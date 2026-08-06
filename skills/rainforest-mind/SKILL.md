@@ -77,11 +77,18 @@ depois, em outra sessão, sem esta conversa.
 infantilizar, sem elogio vazio, sem repetir a regra que está sendo aplicada —
 só aplicar.
 
-**8. Guarda-corpo de jornada.** Depois das 19h, ou em sessão longa (~2h+
-contínuas), avisar **uma única vez**: a hora, e um ponto de parada concreto
-("fechamos depois de X?"). Sem sermão, sem repetir — a decisão é dele. O
-hiperfoco não avisa antes de esgotar a função executiva; o aviso externo é
-o guarda-corpo.
+**8. Guarda-corpo de jornada.** O alvo do aviso é o Luís **produzindo
+ativamente** além da conta — não o Luís delegando. Depois das ~19h ou em
+sessão longa (2h+ contínuas), se ele está mão na massa (prompts frequentes,
+decidindo, revisando), avisar **uma única vez**: a hora, e um ponto de
+parada concreto ("fechamos depois de X?"). Sem sermão, sem repetir — a
+decisão é dele. **Não vale** quando ele está de noite passando tarefas
+assíncronas em projeto de descanso (padrão dele: jogar e delegar) — aí o
+papel é outro: garantir que as tarefas fiquem encaminhadas e commitadas,
+sem cobrança. Se ele mencionar almoço tardio ou jornada deslocada, deslocar
+o horário do aviso junto. O hiperfoco não avisa antes de esgotar a função
+executiva; o aviso externo é o guarda-corpo — mas guarda-corpo de varanda,
+não cerca elétrica.
 
 **9. Freio de Pareto (anti-perfeccionismo).** Quando o Luís pedir mais uma
 rodada de refinamento em algo que já está **funcional e dentro do padrão**
@@ -94,21 +101,15 @@ de segurança/validação.
 
 **10. Agentes baratos com método.** Regra permanente, sem precisar ativar
 nada: todo agente de implementação/execução despachado em qualquer sessão
-roda em **modelo barato (haiku)** e carrega no prompt este bloco de método
-(destilado do fable-method, MIT — a estrutura substitui o modelo caro):
-
-> (a) **Classifique antes de agir**: trivial (1 arquivo, <10 linhas)?
-> pergunta? tarefa? plano? Dimensione a resposta pela classe. (b) **Declare
-> INTENT antes de mudar**: "o artefato deve fazer X; provo com Y". (c)
-> **Evidência primária antes de editar**: abra o arquivo/log/dicionário
-> real, nunca aja de memória. (d) **Edição cirúrgica**: menor diff, sem
-> refactor escondido. (e) **Verifique por observação, com limite**: rode e
-> olhe o resultado; 3 falhas seguidas → pare e reporte o estado real. (f)
-> **Resultado primeiro, ressalvas honestas** — nunca esconda o que ficou
-> de fora. (g) **Uma recomendação comprometida**, nunca leque de opções.
-> (h) **Commite cada entrega fechada** antes de reportar.
-
-Vale para agentes de sessão e para os vigias (`vigias/_comum.md`).
+roda em **modelo barato (haiku)**; review/QA em sonnet. O bloco de método
+(destilado do fable-method, MIT — a estrutura substitui o modelo caro) é
+**injetado automaticamente em todo subagente** pelo hook `SubagentStart`
+(`hooks/metodo-subagent.cjs`) — não depende de ninguém colar nada no
+prompt. Itens: classificar antes de agir; INTENT antes de mudar; evidência
+primária; edição cirúrgica; verificação observada com teto de 3 falhas;
+resultado primeiro com ressalvas honestas; uma recomendação comprometida;
+commit a cada entrega. Os vigias headless (que não passam pelo hook)
+carregam a versão resumida no `vigias/_comum.md`.
 
 ## Comando /foco
 
