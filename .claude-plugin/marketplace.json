@@ -1,0 +1,11 @@
+{
+  "name": "rainforest-mind",
+  "owner": { "name": "Luís Montes" },
+  "plugins": [
+    {
+      "name": "rainforest-mind",
+      "source": "./",
+      "description": "Memória de trabalho externa e radar de escopo — perfil 2e (TDAH + altas habilidades)"
+    }
+  ]
+}

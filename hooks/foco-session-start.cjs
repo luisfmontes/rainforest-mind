@@ -22,7 +22,7 @@ if (m) {
   }
 }
 
-const regras = skill.split('## As 7 regras')[1]?.split('## Comando')[0]?.trim() || '';
+const regras = skill.split('## As regras')[1]?.split('## Comando')[0]?.trim() || '';
 
 console.log(`RAINFOREST MIND ATIVO — memória de trabalho externa e radar de escopo do Luís (perfil 2e).
 
