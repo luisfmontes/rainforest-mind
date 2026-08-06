@@ -3,7 +3,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = path.resolve(__dirname, '..');
+// Dados (FOCO/IDEIAS) vivem no repo de trabalho, não na cópia em cache do plugin.
+const DATA_ROOT = 'C:\\Projetos\\rainforest-mind';
+const ROOT = fs.existsSync(DATA_ROOT) ? DATA_ROOT : path.resolve(__dirname, '..');
 
 function readSafe(p) {
   try { return fs.readFileSync(p, 'utf8').trim(); } catch { return ''; }
