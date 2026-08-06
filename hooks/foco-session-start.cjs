@@ -26,6 +26,24 @@ if (m) {
 
 const regras = skill.split('## As regras')[1]?.split('## Comando')[0]?.trim() || '';
 
+// Sessões paralelas (heartbeat gravado pelo hook UserPromptSubmit)
+let sessoes = '';
+try {
+  const state = JSON.parse(fs.readFileSync(path.join(ROOT, 'sessoes.json'), 'utf8'));
+  const agora = Date.now();
+  const linhas = Object.entries(state)
+    .filter(([, s]) => agora - s.ts < 6 * 3600 * 1000) // ativas nas últimas 6h
+    .map(([id, s]) => {
+      const min = Math.round((agora - s.ts) / 60000);
+      return `- ${s.cwd || '(pasta desconhecida)'} — última atividade há ${min} min`;
+    });
+  if (linhas.length) {
+    sessoes = `\n## Outras sessões recentes (radar multi-janela)\n${linhas.join('\n')}\n` +
+      `Se alguma dessas sessões está no projeto do foco ativo, o radar DESTA sessão fica leve (trabalho paralelo é normal). ` +
+      `O alerta que importa: sessão do projeto do foco ociosa há 45+ min enquanto as demais trabalham — avisar uma vez.\n`;
+  }
+} catch {}
+
 console.log(`RAINFOREST MIND ATIVO — memória de trabalho externa e radar de escopo do Luís (perfil 2e).
 
 ## Regras (aplicar em toda resposta)
@@ -33,5 +51,5 @@ ${regras}
 
 ## Foco declarado
 ${foco || '(nenhum foco declarado — sugira /foco <texto> se o Luís disser no que precisa entregar)'}
-${revisao}
-Arquivos de apoio: ${ROOT}\\FOCO.md e ${ROOT}\\IDEIAS.md`);
+${sessoes}${revisao}
+Arquivos de apoio: ${ROOT}\\FOCO.md e ${ROOT}\\ideias.jsonl (uma ideia por linha)`);
