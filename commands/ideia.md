@@ -13,5 +13,13 @@ Se `$ARGUMENTS` tiver texto: avaliar se a ideia está dentro do foco declarado
   "Isso está no foco — entra na tarefa atual ou planto para depois?"
 - **Se estiver fora:** plantar em `C:\Projetos\rainforest-mind\IDEIAS.md` sob a
   seção `## <data de hoje AAAA-MM-DD>` (criando a seção se não existir, seções
-  mais novas primeiro) no formato `- **Título curto** — uma linha de contexto.`
-  e confirmar: "plantada, de volta a [tarefa]".
+  mais novas primeiro) no formato estruturado:
+  ```
+  - **Título curto** — o que é, em 1-2 linhas.
+    - Contexto: de onde surgiu (conversa/tarefa) e por que foi plantada.
+    - Projeto: repo/pasta a que pertence (ex.: C:\ERP\...\repositorio,
+      plugin X) — ou "solta" se não pertencer a nenhum.
+    - Ao colher: primeiro passo concreto (opcional).
+  ```
+  Se o projeto/repo não estiver óbvio pelo contexto da conversa, perguntar
+  em uma linha antes de gravar. Confirmar: "plantada, de volta a [tarefa]".
