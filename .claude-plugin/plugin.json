@@ -1,7 +1,6 @@
 {
   "name": "rainforest-mind",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Memória de trabalho externa e radar de escopo para o Luís — perfil 2e (TDAH + altas habilidades)",
-  "author": { "name": "Luís Montes" },
-  "hooks": "./hooks/hooks.json"
+  "author": { "name": "Luís Montes" }
 }
