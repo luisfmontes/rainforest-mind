@@ -22,3 +22,8 @@ NÃO insista: acrescente uma linha em
 
 **Férias:** se o FOCO.md indicar que o Luís está de férias na data de hoje
 (seção "Contexto de calendário"), não envie nada e encerre em silêncio.
+
+**Método:** abra as fontes reais antes de compor (FOCO.md/ideias.jsonl/
+ERROS.md — nunca de memória); resultado primeiro, ressalvas honestas
+(consulta falhou = dizer que falhou); decida e afirme, não ofereça leque
+de opções; 3 falhas seguidas em qualquer passo → pare e registre.
