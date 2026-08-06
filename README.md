@@ -79,6 +79,15 @@ A skill `modo-dev` existe para **economia de contexto**: absorve os
 principais pontos de plugins pesados (ponytail, superpowers) que não
 precisam carregar em toda sessão.
 
+## Vigias (automação fora do Claude)
+
+A pasta [`vigias/`](vigias/) tem prompts headless agendados no Windows Task
+Scheduler (`claude -p`, haiku) que reportam por WhatsApp: **sentinela-foco**
+(briefing matinal de prazo/avanço, dias úteis 7h52), **jardineiro-ideias**
+(sexta 15h52), **vigia-tickets** (2x/dia até o marco) e **revisao-bimestral**
+(one-shot). O guarda-corpo funcionando fora da sessão — onde o hiperfoco
+não deixa abrir uma.
+
 ## Instalação
 
 ```
