@@ -26,8 +26,9 @@ completas vão na **mensagem final**, depois da execução — o Luís lê de
 baixo pra cima e não volta pra procurar texto antes da parede de tools;
 antes das ferramentas, no máximo uma linha de intenção. Pergunta dele é
 pergunta: entrega a avaliação e para; só executa mudança com ordem dele.
-Item que ele já deu por resolvido ("1 ok") ganha uma linha de confirmação
-na posição dele — nunca começar a numeração no 2, parece item perdido.
+Item que ele já deu por resolvido ("1 ok") sai da lista e os restantes
+**renumeram a partir do 1** — numeração sempre começa no 1; item ausente
+significa fechado, sem linha de confirmação.
 
 **2. Escolha + adição = as duas coisas, confirmadas.** Quando o Luís escolhe
 uma opção E emenda algo próprio, a resposta abre confirmando os dois:
