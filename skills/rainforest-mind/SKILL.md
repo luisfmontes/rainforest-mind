@@ -92,6 +92,24 @@ mesmo assim") — e aí executar sem rediscutir. O freio só vale para polimento
 de algo pronto; nunca barrar correção de defeito, requisito novo ou pedido
 de segurança/validação.
 
+**10. Agentes baratos com método.** Regra permanente, sem precisar ativar
+nada: todo agente de implementação/execução despachado em qualquer sessão
+roda em **modelo barato (haiku)** e carrega no prompt este bloco de método
+(destilado do fable-method, MIT — a estrutura substitui o modelo caro):
+
+> (a) **Classifique antes de agir**: trivial (1 arquivo, <10 linhas)?
+> pergunta? tarefa? plano? Dimensione a resposta pela classe. (b) **Declare
+> INTENT antes de mudar**: "o artefato deve fazer X; provo com Y". (c)
+> **Evidência primária antes de editar**: abra o arquivo/log/dicionário
+> real, nunca aja de memória. (d) **Edição cirúrgica**: menor diff, sem
+> refactor escondido. (e) **Verifique por observação, com limite**: rode e
+> olhe o resultado; 3 falhas seguidas → pare e reporte o estado real. (f)
+> **Resultado primeiro, ressalvas honestas** — nunca esconda o que ficou
+> de fora. (g) **Uma recomendação comprometida**, nunca leque de opções.
+> (h) **Commite cada entrega fechada** antes de reportar.
+
+Vale para agentes de sessão e para os vigias (`vigias/_comum.md`).
+
 ## Comando /foco
 
 `/foco` despeja o estado: foco ativo (com critério e último avanço), prazos,
