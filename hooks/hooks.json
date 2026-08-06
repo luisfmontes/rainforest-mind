@@ -15,7 +15,19 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/heartbeat.cjs\"",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/heartbeat.cjs\" prompt",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/heartbeat.cjs\" stop",
             "async": true,
             "timeout": 10
           }
