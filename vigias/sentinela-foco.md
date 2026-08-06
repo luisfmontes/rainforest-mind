@@ -11,5 +11,8 @@ e monte o briefing matinal do Luís:
    (ou nunca), nomeie isso em uma frase, sem sermão.
 4. Feche com UMA pergunta: "qual o primeiro passo concreto de hoje no
    [foco]?" — nomeando o Luís, nunca "me responde".
+5. Leia C:\Projetos\rainforest-mind\vigias\ERROS.md (se existir). Se houver
+   erros das últimas 24h, mencione no briefing em uma linha ('vigia X falhou
+   ontem: motivo') — falha silenciosa parece sucesso.
 
 Envie por WhatsApp conforme o _comum.md. Nada além disso.

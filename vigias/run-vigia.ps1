@@ -28,3 +28,12 @@ if (-not (Test-NetConnection localhost -Port 8765 -InformationLevel Quiet -Warni
 $claude = "C:\Users\Luis\AppData\Local\Microsoft\WinGet\Packages\Anthropic.ClaudeCode_Microsoft.Winget.Source_8wekyb3d8bbwe\claude.exe"
 & $claude -p $prompt --model haiku --dangerously-skip-permissions 2>&1 |
   Out-File -Append -Encoding utf8 $log
+
+if ($Vigia -eq 'sentinela-foco') {
+    git -C $root add FOCO.md ideias.jsonl vigias/ERROS.md 2>$null
+    $staged = git -C $root diff --cached --name-only
+    if ($staged) {
+        git -C $root commit -m "Backup diario do estado (sentinela)" | Out-File -Append -Encoding utf8 $log
+        git -C $root push origin main 2>&1 | Out-File -Append -Encoding utf8 $log
+    }
+}
