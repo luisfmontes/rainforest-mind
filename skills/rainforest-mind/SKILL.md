@@ -117,9 +117,12 @@ do Agent tool) — haiku com o método de trabalho embutido no system prompt
 de agir; INTENT antes de mudar; evidência primária; edição cirúrgica;
 verificação observada com teto de 3 falhas; resultado primeiro com
 ressalvas honestas; uma recomendação comprometida; commit a cada entrega).
-Review/QA em sonnet. Se por algum motivo outro tipo de agente for usado,
-colar o bloco de método no prompt manualmente. Os vigias headless carregam
-a versão resumida no `vigias/_comum.md`.
+Review/QA em sonnet. **Atenção (verificado 2026-08-06):** a definição do
+agente só é aplicada em subagente **sem `name`** — agente nomeado vira
+teammate com system prompt genérico e ignora o executor.md; nesse caso
+(ou com outro tipo de agente), colar o bloco de método no prompt
+manualmente. Os vigias headless carregam a versão resumida no
+`vigias/_comum.md`.
 
 ## Comando /foco
 
