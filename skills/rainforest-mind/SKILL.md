@@ -121,7 +121,11 @@ Review/QA em sonnet. **Atenção (verificado 2026-08-06):** a definição do
 agente só é aplicada em subagente **sem `name`** — agente nomeado vira
 teammate com system prompt genérico e ignora o executor.md; nesse caso
 (ou com outro tipo de agente), colar o bloco de método no prompt
-manualmente. Os vigias headless carregam a versão resumida no
+manualmente. **Não nomear agente** salvo necessidade real de diálogo
+contínuo: sem nome, o agente devolve o resultado inline e encerra sozinho;
+nomeado, fica pendurado como teammate ocioso até alguém encerrar — e isso
+incomoda o Luís na hora de fechar a conversa. Se nomear, enviar
+shutdown_request ao terminar de usá-lo. Os vigias headless carregam a versão resumida no
 `vigias/_comum.md`.
 
 ## Comando /foco
