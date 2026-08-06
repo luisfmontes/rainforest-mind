@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="320" viewBox="0 0 1200 320" role="img" aria-label="rainforest-mind">
+  <defs>
+    <linearGradient id="ceu" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#06231a"/>
+      <stop offset="1" stop-color="#0d3b2a"/>
+    </linearGradient>
+    <linearGradient id="copa" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1e5c3f"/>
+      <stop offset="1" stop-color="#123f2c"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="320" fill="url(#ceu)"/>
+
+  <!-- copas ao fundo -->
+  <g opacity="0.5" fill="url(#copa)">
+    <ellipse cx="80"  cy="330" rx="200" ry="120"/>
+    <ellipse cx="330" cy="345" rx="230" ry="110"/>
+    <ellipse cx="900" cy="340" rx="240" ry="115"/>
+    <ellipse cx="1140" cy="330" rx="210" ry="125"/>
+  </g>
+
+  <!-- abas de navegador caindo como folhas -->
+  <g font-family="ui-monospace, 'Cascadia Code', Consolas, monospace" font-size="13">
+    <g transform="translate(105,52) rotate(-8)" opacity="0.95">
+      <rect width="150" height="30" rx="8" fill="#14452f" stroke="#2e8b57" stroke-width="1.5"/>
+      <circle cx="18" cy="15" r="4" fill="#6fcf97"/>
+      <text x="34" y="20" fill="#cdeedd">ideia nova…</text>
+    </g>
+    <g transform="translate(300,26) rotate(5)" opacity="0.8">
+      <rect width="160" height="30" rx="8" fill="#14452f" stroke="#2e8b57" stroke-width="1.5"/>
+      <circle cx="18" cy="15" r="4" fill="#6fcf97"/>
+      <text x="34" y="20" fill="#cdeedd">e se a gente…</text>
+    </g>
+    <g transform="translate(760,30) rotate(-4)" opacity="0.8">
+      <rect width="170" height="30" rx="8" fill="#14452f" stroke="#2e8b57" stroke-width="1.5"/>
+      <circle cx="18" cy="15" r="4" fill="#6fcf97"/>
+      <text x="34" y="20" fill="#cdeedd">outra frente!</text>
+    </g>
+    <g transform="translate(985,58) rotate(7)" opacity="0.95">
+      <rect width="150" height="30" rx="8" fill="#14452f" stroke="#2e8b57" stroke-width="1.5"/>
+      <circle cx="18" cy="15" r="4" fill="#6fcf97"/>
+      <text x="34" y="20" fill="#cdeedd">só mais uma…</text>
+    </g>
+  </g>
+
+  <!-- trilha das abas até o solo (criando raiz) -->
+  <g stroke="#2e8b57" stroke-width="1.5" stroke-dasharray="2 6" fill="none" opacity="0.6">
+    <path d="M 180 92 C 160 170, 210 210, 190 262"/>
+    <path d="M 1060 98 C 1080 170, 1030 210, 1050 262"/>
+  </g>
+
+  <!-- solo e raízes -->
+  <path d="M0 264 Q 600 244 1200 264 L 1200 320 L 0 320 Z" fill="#0a2c1f"/>
+  <g stroke="#3e7d5a" stroke-width="2" fill="none" opacity="0.7">
+    <path d="M 190 262 q -8 20 -26 30 m 26 -30 q 10 22 30 28 m -30 -28 q 0 26 -4 40"/>
+    <path d="M 1050 262 q -8 20 -26 30 m 26 -30 q 10 22 30 28 m -30 -28 q 0 26 -4 40"/>
+  </g>
+
+  <!-- título -->
+  <g text-anchor="middle" font-family="Georgia, 'Times New Roman', serif">
+    <text x="600" y="158" font-size="58" fill="#eafff3" letter-spacing="1">🌳 rainforest-mind</text>
+    <text x="600" y="204" font-size="21" fill="#9fd8ba" font-family="ui-sans-serif, 'Segoe UI', sans-serif">
+      memória de trabalho externa e radar de escopo para uma mente 2e
+    </text>
+    <text x="600" y="240" font-size="15" fill="#6fae8d" font-family="ui-monospace, Consolas, monospace">
+      plantada ≠ descartada — a aba sai da cabeça e cria raiz
+    </text>
+  </g>
+</svg>
