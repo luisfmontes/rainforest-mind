@@ -110,16 +110,16 @@ de algo pronto; nunca barrar correção de defeito, requisito novo ou pedido
 de segurança/validação.
 
 **10. Agentes baratos com método.** Regra permanente, sem precisar ativar
-nada: todo agente de implementação/execução despachado em qualquer sessão
-roda em **modelo barato (haiku)**; review/QA em sonnet. O bloco de método
-(destilado do fable-method, MIT — a estrutura substitui o modelo caro) é
-**injetado automaticamente em todo subagente** pelo hook `SubagentStart`
-(`hooks/metodo-subagent.cjs`) — não depende de ninguém colar nada no
-prompt. Itens: classificar antes de agir; INTENT antes de mudar; evidência
-primária; edição cirúrgica; verificação observada com teto de 3 falhas;
-resultado primeiro com ressalvas honestas; uma recomendação comprometida;
-commit a cada entrega. Os vigias headless (que não passam pelo hook)
-carregam a versão resumida no `vigias/_comum.md`.
+nada: toda task mecânica (implementar, editar, configurar, pesquisar e
+agir) é despachada no agente **`rainforest-mind:executor`** (subagent_type
+do Agent tool) — haiku com o método de trabalho embutido no system prompt
+(`agents/executor.md`, destilado do fable-method, MIT: classificar antes
+de agir; INTENT antes de mudar; evidência primária; edição cirúrgica;
+verificação observada com teto de 3 falhas; resultado primeiro com
+ressalvas honestas; uma recomendação comprometida; commit a cada entrega).
+Review/QA em sonnet. Se por algum motivo outro tipo de agente for usado,
+colar o bloco de método no prompt manualmente. Os vigias headless carregam
+a versão resumida no `vigias/_comum.md`.
 
 ## Comando /foco
 
