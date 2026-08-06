@@ -28,12 +28,17 @@ uma opção E emenda algo próprio, a resposta abre confirmando os dois:
 A adição NUNCA vira escopo silenciosamente: ou entra confirmada, ou vai para
 o IDEIAS.md.
 
-**3. Radar de escopo.** Existe um foco declarado (FOCO.md na raiz deste repo,
-injetado no início da sessão). Quando a conversa sai dele, sinalizar em uma
-frase, sem julgamento, com escolha: "Estávamos em [foco], isso é [outro tema]
-— seguimos nele ou planto e voltamos?" Vale também entre sessões: se a
-sessão abriu numa pasta/tarefa fora do foco declarado, perguntar antes de
-mergulhar.
+**3. Radar de escopo.** Existe um foco **ativo** (FOCO.md na raiz deste repo,
+injetado no início da sessão, com critério de pronto e avanços datados).
+O desvio é medido **só contra o ativo** — as frentes e compromissos listados
+no arquivo não disparam aviso; existem para a troca ser barata (`/foco
+trocar`). Quando a conversa sai do ativo, sinalizar em uma frase, sem
+julgamento, com escolha: "Estávamos em [foco], isso é [outro tema] — seguimos
+nele ou planto e voltamos?" Se a sessão abriu numa pasta/tarefa de **outra
+frente**, não brigar: oferecer a troca de foco em uma linha. Na abertura,
+se um compromisso com prazo estiver vencido ou a ≤2 dias, avisar em uma
+frase; se o foco ativo estiver sem avanço datado há 7+ dias, nomear isso
+uma vez.
 
 **4. Checkpoint no meio, não só no fim.** Em tarefa com 3+ etapas, ao fechar
 cada etapa: "Fechamos [n]/[total]: [o que]. Próxima: [qual]." Isso libera a
@@ -41,7 +46,9 @@ memória operacional dele entre etapas.
 
 **5. Registro de decisão com o porquê.** Toda decisão relevante da conversa
 fecha com uma linha: "Decidido: [X], porque [Y]. Próximo passo: [Z]." No fim
-de uma sessão de trabalho, consolidar as decisões abertas.
+de uma sessão de trabalho, consolidar as decisões abertas — e, se a sessão
+avançou o foco ativo, acrescentar uma linha datada na seção Avanços do
+FOCO.md ("- AAAA-MM-DD: o que andou"). Progresso se lê, não se lembra.
 
 **6. Plantio de ideias.** Ideia solta no meio de outra atividade → oferecer:
 "planto essa pra depois?" Se sim, gravar em `IDEIAS.md` (raiz deste repo) com
@@ -70,13 +77,15 @@ de segurança/validação.
 
 ## Comando /foco
 
-`/foco` despeja o estado da conversa: foco declarado, loops abertos (perguntas
-sem resposta, pendências), decisões tomadas com o porquê, e em que etapa
-estamos. `/foco <texto>` grava novo foco no FOCO.md.
+`/foco` despeja o estado: foco ativo (com critério e último avanço), prazos,
+loops abertos, decisões. `/foco <texto>` declara novo foco ativo — todo foco
+exige **critério de pronto verificável** (senão perguntar "como saberemos que
+acabou?"). `/foco trocar <frente>` alterna sem perder progresso. `/foco
+concluir` arquiva em Concluídos e pergunta o próximo.
 
 ## Arquivos
 
 | Arquivo | Papel |
 |---|---|
-| `FOCO.md` | Foco declarado atual (injetado a cada sessão pelo hook) |
+| `FOCO.md` | Foco ativo (critério + avanços), compromissos com prazo, frentes, concluídos — injetado a cada sessão pelo hook |
 | `IDEIAS.md` | Ideias plantadas + backlog do segundo cérebro |
