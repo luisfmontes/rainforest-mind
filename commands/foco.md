@@ -10,7 +10,7 @@ Se `$ARGUMENTS` estiver vazio: despeje o estado da conversa até aqui, neste for
 3. **Loops abertos:** perguntas do Luís ainda sem resposta, pendências
    combinadas e não executadas, decisões em aberto — cada uma em uma linha
 4. **Decisões tomadas:** "X, porque Y" — só as desta conversa
-5. **Ideias estacionadas nesta conversa:** se houver
+5. **Ideias plantadas nesta conversa:** se houver
 
 Se `$ARGUMENTS` tiver texto: grave-o como novo foco em
 `C:\Projetos\rainforest-mind\FOCO.md` (substituindo o conteúdo, com a data
