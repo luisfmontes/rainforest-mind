@@ -46,8 +46,9 @@ flowchart LR
 ```
 
 **Plantada ≠ descartada.** A ideia sai da cabeça para um lugar confiável e
-cria raiz até a estação certa. O `IDEIAS.md` deste repo guarda as plantadas
-e as colhidas — o histórico de colheita fica visível.
+cria raiz até a estação certa. O `ideias.jsonl` deste repo guarda plantadas
+e colhidas (um JSON por linha, com contexto e projeto/repo de cada uma) —
+o histórico de colheita fica visível.
 
 ## As 9 regras
 
@@ -71,8 +72,8 @@ Detalhe completo em [`skills/rainforest-mind/SKILL.md`](skills/rainforest-mind/S
 |-------|-----|
 | `/foco` | Estado da conversa: foco, loops abertos, decisões tomadas |
 | `/foco <texto>` | Declara novo foco em `FOCO.md` — injetado em toda sessão nova |
-| `/ideia <texto>` | Avalia contra o foco: dentro → entra confirmada; fora → planta |
-| `/ideia` | Lista as ideias plantadas |
+| `/ideia <texto>` | Avalia contra o foco: dentro → entra confirmada; fora → planta em `ideias.jsonl` (com contexto e projeto/repo) |
+| `/ideia` | Lista as ideias plantadas (lendo o jsonl) |
 | `modo-dev` (skill) | Essência de disciplina de dev sob demanda: escada YAGNI, causa raiz, commit a cada entrega, evidência antes de "pronto" |
 
 A skill `modo-dev` existe para **economia de contexto**: absorve os

@@ -9,6 +9,18 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/heartbeat.cjs\"",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }
