@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-0.5.0-1e5c3f?style=flat-square" alt="versão 0.4.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-0.14.0-1e5c3f?style=flat-square" alt="versão 0.14.0">
   <img src="https://img.shields.io/badge/perfil-2e_(TDAH_+_AH%2FSD)-6fcf97?style=flat-square" alt="perfil 2e">
   <img src="https://img.shields.io/badge/revis%C3%A3o-bimestral-9fd8ba?style=flat-square" alt="revisão bimestral">
 </p>
@@ -38,7 +38,7 @@ Com o plugin:
 flowchart LR
     A["💭 ideia solta<br/>no meio da tarefa"] --> B{"radar<br/>de escopo"}
     B -->|"está no foco"| C["entra na tarefa<br/>(confirmada)"]
-    B -->|"está fora"| D["🌱 plantada em<br/>IDEIAS.md"]
+    B -->|"está fora"| D["🌱 plantada em<br/>ideias.jsonl"]
     D --> E["revisão quando<br/>houver espaço"]
     E -->|"chegou a estação"| F["🌳 colhida:<br/>vira trabalho"]
     E -->|"ainda não"| D
@@ -50,19 +50,21 @@ cria raiz até a estação certa. O `ideias.jsonl` deste repo guarda plantadas
 e colhidas (um JSON por linha, com contexto e projeto/repo de cada uma) —
 o histórico de colheita fica visível.
 
-## As 9 regras
+## As 11 regras
 
 | # | Regra | Em uma frase |
 |---|-------|--------------|
-| 1 | Responder tudo, na ordem | N perguntas recebem N respostas, numeradas |
+| 1 | Responder tudo, na ordem | N perguntas recebem N respostas, numeradas, na mensagem final; item resolvido sai e a lista renumera do 1 |
 | 2 | Escolha + adição | A emenda nunca vira escopo em silêncio: confirma ou planta |
 | 3 | Radar de escopo | Saiu do foco declarado → uma frase, sem julgamento, com escolha |
 | 4 | Checkpoint no meio | Tarefa 3+ etapas: "fechamos n/total" a cada etapa |
 | 5 | Decisão com o porquê | "Decidido: X, porque Y. Próximo passo: Z." |
-| 6 | Plantio de ideias | Ideia solta → "planto essa pra depois?" → `IDEIAS.md` |
+| 6 | Plantio de ideias | Ideia solta → "planto essa pra depois?" → `ideias.jsonl` |
 | 7 | Tom sênior | Policia pontas soltas e escopo, nunca o mérito |
-| 8 | Guarda-corpo de jornada | Depois das 19h ou 2h+ contínuas: um aviso, uma vez |
+| 8 | Guarda-corpo de jornada | Jornada real do apontamento-horas: ~9h efetivas produzindo → um aviso, uma vez (fallback: 19h/2h+) |
 | 9 | Freio de Pareto | Polimento de algo pronto → barra uma vez, entrega ou planta |
+| 10 | Agentes baratos com método | Task mecânica → agente `executor` (haiku com método embutido); sem `name` por padrão |
+| 11 | Worktree de subagente | Isolamento sempre — e conferir o commit-base do worktree; integrar por partes, nunca copiar arquivos inteiros |
 
 Detalhe completo em [`skills/rainforest-mind/SKILL.md`](skills/rainforest-mind/SKILL.md).
 
@@ -75,6 +77,7 @@ Detalhe completo em [`skills/rainforest-mind/SKILL.md`](skills/rainforest-mind/S
 | `/ideia <texto>` | Avalia contra o foco: dentro → entra confirmada; fora → planta em `ideias.jsonl` (com contexto e projeto/repo) |
 | `/ideia` | Lista as ideias plantadas (lendo o jsonl) |
 | `modo-dev` (skill) | Essência de disciplina de dev sob demanda: escada YAGNI, causa raiz, commit a cada entrega, evidência antes de "pronto" |
+| `executor` (agente) | Implementação/execução mecânica em haiku com o método de trabalho embutido no system prompt (`agents/executor.md`) |
 
 A skill `modo-dev` existe para **economia de contexto**: absorve os
 principais pontos de plugins pesados (ponytail, superpowers) que não
@@ -102,7 +105,7 @@ Ou aponte `--plugin-dir` para a pasta do repo em desenvolvimento.
 
 - As regras vivem em [`skills/rainforest-mind/SKILL.md`](skills/rainforest-mind/SKILL.md) — edite e a mudança vale na próxima sessão.
 - O hook avisa quando a skill passa de **60 dias sem revisão** (data no cabeçalho do SKILL.md): o perfil muda, a skill acompanha.
-- Fork à vontade: troque `FOCO.md`/`IDEIAS.md` pelos seus arquivos e as regras pelo seu perfil.
+- Fork à vontade: troque `FOCO.md`/`ideias.jsonl` pelos seus arquivos e as regras pelo seu perfil.
 
 ## Base
 
