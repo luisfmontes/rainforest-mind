@@ -26,21 +26,28 @@ if (m) {
 
 const regras = skill.split('## As regras')[1]?.split('## Comando')[0]?.trim() || '';
 
-// Sessões paralelas (heartbeat gravado pelo hook UserPromptSubmit)
+// Sessões paralelas (heartbeat: prompt_ts = o Luís agiu, stop_ts = Claude
+// terminou o turno e está esperando)
 let sessoes = '';
 try {
   const state = JSON.parse(fs.readFileSync(path.join(ROOT, 'sessoes.json'), 'utf8'));
   const agora = Date.now();
   const linhas = Object.entries(state)
-    .filter(([, s]) => agora - s.ts < 6 * 3600 * 1000) // ativas nas últimas 6h
+    .filter(([, s]) => agora - Math.max(s.prompt_ts || 0, s.stop_ts || 0) < 6 * 3600 * 1000)
     .map(([id, s]) => {
-      const min = Math.round((agora - s.ts) / 60000);
-      return `- ${s.cwd || '(pasta desconhecida)'} — última atividade há ${min} min`;
+      const p = s.prompt_ts || 0, t = s.stop_ts || 0;
+      const min = (x) => Math.round((agora - x) / 60000);
+      const status = p > t
+        ? `Claude trabalhando (turno em curso há ${min(p)} min)`
+        : `esperando o Luís há ${min(t || p)} min`;
+      return `- ${s.cwd || '(pasta desconhecida)'} — ${status}`;
     });
   if (linhas.length) {
+    const oci = (foco.match(/Ociosidade máxima:\s*(\d+)\s*min/i) || [])[1] || '45';
     sessoes = `\n## Outras sessões recentes (radar multi-janela)\n${linhas.join('\n')}\n` +
       `Se alguma dessas sessões está no projeto do foco ativo, o radar DESTA sessão fica leve (trabalho paralelo é normal). ` +
-      `O alerta que importa: sessão do projeto do foco ociosa há 45+ min enquanto as demais trabalham — avisar uma vez.\n`;
+      `Ocioso = "esperando o Luís" — Claude trabalhando nunca conta. ` +
+      `O alerta que importa: sessão do projeto do foco esperando o Luís há ${oci}+ min enquanto as demais trabalham — avisar uma vez ("a janela do foco esfriou").\n`;
   }
 } catch {}
 
