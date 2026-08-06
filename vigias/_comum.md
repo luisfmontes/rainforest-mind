@@ -10,6 +10,10 @@ tom pessoal e direto, terminando com o rodapé obrigatório:
 
 🤖 _Mensagem enviada automaticamente pelo assistente do Luís Montes._
 
+**Envio único:** chame `send_message` exatamente UMA vez. Se o resultado
+vier ambíguo (timeout, resposta estranha), NÃO reenvie — mensagem duplicada
+é pior que atrasada; registre em ERROS.md e encerre.
+
 **Pré-checagem:** antes de compor, chame `search_contacts` com query "Luis".
 Se a tool falhar (bridge fora do ar) ou o `send_message` retornar erro,
 NÃO insista: acrescente uma linha em
