@@ -15,7 +15,11 @@ assistente segurar as abas para que o foco fique na tarefa.
 - **`/foco`** — estado da conversa (loops abertos, decisões) ou declara novo
   foco, gravado em `FOCO.md` e injetado em **toda** sessão nova, em qualquer
   pasta.
-- **`IDEIAS.md`** — estacionamento: a aba sai da cabeça, vai para o arquivo.
+- **`/ideia`** — avalia se a ideia está no escopo do foco; fora dele, planta
+  em `IDEIAS.md` — a aba sai da cabeça, vai para o arquivo.
+- **`modo-dev`** — skill sob demanda com a essência de disciplina de dev
+  (escada YAGNI do ponytail, processo do superpowers, commit sempre), para
+  não carregar esses plugins inteiros em toda sessão.
 - **Revisão bimestral** — o hook avisa quando a skill passa de 60 dias sem
   revisão (data no cabeçalho do SKILL.md).
 
