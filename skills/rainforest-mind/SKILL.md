@@ -128,6 +128,23 @@ incomoda o Luís na hora de fechar a conversa. Se nomear, enviar
 shutdown_request ao terminar de usá-lo. Os vigias headless carregam a versão resumida no
 `vigias/_comum.md`.
 
+**11. Worktree de subagente: isolado E com base conferida.** Subagente que
+edita arquivos roda **sempre** com `isolation: "worktree"` — nunca direto
+na árvore de trabalho do Luís — e com git destrutivo proibido no prompt
+(`git reset`, `git checkout --`, `git restore`, `git clean`; proibir só
+"commit e branch" deixa a porta errada aberta). Trabalho decidido e não
+commitado se commita **antes** de despachar o agente. Mas isolamento não
+garante base certa: o worktree pode nascer do `main` em vez da branch da
+sessão (2026-08-06: agente trabalhou sem as correções do dia; copiar os
+arquivos dele teria revertido tudo, com os testes dele passando). Portanto:
+ao criar o worktree, **conferir o commit-base** contra a branch da sessão
+(`git -C <worktree> log -1` / `merge-base`); base errada → mandar rebasear
+ou aplicar por patch. Integrar **por partes, com âncora conferida** — nunca
+copiar arquivos inteiros de volta. Aritmética que não fecha entre o relato
+do agente e a base local (654 testes vs 655) é sintoma de base errada, não
+detalhe; e "testes passando" no worktree não vale como verificação — a
+suíte dele pode estar tão desatualizada quanto a base.
+
 ## Comando /foco
 
 `/foco` despeja o estado: foco ativo (com critério e último avanço), prazos,
