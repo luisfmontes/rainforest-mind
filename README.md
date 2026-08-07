@@ -89,7 +89,9 @@ precisam carregar em toda sessão.
 
 A pasta [`vigias/`](vigias/) tem prompts headless agendados no Windows Task
 Scheduler (`claude -p`, haiku) que reportam por WhatsApp: **sentinela-foco**
-(briefing matinal de prazo/avanço, dias úteis 7h52), **jardineiro-ideias**
+(briefing matinal de prazo/avanço + triagem do inbox Gmail em 3 baldes —
+responder hoje / pode esperar / FYI, somente leitura —, dias úteis 7h52),
+**jardineiro-ideias**
 (sexta 15h52 — ideias plantadas + revisão periódica do vault
 segundo-cerebro), **vigia-tickets** (2x/dia até o marco) e **revisao-bimestral**
 (one-shot). O guarda-corpo funcionando fora da sessão — onde o hiperfoco
