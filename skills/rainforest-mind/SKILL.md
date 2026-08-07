@@ -117,7 +117,11 @@ do Agent tool) — haiku com o método de trabalho embutido no system prompt
 de agir; INTENT antes de mudar; evidência primária; edição cirúrgica;
 verificação observada com teto de 3 falhas; resultado primeiro com
 ressalvas honestas; uma recomendação comprometida; commit a cada entrega).
-Review/QA em sonnet. **Atenção (verificado 2026-08-06):** a definição do
+Review/QA em sonnet via agente **`rainforest-mind:revisor`**
+(`agents/revisor.md` — evidência primária, achado só com cenário concreto
+de falha, veredito integra/não-integra; reporta, não conserta). A divisão
+completa: **a janela principal pensa** (entende, planeja, decide, integra);
+executor implementa; revisor revisa; opus só sob pedido explícito. **Atenção (verificado 2026-08-06):** a definição do
 agente só é aplicada em subagente **sem `name`** — agente nomeado vira
 teammate com system prompt genérico e ignora o executor.md; nesse caso
 (ou com outro tipo de agente), colar o bloco de método no prompt
