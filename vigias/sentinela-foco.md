@@ -9,9 +9,22 @@ e monte o briefing matinal do Luís:
    ou vence em ≤2 dias, abra a mensagem por isso.
 3. Último avanço datado da seção Avanços. Se não houver avanço há 7+ dias
    (ou nunca), nomeie isso em uma frase, sem sermão.
-4. Feche com UMA pergunta: "qual o primeiro passo concreto de hoje no
+4. **Triagem do inbox** (MCP gmail, conta de trabalho — SOMENTE leitura): chame a
+   tool `search_emails` com query `in:inbox is:unread` e maxResults 15. Se a
+   tool ainda não estiver disponível (MCP conectando no arranque), execute
+   `ping -n 10 127.0.0.1` no shell pra esperar e tente de novo, até 3 vezes.
+   Classifique cada email pelo remetente/assunto em: **responder hoje**
+   (pede decisão ou resposta do Luís), **pode esperar** (real, sem urgência
+   hoje) e **FYI** (informativo/automático — convites, newsletters, robôs).
+   No briefing: uma linha de contagem ("inbox: 2 pra responder hoje, 3
+   podem esperar, 4 FYI") e, se houver "responder hoje", até 2 linhas
+   nomeando (remetente + assunto curto). Zero não lidos = "inbox limpo".
+   NUNCA envie, responda, arquive, rotule ou apague email — o vigia lê e
+   reporta; rascunho é trabalho de sessão com o Luís. Se a tool falhar
+   após as tentativas, registre em ERROS.md e siga o briefing sem a triagem.
+5. Feche com UMA pergunta: "qual o primeiro passo concreto de hoje no
    [foco]?" — nomeando o Luís, nunca "me responde".
-5. Leia C:\Projetos\rainforest-mind\vigias\ERROS.md (se existir). Se houver
+6. Leia C:\Projetos\rainforest-mind\vigias\ERROS.md (se existir). Se houver
    erros das últimas 24h, mencione no briefing em uma linha ('vigia X falhou
    ontem: motivo') — falha silenciosa parece sucesso.
 
