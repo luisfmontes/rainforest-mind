@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-0.16.0-1e5c3f?style=flat-square" alt="versão 0.16.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-0.17.0-1e5c3f?style=flat-square" alt="versão 0.17.0">
   <img src="https://img.shields.io/badge/perfil-2e_(TDAH_+_AH%2FSD)-6fcf97?style=flat-square" alt="perfil 2e">
   <img src="https://img.shields.io/badge/revis%C3%A3o-bimestral-9fd8ba?style=flat-square" alt="revisão bimestral">
 </p>
@@ -90,7 +90,8 @@ precisam carregar em toda sessão.
 A pasta [`vigias/`](vigias/) tem prompts headless agendados no Windows Task
 Scheduler (`claude -p`, haiku) que reportam por WhatsApp: **sentinela-foco**
 (briefing matinal de prazo/avanço, dias úteis 7h52), **jardineiro-ideias**
-(sexta 15h52), **vigia-tickets** (2x/dia até o marco) e **revisao-bimestral**
+(sexta 15h52 — ideias plantadas + revisão periódica do vault
+segundo-cerebro), **vigia-tickets** (2x/dia até o marco) e **revisao-bimestral**
 (one-shot). O guarda-corpo funcionando fora da sessão — onde o hiperfoco
 não deixa abrir uma.
 
