@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-0.14.0-1e5c3f?style=flat-square" alt="versão 0.14.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-0.15.0-1e5c3f?style=flat-square" alt="versão 0.15.0">
   <img src="https://img.shields.io/badge/perfil-2e_(TDAH_+_AH%2FSD)-6fcf97?style=flat-square" alt="perfil 2e">
   <img src="https://img.shields.io/badge/revis%C3%A3o-bimestral-9fd8ba?style=flat-square" alt="revisão bimestral">
 </p>
@@ -63,7 +63,7 @@ o histórico de colheita fica visível.
 | 7 | Tom sênior | Policia pontas soltas e escopo, nunca o mérito |
 | 8 | Guarda-corpo de jornada | Jornada real do apontamento-horas: ~9h efetivas produzindo → um aviso, uma vez (fallback: 19h/2h+) |
 | 9 | Freio de Pareto | Polimento de algo pronto → barra uma vez, entrega ou planta |
-| 10 | Agentes baratos com método | Task mecânica → agente `executor` (haiku com método embutido); sem `name` por padrão |
+| 10 | Agentes baratos com método | Janela principal pensa; task mecânica → `executor` (haiku), review/QA → `revisor` (sonnet); sem `name` por padrão |
 | 11 | Worktree de subagente | Isolamento sempre — e conferir o commit-base do worktree; integrar por partes, nunca copiar arquivos inteiros |
 
 Detalhe completo em [`skills/rainforest-mind/SKILL.md`](skills/rainforest-mind/SKILL.md).
@@ -78,6 +78,7 @@ Detalhe completo em [`skills/rainforest-mind/SKILL.md`](skills/rainforest-mind/S
 | `/ideia` | Lista as ideias plantadas (lendo o jsonl) |
 | `modo-dev` (skill) | Essência de disciplina de dev sob demanda: escada YAGNI, causa raiz, commit a cada entrega, evidência antes de "pronto" |
 | `executor` (agente) | Implementação/execução mecânica em haiku com o método de trabalho embutido no system prompt (`agents/executor.md`) |
+| `revisor` (agente) | Review/QA em sonnet com método de revisão embutido (`agents/revisor.md`): evidência primária, achado só com cenário de falha, veredito integra/não-integra |
 
 A skill `modo-dev` existe para **economia de contexto**: absorve os
 principais pontos de plugins pesados (ponytail, superpowers) que não
