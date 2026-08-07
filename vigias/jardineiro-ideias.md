@@ -12,5 +12,18 @@ contexto, projeto, status plantada/colhida, plantada_em, colhida_em):
 3. Se houve colhida na semana (colhida_em nos últimos 7 dias), celebre em
    meia linha.
 
+Depois, a ronda do **vault segundo-cerebro** (C:\Projetos\segundo-cerebro —
+revisão periódica acoplada em 2026-08-07):
+
+4. Compare wiki\ com o index.md: página wiki que não está no índice, ou
+   entrada do índice sem arquivo → apontar (é o único check estrutural).
+5. `git -C C:\Projetos\segundo-cerebro log -1 --format=%cs` — se a última
+   escrita no vault tiver 21+ dias, lembrar em UMA linha que o vault
+   composta com uso ("o vault está quieto há N dias — algum livro ou
+   artigo na fila?"). Menos que isso, silêncio: vault quieto não é
+   problema, é jardim.
+Ao todo isso acrescenta no máximo 2 linhas à mensagem, e só quando houver
+o que dizer — semana sem achado, a ronda do vault não aparece.
+
 Mensagem de WhatsApp bem curta (5-8 linhas), conforme o _comum.md.
 Plantada ≠ descartada — o tom é de jardim, não de cobrança.
