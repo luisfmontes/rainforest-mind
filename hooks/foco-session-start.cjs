@@ -14,17 +14,43 @@ function readSafe(p) {
 
 // Checagem de dependências de ambiente
 function readPlugins() {
-  const settingsPath = process.env.RFM_SETTINGS_PATH || 'C:\\Users\\Luis\\.claude\\settings.json';
-  try {
-    const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-    const plugins = settings.enabledPlugins || {};
-    return {
-      apontamento: plugins['um plugin de apontamento externo'] === true ? 'ok' : 'FORA (regra 8 no fallback de relógio)',
-      claudeMem: plugins['claude-mem@thedotmack'] === true ? 'ok' : 'FORA (revisão bimestral sem dados)',
-    };
-  } catch {
-    return { apontamento: '?', claudeMem: '?' };
+  const userSettingsPath = process.env.RFM_SETTINGS_PATH || 'C:\\Users\\Luis\\.claude\\settings.json';
+  const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  const projectSettingsPath = path.join(projectDir, '.claude', 'settings.json');
+  const projectLocalSettingsPath = path.join(projectDir, '.claude', 'settings.local.json');
+
+  let allPlugins = {};
+  let filesRead = 0;
+
+  // Ordem: usuário, projeto, projeto local (último vence)
+  for (const filePath of [userSettingsPath, projectSettingsPath, projectLocalSettingsPath]) {
+    try {
+      const settings = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      const plugins = settings.enabledPlugins || {};
+      allPlugins = { ...allPlugins, ...plugins };
+      filesRead++;
+    } catch {
+      // Arquivo ausente ou JSON inválido, ignorar
+    }
   }
+
+  // Determinar status para cada plugin
+  const getStatus = (pluginKey, defaultMessage) => {
+    if (allPlugins[pluginKey] === true) {
+      return 'ok';
+    } else if (filesRead > 0) {
+      // Pelo menos um arquivo foi lido
+      return `ausente neste projeto (${defaultMessage})`;
+    } else {
+      // Nenhum arquivo pôde ser lido
+      return '?';
+    }
+  };
+
+  return {
+    apontamento: getStatus('um plugin de apontamento externo', 'regra 8 no fallback de relógio'),
+    claudeMem: getStatus('claude-mem@thedotmack', 'revisão bimestral sem dados'),
+  };
 }
 
 function testTcpConnection(host, port, timeout = 400) {
