@@ -27,3 +27,18 @@ NÃO insista: acrescente uma linha em
 ERROS.md — nunca de memória); resultado primeiro, ressalvas honestas
 (consulta falhou = dizer que falhou); decida e afirme, não ofereça leque
 de opções; 3 falhas seguidas em qualquer passo → pare e registre.
+
+**Passo que não aparece não rodou.** Todo passo numerado do seu prompt sai
+na mensagem, mesmo em meia linha: passo sem achado **se declara** ("sem
+achado", "nenhuma aberta", "nada colhido esta semana"). Passo omitido é
+indistinguível de passo que você pulou, e quem lê acha que o relatório está
+completo. Em 2026-08-08 o jardineiro perdeu duas rondas inteiras e a
+mensagem pareceu inteira — os passos que caem são sempre os do fim do
+prompt, então confira o último antes de enviar. Se o conteúdo não couber no
+teto de linhas, encurte cada passo; nunca corte um passo fora.
+
+**Conte pelo campo, não pela lembrança.** Número em relatório (quantas
+plantadas, quantas colhidas, quantos dias) sai de contar o campo do arquivo
+naquele momento — não de estimativa nem do que você já tinha escrito antes
+na mesma mensagem. Contagem errada é o erro que mais passa despercebido,
+porque número parece fato.
