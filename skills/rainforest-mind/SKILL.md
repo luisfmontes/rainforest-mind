@@ -33,8 +33,8 @@ significa fechado, sem linha de confirmação.
 **2. Escolha + adição = as duas coisas, confirmadas.** Quando o Luís escolhe
 uma opção E emenda algo próprio, a resposta abre confirmando os dois:
 "Fechado: [escolha]. Você adicionou [X] — entra no escopo agora ou planto?"
-A adição NUNCA vira escopo silenciosamente: ou entra confirmada, ou vai para
-o IDEIAS.md.
+A adição NUNCA vira escopo silenciosamente: ou entra confirmada, ou é
+plantada no `ideias.jsonl` pela regra 6 — quem grava é o `/ideia`.
 
 **3. Radar de escopo.** Existe um foco **ativo** (FOCO.md na raiz deste repo,
 injetado no início da sessão, com critério de pronto e avanços datados).
@@ -116,13 +116,8 @@ papel é outro: garantir que as tarefas fiquem encaminhadas e commitadas,
 sem cobrança. **Dados reais em vez de relógio fixo:** se o plugin
 apontamento-horas estiver instalado, ao avaliar o aviso rode
 `python <cache do plugin>\skills\apontamento-horas\scripts\jornada_cli.py status`
-— a raiz do cache **sai da variável `CLAUDE_CONFIG_DIR` da sessão**
-(`<CLAUDE_CONFIG_DIR>\plugins\cache\marketplace-interno\apontamento-horas\`), e a versão
-é a mais nova **dentro dessa raiz**. Ler a variável, e não um caminho
-escrito à mão: em 2026-08-08 ela passou de `.claude` para
-`.claude-personal`, e a pasta antiga ficou para trás com versões obsoletas
-(até 1.12.0, contra 1.16.0 na nova) — resolver por ela devolveria número de
-um plugin que nem está carregado, sem erro nenhum na cara. Ele
+— raiz em `<CLAUDE_CONFIG_DIR>\plugins\cache\marketplace-interno\apontamento-horas\`,
+versão mais nova dentro dela (a raiz sai da variável — regra 14). Ele
 mostra os períodos do dia, o almoço e as horas efetivas. Critério com
 dados: avisar quando as horas efetivas passarem de ~9h E ele estiver
 produzindo ativamente; jornada fechada (sem período aberto) = fora de
@@ -226,6 +221,17 @@ comportamento real**, especificada) deve fazer qual teste falhar;
 pedidas e números que não somam são gatilho de auditoria, não detalhe;
 (4) agentes concorrentes **não compartilham a mesma instância de browser**
 (Playwright) — trocam de aba um sob o outro e leem a página errada.
+**Entrega analítica escapa por não ter artefato.** Relatório que compara,
+levanta achado ou lê documentação não tem comando pra rodar, então as defesas
+acima não pegam nele — e ele chega com a mesma cara de confiança. O sinal
+barato, antes de virar conclusão: conferir **na fonte** duas citações que o
+relatório faz do nosso lado (`arquivo:linha`) e **uma contagem** que ele
+declara (linhas, arquivos, itens). Incidente 2026-08-08: dois agentes
+compararam repos públicos com este; um colou o texto do repo analisado dentro
+da coluna do nosso, o outro afirmou que o `executor.md` barra git destrutivo
+— não barra. Os dois passariam, e o veredito montado em cima deles estava
+errado; quem derrubou foi o Luís não acreditando, não a validação. Citação que
+não existe na fonte = ler a fonte, não integrar o relatório.
 
 **13. Correção sua vira observação registrada.** O plantio da regra 6 depende
 do Luís nomear a ideia; este registro é o inverso — o gatilho é **ele
@@ -257,6 +263,14 @@ Mesma família da ronda de vigia que falha na pré-checagem e não relata:
 **silêncio ≠ nada a relatar**. O aviso é uma linha só, com o efeito prático
 nomeado ("a regra 10 está bloqueada nesta janela: despacho só se você
 pedir"), e não se repete na mesma sessão.
+**Caminho de ambiente se resolve pela variável, nunca se escreve à mão.**
+Cache de plugin, config, sessão: a raiz é a `CLAUDE_CONFIG_DIR` **desta**
+sessão, resolvida na hora. Caminho fixo no texto envelhece calado — em
+2026-08-08 a variável passou de `.claude` para `.claude-personal` e a pasta
+velha ficou com versões obsoletas (1.12.0 contra 1.16.0 na nova); a regra 8
+apontava pra ela. É o modo de falha desta família: não dá erro, devolve o
+número de um plugin que nem está carregado. Ambiente que mudou de lugar
+bloqueia regra do mesmo jeito que ambiente ausente, e pede o mesmo aviso.
 
 **15. Agente não altera o ambiente do Luís.** O worktree da regra 11 isola o
 repositório, não a máquina — e a proibição de git destrutivo foi lida como

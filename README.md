@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-0.25.1-1e5c3f?style=flat-square" alt="versão 0.25.1">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-0.26.0-1e5c3f?style=flat-square" alt="versão 0.26.0">
   <img src="https://img.shields.io/badge/perfil-2e_(TDAH_+_AH%2FSD)-6fcf97?style=flat-square" alt="perfil 2e">
   <img src="https://img.shields.io/badge/revis%C3%A3o-bimestral-9fd8ba?style=flat-square" alt="revisão bimestral">
 </p>
@@ -65,9 +65,9 @@ o histórico de colheita fica visível.
 | 9 | Freio de Pareto | Polimento de algo pronto → triar extrínseco/intrínseco, barra uma vez ou não barra, entrega ou planta |
 | 10 | Agentes baratos com método | Janela principal pensa; task mecânica → `executor` (haiku), review → `revisor`, testes → `tester` (sonnet); sem `name` por padrão |
 | 11 | Worktree de subagente | Isolamento sempre — briefing informa o hash de base e o agente confere como 1ª ação; a integração reconfere e vai por partes, nunca cópia de arquivo inteiro |
-| 12 | Entrega se valida na saída real | Agente reporta intenção, não resultado: critério de sucesso vem pronto no briefing, mutação reverte o comportamento real, e a validação é executar o artefato e olhar a saída — suíte verde não é evidência |
+| 12 | Entrega se valida na saída real | Agente reporta intenção, não resultado: critério de sucesso vem pronto no briefing, mutação reverte o comportamento real, e a validação é executar o artefato e olhar a saída — suíte verde não é evidência. Relatório **analítico** não tem artefato: confere duas citações na fonte e uma contagem declarada |
 | 13 | Correção vira observação | Você corrigir a saída já é o sinal: registra `tipo: observacao` no `ideias.jsonl`, silencioso, e o jardineiro de sexta propõe no máximo uma mudança de regra por semana |
-| 14 | Regra bloqueada se anuncia | Ambiente da sessão impediu uma regra (harness, permissão, MCP fora do ar) → uma linha na primeira vez, nunca silêncio |
+| 14 | Regra bloqueada se anuncia | Ambiente da sessão impediu uma regra (harness, permissão, MCP fora do ar) → uma linha na primeira vez, nunca silêncio. Caminho de ambiente sai da variável (`CLAUDE_CONFIG_DIR`), nunca escrito à mão — pasta que mudou de lugar quebra regra em silêncio |
 | 15 | Agente não altera o ambiente | Subagente não instala software nem mexe em PATH, env, config global ou serviço: ferramenta ausente para e reporta, quem decide é a janela principal com a palavra dele |
 | 16 | Fato é meu, decisão é sua | Pergunta que o ambiente responde se resolve olhando, nunca sobe pra você; decisões abertas vão em **rodada única, numeradas, cada uma com a resposta recomendada** |
 | 17 | Multi-janela | Outra janela ativa no projeto do foco deixa o radar desta leve — paralelo é escolha, não desvio; o alerta é a janela do foco parada esperando você |
