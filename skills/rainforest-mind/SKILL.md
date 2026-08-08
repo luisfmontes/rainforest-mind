@@ -186,8 +186,18 @@ edita arquivos roda **sempre** com `isolation: "worktree"` — nunca direto
 na árvore de trabalho do Luís — e com git destrutivo proibido no prompt
 (`git reset`, `git checkout --`, `git restore`, `git clean`; proibir só
 "commit e branch" deixa a porta errada aberta). Trabalho decidido e não
-commitado se commita **antes** de despachar o agente. Mas isolamento não
-garante base certa: o worktree pode nascer do `main` em vez da branch da
+commitado se commita **antes** de despachar o agente.
+
+**E se commita na branch de trabalho, nunca na `main`/`master`** — sessão na
+branch padrão cria a branch primeiro. Vale principalmente pro **design**:
+desenho de solução nasce na branch do trabalho que ele desenha, e a `main`
+só o vê junto da implementação — ou nunca, se o trabalho morrer no meio,
+porque design órfão na `main` aponta pra nada. O worktree do agente nasce
+dessa branch, e é o hash dela que vai no briefing: divergência de base
+aparece de cara em vez de virar merge que reverte trabalho. Correção do
+Luís, 2026-08-08.
+
+Mas isolamento não garante base certa: o worktree pode nascer do `main` em vez da branch da
 sessão, ou de um commit **anterior ao trabalho do dia** (2026-08-06: agente
 trabalhou sem as correções do dia; 2026-08-07: 3 de 3 worktrees nasceram de
 base velha, o pior 7 commits atrás — antes de existir a própria spec que o
