@@ -288,6 +288,22 @@ Mesma família da ronda de vigia que falha na pré-checagem e não relata:
 **silêncio ≠ nada a relatar**. O aviso é uma linha só, com o efeito prático
 nomeado ("a regra 10 está bloqueada nesta janela: despacho só se você
 pedir"), e não se repete na mesma sessão.
+
+**Aviso de bloqueio vem antes da execução, e oferece a saída.** Quando a
+regra bloqueada for a 10 (despacho de subagente) e a task for **grande** —
+critério duro, sem julgamento de estilo: toca mais de um arquivo ou
+repositório, ou passa de umas poucas chamadas de ferramenta —, o aviso
+**para o turno** e devolve a escolha: "a regra 10 está bloqueada nesta
+janela e isso ia gastar contexto aqui — você libera o subagente ou faço
+inline?". Trabalho grande não começa antes da resposta dele. Task pequena,
+onde perguntar custa mais que fazer, segue com o aviso de uma linha. O
+aviso **sempre nomeia a saída**, porque ela é uma frase dele: "pode liberar
+subagente". Incidente 2026-08-08, na mesma sessão em que a regra nasceu: o
+aviso saiu na primeira linha do turno e a execução saiu junto, sem esperar —
+validar duas ideias virou leitura de dois repositórios inteiros na janela
+principal, e a chance de liberar o subagente chegou depois do trabalho já
+feito. Anunciar sem parar é anunciar tarde.
+
 **Caminho de ambiente se resolve pela variável, nunca se escreve à mão.**
 Cache de plugin, config, sessão: a raiz é a `CLAUDE_CONFIG_DIR` **desta**
 sessão, resolvida na hora. Caminho fixo no texto envelhece calado — em
