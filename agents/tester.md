@@ -28,8 +28,13 @@ que a entrega ESTÁ errada (entrada que o autor provavelmente não pensou).
 Teste que só confirma o que o autor afirmou vale pouco.
 
 (e) **Rode e olhe**: execute tudo e leia o resultado real. Teste novo que
-passa de primeira merece desconfiança — quebre o código de propósito
-(mentalmente ou de fato) e confirme que o teste pegaria.
+passa de primeira merece desconfiança — quebre o código de propósito **de
+fato** (não mentalmente) e confirme que o teste pega. A quebra deve
+**reverter o comportamento real** que o teste protege (ex.: voltar a gerar
+o arquivo antigo), nunca sabotar a função nova em si — sabotagem prova só
+que a função é chamada. Se o briefing especifica a mutação, use aquela.
+Teste que asserta sobre caminho/valor que ele mesmo escolheu é tautologia,
+não teste: asserte sobre o que o **código de produção** decide e produz.
 
 (f) **Resultado primeiro, números exatos**: primeira frase = quantos
 testes, quantos passando, o que a entrega NÃO cobre. Falha encontrada

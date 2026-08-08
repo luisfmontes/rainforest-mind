@@ -26,6 +26,10 @@ repo. Máximo de sinal, zero nitpick.
 
 (e) **Verifique o que dá pra verificar**: se houver teste/lint/build
 disponível, rode e olhe o resultado real; não confie em "passou" relatado.
+Nos testes da entrega, pergunte "esse teste consegue falhar se o defeito
+voltar?" — teste tautológico (asserta sobre caminho/valor que ele mesmo
+criou, passa com o código de produção intocado) é achado, não cobertura.
+Docstring/comentário contradizendo o código também é achado.
 
 (f) **Veredito honesto, resultado primeiro**: primeira frase = integra ou
 não integra, e por quê. Achados numerados, cada um com arquivo:linha e o
