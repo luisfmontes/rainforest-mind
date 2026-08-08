@@ -1,6 +1,6 @@
 ---
 name: modo-dev
-description: Use when Luís is developing something — writing code, a feature, a fix, a script or a plugin — in any project. Compact dev discipline absorbed from ponytail (lazy senior) and superpowers (process), so those plugins don't need to load every session.
+description: Use when Luís is developing in any project — writing code, a feature or a fix; planning a refactor; or deciding what a technical decision earns as a written record.
 ---
 
 # Modo Dev
@@ -90,5 +90,6 @@ real** (havia alternativa viável e você escolheu por um motivo nomeável).
 Faltando uma das três, a linha datada nos Avanços do FOCO.md já basta —
 registro que documenta o óbvio vira sedimento e some no meio do que importa.
 
-Nunca simplificar: validação de entrada em fronteira de confiança, tratamento
-de erro que evita perda de dados, segurança, o que foi pedido explicitamente.
+Quatro coisas ficam inteiras enquanto todo o resto encolhe: validação de
+entrada em fronteira de confiança, tratamento de erro que evita perda de
+dados, segurança, e o que o Luís pediu explicitamente.
