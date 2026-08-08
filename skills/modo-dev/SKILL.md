@@ -5,14 +5,9 @@ description: Use when Luís is developing in any project — writing code, a fea
 
 # Modo Dev
 
-Essência de disciplina de desenvolvimento, sob demanda. Absorvido do ponytail
-e do superpowers em 2026-08-06 para não carregá-los em toda sessão — os
-plugins completos seguem instalados e habilitados nos repos de trabalho.
-Ampliado em 2026-08-08 com o que valia em dois repos públicos, pelo mesmo
-critério de não instalar: rastreabilidade do diff e código morto alheio de
-`andrej-karpathy-skills` (multica-ai); ponto de variação, teste da deleção,
-expandir–contrair e o portão do registro de decisão de `mattpocock/skills`
-(MIT) — `codebase-design`, `to-tickets` e `domain-modeling`.
+Essência de disciplina de desenvolvimento, sob demanda — comprimida de
+plugins e repos que não precisam carregar em toda sessão (ponytail,
+superpowers, karpathy, mattpocock; procedência item a item no README).
 
 ## Antes de codar
 
@@ -42,6 +37,11 @@ hipotética; duas é costura real. Não crie o ponto onde o comportamento
 **Teste da deleção.** Na dúvida se uma camada paga aluguel: imagine apagá-la.
 A complexidade some junto? era passa-culpa. Reaparece espalhada em N
 chamadores? estava fazendo trabalho de verdade.
+
+**Onde a escada não desce.** Quatro coisas ficam inteiras enquanto todo o
+resto encolhe: validação de entrada em fronteira de confiança, tratamento de
+erro que evita perda de dados, segurança, e o que o Luís pediu
+explicitamente.
 
 **Bug = causa raiz, não sintoma.** Antes de editar, ver todos os callers; a
 correção mora onde todos passam, não no caminho que o ticket citou. Bug
@@ -89,7 +89,3 @@ daqui a seis meses vai perguntar "por que assim?") e **resultado de trade-off
 real** (havia alternativa viável e você escolheu por um motivo nomeável).
 Faltando uma das três, a linha datada nos Avanços do FOCO.md já basta —
 registro que documenta o óbvio vira sedimento e some no meio do que importa.
-
-Quatro coisas ficam inteiras enquanto todo o resto encolhe: validação de
-entrada em fronteira de confiança, tratamento de erro que evita perda de
-dados, segurança, e o que o Luís pediu explicitamente.
