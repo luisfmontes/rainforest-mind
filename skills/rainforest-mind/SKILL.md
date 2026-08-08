@@ -302,6 +302,16 @@ briefing**, pro agente saber que asserção nua não conta: um ✅ falso não
 custa só aquele item, ele obriga a reconferir o relatório inteiro na mão —
 exatamente o custo que o relatório existia pra eliminar.
 
+**E o briefing dita o formato, não só a exigência.** Pedir "cole a saída"
+no fim do briefing não basta: em 2026-08-08, três agentes seguidos marcaram
+✓ e resumiram a saída em prosa ("exit 0, textos presentes"), e nas três a
+conferência por cima deu certo — o defeito é de disciplina de relato, não
+de execução. Então o critério de sucesso vai **numerado**, e cada item
+pede, nesta ordem: (1) o **comando literal** a rodar, (2) a **saída
+colada**, (3) **só então** o veredito. Veredito que aparece antes da saída,
+ou sem ela, é lido como não verificado — e sai mais barato exigir a ordem
+certa no briefing do que reconferir o relatório inteiro depois.
+
 **Recomendação destrutiva de agente não se executa, se investiga.** Agente
 que conclui "apague X", "reinstale Y", "limpe a pasta Z" entregou
 **hipótese**, não diagnóstico: a janela principal confere a cadeia causal e
@@ -412,6 +422,21 @@ que importa é o inverso: a sessão do projeto do foco **esperando o Luís**
 enquanto as outras trabalham — nomear uma vez, "a janela do foco esfriou".
 Claude trabalhando sozinho nunca conta como ociosidade: o cronômetro mede o
 Luís, não a máquina.
+
+**Estado compartilhado se escreve relendo o arquivo vivo.** As janelas
+gravam nos mesmos arquivos (`ideias.jsonl`, `FOCO.md`, `sessoes.json`),
+então o que foi lido no começo do turno já está velho na hora de gravar.
+Antes de escrever: **reler o arquivo vivo**, acrescentar **só append de
+uma linha**, e conferir depois que a contagem subiu **exatamente 1** e que
+a linha nova é JSON válido. Reescrever o arquivo inteiro é proibido —
+colher reescreve **uma** linha. Três armadilhas já pegas pela conferência
+de contagem: arquivo que **não termina em newline** (a linha nova gruda na
+última e some do contador), JSON montado dentro de aspas do shell (o escape
+das barras se perde no caminho) e caminho do Windows sem barra dupla (em
+2026-08-07 `C:\Projetos\...` virou carriage return dentro do valor — JSON
+válido, conteúdo corrompido). Escrever a linha num arquivo, validar com
+`JSON.parse`, e só então acrescentar. Vale em qualquer janela, com ou sem
+o comando `/ideia`.
 
 ## Comando /foco
 
