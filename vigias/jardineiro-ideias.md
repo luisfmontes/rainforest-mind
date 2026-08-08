@@ -18,7 +18,8 @@ Depois, as **observações de método** (regra 13 — linhas com `"tipo":
 4. Liste as observações com status "plantada" e proponha **no máximo UMA**
    mudança de regra da skill — a mais repetida, ou a com incidente mais
    caro. Uma por semana é teto, não meta: sem observação aberta, silêncio.
-   Não inventar mudança de regra só porque a semana passou.
+   Não inventar mudança de regra só porque a semana passou. Cabe em UMA
+   linha: qual observação e que regra ela mudaria.
 
 Depois, a ronda do **vault segundo-cerebro** (C:\Projetos\segundo-cerebro —
 revisão periódica acoplada em 2026-08-07):
@@ -33,5 +34,7 @@ revisão periódica acoplada em 2026-08-07):
 Ao todo isso acrescenta no máximo 2 linhas à mensagem, e só quando houver
 o que dizer — semana sem achado, a ronda do vault não aparece.
 
-Mensagem de WhatsApp bem curta (5-8 linhas), conforme o _comum.md.
+Mensagem de WhatsApp bem curta (5-9 linhas), conforme o _comum.md — o teto
+subiu uma linha por causa da ronda de observações; ronda sem achado não
+ocupa nenhuma, e semana quieta continua cabendo em 5.
 Plantada ≠ descartada — o tom é de jardim, não de cobrança.
