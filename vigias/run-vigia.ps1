@@ -71,6 +71,11 @@ $claude = if ($env:RFM_CLAUDE_EXE) { $env:RFM_CLAUDE_EXE } else { "C:\Users\Luis
 $modelos = @{}
 $modelo = if ($modelos.ContainsKey($Vigia)) { $modelos[$Vigia] } else { 'haiku' }
 "modelo: $modelo" | Out-File -Append -Encoding utf8 $log
+# Tamanho do prompt no log: a evidencia de entrega vem do harness, nao do
+# modelo se auto-reportando. Em 2026-08-08 o jardineiro perdeu 3 de 5 rondas
+# e a suspeita caiu no modelo; a causa era o prompt chegando com 1379 de 2717
+# caracteres. Numero no log deixa isso visivel sem depender de ninguem.
+"prompt: $($prompt.Length) chars" | Out-File -Append -Encoding utf8 $log
 # Prompt vai por STDIN, não como argumento: passado em argv ele é cortado no
 # meio (o jardineiro chegava com 1379 de 2717 caracteres, perdendo as rondas
 # 3 a 5). Passo que some do prompt vira passo que some do relatório.

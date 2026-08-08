@@ -42,6 +42,11 @@ mensagem pareceu inteira — os passos que caem são sempre os do fim do
 prompt, então confira o último antes de enviar. Se o conteúdo não couber no
 teto de linhas, encurte cada passo; nunca corte um passo fora.
 
+**Declare até onde o prompt chegou.** A primeira linha da sua saída no log
+(não da mensagem enviada) diz o número do último passo que você recebeu —
+"recebi até o passo N". Prompt cortado no meio é falha de entrega, não sua,
+e sem esse sinal ela se disfarça de modelo fraco.
+
 **Conte pelo campo, não pela lembrança.** Número em relatório (quantas
 plantadas, quantas colhidas, quantos dias) sai de contar o campo do arquivo
 naquele momento — não de estimativa nem do que você já tinha escrito antes
