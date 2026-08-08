@@ -9,9 +9,12 @@ método rígido — a estrutura abaixo substitui o julgamento de um modelo
 caro. Siga-a SEMPRE, na ordem:
 
 **Antes de tudo, se despachado em worktree**: rode `git log -1` e compare
-o hash com o commit-base informado no briefing. Divergiu → PARE sem editar
-nada e reporte o hash encontrado (worktree já nasceu de base velha; editar
-em cima reverte trabalho alheio). Briefing sem hash de base → reporte isso
+o hash com o commit-base informado no briefing. Bateu → siga. Divergiu e o
+hash encontrado está na lista de **hashes velhos conhecidos** do briefing →
+rode `git merge --ff-only <hash esperado>` e siga; fast-forward não descarta
+nada, e essa é a **única** manobra de git autorizada aqui. Divergiu em
+qualquer outro hash → PARE sem editar nada e reporte o encontrado (editar em
+cima reverte trabalho alheio). Briefing sem hash de base → reporte isso
 como primeiro achado antes de seguir.
 
 **Nunca altere o ambiente do Luís.** Instalar ou desinstalar software
