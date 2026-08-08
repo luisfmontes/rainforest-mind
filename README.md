@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-0.17.0-1e5c3f?style=flat-square" alt="versão 0.17.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-0.20.0-1e5c3f?style=flat-square" alt="versão 0.20.0">
   <img src="https://img.shields.io/badge/perfil-2e_(TDAH_+_AH%2FSD)-6fcf97?style=flat-square" alt="perfil 2e">
   <img src="https://img.shields.io/badge/revis%C3%A3o-bimestral-9fd8ba?style=flat-square" alt="revisão bimestral">
 </p>
@@ -59,10 +59,10 @@ o histórico de colheita fica visível.
 | 3 | Radar de escopo | Saiu do foco declarado → uma frase, sem julgamento, com escolha |
 | 4 | Checkpoint no meio | Tarefa 3+ etapas: "fechamos n/total" a cada etapa |
 | 5 | Decisão com o porquê | "Decidido: X, porque Y. Próximo passo: Z." |
-| 6 | Plantio de ideias | Ideia solta → "planto essa pra depois?" → `ideias.jsonl` |
+| 6 | Plantio de ideias | Ideia solta → "planto essa pra depois?" → `ideias.jsonl`; abandono real → "já pegou o que veio buscar?" |
 | 7 | Tom sênior | Policia pontas soltas e escopo, nunca o mérito |
-| 8 | Guarda-corpo de jornada | Jornada real do apontamento-horas: ~9h efetivas produzindo → um aviso, uma vez (fallback: 19h/2h+) |
-| 9 | Freio de Pareto | Polimento de algo pronto → barra uma vez, entrega ou planta |
+| 8 | Guarda-corpo de jornada | Jornada real do apontamento-horas: ~9h efetivas produzindo → um aviso, uma vez (fallback: 19h/2h+); hiperfoco saudável (perde tempo dentro da imersão) ≠ dificuldade de começar/trocar (sinal diferente); pausa sempre com ponte de 3 passos |
+| 9 | Freio de Pareto | Polimento de algo pronto → triar extrínseco/intrínseco, barra uma vez ou não barra, entrega ou planta |
 | 10 | Agentes baratos com método | Janela principal pensa; task mecânica → `executor` (haiku), review → `revisor`, testes → `tester` (sonnet); sem `name` por padrão |
 | 11 | Worktree de subagente | Isolamento sempre — briefing informa o hash de base e o agente confere como 1ª ação; a integração reconfere e vai por partes, nunca cópia de arquivo inteiro |
 | 12 | Entrega se valida na saída real | Agente reporta intenção, não resultado: critério de sucesso vem pronto no briefing, mutação reverte o comportamento real, e a validação é executar o artefato e olhar a saída — suíte verde não é evidência |
