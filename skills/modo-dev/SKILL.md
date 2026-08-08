@@ -8,6 +8,11 @@ description: Use when Luís is developing something — writing code, a feature,
 Essência de disciplina de desenvolvimento, sob demanda. Absorvido do ponytail
 e do superpowers em 2026-08-06 para não carregá-los em toda sessão — os
 plugins completos seguem instalados e habilitados nos repos de trabalho.
+Ampliado em 2026-08-08 com o que valia em dois repos públicos, pelo mesmo
+critério de não instalar: rastreabilidade do diff e código morto alheio de
+`andrej-karpathy-skills` (multica-ai); ponto de variação, teste da deleção,
+expandir–contrair e o portão do registro de decisão de `mattpocock/skills`
+(MIT) — `codebase-design`, `to-tickets` e `domain-modeling`.
 
 ## Antes de codar
 
@@ -16,6 +21,10 @@ plugins completos seguem instalados e habilitados nos repos de trabalho.
 2. **Pensar antes de construir.** Pedido criativo/ambíguo → alinhar intenção
    e abordagem com o Luís antes do código (1 pergunta certa > 100 linhas
    erradas).
+3. **Plano com verificação por passo.** Tarefa de 3+ etapas declara a rota
+   antes de começar, no formato `1. [passo] → verifica: [checagem]`.
+   Critério forte deixa o trabalho rodar sozinho até o fim; critério fraco
+   ("faz funcionar") obriga a voltar perguntando no meio.
 
 ## A escada (parar no primeiro degrau que segura)
 
@@ -26,8 +35,29 @@ plugins completos seguem instalados e habilitados nos repos de trabalho.
 5. Só então: o mínimo que funciona. Menor diff, sem abstração não pedida,
    sem scaffolding "pra depois".
 
+**Ponto de variação só com dois casos reais.** Uma implementação é costura
+hipotética; duas é costura real. Não crie o ponto onde o comportamento
+"poderia" variar antes do segundo caso existir de fato.
+
+**Teste da deleção.** Na dúvida se uma camada paga aluguel: imagine apagá-la.
+A complexidade some junto? era passa-culpa. Reaparece espalhada em N
+chamadores? estava fazendo trabalho de verdade.
+
 **Bug = causa raiz, não sintoma.** Antes de editar, ver todos os callers; a
-correção mora onde todos passam, não no caminho que o ticket citou.
+correção mora onde todos passam, não no caminho que o ticket citou. Bug
+difícil (intermitente, sem repro óbvio, regressão de performance) tem
+protocolo próprio — ver a skill `depurar`.
+
+## Refactor de raio grande (expandir–contrair)
+
+Mudança mecânica cujo raio de explosão atinge o codebase inteiro — renomear
+um campo, trocar o tipo de um símbolo compartilhado — não cabe em fatia
+vertical: uma edição só quebra mil chamadores de uma vez e nada fecha verde.
+Sequência: **expandir** (a forma nova nasce ao lado da velha, nada quebra) →
+**migrar** os chamadores em lotes dimensionados pelo raio (por pasta, por
+módulo), cada lote fechando verde porque a forma velha ainda existe →
+**contrair** (apagar a velha quando não sobrar chamador). Nunca as três
+etapas no mesmo commit.
 
 ## Enquanto coda
 
@@ -37,12 +67,28 @@ correção mora onde todos passam, não no caminho que o ticket citou.
   precisa (YAGNI vale pra teste também).
 - Estado e resultados intermediários vão para **arquivo** (plano, notas,
   FOCO/IDEIAS), não para o chat — contexto é recurso finito.
+- **Toda linha alterada rastreia até o pedido.** Se não dá pra traçar a seta
+  de uma linha do diff até o que o Luís pediu, ela não entra. Melhoria de
+  código vizinho, reformatação e refactor de carona são diff que ninguém
+  pediu — e escondem a mudança real na hora de revisar.
+- **Código morto alheio se menciona, não se apaga.** Remova só os órfãos que
+  a sua própria mudança deixou sem uso (import, variável, função). O que já
+  estava morto antes de você chegar vira uma linha no relatório.
 
 ## Antes de dizer "pronto"
 
 - **Evidência antes de afirmação.** Rodar o comando de verificação (lint,
   teste, build) e olhar a saída antes de declarar concluído. Falhou = dizer
   que falhou, com a saída.
+
+## Qual decisão merece registro escrito
+
+As três ao mesmo tempo, senão não escreve: **difícil de reverter** (mudar de
+ideia depois custa de verdade), **surpreendente sem o contexto** (quem ler
+daqui a seis meses vai perguntar "por que assim?") e **resultado de trade-off
+real** (havia alternativa viável e você escolheu por um motivo nomeável).
+Faltando uma das três, a linha datada nos Avanços do FOCO.md já basta —
+registro que documenta o óbvio vira sedimento e some no meio do que importa.
 
 Nunca simplificar: validação de entrada em fronteira de confiança, tratamento
 de erro que evita perda de dados, segurança, o que foi pedido explicitamente.
