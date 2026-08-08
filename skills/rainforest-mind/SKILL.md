@@ -64,7 +64,10 @@ memória operacional dele entre etapas.
 fecha com uma linha: "Decidido: [X], porque [Y]. Próximo passo: [Z]." No fim
 de uma sessão de trabalho, consolidar as decisões abertas — e, se a sessão
 avançou o foco ativo, acrescentar uma linha datada na seção Avanços do
-FOCO.md ("- AAAA-MM-DD: o que andou"). Progresso se lê, não se lembra.
+FOCO.md ("- AAAA-MM-DD: o que andou"). Progresso se lê, não se lembra. A
+mesma varredura pergunta em uma linha **"alguma observação desta sessão?"**
+(regra 13) — é no fecho que aparece o que não foi registrado no meio do
+trabalho.
 
 **6. Plantio de ideias.** Ideia solta no meio de outra atividade → oferecer:
 "planto essa pra depois?" Se sim, acrescentar uma linha em `ideias.jsonl`
@@ -202,6 +205,37 @@ comportamento real**, especificada) deve fazer qual teste falhar;
 pedidas e números que não somam são gatilho de auditoria, não detalhe;
 (4) agentes concorrentes **não compartilham a mesma instância de browser**
 (Playwright) — trocam de aba um sob o outro e leem a página errada.
+
+**13. Correção sua vira observação registrada.** O plantio da regra 6 depende
+do Luís nomear a ideia; este registro é o inverso — o gatilho é **ele
+corrigir**. Quando o Luís redireciona a saída, repete um pedido que já tinha
+sido atendido, ou aponta que uma regra devia ter disparado e não disparou,
+isso é sinal de regra pouco clara ou ausente: acrescentar uma linha ao
+`ideias.jsonl` com `"tipo": "observacao"`, `contexto` = o que aconteceu na
+sessão (com data), e `ao_colher` = a mudança de regra proposta. **Silencioso
+por padrão**: registra e segue a tarefa — sem anunciar o registro no meio do
+trabalho (regra 7). Só sobe na hora se a correção mudar o que está sendo
+feito agora. Quem fecha o ciclo é a regra 5 (fim de sessão) e o jardineiro
+de sexta, nunca uma interrupção. Sem isso, só vira regra o que o Luís teve o
+trabalho de notar e nomear — as regras 11 e 12 nasceram assim, e custaram
+uma sessão inteira de prejuízo antes de alguém escrever. Mecânica adotada da
+task-observer, de Eoghan Henn (rebelytics.com, CC BY 4.0): o gatilho e o
+ciclo de revisão, **não** o log paralelo — aqui a observação mora no mesmo
+`ideias.jsonl`, um lugar só pra olhar.
+
+**14. Regra bloqueada pelo ambiente se anuncia.** Quando o ambiente da sessão
+(configuração do harness, permissão negada, MCP fora do ar, plugin ausente)
+impedir uma regra desta skill ou do CLAUDE.md global de valer, **dizer em uma
+linha na primeira vez que ela seria aplicada** — nunca seguir em silêncio
+pelo caminho alternativo. Silêncio faz o Luís acreditar que a regra rodou.
+Incidente 2026-08-08: a sessão carregava instrução do harness proibindo
+chamar o Agent; a regra 10 (task mecânica → executor haiku) ficou desligada
+a sessão inteira e a coleta de uma análise inteira rodou na janela principal,
+gastando contexto à toa — o Luís descobriu perguntando, não pelo aviso.
+Mesma família da ronda de vigia que falha na pré-checagem e não relata:
+**silêncio ≠ nada a relatar**. O aviso é uma linha só, com o efeito prático
+nomeado ("a regra 10 está bloqueada nesta janela: despacho só se você
+pedir"), e não se repete na mesma sessão.
 
 ## Comando /foco
 
