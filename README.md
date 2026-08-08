@@ -50,7 +50,7 @@ cria raiz até a estação certa. O `ideias.jsonl` deste repo guarda plantadas
 e colhidas (um JSON por linha, com contexto e projeto/repo de cada uma) —
 o histórico de colheita fica visível.
 
-## As 12 regras
+## As 14 regras
 
 | # | Regra | Em uma frase |
 |---|-------|--------------|
@@ -66,6 +66,8 @@ o histórico de colheita fica visível.
 | 10 | Agentes baratos com método | Janela principal pensa; task mecânica → `executor` (haiku), review → `revisor`, testes → `tester` (sonnet); sem `name` por padrão |
 | 11 | Worktree de subagente | Isolamento sempre — briefing informa o hash de base e o agente confere como 1ª ação; a integração reconfere e vai por partes, nunca cópia de arquivo inteiro |
 | 12 | Entrega se valida na saída real | Agente reporta intenção, não resultado: critério de sucesso vem pronto no briefing, mutação reverte o comportamento real, e a validação é executar o artefato e olhar a saída — suíte verde não é evidência |
+| 13 | Correção vira observação | Você corrigir a saída já é o sinal: registra `tipo: observacao` no `ideias.jsonl`, silencioso, e o jardineiro de sexta propõe no máximo uma mudança de regra por semana |
+| 14 | Regra bloqueada se anuncia | Ambiente da sessão impediu uma regra (harness, permissão, MCP fora do ar) → uma linha na primeira vez, nunca silêncio |
 
 Detalhe completo em [`skills/rainforest-mind/SKILL.md`](skills/rainforest-mind/SKILL.md).
 
@@ -127,3 +129,4 @@ e **fechamento de loops abertos** da conversa.
 - *Your Rainforest Mind* — Paula Prober, a metáfora que dá nome ao plugin.
 - [i-have-adhd](https://github.com/ayghri/i-have-adhd) — inspiração de formato e prova de que skill de neurodivergência funciona.
 - Pesquisa 2e: suporte camuflado em conversa casual não funciona — por isso toda intervenção aqui é explícita e sinalizada.
+- [task-observer](https://github.com/rebelytics/one-skill-to-rule-them-all) — Eoghan Henn (rebelytics.com), CC BY 4.0: o gatilho "correção do usuário = observação" e o ciclo de revisão que viraram a regra 13. Adotado o mecanismo, não o log paralelo.
