@@ -145,15 +145,46 @@ na árvore de trabalho do Luís — e com git destrutivo proibido no prompt
 "commit e branch" deixa a porta errada aberta). Trabalho decidido e não
 commitado se commita **antes** de despachar o agente. Mas isolamento não
 garante base certa: o worktree pode nascer do `main` em vez da branch da
-sessão (2026-08-06: agente trabalhou sem as correções do dia; copiar os
-arquivos dele teria revertido tudo, com os testes dele passando). Portanto:
-ao criar o worktree, **conferir o commit-base** contra a branch da sessão
-(`git -C <worktree> log -1` / `merge-base`); base errada → mandar rebasear
-ou aplicar por patch. Integrar **por partes, com âncora conferida** — nunca
-copiar arquivos inteiros de volta. Aritmética que não fecha entre o relato
-do agente e a base local (654 testes vs 655) é sintoma de base errada, não
-detalhe; e "testes passando" no worktree não vale como verificação — a
-suíte dele pode estar tão desatualizada quanto a base.
+sessão, ou de um commit **anterior ao trabalho do dia** (2026-08-06: agente
+trabalhou sem as correções do dia; 2026-08-07: 3 de 3 worktrees nasceram de
+base velha, o pior 7 commits atrás — antes de existir a própria spec que o
+agente devia ler; mesclar teria revertido correções e testes recém-feitos).
+Portanto, dupla conferência: (1) o **briefing informa o hash esperado** e
+manda o agente rodar `git log -1` como **primeira ação**, abortando se
+divergir — foi o que salvou 2 de 3 integrações em 2026-08-07; o terceiro
+agente não conferiu e reimplementou tudo às cegas; (2) na integração, a
+janela principal confere o commit-base com evidência primária
+(`git -C <worktree> log -1` / `merge-base`) — nunca pelo relato; base
+errada → mandar rebasear ou aplicar por patch. Integrar **por partes, com
+âncora conferida** — nunca copiar arquivos inteiros de volta. Aritmética
+que não fecha entre o relato do agente e a base local (654 testes vs 655)
+é sintoma de base errada, não detalhe; e "testes passando" no worktree não
+vale como verificação — a suíte dele pode estar tão desatualizada quanto a
+base. Worktrees órfãos acumulam em `.claude/worktrees/` entre sessões:
+antes de limpar, conferir se algum guarda trabalho não integrado.
+
+**12. Entrega de agente se valida na saída real.** Agente reporta o que
+pretendia, não o que aconteceu — sem mentir: ele mede de um jeito que não
+pode falhar (2026-08-07: 5 de 7 erros do dia eram isso). As formas
+recorrentes, todas com suíte verde: **teste tautológico** (o teste escolhe
+o próprio caminho de saída e verifica que um arquivo que ninguém criou não
+existe — passa com o código de produção intocado); **mutação falsa**
+(tabela verde "mutação → teste pega" quando a única mutação que dispararia
+o teste seria sabotar a função nova, não reverter o comportamento real);
+**fase renomeada** (itens não feitos viram "próximas fases" num relatório
+de sucesso — um agente entregou 1 de 6 itens assim); **aritmética que não
+fecha** (675 + 7 ≠ 676) e **código contradizendo o próprio docstring**.
+Detector automático não pega nada disso — no mesmo dia, o detector voltou
+limpo onde inspeção visual achou dois P0. Defesas: (1) o **critério de
+sucesso vem pronto no briefing**, nunca é construído pelo executor —
+qual comando rodar, qual saída inspecionar, qual mutação (que **reverta o
+comportamento real**, especificada) deve fazer qual teste falhar;
+(2) validar toda entrega **executando o artefato real e olhando a saída**
+— suíte verde e relato não são evidência; (3) o relatório do agente lista
+**cada item do briefing** com feito/não-feito — "próximas fases" não
+pedidas e números que não somam são gatilho de auditoria, não detalhe;
+(4) agentes concorrentes **não compartilham a mesma instância de browser**
+(Playwright) — trocam de aba um sob o outro e leem a página errada.
 
 ## Comando /foco
 
