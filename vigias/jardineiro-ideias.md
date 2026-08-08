@@ -12,12 +12,20 @@ contexto, projeto, status plantada/colhida, plantada_em, colhida_em):
 3. Se houve colhida na semana (colhida_em nos últimos 7 dias), celebre em
    meia linha.
 
+Depois, as **observações de método** (regra 13 — linhas com `"tipo":
+"observacao"` no mesmo jsonl):
+
+4. Liste as observações com status "plantada" e proponha **no máximo UMA**
+   mudança de regra da skill — a mais repetida, ou a com incidente mais
+   caro. Uma por semana é teto, não meta: sem observação aberta, silêncio.
+   Não inventar mudança de regra só porque a semana passou.
+
 Depois, a ronda do **vault segundo-cerebro** (C:\Projetos\segundo-cerebro —
 revisão periódica acoplada em 2026-08-07):
 
-4. Compare wiki\ com o index.md: página wiki que não está no índice, ou
+5. Compare wiki\ com o index.md: página wiki que não está no índice, ou
    entrada do índice sem arquivo → apontar (é o único check estrutural).
-5. `git -C C:\Projetos\segundo-cerebro log -1 --format=%cs` — se a última
+6. `git -C C:\Projetos\segundo-cerebro log -1 --format=%cs` — se a última
    escrita no vault tiver 21+ dias, lembrar em UMA linha que o vault
    composta com uso ("o vault está quieto há N dias — algum livro ou
    artigo na fila?"). Menos que isso, silêncio: vault quieto não é
