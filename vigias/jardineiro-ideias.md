@@ -14,11 +14,15 @@ O `tipo` separa duas coisas que NÃO se misturam na contagem:
 Os três status também não se misturam: **plantada** (criando raiz),
 **em-colheita** (já começou) e **colhida** (terminou).
 
+**Os números não são seus.** No fim deste prompt vem um bloco `## Dados
+apurados`, contado do arquivo no momento da execução. Quantidades, idades e
+listas saem de lá, literalmente. Você lê o `ideias.jsonl` para entender o
+conteúdo de cada ideia — título, contexto, maturidade —, nunca para contar.
+
 ## Ronda 1 — ideias plantadas
 
-Conte as de tipo ideia com status `plantada` e cite **todas**, com a idade
-de cada uma em dias (inclusive as de hoje, 0 dias). Agrupar por idade é
-bem-vindo; omitir item, não — lista incompleta passa por completa.
+Reproduza `IDEIAS PLANTADAS` do bloco apurado: o total e todos os itens,
+agrupados por idade. Nenhum item fora — lista incompleta passa por completa.
 
 ## Ronda 2 — candidata a colheita
 
@@ -33,13 +37,12 @@ raiz" é resposta válida e boa.
 
 ## Ronda 3 — colheita da semana
 
-Conte as linhas com `colhida_em` nos últimos 7 dias e celebre em meia
-linha: quantas, e a mais significativa pelo nome. Nenhuma na semana:
-"nada colhido esta semana".
+Use `COLHIDAS NOS ULTIMOS 7 DIAS` do bloco apurado e celebre em meia linha:
+quantas, e a mais significativa pelo nome. Zero: "nada colhido esta semana".
 
 ## Ronda 4 — observações de método (regra 13)
 
-Conte as de tipo `observacao` com status `plantada` e proponha **no máximo
+Use `OBSERVACOES ABERTAS` do bloco apurado e proponha **no máximo
 UMA** mudança de regra da skill — a mais repetida, ou a de incidente mais
 caro. Uma por semana é teto, não meta. Cabe em uma linha: qual observação e
 que regra ela mudaria. Sem nenhuma aberta: "observações: nenhuma aberta".
