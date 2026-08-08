@@ -197,11 +197,12 @@ dessa branch, e é o hash dela que vai no briefing: divergência de base
 aparece de cara em vez de virar merge que reverte trabalho. Correção do
 Luís, 2026-08-08.
 
-Mas isolamento não garante base certa: o worktree pode nascer do `main` em vez da branch da
-sessão, ou de um commit **anterior ao trabalho do dia** (2026-08-06: agente
-trabalhou sem as correções do dia; 2026-08-07: 3 de 3 worktrees nasceram de
-base velha, o pior 7 commits atrás — antes de existir a própria spec que o
-agente devia ler; mesclar teria revertido correções e testes recém-feitos).
+Mas isolamento não garante base certa: o worktree pode nascer do `main` em
+vez da branch da sessão, ou de um commit **anterior ao trabalho do dia**
+(2026-08-06: agente trabalhou sem as correções do dia; 2026-08-07: 3 de 3
+worktrees nasceram de base velha, o pior 7 commits atrás — antes de existir
+a própria spec que o agente devia ler; mesclar teria revertido correções e
+testes recém-feitos).
 Portanto, dupla conferência: (1) o **briefing informa o hash esperado** e
 manda o agente rodar `git log -1` como **primeira ação**, abortando se
 divergir — foi o que salvou 2 de 3 integrações em 2026-08-07; o terceiro
