@@ -128,6 +128,9 @@ let impresso = false;
 function doConsoleLog(pluginsStatus, whatsappStatus) {
   if (impresso) return;
   impresso = true;
+  // Sem isto o timer de guarda segura o event loop e TODA sessão paga os 700ms,
+  // mesmo com o bridge respondendo em 1ms (medido: 82ms → 776ms).
+  if (guarda) clearTimeout(guarda);
 
   const dependencias = `## Dependências de ambiente (regra 14)
 Checado pelo hook: apontamento-horas ${pluginsStatus.apontamento}; bridge WhatsApp ${whatsappStatus.status} (${whatsappStatus.url}); claude-mem ${pluginsStatus.claudeMem}.
@@ -145,8 +148,8 @@ ${sessoes}${revisao}${dependencias}
 Arquivos de apoio: ${ROOT}\\FOCO.md e ${ROOT}\\ideias.jsonl (uma ideia por linha)`);
 }
 
-// Força impressão após 700ms se não terminar
-setTimeout(() => {
+// Força impressão após 700ms se não terminar (cancelado assim que imprime)
+const guarda = setTimeout(() => {
   if (!impresso) {
     const pluginsStatus = readPlugins();
     doConsoleLog(pluginsStatus, { status: '?', url: process.env.WHATSAPP_API_BASE_URL || 'http://localhost:3005' });

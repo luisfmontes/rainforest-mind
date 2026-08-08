@@ -38,3 +38,10 @@ válido. Colher é a única reescrita permitida, e reescreve **uma** linha,
 nunca o arquivo inteiro. Caminho do Windows vai com barra dupla (`C:\\Projetos\\x`):
 em 2026-08-07 uma linha gravou `C:\Projetos\rainforest-mind` e o `\r` virou
 carriage return dentro do valor — JSON válido, conteúdo corrompido.
+
+Dois detalhes que já quebraram o append (2026-08-08, os dois pegos pela
+conferência de contagem): **o arquivo pode não terminar em newline** — grave
+o `\n` que falta antes da linha nova, senão ela gruda na última e some do
+contador; e **não monte o JSON dentro de aspas do shell** — o escape das
+barras se perde no caminho. Escreva a linha num arquivo, valide com
+`JSON.parse`, e só então acrescente.
