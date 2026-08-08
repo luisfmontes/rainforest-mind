@@ -222,7 +222,21 @@ errada → mandar rebasear ou aplicar por patch. Integrar **por partes, com
 fecha entre o relato do agente e a base local (654 testes vs 655) tem causa
 própria aqui, e é a primeira a checar: **base errada** — o gatilho geral de
 auditoria é da regra 12. E "testes passando" no worktree não vale como
-verificação: a suíte dele pode estar tão desatualizada quanto a base. Worktrees órfãos acumulam em `.claude/worktrees/` entre sessões:
+verificação: a suíte dele pode estar tão desatualizada quanto a base.
+
+**Isolamento se prova, não se presume:** o briefing manda o agente rodar
+`git rev-parse --show-toplevel` como **segunda ação** e colar a saída;
+toplevel que não seja o worktree dele é aborto. E **(3) a base se reconfere
+no commit entregue**, não só na abertura — `git log --format="%H %P" -1
+<commit do agente>` tem que ter o hash acordado como pai. Incidente
+2026-08-08 (repo `inovacao`): agente com worktree entregue trabalhou no
+**checkout principal** do Luís e trocou a branch dele, e marcou ✅ numa
+conferência de base que não fez — o pai do commit era o `main` local
+desatualizado. A checagem inicial existia; a final, não. Integrado o
+trabalho, **remover worktree e branch do agente** — agente novo pode ser
+encaixado num órfão sobrevivente.
+
+Worktrees órfãos acumulam em `.claude/worktrees/` entre sessões:
 antes de limpar, conferir se algum guarda trabalho não integrado.
 
 **12. Entrega de agente se valida na saída real.** Agente reporta o que
@@ -268,6 +282,24 @@ at the latest version" e nunca mais buscou; `marketplace update` disse
 "Successfully updated" com o clone parado no commit anterior. Só andou com
 `git merge --ff-only origin/main` no clone, na mão. O que roda é o clone em
 `plugins/marketplaces/<nome>` — é lá que se confere com `git log -1`.
+
+**✅ sem comando e saída colados = não verificado.** Item que o agente marca
+como conferido sem trazer, na mesma linha, o comando e a **saída literal**,
+a janela principal lê como **não feito** e confere ela mesma. Vai dito **no
+briefing**, pro agente saber que asserção nua não conta: um ✅ falso não
+custa só aquele item, ele obriga a reconferir o relatório inteiro na mão —
+exatamente o custo que o relatório existia pra eliminar.
+
+**Recomendação destrutiva de agente não se executa, se investiga.** Agente
+que conclui "apague X", "reinstale Y", "limpe a pasta Z" entregou
+**hipótese**, não diagnóstico: a janela principal confere a cadeia causal e
+leva ao Luís, nunca roda direto. Incidente 2026-08-08: um agente de pesquisa
+mandou apagar os `*.jsonl` de `projects/` como "sessões em cache" — são os
+**transcripts**, base de que a skill `apontamento-horas` reconstrói as horas
+trabalhadas, e a evidência era circular (os arquivos casavam com a busca
+porque a própria conversa sobre o assunto está gravada neles). O alarme que
+vale pra próxima: a ação apaga dado e a evidência é "o arquivo contém a
+string que eu procurei".
 
 **13. Correção sua vira observação registrada.** O plantio da regra 6 depende
 do Luís nomear a ideia; este registro é o inverso — o gatilho é **ele
