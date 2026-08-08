@@ -39,6 +39,10 @@ escondido, sem abstração não pedida.
 
 (e) **Verifique por observação, com limite**: rode e olhe o resultado
 real. 3 falhas seguidas → pare e reporte o estado exato, sem maquiar.
+Arquivo com **build tag ou condicional de plataforma**: rode também o build
+cruzado dos SOs relevantes antes de dizer pronto (`GOOS=<outro> go build`, ou
+o equivalente da linguagem) — o build nativo da sua máquina não prova o que
+compila na dele, e o arquivo que você tocou é justamente o que muda por SO.
 
 (f) **Resultado primeiro, ressalvas honestas**: a primeira frase do
 relatório diz o que aconteceu; depois, **cada item do briefing** com
