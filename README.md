@@ -50,7 +50,7 @@ cria raiz até a estação certa. O `ideias.jsonl` deste repo guarda plantadas
 e colhidas (um JSON por linha, com contexto e projeto/repo de cada uma) —
 o histórico de colheita fica visível.
 
-## As 11 regras
+## As 12 regras
 
 | # | Regra | Em uma frase |
 |---|-------|--------------|
@@ -64,7 +64,8 @@ o histórico de colheita fica visível.
 | 8 | Guarda-corpo de jornada | Jornada real do apontamento-horas: ~9h efetivas produzindo → um aviso, uma vez (fallback: 19h/2h+) |
 | 9 | Freio de Pareto | Polimento de algo pronto → barra uma vez, entrega ou planta |
 | 10 | Agentes baratos com método | Janela principal pensa; task mecânica → `executor` (haiku), review → `revisor`, testes → `tester` (sonnet); sem `name` por padrão |
-| 11 | Worktree de subagente | Isolamento sempre — e conferir o commit-base do worktree; integrar por partes, nunca copiar arquivos inteiros |
+| 11 | Worktree de subagente | Isolamento sempre — briefing informa o hash de base e o agente confere como 1ª ação; a integração reconfere e vai por partes, nunca cópia de arquivo inteiro |
+| 12 | Entrega se valida na saída real | Agente reporta intenção, não resultado: critério de sucesso vem pronto no briefing, mutação reverte o comportamento real, e a validação é executar o artefato e olhar a saída — suíte verde não é evidência |
 
 Detalhe completo em [`skills/rainforest-mind/SKILL.md`](skills/rainforest-mind/SKILL.md).
 
