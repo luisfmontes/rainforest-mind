@@ -5,7 +5,18 @@ argument-hint: [novo foco | trocar <frente> | concluir | vazio para estado]
 
 O arquivo de foco é `C:\Projetos\rainforest-mind\FOCO.md`, com as seções
 `## Ativo` (um único foco, com critério de pronto e avanços datados),
-`## Compromissos com prazo`, `## Frentes` e `## Concluídos`.
+`## Não especificado ainda`, `## Fora de escopo`, `## Compromissos com
+prazo`, `## Frentes` e `## Concluídos`.
+
+**Névoa e escopo.** `## Não especificado ainda` guarda o que se enxerga vir
+pela frente mas ainda não dá pra enunciar com precisão — dentro do escopo,
+fora de foco nítido. O teste é **se dá pra formular a pergunta agora, não se
+dá pra respondê-la**. `## Fora de escopo` guarda o que foi descartado deste
+foco, com o porquê; de lá não volta enquanto o critério de pronto for o
+mesmo. Quando uma decisão da conversa afiar um trecho da névoa, mover para
+Avanços (ou tarefa) e limpar o trecho; quando uma decisão revelar que algo
+está além do critério de pronto, mover para Fora de escopo em vez de resolver
+no caminho.
 
 Se `$ARGUMENTS` estiver vazio, despeje o estado — neste formato:
 
@@ -17,6 +28,8 @@ Se `$ARGUMENTS` estiver vazio, despeje o estado — neste formato:
    executadas, decisões em aberto — uma por linha
 5. **Decisões tomadas:** "X, porque Y" — só as desta conversa
 6. **Ideias plantadas nesta conversa:** se houver
+7. **Névoa:** o que está em `## Não especificado ainda`, uma linha cada — só
+   se houver algo registrado
 
 Se `$ARGUMENTS` for `concluir`: confirme que o critério de pronto foi
 atendido (pergunte a evidência se não estiver óbvio), mova o foco ativo para
