@@ -21,6 +21,30 @@ superpowers, karpathy, mattpocock; procedência item a item no README).
    Critério forte deixa o trabalho rodar sozinho até o fim; critério fraco
    ("faz funcionar") obriga a voltar perguntando no meio.
 
+## A cadeia antes do código
+
+Ordem: **brainstorm → design → `/grill` → planejamento → implementar**. Nem
+toda tarefa merece os cinco degraus — mesma lógica da escada: **parar no
+primeiro degrau que segura**. Os gatilhos:
+
+1. **Brainstorm** — há mais de um caminho plausível e nenhum óbvio, ou o
+   pedido é ambíguo. Diverge, não decide: sai com as opções na mesa, não com
+   a escolhida.
+2. **Design** — a decisão bate as **três** condições de "Qual decisão merece
+   registro escrito" (difícil de reverter, surpreendente sem contexto,
+   trade-off real). Aí o design **é** esse registro. Ele nasce na **branch de
+   trabalho**, nunca na `main` (regra 11 do rainforest-mind).
+3. **`/grill`** — interroga o desenho antes de ele virar rota; entra quando o
+   design custou decisão de verdade.
+4. **Planejamento** — tarefa de 3+ etapas: fatias no formato `1. [passo] →
+   verifica: [checagem]`. É o mesmo material que vira critério de sucesso no
+   briefing do executor.
+5. **Implementar** — despacho com hash de base e critério de sucesso pronto
+   (regras 10 a 12).
+
+Pular degrau é legítimo e se diz em uma linha ("sem brainstorm: só um
+caminho plausível"). O que não vale é pular calado.
+
 ## A escada (parar no primeiro degrau que segura)
 
 1. Precisa existir? Necessidade especulativa = pular, dizer em 1 linha (YAGNI).
