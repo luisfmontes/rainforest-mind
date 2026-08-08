@@ -7,11 +7,24 @@ if (-not (Test-Path $promptFile)) { exit 1 }
 # -Encoding UTF8 é obrigatório: sem ele o Get-Content lê o arquivo como ANSI e
 # todo acento chega ao modelo como mojibake (Ã§, â€"). Verificado em 2026-08-08.
 $prompt = Get-Content -Raw -Encoding UTF8 $promptFile
-# Execução manual fora do agendamento: a mensagem tem que se identificar como
-# teste, senão vira ruído indistinguível da ronda de verdade no histórico.
-# Vai no COMEÇO — instrução de enquadramento não disputa espaço com o método.
+# Execução manual fora do agendamento. Marcar a mensagem como teste não
+# funciona: o envio é uma tool do modelo, e ele ignorou a marca nas duas
+# formas tentadas (prefixo no prompt e regra de formato no _comum). Não
+# enviar é determinístico — e ainda tira o ruído do grupo.
 if ($Teste) {
-    $prompt = "EXECUCAO DE TESTE (manual, fora do agendamento): comece a mensagem com a linha 'TESTE - execucao manual, ignore o horario.' antes de qualquer outro conteudo. O resto do trabalho e identico ao normal.`n`n" + $prompt
+    $prompt = "EXECUCAO DE TESTE (manual, fora do agendamento): NAO chame send_message nem qualquer tool de envio. Em vez de enviar, escreva no final da sua resposta a mensagem completa que voce enviaria, entre uma linha ---INICIO--- e uma linha ---FIM---. Todo o resto do trabalho (ler as fontes, apurar, decidir) e identico ao normal.`n`n" + $prompt
+}
+
+# Dados apurados por script, quando o vigia tiver um. Existe porque instrução
+# não conserta aritmética: o jardineiro deu 12, 10, 9 e 11 para o mesmo
+# arquivo (10 era o certo) e chegou a somar observação com ideia. O número
+# vem contado; ao modelo cabe redigir.
+$dadosScript = Join-Path $root "vigias\dados-$Vigia.js"
+if (Test-Path $dadosScript) {
+    $apurado = (& node $dadosScript 2>&1 | Out-String).Trim()
+    if ($apurado) {
+        $prompt += "`n`n## Dados apurados agora, direto do arquivo`n`n$apurado`n`nUse ESTES numeros e ESTAS listas. Nao reconte, nao estime, nao complete de memoria: onde o bloco acima e a fonte, ele vence qualquer contagem sua."
+    }
 }
 $log = Join-Path $root "vigias\log-$Vigia.txt"
 "=== $(Get-Date -Format 'yyyy-MM-dd HH:mm') ===" | Out-File -Append -Encoding utf8 $log
