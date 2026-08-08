@@ -5,8 +5,10 @@
 // Ocioso = stop_ts mais novo que prompt_ts e antigo demais; Claude
 // trabalhando (prompt_ts > stop_ts) nunca conta como ocioso.
 const fs = require('fs');
+const path = require('path');
 
-const STATE = 'C:\\Projetos\\rainforest-mind\\sessoes.json';
+const ROOT = process.env.RFM_ROOT || 'C:\\Projetos\\rainforest-mind';
+const STATE = path.join(ROOT, 'sessoes.json');
 const evento = process.argv[2] === 'stop' ? 'stop_ts' : 'prompt_ts';
 
 let input = '';

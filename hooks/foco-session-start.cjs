@@ -5,7 +5,7 @@ const path = require('path');
 const net = require('net');
 
 // Dados (FOCO/IDEIAS) vivem no repo de trabalho, não na cópia em cache do plugin.
-const DATA_ROOT = 'C:\\Projetos\\rainforest-mind';
+const DATA_ROOT = process.env.RFM_ROOT || 'C:\\Projetos\\rainforest-mind';
 const ROOT = fs.existsSync(DATA_ROOT) ? DATA_ROOT : path.resolve(__dirname, '..');
 
 function readSafe(p) {
@@ -14,7 +14,13 @@ function readSafe(p) {
 
 // Checagem de dependências de ambiente
 function readPlugins() {
-  const userSettingsPath = process.env.RFM_SETTINGS_PATH || 'C:\\Users\\Luis\\.claude\\settings.json';
+  // A raiz da config sai do CLAUDE_CONFIG_DIR da sessão, nunca escrita à mão:
+  // em 2026-08-08 ela virou .claude-personal e o caminho fixo aqui passou a ler
+  // o settings.json antigo — reportando "apontamento-horas ausente" com o plugin
+  // instalado e habilitado. Regra 14.
+  const configDir = process.env.CLAUDE_CONFIG_DIR
+    || path.join(process.env.USERPROFILE || process.env.HOME || '', '.claude');
+  const userSettingsPath = process.env.RFM_SETTINGS_PATH || path.join(configDir, 'settings.json');
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
   const projectSettingsPath = path.join(projectDir, '.claude', 'settings.json');
   const projectLocalSettingsPath = path.join(projectDir, '.claude', 'settings.local.json');
