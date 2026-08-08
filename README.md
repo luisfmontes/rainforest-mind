@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-0.20.0-1e5c3f?style=flat-square" alt="versão 0.20.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-0.24.0-1e5c3f?style=flat-square" alt="versão 0.24.0">
   <img src="https://img.shields.io/badge/perfil-2e_(TDAH_+_AH%2FSD)-6fcf97?style=flat-square" alt="perfil 2e">
   <img src="https://img.shields.io/badge/revis%C3%A3o-bimestral-9fd8ba?style=flat-square" alt="revisão bimestral">
 </p>
@@ -50,7 +50,7 @@ cria raiz até a estação certa. O `ideias.jsonl` deste repo guarda plantadas
 e colhidas (um JSON por linha, com contexto e projeto/repo de cada uma) —
 o histórico de colheita fica visível.
 
-## As 14 regras
+## As 16 regras
 
 | # | Regra | Em uma frase |
 |---|-------|--------------|
@@ -68,6 +68,8 @@ o histórico de colheita fica visível.
 | 12 | Entrega se valida na saída real | Agente reporta intenção, não resultado: critério de sucesso vem pronto no briefing, mutação reverte o comportamento real, e a validação é executar o artefato e olhar a saída — suíte verde não é evidência |
 | 13 | Correção vira observação | Você corrigir a saída já é o sinal: registra `tipo: observacao` no `ideias.jsonl`, silencioso, e o jardineiro de sexta propõe no máximo uma mudança de regra por semana |
 | 14 | Regra bloqueada se anuncia | Ambiente da sessão impediu uma regra (harness, permissão, MCP fora do ar) → uma linha na primeira vez, nunca silêncio |
+| 15 | Agente não altera o ambiente | Subagente não instala software nem mexe em PATH, env, config global ou serviço: ferramenta ausente para e reporta, quem decide é a janela principal com a palavra dele |
+| 16 | Fato é meu, decisão é sua | Pergunta que o ambiente responde se resolve olhando, nunca sobe pra você; decisões abertas vão em **rodada única, numeradas, cada uma com a resposta recomendada** |
 
 Detalhe completo em [`skills/rainforest-mind/SKILL.md`](skills/rainforest-mind/SKILL.md).
 
@@ -79,14 +81,19 @@ Detalhe completo em [`skills/rainforest-mind/SKILL.md`](skills/rainforest-mind/S
 | `/foco <texto>` | Declara novo foco em `FOCO.md` — injetado em toda sessão nova |
 | `/ideia <texto>` | Avalia contra o foco: dentro → entra confirmada; fora → planta em `ideias.jsonl` (com contexto e projeto/repo) |
 | `/ideia` | Lista as ideias plantadas (lendo o jsonl) |
-| `modo-dev` (skill) | Essência de disciplina de dev sob demanda: escada YAGNI, causa raiz, commit a cada entrega, evidência antes de "pronto" |
+| `/grill [plano]` | Entrevista adversarial: árvore de decisão, fronteira por rodadas, cada pergunta numerada com a resposta recomendada — para antes de executar |
+| `modo-dev` (skill) | Essência de disciplina de dev sob demanda: escada YAGNI, causa raiz, rastreabilidade do diff, expandir–contrair, evidência antes de "pronto" |
+| `depurar` (skill) | Dispara sozinha em bug difícil: constrói o loop de feedback vermelho-capaz **antes** de qualquer hipótese, 3–5 hipóteses falseáveis ranqueadas, costura certa pro teste de regressão |
 | `executor` (agente) | Implementação/execução mecânica em haiku com o método de trabalho embutido no system prompt (`agents/executor.md`) |
 | `revisor` (agente) | Review/QA em sonnet com método de revisão embutido (`agents/revisor.md`): evidência primária, achado só com cenário de falha, veredito integra/não-integra |
 | `tester` (agente) | Testes em sonnet com método embutido (`agents/tester.md`): extrai o contrato, escreve os testes que faltam, pelo menos um adversarial, reporta números exatos |
 
 A skill `modo-dev` existe para **economia de contexto**: absorve os
 principais pontos de plugins pesados (ponytail, superpowers) que não
-precisam carregar em toda sessão.
+precisam carregar em toda sessão. O mesmo critério vale para o que veio de
+repos públicos em ago/2026 — nada instalado, só o texto que sobrevive à
+compressão. `depurar` fica fora do `modo-dev` de propósito: depurar é um
+ramo do trabalho de dev, não todo ele, e só carrega quando o gatilho aparece.
 
 ## Vigias (automação fora do Claude)
 
@@ -131,3 +138,5 @@ e **fechamento de loops abertos** da conversa.
 - [i-have-adhd](https://github.com/ayghri/i-have-adhd) — inspiração de formato e prova de que skill de neurodivergência funciona.
 - Pesquisa 2e: suporte camuflado em conversa casual não funciona — por isso toda intervenção aqui é explícita e sinalizada.
 - [task-observer](https://github.com/rebelytics/one-skill-to-rule-them-all) — Eoghan Henn (rebelytics.com), CC BY 4.0: o gatilho "correção do usuário = observação" e o ciclo de revisão que viraram a regra 13. Adotado o mecanismo, não o log paralelo.
+- [mattpocock/skills](https://github.com/mattpocock/skills) — MIT: a árvore de decisão e a fronteira de `grilling` (regra 16 e `/grill`), o loop vermelho-capaz de `diagnosing-bugs` (skill `depurar`), névoa e fora de escopo de `wayfinder` (FOCO.md), expandir–contrair de `to-tickets`, ponto de variação e teste da deleção de `codebase-design`, e o portão triplo do registro de decisão de `domain-modeling`. Acoplado por compressão — nenhuma das 35 skills instalada.
+- [andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills) — a rastreabilidade de cada linha do diff até o pedido, e o tratamento de código morto alheio vs. órfão da própria mudança, no `modo-dev`.
