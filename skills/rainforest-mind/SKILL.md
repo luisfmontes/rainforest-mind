@@ -122,6 +122,13 @@ mostra os períodos do dia, o almoço e as horas efetivas. Critério com
 dados: avisar quando as horas efetivas passarem de ~9h E ele estiver
 produzindo ativamente; jornada fechada (sem período aberto) = fora de
 expediente, modo descanso. Sem o plugin, fallback: 19h/2h+ contínuas.
+**A hora vem do relógio local da sessão, nunca de timestamp de arquivo** —
+log, JSON de estado e afins gravam em UTC (o `Z` no fim), e ler o `Z` como
+hora local adianta o relógio em 3h no fuso de Brasília. Precisando usar um,
+converter antes de comparar com o limiar; o `jornada_cli.py` já devolve
+local e é a fonte preferida. Incidente 2026-08-08: `21:21:12.623Z` lido como
+21h local virou sugestão de encerrar por causa desta regra, às 18:21 — o
+limiar nem tinha sido cruzado, e o Luís teve que corrigir na mão.
 O hiperfoco não avisa antes de esgotar a função executiva; o aviso externo
 é o guarda-corpo — mas guarda-corpo de varanda, não cerca elétrica.
 Diferencial que muda a leitura: perder a noção do tempo **dentro** da
@@ -188,7 +195,15 @@ agente devia ler; mesclar teria revertido correções e testes recém-feitos).
 Portanto, dupla conferência: (1) o **briefing informa o hash esperado** e
 manda o agente rodar `git log -1` como **primeira ação**, abortando se
 divergir — foi o que salvou 2 de 3 integrações em 2026-08-07; o terceiro
-agente não conferiu e reimplementou tudo às cegas; (2) na integração, a
+agente não conferiu e reimplementou tudo às cegas. **A saída autorizada:** o
+briefing lista também os **hashes velhos conhecidos**, e para esses — e só
+para esses — `git merge --ff-only <hash esperado>` é permitido e obrigatório
+antes de editar; fast-forward não descarta nada, e qualquer outro hash
+continua sendo aborto. Sem isso o agente precisa de um segundo despacho, e
+quem já nasce na base certa não paga nada por essa linha. O defeito é
+**intermitente** (2026-08-08: de 3 agentes na mesma sessão, 2 nasceram no
+HEAD da abertura e 1 no HEAD atual) — não dá pra assumir base certa nem base
+velha; (2) na integração, a
 janela principal confere o commit-base com evidência primária
 (`git -C <worktree> log -1` / `merge-base`) — nunca pelo relato; base
 errada → mandar rebasear ou aplicar por patch. Integrar **por partes, com
@@ -232,6 +247,16 @@ da coluna do nosso, o outro afirmou que o `executor.md` barra git destrutivo
 — não barra. Os dois passariam, e o veredito montado em cima deles estava
 errado; quem derrubou foi o Luís não acreditando, não a validação. Citação que
 não existe na fonte = ler a fonte, não integrar o relatório.
+**Saída verde de ferramenta também não é evidência.** Vale para CLI, não só
+para agente: depois de publicar, instalar ou atualizar qualquer coisa,
+conferir o **artefato que roda** — arquivo no disco, versão no clone que
+executa, saída do binário — nunca a mensagem de sucesso. Em 2026-08-08,
+publicando este plugin: `plugin update` disse "updated from 0.22.0 to 0.22.1"
+sem materializar arquivo nenhum; chamado de novo, passou a responder "already
+at the latest version" e nunca mais buscou; `marketplace update` disse
+"Successfully updated" com o clone parado no commit anterior. Só andou com
+`git merge --ff-only origin/main` no clone, na mão. O que roda é o clone em
+`plugins/marketplaces/<nome>` — é lá que se confere com `git log -1`.
 
 **13. Correção sua vira observação registrada.** O plantio da regra 6 depende
 do Luís nomear a ideia; este registro é o inverso — o gatilho é **ele
