@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-0.24.0-1e5c3f?style=flat-square" alt="versão 0.24.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-0.25.0-1e5c3f?style=flat-square" alt="versão 0.25.0">
   <img src="https://img.shields.io/badge/perfil-2e_(TDAH_+_AH%2FSD)-6fcf97?style=flat-square" alt="perfil 2e">
   <img src="https://img.shields.io/badge/revis%C3%A3o-bimestral-9fd8ba?style=flat-square" alt="revisão bimestral">
 </p>
@@ -50,7 +50,7 @@ cria raiz até a estação certa. O `ideias.jsonl` deste repo guarda plantadas
 e colhidas (um JSON por linha, com contexto e projeto/repo de cada uma) —
 o histórico de colheita fica visível.
 
-## As 16 regras
+## As 17 regras
 
 | # | Regra | Em uma frase |
 |---|-------|--------------|
@@ -70,6 +70,7 @@ o histórico de colheita fica visível.
 | 14 | Regra bloqueada se anuncia | Ambiente da sessão impediu uma regra (harness, permissão, MCP fora do ar) → uma linha na primeira vez, nunca silêncio |
 | 15 | Agente não altera o ambiente | Subagente não instala software nem mexe em PATH, env, config global ou serviço: ferramenta ausente para e reporta, quem decide é a janela principal com a palavra dele |
 | 16 | Fato é meu, decisão é sua | Pergunta que o ambiente responde se resolve olhando, nunca sobe pra você; decisões abertas vão em **rodada única, numeradas, cada uma com a resposta recomendada** |
+| 17 | Multi-janela | Outra janela ativa no projeto do foco deixa o radar desta leve — paralelo é escolha, não desvio; o alerta é a janela do foco parada esperando você |
 
 Detalhe completo em [`skills/rainforest-mind/SKILL.md`](skills/rainforest-mind/SKILL.md).
 
