@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-0.26.0-1e5c3f?style=flat-square" alt="versão 0.26.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-0.27.0-1e5c3f?style=flat-square" alt="versão 0.27.0">
   <img src="https://img.shields.io/badge/perfil-2e_(TDAH_+_AH%2FSD)-6fcf97?style=flat-square" alt="perfil 2e">
   <img src="https://img.shields.io/badge/revis%C3%A3o-bimestral-9fd8ba?style=flat-square" alt="revisão bimestral">
 </p>
@@ -121,7 +121,15 @@ Ou aponte `--plugin-dir` para a pasta do repo em desenvolvimento.
 
 - As regras vivem em [`skills/rainforest-mind/SKILL.md`](skills/rainforest-mind/SKILL.md) — edite e a mudança vale na próxima sessão.
 - O hook avisa quando a skill passa de **60 dias sem revisão** (data no cabeçalho do SKILL.md): o perfil muda, a skill acompanha.
-- Fork à vontade: troque `FOCO.md`/`ideias.jsonl` pelos seus arquivos e as regras pelo seu perfil.
+- Fork à vontade: troque `FOCO.md`/`ideias.jsonl` pelos seus arquivos e as regras pelo seu perfil. O código não crava mais caminho — cada um sai de variável, com fallback na máquina do Luís:
+
+  | Variável | Resolve | Fallback |
+  |---|---|---|
+  | `RFM_ROOT` | raiz dos dados (`FOCO.md`, `ideias.jsonl`, `sessoes.json`, `vigias/`) | `C:\Projetos\rainforest-mind` |
+  | `CLAUDE_CONFIG_DIR` | pasta de config, de onde sai o `settings.json` da checagem de dependências | `~/.claude` |
+  | `WHATSAPP_API_BASE_URL` | host **e** porta do bridge, para os vigias e o hook | `http://localhost:3005` |
+  | `RFM_BRIDGE_LAUNCHER` | script que sobe o bridge quando a porta está fechada | `C:\Projetos\whatsapp-mcp\start-bridge.ps1` |
+  | `RFM_CLAUDE_EXE` | binário do Claude Code usado pelos vigias headless | caminho do WinGet |
 - O hook de sessão checa as dependências de ambiente e imprime o estado (plugin `apontamento-horas`, bridge do WhatsApp, `claude-mem`): a regra 14 precisa de uma lista curta pra conferir, não de introspecção. O que nenhum script enxerga — proibição de Agent/MCP no prompt da sessão — fica por conta da declaração em uma linha.
 
 ## Base

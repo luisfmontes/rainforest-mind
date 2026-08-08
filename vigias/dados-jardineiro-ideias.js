@@ -5,8 +5,10 @@
 // O run-vigia.ps1 roda automaticamente qualquer vigias/dados-<vigia>.js e
 // injeta a saída no prompt.
 const fs = require('fs');
+const path = require('path');
 
-const ARQ = 'C:\\Projetos\\rainforest-mind\\ideias.jsonl';
+const ROOT = process.env.RFM_ROOT || 'C:\\Projetos\\rainforest-mind';
+const ARQ = path.join(ROOT, 'ideias.jsonl');
 const hoje = new Date();
 const dia = (d) => Math.round((Date.UTC(hoje.getFullYear(), hoje.getMonth(), hoje.getDate())
   - Date.parse(d + 'T00:00:00Z')) / 86400000);
