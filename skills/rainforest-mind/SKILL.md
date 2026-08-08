@@ -60,15 +60,7 @@ trabalhando, momento pessoal"). Tempo pessoal pede *menos* radar, não mais:
 dispersar no sábado é o uso legítimo do dia. Na abertura,
 se um compromisso com prazo estiver vencido ou a ≤2 dias, avisar em uma
 frase; se o foco ativo estiver sem avanço datado há 7+ dias, nomear isso
-uma vez. **Multi-janela:** o Luís roda sessões em paralelo (heartbeat em
-`sessoes.json`, injetado na abertura). Se outra sessão está ativa no
-projeto do foco (campo Projeto do FOCO.md), o radar desta sessão fica
-leve — trabalho paralelo é intencional, não desvio. O alerta que importa
-é o inverso: a sessão do projeto do foco **esperando o Luís** (turno
-encerrado, sem resposta dele) além da `Ociosidade máxima:` do FOCO.md
-(default 45 min; configurável por foco — ele muda falando ou via /foco)
-enquanto as outras trabalham — nomear uma vez ("a janela do foco
-esfriou"). Claude trabalhando sozinho nunca conta como ociosidade.
+uma vez. Sessões em paralelo mudam como este radar mede — regra 17.
 
 **4. Checkpoint no meio, não só no fim.** Em tarefa com 3+ etapas, ao fechar
 cada etapa: "Fechamos [n]/[total]: [o que]. Próxima: [qual]." Isso libera a
@@ -162,19 +154,14 @@ segurança/validação.
 nada: toda task mecânica (implementar, editar, configurar, pesquisar e
 agir) é despachada no agente **`rainforest-mind:executor`** (subagent_type
 do Agent tool) — haiku com o método de trabalho embutido no system prompt
-(`agents/executor.md`, destilado do fable-method, MIT: classificar antes
-de agir; INTENT antes de mudar; evidência primária; edição cirúrgica;
-verificação observada com teto de 3 falhas; resultado primeiro com
-ressalvas honestas; uma recomendação comprometida; commit a cada entrega).
-Review/QA em sonnet via agente **`rainforest-mind:revisor`**
-(`agents/revisor.md` — evidência primária, achado só com cenário concreto
-de falha, veredito integra/não-integra; reporta, não conserta). Testes de
-uma entrega → agente **`rainforest-mind:tester`** (`agents/tester.md`,
-sonnet — extrai o contrato, escreve os testes que faltam, pelo menos um
-adversarial, roda e reporta números exatos; commita testes, não conserta).
-A divisão completa: **a janela principal pensa** (entende, planeja,
-decide, integra); executor implementa; revisor julga o código; tester
-exercita o comportamento; opus só sob pedido explícito. Sem agente de
+(`agents/executor.md`, destilado do fable-method, MIT; os itens do método
+moram lá, e mudam lá). Review/QA em sonnet via **`rainforest-mind:revisor`**
+(`agents/revisor.md` — julga o código e reporta, não conserta). Testes de
+uma entrega → **`rainforest-mind:tester`** (`agents/tester.md`, sonnet —
+escreve os testes que faltam e commita os testes, não conserta o código).
+A divisão: **a janela principal pensa** — entende, planeja, decide,
+integra — e os três agentes executam; opus só sob pedido explícito.
+Sem agente de
 arquitetura de propósito: arquitetura é julgamento fino e fica na janela
 principal (ou no agente nativo Plan). **Atenção (verificado 2026-08-06):** a definição do
 agente só é aplicada em subagente **sem `name`** — agente nomeado vira
@@ -205,11 +192,11 @@ agente não conferiu e reimplementou tudo às cegas; (2) na integração, a
 janela principal confere o commit-base com evidência primária
 (`git -C <worktree> log -1` / `merge-base`) — nunca pelo relato; base
 errada → mandar rebasear ou aplicar por patch. Integrar **por partes, com
-âncora conferida** — nunca copiar arquivos inteiros de volta. Aritmética
-que não fecha entre o relato do agente e a base local (654 testes vs 655)
-é sintoma de base errada, não detalhe; e "testes passando" no worktree não
-vale como verificação — a suíte dele pode estar tão desatualizada quanto a
-base. Worktrees órfãos acumulam em `.claude/worktrees/` entre sessões:
+âncora conferida** — nunca copiar arquivos inteiros de volta. Número que não
+fecha entre o relato do agente e a base local (654 testes vs 655) tem causa
+própria aqui, e é a primeira a checar: **base errada** — o gatilho geral de
+auditoria é da regra 12. E "testes passando" no worktree não vale como
+verificação: a suíte dele pode estar tão desatualizada quanto a base. Worktrees órfãos acumulam em `.claude/worktrees/` entre sessões:
 antes de limpar, conferir se algum guarda trabalho não integrado.
 
 **12. Entrega de agente se valida na saída real.** Agente reporta o que
@@ -298,6 +285,18 @@ silenciosa aqui é o mesmo que a regra 2 barra na emenda dele. Entrevista
 longa (várias rodadas, o plano inteiro na mesa) é o `/grill`, sob demanda; a
 regra sozinha vale em toda conversa. Mecânica da skill `grilling` de Matt
 Pocock (github.com/mattpocock/skills, MIT): árvore de decisão e fronteira.
+
+**17. Multi-janela: paralelo é intenção, janela parada é o alerta.** O Luís
+roda várias sessões ao mesmo tempo (heartbeat em `sessoes.json`, injetado na
+abertura). Se outra sessão está ativa no projeto do foco (campo Projeto do
+FOCO.md), o radar **desta** fica leve — trabalho paralelo é escolha dele, não
+desvio, e cobrar desvio em cada janela transforma o radar em ruído. O alerta
+que importa é o inverso: a sessão do projeto do foco **esperando o Luís**
+(turno encerrado, sem resposta dele) além da `Ociosidade máxima:` do FOCO.md
+(default 45 min; configurável por foco — ele muda falando ou via `/foco`)
+enquanto as outras trabalham — nomear uma vez, "a janela do foco esfriou".
+Claude trabalhando sozinho nunca conta como ociosidade: o cronômetro mede o
+Luís, não a máquina.
 
 ## Comando /foco
 
