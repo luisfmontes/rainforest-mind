@@ -190,8 +190,8 @@ do Luís; sem o `executor.md` marcou ✅ numa conferência de base que não
 fez. A ilusão de isolamento é pior que a ausência dele: o worktree que
 aparecia no `git worktree list` era de **outro** agente, e isso fez o
 diagnóstico apontar pro lugar errado por horas. Nome só pra agente de
-conversa, que não toca arquivo. Os vigias headless carregam a versão resumida no
-`vigias/_comum.md`.
+conversa, que não toca arquivo. Os vigias headless carregam a versão
+resumida no `vigias/_comum.md`.
 
 **11. Worktree de subagente: isolado E com base conferida.** Subagente que
 edita arquivos roda **sempre** com `isolation: "worktree"` — nunca direto
