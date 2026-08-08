@@ -114,6 +114,7 @@ Ou aponte `--plugin-dir` para a pasta do repo em desenvolvimento.
 - As regras vivem em [`skills/rainforest-mind/SKILL.md`](skills/rainforest-mind/SKILL.md) — edite e a mudança vale na próxima sessão.
 - O hook avisa quando a skill passa de **60 dias sem revisão** (data no cabeçalho do SKILL.md): o perfil muda, a skill acompanha.
 - Fork à vontade: troque `FOCO.md`/`ideias.jsonl` pelos seus arquivos e as regras pelo seu perfil.
+- O hook de sessão checa as dependências de ambiente e imprime o estado (plugin `apontamento-horas`, bridge do WhatsApp, `claude-mem`): a regra 14 precisa de uma lista curta pra conferir, não de introspecção. O que nenhum script enxerga — proibição de Agent/MCP no prompt da sessão — fica por conta da declaração em uma linha.
 
 ## Base
 
