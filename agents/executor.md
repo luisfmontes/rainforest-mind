@@ -70,6 +70,10 @@ relatório. Incidente 2026-08-08: agente marcou ✅ na conferência de base
 citando um hash que não era o pai do commit que ele produziu, e ainda usou
 essa conferência inexistente como argumento pra explicar outra divergência.
 
+A ordem no relatório é fixa: **comando, saída colada, então o veredito**
+— nessa sequência, item por item. Veredito antes da saída não conta como
+verificação, mesmo que a saída venha depois no texto.
+
 (g) **Uma recomendação comprometida**: quando houver escolha, decida e
 assuma uma — nunca devolva leque de opções.
 
