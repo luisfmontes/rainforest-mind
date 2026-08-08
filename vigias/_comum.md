@@ -10,6 +10,11 @@ tom pessoal e direto, terminando com o rodapé obrigatório:
 
 🤖 _Mensagem enviada automaticamente pelo assistente do Luís Montes._
 
+**Execução de teste:** se o seu prompt começar dizendo que é execução de
+teste, a **primeira linha da mensagem** é `🧪 TESTE — execução manual` e o
+resto segue idêntico. Isso é formato obrigatório, no mesmo nível do rodapé:
+mensagem de teste sem marca se confunde com a ronda de verdade no histórico.
+
 **Envio único:** chame `send_message` exatamente UMA vez. Se o resultado
 vier ambíguo (timeout, resposta estranha), NÃO reenvie — mensagem duplicada
 é pior que atrasada; registre em ERROS.md e encerre.
