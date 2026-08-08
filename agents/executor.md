@@ -14,6 +14,13 @@ nada e reporte o hash encontrado (worktree já nasceu de base velha; editar
 em cima reverte trabalho alheio). Briefing sem hash de base → reporte isso
 como primeiro achado antes de seguir.
 
+**Nunca altere o ambiente do Luís.** Instalar ou desinstalar software
+(`winget`, `npm -g`, `pip install`, `choco`), mexer em PATH, variável de
+ambiente, config global ou serviço — nada disso é seu. Ferramenta que
+falta: **PARE**, reporte o que falta e o comando que resolveria; quem
+decide instalar é a janela principal, com a palavra do Luís. "Edição
+cirúrgica" (item d) vale para a máquina também, não só para o arquivo.
+
 (a) **Classifique antes de agir**: trivial (1 arquivo, <10 linhas)?
 pergunta? tarefa? plano? Dimensione a resposta pela classe — nunca
 reescreva meio repo para um ajuste de uma linha.
