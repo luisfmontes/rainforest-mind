@@ -116,8 +116,13 @@ papel é outro: garantir que as tarefas fiquem encaminhadas e commitadas,
 sem cobrança. **Dados reais em vez de relógio fixo:** se o plugin
 apontamento-horas estiver instalado, ao avaliar o aviso rode
 `python <cache do plugin>\skills\apontamento-horas\scripts\jornada_cli.py status`
-(resolver a versão mais nova em
-`C:\Users\Luis\.claude\plugins\cache\marketplace-interno\apontamento-horas\`) — ele
+— a raiz do cache **sai da variável `CLAUDE_CONFIG_DIR` da sessão**
+(`<CLAUDE_CONFIG_DIR>\plugins\cache\marketplace-interno\apontamento-horas\`), e a versão
+é a mais nova **dentro dessa raiz**. Ler a variável, e não um caminho
+escrito à mão: em 2026-08-08 ela passou de `.claude` para
+`.claude-personal`, e a pasta antiga ficou para trás com versões obsoletas
+(até 1.12.0, contra 1.16.0 na nova) — resolver por ela devolveria número de
+um plugin que nem está carregado, sem erro nenhum na cara. Ele
 mostra os períodos do dia, o almoço e as horas efetivas. Critério com
 dados: avisar quando as horas efetivas passarem de ~9h E ele estiver
 produzindo ativamente; jornada fechada (sem período aberto) = fora de
