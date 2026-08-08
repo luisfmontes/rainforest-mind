@@ -178,7 +178,19 @@ manualmente. **Não nomear agente** salvo necessidade real de diálogo
 contínuo: sem nome, o agente devolve o resultado inline e encerra sozinho;
 nomeado, fica pendurado como teammate ocioso até alguém encerrar — e isso
 incomoda o Luís na hora de fechar a conversa. Se nomear, enviar
-shutdown_request ao terminar de usá-lo. Os vigias headless carregam a versão resumida no
+shutdown_request ao terminar de usá-lo.
+
+**E nomear custa o worktree junto** (verificado 2026-08-08, repo
+`inovacao`): agente que **edita arquivo nunca é nomeado**. O despacho
+pediu `isolation: "worktree"` e o agente nomeado `gerador-catalogo-pe`
+rodou **sem worktree nenhum** — o meta dele não traz `worktreePath`,
+enquanto o do irmão **sem nome**, mesmo dia e mesmo tipo de despacho,
+traz. Sem isolamento ele criou branch e commitou no **checkout principal**
+do Luís; sem o `executor.md` marcou ✅ numa conferência de base que não
+fez. A ilusão de isolamento é pior que a ausência dele: o worktree que
+aparecia no `git worktree list` era de **outro** agente, e isso fez o
+diagnóstico apontar pro lugar errado por horas. Nome só pra agente de
+conversa, que não toca arquivo. Os vigias headless carregam a versão resumida no
 `vigias/_comum.md`.
 
 **11. Worktree de subagente: isolado E com base conferida.** Subagente que
