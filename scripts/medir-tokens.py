@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Conta tokens de arquivos pelo endpoint oficial count_tokens da Anthropic.
+r"""Conta tokens de arquivos pelo endpoint oficial count_tokens da Anthropic.
 
 Por que existe: a decisao PT vs EN do SKILL.md precisa de token, nao de
 caractere — o ganho do ingles esta na tokenizacao, e caractere nao mede isso.
