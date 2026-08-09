@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-0.29.0-1e5c3f?style=flat-square" alt="versão 0.29.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-0.39.0-1e5c3f?style=flat-square" alt="versão 0.39.0">
   <img src="https://img.shields.io/badge/perfil-2e_(TDAH_+_AH%2FSD)-6fcf97?style=flat-square" alt="perfil 2e">
   <img src="https://img.shields.io/badge/revis%C3%A3o-bimestral-9fd8ba?style=flat-square" alt="revisão bimestral">
 </p>
@@ -64,15 +64,56 @@ o histórico de colheita fica visível.
 | 8 | Guarda-corpo de jornada | Jornada real do apontamento-horas: ~9h efetivas produzindo → um aviso, uma vez (fallback: 19h/2h+); hiperfoco saudável (perde tempo dentro da imersão) ≠ dificuldade de começar/trocar (sinal diferente); pausa sempre com ponte de 3 passos. A hora vem do relógio local, nunca de timestamp de log — esses são UTC |
 | 9 | Freio de Pareto | Polimento de algo pronto → triar extrínseco/intrínseco, barra uma vez ou não barra, entrega ou planta |
 | 10 | Agentes baratos com método | Janela principal pensa; task mecânica → `executor` (haiku), review → `revisor`, testes → `tester` (sonnet); sem `name` por padrão. Agente que **edita arquivo** nunca é nomeado: nomeado perde o worktree além do método (2026-08-08) |
-| 11 | Worktree de subagente | Isolamento sempre — briefing informa o hash de base e o agente confere como 1ª ação; a integração reconfere e vai por partes, nunca cópia de arquivo inteiro. Base velha **conhecida** tem saída autorizada (`git merge --ff-only`); qualquer outro hash é aborto. Commit antes de despachar é na **branch de trabalho**, nunca na `main` — design nasce na branch do trabalho que ele desenha. Isolamento se prova (`git rev-parse --show-toplevel` colado) e a base se reconfere no **pai do commit entregue**; worktree e branch removidos depois de integrar |
-| 12 | Entrega se valida na saída real | Agente reporta intenção, não resultado: critério de sucesso vem pronto no briefing, mutação reverte o comportamento real, e a validação é executar o artefato e olhar a saída — suíte verde não é evidência. Relatório **analítico** não tem artefato: confere duas citações na fonte e uma contagem declarada. E saída verde de **ferramenta** também não é evidência: confere o artefato que roda, não a mensagem de sucesso. ✅ sem comando e saída colados = não verificado. Recomendação **destrutiva** de agente é hipótese: confere a cadeia causal e leva ao Luís, nunca roda direto. O briefing dita o **formato**: comando, saída colada, então o veredito — nessa ordem |
+| 11 | Worktree de subagente | Isolamento sempre — briefing informa o hash de base e o agente confere como 1ª ação; a integração reconfere e vai por partes, nunca cópia de arquivo inteiro. Base velha **conhecida** tem saída autorizada (`git merge --ff-only`); qualquer outro hash é aborto. Commit antes de despachar é na **branch de trabalho**, nunca na `main` — design nasce na branch do trabalho que ele desenha. Isolamento se prova (`git rev-parse --show-toplevel` colado) e a base se reconfere no **pai do commit entregue**; worktree e branch removidos depois de integrar. Desde 2026-08-09 o isolamento tem **trava mecânica** — o resto continua escrito porque o hook não alcança |
+| 12 | Entrega se valida na saída real | Agente reporta intenção, não resultado: critério de sucesso vem pronto no briefing, mutação reverte o comportamento real, e a validação é executar o artefato e olhar a saída — suíte verde não é evidência. Relatório **analítico** não tem artefato: confere duas citações na fonte e uma contagem declarada. E saída verde de **ferramenta** também não é evidência: confere o artefato que roda, não a mensagem de sucesso. ✅ sem comando e saída colados = não verificado. Recomendação **destrutiva** de agente é hipótese: confere a cadeia causal e leva ao Luís, nunca roda direto. O briefing dita o **formato**: comando, saída colada, então o veredito — nessa ordem. O que mais separou entrega boa de entrega com bug, medido em 3 sessões: o briefing conter **o teste que falsificaria a entrega**, com comando e saída exatos. E exit code lido através de pipe não é exit code |
 | 13 | Correção vira observação | Você corrigir a saída já é o sinal: registra `tipo: observacao` no `ideias.jsonl`, silencioso, e o jardineiro de sexta propõe no máximo uma mudança de regra por semana |
 | 14 | Regra bloqueada se anuncia | Ambiente da sessão impediu uma regra (harness, permissão, MCP fora do ar) → uma linha na primeira vez, nunca silêncio. Caminho de ambiente sai da variável (`CLAUDE_CONFIG_DIR`), nunca escrito à mão — pasta que mudou de lugar quebra regra em silêncio. Se a regra bloqueada for a 10 e a task for grande (mais de um arquivo/repo, ou várias chamadas de ferramenta), o aviso **para o turno** e oferece a saída ("pode liberar subagente") em vez de seguir inline |
-| 15 | Agente não altera o ambiente | Subagente não instala software nem mexe em PATH, env, config global ou serviço: ferramenta ausente para e reporta, quem decide é a janela principal com a palavra dele |
+| 15 | Agente não altera o ambiente | Subagente não instala software nem mexe em PATH, env, config global ou serviço: ferramenta ausente para e reporta, quem decide é a janela principal com a palavra dele. E ambiente nunca se inspeciona com dump filtrado: `printenv \| cut` vazou uma chave Ed25519 inteira em 2026-08-09 — pergunta pelo nome (`printenv NOME`, `compgen -e`) |
 | 16 | Fato é meu, decisão é sua | Pergunta que o ambiente responde se resolve olhando, nunca sobe pra você; decisões abertas vão em **rodada única, numeradas, cada uma com a resposta recomendada** |
-| 17 | Multi-janela | Outra janela ativa no projeto do foco deixa o radar desta leve — paralelo é escolha, não desvio; o alerta é a janela do foco parada esperando você. Estado compartilhado (`ideias.jsonl`, `FOCO.md`) se escreve relendo o arquivo vivo: append de **uma** linha e conferência de que a contagem subiu 1 |
+| 17 | Multi-janela | Outra janela ativa no projeto do foco deixa o radar desta leve — paralelo é escolha, não desvio; o alerta é a janela do foco parada esperando você. Estado compartilhado (`ideias.jsonl`, `FOCO.md`) não se escreve à mão: passa pelo `scripts/ideias.py`, que relê o arquivo vivo, trava, faz backup e confere que a contagem subiu 1 |
 
 Detalhe completo em [`skills/rainforest-mind/SKILL.md`](skills/rainforest-mind/SKILL.md).
+
+## Travas mecânicas
+
+Regra escrita não alcança o modo de falha em que o agente **leu a regra e
+errou mesmo assim**. Em 2026-08-08 um subagente rodou a verificação de
+isolamento, recebeu o diretório principal — que era a condição de parada —,
+transcreveu a condição corretamente e escreveu um OK do lado. No dia
+seguinte foi a vez da janela principal: `git add -A` varreu trabalho de
+outra sessão duas vezes na mesma noite, sabendo que não devia. O que sobrou
+das duas noites:
+
+> Enquanto o veredito de uma checagem for redigido pelo mesmo agente que ela
+> deveria travar, ela não trava nada. **Exit code não se argumenta.**
+
+| Hook (`PreToolUse`, exit 2) | Barra | Em quem |
+|---|---|---|
+| `gate-worktree.cjs` | escrita de subagente em repo git que não é worktree linkado, e git que mexe no checkout (regra 11) | só subagente — a janela principal passa |
+| `gate-staging-total.cjs` | `git add -A/--all/./:/`, `-u`, e `git commit -a/-am` | **também a janela principal**, que foi onde os dois incidentes ocorreram |
+
+Valem em **qualquer** repo git da máquina, porque o hábito é que é o problema,
+não o repositório. A mensagem de bloqueio não só recusa: a de staging roda
+`git status --porcelain -uall` e devolve o `git add` por caminho já montado —
+trava que só diz "não" vira trava desligada. Saídas de emergência, nomeadas
+na própria mensagem: `RAINFOREST_GATE_OFF=1` no ambiente da sessão, ou um
+arquivo `.rainforest-gate-off` na raiz do repo.
+
+Cada uma tem bateria própria (`hooks/testa-gate-*.sh`, 60 casos ao todo) que
+roda o hook de verdade contra repos git montados na hora. A maioria dos casos
+testa o que deve **passar**: falso positivo aqui atrapalha todo repo.
+
+O mesmo princípio nos scripts, para o que hook nenhum alcança:
+
+| Script | Para quê |
+|---|---|
+| `scripts/ideias.py` | única porta de escrita do `ideias.jsonl` — trava de arquivo, backup, escrita atômica e releitura conferida; recusa colher ideia já colhida (regras 6, 13, 17) |
+| `scripts/conferir-entrega.py` | roda na janela principal **depois** da entrega do agente: hash de base, isolamento e citação conferidos na fonte, não no relato (regra 12) |
+| `scripts/medir-injecao.py` | custo real do prompt de abertura, lido do `usage` que a API devolve no transcript — token de verdade, sem chave e sem estimativa |
+| `scripts/medir-tokens.py` | contagem pelo endpoint oficial `count_tokens`, para quando houver chave de API |
+
+O que essas travas custaram e renderam fica em [`relatorios/`](relatorios/) —
+um relatório datado por incidente, com método e números.
 
 ## Comandos e skills
 
@@ -120,6 +161,18 @@ Ou aponte `--plugin-dir` para a pasta do repo em desenvolvimento.
 ## Ajuste fino
 
 - As regras vivem em [`skills/rainforest-mind/SKILL.md`](skills/rainforest-mind/SKILL.md) — edite e a mudança vale na próxima sessão.
+- **Incidente datado vai em blockquote.** O hook remove as linhas que começam
+  com `>` antes de injetar: a narrativa (o que aconteceu, quando, quem
+  corrigiu) continua no arquivo ao lado da regra que fundamenta, para quem lê,
+  e sai do custo de toda sessão. Instrução nunca entra na citação — se a frase
+  diz o que fazer, fica fora e permanece residente. Rendeu **−11%** da injeção
+  na v0.37.0 sem perder uma linha de conteúdo.
+- Antes de caçar token na skill, olhe onde ele está de verdade. Medido com
+  `/context all` em 2026-08-09: as ferramentas de MCP somavam **40,2k tokens**
+  contra ~330 das seis skills deste plugin. Desligar MCP por projeto rendeu
+  **240×** o que traduzir as regras inteiras para inglês renderia — que é 168
+  tokens, medidos, e por isso não foi feito
+  ([relatório](relatorios/2026-08-09-pt-vs-en-medicao-em-token.md)).
 - O hook avisa quando a skill passa de **60 dias sem revisão** (data no cabeçalho do SKILL.md): o perfil muda, a skill acompanha.
 - Fork à vontade: troque `FOCO.md`/`ideias.jsonl` pelos seus arquivos e as regras pelo seu perfil. O código não crava mais caminho — cada um sai de variável, com fallback na máquina do Luís:
 
