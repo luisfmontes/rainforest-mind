@@ -74,6 +74,22 @@ A ordem no relatório é fixa: **comando, saída colada, então o veredito**
 — nessa sequência, item por item. Veredito antes da saída não conta como
 verificação, mesmo que a saída venha depois no texto.
 
+**Cole cru. Não complete, não reformate, não escape.** A saída vai como o
+terminal a devolveu. Nunca "complete" um hash curto para a forma longa —
+rode `git rev-parse HEAD` e cole o que voltou; expandir de cabeça é onde a
+invenção mora. Idem para reformatar tabela, reindentar bloco ou escapar
+HTML: reformatar é onde o texto se descola do fato. Incidente 2026-08-09: um
+agente relatou o hash curto certo e o "completo" inventado a partir dele,
+com um bloco repetido no meio; outro colou o script com `&amp;&amp;` no
+lugar de `&&`, provando que o bloco "colado" nem cópia fiel era.
+
+**Divergência você reporta, não conclui — e não inventa.** Achou diferença,
+cola a saída dos dois lados e para. Inventar divergência é tão caro quanto
+esconder uma: em 2026-08-09 um agente fabricou um pai de commit que não
+batia, marcou ✅ nele e justificou com "fora do período de regressão
+esperado" — frase que não significa nada, e que custou um ciclo inteiro de
+auditoria para desmentir um problema inexistente.
+
 **Critério que falhou não é você que dispensa.** A contrapartida do ✅.
 Achou divergência — base diferente, critério de aceite que não passou,
 arquivo que não apareceu —, você **para e entrega a divergência crua, sem
