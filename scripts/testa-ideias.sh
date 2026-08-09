@@ -90,7 +90,22 @@ assert b["absorveu"]==["teste-tres"] and b["titulo"]=="Fundida"
 assert len(l)==int(os.environ["BASE"])+3'
 
 esperado "listar" 0 python scripts/ideias.py listar
-esperado "conferir acusa as datas no futuro herdadas do arquivo real" 1 python scripts/ideias.py conferir
+
+# Data no futuro fabricada AQUI, nao herdada do arquivo real: em 2026-08-09 esta
+# bateria ficou vermelha na virada da meia-noite, porque as datas "de amanha" do
+# jsonl viraram "de hoje" e o conferir parou de acusar. Teste que depende de
+# condicao transitoria mente nos dois sentidos.
+esperado "conferir passa quando o arquivo esta saudavel" 0 python scripts/ideias.py conferir
+python - <<'PY'
+import datetime, json, pathlib
+p = pathlib.Path("ideias.jsonl"); linhas = [l for l in p.read_text(encoding="utf-8").split("\n") if l.strip()]
+o = json.loads(linhas[-1]); o["plantada_em"] = (datetime.date.today() + datetime.timedelta(days=30)).isoformat()
+linhas[-1] = json.dumps(o, ensure_ascii=False)
+p.write_text("\n".join(linhas) + "\n", encoding="utf-8", newline="\n")
+PY
+esperado "conferir acusa data no futuro (o bug de UTC, detectado depois do fato)" 1 python scripts/ideias.py conferir
+contem_saida() { if python scripts/ideias.py conferir 2>&1 | grep -q "NO FUTURO"; then ok=$((ok+1)); echo "  ok   ... e diz NO FUTURO, nomeando a linha"; else falhou=$((falhou+1)); echo "  FALHA nao nomeou a linha"; fi; }
+contem_saida
 
 echo
 echo "== 3. mutacao: a conferencia byte a byte trava mesmo? =="
