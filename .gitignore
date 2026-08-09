@@ -1,2 +1,6 @@
-﻿vigias/log-*.txt
-sessoes.json
+# Backups automáticos do scripts/ideias.py — um por gravação, ficam locais.
+.ideias-backups/
+
+# Trava entre sessões paralelas e temporário da escrita atômica.
+.ideias.lock
+*.jsonl.tmp

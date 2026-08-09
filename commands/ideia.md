@@ -7,7 +7,8 @@ A fonte da verdade das ideias é `C:\Projetos\rainforest-mind\ideias.jsonl` —
 um objeto JSON por linha, com os campos: `id` (kebab-case), `titulo`,
 `descricao`, `contexto` (de onde surgiu e por quê), `projeto` (repo/pasta,
 ou "solta"), `ao_colher` (primeiro passo, ou null), `status`
-("plantada"/"colhida"), `plantada_em`, e para colhidas `colhida_em` +
+("plantada"/"em-colheita"/"colhida"/"unificada"), `plantada_em`, e para
+colhidas `colhida_em` +
 `resultado`. Campo opcional `tipo`: ausente ou `"ideia"` (padrão) para ideia
 do Luís; `"observacao"` para as da regra 13 — geradas por correção dele
 sobre método, com `ao_colher` = mudança de regra. `/ideia` sem argumento
@@ -22,26 +23,37 @@ Se `$ARGUMENTS` tiver texto: avalie se a ideia está dentro do foco declarado
 
 - **Se estiver no escopo:** confirmar e perguntar: "Isso está no foco — entra
   na tarefa atual ou planto para depois?"
-- **Se estiver fora:** plantar — acrescentar UMA linha ao `ideias.jsonl` com
-  todos os campos (status "plantada", data de hoje). Se o `projeto` não
-  estiver óbvio pelo contexto da conversa, perguntar em uma linha antes de
-  gravar. Confirmar: "plantada, de volta a [tarefa]".
+- **Se estiver fora:** plantar. Se o `projeto` não estiver óbvio pelo contexto
+  da conversa, perguntar em uma linha antes de gravar. Confirmar: "plantada,
+  de volta a [tarefa]".
 
-Para **colher**: não apagar a linha — reescrevê-la com status "colhida",
-`colhida_em` e `resultado`. Colhida ≠ apagada: o histórico fica.
+Colher não apaga a linha: reescreve com `resultado`. Colhida ≠ apagada.
 
-**Escrita segura (sessões paralelas).** O Luís roda várias janelas e todas
-escrevem neste arquivo. Antes de gravar: reler o arquivo vivo — não confiar
-no que foi lido no começo do turno —, acrescentar **só append** de UMA linha,
-e conferir depois que a contagem subiu exatamente 1 e que a linha nova é JSON
-válido. Colher é a única reescrita permitida, e reescreve **uma** linha,
-nunca o arquivo inteiro. Caminho do Windows vai com barra dupla (`C:\\Projetos\\x`):
-em 2026-08-07 uma linha gravou `C:\Projetos\rainforest-mind` e o `\r` virou
-carriage return dentro do valor — JSON válido, conteúdo corrompido.
+**A escrita é do script, nunca sua.** `scripts/ideias.py` faz trava entre
+sessões paralelas, releitura do arquivo vivo, backup, gravação atômica,
+carimbo de data pelo relógio local e conferência byte a byte das linhas que
+não eram alvo — e reverte tudo saindo com exit ≠ 0 se qualquer prova falhar.
+**Não edite o `ideias.jsonl` à mão nem com script improvisado.** Os quatro
+cuidados que moravam aqui em prosa viraram código em 2026-08-08, depois de
+dois appends quebrados no mesmo dia, uma data gravada no futuro e um `unificar`
+que precisou inventar status no meio do caminho.
 
-Dois detalhes que já quebraram o append (2026-08-08, os dois pegos pela
-conferência de contagem): **o arquivo pode não terminar em newline** — grave
-o `\n` que falta antes da linha nova, senão ela gruda na última e some do
-contador; e **não monte o JSON dentro de aspas do shell** — o escape das
-barras se perde no caminho. Escreva a linha num arquivo, valide com
-`JSON.parse`, e só então acrescente.
+```
+python scripts/ideias.py plantar  < nova.json                    # JSON por stdin
+python scripts/ideias.py colher   --id <id> < resultado.json     # {"resultado": "..."}
+python scripts/ideias.py iniciar  --id <id>                      # plantada → em-colheita
+python scripts/ideias.py unificar --manter <id> --absorver <id> < fundida.json
+python scripts/ideias.py listar   [--status plantada] [--tipo ideia|observacao|todos]
+python scripts/ideias.py conferir                                # saúde do arquivo
+```
+
+Dois cuidados continuam seus, porque o script não alcança:
+
+- **Escreva o JSON com a ferramenta de escrita de arquivo, nunca por heredoc
+  do shell** — o shell come as barras do caminho do Windows. Em 2026-08-08
+  isso quebrou uma gravação e o script recusou, em vez de gravar corrompido.
+- **Não passe data nenhuma.** `plantada_em`, `colhida_em` e afins vindos da
+  entrada são erro, não aviso: quem carimba é o script, do relógio local.
+
+Com `$ARGUMENTS` vazio, `listar` já entrega as plantadas com a idade contada —
+formate legível a partir da saída dele, sem recontar nada por conta própria.
