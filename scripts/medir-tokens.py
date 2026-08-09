@@ -12,10 +12,16 @@ Nao existe tokenizer local para Claude. A unica contagem correta vem de
 POST /v1/messages/count_tokens, entao este script fala com a API e nada mais.
 
 Credencial, em ordem (a primeira que existir):
-  1. ANTHROPIC_API_KEY no ambiente  -> header x-api-key
-  2. ANTHROPIC_AUTH_TOKEN           -> header Authorization: Bearer + beta oauth
-Sem nenhuma das duas, ele PARA e diz como resolver — em vez de estimar, que e
+  1. ANTHROPIC_API_KEY no ambiente        -> header x-api-key
+  2. ANTHROPIC_AUTH_TOKEN                 -> Authorization: Bearer + beta oauth
+  3. chave "anthropicApiKey" no arquivo de credenciais fora dos repos:
+     %USERPROFILE%\.claude\local-credentials.json (ou .claude-personal\...)
+Sem nenhuma das tres, ele PARA e diz como resolver — em vez de estimar, que e
 o erro que ele existe para impedir.
+
+A fonte 3 e a preferida no dia a dia: a chave nao passa pela linha de comando
+(que fica no historico do shell) nem pela conversa (que fica no transcript e
+no banco do claude-mem), e o arquivo mora FORA de qualquer repositorio.
 
 Uso:
   python scripts/medir-tokens.py arquivo.md [outro.md ...]
@@ -40,6 +46,24 @@ class Erro(Exception):
     pass
 
 
+def chave_do_arquivo() -> str | None:
+    """Le anthropicApiKey do arquivo de credenciais, se existir. Nunca escreve
+    nele, nunca imprime o valor, e nao reclama se o arquivo tiver outra coisa."""
+    lar = Path(os.path.expanduser("~"))
+    for caminho in (lar / ".claude" / "local-credentials.json",
+                    lar / ".claude-personal" / "local-credentials.json"):
+        if not caminho.is_file():
+            continue
+        try:
+            dados = json.loads(caminho.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+        if isinstance(dados, dict) and isinstance(dados.get("anthropicApiKey"), str):
+            if valor := dados["anthropicApiKey"].strip():
+                return valor
+    return None
+
+
 def cabecalhos() -> dict[str, str]:
     base = {"content-type": "application/json", "anthropic-version": "2023-06-01"}
     if chave := os.environ.get("ANTHROPIC_API_KEY"):
@@ -49,10 +73,16 @@ def cabecalhos() -> dict[str, str]:
         # o header de beta — trocar de chave para token e mudanca de header.
         return {**base, "authorization": f"Bearer {token}",
                 "anthropic-beta": "oauth-2025-04-20"}
+    if chave := chave_do_arquivo():
+        return {**base, "x-api-key": chave}
     raise Erro(
-        "sem credencial no ambiente.\n"
-        "  Opcao A (chave):  export ANTHROPIC_API_KEY=sk-ant-...\n"
-        "  Opcao B (OAuth):  ant auth login  &&  "
+        "sem credencial.\n"
+        "  Opcao A (preferida): acrescente \"anthropicApiKey\": \"sk-ant-...\" ao\n"
+        "     %USERPROFILE%\\.claude\\local-credentials.json — a chave nao passa\n"
+        "     pela linha de comando nem pela conversa. Gere em\n"
+        "     https://platform.claude.com/settings/keys\n"
+        "  Opcao B (pontual):   export ANTHROPIC_API_KEY=sk-ant-...\n"
+        "  Opcao C (sem chave): ant auth login  &&  "
         "export ANTHROPIC_AUTH_TOKEN=$(ant auth print-credentials --access-token)\n"
         "  Nao ha tokenizer local para Claude, e tiktoken e da OpenAI — "
         "subconta Claude em 15-20%. Estimar aqui invalida a medicao."
