@@ -53,6 +53,7 @@ Repo **adotado** tem pergunta diferente na revisita: não é "melhorou?", é
 | `steveyegge/beads` | 2026-08-09 | candidato, não avaliado | — (3 aparições independentes; `.beads/issues.jsonl` espelha o `ideias.jsonl`) | — |
 | `maslennikov-ig/claude-code-orchestrator-kit` | 2026-08-09 | não acopla | 2 (issue aberta: colisão MCP) e 3 (600-5000 tokens injeção fixa) | 2026-08-04 |
 | `Mansuro/claude-projects` | 2026-08-09 | não acopla | 1 (job-runner ≠ despachante contextuado) e 6 (novo demais, 3 ★) | 2026-07-30 |
+| `garrytan/gstack` | 2026-08-09 | não acopla, tem peça (`/codex`) | 2 (framework de método: `careful` vs gate-worktree, `investigate` vs `depurar`, `context-save/restore` vs claude-mem — mesma classe do BMAD/SuperClaude), 3 (55 skills = injeção fixa ~1,0–1,5k tokens em toda sessão, inclusive ERP legado) e 4 (82 issues + 117 PRs de Windows abertos, só 30 mergeados; #2478 `icacls` brica o `.gstack/`, #1375 aberto desde 08/05; o `setup` documenta Windows como modo degradado sem symlink) | 2026-08-08 |
 
 ## Fila da primeira rodada do batedor
 
