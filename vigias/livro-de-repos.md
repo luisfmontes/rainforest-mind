@@ -51,6 +51,8 @@ Repo **adotado** tem pergunta diferente na revisita: não é "melhorou?", é
 | `gsd-build/get-shit-done` | 2026-08-09 | não acopla | 6 (**arquivado**; sucessor `open-gsd/gsd-core` caiu de 64,7k pra 7,9k ★) | 2026-05-31 |
 | `um marketplace interno de cliente` | 2026-08-09 | **adotado** (já instalado como `marketplace-interno`) | — | 2026-08-09 |
 | `steveyegge/beads` | 2026-08-09 | candidato, não avaliado | — (3 aparições independentes; `.beads/issues.jsonl` espelha o `ideias.jsonl`) | — |
+| `maslennikov-ig/claude-code-orchestrator-kit` | 2026-08-09 | não acopla | 2 (issue aberta: colisão MCP) e 3 (600-5000 tokens injeção fixa) | 2026-08-04 |
+| `Mansuro/claude-projects` | 2026-08-09 | não acopla | 1 (job-runner ≠ despachante contextuado) e 6 (novo demais, 3 ★) | 2026-07-30 |
 
 ## Fila da primeira rodada do batedor
 
