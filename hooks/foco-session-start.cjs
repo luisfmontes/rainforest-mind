@@ -127,7 +127,25 @@ if (m) {
   }
 }
 
-const regras = skill.split('## As regras')[1]?.split('## Comando')[0]?.trim() || '';
+// O bloco de regras e 94% do SKILL.md, e e injetado em TODA sessao. O que
+// pesa dentro dele nao e a regra: e o incidente datado que a justifica.
+//
+// Incidente citado em blockquote (`> ...`) sai da injecao e continua no
+// arquivo, ao lado da regra que ele fundamenta. Isso separa duas funcoes que
+// estavam pagando o mesmo preco: a regra precisa estar residente para valer
+// em toda resposta; o incidente precisa estar LEGIVEL para o Luis manter a
+// regra (regra 13) e para o corpo da skill quando ela e aberta sob demanda.
+// A doc do Claude Code e explicita: "a skill's body loads only when it's
+// used" — este hook contornava isso injetando o corpo inteiro.
+//
+// Regra pratica ao marcar: vai pro blockquote a NARRATIVA (o que aconteceu,
+// quando, quem corrigiu). Nunca a instrucao — se a frase diz o que fazer,
+// ela fica fora do blockquote, sempre residente.
+const CITACAO = /^>.*(?:\r?\n|$)/gm;
+const regras = (skill.split('## As regras')[1]?.split('## Comando')[0] || '')
+  .replace(CITACAO, '')
+  .replace(/\n{3,}/g, '\n\n')
+  .trim();
 
 // Sessões paralelas (heartbeat: prompt_ts = o Luís agiu, stop_ts = Claude
 // terminou o turno e está esperando)

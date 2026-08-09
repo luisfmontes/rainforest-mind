@@ -241,8 +241,12 @@ o teste seria sabotar a função nova, não reverter o comportamento real);
 **fase renomeada** (itens não feitos viram "próximas fases" num relatório
 de sucesso — um agente entregou 1 de 6 itens assim); **aritmética que não
 fecha** (675 + 7 ≠ 676) e **código contradizendo o próprio docstring**.
-Detector automático não pega nada disso — no mesmo dia, o detector voltou
-limpo onde inspeção visual achou dois P0. Defesas: (1) o **critério de
+Detector automático não pega nada disso.
+
+> 2026-08-07: no mesmo dia, o detector automático voltou limpo onde a
+> inspeção visual achou dois P0.
+
+Defesas: (1) o **critério de
 sucesso vem pronto no briefing**, nunca é construído pelo executor —
 qual comando rodar, qual saída inspecionar, qual mutação (que **reverta o
 comportamento real**, especificada) deve fazer qual teste falhar;
@@ -258,19 +262,25 @@ levanta achado ou lê documentação não tem comando pra rodar, então as defes
 acima não pegam nele — e ele chega com a mesma cara de confiança. O sinal
 barato, antes de virar conclusão: conferir **na fonte** duas citações que o
 relatório faz do nosso lado (`arquivo:linha`) e **uma contagem** que ele
-declara. Incidente 2026-08-08: de dois agentes que compararam repos públicos
-com este, um colou o texto do repo analisado dentro da coluna do nosso e o
-outro afirmou que o `executor.md` barra git destrutivo — não barra. Os dois
-passariam; quem derrubou foi o Luís não acreditando, não a validação. Citação
-que não existe na fonte = ler a fonte, não integrar o relatório.
+declara. Citação que não existe na fonte = ler a fonte, não integrar o
+relatório.
+
+> 2026-08-08: de dois agentes que compararam repos públicos com este, um
+> colou o texto do repo analisado dentro da coluna do nosso e o outro
+> afirmou que o `executor.md` barra git destrutivo — não barra. Os dois
+> passariam; quem derrubou foi o Luís não acreditando, não a validação.
+
 **Saída verde de ferramenta também não é evidência.** Vale para CLI, não só
 para agente: depois de publicar, instalar ou atualizar qualquer coisa,
 conferir o **artefato que roda** — arquivo no disco, versão no clone que
-executa, saída do binário — nunca a mensagem de sucesso. Em 2026-08-08
-`plugin update` disse "updated from 0.22.0 to 0.22.1" sem materializar
-arquivo nenhum, e `marketplace update` disse "Successfully updated" com o
-clone parado no commit anterior; só andou com `git merge --ff-only
-origin/main` na mão. Publicar este plugin exige três coisas, e faltar uma
+executa, saída do binário — nunca a mensagem de sucesso.
+
+> 2026-08-08: `plugin update` disse "updated from 0.22.0 to 0.22.1" sem
+> materializar arquivo nenhum, e `marketplace update` disse "Successfully
+> updated" com o clone parado no commit anterior; só andou com
+> `git merge --ff-only origin/main` na mão.
+
+Publicar este plugin exige três coisas, e faltar uma
 deixa a mudança **publicada e inerte**: bump em `.claude-plugin/plugin.json`
 (o cache instala **por versão**), fast-forward do clone em
 `plugins/marketplaces/<nome>`, e conferir a versão viva no cache — a que
@@ -280,9 +290,13 @@ tem `.in_use` **sem** `.orphaned_at`.
 formato, não só a exigência. Item marcado como conferido sem trazer, na
 mesma linha, o comando e a **saída literal**, é lido como **não feito** e a
 janela principal confere ela mesma. Pedir "cole a saída" no fim do briefing
-não basta: em 2026-08-08 três agentes seguidos marcaram ✓ resumindo a saída
-em prosa ("exit 0, textos presentes") — defeito de disciplina de relato, não
-de execução. Então o critério de sucesso vai **numerado**, e cada item pede,
+não basta.
+
+> 2026-08-08: três agentes seguidos marcaram ✓ resumindo a saída em prosa
+> ("exit 0, textos presentes") — defeito de disciplina de relato, não de
+> execução.
+
+Então o critério de sucesso vai **numerado**, e cada item pede,
 nesta ordem: (1) o **comando literal**, (2) a **saída colada**, (3) só então
 o veredito. Um ✅ falso não custa só aquele item: obriga a reconferir o
 relatório inteiro na mão, que é o custo que o relatório existia pra eliminar.
@@ -292,12 +306,13 @@ funcionalidade" é conclusão da janela principal, nunca dele.
 **Recomendação destrutiva de agente não se executa, se investiga.** Agente
 que conclui "apague X", "reinstale Y", "limpe a pasta Z" entregou
 **hipótese**, não diagnóstico: a janela principal confere a cadeia causal e
-leva ao Luís, nunca roda direto. Incidente 2026-08-08: um agente mandou
-apagar os `*.jsonl` de `projects/` como "sessões em cache" — são os
-**transcripts** de que o `apontamento-horas` reconstrói as horas, e a
-evidência era circular: os arquivos casavam com a busca porque a conversa
-sobre o assunto está gravada neles. O alarme: a ação apaga dado e a
-evidência é "o arquivo contém a string que eu procurei".
+leva ao Luís, nunca roda direto. O alarme: **a ação apaga dado e a evidência
+é "o arquivo contém a string que eu procurei"**.
+
+> 2026-08-08: um agente mandou apagar os `*.jsonl` de `projects/` como
+> "sessões em cache" — são os **transcripts** de que o `apontamento-horas`
+> reconstrói as horas, e a evidência era circular: os arquivos casavam com a
+> busca porque a conversa sobre o assunto está gravada neles.
 
 **13. Correção sua vira observação registrada.** O plantio da regra 6 depende
 do Luís nomear a ideia; este registro é o inverso — o gatilho é **ele
