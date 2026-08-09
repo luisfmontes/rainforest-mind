@@ -1,0 +1,40 @@
+**11. Subagent worktree: isolated AND with a checked base.** A subagent that
+edits files always runs with `isolation: "worktree"` — never in Luís's own
+working tree — and with destructive git forbidden in the prompt (`git reset`,
+`git checkout --`, `git restore`, `git clean`; forbidding only "commit and
+branch" leaves the wrong door open). Since 2026-08-09 the isolation has a
+**mechanical gate**: the `gate-worktree.cjs` hook blocks with exit 2 any
+subagent write into a git repo that is not a linked worktree. The rest of the
+rule the gate does not reach, which is why it stays written down.
+
+**Commit before dispatching, on the working branch, never on `main`** — a
+session on the default branch creates the branch first. This matters most for
+**design**: it is born on the branch of the work it designs, and `main` only
+sees it alongside the implementation — or never, if the work dies midway,
+because an orphan design points at nothing. The agent's worktree is born from
+that branch, and it is that branch's hash that goes in the briefing.
+
+Isolation does not guarantee the right base: the worktree can be born from
+`main` or from a commit **older than the day's work**, and the defect is
+**intermittent** — you cannot assume a right base or a stale one. Incident
+2026-08-07: 3 of 3 worktrees were born stale, the worst 7 commits back, before
+the spec the agent was supposed to read even existed; merging would have
+reverted the day's fixes. Hence a double check. **(1) The briefing states the
+expected hash** and orders `git log -1` as the first action, aborting on
+divergence. The only authorized escape: the briefing also lists the **known
+stale hashes**, and only for those is `git merge --ff-only <expected hash>`
+permitted and required before editing — a fast-forward discards nothing, and
+any other hash is still an abort. **(2) On integration, the main window checks
+with primary evidence, never with the report** — `python
+scripts/conferir-entrega.py --worktree <wt> --base <hash> --head-antes <hash>`
+runs the five checks (toplevel really is a worktree, base of the **delivered**
+commit, uncommitted dirt, main directory touched, Luís's HEAD moved) and exits
+non-zero. Wrong base → rebase or apply by patch.
+
+Integrate **piece by piece, with a checked anchor** — never copy whole files
+back. A number that does not add up between the report and the local base (654
+tests vs 655) has its own cause here and is the first to check: **wrong base**.
+"Tests passing" in the worktree does not count: its suite may be as stale as
+its base. Once the work is integrated, **remove the worktree and the branch** —
+orphans pile up in `.claude/worktrees/` and a new agent can be slotted into a
+survivor; before cleaning, check whether any holds unintegrated work.

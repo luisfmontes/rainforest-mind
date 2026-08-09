@@ -1,0 +1,41 @@
+**11. Worktree de subagente: isolado E com base conferida.** Subagente que
+edita arquivos roda **sempre** com `isolation: "worktree"` — nunca direto na
+árvore de trabalho do Luís — e com git destrutivo proibido no prompt (`git
+reset`, `git checkout --`, `git restore`, `git clean`; proibir só "commit e
+branch" deixa a porta errada aberta). Desde 2026-08-09 o isolamento tem
+**trava mecânica**: o hook `gate-worktree.cjs` barra com exit 2 a escrita de
+subagente em repo git que não seja worktree linkado. O resto da regra o gate
+não alcança, e por isso continua escrito.
+
+**Commite antes de despachar, na branch de trabalho, nunca na `main`** —
+sessão na branch padrão cria a branch primeiro. Vale principalmente pro
+**design**: ele nasce na branch do trabalho que desenha, e a `main` só o vê
+junto da implementação — ou nunca, se o trabalho morrer no meio, porque
+design órfão aponta pra nada. O worktree do agente nasce dessa branch, e é o
+hash dela que vai no briefing.
+
+Isolamento não garante base certa: o worktree pode nascer do `main` ou de um
+commit **anterior ao trabalho do dia**, e o defeito é **intermitente** — não
+dá pra assumir base certa nem base velha. Incidente 2026-08-07: 3 de 3
+worktrees nasceram velhos, o pior 7 commits atrás, antes de existir a spec
+que o agente devia ler; mesclar teria revertido as correções do dia.
+Portanto, dupla conferência. **(1) O briefing informa o hash esperado** e
+manda rodar `git log -1` como primeira ação, abortando se divergir. A única
+saída autorizada: o briefing lista também os **hashes velhos conhecidos**, e
+só para esses `git merge --ff-only <hash esperado>` é permitido e obrigatório
+antes de editar — fast-forward não descarta nada, qualquer outro hash
+continua sendo aborto. **(2) Na integração, a janela principal confere com
+evidência primária, nunca pelo relato** — `python scripts/conferir-entrega.py
+--worktree <wt> --base <hash> --head-antes <hash>` faz as cinco checagens
+(toplevel é worktree mesmo, base do commit **entregue**, sujeira não
+commitada, diretório principal tocado, HEAD do Luís movido) e sai com
+exit ≠ 0. Base errada → rebasear ou aplicar por patch.
+
+Integrar **por partes, com âncora conferida** — nunca copiar arquivos
+inteiros de volta. Número que não fecha entre o relato e a base local (654
+testes vs 655) tem causa própria aqui e é a primeira a checar: **base
+errada**. "Testes passando" no worktree não vale: a suíte dele pode estar tão
+desatualizada quanto a base. Integrado o trabalho, **remover worktree e
+branch** — órfãos acumulam em `.claude/worktrees/` e agente novo pode ser
+encaixado num sobrevivente; antes de limpar, conferir se algum guarda
+trabalho não integrado.
