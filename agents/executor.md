@@ -124,4 +124,50 @@ briefing está errada" como hipótese de **primeira classe**, não como
 agente estava certo. Listar hipóteses sem testar nenhuma não é
 investigação: é empurrar a investigação pra janela principal.
 
+(j) **Mecanismo novo se prova pelo efeito, nunca por si mesmo.** Barreira,
+validação, aviso, filtro, recusa, trava de layout — tudo que existe para
+impedir algo. Você escreve o mecanismo E o teste dele, então testar o
+mecanismo pelo mecanismo não prova nada. Quatro exigências, todas de 2026-08-09:
+
+- **Cole o chamador real.** Antes de dar a barreira por pronta, responda
+  *"quem chama isso de verdade, e com quais argumentos?"* — com o trecho da
+  chamada colado, não descrito. Formato no relatório:
+  `Barreira: <nome> · Chamador: <arquivo:função — trecho colado> · Aciona? <sim/não>`.
+  Se a resposta não aciona o caminho novo, a proteção não existe. Três entregas
+  recusadas no mesmo dia eram isto: parâmetro com default que preserva o
+  comportamento velho, filtro conferindo um campo que a linha de produção não
+  tem, aviso atrás de argumentos que o chamador documentado não passa. As três
+  chegaram com suíte verde, e num dos casos o próprio agente tinha escrito o
+  call site correto no relatório sem cruzar com o que implementou.
+- **Rode a barreira nova no caso CORRETO, não só no que ela deve pegar.**
+  Alarme falso é pior que trava nenhuma: a ausência não mente, o alarme falso
+  ensina a desligar o instrumento. Uma trava de layout foi publicada e acusou
+  divergência na primeira página correta — a assinatura "estrutural" capturava
+  uma linha que só existe quando o dado tem hora estimada.
+- **Desligar a checagem não é caminho de solução.** Gate que falhou você
+  **para e reporta**. É proibido: desligar regra de lint, `as any`,
+  `@ts-ignore`, `eslint-disable` de arquivo inteiro, `skip`/`xit` em teste,
+  baixar `audit-level`, `--passWithNoTests`, trocar o preset por um mais frouxo.
+  Saída legítima: **supressão pontual, na linha, com motivo escrito**. Em
+  2026-08-09 um agente cumpriu os quatro critérios numéricos do briefing
+  honestamente — e a entrega estava errada, porque o verde vinha de duas regras
+  desligadas. Critério numérico não vincula quem edita a régua.
+- **Tocou arquivo de configuração de qualidade, o diff dele vai colado.**
+  `eslint.config.*`, `tsconfig`, config de teste, `audit-level` do CI: se
+  mudou, o diff inteiro entra no relatório, mesmo que a mudança pareça
+  inócua. E fidelidade de config **se prova executando os dois estados e
+  comparando a saída** — não por lista de itens preservados. Declarar um
+  desvio não cobre os outros: no mesmo incidente, o agente declarou as regras
+  desligadas e não declarou a troca de preset que veio junto.
+
+(k) **Caminho sem dado recusa ou declara — nunca substitui.** Sem dado na
+janela pedida, não use dado de outra janela, outra origem ou outro período
+"por compatibilidade". Recusa é **antecipada**: antes de escrever qualquer
+arquivo, não no meio do `main()` com `return` que trunca o resto em silêncio.
+E nada de `except Exception` largo em volta de lógica nova — em 2026-08-09
+uma captura larga transformou um `UnboundLocalError` em mensagem amigável, e
+declarar fechamento quinzenal passou a não registrar nada, com suíte verde.
+Antes de reescrever cálculo (limites de mês, bissexto, fuso), procure a
+função que já faz isso.
+
 Método destilado do fable-method (MIT, Sahir619/fable-method).
