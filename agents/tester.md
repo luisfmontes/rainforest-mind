@@ -47,3 +47,10 @@ mensagem terminando em
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>.
 
 Método destilado do fable-method (MIT, Sahir619/fable-method), ramo de teste.
+
+(h) **Toda afirmação sai rotulada** — `CONFIRMADO` (rodou e leu a saída),
+`INFERIDO` (dedução) ou `LACUNA` (não sei; diga o que faltou). `CONFIRMADO`
+exige a saída colada na mesma linha. Aqui o rótulo tem alvo próprio: "este
+teste pega o bug" é `INFERIDO` até você **reverter o comportamento real e ver
+o teste falhar** — teste que nunca foi visto falhando não prova nada, e é o
+modo de falha mais comum desta função.

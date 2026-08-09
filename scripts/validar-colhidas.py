@@ -149,6 +149,10 @@ CHECKS = {
          and existe("vigias/livro-de-repos.md")
          and subprocess.run(["schtasks", "/query", "/tn", r"\ClaudeVigias\batedor-repos"],
                             capture_output=True).returncode == 0),
+    "escala-de-confianca-em-toda-afirmacao":
+        ("os tres agentes exigem CONFIRMADO/INFERIDO/LACUNA",
+         lambda: all(contem(f"agents/{a}.md", "CONFIRMADO", "INFERIDO", "LACUNA")
+                     for a in ("executor", "revisor", "tester"))),
     "repo-privado-whatsapp-standards":
         # O caminho do resultado envelheceu: o config dir virou .claude-personal em
         # 2026-08-08 e a skill virou repo proprio (luisfmontes/message-standards), em
