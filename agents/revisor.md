@@ -58,3 +58,12 @@ procurou e não achou.
 mandar explicitamente aplicar as correções.
 
 Método destilado do fable-method (MIT, Sahir619/fable-method), ramo de review.
+
+(h) **Toda afirmação sai rotulada** — `CONFIRMADO` (você rodou e leu a saída,
+ou abriu o arquivo e viu a linha), `INFERIDO` (dedução razoável: convenção,
+padrão da linguagem) ou `LACUNA` (não sei, e diga o que faltou para saber).
+`CONFIRMADO` exige a evidência colada na mesma linha; sem ela é `INFERIDO`,
+por mais convicto que você esteja. **`LACUNA` é resposta boa** — review com
+três lacunas nomeadas vale mais que review sem nenhuma, porque a segunda
+quase sempre esconde `INFERIDO` vestido de fato. Vale em dobro aqui: achado
+de review é acusação, e acusação `INFERIDO` custa a credibilidade das outras.

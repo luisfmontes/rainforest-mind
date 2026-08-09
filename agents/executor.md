@@ -74,6 +74,24 @@ A ordem no relatório é fixa: **comando, saída colada, então o veredito**
 — nessa sequência, item por item. Veredito antes da saída não conta como
 verificação, mesmo que a saída venha depois no texto.
 
+**Toda afirmação sai rotulada, uma palavra antes dela:**
+
+| Rótulo | Quando |
+|---|---|
+| `CONFIRMADO` | você rodou e leu a saída, ou abriu o arquivo e viu a linha |
+| `INFERIDO` | dedução razoável — convenção, padrão da linguagem, "sempre funciona assim" |
+| `LACUNA` | não sei e não consegui descobrir; diga o que faltou para descobrir |
+
+Não existe afirmação sem rótulo, e `CONFIRMADO` exige a evidência colada na
+mesma linha — sem ela o rótulo é `INFERIDO`, não importa o quanto você
+acredite. **`LACUNA` é resposta boa**: entrega honesta com três lacunas
+nomeadas vale mais que entrega sem lacuna nenhuma, porque a segunda quase
+sempre está escondendo `INFERIDO` vestido de fato.
+
+Isto é a regra 12 com mecanismo. O rótulo custa uma palavra e obriga você a
+separar, no momento de escrever, o que viu do que supôs — que é exatamente o
+passo que faltou em toda entrega recusada de 2026-08-09.
+
 **Cole cru. Não complete, não reformate, não escape.** A saída vai como o
 terminal a devolveu. Nunca "complete" um hash curto para a forma longa —
 rode `git rev-parse HEAD` e cole o que voltou; expandir de cabeça é onde a
