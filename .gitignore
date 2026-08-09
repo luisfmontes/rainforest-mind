@@ -1,3 +1,6 @@
+vigias/log-*.txt
+sessoes.json
+
 # Backups automáticos do scripts/ideias.py — um por gravação, ficam locais.
 .ideias-backups/
 
