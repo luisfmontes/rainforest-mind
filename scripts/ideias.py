@@ -35,6 +35,7 @@ argumenta — que e a razao de a trava ser codigo e nao paragrafo.
 Uso:
   python scripts/ideias.py plantar  < nova.json
   python scripts/ideias.py colher   --id <id>  < resultado.json
+  python scripts/ideias.py editar   --id <id>  < mudancas.json
   python scripts/ideias.py iniciar  --id <id>
   python scripts/ideias.py unificar --manter <id> --absorver <id>  < fundida.json
   python scripts/ideias.py listar   [--status plantada] [--tipo ideia|observacao|todos]
@@ -293,6 +294,42 @@ def cmd_colher(args) -> None:
         gravar(antes, depois, {i}, "colher")
 
 
+def cmd_editar(args) -> None:
+    """Corrige campos de uma ideia ainda aberta.
+
+    Faltava, e a falta apareceu rapido: em 2026-08-09, uma hora depois de plantar
+    seis ideias, duas precisaram de correcao de conteudo — a decisao do idioma
+    saiu e o desenho de "dois repos" virou "um repo mais pasta de dados". Havia
+    comando para nascer e para fechar, nenhum para mudar de ideia no meio. Sem
+    ele a correcao vira edicao a mao no jsonl, que e exatamente o que este
+    arquivo inteiro existe para impedir.
+
+    So mexe no que ainda esta aberto: colhida e unificada sao registro do que
+    aconteceu, e reescrever registro fechado apaga a historia em vez de corrigi-la.
+    """
+    entrada = ler_stdin()
+    validar_entrada(entrada, exigir_obrigatorios=False)
+    if "id" in entrada and entrada["id"] != args.id:
+        raise Erro("editar nao troca id — o id e a identidade da ideia, nao um campo")
+    mudaveis = {k: v for k, v in entrada.items() if k != "id"}
+    if not mudaveis:
+        raise Erro("nada para editar — mande no JSON so os campos que mudam")
+    with Trava(TRAVA):
+        antes = ler_vivo()
+        i = indice_por_id(antes, args.id)
+        obj = json.loads(antes[i])
+        if obj.get("status") in ("colhida", "unificada"):
+            raise Erro(
+                f"'{args.id}' esta '{obj['status']}' — o que ja fechou nao se reescreve"
+            )
+        obj.update(mudaveis)
+        obj["editada_em"] = hoje()
+        depois = list(antes)
+        depois[i] = serializar(obj)
+        print(f"editando '{args.id}' (linha {i + 1}): {', '.join(sorted(mudaveis))}")
+        gravar(antes, depois, {i}, "editar")
+
+
 def cmd_iniciar(args) -> None:
     with Trava(TRAVA):
         antes = ler_vivo()
@@ -440,6 +477,10 @@ def main() -> int:
     c = sub.add_parser("colher", help="marca colhida (JSON com 'resultado' por stdin)")
     c.add_argument("--id", required=True)
     c.set_defaults(fn=cmd_colher)
+
+    c = sub.add_parser("editar", help="corrige campos de ideia ainda aberta (JSON por stdin)")
+    c.add_argument("--id", required=True)
+    c.set_defaults(fn=cmd_editar)
 
     c = sub.add_parser("iniciar", help="plantada -> em-colheita")
     c.add_argument("--id", required=True)
