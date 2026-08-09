@@ -53,11 +53,9 @@ contra o foco pessoal ativo, se houver; não havendo, não se mede). Assunto
 declaradamente pessoal vale como contexto pessoal mesmo em dia útil, e
 trabalho no sábado por escolha dele continua valendo — o filtro é sobre o
 que o Luís está fazendo, não sobre o calendário sozinho. Incidente
-2026-08-08 (sábado): ele trouxe livros de psicologia e oratória para o
-segundo cérebro e a abertura cobrou desvio contra um foco de trabalho com
-prazo; ele teve que corrigir na mão ("esse foco é para trabalho, não estou
-trabalhando, momento pessoal"). Tempo pessoal pede *menos* radar, não mais:
-dispersar no sábado é o uso legítimo do dia. Na abertura,
+2026-08-08 (sábado): a abertura cobrou desvio contra um foco de trabalho com
+prazo enquanto ele levava livros para o segundo cérebro, e ele corrigiu na
+mão. Tempo pessoal pede *menos* radar, não mais. Na abertura,
 se um compromisso com prazo estiver vencido ou a ≤2 dias, avisar em uma
 frase; se o foco ativo estiver sem avanço datado há 7+ dias, nomear isso
 uma vez. Sessões em paralelo mudam como este radar mede — regra 17.
@@ -122,13 +120,13 @@ mostra os períodos do dia, o almoço e as horas efetivas. Critério com
 dados: avisar quando as horas efetivas passarem de ~9h E ele estiver
 produzindo ativamente; jornada fechada (sem período aberto) = fora de
 expediente, modo descanso. Sem o plugin, fallback: 19h/2h+ contínuas.
-**A hora vem do relógio local da sessão, nunca de timestamp de arquivo** —
-log, JSON de estado e afins gravam em UTC (o `Z` no fim), e ler o `Z` como
-hora local adianta o relógio em 3h no fuso de Brasília. Precisando usar um,
-converter antes de comparar com o limiar; o `jornada_cli.py` já devolve
-local e é a fonte preferida. Incidente 2026-08-08: `21:21:12.623Z` lido como
-21h local virou sugestão de encerrar por causa desta regra, às 18:21 — o
-limiar nem tinha sido cruzado, e o Luís teve que corrigir na mão.
+**Hora e data vêm do relógio local da sessão, nunca de timestamp de
+arquivo** — log e JSON gravam em UTC (o `Z` no fim), e lê-lo como local
+adianta 3h no fuso de Brasília; depois das 21h, adianta o **dia**. Incidente
+2026-08-08: `21:21:12.623Z` lido como 21h virou sugestão de encerrar às
+18:21, e na mesma noite outra janela carimbou `plantada_em` e nome de
+relatório com a data de amanhã. O `jornada_cli.py` devolve local e é a fonte
+preferida; data gravada em arquivo é carimbada por script, nunca digitada.
 O hiperfoco não avisa antes de esgotar a função executiva; o aviso externo
 é o guarda-corpo — mas guarda-corpo de varanda, não cerca elétrica.
 Diferencial que muda a leitura: perder a noção do tempo **dentro** da
@@ -180,76 +178,57 @@ nomeado, fica pendurado como teammate ocioso até alguém encerrar — e isso
 incomoda o Luís na hora de fechar a conversa. Se nomear, enviar
 shutdown_request ao terminar de usá-lo.
 
-**E nomear custa o worktree junto** (verificado 2026-08-08, repo
-`inovacao`): agente que **edita arquivo nunca é nomeado**. O despacho
-pediu `isolation: "worktree"` e o agente nomeado `gerador-catalogo-pe`
-rodou **sem worktree nenhum** — o meta dele não traz `worktreePath`,
-enquanto o do irmão **sem nome**, mesmo dia e mesmo tipo de despacho,
-traz. Sem isolamento ele criou branch e commitou no **checkout principal**
-do Luís; sem o `executor.md` marcou ✅ numa conferência de base que não
-fez. A ilusão de isolamento é pior que a ausência dele: o worktree que
-aparecia no `git worktree list` era de **outro** agente, e isso fez o
-diagnóstico apontar pro lugar errado por horas. Nome só pra agente de
-conversa, que não toca arquivo. Os vigias headless carregam a versão
-resumida no `vigias/_comum.md`.
+**E nomear custa o worktree junto** (verificado 2026-08-08): agente que
+**edita arquivo nunca é nomeado**. Despacho com `isolation: "worktree"` e
+nome rodou **sem worktree nenhum** — o meta do nomeado não traz
+`worktreePath`, o do irmão sem nome, no mesmo dia e mesmo despacho, traz —
+e ele acabou commitando no checkout principal do Luís. A ilusão de
+isolamento é pior que a ausência dele: o worktree que aparecia no `git
+worktree list` era de **outro** agente, e o diagnóstico apontou pro lugar
+errado por horas. Nome só pra agente de conversa, que não toca arquivo. Os
+vigias headless carregam a versão resumida no `vigias/_comum.md`.
 
 **11. Worktree de subagente: isolado E com base conferida.** Subagente que
-edita arquivos roda **sempre** com `isolation: "worktree"` — nunca direto
-na árvore de trabalho do Luís — e com git destrutivo proibido no prompt
-(`git reset`, `git checkout --`, `git restore`, `git clean`; proibir só
-"commit e branch" deixa a porta errada aberta). Trabalho decidido e não
-commitado se commita **antes** de despachar o agente.
+edita arquivos roda **sempre** com `isolation: "worktree"` — nunca direto na
+árvore de trabalho do Luís — e com git destrutivo proibido no prompt (`git
+reset`, `git checkout --`, `git restore`, `git clean`; proibir só "commit e
+branch" deixa a porta errada aberta). Desde 2026-08-09 o isolamento tem
+**trava mecânica**: o hook `gate-worktree.cjs` barra com exit 2 a escrita de
+subagente em repo git que não seja worktree linkado. O resto da regra o gate
+não alcança, e por isso continua escrito.
 
-**E se commita na branch de trabalho, nunca na `main`/`master`** — sessão na
-branch padrão cria a branch primeiro. Vale principalmente pro **design**:
-desenho de solução nasce na branch do trabalho que ele desenha, e a `main`
-só o vê junto da implementação — ou nunca, se o trabalho morrer no meio,
-porque design órfão na `main` aponta pra nada. O worktree do agente nasce
-dessa branch, e é o hash dela que vai no briefing: divergência de base
-aparece de cara em vez de virar merge que reverte trabalho. Correção do
-Luís, 2026-08-08.
+**Commite antes de despachar, na branch de trabalho, nunca na `main`** —
+sessão na branch padrão cria a branch primeiro. Vale principalmente pro
+**design**: ele nasce na branch do trabalho que desenha, e a `main` só o vê
+junto da implementação — ou nunca, se o trabalho morrer no meio, porque
+design órfão aponta pra nada. O worktree do agente nasce dessa branch, e é o
+hash dela que vai no briefing.
 
-Mas isolamento não garante base certa: o worktree pode nascer do `main` em
-vez da branch da sessão, ou de um commit **anterior ao trabalho do dia**
-(2026-08-06: agente trabalhou sem as correções do dia; 2026-08-07: 3 de 3
-worktrees nasceram de base velha, o pior 7 commits atrás — antes de existir
-a própria spec que o agente devia ler; mesclar teria revertido correções e
-testes recém-feitos).
-Portanto, dupla conferência: (1) o **briefing informa o hash esperado** e
-manda o agente rodar `git log -1` como **primeira ação**, abortando se
-divergir — foi o que salvou 2 de 3 integrações em 2026-08-07; o terceiro
-agente não conferiu e reimplementou tudo às cegas. **A saída autorizada:** o
-briefing lista também os **hashes velhos conhecidos**, e para esses — e só
-para esses — `git merge --ff-only <hash esperado>` é permitido e obrigatório
-antes de editar; fast-forward não descarta nada, e qualquer outro hash
-continua sendo aborto. Sem isso o agente precisa de um segundo despacho, e
-quem já nasce na base certa não paga nada por essa linha. O defeito é
-**intermitente** (2026-08-08: de 3 agentes na mesma sessão, 2 nasceram no
-HEAD da abertura e 1 no HEAD atual) — não dá pra assumir base certa nem base
-velha; (2) na integração, a
-janela principal confere o commit-base com evidência primária
-(`git -C <worktree> log -1` / `merge-base`) — nunca pelo relato; base
-errada → mandar rebasear ou aplicar por patch. Integrar **por partes, com
-âncora conferida** — nunca copiar arquivos inteiros de volta. Número que não
-fecha entre o relato do agente e a base local (654 testes vs 655) tem causa
-própria aqui, e é a primeira a checar: **base errada** — o gatilho geral de
-auditoria é da regra 12. E "testes passando" no worktree não vale como
-verificação: a suíte dele pode estar tão desatualizada quanto a base.
+Isolamento não garante base certa: o worktree pode nascer do `main` ou de um
+commit **anterior ao trabalho do dia**, e o defeito é **intermitente** — não
+dá pra assumir base certa nem base velha. Incidente 2026-08-07: 3 de 3
+worktrees nasceram velhos, o pior 7 commits atrás, antes de existir a spec
+que o agente devia ler; mesclar teria revertido as correções do dia.
+Portanto, dupla conferência. **(1) O briefing informa o hash esperado** e
+manda rodar `git log -1` como primeira ação, abortando se divergir. A única
+saída autorizada: o briefing lista também os **hashes velhos conhecidos**, e
+só para esses `git merge --ff-only <hash esperado>` é permitido e obrigatório
+antes de editar — fast-forward não descarta nada, qualquer outro hash
+continua sendo aborto. **(2) Na integração, a janela principal confere com
+evidência primária, nunca pelo relato** — `python scripts/conferir-entrega.py
+--worktree <wt> --base <hash> --head-antes <hash>` faz as cinco checagens
+(toplevel é worktree mesmo, base do commit **entregue**, sujeira não
+commitada, diretório principal tocado, HEAD do Luís movido) e sai com
+exit ≠ 0. Base errada → rebasear ou aplicar por patch.
 
-**Isolamento se prova, não se presume:** o briefing manda o agente rodar
-`git rev-parse --show-toplevel` como **segunda ação** e colar a saída;
-toplevel que não seja o worktree dele é aborto. E **(3) a base se reconfere
-no commit entregue**, não só na abertura — `git log --format="%H %P" -1
-<commit do agente>` tem que ter o hash acordado como pai. Incidente
-2026-08-08 (repo `inovacao`): agente com worktree entregue trabalhou no
-**checkout principal** do Luís e trocou a branch dele, e marcou ✅ numa
-conferência de base que não fez — o pai do commit era o `main` local
-desatualizado. A checagem inicial existia; a final, não. Integrado o
-trabalho, **remover worktree e branch do agente** — agente novo pode ser
-encaixado num órfão sobrevivente.
-
-Worktrees órfãos acumulam em `.claude/worktrees/` entre sessões:
-antes de limpar, conferir se algum guarda trabalho não integrado.
+Integrar **por partes, com âncora conferida** — nunca copiar arquivos
+inteiros de volta. Número que não fecha entre o relato e a base local (654
+testes vs 655) tem causa própria aqui e é a primeira a checar: **base
+errada**. "Testes passando" no worktree não vale: a suíte dele pode estar tão
+desatualizada quanto a base. Integrado o trabalho, **remover worktree e
+branch** — órfãos acumulam em `.claude/worktrees/` e agente novo pode ser
+encaixado num sobrevivente; antes de limpar, conferir se algum guarda
+trabalho não integrado.
 
 **12. Entrega de agente se valida na saída real.** Agente reporta o que
 pretendia, não o que aconteceu — sem mentir: ele mede de um jeito que não
@@ -268,11 +247,8 @@ sucesso vem pronto no briefing**, nunca é construído pelo executor —
 qual comando rodar, qual saída inspecionar, qual mutação (que **reverta o
 comportamento real**, especificada) deve fazer qual teste falhar;
 (2) validar toda entrega **executando o artefato real e olhando a saída**
-— suíte verde e relato não são evidência; entrega vinda de worktree tem a
-parte mecânica dessa validação pronta em
-`python scripts/conferir-entrega.py --worktree <wt> --base <hash>
---head-antes <hash>` (isolamento, base, sujeira, dir principal, HEAD do
-Luís — exit ≠ 0 reprova, e o veredito deixa de ser do agente); (3) o relatório do agente lista
+— suíte verde e relato não são evidência; entrega de worktree tem a parte
+mecânica pronta no `conferir-entrega.py` da regra 11; (3) o relatório lista
 **cada item do briefing** com feito/não-feito — "próximas fases" não
 pedidas e números que não somam são gatilho de auditoria, não detalhe;
 (4) agentes concorrentes **não compartilham a mesma instância de browser**
@@ -282,50 +258,46 @@ levanta achado ou lê documentação não tem comando pra rodar, então as defes
 acima não pegam nele — e ele chega com a mesma cara de confiança. O sinal
 barato, antes de virar conclusão: conferir **na fonte** duas citações que o
 relatório faz do nosso lado (`arquivo:linha`) e **uma contagem** que ele
-declara (linhas, arquivos, itens). Incidente 2026-08-08: dois agentes
-compararam repos públicos com este; um colou o texto do repo analisado dentro
-da coluna do nosso, o outro afirmou que o `executor.md` barra git destrutivo
-— não barra. Os dois passariam, e o veredito montado em cima deles estava
-errado; quem derrubou foi o Luís não acreditando, não a validação. Citação que
-não existe na fonte = ler a fonte, não integrar o relatório.
+declara. Incidente 2026-08-08: de dois agentes que compararam repos públicos
+com este, um colou o texto do repo analisado dentro da coluna do nosso e o
+outro afirmou que o `executor.md` barra git destrutivo — não barra. Os dois
+passariam; quem derrubou foi o Luís não acreditando, não a validação. Citação
+que não existe na fonte = ler a fonte, não integrar o relatório.
 **Saída verde de ferramenta também não é evidência.** Vale para CLI, não só
 para agente: depois de publicar, instalar ou atualizar qualquer coisa,
 conferir o **artefato que roda** — arquivo no disco, versão no clone que
-executa, saída do binário — nunca a mensagem de sucesso. Em 2026-08-08,
-publicando este plugin: `plugin update` disse "updated from 0.22.0 to 0.22.1"
-sem materializar arquivo nenhum; chamado de novo, passou a responder "already
-at the latest version" e nunca mais buscou; `marketplace update` disse
-"Successfully updated" com o clone parado no commit anterior. Só andou com
-`git merge --ff-only origin/main` no clone, na mão. O que roda é o clone em
-`plugins/marketplaces/<nome>` — é lá que se confere com `git log -1`.
+executa, saída do binário — nunca a mensagem de sucesso. Em 2026-08-08
+`plugin update` disse "updated from 0.22.0 to 0.22.1" sem materializar
+arquivo nenhum, e `marketplace update` disse "Successfully updated" com o
+clone parado no commit anterior; só andou com `git merge --ff-only
+origin/main` na mão. Publicar este plugin exige três coisas, e faltar uma
+deixa a mudança **publicada e inerte**: bump em `.claude-plugin/plugin.json`
+(o cache instala **por versão**), fast-forward do clone em
+`plugins/marketplaces/<nome>`, e conferir a versão viva no cache — a que
+tem `.in_use` **sem** `.orphaned_at`.
 
-**✅ sem comando e saída colados = não verificado.** Item que o agente marca
-como conferido sem trazer, na mesma linha, o comando e a **saída literal**,
-a janela principal lê como **não feito** e confere ela mesma. Vai dito **no
-briefing**, pro agente saber que asserção nua não conta: um ✅ falso não
-custa só aquele item, ele obriga a reconferir o relatório inteiro na mão —
-exatamente o custo que o relatório existia pra eliminar.
-
-**E o briefing dita o formato, não só a exigência.** Pedir "cole a saída"
-no fim do briefing não basta: em 2026-08-08, três agentes seguidos marcaram
-✓ e resumiram a saída em prosa ("exit 0, textos presentes"), e nas três a
-conferência por cima deu certo — o defeito é de disciplina de relato, não
-de execução. Então o critério de sucesso vai **numerado**, e cada item
-pede, nesta ordem: (1) o **comando literal** a rodar, (2) a **saída
-colada**, (3) **só então** o veredito. Veredito que aparece antes da saída,
-ou sem ela, é lido como não verificado — e sai mais barato exigir a ordem
-certa no briefing do que reconferir o relatório inteiro depois.
+**✅ sem comando e saída colados = não verificado**, e o briefing dita o
+formato, não só a exigência. Item marcado como conferido sem trazer, na
+mesma linha, o comando e a **saída literal**, é lido como **não feito** e a
+janela principal confere ela mesma. Pedir "cole a saída" no fim do briefing
+não basta: em 2026-08-08 três agentes seguidos marcaram ✓ resumindo a saída
+em prosa ("exit 0, textos presentes") — defeito de disciplina de relato, não
+de execução. Então o critério de sucesso vai **numerado**, e cada item pede,
+nesta ordem: (1) o **comando literal**, (2) a **saída colada**, (3) só então
+o veredito. Um ✅ falso não custa só aquele item: obriga a reconferir o
+relatório inteiro na mão, que é o custo que o relatório existia pra eliminar.
+**E critério que FALHOU o agente não dispensa** — "não afeta a
+funcionalidade" é conclusão da janela principal, nunca dele.
 
 **Recomendação destrutiva de agente não se executa, se investiga.** Agente
 que conclui "apague X", "reinstale Y", "limpe a pasta Z" entregou
 **hipótese**, não diagnóstico: a janela principal confere a cadeia causal e
-leva ao Luís, nunca roda direto. Incidente 2026-08-08: um agente de pesquisa
-mandou apagar os `*.jsonl` de `projects/` como "sessões em cache" — são os
-**transcripts**, base de que a skill `apontamento-horas` reconstrói as horas
-trabalhadas, e a evidência era circular (os arquivos casavam com a busca
-porque a própria conversa sobre o assunto está gravada neles). O alarme que
-vale pra próxima: a ação apaga dado e a evidência é "o arquivo contém a
-string que eu procurei".
+leva ao Luís, nunca roda direto. Incidente 2026-08-08: um agente mandou
+apagar os `*.jsonl` de `projects/` como "sessões em cache" — são os
+**transcripts** de que o `apontamento-horas` reconstrói as horas, e a
+evidência era circular: os arquivos casavam com a busca porque a conversa
+sobre o assunto está gravada neles. O alarme: a ação apaga dado e a
+evidência é "o arquivo contém a string que eu procurei".
 
 **13. Correção sua vira observação registrada.** O plantio da regra 6 depende
 do Luís nomear a ideia; este registro é o inverso — o gatilho é **ele
@@ -427,20 +399,19 @@ enquanto as outras trabalham — nomear uma vez, "a janela do foco esfriou".
 Claude trabalhando sozinho nunca conta como ociosidade: o cronômetro mede o
 Luís, não a máquina.
 
-**Estado compartilhado se escreve relendo o arquivo vivo.** As janelas
-gravam nos mesmos arquivos (`ideias.jsonl`, `FOCO.md`, `sessoes.json`),
-então o que foi lido no começo do turno já está velho na hora de gravar.
-Antes de escrever: **reler o arquivo vivo**, acrescentar **só append de
-uma linha**, e conferir depois que a contagem subiu **exatamente 1** e que
-a linha nova é JSON válido. Reescrever o arquivo inteiro é proibido —
-colher reescreve **uma** linha. Três armadilhas já pegas pela conferência
-de contagem: arquivo que **não termina em newline** (a linha nova gruda na
-última e some do contador), JSON montado dentro de aspas do shell (o escape
-das barras se perde no caminho) e caminho do Windows sem barra dupla (em
-2026-08-07 `C:\Projetos\...` virou carriage return dentro do valor — JSON
-válido, conteúdo corrompido). Escrever a linha num arquivo, validar com
-`JSON.parse`, e só então acrescentar. Vale em qualquer janela, com ou sem
-o comando `/ideia`.
+**Estado compartilhado se escreve pelo script, não à mão.** As janelas gravam
+nos mesmos arquivos, então o que foi lido no começo do turno já está velho na
+hora de gravar — em 2026-08-09 o `ideias.jsonl` cresceu por baixo de uma
+janela entre duas operações dela. No `ideias.jsonl` isso é código desde
+2026-08-08: `python scripts/ideias.py {plantar|colher|iniciar|unificar|
+listar|conferir}` faz trava entre sessões, releitura do arquivo vivo, backup,
+escrita atômica, carimbo de data pelo relógio **local** e conferência byte a
+byte das linhas não-alvo, revertendo com exit ≠ 0. **Não edite o arquivo à
+mão nem com script improvisado**, e não passe data nenhuma — quem carimba é
+ele. Escreva o JSON de entrada com ferramenta de escrita de arquivo, nunca
+por heredoc do shell: o shell come as barras do caminho do Windows. Nos
+arquivos ainda sem trava (`FOCO.md`, `sessoes.json`) vale a versão manual:
+reler o vivo, append de uma linha, conferir que a contagem subiu 1.
 
 ## Comando /foco
 
