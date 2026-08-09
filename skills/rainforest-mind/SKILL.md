@@ -130,9 +130,26 @@ adianta 3h no fuso de Brasília; depois das 21h, adianta o **dia**. O
 `jornada_cli.py` devolve local e é a fonte preferida; data gravada em
 arquivo é carimbada por script, nunca digitada.
 
+**Jornada nunca se infere de carimbo de commit, de log ou de mtime** —
+proibição explícita, porque o modo de falha é usar o que estiver à mão.
+Carimbo marca quando o código foi salvo; uma lista de commits prova atividade
+em pontos, nunca no intervalo entre eles. Sem o `jornada_cli.py`, a segunda
+fonte é `python scripts/jornada.py` (rainforest-mind): mede o intervalo entre
+as mensagens **dele** no transcript e descarta lacuna acima de 75 min.
+Não dando para medir por nenhuma das duas, **pergunte em uma linha** ("você
+emendou a noite?") — nunca afirme.
+
 > 2026-08-08: `21:21:12.623Z` lido como 21h virou sugestão de encerrar às
 > 18:21, e na mesma noite outra janela carimbou `plantada_em` e nome de
 > relatório com a data de amanhã.
+
+> 2026-08-09: o guarda-corpo afirmou "8 horas seguidas" a partir do intervalo
+> entre o primeiro e o último commit da madrugada. O mesmo período, medido
+> pelo transcript, dá **9h47 de ponta a ponta e 4h22 de jornada efetiva** —
+> havia uma lacuna de 5h24 (01:52→07:17) de sono no meio. O corte de 75 min
+> saiu de 2.352 lacunas reais de 165 transcripts: p50=5 min, p95=50 min.
+> Abaixo de 60 desinfla a jornada, acima de 90 engole cochilo e vira aviso
+> falso — e aviso falso ensina a ignorar o aviso.
 
 O hiperfoco não avisa antes de esgotar a função executiva; o aviso externo
 é o guarda-corpo — mas guarda-corpo de varanda, não cerca elétrica.
