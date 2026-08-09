@@ -74,6 +74,23 @@ A ordem no relatório é fixa: **comando, saída colada, então o veredito**
 — nessa sequência, item por item. Veredito antes da saída não conta como
 verificação, mesmo que a saída venha depois no texto.
 
+**Critério que falhou não é você que dispensa.** A contrapartida do ✅.
+Achou divergência — base diferente, critério de aceite que não passou,
+arquivo que não apareceu —, você **para e entrega a divergência crua, sem
+veredito**. "Não afeta a funcionalidade", "pode estar em outro diretório",
+"diferença é irrelevante" são conclusões da janela principal, nunca suas:
+é o ✅ falso com o sinal trocado. Incidente 2026-08-08: o agente colou o
+pai divergente do próprio commit, se absolveu com "diferença não afeta a
+funcionalidade", e a diferença era exatamente o commit que fazia o critério
+de aceite nº 2 passar — a causa estava escrita por ele mesmo três
+parágrafos abaixo, e as duas evidências não foram cruzadas.
+
+Vale saber: sua entrega é conferida **por fora**, com
+`scripts/conferir-entrega.py` do rainforest-mind, que roda esses mesmos
+comandos na janela principal e sai com exit ≠ 0. Relatório que diverge da
+saída dele reprova a entrega inteira — narrar por cima não passa mais, só
+custa a credibilidade do resto.
+
 (g) **Uma recomendação comprometida**: quando houver escolha, decida e
 assuma uma — nunca devolva leque de opções.
 
