@@ -106,6 +106,64 @@ function bloqueia(motivo, toplevel, agente) {
   process.exit(2);
 }
 
+// `cd X` isolado num segmento do encadeamento.
+const CD = /^\s*cd\s+(?:--\s+)?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s*$/;
+// Diretorio que o proprio git recebe, e que vence o cwd do shell.
+const GIT_DIR_EXPLICITO = /\bgit\b[^\n;&|]*?(?:-C|--work-tree(?:=|\s+))\s*(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))/;
+
+/**
+ * Diretorios onde os `git` que MEXEM no repo realmente vao rodar.
+ *
+ * O bug que isto conserta (2026-08-09, repo inovacao): o alvo era `ev.cwd`, o cwd
+ * REGISTRADO da sessao do agente. Como o cwd registrado de um subagente e o diretorio
+ * principal, `cd <worktree> && git commit` era lido como commit no diretorio do Luis e
+ * barrado — com a assinatura do bug na mensagem, "Repo:" sem o sufixo do worktree.
+ * Efeito pratico: toda entrega de subagente exigia commit da janela principal, o que
+ * empurra trabalho mecanico para o lugar caro e contraria a regra 10.
+ *
+ * O `ao_colher` avisou do buraco obvio, e ele e real: ler o `cd` e mandar ver
+ * trocaria o falso positivo por um falso NEGATIVO, que e o lado caro —
+ * `cd /worktree/ok && git -C /repo/principal commit` passaria batido num parser
+ * ingenuo. Por isso aqui NAO se escolhe um alvo: percorre-se o encadeamento
+ * mantendo o diretorio corrente, e cada git-que-mexe contribui com o SEU diretorio.
+ * Basta um deles cair no diretorio principal para bloquear.
+ *
+ * Conservador de proposito: `cd` que nao da para resolver (variavel, subshell,
+ * `cd -`) marca o diretorio corrente como INCERTO, e dai em diante os alvos incluem
+ * tambem o cwd registrado. Na duvida o gate barra — falso positivo custa uma ida e
+ * volta, falso negativo custa o estado do Luis.
+ */
+function alvosBash(comando, cwdInicial) {
+  const segmentos = comando.split(/&&|\|\||;|\n|\|/);
+  let atual = cwdInicial;
+  let incerto = false;
+  const alvos = [];
+
+  for (const seg of segmentos) {
+    const cd = seg.match(CD);
+    if (cd) {
+      const destino = cd[1] || cd[2] || cd[3];
+      // `cd -`, `cd ~`, `$VAR`, `$(...)`: nao da para resolver aqui sem executar.
+      if (/[$`~]/.test(destino) || destino === "-") { incerto = true; continue; }
+      atual = path.resolve(atual, destino);
+      continue;
+    }
+    if (!GIT_QUE_MEXE.test(seg)) continue;
+
+    const exp = seg.match(GIT_DIR_EXPLICITO);
+    if (exp) {
+      const p = exp[1] || exp[2] || exp[3];
+      // `-C` com variavel: nao da para resolver — cai no conservador.
+      if (/[$`]/.test(p)) { alvos.push(cwdInicial); continue; }
+      alvos.push(path.resolve(atual, p));
+      continue;
+    }
+    alvos.push(atual);
+    if (incerto) alvos.push(cwdInicial);
+  }
+  return alvos;
+}
+
 function main() {
   let ev;
   try {
@@ -120,28 +178,30 @@ function main() {
 
   const entrada = ev.tool_input || {};
   const nome = ev.tool_name;
-  let alvo = null;
+  const cwd = ev.cwd || process.cwd();
+  let alvos = [];
   let motivo = null;
 
   if (FERRAMENTAS_DE_ESCRITA.has(nome)) {
-    alvo = entrada.file_path || entrada.notebook_path || null;
-    motivo = `Escrita (${nome}) em ${alvo}`;
+    const alvo = entrada.file_path || entrada.notebook_path || null;
+    if (alvo) { alvos = [alvo]; motivo = `Escrita (${nome}) em ${alvo}`; }
   } else if (nome === "Bash" && typeof entrada.command === "string") {
     const m = entrada.command.match(GIT_QUE_MEXE);
     if (!m) process.exit(0);
-    alvo = ev.cwd || process.cwd();
+    alvos = alvosBash(entrada.command, cwd);
     motivo = `Comando que mexe no estado do repo: git ${m[1]}`;
   }
 
-  if (!alvo) process.exit(0);
+  if (!alvos.length) process.exit(0);
 
-  const estado = estadoDoRepo(dirDe(alvo));
-  if (!estado) process.exit(0);          // fora de repo git: livre
-  if (estado.ehWorktree) process.exit(0); // worktree linkado: era pra ser isso mesmo
-
-  if (fs.existsSync(path.join(estado.toplevel, ".rainforest-gate-off"))) process.exit(0);
-
-  bloqueia(motivo, estado.toplevel, `${ev.agent_type || "?"} (${ev.agent_id})`);
+  for (const alvo of alvos) {
+    const estado = estadoDoRepo(dirDe(alvo));
+    if (!estado) continue;           // fora de repo git: livre
+    if (estado.ehWorktree) continue; // worktree linkado: era pra ser isso mesmo
+    if (fs.existsSync(path.join(estado.toplevel, ".rainforest-gate-off"))) continue;
+    bloqueia(motivo, estado.toplevel, `${ev.agent_type || "?"} (${ev.agent_id})`);
+  }
+  process.exit(0);
 }
 
 main();

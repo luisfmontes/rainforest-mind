@@ -68,6 +68,31 @@ gate "payload vazio nunca trava"                  0 "{}"
 gate "payload ilegivel nunca trava"               0 "isto nao e json"
 
 echo
+echo
+echo "== o cd do encadeamento: o falso positivo e o falso negativo que ele abre =="
+# Ate 2026-08-09 o alvo era ev.cwd — o cwd REGISTRADO da sessao, que num subagente e
+# sempre o diretorio principal. Resultado: `cd <worktree> && git commit` era barrado,
+# e toda entrega de subagente passou a exigir commit da janela principal.
+# Os 22 testes anteriores ficaram VERDES com esse bug de pe, porque nenhum deles
+# encadeava `cd`. Estes sao os que faltavam — e o par do meio existe porque a correcao
+# obvia (ler o cd e mandar ver) troca o falso positivo por um falso negativo.
+b() { # comando, cwd  -> payload Bash
+  printf '{"agent_id":"ag-1","agent_type":"executor","tool_name":"Bash","cwd":"%s","tool_input":{"command":"%s"}}' \
+    "$(esc "$2")" "$(esc "$1")"
+}
+gate "cd worktree && git commit (O BUG: tem que PASSAR)" 0 \
+  "$(b "cd $WT && git commit -m x" "$R")"
+gate "git -C worktree commit, cwd no principal"          0 \
+  "$(b "git -C $WT commit -m x" "$R")"
+gate "cd worktree && git -C PRINCIPAL commit (falso negativo)" 2 \
+  "$(b "cd $WT && git -C $R commit -m x" "$R")"
+gate "cd worktree, commita, volta e commita no principal" 2 \
+  "$(b "cd $WT && git commit -m x && cd $R && git commit -m y" "$R")"
+gate "cd para variavel nao resolvivel: barra por conservadorismo" 2 \
+  "$(b "cd \$ALVO && git commit -m x" "$R")"
+gate "cd para fora de repo git && git commit"            0 \
+  "$(b "cd $FORA && git commit -m x" "$R")"
+
 echo "== saidas de emergencia =="
 saida=$(printf '%s' "$(j Write file_path "$(esc "$R/novo.txt")")" | RAINFOREST_GATE_OFF=1 node "$GATE" 2>&1); rc=$?
 if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   RAINFOREST_GATE_OFF=1 libera (exit 0)"
