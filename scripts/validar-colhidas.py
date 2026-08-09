@@ -143,6 +143,12 @@ CHECKS = {
         ("gate usa alvosBash (nao ev.cwd) + bateria tem o caso do bug",
          lambda: contem("hooks/gate-worktree.cjs", r"function alvosBash")
          and contem("hooks/testa-gate-worktree.sh", r"O BUG: tem que PASSAR")),
+    "batedor-vigia-de-repos-ancorado":
+        ("prompt + apurador com o nome que o runner procura + livro + tarefa agendada",
+         lambda: existe("vigias/batedor-repos.md") and existe("vigias/dados-batedor-repos.js")
+         and existe("vigias/livro-de-repos.md")
+         and subprocess.run(["schtasks", "/query", "/tn", r"\ClaudeVigias\batedor-repos"],
+                            capture_output=True).returncode == 0),
     "repo-privado-whatsapp-standards":
         # O caminho do resultado envelheceu: o config dir virou .claude-personal em
         # 2026-08-08 e a skill virou repo proprio (luisfmontes/message-standards), em
