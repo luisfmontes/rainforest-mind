@@ -79,6 +79,28 @@ esperado "recusa colher duas vezes" 1 bash -c 'python scripts/ideias.py colher -
 esperado "recusa colher sem resultado" 1 bash -c 'echo "{}" | python scripts/ideias.py colher --id teste-um'
 esperado "recusa id inexistente" 1 bash -c 'python scripts/ideias.py colher --id nao-existe < r.json'
 
+# editar: ideia muda antes de ser colhida. Sem este comando a correcao virava
+# edicao a mao no jsonl, que e o que o ideias.py existe para impedir.
+echo "{\"id\":\"teste-editar\",\"titulo\":\"Antes\",\"descricao\":\"d\",\"contexto\":\"c\",\"projeto\":\"sandbox\"}" > fe.json
+esperado "plantar a que sera editada" 0 bash -c 'python scripts/ideias.py plantar < fe.json'
+echo '{"titulo":"Depois","ao_colher":"passo novo"}' > ed.json
+esperado "editar ideia aberta" 0 bash -c 'python scripts/ideias.py editar --id teste-editar < ed.json'
+prova "editar troca so o que veio, carimba editada_em e preserva plantada_em" '
+import json,datetime,os
+l=[json.loads(x) for x in open("ideias.jsonl",encoding="utf-8") if x.strip()]
+o=[x for x in l if x["id"]=="teste-editar"][0]
+assert o["titulo"]=="Depois" and o["ao_colher"]=="passo novo"
+assert o["descricao"]=="d" and o["contexto"]=="c", "campo nao enviado foi alterado"
+assert o["status"]=="plantada", "editar nao deve mexer no status"
+assert o["editada_em"]==datetime.date.today().isoformat()
+assert o["plantada_em"]==datetime.date.today().isoformat()
+assert len(l)==int(os.environ["BASE"])+2, "editar nao pode mudar a contagem"'
+esperado "recusa editar o que ja foi colhido" 1 bash -c 'echo "{\"titulo\":\"x\"}" | python scripts/ideias.py editar --id teste-um'
+esperado "recusa editar sem nada para mudar" 1 bash -c 'echo "{}" | python scripts/ideias.py editar --id teste-editar'
+esperado "recusa trocar o id pela entrada" 1 bash -c 'echo "{\"id\":\"outro\",\"titulo\":\"x\"}" | python scripts/ideias.py editar --id teste-editar'
+esperado "recusa carimbar data pela entrada tambem no editar" 1 bash -c 'echo "{\"plantada_em\":\"2030-01-01\"}" | python scripts/ideias.py editar --id teste-editar'
+esperado "recusa editar id inexistente" 1 bash -c 'echo "{\"titulo\":\"x\"}" | python scripts/ideias.py editar --id nao-existe-mesmo'
+
 echo "{\"id\":\"teste-dois\",\"titulo\":\"Segunda\",\"descricao\":\"d2\",\"contexto\":\"c2\",\"projeto\":\"sandbox\"}" > f2.json
 esperado "plantar segunda" 0 bash -c 'python scripts/ideias.py plantar < f2.json'
 echo "{\"id\":\"teste-tres\",\"titulo\":\"Terceira\",\"descricao\":\"d3\",\"contexto\":\"c3\",\"projeto\":\"sandbox\"}" > f3.json
@@ -87,13 +109,14 @@ esperado "recusa absorver uma ja colhida" 1 bash -c 'echo "{\"id\":\"teste-dois\
 echo "{\"id\":\"teste-dois\",\"titulo\":\"Fundida\",\"descricao\":\"conteudo fundido\",\"contexto\":\"c2\",\"projeto\":\"sandbox\"}" > fu.json
 esperado "unificar (duas linhas, contagem igual)" 0 bash -c 'python scripts/ideias.py unificar --manter teste-dois --absorver teste-tres < fu.json'
 esperado "recusa unificar consigo mesmo" 1 bash -c 'python scripts/ideias.py unificar --manter teste-dois --absorver teste-dois < fu.json'
-prova "absorvida aponta pra sobrevivente, conteudo fundido gravado, contagem base+3" '
+prova "absorvida aponta pra sobrevivente, conteudo fundido gravado, contagem base+4" '
 import json,os
 l=[json.loads(x) for x in open("ideias.jsonl",encoding="utf-8") if x.strip()]
 a=[x for x in l if x["id"]=="teste-tres"][0]; b=[x for x in l if x["id"]=="teste-dois"][0]
 assert a["status"]=="unificada" and a["unificada_em_id"]=="teste-dois"
 assert b["absorveu"]==["teste-tres"] and b["titulo"]=="Fundida"
-assert len(l)==int(os.environ["BASE"])+3'
+# base+4 e nao base+3 desde que o bloco do editar plantou teste-editar antes daqui.
+assert len(l)==int(os.environ["BASE"])+4'
 
 esperado "listar" 0 python scripts/ideias.py listar
 
@@ -130,6 +153,15 @@ esperado "mutante recusado (a trava reverte e sai != 0)" 1 bash -c 'python scrip
 if cmp -s ideias.jsonl pre-mutacao.jsonl
 then ok=$((ok+1)); echo "  ok   arquivo restaurado do backup, byte a byte igual ao de antes"
 else falhou=$((falhou+1)); echo "  FALHA o mutante corrompeu o arquivo e nada reverteu"; fi
+
+# O editar grava pelo mesmo gravar(), mas com UMA linha como alvo em vez de
+# nenhuma. Alvo diferente e caminho diferente: se a conferencia so travasse no
+# plantar, o editar passaria batido — e ele e o unico comando que reescreve
+# conteudo no lugar. O mutante segue instalado do bloco acima.
+esperado "mutante recusado tambem no editar (alvo e uma linha, nao zero)" 1 bash -c 'echo "{\"titulo\":\"nao deve entrar\"}" | python scripts/ideias.py editar --id teste-editar'
+if cmp -s ideias.jsonl pre-mutacao.jsonl
+then ok=$((ok+1)); echo "  ok   editar tambem reverteu byte a byte"
+else falhou=$((falhou+1)); echo "  FALHA o editar gravou por cima do mutante"; fi
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
