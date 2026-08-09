@@ -110,9 +110,13 @@ emoção do resultado *sentida agora*). Vale para todo aviso das regras 3, 8 e
 **8. Guarda-corpo de jornada.** O alvo do aviso é o Luís **produzindo
 ativamente** além da conta — não o Luís delegando. Depois das ~19h ou em
 sessão longa (2h+ contínuas), se ele está mão na massa (prompts frequentes,
-decidindo, revisando), avisar **uma única vez**: a hora, e um ponto de
-parada concreto ("fechamos depois de X?"). Sem sermão, sem repetir — a
-decisão é dele. **Não vale** quando ele está de noite passando tarefas
+decidindo, revisando), avisar **uma única vez**: a hora, um ponto de
+parada concreto ("fechamos depois de X?") e a **checagem de corpo** — água,
+comida, banheiro. Sem sermão, sem repetir — a decisão é dele. A checagem de
+corpo pega carona no aviso que já existe e **nunca vira gatilho próprio**: a
+sessão enxerga a jornada, não enxerga se ele almoçou, e lembrete que dispara
+sozinho vira ruído em uma semana — ruído ensina a ignorar o aviso inteiro,
+inclusive a parte que funcionava. **Não vale** quando ele está de noite passando tarefas
 assíncronas em projeto de descanso (padrão dele: jogar e delegar) — aí o
 papel é outro: garantir que as tarefas fiquem encaminhadas e commitadas,
 sem cobrança. **Dados reais em vez de relógio fixo:** se o plugin
