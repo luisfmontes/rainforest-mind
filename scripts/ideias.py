@@ -175,8 +175,15 @@ def gravar(linhas_antes: list[str], linhas_depois: list[str], alvos: set[int], r
     de 2026-08-09), entao contagem sozinha nao prova nada.
     """
     DIR_BACKUP.mkdir(exist_ok=True)
-    carimbo = datetime.now().strftime("%Y%m%d-%H%M%S")
+    # Milissegundos, nao segundos: em 2026-08-09 tres operacoes seguidas cairam
+    # no mesmo segundo e as duas ultimas sobrescreveram o backup da primeira.
+    # A reversao de cada operacao continuava certa (ela usa o backup que acabou
+    # de tirar), mas o historico intermediario sumia — e backup que some sem
+    # avisar e a mesma familia de defeito que este arquivo inteiro combate.
+    carimbo = datetime.now().strftime("%Y%m%d-%H%M%S-%f")[:-3]
     backup = DIR_BACKUP / f"ideias-{carimbo}.jsonl"
+    if backup.exists():  # cinto e suspensorio, caso o relogio repita
+        raise Erro(f"backup {backup.name} ja existe — abortando antes de escrever")
     shutil.copy2(ALVO, backup)
 
     tmp = ALVO.with_suffix(".jsonl.tmp")
@@ -295,6 +302,10 @@ def cmd_iniciar(args) -> None:
             raise Erro(f"'{args.id}' esta '{obj.get('status')}', so 'plantada' vira 'em-colheita'")
         obj["status"] = "em-colheita"
         obj["colheita_iniciada_em"] = hoje()
+        # Sem isto, 'em-colheita' diz que comecou e nao diz o que ja andou —
+        # e o que falta volta a ser reconstruido de memoria na proxima sessao.
+        if args.andamento:
+            obj["andamento"] = args.andamento
         depois = list(antes)
         depois[i] = serializar(obj)
         print(f"iniciando colheita de '{args.id}' (linha {i + 1})")
@@ -432,6 +443,7 @@ def main() -> int:
 
     c = sub.add_parser("iniciar", help="plantada -> em-colheita")
     c.add_argument("--id", required=True)
+    c.add_argument("--andamento", help="o que ja andou e o que falta (vai pro campo andamento)")
     c.set_defaults(fn=cmd_iniciar)
 
     c = sub.add_parser("unificar", help="funde duas ideias (JSON fundido por stdin)")
