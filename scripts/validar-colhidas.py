@@ -139,6 +139,10 @@ CHECKS = {
         ("conferir-entrega.py + gate-worktree.cjs + itens (j) e (k) no executor.md",
          lambda: existe("scripts/conferir-entrega.py") and existe("hooks/gate-worktree.cjs")
          and contem(EXEC, r"\(j\)") and contem(EXEC, r"\(k\)")),
+    "gate-worktree-barra-quem-esta-no-lugar-certo":
+        ("gate usa alvosBash (nao ev.cwd) + bateria tem o caso do bug",
+         lambda: contem("hooks/gate-worktree.cjs", r"function alvosBash")
+         and contem("hooks/testa-gate-worktree.sh", r"O BUG: tem que PASSAR")),
     "repo-privado-whatsapp-standards":
         # O caminho do resultado envelheceu: o config dir virou .claude-personal em
         # 2026-08-08 e a skill virou repo proprio (luisfmontes/message-standards), em
