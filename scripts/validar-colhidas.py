@@ -131,6 +131,14 @@ CHECKS = {
         ("15+ livros destilados no vault",
          lambda: len(list(Path(r"C:\Projetos\segundo-cerebro\livros").glob("*"))) >= 15
          if Path(r"C:\Projetos\segundo-cerebro\livros").exists() else False),
+    "jornada-medida-no-transcript-nao-em-carimbo":
+        ("scripts/jornada.py existe + regra 8 proibe carimbo de commit",
+         lambda: existe("scripts/jornada.py")
+         and contem(SKILL, r"nunca\s+se\s+infere\s+de\s+carimbo")),
+    "executor-reincidiu-depois-da-correcao-do-isolamento":
+        ("conferir-entrega.py + gate-worktree.cjs + itens (j) e (k) no executor.md",
+         lambda: existe("scripts/conferir-entrega.py") and existe("hooks/gate-worktree.cjs")
+         and contem(EXEC, r"\(j\)") and contem(EXEC, r"\(k\)")),
     "repo-privado-whatsapp-standards":
         # O caminho do resultado envelheceu: o config dir virou .claude-personal em
         # 2026-08-08 e a skill virou repo proprio (luisfmontes/message-standards), em
