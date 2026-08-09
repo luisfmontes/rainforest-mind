@@ -268,7 +268,11 @@ sucesso vem pronto no briefing**, nunca é construído pelo executor —
 qual comando rodar, qual saída inspecionar, qual mutação (que **reverta o
 comportamento real**, especificada) deve fazer qual teste falhar;
 (2) validar toda entrega **executando o artefato real e olhando a saída**
-— suíte verde e relato não são evidência; (3) o relatório do agente lista
+— suíte verde e relato não são evidência; entrega vinda de worktree tem a
+parte mecânica dessa validação pronta em
+`python scripts/conferir-entrega.py --worktree <wt> --base <hash>
+--head-antes <hash>` (isolamento, base, sujeira, dir principal, HEAD do
+Luís — exit ≠ 0 reprova, e o veredito deixa de ser do agente); (3) o relatório do agente lista
 **cada item do briefing** com feito/não-feito — "próximas fases" não
 pedidas e números que não somam são gatilho de auditoria, não detalhe;
 (4) agentes concorrentes **não compartilham a mesma instância de browser**
