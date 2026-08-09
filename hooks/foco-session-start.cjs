@@ -1,8 +1,13 @@
 #!/usr/bin/env node
 // SessionStart hook: injeta as regras rainforest-mind + foco declarado em toda sessão.
+//
+// Este arquivo é o ADAPTADOR: só faz I/O (ler arquivo, sondar porta, imprimir).
+// A montagem do texto injetado mora em lib/contexto-sessao.cjs, que é puro e tem
+// bateria própria (hooks/testa-contexto-sessao.sh).
 const fs = require('fs');
 const path = require('path');
 const net = require('net');
+const { montarContexto } = require('./lib/contexto-sessao.cjs');
 
 // Dados (FOCO/IDEIAS) vivem no repo de trabalho, não na cópia em cache do plugin.
 const DATA_ROOT = process.env.RFM_ROOT || 'C:\\Projetos\\rainforest-mind';
@@ -114,8 +119,9 @@ async function checkWhatsAppBridge() {
   };
 }
 
+const CAMINHO_SKILL = path.join(ROOT, 'skills', 'rainforest-mind', 'SKILL.md');
 const foco = readSafe(path.join(ROOT, 'FOCO.md'));
-const skill = readSafe(path.join(ROOT, 'skills', 'rainforest-mind', 'SKILL.md'));
+const skill = readSafe(CAMINHO_SKILL);
 
 // Aviso de revisão bimestral a partir da linha "Última revisão: YYYY-MM-DD"
 let revisao = '';
@@ -126,26 +132,6 @@ if (m) {
     revisao = `\n⚠ A skill rainforest-mind não é revisada há ${dias} dias (limite: 60). Avise o Luís que está na hora de revisá-la.`;
   }
 }
-
-// O bloco de regras e 94% do SKILL.md, e e injetado em TODA sessao. O que
-// pesa dentro dele nao e a regra: e o incidente datado que a justifica.
-//
-// Incidente citado em blockquote (`> ...`) sai da injecao e continua no
-// arquivo, ao lado da regra que ele fundamenta. Isso separa duas funcoes que
-// estavam pagando o mesmo preco: a regra precisa estar residente para valer
-// em toda resposta; o incidente precisa estar LEGIVEL para o Luis manter a
-// regra (regra 13) e para o corpo da skill quando ela e aberta sob demanda.
-// A doc do Claude Code e explicita: "a skill's body loads only when it's
-// used" — este hook contornava isso injetando o corpo inteiro.
-//
-// Regra pratica ao marcar: vai pro blockquote a NARRATIVA (o que aconteceu,
-// quando, quem corrigiu). Nunca a instrucao — se a frase diz o que fazer,
-// ela fica fora do blockquote, sempre residente.
-const CITACAO = /^>.*(?:\r?\n|$)/gm;
-const regras = (skill.split('## As regras')[1]?.split('## Comando')[0] || '')
-  .replace(CITACAO, '')
-  .replace(/\n{3,}/g, '\n\n')
-  .trim();
 
 // Sessões paralelas (heartbeat: prompt_ts = o Luís agiu, stop_ts = Claude
 // terminou o turno e está esperando)
@@ -186,16 +172,15 @@ function doConsoleLog(pluginsStatus, whatsappStatus) {
 Checado pelo hook: apontamento-horas ${pluginsStatus.apontamento}; bridge WhatsApp ${whatsappStatus.status} (${whatsappStatus.url}); claude-mem ${pluginsStatus.claudeMem}.
 Nenhum script enxerga o prompt DESTA sessão: se ela proibir o Agent (regra 10), um MCP ou qualquer outra regra, diga em UMA linha na primeira vez que a regra seria aplicada, nomeando o efeito prático — silêncio faz o Luís acreditar que a regra rodou.`;
 
-  console.log(`RAINFOREST MIND ATIVO — memória de trabalho externa e radar de escopo do Luís (perfil 2e).
-
-## Regras (aplicar em toda resposta)
-${regras}
-
-## Foco declarado
-${foco || '(nenhum foco declarado — sugira /foco <texto> se o Luís disser no que precisa entregar)'}
-${sessoes}${revisao}${dependencias}
-
-Arquivos de apoio: ${ROOT}\\FOCO.md e ${ROOT}\\ideias.jsonl (uma ideia por linha)`);
+  console.log(montarContexto({
+    skillText: skill,
+    focoText: foco,
+    caminhoSkill: CAMINHO_SKILL,
+    root: ROOT,
+    sessoes,
+    revisao,
+    dependencias,
+  }));
 }
 
 // Força impressão após 700ms se não terminar (cancelado assim que imprime)
