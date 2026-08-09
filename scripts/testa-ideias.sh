@@ -65,8 +65,14 @@ o=[x for x in l if x["id"]=="teste-um"][0]
 assert o["status"]=="plantada" and o["plantada_em"]==datetime.date.today().isoformat()
 assert len(l)==int(os.environ["BASE"])+1'
 
-esperado "iniciar (plantada -> em-colheita)" 0 python scripts/ideias.py iniciar --id teste-um
+esperado "iniciar (plantada -> em-colheita)" 0 python scripts/ideias.py iniciar --id teste-um --andamento "metade feita"
 esperado "recusa iniciar duas vezes" 1 python scripts/ideias.py iniciar --id teste-um
+prova "iniciar grava colheita_iniciada_em e andamento" '
+import json,datetime
+l=[json.loads(x) for x in open("ideias.jsonl",encoding="utf-8") if x.strip()]
+o=[x for x in l if x["id"]=="teste-um"][0]
+assert o["status"]=="em-colheita" and o["andamento"]=="metade feita"
+assert o["colheita_iniciada_em"]==datetime.date.today().isoformat()'
 echo '{"resultado":"entregue no teste"}' > r.json
 esperado "colher" 0 bash -c 'python scripts/ideias.py colher --id teste-um < r.json'
 esperado "recusa colher duas vezes" 1 bash -c 'python scripts/ideias.py colher --id teste-um < r.json'
