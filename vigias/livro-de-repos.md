@@ -39,7 +39,7 @@ Repo **adotado** tem pergunta diferente na revisita: não é "melhorou?", é
 | `Graphify-Labs/graphify` | 2026-08-09 | não acopla ainda, peça forte | 1 (não cobre linguagem de ERP legado — `.prw`/`.tlpp` fora do mapa de linguagens) | 2026-08-08 |
 | `tirth8205/code-review-graph` | 2026-08-09 | não acopla | 1 (custom_languages exige gramática no tree_sitter_language_pack) | 2026-08-02 |
 | `kepano/obsidian-skills` | 2026-08-09 | **adotado** | — (json-canvas + obsidian-markdown) | 2026-06-08 |
-| `headroomlabs-ai/headroom` | 2026-08-09 | candidato forte, não medido | — (ataca os 40,2k tokens de MCP medidos) | 2026-08-09 |
+| `headroomlabs-ai/headroom` | 2026-08-09 | não acopla **ainda** — o mais forte da fila | 4 (Windows não vetado: issue #1466 "not working on Windows" aberta e sem resposta desde 26/06, e o próprio README diz que os caminhos Windows "need real OS validation") | 2026-08-09 |
 | `getagentseal/codeburn` | 2026-08-09 | testar, custo zero (`npx`) | — | 2026-08-09 |
 | `anthropics/skills` | 2026-08-09 | ler, não copiar | — (**sem arquivo de licença**) | 2026-08-07 |
 | `anthropics/claude-plugins-official` | 2026-08-09 | referência de estrutura | — | 2026-08-09 |
