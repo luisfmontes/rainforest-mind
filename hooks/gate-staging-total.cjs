@@ -1,0 +1,231 @@
+#!/usr/bin/env node
+/**
+ * PreToolUse — barra staging em massa (`git add -A`, `git commit -am`) em
+ * working tree compartilhado por varias sessoes.
+ *
+ * Por que existe, com data: em 2026-08-09, numa unica sessao, `git add -A`
+ * levou junto trabalho de outra janela DUAS vezes.
+ *
+ *   1. Varreu `sessoes.json` e tres logs do vigia para o controle de versao —
+ *      arquivos gerados, que ninguem quis versionar.
+ *   2. Varreu `relatorios/2026-08-09-relato-de-agente-vs-evidencia.md`, escrito
+ *      por outra sessao a pedido do Luis, para dentro da branch
+ *      `skill-em-ingles`. Se a branch tivesse sido descartada — que era o plano
+ *      dela — o relatorio teria sumido junto. Nao sumiu por sorte.
+ *
+ * O diagnostico que importa: a sessao que escreveu o arquivo nao errou nada.
+ * Ela escreveu e deixou la, que e o comportamento de qualquer editor. Quem
+ * errou foi a janela que varreu, e a regra "nao use add -A" ja era obvia para
+ * ela — eu sabia, e digitei assim mesmo, duas vezes na mesma noite. Texto nao
+ * alcanca esse modo de falha. Exit code alcanca.
+ *
+ * NAO adianta consertar na origem. Um `/relatorio` que commitasse na hora teria
+ * commitado na `skill-em-ingles` do mesmo jeito, porque o working tree e
+ * compartilhado e era a MINHA janela que tinha trocado a branch. O conserto so
+ * funciona no lado de quem faz o staging.
+ *
+ * REGRA, uma so: nada entra no index sem caminho explicito.
+ *   git add -A | --all | . | ./ | :/ | * | -u | --update   -> barrado
+ *   git commit -a | -am | --all                            -> barrado
+ *   git add <caminho> ...                                  -> passa
+ *
+ * `-u`/`commit -a` entram na lista por coerencia, nao por incidente: `commit -a`
+ * e literalmente `add -u` + commit, e nesta repo outra sessao mexe em arquivo
+ * RASTREADO o tempo todo (ideias.jsonl, SKILL.md). Bloquear um e liberar o
+ * outro seria uma regra que nao se explica.
+ *
+ * ESCOPO, de proposito estreito:
+ *   - vale para a janela principal TAMBEM — e o oposto do gate-worktree, e de
+ *     proposito: os dois incidentes foram na janela principal;
+ *   - worktree linkado passa livre. La so escreve o agente dono do worktree,
+ *     entao nao ha trabalho alheio para varrer, e e onde subagente commita;
+ *   - fora de repo git, passa.
+ *
+ * A mensagem de bloqueio nao so recusa: ela roda `git status --porcelain` e
+ * mostra O QUE seria varrido, com o `git add` por caminho ja montado. Trava que
+ * so diz "nao" vira trava desligada.
+ *
+ * Saidas de emergencia, as mesmas do gate-worktree e nomeadas na mensagem:
+ *   - env RAINFOREST_GATE_OFF=1  -> desliga na sessao inteira;
+ *   - arquivo .rainforest-gate-off na raiz do repo -> desliga naquele repo.
+ */
+
+const { execFileSync } = require("node:child_process");
+const fs = require("node:fs");
+const path = require("node:path");
+
+// Flags globais do git que consomem o token seguinte (`git -C <dir> add`).
+const FLAG_COM_VALOR = new Set([
+  "-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path", "--super-prefix",
+]);
+// Prefixos que podem vir antes do `git` sem mudar o que ele faz.
+const PREFIXO_NEUTRO = new Set(["env", "sudo", "nohup", "command", "time"]);
+// Pathspecs que significam "o repo inteiro".
+const CAMINHO_TOTAL = new Set([".", "./", ":/", "*", "-A", "--all", "-u", "--update"]);
+
+/**
+ * `cru` preserva o espaco a esquerda. Nao e preciosismo: o porcelain usa duas
+ * COLUNAS de status, e arquivo modificado-nao-staged sai como ' M arquivo'. Um
+ * .trim() come esse espaco na PRIMEIRA linha so, e o slice(3) devolve o caminho
+ * sem a primeira letra — 'ideias.jsonl' virou 'deias.jsonl' no repo real, em
+ * 2026-08-09, com a bateria toda verde: a caixa de areia tinha um '??' na
+ * primeira linha, que nao tem espaco a esquerda e nao expunha o defeito.
+ */
+function git(dir, args, { cru = false } = {}) {
+  try {
+    const s = execFileSync("git", ["-C", dir, ...args], {
+      encoding: "utf8", stdio: ["ignore", "pipe", "ignore"],
+    });
+    return cru ? s.replace(/\r?\n+$/, "") : s.trim();
+  } catch {
+    return null;
+  }
+}
+
+/** Segmenta a linha de comando em invocacoes independentes. */
+function segmentos(cmd) {
+  return cmd.split(/\|\||&&|[;|\n]/);
+}
+
+/**
+ * Tokeniza removendo trechos entre aspas. Um argumento citado nunca e o
+ * subcomando nem uma flag, e removendo-o some o falso positivo de
+ * `git commit -m "suporte a add -A"`.
+ */
+function tokens(seg) {
+  return seg
+    .replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, " ")
+    .trim().split(/\s+/).filter(Boolean);
+}
+
+/** null se o segmento nao e uma chamada de git; senao {sub, args, dirC}. */
+function analisaGit(toks) {
+  let i = 0;
+  while (i < toks.length && (PREFIXO_NEUTRO.has(toks[i]) || /^\w+=/.test(toks[i]))) i += 1;
+  if (toks[i] !== "git") return null;
+  i += 1;
+
+  let dirC = null;
+  while (i < toks.length && toks[i].startsWith("-")) {
+    if (toks[i] === "-C" && toks[i + 1]) dirC = toks[i + 1];
+    i += FLAG_COM_VALOR.has(toks[i]) && !toks[i].includes("=") ? 2 : 1;
+  }
+  if (i >= toks.length) return null;
+  return { sub: toks[i], args: toks.slice(i + 1), dirC };
+}
+
+/** `-am` contem a curta `a`; `--amend` nao e curta e nao conta. */
+function temCurta(args, letra) {
+  return args.some((t) => /^-[A-Za-z]+$/.test(t) && t.slice(1).includes(letra));
+}
+
+/** Motivo do bloqueio, ou null se o segmento e inofensivo. */
+function motivoDe(g) {
+  if (g.sub === "add") {
+    const total = g.args.find((a) => CAMINHO_TOTAL.has(a));
+    if (total) return `git add ${total}`;
+    if (temCurta(g.args, "A")) return "git add -A (em flag combinada)";
+    if (temCurta(g.args, "u")) return "git add -u (em flag combinada)";
+    return null;
+  }
+  if (g.sub === "commit") {
+    if (g.args.includes("--all")) return "git commit --all";
+    if (temCurta(g.args, "a")) return "git commit -a";
+    return null;
+  }
+  return null;
+}
+
+/**
+ * O que o comando pegaria agora, e o `git add` por caminho ja pronto.
+ *
+ * `-uall` nao e detalhe: sem ele o git COLAPSA diretorio nao rastreado numa
+ * linha so (`?? relatorios/`) e a mensagem esconde justamente o arquivo que
+ * seria varrido — que e a unica informacao pela qual ela existe. A primeira
+ * versao saiu assim e a bateria pegou.
+ */
+function oQueSeriaVarrido(dir) {
+  const saida = git(dir, ["status", "--porcelain", "-uall"], { cru: true });
+  if (!saida) return "";
+  const linhas = saida.split("\n").filter(Boolean);
+  // Rename vem como `R  antigo -> novo`; o caminho que interessa e o novo.
+  const caminhos = linhas.map((l) => {
+    const cru = l.slice(3);
+    return (cru.includes(" -> ") ? cru.split(" -> ").pop() : cru).replace(/^"|"$/g, "");
+  });
+  const mostra = linhas.slice(0, 15).map((l) => `  ${l}`).join("\n");
+  const corte = linhas.length > 15 ? `\n  ... e mais ${linhas.length - 15}` : "";
+  const pronto = caminhos.slice(0, 15).map((c) => `"${c}"`).join(" ");
+  return (
+    `\nO que o comando pegaria AGORA (git status --porcelain):\n${mostra}${corte}\n` +
+    `\nSe for tudo seu, o comando por caminho ja esta pronto:\n  git add ${pronto}\n`
+  );
+}
+
+function bloqueia(motivo, dir, quem) {
+  process.stderr.write(
+    `BLOQUEADO pelo gate de staging total do rainforest-mind.\n\n` +
+    `Comando: ${motivo}\n` +
+    `Repo: ${dir}\n` +
+    `Quem: ${quem}\n\n` +
+    `Varias sessoes do Luis trabalham no MESMO working tree. Staging em massa nao\n` +
+    `distingue o seu trabalho do da janela do lado. Em 2026-08-09, na mesma sessao,\n` +
+    `'git add -A' varreu trabalho alheio duas vezes: logs e sessoes.json numa, e o\n` +
+    `relatorio escrito por outra sessao para dentro de uma branch que ia ser\n` +
+    `descartada na outra.\n` +
+    `${oQueSeriaVarrido(dir)}` +
+    `\nAdicione por caminho. Se algum arquivo acima nao e seu, ele nao entra — e vale\n` +
+    `perguntar de quem e antes de commitar.\n\n` +
+    `Se voce decidir que precisa mesmo do staging total:\n` +
+    `  - RAINFOREST_GATE_OFF=1 no ambiente da sessao (desliga na sessao inteira);\n` +
+    `  - arquivo .rainforest-gate-off na raiz do repo (desliga so naquele repo).\n`
+  );
+  process.exit(2);
+}
+
+function main() {
+  let ev;
+  try {
+    ev = JSON.parse(fs.readFileSync(0, "utf8") || "{}");
+  } catch {
+    process.exit(0); // payload ilegivel nunca trava o trabalho do Luis
+  }
+
+  if (process.env.RAINFOREST_GATE_OFF) process.exit(0);
+  if (ev.tool_name !== "Bash") process.exit(0);
+  const cmd = (ev.tool_input || {}).command;
+  if (typeof cmd !== "string") process.exit(0);
+
+  let motivo = null;
+  let dirC = null;
+  for (const seg of segmentos(cmd)) {
+    const g = analisaGit(tokens(seg));
+    if (!g) continue;
+    const m = motivoDe(g);
+    if (m) { motivo = m; dirC = g.dirC; break; }
+  }
+  if (!motivo) process.exit(0);
+
+  const dir = dirC || ev.cwd || process.cwd();
+  const gitDir = git(dir, ["rev-parse", "--git-dir"]);
+  if (gitDir === null) {
+    // Fora de repo git o comando falha sozinho. Mas se o git nao respondeu por
+    // ambiente quebrado, o gate libera FALANDO — foi liberar calado que fez a
+    // bateria do gate-worktree passar verde testando nada, em 2026-08-09.
+    if (git(dir, ["--version"]) === null && git(process.cwd(), ["--version"]) === null) {
+      process.stderr.write(
+        `[gate-staging-total] git nao respondeu para '${dir}' — gate INATIVO nesta chamada.\n`
+      );
+    }
+    process.exit(0);
+  }
+  // Worktree linkado e isolado: so o dono escreve la, nao ha alheio para varrer.
+  if (gitDir.replace(/\\/g, "/").includes("/worktrees/")) process.exit(0);
+
+  const toplevel = git(dir, ["rev-parse", "--show-toplevel"]) || dir;
+  if (fs.existsSync(path.join(toplevel, ".rainforest-gate-off"))) process.exit(0);
+
+  bloqueia(motivo, toplevel, ev.agent_id ? `${ev.agent_type || "?"} (${ev.agent_id})` : "janela principal");
+}
+
+main();
