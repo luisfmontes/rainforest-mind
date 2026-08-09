@@ -110,7 +110,6 @@ O mesmo princípio nos scripts, para o que hook nenhum alcança:
 | `scripts/ideias.py` | única porta de escrita do `ideias.jsonl` — trava de arquivo, backup, escrita atômica e releitura conferida; recusa colher ideia já colhida (regras 6, 13, 17) |
 | `scripts/conferir-entrega.py` | roda na janela principal **depois** da entrega do agente: hash de base, isolamento e citação conferidos na fonte, não no relato (regra 12) |
 | `scripts/medir-injecao.py` | custo real do prompt de abertura, lido do `usage` que a API devolve no transcript — token de verdade, sem chave e sem estimativa |
-| `scripts/medir-tokens.py` | contagem pelo endpoint oficial `count_tokens`, para quando houver chave de API |
 
 O que essas travas custaram e renderam fica em [`relatorios/`](relatorios/) —
 um relatório datado por incidente, com método e números.
