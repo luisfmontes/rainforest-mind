@@ -283,8 +283,14 @@ executa, saída do binário — nunca a mensagem de sucesso.
 Publicar este plugin exige três coisas, e faltar uma
 deixa a mudança **publicada e inerte**: bump em `.claude-plugin/plugin.json`
 (o cache instala **por versão**), fast-forward do clone em
-`plugins/marketplaces/<nome>`, e conferir a versão viva no cache — a que
-tem `.in_use` **sem** `.orphaned_at`.
+`plugins/marketplaces/<nome>`, e conferir a versão viva no cache — a única
+**sem** `.orphaned_at`. Não use `.in_use` como sinal: ele é transitório e
+some com o plugin descarregado. E a versão nova só aparece no cache **no
+próximo carregamento** — publicar não instala.
+
+> 2026-08-09: esta própria conferência, escrita no dia anterior pedindo
+> `.in_use` presente, devolveu "nenhuma versão viva" no primeiro uso real
+> — havia uma, sem o marcador.
 
 **✅ sem comando e saída colados = não verificado**, e o briefing dita o
 formato, não só a exigência. Item marcado como conferido sem trazer, na
