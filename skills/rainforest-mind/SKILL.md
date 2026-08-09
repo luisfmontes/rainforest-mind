@@ -52,10 +52,14 @@ de trabalho não dispara nada) e *qual* (em contexto pessoal o desvio se mede
 contra o foco pessoal ativo, se houver; não havendo, não se mede). Assunto
 declaradamente pessoal vale como contexto pessoal mesmo em dia útil, e
 trabalho no sábado por escolha dele continua valendo — o filtro é sobre o
-que o Luís está fazendo, não sobre o calendário sozinho. Incidente
-2026-08-08 (sábado): a abertura cobrou desvio contra um foco de trabalho com
-prazo enquanto ele levava livros para o segundo cérebro, e ele corrigiu na
-mão. Tempo pessoal pede *menos* radar, não mais. Na abertura,
+que o Luís está fazendo, não sobre o calendário sozinho. Tempo pessoal pede
+*menos* radar, não mais.
+
+> 2026-08-08 (sábado): a abertura cobrou desvio contra um foco de trabalho
+> com prazo enquanto ele levava livros para o segundo cérebro, e ele
+> corrigiu na mão.
+
+Na abertura,
 se um compromisso com prazo estiver vencido ou a ≤2 dias, avisar em uma
 frase; se o foco ativo estiver sem avanço datado há 7+ dias, nomear isso
 uma vez. Sessões em paralelo mudam como este radar mede — regra 17.
@@ -122,11 +126,14 @@ produzindo ativamente; jornada fechada (sem período aberto) = fora de
 expediente, modo descanso. Sem o plugin, fallback: 19h/2h+ contínuas.
 **Hora e data vêm do relógio local da sessão, nunca de timestamp de
 arquivo** — log e JSON gravam em UTC (o `Z` no fim), e lê-lo como local
-adianta 3h no fuso de Brasília; depois das 21h, adianta o **dia**. Incidente
-2026-08-08: `21:21:12.623Z` lido como 21h virou sugestão de encerrar às
-18:21, e na mesma noite outra janela carimbou `plantada_em` e nome de
-relatório com a data de amanhã. O `jornada_cli.py` devolve local e é a fonte
-preferida; data gravada em arquivo é carimbada por script, nunca digitada.
+adianta 3h no fuso de Brasília; depois das 21h, adianta o **dia**. O
+`jornada_cli.py` devolve local e é a fonte preferida; data gravada em
+arquivo é carimbada por script, nunca digitada.
+
+> 2026-08-08: `21:21:12.623Z` lido como 21h virou sugestão de encerrar às
+> 18:21, e na mesma noite outra janela carimbou `plantada_em` e nome de
+> relatório com a data de amanhã.
+
 O hiperfoco não avisa antes de esgotar a função executiva; o aviso externo
 é o guarda-corpo — mas guarda-corpo de varanda, não cerca elétrica.
 Diferencial que muda a leitura: perder a noção do tempo **dentro** da
@@ -179,14 +186,16 @@ incomoda o Luís na hora de fechar a conversa. Se nomear, enviar
 shutdown_request ao terminar de usá-lo.
 
 **E nomear custa o worktree junto** (verificado 2026-08-08): agente que
-**edita arquivo nunca é nomeado**. Despacho com `isolation: "worktree"` e
-nome rodou **sem worktree nenhum** — o meta do nomeado não traz
-`worktreePath`, o do irmão sem nome, no mesmo dia e mesmo despacho, traz —
-e ele acabou commitando no checkout principal do Luís. A ilusão de
-isolamento é pior que a ausência dele: o worktree que aparecia no `git
-worktree list` era de **outro** agente, e o diagnóstico apontou pro lugar
-errado por horas. Nome só pra agente de conversa, que não toca arquivo. Os
-vigias headless carregam a versão resumida no `vigias/_comum.md`.
+**edita arquivo nunca é nomeado** — nome só pra agente de conversa, que não
+toca arquivo. A ilusão de isolamento é pior que a ausência dele.
+
+> 2026-08-08: despacho com `isolation: "worktree"` e nome rodou **sem
+> worktree nenhum** — o meta do nomeado não traz `worktreePath`, o do irmão
+> sem nome, no mesmo dia e mesmo despacho, traz — e ele acabou commitando no
+> checkout principal do Luís. O worktree que aparecia no `git worktree list`
+> era de **outro** agente, e o diagnóstico apontou pro lugar errado por horas.
+
+Os vigias headless carregam a versão resumida no `vigias/_comum.md`.
 
 **11. Worktree de subagente: isolado E com base conferida.** Subagente que
 edita arquivos roda **sempre** com `isolation: "worktree"` — nunca direto na
@@ -206,9 +215,12 @@ hash dela que vai no briefing.
 
 Isolamento não garante base certa: o worktree pode nascer do `main` ou de um
 commit **anterior ao trabalho do dia**, e o defeito é **intermitente** — não
-dá pra assumir base certa nem base velha. Incidente 2026-08-07: 3 de 3
-worktrees nasceram velhos, o pior 7 commits atrás, antes de existir a spec
-que o agente devia ler; mesclar teria revertido as correções do dia.
+dá pra assumir base certa nem base velha.
+
+> 2026-08-07: 3 de 3 worktrees nasceram velhos, o pior 7 commits atrás,
+> antes de existir a spec que o agente devia ler; mesclar teria revertido as
+> correções do dia.
+
 Portanto, dupla conferência. **(1) O briefing informa o hash esperado** e
 manda rodar `git log -1` como primeira ação, abortando se divergir. A única
 saída autorizada: o briefing lista também os **hashes velhos conhecidos**, e
@@ -342,12 +354,15 @@ ciclo de revisão, **não** o log paralelo — aqui a observação mora no mesmo
 impedir uma regra desta skill ou do CLAUDE.md global de valer, **dizer em uma
 linha na primeira vez que ela seria aplicada** — nunca seguir em silêncio
 pelo caminho alternativo. Silêncio faz o Luís acreditar que a regra rodou.
-Incidente 2026-08-08: a sessão carregava instrução do harness proibindo
-chamar o Agent; a regra 10 (task mecânica → executor haiku) ficou desligada
-a sessão inteira e a coleta de uma análise inteira rodou na janela principal,
-gastando contexto à toa — o Luís descobriu perguntando, não pelo aviso.
 Mesma família da ronda de vigia que falha na pré-checagem e não relata:
-**silêncio ≠ nada a relatar**. O aviso é uma linha só, com o efeito prático
+**silêncio ≠ nada a relatar**.
+
+> 2026-08-08: a sessão carregava instrução do harness proibindo chamar o
+> Agent; a regra 10 ficou desligada a sessão inteira e a coleta de uma
+> análise inteira rodou na janela principal, gastando contexto à toa — o
+> Luís descobriu perguntando, não pelo aviso.
+
+O aviso é uma linha só, com o efeito prático
 nomeado ("a regra 10 está bloqueada nesta janela: despacho só se você
 pedir"), e não se repete na mesma sessão.
 
@@ -360,19 +375,25 @@ janela e isso ia gastar contexto aqui — você libera o subagente ou faço
 inline?". Trabalho grande não começa antes da resposta dele. Task pequena,
 onde perguntar custa mais que fazer, segue com o aviso de uma linha. O
 aviso **sempre nomeia a saída**, porque ela é uma frase dele: "pode liberar
-subagente". Incidente 2026-08-08, na mesma sessão em que a regra nasceu: o
-aviso saiu na primeira linha do turno e a execução saiu junto, sem esperar —
-validar duas ideias virou leitura de dois repositórios inteiros na janela
-principal, e a chance de liberar o subagente chegou depois do trabalho já
-feito. Anunciar sem parar é anunciar tarde.
+subagente". Anunciar sem parar é anunciar tarde.
+
+> 2026-08-08, na mesma sessão em que a regra nasceu: o aviso saiu na
+> primeira linha do turno e a execução saiu junto, sem esperar — validar
+> duas ideias virou leitura de dois repositórios inteiros na janela
+> principal, e a chance de liberar o subagente chegou depois do trabalho já
+> feito.
 
 **Caminho de ambiente se resolve pela variável, nunca se escreve à mão.**
 Cache de plugin, config, sessão: a raiz é a `CLAUDE_CONFIG_DIR` **desta**
-sessão, resolvida na hora. Caminho fixo no texto envelhece calado — em
-2026-08-08 a variável passou de `.claude` para `.claude-personal` e a pasta
-velha ficou com versões obsoletas (1.12.0 contra 1.16.0 na nova); a regra 8
-apontava pra ela. É o modo de falha desta família: não dá erro, devolve o
-número de um plugin que nem está carregado. Ambiente que mudou de lugar
+sessão, resolvida na hora. Caminho fixo no texto envelhece calado, e é o
+modo de falha desta família: não dá erro, devolve o número de um plugin que
+nem está carregado.
+
+> 2026-08-08: a variável passou de `.claude` para `.claude-personal` e a
+> pasta velha ficou com versões obsoletas (1.12.0 contra 1.16.0 na nova); a
+> regra 8 apontava pra ela.
+
+Ambiente que mudou de lugar
 bloqueia regra do mesmo jeito que ambiente ausente, e pede o mesmo aviso.
 
 **15. Agente não altera o ambiente do Luís.** O worktree da regra 11 isola o
@@ -381,14 +402,16 @@ repositório, não a máquina — e a proibição de git destrutivo foi lida com
 instala nem desinstala software (`winget`, `npm -g`, `pip`, `choco`), não
 mexe em PATH, variável de ambiente, config global nem serviço. Ferramenta
 ausente → **para e reporta** o que falta com o comando que resolveria; quem
-decide é a janela principal, com a palavra do Luís. Incidente 2026-08-08:
-dos 12 agentes que destilaram livros para o vault, um precisou converter um
-PDF escaneado em imagem e instalou o Poppler via winget por conta própria —
-a janela principal tinha decidido justamente o contrário (não instalar,
-perguntar antes), mas isso vivia só na cabeça dela, não no briefing. Saiu
-bem, e mesmo assim é mudança no computador dele sem a palavra dele,
-descoberta só no relatório final. O mesmo vale para a janela principal
-diante de qualquer instalação: é ação no ambiente, pergunta antes.
+decide é a janela principal, com a palavra do Luís. O mesmo vale para a
+janela principal diante de qualquer instalação: é ação no ambiente, pergunta
+antes. E decisão que vive só na cabeça da janela principal não vale — se ela
+decidiu não instalar, isso vai **no briefing**.
+
+> 2026-08-08: dos 12 agentes que destilaram livros para o vault, um precisou
+> converter um PDF escaneado em imagem e instalou o Poppler via winget por
+> conta própria — a janela principal tinha decidido justamente o contrário,
+> mas isso vivia só na cabeça dela. Saiu bem, e mesmo assim é mudança no
+> computador dele sem a palavra dele, descoberta só no relatório final.
 
 **16. Fato é meu, decisão é sua.** Pergunta que o ambiente responde — o que
 tem no arquivo, qual a estrutura da tabela, que versão está instalada, o que
@@ -422,8 +445,12 @@ Luís, não a máquina.
 
 **Estado compartilhado se escreve pelo script, não à mão.** As janelas gravam
 nos mesmos arquivos, então o que foi lido no começo do turno já está velho na
-hora de gravar — em 2026-08-09 o `ideias.jsonl` cresceu por baixo de uma
-janela entre duas operações dela. No `ideias.jsonl` isso é código desde
+hora de gravar.
+
+> 2026-08-09: o `ideias.jsonl` cresceu por baixo de uma janela entre duas
+> operações dela — só a releitura evitou apagar a ideia de outra sessão.
+
+No `ideias.jsonl` isso é código desde
 2026-08-08: `python scripts/ideias.py {plantar|colher|iniciar|unificar|
 listar|conferir}` faz trava entre sessões, releitura do arquivo vivo, backup,
 escrita atômica, carimbo de data pelo relógio **local** e conferência byte a
