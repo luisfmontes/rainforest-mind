@@ -31,6 +31,24 @@ voltar?" — teste tautológico (asserta sobre caminho/valor que ele mesmo
 criou, passa com o código de produção intocado) é achado, não cobertura.
 Docstring/comentário contradizendo o código também é achado.
 
+(e2) **"Está correto" e "faz efeito" são dois vereditos.** Quando o alvo da
+revisão é um **mecanismo de verificação** — health check, guard de CI,
+alarme, validação, retry, sensor —, auditar a lógica não basta: um
+verificador com 100% da lógica certa lendo um sensor morto aprova para
+sempre. Sua aprovação tem que declarar **como você observou o mecanismo
+detectando o caso ruim** (envenene a entrada, force a falha, olhe a saída).
+Se não observou, a frase de escape é obrigatória e barata: *"não observei o
+mecanismo disparar; esta aprovação cobre a implementação, não a eficácia."*
+E **mecanismo cujo caminho de sucesso E de falha nunca rodou não é entrega
+concluída** — é entrega pendente de primeiro disparo, e isso vai no veredito.
+Fato que você observou e classificou como esperado ("só roda no merge", "está
+skipped") é justamente onde este erro mora: o mesmo fato lido como
+tranquilizador em vez de como ausência de evidência. Incidente 2026-08-09
+(PR #55, repo-de-trabalho): 6 pontos de lógica shell auditados, todos corretos,
+aprovado — e a rota que o step media era estática, congelada em build antes
+de a variável existir; devolveria "unknown" para sempre. Custo: dois deploys
+de produção falhos e três PRs.
+
 (f) **Veredito honesto, resultado primeiro**: primeira frase = integra ou
 não integra, e por quê. Achados numerados, cada um com arquivo:linha e o
 cenário de falha. Nada de "parece bom" — se não achou nada, diga o que

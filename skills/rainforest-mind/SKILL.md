@@ -258,17 +258,58 @@ Detector automático não pega nada disso.
 > 2026-08-07: no mesmo dia, o detector automático voltou limpo onde a
 > inspeção visual achou dois P0.
 
+**E ele inventa nos dois sentidos.** A seção "Verificação" de um relatório
+não é transcrição de saída: é **prosa gerada no formato de uma transcrição**.
+O mesmo gerador que produz ✓ falso produz ⚠ falso — um esconde defeito, o
+outro queima um ciclo de auditoria desmentindo problema que não existe.
+Consequência dura: **nenhum identificador sai do relato para dentro de um
+comando.** Hash, digest, URL de PR, número de issue — a janela principal
+re-deriva tudo de `git`/`gh`. Isso neutraliza a invenção sem depender de o
+agente melhorar.
+
+> 2026-08-09: um agente relatou o hash curto certo (`a009b5b`) e o
+> "completo" inventado a partir dele, com bloco repetido
+> (`...e7f3e4d8e7f3e4d8`) — confabulação de preenchimento, não erro de
+> cópia. Outro inventou uma divergência de commit-pai que não existia,
+> marcou ✅ nela e justificou com "fora do período de regressão esperado",
+> que não significa nada.
+
 Defesas: (1) o **critério de
 sucesso vem pronto no briefing**, nunca é construído pelo executor —
 qual comando rodar, qual saída inspecionar, qual mutação (que **reverta o
-comportamento real**, especificada) deve fazer qual teste falhar;
+comportamento real**, especificada) deve fazer qual teste falhar. O
+briefing **nomeia a falsificação**: comando exato e saída exata que
+provariam a entrega errada. Adjetivo não é critério — "não decorativo",
+"de verdade", "robusto" são convencíveis; `curl` devolvendo uma string
+específica não é;
 (2) validar toda entrega **executando o artefato real e olhando a saída**
 — suíte verde e relato não são evidência; entrega de worktree tem a parte
 mecânica pronta no `conferir-entrega.py` da regra 11; (3) o relatório lista
 **cada item do briefing** com feito/não-feito — "próximas fases" não
 pedidas e números que não somam são gatilho de auditoria, não detalhe;
 (4) agentes concorrentes **não compartilham a mesma instância de browser**
-(Playwright) — trocam de aba um sob o outro e leem a página errada.
+(Playwright) — trocam de aba um sob o outro e leem a página errada;
+(5) **comando cujo exit code é o sinal não vai para dentro de pipe** —
+`| tail`, `| grep`, `| head` devolvem o exit do último elo. Use
+`${PIPESTATUS[0]}` ou não canalize.
+
+> 2026-08-09: `docker build ... 2>&1 | tail -5` devolveu exit 0 e virou
+> "build concluído"; o Docker Desktop estava parado e nada foi construído —
+> o exit 0 era do `tail`. Na mesma noite, `printf ... | node gate.cjs |
+> head -3` reportou exit 0 no lugar do exit 2 do gate.
+
+**O experimento controlado do briefing falsificável.** Dois executores, mesma
+sessão, mesmo tipo de tarefa, resultados opostos — e a variável não foi
+modelo, worktree nem ênfase:
+
+> 2026-08-09 (repo-de-trabalho): o briefing do PR #55 pedia "prove que não é um
+> script decorativo que sempre passa" — veio bug entregue e auto-aprovado,
+> com a linha defeituosa visível dentro do bloco que o agente colou como
+> prova. O do PR #57 pedia "rode `docker run -e GIT_SHA=undefined`; o `curl`
+> tem que **continuar** devolvendo `SHA_TESTE_ABC123`; se devolver
+> `undefined`, não commite" — passou em reverificação adversarial
+> independente. O segundo briefing não era mais longo nem mais enfático: era
+> falsificável, e escapar dele exigiria forjar uma saída de curl específica.
 **Entrega analítica escapa por não ter artefato.** Relatório que compara,
 levanta achado ou lê documentação não tem comando pra rodar, então as defesas
 acima não pegam nele — e ele chega com a mesma cara de confiança. O sinal
@@ -412,6 +453,18 @@ decidiu não instalar, isso vai **no briefing**.
 > conta própria — a janela principal tinha decidido justamente o contrário,
 > mas isso vivia só na cabeça dela. Saiu bem, e mesmo assim é mudança no
 > computador dele sem a palavra dele, descoberta só no relatório final.
+
+**Inspecionar ambiente nunca por dump filtrado.** Para ver o que está
+setado, use `printenv NOME` para nomes específicos ou `compgen -e`, que só
+devolve nomes por construção. `printenv | cut -d= -f1` **parece** seguro e
+não é: valor multilinha (PEM, JSON, certificado) tem linhas sem `=`, e o
+`cut` as deixa passar inteiras. Assuma que todo valor de env pode ser
+multilinha.
+
+> 2026-08-09: `printenv | cut -d= -f1`, pedido justamente para não expor
+> valores, deixou passar o corpo base64 de uma chave privada Ed25519 — a
+> chave inteira — para dentro de um print que o Luís colou na conversa.
+> Chave rotacionada, print apagado, sem impacto em cliente.
 
 **16. Fato é meu, decisão é sua.** Pergunta que o ambiente responde — o que
 tem no arquivo, qual a estrutura da tabela, que versão está instalada, o que
