@@ -9,14 +9,42 @@
   <img src="https://img.shields.io/badge/revis%C3%A3o-bimestral-9fd8ba?style=flat-square" alt="revisão bimestral">
 </p>
 
-Plugin de Claude Code que transforma a sessão em algo que dá pra **ler e
-decidir**: planeja antes de implementar, responde em lista numerada em vez de
-parede de texto, avisa quando a conversa sai do combinado, e **não chama nada
-de pronto sem colar a saída que prova**.
+> ### O problema não é falta de ideia. É o que recebe luz agora.
 
-Nada aqui depende de você lembrar de ativar. As regras entram na sessão
-sozinhas, e duas delas são travas que rodam fora do modelo — não dá pra
-argumentar com elas.
+Plugin de Claude Code que faz a sessão virar algo que dá pra **ler e decidir**.
+Quatro coisas, e nenhuma depende de você lembrar de ativar:
+
+- **planeja antes de implementar** — rodada de perguntas numeradas, cada uma já com a resposta recomendada, e então para e espera;
+- **responde em número**, não em parede de texto;
+- **avisa** quando a conversa sai do combinado — uma frase, com escolha;
+- **não chama nada de pronto** sem colar a saída que prova.
+
+Duas dessas regras são travas que rodam **fora do modelo**: hook com exit code.
+Não dá pra argumentar com elas.
+
+## Por que floresta
+
+Uma **mente-floresta** — o termo é de Paula Prober, em *Your Rainforest Mind* —
+não sofre de falta de ideia. Sofre do contrário: tudo cresce ao mesmo tempo,
+rápido, em direções diferentes, e o que cresce junto disputa a mesma luz.
+
+É por isso que lista de tarefas não resolve. Lista pressupõe **escassez** de
+tarefa; aqui a tarefa sobra. O problema não é lembrar do que fazer — é decidir
+**o que recebe luz agora**, e proteger essa decisão do resto, que continua
+crescendo enquanto você trabalha.
+
+Daí o vocabulário das ideias. Ele não é enfeite, é o modelo:
+
+| Palavra | O que é |
+|---|---|
+| **foco** | a clareira onde você está trabalhando hoje — é contra ele, e só contra ele, que o desvio é medido |
+| **plantar** | o que não pode crescer agora vai pro chão **com contexto**, vivo, em vez de morrer numa lista de "algum dia" |
+| **colher** | ele volta quando chega a hora, e vira trabalho de verdade |
+| **estação** | a admissão de que tempo certo é restrição real, não desculpa de quem procrastina |
+
+O resto do plugin não é botânico e não tenta ser: `/foco`, `depurar` e as travas
+se chamam pelo que fazem. A floresta explica **por que** as ideias têm ciclo de
+vida — onde ela não explica nada, ela não entra.
 
 ## Uma instalação, não uma pilha de skills
 
@@ -285,9 +313,10 @@ adicionais tem `ripgrep` e mais nada).
 
 ## De onde isso veio
 
-O plugin nasceu de um perfil específico — **2e**, altas habilidades com TDAH,
-de *Your Rainforest Mind* (Paula Prober). Pensamento associativo rápido abre
-ideias como abas que competem com a tarefa aberta; a resposta foi construir
+**O problema não é falta de ideia. É o que recebe luz agora.** Essa frase
+nasceu de um perfil específico — **2e**, altas habilidades com TDAH — e é ele
+que explica por que a ferramenta é assim: pensamento associativo rápido abre
+ideias como abas que competem com a tarefa aberta, e a resposta foi construir
 memória de trabalho externa e radar de escopo.
 
 O que a origem explica é o **rigor**, não o público. Um assistente que só
