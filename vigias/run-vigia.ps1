@@ -1,6 +1,8 @@
 param([Parameter(Mandatory=$true)][string]$Vigia, [switch]$Teste, [string]$Cwd)
 # Roda um vigia headless em haiku. Registrado no Agendador de Tarefas do Windows.
-$root = if ($env:RFM_ROOT) { $env:RFM_ROOT } else { "C:\Projetos\rainforest-mind" }
+# A raiz sai da localizacao do proprio script, nao de um caminho fixo: este
+# repositorio e publico e nenhum caminho desta maquina deve estar nele.
+$root = if ($env:RFM_ROOT) { $env:RFM_ROOT } else { Split-Path -Parent $PSScriptRoot }
 
 # O diretorio de trabalho do claude NAO e a raiz do repositorio por acidente de
 # historia: `disabledMcpServers` do .claude.json e por projeto, e neste
@@ -17,6 +19,30 @@ if (-not (Test-Path $cwd)) {
     exit 1
 }
 Set-Location $cwd
+
+# Configuracao da maquina: destino de envio, launcher do bridge, caminho do
+# claude.exe. Mora FORA do repositorio, que e publico — JID de grupo e caminho
+# de usuario sao dado pessoal e nao se versionam. Precedencia: variavel de
+# ambiente, depois este arquivo. Modelo em vigias/vigia.config.exemplo.json.
+$configPath = if ($env:RFM_VIGIA_CONFIG) { $env:RFM_VIGIA_CONFIG } else { Join-Path $cwd "vigia.config.json" }
+$cfg = if (Test-Path $configPath) { Get-Content -Raw -Encoding UTF8 $configPath | ConvertFrom-Json } else { $null }
+function Get-LocalConfig([string]$Var, [string]$Chave) {
+    $v = [Environment]::GetEnvironmentVariable($Var)
+    if ($v) { return $v }
+    if ($script:cfg -and $script:cfg.$Chave) { return $script:cfg.$Chave }
+    return $null
+}
+function Stop-ComErro([string]$Motivo) {
+    "- $(Get-Date -Format 'yyyy-MM-dd HH:mm') [$Vigia]: $Motivo" |
+      Out-File -Append -Encoding utf8 (Join-Path $root "vigias\ERROS.md")
+    exit 1
+}
+
+$destino = Get-LocalConfig 'RFM_WHATSAPP_DESTINO' 'destinoWhatsapp'
+if (-not $destino) {
+    Stop-ComErro "sem destino de envio: defina RFM_WHATSAPP_DESTINO ou destinoWhatsapp em $configPath"
+}
+
 $promptFile = Join-Path $root "vigias\$Vigia.md"
 if (-not (Test-Path $promptFile)) { exit 1 }
 # -Encoding UTF8 é obrigatório: sem ele o Get-Content lê o arquivo como ANSI e
@@ -41,6 +67,10 @@ if (Test-Path $dadosScript) {
         $prompt += "`n`n## Dados apurados agora, direto do arquivo`n`n$apurado`n`nUse ESTES numeros e ESTAS listas. Nao reconte, nao estime, nao complete de memoria: onde o bloco acima e a fonte, ele vence qualquer contagem sua."
     }
 }
+# O destino entra no prompt em vez de ficar escrito no _comum.md: e o unico dado
+# do arquivo que identifica uma pessoa.
+$prompt += "`n`n## Destino de envio`n`nEnvie para o JID ``$destino``. Nao invente destino, nao procure outro chat: e este."
+
 $log = Join-Path $root "vigias\log-$Vigia.txt"
 "=== $(Get-Date -Format 'yyyy-MM-dd HH:mm') ===" | Out-File -Append -Encoding utf8 $log
 
@@ -55,15 +85,13 @@ $log = Join-Path $root "vigias\log-$Vigia.txt"
 $bridgeUrl = if ($env:WHATSAPP_API_BASE_URL) { $env:WHATSAPP_API_BASE_URL } else { "http://localhost:3005" }
 $bridgeHost = ([uri]$bridgeUrl).Host
 $bridgePort = ([uri]$bridgeUrl).Port
-$bridgeLauncher = if ($env:RFM_BRIDGE_LAUNCHER) { $env:RFM_BRIDGE_LAUNCHER } else { "C:\Projetos\whatsapp-mcp\start-bridge.ps1" }
+$bridgeLauncher = Get-LocalConfig 'RFM_BRIDGE_LAUNCHER' 'bridgeLauncher'
 if (-not (Test-NetConnection $bridgeHost -Port $bridgePort -InformationLevel Quiet -WarningAction SilentlyContinue)) {
     "bridge fora do ar - subindo o launcher nativo" | Out-File -Append -Encoding utf8 $log
-    if (Test-Path $bridgeLauncher) {
+    if ($bridgeLauncher -and (Test-Path $bridgeLauncher)) {
         Start-Process powershell -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-File",$bridgeLauncher -WindowStyle Hidden
     } else {
-        "- $(Get-Date -Format 'yyyy-MM-dd HH:mm') [$Vigia]: launcher nao encontrado em $bridgeLauncher" |
-          Out-File -Append -Encoding utf8 (Join-Path $root "vigias\ERROS.md")
-        exit 1
+        Stop-ComErro "bridge fora do ar e sem launcher: defina RFM_BRIDGE_LAUNCHER ou bridgeLauncher em $configPath (valor atual: '$bridgeLauncher')"
     }
     $up = $false
     foreach ($i in 1..12) {
@@ -76,8 +104,14 @@ if (-not (Test-NetConnection $bridgeHost -Port $bridgePort -InformationLevel Qui
         exit 1
     }
 }
-# caminho completo: o Agendador de Tarefas não tem o PATH do usuário garantido
-$claude = if ($env:RFM_CLAUDE_EXE) { $env:RFM_CLAUDE_EXE } else { "C:\Users\Luis\AppData\Local\Microsoft\WinGet\Packages\Anthropic.ClaudeCode_Microsoft.Winget.Source_8wekyb3d8bbwe\claude.exe" }
+# O Agendador de Tarefas nao tem o PATH do usuario garantido, entao o caminho
+# completo importa — mas ele se descobre, nao se escreve: o caminho do instalador
+# muda de maquina e envelhece calado.
+$claude = Get-LocalConfig 'RFM_CLAUDE_EXE' 'claudeExe'
+if (-not $claude) { $claude = (Get-Command claude -ErrorAction SilentlyContinue).Source }
+if (-not $claude) {
+    Stop-ComErro "claude.exe nao encontrado: defina RFM_CLAUDE_EXE ou claudeExe em $configPath"
+}
 # Modelo por vigia. Haiku é o padrão e por ora serve para todos: o mapa fica
 # vazio de propósito. Em 2026-08-08 o jardineiro perdeu 3 de 5 rondas e a culpa
 # pareceu do modelo — subir para sonnet não mudou nada, porque a causa era a
