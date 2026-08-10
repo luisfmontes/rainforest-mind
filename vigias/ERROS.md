@@ -3,3 +3,4 @@
 - 2026-08-06 14:52 [vigia-tickets]: WhatsApp bridge offline (HTTPConnectionPool localhost:8765 refused)
 - 2026-08-07 07:54 [sentinela-foco]: bridge nao subiu apos acordar o WSL (porta 8765 fechada)
 - 2026-08-07 09:48 [sentinela-foco]: send_message failed — localhost:8765 refused (connection refused)
+- 2026-08-10 12:46 [sentinela-foco]: triagem de inbox falhou (Gmail MCP nao autenticado em sessao nao-interativa)
