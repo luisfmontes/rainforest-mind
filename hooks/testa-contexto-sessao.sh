@@ -69,7 +69,7 @@ Avanços:
 - 2026-08-05: quinta coisa feita.
 
 ## Fora de escopo
-nada"
+conteudo-fora-de-escopo"
 
 # roda o driver com fixtures e devolve a saida
 montar() { # skill, foco, [lib]
@@ -113,7 +113,11 @@ checa "mantem 3 residentes (08-03)"        tem     "2026-08-03"                 
 checa "omite a mais antiga"                nao_tem "2026-08-01"                  "$S"
 checa "ponteiro anuncia o corte"           tem     "entradas anteriores"         "$S"
 checa "ponteiro manda ler o arquivo"       tem     "leia o arquivo"              "$S"
-checa "resto do FOCO sobrevive ao corte"   tem     "Fora de escopo"              "$S"
+# Secao nao-residente sai da injecao, mas SAI NOMEADA: o nome no ponteiro e o que
+# separa omissao recuperavel de omissao silenciosa. As duas checagens andam juntas
+# de proposito — so a primeira passaria com o corte mudo que originou tudo isto.
+checa "secao nao-residente sai do texto"   nao_tem "conteudo-fora-de-escopo"     "$S"
+checa "ponteiro nomeia a secao omitida"    tem     "Fora de escopo"              "$S"
 
 echo
 echo "4. foco ausente cai na mensagem propria, nao no alarme de regras"
@@ -159,6 +163,123 @@ checa "SKILL.md real passa do piso"        nao_tem "FALHA AO CARREGAR"      "$S"
 checa "FOCO.md real dispara o resumo"      tem     "omitidas desta injeção" "$S"
 checa "avanco mais recente sobrevive"      tem     "2026-08-08"             "$S"
 echo "  ---   $MED"
+
+echo
+echo "7. ORCAMENTO DE ENTREGA — o teto em bytes, que e o que faz a regra chegar"
+# Este bloco e o teste que faltava em 2026-08-10. Os itens 1 a 6 verificam o
+# CONTEUDO montado; nenhum verificava o TAMANHO — e o defeito era de tamanho.
+# O hook emitia 32 KB, o harness entregava 2,2 KB e saia com exit 0, e a bateria
+# inteira passava verde enquanto as regras 4 a 17 nao chegavam a sessao nenhuma.
+#
+# Roda o HOOK de verdade, nao o motor: o que quebrou foi o formato de saida
+# (texto cru em vez de JSON) e o tamanho final com dependencias e sessoes juntas.
+# Testar so o motor deixaria os dois de fora (regra 12: valide o artefato real).
+SRC_WIN="$(cygpath -m "$SRC" 2>/dev/null || printf '%s' "$SRC")"
+RFM_ROOT="$SRC_WIN" node "$SRC/hooks/foco-session-start.cjs" > "$RAIZ_POSIX/saida-hook.json" 2>/dev/null
+EXIT_HOOK=$?
+
+cat > "$RAIZ_POSIX/checa-hook.cjs" <<'EOF'
+const fs = require('fs');
+const lib = require(process.env.LIB_PATH);
+let j;
+try { j = JSON.parse(fs.readFileSync(process.env.SAIDA, 'utf8')); }
+catch { console.log('json_invalido 0 0 0'); process.exit(0); }
+const c = (j.hookSpecificOutput || {}).additionalContext;
+if (typeof c !== 'string') { console.log('sem_contexto 0 0 0'); process.exit(0); }
+const regras = (c.match(/\*\*\d+\./g) || []).length;
+const travou = c.includes('ACIMA DO ORÇAMENTO') ? 'travou' : 'coube';
+console.log(`ok ${Buffer.byteLength(c, 'utf8')} ${lib.TETOS.ORCAMENTO_BYTES} ${regras} ${travou}`);
+EOF
+LEITURA="$(LIB_PATH="$LIB" SAIDA="$RAIZ_POSIX/saida-hook.json" node "$RAIZ_POSIX/checa-hook.cjs")"
+FORMATO="$(echo "$LEITURA" | cut -d' ' -f1)"
+BYTES="$(echo "$LEITURA" | cut -d' ' -f2)"
+TETO="$(echo "$LEITURA" | cut -d' ' -f3)"
+NREGRAS="$(echo "$LEITURA" | cut -d' ' -f4)"
+TRAVOU="$(echo "$LEITURA" | cut -d' ' -f5)"
+
+if [ "$EXIT_HOOK" = "0" ]; then ok=$((ok+1)); echo "  ok    o hook real roda com exit 0"
+else falhou=$((falhou+1)); echo "  FALHA o hook real saiu com exit $EXIT_HOOK"; fi
+
+# Formato: JSON com additionalContext. Texto cru E a entrega e passa do limite do
+# harness; JSON faz o harness ler so o campo de dentro. Era o defeito de origem.
+if [ "$FORMATO" = "ok" ]; then ok=$((ok+1)); echo "  ok    emite JSON com hookSpecificOutput.additionalContext"
+else falhou=$((falhou+1)); echo "  FALHA saida do hook nao e o JSON esperado ($FORMATO)"; fi
+
+if [ -n "$BYTES" ] && [ "$BYTES" -le "$TETO" ] 2>/dev/null; then
+  ok=$((ok+1)); echo "  ok    payload real cabe no orcamento ($BYTES B <= $TETO B)"
+else
+  falhou=$((falhou+1)); echo "  FALHA payload real estoura o orcamento ($BYTES B > $TETO B)"
+  echo "         reduza os nucleos no SKILL.md (texto antes de <!-- detalhe -->)"
+fi
+
+# "cabe no teto" sozinho passaria verde com a trava tendo cortado o payload ate o
+# teto — o numero bate justamente porque foi cortado. Sem esta checagem, o teste de
+# tamanho mediria o proprio corte em vez do que ele deveria impedir.
+if [ "$TRAVOU" = "coube" ]; then
+  ok=$((ok+1)); echo "  ok    coube sem a trava precisar cortar"
+else
+  falhou=$((falhou+1)); echo "  FALHA a trava teve de cortar o payload real ($TRAVOU)"
+fi
+
+if [ -n "$NREGRAS" ] && [ "$NREGRAS" -ge 17 ] 2>/dev/null; then
+  ok=$((ok+1)); echo "  ok    as 17 regras cabem no orcamento (chegaram $NREGRAS)"
+else
+  falhou=$((falhou+1)); echo "  FALHA so $NREGRAS regras no payload — alguma nao esta valendo em sessao nenhuma"
+fi
+
+echo
+echo "8. NUCLEO E DETALHE — a elaboracao fica fora, e a regra cortada se anuncia"
+SKILL_NUCLEO="# Skill
+## As regras
+
+**1. Regra de teste.** Nucleo que precisa chegar em toda sessao, com texto
+suficiente para passar do piso de quinhentos caracteres exigido pelo motor, o que
+obriga esta frase a se estender bem alem do que seria natural para um fixture.
+Note que o piso e medido DEPOIS da extracao do nucleo: um SKILL.md cujos nucleos
+somados nao passem de quinhentos caracteres aciona o alarme de falha, e e por isso
+que este fixture precisa ser longo apesar de ter uma regra so com detalhe.
+<!-- detalhe -->
+ELABORACAO-QUE-NAO-DEVE-CHEGAR: incidente longo, comandos exatos, historia.
+
+**2. Outra regra.** Esta nao tem marca de detalhe e entra inteira.
+## Comando
+x"
+S="$(montar "$SKILL_NUCLEO" '')"
+checa "nucleo da regra chega"              tem     "Nucleo que precisa chegar"      "$S"
+checa "elaboracao NAO chega"               nao_tem "ELABORACAO-QUE-NAO-DEVE-CHEGAR" "$S"
+checa "regra cortada ganha a seta"         tem     "↳"                              "$S"
+checa "cabecalho explica a seta"           tem     "Skill(rainforest-mind)"         "$S"
+checa "regra sem marca entra inteira"      tem     "entra inteira"                  "$S"
+
+echo
+echo "9. MUTACAO — desligar a trava de orcamento tem que quebrar o item 7"
+# Mesma logica do item 5: se o teto virar infinito e o teste de tamanho continuar
+# verde, ele nao esta medindo o teto. Fixture gigante para forcar o estouro.
+REGRA_GIGANTE="$(printf 'Regra de teste com texto muito longo para estourar qualquer orcamento razoavel. %.0s' $(seq 1 200))"
+SKILL_GIGANTE="# Skill
+## As regras
+$REGRA_GIGANTE
+## Comando
+x"
+S="$(montar "$SKILL_GIGANTE" '')"
+checa "payload gigante dispara a trava"    tem     "ACIMA DO ORÇAMENTO"          "$S"
+# A posicao importa: o corte do harness leva o COMECO do texto, entao aviso que
+# mora no rodape e mais uma regra que nunca chega. Esta checagem e a que impede
+# de "consertar" a trava movendo o aviso para o fim.
+PRIMEIRAS="$(echo "$S" | head -3)"
+checa "aviso da trava vem no TOPO"         tem     "ACIMA DO ORÇAMENTO"          "$PRIMEIRAS"
+checa "trava manda carregar a skill"       tem     "Skill(rainforest-mind)"      "$S"
+
+cp "$LIB" "$RAIZ_POSIX/lib-sem-trava.cjs"
+sed -i 's/ORCAMENTO_BYTES: [0-9]*/ORCAMENTO_BYTES: 99999999/' "$RAIZ_POSIX/lib-sem-trava.cjs"
+S="$(montar "$SKILL_GIGANTE" '' "$RAIZ_POSIX/lib-sem-trava.cjs")"
+if echo "$S" | grep -qF "ACIMA DO ORÇAMENTO"; then
+  falhou=$((falhou+1))
+  echo "  FALHA mutacao nao teve efeito — o teto nao e o que faz a trava disparar"
+else
+  ok=$((ok+1))
+  echo "  ok    com o teto em 99MB a trava para de disparar (o teto e load-bearing)"
+fi
 
 echo
 echo "-----------------------------------------"
