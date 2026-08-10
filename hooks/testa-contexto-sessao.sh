@@ -312,7 +312,113 @@ else
 fi
 
 echo
-echo "10. MUTACAO — desligar a trava de orcamento tem que quebrar o item 7"
+echo "10. FOCO POR PRIORIDADE — o que a regra 3 mede sobrevive ao corte"
+# O corte do foco era por POSICAO e parava no meio do "Criterio de pronto": os
+# marcos e prazos nao chegavam a sessao nenhuma, enquanto a prosa do topo (que
+# documenta o formato do arquivo) sobrevivia inteira. Medido em 2026-08-10 com o
+# FOCO.md real: 855 B entregues, zero prazo dentro.
+cat > "$RAIZ_POSIX/driver-foco.cjs" <<'EOF'
+const lib = require(process.env.LIB_PATH);
+process.stdout.write(lib.priorizarFoco(process.env.FIX_FOCO, Number(process.env.TETO)));
+EOF
+FOCO_BLOCOS="## Ativo
+Último avanço datado: 2026-08-09.
+
+Prosa que documenta o formato do arquivo e nao diz nada sobre entrega. PROSA-META.
+
+**Foco de teste** \`[trabalho]\` — prazo final 2026-08-25.
+
+Marcos (as datas sao as reunioes):
+- **Entrega 1 — 14/08**: o marco que a regra 3 precisa ver.
+
+Avanços:
+- 2026-08-09: AVANCO-QUE-PODE-SAIR, texto longo o bastante para ser o primeiro a
+  ser sacrificado quando o orcamento aperta, que e exatamente o ponto do bloco."
+prioriza() { LIB_PATH="$LIB" FIX_FOCO="$1" TETO="$2" node "$RAIZ_POSIX/driver-foco.cjs" 2>&1; }
+
+S="$(prioriza "$FOCO_BLOCOS" 400)"
+checa "prazo do foco sobrevive"            tem     "prazo final 2026-08-25"     "$S"
+checa "marco sobrevive ao corte"           tem     "Entrega 1 — 14/08"          "$S"
+checa "avanco sai antes do marco"          nao_tem "AVANCO-QUE-PODE-SAIR"       "$S"
+checa "prosa-meta sai antes de tudo"       nao_tem "PROSA-META"                 "$S"
+checa "o que saiu e nomeado"               tem     "Fora desta injeção"         "$S"
+checa "cabecalho da secao fica"            tem     "## Ativo"                   "$S"
+# Ordem: prioridade decide QUEM fica, nao ONDE fica. Bloco reordenado na saida
+# faria o foco chegar com os marcos antes da declaracao, que le errado.
+POS_DECL="$(echo "$S" | grep -n "Foco de teste" | cut -d: -f1)"
+POS_MARCO="$(echo "$S" | grep -n "Entrega 1" | cut -d: -f1)"
+if [ -n "$POS_DECL" ] && [ -n "$POS_MARCO" ] && [ "$POS_DECL" -lt "$POS_MARCO" ]; then
+  ok=$((ok+1)); echo "  ok    a ordem original do arquivo e preservada"
+else
+  falhou=$((falhou+1)); echo "  FALHA blocos sairam reordenados (decl=$POS_DECL marco=$POS_MARCO)"
+fi
+S="$(prioriza "$FOCO_BLOCOS" 99999)"
+checa "cabendo tudo, nada e omitido"       nao_tem "Fora desta injeção"         "$S"
+
+# Marcos: cumprido nao volta, porque prazo cumprido nao dispara a regra 3.
+cat > "$RAIZ_POSIX/driver-marcos.cjs" <<'EOF'
+const lib = require(process.env.LIB_PATH);
+process.stdout.write(lib.resumirFoco(process.env.FIX_FOCO));
+EOF
+FOCO_MARCOS="## Ativo
+**Foco** \`[trabalho]\`
+
+Marcos (as datas sao as reunioes com o cliente):
+- ✅ Marco cumprido — MARCO-CUMPRIDO.
+- Marco proximo — PRIMEIRO-DE-PE.
+- Marco seguinte — SEGUNDO-DE-PE.
+- Marco distante — TERCEIRO-DE-PE.
+- Marco final — QUARTO-DE-PE."
+S="$(LIB_PATH="$LIB" FIX_FOCO="$FOCO_MARCOS" node "$RAIZ_POSIX/driver-marcos.cjs" 2>&1)"
+checa "marco cumprido sai da injecao"      nao_tem "MARCO-CUMPRIDO"             "$S"
+checa "os dois proximos ficam"             tem     "SEGUNDO-DE-PE"              "$S"
+checa "o terceiro sai"                     nao_tem "TERCEIRO-DE-PE"             "$S"
+checa "conta o que saiu, dos dois tipos"   tem     "2 marcos adiante e 1 já cumprido" "$S"
+checa "regra de leitura da data fica"      tem     "datas sao as reunioes"      "$S"
+
+echo
+echo "11. SESSAO ENCERRADA — janela fechada some do radar"
+# A raiz do estouro de 2026-08-10: o sessoes.json nao tinha nocao de sessao
+# ENCERRADA. Media: 3 claude.exe rodando contra 18 entradas contadas como vivas.
+# Sao dois mecanismos e os dois precisam de prova — o SessionEnd cobre o
+# encerramento limpo, o PID cobre o que nao gera evento (X, crash, reboot).
+MORTO=999999
+S="$(LIB_PATH="$LIB" node -e "
+const lib = require(process.env.LIB_PATH);
+const agora = 1786000000000;   // epoch real: timestamp negativo vira 0 no Math.max e o fixture mente
+const state = {
+  viva:      { cwd: 'C:/viva',   pid: process.pid, prompt_ts: agora - 1000 },
+  morta:     { cwd: 'C:/morta',  pid: $MORTO,      prompt_ts: agora - 1000 },
+  antiga:    { cwd: 'C:/antiga', pid: process.pid, prompt_ts: agora - 9 * 3600 * 1000 },
+  sem_pid:   { cwd: 'C:/sempid',                   prompt_ts: agora - 1000 },
+};
+const vivas = lib.sessoesVivas(state, agora, 6 * 3600 * 1000).map(([id]) => id);
+process.stdout.write(vivas.join(','));
+" 2>&1)"
+checa "sessao com processo vivo fica"      tem     "viva"                       "$S"
+checa "sessao com processo morto sai"      nao_tem "morta"                      "$S"
+checa "sessao velha continua saindo"       nao_tem "antiga"                     "$S"
+checa "entrada antiga sem pid sobrevive"   tem     "sem_pid"                    "$S"
+
+# O hook de verdade, com stdin de verdade: o evento "end" tem de apagar a linha.
+HB_RAIZ="$RAIZ_POSIX/hb"
+mkdir -p "$HB_RAIZ"
+HB_WIN="$(cygpath -m "$HB_RAIZ" 2>/dev/null || printf '%s' "$HB_RAIZ")"
+printf '{"session_id":"s1","cwd":"C:/a"}' | RFM_ROOT="$HB_WIN" node "$SRC/hooks/heartbeat.cjs" prompt
+DEPOIS_PROMPT="$(cat "$HB_RAIZ/sessoes.json" 2>/dev/null)"
+printf '{"session_id":"s1","cwd":"C:/a"}' | RFM_ROOT="$HB_WIN" node "$SRC/hooks/heartbeat.cjs" end
+DEPOIS_END="$(cat "$HB_RAIZ/sessoes.json" 2>/dev/null)"
+checa "heartbeat grava a sessao"           tem     '"s1"'                       "$DEPOIS_PROMPT"
+checa "heartbeat grava o pid"              tem     '"pid"'                      "$DEPOIS_PROMPT"
+checa "SessionEnd apaga a sessao"          nao_tem '"s1"'                       "$DEPOIS_END"
+
+# O hook so vale se estiver REGISTRADO — arquivo certo, evento nao declarado, e
+# nada roda. E o mesmo defeito silencioso de sempre, uma camada acima.
+checa "SessionEnd declarado no hooks.json" tem     '"SessionEnd"'               "$(cat "$SRC/hooks/hooks.json")"
+checa "SessionEnd chama o heartbeat end"   tem     'heartbeat.cjs\" end'        "$(cat "$SRC/hooks/hooks.json")"
+
+echo
+echo "12. MUTACAO — desligar a trava de orcamento tem que quebrar o item 7"
 # Mesma logica do item 5: se o teto virar infinito e o teste de tamanho continuar
 # verde, ele nao esta medindo o teto. Fixture gigante para forcar o estouro.
 REGRA_GIGANTE="$(printf 'Regra de teste com texto muito longo para estourar qualquer orcamento razoavel. %.0s' $(seq 1 200))"

@@ -31,6 +31,8 @@
 const TETOS = {
   /** Entradas datadas de "Avanços" que ficam residentes na injeção. */
   AVANCOS_RESIDENTES: 3,
+  /** Marcos AINDA DE PÉ que ficam residentes. Cumprido não entra em nenhum caso. */
+  MARCOS_RESIDENTES: 2,
   /**
    * Teto do payload inteiro, em BYTES. 8.000 contra 9.766 B observados passando
    * inteiros — ~18% de folga. O limite exato do harness não é documentado; este
@@ -176,6 +178,44 @@ function resumirAvancos(focoText, maxEntradas = TETOS.AVANCOS_RESIDENTES) {
 }
 
 /**
+ * Mantém residentes só os marcos que ainda estão de pé, e os PRÓXIMOS.
+ *
+ * Marco cumprido já cumpriu sua função: a regra 3 mede contra prazo **vencido ou a
+ * ≤2 dias**, e nenhum marco com ✅ pode disparar isso. Injetar os cinco custava 641 B
+ * — mais que a sobra inteira do bloco de foco — e o efeito medido em 2026-08-10 era
+ * o pior possível: o bloco não cabia, saía inteiro, e a sessão subia sem prazo
+ * nenhum. Dois marcos de pé custam ~260 B e respondem a pergunta que a regra faz.
+ *
+ * O cabeçalho do bloco fica sempre: é ele que diz que a data é a REUNIÃO e que a
+ * entrega vence antes. Marco sem essa regra de leitura vira prazo errado por 1 dia.
+ */
+function resumirMarcos(secao, mantidos = TETOS.MARCOS_RESIDENTES) {
+  const texto = String(secao);
+  const inicio = texto.search(/^Marcos/m);
+  if (inicio === -1) return texto;
+
+  const resto = texto.slice(inicio);
+  const fimRelativo = resto.search(/\n\n/);
+  const bloco = fimRelativo === -1 ? resto : resto.slice(0, fimRelativo);
+  const cauda = fimRelativo === -1 ? '' : resto.slice(fimRelativo);
+
+  const partes = bloco.split(/\n(?=- )/);
+  const cabecalho = partes.shift();
+  const cumpridos = partes.filter((m) => m.includes('✅'));
+  const dePe = partes.filter((m) => !m.includes('✅'));
+  if (!cumpridos.length && dePe.length <= mantidos) return texto;
+
+  const residentes = dePe.slice(0, mantidos);
+  const adiante = dePe.length - residentes.length;
+  const nota = [];
+  if (adiante) nota.push(`${adiante} marco${adiante > 1 ? 's' : ''} adiante`);
+  if (cumpridos.length) nota.push(`${cumpridos.length} já cumprido${cumpridos.length > 1 ? 's' : ''}`);
+  const ponteiro = nota.length ? `\n- (${nota.join(' e ')} — estão no FOCO.md.)` : '';
+
+  return texto.slice(0, inicio) + [cabecalho, ...residentes].join('\n') + ponteiro + cauda;
+}
+
+/**
  * Iça a data do avanço mais recente para logo abaixo do cabeçalho da seção.
  *
  * O bloco de foco recebe a sobra do orçamento e é cortado pelo FIM quando não cabe
@@ -216,7 +256,7 @@ function resumirFoco(focoText) {
   for (const parte of partes) {
     const cabecalho = parte.match(/^## (.+)$/m);
     if (!cabecalho || SECOES_RESIDENTES.includes(cabecalho[1].trim())) {
-      mantidas.push(iparAvancoRecente(parte.trim()));
+      mantidas.push(iparAvancoRecente(resumirMarcos(parte.trim())));
     } else {
       omitidas.push(cabecalho[1].trim());
     }
@@ -227,6 +267,136 @@ function resumirFoco(focoText) {
       'em que frente algo mora, ou o que já foi concluído**.)');
   }
   return mantidas.filter(Boolean).join('\n\n');
+}
+
+/**
+ * Ordem de prioridade dos blocos do foco. O primeiro padrão que casa manda.
+ *
+ * Existe porque o corte do foco era por POSIÇÃO: o bloco recebia a sobra do
+ * orçamento e era truncado de cima para baixo. Medido em 2026-08-10, isso parava
+ * no meio do "Critério de pronto" — ou seja, **os marcos e prazos não chegavam a
+ * sessão nenhuma**, que é exatamente contra o que a regra 3 mede. Cortar por
+ * importância entrega prazo e marcos dentro dos mesmos bytes.
+ *
+ * Parágrafo que não casa com padrão nenhum cai no fim da fila de propósito: é o
+ * lugar da prosa explicativa do arquivo, que documenta o formato do FOCO.md e não
+ * diz nada sobre o que o Luís está entregando.
+ */
+const PRIORIDADE_FOCO = [
+  { rank: 0, teste: (b) => /^#{1,2} /.test(b) || /^Último avanço datado:/.test(b) },
+  { rank: 1, teste: (b) => /^\*\*/.test(b) },
+  // Lista solta abaixo de um cabeçalho residente: sai junto com ele ou não sai.
+  // Cabeçalho sem o conteúdo dele ("## Compromissos com prazo" e nada embaixo) lê
+  // como "não há compromisso", que é afirmação — e pode ser falsa.
+  { rank: 2, teste: (b) => /^Marcos/.test(b) || /^- /.test(b) },
+  { rank: 3, teste: (b) => /^Avanços:/.test(b) || /^\(Seções do FOCO\.md omitidas/.test(b) },
+];
+
+/**
+ * Nome curto do bloco, para o ponteiro de omissão. Curto de propósito: o ponteiro
+ * disputa bytes com o conteúdo que ele está anunciando, e um ponteiro gordo tira
+ * do foco justamente o espaço que faria o bloco caber.
+ */
+function nomeDoBloco(bloco) {
+  const primeira = bloco.split('\n')[0].replace(/[*#`]/g, '').split(/[—(:]/)[0].trim();
+  return primeira.length > 24 ? `${primeira.slice(0, 24)}…` : primeira;
+}
+
+/**
+ * Encaixa o foco no teto tirando os blocos MENOS importantes primeiro, e nomeando
+ * o que saiu. A ordem original é preservada na saída — prioridade decide quem
+ * fica, não onde fica.
+ *
+ * Só cai no truncamento linear quando nem o bloco de maior prioridade cabe: aí o
+ * problema é de orçamento, não de escolha, e o aviso de corte do `limitarBytes` é
+ * a informação certa.
+ */
+function priorizarFoco(focoResumido, teto) {
+  const texto = String(focoResumido || '').trim();
+  if (!texto || Buffer.byteLength(texto, 'utf8') <= teto) return texto;
+
+  const blocos = texto.split(/\n{2,}/).map((b, ordem) => {
+    const t = b.trim();
+    const regra = PRIORIDADE_FOCO.find((p) => p.teste(t));
+    return { texto: t, ordem, rank: regra ? regra.rank : 9 };
+  });
+
+  const fila = [...blocos].sort((a, b) => a.rank - b.rank || a.ordem - b.ordem);
+  const mantidos = [];
+  const fora = [];
+  let usado = 0;
+  // Reserva para o ponteiro de omissão: ele PRECISA caber, senão o corte vira
+  // silencioso — a falha que este arquivo inteiro existe para não cometer.
+  const reserva = 120;
+  for (const bloco of fila) {
+    const custo = Buffer.byteLength(bloco.texto, 'utf8') + 2;
+    if (usado + custo <= teto - reserva) {
+      mantidos.push(bloco);
+      usado += custo;
+    } else {
+      fora.push(bloco);
+    }
+  }
+
+  if (!mantidos.length) return limitarBytes(texto, teto, 'Foco');
+
+  // A reserva é estimativa: o ponteiro só tem tamanho depois de saber QUEM saiu, e
+  // quem sai depende do espaço. Em vez de adivinhar, monta o texto final e devolve
+  // blocos até caber de verdade — a versão que confiava na estimativa passou 25 B
+  // do teto e fez a trava de orçamento cortar o próprio ponteiro.
+  const montar = () => {
+    const corpo = [...mantidos].sort((a, b) => a.ordem - b.ordem).map((b) => b.texto).join('\n\n');
+    if (!fora.length) return corpo;
+    const nomes = fora.map((b) => nomeDoBloco(b.texto)).filter(Boolean);
+    const mostrados = nomes.slice(0, 3).join('; ') + (nomes.length > 3 ? `; +${nomes.length - 3}` : '');
+    return `${corpo}\n\n(Fora desta injeção por espaço: ${mostrados}. ` +
+      '**Leia o FOCO.md** antes de afirmar prazo, marco ou avanço.)';
+  };
+
+  let saida = montar();
+  while (Buffer.byteLength(saida, 'utf8') > teto && mantidos.length > 1) {
+    // Devolve sempre o de MENOR prioridade entre os mantidos.
+    mantidos.sort((a, b) => a.rank - b.rank || a.ordem - b.ordem);
+    fora.push(mantidos.pop());
+    saida = montar();
+  }
+  return Buffer.byteLength(saida, 'utf8') > teto ? limitarBytes(saida, teto, 'Foco') : saida;
+}
+
+/**
+ * Descarta do estado as sessões cujo processo morreu, e devolve só as vivas.
+ *
+ * O `sessoes.json` não tinha noção de sessão ENCERRADA: guardava `cwd`,
+ * `prompt_ts` e `stop_ts`, e fechar a janela não gerava evento nenhum. A última
+ * linha de uma sessão morta ficava idêntica à de uma sessão viva e ociosa. Medido
+ * em 2026-08-10: 3 `claude.exe` rodando de verdade contra 18 entradas contadas
+ * como vivas na injeção — 15 fantasmas, e foi o que estourou o orçamento.
+ *
+ * O `SessionEnd` cobre o encerramento limpo; esta varredura cobre o resto (janela
+ * fechada no X, crash, reboot), onde evento nenhum chega. Entrada sem `pid` é de
+ * antes desta mudança e sobrevive pela idade — ela some sozinha em 24h.
+ *
+ * @param {object} state          conteúdo do sessoes.json
+ * @param {number} agora          timestamp de referência
+ * @param {number} janelaMs       idade máxima para a entrada contar
+ * @param {(pid:number)=>boolean} vivo  predicado de vida (injetável no teste)
+ */
+function sessoesVivas(state, agora, janelaMs, vivo) {
+  const estaVivo = typeof vivo === 'function' ? vivo : processoVivo;
+  return Object.entries(state || {})
+    .filter(([, s]) => s && agora - Math.max(s.prompt_ts || 0, s.stop_ts || 0) < janelaMs)
+    .filter(([, s]) => !s.pid || estaVivo(s.pid));
+}
+
+/** Existência de processo por PID. O sinal 0 não mata nada — só pergunta. */
+function processoVivo(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    // EPERM = existe e é de outro usuário. Só ESRCH prova que morreu.
+    return e && e.code === 'EPERM';
+  }
 }
 
 /**
@@ -391,9 +561,15 @@ ${regras}
 ## Foco declarado
 `;
 
-  const rodape = `${o.sessoes || ''}${o.revisao || ''}${o.dependencias || ''}
-
-Arquivos de apoio: ${o.root || ''}\\FOCO.md e ${o.root || ''}\\ideias.jsonl (uma ideia por linha)`;
+  // A separação é do rodapé, não dos blocos que ele recebe: quando não havia
+  // sessão paralela, o `## Dependências` colava na última linha do foco e virava
+  // continuação do texto dele. Normalizar aqui vale para qualquer combinação de
+  // blocos presentes ou ausentes.
+  const rodape = '\n\n' + [o.sessoes, o.revisao, o.dependencias]
+    .filter(Boolean)
+    .map((bloco) => String(bloco).replace(/^\n+/, '').trimEnd())
+    .concat(`Arquivos de apoio: ${o.root || ''}\\FOCO.md e ${o.root || ''}\\ideias.jsonl (uma ideia por linha)`)
+    .join('\n\n');
 
   const fixo = Buffer.byteLength(cabecalho + rodape, 'utf8');
   const sobra = TETOS.ORCAMENTO_BYTES - fixo;
@@ -412,7 +588,9 @@ Arquivos de apoio: ${o.root || ''}\\FOCO.md e ${o.root || ''}\\ideias.jsonl (uma
     foco = `⚠️ O foco não coube nesta injeção (${tetoFoco} B livres, piso ${TETOS.FOCO_MIN_BYTES} B).\n` +
       '**Leia o FOCO.md antes de medir desvio de escopo ou afirmar o que está em andamento** (regra 3).';
   } else {
-    foco = limitarBytes(focoResumido, tetoFoco, 'Foco');
+    // Por prioridade, não por posição: cortar de cima para baixo deixava marcos e
+    // prazos de fora de toda sessão enquanto a prosa do topo sobrevivia inteira.
+    foco = priorizarFoco(focoResumido, tetoFoco);
   }
 
   return travarOrcamento(cabecalho + foco + rodape);
@@ -428,6 +606,9 @@ module.exports = {
   limitar,
   limitarBytes,
   cortarBytes,
+  priorizarFoco,
+  sessoesVivas,
+  processoVivo,
   resumirSessoes,
   travarOrcamento,
   montarContexto,
