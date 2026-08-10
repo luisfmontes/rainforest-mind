@@ -161,7 +161,12 @@ S="$(LIB_PATH="$LIB" REPO="$SRC" node "$RAIZ_POSIX/driver-real.cjs" 2>/dev/null)
 MED="$(LIB_PATH="$LIB" REPO="$SRC" node "$RAIZ_POSIX/driver-real.cjs" 2>&1 >/dev/null | grep MEDIDO)"
 checa "SKILL.md real passa do piso"        nao_tem "FALHA AO CARREGAR"      "$S"
 checa "FOCO.md real dispara o resumo"      tem     "omitidas desta injeção" "$S"
-checa "avanco mais recente sobrevive"      tem     "2026-08-08"             "$S"
+# A data sai do FOCO.md AGORA, nao de uma constante: a versao anterior fixava
+# "2026-08-08" e ficou vermelha sozinha no primeiro avanco novo. Teste que quebra
+# quando o arquivo evolui normalmente vira teste que se aprende a ignorar.
+ULTIMO_AVANCO="$(awk '/^## /{dentro=($0=="## Ativo")} dentro' "$SRC/FOCO.md" \
+  | grep -oE '^- [0-9]{4}-[0-9]{2}-[0-9]{2}' | grep -oE '[0-9-]{10}' | sort | tail -1)"
+checa "avanco mais recente sobrevive"      tem     "Último avanço datado: $ULTIMO_AVANCO" "$S"
 echo "  ---   $MED"
 
 echo
@@ -252,7 +257,62 @@ checa "cabecalho explica a seta"           tem     "Skill(rainforest-mind)"     
 checa "regra sem marca entra inteira"      tem     "entra inteira"                  "$S"
 
 echo
-echo "9. MUTACAO — desligar a trava de orcamento tem que quebrar o item 7"
+echo "9. RADAR MULTI-JANELA — uma linha por pasta, e o bloco tem teto"
+# Este bloco e o que estourou a injecao em 2026-08-10: 21 janelas vivas em 7
+# pastas, 1.373 B de linhas, nove delas da MESMA pasta. E o unico pedaco do
+# payload que cresce com o uso da maquina e nao com texto que alguem escreveu —
+# ninguem revisa quantas janelas abriu no dia, entao o teto tem de ser do codigo.
+cat > "$RAIZ_POSIX/driver-sessoes.cjs" <<'EOF'
+const lib = require(process.env.LIB_PATH);
+const entradas = JSON.parse(process.env.FIX_SESSOES);
+const bloco = lib.resumirSessoes(entradas, '15');
+process.stdout.write(bloco + `\nBYTES=${Buffer.byteLength(bloco, 'utf8')}\n`);
+EOF
+sessoes() { LIB_PATH="${2:-$LIB}" FIX_SESSOES="$1" node "$RAIZ_POSIX/driver-sessoes.cjs" 2>&1; }
+
+# Nove janelas da mesma pasta respondem a mesma pergunta da regra 17 nove vezes.
+REPETIDAS='[{"cwd":"C:\\Projetos\\rfm","trabalhando":false,"minutos":300},
+            {"cwd":"C:\\Projetos\\rfm","trabalhando":false,"minutos":40},
+            {"cwd":"C:\\Projetos\\rfm","trabalhando":false,"minutos":355},
+            {"cwd":"C:\\Projetos\\outro","trabalhando":true,"minutos":2}]'
+S="$(sessoes "$REPETIDAS")"
+checa "uma linha por pasta"                tem     "[3 janelas nesta pasta"      "$S"
+checa "estado e o da janela mais recente"  tem     "esperando o Luís há 40 min"  "$S"
+checa "a janela fria some da lista"        nao_tem "355 min"                     "$S"
+checa "pasta com turno em curso aparece"   tem     "Claude trabalhando"          "$S"
+checa "a ociosidade do foco vai junto"     tem     "Ociosidade máxima deste foco: 15 min" "$S"
+checa "sem janela viva, bloco vazio"       nao_tem "radar multi-janela"          "$(sessoes '[]')"
+
+# Muitas PASTAS distintas: a deducao nao resolve, e o teto precisa morder avisando.
+MUITAS="$(node -e "
+const p = Array.from({length: 20}, (_, i) => ({cwd: 'C:\\\\Projetos\\\\pasta-numero-' + i, trabalhando: false, minutos: i * 10}));
+process.stdout.write(JSON.stringify(p));
+")"
+S="$(sessoes "$MUITAS")"
+BYTES_SESSOES="$(echo "$S" | grep -oE 'BYTES=[0-9]+' | cut -d= -f2)"
+TETO_SESSOES="$(LIB_PATH="$LIB" node -e "process.stdout.write(String(require(process.env.LIB_PATH).TETOS.SESSOES_MAX_BYTES))")"
+if [ -n "$BYTES_SESSOES" ] && [ "$BYTES_SESSOES" -le $((TETO_SESSOES + 250)) ] 2>/dev/null; then
+  ok=$((ok+1)); echo "  ok    20 pastas cabem no teto do bloco ($BYTES_SESSOES B, teto de linhas $TETO_SESSOES B)"
+else
+  falhou=$((falhou+1)); echo "  FALHA bloco de sessoes sem teto efetivo ($BYTES_SESSOES B)"
+fi
+checa "corte de pasta se anuncia"          tem     "pastas omitidas desta injeção" "$S"
+checa "a pasta mais recente sobrevive"     tem     "pasta-numero-0"                "$S"
+checa "a mais fria e a que sai"            nao_tem "pasta-numero-19 —"             "$S"
+
+# Mutacao: com o teto em 99MB o corte para de acontecer. Sem isto, "cabe no teto"
+# passaria verde num bloco que nunca chega perto do limite.
+cp "$LIB" "$RAIZ_POSIX/lib-sem-teto-sessoes.cjs"
+sed -i 's/SESSOES_MAX_BYTES: [0-9]*/SESSOES_MAX_BYTES: 99999999/' "$RAIZ_POSIX/lib-sem-teto-sessoes.cjs"
+S="$(sessoes "$MUITAS" "$RAIZ_POSIX/lib-sem-teto-sessoes.cjs")"
+if echo "$S" | grep -qF "pastas omitidas desta injeção"; then
+  falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — nao e o teto que faz o bloco cortar"
+else
+  ok=$((ok+1)); echo "  ok    com o teto em 99MB o bloco para de cortar (o teto e load-bearing)"
+fi
+
+echo
+echo "10. MUTACAO — desligar a trava de orcamento tem que quebrar o item 7"
 # Mesma logica do item 5: se o teto virar infinito e o teste de tamanho continuar
 # verde, ele nao esta medindo o teto. Fixture gigante para forcar o estouro.
 REGRA_GIGANTE="$(printf 'Regra de teste com texto muito longo para estourar qualquer orcamento razoavel. %.0s' $(seq 1 200))"

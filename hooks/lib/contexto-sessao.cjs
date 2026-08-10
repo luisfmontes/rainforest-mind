@@ -46,6 +46,15 @@ const TETOS = {
   FOCO_MAX_BYTES: 2600,
   FOCO_MIN_BYTES: 700,
   /**
+   * Teto do bloco de sessões paralelas, em BYTES. É o único bloco do payload que
+   * cresce com o USO da máquina e não com o texto que alguém escreveu: em
+   * 2026-08-10 o `sessoes.json` tinha 21 janelas vivas em 7 pastas, 1.373 B de
+   * linhas — quase o dobro do piso do foco — e foi o que estourou o orçamento.
+   * O corte precede a dedução por pasta, então este teto só morde numa máquina
+   * com muitas pastas distintas abertas ao mesmo tempo.
+   */
+  SESSOES_MAX_BYTES: 600,
+  /**
    * Piso do bloco de regras. Abaixo disto considera-se que NÃO carregou.
    * Não é `if (!regras)`: SKILL.md truncado ou heading renomeado produzem
    * bloco curto e não-vazio, e essa falha é tão grave quanto o vazio.
@@ -220,6 +229,67 @@ function resumirFoco(focoText) {
   return mantidas.filter(Boolean).join('\n\n');
 }
 
+/**
+ * Reduz o radar multi-janela a UMA linha por pasta, e cabe num teto.
+ *
+ * A regra 17 pergunta duas coisas por PASTA — "tem sessão paralela aqui?" e "a
+ * janela do foco esfriou?" —, e as duas se respondem com a janela mais recente
+ * daquela pasta. Nove linhas da mesma pasta em ordem qualquer não respondem
+ * melhor: custam 9x e ainda enterram as outras pastas no fim do bloco, que é
+ * exatamente onde o corte do orçamento cai.
+ *
+ * Foi este bloco que estourou a injeção de 2026-08-10 (8.306 B para um teto de
+ * 8.000): 21 janelas vivas, 7 pastas. Ele é o único pedaço do payload que cresce
+ * com quantas janelas o Luís abriu no dia — os outros crescem com texto escrito,
+ * que alguém revisa; este ninguém revisa.
+ *
+ * @param {Array<{cwd?: string, trabalhando?: boolean, minutos?: number}>} entradas
+ * @param {string} ociosidade minutos de ociosidade máxima do foco ativo
+ */
+function resumirSessoes(entradas, ociosidade, teto = TETOS.SESSOES_MAX_BYTES) {
+  const lista = Array.isArray(entradas) ? entradas.filter(Boolean) : [];
+  if (!lista.length) return '';
+
+  const porPasta = new Map();
+  for (const e of lista) {
+    const pasta = e.cwd || '(pasta desconhecida)';
+    const min = Number.isFinite(e.minutos) ? e.minutos : Infinity;
+    const atual = porPasta.get(pasta);
+    // Mais recente = menos minutos desde o último evento.
+    if (!atual || min < atual.minutos) porPasta.set(pasta, { pasta, minutos: min, trabalhando: !!e.trabalhando, janelas: (atual ? atual.janelas : 0) + 1 });
+    else porPasta.set(pasta, { ...atual, janelas: atual.janelas + 1 });
+  }
+
+  const linhas = [...porPasta.values()]
+    .sort((a, b) => a.minutos - b.minutos)
+    .map((p) => {
+      const estado = p.trabalhando
+        ? `Claude trabalhando (turno em curso há ${p.minutos} min)`
+        : `esperando o Luís há ${p.minutos} min`;
+      const extras = p.janelas > 1 ? ` [${p.janelas} janelas nesta pasta; estado da mais recente]` : '';
+      return `- ${p.pasta} — ${estado}${extras}`;
+    });
+
+  // O corte tira as pastas MAIS FRIAS (fim da lista) e diz quantas tirou: pasta
+  // omitida em silêncio vira "não havia sessão lá", que é afirmação errada.
+  const cabidas = [];
+  let usado = 0;
+  for (const linha of linhas) {
+    const custo = Buffer.byteLength(linha, 'utf8') + 1;
+    if (usado + custo > teto) break;
+    cabidas.push(linha);
+    usado += custo;
+  }
+  const fora = linhas.length - cabidas.length;
+  if (fora) {
+    cabidas.push(`- (+${fora} ${fora === 1 ? 'pasta omitida' : 'pastas omitidas'} desta injeção por espaço — ` +
+      'o estado completo está no `sessoes.json`.)');
+  }
+
+  return `\n## Outras sessões recentes (radar multi-janela, regra 17)\n${cabidas.join('\n')}\n` +
+    `Ociosidade máxima deste foco: ${ociosidade} min.\n`;
+}
+
 /** Teto duro, com aviso explícito de que houve corte. Nunca corta em silêncio. */
 function limitar(texto, max, nomeDoBloco) {
   const s = String(texto || '');
@@ -269,11 +339,14 @@ function travarOrcamento(payload, orcamento = TETOS.ORCAMENTO_BYTES) {
   const aviso = [
     `⚠️ **INJEÇÃO ACIMA DO ORÇAMENTO: ${bytes} B para um teto de ${orcamento} B.**`,
     '',
-    'O texto abaixo foi cortado por este hook para caber na entrega do harness —',
-    'parte das regras não está aqui. Regra ausente **não está valendo** nesta',
-    'sessão: trate como regra bloqueada pelo ambiente (regra 14), diga isto ao Luís',
-    'em uma linha, e carregue `Skill(rainforest-mind)` antes de aplicar qualquer',
-    'regra. Conserto: reduzir os núcleos no SKILL.md ou revisar o teto aqui.',
+    'O texto abaixo foi cortado no FIM por este hook para caber na entrega do',
+    'harness. O corte come de trás para frente: primeiro as dependências de',
+    'ambiente e o radar de janelas, depois o foco, e só num estouro grande as',
+    'últimas regras. **Nada do que foi cortado está valendo nesta sessão** — trate',
+    'como bloqueio de ambiente (regra 14), diga isto ao Luís em uma linha, carregue',
+    '`Skill(rainforest-mind)` antes de aplicar regra e leia o FOCO.md antes de medir',
+    'escopo. Conserto: encurtar os núcleos no SKILL.md, apertar os tetos do rodapé',
+    '(`SESSOES_MAX_BYTES`) ou revisar o orçamento aqui.',
     '',
     '---',
     '',
@@ -355,6 +428,7 @@ module.exports = {
   limitar,
   limitarBytes,
   cortarBytes,
+  resumirSessoes,
   travarOrcamento,
   montarContexto,
 };
