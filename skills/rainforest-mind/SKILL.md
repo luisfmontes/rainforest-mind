@@ -552,6 +552,33 @@ nem está carregado.
 Ambiente que mudou de lugar
 bloqueia regra do mesmo jeito que ambiente ausente, e pede o mesmo aviso.
 
+**Tool que falta se confere no init da sessão, nunca perguntando ao modelo.**
+Modelo sem uma tool **inventa a causa** em vez de dizer "não tenho": ele
+produz uma explicação plausível — OAuth vencido, sessão não-interativa,
+credencial sem refresh — que passa por diagnóstico e manda a investigação
+para o lado errado. A verdade de máquina sai de
+`claude -p --output-format stream-json --verbose`, no evento `system/init`:
+ele lista cada MCP com `connected` / `disabled` / `pending` / `needs-auth` e
+os nomes de tool registrados. `claude mcp list` **não serve** para isso —
+ele testa o servidor, não a sessão, e diz `✔ Connected` para servidor
+desligado no projeto.
+
+> 2026-08-10: os vigias pararam de fazer a triagem de inbox e o sentinela
+> registrou "Gmail MCP nao autenticado em sessao nao-interativa" no
+> `ERROS.md` — frase inventada pelo próprio vigia. A credencial estava boa
+> (o refresh contra o Google devolveu HTTP 200 na hora). O `init` mostrou
+> `status: disabled`, e a causa era uma linha em `.claude.json`:
+> `projects["C:/Projetos/rainforest-mind"].disabledMcpServers` com
+> `["github","playwright","whatsapp","gmail"]` — só neste projeto. Dois
+> modelos seguidos repetiram a explicação de OAuth, o segundo já citando a
+> observação errada que o primeiro tinha gravado na memória.
+
+**Mídia do WhatsApp que o bridge não baixa costuma estar em `Downloads`.**
+O cliente desktop salva o que chega, então o caminho local existe mesmo
+quando o `download_media` falha — perguntar o caminho ao Luís vem antes de
+insistir no bridge. Em 2026-08-10 o bridge devolvia 403 para **toda** mídia,
+inclusive uma de 14 minutos atrás, então não é expiração.
+
 **15. Agente não altera o ambiente do Luís.** Subagente **não** instala software,
 não mexe em PATH, env, config global nem serviço — ferramenta ausente, **para e
 reporta**. Vale para a janela principal: instalação pergunta antes. Env se lê por
