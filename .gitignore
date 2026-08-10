@@ -5,6 +5,10 @@ sessoes.json
 # porque nomeia um marketplace interno de cliente e o repositório é público.
 .claude/settings.local.json
 
+# Config de máquina dos vigias: destino das mensagens e caminhos locais.
+# O modelo versionado é vigias/vigia.config.exemplo.json.
+vigia.config.json
+
 # Backups automáticos do scripts/ideias.py — um por gravação, ficam locais.
 .ideias-backups/
 
