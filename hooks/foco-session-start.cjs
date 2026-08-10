@@ -151,10 +151,11 @@ try {
     });
   if (linhas.length) {
     const oci = (foco.match(/Ociosidade máxima:\s*(\d+)\s*min/i) || [])[1] || '45';
-    sessoes = `\n## Outras sessões recentes (radar multi-janela)\n${linhas.join('\n')}\n` +
-      `Se alguma dessas sessões está no projeto do foco ativo, o radar DESTA sessão fica leve (trabalho paralelo é normal). ` +
-      `Ocioso = "esperando o Luís" — Claude trabalhando nunca conta. ` +
-      `O alerta que importa: sessão do projeto do foco esperando o Luís há ${oci}+ min enquanto as demais trabalham — avisar uma vez ("a janela do foco esfriou").\n`;
+    // Só o estado medido + o parâmetro que o texto da regra não pode ter (a
+    // ociosidade é por foco). O que fazer com isso é a regra 17, e reescrevê-la
+    // aqui custava ~370 B em toda sessão que tem janela paralela aberta.
+    sessoes = `\n## Outras sessões recentes (radar multi-janela, regra 17)\n${linhas.join('\n')}\n` +
+      `Ociosidade máxima deste foco: ${oci} min.\n`;
   }
 } catch {}
 
@@ -168,11 +169,13 @@ function doConsoleLog(pluginsStatus, whatsappStatus) {
   // mesmo com o bridge respondendo em 1ms (medido: 82ms → 776ms).
   if (guarda) clearTimeout(guarda);
 
+  // Só o estado medido. A instrução do que fazer com ele é a regra 14, e repeti-la
+  // aqui custava ~330 B de duplicação em toda sessão — dentro de um orçamento em
+  // que 330 B são uma regra inteira.
   const dependencias = `## Dependências de ambiente (regra 14)
-Checado pelo hook: apontamento-horas ${pluginsStatus.apontamento}; bridge WhatsApp ${whatsappStatus.status} (${whatsappStatus.url}); claude-mem ${pluginsStatus.claudeMem}.
-Nenhum script enxerga o prompt DESTA sessão: se ela proibir o Agent (regra 10), um MCP ou qualquer outra regra, diga em UMA linha na primeira vez que a regra seria aplicada, nomeando o efeito prático — silêncio faz o Luís acreditar que a regra rodou.`;
+Checado pelo hook: apontamento-horas ${pluginsStatus.apontamento}; bridge WhatsApp ${whatsappStatus.status} (${whatsappStatus.url}); claude-mem ${pluginsStatus.claudeMem}.`;
 
-  console.log(montarContexto({
+  const contexto = montarContexto({
     skillText: skill,
     focoText: foco,
     caminhoSkill: CAMINHO_SKILL,
@@ -180,6 +183,23 @@ Nenhum script enxerga o prompt DESTA sessão: se ela proibir o Agent (regra 10),
     sessoes,
     revisao,
     dependencias,
+  });
+
+  // JSON, não texto cru — e a diferença não é de estilo.
+  //
+  // Texto cru no stdout É a entrega: passando do limite do harness, ele grava tudo
+  // num arquivo, injeta um preview de ~2 KB e sai com exit 0. Foi o que aconteceu
+  // em 50 de 50 sessões até 2026-08-10 (medido: `medir-injecao.py --entrega`).
+  // Com JSON, o harness lê `additionalContext` e o stdout ao redor não conta: no
+  // mesmo transcript, 25 KB de stdout JSON entregaram 9,7 KB de contexto sem
+  // truncamento nenhum, enquanto 32 KB de texto cru daqui viraram 2,2 KB.
+  // Todos os outros hooks de SessionStart desta máquina já emitiam JSON; este era
+  // o único de texto cru, e o único truncado.
+  console.log(JSON.stringify({
+    hookSpecificOutput: {
+      hookEventName: 'SessionStart',
+      additionalContext: contexto,
+    },
   }));
 }
 
