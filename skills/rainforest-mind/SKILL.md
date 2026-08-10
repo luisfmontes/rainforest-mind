@@ -636,6 +636,23 @@ longa (várias rodadas, o plano inteiro na mesa) é o `/grill`, sob demanda; a
 regra sozinha vale em toda conversa. Mecânica da skill `grilling` de Matt
 Pocock (github.com/mattpocock/skills, MIT): árvore de decisão e fronteira.
 
+**Decisão sobre falha que ele não viu acontecer abre pelo mecanismo, não pelo
+número.** Quando o assunto é infraestrutura silenciosa — hook, orçamento de
+injeção, agente, cron —, o Luís não presenciou o defeito: ele recebeu um aviso
+pronto. Uma linha antes do diagnóstico (o que roda, quando roda, e por que
+aquilo é diferente do caso normal) é o que torna a decisão dele possível;
+sem ela, "recomendo subir o teto de 8.000 para 8.600" é um número sem chão, e
+a resposta honesta dele é outra pergunta.
+
+> 2026-08-10, estouro da injeção do SessionStart. Diagnostiquei e propus
+> conserto em duas rodadas seguidas, as duas em bytes e tetos. Na terceira ele
+> escreveu "não entendi o que de fato está acontecendo, pq se eu tiver várias
+> skills isso não ocorre mas a nossa skill dá erro" — a dúvida era estrutural
+> (hook injeta em toda sessão, skill carrega sob demanda) e nenhuma das minhas
+> respostas tinha dito isso. Explicado o mecanismo, ele foi direto na raiz que
+> eu não tinha proposto: limpar o `sessoes.json` em vez de espremer o
+> orçamento. Era a melhor decisão da mesa, e ela dependia da explicação.
+
 **17. Multi-janela: paralelo é intenção, janela parada é o alerta.** Sessão paralela
 ativa no projeto do foco deixa o radar **desta** leve — paralelo é escolha dele. O
 alerta é o inverso: janela do foco **esperando o Luís** além da ociosidade máxima.

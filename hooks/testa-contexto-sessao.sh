@@ -62,11 +62,24 @@ FOCO_MUITOS="# Foco
 Foco de teste.
 
 Avanços:
-- 2026-08-01: primeira coisa feita.
-- 2026-08-02: segunda coisa feita.
-- 2026-08-03: terceira coisa feita.
-- 2026-08-04: quarta coisa feita.
-- 2026-08-05: quinta coisa feita.
+- 2026-08-01: primeira coisa feita, com texto do tamanho de um avanco real de dia
+  produtivo, porque o teto do bloco e medido em BYTES e fixture de uma linha nao
+  chega perto dele — passaria verde sem o resumo nunca disparar, que foi o defeito
+  do parametro anterior (contagem de entradas com item de tamanho variavel).
+- 2026-08-02: segunda coisa feita, com o mesmo peso da anterior para que o corte
+  caia num lugar previsivel e o teste possa afirmar exatamente quais entradas
+  sobrevivem ao teto e quais viram ponteiro, sem depender de sorte de tamanho.
+- 2026-08-03: terceira coisa feita, mesmo peso, e esta e a mais antiga que ainda
+  cabe nos novecentos bytes do teto — a asserção abaixo depende disso e quebra de
+  proposito se o teto mudar sem o fixture acompanhar, que e o comportamento certo
+  para um numero que e politica e nao detalhe de implementacao.
+- 2026-08-04: quarta coisa feita, mesmo peso das anteriores, entrando na conta do
+  teto como qualquer outra entrada datada do bloco de avancos deste fixture, sem
+  tratamento especial de nenhum tipo por ser a penultima da lista.
+- 2026-08-05: quinta coisa feita, a mais recente, que precisa sobreviver em
+  qualquer cenario porque e dela que sai a linha de ultimo avanco datado, usada
+  pela regra 3 para ver foco parado ha 7+ dias, e por isso o resumo garante ao
+  menos uma entrada mesmo quando ela sozinha ja passa do teto.
 
 ## Fora de escopo
 conteudo-fora-de-escopo"
@@ -118,6 +131,46 @@ checa "ponteiro manda ler o arquivo"       tem     "leia o arquivo"             
 # de proposito — so a primeira passaria com o corte mudo que originou tudo isto.
 checa "secao nao-residente sai do texto"   nao_tem "conteudo-fora-de-escopo"     "$S"
 checa "ponteiro nomeia a secao omitida"    tem     "Fora de escopo"              "$S"
+
+# O teto e em BYTES desde 2026-08-10. Era contagem, calibrada com entradas de ~110
+# tokens; entradas de 1,5 KB fizeram "3 entradas" custar 2.271 B sem que o
+# parametro mudasse de valor. Estas provas sao sobre a UNIDADE, nao sobre o numero.
+cat > "$RAIZ_POSIX/driver-avancos.cjs" <<'EOF'
+const lib = require(process.env.LIB_PATH);
+process.stdout.write(lib.resumirAvancos(process.env.FIX_FOCO));
+EOF
+avancos() { LIB_PATH="${2:-$LIB}" FIX_FOCO="$1" node "$RAIZ_POSIX/driver-avancos.cjs" 2>&1; }
+
+# Uma entrada gigante sozinha: o teto nao pode zerar o bloco. Sem entrada nenhuma,
+# some a data que a regra 3 usa para ver foco parado, e o bloco fica so ponteiro.
+GIGANTE="- 2026-08-10: $(printf 'palavra %.0s' $(seq 1 300))"
+S="$(avancos "# Foco
+
+## Ativo
+
+Avanços:
+$GIGANTE")"
+checa "entrada unica gigante sobrevive"    tem     "2026-08-10"                  "$S"
+
+# Data com sufixo antes dos dois-pontos e como o FOCO.md real escreve o segundo
+# avanco do dia. O padrao antigo exigia ':' colado na data e simplesmente nao via
+# a linha — a injecao subia sem "Último avanço datado".
+S="$(montar "$SKILL_OK" "# Foco
+
+## Ativo
+
+Avanços:
+- 2026-08-07 (tarde): entrada com sufixo entre a data e os dois-pontos.")"
+checa "data com sufixo vira ultimo avanco" tem     "Último avanço datado: 2026-08-07" "$S"
+
+cp "$LIB" "$RAIZ_POSIX/lib-sem-teto-avancos.cjs"
+sed -i 's/AVANCOS_MAX_BYTES: [0-9]*/AVANCOS_MAX_BYTES: 99999999/' "$RAIZ_POSIX/lib-sem-teto-avancos.cjs"
+S="$(montar "$SKILL_OK" "$FOCO_MUITOS" "$RAIZ_POSIX/lib-sem-teto-avancos.cjs")"
+if echo "$S" | grep -qF "2026-08-01"; then
+  ok=$((ok+1)); echo "  ok    com o teto em 99MB o resumo para de cortar (o teto e load-bearing)"
+else
+  falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — nao e o teto em bytes que faz o resumo cortar"
+fi
 
 echo
 echo "4. foco ausente cai na mensagem propria, nao no alarme de regras"

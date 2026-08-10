@@ -29,8 +29,17 @@
 
 /** Tetos. Mexer aqui muda o custo de TODA sessão — o número é a política. */
 const TETOS = {
-  /** Entradas datadas de "Avanços" que ficam residentes na injeção. */
-  AVANCOS_RESIDENTES: 3,
+  /**
+   * Teto do bloco "Avanços", em BYTES.
+   *
+   * Era contagem (`AVANCOS_RESIDENTES: 3`), calibrada em 2026-08-09 com entradas
+   * de ~110 tokens. Em 2026-08-10 as entradas passaram a ter ~1,5 KB cada — o dia
+   * rendeu e o registro acompanhou — e as mesmas 3 entradas viraram 2.271 B, mais
+   * que o bloco de foco inteiro. Contagem não é teto quando o tamanho do item
+   * varia 10x, e o pior é que nada avisa: a unidade do parâmetro (entradas) não é
+   * a unidade do problema (bytes), então o número continua parecendo certo.
+   */
+  AVANCOS_MAX_BYTES: 900,
   /** Marcos AINDA DE PÉ que ficam residentes. Cumprido não entra em nenhum caso. */
   MARCOS_RESIDENTES: 2,
   /**
@@ -146,14 +155,19 @@ function blocoRegras(regras, caminhoSkill) {
 }
 
 /**
- * Mantém residentes as N entradas mais recentes de "Avanços" e troca o resto por um
- * ponteiro explícito. Nada se perde: o arquivo continua inteiro em disco.
+ * Mantém residentes os avanços mais recentes que cabem num teto de BYTES, e troca o
+ * resto por um ponteiro explícito. Nada se perde: o arquivo continua inteiro em disco.
  *
- * Motivo (medido em 2026-08-09): "Avanços" era 42% do FOCO.md, ~110 tokens por
- * entrada, append-only e sem teto. Num projeto de 3 meses ultrapassaria o bloco de
- * regras inteiro. É o mesmo movimento do filtro de citação, agora no FOCO.
+ * Motivo (medido em 2026-08-09): "Avanços" era 42% do FOCO.md, append-only e sem
+ * teto. Num projeto de 3 meses ultrapassaria o bloco de regras inteiro. É o mesmo
+ * movimento do filtro de citação, agora no FOCO.
+ *
+ * O teto era em ENTRADAS até 2026-08-10, e a diferença não é cosmética: entrada de
+ * avanço não tem tamanho fixo. Três entradas de ~110 tokens custavam ~350 B; três
+ * entradas de um dia produtivo custaram 2.271 B, e o parâmetro continuou dizendo
+ * "3" o tempo todo. Teto na unidade errada não avisa quando para de valer.
  */
-function resumirAvancos(focoText, maxEntradas = TETOS.AVANCOS_RESIDENTES) {
+function resumirAvancos(focoText, maxBytes = TETOS.AVANCOS_MAX_BYTES) {
   const foco = String(focoText || '');
   const marcador = '\nAvanços:';
   const inicio = foco.indexOf(marcador);
@@ -166,10 +180,22 @@ function resumirAvancos(focoText, maxEntradas = TETOS.AVANCOS_RESIDENTES) {
   const cauda = fim === -1 ? '' : resto.slice(fim);
 
   const entradas = corpo.split(ENTRADA_DATADA).map((e) => e.trim()).filter(Boolean);
-  if (entradas.length <= maxEntradas) return foco;
+  if (Buffer.byteLength(corpo, 'utf8') <= maxBytes) return foco;
 
-  const ocultas = entradas.length - maxEntradas;
-  const mantidas = entradas.slice(-maxEntradas);
+  // Do mais recente para o mais antigo, enquanto couber. Pelo menos uma entrada
+  // fica sempre: "Avanços:" com ponteiro e nada embaixo esconde a data que a
+  // regra 3 usa para ver foco parado, e o iparAvancoRecente depende dela.
+  const mantidas = [];
+  let usado = 0;
+  for (const entrada of [...entradas].reverse()) {
+    const custo = Buffer.byteLength(entrada, 'utf8') + 1;
+    if (mantidas.length && usado + custo > maxBytes) break;
+    mantidas.unshift(entrada);
+    usado += custo;
+  }
+
+  const ocultas = entradas.length - mantidas.length;
+  if (!ocultas) return foco;
   const ponteiro = `- (${ocultas} ${ocultas === 1 ? 'entrada anterior' : 'entradas anteriores'} ` +
     `${ocultas === 1 ? 'foi omitida' : 'foram omitidas'} desta injeção para conter o custo por sessão. ` +
     'Elas continuam no FOCO.md — **leia o arquivo antes de afirmar o que já foi decidido ou feito neste foco**.)';
@@ -226,8 +252,11 @@ function resumirMarcos(secao, mantidos = TETOS.MARCOS_RESIDENTES) {
  * cabeçalho; o histórico completo continua no arquivo.
  */
 function iparAvancoRecente(secao) {
-  const datas = (String(secao).match(/- (\d{4}-\d{2}-\d{2}):/g) || [])
-    .map((s) => s.slice(2, 12))
+  // Sem exigir o `:` colado na data: a entrada real escreve "- 2026-08-10 (tarde):"
+  // e a versão anterior do padrão simplesmente não a via — some a linha inteira, e
+  // com ela a checagem de foco parado da regra 3.
+  const datas = (String(secao).match(/(?:^|\n)- (\d{4}-\d{2}-\d{2})/g) || [])
+    .map((s) => s.trim().slice(2, 12))
     .sort();
   if (!datas.length) return secao;
   const cabecalho = secao.match(/^## .+$/m);
