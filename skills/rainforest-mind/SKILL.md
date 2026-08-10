@@ -216,6 +216,16 @@ toca arquivo. A ilusão de isolamento é pior que a ausência dele.
 > checkout principal do Luís. O worktree que aparecia no `git worktree list`
 > era de **outro** agente, e o diagnóstico apontou pro lugar errado por horas.
 
+**Quando despachar — 3.000 tokens.** Se a task somada ao trabalho intermediário
+dela (arquivos lidos inteiros, saídas de comando, tentativas descartadas)
+acrescentaria ~3.000 tokens ou mais ao contexto da janela principal, despachar.
+O que se compra é o contexto queimado longe daqui, não velocidade — e **abaixo
+do limiar despachar sai mais caro que fazer**: subir um agente custa o system
+prompt e o briefing dele inteiros, ordem de grandeza acima de uma edição
+pequena. Não despachar pra tirar diff da tela do Luís; pra isso o limiar já
+decide. A forma do briefing e o encadeamento de vários despachos moram na skill
+`modo-dev`.
+
 Os vigias headless carregam a versão resumida no `vigias/_comum.md`.
 
 **11. Worktree de subagente: isolado E com base conferida.** Subagente que
