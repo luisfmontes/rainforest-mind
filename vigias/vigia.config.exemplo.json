@@ -1,0 +1,12 @@
+{
+  "_leia": "Copie para vigia.config.json na pasta que o -Cwd aponta (ou aponte RFM_VIGIA_CONFIG para ele). O arquivo real e ignorado pelo git: ele guarda o destino das mensagens e caminhos desta maquina. Qualquer chave pode ser sobrescrita por variavel de ambiente, que tem precedencia.",
+
+  "destinoWhatsapp": "000000000000000000@g.us",
+  "_destinoWhatsapp": "Obrigatorio. JID do chat que recebe as rondas. Grupo termina em @g.us, conversa direta em @s.whatsapp.net. Sem ele o vigia para e registra em ERROS.md. Variavel: RFM_WHATSAPP_DESTINO",
+
+  "bridgeLauncher": "C:\\caminho\\para\\whatsapp-mcp\\start-bridge.ps1",
+  "_bridgeLauncher": "Opcional. Script que sobe o bridge quando a porta esta fechada. Sem ele, bridge fora do ar vira erro em vez de religar. Variavel: RFM_BRIDGE_LAUNCHER",
+
+  "claudeExe": "",
+  "_claudeExe": "Opcional. So e preciso se o claude nao estiver no PATH da conta que roda a tarefa agendada. Vazio faz o script descobrir com Get-Command. Variavel: RFM_CLAUDE_EXE"
+}
