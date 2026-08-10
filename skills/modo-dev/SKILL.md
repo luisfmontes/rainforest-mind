@@ -45,6 +45,36 @@ primeiro degrau que segura**. Os gatilhos:
 Pular degrau é legítimo e se diz em uma linha ("sem brainstorm: só um
 caminho plausível"). O que não vale é pular calado.
 
+## Despachar: a forma do briefing
+
+O limiar de **quando** despachar é a regra 10 (~3.000 tokens). Aqui está o
+**como**. Subagente só enxerga o que o briefing dá; cinco blocos, sempre,
+nesta ordem:
+
+1. **Contexto** — o que ele vai mexer e onde mora (caminho, branch, hash de
+   base da regra 11).
+2. **Objetivos** — numerados e concretos, um por linha.
+3. **Restrições** — o que olhar e, explicitamente, o que ignorar.
+4. **Formato de saída** — a forma exata que a janela principal quer de volta.
+5. **Critério de sucesso** — qual comando rodar, qual saída conta como pronto,
+   e qual mutação (revertendo o comportamento real) tem que quebrar qual teste.
+
+O bloco 5 não é enfeite: é o que transforma "terminei" em evidência (regra 12),
+e sai pronto do passo 4 da cadeia acima. Briefing vago produz trabalho vago, e
+o custo de descobrir isso é uma rodada inteira.
+
+## Despachar: encadear vários
+
+Vários subagentes em sequência não é loop mecânico. A janela principal despacha
+um, **lê a saída**, e só então decide o que o próximo é — próxima fatia, passe
+de crítica, refação, verificação, ângulo diferente. Cada prompt é composto na
+hora com base no que acabou de voltar; não existe template compartilhado nem
+número fixo de rodadas.
+
+O teste que separa: **se as chamadas seriam iguais, era pra ser paralelo.** O
+que faz a próxima ser diferente da anterior é a leitura da anterior. Tasks
+independentes e sem ordem entre si vão juntas, numa mensagem só.
+
 ## A escada (parar no primeiro degrau que segura)
 
 1. Precisa existir? Necessidade especulativa = pular, dizer em 1 linha (YAGNI).
