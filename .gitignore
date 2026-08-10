@@ -1,6 +1,10 @@
 vigias/log-*.txt
 sessoes.json
 
+# Ajuste local de plugin: este projeto não aponta horas. Fica fora do versionado
+# porque nomeia um marketplace interno de cliente e o repositório é público.
+.claude/settings.local.json
+
 # Backups automáticos do scripts/ideias.py — um por gravação, ficam locais.
 .ideias-backups/
 
