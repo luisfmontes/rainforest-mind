@@ -7,7 +7,7 @@
 const fs = require('fs');
 const path = require('path');
 const net = require('net');
-const { montarContexto, resumirSessoes } = require('./lib/contexto-sessao.cjs');
+const { montarContexto, resumirSessoes, sessoesVivas } = require('./lib/contexto-sessao.cjs');
 
 // Dados (FOCO/IDEIAS) vivem no repo de trabalho, não na cópia em cache do plugin.
 const DATA_ROOT = process.env.RFM_ROOT || 'C:\\Projetos\\rainforest-mind';
@@ -139,9 +139,10 @@ let sessoes = '';
 try {
   const state = JSON.parse(fs.readFileSync(path.join(ROOT, 'sessoes.json'), 'utf8'));
   const agora = Date.now();
-  const entradas = Object.values(state)
-    .filter((s) => agora - Math.max(s.prompt_ts || 0, s.stop_ts || 0) < 6 * 3600 * 1000)
-    .map((s) => {
+  // Vivas = recentes E com processo de pé. Só a idade não bastava: janela fechada
+  // não gera evento, e a entrada dela ficava idêntica à de uma sessão ociosa.
+  const entradas = sessoesVivas(state, agora, 6 * 3600 * 1000)
+    .map(([, s]) => {
       const p = s.prompt_ts || 0, t = s.stop_ts || 0;
       return {
         cwd: s.cwd,
