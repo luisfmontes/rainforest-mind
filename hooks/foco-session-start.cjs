@@ -7,7 +7,7 @@
 const fs = require('fs');
 const path = require('path');
 const net = require('net');
-const { montarContexto } = require('./lib/contexto-sessao.cjs');
+const { montarContexto, resumirSessoes } = require('./lib/contexto-sessao.cjs');
 
 // Dados (FOCO/IDEIAS) vivem no repo de trabalho, não na cópia em cache do plugin.
 const DATA_ROOT = process.env.RFM_ROOT || 'C:\\Projetos\\rainforest-mind';
@@ -139,24 +139,22 @@ let sessoes = '';
 try {
   const state = JSON.parse(fs.readFileSync(path.join(ROOT, 'sessoes.json'), 'utf8'));
   const agora = Date.now();
-  const linhas = Object.entries(state)
-    .filter(([, s]) => agora - Math.max(s.prompt_ts || 0, s.stop_ts || 0) < 6 * 3600 * 1000)
-    .map(([id, s]) => {
+  const entradas = Object.values(state)
+    .filter((s) => agora - Math.max(s.prompt_ts || 0, s.stop_ts || 0) < 6 * 3600 * 1000)
+    .map((s) => {
       const p = s.prompt_ts || 0, t = s.stop_ts || 0;
-      const min = (x) => Math.round((agora - x) / 60000);
-      const status = p > t
-        ? `Claude trabalhando (turno em curso há ${min(p)} min)`
-        : `esperando o Luís há ${min(t || p)} min`;
-      return `- ${s.cwd || '(pasta desconhecida)'} — ${status}`;
+      return {
+        cwd: s.cwd,
+        trabalhando: p > t,
+        minutos: Math.round((agora - (p > t ? p : (t || p))) / 60000),
+      };
     });
-  if (linhas.length) {
-    const oci = (foco.match(/Ociosidade máxima:\s*(\d+)\s*min/i) || [])[1] || '45';
-    // Só o estado medido + o parâmetro que o texto da regra não pode ter (a
-    // ociosidade é por foco). O que fazer com isso é a regra 17, e reescrevê-la
-    // aqui custava ~370 B em toda sessão que tem janela paralela aberta.
-    sessoes = `\n## Outras sessões recentes (radar multi-janela, regra 17)\n${linhas.join('\n')}\n` +
-      `Ociosidade máxima deste foco: ${oci} min.\n`;
-  }
+  // Só o estado medido + o parâmetro que o texto da regra não pode ter (a
+  // ociosidade é por foco). O que fazer com isso é a regra 17, e reescrevê-la
+  // aqui custava ~370 B em toda sessão que tem janela paralela aberta. A dedução
+  // por pasta e o teto do bloco moram na lib, onde a bateria os alcança.
+  const oci = (foco.match(/Ociosidade máxima:\s*(\d+)\s*min/i) || [])[1] || '45';
+  sessoes = resumirSessoes(entradas, oci);
 } catch {}
 
 // Checagem de dependências com timeout garantido
