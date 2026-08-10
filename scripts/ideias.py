@@ -38,6 +38,7 @@ Uso:
   python scripts/ideias.py editar   --id <id>  < mudancas.json
   python scripts/ideias.py iniciar  --id <id>
   python scripts/ideias.py unificar --manter <id> --absorver <id>  < fundida.json
+  python scripts/ideias.py reparar  [--id <id> | --todas] [--conferir]
   python scripts/ideias.py listar   [--status plantada] [--tipo ideia|observacao|todos]
   python scripts/ideias.py conferir
 """
@@ -49,6 +50,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 import time
 from datetime import date, datetime
@@ -386,6 +388,135 @@ def cmd_unificar(args) -> None:
         gravar(antes, depois, {i_manter, i_absorver}, "unificar")
 
 
+def data_do_git(alvo_id: str) -> str | None:
+    """Data do commit mais antigo que introduziu este id no jsonl, ou None.
+
+    Existe para o `reparar` nao ter que chutar `plantada_em`. A linha reparada
+    nasceu num dia que nao e hoje; carimbar hoje seria inventar historia — que e
+    o mesmo defeito do bug de UTC de 2026-08-08, so que silencioso, porque data
+    plausivel nao dispara alarme nenhum. O git ja guarda a resposta.
+    """
+    try:
+        r = subprocess.run(
+            ["git", "log", "--reverse", "--format=%ad", "--date=short",
+             "-S", f'"{alvo_id}"', "--", ALVO.name],
+            cwd=RAIZ, capture_output=True, text=True, timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if r.returncode != 0:
+        return None
+    linhas = [l.strip() for l in r.stdout.splitlines() if l.strip()]
+    return linhas[0] if linhas else None
+
+
+def diagnosticar(obj: dict) -> dict[str, str]:
+    """Campos de estado ausentes e de onde sairia o valor. So olha o que FALTA.
+
+    Reparo nunca corrige valor errado — para isso existe `editar`, que deixa
+    rastro de decisao. Reparo so preenche buraco de linha que entrou no arquivo
+    sem passar por este script (a `design-so-no-chat-antes-do-worktree`, de
+    2026-08-10, entrou sem `status` nem `plantada_em` e so apareceu no `conferir`).
+    """
+    faltando: dict[str, str] = {}
+    if obj.get("status") not in STATUS_CONHECIDOS:
+        if obj.get("unificada_em"):
+            faltando["status"] = "unificada"
+        elif obj.get("colhida_em") or obj.get("resultado"):
+            faltando["status"] = "colhida"
+        elif obj.get("colheita_iniciada_em"):
+            faltando["status"] = "em-colheita"
+        else:
+            faltando["status"] = "plantada"
+    if not obj.get("plantada_em"):
+        faltando["plantada_em"] = "<git>"
+    return faltando
+
+
+def cmd_reparar(args) -> None:
+    """Preenche campo de estado ausente em linha que entrou fora do script.
+
+    Sem ele o unico conserto possivel era editar o jsonl a mao — exatamente o que
+    este arquivo existe para impedir. O `editar` nao serve: `status` e
+    `plantada_em` estao em CAMPOS_PROIBIDOS_NO_INPUT, e devem continuar, porque
+    a proibicao e o que impede o modelo de digitar data.
+    """
+    if not args.id and not args.todas:
+        raise Erro("diga --id <id> ou --todas (com --conferir, nada e gravado)")
+    if args.plantada_em:
+        if not args.id:
+            raise Erro("--plantada-em so vale com --id, uma linha por vez")
+        try:
+            d = date.fromisoformat(args.plantada_em)
+        except ValueError:
+            raise Erro(f"--plantada-em '{args.plantada_em}' nao e data ISO (AAAA-MM-DD)")
+        if d > date.today():
+            raise Erro(f"--plantada-em {args.plantada_em} esta no futuro")
+
+    with Trava(TRAVA):
+        antes = ler_vivo()
+        objs = parse_linhas(antes)
+        indices = ([indice_por_id(antes, args.id)] if args.id
+                   else [i for i, o in enumerate(objs) if diagnosticar(o)])
+        if not indices:
+            print("nada a reparar — nenhuma linha com campo de estado ausente.")
+            return
+
+        depois = list(antes)
+        alvos: set[int] = set()
+        pendentes: set[str] = set()
+        for i in indices:
+            obj = json.loads(antes[i])
+            faltando = diagnosticar(obj)
+            if not faltando:
+                print(f"linha {i + 1} ({obj.get('id')}): nada ausente — nao mexo.")
+                continue
+            resolvido: dict[str, str] = {}
+            for campo, valor in faltando.items():
+                if valor != "<git>":
+                    resolvido[campo] = valor
+                    origem = "inferido do proprio registro"
+                elif args.plantada_em:
+                    resolvido[campo] = args.plantada_em
+                    origem = "informado na linha de comando"
+                elif (d := data_do_git(obj["id"])):
+                    resolvido[campo] = d
+                    origem = "data do commit que introduziu a linha"
+                elif args.conferir:
+                    # Em --conferir a pendencia se descreve; quem aborta e a
+                    # gravacao. Dry-run que morre no primeiro buraco nao mostra
+                    # os outros, e o comando existe justamente para mostrar.
+                    pendentes.add(obj["id"])
+                    print(f"  {obj.get('id')}.{campo} = ?  (o git nao sabe — "
+                          f"precisa de --plantada-em AAAA-MM-DD)")
+                    continue
+                else:
+                    raise Erro(
+                        f"'{obj['id']}': o git nao sabe quando esta linha entrou "
+                        f"(ainda nao commitada?). Nao vou carimbar hoje numa linha que nao "
+                        f"nasceu hoje — passe --plantada-em AAAA-MM-DD com a data real."
+                    )
+                print(f"  {obj.get('id')}.{campo} = {resolvido[campo]}  ({origem})")
+            if args.conferir:
+                continue
+            obj.update(resolvido)
+            obj["reparada_em"] = hoje()
+            obj["reparo"] = sorted(resolvido)
+            depois[i] = serializar(obj)
+            alvos.add(i)
+
+        if args.conferir:
+            print(f"\n--conferir: {len(indices)} linha(s) acima, nada gravado.")
+            if pendentes:
+                print(f"{len(pendentes)} sem data no git — o reparo real vai recusar "
+                      f"ate receber --plantada-em: {', '.join(sorted(pendentes))}")
+            return
+        if not alvos:
+            return
+        print(f"reparando {len(alvos)} linha(s)")
+        gravar(antes, depois, alvos, "reparar")
+
+
 def cmd_listar(args) -> None:
     objs = parse_linhas(ler_vivo())
     hj = date.today()
@@ -491,6 +622,14 @@ def main() -> int:
     c.add_argument("--manter", required=True)
     c.add_argument("--absorver", required=True)
     c.set_defaults(fn=cmd_unificar)
+
+    c = sub.add_parser("reparar", help="preenche campo de estado ausente (linha gravada fora do script)")
+    c.add_argument("--id", help="uma linha especifica")
+    c.add_argument("--todas", action="store_true", help="toda linha com campo de estado ausente")
+    c.add_argument("--conferir", action="store_true", help="mostra o que faria, nao grava")
+    c.add_argument("--plantada-em", dest="plantada_em",
+                   help="data real, so quando o git nao souber (AAAA-MM-DD)")
+    c.set_defaults(fn=cmd_reparar)
 
     c = sub.add_parser("listar", help="lista por status e tipo")
     c.add_argument("--status", default="plantada", choices=[*STATUS_CONHECIDOS, "todos"])

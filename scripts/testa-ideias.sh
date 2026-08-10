@@ -118,6 +118,73 @@ assert b["absorveu"]==["teste-tres"] and b["titulo"]=="Fundida"
 # base+4 e nao base+3 desde que o bloco do editar plantou teste-editar antes daqui.
 assert len(l)==int(os.environ["BASE"])+4'
 
+echo
+echo "== 2.5 reparar: linha que entrou no arquivo sem passar pelo script =="
+# O caso real: em 2026-08-10 uma observacao foi gravada a mao, sem status nem
+# plantada_em, e so apareceu no conferir. O editar nao conserta (status e
+# plantada_em sao CAMPOS_PROIBIDOS_NO_INPUT, e devem continuar sendo).
+python - <<'PY'
+import json, pathlib
+p = pathlib.Path("ideias.jsonl")
+linha = json.dumps({"id": "teste-quebrada", "titulo": "Gravada a mao", "descricao": "d",
+                    "contexto": "c", "projeto": "sandbox", "tipo": "observacao"},
+                   ensure_ascii=False)
+p.write_text(p.read_text(encoding="utf-8") + linha + "\n", encoding="utf-8", newline="\n")
+PY
+esperado "conferir acusa a linha sem status" 1 python scripts/ideias.py conferir
+esperado "recusa reparar sem --id nem --todas" 1 python scripts/ideias.py reparar
+md5_pre_reparo=$(md5sum ideias.jsonl | cut -d' ' -f1)
+esperado "--conferir descreve o reparo" 0 python scripts/ideias.py reparar --todas --conferir
+if [ "$md5_pre_reparo" = "$(md5sum ideias.jsonl | cut -d' ' -f1)" ]
+then ok=$((ok+1)); echo "  ok   --conferir nao gravou nada (md5 igual)"
+else falhou=$((falhou+1)); echo "  FALHA --conferir escreveu no arquivo"; fi
+
+# A sandbox nao e repo git: data_do_git devolve None, que e exatamente a
+# condicao em que carimbar hoje seria inventar historia. Recusar aqui e o
+# comportamento certo, e e o unico jeito de provar que ele nao chuta.
+esperado "recusa reparar quando o git nao sabe a data (nao chuta hoje)" 1 python scripts/ideias.py reparar --todas
+if [ "$md5_pre_reparo" = "$(md5sum ideias.jsonl | cut -d' ' -f1)" ]
+then ok=$((ok+1)); echo "  ok   e a recusa deixou o arquivo intocado"
+else falhou=$((falhou+1)); echo "  FALHA gravou apesar de nao saber a data"; fi
+
+esperado "recusa --plantada-em no futuro" 1 python scripts/ideias.py reparar --id teste-quebrada --plantada-em 2099-01-01
+esperado "recusa --plantada-em fora do formato ISO" 1 python scripts/ideias.py reparar --id teste-quebrada --plantada-em 10/08/2026
+esperado "recusa --plantada-em junto de --todas" 1 python scripts/ideias.py reparar --todas --plantada-em 2026-08-01
+esperado "reparar com a data informada" 0 python scripts/ideias.py reparar --id teste-quebrada --plantada-em 2026-08-01
+prova "status inferido, data preservada, reparo deixa rastro" '
+import json, datetime
+l=[json.loads(x) for x in open("ideias.jsonl",encoding="utf-8") if x.strip()]
+o=[x for x in l if x["id"]=="teste-quebrada"][0]
+assert o["status"]=="plantada", o.get("status")
+assert o["plantada_em"]=="2026-08-01", "a data informada foi trocada"
+assert o["reparada_em"]==datetime.date.today().isoformat()
+assert o["reparo"]==["plantada_em","status"], o.get("reparo")
+assert o["titulo"]=="Gravada a mao" and o["tipo"]=="observacao", "reparo mexeu no conteudo"'
+esperado "conferir volta a passar depois do reparo" 0 python scripts/ideias.py conferir
+esperado "reparar de novo nao encontra nada (idempotente)" 0 python scripts/ideias.py reparar --todas
+md5_pos_reparo=$(md5sum ideias.jsonl | cut -d' ' -f1)
+esperado "reparar linha sadia nao a toca" 0 python scripts/ideias.py reparar --id teste-editar
+if [ "$md5_pos_reparo" = "$(md5sum ideias.jsonl | cut -d' ' -f1)" ]
+then ok=$((ok+1)); echo "  ok   linha sadia ficou byte a byte igual"
+else falhou=$((falhou+1)); echo "  FALHA reparou o que nao estava quebrado"; fi
+
+# Reparo nao e conserto de valor errado: para isso existe o editar, que deixa
+# rastro de decisao. Status errado (mas conhecido) nao e buraco.
+python - <<'PY'
+import json, pathlib
+p = pathlib.Path("ideias.jsonl"); linhas=[l for l in p.read_text(encoding="utf-8").split("\n") if l.strip()]
+for i,l in enumerate(linhas):
+    o=json.loads(l)
+    if o["id"]=="teste-quebrada":
+        o["status"]="em-colheita"; linhas[i]=json.dumps(o, ensure_ascii=False)
+p.write_text("\n".join(linhas)+"\n", encoding="utf-8", newline="\n")
+PY
+md5_status_trocado=$(md5sum ideias.jsonl | cut -d' ' -f1)
+esperado "reparar ignora status errado porem conhecido" 0 python scripts/ideias.py reparar --id teste-quebrada
+if [ "$md5_status_trocado" = "$(md5sum ideias.jsonl | cut -d' ' -f1)" ]
+then ok=$((ok+1)); echo "  ok   valor existente nao foi reescrito (isso e trabalho do editar)"
+else falhou=$((falhou+1)); echo "  FALHA reparar sobrescreveu valor que ja existia"; fi
+
 esperado "listar" 0 python scripts/ideias.py listar
 
 # Data no futuro fabricada AQUI, nao herdada do arquivo real: em 2026-08-09 esta
@@ -162,6 +229,21 @@ esperado "mutante recusado tambem no editar (alvo e uma linha, nao zero)" 1 bash
 if cmp -s ideias.jsonl pre-mutacao.jsonl
 then ok=$((ok+1)); echo "  ok   editar tambem reverteu byte a byte"
 else falhou=$((falhou+1)); echo "  FALHA o editar gravou por cima do mutante"; fi
+
+# Terceiro caminho de escrita, terceira forma de alvo: o reparar pode ter varias
+# linhas como alvo de uma vez. Mutante segue instalado.
+python - <<'PY'
+import json, pathlib
+p = pathlib.Path("ideias.jsonl")
+linha = json.dumps({"id": "teste-quebrada-mutante", "titulo": "t", "descricao": "d",
+                    "contexto": "c", "projeto": "sandbox"}, ensure_ascii=False)
+p.write_text(p.read_text(encoding="utf-8") + linha + "\n", encoding="utf-8", newline="\n")
+PY
+cp ideias.jsonl pre-reparo-mutante.jsonl
+esperado "mutante recusado tambem no reparar" 1 python scripts/ideias.py reparar --id teste-quebrada-mutante --plantada-em 2026-08-01
+if cmp -s ideias.jsonl pre-reparo-mutante.jsonl
+then ok=$((ok+1)); echo "  ok   reparar tambem reverteu byte a byte"
+else falhou=$((falhou+1)); echo "  FALHA o reparar gravou por cima do mutante"; fi
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

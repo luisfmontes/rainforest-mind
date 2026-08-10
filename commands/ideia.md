@@ -41,11 +41,24 @@ que precisou inventar status no meio do caminho.
 ```
 python scripts/ideias.py plantar  < nova.json                    # JSON por stdin
 python scripts/ideias.py colher   --id <id> < resultado.json     # {"resultado": "..."}
+python scripts/ideias.py editar   --id <id> < mudancas.json      # só o que ainda está aberto
 python scripts/ideias.py iniciar  --id <id>                      # plantada → em-colheita
 python scripts/ideias.py unificar --manter <id> --absorver <id> < fundida.json
+python scripts/ideias.py reparar  [--id <id> | --todas] [--conferir]
 python scripts/ideias.py listar   [--status plantada] [--tipo ideia|observacao|todos]
 python scripts/ideias.py conferir                                # saúde do arquivo
 ```
+
+`reparar` é para a linha que **entrou no arquivo sem passar pelo script** — o
+`conferir` acusa "status desconhecido" ou campo de estado vazio, e o `editar`
+não resolve porque `status` e `plantada_em` são proibidos na entrada (é essa
+proibição que impede o modelo de digitar data). Ele só preenche o que está
+**ausente**: valor errado porém existente é assunto do `editar`, que deixa
+rastro de decisão. O `status` sai inferido do próprio registro e a
+`plantada_em` sai da **data do commit que introduziu a linha** — se o git não
+souber, ele recusa em vez de carimbar hoje numa linha que não nasceu hoje, e
+aí a data vai à mão em `--plantada-em AAAA-MM-DD`. Rode com `--conferir`
+antes: descreve tudo que faria, sem gravar.
 
 Dois cuidados continuam seus, porque o script não alcança:
 
