@@ -1,7 +1,22 @@
-param([Parameter(Mandatory=$true)][string]$Vigia, [switch]$Teste)
+param([Parameter(Mandatory=$true)][string]$Vigia, [switch]$Teste, [string]$Cwd)
 # Roda um vigia headless em haiku. Registrado no Agendador de Tarefas do Windows.
 $root = if ($env:RFM_ROOT) { $env:RFM_ROOT } else { "C:\Projetos\rainforest-mind" }
-Set-Location $root
+
+# O diretorio de trabalho do claude NAO e a raiz do repositorio por acidente de
+# historia: `disabledMcpServers` do .claude.json e por projeto, e neste
+# repositorio o whatsapp e o gmail ficam desligados de proposito — aqui se mexe
+# no plugin, nao se envia mensagem. Rodando daqui, o vigia herdava esse
+# desligamento e ficava sem send_message e sem triagem de inbox, sem nenhum erro
+# que dissesse isso (2026-08-10: o init da sessao mostrava `status: disabled`
+# enquanto `claude mcp list` dizia Connected). O -Cwd aponta para uma pasta que
+# nao esta na lista de desligados. Sem -Cwd, o comportamento antigo.
+$cwd = if ($Cwd) { $Cwd } else { $root }
+if (-not (Test-Path $cwd)) {
+    "- $(Get-Date -Format 'yyyy-MM-dd HH:mm') [$Vigia]: -Cwd nao existe: $cwd" |
+      Out-File -Append -Encoding utf8 (Join-Path $root "vigias\ERROS.md")
+    exit 1
+}
+Set-Location $cwd
 $promptFile = Join-Path $root "vigias\$Vigia.md"
 if (-not (Test-Path $promptFile)) { exit 1 }
 # -Encoding UTF8 é obrigatório: sem ele o Get-Content lê o arquivo como ANSI e
