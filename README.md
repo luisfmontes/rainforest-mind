@@ -292,6 +292,9 @@ flowchart LR
 | `verificar` | Estágio 5: roda o artefato real e cola a saída — o critério veio pronto do plano e não se afrouxa aqui |
 | `fechar` | Estágio 6: commit, limpeza do repo, remoção dos worktrees, destino da branch com você decidindo, e writeback no FOCO.md |
 | `limpar` | Manutenção fora da esteira: worktree órfão da sessão que nunca chegou ao `fechar` |
+| `/semear` | Propõe o que criar **neste** repositório a partir do que ele já tropeçou — cada proposta cita o registro que a origina |
+| `/setup` | Monta a pasta de dados e liga/desliga os gates e a esteira, por projeto ou para tudo |
+| `/saude` | Só o que os checadores oficiais não sabem: de quem é a raiz, margem da injeção, esteira parada, worktree órfão |
 | `modo-dev` | Disciplina de dev sob demanda (acima) |
 | `depurar` | Loop de feedback antes de hipótese (acima) |
 | `executor` | Implementação mecânica em haiku, com o método embutido no system prompt |
