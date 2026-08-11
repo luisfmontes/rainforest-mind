@@ -1,0 +1,115 @@
+#!/bin/bash
+# Bateria do scripts/estado.cjs — a maquina de estados da esteira.
+# Uso: bash scripts/testa-estado.sh
+#
+# O que esta bateria precisa provar, nesta ordem de importancia:
+#   1. que `exigir` RECUSA com exit 2 quando o pre-requisito nao fechou. E a unica
+#      coisa que separa esta esteira de prosa: no superpowers a transicao e texto que
+#      o modelo le e obedece, e <HARD-GATE> e tag XML sem parser;
+#   2. que `marcar` recusa FECHAR um estagio pulando os anteriores — senao
+#      `marcar verificar ok` pularia a revisao inteira em silencio;
+#   3. que ela NAO barra o caminho feliz. Falso positivo aqui trava todo trabalho;
+#   4. que `parcial` nao conta como fechado (o caso "5 de 7 tarefas");
+#   5. que a retomada aponta o primeiro estagio aberto.
+#
+# A ultima secao e MUTACAO: afrouxa `estaFechado` para aceitar qualquer status e exige
+# que os testes 1 e 2 parem de pegar. Bateria verde com a trava removida testa outra coisa.
+
+set -u
+SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SBP="$(mktemp -d)/caixa"
+trap 'rm -rf "$(dirname "$SBP")"' EXIT
+
+mkdir -p "$SBP/scripts" "$SBP/hooks/lib"
+cp "$SRC/scripts/estado.cjs" "$SBP/scripts/"
+cp "$SRC/hooks/lib/raiz.cjs" "$SBP/hooks/lib/"
+# A caixa vira raiz de dados: sem marcador, resolverRaiz cairia no repo de verdade
+# e a bateria escreveria estado no .rainforest do Luis.
+touch "$SBP/FOCO.md"
+cd "$SBP" || exit 1
+echo "(caixa de areia: $SBP)"
+
+ok=0; falhou=0
+E="node scripts/estado.cjs"
+
+esperado() { # nome, exit esperado, comando...
+  local nome="$1" esp="$2"; shift 2
+  local saida; saida=$("$@" 2>&1); local got=$?
+  if [ "$got" = "$esp" ]; then ok=$((ok+1)); echo "  ok   $nome (exit $got)"
+  else falhou=$((falhou+1)); echo "  FALHA $nome: esperava exit $esp, veio $got"; echo "$saida" | sed 's/^/         /'; fi
+}
+igual() { # nome, esperado, obtido
+  if [ "$2" = "$3" ]; then ok=$((ok+1)); echo "  ok   $1"
+  else falhou=$((falhou+1)); echo "  FALHA $1: esperava '$2', veio '$3'"; fi
+}
+
+echo
+echo "== 1. a trava RECUSA fora de ordem (exit 2, nao 1) =="
+$E iniciar --slug t1 >/dev/null
+esperado "exigir executar sem design"        2 $E exigir --slug t1 --estagio executar
+esperado "exigir revisar sem executar"       2 $E exigir --slug t1 --estagio revisar
+esperado "exigir fechar sem verificar"       2 $E exigir --slug t1 --estagio fechar
+esperado "fechar verificar pulando o resto"  2 $E marcar --slug t1 --estagio verificar --status ok
+esperado "fechar plano sem design"           2 $E marcar --slug t1 --estagio plano --status ok
+# design nao tem pre-requisito: nunca pode ser barrado
+esperado "exigir design passa sempre"        0 $E exigir --slug t1 --estagio design
+# limpar e manutencao, nao estagio: nao pode depender de nada
+esperado "exigir limpar passa sempre"        0 $E exigir --slug t1 --estagio limpar
+
+echo
+echo "== 2. o caminho feliz NAO e barrado =="
+esperado "marcar design aprovado"   0 $E marcar --slug t1 --estagio design    --status aprovado
+esperado "marcar plano ok"          0 $E marcar --slug t1 --estagio plano     --status ok
+esperado "exigir executar agora ok" 0 $E exigir --slug t1 --estagio executar
+esperado "marcar executar ok"       0 $E marcar --slug t1 --estagio executar  --status ok
+esperado "marcar revisar ok"        0 $E marcar --slug t1 --estagio revisar   --status ok
+esperado "marcar verificar ok"      0 $E marcar --slug t1 --estagio verificar --status ok
+esperado "marcar fechar ok"         0 $E marcar --slug t1 --estagio fechar    --status ok
+igual "completo no fim" "completo" "$($E proximo --slug t1)"
+
+echo
+echo "== 3. parcial nao conta como fechado =="
+$E iniciar --slug t2 >/dev/null
+$E marcar --slug t2 --estagio design --status aprovado >/dev/null
+$E marcar --slug t2 --estagio plano  --status ok >/dev/null
+$E marcar --slug t2 --estagio executar --status parcial --json '{"tarefas_ok":3,"tarefas":5}' >/dev/null
+igual "retomada aponta o estagio parcial" "executar" "$($E proximo --slug t2)"
+esperado "revisar recusado com executar parcial" 2 $E exigir --slug t2 --estagio revisar
+# reprovado tambem nao fecha — revisao que reprovou nao libera o proximo
+$E marcar --slug t2 --estagio executar --status ok >/dev/null
+$E marcar --slug t2 --estagio revisar --status reprovado >/dev/null
+esperado "verificar recusado com revisar reprovado" 2 $E exigir --slug t2 --estagio verificar
+igual "retomada aponta o reprovado" "revisar" "$($E proximo --slug t2)"
+
+echo
+echo "== 4. entrada invalida e recusada =="
+esperado "estagio inexistente no marcar"  1 $E marcar --slug t2 --estagio inventado --status ok
+esperado "estagio inexistente no exigir"  1 $E exigir --slug t2 --estagio inventado
+esperado "status invalido para execucao"  1 $E marcar --slug t2 --estagio verificar --status aprovado
+esperado "status invalido para design"    1 $E marcar --slug t2 --estagio design --status parcial
+esperado "json malformado"                1 $E marcar --slug t2 --estagio revisar --status ok --json "{nao json"
+esperado "slug inexistente"               1 $E ler --slug nao-existe
+esperado "iniciar duas vezes"             1 $E iniciar --slug t2
+
+echo
+echo "== 5. o estado sobrevive e e retomavel =="
+igual "arquivo no lugar certo" "sim" "$([ -f .rainforest/estado/t1.json ] && echo sim || echo nao)"
+igual "listar mostra os dois" "2" "$($E listar | grep -c '^t')"
+prox_t2_antes="$($E proximo --slug t2)"
+igual "retomada estavel entre chamadas" "$prox_t2_antes" "$($E proximo --slug t2)"
+
+echo
+echo "== 6. MUTACAO — afrouxar estaFechado tem que quebrar os itens 1 e 3 =="
+cp scripts/estado.cjs scripts/estado-mutante.cjs
+sed -i "s/return bloco.status === (FECHADO\[estagio\] || 'ok');/return true; \/\/ MUTADO/" scripts/estado-mutante.cjs
+$E iniciar --slug t3 >/dev/null
+saida=$(node scripts/estado-mutante.cjs exigir --slug t3 --estagio fechar 2>&1); mut=$?
+if [ "$mut" = "0" ]; then
+  ok=$((ok+1)); echo "  ok   sem estaFechado a trava para de recusar (ela e load-bearing)"
+else
+  falhou=$((falhou+1)); echo "  FALHA mutacao nao teve efeito — nao e estaFechado que decide (exit $mut)"
+fi
+
+echo
+echo "== resultado: $ok ok, $falhou falha(s) =="
+[ "$falhou" = 0 ]
