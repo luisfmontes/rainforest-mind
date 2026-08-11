@@ -152,12 +152,47 @@ function checarVersaoInstalada() {
   }
   const aqui = rodar('git', ['rev-parse', 'HEAD'], { cwd: RAIZ_CODIGO });
   const la = rodar('git', ['rev-parse', 'HEAD'], { cwd: instalado });
-  if (aqui.status !== 0 || la.status !== 0) return;
-  if (aqui.out === la.out) return ok('plugin instalado', 'na mesma versao do repo');
-  const atras = rodar('git', ['rev-list', '--count', `${la.out}..HEAD`], { cwd: RAIZ_CODIGO });
-  const n = atras.status === 0 ? atras.out : '?';
-  alerta('plugin instalado', `${n} commit(s) atras do repo (${la.out.slice(0, 7)} vs ${aqui.out.slice(0, 7)})`,
-    'o que voce escreveu no repo NAO esta valendo em sessao nova — atualize o plugin');
+  if (aqui.status === 0 && la.status === 0 && aqui.out !== la.out) {
+    const atras = rodar('git', ['rev-list', '--count', `${la.out}..HEAD`], { cwd: RAIZ_CODIGO });
+    const n = atras.status === 0 ? atras.out : '?';
+    return alerta('plugin instalado', `clone ${n} commit(s) atras do repo (${la.out.slice(0, 7)} vs ${aqui.out.slice(0, 7)})`,
+      'rode: claude plugin marketplace update ' + nome);
+  }
+
+  // O CACHE é quem carrega, e ele é indexado por VERSÃO.
+  //
+  // Em 2026-08-11 o clone do marketplace estava em dia e o plugin carregado tinha
+  // três skills de dias atrás. A causa: o cache mora em
+  // `plugins/cache/<mkt>/<plugin>/<versao>/`, e o `plugin.json` continuava
+  // declarando a mesma versão. O harness via a versão, achava a pasta já no
+  // cache e usava — atualizar o clone não mudava nada, porque o número não mudou.
+  //
+  // Sete skills, quatro agentes e uma esteira inteira ficaram invisíveis por um
+  // campo. Esta checagem existe porque a anterior (clone vs repo) dizia "na mesma
+  // versao do repo" com o plugin carregado três dias atrasado — checagem que
+  // olha o lugar errado é pior que checagem nenhuma.
+  let versaoDeclarada = null;
+  try {
+    versaoDeclarada = JSON.parse(
+      fs.readFileSync(path.join(RAIZ_CODIGO, '.claude-plugin', 'plugin.json'), 'utf8')).version;
+  } catch { /* sem manifesto: nada a comparar */ }
+  if (!versaoDeclarada) return ok('plugin instalado', 'clone na mesma versao do repo');
+
+  const dirCache = path.join(configDir, 'plugins', 'cache', nome, nome, versaoDeclarada);
+  if (!fs.existsSync(dirCache)) {
+    return aviso('plugin instalado', `versao ${versaoDeclarada} ainda nao esta no cache`,
+      'sessao nova vai baixar e passar a usar o codigo atual — e o que voce quer depois de mexer no plugin');
+  }
+  // Está no cache: o conteúdo é o que de fato carrega. Compare o que existe lá
+  // com o que existe aqui — nome de skill é o sinal mais barato e mais visível.
+  const skillsAqui = (() => { try { return fs.readdirSync(path.join(RAIZ_CODIGO, 'skills')).sort(); } catch { return []; } })();
+  const skillsCache = (() => { try { return fs.readdirSync(path.join(dirCache, 'skills')).sort(); } catch { return []; } })();
+  const faltando = skillsAqui.filter((s) => !skillsCache.includes(s));
+  if (faltando.length) {
+    return alerta('plugin instalado', `cache ${versaoDeclarada} carregado sem ${faltando.length} skill(s): ${faltando.join(', ')}`,
+      `o cache e indexado por VERSAO e ja tem ${versaoDeclarada} congelada — suba a versao em .claude-plugin/plugin.json e atualize`);
+  }
+  ok('plugin instalado', `cache ${versaoDeclarada} com as ${skillsCache.length} skills do repo`);
 }
 
 // ---------------------------------------------------------------- 7. claude-mem
