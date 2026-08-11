@@ -60,6 +60,9 @@ confirmar que chegaram ao mesmo lugar.
 
 ### Design doc — `docs/rainforest/design/<slug>.md`
 
+Caminho relativo à **raiz do projeto em que se trabalha**, nunca à do plugin: o
+design descreve aquele código e mora ao lado dele.
+
 ```markdown
 # <título>
 

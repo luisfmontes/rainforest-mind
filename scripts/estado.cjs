@@ -37,18 +37,22 @@
 const fs = require('fs');
 const path = require('path');
 
-const RAIZ = (() => {
-  const local = path.resolve(__dirname, '..');
-  try {
-    const { resolverRaiz } = require('../hooks/lib/raiz.cjs');
-    return resolverRaiz({ plugin: local }).raiz || local;
-  } catch {
-    return local;
-  }
-})();
+// A raiz aqui é a do PROJETO em que se trabalha, e **não** a cadeia de dados do
+// rainforest (`hooks/lib/raiz.cjs`). São dois tipos de estado diferentes, e
+// confundi-los foi um defeito real, pego em 2026-08-11 antes de rodar em campo:
+//
+//   FOCO.md, ideias.jsonl  -> do LUÍS, atravessam projeto: cadeia RFM_ROOT >
+//                             projeto > global > plugin > legado
+//   design, plano, estado  -> do PROJETO em que se trabalha: ficam onde o
+//                             trabalho está, sempre
+//
+// Com a cadeia de dados, uma feature de ERP legado teria o estado gravado dentro
+// do repositório do rainforest-mind — longe do código, invisível para quem
+// clonasse o projeto, e misturado com o estado de outra feature de outro repo.
+const RAIZ = process.env.RFM_ESTADO_ROOT
+  || process.env.CLAUDE_PROJECT_DIR
+  || process.cwd();
 
-// O estado é rastro de execução, então mora sob o diretório de dados do projeto —
-// nunca em docs/, que é onde ficam as decisões versionadas.
 const DIR_ESTADO = path.join(RAIZ, '.rainforest', 'estado');
 
 // Os dois blocos de vocabulário, separados de propósito (lição do gates.json):
@@ -88,6 +92,18 @@ function hoje() {
 
 function caminho(slug) {
   return path.join(DIR_ESTADO, `${slug}.json`);
+}
+
+/** O git deste projeto ignora o diretorio de estado? Erro = nao sabemos, nao avisa. */
+function estaIgnorado() {
+  try {
+    const { spawnSync } = require('child_process');
+    const r = spawnSync('git', ['check-ignore', '-q', path.join('.rainforest', 'estado', 'x.json')],
+      { cwd: RAIZ, stdio: 'ignore' });
+    return r.status === 0;
+  } catch {
+    return true;
+  }
 }
 
 function ler(slug) {
@@ -167,7 +183,14 @@ function main() {
     }
     const e = novo(slug, arg('titulo', false));
     gravar(slug, e);
-    console.log(`iniciado: ${path.relative(RAIZ, caminho(slug))}`);
+    console.log(`iniciado: ${path.join(RAIZ, '.rainforest', 'estado', `${slug}.json`)}`);
+    // Estado e rastro de execucao e nao deveria entrar no historico do projeto.
+    // Avisar em vez de editar o .gitignore de outro repo por conta propria:
+    // mexer no versionado de um projeto alheio nao e desta ferramenta.
+    if (!estaIgnorado()) {
+      console.log('aviso: `.rainforest/estado/` nao esta no .gitignore deste repositorio —');
+      console.log('       acrescente a linha, ou o rastro de execucao vai parar no diff.');
+    }
     console.log(`proximo: ${proximo(e)}`);
     return;
   }

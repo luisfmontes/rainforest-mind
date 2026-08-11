@@ -22,6 +22,8 @@ o `brainstorm`. Leia o design inteiro em
 
 ## Template — `docs/rainforest/planos/<slug>.md`
 
+Caminho relativo à **raiz do projeto em que se trabalha**, como o design.
+
 ```markdown
 # Plano: <título>
 
