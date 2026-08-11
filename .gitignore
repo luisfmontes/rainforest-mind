@@ -15,3 +15,7 @@ vigia.config.json
 # Trava entre sessões paralelas e temporário da escrita atômica.
 .ideias.lock
 *.jsonl.tmp
+
+# Rastro de execucao da esteira: o que e DECISAO fica versionado em docs/rainforest/,
+# o que e execucao nao polui o diff.
+.rainforest/estado/
