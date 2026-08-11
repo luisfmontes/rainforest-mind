@@ -101,5 +101,41 @@ else
 fi
 
 echo
+echo
+echo "== 7. relatorio de OUTRO projeto nao vaza para este =="
+# Defeito real, achado quando o Luis perguntou se o semear usa a arqueologia: o
+# bloco de relatorios caia na pasta do PLUGIN quando o projeto nao tinha
+# `relatorios/`. Um repo recem-instalado recebia os 14 incidentes do rainforest
+# como se fossem a historia dele — e a regra que sustenta a skill e justamente
+# "toda proposta cita o registro que a origina". Citar incidente alheio produz
+# proposta que PARECE fundamentada sem estar, que e pior que nao propor.
+SEM_REL="$( cd "$SBP" && CLAUDE_PROJECT_DIR="$SB" RFM_ROOT="$SB/dados"   node "$SRC/scripts/semear.cjs" --projeto meu-projeto 2>&1 )"
+tem     "projeto sem relatorios: conta zero"        "$SEM_REL" "RELATORIOS (0)"
+nao_tem "e nao traz os relatorios do plugin"        "$SEM_REL" "rainforest"
+
+echo
+echo "== 8. o mapa da arqueologia entra quando existe =="
+# Semear le o HISTORICO; arqueologia le o TERRENO. Uma nao dispara a outra —
+# arqueologia custa uma sessao e e escopada a uma demanda — mas mapa ja escrito
+# e evidencia barata, e ignora-la seria desperdicar a unica fonte que existe em
+# projeto sem historico nenhum.
+mkdir -p "$SBP/proj/docs/rainforest/mapas"
+printf '| fatia | profundidade | quando |
+|---|---|---|
+| faturamento | 2 | 2026-08-11 |
+'   > "$SBP/proj/docs/rainforest/mapas/COBERTURA.md"
+COM_MAPA="$(roda)"
+tem "a fatia mapeada aparece no digest" "$COM_MAPA" "faturamento"
+tem "sob o bloco de mapas"              "$COM_MAPA" "MAPAS DE LEGADO"
+
+echo
+echo "== 9. sem historico NENHUM, diz o que fazer em vez de devolver vazio =="
+# E o caso de quem acabou de instalar, nao uma anomalia. Tres blocos vazios e
+# honesto e inutil: o primeiro uso ensinaria que a skill nao serve.
+NOVO="$( cd "$SBP" && CLAUDE_PROJECT_DIR="$SB/proj-virgem" RFM_ROOT="$SB/dados"   node "$SRC/scripts/semear.cjs" --projeto nunca-usado 2>&1 )"
+tem "diz que nao ha historico"          "$NOVO" "SEM HISTORICO"
+tem "aponta a arqueologia como a outra fonte" "$NOVO" "Skill(arqueologia)"
+tem "e o recomendador oficial para stack"     "$NOVO" "claude-automation-recommender"
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
