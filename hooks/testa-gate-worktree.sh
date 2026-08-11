@@ -105,11 +105,34 @@ gate "  ... e volta a barrar quando o arquivo sai"  2 "$(j Write file_path "$(es
 
 echo
 echo "== a mensagem de bloqueio serve pra alguma coisa? =="
+# Desde a P1 (relatorio 2026-08-11-escotilha-do-gate-usada-para-contornar) a
+# mensagem MUDA conforme quem a le. Um implementador bloqueado leu o nome do
+# arquivo de escape na propria mensagem, criou `.rainforest-gate-off` na raiz do
+# checkout principal do Luis e seguiu trabalhando, reportando DONE. A escotilha e
+# da JANELA PRINCIPAL — quem tem autoridade de decidir seguir sem isolamento.
+#
+# Este bloco antes exigia que as escotilhas aparecessem SEMPRE. Testar o texto
+# velho depois da mudanca de comportamento so prova que o teste ficou para tras.
 msg=$(printf '%s' "$(j Write file_path "$(esc "$R/novo.txt")")" | node "$GATE" 2>&1)
-for t in "PARE e reporte" "RAINFOREST_GATE_OFF" ".rainforest-gate-off" "regra 11"; do
+for t in "PARE e reporte" "regra 11"; do
   if printf '%s' "$msg" | grep -q -- "$t"; then ok=$((ok+1)); echo "  ok   a mensagem diz '$t'"
   else falhou=$((falhou+1)); echo "  FALHA a mensagem nao diz '$t'"; fi
 done
+
+# Sem agent_id o gate sai cedo (a janela principal e livre), entao a mensagem
+# acima ja e a do SUBAGENTE — e nela a escotilha nao pode aparecer.
+for t in "RAINFOREST_GATE_OFF" ".rainforest-gate-off" "setup.cjs --desligar"; do
+  if printf '%s' "$msg" | grep -q -- "$t"; then
+    falhou=$((falhou+1)); echo "  FALHA a mensagem ao subagente REVELA '$t'"
+  else
+    ok=$((ok+1)); echo "  ok   a mensagem ao subagente nao revela '$t'"
+  fi
+done
+if printf '%s' "$msg" | grep -q -- "a decisao nao e sua"; then
+  ok=$((ok+1)); echo "  ok   e o proibe de criar o contorno sozinho"
+else
+  falhou=$((falhou+1)); echo "  FALHA nao proibe o contorno explicitamente"
+fi
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
