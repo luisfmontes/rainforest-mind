@@ -286,10 +286,17 @@ claude plugin install rainforest-mind@rainforest-mind
 
 Ou aponte `--plugin-dir` para a pasta do repo em desenvolvimento.
 
-**Runtime:** os hooks rodam em **Node**. O `/ideia` e duas verificações ainda
-usam **Python** — remover essa segunda dependência é trabalho em aberto, porque
-o Claude Code não garante nenhum dos dois (a lista oficial de dependências
-adicionais tem `ripgrep` e mais nada).
+**Runtime: só Node no caminho de execução.** Os hooks, os gates e o `/ideia`
+rodam em Node. O Claude Code não garante Node nem Python (a lista oficial de
+dependências adicionais tem `ripgrep` e mais nada), então a meta é **uma**
+dependência, não duas — e desde 2026-08-11 é uma.
+
+Sobra Python em duas verificações que rodam **na sua mão**, não no caminho de
+execução: `conferir-entrega.py` (confere a entrega de um subagente) e
+`medir-injecao.py` (mede o custo real da abertura). O `ideias.py` continua no
+repo como **gêmeo** do `.cjs`: a mesma bateria roda contra os dois
+(`IDEIAS="python scripts/ideias.py" bash scripts/testa-ideias.sh`), e é isso
+que prova que o port não perdeu nenhuma das oito garantias.
 
 ## Ajuste fino
 
