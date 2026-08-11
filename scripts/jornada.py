@@ -38,10 +38,27 @@ CALIBRACAO DO CORTE (medida, nao arbitrada)
     p95 = 49,8 min     corte  90 min -> descarta 3,0%
     p99 = 265,2 min
 
-95% das lacunas ficam abaixo de 50 min: e o ritmo normal de trabalho. 75 min fica
-acima disso com folga e abaixo de cochilo. Corte mais baixo desinfla a jornada
-(descarta pausa curta legitima); mais alto infla (engole sono e vira aviso falso).
-Entre os dois erros, inflar e o pior: aviso falso ensina a ignorar o aviso.
+95% das lacunas ficam abaixo de 50 min: e o ritmo normal de trabalho. Corte mais
+baixo desinfla a jornada (descarta pausa curta legitima); mais alto infla (engole
+pausa e vira aviso falso). Entre os dois erros, inflar e o pior: aviso falso
+ensina a ignorar o aviso.
+
+REVISADO EM 2026-08-11: era 75, virou 55.
+O 75 foi escolhido por um criterio so - ficar acima do ritmo de trabalho (p95) e
+abaixo de cochilo. O ponto cego: ALMOCO. Uma hora de mesa e a pausa mais comum
+que existe, cai bem no meio do vao entre p95 e 75, e entrava na conta como
+trabalho. Medido no dia real do Luis, com ele confirmando o intervalo:
+
+    corte 75 -> 9h43, "nenhuma lacuna acima de 75 min"
+    corte 55 -> 7h41, duas lacunas de ~1h (07:53->08:53 e 11:59->13:01)
+
+Duas horas de pausa contadas como trabalho, 26% a mais, e o aviso da regra 8
+disparando com quase duas horas de antecedencia. 55 continua acima do p95 de
+49,8 min - o ritmo normal de trabalho nao e tocado - e fica abaixo de um almoco.
+
+A licao vale alem deste numero: limiar calibrado contra UM cenario (sono) nao
+serve para outro (pausa) so porque a unidade e a mesma. Todo limiar precisa ser
+confrontado com o caso real que vai encontrar, e quem tem esse caso e o Luis.
 """
 import argparse
 import glob
@@ -50,7 +67,7 @@ import os
 import sys
 from datetime import datetime, timedelta
 
-CORTE_PADRAO_MIN = 75
+CORTE_PADRAO_MIN = 55
 
 
 def transcripts_disponiveis():
