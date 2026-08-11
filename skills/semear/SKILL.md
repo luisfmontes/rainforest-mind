@@ -30,10 +30,25 @@ família. Um recomenda pelo que o projeto **é**; este, pelo que ele **sofreu**.
 node scripts/semear.cjs
 ```
 
-Devolve três blocos: **observações** (o que já deu errado aqui — cada uma é um
-defeito real, com `ao_colher` dizendo o que fazer), **ideias abertas** (já
-propostas, não reproponha) e **relatórios** (incidentes com método e números; o
-título carrega a lição, o corpo se abre quando precisar).
+Devolve: **observações** (o que já deu errado aqui — cada uma é um defeito real,
+com `ao_colher` dizendo o que fazer), **ideias abertas** (já propostas, não
+reproponha), **relatórios** (incidentes com método e números; o título carrega a
+lição) e **mapas de legado**, se a `arqueologia` já tiver levantado alguma fatia.
+
+### E a arqueologia?
+
+São fontes **complementares**, não encadeadas. `semear` lê o **histórico** — o que
+este trabalho já tropeçou. `arqueologia` lê o **terreno** — o que já está lá e
+ninguém daqui escreveu.
+
+Esta skill **consome** o mapa quando ele existe, e **não dispara** a arqueologia:
+mapear custa uma sessão e é escopado a uma demanda específica. Propor *"mapeie a
+fatia X antes"* é uma proposta legítima; sair mapeando não é.
+
+**Projeto sem histórico nenhum é o caso normal de quem acabou de instalar**, não
+uma anomalia. Aí não há o que semear, e o script diz isso com os caminhos: esperar
+o histórico nascer, levantar o terreno com a `arqueologia`, ou — para pergunta de
+stack — o recomendador oficial.
 
 ## O método
 
