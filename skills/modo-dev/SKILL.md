@@ -23,7 +23,7 @@ superpowers, karpathy, mattpocock; procedência item a item no README).
 
 ## A cadeia antes do código
 
-Ordem: **brainstorm → design → `/grill` → planejamento → implementar**. Nem
+Ordem: **`/brainstorm` → design → `plano` → implementar**. Nem
 toda tarefa merece os cinco degraus — mesma lógica da escada: **parar no
 primeiro degrau que segura**. Os gatilhos:
 
@@ -34,7 +34,7 @@ primeiro degrau que segura**. Os gatilhos:
    registro escrito" (difícil de reverter, surpreendente sem contexto,
    trade-off real). Aí o design **é** esse registro. Ele nasce na **branch de
    trabalho**, nunca na `main` (regra 11 do rainforest-mind).
-3. **`/grill`** — interroga o desenho antes de ele virar rota; entra quando o
+3. **`/brainstorm`** — interroga o desenho antes de ele virar rota; entra quando o
    design custou decisão de verdade.
 4. **Planejamento** — tarefa de 3+ etapas: fatias no formato `1. [passo] →
    verifica: [checagem]`. É o mesmo material que vira critério de sucesso no
