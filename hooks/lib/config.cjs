@@ -44,6 +44,19 @@ const CHAVES = {
     padrao: true,
     descricao: 'os sete estágios (brainstorm → plano → … → fechar)',
   },
+  // ATENÇÃO: esta chave é a ÚNICA que inverte o sentido das outras, e por isso
+  // inverte também o lado seguro da falha.
+  //
+  // Nas de cima, ligado = trava de pé, e config ilegível cai para LIGADO (ver
+  // `ligado()` lá embaixo): na dúvida, protege. Aqui ligado = `git branch -D`, que
+  // APAGA branch não mergeada — a trava é o desligado. Então quem lê esta chave
+  // **não pode usar `ligado()`**, que devolve `true` em erro e em chave
+  // desconhecida; tem de ler `resolverConfig().valores` e tratar qualquer falha
+  // como `false`. O `limpar-branches.cjs` faz assim, e diz por quê no lugar.
+  'branch-forcar': {
+    padrao: false,
+    descricao: 'usa `git branch -D` (apaga sem conferir merge) em vez de `-d`',
+  },
 };
 
 function lerJson(p) {

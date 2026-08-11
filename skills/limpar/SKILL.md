@@ -45,7 +45,45 @@ Depois de remover, sempre:
 git worktree prune
 ```
 
-## 3. Resto do rastro
+## 3. A branch, que sobrevive ao worktree
+
+Remover o worktree **não** remove a branch. Ela fica, e ninguém repara — medido
+neste repo em 11/08: zero worktree órfão no disco e **sete branches**
+`worktree-agent-*` penduradas.
+
+```
+node scripts/limpar-branches.cjs
+```
+
+Sem `--remover` ele só lista, em seis classes. As que importam:
+
+- **`resolvida-local`** — já está na base, nunca foi empurrada. É o resíduo de
+  worktree de agente. Sai com `-d`, sem risco: a base contém tudo.
+- **`sumiu-divergente`** — o remoto foi apagado e a base **não** contém aqueles
+  commits. É o caso do *squash merge*: o trabalho está lá em cima, mas o `-d`
+  recusa porque para o git ele nunca chegou. Só o `-D` apaga — e é por isso que
+  esse `-D` existe, não por desleixo.
+- **`viva`** — não está na base e o remoto está de pé. **Nunca entra na remoção**,
+  nem com `--forcar`.
+
+O modo de remoção é configurável, e o padrão é o conservador:
+
+```
+node scripts/limpar-branches.cjs --remover              # -d
+node scripts/limpar-branches.cjs --remover --forcar     # -D só nesta rodada
+node scripts/setup.cjs --ligar branch-forcar            # -D como padrão
+```
+
+**Remover exige estar na base e com ela em dia** — o script recusa e explica.
+Não é preciosismo: tudo é medido contra a base *local*, e base velha faz branch
+já mergeada parecer viva. Aí a limpeza não limpa e parece que não havia o que
+limpar.
+
+O remoto é decisão à parte (`--remoto`), e vale perguntar antes: branch local se
+recria com o SHA — que o script imprime ao apagar —, branch remota some para
+todo mundo.
+
+## 4. Resto do rastro
 
 - **Estado concluído**: `node scripts/estado.cjs listar` mostra `(completo)`
   para trabalhos com os sete estágios fechados. Não é para apagar o JSON

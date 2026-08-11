@@ -269,6 +269,127 @@ function checarClaudeMem() {
   ok('claude-mem', `porta ${info.port} responde${uptimeMin !== null ? `, worker de pe ha ${uptimeMin} min` : ''}`);
 }
 
+// ---------------------------------------------------------------- 8. autocompact
+/**
+ * O ponto de autocompact, e — mais importante — se as config dirs concordam.
+ *
+ * Isto existe por um defeito que o próprio Luís documentou na CLAUDE.md dele: há
+ * **duas** config dirs nesta máquina (`~/.claude` = trabalho, `~/.claude-personal`
+ * = pessoal), mantidas em sincronia à mão. "Editar uma acerta metade do setup e a
+ * outra diverge em silêncio" — e foi o que aconteceu em 2026-08-10. Divergência
+ * silenciosa é justamente o que um health check serve para quebrar.
+ *
+ * A manopla é `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`, lida do bloco `env` do
+ * settings.json. Do binário 2.1.220:
+ *
+ *   if (n !== undefined && !isNaN(n) && n > 0 && n <= 100)
+ *     return Math.min(Math.floor(janelaUtil * (n / 100)), janelaUtil - 13000);
+ *
+ * Ela é **porcentagem da janela útil**, e compacta quando o uso chega lá. Repare no
+ * `n > 0 && n <= 100`: valor fora da faixa é **ignorado em silêncio**, e o padrão
+ * volta. Esse é o pior modo de falha possível — você configurou, leu que
+ * configurou, e não está valendo. Por isso a faixa é checada aqui.
+ *
+ * O check NÃO recomenda um número: 45 é a preferência do Luís, não uma verdade.
+ * Ele reporta o que está valendo, e grita quando as duas dirs discordam.
+ */
+function checarAutocompact() {
+  const home = process.env.USERPROFILE || process.env.HOME || '';
+  if (!home) return;
+
+  // `~/.claude*` NÃO basta como filtro, e a primeira versão desta checagem provou
+  // isso na primeira execução: ela acusou divergência entre `.claude`, `.claude-mem`
+  // e `.claude-personal`. O `.claude-mem` tem um `settings.json` que é dele — um
+  // mapa raso de `CLAUDE_MEM_*`, sem nada do harness. Comparar as duas coisas é
+  // comparar config do Claude Code com config de outro programa, e o alerta que sai
+  // dali é ruído com cara de achado.
+  //
+  // O que separa: as chaves de topo do harness. Config dir de verdade tem pelo menos
+  // uma delas; config de terceiro não tem nenhuma.
+  const CHAVES_DO_HARNESS = ['env', 'model', 'hooks', 'permissions', 'statusLine',
+    'enabledPlugins', 'outputStyle', 'defaultView', 'effortLevel'];
+
+  let candidatas;
+  try {
+    candidatas = fs.readdirSync(home)
+      .filter((n) => n === '.claude' || n.startsWith('.claude-'))
+      .map((n) => path.join(home, n))
+      .filter((d) => fs.existsSync(path.join(d, 'settings.json')));
+  } catch {
+    return;
+  }
+
+  const lidas = [];
+  for (const dir of candidatas) {
+    let cfg;
+    try {
+      cfg = JSON.parse(fs.readFileSync(path.join(dir, 'settings.json'), 'utf8'));
+    } catch {
+      // JSON ilegível não deixa ver as chaves de topo, então a classificação cai
+      // para o disco: config dir do harness tem `plugins/` ou uma CLAUDE.md ao lado.
+      // Sem isso, é `settings.json` de outro programa e o problema não é nosso.
+      const ehDoHarness = ['plugins', 'CLAUDE.md', 'commands', 'settings.local.json']
+        .some((m) => fs.existsSync(path.join(dir, m)));
+      if (ehDoHarness) lidas.push({ nome: path.basename(dir), bruto: null, quebrado: true });
+      continue;
+    }
+    if (!cfg || typeof cfg !== 'object') continue;
+    if (!CHAVES_DO_HARNESS.some((k) => k in cfg)) continue; // config de outro programa
+    lidas.push({ nome: path.basename(dir), bruto: (cfg.env || {}).CLAUDE_AUTOCOMPACT_PCT_OVERRIDE ?? null, quebrado: false });
+  }
+  if (!lidas.length) return; // nenhuma config de usuário: nada a dizer
+
+  const quebradas = lidas.filter((l) => l.quebrado);
+  if (quebradas.length) {
+    return alerta('autocompact', `settings.json ilegivel em: ${quebradas.map((l) => l.nome).join(', ')}`,
+      'JSON quebrado — o Claude Code ignora o arquivo inteiro, nao so esta chave');
+  }
+
+  // Fora da faixa o binário descarta sem avisar, e o padrão volta valendo.
+  const foraDaFaixa = lidas.filter((l) => {
+    if (l.bruto === null) return false;
+    const n = parseFloat(l.bruto);
+    return !(Number.isFinite(n) && n > 0 && n <= 100);
+  });
+  if (foraDaFaixa.length) {
+    return alerta('autocompact', `valor invalido em ${foraDaFaixa.map((l) => `${l.nome}=${l.bruto}`).join(', ')}`,
+      'so vale 0 < n <= 100; fora disso o Claude Code IGNORA em silencio e o padrao volta');
+  }
+
+  const distintos = [...new Set(lidas.map((l) => String(l.bruto)))];
+  if (distintos.length > 1) {
+    return alerta('autocompact', lidas.map((l) => `${l.nome}=${l.bruto ?? '(nao definido)'}`).join(', '),
+      'as config dirs DIVERGEM — mantidas a mao, uma edicao acerta metade do setup');
+  }
+
+  const valor = lidas[0].bruto;
+  const onde = lidas.length > 1 ? ` (igual nas ${lidas.length} config dirs)` : '';
+  if (valor === null) {
+    return ok('autocompact', `no padrao do Claude Code${onde}`,
+      undefined);
+  }
+  ok('autocompact', `compacta aos ${valor}% da janela util${onde}`);
+}
+
+// ---------------------------------------------------------------- 9. branches
+// Irmã da checagem de worktree, e o buraco que ela deixava: remover o worktree não
+// remove a branch. Medido em 2026-08-11 — zero worktree órfão, sete branches
+// `worktree-agent-*` penduradas.
+function checarBranches() {
+  const script = path.join(RAIZ_CODIGO, 'scripts', 'limpar-branches.cjs');
+  if (!fs.existsSync(script)) return;
+  // `--sem-fetch` de propósito: health check não faz rede. A leitura pode estar
+  // velha para o caso `gone`, e isso erra para menos — nunca inventa alvo.
+  const { status, out } = rodar(process.execPath, [script, '--sem-fetch', '--json'], { cwd: process.cwd() });
+  if (status !== 0) return; // não é repo git, ou não há base: nada a dizer
+  let dados;
+  try { dados = JSON.parse(out); } catch { return; }
+  const n = (dados.alvos || []).length;
+  if (!n) return ok('branches', 'nenhuma branch de trabalho ja resolvido sobrando');
+  aviso('branches', `${n} branch(es) de trabalho ja resolvido ocupando o \`git branch\``,
+    'rode: node scripts/limpar-branches.cjs (lista; so remove com --remover)');
+}
+
 // ---------------------------------------------------------------- saida
 
 function main() {
@@ -279,6 +400,8 @@ function main() {
   checarWorktrees();
   checarVersaoInstalada();
   checarClaudeMem();
+  checarAutocompact();
+  checarBranches();
 
   if (process.argv.includes('--json')) {
     console.log(JSON.stringify(achados, null, 2));
