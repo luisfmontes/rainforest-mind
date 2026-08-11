@@ -12,6 +12,13 @@ SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SB="$(mktemp -d)/sandbox"
 trap 'rm -rf "$(dirname "$SB")"' EXIT
 export IDEIAS="${IDEIAS:-node scripts/ideias.cjs}"
+# A CAIXA DE AREIA E A RAIZ, e isso precisa ser DECLARADO e nao presumido.
+# Ate 2026-08-11 a caixa isolava por acidente: o script resolvia a raiz como "a
+# pasta acima de mim", que na caixa era a propria caixa. No dia em que os dados do
+# Luis sairam do repo para ~/.rainforest, a cadeia passou a achar a raiz GLOBAL
+# antes — e a bateria escreveu `teste-com-gancho` dentro do ideias.jsonl de
+# verdade. Isolamento que depende de coincidencia nao e isolamento.
+export RFM_ROOT="$SB"
 
 mkdir -p "$SB/scripts"
 cp "$SRC/scripts/ideias.py" "$SB/scripts/"
@@ -298,7 +305,9 @@ case "$IDEIAS" in
     head -3 ideias.jsonl > "$SB/proj/.rainforest/ideias.jsonl"
     md5_caixa_antes=$(md5sum ideias.jsonl | cut -d' ' -f1)
     echo "{\"id\":\"teste-raiz-projeto\",$base,\"gancho\":\"g\"}" > "$SB/proj/nova.json"
-    ( cd "$SB/proj" && node ../scripts/ideias-limpo.cjs plantar < nova.json ) >/dev/null 2>&1
+    # RFM_ROOT venceria o nivel de projeto (e o nivel 1 da cadeia): sai so aqui,
+    # para o teste exercitar exatamente o nivel que ele existe para provar.
+    ( cd "$SB/proj" && env -u RFM_ROOT node ../scripts/ideias-limpo.cjs plantar < nova.json ) >/dev/null 2>&1
     got=$?
     esperado "plantar de dentro de um projeto com .rainforest" 0 bash -c "exit $got"
     # Caminho RELATIVO: o prova() roda python com cwd na raiz da caixa, e o python
