@@ -29,7 +29,7 @@ Se `$ARGUMENTS` tiver texto: avalie se a ideia está dentro do foco declarado
 
 Colher não apaga a linha: reescreve com `resultado`. Colhida ≠ apagada.
 
-**A escrita é do script, nunca sua.** `scripts/ideias.py` faz trava entre
+**A escrita é do script, nunca sua.** `scripts/ideias.cjs` faz trava entre
 sessões paralelas, releitura do arquivo vivo, backup, gravação atômica,
 carimbo de data pelo relógio local e conferência byte a byte das linhas que
 não eram alvo — e reverte tudo saindo com exit ≠ 0 se qualquer prova falhar.
@@ -39,15 +39,22 @@ dois appends quebrados no mesmo dia, uma data gravada no futuro e um `unificar`
 que precisou inventar status no meio do caminho.
 
 ```
-python scripts/ideias.py plantar  < nova.json                    # JSON por stdin
-python scripts/ideias.py colher   --id <id> < resultado.json     # {"resultado": "..."}
-python scripts/ideias.py editar   --id <id> < mudancas.json      # só o que ainda está aberto
-python scripts/ideias.py iniciar  --id <id>                      # plantada → em-colheita
-python scripts/ideias.py unificar --manter <id> --absorver <id> < fundida.json
-python scripts/ideias.py reparar  [--id <id> | --todas] [--conferir]
-python scripts/ideias.py listar   [--status plantada] [--tipo ideia|observacao|todos]
-python scripts/ideias.py conferir                                # saúde do arquivo
+node scripts/ideias.cjs plantar  < nova.json                    # JSON por stdin
+node scripts/ideias.cjs colher   --id <id> < resultado.json     # {"resultado": "..."}
+node scripts/ideias.cjs editar   --id <id> < mudancas.json      # só o que ainda está aberto
+node scripts/ideias.cjs iniciar  --id <id>                      # plantada → em-colheita
+node scripts/ideias.cjs unificar --manter <id> --absorver <id> < fundida.json
+node scripts/ideias.cjs reparar  [--id <id> | --todas] [--conferir]
+node scripts/ideias.cjs listar   [--status plantada] [--tipo ideia|observacao|todos]
+node scripts/ideias.cjs conferir                                # saúde do arquivo
 ```
+
+Node porque o plugin é instalado por outra gente: os hooks já exigem Node, e o
+Claude Code não garante Python (a lista oficial de dependências extras tem
+`ripgrep` e mais nada). O `scripts/ideias.py` continua no repo como gêmeo — a
+mesma bateria roda contra os dois (`IDEIAS="python scripts/ideias.py" bash
+scripts/testa-ideias.sh`), e é assim que se prova que o port não perdeu nada.
+Escrita nova vai pelo `.cjs`.
 
 `reparar` é para a linha que **entrou no arquivo sem passar pelo script** — o
 `conferir` acusa "status desconhecido" ou campo de estado vazio, e o `editar`
