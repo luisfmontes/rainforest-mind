@@ -23,7 +23,18 @@ export RFM_ROOT="$SB"
 mkdir -p "$SB/scripts"
 cp "$SRC/scripts/ideias.py" "$SB/scripts/"
 cp "$SRC/scripts/ideias.cjs" "$SB/scripts/"
-cp "$SRC/ideias.jsonl" "$SB/"
+# O jsonl e DADO e saiu do repo em 2026-08-11. A caixa copia da raiz de dados
+# real, resolvida pela mesma cadeia do hook - e continua sendo COPIA: o RFM_ROOT
+# acima aponta para a caixa, entao nada aqui toca o arquivo de verdade.
+# `env -u RFM_ROOT`: esta bateria exporta RFM_ROOT para a caixa de areia, e sem
+# tirar a variavel a resolucao devolveria a propria caixa (nivel 1 vence tudo).
+# Caminho em forma WINDOWS: o node daqui nao resolve `/c/Projetos/...` do Git Bash,
+# e o require falha em silencio deixando a variavel vazia. Terceira vez hoje.
+SRC_WIN="$(cygpath -m "$SRC" 2>/dev/null || printf '%s' "$SRC")"
+# `env -u RFM_ROOT`: quando a bateria exporta RFM_ROOT para a caixa de areia, sem
+# tirar a variavel a resolucao devolveria a propria caixa (nivel 1 vence tudo).
+DADOS_REAIS="$(env -u RFM_ROOT node -e "const r=require('$SRC_WIN/hooks/lib/raiz.cjs').resolverRaiz({plugin:'$SRC_WIN'});process.stdout.write(r.raiz||'')" 2>/dev/null)"
+cp "$DADOS_REAIS/ideias.jsonl" "$SB/"
 cd "$SB" || exit 1
 
 export BASE=$(python -c "print(sum(1 for l in open('ideias.jsonl',encoding='utf-8') if l.strip()))")

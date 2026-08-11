@@ -204,20 +204,31 @@ const lib = require(process.env.LIB_PATH);
 const raiz = process.env.REPO;
 const rd = (p) => { try { return fs.readFileSync(p, 'utf8').trim(); } catch { return ''; } };
 const skill = rd(path.join(raiz, 'skills', 'rainforest-mind', 'SKILL.md'));
-const foco = rd(path.join(raiz, 'FOCO.md'));
+const foco = rd(path.join(process.env.DADOS, 'FOCO.md'));
 const saida = lib.montarContexto({ skillText: skill, focoText: foco, caminhoSkill: 'x', root: raiz });
 const bruto = skill.length + foco.length;
 process.stdout.write(saida);
 process.stderr.write(`\nMEDIDO bruto=${bruto} injetado=${saida.length}\n`);
 EOF
-S="$(LIB_PATH="$LIB" REPO="$SRC" node "$RAIZ_POSIX/driver-real.cjs" 2>/dev/null)"
-MED="$(LIB_PATH="$LIB" REPO="$SRC" node "$RAIZ_POSIX/driver-real.cjs" 2>&1 >/dev/null | grep MEDIDO)"
+# SKILL.md e CODIGO (fica no repo); FOCO.md e DADO (saiu para ~/.rainforest em
+# 2026-08-11). A bateria pega cada um de onde ele mora de verdade, pela MESMA
+# cadeia que o hook usa - fixture que le do lugar errado testa outra coisa.
+# `env -u RFM_ROOT`: esta bateria exporta RFM_ROOT para a caixa de areia, e sem
+# tirar a variavel a resolucao devolveria a propria caixa (nivel 1 vence tudo).
+# Caminho em forma WINDOWS: o node daqui nao resolve `/c/Projetos/...` do Git Bash,
+# e o require falha em silencio deixando a variavel vazia. Terceira vez hoje.
+SRC_WIN="$(cygpath -m "$SRC" 2>/dev/null || printf '%s' "$SRC")"
+# `env -u RFM_ROOT`: quando a bateria exporta RFM_ROOT para a caixa de areia, sem
+# tirar a variavel a resolucao devolveria a propria caixa (nivel 1 vence tudo).
+DADOS_REAIS="$(env -u RFM_ROOT node -e "const r=require('$SRC_WIN/hooks/lib/raiz.cjs').resolverRaiz({plugin:'$SRC_WIN'});process.stdout.write(r.raiz||'')" 2>/dev/null)"
+S="$(LIB_PATH="$LIB" REPO="$SRC" DADOS="$DADOS_REAIS" node "$RAIZ_POSIX/driver-real.cjs" 2>/dev/null)"
+MED="$(LIB_PATH="$LIB" REPO="$SRC" DADOS="$DADOS_REAIS" node "$RAIZ_POSIX/driver-real.cjs" 2>&1 >/dev/null | grep MEDIDO)"
 checa "SKILL.md real passa do piso"        nao_tem "FALHA AO CARREGAR"      "$S"
 checa "FOCO.md real dispara o resumo"      tem     "omitidas desta injeção" "$S"
 # A data sai do FOCO.md AGORA, nao de uma constante: a versao anterior fixava
 # "2026-08-08" e ficou vermelha sozinha no primeiro avanco novo. Teste que quebra
 # quando o arquivo evolui normalmente vira teste que se aprende a ignorar.
-ULTIMO_AVANCO="$(awk '/^## /{dentro=($0=="## Ativo")} dentro' "$SRC/FOCO.md" \
+ULTIMO_AVANCO="$(awk '/^## /{dentro=($0=="## Ativo")} dentro' "$DADOS_REAIS/FOCO.md" \
   | grep -oE '^- [0-9]{4}-[0-9]{2}-[0-9]{2}' | grep -oE '[0-9-]{10}' | sort | tail -1)"
 checa "avanco mais recente sobrevive"      tem     "Último avanço datado: $ULTIMO_AVANCO" "$S"
 echo "  ---   $MED"
