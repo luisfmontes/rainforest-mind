@@ -176,9 +176,16 @@ function main() {
   if (!ev.agent_id) process.exit(0);
   if (process.env.RAINFOREST_GATE_OFF) process.exit(0);
 
+  const cwdDoEvento = ev.cwd || process.cwd();
+  // Toggle do setup: quem nao quer este gate num repositorio pode desliga-lo por
+  // `.rainforest/config.json` do projeto, ou de vez no arquivo de dados. A leitura
+  // mora em hooks/lib/config.cjs e falha para o lado de LIGAR - config ilegivel
+  // nao pode virar trava desligada em silencio.
+  try { if (!require("./lib/config.cjs").ligado("gate-worktree", { projeto: cwdDoEvento })) process.exit(0); } catch {}
+
   const entrada = ev.tool_input || {};
   const nome = ev.tool_name;
-  const cwd = ev.cwd || process.cwd();
+  const cwd = cwdDoEvento;
   let alvos = [];
   let motivo = null;
 

@@ -192,6 +192,13 @@ function main() {
   }
 
   if (process.env.RAINFOREST_GATE_OFF) process.exit(0);
+
+  const cwdDoEvento = ev.cwd || process.cwd();
+  // Toggle do setup: quem nao quer este gate num repositorio pode desliga-lo por
+  // `.rainforest/config.json` do projeto, ou de vez no arquivo de dados. A leitura
+  // mora em hooks/lib/config.cjs e falha para o lado de LIGAR - config ilegivel
+  // nao pode virar trava desligada em silencio.
+  try { if (!require("./lib/config.cjs").ligado("gate-staging", { projeto: cwdDoEvento })) process.exit(0); } catch {}
   if (ev.tool_name !== "Bash") process.exit(0);
   const cmd = (ev.tool_input || {}).command;
   if (typeof cmd !== "string") process.exit(0);
