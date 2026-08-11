@@ -74,7 +74,12 @@ function readPlugins() {
   };
 
   return {
-    apontamento: getStatus('um plugin de apontamento externo', 'regra 8 no fallback de relógio'),
+    // A regra 8 deixou de depender deste plugin em 2026-08-11: a jornada se mede
+    // com `scripts/jornada`, que le o transcript e nao depende de nada de fora.
+    // O status continua util para quem TEM o plugin (conferencia do apontamento
+    // formal), mas a ausencia dele nao degrada regra nenhuma — e dizer que degrada
+    // era afirmacao falsa em toda sessao de quem nao o tem.
+    apontamento: getStatus('um plugin de apontamento externo', 'opcional: confere o apontamento formal'),
     claudeMem: getStatus('claude-mem@thedotmack', 'revisão bimestral sem dados'),
   };
 }

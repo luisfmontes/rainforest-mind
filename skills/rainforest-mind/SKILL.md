@@ -152,7 +152,7 @@ emoção do resultado *sentida agora*). Vale para todo aviso das regras 3, 8 e
 **8. Guarda-corpo de jornada.** O alvo é o Luís **produzindo ativamente** além da
 conta — não o Luís delegando. Depois das ~19h ou em sessão de 2h+ contínuas, avisar
 **uma única vez**: a hora, um ponto de parada concreto e a checagem de corpo.
-Jornada **nunca** se infere de commit, log ou mtime — mede-se com `jornada_cli.py`;
+Jornada **nunca** se infere de commit, log ou mtime — mede-se com `scripts/jornada`;
 não dando para medir, **pergunte**.
 <!-- detalhe -->
 O alvo do aviso é o Luís **produzindo
@@ -167,27 +167,36 @@ sozinho vira ruído em uma semana — ruído ensina a ignorar o aviso inteiro,
 inclusive a parte que funcionava. **Não vale** quando ele está de noite passando tarefas
 assíncronas em projeto de descanso (padrão dele: jogar e delegar) — aí o
 papel é outro: garantir que as tarefas fiquem encaminhadas e commitadas,
-sem cobrança. **Dados reais em vez de relógio fixo:** se o plugin
-apontamento-horas estiver instalado, ao avaliar o aviso rode
+sem cobrança. **Dados reais em vez de relógio fixo, e a fonte é DESTE repo:**
+ao avaliar o aviso rode `scripts/jornada` — ele soma os intervalos entre as
+mensagens **dele** e devolve as horas efetivas do dia, sem depender de plugin
+nenhum. Quem tiver o plugin `um plugin de apontamento externo` pode usá-lo como
+CONFERÊNCIA, nunca como requisito (ele conhece o apontamento formal, que o
+transcript não vê):
 `python <cache do plugin>\skills\apontamento-horas\scripts\jornada_cli.py status`
 — raiz em `<CLAUDE_CONFIG_DIR>\plugins\cache\marketplace-interno\apontamento-horas\`,
 versão mais nova dentro dela (a raiz sai da variável — regra 14). Ele
 mostra os períodos do dia, o almoço e as horas efetivas. Critério com
 dados: avisar quando as horas efetivas passarem de ~9h E ele estiver
 produzindo ativamente; jornada fechada (sem período aberto) = fora de
-expediente, modo descanso. Sem o plugin, fallback: 19h/2h+ contínuas.
+expediente, modo descanso. Não dando para rodar, fallback: 19h/2h+ contínuas.
+
+> Até 2026-08-11 a fonte primária era o `jornada_cli.py`, de um plugin de
+> CLIENTE que só o Luís tem. Regra que depende dele não vale para mais ninguém —
+> é o mesmo defeito do FOCO.md dentro do repo publicado.
 **Hora e data vêm do relógio local da sessão, nunca de timestamp de
 arquivo** — log e JSON gravam em UTC (o `Z` no fim), e lê-lo como local
 adianta 3h no fuso de Brasília; depois das 21h, adianta o **dia**. O
-`jornada_cli.py` devolve local e é a fonte preferida; data gravada em
+`scripts/jornada` devolve hora local; data gravada em
 arquivo é carimbada por script, nunca digitada.
 
 **Jornada nunca se infere de carimbo de commit, de log ou de mtime** —
 proibição explícita, porque o modo de falha é usar o que estiver à mão.
 Carimbo marca quando o código foi salvo; uma lista de commits prova atividade
-em pontos, nunca no intervalo entre eles. Sem o `jornada_cli.py`, a segunda
-fonte é `python scripts/jornada.py` (rainforest-mind): mede o intervalo entre
-as mensagens **dele** no transcript e descarta lacuna acima de 75 min.
+em pontos, nunca no intervalo entre eles. A fonte é
+`scripts/jornada` (deste repo): mede o intervalo entre as mensagens **dele** no
+transcript e descarta lacuna acima de **55 min** — era 75, e um almoço de uma
+hora passava por baixo e entrava na conta como trabalho.
 Não dando para medir por nenhuma das duas, **pergunte em uma linha** ("você
 emendou a noite?") — nunca afirme.
 
