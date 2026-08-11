@@ -131,5 +131,35 @@ else
 fi
 
 echo
+echo "== 8. ARQUEOLOGIA — estagio zero, opcional de verdade =="
+# O estagio zero mapeia codigo que ninguem daqui escreveu, antes de o brainstorm
+# fechar decisao sobre terreno que ninguem viu. Ele e OPCIONAL: em projeto novo
+# nao ha o que mapear, e exigir mapa ali seria burocracia. "Opcional" aqui e
+# mecanico, nao promessa no texto — e sao tres provas distintas.
+$E iniciar --slug t-arq >/dev/null
+igual "nunca aparece na retomada" "design" "$($E proximo --slug t-arq)"
+$E marcar --slug t-arq --estagio design --status aprovado >/dev/null
+esperado "nao barra o plano estando pendente"  0 $E exigir --slug t-arq --estagio plano
+esperado "e ele proprio nunca e barrado"       0 $E exigir --slug t-arq --estagio arqueologia
+# `dispensada` e `ok` sao caminhos diferentes para o mesmo lugar: os dois
+# significam que alguem olhou e decidiu. O silencio nao distingue "nao precisa"
+# de "ninguem olhou", e e essa diferenca que o registro compra.
+esperado "aceita ok"                           0 $E marcar --slug t-arq --estagio arqueologia --status ok
+esperado "aceita dispensada"                   0 $E marcar --slug t-arq --estagio arqueologia --status dispensada
+esperado "recusa status de execucao"           1 $E marcar --slug t-arq --estagio arqueologia --status parcial
+igual "mesmo fechada, nao muda a retomada" "plano" "$($E proximo --slug t-arq)"
+
+echo
+echo "== 9. MUTACAO — pondo a arqueologia na varredura, o opcional vira obrigatorio =="
+cp scripts/estado.cjs scripts/estado-arq-mutante.cjs
+sed -i "s/for (const e of \['design', 'plano', ...EXECUCAO\])/for (const e of ['arqueologia', 'design', 'plano', ...EXECUCAO])/" scripts/estado-arq-mutante.cjs
+$E iniciar --slug t-arq2 >/dev/null
+MUTA="$(node scripts/estado-arq-mutante.cjs proximo --slug t-arq2)"
+if [ "$MUTA" = "arqueologia" ]; then
+  ok=$((ok+1)); echo "  ok   na varredura, ela passa a ser cobrada (ficar fora e load-bearing)"
+else
+  falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — nao e a varredura que decide (veio '$MUTA')"
+fi
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

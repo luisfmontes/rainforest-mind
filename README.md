@@ -87,6 +87,7 @@ para entrar no meio, que é o caso normal de quem retoma trabalho.
 
 ```mermaid
 flowchart LR
+    A["arqueologia<br/>mapa.md"] -.->|"só se houver<br/>legado sem mapa"| B
     B["brainstorm<br/>design.md"] --> P["plano<br/>plano.md"]
     P --> E["executar<br/>agentes em paralelo"]
     E --> R["revisar<br/>contexto zerado"]
@@ -286,6 +287,7 @@ flowchart LR
 | `/ideia <texto>` | Avalia contra o foco: dentro → entra confirmada; fora → planta com contexto e projeto |
 | `/ideia` | Lista as ideias plantadas |
 | `/relatorio` | Escreve o relatório de método da sessão, commita e publica |
+| `arqueologia` | Estágio **zero, opcional**: mapeia a fatia de legado que a demanda toca, com escala de confiança — e fatia já mapeada vira **conferência**, não extração |
 | `plano` | Estágio 2: tarefas tipadas, dependência declarada e critério falsificável por tarefa — proíbe placeholder |
 | `executar` | Estágio 3: despacha os agentes, em paralelo o que o plano marcou independente, cada um em worktree |
 | `revisar` | Estágio 4: contexto zerado, escopo fixado pelo diff de três pontos, o relato de quem implementou não é fonte |
