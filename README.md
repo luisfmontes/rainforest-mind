@@ -312,13 +312,34 @@ que prova que o port não perdeu nenhuma das oito garantias.
   as regras inteiras renderia
   ([relatório](relatorios/2026-08-09-pt-vs-en-medicao-em-token.md)).
 - O hook avisa quando a skill passa de **60 dias sem revisão**.
+## Um foco por projeto, sem configurar nada
+
+Onde moram `FOCO.md` e `ideias.jsonl` sai de uma **cadeia de cinco níveis**, do
+mais específico para o mais genérico — o projeto sobrescreve o global, e a
+detecção automática cobre quem não declarou nada:
+
+| # | Nível | Onde | Para quê |
+|---|---|---|---|
+| 1 | `RFM_ROOT` | onde a variável apontar | declaração explícita, vence tudo |
+| 2 | **projeto** | `<repo>/.rainforest/` | **foco e ideias daquele repo** |
+| 3 | global | `<CLAUDE_CONFIG_DIR>/rainforest/` | o seu estado, valendo em qualquer pasta |
+| 4 | plugin | a raiz do próprio plugin | instalação auto-hospedada (desenvolvimento) |
+| 5 | legado | caminho antigo, se existir | ponte, sai quando 1 ou 3 estiverem montados |
+
+O que faz uma pasta contar como raiz é ter `FOCO.md` **ou** `ideias.jsonl`
+dentro: um `.rainforest/` vazio criado por engano não sequestra o seu foco — e
+tem teste de mutação provando que é o marcador que decide.
+
+Criar `.rainforest/FOCO.md` num repositório é tudo o que é preciso para aquele
+repositório ter foco próprio. Sem variável de ambiente, sem editar config.
+
 - Fork à vontade: troque os arquivos de dado pelos seus e as regras pelo seu
   jeito de trabalhar. Nenhum caminho é cravado no código:
 
   | Variável | Resolve |
   |---|---|
-  | `RFM_ROOT` | raiz dos dados (`FOCO.md`, `ideias.jsonl`, `vigias/`) |
-  | `CLAUDE_CONFIG_DIR` | pasta de config, de onde sai a checagem de dependências |
+  | `RFM_ROOT` | raiz dos dados — nível 1 da cadeia acima |
+  | `CLAUDE_CONFIG_DIR` | pasta de config: a checagem de dependências e o nível 3 |
   | `WHATSAPP_API_BASE_URL` | host e porta do bridge, para os vigias e o hook |
   | `RFM_CLAUDE_EXE` | binário do Claude Code usado pelos vigias headless |
 

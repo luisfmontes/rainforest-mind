@@ -501,6 +501,76 @@ else
 fi
 
 echo
+echo "13. RAIZ — cadeia de 5 niveis, projeto sobrescreve global"
+# O defeito que esta secao existe para impedir: ate 2026-08-11 a raiz era
+# `RFM_ROOT || 'C:\Projetos\rainforest-mind'` — caminho da maquina do Luis cravado
+# no codigo, e RFM_ROOT nao esta definida nela. Funcionava para o usuario numero um
+# e para mais ninguem.
+RZP="$RAIZ_POSIX/raizes"
+mkdir -p "$RZP/proj/.rainforest" "$RZP/config/rainforest" "$RZP/plugin" "$RZP/legado" \
+         "$RZP/vazio/.rainforest" "$RZP/declarada" "$RZP/soideias/.rainforest"
+echo "# foco do projeto"  > "$RZP/proj/.rainforest/FOCO.md"
+echo "# foco global"      > "$RZP/config/rainforest/FOCO.md"
+echo "# foco do plugin"   > "$RZP/plugin/FOCO.md"
+echo "# foco legado"      > "$RZP/legado/FOCO.md"
+echo '{}'                 > "$RZP/soideias/.rainforest/ideias.jsonl"
+# $RZP/vazio/.rainforest existe mas nao tem marcador — nao pode sequestrar o foco.
+
+# O Node aqui e o do Windows: caminho POSIX do mktemp nao existe para ele. Converter
+# uma vez, e passar so a forma Windows adiante. Custou uma rodada desta bateria.
+RZ="$(cygpath -m "$RZP" 2>/dev/null || printf '%s' "$RZP")"
+
+resolve() { # env_json, cwd, plugin, legado -> "nivel escopo"
+  RJ="$1" RC="$2" RP="$3" RL="$4" node -e '
+    const { resolverRaiz } = require(process.env.LIB_RAIZ);
+    const r = resolverRaiz({
+      env: JSON.parse(process.env.RJ),
+      cwd: process.env.RC,
+      plugin: process.env.RP,
+      legado: process.env.RL,
+    });
+    process.stdout.write(r.nivel + " " + (r.escopo || "-"));
+  '
+}
+export LIB_RAIZ="$(cygpath -m "$SRC/hooks/lib/raiz.cjs" 2>/dev/null || printf '%s' "$SRC/hooks/lib/raiz.cjs")"
+
+# Igualdade exata, nao substring: "plugin usuario" contem "usuario", e um teste que
+# aceita substring aprovaria o nivel errado sem reclamar.
+checa_igual() { # nome, esperado, obtido
+  if [ "$2" = "$3" ]; then ok=$((ok+1)); echo "  ok    $1"
+  else falhou=$((falhou+1)); echo "  FALHA $1: esperava '$2', veio '$3'"; fi
+}
+
+checa_igual "RFM_ROOT vence tudo"             "RFM_ROOT usuario" \
+  "$(resolve "{\"RFM_ROOT\":\"$RZ/declarada\"}" "$RZ/proj" "$RZ/plugin" "$RZ/legado")"
+checa_igual "sem RFM_ROOT, o projeto vence"   "projeto projeto" \
+  "$(resolve "{}" "$RZ/proj" "$RZ/plugin" "$RZ/legado")"
+checa_igual "sem projeto, cai no global"      "global usuario" \
+  "$(resolve "{\"CLAUDE_CONFIG_DIR\":\"$RZ/config\"}" "$RZ/semnada" "$RZ/plugin" "$RZ/legado")"
+checa_igual "sem global, cai no plugin"       "plugin usuario" \
+  "$(resolve "{\"CLAUDE_CONFIG_DIR\":\"$RZ/inexistente\"}" "$RZ/semnada" "$RZ/plugin" "$RZ/legado")"
+checa_igual "sem plugin, cai no legado"       "legado usuario" \
+  "$(resolve "{\"CLAUDE_CONFIG_DIR\":\"$RZ/inexistente\"}" "$RZ/semnada" "$RZ/semplugin" "$RZ/legado")"
+checa_igual "sem nada, devolve nenhum"        "nenhum -" \
+  "$(resolve "{\"CLAUDE_CONFIG_DIR\":\"$RZ/inexistente\"}" "$RZ/semnada" "$RZ/semplugin" "")"
+# O marcador e o que separa "pasta de dados" de "pasta que alguem criou por engano".
+checa_igual ".rainforest VAZIO nao sequestra" "plugin usuario" \
+  "$(resolve "{\"CLAUDE_CONFIG_DIR\":\"$RZ/inexistente\"}" "$RZ/vazio" "$RZ/plugin" "$RZ/legado")"
+# ideias.jsonl sozinho tambem marca — senao um projeto que so planta ideia nao e visto.
+checa_igual "so ideias.jsonl ja marca a raiz" "projeto projeto" \
+  "$(resolve "{}" "$RZ/soideias" "$RZ/plugin" "$RZ/legado")"
+
+# MUTACAO: sem a checagem de marcador, a pasta vazia passa a sequestrar o foco.
+cp "$SRC/hooks/lib/raiz.cjs" "$RAIZ_POSIX/raiz-sem-marcador.cjs"
+sed -i 's/return MARCADORES.some((m) => fs.existsSync(path.join(dir, m)));/return fs.existsSync(dir);/' "$RAIZ_POSIX/raiz-sem-marcador.cjs"
+MUT="$(LIB_RAIZ="$(cygpath -m "$RAIZ_POSIX/raiz-sem-marcador.cjs" 2>/dev/null || printf '%s' "$RAIZ_POSIX/raiz-sem-marcador.cjs")" resolve "{\"CLAUDE_CONFIG_DIR\":\"$RZ/inexistente\"}" "$RZ/vazio" "$RZ/plugin" "$RZ/legado")"
+if [ "$MUT" = "projeto projeto" ]; then
+  ok=$((ok+1)); echo "  ok    sem o marcador a pasta vazia sequestra (o marcador e load-bearing)"
+else
+  falhou=$((falhou+1)); echo "  FALHA mutacao nao teve efeito — o marcador nao e o que decide"
+fi
+
+echo
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" = "0" ] || exit 1
