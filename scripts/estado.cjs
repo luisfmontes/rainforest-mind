@@ -73,6 +73,14 @@ const DIR_ESTADO = path.join(RAIZ, 'docs', 'rainforest', 'estado');
 // DECISÃO é aprovada por gente e não entra na varredura de retomada; EXECUÇÃO é
 // feita por máquina, tem ordem, e é por onde a retomada anda.
 const DECISAO = {
+  // `arqueologia` e o estagio ZERO, e e OPCIONAL de proposito. Ele mapeia codigo
+  // que ninguem daqui escreveu, antes de o brainstorm fechar decisao sobre terreno
+  // que ninguem viu. Em projeto novo nao ha o que mapear, e exigir mapa ali seria
+  // burocracia — por isso ele NAO entra na varredura de retomada (`proximo`) e
+  // nada o exige. `dispensada` e o registro explicito de "olhei e nao precisa",
+  // que vale mais que o silencio: silencio nao distingue "nao precisa" de
+  // "ninguem olhou".
+  arqueologia: ['pendente', 'ok', 'dispensada'],
   design: ['pendente', 'aprovado'],
   plano: ['pendente', 'ok'],
 };
@@ -81,6 +89,7 @@ const STATUS_EXECUCAO = ['pendente', 'parcial', 'ok', 'reprovado'];
 
 // Quem exige quem. `exigir` recusa se qualquer pré-requisito não estiver fechado.
 const PRE_REQUISITOS = {
+  arqueologia: [], // estagio zero: nunca e barrado, e nunca barra ninguem
   design: [], // primeiro da esteira: não depende de nada, mas precisa constar aqui —
               // esta tabela é também a lista de estágios que `marcar` aceita
   plano: ['design'],
@@ -92,8 +101,12 @@ const PRE_REQUISITOS = {
 };
 
 const FECHADO = { design: 'aprovado', plano: 'ok' };
+// `dispensada` fecha a arqueologia tanto quanto `ok`: as duas significam que
+// alguem olhou e decidiu. Sao caminhos diferentes para o mesmo lugar.
+const FECHA_TAMBEM = { arqueologia: ['ok', 'dispensada'] };
 function estaFechado(estagio, bloco) {
   if (!bloco || typeof bloco !== 'object') return false;
+  if (FECHA_TAMBEM[estagio]) return FECHA_TAMBEM[estagio].includes(bloco.status);
   return bloco.status === (FECHADO[estagio] || 'ok');
 }
 
@@ -127,6 +140,7 @@ function novo(slug, titulo) {
     slug,
     titulo: titulo || slug,
     criado_em: hoje(),
+    arqueologia: { status: 'pendente' },
     design: { status: 'pendente' },
     plano: { status: 'pendente' },
     executar: { status: 'pendente' },
@@ -138,6 +152,9 @@ function novo(slug, titulo) {
 
 /** O primeiro estágio de execução ainda não fechado. É a definição de retomada. */
 function proximo(estado) {
+  // `arqueologia` fica FORA desta lista: se entrasse, todo projeto sem mapa
+  // ficaria eternamente com "proximo: arqueologia", e o estagio opcional viraria
+  // obrigatorio pela porta dos fundos.
   for (const e of ['design', 'plano', ...EXECUCAO]) {
     if (!estaFechado(e, estado[e])) return e;
   }
