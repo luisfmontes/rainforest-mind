@@ -18,3 +18,9 @@ vigia.config.json
 
 # O estado da esteira e VERSIONADO (docs/rainforest/estado/) - e por ele que outro
 # dev retoma a atividade. Fora do git fica so a tagarelice: worktrees e temporarios.
+
+# Os DADOS do Luis sairam do repo em 2026-08-11 e moram em ~/.rainforest.
+# O repo e so CODIGO: um plugin que ninguem edita, nem ele. Ver docs/rainforest/
+# e a cadeia em hooks/lib/raiz.cjs.
+FOCO.md
+ideias.jsonl
