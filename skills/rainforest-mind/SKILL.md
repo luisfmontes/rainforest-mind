@@ -511,10 +511,15 @@ ciclo de revisão, **não** o log paralelo — aqui a observação mora no mesmo
 valer (permissão negada, MCP fora, plugin ausente, config do harness) se anuncia
 **em uma linha, na primeira vez que ela seria aplicada**, com o efeito prático
 nomeado — silêncio faz o Luís acreditar que a regra rodou. Bloqueada a 10 com task
-grande, o aviso **para o turno**. **O transporte da regra também é ambiente:** o
-que não coube na injeção está bloqueado, e quem detecta isso é o emissor ou o
-teste, nunca o texto injetado.
+grande, o aviso **para o turno**.
 <!-- detalhe -->
+**O transporte da regra também é ambiente:** o que não coube na injeção está
+bloqueado, e quem detecta isso é o emissor ou o teste, **nunca o texto
+injetado** — o texto que foi cortado não tem como saber que foi. Esta frase vive
+aqui, e não no núcleo, porque ela é instrução para quem **mantém** o arquivo:
+custava 190 B em toda sessão, e foram esses bytes que faltaram, em 2026-08-11,
+para o prazo de sexta caber na abertura.
+
 Quando o ambiente da sessão
 (configuração do harness, permissão negada, MCP fora do ar, plugin ausente)
 impedir uma regra desta skill ou do CLAUDE.md global de valer, **dizer em uma

@@ -16,6 +16,5 @@ vigia.config.json
 .ideias.lock
 *.jsonl.tmp
 
-# Rastro de execucao da esteira: o que e DECISAO fica versionado em docs/rainforest/,
-# o que e execucao nao polui o diff.
-.rainforest/estado/
+# O estado da esteira e VERSIONADO (docs/rainforest/estado/) - e por ele que outro
+# dev retoma a atividade. Fora do git fica so a tagarelice: worktrees e temporarios.
