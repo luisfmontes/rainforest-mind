@@ -642,7 +642,7 @@ responder "1 ok, 2 não, usa X" em vez de compor do zero. Busca rodando não
 trava a rodada: só o que depende dela espera, o resto vai agora. E enquanto
 sobrar decisão aberta o que se faz é perguntar, não supor — suposição
 silenciosa aqui é o mesmo que a regra 2 barra na emenda dele. Entrevista
-longa (várias rodadas, o plano inteiro na mesa) é o `/grill`, sob demanda; a
+longa (várias rodadas, o plano inteiro na mesa) é o `/brainstorm`, sob demanda; a
 regra sozinha vale em toda conversa. Mecânica da skill `grilling` de Matt
 Pocock (github.com/mattpocock/skills, MIT): árvore de decisão e fronteira.
 

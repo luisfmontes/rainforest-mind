@@ -58,7 +58,7 @@ custo de contexto sai.
 
 ## Planeja antes de implementar
 
-`/grill` é uma entrevista adversarial. Ele mapeia o assunto como **árvore de
+`/brainstorm` é uma entrevista adversarial e o primeiro estágio da esteira. Ele mapeia o assunto como **árvore de
 decisão** e pergunta só o que dá pra perguntar agora — a *fronteira*, o
 conjunto de decisões cujos pré-requisitos já fecharam. Pergunta que depende de
 outra ainda aberta espera a rodada seguinte, em vez de te obrigar a chutar.
@@ -79,6 +79,57 @@ decisão fechada empurra a fronteira e destrava o que dependia dela.
 A regra que sustenta isso: **descobrir fato é trabalho do assistente, nunca
 seu.** Pergunta que o ambiente responde — o que tem no arquivo, qual versão
 está instalada, o que o log diz — vira busca dele, não pergunta pra você.
+
+## A esteira: sete estágios que não dá para pular
+
+`/brainstorm` é o primeiro de sete. Cada um é uma skill invocável sozinha — dá
+para entrar no meio, que é o caso normal de quem retoma trabalho.
+
+```mermaid
+flowchart LR
+    B["brainstorm<br/>design.md"] --> P["plano<br/>plano.md"]
+    P --> E["executar<br/>agentes em paralelo"]
+    E --> R["revisar<br/>contexto zerado"]
+    R --> V["verificar<br/>roda o artefato"]
+    V --> F["fechar<br/>commit + limpeza"]
+    R -.->|"reprovado"| E
+    V -.->|"reprovado"| E
+    L["limpar"] -.->|"manutenção,<br/>fora da esteira"| F
+```
+
+**O que faz isso ser esteira e não conselho:** cada estágio abre rodando
+`estado.cjs exigir`, e esse comando **sai com código 2** quando o anterior não
+fechou. Não é o modelo lendo uma instrução e decidindo obedecer — é comando
+externo, pelo mesmo motivo dos outros gates deste repo.
+
+```
+$ node scripts/estado.cjs exigir --slug 2026-08-11-exemplo --estagio revisar
+RECUSADO: 'revisar' exige executar fechado(s).
+  executar: status=parcial
+Rode o estagio 'executar' antes. Retomada: node scripts/estado.cjs proximo --slug 2026-08-11-exemplo
+```
+
+`parcial` e `reprovado` **não fecham**: "5 de 7 tarefas" para de virar "pronto"
+sem ninguém decidir isso, e revisão reprovada devolve o trabalho para
+`executar` em vez de seguir.
+
+**Retomada é comando, não memória.** Sessão nova — ou sessão que perdeu contexto
+na compactação — roda `estado.cjs proximo --slug <slug>` e sabe onde parou:
+
+| O quê | Onde | No git? |
+|---|---|---|
+| Design aprovado, com o porquê de cada decisão | `docs/rainforest/design/<slug>.md` | **sim** |
+| Plano, com dependência e critério falsificável por tarefa | `docs/rainforest/planos/<slug>.md` | **sim** |
+| Estado da esteira | `.rainforest/estado/<slug>.json` | não |
+
+Decisão fica versionada; rastro de execução não polui o diff.
+
+**O paralelismo vive no `executar`**, e é o plano que diz o que pode ir junto:
+tarefa sem dependência é marcada `paralela: sim`, e várias chamadas de agente na
+mesma resposta rodam ao mesmo tempo. Isso só é seguro porque **todo agente que
+edita roda em worktree isolado**, obrigado pelo hook com exit 2 — a distro que
+mais influenciou este desenho precisou **proibir** implementadores em paralelo
+justamente por não ter essa trava.
 
 ## Números em vez de parede de texto
 
@@ -227,12 +278,18 @@ flowchart LR
 
 | O quê | Faz |
 |-------|-----|
-| `/grill [plano]` | Entrevista adversarial: árvore de decisão, rodada única numerada com resposta recomendada — para **antes** de executar |
+| `/brainstorm [assunto]` | Estágio 1: entrevista adversarial em árvore de decisão, rodada numerada com resposta recomendada — para **antes** de executar, e grava o design |
 | `/foco` | Estado da conversa: foco ativo, loops abertos, decisões tomadas |
 | `/foco <texto>` | Declara novo foco — injetado em toda sessão nova |
 | `/ideia <texto>` | Avalia contra o foco: dentro → entra confirmada; fora → planta com contexto e projeto |
 | `/ideia` | Lista as ideias plantadas |
 | `/relatorio` | Escreve o relatório de método da sessão, commita e publica |
+| `plano` | Estágio 2: tarefas tipadas, dependência declarada e critério falsificável por tarefa — proíbe placeholder |
+| `executar` | Estágio 3: despacha os agentes, em paralelo o que o plano marcou independente, cada um em worktree |
+| `revisar` | Estágio 4: contexto zerado, escopo fixado pelo diff de três pontos, o relato de quem implementou não é fonte |
+| `verificar` | Estágio 5: roda o artefato real e cola a saída — o critério veio pronto do plano e não se afrouxa aqui |
+| `fechar` | Estágio 6: commit, limpeza do repo, remoção dos worktrees, destino da branch com você decidindo, e writeback no FOCO.md |
+| `limpar` | Manutenção fora da esteira: worktree órfão da sessão que nunca chegou ao `fechar` |
 | `modo-dev` | Disciplina de dev sob demanda (acima) |
 | `depurar` | Loop de feedback antes de hipótese (acima) |
 | `executor` | Implementação mecânica em haiku, com o método embutido no system prompt |
@@ -371,5 +428,5 @@ de escopo** e **fechamento de loops abertos**.
 - [i-have-adhd](https://github.com/ayghri/i-have-adhd) — inspiração de formato e prova de que skill de neurodivergência funciona.
 - Pesquisa 2e: suporte camuflado em conversa casual não funciona — por isso toda intervenção aqui é explícita e sinalizada.
 - [task-observer](https://github.com/rebelytics/one-skill-to-rule-them-all) — Eoghan Henn (rebelytics.com), CC BY 4.0: o gatilho "correção do usuário = observação" e o ciclo de revisão que viraram a regra 13. Adotado o mecanismo, não o log paralelo.
-- [mattpocock/skills](https://github.com/mattpocock/skills) — MIT: a árvore de decisão e a fronteira de `grilling` (regra 16 e `/grill`), o loop vermelho-capaz de `diagnosing-bugs` (skill `depurar`), névoa e fora de escopo de `wayfinder`, expandir–contrair de `to-tickets`, ponto de variação e teste da deleção de `codebase-design`, e o portão triplo do registro de decisão de `domain-modeling`. Acoplado por compressão — nenhuma das 35 skills instalada.
+- [mattpocock/skills](https://github.com/mattpocock/skills) — MIT: a árvore de decisão e a fronteira de `grilling` (regra 16 e `/brainstorm`), o loop vermelho-capaz de `diagnosing-bugs` (skill `depurar`), névoa e fora de escopo de `wayfinder`, expandir–contrair de `to-tickets`, ponto de variação e teste da deleção de `codebase-design`, e o portão triplo do registro de decisão de `domain-modeling`. Acoplado por compressão — nenhuma das 35 skills instalada.
 - [andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills) — a rastreabilidade de cada linha do diff até o pedido, e o tratamento de código morto alheio vs. órfão da própria mudança, no `modo-dev`.
