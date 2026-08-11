@@ -22,6 +22,27 @@ cd "$SB" || exit 1
 export BASE=$(python -c "print(sum(1 for l in open('ideias.jsonl',encoding='utf-8') if l.strip()))")
 echo "(base: $BASE linhas copiadas do arquivo real)"
 
+# As 70 linhas reais ainda nao tem `gancho` (e essa lacuna e o motivo desta
+# tarefa — ver o comentario em scripts/ideias.cjs). Migrar o arquivo real e
+# trabalho a parte (reparar --id <id> --gancho "..." linha a linha, fora desta
+# bateria — este script nunca toca ideias.jsonl de verdade). Aqui, na COPIA da
+# caixa de areia, pre-preenche so para o restante da bateria poder testar o
+# comportamento novo sem tropecar na migracao pendente das linhas antigas.
+python - <<'PY'
+import json, pathlib
+p = pathlib.Path("ideias.jsonl")
+linhas = [l for l in p.read_text(encoding="utf-8").split("\n") if l.strip()]
+n = 0
+for i, l in enumerate(linhas):
+    o = json.loads(l)
+    if not o.get("gancho"):
+        o["gancho"] = "gancho de teste (seed da bateria, nao e dado real)"
+        linhas[i] = json.dumps(o, ensure_ascii=False)
+        n += 1
+p.write_text("\n".join(linhas) + "\n", encoding="utf-8", newline="\n")
+print(f"  (seed: gancho preenchido em {n} linha(s) da copia, so para a bateria rodar)")
+PY
+
 ok=0; falhou=0
 esperado() { # nome, exit esperado, comando...
   local nome="$1" esp="$2"; shift 2
@@ -58,7 +79,7 @@ else falhou=$((falhou+1)); echo "  FALHA o arquivo mudou apesar de todas as recu
 
 echo
 echo "== 2. caminho feliz =="
-echo "{\"id\":\"teste-um\",\"titulo\":\"Ideia de teste\",\"descricao\":\"d\",\"contexto\":\"c\",\"projeto\":\"sandbox\",\"ao_colher\":\"nada\"}" > f.json
+echo "{\"id\":\"teste-um\",\"titulo\":\"Ideia de teste\",\"descricao\":\"d\",\"contexto\":\"c\",\"projeto\":\"sandbox\",\"ao_colher\":\"nada\",\"gancho\":\"revisar quando a bateria rodar de novo\"}" > f.json
 esperado "plantar" 0 bash -c '$IDEIAS plantar < f.json'
 prova "data carimbada pelo script (local) e status plantada" '
 import json,datetime,os
@@ -83,7 +104,7 @@ esperado "recusa id inexistente" 1 bash -c '$IDEIAS colher --id nao-existe < r.j
 
 # editar: ideia muda antes de ser colhida. Sem este comando a correcao virava
 # edicao a mao no jsonl, que e o que o ideias.py existe para impedir.
-echo "{\"id\":\"teste-editar\",\"titulo\":\"Antes\",\"descricao\":\"d\",\"contexto\":\"c\",\"projeto\":\"sandbox\"}" > fe.json
+echo "{\"id\":\"teste-editar\",\"titulo\":\"Antes\",\"descricao\":\"d\",\"contexto\":\"c\",\"projeto\":\"sandbox\",\"gancho\":\"g\"}" > fe.json
 esperado "plantar a que sera editada" 0 bash -c '$IDEIAS plantar < fe.json'
 echo '{"titulo":"Depois","ao_colher":"passo novo"}' > ed.json
 esperado "editar ideia aberta" 0 bash -c '$IDEIAS editar --id teste-editar < ed.json'
@@ -103,12 +124,12 @@ esperado "recusa trocar o id pela entrada" 1 bash -c 'echo "{\"id\":\"outro\",\"
 esperado "recusa carimbar data pela entrada tambem no editar" 1 bash -c 'echo "{\"plantada_em\":\"2030-01-01\"}" | $IDEIAS editar --id teste-editar'
 esperado "recusa editar id inexistente" 1 bash -c 'echo "{\"titulo\":\"x\"}" | $IDEIAS editar --id nao-existe-mesmo'
 
-echo "{\"id\":\"teste-dois\",\"titulo\":\"Segunda\",\"descricao\":\"d2\",\"contexto\":\"c2\",\"projeto\":\"sandbox\"}" > f2.json
+echo "{\"id\":\"teste-dois\",\"titulo\":\"Segunda\",\"descricao\":\"d2\",\"contexto\":\"c2\",\"projeto\":\"sandbox\",\"gancho\":\"g\"}" > f2.json
 esperado "plantar segunda" 0 bash -c '$IDEIAS plantar < f2.json'
-echo "{\"id\":\"teste-tres\",\"titulo\":\"Terceira\",\"descricao\":\"d3\",\"contexto\":\"c3\",\"projeto\":\"sandbox\"}" > f3.json
+echo "{\"id\":\"teste-tres\",\"titulo\":\"Terceira\",\"descricao\":\"d3\",\"contexto\":\"c3\",\"projeto\":\"sandbox\",\"gancho\":\"g\"}" > f3.json
 esperado "plantar terceira" 0 bash -c '$IDEIAS plantar < f3.json'
 esperado "recusa absorver uma ja colhida" 1 bash -c 'echo "{\"id\":\"teste-dois\",\"titulo\":\"x\",\"descricao\":\"d\",\"contexto\":\"c\",\"projeto\":\"p\"}" | $IDEIAS unificar --manter teste-dois --absorver teste-um'
-echo "{\"id\":\"teste-dois\",\"titulo\":\"Fundida\",\"descricao\":\"conteudo fundido\",\"contexto\":\"c2\",\"projeto\":\"sandbox\"}" > fu.json
+echo "{\"id\":\"teste-dois\",\"titulo\":\"Fundida\",\"descricao\":\"conteudo fundido\",\"contexto\":\"c2\",\"projeto\":\"sandbox\",\"gancho\":\"g\"}" > fu.json
 esperado "unificar (duas linhas, contagem igual)" 0 bash -c '$IDEIAS unificar --manter teste-dois --absorver teste-tres < fu.json'
 esperado "recusa unificar consigo mesmo" 1 bash -c '$IDEIAS unificar --manter teste-dois --absorver teste-dois < fu.json'
 prova "absorvida aponta pra sobrevivente, conteudo fundido gravado, contagem base+4" '
@@ -129,7 +150,8 @@ python - <<'PY'
 import json, pathlib
 p = pathlib.Path("ideias.jsonl")
 linha = json.dumps({"id": "teste-quebrada", "titulo": "Gravada a mao", "descricao": "d",
-                    "contexto": "c", "projeto": "sandbox", "tipo": "observacao"},
+                    "contexto": "c", "projeto": "sandbox", "tipo": "observacao",
+                    "gancho": "g"},
                    ensure_ascii=False)
 p.write_text(p.read_text(encoding="utf-8") + linha + "\n", encoding="utf-8", newline="\n")
 PY
@@ -229,7 +251,7 @@ s = s.replace(alvo, veneno + alvo, 1)
 p.write_text(s, encoding="utf-8")
 print("  (mutante instalado: corrompe a linha 1, que nunca e alvo de um plantar)")
 PY
-echo "{\"id\":\"teste-quatro\",$base}" > f4.json
+echo "{\"id\":\"teste-quatro\",$base,\"gancho\":\"g\"}" > f4.json
 esperado "mutante recusado (a trava reverte e sai != 0)" 1 bash -c '$IDEIAS plantar < f4.json'
 if cmp -s ideias.jsonl pre-mutacao.jsonl
 then ok=$((ok+1)); echo "  ok   arquivo restaurado do backup, byte a byte igual ao de antes"
@@ -250,7 +272,7 @@ python - <<'PY'
 import json, pathlib
 p = pathlib.Path("ideias.jsonl")
 linha = json.dumps({"id": "teste-quebrada-mutante", "titulo": "t", "descricao": "d",
-                    "contexto": "c", "projeto": "sandbox"}, ensure_ascii=False)
+                    "contexto": "c", "projeto": "sandbox", "gancho": "g"}, ensure_ascii=False)
 p.write_text(p.read_text(encoding="utf-8") + linha + "\n", encoding="utf-8", newline="\n")
 PY
 cp ideias.jsonl pre-reparo-mutante.jsonl
@@ -275,7 +297,7 @@ case "$IDEIAS" in
     cp "$SRC/scripts/ideias.cjs" "$SB/scripts/ideias-limpo.cjs"
     head -3 ideias.jsonl > "$SB/proj/.rainforest/ideias.jsonl"
     md5_caixa_antes=$(md5sum ideias.jsonl | cut -d' ' -f1)
-    echo "{\"id\":\"teste-raiz-projeto\",$base}" > "$SB/proj/nova.json"
+    echo "{\"id\":\"teste-raiz-projeto\",$base,\"gancho\":\"g\"}" > "$SB/proj/nova.json"
     ( cd "$SB/proj" && node ../scripts/ideias-limpo.cjs plantar < nova.json ) >/dev/null 2>&1
     got=$?
     esperado "plantar de dentro de um projeto com .rainforest" 0 bash -c "exit $got"
@@ -296,6 +318,119 @@ assert len(l)==4, len(l)
     ;;
   *)
     echo "  (pulado: a cadeia de raiz e do .cjs; \$IDEIAS aponta para outra implementacao)"
+    ;;
+esac
+
+echo
+echo "== 5. gancho: o gatilho de retorno vira campo obrigatorio (regra 6) =="
+# Regra 6 da skill exige que toda ideia plantada leve o gancho de retorno
+# concreto — ate aqui isso vivia sem validacao, dentro da prosa do ao_colher.
+# O ideias.py fica congelado no contrato antigo de proposito (ver comentario
+# em scripts/ideias.cjs); gancho e recurso novo, so do .cjs. Mesmo padrao do
+# bloco 4: pula quando $IDEIAS aponta para outra implementacao.
+case "$IDEIAS" in
+  *ideias.cjs*)
+    # O bloco 3 deixa o mutante instalado em scripts/ideias.cjs de proposito (a
+    # caixa inteira e descartada no fim). $IDEIAS ainda aponta pra ele aqui —
+    # por isso o bloco 4 usa a copia limpa que ele mesmo criou, e este bloco
+    # reusa a MESMA copia (scripts/ideias-limpo.cjs), pelo mesmo motivo.
+    export IDEIAS_LIMPO="node scripts/ideias-limpo.cjs"
+    md5_antes_gancho=$(md5sum ideias.jsonl | cut -d' ' -f1)
+    echo "{\"id\":\"teste-sem-gancho\",$base}" > fg.json
+    esperado "plantar sem gancho e recusado" 1 bash -c '$IDEIAS_LIMPO plantar < fg.json'
+    if [ "$md5_antes_gancho" = "$(md5sum ideias.jsonl | cut -d' ' -f1)" ]
+    then ok=$((ok+1)); echo "  ok   arquivo intocado apos a recusa por falta de gancho"
+    else falhou=$((falhou+1)); echo "  FALHA plantar sem gancho alterou o arquivo"; fi
+
+    echo "{\"id\":\"teste-com-gancho\",$base,\"gancho\":\"revisar em 2026-09-01\"}" > fg2.json
+    esperado "plantar com gancho passa" 0 bash -c '$IDEIAS_LIMPO plantar < fg2.json'
+    prova "gancho chega gravado na linha" '
+import json
+l=[json.loads(x) for x in open("ideias.jsonl",encoding="utf-8") if x.strip()]
+o=[x for x in l if x["id"]=="teste-com-gancho"][0]
+assert o["gancho"]=="revisar em 2026-09-01", o.get("gancho")'
+
+    echo '{"gancho":"trocado: revisar em 2026-10-01"}' > edg.json
+    esperado "editar troca o gancho de ideia aberta" 0 bash -c '$IDEIAS_LIMPO editar --id teste-com-gancho < edg.json'
+    prova "gancho editado chega gravado" '
+import json
+l=[json.loads(x) for x in open("ideias.jsonl",encoding="utf-8") if x.strip()]
+o=[x for x in l if x["id"]=="teste-com-gancho"][0]
+assert o["gancho"]=="trocado: revisar em 2026-10-01", o.get("gancho")'
+
+    # linha gravada a mao (bypassa o script), sem gancho — o caso real das 70
+    # linhas existentes que motivou a tarefa. Guarda tambem o conteudo exato de
+    # OUTRA linha (nao-alvo do reparo que vem a seguir) para provar depois que
+    # o reparo --gancho nao mexeu nela.
+    python - <<'PY'
+import json, pathlib
+p = pathlib.Path("ideias.jsonl")
+linha = json.dumps({"id": "teste-sem-gancho-existente", "titulo": "t", "descricao": "d",
+                    "contexto": "c", "projeto": "sandbox", "status": "plantada",
+                    "plantada_em": "2026-08-01"}, ensure_ascii=False)
+p.write_text(p.read_text(encoding="utf-8") + linha + "\n", encoding="utf-8", newline="\n")
+l = [x for x in p.read_text(encoding="utf-8").split("\n") if x.strip()]
+outra = [x for x in l if json.loads(x)["id"] == "teste-com-gancho"][0]
+pathlib.Path("linha-outra-antes-reparo-gancho.txt").write_text(outra, encoding="utf-8")
+PY
+    esperado "conferir acusa a linha sem gancho" 1 $IDEIAS_LIMPO conferir
+    saida_conferir_gancho=$($IDEIAS_LIMPO conferir 2>&1)
+    if echo "$saida_conferir_gancho" | grep -q "teste-sem-gancho-existente.*gancho"
+    then ok=$((ok+1)); echo "  ok   ... e nomeia a linha especifica"
+    else falhou=$((falhou+1)); echo "  FALHA nao nomeou a linha sem gancho"; echo "$saida_conferir_gancho" | sed 's/^/         /'; fi
+
+    esperado "recusa --gancho sem --id (uma linha por vez, como --plantada-em)" 1 $IDEIAS_LIMPO reparar --todas --gancho "nao vale"
+    esperado "reparar --gancho preenche a linha" 0 $IDEIAS_LIMPO reparar --id teste-sem-gancho-existente --gancho "revisar em 2026-11-01"
+    prova "gancho reparado gravado, reparo deixa rastro" '
+import json
+l=[json.loads(x) for x in open("ideias.jsonl",encoding="utf-8") if x.strip()]
+o=[x for x in l if x["id"]=="teste-sem-gancho-existente"][0]
+assert o["gancho"]=="revisar em 2026-11-01", o.get("gancho")
+assert "gancho" in o["reparo"], o.get("reparo")'
+    # "conferir para de acusar": checagem pontual da linha reparada, nao do
+    # arquivo inteiro — o bloco 3 deixou teste-quebrada-mutante propositalmente
+    # quebrada (a mutacao foi revertida ANTES do reparo dela chegar a gravar),
+    # entao "conferir" sozinho nunca mais volta a exit 0 nesta caixa. O que
+    # este item do briefing pede e que a ACUSACAO de gancho suma, nao que o
+    # arquivo inteiro fique perfeito.
+    saida_pos_reparo_gancho=$($IDEIAS_LIMPO conferir 2>&1)
+    if ! echo "$saida_pos_reparo_gancho" | grep -q "teste-sem-gancho-existente.*gancho"
+    then ok=$((ok+1)); echo "  ok   conferir para de acusar a linha reparada"
+    else falhou=$((falhou+1)); echo "  FALHA conferir ainda acusa gancho na linha ja reparada"; echo "$saida_pos_reparo_gancho" | sed 's/^/         /'; fi
+
+    prova "reparar --gancho nao mexeu em linha nao-alvo (byte a byte)" '
+import json
+l=[x.rstrip("\n") for x in open("ideias.jsonl",encoding="utf-8") if x.strip()]
+outra=[x for x in l if json.loads(x)["id"]=="teste-com-gancho"][0]
+antes=open("linha-outra-antes-reparo-gancho.txt",encoding="utf-8").read().rstrip("\n")
+assert outra == antes, (outra, antes)'
+
+    # Gancho e gatilho de RETORNO: so ideia ABERTA precisa dele. Cobrar gatilho de
+    # quem ja voltou seria ruido, e ruido ensina a ignorar o conferir. Sem este
+    # teste, a regra viveria so no comentario do codigo.
+    python - <<'PY'
+import json, pathlib
+p = pathlib.Path("ideias.jsonl")
+linha = json.dumps({"id": "teste-colhida-sem-gancho", "titulo": "t", "descricao": "d",
+                    "contexto": "c", "projeto": "sandbox", "status": "colhida",
+                    "plantada_em": "2026-08-01", "colhida_em": "2026-08-02",
+                    "resultado": "feito"}, ensure_ascii=False)
+p.write_text(p.read_text(encoding="utf-8") + linha + "\n", encoding="utf-8", newline="\n")
+PY
+    saida_colhida=$($IDEIAS_LIMPO conferir 2>&1)
+    if echo "$saida_colhida" | grep -q "teste-colhida-sem-gancho.*gancho"
+    then falhou=$((falhou+1)); echo "  FALHA cobrou gancho de ideia ja colhida"
+    else ok=$((ok+1)); echo "  ok   colhida sem gancho NAO e cobrada (gancho e de quem espera voltar)"
+    fi
+    # e a checagem segue valendo para as abertas — o teste acima nao pode ter
+    # desligado a cobranca inteira.
+    if echo "$saida_colhida" | grep -q "teste-sem-gancho-existente.*gancho"
+    then falhou=$((falhou+1)); echo "  FALHA a linha aberta reparada ainda e cobrada"
+    else ok=$((ok+1)); echo "  ok   a aberta reparada saiu da cobranca, e a regra continua ligada"
+    fi
+    ;;
+  *)
+    echo "  (pulado: gancho e recurso novo so do .cjs; \$IDEIAS aponta para outra implementacao)"
     ;;
 esac
 
