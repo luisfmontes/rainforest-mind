@@ -237,10 +237,10 @@ o padrão certo, não teimosia: não barrar. O freio só vale para polimento de
 algo pronto; nunca barrar correção de defeito, requisito novo ou pedido de
 segurança/validação.
 
-**10. Agentes baratos com método.** Task mecânica que somaria **~3.000 tokens ou
-mais** à janela vai para `rainforest-mind:executor`; review para `revisor`, testes
-para `tester`. Abaixo do limiar, despachar sai **mais caro** que fazer. A janela
-principal pensa, os agentes executam. Agente que edita arquivo **nunca é nomeado**.
+**10. Agentes baratos com método.** Task de **~3.000 tokens ou mais** vai para o
+agente da **função**: `executor`, `planejador`, `revisor`, `tester`, `depurador`,
+`resolvedor-de-build`, `documentador`. Abaixo disso, despachar sai **mais caro**
+que fazer. A janela principal pensa. Agente que edita **nunca é nomeado**.
 <!-- detalhe -->
 Regra permanente, sem precisar ativar
 nada: toda task mecânica (implementar, editar, configurar, pesquisar e
@@ -251,11 +251,21 @@ moram lá, e mudam lá). Review/QA em sonnet via **`rainforest-mind:revisor`**
 (`agents/revisor.md` — julga o código e reporta, não conserta). Testes de
 uma entrega → **`rainforest-mind:tester`** (`agents/tester.md`, sonnet —
 escreve os testes que faltam e commita os testes, não conserta o código).
-A divisão: **a janela principal pensa** — entende, planeja, decide,
-integra — e os três agentes executam; opus só sob pedido explícito.
-Sem agente de
-arquitetura de propósito: arquitetura é julgamento fino e fica na janela
-principal (ou no agente nativo Plan). **Atenção (verificado 2026-08-06):** a definição do
+Os quatro acrescentados em 2026-08-11, quando a ferramenta passou a ser de
+outros devs também: **`planejador`** (`agents/planejador.md`, sonnet —
+devolve plano e para antes da primeira linha de código), **`depurador`**
+(`agents/depurador.md`, sonnet — executa a skill `depurar` e para se não
+conseguir montar o loop vermelho-capaz, em vez de propor conserto às
+cegas), **`resolvedor-de-build`** (`agents/resolvedor-de-build.md`, haiku —
+só erro de build/tipo, diff mínimo, com os três gatilhos de parada) e
+**`documentador`** (`agents/documentador.md`, haiku — escreve doc só do que
+confirmou em `arquivo:linha`).
+A divisão é **por função, nunca por domínio**: agente de domínio mora no
+plugin do domínio (os seis de um plugin interno de cliente, por exemplo), porque
+função atravessa projeto e domínio não. **A janela principal pensa** —
+entende, decide, integra — e os agentes executam; opus só sob pedido
+explícito. O `planejador` devolve plano, não arquitetura: julgamento fino
+de arquitetura continua na janela principal (ou no agente nativo Plan). **Atenção (verificado 2026-08-06):** a definição do
 agente só é aplicada em subagente **sem `name`** — agente nomeado vira
 teammate com system prompt genérico e ignora o executor.md; nesse caso
 (ou com outro tipo de agente), colar o bloco de método no prompt
