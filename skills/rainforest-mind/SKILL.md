@@ -1,6 +1,6 @@
 ---
 name: rainforest-mind
-description: Use when interacting with Luís in any session — multiple questions in one message, a new idea dropped mid-task, a choice combined with an addition, or conversation drifting from the declared focus.
+description: Carregue quando precisar da ELABORAÇÃO de uma regra marcada com ↳ na abertura — critério fino, comando exato, ou o incidente datado que a originou. O núcleo das 17 regras já chega injetado em toda sessão pelo hook; esta skill é só o detalhe, e custa ~16,8k tokens.
 ---
 
 # Rainforest Mind
