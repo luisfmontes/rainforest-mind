@@ -64,7 +64,20 @@ const TETOS = {
    * O corte precede a dedução por pasta, então este teto só morde numa máquina
    * com muitas pastas distintas abertas ao mesmo tempo.
    */
-  SESSOES_MAX_BYTES: 600,
+  SESSOES_MAX_BYTES: 300,
+  /**
+   * Quantas pastas o radar LISTA por nome. O resto vira contagem.
+   *
+   * A regra 17 pergunta duas coisas — "tem sessão paralela?" e "a janela do foco
+   * esfriou?" — e as duas se respondem com as pastas mais RECENTES. Listar as oito
+   * não responde melhor: em 2026-08-11 o bloco chegou a 691 B com 11 janelas e
+   * empurrou os Marcos para fora da injeção; a entrega de sexta parou de chegar na
+   * abertura por causa de `repo-de-trabalho` aparecendo três vezes.
+   *
+   * Contagem no lugar do nome mantém o sinal ("há trabalho paralelo") e devolve o
+   * espaço ao foco, que é o que o Luís precisa ler.
+   */
+  SESSOES_PASTAS_LISTADAS: 3,
   /**
    * Piso do bloco de regras. Abaixo disto considera-se que NÃO carregou.
    * Não é `if (!regras)`: SKILL.md truncado ou heading renomeado produzem
@@ -494,20 +507,35 @@ function resumirSessoes(entradas, ociosidade, teto = TETOS.SESSOES_MAX_BYTES) {
       return `- ${p.pasta} — ${estado}${extras}`;
     });
 
-  // O corte tira as pastas MAIS FRIAS (fim da lista) e diz quantas tirou: pasta
-  // omitida em silêncio vira "não havia sessão lá", que é afirmação errada.
+  // Corte em DOIS passos, e o primeiro é por quantidade, não por bytes.
+  //
+  // Só o teto de bytes deixava o bloco crescer até 691 B com 11 janelas — e o que
+  // ele empurrava para fora era o foco, com os Marcos e o prazo mais próximo
+  // dentro. Listar pasta fria não responde nenhuma das duas perguntas da regra 17
+  // e custa exatamente o espaço de que o foco precisa.
+  const listadas = linhas.slice(0, TETOS.SESSOES_PASTAS_LISTADAS);
+  // Reserva para o ponteiro de omissão, quando ele for existir. Sem ela o teto
+  // mente: as linhas cabiam em 300 B, o ponteiro entrava DEPOIS e o bloco saía
+  // com 351. Parâmetro que não governa o número que ele nomeia é a mesma família
+  // do teto em entradas que virou 2.271 B — o problema não é o valor, é a conta.
+  const reserva = linhas.length > listadas.length ? 80 : 0;
   const cabidas = [];
   let usado = 0;
-  for (const linha of linhas) {
+  for (const linha of listadas) {
     const custo = Buffer.byteLength(linha, 'utf8') + 1;
-    if (usado + custo > teto) break;
+    if (usado + custo > teto - reserva) break;
     cabidas.push(linha);
     usado += custo;
   }
+  // Pasta omitida em silêncio vira "não havia sessão lá", que é afirmação errada.
+  // O que sai vira NÚMERO — o sinal "há trabalho paralelo" sobrevive ao corte.
   const fora = linhas.length - cabidas.length;
   if (fora) {
-    cabidas.push(`- (+${fora} ${fora === 1 ? 'pasta omitida' : 'pastas omitidas'} desta injeção por espaço — ` +
-      'o estado completo está no `sessoes.json`.)');
+    const janelasFora = [...porPasta.values()]
+      .sort((a, b) => a.minutos - b.minutos)
+      .slice(cabidas.length)
+      .reduce((n, p) => n + p.janelas, 0);
+    cabidas.push(`- (+${janelasFora} janela(s) em ${fora} outra(s) pasta(s) — nomes no \`sessoes.json\`.)`);
   }
 
   return `\n## Outras sessões recentes (radar multi-janela, regra 17)\n${cabidas.join('\n')}\n` +
