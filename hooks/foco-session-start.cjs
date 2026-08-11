@@ -13,8 +13,20 @@ const { resolverRaiz } = require('./lib/raiz.cjs');
 // Dados (FOCO/IDEIAS) vivem no repo de trabalho, não na cópia em cache do plugin.
 // A cadeia de 5 níveis (RFM_ROOT > projeto > global > plugin > legado) está em
 // lib/raiz.cjs, com o porquê de cada nível. `nivel` diz qual respondeu.
-const { raiz: RAIZ_RESOLVIDA, nivel: NIVEL_RAIZ } = resolverRaiz();
-const ROOT = RAIZ_RESOLVIDA || path.resolve(__dirname, '..');
+// DUAS raizes, e confundi-las apaga as regras da sessao inteira.
+//
+// CODIGO (skills, scripts, o proprio hook) mora sempre no plugin — e o plugin sabe
+// onde ele mesmo esta. DADOS (FOCO.md, ideias.jsonl, sessoes.json) moram na pasta
+// do usuario, resolvida pela cadeia.
+//
+// Em 2026-08-11, ao separar os dados do codigo, este arquivo passou a procurar o
+// SKILL.md dentro da pasta de DADOS. Resultado: a injecao caiu de 7.967 B para
+// 3.047 B e o fallback disparou — "esta sessao esta SEM o rainforest-mind", em
+// TODA sessao. A degradacao barulhenta pegou em voz alta, que e para isso que ela
+// existe; sem ela, as sessoes subiriam mudas e sem regra.
+const CODIGO_ROOT = path.resolve(__dirname, '..');
+const { raiz: RAIZ_RESOLVIDA, nivel: NIVEL_RAIZ } = resolverRaiz({ plugin: CODIGO_ROOT });
+const ROOT = RAIZ_RESOLVIDA || CODIGO_ROOT;
 
 function readSafe(p) {
   try { return fs.readFileSync(p, 'utf8').trim(); } catch { return ''; }
@@ -122,7 +134,7 @@ async function checkWhatsAppBridge() {
   };
 }
 
-const CAMINHO_SKILL = path.join(ROOT, 'skills', 'rainforest-mind', 'SKILL.md');
+const CAMINHO_SKILL = path.join(CODIGO_ROOT, 'skills', 'rainforest-mind', 'SKILL.md');
 const foco = readSafe(path.join(ROOT, 'FOCO.md'));
 const skill = readSafe(CAMINHO_SKILL);
 
