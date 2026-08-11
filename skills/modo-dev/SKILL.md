@@ -1,6 +1,6 @@
 ---
 name: modo-dev
-description: Use when Luís is developing in any project — writing code, a feature or a fix; planning a refactor; or deciding what a technical decision earns as a written record.
+description: Carregue antes de escrever código quando a decisão técnica for pesar — escada YAGNI, causa raiz antes de remendo, rastreabilidade de cada linha do diff até o pedido, expandir–contrair, e o que uma decisão merece de registro. Não é para tarefa mecânica: essa vai direto para o agente da função (regra 10).
 ---
 
 # Modo Dev
