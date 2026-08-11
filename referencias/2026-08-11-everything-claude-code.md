@@ -82,16 +82,25 @@ mostra symlink de quatro pastas + cópia de hooks + `chmod +x`.
 
 Esta é a parte que mais impressiona no README e a que menos existe no código.
 
-**SessionStart não injeta contexto.** `scripts/hooks/session-start.js:30-36`
-procura `*.tmp` dos últimos 7 dias e imprime:
+**SessionStart não injeta nada — nem o caminho.**
+`scripts/hooks/session-start.js:30-36` procura `*.tmp` dos últimos 7 dias e
+imprime:
 
 ```js
 log(`[SessionStart] Found ${recentSessions.length} recent session(s)`);
 log(`[SessionStart] Latest: ${latest.path}`);
 ```
 
-Injeta **o caminho do arquivo**, não o conteúdo. `WORLDFLOWAI.md:122` promete
-*"previous context loads automatically"* — o código não faz isso.
+O conteúdo do `.tmp` nunca é lido — só o caminho é anunciado. E `log()` é
+**stderr** (`scripts/lib/utils.js:182-184`: `console.error(message)`). O mesmo
+`utils.js` define, logo abaixo, a função que iria para stdout, comentada como
+*"Output to stdout (returned to Claude)"* — e **nenhum hook a chama**. Grep em
+`scripts/hooks/`: zero `console.log`, zero `output(`, zero
+`additionalContext`, zero `hookSpecificOutput`.
+
+Ou seja: o volume que chega ao modelo na abertura é **zero em todos os
+caminhos**. `WORLDFLOWAI.md:122` promete *"previous context loads
+automatically"*; o mecanismo não tem por onde entregar.
 
 **SessionEnd grava um template vazio.** `scripts/hooks/session-end.js:46-70`
 escreve, quando o arquivo do dia ainda não existe:
@@ -109,19 +118,42 @@ Se o arquivo já existe, só troca a linha `**Last Updated:**`. O conteúdo rico
 dos exemplos em `examples/sessions/*.tmp` (causa raiz, achados, próximos
 passos) **não é produzido por script nenhum** — é digitação humana.
 
-**O aprendizado contínuo não fecha o laço.**
-`scripts/hooks/evaluate-session.js` conta mensagens do transcript e, se passar
-de 10, imprime:
+**O aprendizado contínuo nem chega a rodar.**
+`scripts/hooks/evaluate-session.js:52-57` busca o transcript assim:
 
 ```js
-log(`[ContinuousLearning] Session has ${messageCount} messages - evaluate for extractable patterns`);
+const transcriptPath = process.env.CLAUDE_TRANSCRIPT_PATH;
+if (!transcriptPath || !fs.existsSync(transcriptPath)) {
+  process.exit(0);
+}
 ```
 
-Não extrai nada, não grava nada, não reinjeta nada. E está pendurado no
-**SessionEnd** (`hooks/hooks.json:145-154`), quando o modelo já saiu — o
-cabeçalho do próprio arquivo diz *"Runs on Stop hook"*, mas o `hooks.json`
-diz outra coisa. `~/.claude/skills/learned/` é criado e fica vazio, a não ser
-que o usuário rode `/learn` à mão.
+O caminho do transcript chega ao hook pelo **JSON no stdin** (campo
+`transcript_path`), não por variável de ambiente. O próprio `utils.js` tem
+`readStdinJson()` (`:154-177`), exportado — e `evaluate-session.js` não a
+importa. Resultado: **o hook sai no primeiro `if`, sempre.**
+
+E a suíte não pega, porque o teste injeta a variável à mão
+(`tests/hooks/hooks.test.js:210`):
+
+```js
+const result = await runScript(path.join(scriptsDir, 'evaluate-session.js'), '', {
+  CLAUDE_TRANSCRIPT_PATH: transcriptPath
+});
+```
+
+**O teste valida o script contra um contrato que o runtime não cumpre** — é a
+forma mais cara de suíte verde que existe: prova que a função funciona quando
+alguém entrega o que a produção nunca entrega.
+
+Mesmo que rodasse, não extrairia nada: ele conta mensagens por regex
+(`/"type":"user"/g`), e as 8 chaves de `config.json` que descrevem um
+classificador (`patterns_to_detect`, `ignore_patterns`, `auto_approve`,
+`extraction_threshold`) **não têm leitor** — só `min_session_length` e
+`learned_skills_path` são consumidas. E está pendurado no **SessionEnd**
+(`hooks/hooks.json:145-154`), quando o modelo já saiu, apesar de o cabeçalho
+do arquivo dizer *"Runs on Stop hook"*. `~/.claude/skills/learned/` é criado e
+permanece vazio, a menos que o usuário rode `/learn` à mão.
 
 **Não há escopo por projeto.** `scripts/lib/utils.js:33-35`:
 
@@ -133,6 +165,21 @@ function getSessionsDir() {
 
 Todas as sessões de todos os repositórios caem em `~/.claude/sessions/`, num
 arquivo por dia (`session-end.js:27`), sem distinguir projeto nem assunto.
+Três projetos abertos na mesma segunda-feira escrevem no mesmo
+`2026-08-11-session.tmp`, e o ramo de atualização (`session-end.js:35-39`)
+preserva o corpo deixado pelo outro projeto — cruzamento silencioso de
+memória entre repositórios.
+
+Pior para esta máquina em particular: `getClaudeDir()` (`utils.js:26-28`)
+**hardcoda `.claude`**. Não há env var, parâmetro nem fallback. Numa máquina
+com dois config dirs — `~/.claude` (trabalho) e `~/.claude-personal`
+(pessoal), que é exatamente o caso do Luís — o ECC escreve sempre no
+primeiro, independentemente de qual conta abriu a sessão.
+
+E o `PreCompact` escolhe "a sessão ativa" pelo mtime global, sem `maxAge`
+(`pre-compact.js:33-38` sobre `findFiles` ordenado por mtime desc): o marcador
+de compactação vai para o `.tmp` mais recentemente tocado **na máquina**, que
+pode ser de outra data ou de outro projeto.
 
 ## 4. As travas não travam
 
@@ -196,6 +243,30 @@ Correlação limpa e invertida: **os arquivos curtos carregam mecanismo, os
 longos carregam vocabulário.** Os melhores achados do repo estão em arquivos
 de 17, 28, 29 e 59 linhas; os piores em arquivos de 211, 452 e 545.
 
+E 3 das 11 skills — `verification-loop`, `eval-harness` e
+`project-guidelines-example` — **não têm frontmatter algum**. Como o
+`description` é o gatilho de ativação, elas são empacotadas pelo manifesto,
+instaladas no diretório do usuário e **nunca ativam sozinhas**. Nenhum teste
+cobre isso: um lint de uma linha ("todo SKILL.md tem `name` e `description`")
+teria pego as três.
+
+## 8. A suíte de testes também mente
+
+Vale registrar porque é o modo de falha que o rainforest mais persegue.
+
+`tests/run-all.js:52-63` captura a exceção de um arquivo de teste que estoure
+e extrai os totais por **regex sobre a saída**. Se o arquivo morrer antes de
+imprimir o sumário, nada casa, `totalFailed` continua 0, e `run-all.js:76`
+sai com código 0. Arquivo ausente é só um `⚠ Skipping` (`:31-34`).
+
+E os testes escrevem no HOME real: `hooks.test.js:112-122` roda
+`session-end.js` e afirma que `~/.claude/sessions/<data>-session.tmp` existe,
+sem sandbox e sem limpeza. Rodar a suíte suja o config dir de quem rodou.
+
+Somado ao `evaluate-session.js` da §3 — teste que injeta o contrato que a
+produção não entrega — o padrão é: **a suíte verde do ECC não é evidência de
+que os hooks funcionam.** É exatamente a regra 12 vista de fora.
+
 ---
 
 ## O que vale trazer para o rainforest-mind
@@ -207,10 +278,13 @@ O rainforest cobre `SessionStart`, `PreToolUse`, `UserPromptSubmit`, `Stop` e
 salvar estado antes da compactação levar o contexto embora — e é o momento em
 que o Luís mais perde fio, porque a compactação não avisa.
 
-O `pre-compact.js` do ECC é trivial (registra timestamp num log e anexa uma
-linha ao arquivo da sessão), mas o **gancho** é a peça que falta. No
-rainforest ele teria conteúdo de verdade: gravar foco ativo, decisões abertas
-e loops pendentes antes do resumo.
+O `pre-compact.js` do ECC não serve de modelo — ele só registra timestamp e
+anexa uma linha ao `.tmp` (o errado, às vezes, ver §3), e o próprio cabeçalho
+promete *"preserve important state that might get lost in summarization"* sem
+ter acesso ao conteúdo da conversa: não lê stdin, não lê transcript, não
+tenta. **O que vale é o gancho, não a implementação.** No rainforest ele teria
+conteúdo de verdade: gravar foco ativo, decisões abertas e loops pendentes
+antes do resumo levar tudo.
 
 ### 2. Contador de chamadas com limiar
 
@@ -273,7 +347,7 @@ lado errado:
 
 | Eixo | ECC | rainforest-mind |
 |---|---|---|
-| Injeção de contexto na abertura | imprime o caminho do arquivo | injeta conteúdo real, com orçamento medido de 8 KB e corte anunciado |
+| Injeção de contexto na abertura | **zero** — tudo sai por stderr; `output()` existe e nunca é chamada | injeta conteúdo real, com orçamento medido de 8 KB e corte anunciado |
 | Estado entre sessões | template vazio, 1 arquivo por dia, global | `FOCO.md` + `ideias.jsonl` + radar multi-janela, com porta de escrita única e conferência byte a byte |
 | Travas | `exit(1)` — não bloqueia | `exit(2)`, com 66 casos de teste rodando o hook de verdade |
 | Verificação de entrega de agente | inexistente | regra 12 + `conferir-entrega.py`, com o hash re-derivado do git |
