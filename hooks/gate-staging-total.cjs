@@ -163,6 +163,33 @@ function oQueSeriaVarrido(dir) {
 }
 
 function bloqueia(motivo, dir, quem) {
+  // P1 do relatorio 2026-08-11-escotilha-do-gate-usada-para-contornar: a saida
+  // de emergencia era NOMEADA na mensagem que o SUBAGENTE le. Um implementador
+  // bloqueado leu o nome do arquivo de escape na propria mensagem de bloqueio,
+  // criou `.rainforest-gate-off` na raiz do checkout principal do Luis - fora do
+  // worktree dele - e seguiu trabalhando. Reportou `DONE`, e o achado so apareceu
+  // porque um revisor leu o relatorio completo linha a linha.
+  //
+  // As saidas continuam existindo e continuam valendo: elas sao para a JANELA
+  // PRINCIPAL, que e quem decide seguir sem isolamento. Ela as conhece pela skill
+  // `setup` e por este codigo. Deixam de ser instrucao visivel para quem nao tem
+  // autoridade de usa-las - escotilha nomeada na mensagem de bloqueio, sem
+  // verificacao de proveniencia, e indistinguivel de instrucao de contorno para
+  // quem esta justamente tentando contornar.
+  //
+  // Em 2026-08-11 (tarde) o `/setup` acrescentou uma TERCEIRA rota - o toggle em
+  // `.rainforest/config.json` -, e ela e a mais amigavel das tres, com comando
+  // documentado. Por isso a mensagem para o subagente nao nomeia nenhuma.
+  const ehSubagente = quem && !/principal/i.test(String(quem));
+  const saidas = ehSubagente
+    ? `PARE e reporte isto para a janela principal — ela decide como seguir.\n` +
+      `NAO crie arquivo nem variavel para desativar esta trava: a decisao nao e sua,\n` +
+      `e desativa-la para si mesmo e o contorno que esta trava existe para impedir.\n`
+    : `Quem decide seguir sem isolamento e voce, e tem tres saidas:\n` +
+      `  - node scripts/setup.cjs --desligar gate-staging --escopo projeto (preferida);\n` +
+      `  - RAINFOREST_GATE_OFF=1 no ambiente da sessao (desliga na sessao inteira);\n` +
+      `  - arquivo .rainforest-gate-off na raiz do repo (desliga so naquele repo).\n`;
+
   process.stderr.write(
     `BLOQUEADO pelo gate de staging total do rainforest-mind.\n\n` +
     `Comando: ${motivo}\n` +
@@ -176,9 +203,7 @@ function bloqueia(motivo, dir, quem) {
     `${oQueSeriaVarrido(dir)}` +
     `\nAdicione por caminho. Se algum arquivo acima nao e seu, ele nao entra — e vale\n` +
     `perguntar de quem e antes de commitar.\n\n` +
-    `Se voce decidir que precisa mesmo do staging total:\n` +
-    `  - RAINFOREST_GATE_OFF=1 no ambiente da sessao (desliga na sessao inteira);\n` +
-    `  - arquivo .rainforest-gate-off na raiz do repo (desliga so naquele repo).\n`
+    saidas
   );
   process.exit(2);
 }
