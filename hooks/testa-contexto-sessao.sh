@@ -360,16 +360,20 @@ if [ -n "$BYTES_SESSOES" ] && [ "$BYTES_SESSOES" -le $((TETO_SESSOES + 250)) ] 2
 else
   falhou=$((falhou+1)); echo "  FALHA bloco de sessoes sem teto efetivo ($BYTES_SESSOES B)"
 fi
-checa "corte de pasta se anuncia"          tem     "pastas omitidas desta injeção" "$S"
+checa "corte de pasta se anuncia"          tem     "outra(s) pasta(s)" "$S"
 checa "a pasta mais recente sobrevive"     tem     "pasta-numero-0"                "$S"
 checa "a mais fria e a que sai"            nao_tem "pasta-numero-19 —"             "$S"
 
 # Mutacao: com o teto em 99MB o corte para de acontecer. Sem isto, "cabe no teto"
 # passaria verde num bloco que nunca chega perto do limite.
 cp "$LIB" "$RAIZ_POSIX/lib-sem-teto-sessoes.cjs"
+# Precisa afrouxar OS DOIS cortes: o de bytes e o de quantidade de pastas. Com
+# so um deles solto o corte continua acontecendo pelo outro, e a mutacao nao
+# provaria nada sobre o teto que ela diz estar testando.
 sed -i 's/SESSOES_MAX_BYTES: [0-9]*/SESSOES_MAX_BYTES: 99999999/' "$RAIZ_POSIX/lib-sem-teto-sessoes.cjs"
+sed -i 's/SESSOES_PASTAS_LISTADAS: [0-9]*/SESSOES_PASTAS_LISTADAS: 9999/' "$RAIZ_POSIX/lib-sem-teto-sessoes.cjs"
 S="$(sessoes "$MUITAS" "$RAIZ_POSIX/lib-sem-teto-sessoes.cjs")"
-if echo "$S" | grep -qF "pastas omitidas desta injeção"; then
+if echo "$S" | grep -qF "outra(s) pasta(s)"; then
   falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — nao e o teto que faz o bloco cortar"
 else
   ok=$((ok+1)); echo "  ok    com o teto em 99MB o bloco para de cortar (o teto e load-bearing)"
@@ -654,6 +658,42 @@ checa "o fallback NAO dispara"             nao_tem "FALHA AO CARREGAR AS REGRAS"
 checa "o foco vem da raiz de DADOS"        tem     "Foco de teste"               "$H"
 # E a prova de que o caminho da skill aponta para o CODIGO, nao para os dados:
 checa "a skill e apontada no plugin"       nao_tem "so-dados\\skills"        "$H"
+
+echo
+echo "15. RADAR CORTADO — o foco nao paga a conta das janelas abertas"
+# Em 2026-08-11 o bloco de sessoes chegou a 691 B com 11 janelas em 8 pastas e
+# empurrou os Marcos para fora da injecao: a entrega de sexta parou de chegar na
+# abertura porque `repo-de-trabalho` aparecia tres vezes. A regra 17 pergunta "tem
+# paralelo?" e "o foco esfriou?", e as duas se respondem com as pastas RECENTES.
+cat > "$RAIZ_POSIX/driver-sessoes.cjs" <<'EOF'
+const lib = require(process.env.LIB_PATH);
+const ent = JSON.parse(process.env.FIX_SESSOES);
+process.stdout.write(lib.resumirSessoes(ent, 15));
+EOF
+sess() { LIB_PATH="$LIB" FIX_SESSOES="$1" node "$RAIZ_POSIX/driver-sessoes.cjs" 2>&1; }
+
+MUITAS='[{"cwd":"C:/a/pasta-quente","trabalhando":true,"minutos":1},
+{"cwd":"C:/b/segunda","trabalhando":false,"minutos":5},
+{"cwd":"C:/c/terceira","trabalhando":false,"minutos":9},
+{"cwd":"C:/d/quarta-fria","trabalhando":false,"minutos":100},
+{"cwd":"C:/e/quinta-fria","trabalhando":false,"minutos":200},
+{"cwd":"C:/f/sexta-fria","trabalhando":false,"minutos":300}]'
+R="$(sess "$MUITAS")"
+checa "a pasta mais recente fica"          tem     "pasta-quente"   "$R"
+checa "pasta fria sai por NOME"            nao_tem "sexta-fria"     "$R"
+checa "o que saiu vira NUMERO"             tem     "outra(s) pasta" "$R"
+# O teto governa a SOMA das linhas, ponteiro incluso. Sem a reserva o bloco saia
+# com 351 B sob um teto de 300 — parametro que nao governa o numero que nomeia.
+SOMA="$(printf '%s' "$R" | grep '^- ' | awk '{s+=length($0)+1} END {print s}')"
+TETO="$(node -e "process.stdout.write(String(require('$SRC_WIN/hooks/lib/contexto-sessao.cjs').TETOS.SESSOES_MAX_BYTES))")"
+if [ "$SOMA" -le "$TETO" ]; then
+  ok=$((ok+1)); echo "  ok    a soma das linhas ($SOMA B) respeita o teto ($TETO B), ponteiro incluso"
+else
+  falhou=$((falhou+1)); echo "  FALHA soma $SOMA B passa do teto $TETO B — a reserva do ponteiro nao esta valendo"
+fi
+# Poucas pastas: nao pode aparecer ponteiro nenhum.
+POUCAS='[{"cwd":"C:/a/unica","trabalhando":true,"minutos":2}]'
+checa "com uma pasta so, sem ponteiro"     nao_tem "outra(s) pasta" "$(sess "$POUCAS")"
 
 echo
 echo "-----------------------------------------"
