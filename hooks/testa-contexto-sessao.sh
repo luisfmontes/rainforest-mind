@@ -396,6 +396,36 @@ checa "avanco sai antes do marco"          nao_tem "AVANCO-QUE-PODE-SAIR"       
 checa "prosa-meta sai antes de tudo"       nao_tem "PROSA-META"                 "$S"
 checa "o que saiu e nomeado"               tem     "Fora desta injeção"         "$S"
 checa "cabecalho da secao fica"            tem     "## Ativo"                   "$S"
+
+# MARCO VENCE LISTA PEQUENA. Ate 2026-08-11 os dois empatavam em rank 2, e o
+# preenchimento guloso levava a lista de 30 B e deixava os marcos de fora: com o
+# FOCO.md real, o `- (nenhum alem do foco ativo)` entrava e a entrega de sexta
+# nao. Empate resolvido pela ordem no arquivo nao e prioridade, e acaso.
+# A lista pequena vem ANTES dos marcos no arquivo de proposito: empatados em rank,
+# quem vem primeiro ganha, e e isso que o rank proprio tem de derrubar. O bloco de
+# Avancos existe so para o teto morder — sem ele o texto inteiro cabe e a disputa
+# nunca acontece.
+FOCO_DISPUTA="## Ativo
+Último avanço datado: 2026-08-09.
+
+**Foco de teste** \`[trabalho]\` — prazo final 2026-08-25.
+
+## Compromissos com prazo
+
+- LISTA-PEQUENA-QUE-NAO-PODE-GANHAR
+
+Marcos (as datas sao as reunioes):
+- **Entrega 1 — 14/08**: o marco que a regra 3 precisa ver.
+
+Avanços:
+- 2026-08-09: bloco sacrificial, longo o bastante para o teto morder e a disputa
+  entre o marco e a lista solta acontecer de verdade, em vez de tudo caber."
+# SO O CORPO. O ponteiro de omissao NOMEIA quem saiu, entao procurar o nome no
+# texto inteiro responde o contrario da verdade — custou duas rodadas de medicao
+# errada nesta bateria antes de alguem olhar a saida de perto.
+CORPO_D="$(prioriza "$FOCO_DISPUTA" 380 | sed '/Fora desta injeção/,$d')"
+checa "marco vence a lista pequena"        tem     "Entrega 1 — 14/08"                "$CORPO_D"
+checa "a lista pequena cede a vez"         nao_tem "LISTA-PEQUENA-QUE-NAO-PODE-GANHAR" "$CORPO_D"
 # Ordem: prioridade decide QUEM fica, nao ONDE fica. Bloco reordenado na saida
 # faria o foco chegar com os marcos antes da declaracao, que le errado.
 POS_DECL="$(echo "$S" | grep -n "Foco de teste" | cut -d: -f1)"

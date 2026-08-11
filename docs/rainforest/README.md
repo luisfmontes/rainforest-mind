@@ -2,11 +2,12 @@
 
 A esteira tem sete estágios — **brainstorm → plano → executar → revisar →
 verificar → fechar**, mais **limpar** — e cada um deixa rastro. Este diretório
-guarda o rastro que é **decisão**. O que é **execução** fica fora do git.
+guarda os três artefatos que **outra pessoa precisa receber** para pegar o
+trabalho no meio. Fora do git fica só a tagarelice da execução.
 
-A divisão não é organizacional, é de diff: decisão precisa de histórico e de
-revisão por gente; rastro de execução, não. Misturar os dois faz o `git log`
-encher de ruído até ninguém mais ler.
+A divisão não é decisão-vs-execução — é **veredito vs. tagarelice**: o veredito
+de cada estágio (fechou? com que número?) é a fonte de verdade e viaja com o
+repositório; brief, diff e worktree são rastro e morrem com a máquina.
 
 **Todos os caminhos abaixo são relativos à raiz do projeto em que você está
 trabalhando** — não a este repositório. Trabalhou num repo de ERP legado, os
@@ -16,7 +17,7 @@ documentos nascem lá, ao lado do código que eles descrevem.
 |---|---|---|---|
 | Design aprovado | `<projeto>/docs/rainforest/design/<slug>.md` | **sim** | `brainstorm` |
 | Plano de implementação | `<projeto>/docs/rainforest/planos/<slug>.md` | **sim** | `plano` |
-| Estado da esteira | `<projeto>/.rainforest/estado/<slug>.json` | não | `scripts/estado.cjs` |
+| Estado da esteira | `<projeto>/docs/rainforest/estado/<slug>.json` | **sim** | `scripts/estado.cjs` |
 | Worktrees do trabalho | `<projeto>/.claude/worktrees/` | não | `executar`, limpos pelo `limpar` |
 
 O **slug** é `AAAA-MM-DD-<tema-em-kebab>` e é o mesmo nas três linhas — é ele
@@ -39,22 +40,26 @@ outra feature de outro repo. O `estado.cjs` resolve por
 `CLAUDE_PROJECT_DIR` (ou o diretório de trabalho), e tem teste provando que
 `RFM_ROOT` apontando para fora **não** o desvia.
 
-Ao criar o primeiro trabalho num projeto, o `iniciar` avisa numa linha se
-`.rainforest/estado/` ainda não estiver no `.gitignore` daquele repositório —
-avisa, não edita: mexer no versionado de um projeto alheio não é papel desta
-ferramenta.
+## Por que o estado é versionado
 
-## Por que o estado fica fora do git
+A primeira versão escondia o estado num `.rainforest/estado/` fora do git, com o
+argumento de que "rastro de execução não polui o diff". O argumento estava
+errado, e caiu com uma pergunta: **o estado existe para o Claude saber como o
+fluxo ficou e para outro dev pegar a atividade no meio.** Fora do git, quem
+clona o repositório não recebe nada — e a retomada, que é a razão de o arquivo
+existir, passa a funcionar só para quem já estava naquela máquina.
 
-O `.rainforest/estado/<slug>.json` é máquina de estados, não documento: muda
-várias vezes por sessão, e versioná-lo produziria um commit por marcação sem
-informação nenhuma para quem lê o histórico depois. O que importa dele — que
-decisão foi tomada e o que foi entregue — já está no design, no plano e nos
-commits do próprio trabalho.
+É o que o plugin interno de cliente faz: o `gates.json` mora em `docs/plans/`,
+junto do design e do plano, e a skill manda ler dele em vez da conversa —
+*"não confie em afirmação da conversa: o arquivo é a fonte de verdade"*.
 
-Ele existe para **retomada**: sessão nova (ou sessão que perdeu contexto na
-compactação) roda `node scripts/estado.cjs proximo --slug <slug>` e sabe onde
-parou, sem reler a conversa — que é justamente o que a compactação levou.
+O que **não** entra no git é a outra metade: worktrees, briefs de agente, diffs
+de review, log. Isso é conversa de máquina e morre com a máquina — é o que o
+`superpowers` mantém git-ignored no workspace dele, e a distinção certa é essa.
+
+O custo é um arquivo JSON de ~40 linhas por trabalho, commitado junto com o
+trabalho, não em commit próprio. Barato para o que compra: outra pessoa clona,
+roda `proximo --slug <slug>` e sabe exatamente onde parou e por quê.
 
 ## Por que design e plano ficam no git
 

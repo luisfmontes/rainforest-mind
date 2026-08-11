@@ -21,9 +21,8 @@
  * que ela deveria barrar. Aqui é comando externo, e exit code não se argumenta (é a
  * mesma razão dos gates de worktree e de staging deste repo).
  *
- * Onde mora: `.rainforest/estado/<slug>.json`, fora do git. O que é DECISÃO fica
- * versionado (design e plano, em docs/rainforest/); o que é RASTRO DE EXECUÇÃO não
- * polui o diff.
+ * Onde mora: `docs/rainforest/estado/<slug>.json` do PROJETO em que se trabalha,
+ * **versionado**, ao lado do design e do plano — ver o comentário de `DIR_ESTADO`.
  *
  * Uso:
  *   node scripts/estado.cjs iniciar  --slug <slug> [--titulo "..."]
@@ -53,7 +52,22 @@ const RAIZ = process.env.RFM_ESTADO_ROOT
   || process.env.CLAUDE_PROJECT_DIR
   || process.cwd();
 
-const DIR_ESTADO = path.join(RAIZ, '.rainforest', 'estado');
+// VERSIONADO, junto do design e do plano. A primeira versão escondia isto num
+// `.rainforest/estado/` fora do git, com o argumento de que "rastro de execução
+// não polui o diff". O argumento estava errado, e o Luís derrubou com uma
+// pergunta: o estado existe para o Claude saber como o fluxo ficou **e para
+// outro dev pegar a atividade no meio**. Fora do git, quem clona o repositório
+// não recebe nada — e a retomada, que é a razão de o arquivo existir, só
+// funciona para quem já estava na máquina.
+//
+// A divisão certa não é decisão-vs-execução; é **veredito vs. tagarelice**:
+//   veredito  (que estágio fechou, com que número)  -> versionado, é a fonte
+//   tagarelice (briefs, diffs, log, worktree)       -> fora do git, é rastro
+//
+// É o que o plugin interno de cliente faz — `gates.json` mora em `docs/plans/`, e a
+// skill manda ler dele em vez da conversa: "o arquivo é a fonte de verdade". O
+// superpowers ignora o workspace de execução, que é a outra metade da divisão.
+const DIR_ESTADO = path.join(RAIZ, 'docs', 'rainforest', 'estado');
 
 // Os dois blocos de vocabulário, separados de propósito (lição do gates.json):
 // DECISÃO é aprovada por gente e não entra na varredura de retomada; EXECUÇÃO é
@@ -94,17 +108,6 @@ function caminho(slug) {
   return path.join(DIR_ESTADO, `${slug}.json`);
 }
 
-/** O git deste projeto ignora o diretorio de estado? Erro = nao sabemos, nao avisa. */
-function estaIgnorado() {
-  try {
-    const { spawnSync } = require('child_process');
-    const r = spawnSync('git', ['check-ignore', '-q', path.join('.rainforest', 'estado', 'x.json')],
-      { cwd: RAIZ, stdio: 'ignore' });
-    return r.status === 0;
-  } catch {
-    return true;
-  }
-}
 
 function ler(slug) {
   const p = caminho(slug);
@@ -183,14 +186,9 @@ function main() {
     }
     const e = novo(slug, arg('titulo', false));
     gravar(slug, e);
-    console.log(`iniciado: ${path.join(RAIZ, '.rainforest', 'estado', `${slug}.json`)}`);
-    // Estado e rastro de execucao e nao deveria entrar no historico do projeto.
-    // Avisar em vez de editar o .gitignore de outro repo por conta propria:
-    // mexer no versionado de um projeto alheio nao e desta ferramenta.
-    if (!estaIgnorado()) {
-      console.log('aviso: `.rainforest/estado/` nao esta no .gitignore deste repositorio —');
-      console.log('       acrescente a linha, ou o rastro de execucao vai parar no diff.');
-    }
+    console.log(`iniciado: ${caminho(slug)}`);
+    console.log('commite este arquivo junto com o trabalho — e por ele que outra');
+    console.log('sessao, ou outro dev, retoma de onde parou.');
     console.log(`proximo: ${proximo(e)}`);
     return;
   }

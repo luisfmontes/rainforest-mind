@@ -49,7 +49,7 @@ git worktree prune
 
 - **Estado concluído**: `node scripts/estado.cjs listar` mostra `(completo)`
   para trabalhos com os sete estágios fechados. Não é para apagar o JSON
-  (fica em `.rainforest/estado/`, fora do git, e serve de histórico) — é
+  (fica em `docs/rainforest/estado/`, fora do git, e serve de histórico) — é
   para conferir se o worktree correspondente já devia ter sumido no passo 2.
 - **Arquivo temporário**: log de comando, harness descartável, artefato de
   teste que sobrou de uma sessão que não passou pelo `fechar`. Mesma regra

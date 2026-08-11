@@ -120,9 +120,11 @@ na compactação — roda `estado.cjs proximo --slug <slug>` e sabe onde parou:
 |---|---|---|
 | Design aprovado, com o porquê de cada decisão | `docs/rainforest/design/<slug>.md` | **sim** |
 | Plano, com dependência e critério falsificável por tarefa | `docs/rainforest/planos/<slug>.md` | **sim** |
-| Estado da esteira | `.rainforest/estado/<slug>.json` | não |
+| Estado da esteira, com o veredito de cada estágio | `docs/rainforest/estado/<slug>.json` | **sim** |
 
-Decisão fica versionada; rastro de execução não polui o diff.
+Os três são versionados de propósito: é por eles que **outro dev pega a
+atividade no meio**. Fora do git fica só a tagarelice — worktrees, briefs de
+agente, diffs de review.
 
 **O paralelismo vive no `executar`**, e é o plano que diz o que pode ir junto:
 tarefa sem dependência é marcada `paralela: sim`, e várias chamadas de agente na
