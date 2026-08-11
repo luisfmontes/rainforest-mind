@@ -68,10 +68,18 @@ function resolverRaiz(o = {}) {
     return { raiz: doProjeto, nivel: 'projeto', escopo: 'projeto' };
   }
 
-  // 3. Global do usuário. Onde cai quem instalou o plugin e não declarou nada.
-  const configDir = env.CLAUDE_CONFIG_DIR
-    || path.join(env.USERPROFILE || env.HOME || '', '.claude');
-  const doUsuario = path.join(configDir, 'rainforest');
+  // 3. Global do usuário: `~/.rainforest`, no HOME — e **não** sob CLAUDE_CONFIG_DIR.
+  //
+  // Decidido em 2026-08-11, e a razão é concreta: esta máquina tem DUAS config dirs
+  // (`~/.claude` para trabalho, `~/.claude-personal` para pessoal), mantidas em
+  // sincronia à mão. Ancorar os dados na config dir partiria o foco e as ideias em
+  // dois conjuntos conforme a conta que abriu a sessão — e a divergência entre as
+  // duas já mordeu duas vezes no mesmo dia (um plugin habilitado de um lado só, e
+  // a checagem de dependências lendo o settings.json errado, que virou a regra 14).
+  //
+  // O home é um lugar só por máquina. `RFM_ROOT` continua vencendo para quem
+  // quiser outro, e é por ele que se aponta uma pasta versionada em repo privado.
+  const doUsuario = path.join(env.USERPROFILE || env.HOME || '', '.rainforest');
   if (ehRaiz(doUsuario)) {
     return { raiz: doUsuario, nivel: 'global', escopo: 'usuario' };
   }

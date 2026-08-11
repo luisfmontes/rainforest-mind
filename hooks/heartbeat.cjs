@@ -8,8 +8,19 @@
 const fs = require('fs');
 const path = require('path');
 const { processoVivo } = require('./lib/contexto-sessao.cjs');
+const { resolverRaiz } = require('./lib/raiz.cjs');
 
-const ROOT = process.env.RFM_ROOT || 'C:\\Projetos\\rainforest-mind';
+// A MESMA cadeia que o hook de abertura usa para LER. Era
+// `RFM_ROOT || 'C:\Projetos\rainforest-mind'` — caminho da máquina do Luís
+// cravado —, e em 2026-08-11, quando os dados saíram do repo, este arquivo
+// continuou gravando no lugar velho enquanto a abertura passou a ler no novo.
+// Efeito: o radar multi-janela cegou por completo, sem erro nenhum, porque o
+// `sessoes.json` que ele lia simplesmente não recebia mais escrita.
+//
+// Quem lê e quem escreve o mesmo arquivo resolvem o caminho pela mesma função,
+// ou a divergência aparece como ausência silenciosa de dado.
+const CODIGO_ROOT = path.resolve(__dirname, '..');
+const ROOT = resolverRaiz({ plugin: CODIGO_ROOT }).raiz || CODIGO_ROOT;
 const STATE = path.join(ROOT, 'sessoes.json');
 const acao = process.argv[2];
 const evento = acao === 'stop' ? 'stop_ts' : 'prompt_ts';
