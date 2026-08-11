@@ -345,17 +345,29 @@ claude plugin install rainforest-mind@rainforest-mind
 
 Ou aponte `--plugin-dir` para a pasta do repo em desenvolvimento.
 
-**Runtime: só Node no caminho de execução.** Os hooks, os gates e o `/ideia`
-rodam em Node. O Claude Code não garante Node nem Python (a lista oficial de
-dependências adicionais tem `ripgrep` e mais nada), então a meta é **uma**
-dependência, não duas — e desde 2026-08-11 é uma.
+**Runtime: só Node no caminho de execução.** Os hooks, os gates, o `/ideia`, o
+`/saude`, a esteira e a medição de jornada rodam em Node. O Claude Code não
+garante Node nem Python (a lista oficial de dependências adicionais tem
+`ripgrep` e mais nada), então a meta é **uma** dependência, não duas.
 
-Sobra Python em duas verificações que rodam **na sua mão**, não no caminho de
-execução: `conferir-entrega.py` (confere a entrega de um subagente) e
-`medir-injecao.py` (mede o custo real da abertura). O `ideias.py` continua no
-repo como **gêmeo** do `.cjs`: a mesma bateria roda contra os dois
-(`IDEIAS="python scripts/ideias.py" bash scripts/testa-ideias.sh`), e é isso
-que prova que o port não perdeu nenhuma das oito garantias.
+Sobra Python em duas verificações que rodam **na sua mão**, nunca dentro de uma
+regra: `conferir-entrega.py` (confere a entrega de um subagente) e
+`medir-injecao.py` (mede o custo real da abertura). Nenhuma regra depende delas —
+se Python não existir na máquina, nada aqui degrada.
+
+Dois scripts ficam como **gêmeos** dos ports, e não como legado morto:
+
+| Gêmeo | O que ele prova |
+|---|---|
+| `ideias.py` | a mesma bateria roda contra os dois — `IDEIAS="python scripts/ideias.py" bash scripts/testa-ideias.sh` — e é isso que mostra que o port não perdeu nenhuma das oito garantias |
+| `jornada.py` | os dois medem o mesmo dia e devolvem os mesmos números, lacuna por lacuna |
+
+Apagar o gêmeo seria apagar a única prova de que o port está certo.
+
+**Nenhuma regra depende de plugin de terceiro.** A regra 8 media a jornada com
+um plugin de cliente até 2026-08-11; hoje mede com `node scripts/jornada.cjs`,
+que lê o transcript da própria sessão. Quem tiver o plugin pode usá-lo como
+conferência — nunca como requisito.
 
 ## Ajuste fino
 

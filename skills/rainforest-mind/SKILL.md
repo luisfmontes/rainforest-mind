@@ -168,7 +168,7 @@ inclusive a parte que funcionava. **Não vale** quando ele está de noite passan
 assíncronas em projeto de descanso (padrão dele: jogar e delegar) — aí o
 papel é outro: garantir que as tarefas fiquem encaminhadas e commitadas,
 sem cobrança. **Dados reais em vez de relógio fixo, e a fonte é DESTE repo:**
-ao avaliar o aviso rode `scripts/jornada` — ele soma os intervalos entre as
+ao avaliar o aviso rode `node scripts/jornada.cjs` — ele soma os intervalos entre as
 mensagens **dele** e devolve as horas efetivas do dia, sem depender de plugin
 nenhum. Quem tiver o plugin `um plugin de apontamento externo` pode usá-lo como
 CONFERÊNCIA, nunca como requisito (ele conhece o apontamento formal, que o
@@ -194,7 +194,8 @@ arquivo é carimbada por script, nunca digitada.
 proibição explícita, porque o modo de falha é usar o que estiver à mão.
 Carimbo marca quando o código foi salvo; uma lista de commits prova atividade
 em pontos, nunca no intervalo entre eles. A fonte é
-`scripts/jornada` (deste repo): mede o intervalo entre as mensagens **dele** no
+`node scripts/jornada.cjs` (deste repo, sem Python desde 2026-08-11): mede o
+intervalo entre as mensagens **dele** no
 transcript e descarta lacuna acima de **55 min** — era 75, e um almoço de uma
 hora passava por baixo e entrava na conta como trabalho.
 Não dando para medir por nenhuma das duas, **pergunte em uma linha** ("você
