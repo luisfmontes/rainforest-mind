@@ -39,12 +39,20 @@ const ALVO_NOME = path.basename(ALVO);
 const DIR_BACKUP = path.join(RAIZ, ".ideias-backups");
 const TRAVA = path.join(RAIZ, ".ideias.lock"); // mesmo nome que o Python usa
 
-const CAMPOS_OBRIGATORIOS = ["id", "titulo", "descricao", "contexto", "projeto"];
+// `gancho` e obrigatorio so aqui, no .cjs — regra 6 da skill exige que toda
+// ideia plantada leve o gatilho concreto de retorno, e ate aqui isso vivia sem
+// validacao dentro da prosa do `ao_colher`. O ideias.py fica congelado no
+// contrato antigo de proposito (ele so existe para provar as oito garantias do
+// port); o gancho e recurso novo, so do .cjs.
+const CAMPOS_OBRIGATORIOS = ["id", "titulo", "descricao", "contexto", "projeto", "gancho"];
 const CAMPOS_PROIBIDOS_NO_INPUT = [
   "status", "plantada_em", "colhida_em", "unificada_em", "unificada_em_id",
   "colheita_iniciada_em",
 ];
 const STATUS_CONHECIDOS = ["plantada", "em-colheita", "colhida", "unificada"];
+// Ideia ABERTA e a que ainda espera voltar — e so dela o `gancho` (gatilho de
+// retorno, regra 6) faz sentido. Colhida ja voltou; unificada virou outra.
+const ABERTAS = new Set(["plantada", "em-colheita"]);
 const TIPOS_CONHECIDOS = ["ideia", "observacao"];
 const ORDEM_CANONICA = [
   "id", "titulo", "descricao", "contexto", "projeto", "ao_colher", "tipo",
@@ -497,6 +505,9 @@ function diagnosticar(obj) {
   if (!obj.plantada_em) {
     faltando.plantada_em = "<git>";
   }
+  if (!obj.gancho) {
+    faltando.gancho = "<manual>";
+  }
   return faltando;
 }
 
@@ -515,6 +526,9 @@ function cmdReparar(args) {
       throw new Erro(`--plantada-em ${args.plantada_em} esta no futuro`);
     }
   }
+  if (args.gancho && !args.id) {
+    throw new Erro("--gancho so vale com --id, uma linha por vez");
+  }
 
   comTrava(() => {
     const antes = lerVivo();
@@ -529,7 +543,8 @@ function cmdReparar(args) {
 
     const depois = antes.slice();
     const alvos = new Set();
-    const pendentes = new Set();
+    const pendentesData = new Set();
+    const pendentesGancho = new Set();
     for (const i of indices) {
       const obj = JSON.parse(antes[i]);
       const faltando = diagnosticar(obj);
@@ -541,9 +556,25 @@ function cmdReparar(args) {
       let pulaLinha = false;
       for (const [campo, valor] of Object.entries(faltando)) {
         let origem;
-        if (valor !== "<git>") {
+        if (valor !== "<git>" && valor !== "<manual>") {
           resolvido[campo] = valor;
           origem = "inferido do proprio registro";
+        } else if (valor === "<manual>") {
+          if (args.gancho) {
+            resolvido[campo] = args.gancho;
+            origem = "informado na linha de comando";
+          } else if (args.conferir) {
+            pendentesGancho.add(obj.id);
+            console.log(
+              `  ${obj.id}.${campo} = ?  (sem gancho — precisa de --gancho "<texto>")`
+            );
+            continue;
+          } else {
+            throw new Erro(
+              `'${obj.id}': falta gancho e nenhum foi informado — passe --gancho "<texto>" ` +
+                "com o gatilho de retorno real (evento, data ou condicao)."
+            );
+          }
         } else if (args.plantada_em) {
           resolvido[campo] = args.plantada_em;
           origem = "informado na linha de comando";
@@ -553,7 +584,7 @@ function cmdReparar(args) {
             resolvido[campo] = d;
             origem = "data do commit que introduziu a linha";
           } else if (args.conferir) {
-            pendentes.add(obj.id);
+            pendentesData.add(obj.id);
             console.log(
               `  ${obj.id}.${campo} = ?  (o git nao sabe — precisa de --plantada-em AAAA-MM-DD)`
             );
@@ -578,10 +609,16 @@ function cmdReparar(args) {
 
     if (args.conferir) {
       console.log(`\n--conferir: ${indices.length} linha(s) acima, nada gravado.`);
-      if (pendentes.size) {
+      if (pendentesData.size) {
         console.log(
-          `${pendentes.size} sem data no git — o reparo real vai recusar ` +
-            `ate receber --plantada-em: ${[...pendentes].sort().join(", ")}`
+          `${pendentesData.size} sem data no git — o reparo real vai recusar ` +
+            `ate receber --plantada-em: ${[...pendentesData].sort().join(", ")}`
+        );
+      }
+      if (pendentesGancho.size) {
+        console.log(
+          `${pendentesGancho.size} sem gancho — o reparo real vai recusar ` +
+            `ate receber --gancho "<texto>": ${[...pendentesGancho].sort().join(", ")}`
         );
       }
       return;
@@ -668,6 +705,9 @@ function cmdConferir(_args) {
       problemas.push(`linha ${i} (${ident}): colhida sem resultado`);
     }
     for (const campo of CAMPOS_OBRIGATORIOS) {
+      // O gancho e gatilho de RETORNO: ideia ja colhida voltou, e cobrar gatilho de
+      // quem chegou e ruido que ensina a ignorar o conferir. So as abertas contam.
+      if (campo === "gancho" && !ABERTAS.has(o.status)) continue;
       if (!o[campo]) {
         problemas.push(`linha ${i} (${ident}): campo obrigatorio '${campo}' vazio`);
       }
@@ -708,6 +748,7 @@ const SUBCOMANDOS = {
       todas: { flag: true },
       conferir: { flag: true },
       "plantada-em": { required: false, dest: "plantada_em" },
+      gancho: { required: false },
     },
     fn: cmdReparar,
   },
