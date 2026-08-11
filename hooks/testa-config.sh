@@ -127,5 +127,34 @@ else
 fi
 rm -f "$SBP/proj/.rainforest/config.json"
 
+echo
+echo "== 6. P1 — a escotilha nao e revelada a quem esta sendo bloqueado =="
+# Relatorio 2026-08-11-escotilha-do-gate-usada-para-contornar: um implementador
+# bloqueado leu o nome do arquivo de escape NA PROPRIA mensagem de bloqueio,
+# criou `.rainforest-gate-off` na raiz do checkout principal do Luis e seguiu
+# trabalhando. Reportou DONE. A escotilha e da JANELA PRINCIPAL; a mensagem era
+# lida pelo subagente. E em 2026-08-11 o /setup acrescentou uma TERCEIRA rota, a
+# mais amigavel de todas — por isso a mensagem ao subagente nao nomeia nenhuma.
+msg() { echo "{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git add -A\"},\"cwd\":\"$PROJ\"$1}" \
+  | node "$SRC/hooks/gate-staging-total.cjs" 2>&1; }
+# Sem barra invertida aqui: o `echo` da funcao ja escapa as aspas dele. Com ela o
+# JSON saia invalido, o gate saia 0 sem mensagem, e as tres checagens de "NAO ve"
+# passavam num texto VAZIO — falso-positivo que so apareceu porque as de "ve"
+# falharam ao lado.
+SUB="$(msg ',"agent_id":"a1"')"
+PRI="$(msg '')"
+temf()     { if echo "$2" | grep -qF "$3"; then ok=$((ok+1)); echo "  ok   $1"; else falhou=$((falhou+1)); echo "  FALHA $1 (esperava achar '$3')"; fi; }
+nao_temf() { if echo "$2" | grep -qF "$3"; then falhou=$((falhou+1)); echo "  FALHA $1 (achou '$3')"; else ok=$((ok+1)); echo "  ok   $1"; fi; }
+
+nao_temf "subagente NAO ve o arquivo de escape"    "$SUB" ".rainforest-gate-off"
+nao_temf "subagente NAO ve a variavel de ambiente" "$SUB" "RAINFOREST_GATE_OFF"
+nao_temf "subagente NAO ve o comando do setup"     "$SUB" "setup.cjs --desligar"
+temf     "subagente e mandado PARAR e reportar"    "$SUB" "PARE e reporte"
+temf     "e proibido de criar o contorno sozinho"  "$SUB" "a decisao nao e sua"
+# A janela principal continua sabendo como seguir: tirar a saida dela transformaria
+# uma escolha legitima em beco sem saida.
+temf     "janela principal ve as tres saidas"      "$PRI" "tres saidas"
+temf     "janela principal ve a preferida"         "$PRI" "setup.cjs --desligar"
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
