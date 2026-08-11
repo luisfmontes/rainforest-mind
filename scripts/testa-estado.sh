@@ -99,7 +99,27 @@ prox_t2_antes="$($E proximo --slug t2)"
 igual "retomada estavel entre chamadas" "$prox_t2_antes" "$($E proximo --slug t2)"
 
 echo
-echo "== 6. MUTACAO — afrouxar estaFechado tem que quebrar os itens 1 e 3 =="
+echo "== 6. o estado mora no PROJETO, nao na cadeia de dados do rainforest =="
+# Defeito real, pego em 2026-08-11 antes de rodar em campo: o estado usava
+# hooks/lib/raiz.cjs (a cadeia RFM_ROOT > projeto > global > plugin > legado), e
+# com isso uma feature de outro repositorio teria o estado gravado dentro do
+# rainforest-mind — longe do codigo e misturado com o de outra feature.
+# Sao dois tipos de estado: FOCO/ideias sao do Luis e atravessam projeto; design,
+# plano e estado sao do PROJETO e ficam onde o trabalho esta.
+mkdir -p "$SBP/outro-projeto"
+( cd "$SBP/outro-projeto" && RFM_ROOT="$SBP" node ../scripts/estado.cjs iniciar --slug t-local >/dev/null 2>&1 )
+igual "estado cai no cwd, mesmo com RFM_ROOT apontando pra fora" "sim" \
+  "$([ -f "$SBP/outro-projeto/.rainforest/estado/t-local.json" ] && echo sim || echo nao)"
+igual "e NAO cai na raiz de dados" "sim" \
+  "$([ -f "$SBP/.rainforest/estado/t-local.json" ] && echo nao || echo sim)"
+# CLAUDE_PROJECT_DIR vence o cwd: e o que o harness informa como raiz do projeto.
+mkdir -p "$SBP/dir-do-harness"
+( cd "$SBP" && CLAUDE_PROJECT_DIR="$SBP/dir-do-harness" node scripts/estado.cjs iniciar --slug t-harness >/dev/null 2>&1 )
+igual "CLAUDE_PROJECT_DIR vence o cwd" "sim" \
+  "$([ -f "$SBP/dir-do-harness/.rainforest/estado/t-harness.json" ] && echo sim || echo nao)"
+
+echo
+echo "== 7. MUTACAO — afrouxar estaFechado tem que quebrar os itens 1 e 3 =="
 cp scripts/estado.cjs scripts/estado-mutante.cjs
 sed -i "s/return bloco.status === (FECHADO\[estagio\] || 'ok');/return true; \/\/ MUTADO/" scripts/estado-mutante.cjs
 $E iniciar --slug t3 >/dev/null

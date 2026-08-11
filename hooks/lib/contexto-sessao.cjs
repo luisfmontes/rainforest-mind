@@ -410,11 +410,30 @@ function priorizarFoco(focoResumido, teto) {
  * @param {number} janelaMs       idade máxima para a entrada contar
  * @param {(pid:number)=>boolean} vivo  predicado de vida (injetável no teste)
  */
+/**
+ * Sessão de SUBAGENTE, não janela do Luís.
+ *
+ * Subagente despachado com `isolation: "worktree"` abre sessão própria, com cwd
+ * dentro de `.claude/worktrees/`. Ela entrava no radar como se fosse mais uma
+ * janela paralela dele — e a regra 17 mede o paralelismo DELE, não o meu rastro.
+ *
+ * Dois danos, os dois medidos em 2026-08-11: o radar mentia sobre quantas
+ * frentes ele tinha abertas, e o bloco de sessões disputa orçamento com o foco —
+ * naquele dia a injeção chegou a 7992 B de 8000, com o radar em 676 B, e o prazo
+ * mais próximo já tinha caído fora da injeção uma vez. Quanto mais eu despacho,
+ * menos foco chegava.
+ */
+function ehWorktreeDeAgente(cwd) {
+  if (!cwd) return false;
+  return /[\\/]\.claude[\\/]worktrees([\\/]|$)/.test(cwd);
+}
+
 function sessoesVivas(state, agora, janelaMs, vivo) {
   const estaVivo = typeof vivo === 'function' ? vivo : processoVivo;
   return Object.entries(state || {})
     .filter(([, s]) => s && agora - Math.max(s.prompt_ts || 0, s.stop_ts || 0) < janelaMs)
-    .filter(([, s]) => !s.pid || estaVivo(s.pid));
+    .filter(([, s]) => !s.pid || estaVivo(s.pid))
+    .filter(([, s]) => !ehWorktreeDeAgente(s.cwd));
 }
 
 /** Existência de processo por PID. O sinal 0 não mata nada — só pergunta. */
@@ -637,6 +656,7 @@ module.exports = {
   cortarBytes,
   priorizarFoco,
   sessoesVivas,
+  ehWorktreeDeAgente,
   processoVivo,
   resumirSessoes,
   travarOrcamento,

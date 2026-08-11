@@ -453,6 +453,28 @@ checa "sessao com processo morto sai"      nao_tem "morta"                      
 checa "sessao velha continua saindo"       nao_tem "antiga"                     "$S"
 checa "entrada antiga sem pid sobrevive"   tem     "sem_pid"                    "$S"
 
+# Subagente em worktree abre sessao propria e NAO e janela paralela do Luis: a
+# regra 17 mede o paralelismo dele, nao o meu rastro. Em 2026-08-11 uma sessao de
+# worktree estava no radar, e o bloco de sessoes disputa orcamento com o foco —
+# no mesmo dia a injecao chegou a 7992 B de 8000 e o prazo mais proximo ja tinha
+# caido fora uma vez.
+W="$(LIB_PATH="$LIB" node -e "
+const lib = require(process.env.LIB_PATH);
+const agora = 1786000000000;
+const state = {
+  janela_real: { cwd: 'C:/Projetos/algo',                              pid: process.pid, prompt_ts: agora - 1000 },
+  wt_windows:  { cwd: 'C:\\\\Projetos\\\\algo\\\\.claude\\\\worktrees\\\\agent-x', pid: process.pid, prompt_ts: agora - 1000 },
+  wt_posix:    { cwd: 'C:/Projetos/algo/.claude/worktrees/agent-y',    pid: process.pid, prompt_ts: agora - 1000 },
+  quase:       { cwd: 'C:/Projetos/worktrees-de-verdade',              pid: process.pid, prompt_ts: agora - 1000 },
+};
+const vivas = lib.sessoesVivas(state, agora, 6 * 3600 * 1000).map(([id]) => id);
+process.stdout.write(vivas.join(','));
+" 2>&1)"
+checa "janela de verdade continua no radar"   tem     "janela_real"  "$W"
+checa "worktree de agente sai (caminho Windows)" nao_tem "wt_windows" "$W"
+checa "worktree de agente sai (caminho POSIX)"   nao_tem "wt_posix"   "$W"
+checa "pasta so parecida NAO e filtrada"      tem     "quase"        "$W"
+
 # O hook de verdade, com stdin de verdade: o evento "end" tem de apagar a linha.
 HB_RAIZ="$RAIZ_POSIX/hb"
 mkdir -p "$HB_RAIZ"
