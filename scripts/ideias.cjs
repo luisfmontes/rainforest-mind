@@ -20,7 +20,20 @@ const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
 
-const RAIZ = path.resolve(__dirname, "..");
+// A raiz sai da mesma cadeia de 5 niveis que o hook usa (hooks/lib/raiz.cjs):
+// RFM_ROOT > <projeto>/.rainforest > <config>/rainforest > plugin > legado. E o que
+// permite um repo ter as proprias ideias sem env var nenhuma. Se a lib nao estiver
+// junto (script copiado sozinho para uma caixa de areia, por exemplo), cai no
+// comportamento antigo — a pasta acima do script.
+const RAIZ = (() => {
+  const local = path.resolve(__dirname, "..");
+  try {
+    const { resolverRaiz } = require("../hooks/lib/raiz.cjs");
+    return resolverRaiz({ plugin: local }).raiz || local;
+  } catch {
+    return local;
+  }
+})();
 const ALVO = path.join(RAIZ, "ideias.jsonl");
 const ALVO_NOME = path.basename(ALVO);
 const DIR_BACKUP = path.join(RAIZ, ".ideias-backups");

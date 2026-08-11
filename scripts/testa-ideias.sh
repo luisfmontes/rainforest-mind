@@ -260,5 +260,45 @@ then ok=$((ok+1)); echo "  ok   reparar tambem reverteu byte a byte"
 else falhou=$((falhou+1)); echo "  FALHA o reparar gravou por cima do mutante"; fi
 
 echo
+echo "== 4. cadeia de raiz: o projeto sobrescreve, e a escrita vai pro lugar certo =="
+# Os blocos acima NAO copiam hooks/lib/raiz.cjs para a caixa — o require falha e o
+# script cai na pasta acima dele, que e o comportamento antigo. E isso que mantem os
+# blocos anteriores isolados. Aqui a lib entra de proposito, para exercitar o caminho
+# novo: com um .rainforest/ marcado no diretorio de trabalho, a escrita tem que ir PARA
+# LA, e o jsonl da raiz da caixa tem que ficar intocado. Sem esta prova, a cadeia estaria
+# ligada no ideias.cjs e nunca vista funcionando por ali.
+case "$IDEIAS" in
+  *ideias.cjs*)
+    # o mutante do bloco 3 segue instalado no .cjs da caixa; usar uma copia limpa
+    mkdir -p "$SB/hooks/lib" "$SB/proj/.rainforest"
+    cp "$SRC/hooks/lib/raiz.cjs" "$SB/hooks/lib/"
+    cp "$SRC/scripts/ideias.cjs" "$SB/scripts/ideias-limpo.cjs"
+    head -3 ideias.jsonl > "$SB/proj/.rainforest/ideias.jsonl"
+    md5_caixa_antes=$(md5sum ideias.jsonl | cut -d' ' -f1)
+    echo "{\"id\":\"teste-raiz-projeto\",$base}" > "$SB/proj/nova.json"
+    ( cd "$SB/proj" && node ../scripts/ideias-limpo.cjs plantar < nova.json ) >/dev/null 2>&1
+    got=$?
+    esperado "plantar de dentro de um projeto com .rainforest" 0 bash -c "exit $got"
+    # Caminho RELATIVO: o prova() roda python com cwd na raiz da caixa, e o python
+    # daqui e o do Windows — caminho POSIX do mktemp ele nao enxerga.
+    prova "gravou no .rainforest do projeto (4 linhas, com o id novo)" "
+import json
+l=[x for x in open('proj/.rainforest/ideias.jsonl',encoding='utf-8') if x.strip()]
+ids=[json.loads(x)['id'] for x in l]
+assert 'teste-raiz-projeto' in ids, ids
+assert len(l)==4, len(l)
+"
+    if [ "$(md5sum ideias.jsonl | cut -d' ' -f1)" = "$md5_caixa_antes" ]; then
+      ok=$((ok+1)); echo "  ok   o jsonl da raiz da caixa ficou intocado"
+    else
+      falhou=$((falhou+1)); echo "  FALHA escreveu na raiz da caixa em vez do projeto"
+    fi
+    ;;
+  *)
+    echo "  (pulado: a cadeia de raiz e do .cjs; \$IDEIAS aponta para outra implementacao)"
+    ;;
+esac
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

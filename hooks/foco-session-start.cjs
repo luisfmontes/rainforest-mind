@@ -8,10 +8,13 @@ const fs = require('fs');
 const path = require('path');
 const net = require('net');
 const { montarContexto, resumirSessoes, sessoesVivas } = require('./lib/contexto-sessao.cjs');
+const { resolverRaiz } = require('./lib/raiz.cjs');
 
 // Dados (FOCO/IDEIAS) vivem no repo de trabalho, não na cópia em cache do plugin.
-const DATA_ROOT = process.env.RFM_ROOT || 'C:\\Projetos\\rainforest-mind';
-const ROOT = fs.existsSync(DATA_ROOT) ? DATA_ROOT : path.resolve(__dirname, '..');
+// A cadeia de 5 níveis (RFM_ROOT > projeto > global > plugin > legado) está em
+// lib/raiz.cjs, com o porquê de cada nível. `nivel` diz qual respondeu.
+const { raiz: RAIZ_RESOLVIDA, nivel: NIVEL_RAIZ } = resolverRaiz();
+const ROOT = RAIZ_RESOLVIDA || path.resolve(__dirname, '..');
 
 function readSafe(p) {
   try { return fs.readFileSync(p, 'utf8').trim(); } catch { return ''; }
