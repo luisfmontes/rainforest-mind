@@ -160,6 +160,82 @@ function checarVersaoInstalada() {
     'o que voce escreveu no repo NAO esta valendo em sessao nova — atualize o plugin');
 }
 
+// ---------------------------------------------------------------- 7. claude-mem
+/**
+ * O worker do claude-mem, medido pela PORTA e não pelo PID.
+ *
+ * Colhe a ideia `guarda-saude-worker-claude-mem`. O modo de falha, medido em
+ * agosto de 2026 e sentido pelo Luís várias vezes: o guarda de spawn do
+ * claude-mem só olha se o PID está vivo. Com **PID vivo e porta muda** ele
+ * recusa subir um worker novo ("Worker already running, refusing to start
+ * duplicate") — o sistema não tem como se curar, os hooks falham em sequência,
+ * e aos 19 falhos o disjuntor bloqueia o `UserPromptSubmit` e **derruba o prompt
+ * do Luís**. Ele descobre pela tela, no meio de uma frase.
+ *
+ * Por isso a checagem é aqui e é assim: PID vivo não é evidência de worker vivo;
+ * só a porta responder é. E o contador de falhas consecutivas é o aviso que
+ * chega ANTES do bloqueio — que é o ponto inteiro de checar.
+ *
+ * Reporta e oferece; não recicla sozinho. Matar processo é mexer no ambiente do
+ * Luís (regra 15), e isso se pergunta.
+ */
+function checarClaudeMem() {
+  const home = process.env.USERPROFILE || process.env.HOME || '';
+  const dir = process.env.CLAUDE_MEM_DIR || path.join(home, '.claude-mem');
+  if (!fs.existsSync(dir)) return; // não instalado: não é problema deste plugin
+
+  // Disjuntor primeiro: ele é o que derruba o prompt.
+  const falhasPath = path.join(dir, 'state', 'hook-failures.json');
+  let consecutivas = 0;
+  try {
+    consecutivas = JSON.parse(fs.readFileSync(falhasPath, 'utf8')).consecutiveFailures || 0;
+  } catch { /* sem arquivo = sem falha registrada */ }
+
+  const pidPath = path.join(dir, 'worker.pid');
+  let info;
+  try {
+    info = JSON.parse(fs.readFileSync(pidPath, 'utf8'));
+  } catch {
+    if (consecutivas > 0) {
+      return alerta('claude-mem', `sem worker.pid e ${consecutivas} falha(s) consecutiva(s) de hook`,
+        'o worker nao esta de pe; o disjuntor vai bloquear o prompt');
+    }
+    return ok('claude-mem', 'sem worker registrado');
+  }
+
+  const vivo = (() => {
+    try { process.kill(info.pid, 0); return true; } catch (e) { return !!(e && e.code === 'EPERM'); }
+  })();
+
+  const responde = (() => {
+    const r = spawnSync(process.execPath, ['-e', `
+      const net=require('net');
+      const s=net.connect({host:'127.0.0.1',port:${Number(info.port)}},()=>{s.destroy();process.exit(0)});
+      s.setTimeout(2000,()=>{s.destroy();process.exit(1)});
+      s.on('error',()=>process.exit(1));
+    `], { timeout: 6000 });
+    return r.status === 0;
+  })();
+
+  if (!responde && vivo) {
+    // O impasse exato: o guarda ve PID vivo e recusa reciclar; a porta esta muda.
+    return alerta('claude-mem', `worker ${info.pid} vivo mas a porta ${info.port} nao responde`,
+      `e o impasse que derruba o seu prompt — o guarda de spawn vai recusar subir outro. Encerre o ${info.pid} e deixe subir limpo.`);
+  }
+  if (!responde) {
+    return aviso('claude-mem', `porta ${info.port} nao responde (worker ${info.pid} tambem morreu)`,
+      'sobe sozinho no proximo hook; se repetir, e o worker saturando');
+  }
+  if (consecutivas > 0) {
+    return aviso('claude-mem', `porta ${info.port} ok, mas ${consecutivas} falha(s) consecutiva(s) de hook`,
+      'degradando — o disjuntor bloqueia o prompt ao acumular; vale reciclar antes');
+  }
+  const uptimeMin = info.startedAt
+    ? Math.round((Date.now() - Date.parse(info.startedAt)) / 60000)
+    : null;
+  ok('claude-mem', `porta ${info.port} responde${uptimeMin !== null ? `, worker de pe ha ${uptimeMin} min` : ''}`);
+}
+
 // ---------------------------------------------------------------- saida
 
 function main() {
@@ -169,6 +245,7 @@ function main() {
   checarEsteira();
   checarWorktrees();
   checarVersaoInstalada();
+  checarClaudeMem();
 
   if (process.argv.includes('--json')) {
     console.log(JSON.stringify(achados, null, 2));
