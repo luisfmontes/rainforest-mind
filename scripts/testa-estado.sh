@@ -93,7 +93,7 @@ esperado "iniciar duas vezes"             1 $E iniciar --slug t2
 
 echo
 echo "== 5. o estado sobrevive e e retomavel =="
-igual "arquivo no lugar certo" "sim" "$([ -f .rainforest/estado/t1.json ] && echo sim || echo nao)"
+igual "arquivo no lugar certo" "sim" "$([ -f docs/rainforest/estado/t1.json ] && echo sim || echo nao)"
 igual "listar mostra os dois" "2" "$($E listar | grep -c '^t')"
 prox_t2_antes="$($E proximo --slug t2)"
 igual "retomada estavel entre chamadas" "$prox_t2_antes" "$($E proximo --slug t2)"
@@ -109,14 +109,14 @@ echo "== 6. o estado mora no PROJETO, nao na cadeia de dados do rainforest =="
 mkdir -p "$SBP/outro-projeto"
 ( cd "$SBP/outro-projeto" && RFM_ROOT="$SBP" node ../scripts/estado.cjs iniciar --slug t-local >/dev/null 2>&1 )
 igual "estado cai no cwd, mesmo com RFM_ROOT apontando pra fora" "sim" \
-  "$([ -f "$SBP/outro-projeto/.rainforest/estado/t-local.json" ] && echo sim || echo nao)"
+  "$([ -f "$SBP/outro-projeto/docs/rainforest/estado/t-local.json" ] && echo sim || echo nao)"
 igual "e NAO cai na raiz de dados" "sim" \
-  "$([ -f "$SBP/.rainforest/estado/t-local.json" ] && echo nao || echo sim)"
+  "$([ -f "$SBP/docs/rainforest/estado/t-local.json" ] && echo nao || echo sim)"
 # CLAUDE_PROJECT_DIR vence o cwd: e o que o harness informa como raiz do projeto.
 mkdir -p "$SBP/dir-do-harness"
 ( cd "$SBP" && CLAUDE_PROJECT_DIR="$SBP/dir-do-harness" node scripts/estado.cjs iniciar --slug t-harness >/dev/null 2>&1 )
 igual "CLAUDE_PROJECT_DIR vence o cwd" "sim" \
-  "$([ -f "$SBP/dir-do-harness/.rainforest/estado/t-harness.json" ] && echo sim || echo nao)"
+  "$([ -f "$SBP/dir-do-harness/docs/rainforest/estado/t-harness.json" ] && echo sim || echo nao)"
 
 echo
 echo "== 7. MUTACAO — afrouxar estaFechado tem que quebrar os itens 1 e 3 =="

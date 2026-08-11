@@ -317,8 +317,14 @@ const PRIORIDADE_FOCO = [
   // Lista solta abaixo de um cabeçalho residente: sai junto com ele ou não sai.
   // Cabeçalho sem o conteúdo dele ("## Compromissos com prazo" e nada embaixo) lê
   // como "não há compromisso", que é afirmação — e pode ser falsa.
-  { rank: 2, teste: (b) => /^Marcos/.test(b) || /^- /.test(b) },
-  { rank: 3, teste: (b) => /^Avanços:/.test(b) || /^\(Seções do FOCO\.md omitidas/.test(b) },
+  // MARCOS TEM RANK PRÓPRIO, acima de qualquer outra lista. Prazo é o que mais
+  // dói perder, e até 2026-08-11 ele empatava em rank 2 com toda lista solta: o
+  // preenchimento é guloso, levou o `- (nenhum além do foco ativo)` de 30 B e
+  // deixou os Marcos — com a entrega de sexta — fora da injeção. Empate resolvido
+  // por ordem no arquivo não é prioridade, é acaso.
+  { rank: 2, teste: (b) => /^Marcos/.test(b) },
+  { rank: 3, teste: (b) => /^- /.test(b) },
+  { rank: 4, teste: (b) => /^Avanços:/.test(b) || /^\(Seções do FOCO\.md omitidas/.test(b) },
 ];
 
 /**
