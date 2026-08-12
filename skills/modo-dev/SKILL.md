@@ -55,7 +55,14 @@ nesta ordem:
    base da regra 11).
 2. **Objetivos** — numerados e concretos, um por linha.
 3. **Restrições** — o que olhar e, explicitamente, o que ignorar.
-4. **Formato de saída** — a forma exata que a janela principal quer de volta.
+4. **Formato de saída** — a forma exata que a janela principal quer de volta,
+   **e como devolvê-la**. As duas coisas: subagente **anônimo** devolve
+   sozinho (o texto final dele é o valor de retorno), mas subagente
+   **nomeado** é teammate persistente e só entrega chamando `SendMessage` —
+   terminar o trabalho não entrega nada. Nomeou, o briefing manda devolver,
+   e diz também que **reportar bloqueio é entrega válida** (ferramenta sem
+   credencial, repo que sumiu, rede fechada), com o comando e a saída de
+   erro colados. Silêncio não é.
 5. **Critério de sucesso** — qual comando rodar, qual saída conta como pronto,
    e qual mutação (revertendo o comportamento real) tem que quebrar qual teste.
 
