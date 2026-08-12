@@ -24,3 +24,6 @@ vigia.config.json
 # e a cadeia em hooks/lib/raiz.cjs.
 FOCO.md
 ideias.jsonl
+
+# Cache da extensao do TDS/AdvPL — fontes gerados, nao sao deste projeto.
+.vscode/
