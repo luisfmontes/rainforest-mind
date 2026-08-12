@@ -1,0 +1,223 @@
+#!/usr/bin/env node
+"use strict";
+/* Ponte para outros agentes — gera o AGENTS.md (Codex) e o GEMINI.md (Gemini CLI)
+ * a partir da MESMA fonte que o hook de abertura injeta no Claude Code.
+ *
+ * POR QUE GERADO, E NUNCA ESCRITO A MAO. As regras moram em
+ * `skills/rainforest-mind/SKILL.md`. Um AGENTS.md escrito a mao seria uma segunda
+ * cópia das regras, mantida em sincronia por disciplina — e existe um incidente
+ * datado exatamente disso na maquina do dono deste plugin: duas CLAUDE.md de
+ * escopo usuario, uma por config dir, sincronizadas a mao. Em 2026-08-10 uma foi
+ * editada, a outra divergiu em silencio, e metade do setup passou a valer o
+ * contrario da outra metade. Regra duplicada nao fica errada com aviso: fica
+ * errada calada. Aqui a duplicata e DERIVADA, e o comando que a gera esta escrito
+ * dentro dela.
+ *
+ * O QUE ATRAVESSA E O QUE NAO. Isto e a parte honesta da ponte, e ela vai dentro
+ * do arquivo gerado tambem — prometer a trava que nao existe seria pior que nao
+ * ter ponte:
+ *
+ *   atravessa (e MECANISMO, porque e comando de shell com exit code):
+ *     scripts/estado.cjs exigir ......... o gate da esteira, exit 2
+ *     scripts/conferir-entrega.cjs ...... a checagem da regra 12, exit 1
+ *     scripts/conferir-relatorio.cjs .... anonimizacao antes de publicar, exit 2
+ *     scripts/ideias.cjs ................ porta unica de escrita do ideias.jsonl
+ *     scripts/foco.cjs / saude.cjs / semear.cjs / limpar-branches.cjs
+ *
+ *   NAO atravessa (e API do Claude Code, e nao tem equivalente):
+ *     hooks/gate-worktree.cjs e gate-staging-total.cjs (PreToolUse)
+ *     a injecao de SessionStart (o arquivo gerado e o substituto dela)
+ *     os slash commands e os subagentes nomeados
+ *
+ * Uso:
+ *   node scripts/ponte.cjs --alvo <dir>                    # ensaio: mostra e nao grava
+ *   node scripts/ponte.cjs --alvo <dir> --aplicar
+ *   node scripts/ponte.cjs --alvo <dir> --agente codex --aplicar
+ */
+
+const fs = require("fs");
+const path = require("path");
+
+const CODIGO_ROOT = path.resolve(__dirname, "..");
+const CAMINHO_SKILL = path.join(CODIGO_ROOT, "skills", "rainforest-mind", "SKILL.md");
+
+const INICIO = "<!-- rainforest-mind:inicio — GERADO por scripts/ponte.cjs, nao edite a mao -->";
+const FIM = "<!-- rainforest-mind:fim -->";
+
+const AGENTES = {
+  codex: {
+    arquivo: "AGENTS.md",
+    nome: "Codex",
+    comoLe: "O Codex le o `AGENTS.md` da raiz do repositorio em toda sessao.",
+  },
+  gemini: {
+    arquivo: "GEMINI.md",
+    nome: "Gemini CLI",
+    comoLe: "O Gemini CLI le o `GEMINI.md` da raiz do repositorio em toda sessao.",
+  },
+};
+
+function arg(nome, argv = process.argv) {
+  const i = argv.indexOf(`--${nome}`);
+  return i >= 0 ? argv[i + 1] || null : null;
+}
+const tem = (nome, argv = process.argv) => argv.includes(`--${nome}`);
+
+function erro(msg) {
+  process.stderr.write(`ponte.cjs: erro: ${msg}\n`);
+  process.exit(1);
+}
+
+/** O nucleo das regras, da mesma fonte e pelo mesmo caminho do hook de abertura. */
+function nucleoDasRegras() {
+  let lib;
+  try {
+    lib = require("../hooks/lib/contexto-sessao.cjs");
+  } catch (e) {
+    erro(`nao consegui carregar hooks/lib/contexto-sessao.cjs: ${e.message}`);
+  }
+  let skill;
+  try {
+    skill = fs.readFileSync(CAMINHO_SKILL, "utf8");
+  } catch {
+    erro(`nao consegui ler ${CAMINHO_SKILL} — a ponte nao inventa regra`);
+  }
+  const nucleo = lib.extrairNucleo(lib.filtrarRegras(skill)).trim();
+  // Degradacao BARULHENTA, igual a do hook: ponte com meia regra parece completa,
+  // e o dev do outro lado nao tem como saber que faltou.
+  if (nucleo.length < lib.TETOS.REGRAS_MIN_CHARS) {
+    erro(
+      `so extrai ${nucleo.length} caracteres de regra (piso ${lib.TETOS.REGRAS_MIN_CHARS}) — ` +
+        "SKILL.md truncado ou heading renomeado. Nao vou gerar ponte pela metade."
+    );
+  }
+  return nucleo;
+}
+
+function raizDeDados() {
+  try {
+    return require("../hooks/lib/raiz.cjs").resolverRaiz({ plugin: CODIGO_ROOT }).raiz || null;
+  } catch {
+    return null;
+  }
+}
+
+function corpo(agente, nucleo, dados) {
+  const cli = [
+    ["`node <plugin>/scripts/estado.cjs exigir --slug <slug> --estagio <e>`", "gate da esteira — **exit 2** quando o estagio anterior nao fechou"],
+    ["`node <plugin>/scripts/conferir-entrega.cjs --worktree <wt> --base <hash>`", "a checagem da regra 12 sobre entrega de agente — **exit 1** se reprovar"],
+    ["`node <plugin>/scripts/conferir-relatorio.cjs <arquivo>`", "**exit 2** se o texto tem telefone, e-mail, caminho de home ou credencial"],
+    // Sem `|` dentro do code span: em tabela markdown ele quebra a celula.
+    ["`node <plugin>/scripts/ideias.cjs plantar, colher, listar, conferir`", "porta unica de escrita do `ideias.jsonl` (trava, backup, atomico, conferido)"],
+    ["`node <plugin>/scripts/foco.cjs caminho, rotacionar`", "onde mora o foco, e o teto do bloco de avancos"],
+    ["`node <plugin>/scripts/saude.cjs`", "o que os checadores oficiais nao sabem"],
+    ["`node <plugin>/scripts/semear.cjs --projeto <slug>`", "o historico deste projeto: observacoes, ideias abertas, relatorios"],
+  ]
+    .map(([c, p]) => `| ${c} | ${p} |`)
+    .join("\n");
+
+  return `# rainforest-mind — ponte para o ${agente.nome}
+
+${agente.comoLe} Este bloco e **gerado**: as regras moram em
+\`skills/rainforest-mind/SKILL.md\`, no plugin, e chegam aqui por
+\`node <plugin>/scripts/ponte.cjs --alvo . --agente ${Object.keys(AGENTES).find((k) => AGENTES[k] === agente)} --aplicar\`.
+Editar este bloco a mao cria uma segunda versao das regras que divergem em
+silencio — foi o que aconteceu com duas CLAUDE.md sincronizadas a mao em
+2026-08-10. Mude o SKILL.md e gere de novo.
+
+## O que NAO vale aqui, e voce precisa saber antes de confiar
+
+Duas travas do rainforest-mind rodam **fora do modelo** no Claude Code, como hook
+com exit code: a que barra agente editando fora de worktree isolado, e a que barra
+\`git add -A\`. Elas usam o \`PreToolUse\`, que **nao existe** neste host. Aqui elas
+sao texto — ou seja, argumentaveis. Trate-as como combinado, nao como trava.
+
+O que continua sendo mecanismo, porque e comando com exit code, esta na tabela
+abaixo. Chame de verdade: **relato de que rodou nao e evidencia de que rodou.**
+
+| Comando | O que ele garante |
+|---|---|
+${cli}
+
+\`<plugin>\` e a pasta do rainforest-mind nesta maquina. Sua pasta de dados
+(FOCO.md, ideias.jsonl, projetos.json) **nao se chumba aqui**: descubra com
+\`node <plugin>/scripts/ideias.cjs conferir\`, que imprime o caminho resolvido${dados ? "" : ", e monte com `node <plugin>/scripts/setup.cjs --criar` se ainda nao existir"}.
+Caminho de home dentro de arquivo versionado vaza a maquina de quem gerou — e este
+arquivo nasce para ser commitado no repo de outra pessoa.
+
+## As regras
+
+O que segue e o **nucleo** de cada regra. Regra marcada com \`↳\` tem elaboracao
+que nao esta aqui — criterio fino, comando exato, incidente datado —, e ela mora
+em \`skills/rainforest-mind/SKILL.md\`. Antes de aplicar uma regra marcada, **leia
+esse arquivo**.
+
+${nucleo}
+`;
+}
+
+function escrever(alvoArquivo, blocoNovo, aplicar) {
+  const marcado = `${INICIO}\n${blocoNovo.trim()}\n${FIM}\n`;
+  let anterior = null;
+  try {
+    anterior = fs.readFileSync(alvoArquivo, "utf8");
+  } catch {
+    anterior = null;
+  }
+
+  let saida;
+  let acao;
+  if (anterior === null) {
+    saida = marcado;
+    acao = "cria";
+  } else if (anterior.includes(INICIO) && anterior.includes(FIM)) {
+    const antes = anterior.slice(0, anterior.indexOf(INICIO));
+    const depois = anterior.slice(anterior.indexOf(FIM) + FIM.length).replace(/^\n+/, "");
+    saida = `${antes}${marcado}${depois ? `\n${depois}` : ""}`;
+    acao = "substitui o bloco gerado";
+  } else {
+    // Arquivo escrito a mao por outra pessoa. Nunca sobrescrever: o bloco entra no
+    // fim e o que era dela continua intacto, byte a byte.
+    saida = `${anterior.replace(/\n*$/, "")}\n\n${marcado}`;
+    acao = "ACRESCENTA no fim (o arquivo ja existia sem marcador — nada dele foi apagado)";
+  }
+
+  if (!aplicar) return { acao, bytes: Buffer.byteLength(saida, "utf8"), gravado: false };
+  fs.writeFileSync(alvoArquivo, saida, "utf8");
+  return { acao, bytes: Buffer.byteLength(saida, "utf8"), gravado: true };
+}
+
+function main() {
+  const alvo = arg("alvo");
+  if (!alvo) erro("diga --alvo <dir> (a raiz do repositorio que vai receber a ponte)");
+  let stat;
+  try {
+    stat = fs.statSync(alvo);
+  } catch {
+    erro(`--alvo '${alvo}' nao existe`);
+  }
+  if (!stat.isDirectory()) erro(`--alvo '${alvo}' nao e diretorio`);
+
+  const pedido = (arg("agente") || "todos").toLowerCase();
+  const chaves = pedido === "todos" ? Object.keys(AGENTES) : [pedido];
+  for (const k of chaves) {
+    if (!AGENTES[k]) erro(`--agente '${k}' desconhecido — use ${Object.keys(AGENTES).join(", ")} ou todos`);
+  }
+
+  const aplicar = tem("aplicar");
+  const nucleo = nucleoDasRegras();
+  const dados = raizDeDados();
+
+  console.log(`fonte das regras: ${path.relative(CODIGO_ROOT, CAMINHO_SKILL)} (nucleo com ${Buffer.byteLength(nucleo, "utf8")} B)`);
+  for (const k of chaves) {
+    const agente = AGENTES[k];
+    const destino = path.join(alvo, agente.arquivo);
+    const r = escrever(destino, corpo(agente, nucleo, dados), aplicar);
+    console.log(`  ${agente.arquivo}: ${r.acao} — ${r.bytes} B ${r.gravado ? "GRAVADO" : "(ensaio)"}`);
+    console.log(`    ${destino}`);
+  }
+  if (!aplicar) console.log("\n--aplicar ausente: ensaio, nada gravado.");
+  return 0;
+}
+
+process.exitCode = main();

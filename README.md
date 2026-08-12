@@ -250,10 +250,46 @@ O mesmo princípio nos scripts, para o que hook nenhum alcança:
 | `scripts/limpar-branches.cjs` | confere o local contra o remoto e classifica por dois eixos (upstream **e** merge); nunca remove branch viva, e exigir estar na base em dia é trava |
 | `scripts/conferir-relatorio.cjs` | **sai com código 2** quando o rascunho tem telefone, JID, e-mail, caminho de home ou credencial — antes de virar Issue público |
 | `scripts/conferir-entrega.cjs` | roda na janela principal **depois** da entrega do agente: hash de base, isolamento e citação conferidos na fonte, não no relato |
+| `scripts/ponte.cjs` | **gera** o `AGENTS.md` (Codex) e o `GEMINI.md` (Gemini CLI) a partir do mesmo SKILL.md que o hook injeta — e recusa gerar se não achar as regras, em vez de escrever meia ponte |
 | `scripts/medir-injecao.py` | custo real do prompt de abertura, lido do `usage` que a API devolve — token de verdade, sem estimativa |
 
 O que essas travas custaram e renderam fica em [`relatorios/`](relatorios/) —
 um relatório datado por incidente, com método e números.
+
+## Codex e Gemini CLI: o que atravessa, e o que não
+
+O plugin é do Claude Code — os 4 hooks, os slash commands, as 13 skills e os 7
+subagentes são API dele e não têm equivalente nos outros hosts. Mas o **método**
+não precisa ficar preso a um agente, e a pasta de dados não sabe quem a escreveu.
+
+```
+node scripts/ponte.cjs --alvo <dir-do-repo>            # ensaio: mostra e não grava
+node scripts/ponte.cjs --alvo <dir-do-repo> --aplicar  # AGENTS.md + GEMINI.md
+```
+
+O arquivo é **gerado**, nunca escrito à mão, e o comando que o gera está escrito
+dentro dele. O motivo é um incidente: nesta máquina existem duas `CLAUDE.md` de
+escopo usuário — uma por config dir — que eram sincronizadas à mão. Em 2026-08-10
+uma foi editada e a outra divergiu **em silêncio**; metade do setup passou a valer
+o contrário da outra metade. Regra duplicada não fica errada com aviso: fica
+errada calada.
+
+E a ponte diz o que ela **não** entrega, porque prometer trava que não existe é
+pior que não ter ponte:
+
+| No Claude Code | Na ponte |
+|---|---|
+| gate de worktree e gate de `git add -A` (hook `PreToolUse`, exit 2) | **texto** — não existe `PreToolUse` nesses hosts, então é combinado, não trava |
+| injeção de SessionStart | o próprio arquivo gerado, que o host lê a cada sessão |
+| `estado.cjs exigir` (gate da esteira, exit 2) | **igual** — é comando de shell |
+| `conferir-entrega.cjs` (regra 12, exit 1) | **igual** |
+| `conferir-relatorio.cjs` (anonimização, exit 2) | **igual** |
+| `/ideia`, `/foco`, `/semear` | os CLIs `ideias.cjs`, `foco.cjs`, `semear.cjs` |
+
+O gerado **não chumba caminho de home** — ele ensina a descobrir a pasta de dados
+com `ideias.cjs conferir`, porque nasce para ser commitado no repo de outra
+pessoa. Se o arquivo já existir escrito à mão, o bloco entra delimitado e nada do
+que estava lá é apagado; regenerar substitui só o bloco.
 
 ## Ideia solta não vira escopo, e não vira esquecimento
 
@@ -298,6 +334,7 @@ flowchart LR
 | `limpar` | Manutenção fora da esteira: worktree órfão da sessão que nunca chegou ao `fechar` — e a **branch**, que sobrevive ao worktree e ninguém vê |
 | `/semear` | Propõe o que criar **neste** repositório a partir do que ele já tropeçou — cada proposta cita o registro que a origina |
 | `/setup` | Monta a pasta de dados e liga/desliga os gates e a esteira, por projeto ou para tudo |
+| `/ponte` | Gera `AGENTS.md` (Codex) e `GEMINI.md` (Gemini CLI) num repo, do mesmo SKILL.md — e declara o que **não** atravessa |
 | `/saude` | Só o que os checadores oficiais não sabem: de quem é a raiz, margem da injeção, esteira parada, worktree órfão |
 | `modo-dev` | Disciplina de dev sob demanda (acima) |
 | `depurar` | Loop de feedback antes de hipótese (acima) |
