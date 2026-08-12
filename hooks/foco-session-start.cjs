@@ -11,7 +11,7 @@ const { montarContexto, resumirSessoes, sessoesVivas } = require('./lib/contexto
 const { resolverRaiz } = require('./lib/raiz.cjs');
 
 // Dados (FOCO/IDEIAS) vivem no repo de trabalho, não na cópia em cache do plugin.
-// A cadeia de 5 níveis (RFM_ROOT > projeto > global > plugin > legado) está em
+// A cadeia de 4 níveis (RFM_ROOT > projeto > global > plugin) está em
 // lib/raiz.cjs, com o porquê de cada nível. `nivel` diz qual respondeu.
 // DUAS raizes, e confundi-las apaga as regras da sessao inteira.
 //

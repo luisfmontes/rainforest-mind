@@ -15,16 +15,22 @@
 //   1. RFM_ROOT              — declaração explícita, vence tudo
 //   2. <projeto>/.rainforest — estado por projeto (foco e ideias daquele repo)
 //   3. ~/.rainforest         — estado global do usuário, no HOME e NÃO sob CLAUDE_CONFIG_DIR
-//                              (o porquê está na linha 71; este comentário já disse o
-//                               contrário do código, e documentação que contradiz o
+//                              (o porquê está junto do nível 3; este comentário já disse
+//                               o contrário do código, e documentação que contradiz o
 //                               arquivo em que mora é pior que documentação ausente)
 //   4. raiz do plugin        — instalação auto-hospedada (o repo é o próprio plugin)
-//   5. legado                — o caminho antigo do usuario, só se existir
 //
-// O nível 5 existe porque `RFM_ROOT` NÃO está definida na máquina dele e o plugin roda
-// de uma cópia em cache: tirar o caminho legado sem mais nada apagaria o foco dele no
-// meio de uma sessão. Ele sai quando `RFM_ROOT` ou o nível 3 estiverem montados —
-// e o próprio `resolverRaiz` diz qual nível respondeu, para isso ser visível.
+// HOUVE UM NÍVEL 5, e ele saiu em 2026-08-11 junto com a preparação para publicar.
+// Era um caminho absoluto de máquina — `C:\Projetos\rainforest-mind` — cravado como
+// último recurso, e existia por uma razão boa e temporária: quando os dados saíram do
+// repo, `RFM_ROOT` ainda não estava definida e o plugin rodava de uma cópia em cache;
+// sem a ponte, o foco sumiria no meio de uma sessão.
+//
+// A ponte cumpriu o papel: o nível 3 está montado, e é ele que responde. O que sobrava
+// era caminho da máquina de uma pessoa dentro de código que outras vão instalar — para
+// qualquer outro dev, um diretório que ele não tem, ou pior, um que ele tem por
+// coincidência. Nível de migração tem prazo, e o prazo é o dia em que a migração
+// terminou.
 
 const fs = require('fs');
 const path = require('path');
@@ -43,20 +49,18 @@ function ehRaiz(dir) {
 }
 
 /**
- * Resolve a raiz de dados percorrendo a cadeia de 5 níveis.
+ * Resolve a raiz de dados percorrendo a cadeia de 4 níveis.
  *
  * @param {object} [o]
  * @param {object} [o.env]      variáveis de ambiente (default: process.env)
  * @param {string} [o.cwd]      diretório do projeto (default: CLAUDE_PROJECT_DIR ou cwd)
  * @param {string} [o.plugin]   raiz do plugin (default: duas pastas acima deste arquivo)
- * @param {string} [o.legado]   caminho legado a aceitar como último recurso
  * @returns {{raiz: string|null, nivel: string, escopo: 'projeto'|'usuario'|null}}
  */
 function resolverRaiz(o = {}) {
   const env = o.env || process.env;
   const projeto = o.cwd || env.CLAUDE_PROJECT_DIR || process.cwd();
   const plugin = o.plugin || path.resolve(__dirname, '..', '..');
-  const legado = 'legado' in o ? o.legado : 'C:\\Projetos\\rainforest-mind';
 
   // 1. Declaração explícita. Vence mesmo sem marcador — quem declarou sabe o que quer,
   //    e exigir marcador aqui impediria montar uma raiz nova pela primeira vez.
@@ -90,11 +94,6 @@ function resolverRaiz(o = {}) {
   // 4. Auto-hospedado: o repo é o próprio plugin (desenvolvimento do rainforest).
   if (ehRaiz(plugin)) {
     return { raiz: plugin, nivel: 'plugin', escopo: 'usuario' };
-  }
-
-  // 5. Legado. Sai quando 1 ou 3 estiverem montados.
-  if (legado && ehRaiz(legado)) {
-    return { raiz: legado, nivel: 'legado', escopo: 'usuario' };
   }
 
   return { raiz: null, nivel: 'nenhum', escopo: null };
