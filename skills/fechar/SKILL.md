@@ -65,6 +65,17 @@ Se este trabalho avançou o **foco ativo** (FOCO.md, seção Ativo), acrescente
 uma linha datada na seção **Avanços**: `- AAAA-MM-DD: o que andou` (regra 5
 do `rainforest-mind`). Não avançou foco nenhum → não escreve nada aí.
 
+Escreveu avanço, rode em seguida:
+
+```
+node scripts/foco.cjs rotacionar --aplicar
+```
+
+É o que mantém o bloco "Avanços" dentro do teto: o que passa vai para o
+`AVANCOS.md` ao lado, e o FOCO.md ganha a linha de histórico apontando para
+lá. Sem isso o arquivo só cresce, e ele é lido inteiro em toda sessão que
+precisa conferir prazo, marco ou avanço.
+
 Pergunte, em uma linha: **"alguma observação desta sessão?"** (regra 13) —
 é o gancho para o que não foi registrado no meio do trabalho.
 

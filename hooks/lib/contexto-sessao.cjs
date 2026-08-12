@@ -114,6 +114,13 @@ const CITACAO = /^>.*(?:\r?\n|$)/gm;
 /** Início de uma entrada datada de "Avanços": `- 2026-08-09: ...` */
 const ENTRADA_DATADA = /\n(?=- \d{4}-\d{2}-\d{2})/;
 
+/**
+ * Linha que o `scripts/foco.cjs` escreve no topo dos Avanços quando move entradas
+ * antigas para o `AVANCOS.md`. Sem `g`: é usada com `.test()`, e regex global guarda
+ * `lastIndex` entre chamadas — testar a mesma linha duas vezes daria `false` na segunda.
+ */
+const PONTEIRO_HISTORICO = /^- \(histórico:.*\)$/;
+
 /** Início de uma regra numerada: `**7. Tom sênior.** ...` */
 const INICIO_REGRA = /\n(?=\*\*\d+\.)/;
 
@@ -210,7 +217,13 @@ function resumirAvancos(focoText, maxBytes = TETOS.AVANCOS_MAX_BYTES) {
   const corpo = fim === -1 ? resto : resto.slice(0, fim);
   const cauda = fim === -1 ? '' : resto.slice(fim);
 
-  const entradas = corpo.split(ENTRADA_DATADA).map((e) => e.trim()).filter(Boolean);
+  // A linha de histórico (escrita pelo `scripts/foco.cjs`) é residente e não conta
+  // como entrada omitida. Sem isso o ponteiro daqui — "elas continuam no FOCO.md" —
+  // vira afirmação FALSA no dia em que a rotação tira entrada do arquivo: quem lesse
+  // o FOCO.md inteiro atrás delas não acharia, e não saberia que existe AVANCOS.md.
+  const todas = corpo.split(ENTRADA_DATADA).map((e) => e.trim()).filter(Boolean);
+  const historico = todas.find((e) => PONTEIRO_HISTORICO.test(e)) || null;
+  const entradas = todas.filter((e) => e !== historico);
   if (Buffer.byteLength(corpo, 'utf8') <= maxBytes) return foco;
 
   // Do mais recente para o mais antigo, enquanto couber. Pelo menos uma entrada
@@ -226,12 +239,15 @@ function resumirAvancos(focoText, maxBytes = TETOS.AVANCOS_MAX_BYTES) {
   }
 
   const ocultas = entradas.length - mantidas.length;
-  if (!ocultas) return foco;
-  const ponteiro = `- (${ocultas} ${ocultas === 1 ? 'entrada anterior' : 'entradas anteriores'} ` +
-    `${ocultas === 1 ? 'foi omitida' : 'foram omitidas'} desta injeção para conter o custo por sessão. ` +
-    'Elas continuam no FOCO.md — **leia o arquivo antes de afirmar o que já foi decidido ou feito neste foco**.)';
+  if (!ocultas && !historico) return foco;
+  const ponteiro = ocultas
+    ? `- (${ocultas} ${ocultas === 1 ? 'entrada anterior' : 'entradas anteriores'} ` +
+      `${ocultas === 1 ? 'foi omitida' : 'foram omitidas'} desta injeção para conter o custo por sessão. ` +
+      'Elas continuam no FOCO.md — **leia o arquivo antes de afirmar o que já foi decidido ou feito neste foco**.)'
+    : null;
 
-  return foco.slice(0, corpoInicio) + '\n' + [ponteiro, ...mantidas].join('\n') + cauda;
+  return foco.slice(0, corpoInicio) + '\n' +
+    [historico, ponteiro, ...mantidas].filter(Boolean).join('\n') + cauda;
 }
 
 /**

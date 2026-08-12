@@ -163,6 +163,26 @@ Avanços:
 - 2026-08-07 (tarde): entrada com sufixo entre a data e os dois-pontos.")"
 checa "data com sufixo vira ultimo avanco" tem     "Último avanço datado: 2026-08-07" "$S"
 
+# A linha de historico escrita pelo `scripts/foco.cjs` quando ele move entradas para
+# o AVANCOS.md: ela e RESIDENTE e nao conta como omitida. Sem isso o ponteiro desta
+# funcao — "elas continuam no FOCO.md" — passa a mentir para as entradas rotacionadas,
+# e a sessao nem fica sabendo que existe outro arquivo.
+GRANDE1="- 2026-08-08: $(printf 'palavra %.0s' $(seq 1 120))"
+GRANDE2="- 2026-08-09: $(printf 'palavra %.0s' $(seq 1 120))"
+GRANDE3="- 2026-08-10: $(printf 'palavra %.0s' $(seq 1 120))"
+S="$(avancos "# Foco
+
+## Ativo
+
+Avanços:
+- (histórico: 11 avanços de 2026-07-20 a 2026-08-07 em AVANCOS.md.)
+$GRANDE1
+$GRANDE2
+$GRANDE3")"
+checa "ponteiro de historico e residente"    tem     "AVANCOS.md"                  "$S"
+checa "historico nao conta como omitida"     tem     "2 entradas anteriores"       "$S"
+checa "o avanco mais recente fica"           tem     "2026-08-10"                  "$S"
+
 cp "$LIB" "$RAIZ_POSIX/lib-sem-teto-avancos.cjs"
 sed -i 's/AVANCOS_MAX_BYTES: [0-9]*/AVANCOS_MAX_BYTES: 99999999/' "$RAIZ_POSIX/lib-sem-teto-avancos.cjs"
 S="$(montar "$SKILL_OK" "$FOCO_MUITOS" "$RAIZ_POSIX/lib-sem-teto-avancos.cjs")"
