@@ -171,7 +171,7 @@ function main() {
   const forcar = tem('forcar') || forcarConfigurado();
   let remover = tem('remover');
 
-  // ESTAR NA BASE — regra do Luís, 2026-08-11, e ela protege mais do que anuncia.
+  // ESTAR NA BASE — regra do usuario, 2026-08-11, e ela protege mais do que anuncia.
   //
   // A parte óbvia: fora da base, a branch em que você está sai da conta (vira
   // `atual`), então uma rodada de limpeza feita de um lugar errado limpa quase tudo
@@ -214,7 +214,7 @@ function main() {
   for (const b of refs) (porClasse[b.classe] ||= []).push(b);
 
   // O `-d` recusa o que a base não contém. Só `sumiu-divergente` cai nesse caso, e
-  // é exatamente ele que o comando original do Luís resolvia com `-D`.
+  // é exatamente ele que o comando original do usuario resolvia com `-D`.
   const alvos = refs.filter((b) => REMOVIVEIS.has(b.classe));
   const precisamForca = alvos.filter((b) => b.classe === 'sumiu-divergente');
   const vaoSair = forcar ? alvos : alvos.filter((b) => b.classe !== 'sumiu-divergente');

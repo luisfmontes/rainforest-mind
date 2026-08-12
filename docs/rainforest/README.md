@@ -30,7 +30,7 @@ Existem **dois** tipos de estado, e confundi-los foi um defeito real, pego em
 
 | | Onde mora | Por quê |
 |---|---|---|
-| `FOCO.md`, `ideias.jsonl` | cadeia de dados (`RFM_ROOT` > projeto > global > plugin) | são **do Luís** e atravessam projeto: o foco de hoje vale em qualquer pasta |
+| `FOCO.md`, `ideias.jsonl` | cadeia de dados (`RFM_ROOT` > projeto > global > plugin) | são **do usuario** e atravessam projeto: o foco de hoje vale em qualquer pasta |
 | design, plano, estado | **sempre o projeto do trabalho** | são **do projeto**: descrevem aquele código e só fazem sentido ao lado dele |
 
 Na primeira versão o estado usava a cadeia de dados, e por isso uma feature de

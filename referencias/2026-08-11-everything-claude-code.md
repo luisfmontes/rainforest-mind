@@ -11,7 +11,7 @@ afirmação aqui foi conferida no arquivo citado.
 
 ## Por que este documento existe
 
-O Luís levantou o repo como expressão do que ele imagina para o
+O usuario levantou o repo como expressão do que ele imagina para o
 rainforest-mind: **"instalar uma coisa e ela cuidar das sessões e
 configurações, independente do projeto"**. A pergunta que este documento
 responde não é "o repo é bom?", é **"ele entrega esse mundo perfeito, e o que
@@ -73,7 +73,7 @@ vira `node "/scripts/hooks/session-start.js"`.
 O próprio autor **não usa o caminho de plugin**: `WORLDFLOWAI.md:160-167`
 mostra symlink de quatro pastas + cópia de hooks + `chmod +x`.
 
-> **Contra o critério do Luís:** instalando só o plugin, chega algo entre 40%
+> **Contra o critério do usuario:** instalando só o plugin, chega algo entre 40%
 > (o que o manifesto declara) e 65% (se `agents/` e `hooks/` forem
 > descobertos por convenção). O resto é cópia manual, e um dos arquivos
 > precisa ser colado **em cada repositório**.
@@ -173,7 +173,7 @@ memória entre repositórios.
 Pior para esta máquina em particular: `getClaudeDir()` (`utils.js:26-28`)
 **hardcoda `.claude`**. Não há env var, parâmetro nem fallback. Numa máquina
 com dois config dirs — `~/.claude` (trabalho) e `~/.claude-personal`
-(pessoal), que é exatamente o caso do Luís — o ECC escreve sempre no
+(pessoal), que é exatamente o caso do usuario — o ECC escreve sempre no
 primeiro, independentemente de qual conta abriu a sessão.
 
 E o `PreCompact` escolhe "a sessão ativa" pelo mtime global, sem `maxAge`
@@ -276,7 +276,7 @@ que os hooks funcionam.** É exatamente a regra 12 vista de fora.
 O rainforest cobre `SessionStart`, `PreToolUse`, `UserPromptSubmit`, `Stop` e
 `SessionEnd`. **Não cobre `PreCompact`.** É o único evento em que dá para
 salvar estado antes da compactação levar o contexto embora — e é o momento em
-que o Luís mais perde fio, porque a compactação não avisa.
+que o usuario mais perde fio, porque a compactação não avisa.
 
 O `pre-compact.js` do ECC não serve de modelo — ele só registra timestamp e
 anexa uma linha ao `.tmp` (o errado, às vezes, ver §3), e o próprio cabeçalho
@@ -372,4 +372,4 @@ menos. Ele tem trava que trava, injeção que cabe no orçamento e verificação
 que pega mentira de agente — e 17 regras que crescem mais rápido que o canal
 que as entrega. Se o alvo agora é outros devs usarem, o que falta não é mais
 mecanismo: é **caber numa instalação e sobreviver a um repositório que não é
-o do Luís**.
+o do usuario**.

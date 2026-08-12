@@ -8,7 +8,7 @@ contexto, projeto, status plantada/colhida/em-colheita, plantada_em,
 colhida_em e o opcional **tipo**).
 
 O `tipo` separa duas coisas que NÃO se misturam na contagem:
-- ausente ou `"ideia"` → ideia do Luís (rondas 1 a 3);
+- ausente ou `"ideia"` → ideia do usuario (rondas 1 a 3);
 - `"observacao"` → observação de método da regra 13 (ronda 4).
 
 Os três status também não se misturam: **plantada** (criando raiz),

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Heartbeat da sessão para consciência entre janelas paralelas.
-// Chamado em três eventos (argv[2]): "prompt" (UserPromptSubmit — o Luís
+// Chamado em três eventos (argv[2]): "prompt" (UserPromptSubmit — o usuario
 // agiu), "stop" (Stop — o Claude terminou o turno e está esperando) e "end"
 // (SessionEnd — a sessão acabou, a entrada sai do arquivo).
 // Ocioso = stop_ts mais novo que prompt_ts e antigo demais; Claude
@@ -11,7 +11,7 @@ const { processoVivo } = require('./lib/contexto-sessao.cjs');
 const { resolverRaiz } = require('./lib/raiz.cjs');
 
 // A MESMA cadeia que o hook de abertura usa para LER. Era
-// `RFM_ROOT || 'C:\Projetos\rainforest-mind'` — caminho da máquina do Luís
+// `RFM_ROOT || 'C:\Projetos\rainforest-mind'` — caminho da máquina do usuario
 // cravado —, e em 2026-08-11, quando os dados saíram do repo, este arquivo
 // continuou gravando no lugar velho enquanto a abertura passou a ler no novo.
 // Efeito: o radar multi-janela cegou por completo, sem erro nenhum, porque o

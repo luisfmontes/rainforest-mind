@@ -156,12 +156,12 @@ function checarVersaoInstalada() {
   // clone estar atrás (estava, e o sync resolveu). Depois culpei o cache versionado
   // em `plugins/cache/<mkt>/<plugin>/<versao>/` — e cheguei a subir a versão do
   // plugin por causa disso. A medição derrubou as duas: o clone estava em `39d6510`
-  // com as 10 skills, o cache tinha 3 skills congeladas de 10/08 às 12:41, e o Luís
+  // com as 10 skills, o cache tinha 3 skills congeladas de 10/08 às 12:41, e o usuario
   // via as 10. Quem carrega é o clone; o cache é outra coisa.
   //
   // Comparar commit não basta porque um clone pode estar no commit certo e ainda
   // não ter sido re-escaneado. O sinal barato e visível é o CONTEÚDO: nome de skill
-  // presente lá e aqui. É o que o Luís vê na lista de comandos, então é o que a
+  // presente lá e aqui. É o que o usuario vê na lista de comandos, então é o que a
   // checagem tem que olhar.
   const listar = (base) => {
     try { return fs.readdirSync(path.join(base, 'skills')).sort(); } catch { return []; }
@@ -198,19 +198,19 @@ function checarVersaoInstalada() {
  * O worker do claude-mem, medido pela PORTA e não pelo PID.
  *
  * Colhe a ideia `guarda-saude-worker-claude-mem`. O modo de falha, medido em
- * agosto de 2026 e sentido pelo Luís várias vezes: o guarda de spawn do
+ * agosto de 2026 e sentido pelo usuario várias vezes: o guarda de spawn do
  * claude-mem só olha se o PID está vivo. Com **PID vivo e porta muda** ele
  * recusa subir um worker novo ("Worker already running, refusing to start
  * duplicate") — o sistema não tem como se curar, os hooks falham em sequência,
  * e aos 19 falhos o disjuntor bloqueia o `UserPromptSubmit` e **derruba o prompt
- * do Luís**. Ele descobre pela tela, no meio de uma frase.
+ * do usuario**. Ele descobre pela tela, no meio de uma frase.
  *
  * Por isso a checagem é aqui e é assim: PID vivo não é evidência de worker vivo;
  * só a porta responder é. E o contador de falhas consecutivas é o aviso que
  * chega ANTES do bloqueio — que é o ponto inteiro de checar.
  *
  * Reporta e oferece; não recicla sozinho. Matar processo é mexer no ambiente do
- * Luís (regra 15), e isso se pergunta.
+ * o usuario (regra 15), e isso se pergunta.
  */
 function checarClaudeMem() {
   const home = process.env.USERPROFILE || process.env.HOME || '';
@@ -273,7 +273,7 @@ function checarClaudeMem() {
 /**
  * O ponto de autocompact, e — mais importante — se as config dirs concordam.
  *
- * Isto existe por um defeito que o próprio Luís documentou na CLAUDE.md dele: há
+ * Isto existe por um defeito que o próprio o usuario documentou na CLAUDE.md dele: há
  * **duas** config dirs nesta máquina (`~/.claude` = trabalho, `~/.claude-personal`
  * = pessoal), mantidas em sincronia à mão. "Editar uma acerta metade do setup e a
  * outra diverge em silêncio" — e foi o que aconteceu em 2026-08-10. Divergência
@@ -290,7 +290,7 @@ function checarClaudeMem() {
  * volta. Esse é o pior modo de falha possível — você configurou, leu que
  * configurou, e não está valendo. Por isso a faixa é checada aqui.
  *
- * O check NÃO recomenda um número: 45 é a preferência do Luís, não uma verdade.
+ * O check NÃO recomenda um número: 45 é a preferência do usuario, não uma verdade.
  * Ele reporta o que está valendo, e grita quando as duas dirs discordam.
  */
 function checarAutocompact() {

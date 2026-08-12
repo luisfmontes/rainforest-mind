@@ -12,4 +12,4 @@ Você é o vigia **revisao-bimestral** (dispara uma vez, ~2 meses após
 3. Envie WhatsApp conforme o _comum.md: avise que a revisão bimestral da
    skill venceu, traga os bullets (ou "sem dados coletados"), e oriente:
    "abra uma sessão do Claude em C:\Projetos\rainforest-mind e peça a
-   revisão da skill" — nomeando o Luís, nunca "me chama".
+   revisão da skill" — nomeando o usuario, nunca "me chama".

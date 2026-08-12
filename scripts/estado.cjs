@@ -54,7 +54,7 @@ const RAIZ = process.env.RFM_ESTADO_ROOT
 
 // VERSIONADO, junto do design e do plano. A primeira versão escondia isto num
 // `.rainforest/estado/` fora do git, com o argumento de que "rastro de execução
-// não polui o diff". O argumento estava errado, e o Luís derrubou com uma
+// não polui o diff". O argumento estava errado, e o usuario derrubou com uma
 // pergunta: o estado existe para o Claude saber como o fluxo ficou **e para
 // outro dev pegar a atividade no meio**. Fora do git, quem clona o repositório
 // não recebe nada — e a retomada, que é a razão de o arquivo existir, só
