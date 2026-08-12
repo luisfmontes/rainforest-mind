@@ -808,6 +808,41 @@ function cmdReparar(args) {
 }
 
 function cmdProjetos(args) {
+  if (args.remover) {
+    // Existe porque o vocabulario erra: slug registrado com o desenho errado (um
+    // por CLIENTE quando o certo era um por REPO) tem que sair por comando, nao a
+    // mao — e a mesma razao de o jsonl ter porta unica de escrita. A trava e
+    // recusar enquanto alguma linha ainda aponta para ele: vocabulario que perde
+    // um slug em uso deixa o dado orfao sem ninguem notar.
+    const mapa = lerProjetos();
+    if (mapa === null) throw new Erro(`${ARQ_PROJETOS} nao existe — nada a remover`);
+    if (!Object.prototype.hasOwnProperty.call(mapa, args.remover)) {
+      throw new Erro(
+        `'${args.remover}' nao esta no vocabulario — registrados: ` +
+          `${Object.keys(mapa).sort().join(", ") || "(nenhum)"}`
+      );
+    }
+    let emUso = [];
+    try {
+      emUso = parseLinhas(lerVivo())
+        .filter((o) => o.projeto === args.remover)
+        .map((o) => o.id);
+    } catch {
+      // sem jsonl legivel a remocao segue: o vocabulario nao e do arquivo
+    }
+    if (emUso.length) {
+      throw new Erro(
+        `'${args.remover}' ainda e o projeto de ${emUso.length} linha(s): ` +
+          `${emUso.slice(0, 5).join(", ")}${emUso.length > 5 ? ", ..." : ""}\n` +
+          `  mova primeiro: node scripts/ideias.cjs editar --id <id> (campo projeto)`
+      );
+    }
+    delete mapa[args.remover];
+    gravarProjetos(mapa);
+    console.log(`removido '${args.remover}' (nenhuma linha apontava para ele)`);
+    console.log(`  restam: ${Object.keys(mapa).sort().join(", ") || "(nenhum)"}`);
+    return;
+  }
   if (!args.registrar) {
     const mapa = lerProjetos();
     if (mapa === null) {
@@ -1119,6 +1154,7 @@ const SUBCOMANDOS = {
   projetos: {
     options: {
       registrar: { required: false },
+      remover: { required: false },
       caminho: { required: false },
       apelido: { required: false },
     },

@@ -27,6 +27,13 @@ node scripts/ideias.cjs projetos                                   # o vocabulá
 node scripts/ideias.cjs projetos --registrar <slug> --caminho <dir> [--apelido a,b]
 ```
 
+**Um slug por repositório, não por frente nem por cliente.** O `caminho` é o que
+faz o `semear` traduzir pasta em slug, e uma pasta que não é raiz de repo nunca
+é a pasta de uma sessão. Frente, cliente ou branch dentro do repo vão no
+`projeto_nota` — o campo existe para isso. O primeiro desenho deste vocabulário
+errou justamente aqui (criou um slug por cliente, com caminho que não existia no
+disco), e é por isso que existe `--remover`.
+
 O campo era texto livre até 2026-08-12 e cobrou os dois preços de sempre:
 `C:\Projetos\rainforest-mind` dentro de string JSON virou `C:\Projetos` + CR +
 `ainforest-mind` em quatro registros (a barra + `r` é escape de carriage
@@ -68,6 +75,7 @@ node scripts/ideias.cjs reparar  [--id <id> | --todas] [--conferir]
 node scripts/ideias.cjs listar   [--status plantada] [--tipo ideia|observacao|todos] [--projeto <slug>]
 node scripts/ideias.cjs conferir                                # saúde do arquivo + caminho dele
 node scripts/ideias.cjs projetos [--registrar <slug> --caminho <dir> --apelido a,b]
+node scripts/ideias.cjs projetos --remover <slug>               # recusa se alguma linha usa
 node scripts/ideias.cjs normalizar-projetos [--mapear id=slug,...] [--aplicar]
 ```
 

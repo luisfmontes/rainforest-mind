@@ -506,6 +506,16 @@ m=json.load(open("projetos.json",encoding="utf-8"))
 assert m["sandbox"]["caminho"]=="C:/tmp/sandbox", m["sandbox"]
 assert m["outro-projeto"]["apelidos"]==["apelido-dois","apelido-um"], m["outro-projeto"]'
 
+    # 6b'. remover: o vocabulario tambem erra, e slug em uso nao sai calado
+    esperado "registrar o que vai ser removido" 0 $IDEIAS_LIMPO projetos --registrar slug-temporario
+    esperado "remover slug sem nenhuma linha apontando" 0 $IDEIAS_LIMPO projetos --remover slug-temporario
+    esperado "recusa remover slug que nao existe" 1 $IDEIAS_LIMPO projetos --remover nunca-existiu
+    prova "o removido saiu do arquivo e os outros ficaram" '
+import json
+m=json.load(open("projetos.json",encoding="utf-8"))
+assert "slug-temporario" not in m, m
+assert "sandbox" in m and "outro-projeto" in m, m'
+
     # 6c. com vocabulario, prosa e recusada ANTES de tocar o arquivo
     md5_vocab=$(md5sum ideias.jsonl | cut -d' ' -f1)
     echo "{\"id\":\"teste-prosa\",\"titulo\":\"t\",\"descricao\":\"d\",\"contexto\":\"c\",\"projeto\":\"sandbox (pasta de teste)\",\"gancho\":\"g\"}" > pv1.json
@@ -603,6 +613,12 @@ PY
     if echo "$saida_conf_proj" | grep -q "teste-projeto-com-cr.*caractere de controle"
     then ok=$((ok+1)); echo "  ok   conferir acusa caractere de controle no projeto"
     else falhou=$((falhou+1)); echo "  FALHA conferir nao viu o CR no projeto"; echo "$saida_conf_proj" | sed 's/^/         /'; fi
+
+    esperado "recusa remover slug que ainda e o projeto de alguma linha" 1 $IDEIAS_LIMPO projetos --remover sandbox
+    saida_remover=$($IDEIAS_LIMPO projetos --remover sandbox 2>&1)
+    if echo "$saida_remover" | grep -q "linha(s)"
+    then ok=$((ok+1)); echo "  ok   ... e diz quantas linhas o impedem"
+    else falhou=$((falhou+1)); echo "  FALHA recusou sem dizer quem usa o slug"; echo "$saida_remover" | sed 's/^/         /'; fi
 
     esperado "listar --projeto filtra por slug" 0 $IDEIAS_LIMPO listar --status todos --tipo todos --projeto outro-projeto
     saida_filtro=$($IDEIAS_LIMPO listar --status todos --tipo todos --projeto outro-projeto 2>&1)
