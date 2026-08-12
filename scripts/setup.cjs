@@ -32,6 +32,7 @@ const path = require('path');
 const CODIGO_ROOT = path.resolve(__dirname, '..');
 const { resolverRaiz } = require('../hooks/lib/raiz.cjs');
 const { CHAVES, resolverConfig } = require('../hooks/lib/config.cjs');
+const P = require('../hooks/lib/projetos.cjs');
 
 function arg(nome) {
   const i = process.argv.indexOf(`--${nome}`);
@@ -191,13 +192,99 @@ function estado() {
   console.log('DE ONDE VEM');
   console.log(`  projeto: ${arquivos.projeto || '(nenhum)'}`);
   console.log(`  usuario: ${arquivos.usuario || '(nenhum)'}`);
+
+  console.log('');
+  console.log('PROJETOS (slug -> pasta; e o slug que vai no campo `projeto` das ideias)');
+  if (raiz) listarProjetos(raiz);
+  else console.log('  sem pasta de dados, sem vocabulario');
+
   console.log('');
   console.log('Para trocar:');
   console.log('  node scripts/setup.cjs --desligar <chave> [--escopo projeto|usuario]');
   console.log('  node scripts/setup.cjs --ligar    <chave> [--escopo projeto|usuario]');
+  console.log('  node scripts/setup.cjs --projeto <slug> --caminho <dir> [--apelido a,b]');
+  console.log('  node scripts/setup.cjs --remover-projeto <slug>');
   console.log('');
   console.log('O que criar de automacao NESTE projeto e outra pergunta, e tem dono');
   console.log('oficial: a skill `claude-automation-recommender` (plugin claude-code-setup).');
+}
+
+// ---------------------------------------------------------------- projetos
+
+/**
+ * Caminho de projeto é configuração, e configuração é assunto do setup — pedido do
+ * usuario em 2026-08-12. A escrita continua sendo de UMA implementação só
+ * (`hooks/lib/projetos.cjs`), que o `ideias.cjs` usa pelo `projetos --registrar`:
+ * duas versões do mesmo esquema divergem em silêncio.
+ */
+function raizDeDadosOuMorre() {
+  const raiz = resolverRaiz({ plugin: CODIGO_ROOT }).raiz;
+  if (!raiz) {
+    console.error('erro: nao ha pasta de dados montada — rode primeiro: node scripts/setup.cjs --criar');
+    process.exit(1);
+  }
+  return raiz;
+}
+
+function listarProjetos(raiz) {
+  let mapa;
+  try {
+    mapa = P.ler(raiz);
+  } catch (e) {
+    console.log(`  ERRO: ${e.message}`);
+    return;
+  }
+  if (mapa === null) {
+    console.log('  nenhum vocabulario ainda — o campo `projeto` das ideias entra SEM validacao');
+    console.log('  registre o primeiro: node scripts/setup.cjs --projeto <slug> --caminho <dir>');
+    return;
+  }
+  const slugs = Object.keys(mapa).sort();
+  if (!slugs.length) console.log('  (vazio)');
+  for (const s of slugs) {
+    const caminho = mapa[s].caminho;
+    // Caminho que nao existe nunca casa com a pasta de uma sessao, e o `semear`
+    // devolveria vazio sem dizer por que. Falha silenciosa se anuncia AQUI.
+    const marca = !caminho ? '(sem pasta propria)' : P.existe(caminho) ? caminho : `${caminho}  <- NAO EXISTE nesta maquina`;
+    console.log(`  ${s.padEnd(22)} ${marca}`);
+    const ap = P.apelidosDe(mapa, s);
+    if (ap.length) console.log(`  ${''.padEnd(22)} apelidos: ${ap.join(', ')}`);
+  }
+}
+
+function registrarProjeto(slug, caminho, apelido) {
+  const raiz = raizDeDadosOuMorre();
+  let r;
+  try {
+    r = P.registrar(raiz, String(slug), { caminho: caminho === null ? undefined : String(caminho), apelido });
+  } catch (e) {
+    console.error(`erro: ${e.message}`);
+    process.exit(1);
+  }
+  console.log(`${r.novo ? 'registrado' : 'atualizado'} '${r.slug}'`);
+  console.log(`  caminho: ${r.entrada.caminho || '(nenhum)'}`);
+  console.log(`  apelidos: ${r.entrada.apelidos.join(', ') || '(nenhum)'}`);
+  console.log(`  arquivo: ${P.arquivoDe(raiz)}`);
+  for (const a of r.avisos) console.log(`  aviso: ${a}`);
+}
+
+function removerProjeto(slug) {
+  const raiz = raizDeDadosOuMorre();
+  // Quem sabe se o slug esta em uso e o jsonl, e ele e do ideias.cjs. Aqui a
+  // pergunta e feita de leve (leitura direta): a trava de verdade vive na lib.
+  let emUso = [];
+  try {
+    const linhas = fs.readFileSync(path.join(raiz, 'ideias.jsonl'), 'utf8').split('\n').filter((l) => l.trim());
+    emUso = linhas.map((l) => JSON.parse(l)).filter((o) => o.projeto === slug).map((o) => o.id);
+  } catch { /* sem jsonl legivel, a lib decide */ }
+  try {
+    const r = P.remover(raiz, String(slug), emUso);
+    console.log(`removido '${slug}'`);
+    console.log(`  restam: ${Object.keys(r.mapa).sort().join(', ') || '(nenhum)'}`);
+  } catch (e) {
+    console.error(`erro: ${e.message}`);
+    process.exit(1);
+  }
 }
 
 // ---------------------------------------------------------------- CLI
@@ -207,6 +294,39 @@ function main() {
     criar();
     console.log('');
   }
+
+  // `--ligado <chave>`: exit 0 se ligado, 1 se desligado. Existe para quem NAO e
+  // Node poder perguntar — o run-vigia.ps1 pergunta por aqui em vez de
+  // reimplementar a cadeia de 3 niveis em PowerShell. Falha de leitura conta como
+  // DESLIGADO nas chaves cujo ligado dispara acao (vigias, branch-forcar).
+  const perguntado = arg('ligado');
+  if (perguntado) {
+    const chave = String(perguntado);
+    if (!(chave in CHAVES)) {
+      console.error(`erro: '${chave}' nao e uma chave conhecida. Sao: ${Object.keys(CHAVES).join(', ')}`);
+      process.exit(2);
+    }
+    let valor = false;
+    try {
+      valor = resolverConfig({ projeto: PROJETO }).valores[chave] === true;
+    } catch {
+      valor = false;
+    }
+    console.log(valor ? 'ligado' : 'desligado');
+    process.exit(valor ? 0 : 1);
+  }
+
+  const projeto = arg('projeto');
+  if (projeto) {
+    registrarProjeto(projeto, arg('caminho'), arg('apelido'));
+    return;
+  }
+  const removerProj = arg('remover-projeto');
+  if (removerProj) {
+    removerProjeto(removerProj);
+    return;
+  }
+
   const ligar = arg('ligar');
   const desligar = arg('desligar');
   if (ligar || desligar) {

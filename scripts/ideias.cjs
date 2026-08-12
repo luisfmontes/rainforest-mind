@@ -66,151 +66,35 @@ class Erro extends Error {}
 // --------------------------------------------------------------------------
 // vocabulario de projeto — slug fechado, caminho FORA do dado
 // --------------------------------------------------------------------------
-// O `projeto` era texto livre e guardava caminho absoluto do Windows dentro de
-// string JSON. A barra invertida seguida de `r` e escape de carriage return: o
-// shell comeu o caminho e `C:\Projetos\rainforest-mind` virou `C:\Projetos` + CR
-// + `ainforest-mind` em QUATRO registros. Junto disso, 22 valores distintos para
-// 7 projetos reais (`rainforest-mind` escrito de quatro jeitos) tornavam o campo
-// inagrupavel — o `semear.cjs` precisou de comparacao difusa para nao perder dois
-// tercos do historico.
-//
-// A correcao mata a CLASSE, nao as 4 ocorrencias: o campo passa a ser slug de
-// vocabulario fechado (kebab-case, sem barra, sem espaco — nada que um escape
-// possa comer), e o caminho sai do dado para o `projetos.json` da pasta de dados.
-// Aviso em prosa nao segura esquema ruim: o SKILL.md do /ideia ja alertava sobre o
-// shell comer barra, e quebrou 4 vezes mesmo assim.
-const ARQ_PROJETOS = path.join(RAIZ, "projetos.json");
+// O mecanismo mora em hooks/lib/projetos.cjs, e o porque de cada regra esta la.
+// Aqui fica so o que e DESTE script: a validacao da entrada e o aviso de
+// vocabulario ausente. Duas implementacoes do mesmo esquema divergem em silencio —
+// o `setup.cjs` tambem mexe no projetos.json desde 2026-08-12.
+const P = require("../hooks/lib/projetos.cjs");
+const ARQ_PROJETOS = P.arquivoDe(RAIZ);
 
 function lerProjetos() {
-  // Sem arquivo, devolve null — e QUEM CHAMA decide o que fazer com a ausencia.
-  // Devolver {} aqui faria "vocabulario vazio" e "vocabulario inexistente"
-  // parecerem a mesma coisa, e a primeira recusaria tudo numa instalacao nova.
-  let bruto;
   try {
-    bruto = fs.readFileSync(ARQ_PROJETOS, "utf8");
-  } catch {
-    return null;
-  }
-  let mapa;
-  try {
-    mapa = JSON.parse(bruto);
+    return P.ler(RAIZ);
   } catch (e) {
-    throw new Erro(`${ARQ_PROJETOS} nao e JSON valido: ${e.message}`);
+    throw new Erro(e.message);
   }
-  if (typeof mapa !== "object" || mapa === null || Array.isArray(mapa)) {
-    throw new Erro(`${ARQ_PROJETOS} precisa ser um objeto {slug: {...}}`);
-  }
-  for (const [slug, v] of Object.entries(mapa)) {
-    if (!RE_ID.test(slug)) {
-      throw new Erro(`slug '${slug}' em projetos.json nao e kebab-case`);
-    }
-    if (typeof v !== "object" || v === null || Array.isArray(v)) {
-      throw new Erro(`projeto '${slug}' precisa ser um objeto {caminho, apelidos}`);
-    }
-  }
-  return mapa;
-}
-
-function gravarProjetos(mapa) {
-  const ordenado = {};
-  for (const k of Object.keys(mapa).sort()) ordenado[k] = mapa[k];
-  const tmp = `${ARQ_PROJETOS}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(ordenado, null, 2) + "\n", "utf8");
-  fs.renameSync(tmp, ARQ_PROJETOS); // atomico, como o jsonl
 }
 
 function apelidosDe(mapa, slug) {
-  const v = mapa[slug] || {};
-  return Array.isArray(v.apelidos) ? v.apelidos.filter((a) => typeof a === "string" && a) : [];
-}
-
-function normalizarProsa(s) {
-  return String(s === null || s === undefined ? "" : s)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-");
-}
-
-function posicaoDoTermo(prosaNorm, termo) {
-  // Posicao do termo respeitando fronteira de hifen: `solta` nao casa dentro de
-  // `consoltado`. Devolve -1 quando nao ha ocorrencia com fronteira.
-  const t = normalizarProsa(termo).replace(/^-|-$/g, "");
-  if (!t) return -1;
-  let de = 0;
-  for (;;) {
-    const i = prosaNorm.indexOf(t, de);
-    if (i < 0) return -1;
-    const antesOk = i === 0 || prosaNorm[i - 1] === "-";
-    const fim = i + t.length;
-    const depoisOk = fim === prosaNorm.length || prosaNorm[fim] === "-";
-    if (antesOk && depoisOk) return i;
-    de = i + 1;
-  }
+  return P.apelidosDe(mapa, slug);
 }
 
 function resolverSlug(prosa, mapa) {
-  // Quem aparece PRIMEIRO na string ganha: o projeto e nomeado no comeco e o
-  // resto do texto e detalhe ("rainforest-mind (...); observado em whatsapp-mcp"
-  // e uma ideia do rainforest). Empate de posicao entre slugs diferentes e
-  // ambiguidade declarada, nao desempate por chute.
-  const norm = normalizarProsa(prosa);
-  let melhor = null;
-  let ambiguo = false;
-  for (const slug of Object.keys(mapa)) {
-    let pos = -1;
-    for (const termo of [slug, ...apelidosDe(mapa, slug)]) {
-      const p = posicaoDoTermo(norm, termo);
-      if (p >= 0 && (pos < 0 || p < pos)) pos = p;
-    }
-    if (pos < 0) continue;
-    if (melhor === null || pos < melhor.pos) {
-      melhor = { slug, pos };
-      ambiguo = false;
-    } else if (pos === melhor.pos && melhor.slug !== slug) {
-      ambiguo = true;
-    }
-  }
-  if (!melhor || ambiguo) return null;
-  return melhor.slug;
+  return P.resolverSlug(prosa, mapa);
 }
 
 function semControle(s) {
-  // CR, LF e TAB dentro do valor sao o rastro do bug: morrem aqui.
-  return String(s === null || s === undefined ? "" : s).replace(/[\r\n\t]+/g, " ");
-}
-
-function tirarCaminhos(prosa) {
-  // Remove SO o parenteses que e caminho inteiro (`(C:\Projetos\x)`, `(~/y)`) —
-  // regra estreita de proposito. Prosa raramente comeca com letra + dois-pontos,
-  // e apagar por heuristica larga perderia informacao real (branch, porta, fork).
-  return semControle(prosa)
-    .replace(/\(\s*(?:[A-Za-z]:|~[\\/]|\/)[^;()]*\)/g, "")
-    .replace(/\s{2,}/g, " ")
-    .replace(/\s+([;,])/g, "$1") // o `;` que sobrou solto depois do parenteses sair
-    .trim()
-    .replace(/^[\s;,\u2014-]+|[\s;,\u2014-]+$/g, "")
-    .trim();
-}
-
-function soCaminho(s) {
-  // Valor que e SO caminho, sem nome de projeto em volta. Vira nota nenhuma: o
-  // caminho passa a morar no projetos.json, e e esse o ponto da mudanca.
-  return /^\s*(?:[A-Za-z]:|~[\\/]|\/)[^;]*$/.test(semControle(s));
+  return P.semControle(s);
 }
 
 function notaDeProjeto(prosa, slug, mapa) {
-  // Nota so existe quando a prosa carrega algo que o slug e o caminho NAO dizem
-  // (branch, porta, fork, "observado em outro repo"). Nada de inventar campo para
-  // guardar o que ja esta no vocabulario.
-  if (soCaminho(prosa)) return null;
-  const limpa = tirarCaminhos(prosa);
-  let resto = normalizarProsa(limpa);
-  for (const termo of [slug, ...apelidosDe(mapa, slug)]) {
-    const t = normalizarProsa(termo).replace(/^-|-$/g, "");
-    if (t) resto = resto.split(t).join("-");
-  }
-  const sobrou = resto.replace(/-+/g, "");
-  if (sobrou.length < 3) return null;
-  return limpa || null;
+  return P.notaDeProjeto(prosa, slug, mapa);
 }
 
 function avisoSemVocabulario() {
@@ -814,14 +698,6 @@ function cmdProjetos(args) {
     // mao — e a mesma razao de o jsonl ter porta unica de escrita. A trava e
     // recusar enquanto alguma linha ainda aponta para ele: vocabulario que perde
     // um slug em uso deixa o dado orfao sem ninguem notar.
-    const mapa = lerProjetos();
-    if (mapa === null) throw new Erro(`${ARQ_PROJETOS} nao existe — nada a remover`);
-    if (!Object.prototype.hasOwnProperty.call(mapa, args.remover)) {
-      throw new Erro(
-        `'${args.remover}' nao esta no vocabulario — registrados: ` +
-          `${Object.keys(mapa).sort().join(", ") || "(nenhum)"}`
-      );
-    }
     let emUso = [];
     try {
       emUso = parseLinhas(lerVivo())
@@ -830,17 +706,14 @@ function cmdProjetos(args) {
     } catch {
       // sem jsonl legivel a remocao segue: o vocabulario nao e do arquivo
     }
-    if (emUso.length) {
-      throw new Erro(
-        `'${args.remover}' ainda e o projeto de ${emUso.length} linha(s): ` +
-          `${emUso.slice(0, 5).join(", ")}${emUso.length > 5 ? ", ..." : ""}\n` +
-          `  mova primeiro: node scripts/ideias.cjs editar --id <id> (campo projeto)`
-      );
+    let r;
+    try {
+      r = P.remover(RAIZ, args.remover, emUso);
+    } catch (e) {
+      throw new Erro(e.message);
     }
-    delete mapa[args.remover];
-    gravarProjetos(mapa);
     console.log(`removido '${args.remover}' (nenhuma linha apontava para ele)`);
-    console.log(`  restam: ${Object.keys(mapa).sort().join(", ") || "(nenhum)"}`);
+    console.log(`  restam: ${Object.keys(r.mapa).sort().join(", ") || "(nenhum)"}`);
     return;
   }
   if (!args.registrar) {
@@ -860,31 +733,20 @@ function cmdProjetos(args) {
     }
     return;
   }
-  if (!RE_ID.test(args.registrar)) {
-    throw new Erro(
-      `slug '${args.registrar}' nao e kebab-case ([a-z0-9] separado por hifen). ` +
-        "O slug e fechado justamente para nao caber barra nem espaco — foi barra dentro " +
-        "de string JSON que corrompeu 4 registros."
-    );
+  let r;
+  try {
+    r = P.registrar(RAIZ, args.registrar, { caminho: args.caminho, apelido: args.apelido });
+  } catch (e) {
+    throw new Erro(e.message);
   }
-  const mapa = lerProjetos() || {};
-  const novo = !Object.prototype.hasOwnProperty.call(mapa, args.registrar);
-  const atual = mapa[args.registrar] || {};
-  const apelidos = new Set(apelidosDe(mapa, args.registrar));
-  if (args.apelido) {
-    for (const a of String(args.apelido).split(",").map((x) => x.trim()).filter(Boolean)) {
-      apelidos.add(a);
-    }
-  }
-  mapa[args.registrar] = {
-    caminho: args.caminho !== null && args.caminho !== undefined ? args.caminho : (atual.caminho || null),
-    apelidos: [...apelidos].sort(),
-  };
-  gravarProjetos(mapa);
-  console.log(`${novo ? "registrado" : "atualizado"} '${args.registrar}'`);
-  console.log(`  caminho: ${mapa[args.registrar].caminho || "(nenhum)"}`);
-  console.log(`  apelidos: ${mapa[args.registrar].apelidos.join(", ") || "(nenhum)"}`);
+  console.log(`${r.novo ? "registrado" : "atualizado"} '${r.slug}'`);
+  console.log(`  caminho: ${r.entrada.caminho || "(nenhum)"}`);
+  console.log(`  apelidos: ${r.entrada.apelidos.join(", ") || "(nenhum)"}`);
   console.log(`  arquivo: ${ARQ_PROJETOS}`);
+  // O aviso de caminho inexistente nasceu de um erro meu em 2026-08-12 (registrei
+  // um slug com caminho deduzido do nome, e a pasta nao existia). Aviso, nao
+  // recusa: registrar projeto de outra maquina e caso legitimo.
+  for (const a of r.avisos) console.log(`  aviso: ${a}`);
 }
 
 function cmdNormalizarProjetos(args) {
