@@ -103,14 +103,23 @@ function checarInjecao() {
 function checarIdeias() {
   const script = path.join(RAIZ_CODIGO, 'scripts', 'ideias.cjs');
   if (!fs.existsSync(script)) return aviso('ideias', 'scripts/ideias.cjs ausente', 'reinstale o plugin');
-  const { out } = rodar(process.execPath, [script, 'conferir']);
+  const { status, out } = rodar(process.execPath, [script, 'conferir']);
   const problemas = (out.match(/^\s+- linha /gm) || []).length;
   // A linha do RESUMO, nao a primeira do stdout: desde 0.53.0 o `conferir` abre
   // dizendo o caminho do arquivo, e pegar a primeira linha punha o caminho no
   // lugar da contagem.
   const linhas = out.split('\n');
   const primeira = linhas.find((l) => /^\d+ linhas,/.test(l)) || linhas[0] || '';
-  if (/sem problemas/.test(out)) return ok('ideias', primeira);
+  // Quem decide se e ok e o EXIT CODE do conferir, nao a contagem de linhas: desde
+  // 2026-08-12 ele separa divida HERDADA (nao bloqueia, sai 0) de problema novo. A
+  // versao anterior lia so o numero e reportava aviso permanente com 35 pendencias
+  // que nao bloqueavam nada — o mesmo defeito do gate sempre vermelho, um andar
+  // acima (Issue #3).
+  if (status === 0) {
+    return ok('ideias', problemas
+      ? `${primeira} — ${problemas} de divida herdada, nenhuma bloqueia`
+      : primeira);
+  }
   // `conferir` acusa e nao quebra: aqui isso vira aviso, nao alerta — arquivo com
   // pendencia continua utilizavel, e o numero e o que interessa.
   aviso('ideias', `${primeira} — ${problemas} pendencia(s)`,

@@ -207,25 +207,56 @@ then ok=$((ok+1)); echo "  ok   --conferir nao gravou nada (md5 igual)"
 else falhou=$((falhou+1)); echo "  FALHA --conferir escreveu no arquivo"; fi
 
 # A sandbox nao e repo git: data_do_git devolve None, que e exatamente a
-# condicao em que carimbar hoje seria inventar historia. Recusar aqui e o
-# comportamento certo, e e o unico jeito de provar que ele nao chuta.
-esperado "recusa reparar quando o git nao sabe a data (nao chuta hoje)" 1 $IDEIAS reparar --todas
-if [ "$md5_pre_reparo" = "$(md5sum ideias.jsonl | cut -d' ' -f1)" ]
-then ok=$((ok+1)); echo "  ok   e a recusa deixou o arquivo intocado"
-else falhou=$((falhou+1)); echo "  FALHA gravou apesar de nao saber a data"; fi
+# condicao em que carimbar hoje seria inventar historia.
+#
+# Ate 2026-08-12 a varredura ABORTAVA aqui, e com isso nao consertava mais nada em
+# nenhuma linha — `reparar --todas` estava morto desde que uma linha sem data
+# existisse (Issue #3). Agora ela conserta o que infere, RELATA o que precisa de
+# texto humano, e sai 1 porque reparo parcial nao e reparo pronto. O que continua
+# valendo, e e o que este teste protege: a data NAO foi inventada.
+# O gemeo em Python fica no contrato ANTIGO de proposito (ele existe para provar as
+# oito garantias do port, nao para receber recurso novo): la a varredura recusa em
+# bloco e nao grava nada. Os dois caminhos exigem a MESMA coisa no que importa — a
+# data nao e inventada — e diferem no que a varredura faz com o resto.
+esperado "varredura sai 1 quando ha pendencia" 1 $IDEIAS reparar --todas
+case "$IDEIAS" in
+  *ideias.cjs*)
+    prova "nao inventou a data, e consertou o status na mesma passada" '
+import json
+l=[json.loads(x) for x in open("ideias.jsonl",encoding="utf-8") if x.strip()]
+o=[x for x in l if x["id"]=="teste-quebrada"][0]
+assert "plantada_em" not in o or not o["plantada_em"], "carimbou data que o git nao sabia"
+assert o["status"]=="plantada", "deixou de consertar o status que sabia inferir"
+assert o["reparo"]==["status"], o.get("reparo")'
+    saida_pend=$($IDEIAS reparar --todas 2>&1)
+    if echo "$saida_pend" | grep -q "SEM plantada_em"; then
+      ok=$((ok+1)); echo "  ok   e RELATOU a linha que ficou sem data"
+    else
+      falhou=$((falhou+1)); echo "  FALHA nao relatou a pendencia de data"; echo "$saida_pend" | sed 's/^/         /' | tail -4
+    fi
+    ;;
+  *)
+    if [ "$md5_pre_reparo" = "$(md5sum ideias.jsonl | cut -d' ' -f1)" ]
+    then ok=$((ok+1)); echo "  ok   (gemeo) a recusa em bloco deixou o arquivo intocado"
+    else falhou=$((falhou+1)); echo "  FALHA (gemeo) gravou apesar de nao saber a data"; fi
+    ;;
+esac
 
 esperado "recusa --plantada-em no futuro" 1 $IDEIAS reparar --id teste-quebrada --plantada-em 2099-01-01
 esperado "recusa --plantada-em fora do formato ISO" 1 $IDEIAS reparar --id teste-quebrada --plantada-em 10/08/2026
 esperado "recusa --plantada-em junto de --todas" 1 $IDEIAS reparar --todas --plantada-em 2026-08-01
 esperado "reparar com a data informada" 0 $IDEIAS reparar --id teste-quebrada --plantada-em 2026-08-01
 prova "status inferido, data preservada, reparo deixa rastro" '
-import json, datetime
+import json, datetime, os
 l=[json.loads(x) for x in open("ideias.jsonl",encoding="utf-8") if x.strip()]
 o=[x for x in l if x["id"]=="teste-quebrada"][0]
 assert o["status"]=="plantada", o.get("status")
 assert o["plantada_em"]=="2026-08-01", "a data informada foi trocada"
 assert o["reparada_em"]==datetime.date.today().isoformat()
-assert o["reparo"]==["plantada_em","status"], o.get("reparo")
+# No .cjs a varredura acima ja consertou o status, entao aqui sobra a data; no
+# gemeo, que recusou em bloco, os dois campos vem juntos.
+esperado_reparo = ["plantada_em"] if "ideias.cjs" in os.environ.get("IDEIAS","") else ["plantada_em","status"]
+assert o["reparo"]==esperado_reparo, o.get("reparo")
 assert o["titulo"]=="Gravada a mao" and o["tipo"]=="observacao", "reparo mexeu no conteudo"'
 esperado "conferir volta a passar depois do reparo" 0 $IDEIAS conferir
 esperado "reparar de novo nao encontra nada (idempotente)" 0 $IDEIAS reparar --todas
@@ -636,6 +667,163 @@ PY
     ;;
   *)
     echo "  (pulado: vocabulario de projeto e recurso novo so do .cjs)"
+    ;;
+esac
+
+echo
+echo "== 7. divida HERDADA nao derruba o gate, e problema NOVO derruba (Issue #3) =="
+# `gancho` virou obrigatorio em 81b125e (11/08) sem backfill: o `conferir` ficou
+# vermelho com 35 linhas antigas, nenhuma delas causada pela sessao que rodava o
+# comando. Gate sempre vermelho nao e gate — ensina a ignorar. A anistia e por DATA
+# declarada em constante, e a divida continua impressa.
+case "$IDEIAS" in
+  *ideias.cjs*)
+    # RAIZ PROPRIA para este bloco. Os blocos 2.5, 3 e 6 deixam destrocos de
+    # proposito na caixa (data no futuro, linha sem status, CR no projeto), e a
+    # afirmacao daqui e "SO divida herdada" — medida em cima de arquivo sujo, ela
+    # nao mede nada. Cada teste tem o direito de declarar o estado inicial dele.
+    export IDEIAS_LIMPO="node scripts/ideias-limpo.cjs"
+    mkdir -p "$SB/b7"
+    head -3 ideias.jsonl > "$SB/b7/ideias.jsonl"
+    B7="env RFM_ROOT=$(cygpath -m "$SB/b7" 2>/dev/null || printf '%s' "$SB/b7") node scripts/ideias-limpo.cjs"
+    python - <<'PY'
+import json, pathlib
+p = pathlib.Path("b7/ideias.jsonl")
+novas = [
+    # anterior ao corte: divida herdada, nao bloqueia
+    {"id": "teste-herdada-sem-gancho", "titulo": "t", "descricao": "d", "contexto": "c",
+     "projeto": "sandbox", "status": "plantada", "plantada_em": "2026-08-06"},
+    # NO dia do corte: `plantada_em` tem granularidade de dia e a regra entrou no
+    # meio dele, entao nao da para provar que nasceu depois — anistiada tambem
+    {"id": "teste-no-dia-do-corte", "titulo": "t", "descricao": "d", "contexto": "c",
+     "projeto": "sandbox", "status": "plantada", "plantada_em": "2026-08-11"},
+    # colhida sem gancho: nao entra em conta nenhuma (ja voltou)
+    {"id": "teste-colhida-sem-gancho-7", "titulo": "t", "descricao": "d", "contexto": "c",
+     "projeto": "sandbox", "status": "colhida", "plantada_em": "2026-08-01",
+     "colhida_em": "2026-08-02", "resultado": "feito"},
+]
+p.write_text(p.read_text(encoding="utf-8")
+             + "".join(json.dumps(o, ensure_ascii=False) + "\n" for o in novas),
+             encoding="utf-8", newline="\n")
+PY
+    esperado "so divida herdada: o gate fica VERDE" 0 $B7 conferir
+    saida_h=$($B7 conferir 2>&1)
+    if echo "$saida_h" | grep -q "teste-herdada-sem-gancho"; then
+      ok=$((ok+1)); echo "  ok   ... e a divida herdada continua IMPRESSA (anistia nao esconde)"
+    else
+      falhou=$((falhou+1)); echo "  FALHA anistiou e escondeu a divida"; echo "$saida_h" | sed 's/^/         /' | tail -5
+    fi
+    if echo "$saida_h" | grep -q "teste-no-dia-do-corte"; then
+      ok=$((ok+1)); echo "  ok   ... o dia do corte entra na anistia (dia nao discrimina)"
+    else
+      falhou=$((falhou+1)); echo "  FALHA a linha do dia do corte ficou fora da anistia"
+    fi
+    if echo "$saida_h" | grep -q "teste-colhida-sem-gancho-7"; then
+      falhou=$((falhou+1)); echo "  FALHA cobrou gancho de ideia colhida"
+    else
+      ok=$((ok+1)); echo "  ok   colhida sem gancho nao entra em nenhum dos dois blocos"
+    fi
+    # P2: cada contagem diz de que conjunto saiu.
+    if echo "$saida_h" | grep -qE "[0-9]+ de [0-9]+ abertas"; then
+      ok=$((ok+1)); echo "  ok   a contagem declara o universo (N de M abertas)"
+    else
+      falhou=$((falhou+1)); echo "  FALHA contagem sem universo declarado"
+    fi
+
+    # Problema NOVO: depois do corte, sem gancho -> BLOQUEIA. Sem isto a anistia
+    # teria desligado a regra em vez de datar a divida.
+    python - <<'PY'
+import json, pathlib
+p = pathlib.Path("b7/ideias.jsonl")
+novas = [
+    {"id": "teste-nova-sem-gancho", "titulo": "t", "descricao": "d", "contexto": "c",
+     "projeto": "sandbox", "status": "plantada", "plantada_em": "2026-08-12"},
+    # sem data NENHUMA: ausencia de prova nao e prova, entao bloqueia
+    {"id": "teste-sem-data-sem-gancho", "titulo": "t", "descricao": "d", "contexto": "c",
+     "projeto": "sandbox", "status": "plantada"},
+]
+p.write_text(p.read_text(encoding="utf-8")
+             + "".join(json.dumps(o, ensure_ascii=False) + "\n" for o in novas),
+             encoding="utf-8", newline="\n")
+PY
+    esperado "linha NOVA sem gancho derruba o gate" 1 $B7 conferir
+    saida_n=$($B7 conferir 2>&1)
+    if echo "$saida_n" | sed -n '/BLOQUEIAM/,$p' | grep -q "teste-nova-sem-gancho"; then
+      ok=$((ok+1)); echo "  ok   ... e ela aparece no bloco que BLOQUEIA"
+    else
+      falhou=$((falhou+1)); echo "  FALHA a linha nova nao foi para o bloco bloqueante"
+    fi
+    if echo "$saida_n" | sed -n '/BLOQUEIAM/,$p' | grep -q "teste-sem-data-sem-gancho"; then
+      ok=$((ok+1)); echo "  ok   linha SEM data bloqueia (ausencia de prova nao anistia)"
+    else
+      falhou=$((falhou+1)); echo "  FALHA linha sem data foi anistiada"
+    fi
+
+    # MUTACAO: com o corte no futuro, TODA linha e herdada e o gate volta a passar.
+    # E o que prova que a constante governa o veredito, e nao o acaso do fixture.
+    python - <<'PY'
+import pathlib
+p = pathlib.Path("scripts/ideias-limpo.cjs")
+t = p.read_text(encoding="utf-8")
+assert 'const GANCHO_EXIGIDO_DESDE = "2026-08-11"' in t, "constante da anistia nao encontrada"
+p.write_text(t.replace('const GANCHO_EXIGIDO_DESDE = "2026-08-11"',
+                       'const GANCHO_EXIGIDO_DESDE = "2099-01-01"'), encoding="utf-8", newline="\n")
+PY
+    # O exit code nao serve de sinal aqui: `teste-sem-data-sem-gancho` bloqueia com
+    # qualquer corte (sem data, sem anistia). O que a mutacao tem que mostrar e a
+    # RECLASSIFICACAO: a linha nova sai do bloco que bloqueia e vira divida herdada.
+    if $B7 conferir 2>&1 | sed -n '/HERDADA/,/BLOQUEIAM/p' | grep -q "teste-nova-sem-gancho"; then
+      ok=$((ok+1)); echo "  ok   com o corte em 2099 a linha nova vira herdada (a constante governa)"
+    else
+      falhou=$((falhou+1)); echo "  FALHA mover a constante nao mudou a classificacao"
+    fi
+    python - <<'PY'
+import pathlib
+p = pathlib.Path("scripts/ideias-limpo.cjs")
+t = p.read_text(encoding="utf-8")
+p.write_text(t.replace('const GANCHO_EXIGIDO_DESDE = "2099-01-01"',
+                       'const GANCHO_EXIGIDO_DESDE = "2026-08-11"'), encoding="utf-8", newline="\n")
+PY
+    esperado "restaurada a constante, o gate volta a acusar" 1 $B7 conferir
+
+    # O `reparar --todas` estava MORTO: abortava na primeira linha sem gancho, e
+    # com isso nao consertava `status` de nenhuma outra.
+    python - <<'PY'
+import json, pathlib
+p = pathlib.Path("b7/ideias.jsonl")
+linha = json.dumps({"id": "teste-sem-status-7", "titulo": "t", "descricao": "d",
+                    "contexto": "c", "projeto": "sandbox", "plantada_em": "2026-08-05",
+                    "gancho": "g"}, ensure_ascii=False)
+p.write_text(p.read_text(encoding="utf-8") + linha + "\n", encoding="utf-8", newline="\n")
+PY
+    esperado "varredura NAO aborta por gancho ausente (sai 1, mas trabalha)" 1 $B7 reparar --todas
+    prova "consertou o status da outra linha na mesma passada" '
+import json
+l=[json.loads(x) for x in open("b7/ideias.jsonl",encoding="utf-8") if x.strip()]
+o=[x for x in l if x["id"]=="teste-sem-status-7"][0]
+assert o["status"]=="plantada", o'
+    prova "e NAO carimbou reparada_em em quem nao foi reparado" '
+import json
+l=[json.loads(x) for x in open("b7/ideias.jsonl",encoding="utf-8") if x.strip()]
+o=[x for x in l if x["id"]=="teste-herdada-sem-gancho"][0]
+assert "reparada_em" not in o, o'
+    saida_r=$($B7 reparar --todas 2>&1)
+    if echo "$saida_r" | grep -q "ficaram SEM gancho"; then
+      ok=$((ok+1)); echo "  ok   a varredura RELATA o que precisa de texto humano"
+    else
+      falhou=$((falhou+1)); echo "  FALHA varredura silenciou as pendencias de gancho"
+    fi
+    esperado "mas --id explicito sem --gancho continua recusando" 1 \
+      $B7 reparar --id teste-herdada-sem-gancho
+    # E o universo tambem aparece no reparar (era 72 contra 35 do conferir).
+    if $B7 reparar --todas --conferir 2>&1 | grep -qE "[0-9]+ de [0-9]+ abertas sem gancho"; then
+      ok=$((ok+1)); echo "  ok   o reparar declara o mesmo universo do conferir"
+    else
+      falhou=$((falhou+1)); echo "  FALHA reparar conta sem dizer o conjunto"
+    fi
+    ;;
+  *)
+    echo "  (pulado: anistia por data e recurso novo so do .cjs)"
     ;;
 esac
 
