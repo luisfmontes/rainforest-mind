@@ -105,7 +105,11 @@ function checarIdeias() {
   if (!fs.existsSync(script)) return aviso('ideias', 'scripts/ideias.cjs ausente', 'reinstale o plugin');
   const { out } = rodar(process.execPath, [script, 'conferir']);
   const problemas = (out.match(/^\s+- linha /gm) || []).length;
-  const primeira = out.split('\n')[0] || '';
+  // A linha do RESUMO, nao a primeira do stdout: desde 0.53.0 o `conferir` abre
+  // dizendo o caminho do arquivo, e pegar a primeira linha punha o caminho no
+  // lugar da contagem.
+  const linhas = out.split('\n');
+  const primeira = linhas.find((l) => /^\d+ linhas,/.test(l)) || linhas[0] || '';
   if (/sem problemas/.test(out)) return ok('ideias', primeira);
   // `conferir` acusa e nao quebra: aqui isso vira aviso, nao alerta — arquivo com
   // pendencia continua utilizavel, e o numero e o que interessa.
