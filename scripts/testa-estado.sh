@@ -24,7 +24,7 @@ mkdir -p "$SBP/scripts" "$SBP/hooks/lib"
 cp "$SRC/scripts/estado.cjs" "$SBP/scripts/"
 cp "$SRC/hooks/lib/raiz.cjs" "$SBP/hooks/lib/"
 # A caixa vira raiz de dados: sem marcador, resolverRaiz cairia no repo de verdade
-# e a bateria escreveria estado no .rainforest do Luis.
+# e a bateria escreveria estado no .rainforest do usuario.
 touch "$SBP/FOCO.md"
 cd "$SBP" || exit 1
 echo "(caixa de areia: $SBP)"
@@ -104,7 +104,7 @@ echo "== 6. o estado mora no PROJETO, nao na cadeia de dados do rainforest =="
 # hooks/lib/raiz.cjs (a cadeia RFM_ROOT > projeto > global > plugin > legado), e
 # com isso uma feature de outro repositorio teria o estado gravado dentro do
 # rainforest-mind — longe do codigo e misturado com o de outra feature.
-# Sao dois tipos de estado: FOCO/ideias sao do Luis e atravessam projeto; design,
+# Sao dois tipos de estado: FOCO/ideias sao do usuario e atravessam projeto; design,
 # plano e estado sao do PROJETO e ficam onde o trabalho esta.
 mkdir -p "$SBP/outro-projeto"
 ( cd "$SBP/outro-projeto" && RFM_ROOT="$SBP" node ../scripts/estado.cjs iniciar --slug t-local >/dev/null 2>&1 )

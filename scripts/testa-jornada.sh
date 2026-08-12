@@ -1,6 +1,6 @@
 #!/bin/bash
 # Bateria do jornada.cjs. Roda numa caixa de areia com transcripts SINTETICOS,
-# montados aqui — nada depende dos transcripts reais do Luis (que mudam a cada
+# montados aqui — nada depende dos transcripts reais do usuario (que mudam a cada
 # sessao e nao servem de fixture estavel). Uso: bash scripts/testa-jornada.sh
 #
 # O teste que importa e o de mutacao, no bloco final: ele desliga o filtro de

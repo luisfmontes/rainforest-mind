@@ -2,7 +2,7 @@
 // dados-batedor-repos.js — apura a ANCORA da ronda do batedor: os problemas vivos.
 //
 // O batedor nao sai olhando repositorio bonito. Ele sai procurando solucao para
-// problema que o Luis tem AGORA — e a lista de problemas sai daqui, apurada por
+// problema que o usuario tem AGORA — e a lista de problemas sai daqui, apurada por
 // script, nao pela lembranca do agente (regra do _comum.md: conte pelo campo).
 //
 // Fontes, em ordem de prioridade:

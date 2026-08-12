@@ -14,7 +14,7 @@
  * POR QUE ESTE SCRIPT EXISTE
  * --------------------------
  * A regra 8 (guarda-corpo de jornada) mede a jornada efetiva pelo intervalo entre
- * mensagens HUMANAS consecutivas do Luis: cada prompt dele prova que ele estava
+ * mensagens HUMANAS consecutivas do usuario: cada prompt dele prova que ele estava
  * ali naquele instante. Lacuna acima do corte e pausa, nao trabalho, e sai da
  * conta. O script original (jornada.py) ficava preso a Python, que nao esta mais
  * no caminho de execucao de nada neste plugin desde que o ideias.py foi portado
@@ -23,7 +23,7 @@
  * DUAS ARMADILHAS, as duas medidas no repo em 2026-08-09 (ver jornada.py)
  * -------------------------------------------------------------------------
  * 1. `type == "user"` NAO significa mensagem humana. Num transcript medido, de
- *    377 entradas "user" so 42 eram do Luis — as outras eram `toolUseResult`,
+ *    377 entradas "user" so 42 eram do usuario — as outras eram `toolUseResult`,
  *    mais `isMeta` e `isCompactSummary`. O filtro e obrigatorio; sem ele o
  *    script mede o ritmo das FERRAMENTAS.
  *
@@ -76,7 +76,7 @@ function transcriptsDisponiveis() {
 }
 
 // --------------------------------------------------------------------------
-// mensagens humanas — carimbos do Luis, em hora LOCAL, ordenados
+// mensagens humanas — carimbos do usuario, em hora LOCAL, ordenados
 // --------------------------------------------------------------------------
 
 function mensagensHumanas(caminho) {
@@ -293,7 +293,7 @@ function main() {
   }
 
   console.log(`escopo ................. ${escopo}`);
-  console.log(`mensagens do Luis ...... ${carimbos.length}`);
+  console.log(`mensagens do usuario ...... ${carimbos.length}`);
   console.log(`primeiro sinal humano .. ${hhmmRelogio(primeiro)} (local)`);
   console.log(`ultimo sinal humano .... ${hhmmRelogio(ultimo)} (local)`);
   console.log(`intervalo bruto ........ ${hhmm(bruto)}  <- ponta a ponta, NAO e jornada`);

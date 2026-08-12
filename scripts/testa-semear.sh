@@ -103,7 +103,7 @@ fi
 echo
 echo
 echo "== 7. relatorio de OUTRO projeto nao vaza para este =="
-# Defeito real, achado quando o Luis perguntou se o semear usa a arqueologia: o
+# Defeito real, achado quando o usuario perguntou se o semear usa a arqueologia: o
 # bloco de relatorios caia na pasta do PLUGIN quando o projeto nao tinha
 # `relatorios/`. Um repo recem-instalado recebia os 14 incidentes do rainforest
 # como se fossem a historia dele — e a regra que sustenta a skill e justamente

@@ -7,7 +7,7 @@
 #   1. que ele BARRA o caso do relatorio (exit 2) — trava que nunca travou nao
 #      e evidencia de nada;
 #   2. que ele NAO barra a janela principal, nem worktree legitimo, nem leitura,
-#      nem arquivo fora de repo git. Falso positivo aqui para o trabalho do Luis
+#      nem arquivo fora de repo git. Falso positivo aqui para o trabalho do usuario
 #      em todos os repos, entao os casos que devem PASSAR sao a maioria.
 
 set -u
@@ -51,7 +51,7 @@ gate "subagente roda git stash no principal (N1)" 2 "$(printf '{"agent_id":"ag-1
 gate "subagente roda git checkout no principal"   2 "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"git checkout main"}}' "$(esc "$R")")"
 
 echo
-echo "== deve PASSAR (exit 0) — falso positivo aqui para o trabalho do Luis =="
+echo "== deve PASSAR (exit 0) — falso positivo aqui para o trabalho do usuario =="
 gate "JANELA PRINCIPAL escrevendo no repo (sem agent_id)" 0 \
   "$(printf '{"tool_name":"Write","cwd":"%s","tool_input":{"file_path":"%s"}}' "$(esc "$R")" "$(esc "$R/x.txt")")"
 gate "subagente escrevendo no worktree dele"      0 "$(j Write file_path "$(esc "$WT/novo.txt")" "$(esc "$WT")")"
@@ -108,7 +108,7 @@ echo "== a mensagem de bloqueio serve pra alguma coisa? =="
 # Desde a P1 (relatorio 2026-08-11-escotilha-do-gate-usada-para-contornar) a
 # mensagem MUDA conforme quem a le. Um implementador bloqueado leu o nome do
 # arquivo de escape na propria mensagem, criou `.rainforest-gate-off` na raiz do
-# checkout principal do Luis e seguiu trabalhando, reportando DONE. A escotilha e
+# checkout principal do usuario e seguiu trabalhando, reportando DONE. A escotilha e
 # da JANELA PRINCIPAL — quem tem autoridade de decidir seguir sem isolamento.
 #
 # Este bloco antes exigia que as escotilhas aparecessem SEMPRE. Testar o texto
