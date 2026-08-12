@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-0.49.0-1e5c3f?style=flat-square" alt="versão 0.49.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-0.50.0-1e5c3f?style=flat-square" alt="versão 0.50.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/revis%C3%A3o-bimestral-9fd8ba?style=flat-square" alt="revisão bimestral">
 </p>
@@ -391,7 +391,7 @@ conferência — nunca como requisito.
 - O hook avisa quando a skill passa de **60 dias sem revisão**.
 ## Um foco por projeto, sem configurar nada
 
-Onde moram `FOCO.md` e `ideias.jsonl` sai de uma **cadeia de cinco níveis**, do
+Onde moram `FOCO.md` e `ideias.jsonl` sai de uma **cadeia de quatro níveis**, do
 mais específico para o mais genérico — o projeto sobrescreve o global, e a
 detecção automática cobre quem não declarou nada:
 
@@ -401,7 +401,6 @@ detecção automática cobre quem não declarou nada:
 | 2 | **projeto** | `<repo>/.rainforest/` | **foco e ideias daquele repo** |
 | 3 | global | `~/.rainforest/` | o seu estado, valendo em qualquer pasta |
 | 4 | plugin | a raiz do próprio plugin | instalação auto-hospedada (desenvolvimento) |
-| 5 | legado | caminho antigo, se existir | ponte, sai quando 1 ou 3 estiverem montados |
 
 O que faz uma pasta contar como raiz é ter `FOCO.md` **ou** `ideias.jsonl`
 dentro: um `.rainforest/` vazio criado por engano não sequestra o seu foco — e

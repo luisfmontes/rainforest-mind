@@ -568,18 +568,17 @@ else
 fi
 
 echo
-echo "13. RAIZ — cadeia de 5 niveis, projeto sobrescreve global"
+echo "13. RAIZ — cadeia de 4 niveis, projeto sobrescreve global"
 # O defeito que esta secao existe para impedir: ate 2026-08-11 a raiz era
 # `RFM_ROOT || 'C:\Projetos\rainforest-mind'` — caminho da maquina do usuario cravado
 # no codigo, e RFM_ROOT nao esta definida nela. Funcionava para o usuario numero um
 # e para mais ninguem.
 RZP="$RAIZ_POSIX/raizes"
-mkdir -p "$RZP/proj/.rainforest" "$RZP/lar/.rainforest" "$RZP/plugin" "$RZP/legado" \
+mkdir -p "$RZP/proj/.rainforest" "$RZP/lar/.rainforest" "$RZP/plugin" \
          "$RZP/vazio/.rainforest" "$RZP/declarada" "$RZP/soideias/.rainforest"
 echo "# foco do projeto"  > "$RZP/proj/.rainforest/FOCO.md"
 echo "# foco global"      > "$RZP/lar/.rainforest/FOCO.md"
 echo "# foco do plugin"   > "$RZP/plugin/FOCO.md"
-echo "# foco legado"      > "$RZP/legado/FOCO.md"
 echo '{}'                 > "$RZP/soideias/.rainforest/ideias.jsonl"
 # $RZP/vazio/.rainforest existe mas nao tem marcador — nao pode sequestrar o foco.
 
@@ -587,14 +586,13 @@ echo '{}'                 > "$RZP/soideias/.rainforest/ideias.jsonl"
 # uma vez, e passar so a forma Windows adiante. Custou uma rodada desta bateria.
 RZ="$(cygpath -m "$RZP" 2>/dev/null || printf '%s' "$RZP")"
 
-resolve() { # env_json, cwd, plugin, legado -> "nivel escopo"
-  RJ="$1" RC="$2" RP="$3" RL="$4" node -e '
+resolve() { # env_json, cwd, plugin -> "nivel escopo"
+  RJ="$1" RC="$2" RP="$3" node -e '
     const { resolverRaiz } = require(process.env.LIB_RAIZ);
     const r = resolverRaiz({
       env: JSON.parse(process.env.RJ),
       cwd: process.env.RC,
       plugin: process.env.RP,
-      legado: process.env.RL,
     });
     process.stdout.write(r.nivel + " " + (r.escopo || "-"));
   '
@@ -609,28 +607,28 @@ checa_igual() { # nome, esperado, obtido
 }
 
 checa_igual "RFM_ROOT vence tudo"             "RFM_ROOT usuario" \
-  "$(resolve "{\"RFM_ROOT\":\"$RZ/declarada\"}" "$RZ/proj" "$RZ/plugin" "$RZ/legado")"
+  "$(resolve "{\"RFM_ROOT\":\"$RZ/declarada\"}" "$RZ/proj" "$RZ/plugin")"
 checa_igual "sem RFM_ROOT, o projeto vence"   "projeto projeto" \
-  "$(resolve "{}" "$RZ/proj" "$RZ/plugin" "$RZ/legado")"
+  "$(resolve "{}" "$RZ/proj" "$RZ/plugin")"
 checa_igual "sem projeto, cai no global"      "global usuario" \
-  "$(resolve "{\"USERPROFILE\":\"$RZ/lar\"}" "$RZ/semnada" "$RZ/plugin" "$RZ/legado")"
+  "$(resolve "{\"USERPROFILE\":\"$RZ/lar\"}" "$RZ/semnada" "$RZ/plugin")"
 checa_igual "sem global, cai no plugin"       "plugin usuario" \
-  "$(resolve "{\"USERPROFILE\":\"$RZ/inexistente\"}" "$RZ/semnada" "$RZ/plugin" "$RZ/legado")"
-checa_igual "sem plugin, cai no legado"       "legado usuario" \
-  "$(resolve "{\"USERPROFILE\":\"$RZ/inexistente\"}" "$RZ/semnada" "$RZ/semplugin" "$RZ/legado")"
+  "$(resolve "{\"USERPROFILE\":\"$RZ/inexistente\"}" "$RZ/semnada" "$RZ/plugin")"
+checa_igual "sem plugin, nao ha raiz"        "nenhum -" \
+  "$(resolve "{\"USERPROFILE\":\"$RZ/inexistente\"}" "$RZ/semnada" "$RZ/semplugin")"
 checa_igual "sem nada, devolve nenhum"        "nenhum -" \
-  "$(resolve "{\"USERPROFILE\":\"$RZ/inexistente\"}" "$RZ/semnada" "$RZ/semplugin" "")"
+  "$(resolve "{\"USERPROFILE\":\"$RZ/inexistente\"}" "$RZ/semnada" "$RZ/semplugin")"
 # O marcador e o que separa "pasta de dados" de "pasta que alguem criou por engano".
 checa_igual ".rainforest VAZIO nao sequestra" "plugin usuario" \
-  "$(resolve "{\"USERPROFILE\":\"$RZ/inexistente\"}" "$RZ/vazio" "$RZ/plugin" "$RZ/legado")"
+  "$(resolve "{\"USERPROFILE\":\"$RZ/inexistente\"}" "$RZ/vazio" "$RZ/plugin")"
 # ideias.jsonl sozinho tambem marca — senao um projeto que so planta ideia nao e visto.
 checa_igual "so ideias.jsonl ja marca a raiz" "projeto projeto" \
-  "$(resolve "{}" "$RZ/soideias" "$RZ/plugin" "$RZ/legado")"
+  "$(resolve "{}" "$RZ/soideias" "$RZ/plugin")"
 
 # MUTACAO: sem a checagem de marcador, a pasta vazia passa a sequestrar o foco.
 cp "$SRC/hooks/lib/raiz.cjs" "$RAIZ_POSIX/raiz-sem-marcador.cjs"
 sed -i 's/return MARCADORES.some((m) => fs.existsSync(path.join(dir, m)));/return fs.existsSync(dir);/' "$RAIZ_POSIX/raiz-sem-marcador.cjs"
-MUT="$(LIB_RAIZ="$(cygpath -m "$RAIZ_POSIX/raiz-sem-marcador.cjs" 2>/dev/null || printf '%s' "$RAIZ_POSIX/raiz-sem-marcador.cjs")" resolve "{\"USERPROFILE\":\"$RZ/inexistente\"}" "$RZ/vazio" "$RZ/plugin" "$RZ/legado")"
+MUT="$(LIB_RAIZ="$(cygpath -m "$RAIZ_POSIX/raiz-sem-marcador.cjs" 2>/dev/null || printf '%s' "$RAIZ_POSIX/raiz-sem-marcador.cjs")" resolve "{\"USERPROFILE\":\"$RZ/inexistente\"}" "$RZ/vazio" "$RZ/plugin")"
 if [ "$MUT" = "projeto projeto" ]; then
   ok=$((ok+1)); echo "  ok    sem o marcador a pasta vazia sequestra (o marcador e load-bearing)"
 else
