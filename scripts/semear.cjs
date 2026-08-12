@@ -45,12 +45,42 @@ function raizDados() {
 }
 
 /**
- * O campo `projeto` é texto livre e tem 20 valores distintos para ~6 projetos
- * reais — `rainforest-mind` aparece escrito de quatro jeitos, alguns com caminho
- * do Windows dentro. Comparar por igualdade perderia dois terços do histórico,
- * então a comparação é por raiz do nome. (A correção de fundo — slug de
- * vocabulário fechado — está plantada em `projeto-vira-slug-e-caminho-sai-do-dado`.)
+ * O `projeto` virou slug de vocabulário fechado em 2026-08-12 (o campo era texto
+ * livre, guardava caminho do Windows dentro de string JSON e a barra + `r` comeu
+ * o caminho de 4 registros). O vocabulário mora no `projetos.json` da pasta de
+ * dados, e é ele que traduz PASTA em slug: um projeto cujo diretório não se chama
+ * como o slug (`...\protheus-totvs-agro\inovacao` → `protheus-inovacao`) só se
+ * resolve por esse mapa.
+ *
+ * A comparação difusa continua existindo, e só como REDE: registro que ainda não
+ * passou pela migração, ou alvo que não está no vocabulário. Quando os dois lados
+ * são slug, a comparação é igualdade — que é o ponto da mudança.
  */
+function lerVocabulario(raiz) {
+  if (!raiz) return null;
+  try {
+    const m = JSON.parse(fs.readFileSync(path.join(raiz, 'projetos.json'), 'utf8'));
+    return m && typeof m === 'object' && !Array.isArray(m) ? m : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Slug do alvo pedido: nome do slug, apelido dele, ou pasta registrada. */
+function slugDoAlvo(alvo, vocab, dir) {
+  if (!vocab) return null;
+  if (Object.prototype.hasOwnProperty.call(vocab, alvo)) return alvo;
+  const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const alvoNorm = norm(alvo);
+  const dirNorm = dir ? path.resolve(dir).toLowerCase() : null;
+  for (const [slug, v] of Object.entries(vocab)) {
+    const apelidos = Array.isArray(v && v.apelidos) ? v.apelidos : [];
+    if ([slug, ...apelidos].some((t) => norm(t) === alvoNorm)) return slug;
+    if (dirNorm && v && v.caminho && path.resolve(v.caminho).toLowerCase() === dirNorm) return slug;
+  }
+  return null;
+}
+
 function combina(valorDoRegistro, alvo) {
   const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
   const a = norm(valorDoRegistro);
@@ -73,7 +103,18 @@ function main() {
     } catch {
       saida.avisos.push(`nao consegui ler ${jsonl}`);
     }
-    const doProjeto = linhas.filter((o) => combina(o.projeto, alvo));
+    const vocab = lerVocabulario(raiz);
+    const slug = slugDoAlvo(alvo, vocab, PROJETO_DIR);
+    if (slug && slug !== alvo) saida.projeto = `${slug} (pedido como '${alvo}')`;
+    const doProjeto = slug
+      ? linhas.filter((o) => o.projeto === slug || combina(o.projeto, slug))
+      : linhas.filter((o) => combina(o.projeto, alvo));
+    if (vocab && !slug) {
+      saida.avisos.push(
+        `'${alvo}' nao esta no projetos.json — comparacao difusa, pode trazer de outro projeto. ` +
+          `registre: node scripts/ideias.cjs projetos --registrar <slug> --caminho "${PROJETO_DIR}"`
+      );
+    }
 
     // OBSERVAÇÃO é o registro de quando o usuario teve de corrigir a saída (regra 13).
     // É a fonte mais densa que existe aqui: cada linha é um defeito que já
