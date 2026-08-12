@@ -106,16 +106,14 @@ echo "== 5. MUTACAO — quem segura a trava com config quebrada e o PADRAO =="
 # mora no `padrao: true` da tabela CHAVES. Mutacao que erra o alvo passa verde
 # sem provar nada, e foi o que aconteceu ate esta linha ser reescrita.
 cp "$SRC/hooks/lib/config.cjs" "$SBP/config-mutante.cjs"
-python - "$SBP/config-mutante.cjs" <<'PY'
-import sys, pathlib
-p = pathlib.Path(sys.argv[1]); s = p.read_text(encoding="utf-8")
-antes = s
-s = s.replace("""  'gate-staging': {
-    padrao: true,""", """  'gate-staging': {
-    padrao: false,""")
-assert s != antes, "ancora do padrao de gate-staging sumiu"
-p.write_text(s, encoding="utf-8", newline="\n")
-PY
+node - "$SBP/config-mutante.cjs" <<'JS'
+const fs = require("fs");
+const alvo = process.argv[2];
+const antes = fs.readFileSync(alvo, "utf8");
+const de = "  'gate-staging': {\n    padrao: true,";
+if (!antes.includes(de)) throw new Error("ancora do padrao de gate-staging sumiu");
+fs.writeFileSync(alvo, antes.replace(de, "  'gate-staging': {\n    padrao: false,"), "utf8");
+JS
 printf '{nao e json' > "$SBP/proj/.rainforest/config.json"
 MUT="$(node -e "
   process.stdout.write(String(require('$SB/config-mutante.cjs').ligado('gate-staging', { projeto: '$PROJ' })));

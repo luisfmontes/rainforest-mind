@@ -43,7 +43,7 @@ DADOS_REAIS="$(env -u RFM_ROOT node -e "const r=require('$SRC_WIN/hooks/lib/raiz
 cp "$DADOS_REAIS/ideias.jsonl" "$SB/"
 cd "$SB" || exit 1
 
-export BASE=$(python -c "print(sum(1 for l in open('ideias.jsonl',encoding='utf-8') if l.strip()))")
+export BASE=$(node -e "process.stdout.write(String(require('fs').readFileSync('ideias.jsonl','utf8').split('\n').filter((l)=>l.trim()).length))")
 echo "(base: $BASE linhas copiadas do arquivo real)"
 
 # As 70 linhas reais ainda nao tem `gancho` (e essa lacuna e o motivo desta
@@ -52,37 +52,36 @@ echo "(base: $BASE linhas copiadas do arquivo real)"
 # bateria — este script nunca toca ideias.jsonl de verdade). Aqui, na COPIA da
 # caixa de areia, pre-preenche so para o restante da bateria poder testar o
 # comportamento novo sem tropecar na migracao pendente das linhas antigas.
-python - <<'PY'
-import json, pathlib, re
-p = pathlib.Path("ideias.jsonl")
-linhas = [l for l in p.read_text(encoding="utf-8").split("\n") if l.strip()]
-n = 0
-c = 0
-for i, l in enumerate(linhas):
-    o = json.loads(l)
-    mudou = False
-    if not o.get("gancho"):
-        o["gancho"] = "gancho de teste (seed da bateria, nao e dado real)"
-        n += 1
-        mudou = True
-    # Mesma razao do gancho, para o campo `projeto`: a copia e FIXTURE, nao dado.
-    # Todo valor real vira o slug `sandbox` — e isso resolve tres coisas de uma
-    # vez. (1) O `conferir` passou a acusar CR/LF/TAB no campo, e 4 linhas reais
-    # tem esse rastro: sem o seed a bateria falharia pelo DADO do usuario e nao
-    # por regressao, e teste que falha por dado ensina a ignorar teste. (2) O
-    # bloco 6 precisa que a prosa a normalizar seja SO a que ele mesmo cria.
-    # (3) Nome de projeto do usuario para de entrar na saida da bateria.
-    # A migracao real e `normalizar-projetos`, fora daqui.
-    if o.get("projeto") != "sandbox":
-        o["projeto"] = "sandbox"
-        o.pop("projeto_nota", None)
-        c += 1
-        mudou = True
-    if mudou:
-        linhas[i] = json.dumps(o, ensure_ascii=False)
-p.write_text("\n".join(linhas) + "\n", encoding="utf-8", newline="\n")
-print(f"  (seed: gancho em {n} linha(s) e projeto=sandbox em {c}, so para a bateria rodar)")
-PY
+node - <<'JS'
+const fs = require("fs");
+const p = "ideias.jsonl";
+const linhas = fs.readFileSync(p, "utf8").split("\n").filter((l) => l.trim());
+let n = 0, c = 0;
+linhas.forEach((l, i) => {
+  const o = JSON.parse(l);
+  let mudou = false;
+  if (!o.gancho) {
+    o.gancho = "gancho de teste (seed da bateria, nao e dado real)";
+    n += 1; mudou = true;
+  }
+  // Mesma razao do gancho, para o campo `projeto`: a copia e FIXTURE, nao dado.
+  // Todo valor real vira o slug `sandbox` — e isso resolve tres coisas de uma
+  // vez. (1) O `conferir` passou a acusar CR/LF/TAB no campo, e 4 linhas reais
+  // tem esse rastro: sem o seed a bateria falharia pelo DADO do usuario e nao
+  // por regressao, e teste que falha por dado ensina a ignorar teste. (2) O
+  // bloco 6 precisa que a prosa a normalizar seja SO a que ele mesmo cria.
+  // (3) Nome de projeto do usuario para de entrar na saida da bateria.
+  // A migracao real e `normalizar-projetos`, fora daqui.
+  if (o.projeto !== "sandbox") {
+    o.projeto = "sandbox";
+    delete o.projeto_nota;
+    c += 1; mudou = true;
+  }
+  if (mudou) linhas[i] = JSON.stringify(o);
+});
+fs.writeFileSync(p, linhas.join("\n") + "\n", "utf8");
+console.log(`  (seed: gancho em ${n} linha(s) e projeto=sandbox em ${c}, so para a bateria rodar)`);
+JS
 
 ok=0; falhou=0
 esperado() { # nome, exit esperado, comando...
@@ -91,10 +90,23 @@ esperado() { # nome, exit esperado, comando...
   if [ "$got" = "$esp" ]; then ok=$((ok+1)); echo "  ok   $nome (exit $got)"
   else falhou=$((falhou+1)); echo "  FALHA $nome: esperava exit $esp, veio $got"; echo "$saida" | sed 's/^/         /'; fi
 }
-prova() { # nome, script python que levanta AssertionError se falhar
+# Preludio dos asserts: ler o jsonl, achar linha por id, comparar data local e um
+# `ok()` que fala. Vive AQUI, uma vez, em vez de repetido em 16 snippets — e e Node,
+# como todo o resto do plugin. Esta bateria nao usa mais Python: o runtime ja era
+# unico no caminho de execucao, e passou a ser unico no caminho de TESTE tambem, para
+# que quem contribui com so Node consiga validar a propria mudanca.
+PRELUDIO='const fs=require("fs");
+const L=(f)=>fs.readFileSync(f,"utf8").split("\n").filter((x)=>x.trim());
+const O=(f)=>L(f).map((x)=>JSON.parse(x));
+const acha=(l,id)=>{const o=l.find((x)=>x.id===id);if(!o)throw new Error("id nao achado: "+id);return o;};
+const ok=(c,m)=>{if(!c)throw new Error(m||"assert falhou");};
+const hoje=()=>{const d=new Date(),p=(n)=>String(n).padStart(2,"0");return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate());};
+const igual=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+'
+prova() { # nome, script node que lanca Error se falhar
   local nome="$1"; shift
-  if python -c "$1" >/dev/null 2>&1; then ok=$((ok+1)); echo "  ok   $nome"
-  else falhou=$((falhou+1)); echo "  FALHA $nome"; python -c "$1" 2>&1 | tail -3 | sed 's/^/         /'; fi
+  if node -e "$PRELUDIO$1" >/dev/null 2>&1; then ok=$((ok+1)); echo "  ok   $nome"
+  else falhou=$((falhou+1)); echo "  FALHA $nome"; node -e "$PRELUDIO$1" 2>&1 | grep -v "^ *at \|^Node.js v" | tail -4 | sed 's/^/         /'; fi
 }
 
 echo "== 1. entrada invalida e recusada ANTES de tocar o arquivo =="
@@ -125,20 +137,16 @@ echo "== 2. caminho feliz =="
 echo "{\"id\":\"teste-um\",\"titulo\":\"Ideia de teste\",\"descricao\":\"d\",\"contexto\":\"c\",\"projeto\":\"sandbox\",\"ao_colher\":\"nada\",\"gancho\":\"revisar quando a bateria rodar de novo\"}" > f.json
 esperado "plantar" 0 bash -c '$IDEIAS plantar < f.json'
 prova "data carimbada pelo script (local) e status plantada" '
-import json,datetime,os
-l=[json.loads(x) for x in open("ideias.jsonl",encoding="utf-8") if x.strip()]
-o=[x for x in l if x["id"]=="teste-um"][0]
-assert o["status"]=="plantada" and o["plantada_em"]==datetime.date.today().isoformat()
-assert len(l)==int(os.environ["BASE"])+1'
+const l=O("ideias.jsonl"), o=acha(l,"teste-um");
+ok(o.status==="plantada" && o.plantada_em===hoje());
+ok(l.length===Number(process.env.BASE)+1);'
 
 esperado "iniciar (plantada -> em-colheita)" 0 $IDEIAS iniciar --id teste-um --andamento "metade feita"
 esperado "recusa iniciar duas vezes" 1 $IDEIAS iniciar --id teste-um
 prova "iniciar grava colheita_iniciada_em e andamento" '
-import json,datetime
-l=[json.loads(x) for x in open("ideias.jsonl",encoding="utf-8") if x.strip()]
-o=[x for x in l if x["id"]=="teste-um"][0]
-assert o["status"]=="em-colheita" and o["andamento"]=="metade feita"
-assert o["colheita_iniciada_em"]==datetime.date.today().isoformat()'
+const l=O("ideias.jsonl"), o=acha(l,"teste-um");
+ok(o.status==="em-colheita" && o.andamento==="metade feita");
+ok(o.colheita_iniciada_em===hoje());'
 echo '{"resultado":"entregue no teste"}' > r.json
 esperado "colher" 0 bash -c '$IDEIAS colher --id teste-um < r.json'
 esperado "recusa colher duas vezes" 1 bash -c '$IDEIAS colher --id teste-um < r.json'
@@ -152,15 +160,13 @@ esperado "plantar a que sera editada" 0 bash -c '$IDEIAS plantar < fe.json'
 echo '{"titulo":"Depois","ao_colher":"passo novo"}' > ed.json
 esperado "editar ideia aberta" 0 bash -c '$IDEIAS editar --id teste-editar < ed.json'
 prova "editar troca so o que veio, carimba editada_em e preserva plantada_em" '
-import json,datetime,os
-l=[json.loads(x) for x in open("ideias.jsonl",encoding="utf-8") if x.strip()]
-o=[x for x in l if x["id"]=="teste-editar"][0]
-assert o["titulo"]=="Depois" and o["ao_colher"]=="passo novo"
-assert o["descricao"]=="d" and o["contexto"]=="c", "campo nao enviado foi alterado"
-assert o["status"]=="plantada", "editar nao deve mexer no status"
-assert o["editada_em"]==datetime.date.today().isoformat()
-assert o["plantada_em"]==datetime.date.today().isoformat()
-assert len(l)==int(os.environ["BASE"])+2, "editar nao pode mudar a contagem"'
+const l=O("ideias.jsonl"), o=acha(l,"teste-editar");
+ok(o.titulo==="Depois" && o.ao_colher==="passo novo");
+ok(o.descricao==="d" && o.contexto==="c", "campo nao enviado foi alterado");
+ok(o.status==="plantada", "editar nao deve mexer no status");
+ok(o.editada_em===hoje());
+ok(o.plantada_em===hoje());
+ok(l.length===Number(process.env.BASE)+2, "editar nao pode mudar a contagem");'
 esperado "recusa editar o que ja foi colhido" 1 bash -c 'echo "{\"titulo\":\"x\"}" | $IDEIAS editar --id teste-um'
 esperado "recusa editar sem nada para mudar" 1 bash -c 'echo "{}" | $IDEIAS editar --id teste-editar'
 esperado "recusa trocar o id pela entrada" 1 bash -c 'echo "{\"id\":\"outro\",\"titulo\":\"x\"}" | $IDEIAS editar --id teste-editar'
@@ -176,28 +182,24 @@ echo "{\"id\":\"teste-dois\",\"titulo\":\"Fundida\",\"descricao\":\"conteudo fun
 esperado "unificar (duas linhas, contagem igual)" 0 bash -c '$IDEIAS unificar --manter teste-dois --absorver teste-tres < fu.json'
 esperado "recusa unificar consigo mesmo" 1 bash -c '$IDEIAS unificar --manter teste-dois --absorver teste-dois < fu.json'
 prova "absorvida aponta pra sobrevivente, conteudo fundido gravado, contagem base+4" '
-import json,os
-l=[json.loads(x) for x in open("ideias.jsonl",encoding="utf-8") if x.strip()]
-a=[x for x in l if x["id"]=="teste-tres"][0]; b=[x for x in l if x["id"]=="teste-dois"][0]
-assert a["status"]=="unificada" and a["unificada_em_id"]=="teste-dois"
-assert b["absorveu"]==["teste-tres"] and b["titulo"]=="Fundida"
-# base+4 e nao base+3 desde que o bloco do editar plantou teste-editar antes daqui.
-assert len(l)==int(os.environ["BASE"])+4'
+const l=O("ideias.jsonl"), a=acha(l,"teste-tres"), b=acha(l,"teste-dois");
+ok(a.status==="unificada" && a.unificada_em_id==="teste-dois");
+ok(igual(b.absorveu,["teste-tres"]) && b.titulo==="Fundida");
+// base+4 e nao base+3 desde que o bloco do editar plantou teste-editar antes daqui.
+ok(l.length===Number(process.env.BASE)+4);'
 
 echo
 echo "== 2.5 reparar: linha que entrou no arquivo sem passar pelo script =="
 # O caso real: em 2026-08-10 uma observacao foi gravada a mao, sem status nem
 # plantada_em, e so apareceu no conferir. O editar nao conserta (status e
 # plantada_em sao CAMPOS_PROIBIDOS_NO_INPUT, e devem continuar sendo).
-python - <<'PY'
-import json, pathlib
-p = pathlib.Path("ideias.jsonl")
-linha = json.dumps({"id": "teste-quebrada", "titulo": "Gravada a mao", "descricao": "d",
-                    "contexto": "c", "projeto": "sandbox", "tipo": "observacao",
-                    "gancho": "g"},
-                   ensure_ascii=False)
-p.write_text(p.read_text(encoding="utf-8") + linha + "\n", encoding="utf-8", newline="\n")
-PY
+node - <<'JS'
+const fs = require("fs");
+fs.appendFileSync("ideias.jsonl", JSON.stringify({
+  id: "teste-quebrada", titulo: "Gravada a mao", descricao: "d",
+  contexto: "c", projeto: "sandbox", tipo: "observacao", gancho: "g",
+}) + "\n", "utf8");
+JS
 esperado "conferir acusa a linha sem status" 1 $IDEIAS conferir
 esperado "recusa reparar sem --id nem --todas" 1 $IDEIAS reparar
 md5_pre_reparo=$(md5sum ideias.jsonl | cut -d' ' -f1)
@@ -222,12 +224,10 @@ esperado "varredura sai 1 quando ha pendencia" 1 $IDEIAS reparar --todas
 case "$IDEIAS" in
   *ideias.cjs*)
     prova "nao inventou a data, e consertou o status na mesma passada" '
-import json
-l=[json.loads(x) for x in open("ideias.jsonl",encoding="utf-8") if x.strip()]
-o=[x for x in l if x["id"]=="teste-quebrada"][0]
-assert "plantada_em" not in o or not o["plantada_em"], "carimbou data que o git nao sabia"
-assert o["status"]=="plantada", "deixou de consertar o status que sabia inferir"
-assert o["reparo"]==["status"], o.get("reparo")'
+const o=acha(O("ideias.jsonl"),"teste-quebrada");
+ok(!o.plantada_em, "carimbou data que o git nao sabia");
+ok(o.status==="plantada", "deixou de consertar o status que sabia inferir");
+ok(igual(o.reparo,["status"]), JSON.stringify(o.reparo));'
     saida_pend=$($IDEIAS reparar --todas 2>&1)
     if echo "$saida_pend" | grep -q "SEM plantada_em"; then
       ok=$((ok+1)); echo "  ok   e RELATOU a linha que ficou sem data"
@@ -247,17 +247,15 @@ esperado "recusa --plantada-em fora do formato ISO" 1 $IDEIAS reparar --id teste
 esperado "recusa --plantada-em junto de --todas" 1 $IDEIAS reparar --todas --plantada-em 2026-08-01
 esperado "reparar com a data informada" 0 $IDEIAS reparar --id teste-quebrada --plantada-em 2026-08-01
 prova "status inferido, data preservada, reparo deixa rastro" '
-import json, datetime, os
-l=[json.loads(x) for x in open("ideias.jsonl",encoding="utf-8") if x.strip()]
-o=[x for x in l if x["id"]=="teste-quebrada"][0]
-assert o["status"]=="plantada", o.get("status")
-assert o["plantada_em"]=="2026-08-01", "a data informada foi trocada"
-assert o["reparada_em"]==datetime.date.today().isoformat()
-# No .cjs a varredura acima ja consertou o status, entao aqui sobra a data; no
-# gemeo, que recusou em bloco, os dois campos vem juntos.
-esperado_reparo = ["plantada_em"] if "ideias.cjs" in os.environ.get("IDEIAS","") else ["plantada_em","status"]
-assert o["reparo"]==esperado_reparo, o.get("reparo")
-assert o["titulo"]=="Gravada a mao" and o["tipo"]=="observacao", "reparo mexeu no conteudo"'
+const o=acha(O("ideias.jsonl"),"teste-quebrada");
+ok(o.status==="plantada", o.status);
+ok(o.plantada_em==="2026-08-01", "a data informada foi trocada");
+ok(o.reparada_em===hoje());
+// No .cjs a varredura acima ja consertou o status, entao aqui sobra a data; no
+// gemeo, que recusou em bloco, os dois campos vem juntos.
+const esperado=(process.env.IDEIAS||"").includes("ideias.cjs")?["plantada_em"]:["plantada_em","status"];
+ok(igual(o.reparo,esperado), JSON.stringify(o.reparo));
+ok(o.titulo==="Gravada a mao" && o.tipo==="observacao", "reparo mexeu no conteudo");'
 esperado "conferir volta a passar depois do reparo" 0 $IDEIAS conferir
 esperado "reparar de novo nao encontra nada (idempotente)" 0 $IDEIAS reparar --todas
 md5_pos_reparo=$(md5sum ideias.jsonl | cut -d' ' -f1)
@@ -268,15 +266,16 @@ else falhou=$((falhou+1)); echo "  FALHA reparou o que nao estava quebrado"; fi
 
 # Reparo nao e conserto de valor errado: para isso existe o editar, que deixa
 # rastro de decisao. Status errado (mas conhecido) nao e buraco.
-python - <<'PY'
-import json, pathlib
-p = pathlib.Path("ideias.jsonl"); linhas=[l for l in p.read_text(encoding="utf-8").split("\n") if l.strip()]
-for i,l in enumerate(linhas):
-    o=json.loads(l)
-    if o["id"]=="teste-quebrada":
-        o["status"]="em-colheita"; linhas[i]=json.dumps(o, ensure_ascii=False)
-p.write_text("\n".join(linhas)+"\n", encoding="utf-8", newline="\n")
-PY
+node - <<'JS'
+const fs = require("fs");
+const p = "ideias.jsonl";
+const linhas = fs.readFileSync(p, "utf8").split("\n").filter((l) => l.trim());
+linhas.forEach((l, i) => {
+  const o = JSON.parse(l);
+  if (o.id === "teste-quebrada") { o.status = "em-colheita"; linhas[i] = JSON.stringify(o); }
+});
+fs.writeFileSync(p, linhas.join("\n") + "\n", "utf8");
+JS
 md5_status_trocado=$(md5sum ideias.jsonl | cut -d' ' -f1)
 esperado "reparar ignora status errado porem conhecido" 0 $IDEIAS reparar --id teste-quebrada
 if [ "$md5_status_trocado" = "$(md5sum ideias.jsonl | cut -d' ' -f1)" ]
@@ -290,13 +289,17 @@ esperado "listar" 0 $IDEIAS listar
 # jsonl viraram "de hoje" e o conferir parou de acusar. Teste que depende de
 # condicao transitoria mente nos dois sentidos.
 esperado "conferir passa quando o arquivo esta saudavel" 0 $IDEIAS conferir
-python - <<'PY'
-import datetime, json, pathlib
-p = pathlib.Path("ideias.jsonl"); linhas = [l for l in p.read_text(encoding="utf-8").split("\n") if l.strip()]
-o = json.loads(linhas[-1]); o["plantada_em"] = (datetime.date.today() + datetime.timedelta(days=30)).isoformat()
-linhas[-1] = json.dumps(o, ensure_ascii=False)
-p.write_text("\n".join(linhas) + "\n", encoding="utf-8", newline="\n")
-PY
+node - <<'JS'
+const fs = require("fs");
+const p = "ideias.jsonl";
+const linhas = fs.readFileSync(p, "utf8").split("\n").filter((l) => l.trim());
+const o = JSON.parse(linhas[linhas.length - 1]);
+const d = new Date(Date.now() + 30 * 86400000);
+const dp = (n) => String(n).padStart(2, "0");
+o.plantada_em = `${d.getFullYear()}-${dp(d.getMonth() + 1)}-${dp(d.getDate())}`;
+linhas[linhas.length - 1] = JSON.stringify(o);
+fs.writeFileSync(p, linhas.join("\n") + "\n", "utf8");
+JS
 esperado "conferir acusa data no futuro (o bug de UTC, detectado depois do fato)" 1 $IDEIAS conferir
 contem_saida() { if $IDEIAS conferir 2>&1 | grep -q "NO FUTURO"; then ok=$((ok+1)); echo "  ok   ... e diz NO FUTURO, nomeando a linha"; else falhou=$((falhou+1)); echo "  FALHA nao nomeou a linha"; fi; }
 contem_saida
@@ -311,20 +314,23 @@ case "$IDEIAS" in
   *)            MUTANTE_ALVO="scripts/ideias.py"  ;;
 esac
 echo "  (mutando $MUTANTE_ALVO — o que \$IDEIAS executa)"
-MUTANTE_ALVO="$MUTANTE_ALVO" python - <<'PY'
-import os, pathlib
-p = pathlib.Path(os.environ["MUTANTE_ALVO"]); s = p.read_text(encoding="utf-8")
-if p.suffix == ".py":
-    alvo = '    tmp = ALVO.with_suffix(".jsonl.tmp")'
-    veneno = '    linhas_depois = list(linhas_depois); linhas_depois[0] = linhas_depois[0].replace("{", "{\\"MUTACAO\\": 1, ", 1)\n'
-else:
-    alvo = '  const tmp = ALVO.replace(/\\.jsonl$/, ".jsonl.tmp");'
-    veneno = '  linhasDepois = linhasDepois.slice(); linhasDepois[0] = linhasDepois[0].replace("{", "{\\"MUTACAO\\": 1, ");\n'
-assert alvo in s, f"ancora da mutacao sumiu em {p} — o teste precisa ser reajustado"
-s = s.replace(alvo, veneno + alvo, 1)
-p.write_text(s, encoding="utf-8")
-print("  (mutante instalado: corrompe a linha 1, que nunca e alvo de um plantar)")
-PY
+MUTANTE_ALVO="$MUTANTE_ALVO" node - <<'JS'
+const fs = require("fs");
+const path = require("path");
+const alvo = process.env.MUTANTE_ALVO;
+const s = fs.readFileSync(alvo, "utf8");
+let ancora, veneno;
+if (path.extname(alvo) === ".py") {
+  ancora = '    tmp = ALVO.with_suffix(".jsonl.tmp")';
+  veneno = '    linhas_depois = list(linhas_depois); linhas_depois[0] = linhas_depois[0].replace("{", "{\\"MUTACAO\\": 1, ", 1)\n';
+} else {
+  ancora = '  const tmp = ALVO.replace(/\\.jsonl$/, ".jsonl.tmp");';
+  veneno = '  linhasDepois = linhasDepois.slice(); linhasDepois[0] = linhasDepois[0].replace("{", "{\\"MUTACAO\\": 1, ");\n';
+}
+if (!s.includes(ancora)) throw new Error(`ancora da mutacao sumiu em ${alvo} — o teste precisa ser reajustado`);
+fs.writeFileSync(alvo, s.replace(ancora, veneno + ancora), "utf8");
+console.log("  (mutante instalado: corrompe a linha 1, que nunca e alvo de um plantar)");
+JS
 echo "{\"id\":\"teste-quatro\",$base,\"gancho\":\"g\"}" > f4.json
 esperado "mutante recusado (a trava reverte e sai != 0)" 1 bash -c '$IDEIAS plantar < f4.json'
 if cmp -s ideias.jsonl pre-mutacao.jsonl
@@ -342,13 +348,13 @@ else falhou=$((falhou+1)); echo "  FALHA o editar gravou por cima do mutante"; f
 
 # Terceiro caminho de escrita, terceira forma de alvo: o reparar pode ter varias
 # linhas como alvo de uma vez. Mutante segue instalado.
-python - <<'PY'
-import json, pathlib
-p = pathlib.Path("ideias.jsonl")
-linha = json.dumps({"id": "teste-quebrada-mutante", "titulo": "t", "descricao": "d",
-                    "contexto": "c", "projeto": "sandbox", "gancho": "g"}, ensure_ascii=False)
-p.write_text(p.read_text(encoding="utf-8") + linha + "\n", encoding="utf-8", newline="\n")
-PY
+node - <<'JS'
+const fs = require("fs");
+fs.appendFileSync("ideias.jsonl", JSON.stringify({
+  id: "teste-quebrada-mutante", titulo: "t", descricao: "d",
+  contexto: "c", projeto: "sandbox", gancho: "g",
+}) + "\n", "utf8");
+JS
 cp ideias.jsonl pre-reparo-mutante.jsonl
 esperado "mutante recusado tambem no reparar" 1 $IDEIAS reparar --id teste-quebrada-mutante --plantada-em 2026-08-01
 if cmp -s ideias.jsonl pre-reparo-mutante.jsonl
@@ -377,15 +383,13 @@ case "$IDEIAS" in
     ( cd "$SB/proj" && env -u RFM_ROOT node ../scripts/ideias-limpo.cjs plantar < nova.json ) >/dev/null 2>&1
     got=$?
     esperado "plantar de dentro de um projeto com .rainforest" 0 bash -c "exit $got"
-    # Caminho RELATIVO: o prova() roda python com cwd na raiz da caixa, e o python
+    # Caminho RELATIVO: o prova() roda node com cwd na raiz da caixa, e o node
     # daqui e o do Windows — caminho POSIX do mktemp ele nao enxerga.
-    prova "gravou no .rainforest do projeto (4 linhas, com o id novo)" "
-import json
-l=[x for x in open('proj/.rainforest/ideias.jsonl',encoding='utf-8') if x.strip()]
-ids=[json.loads(x)['id'] for x in l]
-assert 'teste-raiz-projeto' in ids, ids
-assert len(l)==4, len(l)
-"
+    prova "gravou no .rainforest do projeto (4 linhas, com o id novo)" '
+const l=L("proj/.rainforest/ideias.jsonl");
+const ids=l.map((x)=>JSON.parse(x).id);
+ok(ids.includes("teste-raiz-projeto"), ids.join(","));
+ok(l.length===4, String(l.length));'
     if [ "$(md5sum ideias.jsonl | cut -d' ' -f1)" = "$md5_caixa_antes" ]; then
       ok=$((ok+1)); echo "  ok   o jsonl da raiz da caixa ficou intocado"
     else
@@ -421,34 +425,30 @@ case "$IDEIAS" in
     echo "{\"id\":\"teste-com-gancho\",$base,\"gancho\":\"revisar em 2026-09-01\"}" > fg2.json
     esperado "plantar com gancho passa" 0 bash -c '$IDEIAS_LIMPO plantar < fg2.json'
     prova "gancho chega gravado na linha" '
-import json
-l=[json.loads(x) for x in open("ideias.jsonl",encoding="utf-8") if x.strip()]
-o=[x for x in l if x["id"]=="teste-com-gancho"][0]
-assert o["gancho"]=="revisar em 2026-09-01", o.get("gancho")'
+const o=acha(O("ideias.jsonl"),"teste-com-gancho");
+ok(o.gancho==="revisar em 2026-09-01", o.gancho);'
 
     echo '{"gancho":"trocado: revisar em 2026-10-01"}' > edg.json
     esperado "editar troca o gancho de ideia aberta" 0 bash -c '$IDEIAS_LIMPO editar --id teste-com-gancho < edg.json'
     prova "gancho editado chega gravado" '
-import json
-l=[json.loads(x) for x in open("ideias.jsonl",encoding="utf-8") if x.strip()]
-o=[x for x in l if x["id"]=="teste-com-gancho"][0]
-assert o["gancho"]=="trocado: revisar em 2026-10-01", o.get("gancho")'
+const o=acha(O("ideias.jsonl"),"teste-com-gancho");
+ok(o.gancho==="trocado: revisar em 2026-10-01", o.gancho);'
 
     # linha gravada a mao (bypassa o script), sem gancho — o caso real das 70
     # linhas existentes que motivou a tarefa. Guarda tambem o conteudo exato de
     # OUTRA linha (nao-alvo do reparo que vem a seguir) para provar depois que
     # o reparo --gancho nao mexeu nela.
-    python - <<'PY'
-import json, pathlib
-p = pathlib.Path("ideias.jsonl")
-linha = json.dumps({"id": "teste-sem-gancho-existente", "titulo": "t", "descricao": "d",
-                    "contexto": "c", "projeto": "sandbox", "status": "plantada",
-                    "plantada_em": "2026-08-01"}, ensure_ascii=False)
-p.write_text(p.read_text(encoding="utf-8") + linha + "\n", encoding="utf-8", newline="\n")
-l = [x for x in p.read_text(encoding="utf-8").split("\n") if x.strip()]
-outra = [x for x in l if json.loads(x)["id"] == "teste-com-gancho"][0]
-pathlib.Path("linha-outra-antes-reparo-gancho.txt").write_text(outra, encoding="utf-8")
-PY
+    node - <<'JS'
+const fs = require("fs");
+const p = "ideias.jsonl";
+fs.appendFileSync(p, JSON.stringify({
+  id: "teste-sem-gancho-existente", titulo: "t", descricao: "d",
+  contexto: "c", projeto: "sandbox", status: "plantada", plantada_em: "2026-08-01",
+}) + "\n", "utf8");
+const outra = fs.readFileSync(p, "utf8").split("\n").filter((x) => x.trim())
+  .find((x) => JSON.parse(x).id === "teste-com-gancho");
+fs.writeFileSync("linha-outra-antes-reparo-gancho.txt", outra, "utf8");
+JS
     esperado "conferir acusa a linha sem gancho" 1 $IDEIAS_LIMPO conferir
     saida_conferir_gancho=$($IDEIAS_LIMPO conferir 2>&1)
     if echo "$saida_conferir_gancho" | grep -q "teste-sem-gancho-existente.*gancho"
@@ -458,11 +458,9 @@ PY
     esperado "recusa --gancho sem --id (uma linha por vez, como --plantada-em)" 1 $IDEIAS_LIMPO reparar --todas --gancho "nao vale"
     esperado "reparar --gancho preenche a linha" 0 $IDEIAS_LIMPO reparar --id teste-sem-gancho-existente --gancho "revisar em 2026-11-01"
     prova "gancho reparado gravado, reparo deixa rastro" '
-import json
-l=[json.loads(x) for x in open("ideias.jsonl",encoding="utf-8") if x.strip()]
-o=[x for x in l if x["id"]=="teste-sem-gancho-existente"][0]
-assert o["gancho"]=="revisar em 2026-11-01", o.get("gancho")
-assert "gancho" in o["reparo"], o.get("reparo")'
+const o=acha(O("ideias.jsonl"),"teste-sem-gancho-existente");
+ok(o.gancho==="revisar em 2026-11-01", o.gancho);
+ok((o.reparo||[]).includes("gancho"), JSON.stringify(o.reparo));'
     # "conferir para de acusar": checagem pontual da linha reparada, nao do
     # arquivo inteiro — o bloco 3 deixou teste-quebrada-mutante propositalmente
     # quebrada (a mutacao foi revertida ANTES do reparo dela chegar a gravar),
@@ -475,24 +473,21 @@ assert "gancho" in o["reparo"], o.get("reparo")'
     else falhou=$((falhou+1)); echo "  FALHA conferir ainda acusa gancho na linha ja reparada"; echo "$saida_pos_reparo_gancho" | sed 's/^/         /'; fi
 
     prova "reparar --gancho nao mexeu em linha nao-alvo (byte a byte)" '
-import json
-l=[x.rstrip("\n") for x in open("ideias.jsonl",encoding="utf-8") if x.strip()]
-outra=[x for x in l if json.loads(x)["id"]=="teste-com-gancho"][0]
-antes=open("linha-outra-antes-reparo-gancho.txt",encoding="utf-8").read().rstrip("\n")
-assert outra == antes, (outra, antes)'
+const outra=L("ideias.jsonl").find((x)=>JSON.parse(x).id==="teste-com-gancho");
+const antes=fs.readFileSync("linha-outra-antes-reparo-gancho.txt","utf8").replace(/\n+$/,"");
+ok(outra===antes, "a linha nao-alvo mudou");'
 
     # Gancho e gatilho de RETORNO: so ideia ABERTA precisa dele. Cobrar gatilho de
     # quem ja voltou seria ruido, e ruido ensina a ignorar o conferir. Sem este
     # teste, a regra viveria so no comentario do codigo.
-    python - <<'PY'
-import json, pathlib
-p = pathlib.Path("ideias.jsonl")
-linha = json.dumps({"id": "teste-colhida-sem-gancho", "titulo": "t", "descricao": "d",
-                    "contexto": "c", "projeto": "sandbox", "status": "colhida",
-                    "plantada_em": "2026-08-01", "colhida_em": "2026-08-02",
-                    "resultado": "feito"}, ensure_ascii=False)
-p.write_text(p.read_text(encoding="utf-8") + linha + "\n", encoding="utf-8", newline="\n")
-PY
+    node - <<'JS'
+const fs = require("fs");
+fs.appendFileSync("ideias.jsonl", JSON.stringify({
+  id: "teste-colhida-sem-gancho", titulo: "t", descricao: "d", contexto: "c",
+  projeto: "sandbox", status: "colhida", plantada_em: "2026-08-01",
+  colhida_em: "2026-08-02", resultado: "feito",
+}) + "\n", "utf8");
+JS
     saida_colhida=$($IDEIAS_LIMPO conferir 2>&1)
     if echo "$saida_colhida" | grep -q "teste-colhida-sem-gancho.*gancho"
     then falhou=$((falhou+1)); echo "  FALHA cobrou gancho de ideia ja colhida"
@@ -538,20 +533,18 @@ case "$IDEIAS" in
     esperado "registrar slug" 0 $IDEIAS_LIMPO projetos --registrar sandbox --caminho 'C:/tmp/sandbox'
     esperado "registrar com apelidos" 0 $IDEIAS_LIMPO projetos --registrar outro-projeto --apelido 'apelido-um,apelido-dois'
     prova "projetos.json gravado com caminho e apelidos ordenados" '
-import json
-m=json.load(open("projetos.json",encoding="utf-8"))
-assert m["sandbox"]["caminho"]=="C:/tmp/sandbox", m["sandbox"]
-assert m["outro-projeto"]["apelidos"]==["apelido-dois","apelido-um"], m["outro-projeto"]'
+const m=JSON.parse(fs.readFileSync("projetos.json","utf8"));
+ok(m.sandbox.caminho==="C:/tmp/sandbox", JSON.stringify(m.sandbox));
+ok(igual(m["outro-projeto"].apelidos,["apelido-dois","apelido-um"]), JSON.stringify(m["outro-projeto"]));'
 
     # 6b'. remover: o vocabulario tambem erra, e slug em uso nao sai calado
     esperado "registrar o que vai ser removido" 0 $IDEIAS_LIMPO projetos --registrar slug-temporario
     esperado "remover slug sem nenhuma linha apontando" 0 $IDEIAS_LIMPO projetos --remover slug-temporario
     esperado "recusa remover slug que nao existe" 1 $IDEIAS_LIMPO projetos --remover nunca-existiu
     prova "o removido saiu do arquivo e os outros ficaram" '
-import json
-m=json.load(open("projetos.json",encoding="utf-8"))
-assert "slug-temporario" not in m, m
-assert "sandbox" in m and "outro-projeto" in m, m'
+const m=JSON.parse(fs.readFileSync("projetos.json","utf8"));
+ok(!("slug-temporario" in m), JSON.stringify(Object.keys(m)));
+ok("sandbox" in m && "outro-projeto" in m, JSON.stringify(Object.keys(m)));'
 
     # 6c. com vocabulario, prosa e recusada ANTES de tocar o arquivo
     md5_vocab=$(md5sum ideias.jsonl | cut -d' ' -f1)
@@ -569,27 +562,24 @@ assert "sandbox" in m and "outro-projeto" in m, m'
     esperado "aceita slug do vocabulario" 0 bash -c 'echo "{\"id\":\"teste-slug-ok\",\"titulo\":\"t\",\"descricao\":\"d\",\"contexto\":\"c\",\"projeto\":\"sandbox\",\"gancho\":\"g\"}" | $IDEIAS_LIMPO plantar'
 
     # 6d. a migracao: prosa vira slug, ensaio nao grava, sobra vira projeto_nota
-    python - <<'PY'
-import json, pathlib
-p = pathlib.Path("ideias.jsonl")
-novas = [
-    {"id": "teste-migra-simples", "titulo": "t", "descricao": "d", "contexto": "c",
-     "projeto": "sandbox (C:/tmp/sandbox)", "status": "plantada",
-     "plantada_em": "2026-08-01", "gancho": "g"},
-    {"id": "teste-migra-com-nota", "titulo": "t", "descricao": "d", "contexto": "c",
-     "projeto": "apelido-um (~/outro) - branch teste-de-branch", "status": "plantada",
-     "plantada_em": "2026-08-01", "gancho": "g"},
-    {"id": "teste-migra-so-caminho", "titulo": "t", "descricao": "d", "contexto": "c",
-     "projeto": "C:\\Projetos\\sandbox", "status": "plantada",
-     "plantada_em": "2026-08-01", "gancho": "g"},
-    {"id": "teste-migra-perdida", "titulo": "t", "descricao": "d", "contexto": "c",
-     "projeto": "projeto-que-ninguem-registrou", "status": "plantada",
-     "plantada_em": "2026-08-01", "gancho": "g"},
-]
-texto = p.read_text(encoding="utf-8")
-p.write_text(texto + "".join(json.dumps(o, ensure_ascii=False) + "\n" for o in novas),
-             encoding="utf-8", newline="\n")
-PY
+    node - <<'JS'
+const fs = require("fs");
+const novas = [
+  { id: "teste-migra-simples", titulo: "t", descricao: "d", contexto: "c",
+    projeto: "sandbox (C:/tmp/sandbox)", status: "plantada",
+    plantada_em: "2026-08-01", gancho: "g" },
+  { id: "teste-migra-com-nota", titulo: "t", descricao: "d", contexto: "c",
+    projeto: "apelido-um (~/outro) - branch teste-de-branch", status: "plantada",
+    plantada_em: "2026-08-01", gancho: "g" },
+  { id: "teste-migra-so-caminho", titulo: "t", descricao: "d", contexto: "c",
+    projeto: "C:\\Projetos\\sandbox", status: "plantada",
+    plantada_em: "2026-08-01", gancho: "g" },
+  { id: "teste-migra-perdida", titulo: "t", descricao: "d", contexto: "c",
+    projeto: "projeto-que-ninguem-registrou", status: "plantada",
+    plantada_em: "2026-08-01", gancho: "g" },
+];
+fs.appendFileSync("ideias.jsonl", novas.map((o) => JSON.stringify(o) + "\n").join(""), "utf8");
+JS
     md5_pre_migra=$(md5sum ideias.jsonl | cut -d' ' -f1)
     esperado "migracao recusa quando uma linha nao resolve (parcial esconde o resto)" 1 $IDEIAS_LIMPO normalizar-projetos --aplicar
     if [ "$md5_pre_migra" = "$(md5sum ideias.jsonl | cut -d' ' -f1)" ]
@@ -605,31 +595,27 @@ PY
     then ok=$((ok+1)); echo "  ok   ensaio deixou o arquivo byte a byte igual"
     else falhou=$((falhou+1)); echo "  FALHA o ensaio gravou"; fi
 
-    python -c "
-import json
-l=[x.rstrip('\n') for x in open('ideias.jsonl',encoding='utf-8') if x.strip()]
-alvo=[x for x in l if json.loads(x)['id']=='teste-slug-ok'][0]
-open('linha-nao-alvo-antes-migra.txt','w',encoding='utf-8').write(alvo)
+    node -e "
+const fs=require('fs');
+const alvo=fs.readFileSync('ideias.jsonl','utf8').split('\n').filter((x)=>x.trim())
+  .find((x)=>JSON.parse(x).id==='teste-slug-ok');
+fs.writeFileSync('linha-nao-alvo-antes-migra.txt', alvo, 'utf8');
 "
     esperado "migracao com --mapear e --aplicar" 0 $IDEIAS_LIMPO normalizar-projetos --mapear teste-migra-perdida=sandbox --aplicar
     prova "prosa virou slug, sobra virou projeto_nota, caminho puro nao virou nota" '
-import json
-l=[json.loads(x) for x in open("ideias.jsonl",encoding="utf-8") if x.strip()]
-d={o["id"]: o for o in l}
-assert d["teste-migra-simples"]["projeto"]=="sandbox", d["teste-migra-simples"]
-assert "projeto_nota" not in d["teste-migra-simples"], "caminho entre parenteses nao devia sobrar"
-assert d["teste-migra-com-nota"]["projeto"]=="outro-projeto", d["teste-migra-com-nota"]
-assert "branch teste-de-branch" in d["teste-migra-com-nota"]["projeto_nota"]
-assert "~/outro" not in d["teste-migra-com-nota"]["projeto_nota"], "caminho ficou na nota"
-assert d["teste-migra-so-caminho"]["projeto"]=="sandbox", d["teste-migra-so-caminho"]
-assert "projeto_nota" not in d["teste-migra-so-caminho"], "valor que era SO caminho nao vira nota"
-assert d["teste-migra-perdida"]["projeto"]=="sandbox", d["teste-migra-perdida"]'
+const d={}; for (const o of O("ideias.jsonl")) d[o.id]=o;
+ok(d["teste-migra-simples"].projeto==="sandbox", JSON.stringify(d["teste-migra-simples"]));
+ok(!("projeto_nota" in d["teste-migra-simples"]), "caminho entre parenteses nao devia sobrar");
+ok(d["teste-migra-com-nota"].projeto==="outro-projeto", JSON.stringify(d["teste-migra-com-nota"]));
+ok(d["teste-migra-com-nota"].projeto_nota.includes("branch teste-de-branch"));
+ok(!d["teste-migra-com-nota"].projeto_nota.includes("~/outro"), "caminho ficou na nota");
+ok(d["teste-migra-so-caminho"].projeto==="sandbox", JSON.stringify(d["teste-migra-so-caminho"]));
+ok(!("projeto_nota" in d["teste-migra-so-caminho"]), "valor que era SO caminho nao vira nota");
+ok(d["teste-migra-perdida"].projeto==="sandbox", JSON.stringify(d["teste-migra-perdida"]));'
     prova "migracao nao mexeu em linha nao-alvo (byte a byte)" '
-import json
-l=[x.rstrip("\n") for x in open("ideias.jsonl",encoding="utf-8") if x.strip()]
-agora=[x for x in l if json.loads(x)["id"]=="teste-slug-ok"][0]
-antes=open("linha-nao-alvo-antes-migra.txt",encoding="utf-8").read().rstrip("\n")
-assert agora == antes, (agora, antes)'
+const agora=L("ideias.jsonl").find((x)=>JSON.parse(x).id==="teste-slug-ok");
+const antes=fs.readFileSync("linha-nao-alvo-antes-migra.txt","utf8").replace(/\n+$/,"");
+ok(agora===antes, "a linha nao-alvo mudou");'
     md5_pos_migra=$(md5sum ideias.jsonl | cut -d' ' -f1)
     esperado "segunda passada e inocua (idempotente)" 0 $IDEIAS_LIMPO normalizar-projetos --aplicar
     if [ "$md5_pos_migra" = "$(md5sum ideias.jsonl | cut -d' ' -f1)" ]
@@ -637,15 +623,14 @@ assert agora == antes, (agora, antes)'
     else falhou=$((falhou+1)); echo "  FALHA a segunda passada reescreveu o arquivo"; fi
 
     # 6e. conferir passa a enxergar os dois defeitos, e o listar passa a agrupar
-    python - <<'PY'
-import json, pathlib
-p = pathlib.Path("ideias.jsonl")
-linha = json.dumps({"id": "teste-projeto-com-cr", "titulo": "t", "descricao": "d",
-                    "contexto": "c", "projeto": "C:\\Projetos\rainforest",
-                    "status": "plantada", "plantada_em": "2026-08-01", "gancho": "g"},
-                   ensure_ascii=False)
-p.write_text(p.read_text(encoding="utf-8") + linha + "\n", encoding="utf-8", newline="\n")
-PY
+    node - <<'JS'
+const fs = require("fs");
+fs.appendFileSync("ideias.jsonl", JSON.stringify({
+  id: "teste-projeto-com-cr", titulo: "t", descricao: "d", contexto: "c",
+  projeto: "C:\\Projetos\rainforest",
+  status: "plantada", plantada_em: "2026-08-01", gancho: "g",
+}) + "\n", "utf8");
+JS
     saida_conf_proj=$($IDEIAS_LIMPO conferir 2>&1)
     if echo "$saida_conf_proj" | grep -q "teste-projeto-com-cr.*caractere de controle"
     then ok=$((ok+1)); echo "  ok   conferir acusa caractere de controle no projeto"
@@ -686,26 +671,23 @@ case "$IDEIAS" in
     mkdir -p "$SB/b7"
     head -3 ideias.jsonl > "$SB/b7/ideias.jsonl"
     B7="env RFM_ROOT=$(cygpath -m "$SB/b7" 2>/dev/null || printf '%s' "$SB/b7") node scripts/ideias-limpo.cjs"
-    python - <<'PY'
-import json, pathlib
-p = pathlib.Path("b7/ideias.jsonl")
-novas = [
-    # anterior ao corte: divida herdada, nao bloqueia
-    {"id": "teste-herdada-sem-gancho", "titulo": "t", "descricao": "d", "contexto": "c",
-     "projeto": "sandbox", "status": "plantada", "plantada_em": "2026-08-06"},
-    # NO dia do corte: `plantada_em` tem granularidade de dia e a regra entrou no
-    # meio dele, entao nao da para provar que nasceu depois — anistiada tambem
-    {"id": "teste-no-dia-do-corte", "titulo": "t", "descricao": "d", "contexto": "c",
-     "projeto": "sandbox", "status": "plantada", "plantada_em": "2026-08-11"},
-    # colhida sem gancho: nao entra em conta nenhuma (ja voltou)
-    {"id": "teste-colhida-sem-gancho-7", "titulo": "t", "descricao": "d", "contexto": "c",
-     "projeto": "sandbox", "status": "colhida", "plantada_em": "2026-08-01",
-     "colhida_em": "2026-08-02", "resultado": "feito"},
-]
-p.write_text(p.read_text(encoding="utf-8")
-             + "".join(json.dumps(o, ensure_ascii=False) + "\n" for o in novas),
-             encoding="utf-8", newline="\n")
-PY
+    node - <<'JS'
+const fs = require("fs");
+const novas = [
+  // anterior ao corte: divida herdada, nao bloqueia
+  { id: "teste-herdada-sem-gancho", titulo: "t", descricao: "d", contexto: "c",
+    projeto: "sandbox", status: "plantada", plantada_em: "2026-08-06" },
+  // NO dia do corte: `plantada_em` tem granularidade de dia e a regra entrou no
+  // meio dele, entao nao da para provar que nasceu depois — anistiada tambem
+  { id: "teste-no-dia-do-corte", titulo: "t", descricao: "d", contexto: "c",
+    projeto: "sandbox", status: "plantada", plantada_em: "2026-08-11" },
+  // colhida sem gancho: nao entra em conta nenhuma (ja voltou)
+  { id: "teste-colhida-sem-gancho-7", titulo: "t", descricao: "d", contexto: "c",
+    projeto: "sandbox", status: "colhida", plantada_em: "2026-08-01",
+    colhida_em: "2026-08-02", resultado: "feito" },
+];
+fs.appendFileSync("b7/ideias.jsonl", novas.map((o) => JSON.stringify(o) + "\n").join(""), "utf8");
+JS
     esperado "so divida herdada: o gate fica VERDE" 0 $B7 conferir
     saida_h=$($B7 conferir 2>&1)
     if echo "$saida_h" | grep -q "teste-herdada-sem-gancho"; then
@@ -732,20 +714,17 @@ PY
 
     # Problema NOVO: depois do corte, sem gancho -> BLOQUEIA. Sem isto a anistia
     # teria desligado a regra em vez de datar a divida.
-    python - <<'PY'
-import json, pathlib
-p = pathlib.Path("b7/ideias.jsonl")
-novas = [
-    {"id": "teste-nova-sem-gancho", "titulo": "t", "descricao": "d", "contexto": "c",
-     "projeto": "sandbox", "status": "plantada", "plantada_em": "2026-08-12"},
-    # sem data NENHUMA: ausencia de prova nao e prova, entao bloqueia
-    {"id": "teste-sem-data-sem-gancho", "titulo": "t", "descricao": "d", "contexto": "c",
-     "projeto": "sandbox", "status": "plantada"},
-]
-p.write_text(p.read_text(encoding="utf-8")
-             + "".join(json.dumps(o, ensure_ascii=False) + "\n" for o in novas),
-             encoding="utf-8", newline="\n")
-PY
+    node - <<'JS'
+const fs = require("fs");
+const novas = [
+  { id: "teste-nova-sem-gancho", titulo: "t", descricao: "d", contexto: "c",
+    projeto: "sandbox", status: "plantada", plantada_em: "2026-08-12" },
+  // sem data NENHUMA: ausencia de prova nao e prova, entao bloqueia
+  { id: "teste-sem-data-sem-gancho", titulo: "t", descricao: "d", contexto: "c",
+    projeto: "sandbox", status: "plantada" },
+];
+fs.appendFileSync("b7/ideias.jsonl", novas.map((o) => JSON.stringify(o) + "\n").join(""), "utf8");
+JS
     esperado "linha NOVA sem gancho derruba o gate" 1 $B7 conferir
     saida_n=$($B7 conferir 2>&1)
     if echo "$saida_n" | sed -n '/BLOQUEIAM/,$p' | grep -q "teste-nova-sem-gancho"; then
@@ -761,14 +740,14 @@ PY
 
     # MUTACAO: com o corte no futuro, TODA linha e herdada e o gate volta a passar.
     # E o que prova que a constante governa o veredito, e nao o acaso do fixture.
-    python - <<'PY'
-import pathlib
-p = pathlib.Path("scripts/ideias-limpo.cjs")
-t = p.read_text(encoding="utf-8")
-assert 'const GANCHO_EXIGIDO_DESDE = "2026-08-11"' in t, "constante da anistia nao encontrada"
-p.write_text(t.replace('const GANCHO_EXIGIDO_DESDE = "2026-08-11"',
-                       'const GANCHO_EXIGIDO_DESDE = "2099-01-01"'), encoding="utf-8", newline="\n")
-PY
+    node - <<'JS'
+const fs = require("fs");
+const p = "scripts/ideias-limpo.cjs";
+const t = fs.readFileSync(p, "utf8");
+const de = 'const GANCHO_EXIGIDO_DESDE = "2026-08-11"';
+if (!t.includes(de)) throw new Error("constante da anistia nao encontrada");
+fs.writeFileSync(p, t.replace(de, 'const GANCHO_EXIGIDO_DESDE = "2099-01-01"'), "utf8");
+JS
     # O exit code nao serve de sinal aqui: `teste-sem-data-sem-gancho` bloqueia com
     # qualquer corte (sem data, sem anistia). O que a mutacao tem que mostrar e a
     # RECLASSIFICACAO: a linha nova sai do bloco que bloqueia e vira divida herdada.
@@ -777,36 +756,31 @@ PY
     else
       falhou=$((falhou+1)); echo "  FALHA mover a constante nao mudou a classificacao"
     fi
-    python - <<'PY'
-import pathlib
-p = pathlib.Path("scripts/ideias-limpo.cjs")
-t = p.read_text(encoding="utf-8")
-p.write_text(t.replace('const GANCHO_EXIGIDO_DESDE = "2099-01-01"',
-                       'const GANCHO_EXIGIDO_DESDE = "2026-08-11"'), encoding="utf-8", newline="\n")
-PY
+    node - <<'JS'
+const fs = require("fs");
+const p = "scripts/ideias-limpo.cjs";
+const t = fs.readFileSync(p, "utf8");
+fs.writeFileSync(p, t.replace('const GANCHO_EXIGIDO_DESDE = "2099-01-01"',
+                              'const GANCHO_EXIGIDO_DESDE = "2026-08-11"'), "utf8");
+JS
     esperado "restaurada a constante, o gate volta a acusar" 1 $B7 conferir
 
     # O `reparar --todas` estava MORTO: abortava na primeira linha sem gancho, e
     # com isso nao consertava `status` de nenhuma outra.
-    python - <<'PY'
-import json, pathlib
-p = pathlib.Path("b7/ideias.jsonl")
-linha = json.dumps({"id": "teste-sem-status-7", "titulo": "t", "descricao": "d",
-                    "contexto": "c", "projeto": "sandbox", "plantada_em": "2026-08-05",
-                    "gancho": "g"}, ensure_ascii=False)
-p.write_text(p.read_text(encoding="utf-8") + linha + "\n", encoding="utf-8", newline="\n")
-PY
+    node - <<'JS'
+const fs = require("fs");
+fs.appendFileSync("b7/ideias.jsonl", JSON.stringify({
+  id: "teste-sem-status-7", titulo: "t", descricao: "d",
+  contexto: "c", projeto: "sandbox", plantada_em: "2026-08-05", gancho: "g",
+}) + "\n", "utf8");
+JS
     esperado "varredura NAO aborta por gancho ausente (sai 1, mas trabalha)" 1 $B7 reparar --todas
     prova "consertou o status da outra linha na mesma passada" '
-import json
-l=[json.loads(x) for x in open("b7/ideias.jsonl",encoding="utf-8") if x.strip()]
-o=[x for x in l if x["id"]=="teste-sem-status-7"][0]
-assert o["status"]=="plantada", o'
+const o=acha(O("b7/ideias.jsonl"),"teste-sem-status-7");
+ok(o.status==="plantada", JSON.stringify(o));'
     prova "e NAO carimbou reparada_em em quem nao foi reparado" '
-import json
-l=[json.loads(x) for x in open("b7/ideias.jsonl",encoding="utf-8") if x.strip()]
-o=[x for x in l if x["id"]=="teste-herdada-sem-gancho"][0]
-assert "reparada_em" not in o, o'
+const o=acha(O("b7/ideias.jsonl"),"teste-herdada-sem-gancho");
+ok(!("reparada_em" in o), JSON.stringify(o));'
     saida_r=$($B7 reparar --todas 2>&1)
     if echo "$saida_r" | grep -q "ficaram SEM gancho"; then
       ok=$((ok+1)); echo "  ok   a varredura RELATA o que precisa de texto humano"

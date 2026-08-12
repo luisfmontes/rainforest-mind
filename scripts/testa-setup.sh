@@ -49,14 +49,13 @@ fi
 contem "segunda passada nao sobrescreve" "nada foi sobrescrito" $SETUP --criar
 if [ -s "$DADOS/projetos.json" ]; then ok=$((ok+1)); echo "  ok   projetos.json existe"
 else falhou=$((falhou+1)); echo "  FALHA projetos.json nao foi criado"; fi
-# Caminho em forma WINDOWS: o python daqui e o do Windows e nao enxerga o
+# Caminho em forma WINDOWS: o node daqui e o do Windows e nao enxerga o
 # `/c/Users/...` do Git Bash. Terceira vez que este detalhe morde neste repo.
-if python -c "
-import json
-m=json.load(open('$DADOS_WIN/projetos.json',encoding='utf-8'))
-assert 'solta' in m, m
-assert 'projeto-de-teste' in m, m
-assert m['projeto-de-teste']['caminho'], m
+if node -e "
+const m = require('$DADOS_WIN/projetos.json');
+if (!m.solta) throw new Error('sem a entrada solta');
+if (!m['projeto-de-teste']) throw new Error('sem o slug da pasta atual');
+if (!m['projeto-de-teste'].caminho) throw new Error('slug da pasta sem caminho');
 " 2>/dev/null; then ok=$((ok+1)); echo "  ok   nasce com solta + o slug da pasta atual"
 else falhou=$((falhou+1)); echo "  FALHA a semente do projetos.json nao tem solta + a pasta"; fi
 
@@ -173,22 +172,19 @@ MUT="$CAIXA/plugin-mutante"
 mkdir -p "$MUT/scripts" "$MUT/hooks/lib"
 cp "$SRC/scripts/setup.cjs" "$MUT/scripts/setup.cjs"
 cp "$SRC/hooks/lib/raiz.cjs" "$SRC/hooks/lib/config.cjs" "$SRC/hooks/lib/projetos.cjs" "$MUT/hooks/lib/"
-# Caminho por ENV, nao por interpolacao: o heredoc e `<<'PYM'` (nao expande $), e a
+# Caminho por ENV, nao por interpolacao: o heredoc e quoted (nao expande $), e a
 # primeira versao deste teste passou pelo motivo errado — o mutante nunca foi criado,
 # o node falhou, a saida nao continha "projetos.json" e o assert deu verde. Falso
 # verde e o defeito que este repo persegue; ele apareceu aqui dentro.
-MUTANTE="$MUT/scripts/setup.cjs" python - <<'PYM'
-import os, pathlib
-p = pathlib.Path(os.environ["MUTANTE"])
-t = p.read_text(encoding="utf-8")
-alvo = """  {
-    nome: 'projetos.json',"""
-assert alvo in t, "entrada do projetos.json nao encontrada para mutar"
-t = t.replace(alvo, """  {
-    nome: 'projetos-MUTADO.json',""", 1)
-p.write_text(t, encoding="utf-8", newline="")
-print("mutante escrito")
-PYM
+MUTANTE="$MUT/scripts/setup.cjs" node - <<'JS'
+const fs = require("fs");
+const alvo = process.env.MUTANTE;
+const t = fs.readFileSync(alvo, "utf8");
+const de = "  {\n    nome: 'projetos.json',";
+if (!t.includes(de)) throw new Error("entrada do projetos.json nao encontrada para mutar");
+fs.writeFileSync(alvo, t.replace(de, "  {\n    nome: 'projetos-MUTADO.json',"), "utf8");
+console.log("mutante escrito");
+JS
 if [ $? != 0 ]; then falhou=$((falhou+1)); echo "  FALHA nao consegui escrever o mutante"; fi
 saida_mut=$(RFM_ROOT="$CAIXA6_WIN" node "$MUT/scripts/setup.cjs" 2>&1)
 # O mutante tem que ter RODADO: mutante que quebra tambem "nao imprime o arquivo",
