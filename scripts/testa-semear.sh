@@ -84,14 +84,14 @@ tem "e nomeia o comando exato"              "$SEM" "setup.cjs --criar"
 echo
 echo "== 6. MUTACAO — comparar por igualdade estrita perde o historico =="
 cp "$SRC/scripts/semear.cjs" "$SBP/semear-mutante.cjs"
-python - "$SBP/semear-mutante.cjs" <<'PY'
-import sys, pathlib
-p = pathlib.Path(sys.argv[1]); s = p.read_text(encoding="utf-8")
-antes = s
-s = s.replace("  return a.includes(b) || b.includes(a.split('-c-')[0]);", "  return a === b; // MUTADO")
-assert s != antes, "ancora do combina() sumiu"
-p.write_text(s, encoding="utf-8", newline="\n")
-PY
+node - "$SBP/semear-mutante.cjs" <<'JS'
+const fs = require("fs");
+const alvo = process.argv[2];
+const antes = fs.readFileSync(alvo, "utf8");
+const de = "  return a.includes(b) || b.includes(a.split('-c-')[0]);";
+if (!antes.includes(de)) throw new Error("ancora do combina() sumiu");
+fs.writeFileSync(alvo, antes.replace(de, "  return a === b; // MUTADO"), "utf8");
+JS
 MUT="$( cd "$SBP/proj" && RFM_ROOT="$SB/dados" CLAUDE_PROJECT_DIR="$SB/proj" \
   node "$SBP/semear-mutante.cjs" --projeto meu-projeto 2>&1 )"
 if echo "$MUT" | grep -qF "OBS-CAMINHO"; then
