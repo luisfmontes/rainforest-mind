@@ -59,7 +59,7 @@ A fase 1 fecha quando você consegue nomear **um comando**, já rodado ao menos
 uma vez (mostrando a invocação e a saída), que é:
 
 - **Vermelho-capaz** — percorre o caminho real e afirma o **sintoma exato que
-  o Luís descreveu**, então fica vermelho neste bug e verde quando corrigido.
+  o usuário descreveu**, então fica vermelho neste bug e verde quando corrigido.
   "Roda sem erro" não serve.
 - **Determinístico** — mesmo veredito toda vez (intermitente: taxa alta e
   fixada).
@@ -73,7 +73,7 @@ aparência de método.
 
 ## Fase 2 — reproduzir e minimizar
 
-Rodar e ver ficar vermelho. Confirmar que é **o sintoma que o Luís
+Rodar e ver ficar vermelho. Confirmar que é **o sintoma que o usuário
 descreveu** — falha vizinha leva a correção errada — e que repete.
 
 Depois encolher até o menor cenário que ainda fica vermelho: cortar entrada,
@@ -100,7 +100,7 @@ conteúdo íntegro estar provado é que o modelo entra em suspeita. Em
 mudou nada: o prompt chegava com metade dos caracteres e em mojibake. Subir
 modelo é a correção mais cara e a mais fácil de confundir com solução.
 
-Mostrar a lista ranqueada ao Luís antes de instrumentar — ele reordena na
+Mostrar a lista ranqueada ao usuário antes de instrumentar — ele reordena na
 hora com o que sabe do cliente e do histórico ("mexemos nisso semana
 passada"). Checkpoint barato. Não travar esperando: se ele estiver fora,
 seguir pela sua ordem.
@@ -150,4 +150,4 @@ da regra 13 — registra e segue, não vira refactor agora.
 ---
 
 Destilado de `diagnosing-bugs` (mattpocock/skills, MIT), filtrado para a
-stack do Luís e ancorado na regra 12: entrega se valida na saída real.
+stack do usuário e ancorado na regra 12: entrega se valida na saída real.

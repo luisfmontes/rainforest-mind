@@ -6,9 +6,9 @@ que cada janela reimplementa do zero, em script improvisado, toda vez. Funciona
 enquanto ninguem esquece — e esquecer corrompe a memoria inteira, com descoberta
 tardia. Relatorios que geraram este arquivo:
 
-  relatorios/2026-08-08-executor-reincidencia-isolamento.md  (P1: tirar o veredito
+  2026-08-08, reincidencia de isolamento  (P1: tirar o veredito
       das maos de quem executa; trava mecanica vale mais que regra escrita)
-  relatorios/2026-08-09-plantar-ideia-atrito-e-lacuna.md     (P1 a P4: comando unico,
+  2026-08-09, atrito ao plantar ideia    (P1 a P4: comando unico,
       modelar `unificada`, provar que nao mexi no que nao devia, escrita atomica)
 
 O que ele garante, em toda operacao de escrita:
