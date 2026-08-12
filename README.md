@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-0.59.0-1e5c3f?style=flat-square" alt="versão 0.59.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-0.60.0-1e5c3f?style=flat-square" alt="versão 0.60.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/revis%C3%A3o-bimestral-9fd8ba?style=flat-square" alt="revisão bimestral">
 </p>
@@ -409,6 +409,11 @@ garante Node nem Python (a lista oficial de dependências adicionais tem
 Sobra Python em **ferramental seu**, fora de qualquer regra: `medir-injecao.py`
 (mede o custo real da abertura) e `validar-colhidas.py`. Nenhuma regra depende
 deles — se Python não existir na máquina, nada aqui degrada.
+
+**E as baterias também são Node.** Até 2026-08-12 elas usavam Python para montar
+fixture e conferir JSON: o runtime era único para quem *instala* e duplo para quem
+*contribui*, o que é a mesma promessa quebrada uma camada acima. Os 24 usos viraram
+`node -e`. Os gêmeos em Python continuam, porque ali o Python **é** o teste.
 
 Essa frase foi **falsa até 2026-08-12**, e vale dizer por quê: as regras 11 e 12
 exigiam `conferir-entrega.py` na integração de toda entrega de agente, e

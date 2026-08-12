@@ -13,9 +13,16 @@ IDEIAS="python scripts/ideias.py" bash scripts/testa-ideias.sh
 CONFERIR="python scripts/conferir-entrega.py" bash scripts/testa-conferir-entrega.sh
 ```
 
-Todas verdes, sem exceção. As duas últimas rodam os **gêmeos** em Python: eles
-existem para provar que os ports em Node não perderam garantia, e apagar um gêmeo
-é apagar a prova.
+Todas verdes, sem exceção. **Node é a única dependência**: as baterias não usam
+outra linguagem — nem para montar fixture, nem para conferir JSON. Isso vale para
+quem contribui, não só para quem instala; promessa de runtime que não alcança o
+caminho de teste deixa de fora quem quer validar a própria mudança.
+
+As duas últimas linhas rodam os **gêmeos** em Python. Elas são a exceção que
+confirma a regra: ali o Python **é o teste**, não o meio — a mesma bateria roda
+contra as duas implementações, e é isso que prova que os ports não perderam
+garantia. Apagar um gêmeo é apagar a prova; escrever teste novo em Python é
+adicionar dependência sem precisar.
 
 Bateria nova entra com pelo menos um caso de **mutação** — sabota o mecanismo e
 exige que ele reprove. Trava que nunca foi vista travando não é evidência de nada.
