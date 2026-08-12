@@ -249,7 +249,7 @@ O mesmo princípio nos scripts, para o que hook nenhum alcança:
 | `scripts/ideias.cjs` | única porta de escrita do `ideias.jsonl` — trava de arquivo, backup, escrita atômica, releitura do arquivo vivo e conferência byte a byte das linhas não-alvo; e o `projeto` é **slug de vocabulário fechado** (`projetos.json`), não texto livre |
 | `scripts/limpar-branches.cjs` | confere o local contra o remoto e classifica por dois eixos (upstream **e** merge); nunca remove branch viva, e exigir estar na base em dia é trava |
 | `scripts/conferir-relatorio.cjs` | **sai com código 2** quando o rascunho tem telefone, JID, e-mail, caminho de home ou credencial — antes de virar Issue público |
-| `scripts/conferir-entrega.py` | roda na janela principal **depois** da entrega do agente: hash de base, isolamento e citação conferidos na fonte, não no relato |
+| `scripts/conferir-entrega.cjs` | roda na janela principal **depois** da entrega do agente: hash de base, isolamento e citação conferidos na fonte, não no relato |
 | `scripts/medir-injecao.py` | custo real do prompt de abertura, lido do `usage` que a API devolve — token de verdade, sem estimativa |
 
 O que essas travas custaram e renderam fica em [`relatorios/`](relatorios/) —
@@ -357,16 +357,22 @@ Ou aponte `--plugin-dir` para a pasta do repo em desenvolvimento.
 garante Node nem Python (a lista oficial de dependências adicionais tem
 `ripgrep` e mais nada), então a meta é **uma** dependência, não duas.
 
-Sobra Python em duas verificações que rodam **na sua mão**, nunca dentro de uma
-regra: `conferir-entrega.py` (confere a entrega de um subagente) e
-`medir-injecao.py` (mede o custo real da abertura). Nenhuma regra depende delas —
-se Python não existir na máquina, nada aqui degrada.
+Sobra Python em **ferramental seu**, fora de qualquer regra: `medir-injecao.py`
+(mede o custo real da abertura) e `validar-colhidas.py`. Nenhuma regra depende
+deles — se Python não existir na máquina, nada aqui degrada.
 
-Dois scripts ficam como **gêmeos** dos ports, e não como legado morto:
+Essa frase foi **falsa até 2026-08-12**, e vale dizer por quê: as regras 11 e 12
+exigiam `conferir-entrega.py` na integração de toda entrega de agente, e
+`skills/executar` e `agents/executor.md` o chamavam pelo nome. Um dev sem Python
+não tinha a trava da regra 12 — tinha o texto dela. Trava que não trava é o único
+defeito que este repo não aceita, então o script virou `conferir-entrega.cjs`.
+
+Três scripts ficam como **gêmeos** dos ports, e não como legado morto:
 
 | Gêmeo | O que ele prova |
 |---|---|
 | `ideias.py` | a mesma bateria roda contra os dois — `IDEIAS="python scripts/ideias.py" bash scripts/testa-ideias.sh` — e é isso que mostra que o port não perdeu nenhuma das oito garantias |
+| `conferir-entrega.py` | idem, com `CONFERIR="python scripts/conferir-entrega.py" bash scripts/testa-conferir-entrega.sh` — as seis falhas encenadas reprovam nos dois |
 | `jornada.py` | os dois medem o mesmo dia e devolvem os mesmos números, lacuna por lacuna |
 
 Apagar o gêmeo seria apagar a única prova de que o port está certo.

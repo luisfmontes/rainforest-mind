@@ -759,6 +759,38 @@ POUCAS='[{"cwd":"C:/a/unica","trabalhando":true,"minutos":2}]'
 checa "com uma pasta so, sem ponteiro"     nao_tem "outra(s) pasta" "$(sess "$POUCAS")"
 
 echo
+echo "16. DEPENDENCIA SO SE CHECA QUANDO ALGUEM DECLAROU"
+# Ate 2026-08-12 o hook sondava localhost:3005 por TCP em TODA sessao de TODA
+# maquina e imprimia "bridge WhatsApp FORA" para quem nunca instalou bridge
+# nenhuma — mais o claude-mem "ausente neste projeto". Abertura de usuario novo
+# como propaganda de dependencia opcional, dentro de um orcamento em que 330 B
+# sao uma regra inteira. A declaracao e a WHATSAPP_API_BASE_URL no ambiente.
+#
+# Roda o HOOK real: o que mudou foi o adaptador de I/O, e o motor (lib) nem sabe
+# que existe sonda. Testar o motor aqui provaria a coisa errada.
+CAIXA_DEP="$RAIZ_POSIX/dep"
+mkdir -p "$CAIXA_DEP"
+printf '{}\n' > "$CAIXA_DEP/settings.json"
+ctx_hook() { # $@ = env extra; imprime o additionalContext
+  env "$@" node "$SRC/hooks/foco-session-start.cjs" 2>/dev/null \
+    | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{process.stdout.write(JSON.parse(s).hookSpecificOutput.additionalContext)}catch{process.stdout.write('SEM_CONTEXTO')}})"
+}
+SEM_DEP="$(ctx_hook -u WHATSAPP_API_BASE_URL "RFM_ROOT=$SRC_WIN" "CLAUDE_CONFIG_DIR=$CAIXA_DEP" "RFM_SETTINGS_PATH=$CAIXA_DEP/settings.json")"
+checa "sem declaracao, nao ha bloco de dependencias" nao_tem "Dependências de ambiente" "$SEM_DEP"
+checa "sem declaracao, nao fala de bridge"           nao_tem "bridge WhatsApp"           "$SEM_DEP"
+checa "sem declaracao, nao fala de claude-mem"       nao_tem "claude-mem"                "$SEM_DEP"
+checa "e as regras continuam chegando"               tem     "**17."                     "$SEM_DEP"
+
+# Declarada e apontando para porta morta: o bloco volta, e volta dizendo FORA.
+# Porta alta e improvavel de propósito — o teste nao pode depender do que a
+# maquina tem de pe.
+COM_DEP="$(ctx_hook "WHATSAPP_API_BASE_URL=http://127.0.0.1:59421" "RFM_ROOT=$SRC_WIN" "CLAUDE_CONFIG_DIR=$CAIXA_DEP" "RFM_SETTINGS_PATH=$CAIXA_DEP/settings.json")"
+checa "declarada, o bloco existe"                    tem     "Dependências de ambiente" "$COM_DEP"
+checa "declarada e morta, diz FORA"                  tem     "bridge WhatsApp FORA"     "$COM_DEP"
+checa "declarada, a URL declarada e a que aparece"   tem     "127.0.0.1:59421"          "$COM_DEP"
+checa "claude-mem ausente segue fora do bloco"       nao_tem "claude-mem"               "$COM_DEP"
+
+echo
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" = "0" ] || exit 1

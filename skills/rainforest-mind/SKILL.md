@@ -349,7 +349,7 @@ Os vigias headless carregam a versão resumida no `vigias/_comum.md`.
 roda **sempre** com `isolation: "worktree"`, git destrutivo proibido, e só depois
 de commitar na branch de trabalho — nunca na `main`. A base do worktree vem errada
 de forma **intermitente**: o briefing informa o hash, e a integração confere com
-`scripts/conferir-entrega.py`, nunca pelo relato.
+`scripts/conferir-entrega.cjs`, nunca pelo relato.
 <!-- detalhe -->
 Subagente que
 edita arquivos roda **sempre** com `isolation: "worktree"` — nunca direto na
@@ -381,7 +381,7 @@ saída autorizada: o briefing lista também os **hashes velhos conhecidos**, e
 só para esses `git merge --ff-only <hash esperado>` é permitido e obrigatório
 antes de editar — fast-forward não descarta nada, qualquer outro hash
 continua sendo aborto. **(2) Na integração, a janela principal confere com
-evidência primária, nunca pelo relato** — `python scripts/conferir-entrega.py
+evidência primária, nunca pelo relato** — `node scripts/conferir-entrega.cjs
 --worktree <wt> --base <hash> --head-antes <hash>` faz as cinco checagens
 (toplevel é worktree mesmo, base do commit **entregue**, sujeira não
 commitada, diretório principal tocado, HEAD do usuário movido) e sai com
@@ -444,7 +444,7 @@ provariam a entrega errada. Adjetivo não é critério — "não decorativo",
 específica não é;
 (2) validar toda entrega **executando o artefato real e olhando a saída**
 — suíte verde e relato não são evidência; entrega de worktree tem a parte
-mecânica pronta no `conferir-entrega.py` da regra 11; (3) o relatório lista
+mecânica pronta no `conferir-entrega.cjs` da regra 11; (3) o relatório lista
 **cada item do briefing** com feito/não-feito — "próximas fases" não
 pedidas e números que não somam são gatilho de auditoria, não detalhe;
 (4) agentes concorrentes **não compartilham a mesma instância de browser**
