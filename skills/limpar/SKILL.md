@@ -1,6 +1,6 @@
 ---
 name: limpar
-description: Manutenção do rastro da esteira rainforest-mind — worktree órfão, estado concluído e arquivo temporário. Invocável sozinha a qualquer momento, nunca bloqueia (exigir --estagio limpar sempre passa). Nunca remove worktree com alteração pendente sem a palavra do Luís.
+description: Manutenção do rastro da esteira rainforest-mind — worktree órfão, estado concluído e arquivo temporário. Invocável sozinha a qualquer momento, nunca bloqueia (exigir --estagio limpar sempre passa). Nunca remove worktree com alteração pendente sem a palavra do usuário.
 ---
 
 # Limpar
@@ -35,7 +35,7 @@ git worktree remove <caminho>
 ```
 
 Worktree com alteração pendente **nunca é removido sozinho** — mostre ao
-Luís **o que há dentro** (`git -C <caminho> status --porcelain` e, se
+usuário **o que há dentro** (`git -C <caminho> status --porcelain` e, se
 ajudar a decidir, `git -C <caminho> diff --stat`) e deixe a decisão com
 ele: recuperar, descartar, ou deixar por enquanto.
 

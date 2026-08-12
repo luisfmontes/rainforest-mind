@@ -13,9 +13,9 @@ Em projeto novo não há o que mapear — e é por isso que o `estado.cjs` não 
 esta etapa em lugar nenhum: ela não aparece na retomada e não barra estágio
 nenhum. O gatilho é *"a área da demanda não tem mapa"*, nunca *"sempre"*.
 
-Adaptada da skill `arqueologia` do plugin interno de cliente, que é código do
-próprio Luís — lá ela é o estágio 1 da esteira deles, e os quatro mecanismos
-abaixo vêm de lá.
+Adaptada da skill `arqueologia` de um plugin interno de cliente, escrita pelo mesmo
+autor — lá ela é o estágio 1 da esteira deles, e os quatro mecanismos abaixo
+vêm de lá.
 
 ## O escopo é a fatia, e isso é trava
 

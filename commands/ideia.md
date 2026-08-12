@@ -10,7 +10,7 @@ ou "solta"), `ao_colher` (primeiro passo, ou null), `status`
 ("plantada"/"em-colheita"/"colhida"/"unificada"), `plantada_em`, e para
 colhidas `colhida_em` +
 `resultado`. Campo opcional `tipo`: ausente ou `"ideia"` (padrão) para ideia
-do Luís; `"observacao"` para as da regra 13 — geradas por correção dele
+do usuário; `"observacao"` para as da regra 13 — geradas por correção dele
 sobre método, com `ao_colher` = mudança de regra. `/ideia` sem argumento
 lista só as ideias; observação é assunto do jardineiro de sexta.
 

@@ -1,6 +1,6 @@
 ---
 name: setup
-description: Carregue na primeira vez que o rainforest roda numa máquina, ou quando o Luís quiser ligar/desligar uma peça — os dois gates de git ou a esteira, por projeto ou para tudo. Também quando o `/saude` acusar que a pasta de dados não existe ou é a do plugin.
+description: Carregue na primeira vez que o rainforest roda numa máquina, ou quando o usuário quiser ligar/desligar uma peça — os dois gates de git ou a esteira, por projeto ou para tudo. Também quando o `/saude` acusar que a pasta de dados não existe ou é a do plugin.
 ---
 
 # Setup
@@ -19,7 +19,7 @@ node scripts/setup.cjs
 
 Ele não escreve nada. Diz onde está a pasta de dados, por qual nível da cadeia
 ela foi resolvida, o que está ligado, e **de onde veio cada valor** — projeto,
-usuário ou padrão. Leia isso em voz alta para o Luís antes de propor qualquer
+usuário ou padrão. Leia isso em voz alta para o usuário antes de propor qualquer
 mudança: metade das vezes o que ele quer já está do jeito que ele quer.
 
 ## Se não houver pasta de dados
@@ -35,7 +35,7 @@ sobrescreve** o que já existe.
 
 Se o estado disser `nivel: plugin`, é pior que não ter: a pasta encontrada é a do
 **plugin**, e o foco e as ideias que aparecem na abertura são de quem o publicou.
-Diga isso ao Luís com essas palavras — não é detalhe de configuração, é dado de
+Diga isso ao usuário com essas palavras — não é detalhe de configuração, é dado de
 outra pessoa entrando na sessão dele.
 
 Depois de criar, o passo seguinte é dele: `/foco <texto>` para declarar o

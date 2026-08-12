@@ -9,14 +9,14 @@ cumpriu o critério e entregou errado; o instrumento de medição estava quebrad
 existia e não alcançou o momento da ação.
 
 Grava em `C:\Projetos\rainforest-mind\relatorios\`, mesmo quando o trabalho aconteceu
-noutro repositório — a pasta é o acervo de método do Luís, não do projeto.
+noutro repositório — a pasta é o acervo de método do usuário, não do projeto.
 
 ## Quando NÃO escrever
 
 Se o achado é "implementei X e funcionou", não é relatório: é mensagem de commit. Relatório
 pressupõe que algo no **método** apareceu — uma trava que não travou, um critério
 satisfazível por fora, um relato que não bateu com o artefato, um acerto de processo que
-vale repetir. Sem isso, diga ao Luís em duas linhas que não houve achado de método e pare.
+vale repetir. Sem isso, diga ao usuário em duas linhas que não houve achado de método e pare.
 
 ## Nome do arquivo e numeração
 
@@ -49,7 +49,7 @@ slug**, nunca o número. A data no nome do arquivo já ordena.
 
 ## As partes obrigatórias, e por que cada uma existe
 
-**O parágrafo `> Se você só for ler um parágrafo`.** O Luís lê de baixo para cima e lê muita
+**O parágrafo `> Se você só for ler um parágrafo`.** O usuário lê de baixo para cima e lê muita
 coisa. Se o achado não couber aí, ele não foi entendido ainda — volte e entenda antes de
 escrever o resto.
 
@@ -69,7 +69,7 @@ e relatório não é injetado, não é hook, não é `executor.md`. Toda propost
 | `skills/rainforest-mind/SKILL.md` | regra que precisa valer em toda resposta |
 | `agents/executor.md` / `revisor.md` / `tester.md` | passo obrigatório de subagente |
 | `hooks/` | trava mecânica — o que dá para fazer o computador cobrar |
-| `commands/` | procedimento que o Luís dispara |
+| `commands/` | procedimento que o usuário dispara |
 | template de briefing | o que muda no despacho |
 | `ideias.jsonl` via `/ideia` | proposta boa que não cabe agora |
 
@@ -83,7 +83,7 @@ prova está no relatório.
 ## Commit — não pergunte
 
 **O relatório é commitado e publicado como parte de escrevê-lo.** Não pergunte se pode, não
-pergunte se o Luís quer, não deixe untracked esperando resposta. Em 2026-08-09 três
+pergunte se o usuário quer, não deixe untracked esperando resposta. Em 2026-08-09 três
 relatórios ficaram parados fora do git porque três sessões pararam para perguntar a mesma
 coisa — foi o que originou este comando.
 
@@ -104,10 +104,10 @@ nada de `git add -A`, que o gate de staging barra e com razão.
 
 Duas exceções, e só estas duas: se o achado citar credencial, dado de cliente ou fonte de
 cliente, anonimize antes de gravar; se a árvore do rainforest-mind estiver no meio de outra
-coisa não commitada, commite apenas o caminho do relatório e diga isso ao Luís em uma linha.
+coisa não commitada, commite apenas o caminho do relatório e diga isso ao usuário em uma linha.
 
 ## Ao terminar
 
-Diga ao Luís, em no máximo cinco linhas: o achado em uma frase, o hash do commit, e as
+Diga ao usuário, em no máximo cinco linhas: o achado em uma frase, o hash do commit, e as
 propostas que ficaram **pendentes por falta de destino**. Não repita o relatório no chat —
 ele está no arquivo, e o chat some.

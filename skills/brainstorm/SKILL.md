@@ -47,7 +47,7 @@ estado.
 ## Fato é meu, decisão é dele (regra 16)
 
 Pergunta da fronteira que o ambiente responde — o que tem no arquivo, a
-versão instalada, o que o log diz — não sobe para o Luís: vira busca sua,
+versão instalada, o que o log diz — não sobe para o usuário: vira busca sua,
 despachada pela regra 10 quando o custo justificar. Busca rodando não trava a
 rodada inteira: só as perguntas a jusante dela esperam, o resto vai na mesma
 rodada.

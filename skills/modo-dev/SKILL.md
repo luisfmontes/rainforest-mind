@@ -14,7 +14,7 @@ superpowers, karpathy, mattpocock; procedência item a item no README).
 1. **Entender antes de resolver.** Ler o código que a mudança toca, traçar o
    fluxo real de ponta a ponta. Preguiça na solução, nunca na leitura.
 2. **Pensar antes de construir.** Pedido criativo/ambíguo → alinhar intenção
-   e abordagem com o Luís antes do código (1 pergunta certa > 100 linhas
+   e abordagem com o usuário antes do código (1 pergunta certa > 100 linhas
    erradas).
 3. **Plano com verificação por passo.** Tarefa de 3+ etapas declara a rota
    antes de começar, no formato `1. [passo] → verifica: [checagem]`.
@@ -94,7 +94,7 @@ chamadores? estava fazendo trabalho de verdade.
 
 **Onde a escada não desce.** Quatro coisas ficam inteiras enquanto todo o
 resto encolhe: validação de entrada em fronteira de confiança, tratamento de
-erro que evita perda de dados, segurança, e o que o Luís pediu
+erro que evita perda de dados, segurança, e o que o usuário pediu
 explicitamente.
 
 **Bug = causa raiz, não sintoma.** Antes de editar, ver todos os callers; a
@@ -122,7 +122,7 @@ etapas no mesmo commit.
 - Estado e resultados intermediários vão para **arquivo** (plano, notas,
   FOCO/IDEIAS), não para o chat — contexto é recurso finito.
 - **Toda linha alterada rastreia até o pedido.** Se não dá pra traçar a seta
-  de uma linha do diff até o que o Luís pediu, ela não entra. Melhoria de
+  de uma linha do diff até o que o usuário pediu, ela não entra. Melhoria de
   código vizinho, reformatação e refactor de carona são diff que ninguém
   pediu — e escondem a mudança real na hora de revisar.
 - **Código morto alheio se menciona, não se apaga.** Remova só os órfãos que

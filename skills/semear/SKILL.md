@@ -1,6 +1,6 @@
 ---
 name: semear
-description: Use quando o Luís quiser saber o que criar NESTE repositório — skill, agente, hook ou trava. Lê o histórico do que este trabalho já tropeçou (observações, relatórios, ideias abertas) e devolve propostas com a evidência de cada uma. Propõe e para; não executa.
+description: Use quando o usuário quiser saber o que criar NESTE repositório — skill, agente, hook ou trava. Lê o histórico do que este trabalho já tropeçou (observações, relatórios, ideias abertas) e devolve propostas com a evidência de cada uma. Propõe e para; não executa.
 ---
 
 # Semear
@@ -73,7 +73,7 @@ stack — o recomendador oficial.
 relatório, data. Sem registro, não se propõe.
 
 Isso não é formalidade: é o que separa esta skill do recomendador oficial. Sem a
-citação ela vira uma segunda opinião genérica sobre boas práticas, e aí o Luís
+citação ela vira uma segunda opinião genérica sobre boas práticas, e aí o usuário
 tem duas ferramentas fazendo a mesma coisa, uma delas pior.
 
 ## Fechar

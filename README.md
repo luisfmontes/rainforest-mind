@@ -385,8 +385,7 @@ conferência — nunca como requisito.
 - Antes de caçar token na skill, olhe onde ele está de verdade. Medido com
   `/context all`: as ferramentas de MCP somavam **40,2k tokens** contra ~330 das
   skills deste plugin. Desligar MCP por projeto rendeu **240×** o que traduzir
-  as regras inteiras renderia
-  ([relatório](relatorios/2026-08-09-pt-vs-en-medicao-em-token.md)).
+  as regras inteiras renderia.
 - O hook avisa quando a skill passa de **60 dias sem revisão**.
 ## Um foco por projeto, sem configurar nada
 

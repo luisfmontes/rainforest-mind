@@ -14,7 +14,7 @@
  *     markdown: não há parser, não há hook que a leia.
  *   - everything-claude-code: `/orchestrate` encadeia agentes em prosa e aceita o
  *     relato de cada um como verdade.
- *   - cliente: `gates.json` com esquema fechado, e quatro skills o leem como PRÉ-CONDIÇÃO.
+ *   - o plugin de cliente: `gates.json` com esquema fechado, e quatro skills o leem como PRÉ-CONDIÇÃO.
  *
  * O que este arquivo acrescenta às três: `exigir` **sai com código ≠ 0**. Nele a
  * pré-condição é conferida por instrução dentro da skill — ou seja, pelo mesmo agente

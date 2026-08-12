@@ -1,6 +1,6 @@
 ---
 name: fechar
-description: Use no estágio 'fechar' da esteira rainforest-mind — depois de 'verificar' fechado, é o fim da esteira, com commit, remoção de worktrees, e a pergunta de destino ao Luís. Nunca decide o destino por conta própria.
+description: Use no estágio 'fechar' da esteira rainforest-mind — depois de 'verificar' fechado, é o fim da esteira, com commit, remoção de worktrees, e a pergunta de destino ao usuário. Nunca decide o destino por conta própria.
 ---
 
 # Fechar
@@ -25,7 +25,7 @@ esteira" sozinho). `git add -A` é **proibido**: o hook
 adicione por caminho.
 
 **Árvore suja de algo que não é deste trabalho é condição de parada**:
-pare e mostre o `git status` ao Luís em vez de commitar por cima. Nunca
+pare e mostre o `git status` ao usuário em vez de commitar por cima. Nunca
 assuma que um arquivo modificado é seu porque está lá.
 
 ## 2. Limpar o repositório local
@@ -75,7 +75,7 @@ node scripts/estado.cjs marcar --slug <slug> --estagio fechar --status ok \
   --json '{"acao":"merge|pr|manteve"}'
 ```
 
-`acao` é a resposta que o Luís deu no passo 4 — nunca a que pareceria mais
+`acao` é a resposta que o usuário deu no passo 4 — nunca a que pareceria mais
 razoável.
 
 ## Condição de parada

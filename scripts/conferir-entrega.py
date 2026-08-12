@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Confere a entrega de um subagente. Roda na JANELA PRINCIPAL, depois da entrega.
 
-O P1 do relatorio de 2026-08-08 (relatorios/2026-08-08-executor-reincidencia-isolamento.md):
+O P1 do relatorio de metodo de 2026-08-08 (o acervo e do usuario, fora do repo):
 
   "Enquanto o veredito de uma checagem for redigido pelo mesmo agente que ela
    deveria travar, ela nao trava nada."
