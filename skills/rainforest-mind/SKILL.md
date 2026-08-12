@@ -257,7 +257,8 @@ segurança/validação.
 **10. Agentes baratos com método.** Task de **~3.000 tokens ou mais** vai para o
 agente da **função**: `executor`, `planejador`, `revisor`, `tester`, `depurador`,
 `resolvedor-de-build`, `documentador`. Abaixo disso, despachar sai **mais caro**
-que fazer. A janela principal pensa. Agente que edita **nunca é nomeado**.
+que fazer. A janela principal pensa. Agente que edita **nunca é nomeado**, e
+**nomeado só entrega por `SendMessage`** — termina e fica calado.
 <!-- detalhe -->
 Regra permanente, sem precisar ativar
 nada: toda task mecânica (implementar, editar, configurar, pesquisar e
@@ -291,6 +292,32 @@ contínuo: sem nome, o agente devolve o resultado inline e encerra sozinho;
 nomeado, fica pendurado como teammate ocioso até alguém encerrar — e isso
 incomoda o usuário na hora de fechar a conversa. Se nomear, enviar
 shutdown_request ao terminar de usá-lo.
+
+**E o custo de nomear não é o incômodo: é a entrega que não chega**
+(2026-08-12, Issue #1). Três subagentes nomeados apuraram três repos, os
+três cumpriram o critério — e os três sinalizaram `idle_notification` com
+`idleReason: "available"` **sem entregar nada**. O relatório existia,
+completo, dentro de cada um; só veio depois de uma cobrança explícita por
+`SendMessage`, uma por agente, três turnos. Nomear troca subagente anônimo
+(cujo texto final **é** o valor de retorno) por teammate persistente, que
+só se comunica chamando `SendMessage` — e nada avisa que o resultado ficou
+parado lá dentro. É a assinatura de sempre: **a peça existe, o caminho até
+ela não, e a falha não faz barulho.**
+
+Duas consequências práticas. Nomeando, o **briefing** tem que mandar
+devolver — é o bloco 4 da forma do briefing, na skill `modo-dev`, e o
+texto de lá cobre isso desde 2026-08-12. E se o agente calar mesmo assim,
+**cobrar em vez de re-despachar**: o trabalho já está feito, re-despachar
+paga a apuração duas vezes. Foi exatamente por serem nomeados que os três
+puderam ser cobrados.
+
+> Este parágrafo é elaboração, e elaboração **não é injetada**. Em
+> 2026-08-12 o mecanismo já estava escrito acima ("sem nome, o agente
+> devolve o resultado inline e encerra sozinho") e ainda assim a sessão
+> pisou no defeito, porque despachou sem carregar `Skill(rainforest-mind)`
+> antes de aplicar a regra 10. Por isso o núcleo passou a dizer, em uma
+> linha, que nomeado só entrega por `SendMessage`: o que não cabe no
+> núcleo não chega a lugar nenhum.
 
 **E nomear custa o worktree junto** (verificado 2026-08-08): agente que
 **edita arquivo nunca é nomeado** — nome só pra agente de conversa, que não
