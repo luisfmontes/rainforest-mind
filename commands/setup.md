@@ -7,7 +7,7 @@ Carregue `Skill(setup)` e conduza `$ARGUMENTS` — ou, se vazio, mostre o estado
 
 Comece **sempre** por `node scripts/setup.cjs`, que não escreve nada: ele diz
 onde está a pasta de dados, o que está ligado e **de onde veio cada valor**. Leia
-isso ao Luís antes de propor mudança.
+isso ao usuário antes de propor mudança.
 
 Dois pontos param e esperam a palavra dele, e não são formalidade:
 

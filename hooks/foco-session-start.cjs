@@ -35,9 +35,9 @@ function readSafe(p) {
 // Checagem de dependências de ambiente
 function readPlugins() {
   // A raiz da config sai do CLAUDE_CONFIG_DIR da sessão, nunca escrita à mão:
-  // em 2026-08-08 ela virou .claude-personal e o caminho fixo aqui passou a ler
-  // o settings.json antigo — reportando "apontamento-horas ausente" com o plugin
-  // instalado e habilitado. Regra 14.
+  // em 2026-08-08 ela virou outra pasta e o caminho fixo aqui passou a ler o
+  // settings.json antigo — reportando plugin ausente com ele instalado e
+  // habilitado. Regra 14.
   const configDir = process.env.CLAUDE_CONFIG_DIR
     || path.join(process.env.USERPROFILE || process.env.HOME || '', '.claude');
   const userSettingsPath = process.env.RFM_SETTINGS_PATH || path.join(configDir, 'settings.json');
@@ -74,12 +74,6 @@ function readPlugins() {
   };
 
   return {
-    // A regra 8 deixou de depender deste plugin em 2026-08-11: a jornada se mede
-    // com `scripts/jornada`, que le o transcript e nao depende de nada de fora.
-    // O status continua util para quem TEM o plugin (conferencia do apontamento
-    // formal), mas a ausencia dele nao degrada regra nenhuma — e dizer que degrada
-    // era afirmacao falsa em toda sessao de quem nao o tem.
-    apontamento: getStatus('um plugin de apontamento externo', 'opcional: confere o apontamento formal'),
     claudeMem: getStatus('claude-mem@thedotmack', 'revisão bimestral sem dados'),
   };
 }
@@ -192,7 +186,7 @@ function doConsoleLog(pluginsStatus, whatsappStatus) {
   // aqui custava ~330 B de duplicação em toda sessão — dentro de um orçamento em
   // que 330 B são uma regra inteira.
   const dependencias = `## Dependências de ambiente (regra 14)
-Checado pelo hook: apontamento-horas ${pluginsStatus.apontamento}; bridge WhatsApp ${whatsappStatus.status} (${whatsappStatus.url}); claude-mem ${pluginsStatus.claudeMem}.`;
+Checado pelo hook: bridge WhatsApp ${whatsappStatus.status} (${whatsappStatus.url}); claude-mem ${pluginsStatus.claudeMem}.`;
 
   const contexto = montarContexto({
     skillText: skill,

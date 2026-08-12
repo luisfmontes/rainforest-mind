@@ -7,7 +7,7 @@ Carregue `Skill(arqueologia)` e mapeie `$ARGUMENTS`.
 
 Antes de ler o primeiro arquivo, duas coisas:
 
-1. **Confirme a fatia com o Luís.** Escopo é o que a demanda toca, nunca a base
+1. **Confirme a fatia com o usuário.** Escopo é o que a demanda toca, nunca a base
    inteira — mapa que não cabe numa sessão significa escopo errado, e a saída é
    reduzir, não resumir mais.
 2. **Olhe `docs/rainforest/mapas/COBERTURA.md`.** Fatia com linha lá não é
