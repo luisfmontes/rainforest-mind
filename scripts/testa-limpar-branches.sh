@@ -16,7 +16,7 @@
 #   5. o SHA de cada branch removida sai na tela, senao o -D e irreversivel na
 #      pratica (o reflog guarda, mas ninguem procura).
 #
-# E o motivo de o script existir, que vale como teste tambem: o comando que o Luis
+# E o motivo de o script existir, que vale como teste tambem: o comando que o usuario
 # ja usava (`git branch -vv | grep ' gone]'`) nao enxerga branch SEM upstream — e
 # eram justamente essas as sete que estavam sobrando no repo dele.
 #

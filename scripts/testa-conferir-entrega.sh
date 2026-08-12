@@ -85,7 +85,7 @@ git -C "$WT" checkout -q -- rastreado.txt
 
 # 5 — mexeu no diretorio principal (N1)
 echo intruso > "$R/intruso.txt"
-esperado "alteracao no diretorio principal do Luis" 1 \
+esperado "alteracao no diretorio principal do usuario" 1 \
   python "$CONF" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES"
 rm "$R/intruso.txt"
 

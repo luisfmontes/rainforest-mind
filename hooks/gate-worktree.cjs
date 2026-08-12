@@ -28,7 +28,7 @@
  *     repo git que NAO e worktree linkado;
  *   - Bash: so a lista curta de comandos que mexem no estado do repo
  *     (stash, checkout, switch, reset, merge, rebase, commit, clean) — foi
- *     `git stash`/`pop` que moveu o HEAD do Luis na falha N1. Leitura passa.
+ *     `git stash`/`pop` que moveu o HEAD do usuario na falha N1. Leitura passa.
  *   - fora de repo git (scratchpad, temp) passa sempre.
  *
  * Saidas de emergencia, as duas nomeadas na mensagem de bloqueio:
@@ -92,7 +92,7 @@ function bloqueia(motivo, toplevel, agente) {
   // P1 do relatorio 2026-08-11-escotilha-do-gate-usada-para-contornar: a saida
   // de emergencia era NOMEADA na mensagem que o SUBAGENTE le. Um implementador
   // bloqueado leu o nome do arquivo de escape na propria mensagem de bloqueio,
-  // criou `.rainforest-gate-off` na raiz do checkout principal do Luis - fora do
+  // criou `.rainforest-gate-off` na raiz do checkout principal - fora do
   // worktree dele - e seguiu trabalhando. Reportou `DONE`, e o achado so apareceu
   // porque um revisor leu o relatorio completo linha a linha.
   //
@@ -121,10 +121,10 @@ function bloqueia(motivo, toplevel, agente) {
     `${motivo}\n` +
     `Repo: ${toplevel}\n` +
     `Agente: ${agente}\n\n` +
-    `Este e o diretorio de trabalho do Luis, nao um worktree isolado. A regra 11 manda\n` +
+    `Este e o diretorio de trabalho principal, nao um worktree isolado. A regra 11 manda\n` +
     `subagente que edita arquivos trabalhar em worktree proprio, para o trabalho poder ser\n` +
     `descartado sem tocar no estado dele. Em 2026-08-08 um agente escreveu aqui duas vezes,\n` +
-    `trocou a branch do Luis e moveu o HEAD dele com stash/pop.\n\n` +
+    `trocou a branch e moveu o HEAD com stash/pop.\n\n` +
     saidas
   );
   process.exit(2);
@@ -140,7 +140,7 @@ const GIT_DIR_EXPLICITO = /\bgit\b[^\n;&|]*?(?:-C|--work-tree(?:=|\s+))\s*(?:"([
  *
  * O bug que isto conserta (2026-08-09, repo inovacao): o alvo era `ev.cwd`, o cwd
  * REGISTRADO da sessao do agente. Como o cwd registrado de um subagente e o diretorio
- * principal, `cd <worktree> && git commit` era lido como commit no diretorio do Luis e
+ * principal, `cd <worktree> && git commit` era lido como commit no diretorio do usuario e
  * barrado — com a assinatura do bug na mensagem, "Repo:" sem o sufixo do worktree.
  * Efeito pratico: toda entrega de subagente exigia commit da janela principal, o que
  * empurra trabalho mecanico para o lugar caro e contraria a regra 10.
@@ -155,7 +155,7 @@ const GIT_DIR_EXPLICITO = /\bgit\b[^\n;&|]*?(?:-C|--work-tree(?:=|\s+))\s*(?:"([
  * Conservador de proposito: `cd` que nao da para resolver (variavel, subshell,
  * `cd -`) marca o diretorio corrente como INCERTO, e dai em diante os alvos incluem
  * tambem o cwd registrado. Na duvida o gate barra — falso positivo custa uma ida e
- * volta, falso negativo custa o estado do Luis.
+ * volta, falso negativo custa o estado do usuario.
  */
 function alvosBash(comando, cwdInicial) {
   const segmentos = comando.split(/&&|\|\||;|\n|\|/);
@@ -193,7 +193,7 @@ function main() {
   try {
     ev = JSON.parse(fs.readFileSync(0, "utf8") || "{}");
   } catch {
-    process.exit(0); // payload ilegivel nunca trava o trabalho do Luis
+    process.exit(0); // payload ilegivel nunca trava o trabalho do usuario
   }
 
   // A janela principal e livre: o gate existe para quem foi despachado.

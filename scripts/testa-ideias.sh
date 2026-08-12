@@ -15,7 +15,7 @@ export IDEIAS="${IDEIAS:-node scripts/ideias.cjs}"
 # A CAIXA DE AREIA E A RAIZ, e isso precisa ser DECLARADO e nao presumido.
 # Ate 2026-08-11 a caixa isolava por acidente: o script resolvia a raiz como "a
 # pasta acima de mim", que na caixa era a propria caixa. No dia em que os dados do
-# Luis sairam do repo para ~/.rainforest, a cadeia passou a achar a raiz GLOBAL
+# o usuario sairam do repo para ~/.rainforest, a cadeia passou a achar a raiz GLOBAL
 # antes — e a bateria escreveu `teste-com-gancho` dentro do ideias.jsonl de
 # verdade. Isolamento que depende de coincidencia nao e isolamento.
 export RFM_ROOT="$SB"

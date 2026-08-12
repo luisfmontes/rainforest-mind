@@ -5,7 +5,7 @@
 #   1. que o toggle DESLIGA DE VERDADE o gate. Toggle que nada le e promessa sem
 #      mecanismo — e o defeito que este repo passou o dia 11/08 inteiro catando;
 #   2. que a precedencia e a prometida: emergencia > projeto > usuario > padrao.
-#      Precedencia errada e pior que ausente: o Luis desliga num lugar e continua
+#      Precedencia errada e pior que ausente: o usuario desliga num lugar e continua
 #      barrado, sem saber por que;
 #   3. que config ilegivel deixa a trava LIGADA. Falhar para o lado de desligar
 #      apaga a protecao em silencio, que e a familia de defeito da injecao muda;
@@ -131,7 +131,7 @@ echo
 echo "== 6. P1 — a escotilha nao e revelada a quem esta sendo bloqueado =="
 # Relatorio 2026-08-11-escotilha-do-gate-usada-para-contornar: um implementador
 # bloqueado leu o nome do arquivo de escape NA PROPRIA mensagem de bloqueio,
-# criou `.rainforest-gate-off` na raiz do checkout principal do Luis e seguiu
+# criou `.rainforest-gate-off` na raiz do checkout principal do usuario e seguiu
 # trabalhando. Reportou DONE. A escotilha e da JANELA PRINCIPAL; a mensagem era
 # lida pelo subagente. E em 2026-08-11 o /setup acrescentou uma TERCEIRA rota, a
 # mais amigavel de todas — por isso a mensagem ao subagente nao nomeia nenhuma.

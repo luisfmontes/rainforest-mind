@@ -105,7 +105,7 @@ echo
 echo "1. o fallback dispara quando as regras nao carregam"
 S="$(montar '' '')"
 checa "skill vazio aciona o alarme"        tem     "FALHA AO CARREGAR AS REGRAS" "$S"
-checa "alarme manda avisar o Luis"         tem     "Diga isto ao Luís"           "$S"
+checa "alarme manda avisar o usuario"         tem     "Diga isto ao usuario"           "$S"
 checa "alarme cita a origem esperada"      tem     "fake"                        "$S"
 S="$(montar "$SKILL_CURTO" '')"
 checa "skill truncado aciona o alarme"     tem     "FALHA AO CARREGAR AS REGRAS" "$S"
@@ -341,7 +341,7 @@ REPETIDAS='[{"cwd":"C:\\Projetos\\rfm","trabalhando":false,"minutos":300},
             {"cwd":"C:\\Projetos\\outro","trabalhando":true,"minutos":2}]'
 S="$(sessoes "$REPETIDAS")"
 checa "uma linha por pasta"                tem     "[3 janelas nesta pasta"      "$S"
-checa "estado e o da janela mais recente"  tem     "esperando o Luís há 40 min"  "$S"
+checa "estado e o da janela mais recente"  tem     "esperando o usuario há 40 min"  "$S"
 checa "a janela fria some da lista"        nao_tem "355 min"                     "$S"
 checa "pasta com turno em curso aparece"   tem     "Claude trabalhando"          "$S"
 checa "a ociosidade do foco vai junto"     tem     "Ociosidade máxima deste foco: 15 min" "$S"
@@ -498,7 +498,7 @@ checa "sessao com processo morto sai"      nao_tem "morta"                      
 checa "sessao velha continua saindo"       nao_tem "antiga"                     "$S"
 checa "entrada antiga sem pid sobrevive"   tem     "sem_pid"                    "$S"
 
-# Subagente em worktree abre sessao propria e NAO e janela paralela do Luis: a
+# Subagente em worktree abre sessao propria e NAO e janela paralela do usuario: a
 # regra 17 mede o paralelismo dele, nao o meu rastro. Em 2026-08-11 uma sessao de
 # worktree estava no radar, e o bloco de sessoes disputa orcamento com o foco —
 # no mesmo dia a injecao chegou a 7992 B de 8000 e o prazo mais proximo ja tinha
@@ -570,7 +570,7 @@ fi
 echo
 echo "13. RAIZ — cadeia de 5 niveis, projeto sobrescreve global"
 # O defeito que esta secao existe para impedir: ate 2026-08-11 a raiz era
-# `RFM_ROOT || 'C:\Projetos\rainforest-mind'` — caminho da maquina do Luis cravado
+# `RFM_ROOT || 'C:\Projetos\rainforest-mind'` — caminho da maquina do usuario cravado
 # no codigo, e RFM_ROOT nao esta definida nela. Funcionava para o usuario numero um
 # e para mais ninguem.
 RZP="$RAIZ_POSIX/raizes"

@@ -1,4 +1,4 @@
-"""scripts/jornada.py — mede a jornada efetiva pelos intervalos entre mensagens do Luis.
+"""scripts/jornada.py — mede a jornada efetiva pelos intervalos entre mensagens do usuario.
 
 Uso:
     python scripts/jornada.py                          # hoje, todas as janelas
@@ -14,14 +14,14 @@ que o codigo foi salvo, nunca a duracao do trabalho: uma lista de commits e evid
 de atividade em pontos, jamais no intervalo entre eles. Em 2026-08-09 isso produziu
 "8 horas seguidas" a partir de um intervalo que continha 5h24 de sono no meio.
 
-O sinal certo e o intervalo entre mensagens HUMANAS consecutivas: cada prompt do Luis
+O sinal certo e o intervalo entre mensagens HUMANAS consecutivas: cada prompt do usuario
 prova que ele estava ali naquele instante. Lacuna acima do corte e pausa, nao trabalho,
 e sai da conta.
 
 DUAS ARMADILHAS, as duas medidas neste repo em 2026-08-09
 ----------------------------------------------------------
 1. `type == "user"` NAO significa mensagem humana. No transcript 5dd841be sao 377
-   entradas "user" e apenas 42 sao do Luis — as outras 327 sao `toolUseResult`, mais
+   entradas "user" e apenas 42 sao do usuario — as outras 327 sao `toolUseResult`, mais
    6 `isMeta` e 2 `isCompactSummary`. Contar as 377 mede o ritmo das FERRAMENTAS e da
    um numero sem relacao com jornada. O filtro e obrigatorio.
 
@@ -47,7 +47,7 @@ REVISADO EM 2026-08-11: era 75, virou 55.
 O 75 foi escolhido por um criterio so - ficar acima do ritmo de trabalho (p95) e
 abaixo de cochilo. O ponto cego: ALMOCO. Uma hora de mesa e a pausa mais comum
 que existe, cai bem no meio do vao entre p95 e 75, e entrava na conta como
-trabalho. Medido no dia real do Luis, com ele confirmando o intervalo:
+trabalho. Medido no dia real do usuario, com ele confirmando o intervalo:
 
     corte 75 -> 9h43, "nenhuma lacuna acima de 75 min"
     corte 55 -> 7h41, duas lacunas de ~1h (07:53->08:53 e 11:59->13:01)
@@ -58,7 +58,7 @@ disparando com quase duas horas de antecedencia. 55 continua acima do p95 de
 
 A licao vale alem deste numero: limiar calibrado contra UM cenario (sono) nao
 serve para outro (pausa) so porque a unidade e a mesma. Todo limiar precisa ser
-confrontado com o caso real que vai encontrar, e quem tem esse caso e o Luis.
+confrontado com o caso real que vai encontrar, e quem tem esse caso e o usuario.
 """
 import argparse
 import glob
@@ -79,7 +79,7 @@ def transcripts_disponiveis():
 
 
 def mensagens_humanas(caminho):
-    """Carimbos das mensagens do Luis, em hora LOCAL, ordenados.
+    """Carimbos das mensagens do usuario, em hora LOCAL, ordenados.
 
     Descarta retorno de ferramenta (`toolUseResult`), meta e resumo de compactacao —
     os tres chegam como type "user" e nao provam presenca humana nenhuma.
@@ -180,7 +180,7 @@ def main():
         return 0
 
     print(f"escopo ................. {escopo}")
-    print(f"mensagens do Luis ...... {len(carimbos)}")
+    print(f"mensagens do usuario ...... {len(carimbos)}")
     print(f"primeiro sinal humano .. {primeiro.strftime('%H:%M')} (local)")
     print(f"ultimo sinal humano .... {ultimo.strftime('%H:%M')} (local)")
     print(f"intervalo bruto ........ {hhmm(bruto)}  <- ponta a ponta, NAO e jornada")

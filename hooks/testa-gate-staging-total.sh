@@ -11,7 +11,7 @@
 #      precisa ser observada funcionando, nao presumida;
 #   3. que NAO barra staging por caminho, leitura, worktree, nem
 #      `git commit -m "suporte a add -A"` — falso positivo aqui atrapalha o
-#      Luis em todos os repos, entao os casos que devem PASSAR sao a maioria.
+#      o usuario em todos os repos, entao os casos que devem PASSAR sao a maioria.
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -85,7 +85,7 @@ if printf '%s' "$msg" | grep -qF -- '".txt"'; then
 else ok=$((ok+1)); echo "  ok   primeira linha do porcelain (' M a.txt') sai inteira"; fi
 
 echo
-echo "== deve PASSAR (exit 0) — falso positivo aqui atrapalha todo repo do Luis =="
+echo "== deve PASSAR (exit 0) — falso positivo aqui atrapalha todo repo do usuario =="
 gate "git add por caminho"                        0 "$(b 'git add relatorios/foo.md')"
 gate "git add dois caminhos citados"              0 "$(b 'git add \"a.txt\" \"b.txt\"')"
 gate "git add ./caminho/arquivo.md"               0 "$(b 'git add ./relatorios/foo.md')"
