@@ -3,16 +3,36 @@ description: Avalia se a ideia está no escopo e a planta se estiver fora
 argument-hint: [ideia em uma frase — vazio para listar plantadas]
 ---
 
-A fonte da verdade das ideias é `C:\Projetos\rainforest-mind\ideias.jsonl` —
-um objeto JSON por linha, com os campos: `id` (kebab-case), `titulo`,
-`descricao`, `contexto` (de onde surgiu e por quê), `projeto` (repo/pasta,
-ou "solta"), `ao_colher` (primeiro passo, ou null), `status`
+A fonte da verdade das ideias é o `ideias.jsonl` da **pasta de dados** — não do
+repo; descubra onde com `node scripts/ideias.cjs conferir` (ele imprime o
+caminho resolvido) e nunca chumbe o caminho. Um objeto JSON por linha, com os
+campos: `id` (kebab-case), `titulo`, `descricao`, `contexto` (de onde surgiu e
+por quê), `projeto` (**slug do `projetos.json`**, ver abaixo), `gancho`
+(obrigatório nas abertas — o gatilho concreto de retorno: que evento, data ou
+condição a traz de volta), `ao_colher` (primeiro passo, ou null), `status`
 ("plantada"/"em-colheita"/"colhida"/"unificada"), `plantada_em`, e para
-colhidas `colhida_em` +
-`resultado`. Campo opcional `tipo`: ausente ou `"ideia"` (padrão) para ideia
-do usuário; `"observacao"` para as da regra 13 — geradas por correção dele
-sobre método, com `ao_colher` = mudança de regra. `/ideia` sem argumento
-lista só as ideias; observação é assunto do jardineiro de sexta.
+colhidas `colhida_em` + `resultado`. Campo opcional `tipo`: ausente ou
+`"ideia"` (padrão) para ideia do usuário; `"observacao"` para as da regra 13 —
+geradas por correção dele sobre método, com `ao_colher` = mudança de regra.
+`/ideia` sem argumento lista só as ideias; observação é assunto do jardineiro
+de sexta.
+
+**`projeto` é slug de vocabulário fechado, não texto livre.** Os slugs vivem no
+`projetos.json` da pasta de dados, que é também onde mora o **caminho** de cada
+projeto — o dado não guarda caminho. `plantar` recusa slug fora do vocabulário
+(e sugere o parecido); se o projeto é novo, registre antes:
+
+```
+node scripts/ideias.cjs projetos                                   # o vocabulário
+node scripts/ideias.cjs projetos --registrar <slug> --caminho <dir> [--apelido a,b]
+```
+
+O campo era texto livre até 2026-08-12 e cobrou os dois preços de sempre:
+`C:\Projetos\rainforest-mind` dentro de string JSON virou `C:\Projetos` + CR +
+`ainforest-mind` em quatro registros (a barra + `r` é escape de carriage
+return), e 22 valores distintos para 7 projetos reais deixaram o campo
+inagrupável. Slug não tem barra para escape nenhum comer. Migração de arquivo
+antigo: `normalizar-projetos` (ensaio por padrão, `--aplicar` grava).
 
 Se `$ARGUMENTS` estiver vazio: leia o jsonl e liste as **plantadas** em
 markdown legível (título, há quantos dias plantada, projeto, contexto em uma
@@ -24,8 +44,8 @@ Se `$ARGUMENTS` tiver texto: avalie se a ideia está dentro do foco declarado
 - **Se estiver no escopo:** confirmar e perguntar: "Isso está no foco — entra
   na tarefa atual ou planto para depois?"
 - **Se estiver fora:** plantar. Se o `projeto` não estiver óbvio pelo contexto
-  da conversa, perguntar em uma linha antes de gravar. Confirmar: "plantada,
-  de volta a [tarefa]".
+  da conversa, perguntar em uma linha antes de gravar — e a resposta é um slug
+  do vocabulário, nunca um caminho. Confirmar: "plantada, de volta a [tarefa]".
 
 Colher não apaga a linha: reescreve com `resultado`. Colhida ≠ apagada.
 
@@ -45,8 +65,10 @@ node scripts/ideias.cjs editar   --id <id> < mudancas.json      # só o que aind
 node scripts/ideias.cjs iniciar  --id <id>                      # plantada → em-colheita
 node scripts/ideias.cjs unificar --manter <id> --absorver <id> < fundida.json
 node scripts/ideias.cjs reparar  [--id <id> | --todas] [--conferir]
-node scripts/ideias.cjs listar   [--status plantada] [--tipo ideia|observacao|todos]
-node scripts/ideias.cjs conferir                                # saúde do arquivo
+node scripts/ideias.cjs listar   [--status plantada] [--tipo ideia|observacao|todos] [--projeto <slug>]
+node scripts/ideias.cjs conferir                                # saúde do arquivo + caminho dele
+node scripts/ideias.cjs projetos [--registrar <slug> --caminho <dir> --apelido a,b]
+node scripts/ideias.cjs normalizar-projetos [--mapear id=slug,...] [--aplicar]
 ```
 
 Node porque o plugin é instalado por outra gente: os hooks já exigem Node, e o
@@ -72,6 +94,8 @@ Dois cuidados continuam seus, porque o script não alcança:
 - **Escreva o JSON com a ferramenta de escrita de arquivo, nunca por heredoc
   do shell** — o shell come as barras do caminho do Windows. Em 2026-08-08
   isso quebrou uma gravação e o script recusou, em vez de gravar corrompido.
+  O `projeto` virando slug tirou o pior caso das mãos do aviso (era ele que
+  guardava caminho), mas `descricao` e `contexto` ainda são texto livre.
 - **Não passe data nenhuma.** `plantada_em`, `colhida_em` e afins vindos da
   entrada são erro, não aviso: quem carimba é o script, do relógio local.
 

@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-0.52.0-1e5c3f?style=flat-square" alt="versão 0.52.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-0.53.0-1e5c3f?style=flat-square" alt="versão 0.53.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/revis%C3%A3o-bimestral-9fd8ba?style=flat-square" alt="revisão bimestral">
 </p>
@@ -246,7 +246,7 @@ O mesmo princípio nos scripts, para o que hook nenhum alcança:
 
 | Script | Para quê |
 |---|---|
-| `scripts/ideias.cjs` | única porta de escrita do `ideias.jsonl` — trava de arquivo, backup, escrita atômica, releitura do arquivo vivo e conferência byte a byte das linhas não-alvo |
+| `scripts/ideias.cjs` | única porta de escrita do `ideias.jsonl` — trava de arquivo, backup, escrita atômica, releitura do arquivo vivo e conferência byte a byte das linhas não-alvo; e o `projeto` é **slug de vocabulário fechado** (`projetos.json`), não texto livre |
 | `scripts/limpar-branches.cjs` | confere o local contra o remoto e classifica por dois eixos (upstream **e** merge); nunca remove branch viva, e exigir estar na base em dia é trava |
 | `scripts/conferir-relatorio.cjs` | **sai com código 2** quando o rascunho tem telefone, JID, e-mail, caminho de home ou credencial — antes de virar Issue público |
 | `scripts/conferir-entrega.py` | roda na janela principal **depois** da entrega do agente: hash de base, isolamento e citação conferidos na fonte, não no relato |
@@ -411,9 +411,18 @@ diferença parece detalhe e não é: dá para ter mais de uma config dir na mesm
 máquina — uma de trabalho e uma pessoal, por exemplo —, e ancorar o estado nela
 partiria o seu foco em dois sem avisar. O foco é da pessoa, não do perfil.
 
-**O repositório é só código.** `FOCO.md` e `ideias.jsonl` não moram aqui e não
-entram no git: quem instala o plugin recebe as regras, não o foco nem as ideias
-de quem o publicou. Antes disso ser assim, um projeto novo herdava o estado
+A pasta de dados tem um terceiro arquivo: o **`projetos.json`**, o vocabulário
+fechado de slugs de projeto (`slug → caminho + apelidos`). É ele que tira o
+caminho de disco de dentro do dado — o campo `projeto` das ideias era texto
+livre e guardava caminho do Windows dentro de string JSON, onde a barra
+invertida seguida de `r` é escape de *carriage return*: quatro registros
+tiveram o caminho comido, e 22 valores distintos para 7 projetos reais
+deixaram o campo inagrupável. Slug não tem barra para escape nenhum comer, e a
+pasta de cada projeto passa a ter um lugar só seu.
+
+**O repositório é só código.** `FOCO.md`, `ideias.jsonl` e `projetos.json` não
+moram aqui e não entram no git: quem instala o plugin recebe as regras, não o
+foco nem as ideias de quem o publicou. Antes disso ser assim, um projeto novo herdava o estado
 alheio pela cadeia — o nível 4 existe para desenvolvimento e é justamente onde
 esse defeito nascia.
 
@@ -496,5 +505,6 @@ coerência: este plugin foi montado aproveitando trabalho que outras pessoas
 liberaram, e devolvê-lo sob condição mais apertada do que a que o tornou
 possível não faria sentido.
 
-O que **não** está sob esta licença é a sua pasta de dados — `FOCO.md` e
-`ideias.jsonl` moram em `~/.rainforest`, nunca no repositório, e são só seus.
+O que **não** está sob esta licença é a sua pasta de dados — `FOCO.md`,
+`ideias.jsonl` e `projetos.json` moram em `~/.rainforest`, nunca no
+repositório, e são só seus.

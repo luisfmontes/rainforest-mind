@@ -47,18 +47,35 @@ echo "(base: $BASE linhas copiadas do arquivo real)"
 # caixa de areia, pre-preenche so para o restante da bateria poder testar o
 # comportamento novo sem tropecar na migracao pendente das linhas antigas.
 python - <<'PY'
-import json, pathlib
+import json, pathlib, re
 p = pathlib.Path("ideias.jsonl")
 linhas = [l for l in p.read_text(encoding="utf-8").split("\n") if l.strip()]
 n = 0
+c = 0
 for i, l in enumerate(linhas):
     o = json.loads(l)
+    mudou = False
     if not o.get("gancho"):
         o["gancho"] = "gancho de teste (seed da bateria, nao e dado real)"
-        linhas[i] = json.dumps(o, ensure_ascii=False)
         n += 1
+        mudou = True
+    # Mesma razao do gancho, para o campo `projeto`: a copia e FIXTURE, nao dado.
+    # Todo valor real vira o slug `sandbox` — e isso resolve tres coisas de uma
+    # vez. (1) O `conferir` passou a acusar CR/LF/TAB no campo, e 4 linhas reais
+    # tem esse rastro: sem o seed a bateria falharia pelo DADO do usuario e nao
+    # por regressao, e teste que falha por dado ensina a ignorar teste. (2) O
+    # bloco 6 precisa que a prosa a normalizar seja SO a que ele mesmo cria.
+    # (3) Nome de projeto do usuario para de entrar na saida da bateria.
+    # A migracao real e `normalizar-projetos`, fora daqui.
+    if o.get("projeto") != "sandbox":
+        o["projeto"] = "sandbox"
+        o.pop("projeto_nota", None)
+        c += 1
+        mudou = True
+    if mudou:
+        linhas[i] = json.dumps(o, ensure_ascii=False)
 p.write_text("\n".join(linhas) + "\n", encoding="utf-8", newline="\n")
-print(f"  (seed: gancho preenchido em {n} linha(s) da copia, so para a bateria rodar)")
+print(f"  (seed: gancho em {n} linha(s) e projeto=sandbox em {c}, so para a bateria rodar)")
 PY
 
 ok=0; falhou=0
@@ -76,7 +93,9 @@ prova() { # nome, script python que levanta AssertionError se falhar
 
 echo "== 1. entrada invalida e recusada ANTES de tocar o arquivo =="
 md5_antes=$(md5sum ideias.jsonl | cut -d' ' -f1)
-base='"titulo":"t","descricao":"d","contexto":"c","projeto":"p"'
+# `projeto` do fixture e o mesmo slug que o bloco 6 registra: assim o vocabulario,
+# quando entra em cena, ja vale para tudo que os blocos anteriores plantaram.
+base='"titulo":"t","descricao":"d","contexto":"c","projeto":"sandbox"'
 
 echo "{\"id\":\"teste-um\",$base,\"plantada_em\":\"2030-01-01\"}" > f.json
 esperado "recusa data vinda do input (o bug de UTC, por construcao)" 1 bash -c '$IDEIAS plantar < f.json'
@@ -451,6 +470,150 @@ PY
     ;;
   *)
     echo "  (pulado: gancho e recurso novo so do .cjs; \$IDEIAS aponta para outra implementacao)"
+    ;;
+esac
+
+echo
+echo "== 6. projeto e slug de vocabulario fechado, e o caminho sai do dado =="
+# O campo guardava caminho do Windows dentro de string JSON e a barra + `r` virou
+# escape de CR em 4 registros. Vocabulario fechado mata a classe: slug nao tem
+# barra para o escape comer. Recurso novo, so do .cjs (mesmo padrao dos blocos 4 e 5).
+case "$IDEIAS" in
+  *ideias.cjs*)
+    export IDEIAS_LIMPO="node scripts/ideias-limpo.cjs"
+    # 6a. sem projetos.json a validacao esta DESLIGADA — e se anuncia. Silencio
+    # aqui faria o usuario de instalacao nova crer que o campo foi validado.
+    echo "{\"id\":\"teste-sem-vocab\",$base,\"gancho\":\"g\"}" > pv0.json
+    saida_sem_vocab=$($IDEIAS_LIMPO plantar < pv0.json 2>&1)
+    got=$?
+    esperado "sem projetos.json, plantar passa (instalacao nova nao trava)" 0 bash -c "exit $got"
+    if echo "$saida_sem_vocab" | grep -q "sem projetos.json"
+    then ok=$((ok+1)); echo "  ok   ... e o aviso de regra desligada aparece"
+    else falhou=$((falhou+1)); echo "  FALHA validacao desligada em silencio"; echo "$saida_sem_vocab" | sed 's/^/         /'; fi
+
+    # 6b. o vocabulario nasce pelo comando, nao a mao
+    esperado "recusa slug com barra (o que causou o bug)" 1 $IDEIAS_LIMPO projetos --registrar 'C:\Projetos\x'
+    # Caminho com DRIVE e barra normal: caminho POSIX absoluto ('/tmp/x') o Git
+    # Bash converte antes de o node ver, e a barra invertida do Windows some dentro
+    # do fixture Python — as duas coisas medem a camada de escape, nao o script.
+    # (A segunda aconteceu escrevendo este teste: 'C:	mp' virou 'C:' + TAB. E o
+    # mesmo defeito que o vocabulario existe para matar, uma camada acima.)
+    esperado "registrar slug" 0 $IDEIAS_LIMPO projetos --registrar sandbox --caminho 'C:/tmp/sandbox'
+    esperado "registrar com apelidos" 0 $IDEIAS_LIMPO projetos --registrar outro-projeto --apelido 'apelido-um,apelido-dois'
+    prova "projetos.json gravado com caminho e apelidos ordenados" '
+import json
+m=json.load(open("projetos.json",encoding="utf-8"))
+assert m["sandbox"]["caminho"]=="C:/tmp/sandbox", m["sandbox"]
+assert m["outro-projeto"]["apelidos"]==["apelido-dois","apelido-um"], m["outro-projeto"]'
+
+    # 6c. com vocabulario, prosa e recusada ANTES de tocar o arquivo
+    md5_vocab=$(md5sum ideias.jsonl | cut -d' ' -f1)
+    echo "{\"id\":\"teste-prosa\",\"titulo\":\"t\",\"descricao\":\"d\",\"contexto\":\"c\",\"projeto\":\"sandbox (pasta de teste)\",\"gancho\":\"g\"}" > pv1.json
+    esperado "recusa projeto em prosa quando ha vocabulario" 1 bash -c '$IDEIAS_LIMPO plantar < pv1.json'
+    saida_prosa=$($IDEIAS_LIMPO plantar < pv1.json 2>&1)
+    if echo "$saida_prosa" | grep -q "Quis dizer 'sandbox'"
+    then ok=$((ok+1)); echo "  ok   ... e sugere o slug certo em vez de so recusar"
+    else falhou=$((falhou+1)); echo "  FALHA recusou sem sugerir o slug"; echo "$saida_prosa" | sed 's/^/         /'; fi
+    echo "{\"id\":\"teste-slug-novo\",\"titulo\":\"t\",\"descricao\":\"d\",\"contexto\":\"c\",\"projeto\":\"nao-registrado\",\"gancho\":\"g\"}" > pv2.json
+    esperado "recusa slug fora do vocabulario" 1 bash -c '$IDEIAS_LIMPO plantar < pv2.json'
+    if [ "$md5_vocab" = "$(md5sum ideias.jsonl | cut -d' ' -f1)" ]
+    then ok=$((ok+1)); echo "  ok   arquivo intocado apos as recusas de vocabulario"
+    else falhou=$((falhou+1)); echo "  FALHA recusa de vocabulario alterou o arquivo"; fi
+    esperado "aceita slug do vocabulario" 0 bash -c 'echo "{\"id\":\"teste-slug-ok\",\"titulo\":\"t\",\"descricao\":\"d\",\"contexto\":\"c\",\"projeto\":\"sandbox\",\"gancho\":\"g\"}" | $IDEIAS_LIMPO plantar'
+
+    # 6d. a migracao: prosa vira slug, ensaio nao grava, sobra vira projeto_nota
+    python - <<'PY'
+import json, pathlib
+p = pathlib.Path("ideias.jsonl")
+novas = [
+    {"id": "teste-migra-simples", "titulo": "t", "descricao": "d", "contexto": "c",
+     "projeto": "sandbox (C:/tmp/sandbox)", "status": "plantada",
+     "plantada_em": "2026-08-01", "gancho": "g"},
+    {"id": "teste-migra-com-nota", "titulo": "t", "descricao": "d", "contexto": "c",
+     "projeto": "apelido-um (~/outro) - branch teste-de-branch", "status": "plantada",
+     "plantada_em": "2026-08-01", "gancho": "g"},
+    {"id": "teste-migra-so-caminho", "titulo": "t", "descricao": "d", "contexto": "c",
+     "projeto": "C:\\Projetos\\sandbox", "status": "plantada",
+     "plantada_em": "2026-08-01", "gancho": "g"},
+    {"id": "teste-migra-perdida", "titulo": "t", "descricao": "d", "contexto": "c",
+     "projeto": "projeto-que-ninguem-registrou", "status": "plantada",
+     "plantada_em": "2026-08-01", "gancho": "g"},
+]
+texto = p.read_text(encoding="utf-8")
+p.write_text(texto + "".join(json.dumps(o, ensure_ascii=False) + "\n" for o in novas),
+             encoding="utf-8", newline="\n")
+PY
+    md5_pre_migra=$(md5sum ideias.jsonl | cut -d' ' -f1)
+    esperado "migracao recusa quando uma linha nao resolve (parcial esconde o resto)" 1 $IDEIAS_LIMPO normalizar-projetos --aplicar
+    if [ "$md5_pre_migra" = "$(md5sum ideias.jsonl | cut -d' ' -f1)" ]
+    then ok=$((ok+1)); echo "  ok   arquivo intocado apos a recusa da migracao"
+    else falhou=$((falhou+1)); echo "  FALHA a migracao gravou apesar da linha sem resolucao"; fi
+    saida_pend=$($IDEIAS_LIMPO normalizar-projetos --aplicar 2>&1)
+    if echo "$saida_pend" | grep -q "teste-migra-perdida"
+    then ok=$((ok+1)); echo "  ok   ... e nomeia a linha que nao resolveu"
+    else falhou=$((falhou+1)); echo "  FALHA nao nomeou a linha sem resolucao"; echo "$saida_pend" | sed 's/^/         /'; fi
+
+    esperado "ensaio (sem --aplicar) nao grava" 0 $IDEIAS_LIMPO normalizar-projetos --mapear teste-migra-perdida=sandbox
+    if [ "$md5_pre_migra" = "$(md5sum ideias.jsonl | cut -d' ' -f1)" ]
+    then ok=$((ok+1)); echo "  ok   ensaio deixou o arquivo byte a byte igual"
+    else falhou=$((falhou+1)); echo "  FALHA o ensaio gravou"; fi
+
+    python -c "
+import json
+l=[x.rstrip('\n') for x in open('ideias.jsonl',encoding='utf-8') if x.strip()]
+alvo=[x for x in l if json.loads(x)['id']=='teste-slug-ok'][0]
+open('linha-nao-alvo-antes-migra.txt','w',encoding='utf-8').write(alvo)
+"
+    esperado "migracao com --mapear e --aplicar" 0 $IDEIAS_LIMPO normalizar-projetos --mapear teste-migra-perdida=sandbox --aplicar
+    prova "prosa virou slug, sobra virou projeto_nota, caminho puro nao virou nota" '
+import json
+l=[json.loads(x) for x in open("ideias.jsonl",encoding="utf-8") if x.strip()]
+d={o["id"]: o for o in l}
+assert d["teste-migra-simples"]["projeto"]=="sandbox", d["teste-migra-simples"]
+assert "projeto_nota" not in d["teste-migra-simples"], "caminho entre parenteses nao devia sobrar"
+assert d["teste-migra-com-nota"]["projeto"]=="outro-projeto", d["teste-migra-com-nota"]
+assert "branch teste-de-branch" in d["teste-migra-com-nota"]["projeto_nota"]
+assert "~/outro" not in d["teste-migra-com-nota"]["projeto_nota"], "caminho ficou na nota"
+assert d["teste-migra-so-caminho"]["projeto"]=="sandbox", d["teste-migra-so-caminho"]
+assert "projeto_nota" not in d["teste-migra-so-caminho"], "valor que era SO caminho nao vira nota"
+assert d["teste-migra-perdida"]["projeto"]=="sandbox", d["teste-migra-perdida"]'
+    prova "migracao nao mexeu em linha nao-alvo (byte a byte)" '
+import json
+l=[x.rstrip("\n") for x in open("ideias.jsonl",encoding="utf-8") if x.strip()]
+agora=[x for x in l if json.loads(x)["id"]=="teste-slug-ok"][0]
+antes=open("linha-nao-alvo-antes-migra.txt",encoding="utf-8").read().rstrip("\n")
+assert agora == antes, (agora, antes)'
+    md5_pos_migra=$(md5sum ideias.jsonl | cut -d' ' -f1)
+    esperado "segunda passada e inocua (idempotente)" 0 $IDEIAS_LIMPO normalizar-projetos --aplicar
+    if [ "$md5_pos_migra" = "$(md5sum ideias.jsonl | cut -d' ' -f1)" ]
+    then ok=$((ok+1)); echo "  ok   nada mudou na segunda passada"
+    else falhou=$((falhou+1)); echo "  FALHA a segunda passada reescreveu o arquivo"; fi
+
+    # 6e. conferir passa a enxergar os dois defeitos, e o listar passa a agrupar
+    python - <<'PY'
+import json, pathlib
+p = pathlib.Path("ideias.jsonl")
+linha = json.dumps({"id": "teste-projeto-com-cr", "titulo": "t", "descricao": "d",
+                    "contexto": "c", "projeto": "C:\\Projetos\rainforest",
+                    "status": "plantada", "plantada_em": "2026-08-01", "gancho": "g"},
+                   ensure_ascii=False)
+p.write_text(p.read_text(encoding="utf-8") + linha + "\n", encoding="utf-8", newline="\n")
+PY
+    saida_conf_proj=$($IDEIAS_LIMPO conferir 2>&1)
+    if echo "$saida_conf_proj" | grep -q "teste-projeto-com-cr.*caractere de controle"
+    then ok=$((ok+1)); echo "  ok   conferir acusa caractere de controle no projeto"
+    else falhou=$((falhou+1)); echo "  FALHA conferir nao viu o CR no projeto"; echo "$saida_conf_proj" | sed 's/^/         /'; fi
+
+    esperado "listar --projeto filtra por slug" 0 $IDEIAS_LIMPO listar --status todos --tipo todos --projeto outro-projeto
+    saida_filtro=$($IDEIAS_LIMPO listar --status todos --tipo todos --projeto outro-projeto 2>&1)
+    if echo "$saida_filtro" | grep -q "teste-migra-com-nota" &&
+       ! echo "$saida_filtro" | grep -q "teste-migra-simples"
+    then ok=$((ok+1)); echo "  ok   ... e leva so o que e do projeto pedido"
+    else falhou=$((falhou+1)); echo "  FALHA o filtro por projeto nao separou"; echo "$saida_filtro" | sed 's/^/         /'; fi
+    esperado "recusa filtrar por slug inexistente (lista vazia enganaria)" 1 $IDEIAS_LIMPO listar --projeto nao-existe
+    ;;
+  *)
+    echo "  (pulado: vocabulario de projeto e recurso novo so do .cjs)"
     ;;
 esac
 

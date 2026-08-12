@@ -71,10 +71,19 @@ que o desvio é medido.
 - (nenhum)
 `;
 
+/** `Meu Repo` → `meu-repo`. O slug é fechado justamente para não caber barra. */
+function slugificar(nome) {
+  return String(nome || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 function criar() {
   const destino = process.env.RFM_ROOT || destinoPadrao();
   const foco = path.join(destino, 'FOCO.md');
   const ideias = path.join(destino, 'ideias.jsonl');
+  const projetos = path.join(destino, 'projetos.json');
 
   fs.mkdirSync(destino, { recursive: true });
   const feito = [];
@@ -88,6 +97,20 @@ function criar() {
   if (!fs.existsSync(ideias)) {
     fs.writeFileSync(ideias, '', 'utf8');
     feito.push('ideias.jsonl (vazio)');
+  }
+  // O `projeto` de cada ideia é slug de vocabulário fechado, e o vocabulário mora
+  // aqui — é o que tira o caminho de dentro do dado (barra invertida dentro de
+  // string JSON já corrompeu 4 registros). Nasce com DUAS entradas e não vazio:
+  // vocabulário vazio recusaria todo `plantar`, e a `solta` é a que recebe ideia
+  // que não é de repo nenhum.
+  if (!fs.existsSync(projetos)) {
+    const slug = slugificar(path.basename(PROJETO)) || 'este-projeto';
+    const mapa = {
+      solta: { caminho: null, apelidos: [] },
+      [slug]: { caminho: PROJETO, apelidos: [] },
+    };
+    fs.writeFileSync(projetos, JSON.stringify(mapa, null, 2) + '\n', 'utf8');
+    feito.push(`projetos.json (solta + ${slug})`);
   }
 
   console.log(`pasta de dados: ${destino}`);
