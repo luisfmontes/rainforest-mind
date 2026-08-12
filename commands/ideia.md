@@ -86,6 +86,21 @@ mesma bateria roda contra os dois (`IDEIAS="python scripts/ideias.py" bash
 scripts/testa-ideias.sh`), e é assim que se prova que o port não perdeu nada.
 Escrita nova vai pelo `.cjs`.
 
+**O `conferir` separa dívida herdada de problema novo, e só falha no segundo.**
+`gancho` passou a ser cobrado em 2026-08-11 (`GANCHO_EXIGIDO_DESDE`, no
+`ideias.cjs`): linha plantada nesse dia ou antes aparece na saída como **dívida
+herdada**, com a contagem, e **não** derruba o exit code. Linha nova sem gancho
+derruba — e linha **sem `plantada_em`** também, porque aí não há prova de ser
+antiga. A dívida continua impressa em toda execução: anistia que esconde vira
+esquecimento. Fechá-la é curadoria de uma linha por vez
+(`reparar --id <id> --gancho "<texto>"`), e está plantada como
+`mutirao-de-gancho-nas-35-abertas-herdadas`.
+
+Toda contagem diz **de qual conjunto saiu** (`35 de 56 abertas`). Isso não é
+enfeite: o mesmo arquivo já mostrou 35 num comando e 72 em outro, sem nenhum dos
+dois declarar o universo — e o 72 era o errado, porque cobrava gatilho de retorno
+de ideia já colhida.
+
 `reparar` é para a linha que **entrou no arquivo sem passar pelo script** — o
 `conferir` acusa "status desconhecido" ou campo de estado vazio, e o `editar`
 não resolve porque `status` e `plantada_em` são proibidos na entrada (é essa
@@ -96,6 +111,14 @@ rastro de decisão. O `status` sai inferido do próprio registro e a
 souber, ele recusa em vez de carimbar hoje numa linha que não nasceu hoje, e
 aí a data vai à mão em `--plantada-em AAAA-MM-DD`. Rode com `--conferir`
 antes: descreve tudo que faria, sem gravar.
+
+**`--todas` não aborta por causa de uma linha.** A varredura conserta o que
+consegue inferir, **relata** o que precisa de texto seu (gancho, ou data que o git
+não sabe) e sai com **código 1**, porque reparo parcial não é reparo pronto. Com
+`--id`, o pedido é sobre aquela linha e a exigência continua: sem `--gancho` ou
+`--plantada-em`, ele recusa em vez de inventar. Até 2026-08-12 a varredura
+abortava na primeira pendência, e com isso não consertava `status` de nenhuma
+linha — o comando estava morto desde que uma única linha irreparável existisse.
 
 Dois cuidados continuam seus, porque o script não alcança:
 

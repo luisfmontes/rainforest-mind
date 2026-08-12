@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-0.56.0-1e5c3f?style=flat-square" alt="versão 0.56.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-0.57.0-1e5c3f?style=flat-square" alt="versão 0.57.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/revis%C3%A3o-bimestral-9fd8ba?style=flat-square" alt="revisão bimestral">
 </p>
@@ -553,6 +553,14 @@ de escopo** e **fechamento de loops abertos**.
 - [task-observer](https://github.com/rebelytics/one-skill-to-rule-them-all) — Eoghan Henn (rebelytics.com), CC BY 4.0: o gatilho "correção do usuário = observação" e o ciclo de revisão que viraram a regra 13. Adotado o mecanismo, não o log paralelo.
 - [mattpocock/skills](https://github.com/mattpocock/skills) — MIT: a árvore de decisão e a fronteira de `grilling` (regra 16 e `/brainstorm`), o loop vermelho-capaz de `diagnosing-bugs` (skill `depurar`), névoa e fora de escopo de `wayfinder`, expandir–contrair de `to-tickets`, ponto de variação e teste da deleção de `codebase-design`, e o portão triplo do registro de decisão de `domain-modeling`. Acoplado por compressão — nenhuma das 35 skills instalada.
 - [andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills) — a rastreabilidade de cada linha do diff até o pedido, e o tratamento de código morto alheio vs. órfão da própria mudança, no `modo-dev`.
+
+## Mexer no plugin
+
+Bateria verde nas 15 suítes (mais os dois gêmeos em Python), mutação em bateria
+nova, e a regra que este repo aprendeu do jeito caro: **campo obrigatório novo vem
+com o passado resolvido no mesmo commit** — backfill, anistia por data em constante
+declarada, ou opcional para quem nasceu antes. Está tudo em
+[`CONTRIBUTING.md`](CONTRIBUTING.md), com o incidente que originou cada item.
 
 ## Licença
 

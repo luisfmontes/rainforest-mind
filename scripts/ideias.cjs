@@ -54,6 +54,34 @@ const STATUS_CONHECIDOS = ["plantada", "em-colheita", "colhida", "unificada"];
 // retorno, regra 6) faz sentido. Colhida ja voltou; unificada virou outra.
 const ABERTAS = new Set(["plantada", "em-colheita"]);
 const TIPOS_CONHECIDOS = ["ideia", "observacao"];
+/**
+ * Data em que `gancho` passou a ser cobrado (commit 81b125e). Linha PLANTADA ANTES
+ * disso conta como divida herdada: aparece na saida do `conferir`, com o total, e
+ * NAO derruba o exit code.
+ *
+ * Por que a anistia existe: a regra entrou sem backfill e o `conferir` ficou
+ * vermelho de 11/08 em diante, com 35 problemas que nenhuma sessao tinha causado.
+ * Gate permanentemente vermelho nao e gate — a sessao que o encontra assim aprende
+ * a ignora-lo, e ai ele deixa de pegar o problema NOVO, que e a unica coisa que ele
+ * existe para pegar (Issue #3).
+ *
+ * Por que em CONSTANTE, e nao em heuristica: o corte tem que ser auditavel e ter
+ * data. E por que a divida continua IMPRESSA: anistia que esconde vira esquecimento,
+ * e o mutirao de curadoria precisa do numero para existir.
+ *
+ * O DIA DO CORTE entra na anistia (`<=`, nao `<`), e a razao e de medida: o campo
+ * `plantada_em` tem granularidade de DIA e a regra entrou no meio de um dia. Quatro
+ * observacoes plantadas em 2026-08-11 nao tem como provar que nasceram depois do
+ * commit — e cobrar do que nao se pode discriminar era manter o gate vermelho por
+ * quatro linhas que ninguem consegue acusar. Isso NAO afrouxa o outro lado: linha
+ * SEM `plantada_em` continua bloqueando, porque ali nao ha evidencia nenhuma, e
+ * ausencia de prova e diferente de prova que nao discrimina.
+ */
+const GANCHO_EXIGIDO_DESDE = "2026-08-11";
+
+function abertas(objs) {
+  return objs.filter((o) => ABERTAS.has(o.status));
+}
 const ORDEM_CANONICA = [
   "id", "titulo", "descricao", "contexto", "projeto", "projeto_nota", "ao_colher", "tipo",
   "status", "plantada_em", "colheita_iniciada_em", "andamento",
@@ -567,11 +595,26 @@ function diagnosticar(obj) {
   if (!obj.plantada_em) {
     faltando.plantada_em = "<git>";
   }
-  if (!obj.gancho) {
+  // `gancho` so falta em ideia ABERTA — a MESMA regra que o `conferir` aplica, e
+  // ela vivia so lá. A divergencia custou dois numeros contraditorios sobre o
+  // mesmo arquivo (Issue #3): o `conferir` acusava 35 e o `reparar` 72, e as 37 de
+  // diferenca eram ideias JA COLHIDAS, que voltaram — gatilho de retorno para quem
+  // chegou e ruido, e ruido ensina a ignorar a checagem.
+  //
+  // O status EFETIVO, e nao o gravado: linha escrita a mao sem status nenhum vai
+  // virar `plantada` na mesma reparacao, e ai o gancho passa a valer para ela.
+  const statusEfetivo = faltando.status || obj.status;
+  if (!obj.gancho && ABERTAS.has(statusEfetivo)) {
     faltando.gancho = "<manual>";
   }
   return faltando;
 }
+
+// Varredura que deixou pendencia NAO sai 0. Ela conserta o que consegue (nao
+// aborta mais), mas exit 0 num reparo parcial faria um script — ou uma sessao com
+// pressa — ler "reparado" onde ficou trabalho autoral pendente. Ninguem carimba
+// data nem gatilho que nao sabe, e ninguem chama parcial de pronto.
+let reparoIncompleto = false;
 
 function cmdReparar(args) {
   if (!args.id && !args.todas) {
@@ -631,6 +674,16 @@ function cmdReparar(args) {
               `  ${obj.id}.${campo} = ?  (sem gancho — precisa de --gancho "<texto>")`
             );
             continue;
+          } else if (args.todas) {
+            // VARREDURA nao aborta por causa de campo autoral: ela conserta o que se
+            // infere (status, data do git) e RELATA o que precisa de texto humano.
+            // Ate 2026-08-12 ela lancava erro na primeira linha sem gancho, e o
+            // `reparar --todas` estava morto desde 11/08 — nao dava para consertar
+            // `status` de NENHUMA linha, que e o defeito para o qual ele foi criado
+            // (Issue #3). Alvo explicito (`--id`) continua exigindo: ali o pedido e
+            // sobre aquela linha, e inventar gatilho nunca foi opcao.
+            pendentesGancho.add(obj.id);
+            continue;
           } else {
             throw new Erro(
               `'${obj.id}': falta gancho e nenhum foi informado — passe --gancho "<texto>" ` +
@@ -651,6 +704,15 @@ function cmdReparar(args) {
               `  ${obj.id}.${campo} = ?  (o git nao sabe — precisa de --plantada-em AAAA-MM-DD)`
             );
             continue;
+          } else if (args.todas) {
+            // Mesma regra do gancho, pelo mesmo motivo: varredura nao aborta por
+            // UMA linha que ela nao sabe consertar. Aqui o risco e maior do que
+            // parecia: desde que os dados sairam do repo (11/08), `dataDoGit` roda
+            // `git log` numa pasta que nao e repositorio e devolve null para TODA
+            // linha — bastava uma linha sem `plantada_em` para o `--todas` inteiro
+            // morrer. O que nao muda: ninguem carimba data que nao sabe.
+            pendentesData.add(obj.id);
+            continue;
           } else {
             throw new Erro(
               `'${obj.id}': o git nao sabe quando esta linha entrou ` +
@@ -662,6 +724,10 @@ function cmdReparar(args) {
         console.log(`  ${obj.id}.${campo} = ${resolvido[campo]}  (${origem})`);
       }
       if (args.conferir) continue;
+      // Nada resolvido = nada a gravar. Sem isto, linha cuja UNICA falta e o gancho
+      // (pulado na varredura) seria reescrita so para ganhar um `reparada_em` que
+      // nao reparou nada — carimbo que mente sobre o proprio arquivo.
+      if (Object.keys(resolvido).length === 0) continue;
       Object.assign(obj, resolvido);
       obj.reparada_em = hoje();
       obj.reparo = Object.keys(resolvido).sort();
@@ -679,13 +745,31 @@ function cmdReparar(args) {
       }
       if (pendentesGancho.size) {
         console.log(
-          `${pendentesGancho.size} sem gancho — o reparo real vai recusar ` +
-            `ate receber --gancho "<texto>": ${[...pendentesGancho].sort().join(", ")}`
+          `${pendentesGancho.size} de ${abertas(objs).length} abertas sem gancho — ` +
+            "a varredura NAO conserta isso (gatilho de retorno e texto seu); o conserto e " +
+            `um por linha: reparar --id <id> --gancho "<texto>"`
         );
+        console.log(`  ${[...pendentesGancho].sort().join(", ")}`);
       }
       return;
     }
-    if (alvos.size === 0) return;
+    if (pendentesGancho.size) {
+      console.log(
+        `\n${pendentesGancho.size} linha(s) ficaram SEM gancho — a varredura nao inventa ` +
+          `gatilho de retorno. Uma por uma: reparar --id <id> --gancho "<texto>"`
+      );
+    }
+    if (pendentesData.size) {
+      console.log(
+        `${pendentesData.size} linha(s) ficaram SEM plantada_em — o git nao sabe quando ` +
+          `entraram. Uma por uma: reparar --id <id> --plantada-em AAAA-MM-DD`
+      );
+    }
+    if (pendentesGancho.size || pendentesData.size) reparoIncompleto = true;
+    if (alvos.size === 0) {
+      console.log("nada mais a reparar — o que faltava era so o que precisa de texto seu.");
+      return;
+    }
     console.log(`reparando ${alvos.size} linha(s)`);
     gravar(antes, depois, alvos, "reparar");
   });
@@ -908,6 +992,7 @@ function cmdConferir(_args) {
   const objs = parseLinhas(linhas);
   const hjStr = hoje();
   const problemas = [];
+  const herdados = []; // divida anterior a uma regra nova: conta, imprime, nao bloqueia
   const vistos = {};
   const mapaProjetos = lerProjetos();
   objs.forEach((o, idx) => {
@@ -944,8 +1029,15 @@ function cmdConferir(_args) {
       // O gancho e gatilho de RETORNO: ideia ja colhida voltou, e cobrar gatilho de
       // quem chegou e ruido que ensina a ignorar o conferir. So as abertas contam.
       if (campo === "gancho" && !ABERTAS.has(o.status)) continue;
-      if (!o[campo]) {
-        problemas.push(`linha ${i} (${ident}): campo obrigatorio '${campo}' vazio`);
+      if (o[campo]) continue;
+      const queixa = `linha ${i} (${ident}): campo obrigatorio '${campo}' vazio`;
+      // Anistia: SO o gancho, e SO com data que prove que a linha e anterior a
+      // regra. Sem `plantada_em` nao ha prova, e sem prova nao ha anistia — falhar
+      // para o lado de cobrar e o unico lado em que a anistia nao vira desculpa.
+      if (campo === "gancho" && o.plantada_em && o.plantada_em <= GANCHO_EXIGIDO_DESDE) {
+        herdados.push(`${queixa} (plantada em ${o.plantada_em})`);
+      } else {
+        problemas.push(queixa);
       }
     }
     // Caractere de controle no `projeto` e a assinatura do bug de escape: e por
@@ -970,12 +1062,28 @@ function cmdConferir(_args) {
   for (const s of STATUS_CONHECIDOS) {
     console.log(`  ${s}: ${objs.filter((o) => o.status === s).length}`);
   }
+
+  // Cada contagem diz de QUAL CONJUNTO saiu. Dois numeros sem universo declarado
+  // sobre o mesmo arquivo (35 aqui, 72 no `reparar`) fizeram uma sessao inteira
+  // duvidar de qual era o certo — e nenhum dos dois dizia.
+  const nAbertas = abertas(objs).length;
+  if (herdados.length) {
+    console.log(
+      `\n${herdados.length} de ${nAbertas} abertas com divida HERDADA — plantadas em ` +
+        `${GANCHO_EXIGIDO_DESDE} ou antes, quando 'gancho' passou a ser cobrado. NAO bloqueiam:`
+    );
+    for (const p of herdados) console.log(`  - ${p}`);
+    console.log(
+      `  fechar essa divida e curadoria, uma linha por vez: ` +
+        `reparar --id <id> --gancho "<texto>"`
+    );
+  }
   if (problemas.length) {
-    console.log(`\n${problemas.length} problema(s):`);
+    console.log(`\n${problemas.length} problema(s) que BLOQUEIAM (de ${objs.length} linhas):`);
     for (const p of problemas) console.log(`  - ${p}`);
     throw new Erro("conferencia falhou");
   }
-  console.log("\nsem problemas.");
+  console.log(herdados.length ? "\nsem problema que bloqueie." : "\nsem problemas.");
 }
 
 // --------------------------------------------------------------------------
@@ -1093,6 +1201,7 @@ function main() {
   const args = parseArgs(process.argv.slice(2));
   try {
     args._fn(args);
+    if (reparoIncompleto) return 1;
   } catch (e) {
     if (e instanceof Erro) {
       process.stderr.write(`erro: ${e.message}\n`);
