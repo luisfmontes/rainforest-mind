@@ -49,6 +49,24 @@ const TETOS = {
    */
   ORCAMENTO_BYTES: 8000,
   /**
+   * Teto do bloco de REGRAS (só os núcleos), em BYTES. É um **catraca**, não uma
+   * medida do harness: fica pouco acima do tamanho de hoje justamente para que
+   * crescer doa na hora de escrever.
+   *
+   * Existe porque o `ORCAMENTO_BYTES` sozinho não dá retorno a quem edita regra.
+   * As regras entram ANTES do foco (`sobra = ORCAMENTO - fixo`, e o foco leva o
+   * que restar até `FOCO_MAX_BYTES`), então núcleo que engorda não estoura nada:
+   * ele come em silêncio o espaço do foco, e o sintoma aparece longe da causa —
+   * numa sessão futura, com o FOCO.md chegando mais pobre. O teste do orçamento
+   * também não pega: ele roda com os dados de FIXTURE do repo (~6,3 KB) e não
+   * com os dados reais de quem usa (7.924 B medidos em 2026-08-12, 76 B de folga).
+   *
+   * Quem quiser passar daqui paga por **subtração** — é a mesma regra que vale
+   * para skill neste repo. Subir o número é decisão consciente e vem com a conta
+   * escrita: cada byte a mais aqui é um byte a menos de FOCO.md em toda sessão.
+   */
+  NUCLEOS_MAX_BYTES: 5600,
+  /**
    * Teto e piso do bloco de foco, em BYTES — a mesma unidade do orçamento.
    * Misturar as duas unidades é erro silencioso aqui: em português acentuado
    * 1 char ≈ 1,08 byte, então um teto em chars deixa o payload passar do teto
