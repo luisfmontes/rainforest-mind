@@ -13,7 +13,7 @@ tardia. Relatorios que geraram este arquivo:
 
 O que ele garante, em toda operacao de escrita:
 
-  1. Trava de arquivo — sessoes paralelas do Luis escrevem neste jsonl. Reler-vivo
+  1. Trava de arquivo — sessoes paralelas do usuario escrevem neste jsonl. Reler-vivo
      mitiga; trava resolve.
   2. Releitura do arquivo VIVO no instante da escrita, nunca de leitura anterior.
      Em 2026-08-09 o arquivo cresceu por baixo de uma janela entre duas operacoes

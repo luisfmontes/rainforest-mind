@@ -22,8 +22,8 @@ As seis falhas dos dois relatorios e onde cada uma morre aqui:
   commit sobre base errada, auto-absolvido ........... checagem 2
   sujeira deixada no worktree ........................ checagem 3
   arquivo rastreado apagado como dano colateral (N3) . checagem 3
-  mexeu no diretorio principal do Luis (N1) .......... checagem 4
-  stash/pop movendo o HEAD do Luis (N1) .............. checagem 5
+  mexeu no diretorio principal do usuario (N1) .......... checagem 4
+  stash/pop movendo o HEAD do usuario (N1) .............. checagem 5
 
 Cada checagem imprime o comando literal e a saida CRUA antes do veredito: quem
 ler o relatorio confere a conclusao contra a evidencia, sem confiar na conclusao.
@@ -190,7 +190,7 @@ def main() -> int:
         _, stp = c.mostra(principal, "status", "--porcelain")
         if stp:
             c.falha(
-                f"{len(stp.splitlines())} alteracao(oes) no diretorio principal do Luis — o agente "
+                f"{len(stp.splitlines())} alteracao(oes) no diretorio principal do usuario — o agente "
                 "devia estar isolado no worktree. Foi a falha N1 de 2026-08-08."
             )
         else:
@@ -203,7 +203,7 @@ def main() -> int:
         elif not head_agora.startswith(a.head_antes) and not a.head_antes.startswith(head_agora):
             c.falha(
                 f"o HEAD do repo principal era {a.head_antes} e virou {head_agora[:12]} — algo moveu "
-                "o HEAD do Luis (stash/pop, checkout). Falha N1 de 2026-08-08."
+                "o HEAD do usuario (stash/pop, checkout). Falha N1 de 2026-08-08."
             )
         else:
             c.ok("HEAD do repo principal inalterado")

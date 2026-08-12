@@ -9,7 +9,7 @@
  *   1. Varreu `sessoes.json` e tres logs do vigia para o controle de versao —
  *      arquivos gerados, que ninguem quis versionar.
  *   2. Varreu `relatorios/2026-08-09-relato-de-agente-vs-evidencia.md`, escrito
- *      por outra sessao a pedido do Luis, para dentro da branch
+ *      por outra sessao a pedido do usuario, para dentro da branch
  *      `skill-em-ingles`. Se a branch tivesse sido descartada — que era o plano
  *      dela — o relatorio teria sumido junto. Nao sumiu por sorte.
  *
@@ -166,7 +166,7 @@ function bloqueia(motivo, dir, quem) {
   // P1 do relatorio 2026-08-11-escotilha-do-gate-usada-para-contornar: a saida
   // de emergencia era NOMEADA na mensagem que o SUBAGENTE le. Um implementador
   // bloqueado leu o nome do arquivo de escape na propria mensagem de bloqueio,
-  // criou `.rainforest-gate-off` na raiz do checkout principal do Luis - fora do
+  // criou `.rainforest-gate-off` na raiz do checkout principal - fora do
   // worktree dele - e seguiu trabalhando. Reportou `DONE`, e o achado so apareceu
   // porque um revisor leu o relatorio completo linha a linha.
   //
@@ -195,7 +195,7 @@ function bloqueia(motivo, dir, quem) {
     `Comando: ${motivo}\n` +
     `Repo: ${dir}\n` +
     `Quem: ${quem}\n\n` +
-    `Varias sessoes do Luis trabalham no MESMO working tree. Staging em massa nao\n` +
+    `Varias sessoes podem trabalhar no MESMO working tree. Staging em massa nao\n` +
     `distingue o seu trabalho do da janela do lado. Em 2026-08-09, na mesma sessao,\n` +
     `'git add -A' varreu trabalho alheio duas vezes: logs e sessoes.json numa, e o\n` +
     `relatorio escrito por outra sessao para dentro de uma branch que ia ser\n` +
@@ -213,7 +213,7 @@ function main() {
   try {
     ev = JSON.parse(fs.readFileSync(0, "utf8") || "{}");
   } catch {
-    process.exit(0); // payload ilegivel nunca trava o trabalho do Luis
+    process.exit(0); // payload ilegivel nunca trava o trabalho do usuario
   }
 
   if (process.env.RAINFOREST_GATE_OFF) process.exit(0);
