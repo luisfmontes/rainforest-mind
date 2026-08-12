@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-0.58.0-1e5c3f?style=flat-square" alt="versão 0.58.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-0.59.0-1e5c3f?style=flat-square" alt="versão 0.59.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/revis%C3%A3o-bimestral-9fd8ba?style=flat-square" alt="revisão bimestral">
 </p>
@@ -568,10 +568,17 @@ de escopo** e **fechamento de loops abertos**.
 ## Mexer no plugin
 
 Bateria verde nas 15 suítes (mais os dois gêmeos em Python), mutação em bateria
-nova, e a regra que este repo aprendeu do jeito caro: **campo obrigatório novo vem
-com o passado resolvido no mesmo commit** — backfill, anistia por data em constante
-declarada, ou opcional para quem nasceu antes. Está tudo em
-[`CONTRIBUTING.md`](CONTRIBUTING.md), com o incidente que originou cada item.
+nova, e duas regras que este repo aprendeu do jeito caro:
+
+- **campo obrigatório novo vem com o passado resolvido no mesmo commit** — backfill,
+  anistia por data em constante declarada, ou opcional para quem nasceu antes;
+- **arquivo novo na pasta de dados nasce com três portas** — quem escreve, quem
+  **mostra** no `/setup` e quem checa no `/saude`. A porta do meio é mecânica: uma
+  lista só (`ARQUIVOS`, no `setup.cjs`) é lida por quem semeia e por quem mostra, e
+  a bateria compara o disco com a saída, com mutação.
+
+Está tudo em [`CONTRIBUTING.md`](CONTRIBUTING.md), com o incidente que originou cada
+item.
 
 ## Licença
 

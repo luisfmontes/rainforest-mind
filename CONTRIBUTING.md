@@ -56,6 +56,25 @@ linha nova derruba.**
   com código ≠ 0 porque parcial não é pronto. Abortar na primeira linha
   irreparável deixa o comando inútil para todas as outras.
 
+## Arquivo novo na pasta de dados nasce com três portas
+
+Quem **escreve** (o comando dono), quem **mostra** (o `/setup`) e quem **checa** (o
+`/saude`, quando houver como falhar em silêncio). Enquanto as três não existirem, a
+entrega está pela metade.
+
+A porta do meio é mecânica: os arquivos que o plugin possui na pasta de dados vivem
+em **uma** lista no `scripts/setup.cjs` (`ARQUIVOS`), lida por quem semeia e por
+quem mostra. `scripts/testa-setup.sh` compara o que existe no disco depois do
+`--criar` com o que a saída do estado **nomeia**, e a mutação tira um item da lista
+para exigir que ele desapareça do estado.
+
+> 2026-08-12: o `projetos.json` nasceu, o `--criar` aprendeu a semeá-lo, e o estado
+> nunca soube que ele existia — quem instalasse não tinha onde ver a configuração
+> nova. Horas depois, no mesmo dia, a mesma coisa com as pontes de Codex/Gemini:
+> capacidade nova exposta só pelo comando que a criou. Nas duas vezes quem apontou
+> foi o usuário, e nas duas a regra já estava escrita — como observação plantada,
+> que não trava nada. Daí a lista única e o teste com mutação.
+
 ## Dependência externa nasce desligada
 
 Recurso que precisa de PowerShell agendado, bridge, plugin de terceiro ou serviço

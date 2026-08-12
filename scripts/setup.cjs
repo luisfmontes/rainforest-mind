@@ -80,38 +80,84 @@ function slugificar(nome) {
     .replace(/^-+|-+$/g, '');
 }
 
+/**
+ * Os arquivos que este plugin possui na pasta de dados — UMA lista, lida por quem
+ * SEMEIA (`criar`) e por quem MOSTRA (`estado`).
+ *
+ * Ela existe por causa de um defeito que aconteceu duas vezes no mesmo dia
+ * (2026-08-12): nasceu o `projetos.json`, o `criar` aprendeu a semeá-lo, e o
+ * `estado` nunca soube que ele existia — o usuário não tinha onde ver a
+ * configuração nova. Horas depois, o mesmo com a ponte. A correção não é lembrar:
+ * é arquivo novo entrar **aqui**, e as duas portas ganharem juntas. A bateria
+ * `testa-setup.sh` cobra isso mecanicamente, com mutação.
+ *
+ * `semear: null` = não nasce no `--criar`; aparece quando alguém liga/desliga algo.
+ */
+const ARQUIVOS = [
+  {
+    nome: 'FOCO.md',
+    descricao: 'o foco declarado, injetado em toda sessao',
+    semear: () => FOCO_MODELO,
+    aoCriar: () => 'FOCO.md (modelo vazio)',
+  },
+  {
+    nome: 'ideias.jsonl',
+    descricao: 'uma ideia (ou observacao) por linha',
+    semear: () => '',
+    aoCriar: () => 'ideias.jsonl (vazio)',
+  },
+  {
+    nome: 'projetos.json',
+    descricao: 'vocabulario de projeto: slug -> pasta',
+    aoCriar: () => `projetos.json (solta + ${slugificar(path.basename(PROJETO)) || 'este-projeto'})`,
+    semear: (destino) => {
+      const slug = slugificar(path.basename(PROJETO)) || 'este-projeto';
+      return `${JSON.stringify({
+        solta: { caminho: null, apelidos: [] },
+        [slug]: { caminho: PROJETO, apelidos: [] },
+      }, null, 2)}\n`;
+    },
+  },
+  {
+    nome: 'config.json',
+    descricao: 'o que esta ligado no seu escopo de usuario',
+    semear: null,
+  },
+  {
+    nome: 'AVANCOS.md',
+    descricao: 'historico de avancos que saiu do FOCO.md pela rotacao',
+    semear: null,
+  },
+];
+
+function tamanhoDe(p) {
+  try {
+    const b = fs.statSync(p).size;
+    if (b === 0) return 'vazio';
+    return b < 1024 ? `${b} B` : `${(b / 1024).toFixed(1)} KB`;
+  } catch {
+    return null;
+  }
+}
+
 function criar() {
   const destino = process.env.RFM_ROOT || destinoPadrao();
-  const foco = path.join(destino, 'FOCO.md');
-  const ideias = path.join(destino, 'ideias.jsonl');
-  const projetos = path.join(destino, 'projetos.json');
 
   fs.mkdirSync(destino, { recursive: true });
   const feito = [];
   // Nunca sobrescreve: a pasta é a memória do usuário, e setup que roda de novo
   // não pode apagar o que já existe. É a mesma razão de o `iniciar` da esteira
   // recusar slug repetido.
-  if (!fs.existsSync(foco)) {
-    fs.writeFileSync(foco, FOCO_MODELO, 'utf8');
-    feito.push('FOCO.md (modelo vazio)');
-  }
-  if (!fs.existsSync(ideias)) {
-    fs.writeFileSync(ideias, '', 'utf8');
-    feito.push('ideias.jsonl (vazio)');
-  }
-  // O `projeto` de cada ideia é slug de vocabulário fechado, e o vocabulário mora
-  // aqui — é o que tira o caminho de dentro do dado (barra invertida dentro de
-  // string JSON já corrompeu 4 registros). Nasce com DUAS entradas e não vazio:
-  // vocabulário vazio recusaria todo `plantar`, e a `solta` é a que recebe ideia
-  // que não é de repo nenhum.
-  if (!fs.existsSync(projetos)) {
-    const slug = slugificar(path.basename(PROJETO)) || 'este-projeto';
-    const mapa = {
-      solta: { caminho: null, apelidos: [] },
-      [slug]: { caminho: PROJETO, apelidos: [] },
-    };
-    fs.writeFileSync(projetos, JSON.stringify(mapa, null, 2) + '\n', 'utf8');
-    feito.push(`projetos.json (solta + ${slug})`);
+  //
+  // O `projetos.json` nasce com DUAS entradas e não vazio: vocabulário vazio
+  // recusaria todo `plantar`, e a `solta` é a que recebe ideia que não é de repo
+  // nenhum.
+  for (const a of ARQUIVOS) {
+    if (!a.semear) continue;
+    const alvo = path.join(destino, a.nome);
+    if (fs.existsSync(alvo)) continue;
+    fs.writeFileSync(alvo, a.semear(destino), 'utf8');
+    feito.push(a.aoCriar ? a.aoCriar() : a.nome);
   }
 
   console.log(`pasta de dados: ${destino}`);
@@ -177,6 +223,14 @@ function estado() {
     if (nivel === 'plugin') {
       console.log('  ATENCAO: esta e a pasta do PLUGIN. O foco e as ideias que voce ve');
       console.log('  sao de quem o publicou. Rode: node scripts/setup.cjs --criar');
+    }
+    // Cada arquivo que o plugin possui aparece NOMEADO. Ate 2026-08-12 este bloco
+    // mostrava so o caminho da pasta, e arquivo novo (o `projetos.json`) podia
+    // nascer sem que o usuario tivesse onde ve-lo. A lista e a mesma que o `criar`
+    // semeia — uma fonte, duas portas.
+    for (const a of ARQUIVOS) {
+      const tam = tamanhoDe(path.join(raiz, a.nome));
+      console.log(`  ${a.nome.padEnd(14)} ${(tam || '(ausente)').padEnd(9)} ${a.descricao}`);
     }
   }
 

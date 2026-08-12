@@ -138,5 +138,69 @@ esperado "desligar ponte-codex" 0 $SETUP --desligar ponte-codex --escopo usuario
 contem "  ... e volta a dizer que nao ha nenhuma" "nenhuma ligada" $SETUP
 
 echo
+echo "== 6. TODO arquivo que o setup semeia, o setup MOSTRA (a trava das duas portas) =="
+# Este bloco existe porque o mesmo defeito aconteceu duas vezes em 2026-08-12:
+# nasceu o `projetos.json`, o `--criar` aprendeu a semea-lo, e o estado nunca soube
+# que ele existia — o usuario nao tinha onde ver a configuracao nova. Horas depois,
+# o mesmo com a ponte. A regra ("arquivo novo nasce com tres portas: quem escreve,
+# quem MOSTRA, quem checa") era uma observacao plantada, e observacao nao trava
+# nada. Aqui ela vira comparacao entre o que existe no disco e o que a saida nomeia.
+CAIXA6="$CAIXA/portas"; mkdir -p "$CAIXA6"
+CAIXA6_WIN="$(cygpath -m "$CAIXA6" 2>/dev/null || printf '%s' "$CAIXA6")"
+RFM_ROOT="$CAIXA6_WIN" node "$SRC/scripts/setup.cjs" --criar >/dev/null 2>&1
+saida6=$(RFM_ROOT="$CAIXA6_WIN" node "$SRC/scripts/setup.cjs" 2>&1)
+faltou6=""
+for arq in $(ls "$CAIXA6"); do
+  case "$arq" in .ideias-backups|.ideias.lock|*.tmp) continue ;; esac
+  echo "$saida6" | grep -q -- "$arq" || faltou6="$faltou6 $arq"
+done
+if [ -z "$faltou6" ]; then
+  ok=$((ok+1)); echo "  ok   todo arquivo semeado aparece NOMEADO no estado"
+else
+  falhou=$((falhou+1)); echo "  FALHA o estado nao nomeia:$faltou6 (semeou e nao mostra)"
+fi
+# E mostra o ESTADO de cada um, nao so o nome: ausente e vazio nao sao a mesma coisa
+# que existe com conteudo.
+contem "  ... com o estado de cada um (ausente/vazio/tamanho)" "(ausente)"   bash -c "RFM_ROOT='$CAIXA6_WIN' node '$SRC/scripts/setup.cjs'"
+
+# MUTACAO: um arquivo que existe no disco e sai da lista para de ser mostrado, e o
+# teste acima TEM que reprovar. Sem isto, a comparacao poderia estar passando por
+# coincidencia de substring em outra parte da saida.
+# O mutante mora numa ARVORE espelhada: o setup.cjs resolve as libs por
+# `../hooks/lib/...`, entao copia solta nao roda (foi o segundo motivo errado pelo
+# qual este teste quase passou).
+MUT="$CAIXA/plugin-mutante"
+mkdir -p "$MUT/scripts" "$MUT/hooks/lib"
+cp "$SRC/scripts/setup.cjs" "$MUT/scripts/setup.cjs"
+cp "$SRC/hooks/lib/raiz.cjs" "$SRC/hooks/lib/config.cjs" "$SRC/hooks/lib/projetos.cjs" "$MUT/hooks/lib/"
+# Caminho por ENV, nao por interpolacao: o heredoc e `<<'PYM'` (nao expande $), e a
+# primeira versao deste teste passou pelo motivo errado — o mutante nunca foi criado,
+# o node falhou, a saida nao continha "projetos.json" e o assert deu verde. Falso
+# verde e o defeito que este repo persegue; ele apareceu aqui dentro.
+MUTANTE="$MUT/scripts/setup.cjs" python - <<'PYM'
+import os, pathlib
+p = pathlib.Path(os.environ["MUTANTE"])
+t = p.read_text(encoding="utf-8")
+alvo = """  {
+    nome: 'projetos.json',"""
+assert alvo in t, "entrada do projetos.json nao encontrada para mutar"
+t = t.replace(alvo, """  {
+    nome: 'projetos-MUTADO.json',""", 1)
+p.write_text(t, encoding="utf-8", newline="")
+print("mutante escrito")
+PYM
+if [ $? != 0 ]; then falhou=$((falhou+1)); echo "  FALHA nao consegui escrever o mutante"; fi
+saida_mut=$(RFM_ROOT="$CAIXA6_WIN" node "$MUT/scripts/setup.cjs" 2>&1)
+# O mutante tem que ter RODADO: mutante que quebra tambem "nao imprime o arquivo",
+# e ai a mutacao provaria nada. Duas condicoes, nao uma.
+if ! echo "$saida_mut" | grep -q "PASTA DE DADOS"; then
+  falhou=$((falhou+1)); echo "  FALHA o mutante nao rodou (a mutacao nao provaria nada)"; echo "$saida_mut" | sed 's/^/         /' | tail -4
+elif echo "$saida_mut" | grep -q "projetos.json"; then
+  falhou=$((falhou+1)); echo "  FALHA a mutacao nao mudou a saida (a lista nao governa o que e mostrado)"
+else
+  ok=$((ok+1)); echo "  ok   tirando o arquivo da lista, ele DESAPARECE do estado (a lista e load-bearing)"
+fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
