@@ -62,6 +62,28 @@ const CHAVES = {
     padrao: false,
     descricao: 'as rondas headless agendadas (exigem PowerShell, claude.exe e destino de envio)',
   },
+  // PONTES — quais hosts de agente recebem as regras deste plugin, geradas do mesmo
+  // SKILL.md (`scripts/ponte.cjs`). Entram aqui porque "quais agentes eu uso nesta
+  // máquina" é configuração do usuário, e configuração mora no `/setup`; o que NÃO
+  // é configuração é o repositório de destino, que continua sendo alvo explícito do
+  // comando, com ensaio, porque o arquivo gerado vai ser commitado por outra pessoa.
+  //
+  // Padrão falso nos três: gerar arquivo em repo de terceiro nunca é padrão. E são
+  // três, não dois — `ponte-claude` existe para quem usa Claude Code **sem o plugin
+  // instalado**, que é o caminho de quem vai receber o convite antes de instalar
+  // qualquer coisa.
+  'ponte-claude': {
+    padrao: false,
+    descricao: 'gera CLAUDE.md para Claude Code SEM o plugin (regras sem as travas)',
+  },
+  'ponte-codex': {
+    padrao: false,
+    descricao: 'gera AGENTS.md para o Codex',
+  },
+  'ponte-gemini': {
+    padrao: false,
+    descricao: 'gera GEMINI.md para o Gemini CLI',
+  },
   // ATENÇÃO: esta chave é a ÚNICA que inverte o sentido das outras, e por isso
   // inverte também o lado seguro da falha.
   //

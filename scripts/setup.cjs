@@ -193,6 +193,28 @@ function estado() {
   console.log(`  projeto: ${arquivos.projeto || '(nenhum)'}`);
   console.log(`  usuario: ${arquivos.usuario || '(nenhum)'}`);
 
+  // PONTES: quais hosts de agente recebem as regras. E configuracao ("o que eu uso
+  // nesta maquina"), por isso mora aqui; o repositorio de DESTINO nao e — ele e alvo
+  // explicito do comando, com ensaio, porque o arquivo gerado vai ser commitado no
+  // repo de outra pessoa. O que este bloco NAO guarda, de proposito: em quais repos
+  // a ponte ja foi gerada. Isso e estado que envelhece sem ninguem conferir, e o
+  // arquivo no repo (com o marcador `rainforest-mind:inicio`) e a fonte da verdade.
+  const pontes = Object.entries(CHAVES).filter(([k]) => k.startsWith('ponte-'));
+  const ligadas = pontes.filter(([k]) => valores[k]).map(([k]) => k.replace('ponte-', ''));
+  console.log('');
+  console.log('PONTES (as regras deste plugin em outro agente, geradas do mesmo SKILL.md)');
+  if (!ligadas.length) {
+    console.log('  nenhuma ligada — o plugin vale so no Claude Code desta maquina');
+    console.log('  ligue o que voce usa: node scripts/setup.cjs --ligar ponte-codex');
+  } else {
+    for (const [chave, def] of pontes) {
+      if (!valores[chave]) continue;
+      console.log(`  ligado    ${chave.replace('ponte-', '').padEnd(8)} ${def.descricao}`);
+    }
+    console.log(`  gerar num repo: node scripts/ponte.cjs --alvo <dir>            (ensaio)`);
+    console.log(`                  node scripts/ponte.cjs --alvo <dir> --aplicar`);
+  }
+
   console.log('');
   console.log('PROJETOS (slug -> pasta; e o slug que vai no campo `projeto` das ideias)');
   if (raiz) listarProjetos(raiz);

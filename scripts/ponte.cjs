@@ -1,7 +1,14 @@
 #!/usr/bin/env node
 "use strict";
-/* Ponte para outros agentes — gera o AGENTS.md (Codex) e o GEMINI.md (Gemini CLI)
- * a partir da MESMA fonte que o hook de abertura injeta no Claude Code.
+/* Ponte para outro agente — gera o CLAUDE.md (Claude Code SEM o plugin), o
+ * AGENTS.md (Codex) ou o GEMINI.md (Gemini CLI) a partir da MESMA fonte que o hook
+ * de abertura injeta no Claude Code.
+ *
+ * QUEM ESCOLHE O ALVO E O /setup, nao este comando: as chaves `ponte-*` dizem o que
+ * esta maquina usa, e sao elas que valem sem `--agente`. A divisao tem razao — qual
+ * agente o usuario usa e CONFIGURACAO; qual repositorio recebe o arquivo NAO e, e
+ * continua sendo alvo explicito com ensaio, porque o gerado vai ser commitado no
+ * repo de outra pessoa.
  *
  * POR QUE GERADO, E NUNCA ESCRITO A MAO. As regras moram em
  * `skills/rainforest-mind/SKILL.md`. Um AGENTS.md escrito a mao seria uma segunda
@@ -45,17 +52,58 @@ const INICIO = "<!-- rainforest-mind:inicio — GERADO por scripts/ponte.cjs, na
 const FIM = "<!-- rainforest-mind:fim -->";
 
 const AGENTES = {
+  // `claude` e o terceiro alvo, e nao e redundante: quem usa Claude Code SEM o
+  // plugin instalado nao tem regra nenhuma. E o caminho de quem vai receber o
+  // convite antes de instalar, e o unico caminho num repo compartilhado onde nao da
+  // para exigir plugin de ninguem.
+  claude: {
+    arquivo: "CLAUDE.md",
+    nome: "Claude Code (sem o plugin)",
+    comoLe: "O Claude Code le o `CLAUDE.md` da raiz do repositorio em toda sessao.",
+    semTrava:
+      "As duas travas do rainforest-mind (agente fora de worktree isolado, `git add -A`) " +
+      "sao hooks `PreToolUse` do PLUGIN. Este arquivo entrega as regras, nao os hooks: " +
+      "sem o plugin instalado elas sao combinado, nao trava. Quem quiser as travas " +
+      "instala o plugin — ai este arquivo fica redundante e pode sair.",
+  },
   codex: {
     arquivo: "AGENTS.md",
     nome: "Codex",
     comoLe: "O Codex le o `AGENTS.md` da raiz do repositorio em toda sessao.",
+    semTrava:
+      "Duas travas do rainforest-mind rodam fora do modelo no Claude Code, como hook " +
+      "com exit code: a que barra agente editando fora de worktree isolado, e a que " +
+      "barra `git add -A`. Elas usam o `PreToolUse`, que **nao existe** neste host. " +
+      "Aqui elas sao texto — ou seja, argumentaveis. Trate-as como combinado.",
   },
   gemini: {
     arquivo: "GEMINI.md",
     nome: "Gemini CLI",
     comoLe: "O Gemini CLI le o `GEMINI.md` da raiz do repositorio em toda sessao.",
+    semTrava:
+      "Duas travas do rainforest-mind rodam fora do modelo no Claude Code, como hook " +
+      "com exit code: a que barra agente editando fora de worktree isolado, e a que " +
+      "barra `git add -A`. Elas usam o `PreToolUse`, que **nao existe** neste host. " +
+      "Aqui elas sao texto — ou seja, argumentaveis. Trate-as como combinado.",
   },
 };
+
+/**
+ * Quais alvos este install DECLAROU no `/setup` (chaves `ponte-*`).
+ *
+ * O default do comando saiu de "todos" para "o que o usuario ligou": gerar arquivo
+ * em repositorio de terceiro nunca e padrao, e "nada declarado" nao pode virar
+ * "gera os tres". `--agente` continua valendo como escolha pontual.
+ */
+function declarados() {
+  let valores;
+  try {
+    valores = require("../hooks/lib/config.cjs").resolverConfig().valores;
+  } catch {
+    return [];
+  }
+  return Object.keys(AGENTES).filter((k) => valores[`ponte-${k}`] === true);
+}
 
 function arg(nome, argv = process.argv) {
   const i = argv.indexOf(`--${nome}`);
@@ -127,10 +175,7 @@ silencio — foi o que aconteceu com duas CLAUDE.md sincronizadas a mao em
 
 ## O que NAO vale aqui, e voce precisa saber antes de confiar
 
-Duas travas do rainforest-mind rodam **fora do modelo** no Claude Code, como hook
-com exit code: a que barra agente editando fora de worktree isolado, e a que barra
-\`git add -A\`. Elas usam o \`PreToolUse\`, que **nao existe** neste host. Aqui elas
-sao texto — ou seja, argumentaveis. Trate-as como combinado, nao como trava.
+${agente.semTrava}
 
 O que continua sendo mecanismo, porque e comando com exit code, esta na tabela
 abaixo. Chame de verdade: **relato de que rodou nao e evidencia de que rodou.**
@@ -198,8 +243,29 @@ function main() {
   }
   if (!stat.isDirectory()) erro(`--alvo '${alvo}' nao e diretorio`);
 
-  const pedido = (arg("agente") || "todos").toLowerCase();
-  const chaves = pedido === "todos" ? Object.keys(AGENTES) : [pedido];
+  // Sem `--agente`, valem os alvos DECLARADOS no /setup. `todos` continua existindo
+  // como escolha explicita — o que saiu foi o "todos" como PADRAO: gerar arquivo em
+  // repositorio de terceiro nao e coisa que se faz por omissao.
+  const pedido = arg("agente");
+  let chaves;
+  if (pedido && pedido.toLowerCase() === "todos") {
+    chaves = Object.keys(AGENTES);
+  } else if (pedido) {
+    chaves = [pedido.toLowerCase()];
+  } else {
+    chaves = declarados();
+    if (!chaves.length) {
+      erro(
+        "nenhum alvo declarado nesta configuracao. Ligue no setup o que voce usa:\n" +
+          Object.keys(AGENTES)
+            .map((k) => `    node scripts/setup.cjs --ligar ponte-${k}   (${AGENTES[k].arquivo})`)
+            .join("\n") +
+          "\n  ou escolha pontualmente: --agente " +
+          `${Object.keys(AGENTES).join("|")}|todos`
+      );
+    }
+    console.log(`alvos declarados no setup: ${chaves.join(", ")}`);
+  }
   for (const k of chaves) {
     if (!AGENTES[k]) erro(`--agente '${k}' desconhecido — use ${Object.keys(AGENTES).join(", ")} ou todos`);
   }

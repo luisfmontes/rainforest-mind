@@ -31,6 +31,13 @@ vai casar aquela pasta com o slug, e o erro é silencioso), e **um slug por
 repositório** — frente, cliente ou branch dentro do repo vão no `projeto_nota`,
 não em slug novo.
 
+**As pontes também são setup.** A seção `PONTES` diz quais agentes recebem as
+regras deste plugin (`ponte-claude`, `ponte-codex`, `ponte-gemini`, todas
+desligadas por padrão) — e é o que o `/ponte` usa como alvo quando ninguém passa
+`--agente`. O que o `/setup` **não** guarda, de propósito: em quais repositórios a
+ponte já foi gerada. Isso é estado que envelhece sem ninguém conferir, e o arquivo
+no repo (com o marcador `rainforest-mind:inicio`) é a fonte da verdade.
+
 **Os vigias nascem desligados.** As rondas exigem PowerShell agendado, um
 `claude.exe` no caminho e um destino de envio configurado; quem não tem isso não
 deve descobrir por erro em tarefa agendada. Ligar é escolha dele:
