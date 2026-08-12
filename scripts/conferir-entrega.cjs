@@ -1,0 +1,310 @@
+#!/usr/bin/env node
+"use strict";
+/* Port de scripts/conferir-entrega.py — confere a entrega de um subagente, sem
+ * dependencia externa (so biblioteca padrao do Node). Mesma interface de linha de
+ * comando, mesmas checagens, mesmos codigos de saida do original em Python.
+ *
+ * POR QUE O PORT: as regras 11 e 12 EXIGEM este script na integracao de toda
+ * entrega de agente, e `skills/executar` e `agents/executor.md` o citam pelo nome.
+ * Enquanto ele era Python, a promessa do README ("so Node no caminho de execucao,
+ * e o Claude Code nao garante Python") era falsa — bastava um dev sem Python para
+ * a regra 12 virar texto sem mecanismo, do lado errado da unica coisa que este
+ * repo nao aceita: trava que nao trava. O .py fica como GEMEO, no mesmo desenho de
+ * ideias.py e jornada.py: a mesma bateria roda contra os dois, e e isso que prova
+ * que o port nao perdeu checagem nenhuma.
+ *
+ * O P1 do relatorio de metodo de 2026-08-08 (o acervo e do usuario, fora do repo):
+ *
+ *   "Enquanto o veredito de uma checagem for redigido pelo mesmo agente que ela
+ *    deveria travar, ela nao trava nada."
+ *
+ * Naquele dia o agente RODOU `git rev-parse --show-toplevel`, recebeu o diretorio
+ * principal do repo — que era a condicao de parada —, transcreveu a condicao
+ * corretamente e escreveu um OK do lado. Na mesma entrega colou o pai do commit,
+ * viu que divergia da base e se absolveu com "diferenca nao afeta a
+ * funcionalidade", quando era justamente o commit que fazia o criterio de aceite
+ * passar.
+ *
+ * Nenhuma regra de texto alcanca esse modo de falha, porque o texto ja estava la e
+ * foi lido. O que alcanca e o veredito sair das maos de quem executou: a janela
+ * principal roda isto ao receber a entrega, e o exit code nao se argumenta.
+ *
+ * As seis falhas dos dois relatorios e onde cada uma morre aqui:
+ *
+ *   worktree ignorado, trabalho no dir principal ....... checagem 1
+ *   commit sobre base errada, auto-absolvido ........... checagem 2
+ *   sujeira deixada no worktree ........................ checagem 3
+ *   arquivo rastreado apagado como dano colateral (N3) . checagem 3
+ *   mexeu no diretorio principal do usuario (N1) ....... checagem 4
+ *   stash/pop movendo o HEAD do usuario (N1) ........... checagem 5
+ *
+ * Cada checagem imprime o comando literal e a saida CRUA antes do veredito: quem
+ * ler o relatorio confere a conclusao contra a evidencia, sem confiar na conclusao.
+ *
+ * Uso tipico, com o que a janela principal ja sabia antes de despachar:
+ *
+ *   node scripts/conferir-entrega.cjs \
+ *       --worktree C:/repo/.worktrees/agent-abc \
+ *       --base 61be664 \
+ *       --head-antes $(git -C C:/repo rev-parse HEAD)
+ *
+ * Exit 0 so quando tudo passa.
+ */
+
+const fs = require("fs");
+const path = require("path");
+const { spawnSync } = require("child_process");
+
+class Conferencia {
+  constructor() {
+    this.falhas = [];
+    this.avisos = [];
+    this.n = 0;
+  }
+
+  // -- execucao --------------------------------------------------------
+  git(dir, ...args) {
+    let r;
+    try {
+      r = spawnSync("git", ["-C", String(dir), ...args], {
+        encoding: "utf8",
+        maxBuffer: 32 * 1024 * 1024,
+      });
+    } catch {
+      return [127, "git nao encontrado no PATH"];
+    }
+    if (!r || (r.error && r.error.code === "ENOENT")) {
+      return [127, "git nao encontrado no PATH"];
+    }
+    if (r.error) return [127, String(r.error.message || r.error)];
+    const saida = `${r.stdout || ""}${r.stderr || ""}`.trim();
+    return [r.status === null ? 127 : r.status, saida];
+  }
+
+  // -- relato ----------------------------------------------------------
+  abre(titulo) {
+    this.n += 1;
+    console.log(`\n${this.n}. ${titulo}`);
+  }
+
+  mostra(dir, ...args) {
+    const [rc, out] = this.git(dir, ...args);
+    console.log(`   $ git -C ${dir} ${args.join(" ")}`);
+    const linhas = (out || "(vazio)").split(/\r?\n/);
+    for (const linha of linhas.length ? linhas : ["(vazio)"]) {
+      console.log(`     ${linha}`);
+    }
+    return [rc, out];
+  }
+
+  ok(msg) {
+    console.log(`   OK   ${msg}`);
+  }
+
+  falha(msg) {
+    console.log(`   FALHA  ${msg}`);
+    this.falhas.push(`${this.n}. ${msg}`);
+  }
+
+  aviso(msg) {
+    console.log(`   aviso  ${msg}`);
+    this.avisos.push(`${this.n}. ${msg}`);
+  }
+}
+
+/** Compara caminho sem tropecar em barra invertida, maiuscula e link. */
+function norm(p) {
+  let alvo;
+  try {
+    alvo = fs.realpathSync(p);
+  } catch {
+    alvo = path.resolve(p);
+  }
+  return alvo.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+}
+
+function erroArgs(msg) {
+  process.stderr.write(`conferir-entrega.cjs: erro: ${msg}\n`);
+  process.exit(2); // 2 = erro de uso, igual ao argparse do gemeo em Python
+}
+
+const OPCOES = {
+  worktree: { dest: "worktree", exige: true },
+  base: { dest: "base" },
+  commit: { dest: "commit", padrao: "HEAD" },
+  "repo-principal": { dest: "repo_principal" },
+  "head-antes": { dest: "head_antes" },
+  "permite-sujeira": { dest: "permite_sujeira", flag: true },
+};
+
+function parseArgs(argv) {
+  const a = { commit: "HEAD", permite_sujeira: false };
+  let i = 0;
+  while (i < argv.length) {
+    const tok = argv[i];
+    if (!tok.startsWith("--")) erroArgs(`argumento inesperado: ${tok}`);
+    const o = OPCOES[tok.slice(2)];
+    if (!o) erroArgs(`opcao desconhecida: ${tok}`);
+    if (o.flag) {
+      a[o.dest] = true;
+      i += 1;
+      continue;
+    }
+    const val = argv[i + 1];
+    if (val === undefined) erroArgs(`opcao ${tok} exige valor`);
+    a[o.dest] = val;
+    i += 2;
+  }
+  for (const [chave, o] of Object.entries(OPCOES)) {
+    if (o.exige && !a[o.dest]) erroArgs(`opcao obrigatoria faltando: --${chave}`);
+  }
+  return a;
+}
+
+function ehDir(p) {
+  try {
+    return fs.statSync(p).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+function main() {
+  const a = parseArgs(process.argv.slice(2));
+  const c = new Conferencia();
+  const wt = a.worktree;
+
+  if (!ehDir(wt)) {
+    process.stderr.write(`erro: worktree '${wt}' nao existe\n`);
+    return 2;
+  }
+
+  // ------------------------------------------------------------------
+  c.abre("Onde ele mexeu — o worktree e mesmo um worktree?");
+  let [rc, top] = c.mostra(wt, "rev-parse", "--show-toplevel");
+  if (rc !== 0) {
+    c.falha("nao e repositorio git");
+    top = "";
+  }
+  const [, gitdir] = c.mostra(wt, "rev-parse", "--git-dir");
+  const [, common] = c.git(wt, "rev-parse", "--git-common-dir");
+
+  let principal = a.repo_principal;
+  if (!principal && common) {
+    const abs = path.isAbsolute(common) ? common : path.join(wt, common);
+    principal = path.dirname(path.resolve(abs));
+  }
+
+  if (top && norm(top) !== norm(wt)) {
+    c.falha(`o toplevel (${top}) nao e o worktree do briefing (${wt})`);
+  } else if (top) {
+    c.ok("o toplevel bate com o worktree do briefing");
+  }
+
+  if (!gitdir.replace(/\\/g, "/").includes("worktrees")) {
+    c.falha(
+      `o git-dir e '${gitdir}' — sem 'worktrees' no meio isto NAO e worktree linkado, ` +
+        "e o agente trabalhou no repo principal. Foi esta a falha de 2026-08-08."
+    );
+  } else {
+    c.ok("git-dir aponta para worktree linkado");
+  }
+
+  if (principal && top && norm(principal) === norm(top)) {
+    c.falha(`worktree e repo principal sao o mesmo lugar (${principal})`);
+  }
+
+  // ------------------------------------------------------------------
+  c.abre("De onde ele partiu — a base do commit entregue");
+  const [rcLog, linha] = c.mostra(wt, "log", "--format=%H %P", "-1", a.commit);
+  if (rcLog !== 0) {
+    c.falha(`commit '${a.commit}' nao resolve no worktree`);
+  } else if (a.base) {
+    const partes = linha.split(/\s+/).filter(Boolean);
+    const entregue = partes[0] || "";
+    const pais = partes.slice(1);
+    const [rcAnc] = c.git(wt, "merge-base", "--is-ancestor", a.base, entregue);
+    const paiDireto = pais.some((p) => p.startsWith(a.base) || a.base.startsWith(p));
+    if (paiDireto) {
+      c.ok(`a base ${a.base} e pai direto do commit entregue`);
+    } else if (rcAnc === 0) {
+      c.aviso(`a base ${a.base} nao e pai direto, mas e ancestral — houve commit no meio`);
+    } else {
+      c.falha(
+        `a base ${a.base} NAO esta na historia de ${entregue.slice(0, 12)} — o trabalho saiu de outro ` +
+          "lugar. 'Nao afeta a funcionalidade' e conclusao da janela principal, nunca do agente."
+      );
+    }
+  } else {
+    c.aviso("sem --base para conferir; o briefing devia ter fixado uma");
+  }
+
+  // ------------------------------------------------------------------
+  c.abre("O que ficou solto no worktree");
+  const [, st] = c.mostra(wt, "status", "--porcelain");
+  const linhasSt = st ? st.split(/\r?\n/).filter((l) => l.length > 0) : [];
+  const apagados = linhasSt.filter((l) => l.slice(0, 2).trim() === "D");
+  if (apagados.length) {
+    c.falha(
+      `${apagados.length} arquivo(s) RASTREADO(S) apagado(s) — dano colateral (falha N3): ` +
+        apagados.slice(0, 5).map((l) => l.slice(3)).join(", ")
+    );
+  }
+  if (linhasSt.length && !a.permite_sujeira) {
+    c.falha(`${linhasSt.length} entrada(s) nao commitada(s) — a entrega nao esta no commit`);
+  } else if (linhasSt.length) {
+    c.aviso(`${linhasSt.length} entrada(s) nao commitada(s), dispensado por --permite-sujeira`);
+  } else {
+    c.ok("worktree limpo, tudo o que ele fez esta no commit");
+  }
+
+  // ------------------------------------------------------------------
+  if (principal && ehDir(principal) && norm(principal) !== norm(wt)) {
+    c.abre(`O repo principal foi tocado? (${principal})`);
+    const [, stp] = c.mostra(principal, "status", "--porcelain");
+    const linhasStp = stp ? stp.split(/\r?\n/).filter((l) => l.length > 0) : [];
+    if (linhasStp.length) {
+      c.falha(
+        `${linhasStp.length} alteracao(oes) no diretorio principal do usuario — o agente ` +
+          "devia estar isolado no worktree. Foi a falha N1 de 2026-08-08."
+      );
+    } else {
+      c.ok("diretorio principal intacto");
+    }
+
+    c.abre("O HEAD do repo principal se mexeu?");
+    const [, headAgora] = c.mostra(principal, "rev-parse", "HEAD");
+    if (!a.head_antes) {
+      c.aviso("sem --head-antes; registre o HEAD antes de despachar para esta checagem valer");
+    } else if (!headAgora.startsWith(a.head_antes) && !a.head_antes.startsWith(headAgora)) {
+      c.falha(
+        `o HEAD do repo principal era ${a.head_antes} e virou ${headAgora.slice(0, 12)} — algo moveu ` +
+          "o HEAD do usuario (stash/pop, checkout). Falha N1 de 2026-08-08."
+      );
+    } else {
+      c.ok("HEAD do repo principal inalterado");
+    }
+  } else {
+    c.abre("Repo principal");
+    c.aviso("nao identifiquei um repo principal distinto do worktree — checagens 4 e 5 puladas");
+  }
+
+  // ------------------------------------------------------------------
+  console.log("\n" + "=".repeat(66));
+  if (c.falhas.length) {
+    console.log(`REPROVADO — ${c.falhas.length} falha(s):`);
+    for (const f of c.falhas) console.log(`  - ${f}`);
+    console.log("\nNao integre. Se alguma falha for aceitavel, a dispensa e sua, por escrito,");
+    console.log("nesta janela — nunca do agente que produziu a entrega.");
+    return 1;
+  }
+  if (c.avisos.length) {
+    console.log(`APROVADO com ${c.avisos.length} aviso(s):`);
+    for (const w of c.avisos) console.log(`  - ${w}`);
+    return 0;
+  }
+  console.log("APROVADO — as 5 checagens passaram.");
+  return 0;
+}
+
+process.exitCode = main();

@@ -73,9 +73,32 @@ function readPlugins() {
     }
   };
 
+  // Só reporta o que ESTÁ instalado. A versão anterior reportava "ausente neste
+  // projeto (revisão bimestral sem dados)" para quem nunca ouviu falar do
+  // claude-mem — e a abertura de um usuario novo virava propaganda de dependência
+  // opcional. Regra 14 manda anunciar regra BLOQUEADA pelo ambiente, não
+  // integração que o usuario não pediu.
   return {
-    claudeMem: getStatus('claude-mem@thedotmack', 'revisão bimestral sem dados'),
+    claudeMem: allPlugins['claude-mem@thedotmack'] === true ? 'ok' : '',
   };
+}
+
+/**
+ * A bridge do WhatsApp só se checa quando ALGUÉM A DECLAROU, e a declaração é a
+ * `WHATSAPP_API_BASE_URL` estar no ambiente.
+ *
+ * Antes disso, toda sessão de toda máquina sondava `localhost:3005` por TCP (400ms
+ * de timeout, mais o guarda de 700ms) e imprimia o resultado. Para quem instalou o
+ * plugin e não tem bridge nenhuma, isso é uma linha dizendo "bridge WhatsApp FORA"
+ * em cada abertura, sobre uma dependência que ele não pediu — e o custo do teto de
+ * injeção, que está a 21 B da borda.
+ *
+ * Não virou toggle de propósito: o critério escrito em `lib/config.cjs` é que
+ * entra na lista o que muda comportamento em repositório de terceiro. Isto não
+ * muda comportamento — só deixa de perguntar.
+ */
+function bridgeDeclarada(env = process.env) {
+  return Boolean(env.WHATSAPP_API_BASE_URL);
 }
 
 function testTcpConnection(host, port, timeout = 400) {
@@ -114,7 +137,9 @@ function testTcpConnection(host, port, timeout = 400) {
 }
 
 async function checkWhatsAppBridge() {
-  const url = process.env.WHATSAPP_API_BASE_URL || 'http://localhost:3005';
+  // Só chamada quando `bridgeDeclarada()` — a variável existe, e o default antigo
+  // (`localhost:3005`) era justamente o que fazia toda máquina sondar sem pedir.
+  const url = process.env.WHATSAPP_API_BASE_URL;
   let host = 'localhost';
   let port = 3005;
 
@@ -174,6 +199,7 @@ try {
 
 // Checagem de dependências com timeout garantido
 let impresso = false;
+let guarda = null; // só existe quando há sonda para esperar (bridge declarada)
 
 function doConsoleLog(pluginsStatus, whatsappStatus) {
   if (impresso) return;
@@ -185,8 +211,16 @@ function doConsoleLog(pluginsStatus, whatsappStatus) {
   // Só o estado medido. A instrução do que fazer com ele é a regra 14, e repeti-la
   // aqui custava ~330 B de duplicação em toda sessão — dentro de um orçamento em
   // que 330 B são uma regra inteira.
-  const dependencias = `## Dependências de ambiente (regra 14)
-Checado pelo hook: bridge WhatsApp ${whatsappStatus.status} (${whatsappStatus.url}); claude-mem ${pluginsStatus.claudeMem}.`;
+  //
+  // E só o que este install DECLARA: dependência que ninguem pediu não se checa nem
+  // se anuncia. Sem nada declarado, o bloco inteiro sai fora — o `montarContexto`
+  // filtra bloco vazio.
+  const checados = [];
+  if (whatsappStatus) checados.push(`bridge WhatsApp ${whatsappStatus.status} (${whatsappStatus.url})`);
+  if (pluginsStatus.claudeMem) checados.push(`claude-mem ${pluginsStatus.claudeMem}`);
+  const dependencias = checados.length
+    ? `## Dependências de ambiente (regra 14)\nChecado pelo hook: ${checados.join('; ')}.`
+    : '';
 
   const contexto = montarContexto({
     skillText: skill,
@@ -216,24 +250,28 @@ Checado pelo hook: bridge WhatsApp ${whatsappStatus.status} (${whatsappStatus.ur
   }));
 }
 
-// Força impressão após 700ms se não terminar (cancelado assim que imprime)
-const guarda = setTimeout(() => {
-  if (!impresso) {
-    const pluginsStatus = readPlugins();
-    doConsoleLog(pluginsStatus, { status: '?', url: process.env.WHATSAPP_API_BASE_URL || 'http://localhost:3005' });
-  }
-}, 700);
-
-// Executa checagem de dependências e imprime quando pronto
-(async () => {
-  try {
-    const pluginsStatus = readPlugins();
-    const whatsappStatus = await checkWhatsAppBridge();
-    doConsoleLog(pluginsStatus, whatsappStatus);
-  } catch {
+// Sem bridge declarada não há I/O nenhum a esperar: imprime na hora, sem sonda de
+// 400ms e sem o guarda de 700ms. É o caminho de quem acabou de instalar o plugin.
+if (!bridgeDeclarada()) {
+  doConsoleLog(readPlugins(), null);
+} else {
+  // Força impressão após 700ms se não terminar (cancelado assim que imprime)
+  guarda = setTimeout(() => {
     if (!impresso) {
-      const pluginsStatus = readPlugins();
-      doConsoleLog(pluginsStatus, { status: '?', url: process.env.WHATSAPP_API_BASE_URL || 'http://localhost:3005' });
+      doConsoleLog(readPlugins(), { status: '?', url: process.env.WHATSAPP_API_BASE_URL });
     }
-  }
-})();
+  }, 700);
+
+  // Executa checagem de dependências e imprime quando pronto
+  (async () => {
+    try {
+      const pluginsStatus = readPlugins();
+      const whatsappStatus = await checkWhatsAppBridge();
+      doConsoleLog(pluginsStatus, whatsappStatus);
+    } catch {
+      if (!impresso) {
+        doConsoleLog(readPlugins(), { status: '?', url: process.env.WHATSAPP_API_BASE_URL });
+      }
+    }
+  })();
+}

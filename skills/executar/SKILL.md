@@ -60,7 +60,7 @@ teammate ocioso pendurado.
 Entrega de agente não se aceita pelo relato (regra 12). Ao receber:
 
 ```
-python scripts/conferir-entrega.py --worktree <wt> --base <hash> --head-antes <hash-antes-do-despacho>
+node scripts/conferir-entrega.cjs --worktree <wt> --base <hash> --head-antes <hash-antes-do-despacho>
 ```
 
 Exit ≠ 0 é achado, não detalhe — trate como base errada até provar o
