@@ -55,13 +55,190 @@ const STATUS_CONHECIDOS = ["plantada", "em-colheita", "colhida", "unificada"];
 const ABERTAS = new Set(["plantada", "em-colheita"]);
 const TIPOS_CONHECIDOS = ["ideia", "observacao"];
 const ORDEM_CANONICA = [
-  "id", "titulo", "descricao", "contexto", "projeto", "ao_colher", "tipo",
+  "id", "titulo", "descricao", "contexto", "projeto", "projeto_nota", "ao_colher", "tipo",
   "status", "plantada_em", "colheita_iniciada_em", "andamento",
   "colhida_em", "resultado", "unificada_em", "unificada_em_id", "absorveu",
 ];
 const RE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 class Erro extends Error {}
+
+// --------------------------------------------------------------------------
+// vocabulario de projeto — slug fechado, caminho FORA do dado
+// --------------------------------------------------------------------------
+// O `projeto` era texto livre e guardava caminho absoluto do Windows dentro de
+// string JSON. A barra invertida seguida de `r` e escape de carriage return: o
+// shell comeu o caminho e `C:\Projetos\rainforest-mind` virou `C:\Projetos` + CR
+// + `ainforest-mind` em QUATRO registros. Junto disso, 22 valores distintos para
+// 7 projetos reais (`rainforest-mind` escrito de quatro jeitos) tornavam o campo
+// inagrupavel — o `semear.cjs` precisou de comparacao difusa para nao perder dois
+// tercos do historico.
+//
+// A correcao mata a CLASSE, nao as 4 ocorrencias: o campo passa a ser slug de
+// vocabulario fechado (kebab-case, sem barra, sem espaco — nada que um escape
+// possa comer), e o caminho sai do dado para o `projetos.json` da pasta de dados.
+// Aviso em prosa nao segura esquema ruim: o SKILL.md do /ideia ja alertava sobre o
+// shell comer barra, e quebrou 4 vezes mesmo assim.
+const ARQ_PROJETOS = path.join(RAIZ, "projetos.json");
+
+function lerProjetos() {
+  // Sem arquivo, devolve null — e QUEM CHAMA decide o que fazer com a ausencia.
+  // Devolver {} aqui faria "vocabulario vazio" e "vocabulario inexistente"
+  // parecerem a mesma coisa, e a primeira recusaria tudo numa instalacao nova.
+  let bruto;
+  try {
+    bruto = fs.readFileSync(ARQ_PROJETOS, "utf8");
+  } catch {
+    return null;
+  }
+  let mapa;
+  try {
+    mapa = JSON.parse(bruto);
+  } catch (e) {
+    throw new Erro(`${ARQ_PROJETOS} nao e JSON valido: ${e.message}`);
+  }
+  if (typeof mapa !== "object" || mapa === null || Array.isArray(mapa)) {
+    throw new Erro(`${ARQ_PROJETOS} precisa ser um objeto {slug: {...}}`);
+  }
+  for (const [slug, v] of Object.entries(mapa)) {
+    if (!RE_ID.test(slug)) {
+      throw new Erro(`slug '${slug}' em projetos.json nao e kebab-case`);
+    }
+    if (typeof v !== "object" || v === null || Array.isArray(v)) {
+      throw new Erro(`projeto '${slug}' precisa ser um objeto {caminho, apelidos}`);
+    }
+  }
+  return mapa;
+}
+
+function gravarProjetos(mapa) {
+  const ordenado = {};
+  for (const k of Object.keys(mapa).sort()) ordenado[k] = mapa[k];
+  const tmp = `${ARQ_PROJETOS}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(ordenado, null, 2) + "\n", "utf8");
+  fs.renameSync(tmp, ARQ_PROJETOS); // atomico, como o jsonl
+}
+
+function apelidosDe(mapa, slug) {
+  const v = mapa[slug] || {};
+  return Array.isArray(v.apelidos) ? v.apelidos.filter((a) => typeof a === "string" && a) : [];
+}
+
+function normalizarProsa(s) {
+  return String(s === null || s === undefined ? "" : s)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-");
+}
+
+function posicaoDoTermo(prosaNorm, termo) {
+  // Posicao do termo respeitando fronteira de hifen: `solta` nao casa dentro de
+  // `consoltado`. Devolve -1 quando nao ha ocorrencia com fronteira.
+  const t = normalizarProsa(termo).replace(/^-|-$/g, "");
+  if (!t) return -1;
+  let de = 0;
+  for (;;) {
+    const i = prosaNorm.indexOf(t, de);
+    if (i < 0) return -1;
+    const antesOk = i === 0 || prosaNorm[i - 1] === "-";
+    const fim = i + t.length;
+    const depoisOk = fim === prosaNorm.length || prosaNorm[fim] === "-";
+    if (antesOk && depoisOk) return i;
+    de = i + 1;
+  }
+}
+
+function resolverSlug(prosa, mapa) {
+  // Quem aparece PRIMEIRO na string ganha: o projeto e nomeado no comeco e o
+  // resto do texto e detalhe ("rainforest-mind (...); observado em whatsapp-mcp"
+  // e uma ideia do rainforest). Empate de posicao entre slugs diferentes e
+  // ambiguidade declarada, nao desempate por chute.
+  const norm = normalizarProsa(prosa);
+  let melhor = null;
+  let ambiguo = false;
+  for (const slug of Object.keys(mapa)) {
+    let pos = -1;
+    for (const termo of [slug, ...apelidosDe(mapa, slug)]) {
+      const p = posicaoDoTermo(norm, termo);
+      if (p >= 0 && (pos < 0 || p < pos)) pos = p;
+    }
+    if (pos < 0) continue;
+    if (melhor === null || pos < melhor.pos) {
+      melhor = { slug, pos };
+      ambiguo = false;
+    } else if (pos === melhor.pos && melhor.slug !== slug) {
+      ambiguo = true;
+    }
+  }
+  if (!melhor || ambiguo) return null;
+  return melhor.slug;
+}
+
+function semControle(s) {
+  // CR, LF e TAB dentro do valor sao o rastro do bug: morrem aqui.
+  return String(s === null || s === undefined ? "" : s).replace(/[\r\n\t]+/g, " ");
+}
+
+function tirarCaminhos(prosa) {
+  // Remove SO o parenteses que e caminho inteiro (`(C:\Projetos\x)`, `(~/y)`) —
+  // regra estreita de proposito. Prosa raramente comeca com letra + dois-pontos,
+  // e apagar por heuristica larga perderia informacao real (branch, porta, fork).
+  return semControle(prosa)
+    .replace(/\(\s*(?:[A-Za-z]:|~[\\/]|\/)[^;()]*\)/g, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+([;,])/g, "$1") // o `;` que sobrou solto depois do parenteses sair
+    .trim()
+    .replace(/^[\s;,\u2014-]+|[\s;,\u2014-]+$/g, "")
+    .trim();
+}
+
+function soCaminho(s) {
+  // Valor que e SO caminho, sem nome de projeto em volta. Vira nota nenhuma: o
+  // caminho passa a morar no projetos.json, e e esse o ponto da mudanca.
+  return /^\s*(?:[A-Za-z]:|~[\\/]|\/)[^;]*$/.test(semControle(s));
+}
+
+function notaDeProjeto(prosa, slug, mapa) {
+  // Nota so existe quando a prosa carrega algo que o slug e o caminho NAO dizem
+  // (branch, porta, fork, "observado em outro repo"). Nada de inventar campo para
+  // guardar o que ja esta no vocabulario.
+  if (soCaminho(prosa)) return null;
+  const limpa = tirarCaminhos(prosa);
+  let resto = normalizarProsa(limpa);
+  for (const termo of [slug, ...apelidosDe(mapa, slug)]) {
+    const t = normalizarProsa(termo).replace(/^-|-$/g, "");
+    if (t) resto = resto.split(t).join("-");
+  }
+  const sobrou = resto.replace(/-+/g, "");
+  if (sobrou.length < 3) return null;
+  return limpa || null;
+}
+
+function avisoSemVocabulario() {
+  process.stderr.write(
+    "aviso: sem projetos.json na pasta de dados — o campo 'projeto' entrou SEM validacao " +
+      "de vocabulario. Registre os slugs: node scripts/ideias.cjs projetos --registrar <slug>\n"
+  );
+}
+
+function validarProjeto(valor) {
+  const mapa = lerProjetos();
+  if (mapa === null) {
+    // Rule of the house: regra que o ambiente impede se ANUNCIA (uma linha, com o
+    // efeito pratico), nunca degrada em silencio. Instalacao nova nao tem
+    // vocabulario, e recusar tudo travaria o primeiro `plantar` do usuario.
+    avisoSemVocabulario();
+    return;
+  }
+  const slugs = Object.keys(mapa);
+  if (slugs.includes(valor)) return;
+  const sugerido = resolverSlug(valor, mapa);
+  throw new Erro(
+    `projeto '${semControle(valor)}' nao e slug conhecido.` +
+      (sugerido ? ` Quis dizer '${sugerido}'?` : "") +
+      `\n  registrados: ${slugs.sort().join(", ") || "(nenhum)"}` +
+      `\n  se o projeto e novo: node scripts/ideias.cjs projetos --registrar <slug> --caminho <dir>`
+  );
+}
 
 // --------------------------------------------------------------------------
 // data — sempre local, nunca UTC
@@ -317,6 +494,7 @@ function validarEntrada(obj, exigirObrigatorios = true) {
   ) {
     throw new Erro(`tipo '${obj.tipo}' desconhecido — use ${TIPOS_CONHECIDOS.join(" ou ")}`);
   }
+  if (obj.projeto) validarProjeto(obj.projeto);
 }
 
 function lerStdin() {
@@ -629,6 +807,140 @@ function cmdReparar(args) {
   });
 }
 
+function cmdProjetos(args) {
+  if (!args.registrar) {
+    const mapa = lerProjetos();
+    if (mapa === null) {
+      console.log(`sem vocabulario: ${ARQ_PROJETOS} nao existe.`);
+      console.log("  crie o primeiro: node scripts/ideias.cjs projetos --registrar <slug> --caminho <dir>");
+      return;
+    }
+    const slugs = Object.keys(mapa).sort();
+    console.log(`${slugs.length} projeto(s) em ${path.relative(RAIZ, ARQ_PROJETOS)}\n`);
+    for (const s of slugs) {
+      const ap = apelidosDe(mapa, s);
+      console.log(`- ${s}`);
+      console.log(`  caminho: ${mapa[s].caminho || "(nenhum — projeto sem pasta propria)"}`);
+      if (ap.length) console.log(`  apelidos: ${ap.join(", ")}`);
+    }
+    return;
+  }
+  if (!RE_ID.test(args.registrar)) {
+    throw new Erro(
+      `slug '${args.registrar}' nao e kebab-case ([a-z0-9] separado por hifen). ` +
+        "O slug e fechado justamente para nao caber barra nem espaco — foi barra dentro " +
+        "de string JSON que corrompeu 4 registros."
+    );
+  }
+  const mapa = lerProjetos() || {};
+  const novo = !Object.prototype.hasOwnProperty.call(mapa, args.registrar);
+  const atual = mapa[args.registrar] || {};
+  const apelidos = new Set(apelidosDe(mapa, args.registrar));
+  if (args.apelido) {
+    for (const a of String(args.apelido).split(",").map((x) => x.trim()).filter(Boolean)) {
+      apelidos.add(a);
+    }
+  }
+  mapa[args.registrar] = {
+    caminho: args.caminho !== null && args.caminho !== undefined ? args.caminho : (atual.caminho || null),
+    apelidos: [...apelidos].sort(),
+  };
+  gravarProjetos(mapa);
+  console.log(`${novo ? "registrado" : "atualizado"} '${args.registrar}'`);
+  console.log(`  caminho: ${mapa[args.registrar].caminho || "(nenhum)"}`);
+  console.log(`  apelidos: ${mapa[args.registrar].apelidos.join(", ") || "(nenhum)"}`);
+  console.log(`  arquivo: ${ARQ_PROJETOS}`);
+}
+
+function cmdNormalizarProjetos(args) {
+  // Migracao da prosa para slug. ENSAIO por padrao: `--aplicar` e que grava, como
+  // no `foco.cjs rotacionar`. Linha que o vocabulario nao resolve NAO e chutada —
+  // ela para a migracao e sobe para o usuario decidir (--mapear id=slug), porque
+  // adivinhar projeto errado enterra a ideia num lugar onde ninguem vai procurar.
+  const mapa = lerProjetos();
+  if (mapa === null) {
+    throw new Erro(
+      "sem projetos.json — nao ha vocabulario para normalizar contra. " +
+        "Registre os slugs primeiro: node scripts/ideias.cjs projetos --registrar <slug>"
+    );
+  }
+  const forcado = {};
+  if (args.mapear) {
+    for (const par of String(args.mapear).split(",").map((x) => x.trim()).filter(Boolean)) {
+      const i = par.indexOf("=");
+      if (i < 0) throw new Erro(`--mapear espera 'id=slug' (veio '${par}')`);
+      const id = par.slice(0, i).trim();
+      const slug = par.slice(i + 1).trim();
+      if (!Object.prototype.hasOwnProperty.call(mapa, slug)) {
+        throw new Erro(`--mapear ${id}=${slug}: '${slug}' nao esta no projetos.json`);
+      }
+      forcado[id] = slug;
+    }
+  }
+
+  comTrava(() => {
+    const antes = lerVivo();
+    const objs = parseLinhas(antes);
+    const depois = antes.slice();
+    const alvos = new Set();
+    const pendentes = [];
+    let jaOk = 0;
+
+    objs.forEach((o, i) => {
+      const prosa = o.projeto;
+      if (prosa && Object.prototype.hasOwnProperty.call(mapa, prosa)) {
+        jaOk += 1;
+        return;
+      }
+      const slug = forcado[o.id] || resolverSlug(prosa, mapa);
+      if (!slug) {
+        pendentes.push({ linha: i + 1, id: o.id, prosa: semControle(prosa) });
+        return;
+      }
+      const nota = notaDeProjeto(prosa, slug, mapa);
+      const obj = JSON.parse(antes[i]);
+      obj.projeto = slug;
+      if (nota) obj.projeto_nota = nota;
+      else delete obj.projeto_nota;
+      const linha = serializar(obj);
+      if (linha === antes[i]) {
+        jaOk += 1;
+        return;
+      }
+      depois[i] = linha;
+      alvos.add(i);
+      const origem = forcado[o.id] ? " (mapeado na linha de comando)" : "";
+      console.log(`linha ${i + 1} (${o.id}): '${semControle(prosa)}' -> ${slug}${origem}`);
+      if (nota) console.log(`  projeto_nota: ${nota}`);
+    });
+
+    console.log(
+      `\n${alvos.size} linha(s) a normalizar, ${jaOk} ja em slug, ${pendentes.length} sem resolucao`
+    );
+    if (pendentes.length) {
+      console.log("\nsem resolucao no vocabulario (nada foi gravado por causa destas):");
+      for (const p of pendentes) console.log(`  linha ${p.linha} (${p.id}): '${p.prosa}'`);
+      console.log(
+        "\n  resolva de um destes dois jeitos:\n" +
+          "    node scripts/ideias.cjs projetos --registrar <slug> --apelido '<termo da prosa>'\n" +
+          `    node scripts/ideias.cjs normalizar-projetos --mapear ${pendentes[0].id}=<slug> --aplicar`
+      );
+      throw new Erro(
+        `${pendentes.length} linha(s) sem slug resolvido — migracao parcial esconderia o resto`
+      );
+    }
+    if (!args.aplicar) {
+      console.log("\n--aplicar ausente: ensaio, nada gravado.");
+      return;
+    }
+    if (alvos.size === 0) {
+      console.log("nada a normalizar — todo projeto ja e slug do vocabulario.");
+      return;
+    }
+    gravar(antes, depois, alvos, "normalizar-projetos");
+  });
+}
+
 function cmdListar(args) {
   const objs = parseLinhas(lerVivo());
   const hjStr = hoje();
@@ -637,6 +949,19 @@ function cmdListar(args) {
   let itens = objs.filter((o) => alvoStatus === "todos" || o.status === alvoStatus);
   if (args.tipo !== "todos") {
     itens = itens.filter((o) => (o.tipo || "ideia") === args.tipo);
+  }
+  // Filtro por projeto: e o que o campo em prosa nao permitia. Compara por
+  // igualdade de slug, e recusa slug que nao existe em vez de devolver lista
+  // vazia — lista vazia por erro de digitacao parece "nao ha nada aqui".
+  if (args.projeto) {
+    const mapa = lerProjetos();
+    if (mapa !== null && !Object.prototype.hasOwnProperty.call(mapa, args.projeto)) {
+      throw new Erro(
+        `projeto '${args.projeto}' nao esta no vocabulario — registrados: ` +
+          `${Object.keys(mapa).sort().join(", ") || "(nenhum)"}`
+      );
+    }
+    itens = itens.filter((o) => o.projeto === args.projeto);
   }
 
   function idade(o) {
@@ -666,6 +991,19 @@ function cmdListar(args) {
   const total = objs.length;
   const colhidas = objs.filter((o) => o.status === "colhida").length;
   console.log(`\n${total} no total, ${colhidas} colhidas.`);
+  if (!args.projeto) {
+    // Agrupar era impossivel com o campo em prosa (22 valores para 7 projetos).
+    // Com slug, sai de graca — e e o que mostra onde a divida esta concentrada.
+    const porProjeto = {};
+    for (const o of itens) {
+      const p = o.projeto || "(sem projeto)";
+      porProjeto[p] = (porProjeto[p] || 0) + 1;
+    }
+    const linhas = Object.keys(porProjeto)
+      .sort((a, b) => porProjeto[b] - porProjeto[a] || (a < b ? -1 : 1))
+      .map((p) => `${p}: ${porProjeto[p]}`);
+    if (linhas.length) console.log(`por projeto — ${linhas.join(", ")}`);
+  }
 }
 
 function cmdConferir(_args) {
@@ -674,6 +1012,7 @@ function cmdConferir(_args) {
   const hjStr = hoje();
   const problemas = [];
   const vistos = {};
+  const mapaProjetos = lerProjetos();
   objs.forEach((o, idx) => {
     const i = idx + 1;
     const ident = o.id;
@@ -712,8 +1051,24 @@ function cmdConferir(_args) {
         problemas.push(`linha ${i} (${ident}): campo obrigatorio '${campo}' vazio`);
       }
     }
+    // Caractere de controle no `projeto` e a assinatura do bug de escape: e por
+    // aqui que `C:\Projetos\rainforest-mind` virou `C:\Projetos` + CR + `ainforest`.
+    // Vale para toda linha, inclusive colhida, porque e corrupcao e nao pendencia.
+    if (o.projeto && /[\r\n\t]/.test(o.projeto)) {
+      problemas.push(
+        `linha ${i} (${ident}): projeto tem caractere de controle (CR/LF/TAB) — ` +
+          "rastro de caminho comido por escape"
+      );
+    } else if (o.projeto && mapaProjetos !== null &&
+               !Object.prototype.hasOwnProperty.call(mapaProjetos, o.projeto)) {
+      problemas.push(
+        `linha ${i} (${ident}): projeto '${o.projeto}' fora do vocabulario — ` +
+          "rode: node scripts/ideias.cjs normalizar-projetos"
+      );
+    }
   });
 
+  console.log(`arquivo: ${ALVO}`);
   console.log(`${objs.length} linhas, ${Object.keys(vistos).length} ids unicos`);
   for (const s of STATUS_CONHECIDOS) {
     console.log(`  ${s}: ${objs.filter((o) => o.status === s).length}`);
@@ -756,10 +1111,26 @@ const SUBCOMANDOS = {
     options: {
       status: { required: false, default: "plantada", choices: [...STATUS_CONHECIDOS, "todos"] },
       tipo: { required: false, default: "ideia", choices: [...TIPOS_CONHECIDOS, "todos"] },
+      projeto: { required: false },
     },
     fn: cmdListar,
   },
   conferir: { options: {}, fn: cmdConferir },
+  projetos: {
+    options: {
+      registrar: { required: false },
+      caminho: { required: false },
+      apelido: { required: false },
+    },
+    fn: cmdProjetos,
+  },
+  "normalizar-projetos": {
+    options: {
+      aplicar: { flag: true },
+      mapear: { required: false },
+    },
+    fn: cmdNormalizarProjetos,
+  },
 };
 
 function erroArgs(msg) {
@@ -773,7 +1144,9 @@ function destDe(chave, o) {
 
 function parseArgs(argv) {
   if (argv.length === 0) {
-    erroArgs("subcomando obrigatorio (plantar|colher|editar|iniciar|unificar|reparar|listar|conferir)");
+    erroArgs(
+      "subcomando obrigatorio (" + Object.keys(SUBCOMANDOS).join("|") + ")"
+    );
   }
   const cmd = argv[0];
   const spec = SUBCOMANDOS[cmd];
