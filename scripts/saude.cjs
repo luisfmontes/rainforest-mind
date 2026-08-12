@@ -66,10 +66,6 @@ function checarRaiz() {
     return alerta('raiz de dados', `${raiz} (nivel: plugin)`,
       'esta e a pasta do PLUGIN — o foco e as ideias que voce esta vendo sao de quem o publicou. Rode o setup.');
   }
-  if (nivel === 'legado') {
-    return aviso('raiz de dados', `${raiz} (nivel: legado)`,
-      'nivel de ponte; monte a raiz global ou defina RFM_ROOT');
-  }
   ok('raiz de dados', `${raiz} (nivel: ${nivel})`);
 }
 
