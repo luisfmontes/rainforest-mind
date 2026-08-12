@@ -171,13 +171,68 @@ function checarVersaoInstalada() {
   // devolvia cedo no commit e nunca chegava a olhar o conteúdo.
   const aqui = rodar('git', ['rev-parse', 'HEAD'], { cwd: RAIZ_CODIGO });
   const la = rodar('git', ['rev-parse', 'HEAD'], { cwd: instalado });
+
+  // TRÊS situações, não uma — e a versão anterior desta checagem só sabia contar.
+  //
+  // Ela fazia `rev-list --count <la>..HEAD` e, quando o comando falhava, imprimia
+  // `? commit(s) atras`. Isso aconteceu de verdade em 2026-08-11, depois de o
+  // histórico ser reescrito para publicar: o commit do clone deixou de existir
+  // aqui, a contagem virou impossível, e o `/saude` respondeu com uma
+  // interrogação. Ficou mudo justamente no caso em que a resposta era mais útil —
+  // e o conserto ali NÃO é o `marketplace update`, que não reconcilia histórias
+  // sem parentesco.
+  //
+  // Medidor que não sabe dizer "esta pergunta não se aplica" é pior que medidor
+  // ausente: a interrogação parece ruído de ferramenta, não achado.
   let atrasoCommit = '';
+  let semParentesco = false;
   if (aqui.status === 0 && la.status === 0 && aqui.out !== la.out) {
-    const n = rodar('git', ['rev-list', '--count', `${la.out}..HEAD`], { cwd: RAIZ_CODIGO });
-    atrasoCommit = `${n.status === 0 ? n.out : '?'} commit(s) atras (${la.out.slice(0, 7)} vs ${aqui.out.slice(0, 7)})`;
+    // O DISCRIMINADOR É O COMMIT RAIZ, e a primeira versão disto errou.
+    //
+    // Ela perguntava "o commit do clone existe aqui?" e, quando não existia,
+    // concluía história sem parentesco. O teste derrubou na hora: um clone que fez
+    // um commit próprio também tem um objeto que este repo não conhece — e ali o
+    // parentesco existe, só não voltou. Ausência de objeto não é ausência de
+    // parentesco.
+    //
+    // O commit raiz resolve sem depender de os dois lados compartilharem objeto
+    // nenhum: histórias com a mesma origem têm a mesma raiz, e reescrever o
+    // histórico troca a raiz. É a única pergunta que os dois repositórios sabem
+    // responder sozinhos.
+    const raizDe = (dir) => {
+      const r = rodar('git', ['rev-list', '--max-parents=0', 'HEAD'], { cwd: dir });
+      return r.status === 0 ? r.out.split('\n').pop().trim() : null;
+    };
+    const raizAqui = raizDe(RAIZ_CODIGO);
+    const raizLa = raizDe(instalado);
+    const par = `(${la.out.slice(0, 7)} vs ${aqui.out.slice(0, 7)})`;
+
+    if (raizAqui && raizLa && raizAqui !== raizLa) {
+      semParentesco = true;
+    } else {
+      const n = rodar('git', ['rev-list', '--count', `${la.out}..HEAD`], { cwd: RAIZ_CODIGO });
+      if (n.status === 0) {
+        atrasoCommit = `${n.out} commit(s) atras ${par}`;
+      } else {
+        // Mesma raiz, mas o commit do clone não chegou aqui: alguém commitou na
+        // cópia instalada. Não é atraso — é trabalho que só existe lá, e o
+        // `marketplace update` passaria por cima dele.
+        atrasoCommit = `o clone tem commit proprio que este repo nao conhece ${par}`;
+      }
+    }
   }
 
   const atualiza = `rode: claude plugin marketplace update ${nome} — e abra uma janela NOVA, o efeito nao alcanca as abertas`;
+
+  // Sem parentesco vem ANTES da checagem de skill: mesmo com todas as skills no
+  // lugar, o clone está preso a uma história que não existe mais, e o comando de
+  // atualizar não resolve isso.
+  if (semParentesco) {
+    return alerta('plugin instalado',
+      `o clone esta numa historia sem parentesco com este repo (${la.out.slice(0, 7)} nao existe aqui)`,
+      `o \`marketplace update\` NAO reconcilia isso. Reaponte o clone:\n        `
+      + `git -C "${instalado}" fetch origin && git -C "${instalado}" reset --hard origin/main`);
+  }
   if (faltando.length) {
     return alerta('plugin instalado', `carregado sem ${faltando.length} skill(s): ${faltando.join(', ')}`
       + (atrasoCommit ? `; ${atrasoCommit}` : ''), atualiza);
