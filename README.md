@@ -449,3 +449,16 @@ de escopo** e **fechamento de loops abertos**.
 - [task-observer](https://github.com/rebelytics/one-skill-to-rule-them-all) — Eoghan Henn (rebelytics.com), CC BY 4.0: o gatilho "correção do usuário = observação" e o ciclo de revisão que viraram a regra 13. Adotado o mecanismo, não o log paralelo.
 - [mattpocock/skills](https://github.com/mattpocock/skills) — MIT: a árvore de decisão e a fronteira de `grilling` (regra 16 e `/brainstorm`), o loop vermelho-capaz de `diagnosing-bugs` (skill `depurar`), névoa e fora de escopo de `wayfinder`, expandir–contrair de `to-tickets`, ponto de variação e teste da deleção de `codebase-design`, e o portão triplo do registro de decisão de `domain-modeling`. Acoplado por compressão — nenhuma das 35 skills instalada.
 - [andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills) — a rastreabilidade de cada linha do diff até o pedido, e o tratamento de código morto alheio vs. órfão da própria mudança, no `modo-dev`.
+
+## Licença
+
+[MIT](LICENSE) — use, modifique e redistribua, inclusive comercialmente,
+mantendo o aviso de copyright.
+
+É a mesma licença de boa parte do que está creditado acima, e a escolha é por
+coerência: este plugin foi montado aproveitando trabalho que outras pessoas
+liberaram, e devolvê-lo sob condição mais apertada do que a que o tornou
+possível não faria sentido.
+
+O que **não** está sob esta licença é a sua pasta de dados — `FOCO.md` e
+`ideias.jsonl` moram em `~/.rainforest`, nunca no repositório, e são só seus.
