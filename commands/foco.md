@@ -3,10 +3,25 @@ description: Estado da conversa e do foco ativo, ou declara/troca/conclui foco
 argument-hint: [novo foco | trocar <frente> | concluir | vazio para estado]
 ---
 
-O arquivo de foco é `C:\Projetos\rainforest-mind\FOCO.md`, com as seções
-`## Ativo` (um único foco, com critério de pronto e avanços datados),
-`## Não especificado ainda`, `## Fora de escopo`, `## Compromissos com
-prazo`, `## Frentes` e `## Concluídos`.
+O arquivo de foco é o `FOCO.md` da **raiz de dados**, que não é um caminho
+fixo — descubra com:
+
+```
+node scripts/foco.cjs caminho
+```
+
+Ele tem as seções `## Ativo` (um único foco, com critério de pronto e avanços
+datados), `## Não especificado ainda`, `## Fora de escopo`, `## Compromissos
+com prazo`, `## Frentes` e `## Concluídos`.
+
+**Avanços tem teto.** Os antigos vivem no `AVANCOS.md` ao lado, e a linha
+`- (histórico: ... em AVANCOS.md.)` no topo do bloco diz quantos e de quando.
+Procurando avanço que não está no FOCO.md, leia o `AVANCOS.md` antes de
+concluir que não existe. Depois de **escrever** um avanço novo, rode:
+
+```
+node scripts/foco.cjs rotacionar --aplicar
+```
 
 **Névoa e escopo.** `## Não especificado ainda` guarda o que se enxerga vir
 pela frente mas ainda não dá pra enunciar com precisão — dentro do escopo,
