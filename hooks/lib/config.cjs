@@ -71,7 +71,7 @@ function lerJson(p) {
  * Resolve a configuração efetiva, e diz de ONDE veio cada chave.
  *
  * A procedência importa tanto quanto o valor: "o gate está desligado" sem dizer
- * onde foi desligado manda o Luís procurar num de três lugares. O `/saude` e o
+ * onde foi desligado manda o usuario procurar num de três lugares. O `/saude` e o
  * próprio setup imprimem a origem.
  *
  * @param {object} [o]

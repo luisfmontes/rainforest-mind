@@ -1,7 +1,7 @@
 Leia C:\Projetos\rainforest-mind\vigias\_comum.md e siga as instruções de lá.
 
 Você é o vigia **vigia-tickets** (roda 2x/dia em dia útil até 2026-08-11).
-Missão: os tickets da template que o Luís precisa entregar até terça
+Missão: os tickets da template que o usuario precisa entregar até terça
 2026-08-11 (marco do foco Template ABAPA).
 
 1. Consulte o Jira via CLI `acli` (já autenticado na máquina). Tente:

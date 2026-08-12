@@ -143,11 +143,11 @@ const m = skill.match(/Última revisão:\s*(\d{4}-\d{2}-\d{2})/);
 if (m) {
   const dias = Math.floor((Date.now() - new Date(m[1]).getTime()) / 86400000);
   if (dias > 60) {
-    revisao = `\n⚠ A skill rainforest-mind não é revisada há ${dias} dias (limite: 60). Avise o Luís que está na hora de revisá-la.`;
+    revisao = `\n⚠ A skill rainforest-mind não é revisada há ${dias} dias (limite: 60). Avise o usuario que está na hora de revisá-la.`;
   }
 }
 
-// Sessões paralelas (heartbeat: prompt_ts = o Luís agiu, stop_ts = Claude
+// Sessões paralelas (heartbeat: prompt_ts = o usuario agiu, stop_ts = Claude
 // terminou o turno e está esperando)
 let sessoes = '';
 try {

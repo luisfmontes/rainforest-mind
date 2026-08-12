@@ -57,7 +57,7 @@ Repo **adotado** tem pergunta diferente na revisita: não é "melhorou?", é
 
 ## Fila da primeira rodada do batedor
 
-Levantados pelo Luís em 2026-08-08 e deixados **sem avaliar de propósito** — são o
+Levantados pelo usuario em 2026-08-08 e deixados **sem avaliar de propósito** — são o
 material de teste da própria maquinaria.
 
 1. **`fockus/claude-skill-find-skill`** (e a variante em `vercel-labs/skills`) — CLI que
