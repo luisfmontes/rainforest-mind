@@ -296,6 +296,51 @@ else
   falhou=$((falhou+1)); echo "  FALHA so $NREGRAS regras no payload — alguma nao esta valendo em sessao nenhuma"
 fi
 
+# CATRACA DOS NUCLEOS. As duas checagens acima nao dao retorno a quem EDITA regra,
+# e foi assim que 2026-08-12 aconteceu: um nucleo ganhou ~60 B e nada reclamou. Nao
+# reclama porque as regras entram ANTES do foco -- `sobra = ORCAMENTO - fixo`, e o
+# foco leva o que restar. Nucleo que engorda nao estoura o orcamento: come o espaco
+# do foco, calado, e o sintoma aparece numa sessao futura com o FOCO.md mais pobre.
+# E o teste de cima roda com a FIXTURE do repo (~6,3 KB), nao com dados reais
+# (7.924 B medidos na maquina do autor no mesmo dia, 76 B de folga) -- ele passaria
+# verde ate o dia em que o usuario perdesse conteudo de abertura.
+cat > "$RAIZ_POSIX/checa-nucleos.cjs" <<'EOF'
+const fs = require('fs');
+const lib = require(process.env.LIB_PATH);
+const skill = fs.readFileSync(process.env.SKILL, 'utf8');
+const nucleos = lib.extrairNucleo(lib.filtrarRegras(skill));
+console.log(`${Buffer.byteLength(nucleos, 'utf8')} ${lib.TETOS.NUCLEOS_MAX_BYTES}`);
+EOF
+LEITURA_N="$(LIB_PATH="$LIB" SKILL="$SRC/skills/rainforest-mind/SKILL.md" node "$RAIZ_POSIX/checa-nucleos.cjs")"
+BYTES_N="$(echo "$LEITURA_N" | cut -d' ' -f1)"
+TETO_N="$(echo "$LEITURA_N" | cut -d' ' -f2)"
+
+if [ -n "$BYTES_N" ] && [ "$BYTES_N" -le "$TETO_N" ] 2>/dev/null; then
+  ok=$((ok+1)); echo "  ok    os nucleos cabem na catraca ($BYTES_N B <= $TETO_N B, folga $((TETO_N-BYTES_N)) B)"
+else
+  falhou=$((falhou+1)); echo "  FALHA os nucleos passaram da catraca ($BYTES_N B > $TETO_N B)"
+  echo "         cada byte aqui e um byte a menos de FOCO.md em TODA sessao."
+  echo "         pague por subtracao noutro nucleo, ou suba NUCLEOS_MAX_BYTES de proposito."
+fi
+
+# A catraca so vale se ela for o que reprova. Com uma regra gorda a mais, o mesmo
+# calculo tem de acusar -- senao o numero acima esta passando por folga, nao por medida.
+cat > "$RAIZ_POSIX/checa-nucleos-mutado.cjs" <<'EOF'
+const fs = require('fs');
+const lib = require(process.env.LIB_PATH);
+const skill = fs.readFileSync(process.env.SKILL, 'utf8');
+const gorda = '\n\n**18. Regra inventada pelo teste.** ' + 'x'.repeat(700) + '\n';
+const mutado = skill.replace('## Comando', gorda + '\n## Comando');
+const n = lib.extrairNucleo(lib.filtrarRegras(mutado));
+console.log(Buffer.byteLength(n, 'utf8') > lib.TETOS.NUCLEOS_MAX_BYTES ? 'acusou' : 'passou');
+EOF
+MUT_N="$(LIB_PATH="$LIB" SKILL="$SRC/skills/rainforest-mind/SKILL.md" node "$RAIZ_POSIX/checa-nucleos-mutado.cjs")"
+if [ "$MUT_N" = "acusou" ]; then
+  ok=$((ok+1)); echo "  ok    com uma regra gorda a mais a catraca acusa (o teto e load-bearing)"
+else
+  falhou=$((falhou+1)); echo "  FALHA regra gorda a mais e a catraca nao acusou — o teto nao esta medindo nada"
+fi
+
 echo
 echo "8. NUCLEO E DETALHE — a elaboracao fica fora, e a regra cortada se anuncia"
 SKILL_NUCLEO="# Skill
