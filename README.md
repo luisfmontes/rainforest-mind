@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-0.57.0-1e5c3f?style=flat-square" alt="versão 0.57.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-0.58.0-1e5c3f?style=flat-square" alt="versão 0.58.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/revis%C3%A3o-bimestral-9fd8ba?style=flat-square" alt="revisão bimestral">
 </p>
@@ -263,10 +263,21 @@ O plugin é do Claude Code — os 4 hooks, os slash commands, as 13 skills e os 
 subagentes são API dele e não têm equivalente nos outros hosts. Mas o **método**
 não precisa ficar preso a um agente, e a pasta de dados não sabe quem a escreveu.
 
+Quais agentes você usa é **configuração**, e mora no `/setup` (`ponte-claude`,
+`ponte-codex`, `ponte-gemini`, desligadas por padrão). Qual repositório recebe o
+arquivo **não é**: é alvo explícito, com ensaio, porque o gerado vai ser commitado
+no repo de outra pessoa.
+
 ```
+node scripts/setup.cjs --ligar ponte-codex             # declara o que esta máquina usa
 node scripts/ponte.cjs --alvo <dir-do-repo>            # ensaio: mostra e não grava
-node scripts/ponte.cjs --alvo <dir-do-repo> --aplicar  # AGENTS.md + GEMINI.md
+node scripts/ponte.cjs --alvo <dir-do-repo> --aplicar  # só os alvos declarados
 ```
+
+São **três** alvos: `CLAUDE.md` também é ponte — para quem usa Claude Code **sem o
+plugin**, que não tem regra nenhuma. É o caminho de quem recebe o convite antes de
+instalar. E o texto muda com o alvo: lá a falta das travas se explica pelo plugin
+ausente; nos outros dois, por o host não ter `PreToolUse`.
 
 O arquivo é **gerado**, nunca escrito à mão, e o comando que o gera está escrito
 dentro dele. O motivo é um incidente: nesta máquina existem duas `CLAUDE.md` de
@@ -335,7 +346,7 @@ flowchart LR
 | `limpar` | Manutenção fora da esteira: worktree órfão da sessão que nunca chegou ao `fechar` — e a **branch**, que sobrevive ao worktree e ninguém vê |
 | `/semear` | Propõe o que criar **neste** repositório a partir do que ele já tropeçou — cada proposta cita o registro que a origina |
 | `/setup` | Monta a pasta de dados e liga/desliga os gates e a esteira, por projeto ou para tudo |
-| `/ponte` | Gera `AGENTS.md` (Codex) e `GEMINI.md` (Gemini CLI) num repo, do mesmo SKILL.md — e declara o que **não** atravessa |
+| `/ponte` | Gera `CLAUDE.md`, `AGENTS.md` (Codex) ou `GEMINI.md` (Gemini CLI) num repo, do mesmo SKILL.md — alvos declarados no `/setup`, e cada um diz o que **não** atravessa |
 | `/saude` | Só o que os checadores oficiais não sabem: de quem é a raiz, margem da injeção, esteira parada, worktree órfão |
 | `modo-dev` | Disciplina de dev sob demanda (acima) |
 | `depurar` | Loop de feedback antes de hipótese (acima) |

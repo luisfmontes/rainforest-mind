@@ -124,5 +124,19 @@ else
 fi
 
 echo
+echo "== 5. PONTES: quais agentes recebem as regras (config, nao repo) =="
+# "Quais agentes eu uso nesta maquina" e configuracao — e configuracao mora aqui.
+# O repositorio de DESTINO nao mora aqui de proposito: ele e alvo explicito do
+# `ponte.cjs`, com ensaio, porque o arquivo gerado vai ser commitado por terceiro.
+contem "a secao existe" "PONTES" $SETUP
+contem "  ... e diz que nao ha nenhuma ligada" "nenhuma ligada" $SETUP
+esperado "ligar ponte-codex" 0 $SETUP --ligar ponte-codex --escopo usuario
+contem "  ... a ligada aparece nomeando o arquivo" "AGENTS.md" $SETUP
+contem "  ... e aparece o comando que gera" "ponte.cjs --alvo" $SETUP
+nao_contem "  ... e a desligada nao se anuncia como ligada" "ligado    gemini" $SETUP
+esperado "desligar ponte-codex" 0 $SETUP --desligar ponte-codex --escopo usuario
+contem "  ... e volta a dizer que nao ha nenhuma" "nenhuma ligada" $SETUP
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

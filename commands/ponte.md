@@ -3,15 +3,33 @@ description: Leva as regras para um repositório que outra pessoa usa com Codex 
 argument-hint: [caminho do repo — vazio para o repo atual]
 ---
 
-Gera a **ponte** para outros agentes: `AGENTS.md` (Codex) e `GEMINI.md` (Gemini
-CLI), a partir do mesmo `skills/rainforest-mind/SKILL.md` que o hook de abertura
-injeta no Claude Code.
+Gera a **ponte** para outro agente — `CLAUDE.md` (Claude Code sem o plugin),
+`AGENTS.md` (Codex) ou `GEMINI.md` (Gemini CLI) —, a partir do mesmo
+`skills/rainforest-mind/SKILL.md` que o hook de abertura injeta no Claude Code.
 
 ```
 node scripts/ponte.cjs --alvo <dir>                      # ensaio: mostra e não grava
 node scripts/ponte.cjs --alvo <dir> --aplicar
-node scripts/ponte.cjs --alvo <dir> --agente codex --aplicar
+node scripts/ponte.cjs --alvo <dir> --agente claude|codex|gemini|todos --aplicar
 ```
+
+**Quem escolhe o agente é o `/setup`, não este comando.** As chaves
+`ponte-claude`, `ponte-codex` e `ponte-gemini` (todas desligadas por padrão) dizem
+o que esta máquina usa, e é isso que vale quando ninguém passa `--agente`. Sem
+nenhuma ligada, o comando **recusa** e ensina a ligar — gerar arquivo em
+repositório de terceiro não é coisa que se faça por omissão. `--agente` continua
+existindo como escolha pontual.
+
+A divisão é essa, e ela tem razão: **qual agente você usa é configuração** (mora
+no `/setup`); **qual repositório recebe o arquivo não é** — é alvo explícito, com
+ensaio, porque o arquivo gerado vai ser commitado no repo de outra pessoa.
+
+**Três alvos, e o terceiro não é redundante.** `ponte-claude` gera `CLAUDE.md`
+para quem usa **Claude Code sem o plugin instalado** — que não tem regra nenhuma.
+É o caminho de quem vai receber o convite antes de instalar, e o único caminho num
+repo compartilhado onde não dá para exigir plugin. O texto do gerado muda com o
+alvo: no `CLAUDE.md` a falta das travas se explica pelo **plugin ausente** (e
+instalar resolve); no `AGENTS.md`/`GEMINI.md`, pelo **host não ter `PreToolUse`**.
 
 Alvo = `$ARGUMENTS` quando vier, senão o repositório da sessão. **Rode o ensaio
 primeiro e mostre ao usuario o tamanho e a ação de cada arquivo** (criar,

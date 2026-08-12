@@ -156,5 +156,21 @@ temf     "e proibido de criar o contorno sozinho"  "$SUB" "a decisao nao e sua"
 temf     "janela principal ve as tres saidas"      "$PRI" "tres saidas"
 temf     "janela principal ve a preferida"         "$PRI" "setup.cjs --desligar"
 
+echo
+echo "== 7. as chaves ponte-*: quais agentes recebem as regras =="
+# Elas entraram porque "quais agentes eu uso nesta maquina" e configuracao, e
+# configuracao mora no /setup. Padrao FALSO nos tres: gerar arquivo em repositorio
+# de terceiro nunca e padrao.
+for chave in ponte-claude ponte-codex ponte-gemini; do
+  if node -e "
+const {CHAVES}=require('$SRC_WIN/hooks/lib/config.cjs');
+const d=CHAVES['$chave'];
+if (!d) { console.error('chave ausente'); process.exit(1); }
+if (d.padrao !== false) { console.error('padrao nao e falso: '+d.padrao); process.exit(1); }
+" 2>/dev/null; then ok=$((ok+1)); echo "  ok   $chave existe e nasce DESLIGADA"
+  else falhou=$((falhou+1)); echo "  FALHA $chave ausente ou ligada por padrao"; fi
+done
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
