@@ -3,6 +3,34 @@ param([Parameter(Mandatory=$true)][string]$Vigia, [switch]$Teste, [string]$Cwd)
 # A raiz sai da localizacao do proprio script, nao de um caminho fixo: este
 # repositorio e publico e nenhum caminho desta maquina deve estar nele.
 $root = if ($env:RFM_ROOT) { $env:RFM_ROOT } else { Split-Path -Parent $PSScriptRoot }
+# O PLUGIN e sempre a pasta acima deste script, mesmo quando $root aponta para a
+# pasta de DADOS (RFM_ROOT). Os dois nao sao a mesma coisa desde 2026-08-11.
+$plugin = Split-Path -Parent $PSScriptRoot
+
+# TOGGLE `vigias` — as rondas nascem DESLIGADAS (chave em hooks/lib/config.cjs).
+# Quem instala o plugin sem PowerShell agendado, sem claude.exe no caminho e sem
+# destino de envio nao pode descobrir essas dependencias por erro em tarefa
+# agendada. A pergunta vai para o Node de proposito: reimplementar a cadeia de tres
+# niveis (projeto > usuario > padrao) aqui seria a segunda copia da regra, e copia
+# mantida a mao diverge calada.
+$estado = & node (Join-Path $plugin "scripts\setup.cjs") --ligado vigias 2>$null
+if ($LASTEXITCODE -ne 0) {
+    # Desligado NAO e erro: sai limpo, sem escrever em ERROS.md. Ja "nao consegui
+    # perguntar" e erro, e vai para o log — silencio faria a ronda parar sem rastro.
+    if ($estado -eq 'desligado') {
+        # SEM travessao dentro de string: o arquivo e UTF-8 sem BOM, o Windows
+        # PowerShell 5.1 le como cp1252, e os bytes de `—` terminam em 0x94, que
+        # e a aspa tipografica U+201D. O tokenizer aceita aspa tipografica como
+        # delimitador: a string FECHAVA no meio e o parse morria com "'}' de
+        # fechamento ausente" 20 linhas depois. Nos 10 travessoes que este arquivo
+        # ja tinha isso nunca apareceu porque todos estao em COMENTARIO.
+        Write-Output "vigias desligado nesta configuracao - nada a fazer. Ligue com: node scripts/setup.cjs --ligar vigias"
+        exit 0
+    }
+    "- $(Get-Date -Format 'yyyy-MM-dd HH:mm') [$Vigia]: nao consegui ler o toggle 'vigias' (node no PATH?)" |
+      Out-File -Append -Encoding utf8 (Join-Path $plugin "vigias\ERROS.md")
+    exit 1
+}
 
 # O diretorio de trabalho do claude NAO e a raiz do repositorio por acidente de
 # historia: `disabledMcpServers` do .claude.json e por projeto, e neste

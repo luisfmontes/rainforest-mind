@@ -44,6 +44,24 @@ const CHAVES = {
     padrao: true,
     descricao: 'os sete estágios (brainstorm → plano → … → fechar)',
   },
+  // Os VIGIAS entram na lista a pedido do usuario (2026-08-12), e o pedido corrige
+  // o critério escrito no comentário acima. A frase "vigia degrada sozinho quando a
+  // dependência não existe" estava certa sobre o CÓDIGO e errada sobre a
+  // EXPERIÊNCIA: as rondas exigem PowerShell, um `claude.exe` no caminho e um
+  // destino de envio configurado, e quem instala o plugin sem nada disso não quer
+  // descobrir a dependência por mensagem de erro numa tarefa agendada.
+  //
+  // Nasce DESLIGADO — é a única com padrão falso junto de `branch-forcar`, e pela
+  // mesma razão: aqui ligado = ronda dispara, então o lado seguro da falha é o
+  // desligado. Quem lê esta chave **não pode usar `ligado()`**, que devolve `true`
+  // em erro; tem de ler `resolverConfig().valores` e tratar falha como `false`. O
+  // `setup.cjs --ligado` faz assim, e é por ele que o `run-vigia.ps1` pergunta —
+  // reimplementar a cadeia de 3 níveis em PowerShell seria a segunda cópia que
+  // diverge calada.
+  vigias: {
+    padrao: false,
+    descricao: 'as rondas headless agendadas (exigem PowerShell, claude.exe e destino de envio)',
+  },
   // ATENÇÃO: esta chave é a ÚNICA que inverte o sentido das outras, e por isso
   // inverte também o lado seguro da falha.
   //

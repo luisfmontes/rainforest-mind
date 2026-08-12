@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-0.54.0-1e5c3f?style=flat-square" alt="versão 0.54.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-0.55.0-1e5c3f?style=flat-square" alt="versão 0.55.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/revis%C3%A3o-bimestral-9fd8ba?style=flat-square" alt="revisão bimestral">
 </p>
@@ -250,6 +250,7 @@ O mesmo princípio nos scripts, para o que hook nenhum alcança:
 | `scripts/limpar-branches.cjs` | confere o local contra o remoto e classifica por dois eixos (upstream **e** merge); nunca remove branch viva, e exigir estar na base em dia é trava |
 | `scripts/conferir-relatorio.cjs` | **sai com código 2** quando o rascunho tem telefone, JID, e-mail, caminho de home ou credencial — antes de virar Issue público |
 | `scripts/conferir-entrega.cjs` | roda na janela principal **depois** da entrega do agente: hash de base, isolamento e citação conferidos na fonte, não no relato |
+| `scripts/setup.cjs` | monta a pasta de dados, liga/desliga o que é opcional **e configura o caminho de cada projeto** — e marca no estado o caminho que **não existe** nesta máquina, que era falha silenciosa |
 | `scripts/ponte.cjs` | **gera** o `AGENTS.md` (Codex) e o `GEMINI.md` (Gemini CLI) a partir do mesmo SKILL.md que o hook injeta — e recusa gerar se não achar as regras, em vez de escrever meia ponte |
 | `scripts/medir-injecao.py` | custo real do prompt de abertura, lido do `usage` que a API devolve — token de verdade, sem estimativa |
 
@@ -418,6 +419,21 @@ Apagar o gêmeo seria apagar a única prova de que o port está certo.
 um plugin de cliente até 2026-08-11; hoje mede com `node scripts/jornada.cjs`,
 que lê o transcript da própria sessão. Quem tiver o plugin pode usá-lo como
 conferência — nunca como requisito.
+
+**E dependência opcional não se anuncia nem se sonda sem alguém pedir.** Duas
+consequências disso, as duas de 2026-08-12:
+
+- A abertura só reporta o que este install **declara**: a bridge do WhatsApp
+  aparece quando existe `WHATSAPP_API_BASE_URL` no ambiente, e o claude-mem
+  quando está instalado. Antes, toda sessão de toda máquina abria uma conexão TCP
+  para `localhost:3005` e imprimia "bridge WhatsApp FORA" para quem nunca ouviu
+  falar dela. Sem nada declarado o bloco inteiro sai da injeção (−169 B).
+- **Os vigias nascem desligados** (`vigias`, em `/setup`). As rondas exigem
+  PowerShell agendado, `claude.exe` no caminho e um destino de envio; com a chave
+  desligada o `run-vigia.ps1` **sai limpo (exit 0)** e não escreve em
+  `vigias/ERROS.md`, porque desligado não é erro. Ele pergunta o estado por
+  `node scripts/setup.cjs --ligado vigias` em vez de reimplementar a cadeia de
+  três níveis em PowerShell — segunda cópia da regra é cópia que diverge calada.
 
 ## Ajuste fino
 

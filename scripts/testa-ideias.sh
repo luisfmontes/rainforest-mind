@@ -20,9 +20,15 @@ export IDEIAS="${IDEIAS:-node scripts/ideias.cjs}"
 # verdade. Isolamento que depende de coincidencia nao e isolamento.
 export RFM_ROOT="$SB"
 
-mkdir -p "$SB/scripts"
+mkdir -p "$SB/scripts" "$SB/hooks/lib"
 cp "$SRC/scripts/ideias.py" "$SB/scripts/"
 cp "$SRC/scripts/ideias.cjs" "$SB/scripts/"
+# O vocabulario de projeto virou lib em 2026-08-12 (o setup.cjs tambem mexe no
+# projetos.json, e duas implementacoes divergem em silencio). O require dela e DURO
+# de proposito — lib ausente e instalacao quebrada, nao caso de fallback —, entao a
+# caixa de areia tem que espelhar a forma do plugin. `raiz.cjs` NAO entra aqui: o
+# bloco 4 a copia de proposito no meio da bateria, para exercitar a cadeia.
+cp "$SRC/hooks/lib/projetos.cjs" "$SB/hooks/lib/"
 # O jsonl e DADO e saiu do repo em 2026-08-11. A caixa copia da raiz de dados
 # real, resolvida pela mesma cadeia do hook - e continua sendo COPIA: o RFM_ROOT
 # acima aponta para a caixa, entao nada aqui toca o arquivo de verdade.
