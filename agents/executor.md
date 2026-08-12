@@ -120,7 +120,7 @@ de aceite nº 2 passar — a causa estava escrita por ele mesmo três
 parágrafos abaixo, e as duas evidências não foram cruzadas.
 
 Vale saber: sua entrega é conferida **por fora**, com
-`scripts/conferir-entrega.py` do rainforest-mind, que roda esses mesmos
+`scripts/conferir-entrega.cjs` do rainforest-mind, que roda esses mesmos
 comandos na janela principal e sai com exit ≠ 0. Relatório que diverge da
 saída dele reprova a entrega inteira — narrar por cima não passa mais, só
 custa a credibilidade do resto.

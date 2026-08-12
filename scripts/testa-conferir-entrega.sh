@@ -1,15 +1,25 @@
 #!/bin/bash
-# Bateria do conferir-entrega.py. Monta um repo git de verdade com worktree de
+# Bateria do conferir-entrega. Monta um repo git de verdade com worktree de
 # verdade e ENCENA cada uma das seis falhas dos dois relatorios, exigindo que
 # cada uma reprove. Uso: bash scripts/testa-conferir-entrega.sh
 #
 # Por que encenar em vez de simular saida: o script existe justamente porque
 # relato nao e evidencia. Testa-lo com git falso repetiria o erro que ele
 # conserta (regra 12).
+#
+# Roda contra o .cjs por padrao (o que as regras 11 e 12 chamam) e contra o gemeo
+# em Python por escolha:
+#   CONFERIR="python scripts/conferir-entrega.py" bash scripts/testa-conferir-entrega.sh
+# E isso que prova que o port nao perdeu checagem — mesmo desenho de testa-ideias.sh.
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CONF="$SRC/scripts/conferir-entrega.py"
+CONFERIR="${CONFERIR:-node scripts/conferir-entrega.cjs}"
+# O comando vem como string com espaco ("node scripts/x.cjs"): parte em palavras
+# uma vez aqui, em vez de deixar cada chamada lidar com isso.
+read -r -a CONF_CMD <<< "$CONFERIR"
+CONF_CMD[1]="$SRC/${CONF_CMD[1]}"
+echo "(alvo: ${CONF_CMD[*]})"
 RAIZ="$(mktemp -d)"
 trap 'rm -rf "$RAIZ"' EXIT
 
@@ -49,16 +59,16 @@ echo novo > "$WT/feito.txt"; git -C "$WT" add .; git -C "$WT" commit -qm "entreg
 
 echo "== entrega correta =="
 esperado "worktree real, base certa, tudo limpo -> aprovado" 0 \
-  python "$CONF" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES"
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES"
 
 echo
 echo "== as seis falhas dos relatorios =="
 
 # 1 — trabalhou no diretorio principal em vez do worktree
 esperado "agente no repo principal (nao e worktree linkado)" 1 \
-  python "$CONF" --worktree "$R" --base "$BASE" --head-antes "$HEAD_ANTES"
+  "${CONF_CMD[@]}" --worktree "$R" --base "$BASE" --head-antes "$HEAD_ANTES"
 contem "  ... e diz que faltou 'worktrees' no git-dir" "worktrees" \
-  python "$CONF" --worktree "$R" --base "$BASE"
+  "${CONF_CMD[@]}" --worktree "$R" --base "$BASE"
 
 # 2 — commit sobre base errada
 OUTRA=$(git -C "$R" rev-parse HEAD~1)
@@ -66,43 +76,43 @@ WT2="$RAIZ/wt-base-errada"
 git -C "$R" worktree add -q -b desviada "$WT2" "$OUTRA" >/dev/null 2>&1
 echo x > "$WT2/x.txt"; git -C "$WT2" add .; git -C "$WT2" commit -qm "sobre base velha"
 esperado "commit fora da historia da base do briefing" 1 \
-  python "$CONF" --worktree "$WT2" --base "$BASE"
+  "${CONF_CMD[@]}" --worktree "$WT2" --base "$BASE"
 contem "  ... e recusa a auto-absolvicao" "conclusao da janela principal" \
-  python "$CONF" --worktree "$WT2" --base "$BASE"
+  "${CONF_CMD[@]}" --worktree "$WT2" --base "$BASE"
 
 # 3 — sujeira nao commitada
 echo sujo > "$WT/solto.txt"
-esperado "entrega com arquivo nao commitado" 1 python "$CONF" --worktree "$WT" --base "$BASE"
+esperado "entrega com arquivo nao commitado" 1 "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE"
 esperado "  ... dispensavel por --permite-sujeira" 0 \
-  python "$CONF" --worktree "$WT" --base "$BASE" --permite-sujeira
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --permite-sujeira
 rm "$WT/solto.txt"
 
 # 4 — arquivo rastreado apagado (N3)
 rm "$WT/rastreado.txt"
-esperado "arquivo rastreado apagado como dano colateral" 1 python "$CONF" --worktree "$WT" --base "$BASE"
-contem "  ... nomeando a falha N3" "N3" python "$CONF" --worktree "$WT" --base "$BASE"
+esperado "arquivo rastreado apagado como dano colateral" 1 "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE"
+contem "  ... nomeando a falha N3" "N3" "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE"
 git -C "$WT" checkout -q -- rastreado.txt
 
 # 5 — mexeu no diretorio principal (N1)
 echo intruso > "$R/intruso.txt"
 esperado "alteracao no diretorio principal do usuario" 1 \
-  python "$CONF" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES"
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES"
 rm "$R/intruso.txt"
 
 # 6 — HEAD do principal movido (N1, o stash/pop)
 git -C "$R" checkout -q HEAD~1
 esperado "HEAD do repo principal movido durante a tarefa" 1 \
-  python "$CONF" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES"
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES"
 git -C "$R" checkout -q "$HEAD_ANTES"
 
 echo
 echo "== bordas =="
 esperado "worktree inexistente -> exit 2, nao 0" 2 \
-  python "$CONF" --worktree "$RAIZ/nao-existe" --base "$BASE"
+  "${CONF_CMD[@]}" --worktree "$RAIZ/nao-existe" --base "$BASE"
 esperado "sem --base ainda roda, com aviso" 0 \
-  python "$CONF" --worktree "$WT" --head-antes "$HEAD_ANTES"
+  "${CONF_CMD[@]}" --worktree "$WT" --head-antes "$HEAD_ANTES"
 contem "  ... e o aviso diz que o briefing devia ter fixado a base" "briefing devia ter fixado" \
-  python "$CONF" --worktree "$WT" --head-antes "$HEAD_ANTES"
+  "${CONF_CMD[@]}" --worktree "$WT" --head-antes "$HEAD_ANTES"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
