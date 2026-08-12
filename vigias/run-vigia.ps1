@@ -133,7 +133,7 @@ $prompt | & $claude -p --model $modelo --dangerously-skip-permissions 2>&1 |
 
 # O backup do estado fica de fora da execução de teste. O -Teste bloqueava só o
 # envio, e este bloco rodava igual: em 2026-08-10 um teste manual levou o
-# FOCO.md que o Luís tinha modificado e ainda não commitado para a main, no
+# FOCO.md que o usuario tinha modificado e ainda não commitado para a main, no
 # commit 720585f, com a mensagem "Backup diario do estado (sentinela)". Modo de
 # teste que escreve no repositório do usuário não é teste — é a ronda de verdade
 # com o envio desligado.

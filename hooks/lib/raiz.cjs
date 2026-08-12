@@ -1,7 +1,7 @@
 // Cadeia de resolução da raiz de dados (FOCO.md, ideias.jsonl).
 //
 // Por que existe: até 2026-08-11 a raiz era `RFM_ROOT || 'C:\Projetos\rainforest-mind'`
-// — um nível de configuração e um caminho da máquina do Luís cravado no código. Isso
+// — um nível de configuração e um caminho da máquina do usuario cravado no código. Isso
 // funciona para o usuário número um e para mais ninguém, e o plugin passou a ser
 // instalado por outros devs.
 //
@@ -14,9 +14,12 @@
 //
 //   1. RFM_ROOT              — declaração explícita, vence tudo
 //   2. <projeto>/.rainforest — estado por projeto (foco e ideias daquele repo)
-//   3. <config>/rainforest   — estado global do usuário, sob CLAUDE_CONFIG_DIR
+//   3. ~/.rainforest         — estado global do usuário, no HOME e NÃO sob CLAUDE_CONFIG_DIR
+//                              (o porquê está na linha 71; este comentário já disse o
+//                               contrário do código, e documentação que contradiz o
+//                               arquivo em que mora é pior que documentação ausente)
 //   4. raiz do plugin        — instalação auto-hospedada (o repo é o próprio plugin)
-//   5. legado                — o caminho antigo do Luís, só se existir
+//   5. legado                — o caminho antigo do usuario, só se existir
 //
 // O nível 5 existe porque `RFM_ROOT` NÃO está definida na máquina dele e o plugin roda
 // de uma cópia em cache: tirar o caminho legado sem mais nada apagaria o foco dele no

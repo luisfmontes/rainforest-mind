@@ -246,7 +246,9 @@ O mesmo princípio nos scripts, para o que hook nenhum alcança:
 
 | Script | Para quê |
 |---|---|
-| `scripts/ideias.py` | única porta de escrita do `ideias.jsonl` — trava de arquivo, backup, escrita atômica, releitura do arquivo vivo e conferência byte a byte das linhas não-alvo |
+| `scripts/ideias.cjs` | única porta de escrita do `ideias.jsonl` — trava de arquivo, backup, escrita atômica, releitura do arquivo vivo e conferência byte a byte das linhas não-alvo |
+| `scripts/limpar-branches.cjs` | confere o local contra o remoto e classifica por dois eixos (upstream **e** merge); nunca remove branch viva, e exigir estar na base em dia é trava |
+| `scripts/conferir-relatorio.cjs` | **sai com código 2** quando o rascunho tem telefone, JID, e-mail, caminho de home ou credencial — antes de virar Issue público |
 | `scripts/conferir-entrega.py` | roda na janela principal **depois** da entrega do agente: hash de base, isolamento e citação conferidos na fonte, não no relato |
 | `scripts/medir-injecao.py` | custo real do prompt de abertura, lido do `usage` que a API devolve — token de verdade, sem estimativa |
 
@@ -286,14 +288,14 @@ flowchart LR
 | `/foco <texto>` | Declara novo foco — injetado em toda sessão nova |
 | `/ideia <texto>` | Avalia contra o foco: dentro → entra confirmada; fora → planta com contexto e projeto |
 | `/ideia` | Lista as ideias plantadas |
-| `/relatorio` | Escreve o relatório de método da sessão, commita e publica |
+| `/relatorio` | Registra o que a sessão ensinou sobre o **método** — tria por de quem é o defeito: do plugin vira Issue, do seu trabalho vira markdown no seu repo |
 | `arqueologia` | Estágio **zero, opcional**: mapeia a fatia de legado que a demanda toca, com escala de confiança — e fatia já mapeada vira **conferência**, não extração |
 | `plano` | Estágio 2: tarefas tipadas, dependência declarada e critério falsificável por tarefa — proíbe placeholder |
 | `executar` | Estágio 3: despacha os agentes, em paralelo o que o plano marcou independente, cada um em worktree |
 | `revisar` | Estágio 4: contexto zerado, escopo fixado pelo diff de três pontos, o relato de quem implementou não é fonte |
 | `verificar` | Estágio 5: roda o artefato real e cola a saída — o critério veio pronto do plano e não se afrouxa aqui |
 | `fechar` | Estágio 6: commit, limpeza do repo, remoção dos worktrees, destino da branch com você decidindo, e writeback no FOCO.md |
-| `limpar` | Manutenção fora da esteira: worktree órfão da sessão que nunca chegou ao `fechar` |
+| `limpar` | Manutenção fora da esteira: worktree órfão da sessão que nunca chegou ao `fechar` — e a **branch**, que sobrevive ao worktree e ninguém vê |
 | `/semear` | Propõe o que criar **neste** repositório a partir do que ele já tropeçou — cada proposta cita o registro que a origina |
 | `/setup` | Monta a pasta de dados e liga/desliga os gates e a esteira, por projeto ou para tudo |
 | `/saude` | Só o que os checadores oficiais não sabem: de quem é a raiz, margem da injeção, esteira parada, worktree órfão |
@@ -397,13 +399,24 @@ detecção automática cobre quem não declarou nada:
 |---|---|---|---|
 | 1 | `RFM_ROOT` | onde a variável apontar | declaração explícita, vence tudo |
 | 2 | **projeto** | `<repo>/.rainforest/` | **foco e ideias daquele repo** |
-| 3 | global | `<CLAUDE_CONFIG_DIR>/rainforest/` | o seu estado, valendo em qualquer pasta |
+| 3 | global | `~/.rainforest/` | o seu estado, valendo em qualquer pasta |
 | 4 | plugin | a raiz do próprio plugin | instalação auto-hospedada (desenvolvimento) |
 | 5 | legado | caminho antigo, se existir | ponte, sai quando 1 ou 3 estiverem montados |
 
 O que faz uma pasta contar como raiz é ter `FOCO.md` **ou** `ideias.jsonl`
 dentro: um `.rainforest/` vazio criado por engano não sequestra o seu foco — e
 tem teste de mutação provando que é o marcador que decide.
+
+**O nível 3 é o seu `HOME`, e não a pasta de config do Claude Code.** A
+diferença parece detalhe e não é: dá para ter mais de uma config dir na mesma
+máquina — uma de trabalho e uma pessoal, por exemplo —, e ancorar o estado nela
+partiria o seu foco em dois sem avisar. O foco é da pessoa, não do perfil.
+
+**O repositório é só código.** `FOCO.md` e `ideias.jsonl` não moram aqui e não
+entram no git: quem instala o plugin recebe as regras, não o foco nem as ideias
+de quem o publicou. Antes disso ser assim, um projeto novo herdava o estado
+alheio pela cadeia — o nível 4 existe para desenvolvimento e é justamente onde
+esse defeito nascia.
 
 Criar `.rainforest/FOCO.md` num repositório é tudo o que é preciso para aquele
 repositório ter foco próprio. Sem variável de ambiente, sem editar config.

@@ -75,7 +75,7 @@ const TETOS = {
    * abertura por causa de `repo-de-trabalho` aparecendo três vezes.
    *
    * Contagem no lugar do nome mantém o sinal ("há trabalho paralelo") e devolve o
-   * espaço ao foco, que é o que o Luís precisa ler.
+   * espaço ao foco, que é o que o usuario precisa ler.
    */
   SESSOES_PASTAS_LISTADAS: 3,
   /**
@@ -141,7 +141,7 @@ function extrairNucleo(regrasTexto) {
  *
  * O hook antigo imprimia o cabeçalho seguido de nada quando o SKILL.md não era
  * legível: a sessão subia sem regra nenhuma e ninguém ficava sabendo. O próprio
- * texto injetado dizia "silêncio faz o Luís acreditar que a regra rodou" — e o
+ * texto injetado dizia "silêncio faz o usuario acreditar que a regra rodou" — e o
  * hook cometia exatamente essa falha. Reproduzido em 2026-08-09 rodando o hook
  * com RFM_ROOT numa pasta vazia.
  */
@@ -162,7 +162,7 @@ function blocoRegras(regras, caminhoSkill) {
     'Nenhuma regra numerada está valendo nesta sessão: nem responder tudo na ordem,',
     'nem o radar de escopo, nem os guarda-corpos de agente e de jornada.',
     '',
-    '**Diga isto ao Luís na primeira resposta do turno, antes de qualquer trabalho.**',
+    '**Diga isto ao usuario na primeira resposta do turno, antes de qualquer trabalho.**',
     'Não trabalhe como se as regras estivessem ativas — elas não estão.',
   ].join('\n');
 }
@@ -322,7 +322,7 @@ function resumirFoco(focoText) {
  *
  * Parágrafo que não casa com padrão nenhum cai no fim da fila de propósito: é o
  * lugar da prosa explicativa do arquivo, que documenta o formato do FOCO.md e não
- * diz nada sobre o que o Luís está entregando.
+ * diz nada sobre o que o usuario está entregando.
  */
 const PRIORIDADE_FOCO = [
   { rank: 0, teste: (b) => /^#{1,2} /.test(b) || /^Último avanço datado:/.test(b) },
@@ -430,7 +430,7 @@ function priorizarFoco(focoResumido, teto) {
  * @param {(pid:number)=>boolean} vivo  predicado de vida (injetável no teste)
  */
 /**
- * Sessão de SUBAGENTE, não janela do Luís.
+ * Sessão de SUBAGENTE, não janela do usuario.
  *
  * Subagente despachado com `isolation: "worktree"` abre sessão própria, com cwd
  * dentro de `.claude/worktrees/`. Ela entrava no radar como se fosse mais uma
@@ -477,7 +477,7 @@ function processoVivo(pid) {
  *
  * Foi este bloco que estourou a injeção de 2026-08-10 (8.306 B para um teto de
  * 8.000): 21 janelas vivas, 7 pastas. Ele é o único pedaço do payload que cresce
- * com quantas janelas o Luís abriu no dia — os outros crescem com texto escrito,
+ * com quantas janelas o usuario abriu no dia — os outros crescem com texto escrito,
  * que alguém revisa; este ninguém revisa.
  *
  * @param {Array<{cwd?: string, trabalhando?: boolean, minutos?: number}>} entradas
@@ -502,7 +502,7 @@ function resumirSessoes(entradas, ociosidade, teto = TETOS.SESSOES_MAX_BYTES) {
     .map((p) => {
       const estado = p.trabalhando
         ? `Claude trabalhando (turno em curso há ${p.minutos} min)`
-        : `esperando o Luís há ${p.minutos} min`;
+        : `esperando o usuario há ${p.minutos} min`;
       const extras = p.janelas > 1 ? ` [${p.janelas} janelas nesta pasta; estado da mais recente]` : '';
       return `- ${p.pasta} — ${estado}${extras}`;
     });
@@ -595,7 +595,7 @@ function travarOrcamento(payload, orcamento = TETOS.ORCAMENTO_BYTES) {
     'harness. O corte come de trás para frente: primeiro as dependências de',
     'ambiente e o radar de janelas, depois o foco, e só num estouro grande as',
     'últimas regras. **Nada do que foi cortado está valendo nesta sessão** — trate',
-    'como bloqueio de ambiente (regra 14), diga isto ao Luís em uma linha, carregue',
+    'como bloqueio de ambiente (regra 14), diga isto ao usuario em uma linha, carregue',
     '`Skill(rainforest-mind)` antes de aplicar regra e leia o FOCO.md antes de medir',
     'escopo. Conserto: encurtar os núcleos no SKILL.md, apertar os tetos do rodapé',
     '(`SESSOES_MAX_BYTES`) ou revisar o orçamento aqui.',
@@ -630,7 +630,7 @@ function montarContexto(o) {
   // O imóvel mais caro do payload é o começo: é o único pedaço que sobrevive a um
   // corte. Ele carrega a CONVOCAÇÃO, não a identidade — "quem eu sou" não faz nada
   // acontecer; "carregue a skill antes de aplicar a regra marcada" faz.
-  const cabecalho = `RAINFOREST MIND ATIVO — memória de trabalho externa e radar de escopo do Luís (perfil 2e).
+  const cabecalho = `RAINFOREST MIND ATIVO — memória de trabalho externa e radar de escopo do usuario (perfil 2e).
 
 **Isto é o NÚCLEO das regras, não o texto completo.** Regra marcada com ↳ tem
 elaboração que não está aqui — critérios finos, comandos exatos, incidentes.
@@ -660,7 +660,7 @@ ${regras}
   const focoResumido = resumirFoco(o.focoText).trim();
   let foco;
   if (!focoResumido) {
-    foco = '(nenhum foco declarado — sugira /foco <texto> se o Luís disser no que precisa entregar)';
+    foco = '(nenhum foco declarado — sugira /foco <texto> se o usuario disser no que precisa entregar)';
   } else if (tetoFoco < TETOS.FOCO_MIN_BYTES) {
     // Abaixo do piso, um excerto é pior que um ponteiro: sobrariam o título e o
     // cabeçalho, e o critério de pronto — que é contra o que a regra 3 mede —

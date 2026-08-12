@@ -75,7 +75,7 @@ function main() {
     }
     const doProjeto = linhas.filter((o) => combina(o.projeto, alvo));
 
-    // OBSERVAÇÃO é o registro de quando o Luís teve de corrigir a saída (regra 13).
+    // OBSERVAÇÃO é o registro de quando o usuario teve de corrigir a saída (regra 13).
     // É a fonte mais densa que existe aqui: cada linha é um defeito que já
     // aconteceu neste projeto, com o `ao_colher` dizendo o que fazer a respeito.
     saida.observacoes = doProjeto
