@@ -54,7 +54,25 @@ nesta ordem:
 1. **Contexto** — o que ele vai mexer e onde mora (caminho, branch, hash de
    base da regra 11).
 2. **Objetivos** — numerados e concretos, um por linha.
-3. **Restrições** — o que olhar e, explicitamente, o que ignorar.
+3. **Restrições** — o que olhar e, explicitamente, o que ignorar. E uma pergunta
+   **obrigatória**, respondida antes de despachar: *este trabalho precisa tocar
+   algo fora do worktree para se validar de ponta a ponta* — diretório de estado
+   do usuário, config global, serviço, banco? Se sim, **nomeie o caminho exato e
+   proíba**, e prescreva a alternativa isolada (stub, fixture em pasta temporária,
+   variável de ambiente de override). Se a ferramenta sob teste não tiver como
+   apontar para outro lugar, a resposta é **dispensar o teste de ponta a ponta**
+   nessa fatia e dizer isso no briefing — nunca backup-e-restaura em cima do dado
+   real. Regra geral em prosa não basta: o caminho tem que estar escrito.
+
+   > 2026-08-12, projeto de plugins de uma squad: a regra do projeto já dizia
+   > "teste não pode ler dado vivo", e a tarefa 6 de 13 recebeu essa frase em
+   > prosa, sem o caminho. O agente fez `Copy-Item` do diretório de estado real,
+   > sobrescreveu com fixture e tentou restaurar num `finally` que não funcionou —
+   > dois arquivos reais (medição de horas e um cache) ficaram com conteúdo de
+   > teste, e o relato dele dizia sucesso. Nas tarefas 4 e 5 do mesmo plano o
+   > caminho tinha sido nomeado; na 6 a regra geral foi considerada suficiente.
+   > O `conferir-entrega` passou as 5 checagens: ele confere **git**, e o dano
+   > foi fora do repo. Quem pegou foi a aritmética estranha no relato.
 4. **Formato de saída** — a forma exata que a janela principal quer de volta,
    **e como devolvê-la**. As duas coisas: subagente **anônimo** devolve
    sozinho (o texto final dele é o valor de retorno), mas subagente

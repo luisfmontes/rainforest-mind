@@ -643,9 +643,9 @@ insistir no bridge. Em 2026-08-10 o bridge devolvia 403 para **toda** mídia,
 inclusive uma de 14 minutos atrás, então não é expiração.
 
 **15. Agente não altera o ambiente do usuário.** Subagente **não** instala software,
-não mexe em PATH, env, config global nem serviço — ferramenta ausente, **para e
-reporta**. Vale para a janela principal: instalação pergunta antes. Env se lê por
-`printenv NOME`, nunca por dump filtrado.
+não mexe em PATH, env, config, serviço **nem dado fora do worktree** — ferramenta
+ausente, **para e reporta**. Vale para a janela principal: instalação pergunta antes.
+Env se lê por `printenv NOME`, nunca por dump filtrado.
 <!-- detalhe -->
 O worktree da regra 11 isola o
 repositório, não a máquina — e a proibição de git destrutivo foi lida como
@@ -657,6 +657,33 @@ decide é a janela principal, com a palavra do usuário. O mesmo vale para a
 janela principal diante de qualquer instalação: é ação no ambiente, pergunta
 antes. E decisão que vive só na cabeça da janela principal não vale — se ela
 decidiu não instalar, isso vai **no briefing**.
+
+**Dado fora do repositório é a outra metade de "isola o repositório, não a
+máquina", e é a que passa desapercebida.** Diretório de estado do usuário
+(`~/.rainforest`, `~/.claude/<coisa>`, cache, banco local) fica **fora** do
+worktree: escrever nele é alterar o ambiente do usuário do mesmo jeito que um
+`winget` — só que sem instalador nenhum para chamar a atenção. Vale
+especialmente para **teste**: teste que só se valida tocando o dado vivo não é
+teste de ponta a ponta, é operação em produção. A alternativa é stub, fixture em
+pasta temporária ou variável de override; não havendo nenhuma das três, a fatia
+**dispensa** o teste e isso vai escrito. E o padrão a barrar por nome é
+**backup-e-restaura em cima do dado real** — ele parece cuidadoso e transfere o
+risco para o `finally` funcionar.
+
+E o mecanismo não pega isto: o `conferir-entrega.cjs` confere **git**, então dano
+fora do repositório passa pelas cinco checagens. Aqui a rede é a regra 12 pela
+aritmética — número que não fecha no relato é gatilho de auditoria.
+
+> 2026-08-12, projeto de plugins de uma squad, tarefa 6 de um plano de 13: a
+> regra do projeto ("teste não pode ler dado vivo") entrou no briefing em prosa,
+> sem o caminho — nas tarefas 4 e 5 ele tinha sido nomeado. O agente fez
+> `Copy-Item` do diretório de estado real, sobrescreveu com fixture e restaurou
+> num `finally` que não funcionou: dois arquivos reais (medição de horas e um
+> cache de enriquecimento) ficaram com conteúdo de teste, e o relato dizia
+> sucesso. As 5 checagens do `conferir-entrega` passaram, porque o dano foi fora
+> do git. O que pegou foi um "803 passed, 17 skipped" que não fechava com o
+> esperado, e o snapshot que o próprio projeto já tinha recuperou a medição sem
+> perda.
 
 > 2026-08-08: dos 12 agentes que destilaram livros para o vault, um precisou
 > converter um PDF escaneado em imagem e instalou o Poppler via winget por
