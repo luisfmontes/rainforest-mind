@@ -35,6 +35,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 
 // A raiz aqui é a do PROJETO em que se trabalha, e **não** a cadeia de dados do
 // rainforest (`hooks/lib/raiz.cjs`). São dois tipos de estado diferentes, e
@@ -165,6 +166,60 @@ function faltando(estado, estagio) {
   return (PRE_REQUISITOS[estagio] || []).filter((r) => !estaFechado(r, estado[r]));
 }
 
+// ------------------------------------------------- trava de fechamento (D5)
+//
+// Fechar estágio roda a checagem correspondente do `conferir-esteira.cjs`, e
+// recusa com exit 2 se ela falhar. O motivo de a trava morar AQUI, e não numa
+// instrução dentro da skill: enquanto o veredito for redigido pelo mesmo agente
+// que ele deveria travar, ele não trava nada — é o mesmo argumento que fez este
+// arquivo existir, e em 2026-08-13 ele se provou três vezes numa tarde, com um
+// agente aprovando a própria entrega em três rodadas seguidas.
+//
+// `marcar` é o gargalo único por onde a esteira inteira já passa, e já recusava
+// com exit 2 por pré-requisito aberto. A trava nova é a mesma forma, não
+// mecanismo novo.
+//
+// **Só age quando o arquivo alvo existe.** Projeto que não usa design/plano não
+// pode passar a ser barrado por uma checagem sobre arquivos que ele nunca teve —
+// isso é invariante, não detalhe: a trava foi desenhada para apertar quem já
+// está na esteira, nunca para tornar a esteira obrigatória.
+const CHECADOR = path.join(__dirname, 'conferir-esteira.cjs');
+
+function docDe(tipo, slug) {
+  return path.join(RAIZ, 'docs', 'rainforest', tipo, `${slug}.md`);
+}
+
+/** @returns {string|null} mensagem de recusa, ou null se passou/não se aplica */
+function conferirFechamento(estagio, slug, extra) {
+  if (!fs.existsSync(CHECADOR)) return null; // plugin antigo: não inventa trava
+
+  let args = null;
+  if (estagio === 'design' && fs.existsSync(docDe('design', slug))) {
+    args = ['design', '--slug', slug];
+  } else if (estagio === 'plano' && fs.existsSync(docDe('planos', slug))) {
+    args = ['cobertura', '--slug', slug];
+  } else if (estagio === 'revisar' && fs.existsSync(docDe('planos', slug))) {
+    // Sem os dois pontos do diff não há como provar ausência de creep, e fechar
+    // a revisão sem essa prova é exatamente o buraco que a decisão D4 fecha.
+    const base = extra && extra.base;
+    const head = extra && extra.head;
+    if (!base || !head) {
+      return `RECUSADO: fechar 'revisar' exige 'base' e 'head' no --json.\n`
+        + `Sem os dois pontos do diff nao ha como provar que o trabalho nao tocou\n`
+        + `arquivo fora do plano. Ex.: --json '{"achados":0,"base":"<ref>","head":"<ref>"}'`;
+    }
+    args = ['creep', '--slug', slug, '--base', String(base), '--head', String(head)];
+  }
+  if (!args) return null;
+
+  // Processo filho de propósito: a mensagem útil (qual decisão ficou órfã, que
+  // arquivo não casou com glob nenhum) já está no checador, e reimplementá-la
+  // aqui criaria duas versões da mesma regra para divergirem.
+  const r = spawnSync(process.execPath, [CHECADOR, ...args], { stdio: 'inherit' });
+  if (r.status === 0) return null;
+  return `RECUSADO: '${estagio}' nao fecha enquanto a checagem acima nao passar.`;
+}
+
 // ---------------------------------------------------------------- CLI
 
 function arg(nome, obrigatorio = true) {
@@ -275,6 +330,15 @@ function main() {
       } catch (err) {
         console.error(`erro: --json nao e JSON valido: ${err.message}`);
         process.exit(1);
+      }
+    }
+    // Depois do `--json`, porque o `revisar` tira `base` e `head` de lá; e antes
+    // do `gravar`, porque estado que já foi para o disco não desfecha.
+    if (status === (FECHADO[estagio] || 'ok')) {
+      const recusa = conferirFechamento(estagio, slug, extra);
+      if (recusa) {
+        console.error(recusa);
+        process.exit(2);
       }
     }
     estado[estagio] = { ...estado[estagio], ...extra, status, em: hoje() };
