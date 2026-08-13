@@ -7,7 +7,6 @@
 // trabalhando (prompt_ts > stop_ts) nunca conta como ocioso.
 const fs = require('fs');
 const path = require('path');
-const { processoVivo } = require('./lib/contexto-sessao.cjs');
 const { resolverRaiz } = require('./lib/raiz.cjs');
 
 // A MESMA cadeia que o hook de abertura usa para LER. Era
@@ -19,6 +18,25 @@ const { resolverRaiz } = require('./lib/raiz.cjs');
 //
 // Quem lê e quem escreve o mesmo arquivo resolvem o caminho pela mesma função,
 // ou a divergência aparece como ausência silenciosa de dado.
+
+// Nota sobre PID: em 2026-08-13 foi tentado gravar o PID do claude.exe subindo
+// a árvore de processos (bash -> bash -> bash -> claude.exe). Isso foi abandonado.
+// Causa 1: shell efêmera. O hook roda em uma shell criada para executá-lo, e essa
+// shell morre imediatamente. ParentProcessId fica gravado no kernel mas a cadeia
+// é quebrada: `bash.exe (pid=2940) tem ppid=46360`, mas 46360 não existe mais.
+// Causa 2: elo morto permanente. Sem acesso ao processo que foi, o walk quebra
+// antes de chegar a claude.exe, não importa quantas vezes é tentado. Funciona
+// em teste isolado (cadeia viva) mas falha em produção (cadeia com elo morto).
+// Causa 3: linha de comando sem identidade. `"...\claude.exe" --dangerously-skip-permissions`
+// não tem session id, não tem cwd, não tem projeto — impossível casar pela CLI.
+//
+// Desenho aprovado: podar só por IDADE (24h). SessionEnd cuida do fechamento
+// limpo (ação "end"). Custo aceito, nomeado: janela fechada no X ou por crash
+// fica no arquivo até o corte de 24 h, pode ser lida como janela do foco ociosa.
+// Isso é pior que perder o PID de verdade (cegueira), mas melhor que falhar a
+// resolver (ficar travado aguardando resposta). Radar multi-janela depende de
+// SessionEnd ser chamado — é o mecanismo real de limpeza.
+
 const CODIGO_ROOT = path.resolve(__dirname, '..');
 const ROOT = resolverRaiz({ plugin: CODIGO_ROOT }).raiz || CODIGO_ROOT;
 const STATE = path.join(ROOT, 'sessoes.json');
@@ -42,21 +60,16 @@ if (acao === 'end') {
 } else {
   const s = state[data.session_id] || {};
   if (data.cwd) s.cwd = data.cwd;
-  // O PID do processo que chamou o hook é o claude.exe desta sessão. É o que
-  // permite a varredura da abertura derrubar o que o SessionEnd não alcança:
-  // janela fechada no X, crash e reboot não disparam evento nenhum.
-  s.pid = process.ppid;
   s[evento] = Date.now();
   state[data.session_id] = s;
 }
 
-// Poda: processo morto sai imediatamente; sem atividade há 24h+ também. A idade
-// continua sendo a rede embaixo — cobre entrada antiga sem `pid` e PID reciclado
-// depois de um reboot.
+// Poda: sem atividade há 24h+ sai. Idade é a rede embaixo — cobre processamento
+// de crash, reboot, janela fechada no X. SessionEnd cobre fechamento limpo.
 const corte = Date.now() - 24 * 3600 * 1000;
 for (const [id, x] of Object.entries(state)) {
   const ult = Math.max(x.prompt_ts || 0, x.stop_ts || 0);
-  if (ult < corte || (x.pid && id !== data.session_id && !processoVivo(x.pid))) delete state[id];
+  if (ult < corte) delete state[id];
 }
 
 // ponytail: escrita direta sem lock — última escrita vence, dano máximo é
