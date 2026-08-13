@@ -540,6 +540,94 @@ checa "conta o que saiu, dos dois tipos"   tem     "2 marcos adiante e 1 já cum
 checa "regra de leitura da data fica"      tem     "datas sao as reunioes"      "$S"
 
 echo
+echo
+echo "10.5 O CORTE QUE ANUNCIA O CORTE, e o cabecalho que nao fica sozinho"
+# Tres defeitos medidos em 2026-08-13 (00h), quando outra sessao escreveu um
+# compromisso novo no FOCO.md e o arquivo foi de 8.412 para 10.946 B.
+#
+# (a) O ponteiro das SECOES omitidas tinha rank 4 — o mais baixo — e era o PRIMEIRO
+#     a cair. Ele e o unico aviso de que "Fora de escopo", "Frentes" e "Concluidos"
+#     existem no arquivo: sem ele a sessao afirma escopo sem saber que ha uma secao
+#     de escopo. Agora e residente, com reserva propria dentro do teto.
+# (b) `## Compromissos com prazo` ficou na injecao SEM o conteudo dele, e cabecalho
+#     sem conteudo le como "nao ha compromisso" — afirmacao, e falsa: havia um prazo
+#     para o dia seguinte.
+# (c) O preenchimento era guloso e a prosa-meta de 160 B (rank 9) ficou enquanto o
+#     compromisso de 456 B (com data) saiu.
+FOCO_PONTEIRO="## Ativo
+Último avanço datado: 2026-08-12.
+
+**Foco de teste** \`[trabalho]\` — prazo final 2026-08-25.
+
+Marcos (as datas sao as reunioes):
+- **Entrega 1 — 14/08**: marco de cronograma, com texto do tamanho de um marco real
+  para que a disputa por espaco aconteca de verdade em vez de tudo caber e o teste
+  nao medir nada — foi assim que a primeira versao deste bloco passou verde sem
+  cortar uma linha.
+
+## Compromissos com prazo
+
+- **PRAZO-DE-AMANHA até 2026-08-13**: o compromisso com data, que e o mais proximo,
+  tambem com o peso de um compromisso real escrito por quem tem uma entrega no dia
+  seguinte e precisa que ela chegue na abertura da sessao, nao no ponteiro.
+
+(Seções do FOCO.md omitidas desta injeção: Fora de escopo, Frentes, Concluídos. Elas continuam no arquivo — **leia o FOCO.md antes de afirmar**.)"
+P="$(prioriza "$FOCO_PONTEIRO" 700)"
+checa "(a) ponteiro das SECOES sobrevive ao teto"   tem     "omitidas desta injeção"  "$P"
+checa "(c) compromisso COM DATA entra"              tem     "PRAZO-DE-AMANHA"         "$P"
+checa "(c) e o marco de cronograma cede a vez"      nao_tem "Entrega 1 — 14/08"       "$P"
+checa "o que saiu continua nomeado"                 tem     "Fora desta injeção"      "$P"
+
+# (b) Secao INTEIRA fora => o cabecalho vai com ela. Teto minusculo para forcar.
+Q="$(prioriza "$FOCO_PONTEIRO" 380)"
+if printf '%s' "$Q" | grep -q "## Compromissos com prazo" && ! printf '%s' "$Q" | grep -q "PRAZO-DE-AMANHA"; then
+  falhou=$((falhou+1)); echo "  FALHA (b) cabecalho ficou orfao — le como 'nao ha compromisso'"
+else
+  ok=$((ok+1)); echo "  ok    (b) cabecalho nao fica sem o conteudo da secao"
+fi
+# ...mas cabecalho cuja secao AINDA TEM conteudo mantido nao pode cair. Foi o erro
+# da primeira versao desta regra: ela olhava o vizinho imediato (a prosa-meta) e
+# derrubava `## Ativo`, levando junto a linha `Último avanço datado`.
+checa "cabecalho com conteudo mantido FICA"         tem     "## Ativo"                "$P"
+checa "e a linha do avanco datado vai com ele"      tem     "Último avanço datado"    "$P"
+
+# MUTACAO: sem a promocao do compromisso datado, quem entra e o marco — e o prazo
+# mais proximo sai. E o que prova que a regra nova governa o veredito.
+# MUTACAO com fixture PROPRIO e blocos gordos, de proposito: reaproveitando o de
+# cima a decisao ficava no fio da navalha (em 700 nem o marco cabia; em 900 os dois
+# cabiam) e o teste mediria o APERTO em vez da PRIORIDADE. Com dois blocos de ~600 B
+# e teto 800, exatamente um dos dois entra — a margem e de ~180 B, nao de ~20, e o
+# unico fator que muda entre as duas rodadas e a presenca da data.
+ENCHE="texto de enchimento para o bloco ter o peso de um bloco real, porque disputa
+  por espaco medida com bloco de duas linhas nao mede disputa nenhuma — foi assim
+  que a primeira versao deste teste passou verde sem cortar uma unica linha, e
+  bateria que passa sem exercitar o mecanismo esta testando outra coisa."
+FOCO_DISPUTA_DATA="## Ativo
+Último avanço datado: 2026-08-12.
+
+**Foco de teste** \`[trabalho]\` — prazo final 2026-08-25.
+
+Marcos (as datas sao as reunioes):
+- **Entrega 1 — 14/08**: marco de cronograma. $ENCHE
+
+## Compromissos com prazo
+
+- **PRAZO-DE-AMANHA até 2026-08-13**: CORPO-DO-COMPROMISSO. $ENCHE"
+FOCO_SEM_DATA="${FOCO_DISPUTA_DATA/PRAZO-DE-AMANHA até 2026-08-13/PRAZO-SEM-DATA-NENHUMA}"
+# Os dois blocos em disputa pesam ~380 B cada e a base ~130: com 800 (menos 120 de
+# reserva do ponteiro) cabe a base + UM deles, nunca os dois. Conta feita, nao chutada.
+COM="$(prioriza "$FOCO_DISPUTA_DATA" 800)"
+SEM="$(prioriza "$FOCO_SEM_DATA" 800)"
+checa "com data: o compromisso entra"               tem     "PRAZO-DE-AMANHA"      "$COM"
+checa "com data: o marco cede"                      nao_tem "Entrega 1 — 14/08"    "$COM"
+checa "sem data: o MARCO entra"                     tem     "Entrega 1 — 14/08"    "$SEM"
+# A assercao olha o CORPO do bloco, nao o nome: o nome aparecer no ponteiro e o
+# comportamento certo — foi o que esta checagem acusou como falha na primeira rodada,
+# e quem estava errado era ela.
+checa "sem data: o compromisso cede"                nao_tem "CORPO-DO-COMPROMISSO"  "$SEM"
+checa "sem data: mas o ponteiro NOMEIA quem saiu"   tem     "PRAZO-SEM-DATA"        "$SEM"
+checa "com data: o corpo do compromisso chega"      tem     "CORPO-DO-COMPROMISSO"  "$COM"
+
 echo "11. SESSAO ENCERRADA — janela fechada some do radar"
 # A raiz do estouro de 2026-08-10: o sessoes.json nao tinha nocao de sessao
 # ENCERRADA. Media: 3 claude.exe rodando contra 18 entradas contadas como vivas.

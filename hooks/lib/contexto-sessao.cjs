@@ -369,6 +369,24 @@ const PRIORIDADE_FOCO = [
   // preenchimento é guloso, levou o `- (nenhum além do foco ativo)` de 30 B e
   // deixou os Marcos — com a entrega de sexta — fora da injeção. Empate resolvido
   // por ordem no arquivo não é prioridade, é acaso.
+  // CONTEÚDO DE "Compromissos com prazo" ENTRA ANTES DOS MARCOS, e por construção:
+  // compromisso datado é o prazo mais PRÓXIMO, marco é cronograma. A regra 3 diz que
+  // prazo é o que mais dói perder, e em 2026-08-13 (00h) a conta ficou explícita — o
+  // foco recebe o que as regras deixam (1.686 B de um orçamento de 8.000 com 5.513 de
+  // núcleos), e o compromisso de hoje (456 B) e os Marcos (475 B) não cabem juntos.
+  // Sem este rank, quem entrava era o bloco de cronograma e quem saía era a entrega
+  // do dia — nomeada no ponteiro, mas fora da injeção.
+  // ...mas só o compromisso que TEM DATA. Promover a seção inteira devolveria o
+  // acidente de 11/08 por outra porta: o placeholder `- (nenhum além do foco ativo)`,
+  // de 30 B, passaria na frente dos Marcos de novo. Compromisso com prazo sem data
+  // não é prazo, e cai no rank de lista comum. Duas checagens da bateria (marco
+  // sobrevive ao corte, marco vence a lista pequena) pegaram isso na hora.
+  {
+    rank: 1,
+    teste: (b, secao) =>
+      /^Compromissos com prazo/i.test(secao || '') &&
+      /\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}/.test(b),
+  },
   { rank: 2, teste: (b) => /^Marcos/.test(b) },
   { rank: 3, teste: (b) => /^- /.test(b) },
   { rank: 4, teste: (b) => /^Avanços:/.test(b) || /^\(Seções do FOCO\.md omitidas/.test(b) },
@@ -397,27 +415,85 @@ function priorizarFoco(focoResumido, teto) {
   const texto = String(focoResumido || '').trim();
   if (!texto || Buffer.byteLength(texto, 'utf8') <= teto) return texto;
 
-  const blocos = texto.split(/\n{2,}/).map((b, ordem) => {
-    const t = b.trim();
-    const regra = PRIORIDADE_FOCO.find((p) => p.teste(t));
-    return { texto: t, ordem, rank: regra ? regra.rank : 9 };
-  });
+  // O ponteiro das SEÇÕES omitidas sai da fila e passa a ser RESIDENTE.
+  //
+  // Ele tinha `rank: 4` — o mais baixo da tabela —, então era o PRIMEIRO bloco a
+  // cair quando o teto apertava. E ele é o único aviso de que "Fora de escopo",
+  // "Frentes" e "Concluídos" existem no arquivo: sem ele a sessão afirma escopo sem
+  // saber que existe uma seção de escopo, que é a afirmação falsa mais barata que
+  // este bloco pode produzir.
+  //
+  // Medido em 2026-08-12 (23h40): outra sessão escreveu um compromisso novo no
+  // FOCO.md, o arquivo foi de 8.412 para 10.946 B, e a injeção passou a sair SEM o
+  // ponteiro — `omitidas desta injeção: false`. O corte que anuncia o corte não pode
+  // ser cortável, e é a mesma correção que o bloco de sessões já tinha: reserva para
+  // o próprio ponteiro dentro do teto.
+  const RE_PONTEIRO_SECOES = /^\(Seções do FOCO\.md omitidas/;
+  const partes = texto.split(/\n{2,}/).map((b) => b.trim());
+  const ponteiroSecoes = partes.find((b) => RE_PONTEIRO_SECOES.test(b)) || '';
+  // A SEÇÃO de cada bloco entra na decisão de prioridade: "- Telas entregues até
+  // 13/08" é um item de lista igual a qualquer outro se olhado sozinho, e é a seção
+  // que diz que ele é um compromisso com prazo.
+  let secaoAtual = '';
+  const blocos = partes
+    .filter((b) => !RE_PONTEIRO_SECOES.test(b))
+    .map((b, ordem) => {
+      if (/^#{1,2} /.test(b)) secaoAtual = b.split('\n')[0].replace(/^#+\s*/, '').trim();
+      const regra = PRIORIDADE_FOCO.find((p) => p.teste(b, secaoAtual));
+      return { texto: b, ordem, rank: regra ? regra.rank : 9, secao: secaoAtual };
+    });
 
   const fila = [...blocos].sort((a, b) => a.rank - b.rank || a.ordem - b.ordem);
   const mantidos = [];
   const fora = [];
   let usado = 0;
   // Reserva para o ponteiro de omissão: ele PRECISA caber, senão o corte vira
-  // silencioso — a falha que este arquivo inteiro existe para não cometer.
-  const reserva = 120;
+  // silencioso — a falha que este arquivo inteiro existe para não cometer. O
+  // ponteiro das seções entra na reserva pelo tamanho REAL dele, porque ele é
+  // texto já montado (o outro só existe depois de saber quem saiu).
+  const reserva = 120 + (ponteiroSecoes ? Buffer.byteLength(ponteiroSecoes, 'utf8') + 2 : 0);
+  // PRIORIDADE É ABSOLUTA: no primeiro bloco que não couber, para. Nada de rank
+  // pior entra depois dele.
+  //
+  // O preenchimento era guloso — seguia procurando bloco pequeno que caiba —, e o
+  // efeito medido em 2026-08-12 foi o pior possível: a prosa-meta de 180 B (rank 9,
+  // texto sobre o FORMATO do arquivo) ficou, e o compromisso com prazo de HOJE, de
+  // ~450 B e rank 3, saiu. É o mesmo acidente que já tinha criado o rank próprio dos
+  // Marcos em 11/08, e ele volta sempre que um bloco importante é grande. Espaço que
+  // sobra e não é usado é preço de prioridade honesta: o ponteiro nomeia o que saiu,
+  // então nada disso é silencioso.
   for (const bloco of fila) {
     const custo = Buffer.byteLength(bloco.texto, 'utf8') + 2;
-    if (usado + custo <= teto - reserva) {
+    if (fora.length === 0 && usado + custo <= teto - reserva) {
       mantidos.push(bloco);
       usado += custo;
     } else {
       fora.push(bloco);
     }
+  }
+
+  // CABEÇALHO NÃO FICA SEM O CONTEÚDO DELE. "## Compromissos com prazo" seguido de
+  // nada lê como "não há compromisso", que é afirmação — e pode ser falsa: em
+  // 2026-08-12 havia um prazo para o dia seguinte embaixo dele. A regra já estava
+  // escrita no comentário da tabela de prioridade e nada a fazia valer.
+  // Órfão é o cabeçalho cuja seção INTEIRA saiu — não o cabeçalho cujo bloco
+  // seguinte saiu. A primeira versão desta regra usava o vizinho imediato e
+  // derrubou `## Ativo` porque o bloco depois dele é a prosa-meta (rank 9): junto
+  // com o cabeçalho foi embora a linha `Último avanço datado`, que mora nele. Duas
+  // checagens da bateria pegaram isso na hora.
+  const mantidosPorOrdem = new Set(mantidos.map((b) => b.ordem));
+  const ehCabecalho = (b) => /^#{1,2} /.test(b.texto);
+  for (const bloco of [...mantidos]) {
+    if (!ehCabecalho(bloco)) continue;
+    const daSecao = blocos.filter(
+      (b) => b.ordem > bloco.ordem && !ehCabecalho(b) &&
+        !blocos.some((h) => ehCabecalho(h) && h.ordem > bloco.ordem && h.ordem < b.ordem)
+    );
+    if (!daSecao.length) continue; // cabeçalho sem conteúdo próprio (o título)
+    if (daSecao.some((b) => mantidosPorOrdem.has(b.ordem))) continue;
+    mantidos.splice(mantidos.indexOf(bloco), 1);
+    fora.push(bloco);
+    mantidosPorOrdem.delete(bloco.ordem);
   }
 
   if (!mantidos.length) return limitarBytes(texto, teto, 'Foco');
@@ -427,7 +503,11 @@ function priorizarFoco(focoResumido, teto) {
   // blocos até caber de verdade — a versão que confiava na estimativa passou 25 B
   // do teto e fez a trava de orçamento cortar o próprio ponteiro.
   const montar = () => {
-    const corpo = [...mantidos].sort((a, b) => a.ordem - b.ordem).map((b) => b.texto).join('\n\n');
+    const so = [...mantidos].sort((a, b) => a.ordem - b.ordem).map((b) => b.texto).join('\n\n');
+    // Residente: entra sempre, e antes do outro ponteiro. Os dois anunciam coisas
+    // diferentes — este, as seções que o `resumirFoco` trocou por ponteiro; o de
+    // baixo, os blocos que não couberam no teto.
+    const corpo = ponteiroSecoes ? `${so}\n\n${ponteiroSecoes}` : so;
     if (!fora.length) return corpo;
     const nomes = fora.map((b) => nomeDoBloco(b.texto)).filter(Boolean);
     const mostrados = nomes.slice(0, 3).join('; ') + (nomes.length > 3 ? `; +${nomes.length - 3}` : '');
