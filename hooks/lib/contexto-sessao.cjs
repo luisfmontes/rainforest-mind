@@ -132,7 +132,16 @@ const SECOES_RESIDENTES = ['Ativo', 'Compromissos com prazo'];
 
 /** Extrai o bloco de regras do SKILL.md e remove as citações. */
 function filtrarRegras(skillText) {
-  const bruto = (String(skillText || '').split('## As regras')[1] || '').split('## Comando')[0] || '';
+  // CRLF -> LF ANTES de qualquer coisa. Nao e cosmetica: no Windows o
+  // `core.autocrlf=true` (padrao) reescreve o SKILL.md no checkout, e cada linha
+  // ganha um `\r` que vai inteiro para dentro da injecao de TODA sessao. Em
+  // 2026-08-13 o arquivo voltou de um merge com 827 CRLF, e 56 desses bytes
+  // caiam dentro dos nucleos — a catraca acusou 5648 B onde o autor tinha
+  // medido 5592 B, sem uma linha de regra ter mudado. Pior que o teto: o mesmo
+  // commit custava bytes diferentes em maquinas diferentes, e ninguem via.
+  // `\r` na injecao nao carrega significado nenhum; e desperdicio puro.
+  const texto = String(skillText || '').replace(/\r\n/g, '\n');
+  const bruto = (texto.split('## As regras')[1] || '').split('## Comando')[0] || '';
   return bruto.replace(CITACAO, '').replace(/\n{3,}/g, '\n\n').trim();
 }
 
