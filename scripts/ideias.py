@@ -69,7 +69,11 @@ CAMPOS_PROIBIDOS_NO_INPUT = (
     "status", "plantada_em", "colhida_em", "unificada_em", "unificada_em_id",
     "colheita_iniciada_em",
 )
-STATUS_CONHECIDOS = ("plantada", "em-colheita", "colhida", "unificada")
+# `descartada` entrou no .cjs em 2026-08-12. O gemeo NAO ganha o comando `descartar`
+# — ele fica congelado no contrato antigo de proposito —, mas precisa SABER LER o
+# status, senao para de conseguir validar o mesmo arquivo e deixa de provar o que ele
+# existe para provar. A licao: feature nova e do .cjs; DADO novo os dois enxergam.
+STATUS_CONHECIDOS = ("plantada", "em-colheita", "colhida", "unificada", "descartada")
 TIPOS_CONHECIDOS = ("ideia", "observacao")
 ORDEM_CANONICA = (
     "id", "titulo", "descricao", "contexto", "projeto", "ao_colher", "tipo",
