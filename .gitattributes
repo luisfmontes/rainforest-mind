@@ -1,0 +1,20 @@
+# Fim de linha LF no repositorio, sempre.
+#
+# O plugin tem um teto em BYTES para o que o SessionStart injeta (catraca dos
+# nucleos, hooks/lib/contexto-sessao.cjs). Com `core.autocrlf=true` — o padrao
+# do Git no Windows — o checkout reescreve os .md em CRLF e cada linha ganha um
+# byte. Em 2026-08-13 o SKILL.md voltou de um merge com 827 CRLF: 56 bytes a
+# mais dentro dos nucleos, sem uma linha de regra ter mudado, e a catraca
+# reprovou uma branch que nao tinha tocado em regra nenhuma.
+#
+# A lib ja normaliza CRLF na leitura, entao a injecao esta protegida em
+# qualquer maquina. Isto aqui e a outra metade: o repositorio guarda LF, para
+# que `git diff` e contagem de bytes signifiquem a mesma coisa para todo mundo.
+* text=auto eol=lf
+
+# Binarios continuam intocados.
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.pdf binary
