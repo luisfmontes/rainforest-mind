@@ -41,6 +41,9 @@
     "em": "2026-08-13"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "destino": "PR #9",
+    "worktrees_removidos": 2,
+    "em": "2026-08-13"
   }
 }
