@@ -10,8 +10,9 @@ campos: `id` (kebab-case), `titulo`, `descricao`, `contexto` (de onde surgiu e
 por quê), `projeto` (**slug do `projetos.json`**, ver abaixo), `gancho`
 (obrigatório nas abertas — o gatilho concreto de retorno: que evento, data ou
 condição a traz de volta), `ao_colher` (primeiro passo, ou null), `status`
-("plantada"/"em-colheita"/"colhida"/"unificada"), `plantada_em`, e para
-colhidas `colhida_em` + `resultado`. Campo opcional `tipo`: ausente ou
+("plantada"/"em-colheita"/"colhida"/"unificada"/"descartada"),
+`plantada_em`, e para colhidas `colhida_em` + `resultado`; para descartadas
+`descartada_em` + `motivo`. Campo opcional `tipo`: ausente ou
 `"ideia"` (padrão) para ideia do usuário; `"observacao"` para as da regra 13 —
 geradas por correção dele sobre método, com `ao_colher` = mudança de regra.
 `/ideia` sem argumento lista só as ideias; observação é assunto do jardineiro
@@ -56,6 +57,16 @@ Se `$ARGUMENTS` tiver texto: avalie se a ideia está dentro do foco declarado
 
 Colher não apaga a linha: reescreve com `resultado`. Colhida ≠ apagada.
 
+**A ideia que não vai acontecer se DESCARTA, e descartar também não apaga.**
+`descartar --id <id> --motivo "<texto>"` fecha a linha com status `descartada`,
+data e **motivo obrigatório** — e é o único caminho para "tira essa ideia da
+lista". Não use `colher` para isso: colher significa **entregue**, e usar para
+descarte infla a contagem de colhidas com uma não-entrega. O `motivo` é o que
+separa *decidido* de *esquecido*; sem ele a mesma ideia volta idêntica em três
+semanas, e o `conferir` derruba descartada sem motivo. O que já fechou
+(`colhida`, `unificada`, `descartada`) não se descarta — registro fechado é
+história.
+
 **A escrita é do script, nunca sua.** `scripts/ideias.cjs` faz trava entre
 sessões paralelas, releitura do arquivo vivo, backup, gravação atômica,
 carimbo de data pelo relógio local e conferência byte a byte das linhas que
@@ -70,6 +81,7 @@ node scripts/ideias.cjs plantar  < nova.json                    # JSON por stdin
 node scripts/ideias.cjs colher   --id <id> < resultado.json     # {"resultado": "..."}
 node scripts/ideias.cjs editar   --id <id> < mudancas.json      # só o que ainda está aberto
 node scripts/ideias.cjs iniciar  --id <id>                      # plantada → em-colheita
+node scripts/ideias.cjs descartar --id <id> --motivo "<texto>"  # não vai acontecer; motivo é obrigatório
 node scripts/ideias.cjs unificar --manter <id> --absorver <id> < fundida.json
 node scripts/ideias.cjs reparar  [--id <id> | --todas] [--conferir]
 node scripts/ideias.cjs listar   [--status plantada] [--tipo ideia|observacao|todos] [--projeto <slug>]
