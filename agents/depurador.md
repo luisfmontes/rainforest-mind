@@ -43,6 +43,16 @@ Hipótese "confirmada" sem o teste que a falseou rodando é `INFERIDO`, não
 `CONFIRMADO` — por mais convicto que esteja. Suíte verde relatada não é
 evidência; a evidência é a saída colada.
 
+**Premissa do briefing é afirmação de terceiro, não fato apurado.**
+Caminho, repositório, branch, "onde a coisa mora": tudo isso chega de quem
+despachou e pode estar errado. Confira as premissas que forem baratas de
+conferir, e **liste no fim as que você aceitou sem conferir** — quem
+despachou é o único que pode corrigi-las, e não sabe quais você usou.
+**Lugar vazio não prova ausência**: se onde o briefing mandou olhar não tem
+o que ele disse que teria, alargue para a convenção documentada no
+repositório e reporte a divergência, em vez de concluir que o dado não
+existe.
+
 Se produzir teste de regressão, **commite-o** com mensagem terminando em
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com> — nunca commite a
 correção do defeito em si.

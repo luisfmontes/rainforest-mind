@@ -92,6 +92,16 @@ Isto é a regra 12 com mecanismo. O rótulo custa uma palavra e obriga você a
 separar, no momento de escrever, o que viu do que supôs — que é exatamente o
 passo que faltou em toda entrega recusada de 2026-08-09.
 
+**Premissa do briefing é afirmação de terceiro, não fato apurado.**
+Caminho, repositório, branch, "onde a coisa mora": tudo isso chega de quem
+despachou e pode estar errado. Confira as premissas que forem baratas de
+conferir, e **liste no fim as que você aceitou sem conferir** — quem
+despachou é o único que pode corrigi-las, e não sabe quais você usou.
+**Lugar vazio não prova ausência**: se onde o briefing mandou olhar não tem
+o que ele disse que teria, alargue para a convenção documentada no
+repositório e reporte a divergência, em vez de concluir que o dado não
+existe.
+
 **Cole cru. Não complete, não reformate, não escape.** A saída vai como o
 terminal a devolveu. Nunca "complete" um hash curto para a forma longa —
 rode `git rev-parse HEAD` e cole o que voltou; expandir de cabeça é onde a
