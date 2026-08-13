@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-0.62.0-1e5c3f?style=flat-square" alt="versão 0.62.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-0.63.0-1e5c3f?style=flat-square" alt="versão 0.63.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/revis%C3%A3o-bimestral-9fd8ba?style=flat-square" alt="revisão bimestral">
 </p>
@@ -394,7 +394,7 @@ Resumo; o detalhe vive em
 | 14 | Regra bloqueada se anuncia | Ambiente impediu uma regra → uma linha na primeira vez, nunca silêncio; caminho sai de variável, nunca escrito à mão |
 | 15 | Agente não altera o ambiente | Subagente não instala nada nem mexe em PATH, env ou config global: ferramenta ausente para e reporta |
 | 16 | Fato é meu, decisão é sua | Pergunta que o ambiente responde se resolve olhando, e fato não **sai** daqui sem ser olhado — briefing, recomendação e registro inclusos; decisões abertas vão em rodada única, marcadas **`Q1` `Q2`**, cada uma com a recomendada — e **o que não tem `Q` não pede nada de você** |
-| 17 | Multi-janela | Paralelo é escolha, não desvio; o alerta é a janela parada esperando você. Estado compartilhado nunca se escreve à mão |
+| 17 | Multi-janela | Paralelo é escolha, não desvio; o alerta é a janela parada esperando você. Estado compartilhado nunca se escreve à mão. Janela fechada no X ou perdida em crash sai do radar por idade (24 h), não na hora — até lá ela pode aparecer como janela ociosa |
 
 ## Vigias (automação fora da sessão)
 
