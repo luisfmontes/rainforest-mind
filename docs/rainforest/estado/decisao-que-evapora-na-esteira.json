@@ -22,13 +22,23 @@
     "em": "2026-08-13"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "tarefas_feitas": 5,
+    "em": "2026-08-13"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "achados": 0,
+    "em": "2026-08-13",
+    "rodadas": 3,
+    "base": "ff1fd3c",
+    "head": "HEAD"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "criterios": 5,
+    "todos_batendo": true,
+    "em": "2026-08-13"
   },
   "fechar": {
     "status": "pendente"
