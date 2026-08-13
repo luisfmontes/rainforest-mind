@@ -150,12 +150,45 @@ echo
 echo "== 6. isencao do creep e escopada por slug =="
 # Isentar `docs/rainforest/design/**` inteiro escondia creep de verdade: o design
 # de OUTRA feature entrava no diff e passava. Achado 4 da revisão de 2026-08-13.
-if git -C "$RAIZ" cat-file -e ff1fd3c^{commit} 2>/dev/null; then
+#
+# A primeira versão DESTE caso era vazia — rodava com um slug fictício, e o
+# `creep` recusava antes, na leitura do plano inexistente, sem nunca chegar na
+# isenção. Dava exit 2 com a isenção escopada E com a isenção ampla: não
+# discriminava nada. Achado 5, da segunda rodada da mesma revisão.
+#
+# Por isso aqui se monta um repositório git DE VERDADE: sem dois commits reais
+# não há diff, e sem diff o `creep` não roda. Fixture que não chega no código
+# alvo é fixture que mede a própria ausência.
+#
+# Três commits, e DOIS intervalos sobre o mesmo repositório — nada é desfeito. O
+# contraste entre os dois é o que prova que a recusa vem do outro slug, e não de
+# o `creep` recusar tudo que aparece.
+G="$(mktemp -d)"; GW="$(cygpath -m "$G" 2>/dev/null || printf '%s' "$G")"
+mkdir -p "$G/docs/rainforest/design" "$G/docs/rainforest/planos"
+cp "$REAL_D" "$G/docs/rainforest/design/t.md"
+cp "$REAL_P" "$G/docs/rainforest/planos/t.md"
+git -C "$G" init -q . >/dev/null 2>&1
+git -C "$G" config user.email t@t; git -C "$G" config user.name t
+git -C "$G" add docs >/dev/null 2>&1; git -C "$G" commit -qm base >/dev/null 2>&1
+BASE_G="$(git -C "$G" rev-parse HEAD 2>/dev/null)"
+# commit A: mexe SÓ no design deste slug (isento)
+echo "- nota" >> "$G/docs/rainforest/design/t.md"
+git -C "$G" add docs >/dev/null 2>&1; git -C "$G" commit -qm so-o-proprio >/dev/null 2>&1
+SO_PROPRIO="$(git -C "$G" rev-parse HEAD 2>/dev/null)"
+# commit B: acrescenta o design de OUTRO slug (não isento, e nenhuma tarefa o declara)
+echo "# design de outra feature" > "$G/docs/rainforest/design/outra-feature.md"
+git -C "$G" add docs >/dev/null 2>&1; git -C "$G" commit -qm com-outro-slug >/dev/null 2>&1
+COM_OUTRO="$(git -C "$G" rev-parse HEAD 2>/dev/null)"
+
+if [ -n "$BASE_G" ] && [ -n "$COM_OUTRO" ] && [ "$BASE_G" != "$COM_OUTRO" ]; then
+  exige 0 "design do PROPRIO slug e isento" \
+    env RFM_ESTADO_ROOT="$GW" node "$CHECADOR" creep --slug t --base "$BASE_G" --head "$SO_PROPRIO"
   exige 2 "design de OUTRO slug no diff conta como creep" \
-    node "$CHECADOR" creep --slug outro-trabalho-qualquer --base ff1fd3c --head HEAD
+    env RFM_ESTADO_ROOT="$GW" node "$CHECADOR" creep --slug t --base "$BASE_G" --head "$COM_OUTRO"
 else
-  echo "  (pulado: commit de referencia ausente neste clone)"
+  echo "  FALHA nao consegui montar o repositorio de fixture"; falhou=$((falhou+1))
 fi
+rm -rf "$G"
 
 echo
 echo "-----------------------------------------"
