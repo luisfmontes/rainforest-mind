@@ -271,7 +271,7 @@ um relatório datado por incidente, com método e números.
 
 ## Codex e Gemini CLI: o que atravessa, e o que não
 
-O plugin é do Claude Code — os 4 hooks, os slash commands, as 13 skills e os 7
+O plugin é do Claude Code — os 4 hooks, os slash commands, as 14 skills e os 7
 subagentes são API dele e não têm equivalente nos outros hosts. Mas o **método**
 não precisa ficar preso a um agente, e a pasta de dados não sabe quem a escreveu.
 
@@ -343,6 +343,7 @@ flowchart LR
 
 | O quê | Faz |
 |-------|-----|
+| `/divergir [problema]` | **Antes** do `brainstorm`, quando o espaço é largo e a primeira ideia já está ancorando: N frames isolados em paralelo, sem se verem, e um crítico que também nasce zerado. Devolve material para decidir; não decide e não codifica |
 | `/brainstorm [assunto]` | Estágio 1: entrevista adversarial em árvore de decisão, rodada numerada com resposta recomendada — para **antes** de executar, e grava o design |
 | `/foco` | Estado da conversa: foco ativo, loops abertos, decisões tomadas |
 | `/foco <texto>` | Declara novo foco — injetado em toda sessão nova |
@@ -581,6 +582,7 @@ de escopo** e **fechamento de loops abertos**.
 - [task-observer](https://github.com/rebelytics/one-skill-to-rule-them-all) — Eoghan Henn (rebelytics.com), CC BY 4.0: o gatilho "correção do usuário = observação" e o ciclo de revisão que viraram a regra 13. Adotado o mecanismo, não o log paralelo.
 - [mattpocock/skills](https://github.com/mattpocock/skills) — MIT: a árvore de decisão e a fronteira de `grilling` (regra 16 e `/brainstorm`), o loop vermelho-capaz de `diagnosing-bugs` (skill `depurar`), névoa e fora de escopo de `wayfinder`, expandir–contrair de `to-tickets`, ponto de variação e teste da deleção de `codebase-design`, e o portão triplo do registro de decisão de `domain-modeling`. Acoplado por compressão — nenhuma das 35 skills instalada.
 - [andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills) — a rastreabilidade de cada linha do diff até o pedido, e o tratamento de código morto alheio vs. órfão da própria mudança, no `modo-dev`.
+- [UditAkhourii/adhd](https://github.com/UditAkhourii/adhd) — a tese que sustenta o `/divergir`: *tree-of-thought* alarga a busca mas caminha num contexto compartilhado, então a ancoragem persiste entre os ramos — **problema de arquitetura, não de prompt**. Contrato reimplementado a partir da descrição, sem copiar código, porque regra deste plugin não depende de plugin de terceiro. O frame `premissa`, o cenário concreto exigido na refutação e o teste que falsifica a própria skill são daqui.
 
 ## Mexer no plugin
 

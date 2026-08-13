@@ -361,6 +361,31 @@ else
   falhou=$((falhou+1)); echo "  FALHA regra gorda a mais e a catraca nao acusou — o teto nao esta medindo nada"
 fi
 
+# CRLF NAO PODE CUSTAR BYTE. No Windows o `core.autocrlf=true` (padrao) reescreve
+# o SKILL.md no checkout. Em 2026-08-13 o arquivo voltou de um merge com 827 CRLF
+# e os nucleos pularam de 5592 para 5648 B -- 56 bytes em toda sessao, sem uma
+# linha de regra ter mudado, e a catraca reprovou uma branch que nao tocou em
+# regra nenhuma. O defeito de verdade nao era o teto: era o MESMO commit custar
+# bytes diferentes em maquinas diferentes, calado.
+cat > "$RAIZ_POSIX/checa-crlf.cjs" <<'EOF'
+const fs = require('fs');
+const lib = require(process.env.LIB_PATH);
+const lf = fs.readFileSync(process.env.SKILL, 'utf8').replace(/\r\n/g, '\n');
+const crlf = lf.replace(/\n/g, '\r\n');
+const bLf = Buffer.byteLength(lib.extrairNucleo(lib.filtrarRegras(lf)), 'utf8');
+const bCrlf = Buffer.byteLength(lib.extrairNucleo(lib.filtrarRegras(crlf)), 'utf8');
+console.log(`${bLf} ${bCrlf}`);
+EOF
+LEITURA_C="$(LIB_PATH="$LIB" SKILL="$SRC/skills/rainforest-mind/SKILL.md" node "$RAIZ_POSIX/checa-crlf.cjs")"
+B_LF="$(echo "$LEITURA_C" | cut -d' ' -f1)"
+B_CRLF="$(echo "$LEITURA_C" | cut -d' ' -f2)"
+if [ -n "$B_LF" ] && [ "$B_LF" = "$B_CRLF" ]; then
+  ok=$((ok+1)); echo "  ok    o mesmo texto em CRLF custa os mesmos $B_LF B (fim de linha nao entra na conta)"
+else
+  falhou=$((falhou+1)); echo "  FALHA CRLF custa diferente de LF ($B_CRLF B vs $B_LF B) — o mesmo commit pesa"
+  echo "         diferente em maquinas diferentes, e o teto vira loteria de checkout."
+fi
+
 echo
 echo "8. NUCLEO E DETALHE — a elaboracao fica fora, e a regra cortada se anuncia"
 SKILL_NUCLEO="# Skill
