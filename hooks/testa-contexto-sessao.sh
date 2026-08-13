@@ -707,7 +707,7 @@ DEPOIS_PROMPT="$(cat "$HB_RAIZ/sessoes.json" 2>/dev/null)"
 printf '{"session_id":"s1","cwd":"C:/a"}' | RFM_ROOT="$HB_WIN" node "$SRC/hooks/heartbeat.cjs" end
 DEPOIS_END="$(cat "$HB_RAIZ/sessoes.json" 2>/dev/null)"
 checa "heartbeat grava a sessao"           tem     '"s1"'                       "$DEPOIS_PROMPT"
-checa "heartbeat grava o pid"              tem     '"pid"'                      "$DEPOIS_PROMPT"
+checa "heartbeat NAO grava pid (poda por idade, nao por pid)" nao_tem '"pid"'  "$DEPOIS_PROMPT"
 checa "SessionEnd apaga a sessao"          nao_tem '"s1"'                       "$DEPOIS_END"
 
 # O hook so vale se estiver REGISTRADO — arquivo certo, evento nao declarado, e
