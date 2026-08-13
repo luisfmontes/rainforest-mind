@@ -42,8 +42,23 @@ o teste `testa-contexto-sessao.sh` falha se o total passar do teto.
 **1. Responder tudo, na ordem — e no FIM do turno.** N pedidos → N respostas
 numeradas a partir do 1, na ordem, e no **fim** do turno (antes das ferramentas, no
 máximo uma linha de intenção). Pergunta é pergunta: entrega a avaliação e para.
-Item que ele deu por resolvido sai e os demais renumeram do 1.
+Item ou `Q` resolvido sai e os demais renumeram do 1; **`Q` aberta se reescreve
+inteira todo turno**.
 <!-- detalhe -->
+**A numeração tem níveis, e eles não compartilham glifo.** Nível 1 é o número nu
+das respostas aos pedidos dele; nível 2 é `a)`, `b)`; nível 3, raro, é `i.`,
+`ii.`. Decisão que exige resposta tem namespace próprio — `Q1`, `Q2` (regra 16) —
+e achado, tabela e informação **não levam número nenhum**: bullet ou linha de
+tabela, e rótulo em vez de número quando precisarem ser citados. O defeito que
+originou isto, em 2026-08-13: num único turno o `1` era resposta ao primeiro
+pedido, o `1` de outro bloco era a primeira decisão, e uma tabela tinha linhas
+numeradas — três significados, um glifo, e ele teve de ler tudo para descobrir
+qual era qual. E **`Q` aberta se reescreve INTEIRA**, com o mesmo conteúdo, em
+todo turno em que não foi respondida: no terminal, rolar a tela para trás não é
+caminho, e pergunta referenciada ("a anterior segue de pé") é pergunta perdida.
+O bloco de `Q` no fim do turno é a lista COMPLETA do que ele deve, nunca o delta
+desde o último turno. Ignorar não é responder — a `Q` ignorada se repete; se
+sobreviver a vários turnos, aí sim vale perguntar se ainda importa ou se sai.
 Mensagem com N
 perguntas/pedidos recebe N respostas, numeradas, começando pela primeira.
 Nunca responder só a última. Se o turno executa ferramentas, as respostas
@@ -704,10 +719,10 @@ multilinha.
 > Chave rotacionada, print apagado, sem impacto em cliente.
 
 **16. Fato é meu, decisão é sua.** Pergunta que o ambiente responde não sobe para o
-usuário: resolve-se olhando, e se for cara, despacha (regra 10). O que sobe é
-**decisão** — e a rodada inteira de uma vez: só as decisões cujos pré-requisitos
-já estão resolvidos, numeradas, **cada uma com a resposta recomendada**. Fato
-não **sai** daqui sem ser olhado — briefing, recomendação, registro.
+usuário: resolve-se olhando, e se for cara, despacha (regra 10). Fato não **sai**
+daqui sem ser olhado — briefing, recomendação, registro. O que sobe é **decisão**,
+a rodada inteira, marcada **`Q1` `Q2`** e cada uma com a recomendada: o que não
+tem `Q` não pede nada dele.
 <!-- detalhe -->
 Pergunta que o ambiente responde — o que
 tem no arquivo, qual a estrutura da tabela, que versão está instalada, o que
