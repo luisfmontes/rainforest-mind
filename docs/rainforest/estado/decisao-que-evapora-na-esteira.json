@@ -1,0 +1,36 @@
+{
+  "slug": "decisao-que-evapora-na-esteira",
+  "titulo": "Decisao e opcao que evaporam entre design, plano e revisao",
+  "criado_em": "2026-08-13",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/decisao-que-evapora-na-esteira.md",
+    "decisoes": 8,
+    "em": "2026-08-13"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/decisao-que-evapora-na-esteira.md",
+    "tarefas": 5,
+    "paralelas": [
+      1,
+      4
+    ],
+    "em": "2026-08-13"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
