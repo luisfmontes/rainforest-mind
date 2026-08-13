@@ -49,7 +49,15 @@ const CAMPOS_PROIBIDOS_NO_INPUT = [
   "status", "plantada_em", "colhida_em", "unificada_em", "unificada_em_id",
   "colheita_iniciada_em",
 ];
-const STATUS_CONHECIDOS = ["plantada", "em-colheita", "colhida", "unificada"];
+// `descartada` entrou em 2026-08-12, e a falta dela era um buraco de vocabulario:
+// o usuario pediu "remove essa ideia" e nao havia como. Os dois caminhos existentes
+// eram os dois errados — `colher` significa ENTREGUE e inflaria a contagem de
+// colhidas com uma nao-entrega (a mesma deriva semantica do 72 contra 35, que este
+// arquivo passou o dia consertando), e editar o jsonl a mao e o que a porta unica de
+// escrita existe para impedir. Descartada tambem NAO e apagada: a linha fica, com
+// motivo e data, porque ideia que sai sem rastro volta identica em tres semanas.
+const STATUS_CONHECIDOS = ["plantada", "em-colheita", "colhida", "unificada", "descartada"];
+const FECHADOS = new Set(["colhida", "unificada", "descartada"]);
 // Ideia ABERTA e a que ainda espera voltar — e so dela o `gancho` (gatilho de
 // retorno, regra 6) faz sentido. Colhida ja voltou; unificada virou outra.
 const ABERTAS = new Set(["plantada", "em-colheita"]);
@@ -85,7 +93,8 @@ function abertas(objs) {
 const ORDEM_CANONICA = [
   "id", "titulo", "descricao", "contexto", "projeto", "projeto_nota", "ao_colher", "tipo",
   "status", "plantada_em", "colheita_iniciada_em", "andamento",
-  "colhida_em", "resultado", "unificada_em", "unificada_em_id", "absorveu",
+  "colhida_em", "resultado", "descartada_em", "motivo",
+  "unificada_em", "unificada_em_id", "absorveu",
 ];
 const RE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -582,7 +591,9 @@ function diagnosticar(obj) {
   // Campos de estado ausentes e de onde sairia o valor. So olha o que FALTA.
   const faltando = {};
   if (!STATUS_CONHECIDOS.includes(obj.status)) {
-    if (obj.unificada_em) {
+    if (obj.descartada_em || obj.motivo) {
+      faltando.status = "descartada";
+    } else if (obj.unificada_em) {
       faltando.status = "unificada";
     } else if (obj.colhida_em || obj.resultado) {
       faltando.status = "colhida";
@@ -772,6 +783,33 @@ function cmdReparar(args) {
     }
     console.log(`reparando ${alvos.size} linha(s)`);
     gravar(antes, depois, alvos, "reparar");
+  });
+}
+
+function cmdDescartar(args) {
+  if (!String(args.motivo || "").trim()) {
+    throw new Erro(
+      '--motivo e obrigatorio: descarte sem motivo volta como ideia igual em tres semanas, ' +
+        "porque quem le a linha nao sabe se foi decidido ou esquecido."
+    );
+  }
+  comTrava(() => {
+    const antes = lerVivo();
+    const i = indicePorId(antes, args.id);
+    const obj = JSON.parse(antes[i]);
+    if (FECHADOS.has(obj.status)) {
+      throw new Erro(
+        `'${args.id}' esta '${obj.status}' — o que ja fechou nao se descarta. ` +
+          "Registro fechado e historia, e reescrever historia nao e descartar."
+      );
+    }
+    obj.status = "descartada";
+    obj.descartada_em = hoje();
+    obj.motivo = args.motivo;
+    const depois = antes.slice();
+    depois[i] = serializar(obj);
+    console.log(`descartando '${args.id}' (linha ${i + 1})`);
+    gravar(antes, depois, new Set([i]), "descartar");
   });
 }
 
@@ -1025,6 +1063,11 @@ function cmdConferir(_args) {
     if (o.status === "colhida" && !o.resultado) {
       problemas.push(`linha ${i} (${ident}): colhida sem resultado`);
     }
+    // Descarte sem motivo e a ideia voltando identica em tres semanas: quem le a
+    // linha nao tem como saber se foi decidido ou esquecido.
+    if (o.status === "descartada" && !o.motivo) {
+      problemas.push(`linha ${i} (${ident}): descartada sem motivo`);
+    }
     for (const campo of CAMPOS_OBRIGATORIOS) {
       // O gancho e gatilho de RETORNO: ideia ja colhida voltou, e cobrar gatilho de
       // quem chegou e ruido que ensina a ignorar o conferir. So as abertas contam.
@@ -1119,6 +1162,10 @@ const SUBCOMANDOS = {
       projeto: { required: false },
     },
     fn: cmdListar,
+  },
+  descartar: {
+    options: { id: { required: true }, motivo: { required: true } },
+    fn: cmdDescartar,
   },
   conferir: { options: {}, fn: cmdConferir },
   projetos: {

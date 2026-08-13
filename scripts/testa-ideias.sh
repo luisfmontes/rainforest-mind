@@ -802,5 +802,69 @@ ok(!("reparada_em" in o), JSON.stringify(o));'
 esac
 
 echo
+echo "== 8. descartar: a ideia que NAO vai acontecer sai da lista sem virar colhida =="
+# O buraco que este bloco fecha: o usuario pediu "remove essa ideia" em 2026-08-12 e
+# nao havia como. `colher` significa ENTREGUE — usar para descarte infla a contagem
+# de colhidas com uma nao-entrega. E editar o jsonl a mao e o que a porta unica de
+# escrita existe para impedir. Descartada tambem nao e apagada: a linha fica.
+case "$IDEIAS" in
+  *ideias.cjs*)
+    export IDEIAS_LIMPO="node scripts/ideias-limpo.cjs"
+    echo "{\"id\":\"teste-descartar\",$base,\"gancho\":\"g\"}" > fd.json
+    esperado "plantar a que sera descartada" 0 bash -c '$IDEIAS_LIMPO plantar < fd.json'
+    md5_pre_desc=$(md5sum ideias.jsonl | cut -d' ' -f1)
+    esperado "recusa descartar sem --motivo" 2 $IDEIAS_LIMPO descartar --id teste-descartar
+    esperado "recusa descartar com motivo vazio" 1 $IDEIAS_LIMPO descartar --id teste-descartar --motivo "   "
+    if [ "$md5_pre_desc" = "$(md5sum ideias.jsonl | cut -d' ' -f1)" ]
+    then ok=$((ok+1)); echo "  ok   arquivo intocado apos as recusas"
+    else falhou=$((falhou+1)); echo "  FALHA recusa de descarte alterou o arquivo"; fi
+
+    esperado "descartar com motivo" 0 $IDEIAS_LIMPO descartar --id teste-descartar --motivo "nao vale o custo: o book-to-skill ja resolve"
+    prova "status, data e motivo gravados — e a linha CONTINUA no arquivo" '
+const l=O("ideias.jsonl"), o=acha(l,"teste-descartar");
+ok(o.status==="descartada", o.status);
+ok(o.descartada_em===hoje(), o.descartada_em);
+ok(o.motivo.includes("book-to-skill"), o.motivo);
+ok(o.titulo==="t" && o.contexto==="c", "descartar mexeu no conteudo");'
+    esperado "recusa descartar duas vezes (fechado nao se descarta)" 1       $IDEIAS_LIMPO descartar --id teste-descartar --motivo "de novo"
+    esperado "recusa descartar o que ja foi colhido" 1       $IDEIAS_LIMPO descartar --id teste-um --motivo "colhida nao se descarta"
+
+    # A descartada nao e ABERTA: o conferir nao cobra gancho dela, e ela sai da lista
+    # de plantadas sem entrar na de colhidas — que era o ponto todo.
+    saida_desc=$($IDEIAS_LIMPO conferir 2>&1)
+    if echo "$saida_desc" | grep -q "teste-descartar.*gancho"
+    then falhou=$((falhou+1)); echo "  FALHA cobrou gancho de ideia descartada"
+    else ok=$((ok+1)); echo "  ok   descartada nao e cobrada por gancho (nao e aberta)"; fi
+    prova "nao entrou na conta de colhidas" '
+const l=O("ideias.jsonl"), o=acha(l,"teste-descartar");
+ok(!o.colhida_em && !o.resultado, "descarte virou colheita");'
+    if $IDEIAS_LIMPO listar --status descartada --tipo todos 2>&1 | grep -q "teste-descartar"
+    then ok=$((ok+1)); echo "  ok   listar --status descartada a mostra"
+    else falhou=$((falhou+1)); echo "  FALHA a descartada nao aparece no listar"; fi
+
+    # MUTACAO do proprio contrato: descartada SEM motivo tem que derrubar o conferir.
+    # E o motivo que separa "decidido" de "esquecido" — sem ele a ideia volta igual.
+    node - <<'JS'
+const fs = require("fs");
+fs.appendFileSync("ideias.jsonl", JSON.stringify({
+  id: "teste-descartada-sem-motivo", titulo: "t", descricao: "d", contexto: "c",
+  projeto: "sandbox", status: "descartada", plantada_em: "2026-08-01",
+  descartada_em: "2026-08-02",
+}) + "\n", "utf8");
+JS
+    esperado "conferir derruba descartada SEM motivo" 1 $IDEIAS_LIMPO conferir
+    saida_sem_motivo=$($IDEIAS_LIMPO conferir 2>&1)
+    if echo "$saida_sem_motivo" | sed -n '/BLOQUEIAM/,$p' | grep -q "teste-descartada-sem-motivo.*sem motivo"
+    then ok=$((ok+1)); echo "  ok   ... e nomeia a linha, no bloco que bloqueia"
+    else falhou=$((falhou+1)); echo "  FALHA nao acusou a descartada sem motivo"; fi
+    # E o reparar sabe inferir o status de uma linha com descartada_em.
+    esperado "reparar infere status descartada de quem tem descartada_em" 1       $IDEIAS_LIMPO reparar --todas
+    ;;
+  *)
+    echo "  (pulado: descartada e status novo, so do .cjs)"
+    ;;
+esac
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

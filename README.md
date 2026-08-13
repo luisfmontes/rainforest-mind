@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-0.60.0-1e5c3f?style=flat-square" alt="versão 0.60.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-0.61.0-1e5c3f?style=flat-square" alt="versão 0.61.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/revis%C3%A3o-bimestral-9fd8ba?style=flat-square" alt="revisão bimestral">
 </p>
@@ -40,6 +40,7 @@ Daí o vocabulário das ideias. Ele não é enfeite, é o modelo:
 | **foco** | a clareira onde você está trabalhando hoje — é contra ele, e só contra ele, que o desvio é medido |
 | **plantar** | o que não pode crescer agora vai pro chão **com contexto**, vivo, em vez de morrer numa lista de "algum dia" |
 | **colher** | ele volta quando chega a hora, e vira trabalho de verdade |
+| **descartar** | o que decidiu não acontecer sai da lista **com motivo** — e a linha fica, porque ideia que sai sem rastro volta idêntica em três semanas |
 | **estação** | a admissão de que tempo certo é restrição real, não desculpa de quem procrastina |
 
 O resto do plugin não é botânico e não tenta ser: `/foco`, `depurar` e as travas
