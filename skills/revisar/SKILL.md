@@ -67,6 +67,21 @@ pela letra da trava — e ele desfez reescrevendo o arquivo por fora do git,
 o que funcionou e não deixou rastro auditável (Issue #4). A trava não estava
 errada; o caminho é que não existia.
 
+## Creep: medido contra o plano, não contra o gosto
+
+**Creep é código sem tarefa correspondente no plano.** Arquivo que você tocou mas que não se encaixa em nenhum glob de `arquivos:` de tarefa nenhuma é achado e reprova a revisão.
+
+Isto é **distinto** de "eu faria diferente":
+
+- **Estilo** ("não é assim que eu escreveria", "deixaria mais limpo"): só entra se violar padrão documentado do repo. Senão, é gosto, não achado.
+- **Creep** ("esse arquivo não era pra ser tocado", "essa mudança não estava no plano"): arquivo no diff que não casa com nenhum `arquivos:` da tarefa. Sempre reprova.
+
+### Saída única: emendar o plano
+
+Encontrou creep? A única forma de destravá-lo é emendar o plano: a tarefa que faltava entra no plano com critério falsificável. **Justificar em prosa não destrava** — "era uma limpeza necessária", "o compilador pediu" são narrativas, não ações que o plano registra.
+
+A emenda deixa rastro conscientemente registrado de que o escopo cresceu — é isso que distingue creep legítimo (genuinamente necessário) de mudança de escopo silenciosa.
+
 ## Veredito binário
 
 ```
@@ -88,3 +103,9 @@ pendências da próxima rodada.
 sem commit novo, `head` que não existe, worktree que não foi integrado —
 vale mais que produzir um veredito sobre o que a memória da conversa
 lembra ter sido feito.
+
+### Trava de cobertura de creep
+
+A partir de 2026-08-13, `node scripts/estado.cjs marcar --estagio revisar --status ok` recusa se o `--json` não incluir `base` e `head` — são os dois pontos que definem o diff e permitem provar ausência de creep. Sem eles, fechar a revisão sem poder provar que o diff não toca arquivo fora do plano é o buraco que a trava fecha.
+
+Fechar review como `reprovado` com achados de creep também exige `base` e `head` para que quem fizer a próxima rodada saiba qual era o escopo.
