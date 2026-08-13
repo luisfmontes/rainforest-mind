@@ -54,3 +54,13 @@ exige a saída colada na mesma linha. Aqui o rótulo tem alvo próprio: "este
 teste pega o bug" é `INFERIDO` até você **reverter o comportamento real e ver
 o teste falhar** — teste que nunca foi visto falhando não prova nada, e é o
 modo de falha mais comum desta função.
+
+(i) **Premissa do briefing é afirmação de terceiro, não fato apurado.**
+Caminho, repositório, branch, "onde a coisa mora": tudo isso chega de quem
+despachou e pode estar errado. Confira as premissas que forem baratas de
+conferir, e **liste no fim as que você aceitou sem conferir** — quem
+despachou é o único que pode corrigi-las, e não sabe quais você usou.
+**Lugar vazio não prova ausência**: se onde o briefing mandou olhar não tem
+o que ele disse que teria, alargue para a convenção documentada no
+repositório e reporte a divergência, em vez de concluir que o dado não
+existe.
