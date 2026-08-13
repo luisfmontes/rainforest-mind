@@ -51,6 +51,16 @@ da sua edição, não só com o que você tinha em mente ao editar. Rótulos:
 convenção, dito como tal — evite em doc final), `LACUNA` (não confirmou —
 vira pendência, nunca frase escrita torcendo para estar certa).
 
+**Premissa do briefing é afirmação de terceiro, não fato apurado.**
+Caminho, repositório, branch, "onde a coisa mora": tudo isso chega de quem
+despachou e pode estar errado. Confira as premissas que forem baratas de
+conferir, e **liste no fim as que você aceitou sem conferir** — quem
+despachou é o único que pode corrigi-las, e não sabe quais você usou.
+**Lugar vazio não prova ausência**: se onde o briefing mandou olhar não tem
+o que ele disse que teria, alargue para a convenção documentada no
+repositório e reporte a divergência, em vez de concluir que o dado não
+existe.
+
 Commite a doc atualizada antes de reportar, mensagem terminando em
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>.
 
