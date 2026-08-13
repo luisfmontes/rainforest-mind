@@ -24,6 +24,15 @@ As seis falhas dos dois relatorios e onde cada uma morre aqui:
   arquivo rastreado apagado como dano colateral (N3) . checagem 3
   mexeu no diretorio principal do usuario (N1) .......... checagem 4
   stash/pop movendo o HEAD do usuario (N1) .............. checagem 5
+  arquivo criado no disco que nunca virou commit ........ checagem 6
+
+A checagem 6 nasceu da Issue #4 (2026-08-13): uma tarefa criou
+`scripts/gerado/.gitignore` com o conteudo `*`, que ignora A SI MESMO — o
+`git add -A` nunca o adicionou e ele nunca chegou ao commit. O agente relatou o
+arquivo como criado e colou evidencia REAL: `ls -la` mostrando o arquivo, `cat`
+mostrando o conteudo. Evidencia do DISCO, nunca do COMMIT. E a checagem 3
+tambem nao pega: `git status --porcelain` por desenho nao lista ignorado, que e
+exatamente a categoria do arquivo que faltava.
 
 Cada checagem imprime o comando literal e a saida CRUA antes do veredito: quem
 ler o relatorio confere a conclusao contra a evidencia, sem confiar na conclusao.
@@ -105,6 +114,9 @@ def main() -> int:
     ap.add_argument("--commit", default="HEAD", help="commit entregue (default: HEAD do worktree)")
     ap.add_argument("--repo-principal", help="default: deduzido do git-common-dir do worktree")
     ap.add_argument("--head-antes", help="HEAD do repo principal ANTES do despacho, para pegar HEAD movido")
+    ap.add_argument("--espera", action="append", default=[], metavar="CAMINHO",
+                    help="caminho que a tarefa prometia criar; repetivel. Confere na ARVORE DO "
+                         "COMMIT, nao no disco — `ls`/`cat` do agente provam o disco")
     ap.add_argument("--permite-sujeira", action="store_true",
                     help="nao falhar por working tree suja no worktree (raro; justifique)")
     a = ap.parse_args()
@@ -212,6 +224,33 @@ def main() -> int:
         c.aviso("nao identifiquei um repo principal distinto do worktree — checagens 4 e 5 puladas")
 
     # ------------------------------------------------------------------
+    # O que o briefing prometeu esta NO COMMIT? `git status --porcelain` da
+    # checagem 3 nao lista arquivo ignorado, e `ls`/`cat` do agente provam o
+    # disco. So a arvore do commit responde a pergunta que interessa.
+    c.abre("O que a tarefa prometia criar esta MESMO no commit?")
+    if not a.espera:
+        c.aviso("sem --espera; esta checagem so vale se o briefing disser que arquivo a tarefa devia criar")
+    else:
+        for alvo in a.espera:
+            rc_t, dentro = c.mostra(wt, "ls-tree", "-r", "--name-only", a.commit, "--", alvo)
+            if rc_t == 0 and dentro:
+                c.ok(f"'{alvo}' esta no commit entregue")
+                continue
+            if not (Path(wt) / alvo).exists():
+                c.falha(f"'{alvo}' nao esta no commit e nao existe no disco — a tarefa nao criou o arquivo")
+                continue
+            rc_ig, regra = c.git(wt, "check-ignore", "-v", "--", alvo)
+            porque = (
+                f"um .gitignore o excluiu: {regra.splitlines()[0]}"
+                if rc_ig == 0 and regra
+                else "existe no disco mas nunca foi adicionado ao indice"
+            )
+            c.falha(
+                f"'{alvo}' EXISTE NO DISCO e NAO esta no commit — {porque}. "
+                "ls/cat do agente provam o disco, nunca o commit (Issue #4, 2026-08-13)."
+            )
+
+    # ------------------------------------------------------------------
     print("\n" + "=" * 66)
     if c.falhas:
         print(f"REPROVADO — {len(c.falhas)} falha(s):")
@@ -225,7 +264,7 @@ def main() -> int:
         for w in c.avisos:
             print(f"  - {w}")
         return 0
-    print("APROVADO — as 5 checagens passaram.")
+    print(f"APROVADO — as {c.n} checagens passaram.")
     return 0
 
 

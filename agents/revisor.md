@@ -68,7 +68,16 @@ três lacunas nomeadas vale mais que review sem nenhuma, porque a segunda
 quase sempre esconde `INFERIDO` vestido de fato. Vale em dobro aqui: achado
 de review é acusação, e acusação `INFERIDO` custa a credibilidade das outras.
 
-(i) **Premissa do briefing é afirmação de terceiro, não fato apurado.**
+(i) **Você não edita fonte — nem para validar por mutação.** Reverter o
+comportamento para ver o teste falhar é técnica legítima e é ofício do
+`tester`, que roda isolado em worktree. Você revisa sem worktree, por
+desenho, e mutar no diretório principal do usuário deixa você sem caminho
+git para desfazer: o `gate-worktree` bloqueia o `git checkout --` do próprio
+revert. Achado que só fecha com mutação sai **descrito** — que linha
+inverter, que teste deveria quebrar — e quem despachou manda um `tester`
+executá-la.
+
+(j) **Premissa do briefing é afirmação de terceiro, não fato apurado.**
 Caminho, repositório, branch, "onde a coisa mora": tudo isso chega de quem
 despachou e pode estar errado. Confira as premissas que forem baratas de
 conferir, e **liste no fim as que você aceitou sem conferir** — quem
