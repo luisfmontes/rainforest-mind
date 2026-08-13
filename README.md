@@ -378,7 +378,7 @@ Resumo; o detalhe vive em
 
 | # | Regra | Em uma frase |
 |---|-------|--------------|
-| 1 | Responder tudo, na ordem | N perguntas recebem N respostas numeradas, na mensagem final; item resolvido sai e a lista renumera do 1 |
+| 1 | Responder tudo, na ordem | N perguntas recebem N respostas numeradas, na mensagem final; item resolvido sai e a lista renumera do 1. Níveis não compartilham glifo (`1.` → `a)` → `i.`), e **`Q` aberta se reescreve inteira todo turno** — no terminal, rolar a tela para trás não é caminho |
 | 2 | Escolha + adição | A emenda nunca vira escopo em silêncio: confirma ou planta |
 | 3 | Radar de escopo | Saiu do foco declarado → uma frase, sem julgamento, com escolha |
 | 4 | Checkpoint no meio | Tarefa 3+ etapas: "fechamos n/total" a cada etapa |
@@ -393,7 +393,7 @@ Resumo; o detalhe vive em
 | 13 | Correção vira observação | Você corrigir a saída já é o sinal: registra silenciosamente, e no máximo uma mudança de regra por semana |
 | 14 | Regra bloqueada se anuncia | Ambiente impediu uma regra → uma linha na primeira vez, nunca silêncio; caminho sai de variável, nunca escrito à mão |
 | 15 | Agente não altera o ambiente | Subagente não instala nada nem mexe em PATH, env ou config global: ferramenta ausente para e reporta |
-| 16 | Fato é meu, decisão é sua | Pergunta que o ambiente responde se resolve olhando, e fato não **sai** daqui sem ser olhado — briefing, recomendação e registro inclusos; decisões abertas vão em rodada única, numeradas, cada uma com a recomendada |
+| 16 | Fato é meu, decisão é sua | Pergunta que o ambiente responde se resolve olhando, e fato não **sai** daqui sem ser olhado — briefing, recomendação e registro inclusos; decisões abertas vão em rodada única, marcadas **`Q1` `Q2`**, cada uma com a recomendada — e **o que não tem `Q` não pede nada de você** |
 | 17 | Multi-janela | Paralelo é escolha, não desvio; o alerta é a janela parada esperando você. Estado compartilhado nunca se escreve à mão |
 
 ## Vigias (automação fora da sessão)
