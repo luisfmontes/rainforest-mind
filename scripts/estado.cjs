@@ -196,7 +196,16 @@ function conferirFechamento(estagio, slug, extra) {
   let args = null;
   if (estagio === 'design' && fs.existsSync(docDe('design', slug))) {
     args = ['design', '--slug', slug];
-  } else if (estagio === 'plano' && fs.existsSync(docDe('planos', slug))) {
+  } else if (estagio === 'plano'
+      && fs.existsSync(docDe('planos', slug))
+      // `cobertura` cruza os DOIS arquivos, então exigir só o plano prendia o
+      // estágio para sempre num projeto que escreveu plano e nunca escreveu
+      // design: o `marcar design aprovado` passava (sem design em disco não há o
+      // que conferir) e o `plano ok` seguinte recusava com "design não existe",
+      // sem saída nenhuma. Achado 1 da revisão de 2026-08-13, reproduzido antes
+      // de consertar. A regra é: a trava só age quando **tudo que a checagem lê**
+      // existe — checar a presença do arquivo do estágio não basta.
+      && fs.existsSync(docDe('design', slug))) {
     args = ['cobertura', '--slug', slug];
   } else if (estagio === 'revisar' && fs.existsSync(docDe('planos', slug))) {
     // Sem os dois pontos do diff não há como provar ausência de creep, e fechar

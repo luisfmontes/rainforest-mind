@@ -62,8 +62,13 @@ exige 2 "secao 'Fora de escopo' ausente recusa" CHK design --slug t
 restaura; sed -i 's/\*\*D5 —/**D9 —/' "$D"
 exige 2 "buraco na sequencia de D recusa" CHK design --slug t
 
-restaura; sed -i 's/\*\*D6 —/**D5 —/' "$D"
-exige 2 "D repetido recusa" CHK design --slug t
+# D repetido tem de ser ACRESCENTADO, nunca renomeado. Renomear `D6` para `D5`
+# cria um repetido E um buraco, e o check de buraco roda primeiro — o caso saía
+# verde com o check de repetido apagado, provando nada. Achado 2 da revisão de
+# 2026-08-13. Acrescentar uma linha mantém D1..D8 inteiros e deixa a duplicidade
+# como a única coisa errada no documento.
+restaura; awk '/^## Avaliado e descartado$/{print "- **D3 — duplicata deliberada** — porque: isolar o check de repetido"; print ""} {print}' "$REAL_D" > "$D"
+exige 2 "D repetido (sem buraco junto) recusa" CHK design --slug t
 
 echo
 echo "== 2. cobertura: design x plano, nos dois sentidos (D8) =="
@@ -74,11 +79,17 @@ exige 0 "cobertura real passa" CHK cobertura --slug t
 restaura; awk '/^### 2\. /{p=1} /^### 3\. /{p=0} !p' "$REAL_P" > "$P"
 exige 2 "decisao sem tarefa recusa" CHK cobertura --slug t
 
-restaura; sed -i '0,/^atende: /s/^atende: .*/atende:/' "$P"
-exige 2 "tarefa com 'atende:' vazio recusa" CHK cobertura --slug t
+# Os dois casos abaixo mutam a TAREFA 3 (`atende: D1, D7`) e não a primeira que
+# aparecer. Motivo: D1 também está na tarefa 1, e D7 nas tarefas 1 e 5 — mexer na
+# 3 não deixa decisão órfã, então o único check que pode recusar é o que o rótulo
+# promete. Mutando a tarefa 1 (a única que cita D8), esvaziar o `atende:` orfanava
+# D8 e o caso saía verde pelo check de "decisão sem tarefa", com o código sob
+# teste apagado. Achado 2 da revisão de 2026-08-13.
+restaura; sed -i '/^### 3\. /,/^pronto quando:/ s/^atende: .*/atende:/' "$P"
+exige 2 "tarefa com 'atende:' vazio recusa (sem orfanar decisao)" CHK cobertura --slug t
 
-restaura; sed -i '0,/^atende: /s/^atende: .*/atende: D99/' "$P"
-exige 2 "tarefa citando D inexistente recusa" CHK cobertura --slug t
+restaura; sed -i '/^### 3\. /,/^pronto quando:/ s/^atende: .*/atende: D1, D7, D99/' "$P"
+exige 2 "tarefa citando D inexistente recusa (cobertura intacta)" CHK cobertura --slug t
 
 echo
 echo "== 3. creep: diff x globs das tarefas =="
@@ -120,6 +131,31 @@ VE iniciar --slug vazio >/dev/null 2>&1
 exige 0 "sem design no disco, 'design aprovado' fecha" VE marcar --slug vazio --estagio design --status aprovado
 exige 0 "sem plano no disco, 'plano ok' fecha" VE marcar --slug vazio --estagio plano --status ok
 rm -rf "$V"
+
+# O CASO MISTO, que a seção acima não pegava: plano existe, design nunca existiu.
+# Aqui a trava prendia o estágio para sempre — `design aprovado` passava (sem
+# design não há o que conferir) e o `plano ok` seguinte recusava com "design não
+# existe", sem saída. Achado 1 da revisão de 2026-08-13. A regra que este caso
+# guarda: a trava só age quando TUDO que a checagem lê existe, não só o arquivo
+# do estágio que está fechando.
+M="$(mktemp -d)"; MW="$(cygpath -m "$M" 2>/dev/null || printf '%s' "$M")"
+mkdir -p "$M/docs/rainforest/planos"; cp "$REAL_P" "$M/docs/rainforest/planos/misto.md"
+ME(){ RFM_ESTADO_ROOT="$MW" node "$ESTADO" "$@"; }
+ME iniciar --slug misto >/dev/null 2>&1
+ME marcar --slug misto --estagio design --status aprovado >/dev/null 2>&1
+exige 0 "plano SEM design no disco nao fica preso" ME marcar --slug misto --estagio plano --status ok
+rm -rf "$M"
+
+echo
+echo "== 6. isencao do creep e escopada por slug =="
+# Isentar `docs/rainforest/design/**` inteiro escondia creep de verdade: o design
+# de OUTRA feature entrava no diff e passava. Achado 4 da revisão de 2026-08-13.
+if git -C "$RAIZ" cat-file -e ff1fd3c^{commit} 2>/dev/null; then
+  exige 2 "design de OUTRO slug no diff conta como creep" \
+    node "$CHECADOR" creep --slug outro-trabalho-qualquer --base ff1fd3c --head HEAD
+else
+  echo "  (pulado: commit de referencia ausente neste clone)"
+fi
 
 echo
 echo "-----------------------------------------"

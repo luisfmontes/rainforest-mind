@@ -108,4 +108,7 @@ lembra ter sido feito.
 
 A partir de 2026-08-13, `node scripts/estado.cjs marcar --estagio revisar --status ok` recusa se o `--json` não incluir `base` e `head` — são os dois pontos que definem o diff e permitem provar ausência de creep. Sem eles, fechar a revisão sem poder provar que o diff não toca arquivo fora do plano é o buraco que a trava fecha.
 
-Fechar review como `reprovado` com achados de creep também exige `base` e `head` para que quem fizer a próxima rodada saiba qual era o escopo.
+**`reprovado` não exige nada disso**, e é deliberado: reprovar já devolve o
+trabalho para o `executar`, então não há veredito de ausência de creep para
+provar. A trava existe para impedir que se declare "sem creep" sem o diff — não
+para burocratizar a recusa.

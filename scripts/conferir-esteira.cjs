@@ -322,11 +322,21 @@ function cmdCreep() {
     globs.push(...gs);
   }
 
-  // Globs isentos (nunca são creep)
+  // Isentos: os artefatos que a PRÓPRIA esteira escreve para ESTE trabalho.
+  // Eles nunca aparecem no `arquivos:` de tarefa nenhuma — quem os escreve é o
+  // brainstorm, o plano e o `estado.cjs` —, então sem isenção a checagem acusaria
+  // o próprio rastro dela e nunca passaria.
+  //
+  // **Escopado por slug de propósito.** A primeira versão isentava
+  // `docs/rainforest/design/**` inteiro, e com isso um diff que também tocasse o
+  // design de OUTRA feature passava despercebido — creep de verdade, escondido
+  // dentro da pasta isenta. É a mesma forma do glob largo que a decisão D6 proíbe
+  // numa tarefa, só que embutida no checador, onde nenhum `revisar` a veria.
+  // Achado 4 da revisão de 2026-08-13.
   const globs_isentos = [
-    'docs/rainforest/design/**',
-    'docs/rainforest/planos/**',
-    'docs/rainforest/estado/**',
+    `docs/rainforest/design/${slug}.md`,
+    `docs/rainforest/planos/${slug}.md`,
+    `docs/rainforest/estado/${slug}.json`,
   ];
 
   // Pega diff
