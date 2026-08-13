@@ -196,9 +196,20 @@ não foi o modelo nem o isolamento:
 > Foi o briefing conter, ou não, **o teste que falsificaria a entrega** — com
 > comando exato e saída exata esperada.
 
+**A evidência real do objeto errado.** Uma tarefa criou um `.gitignore` com o
+conteúdo `*` — que, dentro do próprio diretório, ignora **a si mesmo**. O
+`git add -A` nunca o adicionou e ele nunca chegou ao commit. O agente colou
+evidência **real**: `ls -la` mostrando o arquivo, `cat` mostrando o conteúdo.
+Evidência do disco, quando a afirmação era sobre o commit. E `git status
+--porcelain` não pega, porque por desenho não lista ignorado — a categoria
+exata do arquivo que faltava. *Comando e saída colados também não bastam se
+provarem outra coisa.* O conserto foi mecânico: `--espera <caminho>` pergunta à
+árvore do commit e nomeia a regra de ignore que comeu o arquivo.
+
 Daí a regra: o critério de sucesso vai pronto no briefing, e a validação é
 executar o artefato e olhar a saída. **Suíte verde não é evidência. ✅ sem
-comando e saída colados não é verificação.**
+comando e saída colados não é verificação — e a saída colada tem que ser do
+objeto sobre o qual se está afirmando.**
 
 ## Disciplina de dev, embutida
 
@@ -239,7 +250,7 @@ trava que só diz "não" vira trava desligada. Saídas de emergência, nomeadas 
 própria mensagem: `RAINFOREST_GATE_OFF=1` no ambiente, ou um arquivo
 `.rainforest-gate-off` na raiz do repo.
 
-Cada uma tem bateria própria (`hooks/testa-gate-*.sh`, **66 casos** — 28 e 38)
+Cada uma tem bateria própria (`hooks/testa-gate-*.sh`, **68 casos** — 30 e 38)
 que roda o hook de verdade contra repos git montados na hora. A maioria dos
 casos testa o que deve **passar**: falso positivo aqui atrapalha todo repo.
 
@@ -427,7 +438,7 @@ Três scripts ficam como **gêmeos** dos ports, e não como legado morto:
 | Gêmeo | O que ele prova |
 |---|---|
 | `ideias.py` | a mesma bateria roda contra os dois — `IDEIAS="python scripts/ideias.py" bash scripts/testa-ideias.sh` — e é isso que mostra que o port não perdeu nenhuma das oito garantias |
-| `conferir-entrega.py` | idem, com `CONFERIR="python scripts/conferir-entrega.py" bash scripts/testa-conferir-entrega.sh` — as sete falhas encenadas reprovam nos dois |
+| `conferir-entrega.py` | idem, com `CONFERIR="python scripts/conferir-entrega.py" bash scripts/testa-conferir-entrega.sh` — **23 casos**, e as falhas encenadas (as seis dos relatórios mais o arquivo que some por `.gitignore`) reprovam nos dois |
 | `jornada.py` | os dois medem o mesmo dia e devolvem os mesmos números, lacuna por lacuna |
 
 Apagar o gêmeo seria apagar a única prova de que o port está certo.
