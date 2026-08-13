@@ -196,9 +196,20 @@ não foi o modelo nem o isolamento:
 > Foi o briefing conter, ou não, **o teste que falsificaria a entrega** — com
 > comando exato e saída exata esperada.
 
+**A evidência real do objeto errado.** Uma tarefa criou um `.gitignore` com o
+conteúdo `*` — que, dentro do próprio diretório, ignora **a si mesmo**. O
+`git add -A` nunca o adicionou e ele nunca chegou ao commit. O agente colou
+evidência **real**: `ls -la` mostrando o arquivo, `cat` mostrando o conteúdo.
+Evidência do disco, quando a afirmação era sobre o commit. E `git status
+--porcelain` não pega, porque por desenho não lista ignorado — a categoria
+exata do arquivo que faltava. *Comando e saída colados também não bastam se
+provarem outra coisa.* O conserto foi mecânico: `--espera <caminho>` pergunta à
+árvore do commit e nomeia a regra de ignore que comeu o arquivo.
+
 Daí a regra: o critério de sucesso vai pronto no briefing, e a validação é
 executar o artefato e olhar a saída. **Suíte verde não é evidência. ✅ sem
-comando e saída colados não é verificação.**
+comando e saída colados não é verificação — e a saída colada tem que ser do
+objeto sobre o qual se está afirmando.**
 
 ## Disciplina de dev, embutida
 
@@ -239,7 +250,7 @@ trava que só diz "não" vira trava desligada. Saídas de emergência, nomeadas 
 própria mensagem: `RAINFOREST_GATE_OFF=1` no ambiente, ou um arquivo
 `.rainforest-gate-off` na raiz do repo.
 
-Cada uma tem bateria própria (`hooks/testa-gate-*.sh`, **66 casos** — 28 e 38)
+Cada uma tem bateria própria (`hooks/testa-gate-*.sh`, **68 casos** — 30 e 38)
 que roda o hook de verdade contra repos git montados na hora. A maioria dos
 casos testa o que deve **passar**: falso positivo aqui atrapalha todo repo.
 
@@ -250,7 +261,7 @@ O mesmo princípio nos scripts, para o que hook nenhum alcança:
 | `scripts/ideias.cjs` | única porta de escrita do `ideias.jsonl` — trava de arquivo, backup, escrita atômica, releitura do arquivo vivo e conferência byte a byte das linhas não-alvo; e o `projeto` é **slug de vocabulário fechado** (`projetos.json`), não texto livre |
 | `scripts/limpar-branches.cjs` | confere o local contra o remoto e classifica por dois eixos (upstream **e** merge); nunca remove branch viva, e exigir estar na base em dia é trava |
 | `scripts/conferir-relatorio.cjs` | **sai com código 2** quando o rascunho tem telefone, JID, e-mail, caminho de home ou credencial — antes de virar Issue público |
-| `scripts/conferir-entrega.cjs` | roda na janela principal **depois** da entrega do agente: hash de base, isolamento e citação conferidos na fonte, não no relato |
+| `scripts/conferir-entrega.cjs` | roda na janela principal **depois** da entrega do agente: hash de base, isolamento e citação conferidos na fonte, não no relato. `--espera <caminho>` (repetível) confere o que a tarefa prometia **na árvore do commit** — `ls`/`cat` do agente provam o disco, e `git status` não lista ignorado |
 | `scripts/setup.cjs` | monta a pasta de dados, liga/desliga o que é opcional **e configura o caminho de cada projeto** — e marca no estado o caminho que **não existe** nesta máquina, que era falha silenciosa |
 | `scripts/ponte.cjs` | **gera** o `AGENTS.md` (Codex) e o `GEMINI.md` (Gemini CLI) a partir do mesmo SKILL.md que o hook injeta — e recusa gerar se não achar as regras, em vez de escrever meia ponte |
 | `scripts/medir-injecao.py` | custo real do prompt de abertura, lido do `usage` que a API devolve — token de verdade, sem estimativa |
@@ -375,13 +386,13 @@ Resumo; o detalhe vive em
 | 7 | Tom sênior | Policia pontas soltas e escopo, nunca o mérito; aviso ancora na emoção do resultado, não na ameaça do prazo |
 | 8 | Guarda-corpo de jornada | Jornada real medida, não estimada: ~9h efetivas produzindo → um aviso, uma vez, com a hora, um ponto de parada e a checagem de corpo (água, comida, banheiro) de carona — nunca gatilho próprio. Perder a noção do tempo **dentro** da imersão é traço saudável; dificuldade de **começar ou trocar** é sinal diferente |
 | 9 | Freio de Pareto | Polimento do que já está pronto → "alguém que recebe isso fica prejudicado?"; se não, entrega ou planta |
-| 10 | Agentes baratos com método | Janela principal pensa; sete agentes por **função**, não por domínio: `executor` e `resolvedor-de-build` (haiku), `documentador` (haiku), `planejador`, `revisor`, `tester` e `depurador` (sonnet). Agente que edita nunca é nomeado, e **nomeado só entrega por `SendMessage`** — termina e fica calado |
+| 10 | Agentes baratos com método | Janela principal pensa; sete agentes por **função**, não por domínio: `executor` e `resolvedor-de-build` (haiku), `documentador` (haiku), `planejador`, `revisor`, `tester` e `depurador` (sonnet). Agente que edita nunca é nomeado, e **nomeado só entrega por `SendMessage`** — termina e fica calado. Os sete carregam a **cláusula de premissa**: listam o que aceitaram do briefing sem conferir, e lugar vazio não vira "não existe" |
 | 11 | Worktree de subagente | Isolamento sempre, hash de base conferido na primeira ação e reconferido antes de integrar; integração por partes, nunca cópia de arquivo inteiro |
 | 12 | Entrega se valida na saída real | Critério de sucesso vai pronto no briefing, incluindo o teste que falsificaria a entrega; validação é rodar o artefato e olhar a saída. Suíte verde não é evidência; exit code lido através de pipe não é exit code |
 | 13 | Correção vira observação | Você corrigir a saída já é o sinal: registra silenciosamente, e no máximo uma mudança de regra por semana |
 | 14 | Regra bloqueada se anuncia | Ambiente impediu uma regra → uma linha na primeira vez, nunca silêncio; caminho sai de variável, nunca escrito à mão |
 | 15 | Agente não altera o ambiente | Subagente não instala nada nem mexe em PATH, env ou config global: ferramenta ausente para e reporta |
-| 16 | Fato é meu, decisão é sua | Pergunta que o ambiente responde se resolve olhando; decisões abertas vão em rodada única, numeradas, cada uma com a recomendada |
+| 16 | Fato é meu, decisão é sua | Pergunta que o ambiente responde se resolve olhando, e fato não **sai** daqui sem ser olhado — briefing, recomendação e registro inclusos; decisões abertas vão em rodada única, numeradas, cada uma com a recomendada |
 | 17 | Multi-janela | Paralelo é escolha, não desvio; o alerta é a janela parada esperando você. Estado compartilhado nunca se escreve à mão |
 
 ## Vigias (automação fora da sessão)
@@ -427,7 +438,7 @@ Três scripts ficam como **gêmeos** dos ports, e não como legado morto:
 | Gêmeo | O que ele prova |
 |---|---|
 | `ideias.py` | a mesma bateria roda contra os dois — `IDEIAS="python scripts/ideias.py" bash scripts/testa-ideias.sh` — e é isso que mostra que o port não perdeu nenhuma das oito garantias |
-| `conferir-entrega.py` | idem, com `CONFERIR="python scripts/conferir-entrega.py" bash scripts/testa-conferir-entrega.sh` — as seis falhas encenadas reprovam nos dois |
+| `conferir-entrega.py` | idem, com `CONFERIR="python scripts/conferir-entrega.py" bash scripts/testa-conferir-entrega.sh` — **23 casos**, e as falhas encenadas (as seis dos relatórios mais o arquivo que some por `.gitignore`) reprovam nos dois |
 | `jornada.py` | os dois medem o mesmo dia e devolvem os mesmos números, lacuna por lacuna |
 
 Apagar o gêmeo seria apagar a única prova de que o port está certo.
