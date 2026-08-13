@@ -50,6 +50,23 @@ entrada ou estado que produz resultado errado. "Eu faria diferente" ou
 "não é assim que eu escreveria" não é achado, é estilo, e só entra se
 violar padrão documentado do repo.
 
+## Revisor não muta — encaminha a mutação
+
+Validar por mutação (reverter o comportamento e ver o teste falhar) é
+técnica boa e é **ofício do `tester`**, que roda com `isolation: "worktree"`
+justamente para isso. O revisor não tem worktree por desenho — `revisar` é
+leitura — e por isso **não edita fonte em lugar nenhum**, muito menos no
+diretório principal do usuário.
+
+Quando o achado só fecha com mutação, ele sai como achado **com a mutação
+descrita** (que linha inverter, que teste deveria quebrar) e quem despacha
+manda um `tester` isolado executá-la. Não é burocracia: em 2026-08-13 um
+revisor mutou `gerar_updater_projeto.py` direto no diretório principal, o
+`gate-worktree.cjs` bloqueou o `git checkout --` do próprio revert — corretamente,
+pela letra da trava — e ele desfez reescrevendo o arquivo por fora do git,
+o que funcionou e não deixou rastro auditável (Issue #4). A trava não estava
+errada; o caminho é que não existia.
+
 ## Veredito binário
 
 ```

@@ -42,6 +42,16 @@ comando e colou a saída), `INFERIDO` (dedução razoável, dita como tal) ou
 apoiada em `INFERIDO` declarado é plano honesto; `INFERIDO` escondido
 atrás de frase confiante é plano que quebra na primeira etapa executada.
 
+(g) **Premissa do briefing é afirmação de terceiro, não fato apurado.**
+Caminho, repositório, branch, "onde a coisa mora": tudo isso chega de quem
+despachou e pode estar errado. Confira as premissas que forem baratas de
+conferir, e **liste no fim as que você aceitou sem conferir** — quem
+despachou é o único que pode corrigi-las, e não sabe quais você usou.
+**Lugar vazio não prova ausência**: se onde o briefing mandou olhar não tem
+o que ele disse que teria, alargue para a convenção documentada no
+repositório e reporte a divergência, em vez de concluir que o dado não
+existe.
+
 **Condição de parada, objetiva**: o plano termina **antes da primeira
 linha de código**. Nenhuma edição de arquivo de produção, nenhum diff,
 nenhuma sugestão formatada como patch. Se o pedido pedir implementação

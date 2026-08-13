@@ -106,6 +106,44 @@ esperado "HEAD do repo principal movido durante a tarefa" 1 \
 git -C "$R" checkout -q "$HEAD_ANTES"
 
 echo
+echo "== checagem 6: o arquivo esta no COMMIT, nao no disco (Issue #4) =="
+# Encena o defeito EXATO: .gitignore com '*' dentro do proprio diretorio ignora
+# a si mesmo, o `git add -A` nunca o adiciona, e ele nunca chega ao commit.
+# `ls`/`cat` mostram o arquivo; `git status --porcelain` nao mostra nada.
+mkdir -p "$WT/gerado"
+printf '*\n' > "$WT/gerado/.gitignore"
+git -C "$WT" add -A >/dev/null 2>&1; git -C "$WT" commit -qm "vendoriza (gitignore some)" 2>/dev/null || true
+
+esperado "  o worktree parece LIMPO mesmo com o arquivo faltando no commit" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES"
+esperado "arquivo prometido que nunca entrou no commit -> reprova" 1 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES" \
+  --espera "gerado/.gitignore"
+contem "  ... e nomeia a regra de ignore que o comeu" "gitignore o excluiu" \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --espera "gerado/.gitignore"
+contem "  ... e diz que ls/cat provam o disco, nunca o commit" "provam o disco" \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --espera "gerado/.gitignore"
+
+esperado "arquivo que nunca foi criado -> reprova por outro motivo" 1 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --espera "nunca-existiu.txt"
+contem "  ... dizendo que nem no disco esta" "nao existe no disco" \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --espera "nunca-existiu.txt"
+
+esperado "arquivo realmente commitado -> aprova" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES" \
+  --espera "feito.txt"
+esperado "  --espera repetivel: dois caminhos, um quebrado, reprova" 1 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --espera "feito.txt" --espera "gerado/.gitignore"
+
+# MUTACAO: com o idioma correto (`*` + `!.gitignore`) o arquivo entra no commit
+# e a MESMA checagem tem que aprovar — senao ela reprova tudo e nao prova nada.
+printf '*\n!.gitignore\n' > "$WT/gerado/.gitignore"
+git -C "$WT" add -A >/dev/null 2>&1; git -C "$WT" commit -qm "corrige o idioma do gitignore" >/dev/null 2>&1
+esperado "  MUTACAO: corrigido o idioma, a mesma checagem aprova" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES" \
+  --espera "gerado/.gitignore"
+
+echo
 echo "== bordas =="
 esperado "worktree inexistente -> exit 2, nao 0" 2 \
   "${CONF_CMD[@]}" --worktree "$RAIZ/nao-existe" --base "$BASE"
