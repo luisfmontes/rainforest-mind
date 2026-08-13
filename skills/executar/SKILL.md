@@ -46,6 +46,17 @@ O briefing de cada agente leva, sempre:
 - **O hash da base** (regra 11) e a instrução de conferir na primeira ação
   (`git log -1`), abortando se divergir — só hash velho conhecido autoriza
   `git merge --ff-only`.
+- **O hash velho conhecido, já nomeado, desde o primeiro despacho.** O HEAD
+  do `main` (ou o commit imediatamente anterior ao início do trabalho) é
+  candidato natural: é ali que o worktree nasce quando nasce errado. A Issue #4
+  mediu **2 de 8 despachos confirmados por abort explícito, possivelmente 5 de
+  8**, sempre no mesmo hash — a regra 11 chama isso de "intermitente" e a
+  medição diz que é frequente. Deixar a autorização para a segunda tentativa
+  custou 3 despachos completos numa única tarefa, mais um worktree órfão para
+  remover à mão.
+- **Os caminhos que a tarefa promete criar**, para o `--espera` da integração
+  abaixo — sem eles, arquivo que o agente cria e nunca chega ao commit passa
+  por todas as outras checagens.
 - **Git destrutivo proibido** e commit só na branch de trabalho, nunca `main`.
 - **Critério de sucesso falsificável**, copiado literal da tarefa do plano:
   comando exato e saída exata que provam pronto — nunca adjetivo
@@ -60,8 +71,15 @@ teammate ocioso pendurado.
 Entrega de agente não se aceita pelo relato (regra 12). Ao receber:
 
 ```
-node scripts/conferir-entrega.cjs --worktree <wt> --base <hash> --head-antes <hash-antes-do-despacho>
+node scripts/conferir-entrega.cjs --worktree <wt> --base <hash> --head-antes <hash-antes-do-despacho> \
+    --espera <caminho-que-a-tarefa-prometia> [--espera <outro>]
 ```
+
+`--espera` confere na **árvore do commit**, não no disco: `ls -la` e `cat` do
+agente provam que o arquivo existe, nunca que ele foi commitado, e
+`git status --porcelain` (checagem 3) por desenho não lista arquivo ignorado.
+Foi assim que um `.gitignore` com `*` se autoexcluiu e sumiu da entrega com as
+cinco checagens verdes (Issue #4).
 
 Exit ≠ 0 é achado, não detalhe — trate como base errada até provar o
 contrário. **Nenhum identificador do relato entra num comando**: hash,

@@ -37,6 +37,16 @@
  *   arquivo rastreado apagado como dano colateral (N3) . checagem 3
  *   mexeu no diretorio principal do usuario (N1) ....... checagem 4
  *   stash/pop movendo o HEAD do usuario (N1) ........... checagem 5
+ *   arquivo criado no disco que nunca virou commit ..... checagem 6
+ *
+ * A checagem 6 nasceu da Issue #4 (2026-08-13): uma tarefa criou
+ * `scripts/gerado/.gitignore` com o conteudo `*`, que ignora A SI MESMO — o
+ * `git add -A` nunca o adicionou e ele nunca chegou ao commit. O agente relatou
+ * o arquivo como criado e colou evidencia REAL: `ls -la` mostrando o arquivo,
+ * `cat` mostrando o conteudo. Evidencia do DISCO, nunca do COMMIT. E a checagem
+ * 3 tambem nao pega: `git status --porcelain` por desenho nao lista ignorado,
+ * que e exatamente a categoria do arquivo que faltava. As cinco checagens
+ * passaram e a entrega estava incompleta.
  *
  * Cada checagem imprime o comando literal e a saida CRUA antes do veredito: quem
  * ler o relatorio confere a conclusao contra a evidencia, sem confiar na conclusao.
@@ -135,10 +145,12 @@ const OPCOES = {
   "repo-principal": { dest: "repo_principal" },
   "head-antes": { dest: "head_antes" },
   "permite-sujeira": { dest: "permite_sujeira", flag: true },
+  // Repetivel: o briefing costuma prometer mais de um arquivo por tarefa.
+  espera: { dest: "espera", lista: true },
 };
 
 function parseArgs(argv) {
-  const a = { commit: "HEAD", permite_sujeira: false };
+  const a = { commit: "HEAD", permite_sujeira: false, espera: [] };
   let i = 0;
   while (i < argv.length) {
     const tok = argv[i];
@@ -152,7 +164,8 @@ function parseArgs(argv) {
     }
     const val = argv[i + 1];
     if (val === undefined) erroArgs(`opcao ${tok} exige valor`);
-    a[o.dest] = val;
+    if (o.lista) a[o.dest].push(val);
+    else a[o.dest] = val;
     i += 2;
   }
   for (const [chave, o] of Object.entries(OPCOES)) {
@@ -290,6 +303,38 @@ function main() {
   }
 
   // ------------------------------------------------------------------
+  // O que o briefing prometeu esta NO COMMIT? `git status --porcelain` da
+  // checagem 3 nao lista arquivo ignorado, e `ls`/`cat` do agente provam o
+  // disco. So a arvore do commit responde a pergunta que interessa.
+  c.abre("O que a tarefa prometia criar esta MESMO no commit?");
+  if (!a.espera.length) {
+    c.aviso(
+      "sem --espera; esta checagem so vale se o briefing disser que arquivo a tarefa devia criar"
+    );
+  } else {
+    for (const alvo of a.espera) {
+      const [rcT, dentro] = c.mostra(wt, "ls-tree", "-r", "--name-only", a.commit, "--", alvo);
+      if (rcT === 0 && dentro) {
+        c.ok(`'${alvo}' esta no commit entregue`);
+        continue;
+      }
+      if (!fs.existsSync(path.join(wt, alvo))) {
+        c.falha(`'${alvo}' nao esta no commit e nao existe no disco — a tarefa nao criou o arquivo`);
+        continue;
+      }
+      const [rcIg, regra] = c.git(wt, "check-ignore", "-v", "--", alvo);
+      const porque =
+        rcIg === 0 && regra
+          ? `um .gitignore o excluiu: ${regra.split(/\r?\n/)[0]}`
+          : "existe no disco mas nunca foi adicionado ao indice";
+      c.falha(
+        `'${alvo}' EXISTE NO DISCO e NAO esta no commit — ${porque}. ` +
+          "ls/cat do agente provam o disco, nunca o commit (Issue #4, 2026-08-13)."
+      );
+    }
+  }
+
+  // ------------------------------------------------------------------
   console.log("\n" + "=".repeat(66));
   if (c.falhas.length) {
     console.log(`REPROVADO — ${c.falhas.length} falha(s):`);
@@ -303,7 +348,7 @@ function main() {
     for (const w of c.avisos) console.log(`  - ${w}`);
     return 0;
   }
-  console.log("APROVADO — as 5 checagens passaram.");
+  console.log(`APROVADO — as ${c.n} checagens passaram.`);
   return 0;
 }
 
