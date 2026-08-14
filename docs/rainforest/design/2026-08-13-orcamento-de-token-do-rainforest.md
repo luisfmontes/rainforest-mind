@@ -49,4 +49,4 @@ hoje não existe medição que justifique comprimir coisa alguma.
 
 ## Em aberto
 
-- O **valor** do fator byte→token usado na coluna estimada. Fica declarado como constante única e visível na saída, com a proveniência ao lado; é o único número do instrumento que é proxy e não medição.
+- O fator byte→token usado na coluna estimada foi medido e fixado: **`BYTES_POR_TOKEN = 3.11`**. Proveniência: medido em 2026-08-13 com `tiktoken` (tokenizador cl100k_base de Claude) sobre o payload real gerado por `hooks/foco-session-start.cjs` deste repositório — 7.666 bytes (UTF-8) → 2.465 tokens. Fica declarado como constante única e visível na saída. O que ele **não** garante: mudanças futuras no payload do hook, adição de skills ou agentes, ou revisions do tokenizador de Claude exigem remedir; este valor é snapshot de 2026-08-13 e não é estável por indefinido.
