@@ -921,11 +921,13 @@ function focoAtivoEmOutraJanela(sessoes, pastasDoFoco, ociosidadeMin, agora) {
 
 
 /**
- * Computa o veredito de isenção de desvio de escopo (D10, D6).
+ * Computa o veredito de isenção de desvio de escopo (D10, D6 corrigido).
  *
- * Emite uma linha imperativa quando há dados suficientes para decidir,
- * ou um anúncio da ausência de dados quando não há. Veredito e anúncio
- * são mutuamente exclusivos (D6).
+ * Analisa cada isenção independentemente:
+ * - Alguma isenção DETERMINADA e SATISFEITA → emite veredito
+ * - Alguma isenção INDETERMINADA → emite anúncio daquela
+ * - Os dois PODEM sair juntos quando tratam de isenções diferentes
+ * - Nenhuma satisfeita e nenhuma indeterminada → string vazia
  *
  * Isenção aplica quando:
  * - O foco está sendo trabalhado em outra janela agora (regra 17), OU
@@ -935,7 +937,7 @@ function focoAtivoEmOutraJanela(sessoes, pastasDoFoco, ociosidadeMin, agora) {
  * @param {Array<{cwd?: string, prompt_ts?: number, stop_ts?: number}>} sessoes lista do sessoes.json
  * @param {object} config contém {expediente: {...}} opcional
  * @param {number} agora timestamp de referência (Date.now())
- * @returns {string} veredito de uma linha OU anúncio de ausência, ou string vazia se nenhum aplica
+ * @returns {string} veredito e/ou anúncio, ou string vazia se nenhum aplica
  */
 function computarVeredito(textoDoFoco, sessoes, config, agora) {
   const texto = String(textoDoFoco || '');
@@ -944,43 +946,54 @@ function computarVeredito(textoDoFoco, sessoes, config, agora) {
   const pastas = pastasDoFoco(texto);
   const expediente = config && config.expediente;
   const ociMin = (texto.match(/Ociosidade máxima:\s*(\d+)\s*min/i) || [])[1] || '45';
-  const ociodadePar = Number.parseInt(ociMin, 10);
+  const ociosidadePar = Number.parseInt(ociMin, 10);
 
-  // Verifica se o foco é de trabalho ou pessoal: `[trabalho]` ou `[pessoal]`
+  // Verifica se o foco é de trabalho
   const ehFocoTrabalho = /\[trabalho\]/.test(texto);
 
-  // Se faltam dados, anuncia e não isenta (D6)
+  // Analisa cada isenção INDEPENDENTEMENTE (D6 corrigido)
+  const vereditos = [];
+  const anuncios = [];
+
+  // ISENÇÃO 1: Foco ativo em outra janela (regra 17)
+  // Precisa de: Pastas: configurado
   if (!pastas.length) {
-    return 'Pastas: ausente no FOCO.md — o radar vai cobrar desvio mesmo com o foco aberto em outra janela.';
-  }
-
-  if (expediente === undefined) {
-    return 'expediente: ausente no config.json — o radar vai cobrar desvio fora do expediente (tempo pessoal).';
-  }
-
-  // Tem dados: computa as condições (D1, D3)
-  const motivos = [];
-
-  // Condição 1: foco ativo em outra janela (regra 17)
-  if (focoAtivoEmOutraJanela(sessoes, pastas, ociodadePar, agora)) {
-    motivos.push('foco ativo em outra janela');
-  }
-
-  // Condição 2: tempo pessoal + foco de trabalho (regra 3)
-  // Só aplica se o foco é marcado como [trabalho]
-  if (ehFocoTrabalho) {
-    const dentro = dentroDoExpediente(new Date(agora), config);
-    if (dentro === false) {
-      // false = não é expediente, logo é tempo pessoal
-      motivos.push('tempo pessoal');
+    // Indeterminada: faltam dados
+    anuncios.push('Pastas: ausente no FOCO.md — o radar vai cobrar desvio mesmo com o foco aberto em outra janela.');
+  } else {
+    // Determinada: pode decidir
+    if (focoAtivoEmOutraJanela(sessoes, pastas, ociosidadePar, agora)) {
+      vereditos.push('foco ativo em outra janela');
     }
   }
 
-  // Se nenhum motivo aplica, sem veredito
-  if (!motivos.length) return '';
+  // ISENÇÃO 2: Tempo pessoal (regra 3)
+  // Precisa de: expediente no config E foco [trabalho]
+  if (ehFocoTrabalho && expediente === undefined) {
+    // Indeterminada: faltam dados (expediente)
+    anuncios.push('expediente: ausente no config.json — o radar vai cobrar desvio fora do expediente (tempo pessoal).');
+  } else if (ehFocoTrabalho && expediente !== undefined) {
+    // Determinada: pode decidir
+    const dentro = dentroDoExpediente(new Date(agora), config);
+    if (dentro === false) {
+      // false = não é expediente, logo é tempo pessoal
+      vereditos.push('tempo pessoal');
+    }
+  }
+  // Se ehFocoTrabalho = false, esta isenção não se aplica (foco não é de trabalho)
 
-  // Veredito de uma linha (D10): componível, imperativo
-  return `**NÃO cobrar desvio de escopo nesta sessão** — ${motivos.join(' e ')}.`;
+  // Monta a resposta final
+  const linhas = [];
+
+  // Veredito: se há motivos aplicáveis
+  if (vereditos.length) {
+    linhas.push(`**NÃO cobrar desvio de escopo nesta sessão** — ${vereditos.join(' e ')}.`);
+  }
+
+  // Anúncios: um por isenção indeterminada (podem sair com veredito ou sozinhos)
+  linhas.push(...anuncios);
+
+  return linhas.join('\n');
 }
 
 module.exports = {
