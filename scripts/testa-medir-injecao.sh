@@ -687,8 +687,36 @@ else
   COM_DOIS_PONTOS14="$(val14 COM_DOIS_PONTOS)"
   SEM_SUFIXO14="$(val14 SESSIONSTART_SEM_SUFIXO)"
   echo "  (amostra: $TOTAL14 registros de hookEvent em $ARQUIVOS14 transcript(s) reais)"
-  igual "nenhum hookEvent real contem ':' (forma da fixture continua real)" "$COM_DOIS_PONTOS14" "0"
-  igual "todo registro SessionStart real traz o sufixo em hookName" "$SEM_SUFIXO14" "0"
+
+  # Esta ancora AVISA, nao reprova — de proposito, e a diferenca importa.
+  #
+  # Ela le `~/.claude/projects/` inteiro, ou seja, transcript de TODOS os
+  # projetos da maquina, nao so deste repo. Isso e o que da forca a ela: 26 mil
+  # registros dizem mais sobre a forma real do harness do que qualquer fixture.
+  # Mas e tambem o que a tornaria um gate que quebra sozinho: um transcript de
+  # outro projeto, de outra versao do Claude Code, ou importado de outra
+  # maquina, faria a suite DESTE repo falhar por motivo sem relacao nenhuma com
+  # o codigo que alguem esta tentando integrar. E o CONTRIBUTING.md:11 pede a
+  # suite inteira verde antes de abrir PR.
+  #
+  # Reproduzido em 2026-08-14 na revisao da rodada 5: um .jsonl sintetico com
+  # `"hookEvent": "SessionStart:startup"` sob um CLAUDE_CONFIG_DIR de teste
+  # levou a bateria a 45 ok / 1 falha, exit 1. Nos dados reais da maquina
+  # (26.008 registros, 895 arquivos, varios projetos) a contagem e zero.
+  #
+  # Entao ela avisa alto e nao reprova. Divergencia aqui nao significa "o codigo
+  # esta errado" — significa "a forma do harness mudou, va conferir as fixtures".
+  # Isso e informacao para um humano, nao veredito sobre um diff.
+  if [ "${COM_DOIS_PONTOS14:-0}" != "0" ] || [ "${SEM_SUFIXO14:-0}" != "0" ]; then
+    echo "  AVISO — a forma real do transcript DIVERGIU da que as fixtures assumem:"
+    echo "     hookEvent contendo ':' ......... $COM_DOIS_PONTOS14  $(val14 COM_DOIS_PONTOS_VALORES)"
+    echo "     SessionStart sem sufixo ........ $SEM_SUFIXO14"
+    echo "     As fixtures das secoes 7-13 podem ter envelhecido. Isto NAO reprova"
+    echo "     esta bateria: a divergencia pode vir de transcript de OUTRO projeto"
+    echo "     ou de outra versao do harness, e nao do codigo sob teste."
+  else
+    igual "forma real do transcript continua batendo com a das fixtures ($TOTAL14 registros)" "$COM_DOIS_PONTOS14:$SEM_SUFIXO14" "0:0"
+  fi
 fi
 
 # =========================================================================
