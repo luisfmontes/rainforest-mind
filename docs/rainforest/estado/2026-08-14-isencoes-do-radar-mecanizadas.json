@@ -6,7 +6,9 @@
     "status": "pendente"
   },
   "design": {
-    "status": "pendente"
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-08-14-isencoes-do-radar-mecanizadas.md",
+    "em": "2026-08-14"
   },
   "plano": {
     "status": "pendente"
