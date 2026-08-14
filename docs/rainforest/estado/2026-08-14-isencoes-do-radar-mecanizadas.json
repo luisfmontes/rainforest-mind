@@ -40,7 +40,11 @@
     "head": "db05544230bbe69bd6ad47c3a8646bff91eeb952"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "tarefas": 7,
+    "criterios_rodados": 7,
+    "criterios_ok": 7,
+    "em": "2026-08-14"
   },
   "fechar": {
     "status": "pendente"
