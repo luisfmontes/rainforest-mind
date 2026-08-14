@@ -895,8 +895,13 @@ function focoAtivoEmOutraJanela(sessoes, pastasDoFoco, ociosidadeMin, agora) {
 
     const cwdNormalizado = normalizarCaminho(cwd);
 
-    // Verifica se a sessão está numa pasta do foco (igualdade exata, não substring).
-    const estaNoFoco = pastasFocoNormalizadas.some((pasta) => pasta === cwdNormalizado);
+    // Verifica se a sessão está numa pasta do foco (igualdade exata OU subpasta).
+    // A comparação por prefixo com separador evita casar irmão com nome comum:
+    // C:/a não casa C:/abc, e .../gestao-projetos-template não casa
+    // .../gestao-projetos-template-outro.
+    const estaNoFoco = pastasFocoNormalizadas.some((pasta) => {
+      return cwdNormalizado === pasta || cwdNormalizado.startsWith(pasta + '/');
+    });
     if (!estaNoFoco) continue;
 
     // Sessão no foco, mas sem sinal humano registrado: não conta como ativa.
