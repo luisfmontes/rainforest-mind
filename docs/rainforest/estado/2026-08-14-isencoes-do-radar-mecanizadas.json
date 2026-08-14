@@ -30,7 +30,9 @@
     "nota": "expediente plantado, so as pastas configuradas"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "achados": 4,
+    "em": "2026-08-14"
   },
   "verificar": {
     "status": "pendente"
