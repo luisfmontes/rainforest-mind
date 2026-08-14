@@ -20,13 +20,14 @@
     "em": "2026-08-14"
   },
   "executar": {
-    "status": "parcial",
-    "tarefas_ok": 5,
+    "status": "ok",
+    "tarefas_ok": 6,
     "tarefas": 6,
     "em": "2026-08-14",
     "pendentes": [
       "tarefa-6: precisa das pastas do foco; expediente pendente de decisao sobre duas faixas"
-    ]
+    ],
+    "nota": "expediente plantado, so as pastas configuradas"
   },
   "revisar": {
     "status": "pendente"
