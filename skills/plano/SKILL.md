@@ -36,24 +36,35 @@ Design: docs/rainforest/design/<slug>.md
 ## Tarefas
 
 ### 1. <nome da tarefa> [tipo: implementar|configurar|pesquisar|teste|docs]
+atende: D1, D2
+arquivos: `<padrão ou caminho>`
 depende de: nenhuma
 paralela: sim
 pronto quando: `<comando exato>` devolve `<saída ou exit esperado>`
 
 ### 2. <nome da tarefa> [tipo: ...]
+atende: D3
+arquivos: `<padrão ou caminho>`
 depende de: 1
 paralela: nao
 pronto quando: `<comando exato>` devolve `<saída ou exit esperado>`
 ```
 
-Cada tarefa leva: **tipo**, `depende de:` (números das tarefas antecessoras
-ou "nenhuma"), `paralela: sim|nao` (só "sim" quando `depende de: nenhuma`) e
-critério de pronto **falsificável** — comando e saída esperada, nunca
-"funcionar bem" ou "funcionar corretamente".
+Cada tarefa leva: **tipo**, `atende:` (lista de `D<n>` do design que esta tarefa realiza), `arquivos:` (caminhos ou globs que ela pode tocar), `depende de:` (números das tarefas antecessoras ou "nenhuma"), `paralela: sim|nao` (só "sim" quando `depende de: nenhuma`) e critério de pronto **falsificável** — comando e saída esperada, nunca "funcionar bem" ou "funcionar corretamente".
+
+### Campos obrigatórios: `atende:` e `arquivos:`
+
+- **`atende:` vazio é recusa**: tarefa sem `atende:`, ou com `atende:` vazio, não entra no plano — se não atende nenhuma decisão, ela não deveria estar aqui.
+- **`arquivos:` sem glob largo**: declare caminhos concretos ou padrões específicos. Glob largo como `hooks/**` não descreve o que você toca — é achado do `revisar`, não atalho.
+- **Cobertura nos dois sentidos**: decisão do design sem tarefa barra o plano, e tarefa citando `D<n>` inexistente também barra.
 
 **Proibido placeholder.** Tarefa com "TBD", "a definir" ou critério de
 pronto vago não entra no plano — falta decisão, e decisão que falta volta
 para o `brainstorm`; não se resolve inventando aqui.
+
+### Trava de cobertura
+
+A partir de 2026-08-13, `node scripts/estado.cjs marcar --estagio plano --status ok` recusa plano que não tenha cobertura completa: testa se toda decisão `D<n>` do design tem tarefa no plano com `atende: D<n>`, e se toda tarefa do plano cita apenas `D<n>` existentes. Sem cobertura completa, o comando sai com exit 2.
 
 ## Fechar
 

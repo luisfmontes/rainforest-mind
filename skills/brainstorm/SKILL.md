@@ -70,8 +70,11 @@ design descreve aquele código e mora ao lado dele.
 <uma ou duas frases>
 
 ## Decisões fechadas
-- **<decisão>** — porquê: <motivo>
-- **<decisão>** — porquê: <motivo>
+- **D1 — <decisão>** — porquê: <motivo>
+- **D2 — <decisão>** — porquê: <motivo>
+
+## Avaliado e descartado
+- <caminho tentado e a medição que o matou>
 
 ## Fora de escopo
 - <o que ficou de fora e por quê>
@@ -79,6 +82,15 @@ design descreve aquele código e mora ao lado dele.
 ## Em aberto
 - <o que não fechou — geralmente vazio no fim>
 ```
+
+### Avaliado e descartado vs. Fora de escopo
+
+As duas seções existem e **são diferentes**:
+
+- **Avaliado e descartado**: caminho que você tentou e mediu — ficou mais lento, mais complexo, menos seguro, ou viola restrição do projeto. Decisão **refutada por evidência**.
+- **Fora de escopo**: o que você não vai fazer no projeto, porque o projeto não é sobre aquilo. Decisão **não tomada, porque não é responsabilidade desta entrega**.
+
+A seção "Avaliado e descartado" é distinta porque reduz a chance de a mesma ideia ressurgir na próxima rodada: quando você escreve "tentei compilar in-memory e o tempo subiu 40%", quem ler sabe que não foi esquecimento e sabe por que ficar longe.
 
 ### Fechar o estágio
 
@@ -91,6 +103,10 @@ node scripts/estado.cjs marcar --slug <slug> --estagio design --status aprovado 
 Só depois que ele confirmou o entendimento. Marcar `aprovado` sem a palavra
 dele é assinar a aprovação no lugar de quem aprova — e é o que destranca o
 `plano`, o `executar` e todo o resto da esteira.
+
+### Trava de formato
+
+A partir de 2026-08-13, `node scripts/estado.cjs marcar --estagio design --status aprovado` recusa design que não siga o formato acima: seções obrigatórias, decisões marcadas como `**D<n> — ...**` com `n` sequencial de 1, sem buraco e sem repetido. Sem o formato, o comando sai com exit 2.
 
 ---
 
