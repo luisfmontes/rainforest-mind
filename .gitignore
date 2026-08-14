@@ -32,3 +32,7 @@ ideias.jsonl
 # Sem esta linha, `conferir-entrega.cjs` acusa falso positivo na checagem 4
 # ("o repo principal foi tocado?") em TODA entrega de agente.
 .claude/worktrees/
+
+# Bytecode do Python, gerado ao rodar scripts/medir-injecao.py.
+__pycache__/
+*.pyc
