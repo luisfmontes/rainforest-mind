@@ -51,6 +51,8 @@ function destinoPadrao() {
 
 const FOCO_MODELO = `# Foco
 
+Pastas:
+
 ## Ativo
 
 Todo foco declara a natureza — \`[trabalho]\` ou \`[pessoal]\`.
