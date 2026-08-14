@@ -29,10 +29,11 @@
     "achados_fechados": 10
   },
   "revisar": {
-    "status": "reprovado",
-    "achados": 2,
+    "status": "ok",
+    "achados": 0,
     "em": "2026-08-14",
-    "rodada": 4
+    "rodada": 5,
+    "achados_totais_fechados": 10
   },
   "verificar": {
     "status": "pendente"
