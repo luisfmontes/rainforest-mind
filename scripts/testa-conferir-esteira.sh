@@ -99,8 +99,18 @@ echo "== 3. creep: diff x globs das tarefas =="
 if git -C "$RAIZ" cat-file -e e1a6824^{commit} 2>/dev/null && git -C "$RAIZ" cat-file -e ff1fd3c^{commit} 2>/dev/null; then
   exige 2 "arquivo fora de todo glob recusa" \
     node "$CHECADOR" creep --slug decisao-que-evapora-na-esteira --base e1a6824 --head ff1fd3c
-  exige 0 "docs/rainforest/** nao conta como creep" \
-    node "$CHECADOR" creep --slug decisao-que-evapora-na-esteira --base ff1fd3c --head HEAD
+  # `--head` PRECISA ser fixo. A versao original usava `HEAD`, e a assercao so
+  # valia enquanto o HEAD do repo fosse a ponta do proprio trabalho
+  # `decisao-que-evapora-na-esteira` — o primeiro trabalho seguinte a entrar na
+  # branch coloca no diff arquivos que o plano dele nao declara, e o creep passa
+  # a acusar CORRETAMENTE, derrubando um teste que nao tem nada a ver.
+  # Aconteceu em 2026-08-14, ao integrar a esteira do orcamento de token: 21 ok
+  # na main, 20 ok / 1 falha na branch seguinte. Mesma familia do fixture do
+  # testa-saude.sh: teste que afirma sobre o estado corrente do repo envelhece
+  # sozinho. `f9fe746` e o squash do PR #9, ou seja, exatamente a ponta daquele
+  # trabalho — o intervalo ff1fd3c..f9fe746 e o diff dele e mais nada.
+  exige 0 "diff do proprio trabalho nao conta como creep" \
+    node "$CHECADOR" creep --slug decisao-que-evapora-na-esteira --base ff1fd3c --head f9fe746
 else
   echo "  (pulado: commits de referencia ausentes neste clone)"
 fi

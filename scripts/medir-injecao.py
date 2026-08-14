@@ -141,6 +141,192 @@ def entregas(caminho: Path) -> list[dict]:
     return linhas
 
 
+def repartir(caminho: Path) -> int:
+    """Reparte a abertura por fonte usando attachments do transcript."""
+    BYTES_POR_TOKEN = 3.11
+
+    # Marcador que o hook foco-session-start.cjs emite no início do contexto.
+    # DEVE bater com a primeira linha do `cabecalho` em lib/contexto-sessao.cjs.
+    RAINFOREST_MARKER = "RAINFOREST MIND ATIVO"
+
+    # Ler os attachments
+    skill_listing_bytes = 0
+    skill_listing_rainforest_bytes = 0
+    deferred_tools_bytes = 0
+    agent_listing_bytes = 0
+    agent_listing_rainforest_bytes = 0
+    hook_additional_context_bytes = 0
+    hook_additional_context_rainforest_bytes = 0
+    total_tokens = None
+
+    with caminho.open(encoding="utf-8", errors="replace") as fh:
+        for linha in fh:
+            try:
+                d = json.loads(linha)
+            except json.JSONDecodeError:
+                continue
+
+            # Ler o total de tokens da abertura
+            if total_tokens is None:
+                u = (d.get("message") or {}).get("usage") or d.get("usage")
+                if isinstance(u, dict) and u.get("input_tokens") is not None:
+                    total_tokens = (u.get("input_tokens") or 0) + (u.get("cache_read_input_tokens") or 0) \
+                        + (u.get("cache_creation_input_tokens") or 0)
+
+            # Processar attachments
+            att = d.get("attachment")
+            if not att:
+                continue
+
+            att_type = att.get("type")
+
+            if att_type == "skill_listing":
+                # Guardar apenas da primeira ocorrência
+                if skill_listing_bytes == 0:
+                    content = att.get("content", "")
+                    skill_listing_bytes = len(content.encode("utf-8"))
+
+                    # Contar a fatia rainforest-mind
+                    names = att.get("names", [])
+                    rainforest_names = [n for n in names if n.startswith("rainforest-mind:")]
+
+                    # Se temos os nomes, calcular a fatia aproximada
+                    if rainforest_names and content:
+                        # Procurar cada skill rainforest-mind no conteúdo
+                        # e somar os bytes até o próximo skill
+                        lines = content.split('\n')
+                        rf_content = []
+                        in_rainforest = False
+                        for line in lines:
+                            # Detectar linha de skill (começa com "- ")
+                            if line.startswith("- "):
+                                # Extrair o identificador (parte entre "- " e ": ")
+                                parts = line[2:].split(": ", 1)
+                                identifier = parts[0]
+                                if identifier in rainforest_names:
+                                    in_rainforest = True
+                                else:
+                                    in_rainforest = False
+
+                            if in_rainforest:
+                                rf_content.append(line)
+
+                        rainforest_content = '\n'.join(rf_content)
+                        skill_listing_rainforest_bytes = len(rainforest_content.encode("utf-8"))
+
+            elif att_type == "deferred_tools_delta":
+                # Guardar apenas da primeira ocorrência
+                if deferred_tools_bytes == 0:
+                    added_lines = att.get("addedLines", [])
+                    content = '\n'.join(added_lines)
+                    deferred_tools_bytes = len(content.encode("utf-8"))
+
+            elif att_type == "agent_listing_delta":
+                # Guardar apenas da primeira ocorrência
+                if agent_listing_bytes == 0:
+                    added_lines = att.get("addedLines", [])
+                    content = '\n'.join(added_lines)
+                    agent_listing_bytes = len(content.encode("utf-8"))
+
+                    # Contar a fatia rainforest-mind
+                    added_types = att.get("addedTypes", [])
+                    rainforest_types = [t for t in added_types if t.startswith("rainforest-mind:")]
+
+                    if rainforest_types and content:
+                        # Similar ao skill_listing, procurar linhas que correspondem aos tipos
+                        lines = content.split('\n')
+                        rf_content = []
+                        in_rainforest = False
+                        for line in lines:
+                            # Detectar linha de agente (começa com "- ")
+                            if line.startswith("- "):
+                                # Extrair o identificador (parte entre "- " e ": ")
+                                parts = line[2:].split(": ", 1)
+                                identifier = parts[0]
+                                if identifier in rainforest_types:
+                                    in_rainforest = True
+                                else:
+                                    in_rainforest = False
+
+                            if in_rainforest:
+                                rf_content.append(line)
+
+                        rainforest_content = '\n'.join(rf_content)
+                        agent_listing_rainforest_bytes = len(rainforest_content.encode("utf-8"))
+
+            elif att_type == "hook_additional_context":
+                # Guardar apenas da primeira ocorrência
+                if hook_additional_context_bytes == 0:
+                    # Processar hook_additional_context do foco-session-start.cjs
+                    # O content pode ser uma string ou uma lista de strings
+                    content_raw = att.get("content", "")
+                    if isinstance(content_raw, list):
+                        # Calcular o total de todos os itens
+                        hook_additional_context_bytes = sum(
+                            len(item.encode("utf-8")) for item in content_raw
+                        )
+                        # Adicionar bytes das quebras de linha entre itens
+                        if len(content_raw) > 1:
+                            hook_additional_context_bytes += (len(content_raw) - 1)
+
+                        # Contar apenas o item que é nosso (começa com RAINFOREST_MARKER)
+                        for item in content_raw:
+                            if item.startswith(RAINFOREST_MARKER):
+                                hook_additional_context_rainforest_bytes = len(item.encode("utf-8"))
+                                break
+                    else:
+                        content = content_raw
+                        hook_additional_context_bytes = len(content.encode("utf-8"))
+                        # Se for string, verificar se começa com o marcador
+                        if content.startswith(RAINFOREST_MARKER):
+                            hook_additional_context_rainforest_bytes = hook_additional_context_bytes
+
+    if total_tokens is None:
+        print("erro: nenhum registro com usage nos transcripts lidos.\n"
+              "      Sessao sem abertura, ou o transcript nao guarda o campo `usage`.",
+              file=sys.stderr)
+        return 1
+
+    # Calcular subtotais
+    rainforest_bytes = skill_listing_rainforest_bytes + agent_listing_rainforest_bytes + hook_additional_context_rainforest_bytes
+    atribuido_bytes = skill_listing_bytes + deferred_tools_bytes + agent_listing_bytes + hook_additional_context_bytes
+
+    # Calcular não atribuído
+    atribuido_tokens = atribuido_bytes / BYTES_POR_TOKEN
+    nao_atribuido_tokens = total_tokens - atribuido_tokens
+
+    # Imprimir resultado.
+    # As tres primeiras linhas sao fontes IRMAS e somam. A linha rainforest-mind
+    # e um recorte DENTRO de skill_listing e agent_listing_delta — some-la com as
+    # outras conta o mesmo byte duas vezes, e por isso ela vem recuada e marcada
+    # com "dos quais". Ja aconteceu de alguem somar a coluna inteira.
+    print(f"{'fonte':28s} {'bytes':>9s} {'tokens~':>9s}")
+    print(f"{'-' * 28} {'-' * 9} {'-' * 9}")
+    for nome, b in (("skill_listing", skill_listing_bytes),
+                    ("deferred_tools_delta", deferred_tools_bytes),
+                    ("agent_listing_delta", agent_listing_bytes),
+                    ("hook_additional_context", hook_additional_context_bytes)):
+        print(f"{nome:28s} {b:>9,d} {b / BYTES_POR_TOKEN:>9,.0f}")
+    print(f"{'atribuido':28s} {atribuido_bytes:>9,d} {atribuido_tokens:>9,.0f}")
+    print(f"{'  dos quais rainforest-mind':28s} {rainforest_bytes:>9,d} "
+          f"{rainforest_bytes / BYTES_POR_TOKEN:>9,.0f}")
+    nao_atribuido_bytes_estimado = int(nao_atribuido_tokens * BYTES_POR_TOKEN)
+    print(f"{'nao atribuido':28s} {'~' + f'{nao_atribuido_bytes_estimado:,d}':>9s} "
+          f"{nao_atribuido_tokens:>9,.0f}")
+    print(f"{'TOTAL DA ABERTURA':28s} {'':>9s} {total_tokens:>9,d}")
+
+    print(f"\nO total da abertura ({total_tokens:,d} tokens) e MEDIDO - vem do `usage`")
+    print("devolvido pela API e gravado no transcript. Todo o resto da coluna")
+    print(f"'tokens~' e ESTIMADO, dividindo byte por BYTES_POR_TOKEN = {BYTES_POR_TOKEN}.")
+    print("Esse fator foi medido com tiktoken no encoding cl100k_base, que e da")
+    print("OPENAI (GPT-4) - NAO e o tokenizador do Claude, que nao existe offline")
+    print("nesta maquina. Trate a coluna estimada como ordem de grandeza.")
+    print("A linha 'nao atribuido' e a mais fraca de todas: ela nasce em token")
+    print("(total medido menos atribuido) e volta para byte pelo mesmo fator.")
+
+    return 0
+
+
 def relatar_entrega(alvos: list[Path]) -> int:
     linhas = [m for c in alvos for m in entregas(c)]
     if not linhas:
@@ -201,6 +387,8 @@ def main() -> int:
     ap.add_argument("--projeto", default=".")
     ap.add_argument("--entrega", action="store_true",
                     help="mede o que CHEGOU ao modelo por hook, nao o total da abertura")
+    ap.add_argument("--repartir", action="store_true",
+                    help="reparte a abertura por fonte usando attachments do transcript")
     a = ap.parse_args()
 
     if a.arquivo:
@@ -213,6 +401,13 @@ def main() -> int:
 
     if a.entrega:
         return relatar_entrega(alvos)
+
+    if a.repartir:
+        if len(alvos) > 1:
+            print("erro: --repartir so funciona com um transcript (use --ultimas 1 ou especifique arquivo)",
+                  file=sys.stderr)
+            return 1
+        return repartir(alvos[0])
 
     linhas = [m for c in alvos if (m := abertura(c))]
     if not linhas:
