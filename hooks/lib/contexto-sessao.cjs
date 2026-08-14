@@ -826,8 +826,13 @@ ${regras}
  */
 function pastasDoFoco(textoDoFoco) {
   const texto = String(textoDoFoco || '');
-  const match = texto.match(/^Pastas:\s*(.+)$/m);
-  if (!match || !match[1]) return [];
+  // `[ \t]*` (nunca `\s*`) entre os dois-pontos e o conteúdo: `\s` inclui quebra
+  // de linha, e um `Pastas:` seguido de linha em branco (a forma exata que o
+  // `scripts/setup.cjs` semeia) atravessava para o próximo heading não-vazio —
+  // `pastasDoFoco("Pastas:\n\n## Ativo\n")` devolvia `["## Ativo"]` em vez de `[]`,
+  // e a isenção 1 (D6/regra 17) tratava isso como pasta configurada de verdade.
+  const match = texto.match(/^Pastas:[ \t]*(.*)$/m);
+  if (!match || !match[1].trim()) return [];
   return match[1].split(',').map((s) => s.trim()).filter(Boolean);
 }
 
