@@ -21,9 +21,12 @@
   },
   "executar": {
     "status": "parcial",
-    "tarefas_ok": 4,
+    "tarefas_ok": 5,
     "tarefas": 6,
-    "em": "2026-08-14"
+    "em": "2026-08-14",
+    "pendentes": [
+      "tarefa-6: precisa das pastas do foco e do expediente do usuario"
+    ]
   },
   "revisar": {
     "status": "pendente"
