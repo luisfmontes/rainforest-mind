@@ -855,6 +855,66 @@ function dentroDoExpediente(agora, config) {
   return true;
 }
 
+/**
+ * Verifica se existe uma sessão viva na pasta do foco com sinal humano recente.
+ *
+ * Respostas a D7: "Foco ativo em outra janela" = sinal humano dentro da ociosidade
+ * máxima que o foco já declara. O `sessoes.json` só tem `cwd`, `prompt_ts` e `stop_ts`,
+ * então "ativa" precisa de um limiar — reusar os minutos já declarados evita inventar
+ * parâmetro.
+ *
+ * Comparação de caminho NORMALIZA separador (\ vs /) e caixa, porque `cwd` vem com as
+ * duas variações no Windows. MAS NUNCA casa por prefixo — `C:/a` não pode casar `C:/abc`.
+ *
+ * Sinal humano é o `prompt_ts` (quando o usuario digitou algo), não `stop_ts` (quando
+ * a resposta parou). Uma janela que parou há uma hora não está sendo trabalhada.
+ *
+ * @param {Array<{cwd?: string, prompt_ts?: number, stop_ts?: number}>} sessoes lista do sessoes.json
+ * @param {string[]} pastasDoFoco array de caminhos do foco
+ * @param {number} ociosidadeMin minutos de inatividade máxima (da "Ociosidade máxima" do foco)
+ * @param {number} agora timestamp de referência (Date.now())
+ * @returns {boolean} true se existe sessão no foco com sinal dentro da ociosidade; false caso contrário
+ */
+function focoAtivoEmOutraJanela(sessoes, pastasDoFoco, ociosidadeMin, agora) {
+  // Não há foco ou não há sessões = sem atividade detectada.
+  if (!pastasDoFoco || !pastasDoFoco.length) return false;
+  if (!sessoes || !sessoes.length) return false;
+
+  // Normaliza um caminho para comparação: separador \ -> /, e minúscula.
+  // Não é substring: `C:/a` não casa `C:/abc`.
+  const normalizarCaminho = (caminho) => {
+    if (!caminho) return '';
+    return caminho.replace(/\\/g, '/').toLowerCase();
+  };
+
+  const pastasFocoNormalizadas = pastasDoFoco.map(normalizarCaminho);
+
+  for (const sessao of sessoes) {
+    const { cwd, prompt_ts } = sessao;
+    if (!cwd) continue;
+
+    const cwdNormalizado = normalizarCaminho(cwd);
+
+    // Verifica se a sessão está numa pasta do foco (igualdade exata, não substring).
+    const estaNoFoco = pastasFocoNormalizadas.some((pasta) => pasta === cwdNormalizado);
+    if (!estaNoFoco) continue;
+
+    // Sessão no foco, mas sem sinal humano registrado: não conta como ativa.
+    if (!prompt_ts) continue;
+
+    // Calcula minutos desde o último sinal (prompt_ts).
+    const minutosSinal = (agora - prompt_ts) / (1000 * 60);
+
+    // Se o sinal está dentro da ociosidade máxima, o foco está ativo em outra janela.
+    if (minutosSinal <= ociosidadeMin) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+
 module.exports = {
   TETOS,
   filtrarRegras,
@@ -874,4 +934,5 @@ module.exports = {
   montarContexto,
   pastasDoFoco,
   dentroDoExpediente,
+  focoAtivoEmOutraJanela,
 };
