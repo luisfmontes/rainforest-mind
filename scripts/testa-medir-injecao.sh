@@ -1,0 +1,361 @@
+#!/bin/bash
+# Bateria do scripts/medir-injecao.py --repartir — o script que REPARTE por fonte
+# (skill_listing, deferred_tools_delta, agent_listing_delta, hook_additional_context)
+# o custo real, em token medido pela API, do prompt de abertura de uma sessão.
+#
+# Nenhum gate cobria este arquivo (grep -rl "medir-injecao\|repartir" scripts/*.sh
+# voltava vazio) e ele acumulou SEIS defeitos confirmados em duas rodadas de
+# revisão. Esta bateria fecha essa lacuna. Cada seção abaixo:
+#   1. monta uma fixture de transcript JSONL sintético em caixa de areia;
+#   2. roda `python scripts/medir-injecao.py --repartir <fixture>` contra o
+#      ORIGINAL e afirma o valor exato que o defeito, se reintroduzido, mudaria;
+#   3. sabota uma CÓPIA do script (nunca o original) reintroduzindo aquele
+#      defeito específico, roda a MESMA fixture contra a cópia, e mostra que o
+#      valor medido se afasta do esperado — a prova de que a asserção pegaria.
+#
+# Os seis defeitos:
+#   1. fatia rainforest-mind dos agentes zerada por nome derivado errado
+#      (line[2:].split(":")[0] sempre devolve "rainforest-mind").
+#   2. hook_additional_context nunca lido (branch do att_type não bate).
+#   3. a linha "nao atribuido" é ESTIMADA (byte convertido de volta a partir do
+#      token) e tem que vir marcada com "~" — sem a marca, parece medida.
+#   4. byte de uma linha da tabela casado com token de OUTRA linha.
+#   5. total_tokens do primeiro SessionStart, fontes vindas do último — a
+#      distinção entre medir a ABERTURA e medir um RESUME.
+#   6. hook_additional_context.content é uma LISTA; conteúdo de outro plugin
+#      (ex.: claude-mem) não pode entrar na fatia rainforest-mind.
+#
+# Mais uma amarração (roda contra o HOOK REAL, não fixture): o RAINFOREST_MARKER
+# que o script usa para reconhecer "qual item da lista é nosso" tem que continuar
+# batendo com a primeira linha que `node hooks/foco-session-start.cjs` emite.
+
+set -u
+SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SBP="$(mktemp -d)"
+trap 'rm -rf "$SBP"' EXIT
+echo "(caixa de areia: $SBP)"
+
+ALVO="$SRC/scripts/medir-injecao.py"
+
+ok=0; falhou=0
+tem()     { if echo "$2" | grep -qF -- "$3"; then ok=$((ok+1)); echo "  ok   $1"; else falhou=$((falhou+1)); echo "  FALHA $1 (esperava achar '$3')"; fi; }
+nao_tem() { if echo "$2" | grep -qF -- "$3"; then falhou=$((falhou+1)); echo "  FALHA $1 (achou '$3')"; else ok=$((ok+1)); echo "  ok   $1"; fi; }
+igual()   { if [ "$2" = "$3" ]; then ok=$((ok+1)); echo "  ok   $1"; else falhou=$((falhou+1)); echo "  FALHA $1 (esperava '$3', veio '$2')"; fi; }
+
+# extratores de campo da tabela do --repartir. Formato de cada linha de fonte:
+#   "{nome:28s} {bytes:>9,d} {tokens:>9,.0f}"  -> awk splita por espaço; o rótulo
+# pode ter espaços dentro (ex. "dos quais rainforest-mind"), então os dois
+# ÚLTIMOS campos são sempre bytes e tokens, não importa quantas palavras o rótulo tem.
+campo()        { echo "$1" | grep -F -- "$2" | head -1 | awk '{print $(NF-1)}' | tr -d ','; }
+campo_bruto()  { echo "$1" | grep -F -- "$2" | head -1 | awk '{print $(NF-1)}'; }
+campo_tokens() { echo "$1" | grep -F -- "$2" | head -1 | awk '{print $NF}'     | tr -d ','; }
+# "atribuido" é substring de "nao atribuido" — grep -F comum pegaria a linha errada.
+campo_atrib_bytes()  { echo "$1" | grep -E '^atribuido[[:space:]]' | head -1 | awk '{print $(NF-1)}' | tr -d ','; }
+campo_atrib_tokens() { echo "$1" | grep -E '^atribuido[[:space:]]' | head -1 | awk '{print $NF}'     | tr -d ','; }
+
+# afirma que bytes/3.11 ~= tokens da MESMA linha (tolerância 1, por causa do
+# arredondamento ",.0f" do print). É a asserção do defeito 4.
+bate_token() {
+  local rotulo="$1" bytes="$2" tokens="$3" esperado diff
+  esperado="$(python -c "print(round($bytes/3.11))" 2>/dev/null)"
+  diff=$(( tokens - esperado )); diff=${diff#-}
+  if [ "$diff" -le 1 ]; then
+    ok=$((ok+1)); echo "  ok   $rotulo: ${bytes} B casa com ${tokens} tokens~ (esperado ~$esperado)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA $rotulo: ${bytes} B NAO casa com ${tokens} tokens~ (esperado ~$esperado, diff $diff)"
+  fi
+}
+
+# meta-asserções da perna vermelha: o valor sob mutação tem que DIVERGIR do
+# valor correto medido contra o original. Divergir é o mutante "detectado".
+mutante_detectado_num() {
+  local rotulo="$1" correto="$2" sabotado="$3"
+  if [ "$correto" != "$sabotado" ]; then
+    ok=$((ok+1)); echo "  ok   mutante detectado — $rotulo (original: $correto | sabotado: $sabotado)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mutante NAO detectado — $rotulo continuou $sabotado mesmo sabotado"
+  fi
+}
+mutante_detectado_se() {
+  # $1 rotulo, $2 = "1" quando o sintoma do bug apareceu no output sabotado
+  if [ "$2" = "1" ]; then ok=$((ok+1)); echo "  ok   mutante detectado — $1"; else falhou=$((falhou+1)); echo "  FALHA mutante NAO detectado — $1"; fi
+}
+
+# sabota uma linha específica (1-indexed) de uma CÓPIA do script, por
+# substituição de trecho DENTRO da linha (confere a âncora antes de trocar, e
+# copia do original só na primeira chamada — chamadas seguintes acumulam no
+# mesmo arquivo mutante).
+sabotar_linha() {
+  local n="$1" achar="$2" trocar="$3" alvo="$4"
+  if [ ! -f "$alvo" ]; then cp "$ALVO" "$alvo"; fi
+  N="$n" ACHAR="$achar" TROCAR="$trocar" ALVO_PY="$alvo" python3 <<'PY'
+import os
+n = int(os.environ["N"]) - 1
+achar = os.environ["ACHAR"]
+trocar = os.environ["TROCAR"]
+alvo = os.environ["ALVO_PY"]
+with open(alvo, encoding="utf-8") as f:
+    linhas = f.readlines()
+if achar not in linhas[n]:
+    raise SystemExit(f"ANCORA NAO BATE na linha {n+1}: esperava achar {achar!r}, linha era {linhas[n]!r}")
+linhas[n] = linhas[n].replace(achar, trocar, 1)
+with open(alvo, "w", encoding="utf-8") as f:
+    f.writelines(linhas)
+print(f"  (sabotagem: linha {n+1}: {achar!r} -> {trocar!r})")
+PY
+}
+
+# sabota um INTERVALO de linhas (1-indexed, inclusive), substituindo o bloco
+# inteiro pelo texto lido do stdin (heredoc do chamador).
+sabotar_bloco() {
+  local ini="$1" fim="$2" ancora="$3" alvo="$4"
+  local novo; novo="$(cat)"
+  if [ ! -f "$alvo" ]; then cp "$ALVO" "$alvo"; fi
+  INI="$ini" FIM="$fim" ANCORA="$ancora" NOVO="$novo" ALVO_PY="$alvo" python3 <<'PY'
+import os
+ini = int(os.environ["INI"]) - 1
+fim = int(os.environ["FIM"])
+ancora = os.environ["ANCORA"]
+novo = os.environ["NOVO"]
+alvo = os.environ["ALVO_PY"]
+with open(alvo, encoding="utf-8") as f:
+    linhas = f.readlines()
+bloco = "".join(linhas[ini:fim])
+if ancora not in bloco:
+    raise SystemExit(f"ANCORA NAO BATE nas linhas {ini+1}-{fim}: esperava achar {ancora!r}, bloco era {bloco!r}")
+linhas[ini:fim] = [l + "\n" for l in novo.split("\n")]
+with open(alvo, "w", encoding="utf-8") as f:
+    f.writelines(linhas)
+print(f"  (sabotagem: linhas {ini+1}-{fim} -> {novo!r})")
+PY
+}
+
+rodar() { python "$ALVO" --repartir "$1" 2>&1; }
+rodar_mutante() { python "$1" --repartir "$2" 2>&1; }
+
+# =========================================================================
+echo; echo "0. o marcador bate com o hook REAL (nao fixture)"
+# O RAINFOREST_MARKER que o repartir() usa para reconhecer "qual item da lista
+# é nosso" é lido do PRÓPRIO medir-injecao.py, não digitado aqui de novo — o
+# que se afirma é que ele ainda bate com o que o hook de verdade emite hoje.
+MARCADOR="$(ALVO_PY="$ALVO" python3 <<'PY'
+import os, re
+t = open(os.environ["ALVO_PY"], encoding="utf-8").read()
+m = re.search(r'RAINFOREST_MARKER = "(.*)"', t)
+print(m.group(1) if m else "")
+PY
+)"
+if [ -z "$MARCADOR" ]; then
+  falhou=$((falhou+1)); echo "  FALHA nao encontrei RAINFOREST_MARKER em medir-injecao.py"
+else
+  CONTEXTO_HOOK="$(cd "$SRC" && node hooks/foco-session-start.cjs 2>&1 | node -e '
+    let data = "";
+    process.stdin.on("data", (c) => (data += c));
+    process.stdin.on("end", () => {
+      try {
+        const j = JSON.parse(data);
+        process.stdout.write(String(j.hookSpecificOutput.additionalContext).slice(0, 80));
+      } catch (e) {
+        process.stdout.write("ERRO_PARSE: " + e.message);
+      }
+    });
+  ')"
+  case "$CONTEXTO_HOOK" in
+    "$MARCADOR"*) ok=$((ok+1)); echo "  ok   marcador '$MARCADOR' bate com o inicio do que o hook real emite" ;;
+    *) falhou=$((falhou+1)); echo "  FALHA marcador '$MARCADOR' NAO bate — hook real comeca com: '${CONTEXTO_HOOK:0:60}'" ;;
+  esac
+fi
+
+# =========================================================================
+echo; echo "1. fatia rainforest-mind dos AGENTES nao pode zerar nem vazar de outro plugin"
+AG1_ID="rainforest-mind:executor"
+AG1_DESC="Agente padrao de execucao"
+AG2_ID="rainforest-mind:revisor"
+AG2_DESC="Agente de revisao"
+OUT_ID="outro-plugin:tarefa"
+OUT_DESC="Agente de outro plugin nao relacionado"
+LINE1="- ${AG1_ID}: ${AG1_DESC}"
+LINE2="- ${OUT_ID}: ${OUT_DESC}"
+LINE3="- ${AG2_ID}: ${AG2_DESC}"
+RF_BYTES_1="$(printf '%s\n%s' "$LINE1" "$LINE3" | wc -c)"
+
+FX1="$SBP/1-agentes.jsonl"
+LINES_JSON="$(python3 -c "import json,sys; print(json.dumps(sys.argv[1:]))" "$LINE1" "$LINE2" "$LINE3")"
+TYPES_JSON="$(python3 -c "import json,sys; print(json.dumps(sys.argv[1:]))" "$AG1_ID" "$OUT_ID" "$AG2_ID")"
+FIX_PATH="$FX1" LINES_JSON="$LINES_JSON" TYPES_JSON="$TYPES_JSON" python3 <<'PY'
+import json, os
+lines = json.loads(os.environ["LINES_JSON"])
+types = json.loads(os.environ["TYPES_JSON"])
+with open(os.environ["FIX_PATH"], "w", encoding="utf-8") as f:
+    f.write(json.dumps({"message": {"usage": {"input_tokens": 20000, "cache_read_input_tokens": 0, "cache_creation_input_tokens": 0}}}) + "\n")
+    f.write(json.dumps({"attachment": {"type": "agent_listing_delta", "addedLines": lines, "addedTypes": types}}) + "\n")
+PY
+
+SAIDA1="$(rodar "$FX1")"
+FATIA1="$(campo "$SAIDA1" 'dos quais rainforest-mind')"
+igual "fatia rainforest dos agentes bate exatamente (so os dois nossos, sem o de outro plugin)" "$FATIA1" "$RF_BYTES_1"
+
+echo "  -- mutacao 1a: reintroduz split(\":\")[0] (bug medido: fatia sempre 0 B)"
+MUT1A="$SBP/mut-1a.py"
+sabotar_linha 244 '.split(": ", 1)' '.split(":")' "$MUT1A"
+SAIDA1A="$(rodar_mutante "$MUT1A" "$FX1")"
+FATIA1A="$(campo "$SAIDA1A" 'dos quais rainforest-mind')"
+echo "  saida do mutante (linha da fatia): $(echo "$SAIDA1A" | grep -F 'dos quais rainforest-mind')"
+mutante_detectado_num "fatia zera com split(\":\")[0]" "$RF_BYTES_1" "$FATIA1A"
+
+echo "  -- mutacao 1b: comparacao sempre verdadeira (bug: fatia passa a incluir outro plugin)"
+MUT1B="$SBP/mut-1b.py"
+sabotar_linha 246 'if identifier in rainforest_types:' 'if True:' "$MUT1B"
+SAIDA1B="$(rodar_mutante "$MUT1B" "$FX1")"
+FATIA1B="$(campo "$SAIDA1B" 'dos quais rainforest-mind')"
+echo "  saida do mutante (linha da fatia): $(echo "$SAIDA1B" | grep -F 'dos quais rainforest-mind')"
+mutante_detectado_num "fatia infla incluindo linha de outro plugin" "$RF_BYTES_1" "$FATIA1B"
+
+# =========================================================================
+echo; echo "2, 3 e 4. hook_additional_context lido, 'nao atribuido' marcada, byte casado com token da mesma linha"
+FX_GERAL="$SBP/geral.jsonl"
+FIX_PATH="$FX_GERAL" python3 <<'PY'
+import json, os
+skill = 'k' * 700
+deferred = 'l' * 250
+agent = 'm' * 1300
+hook = 'n' * 450
+with open(os.environ["FIX_PATH"], 'w', encoding='utf-8') as f:
+    f.write(json.dumps({'message': {'usage': {'input_tokens': 50000, 'cache_read_input_tokens': 0, 'cache_creation_input_tokens': 0}}}) + "\n")
+    f.write(json.dumps({'attachment': {'type': 'skill_listing', 'content': skill, 'names': []}}) + "\n")
+    f.write(json.dumps({'attachment': {'type': 'deferred_tools_delta', 'addedLines': [deferred]}}) + "\n")
+    f.write(json.dumps({'attachment': {'type': 'agent_listing_delta', 'addedLines': [agent], 'addedTypes': []}}) + "\n")
+    f.write(json.dumps({'attachment': {'type': 'hook_additional_context', 'content': hook}}) + "\n")
+PY
+SAIDA_G="$(rodar "$FX_GERAL")"
+
+echo "-- defeito 2: hook_additional_context tem que ser lido"
+HOOK_BYTES="$(campo "$SAIDA_G" 'hook_additional_context')"
+igual "hook_additional_context mediu exatamente os 450 B da fixture" "$HOOK_BYTES" "450"
+
+echo "-- defeito 3: 'nao atribuido' tem que vir marcada com ~"
+NAOATR_BRUTO="$(campo_bruto "$SAIDA_G" 'nao atribuido')"
+case "$NAOATR_BRUTO" in
+  "~"*) ok=$((ok+1)); echo "  ok   'nao atribuido' vem marcada com ~ ($NAOATR_BRUTO)" ;;
+  *) falhou=$((falhou+1)); echo "  FALHA 'nao atribuido' SEM marca de estimativa ($NAOATR_BRUTO)" ;;
+esac
+
+echo "-- defeito 4: byte de cada linha casa com token DA MESMA linha (exceto 'nao atribuido' e TOTAL)"
+for rotulo in "skill_listing" "deferred_tools_delta" "agent_listing_delta" "hook_additional_context"; do
+  B="$(campo "$SAIDA_G" "$rotulo")"; T="$(campo_tokens "$SAIDA_G" "$rotulo")"
+  bate_token "$rotulo" "$B" "$T"
+done
+AB="$(campo_atrib_bytes "$SAIDA_G")"; AT="$(campo_atrib_tokens "$SAIDA_G")"
+bate_token "atribuido" "$AB" "$AT"
+RB="$(campo "$SAIDA_G" 'dos quais rainforest-mind')"; RT="$(campo_tokens "$SAIDA_G" 'dos quais rainforest-mind')"
+bate_token "dos quais rainforest-mind" "$RB" "$RT"
+
+echo "  -- mutacao 2: desliga o branch do att_type hook_additional_context"
+MUT2="$SBP/mut-2.py"
+sabotar_linha 257 '"hook_additional_context"' '"hook_additional_context_DESLIGADO"' "$MUT2"
+SAIDA2M="$(rodar_mutante "$MUT2" "$FX_GERAL")"
+HOOK_BYTES_M="$(campo "$SAIDA2M" 'hook_additional_context')"
+echo "  saida do mutante (linha do hook): $(echo "$SAIDA2M" | grep -F 'hook_additional_context')"
+mutante_detectado_num "hook_additional_context deixa de ser lido" "450" "${HOOK_BYTES_M:-0}"
+
+echo "  -- mutacao 3: remove a marca ~ de 'nao atribuido'"
+MUT3="$SBP/mut-3.py"
+sabotar_linha 314 "'~' + f'{nao_atribuido_bytes_estimado:,d}'" "f'{nao_atribuido_bytes_estimado:,d}'" "$MUT3"
+SAIDA3M="$(rodar_mutante "$MUT3" "$FX_GERAL")"
+NAOATR_BRUTO_M="$(campo_bruto "$SAIDA3M" 'nao atribuido')"
+echo "  saida do mutante (linha nao atribuido): $(echo "$SAIDA3M" | grep -F 'nao atribuido')"
+case "$NAOATR_BRUTO_M" in
+  "~"*) mutante_detectado_se "marca ~ removida de 'nao atribuido'" "0" ;;
+  *) mutante_detectado_se "marca ~ removida de 'nao atribuido'" "1" ;;
+esac
+
+echo "  -- mutacao 4: token da linha usa sempre o byte do skill_listing (copia-e-cola)"
+MUT4="$SBP/mut-4.py"
+sabotar_linha 309 'b / BYTES_POR_TOKEN' 'skill_listing_bytes / BYTES_POR_TOKEN' "$MUT4"
+SAIDA4M="$(rodar_mutante "$MUT4" "$FX_GERAL")"
+echo "  saida do mutante (linhas da tabela):"
+echo "$SAIDA4M" | grep -E 'skill_listing|deferred_tools_delta|agent_listing_delta|hook_additional_context' | sed 's/^/    /'
+T4="$(campo_tokens "$SAIDA4M" 'hook_additional_context')"
+ESPERADO4="$(python -c 'print(round(450/3.11))')"
+mutante_detectado_num "token de hook_additional_context casado com o byte de outra linha" "$ESPERADO4" "$T4"
+
+# =========================================================================
+echo; echo "5. total_tokens do PRIMEIRO SessionStart, fontes do MESMO primeiro (nao do ultimo)"
+FX5="$SBP/5-duplo.jsonl"
+FIX_PATH="$FX5" python3 <<'PY'
+import json, os
+skill1 = 'p' * 600
+hook1 = 'q' * 300
+skill2 = 'r' * 2000
+hook2 = 's' * 900
+with open(os.environ["FIX_PATH"], 'w', encoding='utf-8') as f:
+    # primeiro SessionStart
+    f.write(json.dumps({'message': {'usage': {'input_tokens': 12345, 'cache_read_input_tokens': 0, 'cache_creation_input_tokens': 0}}}) + "\n")
+    f.write(json.dumps({'attachment': {'type': 'skill_listing', 'content': skill1, 'names': []}}) + "\n")
+    f.write(json.dumps({'attachment': {'type': 'hook_additional_context', 'content': hook1}}) + "\n")
+    # segundo SessionStart (ex.: resume) — total e fontes BEM diferentes, de proposito
+    f.write(json.dumps({'message': {'usage': {'input_tokens': 99999, 'cache_read_input_tokens': 0, 'cache_creation_input_tokens': 0}}}) + "\n")
+    f.write(json.dumps({'attachment': {'type': 'skill_listing', 'content': skill2, 'names': []}}) + "\n")
+    f.write(json.dumps({'attachment': {'type': 'hook_additional_context', 'content': hook2}}) + "\n")
+PY
+SAIDA5="$(rodar "$FX5")"
+TOTAL5="$(campo_tokens "$SAIDA5" 'TOTAL DA ABERTURA')"
+SKILL5="$(campo "$SAIDA5" 'skill_listing')"
+HOOK5="$(campo "$SAIDA5" 'hook_additional_context')"
+igual "TOTAL DA ABERTURA e do PRIMEIRO SessionStart (12345), nao do segundo (99999)" "$TOTAL5" "12345"
+igual "skill_listing e do PRIMEIRO bloco (600 B), nao do segundo (2000 B)" "$SKILL5" "600"
+igual "hook_additional_context e do PRIMEIRO bloco (300 B), nao do segundo (900 B)" "$HOOK5" "300"
+
+echo "  -- mutacao 5: guardas 'so a primeira ocorrencia' viram 'sempre sobrescreve' (fontes passam a vir do ultimo)"
+MUT5="$SBP/mut-5.py"
+sabotar_linha 185 '_bytes == 0:' '_bytes >= 0:' "$MUT5"
+sabotar_linha 219 '_bytes == 0:' '_bytes >= 0:' "$MUT5"
+sabotar_linha 226 '_bytes == 0:' '_bytes >= 0:' "$MUT5"
+sabotar_linha 259 '_bytes == 0:' '_bytes >= 0:' "$MUT5"
+SAIDA5M="$(rodar_mutante "$MUT5" "$FX5")"
+echo "  saida do mutante:"
+echo "$SAIDA5M" | grep -E 'skill_listing|hook_additional_context|TOTAL DA ABERTURA' | sed 's/^/    /'
+TOTAL5M="$(campo_tokens "$SAIDA5M" 'TOTAL DA ABERTURA')"
+SKILL5M="$(campo "$SAIDA5M" 'skill_listing')"
+# invariante: o total NAO deve mudar com esta sabotagem (ela so afeta as fontes) —
+# se mudasse, a fixture estaria testando outra coisa, nao o defeito 5.
+igual "total continua do primeiro mesmo sabotado (a sabotagem so afeta as fontes)" "$TOTAL5M" "12345"
+mutante_detectado_num "skill_listing passa a vir do ULTIMO bloco (2000), nao do primeiro (600)" "600" "$SKILL5M"
+
+# =========================================================================
+echo; echo "6. hook_additional_context.content e LISTA — conteudo de outro plugin nao pode contar como nosso"
+MARCADOR_6="${MARCADOR:-RAINFOREST MIND ATIVO}"
+FX6="$SBP/6-conteudo.jsonl"
+FIX_PATH="$FX6" MARCADOR_ENV="$MARCADOR_6" python3 <<'PY'
+import json, os
+marcador = os.environ["MARCADOR_ENV"]
+item_a = marcador + 'a' * (500 - len(marcador.encode('utf-8')))
+item_b = '# [rainforest-mind] recent context' + 'b' * (300 - len('# [rainforest-mind] recent context'.encode('utf-8')))
+with open(os.environ["FIX_PATH"], 'w', encoding='utf-8') as f:
+    f.write(json.dumps({'message': {'usage': {'input_tokens': 20000, 'cache_read_input_tokens': 0, 'cache_creation_input_tokens': 0}}}) + "\n")
+    f.write(json.dumps({'attachment': {'type': 'hook_additional_context', 'content': [item_a, item_b]}}) + "\n")
+PY
+SAIDA6="$(rodar "$FX6")"
+HOOK6="$(campo "$SAIDA6" 'hook_additional_context')"
+FATIA6="$(campo "$SAIDA6" 'dos quais rainforest-mind')"
+igual "hook_additional_context soma os DOIS itens da lista (500+300+1 separador)" "$HOOK6" "801"
+igual "fatia rainforest-mind leva SO o item nosso (500 B), nao o do claude-mem (300 B)" "$FATIA6" "500"
+
+echo "  -- mutacao 6: fatia rainforest passa a ser o total do attachment (conta o item do outro plugin como nosso)"
+MUT6="$SBP/mut-6.py"
+sabotar_bloco 273 276 'for item in content_raw' "$MUT6" <<'NOVOBLOCO'
+                        hook_additional_context_rainforest_bytes = hook_additional_context_bytes
+NOVOBLOCO
+SAIDA6M="$(rodar_mutante "$MUT6" "$FX6")"
+FATIA6M="$(campo "$SAIDA6M" 'dos quais rainforest-mind')"
+echo "  saida do mutante (linha da fatia): $(echo "$SAIDA6M" | grep -F 'dos quais rainforest-mind')"
+mutante_detectado_num "fatia passa a incluir o item do claude-mem" "500" "$FATIA6M"
+
+# =========================================================================
+echo; echo "guarda final — o original nao pode ter sido tocado"
+GITSTATUS="$(cd "$SRC" && git status --porcelain -- scripts/medir-injecao.py)"
+igual "scripts/medir-injecao.py continua intocado" "$GITSTATUS" ""
+
+echo; echo "-----------------------------------------"
+echo "ok: $ok   falhou: $falhou"
+[ "$falhou" -eq 0 ] || exit 1
