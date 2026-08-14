@@ -22,6 +22,12 @@ como prosa que o modelo deveria aplicar sem ter o dado.
 
 - **D6 — Falha fechada: sem dado, cobra — e a ausência se anuncia em uma linha** — porquê: radar mudo por falta de config é indetectável, e o usuário nunca saberia que parou. Radar que cobra demais ele percebe e reclama, que foi exatamente como este defeito apareceu. O anúncio, no espírito da regra 14, é o que evita o pior dos dois mundos: nem silêncio, nem cobrança sem explicação.
 
+  **Corrigido em 2026-08-14, ainda no `executar`, e o erro era meu.** A redação original terminava com *"veredito e anúncio são mutuamente exclusivos: não há como julgar sem dado"*, e a implementação tomou isso **globalmente** — leitura legítima do que estava escrito. O resultado: com `Pastas:` configurado e `expediente` ausente, a isenção do paralelo ficava plenamente determinada (`focoAtivoEmOutraJanela` devolvia `true`) e **mesmo assim** o veredito não saía, porque o anúncio da outra isenção o engolia. Ou seja: o arranjo mais provável de um usuário real — configurar uma metade e não a outra — deixava a entrega inteira inerte.
+
+  A exclusividade vale **por isenção, nunca entre isenções**. As duas são independentes: dado faltando numa não pode calar a outra. Veredito e anúncio **podem** sair juntos quando tratam de isenções diferentes — o veredito dizendo por que não cobra, o anúncio dizendo qual metade ainda está cega.
+
+  Isto derruba, de propósito, uma asserção da bateria ("veredito não vem com anúncio junto") e a sabotagem nº 4 que a acompanhava — as duas foram escritas a partir do texto errado, e escrever teste que fixa a redação equivocada é como o defeito ganharia proteção.
+
 - **D7 — "Foco ativo em outra janela" = sinal humano dentro da `Ociosidade máxima` que o foco já declara** — porquê: o `sessoes.json` só tem `cwd`, `prompt_ts` e `stop_ts`, então "ativa" precisa de um limiar. Reusar os 15 min já declarados evita inventar parâmetro, e os dois usos são coerentes: dentro da janela a sessão do foco está quente e isenta esta; passando dela, a própria regra 17 já quer avisar que "a janela do foco esfriou".
 
 - **D8 — Expediente é dias da semana + faixa horária, sem feriado** — porquê: feriado exigiria fonte de calendário, que é dependência externa, envelhece e falha em silêncio. E trabalhar em feriado é escolha do usuário; o filtro de *qual* (assunto declaradamente pessoal) já cobre o caso em que ele não quer ser cobrado. Forma: `{"dias": [1,2,3,4,5], "de": "08:00", "ate": "18:00"}`.
