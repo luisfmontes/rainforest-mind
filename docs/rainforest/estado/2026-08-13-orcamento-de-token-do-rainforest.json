@@ -25,7 +25,8 @@
     "tarefas_ok": 5,
     "tarefas": 5,
     "em": "2026-08-14",
-    "rodada": 2
+    "rodada": 3,
+    "achados_fechados": 7
   },
   "revisar": {
     "status": "reprovado",
