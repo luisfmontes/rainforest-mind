@@ -770,11 +770,11 @@ ${regras}
   // sessão paralela, o `## Dependências` colava na última linha do foco e virava
   // continuação do texto dele. Normalizar aqui vale para qualquer combinação de
   // blocos presentes ou ausentes.
-  const rodape = '\n\n' + [o.sessoes, o.revisao, o.dependencias]
+  const blocoRodape = [o.veredito, o.sessoes, o.revisao, o.dependencias]
     .filter(Boolean)
-    .map((bloco) => String(bloco).replace(/^\n+/, '').trimEnd())
-    .concat(`Arquivos de apoio: ${o.root || ''}\\FOCO.md e ${o.root || ''}\\ideias.jsonl (uma ideia por linha)`)
-    .join('\n\n');
+    .map((bloco) => String(bloco).replace(/^\n+/, '').trimEnd());
+  blocoRodape.push(`Arquivos de apoio: ${o.root || ''}\\FOCO.md e ${o.root || ''}\\ideias.jsonl (uma ideia por linha)`);
+  const rodape = '\n\n' + blocoRodape.join('\n\n');
 
   const fixo = Buffer.byteLength(cabecalho + rodape, 'utf8');
   const sobra = TETOS.ORCAMENTO_BYTES - fixo;
@@ -915,6 +915,69 @@ function focoAtivoEmOutraJanela(sessoes, pastasDoFoco, ociosidadeMin, agora) {
 }
 
 
+/**
+ * Computa o veredito de isenção de desvio de escopo (D10, D6).
+ *
+ * Emite uma linha imperativa quando há dados suficientes para decidir,
+ * ou um anúncio da ausência de dados quando não há. Veredito e anúncio
+ * são mutuamente exclusivos (D6).
+ *
+ * Isenção aplica quando:
+ * - O foco está sendo trabalhado em outra janela agora (regra 17), OU
+ * - É tempo pessoal e o foco é de trabalho (regra 3)
+ *
+ * @param {string} textoDoFoco conteúdo do FOCO.md
+ * @param {Array<{cwd?: string, prompt_ts?: number, stop_ts?: number}>} sessoes lista do sessoes.json
+ * @param {object} config contém {expediente: {...}} opcional
+ * @param {number} agora timestamp de referência (Date.now())
+ * @returns {string} veredito de uma linha OU anúncio de ausência, ou string vazia se nenhum aplica
+ */
+function computarVeredito(textoDoFoco, sessoes, config, agora) {
+  const texto = String(textoDoFoco || '');
+
+  // Extrai dados necessários
+  const pastas = pastasDoFoco(texto);
+  const expediente = config && config.expediente;
+  const ociMin = (texto.match(/Ociosidade máxima:\s*(\d+)\s*min/i) || [])[1] || '45';
+  const ociodadePar = Number.parseInt(ociMin, 10);
+
+  // Verifica se o foco é de trabalho ou pessoal: `[trabalho]` ou `[pessoal]`
+  const ehFocoTrabalho = /\[trabalho\]/.test(texto);
+
+  // Se faltam dados, anuncia e não isenta (D6)
+  if (!pastas.length) {
+    return 'Pastas: ausente no FOCO.md — o radar vai cobrar desvio mesmo com o foco aberto em outra janela.';
+  }
+
+  if (expediente === undefined) {
+    return 'expediente: ausente no config.json — o radar vai cobrar desvio fora do expediente (tempo pessoal).';
+  }
+
+  // Tem dados: computa as condições (D1, D3)
+  const motivos = [];
+
+  // Condição 1: foco ativo em outra janela (regra 17)
+  if (focoAtivoEmOutraJanela(sessoes, pastas, ociodadePar, agora)) {
+    motivos.push('foco ativo em outra janela');
+  }
+
+  // Condição 2: tempo pessoal + foco de trabalho (regra 3)
+  // Só aplica se o foco é marcado como [trabalho]
+  if (ehFocoTrabalho) {
+    const dentro = dentroDoExpediente(new Date(agora), config);
+    if (dentro === false) {
+      // false = não é expediente, logo é tempo pessoal
+      motivos.push('tempo pessoal');
+    }
+  }
+
+  // Se nenhum motivo aplica, sem veredito
+  if (!motivos.length) return '';
+
+  // Veredito de uma linha (D10): componível, imperativo
+  return `**NÃO cobrar desvio de escopo nesta sessão** — ${motivos.join(' e ')}.`;
+}
+
 module.exports = {
   TETOS,
   filtrarRegras,
@@ -935,4 +998,5 @@ module.exports = {
   pastasDoFoco,
   dentroDoExpediente,
   focoAtivoEmOutraJanela,
+  computarVeredito,
 };
