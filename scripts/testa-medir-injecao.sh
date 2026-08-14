@@ -1,7 +1,17 @@
 #!/bin/bash
-# Bateria do scripts/medir-injecao.py --repartir — o script que REPARTE por fonte
-# (skill_listing, deferred_tools_delta, agent_listing_delta, hook_additional_context)
-# o custo real, em token medido pela API, do prompt de abertura de uma sessão.
+# Bateria do scripts/medir-injecao.py — os DOIS modos que o arquivo tem.
+#
+# Seções 1-6: --repartir, que REPARTE por fonte (skill_listing,
+# deferred_tools_delta, agent_listing_delta, hook_additional_context) o custo
+# real, em token medido pela API, do prompt de abertura de uma sessão.
+#
+# Seções 7-13: --entrega, que por hook de SessionStart compara o que foi
+# ESCRITO (stdout) com o que CHEGOU ao modelo (content) e decide truncamento.
+# Ficou sem rede (grep -rl -- "--entrega" scripts/*.sh hooks/*.sh voltava
+# vazio) apesar de o próprio docstring do arquivo creditar este modo como "a
+# tabela de 15 linhas que teria mostrado" o incidente de 50 de 50 sessões com
+# payload cortado sem ninguém perceber — ver seção 7, que reproduz exatamente
+# essa classe de defeito (emitido e chegou trocados de lugar).
 #
 # Nenhum gate cobria este arquivo (grep -rl "medir-injecao\|repartir" scripts/*.sh
 # voltava vazio) e ele acumulou SEIS defeitos confirmados em duas rodadas de
@@ -350,6 +360,230 @@ SAIDA6M="$(rodar_mutante "$MUT6" "$FX6")"
 FATIA6M="$(campo "$SAIDA6M" 'dos quais rainforest-mind')"
 echo "  saida do mutante (linha da fatia): $(echo "$SAIDA6M" | grep -F 'dos quais rainforest-mind')"
 mutante_detectado_num "fatia passa a incluir o item do claude-mem" "500" "$FATIA6M"
+
+# =========================================================================
+# --entrega: a metade do arquivo sem rede (grep -rl -- "--entrega" scripts/*.sh
+# hooks/*.sh volta vazio). entregas()/relatar_entrega() leem, por hook de
+# SessionStart, o par (stdout emitido, content que chegou) e decidem se houve
+# truncamento — via marcador <persisted-output> OU via 0 < chegou < emitido.
+# Mesmo padrao das secoes 1-6: fixture em caixa de areia, roda contra o
+# ORIGINAL, sabota uma COPIA, roda a MESMA fixture na copia, mostra que o
+# valor diverge.
+#   7. emitido e chegou nao podem inverter (a sabotagem que motivou este
+#      trabalho: linhas 121-122 trocadas de lugar).
+#   8. truncamento pelo marcador <persisted-output>, mesmo com chegou > emitido.
+#   9. truncamento por tamanho (0 < chegou < emitido), sem marcador.
+#  10. NAO truncado quando chegou == emitido, sem marcador (pega inversao de
+#      sinal na comparacao: < virando <=).
+#  11. hook que nao e SessionStart fica de fora da tabela.
+#  12. dedup por (command, emitido, chegou).
+#  13. a varredura por forma (_varrer) desce em profundidade arbitraria.
+
+rodar_entrega() { python "$ALVO" --entrega "$1" 2>&1; }
+rodar_entrega_mutante() { python "$1" --entrega "$2" 2>&1; }
+# extrai a linha da tabela de --entrega que contem o nome do hook.
+linha_entrega() { printf '%s\n' "$1" | grep -F -- "$2" | head -1; }
+# colunas de largura fixa: quando(20) sp hook(28) sp emitido(8) sp chegou(8)
+# sp pcts(5) 2sp estado — usa fatiamento por indice, nao awk, porque "estado"
+# pode ser "sem corte" (tem espaco dentro) e quebraria contagem de campos.
+campo_entrega() {
+  LINHA="$1" CAMPO="$2" python3 <<'PY'
+import os
+linha = os.environ["LINHA"]
+campo = os.environ["CAMPO"]
+vals = {
+    "quando": linha[0:20].strip(),
+    "hook": linha[21:49].strip(),
+    "emitido": linha[50:58].strip().replace(",", ""),
+    "chegou": linha[59:67].strip().replace(",", ""),
+    "pcts": linha[68:73].strip(),
+    "estado": linha[75:].strip(),
+}
+print(vals.get(campo, ""))
+PY
+}
+
+# =========================================================================
+echo; echo "7. emitido e chegou NAO PODEM INVERTER (a sabotagem que motivou este trabalho)"
+FX7="$SBP/7-inversao.jsonl"
+FIX_PATH="$FX7" python3 <<'PY'
+import json, os
+with open(os.environ["FIX_PATH"], "w", encoding="utf-8") as f:
+    f.write(json.dumps({"timestamp": "2026-01-01T10:00:00Z", "toolUseResult": {"hooks": [{
+        "hookEvent": "SessionStart:startup", "stdout": "A" * 12, "content": "B" * 7,
+        "command": "node hooks/inversao-emitido-chegou.cjs", "exitCode": 0}]}}) + "\n")
+PY
+SAIDA7="$(rodar_entrega "$FX7")"
+LINHA7="$(linha_entrega "$SAIDA7" "inversao-emitido-chegou.cjs")"
+EMITIDO7="$(campo_entrega "$LINHA7" emitido)"
+CHEGOU7="$(campo_entrega "$LINHA7" chegou)"
+igual "emitido mede o STDOUT (12 chars), nao o content" "$EMITIDO7" "12"
+igual "chegou mede o CONTENT (7 chars), nao o stdout" "$CHEGOU7" "7"
+
+echo "  -- mutacao 7: linhas 121-122 trocadas de lugar (emitido <-> chegou)"
+MUT7="$SBP/mut-7.py"
+sabotar_bloco 121 122 'emitido = len(h.get("stdout") or "")' "$MUT7" <<'NOVOBLOCO'
+                chegou = len(h.get("stdout") or "")
+                emitido = len(h.get("content") or "")
+NOVOBLOCO
+SAIDA7M="$(rodar_entrega_mutante "$MUT7" "$FX7")"
+LINHA7M="$(linha_entrega "$SAIDA7M" "inversao-emitido-chegou.cjs")"
+EMITIDO7M="$(campo_entrega "$LINHA7M" emitido)"
+echo "  saida do mutante (linha do hook): $LINHA7M"
+mutante_detectado_num "emitido passa a valer o tamanho do content, nao do stdout" "12" "$EMITIDO7M"
+
+# =========================================================================
+echo; echo "8. truncamento pelo MARCADOR <persisted-output>, mesmo com chegou > emitido"
+FX8="$SBP/8-marcador.jsonl"
+FIX_PATH="$FX8" python3 <<'PY'
+import json, os
+content = "<persisted-output>" + "D" * 60
+with open(os.environ["FIX_PATH"], "w", encoding="utf-8") as f:
+    f.write(json.dumps({"timestamp": "2026-01-01T10:00:01Z", "toolUseResult": {"hooks": [{
+        "hookEvent": "SessionStart:startup", "stdout": "C" * 10, "content": content,
+        "command": "node hooks/marcador-conteudo-maior.cjs", "exitCode": 0}]}}) + "\n")
+PY
+SAIDA8="$(rodar_entrega "$FX8")"
+LINHA8="$(linha_entrega "$SAIDA8" "marcador-conteudo-maior.cjs")"
+ESTADO8="$(campo_entrega "$LINHA8" estado)"
+igual "marcador presente -> TRUNCADO mesmo com chegou (79) > emitido (10)" "$ESTADO8" "TRUNCADO"
+
+echo "  -- mutacao 8: 'truncado' deixa de considerar o marcador, so o tamanho"
+MUT8="$SBP/mut-8.py"
+sabotar_linha 137 '"truncado": marcado or (0 < chegou < emitido),' '"truncado": (0 < chegou < emitido),' "$MUT8"
+SAIDA8M="$(rodar_entrega_mutante "$MUT8" "$FX8")"
+LINHA8M="$(linha_entrega "$SAIDA8M" "marcador-conteudo-maior.cjs")"
+ESTADO8M="$(campo_entrega "$LINHA8M" estado)"
+echo "  saida do mutante (linha do hook): $LINHA8M"
+mutante_detectado_num "marcador ignorado -> deixa de ser TRUNCADO" "TRUNCADO" "$ESTADO8M"
+
+# =========================================================================
+echo; echo "9. truncamento POR TAMANHO (0 < chegou < emitido), sem marcador"
+FX9="$SBP/9-tamanho.jsonl"
+FIX_PATH="$FX9" python3 <<'PY'
+import json, os
+with open(os.environ["FIX_PATH"], "w", encoding="utf-8") as f:
+    f.write(json.dumps({"timestamp": "2026-01-01T10:00:02Z", "toolUseResult": {"hooks": [{
+        "hookEvent": "SessionStart:startup", "stdout": "E" * 10, "content": "F" * 4,
+        "command": "node hooks/truncado-por-tamanho.cjs", "exitCode": 0}]}}) + "\n")
+PY
+SAIDA9="$(rodar_entrega "$FX9")"
+LINHA9="$(linha_entrega "$SAIDA9" "truncado-por-tamanho.cjs")"
+ESTADO9="$(campo_entrega "$LINHA9" estado)"
+igual "sem marcador, chegou (4) < emitido (10) -> TRUNCADO" "$ESTADO9" "TRUNCADO"
+
+echo "  -- mutacao 9: 'truncado' deixa de considerar o tamanho, so o marcador"
+MUT9="$SBP/mut-9.py"
+sabotar_linha 137 '"truncado": marcado or (0 < chegou < emitido),' '"truncado": marcado,' "$MUT9"
+SAIDA9M="$(rodar_entrega_mutante "$MUT9" "$FX9")"
+LINHA9M="$(linha_entrega "$SAIDA9M" "truncado-por-tamanho.cjs")"
+ESTADO9M="$(campo_entrega "$LINHA9M" estado)"
+echo "  saida do mutante (linha do hook): $LINHA9M"
+mutante_detectado_num "tamanho ignorado -> deixa de ser TRUNCADO" "TRUNCADO" "$ESTADO9M"
+
+# =========================================================================
+echo; echo "10. NAO truncado quando chegou == emitido, sem marcador (pega inversao de sinal)"
+FX10="$SBP/10-igual.jsonl"
+FIX_PATH="$FX10" python3 <<'PY'
+import json, os
+with open(os.environ["FIX_PATH"], "w", encoding="utf-8") as f:
+    f.write(json.dumps({"timestamp": "2026-01-01T10:00:03Z", "toolUseResult": {"hooks": [{
+        "hookEvent": "SessionStart:startup", "stdout": "G" * 10, "content": "H" * 10,
+        "command": "node hooks/nao-truncado-igual.cjs", "exitCode": 0}]}}) + "\n")
+PY
+SAIDA10="$(rodar_entrega "$FX10")"
+LINHA10="$(linha_entrega "$SAIDA10" "nao-truncado-igual.cjs")"
+ESTADO10="$(campo_entrega "$LINHA10" estado)"
+igual "chegou == emitido (10 == 10), sem marcador -> sem corte" "$ESTADO10" "sem corte"
+
+echo "  -- mutacao 10: '<' vira '<=' (sinal da comparacao invertido na fronteira)"
+MUT10="$SBP/mut-10.py"
+sabotar_linha 137 '(0 < chegou < emitido)' '(0 < chegou <= emitido)' "$MUT10"
+SAIDA10M="$(rodar_entrega_mutante "$MUT10" "$FX10")"
+LINHA10M="$(linha_entrega "$SAIDA10M" "nao-truncado-igual.cjs")"
+ESTADO10M="$(campo_entrega "$LINHA10M" estado)"
+echo "  saida do mutante (linha do hook): $LINHA10M"
+mutante_detectado_num "igualdade passa a contar como TRUNCADO" "sem corte" "$ESTADO10M"
+
+# =========================================================================
+echo; echo "11. hook que NAO E SessionStart fica de fora da tabela"
+FX11="$SBP/11-filtro.jsonl"
+FIX_PATH="$FX11" python3 <<'PY'
+import json, os
+with open(os.environ["FIX_PATH"], "w", encoding="utf-8") as f:
+    f.write(json.dumps({"timestamp": "2026-01-01T10:00:04Z", "toolUseResult": {"hooks": [{
+        "hookEvent": "SessionStart:startup", "stdout": "I" * 10, "content": "I" * 10,
+        "command": "node hooks/controle-session-start.cjs", "exitCode": 0}]}}) + "\n")
+    f.write(json.dumps({"timestamp": "2026-01-01T10:00:05Z", "toolUseResult": {"hooks": [{
+        "hookEvent": "PreToolUse", "stdout": "J" * 10, "content": "J" * 2,
+        "command": "node hooks/ignorar-pretooluse.cjs", "exitCode": 0}]}}) + "\n")
+PY
+SAIDA11="$(rodar_entrega "$FX11")"
+tem "hook SessionStart aparece na tabela" "$SAIDA11" "controle-session-start.cjs"
+nao_tem "hook PreToolUse NAO aparece na tabela" "$SAIDA11" "ignorar-pretooluse.cjs"
+
+echo "  -- mutacao 11: filtro perde o 'not' (passa a excluir SessionStart e deixar passar o resto)"
+MUT11="$SBP/mut-11.py"
+sabotar_linha 119 'if not str(h.get("hookEvent", "")).startswith("SessionStart"):' 'if str(h.get("hookEvent", "")).startswith("SessionStart"):' "$MUT11"
+SAIDA11M="$(rodar_entrega_mutante "$MUT11" "$FX11")"
+echo "  saida do mutante:"
+echo "$SAIDA11M" | grep -E 'controle-session-start|ignorar-pretooluse|entrega\(s\)' | sed 's/^/    /'
+case "$SAIDA11M" in
+  *ignorar-pretooluse.cjs*) mutante_detectado_se "hook PreToolUse passa a aparecer na tabela" "1" ;;
+  *) mutante_detectado_se "hook PreToolUse passa a aparecer na tabela" "0" ;;
+esac
+
+# =========================================================================
+echo; echo "12. DEDUPLICACAO por (command, emitido, chegou)"
+FX12="$SBP/12-dedup.jsonl"
+FIX_PATH="$FX12" python3 <<'PY'
+import json, os
+registro = {"hookEvent": "SessionStart:startup", "stdout": "K" * 10, "content": "K" * 2,
+            "command": "node hooks/duplicado.cjs", "exitCode": 0}
+with open(os.environ["FIX_PATH"], "w", encoding="utf-8") as f:
+    f.write(json.dumps({"timestamp": "2026-01-01T10:00:06Z", "toolUseResult": {"hooks": [registro]}}) + "\n")
+    f.write(json.dumps({"timestamp": "2026-01-01T10:00:07Z", "toolUseResult": {"hooks": [registro]}}) + "\n")
+PY
+SAIDA12="$(rodar_entrega "$FX12")"
+CONT12="$(printf '%s\n' "$SAIDA12" | grep -c -F -- 'duplicado.cjs')"
+igual "dois registros identicos (mesmo command/emitido/chegou) viram UMA linha" "$CONT12" "1"
+QTD12="$(printf '%s\n' "$SAIDA12" | grep -oE '^[0-9]+ entrega\(s\)' | grep -oE '^[0-9]+')"
+igual "contagem total tambem reflete o dedup (1 entrega, nao 2)" "$QTD12" "1"
+
+echo "  -- mutacao 12: chave de dedup passa a incluir o timestamp (nunca mais colide)"
+MUT12="$SBP/mut-12.py"
+sabotar_linha 127 'chave = (h.get("command"), emitido, chegou)' 'chave = (h.get("command"), emitido, chegou, quando)' "$MUT12"
+SAIDA12M="$(rodar_entrega_mutante "$MUT12" "$FX12")"
+CONT12M="$(printf '%s\n' "$SAIDA12M" | grep -c -F -- 'duplicado.cjs')"
+echo "  saida do mutante: $(printf '%s\n' "$SAIDA12M" | grep -c -F -- 'duplicado.cjs') linha(s) de 'duplicado.cjs'"
+mutante_detectado_num "dedup quebrada -> duas linhas em vez de uma" "1" "$CONT12M"
+
+# =========================================================================
+echo; echo "13. a varredura por forma (_varrer) desce em PROFUNDIDADE ARBITRARIA"
+FX13="$SBP/13-profundo.jsonl"
+FIX_PATH="$FX13" python3 <<'PY'
+import json, os
+# hook enterrado 4 niveis abaixo, dentro de dict->dict->list->dict — nenhum
+# caminho fixo, so a FORMA (hookEvent + stdout) identifica o registro.
+fundo = {"hookEvent": "SessionStart:startup", "stdout": "L" * 10, "content": "L" * 2,
+         "command": "node hooks/profundo-de-verdade.cjs", "exitCode": 0}
+estrutura = {"timestamp": "2026-01-01T10:00:08Z",
+             "nivel1": {"nivel2": {"nivel3": [{"nivel4": fundo}]}}}
+with open(os.environ["FIX_PATH"], "w", encoding="utf-8") as f:
+    f.write(json.dumps(estrutura) + "\n")
+PY
+SAIDA13="$(rodar_entrega "$FX13")"
+tem "hook enterrado 4 niveis abaixo e encontrado pela varredura por forma" "$SAIDA13" "profundo-de-verdade.cjs"
+
+echo "  -- mutacao 13: _varrer para de descer em dict (so olha o nivel de cima)"
+MUT13="$SBP/mut-13.py"
+sabotar_linha 98 'for v in no.values():' 'for v in []:' "$MUT13"
+SAIDA13M="$(rodar_entrega_mutante "$MUT13" "$FX13")"
+echo "  saida do mutante: $(echo "$SAIDA13M" | head -3 | tr '\n' ' ')"
+case "$SAIDA13M" in
+  *profundo-de-verdade.cjs*) mutante_detectado_se "hook enterrado deixa de ser encontrado" "0" ;;
+  *) mutante_detectado_se "hook enterrado deixa de ser encontrado" "1" ;;
+esac
 
 # =========================================================================
 echo; echo "guarda final — o original nao pode ter sido tocado"
