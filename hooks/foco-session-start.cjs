@@ -7,7 +7,7 @@
 const fs = require('fs');
 const path = require('path');
 const net = require('net');
-const { montarContexto, resumirSessoes, sessoesVivas } = require('./lib/contexto-sessao.cjs');
+const { montarContexto, resumirSessoes, sessoesVivas, computarVeredito, pastasDoFoco } = require('./lib/contexto-sessao.cjs');
 const { resolverRaiz } = require('./lib/raiz.cjs');
 
 // Dados (FOCO/IDEIAS) vivem no repo de trabalho, não na cópia em cache do plugin.
@@ -197,6 +197,28 @@ try {
   sessoes = resumirSessoes(entradas, oci);
 } catch {}
 
+// Lê config.json e computa o veredito de isenção de desvio (tarefa 3)
+let veredito = '';
+try {
+  const configPath = path.join(ROOT, 'config.json');
+  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  const agora = Date.now();
+
+  // Tenta obter sessões para verificar foco ativo em outra janela
+  let sessoesParaVeredito = [];
+  try {
+    const state = JSON.parse(fs.readFileSync(path.join(ROOT, 'sessoes.json'), 'utf8'));
+    const entradas = sessoesVivas(state, agora, 6 * 3600 * 1000);
+    sessoesParaVeredito = entradas.map(([, s]) => ({
+      cwd: s.cwd,
+      prompt_ts: s.prompt_ts,
+      stop_ts: s.stop_ts,
+    }));
+  } catch {}
+
+  veredito = computarVeredito(foco, sessoesParaVeredito, config, agora);
+} catch {}
+
 // Checagem de dependências com timeout garantido
 let impresso = false;
 let guarda = null; // só existe quando há sonda para esperar (bridge declarada)
@@ -227,6 +249,7 @@ function doConsoleLog(pluginsStatus, whatsappStatus) {
     focoText: foco,
     caminhoSkill: CAMINHO_SKILL,
     root: ROOT,
+    veredito,
     sessoes,
     revisao,
     dependencias,
