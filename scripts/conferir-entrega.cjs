@@ -145,12 +145,13 @@ const OPCOES = {
   "repo-principal": { dest: "repo_principal" },
   "head-antes": { dest: "head_antes" },
   "permite-sujeira": { dest: "permite_sujeira", flag: true },
+  paralelo: { dest: "paralelo", flag: true },
   // Repetivel: o briefing costuma prometer mais de um arquivo por tarefa.
   espera: { dest: "espera", lista: true },
 };
 
 function parseArgs(argv) {
-  const a = { commit: "HEAD", permite_sujeira: false, espera: [] };
+  const a = { commit: "HEAD", permite_sujeira: false, paralelo: false, espera: [] };
   let i = 0;
   while (i < argv.length) {
     const tok = argv[i];
@@ -180,6 +181,19 @@ function ehDir(p) {
   } catch {
     return false;
   }
+}
+
+/** Extrai conjunto de arquivos que o agente tocou. */
+function arquivosAgente(c, wt, base, commit) {
+  let rc, saida;
+  if (base) {
+    [rc, saida] = c.git(wt, "diff", "--name-only", `${base}..${commit}`);
+  } else {
+    [rc, saida] = c.git(wt, "show", "--name-only", "--format=", commit);
+  }
+  if (rc !== 0) return new Set();
+  const linhas = saida ? saida.split(/\r?\n/).filter((l) => l.length > 0) : [];
+  return new Set(linhas.map((l) => l.replace(/\\/g, "/").toLowerCase()));
 }
 
 function main() {
@@ -276,7 +290,30 @@ function main() {
     c.abre(`O repo principal foi tocado? (${principal})`);
     const [, stp] = c.mostra(principal, "status", "--porcelain");
     const linhasStp = stp ? stp.split(/\r?\n/).filter((l) => l.length > 0) : [];
-    if (linhasStp.length) {
+
+    if (a.paralelo && linhasStp.length) {
+      // Modo cruzamento: extrai arquivos que o agente tocou
+      const arquivos = arquivosAgente(c, wt, a.base, a.commit);
+      const caminhosSujos = linhasStp.map((l) => {
+        // Descarta 3 primeiros caracteres do status, trata rename
+        let p = l.slice(3);
+        const partes = p.split(" -> ");
+        p = partes.length > 1 ? partes[1] : partes[0];
+        return p.replace(/\\/g, "/").toLowerCase();
+      });
+      const cruzamento = caminhosSujos.filter((p) => arquivos.has(p));
+
+      if (cruzamento.length) {
+        c.falha(
+          `${cruzamento.length} arquivo(s) sujo(s) no principal e tocado(s) pelo agente: ` +
+            cruzamento.slice(0, 5).join(", ")
+        );
+      } else {
+        c.aviso(
+          `${linhasStp.length} alteracao(oes) no principal, nenhuma nos arquivos do agente`
+        );
+      }
+    } else if (linhasStp.length) {
       c.falha(
         `${linhasStp.length} alteracao(oes) no diretorio principal do usuario — o agente ` +
           "devia estar isolado no worktree. Foi a falha N1 de 2026-08-08."
@@ -289,13 +326,22 @@ function main() {
     const [, headAgora] = c.mostra(principal, "rev-parse", "HEAD");
     if (!a.head_antes) {
       c.aviso("sem --head-antes; registre o HEAD antes de despachar para esta checagem valer");
-    } else if (!headAgora.startsWith(a.head_antes) && !a.head_antes.startsWith(headAgora)) {
-      c.falha(
-        `o HEAD do repo principal era ${a.head_antes} e virou ${headAgora.slice(0, 12)} — algo moveu ` +
-          "o HEAD do usuario (stash/pop, checkout). Falha N1 de 2026-08-08."
-      );
-    } else {
+    } else if (headAgora.startsWith(a.head_antes) || a.head_antes.startsWith(headAgora)) {
       c.ok("HEAD do repo principal inalterado");
+    } else {
+      // HEAD mexeu. Verifica se foi avanco (HEAD anterior é ancestral)
+      const [rcAnc] = c.git(principal, "merge-base", "--is-ancestor", a.head_antes, "HEAD");
+      if (rcAnc === 0) {
+        // Avançou: contar commits
+        const [, contagem] = c.mostra(principal, "rev-list", "--count", `${a.head_antes}..HEAD`);
+        c.aviso(`o HEAD do principal avancou ${contagem} commit(s) desde o despacho`);
+      } else {
+        // Recuo ou movimento lateral: falha
+        c.falha(
+          `o HEAD do repo principal era ${a.head_antes} e virou ${headAgora.slice(0, 12)} — algo moveu ` +
+            "o HEAD do usuario (stash/pop, checkout). Falha N1 de 2026-08-08."
+        );
+      }
     }
   } else {
     c.abre("Repo principal");
