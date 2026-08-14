@@ -556,7 +556,7 @@ function priorizarFoco(focoResumido, teto) {
  * Sessão de SUBAGENTE, não janela do usuario.
  *
  * Subagente despachado com `isolation: "worktree"` abre sessão própria, com cwd
- * dentro de `.claude/worktrees/`. Ela entrava no radar como se fosse mais uma
+ * dentro de `.claude/worktrees/agent-...`. Ela entrava no radar como se fosse mais uma
  * janela paralela dele — e a regra 17 mede o paralelismo DELE, não o meu rastro.
  *
  * Dois danos, os dois medidos em 2026-08-11: o radar mentia sobre quantas
@@ -564,10 +564,19 @@ function priorizarFoco(focoResumido, teto) {
  * naquele dia a injeção chegou a 7992 B de 8000, com o radar em 676 B, e o prazo
  * mais próximo já tinha caído fora da injeção uma vez. Quanto mais eu despacho,
  * menos foco chegava.
+ *
+ * AJUSTE 2026-08-14: O filtro foi estreitado para exigir o prefixo `agent-` no
+ * segmento imediatamente após `worktrees/`. A razão: o usuario pode ter worktrees
+ * de seus próprios projetos (ex.: gestao-projetos-template) dentro de `.claude/worktrees/`,
+ * e essas NÃO devem ser filtradas. Apenas worktrees criadas pelo harness
+ * (nomeadas `agent-<hash>`) devem sair do radar. O teste exato é:
+ * `/.../worktrees/agent-` — não substring, mas limite de segmento.
  */
 function ehWorktreeDeAgente(cwd) {
   if (!cwd) return false;
-  return /[\\/]\.claude[\\/]worktrees([\\/]|$)/.test(cwd);
+  // Aceita barras normais (/) e invertidas (\), e exige que o segmento
+  // imediatamente após "worktrees" comece com "agent-".
+  return /[\\/]\.claude[\\/]worktrees[\\/]agent-/.test(cwd);
 }
 
 function sessoesVivas(state, agora, janelaMs, vivo) {
