@@ -494,11 +494,15 @@ O modo `--repartir` do `scripts/medir-injecao.py` lê o transcript e reparte a a
 python scripts/medir-injecao.py --repartir
 ```
 
-Medição de 2026-08-13 (quando o orçamento foi desenhado): das **67.914 tokens** da abertura, **16.170 (24%)** são atribuíveis pelo transcript — o resto é system prompt do Claude Code, schema das tools, CLAUDE.md e memórias, que o transcript não guarda.
+Medição da abertura de 2026-08-14T00:36 (transcript `570a6723`): das **67.914 tokens**, **18.980 (28%)** são atribuíveis pelo transcript — o resto é system prompt do Claude Code, schema das tools, CLAUDE.md e memórias, que o transcript não guarda.
 
-O rainforest-mind por si ocupa **13.486 B, uns 4.336 tokens estimados, ou ~6,4%** da abertura. Esse número é medido de **duas formas independentes que convergem**, e é por isso que dá pra confiar nele: o `orcamento.cjs` chega a 13.604 B contando os arquivos do repositório (hook 7.640 + skills 3.442 + commands 904 + agentes 1.618), e o `--repartir` chega a 13.486 B recortando a fatia do plugin dentro do que o transcript registrou. Menos de 1% de diferença entre dois caminhos que não compartilham código.
+O rainforest-mind por si ocupa **13.205 B, uns 4.246 tokens estimados, ou ~6,3%** da abertura. Pelo outro caminho, o `orcamento.cjs` contando arquivos do repositório dá **13.744 B**. Os dois **não medem a mesma coisa** e não deveriam bater exatamente: o lado do repositório conta `commands/` como parcela própria, e o lado do transcript já os traz dentro da listagem de skills; o lado do transcript mede a linha renderizada na listagem, com prefixo e formatação, e o do repositório mede só o texto da `description`. Ficarem a ~4% um do outro é consistência entre duas réguas parecidas — **não é validação cruzada**, e não deve ser lida como tal.
 
-**Não some byte de uma medição com token da outra.** A primeira versão deste parágrafo dizia "13.604 B ... 1.157 tokens ou 1,7%", casando o total do `orcamento.cjs` com o token de um recorte bem mais estreito do `--repartir` — e errava o custo do plugin em quase 4× para menos. Cada linha da tabela do `--repartir` traz byte e token da mesma medição; é assim que se lê.
+**Três armadilhas que este número já pisou, todas deixadas escritas de propósito:**
+
+1. **Não some byte de uma medição com token da outra.** Uma versão deste parágrafo dizia "13.604 B ... 1.157 tokens ou 1,7%", casando o total do `orcamento.cjs` com o token de um recorte bem mais estreito do `--repartir` — errando o custo em quase 4× para menos. Cada linha da tabela traz byte e token da mesma medição; é assim que se lê.
+2. **Um transcript pode ter mais de uma abertura.** Todo `--resume` grava outro `SessionStart` no mesmo arquivo. O `--repartir` atribui pelo **primeiro**, que é o mesmo que fixou o total em token — antes de isso ser consertado, ele somava as fontes de um evento com o total de outro.
+3. **Nem tudo que diz "rainforest-mind" é do rainforest-mind.** O `hook_additional_context` da abertura chega como **lista** de itens de plugins diferentes, e o item do claude-mem começa com `# [rainforest-mind] recent context` — o nome do projeto no claude-mem, não o dono do texto. Ele foi contado como nosso por uma rodada inteira, inflando a fatia em 9.018 B. A separação hoje é por marcador do item, não pelo nome que aparece nele.
 
 O byte do hook **oscila entre execuções** — ele embute estado vivo da sessão (janelas ativas, horários), então medições feitas com minutos de diferença dão 7.6xx variando. As três outras fontes são estáveis. Por isso o teto é agregado e com folga, e por isso o `testa-orcamento.sh` afirma faixas e "não pode ser 0 B", nunca igualdade exata contra o repo real.
 
