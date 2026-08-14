@@ -969,6 +969,12 @@ checa "focoAtivoEmOutraJanela: pasta diferente nao isenta"           tem "false"
 # ninguem reclama de nao ser cobrado.
 checa "focoAtivoEmOutraJanela: C:/abc nao casa C:/a por prefixo"     tem "false" \
   "$(outra_janela "[{\"cwd\":\"C:/abc\",\"prompt_ts\":$((AGORA_FIXO-1000))}]" '["C:/a"]' 15 "$AGORA_FIXO")"
+# SUBPASTA: a sessao em uma SUBPASTA da pasta do foco deve isenta, porque o foco
+# esta sendo trabalhado ali. Este era o defeito: a comparacao usava === exata e
+# nunca casava subpasta. Realidade: usuario declara a raiz da pasta no FOCO.md
+# mas a sessao roda em template/FIN/Gestao_Projetos dentro dela.
+checa "focoAtivoEmOutraJanela: sessao em subpasta isenta"               tem "true" \
+  "$(outra_janela "[{\"cwd\":\"C:/a/templates/FIN/Gestao_Projetos\",\"prompt_ts\":$((AGORA_FIXO-1000))}]" '["C:/a"]' 15 "$AGORA_FIXO")"
 # Sinal humano e o prompt_ts (o usuario digitou algo), nao o stop_ts (Claude
 # parou de responder). Sessao com prompt frio mas stop recente nao esta sendo
 # TRABALHADA por ninguem — nao pode isentar.
@@ -1059,7 +1065,7 @@ fi
 
 echo "  -- SABOTAGEM 2: focoAtivoEmOutraJanela compara caminho com includes (substring) em vez de igualdade"
 cp "$LIB" "$RAIZ_POSIX/lib-mut-includes.cjs"
-sed -i 's/pasta === cwdNormalizado/cwdNormalizado.includes(pasta)/' "$RAIZ_POSIX/lib-mut-includes.cjs"
+sed -i 's/cwdNormalizado === pasta/cwdNormalizado.includes(pasta)/' "$RAIZ_POSIX/lib-mut-includes.cjs"
 S_MUT2="$(outra_janela "[{\"cwd\":\"C:/abc\",\"prompt_ts\":$((AGORA_FIXO-1000))}]" '["C:/a"]' 15 "$AGORA_FIXO" "$RAIZ_POSIX/lib-mut-includes.cjs")"
 echo "  (saida do mutante: $S_MUT2 — a assercao real espera 'false')"
 ( checa "focoAtivoEmOutraJanela: C:/abc nao casa C:/a por prefixo" tem "false" "$S_MUT2" )
