@@ -56,10 +56,27 @@ node - <<'JS'
 const fs = require("fs");
 const p = "ideias.jsonl";
 const linhas = fs.readFileSync(p, "utf8").split("\n").filter((l) => l.trim());
-let n = 0, c = 0;
+let n = 0, c = 0, e = 0;
 linhas.forEach((l, i) => {
   const o = JSON.parse(l);
   let mudou = false;
+  // Registro real fora do schema atual (sem id/titulo/descricao — visto em
+  // 2026-08-14: uma linha gravada por outro caminho, com o campo antigo `data`
+  // no lugar de `plantada_em`). E um dos problemas de DADO que o `conferir`
+  // real ja acusa contra o arquivo do usuario — fora do escopo desta bateria.
+  // Sem este seed, o registro vaza para a caixa de areia e derruba os testes
+  // de reparar/conferir dos blocos seguintes, que nada tem a ver com ele.
+  // Mesma razao do seed de gancho/projeto logo abaixo: e FIXTURE, nao dado.
+  if (!o.id) {
+    o.id = `linha-real-sem-id-${i}`;
+    if (!o.titulo) o.titulo = "registro real sem titulo (seed da bateria, nao e dado real)";
+    if (!o.descricao) o.descricao = "registro real sem descricao (seed da bateria, nao e dado real)";
+    if (!o.status) o.status = "plantada";
+    if (!o.plantada_em) {
+      o.plantada_em = /^\d{4}-\d{2}-\d{2}$/.test(o.data || "") ? o.data : "2026-08-01";
+    }
+    e += 1; mudou = true;
+  }
   if (!o.gancho) {
     o.gancho = "gancho de teste (seed da bateria, nao e dado real)";
     n += 1; mudou = true;
@@ -80,7 +97,7 @@ linhas.forEach((l, i) => {
   if (mudou) linhas[i] = JSON.stringify(o);
 });
 fs.writeFileSync(p, linhas.join("\n") + "\n", "utf8");
-console.log(`  (seed: gancho em ${n} linha(s) e projeto=sandbox em ${c}, so para a bateria rodar)`);
+console.log(`  (seed: gancho em ${n} linha(s), projeto=sandbox em ${c}, e schema completo em ${e}, so para a bateria rodar)`);
 JS
 
 ok=0; falhou=0
