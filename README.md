@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-0.65.0-1e5c3f?style=flat-square" alt="versão 0.65.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-0.66.0-1e5c3f?style=flat-square" alt="versão 0.66.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/revis%C3%A3o-bimestral-9fd8ba?style=flat-square" alt="revisão bimestral">
 </p>
@@ -158,6 +158,28 @@ conversa sai dele, o aviso é **uma frase, sem julgamento, com escolha**:
 Sem sermão e sem repetir. Três coisas que o desvio *não* dispara: trabalhar em
 paralelo de propósito, tocar uma frente que já está listada como compromisso, e
 foco de trabalho fora do horário de trabalho.
+
+Quando o radar avisa desvio de escopo, ele computar se precisa dessa linha
+depende de dois dados, ambos opcionais:
+
+- **`Pastas:` no FOCO.md** — lista separada por vírgula das pastas onde o foco
+  está sendo trabalhado. Exemplo: `Pastas: C:/projeto-a, C:/projeto-a/src`.
+  O radar usa isso para saber se a janela que está aberta é a do foco, mesmo
+  que não seja a janela da sessão atual. Sem este campo, o radar cobra desvio
+  mesmo que a mesma clareira esteja viva em outra janela.
+
+- **`expediente` no `config.json`** — dias da semana e horário de trabalho.
+  Forma: `"expediente": {"dias": [1,2,3,4,5], "de": "08:00", "ate": "18:00"}`.
+  Dias usa a convenção de `Date.getDay()` — 0 = domingo, 1 = segunda, etc.
+  O radar usa isso para saber se é hora de trabalho ou tempo pessoal.
+  Sem este campo, o radar cobra desvio fora do horário, mesmo que o foco seja
+  marcado como `[trabalho]`.
+
+Quando ambos estão faltando, o hook anuncia. Quando um dos dois está faltando,
+o radar continua cobrando — é a falha fechada, porque deixar de anunciar a
+ausência é silêncio pior que correr de novo a checagem. O anúncio e o veredito
+são mutuamente exclusivos, e a prioridade é clara: falha de dado antes de
+isenção falsa.
 
 E quando o ambiente **impede** uma regra — permissão negada, hook fora do ar,
 ferramenta ausente —, ele diz numa linha em vez de falhar em silêncio. Regra
