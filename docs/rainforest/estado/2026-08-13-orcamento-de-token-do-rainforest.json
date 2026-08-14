@@ -1,0 +1,28 @@
+{
+  "slug": "2026-08-13-orcamento-de-token-do-rainforest",
+  "titulo": "Medir onde o rainforest gasta token e estoura teto de entrega",
+  "criado_em": "2026-08-13",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-08-13-orcamento-de-token-do-rainforest.md",
+    "em": "2026-08-13"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
