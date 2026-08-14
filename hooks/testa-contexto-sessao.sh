@@ -1038,12 +1038,16 @@ FOCO_SEM_PASTAS="# Foco
 
 ## Ativo
 
-**Foco de teste** \`[trabalho]\`"
+**Foco de teste** \`[trabalho]\`
+
+Ociosidade máxima: 15 min"
 FOCO_COM_PASTAS="Pastas: C:/a
 
 ## Ativo
 
-**Foco de teste** \`[trabalho]\`"
+**Foco de teste** \`[trabalho]\`
+
+Ociosidade máxima: 15 min"
 AGORA_SEG="$(node -e "process.stdout.write(String(new Date(2026,7,10,10,0).getTime()))")"
 AGORA_SAB="$(node -e "process.stdout.write(String(new Date(2026,7,15,10,0).getTime()))")"
 
@@ -1071,6 +1075,76 @@ S="$(veredito "$FOCO_COM_PASTAS" "[{\"cwd\":\"C:/a\",\"prompt_ts\":$((AGORA_SEG-
 checa "caso real: Pastas presente, expediente ausente → veredito + anuncio" tem "NÃO cobrar desvio de escopo nesta sessão" "$S"
 checa "caso real: veredito menciona foco ativo em outra janela" tem "foco ativo em outra janela" "$S"
 checa "caso real: anuncio menciona expediente ausente" tem "expediente: ausente no config.json" "$S"
+
+# ACHADO 1: Foco com boilerplate + foco ativo [pessoal], fora do expediente
+# Não deve isentar por "tempo pessoal" porque o foco é [pessoal]
+FOCO_BOILERPLATE_PESSOAL="# FOCO — Memória externa de trabalho
+
+A cada virada de foco, troque o texto abaixo pelo novo. Tudo que não for
+a seção Ativo continua vivo no arquivo mesmo que saia da injeção — e não é
+decoração: o radar de escopo mede contra o foco ATIVO, que é a linha em
+negrito. Todo foco declara a natureza — \`[trabalho]\` ou \`[pessoal]\` —, e as
+regras usam isso para ajustar o que cobrar (regra 3).
+
+Pastas: C:/projetos/meu-foco
+
+## Ativo
+
+**Projeto pessoal** \`[pessoal]\` — prazo final 2026-12-31.
+
+Avanços:
+- 2026-08-14: comecei a trabalhar nisso."
+S="$(veredito "$FOCO_BOILERPLATE_PESSOAL" '[]' "$CONFIG_EXPEDIENTE" "$AGORA_SAB")"
+checa "ACHADO 1: foco [pessoal] com boilerplate, fora do expediente" nao_tem "tempo pessoal" "$S"
+checa "ACHADO 1: confirma que nao isenta (string vazia ou outra razao)" nao_tem "NÃO cobrar desvio" "$S"
+
+# ACHADO 1 caso feliz: foco com boilerplate + foco ativo [trabalho], fora do expediente
+# Deve isentar por "tempo pessoal"
+FOCO_BOILERPLATE_TRABALHO="# FOCO — Memória externa de trabalho
+
+A cada virada de foco, troque o texto abaixo pelo novo. Tudo que não for
+a seção Ativo continua vivo no arquivo mesmo que saia da injeção — e não é
+decoração: o radar de escopo mede contra o foco ATIVO, que é a linha em
+negrito. Todo foco declara a natureza — \`[trabalho]\` ou \`[pessoal]\` —, e as
+regras usam isso para ajustar o que cobrar (regra 3).
+
+Pastas: C:/projetos/meu-foco
+
+## Ativo
+
+**Projeto trabalho** \`[trabalho]\` — prazo final 2026-12-31.
+
+Ociosidade máxima: 15 min
+
+Avanços:
+- 2026-08-14: comecei a trabalhar nisso."
+S="$(veredito "$FOCO_BOILERPLATE_TRABALHO" '[]' "$CONFIG_EXPEDIENTE" "$AGORA_SAB")"
+checa "ACHADO 1 feliz: foco [trabalho] com boilerplate, fora do expediente" tem "tempo pessoal" "$S"
+checa "ACHADO 1 feliz: emite veredito" tem "NÃO cobrar desvio" "$S"
+
+# ACHADO 2: sem config.json, com Pastas: ausente
+# Deve sair anúncio da isenção indeterminada
+S="$(veredito "$FOCO_SEM_PASTAS" '[]' '{}' "$AGORA_SEG")"
+checa "ACHADO 2: sem config.json, sem Pastas, sai anuncio" tem "ausente" "$S"
+
+# ACHADO 3: sem Ociosidade máxima, sessão parada há 30 min na pasta do foco
+# Não deve isentar (a ociosidade é indeterminada, logo não pode decidir)
+FOCO_SEM_OCI="Pastas: C:/a
+
+## Ativo
+
+**Foco de teste** \`[trabalho]\`
+
+Avanços:
+- 2026-08-14: um avanco"
+S="$(veredito "$FOCO_SEM_OCI" "[{\"cwd\":\"C:/a\",\"prompt_ts\":$((AGORA_SEG - 30*60*1000))}]" "$CONFIG_EXPEDIENTE" "$AGORA_SEG")"
+checa "ACHADO 3: sem Ociosidade maxima, nao isenta por foco em outra janela" nao_tem "foco ativo em outra janela" "$S"
+checa "ACHADO 3: anuncia a indeterminacao" tem "Ociosidade máxima: ausente" "$S"
+
+# ACHADO 4: C:/projetos/a/../a-secreto/x contra C:/projetos/a não deve casar
+# (testando que path.normalize resolve ..)
+S="$(outra_janela "[{\"cwd\":\"C:/projetos/a/../a-secreto/x\",\"prompt_ts\":$((AGORA_FIXO-1000))}]" '["C:/projetos/a"]' 15 "$AGORA_FIXO")"
+checa "ACHADO 4: C:/projetos/a/../a-secreto/x nao casa C:/projetos/a (.. resolvido)" tem "false" "$S"
 
 echo
 echo "17.1 MUTACOES — as quatro sabotagens do briefing, cada uma tem que quebrar a asserção correspondente"

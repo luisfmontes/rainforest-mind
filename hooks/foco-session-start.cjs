@@ -198,26 +198,33 @@ try {
 } catch {}
 
 // Lê config.json e computa o veredito de isenção de desvio (tarefa 3)
+// Separado em duas partes: leitura de config (com fallback para {})
+// e cálculo de veredito (roda sempre).
 let veredito = '';
+let config = {}; // Padrão: config vazia se não conseguir ler
 try {
   const configPath = path.join(ROOT, 'config.json');
-  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+} catch {
+  // config fica como {} se arquivo não existir ou for inválido
+}
+
+// Tenta obter sessões para verificar foco ativo em outra janela
+let sessoesParaVeredito = [];
+try {
+  const state = JSON.parse(fs.readFileSync(path.join(ROOT, 'sessoes.json'), 'utf8'));
   const agora = Date.now();
-
-  // Tenta obter sessões para verificar foco ativo em outra janela
-  let sessoesParaVeredito = [];
-  try {
-    const state = JSON.parse(fs.readFileSync(path.join(ROOT, 'sessoes.json'), 'utf8'));
-    const entradas = sessoesVivas(state, agora, 6 * 3600 * 1000);
-    sessoesParaVeredito = entradas.map(([, s]) => ({
-      cwd: s.cwd,
-      prompt_ts: s.prompt_ts,
-      stop_ts: s.stop_ts,
-    }));
-  } catch {}
-
-  veredito = computarVeredito(foco, sessoesParaVeredito, config, agora);
+  const entradas = sessoesVivas(state, agora, 6 * 3600 * 1000);
+  sessoesParaVeredito = entradas.map(([, s]) => ({
+    cwd: s.cwd,
+    prompt_ts: s.prompt_ts,
+    stop_ts: s.stop_ts,
+  }));
 } catch {}
+
+// Calcula veredito independentemente de config ter sido lido
+const agora = Date.now();
+veredito = computarVeredito(foco, sessoesParaVeredito, config, agora);
 
 // Checagem de dependências com timeout garantido
 let impresso = false;
