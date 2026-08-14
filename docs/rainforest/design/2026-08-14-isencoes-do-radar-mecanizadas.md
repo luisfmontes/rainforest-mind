@@ -49,4 +49,5 @@ como prosa que o modelo deveria aplicar sem ter o dado.
 
 ## Em aberto
 
-- O custo real em bytes das linhas novas só se conhece depois de escritas. A estimativa que sustentou o D10 (~110 B e ~95 B) é de projeto, não medição — se o veredito real passar dos 202 B de folga do hook, a decisão de subir o teto ou cortar em outro lugar volta para o usuário, com o número medido na mão pelo `scripts/orcamento.cjs`.
+- ~~O custo real em bytes das linhas novas~~ — **medido em 2026-08-14, e fechou melhor que o projetado.** O veredito com os **dois** motivos ("foco ativo em outra janela e tempo pessoal") ocupa **94 B**; a linha de anúncio que ele substitui ocupa **97 B**. Como veredito e anúncio são mutuamente exclusivos (D6), a injeção com anúncio — que é o estado de quem não configurou nada, e é o de hoje — **já é o pior caso**: 7.870 B contra teto de 8.000, com 130 B de folga. A preocupação que sustentou o D10 (duas linhas somando ~205 B contra 202 B de folga) não se materializou porque a linha única ficou menor que qualquer das duas estimativas. A decisão do D10 continua certa pelo motivo errado — e é melhor registrar isso do que deixar parecer previsão acertada.
+
