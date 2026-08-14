@@ -36,7 +36,11 @@
     "achados_totais_fechados": 10
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "tarefas": 5,
+    "criterios_rodados": 5,
+    "criterios_ok": 5,
+    "em": "2026-08-14"
   },
   "fechar": {
     "status": "pendente"
