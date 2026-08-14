@@ -698,6 +698,30 @@ checa "worktree de agente sai (caminho Windows)" nao_tem "wt_windows" "$W"
 checa "worktree de agente sai (caminho POSIX)"   nao_tem "wt_posix"   "$W"
 checa "pasta so parecida NAO e filtrada"      tem     "quase"        "$W"
 
+# AJUSTE 2026-08-14: Filtro estreitado para exigir "agent-" como prefixo do
+# segmento após "worktrees/". O usuario pode ter seus próprios worktrees (ex.:
+# gestao-projetos-template) em .claude/worktrees/, e esses NÃO devem sair do radar.
+# Apenas worktrees criadas pelo harness (agent-*) devem sair. O test e por limite
+# de segmento, não substring.
+X="$(LIB_PATH="$LIB" node -e "
+const lib = require(process.env.LIB_PATH);
+const agora = 1786000000000;
+const state = {
+  agent_simples: { cwd: 'C:/Projetos/rainforest-mind/.claude/worktrees/agent-a1b2c3', pid: process.pid, prompt_ts: agora - 1000 },
+  agent_subpasta: { cwd: 'C:/Projetos/rainforest-mind/.claude/worktrees/agent-a1b2c3/templates/FIN', pid: process.pid, prompt_ts: agora - 1000 },
+  usuario_simples: { cwd: 'C:/Microsiga/protheus-totvs-agro/inovacao/.claude/worktrees/gestao-projetos-template', pid: process.pid, prompt_ts: agora - 1000 },
+  usuario_subpasta: { cwd: 'C:/Microsiga/protheus-totvs-agro/inovacao/.claude/worktrees/gestao-projetos-template/templates/FIN/Gestao_Projetos', pid: process.pid, prompt_ts: agora - 1000 },
+  parecido: { cwd: 'C:/Projetos/rainforest-mind/.claude/worktrees/agente-do-cliente', pid: process.pid, prompt_ts: agora - 1000 },
+};
+const vivas = lib.sessoesVivas(state, agora, 6 * 3600 * 1000).map(([id]) => id);
+process.stdout.write(vivas.join(','));
+" 2>&1)"
+checa "agent-abc simples sai (agent- requerido)"           nao_tem "agent_simples"  "$X"
+checa "agent-abc em subpasta sai (agent- requerido)"       nao_tem "agent_subpasta" "$X"
+checa "usuario gestao-projetos-template FICA no radar"     tem     "usuario_simples" "$X"
+checa "usuario em subpasta de seu worktree FICA"           tem     "usuario_subpasta" "$X"
+checa "agente-do-cliente (sem agent-) FICA no radar"       tem     "parecido"       "$X"
+
 # O hook de verdade, com stdin de verdade: o evento "end" tem de apagar a linha.
 HB_RAIZ="$RAIZ_POSIX/hb"
 mkdir -p "$HB_RAIZ"
