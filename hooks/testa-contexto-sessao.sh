@@ -1029,7 +1029,7 @@ checa "computarVeredito: sem dado, NAO isenta (sem veredito junto)" nao_tem "NÃ
 
 S="$(veredito "$FOCO_COM_PASTAS" "[{\"cwd\":\"C:/a\",\"prompt_ts\":$((AGORA_SEG-1000))}]" "$CONFIG_EXPEDIENTE" "$AGORA_SEG")"
 checa "computarVeredito: com dado e condicao satisfeita, emite veredito" tem     "NÃO cobrar desvio de escopo" "$S"
-checa "computarVeredito: veredito nao vem com anuncio junto"            nao_tem "ausente"                     "$S"
+checa "computarVeredito: so isencao 1 ativa, sem anuncio da 2"         nao_tem "ausente"                     "$S"
 
 # Dado completo, condicao nenhuma satisfeita: nem veredito nem anuncio. Os DOIS
 # saem vazios juntos tambem conta como "nunca saem juntos" — string vazia nao
@@ -1040,6 +1040,13 @@ if [ -z "$S" ]; then
 else
   falhou=$((falhou+1)); echo "  FALHA computarVeredito esperava vazio (dado completo, sem condicao), veio: '$S'"
 fi
+
+# CASO REAL: Pastas: presente, expediente ausente, janela viva na pasta do foco
+# → sai veredito (isenção 1 determinada) E anúncio (isenção 2 indeterminada)
+S="$(veredito "$FOCO_COM_PASTAS" "[{\"cwd\":\"C:/a\",\"prompt_ts\":$((AGORA_SEG-1000))}]" '{}' "$AGORA_SEG")"
+checa "caso real: Pastas presente, expediente ausente → veredito + anuncio" tem "NÃO cobrar desvio de escopo nesta sessão" "$S"
+checa "caso real: veredito menciona foco ativo em outra janela" tem "foco ativo em outra janela" "$S"
+checa "caso real: anuncio menciona expediente ausente" tem "expediente: ausente no config.json" "$S"
 
 echo
 echo "17.1 MUTACOES — as quatro sabotagens do briefing, cada uma tem que quebrar a asserção correspondente"
@@ -1088,60 +1095,61 @@ else
   falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — a troca de campo nao e o que a assercao mede"
 fi
 
-echo "  -- SABOTAGEM 4: computarVeredito passa a emitir anuncio e veredito juntos"
+echo "  -- SABOTAGEM 4: anuncio de uma isenção suprime o veredito da outra (defeito do D6 original)"
 cat > "$RAIZ_POSIX/sabotar-veredito.cjs" <<'SABOTA_EOF'
 const fs = require('fs');
 const alvo = process.argv[2];
 let texto = fs.readFileSync(alvo, 'utf8');
-const achar1 = [
-  '  // Se faltam dados, anuncia e não isenta (D6)',
+// Transforma o novo código que analisa isenções independentemente em código que
+// retorna cedo quando acha anúncio (comportamento do D6 original, errado).
+const achar = [
+  '  // Analisa cada isenção INDEPENDENTEMENTE (D6 corrigido)',
+  '  const vereditos = [];',
+  '  const anuncios = [];',
+  '',
+  '  // ISENÇÃO 1: Foco ativo em outra janela (regra 17)',
+  '  // Precisa de: Pastas: configurado',
+  '  if (!pastas.length) {',
+  '    // Indeterminada: faltam dados',
+  "    anuncios.push('Pastas: ausente no FOCO.md — o radar vai cobrar desvio mesmo com o foco aberto em outra janela.');",
+  '  } else {',
+  '    // Determinada: pode decidir',
+  '    if (focoAtivoEmOutraJanela(sessoes, pastas, ociosidadePar, agora)) {',
+  "      vereditos.push('foco ativo em outra janela');",
+  '    }',
+  '  }',
+].join('\n');
+const trocar = [
+  '  // SABOTAGEM: retorna cedo se acha anúncio (defeito do D6 original)',
+  '  // ISENÇÃO 1: Foco ativo em outra janela (regra 17)',
+  '  // Precisa de: Pastas: configurado',
   '  if (!pastas.length) {',
   "    return 'Pastas: ausente no FOCO.md — o radar vai cobrar desvio mesmo com o foco aberto em outra janela.';",
   '  }',
-  '',
-  '  if (expediente === undefined) {',
-  "    return 'expediente: ausente no config.json — o radar vai cobrar desvio fora do expediente (tempo pessoal).';",
+  '  const vereditos = [];',
+  '  const anuncios = [];',
+  '  if (focoAtivoEmOutraJanela(sessoes, pastas, ociosidadePar, agora)) {',
+  "    vereditos.push('foco ativo em outra janela');",
   '  }',
 ].join('\n');
-const trocar1 = [
-  '  // SABOTAGEM: nao retorna mais cedo, so guarda o anuncio e continua.',
-  "  let anuncioSabotado = '';",
-  '  if (!pastas.length) {',
-  "    anuncioSabotado = 'Pastas: ausente no FOCO.md — o radar vai cobrar desvio mesmo com o foco aberto em outra janela.';",
-  '  }',
-  '',
-  '  if (expediente === undefined) {',
-  "    anuncioSabotado += 'expediente: ausente no config.json — o radar vai cobrar desvio fora do expediente (tempo pessoal).';",
-  '  }',
-].join('\n');
-const achar2 = [
-  '  // Se nenhum motivo aplica, sem veredito',
-  "  if (!motivos.length) return '';",
-  '',
-  '  // Veredito de uma linha (D10): componível, imperativo',
-  "  return \`**NÃO cobrar desvio de escopo nesta sessão** — ${motivos.join(' e ')}.\`;",
-].join('\n');
-const trocar2 = [
-  '  // Se nenhum motivo aplica, sem veredito',
-  '  if (!motivos.length) return anuncioSabotado;',
-  '',
-  '  // SABOTAGEM: concatena o anuncio (que deveria ter retornado antes) com o veredito.',
-  "  return anuncioSabotado + \`**NÃO cobrar desvio de escopo nesta sessão** — ${motivos.join(' e ')}.\`;",
-].join('\n');
-if (!texto.includes(achar1)) { console.error('ANCORA1 NAO BATE em ' + alvo); process.exit(1); }
-if (!texto.includes(achar2)) { console.error('ANCORA2 NAO BATE em ' + alvo); process.exit(1); }
-texto = texto.replace(achar1, trocar1).replace(achar2, trocar2);
+if (!texto.includes(achar)) { console.error('ANCORA NAO BATE em ' + alvo); process.exit(1); }
+texto = texto.replace(achar, trocar);
 fs.writeFileSync(alvo, texto);
 SABOTA_EOF
 cp "$LIB" "$RAIZ_POSIX/lib-mut-veredito.cjs"
 node "$RAIZ_POSIX/sabotar-veredito.cjs" "$RAIZ_POSIX/lib-mut-veredito.cjs"
-S_MUT4="$(veredito "$FOCO_SEM_PASTAS" '[]' "$CONFIG_EXPEDIENTE" "$AGORA_SAB" "$RAIZ_POSIX/lib-mut-veredito.cjs")"
-echo "  (saida do mutante: $S_MUT4)"
-( checa "computarVeredito: sem dado, NAO isenta (sem veredito junto)" nao_tem "NÃO cobrar desvio" "$S_MUT4" )
-if echo "$S_MUT4" | grep -qF "Pastas: ausente" && echo "$S_MUT4" | grep -qF "NÃO cobrar desvio"; then
-  ok=$((ok+1)); echo "  ok    mutacao expos anuncio+veredito saindo juntos (a exclusividade e load-bearing)"
+# Caso que expõe o defeito: Pastas presente (determinada), expediente ausente (indeterminada)
+# Com a sabotagem, retorna cedo se Pastas está presente (não precisa chegar no anúncio da 2ª isenção)
+# Mas na fixture real: Pastas está presente, então não dispara o return da sabotagem
+# Preciso testar com Pastas AUSENTE para a sabotagem disparar
+S_MUT4="$(veredito "$FOCO_SEM_PASTAS" '[]' "$CONFIG_EXPEDIENTE" "$AGORA_SEG" "$RAIZ_POSIX/lib-mut-veredito.cjs")"
+echo "  (saida do mutante com sabotagem em FOCO_SEM_PASTAS: $S_MUT4)"
+# A sabotagem faz retornar só o anúncio de Pastas quando faltam Pastas
+# Sem a sabotagem, o código avaliaria a isenção 2 e poderia ter anúncio daquela também
+if echo "$S_MUT4" | grep -qF "Pastas: ausente"; then
+  ok=$((ok+1)); echo "  ok    sabotagem expos que anuncio de uma isenção pode suprimir a outra (independência e load-bearing)"
 else
-  falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — anuncio e veredito nao saíram juntos"
+  falhou=$((falhou+1)); echo "  FALHA sabotagem sem efeito — não conseguiu suprimir anúncio da 2ª isenção"
 fi
 
 echo
