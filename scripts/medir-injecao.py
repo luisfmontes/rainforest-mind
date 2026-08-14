@@ -145,6 +145,10 @@ def repartir(caminho: Path) -> int:
     """Reparte a abertura por fonte usando attachments do transcript."""
     BYTES_POR_TOKEN = 3.11
 
+    # Marcador que o hook foco-session-start.cjs emite no início do contexto.
+    # DEVE bater com a primeira linha do `cabecalho` em lib/contexto-sessao.cjs.
+    RAINFOREST_MARKER = "RAINFOREST MIND ATIVO"
+
     # Ler os attachments
     skill_listing_bytes = 0
     skill_listing_rainforest_bytes = 0
@@ -177,86 +181,105 @@ def repartir(caminho: Path) -> int:
             att_type = att.get("type")
 
             if att_type == "skill_listing":
-                content = att.get("content", "")
-                skill_listing_bytes = len(content.encode("utf-8"))
+                # Guardar apenas da primeira ocorrência
+                if skill_listing_bytes == 0:
+                    content = att.get("content", "")
+                    skill_listing_bytes = len(content.encode("utf-8"))
 
-                # Contar a fatia rainforest-mind
-                names = att.get("names", [])
-                rainforest_names = [n for n in names if n.startswith("rainforest-mind:")]
+                    # Contar a fatia rainforest-mind
+                    names = att.get("names", [])
+                    rainforest_names = [n for n in names if n.startswith("rainforest-mind:")]
 
-                # Se temos os nomes, calcular a fatia aproximada
-                if rainforest_names and content:
-                    # Procurar cada skill rainforest-mind no conteúdo
-                    # e somar os bytes até o próximo skill
-                    lines = content.split('\n')
-                    rf_content = []
-                    in_rainforest = False
-                    for line in lines:
-                        # Detectar linha de skill (começa com "- ")
-                        if line.startswith("- "):
-                            # Extrair o identificador (parte entre "- " e ": ")
-                            parts = line[2:].split(": ", 1)
-                            identifier = parts[0]
-                            if identifier in rainforest_names:
-                                in_rainforest = True
-                            else:
-                                in_rainforest = False
+                    # Se temos os nomes, calcular a fatia aproximada
+                    if rainforest_names and content:
+                        # Procurar cada skill rainforest-mind no conteúdo
+                        # e somar os bytes até o próximo skill
+                        lines = content.split('\n')
+                        rf_content = []
+                        in_rainforest = False
+                        for line in lines:
+                            # Detectar linha de skill (começa com "- ")
+                            if line.startswith("- "):
+                                # Extrair o identificador (parte entre "- " e ": ")
+                                parts = line[2:].split(": ", 1)
+                                identifier = parts[0]
+                                if identifier in rainforest_names:
+                                    in_rainforest = True
+                                else:
+                                    in_rainforest = False
 
-                        if in_rainforest:
-                            rf_content.append(line)
+                            if in_rainforest:
+                                rf_content.append(line)
 
-                    rainforest_content = '\n'.join(rf_content)
-                    skill_listing_rainforest_bytes = len(rainforest_content.encode("utf-8"))
+                        rainforest_content = '\n'.join(rf_content)
+                        skill_listing_rainforest_bytes = len(rainforest_content.encode("utf-8"))
 
             elif att_type == "deferred_tools_delta":
-                added_lines = att.get("addedLines", [])
-                content = '\n'.join(added_lines)
-                deferred_tools_bytes = len(content.encode("utf-8"))
+                # Guardar apenas da primeira ocorrência
+                if deferred_tools_bytes == 0:
+                    added_lines = att.get("addedLines", [])
+                    content = '\n'.join(added_lines)
+                    deferred_tools_bytes = len(content.encode("utf-8"))
 
             elif att_type == "agent_listing_delta":
-                added_lines = att.get("addedLines", [])
-                content = '\n'.join(added_lines)
-                agent_listing_bytes = len(content.encode("utf-8"))
+                # Guardar apenas da primeira ocorrência
+                if agent_listing_bytes == 0:
+                    added_lines = att.get("addedLines", [])
+                    content = '\n'.join(added_lines)
+                    agent_listing_bytes = len(content.encode("utf-8"))
 
-                # Contar a fatia rainforest-mind
-                added_types = att.get("addedTypes", [])
-                rainforest_types = [t for t in added_types if t.startswith("rainforest-mind:")]
+                    # Contar a fatia rainforest-mind
+                    added_types = att.get("addedTypes", [])
+                    rainforest_types = [t for t in added_types if t.startswith("rainforest-mind:")]
 
-                if rainforest_types and content:
-                    # Similar ao skill_listing, procurar linhas que correspondem aos tipos
-                    lines = content.split('\n')
-                    rf_content = []
-                    in_rainforest = False
-                    for line in lines:
-                        # Detectar linha de agente (começa com "- ")
-                        if line.startswith("- "):
-                            # Extrair o identificador (parte entre "- " e ": ")
-                            parts = line[2:].split(": ", 1)
-                            identifier = parts[0]
-                            if identifier in rainforest_types:
-                                in_rainforest = True
-                            else:
-                                in_rainforest = False
+                    if rainforest_types and content:
+                        # Similar ao skill_listing, procurar linhas que correspondem aos tipos
+                        lines = content.split('\n')
+                        rf_content = []
+                        in_rainforest = False
+                        for line in lines:
+                            # Detectar linha de agente (começa com "- ")
+                            if line.startswith("- "):
+                                # Extrair o identificador (parte entre "- " e ": ")
+                                parts = line[2:].split(": ", 1)
+                                identifier = parts[0]
+                                if identifier in rainforest_types:
+                                    in_rainforest = True
+                                else:
+                                    in_rainforest = False
 
-                        if in_rainforest:
-                            rf_content.append(line)
+                            if in_rainforest:
+                                rf_content.append(line)
 
-                    rainforest_content = '\n'.join(rf_content)
-                    agent_listing_rainforest_bytes = len(rainforest_content.encode("utf-8"))
+                        rainforest_content = '\n'.join(rf_content)
+                        agent_listing_rainforest_bytes = len(rainforest_content.encode("utf-8"))
 
             elif att_type == "hook_additional_context":
-                # Processar hook_additional_context do foco-session-start.cjs
-                # O content pode ser uma string ou uma lista de strings
-                content_raw = att.get("content", "")
-                if isinstance(content_raw, list):
-                    content = '\n'.join(content_raw)
-                else:
-                    content = content_raw
-                hook_additional_context_bytes = len(content.encode("utf-8"))
+                # Guardar apenas da primeira ocorrência
+                if hook_additional_context_bytes == 0:
+                    # Processar hook_additional_context do foco-session-start.cjs
+                    # O content pode ser uma string ou uma lista de strings
+                    content_raw = att.get("content", "")
+                    if isinstance(content_raw, list):
+                        # Calcular o total de todos os itens
+                        hook_additional_context_bytes = sum(
+                            len(item.encode("utf-8")) for item in content_raw
+                        )
+                        # Adicionar bytes das quebras de linha entre itens
+                        if len(content_raw) > 1:
+                            hook_additional_context_bytes += (len(content_raw) - 1)
 
-                # Este hook vem do foco-session-start.cjs do rainforest-mind
-                # Então conta como rainforest tanto no atribuído quanto na fatia rainforest
-                hook_additional_context_rainforest_bytes = hook_additional_context_bytes
+                        # Contar apenas o item que é nosso (começa com RAINFOREST_MARKER)
+                        for item in content_raw:
+                            if item.startswith(RAINFOREST_MARKER):
+                                hook_additional_context_rainforest_bytes = len(item.encode("utf-8"))
+                                break
+                    else:
+                        content = content_raw
+                        hook_additional_context_bytes = len(content.encode("utf-8"))
+                        # Se for string, verificar se começa com o marcador
+                        if content.startswith(RAINFOREST_MARKER):
+                            hook_additional_context_rainforest_bytes = hook_additional_context_bytes
 
     if total_tokens is None:
         print("erro: nenhum registro com usage nos transcripts lidos.\n"
