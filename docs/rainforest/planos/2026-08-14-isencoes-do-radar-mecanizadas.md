@@ -88,3 +88,14 @@ paralela: nao
 pronto quando: `node hooks/foco-session-start.cjs` passa a emitir o veredito quando há sessão viva na pasta do foco, provado com a saída colada; e `node scripts/orcamento.cjs` continua saindo `0` **com o veredito presente**, que é o pior caso de orçamento.
 
 **Esta tarefa roda na janela principal, nunca em agente:** ela edita `~/.rainforest/FOCO.md` e `~/.rainforest/config.json`, que são dados do usuário fora do repositório — a regra 15 proíbe agente de tocar neles. E ela **exige a palavra do usuário sobre os valores**: quais pastas contam como o foco atual, e qual é a faixa de expediente dele. Nenhum dos dois se descobre olhando o ambiente.
+
+### 7. Cortar o núcleo da regra 13 para caber na catraca [tipo: implementar]
+atende: D10
+arquivos: `skills/rainforest-mind/SKILL.md`
+depende de: nenhuma
+paralela: nao
+pronto quando: `bash hooks/testa-contexto-sessao.sh` traz a linha `os nucleos cabem na catraca` como `ok`, e a regra 13 injetada continua nomeando o comando — `node hooks/foco-session-start.cjs` produz payload contendo `ideias.cjs plantar`.
+
+Tarefa acrescentada **durante** o `executar`, não no planejamento, e o motivo fica registrado: ao trazer a `main` com o PR #11, a bateria acusou `os nucleos passaram da catraca (5657 B > 5600 B)`. A causa foi o próprio PR #11, que engordou o núcleo da regra 13 para nomear o `ideias.cjs plantar`. Subir o teto seria reescrever a régua depois da medida; o conserto foi reescrever a regra em voz direta e mover o parêntese explicativo para o detalhe. Núcleo em 5.590 B, folga de 10 B.
+
+Ela entra no plano porque a checagem de creep a apontou como arquivo tocado sem tarefa correspondente — e a resposta certa a essa acusação é declarar o trabalho, nunca afrouxar a checagem.
