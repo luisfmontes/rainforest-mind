@@ -35,7 +35,9 @@ atende: D5
 arquivos: `scripts/testa-saude.sh`
 depende de: nenhuma
 paralela: sim
-pronto quando: `grep -c 'HEAD~3' scripts/testa-saude.sh` devolve `0`, E `bash scripts/testa-saude.sh; echo EXIT=$?` devolve `EXIT=0`, E depois de criar um merge commit no HEAD do worktree com `git checkout -b lateral HEAD~2 && echo x > z-prova.txt && git add z-prova.txt && git commit -qm lateral && git checkout - && git merge --no-ff -m prova lateral`, o mesmo `bash scripts/testa-saude.sh; echo EXIT=$?` devolve `EXIT=0` de novo. Os DOIS, porque so o primeiro e o que ja passava hoje. Desfazer o cenario de merge antes de commitar (`git reset --hard` ate o commit da tarefa) — o merge de prova nao entra na entrega.
+pronto quando: `grep -c 'HEAD~3' scripts/testa-saude.sh` devolve `0` E `bash scripts/testa-saude.sh; echo EXIT=$?` devolve `EXIT=0`.
+
+**A prova do merge nao e do agente, e do `verificar`** — ela exige criar um merge commit e desfaze-lo, e git destrutivo e proibido para agente (regra 11). A janela principal roda, em CLONE DESCARTAVEL fora do repo: clonar o worktree, criar uma branch lateral a partir de `HEAD~2`, commitar nela, voltar e `git merge --no-ff`, e entao `bash scripts/testa-saude.sh; echo EXIT=$?` dentro do clone tem de devolver `EXIT=0`. Sem essa segunda medicao a tarefa 2 esta **nao verificada**, porque o primeiro `EXIT=0` e exatamente o que ja passava hoje.
 
 ### 3. O caminho paralelo do executar passa a flag [tipo: docs]
 atende: D7
