@@ -481,7 +481,7 @@ consequências disso, as duas de 2026-08-12:
 
 ## Orçamento de token
 
-O rainforest-mind é injetado em toda sessão, então o custo dele é real e precisa de medição contínua. O `scripts/orcamento.cjs` mede as fontes (hook, skills, commands, agentes) em byte e acusa quando passa do teto de 14.000 B — é o gate que entra no loop do `CONTRIBUTING.md:11` e barra PR quando o plugin engordar além do orçamento:
+O rainforest-mind é injetado em toda sessão, então o custo dele é real e precisa de medição contínua. O `scripts/orcamento.cjs` mede as fontes (hook, skills, commands, agentes) em byte e acusa quando passa do teto de 14.000 B. Ele entra no laço de testes do `CONTRIBUTING.md:11` pela convenção de nome, via `scripts/testa-orcamento.sh` — **este repositório não tem CI**, então o gate vale quando alguém roda o laço, não automaticamente num PR:
 
 ```bash
 node scripts/orcamento.cjs          # sai 0 se dentro do teto, 1 se estourou
@@ -494,7 +494,9 @@ O modo `--repartir` do `scripts/medir-injecao.py` lê o transcript e reparte a a
 python scripts/medir-injecao.py --repartir
 ```
 
-Medição de 2026-08-13 (quando o orçamento foi desenhado): das **67.914 tokens** da abertura, só **13.623 (20%)** são atribuíveis pelo transcript — o resto é system prompt do Claude Code, schema das tools, CLAUDE.md e memórias, que o transcript não guarda. O rainforest-mind por si ocupa **13.604 B** (hook 7.624 B + skills 3.442 B + commands 904 B + agentes 1.618 B), **1.157 tokens ou 1,7%** da abertura.
+Medição de 2026-08-13 (quando o orçamento foi desenhado): das **67.914 tokens** da abertura, só **13.623 (20%)** são atribuíveis pelo transcript — o resto é system prompt do Claude Code, schema das tools, CLAUDE.md e memórias, que o transcript não guarda. O rainforest-mind por si ocupa **13.604 B** (hook 7.640 B + skills 3.442 B + commands 904 B + agentes 1.618 B), **1.157 tokens ou 1,7%** da abertura.
+
+O byte do hook **oscila entre execuções** — ele embute estado vivo da sessão (janelas ativas, horários), então medições feitas com minutos de diferença dão 7.6xx variando. As três outras fontes são estáveis. Por isso o teto é agregado e com folga, e por isso o `testa-orcamento.sh` afirma faixas e "não pode ser 0 B", nunca igualdade exata contra o repo real.
 
 **Ressalva sobre token estimado:** a coluna de token no `--repartir` é estimada dividindo byte por fator **3.11**, que foi medido com `tiktoken` no encoding `cl100k_base` — **que é da OpenAI (GPT-4)**, não do Claude. Não existe tokenizador do Claude disponível offline nesta máquina. O total da abertura é token **medido** (vem do `usage` da API), tudo mais é **indicativo**.
 
