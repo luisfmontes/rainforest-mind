@@ -78,8 +78,14 @@ function medirHook() {
 function extrairDescription(caminhoArquivo) {
   try {
     const conteudo = fs.readFileSync(caminhoArquivo, 'utf8');
-    // Procura pelo bloco frontmatter
-    const match = conteudo.match(/^---\n([\s\S]*?)\n---/);
+    // Procura pelo bloco frontmatter.
+    // O `\r?` nao e zelo: o repo tem .gitattributes exigindo LF, e ainda assim
+    // `agents/executor.md` e `commands/foco.md` estao em CRLF no disco. Sem
+    // tolerar o \r, o bloco nao casa, esta funcao devolve '' e a fonte inteira
+    // e medida como 0 B — o instrumento subestima o orcamento e o gate nunca
+    // dispara. Foi o que aconteceu em 2026-08-13: `Agentes: 0 B` no checkout
+    // principal, contra 1.618 B no worktree do agente, que veio com LF.
+    const match = conteudo.match(/^---\r?\n([\s\S]*?)\r?\n---/);
     if (!match) return '';
     const frontmatter = match[1];
     // Procura pela linha description:
