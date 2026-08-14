@@ -904,6 +904,241 @@ checa "declarada, a URL declarada e a que aparece"   tem     "127.0.0.1:59421"  
 checa "claude-mem ausente segue fora do bloco"       nao_tem "claude-mem"               "$COM_DEP"
 
 echo
+echo "17. ISENCOES MECANIZADAS — pastasDoFoco, dentroDoExpediente, focoAtivoEmOutraJanela, computarVeredito"
+# D6: "sem dado, cobra — e a ausencia se anuncia". As quatro funcoes deste bloco
+# decidem se o radar de desvio de escopo pode ficar QUIETO nesta sessao. Erro
+# aqui e o pior tipo: silencioso. Ninguem reclama de NAO ser cobrado por engano.
+
+cat > "$RAIZ_POSIX/driver-pastas.cjs" <<'EOF'
+const lib = require(process.env.LIB_PATH);
+process.stdout.write(JSON.stringify(lib.pastasDoFoco(process.env.FIX_FOCO)));
+EOF
+pastas() { LIB_PATH="${2:-$LIB}" FIX_FOCO="$1" node "$RAIZ_POSIX/driver-pastas.cjs" 2>&1; }
+
+checa "pastasDoFoco: campo presente vira lista"    tem "[\"C:/a\",\"C:/b\"]" \
+  "$(pastas 'Pastas: C:/a, C:/b
+
+## Ativo
+')"
+checa "pastasDoFoco: campo ausente devolve []"     tem "[]" \
+  "$(pastas '# Foco
+
+## Ativo
+')"
+
+cat > "$RAIZ_POSIX/driver-expediente.cjs" <<'EOF'
+const lib = require(process.env.LIB_PATH);
+const [y, m, d, h, mi] = process.env.FIX_QUANDO.split(',').map(Number);
+const agora = new Date(y, m - 1, d, h, mi);
+const config = JSON.parse(process.env.FIX_CONFIG);
+process.stdout.write(JSON.stringify(lib.dentroDoExpediente(agora, config)));
+EOF
+expediente() { LIB_PATH="${3:-$LIB}" FIX_QUANDO="$1" FIX_CONFIG="$2" node "$RAIZ_POSIX/driver-expediente.cjs" 2>&1; }
+
+# 2026-08-10 = segunda; 2026-08-15 = sabado (conferido com node antes de escrever
+# o fixture — Date.getDay() e o que a funcao usa, e o dia da semana e o ponto
+# inteiro deste caso).
+CONFIG_EXPEDIENTE='{"expediente":{"dias":[1,2,3,4,5],"de":"08:00","ate":"18:00"}}'
+checa "dentroDoExpediente: dentro da faixa (seg 10:00)"            tem "true"  "$(expediente '2026,8,10,10,0' "$CONFIG_EXPEDIENTE")"
+checa "dentroDoExpediente: fora da faixa, mesmo dia (seg 20:00)"   tem "false" "$(expediente '2026,8,10,20,0' "$CONFIG_EXPEDIENTE")"
+checa "dentroDoExpediente: dia fora dos dias (sab 10:00)"          tem "false" "$(expediente '2026,8,15,10,0' "$CONFIG_EXPEDIENTE")"
+# A MAIS IMPORTANTE DO ARQUIVO: sem `expediente` no config, a resposta e NULL
+# ("nao sei"), nunca false ("nao e expediente"). Colapsar os dois faz o D6
+# nunca disparar o anuncio, e o radar cobra desvio de escopo sem avisar que o
+# dado sumiu — silencio dentro de silencio.
+checa "dentroDoExpediente: sem expediente no config devolve null (nao false)" tem "null" "$(expediente '2026,8,10,10,0' '{}')"
+
+cat > "$RAIZ_POSIX/driver-outra-janela.cjs" <<'EOF'
+const lib = require(process.env.LIB_PATH);
+const sessoes = JSON.parse(process.env.FIX_SESSOES);
+const pastas = JSON.parse(process.env.FIX_PASTAS);
+const oci = Number(process.env.FIX_OCI);
+const agora = Number(process.env.FIX_AGORA);
+process.stdout.write(String(lib.focoAtivoEmOutraJanela(sessoes, pastas, oci, agora)));
+EOF
+outra_janela() { LIB_PATH="${5:-$LIB}" FIX_SESSOES="$1" FIX_PASTAS="$2" FIX_OCI="$3" FIX_AGORA="$4" node "$RAIZ_POSIX/driver-outra-janela.cjs" 2>&1; }
+
+AGORA_FIXO=1786000000000
+checa "focoAtivoEmOutraJanela: sinal recente na pasta do foco isenta" tem "true" \
+  "$(outra_janela "[{\"cwd\":\"C:/a\",\"prompt_ts\":$((AGORA_FIXO-1000))}]" '["C:/a"]' 15 "$AGORA_FIXO")"
+checa "focoAtivoEmOutraJanela: mesma pasta, sinal alem da ociosidade nao isenta" tem "false" \
+  "$(outra_janela "[{\"cwd\":\"C:/a\",\"prompt_ts\":$((AGORA_FIXO - 20*60*1000))}]" '["C:/a"]' 15 "$AGORA_FIXO")"
+checa "focoAtivoEmOutraJanela: pasta diferente nao isenta"           tem "false" \
+  "$(outra_janela "[{\"cwd\":\"C:/b\",\"prompt_ts\":$((AGORA_FIXO-1000))}]" '["C:/a"]' 15 "$AGORA_FIXO")"
+# O CASO DE PREFIXO. `C:/abc` nao pode casar `C:/a` — erro aqui e invisivel,
+# ninguem reclama de nao ser cobrado.
+checa "focoAtivoEmOutraJanela: C:/abc nao casa C:/a por prefixo"     tem "false" \
+  "$(outra_janela "[{\"cwd\":\"C:/abc\",\"prompt_ts\":$((AGORA_FIXO-1000))}]" '["C:/a"]' 15 "$AGORA_FIXO")"
+# Sinal humano e o prompt_ts (o usuario digitou algo), nao o stop_ts (Claude
+# parou de responder). Sessao com prompt frio mas stop recente nao esta sendo
+# TRABALHADA por ninguem — nao pode isentar.
+checa "focoAtivoEmOutraJanela: prompt_ts frio e o que conta, nao stop_ts" tem "false" \
+  "$(outra_janela "[{\"cwd\":\"C:/a\",\"prompt_ts\":$((AGORA_FIXO - 999999999)),\"stop_ts\":$((AGORA_FIXO-1000))}]" '["C:/a"]' 15 "$AGORA_FIXO")"
+
+# CAMINHO WINDOWS DE VERDADE: barra invertida + maiuscula, contra o foco
+# declarado com barra normal e minuscula. A barra e construida com
+# String.fromCharCode(92) e o valor e IMPRESSO antes de afirmar o resultado —
+# o aviso do briefing e literal: aspas de shell e heredoc comem a barra
+# invertida sem avisar, e isso ja rendeu medicao errada hoje.
+cat > "$RAIZ_POSIX/driver-outra-janela-win.cjs" <<'EOF'
+const lib = require(process.env.LIB_PATH);
+const BS = String.fromCharCode(92);
+const cwdSessao = 'C:' + BS + 'A';
+process.stderr.write('CWD_CONSTRUIDO=' + JSON.stringify(cwdSessao) + '\n');
+const agora = 1786000000000;
+const r = lib.focoAtivoEmOutraJanela([{ cwd: cwdSessao, prompt_ts: agora - 1000 }], ['C:/a'], 15, agora);
+process.stdout.write(String(r));
+EOF
+CONFIRMA_WIN="$RAIZ_POSIX/confirma-win.log"
+SAIDA_WIN="$(LIB_PATH="$LIB" node "$RAIZ_POSIX/driver-outra-janela-win.cjs" 2>"$CONFIRMA_WIN")"
+echo "  (confirmando o valor antes de afirmar: $(cat "$CONFIRMA_WIN"))"
+checa "focoAtivoEmOutraJanela: C:\\A (barra invertida + maiuscula) normaliza e casa com C:/a" tem "true" "$SAIDA_WIN"
+
+cat > "$RAIZ_POSIX/driver-veredito.cjs" <<'EOF'
+const lib = require(process.env.LIB_PATH);
+const foco = process.env.FIX_FOCO;
+const sessoes = JSON.parse(process.env.FIX_SESSOES || '[]');
+const config = JSON.parse(process.env.FIX_CONFIG || '{}');
+const agora = Number(process.env.FIX_AGORA);
+process.stdout.write(lib.computarVeredito(foco, sessoes, config, agora));
+EOF
+veredito() { LIB_PATH="${5:-$LIB}" FIX_FOCO="$1" FIX_SESSOES="$2" FIX_CONFIG="$3" FIX_AGORA="$4" node "$RAIZ_POSIX/driver-veredito.cjs" 2>&1; }
+
+FOCO_SEM_PASTAS="# Foco
+
+## Ativo
+
+**Foco de teste** \`[trabalho]\`"
+FOCO_COM_PASTAS="Pastas: C:/a
+
+## Ativo
+
+**Foco de teste** \`[trabalho]\`"
+AGORA_SEG="$(node -e "process.stdout.write(String(new Date(2026,7,10,10,0).getTime()))")"
+AGORA_SAB="$(node -e "process.stdout.write(String(new Date(2026,7,15,10,0).getTime()))")"
+
+S="$(veredito "$FOCO_SEM_PASTAS" '[]' "$CONFIG_EXPEDIENTE" "$AGORA_SEG")"
+checa "computarVeredito: sem dado (Pastas ausente), anuncia"       tem     "Pastas: ausente no FOCO.md" "$S"
+checa "computarVeredito: sem dado, NAO isenta (sem veredito junto)" nao_tem "NÃO cobrar desvio"          "$S"
+
+S="$(veredito "$FOCO_COM_PASTAS" "[{\"cwd\":\"C:/a\",\"prompt_ts\":$((AGORA_SEG-1000))}]" "$CONFIG_EXPEDIENTE" "$AGORA_SEG")"
+checa "computarVeredito: com dado e condicao satisfeita, emite veredito" tem     "NÃO cobrar desvio de escopo" "$S"
+checa "computarVeredito: veredito nao vem com anuncio junto"            nao_tem "ausente"                     "$S"
+
+# Dado completo, condicao nenhuma satisfeita: nem veredito nem anuncio. Os DOIS
+# saem vazios juntos tambem conta como "nunca saem juntos" — string vazia nao
+# afirma nada, nem cobranca nem isencao.
+S="$(veredito "$FOCO_COM_PASTAS" '[]' "$CONFIG_EXPEDIENTE" "$AGORA_SEG")"
+if [ -z "$S" ]; then
+  ok=$((ok+1)); echo "  ok    computarVeredito: dado completo sem condicao satisfeita devolve string vazia"
+else
+  falhou=$((falhou+1)); echo "  FALHA computarVeredito esperava vazio (dado completo, sem condicao), veio: '$S'"
+fi
+
+echo
+echo "17.1 MUTACOES — as quatro sabotagens do briefing, cada uma tem que quebrar a asserção correspondente"
+# Padrao: sabota uma COPIA da lib (nunca o LIB original), roda a MESMA fixture
+# contra ela, e mostra a saida divergindo. A chamada de `checa` dentro de um
+# SUBSHELL `( ... )` imprime a linha "FALHA ..." de verdade (prova textual de
+# que a assercao pega o defeito) sem contaminar o ok/falhou do arquivo inteiro
+# — subshell tem copia propria das variaveis, o incremento nao vaza para fora.
+# O veredito sobre "mutacao e load-bearing" quem da e o if/else logo depois,
+# no mesmo estilo das secoes 5, 9 e 12 deste arquivo.
+
+echo "  -- SABOTAGEM 1: dentroDoExpediente devolve false em vez de null quando falta expediente"
+cp "$LIB" "$RAIZ_POSIX/lib-mut-expediente.cjs"
+sed -i 's/if (!config || !config.expediente) return null;/if (!config || !config.expediente) return false;/' "$RAIZ_POSIX/lib-mut-expediente.cjs"
+S_MUT1="$(expediente '2026,8,10,10,0' '{}' "$RAIZ_POSIX/lib-mut-expediente.cjs")"
+echo "  (saida do mutante: $S_MUT1 — a assercao real espera 'null')"
+( checa "dentroDoExpediente: sem expediente no config devolve null (nao false)" tem "null" "$S_MUT1" )
+if [ "$S_MUT1" != "null" ]; then
+  ok=$((ok+1)); echo "  ok    mutacao expos o colapso null->false (D6 inteiro depende disso)"
+else
+  falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — null->false nao e o que a assercao mede"
+fi
+
+echo "  -- SABOTAGEM 2: focoAtivoEmOutraJanela compara caminho com includes (substring) em vez de igualdade"
+cp "$LIB" "$RAIZ_POSIX/lib-mut-includes.cjs"
+sed -i 's/pasta === cwdNormalizado/cwdNormalizado.includes(pasta)/' "$RAIZ_POSIX/lib-mut-includes.cjs"
+S_MUT2="$(outra_janela "[{\"cwd\":\"C:/abc\",\"prompt_ts\":$((AGORA_FIXO-1000))}]" '["C:/a"]' 15 "$AGORA_FIXO" "$RAIZ_POSIX/lib-mut-includes.cjs")"
+echo "  (saida do mutante: $S_MUT2 — a assercao real espera 'false')"
+( checa "focoAtivoEmOutraJanela: C:/abc nao casa C:/a por prefixo" tem "false" "$S_MUT2" )
+if [ "$S_MUT2" = "true" ]; then
+  ok=$((ok+1)); echo "  ok    mutacao expos o casamento por prefixo (C:/abc passou a isentar contra C:/a)"
+else
+  falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — includes() nao e o que a assercao mede"
+fi
+
+echo "  -- SABOTAGEM 3: focoAtivoEmOutraJanela usa stop_ts em vez de prompt_ts como sinal humano"
+cp "$LIB" "$RAIZ_POSIX/lib-mut-stopts.cjs"
+sed -i 's/const { cwd, prompt_ts } = sessao;/const { cwd, stop_ts: prompt_ts } = sessao;/' "$RAIZ_POSIX/lib-mut-stopts.cjs"
+FIX_STOP="[{\"cwd\":\"C:/a\",\"prompt_ts\":$((AGORA_FIXO - 999999999)),\"stop_ts\":$((AGORA_FIXO-1000))}]"
+S_MUT3="$(outra_janela "$FIX_STOP" '["C:/a"]' 15 "$AGORA_FIXO" "$RAIZ_POSIX/lib-mut-stopts.cjs")"
+echo "  (saida do mutante: $S_MUT3 — a assercao real espera 'false')"
+( checa "focoAtivoEmOutraJanela: prompt_ts frio e o que conta, nao stop_ts" tem "false" "$S_MUT3" )
+if [ "$S_MUT3" = "true" ]; then
+  ok=$((ok+1)); echo "  ok    mutacao expos a troca prompt_ts->stop_ts (sinal errado passou a isentar)"
+else
+  falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — a troca de campo nao e o que a assercao mede"
+fi
+
+echo "  -- SABOTAGEM 4: computarVeredito passa a emitir anuncio e veredito juntos"
+cat > "$RAIZ_POSIX/sabotar-veredito.cjs" <<'SABOTA_EOF'
+const fs = require('fs');
+const alvo = process.argv[2];
+let texto = fs.readFileSync(alvo, 'utf8');
+const achar1 = [
+  '  // Se faltam dados, anuncia e não isenta (D6)',
+  '  if (!pastas.length) {',
+  "    return 'Pastas: ausente no FOCO.md — o radar vai cobrar desvio mesmo com o foco aberto em outra janela.';",
+  '  }',
+  '',
+  '  if (expediente === undefined) {',
+  "    return 'expediente: ausente no config.json — o radar vai cobrar desvio fora do expediente (tempo pessoal).';",
+  '  }',
+].join('\n');
+const trocar1 = [
+  '  // SABOTAGEM: nao retorna mais cedo, so guarda o anuncio e continua.',
+  "  let anuncioSabotado = '';",
+  '  if (!pastas.length) {',
+  "    anuncioSabotado = 'Pastas: ausente no FOCO.md — o radar vai cobrar desvio mesmo com o foco aberto em outra janela.';",
+  '  }',
+  '',
+  '  if (expediente === undefined) {',
+  "    anuncioSabotado += 'expediente: ausente no config.json — o radar vai cobrar desvio fora do expediente (tempo pessoal).';",
+  '  }',
+].join('\n');
+const achar2 = [
+  '  // Se nenhum motivo aplica, sem veredito',
+  "  if (!motivos.length) return '';",
+  '',
+  '  // Veredito de uma linha (D10): componível, imperativo',
+  "  return \`**NÃO cobrar desvio de escopo nesta sessão** — ${motivos.join(' e ')}.\`;",
+].join('\n');
+const trocar2 = [
+  '  // Se nenhum motivo aplica, sem veredito',
+  '  if (!motivos.length) return anuncioSabotado;',
+  '',
+  '  // SABOTAGEM: concatena o anuncio (que deveria ter retornado antes) com o veredito.',
+  "  return anuncioSabotado + \`**NÃO cobrar desvio de escopo nesta sessão** — ${motivos.join(' e ')}.\`;",
+].join('\n');
+if (!texto.includes(achar1)) { console.error('ANCORA1 NAO BATE em ' + alvo); process.exit(1); }
+if (!texto.includes(achar2)) { console.error('ANCORA2 NAO BATE em ' + alvo); process.exit(1); }
+texto = texto.replace(achar1, trocar1).replace(achar2, trocar2);
+fs.writeFileSync(alvo, texto);
+SABOTA_EOF
+cp "$LIB" "$RAIZ_POSIX/lib-mut-veredito.cjs"
+node "$RAIZ_POSIX/sabotar-veredito.cjs" "$RAIZ_POSIX/lib-mut-veredito.cjs"
+S_MUT4="$(veredito "$FOCO_SEM_PASTAS" '[]' "$CONFIG_EXPEDIENTE" "$AGORA_SAB" "$RAIZ_POSIX/lib-mut-veredito.cjs")"
+echo "  (saida do mutante: $S_MUT4)"
+( checa "computarVeredito: sem dado, NAO isenta (sem veredito junto)" nao_tem "NÃO cobrar desvio" "$S_MUT4" )
+if echo "$S_MUT4" | grep -qF "Pastas: ausente" && echo "$S_MUT4" | grep -qF "NÃO cobrar desvio"; then
+  ok=$((ok+1)); echo "  ok    mutacao expos anuncio+veredito saindo juntos (a exclusividade e load-bearing)"
+else
+  falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — anuncio e veredito nao saíram juntos"
+fi
+
+echo
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" = "0" ] || exit 1
