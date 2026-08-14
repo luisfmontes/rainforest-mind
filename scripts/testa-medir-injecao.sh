@@ -47,7 +47,7 @@ echo "(caixa de areia: $SBP)"
 
 ALVO="$SRC/scripts/medir-injecao.py"
 
-ok=0; falhou=0
+ok=0; falhou=0; pulou=0
 tem()     { if echo "$2" | grep -qF -- "$3"; then ok=$((ok+1)); echo "  ok   $1"; else falhou=$((falhou+1)); echo "  FALHA $1 (esperava achar '$3')"; fi; }
 nao_tem() { if echo "$2" | grep -qF -- "$3"; then falhou=$((falhou+1)); echo "  FALHA $1 (achou '$3')"; else ok=$((ok+1)); echo "  ok   $1"; fi; }
 igual()   { if [ "$2" = "$3" ]; then ok=$((ok+1)); echo "  ok   $1"; else falhou=$((falhou+1)); echo "  FALHA $1 (esperava '$3', veio '$2')"; fi; }
@@ -378,26 +378,45 @@ mutante_detectado_num "fatia passa a incluir o item do claude-mem" "500" "$FATIA
 #  11. hook que nao e SessionStart fica de fora da tabela.
 #  12. dedup por (command, emitido, chegou).
 #  13. a varredura por forma (_varrer) desce em profundidade arbitraria.
+#  14. (achado 9, rodada de revisao) hookEvent real NUNCA traz sufixo — o
+#      sufixo (":startup"/":clear"/":resume") mora em hookName. As fixtures
+#      acima foram corrigidas para essa forma; esta secao ancora contra
+#      TRANSCRIPT REAL de ~/.claude/projects/ para a fixture nao poder
+#      divergir da realidade de novo em silencio.
+#  15. (achado 10, rodada de revisao) campo_entrega() nao pode corromper
+#      numero grande so porque ele estoura a largura nominal da coluna.
 
 rodar_entrega() { python "$ALVO" --entrega "$1" 2>&1; }
 rodar_entrega_mutante() { python "$1" --entrega "$2" 2>&1; }
 # extrai a linha da tabela de --entrega que contem o nome do hook.
 linha_entrega() { printf '%s\n' "$1" | grep -F -- "$2" | head -1; }
-# colunas de largura fixa: quando(20) sp hook(28) sp emitido(8) sp chegou(8)
-# sp pcts(5) 2sp estado — usa fatiamento por indice, nao awk, porque "estado"
-# pode ser "sem corte" (tem espaco dentro) e quebraria contagem de campos.
+# quando(20) e hook(28) sao SEMPRE largura fixa por construcao da propria
+# producao (timestamp tem tamanho fixo; nome do hook e truncado em [:28] antes
+# de imprimir) — fatiar por indice ali e seguro. emitido/chegou NAO sao: sao
+# numeros formatados com ">8,d"/">8s", que o Python nunca TRUNCA quando o
+# valor e mais largo que 8 (ex.: "1,200,000" tem 9 caracteres) — so estica o
+# campo. Fatiar aquilo por indice fixo (achado 10) desloca tudo que vem depois
+# e corrompe o numero em silencio. A partir do fim do campo hook (posicao 50)
+# o resto da linha e tokenizado por espaco com limite 3: os tres primeiros
+# tokens (emitido, chegou, pcts) nunca tem espaco dentro; o quarto pedaco é
+# "estado" inteiro, que PODE ter espaco dentro ("sem corte") — por isso o
+# maxsplit para exatamente ai e nao mais.
 campo_entrega() {
   LINHA="$1" CAMPO="$2" python3 <<'PY'
 import os
 linha = os.environ["LINHA"]
 campo = os.environ["CAMPO"]
+resto = linha[50:].split(None, 3)
+while len(resto) < 4:
+    resto.append("")
+emitido, chegou, pcts, estado = resto
 vals = {
     "quando": linha[0:20].strip(),
     "hook": linha[21:49].strip(),
-    "emitido": linha[50:58].strip().replace(",", ""),
-    "chegou": linha[59:67].strip().replace(",", ""),
-    "pcts": linha[68:73].strip(),
-    "estado": linha[75:].strip(),
+    "emitido": emitido.replace(",", ""),
+    "chegou": chegou.replace(",", ""),
+    "pcts": pcts,
+    "estado": estado,
 }
 print(vals.get(campo, ""))
 PY
@@ -410,7 +429,7 @@ FIX_PATH="$FX7" python3 <<'PY'
 import json, os
 with open(os.environ["FIX_PATH"], "w", encoding="utf-8") as f:
     f.write(json.dumps({"timestamp": "2026-01-01T10:00:00Z", "toolUseResult": {"hooks": [{
-        "hookEvent": "SessionStart:startup", "stdout": "A" * 12, "content": "B" * 7,
+        "hookEvent": "SessionStart", "hookName": "SessionStart:startup", "stdout": "A" * 12, "content": "B" * 7,
         "command": "node hooks/inversao-emitido-chegou.cjs", "exitCode": 0}]}}) + "\n")
 PY
 SAIDA7="$(rodar_entrega "$FX7")"
@@ -440,7 +459,7 @@ import json, os
 content = "<persisted-output>" + "D" * 60
 with open(os.environ["FIX_PATH"], "w", encoding="utf-8") as f:
     f.write(json.dumps({"timestamp": "2026-01-01T10:00:01Z", "toolUseResult": {"hooks": [{
-        "hookEvent": "SessionStart:startup", "stdout": "C" * 10, "content": content,
+        "hookEvent": "SessionStart", "hookName": "SessionStart:clear", "stdout": "C" * 10, "content": content,
         "command": "node hooks/marcador-conteudo-maior.cjs", "exitCode": 0}]}}) + "\n")
 PY
 SAIDA8="$(rodar_entrega "$FX8")"
@@ -464,7 +483,7 @@ FIX_PATH="$FX9" python3 <<'PY'
 import json, os
 with open(os.environ["FIX_PATH"], "w", encoding="utf-8") as f:
     f.write(json.dumps({"timestamp": "2026-01-01T10:00:02Z", "toolUseResult": {"hooks": [{
-        "hookEvent": "SessionStart:startup", "stdout": "E" * 10, "content": "F" * 4,
+        "hookEvent": "SessionStart", "hookName": "SessionStart:resume", "stdout": "E" * 10, "content": "F" * 4,
         "command": "node hooks/truncado-por-tamanho.cjs", "exitCode": 0}]}}) + "\n")
 PY
 SAIDA9="$(rodar_entrega "$FX9")"
@@ -488,7 +507,7 @@ FIX_PATH="$FX10" python3 <<'PY'
 import json, os
 with open(os.environ["FIX_PATH"], "w", encoding="utf-8") as f:
     f.write(json.dumps({"timestamp": "2026-01-01T10:00:03Z", "toolUseResult": {"hooks": [{
-        "hookEvent": "SessionStart:startup", "stdout": "G" * 10, "content": "H" * 10,
+        "hookEvent": "SessionStart", "hookName": "SessionStart:startup", "stdout": "G" * 10, "content": "H" * 10,
         "command": "node hooks/nao-truncado-igual.cjs", "exitCode": 0}]}}) + "\n")
 PY
 SAIDA10="$(rodar_entrega "$FX10")"
@@ -512,7 +531,7 @@ FIX_PATH="$FX11" python3 <<'PY'
 import json, os
 with open(os.environ["FIX_PATH"], "w", encoding="utf-8") as f:
     f.write(json.dumps({"timestamp": "2026-01-01T10:00:04Z", "toolUseResult": {"hooks": [{
-        "hookEvent": "SessionStart:startup", "stdout": "I" * 10, "content": "I" * 10,
+        "hookEvent": "SessionStart", "hookName": "SessionStart:clear", "stdout": "I" * 10, "content": "I" * 10,
         "command": "node hooks/controle-session-start.cjs", "exitCode": 0}]}}) + "\n")
     f.write(json.dumps({"timestamp": "2026-01-01T10:00:05Z", "toolUseResult": {"hooks": [{
         "hookEvent": "PreToolUse", "stdout": "J" * 10, "content": "J" * 2,
@@ -538,7 +557,7 @@ echo; echo "12. DEDUPLICACAO por (command, emitido, chegou)"
 FX12="$SBP/12-dedup.jsonl"
 FIX_PATH="$FX12" python3 <<'PY'
 import json, os
-registro = {"hookEvent": "SessionStart:startup", "stdout": "K" * 10, "content": "K" * 2,
+registro = {"hookEvent": "SessionStart", "hookName": "SessionStart:resume", "stdout": "K" * 10, "content": "K" * 2,
             "command": "node hooks/duplicado.cjs", "exitCode": 0}
 with open(os.environ["FIX_PATH"], "w", encoding="utf-8") as f:
     f.write(json.dumps({"timestamp": "2026-01-01T10:00:06Z", "toolUseResult": {"hooks": [registro]}}) + "\n")
@@ -565,7 +584,7 @@ FIX_PATH="$FX13" python3 <<'PY'
 import json, os
 # hook enterrado 4 niveis abaixo, dentro de dict->dict->list->dict — nenhum
 # caminho fixo, so a FORMA (hookEvent + stdout) identifica o registro.
-fundo = {"hookEvent": "SessionStart:startup", "stdout": "L" * 10, "content": "L" * 2,
+fundo = {"hookEvent": "SessionStart", "hookName": "SessionStart:startup", "stdout": "L" * 10, "content": "L" * 2,
          "command": "node hooks/profundo-de-verdade.cjs", "exitCode": 0}
 estrutura = {"timestamp": "2026-01-01T10:00:08Z",
              "nivel1": {"nivel2": {"nivel3": [{"nivel4": fundo}]}}}
@@ -586,10 +605,133 @@ case "$SAIDA13M" in
 esac
 
 # =========================================================================
+echo; echo "14. ANCORAGEM contra transcript REAL (nao fixture): hookEvent nunca traz sufixo"
+# Achado 9 (revisao): as fixtures das secoes 7-13 escreviam
+# "hookEvent": "SessionStart:startup" — forma que NUNCA ocorre em producao.
+# hookEvent so assume PostToolUse/Stop/SessionStart/PreToolUse/UserPromptSubmit,
+# sempre SEM sufixo; o sufixo (":startup"/":clear"/":resume") mora em hookName.
+# Corrigimos as fixtures acima; esta secao AMARRA essa forma contra dado real,
+# para a fixture nao poder divergir da realidade de novo em silencio — mesmo
+# proposito da secao 0, que roda contra o hook real em vez de reafirmar uma
+# constante digitada aqui.
+#
+# Degrada com honestidade: maquina sem transcript nenhum nao falha nem passa
+# calada — conta em "pulou", visivel no relatorio final, nunca em ok/falhou
+# (o estado da maquina de quem roda o teste nao pode fazer o gate oscilar).
+RAIZ_TRANSCRIPTS="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects"
+RESULTADO14="$(RAIZ="$RAIZ_TRANSCRIPTS" python3 <<'PY'
+import json, os
+from pathlib import Path
+
+raiz = Path(os.environ["RAIZ"])
+arquivos = list(raiz.glob("**/*.jsonl")) if raiz.is_dir() else []
+
+total_hookevent = 0
+com_dois_pontos = set()
+sessionstart_sem_sufixo = 0
+sufixos_vistos = set()
+
+def varrer(no):
+    # Mesma FORMA que o _varrer() de medir-injecao.py usa para reconhecer um
+    # registro de hook de verdade: hookEvent E stdout juntos no mesmo dict —
+    # nao so hookEvent (que tambem aparece solto em objetos que nao sao
+    # execucao de hook, e conta ruido que nao existe do ponto de vista do
+    # script que estamos ancorando).
+    global total_hookevent, sessionstart_sem_sufixo
+    if isinstance(no, dict):
+        if "hookEvent" in no and "stdout" in no:
+            total_hookevent += 1
+            he = str(no.get("hookEvent", ""))
+            if ":" in he:
+                com_dois_pontos.add(he)
+            if he == "SessionStart":
+                hn = str(no.get("hookName", ""))
+                if ":" in hn:
+                    sufixos_vistos.add(hn.split(":", 1)[1])
+                else:
+                    sessionstart_sem_sufixo += 1
+        for v in no.values():
+            varrer(v)
+    elif isinstance(no, list):
+        for v in no:
+            varrer(v)
+
+for arq in arquivos:
+    try:
+        with arq.open(encoding="utf-8", errors="replace") as f:
+            for linha in f:
+                try:
+                    d = json.loads(linha)
+                except json.JSONDecodeError:
+                    continue
+                varrer(d)
+    except OSError:
+        continue
+
+print(f"ARQUIVOS={len(arquivos)}")
+print(f"TOTAL_HOOKEVENT={total_hookevent}")
+print(f"COM_DOIS_PONTOS={len(com_dois_pontos)}")
+print(f"COM_DOIS_PONTOS_VALORES={sorted(com_dois_pontos)}")
+print(f"SESSIONSTART_SEM_SUFIXO={sessionstart_sem_sufixo}")
+print(f"SUFIXOS_VISTOS={sorted(sufixos_vistos)}")
+PY
+)"
+echo "$RESULTADO14" | sed 's/^/  /'
+val14() { echo "$RESULTADO14" | grep "^$1=" | head -1 | cut -d= -f2-; }
+ARQUIVOS14="$(val14 ARQUIVOS)"
+TOTAL14="$(val14 TOTAL_HOOKEVENT)"
+if [ "${ARQUIVOS14:-0}" -eq 0 ] || [ "${TOTAL14:-0}" -eq 0 ]; then
+  pulou=$((pulou+1))
+  echo "  PULADA — sem dado de producao em $RAIZ_TRANSCRIPTS (nenhum registro de hook achado). Isto NAO conta como ok nem como falha."
+else
+  COM_DOIS_PONTOS14="$(val14 COM_DOIS_PONTOS)"
+  SEM_SUFIXO14="$(val14 SESSIONSTART_SEM_SUFIXO)"
+  echo "  (amostra: $TOTAL14 registros de hookEvent em $ARQUIVOS14 transcript(s) reais)"
+  igual "nenhum hookEvent real contem ':' (forma da fixture continua real)" "$COM_DOIS_PONTOS14" "0"
+  igual "todo registro SessionStart real traz o sufixo em hookName" "$SEM_SUFIXO14" "0"
+fi
+
+# =========================================================================
+echo; echo "15. campo_entrega() NAO CORROMPE numero grande que estoura a largura nominal (achado 10)"
+FX15="$SBP/15-numero-grande.jsonl"
+FIX_PATH="$FX15" python3 <<'PY'
+import json, os
+with open(os.environ["FIX_PATH"], "w", encoding="utf-8") as f:
+    f.write(json.dumps({"timestamp": "2026-01-01T10:00:09Z", "toolUseResult": {"hooks": [{
+        "hookEvent": "SessionStart", "hookName": "SessionStart:startup",
+        "stdout": "M" * 1200000, "content": "N" * 500000,
+        "command": "node hooks/numero-grande.cjs", "exitCode": 0}]}}) + "\n")
+PY
+SAIDA15="$(rodar_entrega "$FX15")"
+LINHA15="$(linha_entrega "$SAIDA15" "numero-grande.cjs")"
+echo "  linha real da tabela: $LINHA15"
+EMITIDO15="$(campo_entrega "$LINHA15" emitido)"
+CHEGOU15="$(campo_entrega "$LINHA15" chegou)"
+igual "emitido de 1.200.000 (9 digitos com virgula) nao corrompe, extrai 1200000 inteiro" "$EMITIDO15" "1200000"
+igual "chegou de 500.000 (7 digitos com virgula) nao corrompe, extrai 500000 inteiro" "$CHEGOU15" "500000"
+
+echo "  -- mutacao 15: volta ao fatiamento por indice fixo (achado 10 original)"
+mutacao_campo_entrega_fixo() {
+  LINHA="$1" CAMPO="$2" python3 <<'PY'
+import os
+linha = os.environ["LINHA"]
+campo = os.environ["CAMPO"]
+vals = {
+    "emitido": linha[50:58].strip().replace(",", ""),
+    "chegou": linha[59:67].strip().replace(",", ""),
+}
+print(vals.get(campo, ""))
+PY
+}
+EMITIDO15M="$(mutacao_campo_entrega_fixo "$LINHA15" emitido)"
+echo "  saida da extracao sabotada (fatiamento fixo): emitido='$EMITIDO15M'"
+mutante_detectado_num "extracao por indice fixo corrompe o numero grande" "1200000" "$EMITIDO15M"
+
+# =========================================================================
 echo; echo "guarda final — o original nao pode ter sido tocado"
 GITSTATUS="$(cd "$SRC" && git status --porcelain -- scripts/medir-injecao.py)"
 igual "scripts/medir-injecao.py continua intocado" "$GITSTATUS" ""
 
 echo; echo "-----------------------------------------"
-echo "ok: $ok   falhou: $falhou"
+echo "ok: $ok   falhou: $falhou   pulou: $pulou"
 [ "$falhou" -eq 0 ] || exit 1
