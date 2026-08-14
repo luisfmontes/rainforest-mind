@@ -151,6 +151,8 @@ def repartir(caminho: Path) -> int:
     deferred_tools_bytes = 0
     agent_listing_bytes = 0
     agent_listing_rainforest_bytes = 0
+    hook_additional_context_bytes = 0
+    hook_additional_context_rainforest_bytes = 0
     total_tokens = None
 
     with caminho.open(encoding="utf-8", errors="replace") as fh:
@@ -192,9 +194,10 @@ def repartir(caminho: Path) -> int:
                     for line in lines:
                         # Detectar linha de skill (começa com "- ")
                         if line.startswith("- "):
-                            # Extrair o nome da skill (entre "- " e ":")
-                            skill_name = line[2:].split(":")[0] if ":" in line else ""
-                            if f"rainforest-mind:{skill_name}" in rainforest_names:
+                            # Extrair o identificador (parte entre "- " e ": ")
+                            parts = line[2:].split(": ", 1)
+                            identifier = parts[0]
+                            if identifier in rainforest_names:
                                 in_rainforest = True
                             else:
                                 in_rainforest = False
@@ -227,9 +230,10 @@ def repartir(caminho: Path) -> int:
                     for line in lines:
                         # Detectar linha de agente (começa com "- ")
                         if line.startswith("- "):
-                            # Extrair o nome do agente (entre "- " e ":")
-                            agent_name = line[2:].split(":")[0] if ":" in line else ""
-                            if f"rainforest-mind:{agent_name}" in rainforest_types:
+                            # Extrair o identificador (parte entre "- " e ": ")
+                            parts = line[2:].split(": ", 1)
+                            identifier = parts[0]
+                            if identifier in rainforest_types:
                                 in_rainforest = True
                             else:
                                 in_rainforest = False
@@ -240,6 +244,20 @@ def repartir(caminho: Path) -> int:
                     rainforest_content = '\n'.join(rf_content)
                     agent_listing_rainforest_bytes = len(rainforest_content.encode("utf-8"))
 
+            elif att_type == "hook_additional_context":
+                # Processar hook_additional_context do foco-session-start.cjs
+                # O content pode ser uma string ou uma lista de strings
+                content_raw = att.get("content", "")
+                if isinstance(content_raw, list):
+                    content = '\n'.join(content_raw)
+                else:
+                    content = content_raw
+                hook_additional_context_bytes = len(content.encode("utf-8"))
+
+                # Este hook vem do foco-session-start.cjs do rainforest-mind
+                # Então conta como rainforest tanto no atribuído quanto na fatia rainforest
+                hook_additional_context_rainforest_bytes = hook_additional_context_bytes
+
     if total_tokens is None:
         print("erro: nenhum registro com usage nos transcripts lidos.\n"
               "      Sessao sem abertura, ou o transcript nao guarda o campo `usage`.",
@@ -247,8 +265,8 @@ def repartir(caminho: Path) -> int:
         return 1
 
     # Calcular subtotais
-    rainforest_bytes = skill_listing_rainforest_bytes + agent_listing_rainforest_bytes
-    atribuido_bytes = skill_listing_bytes + deferred_tools_bytes + agent_listing_bytes
+    rainforest_bytes = skill_listing_rainforest_bytes + agent_listing_rainforest_bytes + hook_additional_context_rainforest_bytes
+    atribuido_bytes = skill_listing_bytes + deferred_tools_bytes + agent_listing_bytes + hook_additional_context_bytes
 
     # Calcular não atribuído
     atribuido_tokens = atribuido_bytes / BYTES_POR_TOKEN
@@ -263,12 +281,14 @@ def repartir(caminho: Path) -> int:
     print(f"{'-' * 28} {'-' * 9} {'-' * 9}")
     for nome, b in (("skill_listing", skill_listing_bytes),
                     ("deferred_tools_delta", deferred_tools_bytes),
-                    ("agent_listing_delta", agent_listing_bytes)):
+                    ("agent_listing_delta", agent_listing_bytes),
+                    ("hook_additional_context", hook_additional_context_bytes)):
         print(f"{nome:28s} {b:>9,d} {b / BYTES_POR_TOKEN:>9,.0f}")
     print(f"{'atribuido':28s} {atribuido_bytes:>9,d} {atribuido_tokens:>9,.0f}")
     print(f"{'  dos quais rainforest-mind':28s} {rainforest_bytes:>9,d} "
           f"{rainforest_bytes / BYTES_POR_TOKEN:>9,.0f}")
-    print(f"{'nao atribuido':28s} {int(nao_atribuido_tokens * BYTES_POR_TOKEN):>9,d} "
+    nao_atribuido_bytes_estimado = int(nao_atribuido_tokens * BYTES_POR_TOKEN)
+    print(f"{'nao atribuido':28s} {'~' + f'{nao_atribuido_bytes_estimado:,d}':>9s} "
           f"{nao_atribuido_tokens:>9,.0f}")
     print(f"{'TOTAL DA ABERTURA':28s} {'':>9s} {total_tokens:>9,d}")
 
