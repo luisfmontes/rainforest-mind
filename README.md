@@ -159,8 +159,7 @@ Sem sermão e sem repetir. Três coisas que o desvio *não* dispara: trabalhar e
 paralelo de propósito, tocar uma frente que já está listada como compromisso, e
 foco de trabalho fora do horário de trabalho.
 
-Quando o radar avisa desvio de escopo, ele computar se precisa dessa linha
-depende de dois dados, ambos opcionais:
+Para decidir se cala, o radar depende de dois dados, ambos opcionais:
 
 - **`Pastas:` no FOCO.md** — lista separada por vírgula das pastas onde o foco
   está sendo trabalhado. Exemplo: `Pastas: C:/projeto-a, C:/projeto-a/src`.
@@ -175,11 +174,25 @@ depende de dois dados, ambos opcionais:
   Sem este campo, o radar cobra desvio fora do horário, mesmo que o foco seja
   marcado como `[trabalho]`.
 
-Quando ambos estão faltando, o hook anuncia. Quando um dos dois está faltando,
-o radar continua cobrando — é a falha fechada, porque deixar de anunciar a
-ausência é silêncio pior que correr de novo a checagem. O anúncio e o veredito
-são mutuamente exclusivos, e a prioridade é clara: falha de dado antes de
-isenção falsa.
+Faltando qualquer um dos dois, o radar **continua cobrando** e o hook anuncia o
+que falta, com o efeito prático junto — assim:
+
+```
+Pastas: ausente no FOCO.md — o radar vai cobrar desvio mesmo com o foco
+aberto em outra janela.
+```
+
+Isso é **falha fechada**, e é deliberado: um radar que emudece por falta de
+configuração é indetectável, e você nunca saberia que ele parou. Um radar que
+cobra demais você percebe e reclama — foi exatamente assim que este defeito
+apareceu. Anúncio e veredito são mutuamente exclusivos: não há como julgar sem
+dado.
+
+**A isenção cala só o aviso de desvio de escopo.** O aviso de prazo — vencido
+ou a ≤2 dias — continua saindo, sempre. São coisas diferentes: saber num sábado
+que algo vence na segunda é informação e não custa nada; ser cobrado no sábado
+por estar lendo outra coisa é o que incomoda. Uma isenção que silenciasse o
+radar inteiro trocaria um defeito por outro.
 
 E quando o ambiente **impede** uma regra — permissão negada, hook fora do ar,
 ferramenta ausente —, ele diz numa linha em vez de falhar em silêncio. Regra
