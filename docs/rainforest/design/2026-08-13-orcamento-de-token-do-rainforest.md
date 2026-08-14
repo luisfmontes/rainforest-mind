@@ -49,4 +49,10 @@ hoje não existe medição que justifique comprimir coisa alguma.
 
 ## Em aberto
 
-- O fator byte→token usado na coluna estimada foi medido e fixado: **`BYTES_POR_TOKEN = 3.11`**. Proveniência: medido em 2026-08-13 com `tiktoken` (tokenizador cl100k_base de Claude) sobre o payload real gerado por `hooks/foco-session-start.cjs` deste repositório — 7.666 bytes (UTF-8) → 2.465 tokens. Fica declarado como constante única e visível na saída. O que ele **não** garante: mudanças futuras no payload do hook, adição de skills ou agentes, ou revisions do tokenizador de Claude exigem remedir; este valor é snapshot de 2026-08-13 e não é estável por indefinido.
+- O fator byte→token usado na coluna estimada foi medido e fixado: **`BYTES_POR_TOKEN = 3.11`**.
+
+  **Proveniência, e o que ela não é.** Medido em 2026-08-13 com `tiktoken` sobre o payload real de `hooks/foco-session-start.cjs`, rodando offline. O encoding é o **`cl100k_base`, que é da OpenAI** (GPT-4 / GPT-3.5-turbo) — **não é o tokenizador do Claude**. Não existe tokenizador do Claude disponível offline nesta máquina: `tiktoken.list_encoding_names()` devolve `['gpt2', 'r50k_base', 'p50k_base', 'p50k_edit', 'cl100k_base', 'o200k_base', 'o200k_harmony']`, todos da OpenAI. Portanto o fator é **proxy**, e a coluna de token que ele alimenta é **indicativa, não medição** — é exatamente por isso que o D5 fixou byte como primária.
+
+  Duas medições independentes, no mesmo dia e no mesmo texto: 7.666 B → 2.465 tokens (fator 3,110) e 7.640 B → 2.453 tokens (fator 3,115). O byte do payload **oscila entre execuções** porque ele embute estado vivo da sessão (janelas ativas, horários); o fator não oscila.
+
+  O que ele **não** garante, além do acima: mudança no payload, adição de skill ou agente, ou troca do tokenizador real do Claude exigem remedir. É snapshot de 2026-08-13.

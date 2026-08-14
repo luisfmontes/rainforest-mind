@@ -27,3 +27,8 @@ ideias.jsonl
 
 # Cache da extensao do TDS/AdvPL — fontes gerados, nao sao deste projeto.
 .vscode/
+
+# O mecanismo de isolamento de subagente cria worktrees aqui dentro.
+# Sem esta linha, `conferir-entrega.cjs` acusa falso positivo na checagem 4
+# ("o repo principal foi tocado?") em TODA entrega de agente.
+.claude/worktrees/
