@@ -21,6 +21,8 @@ falta de análise: as dependências declaradas abaixo são reais em cada caso.
 ## Tarefas
 
 ### 1. Duas funções puras: pastas do foco e expediente [tipo: implementar]
+atende: D2, D4, D8
+arquivos: `hooks/lib/contexto-sessao.cjs`
 depende de: nenhuma
 paralela: sim
 pronto quando: os dois comandos abaixo imprimem exatamente o esperado.
@@ -38,6 +40,8 @@ devolve `true false` (15/08/2026 é sábado, 16/08 é domingo — confira as dat
 Ambas exportadas em `module.exports`. `pastasDoFoco` aceita lista separada por vírgula e devolve `[]` quando o campo não existe. `dentroDoExpediente` devolve `null` — não `false` — quando não há `expediente` no config: "não sei" é diferente de "não é expediente", e o D6 depende dessa distinção para anunciar a ausência.
 
 ### 2. `focoAtivoEmOutraJanela` [tipo: implementar]
+atende: D7
+arquivos: `hooks/lib/contexto-sessao.cjs`
 depende de: 1
 paralela: nao
 pronto quando:
@@ -50,6 +54,8 @@ devolve `true false false` — janela na pasta do foco com sinal de 1 min isenta
 A comparação de caminho normaliza separador e caixa, porque o `cwd` do `sessoes.json` vem com barra e caixa variáveis no Windows. **Não** deve casar por sufixo ou por `includes`: `C:/a` não pode casar `C:/abc`.
 
 ### 3. O veredito componível, e o anúncio quando falta dado [tipo: implementar]
+atende: D1, D3, D5, D6, D9, D10
+arquivos: `hooks/lib/contexto-sessao.cjs`, `hooks/foco-session-start.cjs`
 depende de: 1, 2
 paralela: nao
 pronto quando: `node hooks/foco-session-start.cjs | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const c=JSON.parse(s).hookSpecificOutput.additionalContext;console.log(/nao cobrar desvio|não cobrar desvio/i.test(c)?'VEREDITO':'sem veredito')})"` imprime `sem veredito` no estado atual da máquina (nenhuma janela na pasta do foco, expediente não configurado) **e** `node scripts/orcamento.cjs` sai `0`.
@@ -57,6 +63,8 @@ pronto quando: `node hooks/foco-session-start.cjs | node -e "let s='';process.st
 Uma linha só, carregando os motivos aplicáveis (D10). Quando faltar dado para julgar — sem `Pastas:` no foco, sem `expediente` no config — não isenta (D6, falha fechada) e anuncia a ausência em uma linha, nomeando o que falta e o efeito prático, no espírito da regra 14. Veredito e anúncio são mutuamente exclusivos: não há como julgar sem dado.
 
 ### 4. Bateria com mutação [tipo: teste]
+atende: D3, D6, D7
+arquivos: `hooks/testa-contexto-sessao.sh`
 depende de: 3
 paralela: nao
 pronto quando: `bash hooks/testa-contexto-sessao.sh` sai `0` com as asserções novas somadas às 123 existentes; e, para **cada** uma das três funções novas, existe saída colada mostrando que sabotar a função em uma **cópia** derruba a asserção correspondente.
@@ -64,6 +72,8 @@ pronto quando: `bash hooks/testa-contexto-sessao.sh` sai `0` com as asserções 
 Cobrir, no mínimo: pasta do foco ausente (não isenta e anuncia); janela do foco fria além da ociosidade (não isenta); janela em pasta parecida mas diferente (`C:/abc` contra `C:/a`, não isenta); expediente ausente (não isenta e anuncia); dentro e fora da faixa horária; e o veredito compondo os dois motivos numa linha só.
 
 ### 5. Template do foco, README e versão [tipo: docs]
+atende: D2, D4, D8
+arquivos: `scripts/setup.cjs`, `README.md`, `.claude-plugin/plugin.json`, `docs/rainforest/**`
 depende de: 3
 paralela: nao
 pronto quando: `grep -c 'Pastas:' scripts/setup.cjs` devolve `1` ou mais; `grep -c 'expediente' README.md` devolve `1` ou mais; e `bash scripts/testa-versao.sh` sai `0`.
@@ -71,6 +81,8 @@ pronto quando: `grep -c 'Pastas:' scripts/setup.cjs` devolve `1` ou mais; `grep 
 O `FOCO_MODELO` do `setup.cjs` passa a trazer o campo `Pastas:` com explicação de uma linha. O README documenta o campo, o `expediente` do `config.json`, e **o que acontece quando não estão configurados** — que é o caso de todo mundo hoje. A versão sobe, e o `testa-versao.sh` (que entrou no PR #11) é quem prova que subiu nos dois lugares.
 
 ### 6. Configurar os dados do usuário [tipo: configurar]
+atende: D2, D4
+arquivos: `docs/rainforest/**` (o resto e fora do repositorio)
 depende de: 3, 5
 paralela: nao
 pronto quando: `node hooks/foco-session-start.cjs` passa a emitir o veredito quando há sessão viva na pasta do foco, provado com a saída colada; e `node scripts/orcamento.cjs` continua saindo `0` **com o veredito presente**, que é o pior caso de orçamento.

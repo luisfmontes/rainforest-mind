@@ -11,7 +11,13 @@
     "em": "2026-08-14"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-08-14-isencoes-do-radar-mecanizadas.md",
+    "tarefas": 6,
+    "paralelas": [
+      1
+    ],
+    "em": "2026-08-14"
   },
   "executar": {
     "status": "pendente"
