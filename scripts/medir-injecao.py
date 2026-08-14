@@ -254,12 +254,32 @@ def repartir(caminho: Path) -> int:
     atribuido_tokens = atribuido_bytes / BYTES_POR_TOKEN
     nao_atribuido_tokens = total_tokens - atribuido_tokens
 
-    # Imprimir resultado
-    print(f"skill_listing: {skill_listing_bytes:,d} B ({skill_listing_bytes / BYTES_POR_TOKEN:.0f} tokens)")
-    print(f"deferred_tools_delta: {deferred_tools_bytes:,d} B ({deferred_tools_bytes / BYTES_POR_TOKEN:.0f} tokens)")
-    print(f"agent_listing_delta: {agent_listing_bytes:,d} B ({agent_listing_bytes / BYTES_POR_TOKEN:.0f} tokens)")
-    print(f"rainforest-mind: {rainforest_bytes:,d} B ({rainforest_bytes / BYTES_POR_TOKEN:.0f} tokens)")
-    print(f"nao atribuido: {int(nao_atribuido_tokens * BYTES_POR_TOKEN):,d} B ({nao_atribuido_tokens:.0f} tokens, estimado com fator {BYTES_POR_TOKEN})")
+    # Imprimir resultado.
+    # As tres primeiras linhas sao fontes IRMAS e somam. A linha rainforest-mind
+    # e um recorte DENTRO de skill_listing e agent_listing_delta — some-la com as
+    # outras conta o mesmo byte duas vezes, e por isso ela vem recuada e marcada
+    # com "dos quais". Ja aconteceu de alguem somar a coluna inteira.
+    print(f"{'fonte':28s} {'bytes':>9s} {'tokens~':>9s}")
+    print(f"{'-' * 28} {'-' * 9} {'-' * 9}")
+    for nome, b in (("skill_listing", skill_listing_bytes),
+                    ("deferred_tools_delta", deferred_tools_bytes),
+                    ("agent_listing_delta", agent_listing_bytes)):
+        print(f"{nome:28s} {b:>9,d} {b / BYTES_POR_TOKEN:>9,.0f}")
+    print(f"{'atribuido':28s} {atribuido_bytes:>9,d} {atribuido_tokens:>9,.0f}")
+    print(f"{'  dos quais rainforest-mind':28s} {rainforest_bytes:>9,d} "
+          f"{rainforest_bytes / BYTES_POR_TOKEN:>9,.0f}")
+    print(f"{'nao atribuido':28s} {int(nao_atribuido_tokens * BYTES_POR_TOKEN):>9,d} "
+          f"{nao_atribuido_tokens:>9,.0f}")
+    print(f"{'TOTAL DA ABERTURA':28s} {'':>9s} {total_tokens:>9,d}")
+
+    print(f"\nO total da abertura ({total_tokens:,d} tokens) e MEDIDO - vem do `usage`")
+    print("devolvido pela API e gravado no transcript. Todo o resto da coluna")
+    print(f"'tokens~' e ESTIMADO, dividindo byte por BYTES_POR_TOKEN = {BYTES_POR_TOKEN}.")
+    print("Esse fator foi medido com tiktoken no encoding cl100k_base, que e da")
+    print("OPENAI (GPT-4) - NAO e o tokenizador do Claude, que nao existe offline")
+    print("nesta maquina. Trate a coluna estimada como ordem de grandeza.")
+    print("A linha 'nao atribuido' e a mais fraca de todas: ela nasce em token")
+    print("(total medido menos atribuido) e volta para byte pelo mesmo fator.")
 
     return 0
 
