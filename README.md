@@ -264,7 +264,8 @@ O mesmo princípio nos scripts, para o que hook nenhum alcança:
 | `scripts/conferir-entrega.cjs` | roda na janela principal **depois** da entrega do agente: hash de base, isolamento e citação conferidos na fonte, não no relato. `--espera <caminho>` (repetível) confere o que a tarefa prometia **na árvore do commit** — `ls`/`cat` do agente provam o disco, e `git status` não lista ignorado |
 | `scripts/setup.cjs` | monta a pasta de dados, liga/desliga o que é opcional **e configura o caminho de cada projeto** — e marca no estado o caminho que **não existe** nesta máquina, que era falha silenciosa |
 | `scripts/ponte.cjs` | **gera** o `AGENTS.md` (Codex) e o `GEMINI.md` (Gemini CLI) a partir do mesmo SKILL.md que o hook injeta — e recusa gerar se não achar as regras, em vez de escrever meia ponte |
-| `scripts/medir-injecao.py` | custo real do prompt de abertura, lido do `usage` que a API devolve — token de verdade, sem estimativa |
+| `scripts/orcamento.cjs` | mede em **byte** as quatro fontes que o plugin põe na abertura (saída do hook, descriptions de skills, de commands e de agentes), compara com dois tetos (o `ORCAMENTO_BYTES` do hook, lido de `hooks/lib/contexto-sessao.cjs`, e um agregado de 14.000 B), e sai com exit 1 quando estoura — entra no laço do `CONTRIBUTING.md:11` como o gate que acusa quando o plugin engordar além do orçamento |
+| `scripts/medir-injecao.py` | custo real do prompt de abertura, lido do `usage` que a API devolve — token de verdade, sem estimativa. O modo `--repartir` reparte a abertura por fonte (skill_listing, deferred_tools_delta, agent_listing_delta, rainforest-mind) e marca o que é **medido** (total via API), o que é **estimado** (byte convertido por fator 3.11 do tokenizador OpenAI), e o que é **subconjunto** (rainforest-mind dentro das listagens) |
 
 O que essas travas custaram e renderam fica em [`relatorios/`](relatorios/) —
 um relatório datado por incidente, com método e números.
@@ -477,6 +478,26 @@ consequências disso, as duas de 2026-08-12:
   skills deste plugin. Desligar MCP por projeto rendeu **240×** o que traduzir
   as regras inteiras renderia.
 - O hook avisa quando a skill passa de **60 dias sem revisão**.
+
+## Orçamento de token
+
+O rainforest-mind é injetado em toda sessão, então o custo dele é real e precisa de medição contínua. O `scripts/orcamento.cjs` mede as fontes (hook, skills, commands, agentes) em byte e acusa quando passa do teto de 14.000 B — é o gate que entra no loop do `CONTRIBUTING.md:11` e barra PR quando o plugin engordar além do orçamento:
+
+```bash
+node scripts/orcamento.cjs          # sai 0 se dentro do teto, 1 se estourou
+node scripts/orcamento.cjs --teto 1000  # sobrescreve o teto para teste
+```
+
+O modo `--repartir` do `scripts/medir-injecao.py` lê o transcript e reparte a abertura por fonte, respondendo a pergunta "para onde foi cada token?" em vez de só "quanto custa?":
+
+```bash
+python scripts/medir-injecao.py --repartir
+```
+
+Medição de 2026-08-13 (quando o orçamento foi desenhado): das **67.914 tokens** da abertura, só **13.623 (20%)** são atribuíveis pelo transcript — o resto é system prompt do Claude Code, schema das tools, CLAUDE.md e memórias, que o transcript não guarda. O rainforest-mind por si ocupa **13.604 B** (hook 7.624 B + skills 3.442 B + commands 904 B + agentes 1.618 B), **1.157 tokens ou 1,7%** da abertura.
+
+**Ressalva sobre token estimado:** a coluna de token no `--repartir` é estimada dividindo byte por fator **3.11**, que foi medido com `tiktoken` no encoding `cl100k_base` — **que é da OpenAI (GPT-4)**, não do Claude. Não existe tokenizador do Claude disponível offline nesta máquina. O total da abertura é token **medido** (vem do `usage` da API), tudo mais é **indicativo**.
+
 ## Um foco por projeto, sem configurar nada
 
 Onde moram `FOCO.md` e `ideias.jsonl` sai de uma **cadeia de quatro níveis**, do
