@@ -30,9 +30,9 @@
   },
   "revisar": {
     "status": "reprovado",
-    "achados": 1,
+    "achados": 2,
     "em": "2026-08-14",
-    "rodada": 3
+    "rodada": 4
   },
   "verificar": {
     "status": "pendente"
