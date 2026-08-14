@@ -20,7 +20,10 @@
     "em": "2026-08-14"
   },
   "executar": {
-    "status": "pendente"
+    "status": "parcial",
+    "tarefas_ok": 1,
+    "tarefas": 6,
+    "em": "2026-08-14"
   },
   "revisar": {
     "status": "pendente"
