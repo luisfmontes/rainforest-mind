@@ -801,6 +801,60 @@ ${regras}
   return travarOrcamento(cabecalho + foco + rodape);
 }
 
+/**
+ * Extrai a lista de pastas do campo "Pastas:" do FOCO.md.
+ *
+ * Precedente de extração por regex do FOCO.md (hooks/foco-session-start.cjs:196):
+ * `Ociosidade máxima:\s*(\d+)\s*min`. Mesmo padrão aqui.
+ *
+ * O campo "Pastas:" é uma linha com lista separada por vírgula, que o usuário
+ * escreve no topo do FOCO.md. Exemplo: `Pastas: C:/a, C:/b`.
+ *
+ * @param {string} textoDoFoco conteúdo do FOCO.md
+ * @returns {string[]} array de caminhos aparados, ou [] se o campo não existe
+ */
+function pastasDoFoco(textoDoFoco) {
+  const texto = String(textoDoFoco || '');
+  const match = texto.match(/^Pastas:\s*(.+)$/m);
+  if (!match || !match[1]) return [];
+  return match[1].split(',').map((s) => s.trim()).filter(Boolean);
+}
+
+/**
+ * Decide se um timestamp cai dentro do expediente declarado no config.
+ *
+ * A decisão é crucial para a regra 3 (D6): "sem data, cobra — e a ausência se
+ * anuncia". Devolver false (não é expediente) quando não há config provocaria
+ * falha aberta — o radar não cobraria e ninguém saberia que o dado desapareceu.
+ * Devolver null (não sei) permite ao chamador distinguir entre "não é expediente"
+ * (cobrança justificada) e "não tenho dado" (anúncio). A diferença impede silêncio.
+ *
+ * Expediente é dias da semana + faixa horária, sem feriado (D8). Forma esperada:
+ * `{"dias": [1,2,3,4,5], "de": "08:00", "ate": "18:00"}`.
+ * Dias usa convenção de Date.getDay(): 0 = domingo, 1 = segunda, ..., 6 = sábado.
+ *
+ * @param {Date} agora timestamp a ser avaliado
+ * @param {object} config contém {expediente: {...}} opcional
+ * @returns {boolean|null} true/false se há config, null se expediente está ausente
+ */
+function dentroDoExpediente(agora, config) {
+  if (!config || !config.expediente) return null;
+
+  const exp = config.expediente;
+  const dia = agora.getDay();
+  const hora = String(agora.getHours()).padStart(2, '0');
+  const minuto = String(agora.getMinutes()).padStart(2, '0');
+  const agoras = `${hora}:${minuto}`;
+
+  // Dia da semana não está na lista de trabalho.
+  if (!Array.isArray(exp.dias) || !exp.dias.includes(dia)) return false;
+
+  // Hora está fora da faixa.
+  if (agoras < exp.de || agoras >= exp.ate) return false;
+
+  return true;
+}
+
 module.exports = {
   TETOS,
   filtrarRegras,
@@ -818,4 +872,6 @@ module.exports = {
   resumirSessoes,
   travarOrcamento,
   montarContexto,
+  pastasDoFoco,
+  dentroDoExpediente,
 };
