@@ -27,7 +27,9 @@
     "pendentes": [
       "tarefa-6: precisa das pastas do foco; expediente pendente de decisao sobre duas faixas"
     ],
-    "nota": "expediente plantado, so as pastas configuradas"
+    "nota": "expediente plantado, so as pastas configuradas",
+    "rodada": 2,
+    "achados_fechados": 4
   },
   "revisar": {
     "status": "reprovado",
