@@ -1,0 +1,36 @@
+{
+  "slug": "2026-08-14-conferencia-de-entrega-em-paralelo",
+  "titulo": "Conferencia de entrega e teste de saude sobrevivem a despacho paralelo",
+  "criado_em": "2026-08-14",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-08-14-conferencia-de-entrega-em-paralelo.md",
+    "em": "2026-08-14"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-08-14-conferencia-de-entrega-em-paralelo.md",
+    "tarefas": 5,
+    "paralelas": [
+      1,
+      2,
+      3
+    ],
+    "em": "2026-08-14"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
