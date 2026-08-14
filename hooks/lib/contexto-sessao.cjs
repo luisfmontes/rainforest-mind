@@ -1,4 +1,6 @@
 'use strict';
+const path = require('path');
+
 /**
  * contexto-sessao.cjs — motor puro do SessionStart (foco-session-start.cjs).
  *
@@ -889,11 +891,13 @@ function focoAtivoEmOutraJanela(sessoes, pastasDoFoco, ociosidadeMin, agora) {
   if (!pastasDoFoco || !pastasDoFoco.length) return false;
   if (!sessoes || !sessoes.length) return false;
 
-  // Normaliza um caminho para comparação: separador \ -> /, e minúscula.
+  // Normaliza um caminho para comparação: resolve .., separador \ -> /, e minúscula.
   // Não é substring: `C:/a` não casa `C:/abc`.
   const normalizarCaminho = (caminho) => {
     if (!caminho) return '';
-    return caminho.replace(/\\/g, '/').toLowerCase();
+    // path.normalize resolve .. e .
+    const resolvido = path.normalize(caminho);
+    return resolvido.replace(/\\/g, '/').toLowerCase();
   };
 
   const pastasFocoNormalizadas = pastasDoFoco.map(normalizarCaminho);
@@ -930,6 +934,48 @@ function focoAtivoEmOutraJanela(sessoes, pastasDoFoco, ociosidadeMin, agora) {
 
 
 /**
+ * Extrai a ociosidade máxima declarada no FOCO.md.
+ *
+ * @param {string} textoDoFoco conteúdo do FOCO.md
+ * @returns {number|null} minutos de ociosidade, ou null se não declarado
+ */
+function ociosidadeDoFoco(textoDoFoco) {
+  const texto = String(textoDoFoco || '');
+  const match = texto.match(/Ociosidade máxima:\s*(\d+)\s*min/i);
+  if (!match || !match[1]) return null;
+  return Number.parseInt(match[1], 10);
+}
+
+/**
+ * Extrai a natureza do foco ativo (trabalho ou pessoal).
+ *
+ * Lê a linha em negrito da seção "## Ativo", que declara a natureza entre colchetes.
+ * Ignora o boilerplate que explica o formato no topo do arquivo.
+ *
+ * @param {string} textoDoFoco conteúdo do FOCO.md
+ * @returns {'trabalho'|'pessoal'|null} natureza do foco ativo, ou null se não encontrada
+ */
+function naturezaDoFocoAtivo(textoDoFoco) {
+  const texto = String(textoDoFoco || '');
+  // Procura a seção "## Ativo"
+  const inicioAtivo = texto.search(/^## Ativo/m);
+  if (inicioAtivo === -1) return null;
+
+  // Procura a próxima seção (##) ou fim do texto
+  const depois = texto.slice(inicioAtivo + 8); // Pula "## Ativo"
+  const fimSecao = depois.search(/^## /m);
+  const secaoAtivo = fimSecao === -1 ? depois : depois.slice(0, fimSecao);
+
+  // Procura a linha em negrito (**....**) — pode ter conteúdo após o negrito
+  const linhaEmNegrito = secaoAtivo.match(/^\*\*.+?\*\*.*$/m);
+  if (!linhaEmNegrito) return null;
+
+  // Extrai a natureza [trabalho] ou [pessoal]
+  const natureza = linhaEmNegrito[0].match(/\[(trabalho|pessoal)\]/);
+  return natureza ? natureza[1] : null;
+}
+
+/**
  * Computa o veredito de isenção de desvio de escopo (D10, D6 corrigido).
  *
  * Analisa cada isenção independentemente:
@@ -954,24 +1000,27 @@ function computarVeredito(textoDoFoco, sessoes, config, agora) {
   // Extrai dados necessários
   const pastas = pastasDoFoco(texto);
   const expediente = config && config.expediente;
-  const ociMin = (texto.match(/Ociosidade máxima:\s*(\d+)\s*min/i) || [])[1] || '45';
-  const ociosidadePar = Number.parseInt(ociMin, 10);
+  const ociosidade = ociosidadeDoFoco(texto);
 
-  // Verifica se o foco é de trabalho
-  const ehFocoTrabalho = /\[trabalho\]/.test(texto);
+  // Natureza do foco ativo, não boilerplate
+  const natureza = naturezaDoFocoAtivo(texto);
+  const ehFocoTrabalho = natureza === 'trabalho';
 
   // Analisa cada isenção INDEPENDENTEMENTE (D6 corrigido)
   const vereditos = [];
   const anuncios = [];
 
   // ISENÇÃO 1: Foco ativo em outra janela (regra 17)
-  // Precisa de: Pastas: configurado
+  // Precisa de: Pastas: configurado E Ociosidade máxima: declarada
   if (!pastas.length) {
     // Indeterminada: faltam dados
     anuncios.push('Pastas: ausente no FOCO.md — o radar vai cobrar desvio mesmo com o foco aberto em outra janela.');
+  } else if (ociosidade === null) {
+    // Indeterminada: faltam dados (ociosidade)
+    anuncios.push('Ociosidade máxima: ausente no FOCO.md — o radar não pode determinar se o foco está ativo em outra janela.');
   } else {
     // Determinada: pode decidir
-    if (focoAtivoEmOutraJanela(sessoes, pastas, ociosidadePar, agora)) {
+    if (focoAtivoEmOutraJanela(sessoes, pastas, ociosidade, agora)) {
       vereditos.push('foco ativo em outra janela');
     }
   }
@@ -1026,4 +1075,6 @@ module.exports = {
   dentroDoExpediente,
   focoAtivoEmOutraJanela,
   computarVeredito,
+  ociosidadeDoFoco,
+  naturezaDoFocoAtivo,
 };
