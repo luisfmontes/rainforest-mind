@@ -104,6 +104,20 @@ def norm(p: str) -> str:
         return p.replace("\\", "/").rstrip("/").lower()
 
 
+def arquivosAgente(c: Conferencia, wt: str, base: str | None, commit: str) -> set[str]:
+    """Extrai conjunto de arquivos que o agente tocou."""
+    if base:
+        rc, saida = c.git(wt, "diff", "--name-only", f"{base}..{commit}")
+    else:
+        rc, saida = c.git(wt, "show", "--name-only", "--format=", commit)
+
+    if rc != 0:
+        return set()
+
+    linhas = [l for l in (saida or "").split("\n") if l.strip()]
+    return {l.replace("\\", "/").lower() for l in linhas}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         prog="conferir-entrega.py",
@@ -119,6 +133,8 @@ def main() -> int:
                          "COMMIT, nao no disco — `ls`/`cat` do agente provam o disco")
     ap.add_argument("--permite-sujeira", action="store_true",
                     help="nao falhar por working tree suja no worktree (raro; justifique)")
+    ap.add_argument("--paralelo", action="store_true",
+                    help="ativa cruzamento de sujeira com arquivos tocados (checagem 4)")
     a = ap.parse_args()
 
     c = Conferencia()
@@ -200,9 +216,33 @@ def main() -> int:
     if principal and Path(principal).is_dir() and norm(principal) != norm(wt):
         c.abre(f"O repo principal foi tocado? ({principal})")
         _, stp = c.mostra(principal, "status", "--porcelain")
-        if stp:
+        linhas_stp = [l for l in (stp or "").split("\n") if l.strip()]
+
+        if a.paralelo and linhas_stp:
+            # Modo cruzamento: extrai arquivos que o agente tocou
+            arquivos = arquivosAgente(c, wt, a.base, a.commit)
+            caminhos_sujos = []
+            for l in linhas_stp:
+                # Descarta 3 primeiros caracteres do status, trata rename
+                p = l[3:]
+                partes = p.split(" -> ")
+                p = partes[-1] if len(partes) > 1 else partes[0]
+                caminhos_sujos.append(p.replace("\\", "/").lower())
+
+            cruzamento = [p for p in caminhos_sujos if p in arquivos]
+
+            if cruzamento:
+                c.falha(
+                    f"{len(cruzamento)} arquivo(s) sujo(s) no principal e tocado(s) pelo agente: " +
+                    ", ".join(cruzamento[:5])
+                )
+            else:
+                c.aviso(
+                    f"{len(linhas_stp)} alteracao(oes) no principal, nenhuma nos arquivos do agente"
+                )
+        elif linhas_stp:
             c.falha(
-                f"{len(stp.splitlines())} alteracao(oes) no diretorio principal do usuario — o agente "
+                f"{len(linhas_stp)} alteracao(oes) no diretorio principal do usuario — o agente "
                 "devia estar isolado no worktree. Foi a falha N1 de 2026-08-08."
             )
         else:
@@ -212,13 +252,21 @@ def main() -> int:
         _, head_agora = c.mostra(principal, "rev-parse", "HEAD")
         if not a.head_antes:
             c.aviso("sem --head-antes; registre o HEAD antes de despachar para esta checagem valer")
-        elif not head_agora.startswith(a.head_antes) and not a.head_antes.startswith(head_agora):
-            c.falha(
-                f"o HEAD do repo principal era {a.head_antes} e virou {head_agora[:12]} — algo moveu "
-                "o HEAD do usuario (stash/pop, checkout). Falha N1 de 2026-08-08."
-            )
-        else:
+        elif head_agora.startswith(a.head_antes) or a.head_antes.startswith(head_agora):
             c.ok("HEAD do repo principal inalterado")
+        else:
+            # HEAD mexeu. Verifica se foi avanco (HEAD anterior é ancestral)
+            rc_anc, _ = c.git(principal, "merge-base", "--is-ancestor", a.head_antes, "HEAD")
+            if rc_anc == 0:
+                # Avançou: contar commits
+                _, contagem = c.mostra(principal, "rev-list", "--count", f"{a.head_antes}..HEAD")
+                c.aviso(f"o HEAD do principal avancou {contagem} commit(s) desde o despacho")
+            else:
+                # Recuo ou movimento lateral: falha
+                c.falha(
+                    f"o HEAD do repo principal era {a.head_antes} e virou {head_agora[:12]} — algo moveu "
+                    "o HEAD do usuario (stash/pop, checkout). Falha N1 de 2026-08-08."
+                )
     else:
         c.abre("Repo principal")
         c.aviso("nao identifiquei um repo principal distinto do worktree — checagens 4 e 5 puladas")
