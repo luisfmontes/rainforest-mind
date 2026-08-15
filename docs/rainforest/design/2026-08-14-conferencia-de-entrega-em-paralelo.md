@@ -44,14 +44,23 @@ paralelo.
   no principal, nenhuma nos arquivos do agente". Aviso nao derruba o exit 0, e
   apagar o fato do relatorio esconderia que houve trabalho em paralelo.
 
-- **D5 — O fixture da situacao A do `testa-saude.sh` passa a usar commits
-  sinteticos numa linha reta** — porquê: hoje `testa-saude.sh:62` monta o
-  cenario com `reset --hard HEAD~3`, que anda pelo primeiro pai, e afere contra
-  o `rev-list --count` do `saude.cjs`, que percorre o DAG inteiro. Em historico
-  linear os dois numeros coincidem e o teste passa por acidente. O errado e o
-  fixture, nao o `saude.cjs`: contar pelo DAG e a resposta certa para "quantos
-  commits este clone esta atras". Com commits criados pelo proprio teste, ele
-  mede o script e nao a forma do historico do dia.
+- **D5 — A situacao A do `testa-saude.sh` passa a rodar contra uma FONTE
+  sintetica, nao contra o repositorio real** — porquê: hoje `testa-saude.sh:62`
+  monta o cenario com `reset --hard HEAD~3`, que anda pelo primeiro pai, e afere
+  contra o `rev-list --count` do `saude.cjs`, que percorre o DAG inteiro. Em
+  historico linear os dois numeros coincidem e o teste passa por acidente. O
+  errado e o fixture, nao o `saude.cjs`: contar pelo DAG e a resposta certa para
+  "quantos commits este clone esta atras".
+  A bateria passa a montar um repositorio-fonte proprio, com historico linear
+  criado por ela, clona-lo enquanto ele tem 1 commit, acrescentar 3 commits a
+  fonte e so entao rodar o `saude.cjs` contra essa fonte. O clone fica 3 atras
+  **por construcao**, em qualquer maquina e em qualquer dia.
+  **Emendada em 2026-08-15**: a redacao anterior dizia "commits sinteticos numa
+  linha reta criada pelo proprio teste" sem dizer contra qual fonte, e era
+  incumprivel — enquanto o clone for do repositorio real, os commits que faltam
+  a ele sao necessariamente commits reais, e commit sintetico deixaria o clone
+  a FRENTE, que e a situacao C. Duas tentativas de agente falharam nesse ponto
+  cego antes de a causa ser isolada.
 
 - **D6 — As mudancas entram no `.cjs` e no gemeo `.py`** — porquê: a bateria
   roda contra os dois por `CONFERIR="python scripts/conferir-entrega.py"`
@@ -83,7 +92,18 @@ paralelo.
 - **Modo `--paralelo` rebaixando as checagens 4 e 5 a mero aviso** — desliga a
   trava exatamente onde o risco e maior.
 - **Derivar o alvo do fixture da mesma metrica (recuar ate `rev-list --count`
-  dar 3)** — conserta o sintoma e mantem o teste refem do DAG do dia.
+  dar 3)** — descartado primeiro por manter o teste refem do DAG do dia, e
+  depois **refutado por medicao**: em 2026-08-15, na propria branch de trabalho,
+  as contagens dos dez ancestrais do HEAD eram `0, 1, 2, 4, 4, 5, 7, 8, 8, 9`.
+  O 3 foi pulado. Nao existe alvo a derivar — o cenario "exatamente 3 atras"
+  pode nao existir no historico, e um fixture que o procura falha por ausencia,
+  nao por defeito.
+- **Afrouxar a assercao da situacao A (exigir so o nivel `aviso`, sem o numero)**
+  — apaga justamente o que dava valor ao caso: o defeito original era uma
+  contagem errada passando despercebida.
+- **Derivar alvo e numero esperado juntos, com `rev-list --count` antes de
+  asserir** — sempre existe e e barato, mas afere com a mesma regua que testa:
+  pegaria nivel errado e formato errado, nunca contagem errada.
 
 ## Fora de escopo
 

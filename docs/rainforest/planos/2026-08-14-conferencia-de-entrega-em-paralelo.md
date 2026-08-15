@@ -30,12 +30,23 @@ depende de: nenhuma
 paralela: sim
 pronto quando: `bash scripts/testa-conferir-entrega.sh; echo EXIT=$?` devolve `EXIT=0` com os 16 casos existentes intactos (nenhuma linha de caso reescrita — o diff nao toca `scripts/testa-conferir-entrega.sh`), E `node scripts/conferir-entrega.cjs --worktree . --paralelo 2>&1 | head -1` NAO contem `opcao desconhecida`.
 
-### 2. Fixture da situacao A do testa-saude.sh sem historico real [tipo: teste]
+### 2. Situacao A do testa-saude.sh roda contra fonte sintetica [tipo: teste]
 atende: D5
 arquivos: `scripts/testa-saude.sh`
 depende de: nenhuma
 paralela: sim
 pronto quando: `bash scripts/testa-saude.sh; echo EXIT=$?` devolve `EXIT=0` **rodando de uma base cujo historico contem merge commits nos ultimos tres passos** — a partir de 2026-08-15 a propria branch de trabalho serve, porque a integracao das tarefas 1 e 3 colocou dois merges ali. A situacao A tem de aparecer como `ok`.
+
+**Emenda de 2026-08-15, segunda rodada — a tarefa era incumprivel como escrita.**
+A segunda tentativa entregou diff VAZIO relatando sucesso. Investigando, a causa
+nao era o agente: enquanto o fixture clonar o repositorio real, o cenario
+"exatamente 3 commits atras" depende da sorte do historico, e naquele momento
+ele **nao existia** — as contagens dos dez ancestrais do HEAD eram
+`0, 1, 2, 4, 4, 5, 7, 8, 8, 9`, sem o 3. D5 foi reescrita: a situacao A passa a
+montar uma **fonte sintetica** (repo proprio, clone com 1 commit, mais 3 commits
+na fonte depois do clone), ficando 3 atras por construcao. Registro tambem que
+**entrega vazia passa pelas seis checagens do `conferir-entrega`** — so o
+criterio de diff do plano a pegou.
 
 **Historico da emenda — o criterio anterior era jogavel.** Ele pedia
 `grep -c 'HEAD~3' scripts/testa-saude.sh` devolvendo `0` mais a suite verde. A
