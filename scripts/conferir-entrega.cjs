@@ -187,9 +187,9 @@ function ehDir(p) {
 function arquivosAgente(c, wt, base, commit) {
   let rc, saida;
   if (base) {
-    [rc, saida] = c.git(wt, "diff", "--name-only", `${base}..${commit}`);
+    [rc, saida] = c.mostra(wt, "diff", "--name-only", `${base}..${commit}`);
   } else {
-    [rc, saida] = c.git(wt, "show", "--name-only", "--format=", commit);
+    [rc, saida] = c.mostra(wt, "show", "--name-only", "--format=", commit);
   }
   if (rc !== 0) return new Set();
   const linhas = saida ? saida.split(/\r?\n/).filter((l) => l.length > 0) : [];
