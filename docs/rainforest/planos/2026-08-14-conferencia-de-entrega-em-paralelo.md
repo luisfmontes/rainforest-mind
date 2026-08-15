@@ -81,12 +81,34 @@ depende de: 1, 4
 paralela: nao
 pronto quando: `bash scripts/testa-conferir-entrega.sh; echo EXIT=$?` devolve `EXIT=0` E `CONFERIR="python scripts/conferir-entrega.py" bash scripts/testa-conferir-entrega.sh; echo EXIT=$?` devolve `EXIT=0`, com pelo menos estes quatro casos novos, cada um nomeando `paralelo`: (a) HEAD do principal avancou para frente + `--paralelo` -> exit 0 com aviso contendo `avancou`; (b) HEAD do principal moveu para tras (`checkout HEAD~1`) + `--paralelo` -> exit **1**, porque recuo nunca e avanco; (c) sujeira no principal em arquivo que o agente NAO tocou + `--paralelo` -> exit 0 com aviso contendo `nenhuma nos arquivos do agente`; (d) sujeira no principal em arquivo que o agente TOCOU (`feito.txt`) + `--paralelo` -> exit **1**. O caso (b) e o que separa D1 de "desligar a checagem 5".
 
+### 6. O conjunto que decide o cruzamento vira evidencia impressa [tipo: implementar]
+atende: D2, D4
+arquivos: `scripts/conferir-entrega.cjs`, `scripts/conferir-entrega.py`
+depende de: 1, 4
+paralela: nao
+pronto quando: rodando o `conferir-entrega` com `--paralelo` num cenario com sujeira no principal, a saida da checagem 4 contem a linha `$ git -C <worktree> diff --name-only <base>..<commit>` (ou o `show --name-only` equivalente quando nao ha `--base`) **antes** do veredito, com a lista de arquivos crua; e as duas baterias seguem em `29 ok, 0 falha(s)` (`bash scripts/testa-conferir-entrega.sh` e a mesma com `CONFERIR="python scripts/conferir-entrega.py"`), sem reescrita de caso.
+
+**Emenda de 2026-08-15, vinda do `revisar`.** Achado 1 do revisor independente:
+`arquivosAgente` (`conferir-entrega.cjs:190,192` e `conferir-entrega.py:110,112`)
+usa `c.git`, que nao imprime, e com isso o **conjunto de arquivos que decide o
+cruzamento** nunca aparece no relatorio. O cabecalho do proprio arquivo
+(`conferir-entrega.cjs:51-52`) declara o contrario: "cada checagem imprime o
+comando literal e a saida CRUA antes do veredito".
+
+O achado foi **conferido e estreitado** na janela principal antes de virar
+tarefa: `c.git` silencioso ja era o padrao da casa para consulta auxiliar,
+inclusive na linha 253, onde a checagem 2 decide o veredito com um
+`merge-base --is-ancestor` silencioso desde antes desta entrega. Logo a chamada
+equivalente na checagem 5 segue precedente e **nao** entra nesta tarefa. O que
+entra e so o `arquivosAgente`: diferente de um booleano de ancestralidade, um
+**conjunto** o leitor nao consegue reconstruir a partir do que esta impresso.
+
 ## Cobertura
 
 - D1 -> tarefas 1, 5
-- D2 -> tarefas 1, 5
+- D2 -> tarefas 1, 5, 6
 - D3 -> tarefas 1, 5
-- D4 -> tarefas 1, 5
+- D4 -> tarefas 1, 5, 6
 - D5 -> tarefa 2
 - D6 -> tarefas 4, 5
 - D7 -> tarefa 3
