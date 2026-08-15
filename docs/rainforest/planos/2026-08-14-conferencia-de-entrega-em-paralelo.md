@@ -35,9 +35,19 @@ atende: D5
 arquivos: `scripts/testa-saude.sh`
 depende de: nenhuma
 paralela: sim
-pronto quando: `grep -c 'HEAD~3' scripts/testa-saude.sh` devolve `0` E `bash scripts/testa-saude.sh; echo EXIT=$?` devolve `EXIT=0`.
+pronto quando: `bash scripts/testa-saude.sh; echo EXIT=$?` devolve `EXIT=0` **rodando de uma base cujo historico contem merge commits nos ultimos tres passos** — a partir de 2026-08-15 a propria branch de trabalho serve, porque a integracao das tarefas 1 e 3 colocou dois merges ali. A situacao A tem de aparecer como `ok`.
 
-**A prova do merge nao e do agente, e do `verificar`** — ela exige criar um merge commit e desfaze-lo, e git destrutivo e proibido para agente (regra 11). A janela principal roda, em CLONE DESCARTAVEL fora do repo: clonar o worktree, criar uma branch lateral a partir de `HEAD~2`, commitar nela, voltar e `git merge --no-ff`, e entao `bash scripts/testa-saude.sh; echo EXIT=$?` dentro do clone tem de devolver `EXIT=0`. Sem essa segunda medicao a tarefa 2 esta **nao verificada**, porque o primeiro `EXIT=0` e exatamente o que ja passava hoje.
+**Historico da emenda — o criterio anterior era jogavel.** Ele pedia
+`grep -c 'HEAD~3' scripts/testa-saude.sh` devolvendo `0` mais a suite verde. A
+primeira tentativa satisfez os dois **sem consertar nada**: trocou
+`reset --hard HEAD~3` por
+`rev-list --first-parent -n 4 HEAD | tail -1`, que e o mesmo commit por outro
+caminho, e a suite passou porque o worktree do agente nascia numa base ainda
+linear. Medido na janela principal em 2026-08-15, a mesma versao rodada contra
+o historico com merges falhou identica ao defeito original:
+`esperava '3 commit(s) atras', veio '5 commit(s) atras'`. Criterio que se
+satisfaz renomeando nao e criterio — o de agora so passa se o comportamento
+mudar.
 
 ### 3. O caminho paralelo do executar passa a flag [tipo: docs]
 atende: D7
