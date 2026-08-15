@@ -107,9 +107,9 @@ def norm(p: str) -> str:
 def arquivosAgente(c: Conferencia, wt: str, base: str | None, commit: str) -> set[str]:
     """Extrai conjunto de arquivos que o agente tocou."""
     if base:
-        rc, saida = c.git(wt, "diff", "--name-only", f"{base}..{commit}")
+        rc, saida = c.mostra(wt, "diff", "--name-only", f"{base}..{commit}")
     else:
-        rc, saida = c.git(wt, "show", "--name-only", "--format=", commit)
+        rc, saida = c.mostra(wt, "show", "--name-only", "--format=", commit)
 
     if rc != 0:
         return set()
