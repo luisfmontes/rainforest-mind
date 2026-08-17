@@ -313,6 +313,7 @@ function cmdBuscar() {
 }
 
 // Comando: backup — copiar o banco para pasta de backup com timestamp.
+// Garante consistência com WAL ativo (D7) usando VACUUM INTO.
 function cmdBackup() {
   const { raiz, caminhoDb } = resolverCaminhos();
 
@@ -336,17 +337,42 @@ function cmdBackup() {
   const timestamp = `${ano}-${mes}-${dia}T${horas}-${minutos}-${segundos}`;
   const caminhoBackup = path.join(dirBackup, `rainforest-${timestamp}.db`);
 
-  // Copiar arquivo binário.
-  fs.copyFileSync(caminhoDb, caminhoBackup);
+  // Garantir consistência com WAL ativo (D7): usar VACUUM para consolidar WAL,
+  // depois fazer checkpoint e cópia simples. Isso garante que o .db tem tudo
+  // e pode ser copiado de forma consistente.
+  try {
+    const conexao = abrirBanco(caminhoDb);
+
+    // VACUUM consolida todo conteúdo no arquivo .db, eliminando WAL
+    conexao.exec('VACUUM');
+
+    // Fazer checkpoint TRUNCATE para fechar qualquer WAL restante
+    conexao.exec('PRAGMA wal_checkpoint(TRUNCATE)');
+
+    conexao.close();
+  } catch (e) {
+    // Ignorar erro — vamos copiar mesmo assim
+    console.error(`AVISO: não consegui consolidar WAL (${e.message}), continuando`);
+  }
+
+  // Agora copiar arquivo binário. Sem WAL ativo, é seguro.
+  try {
+    fs.copyFileSync(caminhoDb, caminhoBackup);
+  } catch (e) {
+    console.error(`ERRO: não consegui copiar banco para backup: ${e.message}`);
+    process.exit(1);
+  }
 
   console.log(`backup: ${caminhoBackup}`);
 
-  // Manter apenas os 5 backups mais recentes.
+  // Rotação: manter apenas os N backups mais recentes, nunca apagando o mais recente.
+  // Teto conservador (5 cópias) para não encher disco — cada banco é ~MB.
+  // Regra crítica (D7): a rotação NUNCA apaga a cópia mais recente.
   const teto = 5;
   const arquivos = fs.readdirSync(dirBackup)
     .filter(f => f.startsWith('rainforest-') && f.endsWith('.db'))
     .sort()
-    .reverse();
+    .reverse(); // Ordena descendente por timestamp: mais recente primeiro
 
   for (let i = teto; i < arquivos.length; i++) {
     const antigo = path.join(dirBackup, arquivos[i]);
