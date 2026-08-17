@@ -198,5 +198,59 @@ else
 fi
 
 echo
+echo "== 7. versionar: transforma raiz em repositorio git =="
+CAIXA7="$CAIXA/versionamento"; mkdir -p "$CAIXA7"
+CAIXA7_WIN="$(cygpath -m "$CAIXA7" 2>/dev/null || printf '%s' "$CAIXA7")"
+export RFM_ROOT="$CAIXA7_WIN"
+# A pasta de dados tem que existir para versionar
+$SETUP --criar >/dev/null 2>&1
+
+esperado "versionar em pasta que ja tem setup" 0 $SETUP versionar
+if [ -d "$CAIXA7/.git" ]; then ok=$((ok+1)); echo "  ok   criou .git"
+else falhou=$((falhou+1)); echo "  FALHA nao criou .git"; fi
+
+if [ -f "$CAIXA7/.gitignore" ]; then ok=$((ok+1)); echo "  ok   criou .gitignore"
+else falhou=$((falhou+1)); echo "  FALHA nao criou .gitignore"; fi
+
+if grep -q "rainforest.db" "$CAIXA7/.gitignore"; then
+  ok=$((ok+1)); echo "  ok   .gitignore ignora rainforest.db*"
+else
+  falhou=$((falhou+1)); echo "  FALHA .gitignore nao menciona rainforest.db"; cat "$CAIXA7/.gitignore" | sed 's/^/         /'
+fi
+
+# git status --short deve estar vazio logo apos versionar
+saida_status=$(git -C "$CAIXA7" status --short 2>&1); got=$?
+if [ "$got" = 0 ] && [ -z "$saida_status" ]; then
+  ok=$((ok+1)); echo "  ok   git status --short fica vazio apos versionar"
+else
+  falhou=$((falhou+1)); echo "  FALHA git status --short nao ficou vazio"; echo "       $saida_status" | sed 's/^/       /'
+fi
+
+# Idempotencia: rodar de novo nao quebra
+esperado "versionar (segunda vez) e idempotente" 0 $SETUP versionar
+saida_status2=$(git -C "$CAIXA7" status --short 2>&1); got2=$?
+if [ "$got2" = 0 ] && [ -z "$saida_status2" ]; then
+  ok=$((ok+1)); echo "  ok   git status --short continua vazio apos segunda passada"
+else
+  falhou=$((falhou+1)); echo "  FALHA segunda passada quebrou o estado"; echo "       $saida_status2" | sed 's/^/       /'
+fi
+
+# .gitignore nao sobrescreve se ja existe
+CAIXA7b="$CAIXA/versionamento-b"; mkdir -p "$CAIXA7b"
+CAIXA7b_WIN="$(cygpath -m "$CAIXA7b" 2>/dev/null || printf '%s' "$CAIXA7b")"
+export RFM_ROOT="$CAIXA7b_WIN"
+$SETUP --criar >/dev/null 2>&1
+# Escreve conteudo customizado no .gitignore
+echo "# Custom comment" > "$CAIXA7b/.gitignore"
+echo "rainforest.db*" >> "$CAIXA7b/.gitignore"
+$SETUP versionar >/dev/null 2>&1
+# Checa que o custom comment continua (nao foi sobrescrito)
+if grep -q "Custom comment" "$CAIXA7b/.gitignore"; then
+  ok=$((ok+1)); echo "  ok   .gitignore pre-existente nao e sobrescrito"
+else
+  falhou=$((falhou+1)); echo "  FALHA .gitignore foi sobrescrito"; cat "$CAIXA7b/.gitignore" | sed 's/^/         /'
+fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
