@@ -91,10 +91,12 @@ function criarSchema(conexao) {
     process.exit(1);
   }
 
-  const sql = fs.readFileSync(caminhoSchema, 'utf8');
+  let sql = fs.readFileSync(caminhoSchema, 'utf8');
+  // Remover comentários de linha SQL (--) antes de fazer split.
   // Dividir por `;` não é parsing robusto, mas o arquivo é nosso e controlado.
   // Para arquivos SQL arbitrários isso falharia com comentários dentro de strings,
   // mas aqui temos apenas CREATE TABLE IF NOT EXISTS (idempotentes).
+  sql = sql.split('\n').filter(linha => !linha.trim().startsWith('--')).join('\n');
   const statements = sql
     .split(';')
     .map(s => s.trim())
@@ -446,6 +448,7 @@ function lerIdeias(caminhoIdeias) {
 
 // Comando: reindexar — reconstruir índice DERIVADO do zero a partir de FOCO.md e ideias.jsonl.
 // Garantia: apagar o índice não perde dado nenhum — tudo é rederivável dos arquivos fonte.
+// Tabelas DERIVADAS: indice_foco e indice_ideias. Nunca toca observacoes, resumos, prompts, marca_dagua.
 function cmdReindexar() {
   const { raiz, caminhoDb, projeto } = resolverCaminhos();
 
@@ -460,9 +463,15 @@ function cmdReindexar() {
   try {
     const conexao = abrirBanco(caminhoDb);
 
-    // Limpar tabela resumos (índice derivado).
+    // Limpar APENAS as tabelas derivadas. Nunca tocar em observacoes, resumos, prompts ou marca_dagua.
     try {
-      conexao.exec('DELETE FROM resumos');
+      conexao.exec('DELETE FROM indice_foco');
+    } catch (e) {
+      // Ignorar se não existe.
+    }
+
+    try {
+      conexao.exec('DELETE FROM indice_ideias');
     } catch (e) {
       // Ignorar se não existe.
     }
@@ -474,42 +483,28 @@ function cmdReindexar() {
     const focoItems = lerFoco(caminhoFoco);
     const ideias = lerIdeias(caminhoIdeias);
 
-    // Popular resumos com dados de ideias (índice derivado).
-    const stmtInsertIdeias = conexao.prepare(
-      `INSERT INTO resumos (projeto, titulo, conteudo, criada_em)
-       VALUES (?, ?, ?, ?)`
-    );
-
     const agora = new Date().toISOString();
+
+    // Popular indice_ideias com metadados das ideias (para busca e join).
+    // Campos: id, titulo, projeto, status, tipo, plantada_em, gancho, conteudo_busca.
+    const stmtInsertIdeias = conexao.prepare(
+      `INSERT INTO indice_ideias
+       (projeto, ideia_id, titulo, status, tipo, plantada_em, gancho, conteudo_busca, indexada_em)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    );
 
     for (const ideia of ideias) {
       if (ideia.titulo) {
         try {
           stmtInsertIdeias.run(
             projeto,
-            `[ideia] ${ideia.titulo}`,
+            ideia.id,
+            ideia.titulo,
+            ideia.status,
+            ideia.tipo,
+            ideia.plantada_em,
+            ideia.gancho,
             ideia.conteudo,
-            ideia.plantada_em || agora
-          );
-        } catch (e) {
-          // Ignorar duplicatas
-        }
-      }
-    }
-
-    // Popular resumos com dados de FOCO (itens estruturados).
-    const stmtInsertFoco = conexao.prepare(
-      `INSERT INTO resumos (projeto, titulo, conteudo, criada_em)
-       VALUES (?, ?, ?, ?)`
-    );
-
-    for (const item of focoItems) {
-      if (item.tipo === 'header') {
-        try {
-          stmtInsertFoco.run(
-            projeto,
-            `[foco] ${item.valor}`,
-            item.valor,
             agora
           );
         } catch (e) {
@@ -518,7 +513,26 @@ function cmdReindexar() {
       }
     }
 
-    // Reconstruir índice FTS5 a partir das observações.
+    // Popular indice_foco com campos estruturados de FOCO.md.
+    const stmtInsertFoco = conexao.prepare(
+      `INSERT INTO indice_foco (projeto, tipo, valor, indexada_em)
+       VALUES (?, ?, ?, ?)`
+    );
+
+    for (const item of focoItems) {
+      try {
+        stmtInsertFoco.run(
+          projeto,
+          item.tipo,
+          item.valor,
+          agora
+        );
+      } catch (e) {
+        // Ignorar duplicatas
+      }
+    }
+
+    // Reconstruir índice FTS5 a partir das observações (que virão na fase 2).
     try {
       conexao.exec('DELETE FROM observacoes_fts');
     } catch (e) {

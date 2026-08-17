@@ -95,51 +95,110 @@ fi
 
 echo
 echo "== 4. Verificar que index foi populado com dados derivados =="
-# Contar linhas em resumos (deve ter dados das ideias)
-resumo_count=$(node -e "
+# Contar linhas nas tabelas derivadas
+indice_foco_count=$(node -e "
 const sqlite3 = require('node:sqlite');
 const db = new sqlite3.DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
-const r = db.prepare('SELECT COUNT(*) as c FROM resumos').get();
+const r = db.prepare('SELECT COUNT(*) as c FROM indice_foco').get();
 process.stdout.write(String(r.c || 0));
 " 2>/dev/null || echo "0")
 
-if [ "$resumo_count" -gt "0" ]; then
-  ok=$((ok+1)); echo "  ok   tabela resumos tem $resumo_count registros"
+indice_ideias_count=$(node -e "
+const sqlite3 = require('node:sqlite');
+const db = new sqlite3.DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
+const r = db.prepare('SELECT COUNT(*) as c FROM indice_ideias').get();
+process.stdout.write(String(r.c || 0));
+" 2>/dev/null || echo "0")
+
+if [ "$indice_foco_count" -gt "0" ] && [ "$indice_ideias_count" -gt "0" ]; then
+  ok=$((ok+1)); echo "  ok   tabela indice_foco tem $indice_foco_count registros"
+  ok=$((ok+1)); echo "  ok   tabela indice_ideias tem $indice_ideias_count registros"
 else
-  falhou=$((falhou+1)); echo "  FALHA tabela resumos vazia"
+  falhou=$((falhou+1)); echo "  FALHA índices vazios: foco=$indice_foco_count, ideias=$indice_ideias_count"
 fi
 
 echo
-echo "== 5. Apagar índice (tabela resumos) e verificar que reconstrói =="
-# Remover dados de resumos
+echo "== 5. CRÍTICO: Popular resumos e observacoes, depois reindexar e provar que não mudaram =="
+# Popular resumos e observacoes com registros de TESTE (dados de outras tarefas)
+resumos_antes=$(node -e "
+const sqlite3 = require('node:sqlite');
+const db = new sqlite3.DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
+const db_projeto = process.env.RFM_ROOT.split('/').pop();
+
+// Inserir resumo de teste (simular dados da tarefa 3 — importação de claude-mem)
+db.prepare('INSERT INTO resumos (projeto, titulo, conteudo, criada_em) VALUES (?, ?, ?, ?)')
+  .run(db_projeto, 'Resumo de Sessão Teste', 'Conteúdo de resumo que NÃO deve ser apagado', '2026-08-17');
+
+// Inserir observação de teste (simula dados da fase 2)
+db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em) VALUES (?, ?, ?)')
+  .run(db_projeto, 'Observação de teste que NÃO deve ser apagada', '2026-08-17');
+
+const resumos = db.prepare('SELECT COUNT(*) as c FROM resumos WHERE titulo LIKE \"%Resumo%\"').get();
+const obs = db.prepare('SELECT COUNT(*) as c FROM observacoes WHERE conteudo LIKE \"%Observação%\"').get();
+process.stdout.write('resumos=' + resumos.c + ' observacoes=' + obs.c);
+db.close();
+" 2>/dev/null || echo "resumos=0 observacoes=0")
+
+echo "  Antes de reindexar: $resumos_antes"
+
+# Agora reindexar — não deve apagar resumos e observacoes
+esperado "reindexar com dados existentes" 0 $MEMORIA reindexar
+
+# Verificar que resumos e observacoes NÃO foram apagados
+resumos_depois=$(node -e "
+const sqlite3 = require('node:sqlite');
+const db = new sqlite3.DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
+const resumos = db.prepare('SELECT COUNT(*) as c FROM resumos WHERE titulo LIKE \"%Resumo%\"').get();
+const obs = db.prepare('SELECT COUNT(*) as c FROM observacoes WHERE conteudo LIKE \"%Observação%\"').get();
+process.stdout.write('resumos=' + resumos.c + ' observacoes=' + obs.c);
+db.close();
+" 2>/dev/null || echo "resumos=0 observacoes=0")
+
+echo "  Depois de reindexar: $resumos_depois"
+
+if [ "$resumos_antes" = "$resumos_depois" ]; then
+  ok=$((ok+1)); echo "  ok   resumos e observacoes não foram tocados por reindexar"
+else
+  falhou=$((falhou+1)); echo "  FALHA reindexar apagou dados de outras tarefas!"
+  echo "         antes:  $resumos_antes"
+  echo "         depois: $resumos_depois"
+fi
+
+echo
+echo "== 6. Apagar índice derivado e verificar que reconstrói =="
+# Remover dados do índice derivado
 node -e "
 const sqlite3 = require('node:sqlite');
 const db = new sqlite3.DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
-db.exec('DELETE FROM resumos');
-const r = db.prepare('SELECT COUNT(*) as c FROM resumos').get();
-process.stdout.write('Apagado, resumos agora: ' + (r.c || 0) + '\n');
+db.exec('DELETE FROM indice_foco');
+db.exec('DELETE FROM indice_ideias');
+const foco = db.prepare('SELECT COUNT(*) as c FROM indice_foco').get();
+const ideias = db.prepare('SELECT COUNT(*) as c FROM indice_ideias').get();
+process.stdout.write('Apagado, indice_foco agora: ' + (foco.c || 0) + ', indice_ideias: ' + (ideias.c || 0) + '\n');
 db.close();
 " 2>&1 | grep -v ExperimentalWarning | sed 's/^/  /'
 
 # Reindexar novamente
-esperado "reindexar após apagar" 0 $MEMORIA reindexar
+esperado "reindexar após apagar índices" 0 $MEMORIA reindexar
 
 # Verificar que voltou a ter dados
-resumo_count_novo=$(node -e "
+indice_counts=$(node -e "
 const sqlite3 = require('node:sqlite');
 const db = new sqlite3.DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
-const r = db.prepare('SELECT COUNT(*) as c FROM resumos').get();
-process.stdout.write(String(r.c || 0));
-" 2>/dev/null || echo "0")
+const foco = db.prepare('SELECT COUNT(*) as c FROM indice_foco').get();
+const ideias = db.prepare('SELECT COUNT(*) as c FROM indice_ideias').get();
+process.stdout.write('foco=' + (foco.c || 0) + ' ideias=' + (ideias.c || 0));
+db.close();
+" 2>/dev/null || echo "foco=0 ideias=0")
 
-if [ "$resumo_count_novo" -eq "$resumo_count" ]; then
-  ok=$((ok+1)); echo "  ok   tabela resumos reconstruída com $resumo_count_novo registros"
+if [ "$indice_counts" = "foco=$indice_foco_count ideias=$indice_ideias_count" ]; then
+  ok=$((ok+1)); echo "  ok   índices derivados reconstruídos: $indice_counts"
 else
-  falhou=$((falhou+1)); echo "  FALHA contagem mismatch: antes=$resumo_count, depois=$resumo_count_novo"
+  falhou=$((falhou+1)); echo "  FALHA contagem mismatch: esperava foco=$indice_foco_count ideias=$indice_ideias_count, veio $indice_counts"
 fi
 
 echo
-echo "== 6. Verificar que ideias.cjs é único a escrever em ideias.jsonl =="
+echo "== 7. Verificar que ideias.cjs é único a escrever em ideias.jsonl =="
 # Verificar que nenhum outro arquivo toca ideias.jsonl
 if ! grep -r "writeFileSync.*ideias.jsonl" "$SRC/scripts/" --include="*.cjs" | grep -v "ideias.cjs" > /dev/null 2>&1; then
   ok=$((ok+1)); echo "  ok   nenhum outro arquivo escreve em ideias.jsonl"
