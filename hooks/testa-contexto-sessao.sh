@@ -230,27 +230,77 @@ const bruto = skill.length + foco.length;
 process.stdout.write(saida);
 process.stderr.write(`\nMEDIDO bruto=${bruto} injetado=${saida.length}\n`);
 EOF
-# SKILL.md e CODIGO (fica no repo); FOCO.md e DADO (saiu para ~/.rainforest em
-# 2026-08-11). A bateria pega cada um de onde ele mora de verdade, pela MESMA
-# cadeia que o hook usa - fixture que le do lugar errado testa outra coisa.
-# `env -u RFM_ROOT`: esta bateria exporta RFM_ROOT para a caixa de areia, e sem
-# tirar a variavel a resolucao devolveria a propria caixa (nivel 1 vence tudo).
-# Caminho em forma WINDOWS: o node daqui nao resolve `/c/Projetos/...` do Git Bash,
-# e o require falha em silencio deixando a variavel vazia. Terceira vez hoje.
-SRC_WIN="$(cygpath -m "$SRC" 2>/dev/null || printf '%s' "$SRC")"
-# `env -u RFM_ROOT`: quando a bateria exporta RFM_ROOT para a caixa de areia, sem
-# tirar a variavel a resolucao devolveria a propria caixa (nivel 1 vence tudo).
-DADOS_REAIS="$(env -u RFM_ROOT node -e "const r=require('$SRC_WIN/hooks/lib/raiz.cjs').resolverRaiz({plugin:'$SRC_WIN'});process.stdout.write(r.raiz||'')" 2>/dev/null)"
+# SKILL.md e CODIGO e continua vindo do repo — e determinista, todo mundo tem o
+# mesmo. FOCO.md e DADO, e ate 2026-08-17 esta bateria lia o **FOCO.md de verdade**
+# do usuario. Duas consequencias, as duas medidas:
+#
+#   - no CI (Issue #16) nao existe `~/.rainforest`, entao os dois `checa` abaixo
+#     ficavam vermelhos por ausencia de dado, nao por regressao;
+#   - e na propria maquina do dono ela era INSTAVEL: `ok: 169 falhou: 0` as ~14h
+#     e dois vermelhos as ~18h do MESMO dia, porque o FOCO.md mudou no meio.
+#
+# Teste que muda de resultado sem ninguem mexer no codigo e teste que se aprende a
+# ignorar. O que estes casos existem para provar e o MECANISMO — que um FOCO.md
+# com varias secoes dispara o resumo, e que o avanco mais recente sobrevive a
+# compressao. Isso se prova com uma fixture que tem a FORMA do arquivo real, e a
+# forma esta reproduzida abaixo: `## Ativo` com linhas de avanco datadas, mais as
+# outras secoes que a injecao precisa omitir para ter o que resumir.
+#
+# O que se perde de proposito: esta bateria nao vigia mais o FOCO.md do usuario.
+# Vigiar o dado vivo dele e trabalho de `scripts/saude.cjs`, que roda contra a
+# maquina — nao de bateria, que roda em qualquer maquina e tem de dar o mesmo.
+DADOS_REAIS="$RAIZ_POSIX/dados-fixture"
+mkdir -p "$DADOS_REAIS"
+cat > "$DADOS_REAIS/FOCO.md" <<'FOCOEOF'
+# Foco
+
+## Ativo
+Último avanço datado: 2026-08-12.
+
+**Trabalho de fixture — V1 funcionando** `[trabalho]` — declarado 2026-08-01.
+Projeto: pasta de fixture, usada so por esta bateria.
+Pastas: C:/fixture/projeto
+Ociosidade máxima: 15 min.
+Prioridade 00 na palavra do gestor; prazo final 2026-09-30.
+
+- 2026-08-05: **primeiro avanço da fixture**, escrito com prosa suficiente para
+  ocupar espaço e obrigar a injeção a decidir o que corta, que é exatamente o
+  comportamento sob teste aqui.
+- 2026-08-09: **segundo avanço da fixture**, também com prosa, pelo mesmo motivo
+  do anterior — sem volume não há compressão a observar.
+- 2026-08-12: **avanço mais recente da fixture**, e é esta data que os casos
+  abaixo exigem que sobreviva à compressão.
+
+## Não especificado ainda
+- o que entra no mínimo viável da fixture, a detalhar.
+
+## Fora de escopo
+- tudo que não for a fixture.
+
+## Compromissos com prazo
+- 2026-09-30: entrega da fixture.
+
+## Contexto de calendário
+- semana de fixture, sem feriado.
+
+## Frentes
+- frente única, de fixture.
+
+## Concluídos
+- nada — é fixture.
+FOCOEOF
 S="$(LIB_PATH="$LIB" REPO="$SRC" DADOS="$DADOS_REAIS" node "$RAIZ_POSIX/driver-real.cjs" 2>/dev/null)"
 MED="$(LIB_PATH="$LIB" REPO="$SRC" DADOS="$DADOS_REAIS" node "$RAIZ_POSIX/driver-real.cjs" 2>&1 >/dev/null | grep MEDIDO)"
-checa "SKILL.md real passa do piso"        nao_tem "FALHA AO CARREGAR"      "$S"
-checa "FOCO.md real dispara o resumo"      tem     "omitidas desta injeção" "$S"
-# A data sai do FOCO.md AGORA, nao de uma constante: a versao anterior fixava
-# "2026-08-08" e ficou vermelha sozinha no primeiro avanco novo. Teste que quebra
-# quando o arquivo evolui normalmente vira teste que se aprende a ignorar.
+checa "SKILL.md real passa do piso"          nao_tem "FALHA AO CARREGAR"      "$S"
+checa "FOCO.md de fixture dispara o resumo"  tem     "omitidas desta injeção" "$S"
+# A data continua saindo do arquivo, nao de uma constante repetida aqui — a versao
+# de 2026-08-08 fixava a data no proprio `checa` e ficava vermelha sozinha no
+# primeiro avanco novo. Agora o arquivo e a fixture logo acima, entao a data e
+# estavel; ler dela em vez de repetir o literal mantem os dois lados em sincronia
+# quando alguem editar a fixture.
 ULTIMO_AVANCO="$(awk '/^## /{dentro=($0=="## Ativo")} dentro' "$DADOS_REAIS/FOCO.md" \
   | grep -oE '^- [0-9]{4}-[0-9]{2}-[0-9]{2}' | grep -oE '[0-9-]{10}' | sort | tail -1)"
-checa "avanco mais recente sobrevive"      tem     "Último avanço datado: $ULTIMO_AVANCO" "$S"
+checa "avanco mais recente sobrevive"        tem     "Último avanço datado: $ULTIMO_AVANCO" "$S"
 echo "  ---   $MED"
 
 echo

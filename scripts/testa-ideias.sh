@@ -29,22 +29,74 @@ cp "$SRC/scripts/ideias.cjs" "$SB/scripts/"
 # caixa de areia tem que espelhar a forma do plugin. `raiz.cjs` NAO entra aqui: o
 # bloco 4 a copia de proposito no meio da bateria, para exercitar a cadeia.
 cp "$SRC/hooks/lib/projetos.cjs" "$SB/hooks/lib/"
-# O jsonl e DADO e saiu do repo em 2026-08-11. A caixa copia da raiz de dados
-# real, resolvida pela mesma cadeia do hook - e continua sendo COPIA: o RFM_ROOT
-# acima aponta para a caixa, entao nada aqui toca o arquivo de verdade.
-# `env -u RFM_ROOT`: esta bateria exporta RFM_ROOT para a caixa de areia, e sem
-# tirar a variavel a resolucao devolveria a propria caixa (nivel 1 vence tudo).
-# Caminho em forma WINDOWS: o node daqui nao resolve `/c/Projetos/...` do Git Bash,
-# e o require falha em silencio deixando a variavel vazia. Terceira vez hoje.
 SRC_WIN="$(cygpath -m "$SRC" 2>/dev/null || printf '%s' "$SRC")"
-# `env -u RFM_ROOT`: quando a bateria exporta RFM_ROOT para a caixa de areia, sem
-# tirar a variavel a resolucao devolveria a propria caixa (nivel 1 vence tudo).
-DADOS_REAIS="$(env -u RFM_ROOT node -e "const r=require('$SRC_WIN/hooks/lib/raiz.cjs').resolverRaiz({plugin:'$SRC_WIN'});process.stdout.write(r.raiz||'')" 2>/dev/null)"
-cp "$DADOS_REAIS/ideias.jsonl" "$SB/"
+# O jsonl da caixa e FIXTURE GERADA, e nao copia do arquivo do usuario.
+#
+# Ate 2026-08-17 estas linhas resolviam a raiz de dados REAL e copiavam o
+# `ideias.jsonl` de verdade para dentro da caixa. Nada era escrito no arquivo do
+# usuario — o RFM_ROOT acima ja garantia isso —, mas a bateria dependia dele
+# EXISTIR e do que tinha dentro. Duas consequencias, as duas medidas no mesmo dia:
+#
+#   $ bash scripts/testa-ideias.sh                        # com a casa real
+#     == resultado: 138 ok, 0 falha(s) ==
+#   $ USERPROFILE=<pasta vazia> bash scripts/testa-ideias.sh
+#     FALHA plantar: esperava exit 0, veio 1     (a bateria inteira desaba)
+#
+# Foi assim que ela ficou vermelha no CI (Issue #16) e verde aqui. Uma bateria que
+# so passa porque a maquina de quem roda tem dado nao e evidencia de nada — e o
+# `$BASE` vindo do arquivo real fazia a contagem esperada mudar conforme o dia.
+#
+# O seed logo abaixo ja normalizava TODO o conteudo copiado (projeto=sandbox,
+# gancho preenchido, schema completado), entao o arquivo real nunca foi fixture de
+# verdade: so emprestava a contagem e a existencia. A fixture abaixo entrega as
+# mesmas FORMAS de proposito — inclusive a linha legada sem `id` e com `data`, e a
+# linha sem `gancho` — para que os tres caminhos do seed continuem exercitados.
+#
+# O `cd` vem ANTES de gerar, e nao e detalhe: o gerador escreve `ideias.jsonl` no
+# diretorio corrente, e com o `cd` depois ele cairia na raiz do REPOSITORIO.
 cd "$SB" || exit 1
+node - <<'JS'
+const fs = require("fs");
+const linhas = [];
+const base = (i) => ({
+  id: `fixture-${String(i).padStart(2, "0")}`,
+  titulo: `ideia de fixture ${i}`,
+  descricao: "descricao de fixture, gerada pela bateria",
+  contexto: "contexto de fixture, gerado pela bateria",
+  projeto: "sandbox",
+  ao_colher: "nada — e fixture",
+  gancho: "gancho de fixture",
+  tipo: "ideia",
+  status: "plantada",
+  plantada_em: "2026-08-01",
+});
+for (let i = 1; i <= 9; i += 1) linhas.push(base(i));
+// Linha legada: sem `id`, com o campo antigo `data` no lugar de `plantada_em`.
+// Existe uma assim no arquivo real (vista em 2026-08-14), e o seed tem um ramo so
+// para ela — sem esta forma aqui, esse ramo nunca rodaria.
+//
+// Ela traz `contexto`, `ao_colher` e `tipo` de proposito: o seed preenche `id`,
+// `titulo`, `descricao`, `status`, `plantada_em` e `gancho`, e SO esses. O que ele
+// nao preenche tem de vir da fixture, senao o `conferir` dos blocos seguintes
+// reprova a linha por campo obrigatorio vazio — que foi o que aconteceu na
+// primeira versao desta fixture.
+linhas.push({
+  data: "2026-07-30",
+  descricao: "linha legada sem id",
+  contexto: "contexto de fixture",
+  projeto: "sandbox",
+  ao_colher: "nada — e fixture",
+  tipo: "ideia",
+});
+// Sem `gancho`: exercita o ramo `n` do seed.
+{ const o = base(10); delete o.gancho; linhas.push(o); }
+// Projeto fora do vocabulario: exercita o ramo `c` do seed.
+{ const o = base(11); o.projeto = "Projeto Qualquer\tcom tab"; linhas.push(o); }
+fs.writeFileSync("ideias.jsonl", linhas.map((o) => JSON.stringify(o)).join("\n") + "\n", "utf8");
+JS
 
 export BASE=$(node -e "process.stdout.write(String(require('fs').readFileSync('ideias.jsonl','utf8').split('\n').filter((l)=>l.trim()).length))")
-echo "(base: $BASE linhas copiadas do arquivo real)"
+echo "(base: $BASE linhas de fixture gerada — nao depende da casa de quem roda)"
 
 # As 70 linhas reais ainda nao tem `gancho` (e essa lacuna e o motivo desta
 # tarefa — ver o comentario em scripts/ideias.cjs). Migrar o arquivo real e
