@@ -184,5 +184,51 @@ esperado "paralelo: sujeira no principal em arquivo tocado pelo agente -> reprov
 rm "$R/feito.txt"
 
 echo
+echo "== o mesmo worktree escrito nas duas grafias do Windows (8.3) =="
+# Achado pelo CI em 2026-08-17 (Issue #16). O TEMP do runner do GitHub e
+# `C:/Users/RUNNER~1/...`; o git responde sempre na forma longa
+# (`C:/Users/runneradmin/...`). O `norm()` do .cjs usava `fs.realpathSync`, que
+# no Windows NAO expande 8.3 — entao as duas grafias do MESMO diretorio nao
+# batiam, e a conferencia cuspia:
+#
+#   REPROVADO — 1 falha(s):
+#     - 1. o toplevel (C:/Users/runneradmin/.../wt-bom)
+#          nao e o worktree do briefing (C:/Users/RUNNER~1/.../wt-bom)
+#
+# Ou seja: a peca que decide se a entrega de um subagente pode ser integrada
+# mandava NAO INTEGRAR uma entrega correta. O gemeo em Python nunca teve o
+# defeito — `Path.resolve()` ja canoniza.
+#
+# O alias 8.3 nao pode ser fabricado: depende do `fsutil 8dot3name` da maquina e
+# de o nome ser longo o bastante. Quando nao houver alias, este bloco ANUNCIA que
+# pulou. Pular calado seria pior que nao ter o teste — leria como cobertura.
+LONGA="$RAIZ/pasta-com-nome-suficientemente-longo-para-ter-alias-curto"
+mkdir -p "$LONGA"
+R83="$LONGA/principal"
+git init -q "$R83"
+git -C "$R83" config user.email t@t; git -C "$R83" config user.name t
+git -C "$R83" config commit.gpgsign false
+echo v1 > "$R83/a.txt"; git -C "$R83" add .; git -C "$R83" commit -qm base
+BASE83=$(git -C "$R83" rev-parse HEAD)
+WT83="$LONGA/wt83"
+git -C "$R83" worktree add -q -b trabalho-83 "$WT83" >/dev/null 2>&1
+echo novo > "$WT83/feito.txt"; git -C "$WT83" add .; git -C "$WT83" commit -qm "entrega 83"
+
+WT83_LONGO="$(cygpath -m "$WT83" 2>/dev/null || printf '%s' "$WT83")"
+WT83_CURTO="$(cygpath -m -s "$WT83" 2>/dev/null || printf '%s' "$WT83")"
+
+if [ "$WT83_CURTO" = "$WT83_LONGO" ]; then
+  echo "  PULADO sem alias 8.3 nesta maquina ($WT83_CURTO) — nao da para encenar as duas grafias."
+  echo "         (nao conta como ok: o caso fica sem cobertura aqui, e o CI cobre)"
+else
+  echo "  (longo: $WT83_LONGO)"
+  echo "  (curto: $WT83_CURTO)"
+  esperado "worktree passado na forma 8.3 -> aprovado igual a forma longa" 0 \
+    "${CONF_CMD[@]}" --worktree "$WT83_CURTO" --base "$BASE83"
+  esperado "  ... e a forma longa segue aprovando (controle)" 0 \
+    "${CONF_CMD[@]}" --worktree "$WT83_LONGO" --base "$BASE83"
+fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
