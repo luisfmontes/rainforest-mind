@@ -151,5 +151,161 @@ S="$(roda --sem-fetch --json --forcar)"
 nao_tem "e o script foi restaurado (viva protegida de novo)" "$(montar; alvos --forcar)" "viva"
 
 echo
+echo "== 7. mergeada-por-squash: PR mergeado por squash, upstream vivo (Issue #14) =="
+# Cenario novo: o conteudo de 'squash-vivo' entra na base por um squash merge (um
+# commit novo na base, sem os commits originais como ancestrais) e o upstream dela
+# CONTINUA existindo — a intersecao que nem `--merged` (recusa squash) nem `gone`
+# (upstream de pe) enxergam. Sozinho, nenhum sinal de git resolve isso: cai em
+# 'viva'. So um `gh pr list --head squash-vivo --state merged` decide.
+montar_squash_vivo() {
+  montar
+  (
+    cd "$SBP/local"
+    git checkout -qb squash-vivo
+    echo sq > sq.txt; git add .; git commit -qm sq
+    git push -q -u origin squash-vivo
+    git checkout -q main
+    git merge -q --squash squash-vivo
+    git commit -qm "squash merge de squash-vivo"
+    git push -q origin main
+    git checkout -q main
+  )
+}
+montar_squash_vivo
+
+# `gh` de mentira, so para esta bateria: devolve a lista de PR mergeado do GitHub
+# fingido, e nela so 'squash-vivo' aparece. Nunca mexe no PATH da maquina —
+# SEM_GH_PATH e o PATH real MENOS o diretorio do `gh` de verdade, usado so dentro das
+# funcoes deste bloco (o `gh` real, sem repo do GitHub por tras, so atrapalharia:
+# sempre falha, e ai nada vira `mergeada-por-squash` para testar).
+#
+# O stub responde SEM olhar os argumentos, e isso e proposital: desde 2026-08-17 o
+# limpar-branches.cjs pede a lista de PR mergeado UMA vez, com argumentos constantes,
+# e cruza os nomes em JS. Nome de branch nao entra mais na linha de comando — ver a
+# secao 12 e o comentario de `prsMergeados()`. Ele e `.cmd` porque no Windows o spawn
+# sem shell nao acha `.cmd`, e e justamente esse o caso que o fallback cobre.
+SEM_GH_PATH="${PATH//:\/c\/Program Files\/GitHub CLI/}"
+mkdir -p "$SBP/bin"
+cat > "$SBP/bin/gh.cmd" <<'STUB'
+@echo off
+rem GH_LOG vazio tem de ser tratado como ausente: `if defined` da verdadeiro para
+rem variavel herdada vazia, e ai o append vai para um caminho "" — o .cmd sai != 0, o
+rem script le isso como "gh nao respondeu", e a bateria inteira da secao 7 cai.
+if not "%GH_LOG%"=="" echo %* >> "%GH_LOG%"
+echo [{"headRefName":"squash-vivo"}]
+exit /b 0
+STUB
+
+# `${GH_LOG:-}` e obrigatorio: a bateria roda com `set -u`, e as secoes 7 a 11 chamam
+# `roda_gh` antes de a secao 12 definir o log de argumentos. Sem o default, o subshell
+# morre com "unbound variable", a saida vem vazia, e as falhas aparecem como se a
+# classificacao tivesse quebrado — foi o que aconteceu na primeira tentativa.
+roda_gh()    { ( cd "$SBP/local" && PATH="$SBP/bin:$SEM_GH_PATH" GH_LOG="${GH_LOG:-}" CLAUDE_PROJECT_DIR="$SBP/local" node "$SRC/scripts/limpar-branches.cjs" "$@" 2>&1 ); }
+roda_sem_gh(){ ( cd "$SBP/local" && PATH="$SEM_GH_PATH"          CLAUDE_PROJECT_DIR="$SBP/local" node "$SRC/scripts/limpar-branches.cjs" "$@" 2>&1 ); }
+alvos_gh()   { roda_gh --sem-fetch --json "$@" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.stringify(JSON.parse(d).alvos)))"; }
+classe_gh()  { roda_gh --sem-fetch --json | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const b=JSON.parse(d).refs.find(x=>x.nome===process.argv[1]);console.log(b?b.classe:'(ausente)')})" "$1"; }
+
+tem "squash-vivo vira mergeada-por-squash (nao viva)" "$(classe_gh squash-vivo)" "mergeada-por-squash"
+S7="$(roda_gh --sem-fetch)"
+tem "o nome da classe aparece na saida" "$S7" "mergeada-por-squash"
+
+echo
+echo "== 8. mergeada-por-squash exige -D, como sumiu-divergente =="
+nao_tem "sem --forcar, squash-vivo fica de fora dos alvos" "$(alvos_gh)" "squash-vivo"
+tem     "a mensagem diz que so o -D alcanca"                "$S7" "o -d as recusa"
+roda_gh --sem-fetch --remover > /dev/null
+tem     "squash-vivo sobrevive sem --forcar"                 "$(git -C "$SBP/local" branch --list squash-vivo)" "squash-vivo"
+S9="$(roda_gh --sem-fetch --remover --forcar)"
+tem     "com --forcar, squash-vivo sai e imprime o SHA"      "$S9" "ok      squash-vivo"
+nao_tem "squash-vivo saiu do repo"                            "$(git -C "$SBP/local" branch)" "squash-vivo"
+
+echo
+echo "== 9. gh indisponivel: a candidata volta a ser viva, exit continua 0 =="
+# Simula gh ausente SO dentro deste bloco, com um PATH restrito montado nas proprias
+# funcoes roda_sem_gh/classe_sem_gh acima — nunca mexe no PATH da maquina.
+montar_squash_vivo
+classe_sem_gh() { roda_sem_gh --sem-fetch --json | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const b=JSON.parse(d).refs.find(x=>x.nome===process.argv[1]);console.log(b?b.classe:'(ausente)')})" "$1"; }
+tem "sem gh, squash-vivo volta a classificar como viva" "$(classe_sem_gh squash-vivo)" "viva"
+S10="$(roda_sem_gh --sem-fetch)"
+tem "e avisa que a checagem de PR nao rodou"          "$S10" "gh pr list"
+roda_sem_gh --sem-fetch > /dev/null
+EX=$?
+tem "e o exit code continua 0" "$EX" "0"
+
+echo
+echo "== 10. --base <ref>: mede contra outra ref, nao so a base default =="
+montar
+(
+  cd "$SBP/local"
+  git checkout -qb outra-base
+  git push -q -u origin outra-base
+  git checkout -qb so-na-outra
+  echo o > o.txt; git add .; git commit -qm o
+  git push -q -u origin so-na-outra
+  git checkout -q outra-base
+  git merge -q --no-ff -m m2 so-na-outra
+  git push -q origin outra-base
+  git checkout -q main
+)
+classe_base() { roda --sem-fetch --json --base "$1" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const b=JSON.parse(d).refs.find(x=>x.nome===process.argv[1]);console.log(b?b.classe:'(ausente)')})" "$2"; }
+tem     "com a base default, so-na-outra e viva"                        "$(classe so-na-outra)" "viva"
+nao_tem "com --base outra-base, deixa de ser viva"                       "$(classe_base outra-base so-na-outra)" "viva"
+tem     "e passa a ser resolvida-remota (mergeada la, upstream de pe)"   "$(classe_base outra-base so-na-outra)" "resolvida-remota"
+
+echo
+echo "== 11. MUTACAO: sabotar a exigencia de -D de mergeada-por-squash =="
+# Mesma logica da secao 6, agora na trava nova: se a exigencia de -D para
+# mergeada-por-squash sumir do codigo, o caso 8 ("sem --forcar, fica de fora dos
+# alvos") tem que FALHAR — senao a trava nao esta la, so parece que esta.
+montar_squash_vivo
+cp "$SRC/scripts/limpar-branches.cjs" "$SBP/original2.cjs"
+node -e "
+  const fs=require('fs'), p=process.argv[1];
+  const s=fs.readFileSync(p,'utf8');
+  const alvo = \"b.classe !== 'sumiu-divergente' && b.classe !== 'mergeada-por-squash'\";
+  if(!s.includes(alvo)) { console.error('MUTACAO NAO APLICADA: alvo ausente'); process.exit(1); }
+  fs.writeFileSync(p, s.replace(alvo, \"b.classe !== 'sumiu-divergente'\"));
+" "$SRC/scripts/limpar-branches.cjs"
+if [ $? -ne 0 ]; then falhou=$((falhou+1)); echo "  FALHA nao consegui aplicar a mutacao"; else
+  AM="$(alvos_gh)"
+  tem "com a exigencia sabotada, squash-vivo entra nos alvos sem --forcar (prova que a exigencia de -D era a trava)" "$AM" "squash-vivo"
+fi
+cp "$SBP/original2.cjs" "$SRC/scripts/limpar-branches.cjs"
+montar_squash_vivo
+nao_tem "e o script foi restaurado (squash-vivo exige --forcar de novo)" "$(alvos_gh)" "squash-vivo"
+
+echo
+echo "== 12. nome de branch NAO entra na linha de comando do gh =="
+# Nome de branch e dado de quem empurrou: o git proibe espaco, controle e `~^:?*[\`,
+# mas ACEITA `&`, `"`, `|`, `(`, `)` e `;`. A primeira versao desta checagem passava
+# `--head <nome>` com `shell: true`, e em 2026-08-17 dois payloads executaram comando
+# de verdade nesta maquina — a branch `x&echo A>marca&y` fez o `echo` rodar.
+#
+# A trava nao e uma lista de caracteres proibidos, e sim a invariante: o `gh` e
+# chamado com argumentos CONSTANTES, e o cruzamento por nome acontece em JS. Este
+# bloco le o log de argumentos do stub e exige que nenhum nome de branch esteja la —
+# assim a trava vale para payload que ninguem imaginou. (Payload com `>` no nome nao
+# da para testar no Windows: o ref e um arquivo, e o `>` e proibido pelo sistema de
+# arquivos, nao pelo git.)
+montar_squash_vivo
+(
+  cd "$SBP/local"
+  git checkout -q -b 'zz&yy' main
+  echo inj > inj.txt; git add .; git commit -qm inj
+  git push -q -u origin 'zz&yy'
+  git checkout -q main
+)
+GH_LOG="$SBP/gh-args.log"
+rm -f "$GH_LOG"
+S12="$(roda_gh --sem-fetch)"
+LOG12="$(cat "$GH_LOG" 2>/dev/null)"
+tem     "o gh e chamado com os argumentos constantes"     "$LOG12" "pr list --state merged"
+nao_tem "e nenhum nome de branch entra na linha"          "$LOG12" "zz&yy"
+nao_tem "nem o nome da candidata a squash"                "$LOG12" "squash-vivo"
+nao_tem "nem sobra um --head de qualquer especie"          "$LOG12" " --head"
+tem     "e a branch com & no nome roda e aparece na saida" "$S12" "zz&yy"
+GH_LOG=""
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]
