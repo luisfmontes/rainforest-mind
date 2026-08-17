@@ -58,6 +58,41 @@ S="$(roda "$SBP/chave.md")"
 tem   "pega chave com prefixo conhecido" "$S" "chave-conhecida"
 tem   "e manda REVOGAR antes de editar"  "$S" "REVOGUE"
 
+# A CHAVE em caixa alta e a forma mais comum em log e config, e um padrao
+# case-sensitive fica cego justamente para ela. Estes tres casos existem porque uma
+# tentativa de calar o falso positivo da prosa (abaixo) tirou o `i` da regex em
+# 2026-08-17: `senha:` minusculo continuava pego, e `SENHA:`, `Token:` e `API_KEY:`
+# passavam limpos. O detector fica cego para a forma mais comum e a bateria nao
+# acusava, porque nenhum caso usava caixa alta.
+printf '# achado\n\nSENHA: aBcD1234XyZw5678\n' > "$SBP/cred-alta.md"
+tem   "pega credencial com a chave em caixa alta"  "$(roda "$SBP/cred-alta.md")" "credencial"
+printf '# achado\n\nToken: aBcD1234XyZw5678\n' > "$SBP/cred-mista.md"
+tem   "pega credencial com a chave em caixa mista" "$(roda "$SBP/cred-mista.md")" "credencial"
+printf '# achado\n\nAPI_KEY: aBcD1234XyZw5678\n' > "$SBP/cred-apikey.md"
+tem   "pega API_KEY em caixa alta"                 "$(roda "$SBP/cred-apikey.md")" "credencial"
+
+# Segredo todo minusculo, sem digito: nao tem forma de segredo nenhuma, e mesmo
+# assim e recusado — o valor esta SOZINHO na linha, e prosa nao termina assim.
+printf '# achado\n\npassword: correcthorsebatterystaple\n' > "$SBP/cred-frase.md"
+tem   "pega senha em minusculas sozinha na linha"  "$(roda "$SBP/cred-frase.md")" "credencial"
+
+echo
+echo "== 1b. e a PROSA com a palavra-chave nao e credencial =="
+# 2026-08-17: este relatorio foi recusado por conter o assunto de um commit da main,
+# em que `token` vem seguido de dois-pontos e de prosa comum. O checador degradou a
+# evidencia de um relatorio — a citacao teve de ser truncada para publicar. A
+# liberacao e estreita: palavra curta, minuscula, e a linha SEGUE com mais palavras.
+printf '# achado\n\n41d73b7 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)\n' > "$SBP/prosa.md"
+S="$(roda "$SBP/prosa.md")"
+saiu    "prosa com 'token:' passa (exit 0)"        "$(codigo "$SBP/prosa.md")" "0"
+nao_tem "e nao inventa achado de credencial"       "$S" "credencial"
+
+# O contrapeso, na MESMA forma de prosa: basta o valor ter digito para voltar a ser
+# segredo. Sem este par, a liberacao acima seria indistinguivel de desligar o teste.
+printf '# achado\n\nRegua de orcamento de token: aBcD1234XyZw5678 e o que usei\n' > "$SBP/prosa-cred.md"
+tem   "mas com valor em forma de segredo recusa"   "$(roda "$SBP/prosa-cred.md")" "credencial"
+saiu  "e o exit volta a 2"                         "$(codigo "$SBP/prosa-cred.md")" "2"
+
 echo
 echo "== 2. texto limpo passa =="
 printf '# a trava nao travou\n\nO gate saiu com codigo 0 quando devia sair 2.\nMedido: 38 testes, 1 falha.\n' > "$SBP/limpo.md"
