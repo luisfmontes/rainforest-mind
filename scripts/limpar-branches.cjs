@@ -113,23 +113,45 @@ function descobrirBase(override) {
  * caso "a checagem nao rodou": `gh` ausente, sem autenticacao, ou qualquer saida
  * != 0. `null` NUNCA vira remocao; quem chama trata como "continua viva".
  */
-function prMergeado(nomeBranch) {
-  // `shell: true` nao e' so pra testar: no Windows, `gh` instalado via alguns
-  // gerenciadores e' `.cmd`/`.bat`, e o spawn direto (sem shell) ENOENT nisso —
-  // so acha `.exe`. Passar array de args com shell:true continua seguro (o Node
-  // escapa cada argumento antes de montar a linha de comando).
-  const r = spawnSync(
-    'gh',
-    ['pr', 'list', '--head', nomeBranch, '--state', 'merged', '--json', 'mergedAt'],
-    { cwd: REPO, encoding: 'utf8', shell: true },
-  );
-  if (r.error || r.status !== 0) return null;
-  try {
-    const lista = JSON.parse(r.stdout || '[]');
-    return Array.isArray(lista) && lista.length > 0;
-  } catch {
-    return null;
+function prsMergeados() {
+  // **Nenhum nome de branch entra na linha de comando.** Uma chamada só, com
+  // argumentos constantes, e o cruzamento acontece aqui em JS. Não é elegância: a
+  // primeira versão passava `--head <nomeBranch>` com `shell: true`, e nome de branch
+  // é dado de quem empurrou — o git proíbe espaço, controle e `~^:?*[\`, mas ACEITA
+  // `&`, `"`, `|`, `(`, `)` e `;`.
+  //
+  // Medido nesta máquina em 2026-08-17, com `shell: true`: uma branch chamada
+  // `x&echo A>marca&y` fez o `echo` rodar e criar o arquivo, e a variante com `""`
+  // também. Ou seja, quem consegue empurrar uma branch para um repo que você faz
+  // fetch executa comando na sua máquina quando você roda esta limpeza. A alegação
+  // de que "o Node escapa cada argumento" é falsa no cmd.exe, e a própria doc do
+  // Node manda não passar entrada não-sanitizada com shell.
+  //
+  // Com argumentos constantes, o `shell: true` de fallback (que existe só para achar
+  // um `gh` instalado como `.cmd`, que o spawn sem shell não alcança) não carrega
+  // dado de ninguém.
+  const args = ['pr', 'list', '--state', 'merged', '--limit', '200', '--json', 'headRefName'];
+  const tentativas = process.platform === 'win32'
+    ? [{ shell: false }, { shell: true }]
+    : [{ shell: false }];
+  for (const opts of tentativas) {
+    const r = spawnSync('gh', args, { cwd: REPO, encoding: 'utf8', ...opts });
+    // ENOENT é "não achei o executável assim" — tenta a próxima forma. Qualquer
+    // outro erro, ou saída != 0 (sem auth, sem rede, repo sem GitHub por trás), é
+    // `null`: a checagem não rodou, e `null` nunca vira remoção.
+    if (r.error && r.error.code === 'ENOENT') continue;
+    if (r.error || r.status !== 0) return null;
+    try {
+      const lista = JSON.parse(r.stdout || '[]');
+      if (!Array.isArray(lista)) return null;
+      // O `--limit 200` erra para o lado seguro: PR mergeado que ficou fora da
+      // janela não aparece aqui, e a branch continua `viva` — nunca o contrário.
+      return new Set(lista.map((p) => p && p.headRefName).filter(Boolean));
+    } catch {
+      return null;
+    }
   }
+  return null;
 }
 
 function coletar(baseOverride) {
@@ -174,14 +196,17 @@ function coletar(baseOverride) {
 
   // Segunda passada, so em cima de quem ainda e 'viva' e tem upstream: e a
   // interseccao "squash + remoto sobrevivente" que nenhum dos dois sinais acima
-  // enxerga. `ghFalhou` fica ligado se QUALQUER checagem nao rodou, para o aviso
-  // sair uma vez so, nao um por branch.
+  // enxerga. A consulta e UMA, feita antes do laco — nao uma por branch — e o
+  // cruzamento e por nome, aqui dentro. `ghFalhou` liga quando ela nao rodou.
   let ghFalhou = false;
-  for (const b of refs) {
-    if (b.classe === 'viva' && b.upstream) {
-      const r = prMergeado(b.nome);
-      if (r === true) b.classe = 'mergeada-por-squash';
-      else if (r === null) ghFalhou = true;
+  const candidatas = refs.filter((b) => b.classe === 'viva' && b.upstream);
+  if (candidatas.length) {
+    const mergeadosNoGitHub = prsMergeados();
+    if (mergeadosNoGitHub === null) ghFalhou = true;
+    else {
+      for (const b of candidatas) {
+        if (mergeadosNoGitHub.has(b.nome)) b.classe = 'mergeada-por-squash';
+      }
     }
   }
 

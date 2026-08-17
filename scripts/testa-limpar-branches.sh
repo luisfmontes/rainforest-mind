@@ -173,26 +173,34 @@ montar_squash_vivo() {
 }
 montar_squash_vivo
 
-# `gh` de mentira, so para esta bateria: responde PR mergeado so para 'squash-vivo',
-# vazio para qualquer outra branch. Nunca mexe no PATH da maquina — SEM_GH_PATH e o
-# PATH real MENOS o diretorio do `gh` de verdade, usado so dentro das funcoes deste
-# bloco (o `gh` real, sem repo do GitHub por tras, so atrapalharia: sempre falha, e
-# ai nada vira `mergeada-por-squash` para testar). Precisa ser `.cmd` (nao um script
-# sem shebang) porque no Windows o spawn sem shell so acha `.exe` direto — por isso
-# limpar-branches.cjs chama `gh` com `shell:true`.
+# `gh` de mentira, so para esta bateria: devolve a lista de PR mergeado do GitHub
+# fingido, e nela so 'squash-vivo' aparece. Nunca mexe no PATH da maquina —
+# SEM_GH_PATH e o PATH real MENOS o diretorio do `gh` de verdade, usado so dentro das
+# funcoes deste bloco (o `gh` real, sem repo do GitHub por tras, so atrapalharia:
+# sempre falha, e ai nada vira `mergeada-por-squash` para testar).
+#
+# O stub responde SEM olhar os argumentos, e isso e proposital: desde 2026-08-17 o
+# limpar-branches.cjs pede a lista de PR mergeado UMA vez, com argumentos constantes,
+# e cruza os nomes em JS. Nome de branch nao entra mais na linha de comando — ver a
+# secao 12 e o comentario de `prsMergeados()`. Ele e `.cmd` porque no Windows o spawn
+# sem shell nao acha `.cmd`, e e justamente esse o caso que o fallback cobre.
 SEM_GH_PATH="${PATH//:\/c\/Program Files\/GitHub CLI/}"
 mkdir -p "$SBP/bin"
 cat > "$SBP/bin/gh.cmd" <<'STUB'
 @echo off
-echo %* | findstr /C:"squash-vivo" >nul
-if %errorlevel%==0 (
-  echo [{"mergedAt":"2026-08-17T00:00:00Z"}]
-) else (
-  echo []
-)
+rem GH_LOG vazio tem de ser tratado como ausente: `if defined` da verdadeiro para
+rem variavel herdada vazia, e ai o append vai para um caminho "" — o .cmd sai != 0, o
+rem script le isso como "gh nao respondeu", e a bateria inteira da secao 7 cai.
+if not "%GH_LOG%"=="" echo %* >> "%GH_LOG%"
+echo [{"headRefName":"squash-vivo"}]
+exit /b 0
 STUB
 
-roda_gh()    { ( cd "$SBP/local" && PATH="$SBP/bin:$SEM_GH_PATH" CLAUDE_PROJECT_DIR="$SBP/local" node "$SRC/scripts/limpar-branches.cjs" "$@" 2>&1 ); }
+# `${GH_LOG:-}` e obrigatorio: a bateria roda com `set -u`, e as secoes 7 a 11 chamam
+# `roda_gh` antes de a secao 12 definir o log de argumentos. Sem o default, o subshell
+# morre com "unbound variable", a saida vem vazia, e as falhas aparecem como se a
+# classificacao tivesse quebrado — foi o que aconteceu na primeira tentativa.
+roda_gh()    { ( cd "$SBP/local" && PATH="$SBP/bin:$SEM_GH_PATH" GH_LOG="${GH_LOG:-}" CLAUDE_PROJECT_DIR="$SBP/local" node "$SRC/scripts/limpar-branches.cjs" "$@" 2>&1 ); }
 roda_sem_gh(){ ( cd "$SBP/local" && PATH="$SEM_GH_PATH"          CLAUDE_PROJECT_DIR="$SBP/local" node "$SRC/scripts/limpar-branches.cjs" "$@" 2>&1 ); }
 alvos_gh()   { roda_gh --sem-fetch --json "$@" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.stringify(JSON.parse(d).alvos)))"; }
 classe_gh()  { roda_gh --sem-fetch --json | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const b=JSON.parse(d).refs.find(x=>x.nome===process.argv[1]);console.log(b?b.classe:'(ausente)')})" "$1"; }
@@ -265,6 +273,38 @@ fi
 cp "$SBP/original2.cjs" "$SRC/scripts/limpar-branches.cjs"
 montar_squash_vivo
 nao_tem "e o script foi restaurado (squash-vivo exige --forcar de novo)" "$(alvos_gh)" "squash-vivo"
+
+echo
+echo "== 12. nome de branch NAO entra na linha de comando do gh =="
+# Nome de branch e dado de quem empurrou: o git proibe espaco, controle e `~^:?*[\`,
+# mas ACEITA `&`, `"`, `|`, `(`, `)` e `;`. A primeira versao desta checagem passava
+# `--head <nome>` com `shell: true`, e em 2026-08-17 dois payloads executaram comando
+# de verdade nesta maquina — a branch `x&echo A>marca&y` fez o `echo` rodar.
+#
+# A trava nao e uma lista de caracteres proibidos, e sim a invariante: o `gh` e
+# chamado com argumentos CONSTANTES, e o cruzamento por nome acontece em JS. Este
+# bloco le o log de argumentos do stub e exige que nenhum nome de branch esteja la —
+# assim a trava vale para payload que ninguem imaginou. (Payload com `>` no nome nao
+# da para testar no Windows: o ref e um arquivo, e o `>` e proibido pelo sistema de
+# arquivos, nao pelo git.)
+montar_squash_vivo
+(
+  cd "$SBP/local"
+  git checkout -q -b 'zz&yy' main
+  echo inj > inj.txt; git add .; git commit -qm inj
+  git push -q -u origin 'zz&yy'
+  git checkout -q main
+)
+GH_LOG="$SBP/gh-args.log"
+rm -f "$GH_LOG"
+S12="$(roda_gh --sem-fetch)"
+LOG12="$(cat "$GH_LOG" 2>/dev/null)"
+tem     "o gh e chamado com os argumentos constantes"     "$LOG12" "pr list --state merged"
+nao_tem "e nenhum nome de branch entra na linha"          "$LOG12" "zz&yy"
+nao_tem "nem o nome da candidata a squash"                "$LOG12" "squash-vivo"
+nao_tem "nem sobra um --head de qualquer especie"          "$LOG12" " --head"
+tem     "e a branch com & no nome roda e aparece na saida" "$S12" "zz&yy"
+GH_LOG=""
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

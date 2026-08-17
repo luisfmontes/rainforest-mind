@@ -55,7 +55,7 @@ neste repo em 11/08: zero worktree órfão no disco e **sete branches**
 node scripts/limpar-branches.cjs
 ```
 
-Sem `--remover` ele só lista, em seis classes. As que importam:
+Sem `--remover` ele só lista, em sete classes. As que importam:
 
 - **`resolvida-local`** — já está na base, nunca foi empurrada. É o resíduo de
   worktree de agente. Sai com `-d`, sem risco: a base contém tudo.
@@ -63,8 +63,20 @@ Sem `--remover` ele só lista, em seis classes. As que importam:
   commits. É o caso do *squash merge*: o trabalho está lá em cima, mas o `-d`
   recusa porque para o git ele nunca chegou. Só o `-D` apaga — e é por isso que
   esse `-D` existe, não por desleixo.
+- **`mergeada-por-squash`** — o PR foi mergeado por squash e o remoto **não** foi
+  apagado, então nenhum sinal de git acende: `--merged` é falso porque o squash
+  não deixa os commits na base, e o upstream não está `gone`. Quem decide é o
+  estado do PR (`gh`). Também só sai com `-D`. Sem o `gh` respondendo, a branch
+  fica `viva` e o script avisa em uma linha — falta de resposta nunca vira
+  remoção. Nasceu da Issue #14, em que três branches mergeadas passavam por
+  trabalho vivo.
 - **`viva`** — não está na base e o remoto está de pé. **Nunca entra na remoção**,
   nem com `--forcar`.
+
+E a base é escolhível: `--base <ref>` mede contra a ref que você passar, em vez
+de `origin/HEAD`. É o que permite limpar resíduo de agente numa esteira cujo
+trabalho ainda não chegou à `main` — sem isso, tudo que vive só na branch de
+trabalho aparece como `viva`.
 
 O modo de remoção é configurável, e o padrão é o conservador:
 
