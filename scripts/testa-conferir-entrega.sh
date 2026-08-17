@@ -153,5 +153,36 @@ contem "  ... e o aviso diz que o briefing devia ter fixado a base" "briefing de
   "${CONF_CMD[@]}" --worktree "$WT" --head-antes "$HEAD_ANTES"
 
 echo
+echo "== --paralelo: checagem 5 vira ancestralidade, checagem 4 vira cruzamento =="
+
+# a — HEAD do principal avancou (commit novo na mesma linha) + --paralelo -> aviso, exit 0
+git -C "$R" commit -q --allow-empty -m "avanco depois do despacho"
+esperado "paralelo: HEAD do principal avancou -> aprovado com aviso" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES" --paralelo
+contem "  ... e o aviso menciona o avanco" "avancou" \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES" --paralelo
+git -C "$R" reset -q --hard "$HEAD_ANTES"
+
+# b — HEAD do principal recuou + --paralelo -> continua reprovado (avanco != qualquer movimento)
+git -C "$R" checkout -q HEAD~1
+esperado "paralelo: HEAD do principal recuou -> reprovado mesmo assim" 1 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES" --paralelo
+git -C "$R" checkout -q "$HEAD_ANTES"
+
+# c — sujeira no principal fora dos arquivos do agente + --paralelo -> aviso, exit 0
+echo sujo > "$R/nao-tocado-pelo-agente.txt"
+esperado "paralelo: sujeira no principal fora dos arquivos do agente -> aprovado com aviso" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES" --paralelo
+contem "  ... e o aviso diz que nenhuma caiu nos arquivos do agente" "nenhuma nos arquivos do agente" \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES" --paralelo
+rm "$R/nao-tocado-pelo-agente.txt"
+
+# d — sujeira no principal EM arquivo que o agente tocou (feito.txt) + --paralelo -> reprova
+echo sujo > "$R/feito.txt"
+esperado "paralelo: sujeira no principal em arquivo tocado pelo agente -> reprovado" 1 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES" --paralelo
+rm "$R/feito.txt"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
