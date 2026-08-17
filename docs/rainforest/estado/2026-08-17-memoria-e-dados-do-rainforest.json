@@ -1,0 +1,36 @@
+{
+  "slug": "2026-08-17-memoria-e-dados-do-rainforest",
+  "titulo": "Memoria e dados do rainforest saem de dependencia fragil",
+  "criado_em": "2026-08-17",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-08-17-memoria-e-dados-do-rainforest.md",
+    "em": "2026-08-17"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-08-17-memoria-e-dados-do-rainforest.md",
+    "tarefas": 13,
+    "paralelas": [
+      1,
+      8,
+      13
+    ],
+    "em": "2026-08-17"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
