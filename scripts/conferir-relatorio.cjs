@@ -72,9 +72,26 @@ const PADROES = [
   },
   {
     id: 'credencial',
-    re: /\b(senha|password|api[_-]?key|apikey|secret|token|authorization)\s*[:=]\s*["']?[^\s"']{4,}/gi,
+    re: /\b(senha|password|api[_-]?key|apikey|secret|token|authorization)\s*[:=]\s*["']?(\S+)/gi,
     o_que: 'credencial atribuída a uma chave',
     faca: 'nunca cole credencial em relatório, nem revogada — troque por `<redigido>`',
+    // O `i` vale para a CHAVE, e não é negociável: `API_KEY:` e `SENHA:` são as
+    // formas mais comuns em log e config, e padrão case-sensitive fica cego para
+    // as duas. Quem separa prosa de segredo é o `so_se`, em código — a distinção
+    // não cabe na mesma regex que ignora caixa.
+    //
+    // 2026-08-17: a palavra `token` seguida de dois-pontos e prosa comum ("Regua
+    // de orcamento de token: medir a abertura antes de comprimir...") recusou um
+    // relatório legítimo e obrigou a truncar a evidência que ele existia para
+    // mostrar. A liberação é estreita de propósito: valor de palavra curta, toda
+    // minúscula, E a linha seguindo com mais palavras. Dúvida captura — valor
+    // sozinho na linha continua recusado, mesmo minúsculo.
+    so_se: (m, linha) => {
+      const valor = m[2].replace(/^["']+/, '');
+      const prosaCurta = /^[a-zà-ú]{1,12}$/.test(valor);
+      const depois = linha.slice(m.index + m[0].length).trim().split(/\s+/).filter(Boolean);
+      return !(prosaCurta && depois.length >= 2);
+    },
   },
   {
     id: 'chave-conhecida',
@@ -97,7 +114,21 @@ function conferir(texto) {
     const linhas = texto.split('\n');
     linhas.forEach((linha, i) => {
       p.re.lastIndex = 0;
-      if (p.re.test(linha)) {
+      let bateu;
+      if (p.so_se) {
+        // Padrão com `so_se` decide olhando o match inteiro e a linha, então aqui
+        // é `exec` e não `test`: um único match liberado não pode liberar a linha,
+        // e um único match capturado já a recusa.
+        bateu = false;
+        let m;
+        while ((m = p.re.exec(linha)) !== null) {
+          if (p.so_se(m, linha)) { bateu = true; break; }
+          if (m.index === p.re.lastIndex) p.re.lastIndex += 1;
+        }
+      } else {
+        bateu = p.re.test(linha);
+      }
+      if (bateu) {
         achados.push({ id: p.id, linha: i + 1, o_que: p.o_que, faca: p.faca, pode_ser_falso: !!p.pode_ser_falso });
       }
     });

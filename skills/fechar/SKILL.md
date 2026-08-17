@@ -89,6 +89,10 @@ node scripts/estado.cjs marcar --slug <slug> --estagio fechar --status ok \
 `acao` é a resposta que o usuário deu no passo 4 — nunca a que pareceria mais
 razoável.
 
+O `marcar ... fechar ok` grava o estado no JSON, sujando o `git status`. Se
+houver pendência, o commit se repete: os passos 1 a 3 fizeram sua parte, e o
+estágio só termina com a árvore limpa.
+
 ## Condição de parada
 
 Árvore suja com algo alheio ao trabalho: pare e mostre, nunca commite por
