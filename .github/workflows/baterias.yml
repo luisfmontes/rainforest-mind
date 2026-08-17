@@ -88,17 +88,20 @@ jobs:
 
       - name: Identidade git — o runner nao tem, a maquina do Luis tem
         run: |
-          # Varias baterias montam repo de sandbox e commitam nele. As que setam
-          # `user.email` por repo funcionam em qualquer lugar; as que NAO setam
-          # passavam so porque a maquina do dono tinha identidade global. Sem ela,
-          # `git commit` sai 128 "Author identity unknown" e a bateria fica vermelha
-          # por um motivo que nao tem nada a ver com o que ela testa.
+          # Rede, nao conserto. Isto entrou apostando que era a causa das baterias
+          # vermelhas — NAO era: com o step no lugar, as mesmas 4 continuaram
+          # vermelhas (run 32052513910). As causas reais estao no corpo do PR #17.
           #
-          # Isto aqui e ambiente legitimo, nao remendo: identidade de commit e
-          # configuracao de maquina, nao assercao de teste. O que NAO se resolve
-          # deste lado e bateria que le dado VIVO do usuario (~/.rainforest, FOCO.md
-          # real) — isso e acoplamento da bateria, e plantar dado falso no runner
-          # so esconderia. Ver o corpo do PR.
+          # Fica porque a afirmacao continua verdadeira e o custo e zero: o runner
+          # nao tem `user.email` global, e hoje toda bateria que commita seta a
+          # identidade por repo. No dia em que uma esquecer, sem isto aqui ela sai
+          # `128 Author identity unknown` — falha que nao diz nada sobre o que a
+          # bateria testa. Identidade de commit e ambiente de maquina, entao o
+          # lugar dela e o workflow.
+          #
+          # O que este step NAO faz, de proposito: plantar `~/.rainforest` ou
+          # FOCO.md sinteticos. Isso deixaria o CI verde alimentando as baterias
+          # com o acoplamento que elas nao deviam ter.
           git config --global user.email "ci@rainforest.invalid"
           git config --global user.name "CI das baterias"
           git config --global init.defaultBranch master # o mesmo default da maquina do Luis (unset la tambem)
