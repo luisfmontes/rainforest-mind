@@ -151,14 +151,202 @@ function checarWorktrees() {
 // ---------------------------------------------------------------- 6. plugin vs repo
 // O achado de 2026-08-11: 18 commits de atraso, e nada do que foi construido
 // naquele dia valia numa sessao nova.
+//
+// O achado de 2026-08-17: a checagem voltou a mentir, e desta vez com a resposta
+// MAIS SAUDAVEL do painel. Rodando a copia instalada, ela imprimia
+// "rodando direto do repo (nenhuma copia instalada nesta config)" — enquanto o
+// codigo que executava estava 6 commits atras, entre eles o proprio conserto do
+// radar multi-janela. Medido no mesmo minuto, na mesma maquina, na mesma config:
+//
+//   $ (cd <cache>/0.65.0 && node scripts/saude.cjs)
+//     OK     plugin instalado: rodando direto do repo (nenhuma copia instalada...)
+//   $ (cd <repo> && CLAUDE_CONFIG_DIR=<mesma> node scripts/saude.cjs)
+//     AVISO  plugin instalado: ... 6 commit(s) atras (a78132b vs 14dc7ad)
+//
+// Tres defeitos somados, e cada um sozinho ja bastava para o silencio:
+//
+//   1. O NOME do plugin saia de `path.basename(RAIZ_CODIGO)`. Rodando do cache
+//      versionado (`plugins/cache/<mkt>/<plugin>/<versao>/`), o basename e a
+//      VERSAO — "0.65.0" —, entao o clone procurado era
+//      `plugins/marketplaces/0.65.0`, que nunca existe. A ausencia caia no ramo
+//      de sucesso. Nome de plugin sai do MANIFESTO, que e onde ele e declarado;
+//      basename e o nome da pasta, e pasta se renomeia.
+//   2. So UMA config dir era olhada (`CLAUDE_CONFIG_DIR || ~/.claude`). Esta
+//      maquina tem duas (`~/.claude` = trabalho, `~/.claude-personal` = pessoal)
+//      com o plugin habilitado nas duas, e a divergencia silenciosa entre elas ja
+//      tinha custado as regras da CLAUDE.md uma vez.
+//   3. Rodando do cache, RAIZ_CODIGO nao e repo git — nao ha com o que comparar.
+//      A resposta certa ali e dizer que a pergunta nao pode ser feita daqui, nao
+//      responder "esta tudo bem". Medidor que nao sabe dizer "nao sei" e a mesma
+//      familia do `? commit(s) atras` de 2026-08-11.
+//
+// E o que EXECUTA e o cache, nao o clone: sao dois artefatos independentes, e o
+// `installed_plugins.json` e quem sabe qual versao/commit foi instalada. O clone
+// pode ter sido atualizado hoje (foi, as 13:41) sem o install acompanhar.
+
+/**
+ * Nome e versao do plugin pelo MANIFESTO, com o basename so como ultimo recurso.
+ *
+ * O fallback existe para fonte sem manifesto (a bateria monta uma), e nao para o
+ * caso do cache: la o manifesto existe e e ele que da a resposta certa.
+ */
+function manifestoDoPlugin(raiz) {
+  try {
+    const m = JSON.parse(fs.readFileSync(path.join(raiz, '.claude-plugin', 'plugin.json'), 'utf8'));
+    if (m && typeof m.name === 'string' && m.name.trim()) {
+      return { nome: m.name.trim(), versao: typeof m.version === 'string' ? m.version : null };
+    }
+  } catch { /* sem manifesto legivel: cai no basename */ }
+  return { nome: path.basename(raiz), versao: null };
+}
+
+/**
+ * Config dirs do harness a inspecionar.
+ *
+ * `CLAUDE_CONFIG_DIR` posto no ambiente e uma DECLARACAO — "a config e esta" —, e
+ * quando ele existe a varredura para nele. Isso nao e detalhe: e o que mantem a
+ * bateria HERMETICA. Varrer a home de qualquer jeito faria o teste ler as config
+ * dirs reais de quem roda, e o resultado passaria a depender da maquina do dono —
+ * exatamente o que a bateria deste repo deixou de aceitar em 2026-08-17.
+ *
+ * Sem a variavel, varre a home: `.claude` e `.claude-*` que tenham `plugins/`. O
+ * discriminador e o `plugins/`, nao o nome — `.claude-mem` e `.claude-flow` casam
+ * o prefixo e sao de outros programas (a mesma armadilha ja documentada na
+ * checagem de autocompact).
+ */
+function configDirsDoHarness() {
+  if (process.env.CLAUDE_CONFIG_DIR) return [path.resolve(process.env.CLAUDE_CONFIG_DIR)];
+  const home = process.env.USERPROFILE || process.env.HOME || '';
+  if (!home) return [];
+  try {
+    return fs.readdirSync(home)
+      .filter((n) => n === '.claude' || n.startsWith('.claude-'))
+      .map((n) => path.join(home, n))
+      .filter((d) => fs.existsSync(path.join(d, 'plugins')))
+      .map((d) => path.resolve(d));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * As instalacoes registradas de um plugin numa config dir.
+ *
+ * O `installed_plugins.json` e o unico lugar que diz QUAL versao esta instalada e
+ * de que commit ela saiu — o cache em si nao e repo git e nao sabe se responder.
+ * A chave e `<plugin>@<marketplace>`, e o mesmo plugin pode ter mais de uma
+ * entrada (escopo `user` e escopo `local` por projeto).
+ */
+function instalacoesRegistradas(configDir, nome) {
+  let registro;
+  try {
+    registro = JSON.parse(fs.readFileSync(path.join(configDir, 'plugins', 'installed_plugins.json'), 'utf8'));
+  } catch {
+    return [];
+  }
+  const mapa = (registro && registro.plugins) || {};
+  const saida = [];
+  for (const [chave, lista] of Object.entries(mapa)) {
+    if (chave.split('@')[0] !== nome) continue;
+    for (const item of Array.isArray(lista) ? lista : []) {
+      if (item && item.installPath) saida.push({ chave, ...item });
+    }
+  }
+  return saida;
+}
+
 function checarVersaoInstalada() {
-  const configDir = process.env.CLAUDE_CONFIG_DIR
-    || path.join(process.env.USERPROFILE || process.env.HOME || '', '.claude');
-  const nome = path.basename(RAIZ_CODIGO);
-  const instalado = path.join(configDir, 'plugins', 'marketplaces', nome);
-  if (!fs.existsSync(instalado)) {
+  const { nome, versao: versaoRepo } = manifestoDoPlugin(RAIZ_CODIGO);
+
+  // Sem repo git sob os pes, a comparacao nao existe — e dizer isso e a resposta,
+  // nao um detalhe de implementacao. Este e o ramo em que a versao anterior
+  // imprimia "rodando direto do repo" e encerrava o assunto.
+  const dentroDeGit = rodar('git', ['rev-parse', '--is-inside-work-tree'], { cwd: RAIZ_CODIGO });
+  if (dentroDeGit.status !== 0 || dentroDeGit.out !== 'true') {
+    return aviso('plugin instalado',
+      `rodando a copia INSTALADA (${RAIZ_CODIGO}${versaoRepo ? `, versao ${versaoRepo}` : ''}), que nao e repo git`,
+      'daqui nao da para saber se ha codigo novo. Rode o `/saude` de dentro do repo do plugin');
+  }
+
+  const dirs = configDirsDoHarness();
+  const relatos = dirs
+    .map((cfg) => avaliarConfigDir(cfg, nome, versaoRepo))
+    .filter(Boolean);
+
+  if (!relatos.length) {
     return ok('plugin instalado', 'rodando direto do repo (nenhuma copia instalada nesta config)');
   }
+
+  // Prefixo so quando ha mais de uma config dir com o plugin: com uma so, ele
+  // seria ruido em toda linha.
+  const rotular = (r) => (relatos.length > 1 ? `[${path.basename(r.dir)}] ${r.detalhe}` : r.detalhe);
+  const piores = ['alerta', 'aviso', 'ok'];
+  const nivel = piores.find((n) => relatos.some((r) => r.nivel === n)) || 'ok';
+  const relevantes = nivel === 'ok' ? relatos : relatos.filter((r) => r.nivel === nivel);
+  const detalhe = relevantes.map(rotular).join(' | ');
+  const acao = relevantes.map((r) => r.acao).filter(Boolean)[0];
+
+  if (nivel === 'alerta') return alerta('plugin instalado', detalhe, acao);
+  if (nivel === 'aviso') return aviso('plugin instalado', detalhe, acao);
+  return ok('plugin instalado', detalhe);
+}
+
+/**
+ * Avalia UMA config dir: o clone do marketplace e a instalacao que executa.
+ *
+ * Devolve `null` quando o plugin nao esta nessa config dir — ausencia nao e achado.
+ */
+function avaliarConfigDir(configDir, nome, versaoRepo) {
+  const instalado = path.join(configDir, 'plugins', 'marketplaces', nome);
+  const instalacoes = instalacoesRegistradas(configDir, nome);
+  if (!fs.existsSync(instalado) && !instalacoes.length) return null;
+
+  const doInstall = avaliarInstalacoes(instalacoes, versaoRepo, nome);
+  if (!fs.existsSync(instalado)) {
+    return doInstall || { dir: configDir, nivel: 'ok', detalhe: 'instalacao em dia com o repo' };
+  }
+  const doClone = avaliarClone(instalado, nome);
+  // Aviso do install vem junto do clone: sao artefatos diferentes, e o clone em
+  // dia com o install atrasado e justamente o caso que ninguem procura.
+  if (doInstall && doClone.nivel === 'ok') return { ...doInstall, dir: configDir };
+  if (doInstall && doClone.nivel !== 'ok') {
+    return { ...doClone, dir: configDir, detalhe: `${doClone.detalhe}; ${doInstall.detalhe}` };
+  }
+  return { ...doClone, dir: configDir };
+}
+
+/**
+ * Compara o que EXECUTA (cache versionado) com o repo.
+ *
+ * Devolve `null` quando nao ha divergencia — o silencio aqui e informativo, porque
+ * o chamador so fala de install quando ha o que dizer.
+ */
+function avaliarInstalacoes(instalacoes, versaoRepo, nome) {
+  if (!instalacoes.length) return null;
+  const atras = [];
+  for (const i of instalacoes) {
+    const partes = [];
+    if (versaoRepo && i.version && i.version !== versaoRepo) {
+      partes.push(`versao ${i.version} instalada contra ${versaoRepo} no repo`);
+    }
+    if (i.gitCommitSha) {
+      const n = rodar('git', ['rev-list', '--count', `${i.gitCommitSha}..HEAD`], { cwd: RAIZ_CODIGO });
+      // Comando que falha = commit desconhecido aqui. Nao vira contagem nem
+      // interrogacao: vira a frase que descreve o que se sabe.
+      if (n.status === 0 && Number(n.out) > 0) partes.push(`${n.out} commit(s) atras`);
+      else if (n.status !== 0) partes.push(`instalada de um commit que este repo nao conhece (${i.gitCommitSha.slice(0, 7)})`);
+    }
+    if (partes.length) atras.push(partes.join(', '));
+  }
+  if (!atras.length) return null;
+  return {
+    nivel: 'aviso',
+    detalhe: `o que EXECUTA esta atras: ${[...new Set(atras)].join('; ')}`,
+    acao: `rode: claude plugin update ${nome} — e abra uma janela NOVA, o efeito nao alcanca as abertas`,
+  };
+}
+
+function avaliarClone(instalado, nome) {
   // O CONTEÚDO do clone é o que carrega — e não bastava comparar commits.
   //
   // Em 2026-08-11 diagnostiquei isto errado duas vezes seguidas. Primeiro culpei o
@@ -167,6 +355,14 @@ function checarVersaoInstalada() {
   // plugin por causa disso. A medição derrubou as duas: o clone estava em `39d6510`
   // com as 10 skills, o cache tinha 3 skills congeladas de 10/08 às 12:41, e o usuario
   // via as 10. Quem carrega é o clone; o cache é outra coisa.
+  //
+  // CORREÇÃO de 2026-08-17 — a conclusão acima vale para a PALETA de skills, e só
+  // para ela. O que EXECUTA sai do cache versionado: a injeção de abertura desta
+  // máquina cita o próprio caminho de onde o hook rodou, e ele era
+  // `plugins/cache/rainforest-mind/rainforest-mind/0.65.0/skills/...`. Hook, script
+  // e agente vêm de lá. Por isso o cache agora é medido também, pelo
+  // `installed_plugins.json` (ver `avaliarInstalacoes`), e não substituído por ele:
+  // clone e install atrasam de forma independente.
   //
   // Comparar commit não basta porque um clone pode estar no commit certo e ainda
   // não ter sido re-escaneado. O sinal barato e visível é o CONTEÚDO: nome de skill
@@ -241,20 +437,26 @@ function checarVersaoInstalada() {
   // lugar, o clone está preso a uma história que não existe mais, e o comando de
   // atualizar não resolve isso.
   if (semParentesco) {
-    return alerta('plugin instalado',
-      `o clone esta numa historia sem parentesco com este repo (${la.out.slice(0, 7)} nao existe aqui)`,
-      `o \`marketplace update\` NAO reconcilia isso. Reaponte o clone:\n        `
-      + `git -C "${instalado}" fetch origin && git -C "${instalado}" reset --hard origin/main`);
+    return {
+      nivel: 'alerta',
+      detalhe: `o clone esta numa historia sem parentesco com este repo (${la.out.slice(0, 7)} nao existe aqui)`,
+      acao: `o \`marketplace update\` NAO reconcilia isso. Reaponte o clone:\n        `
+        + `git -C "${instalado}" fetch origin && git -C "${instalado}" reset --hard origin/main`,
+    };
   }
   if (faltando.length) {
-    return alerta('plugin instalado', `carregado sem ${faltando.length} skill(s): ${faltando.join(', ')}`
-      + (atrasoCommit ? `; ${atrasoCommit}` : ''), atualiza);
+    return {
+      nivel: 'alerta',
+      detalhe: `carregado sem ${faltando.length} skill(s): ${faltando.join(', ')}`
+        + (atrasoCommit ? `; ${atrasoCommit}` : ''),
+      acao: atualiza,
+    };
   }
   if (atrasoCommit) {
     // Todas as skills estão lá, mas há código novo (hook, script, regra) por vir.
-    return aviso('plugin instalado', `todas as skills presentes, mas ${atrasoCommit}`, atualiza);
+    return { nivel: 'aviso', detalhe: `todas as skills presentes, mas ${atrasoCommit}`, acao: atualiza };
   }
-  ok('plugin instalado', `as ${skillsLa.length} skills do repo estao no que carrega`);
+  return { nivel: 'ok', detalhe: `as ${skillsLa.length} skills do repo estao no que carrega` };
 }
 
 // ---------------------------------------------------------------- 7. claude-mem
