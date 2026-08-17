@@ -123,12 +123,32 @@ class Conferencia {
 }
 
 /** Compara caminho sem tropecar em barra invertida, maiuscula e link. */
+// `realpathSync.native` primeiro, e nao por gosto: no Windows o `realpathSync`
+// puro do Node NAO expande nome curto 8.3 — ele devolve `C:/Users/RUNNER~1/...`
+// como recebeu. O git, do outro lado, sempre responde na forma longa
+// (`C:/Users/runneradmin/...`). Comparar as duas por texto reprova uma entrega
+// correta, e esta funcao e exatamente quem decide se o worktree do briefing e o
+// worktree de verdade — ou seja, o falso "nao integre" da regra 12 nascia aqui.
+//
+// Medido em 2026-08-17 (Issue #16), mesmo diretorio pelas duas grafias:
+//   realpathSync         curto -> .../tmp~1.pcq/uma-pa~1          <- nao bate
+//   realpathSync         longo -> .../tmp.pcqqh0lbsn/uma-pasta-...
+//   realpathSync.native  curto -> .../tmp.pcqqh0lbsn/uma-pasta-... <- bate
+//   realpathSync.native  longo -> .../tmp.pcqqh0lbsn/uma-pasta-...
+//
+// A cadeia de fallback existe porque `.native` propaga erro do SO em caminho que
+// nao existe (e em alguns caminhos de rede), e aqui caminho inexistente tem de
+// virar comparacao textual, nao excecao.
 function norm(p) {
   let alvo;
   try {
-    alvo = fs.realpathSync(p);
+    alvo = fs.realpathSync.native(p);
   } catch {
-    alvo = path.resolve(p);
+    try {
+      alvo = fs.realpathSync(p);
+    } catch {
+      alvo = path.resolve(p);
+    }
   }
   return alvo.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
 }
