@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-0.65.0-1e5c3f?style=flat-square" alt="versão 0.65.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-0.66.0-1e5c3f?style=flat-square" alt="versão 0.66.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/revis%C3%A3o-bimestral-9fd8ba?style=flat-square" alt="revisão bimestral">
 </p>
@@ -158,6 +158,41 @@ conversa sai dele, o aviso é **uma frase, sem julgamento, com escolha**:
 Sem sermão e sem repetir. Três coisas que o desvio *não* dispara: trabalhar em
 paralelo de propósito, tocar uma frente que já está listada como compromisso, e
 foco de trabalho fora do horário de trabalho.
+
+Para decidir se cala, o radar depende de dois dados, ambos opcionais:
+
+- **`Pastas:` no FOCO.md** — lista separada por vírgula das pastas onde o foco
+  está sendo trabalhado. Exemplo: `Pastas: C:/projeto-a, C:/projeto-a/src`.
+  O radar usa isso para saber se a janela que está aberta é a do foco, mesmo
+  que não seja a janela da sessão atual. Sem este campo, o radar cobra desvio
+  mesmo que a mesma clareira esteja viva em outra janela.
+
+- **`expediente` no `config.json`** — dias da semana e horário de trabalho.
+  Forma: `"expediente": {"dias": [1,2,3,4,5], "de": "08:00", "ate": "18:00"}`.
+  Dias usa a convenção de `Date.getDay()` — 0 = domingo, 1 = segunda, etc.
+  O radar usa isso para saber se é hora de trabalho ou tempo pessoal.
+  Sem este campo, o radar cobra desvio fora do horário, mesmo que o foco seja
+  marcado como `[trabalho]`.
+
+Faltando qualquer um dos dois, o radar **continua cobrando** e o hook anuncia o
+que falta, com o efeito prático junto — assim:
+
+```
+Pastas: ausente no FOCO.md — o radar vai cobrar desvio mesmo com o foco
+aberto em outra janela.
+```
+
+Isso é **falha fechada**, e é deliberado: um radar que emudece por falta de
+configuração é indetectável, e você nunca saberia que ele parou. Um radar que
+cobra demais você percebe e reclama — foi exatamente assim que este defeito
+apareceu. Anúncio e veredito são mutuamente exclusivos: não há como julgar sem
+dado.
+
+**A isenção cala só o aviso de desvio de escopo.** O aviso de prazo — vencido
+ou a ≤2 dias — continua saindo, sempre. São coisas diferentes: saber num sábado
+que algo vence na segunda é informação e não custa nada; ser cobrado no sábado
+por estar lendo outra coisa é o que incomoda. Uma isenção que silenciasse o
+radar inteiro trocaria um defeito por outro.
 
 E quando o ambiente **impede** uma regra — permissão negada, hook fora do ar,
 ferramenta ausente —, ele diz numa linha em vez de falhar em silêncio. Regra

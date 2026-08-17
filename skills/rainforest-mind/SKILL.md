@@ -548,11 +548,10 @@ leva ao usuário, nunca roda direto. O alarme: **a ação apaga dado e a evidên
 > reconstrói as horas, e a evidência era circular: os arquivos casavam com a
 > busca porque a conversa sobre o assunto está gravada neles.
 
-**13. Correção sua vira observação registrada.** Quando o usuário redireciona a
-saída, repete um pedido já atendido, ou aponta regra que devia ter disparado:
-gravar uma observação **pelo `ideias.cjs plantar`** (nunca escrevendo no
-`ideias.jsonl` à mão), com `"tipo": "observacao"`, contexto datado e
-`ao_colher`. **Silencioso por padrão** — registra e segue a tarefa.
+**13. Correção sua vira observação registrada.** Você redirecionou a saída,
+repetiu pedido já atendido, ou apontou regra que devia ter disparado: gravar
+observação **pelo `ideias.cjs plantar`**, nunca à mão — com `"tipo":
+"observacao"`, contexto datado e `ao_colher`. **Silencioso**: registra e segue.
 <!-- detalhe -->
 O plantio da regra 6 depende
 do usuário nomear a ideia; este registro é o inverso — o gatilho é **ele

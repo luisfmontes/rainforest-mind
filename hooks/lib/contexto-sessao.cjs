@@ -1,4 +1,6 @@
 'use strict';
+const path = require('path');
+
 /**
  * contexto-sessao.cjs — motor puro do SessionStart (foco-session-start.cjs).
  *
@@ -556,7 +558,7 @@ function priorizarFoco(focoResumido, teto) {
  * Sessão de SUBAGENTE, não janela do usuario.
  *
  * Subagente despachado com `isolation: "worktree"` abre sessão própria, com cwd
- * dentro de `.claude/worktrees/`. Ela entrava no radar como se fosse mais uma
+ * dentro de `.claude/worktrees/agent-...`. Ela entrava no radar como se fosse mais uma
  * janela paralela dele — e a regra 17 mede o paralelismo DELE, não o meu rastro.
  *
  * Dois danos, os dois medidos em 2026-08-11: o radar mentia sobre quantas
@@ -564,10 +566,19 @@ function priorizarFoco(focoResumido, teto) {
  * naquele dia a injeção chegou a 7992 B de 8000, com o radar em 676 B, e o prazo
  * mais próximo já tinha caído fora da injeção uma vez. Quanto mais eu despacho,
  * menos foco chegava.
+ *
+ * AJUSTE 2026-08-14: O filtro foi estreitado para exigir o prefixo `agent-` no
+ * segmento imediatamente após `worktrees/`. A razão: o usuario pode ter worktrees
+ * de seus próprios projetos (ex.: gestao-projetos-template) dentro de `.claude/worktrees/`,
+ * e essas NÃO devem ser filtradas. Apenas worktrees criadas pelo harness
+ * (nomeadas `agent-<hash>`) devem sair do radar. O teste exato é:
+ * `/.../worktrees/agent-` — não substring, mas limite de segmento.
  */
 function ehWorktreeDeAgente(cwd) {
   if (!cwd) return false;
-  return /[\\/]\.claude[\\/]worktrees([\\/]|$)/.test(cwd);
+  // Aceita barras normais (/) e invertidas (\), e exige que o segmento
+  // imediatamente após "worktrees" comece com "agent-".
+  return /[\\/]\.claude[\\/]worktrees[\\/]agent-/.test(cwd);
 }
 
 function sessoesVivas(state, agora, janelaMs, vivo) {
@@ -770,11 +781,11 @@ ${regras}
   // sessão paralela, o `## Dependências` colava na última linha do foco e virava
   // continuação do texto dele. Normalizar aqui vale para qualquer combinação de
   // blocos presentes ou ausentes.
-  const rodape = '\n\n' + [o.sessoes, o.revisao, o.dependencias]
+  const blocoRodape = [o.veredito, o.sessoes, o.revisao, o.dependencias]
     .filter(Boolean)
-    .map((bloco) => String(bloco).replace(/^\n+/, '').trimEnd())
-    .concat(`Arquivos de apoio: ${o.root || ''}\\FOCO.md e ${o.root || ''}\\ideias.jsonl (uma ideia por linha)`)
-    .join('\n\n');
+    .map((bloco) => String(bloco).replace(/^\n+/, '').trimEnd());
+  blocoRodape.push(`Arquivos de apoio: ${o.root || ''}\\FOCO.md e ${o.root || ''}\\ideias.jsonl (uma ideia por linha)`);
+  const rodape = '\n\n' + blocoRodape.join('\n\n');
 
   const fixo = Buffer.byteLength(cabecalho + rodape, 'utf8');
   const sobra = TETOS.ORCAMENTO_BYTES - fixo;
@@ -801,6 +812,253 @@ ${regras}
   return travarOrcamento(cabecalho + foco + rodape);
 }
 
+/**
+ * Extrai a lista de pastas do campo "Pastas:" do FOCO.md.
+ *
+ * Precedente de extração por regex do FOCO.md (hooks/foco-session-start.cjs:196):
+ * `Ociosidade máxima:\s*(\d+)\s*min`. Mesmo padrão aqui.
+ *
+ * O campo "Pastas:" é uma linha com lista separada por vírgula, que o usuário
+ * escreve no topo do FOCO.md. Exemplo: `Pastas: C:/a, C:/b`.
+ *
+ * @param {string} textoDoFoco conteúdo do FOCO.md
+ * @returns {string[]} array de caminhos aparados, ou [] se o campo não existe
+ */
+function pastasDoFoco(textoDoFoco) {
+  const texto = String(textoDoFoco || '');
+  // `[ \t]*` (nunca `\s*`) entre os dois-pontos e o conteúdo: `\s` inclui quebra
+  // de linha, e um `Pastas:` seguido de linha em branco (a forma exata que o
+  // `scripts/setup.cjs` semeia) atravessava para o próximo heading não-vazio —
+  // `pastasDoFoco("Pastas:\n\n## Ativo\n")` devolvia `["## Ativo"]` em vez de `[]`,
+  // e a isenção 1 (D6/regra 17) tratava isso como pasta configurada de verdade.
+  const match = texto.match(/^Pastas:[ \t]*(.*)$/m);
+  if (!match || !match[1].trim()) return [];
+  return match[1].split(',').map((s) => s.trim()).filter(Boolean);
+}
+
+/**
+ * Decide se um timestamp cai dentro do expediente declarado no config.
+ *
+ * A decisão é crucial para a regra 3 (D6): "sem data, cobra — e a ausência se
+ * anuncia". Devolver false (não é expediente) quando não há config provocaria
+ * falha aberta — o radar não cobraria e ninguém saberia que o dado desapareceu.
+ * Devolver null (não sei) permite ao chamador distinguir entre "não é expediente"
+ * (cobrança justificada) e "não tenho dado" (anúncio). A diferença impede silêncio.
+ *
+ * Expediente é dias da semana + faixa horária, sem feriado (D8). Forma esperada:
+ * `{"dias": [1,2,3,4,5], "de": "08:00", "ate": "18:00"}`.
+ * Dias usa convenção de Date.getDay(): 0 = domingo, 1 = segunda, ..., 6 = sábado.
+ *
+ * @param {Date} agora timestamp a ser avaliado
+ * @param {object} config contém {expediente: {...}} opcional
+ * @returns {boolean|null} true/false se há config, null se expediente está ausente
+ */
+function dentroDoExpediente(agora, config) {
+  if (!config || !config.expediente) return null;
+
+  const exp = config.expediente;
+  const dia = agora.getDay();
+  const hora = String(agora.getHours()).padStart(2, '0');
+  const minuto = String(agora.getMinutes()).padStart(2, '0');
+  const agoras = `${hora}:${minuto}`;
+
+  // Dia da semana não está na lista de trabalho.
+  if (!Array.isArray(exp.dias) || !exp.dias.includes(dia)) return false;
+
+  // Hora está fora da faixa.
+  if (agoras < exp.de || agoras >= exp.ate) return false;
+
+  return true;
+}
+
+/**
+ * Verifica se existe uma sessão viva na pasta do foco com sinal humano recente.
+ *
+ * Respostas a D7: "Foco ativo em outra janela" = sinal humano dentro da ociosidade
+ * máxima que o foco já declara. O `sessoes.json` só tem `cwd`, `prompt_ts` e `stop_ts`,
+ * então "ativa" precisa de um limiar — reusar os minutos já declarados evita inventar
+ * parâmetro.
+ *
+ * Comparação de caminho NORMALIZA separador (\ vs /) e caixa, porque `cwd` vem com as
+ * duas variações no Windows. MAS NUNCA casa por prefixo — `C:/a` não pode casar `C:/abc`.
+ *
+ * Sinal humano é o `prompt_ts` (quando o usuario digitou algo), não `stop_ts` (quando
+ * a resposta parou). Uma janela que parou há uma hora não está sendo trabalhada.
+ *
+ * @param {Array<{cwd?: string, prompt_ts?: number, stop_ts?: number}>} sessoes lista do sessoes.json
+ * @param {string[]} pastasDoFoco array de caminhos do foco
+ * @param {number} ociosidadeMin minutos de inatividade máxima (da "Ociosidade máxima" do foco)
+ * @param {number} agora timestamp de referência (Date.now())
+ * @returns {boolean} true se existe sessão no foco com sinal dentro da ociosidade; false caso contrário
+ */
+function focoAtivoEmOutraJanela(sessoes, pastasDoFoco, ociosidadeMin, agora) {
+  // Não há foco ou não há sessões = sem atividade detectada.
+  if (!pastasDoFoco || !pastasDoFoco.length) return false;
+  if (!sessoes || !sessoes.length) return false;
+
+  // Normaliza um caminho para comparação: resolve .., separador \ -> /, e minúscula.
+  // Não é substring: `C:/a` não casa `C:/abc`.
+  const normalizarCaminho = (caminho) => {
+    if (!caminho) return '';
+    // path.normalize resolve .. e .
+    const resolvido = path.normalize(caminho);
+    return resolvido.replace(/\\/g, '/').toLowerCase();
+  };
+
+  const pastasFocoNormalizadas = pastasDoFoco.map(normalizarCaminho);
+
+  for (const sessao of sessoes) {
+    const { cwd, prompt_ts } = sessao;
+    if (!cwd) continue;
+
+    const cwdNormalizado = normalizarCaminho(cwd);
+
+    // Verifica se a sessão está numa pasta do foco (igualdade exata OU subpasta).
+    // A comparação por prefixo com separador evita casar irmão com nome comum:
+    // C:/a não casa C:/abc, e .../gestao-projetos-template não casa
+    // .../gestao-projetos-template-outro.
+    const estaNoFoco = pastasFocoNormalizadas.some((pasta) => {
+      return cwdNormalizado === pasta || cwdNormalizado.startsWith(pasta + '/');
+    });
+    if (!estaNoFoco) continue;
+
+    // Sessão no foco, mas sem sinal humano registrado: não conta como ativa.
+    if (!prompt_ts) continue;
+
+    // Calcula minutos desde o último sinal (prompt_ts).
+    const minutosSinal = (agora - prompt_ts) / (1000 * 60);
+
+    // Se o sinal está dentro da ociosidade máxima, o foco está ativo em outra janela.
+    if (minutosSinal <= ociosidadeMin) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+
+/**
+ * Extrai a ociosidade máxima declarada no FOCO.md.
+ *
+ * @param {string} textoDoFoco conteúdo do FOCO.md
+ * @returns {number|null} minutos de ociosidade, ou null se não declarado
+ */
+function ociosidadeDoFoco(textoDoFoco) {
+  const texto = String(textoDoFoco || '');
+  const match = texto.match(/Ociosidade máxima:\s*(\d+)\s*min/i);
+  if (!match || !match[1]) return null;
+  return Number.parseInt(match[1], 10);
+}
+
+/**
+ * Extrai a natureza do foco ativo (trabalho ou pessoal).
+ *
+ * Lê a linha em negrito da seção "## Ativo", que declara a natureza entre colchetes.
+ * Ignora o boilerplate que explica o formato no topo do arquivo.
+ *
+ * @param {string} textoDoFoco conteúdo do FOCO.md
+ * @returns {'trabalho'|'pessoal'|null} natureza do foco ativo, ou null se não encontrada
+ */
+function naturezaDoFocoAtivo(textoDoFoco) {
+  const texto = String(textoDoFoco || '');
+  // Procura a seção "## Ativo"
+  const inicioAtivo = texto.search(/^## Ativo/m);
+  if (inicioAtivo === -1) return null;
+
+  // Procura a próxima seção (##) ou fim do texto
+  const depois = texto.slice(inicioAtivo + 8); // Pula "## Ativo"
+  const fimSecao = depois.search(/^## /m);
+  const secaoAtivo = fimSecao === -1 ? depois : depois.slice(0, fimSecao);
+
+  // Procura a linha em negrito (**....**) — pode ter conteúdo após o negrito
+  const linhaEmNegrito = secaoAtivo.match(/^\*\*.+?\*\*.*$/m);
+  if (!linhaEmNegrito) return null;
+
+  // Extrai a natureza [trabalho] ou [pessoal]
+  const natureza = linhaEmNegrito[0].match(/\[(trabalho|pessoal)\]/);
+  return natureza ? natureza[1] : null;
+}
+
+/**
+ * Computa o veredito de isenção de desvio de escopo (D10, D6 corrigido).
+ *
+ * Analisa cada isenção independentemente:
+ * - Alguma isenção DETERMINADA e SATISFEITA → emite veredito
+ * - Alguma isenção INDETERMINADA → emite anúncio daquela
+ * - Os dois PODEM sair juntos quando tratam de isenções diferentes
+ * - Nenhuma satisfeita e nenhuma indeterminada → string vazia
+ *
+ * Isenção aplica quando:
+ * - O foco está sendo trabalhado em outra janela agora (regra 17), OU
+ * - É tempo pessoal e o foco é de trabalho (regra 3)
+ *
+ * @param {string} textoDoFoco conteúdo do FOCO.md
+ * @param {Array<{cwd?: string, prompt_ts?: number, stop_ts?: number}>} sessoes lista do sessoes.json
+ * @param {object} config contém {expediente: {...}} opcional
+ * @param {number} agora timestamp de referência (Date.now())
+ * @returns {string} veredito e/ou anúncio, ou string vazia se nenhum aplica
+ */
+function computarVeredito(textoDoFoco, sessoes, config, agora) {
+  const texto = String(textoDoFoco || '');
+
+  // Extrai dados necessários
+  const pastas = pastasDoFoco(texto);
+  const expediente = config && config.expediente;
+  const ociosidade = ociosidadeDoFoco(texto);
+
+  // Natureza do foco ativo, não boilerplate
+  const natureza = naturezaDoFocoAtivo(texto);
+  const ehFocoTrabalho = natureza === 'trabalho';
+
+  // Analisa cada isenção INDEPENDENTEMENTE (D6 corrigido)
+  const vereditos = [];
+  const anuncios = [];
+
+  // ISENÇÃO 1: Foco ativo em outra janela (regra 17)
+  // Precisa de: Pastas: configurado E Ociosidade máxima: declarada
+  if (!pastas.length) {
+    // Indeterminada: faltam dados
+    anuncios.push('Pastas: ausente no FOCO.md — o radar vai cobrar desvio mesmo com o foco aberto em outra janela.');
+  } else if (ociosidade === null) {
+    // Indeterminada: faltam dados (ociosidade)
+    anuncios.push('Ociosidade máxima: ausente no FOCO.md — o radar não pode determinar se o foco está ativo em outra janela.');
+  } else {
+    // Determinada: pode decidir
+    if (focoAtivoEmOutraJanela(sessoes, pastas, ociosidade, agora)) {
+      vereditos.push('foco ativo em outra janela');
+    }
+  }
+
+  // ISENÇÃO 2: Tempo pessoal (regra 3)
+  // Precisa de: expediente no config E foco [trabalho]
+  if (ehFocoTrabalho && expediente === undefined) {
+    // Indeterminada: faltam dados (expediente)
+    anuncios.push('expediente: ausente no config.json — o radar vai cobrar desvio fora do expediente (tempo pessoal).');
+  } else if (ehFocoTrabalho && expediente !== undefined) {
+    // Determinada: pode decidir
+    const dentro = dentroDoExpediente(new Date(agora), config);
+    if (dentro === false) {
+      // false = não é expediente, logo é tempo pessoal
+      vereditos.push('tempo pessoal');
+    }
+  }
+  // Se ehFocoTrabalho = false, esta isenção não se aplica (foco não é de trabalho)
+
+  // Monta a resposta final
+  const linhas = [];
+
+  // Veredito: se há motivos aplicáveis
+  if (vereditos.length) {
+    linhas.push(`**NÃO cobrar desvio de escopo nesta sessão** — ${vereditos.join(' e ')}.`);
+  }
+
+  // Anúncios: um por isenção indeterminada (podem sair com veredito ou sozinhos)
+  linhas.push(...anuncios);
+
+  return linhas.join('\n');
+}
+
 module.exports = {
   TETOS,
   filtrarRegras,
@@ -818,4 +1076,10 @@ module.exports = {
   resumirSessoes,
   travarOrcamento,
   montarContexto,
+  pastasDoFoco,
+  dentroDoExpediente,
+  focoAtivoEmOutraJanela,
+  computarVeredito,
+  ociosidadeDoFoco,
+  naturezaDoFocoAtivo,
 };
