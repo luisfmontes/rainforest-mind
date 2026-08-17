@@ -135,5 +135,42 @@ else
 fi
 
 echo
+echo
+echo "== o til: expansao de home so no COMECO, e caminho 8.3 tem til no meio =="
+# Achado pelo CI em 2026-08-17 (Issue #16): o TEMP do runner do GitHub e
+# `C:/Users/RUNNER~1/...` na forma 8.3. O teste de `cd` nao-resolvivel era
+# /[$`~]/, que casa com til em QUALQUER posicao — entao `cd <worktree>` num
+# caminho 8.3 virava INCERTO, o conservadorismo somava o cwd principal aos alvos,
+# e o gate BARRAVA um commit legitimo dentro do worktree. Vermelho la, verde aqui,
+# porque `C:/Users/Luis` nao tem alias 8.3.
+#
+# Aqui a condicao se reproduz sem depender do 8.3 do SO: uma pasta chamada
+# literalmente `RUNNER~1`. Os dois lados sao testados de proposito — sem o par,
+# "resolveu o til" e indistinguivel de "parou de barrar til nenhum".
+TIL="$RAIZ_POSIX/RUNNER~1"; mkdir -p "$TIL"
+RT="$TIL/principal"
+git init -q "$RT"; git -C "$RT" config user.email t@t; git -C "$RT" config user.name t
+git -C "$RT" config commit.gpgsign false
+echo v1 > "$RT/a.txt"; git -C "$RT" add .; git -C "$RT" commit -qm base
+WTT="$TIL/wt"; git -C "$RT" worktree add -q -b trabalho-til "$WTT" >/dev/null 2>&1
+RTW="$(cygpath -m "$RT" 2>/dev/null || printf '%s' "$RT")"
+WTTW="$(cygpath -m "$WTT" 2>/dev/null || printf '%s' "$WTT")"
+bt() { printf '{"agent_id":"ag-1","agent_type":"executor","tool_name":"Bash","cwd":"%s","tool_input":{"command":"%s"}}' \
+  "$(esc "$2")" "$(esc "$1")"; }
+
+gate "til NO MEIO (8.3): cd worktree && git commit PASSA" 0 \
+  "$(bt "cd $WTTW && git commit -m x" "$RTW")"
+gate "til no meio: cd principal && git commit ainda BARRA" 2 \
+  "$(bt "cd $RTW && git commit -m x" "$RTW")"
+
+# O outro lado da moeda: til no COMECO continua sendo expansao de home, e
+# continua incerto. Se este par ficar verde com o anterior, a correcao e a certa;
+# se `cd ~` passar a nao barrar, o conserto virou buraco.
+gate "til no COMECO (cd ~) segue INCERTO e barra" 2 \
+  "$(bt "cd ~ && git commit -m x" "$RTW")"
+gate "til no COMECO (cd ~/algo) segue INCERTO e barra" 2 \
+  "$(bt "cd ~/algo && git commit -m x" "$RTW")"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
