@@ -52,7 +52,36 @@ function limitarBytes(texto, maxBytes, nomeDoBloco) {
 }
 
 /**
- * Formata uma observação como linha de texto.
+ * Extrai título e subtítulo de uma observação (conteúdo estruturado em markdown).
+ * Observações têm estrutura: ## Título\n\nSubtítulo\n\n### Seções...
+ *
+ * @param {string} conteudo conteúdo da observação
+ * @returns {object} {titulo, subtitulo}
+ */
+function extrairTituloESubtitulo(conteudo) {
+  if (!conteudo) return { titulo: '', subtitulo: '' };
+
+  const linhas = conteudo.split('\n').map(l => l.trim()).filter(Boolean);
+
+  // Primeira linha não vazia é o título (remove ## se existir)
+  let titulo = linhas[0] || '';
+  titulo = titulo.replace(/^#+\s*/, '').trim();
+
+  // Próxima linha não vazia que não seja cabeçalho (###, ##, etc) é o subtítulo
+  let subtitulo = '';
+  for (let i = 1; i < linhas.length; i++) {
+    if (!linhas[i].match(/^#+\s/)) {
+      subtitulo = linhas[i];
+      break;
+    }
+  }
+
+  return { titulo, subtitulo };
+}
+
+/**
+ * Formata uma observação como linha curta com título e subtítulo.
+ * Formato: [data (projeto)] título — subtítulo
  *
  * @param {object} obs observação do banco
  * @returns {string} linha formatada
@@ -63,7 +92,16 @@ function formatarObservacao(obs) {
   // criada_em é timestamp ISO; tira a hora para economizar bytes.
   const data = (criada_em || '').split('T')[0] || '';
   const proj = projeto ? ` (${projeto})` : '';
-  return `- [${data}${proj}] ${conteudo || ''}`.trim();
+
+  // Extrai título e subtítulo do conteúdo
+  const { titulo, subtitulo } = extrairTituloESubtitulo(conteudo);
+
+  // Formata como: [data (projeto)] título — subtítulo
+  let linha = `[${data}${proj}]`;
+  if (titulo) linha += ` ${titulo}`;
+  if (subtitulo) linha += ` — ${subtitulo}`;
+
+  return linha.trim();
 }
 
 /**
@@ -84,13 +122,14 @@ function montarMemoria(o) {
   // Cabeçalho do bloco.
   const cabecalho = '## Memória (corpus residentes)\n';
 
-  // Formata cada observação como linha.
+  // Formata cada observação como linha curta (título + subtítulo).
   const linhas = observacoes.map(formatarObservacao).filter(Boolean);
   const corpo = linhas.join('\n');
 
-  const rodape = '\n\n(Estas são as observações mais recentes do corpus. Use `Skill(rainforest-mind)` para buscar mais.)';
+  // Ponteiro para busca sob demanda (D11 — reduz observações residentes mas mantém acesso ao corpus).
+  const ponteiro = '\n\n(Para buscar no corpus completo: `node scripts/memoria.cjs buscar --texto <termo> --limite 5`)';
 
-  const texto = cabecalho + corpo + rodape;
+  const texto = cabecalho + corpo + ponteiro;
 
   // Teto em bytes com corte ANUNCIADO.
   return limitarBytes(texto, TETOS.MEMORIA_MAX_BYTES, 'Memória');
@@ -100,6 +139,7 @@ module.exports = {
   TETOS,
   montarMemoria,
   formatarObservacao,
+  extrairTituloESubtitulo,
   limitarBytes,
   cortarBytes,
 };

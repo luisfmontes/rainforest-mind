@@ -146,7 +146,45 @@ else
 fi
 
 echo
-echo "6. Mutação — com teto menor, o bloco deveria caber ainda mais apertado"
+echo "6. Bloco carrega múltiplas observações (D11 — revisão de decisão)"
+# Fixture: várias observações pequenas (cada uma com título e subtítulo).
+# Com título + subtítulo (~184 B por linha), devemos caber ~14 linhas no teto de 3000 B.
+OBS_MULTIPLAS="$(node -e "
+const obs = Array.from({length: 5}, (_, i) => ({
+  id: i,
+  projeto: 'rainforest',
+  conteudo: '## Observação ' + (i+1) + '\n\nSubtítulo da observação número ' + (i+1),
+  criada_em: '2026-08-17T10:' + String(i).padStart(2, '0') + ':00'
+}));
+process.stdout.write(JSON.stringify({observacoes: obs}));
+")"
+
+S="$(memoria "$OBS_MULTIPLAS")"
+
+# Verifica que o bloco tem múltiplas linhas
+NUMERO_LINHAS="$(echo "$S" | grep -c "\\[2026")"
+if [ "$NUMERO_LINHAS" -ge 5 ]; then
+  ok=$((ok+1)); echo "  ok    bloco contém 5 observações (5 linhas com [data] encontradas)"
+else
+  falhou=$((falhou+1)); echo "  FALHA bloco não tem 5 observações ($NUMERO_LINHAS encontradas)"
+fi
+
+# Verifica que títulos estão em formato curto: [data (projeto)] título — subtítulo
+if echo "$S" | grep -q "\[2026.*\] Observação.*—"; then
+  ok=$((ok+1)); echo "  ok    título das observações está em formato curto [data] título — subtítulo"
+else
+  falhou=$((falhou+1)); echo "  FALHA títulos não estão em formato esperado"
+fi
+
+# Verifica que o ponteiro de busca está presente
+if echo "$S" | grep -q "memoria.cjs buscar"; then
+  ok=$((ok+1)); echo "  ok    ponteiro de busca sob demanda presente"
+else
+  falhou=$((falhou+1)); echo "  FALHA ponteiro de busca não encontrado"
+fi
+
+echo
+echo "7. Mutação — com teto menor, o bloco deveria caber ainda mais apertado"
 # Usa node para substituir o teto.
 # Teto de 200 B é realista: aviso (~110 B) + conteúdo (~90 B).
 cat > "$RAIZ_POSIX/mutar-lib.cjs" <<'EOF'
@@ -176,6 +214,37 @@ if echo "$S" | grep -q "truncado no teto"; then
   ok=$((ok+1)); echo "  ok    aviso de corte está presente"
 else
   falhou=$((falhou+1)); echo "  FALHA aviso de corte não apareceu"
+fi
+
+echo
+echo "8. Prova que checagem sabe falhar: força 1 linha apenas, espera vermelho"
+# Substitui MEMORIA_MAX_BYTES com um valor que só cabe cabecalho + uma linha curta (~100 B)
+cat > "$RAIZ_POSIX/forcar-uma-linha.cjs" <<'EOF'
+const fs = require('fs');
+const lib = fs.readFileSync(process.env.LIB_SRC, 'utf8');
+const mutada = lib.replace(/MEMORIA_MAX_BYTES: \d+/, 'MEMORIA_MAX_BYTES: 100');
+fs.writeFileSync(process.env.LIB_DST, mutada);
+EOF
+LIB_SRC="$LIB" LIB_DST="$RAIZ_POSIX/lib-uma-linha.cjs" node "$RAIZ_POSIX/forcar-uma-linha.cjs"
+
+# Com teto de 100 B e 5 observações, só uma cabe → bloco deve ser cortado
+S="$(LIB_PATH="$RAIZ_POSIX/lib-uma-linha.cjs" OBS="$OBS_MULTIPLAS" node "$RAIZ_POSIX/driver-memoria.cjs" 2>&1)"
+NUMERO_LINHAS_UMA="$(echo "$S" | grep -c "\\[2026")"
+
+if [ "$NUMERO_LINHAS_UMA" -lt 5 ]; then
+  ok=$((ok+1)); echo "  ok    VERMELHO: com teto 100 B só $NUMERO_LINHAS_UMA linha(s) cabem (esperado < 5)"
+else
+  falhou=$((falhou+1)); echo "  FALHA checagem não consegue falhar (tinha $NUMERO_LINHAS_UMA linhas)"
+fi
+
+# Volta para teto normal: deve estar verde novamente
+S="$(memoria "$OBS_MULTIPLAS")"
+NUMERO_LINHAS_VOLTA="$(echo "$S" | grep -c "\\[2026")"
+
+if [ "$NUMERO_LINHAS_VOLTA" -ge 5 ]; then
+  ok=$((ok+1)); echo "  ok    VERDE: com teto 3000 B voltam as 5 observações ($NUMERO_LINHAS_VOLTA encontradas)"
+else
+  falhou=$((falhou+1)); echo "  FALHA checagem não voltou ao verde ($NUMERO_LINHAS_VOLTA encontradas)"
 fi
 
 echo
