@@ -95,20 +95,20 @@ fi
 
 echo
 echo "== 4. Verificar que index foi populado com dados derivados =="
-# Contar linhas nas tabelas derivadas
+# Contar linhas nas tabelas derivadas — SEM 2>/dev/null para deixar erros visíveis
 indice_foco_count=$(node -e "
 const sqlite3 = require('node:sqlite');
 const db = new sqlite3.DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
 const r = db.prepare('SELECT COUNT(*) as c FROM indice_foco').get();
 process.stdout.write(String(r.c || 0));
-" 2>/dev/null || echo "0")
+")
 
 indice_ideias_count=$(node -e "
 const sqlite3 = require('node:sqlite');
 const db = new sqlite3.DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
 const r = db.prepare('SELECT COUNT(*) as c FROM indice_ideias').get();
 process.stdout.write(String(r.c || 0));
-" 2>/dev/null || echo "0")
+")
 
 if [ "$indice_foco_count" -gt "0" ] && [ "$indice_ideias_count" -gt "0" ]; then
   ok=$((ok+1)); echo "  ok   tabela indice_foco tem $indice_foco_count registros"
@@ -120,24 +120,26 @@ fi
 echo
 echo "== 5. CRÍTICO: Popular resumos e observacoes, depois reindexar e provar que não mudaram =="
 # Popular resumos e observacoes com registros de TESTE (dados de outras tarefas)
+# SEM 2>/dev/null, SEM || echo — se falhar, a bateria fica VERMELHA aqui mesmo.
 resumos_antes=$(node -e "
 const sqlite3 = require('node:sqlite');
 const db = new sqlite3.DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
-const db_projeto = process.env.RFM_ROOT.split('/').pop();
+const db_projeto = process.env.RFM_ROOT.split(/(\\\\|\\/)/).pop();
 
 // Inserir resumo de teste (simular dados da tarefa 3 — importação de claude-mem)
 db.prepare('INSERT INTO resumos (projeto, titulo, conteudo, criada_em) VALUES (?, ?, ?, ?)')
-  .run(db_projeto, 'Resumo de Sessão Teste', 'Conteúdo de resumo que NÃO deve ser apagado', '2026-08-17');
+  .run(db_projeto, 'Resumo Teste', 'Conteúdo de resumo que NÃO deve ser apagado', '2026-08-17');
 
 // Inserir observação de teste (simula dados da fase 2)
 db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em) VALUES (?, ?, ?)')
   .run(db_projeto, 'Observação de teste que NÃO deve ser apagada', '2026-08-17');
 
-const resumos = db.prepare('SELECT COUNT(*) as c FROM resumos WHERE titulo LIKE \"%Resumo%\"').get();
-const obs = db.prepare('SELECT COUNT(*) as c FROM observacoes WHERE conteudo LIKE \"%Observação%\"').get();
+// Contar TODOS os resumos (não filtrado, para prova simples)
+const resumos = db.prepare('SELECT COUNT(*) as c FROM resumos').get();
+const obs = db.prepare('SELECT COUNT(*) as c FROM observacoes').get();
 process.stdout.write('resumos=' + resumos.c + ' observacoes=' + obs.c);
 db.close();
-" 2>/dev/null || echo "resumos=0 observacoes=0")
+")
 
 echo "  Antes de reindexar: $resumos_antes"
 
@@ -145,14 +147,15 @@ echo "  Antes de reindexar: $resumos_antes"
 esperado "reindexar com dados existentes" 0 $MEMORIA reindexar
 
 # Verificar que resumos e observacoes NÃO foram apagados
+# SEM 2>/dev/null — se falhar, aparece na bateria
 resumos_depois=$(node -e "
 const sqlite3 = require('node:sqlite');
 const db = new sqlite3.DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
-const resumos = db.prepare('SELECT COUNT(*) as c FROM resumos WHERE titulo LIKE \"%Resumo%\"').get();
-const obs = db.prepare('SELECT COUNT(*) as c FROM observacoes WHERE conteudo LIKE \"%Observação%\"').get();
+const resumos = db.prepare('SELECT COUNT(*) as c FROM resumos').get();
+const obs = db.prepare('SELECT COUNT(*) as c FROM observacoes').get();
 process.stdout.write('resumos=' + resumos.c + ' observacoes=' + obs.c);
 db.close();
-" 2>/dev/null || echo "resumos=0 observacoes=0")
+")
 
 echo "  Depois de reindexar: $resumos_depois"
 
@@ -181,7 +184,7 @@ db.close();
 # Reindexar novamente
 esperado "reindexar após apagar índices" 0 $MEMORIA reindexar
 
-# Verificar que voltou a ter dados
+# Verificar que voltou a ter dados — SEM 2>/dev/null
 indice_counts=$(node -e "
 const sqlite3 = require('node:sqlite');
 const db = new sqlite3.DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
@@ -189,7 +192,7 @@ const foco = db.prepare('SELECT COUNT(*) as c FROM indice_foco').get();
 const ideias = db.prepare('SELECT COUNT(*) as c FROM indice_ideias').get();
 process.stdout.write('foco=' + (foco.c || 0) + ' ideias=' + (ideias.c || 0));
 db.close();
-" 2>/dev/null || echo "foco=0 ideias=0")
+")
 
 if [ "$indice_counts" = "foco=$indice_foco_count ideias=$indice_ideias_count" ]; then
   ok=$((ok+1)); echo "  ok   índices derivados reconstruídos: $indice_counts"
