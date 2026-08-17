@@ -57,3 +57,6 @@ CREATE INDEX IF NOT EXISTS idx_observacoes_projeto ON observacoes(projeto);
 CREATE INDEX IF NOT EXISTS idx_resumos_projeto ON resumos(projeto);
 CREATE INDEX IF NOT EXISTS idx_prompts_projeto ON prompts(projeto);
 CREATE INDEX IF NOT EXISTS idx_marca_dagua_projeto ON marca_dagua(projeto);
+
+-- Full-Text Search para busca rapida em observacoes
+CREATE VIRTUAL TABLE IF NOT EXISTS observacoes_fts USING fts5(conteudo);
