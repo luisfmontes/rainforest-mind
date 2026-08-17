@@ -1,0 +1,54 @@
+{
+  "slug": "2026-08-14-conferencia-de-entrega-em-paralelo",
+  "titulo": "Conferencia de entrega e teste de saude sobrevivem a despacho paralelo",
+  "criado_em": "2026-08-14",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-08-14-conferencia-de-entrega-em-paralelo.md",
+    "em": "2026-08-15"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-08-14-conferencia-de-entrega-em-paralelo.md",
+    "tarefas": 5,
+    "paralelas": [
+      1,
+      2,
+      3
+    ],
+    "em": "2026-08-14"
+  },
+  "executar": {
+    "status": "ok",
+    "tarefas": 5,
+    "integradas": 5,
+    "suites": "testa-saude=0, testa-conferir-entrega .cjs=0, .py=0",
+    "em": "2026-08-15"
+  },
+  "revisar": {
+    "status": "ok",
+    "achados": 3,
+    "base": "a78132b0528fc19154bf6da83a33e5b39894e4c5",
+    "head": "1719e8f825520fc40ca5f3d18280307a69c58b2c",
+    "em": "2026-08-15"
+  },
+  "verificar": {
+    "status": "ok",
+    "tarefas": 6,
+    "criterios_rodados": 6,
+    "comando": "bash scripts/testa-conferir-entrega.sh | CONFERIR=python ... | bash scripts/testa-saude.sh | node+python conferir-entrega --paralelo contra worktree linkado real",
+    "saida": "29 ok/0 falha nas duas baterias (EXIT=0), 8 ok/0 falha no testa-saude (EXIT=0), situacao A ok, checagem 4 imprime diff --name-only antes do veredito nos dois gemeos",
+    "head": "9309cf9",
+    "em": "2026-08-17"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "pr",
+    "pr": 13,
+    "url": "https://github.com/luisfmontes/rainforest-mind/pull/13",
+    "em": "2026-08-17"
+  }
+}

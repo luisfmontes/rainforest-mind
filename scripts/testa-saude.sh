@@ -28,6 +28,17 @@
 # sem os dois lados precisarem compartilhar objeto nenhum.
 #
 # A ultima secao e MUTACAO: iguala as raizes e exige que B pare de ser detectado.
+#
+# D5 (2026-08-15): a situacao A rodava contra um CLONE DO REPO REAL, recuado com
+# `git reset --hard HEAD~3`. `HEAD~3` anda por PRIMEIRO-PAI; o `saude.cjs` conta
+# atraso com `rev-list --count`, que percorre o DAG INTEIRO. Os dois so combinam
+# em historico sem merge — e este repo tem merge. Medido nos dez ancestrais do
+# HEAD da branch de trabalho: 0, 1, 2, 4, 4, 5, 7, 8, 8, 9 commits de distancia
+# por DAG. O "3" foi pulado; nao existe commit 3 atras, e a situacao A falhava
+# por ausencia, nao por defeito do `saude.cjs`. A partir daqui, a situacao A
+# monta uma fonte SINTETICA com historico linear proprio (ver `criar_fonte_
+# sintetica`) e clona, depois avanca, essa fonte — o atraso de 3 fica garantido
+# por CONSTRUCAO, nao pela sorte do historico da semana.
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -46,9 +57,10 @@ checa() { # nome, esperado(nivel), esperado(trecho), obtido
 M="$SBP/cfg/plugins/marketplaces/$(basename "$SRC")"
 mkdir -p "$SBP/cfg/plugins/marketplaces" "$SBP/dados"
 
-ver() {
-  ( cd "$SRC" && CLAUDE_CONFIG_DIR="$SBP/cfg" RFM_ROOT="$SBP/dados" \
-    node "$SRC/scripts/saude.cjs" --json 2>/dev/null ) | node -e "
+ver() { # opcional: caminho da fonte a rodar (default: $SRC, o repo real)
+  local fonte="${1:-$SRC}"
+  ( cd "$fonte" && CLAUDE_CONFIG_DIR="$SBP/cfg" RFM_ROOT="$SBP/dados" \
+    node "$fonte/scripts/saude.cjs" --json 2>/dev/null ) | node -e "
       let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{
         const a=JSON.parse(d).find(x=>x.item==='plugin instalado');
         console.log(a ? a.nivel+' '+a.detalhe : 'ausente');
@@ -59,8 +71,33 @@ commit_no_clone() { git -C "$M" -c user.email=t@t -c user.name=t "$@" >/dev/null
 
 echo "== as quatro situacoes =="
 
-git_clone && git -C "$M" reset -q --hard HEAD~3
-checa "A. clone atras vira aviso com a contagem"   "aviso" "3 commit(s) atras"   "$(ver)"
+# Situacao A: fonte sintetica com historico LINEAR, montada por esta bateria —
+# ver a nota D5 la em cima. `saude.cjs` so precisa achar, a partir da propria
+# pasta (RAIZ_CODIGO = dirname(__dirname) do script rodado), `scripts/` (para o
+# require nao quebrar o proprio node ao carregar o arquivo) e `skills/` (para o
+# discriminador de conteudo ter algo pra listar). O resto das checagens do
+# saude.cjs (raiz de dados, injecao, ideias, ...) so precisa nao ESTOURAR
+# quando o que consultam nao existe — e ja nao estoura, cada uma cai no seu
+# proprio "ausente"/"alerta" com try/catch ou fs.existsSync antes de agir.
+FONTE="$SBP/fonte-sintetica"
+MF="$SBP/cfg/plugins/marketplaces/$(basename "$FONTE")"
+
+criar_fonte_sintetica() {
+  rm -rf "$FONTE"
+  mkdir -p "$FONTE/scripts" "$FONTE/skills/exemplo"
+  cp "$SRC/scripts/saude.cjs" "$FONTE/scripts/saude.cjs"
+  echo "# skill de exemplo, so para skills/ nao ficar vazio" > "$FONTE/skills/exemplo/SKILL.md"
+  git init -q "$FONTE"
+  git -C "$FONTE" -c user.email=t@t -c user.name=t add -A >/dev/null 2>&1
+  git -C "$FONTE" -c user.email=t@t -c user.name=t commit -qm "inicial" >/dev/null 2>&1
+}
+
+criar_fonte_sintetica
+rm -rf "$MF"; git clone -q "$FONTE" "$MF" 2>/dev/null
+for i in 1 2 3; do
+  git -C "$FONTE" -c user.email=t@t -c user.name=t commit -q --allow-empty -m "commit sintetico $i" >/dev/null 2>&1
+done
+checa "A. clone atras vira aviso com a contagem"   "aviso" "3 commit(s) atras"   "$(ver "$FONTE")"
 
 # Historia paralela COM todas as skills no lugar: o parentesco tem que ser checado
 # antes do conteudo, senao um clone completo porem orfao passa como saudavel.
