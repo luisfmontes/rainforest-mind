@@ -98,5 +98,29 @@ else
 fi
 
 echo
+echo "== 6. buscar em banco vazio devolve array vazio =="
+resultado=$($MEMORIA buscar --texto "nada" --json 2>&1)
+if [ "$?" = "0" ] && echo "$resultado" | grep -q '^\[\]$'; then
+  ok=$((ok+1)); echo "  ok   buscar vazio retorna exit 0 e array vazio"
+else
+  falhou=$((falhou+1)); echo "  FALHA buscar vazio não retornou array vazio"
+fi
+
+echo
+echo "== 7. buscar num banco que não existe devolve array vazio =="
+CAIXA3="$(mktemp -d)"
+trap 'rm -rf "$CAIXA" "$CAIXA2" "$CAIXA3"' EXIT
+resultado=$(RFM_ROOT="$CAIXA3" $MEMORIA buscar --texto "test" --json 2>&1)
+if [ "$?" = "0" ] && echo "$resultado" | grep -q '^\[\]$'; then
+  ok=$((ok+1)); echo "  ok   buscar em banco inexistente retorna exit 0 e array vazio"
+else
+  falhou=$((falhou+1)); echo "  FALHA buscar em banco inexistente não retornou array vazio"
+fi
+
+echo
+echo "== 8. reindexar em banco vazio funciona =="
+esperado "reindexar vazio" 0 $MEMORIA reindexar
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

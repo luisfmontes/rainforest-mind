@@ -140,6 +140,30 @@ function extrairSchema(conexao) {
   return tabelas;
 }
 
+// Popula o índice FTS5 com observações existentes no banco.
+function popularFts5(conexao) {
+  try {
+    // Limpar índice anterior se existe (para reindexação).
+    try {
+      conexao.exec('DELETE FROM observacoes_fts');
+    } catch (e) {
+      // Ignorar se tabela não existe ainda (primeira execução).
+    }
+
+    // Inserir todas as observações no índice FTS5.
+    const linhas = conexao.prepare('SELECT id, conteudo FROM observacoes').all();
+    const stmt = conexao.prepare('INSERT INTO observacoes_fts(rowid, conteudo) VALUES (?, ?)');
+
+    for (const { id, conteudo } of linhas) {
+      stmt.run(id, conteudo);
+    }
+  } catch (e) {
+    // Não é crítico falhar aqui; FTS5 pode ser reconstruída depois.
+    // Mas logamos para debug.
+    console.error(`AVISO: não consegui popular FTS5: ${e.message}`);
+  }
+}
+
 // Comando: iniciar — criar/abrir o banco, verificar schema.
 function cmdIniciar() {
   const { raiz, caminhoDb, projeto } = resolverCaminhos();
@@ -149,6 +173,9 @@ function cmdIniciar() {
 
   const conexao = abrirBanco(caminhoDb);
   criarSchema(conexao);
+
+  // Popular índice FTS5 (idempotente).
+  popularFts5(conexao);
 
   console.log(`ok: banco em ${caminhoDb} (projeto: ${projeto})`);
 
@@ -191,14 +218,11 @@ function cmdEsquema() {
   }
 }
 
-// Comando: buscar [--texto "..."] [--limite N] [--json] — buscar observações.
+// Comando: buscar [--texto "..."] [--projeto "..."] [--limite N] [--json]
+// Busca observações usando FTS5. Degradação: banco ausente/vazio/corrompido
+// devolve resultado vazio com exit 0, nunca erro.
 function cmdBuscar() {
   const { caminhoDb } = resolverCaminhos();
-
-  if (!fs.existsSync(caminhoDb)) {
-    console.error(`ERRO: banco não existe em ${caminhoDb}`);
-    process.exit(1);
-  }
 
   // Parser de argumentos simples.
   function arg(nome) {
@@ -208,26 +232,70 @@ function cmdBuscar() {
   }
 
   const texto = arg('texto') || '';
+  const projeto = arg('projeto') || null;
   const limite = parseInt(arg('limite') || '10', 10);
   const ehJson = process.argv.includes('--json');
 
-  const conexao = abrirBanco(caminhoDb);
+  // Resultado padrão: array vazio (degradação).
+  let resultados = [];
 
-  let query = 'SELECT id, projeto, conteudo, criada_em FROM observacoes';
-  const params = {};
+  try {
+    // Degradação: banco não existe — devolver array vazio, exit 0.
+    if (!fs.existsSync(caminhoDb)) {
+      if (ehJson) {
+        console.log(JSON.stringify(resultados, null, 2));
+      } else {
+        console.log('(banco não existe)');
+      }
+      return;
+    }
 
-  if (texto) {
-    query += ' WHERE conteudo LIKE :texto';
-    params.texto = `%${texto}%`;
+    const conexao = abrirBanco(caminhoDb);
+
+    // Se há texto, usar FTS5; senão, listar recentes.
+    let query;
+    const params = { limite };
+
+    if (texto) {
+      // Busca FTS5: combinar conteúdo com projeto se fornecido.
+      query = `
+        SELECT o.id, o.projeto, o.conteudo, o.criada_em
+        FROM observacoes o
+        WHERE o.id IN (
+          SELECT rowid FROM observacoes_fts WHERE conteudo MATCH :fts_query
+        )
+      `;
+      params.fts_query = texto; // FTS5 syntax: "palavra" ou "palavra1 AND palavra2"
+
+      if (projeto) {
+        query += ' AND o.projeto = :projeto';
+        params.projeto = projeto;
+      }
+    } else {
+      // Sem texto: listar recentes de um projeto (se fornecido).
+      query = 'SELECT id, projeto, conteudo, criada_em FROM observacoes';
+
+      if (projeto) {
+        query += ' WHERE projeto = :projeto';
+        params.projeto = projeto;
+      }
+    }
+
+    query += ' ORDER BY criada_em DESC LIMIT :limite';
+
+    const stmt = conexao.prepare(query);
+    resultados = stmt.all(params);
+    conexao.close();
+  } catch (e) {
+    // Degradação: banco corrompido ou outro erro — resultado vazio, exit 0.
+    // Aviso só no stderr para não poluir JSON de saída.
+    if (!ehJson) {
+      console.error(`AVISO: não consegui buscar no banco: ${e.message}`);
+    }
+    resultados = [];
   }
 
-  query += ' ORDER BY id DESC LIMIT :limite';
-  params.limite = limite;
-
-  const stmt = conexao.prepare(query);
-  const resultados = stmt.all(params);
-  conexao.close();
-
+  // Saída.
   if (ehJson) {
     console.log(JSON.stringify(resultados, null, 2));
   } else {
@@ -284,10 +352,36 @@ function cmdBackup() {
   }
 }
 
-// Comando: reindexar — reconstruir índices derivados (tarefa futura).
+// Comando: reindexar — reconstruir índice FTS5 do zero.
+// Útil se FTS5 ficar desincronizado ou corrompido.
 function cmdReindexar() {
-  // Placeholder para tarefa 7 (índices derivados de FOCO.md e ideias.jsonl).
-  console.log('(reindexar — não implementado nesta versão)');
+  const { caminhoDb } = resolverCaminhos();
+
+  // Degradação: banco não existe — exit 0 com mensagem clara.
+  if (!fs.existsSync(caminhoDb)) {
+    console.log(`(banco não existe em ${caminhoDb}; nada a reindexar)`);
+    return;
+  }
+
+  try {
+    const conexao = abrirBanco(caminhoDb);
+
+    // Apagar índice FTS antigo.
+    try {
+      conexao.exec('DELETE FROM observacoes_fts');
+    } catch (e) {
+      // Ignorar se não existe.
+    }
+
+    // Reconstruir do zero.
+    popularFts5(conexao);
+
+    console.log(`ok: índice FTS5 reconstruído (${caminhoDb})`);
+    conexao.close();
+  } catch (e) {
+    // Degradação: erro ao reindexar — exit 0 com aviso.
+    console.error(`AVISO: não consegui reindexar: ${e.message}`);
+  }
 }
 
 // ---- CLI
