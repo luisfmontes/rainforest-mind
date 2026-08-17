@@ -45,6 +45,10 @@
     "em": "2026-08-17"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "acao": "pr",
+    "pr": 13,
+    "url": "https://github.com/luisfmontes/rainforest-mind/pull/13",
+    "em": "2026-08-17"
   }
 }
