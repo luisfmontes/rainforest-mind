@@ -1,0 +1,146 @@
+# Roda TODAS as baterias do repositorio a cada push e a cada PR.
+#
+# Por que existe: ate 2026-08-17 nenhuma bateria deste repo rodava sozinha. A
+# catraca de bytes da injecao (hooks/testa-contexto-sessao.sh) ficou VERMELHA na
+# `main` por tres dias — o PR #11 gastou 64 B de nucleo sobre uma folga de 7 B,
+# em 14/08, e ninguem viu ate 17/08. A catraca existe para pegar o que passa
+# desapercebido, e ela mesma passou desapercebida. Issue #16.
+#
+# Escolhas, e o que cada uma custa:
+#
+# - `windows-latest`, e nao `ubuntu-latest`. Este plugin so roda em Windows: le
+#   USERPROFILE antes de HOME, converte caminho com `cygpath`, e as baterias sao
+#   bash do Git Bash. Verde no Linux provaria que o codigo passa num lugar onde
+#   ele nunca vai rodar. O preco e real: repo PRIVADO, e minuto de Windows conta
+#   2x na cota do Actions.
+#
+# - Um job so, serial. As 20 baterias levam ~3 min juntas (medido na maquina do
+#   Luis, 2026-08-17). Uma matriz de 20 jobs paralelos cortaria o relogio, mas o
+#   Actions cobra por job com minuto minimo arredondado: 20 x 1 min x 2 = 40 min
+#   faturados contra ~8 do job unico. Paralelismo aqui custa mais do que vale.
+#
+# - Nao para na primeira falha. Roda as 20, imprime o placar, e ai decide o exit.
+#   Saber que 3 bateriais quebraram junto vale mais que saber qual quebrou primeiro.
+
+name: baterias
+
+# Branch se confere pelo PR; `main` se confere no merge. `push:` sem filtro somado
+# ao `pull_request:` faria DUAS execucoes por push em toda branch com PR aberto —
+# num repo privado, com minuto de Windows valendo 2x, isso dobra a conta para
+# provar a mesma arvore duas vezes.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  baterias:
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    defaults:
+      run:
+        shell: bash # no runner Windows isto e o Git Bash — o mesmo shell da maquina do Luis
+
+    steps:
+      - name: Checkout com historico
+        uses: actions/checkout@v4
+        with:
+          # testa-saude.sh monta cenarios contando o DAG e testa-limpar-branches.sh
+          # exercita branch com remoto. Clone raso mente para os dois.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Preflight — as ferramentas existem, e a arvore veio em LF
+        run: |
+          set -u
+          falta=0
+          for t in bash node python3 git cygpath; do
+            if command -v "$t" >/dev/null 2>&1; then
+              printf '  ok    %-8s %s\n' "$t" "$(command -v "$t")"
+            else
+              printf '  FALTA %s\n' "$t"; falta=1
+            fi
+          done
+          [ "$falta" -eq 0 ] || { echo "ferramenta ausente — as baterias nao significariam nada"; exit 1; }
+
+          # O .gitattributes manda `* text=auto eol=lf`. Se o checkout entregasse
+          # CRLF, cada linha de regra ganharia um byte e a catraca dos nucleos
+          # acusaria uma regressao que nao existe. Falhar aqui nomeia a causa.
+          if git ls-files --eol skills hooks | grep -q 'w/crlf'; then
+            echo "FALHA arquivo em CRLF na arvore de trabalho — a contagem de bytes da injecao vai mentir"
+            git ls-files --eol skills hooks | grep 'w/crlf' | head
+            exit 1
+          fi
+          echo "  ok    arvore em LF"
+
+      - name: Identidade git — o runner nao tem, a maquina do Luis tem
+        run: |
+          # Rede, nao conserto. Isto entrou apostando que era a causa das baterias
+          # vermelhas — NAO era: com o step no lugar, as mesmas 4 continuaram
+          # vermelhas (run 32052513910). As causas reais estao no corpo do PR #17.
+          #
+          # Fica porque a afirmacao continua verdadeira e o custo e zero: o runner
+          # nao tem `user.email` global, e hoje toda bateria que commita seta a
+          # identidade por repo. No dia em que uma esquecer, sem isto aqui ela sai
+          # `128 Author identity unknown` — falha que nao diz nada sobre o que a
+          # bateria testa. Identidade de commit e ambiente de maquina, entao o
+          # lugar dela e o workflow.
+          #
+          # O que este step NAO faz, de proposito: plantar `~/.rainforest` ou
+          # FOCO.md sinteticos. Isso deixaria o CI verde alimentando as baterias
+          # com o acoplamento que elas nao deviam ter.
+          git config --global user.email "ci@rainforest.invalid"
+          git config --global user.name "CI das baterias"
+          git config --global init.defaultBranch master # o mesmo default da maquina do Luis (unset la tambem)
+
+      - name: Rodar as baterias
+        run: |
+          set -u
+
+          baterias=$(ls scripts/testa-*.sh hooks/testa-*.sh 2>/dev/null)
+          total=$(printf '%s\n' "$baterias" | grep -c . || true)
+
+          # Guarda contra o unico jeito deste job ser verde sem provar nada: um
+          # glob que nao casa com ninguem roda zero bateria e sai 0. Em 17/08/2026
+          # eram 20 (15 em scripts/, 5 em hooks/); o piso e deliberadamente baixo
+          # para nao virar catraca de contagem, so para pegar o vazio.
+          if [ "$total" -lt 15 ]; then
+            echo "FALHA achei $total baterias — esperava pelo menos 15. Glob quebrado ou arvore incompleta."
+            exit 1
+          fi
+          echo "== $total baterias =="
+
+          vermelhas=""
+          for f in $baterias; do
+            echo ""
+            echo "----- $f -----"
+            if bash "$f"; then
+              echo "  >> VERDE  $f"
+            else
+              echo "  >> VERMELHA $f (exit $?)"
+              vermelhas="$vermelhas $f"
+            fi
+          done
+
+          echo ""
+          echo "================ placar ================"
+          if [ -z "$vermelhas" ]; then
+            echo "as $total baterias passaram"
+            exit 0
+          fi
+          echo "vermelhas:"
+          for f in $vermelhas; do echo "  - $f"; done
+          exit 1
