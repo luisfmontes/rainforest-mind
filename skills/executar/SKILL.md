@@ -72,8 +72,12 @@ Entrega de agente não se aceita pelo relato (regra 12). Ao receber:
 
 ```
 node scripts/conferir-entrega.cjs --worktree <wt> --base <hash> --head-antes <hash-antes-do-despacho> \
-    --espera <caminho-que-a-tarefa-prometia> [--espera <outro>]
+    [--paralelo] --espera <caminho-que-a-tarefa-prometia> [--espera <outro>]
 ```
+
+Passe `--paralelo` em despachos paralelos; a flag afrouxa a checagem 4 para
+só reprovar sujeira que cruza com os arquivos do commit, deixando o resto como
+aviso.
 
 `--espera` confere na **árvore do commit**, não no disco: `ls -la` e `cat` do
 agente provam que o arquivo existe, nunca que ele foi commitado, e
