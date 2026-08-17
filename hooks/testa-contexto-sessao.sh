@@ -698,6 +698,30 @@ checa "worktree de agente sai (caminho Windows)" nao_tem "wt_windows" "$W"
 checa "worktree de agente sai (caminho POSIX)"   nao_tem "wt_posix"   "$W"
 checa "pasta so parecida NAO e filtrada"      tem     "quase"        "$W"
 
+# AJUSTE 2026-08-14: Filtro estreitado para exigir "agent-" como prefixo do
+# segmento após "worktrees/". O usuario pode ter seus próprios worktrees (ex.:
+# gestao-projetos-template) em .claude/worktrees/, e esses NÃO devem sair do radar.
+# Apenas worktrees criadas pelo harness (agent-*) devem sair. O test e por limite
+# de segmento, não substring.
+X="$(LIB_PATH="$LIB" node -e "
+const lib = require(process.env.LIB_PATH);
+const agora = 1786000000000;
+const state = {
+  agent_simples: { cwd: 'C:/Projetos/rainforest-mind/.claude/worktrees/agent-a1b2c3', pid: process.pid, prompt_ts: agora - 1000 },
+  agent_subpasta: { cwd: 'C:/Projetos/rainforest-mind/.claude/worktrees/agent-a1b2c3/templates/FIN', pid: process.pid, prompt_ts: agora - 1000 },
+  usuario_simples: { cwd: 'C:/Microsiga/protheus-totvs-agro/inovacao/.claude/worktrees/gestao-projetos-template', pid: process.pid, prompt_ts: agora - 1000 },
+  usuario_subpasta: { cwd: 'C:/Microsiga/protheus-totvs-agro/inovacao/.claude/worktrees/gestao-projetos-template/templates/FIN/Gestao_Projetos', pid: process.pid, prompt_ts: agora - 1000 },
+  parecido: { cwd: 'C:/Projetos/rainforest-mind/.claude/worktrees/agente-do-cliente', pid: process.pid, prompt_ts: agora - 1000 },
+};
+const vivas = lib.sessoesVivas(state, agora, 6 * 3600 * 1000).map(([id]) => id);
+process.stdout.write(vivas.join(','));
+" 2>&1)"
+checa "agent-abc simples sai (agent- requerido)"           nao_tem "agent_simples"  "$X"
+checa "agent-abc em subpasta sai (agent- requerido)"       nao_tem "agent_subpasta" "$X"
+checa "usuario gestao-projetos-template FICA no radar"     tem     "usuario_simples" "$X"
+checa "usuario em subpasta de seu worktree FICA"           tem     "usuario_subpasta" "$X"
+checa "agente-do-cliente (sem agent-) FICA no radar"       tem     "parecido"       "$X"
+
 # O hook de verdade, com stdin de verdade: o evento "end" tem de apagar a linha.
 HB_RAIZ="$RAIZ_POSIX/hb"
 mkdir -p "$HB_RAIZ"
@@ -902,6 +926,407 @@ checa "declarada, o bloco existe"                    tem     "Dependências de a
 checa "declarada e morta, diz FORA"                  tem     "bridge WhatsApp FORA"     "$COM_DEP"
 checa "declarada, a URL declarada e a que aparece"   tem     "127.0.0.1:59421"          "$COM_DEP"
 checa "claude-mem ausente segue fora do bloco"       nao_tem "claude-mem"               "$COM_DEP"
+
+echo
+echo "17. ISENCOES MECANIZADAS — pastasDoFoco, dentroDoExpediente, focoAtivoEmOutraJanela, computarVeredito"
+# D6: "sem dado, cobra — e a ausencia se anuncia". As quatro funcoes deste bloco
+# decidem se o radar de desvio de escopo pode ficar QUIETO nesta sessao. Erro
+# aqui e o pior tipo: silencioso. Ninguem reclama de NAO ser cobrado por engano.
+
+cat > "$RAIZ_POSIX/driver-pastas.cjs" <<'EOF'
+const lib = require(process.env.LIB_PATH);
+process.stdout.write(JSON.stringify(lib.pastasDoFoco(process.env.FIX_FOCO)));
+EOF
+pastas() { LIB_PATH="${2:-$LIB}" FIX_FOCO="$1" node "$RAIZ_POSIX/driver-pastas.cjs" 2>&1; }
+
+checa "pastasDoFoco: campo presente vira lista"    tem "[\"C:/a\",\"C:/b\"]" \
+  "$(pastas 'Pastas: C:/a, C:/b
+
+## Ativo
+')"
+checa "pastasDoFoco: campo ausente devolve []"     tem "[]" \
+  "$(pastas '# Foco
+
+## Ativo
+')"
+# ACHADO 7: esta e a forma EXATA que o `scripts/setup.cjs` semeia no FOCO_MODELO —
+# "Pastas:" sozinho na linha, seguido de linha em branco. O regex antigo (`\s*`
+# atravessa quebra de linha) casava ate o proximo texto nao-vazio e devolvia
+# `["## Ativo"]`: pasta configurada de mentira, e a isencao 1 (D6/regra 17) nunca
+# mais anuncia dado ausente para uma instalacao nova. Reproduzido antes do conserto:
+# `pastasDoFoco("Pastas:\n\n## Ativo\n")` -> `["## Ativo"]`.
+checa "pastasDoFoco: campo VAZIO (forma do FOCO_MODELO) devolve []" tem "[]" \
+  "$(pastas 'Pastas:
+
+## Ativo
+')"
+checa "pastasDoFoco: campo so com espacos devolve []" tem "[]" \
+  "$(pastas "$(printf 'Pastas:   \n\n## Ativo\n')")"
+
+cat > "$RAIZ_POSIX/driver-expediente.cjs" <<'EOF'
+const lib = require(process.env.LIB_PATH);
+const [y, m, d, h, mi] = process.env.FIX_QUANDO.split(',').map(Number);
+const agora = new Date(y, m - 1, d, h, mi);
+const config = JSON.parse(process.env.FIX_CONFIG);
+process.stdout.write(JSON.stringify(lib.dentroDoExpediente(agora, config)));
+EOF
+expediente() { LIB_PATH="${3:-$LIB}" FIX_QUANDO="$1" FIX_CONFIG="$2" node "$RAIZ_POSIX/driver-expediente.cjs" 2>&1; }
+
+# 2026-08-10 = segunda; 2026-08-15 = sabado (conferido com node antes de escrever
+# o fixture — Date.getDay() e o que a funcao usa, e o dia da semana e o ponto
+# inteiro deste caso).
+CONFIG_EXPEDIENTE='{"expediente":{"dias":[1,2,3,4,5],"de":"08:00","ate":"18:00"}}'
+checa "dentroDoExpediente: dentro da faixa (seg 10:00)"            tem "true"  "$(expediente '2026,8,10,10,0' "$CONFIG_EXPEDIENTE")"
+checa "dentroDoExpediente: fora da faixa, mesmo dia (seg 20:00)"   tem "false" "$(expediente '2026,8,10,20,0' "$CONFIG_EXPEDIENTE")"
+checa "dentroDoExpediente: dia fora dos dias (sab 10:00)"          tem "false" "$(expediente '2026,8,15,10,0' "$CONFIG_EXPEDIENTE")"
+# A MAIS IMPORTANTE DO ARQUIVO: sem `expediente` no config, a resposta e NULL
+# ("nao sei"), nunca false ("nao e expediente"). Colapsar os dois faz o D6
+# nunca disparar o anuncio, e o radar cobra desvio de escopo sem avisar que o
+# dado sumiu — silencio dentro de silencio.
+checa "dentroDoExpediente: sem expediente no config devolve null (nao false)" tem "null" "$(expediente '2026,8,10,10,0' '{}')"
+
+cat > "$RAIZ_POSIX/driver-outra-janela.cjs" <<'EOF'
+const lib = require(process.env.LIB_PATH);
+const sessoes = JSON.parse(process.env.FIX_SESSOES);
+const pastas = JSON.parse(process.env.FIX_PASTAS);
+const oci = Number(process.env.FIX_OCI);
+const agora = Number(process.env.FIX_AGORA);
+process.stdout.write(String(lib.focoAtivoEmOutraJanela(sessoes, pastas, oci, agora)));
+EOF
+outra_janela() { LIB_PATH="${5:-$LIB}" FIX_SESSOES="$1" FIX_PASTAS="$2" FIX_OCI="$3" FIX_AGORA="$4" node "$RAIZ_POSIX/driver-outra-janela.cjs" 2>&1; }
+
+AGORA_FIXO=1786000000000
+checa "focoAtivoEmOutraJanela: sinal recente na pasta do foco isenta" tem "true" \
+  "$(outra_janela "[{\"cwd\":\"C:/a\",\"prompt_ts\":$((AGORA_FIXO-1000))}]" '["C:/a"]' 15 "$AGORA_FIXO")"
+checa "focoAtivoEmOutraJanela: mesma pasta, sinal alem da ociosidade nao isenta" tem "false" \
+  "$(outra_janela "[{\"cwd\":\"C:/a\",\"prompt_ts\":$((AGORA_FIXO - 20*60*1000))}]" '["C:/a"]' 15 "$AGORA_FIXO")"
+checa "focoAtivoEmOutraJanela: pasta diferente nao isenta"           tem "false" \
+  "$(outra_janela "[{\"cwd\":\"C:/b\",\"prompt_ts\":$((AGORA_FIXO-1000))}]" '["C:/a"]' 15 "$AGORA_FIXO")"
+# O CASO DE PREFIXO. `C:/abc` nao pode casar `C:/a` — erro aqui e invisivel,
+# ninguem reclama de nao ser cobrado.
+checa "focoAtivoEmOutraJanela: C:/abc nao casa C:/a por prefixo"     tem "false" \
+  "$(outra_janela "[{\"cwd\":\"C:/abc\",\"prompt_ts\":$((AGORA_FIXO-1000))}]" '["C:/a"]' 15 "$AGORA_FIXO")"
+# SUBPASTA: a sessao em uma SUBPASTA da pasta do foco deve isenta, porque o foco
+# esta sendo trabalhado ali. Este era o defeito: a comparacao usava === exata e
+# nunca casava subpasta. Realidade: usuario declara a raiz da pasta no FOCO.md
+# mas a sessao roda em template/FIN/Gestao_Projetos dentro dela.
+checa "focoAtivoEmOutraJanela: sessao em subpasta isenta"               tem "true" \
+  "$(outra_janela "[{\"cwd\":\"C:/a/templates/FIN/Gestao_Projetos\",\"prompt_ts\":$((AGORA_FIXO-1000))}]" '["C:/a"]' 15 "$AGORA_FIXO")"
+# Sinal humano e o prompt_ts (o usuario digitou algo), nao o stop_ts (Claude
+# parou de responder). Sessao com prompt frio mas stop recente nao esta sendo
+# TRABALHADA por ninguem — nao pode isentar.
+checa "focoAtivoEmOutraJanela: prompt_ts frio e o que conta, nao stop_ts" tem "false" \
+  "$(outra_janela "[{\"cwd\":\"C:/a\",\"prompt_ts\":$((AGORA_FIXO - 999999999)),\"stop_ts\":$((AGORA_FIXO-1000))}]" '["C:/a"]' 15 "$AGORA_FIXO")"
+
+# CAMINHO WINDOWS DE VERDADE: barra invertida + maiuscula, contra o foco
+# declarado com barra normal e minuscula. A barra e construida com
+# String.fromCharCode(92) e o valor e IMPRESSO antes de afirmar o resultado —
+# o aviso do briefing e literal: aspas de shell e heredoc comem a barra
+# invertida sem avisar, e isso ja rendeu medicao errada hoje.
+cat > "$RAIZ_POSIX/driver-outra-janela-win.cjs" <<'EOF'
+const lib = require(process.env.LIB_PATH);
+const BS = String.fromCharCode(92);
+const cwdSessao = 'C:' + BS + 'A';
+process.stderr.write('CWD_CONSTRUIDO=' + JSON.stringify(cwdSessao) + '\n');
+const agora = 1786000000000;
+const r = lib.focoAtivoEmOutraJanela([{ cwd: cwdSessao, prompt_ts: agora - 1000 }], ['C:/a'], 15, agora);
+process.stdout.write(String(r));
+EOF
+CONFIRMA_WIN="$RAIZ_POSIX/confirma-win.log"
+SAIDA_WIN="$(LIB_PATH="$LIB" node "$RAIZ_POSIX/driver-outra-janela-win.cjs" 2>"$CONFIRMA_WIN")"
+echo "  (confirmando o valor antes de afirmar: $(cat "$CONFIRMA_WIN"))"
+checa "focoAtivoEmOutraJanela: C:\\A (barra invertida + maiuscula) normaliza e casa com C:/a" tem "true" "$SAIDA_WIN"
+
+cat > "$RAIZ_POSIX/driver-veredito.cjs" <<'EOF'
+const lib = require(process.env.LIB_PATH);
+const foco = process.env.FIX_FOCO;
+const sessoes = JSON.parse(process.env.FIX_SESSOES || '[]');
+const config = JSON.parse(process.env.FIX_CONFIG || '{}');
+const agora = Number(process.env.FIX_AGORA);
+process.stdout.write(lib.computarVeredito(foco, sessoes, config, agora));
+EOF
+veredito() { LIB_PATH="${5:-$LIB}" FIX_FOCO="$1" FIX_SESSOES="$2" FIX_CONFIG="$3" FIX_AGORA="$4" node "$RAIZ_POSIX/driver-veredito.cjs" 2>&1; }
+
+FOCO_SEM_PASTAS="# Foco
+
+## Ativo
+
+**Foco de teste** \`[trabalho]\`
+
+Ociosidade máxima: 15 min"
+FOCO_COM_PASTAS="Pastas: C:/a
+
+## Ativo
+
+**Foco de teste** \`[trabalho]\`
+
+Ociosidade máxima: 15 min"
+AGORA_SEG="$(node -e "process.stdout.write(String(new Date(2026,7,10,10,0).getTime()))")"
+AGORA_SAB="$(node -e "process.stdout.write(String(new Date(2026,7,15,10,0).getTime()))")"
+
+S="$(veredito "$FOCO_SEM_PASTAS" '[]' "$CONFIG_EXPEDIENTE" "$AGORA_SEG")"
+checa "computarVeredito: sem dado (Pastas ausente), anuncia"       tem     "Pastas: ausente no FOCO.md" "$S"
+checa "computarVeredito: sem dado, NAO isenta (sem veredito junto)" nao_tem "NÃO cobrar desvio"          "$S"
+
+S="$(veredito "$FOCO_COM_PASTAS" "[{\"cwd\":\"C:/a\",\"prompt_ts\":$((AGORA_SEG-1000))}]" "$CONFIG_EXPEDIENTE" "$AGORA_SEG")"
+checa "computarVeredito: com dado e condicao satisfeita, emite veredito" tem     "NÃO cobrar desvio de escopo" "$S"
+checa "computarVeredito: so isencao 1 ativa, sem anuncio da 2"         nao_tem "ausente"                     "$S"
+
+# Dado completo, condicao nenhuma satisfeita: nem veredito nem anuncio. Os DOIS
+# saem vazios juntos tambem conta como "nunca saem juntos" — string vazia nao
+# afirma nada, nem cobranca nem isencao.
+S="$(veredito "$FOCO_COM_PASTAS" '[]' "$CONFIG_EXPEDIENTE" "$AGORA_SEG")"
+if [ -z "$S" ]; then
+  ok=$((ok+1)); echo "  ok    computarVeredito: dado completo sem condicao satisfeita devolve string vazia"
+else
+  falhou=$((falhou+1)); echo "  FALHA computarVeredito esperava vazio (dado completo, sem condicao), veio: '$S'"
+fi
+
+# CASO REAL: Pastas: presente, expediente ausente, janela viva na pasta do foco
+# → sai veredito (isenção 1 determinada) E anúncio (isenção 2 indeterminada)
+S="$(veredito "$FOCO_COM_PASTAS" "[{\"cwd\":\"C:/a\",\"prompt_ts\":$((AGORA_SEG-1000))}]" '{}' "$AGORA_SEG")"
+checa "caso real: Pastas presente, expediente ausente → veredito + anuncio" tem "NÃO cobrar desvio de escopo nesta sessão" "$S"
+checa "caso real: veredito menciona foco ativo em outra janela" tem "foco ativo em outra janela" "$S"
+checa "caso real: anuncio menciona expediente ausente" tem "expediente: ausente no config.json" "$S"
+
+# ACHADO 1: Foco com boilerplate + foco ativo [pessoal], fora do expediente
+# Não deve isentar por "tempo pessoal" porque o foco é [pessoal]
+FOCO_BOILERPLATE_PESSOAL="# FOCO — Memória externa de trabalho
+
+A cada virada de foco, troque o texto abaixo pelo novo. Tudo que não for
+a seção Ativo continua vivo no arquivo mesmo que saia da injeção — e não é
+decoração: o radar de escopo mede contra o foco ATIVO, que é a linha em
+negrito. Todo foco declara a natureza — \`[trabalho]\` ou \`[pessoal]\` —, e as
+regras usam isso para ajustar o que cobrar (regra 3).
+
+Pastas: C:/projetos/meu-foco
+
+## Ativo
+
+**Projeto pessoal** \`[pessoal]\` — prazo final 2026-12-31.
+
+Avanços:
+- 2026-08-14: comecei a trabalhar nisso."
+S="$(veredito "$FOCO_BOILERPLATE_PESSOAL" '[]' "$CONFIG_EXPEDIENTE" "$AGORA_SAB")"
+checa "ACHADO 1: foco [pessoal] com boilerplate, fora do expediente" nao_tem "tempo pessoal" "$S"
+checa "ACHADO 1: confirma que nao isenta (string vazia ou outra razao)" nao_tem "NÃO cobrar desvio" "$S"
+
+# ACHADO 1 caso feliz: foco com boilerplate + foco ativo [trabalho], fora do expediente
+# Deve isentar por "tempo pessoal"
+FOCO_BOILERPLATE_TRABALHO="# FOCO — Memória externa de trabalho
+
+A cada virada de foco, troque o texto abaixo pelo novo. Tudo que não for
+a seção Ativo continua vivo no arquivo mesmo que saia da injeção — e não é
+decoração: o radar de escopo mede contra o foco ATIVO, que é a linha em
+negrito. Todo foco declara a natureza — \`[trabalho]\` ou \`[pessoal]\` —, e as
+regras usam isso para ajustar o que cobrar (regra 3).
+
+Pastas: C:/projetos/meu-foco
+
+## Ativo
+
+**Projeto trabalho** \`[trabalho]\` — prazo final 2026-12-31.
+
+Ociosidade máxima: 15 min
+
+Avanços:
+- 2026-08-14: comecei a trabalhar nisso."
+S="$(veredito "$FOCO_BOILERPLATE_TRABALHO" '[]' "$CONFIG_EXPEDIENTE" "$AGORA_SAB")"
+checa "ACHADO 1 feliz: foco [trabalho] com boilerplate, fora do expediente" tem "tempo pessoal" "$S"
+checa "ACHADO 1 feliz: emite veredito" tem "NÃO cobrar desvio" "$S"
+
+# ACHADO 2 / ACHADO 6: sem config.json, com Pastas: ausente
+# Deve sair anúncio da isenção indeterminada
+S="$(veredito "$FOCO_SEM_PASTAS" '[]' '{}' "$AGORA_SEG")"
+checa "ACHADO 2: sem config.json, sem Pastas, sai anuncio" tem "ausente" "$S"
+
+# ACHADO 6: o defeito corrigido (try ÚNICO engolindo a leitura do config.json
+# junto com o cálculo do veredito) mora em hooks/foco-session-start.cjs, não no
+# motor — a asserção do ACHADO 2 acima chama `computarVeredito` direto na lib e
+# não prova nada sobre o chicote. Roda o HOOK real, mesma lógica da seção 14:
+# testar o motor aqui provaria a coisa errada.
+#
+# A asserção antiga também era CEGA ao argumento `config`: passava com config
+# vazio e com config completo, porque a fixture reaproveitada já era "Pastas:
+# ausente" e QUALQUER anúncio (o da isenção 1) fazia "ausente" bater. Este bloco
+# usa um FOCO com Pastas E Ociosidade preenchidas (isenção 1 totalmente
+# determinada e QUIETA) para que o único jeito de "ausente"/"expediente" aparecer
+# seja o config.json — discrimina de verdade.
+CAIXA_A6="$RAIZ_POSIX/achado6"
+CAIXA_A6_INVALIDO="$RAIZ_POSIX/achado6-invalido"
+mkdir -p "$CAIXA_A6" "$CAIXA_A6_INVALIDO"
+printf '%s\n' \
+  '# Foco' \
+  '' \
+  'Pastas: C:/a' \
+  '' \
+  '## Ativo' \
+  '' \
+  '**Foco de teste** `[trabalho]` — prazo final 2026-12-31.' \
+  '' \
+  'Ociosidade máxima: 15 min' \
+  > "$CAIXA_A6/FOCO.md"
+cp "$CAIXA_A6/FOCO.md" "$CAIXA_A6_INVALIDO/FOCO.md"
+printf 'isto nao e JSON valido {' > "$CAIXA_A6_INVALIDO/config.json"
+
+A6_ROOT="$(cygpath -m "$CAIXA_A6" 2>/dev/null || printf '%s' "$CAIXA_A6")"
+A6_ROOT_INVALIDO="$(cygpath -m "$CAIXA_A6_INVALIDO" 2>/dev/null || printf '%s' "$CAIXA_A6_INVALIDO")"
+
+# config.json AUSENTE: o hook não pode quebrar, e tem que sair o anúncio de
+# expediente (o único jeito da isenção 2 ficar indeterminada é o config faltar).
+SAIDA_A6="$(RFM_ROOT="$A6_ROOT" CLAUDE_CONFIG_DIR="$CAIXA_DEP" RFM_SETTINGS_PATH="$CAIXA_DEP/settings.json" node "$SRC/hooks/foco-session-start.cjs" > "$RAIZ_POSIX/a6-saida.json" 2>"$RAIZ_POSIX/a6-stderr.log"; echo "EXIT=$?")"
+EXIT_A6="${SAIDA_A6#EXIT=}"
+CTX_A6="$(node -e "try{process.stdout.write(JSON.parse(require('fs').readFileSync(process.argv[1],'utf8')).hookSpecificOutput.additionalContext)}catch{process.stdout.write('SEM_CONTEXTO')}" "$RAIZ_POSIX/a6-saida.json")"
+if [ "$EXIT_A6" = "0" ]; then ok=$((ok+1)); echo "  ok    ACHADO 6: hook real com config.json ausente sai com exit 0"
+else falhou=$((falhou+1)); echo "  FALHA ACHADO 6: hook real com config.json ausente saiu com exit $EXIT_A6"; fi
+checa "ACHADO 6: config.json ausente, sai anuncio de expediente"  tem     "expediente: ausente no config.json" "$CTX_A6"
+checa "ACHADO 6: config.json ausente, isencao 1 fica quieta"      nao_tem "Pastas: ausente"                    "$CTX_A6"
+
+# config.json PRESENTE MAS CORROMPIDO (JSON inválido): mesmo anúncio, e o hook
+# não pode quebrar — é o defeito de origem (um try único que engolia os dois).
+SAIDA_A6B="$(RFM_ROOT="$A6_ROOT_INVALIDO" CLAUDE_CONFIG_DIR="$CAIXA_DEP" RFM_SETTINGS_PATH="$CAIXA_DEP/settings.json" node "$SRC/hooks/foco-session-start.cjs" > "$RAIZ_POSIX/a6b-saida.json" 2>"$RAIZ_POSIX/a6b-stderr.log"; echo "EXIT=$?")"
+EXIT_A6B="${SAIDA_A6B#EXIT=}"
+CTX_A6B="$(node -e "try{process.stdout.write(JSON.parse(require('fs').readFileSync(process.argv[1],'utf8')).hookSpecificOutput.additionalContext)}catch{process.stdout.write('SEM_CONTEXTO')}" "$RAIZ_POSIX/a6b-saida.json")"
+if [ "$EXIT_A6B" = "0" ]; then ok=$((ok+1)); echo "  ok    ACHADO 6: hook real com config.json corrompido sai com exit 0 (nao quebra)"
+else falhou=$((falhou+1)); echo "  FALHA ACHADO 6: hook real com config.json corrompido saiu com exit $EXIT_A6B"; fi
+checa "ACHADO 6: config.json corrompido, sai anuncio de expediente" tem     "expediente: ausente no config.json" "$CTX_A6B"
+checa "ACHADO 6: config.json corrompido, isencao 1 fica quieta"     nao_tem "Pastas: ausente"                    "$CTX_A6B"
+
+# ACHADO 3: sem Ociosidade máxima, sessão parada há 30 min na pasta do foco
+# Não deve isentar (a ociosidade é indeterminada, logo não pode decidir)
+FOCO_SEM_OCI="Pastas: C:/a
+
+## Ativo
+
+**Foco de teste** \`[trabalho]\`
+
+Avanços:
+- 2026-08-14: um avanco"
+S="$(veredito "$FOCO_SEM_OCI" "[{\"cwd\":\"C:/a\",\"prompt_ts\":$((AGORA_SEG - 30*60*1000))}]" "$CONFIG_EXPEDIENTE" "$AGORA_SEG")"
+checa "ACHADO 3: sem Ociosidade maxima, nao isenta por foco em outra janela" nao_tem "foco ativo em outra janela" "$S"
+checa "ACHADO 3: anuncia a indeterminacao" tem "Ociosidade máxima: ausente" "$S"
+
+# ACHADO 4: C:/projetos/a/../a-secreto/x contra C:/projetos/a não deve casar
+# (testando que path.normalize resolve ..)
+S="$(outra_janela "[{\"cwd\":\"C:/projetos/a/../a-secreto/x\",\"prompt_ts\":$((AGORA_FIXO-1000))}]" '["C:/projetos/a"]' 15 "$AGORA_FIXO")"
+checa "ACHADO 4: C:/projetos/a/../a-secreto/x nao casa C:/projetos/a (.. resolvido)" tem "false" "$S"
+
+echo
+echo "17.1 MUTACOES — as quatro sabotagens do briefing, cada uma tem que quebrar a asserção correspondente"
+# Padrao: sabota uma COPIA da lib (nunca o LIB original), roda a MESMA fixture
+# contra ela, e mostra a saida divergindo. A chamada de `checa` dentro de um
+# SUBSHELL `( ... )` imprime a linha "FALHA ..." de verdade (prova textual de
+# que a assercao pega o defeito) sem contaminar o ok/falhou do arquivo inteiro
+# — subshell tem copia propria das variaveis, o incremento nao vaza para fora.
+# O veredito sobre "mutacao e load-bearing" quem da e o if/else logo depois,
+# no mesmo estilo das secoes 5, 9 e 12 deste arquivo.
+
+echo "  -- SABOTAGEM 1: dentroDoExpediente devolve false em vez de null quando falta expediente"
+cp "$LIB" "$RAIZ_POSIX/lib-mut-expediente.cjs"
+sed -i 's/if (!config || !config.expediente) return null;/if (!config || !config.expediente) return false;/' "$RAIZ_POSIX/lib-mut-expediente.cjs"
+S_MUT1="$(expediente '2026,8,10,10,0' '{}' "$RAIZ_POSIX/lib-mut-expediente.cjs")"
+echo "  (saida do mutante: $S_MUT1 — a assercao real espera 'null')"
+( checa "dentroDoExpediente: sem expediente no config devolve null (nao false)" tem "null" "$S_MUT1" )
+if [ "$S_MUT1" != "null" ]; then
+  ok=$((ok+1)); echo "  ok    mutacao expos o colapso null->false (D6 inteiro depende disso)"
+else
+  falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — null->false nao e o que a assercao mede"
+fi
+
+echo "  -- SABOTAGEM 2: focoAtivoEmOutraJanela compara caminho com includes (substring) em vez de igualdade"
+cp "$LIB" "$RAIZ_POSIX/lib-mut-includes.cjs"
+sed -i 's/cwdNormalizado === pasta/cwdNormalizado.includes(pasta)/' "$RAIZ_POSIX/lib-mut-includes.cjs"
+S_MUT2="$(outra_janela "[{\"cwd\":\"C:/abc\",\"prompt_ts\":$((AGORA_FIXO-1000))}]" '["C:/a"]' 15 "$AGORA_FIXO" "$RAIZ_POSIX/lib-mut-includes.cjs")"
+echo "  (saida do mutante: $S_MUT2 — a assercao real espera 'false')"
+( checa "focoAtivoEmOutraJanela: C:/abc nao casa C:/a por prefixo" tem "false" "$S_MUT2" )
+if [ "$S_MUT2" = "true" ]; then
+  ok=$((ok+1)); echo "  ok    mutacao expos o casamento por prefixo (C:/abc passou a isentar contra C:/a)"
+else
+  falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — includes() nao e o que a assercao mede"
+fi
+
+echo "  -- SABOTAGEM 3: focoAtivoEmOutraJanela usa stop_ts em vez de prompt_ts como sinal humano"
+cp "$LIB" "$RAIZ_POSIX/lib-mut-stopts.cjs"
+sed -i 's/const { cwd, prompt_ts } = sessao;/const { cwd, stop_ts: prompt_ts } = sessao;/' "$RAIZ_POSIX/lib-mut-stopts.cjs"
+FIX_STOP="[{\"cwd\":\"C:/a\",\"prompt_ts\":$((AGORA_FIXO - 999999999)),\"stop_ts\":$((AGORA_FIXO-1000))}]"
+S_MUT3="$(outra_janela "$FIX_STOP" '["C:/a"]' 15 "$AGORA_FIXO" "$RAIZ_POSIX/lib-mut-stopts.cjs")"
+echo "  (saida do mutante: $S_MUT3 — a assercao real espera 'false')"
+( checa "focoAtivoEmOutraJanela: prompt_ts frio e o que conta, nao stop_ts" tem "false" "$S_MUT3" )
+if [ "$S_MUT3" = "true" ]; then
+  ok=$((ok+1)); echo "  ok    mutacao expos a troca prompt_ts->stop_ts (sinal errado passou a isentar)"
+else
+  falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — a troca de campo nao e o que a assercao mede"
+fi
+
+echo "  -- SABOTAGEM 4: anuncio de uma isenção suprime o veredito da outra (defeito do D6 original)"
+cat > "$RAIZ_POSIX/sabotar-veredito.cjs" <<'SABOTA_EOF'
+const fs = require('fs');
+const alvo = process.argv[2];
+let texto = fs.readFileSync(alvo, 'utf8');
+// Transforma o novo código que analisa isenções independentemente em código que
+// retorna cedo quando acha anúncio (comportamento do D6 original, errado).
+// Ancora reescrita em 2026-08-14: a variavel "ociosidadePar" virou "ociosidade" e
+// a isenção 1 ganhou um segundo ramo (ociosidade === null) — ancora presa na forma
+// antiga nunca batia, o mutador saia com exit 1 e o `.sh` seguia usando a copia
+// intocada. Regra 12: se a ancora nao bate no arquivo de verdade, ela nao prova nada.
+const achar = [
+  '  // Analisa cada isenção INDEPENDENTEMENTE (D6 corrigido)',
+  '  const vereditos = [];',
+  '  const anuncios = [];',
+  '',
+  '  // ISENÇÃO 1: Foco ativo em outra janela (regra 17)',
+  '  // Precisa de: Pastas: configurado E Ociosidade máxima: declarada',
+  '  if (!pastas.length) {',
+  '    // Indeterminada: faltam dados',
+  "    anuncios.push('Pastas: ausente no FOCO.md — o radar vai cobrar desvio mesmo com o foco aberto em outra janela.');",
+  "  } else if (ociosidade === null) {",
+  '    // Indeterminada: faltam dados (ociosidade)',
+  "    anuncios.push('Ociosidade máxima: ausente no FOCO.md — o radar não pode determinar se o foco está ativo em outra janela.');",
+  '  } else {',
+  '    // Determinada: pode decidir',
+  '    if (focoAtivoEmOutraJanela(sessoes, pastas, ociosidade, agora)) {',
+  "      vereditos.push('foco ativo em outra janela');",
+  '    }',
+  '  }',
+].join('\n');
+const trocar = [
+  '  // SABOTAGEM: retorna cedo se acha anúncio (defeito do D6 original)',
+  '  // ISENÇÃO 1: Foco ativo em outra janela (regra 17)',
+  '  // Precisa de: Pastas: configurado E Ociosidade máxima: declarada',
+  '  if (!pastas.length) {',
+  "    return 'Pastas: ausente no FOCO.md — o radar vai cobrar desvio mesmo com o foco aberto em outra janela.';",
+  '  }',
+  '  const vereditos = [];',
+  '  const anuncios = [];',
+  '  if (ociosidade !== null && focoAtivoEmOutraJanela(sessoes, pastas, ociosidade, agora)) {',
+  "    vereditos.push('foco ativo em outra janela');",
+  '  }',
+].join('\n');
+if (!texto.includes(achar)) { console.error('ANCORA NAO BATE em ' + alvo); process.exit(1); }
+texto = texto.replace(achar, trocar);
+fs.writeFileSync(alvo, texto);
+SABOTA_EOF
+cp "$LIB" "$RAIZ_POSIX/lib-mut-veredito.cjs"
+node "$RAIZ_POSIX/sabotar-veredito.cjs" "$RAIZ_POSIX/lib-mut-veredito.cjs"
+EXIT_SABOTA4=$?
+if [ "$EXIT_SABOTA4" != "0" ]; then
+  falhou=$((falhou+1))
+  echo "  FALHA ANCORA NAO BATE na sabotagem 4 (exit $EXIT_SABOTA4) — mutador nao mutou nada,"
+  echo "         a copia intocada nao prova que a independencia das isencoes e load-bearing"
+else
+  # Discriminante de verdade: Pastas AUSENTE e config SEM expediente. So assim o
+  # codigo correto tem as DUAS isencoes indeterminadas e emite os DOIS anuncios —
+  # com Pastas presente (fixture antiga) o codigo correto ja para no primeiro
+  # anuncio sozinho, e a checagem passava com ou sem sabotagem (o proprio Achado 5).
+  S_MUT4="$(veredito "$FOCO_SEM_PASTAS" '[]' '{}' "$AGORA_SEG" "$RAIZ_POSIX/lib-mut-veredito.cjs")"
+  echo "  (saida do mutante com sabotagem, Pastas ausente + config {}: $S_MUT4)"
+  if echo "$S_MUT4" | grep -qF "expediente: ausente"; then
+    falhou=$((falhou+1))
+    echo "  FALHA sabotagem sem efeito — o anuncio da 2a isencao sobreviveu ao return cedo"
+  else
+    ok=$((ok+1)); echo "  ok    sabotagem expos que o return cedo suprime o anuncio da 2a isencao (independência e load-bearing)"
+  fi
+fi
 
 echo
 echo "-----------------------------------------"
