@@ -49,6 +49,10 @@ const CODIGO_ROOT = path.resolve(__dirname, '..');
 const REPO = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 
 const tem = (nome) => process.argv.includes(`--${nome}`);
+const argValor = (nome) => {
+  const i = process.argv.indexOf(`--${nome}`);
+  return i === -1 ? null : process.argv[i + 1] || null;
+};
 
 function git(args, { permitirErro = false } = {}) {
   const r = spawnSync('git', args, { cwd: REPO, encoding: 'utf8' });
@@ -80,8 +84,16 @@ function forcarConfigurado() {
   }
 }
 
-/** A base de comparação. Não chuta `main`: pergunta ao remoto, e só então tenta os nomes usuais. */
-function descobrirBase() {
+/**
+ * A base de comparação. Com `--base <ref>` é essa ref, sem mais pergunta — quem
+ * pediu decide. Sem a flag: não chuta `main`, pergunta ao remoto, e só então tenta
+ * os nomes usuais.
+ */
+function descobrirBase(override) {
+  if (override) {
+    const r = git(['rev-parse', '--verify', '--quiet', override], { permitirErro: true });
+    return r.ok && r.saida ? override : null;
+  }
   const h = git(['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'], { permitirErro: true });
   if (h.ok && h.saida) return h.saida.replace(/^origin\//, '');
   for (const nome of ['main', 'master']) {
@@ -91,8 +103,37 @@ function descobrirBase() {
   return null;
 }
 
-function coletar() {
-  const base = descobrirBase();
+/**
+ * Squash apaga os commits originais da base — a única marca que sobra é o PR em
+ * si, com estado `merged`. Por isso esta checagem só entra depois que os dois sinais
+ * de git (`--merged` e `gone`) já disseram `viva`: nunca é o primeiro critério, é o
+ * último, para quem tem upstream (sem upstream nao ha PR pra achar).
+ *
+ * Devolve `true` (achou PR mergeado), `false` (nao achou) ou `null` — `null` e o
+ * caso "a checagem nao rodou": `gh` ausente, sem autenticacao, ou qualquer saida
+ * != 0. `null` NUNCA vira remocao; quem chama trata como "continua viva".
+ */
+function prMergeado(nomeBranch) {
+  // `shell: true` nao e' so pra testar: no Windows, `gh` instalado via alguns
+  // gerenciadores e' `.cmd`/`.bat`, e o spawn direto (sem shell) ENOENT nisso —
+  // so acha `.exe`. Passar array de args com shell:true continua seguro (o Node
+  // escapa cada argumento antes de montar a linha de comando).
+  const r = spawnSync(
+    'gh',
+    ['pr', 'list', '--head', nomeBranch, '--state', 'merged', '--json', 'mergedAt'],
+    { cwd: REPO, encoding: 'utf8', shell: true },
+  );
+  if (r.error || r.status !== 0) return null;
+  try {
+    const lista = JSON.parse(r.stdout || '[]');
+    return Array.isArray(lista) && lista.length > 0;
+  } catch {
+    return null;
+  }
+}
+
+function coletar(baseOverride) {
+  const base = descobrirBase(baseOverride);
   if (!base) {
     console.error('erro: nao achei a branch base (nem origin/HEAD, nem main, nem master)');
     process.exit(1);
@@ -131,7 +172,20 @@ function coletar() {
     else b.classe = 'viva';
   }
 
-  return { base, atual, refs };
+  // Segunda passada, so em cima de quem ainda e 'viva' e tem upstream: e a
+  // interseccao "squash + remoto sobrevivente" que nenhum dos dois sinais acima
+  // enxerga. `ghFalhou` fica ligado se QUALQUER checagem nao rodou, para o aviso
+  // sair uma vez so, nao um por branch.
+  let ghFalhou = false;
+  for (const b of refs) {
+    if (b.classe === 'viva' && b.upstream) {
+      const r = prMergeado(b.nome);
+      if (r === true) b.classe = 'mergeada-por-squash';
+      else if (r === null) ghFalhou = true;
+    }
+  }
+
+  return { base, atual, refs, ghFalhou };
 }
 
 /**
@@ -141,7 +195,11 @@ function coletar() {
  * pé. Nem `--forcar` a alcança, porque a única coisa que `-D` faz por ela é apagar
  * commit que só existe ali.
  */
-const REMOVIVEIS = new Set(['resolvida-local', 'resolvida-remota', 'sumiu-mergeada', 'sumiu-divergente']);
+// A ordem importa para a bateria de teste: a secao de MUTACAO casa, no fonte deste
+// arquivo, o ultimo item deste Set seguido do fechamento do array, para sabotar a
+// lista sem tocar no teste. Por isso o item sumiu-x fica por ultimo aqui, e o item
+// novo entra antes dele, nao depois.
+const REMOVIVEIS = new Set(['resolvida-local', 'resolvida-remota', 'sumiu-mergeada', 'mergeada-por-squash', 'sumiu-divergente']);
 
 const EXPLICA = {
   base: 'a base — nunca',
@@ -151,6 +209,7 @@ const EXPLICA = {
   'resolvida-remota': 'ja esta na base, e o remoto ainda existe',
   'sumiu-mergeada': 'o remoto foi apagado e o trabalho esta na base',
   'sumiu-divergente': 'o remoto foi apagado mas a base NAO contem estes commits (tipico de squash merge) — so o -D apaga',
+  'mergeada-por-squash': 'o PR foi mergeado por squash e o remoto ainda existe — a base NAO contem estes commits (gh confirmou o merge) — so o -D apaga',
   viva: 'nao esta na base e o remoto esta de pe — trabalho vivo',
 };
 
@@ -167,9 +226,19 @@ function main() {
     if (!f.ok) console.log('aviso: `git fetch --prune` falhou — a leitura pode estar velha\n');
   }
 
-  const { base, atual, refs } = coletar();
+  const { base, atual, refs, ghFalhou } = coletar(argValor('base'));
   const forcar = tem('forcar') || forcarConfigurado();
   let remover = tem('remover');
+
+  // `null` de prMergeado nunca vira remocao — so avisa. Fora do modo --json: em
+  // --json a saida inteira tem que ser o objeto (e' o que `alvos()`/`classe()` da
+  // bateria fazem com `JSON.parse`), entao um aviso solto quebraria o parse.
+  if (ghFalhou && !tem('json')) {
+    console.log(
+      "aviso: `gh pr list` nao respondeu (gh ausente, sem autenticacao, ou saida != 0) — " +
+      "branch(es) candidata(s) a mergeada-por-squash continuam 'viva', sem checagem de PR\n",
+    );
+  }
 
   // ESTAR NA BASE — regra do usuario, 2026-08-11, e ela protege mais do que anuncia.
   //
@@ -216,8 +285,10 @@ function main() {
   // O `-d` recusa o que a base não contém. Só `sumiu-divergente` cai nesse caso, e
   // é exatamente ele que o comando original do usuario resolvia com `-D`.
   const alvos = refs.filter((b) => REMOVIVEIS.has(b.classe));
-  const precisamForca = alvos.filter((b) => b.classe === 'sumiu-divergente');
-  const vaoSair = forcar ? alvos : alvos.filter((b) => b.classe !== 'sumiu-divergente');
+  const precisamForca = alvos.filter((b) => b.classe === 'sumiu-divergente' || b.classe === 'mergeada-por-squash');
+  const vaoSair = forcar
+    ? alvos
+    : alvos.filter((b) => b.classe !== 'sumiu-divergente' && b.classe !== 'mergeada-por-squash');
 
   if (tem('json')) {
     console.log(JSON.stringify({ base, atual, forcar, refs, alvos: vaoSair.map((b) => b.nome) }, null, 2));
@@ -228,7 +299,7 @@ function main() {
   console.log(`Modo de remocao: ${forcar ? 'git branch -D (FORCA)' : 'git branch -d (recusa nao mergeada)'}`);
   console.log('');
 
-  for (const classe of ['viva', 'sumiu-divergente', 'sumiu-mergeada', 'resolvida-remota', 'resolvida-local', 'em-uso', 'atual', 'base']) {
+  for (const classe of ['viva', 'mergeada-por-squash', 'sumiu-divergente', 'sumiu-mergeada', 'resolvida-remota', 'resolvida-local', 'em-uso', 'atual', 'base']) {
     const lista = porClasse[classe];
     if (!lista || !lista.length) continue;
     console.log(`${classe} (${lista.length}) — ${EXPLICA[classe]}`);
