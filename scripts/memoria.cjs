@@ -352,31 +352,182 @@ function cmdBackup() {
   }
 }
 
-// Comando: reindexar — reconstruir índice FTS5 do zero.
-// Útil se FTS5 ficar desincronizado ou corrompido.
-function cmdReindexar() {
-  const { caminhoDb } = resolverCaminhos();
+// Função auxiliar: ler FOCO.md e extrair campos estruturados (datas, prazos, pastas).
+// Retorna array de objetos {campo, valor, linha}.
+function lerFoco(caminhoFoco) {
+  if (!fs.existsSync(caminhoFoco)) {
+    return [];
+  }
 
-  // Degradação: banco não existe — exit 0 com mensagem clara.
+  try {
+    const conteudo = fs.readFileSync(caminhoFoco, 'utf8');
+    const resultados = [];
+
+    // Extrair datas em formato YYYY-MM-DD
+    const reData = /\d{4}-\d{2}-\d{2}/g;
+    let match;
+    while ((match = reData.exec(conteudo)) !== null) {
+      resultados.push({
+        campo: 'data',
+        valor: match[0],
+        tipo: 'data',
+      });
+    }
+
+    // Extrair seções de Headers (## Titulo)
+    const reHeader = /^##\s+(.+)$/gm;
+    while ((match = reHeader.exec(conteudo)) !== null) {
+      resultados.push({
+        campo: 'titulo',
+        valor: match[1].trim(),
+        tipo: 'header',
+      });
+    }
+
+    // Extrair caminhos/pastas (linhas com `/` indicando estrutura)
+    const reFolder = /^-\s+(.+?\/[^\n]+)$/gm;
+    while ((match = reFolder.exec(conteudo)) !== null) {
+      resultados.push({
+        campo: 'pasta',
+        valor: match[1].trim(),
+        tipo: 'folder',
+      });
+    }
+
+    return resultados;
+  } catch (e) {
+    console.error(`AVISO: não consegui ler FOCO.md: ${e.message}`);
+    return [];
+  }
+}
+
+// Função auxiliar: ler ideias.jsonl e extrair metadados das ideias.
+// Retorna array de objetos com campos: id, titulo, projeto, status, tipo, plantada_em, gancho, conteudo.
+function lerIdeias(caminhoIdeias) {
+  if (!fs.existsSync(caminhoIdeias)) {
+    return [];
+  }
+
+  try {
+    const conteudo = fs.readFileSync(caminhoIdeias, 'utf8');
+    const linhas = conteudo.split('\n').filter(l => l.trim());
+    const ideias = [];
+
+    for (const linha of linhas) {
+      try {
+        const ideia = JSON.parse(linha);
+        ideias.push({
+          id: ideia.id || null,
+          titulo: ideia.titulo || '',
+          projeto: ideia.projeto || 'desconhecido',
+          status: ideia.status || 'plantada',
+          tipo: ideia.tipo || 'ideia',
+          plantada_em: ideia.plantada_em || ideia.data || null,
+          gancho: ideia.gancho || '',
+          // Concatenar campos para busca textual
+          conteudo: [
+            ideia.titulo,
+            ideia.descricao,
+            ideia.contexto,
+            ideia.ao_colher,
+          ].filter(x => x).join(' '),
+        });
+      } catch (e) {
+        // Ignorar linhas malformadas
+      }
+    }
+
+    return ideias;
+  } catch (e) {
+    console.error(`AVISO: não consegui ler ideias.jsonl: ${e.message}`);
+    return [];
+  }
+}
+
+// Comando: reindexar — reconstruir índice DERIVADO do zero a partir de FOCO.md e ideias.jsonl.
+// Garantia: apagar o índice não perde dado nenhum — tudo é rederivável dos arquivos fonte.
+function cmdReindexar() {
+  const { raiz, caminhoDb, projeto } = resolverCaminhos();
+
+  // Degradação: banco não existe — criar.
   if (!fs.existsSync(caminhoDb)) {
-    console.log(`(banco não existe em ${caminhoDb}; nada a reindexar)`);
-    return;
+    fs.mkdirSync(raiz, { recursive: true });
+    const conexao = abrirBanco(caminhoDb);
+    criarSchema(conexao);
+    conexao.close();
   }
 
   try {
     const conexao = abrirBanco(caminhoDb);
 
-    // Apagar índice FTS antigo.
+    // Limpar tabela resumos (índice derivado).
+    try {
+      conexao.exec('DELETE FROM resumos');
+    } catch (e) {
+      // Ignorar se não existe.
+    }
+
+    // Ler fontes de verdade.
+    const caminhoFoco = path.join(raiz, 'FOCO.md');
+    const caminhoIdeias = path.join(raiz, 'ideias.jsonl');
+
+    const focoItems = lerFoco(caminhoFoco);
+    const ideias = lerIdeias(caminhoIdeias);
+
+    // Popular resumos com dados de ideias (índice derivado).
+    const stmtInsertIdeias = conexao.prepare(
+      `INSERT INTO resumos (projeto, titulo, conteudo, criada_em)
+       VALUES (?, ?, ?, ?)`
+    );
+
+    const agora = new Date().toISOString();
+
+    for (const ideia of ideias) {
+      if (ideia.titulo) {
+        try {
+          stmtInsertIdeias.run(
+            projeto,
+            `[ideia] ${ideia.titulo}`,
+            ideia.conteudo,
+            ideia.plantada_em || agora
+          );
+        } catch (e) {
+          // Ignorar duplicatas
+        }
+      }
+    }
+
+    // Popular resumos com dados de FOCO (itens estruturados).
+    const stmtInsertFoco = conexao.prepare(
+      `INSERT INTO resumos (projeto, titulo, conteudo, criada_em)
+       VALUES (?, ?, ?, ?)`
+    );
+
+    for (const item of focoItems) {
+      if (item.tipo === 'header') {
+        try {
+          stmtInsertFoco.run(
+            projeto,
+            `[foco] ${item.valor}`,
+            item.valor,
+            agora
+          );
+        } catch (e) {
+          // Ignorar duplicatas
+        }
+      }
+    }
+
+    // Reconstruir índice FTS5 a partir das observações.
     try {
       conexao.exec('DELETE FROM observacoes_fts');
     } catch (e) {
       // Ignorar se não existe.
     }
 
-    // Reconstruir do zero.
     popularFts5(conexao);
 
-    console.log(`ok: índice FTS5 reconstruído (${caminhoDb})`);
+    console.log(`ok: índice derivado reconstruído (${caminhoDb})`);
     conexao.close();
   } catch (e) {
     // Degradação: erro ao reindexar — exit 0 com aviso.
