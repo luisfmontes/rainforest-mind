@@ -84,9 +84,13 @@ MF="$SBP/cfg/plugins/marketplaces/$(basename "$FONTE")"
 
 criar_fonte_sintetica() {
   rm -rf "$FONTE"
-  mkdir -p "$FONTE/scripts" "$FONTE/skills/exemplo"
+  mkdir -p "$FONTE/scripts" "$FONTE/skills/exemplo" "$FONTE/.claude-plugin"
   cp "$SRC/scripts/saude.cjs" "$FONTE/scripts/saude.cjs"
   echo "# skill de exemplo, so para skills/ nao ficar vazio" > "$FONTE/skills/exemplo/SKILL.md"
+  # Manifesto com o nome IGUAL ao basename da pasta: as situacoes A-D ja assumiam
+  # o basename, e o nome agora sai daqui (ver `manifestoDoPlugin`). Igualar os dois
+  # mantem A-D medindo o que sempre mediram e libera E-G para usar o manifesto.
+  printf '{"name":"fonte-sintetica","version":"1.0.0"}' > "$FONTE/.claude-plugin/plugin.json"
   git init -q "$FONTE"
   git -C "$FONTE" -c user.email=t@t -c user.name=t add -A >/dev/null 2>&1
   git -C "$FONTE" -c user.email=t@t -c user.name=t commit -qm "inicial" >/dev/null 2>&1
@@ -112,6 +116,99 @@ checa "C. commit so no clone nao vira 'atraso'"    "aviso" "commit proprio"     
 
 git_clone
 checa "D. clone em dia vira ok"                    "ok"    "skills do repo"      "$(ver)"
+
+echo
+echo "== o falso verde de 2026-08-17 =="
+# A checagem respondia "rodando direto do repo (nenhuma copia instalada nesta
+# config)" — a linha MAIS saudavel do painel — justamente quando rodava da copia
+# instalada, com 6 commits de codigo novo parados. Dois defeitos somados:
+# o nome do plugin vinha de `basename(RAIZ_CODIGO)`, que no cache versionado e a
+# VERSAO ("0.65.0"), e o ramo "clone nao existe" caia em `ok`.
+#
+# Aqui a pasta tem manifesto (nome de verdade) e NAO e repo git — a forma exata do
+# cache. A resposta certa e dizer que a pergunta nao pode ser feita dali.
+NOGIT="$SBP/cache-falso/0.65.0"
+mkdir -p "$NOGIT/scripts" "$NOGIT/.claude-plugin" "$NOGIT/skills/exemplo"
+cp "$SRC/scripts/saude.cjs" "$NOGIT/scripts/saude.cjs"
+printf '{"name":"rainforest-mind","version":"0.65.0"}' > "$NOGIT/.claude-plugin/plugin.json"
+echo "# exemplo" > "$NOGIT/skills/exemplo/SKILL.md"
+E="$(ver "$NOGIT")"
+checa "E. de pasta que nao e repo git, vira aviso"  "aviso" "nao e repo git"      "$E"
+if echo "$E" | grep -qF "rodando direto do repo"; then
+  falhou=$((falhou+1)); echo "  FALHA voltou o falso verde 'rodando direto do repo'"
+else
+  ok=$((ok+1)); echo "  ok   nao diz mais 'rodando direto do repo'"
+fi
+
+echo
+echo "== o que EXECUTA e o cache, e ele atrasa sozinho =="
+# Clone e install sao artefatos independentes: em 2026-08-17 o clone do marketplace
+# foi atualizado as 13:41 e o install continuou onde estava. Com o clone EM DIA, a
+# checagem antiga nao tinha nada a dizer — e o codigo que rodava seguia velho.
+criar_fonte_sintetica
+SHA_VELHO="$(git -C "$FONTE" rev-parse HEAD)"
+for i in 1 2; do
+  git -C "$FONTE" -c user.email=t@t -c user.name=t commit -q --allow-empty -m "depois do install $i" >/dev/null 2>&1
+done
+rm -rf "$MF"; git clone -q "$FONTE" "$MF" 2>/dev/null   # clone EM DIA com a fonte
+cat > "$SBP/cfg/plugins/installed_plugins.json" <<JSON
+{"version":2,"plugins":{"fonte-sintetica@teste":[{"scope":"user",
+ "installPath":"$SBP/cfg/plugins/cache/teste/fonte-sintetica/0.9.0",
+ "version":"0.9.0","gitCommitSha":"$SHA_VELHO"}]}}
+JSON
+F="$(ver "$FONTE")"
+checa "F. install atras e acusado com o clone em dia" "aviso" "o que EXECUTA esta atras" "$F"
+checa "F. e nomeia a versao instalada"                "aviso" "0.9.0 instalada contra 1.0.0" "$F"
+rm -f "$SBP/cfg/plugins/installed_plugins.json"
+
+echo
+echo "== as duas config dirs, nao so uma =="
+# `CLAUDE_CONFIG_DIR || ~/.claude` olhava UMA. Esta maquina tem duas com o plugin
+# habilitado, e elas divergem em silencio — foi o que ja custou as regras da
+# CLAUDE.md uma vez. Sem a variavel declarada, a varredura tem que achar as duas e
+# NOMEAR qual esta atras.
+#
+# `CLAUDE_CONFIG_DIR` vazio de proposito: com ele posto, a varredura para nele (e
+# e isso que mantem A-F hermeticas). Aqui a home e o sandbox, nunca a do dono.
+HOMEFALSA="$SBP/home"
+mkdir -p "$HOMEFALSA/.claude/plugins/marketplaces" "$HOMEFALSA/.claude-teste/plugins/marketplaces"
+criar_fonte_sintetica
+rm -rf "$HOMEFALSA/.claude-teste/plugins/marketplaces/fonte-sintetica"
+git clone -q "$FONTE" "$HOMEFALSA/.claude-teste/plugins/marketplaces/fonte-sintetica" 2>/dev/null
+for i in 1 2 3 4; do
+  git -C "$FONTE" -c user.email=t@t -c user.name=t commit -q --allow-empty -m "so na fonte $i" >/dev/null 2>&1
+done
+rm -rf "$HOMEFALSA/.claude/plugins/marketplaces/fonte-sintetica"
+git clone -q "$FONTE" "$HOMEFALSA/.claude/plugins/marketplaces/fonte-sintetica" 2>/dev/null
+G="$( ( cd "$FONTE" && CLAUDE_CONFIG_DIR= USERPROFILE="$HOMEFALSA" HOME="$HOMEFALSA" RFM_ROOT="$SBP/dados" \
+  node "$FONTE/scripts/saude.cjs" --json 2>/dev/null ) | node -e "
+    let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{
+      const a=JSON.parse(d).find(x=>x.item==='plugin instalado');
+      console.log(a ? a.nivel+' '+a.detalhe : 'ausente');
+    })")"
+checa "G. acha a segunda config dir e a nomeia"      "aviso" "[.claude-teste]"     "$G"
+checa "G. e conta o atraso so dela"                  "aviso" "4 commit(s) atras"   "$G"
+if echo "$G" | grep -qF "[.claude]"; then
+  falhou=$((falhou+1)); echo "  FALHA a config dir em dia entrou no aviso"
+else
+  ok=$((ok+1)); echo "  ok   a config dir em dia nao vira achado"
+fi
+
+echo
+echo "== o nome do plugin sai do manifesto, nao da pasta =="
+# `basename(RAIZ_CODIGO)` so acerta enquanto a pasta se chama como o plugin. Ela nao
+# se chama: no cache versionado o basename e a VERSAO, e num worktree deste proprio
+# repo e o nome da branch. Nos dois casos o clone procurado nao existe e a checagem
+# devolvia o ramo de sucesso. O nome esta declarado no manifesto — e de la que sai.
+criar_fonte_sintetica
+RENOMEADA="$SBP/pasta-com-outro-nome"
+rm -rf "$RENOMEADA"; cp -r "$FONTE" "$RENOMEADA"
+rm -rf "$MF"; git clone -q "$RENOMEADA" "$MF" 2>/dev/null   # clone em marketplaces/fonte-sintetica
+for i in 1 2 3 4 5; do
+  git -C "$RENOMEADA" -c user.email=t@t -c user.name=t commit -q --allow-empty -m "so na fonte $i" >/dev/null 2>&1
+done
+H="$(ver "$RENOMEADA")"
+checa "H. pasta com outro nome ainda acha o clone"   "aviso" "5 commit(s) atras"   "$H"
 
 echo
 echo "== a saida nunca imprime interrogacao =="
