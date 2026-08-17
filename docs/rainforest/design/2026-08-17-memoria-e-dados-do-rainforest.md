@@ -34,16 +34,16 @@ Grep 792, PowerShell 704, Write 594 — as seis somam 91% do total.
 - **D10 — A memória injetada é item de contexto separado, com teto próprio** — porquê: o hook atual usa 7.308 B de um teto de 8.000, e a disputa por esses bytes já deixou marcos e prazos fora da injeção mais de uma vez. O bloco do claude-mem hoje são ~9.018 B que não disputam esse orçamento; absorvê-los mataria o `FOCO.md`.
 - **D11 — A injeção de memória é híbrida: poucas observações residentes mais ponteiro para busca sob demanda, com o número medido e não arbitrado** — porquê: só ponteiro é a tese teoricamente certa, mas regride comportamento que hoje entrega ~9 KB de contexto útil na abertura; injetar 50 observações é o custo sem revisão que já estourou orçamento antes.
 
-  **Medição (D11):** observações realistas (1–3 KB cada, do corpus real):
+  **Medição (D11):** observações do tamanho real do corpus (~1.504 B cada: title ~76 B, subtitle ~111 B, facts ~609 B, narrative ~669 B, concepts ~27 B):
   
   | Observações | Bytes | % do teto (3000 B) |
   |---|---|---|
-  | 1 | 177 | 5,9% |
-  | 3 | 680 | 22,7% |
-  | 5 | 1170 | **39,0%** |
-  | 10 | 2999 | 99,9% |
+  | 1 | 1.666 | **55,5%** |
+  | 3 | 3.000 | 100,0% (truncado) |
+  | 5 | 3.000 | 100,0% (truncado) |
+  | 10 | 3.000 | 100,0% (truncado) |
   
-  **Escolha:** 5 observações residentes (1170 B). Motivo: equilíbrio entre contexto útil (~13% do que claude-mem injetava) e austeridade orçamentária, deixando ~1830 B de margem para crescimento futuro.
+  **Escolha:** 1 observação residente (1.666 B). Motivo: é o único número que não sofre truncamento contínuo no bloco. Prova que a tese de D11 ("poucas residentes **mais ponteiro**") está correta — o ponteiro carrega o peso, não as observações residentes. Deixa 44,5% de margem (1.334 B).
 - **D12 — O hook escreve direto no banco, e a passada de LLM nunca roda no caminho do prompt** — porquê: os hooks do rainforest já rodam como `.cjs` no node do harness, e o `node:sqlite` é em processo — dá para gravar em microssegundos sem subir nada. É o único desenho com zero processo de pé e zero spawn por evento.
 - **D13 — A matéria-prima é o transcrito que o harness já grava; o hook registra só a marca d'água (sessão, caminho, offset processado)** — porquê: o harness escreve o transcrito completo em `projects/<projeto>/<sessão>.jsonl` (1,3 MB numa sessão medida) e o `scripts/medir-injecao.py` já lê de lá. Gravar evento por evento seria duplicar o que já existe. A régua dá idempotência de graça: reprocessar é recuar o offset.
 - **D14 — A passada de LLM dispara no `SessionEnd`, com recuperação pela marca d'água na abertura seguinte** — porquê: um spawn por sessão contra ~3.800 por dia é a diferença inteira, e no fim da sessão o transcrito está completo. A recuperação não é zelo: este repo já documenta que o `SessionEnd` não dispara quando a janela morre no X.

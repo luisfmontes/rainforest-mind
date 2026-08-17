@@ -52,7 +52,7 @@ const caminhoDb = path.join(ROOT, 'rainforest.db');
 // Lê observações residentes.
 let observacoes = [];
 try {
-  observacoes = lerObservacoes(caminhoDb, 5);
+  observacoes = lerObservacoes(caminhoDb, 1);
 } catch {
   // Qualquer erro imprevisto: bloco vazio, nunca erro.
   observacoes = [];
