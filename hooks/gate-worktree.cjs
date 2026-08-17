@@ -168,7 +168,18 @@ function alvosBash(comando, cwdInicial) {
     if (cd) {
       const destino = cd[1] || cd[2] || cd[3];
       // `cd -`, `cd ~`, `$VAR`, `$(...)`: nao da para resolver aqui sem executar.
-      if (/[$`~]/.test(destino) || destino === "-") { incerto = true; continue; }
+      //
+      // O `~` so e expansao de home no COMECO (`~`, `~/x`, `~fulano/x`). Ate
+      // 2026-08-17 este teste era /[$`~]/, que casava com o til em QUALQUER
+      // posicao — e caminho do Windows tem til no meio o tempo todo, na forma
+      // 8.3: `C:/Users/RUNNER~1/...`, `C:/Users/LUISFE~1/...`. O efeito era o
+      // pior possivel para um gate: `cd <worktree> && git commit` num caminho
+      // 8.3 virava INCERTO, o conservadorismo somava o cwd principal aos alvos,
+      // e o gate BARRAVA um commit perfeitamente legitimo dentro do worktree.
+      // Achado pelo CI (Issue #16): o TEMP do runner e `C:/Users/RUNNER~1/...`,
+      // e a bateria hooks/testa-gate-worktree.sh ficou vermelha la e verde aqui.
+      // `$` e crase continuam valendo em qualquer posicao — sao expansao mesmo.
+      if (/[$`]/.test(destino) || /^~/.test(destino) || destino === "-") { incerto = true; continue; }
       atual = path.resolve(atual, destino);
       continue;
     }
