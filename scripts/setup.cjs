@@ -28,6 +28,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
 const CODIGO_ROOT = path.resolve(__dirname, '..');
 const { resolverRaiz } = require('../hooks/lib/raiz.cjs');
@@ -365,9 +366,69 @@ function removerProjeto(slug) {
   }
 }
 
+// ---------------------------------------------------------------- versionamento
+
+/**
+ * Transforma a raiz de dados num repositório git, com .gitignore que ignora
+ * o banco SQLite (binário que muda a cada minuto).
+ *
+ * Atende D3 e D7 do design. É idempotente: rodar duas vezes não quebra nem
+ * duplica commit.
+ *
+ * exit 0: repositorio foi criado ou ja existia
+ * exit 1: raiz nao existe ou erro ao criar repo
+ */
+function versionar() {
+  const { raiz, nivel } = resolverRaiz({ plugin: CODIGO_ROOT });
+
+  if (!raiz) {
+    console.error('erro: nao ha pasta de dados — rode primeiro: node scripts/setup.cjs --criar');
+    process.exit(1);
+  }
+
+  const gitDir = path.join(raiz, '.git');
+  const gitignorePath = path.join(raiz, '.gitignore');
+
+  // Idempotencia: se ja eh repositorio, nada a fazer
+  if (fs.existsSync(gitDir)) {
+    console.log(`repositorio ja existe em: ${raiz}`);
+    return;
+  }
+
+  // Cria .gitignore se nao existir. Nao sobrescreve se ja existe
+  // (usuario pode ter escrito manualmente algo ali).
+  if (!fs.existsSync(gitignorePath)) {
+    const gitignoreConteudo = `# Banco de dados SQLite do rainforest
+# Binario que muda a cada minuto — git nao da diff legivel dele
+rainforest.db*
+`;
+    fs.writeFileSync(gitignorePath, gitignoreConteudo, 'utf8');
+  }
+
+  // Inicializa repositorio e faz commit inicial
+  try {
+    execSync('git init', { cwd: raiz, stdio: 'pipe' });
+    execSync('git add -A', { cwd: raiz, stdio: 'pipe' });
+    execSync('git commit -m "Versionamento inicial: estrutura de dados do rainforest"', {
+      cwd: raiz,
+      stdio: 'pipe',
+    });
+    console.log(`repositorio criado em: ${raiz}`);
+  } catch (e) {
+    console.error(`erro ao criar repositorio: ${e.message}`);
+    process.exit(1);
+  }
+}
+
 // ---------------------------------------------------------------- CLI
 
 function main() {
+  // `versionar` como subcomando posicional (argv[2])
+  if (process.argv[2] === 'versionar') {
+    versionar();
+    return;
+  }
+
   if (tem('criar')) {
     criar();
     console.log('');
