@@ -50,9 +50,11 @@ const ROOT = RAIZ_RESOLVIDA || path.resolve(__dirname, '..');
 const caminhoDb = path.join(ROOT, 'rainforest.db');
 
 // Lê observações residentes.
+// Decisão D11: carregar múltiplas observações curtas (título + subtítulo)
+// em vez de uma observação completa. Número calibrado pela medição.
 let observacoes = [];
 try {
-  observacoes = lerObservacoes(caminhoDb, 1);
+  observacoes = lerObservacoes(caminhoDb, 14);
 } catch {
   // Qualquer erro imprevisto: bloco vazio, nunca erro.
   observacoes = [];
