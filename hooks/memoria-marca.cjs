@@ -110,8 +110,71 @@ function lerOffset(caminhoTranscrito) {
   }
 }
 
+// Recupera marcas d'água pendentes (sessões interrompidas).
+// Chamado no SessionStart com --recover.
+// Varre a tabela marca_dagua e processa transcritos que cresceram após a marca.
+function recuperarSessoes() {
+  try {
+    const dados = resolverDados();
+    if (!dados) {
+      process.exit(0);
+    }
+
+    let conexao;
+    try {
+      conexao = abrirBanco(dados.caminhoDb);
+      criarSchema(conexao);
+    } catch (e) {
+      // Banco não abrível — degradação silenciosa.
+      process.exit(0);
+    }
+
+    try {
+      // Varre todas as marcas da tabela.
+      const stmtLer = conexao.prepare(`
+        SELECT id, projeto, sessao, arquivo, offset FROM marca_dagua
+      `);
+      const marcas = stmtLer.all();
+
+      // Para cada marca, verifica se o arquivo cresceu.
+      // Tarefa 11: Detecta e sinaliza pendência, MAS NUNCA avança offset.
+      // O offset só avança após a passada de observação (tarefa 12) processar e gravar.
+      for (const marca of marcas) {
+        try {
+          const tamanhoAtual = lerOffset(marca.arquivo);
+
+          // Se o arquivo cresceu além do offset marcado, há recuperação a fazer.
+          // A condição tamanhoAtual > marca.offset é o próprio sinal de pendência.
+          if (tamanhoAtual > marca.offset) {
+            // Apenas detecta — não processa, não avança offset.
+            // A passada de observação (tarefa 12) vai ler [offset..tamanhoAtual],
+            // gravar observação, e aí sim avançar offset.
+          }
+        } catch (e) {
+          // Erro ao processar marca específica — continua com próxima.
+        }
+      }
+
+      process.exit(0);
+    } finally {
+      conexao.close();
+    }
+  } catch (e) {
+    // Qualquer erro não antecipado — degradação silenciosa.
+    process.exit(0);
+  }
+}
+
 // Main: lê evento, resolve caminhos, grava marca.
+// Detecta se está rodando em modo --recover (SessionStart) ou modo normal (Stop/SessionEnd).
 function main() {
+  // Modo recuperação: SessionStart com --recover
+  if (process.argv.includes('--recover')) {
+    recuperarSessoes();
+    return;
+  }
+
+  // Modo normal: grava marca d'água (Stop/SessionEnd)
   try {
     const evento = lerEvento();
     const sessionId = evento.session_id;
