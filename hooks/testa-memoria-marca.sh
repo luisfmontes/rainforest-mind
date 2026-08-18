@@ -6,11 +6,14 @@
 #   1. que o hook grava sessão, caminho do transcrito e offset
 #   2. que nenhum spawn/exec existe no arquivo
 #   3. que reprocessar após recuar o offset é idempotente (mesma contagem)
+#   4. que PostToolUse NÃO existe para rainforest (proibido: 15k+ processos/dia)
+#   5. que SessionEnd TEM memoria-marca.cjs (amortizado com heartbeat)
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HOOK="$SRC/hooks/memoria-marca.cjs"
 SCRIPT_MEMORIA="$SRC/scripts/memoria.cjs"
+HOOKS_JSON="$SRC/hooks/hooks.json"
 
 # Sandbox hermética
 RAIZ_POSIX="$(mktemp -d)"
@@ -29,9 +32,29 @@ else
   ok=$((ok+1)); echo "  ok    sem spawn/exec"
 fi
 
-# Teste 2: Inicializa banco
+# Teste 2: PostToolUse NÃO existe para rainforest
 echo
-echo "2. Inicializando banco na caixa de areia"
+echo "2. PostToolUse não existe em hooks.json (proibido)"
+if grep -A 10 '"PostToolUse"' "$HOOKS_JSON" | grep -q 'memoria-marca'; then
+  falhou=$((falhou+1)); echo "  FALHA PostToolUse tem memoria-marca (sobe 15k+ processos)"
+elif grep -q '"PostToolUse"' "$HOOKS_JSON"; then
+  falhou=$((falhou+1)); echo "  FALHA PostToolUse existe com outro hook"
+else
+  ok=$((ok+1)); echo "  ok    PostToolUse não registrado para rainforest"
+fi
+
+# Teste 3: SessionEnd TEM memoria-marca.cjs
+echo
+echo "3. SessionEnd tem memoria-marca.cjs (amortizado)"
+if grep -A 15 '"SessionEnd"' "$HOOKS_JSON" | grep -q 'memoria-marca.cjs'; then
+  ok=$((ok+1)); echo "  ok    memoria-marca.cjs registrado em SessionEnd"
+else
+  falhou=$((falhou+1)); echo "  FALHA memoria-marca.cjs não está em SessionEnd"
+fi
+
+# Teste 4: Inicializa banco
+echo
+echo "4. Inicializando banco na caixa de areia"
 RFM_ROOT="$RAIZ" node "$SCRIPT_MEMORIA" iniciar > /dev/null 2>&1
 
 if [ -f "$RAIZ_POSIX/rainforest.db" ]; then
