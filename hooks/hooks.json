@@ -48,6 +48,12 @@
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/heartbeat.cjs\" stop",
             "async": true,
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/memoria-marca.cjs\"",
+            "async": true,
+            "timeout": 5
           }
         ]
       }
@@ -60,6 +66,12 @@
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/heartbeat.cjs\" end",
             "async": true,
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/memoria-marca.cjs\"",
+            "async": true,
+            "timeout": 5
           }
         ]
       }
