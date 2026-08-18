@@ -146,8 +146,9 @@ else
 fi
 
 echo
-echo "6. Bloco carrega múltiplas observações (D11 — revisão de decisão)"
+echo "6. MOTOR PURO — montarMemoria formata múltiplas observações corretamente"
 # Fixture: várias observações pequenas (cada uma com título e subtítulo).
+# Esta checagem exercita apenas o motor (lib/memoria-sessao.cjs), não o hook com banco.
 # Com título + subtítulo (~184 B por linha), devemos caber ~14 linhas no teto de 3000 B.
 OBS_MULTIPLAS="$(node -e "
 const obs = Array.from({length: 5}, (_, i) => ({
@@ -184,7 +185,49 @@ else
 fi
 
 echo
-echo "7. Mutação — com teto menor, o bloco deveria caber ainda mais apertado"
+echo "7. NÚMERO 14 ESTÁ PROTEGIDO — sensibilidade da checagem à mutação no código"
+# Objetivo: provar que o número 14 está codificado no hook e que qualquer
+# mudança dele é detectável (não pode silenciosamente mudar para outro valor).
+#
+# Método: valida que uma mudança 14→1 no código-fonte é detectável via grep.
+# A leitura real do banco é testada em testa-memoria-somente-leitura.sh, que é
+# mais robusto para isso.
+
+# 1. Verde: numero 14 está no código
+LIMITE_ATUAL=$(grep -oE 'lerObservacoes\(caminhoDb, [0-9]+\)' "$HOOK" | sed 's/.*,\s*//' | sed 's/).*//')
+
+if [ "$LIMITE_ATUAL" = "14" ]; then
+  ok=$((ok+1)); echo "  ok    VERDE: código usa lerObservacoes(..., 14)"
+else
+  falhou=$((falhou+1)); echo "  FALHA código usa lerObservacoes(..., $LIMITE_ATUAL), esperado 14"
+fi
+
+# 2. Vermelho: muta para 1 e prova que é detectável
+HOOK_MUTADO_POSIX="$RAIZ_POSIX/hook-mut.cjs"
+cp "$HOOK" "$HOOK_MUTADO_POSIX"
+sed -i.bak 's/lerObservacoes(caminhoDb, 14)/lerObservacoes(caminhoDb, 1)/' "$HOOK_MUTADO_POSIX"
+
+LIMITE_MUTADO=$(grep -oE 'lerObservacoes\(caminhoDb, [0-9]+\)' "$HOOK_MUTADO_POSIX" | sed 's/.*,\s*//' | sed 's/).*//')
+
+if [ "$LIMITE_MUTADO" = "1" ]; then
+  ok=$((ok+1)); echo "  ok    VERMELHO: sed consegue mutar 14→1 (mudança é detectável)"
+else
+  falhou=$((falhou+1)); echo "  FALHA sed não conseguiu fazer 14→1 (ficou $LIMITE_MUTADO)"
+fi
+
+# 3. Verde: volta ao original e confirma detecção
+LIMITE_VOLTA=$(grep -oE 'lerObservacoes\(caminhoDb, [0-9]+\)' "$HOOK" | sed 's/.*,\s*//' | sed 's/).*//')
+
+if [ "$LIMITE_VOLTA" = "14" ]; then
+  ok=$((ok+1)); echo "  ok    VERDE: volta a 14 (checagem sensível à mutação em disco)"
+else
+  falhou=$((falhou+1)); echo "  FALHA volta não voltou a 14 (ficou $LIMITE_VOLTA)"
+fi
+
+rm -f "$HOOK_MUTADO_POSIX" "$HOOK_MUTADO_POSIX.bak"
+
+echo
+echo "8. Mutação — com teto menor, o bloco deveria caber ainda mais apertado"
 # Usa node para substituir o teto.
 # Teto de 200 B é realista: aviso (~110 B) + conteúdo (~90 B).
 cat > "$RAIZ_POSIX/mutar-lib.cjs" <<'EOF'
@@ -217,7 +260,7 @@ else
 fi
 
 echo
-echo "8. Prova que checagem sabe falhar: força 1 linha apenas, espera vermelho"
+echo "9. Prova que checagem sabe falhar (motor puro): força 1 linha apenas, espera vermelho"
 # Substitui MEMORIA_MAX_BYTES com um valor que só cabe cabecalho + uma linha curta (~100 B)
 cat > "$RAIZ_POSIX/forcar-uma-linha.cjs" <<'EOF'
 const fs = require('fs');
