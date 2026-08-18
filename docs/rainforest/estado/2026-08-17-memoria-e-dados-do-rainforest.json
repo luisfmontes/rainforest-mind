@@ -26,8 +26,8 @@
     "tarefas_ok": 12,
     "tarefas": 13,
     "pendentes": [
-      "tarefa-11: devolvida 3x — a recuperacao avancava o offset por cima do trecho pendente",
-      "tarefa-13: Issue no upstream, texto com o Luis"
+      "tarefa-13: Issue no upstream, texto com o Luis",
+      "D14: o laco da recuperacao esta aberto — deteccao pronta, acao nao decidida"
     ],
     "em": "2026-08-17"
   },
