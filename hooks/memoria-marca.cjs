@@ -143,14 +143,16 @@ function recuperarSessoes() {
 
           // Se o arquivo cresceu além do offset marcado, há recuperação a fazer.
           if (tamanhoAtual > marca.offset) {
-            // Nota: a recuperação REAL (ler transcrito, processar com LLM, gravar observação)
-            // é a tarefa 12 (passada de LLM). Nesta tarefa 11, apenas registramos que há
-            // recuperação pendente. O SessionEnd da tarefa 12 vai processar quando
-            // a sessão fechar normalmente, ou a recuperação na abertura seguinte vai pegar.
-            //
-            // Por enquanto, apenas atualiza o offset para a recuperação seguinte começar
-            // de onde a anterior parou.
-            // Em produção (tarefa 12), isso vai incluir o call à passada de LLM.
+            // Tarefa 11: Atualizar offset para o novo tamanho do arquivo.
+            // Isso marca o ponto até onde foi processado. A passada de LLM (tarefa 12)
+            // vai usar este offset para ler só o novo conteúdo do transcrito.
+            const agora = new Date().toISOString();
+            const stmtUpdate = conexao.prepare(`
+              UPDATE marca_dagua
+              SET offset = ?, processada_em = ?
+              WHERE projeto = ? AND sessao = ?
+            `);
+            stmtUpdate.run(tamanhoAtual, agora, marca.projeto, marca.sessao);
           }
         } catch (e) {
           // Erro ao processar marca específica — continua com próxima.

@@ -115,24 +115,25 @@ else
   falhou=$((falhou+1)); echo "  FALHA marca final diverge (esperado=$OFFSET_TURNO2, obtido=$RESULTADO)"
 fi
 
-# Teste 5: Caminho de recuperação — SessionEnd **nunca dispara**
+# Teste 5: Caminho de recuperação — SessionEnd **nunca dispara**, recovery avança offset
 echo
-echo "5. Caminho de recuperação: SessionEnd não dispara, recuperação na abertura seguinte"
+echo "5. CRÍTICO: Janela morta — offset avança de X para Y quando recuperação roda"
 
 SESSAO_MORTA="sessao-morta-001"
 mkdir -p "$RAIZ_POSIX/projects/projeto-teste"
-echo '{"tipo":"prompt","conteudo":"turno1"}' > "$RAIZ_POSIX/projects/projeto-teste/$SESSAO_MORTA.jsonl"
-OFFSET_MORTA_TURNO1=$(wc -c < "$RAIZ_POSIX/projects/projeto-teste/$SESSAO_MORTA.jsonl")
 
-# Stop: marca é escrita (apenas Stop, sessão vai morrer)
+# Passo 1: Cria transcrito, Stop marca em offset X
+echo '{"tipo":"prompt","conteudo":"turno1"}' > "$RAIZ_POSIX/projects/projeto-teste/$SESSAO_MORTA.jsonl"
+OFFSET_X=$(wc -c < "$RAIZ_POSIX/projects/projeto-teste/$SESSAO_MORTA.jsonl")
+
 EVENTO_MORTA='{"session_id":"'$SESSAO_MORTA'","project":"projeto-teste"}'
 echo "$EVENTO_MORTA" | \
   CLAUDE_CONFIG_DIR="$RAIZ" \
   RFM_ROOT="$RAIZ" \
   node "$HOOK" > /dev/null 2>&1
 
-# Verifica marca após Stop (antes de SessionEnd)
-RESULTADO_ANTES=$(cd "$SRC" && node -e "
+# Verifica marca após Stop (offset = X)
+MARCA_ANTES=$(cd "$SRC" && node -e "
 const { abrirBanco } = require('./scripts/memoria.cjs');
 const db = abrirBanco('$RAIZ/rainforest.db');
 const stmt = db.prepare('SELECT offset FROM marca_dagua WHERE sessao=\\'$SESSAO_MORTA\\'');
@@ -141,28 +142,31 @@ console.log(rows[0] ? rows[0].offset : '0');
 db.close();
 " 2>/dev/null)
 
-if [ "$RESULTADO_ANTES" = "$OFFSET_MORTA_TURNO1" ]; then
-  ok=$((ok+1)); echo "  ok    marca após Stop (antes de SessionEnd morrer) = $RESULTADO_ANTES bytes"
+if [ "$MARCA_ANTES" = "$OFFSET_X" ]; then
+  echo "  ok    marca após Stop = $MARCA_ANTES bytes (offset X)"
 else
-  falhou=$((falhou+1)); echo "  FALHA marca no Stop diverge (esperado=$OFFSET_MORTA_TURNO1, obtido=$RESULTADO_ANTES)"
+  falhou=$((falhou+1)); echo "  FALHA marca após Stop diverge (esperado=$OFFSET_X, obtido=$MARCA_ANTES)"
 fi
 
-# **Simula: SessionEnd NUNCA dispara** (sessão morre, não chama hook)
-# O transcrito CRESCE depois que Stop rodou (usuário continua digitando)
-echo '{"tipo":"ferramenta","conteudo":"resultado"}' >> "$RAIZ_POSIX/projects/projeto-teste/$SESSAO_MORTA.jsonl"
-OFFSET_MORTA_TURNO2=$(wc -c < "$RAIZ_POSIX/projects/projeto-teste/$SESSAO_MORTA.jsonl")
+# Passo 2: Transcrito CRESCE (Y > X), SessionEnd MORRE (nunca chama hook)
+echo '{"tipo":"ferramenta","conteudo":"resultado","dados":"extra_bytes"}' >> "$RAIZ_POSIX/projects/projeto-teste/$SESSAO_MORTA.jsonl"
+OFFSET_Y=$(wc -c < "$RAIZ_POSIX/projects/projeto-teste/$SESSAO_MORTA.jsonl")
 
-# Não chama SessionEnd — simula janela morta
+if [ "$OFFSET_Y" -gt "$OFFSET_X" ]; then
+  echo "  ok    transcrito cresceu de $OFFSET_X para $OFFSET_Y bytes"
+else
+  falhou=$((falhou+1)); echo "  FALHA transcrito não cresceu"
+fi
 
-# **Abertura seguinte**: chama recuperação
+# Passo 3: Abertura seguinte — recuperação chamada, offset DEVE AVANÇAR para Y
+echo "  Chamando recuperação (offset deve avançar de $OFFSET_X para $OFFSET_Y)..."
 echo "$EVENTO_MORTA" | \
   CLAUDE_CONFIG_DIR="$RAIZ" \
   RFM_ROOT="$RAIZ" \
   node "$HOOK" --recover > /dev/null 2>&1
 
-# Verifica marca após recuperação (deve continuar como estava, pois recuperação
-# em tarefa 11 só valida; a atualização real vem na tarefa 12)
-RESULTADO_DEPOIS=$(cd "$SRC" && node -e "
+# Verifica marca após recuperação (DEVE ter avançado para Y)
+MARCA_DEPOIS=$(cd "$SRC" && node -e "
 const { abrirBanco } = require('./scripts/memoria.cjs');
 const db = abrirBanco('$RAIZ/rainforest.db');
 const stmt = db.prepare('SELECT offset FROM marca_dagua WHERE sessao=\\'$SESSAO_MORTA\\'');
@@ -171,18 +175,11 @@ console.log(rows[0] ? rows[0].offset : '0');
 db.close();
 " 2>/dev/null)
 
-# A marca deve permanecer inalterada após recuperação (tarefa 11 só valida, tarefa 12 processa)
-if [ "$RESULTADO_DEPOIS" = "$RESULTADO_ANTES" ]; then
-  ok=$((ok+1)); echo "  ok    recuperação não sobrescreveu marca ($RESULTADO_DEPOIS bytes)"
+# AQUI VAI O TESTE QUE FALHA QUANDO recuperarSessoes() tem return; no topo
+if [ "$MARCA_DEPOIS" = "$OFFSET_Y" ]; then
+  ok=$((ok+1)); echo "  ok    RECUPERAÇÃO FUNCIONOU: offset avançou de $MARCA_ANTES para $MARCA_DEPOIS"
 else
-  falhou=$((falhou+1)); echo "  FALHA recuperação alterou marca (era=$RESULTADO_ANTES, ficou=$RESULTADO_DEPOIS)"
-fi
-
-# Verifica que transcrito cresceu (prova que recuperação precisa processar)
-if [ "$OFFSET_MORTA_TURNO2" -gt "$RESULTADO_ANTES" ]; then
-  ok=$((ok+1)); echo "  ok    transcrito cresceu ($OFFSET_MORTA_TURNO1 → $OFFSET_MORTA_TURNO2 bytes)"
-else
-  falhou=$((falhou+1)); echo "  FALHA transcrito não cresceu"
+  falhou=$((falhou+1)); echo "  FALHA RECUPERAÇÃO NÃO FUNCIONOU: offset continuou em $MARCA_DEPOIS (esperava $OFFSET_Y)"
 fi
 
 # Teste 6: Prova por mutação — desliga recuperação, SessionEnd morto fica suspenso
