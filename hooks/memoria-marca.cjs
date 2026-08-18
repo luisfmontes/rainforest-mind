@@ -137,22 +137,18 @@ function recuperarSessoes() {
       const marcas = stmtLer.all();
 
       // Para cada marca, verifica se o arquivo cresceu.
+      // Tarefa 11: Detecta e sinaliza pendência, MAS NUNCA avança offset.
+      // O offset só avança após a passada de observação (tarefa 12) processar e gravar.
       for (const marca of marcas) {
         try {
           const tamanhoAtual = lerOffset(marca.arquivo);
 
           // Se o arquivo cresceu além do offset marcado, há recuperação a fazer.
+          // A condição tamanhoAtual > marca.offset é o próprio sinal de pendência.
           if (tamanhoAtual > marca.offset) {
-            // Tarefa 11: Atualizar offset para o novo tamanho do arquivo.
-            // Isso marca o ponto até onde foi processado. A passada de LLM (tarefa 12)
-            // vai usar este offset para ler só o novo conteúdo do transcrito.
-            const agora = new Date().toISOString();
-            const stmtUpdate = conexao.prepare(`
-              UPDATE marca_dagua
-              SET offset = ?, processada_em = ?
-              WHERE projeto = ? AND sessao = ?
-            `);
-            stmtUpdate.run(tamanhoAtual, agora, marca.projeto, marca.sessao);
+            // Apenas detecta — não processa, não avança offset.
+            // A passada de observação (tarefa 12) vai ler [offset..tamanhoAtual],
+            // gravar observação, e aí sim avançar offset.
           }
         } catch (e) {
           // Erro ao processar marca específica — continua com próxima.

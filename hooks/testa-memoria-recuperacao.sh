@@ -115,9 +115,9 @@ else
   falhou=$((falhou+1)); echo "  FALHA marca final diverge (esperado=$OFFSET_TURNO2, obtido=$RESULTADO)"
 fi
 
-# Teste 5: Caminho de recuperação — SessionEnd **nunca dispara**, recovery avança offset
+# Teste 5: Caminho de recuperação — SessionEnd **nunca dispara**, offset NÃO avança
 echo
-echo "5. CRÍTICO: Janela morta — offset avança de X para Y quando recuperação roda"
+echo "5. CRÍTICO: Janela morta — offset CONTINUA em X (recuperação NÃO processa)"
 
 SESSAO_MORTA="sessao-morta-001"
 mkdir -p "$RAIZ_POSIX/projects/projeto-teste"
@@ -151,21 +151,22 @@ fi
 # Passo 2: Transcrito CRESCE (Y > X), SessionEnd MORRE (nunca chama hook)
 echo '{"tipo":"ferramenta","conteudo":"resultado","dados":"extra_bytes"}' >> "$RAIZ_POSIX/projects/projeto-teste/$SESSAO_MORTA.jsonl"
 OFFSET_Y=$(wc -c < "$RAIZ_POSIX/projects/projeto-teste/$SESSAO_MORTA.jsonl")
+PENDENTE=$((OFFSET_Y - OFFSET_X))
 
 if [ "$OFFSET_Y" -gt "$OFFSET_X" ]; then
-  echo "  ok    transcrito cresceu de $OFFSET_X para $OFFSET_Y bytes"
+  echo "  ok    transcrito cresceu de $OFFSET_X para $OFFSET_Y bytes (pendente: $PENDENTE)"
 else
   falhou=$((falhou+1)); echo "  FALHA transcrito não cresceu"
 fi
 
-# Passo 3: Abertura seguinte — recuperação chamada, offset DEVE AVANÇAR para Y
-echo "  Chamando recuperação (offset deve avançar de $OFFSET_X para $OFFSET_Y)..."
+# Passo 3: Abertura seguinte — recuperação DETECTA pendência, MAS NÃO PROCESSA
+echo "  Chamando recuperação (offset deve CONTINUAR em $OFFSET_X, pendente fica $PENDENTE)..."
 echo "$EVENTO_MORTA" | \
   CLAUDE_CONFIG_DIR="$RAIZ" \
   RFM_ROOT="$RAIZ" \
   node "$HOOK" --recover > /dev/null 2>&1
 
-# Verifica marca após recuperação (DEVE ter avançado para Y)
+# Verifica marca após recuperação (DEVE continuar em X, não avançar para Y)
 MARCA_DEPOIS=$(cd "$SRC" && node -e "
 const { abrirBanco } = require('./scripts/memoria.cjs');
 const db = abrirBanco('$RAIZ/rainforest.db');
@@ -175,11 +176,12 @@ console.log(rows[0] ? rows[0].offset : '0');
 db.close();
 " 2>/dev/null)
 
-# AQUI VAI O TESTE QUE FALHA QUANDO recuperarSessoes() tem return; no topo
-if [ "$MARCA_DEPOIS" = "$OFFSET_Y" ]; then
-  ok=$((ok+1)); echo "  ok    RECUPERAÇÃO FUNCIONOU: offset avançou de $MARCA_ANTES para $MARCA_DEPOIS"
+# TESTE CRÍTICO: offset NUNCA deve avançar (comportamento correto da recuperação)
+# Se offset avançou para Y, significa que recuperação DESTRUIU o pendente
+if [ "$MARCA_DEPOIS" = "$OFFSET_X" ]; then
+  ok=$((ok+1)); echo "  ok    RECUPERAÇÃO CORRETA: offset continua em $MARCA_DEPOIS (pendente conservado)"
 else
-  falhou=$((falhou+1)); echo "  FALHA RECUPERAÇÃO NÃO FUNCIONOU: offset continuou em $MARCA_DEPOIS (esperava $OFFSET_Y)"
+  falhou=$((falhou+1)); echo "  FALHA RECUPERAÇÃO DESTRUIU PENDENTE: offset pulou de $OFFSET_X para $MARCA_DEPOIS"
 fi
 
 # Teste 6: Prova por mutação — desliga recuperação, SessionEnd morto fica suspenso
