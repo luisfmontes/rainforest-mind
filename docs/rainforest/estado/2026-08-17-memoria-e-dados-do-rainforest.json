@@ -23,11 +23,10 @@
   },
   "executar": {
     "status": "parcial",
-    "tarefas_ok": 12,
+    "tarefas_ok": 13,
     "tarefas": 13,
     "pendentes": [
-      "tarefa-13: Issue no upstream, texto com o Luis",
-      "D14: o laco da recuperacao esta aberto — deteccao pronta, acao nao decidida"
+      "D14: o laco da recuperacao segue aberto — 5 tentativas, nenhuma verde"
     ],
     "em": "2026-08-17"
   },
