@@ -23,9 +23,10 @@
   },
   "executar": {
     "status": "parcial",
-    "tarefas_ok": 8,
+    "tarefas_ok": 12,
     "tarefas": 13,
     "pendentes": [
+      "tarefa-11: devolvida 3x — a recuperacao avancava o offset por cima do trecho pendente",
       "tarefa-13: Issue no upstream, texto com o Luis"
     ],
     "em": "2026-08-17"
