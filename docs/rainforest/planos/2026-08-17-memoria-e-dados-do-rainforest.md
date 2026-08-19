@@ -171,3 +171,104 @@ Nasceram como consequência da tarefa 2: se o driver se isola no adaptador, as
 baterias precisam de uma porta para inspecionar tabela. `conta-em-tabela.cjs` e
 `manipula-tabela.cjs` seguem separados por ora; consolidá-los num só é
 melhoria pendente, não requisito.
+
+## Emenda de 2026-08-19 (tarde) — tarefas 18 a 22
+
+A quarta revisão, dividida em três recortes paralelos, reprovou com 11 achados e
+**3 críticos** que as três rodadas anteriores não alcançaram. As tarefas abaixo
+são o conserto, e a 18 também fecha o creep de `scripts/saude.cjs` — que entrou
+no diff pelo commit `5532853` sem tarefa que o cobrisse, a mesma classe que a
+emenda anterior (14 a 17) tinha acabado de fechar.
+
+As tarefas 18 a 21 são **produção**; a 22 é **instrumento**. São despachos
+separados de propósito: consertar o medidor com o mesmo agente que conserta o
+medido foi como um subsistema morto passou por dez baterias verdes.
+
+### 18. `saude.cjs` fala com o banco pelo adaptador [tipo: implementar]
+atende: D8, D16
+arquivos: `scripts/saude.cjs`, `scripts/memoria.cjs`
+depende de: 2
+paralela: nao
+pronto quando: `grep -rl "node:sqlite" scripts/ hooks/ --exclude="testa-*"` lista
+**exatamente** `scripts/memoria.cjs` — o critério das tarefas 2 e 17, que hoje
+lista dois arquivos; **e** a lógica de detectar `UNIQUE(projeto, origem)` existe
+num lugar só (hoje duplicada literalmente entre `memoria.cjs:198-219` e
+`saude.cjs:698-717`); **e** a checagem de esquema do `/saude` continua
+**detectando** banco com esquema velho — provado envenenando um banco de teste e
+mostrando o `/saude` acusar, não só rodando o caminho feliz.
+
+### 19. Offset é byte de ponta a ponta [tipo: implementar]
+atende: D12, D14
+arquivos: `scripts/observar.cjs`, `hooks/memoria-marca.cjs`, `scripts/testa-observar-offset.sh`
+depende de: 12
+paralela: nao
+pronto quando: `bash scripts/testa-observar-offset.sh` sai 0 contra um transcrito
+cuja **primeira linha tem acentuação PT-BR**, provando que a segunda passada lê a
+janela `[processado, visto]` sem corromper o JSON e que `offset_processado`
+avança; **e** a mesma bateria, rodada contra o código de hoje (`git stash` do
+conserto, ou cópia do arquivo original numa caixa), **falha** — bateria de
+regressão que passa nos dois lados não prova nada. O defeito medido:
+`memoria-marca.cjs:112` grava `statSync().size` (bytes) e `observar.cjs:96` corta
+com `conteudo.substring(offset)` (unidades UTF-16); 122 bytes de primeira linha
+valem 106 caracteres, e o corte cai 16 caracteres dentro da linha seguinte.
+
+### 20. Migração é atômica, e tabela órfã é recuperada [tipo: implementar]
+atende: D2, D9
+arquivos: `scripts/memoria.cjs`, `scripts/testa-memoria-migracao-atomica.sh`
+depende de: 1
+paralela: nao
+pronto quando: `bash scripts/testa-memoria-migracao-atomica.sh` sai 0 provando os
+dois lados: (a) a sequência RENAME → CREATE → INSERT → DROP roda dentro de uma
+transação, de modo que matar o processo no meio deixa o banco no estado anterior,
+com as N linhas originais em `observacoes`; **e** (b) um banco que **já esteja**
+no estado quebrado (com `observacoes_backup` órfã e `observacoes` vazia, o
+resultado de uma interrupção anterior) é recuperado na abertura seguinte, com as
+N linhas de volta — nunca abandonado com um `ok:` na saída, que é o
+comportamento de hoje.
+
+### 21. Banco corrompido degrada nos quatro pontos de entrada [tipo: implementar]
+atende: D5, D10
+arquivos: `scripts/memoria.cjs`, `hooks/memoria-session-start.cjs`, `hooks/memoria-marca.cjs`, `scripts/observar.cjs`, `scripts/testa-memoria-degradacao.sh`
+depende de: 1
+paralela: nao
+pronto quando: `bash scripts/testa-memoria-degradacao.sh` sai 0 provando que, com
+um `rainforest.db` corrompido (bytes arbitrários, não-SQLite), **os quatro**
+pontos de entrada saem **0**: `hooks/memoria-session-start.cjs` (que é síncrono e
+bloqueia a abertura), `hooks/memoria-marca.cjs` normal, `memoria-marca.cjs
+--recover` e `scripts/observar.cjs` sem argumentos — o hook de abertura emitindo
+`additionalContext` vazio, nunca stack trace. A causa é `abrirBanco()`
+(`memoria.cjs:66-84`) chamando `process.exit(1)` dentro do próprio `catch`:
+`process.exit` não lança, então todo `try/catch` de degradação a jusante é
+inerte. A bateria cobre os três estados juntos — ausente, vazio e corrompido —,
+que é como o plano os nomeia.
+
+### 22. Saneamento do instrumento de medição [tipo: testes]
+atende: D16
+arquivos: `scripts/testa-memoria.sh`, `scripts/testa-verifica-fidelidade.sh`, `scripts/testa-observar.sh`, `hooks/testa-memoria-criticos-ponta-a-ponta.sh`, `hooks/testa-memoria-recuperacao-ponta-a-ponta.sh`, `hooks/testa-memoria-recuperacao.sh`
+depende de: nenhuma
+paralela: sim
+pronto quando: cada um dos seis defeitos abaixo tem a correção **provada
+falhando antes e passando depois**, e nenhuma bateria do repo muta arquivo
+rastreado no working tree:
+
+1. `testa-memoria-recuperacao-ponta-a-ponta.sh:474-480` — dois `ok=$((ok+1))`
+   incondicionais no lugar de uma prova por mutação, com o comentário
+   "Confirmado manualmente pelo coordinador". Ou vira mutação de verdade, ou
+   sai — contador que sobe sem exercitar nada é ruído com aparência de prova.
+2. As três baterias que fazem `sed -i` em `$SRC/hooks/memoria-marca.cjs` e
+   `$SRC/scripts/observar.cjs` (criticos-ponta-a-ponta:78,223,279;
+   recuperacao-ponta-a-ponta:102; recuperacao:342-344,438) passam a mutar
+   **cópia** no sandbox, como `testa-memoria-somente-leitura.sh:231` e
+   `testa-memoria-session-start.sh:207` já fazem. O `trap` de hoje só limpa a
+   raiz de dados: Ctrl-C entre o `sed` e o `cp` de volta deixa produção mutada.
+3. `testa-memoria.sh:94` — `[ A ] && [ B ] || [ C ]` com `C` sempre verdadeiro
+   (dois `mktemp -d` distintos) faz o teste de hermeticidade passar sempre.
+4. `testa-memoria.sh:49-52` — `$?` depois de um pipe mede o `grep`, não o
+   `memoria.cjs`, e a asserção ainda aceita `0` **ou** `1`.
+5. `testa-verifica-fidelidade.sh` não cobre o terceiro caso que a tarefa 16
+   exige: ausência de transcrito real sai 1 com aviso, nunca 0 silencioso.
+6. `testa-observar.sh` só exercita `observar.cjs --sessao X --projeto Y`, e o
+   `hooks.json` chama **sem argumento nenhum**. O modo que roda em produção é o
+   que não tem bateria. Some a isso `testa-memoria-recuperacao.sh`, que imprime
+   `ERRO mutação não funcionou` sem incrementar o contador de falhas — mutação
+   que não casa passa por verde.
