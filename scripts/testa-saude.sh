@@ -245,5 +245,51 @@ cp "$SBP/original.cjs" "$SRC/scripts/saude.cjs"
 checa "e restaurado, B volta a ser ALERTA"         "alerta" "sem parentesco"     "$(ver)"
 
 echo
+echo "== esquema de banco: detecta falta de UNIQUE (Tarefa 23 - item 6) =="
+# Teste I: banco com esquema legado (sem UNIQUE constraint, mas com offset_processado)
+DADOS_LEGADO=".rainforest-saude-legado"
+rm -rf "$DADOS_LEGADO" && mkdir -p "$DADOS_LEGADO"
+( cd "$DADOS_LEGADO" && node << 'MKLEGACY'
+const { DatabaseSync } = require('node:sqlite');
+const db = new DatabaseSync('./rainforest.db');
+
+db.exec(`
+  CREATE TABLE observacoes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    projeto TEXT NOT NULL,
+    conteudo TEXT NOT NULL,
+    criada_em TEXT NOT NULL,
+    origem TEXT
+  );
+  CREATE TABLE marca_dagua (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    projeto TEXT NOT NULL,
+    sessao TEXT NOT NULL,
+    arquivo TEXT NOT NULL,
+    offset INTEGER DEFAULT 0,
+    offset_processado INTEGER DEFAULT 0
+  );
+`);
+
+db.close();
+MKLEGACY
+)
+
+DADOS_LEGADO_ABS="$(cd "$DADOS_LEGADO" && pwd)"
+I="$(RFM_ROOT="$DADOS_LEGADO_ABS" node "$SRC/scripts/saude.cjs" --json 2>/dev/null | node -e 'let d=""; process.stdin.on("data", c => d += c).on("end", () => { try { const a = JSON.parse(d).find(x => x.item === "esquema de banco"); console.log(a ? a.nivel + " " + a.detalhe : "ausente"); } catch(e) { console.log("erro"); } })')"
+checa "I. banco legado acusa falta de UNIQUE"     "alerta" "UNIQUE" "$I"
+
+# Mutação: remover a checagem do UNIQUE
+echo
+echo "== MUTACAO: desabilitar checagem de UNIQUE =="
+cp "$SRC/scripts/saude.cjs" "./.saude-mutada.cjs"
+node -e "const fs=require('fs'); const s=fs.readFileSync('./.saude-mutada.cjs','utf8'); const m=s.replace('if (!verificarConstraintUniqueProjetoOrigem(db)) {', 'if (false) { // MUTACAO'); fs.writeFileSync('./.saude-mutada.cjs', m);"
+
+J="$(RFM_ROOT="$DADOS_LEGADO_ABS" node "./.saude-mutada.cjs" --json 2>/dev/null | node -e 'let d=""; process.stdin.on("data", c => d += c).on("end", () => { try { const a = JSON.parse(d).find(x => x.item === "esquema de banco"); console.log(a ? a.nivel + " " + a.detalhe : "ausente"); } catch(e) { console.log("erro"); } })')"
+checa "J. mutacao desabilita alerta, vira ok"     "ok" "observacoes" "$J"
+
+rm -rf "$DADOS_LEGADO" "./.saude-mutada.cjs"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]
