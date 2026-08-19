@@ -271,17 +271,19 @@ function debug(msg) {
 async function processarSessao(sessao, projeto) {
   const dados = resolverDados();
 
+  // Decisão D16 (reversibilidade da fase 1): se o banco não existe, é degradação
+  // graciosa — a fase 1 é leitura pura e nunca cria estado. Exit 0, sem observação.
   if (!fs.existsSync(dados.caminhoDb)) {
-    console.error(`ERRO: banco não existe em ${dados.caminhoDb}`);
-    process.exit(1);
+    debug(`banco ausente (degradacao graciosa): ${dados.caminhoDb}`);
+    return;
   }
 
   let conexao;
   try {
     conexao = abrirBanco(dados.caminhoDb);
   } catch (e) {
-    console.error(`ERRO: não consegui abrir banco: ${e.message}`);
-    process.exit(1);
+    console.error(`AVISO: não consegui abrir banco: ${e.message}`);
+    return; // Degradação: tenta novamente depois
   }
 
   try {
