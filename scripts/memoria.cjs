@@ -224,6 +224,7 @@ function migraoesObservacoes(conexao) {
   }
 
   // Constraint está errada ou faltando — migrar.
+  // CRÍTICO: Preservar TODAS as linhas. Nenhuma pode ser descartada em silêncio.
   // 1. Contar quantas linhas vamos migrar
   const contagem = conexao.prepare(`SELECT COUNT(*) as cnt FROM observacoes`).all();
   const cntAntes = contagem[0].cnt;
@@ -232,12 +233,51 @@ function migraoesObservacoes(conexao) {
   const dados = conexao.prepare(`
     SELECT id, projeto, conteudo, criada_em, origem
     FROM observacoes
+    ORDER BY id
   `).all();
 
-  // 3. Renomear tabela antiga
+  // 3. Detectar colisões: (projeto, origem) duplicado OU origem NULL
+  // Estratégia: para qualquer linha que colida, adicionar sufixo _dedup_N na origem.
+  const chaveParaIds = {}; // (projeto, origem) → lista de IDs
+  const origemNova = {}; // ID → nova origem (com sufixo se necessário)
+
+  for (const row of dados) {
+    const chave = row.projeto + '\x00' + (row.origem || ''); // Separador \x00 para disambiguar
+    if (!chaveParaIds[chave]) {
+      chaveParaIds[chave] = [];
+    }
+    chaveParaIds[chave].push(row.id);
+  }
+
+  // Aplicar sufixos apenas a linhas que colidem
+  let temColidentes = false;
+  let sufixoCounter = 0;
+  for (const [chave, ids] of Object.entries(chaveParaIds)) {
+    if (ids.length > 1) {
+      temColidentes = true;
+      // Múltiplas linhas com mesma chave: adicionar sufixo a todas
+      for (const id of ids) {
+        const row = dados.find(r => r.id === id);
+        origemNova[id] = row.origem === null
+          ? `_dedup_${sufixoCounter}`
+          : `${row.origem}_dedup_${sufixoCounter}`;
+        sufixoCounter++;
+      }
+    } else {
+      // Sem colisão: mantém origem como está
+      origemNova[ids[0]] = dados.find(r => r.id === ids[0]).origem;
+    }
+  }
+
+  if (process.env.DEBUG_SCHEMA && temColidentes) {
+    console.error(`Migração de observacoes: ${cntAntes} linhas com colisões detectadas`);
+    console.error(`  Estratégia: adicionar sufixo _dedup_N para origem(s) colidentes`);
+  }
+
+  // 4. Renomear tabela antiga
   conexao.exec(`ALTER TABLE observacoes RENAME TO observacoes_backup;`);
 
-  // 4. Criar nova tabela com constraint correto
+  // 5. Criar nova tabela com constraint correto
   conexao.exec(`
     CREATE TABLE observacoes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -249,36 +289,38 @@ function migraoesObservacoes(conexao) {
     );
   `);
 
-  // 5. Copiar dados linha por linha, ignorando violações de constraint
+  // 6. Copiar dados — TODOS, com origem modificada se colidia
   const insertStmt = conexao.prepare(`
     INSERT INTO observacoes (id, projeto, conteudo, criada_em, origem)
     VALUES (?, ?, ?, ?, ?)
   `);
 
-  let cntCopiadas = 0;
   for (const row of dados) {
-    try {
-      insertStmt.run(row.id, row.projeto, row.conteudo, row.criada_em, row.origem);
-      cntCopiadas++;
-    } catch (e) {
-      // Ignorar violação de constraint (duplicata)
-      if (!e.message.includes('UNIQUE')) {
-        throw e;
-      }
-    }
+    insertStmt.run(
+      row.id,
+      row.projeto,
+      row.conteudo,
+      row.criada_em,
+      origemNova[row.id]
+    );
   }
 
-  // 6. Apagar tabela de backup
+  // 7. Apagar tabela de backup
   conexao.exec(`DROP TABLE observacoes_backup;`);
 
-  // 7. Recriar os índices (são idempotentes com IF NOT EXISTS)
+  // 8. Recriar os índices (são idempotentes com IF NOT EXISTS)
   conexao.exec(`CREATE INDEX IF NOT EXISTS idx_observacoes_projeto ON observacoes(projeto);`);
 
-  // Log de debug se habilitado
+  // CRÍTICO: Verificar que nenhuma linha foi perdida
+  const cntDepois = conexao.prepare(`SELECT COUNT(*) as cnt FROM observacoes`).all()[0].cnt;
+  if (cntDepois !== cntAntes) {
+    throw new Error(`MIGRAÇÃO ABORTADA: ${cntAntes} linhas antes, ${cntDepois} depois. Dados perdidos!`);
+  }
+
   if (process.env.DEBUG_SCHEMA) {
-    console.error(`Migração de observacoes: ${cntAntes} linhas antes, ${cntCopiadas} linhas copiadas`);
-    if (cntCopiadas < cntAntes) {
-      console.error(`  AVISO: ${cntAntes - cntCopiadas} linhas descartadas por conflito de constraint`);
+    console.error(`Migração de observacoes: ${cntAntes} linhas antes, ${cntDepois} linhas depois`);
+    if (temColidentes) {
+      console.error(`  OK: colisões resolvidas com sufixos _dedup_N (nenhuma linha perdida)`);
     }
   }
 }
