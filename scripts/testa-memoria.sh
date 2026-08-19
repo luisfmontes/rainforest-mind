@@ -46,12 +46,22 @@ fi
 
 echo
 echo "== 2. esquema --json devolve JSON com 4 tabelas =="
-SCHEMA=$($MEMORIA esquema --json 2>&1 | grep -v "ExperimentalWarning")
+# Achado 4 da tarefa 22: `$? depois de um pipe` media o grep, nunca o
+# memoria.cjs — e a asserção ainda aceitava exit 0 OU 1, escondendo qualquer
+# falha real do memoria.cjs atrás do exit code do grep de filtragem.
+# PIPESTATUS não ajuda aqui: dentro de `$(cmd1 | cmd2)`, o array PIPESTATUS
+# do shell externo NÃO é atualizado pelo pipeline que roda na subshell da
+# substituição de comando (confirmado testando à parte: `PIPESTATUS[0]` depois
+# de `x=$(f | g)` continua com o valor de antes, não o do `f` interno). A forma
+# correta é não canalizar dentro do `$(...)`: captura o exit code real do
+# memoria.cjs primeiro, sem pipe, e só depois filtra o texto para exibição.
+RAW=$($MEMORIA esquema --json 2>&1)
 got=$?
-if [ "$got" = "0" ] || [ "$got" = "1" ]; then
-  ok=$((ok+1)); echo "  ok   esquema --json rodou (saida filtrada de warnings)"
+SCHEMA=$(printf '%s\n' "$RAW" | grep -v "ExperimentalWarning")
+if [ "$got" = "0" ]; then
+  ok=$((ok+1)); echo "  ok   esquema --json saiu 0 (saida filtrada de warnings)"
 else
-  falhou=$((falhou+1)); echo "  FALHA esperava exit 0, veio $got"
+  falhou=$((falhou+1)); echo "  FALHA esquema --json esperava exit 0, veio $got"
 fi
 
 # Verificar 4 tabelas
@@ -85,17 +95,27 @@ else
 fi
 
 echo
-echo "== 5. hermeticidade — segunda execucao cria novo banco =="
-# Criar um novo temp dir e rodar de novo — tem que criar banco ali, nao usar o anterior
+echo "== 5. hermeticidade — segunda execucao em RFM_ROOT diferente nao toca o banco anterior =="
+# Achado 3 da tarefa 22: a condicao antiga era `[ A ] && [ B ] || [ C ]`, que
+# em shell avalia como `(A && B) || C`. C era `[ "$CAIXA" != "$CAIXA2" ]` —
+# sempre verdadeiro, porque sao dois `mktemp -d` distintos por construcao.
+# O teste passava mesmo que RFM_ROOT parasse de ser respeitado. A prova real
+# de hermeticidade precisa das DUAS coisas ao mesmo tempo, em AND: (1) o
+# banco novo aparece em CAIXA2, e (2) o banco em CAIXA (criado na secao 1)
+# continua BYTE A BYTE igual — nao foi tocado pela segunda chamada.
+cp "$CAIXA/rainforest.db" "$CAIXA/.snapshot-antes-caixa2"
 CAIXA2="$(mktemp -d)"
 trap 'rm -rf "$CAIXA" "$CAIXA2"' EXIT
 
 RFM_ROOT="$CAIXA2" $MEMORIA iniciar >/dev/null 2>&1
-if [ -f "$CAIXA2/rainforest.db" ] && [ ! -f "$CAIXA/rainforest.db" ] || [ "$CAIXA" != "$CAIXA2" ]; then
-  ok=$((ok+1)); echo "  ok   banco isolado por RFM_ROOT (hermetico)"
+if [ -f "$CAIXA2/rainforest.db" ] && cmp -s "$CAIXA/rainforest.db" "$CAIXA/.snapshot-antes-caixa2"; then
+  ok=$((ok+1)); echo "  ok   banco isolado por RFM_ROOT (novo banco em CAIXA2, CAIXA original intocado)"
 else
   falhou=$((falhou+1)); echo "  FALHA nao isolou dado por RFM_ROOT"
+  echo "         CAIXA2/rainforest.db existe? $([ -f "$CAIXA2/rainforest.db" ] && echo sim || echo nao)"
+  echo "         CAIXA/rainforest.db mudou?   $(cmp -s "$CAIXA/rainforest.db" "$CAIXA/.snapshot-antes-caixa2" && echo nao || echo SIM)"
 fi
+rm -f "$CAIXA/.snapshot-antes-caixa2"
 
 echo
 echo "== 6. buscar em banco vazio devolve array vazio =="

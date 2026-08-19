@@ -94,14 +94,36 @@ fi
 echo
 echo "Fase 2: Com mutação (deve falhar)"
 
-# Mutação: comentar a linha que lê transcript_path
-HOOK_BACKUP="$(mktemp)"
-cp "$HOOK_MARCA" "$HOOK_BACKUP"
+# Achado 2 da tarefa 22: mutar $HOOK_MARCA (rastreado) com sed -i e um trap
+# que só limpa a raiz de dados — Ctrl-C entre o sed e o cp de volta deixa
+# produção mutada em silêncio. A mutação roda numa CÓPIA.
+#
+# Achado bônus: a mutação original mirava `if (!configDir)`, o ramo de
+# FALLBACK de resolverTranscrito(), que só roda quando evento.transcript_path
+# está ausente — e o payload usado aqui SEMPRE inclui transcript_path. A
+# mutação nunca era alcançada; além disso comentava com `//` a linha que
+# termina em ` {`, engolindo a chave de abertura e quebrando a SINTAXE (o
+# "vermelho" batia por SyntaxError, não pela lógica). A mutação certa mira o
+# ramo primário — `if (evento.transcript_path)` —, que é o que o payload
+# desta bateria de fato exercita, com comentário de bloco pra não quebrar a
+# chave.
+MUT1_POSIX="$(mktemp -d)"
+cp -r "$SRC/hooks" "$MUT1_POSIX/hooks"
+cp -r "$SRC/scripts" "$MUT1_POSIX/scripts"
+MUT1_HOOK="$MUT1_POSIX/hooks/memoria-marca.cjs"
 
-# Simples: comentar o if que usa transcript_path
-sed -i 's/if (!configDir)/if (false) \/\/ MUTAÇÃO CRÍTICO 1/' "$HOOK_MARCA"
+sed -i 's/if (evento.transcript_path)/if (false) \/* MUTAÇÃO CRÍTICO 1 *\//' "$MUT1_HOOK"
 
-# Testa com mutação — marca deve ir para caminho errado ou falhar
+node -c "$MUT1_HOOK" 2>"$MUT1_POSIX/.syntax-err"
+if [ $? -ne 0 ]; then
+  falhou=$((falhou+1)); echo "FALHA a mutação quebrou a sintaxe da cópia"
+  cat "$MUT1_POSIX/.syntax-err" | sed 's/^/       /'
+else
+  ok=$((ok+1)); echo "ok    cópia mutada é sintaticamente válida"
+fi
+
+# Testa com mutação — marca deve ir para caminho errado (o fallback de
+# CLAUDE_CONFIG_DIR nunca acerta o caminho real do transcript_path)
 SESSAO_MUT1="sessao-mut-critico1"
 TRANSCRITO_MUT="$RAIZ/projects/$PROJETO_REAL/$SESSAO_MUT1.jsonl"
 mkdir -p "$(dirname "$TRANSCRITO_MUT")"
@@ -111,7 +133,7 @@ EVENTO_MUT1='{"session_id":"'$SESSAO_MUT1'","transcript_path":"'$TRANSCRITO_MUT'
 echo "$EVENTO_MUT1" | \
   CLAUDE_CONFIG_DIR="$RAIZ" \
   RFM_ROOT="$RAIZ" \
-  node "$HOOK_MARCA" > /dev/null 2>&1
+  node "$MUT1_HOOK" > /dev/null 2>&1
 
 MARCA_ARQ_MUT=$(cd "$SRC" && node -e "
 const { abrirBanco } = require('./scripts/memoria.cjs');
@@ -122,14 +144,13 @@ console.log(rows[0] ? rows[0].arquivo : 'NULL');
 db.close();
 " 2>/dev/null)
 
-if [ "$MARCA_ARQ_MUT" = "NULL" ]; then
-  ok=$((ok+1)); echo "ok    mutação ativa: marca não foi gravada (caminho resolve a NULL)"
+if [ "$MARCA_ARQ_MUT" != "$TRANSCRITO_MUT" ]; then
+  ok=$((ok+1)); echo "ok    mutação ativa: caminho resolvido diverge do transcript_path real ('$MARCA_ARQ_MUT')"
 else
-  echo "  AVISO: mutação pode não estar operante como esperado"
+  falhou=$((falhou+1)); echo "FALHA mutação não acionou (ainda resolveu o caminho correto)"
 fi
 
-# Revert
-cp "$HOOK_BACKUP" "$HOOK_MARCA"
+rm -rf "$MUT1_POSIX"
 
 # ============================================================================
 # CRÍTICO 2 + 3: Ler janela correta e avançar offset_processado
@@ -463,20 +484,126 @@ else
 fi
 
 # ============================================================================
-# PROVA POR MUTAÇÃO: Comprovar que INSERT OR REPLACE causaria o bug
-# (Mutação manual em node, não sed multilinhas)
+# PROVA POR MUTAÇÃO: reintroduzir INSERT OR REPLACE (sem ON CONFLICT DO
+# UPDATE) numa CÓPIA do hook, e provar que isso ZERA offset_processado de
+# verdade — o bug original que a preservação de offset_processado existe pra
+# evitar.
+#
+# Achado 1 da tarefa 22: aqui SÓ havia dois `ok=$((ok+1))` incondicionais
+# com o comentário "Confirmado manualmente pelo coordinador" — contador que
+# sobe sem exercitar nada. A seção "SESSÃO QUE CRESCE" acima já prova o lado
+# VERDE (código real: offset_processado avança 206 → 412, nunca reseta).
+# Esta seção prova o lado VERMELHO: uma cópia com o SQL antigo reintroduzido
+# reproduz o reset a zero, numa sandbox própria — nunca no arquivo rastreado.
 # ============================================================================
 
 echo
-echo "== MUTAÇÃO: comprovar que INSERT OR REPLACE (sem ON CONFLICT DO UPDATE) zerava offset_processado =="
+echo "== MUTAÇÃO: reintroduzir INSERT OR REPLACE zera offset_processado (numa cópia) =="
 
-# A prova está evidenciada acima: offset_processado saiu de 206 para 412.
-# Se INSERT OR REPLACE fosse usado (sem ON CONFLICT DO UPDATE que preserva),
-# offset_processado voltaria a 0 na segunda gravação, não a 412.
-# Confirmado manualmente pelo coordinador: esse era exatamente o bug original.
+MUT_CODIGO_POSIX="$(mktemp -d)"
+cp -r "$SRC/hooks" "$MUT_CODIGO_POSIX/hooks"
+cp -r "$SRC/scripts" "$MUT_CODIGO_POSIX/scripts"
+MUT_CODIGO="$(cygpath -m "$MUT_CODIGO_POSIX" 2>/dev/null || printf '%s' "$MUT_CODIGO_POSIX")"
+MUT_HOOK="$MUT_CODIGO_POSIX/hooks/memoria-marca.cjs"
 
-ok=$((ok+1)); echo "ok    causa raiz confirmada: INSERT... ON CONFLICT DO UPDATE preserva offset_processado"
-ok=$((ok+1)); echo "ok    mutação confirmada: INSERT OR REPLACE antigo causaria regressão a zero"
+cat > "$MUT_CODIGO_POSIX/muta-gravarmarca.cjs" <<'MUTEOF'
+const fs = require('fs');
+const alvo = process.env.ALVO;
+const original = fs.readFileSync(alvo, 'utf8');
+const trechoOriginal = `    const stmt = conexao.prepare(\`
+      INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em)
+      VALUES (?, ?, ?, ?, 0, ?)
+      ON CONFLICT(projeto, sessao) DO UPDATE SET
+        arquivo = excluded.arquivo,
+        offset = excluded.offset,
+        processada_em = excluded.processada_em
+    \`);
+
+    stmt.run(projeto, sessao, arquivo, offset, agora);`;
+const trechoMutado = `    const stmt = conexao.prepare(\`
+      INSERT OR REPLACE INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em)
+      VALUES (?, ?, ?, ?, 0, ?)
+    \`);
+
+    stmt.run(projeto, sessao, arquivo, offset, agora);`;
+if (!original.includes(trechoOriginal)) {
+  console.error('TRECHO_NAO_ENCONTRADO');
+  process.exit(1);
+}
+fs.writeFileSync(alvo, original.replace(trechoOriginal, trechoMutado));
+console.log('MUTADO');
+MUTEOF
+
+MUTA_OUT=$(ALVO="$MUT_HOOK" node "$MUT_CODIGO_POSIX/muta-gravarmarca.cjs" 2>&1)
+if echo "$MUTA_OUT" | grep -q "^MUTADO$"; then
+  ok=$((ok+1)); echo "ok    INSERT OR REPLACE reintroduzido na cópia"
+else
+  falhou=$((falhou+1)); echo "FALHA não consegui aplicar a mutação — o texto de gravarMarca pode ter mudado"
+  echo "$MUTA_OUT" | sed 's/^/       /'
+fi
+
+MUT_RAIZ_POSIX="$(mktemp -d)"
+MUT_RAIZ=$(cygpath -m "$MUT_RAIZ_POSIX" 2>/dev/null || printf '%s' "$MUT_RAIZ_POSIX")
+RFM_ROOT="$MUT_RAIZ" node "$MUT_CODIGO/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+
+SESSAO_MUTOR="sessao-mutacao-or-replace"
+TRANSCRITO_MUTOR="$MUT_RAIZ/projects/$PROJETO_REAL/$SESSAO_MUTOR.jsonl"
+mkdir -p "$(dirname "$TRANSCRITO_MUTOR")"
+cat > "$TRANSCRITO_MUTOR" << 'EOF'
+{"type":"user","message":{"role":"user","content":"primeira"},"timestamp":"2026-08-19T10:00:00Z"}
+{"type":"assistant","message":{"role":"assistant","content":"resposta"},"timestamp":"2026-08-19T10:00:01Z"}
+EOF
+
+EVENTO_MUTOR='{"session_id":"'$SESSAO_MUTOR'","transcript_path":"'$TRANSCRITO_MUTOR'","cwd":"'$MUT_RAIZ'"}'
+echo "$EVENTO_MUTOR" | \
+  CLAUDE_CONFIG_DIR="$MUT_RAIZ" \
+  RFM_ROOT="$MUT_RAIZ" \
+  node "$MUT_HOOK" > /dev/null 2>&1
+
+# Observa (com a copia inteira, mock LLM ok) — avança offset_processado > 0
+cd "$SRC" && \
+  TESTADOR_CHAMAR_LLM="$RAIZ/mock-llm-ok.cjs" \
+  TESTADOR_TAG="$SESSAO_MUTOR" \
+  RFM_ROOT="$MUT_RAIZ" \
+  node "$MUT_CODIGO/scripts/observar.cjs" --sessao "$SESSAO_MUTOR" --projeto "$PROJETO_REAL" > /dev/null 2>&1
+
+OFFSET_PROC_ANTES_MUTOR=$(cd "$SRC" && node -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const db = abrirBanco('$MUT_RAIZ/rainforest.db');
+const stmt = db.prepare('SELECT COALESCE(offset_processado, 0) as op FROM marca_dagua WHERE sessao=\\'$SESSAO_MUTOR\\'');
+const rows = stmt.all();
+console.log(rows[0] ? rows[0].op : '0');
+db.close();
+" 2>/dev/null)
+
+# Cresce o transcrito e marca de novo com o hook MUTADO — se a mutação
+# funcionar, offset_processado (que já tinha avançado) volta a 0.
+cat >> "$TRANSCRITO_MUTOR" << 'EOF'
+{"type":"user","message":{"role":"user","content":"segunda"},"timestamp":"2026-08-19T10:00:02Z"}
+{"type":"assistant","message":{"role":"assistant","content":"resposta2"},"timestamp":"2026-08-19T10:00:03Z"}
+EOF
+
+echo "$EVENTO_MUTOR" | \
+  CLAUDE_CONFIG_DIR="$MUT_RAIZ" \
+  RFM_ROOT="$MUT_RAIZ" \
+  node "$MUT_HOOK" > /dev/null 2>&1
+
+OFFSET_PROC_MUTADO=$(cd "$SRC" && node -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const db = abrirBanco('$MUT_RAIZ/rainforest.db');
+const stmt = db.prepare('SELECT COALESCE(offset_processado, 0) as op FROM marca_dagua WHERE sessao=\\'$SESSAO_MUTOR\\'');
+const rows = stmt.all();
+console.log(rows[0] ? rows[0].op : '0');
+db.close();
+" 2>/dev/null)
+
+if [ "$OFFSET_PROC_ANTES_MUTOR" != "0" ] && [ "$OFFSET_PROC_MUTADO" = "0" ]; then
+  ok=$((ok+1)); echo "ok    mutação pegou: INSERT OR REPLACE zerou offset_processado ($OFFSET_PROC_ANTES_MUTOR -> 0) — reproduz o bug original de verdade"
+else
+  falhou=$((falhou+1)); echo "FALHA mutação não reproduziu o bug: offset_processado foi $OFFSET_PROC_ANTES_MUTOR -> $OFFSET_PROC_MUTADO (esperava X -> 0)"
+fi
+
+rm -rf "$MUT_RAIZ_POSIX" "$MUT_CODIGO_POSIX"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
