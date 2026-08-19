@@ -66,6 +66,22 @@ function lerMarca(conexao, { sessao, projeto }) {
   }
 }
 
+// Lê todas as marcas com pendência (offset_visto > offset_processado).
+// Usado quando observar.cjs é invocado SEM argumentos (modo produção).
+function lerMarcasPendentes(conexao) {
+  try {
+    const stmt = conexao.prepare(`
+      SELECT * FROM marca_dagua
+      WHERE offset > COALESCE(offset_processado, 0)
+      ORDER BY processada_em DESC
+    `);
+    return stmt.all();
+  } catch (e) {
+    console.error(`AVISO: erro ao ler marcas pendentes: ${e.message}`);
+    return [];
+  }
+}
+
 // Lê trecho do transcrito a partir do offset (em bytes).
 // O transcrito é JSONL: uma linha = um evento.
 // Retorna array de eventos JSON a partir do offset.
@@ -267,6 +283,80 @@ function debug(msg) {
   }
 }
 
+// Processa uma marca d'água específica: lê, formata, passa à LLM, grava observação.
+// Retorna true se processou com sucesso, false se pulou ou falhou.
+async function processarMarca(conexao, marca) {
+  // Calcular a janela: ler a partir de offset_processado (até onde foi processado).
+  // Tarefa 12 (D14): offset_processado é o ponto já processado.
+  // marca.offset é offset_visto (tamanho do arquivo no Stop/SessionEnd).
+  const offsetProcessado = marca.offset_processado || 0;
+  debug(`janela: [${offsetProcessado}, ${marca.offset}]`);
+
+  // Ler transcrito a partir de offset_processado
+  const eventos = lerTranscrito(marca.arquivo, offsetProcessado);
+  debug(`eventos lidos: ${eventos.length}`);
+
+  if (eventos.length === 0) {
+    console.log(`nenhum evento novo no transcrito (sessao=${marca.sessao})`);
+    return false;
+  }
+
+  // Formatar para LLM
+  const textoDaPassada = formatarParaLLM(eventos);
+  debug(`texto para LLM: ${textoDaPassada.substring(0, 100)}...`);
+
+  // Rejeitar prompt vazio (tarefa 15: não gravar lixo no banco)
+  if (!textoDaPassada || !textoDaPassada.trim()) {
+    console.log(`prompt vazio: nenhuma observacao para gravar (sessao=${marca.sessao})`);
+    return false;
+  }
+
+  // Chamar LLM
+  console.log(`processando ${eventos.length} evento(s) (sessao=${marca.sessao})...`);
+  const observacao = await chamarLLM(textoDaPassada);
+  debug(`observacao da LLM: ${observacao ? observacao.substring(0, 50) : 'null'}`);
+
+  if (!observacao) {
+    // Falha na LLM — marca intacta, tenta novamente depois
+    console.log(`LLM retornou null, marca dagua nao avanca (sessao=${marca.sessao})`);
+    return false;
+  }
+
+  // Gravar observação
+  // Origem inclui offset_processado para granularidade — permite múltiplas observações
+  // por sessão sem colisão (Achado 5 revisado: discriminador granular, não por sessão inteira).
+  const gravouOk = gravarObservacao(conexao, {
+    projeto: marca.projeto,
+    conteudo: observacao,
+    origem: `sessao:${marca.sessao}:offset:${marca.offset_processado}`,
+  });
+  debug(`gravou ok: ${gravouOk}`);
+
+  if (!gravouOk) {
+    // Falha ao gravar — marca intacta
+    console.log(`erro ao gravar observacao, marca dagua nao avanca (sessao=${marca.sessao})`);
+    return false;
+  }
+
+  // CRÍTICO 3: Só avança offset_processado DEPOIS de gravar com sucesso.
+  // Se falhar em qualquer ponto anterior, fica intacto e tenta novamente.
+  const avancoOk = avancarMarca(conexao, {
+    projeto: marca.projeto,
+    sessao: marca.sessao,
+    offsetProcessado: marca.offset, // Avança até offset_visto (fim do que foi visto)
+  });
+  debug(`avanco ok: ${avancoOk}`);
+
+  if (!avancoOk) {
+    // Falha ao avançar — aviso, mas observação já foi gravada
+    console.log(`AVISO: observacao gravada mas offset_processado nao avancou (sessao=${marca.sessao})`);
+    return false;
+  }
+
+  console.log(`ok: observacao gravada e offset_processado avancado para sessao ${marca.sessao}`);
+  return true;
+}
+
 // Função principal: processa sessão e grava observação.
 async function processarSessao(sessao, projeto) {
   const dados = resolverDados();
@@ -287,88 +377,38 @@ async function processarSessao(sessao, projeto) {
   }
 
   try {
-    // Ler marca d'água
-    const proj = projeto || dados.projeto;
-    debug(`Procurando marca: sessao=${sessao}, projeto=${proj}`);
-    const marca = lerMarca(conexao, { sessao, projeto: proj });
-    debug(`marca encontrada: ${marca ? 'sim' : 'nao'}`);
-    if (marca) {
-      debug(`  sessao=${marca.sessao}, arquivo=${marca.arquivo}, offset=${marca.offset}`);
+    // Modo 1: sessão e projeto informados — processar aquela marca específica
+    if (sessao && projeto) {
+      debug(`Procurando marca: sessao=${sessao}, projeto=${projeto}`);
+      const marca = lerMarca(conexao, { sessao, projeto });
+      debug(`marca encontrada: ${marca ? 'sim' : 'nao'}`);
+      if (marca) {
+        debug(`  sessao=${marca.sessao}, arquivo=${marca.arquivo}, offset=${marca.offset}`);
+      }
+
+      if (!marca) {
+        console.log('nenhuma marca dagua encontrada');
+        return;
+      }
+
+      await processarMarca(conexao, marca);
     }
+    // Modo 2: sem argumentos — processar TODAS as marcas com pendência
+    else {
+      debug('Nenhum argumento: processando todas as marcas com pendência');
+      const marcas = lerMarcasPendentes(conexao);
 
-    if (!marca) {
-      console.log('nenhuma marca dagua encontrada');
-      return;
+      if (marcas.length === 0) {
+        console.log('nenhuma marca com pendencia para processar');
+        return;
+      }
+
+      console.log(`encontradas ${marcas.length} marca(s) com pendencia`);
+      for (const marca of marcas) {
+        debug(`processando marca: sessao=${marca.sessao}, projeto=${marca.projeto}`);
+        await processarMarca(conexao, marca);
+      }
     }
-
-    // Calcular a janela: ler a partir de offset_processado (até onde foi processado).
-    // Tarefa 12 (D14): offset_processado é o ponto já processado.
-    // marca.offset é offset_visto (tamanho do arquivo no Stop/SessionEnd).
-    const offsetProcessado = marca.offset_processado || 0;
-    debug(`janela: [${offsetProcessado}, ${marca.offset}]`);
-
-    // Ler transcrito a partir de offset_processado
-    const eventos = lerTranscrito(marca.arquivo, offsetProcessado);
-    debug(`eventos lidos: ${eventos.length}`);
-
-    if (eventos.length === 0) {
-      console.log('nenhum evento novo no transcrito');
-      return;
-    }
-
-    // Formatar para LLM
-    const textoDaPassada = formatarParaLLM(eventos);
-    debug(`texto para LLM: ${textoDaPassada.substring(0, 100)}...`);
-
-    // Rejeitar prompt vazio (tarefa 15: não gravar lixo no banco)
-    if (!textoDaPassada || !textoDaPassada.trim()) {
-      console.log('prompt vazio: nenhuma observacao para gravar');
-      return;
-    }
-
-    // Chamar LLM
-    console.log(`processando ${eventos.length} evento(s)...`);
-    const observacao = await chamarLLM(textoDaPassada);
-    debug(`observacao da LLM: ${observacao ? observacao.substring(0, 50) : 'null'}`);
-
-    if (!observacao) {
-      // Falha na LLM — marca intacta, tenta novamente depois
-      console.log('LLM retornou null, marca dagua nao avanca');
-      return;
-    }
-
-    // Gravar observação
-    // Origem inclui offset_processado para granularidade — permite múltiplas observações
-    // por sessão sem colisão (Achado 5 revisado: discriminador granular, não por sessão inteira).
-    const gravouOk = gravarObservacao(conexao, {
-      projeto: marca.projeto,
-      conteudo: observacao,
-      origem: `sessao:${marca.sessao}:offset:${marca.offset_processado}`,
-    });
-    debug(`gravou ok: ${gravouOk}`);
-
-    if (!gravouOk) {
-      // Falha ao gravar — marca intacta
-      console.log('erro ao gravar observacao, marca dagua nao avanca');
-      return;
-    }
-
-    // CRÍTICO 3: Só avança offset_processado DEPOIS de gravar com sucesso.
-    // Se falhar em qualquer ponto anterior, fica intacto e tenta novamente.
-    const avancoOk = avancarMarca(conexao, {
-      projeto: marca.projeto,
-      sessao: marca.sessao,
-      offsetProcessado: marca.offset, // Avança até offset_visto (fim do que foi visto)
-    });
-    debug(`avanco ok: ${avancoOk}`);
-
-    if (!avancoOk) {
-      // Falha ao avançar — aviso, mas observação já foi gravada
-      console.log('AVISO: observacao gravada mas offset_processado nao avancou');
-      return;
-    }
-
-    console.log(`ok: observacao gravada e offset_processado avancado para sessao ${marca.sessao}`);
   } finally {
     conexao.close();
   }
