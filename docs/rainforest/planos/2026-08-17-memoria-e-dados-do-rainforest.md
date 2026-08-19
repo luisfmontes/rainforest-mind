@@ -272,3 +272,56 @@ rastreado no working tree:
    que não tem bateria. Some a isso `testa-memoria-recuperacao.sh`, que imprime
    `ERRO mutação não funcionou` sem incrementar o contador de falhas — mutação
    que não casa passa por verde.
+
+## Emenda de 2026-08-19 (noite) — tarefa 23
+
+A quinta revisão achou uma **regressão criada pela tarefa 21**. Trocar o
+`process.exit(1)` de `abrirBanco()` por `throw` era certo, mas mudou o
+comportamento de **todos** os 13 pontos que chamam essa função: onde antes o
+processo morria, agora existe uma exceção que um `try/catch` pré-existente —
+escrito quando ele era código morto — pode capturar e seguir adiante como se o
+banco tivesse aberto. Em `cmdBackup` é o que acontece, e custa dado do usuário.
+
+### 23. O `throw` de `abrirBanco` auditado em todos os call sites [tipo: implementar]
+atende: D5, D7, D16
+arquivos: `scripts/memoria.cjs`, `scripts/testa-memoria-backup.sh`, `scripts/testa-memoria-degradacao.sh`, `scripts/testa-memoria-migracao-atomica.sh`, `scripts/testa-saude.sh`
+depende de: 21
+paralela: nao
+pronto quando:
+
+1. **`backup` recusa banco corrompido.** `bash scripts/testa-memoria-backup.sh`
+   sai 0 provando que, com o `rainforest.db` corrompido, o `backup` sai
+   **diferente de 0**, **não** cria arquivo em `.rainforest-backups/`, e **não**
+   remove nenhum backup existente. Medido hoje em `916eafb`: sai 0, grava o lixo,
+   e a rotação de teto 5 expulsa o backup válido mais antigo — o momento em que
+   o usuário mais precisaria dele. A bateria tem de ficar **vermelha** contra
+   `916eafb`.
+2. **Os outros 12 call sites auditados um a um.** Para cada chamada de
+   `abrirBanco()` em `scripts/` e `hooks/`, o comportamento com banco corrompido
+   é: degrada declaradamente (com o efeito colateral **não** executado) ou falha
+   com exit ≠ 0. Nenhum `catch` pode seguir para a ação seguinte como se a
+   conexão existisse. A entrega traz a lista dos 13, cada um com o veredito e o
+   comando que o mediu.
+3. **A bateria da tarefa 21 passa a invocar os quatro arquivos reais.**
+   `grep -c "memoria-session-start\|memoria-marca.cjs\|observar.cjs"
+   scripts/testa-memoria-degradacao.sh` devolve **0** hoje: ela testa
+   `abrirBanco()` isolado e um `simularHook()` escrito dentro do próprio teste.
+   Tem de exercitar `hooks/memoria-session-start.cjs`,
+   `hooks/memoria-marca.cjs` (normal e `--recover`) e `scripts/observar.cjs` sem
+   argumentos, provando por mutação **em cópia** que ela fica vermelha se um
+   deles regredir.
+4. **A migração cobre o crash real e a tabela vazia.**
+   `scripts/testa-memoria-migracao-atomica.sh` hoje nunca mata processo e só
+   cobre `observacoes` **ausente**. Passa a cobrir (a) interrupção de verdade no
+   meio da transação (`process.abort()` depois do RENAME) deixando as N linhas
+   originais, e (b) `observacoes` **vazia** com `observacoes_backup` órfã — o
+   ramo `if (temTabela) { DROP TABLE observacoes; }` de `memoria.cjs:158`, que
+   é o cenário que a tarefa 20 nomeia e nenhuma bateria exercita.
+5. **A detecção de constraint num lugar só.** `migraoesObservacoes()`
+   (`memoria.cjs:361-382`) ainda tem cópia própria do laço que
+   `verificarConstraintUniqueProjetoOrigem()` já faz. A tarefa 18 tirou a
+   duplicação entre `memoria.cjs` e `saude.cjs`; esta tira a que sobrou dentro do
+   próprio `memoria.cjs`.
+6. **O `/saude` provado por bateria, não à mão.** `scripts/testa-saude.sh` ganha
+   o caso da D16: banco com esquema velho plantado, e o `/saude` **acusando** —
+   vermelho se a checagem for removida. Hoje a única prova disso é manual.

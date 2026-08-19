@@ -23,24 +23,24 @@
   },
   "executar": {
     "status": "ok",
-    "tarefas_ok": 17,
-    "tarefas": 17,
+    "tarefas_ok": 22,
+    "tarefas": 22,
     "pendentes": [
       "Achado 6 PARCIAL: o criterio da tarefa 2 (grep -rl node:sqlite lista exatamente scripts/memoria.cjs) nao passa porque testa-importar-claude-mem.sh:29 fabrica banco de origem. A proposta do agente (require.*node:sqlite) NAO resolve — medido, da o mesmo resultado. Redacao que funciona, testada: grep -rl node:sqlite scripts/ hooks/ --exclude=testa-* . Mudar a regua e decisao do Luis",
       "Tarefa 15 (dublê de LLM que ecoa em vez de devolver texto fixo) segue aberta de proposito"
     ],
     "em": "2026-08-19",
     "em_2": "2026-08-19",
-    "nota": "4 achados da 3a revisao fechados"
+    "nota": "tarefas 18 a 22: os 11 achados da 4a revisao fechados e integrados"
   },
   "revisar": {
     "status": "reprovado",
-    "achados": 11,
-    "criticos": 3,
-    "base": "d52f5a4",
-    "head": "ca1d5ae",
+    "achados": 5,
+    "criticos": 1,
+    "base": "d91c2fd",
+    "head": "916eafb",
     "em": "2026-08-19",
-    "nota": "4a revisao em tres recortes paralelos"
+    "nota": "5a revisao: regressao no backup causada pelo conserto da 21"
   },
   "verificar": {
     "status": "pendente"
