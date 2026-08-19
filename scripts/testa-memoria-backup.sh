@@ -122,7 +122,39 @@ else
 fi
 
 echo
-echo "== 5. banco ausente devolve erro =="
+echo "== 5. banco corrompido recusa backup (Tarefa 23 - D18) =="
+# Salvar estado atual (temos backups válidos)
+BACKUPS_ANTES=$(ls "$CAIXA/.rainforest-backups"/*.db 2>/dev/null | wc -l)
+
+# Corromper o banco: sobrescrever com lixo
+BANCO_MAIN="$CAIXA/rainforest.db"
+echo "LIXO" > "$BANCO_MAIN"
+
+# Tentar backup — deve falhar
+resultado=$(node "$SRC/scripts/memoria.cjs" backup 2>&1)
+exit_code=$?
+
+# Verificar exit ≠ 0
+if [ "$exit_code" != "0" ]; then
+  ok=$((ok+1)); echo "  ok   banco corrompido recusa backup (exit $exit_code)"
+else
+  falhou=$((falhou+1)); echo "  FALHA banco corrompido retornou exit 0"
+fi
+
+# Verificar que não criou novo arquivo
+BACKUPS_DEPOIS=$(ls "$CAIXA/.rainforest-backups"/*.db 2>/dev/null | wc -l)
+if [ "$BACKUPS_DEPOIS" = "$BACKUPS_ANTES" ]; then
+  ok=$((ok+1)); echo "  ok   nenhum arquivo de backup criado"
+else
+  falhou=$((falhou+1)); echo "  FALHA criou arquivo: $BACKUPS_ANTES → $BACKUPS_DEPOIS"
+fi
+
+# Restaurar banco válido para testes seguintes
+rm "$BANCO_MAIN"
+$MEMORIA iniciar > /dev/null 2>&1
+
+echo
+echo "== 6. banco ausente devolve erro =="
 # Criar um RFM_ROOT novo sem banco
 CAIXA_VAZIA="$(mktemp -d)"
 trap 'rm -rf "$CAIXA" "$CAIXA_VAZIA"' EXIT
