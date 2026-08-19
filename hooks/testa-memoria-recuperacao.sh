@@ -334,14 +334,65 @@ echo
 echo "  Fase 2: Com mutação (comportamento quebrado)"
 echo "  Mutação: fazer gravarMarca escrever offset atual em offset_processado..."
 
-# Cria backup do hook
-HOOK_BACKUP="$(mktemp)"
-cp "$HOOK" "$HOOK_BACKUP"
+# Achado 2 da tarefa 22: mutar $HOOK (rastreado) com sed -i.bak e um trap que
+# só limpa a raiz de dados — Ctrl-C entre os 3 sed e o cp de volta deixa
+# produção mutada em silêncio. A mutação roda numa CÓPIA.
+#
+# Achado bônus: os 3 sed miravam texto de uma versão ANTERIOR do SQL de
+# gravarMarca ("INSERT OR REPLACE INTO marca_dagua (projeto, sessao, arquivo,
+# offset, processada_em)" / "VALUES (?, ?, ?, ?, ?)"), que não existe mais —
+# a produção evoluiu para INSERT ... ON CONFLICT DO UPDATE (5532853 e
+# posteriores). Os 2 primeiros sed eram no-op silencioso (sem erro, sem
+# efeito); só o 3º casava, e passava 6 argumentos pra um prepared statement
+# com 5 "?" — estourava dentro do try/catch de gravarMarca (que engole tudo),
+# então a marca simplesmente não era gravada. O "ERRO mutação não funcionou"
+# saía impresso mas NUNCA incrementava $falhou — passava por verde do
+# mesmo jeito. A mutação abaixo mira o SQL ATUAL e cobre INSERT e UPDATE.
+MUT_TA_POSIX="$(mktemp -d)"
+cp -r "$SRC/hooks" "$MUT_TA_POSIX/hooks"
+cp -r "$SRC/scripts" "$MUT_TA_POSIX/scripts"
+MUT_TA_HOOK="$MUT_TA_POSIX/hooks/memoria-marca.cjs"
 
-# Mutação: modificar gravarMarca para escrever offset em offset_processado
-sed -i.bak 's/INSERT OR REPLACE INTO marca_dagua (projeto, sessao, arquivo, offset, processada_em)/INSERT OR REPLACE INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em)/' "$HOOK"
-sed -i.bak 's/VALUES (?, ?, ?, ?, ?)/VALUES (?, ?, ?, ?, ?, ?)/' "$HOOK"
-sed -i.bak '/stmt.run(projeto, sessao, arquivo, offset, agora);/c\    stmt.run(projeto, sessao, arquivo, offset, offset, agora);' "$HOOK"
+cat > "$MUT_TA_POSIX/muta-offset-processado.cjs" <<'MUTEOF'
+const fs = require('fs');
+const alvo = process.env.ALVO;
+const original = fs.readFileSync(alvo, 'utf8');
+const trechoOriginal = `    const stmt = conexao.prepare(\`
+      INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em)
+      VALUES (?, ?, ?, ?, 0, ?)
+      ON CONFLICT(projeto, sessao) DO UPDATE SET
+        arquivo = excluded.arquivo,
+        offset = excluded.offset,
+        processada_em = excluded.processada_em
+    \`);
+
+    stmt.run(projeto, sessao, arquivo, offset, agora);`;
+const trechoMutado = `    const stmt = conexao.prepare(\`
+      INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(projeto, sessao) DO UPDATE SET
+        arquivo = excluded.arquivo,
+        offset = excluded.offset,
+        offset_processado = excluded.offset_processado,
+        processada_em = excluded.processada_em
+    \`);
+
+    stmt.run(projeto, sessao, arquivo, offset, offset, agora);`;
+if (!original.includes(trechoOriginal)) {
+  console.error('TRECHO_NAO_ENCONTRADO');
+  process.exit(1);
+}
+fs.writeFileSync(alvo, original.replace(trechoOriginal, trechoMutado));
+console.log('MUTADO');
+MUTEOF
+
+MUTA_TA_OUT=$(ALVO="$MUT_TA_HOOK" node "$MUT_TA_POSIX/muta-offset-processado.cjs" 2>&1)
+if echo "$MUTA_TA_OUT" | grep -q "^MUTADO$"; then
+  ok=$((ok+1)); echo "  ok    mutação aplicada na cópia (offset_processado passa a receber offset atual)"
+else
+  falhou=$((falhou+1)); echo "  FALHA não consegui aplicar a mutação — o SQL de gravarMarca pode ter mudado"
+  echo "$MUTA_TA_OUT" | sed 's/^/         /'
+fi
 
 # Testa com mutação — deve falhar (offset_processado vai avançar)
 SESSAO_TA_MUT="sessao-ta-mut-001"
@@ -351,7 +402,7 @@ echo '{"tipo":"prompt","conteudo":"turno1"}' > "$RAIZ_POSIX/projects/projeto-tes
 echo '{"session_id":"'$SESSAO_TA_MUT'","project":"projeto-teste"}' | \
   CLAUDE_CONFIG_DIR="$RAIZ" \
   RFM_ROOT="$RAIZ" \
-  node "$HOOK" > /dev/null 2>&1
+  node "$MUT_TA_HOOK" > /dev/null 2>&1
 
 # Verifica marca com mutação
 MARCA_TA_MUT=$(cd "$SRC" && node -e "
@@ -369,17 +420,14 @@ db.close();
 
 OFFSET_PROC_MUT=$(echo "$MARCA_TA_MUT" | cut -d, -f2)
 
-if [ "$OFFSET_PROC_MUT" = "0" ]; then
-  echo "  ERRO mutação não funcionou (esperava que offset_processado fosse escrito)"
-else
+if [ "$OFFSET_PROC_MUT" != "0" ]; then
   # Mutação funcionou — offset_processado foi escrito quando não deveria
-  ok=$((ok+1)); echo "  ok    mutação ativa: offset_processado=$OFFSET_PROC_MUT (visto que não deveria)"
-  echo "  Saída esperada vermelha CONSEGUIDA (comportamento quebrado acionado)"
+  ok=$((ok+1)); echo "  ok    mutação ativa: offset_processado=$OFFSET_PROC_MUT (visto que não deveria — vermelho conseguido)"
+else
+  falhou=$((falhou+1)); echo "  FALHA mutação não reproduziu o bug (offset_processado continua 0)"
 fi
 
-# Reverter mutação
-cp "$HOOK_BACKUP" "$HOOK"
-rm -f "$HOOK_BACKUP" "$HOOK.bak"
+rm -rf "$MUT_TA_POSIX"
 
 # Teste T-B: Prova por mutação — recuperarSessoes() sinaliza pendência
 # NOTA: Usar sandbox separada para evitar interferência de testes anteriores
@@ -430,18 +478,23 @@ echo
 echo "  Fase 2: Com mutação (comportamento quebrado)"
 echo "  Mutação: alterar condição para nunca detectar pendência..."
 
-# Cria backup do hook
-cp "$HOOK" "$HOOK_BACKUP"
+# Achado 2 da tarefa 22: mutar $HOOK (rastreado) com sed -i e um trap que só
+# limpa a raiz de dados — Ctrl-C entre o sed e o cp de volta deixa produção
+# mutada. A mutação roda numa CÓPIA.
+MUT_TB_POSIX="$(mktemp -d)"
+cp -r "$SRC/hooks" "$MUT_TB_POSIX/hooks"
+cp -r "$SRC/scripts" "$MUT_TB_POSIX/scripts"
+MUT_TB_HOOK="$MUT_TB_POSIX/hooks/memoria-marca.cjs"
 
 # Mutação: alterar "if (tamanhoAtual > marca.offset_processado)" para "if (false)"
 # Isso garante que a pendência nunca seja sinalizada
-sed -i "s/if (tamanhoAtual > marca.offset_processado)/if (false)/g" "$HOOK"
+sed -i "s/if (tamanhoAtual > marca.offset_processado)/if (false)/g" "$MUT_TB_HOOK"
 
 # Verificar que a mutação foi aplicada
-if grep -q "if (false)" "$HOOK"; then
-  echo "    Mutação aplicada: if (false) substituindo a condição"
+if grep -q "if (false)" "$MUT_TB_HOOK"; then
+  ok=$((ok+1)); echo "  ok    mutação aplicada na cópia: if (false) substituindo a condição"
 else
-  echo "    AVISO: mutação pode não ter funcionado"
+  falhou=$((falhou+1)); echo "  FALHA não consegui aplicar a mutação — o texto de recuperarSessoes() pode ter mudado"
 fi
 
 # Usar nova sandbox para teste com mutação
@@ -459,7 +512,7 @@ echo '{"tipo":"prompt","conteudo":"turno1"}' > "$RAIZ_TB_MUT_POSIX/projects/proj
 echo '{"session_id":"'$SESSAO_TB_MUT'","project":"projeto-teste"}' | \
   CLAUDE_CONFIG_DIR="$RAIZ_TB_MUT" \
   RFM_ROOT="$RAIZ_TB_MUT" \
-  node "$HOOK" > /dev/null 2>&1
+  node "$MUT_TB_HOOK" > /dev/null 2>&1
 
 # Cresce transcrito
 echo '{"tipo":"ferramenta","conteudo":"resultado_pendente"}' >> "$RAIZ_TB_MUT_POSIX/projects/projeto-teste/$SESSAO_TB_MUT.jsonl"
@@ -468,20 +521,19 @@ echo '{"tipo":"ferramenta","conteudo":"resultado_pendente"}' >> "$RAIZ_TB_MUT_PO
 RECUPERACAO_MUT_OUTPUT=$(echo '{"session_id":"'$SESSAO_TB_MUT'","project":"projeto-teste"}' | \
   CLAUDE_CONFIG_DIR="$RAIZ_TB_MUT" \
   RFM_ROOT="$RAIZ_TB_MUT" \
-  node "$HOOK" --recover 2>&1)
+  node "$MUT_TB_HOOK" --recover 2>&1)
 
-# Verifica se saída NÃO contém PENDENCIA (indicando que mutação funcionou)
+# Achado 6 da tarefa 22 (segunda metade): o ramo "não funcionou" só imprimia
+# "ERRO", sem nunca incrementar $falhou — mutação que não casa passava por
+# verde do mesmo jeito que uma que casasse. Agora os dois lados contam.
 if echo "$RECUPERACAO_MUT_OUTPUT" | grep -q "PENDENCIA:"; then
-  echo "  ERRO mutação não funcionou (ainda tem PENDENCIA)"
+  falhou=$((falhou+1)); echo "  FALHA mutação não acionou (ainda tem PENDENCIA na saída)"
 else
   # Mutação funcionou — nenhuma PENDENCIA foi sinalizada
   ok=$((ok+1)); echo "  ok    mutação ativa: nenhuma PENDENCIA sinalizada (comportamento quebrado acionado)"
 fi
 
-# Reverter mutação
-cp "$HOOK_BACKUP" "$HOOK"
-rm -f "$HOOK_BACKUP" "$HOOK.bak"
-rm -rf "$RAIZ_TB_MUT_POSIX"
+rm -rf "$MUT_TB_POSIX" "$RAIZ_TB_MUT_POSIX"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

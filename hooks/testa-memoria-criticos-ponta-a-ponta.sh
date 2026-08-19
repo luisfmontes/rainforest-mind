@@ -70,12 +70,36 @@ fi
 echo
 echo "Crítico 1 — PROVA COM MUTAÇÃO (deve falhar)"
 
-# Backup
-HOOK_BACKUP="$(mktemp)"
-cp "$HOOK_MARCA" "$HOOK_BACKUP"
+# Achado 2 da tarefa 22: mutar $HOOK_MARCA (arquivo RASTREADO) com sed -i, com
+# o único trap do script limpando só a raiz de dados — Ctrl-C entre o sed e o
+# cp de volta deixava produção mutada em silêncio. A mutação agora roda numa
+# CÓPIA, nunca no arquivo rastreado.
+#
+# Bônus achado nesta tarefa: a mutação original comentava
+# `if (evento.transcript_path)` trocando por `if (false) // MUTAÇÃO C1`, mas
+# a linha original termina em ` {` — o comentário de linha (`//`) engolia a
+# chave de abertura, quebrando a SINTAXE do arquivo (SyntaxError ao carregar).
+# O "vermelho" batia por acidente (o processo nem chegava a rodar), não
+# porque a lógica de resolução do transcrito estivesse sendo exercitada.
+# Comentário de bloco (`/* ... */`) não engole a chave, e a mutação passa a
+# testar de verdade o que o nome promete.
+MUT1_POSIX="$(mktemp -d)"
+cp -r "$SRC/hooks" "$MUT1_POSIX/hooks"
+cp -r "$SRC/scripts" "$MUT1_POSIX/scripts"
+MUT1="$(cygpath -m "$MUT1_POSIX" 2>/dev/null || printf '%s' "$MUT1_POSIX")"
+MUT1_HOOK="$MUT1_POSIX/hooks/memoria-marca.cjs"
 
-# Mutação: ignorar transcript_path
-sed -i 's/if (evento.transcript_path)/if (false) \/\/ MUTAÇÃO C1/' "$HOOK_MARCA"
+sed -i 's/if (evento.transcript_path)/if (false) \/* MUTAÇÃO C1 *\//' "$MUT1_HOOK"
+
+# Confere que a cópia mutada ainda carrega sem SyntaxError (senão a mutação
+# não prova nada sobre a lógica, só sobre a própria sintaxe do sed).
+node -c "$MUT1_HOOK" 2>"$MUT1_POSIX/.syntax-err"
+if [ $? -ne 0 ]; then
+  falhou=$((falhou+1)); echo "FALHA    Crítico 1: a mutação quebrou a SINTAXE da cópia, não testa a lógica"
+  cat "$MUT1_POSIX/.syntax-err" | sed 's/^/         /'
+else
+  ok=$((ok+1)); echo "ok    Crítico 1: a cópia mutada ainda é sintaticamente válida"
+fi
 
 SESSAO_MUT1="sessao-mut-c1"
 TRANSCRITO_MUT1="$RAIZ/projects/$PROJETO/$SESSAO_MUT1.jsonl"
@@ -86,7 +110,7 @@ EVENTO_MUT1='{"session_id":"'$SESSAO_MUT1'","transcript_path":"'$TRANSCRITO_MUT1
 echo "$EVENTO_MUT1" | \
   CLAUDE_CONFIG_DIR="$RAIZ" \
   RFM_ROOT="$RAIZ" \
-  node "$HOOK_MARCA" > /dev/null 2>&1
+  node "$MUT1_HOOK" > /dev/null 2>&1
 
 MARCA_ARQ_MUT1=$(cd "$SRC" && node -e "
 const { abrirBanco } = require('./scripts/memoria.cjs');
@@ -97,15 +121,17 @@ console.log(rows[0] ? rows[0].arquivo : 'NULL');
 db.close();
 " 2>/dev/null)
 
-if [ "$MARCA_ARQ_MUT1" = "NULL" ]; then
-  ok=$((ok+1)); echo "ok    Crítico 1: mutação acionou saída vermelha (marca=NULL)"
+# Com a mutação corrigida (comentário de bloco), o if desviado cai no
+# fallback de CLAUDE_CONFIG_DIR — que resolve um caminho DIFERENTE (errado)
+# do transcript_path real, não necessariamente NULL. O que importa é que o
+# caminho gravado não é o correto — NULL era só um caso particular.
+if [ "$MARCA_ARQ_MUT1" != "$TRANSCRITO_MUT1" ]; then
+  ok=$((ok+1)); echo "ok    Crítico 1: mutação acionou saída vermelha (caminho != transcript_path: '$MARCA_ARQ_MUT1')"
 else
-  falhou=$((falhou+1)); echo "FALHA    Crítico 1: mutação não acionou (ainda gravou: $MARCA_ARQ_MUT1)"
+  falhou=$((falhou+1)); echo "FALHA    Crítico 1: mutação não acionou (ainda resolveu o caminho correto)"
 fi
 
-# Revert
-cp "$HOOK_BACKUP" "$HOOK_MARCA"
-rm -f "$HOOK_BACKUP"
+rm -rf "$MUT1_POSIX"
 
 # ============================================================================
 # Crítico 2+3: TESTE SEM MUTAÇÃO — deve ler janela correta e avançar offset_processado
@@ -215,12 +241,17 @@ fi
 echo
 echo "Críticos 2+3 — PROVA COM MUTAÇÃO (deve falhar)"
 
-# Backup
-OBSERVAR_BACKUP="$(mktemp)"
-cp "$SCRIPT_OBSERVAR" "$OBSERVAR_BACKUP"
+# Achado 2 da tarefa 22: mutar $SCRIPT_OBSERVAR (arquivo RASTREADO) com sed -i
+# corria o mesmo risco do Crítico 1 — Ctrl-C entre o sed e o cp de volta deixa
+# produção mutada. A mutação agora roda numa CÓPIA.
+MUT2_POSIX="$(mktemp -d)"
+cp -r "$SRC/hooks" "$MUT2_POSIX/hooks"
+cp -r "$SRC/scripts" "$MUT2_POSIX/scripts"
+MUT2="$(cygpath -m "$MUT2_POSIX" 2>/dev/null || printf '%s' "$MUT2_POSIX")"
+MUT2_OBSERVAR="$MUT2_POSIX/scripts/observar.cjs"
 
 # Mutação: forçar ler de offset_visto em vez de offset_processado
-sed -i 's/const offsetProcessado = marca.offset_processado || 0;/const offsetProcessado = marca.offset; \/\/ MUTAÇÃO C2/' "$SCRIPT_OBSERVAR"
+sed -i 's/const offsetProcessado = marca.offset_processado || 0;/const offsetProcessado = marca.offset; \/\/ MUTAÇÃO C2/' "$MUT2_OBSERVAR"
 
 SESSAO_MUT2="sessao-mut-c23"
 TRANSCRITO_MUT2="$RAIZ/projects/$PROJETO/$SESSAO_MUT2.jsonl"
@@ -244,11 +275,11 @@ echo "$EVENTO_MUT2" | \
 # (Se o arquivo crescesse aqui, a leitura mutada ainda acharia o texto novo e
 # a mutação não seria pega — foi o defeito do desenho original deste teste.)
 
-# Rodar observar com mutação — vai ler de offset_visto até EOF (vazio)
+# Rodar observar (cópia mutada) — vai ler de offset_visto até EOF (vazio)
 OBSERVAR_MUT_OUT=$(cd "$SRC" && \
   TESTADOR_CHAMAR_LLM="$RAIZ/mock-llm-ok.cjs" \
   RFM_ROOT="$RAIZ" \
-  node "$SCRIPT_OBSERVAR" --sessao "$SESSAO_MUT2" --projeto "$PROJETO" 2>&1)
+  node "$MUT2_OBSERVAR" --sessao "$SESSAO_MUT2" --projeto "$PROJETO" 2>&1)
 
 # Com mutação, deve dizer "nenhum evento novo"
 if echo "$OBSERVAR_MUT_OUT" | grep -q "nenhum evento"; then
@@ -258,9 +289,7 @@ else
   echo "  Saída: $OBSERVAR_MUT_OUT"
 fi
 
-# Revert
-cp "$OBSERVAR_BACKUP" "$SCRIPT_OBSERVAR"
-rm -f "$OBSERVAR_BACKUP"
+rm -rf "$MUT2_POSIX"
 
 # ============================================================================
 # Crítico 3 ISOLADO — PROVA COM MUTAÇÃO (deve falhar)
@@ -271,12 +300,16 @@ rm -f "$OBSERVAR_BACKUP"
 echo
 echo "Crítico 3 ISOLADO — PROVA COM MUTAÇÃO (deve falhar)"
 
-OBSERVAR_BACKUP_C3="$(mktemp)"
-cp "$SCRIPT_OBSERVAR" "$OBSERVAR_BACKUP_C3"
+# Achado 2 da tarefa 22: mesma conversão para cópia.
+MUT3_POSIX="$(mktemp -d)"
+cp -r "$SRC/hooks" "$MUT3_POSIX/hooks"
+cp -r "$SRC/scripts" "$MUT3_POSIX/scripts"
+MUT3="$(cygpath -m "$MUT3_POSIX" 2>/dev/null || printf '%s' "$MUT3_POSIX")"
+MUT3_OBSERVAR="$MUT3_POSIX/scripts/observar.cjs"
 
 # Mutação: desativa a escrita real do UPDATE, mas a função ainda retorna true
 # (a mensagem de sucesso continua saindo — só o banco não muda).
-sed -i 's/stmt.run(offsetProcessado, projeto, sessao);/\/\/ MUTAÇÃO C3: stmt.run(offsetProcessado, projeto, sessao);/' "$SCRIPT_OBSERVAR"
+sed -i 's/stmt.run(offsetProcessado, projeto, sessao);/\/\/ MUTAÇÃO C3: stmt.run(offsetProcessado, projeto, sessao);/' "$MUT3_OBSERVAR"
 
 SESSAO_MUT3="sessao-mut-c3"
 TRANSCRITO_MUT3="$RAIZ/projects/$PROJETO/$SESSAO_MUT3.jsonl"
@@ -296,7 +329,7 @@ echo "$EVENTO_MUT3" | \
 OBSERVAR_MUT3_OUT=$(cd "$SRC" && \
   TESTADOR_CHAMAR_LLM="$RAIZ/mock-llm-ok.cjs" \
   RFM_ROOT="$RAIZ" \
-  node "$SCRIPT_OBSERVAR" --sessao "$SESSAO_MUT3" --projeto "$PROJETO" 2>&1)
+  node "$MUT3_OBSERVAR" --sessao "$SESSAO_MUT3" --projeto "$PROJETO" 2>&1)
 
 MARCA_OFFSET_PROC_MUT3=$(cd "$SRC" && node -e "
 const { abrirBanco } = require('./scripts/memoria.cjs');
@@ -316,9 +349,7 @@ else
   falhou=$((falhou+1)); echo "FALHA    Crítico 3: mutação não acionou (offset_processado=$MARCA_OFFSET_PROC_MUT3)"
 fi
 
-# Revert
-cp "$OBSERVAR_BACKUP_C3" "$SCRIPT_OBSERVAR"
-rm -f "$OBSERVAR_BACKUP_C3"
+rm -rf "$MUT3_POSIX"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

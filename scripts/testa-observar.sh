@@ -348,6 +348,154 @@ else
   falhou=$((falhou+1)); echo "  FALHA offset_processado mudou para $MARCA_OFFSET_VAZIO (esperado 0)"
 fi
 
+# ============ Teste 14: modo producao — SEM argumentos ============
+# Achado 6 da tarefa 22: esta bateria so exercitava
+# `observar.cjs --sessao X --projeto Y`, mas hooks/hooks.json chama
+# `node observar.cjs` SEM argumento nenhum, tanto em SessionStart quanto em
+# SessionEnd — o modo que roda em producao era justamente o que nao tinha
+# bateria nenhuma. Sem --sessao/--projeto, processarSessao() cai no modo 2:
+# le TODAS as marcas com pendencia (offset > offset_processado) e processa
+# cada uma.
+echo
+echo "14. Modo producao: observar.cjs SEM argumentos processa marcas pendentes"
+
+node <<'LIMPA14' 2>/dev/null
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+db.exec('DELETE FROM observacoes');
+db.exec('DELETE FROM marca_dagua');
+db.close();
+LIMPA14
+
+TRANSCRITO_SEMARG="$RFM_ROOT/projects/proj-teste/sessao-semarg.jsonl"
+cat > "$TRANSCRITO_SEMARG" <<'EOF'
+{"type":"user","message":{"role":"user","content":"Qual eh a capital do Japao?"},"timestamp":"2026-08-19T10:02:00Z","sessionId":"sessao-semarg","version":"2.1.0","cwd":"test"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"A capital eh Toquio"}]},"timestamp":"2026-08-19T10:02:01Z","sessionId":"sessao-semarg","version":"2.1.0","cwd":"test"}
+EOF
+
+node <<CRIA_MARCA_SEMARG 2>/dev/null
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const fs = require('fs');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const stmt = db.prepare(\`INSERT OR REPLACE INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?, ?, ?, ?, ?, ?)\`);
+const caminhoTranscrito = path.join(process.env.RFM_ROOT, 'projects', 'proj-teste', 'sessao-semarg.jsonl');
+const tamanho = fs.statSync(caminhoTranscrito).size;
+stmt.run('proj-teste', 'sessao-semarg', caminhoTranscrito, tamanho, 0, new Date().toISOString());
+db.close();
+CRIA_MARCA_SEMARG
+
+export TESTADOR_CHAMAR_LLM="$DUBLIADOR_OK"
+SAIDA_SEMARG=$(node "$OBSERVADOR" 2>&1)
+EXIT_SEMARG=$?
+
+if [ $EXIT_SEMARG -eq 0 ]; then
+  ok=$((ok+1)); echo "  ok    observador sem argumentos (modo producao) saiu 0"
+else
+  falhou=$((falhou+1)); echo "  FALHA observador sem argumentos saiu $EXIT_SEMARG"
+  echo "$SAIDA_SEMARG" | sed 's/^/         /'
+fi
+
+CONTA_SEMARG=$(node <<'CONTA_SEMARG' 2>/dev/null
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const stmt = db.prepare('SELECT COUNT(*) as cnt FROM observacoes WHERE projeto=?');
+const rows = stmt.all('proj-teste');
+console.log(rows[0].cnt);
+db.close();
+CONTA_SEMARG
+)
+
+if [ "$CONTA_SEMARG" -eq 1 ]; then
+  ok=$((ok+1)); echo "  ok    modo producao (sem args) processou a marca pendente e gravou 1 observacao"
+else
+  falhou=$((falhou+1)); echo "  FALHA modo producao (sem args) nao processou: $CONTA_SEMARG observacoes (esperado 1)"
+fi
+
+# ---- Mutacao: prova que o Teste 14 pega regressao no modo 2 (numa COPIA) ----
+# Se o modo "sem argumentos" quebrar (o unico que hooks.json realmente chama),
+# esta bateria tinha zero chance de perceber antes do achado 6. A mutacao
+# desliga o modo 2 numa copia de observar.cjs — nunca no arquivo rastreado —
+# e confirma que o Teste 14 vira vermelho.
+MUT14_DIR="$(mktemp -d)"
+cp -r "$SRC/hooks" "$MUT14_DIR/hooks"
+cp -r "$SRC/scripts" "$MUT14_DIR/scripts"
+MUT14_OBSERVAR="$MUT14_DIR/scripts/observar.cjs"
+
+cat > "$MUT14_DIR/muta-modo2.cjs" <<'MUTEOF'
+const fs = require('fs');
+const alvo = process.env.ALVO;
+const original = fs.readFileSync(alvo, 'utf8');
+const trecho = "      console.log(`encontradas ${marcas.length} marca(s) com pendencia`);";
+if (!original.includes(trecho)) {
+  console.error('TRECHO_NAO_ENCONTRADO');
+  process.exit(1);
+}
+// MUTACAO: modo 2 (sem argumentos) para de processar — como se o "else" de
+// processarSessao() nunca existisse. E exatamente o modo que hooks.json chama.
+fs.writeFileSync(alvo, original.replace(trecho, trecho + '\n      return; // MUTACAO: modo sem argumentos nunca processa'));
+console.log('MUTADO');
+MUTEOF
+
+MUTA14_OUT=$(ALVO="$MUT14_OBSERVAR" node "$MUT14_DIR/muta-modo2.cjs" 2>&1)
+if echo "$MUTA14_OUT" | grep -q "^MUTADO$"; then
+  ok=$((ok+1)); echo "  ok    mutacao aplicada na copia (modo sem argumentos desligado)"
+else
+  falhou=$((falhou+1)); echo "  FALHA nao consegui mutar a copia — o texto de observar.cjs pode ter mudado"
+  echo "$MUTA14_OUT" | sed 's/^/         /'
+fi
+
+# Novo transcrito+marca pendente, banco limpo, mesma sandbox de dados
+node <<'LIMPA14B' 2>/dev/null
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+db.exec('DELETE FROM observacoes');
+db.exec('DELETE FROM marca_dagua');
+db.close();
+LIMPA14B
+
+TRANSCRITO_MUT14="$RFM_ROOT/projects/proj-teste/sessao-mut14.jsonl"
+cat > "$TRANSCRITO_MUT14" <<'EOF'
+{"type":"user","message":{"role":"user","content":"Qual eh a capital da China?"},"timestamp":"2026-08-19T10:03:00Z","sessionId":"sessao-mut14","version":"2.1.0","cwd":"test"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"A capital eh Pequim"}]},"timestamp":"2026-08-19T10:03:01Z","sessionId":"sessao-mut14","version":"2.1.0","cwd":"test"}
+EOF
+
+node <<CRIA_MARCA_MUT14 2>/dev/null
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const fs = require('fs');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const stmt = db.prepare(\`INSERT OR REPLACE INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?, ?, ?, ?, ?, ?)\`);
+const caminhoTranscrito = path.join(process.env.RFM_ROOT, 'projects', 'proj-teste', 'sessao-mut14.jsonl');
+const tamanho = fs.statSync(caminhoTranscrito).size;
+stmt.run('proj-teste', 'sessao-mut14', caminhoTranscrito, tamanho, 0, new Date().toISOString());
+db.close();
+CRIA_MARCA_MUT14
+
+SAIDA_MUT14=$(node "$MUT14_OBSERVAR" 2>&1)
+
+CONTA_MUT14=$(node <<'CONTA_MUT14' 2>/dev/null
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const stmt = db.prepare('SELECT COUNT(*) as cnt FROM observacoes WHERE projeto=?');
+const rows = stmt.all('proj-teste');
+console.log(rows[0].cnt);
+db.close();
+CONTA_MUT14
+)
+
+if [ "$CONTA_MUT14" -eq 0 ]; then
+  ok=$((ok+1)); echo "  ok    mutacao pegou: modo sem argumentos desligado nao gravou observacao nenhuma (o Teste 14 real acima acusaria isso)"
+else
+  falhou=$((falhou+1)); echo "  FALHA mutacao nao reproduziu o bug: $CONTA_MUT14 observacoes gravadas (esperava 0)"
+fi
+
+rm -rf "$MUT14_DIR"
+
 # ============ Resultado final ============
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
