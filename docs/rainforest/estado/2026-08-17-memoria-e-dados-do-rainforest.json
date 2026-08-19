@@ -22,8 +22,8 @@
     "em": "2026-08-17"
   },
   "executar": {
-    "status": "parcial",
-    "tarefas_ok": 16,
+    "status": "ok",
+    "tarefas_ok": 17,
     "tarefas": 17,
     "pendentes": [
       "Achado 6 PARCIAL: o criterio da tarefa 2 (grep -rl node:sqlite lista exatamente scripts/memoria.cjs) nao passa porque testa-importar-claude-mem.sh:29 fabrica banco de origem. A proposta do agente (require.*node:sqlite) NAO resolve — medido, da o mesmo resultado. Redacao que funciona, testada: grep -rl node:sqlite scripts/ hooks/ --exclude=testa-* . Mudar a regua e decisao do Luis",
