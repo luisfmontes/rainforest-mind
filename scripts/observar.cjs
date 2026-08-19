@@ -338,10 +338,12 @@ async function processarSessao(sessao, projeto) {
     }
 
     // Gravar observação
+    // Origem inclui offset_processado para granularidade — permite múltiplas observações
+    // por sessão sem colisão (Achado 5 revisado: discriminador granular, não por sessão inteira).
     const gravouOk = gravarObservacao(conexao, {
       projeto: marca.projeto,
       conteudo: observacao,
-      origem: `sessao:${marca.sessao}`,
+      origem: `sessao:${marca.sessao}:offset:${marca.offset_processado}`,
     });
     debug(`gravou ok: ${gravouOk}`);
 

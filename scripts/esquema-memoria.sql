@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS marca_dagua (
   sessao TEXT NOT NULL,
   arquivo TEXT NOT NULL,
   offset INTEGER NOT NULL DEFAULT 0,
+  offset_processado INTEGER NOT NULL DEFAULT 0,
   processada_em TEXT NOT NULL,
   UNIQUE(projeto, sessao)
 );

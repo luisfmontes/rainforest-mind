@@ -93,7 +93,7 @@ function importarObservacoes(conexaoOrigem, conexaoDestino, projeto) {
 
       importadas++;
     } catch (e) {
-      // UNIQUE(projeto, conteudo) violation: observação já existe
+      // UNIQUE(projeto, origem) violation: observação desta origem já foi importada
       if (e.message && e.message.includes('UNIQUE constraint failed')) {
         duplicadas++;
       } else {

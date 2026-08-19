@@ -86,14 +86,20 @@ function resolverTranscrito(evento) {
 
 // Grava a marca d'água na tabela.
 // Para a tarefa 10: registra sessão, arquivo, offset (tamanho do arquivo).
-// Usa INSERT OR REPLACE para ser idempotente.
+// CRÍTICO: preserva offset_processado ao atualizar (regressão d5).
+// INSERT ... ON CONFLICT DO UPDATE só toca as colunas "de visto" (offset, processada_em),
+// deixando offset_processado intacto para a passada de LLM consultar na abertura seguinte.
 function gravarMarca(conexao, { projeto, sessao, arquivo, offset }) {
   const agora = new Date().toISOString();
 
   try {
     const stmt = conexao.prepare(`
-      INSERT OR REPLACE INTO marca_dagua (projeto, sessao, arquivo, offset, processada_em)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em)
+      VALUES (?, ?, ?, ?, 0, ?)
+      ON CONFLICT(projeto, sessao) DO UPDATE SET
+        arquivo = excluded.arquivo,
+        offset = excluded.offset,
+        processada_em = excluded.processada_em
     `);
 
     stmt.run(projeto, sessao, arquivo, offset, agora);
