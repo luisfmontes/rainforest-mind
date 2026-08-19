@@ -238,7 +238,7 @@ db.close();
 CONTROLE_OBS=$(cd "$SRC" && node -e "
 const { abrirBanco } = require('./scripts/memoria.cjs');
 const db = abrirBanco('$RAIZ/rainforest.db');
-const stmt = db.prepare('SELECT COUNT(*) as cnt FROM observacoes WHERE origem=\\'sessao:$SESSAO_CONTROLE\\'');
+const stmt = db.prepare('SELECT COUNT(*) as cnt FROM observacoes WHERE origem LIKE \\'sessao:$SESSAO_CONTROLE:%\\'');
 const rows = stmt.all();
 console.log(rows[0] ? rows[0].cnt : '0');
 db.close();
@@ -299,7 +299,7 @@ db.close();
 REAL_OBS=$(cd "$SRC" && node -e "
 const { abrirBanco } = require('./scripts/memoria.cjs');
 const db = abrirBanco('$RAIZ/rainforest.db');
-const stmt = db.prepare('SELECT COUNT(*) as cnt FROM observacoes WHERE origem=\\'sessao:$SESSAO_REAL\\'');
+const stmt = db.prepare('SELECT COUNT(*) as cnt FROM observacoes WHERE origem LIKE \\'sessao:$SESSAO_REAL:%\\'');
 const rows = stmt.all();
 console.log(rows[0] ? rows[0].cnt : '0');
 db.close();
@@ -341,7 +341,7 @@ fi
 REAL_OBS_2=$(cd "$SRC" && node -e "
 const { abrirBanco } = require('./scripts/memoria.cjs');
 const db = abrirBanco('$RAIZ/rainforest.db');
-const stmt = db.prepare('SELECT COUNT(*) as cnt FROM observacoes WHERE origem=\\'sessao:$SESSAO_REAL\\'');
+const stmt = db.prepare('SELECT COUNT(*) as cnt FROM observacoes WHERE origem LIKE \\'sessao:$SESSAO_REAL:%\\'');
 const rows = stmt.all();
 console.log(rows[0] ? rows[0].cnt : '0');
 db.close();
