@@ -88,6 +88,12 @@
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/memoria-marca.cjs\"",
             "async": true,
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/observar.cjs\"",
+            "async": true,
+            "timeout": 30
           }
         ]
       }

@@ -63,23 +63,39 @@ sidecars_db() {
 
 tem_stack_trace() { # texto
   # Stack trace de node: linhas "    at algumaCoisa (arquivo:linha:coluna)".
-  # O aviso experimental do node:sqlite NAO casa com este padrao.
+  # O aviso experimental de módulos não casa com este padrão.
   printf '%s' "$1" | grep -qE '^\s*at .+:[0-9]+:[0-9]+'
 }
 
-# Roda a abertura de sessao completa de verdade: os dois hooks de SessionStart,
-# na ordem declarada em hooks/hooks.json. Preenche variaveis globais.
+# Roda a abertura de sessao completa de verdade: todos os hooks de SessionStart
+# DERIVADOS do hooks.json, na ordem declarada. Preenche variaveis globais:
+# OUT_1, EXIT_1, ERR_1 para o 1o hook (foco); OUT_2, EXIT_2, ERR_2 para o 2o (memoria);
+# OUT_3, EXIT_3, ERR_3 para o 3o (memoria-marca); OUT_4, EXIT_4, ERR_4 para o 4o (observar).
+# HOOKS_COUNT = total de hooks rodados.
 rodar_abertura() { # raiz [caminho_do_hook_de_memoria]
   local raiz="$1"
   local hook_memoria="${2:-$SRC_WIN/hooks/memoria-session-start.cjs}"
 
-  OUT_FOCO="$(RFM_ROOT="$raiz" node "$SRC_WIN/hooks/foco-session-start.cjs" 2>"$DADOS_POSIX/.err-foco")"
-  EXIT_FOCO=$?
-  ERR_FOCO="$(cat "$DADOS_POSIX/.err-foco" 2>/dev/null || true)"
+  # Avaliar script que exporta variaveis de cada hook
+  eval "$(RFM_ROOT="$raiz" node "$SRC_WIN/scripts/exporta-hooks-sessao-start.cjs" "$raiz" 2>&1)"
 
-  OUT_MEM="$(RFM_ROOT="$raiz" node "$hook_memoria" 2>"$DADOS_POSIX/.err-mem")"
-  EXIT_MEM=$?
-  ERR_MEM="$(cat "$DADOS_POSIX/.err-mem" 2>/dev/null || true)"
+  # Para compatibilidade com codigo antigo que usava OUT_FOCO, OUT_MEM:
+  # mapeamos OUT_1 -> OUT_FOCO, OUT_2 -> OUT_MEM (os dois primeiros hooks)
+  OUT_FOCO="${OUT_1:-}"
+  EXIT_FOCO="${EXIT_1:-1}"
+  ERR_FOCO="${ERR_1:-}"
+
+  # Se hook_memoria foi passado (mutacao no teste 4), reavaliar apenas esse hook
+  if [ "$hook_memoria" != "$SRC_WIN/hooks/memoria-session-start.cjs" ]; then
+    OUT_MEM="$(RFM_ROOT="$raiz" node "$hook_memoria" 2>"$DADOS_POSIX/.err-mem")"
+    EXIT_MEM=$?
+    ERR_MEM="$(cat "$DADOS_POSIX/.err-mem" 2>/dev/null || true)"
+  else
+    # Caso normal: usar o segundo hook da lista (memoria-session-start.cjs)
+    OUT_MEM="${OUT_2:-}"
+    EXIT_MEM="${EXIT_2:-1}"
+    ERR_MEM="${ERR_2:-}"
+  fi
 }
 
 checa() { # nome, condicao(0=ok)
@@ -131,20 +147,8 @@ else
   echo "$INICIAR_SAIDA" | sed 's/^/         /'
 fi
 
-cat > "$DADOS_POSIX/insere-fixture.cjs" <<'EOF'
-const { DatabaseSync } = require('node:sqlite');
-const path = require('path');
-const dbPath = path.join(process.env.RFM_ROOT, 'rainforest.db');
-const conexao = new DatabaseSync(dbPath);
-conexao.exec('PRAGMA journal_mode = WAL;');
-conexao.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em) VALUES (?, ?, ?)')
-  .run('teste-somente-leitura', 'FIXTURE-OBSERVACAO-DE-TESTE', '2026-08-17T10:00:00');
-// Consolida o WAL no arquivo principal antes de medir hash — sem isto o
-// baseline ficaria dependendo de -wal/-shm que o proprio setup deixou.
-conexao.exec('PRAGMA wal_checkpoint(TRUNCATE);');
-conexao.close();
-EOF
-RFM_ROOT="$DADOS" node "$DADOS_POSIX/insere-fixture.cjs" > "$DADOS_POSIX/.insere-out" 2>&1
+# Inserir observação fixture via adaptador (D8 — driver isolado)
+RFM_ROOT="$DADOS" node "$SRC_WIN/scripts/manipula-tabela.cjs" insere-observacao-fixture "teste-somente-leitura" "FIXTURE-OBSERVACAO-DE-TESTE" > "$DADOS_POSIX/.insere-out" 2>&1
 if [ "$?" = "0" ]; then
   ok=$((ok+1)); echo "  ok    setup: observacao fixture inserida"
 else

@@ -8,11 +8,10 @@
  * processamento atual (sessão, caminho do transcrito, offset processado),
  * permitindo que uma sessão interrompida seja recuperada na abertura seguinte.
  *
- * Justificativa do evento:
- * - O transcrito cresce a cada ferramenta executada.
- * - PostToolUse dispara no fim de cada ferramenta, capturando o transcrito atual.
- * - Permite recuperação fina: se a sessão morrer, sabe-se até onde foi processado.
- * - Custo: zero — apenas uma escrita de marca d'água no banco, em processo.
+ * Justificativa dos eventos:
+ * - Stop: dispara quando o usuário interrompe a sessão manualmente.
+ * - SessionEnd: dispara ao término natural de uma sessão (encerramento do harness).
+ * - Em ambos os casos, marca o ponto de processamento para recuperação na abertura seguinte.
  *
  * Propriedades exigidas:
  * - Zero spawn/exec (nenhum processo novo).
@@ -145,6 +144,12 @@ function recuperarSessoes() {
   try {
     const dados = resolverDados();
     if (!dados) {
+      process.exit(0);
+    }
+
+    // Decisão D16 (reversibilidade da fase 1): se o banco não existe, é degradação
+    // graciosa — a fase 1 é leitura pura e nunca cria estado. Exit 0, sem erro.
+    if (!fs.existsSync(dados.caminhoDb)) {
       process.exit(0);
     }
 

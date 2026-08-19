@@ -83,6 +83,32 @@ function abrirBanco(caminhoDb) {
   }
 }
 
+// Abre conexão somente-leitura com um banco (qualquer banco, não só rainforest.db).
+// Decisão D8 (driver isolado no adaptador): todos acessos a node:sqlite via este módulo.
+//
+// Uso: importação de bancos externos, auditorias, backups, leitura de transcritos.
+// Tolera WAL aberto por escrita concorrente — pragmas PRAGMA query_only + modo readonly
+// impedem qualquer escrita, mesmo se o banco tiver PRAGMA journal_mode = WAL ativo em outro
+// processo.
+//
+// Parâmetros:
+//   caminhoDb (string): caminho do arquivo do banco
+//
+// Retorna: conexão DatabaseSync se sucesso, null se falha (banco ausente, corrompido, etc.)
+// Não lança exceção, não faz console.error — decisão para degradação graciosa em hook.
+function abrirBancoSomenteLeitura(caminhoDb) {
+  try {
+    const DatabaseSync = require('node:sqlite').DatabaseSync;
+    const conexao = new DatabaseSync(caminhoDb, { readonly: true });
+    // PRAGMA query_only: trata qualquer tentativa de escrita como erro
+    conexao.exec('PRAGMA query_only = ON;');
+    return conexao;
+  } catch (e) {
+    // Banco indisponível (em uso, corrompido, ausente, etc.)
+    return null;
+  }
+}
+
 // Executa o schema SQL no banco.
 function criarSchema(conexao) {
   const caminhoSchema = path.resolve(__dirname, 'esquema-memoria.sql');
@@ -633,4 +659,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { abrirBanco, criarSchema, extrairSchema, resolverCaminhos };
+module.exports = { abrirBanco, abrirBancoSomenteLeitura, criarSchema, extrairSchema, resolverCaminhos };
