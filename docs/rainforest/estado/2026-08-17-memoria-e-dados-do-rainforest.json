@@ -26,9 +26,8 @@
     "tarefas_ok": 13,
     "tarefas": 13,
     "pendentes": [
-      "CRITICO NOVO (2026-08-19): formatarParaLLM (observar.cjs:109-121) so reconhece evento.tipo prompt/resposta/erro/ferramenta e evento.conteudo. O transcrito REAL do Claude Code usa type (user/assistant/system/attachment) e o texto mora em message.content. Nenhum campo reconhecido existe no transcrito real: resumo sai vazio para toda sessao real. Subsistema segue morto em producao, num ponto mais fundo que o critico 1",
-      "Os fixtures dos testes ponta a ponta foram ajustados para tipo/conteudo, casando o teste com o codigo errado — o verde deles nao vale ate o schema ser o real",
-      "Achados 4 a 9 da revisao seguem abertos (SessionEnd ausente, node:sqlite fora do adaptador, bateria de somente-leitura desatualizada, comentario PostToolUse, creep)"
+      "Achados 4 a 9 da revisao seguem abertos: observar.cjs esta no SessionStart e NAO no SessionEnd (contraria D14); importar-claude-mem.cjs abre node:sqlite fora do adaptador (contraria D8 e reprova o pronto-quando da tarefa 2); testa-memoria-somente-leitura.sh desatualizada (prova de D16 nao cobre os 4 hooks de SessionStart de hoje); comentario PostToolUse em memoria-marca.cjs:11-14; creep de 4 arquivos sem tarefa no plano",
+      "O dubliador-llm-ok.cjs ignora o texto recebido e devolve string fixa: nenhuma bateria que o usa consegue provar que formatarParaLLM produz prompt util. Trocar por dublê que ecoa o texto, ou o verde volta a ser tautologico"
     ],
     "em": "2026-08-19",
     "em_2": "2026-08-19",
