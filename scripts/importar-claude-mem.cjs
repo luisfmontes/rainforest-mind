@@ -22,7 +22,7 @@ const path = require('path');
 const os = require('os');
 
 // Importar funções reutilizáveis de memoria.cjs (D2, D8 — zero duplicação de lógica,
-// driver isolado no adaptador). O adaptador memoria.cjs encapsula node:sqlite.
+// driver isolado no adaptador).
 const { resolverCaminhos, abrirBanco, abrirBancoSomenteLeitura, criarSchema } = require('./memoria.cjs');
 
 // Encontrar o banco de origem (claude-mem.db) em ~/.claude-mem/

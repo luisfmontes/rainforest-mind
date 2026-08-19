@@ -63,7 +63,7 @@ sidecars_db() {
 
 tem_stack_trace() { # texto
   # Stack trace de node: linhas "    at algumaCoisa (arquivo:linha:coluna)".
-  # O aviso experimental do node:sqlite NAO casa com este padrao.
+  # O aviso experimental de módulos não casa com este padrão.
   printf '%s' "$1" | grep -qE '^\s*at .+:[0-9]+:[0-9]+'
 }
 
