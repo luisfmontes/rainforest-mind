@@ -27,7 +27,9 @@ atende: D8
 arquivos: `scripts/memoria.cjs`
 depende de: 1
 paralela: nao
-pronto quando: `node scripts/memoria.cjs buscar --texto "porta orfa" --limite 3 --json` devolve exit 0 e um array (vazio é resultado válido); e `grep -rl "node:sqlite" scripts/ hooks/` lista **exatamente** `scripts/memoria.cjs` — qualquer outro arquivo tocando o driver reprova a tarefa.
+pronto quando: `node scripts/memoria.cjs buscar --texto "porta orfa" --limite 3 --json` devolve exit 0 e um array (vazio é resultado válido); e `grep -rl "node:sqlite" scripts/ hooks/ --exclude="testa-*"` lista **exatamente** `scripts/memoria.cjs` — qualquer outro arquivo de produção tocando o driver reprova a tarefa.
+
+> **Emenda de 2026-08-19 (achado 6 da revisão).** A redação original não tinha o `--exclude="testa-*"`, e por isso reprovava também `scripts/testa-importar-claude-mem.sh:29`, que faz `require('node:sqlite')` para **fabricar o banco de origem** que o importador vai ler. Isso nunca foi o alvo: a D8 isola o driver na **produção**, e um teste que constrói o mundo de onde se importa não é código de produção. A alternativa era refatorar aquele teste para passar pelo adaptador — descartada porque faria o teste depender justamente do código que ele existe para exercitar. Fica registrado que a régua mudou, e por quê: critério ajustado em silêncio é o que esta esteira passou o dia pagando para descobrir.
 
 ### 3. Importador do claude-mem, único e incremental [tipo: implementar]
 atende: D6
