@@ -139,7 +139,7 @@ function criarSchema(conexao) {
     }
   }
 
-  // Migração: separar "visto" de "processado" na marca_dagua.
+  // Migração 1: separar "visto" de "processado" na marca_dagua.
   // Tarefa 11 (D12, D13) decidiu que:
   // - offset_visto: tamanho do transcrito conforme visto pelo harness (Stop/SessionEnd)
   // - offset_processado: tamanho processado pela passada de LLM (observar.cjs)
@@ -164,6 +164,123 @@ function criarSchema(conexao) {
   // e offset_processado foi acabado de adicionar (default 0).
   // Não precisamos renomear offset para offset_visto nesta versão, pois
   // o código vai continuar a usar 'offset' na INSERT/SELECT para retrocompatibilidade.
+
+  // Migração 2: renomear constraint UNIQUE de observacoes.
+  // Achado 2: esquema novo tem UNIQUE(projeto, origem), mas bancos legados têm
+  // UNIQUE(projeto, conteudo) ou nenhuma constraint UNIQUE.
+  // SQLite não altera constraints com ALTER TABLE, então precisa recriar a tabela.
+  // Esta migração é idempotente: detecta se já tem a constraint correta e pula.
+  try {
+    migraoesObservacoes(conexao);
+  } catch (e) {
+    // Falha na migração não trava schema creation — log e continua.
+    // O banco pode estar em estado intermediário, mas deve ser recuperável.
+    if (process.env.DEBUG_SCHEMA) {
+      console.error(`AVISO: falha na migração de observacoes: ${e.message}`);
+    }
+  }
+}
+
+// Migração de observacoes: garantir que tem UNIQUE(projeto, origem).
+// Detecta se a constraint está correta, e se não, recria a tabela.
+function migraoesObservacoes(conexao) {
+  // Verificar se a tabela observacoes existe
+  const temTabela = conexao.prepare(`
+    SELECT name FROM sqlite_master
+    WHERE type='table' AND name='observacoes'
+  `).all().length > 0;
+
+  if (!temTabela) {
+    // Tabela não existe — será criada pelo CREATE TABLE IF NOT EXISTS acima.
+    return;
+  }
+
+  // Verificar se há um índice UNIQUE em (projeto, origem) — a constraint correta.
+  // Nota: UNIQUE constraint inline CREATE TABLE cria um índice implícito.
+  const indices = conexao.prepare(`
+    SELECT name FROM sqlite_master
+    WHERE type='index' AND tbl_name='observacoes'
+  `).all();
+
+  let temConstraintCorreta = false;
+  for (const idx of indices) {
+    try {
+      const colstmt = conexao.prepare(`PRAGMA index_info('${idx.name}')`);
+      const colunas = colstmt.all();
+      if (colunas.length === 2
+          && colunas[0].name === 'projeto'
+          && colunas[1].name === 'origem') {
+        temConstraintCorreta = true;
+        break;
+      }
+    } catch (e) {
+      // Ignorar erro ao verificar índice
+    }
+  }
+
+  if (temConstraintCorreta) {
+    // Constraint já está correta — nada a fazer.
+    return;
+  }
+
+  // Constraint está errada ou faltando — migrar.
+  // 1. Contar quantas linhas vamos migrar
+  const contagem = conexao.prepare(`SELECT COUNT(*) as cnt FROM observacoes`).all();
+  const cntAntes = contagem[0].cnt;
+
+  // 2. Ler todos os dados em memória
+  const dados = conexao.prepare(`
+    SELECT id, projeto, conteudo, criada_em, origem
+    FROM observacoes
+  `).all();
+
+  // 3. Renomear tabela antiga
+  conexao.exec(`ALTER TABLE observacoes RENAME TO observacoes_backup;`);
+
+  // 4. Criar nova tabela com constraint correto
+  conexao.exec(`
+    CREATE TABLE observacoes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      projeto TEXT NOT NULL,
+      conteudo TEXT NOT NULL,
+      criada_em TEXT NOT NULL,
+      origem TEXT,
+      UNIQUE(projeto, origem)
+    );
+  `);
+
+  // 5. Copiar dados linha por linha, ignorando violações de constraint
+  const insertStmt = conexao.prepare(`
+    INSERT INTO observacoes (id, projeto, conteudo, criada_em, origem)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+
+  let cntCopiadas = 0;
+  for (const row of dados) {
+    try {
+      insertStmt.run(row.id, row.projeto, row.conteudo, row.criada_em, row.origem);
+      cntCopiadas++;
+    } catch (e) {
+      // Ignorar violação de constraint (duplicata)
+      if (!e.message.includes('UNIQUE')) {
+        throw e;
+      }
+    }
+  }
+
+  // 6. Apagar tabela de backup
+  conexao.exec(`DROP TABLE observacoes_backup;`);
+
+  // 7. Recriar os índices (são idempotentes com IF NOT EXISTS)
+  conexao.exec(`CREATE INDEX IF NOT EXISTS idx_observacoes_projeto ON observacoes(projeto);`);
+
+  // Log de debug se habilitado
+  if (process.env.DEBUG_SCHEMA) {
+    console.error(`Migração de observacoes: ${cntAntes} linhas antes, ${cntCopiadas} linhas copiadas`);
+    if (cntCopiadas < cntAntes) {
+      console.error(`  AVISO: ${cntAntes - cntCopiadas} linhas descartadas por conflito de constraint`);
+    }
+  }
 }
 
 // Retorna schema como JSON (comando `esquema --json`).
