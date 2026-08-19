@@ -26,9 +26,13 @@
     "tarefas_ok": 13,
     "tarefas": 13,
     "pendentes": [
-      "D14: o laco da recuperacao segue aberto — 5 tentativas, nenhuma verde"
+      "D14 decidida em 2026-08-19: SessionStart dispara a passada. Falta implementar o disparo — recuperarSessoes() e no-op (memoria-marca.cjs:148-152, corpo so de comentarios)",
+      "memoria-marca.cjs avanca o offset no Stop/SessionEnd por cima de trecho nao processado (:212/:219), sem observar.cjs ter rodado — mesmo defeito que a3eb9ae diz ter consertado, na outra ponta",
+      "observar.cjs nao esta registrado em hook nenhum: nada dispara a passada",
+      "bateria nao cobre a sequencia real Stop grava -> ninguem observa -> conteudo perdido; teste 5 passa sobre no-op",
+      "memoria-marca.cjs:5 declara Evento: PostToolUse, proibido por D12/D14; hooks.json registra em Stop/SessionEnd"
     ],
-    "em": "2026-08-17"
+    "em": "2026-08-19"
   },
   "revisar": {
     "status": "pendente"
