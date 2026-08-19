@@ -141,5 +141,79 @@ if echo "$saida_sem" | grep -q "nenhuma origem encontrada"; then ok=$((ok+1)); e
 else falhou=$((falhou+1)); echo "  FALHA relata origem ausente"; echo "$saida_sem" | head -3 | sed 's/^/         /'; fi
 
 echo
+echo "== 5. duas observações com texto idêntico, origem diferente =="
+# Este é o achado 5 da revisão: origem é o verdadeiro discriminador
+# (não conteúdo). Duas observações do mesmo texto de fontes diferentes
+# devem AMBAS ser importadas, não descartar uma por "duplicada".
+
+ORIGEM2="$CAIXA/origem-segunda.db"
+export ORIGEM2
+
+# Criar segunda origem com uma observação de texto idêntico à primeira origem
+node <<SETUP_ORIGEM2
+const { DatabaseSync } = require('node:sqlite');
+
+const db = new DatabaseSync(process.env.ORIGEM2);
+
+db.exec(\`
+  CREATE TABLE observations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    memory_session_id TEXT,
+    project TEXT,
+    text TEXT NOT NULL,
+    type TEXT,
+    title TEXT,
+    subtitle TEXT,
+    facts TEXT,
+    narrative TEXT,
+    concepts TEXT,
+    files_read TEXT,
+    files_modified TEXT,
+    prompt_number INTEGER,
+    created_at TEXT NOT NULL,
+    created_at_epoch INTEGER,
+    content_hash TEXT,
+    agent_type TEXT
+  );
+\`);
+
+// Observação com MESMO TEXTO que a primeira da origem anterior, mas origem diferente
+db.prepare(\`
+  INSERT INTO observations (text, created_at, content_hash, created_at_epoch)
+  VALUES (?, ?, ?, ?)
+\`).run(
+  'observacao teste 1 - conteudo unico xyz',
+  '2026-08-04T10:00:00Z',
+  'hash-diferente-99',
+  Math.floor(new Date('2026-08-04').getTime() / 1000)
+);
+
+db.close();
+SETUP_ORIGEM2
+
+# Importar da segunda origem
+export TESTADOR_ORIGEM_CLAUDE_MEM="$ORIGEM2"
+saida_imp3=$(node "$SRC/scripts/importar-claude-mem.cjs" 2>&1); got3=$?
+if [ "$got3" = "0" ]; then ok=$((ok+1)); echo "  ok   importação de segunda origem (exit 0)"
+else falhou=$((falhou+1)); echo "  FALHA importação de segunda origem: exit $got3"; fi
+
+if echo "$saida_imp3" | grep -q "importadas: 1"; then ok=$((ok+1)); echo "  ok   segunda origem importou 1 observação (não descartada por texto idêntico)"
+else falhou=$((falhou+1)); echo "  FALHA segunda origem deveria importar 1, não descartá-la"; echo "$saida_imp3" | sed 's/^/         /'; fi
+
+# Verificar que agora temos 4 observações no total (3 da primeira + 1 da segunda)
+CONTA=$(node <<'CONTA_FINAL'
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const db = abrirBanco(process.env.RFM_ROOT + '/rainforest.db');
+const stmt = db.prepare('SELECT COUNT(*) as cnt FROM observacoes');
+const rows = stmt.all();
+console.log(rows[0].cnt);
+db.close();
+CONTA_FINAL
+)
+
+if [ "$CONTA" = "4" ]; then ok=$((ok+1)); echo "  ok   total de 4 observações (3 + 1), não descartada"
+else falhou=$((falhou+1)); echo "  FALHA total deveria ser 4, mas é $CONTA"; fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

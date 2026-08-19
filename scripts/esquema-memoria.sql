@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS observacoes (
   conteudo TEXT NOT NULL,
   criada_em TEXT NOT NULL,
   origem TEXT,
-  UNIQUE(projeto, conteudo)
+  UNIQUE(projeto, origem)
 );
 
 CREATE TABLE IF NOT EXISTS resumos (
