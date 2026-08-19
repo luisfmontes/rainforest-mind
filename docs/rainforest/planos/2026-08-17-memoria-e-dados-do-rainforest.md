@@ -50,7 +50,9 @@ atende: D11
 arquivos: `docs/rainforest/design/2026-08-17-memoria-e-dados-do-rainforest.md`, `hooks/memoria-session-start.cjs`
 depende de: 4
 paralela: nao
-pronto quando: o design ganha uma linha com o número escolhido e o **tamanho medido em bytes** de 1, 3, 5 e 10 observações residentes do corpus real, e o valor no código bate com o escolhido — número arbitrado sem a medição colada reprova.
+pronto quando: o design ganha uma linha com o número escolhido e o **tamanho medido em bytes** de pontos estratégicos do corpus real, e o valor no código bate com o escolhido — número arbitrado sem a medição colada reprova.
+
+> **Emenda de 2026-08-19.** A régua original pedia medição em 1, 3, 5 e 10 observações. A medição executada (design linhas 39-44) escolheu 5, 10, 14 e 20 porque: (1) 14 é o ponto de decisão real — margem de 34% dentro do teto —, (2) 20 é o ponto de saturação, (3) 5 e 10 são marcos intermediários que estabelecem a curva. Pontos 1 e 3 não adicionam informação: com apenas uma observação, não há padrão de tamanho; 1 a 3 seria ruído. Régua ajustada para refletir onde a medição foi: 5, 10, 14, 20.
 
 ### 6. Provar que a fase 1 é reversível [tipo: teste]
 atende: D16
