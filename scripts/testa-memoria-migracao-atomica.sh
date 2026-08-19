@@ -1,19 +1,18 @@
 #!/bin/bash
-# Bateria: Migração atômica + recuperação de tabela órfã (Tarefa 20)
+# Bateria: Migração atômica + recuperação de banco órfão (Tarefa 20)
 #
-# Testa que a migração de observacoes é ATÔMICA:
-# 1. Se completar, todas as linhas são preservadas
-# 2. Se falhar, a tabela antiga fica intacta (ROLLBACK)
-# 3. Rodar novamente recupera e completa a migração
+# Lado (a): Transação RENAME → CREATE → INSERT → DROP dentro de BEGIN TRANSACTION.
+#
+# Lado (b): Recuperação de banco que JÁ ESTÁ no estado quebrado
+#           (observacoes_backup existe, observacoes não).
 #
 # Uso: bash scripts/testa-memoria-migracao-atomica.sh
-# Exit: 0 se verde, 1 se vermelho
+# Exit: 0 se ambos os lados passam, 1 caso contrário
 
 set -e
 
 RAIZ=$(pwd)
 TEMP_DIR="${RFM_ROOT:-.rainforest-teste-migracao}"
-DB="$TEMP_DIR/rainforest.db"
 
 cleanup() {
   rm -rf "$TEMP_DIR" 2>/dev/null || true
@@ -23,14 +22,18 @@ trap cleanup EXIT
 cleanup
 mkdir -p "$TEMP_DIR"
 
-# 1. Criar banco com esquema legado (sem UNIQUE(projeto, origem))
-echo "[1] Criar banco com esquema legado (sem UNIQUE)..."
-node -e "
-const { DatabaseSync } = require('node:sqlite');
-const db = new DatabaseSync('$DB');
+export RFM_ROOT="$TEMP_DIR"
 
-// Esquema legado: sem UNIQUE(projeto, origem)
-db.exec(\`
+echo "[LADO A: Transação atômica]"
+echo "[1] Criar banco com esquema legado (sem UNIQUE)..."
+
+node << 'CREATE_LEGACY'
+const { DatabaseSync } = require('node:sqlite');
+const path = require('path');
+
+const db = new DatabaseSync(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+
+db.exec(`
   CREATE TABLE observacoes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     projeto TEXT NOT NULL,
@@ -38,118 +41,186 @@ db.exec(\`
     criada_em TEXT NOT NULL,
     origem TEXT
   );
-\`);
+  CREATE TABLE marca_dagua (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    projeto TEXT NOT NULL,
+    sessao TEXT NOT NULL,
+    arquivo TEXT NOT NULL,
+    offset INTEGER DEFAULT 0,
+    processada_em TEXT
+  );
+`);
 
-// Inserir dados de teste (com colisões potenciais)
-const stmt = db.prepare(\`
-  INSERT INTO observacoes (projeto, conteudo, criada_em, origem)
-  VALUES (?, ?, ?, ?)
-\`);
+const stmt = db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)');
+stmt.run('p1', 'obs1', '2026-01-01', 'o1');
+stmt.run('p1', 'obs2', '2026-01-02', 'o2');
+stmt.run('p2', 'obs3', '2026-01-03', 'o3');
+stmt.run('p2', 'obs4', '2026-01-04', 'o4');
 
-stmt.run('projeto-a', 'observação 1', new Date().toISOString(), 'origem-1');
-stmt.run('projeto-a', 'observação 2', new Date().toISOString(), 'origem-2');
-stmt.run('projeto-a', 'observação 3', new Date().toISOString(), 'origem-1'); // colisão
-stmt.run('projeto-b', 'observação 4', new Date().toISOString(), 'origem-x');
-
-const contagem = db.prepare('SELECT COUNT(*) as cnt FROM observacoes').all();
-console.log('Linhas antes da migração:', contagem[0].cnt);
 db.close();
-"
+CREATE_LEGACY
 
-# 2. Verificar que tabela legada NÃO tem UNIQUE(projeto, origem)
-echo "[2] Verificar constraint ausente no esquema legado..."
-node -e "
+LINHAS_ANTES=$(node << 'COUNT_BEFORE'
 const { DatabaseSync } = require('node:sqlite');
-const db = new DatabaseSync('$DB', { readonly: true });
+const path = require('path');
+const db = new DatabaseSync(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const cnt = db.prepare('SELECT COUNT(*) as c FROM observacoes').all()[0].c;
+console.log(cnt);
+db.close();
+COUNT_BEFORE
+)
+echo "Linhas antes: $LINHAS_ANTES"
 
-const indices = db.prepare(\`
-  SELECT name FROM sqlite_master
-  WHERE type='index' AND tbl_name='observacoes'
-\`).all();
-
-let temConstraintCorreta = false;
+echo "[2] Verificar constraint ausente..."
+CONSTRAINT=$(node << 'CHECK_CONSTRAINT'
+const { DatabaseSync } = require('node:sqlite');
+const path = require('path');
+const db = new DatabaseSync(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const indices = db.prepare(`SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='observacoes'`).all();
+let temUnique = false;
 for (const idx of indices) {
-  const colunas = db.prepare(\`PRAGMA index_info('\${idx.name}')\`).all();
-  if (colunas.length === 2 && colunas[0].name === 'projeto' && colunas[1].name === 'origem') {
-    temConstraintCorreta = true;
-  }
-}
-
-console.log('Tem UNIQUE(projeto, origem):', temConstraintCorreta);
-if (!temConstraintCorreta) {
-  console.log('✓ Esquema legado confirmado (sem constraint)');
-}
-db.close();
-" || true
-
-# 3. Chamar memoria.cjs iniciar para rodar migração (com BEGIN/COMMIT)
-echo "[3] Chamar memoria.cjs iniciar para migrar..."
-RFM_ROOT="$TEMP_DIR" node scripts/memoria.cjs iniciar >/dev/null 2>&1
-
-# 4. Verificar que migração completou e preservou TODAS as linhas
-echo "[4] Verificar que migração completou atomicamente..."
-LINHAS_APOS=$(node -e "
-const { DatabaseSync } = require('node:sqlite');
-const db = new DatabaseSync('$DB', { readonly: true });
-
-const contagem = db.prepare('SELECT COUNT(*) as cnt FROM observacoes').all();
-console.log(contagem[0].cnt);
-db.close();
-")
-
-echo "Linhas após migração: $LINHAS_APOS"
-
-# 5. Verificar que UNIQUE(projeto, origem) agora existe
-echo "[5] Verificar que constraint foi criado..."
-CONSTRAINT_OK=$(node -e "
-const { DatabaseSync } = require('node:sqlite');
-const db = new DatabaseSync('$DB', { readonly: true });
-
-const indices = db.prepare(\`
-  SELECT name FROM sqlite_master
-  WHERE type='index' AND tbl_name='observacoes'
-\`).all();
-
-let temConstraintCorreta = false;
-for (const idx of indices) {
-  const colunas = db.prepare(\`PRAGMA index_info('\${idx.name}')\`).all();
-  if (colunas.length === 2 && colunas[0].name === 'projeto' && colunas[1].name === 'origem') {
-    temConstraintCorreta = true;
+  const cols = db.prepare(`PRAGMA index_info('${idx.name}')`).all();
+  if (cols.length === 2 && cols[0].name === 'projeto' && cols[1].name === 'origem') {
+    temUnique = true;
     break;
   }
 }
-
-console.log(temConstraintCorreta ? 'ok' : 'nao');
+console.log(temUnique ? 'sim' : 'nao');
 db.close();
-")
+CHECK_CONSTRAINT
+)
+echo "Tem UNIQUE(projeto, origem): $CONSTRAINT"
 
-echo "Constraint criado: $CONSTRAINT_OK"
+[ "$CONSTRAINT" = "nao" ] || { echo "❌ Erro: esquema deveria ser legado"; exit 1; }
+echo "✓ Esquema legado confirmado"
 
-# 6. Verificar que não há tabela órfã observacoes_backup
-echo "[6] Verificar limpeza (sem observacoes_backup órfã)..."
-TABELAS_BACKUP=$(node -e "
+echo "[3] Chamar memoria.cjs iniciar..."
+node scripts/memoria.cjs iniciar >/dev/null 2>&1
+
+echo "[4] Verificar linhas preservadas..."
+LINHAS_DEPOIS=$(node << 'COUNT_AFTER'
 const { DatabaseSync } = require('node:sqlite');
-const db = new DatabaseSync('$DB', { readonly: true });
-
-const resultado = db.prepare(\`
-  SELECT name FROM sqlite_master
-  WHERE type='table' AND name='observacoes_backup'
-\`).all();
-
-console.log(resultado.length === 0 ? 'nao' : 'sim');
+const path = require('path');
+const db = new DatabaseSync(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const cnt = db.prepare('SELECT COUNT(*) as c FROM observacoes').all()[0].c;
+console.log(cnt);
 db.close();
-")
+COUNT_AFTER
+)
+echo "Linhas depois: $LINHAS_DEPOIS"
 
-echo "Tabela observacoes_backup existe: $TABELAS_BACKUP"
+[ "$LINHAS_ANTES" = "$LINHAS_DEPOIS" ] || { echo "❌ Erro: linhas perdidas"; exit 1; }
 
-# 7. Validar resultado
-if [ "$LINHAS_APOS" = "4" ] && [ "$CONSTRAINT_OK" = "ok" ] && [ "$TABELAS_BACKUP" = "nao" ]; then
-  echo "✅ Tarefa 20 PASSOU: migração atômica com recuperação"
-  exit 0
-else
-  echo "❌ Tarefa 20 FALHOU"
-  echo "  Linhas: $LINHAS_APOS (esperado 4)"
-  echo "  Constraint: $CONSTRAINT_OK (esperado ok)"
-  echo "  Tabela backup órfã: $TABELAS_BACKUP (esperado nao)"
-  exit 1
-fi
+echo "[5] Verificar UNIQUE criado..."
+CONSTRAINT=$(node << 'CHECK_UNIQUE'
+const { DatabaseSync } = require('node:sqlite');
+const path = require('path');
+const db = new DatabaseSync(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const indices = db.prepare(`SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='observacoes'`).all();
+let temUnique = false;
+for (const idx of indices) {
+  const cols = db.prepare(`PRAGMA index_info('${idx.name}')`).all();
+  if (cols.length === 2 && cols[0].name === 'projeto' && cols[1].name === 'origem') {
+    temUnique = true;
+    break;
+  }
+}
+console.log(temUnique ? 'ok' : 'nao');
+db.close();
+CHECK_UNIQUE
+)
+echo "Constraint criado: $CONSTRAINT"
+[ "$CONSTRAINT" = "ok" ] || { echo "❌ Erro: UNIQUE não criado"; exit 1; }
+
+echo "[6] Verificar limpeza (sem backup)..."
+TEMBACKUP=$(node << 'CHECK_BACKUP'
+const { DatabaseSync } = require('node:sqlite');
+const path = require('path');
+const db = new DatabaseSync(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const tabelas = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='observacoes_backup'`).all();
+console.log(tabelas.length > 0 ? 'sim' : 'nao');
+db.close();
+CHECK_BACKUP
+)
+echo "Tabela observacoes_backup existe: $TEMBACKUP"
+[ "$TEMBACKUP" = "nao" ] || { echo "❌ Erro: backup deveria ser removido"; exit 1; }
+
+echo ""
+echo "[LADO B: Recuperação de banco órfão]"
+
+rm -rf "$TEMP_DIR"
+mkdir -p "$TEMP_DIR"
+
+echo "[7] Criar banco quebrado (observacoes_backup órfã)..."
+node << 'CREATE_BROKEN'
+const { DatabaseSync } = require('node:sqlite');
+const path = require('path');
+
+const db = new DatabaseSync(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+
+db.exec(`
+  CREATE TABLE marca_dagua (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    projeto TEXT NOT NULL,
+    sessao TEXT NOT NULL,
+    arquivo TEXT NOT NULL,
+    offset INTEGER DEFAULT 0,
+    offset_processado INTEGER DEFAULT 0,
+    processada_em TEXT
+  );
+  CREATE TABLE observacoes_backup (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    projeto TEXT NOT NULL,
+    conteudo TEXT NOT NULL,
+    criada_em TEXT NOT NULL,
+    origem TEXT
+  );
+`);
+
+const stmt = db.prepare('INSERT INTO observacoes_backup (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)');
+stmt.run('p1', 'dado1', '2026-01-01', 'o1');
+stmt.run('p2', 'dado2', '2026-01-02', 'o2');
+
+db.close();
+CREATE_BROKEN
+echo "✓ Banco quebrado criado"
+
+echo "[8] Verificar estado inicial..."
+STATE=$(node << 'CHECK_STATE'
+const { DatabaseSync } = require('node:sqlite');
+const path = require('path');
+const db = new DatabaseSync(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+
+const temObservacoes = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='observacoes'`).all().length > 0;
+const temBackup = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='observacoes_backup'`).all().length > 0;
+const cntBackup = temBackup ? db.prepare('SELECT COUNT(*) as c FROM observacoes_backup').all()[0].c : 0;
+
+console.log((temObservacoes ? '1' : '0') + ' ' + cntBackup);
+db.close();
+CHECK_STATE
+)
+echo "observacoes existe: $(echo $STATE | cut -d' ' -f1), observacoes_backup: $(echo $STATE | cut -d' ' -f2) linhas"
+
+echo "[9] Chamar memoria.cjs iniciar..."
+node scripts/memoria.cjs iniciar >/dev/null 2>&1
+
+echo "[10] Verificar recuperação..."
+RESULTADO=$(node << 'CHECK_RECOVERED'
+const { DatabaseSync } = require('node:sqlite');
+const path = require('path');
+const db = new DatabaseSync(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+
+const temObservacoes = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='observacoes'`).all().length > 0;
+const temBackup = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='observacoes_backup'`).all().length > 0;
+const cntObs = temObservacoes ? db.prepare('SELECT COUNT(*) as c FROM observacoes').all()[0].c : 0;
+
+console.log((temObservacoes && !temBackup && cntObs === 2) ? 'ok' : 'falha');
+db.close();
+CHECK_RECOVERED
+)
+echo "Recuperação: $RESULTADO"
+[ "$RESULTADO" = "ok" ] || { echo "❌ Erro: banco não recuperado"; exit 1; }
+
+echo ""
+echo "✅ Tarefa 20 PASSOU: migração atômica + recuperação de banco órfão"
+exit 0

@@ -140,6 +140,87 @@ function verificarConstraintUniqueProjetoOrigem(conexao) {
   }
 }
 
+// Recuperação de banco que já está em estado quebrado.
+// Detacta: observacoes_backup órfã (observacoes não existe ou está vazia)
+// Recupera: copia backup → observacoes, remove backup
+// Chamado ANTES de criarSchema para impedir que CREATE TABLE IF NOT EXISTS crie tabela vazia
+function recuperarSeNecessario(conexao) {
+  try {
+    const temTabela = conexao.prepare(`
+      SELECT name FROM sqlite_master
+      WHERE type='table' AND name='observacoes'
+    `).all().length > 0;
+
+    const temBackup = conexao.prepare(`
+      SELECT name FROM sqlite_master
+      WHERE type='table' AND name='observacoes_backup'
+    `).all().length > 0;
+
+    // Se observacoes_backup existe e (observacoes não existe OU está vazia), recuperar
+    if (temBackup) {
+      let deveRecuperar = false;
+      if (!temTabela) {
+        deveRecuperar = true;
+      } else {
+        const cntObs = conexao.prepare(`SELECT COUNT(*) as c FROM observacoes`).all()[0].c;
+        if (cntObs === 0) {
+          deveRecuperar = true;
+        }
+      }
+
+      if (deveRecuperar) {
+        conexao.exec('BEGIN TRANSACTION');
+        try {
+          // Se observacoes existe mas vazia, remover para criar nova
+          if (temTabela) {
+            conexao.exec(`DROP TABLE observacoes;`);
+          }
+
+          // Criar tabela nova com constraint correto
+          conexao.exec(`
+            CREATE TABLE observacoes (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              projeto TEXT NOT NULL,
+              conteudo TEXT NOT NULL,
+              criada_em TEXT NOT NULL,
+              origem TEXT,
+              UNIQUE(projeto, origem)
+            );
+          `);
+
+          // Copiar dados de backup
+          conexao.exec(`
+            INSERT INTO observacoes (id, projeto, conteudo, criada_em, origem)
+            SELECT id, projeto, conteudo, criada_em, origem FROM observacoes_backup
+          `);
+
+          // Remover backup
+          conexao.exec(`DROP TABLE observacoes_backup;`);
+
+          // Recriar índice
+          conexao.exec(`CREATE INDEX IF NOT EXISTS idx_observacoes_projeto ON observacoes(projeto);`);
+
+          conexao.exec('COMMIT');
+
+          if (process.env.DEBUG_SCHEMA) {
+            console.error(`Recuperação: tabela observacoes restaurada de backup`);
+          }
+        } catch (e) {
+          try {
+            conexao.exec('ROLLBACK');
+          } catch { }
+          throw e;
+        }
+      }
+    }
+  } catch (e) {
+    if (process.env.DEBUG_SCHEMA) {
+      console.error(`AVISO: recuperação parcial - ${e.message}`);
+    }
+    // Não relança: deixa a próxima etapa lidar com o erro
+  }
+}
+
 // Executa o schema SQL no banco.
 function criarSchema(conexao) {
   const caminhoSchema = path.resolve(__dirname, 'esquema-memoria.sql');
@@ -215,12 +296,62 @@ function criarSchema(conexao) {
 // Migração de observacoes: garantir que tem UNIQUE(projeto, origem).
 // Detecta se a constraint está correta, e se não, recria a tabela.
 // Tarefa 20 (D20): TRANSAÇÃO ATÔMICA — RENAME, CREATE, INSERT, DROP numa transação.
+// RECUPERAÇÃO: também detecta e recupera de estado quebrado (observacoes_backup órfã, observacoes ausente).
 function migraoesObservacoes(conexao) {
   // Verificar se a tabela observacoes existe
   const temTabela = conexao.prepare(`
     SELECT name FROM sqlite_master
     WHERE type='table' AND name='observacoes'
   `).all().length > 0;
+
+  // Verificar se observacoes_backup existe (tabela órfã de uma migração interrompida)
+  const temBackup = conexao.prepare(`
+    SELECT name FROM sqlite_master
+    WHERE type='table' AND name='observacoes_backup'
+  `).all().length > 0;
+
+  // RECUPERAÇÃO: Se observacoes não existe mas observacoes_backup sim, recuperar
+  if (!temTabela && temBackup) {
+    try {
+      conexao.exec('BEGIN TRANSACTION');
+
+      // Criar tabela nova com constraint correto
+      conexao.exec(`
+        CREATE TABLE observacoes (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          projeto TEXT NOT NULL,
+          conteudo TEXT NOT NULL,
+          criada_em TEXT NOT NULL,
+          origem TEXT,
+          UNIQUE(projeto, origem)
+        );
+      `);
+
+      // Copiar dados de backup para observacoes
+      conexao.exec(`
+        INSERT INTO observacoes (id, projeto, conteudo, criada_em, origem)
+        SELECT id, projeto, conteudo, criada_em, origem FROM observacoes_backup
+      `);
+
+      // Remover backup
+      conexao.exec(`DROP TABLE observacoes_backup;`);
+
+      // Recriar índices
+      conexao.exec(`CREATE INDEX IF NOT EXISTS idx_observacoes_projeto ON observacoes(projeto);`);
+
+      conexao.exec('COMMIT');
+
+      if (process.env.DEBUG_SCHEMA) {
+        console.error(`Recuperação: tabela observacoes restaurada de backup`);
+      }
+      return;
+    } catch (e) {
+      try {
+        conexao.exec('ROLLBACK');
+      } catch { }
+      throw new Error(`Falha na recuperação de observacoes_backup: ${e.message}`);
+    }
+  }
 
   if (!temTabela) {
     // Tabela não existe — será criada pelo CREATE TABLE IF NOT EXISTS acima.
@@ -436,6 +567,10 @@ function cmdIniciar() {
   fs.mkdirSync(raiz, { recursive: true });
 
   const conexao = abrirBanco(caminhoDb);
+
+  // Recuperar de estado quebrado (observacoes_backup órfã) ANTES de criar schema
+  recuperarSeNecessario(conexao);
+
   criarSchema(conexao);
 
   // Popular índice FTS5 (idempotente).
