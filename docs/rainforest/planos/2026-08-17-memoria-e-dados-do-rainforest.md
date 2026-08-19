@@ -105,3 +105,47 @@ arquivos: `docs/rainforest/design/2026-08-17-memoria-e-dados-do-rainforest.md`
 depende de: nenhuma
 paralela: sim
 pronto quando: a Issue existe no repo do claude-mem com os números medidos colados (15.331 `PostToolUse` em 8 dias, três processos por evento, `SKIP_TOOLS` lido só dentro do `worker-service.cjs`), e o design registra o link. **Texto escrito junto com o Luís antes de enviar** — publicação em repo de terceiro não sai sozinha.
+
+## Emenda de 2026-08-19 — tarefas 14 a 16
+
+A revisão do dia reprovou a entrega com 9 achados; o 9 era **creep**: sete arquivos
+no diff sem tarefa correspondente. Creep não se destrava com justificativa em
+prosa — só emendando o plano, com critério falsificável, para que o crescimento
+de escopo fique registrado em vez de silencioso. É o que estas três tarefas fazem.
+Elas descrevem trabalho **já executado**; o que faltava era a régua.
+
+### 14. Biblioteca de sessão extraída do hook de abertura [tipo: implementar]
+atende: D3
+arquivos: `hooks/lib/memoria-sessao.cjs`
+depende de: 4
+paralela: nao
+pronto quando: `bash hooks/testa-memoria-session-start.sh` sai 0 **e** o
+`memoria-session-start.cjs` não repete a lógica de leitura que a biblioteca já
+faz — verificado por `grep` mostrando que a consulta de observações aparece uma
+única vez nos dois arquivos somados.
+
+### 15. Dublês de LLM e bateria do adaptador [tipo: testes]
+atende: D4, D8
+arquivos: `scripts/dubliador-llm-ok.cjs`, `scripts/dubliador-llm-fail.cjs`, `scripts/testa-memoria.sh`
+depende de: 12
+paralela: nao
+pronto quando: `bash scripts/testa-memoria.sh` sai 0, **e** o dublê de sucesso
+**ecoa o texto que recebe** em vez de devolver string fixa — provado por um teste
+que alimenta a passada com transcrito vazio e exige que a observação resultante
+seja recusada. Enquanto o dublê devolver texto constante, nenhuma bateria
+consegue distinguir prompt cheio de prompt vazio, e foi assim que um subsistema
+morto passou por 10 baterias verdes em 2026-08-19.
+
+### 16. Fidelidade de fixture e provas ponta a ponta [tipo: testes]
+atende: D4, D14
+arquivos: `scripts/verifica-fidelidade-fixture.cjs`, `hooks/testa-memoria-criticos-ponta-a-ponta.sh`, `hooks/testa-memoria-recuperacao-ponta-a-ponta.sh`
+depende de: 10, 11, 12
+paralela: nao
+pronto quando: os três casos do checador se comportam como especificado, com o
+código de saída medido **sem pipe no meio** — fixture divergente sai 1, fixture
+fiel sai 0, e ausência de transcrito real sai 1 com aviso explícito, nunca 0
+silencioso; **e** as duas baterias ponta a ponta provam a cadeia com payload real
+do harness (`session_id` + `transcript_path` + `cwd`, sem `project`): marca com
+`offset` > 0, observador acha a janela `[processado, visto]`, observação gravada,
+`offset_processado` avança, segunda passada não reprocessa. O checador **nunca**
+commita transcrito real nem trecho dele — compara estrutura, não conteúdo.
