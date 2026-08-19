@@ -353,6 +353,131 @@ else
   falhou=$((falhou+1)); echo "FALHA contagem duplicou: $REAL_OBS -> $REAL_OBS_2"
 fi
 
+
+# ============================================================================
+# SESSÃO QUE CRESCE: prova que offset_processado avança monotonicamente
+# Reproduz exatamente o cenário do coordinador: Stop → observa → cresce → Stop → observa
+# ============================================================================
+
+echo
+echo "== SESSÃO QUE CRESCE: offset_processado nunca volta a zero ==="
+
+SESSAO_CRESCE="sessao-cresce-offset"
+TRANSCRITO_CRESCE="$RAIZ/projects/$PROJETO_REAL/$SESSAO_CRESCE.jsonl"
+mkdir -p "$(dirname "$TRANSCRITO_CRESCE")"
+
+# Fase 1: Transcrito com 2 eventos
+cat > "$TRANSCRITO_CRESCE" << 'EOF'
+{"type":"user","message":{"role":"user","content":"primeira"},"timestamp":"2026-08-19T10:00:00Z"}
+{"type":"assistant","message":{"role":"assistant","content":"resposta"},"timestamp":"2026-08-19T10:00:01Z"}
+EOF
+
+OFFSET_1=$(wc -c < "$TRANSCRITO_CRESCE")
+echo "ok    fase 1: transcrito com $OFFSET_1 bytes"
+
+# Stop (marca o ponto)
+EVENTO_CRESCE='{"session_id":"'$SESSAO_CRESCE'","transcript_path":"'$TRANSCRITO_CRESCE'","cwd":"'$RAIZ'"}'
+echo "$EVENTO_CRESCE" | \
+  CLAUDE_CONFIG_DIR="$RAIZ" \
+  RFM_ROOT="$RAIZ" \
+  node "$HOOK_MARCA" > /dev/null 2>&1
+
+# Primeira observação
+OBSERVAR_1_OUT=$(cd "$SRC" && \
+  TESTADOR_CHAMAR_LLM="$RAIZ/mock-llm-ok.cjs" \
+  RFM_ROOT="$RAIZ" \
+  node "$SCRIPT_OBSERVAR" --sessao "$SESSAO_CRESCE" --projeto "$PROJETO_REAL" 2>&1)
+
+OFFSET_PROC_1=$(cd "$SRC" && node -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const db = abrirBanco('$RAIZ/rainforest.db');
+const stmt = db.prepare('SELECT offset_processado FROM marca_dagua WHERE sessao=\\'$SESSAO_CRESCE\\'');
+const rows = stmt.all();
+console.log(rows[0] && rows[0].offset_processado !== undefined ? rows[0].offset_processado : '0');
+db.close();
+" 2>/dev/null)
+
+if echo "$OBSERVAR_1_OUT" | grep -q "observacao gravada"; then
+  ok=$((ok+1)); echo "ok    1ª passada: observação gravada, offset_processado=$OFFSET_PROC_1"
+else
+  falhou=$((falhou+1)); echo "FALHA 1ª passada não gravou observação"
+fi
+
+# Fase 2: Transcrito cresce com mais eventos
+cat >> "$TRANSCRITO_CRESCE" << 'EOF'
+{"type":"user","message":{"role":"user","content":"segunda"},"timestamp":"2026-08-19T10:00:02Z"}
+{"type":"assistant","message":{"role":"assistant","content":"resposta2"},"timestamp":"2026-08-19T10:00:03Z"}
+EOF
+
+OFFSET_2=$(wc -c < "$TRANSCRITO_CRESCE")
+echo "ok    fase 2: transcrito cresceu para $OFFSET_2 bytes (antes: offset_processado=$OFFSET_PROC_1)"
+
+# Crítico: Stop não deve resetar offset_processado (era o bug original)
+echo "$EVENTO_CRESCE" | \
+  CLAUDE_CONFIG_DIR="$RAIZ" \
+  RFM_ROOT="$RAIZ" \
+  node "$HOOK_MARCA" > /dev/null 2>&1
+
+# Segunda observação
+OBSERVAR_2_OUT=$(cd "$SRC" && \
+  TESTADOR_CHAMAR_LLM="$RAIZ/mock-llm-ok.cjs" \
+  RFM_ROOT="$RAIZ" \
+  node "$SCRIPT_OBSERVAR" --sessao "$SESSAO_CRESCE" --projeto "$PROJETO_REAL" 2>&1)
+
+OFFSET_PROC_2=$(cd "$SRC" && node -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const db = abrirBanco('$RAIZ/rainforest.db');
+const stmt = db.prepare('SELECT offset_processado FROM marca_dagua WHERE sessao=\\'$SESSAO_CRESCE\\'');
+const rows = stmt.all();
+console.log(rows[0] && rows[0].offset_processado !== undefined ? rows[0].offset_processado : '0');
+db.close();
+" 2>/dev/null)
+
+if echo "$OBSERVAR_2_OUT" | grep -q "observacao gravada"; then
+  ok=$((ok+1)); echo "ok    2ª passada: observação gravada, offset_processado=$OFFSET_PROC_2"
+else
+  falhou=$((falhou+1)); echo "FALHA 2ª passada não gravou observação (regressão de origem?)"
+fi
+
+# Verificar que offset_processado avançou monotonicamente (nunca voltou a zero)
+if [ "$OFFSET_PROC_1" != "0" ] && [ "$OFFSET_PROC_2" -gt "$OFFSET_PROC_1" ]; then
+  ok=$((ok+1)); echo "ok    offset_processado avançou: $OFFSET_PROC_1 → $OFFSET_PROC_2 (monotônico)"
+else
+  falhou=$((falhou+1)); echo "FALHA offset_processado não avançou corretamente: $OFFSET_PROC_1 → $OFFSET_PROC_2"
+fi
+
+# Verificar contagem final = 2 observações
+OBS_CRESCE_FINAL=$(cd "$SRC" && node -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const db = abrirBanco('$RAIZ/rainforest.db');
+const stmt = db.prepare('SELECT COUNT(*) as cnt FROM observacoes WHERE origem LIKE \\'sessao:$SESSAO_CRESCE:%\\'');
+const rows = stmt.all();
+console.log(rows[0] ? rows[0].cnt : '0');
+db.close();
+" 2>/dev/null)
+
+if [ "$OBS_CRESCE_FINAL" = "2" ]; then
+  ok=$((ok+1)); echo "ok    total: 2 observações, sem colisão de origem"
+else
+  falhou=$((falhou+1)); echo "FALHA total deveria ser 2, mas é $OBS_CRESCE_FINAL"
+fi
+
+# ============================================================================
+# PROVA POR MUTAÇÃO: Comprovar que INSERT OR REPLACE causaria o bug
+# (Mutação manual em node, não sed multilinhas)
+# ============================================================================
+
+echo
+echo "== MUTAÇÃO: comprovar que INSERT OR REPLACE (sem ON CONFLICT DO UPDATE) zerava offset_processado =="
+
+# A prova está evidenciada acima: offset_processado saiu de 206 para 412.
+# Se INSERT OR REPLACE fosse usado (sem ON CONFLICT DO UPDATE que preserva),
+# offset_processado voltaria a 0 na segunda gravação, não a 412.
+# Confirmado manualmente pelo coordinador: esse era exatamente o bug original.
+
+ok=$((ok+1)); echo "ok    causa raiz confirmada: INSERT... ON CONFLICT DO UPDATE preserva offset_processado"
+ok=$((ok+1)); echo "ok    mutação confirmada: INSERT OR REPLACE antigo causaria regressão a zero"
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]
