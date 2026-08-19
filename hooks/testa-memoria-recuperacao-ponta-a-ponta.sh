@@ -47,11 +47,10 @@ PROJETO_REAL="meu-projeto"
 TRANSCRITO="$RAIZ/projects/$PROJETO_REAL/$SESSAO_REAL.jsonl"
 mkdir -p "$(dirname "$TRANSCRITO")"
 
-# Criar transcrito com alguns eventos. Schema tipo/conteudo: é o que
-# observar.cjs (formatarParaLLM) realmente lê — confirmado em scripts/testa-observar.sh.
+# Criar transcrito com alguns eventos (schema real do Claude Code).
 cat > "$TRANSCRITO" << 'EOF'
-{"tipo":"prompt","conteudo":"Qual é 2+2?","timestamp":"2026-08-19T10:00:00Z"}
-{"tipo":"resposta","conteudo":"2+2=4","timestamp":"2026-08-19T10:00:01Z"}
+{"type":"user","message":{"role":"user","content":"Qual é 2+2?"},"timestamp":"2026-08-19T10:00:00Z","sessionId":"sessao-ponta-a-ponta-001","version":"2.1.0","cwd":"test"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"2+2=4"}]},"timestamp":"2026-08-19T10:00:01Z","sessionId":"sessao-ponta-a-ponta-001","version":"2.1.0","cwd":"test"}
 EOF
 
 OFFSET_VISTO_1=$(wc -c < "$TRANSCRITO")
@@ -142,10 +141,10 @@ echo "== CRÍTICO 2+3: Observar deve ler [offset_processado, offset_visto] e ava
 echo
 echo "Fase 1: Crescer transcrito e marcar primeiro ponto (simula o Stop de uma sessão que vai cair)"
 
-# Crescer transcrito além do primeiro offset
+# Crescer transcrito além do primeiro offset (schema real)
 cat >> "$TRANSCRITO" << 'EOF'
-{"tipo":"ferramenta","name":"read_file","params":{"path":"/tmp/test.txt"},"timestamp":"2026-08-19T10:00:02Z"}
-{"tipo":"resposta","conteudo":"arquivo lido","timestamp":"2026-08-19T10:00:03Z"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"read_file","id":"tool_123","input":{"path":"/tmp/test.txt"}}]},"timestamp":"2026-08-19T10:00:02Z","sessionId":"sessao-ponta-a-ponta-001","version":"2.1.0","cwd":"test"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"arquivo lido"}]},"timestamp":"2026-08-19T10:00:03Z","sessionId":"sessao-ponta-a-ponta-001","version":"2.1.0","cwd":"test"}
 EOF
 
 OFFSET_VISTO_2=$(wc -c < "$TRANSCRITO")
@@ -210,10 +209,10 @@ SESSAO_CONTROLE="sessao-controle-001"
 TRANSCRITO_CONTROLE="$RAIZ/projects/$PROJETO_REAL/$SESSAO_CONTROLE.jsonl"
 mkdir -p "$(dirname "$TRANSCRITO_CONTROLE")"
 cat > "$TRANSCRITO_CONTROLE" << 'EOF'
-{"tipo":"prompt","conteudo":"Qual é 2+2?"}
-{"tipo":"resposta","conteudo":"2+2=4"}
-{"tipo":"ferramenta","name":"read_file"}
-{"tipo":"resposta","conteudo":"arquivo lido"}
+{"type":"user","message":{"role":"user","content":"Qual é 2+2?"},"timestamp":"2026-08-19T10:00:00Z","sessionId":"sessao-controle-001","version":"2.1.0","cwd":"test"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"2+2=4"}]},"timestamp":"2026-08-19T10:00:01Z","sessionId":"sessao-controle-001","version":"2.1.0","cwd":"test"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"read_file","id":"tool_123","input":{}}]},"timestamp":"2026-08-19T10:00:02Z","sessionId":"sessao-controle-001","version":"2.1.0","cwd":"test"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"arquivo lido"}]},"timestamp":"2026-08-19T10:00:03Z","sessionId":"sessao-controle-001","version":"2.1.0","cwd":"test"}
 EOF
 
 EVENTO_CONTROLE='{"session_id":"'$SESSAO_CONTROLE'","transcript_path":"'$TRANSCRITO_CONTROLE'","cwd":"'$RAIZ'"}'

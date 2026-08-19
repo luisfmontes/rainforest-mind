@@ -65,8 +65,8 @@ echo "4. Cria transcrito com eventos e marca d'água"
 
 TRANSCRITO="$RFM_ROOT/projects/proj-teste/sessao.jsonl"
 cat > "$TRANSCRITO" <<'EOF'
-{"tipo":"prompt","conteudo":"Qual eh o capital da Franca?"}
-{"tipo":"resposta","conteudo":"O capital eh Paris"}
+{"type":"user","message":{"role":"user","content":"Qual eh o capital da Franca?"},"timestamp":"2026-08-19T10:00:00Z","sessionId":"sessao","version":"2.1.0","cwd":"test"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"O capital eh Paris"}]},"timestamp":"2026-08-19T10:00:01Z","sessionId":"sessao","version":"2.1.0","cwd":"test"}
 EOF
 
 OFFSET_ESPERADO=0

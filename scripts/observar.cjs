@@ -101,25 +101,45 @@ function lerTranscrito(caminhoTranscrito, offsetInicio) {
 }
 
 // Formata eventos para passar à LLM.
-// Extrai conteúdo relevante de cada evento (prompts, respostas, erros).
+// Extrai conteúdo relevante de cada evento (prompts, respostas, chamadas de ferramenta).
+// Schema real dos transcritos (Claude Code):
+//   - type: "user", "assistant", "system", "attachment", "last-prompt", "mode", "permission-mode", etc.
+//   - message.content: string (user/system) ou array (assistant: [{type: "text", text: "..."}, {type: "tool_use", ...}])
+// Ignorados: "attachment" (ruído de hooks), "system", "last-prompt", "mode", "permission-mode", etc.
 function formatarParaLLM(eventos) {
   const resumo = [];
 
   for (const evento of eventos) {
-    if (evento.tipo === 'prompt' || evento.user_prompt) {
-      resumo.push(`Prompt: ${evento.conteudo || evento.user_prompt || ''}`);
+    // Apenas "user" e "assistant" carregam conteúdo conversacional
+    if (evento.type === 'user' && evento.message && evento.message.content) {
+      const conteudo = evento.message.content;
+      const texto = typeof conteudo === 'string' ? conteudo : '';
+      if (texto.trim()) {
+        resumo.push(`Prompt: ${texto}`);
+      }
     }
-    if (evento.tipo === 'resposta' || evento.response_text) {
-      // Truncar respostas muito longas
-      const texto = evento.conteudo || evento.response_text || '';
-      const truncado = texto.substring(0, 500) + (texto.length > 500 ? '...' : '');
-      resumo.push(`Resposta: ${truncado}`);
-    }
-    if (evento.tipo === 'erro' || evento.error) {
-      resumo.push(`Erro: ${evento.conteudo || evento.error || ''}`);
-    }
-    if (evento.tipo === 'ferramenta' || evento.tool_use) {
-      resumo.push(`Ferramenta: ${evento.name || ''}`);
+
+    if (evento.type === 'assistant' && evento.message && evento.message.content) {
+      const conteudo = evento.message.content;
+
+      if (Array.isArray(conteudo)) {
+        // Extrair blocos de texto e chamadas de ferramenta
+        for (const bloco of conteudo) {
+          if (bloco.type === 'text' && bloco.text) {
+            // Truncar respostas muito longas
+            const texto = bloco.text;
+            const truncado = texto.substring(0, 500) + (texto.length > 500 ? '...' : '');
+            resumo.push(`Resposta: ${truncado}`);
+          }
+          if (bloco.type === 'tool_use' && bloco.name) {
+            resumo.push(`Ferramenta: ${bloco.name}`);
+          }
+        }
+      } else if (typeof conteudo === 'string') {
+        // Content pode ser string em alguns casos
+        const truncado = conteudo.substring(0, 500) + (conteudo.length > 500 ? '...' : '');
+        resumo.push(`Resposta: ${truncado}`);
+      }
     }
   }
 

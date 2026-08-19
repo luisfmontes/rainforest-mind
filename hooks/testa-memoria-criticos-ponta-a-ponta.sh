@@ -26,15 +26,15 @@ echo "(caixa de areia: $RAIZ)"
 RFM_ROOT="$RAIZ" node "$SCRIPT_MEMORIA" iniciar > /dev/null 2>&1
 ok=$((ok+1)); echo "ok    banco criado"
 
-# Criar transcrito realista
+# Criar transcrito realista (schema real do Claude Code)
 SESSAO="sessao-real-001"
 PROJETO="projeto-real"
 TRANSCRITO="$RAIZ/projects/$PROJETO/$SESSAO.jsonl"
 mkdir -p "$(dirname "$TRANSCRITO")"
 
 cat > "$TRANSCRITO" << 'EOF'
-{"tipo":"prompt","conteudo":"Oi","timestamp":"2026-08-19T10:00:00Z"}
-{"tipo":"resposta","conteudo":"Olá!","timestamp":"2026-08-19T10:00:01Z"}
+{"type":"user","message":{"role":"user","content":"Oi"},"timestamp":"2026-08-19T10:00:00Z","sessionId":"sessao-real-001","version":"2.1.0","cwd":"test"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Olá!"}]},"timestamp":"2026-08-19T10:00:01Z","sessionId":"sessao-real-001","version":"2.1.0","cwd":"test"}
 EOF
 
 # ============================================================================
@@ -114,10 +114,10 @@ rm -f "$HOOK_BACKUP"
 echo
 echo "== CRÍTICO 2+3: janela correta + avanço offset_processado ==="
 
-# Crescer transcrito
+# Crescer transcrito (schema real)
 cat >> "$TRANSCRITO" << 'EOF'
-{"tipo":"ferramenta","name":"test","timestamp":"2026-08-19T10:00:02Z"}
-{"tipo":"resposta","conteudo":"resultado","timestamp":"2026-08-19T10:00:03Z"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"test","id":"tool_123","input":{}}]},"timestamp":"2026-08-19T10:00:02Z","sessionId":"sessao-real-001","version":"2.1.0","cwd":"test"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"resultado"}]},"timestamp":"2026-08-19T10:00:03Z","sessionId":"sessao-real-001","version":"2.1.0","cwd":"test"}
 EOF
 
 # Reobservar marca
@@ -283,8 +283,8 @@ TRANSCRITO_MUT3="$RAIZ/projects/$PROJETO/$SESSAO_MUT3.jsonl"
 mkdir -p "$(dirname "$TRANSCRITO_MUT3")"
 
 cat > "$TRANSCRITO_MUT3" << 'EOF'
-{"tipo":"prompt","conteudo":"eventoA"}
-{"tipo":"resposta","conteudo":"eventoB"}
+{"type":"user","message":{"role":"user","content":"eventoA"},"timestamp":"2026-08-19T10:00:00Z","sessionId":"sessao-mut-c3","version":"2.1.0","cwd":"test"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"eventoB"}]},"timestamp":"2026-08-19T10:00:01Z","sessionId":"sessao-mut-c3","version":"2.1.0","cwd":"test"}
 EOF
 
 EVENTO_MUT3='{"session_id":"'$SESSAO_MUT3'","transcript_path":"'$TRANSCRITO_MUT3'","cwd":"'$RAIZ'"}'
