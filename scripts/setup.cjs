@@ -404,8 +404,17 @@ rainforest.db*
   try {
     // Se repositório não existe, criar
     if (!fs.existsSync(gitDir)) {
-      // Cria .gitignore antes de init
-      fs.writeFileSync(gitignorePath, gitignoreConteudo, 'utf8');
+      // Cria .gitignore antes de init, mas não sobrescreve se já existe
+      // (permite que o usuário tenha escrito conteúdo customizado antes de chamar versionar)
+      if (!fs.existsSync(gitignorePath)) {
+        fs.writeFileSync(gitignorePath, gitignoreConteudo, 'utf8');
+      } else {
+        // Arquivo já existe: garantir que tem os padrões
+        const conteudoAtual = fs.readFileSync(gitignorePath, 'utf8');
+        if (!conteudoAtual.includes('rainforest.db*')) {
+          fs.appendFileSync(gitignorePath, '\n' + gitignoreConteudo, 'utf8');
+        }
+      }
 
       // Inicializa repositorio e faz commit inicial
       execSync('git init', { cwd: raiz, stdio: 'pipe' });
