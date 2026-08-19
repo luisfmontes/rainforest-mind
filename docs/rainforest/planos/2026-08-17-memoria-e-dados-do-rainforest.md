@@ -128,15 +128,15 @@ faz — verificado por `grep` mostrando que a consulta de observações aparece 
 
 ### 15. Dublês de LLM e bateria do adaptador [tipo: testes]
 atende: D4, D8
-arquivos: `scripts/dubliador-llm-ok.cjs`, `scripts/dubliador-llm-fail.cjs`, `scripts/testa-memoria.sh`
+arquivos: `scripts/dubliador-llm-ok.cjs`, `scripts/dubliador-llm-fail.cjs`, `scripts/testa-observar.sh`
 depende de: 12
 paralela: nao
-pronto quando: `bash scripts/testa-memoria.sh` sai 0, **e** o dublê de sucesso
-**ecoa o texto que recebe** em vez de devolver string fixa — provado por um teste
-que alimenta a passada com transcrito vazio e exige que a observação resultante
-seja recusada. Enquanto o dublê devolver texto constante, nenhuma bateria
-consegue distinguir prompt cheio de prompt vazio, e foi assim que um subsistema
-morto passou por 10 baterias verdes em 2026-08-19.
+pronto quando: `bash scripts/testa-observar.sh` sai 0, provando em **dois casos críticos**:
+1. Teste 6a (linhas 124-145): observação contém eco — dublê de sucesso **ecoa o texto** em vez de devolver string fixa
+2. Teste 13 (linhas 271-330): transcrito vazio é **recusado** — observação não é gravada, marca d'água não avança
+
+Enquanto o dublê devolver texto constante, nenhuma bateria consegue distinguir prompt
+cheio de prompt vazio, e foi assim que um subsistema morto passou por 10 baterias verdes.
 
 ### 16. Fidelidade de fixture e provas ponta a ponta [tipo: testes]
 atende: D4, D14
