@@ -121,6 +121,29 @@ else
   falhou=$((falhou+1)); echo "  FALHA $CONTA_OBS observacoes (esperado 1)"
 fi
 
+# ============ Teste 6a: Verificar que observação CONTÉM o conteúdo (dublê faz eco) ============
+echo
+echo "6a. Observacao deve conter referencia ao conteudo do transcrito (eco)"
+
+CONTEUDO_OBS=$(node <<'LEI_CONTEUDO' 2>/dev/null
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const stmt = db.prepare('SELECT conteudo FROM observacoes WHERE projeto=? LIMIT 1');
+const rows = stmt.all('proj-teste');
+console.log(rows.length > 0 ? rows[0].conteudo : '');
+db.close();
+LEI_CONTEUDO
+)
+
+# O transcrito tem "Qual eh o capital da Franca?" e "O capital eh Paris"
+# O dublê faz eco: "[Resumo do dublê] Prompt: Qual eh o capital da Franca?..."
+if echo "$CONTEUDO_OBS" | grep -q "capital\|Franca"; then
+  ok=$((ok+1)); echo "  ok    observacao contém referência ao conteudo (eco funciona)"
+else
+  falhou=$((falhou+1)); echo "  FALHA observacao não contém conteudo: [$CONTEUDO_OBS]"
+fi
+
 # ============ Novo ciclo: testar falha de LLM ============
 echo
 echo "7. Criar nova sessao para testar falha da LLM"
