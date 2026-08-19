@@ -31,7 +31,7 @@
     ],
     "em": "2026-08-19",
     "em_2": "2026-08-19",
-    "nota": "pendencias da rodada anterior caíram; validado por mutação no codigo de producao na janela principal, nao pelo relato"
+    "nota": "5 achados da 2a revisao + causa raiz do offset_processado"
   },
   "revisar": {
     "status": "reprovado",

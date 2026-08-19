@@ -24,7 +24,7 @@ pronto quando: `RFM_ROOT=$(mktemp -d) node scripts/memoria.cjs iniciar && RFM_RO
 
 ### 2. Adaptador de leitura — o único módulo que conhece o esquema [tipo: implementar]
 atende: D8
-arquivos: `scripts/memoria.cjs`
+arquivos: `scripts/memoria.cjs`, `scripts/testa-memoria.sh`
 depende de: 1
 paralela: nao
 pronto quando: `node scripts/memoria.cjs buscar --texto "porta orfa" --limite 3 --json` devolve exit 0 e um array (vazio é resultado válido); e `grep -rl "node:sqlite" scripts/ hooks/ --exclude="testa-*"` lista **exatamente** `scripts/memoria.cjs` — qualquer outro arquivo de produção tocando o driver reprova a tarefa.
@@ -73,7 +73,9 @@ atende: D3, D7
 arquivos: `scripts/setup.cjs`, `scripts/testa-setup.sh`
 depende de: nenhuma
 paralela: sim
-pronto quando: `RFM_ROOT=$(mktemp -d) node scripts/setup.cjs versionar` sai 0, cria repo git na raiz com um commit inicial, e o `.gitignore` gerado ignora `rainforest.db*`; e `git -C <raiz> status --short` sai vazio logo após o comando.
+pronto quando: `RFM_ROOT=$(mktemp -d) node scripts/setup.cjs versionar` sai 0, cria repo git na raiz com um commit inicial, e **`git -C <raiz> ls-files` não lista nenhum arquivo `.db`** — nem o banco, nem backup, nem cópia futura; e `git -C <raiz> status --short` sai vazio logo após o comando.
+
+> **Emenda de 2026-08-19 (achado 1 da segunda revisão, crítico).** A régua original dizia "o `.gitignore` gerado ignora `rainforest.db*`", e **passava com o defeito presente**: os backups se chamam `rainforest-<timestamp>.db`, que não casa com `rainforest.db*`, então a sequência `iniciar → backup → versionar` versionava o binário do banco — com as observações das sessões do usuário dentro. O critério literal estava cumprido; a D7 ("o banco fica fora do git"), não. A régua nova mede o **efeito** (`git ls-files` não lista `.db`) em vez do **texto do arquivo de configuração**, porque foi medindo o texto que o defeito passou.
 
 ### 9. Backup próprio do banco [tipo: implementar]
 atende: D7
@@ -142,7 +144,7 @@ cheio de prompt vazio, e foi assim que um subsistema morto passou por 10 bateria
 
 ### 16. Fidelidade de fixture e provas ponta a ponta [tipo: testes]
 atende: D4, D14
-arquivos: `scripts/verifica-fidelidade-fixture.cjs`, `hooks/testa-memoria-criticos-ponta-a-ponta.sh`, `hooks/testa-memoria-recuperacao-ponta-a-ponta.sh`
+arquivos: `scripts/verifica-fidelidade-fixture.cjs`, `scripts/testa-verifica-fidelidade.sh`, `hooks/testa-memoria-criticos-ponta-a-ponta.sh`, `hooks/testa-memoria-recuperacao-ponta-a-ponta.sh`
 depende de: 10, 11, 12
 paralela: nao
 pronto quando: os três casos do checador se comportam como especificado, com o
