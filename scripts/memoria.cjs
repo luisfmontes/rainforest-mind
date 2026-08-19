@@ -358,28 +358,8 @@ function migraoesObservacoes(conexao) {
     return;
   }
 
-  // Verificar se há um índice UNIQUE em (projeto, origem) — a constraint correta.
-  // Nota: UNIQUE constraint inline CREATE TABLE cria um índice implícito.
-  const indices = conexao.prepare(`
-    SELECT name FROM sqlite_master
-    WHERE type='index' AND tbl_name='observacoes'
-  `).all();
-
-  let temConstraintCorreta = false;
-  for (const idx of indices) {
-    try {
-      const colstmt = conexao.prepare(`PRAGMA index_info('${idx.name}')`);
-      const colunas = colstmt.all();
-      if (colunas.length === 2
-          && colunas[0].name === 'projeto'
-          && colunas[1].name === 'origem') {
-        temConstraintCorreta = true;
-        break;
-      }
-    } catch (e) {
-      // Ignorar erro ao verificar índice
-    }
-  }
+  // Verificar se há constraint UNIQUE(projeto, origem) correta — reutilizar função existente (Tarefa 23 - D18)
+  const temConstraintCorreta = verificarConstraintUniqueProjetoOrigem(conexao);
 
   if (temConstraintCorreta) {
     // Constraint já está correta — nada a fazer.
@@ -737,9 +717,21 @@ function cmdBackup() {
   // Garantir consistência com WAL ativo (D7): usar VACUUM para consolidar WAL,
   // depois fazer checkpoint e cópia simples. Isso garante que o .db tem tudo
   // e pode ser copiado de forma consistente.
+  //
+  // CRÍTICO: Tarefa 23 (D18 refinado) — banco corrompido é erro FATAL. Separamos
+  // em dois try/catch: (1) abertura do banco é obrigatória, (2) consolidação é
+  // degradação. Antes disso, abertura era capturada junto com consolidação,
+  // permitindo backup de banco corrompido → perda de dado de usuário.
+  let conexao;
   try {
-    const conexao = abrirBanco(caminhoDb);
+    conexao = abrirBanco(caminhoDb);
+  } catch (e) {
+    console.error(`ERRO: banco corrompido ou inacessível (${e.message})`);
+    process.exit(1);
+  }
 
+  // Agora que temos conexão válida, tentar consolidar (nice-to-have)
+  try {
     // VACUUM consolida todo conteúdo no arquivo .db, eliminando WAL
     conexao.exec('VACUUM');
 
@@ -748,8 +740,9 @@ function cmdBackup() {
 
     conexao.close();
   } catch (e) {
-    // Ignorar erro — vamos copiar mesmo assim
+    // Consolidação falhou, mas banco é válido — ignorar e continuar
     console.error(`AVISO: não consegui consolidar WAL (${e.message}), continuando`);
+    try { conexao.close(); } catch (_) {}
   }
 
   // Agora copiar arquivo binário. Sem WAL ativo, é seguro.

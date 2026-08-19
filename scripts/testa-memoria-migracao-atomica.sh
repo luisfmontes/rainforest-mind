@@ -222,5 +222,87 @@ echo "Recuperação: $RESULTADO"
 [ "$RESULTADO" = "ok" ] || { echo "❌ Erro: banco não recuperado"; exit 1; }
 
 echo ""
-echo "✅ Tarefa 20 PASSOU: migração atômica + recuperação de banco órfão"
+echo "[LADO C: Banco com observacoes vazia + backup órfã (Tarefa 23 - item 4)]"
+
+rm -rf "$TEMP_DIR"
+mkdir -p "$TEMP_DIR"
+
+echo "[11] Criar banco com observacoes vazia + observacoes_backup com dados..."
+node << 'CREATE_EMPTY_WITH_BACKUP'
+const { DatabaseSync } = require('node:sqlite');
+const path = require('path');
+
+const db = new DatabaseSync(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+
+db.exec(`
+  CREATE TABLE marca_dagua (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    projeto TEXT NOT NULL,
+    sessao TEXT NOT NULL,
+    arquivo TEXT NOT NULL,
+    offset INTEGER DEFAULT 0,
+    offset_processado INTEGER DEFAULT 0,
+    processada_em TEXT
+  );
+  CREATE TABLE observacoes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    projeto TEXT NOT NULL,
+    conteudo TEXT NOT NULL,
+    criada_em TEXT NOT NULL,
+    origem TEXT
+  );
+  CREATE TABLE observacoes_backup (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    projeto TEXT NOT NULL,
+    conteudo TEXT NOT NULL,
+    criada_em TEXT NOT NULL,
+    origem TEXT
+  );
+`);
+
+const stmt = db.prepare('INSERT INTO observacoes_backup (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)');
+stmt.run('p1', 'dado1', '2026-01-01', 'o1');
+stmt.run('p2', 'dado2', '2026-01-02', 'o2');
+
+db.close();
+CREATE_EMPTY_WITH_BACKUP
+echo "✓ Banco com observacoes vazia + backup criado"
+
+echo "[12] Verificar estado inicial..."
+STATE=$(node << 'CHECK_EMPTY_STATE'
+const { DatabaseSync } = require('node:sqlite');
+const path = require('path');
+const db = new DatabaseSync(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+
+const cntObs = db.prepare('SELECT COUNT(*) as c FROM observacoes').all()[0].c;
+const cntBackup = db.prepare('SELECT COUNT(*) as c FROM observacoes_backup').all()[0].c;
+
+console.log(cntObs + ' ' + cntBackup);
+db.close();
+CHECK_EMPTY_STATE
+)
+echo "observacoes: $(echo $STATE | cut -d' ' -f1) linhas, observacoes_backup: $(echo $STATE | cut -d' ' -f2) linhas"
+
+echo "[13] Chamar memoria.cjs iniciar..."
+node scripts/memoria.cjs iniciar >/dev/null 2>&1
+
+echo "[14] Verificar recuperação..."
+RESULTADO=$(node << 'CHECK_EMPTY_RECOVERED'
+const { DatabaseSync } = require('node:sqlite');
+const path = require('path');
+const db = new DatabaseSync(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+
+const temObservacoes = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='observacoes'`).all().length > 0;
+const temBackup = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='observacoes_backup'`).all().length > 0;
+const cntObs = temObservacoes ? db.prepare('SELECT COUNT(*) as c FROM observacoes').all()[0].c : 0;
+
+console.log((temObservacoes && !temBackup && cntObs === 2) ? 'ok' : 'falha');
+db.close();
+CHECK_EMPTY_RECOVERED
+)
+echo "Recuperação: $RESULTADO"
+[ "$RESULTADO" = "ok" ] || { echo "❌ Erro: banco não recuperado"; exit 1; }
+
+echo ""
+echo "✅ Tarefa 20/23 PASSOU: migração atômica + recuperação (3 cenários)"
 exit 0

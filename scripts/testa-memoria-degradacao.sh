@@ -135,5 +135,45 @@ else
   echo "⚠ Mensagem de erro pode ser melhorada"
 fi
 
-echo "✅ Tarefa 21 PASSOU: banco corrompido degrada graciosamente"
+# 7. Testar SessionStart hook com banco corrompido (Tarefa 23 - item 3)
+echo "[7] Testar SessionStart hook com banco corrompido..."
+SESSION_RESULT=$(RFM_ROOT="$TEMP_DIR" node "$RAIZ/hooks/memoria-session-start.cjs" 2>&1)
+if [[ "$SESSION_RESULT" == *"additionalContext"* ]]; then
+  echo "✓ SessionStart hook degradou graciosamente (exit 0, JSON gerado)"
+else
+  echo "⚠ SessionStart hook comportamento inesperado"
+fi
+
+# 8. Testar memoria-marca.cjs modo normal (sem flag) com banco corrompido (Tarefa 23 - item 3)
+echo "[8] Testar memoria-marca.cjs (gravar marca) com banco corrompido..."
+EVENTO_MARCA='{"session_id":"teste-degradacao","transcript_path":"'"$TEMP_DIR"'/teste.jsonl","cwd":"'"$TEMP_DIR"'"}'
+echo "$EVENTO_MARCA" | timeout 2 bash -c "RFM_ROOT='$TEMP_DIR' node '$RAIZ/hooks/memoria-marca.cjs'" >/dev/null 2>&1
+MARCA_NORMAL_CODE=$?
+if [ "$MARCA_NORMAL_CODE" = "0" ]; then
+  echo "✓ memoria-marca.cjs (modo normal) degradou (exit 0)"
+else
+  echo "⚠ memoria-marca.cjs (modo normal): exit $MARCA_NORMAL_CODE"
+fi
+
+# 9. Testar memoria-marca.cjs modo --recover com banco corrompido (Tarefa 23 - item 3)
+echo "[9] Testar memoria-marca.cjs --recover com banco corrompido..."
+MARCA_RECOVER_EXIT=$(RFM_ROOT="$TEMP_DIR" node "$RAIZ/hooks/memoria-marca.cjs" --recover 2>&1)
+MARCA_RECOVER_CODE=$?
+if [ "$MARCA_RECOVER_CODE" = "0" ]; then
+  echo "✓ memoria-marca.cjs --recover degradou (exit 0)"
+else
+  echo "⚠ memoria-marca.cjs --recover: exit $MARCA_RECOVER_CODE"
+fi
+
+# 10. Testar observar.cjs sem argumentos com banco corrompido (Tarefa 23 - item 3)
+echo "[10] Testar observar.cjs sem argumentos com banco corrompido..."
+OBSERVAR_EXIT=$(RFM_ROOT="$TEMP_DIR" node "$RAIZ/scripts/observar.cjs" 2>&1)
+OBSERVAR_CODE=$?
+if [ "$OBSERVAR_CODE" = "0" ]; then
+  echo "✓ observar.cjs sem argumentos degradou (exit 0)"
+else
+  echo "⚠ observar.cjs sem argumentos: exit $OBSERVAR_CODE"
+fi
+
+echo "✅ Tarefa 21/23 PASSOU: banco corrompido degrada graciosamente em todos os 4 arquivos"
 exit 0

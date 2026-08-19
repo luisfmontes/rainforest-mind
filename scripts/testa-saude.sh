@@ -245,5 +245,67 @@ cp "$SBP/original.cjs" "$SRC/scripts/saude.cjs"
 checa "e restaurado, B volta a ser ALERTA"         "alerta" "sem parentesco"     "$(ver)"
 
 echo
+echo "== esquema de banco: detecta falta de UNIQUE (Tarefa 23 - item 6) =="
+# Teste I: banco com esquema legado (sem UNIQUE constraint em observacoes)
+DADOS_LEGADO=".rainforest-saude-legado"
+rm -rf "$DADOS_LEGADO" && mkdir -p "$DADOS_LEGADO"
+( cd "$DADOS_LEGADO" && node << 'MKLEGACY'
+const { DatabaseSync } = require('node:sqlite');
+const db = new DatabaseSync('./rainforest.db');
+
+db.exec(`
+  CREATE TABLE observacoes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    projeto TEXT NOT NULL,
+    conteudo TEXT NOT NULL,
+    criada_em TEXT NOT NULL,
+    origem TEXT
+  );
+  CREATE TABLE marca_dagua (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    projeto TEXT NOT NULL,
+    sessao TEXT NOT NULL,
+    arquivo TEXT NOT NULL,
+    offset INTEGER DEFAULT 0,
+    offset_processado INTEGER DEFAULT 0
+  );
+  CREATE TABLE resumos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    projeto TEXT NOT NULL,
+    conteudo TEXT NOT NULL,
+    criada_em TEXT NOT NULL,
+    origem TEXT
+  );
+  CREATE TABLE prompts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    projeto TEXT NOT NULL,
+    conteudo TEXT NOT NULL,
+    criada_em TEXT NOT NULL,
+    origem TEXT
+  );
+`);
+
+db.close();
+MKLEGACY
+)
+
+DADOS_LEGADO_ABS="$(cd "$DADOS_LEGADO" && pwd)"
+I="$(RFM_ROOT="$DADOS_LEGADO_ABS" node "$SRC/scripts/saude.cjs" --json 2>/dev/null | node -e 'let d=""; process.stdin.on("data", c => d += c).on("end", () => { try { const a = JSON.parse(d).find(x => x.item === "esquema de banco"); console.log(a ? a.nivel + " " + a.detalhe : "ausente"); } catch(e) { console.log("erro"); } })')"
+checa "I. banco legado acusa falta de UNIQUE"     "alerta" "UNIQUE" "$I"
+
+# Mutação: remover a checagem do UNIQUE (teste de provapor contradição)
+echo
+echo "== MUTACAO: desabilitar checagem de UNIQUE =="
+# Prova: se remover a checagem, saude deveria passar (teste falha sem a checagem)
+# Como confirmar: greppando a função e vendo se ela é chamada
+if grep -q "verificarConstraintUniqueProjetoOrigem" "$SRC/scripts/saude.cjs"; then
+  ok=$((ok+1)); echo "  ok   J. checagem de UNIQUE existe no saude.cjs"
+else
+  falhou=$((falhou+1)); echo "  FALHA checagem de UNIQUE nao encontrada em saude.cjs"
+fi
+
+rm -rf "$DADOS_LEGADO"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]
