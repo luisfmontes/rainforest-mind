@@ -398,9 +398,12 @@ function versionar() {
   // Cria .gitignore se nao existir. Nao sobrescreve se ja existe
   // (usuario pode ter escrito manualmente algo ali).
   if (!fs.existsSync(gitignorePath)) {
-    const gitignoreConteudo = `# Banco de dados SQLite do rainforest
+    const gitignoreConteudo = `# Dados do rainforest-mind (banco principal + backups)
 # Binario que muda a cada minuto — git nao da diff legivel dele
+# Cobre rainforest.db* (banco principal e seus journals)
+# e .rainforest-*/ (backups e outros dados persistidos)
 rainforest.db*
+.rainforest-*/
 `;
     fs.writeFileSync(gitignorePath, gitignoreConteudo, 'utf8');
   }

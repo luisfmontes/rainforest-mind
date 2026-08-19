@@ -205,6 +205,10 @@ export RFM_ROOT="$CAIXA7_WIN"
 # A pasta de dados tem que existir para versionar
 $SETUP --criar >/dev/null 2>&1
 
+# Faz backup ANTES de versionar para provar que o .gitignore cobre backups
+# Este é exatamente o padrão que causava o vazamento (Achado 1): backup + versionar.
+node "$SRC/scripts/memoria.cjs" backup >/dev/null 2>&1
+
 esperado "versionar em pasta que ja tem setup" 0 $SETUP versionar
 if [ -d "$CAIXA7/.git" ]; then ok=$((ok+1)); echo "  ok   criou .git"
 else falhou=$((falhou+1)); echo "  FALHA nao criou .git"; fi
@@ -213,9 +217,17 @@ if [ -f "$CAIXA7/.gitignore" ]; then ok=$((ok+1)); echo "  ok   criou .gitignore
 else falhou=$((falhou+1)); echo "  FALHA nao criou .gitignore"; fi
 
 if grep -q "rainforest.db" "$CAIXA7/.gitignore"; then
-  ok=$((ok+1)); echo "  ok   .gitignore ignora rainforest.db*"
+  ok=$((ok+1)); echo "  ok   .gitignore menciona rainforest.db"
 else
   falhou=$((falhou+1)); echo "  FALHA .gitignore nao menciona rainforest.db"; cat "$CAIXA7/.gitignore" | sed 's/^/         /'
+fi
+
+# Verifica que NENHUM arquivo .db e rastreado (esta e a prova real, nao apenas texto)
+db_files=$(git -C "$CAIXA7" ls-files | grep -E '\.db' | tr '\n' ' ')
+if [ -z "$db_files" ]; then
+  ok=$((ok+1)); echo "  ok   nenhum arquivo .db e rastreado (banco + backups ignorados)"
+else
+  falhou=$((falhou+1)); echo "  FALHA arquivos .db foram rastreados: $db_files"
 fi
 
 # git status --short deve estar vazio logo apos versionar
@@ -233,6 +245,24 @@ if [ "$got2" = 0 ] && [ -z "$saida_status2" ]; then
   ok=$((ok+1)); echo "  ok   git status --short continua vazio apos segunda passada"
 else
   falhou=$((falhou+1)); echo "  FALHA segunda passada quebrou o estado"; echo "       $saida_status2" | sed 's/^/       /'
+fi
+
+# MUTACAO: verifica que o padrão antigo causaria o vazamento (prova inversa)
+CAIXA7m="$CAIXA/versionamento-mutante"; mkdir -p "$CAIXA7m/.rainforest-backups"
+CAIXA7m_WIN="$(cygpath -m "$CAIXA7m" 2>/dev/null || printf '%s' "$CAIXA7m")"
+cd "$CAIXA7m"
+git init >/dev/null 2>&1
+# Cria arquivos de dados
+touch rainforest.db ".rainforest-backups/rainforest-2026-08-19T14-14-14.db"
+# Padrão ANTIGO (só rainforest.db*)
+echo "rainforest.db*" > .gitignore
+git add -A >/dev/null 2>&1
+db_files_mut=$(git ls-files | grep -E '\.db' | tr '\n' ' ')
+cd "$SRC"
+if [ -n "$db_files_mut" ]; then
+  ok=$((ok+1)); echo "  ok   MUTACAO: padrão antigo deixaria backups rastreados ($db_files_mut)"
+else
+  falhou=$((falhou+1)); echo "  FALHA MUTACAO: padrão antigo nao causou vazamento conforme esperado"
 fi
 
 # .gitignore nao sobrescreve se ja existe
