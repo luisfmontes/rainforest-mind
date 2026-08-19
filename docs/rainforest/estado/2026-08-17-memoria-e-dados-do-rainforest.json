@@ -22,15 +22,13 @@
     "em": "2026-08-17"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "tarefas_ok": 13,
     "tarefas": 13,
     "pendentes": [
-      "D14 decidida em 2026-08-19: SessionStart dispara a passada. Falta implementar o disparo — recuperarSessoes() e no-op (memoria-marca.cjs:148-152, corpo so de comentarios)",
-      "memoria-marca.cjs avanca o offset no Stop/SessionEnd por cima de trecho nao processado (:212/:219), sem observar.cjs ter rodado — mesmo defeito que a3eb9ae diz ter consertado, na outra ponta",
-      "observar.cjs nao esta registrado em hook nenhum: nada dispara a passada",
-      "bateria nao cobre a sequencia real Stop grava -> ninguem observa -> conteudo perdido; teste 5 passa sobre no-op",
-      "memoria-marca.cjs:5 declara Evento: PostToolUse, proibido por D12/D14; hooks.json registra em Stop/SessionEnd"
+      "CRITICO NOVO (2026-08-19): formatarParaLLM (observar.cjs:109-121) so reconhece evento.tipo prompt/resposta/erro/ferramenta e evento.conteudo. O transcrito REAL do Claude Code usa type (user/assistant/system/attachment) e o texto mora em message.content. Nenhum campo reconhecido existe no transcrito real: resumo sai vazio para toda sessao real. Subsistema segue morto em producao, num ponto mais fundo que o critico 1",
+      "Os fixtures dos testes ponta a ponta foram ajustados para tipo/conteudo, casando o teste com o codigo errado — o verde deles nao vale ate o schema ser o real",
+      "Achados 4 a 9 da revisao seguem abertos (SessionEnd ausente, node:sqlite fora do adaptador, bateria de somente-leitura desatualizada, comentario PostToolUse, creep)"
     ],
     "em": "2026-08-19",
     "em_2": "2026-08-19",
