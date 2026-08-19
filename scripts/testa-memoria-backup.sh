@@ -57,40 +57,8 @@ if [ "$BACKUPS" -ge 1 ]; then
   if [ -z "$BACKUP_PATH" ]; then
     falhou=$((falhou+1)); echo "  FALHA nenhum arquivo de backup encontrado (listagem falhou)"
   else
-    # Usar Node com RFM_ROOT para ler backup, evitando path issues
-    SELECT_RESULT=$(node -e "
-const sqlite = require('node:sqlite').DatabaseSync;
-const path = require('path');
-const fs = require('fs');
-
-// Usar a raiz resolvida para achar o backup
-const { resolverRaiz } = require('./hooks/lib/raiz.cjs');
-const { raiz } = resolverRaiz({
-  plugin: path.resolve(__dirname, '.'),
-});
-
-const backupDir = path.join(raiz, '.rainforest-backups');
-const backups = fs.readdirSync(backupDir)
-  .filter(f => f.startsWith('rainforest-') && f.endsWith('.db'))
-  .sort()
-  .reverse();
-
-if (!backups.length) {
-  console.error('erro: nenhum backup encontrado');
-  process.exit(1);
-}
-
-const backupPath = path.join(backupDir, backups[0]);
-try {
-  const db = new sqlite(backupPath, { readonly: true });
-  const result = db.prepare('SELECT COUNT(*) as cnt FROM observacoes').get();
-  console.log(result.cnt);
-  db.close();
-} catch (e) {
-  console.error('erro: ' + e.message);
-  process.exit(1);
-}
-    " 2>&1)
+    # Contar observações no backup via script adaptador (D8 — driver isolado)
+    SELECT_RESULT=$(node "$SRC/scripts/conta-observacoes-backup.cjs" "$BACKUP_PATH" 2>&1)
     EXIT_RESULT=$?
 
     if [ "$EXIT_RESULT" = "0" ]; then

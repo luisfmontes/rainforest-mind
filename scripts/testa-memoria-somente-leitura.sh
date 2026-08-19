@@ -147,20 +147,8 @@ else
   echo "$INICIAR_SAIDA" | sed 's/^/         /'
 fi
 
-cat > "$DADOS_POSIX/insere-fixture.cjs" <<'EOF'
-const { DatabaseSync } = require('node:sqlite');
-const path = require('path');
-const dbPath = path.join(process.env.RFM_ROOT, 'rainforest.db');
-const conexao = new DatabaseSync(dbPath);
-conexao.exec('PRAGMA journal_mode = WAL;');
-conexao.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em) VALUES (?, ?, ?)')
-  .run('teste-somente-leitura', 'FIXTURE-OBSERVACAO-DE-TESTE', '2026-08-17T10:00:00');
-// Consolida o WAL no arquivo principal antes de medir hash — sem isto o
-// baseline ficaria dependendo de -wal/-shm que o proprio setup deixou.
-conexao.exec('PRAGMA wal_checkpoint(TRUNCATE);');
-conexao.close();
-EOF
-RFM_ROOT="$DADOS" node "$DADOS_POSIX/insere-fixture.cjs" > "$DADOS_POSIX/.insere-out" 2>&1
+# Inserir observação fixture via script adaptador (D8 — driver isolado)
+RFM_ROOT="$DADOS" node "$SRC_WIN/scripts/insere-observacao-fixture.cjs" "teste-somente-leitura" "FIXTURE-OBSERVACAO-DE-TESTE" > "$DADOS_POSIX/.insere-out" 2>&1
 if [ "$?" = "0" ]; then
   ok=$((ok+1)); echo "  ok    setup: observacao fixture inserida"
 else

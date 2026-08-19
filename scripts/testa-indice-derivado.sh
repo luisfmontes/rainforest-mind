@@ -95,20 +95,10 @@ fi
 
 echo
 echo "== 4. Verificar que index foi populado com dados derivados =="
-# Contar linhas nas tabelas derivadas — SEM 2>/dev/null para deixar erros visíveis
-indice_foco_count=$(node -e "
-const sqlite3 = require('node:sqlite');
-const db = new sqlite3.DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
-const r = db.prepare('SELECT COUNT(*) as c FROM indice_foco').get();
-process.stdout.write(String(r.c || 0));
-")
-
-indice_ideias_count=$(node -e "
-const sqlite3 = require('node:sqlite');
-const db = new sqlite3.DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
-const r = db.prepare('SELECT COUNT(*) as c FROM indice_ideias').get();
-process.stdout.write(String(r.c || 0));
-")
+# Contar linhas nas tabelas derivadas via script adaptador (D8 — driver isolado)
+counts=$(node "$SRC/scripts/manipula-tabela.cjs" conta-multi indice_foco indice_ideias)
+indice_foco_count=$(echo "$counts" | grep -o 'indice_foco=[0-9]*' | cut -d= -f2)
+indice_ideias_count=$(echo "$counts" | grep -o 'indice_ideias=[0-9]*' | cut -d= -f2)
 
 if [ "$indice_foco_count" -gt "0" ] && [ "$indice_ideias_count" -gt "0" ]; then
   ok=$((ok+1)); echo "  ok   tabela indice_foco tem $indice_foco_count registros"
@@ -120,42 +110,19 @@ fi
 echo
 echo "== 5. CRÍTICO: Popular resumos e observacoes, depois reindexar e provar que não mudaram =="
 # Popular resumos e observacoes com registros de TESTE (dados de outras tarefas)
-# SEM 2>/dev/null, SEM || echo — se falhar, a bateria fica VERMELHA aqui mesmo.
-resumos_antes=$(node -e "
-const sqlite3 = require('node:sqlite');
-const db = new sqlite3.DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
-const db_projeto = process.env.RFM_ROOT.split(/(\\\\|\\/)/).pop();
-
-// Inserir resumo de teste (simular dados da tarefa 3 — importação de claude-mem)
-db.prepare('INSERT INTO resumos (projeto, titulo, conteudo, criada_em) VALUES (?, ?, ?, ?)')
-  .run(db_projeto, 'Resumo Teste', 'Conteúdo de resumo que NÃO deve ser apagado', '2026-08-17');
-
-// Inserir observação de teste (simula dados da fase 2)
-db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em) VALUES (?, ?, ?)')
-  .run(db_projeto, 'Observação de teste que NÃO deve ser apagada', '2026-08-17');
-
-// Contar TODOS os resumos (não filtrado, para prova simples)
-const resumos = db.prepare('SELECT COUNT(*) as c FROM resumos').get();
-const obs = db.prepare('SELECT COUNT(*) as c FROM observacoes').get();
-process.stdout.write('resumos=' + resumos.c + ' observacoes=' + obs.c);
-db.close();
-")
+# Usar script adaptador (D8 — driver isolado)
+db_projeto=$(basename "$CAIXA")
+node "$SRC/scripts/manipula-tabela.cjs" insere-resumo "$db_projeto" "Resumo Teste" "Conteúdo de resumo que NÃO deve ser apagado" > /dev/null
+node "$SRC/scripts/manipula-tabela.cjs" insere-observacao "$db_projeto" "Observação de teste que NÃO deve ser apagada" > /dev/null
+resumos_antes=$(node "$SRC/scripts/manipula-tabela.cjs" conta-multi resumos observacoes)
 
 echo "  Antes de reindexar: $resumos_antes"
 
 # Agora reindexar — não deve apagar resumos e observacoes
 esperado "reindexar com dados existentes" 0 $MEMORIA reindexar
 
-# Verificar que resumos e observacoes NÃO foram apagados
-# SEM 2>/dev/null — se falhar, aparece na bateria
-resumos_depois=$(node -e "
-const sqlite3 = require('node:sqlite');
-const db = new sqlite3.DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
-const resumos = db.prepare('SELECT COUNT(*) as c FROM resumos').get();
-const obs = db.prepare('SELECT COUNT(*) as c FROM observacoes').get();
-process.stdout.write('resumos=' + resumos.c + ' observacoes=' + obs.c);
-db.close();
-")
+# Verificar que resumos e observacoes NÃO foram apagados via script adaptador
+resumos_depois=$(node "$SRC/scripts/manipula-tabela.cjs" conta-multi resumos observacoes)
 
 echo "  Depois de reindexar: $resumos_depois"
 
@@ -169,14 +136,12 @@ fi
 
 echo
 echo "== 6. Apagar índice derivado e verificar que reconstrói =="
-# Remover dados do índice derivado
-node -e "
-const sqlite3 = require('node:sqlite');
-const db = new sqlite3.DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
-db.exec('DELETE FROM indice_foco');
-db.exec('DELETE FROM indice_ideias');
-const foco = db.prepare('SELECT COUNT(*) as c FROM indice_foco').get();
-const ideias = db.prepare('SELECT COUNT(*) as c FROM indice_ideias').get();
+# Remover dados do índice derivado via script adaptador (D8 — driver isolado)
+node "$SRC/scripts/manipula-tabela.cjs" limpa indice_foco > /dev/null
+node "$SRC/scripts/manipula-tabela.cjs" limpa indice_ideias > /dev/null
+counts_vazios=$(node "$SRC/scripts/manipula-tabela.cjs" conta-multi indice_foco indice_ideias)
+foco=$(echo "$counts_vazios" | grep -o 'indice_foco=[0-9]*' | cut -d= -f2)
+ideias=$(echo "$counts_vazios" | grep -o 'indice_ideias=[0-9]*' | cut -d= -f2)
 process.stdout.write('Apagado, indice_foco agora: ' + (foco.c || 0) + ', indice_ideias: ' + (ideias.c || 0) + '\n');
 db.close();
 " 2>&1 | grep -v ExperimentalWarning | sed 's/^/  /'
@@ -184,15 +149,8 @@ db.close();
 # Reindexar novamente
 esperado "reindexar após apagar índices" 0 $MEMORIA reindexar
 
-# Verificar que voltou a ter dados — SEM 2>/dev/null
-indice_counts=$(node -e "
-const sqlite3 = require('node:sqlite');
-const db = new sqlite3.DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
-const foco = db.prepare('SELECT COUNT(*) as c FROM indice_foco').get();
-const ideias = db.prepare('SELECT COUNT(*) as c FROM indice_ideias').get();
-process.stdout.write('foco=' + (foco.c || 0) + ' ideias=' + (ideias.c || 0));
-db.close();
-")
+# Verificar que voltou a ter dados — via script adaptador (D8 — driver isolado)
+indice_counts=$(node "$SRC/scripts/manipula-tabela.cjs" conta-multi indice_foco indice_ideias)
 
 if [ "$indice_counts" = "foco=$indice_foco_count ideias=$indice_ideias_count" ]; then
   ok=$((ok+1)); echo "  ok   índices derivados reconstruídos: $indice_counts"

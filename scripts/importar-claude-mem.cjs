@@ -21,17 +21,9 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-let sqlite3 = null;
-try {
-  sqlite3 = require('node:sqlite');
-} catch (e) {
-  console.error('ERRO: node:sqlite não disponível');
-  console.error('Requer: Node.js 22.0.0 ou superior');
-  process.exit(1);
-}
-
-// Importar funções reutilizáveis de memoria.cjs (D2 — zero duplicação de lógica)
-const { resolverCaminhos, abrirBanco, criarSchema } = require('./memoria.cjs');
+// Importar funções reutilizáveis de memoria.cjs (D2, D8 — zero duplicação de lógica,
+// driver isolado no adaptador). O adaptador memoria.cjs encapsula node:sqlite.
+const { resolverCaminhos, abrirBanco, abrirBancoSomenteLeitura, criarSchema } = require('./memoria.cjs');
 
 // Encontrar o banco de origem (claude-mem.db) em ~/.claude-mem/
 // Por testes: permite override via TESTADOR_ORIGEM_CLAUDE_MEM
@@ -52,21 +44,6 @@ function encontrarOrigemClaudeMem() {
   return null;
 }
 
-// Abre conexão com o banco de origem em modo somente-leitura.
-// Tolera WAL aberto por escrita concorrente — já foi medido que funciona.
-function abrirOrigemSomenteLeitura(caminhoOrigem) {
-  try {
-    const DatabaseSync = require('node:sqlite').DatabaseSync;
-    // mode=ro: readonly, trata como erro qualquer escrita tentada
-    const conexao = new DatabaseSync(caminhoOrigem, { readonly: true });
-    // Suporte a leitura durante escrita concorrente
-    conexao.exec('PRAGMA query_only = ON;');
-    return conexao;
-  } catch (e) {
-    // Origem indisponível (em uso, corrompida, etc.)
-    return null;
-  }
-}
 
 // Busca observações da origem (tabela `observations`)
 function buscarObservacoes(conexaoOrigem) {
@@ -139,8 +116,9 @@ function main() {
     process.exit(0);
   }
 
-  // Abrir origem em modo somente-leitura (D6 — origem ausente é caminho normal)
-  const conexaoOrigem = abrirOrigemSomenteLeitura(caminhoOrigem);
+  // Abrir origem em modo somente-leitura via adaptador (D6, D8 — origem ausente é caminho normal,
+  // driver isolado no adaptador memoria.cjs)
+  const conexaoOrigem = abrirBancoSomenteLeitura(caminhoOrigem);
   if (!conexaoOrigem) {
     console.log('não consegui abrir origem (em uso ou corrompida)');
     console.log('tente de novo em alguns segundos');
