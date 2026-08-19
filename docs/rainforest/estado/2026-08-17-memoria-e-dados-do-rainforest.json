@@ -23,11 +23,11 @@
   },
   "executar": {
     "status": "parcial",
-    "tarefas_ok": 13,
-    "tarefas": 13,
+    "tarefas_ok": 16,
+    "tarefas": 17,
     "pendentes": [
-      "Achados 4 a 9 da revisao seguem abertos: observar.cjs esta no SessionStart e NAO no SessionEnd (contraria D14); importar-claude-mem.cjs abre node:sqlite fora do adaptador (contraria D8 e reprova o pronto-quando da tarefa 2); testa-memoria-somente-leitura.sh desatualizada (prova de D16 nao cobre os 4 hooks de SessionStart de hoje); comentario PostToolUse em memoria-marca.cjs:11-14; creep de 4 arquivos sem tarefa no plano",
-      "O dubliador-llm-ok.cjs ignora o texto recebido e devolve string fixa: nenhuma bateria que o usa consegue provar que formatarParaLLM produz prompt util. Trocar por dublê que ecoa o texto, ou o verde volta a ser tautologico"
+      "Achado 6 PARCIAL: o criterio da tarefa 2 (grep -rl node:sqlite lista exatamente scripts/memoria.cjs) nao passa porque testa-importar-claude-mem.sh:29 fabrica banco de origem. A proposta do agente (require.*node:sqlite) NAO resolve — medido, da o mesmo resultado. Redacao que funciona, testada: grep -rl node:sqlite scripts/ hooks/ --exclude=testa-* . Mudar a regua e decisao do Luis",
+      "Tarefa 15 (dublê de LLM que ecoa em vez de devolver texto fixo) segue aberta de proposito"
     ],
     "em": "2026-08-19",
     "em_2": "2026-08-19",

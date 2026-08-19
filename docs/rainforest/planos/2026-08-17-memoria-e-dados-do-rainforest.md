@@ -149,3 +149,19 @@ do harness (`session_id` + `transcript_path` + `cwd`, sem `project`): marca com
 `offset` > 0, observador acha a janela `[processado, visto]`, observação gravada,
 `offset_processado` avança, segunda passada não reprocessa. O checador **nunca**
 commita transcrito real nem trecho dele — compara estrutura, não conteúdo.
+
+### 17. Utilitários de banco para as baterias [tipo: testes]
+atende: D8
+arquivos: `scripts/manipula-tabela.cjs`, `scripts/conta-em-tabela.cjs`, `scripts/exporta-hooks-sessao-start.cjs`
+depende de: 2
+paralela: nao
+pronto quando: nenhuma bateria abre `node:sqlite` por conta própria — verificado
+por `grep -rl "node:sqlite" scripts/ hooks/ --exclude="testa-*"` listando
+exatamente `scripts/memoria.cjs` — **e** o `exporta-hooks-sessao-start.cjs`
+deriva a lista de hooks do `hooks.json`, provado por uma entrada nova em
+`SessionStart` aparecer na abertura sem ninguém editar bateria.
+
+Nasceram como consequência da tarefa 2: se o driver se isola no adaptador, as
+baterias precisam de uma porta para inspecionar tabela. `conta-em-tabela.cjs` e
+`manipula-tabela.cjs` seguem separados por ora; consolidá-los num só é
+melhoria pendente, não requisito.
