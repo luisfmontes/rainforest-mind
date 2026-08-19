@@ -137,7 +137,10 @@ LIMPA
 
 # Criar nova sessão e transcrito
 TRANSCRITO2="$RFM_ROOT/projects/proj-teste/sessao2.jsonl"
-echo '{"tipo":"prompt","conteudo":"Teste 2"}' > "$TRANSCRITO2"
+cat > "$TRANSCRITO2" <<'EOF'
+{"type":"user","message":{"role":"user","content":"Qual eh a capital da Italia?"},"timestamp":"2026-08-19T10:01:00Z","sessionId":"sessao2","version":"2.1.0","cwd":"test"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"A capital eh Roma"}]},"timestamp":"2026-08-19T10:01:01Z","sessionId":"sessao2","version":"2.1.0","cwd":"test"}
+EOF
 
 node <<CRIA_MARCA2 2>/dev/null
 const { abrirBanco } = require('./scripts/memoria.cjs');
@@ -240,6 +243,86 @@ if [ "$CONTA_OBS_FINAL" = "1" ]; then
   ok=$((ok+1)); echo "  ok    1 observacao gravada apos recuperacao"
 else
   falhou=$((falhou+1)); echo "  FALHA $CONTA_OBS_FINAL observacoes (esperado 1)"
+fi
+
+# ============ Teste 13: Teste crítico — prompt vazio deve ser recusado ============
+echo
+echo "13. Transcrito que produz prompt vazio deve recusar observacao"
+
+# Limpar banco para novo teste
+node <<'LIMPA3' 2>/dev/null
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+db.exec('DELETE FROM observacoes');
+db.exec('DELETE FROM marca_dagua');
+db.close();
+LIMPA3
+
+# Criar transcrito que produz prompt vazio (apenas eventos sem conteúdo)
+TRANSCRITO_VAZIO="$RFM_ROOT/projects/proj-teste/sessao-vazia.jsonl"
+cat > "$TRANSCRITO_VAZIO" <<'EOF'
+{"type":"mode","data":{"mode":"default"},"timestamp":"2026-08-19T10:00:00Z"}
+{"type":"permission-mode","data":{"mode":"default"},"timestamp":"2026-08-19T10:00:01Z"}
+EOF
+
+node <<CRIA_MARCA3 2>/dev/null
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const stmt = db.prepare(\`INSERT OR REPLACE INTO marca_dagua (projeto, sessao, arquivo, offset, processada_em) VALUES (?, ?, ?, ?, ?)\`);
+const caminhoTranscrito3 = path.join(process.env.RFM_ROOT, 'projects', 'proj-teste', 'sessao-vazia.jsonl');
+stmt.run('proj-teste', 'sessao-vazia', caminhoTranscrito3, 0, new Date().toISOString());
+db.close();
+CRIA_MARCA3
+
+ok=$((ok+1)); echo "  ok    transcrito com eventos vazios criado"
+
+# Chamar observador com dublê OK — deve recusar (prompt vazio)
+export TESTADOR_CHAMAR_LLM="$DUBLIADOR_OK"
+node "$OBSERVADOR" --sessao sessao-vazia --projeto proj-teste 2>/dev/null
+EXIT_CODE=$?
+
+if [ $EXIT_CODE -eq 0 ]; then
+  ok=$((ok+1)); echo "  ok    observador retornou exit 0 (degradacao graciosa)"
+else
+  falhou=$((falhou+1)); echo "  FALHA observador retornou exit $EXIT_CODE"
+fi
+
+# Verificar que NENHUMA observação foi gravada (prompt vazio foi recusado)
+CONTA_VAZIO=$(node <<'CONTA_VAZIO' 2>/dev/null
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const stmt = db.prepare('SELECT COUNT(*) as cnt FROM observacoes');
+const rows = stmt.all();
+console.log(rows[0].cnt);
+db.close();
+CONTA_VAZIO
+)
+
+if [ "$CONTA_VAZIO" = "0" ]; then
+  ok=$((ok+1)); echo "  ok    nenhuma observacao foi gravada (prompt vazio recusado)"
+else
+  falhou=$((falhou+1)); echo "  FALHA $CONTA_VAZIO observacoes gravadas (esperado 0 para prompt vazio)"
+fi
+
+# Verificar que offset_processado NÃO avancou (marca intacta)
+MARCA_OFFSET_VAZIO=$(node <<'LER_MARCA_VAZIO' 2>/dev/null
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const stmt = db.prepare('SELECT offset_processado FROM marca_dagua WHERE sessao=?');
+const rows = stmt.all('sessao-vazia');
+console.log(rows.length > 0 && rows[0].offset_processado !== null ? rows[0].offset_processado : '0');
+db.close();
+LER_MARCA_VAZIO
+)
+
+if [ "$MARCA_OFFSET_VAZIO" = "0" ]; then
+  ok=$((ok+1)); echo "  ok    offset_processado permaneceu em 0 (marca não avancou)"
+else
+  falhou=$((falhou+1)); echo "  FALHA offset_processado mudou para $MARCA_OFFSET_VAZIO (esperado 0)"
 fi
 
 # ============ Resultado final ============

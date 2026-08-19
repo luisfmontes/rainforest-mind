@@ -320,6 +320,12 @@ async function processarSessao(sessao, projeto) {
     const textoDaPassada = formatarParaLLM(eventos);
     debug(`texto para LLM: ${textoDaPassada.substring(0, 100)}...`);
 
+    // Rejeitar prompt vazio (tarefa 15: não gravar lixo no banco)
+    if (!textoDaPassada || !textoDaPassada.trim()) {
+      console.log('prompt vazio: nenhuma observacao para gravar');
+      return;
+    }
+
     // Chamar LLM
     console.log(`processando ${eventos.length} evento(s)...`);
     const observacao = await chamarLLM(textoDaPassada);
