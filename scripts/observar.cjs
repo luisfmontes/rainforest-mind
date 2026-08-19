@@ -214,6 +214,25 @@ function gravarObservacao(conexao, { projeto, conteudo, origem }) {
   }
 }
 
+// Avança a marca d'água após sucesso na gravação.
+// Tarefa 12 (D14): só avança offset_processado depois de gravar com sucesso.
+// Retorna true se sucesso, false se falha.
+function avancarMarca(conexao, { projeto, sessao, offsetProcessado }) {
+  try {
+    const stmt = conexao.prepare(`
+      UPDATE marca_dagua
+      SET offset_processado = ?
+      WHERE projeto = ? AND sessao = ?
+    `);
+
+    stmt.run(offsetProcessado, projeto, sessao);
+    return true;
+  } catch (e) {
+    console.error(`AVISO: erro ao avançar marca d'água: ${e.message}`);
+    return false;
+  }
+}
+
 // Log para debug (apenas em teste)
 function debug(msg) {
   if (process.env.DEBUG_OBSERVADOR) {
@@ -260,8 +279,14 @@ async function processarSessao(sessao, projeto) {
       return;
     }
 
-    // Ler transcrito a partir do offset
-    const eventos = lerTranscrito(marca.arquivo, marca.offset);
+    // Calcular a janela: ler a partir de offset_processado (até onde foi processado).
+    // Tarefa 12 (D14): offset_processado é o ponto já processado.
+    // marca.offset é offset_visto (tamanho do arquivo no Stop/SessionEnd).
+    const offsetProcessado = marca.offset_processado || 0;
+    debug(`janela: [${offsetProcessado}, ${marca.offset}]`);
+
+    // Ler transcrito a partir de offset_processado
+    const eventos = lerTranscrito(marca.arquivo, offsetProcessado);
     debug(`eventos lidos: ${eventos.length}`);
 
     if (eventos.length === 0) {
@@ -298,7 +323,22 @@ async function processarSessao(sessao, projeto) {
       return;
     }
 
-    console.log(`ok: observacao gravada para sessao ${marca.sessao}`);
+    // CRÍTICO 3: Só avança offset_processado DEPOIS de gravar com sucesso.
+    // Se falhar em qualquer ponto anterior, fica intacto e tenta novamente.
+    const avancoOk = avancarMarca(conexao, {
+      projeto: marca.projeto,
+      sessao: marca.sessao,
+      offsetProcessado: marca.offset, // Avança até offset_visto (fim do que foi visto)
+    });
+    debug(`avanco ok: ${avancoOk}`);
+
+    if (!avancoOk) {
+      // Falha ao avançar — aviso, mas observação já foi gravada
+      console.log('AVISO: observacao gravada mas offset_processado nao avancou');
+      return;
+    }
+
+    console.log(`ok: observacao gravada e offset_processado avancado para sessao ${marca.sessao}`);
   } finally {
     conexao.close();
   }

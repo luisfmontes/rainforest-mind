@@ -55,9 +55,15 @@ function resolverDados() {
 }
 
 // Resolve o caminho do transcrito.
-// O harness escreve em: ${CLAUDE_CONFIG_DIR}/projects/<projeto>/<sessão>.jsonl
-// Para agora, usamos CLAUDE_CONFIG_DIR se disponível, ou resolvemos pela raiz.
+// O harness passa o caminho pronto em evento.transcript_path (D13).
+// Fallback: tenta montar a partir de CLAUDE_CONFIG_DIR se o campo faltar.
 function resolverTranscrito(evento) {
+  // Fonte primária: transcript_path do evento (harness manda pronto).
+  if (evento.transcript_path) {
+    return evento.transcript_path;
+  }
+
+  // Fallback degradação: montar a partir de CLAUDE_CONFIG_DIR se disponível.
   const configDir = process.env.CLAUDE_CONFIG_DIR;
   const sessionId = evento.session_id || 'desconhecida';
 
@@ -108,6 +114,27 @@ function lerOffset(caminhoTranscrito) {
   } catch (e) {
     return 0;
   }
+}
+
+// Extrai o projeto a partir do caminho do transcrito.
+// Formato esperado: /path/to/projects/<projeto>/<sessao>.jsonl
+// Retorna <projeto> ou null se não conseguir extrair.
+function extrairProjeto(caminhoTranscrito) {
+  try {
+    // Normalizar para sempre usar / como separador para split
+    const caminhoNormalizado = caminhoTranscrito.replace(/\\/g, '/');
+    const partes = caminhoNormalizado.split('/');
+    const projectsIndex = partes.indexOf('projects');
+    if (projectsIndex !== -1 && projectsIndex + 1 < partes.length) {
+      const projeto = partes[projectsIndex + 1];
+      if (projeto && projeto.length > 0) {
+        return projeto;
+      }
+    }
+  } catch (e) {
+    // Ignorar erros na extração
+  }
+  return null;
 }
 
 // Recupera marcas d'água pendentes (sessões interrompidas).
@@ -216,7 +243,17 @@ function main() {
 
     try {
       // Extrai projeto e offset.
-      const projeto = evento.project || path.basename(dados.raiz);
+      // Fonte 1: campo project do evento (pode estar vazio)
+      // Fonte 2: extrair do caminho do transcrito (formato: projects/<projeto>/<sessao>)
+      // Fallback: nome da pasta raiz de dados
+      let projeto = evento.project;
+      if (!projeto) {
+        projeto = extrairProjeto(caminhoTranscrito);
+      }
+      if (!projeto) {
+        projeto = path.basename(dados.raiz);
+      }
+
       const offset = lerOffset(caminhoTranscrito);
 
       // Grava marca d'água.
