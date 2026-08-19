@@ -35,10 +35,10 @@
   },
   "revisar": {
     "status": "reprovado",
-    "achados": 9,
-    "criticos": 2,
+    "achados": 5,
+    "criticos": 1,
     "base": "d52f5a4",
-    "head": "f2fedd9",
+    "head": "f34c026",
     "em": "2026-08-19"
   },
   "verificar": {
