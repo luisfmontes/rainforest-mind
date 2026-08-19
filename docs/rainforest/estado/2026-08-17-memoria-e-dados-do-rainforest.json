@@ -22,7 +22,7 @@
     "em": "2026-08-17"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "tarefas_ok": 13,
     "tarefas": 13,
     "pendentes": [
@@ -32,7 +32,9 @@
       "bateria nao cobre a sequencia real Stop grava -> ninguem observa -> conteudo perdido; teste 5 passa sobre no-op",
       "memoria-marca.cjs:5 declara Evento: PostToolUse, proibido por D12/D14; hooks.json registra em Stop/SessionEnd"
     ],
-    "em": "2026-08-19"
+    "em": "2026-08-19",
+    "em_2": "2026-08-19",
+    "nota": "pendencias da rodada anterior caíram; validado por mutação no codigo de producao na janela principal, nao pelo relato"
   },
   "revisar": {
     "status": "pendente"
