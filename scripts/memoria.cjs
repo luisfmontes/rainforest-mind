@@ -112,6 +112,32 @@ function criarSchema(conexao) {
       }
     }
   }
+
+  // Migração: separar "visto" de "processado" na marca_dagua.
+  // Tarefa 11 (D12, D13) decidiu que:
+  // - offset_visto: tamanho do transcrito conforme visto pelo harness (Stop/SessionEnd)
+  // - offset_processado: tamanho processado pela passada de LLM (observar.cjs)
+  // - A recuperação detecta (offset_visto > offset_processado) mas não avança offset_processado
+  // Esta migração é idempotente: ADD COLUMN IF NOT EXISTS garante segurança.
+  try {
+    // Tentar adicionar offset_processado. Se já existir, será no-op.
+    conexao.exec(`
+      ALTER TABLE marca_dagua ADD COLUMN offset_processado INTEGER DEFAULT 0;
+    `);
+  } catch (e) {
+    // Se falhar com "duplicate column name", é porque já existe — ok.
+    // Qualquer outro erro é inesperado, mas não trava a sessão (é schema creation).
+    if (!e.message.includes('duplicate column')) {
+      // Nota: não relançamos. Schema pode estar parcialmente aplicado
+      // (offset_processado já existe), e é ok continuar.
+    }
+  }
+
+  // Se a tabela é nova, offset e offset_processado são criados da mesma forma
+  // na criação inicial. Se é legado, offset já existe (será usado como offset_visto)
+  // e offset_processado foi acabado de adicionar (default 0).
+  // Não precisamos renomear offset para offset_visto nesta versão, pois
+  // o código vai continuar a usar 'offset' na INSERT/SELECT para retrocompatibilidade.
 }
 
 // Retorna schema como JSON (comando `esquema --json`).

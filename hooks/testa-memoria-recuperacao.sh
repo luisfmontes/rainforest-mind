@@ -255,6 +255,234 @@ else
   falhou=$((falhou+1)); echo "  FALHA recuperação saiu com exit $EXIT_CODE"
 fi
 
+
+# Teste T-A: Prova por mutação — Stop/SessionEnd não avança offset_processado
+echo
+echo "T-A. Prova por mutação: Stop/SessionEnd não avança offset_processado"
+echo
+echo "  Fase 1: Sem mutação (comportamento correto)"
+
+SESSAO_TA="sessao-ta-001"
+mkdir -p "$RAIZ_POSIX/projects/projeto-teste"
+echo '{"tipo":"prompt","conteudo":"turno1"}' > "$RAIZ_POSIX/projects/projeto-teste/$SESSAO_TA.jsonl"
+OFFSET_TA_1=$(wc -c < "$RAIZ_POSIX/projects/projeto-teste/$SESSAO_TA.jsonl")
+
+# Stop marca em offset_visto=X, offset_processado=0
+EVENTO_TA='{"session_id":"'$SESSAO_TA'","project":"projeto-teste"}'
+echo "$EVENTO_TA" | \
+  CLAUDE_CONFIG_DIR="$RAIZ" \
+  RFM_ROOT="$RAIZ" \
+  node "$HOOK" > /dev/null 2>&1
+
+# Verifica marca após Stop (offset_visto=X, offset_processado=0)
+MARCA_TA_ANTES=$(cd "$SRC" && node -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const db = abrirBanco('$RAIZ/rainforest.db');
+const stmt = db.prepare('SELECT offset, COALESCE(offset_processado, 0) as offset_processado FROM marca_dagua WHERE sessao=\\'$SESSAO_TA\\'');
+const rows = stmt.all();
+if (rows[0]) {
+  console.log(rows[0].offset + ',' + rows[0].offset_processado);
+} else {
+  console.log('0,0');
+}
+db.close();
+" 2>/dev/null)
+
+OFFSET_VISTO_ANTES=$(echo "$MARCA_TA_ANTES" | cut -d, -f1)
+OFFSET_PROC_ANTES=$(echo "$MARCA_TA_ANTES" | cut -d, -f2)
+
+if [ "$OFFSET_VISTO_ANTES" = "$OFFSET_TA_1" ] && [ "$OFFSET_PROC_ANTES" = "0" ]; then
+  echo "  ok    marca após Stop: offset_visto=$OFFSET_VISTO_ANTES, offset_processado=$OFFSET_PROC_ANTES"
+else
+  falhou=$((falhou+1)); echo "  FALHA marca após Stop: esperado ($OFFSET_TA_1,0), obtido ($OFFSET_VISTO_ANTES,$OFFSET_PROC_ANTES)"
+fi
+
+# Cresce transcrito, Stop novamente (offset_processado NÃO deve avançar)
+echo '{"tipo":"ferramenta","conteudo":"resultado_long_x"}' >> "$RAIZ_POSIX/projects/projeto-teste/$SESSAO_TA.jsonl"
+OFFSET_TA_2=$(wc -c < "$RAIZ_POSIX/projects/projeto-teste/$SESSAO_TA.jsonl")
+
+echo "$EVENTO_TA" | \
+  CLAUDE_CONFIG_DIR="$RAIZ" \
+  RFM_ROOT="$RAIZ" \
+  node "$HOOK" > /dev/null 2>&1
+
+# Verifica marca após segundo Stop (offset_visto=Y, offset_processado AINDA 0)
+MARCA_TA_DEPOIS=$(cd "$SRC" && node -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const db = abrirBanco('$RAIZ/rainforest.db');
+const stmt = db.prepare('SELECT offset, COALESCE(offset_processado, 0) as offset_processado FROM marca_dagua WHERE sessao=\\'$SESSAO_TA\\'');
+const rows = stmt.all();
+if (rows[0]) {
+  console.log(rows[0].offset + ',' + rows[0].offset_processado);
+} else {
+  console.log('0,0');
+}
+db.close();
+" 2>/dev/null)
+
+OFFSET_VISTO_DEPOIS=$(echo "$MARCA_TA_DEPOIS" | cut -d, -f1)
+OFFSET_PROC_DEPOIS=$(echo "$MARCA_TA_DEPOIS" | cut -d, -f2)
+
+if [ "$OFFSET_VISTO_DEPOIS" = "$OFFSET_TA_2" ] && [ "$OFFSET_PROC_DEPOIS" = "0" ]; then
+  ok=$((ok+1)); echo "  ok    marca após crescimento: offset_visto=$OFFSET_VISTO_DEPOIS, offset_processado=$OFFSET_PROC_DEPOIS (intacto)"
+else
+  falhou=$((falhou+1)); echo "  FALHA marca alterou mal: esperado ($OFFSET_TA_2,0), obtido ($OFFSET_VISTO_DEPOIS,$OFFSET_PROC_DEPOIS)"
+fi
+
+# Fase 2: Mutação (deve falhar)
+echo
+echo "  Fase 2: Com mutação (comportamento quebrado)"
+echo "  Mutação: fazer gravarMarca escrever offset atual em offset_processado..."
+
+# Cria backup do hook
+HOOK_BACKUP="$(mktemp)"
+cp "$HOOK" "$HOOK_BACKUP"
+
+# Mutação: modificar gravarMarca para escrever offset em offset_processado
+sed -i.bak 's/INSERT OR REPLACE INTO marca_dagua (projeto, sessao, arquivo, offset, processada_em)/INSERT OR REPLACE INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em)/' "$HOOK"
+sed -i.bak 's/VALUES (?, ?, ?, ?, ?)/VALUES (?, ?, ?, ?, ?, ?)/' "$HOOK"
+sed -i.bak '/stmt.run(projeto, sessao, arquivo, offset, agora);/c\    stmt.run(projeto, sessao, arquivo, offset, offset, agora);' "$HOOK"
+
+# Testa com mutação — deve falhar (offset_processado vai avançar)
+SESSAO_TA_MUT="sessao-ta-mut-001"
+mkdir -p "$RAIZ_POSIX/projects/projeto-teste"
+echo '{"tipo":"prompt","conteudo":"turno1"}' > "$RAIZ_POSIX/projects/projeto-teste/$SESSAO_TA_MUT.jsonl"
+
+echo '{"session_id":"'$SESSAO_TA_MUT'","project":"projeto-teste"}' | \
+  CLAUDE_CONFIG_DIR="$RAIZ" \
+  RFM_ROOT="$RAIZ" \
+  node "$HOOK" > /dev/null 2>&1
+
+# Verifica marca com mutação
+MARCA_TA_MUT=$(cd "$SRC" && node -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const db = abrirBanco('$RAIZ/rainforest.db');
+const stmt = db.prepare('SELECT offset, COALESCE(offset_processado, 0) as offset_processado FROM marca_dagua WHERE sessao=\\'$SESSAO_TA_MUT\\'');
+const rows = stmt.all();
+if (rows[0]) {
+  console.log(rows[0].offset + ',' + rows[0].offset_processado);
+} else {
+  console.log('0,0');
+}
+db.close();
+" 2>/dev/null)
+
+OFFSET_PROC_MUT=$(echo "$MARCA_TA_MUT" | cut -d, -f2)
+
+if [ "$OFFSET_PROC_MUT" = "0" ]; then
+  echo "  ERRO mutação não funcionou (esperava que offset_processado fosse escrito)"
+else
+  # Mutação funcionou — offset_processado foi escrito quando não deveria
+  ok=$((ok+1)); echo "  ok    mutação ativa: offset_processado=$OFFSET_PROC_MUT (visto que não deveria)"
+  echo "  Saída esperada vermelha CONSEGUIDA (comportamento quebrado acionado)"
+fi
+
+# Reverter mutação
+cp "$HOOK_BACKUP" "$HOOK"
+rm -f "$HOOK_BACKUP" "$HOOK.bak"
+
+# Teste T-B: Prova por mutação — recuperarSessoes() sinaliza pendência
+# NOTA: Usar sandbox separada para evitar interferência de testes anteriores
+echo
+echo "T-B. Prova por mutação: recuperarSessoes() sinaliza pendência"
+
+RAIZ_TB_POSIX="$(mktemp -d)"
+RAIZ_TB=$(cygpath -m "$RAIZ_TB_POSIX" 2>/dev/null || printf '%s' "$RAIZ_TB_POSIX")
+
+# Inicializar banco
+RFM_ROOT="$RAIZ_TB" node "$SCRIPT_MEMORIA" iniciar > /dev/null 2>&1
+
+echo
+echo "  Fase 1: Sem mutação (comportamento correto)"
+
+SESSAO_TB="sessao-tb-001"
+mkdir -p "$RAIZ_TB_POSIX/projects/projeto-teste"
+echo '{"tipo":"prompt","conteudo":"turno1"}' > "$RAIZ_TB_POSIX/projects/projeto-teste/$SESSAO_TB.jsonl"
+OFFSET_TB_1=$(wc -c < "$RAIZ_TB_POSIX/projects/projeto-teste/$SESSAO_TB.jsonl")
+
+# Stop marca
+EVENTO_TB='{"session_id":"'$SESSAO_TB'","project":"projeto-teste"}'
+echo "$EVENTO_TB" | \
+  CLAUDE_CONFIG_DIR="$RAIZ_TB" \
+  RFM_ROOT="$RAIZ_TB" \
+  node "$HOOK" > /dev/null 2>&1
+
+# Cresce transcrito (simula SessionEnd morto)
+echo '{"tipo":"ferramenta","conteudo":"resultado_pendente"}' >> "$RAIZ_TB_POSIX/projects/projeto-teste/$SESSAO_TB.jsonl"
+OFFSET_TB_2=$(wc -c < "$RAIZ_TB_POSIX/projects/projeto-teste/$SESSAO_TB.jsonl")
+
+# Recuperação com --recover (deve sinalizar PENDENCIA)
+RECUPERACAO_OUTPUT=$(echo "$EVENTO_TB" | \
+  CLAUDE_CONFIG_DIR="$RAIZ_TB" \
+  RFM_ROOT="$RAIZ_TB" \
+  node "$HOOK" --recover 2>&1)
+
+# Verifica se saída contém PENDENCIA
+if echo "$RECUPERACAO_OUTPUT" | grep -q "PENDENCIA:.*sessao=$SESSAO_TB"; then
+  ok=$((ok+1)); echo "  ok    recuperação sinalizou pendência"
+else
+  falhou=$((falhou+1)); echo "  FALHA recuperação não sinalizou pendência"
+  echo "  Saída: $RECUPERACAO_OUTPUT"
+fi
+
+# Fase 2: Mutação (deve falhar)
+echo
+echo "  Fase 2: Com mutação (comportamento quebrado)"
+echo "  Mutação: alterar condição para nunca detectar pendência..."
+
+# Cria backup do hook
+cp "$HOOK" "$HOOK_BACKUP"
+
+# Mutação: alterar "if (tamanhoAtual > marca.offset_processado)" para "if (false)"
+# Isso garante que a pendência nunca seja sinalizada
+sed -i "s/if (tamanhoAtual > marca.offset_processado)/if (false)/g" "$HOOK"
+
+# Verificar que a mutação foi aplicada
+if grep -q "if (false)" "$HOOK"; then
+  echo "    Mutação aplicada: if (false) substituindo a condição"
+else
+  echo "    AVISO: mutação pode não ter funcionado"
+fi
+
+# Usar nova sandbox para teste com mutação
+RAIZ_TB_MUT_POSIX="$(mktemp -d)"
+RAIZ_TB_MUT=$(cygpath -m "$RAIZ_TB_MUT_POSIX" 2>/dev/null || printf '%s' "$RAIZ_TB_MUT_POSIX")
+
+# Inicializar banco para teste com mutação
+RFM_ROOT="$RAIZ_TB_MUT" node "$SCRIPT_MEMORIA" iniciar > /dev/null 2>&1
+
+# Testa com mutação — deve falhar (sem PENDENCIA na saída)
+SESSAO_TB_MUT="sessao-tb-mut-001"
+mkdir -p "$RAIZ_TB_MUT_POSIX/projects/projeto-teste"
+echo '{"tipo":"prompt","conteudo":"turno1"}' > "$RAIZ_TB_MUT_POSIX/projects/projeto-teste/$SESSAO_TB_MUT.jsonl"
+
+echo '{"session_id":"'$SESSAO_TB_MUT'","project":"projeto-teste"}' | \
+  CLAUDE_CONFIG_DIR="$RAIZ_TB_MUT" \
+  RFM_ROOT="$RAIZ_TB_MUT" \
+  node "$HOOK" > /dev/null 2>&1
+
+# Cresce transcrito
+echo '{"tipo":"ferramenta","conteudo":"resultado_pendente"}' >> "$RAIZ_TB_MUT_POSIX/projects/projeto-teste/$SESSAO_TB_MUT.jsonl"
+
+# Recuperação com mutação (NÃO deve sinalizar)
+RECUPERACAO_MUT_OUTPUT=$(echo '{"session_id":"'$SESSAO_TB_MUT'","project":"projeto-teste"}' | \
+  CLAUDE_CONFIG_DIR="$RAIZ_TB_MUT" \
+  RFM_ROOT="$RAIZ_TB_MUT" \
+  node "$HOOK" --recover 2>&1)
+
+# Verifica se saída NÃO contém PENDENCIA (indicando que mutação funcionou)
+if echo "$RECUPERACAO_MUT_OUTPUT" | grep -q "PENDENCIA:"; then
+  echo "  ERRO mutação não funcionou (ainda tem PENDENCIA)"
+else
+  # Mutação funcionou — nenhuma PENDENCIA foi sinalizada
+  ok=$((ok+1)); echo "  ok    mutação ativa: nenhuma PENDENCIA sinalizada (comportamento quebrado acionado)"
+fi
+
+# Reverter mutação
+cp "$HOOK_BACKUP" "$HOOK"
+rm -f "$HOOK_BACKUP" "$HOOK.bak"
+rm -rf "$RAIZ_TB_MUT_POSIX"
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]

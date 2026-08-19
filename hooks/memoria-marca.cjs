@@ -2,7 +2,7 @@
 /**
  * Hook: marca d'água sobre o transcrito.
  *
- * Evento: PostToolUse — dispara após cada ferramenta executar.
+ * Eventos: Stop, SessionEnd — gravam o ponto de processamento na abertura seguinte.
  *
  * Responsabilidade (tarefa 10): gravar na tabela `marca_dagua` o ponto de
  * processamento atual (sessão, caminho do transcrito, offset processado),
@@ -112,7 +112,8 @@ function lerOffset(caminhoTranscrito) {
 
 // Recupera marcas d'água pendentes (sessões interrompidas).
 // Chamado no SessionStart com --recover.
-// Varre a tabela marca_dagua e processa transcritos que cresceram após a marca.
+// Varre a tabela marca_dagua, detecta pendências (offset_visto > offset_processado)
+// e sinaliza para que observar.cjs processe na sessão atual.
 function recuperarSessoes() {
   try {
     const dados = resolverDados();
@@ -131,24 +132,31 @@ function recuperarSessoes() {
 
     try {
       // Varre todas as marcas da tabela.
+      // Nota: offset_processado pode não existir em DBs legados (antes da migração).
+      // SQLite retorna NULL para colunas inexistentes, mas se a migração rodou,
+      // offset_processado existe com default 0.
       const stmtLer = conexao.prepare(`
-        SELECT id, projeto, sessao, arquivo, offset FROM marca_dagua
+        SELECT id, projeto, sessao, arquivo, offset,
+               COALESCE(offset_processado, 0) as offset_processado
+        FROM marca_dagua
       `);
       const marcas = stmtLer.all();
 
-      // Para cada marca, verifica se o arquivo cresceu.
-      // Tarefa 11: Detecta e sinaliza pendência, MAS NUNCA avança offset.
+      // Tarefa 11 (D14): detecta e **sinaliza** pendência, MAS NUNCA avança offset.
       // O offset só avança após a passada de observação (tarefa 12) processar e gravar.
+      // Sinalização: console.log de pendência detectada.
+      // A passada de observação (observar.cjs) roda em SessionStart e verifica
+      // se há pendências a processar.
       for (const marca of marcas) {
         try {
           const tamanhoAtual = lerOffset(marca.arquivo);
 
-          // Se o arquivo cresceu além do offset marcado, há recuperação a fazer.
-          // A condição tamanhoAtual > marca.offset é o próprio sinal de pendência.
-          if (tamanhoAtual > marca.offset) {
-            // Apenas detecta — não processa, não avança offset.
-            // A passada de observação (tarefa 12) vai ler [offset..tamanhoAtual],
-            // gravar observação, e aí sim avançar offset.
+          // Se o arquivo cresceu além do offset_processado (não offset_visto),
+          // há observações pendentes para gerar.
+          if (tamanhoAtual > marca.offset_processado) {
+            // Sinaliza que há pendência nesta sessão.
+            // O formato é estruturado para ser parsável por testes.
+            console.log(`PENDENCIA: sessao=${marca.sessao} projeto=${marca.projeto} offset_processado=${marca.offset_processado} tamanho_atual=${tamanhoAtual}`);
           }
         } catch (e) {
           // Erro ao processar marca específica — continua com próxima.

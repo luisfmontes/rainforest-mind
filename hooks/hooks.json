@@ -18,6 +18,16 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/observar.cjs\"",
+            "async": true,
+            "timeout": 30
+          }
+        ]
       }
     ],
     "PreToolUse": [
