@@ -85,18 +85,21 @@ function lerMarcasPendentes(conexao) {
 // Lê trecho do transcrito a partir do offset (em bytes).
 // O transcrito é JSONL: uma linha = um evento.
 // Retorna array de eventos JSON a partir do offset.
+// Tarefa 19 (D19): Offset é BYTE de ponta a ponta. Lê usando Buffer.toString(),
+// não substring() que trabalha com índices de caracteres.
 function lerTranscrito(caminhoTranscrito, offsetInicio) {
   try {
     if (!fs.existsSync(caminhoTranscrito)) {
       return [];
     }
 
-    const conteudo = fs.readFileSync(caminhoTranscrito, 'utf8');
-    // Extrair texto a partir do offset
-    const textoAposOffset = conteudo.substring(offsetInicio);
+    // Ler arquivo como Buffer para trabalhar com offsets em bytes
+    const buffer = fs.readFileSync(caminhoTranscrito);
+    // Converter a partir do byte offsetInicio, garantindo UTF-8 válido
+    const conteudo = buffer.toString('utf8', offsetInicio);
 
     // Dividir em linhas e parsear JSON
-    const linhas = textoAposOffset.split('\n').filter(l => l.trim());
+    const linhas = conteudo.split('\n').filter(l => l.trim());
     const eventos = [];
 
     for (const linha of linhas) {

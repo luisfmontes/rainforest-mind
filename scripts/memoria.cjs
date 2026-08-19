@@ -63,6 +63,7 @@ function resolverCaminhos() {
 }
 
 // Abre conexão com o banco. Cria se não existe. Retorna a conexão.
+// LANÇA exceção se não conseguir abrir — permite degradação graciosa no chamador.
 function abrirBanco(caminhoDb) {
   // sqlite3.open retorna uma Promise; aqui usamos await em contexto
   // async, ou podemos usar synchronous method se disponível. Node 22
@@ -76,10 +77,9 @@ function abrirBanco(caminhoDb) {
     conexao.exec('PRAGMA journal_mode = WAL;');
     return conexao;
   } catch (e) {
-    // Fallback para versões antigas de Node 22 que não têm DatabaseSync
-    console.error('ERRO: Não consegui abrir DatabaseSync do node:sqlite');
-    console.error(`Detalhes: ${e.message}`);
-    process.exit(1);
+    // Tarefa 21 (D18): LANÇAR exceção em vez de process.exit, permitindo
+    // degradação graciosa do chamador (hook de SessionStart, saude.cjs, etc).
+    throw new Error(`Não consegui abrir DatabaseSync do node:sqlite: ${e.message}`);
   }
 }
 
@@ -106,6 +106,37 @@ function abrirBancoSomenteLeitura(caminhoDb) {
   } catch (e) {
     // Banco indisponível (em uso, corrompido, ausente, etc.)
     return null;
+  }
+}
+
+// Verifica se o banco tem UNIQUE(projeto, origem) — constraint obrigatória.
+// Retorna: true se constraint existe, false caso contrário.
+// Não lança exceção, retorna false em qualquer erro de leitura.
+function verificarConstraintUniqueProjetoOrigem(conexao) {
+  if (!conexao) return false;
+
+  try {
+    const indices = conexao.prepare(`
+      SELECT name FROM sqlite_master
+      WHERE type='index' AND tbl_name='observacoes'
+    `).all();
+
+    for (const idx of indices) {
+      try {
+        const colunas = conexao.prepare(`PRAGMA index_info('${idx.name}')`).all();
+        if (colunas.length === 2
+            && colunas[0].name === 'projeto'
+            && colunas[1].name === 'origem') {
+          return true;
+        }
+      } catch {
+        // Continuar verificando outros índices
+      }
+    }
+
+    return false;
+  } catch {
+    return false;
   }
 }
 
@@ -183,6 +214,7 @@ function criarSchema(conexao) {
 
 // Migração de observacoes: garantir que tem UNIQUE(projeto, origem).
 // Detecta se a constraint está correta, e se não, recria a tabela.
+// Tarefa 20 (D20): TRANSAÇÃO ATÔMICA — RENAME, CREATE, INSERT, DROP numa transação.
 function migraoesObservacoes(conexao) {
   // Verificar se a tabela observacoes existe
   const temTabela = conexao.prepare(`
@@ -274,54 +306,73 @@ function migraoesObservacoes(conexao) {
     console.error(`  Estratégia: adicionar sufixo _dedup_N para origem(s) colidentes`);
   }
 
-  // 4. Renomear tabela antiga
-  conexao.exec(`ALTER TABLE observacoes RENAME TO observacoes_backup;`);
+  // TRANSAÇÃO: Tarefa 20 — RENAME, CREATE, INSERT, DROP são ATÔMICOS.
+  // Se falhar em qualquer ponto, ROLLBACK desfaz tudo e tabela fica intacta.
+  // Se completar, COMMIT persiste tudo.
+  try {
+    conexao.exec('BEGIN TRANSACTION');
 
-  // 5. Criar nova tabela com constraint correto
-  conexao.exec(`
-    CREATE TABLE observacoes (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      projeto TEXT NOT NULL,
-      conteudo TEXT NOT NULL,
-      criada_em TEXT NOT NULL,
-      origem TEXT,
-      UNIQUE(projeto, origem)
-    );
-  `);
+    // 4. Renomear tabela antiga
+    conexao.exec(`ALTER TABLE observacoes RENAME TO observacoes_backup;`);
 
-  // 6. Copiar dados — TODOS, com origem modificada se colidia
-  const insertStmt = conexao.prepare(`
-    INSERT INTO observacoes (id, projeto, conteudo, criada_em, origem)
-    VALUES (?, ?, ?, ?, ?)
-  `);
+    // 5. Criar nova tabela com constraint correto
+    conexao.exec(`
+      CREATE TABLE observacoes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        projeto TEXT NOT NULL,
+        conteudo TEXT NOT NULL,
+        criada_em TEXT NOT NULL,
+        origem TEXT,
+        UNIQUE(projeto, origem)
+      );
+    `);
 
-  for (const row of dados) {
-    insertStmt.run(
-      row.id,
-      row.projeto,
-      row.conteudo,
-      row.criada_em,
-      origemNova[row.id]
-    );
-  }
+    // 6. Copiar dados — TODOS, com origem modificada se colidia
+    const insertStmt = conexao.prepare(`
+      INSERT INTO observacoes (id, projeto, conteudo, criada_em, origem)
+      VALUES (?, ?, ?, ?, ?)
+    `);
 
-  // 7. Apagar tabela de backup
-  conexao.exec(`DROP TABLE observacoes_backup;`);
-
-  // 8. Recriar os índices (são idempotentes com IF NOT EXISTS)
-  conexao.exec(`CREATE INDEX IF NOT EXISTS idx_observacoes_projeto ON observacoes(projeto);`);
-
-  // CRÍTICO: Verificar que nenhuma linha foi perdida
-  const cntDepois = conexao.prepare(`SELECT COUNT(*) as cnt FROM observacoes`).all()[0].cnt;
-  if (cntDepois !== cntAntes) {
-    throw new Error(`MIGRAÇÃO ABORTADA: ${cntAntes} linhas antes, ${cntDepois} depois. Dados perdidos!`);
-  }
-
-  if (process.env.DEBUG_SCHEMA) {
-    console.error(`Migração de observacoes: ${cntAntes} linhas antes, ${cntDepois} linhas depois`);
-    if (temColidentes) {
-      console.error(`  OK: colisões resolvidas com sufixos _dedup_N (nenhuma linha perdida)`);
+    for (const row of dados) {
+      insertStmt.run(
+        row.id,
+        row.projeto,
+        row.conteudo,
+        row.criada_em,
+        origemNova[row.id]
+      );
     }
+
+    // 7. Apagar tabela de backup
+    conexao.exec(`DROP TABLE observacoes_backup;`);
+
+    // 8. Recriar os índices (são idempotentes com IF NOT EXISTS)
+    conexao.exec(`CREATE INDEX IF NOT EXISTS idx_observacoes_projeto ON observacoes(projeto);`);
+
+    // 9. Verificar que nenhuma linha foi perdida
+    const cntDepois = conexao.prepare(`SELECT COUNT(*) as cnt FROM observacoes`).all()[0].cnt;
+    if (cntDepois !== cntAntes) {
+      throw new Error(`MIGRAÇÃO ABORTADA: ${cntAntes} linhas antes, ${cntDepois} depois. Dados perdidos!`);
+    }
+
+    // COMMIT persiste a migração
+    conexao.exec('COMMIT');
+
+    if (process.env.DEBUG_SCHEMA) {
+      console.error(`Migração de observacoes: ${cntAntes} linhas antes, ${cntDepois} linhas depois`);
+      if (temColidentes) {
+        console.error(`  OK: colisões resolvidas com sufixos _dedup_N (nenhuma linha perdida)`);
+      }
+    }
+  } catch (e) {
+    // ROLLBACK desfaz tudo se algo falhar
+    try {
+      conexao.exec('ROLLBACK');
+    } catch {
+      // Se ROLLBACK falhar, pelo menos tentamos
+    }
+    // Relançar o erro para o chamador tratar
+    throw e;
   }
 }
 
@@ -818,4 +869,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { abrirBanco, abrirBancoSomenteLeitura, criarSchema, extrairSchema, resolverCaminhos };
+module.exports = { abrirBanco, abrirBancoSomenteLeitura, criarSchema, extrairSchema, resolverCaminhos, verificarConstraintUniqueProjetoOrigem };

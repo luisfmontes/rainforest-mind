@@ -667,6 +667,9 @@ function checarBranches() {
  * Verificações:
  * - Tabela observacoes tem UNIQUE(projeto, origem)?
  * - Coluna offset_processado existe em marca_dagua?
+ *
+ * Tarefa 18 (D21): fala com banco via adaptador abrirBancoSomenteLeitura,
+ * removendo duplicação de acesso ao sqlite3.
  */
 function checarEsquema() {
   let raizDados;
@@ -687,40 +690,25 @@ function checarEsquema() {
     return; // sem banco: nada a checar
   }
 
+  // Tarefa 18: Usar adaptador (memoria.cjs) em vez de carregar driver direto
+  let abrirBancoSomenteLeitura, verificarConstraintUniqueProjetoOrigem;
   try {
-    const DatabaseSync = require('node:sqlite').DatabaseSync;
-    const db = new DatabaseSync(caminhoDb, { readonly: true });
-    db.exec('PRAGMA query_only = ON;');
+    ({ abrirBancoSomenteLeitura, verificarConstraintUniqueProjetoOrigem } = require('../scripts/memoria.cjs'));
+  } catch {
+    return; // não consegui carregar adaptador: nada a checar
+  }
 
+  const db = abrirBancoSomenteLeitura(caminhoDb);
+  if (!db) {
+    return; // banco indisponível: degradação silenciosa
+  }
+
+  try {
     const problemas = [];
 
     // Verificação 1: observacoes tem UNIQUE(projeto, origem)?
-    try {
-      const indices = db.prepare(`
-        SELECT name FROM sqlite_master
-        WHERE type='index' AND tbl_name='observacoes'
-      `).all();
-
-      let temConstraintCorreta = false;
-      for (const idx of indices) {
-        try {
-          const colunas = db.prepare(`PRAGMA index_info('${idx.name}')`).all();
-          if (colunas.length === 2
-              && colunas[0].name === 'projeto'
-              && colunas[1].name === 'origem') {
-            temConstraintCorreta = true;
-            break;
-          }
-        } catch {
-          // Erro ao verificar índice: ignorar e continuar
-        }
-      }
-
-      if (!temConstraintCorreta) {
-        problemas.push('observacoes sem UNIQUE(projeto, origem) — bancos legados precisam migrar');
-      }
-    } catch (e) {
-      problemas.push(`erro ao verificar observacoes: ${e.message}`);
+    if (!verificarConstraintUniqueProjetoOrigem(db)) {
+      problemas.push('observacoes sem UNIQUE(projeto, origem) — bancos legados precisam migrar');
     }
 
     // Verificação 2: marca_dagua tem offset_processado?
@@ -735,8 +723,6 @@ function checarEsquema() {
       problemas.push(`erro ao verificar marca_dagua: ${e.message}`);
     }
 
-    db.close();
-
     if (problemas.length > 0) {
       return alerta('esquema de banco', problemas.join('; '),
         'rode: node scripts/memoria.cjs iniciar — a migração é automática e idempotente');
@@ -746,6 +732,12 @@ function checarEsquema() {
     // Erro grave ao abrir banco: não é schema, é arquivo corrompido ou inacessível
     alerta('esquema de banco', `nao consegui ler banco: ${e.message}`,
       'o banco pode estar corrompido; procure um backup em .rainforest-*/');
+  } finally {
+    try {
+      db.close();
+    } catch {
+      // Ignorar erro ao fechar
+    }
   }
 }
 
