@@ -147,8 +147,8 @@ else
   echo "$INICIAR_SAIDA" | sed 's/^/         /'
 fi
 
-# Inserir observação fixture via script adaptador (D8 — driver isolado)
-RFM_ROOT="$DADOS" node "$SRC_WIN/scripts/insere-observacao-fixture.cjs" "teste-somente-leitura" "FIXTURE-OBSERVACAO-DE-TESTE" > "$DADOS_POSIX/.insere-out" 2>&1
+# Inserir observação fixture via adaptador (D8 — driver isolado)
+RFM_ROOT="$DADOS" node "$SRC_WIN/scripts/manipula-tabela.cjs" insere-observacao-fixture "teste-somente-leitura" "FIXTURE-OBSERVACAO-DE-TESTE" > "$DADOS_POSIX/.insere-out" 2>&1
 if [ "$?" = "0" ]; then
   ok=$((ok+1)); echo "  ok    setup: observacao fixture inserida"
 else

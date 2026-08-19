@@ -12,7 +12,7 @@
  */
 
 const path = require('path');
-const { abrirBanco, resolverCaminhos } = require('./memoria.cjs');
+const { abrirBanco, abrirBancoSomenteLeitura, resolverCaminhos } = require('./memoria.cjs');
 
 function main() {
   const cmd = process.argv[2];
@@ -82,6 +82,41 @@ function main() {
           resultados.push(`${tabela}=${r.cnt || 0}`);
         }
         console.log(resultados.join(' '));
+        break;
+      }
+
+      case 'insere-observacao-fixture': {
+        const projeto = process.argv[3];
+        const conteudo = process.argv[4];
+        if (!projeto || !conteudo) {
+          console.error('Uso: manipula-tabela.cjs insere-observacao-fixture <projeto> <conteudo>');
+          process.exit(1);
+        }
+        conexao.exec('PRAGMA journal_mode = WAL;');
+        conexao.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em) VALUES (?, ?, ?)')
+          .run(projeto, conteudo, '2026-08-17T10:00:00');
+        conexao.exec('PRAGMA wal_checkpoint(TRUNCATE);');
+        console.log('ok');
+        break;
+      }
+
+      case 'conta-observacoes-backup': {
+        const caminhoBackup = process.argv[3];
+        if (!caminhoBackup) {
+          console.error('Uso: manipula-tabela.cjs conta-observacoes-backup <caminho-backup>');
+          process.exit(1);
+        }
+        const dbBackup = abrirBancoSomenteLeitura(caminhoBackup);
+        if (!dbBackup) {
+          console.error('erro: nao consegui abrir o backup');
+          process.exit(1);
+        }
+        try {
+          const result = dbBackup.prepare('SELECT COUNT(*) as cnt FROM observacoes').get();
+          console.log(result.cnt);
+        } finally {
+          dbBackup.close();
+        }
         break;
       }
 

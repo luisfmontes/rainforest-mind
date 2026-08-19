@@ -142,20 +142,24 @@ node "$SRC/scripts/manipula-tabela.cjs" limpa indice_ideias > /dev/null
 counts_vazios=$(node "$SRC/scripts/manipula-tabela.cjs" conta-multi indice_foco indice_ideias)
 foco=$(echo "$counts_vazios" | grep -o 'indice_foco=[0-9]*' | cut -d= -f2)
 ideias=$(echo "$counts_vazios" | grep -o 'indice_ideias=[0-9]*' | cut -d= -f2)
-process.stdout.write('Apagado, indice_foco agora: ' + (foco.c || 0) + ', indice_ideias: ' + (ideias.c || 0) + '\n');
-db.close();
-" 2>&1 | grep -v ExperimentalWarning | sed 's/^/  /'
+if [ "$foco" = "0" ] && [ "$ideias" = "0" ]; then
+  ok=$((ok+1)); echo "  ok    índices limpos: foco=$foco, ideias=$ideias"
+else
+  falhou=$((falhou+1)); echo "  FALHA índices não foram limpos: foco=$foco, ideias=$ideias"
+fi
 
 # Reindexar novamente
 esperado "reindexar após apagar índices" 0 $MEMORIA reindexar
 
 # Verificar que voltou a ter dados — via script adaptador (D8 — driver isolado)
 indice_counts=$(node "$SRC/scripts/manipula-tabela.cjs" conta-multi indice_foco indice_ideias)
+foco_reconstruido=$(echo "$indice_counts" | grep -o 'indice_foco=[0-9]*' | cut -d= -f2)
+ideias_reconstruido=$(echo "$indice_counts" | grep -o 'indice_ideias=[0-9]*' | cut -d= -f2)
 
-if [ "$indice_counts" = "foco=$indice_foco_count ideias=$indice_ideias_count" ]; then
-  ok=$((ok+1)); echo "  ok   índices derivados reconstruídos: $indice_counts"
+if [ "$foco_reconstruido" = "$indice_foco_count" ] && [ "$ideias_reconstruido" = "$indice_ideias_count" ]; then
+  ok=$((ok+1)); echo "  ok   índices derivados reconstruídos: foco=$foco_reconstruido, ideias=$ideias_reconstruido"
 else
-  falhou=$((falhou+1)); echo "  FALHA contagem mismatch: esperava foco=$indice_foco_count ideias=$indice_ideias_count, veio $indice_counts"
+  falhou=$((falhou+1)); echo "  FALHA contagem mismatch: esperava foco=$indice_foco_count ideias=$indice_ideias_count, veio foco=$foco_reconstruido ideias=$ideias_reconstruido"
 fi
 
 echo

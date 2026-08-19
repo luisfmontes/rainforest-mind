@@ -57,8 +57,8 @@ if [ "$BACKUPS" -ge 1 ]; then
   if [ -z "$BACKUP_PATH" ]; then
     falhou=$((falhou+1)); echo "  FALHA nenhum arquivo de backup encontrado (listagem falhou)"
   else
-    # Contar observações no backup via script adaptador (D8 — driver isolado)
-    SELECT_RESULT=$(node "$SRC/scripts/conta-observacoes-backup.cjs" "$BACKUP_PATH" 2>&1)
+    # Contar observações no backup via adaptador (D8 — driver isolado)
+    SELECT_RESULT=$(node "$SRC/scripts/manipula-tabela.cjs" conta-observacoes-backup "$BACKUP_PATH" 2>&1)
     EXIT_RESULT=$?
 
     if [ "$EXIT_RESULT" = "0" ]; then
