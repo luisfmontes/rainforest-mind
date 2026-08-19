@@ -144,14 +144,15 @@ else
   echo "⚠ SessionStart hook comportamento inesperado"
 fi
 
-# 8. Testar memoria-marca.cjs modo --mark com banco corrompido (Tarefa 23 - item 3)
-echo "[8] Testar memoria-marca.cjs --mark com banco corrompido..."
-MARCA_MARK_EXIT=$(RFM_ROOT="$TEMP_DIR" node "$RAIZ/hooks/memoria-marca.cjs" --mark 2>&1)
-MARCA_MARK_CODE=$?
-if [ "$MARCA_MARK_CODE" = "0" ]; then
-  echo "✓ memoria-marca.cjs --mark degradou (exit 0)"
+# 8. Testar memoria-marca.cjs modo normal (sem flag) com banco corrompido (Tarefa 23 - item 3)
+echo "[8] Testar memoria-marca.cjs (gravar marca) com banco corrompido..."
+EVENTO_MARCA='{"session_id":"teste-degradacao","transcript_path":"'"$TEMP_DIR"'/teste.jsonl","cwd":"'"$TEMP_DIR"'"}'
+echo "$EVENTO_MARCA" | timeout 2 bash -c "RFM_ROOT='$TEMP_DIR' node '$RAIZ/hooks/memoria-marca.cjs'" >/dev/null 2>&1
+MARCA_NORMAL_CODE=$?
+if [ "$MARCA_NORMAL_CODE" = "0" ]; then
+  echo "✓ memoria-marca.cjs (modo normal) degradou (exit 0)"
 else
-  echo "⚠ memoria-marca.cjs --mark: exit $MARCA_MARK_CODE"
+  echo "⚠ memoria-marca.cjs (modo normal): exit $MARCA_NORMAL_CODE"
 fi
 
 # 9. Testar memoria-marca.cjs modo --recover com banco corrompido (Tarefa 23 - item 3)
