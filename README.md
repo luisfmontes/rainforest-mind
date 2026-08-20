@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-0.69.0-1e5c3f?style=flat-square" alt="versão 0.69.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-0.70.0-1e5c3f?style=flat-square" alt="versão 0.70.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/revis%C3%A3o-bimestral-9fd8ba?style=flat-square" alt="revisão bimestral">
 </p>
@@ -400,6 +400,7 @@ flowchart LR
 | `/saude` | Só o que os checadores oficiais não sabem: de quem é a raiz, margem da injeção, esteira parada, worktree órfão |
 | `modo-dev` | Disciplina de dev sob demanda (acima) |
 | `depurar` | Loop de feedback antes de hipótese (acima) |
+| `analisar` | Análise de dados em notebook: uma pergunta por vez, célula curta, e **revisão crítica do achado** (`n` visível, share vs. risco, explicação alternativa) antes de virar conclusão |
 | `executor` | Implementação mecânica em haiku, com o método embutido no system prompt |
 | `revisor` | Review/QA em sonnet: evidência primária, achado só com cenário de falha, veredito integra/não-integra |
 | `tester` | Testes em sonnet: extrai o contrato, escreve o que falta, pelo menos um adversarial |
