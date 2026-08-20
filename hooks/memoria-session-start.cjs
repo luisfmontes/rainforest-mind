@@ -8,11 +8,12 @@ const fs = require('fs');
 const path = require('path');
 const { montarMemoria } = require('./lib/memoria-sessao.cjs');
 const { resolverRaiz } = require('./lib/raiz.cjs');
-const { abrirBanco } = require(path.join(__dirname, '..', 'scripts', 'memoria.cjs'));
+const { abrirBanco, resolverCaminhos } = require(path.join(__dirname, '..', 'scripts', 'memoria.cjs'));
 
-// Lê observações recentes do banco de memória.
+// Lê observações recentes do banco de memória, filtrando por projeto.
+// Tarefa 3 (D3): top 5 do projeto atual, completa com outros se houver menos.
 // Banco ausente, vazio ou corrompido: retorna array vazio (degradação graceful).
-function lerObservacoes(caminhoDb, limite = 5) {
+function lerObservacoes(caminhoDb, projetoAtual, limiteTotal = 5) {
   try {
     // Se o banco não existe, array vazio é o resultado esperado.
     if (!fs.existsSync(caminhoDb)) {
@@ -26,11 +27,52 @@ function lerObservacoes(caminhoDb, limite = 5) {
     }
 
     try {
-      // Busca as observações mais recentes.
-      const query = 'SELECT id, projeto, conteudo, criada_em FROM observacoes ORDER BY criada_em DESC LIMIT ?';
-      const stmt = conexao.prepare(query);
-      const resultado = stmt.all(limite);
-      return resultado || [];
+      // Tarefa 3 (D3): Se projeto não resolveu, busca sem filtro (fallback).
+      // WHERE projeto = NULL nunca casa em SQL, então precisamos da busca sem filtro.
+      if (!projetoAtual) {
+        const queryTudo = `
+          SELECT id, projeto, conteudo, criada_em
+          FROM observacoes
+          ORDER BY criada_em DESC
+          LIMIT ?
+        `;
+        const stmtTudo = conexao.prepare(queryTudo);
+        const resultado = stmtTudo.all(limiteTotal) || [];
+        return resultado;
+      }
+
+      // Tarefa 3 (D3): Busca as observações do projeto atual, até o limite.
+      const queryPropio = `
+        SELECT id, projeto, conteudo, criada_em
+        FROM observacoes
+        WHERE projeto = ?
+        ORDER BY criada_em DESC
+        LIMIT ?
+      `;
+      const stmtPropio = conexao.prepare(queryPropio);
+      const obsProprio = stmtPropio.all(projetoAtual, limiteTotal) || [];
+
+      // Se temos o limite, devolver só as próprias.
+      if (obsProprio.length >= limiteTotal) {
+        return obsProprio.slice(0, limiteTotal);
+      }
+
+      // Senão, completar com outras mais recentes (de outros projetos).
+      const vagas = limiteTotal - obsProprio.length;
+      const queryOutros = `
+        SELECT id, projeto, conteudo, criada_em
+        FROM observacoes
+        WHERE projeto != ?
+        ORDER BY criada_em DESC
+        LIMIT ?
+      `;
+      const stmtOutros = conexao.prepare(queryOutros);
+      const obsOutros = stmtOutros.all(projetoAtual, vagas) || [];
+
+      // Combinar: próprias primeiro (mais importantes), depois outros.
+      // O projeto já está marcado no campo `projeto`, então formatarObservacao
+      // vai mostrar [data (projeto)] para observações de outros projetos.
+      return obsProprio.concat(obsOutros);
     } finally {
       conexao.close();
     }
@@ -49,12 +91,23 @@ const { raiz: RAIZ_RESOLVIDA } = resolverRaiz({
 const ROOT = RAIZ_RESOLVIDA || path.resolve(__dirname, '..');
 const caminhoDb = path.join(ROOT, 'rainforest.db');
 
+// Tarefa 3 (D3): Resolve o projeto da sessão atual para filtro.
+// Se não conseguir resolver (fora de repositório), usa null e a consulta devolve todas.
+let projetoAtual = null;
+try {
+  const { projeto } = resolverCaminhos();
+  projetoAtual = projeto;
+} catch {
+  // Não conseguir resolver não é erro — continua sem filtro.
+}
+
 // Lê observações residentes.
+// Tarefa 3 (D3): Filtra por projeto, completa com outros se houver vagas.
 // Decisão D11: carregar múltiplas observações curtas (título + subtítulo)
 // em vez de uma observação completa. Número calibrado pela medição.
 let observacoes = [];
 try {
-  observacoes = lerObservacoes(caminhoDb, 14);
+  observacoes = lerObservacoes(caminhoDb, projetoAtual, 14);
 } catch {
   // Qualquer erro imprevisto: bloco vazio, nunca erro.
   observacoes = [];

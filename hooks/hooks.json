@@ -25,7 +25,7 @@
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/observar.cjs\"",
             "async": true,
-            "timeout": 30
+            "timeout": 120
           }
         ]
       }
@@ -93,7 +93,7 @@
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/observar.cjs\"",
             "async": true,
-            "timeout": 30
+            "timeout": 120
           }
         ]
       }

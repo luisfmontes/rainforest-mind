@@ -142,5 +142,33 @@ echo "== 8. reindexar em banco vazio funciona =="
 esperado "reindexar vazio" 0 $MEMORIA reindexar
 
 echo
+echo "== 9. a migração de marca_dagua roda UMA vez, não a cada abertura =="
+# Por que esta bateria existe: `criarSchema()` é chamada em todo caminho que
+# abre o banco — inclusive pelo hook que grava marca d'água, a cada gravação.
+# A primeira versão da migração da tarefa 4 apagava a tabela toda vez, então a
+# marca recém-escrita sumia e o `offset_processado` nunca saía de 0: a captura
+# reprocessaria o mesmo transcrito para sempre, sem erro nenhum na tela.
+CAIXA4="$(mktemp -d)"
+trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${CAIXA4:-}"' EXIT
+RFM_ROOT="$CAIXA4" $MEMORIA iniciar > /dev/null 2>&1
+SOBREVIVEU=$(RFM_ROOT="$CAIXA4" node --no-warnings -e "
+const { abrirBanco, criarSchema } = require('./scripts/memoria.cjs');
+const caminho = process.env.RFM_ROOT + '/rainforest.db';
+const db = abrirBanco(caminho);
+db.prepare('INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?,?,?,?,?,?)')
+  .run('p', 's1', 'a.jsonl', 206, 206, '2026-08-20T00:00:00Z');
+criarSchema(db);                       // é isto que o hook faz a cada gravação
+const n = db.prepare('SELECT count(*) c FROM marca_dagua').get().c;
+const off = db.prepare('SELECT offset_processado o FROM marca_dagua').get();
+db.close();
+process.stdout.write(n + ':' + (off ? off.o : 'nada'));
+")
+if [ "$SOBREVIVEU" = "1:206" ]; then
+  ok=$((ok+1)); echo "  ok   marca d'água sobrevive a criarSchema (1 linha, offset 206)"
+else
+  falhou=$((falhou+1)); echo "  FALHA marca d'água não sobreviveu a criarSchema: esperava '1:206', veio '$SOBREVIVEU'"
+fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

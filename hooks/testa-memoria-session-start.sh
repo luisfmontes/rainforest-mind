@@ -193,21 +193,21 @@ echo "7. NÚMERO 14 ESTÁ PROTEGIDO — sensibilidade da checagem à mutação n
 # A leitura real do banco é testada em testa-memoria-somente-leitura.sh, que é
 # mais robusto para isso.
 
-# 1. Verde: numero 14 está no código
-LIMITE_ATUAL=$(grep -oE 'lerObservacoes\(caminhoDb, [0-9]+\)' "$HOOK" | sed 's/.*,\s*//' | sed 's/).*//')
+# 1. Verde: numero 14 está no código (agora com 3 argumentos: caminhoDb, projetoAtual, limiteTotal)
+LIMITE_ATUAL=$(grep -oE 'lerObservacoes\(caminhoDb, [^,]+, [0-9]+\)' "$HOOK" | sed 's/.*,\s*//' | sed 's/).*//')
 
 if [ "$LIMITE_ATUAL" = "14" ]; then
-  ok=$((ok+1)); echo "  ok    VERDE: código usa lerObservacoes(..., 14)"
+  ok=$((ok+1)); echo "  ok    VERDE: código usa lerObservacoes(..., ..., 14)"
 else
-  falhou=$((falhou+1)); echo "  FALHA código usa lerObservacoes(..., $LIMITE_ATUAL), esperado 14"
+  falhou=$((falhou+1)); echo "  FALHA código usa lerObservacoes(..., ..., $LIMITE_ATUAL), esperado 14"
 fi
 
 # 2. Vermelho: muta para 1 e prova que é detectável
 HOOK_MUTADO_POSIX="$RAIZ_POSIX/hook-mut.cjs"
 cp "$HOOK" "$HOOK_MUTADO_POSIX"
-sed -i.bak 's/lerObservacoes(caminhoDb, 14)/lerObservacoes(caminhoDb, 1)/' "$HOOK_MUTADO_POSIX"
+sed -i.bak 's/lerObservacoes(caminhoDb, projetoAtual, 14)/lerObservacoes(caminhoDb, projetoAtual, 1)/' "$HOOK_MUTADO_POSIX"
 
-LIMITE_MUTADO=$(grep -oE 'lerObservacoes\(caminhoDb, [0-9]+\)' "$HOOK_MUTADO_POSIX" | sed 's/.*,\s*//' | sed 's/).*//')
+LIMITE_MUTADO=$(grep -oE 'lerObservacoes\(caminhoDb, [^,]+, [0-9]+\)' "$HOOK_MUTADO_POSIX" | sed 's/.*,\s*//' | sed 's/).*//')
 
 if [ "$LIMITE_MUTADO" = "1" ]; then
   ok=$((ok+1)); echo "  ok    VERMELHO: sed consegue mutar 14→1 (mudança é detectável)"
@@ -216,7 +216,7 @@ else
 fi
 
 # 3. Verde: volta ao original e confirma detecção
-LIMITE_VOLTA=$(grep -oE 'lerObservacoes\(caminhoDb, [0-9]+\)' "$HOOK" | sed 's/.*,\s*//' | sed 's/).*//')
+LIMITE_VOLTA=$(grep -oE 'lerObservacoes\(caminhoDb, [^,]+, [0-9]+\)' "$HOOK" | sed 's/.*,\s*//' | sed 's/).*//')
 
 if [ "$LIMITE_VOLTA" = "14" ]; then
   ok=$((ok+1)); echo "  ok    VERDE: volta a 14 (checagem sensível à mutação em disco)"
@@ -289,6 +289,199 @@ if [ "$NUMERO_LINHAS_VOLTA" -ge 5 ]; then
 else
   falhou=$((falhou+1)); echo "  FALHA checagem não voltou ao verde ($NUMERO_LINHAS_VOLTA encontradas)"
 fi
+
+echo
+echo "10. Tarefa 3 — filtro por projeto no hook de verdade (D3)"
+
+# Criar caixa de areia para os testes do hook
+CAIXA_HOOK="$(mktemp -d)"
+mkdir -p "$CAIXA_HOOK"
+# `set -u` derruba o trap inteiro se uma das variáveis não existir — e aí a
+# limpeza não roda e cada execução deixa pasta temporária para trás. Os `:-`
+# são o que faz o trap sobreviver a variável que a seção anterior não criou.
+trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${RAIZ_POSIX:-}" "${CAIXA_HOOK:-}" "${CAIXA_PROJETO:-}"' EXIT
+
+# Inicializar banco em RFM_ROOT
+export RFM_ROOT="$CAIXA_HOOK"
+node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+
+# Inserir dados de teste: 8 de projeto-a, 8 de projeto-b
+node <<'SETUP_HOOK_TEST'
+const { DatabaseSync } = require('node:sqlite');
+
+const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
+
+// 8 observações de projeto-a (mais recentes)
+for (let i = 1; i <= 8; i++) {
+  db.prepare(`
+    INSERT INTO observacoes (projeto, conteudo, criada_em, origem)
+    VALUES (?, ?, ?, ?)
+  `).run(
+    'projeto-a',
+    '## Obs A' + i + '\n\nConteúdo projeto A',
+    '2026-08-' + String(10 + i).padStart(2, '0') + 'T10:00:00Z',
+    'origem-a-' + i
+  );
+}
+
+// 8 observações de projeto-b (mais antigas)
+for (let i = 1; i <= 8; i++) {
+  db.prepare(`
+    INSERT INTO observacoes (projeto, conteudo, criada_em, origem)
+    VALUES (?, ?, ?, ?)
+  `).run(
+    'projeto-b',
+    '## Obs B' + i + '\n\nConteúdo projeto B',
+    '2026-08-' + String(i).padStart(2, '0') + 'T10:00:00Z',
+    'origem-b-' + i
+  );
+}
+
+db.close();
+SETUP_HOOK_TEST
+
+echo
+echo "  10.a — sessão de projeto-a: recebe 8 de projeto-a, depois 6 de projeto-b (total 14)"
+
+# Criar pasta temporária com .git para simular sessão de projeto-a
+PASTA_A="$CAIXA_HOOK/test-projeto-a"
+mkdir -p "$PASTA_A"
+git init -q "$PASTA_A"
+
+# Executar hook de dentro de projeto-a com RFM_ROOT apontando para banco
+SAIDA_A=$(cd "$PASTA_A" && RFM_ROOT="$CAIXA_HOOK" echo '{}' | node "$HOOK" 2>/dev/null)
+
+# Extrair additionalContext
+BLOCO_A=$(echo "$SAIDA_A" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); process.stdout.write((d.hookSpecificOutput||{}).additionalContext||'')")
+
+# Contar linhas com [data] — cada linha de observação tem [data (projeto)]
+NUM_LINHAS_A=$(echo "$BLOCO_A" | grep -c "\\[2026")
+
+# Verificar que as OITO PRIMEIRAS linhas, em ordem, são de projeto-a.
+# Contar ocorrências no bloco inteiro não serve: passa com o filtro quebrado,
+# porque as 8 estariam lá de qualquer jeito — só que no meio das outras.
+PRIMEIRAS_A=$(echo "$BLOCO_A" | grep "\\[2026" | head -8 | grep -c "(projeto-a)")
+
+# Verificar que tem algumas de projeto-b depois
+TEM_B=$(echo "$BLOCO_A" | grep -c "\\(projeto-b\\)")
+
+if [ "$NUM_LINHAS_A" = "14" ]; then
+  ok=$((ok+1)); echo "  ok    bloco tem 14 linhas"
+else
+  falhou=$((falhou+1)); echo "  FALHA bloco tem $NUM_LINHAS_A linhas, esperado 14"
+fi
+
+if [ "$PRIMEIRAS_A" = "8" ]; then
+  ok=$((ok+1)); echo "  ok    as 8 primeiras linhas, em ordem, são de projeto-a"
+else
+  falhou=$((falhou+1)); echo "  FALHA das 8 primeiras linhas, $PRIMEIRAS_A são de projeto-a, esperado 8"
+fi
+
+if [ "$TEM_B" -gt "0" ]; then
+  ok=$((ok+1)); echo "  ok    bloco tem observações de projeto-b depois"
+else
+  falhou=$((falhou+1)); echo "  FALHA nenhuma observação de projeto-b encontrada"
+fi
+
+echo
+echo "  10.b — projeto com 2 obs próprias: recebe 2 + 12 de outros (total 14)"
+
+# Adicionar 2 observações de projeto-c (mais recentes)
+node <<'ADD_C'
+const { DatabaseSync } = require('node:sqlite');
+const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
+
+for (let i = 1; i <= 2; i++) {
+  db.prepare(`
+    INSERT INTO observacoes (projeto, conteudo, criada_em, origem)
+    VALUES (?, ?, ?, ?)
+  `).run(
+    'projeto-c',
+    '## Obs C' + i + '\n\nConteúdo projeto C',
+    '2026-08-25T' + String(i).padStart(2, '0') + ':00:00Z',
+    'origem-c-' + i
+  );
+}
+db.close();
+ADD_C
+
+# Criar pasta com .git para simular sessão de projeto-c
+PASTA_C="$CAIXA_HOOK/test-projeto-c"
+mkdir -p "$PASTA_C"
+git init -q "$PASTA_C"
+
+# Executar hook de dentro de projeto-c
+SAIDA_C=$(cd "$PASTA_C" && RFM_ROOT="$CAIXA_HOOK" echo '{}' | node "$HOOK" 2>/dev/null)
+
+# Extrair bloco
+BLOCO_C=$(echo "$SAIDA_C" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); process.stdout.write((d.hookSpecificOutput||{}).additionalContext||'')")
+
+# Contar linhas
+NUM_LINHAS_C=$(echo "$BLOCO_C" | grep -c "\\[2026")
+
+# Contar de projeto-c
+NUM_C=$(echo "$BLOCO_C" | grep -o "\\(projeto-c\\)" | wc -l)
+
+# Contar de outros
+NUM_OUTROS_C=$(echo "$BLOCO_C" | grep -c "\\(projeto-a\\)\\|\\(projeto-b\\)")
+
+if [ "$NUM_LINHAS_C" = "14" ]; then
+  ok=$((ok+1)); echo "  ok    bloco tem 14 linhas"
+else
+  falhou=$((falhou+1)); echo "  FALHA bloco tem $NUM_LINHAS_C linhas, esperado 14"
+fi
+
+if [ "$NUM_C" = "2" ]; then
+  ok=$((ok+1)); echo "  ok    bloco tem 2 de projeto-c"
+else
+  falhou=$((falhou+1)); echo "  FALHA bloco tem $NUM_C de projeto-c, esperado 2"
+fi
+
+# EXATAMENTE 12, não `>= 10`. O bloco tem 14 linhas e 2 são de projeto-c, então
+# aritmeticamente as outras só podem ser 12 — a margem de 10 aceitava duas
+# linhas SEM rótulo de projeto, que é justamente a regressão de formatação que
+# esta seção existe para pegar. A mensagem de erro já dizia "esperado >= 12"
+# enquanto o teste comparava com 10; onde o texto e o número divergem, é o
+# número que manda, e ele estava frouxo.
+if [ "$NUM_OUTROS_C" = "12" ]; then
+  ok=$((ok+1)); echo "  ok    bloco completa com exatamente 12 de outros projetos, todas rotuladas"
+else
+  falhou=$((falhou+1)); echo "  FALHA bloco tem $NUM_OUTROS_C rotuladas de outros projetos, esperado exatamente 12"
+fi
+
+echo
+echo "  10.c — FALSIFICAÇÃO: o filtro invertido tem que derrubar 10.a"
+# A mutação roda numa CÓPIA, nunca no arquivo versionado: bateria que edita o
+# próprio fonte deixa o repositório mutado se morrer no meio, e esta roda no CI.
+COPIA_MUT="$(mktemp -d)"
+cp -r "$(dirname "$HOOK")" "$COPIA_MUT/hooks"
+cp -r "$(dirname "$HOOK")/../scripts" "$COPIA_MUT/scripts"
+
+# A mutação é `=` -> `!=`: mesma aridade de parâmetros, SQL continua VÁLIDO, e
+# o significado inverte. A primeira versão desta prova comentava a linha do
+# WHERE, o que deixava a consulta com um placeholder e dois binds — ela
+# estourava, caía no catch, e devolvia bloco VAZIO. Aí o teste "passava" porque
+# a primeira linha de um bloco vazio não menciona projeto-a: passaria igual com
+# a função inteira apagada. Medido em 2026-08-20, e é o motivo da guarda abaixo.
+sed -i 's/WHERE projeto = ?/WHERE projeto != ?/' "$COPIA_MUT/hooks/memoria-session-start.cjs"
+
+SAIDA_MUTADA=$(cd "$PASTA_A" && echo '{}' | node "$COPIA_MUT/hooks/memoria-session-start.cjs" 2>/dev/null)
+BLOCO_MUTADO=$(echo "$SAIDA_MUTADA" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); process.stdout.write((d.hookSpecificOutput||{}).additionalContext||'')")
+
+LINHAS_MUTADAS=$(echo "$BLOCO_MUTADO" | grep -c "\\[2026")
+PRIMEIRA_MUTADA=$(echo "$BLOCO_MUTADO" | grep "\\[2026" | head -1)
+
+if [ "$LINHAS_MUTADAS" -lt 1 ]; then
+  # Guarda anti-vacuidade: bloco vazio não prova filtro nenhum, prova que a
+  # mutação quebrou a consulta. Prova que não pode falhar não é prova.
+  falhou=$((falhou+1)); echo "  FALHA a mutação degradou para bloco vazio — a falsificação não vale"
+elif echo "$PRIMEIRA_MUTADA" | grep -q "(projeto-a)"; then
+  falhou=$((falhou+1)); echo "  FALHA filtro invertido e a primeira linha ainda é de projeto-a — a bateria não detecta"
+else
+  ok=$((ok+1)); echo "  ok    VERMELHO: com o filtro invertido, a primeira linha é de outro projeto ($LINHAS_MUTADAS linhas, bloco não-vazio)"
+fi
+
+rm -rf "$COPIA_MUT"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

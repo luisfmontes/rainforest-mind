@@ -215,5 +215,162 @@ if [ "$CONTA" = "4" ]; then ok=$((ok+1)); echo "  ok   total de 4 observações 
 else falhou=$((falhou+1)); echo "  FALHA total deveria ser 4, mas é $CONTA"; fi
 
 echo
+echo "== 6. Tarefa 2 — projeto é lido e normalizado da origem =="
+# Criar terceira origem com 3 observações de projetos distintos (um deles com caminho pai/filho)
+ORIGEM3="$CAIXA/origem-terceira.db"
+export ORIGEM3
+
+node <<SETUP_ORIGEM3
+const { DatabaseSync } = require('node:sqlite');
+
+const db = new DatabaseSync(process.env.ORIGEM3);
+
+db.exec(\`
+  CREATE TABLE observations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    memory_session_id TEXT,
+    project TEXT,
+    text TEXT NOT NULL,
+    type TEXT,
+    title TEXT,
+    subtitle TEXT,
+    facts TEXT,
+    narrative TEXT,
+    concepts TEXT,
+    files_read TEXT,
+    files_modified TEXT,
+    prompt_number INTEGER,
+    created_at TEXT NOT NULL,
+    created_at_epoch INTEGER,
+    content_hash TEXT,
+    agent_type TEXT
+  );
+\`);
+
+// 3 observações com projetos diferentes
+db.prepare(\`
+  INSERT INTO observations (text, project, created_at, content_hash, created_at_epoch)
+  VALUES (?, ?, ?, ?, ?)
+\`).run(
+  'obs do projeto A',
+  'projeto-a',
+  '2026-08-10T10:00:00Z',
+  'hash-proj-a-1',
+  Math.floor(new Date('2026-08-10').getTime() / 1000)
+);
+
+db.prepare(\`
+  INSERT INTO observations (text, project, created_at, content_hash, created_at_epoch)
+  VALUES (?, ?, ?, ?, ?)
+\`).run(
+  'obs do projeto B',
+  'projeto-b',
+  '2026-08-11T10:00:00Z',
+  'hash-proj-b-1',
+  Math.floor(new Date('2026-08-11').getTime() / 1000)
+);
+
+// Projeto com caminho (deve ser normalizado para o último segmento)
+db.prepare(\`
+  INSERT INTO observations (text, project, created_at, content_hash, created_at_epoch)
+  VALUES (?, ?, ?, ?, ?)
+\`).run(
+  'obs do projeto pai/filho',
+  'inovacao/gestao-projetos-template',
+  '2026-08-12T10:00:00Z',
+  'hash-proj-c-1',
+  Math.floor(new Date('2026-08-12').getTime() / 1000)
+);
+
+db.close();
+SETUP_ORIGEM3
+
+# Limpar banco destino e reimportar
+rm -f "$RFM_ROOT/rainforest.db"
+export RFM_ROOT="$CAIXA/rainforest-root-3"
+mkdir -p "$RFM_ROOT"
+
+# Inicializar novo banco
+node "$SRC/scripts/memoria.cjs" iniciar >/dev/null 2>&1
+
+# Importar da terceira origem
+export TESTADOR_ORIGEM_CLAUDE_MEM="$ORIGEM3"
+node "$SRC/scripts/importar-claude-mem.cjs" >/dev/null 2>&1
+got=$?
+
+if [ "$got" = "0" ]; then ok=$((ok+1)); echo "  ok   importação de origem com 3 projetos (exit 0)"
+else falhou=$((falhou+1)); echo "  FALHA importação de origem com 3 projetos: exit $got"; fi
+
+# Verificar que os 3 projetos foram importados com seus nomes distintos
+RESULTADO=$(node <<'QUERY_PROJETOS'
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const db = abrirBanco(process.env.RFM_ROOT + '/rainforest.db');
+const stmt = db.prepare('SELECT DISTINCT projeto FROM observacoes ORDER BY 1');
+const rows = stmt.all();
+db.close();
+process.stdout.write(JSON.stringify(rows));
+QUERY_PROJETOS
+)
+
+NUM_PROJETOS=$(echo "$RESULTADO" | node -e "const d = JSON.parse(require('fs').readFileSync(0, 'utf-8')); process.stdout.write(String(d.length))")
+
+if [ "$NUM_PROJETOS" = "3" ]; then ok=$((ok+1)); echo "  ok   3 projetos distintos importados"
+else falhou=$((falhou+1)); echo "  FALHA esperava 3 projetos, mas encontrou $NUM_PROJETOS"; echo "$RESULTADO" | sed 's/^/         /'; fi
+
+# Verificar que o projeto com caminho foi normalizado para o último segmento
+PROJETOS_JSON="$RESULTADO"
+if echo "$PROJETOS_JSON" | grep -q 'gestao-projetos-template' && ! echo "$PROJETOS_JSON" | grep -q 'inovacao'; then
+  ok=$((ok+1)); echo "  ok   projeto pai/filho normalizado para 'gestao-projetos-template'"
+else
+  falhou=$((falhou+1)); echo "  FALHA projeto não foi normalizado corretamente"
+  echo "         Projetos encontrados:" | sed 's/^/         /'
+  echo "$PROJETOS_JSON" | sed 's/^/         /'
+fi
+
+echo
+echo "== 7. origem FIEL: text vazio, conteudo em title/subtitle =="
+# Esta seção existe porque as fixtures acima mentem sobre a origem real. Elas
+# preenchem `text`, e na base de verdade — medida em 2026-08-20 sobre 10.092
+# observações — `text` está VAZIO em TODAS. O conteúdo mora em `title` (10.092
+# preenchidos) e `subtitle` (9.848). Com a fixture infiel, o importador que lia
+# só `text` passava em tudo e importava 10.092 linhas em branco. Fixture que não
+# reproduz o preenchimento da origem não testa importação, testa a si mesma.
+ORIGEM_FIEL="$(mktemp -d)/fiel.db"
+ORIGEM="$ORIGEM_FIEL" node --no-warnings <<'FIXTURE_FIEL'
+const { DatabaseSync } = require('node:sqlite');
+const db = new DatabaseSync(process.env.ORIGEM);
+db.exec(`CREATE TABLE observations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, memory_session_id TEXT, project TEXT,
+  text TEXT, type TEXT, title TEXT, subtitle TEXT, facts TEXT, narrative TEXT,
+  created_at TEXT NOT NULL, created_at_epoch INTEGER, content_hash TEXT
+);`);
+// text = '' (como na origem real), conteudo em title + subtitle
+db.prepare(`INSERT INTO observations (text, title, subtitle, project, created_at, content_hash)
+  VALUES ('', ?, ?, 'proj-fiel', '2026-08-20T05:00:00Z', ?)`)
+  .run('Titulo que carrega o conteudo', 'Subtitulo com o detalhe', 'hash-fiel-1');
+db.close();
+FIXTURE_FIEL
+
+CAIXA_FIEL="$(mktemp -d)"
+TESTADOR_ORIGEM_CLAUDE_MEM="$ORIGEM_FIEL" RFM_ROOT="$CAIXA_FIEL" node "$SRC/scripts/importar-claude-mem.cjs" > /dev/null 2>&1
+# O `cd` é necessário: caminho POSIX embutido em `node -e` NÃO passa pela
+# conversão do MSYS (ela só vale para argumento e variável de ambiente), e o
+# require estoura. Com o cd, o require é relativo e não tem caminho no texto.
+CONTEUDO_FIEL=$(cd "$SRC" && RFM_ROOT="$CAIXA_FIEL" node --no-warnings -e "
+const { abrirBancoSomenteLeitura } = require('./scripts/memoria.cjs');
+const db = abrirBancoSomenteLeitura(process.env.RFM_ROOT + '/rainforest.db');
+if (!db) { process.stdout.write('SEM-BANCO'); process.exit(0); }
+const r = db.prepare('SELECT conteudo FROM observacoes').get();
+db.close();
+process.stdout.write(r ? JSON.stringify(r.conteudo) : 'SEM-LINHA');
+")
+
+if echo "$CONTEUDO_FIEL" | grep -q "Titulo que carrega o conteudo" && echo "$CONTEUDO_FIEL" | grep -q "Subtitulo com o detalhe"; then
+  ok=$((ok+1)); echo "  ok   conteudo veio de title + subtitle quando text esta vazio"
+else
+  falhou=$((falhou+1)); echo "  FALHA conteudo importado nao tem title/subtitle: $CONTEUDO_FIEL"
+fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

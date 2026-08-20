@@ -39,6 +39,30 @@ try {
 // RFM_ROOT > projeto/.rainforest > ~/.rainforest > plugin
 const { resolverRaiz } = require('../hooks/lib/raiz.cjs');
 
+// Encontra o diretório .git subindo a árvore de diretórios.
+// Retorna o caminho do diretório que contém .git, ou null se não encontrado.
+// Implementação: varredura de sistema de arquivos, sem spawns de git (decisão D1).
+function encontrarGit(inicio = process.cwd()) {
+  let atual = path.resolve(inicio);
+  const raizVolume = path.parse(atual).root;
+
+  while (atual !== raizVolume) {
+    const gitPath = path.join(atual, '.git');
+    try {
+      const stats = fs.statSync(gitPath);
+      // .git pode ser arquivo (worktree linkada) ou diretório (repositório normal)
+      if (stats.isFile() || stats.isDirectory()) {
+        return atual;
+      }
+    } catch (e) {
+      // .git não existe neste diretório, subir mais um nível
+    }
+    atual = path.dirname(atual);
+  }
+
+  return null;
+}
+
 function resolverCaminhos() {
   const { raiz } = resolverRaiz({
     plugin: path.resolve(__dirname, '..'),
@@ -50,12 +74,17 @@ function resolverCaminhos() {
     process.exit(1);
   }
 
-  // Coluna `projeto` dentro de observacoes (D9) — precisa saber de quem
-  // é a raiz. Se vier de RFM_ROOT, a raiz é só um caminho; se vier do
-  // projeto, temos que guardar qual projeto. Padrão: nome da pasta da raiz.
-  const projeto = path.basename(raiz) === '.rainforest'
-    ? path.basename(path.dirname(raiz))
-    : path.basename(raiz);
+  // Tarefa 1 (D1): O projeto vem do diretório da sessão, não da raiz de dados.
+  // Suba a árvore procurando .git (arquivo ou diretório); basename desse diretório é o projeto.
+  // Fallback: basename do cwd se .git não encontrado (sessão fora de repositório).
+  let projeto;
+  const cwd = process.cwd();
+  const topLevel = encontrarGit(cwd);
+  if (topLevel) {
+    projeto = path.basename(topLevel);
+  } else {
+    projeto = path.basename(cwd);
+  }
 
   const caminhoDb = path.join(raiz, 'rainforest.db');
 
@@ -221,6 +250,58 @@ function recuperarSeNecessario(conexao) {
   }
 }
 
+// Limpa marca_dagua sob rótulo velho de projeto.
+// Tarefa 4 (D1): O projeto muda de derivação (de raiz global para diretório da sessão).
+// Linhas antigas com projeto constante (ex: "Luis") nunca mais casam com sessões novas.
+// Esta migração é idempotente: DELETE de tabela vazia ou inexistente não causa erro.
+// Justificativa: UNIQUE(projeto, sessao) garante que qualquer sessão nova cria linha nova,
+// então é seguro deletar tudo. Marca d'água só carrega (sessao, arquivo, offset),
+// ainda não existe observação nenhuma no banco de teste, e reprocessar do offset 0 não duplica.
+// Versão de esquema desta base. Sobe quando uma migração precisa rodar UMA vez.
+// 1 = marca_dagua limpa por causa da troca de derivação de projeto (D1).
+const VERSAO_ESQUEMA = 1;
+
+function limparMarcaDagua(conexao) {
+  try {
+    // Verificar se a tabela marca_dagua existe
+    const temTabela = conexao.prepare(`
+      SELECT name FROM sqlite_master
+      WHERE type='table' AND name='marca_dagua'
+    `).all().length > 0;
+
+    if (!temTabela) {
+      // Tabela não existe — nada a limpar.
+      return;
+    }
+
+    // ESTA MIGRAÇÃO RODA UMA VEZ, E O GUARDA É O MOTIVO DE ELA EXISTIR ASSIM.
+    // `criarSchema()` é chamada em todo caminho que abre o banco — inclusive
+    // pelo `hooks/memoria-marca.cjs`, a cada gravação de marca d'água. Sem o
+    // guarda, o DELETE apagava a marca que o próprio hook acabara de escrever:
+    // o `offset_processado` nunca saía de 0 e a captura reprocessava do início
+    // para sempre, em silêncio. Medido em 2026-08-20, com três baterias
+    // (`testa-observar-offset`, `testa-memoria-recuperacao`,
+    // `testa-memoria-recuperacao-ponta-a-ponta`) ficando vermelhas de uma vez.
+    const versao = conexao.prepare('PRAGMA user_version').get().user_version;
+    if (versao >= VERSAO_ESQUEMA) {
+      return;
+    }
+
+    // Limpar todas as linhas da tabela e carimbar a versão, para não repetir.
+    conexao.exec(`DELETE FROM marca_dagua;`);
+    conexao.exec(`PRAGMA user_version = ${VERSAO_ESQUEMA};`);
+
+    if (process.env.DEBUG_SCHEMA) {
+      console.error(`Migração: marca_dagua limpa (linhas com projeto velho descartadas)`);
+    }
+  } catch (e) {
+    // Falha na limpeza não trava — a tabela pode estar em estado inesperado
+    if (process.env.DEBUG_SCHEMA) {
+      console.error(`AVISO: falha ao limpar marca_dagua: ${e.message}`);
+    }
+  }
+}
+
 // Executa o schema SQL no banco.
 function criarSchema(conexao) {
   const caminhoSchema = path.resolve(__dirname, 'esquema-memoria.sql');
@@ -289,6 +370,20 @@ function criarSchema(conexao) {
     // O banco pode estar em estado intermediário, mas deve ser recuperável.
     if (process.env.DEBUG_SCHEMA) {
       console.error(`AVISO: falha na migração de observacoes: ${e.message}`);
+    }
+  }
+
+  // Migração 3: limpar marca_dagua sob rótulo velho de projeto.
+  // Tarefa 4 (D1): O projeto muda de derivação (de raiz global para diretório da sessão).
+  // Linhas antigas com projeto constante nunca mais casam com a sessão que as escreveu.
+  // UNIQUE(projeto, sessao) garante que qualquer sessão nova cria linha nova, então é seguro deletar.
+  // Idempotente: DELETE de tabela vazia não causa erro.
+  try {
+    limparMarcaDagua(conexao);
+  } catch (e) {
+    // Falha na migração não trava schema creation — log e continua.
+    if (process.env.DEBUG_SCHEMA) {
+      console.error(`AVISO: falha na migração de marca_dagua: ${e.message}`);
     }
   }
 }
@@ -997,4 +1092,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { abrirBanco, abrirBancoSomenteLeitura, criarSchema, extrairSchema, resolverCaminhos, verificarConstraintUniqueProjetoOrigem };
+module.exports = { abrirBanco, abrirBancoSomenteLeitura, criarSchema, extrairSchema, popularFts5, resolverCaminhos, verificarConstraintUniqueProjetoOrigem };
