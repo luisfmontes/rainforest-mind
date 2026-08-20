@@ -344,6 +344,80 @@ rm -rf "$MUT"
 rm -rf "$DADOS_LEGADO"
 
 echo
+echo "== contas do harness em versoes diferentes do mesmo plugin =="
+# 2026-08-20: depois de quatro PRs e de um `claude plugin update`, a config
+# pessoal estava em 0.71.0 e a de trabalho em 0.70.0 — e o painel dizia `ok`,
+# porque a checagem 6 obedece (corretamente) a declaracao do CLAUDE_CONFIG_DIR e
+# para na config ativa. A pergunta de inventario nao tem quem a faca.
+#
+# A HOME e falsa aqui, como na secao G: sem isso a bateria leria as config dirs
+# reais de quem roda, e o resultado passaria a depender da maquina do dono.
+# Repare que o CLAUDE_CONFIG_DIR e apontado para OUTRO lugar de proposito — e
+# exatamente isso que o cenario prova: a varredura de inventario ignora a
+# declaracao, enquanto o resto do painel continua obedecendo a ela.
+HOMEDIVERGE="$SBP/home-diverge"
+monta_conta() { # $1 = nome da config dir, $2 = versao, $3 = sha
+  mkdir -p "$HOMEDIVERGE/$1/plugins"
+  cat > "$HOMEDIVERGE/$1/plugins/installed_plugins.json" <<JSON
+{"version":2,"plugins":{"rainforest-mind@rainforest-mind":[{"scope":"user",
+ "installPath":"$HOMEDIVERGE/$1/plugins/cache/rainforest-mind/$2",
+ "version":"$2","gitCommitSha":"$3"}]}}
+JSON
+}
+contas() { # roda o saude.cjs indicado ($1) contra a home falsa e devolve o item
+  ( cd "$SRC" && CLAUDE_CONFIG_DIR="$SBP/cfg" USERPROFILE="$HOMEDIVERGE" HOME="$HOMEDIVERGE" \
+    RFM_ROOT="$SBP/dados" node "$1" --json 2>/dev/null ) | node -e "
+      let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{
+        const a=JSON.parse(d).find(x=>x.item==='config dirs');
+        console.log(a ? a.nivel+' '+a.detalhe : 'ausente');
+      })"
+}
+
+rm -rf "$HOMEDIVERGE"
+monta_conta ".claude"       "0.70.0" "df1b135aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+monta_conta ".claude-outra" "0.71.0" "1369ca5bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+M1="$(contas "$SRC/scripts/saude.cjs")"
+checa "M. duas contas em versoes diferentes viram aviso" "aviso" "versoes diferentes" "$M1"
+checa "M. e nomeia as duas, com versao e sha"            "aviso" "[.claude] 0.70.0 (df1b135), [.claude-outra] 0.71.0 (1369ca5)" "$M1"
+
+# Silencio quando batem: uma linha dizendo "estao iguais" e inventario 364 dias
+# por ano, e o evento e a divergencia. Sem esta metade, bastaria imprimir sempre.
+monta_conta ".claude-outra" "0.70.0" "df1b135aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+M2="$(contas "$SRC/scripts/saude.cjs")"
+checa "M. contas iguais nao viram achado nenhum" "ausente" "ausente" "$M2"
+
+# Uma conta so nao diverge de ninguem.
+rm -rf "$HOMEDIVERGE/.claude-outra"
+checa "M. com uma conta so, nada a dizer" "ausente" "ausente" "$(contas "$SRC/scripts/saude.cjs")"
+
+echo
+echo "== MUTACAO: fazer o inventario obedecer o CLAUDE_CONFIG_DIR =="
+# A decisao de desenho inteira desta checagem e ignorar a declaracao de sessao,
+# porque declaracao de sessao nao responde pergunta de inventario. Se alguem
+# "consertar" a incoerencia aparente igualando as duas varreduras, a divergencia
+# volta a passar em silencio. A mutacao roda numa COPIA — nunca no fonte do repo.
+rm -rf "$HOMEDIVERGE"
+monta_conta ".claude"       "0.70.0" "df1b135aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+monta_conta ".claude-outra" "0.71.0" "1369ca5bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+MUTCD="$(mktemp -d)"
+cp -r "$SRC/scripts" "$MUTCD/scripts"
+node -e "
+  const fs=require('fs'), p=process.argv[1];
+  const s=fs.readFileSync(p,'utf8'), a='const dirs = todasAsConfigDirsDaHome();';
+  if(!s.includes(a)) { console.error('MUTACAO NAO APLICADA: alvo ausente'); process.exit(1); }
+  fs.writeFileSync(p, s.replace(a, 'const dirs = configDirsDoHarness();'));
+" "$MUTCD/scripts/saude.cjs"
+if [ $? -ne 0 ]; then falhou=$((falhou+1)); echo "  FALHA nao consegui aplicar a mutacao"; else
+  MM="$(contas "$MUTCD/scripts/saude.cjs")"
+  if echo "$MM" | grep -qF "versoes diferentes"; then
+    falhou=$((falhou+1)); echo "  FALHA obedecendo a declaracao, ainda acusou — o cenario M nao prova nada"
+  else
+    ok=$((ok+1)); echo "  ok   obedecendo a declaracao, a divergencia passa em silencio (ignorar a variavel era a trava)"
+  fi
+fi
+rm -rf "$MUTCD" "$HOMEDIVERGE"
+
+echo
 echo "== a esteira diz de QUEM e a branch, nao so que ha trabalho aberto (Issue #25) =="
 # 2026-08-20: esta checagem imprimiu `1 trabalho(s) em aberto -> revisar` 20 minutos
 # antes de a sessao commitar naquela mesma branch — que era de outra sessao. Ela tinha
