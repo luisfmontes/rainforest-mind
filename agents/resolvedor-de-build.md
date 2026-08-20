@@ -83,7 +83,17 @@ valem para a janela principal.
   defeito presente não é teste. A mutação que prova isso **reverte o
   comportamento** mantendo mesma aridade e mesmo contrato; mutação que quebra a
   execução mede o `catch`, não o comportamento.
+- **Mutação é editar o código de produção, não um caso de teste.** O
+  procedimento inteiro: edite o **fonte de produção**, rode a bateria, obtenha
+  **exit 1**, cole a saída vermelha, reverta. Caso de teste que aplica a
+  mutação numa cópia isolada e marca `ok` não é prova — passa nos dois mundos,
+  ainda infla o placar, e imprime "saída vermelha CONSEGUIDA" ao lado de
+  `0 falha(s)`.
 - **Branch que já é de outra sessão não recebe trabalho novo.** Antes do
   primeiro commit, cheque de quem é: esteira em aberto ou modificação alheia no
   working tree significa criar branch própria.
+- **`git -C` mente sobre onde você está.** Num diretório que não é
+  repositório, ele sobe para o pai **em silêncio** e responde por lá. Confira
+  onde está com `cd` + `git rev-parse --show-toplevel` **antes** de aceitar
+  qualquer hash — senão a conferência confirma o hash certo do repo errado.
 <!-- perfil-de-trabalho:fim -->

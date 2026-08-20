@@ -40,17 +40,17 @@ atende: D1, D2
 arquivos: `<padrão ou caminho>`
 depende de: nenhuma
 paralela: sim
-pronto quando: `<comando exato>` devolve `<saída ou exit esperado>`
+pronto quando: com `<entrada real do sistema>`, `<efeito verificável>` — provado por `<comando exato>` devolvendo `<saída esperada>`
 
 ### 2. <nome da tarefa> [tipo: ...]
 atende: D3
 arquivos: `<padrão ou caminho>`
 depende de: 1
 paralela: nao
-pronto quando: `<comando exato>` devolve `<saída ou exit esperado>`
+pronto quando: com `<entrada real do sistema>`, `<efeito verificável>` — provado por `<comando exato>` devolvendo `<saída esperada>`
 ```
 
-Cada tarefa leva: **tipo**, `atende:` (lista de `D<n>` do design que esta tarefa realiza), `arquivos:` (caminhos ou globs que ela pode tocar), `depende de:` (números das tarefas antecessoras ou "nenhuma"), `paralela: sim|nao` (só "sim" quando `depende de: nenhuma`) e critério de pronto **falsificável** — comando e saída esperada, nunca "funcionar bem" ou "funcionar corretamente".
+Cada tarefa leva: **tipo**, `atende:` (lista de `D<n>` do design que esta tarefa realiza), `arquivos:` (caminhos ou globs que ela pode tocar), `depende de:` (números das tarefas antecessoras ou "nenhuma"), `paralela: sim|nao` (só "sim" quando `depende de: nenhuma`) e critério de pronto **falsificável** — comando e saída esperada, nunca "funcionar bem" ou "funcionar corretamente", e nunca "a bateria sai 0" (ver abaixo: o critério nomeia a entrada real do sistema, não o instrumento).
 
 ### Campos obrigatórios: `atende:` e `arquivos:`
 
@@ -61,6 +61,39 @@ Cada tarefa leva: **tipo**, `atende:` (lista de `D<n>` do design que esta tarefa
 **Proibido placeholder.** Tarefa com "TBD", "a definir" ou critério de
 pronto vago não entra no plano — falta decisão, e decisão que falta volta
 para o `brainstorm`; não se resolve inventando aqui.
+
+### `pronto quando:` nomeia a ENTRADA REAL, não a bateria
+
+**"`bash <bateria>` sai 0" não é critério de pronto.** Essa forma mede o
+instrumento, não o sistema — e o instrumento é escrito por quem precisa dele
+verde, então enquanto o critério apontar para ele, a saída mais barata sempre
+será ajustar o instrumento. A forma que vale:
+
+```
+pronto quando: com <entrada real do sistema>, <efeito verificável> — provado por `<comando>`
+```
+
+Qual payload entra, qual efeito sai. "Entrada real" quer dizer **a que o mundo
+manda**, não a que o teste monta: o JSON que o harness realmente envia no
+stdin, o registro que o cliente realmente tem na tabela, o arquivo no formato
+em que ele realmente chega. A bateria continua existindo e continua rodando —
+ela só não é mais o que a tarefa promete.
+
+> 2026-08-19: as 13 tarefas de um plano tinham `pronto quando:` na forma
+> "`bash <bateria>` sai 0". A entrega passou por **10 baterias verdes**, por
+> validação por mutação feita à mão, e pelo `conferir-entrega.cjs` com exit 0 —
+> e o subsistema estava **morto em produção**: o hook lia `evento.project`, um
+> campo que o harness nunca envia, e as baterias só passavam porque
+> **injetavam esse campo à mão** no JSON de teste. Três formas do mesmo defeito
+> num dia só: teste que certifica um no-op (a função tinha um `if` de corpo
+> vazio e o teste verificava que nada mudava); payload que a produção nunca
+> produz; e fixture com schema inventado — os transcritos de teste ganharam os
+> campos `tipo`/`conteudo` que o código esperava, e o transcrito real do Claude
+> Code não tem nenhum dos dois. O denominador não é descuido de quem escreveu.
+>
+> O agravante: a armadilha estava documentada **dentro do próprio repositório**
+> (`referencias/2026-08-11-everything-claude-code.md:131`), incluindo o
+> mecanismo pelo qual a suíte não pega. O repo documentou e caiu nela.
 
 ### Trava de cobertura
 

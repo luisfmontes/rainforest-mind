@@ -423,7 +423,28 @@ dá pra assumir base certa nem base velha.
 > correções do dia.
 
 Portanto, dupla conferência. **(1) O briefing informa o hash esperado** e
-manda rodar `git log -1` como primeira ação, abortando se divergir. A única
+manda rodar `git log -1` como primeira ação, abortando se divergir — **de
+dentro do worktree, com `cd`, e nunca com `git -C`**. `git -C <dir>` sobe para
+o repositório pai **em silêncio** quando `<dir>` não é repositório, e devolve o
+hash de lá como se fosse o de cá: a regra que existe para impedir trabalho
+sobre base errada é cumprida por um comando que mente nessa situação exata.
+Por isso o primeiro comando é `git rev-parse --show-toplevel`, e ele tem que
+bater com o worktree do briefing **antes** de qualquer hash ser aceito. O
+`conferir-entrega.cjs` já checa nessa ordem; o briefing é que não checava.
+
+> 2026-08-19: a conferência devolveu o hash esperado e estava errada — o
+> diretório não era repositório, e o hash "confirmado" era o do repo
+> principal. O worktree tinha sido auto-removido por estar inalterado (o
+> agente conferiu a base, divergiu e parou sem editar, que é o que a regra
+> manda), e o resume caiu num diretório fantasma: duas pastas vazias, sem
+> `.git`, ausente de `git worktree list`. Duas regras corretas — "pare se a
+> base divergir" e "remova worktree inalterado" — se combinam num laço em que
+> a tarefa nunca começa. Custou duas rodadas de agente, e quando a base foi
+> reconferida ela **já estava certa**: a divergência era corrida na criação do
+> worktree, não estado estável. Daí o `--ff-only` abaixo ser preferível a
+> parar, quando o toplevel está certo e só o HEAD diverge.
+
+A única
 saída autorizada: o briefing lista também os **hashes velhos conhecidos**, e
 só para esses `git merge --ff-only <hash esperado>` é permitido e obrigatório
 antes de editar — fast-forward não descarta nada, qualquer outro hash
@@ -491,7 +512,22 @@ provariam a entrega errada. Adjetivo não é critério — "não decorativo",
 específica não é;
 (2) validar toda entrega **executando o artefato real e olhando a saída**
 — suíte verde e relato não são evidência; entrega de worktree tem a parte
-mecânica pronta no `conferir-entrega.cjs` da regra 11; (3) o relatório lista
+mecânica pronta no `conferir-entrega.cjs` da regra 11, e rodá-lo **não é
+opcional**: relatório internamente coerente é indistinguível de relatório
+verdadeiro por leitura, e só a comparação com o **estado do worktree** separa
+os dois. A checagem de **entrada não commitada é reprovação**, não aviso;
+
+> 2026-08-19: um agente escreveu os dois testes ponta a ponta que o briefing
+> exigia — 230 e 178 linhas, com `transcript_path` e zero `"project"`,
+> exatamente o pedido —, **viu que ficavam vermelhos, não commitou e não
+> mencionou**, e entregou como prova o verde das baterias que não exercitam o
+> caminho real. Checklist todo ✅, três baterias em `12 ok, 0 falha(s)`, e uma
+> justificativa para manter o campo velho por "compatibilidade com harness
+> antigo" — um harness que nunca existiu. O relatório não mentiu sobre nenhum
+> número que citou: mentiu por **omissão do artefato que contradizia os
+> números citados**. Quem pegou foi `FALHA 2 entrada(s) nao commitada(s)`. O
+> agravante: o código de produção estava certo, e as falhas eram dos testes
+> novos — ele tinha uma entrega boa e a escondeu junto com o problema; (3) o relatório lista
 **cada item do briefing** com feito/não-feito — "próximas fases" não
 pedidas e números que não somam são gatilho de auditoria, não detalhe;
 (4) agentes concorrentes **não compartilham a mesma instância de browser**
