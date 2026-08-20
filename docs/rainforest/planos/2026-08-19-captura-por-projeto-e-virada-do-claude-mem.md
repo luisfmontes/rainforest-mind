@@ -42,9 +42,19 @@ atende: D3
 arquivos: `hooks/memoria-session-start.cjs`, `hooks/testa-memoria-session-start.sh`
 depende de: 1
 paralela: nao
-pronto quando: `bash hooks/testa-memoria-session-start.sh` sai 0 cobrindo dois casos contra banco de fixture:
-  a) projeto com 8 observações próprias e outro projeto com 8 — a sessão do primeiro recebe **5, todas dele**, e nenhuma do segundo aparece no bloco;
-  b) projeto com **2** observações próprias — o bloco traz as 2 e completa com 3 de outros projetos, **marcadas como de outro projeto** no texto injetado.
+pronto quando: `bash hooks/testa-memoria-session-start.sh` sai 0 **exercitando o hook de verdade** (`echo '{}' | node hooks/memoria-session-start.cjs`, lendo o `additionalContext`), cobrindo dois casos contra banco de fixture:
+  a) projeto com 8 observações próprias e outro projeto com 8 — o bloco traz as **8 próprias primeiro** e completa até o teto de **14** com as do outro, cada linha com o rótulo do projeto;
+  b) projeto com **2** observações próprias — o bloco traz as 2 dele primeiro e completa com 12 de outros projetos, rotuladas.
+falsificação: removido o `WHERE projeto = ?` da consulta (o código de antes), a bateria tem que ficar **vermelha** — a ordem "próprias primeiro" cai.
+
+> **Correção de 2026-08-19 (madrugada).** A redação original dizia teto **5** e
+> "nenhuma do segundo aparece no bloco". As duas coisas estavam erradas, e o erro
+> foi meu: li o default da assinatura (`lerObservacoes(caminhoDb, limite = 5)`)
+> em vez do call site, que passa **14** desde antes deste trabalho, calibrado pela
+> D11 do desenho anterior. Com teto 14 e 8 observações próprias, completar com as
+> de outro projeto é o comportamento decidido na D3, não defeito. Fica registrado
+> porque critério que muda em silêncio é o que a esteira anterior passou o dia
+> pagando para descobrir.
 
 ### 4. As marcas d'água escritas sob o rótulo velho saem [tipo: implementar]
 atende: D1
