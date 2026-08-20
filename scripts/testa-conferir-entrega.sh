@@ -105,6 +105,24 @@ esperado "HEAD do repo principal movido durante a tarefa" 1 \
   "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES"
 git -C "$R" checkout -q "$HEAD_ANTES"
 
+# 6b — HEAD do principal AVANCOU no caminho DEFAULT, sem --paralelo. Buraco de
+# cobertura achado por revisao independente em 2026-08-15: a logica de
+# ancestralidade do .cjs (por volta das linhas 345-365) decide "avancou vira
+# aviso, recuou ou lateral vira falha" e NAO e condicionada por a.paralelo —
+# ela vale sempre, inclusive aqui no caminho default. Antes deste caso, o
+# unico exercicio do caminho default com HEAD movido era o caso 6 acima, que e
+# recuo; e o unico exercicio do ramo "avancou" era o caso `a` la embaixo, que
+# so roda com --paralelo. Alguem podia trocar o merge-base --is-ancestor por
+# uma comparacao de identidade pura (== em vez de ancestral) e a bateria
+# inteira continuava verde, porque nenhum caso sem --paralelo jamais avancava
+# o HEAD do principal para testar esse ramo especifico.
+git -C "$R" commit -q --allow-empty -m "avanco no caminho default"
+esperado "caminho default (sem --paralelo): HEAD do principal avancou -> aprovado com aviso" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES"
+contem "  ... e o aviso menciona o avanco mesmo sem --paralelo" "avancou" \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES"
+git -C "$R" reset -q --hard "$HEAD_ANTES"
+
 echo
 echo "== checagem 6: o arquivo esta no COMMIT, nao no disco (Issue #4) =="
 # Encena o defeito EXATO: .gitignore com '*' dentro do proprio diretorio ignora
