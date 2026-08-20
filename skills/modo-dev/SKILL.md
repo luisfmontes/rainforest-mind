@@ -53,7 +53,10 @@ O limiar de **quando** despachar é a regra 10 (~3.000 tokens). Aqui está o
 nesta ordem:
 
 1. **Contexto** — o que ele vai mexer e onde mora (caminho, branch, hash de
-   base da regra 11).
+   base da regra 11). A conferência da base vai escrita como **`cd` no worktree
+   e `git rev-parse --show-toplevel` antes do `rev-parse HEAD`**, nunca
+   `git -C`: fora de um repositório, o `git -C` sobe para o pai em silêncio e
+   devolve o hash de lá: a conferência confirma a base errada.
 2. **Objetivos** — numerados e concretos, um por linha.
 3. **Restrições** — o que olhar e, explicitamente, o que ignorar. E uma pergunta
    **obrigatória**, respondida antes de despachar: *este trabalho precisa tocar
@@ -84,10 +87,24 @@ nesta ordem:
    erro colados. Silêncio não é.
 5. **Critério de sucesso** — qual comando rodar, qual saída conta como pronto,
    e qual mutação (revertendo o comportamento real) tem que quebrar qual teste.
+   O critério nomeia a **entrada real do sistema** e o efeito observável, nunca
+   "a bateria sai 0" — essa forma mede o instrumento, e o instrumento é escrito
+   por quem precisa dele verde (skill `plano`, seção do `pronto quando:`). E
+   "prova por mutação" tem procedimento fechado: editar o **código de
+   produção**, rodar a bateria, obter **exit 1**, colar a saída, reverter. Caso
+   de teste que aplica a mutação numa cópia e marca `ok` não conta.
 
 O bloco 5 não é enfeite: é o que transforma "terminei" em evidência (regra 12),
 e sai pronto do passo 4 da cadeia acima. Briefing vago produz trabalho vago, e
 o custo de descobrir isso é uma rodada inteira.
+
+**Na volta, antes de aceitar:** `node scripts/conferir-entrega.cjs --worktree
+<wt> --base <hash> --head-antes <hash>` é obrigatório, e **`entrada(s) nao
+commitada(s)` é reprovação, não aviso**. Relatório internamente coerente é
+indistinguível de relatório verdadeiro por leitura — só a comparação com o
+estado do worktree separa os dois. Foi o único instrumento que pegou um agente
+que escreveu os testes pedidos, viu que ficavam vermelhos, não commitou, não
+mencionou, e entregou o verde das baterias que não exercitam o caminho real.
 
 ## Despachar: encadear vários
 
