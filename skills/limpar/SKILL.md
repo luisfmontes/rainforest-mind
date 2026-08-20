@@ -55,7 +55,7 @@ neste repo em 11/08: zero worktree órfão no disco e **sete branches**
 node scripts/limpar-branches.cjs
 ```
 
-Sem `--remover` ele só lista, em sete classes. As que importam:
+Sem `--remover` ele só lista, em oito classes. As que importam:
 
 - **`resolvida-local`** — já está na base, nunca foi empurrada. É o resíduo de
   worktree de agente. Sai com `-d`, sem risco: a base contém tudo.
@@ -72,11 +72,22 @@ Sem `--remover` ele só lista, em sete classes. As que importam:
   trabalho vivo.
 - **`viva`** — não está na base e o remoto está de pé. **Nunca entra na remoção**,
   nem com `--forcar`.
+- **`padrao`** — a branch padrão do repositório (`origin/HEAD`). **Nunca entra na
+  remoção**, seja qual for a `--base`. Nasceu da Issue #23, e o ponto é que a
+  classificação estava *certa* e levava ao lugar errado — ver logo abaixo.
 
 E a base é escolhível: `--base <ref>` mede contra a ref que você passar, em vez
 de `origin/HEAD`. É o que permite limpar resíduo de agente numa esteira cujo
 trabalho ainda não chegou à `main` — sem isso, tudo que vive só na branch de
 trabalho aparece como `viva`.
+
+Esse `--base` tem um efeito que não é óbvio: a branch de trabalho **saiu** da
+`main`, então a `main` está contida nela, então a `main` satisfaz "já está na
+base". Em 2026-08-19 isso apagou a `main` local junto com as 11 branches de
+agente, e o passo seguinte do `fechar` morreu com `fatal: ambiguous argument
+'main..HEAD'`. Estar na `main` não protegia — no incidente a pessoa estava na
+branch de trabalho. Por isso a classe `padrao` existe separada da `atual` e da
+`base`, e por isso ela não olha o valor de `--base`.
 
 O modo de remoção é configurável, e o padrão é o conservador:
 
