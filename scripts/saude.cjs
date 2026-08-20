@@ -134,6 +134,34 @@ function checarEsteira() {
   if (/nenhum trabalho/.test(out)) return ok('esteira', 'nenhum trabalho em andamento');
   const linhas = out.split('\n').filter((l) => l.trim() && !/\(completo\)/.test(l));
   if (!linhas.length) return ok('esteira', 'todos os trabalhos completos');
+
+  // O slug do trabalho e `<data>-<nome da branch>` — convencao que se sustenta no
+  // acervo (`2026-08-17-memoria-e-dados-do-rainforest.json` <-> a branch
+  // `memoria-e-dados-do-rainforest`). Tirar a data e comparar com o HEAD responde
+  // uma pergunta que a listagem sozinha nao responde: **esta branch tem dono?**
+  //
+  // Em 2026-08-20 (Issue #25) esta checagem ja tinha as duas metades do fato e
+  // imprimiu so uma. A sessao leu `1 trabalho(s) em aberto -> revisar` como estado
+  // da esteira, nao como "a branch em que voce esta e de outro", e commitou em cima
+  // do trabalho alheio. Quando a correcao veio, a outra sessao ja tinha commitado
+  // por cima, e desfazer custou `rebase --onto` + `push --force-with-lease`,
+  // trocando o hash do commit dela. O fato existia 20 minutos antes do commit.
+  //
+  // O aviso NAO diz "nao commite": a sessao DONA da esteira commita nessa branch o
+  // tempo todo e com razao. Ele diz de quem e a branch, e quem sabe se e sua e voce.
+  const r = rodar('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { cwd: process.cwd() });
+  const branch = r.status === 0 ? r.out.trim() : '';
+  const daBranch = branch && branch !== 'HEAD'
+    ? linhas.find((l) => l.trim().split(/\s+/)[0].replace(/^\d{4}-\d{2}-\d{2}-/, '') === branch)
+    : null;
+
+  if (daBranch) {
+    return aviso('esteira', `${linhas.length} trabalho(s) em aberto — ESTA branch tem dono: ${daBranch.trim()}`,
+      `se o trabalho nao e seu, comece o seu em branch nova (regra 11) — a partir da base, nao daqui:\n` +
+      `        git checkout -b <sua-branch> $(git rev-parse --abbrev-ref origin/HEAD)\n` +
+      linhas.map((l) => `  ${l.trim()}`).join('\n'));
+  }
+
   aviso('esteira', `${linhas.length} trabalho(s) em aberto`,
     linhas.map((l) => `  ${l.trim()}`).join('\n'));
 }

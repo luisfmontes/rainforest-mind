@@ -33,7 +33,8 @@ primeiro degrau que segura**. Os gatilhos:
 2. **Design** — a decisão bate as **três** condições de "Qual decisão merece
    registro escrito" (difícil de reverter, surpreendente sem contexto,
    trade-off real). Aí o design **é** esse registro. Ele nasce na **branch de
-   trabalho**, nunca na `main` (regra 11 do rainforest-mind).
+   trabalho sua** — nunca a `main`, nunca a de outra sessão (regra 11 do
+   rainforest-mind; o `/saude` diz se a branch atual tem dono).
 3. **`/brainstorm`** — interroga o desenho antes de ele virar rota; entra quando o
    design custou decisão de verdade.
 4. **Planejamento** — tarefa de 3+ etapas: fatias no formato `1. [passo] →
