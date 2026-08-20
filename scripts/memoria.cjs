@@ -257,6 +257,10 @@ function recuperarSeNecessario(conexao) {
 // Justificativa: UNIQUE(projeto, sessao) garante que qualquer sessão nova cria linha nova,
 // então é seguro deletar tudo. Marca d'água só carrega (sessao, arquivo, offset),
 // ainda não existe observação nenhuma no banco de teste, e reprocessar do offset 0 não duplica.
+// Versão de esquema desta base. Sobe quando uma migração precisa rodar UMA vez.
+// 1 = marca_dagua limpa por causa da troca de derivação de projeto (D1).
+const VERSAO_ESQUEMA = 1;
+
 function limparMarcaDagua(conexao) {
   try {
     // Verificar se a tabela marca_dagua existe
@@ -270,8 +274,22 @@ function limparMarcaDagua(conexao) {
       return;
     }
 
-    // Limpar todas as linhas da tabela (idempotente)
+    // ESTA MIGRAÇÃO RODA UMA VEZ, E O GUARDA É O MOTIVO DE ELA EXISTIR ASSIM.
+    // `criarSchema()` é chamada em todo caminho que abre o banco — inclusive
+    // pelo `hooks/memoria-marca.cjs`, a cada gravação de marca d'água. Sem o
+    // guarda, o DELETE apagava a marca que o próprio hook acabara de escrever:
+    // o `offset_processado` nunca saía de 0 e a captura reprocessava do início
+    // para sempre, em silêncio. Medido em 2026-08-20, com três baterias
+    // (`testa-observar-offset`, `testa-memoria-recuperacao`,
+    // `testa-memoria-recuperacao-ponta-a-ponta`) ficando vermelhas de uma vez.
+    const versao = conexao.prepare('PRAGMA user_version').get().user_version;
+    if (versao >= VERSAO_ESQUEMA) {
+      return;
+    }
+
+    // Limpar todas as linhas da tabela e carimbar a versão, para não repetir.
     conexao.exec(`DELETE FROM marca_dagua;`);
+    conexao.exec(`PRAGMA user_version = ${VERSAO_ESQUEMA};`);
 
     if (process.env.DEBUG_SCHEMA) {
       console.error(`Migração: marca_dagua limpa (linhas com projeto velho descartadas)`);

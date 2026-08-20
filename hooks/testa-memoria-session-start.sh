@@ -296,7 +296,10 @@ echo "10. Tarefa 3 — filtro por projeto no hook de verdade (D3)"
 # Criar caixa de areia para os testes do hook
 CAIXA_HOOK="$(mktemp -d)"
 mkdir -p "$CAIXA_HOOK"
-trap 'rm -rf "$CAIXA" "$CAIXA2" "$CAIXA3" "$RAIZ_POSIX" "$CAIXA_HOOK"' EXIT
+# `set -u` derruba o trap inteiro se uma das variáveis não existir — e aí a
+# limpeza não roda e cada execução deixa pasta temporária para trás. Os `:-`
+# são o que faz o trap sobreviver a variável que a seção anterior não criou.
+trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${RAIZ_POSIX:-}" "${CAIXA_HOOK:-}" "${CAIXA_PROJETO:-}"' EXIT
 
 # Inicializar banco em RFM_ROOT
 export RFM_ROOT="$CAIXA_HOOK"
@@ -354,8 +357,10 @@ BLOCO_A=$(echo "$SAIDA_A" | node -e "const d=JSON.parse(require('fs').readFileSy
 # Contar linhas com [data] — cada linha de observação tem [data (projeto)]
 NUM_LINHAS_A=$(echo "$BLOCO_A" | grep -c "\\[2026")
 
-# Verificar que as primeiras são de projeto-a
-PRIMEIRAS_A=$(echo "$BLOCO_A" | grep -o "\\(projeto-a\\)" | head -8 | wc -l)
+# Verificar que as OITO PRIMEIRAS linhas, em ordem, são de projeto-a.
+# Contar ocorrências no bloco inteiro não serve: passa com o filtro quebrado,
+# porque as 8 estariam lá de qualquer jeito — só que no meio das outras.
+PRIMEIRAS_A=$(echo "$BLOCO_A" | grep "\\[2026" | head -8 | grep -c "(projeto-a)")
 
 # Verificar que tem algumas de projeto-b depois
 TEM_B=$(echo "$BLOCO_A" | grep -c "\\(projeto-b\\)")
@@ -366,10 +371,10 @@ else
   falhou=$((falhou+1)); echo "  FALHA bloco tem $NUM_LINHAS_A linhas, esperado 14"
 fi
 
-if [ "$PRIMEIRAS_A" -ge "5" ]; then
-  ok=$((ok+1)); echo "  ok    primeiras 5+ linhas são de projeto-a"
+if [ "$PRIMEIRAS_A" = "8" ]; then
+  ok=$((ok+1)); echo "  ok    as 8 primeiras linhas, em ordem, são de projeto-a"
 else
-  falhou=$((falhou+1)); echo "  FALHA encontrei $PRIMEIRAS_A linhas de projeto-a nas primeiras, esperado >= 5"
+  falhou=$((falhou+1)); echo "  FALHA das 8 primeiras linhas, $PRIMEIRAS_A são de projeto-a, esperado 8"
 fi
 
 if [ "$TEM_B" -gt "0" ]; then
@@ -439,32 +444,38 @@ else
 fi
 
 echo
-echo "  10.c — FALSIFICAÇÃO: remover WHERE projeto = ?"
-# Criar backup da version nova
-cp "$HOOK" "$CAIXA_HOOK/hook-novo.cjs"
+echo "  10.c — FALSIFICAÇÃO: o filtro invertido tem que derrubar 10.a"
+# A mutação roda numa CÓPIA, nunca no arquivo versionado: bateria que edita o
+# próprio fonte deixa o repositório mutado se morrer no meio, e esta roda no CI.
+COPIA_MUT="$(mktemp -d)"
+cp -r "$(dirname "$HOOK")" "$COPIA_MUT/hooks"
+cp -r "$(dirname "$HOOK")/../scripts" "$COPIA_MUT/scripts"
 
-# Remover a cláusula WHERE projeto = ? da primeira query (deixa unfiltered)
-sed -i.bak 's/WHERE projeto = ?/-- WHERE projeto = ? REMOVIDO PARA FALSIFICACAO/' "$HOOK"
+# A mutação é `=` -> `!=`: mesma aridade de parâmetros, SQL continua VÁLIDO, e
+# o significado inverte. A primeira versão desta prova comentava a linha do
+# WHERE, o que deixava a consulta com um placeholder e dois binds — ela
+# estourava, caía no catch, e devolvia bloco VAZIO. Aí o teste "passava" porque
+# a primeira linha de um bloco vazio não menciona projeto-a: passaria igual com
+# a função inteira apagada. Medido em 2026-08-20, e é o motivo da guarda abaixo.
+sed -i 's/WHERE projeto = ?/WHERE projeto != ?/' "$COPIA_MUT/hooks/memoria-session-start.cjs"
 
-# Rodar teste novamente (agora SEM filtro)
-SAIDA_MUTADA=$(cd "$PASTA_A" && RFM_ROOT="$CAIXA_HOOK" echo '{}' | node "$HOOK" 2>/dev/null)
+SAIDA_MUTADA=$(cd "$PASTA_A" && echo '{}' | node "$COPIA_MUT/hooks/memoria-session-start.cjs" 2>/dev/null)
 BLOCO_MUTADO=$(echo "$SAIDA_MUTADA" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); process.stdout.write((d.hookSpecificOutput||{}).additionalContext||'')")
 
-# Com o filtro removido, projeto-a não recebe SUAS observações primeiro
-# As observações são devolvidas em ordem DESC por criada_em, então projeto-b (mais antigas = datas menores)
-# vem ANTES quando sem filtro. Verificar que a ordem mudou.
-PRIMEIRO_BLOCO_MUTADO=$(echo "$BLOCO_MUTADO" | head -1)
+LINHAS_MUTADAS=$(echo "$BLOCO_MUTADO" | grep -c "\\[2026")
+PRIMEIRA_MUTADA=$(echo "$BLOCO_MUTADO" | grep "\\[2026" | head -1)
 
-# Se começar com projeto-b ou não marcar projeto-a primeiro, é falso positivo (filtro não está funcionando)
-if echo "$PRIMEIRO_BLOCO_MUTADO" | grep -q "projeto-a"; then
-  falhou=$((falhou+1)); echo "  FALHA filtro não foi removido (primeiro resultado ainda é projeto-a)"
+if [ "$LINHAS_MUTADAS" -lt 1 ]; then
+  # Guarda anti-vacuidade: bloco vazio não prova filtro nenhum, prova que a
+  # mutação quebrou a consulta. Prova que não pode falhar não é prova.
+  falhou=$((falhou+1)); echo "  FALHA a mutação degradou para bloco vazio — a falsificação não vale"
+elif echo "$PRIMEIRA_MUTADA" | grep -q "(projeto-a)"; then
+  falhou=$((falhou+1)); echo "  FALHA filtro invertido e a primeira linha ainda é de projeto-a — a bateria não detecta"
 else
-  ok=$((ok+1)); echo "  ok    VERMELHO: sem filtro, ordem se inverte (teste detecta a mudança)"
+  ok=$((ok+1)); echo "  ok    VERMELHO: com o filtro invertido, a primeira linha é de outro projeto ($LINHAS_MUTADAS linhas, bloco não-vazio)"
 fi
 
-# Restaurar código correto
-cp "$CAIXA_HOOK/hook-novo.cjs" "$HOOK"
-rm -f "$HOOK.bak" "$CAIXA_HOOK/hook-novo.cjs"
+rm -rf "$COPIA_MUT"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
