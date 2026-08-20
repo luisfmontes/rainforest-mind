@@ -85,9 +85,62 @@ escrito, porque a captura nunca gravou.
   `ANTHROPIC_API_KEY`, que não existe nesta máquina. Continua na mesa, junto da
   decisão em aberto.
 
+- **D6 — A passada de LLM sai por `claude -p --model claude-haiku-4-5-20251001
+  --setting-sources ''`, com as ferramentas travadas e `cwd` neutro** — porquê: o
+  custo de 125 s do `claude -p` não era do modelo nem do prompt, era do
+  **carregamento das configurações de usuário** (plugins, marketplaces, hooks).
+  Medido em 2026-08-20: 125,3 s na linha de base, 124,5 s com MCP inteiramente
+  desligado — e **4,8 s** com `--setting-sources ''`, duas medições
+  (4.806 ms e 4.804 ms), exit 0, mesma autenticação OAuth, sem chave nenhuma.
+  Vinte e seis vezes mais rápido pelo caminho que já estava escolhido.
+
+  Brinde que resolve o outro problema por construção: nessa forma **os hooks do
+  plugin não rodam**, então não existe a recursão que ia exigir trava por
+  variável de ambiente. Conferido pelo lado de fora — `sessoes.json` tinha 11
+  sessões antes e 11 depois da chamada, ou seja, o `SessionStart` do rainforest
+  não disparou.
+
+  **E não é achado nosso: é o que o claude-mem já faz.** A leitura do código
+  dele (clone em `plugins/marketplaces/thedotmack`) mostra o mesmo desenho, e as
+  citações abaixo foram conferidas na fonte:
+  `src/sdk/hardened-options.ts:124-139` monta as opções do SDK com
+  `settingSources: []`, `mcpServers: {}`, `strictMcpConfig: true`,
+  `additionalDirectories: []`, `tools: []`, `allowedTools: []`,
+  `disallowedTools`, `permissionMode: 'dontAsk'`, `canUseTool` negando tudo,
+  `thinkingConfig: {type:'disabled'}` e `cwd` preso a um diretório neutro —
+  nunca o do projeto. O modelo default é `claude-haiku-4-5-20251001`
+  (`src/shared/SettingsDefaultsManager.ts:118`), e a autenticação padrão é
+  assinatura, não chave (`SettingsDefaultsManager.ts:125`,
+  `CLAUDE_MEM_CLAUDE_AUTH_METHOD: 'subscription'`). O `~/.claude-mem/.env`, de
+  onde ele leria uma chave, **não existe nesta máquina** — e o log de 2026-08-19
+  tem 40 ocorrências de `authMethod=Claude Code OAuth token` contra **zero** de
+  token injetado, com observações gravadas mesmo assim. Ele nunca precisou de
+  chave porque spawna o **binário `claude` do próprio usuário** e deixa o CLI
+  resolver a credencial.
+
+  Copiamos o travamento de ferramenta junto, e por um motivo prático: o que a
+  passada precisa é resumir texto, não navegar. Agente de resumo com Read e Bash
+  na mão é superfície de ataque sobre o transcrito, que é conteúdo não
+  confiável.
+
+- **D7 — Nada de worker residente, nem de sessão reaproveitada entre chamadas** —
+  porquê: o claude-mem sustenta um daemon Express em porta fixa e um subprocesso
+  `claude` mantido vivo por um async generator, com timeout de ociosidade de 3
+  minutos (`src/services/worker/SessionMessageBuffer.ts:5`, conferido). É isso
+  que compra os 2 a 10 s por passada morna dele — e é exatamente a arquitetura
+  que a fase 1 rejeitou, porque processo de pé é a causa medida da falha que
+  originou este trabalho. Nossa passada roda uma vez por sessão, no `SessionEnd`:
+  pagar 4,8 s de partida a cada sessão é mais barato que manter qualquer coisa
+  viva, e o cold start medido no log dele para o caminho com worker é ~16 s,
+  pior que o nosso sem worker.
+
 ## Em aberto
 
-- **Como a passada de LLM chama o modelo.** A escolha de 2026-08-19 foi
+- (nada — a última fronteira fechou com a medição do `--setting-sources`)
+
+## Histórico da decisão da LLM
+
+- A escolha de 2026-08-19 foi
   `claude -p` com haiku, pela autenticação que já existe na máquina. As medições
   da mesma noite derrubaram a premissa de que isso sai barato:
 
@@ -102,6 +155,10 @@ escrito, porque a captura nunca gravou.
   de CLAUDE.md — sobe em 1,3 s. Ou seja, os ~125 s são o ambiente que o
   `--bare` não carrega, e é o mesmo peso de processo de que este trabalho está
   saindo.
+
+  **Resolvido na D6**, e o que destravou foi a pergunta do Luís ("como o
+  claude-mem faz? não podemos replicar?"): o `--setting-sources ''` corta esse
+  ambiente sem trocar a autenticação, e a chave de API deixou de ser necessária.
 
   Dois limites do mesmo caminho, medidos junto: o trecho vai no **argumento**,
   porque `claude -p "instrução"` com stdin canalizado **trava** (morto em 120 s);

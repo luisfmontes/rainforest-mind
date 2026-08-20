@@ -63,13 +63,25 @@ depende de: 1
 paralela: nao
 pronto quando: a migração remove de `marca_dagua` as linhas cujo `projeto` não corresponde mais à derivação nova, e `node scripts/memoria.cjs esquema --json` continua saindo 0 depois dela. A `UNIQUE(projeto, sessao)` é a razão: linha velha com `projeto` constante nunca mais casa com a sessão que a escreveu, e fica órfã para sempre.
 
-### 5. Passada de LLM ligada de verdade [tipo: implementar] — BLOQUEADA
-atende: (decisão em aberto no design)
-pronto quando: a definir junto com o caminho escolhido. O critério **não** pode ser "a marca d'água fica intacta quando a LLM falha" — foi exatamente esse o critério que o toco de hoje satisfaz. Tem que ser observação **gravada** no banco a partir de transcrito real, com `projeto` correto, conferida por `SELECT`.
+### 5. Passada de LLM ligada de verdade [tipo: implementar]
+atende: D6
+arquivos: `scripts/observar.cjs`, `scripts/testa-observar.sh`
+depende de: 1
+paralela: nao
+pronto quando: os quatro itens abaixo, cada um com comando e saída colados:
+  a) `bash scripts/testa-observar.sh` sai 0, com caso novo em que o dublê devolve texto e a observação **aparece no banco** — `SELECT projeto, conteudo FROM observacoes` traz a linha, com o `projeto` resolvido pela tarefa 1;
+  b) **prova de ponta a ponta com a LLM de verdade**, rodada à mão e colada no relatório: um transcrito de fixture pequeno, `node scripts/observar.cjs` sem dublê, e o `SELECT` mostrando a observação gravada. Esta é a régua que o toco de hoje não passa: hoje o mesmo comando imprime `AVISO: LLM não disponível` e não grava nada;
+  c) a linha de comando montada carrega `--setting-sources ''`, o modelo fixado, e o travamento de ferramenta da D6 — `grep -n "setting-sources\|disallowedTools\|permission-mode" scripts/observar.cjs` mostra os três;
+  d) `cwd` da chamada é diretório neutro, nunca o do projeto — para o transcrito, que é conteúdo não confiável, não conseguir puxar arquivo do repositório de quem estiver rodando.
+falsificação: com a LLM falhando (dublê que devolve `null`), **nenhuma observação vazia é gravada** e a marca d'água **não avança** — `SELECT count(*) FROM observacoes` fica em 0 e o `offset_processado` fica onde estava. Rodar e colar.
 
-### 6. Teto por chamada e fatiamento do trecho [tipo: implementar] — BLOQUEADA
-atende: (decisão em aberto no design)
-pronto quando: trecho maior que o teto vira N chamadas, e a marca d'água avança por fatia processada — nunca de uma vez só no fim.
+### 6. Teto por chamada e fatiamento do trecho [tipo: implementar]
+atende: D6
+arquivos: `scripts/observar.cjs`, `scripts/testa-observar.sh`
+depende de: 5
+paralela: nao
+pronto quando: `bash scripts/testa-observar.sh` sai 0 com um trecho de fixture **maior que o teto** (o limite medido é `ENAMETOOLONG` entre 16.908 e 33.708 caracteres de argumento; adote teto conservador e deixe-o nomeado numa constante): o dublê conta as chamadas e recebe **mais de uma**, nenhuma delas acima do teto, e a marca d'água avança **por fatia processada**, não de uma vez no fim.
+falsificação: com o teto elevado artificialmente acima do trecho, a chamada única tem que estourar `ENAMETOOLONG` — se não estourar, o teste não está exercitando o caminho que a constante existe para evitar.
 
 ### 7. A virada: importar, provar, desligar [tipo: configurar]
 atende: D5
