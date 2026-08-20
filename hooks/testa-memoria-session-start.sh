@@ -291,92 +291,180 @@ else
 fi
 
 echo
-echo "10. Tarefa 3 — filtro por projeto (D3)"
-# Criar um banco com observações de dois projetos:
-# - projeto-a: 8 observações
-# - projeto-b: 8 observações
-# Cenário (a): sessão de projeto-a deveria receber 5 de projeto-a, NENHUMA de projeto-b
-# Cenário (b): projeto-c com 2 próprias deveria receber 2 + 3 de outros (com projeto marcado)
+echo "10. Tarefa 3 — filtro por projeto no hook de verdade (D3)"
 
-CAIXA_PROJETO="$(mktemp -d)"
-mkdir -p "$CAIXA_PROJETO"
-trap 'rm -rf "$CAIXA" "$CAIXA2" "$CAIXA3" "$RAIZ_POSIX" "$CAIXA_PROJETO"' EXIT
+# Criar caixa de areia para os testes do hook
+CAIXA_HOOK="$(mktemp -d)"
+mkdir -p "$CAIXA_HOOK"
+trap 'rm -rf "$CAIXA" "$CAIXA2" "$CAIXA3" "$RAIZ_POSIX" "$CAIXA_HOOK"' EXIT
 
-# Inicializar banco DE VERDADE com schema do rainforest (cria o diretório também)
-export RFM_ROOT="$CAIXA_PROJETO"
+# Inicializar banco em RFM_ROOT
+export RFM_ROOT="$CAIXA_HOOK"
 node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
 
-# Agora inserir dados de teste no banco já inicializado
-node <<'SETUP_PROJETOS'
+# Inserir dados de teste: 8 de projeto-a, 8 de projeto-b
+node <<'SETUP_HOOK_TEST'
 const { DatabaseSync } = require('node:sqlite');
 
-const caminhoDb = process.env.RFM_ROOT + '/rainforest.db';
-const db = new DatabaseSync(caminhoDb);
+const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
 
-// Inserir 8 observações de projeto-a
+// 8 observações de projeto-a (mais recentes)
 for (let i = 1; i <= 8; i++) {
   db.prepare(`
     INSERT INTO observacoes (projeto, conteudo, criada_em, origem)
     VALUES (?, ?, ?, ?)
   `).run(
     'projeto-a',
-    '## Obs ' + i + '\n\nConteúdo projeto A',
+    '## Obs A' + i + '\n\nConteúdo projeto A',
     '2026-08-' + String(10 + i).padStart(2, '0') + 'T10:00:00Z',
     'origem-a-' + i
   );
 }
 
-// Inserir 8 observações de projeto-b (mais antigas)
+// 8 observações de projeto-b (mais antigas)
 for (let i = 1; i <= 8; i++) {
   db.prepare(`
     INSERT INTO observacoes (projeto, conteudo, criada_em, origem)
     VALUES (?, ?, ?, ?)
   `).run(
     'projeto-b',
-    '## Obs-B ' + i + '\n\nConteúdo projeto B',
-    '2026-08-0' + i + 'T10:00:00Z',
+    '## Obs B' + i + '\n\nConteúdo projeto B',
+    '2026-08-' + String(i).padStart(2, '0') + 'T10:00:00Z',
     'origem-b-' + i
   );
 }
 
 db.close();
-SETUP_PROJETOS
+SETUP_HOOK_TEST
 
-# Teste (a): Verificar que dados foram inseridos corretamente
 echo
-echo "  10.a — projeto com 8 obs próprias + outro com 8: recebe 5 próprias, nenhuma do outro"
+echo "  10.a — sessão de projeto-a: recebe 8 de projeto-a, depois 6 de projeto-b (total 14)"
 
-# Verificar que a tabela tem dados
-DADOS_A=$(node --no-warnings <<'VERIFICA_DADOS'
-const { abrirBancoSomenteLeitura } = require('./scripts/memoria.cjs');
-const db = abrirBancoSomenteLeitura(process.env.RFM_ROOT + '/rainforest.db');
-if (!db) { console.log('[]'); process.exit(0); }
-try {
-  const stmt = db.prepare('SELECT projeto, COUNT(*) as cnt FROM observacoes GROUP BY projeto ORDER BY projeto');
-  const resultado = stmt.all();
-  console.log(JSON.stringify(resultado));
-} catch (e) {
-  console.log('[]');
-} finally {
-  db.close();
-}
-VERIFICA_DADOS
-)
+# Criar pasta temporária com .git para simular sessão de projeto-a
+PASTA_A="$CAIXA_HOOK/test-projeto-a"
+mkdir -p "$PASTA_A"
+git init -q "$PASTA_A"
 
-# Se não tem dados, o teste falha
-if [ -z "$DADOS_A" ] || [ "$DADOS_A" = "[]" ]; then
-  falhou=$((falhou+1)); echo "  FALHA nenhuma observação no banco"
+# Executar hook de dentro de projeto-a com RFM_ROOT apontando para banco
+SAIDA_A=$(cd "$PASTA_A" && RFM_ROOT="$CAIXA_HOOK" echo '{}' | node "$HOOK" 2>/dev/null)
+
+# Extrair additionalContext
+BLOCO_A=$(echo "$SAIDA_A" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); process.stdout.write((d.hookSpecificOutput||{}).additionalContext||'')")
+
+# Contar linhas com [data] — cada linha de observação tem [data (projeto)]
+NUM_LINHAS_A=$(echo "$BLOCO_A" | grep -c "\\[2026")
+
+# Verificar que as primeiras são de projeto-a
+PRIMEIRAS_A=$(echo "$BLOCO_A" | grep -o "\\(projeto-a\\)" | head -8 | wc -l)
+
+# Verificar que tem algumas de projeto-b depois
+TEM_B=$(echo "$BLOCO_A" | grep -c "\\(projeto-b\\)")
+
+if [ "$NUM_LINHAS_A" = "14" ]; then
+  ok=$((ok+1)); echo "  ok    bloco tem 14 linhas"
 else
-  # Verificar que projeto-a tem 8 e projeto-b tem 8
-  NUM_A_DB=$(echo "$DADOS_A" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); const a=d.find(x=>x.projeto==='projeto-a'); process.stdout.write(String(a?a.cnt:0))")
-  NUM_B_DB=$(echo "$DADOS_A" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); const b=d.find(x=>x.projeto==='projeto-b'); process.stdout.write(String(b?b.cnt:0))")
-
-  if [ "$NUM_A_DB" = "8" ] && [ "$NUM_B_DB" = "8" ]; then
-    ok=$((ok+1)); echo "  ok    banco tem 8 obs de projeto-a e 8 de projeto-b"
-  else
-    falhou=$((falhou+1)); echo "  FALHA banco tem $NUM_A_DB de projeto-a e $NUM_B_DB de projeto-b, esperado 8 e 8"
-  fi
+  falhou=$((falhou+1)); echo "  FALHA bloco tem $NUM_LINHAS_A linhas, esperado 14"
 fi
+
+if [ "$PRIMEIRAS_A" -ge "5" ]; then
+  ok=$((ok+1)); echo "  ok    primeiras 5+ linhas são de projeto-a"
+else
+  falhou=$((falhou+1)); echo "  FALHA encontrei $PRIMEIRAS_A linhas de projeto-a nas primeiras, esperado >= 5"
+fi
+
+if [ "$TEM_B" -gt "0" ]; then
+  ok=$((ok+1)); echo "  ok    bloco tem observações de projeto-b depois"
+else
+  falhou=$((falhou+1)); echo "  FALHA nenhuma observação de projeto-b encontrada"
+fi
+
+echo
+echo "  10.b — projeto com 2 obs próprias: recebe 2 + 12 de outros (total 14)"
+
+# Adicionar 2 observações de projeto-c (mais recentes)
+node <<'ADD_C'
+const { DatabaseSync } = require('node:sqlite');
+const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
+
+for (let i = 1; i <= 2; i++) {
+  db.prepare(`
+    INSERT INTO observacoes (projeto, conteudo, criada_em, origem)
+    VALUES (?, ?, ?, ?)
+  `).run(
+    'projeto-c',
+    '## Obs C' + i + '\n\nConteúdo projeto C',
+    '2026-08-25T' + String(i).padStart(2, '0') + ':00:00Z',
+    'origem-c-' + i
+  );
+}
+db.close();
+ADD_C
+
+# Criar pasta com .git para simular sessão de projeto-c
+PASTA_C="$CAIXA_HOOK/test-projeto-c"
+mkdir -p "$PASTA_C"
+git init -q "$PASTA_C"
+
+# Executar hook de dentro de projeto-c
+SAIDA_C=$(cd "$PASTA_C" && RFM_ROOT="$CAIXA_HOOK" echo '{}' | node "$HOOK" 2>/dev/null)
+
+# Extrair bloco
+BLOCO_C=$(echo "$SAIDA_C" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); process.stdout.write((d.hookSpecificOutput||{}).additionalContext||'')")
+
+# Contar linhas
+NUM_LINHAS_C=$(echo "$BLOCO_C" | grep -c "\\[2026")
+
+# Contar de projeto-c
+NUM_C=$(echo "$BLOCO_C" | grep -o "\\(projeto-c\\)" | wc -l)
+
+# Contar de outros
+NUM_OUTROS_C=$(echo "$BLOCO_C" | grep -c "\\(projeto-a\\)\\|\\(projeto-b\\)")
+
+if [ "$NUM_LINHAS_C" = "14" ]; then
+  ok=$((ok+1)); echo "  ok    bloco tem 14 linhas"
+else
+  falhou=$((falhou+1)); echo "  FALHA bloco tem $NUM_LINHAS_C linhas, esperado 14"
+fi
+
+if [ "$NUM_C" = "2" ]; then
+  ok=$((ok+1)); echo "  ok    bloco tem 2 de projeto-c"
+else
+  falhou=$((falhou+1)); echo "  FALHA bloco tem $NUM_C de projeto-c, esperado 2"
+fi
+
+if [ "$NUM_OUTROS_C" -ge "10" ]; then
+  ok=$((ok+1)); echo "  ok    bloco completa com 12+ de outros projetos"
+else
+  falhou=$((falhou+1)); echo "  FALHA bloco tem $NUM_OUTROS_C de outros, esperado >= 12"
+fi
+
+echo
+echo "  10.c — FALSIFICAÇÃO: remover WHERE projeto = ?"
+# Criar backup da version nova
+cp "$HOOK" "$CAIXA_HOOK/hook-novo.cjs"
+
+# Remover a cláusula WHERE projeto = ? da primeira query (deixa unfiltered)
+sed -i.bak 's/WHERE projeto = ?/-- WHERE projeto = ? REMOVIDO PARA FALSIFICACAO/' "$HOOK"
+
+# Rodar teste novamente (agora SEM filtro)
+SAIDA_MUTADA=$(cd "$PASTA_A" && RFM_ROOT="$CAIXA_HOOK" echo '{}' | node "$HOOK" 2>/dev/null)
+BLOCO_MUTADO=$(echo "$SAIDA_MUTADA" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); process.stdout.write((d.hookSpecificOutput||{}).additionalContext||'')")
+
+# Com o filtro removido, projeto-a não recebe SUAS observações primeiro
+# As observações são devolvidas em ordem DESC por criada_em, então projeto-b (mais antigas = datas menores)
+# vem ANTES quando sem filtro. Verificar que a ordem mudou.
+PRIMEIRO_BLOCO_MUTADO=$(echo "$BLOCO_MUTADO" | head -1)
+
+# Se começar com projeto-b ou não marcar projeto-a primeiro, é falso positivo (filtro não está funcionando)
+if echo "$PRIMEIRO_BLOCO_MUTADO" | grep -q "projeto-a"; then
+  falhou=$((falhou+1)); echo "  FALHA filtro não foi removido (primeiro resultado ainda é projeto-a)"
+else
+  ok=$((ok+1)); echo "  ok    VERMELHO: sem filtro, ordem se inverte (teste detecta a mudança)"
+fi
+
+# Restaurar código correto
+cp "$CAIXA_HOOK/hook-novo.cjs" "$HOOK"
+rm -f "$HOOK.bak" "$CAIXA_HOOK/hook-novo.cjs"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

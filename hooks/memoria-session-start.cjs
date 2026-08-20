@@ -27,6 +27,20 @@ function lerObservacoes(caminhoDb, projetoAtual, limiteTotal = 5) {
     }
 
     try {
+      // Tarefa 3 (D3): Se projeto não resolveu, busca sem filtro (fallback).
+      // WHERE projeto = NULL nunca casa em SQL, então precisamos da busca sem filtro.
+      if (!projetoAtual) {
+        const queryTudo = `
+          SELECT id, projeto, conteudo, criada_em
+          FROM observacoes
+          ORDER BY criada_em DESC
+          LIMIT ?
+        `;
+        const stmtTudo = conexao.prepare(queryTudo);
+        const resultado = stmtTudo.all(limiteTotal) || [];
+        return resultado;
+      }
+
       // Tarefa 3 (D3): Busca as observações do projeto atual, até o limite.
       const queryPropio = `
         SELECT id, projeto, conteudo, criada_em
