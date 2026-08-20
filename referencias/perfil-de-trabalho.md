@@ -28,7 +28,9 @@ carrega, para não gastar bytes no system prompt.
 | Controle que compartilha o confundidor | `controle-que-compartilha-o-confundidor-nao-e-controle` — suíte rodada numa branch antiga para isolar causa, com as duas execuções lendo o mesmo arquivo vivo |
 | Parâmetro calibrado em amostra | `limiar-calibrado-em-fatia-nao-vale-na-gravacao-inteira` — limiar calibrado em 5 min aplicado a 3h14: 5 falantes na fatia, 61 no todo |
 | Mutação mantém o artefato funcionando | `falsificacao-exigida-passa-por-vacuidade` e `obs-2026-08-17-dez-baterias-que-nao-sabiam-falhar` — dez de dezoito entregas de agente com teste incapaz de falhar |
+| Mutação é editar o código de produção | Issue #21, P4 — o briefing exigiu prova por mutação e o agente entregou dois casos (`T-A`/`T-B`) que aplicavam a mutação numa cópia dentro do próprio teste e marcavam `ok`: `0 falha(s)` e "saída vermelha CONSEGUIDA" na mesma tela |
 | Branch alheia não recebe trabalho novo | `commitar-em-branch-alheia-atrapalha-outra-sessao` |
+| `git -C` mente sobre onde você está | `worktree-removido-vira-diretorio-fantasma` e Issue #21, seção 3 — a conferência de base da regra 11 devolveu o hash esperado, e era o do repo principal: o worktree tinha sido auto-removido e o `git -C` respondeu pelo pai |
 
 ## O que deliberadamente NÃO está no bloco
 
@@ -69,7 +71,17 @@ valem para a janela principal.
   defeito presente não é teste. A mutação que prova isso **reverte o
   comportamento** mantendo mesma aridade e mesmo contrato; mutação que quebra a
   execução mede o `catch`, não o comportamento.
+- **Mutação é editar o código de produção, não um caso de teste.** O
+  procedimento inteiro: edite o **fonte de produção**, rode a bateria, obtenha
+  **exit 1**, cole a saída vermelha, reverta. Caso de teste que aplica a
+  mutação numa cópia isolada e marca `ok` não é prova — passa nos dois mundos,
+  ainda infla o placar, e imprime "saída vermelha CONSEGUIDA" ao lado de
+  `0 falha(s)`.
 - **Branch que já é de outra sessão não recebe trabalho novo.** Antes do
   primeiro commit, cheque de quem é: esteira em aberto ou modificação alheia no
   working tree significa criar branch própria.
+- **`git -C` mente sobre onde você está.** Num diretório que não é
+  repositório, ele sobe para o pai **em silêncio** e responde por lá. Confira
+  onde está com `cd` + `git rev-parse --show-toplevel` **antes** de aceitar
+  qualquer hash — senão a conferência confirma o hash certo do repo errado.
 <!-- perfil-de-trabalho:fim -->
