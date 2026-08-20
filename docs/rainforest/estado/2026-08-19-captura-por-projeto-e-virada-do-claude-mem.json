@@ -1,0 +1,50 @@
+{
+  "slug": "2026-08-19-captura-por-projeto-e-virada-do-claude-mem",
+  "titulo": "A captura passa a ser nossa, e por projeto",
+  "criado_em": "2026-08-19",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-08-19-captura-por-projeto-e-virada-do-claude-mem.md",
+    "em": "2026-08-19"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-08-19-captura-por-projeto-e-virada-do-claude-mem.md",
+    "tarefas": 7,
+    "em": "2026-08-19"
+  },
+  "executar": {
+    "status": "ok",
+    "tarefas": 7,
+    "tarefas_ok": 6,
+    "pendentes": [
+      "Tarefa 7 (virada: desligar o claude-mem) depende de publicar a branch e da palavra do Luis"
+    ],
+    "nota": "tarefas 1 a 6; a 6 entregue sem bateria, ver revisar",
+    "em": "2026-08-20"
+  },
+  "revisar": {
+    "status": "ok",
+    "achados": 3,
+    "criticos": 0,
+    "base": "1a1dae5",
+    "head": "f0ef729",
+    "nota": "2a rodada: os 3 achados cairam com prova de mutacao; risco residual do processo orfao registrado",
+    "em": "2026-08-20"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "35 baterias + os criterios nao-bateria das tarefas 1 a 6, exit medido sem pipe",
+    "saida": "todas exit=0; T1 devolve rainforest-mind/basename-fora-de-git/nome-da-worktree; ponta a ponta com LLM real gravou observacao em 6,8s com marca 0->474; fatiamento 56802B em 3 fatias, maior 15827 de 16000; orcamento para em 1 de 3 com marca em 23166; driver node:sqlite so em memoria.cjs; nenhum .db versionado; orcamento do hook 7956 B de 8000",
+    "em": "2026-08-20"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "pr",
+    "pr": 24,
+    "em": "2026-08-20"
+  }
+}
