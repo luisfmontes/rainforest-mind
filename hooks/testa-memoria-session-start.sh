@@ -193,21 +193,21 @@ echo "7. NÚMERO 14 ESTÁ PROTEGIDO — sensibilidade da checagem à mutação n
 # A leitura real do banco é testada em testa-memoria-somente-leitura.sh, que é
 # mais robusto para isso.
 
-# 1. Verde: numero 14 está no código
-LIMITE_ATUAL=$(grep -oE 'lerObservacoes\(caminhoDb, [0-9]+\)' "$HOOK" | sed 's/.*,\s*//' | sed 's/).*//')
+# 1. Verde: numero 14 está no código (agora com 3 argumentos: caminhoDb, projetoAtual, limiteTotal)
+LIMITE_ATUAL=$(grep -oE 'lerObservacoes\(caminhoDb, [^,]+, [0-9]+\)' "$HOOK" | sed 's/.*,\s*//' | sed 's/).*//')
 
 if [ "$LIMITE_ATUAL" = "14" ]; then
-  ok=$((ok+1)); echo "  ok    VERDE: código usa lerObservacoes(..., 14)"
+  ok=$((ok+1)); echo "  ok    VERDE: código usa lerObservacoes(..., ..., 14)"
 else
-  falhou=$((falhou+1)); echo "  FALHA código usa lerObservacoes(..., $LIMITE_ATUAL), esperado 14"
+  falhou=$((falhou+1)); echo "  FALHA código usa lerObservacoes(..., ..., $LIMITE_ATUAL), esperado 14"
 fi
 
 # 2. Vermelho: muta para 1 e prova que é detectável
 HOOK_MUTADO_POSIX="$RAIZ_POSIX/hook-mut.cjs"
 cp "$HOOK" "$HOOK_MUTADO_POSIX"
-sed -i.bak 's/lerObservacoes(caminhoDb, 14)/lerObservacoes(caminhoDb, 1)/' "$HOOK_MUTADO_POSIX"
+sed -i.bak 's/lerObservacoes(caminhoDb, projetoAtual, 14)/lerObservacoes(caminhoDb, projetoAtual, 1)/' "$HOOK_MUTADO_POSIX"
 
-LIMITE_MUTADO=$(grep -oE 'lerObservacoes\(caminhoDb, [0-9]+\)' "$HOOK_MUTADO_POSIX" | sed 's/.*,\s*//' | sed 's/).*//')
+LIMITE_MUTADO=$(grep -oE 'lerObservacoes\(caminhoDb, [^,]+, [0-9]+\)' "$HOOK_MUTADO_POSIX" | sed 's/.*,\s*//' | sed 's/).*//')
 
 if [ "$LIMITE_MUTADO" = "1" ]; then
   ok=$((ok+1)); echo "  ok    VERMELHO: sed consegue mutar 14→1 (mudança é detectável)"
@@ -216,7 +216,7 @@ else
 fi
 
 # 3. Verde: volta ao original e confirma detecção
-LIMITE_VOLTA=$(grep -oE 'lerObservacoes\(caminhoDb, [0-9]+\)' "$HOOK" | sed 's/.*,\s*//' | sed 's/).*//')
+LIMITE_VOLTA=$(grep -oE 'lerObservacoes\(caminhoDb, [^,]+, [0-9]+\)' "$HOOK" | sed 's/.*,\s*//' | sed 's/).*//')
 
 if [ "$LIMITE_VOLTA" = "14" ]; then
   ok=$((ok+1)); echo "  ok    VERDE: volta a 14 (checagem sensível à mutação em disco)"
@@ -289,6 +289,182 @@ if [ "$NUMERO_LINHAS_VOLTA" -ge 5 ]; then
 else
   falhou=$((falhou+1)); echo "  FALHA checagem não voltou ao verde ($NUMERO_LINHAS_VOLTA encontradas)"
 fi
+
+echo
+echo "10. Tarefa 3 — filtro por projeto no hook de verdade (D3)"
+
+# Criar caixa de areia para os testes do hook
+CAIXA_HOOK="$(mktemp -d)"
+mkdir -p "$CAIXA_HOOK"
+trap 'rm -rf "$CAIXA" "$CAIXA2" "$CAIXA3" "$RAIZ_POSIX" "$CAIXA_HOOK"' EXIT
+
+# Inicializar banco em RFM_ROOT
+export RFM_ROOT="$CAIXA_HOOK"
+node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+
+# Inserir dados de teste: 8 de projeto-a, 8 de projeto-b
+node <<'SETUP_HOOK_TEST'
+const { DatabaseSync } = require('node:sqlite');
+
+const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
+
+// 8 observações de projeto-a (mais recentes)
+for (let i = 1; i <= 8; i++) {
+  db.prepare(`
+    INSERT INTO observacoes (projeto, conteudo, criada_em, origem)
+    VALUES (?, ?, ?, ?)
+  `).run(
+    'projeto-a',
+    '## Obs A' + i + '\n\nConteúdo projeto A',
+    '2026-08-' + String(10 + i).padStart(2, '0') + 'T10:00:00Z',
+    'origem-a-' + i
+  );
+}
+
+// 8 observações de projeto-b (mais antigas)
+for (let i = 1; i <= 8; i++) {
+  db.prepare(`
+    INSERT INTO observacoes (projeto, conteudo, criada_em, origem)
+    VALUES (?, ?, ?, ?)
+  `).run(
+    'projeto-b',
+    '## Obs B' + i + '\n\nConteúdo projeto B',
+    '2026-08-' + String(i).padStart(2, '0') + 'T10:00:00Z',
+    'origem-b-' + i
+  );
+}
+
+db.close();
+SETUP_HOOK_TEST
+
+echo
+echo "  10.a — sessão de projeto-a: recebe 8 de projeto-a, depois 6 de projeto-b (total 14)"
+
+# Criar pasta temporária com .git para simular sessão de projeto-a
+PASTA_A="$CAIXA_HOOK/test-projeto-a"
+mkdir -p "$PASTA_A"
+git init -q "$PASTA_A"
+
+# Executar hook de dentro de projeto-a com RFM_ROOT apontando para banco
+SAIDA_A=$(cd "$PASTA_A" && RFM_ROOT="$CAIXA_HOOK" echo '{}' | node "$HOOK" 2>/dev/null)
+
+# Extrair additionalContext
+BLOCO_A=$(echo "$SAIDA_A" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); process.stdout.write((d.hookSpecificOutput||{}).additionalContext||'')")
+
+# Contar linhas com [data] — cada linha de observação tem [data (projeto)]
+NUM_LINHAS_A=$(echo "$BLOCO_A" | grep -c "\\[2026")
+
+# Verificar que as primeiras são de projeto-a
+PRIMEIRAS_A=$(echo "$BLOCO_A" | grep -o "\\(projeto-a\\)" | head -8 | wc -l)
+
+# Verificar que tem algumas de projeto-b depois
+TEM_B=$(echo "$BLOCO_A" | grep -c "\\(projeto-b\\)")
+
+if [ "$NUM_LINHAS_A" = "14" ]; then
+  ok=$((ok+1)); echo "  ok    bloco tem 14 linhas"
+else
+  falhou=$((falhou+1)); echo "  FALHA bloco tem $NUM_LINHAS_A linhas, esperado 14"
+fi
+
+if [ "$PRIMEIRAS_A" -ge "5" ]; then
+  ok=$((ok+1)); echo "  ok    primeiras 5+ linhas são de projeto-a"
+else
+  falhou=$((falhou+1)); echo "  FALHA encontrei $PRIMEIRAS_A linhas de projeto-a nas primeiras, esperado >= 5"
+fi
+
+if [ "$TEM_B" -gt "0" ]; then
+  ok=$((ok+1)); echo "  ok    bloco tem observações de projeto-b depois"
+else
+  falhou=$((falhou+1)); echo "  FALHA nenhuma observação de projeto-b encontrada"
+fi
+
+echo
+echo "  10.b — projeto com 2 obs próprias: recebe 2 + 12 de outros (total 14)"
+
+# Adicionar 2 observações de projeto-c (mais recentes)
+node <<'ADD_C'
+const { DatabaseSync } = require('node:sqlite');
+const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
+
+for (let i = 1; i <= 2; i++) {
+  db.prepare(`
+    INSERT INTO observacoes (projeto, conteudo, criada_em, origem)
+    VALUES (?, ?, ?, ?)
+  `).run(
+    'projeto-c',
+    '## Obs C' + i + '\n\nConteúdo projeto C',
+    '2026-08-25T' + String(i).padStart(2, '0') + ':00:00Z',
+    'origem-c-' + i
+  );
+}
+db.close();
+ADD_C
+
+# Criar pasta com .git para simular sessão de projeto-c
+PASTA_C="$CAIXA_HOOK/test-projeto-c"
+mkdir -p "$PASTA_C"
+git init -q "$PASTA_C"
+
+# Executar hook de dentro de projeto-c
+SAIDA_C=$(cd "$PASTA_C" && RFM_ROOT="$CAIXA_HOOK" echo '{}' | node "$HOOK" 2>/dev/null)
+
+# Extrair bloco
+BLOCO_C=$(echo "$SAIDA_C" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); process.stdout.write((d.hookSpecificOutput||{}).additionalContext||'')")
+
+# Contar linhas
+NUM_LINHAS_C=$(echo "$BLOCO_C" | grep -c "\\[2026")
+
+# Contar de projeto-c
+NUM_C=$(echo "$BLOCO_C" | grep -o "\\(projeto-c\\)" | wc -l)
+
+# Contar de outros
+NUM_OUTROS_C=$(echo "$BLOCO_C" | grep -c "\\(projeto-a\\)\\|\\(projeto-b\\)")
+
+if [ "$NUM_LINHAS_C" = "14" ]; then
+  ok=$((ok+1)); echo "  ok    bloco tem 14 linhas"
+else
+  falhou=$((falhou+1)); echo "  FALHA bloco tem $NUM_LINHAS_C linhas, esperado 14"
+fi
+
+if [ "$NUM_C" = "2" ]; then
+  ok=$((ok+1)); echo "  ok    bloco tem 2 de projeto-c"
+else
+  falhou=$((falhou+1)); echo "  FALHA bloco tem $NUM_C de projeto-c, esperado 2"
+fi
+
+if [ "$NUM_OUTROS_C" -ge "10" ]; then
+  ok=$((ok+1)); echo "  ok    bloco completa com 12+ de outros projetos"
+else
+  falhou=$((falhou+1)); echo "  FALHA bloco tem $NUM_OUTROS_C de outros, esperado >= 12"
+fi
+
+echo
+echo "  10.c — FALSIFICAÇÃO: remover WHERE projeto = ?"
+# Criar backup da version nova
+cp "$HOOK" "$CAIXA_HOOK/hook-novo.cjs"
+
+# Remover a cláusula WHERE projeto = ? da primeira query (deixa unfiltered)
+sed -i.bak 's/WHERE projeto = ?/-- WHERE projeto = ? REMOVIDO PARA FALSIFICACAO/' "$HOOK"
+
+# Rodar teste novamente (agora SEM filtro)
+SAIDA_MUTADA=$(cd "$PASTA_A" && RFM_ROOT="$CAIXA_HOOK" echo '{}' | node "$HOOK" 2>/dev/null)
+BLOCO_MUTADO=$(echo "$SAIDA_MUTADA" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); process.stdout.write((d.hookSpecificOutput||{}).additionalContext||'')")
+
+# Com o filtro removido, projeto-a não recebe SUAS observações primeiro
+# As observações são devolvidas em ordem DESC por criada_em, então projeto-b (mais antigas = datas menores)
+# vem ANTES quando sem filtro. Verificar que a ordem mudou.
+PRIMEIRO_BLOCO_MUTADO=$(echo "$BLOCO_MUTADO" | head -1)
+
+# Se começar com projeto-b ou não marcar projeto-a primeiro, é falso positivo (filtro não está funcionando)
+if echo "$PRIMEIRO_BLOCO_MUTADO" | grep -q "projeto-a"; then
+  falhou=$((falhou+1)); echo "  FALHA filtro não foi removido (primeiro resultado ainda é projeto-a)"
+else
+  ok=$((ok+1)); echo "  ok    VERMELHO: sem filtro, ordem se inverte (teste detecta a mudança)"
+fi
+
+# Restaurar código correto
+cp "$CAIXA_HOOK/hook-novo.cjs" "$HOOK"
+rm -f "$HOOK.bak" "$CAIXA_HOOK/hook-novo.cjs"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

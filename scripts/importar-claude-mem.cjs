@@ -44,27 +44,51 @@ function encontrarOrigemClaudeMem() {
   return null;
 }
 
+// Normaliza nome de projeto ao último segmento do caminho.
+// Tarefa 2 (D2): `inovacao/gestao-projetos-template` → `gestao-projetos-template`.
+// Vale para `/` e para `\` em caminhos Windows.
+function normalizarProjeto(projetoOrigem) {
+  if (!projetoOrigem) return null;
+  // Pegar o último segmento do caminho (independente do separador / ou \)
+  const partes = String(projetoOrigem).split(/[\/\\]/);
+  const ultimo = partes[partes.length - 1];
+  return ultimo || null;
+}
 
 // Busca observações da origem (tabela `observations`)
+// Tarefa 2 (D2, D4): Inclui coluna `project` da origem para preservação linha a linha.
 function buscarObservacoes(conexaoOrigem) {
   try {
-    // Esquema da origem (D5): id, text, created_at, content_hash (e mais colunas não usadas aqui)
+    // Esquema da origem (D5): id, text, created_at, content_hash, project
+    // Se coluna project não existe (origem antiga), trata como null — SQL retorna NULL para coluna inexistente
     const resultado = conexaoOrigem.prepare(`
-      SELECT id, text, created_at, content_hash
+      SELECT id, text, created_at, content_hash, project
       FROM observations
       ORDER BY id ASC
     `).all();
     return resultado || [];
   } catch (e) {
-    // Se tabela não existe ou consulta falha, retornar vazio
-    // (origem incompatível ou corrompida)
-    return [];
+    // Se tabela não existe ou consulta falha (inclusive se coluna project não existe),
+    // tentar sem a coluna project (compatibilidade com origin antiga)
+    try {
+      const resultado = conexaoOrigem.prepare(`
+        SELECT id, text, created_at, content_hash, NULL as project
+        FROM observations
+        ORDER BY id ASC
+      `).all();
+      return resultado || [];
+    } catch {
+      // Se tabela não existe ou consulta falha mesmo, retornar vazio
+      // (origem incompatível ou corrompida)
+      return [];
+    }
   }
 }
 
 // Importar observações do banco de origem para o destino
+// Tarefa 2 (D2, D4): Preserva o projeto da origem, normalizado.
 // Usa discriminador estável (content_hash + id) via campo `origem` no destino
-function importarObservacoes(conexaoOrigem, conexaoDestino, projeto) {
+function importarObservacoes(conexaoOrigem, conexaoDestino, projetoFallback) {
   const observacoes = buscarObservacoes(conexaoOrigem);
 
   if (observacoes.length === 0) {
@@ -77,6 +101,16 @@ function importarObservacoes(conexaoOrigem, conexaoDestino, projeto) {
 
   for (const obs of observacoes) {
     try {
+      // Tarefa 2 (D2): Se a observação tem projeto, normalizar e usar.
+      // Senão, fallback para o projeto resolvido no destino.
+      let projetoFinal = projetoFallback;
+      if (obs.project) {
+        const normalizado = normalizarProjeto(obs.project);
+        if (normalizado) {
+          projetoFinal = normalizado;
+        }
+      }
+
       // Inserir com discriminador estável como origem
       const stmt = conexaoDestino.prepare(`
         INSERT INTO observacoes (projeto, conteudo, criada_em, origem)
@@ -84,7 +118,7 @@ function importarObservacoes(conexaoOrigem, conexaoDestino, projeto) {
       `);
 
       stmt.run({
-        projeto,
+        projeto: projetoFinal,
         conteudo: obs.text || '',
         criada_em: obs.created_at || new Date().toISOString(),
         // Discriminador estável: identifica origem e evita reimportação
