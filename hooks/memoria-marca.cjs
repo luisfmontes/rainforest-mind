@@ -1,0 +1,292 @@
+#!/usr/bin/env node
+/**
+ * Hook: marca d'água sobre o transcrito.
+ *
+ * Eventos: Stop, SessionEnd — gravam o ponto de processamento na abertura seguinte.
+ *
+ * Responsabilidade (tarefa 10): gravar na tabela `marca_dagua` o ponto de
+ * processamento atual (sessão, caminho do transcrito, offset processado),
+ * permitindo que uma sessão interrompida seja recuperada na abertura seguinte.
+ *
+ * Justificativa dos eventos:
+ * - Stop: dispara quando o usuário interrompe a sessão manualmente.
+ * - SessionEnd: dispara ao término natural de uma sessão (encerramento do harness).
+ * - Em ambos os casos, marca o ponto de processamento para recuperação na abertura seguinte.
+ *
+ * Propriedades exigidas:
+ * - Zero spawn/exec (nenhum processo novo).
+ * - Idempotente: recuar offset e reprocessar = mesma contagem final.
+ * - Degradação graciosa: banco ausente/corrompido não trava o hook.
+ */
+
+const fs = require('fs');
+const path = require('path');
+const { resolverRaiz } = require('./lib/raiz.cjs');
+const { abrirBanco, criarSchema, resolverCaminhos } = require(
+  path.join(__dirname, '..', 'scripts', 'memoria.cjs')
+);
+
+// Lê JSON do stdin (evento do harness).
+function lerEvento() {
+  try {
+    const input = fs.readFileSync(0, 'utf8');
+    return JSON.parse(input);
+  } catch (e) {
+    // Sem stdin válido, sem dados — exit 0, não bloqueia.
+    return {};
+  }
+}
+
+// Resolve caminhos da raiz de dados.
+function resolverDados() {
+  const { raiz } = resolverRaiz({
+    plugin: path.resolve(__dirname, '..'),
+  });
+
+  if (!raiz) {
+    return null;
+  }
+
+  return {
+    raiz,
+    caminhoDb: path.join(raiz, 'rainforest.db'),
+  };
+}
+
+// Resolve o caminho do transcrito.
+// O harness passa o caminho pronto em evento.transcript_path (D13).
+// Fallback: tenta montar a partir de CLAUDE_CONFIG_DIR se o campo faltar.
+function resolverTranscrito(evento) {
+  // Fonte primária: transcript_path do evento (harness manda pronto).
+  if (evento.transcript_path) {
+    return evento.transcript_path;
+  }
+
+  // Fallback degradação: montar a partir de CLAUDE_CONFIG_DIR se disponível.
+  const configDir = process.env.CLAUDE_CONFIG_DIR;
+  const sessionId = evento.session_id || 'desconhecida';
+
+  if (!configDir) {
+    return null;
+  }
+
+  // Tenta usar o projeto do evento (pode vir do stdin).
+  const projeto = evento.project || 'default';
+
+  // Caminho do transcrito: ${CLAUDE_CONFIG_DIR}/projects/${projeto}/${sessionId}.jsonl
+  const caminhoTranscrito = path.join(
+    configDir,
+    'projects',
+    projeto,
+    `${sessionId}.jsonl`
+  );
+
+  return caminhoTranscrito;
+}
+
+// Grava a marca d'água na tabela.
+// Para a tarefa 10: registra sessão, arquivo, offset (tamanho do arquivo).
+// CRÍTICO: preserva offset_processado ao atualizar (regressão d5).
+// INSERT ... ON CONFLICT DO UPDATE só toca as colunas "de visto" (offset, processada_em),
+// deixando offset_processado intacto para a passada de LLM consultar na abertura seguinte.
+function gravarMarca(conexao, { projeto, sessao, arquivo, offset }) {
+  const agora = new Date().toISOString();
+
+  try {
+    const stmt = conexao.prepare(`
+      INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em)
+      VALUES (?, ?, ?, ?, 0, ?)
+      ON CONFLICT(projeto, sessao) DO UPDATE SET
+        arquivo = excluded.arquivo,
+        offset = excluded.offset,
+        processada_em = excluded.processada_em
+    `);
+
+    stmt.run(projeto, sessao, arquivo, offset, agora);
+  } catch (e) {
+    // Falha ao gravar — ignorar, não travar o hook.
+  }
+}
+
+// Extrai o tamanho do transcrito (offset).
+function lerOffset(caminhoTranscrito) {
+  try {
+    if (!fs.existsSync(caminhoTranscrito)) {
+      return 0;
+    }
+    const stats = fs.statSync(caminhoTranscrito);
+    return stats.size;
+  } catch (e) {
+    return 0;
+  }
+}
+
+// Extrai o projeto a partir do caminho do transcrito.
+// Formato esperado: /path/to/projects/<projeto>/<sessao>.jsonl
+// Retorna <projeto> ou null se não conseguir extrair.
+function extrairProjeto(caminhoTranscrito) {
+  try {
+    // Normalizar para sempre usar / como separador para split
+    const caminhoNormalizado = caminhoTranscrito.replace(/\\/g, '/');
+    const partes = caminhoNormalizado.split('/');
+    const projectsIndex = partes.indexOf('projects');
+    if (projectsIndex !== -1 && projectsIndex + 1 < partes.length) {
+      const projeto = partes[projectsIndex + 1];
+      if (projeto && projeto.length > 0) {
+        return projeto;
+      }
+    }
+  } catch (e) {
+    // Ignorar erros na extração
+  }
+  return null;
+}
+
+// Recupera marcas d'água pendentes (sessões interrompidas).
+// Chamado no SessionStart com --recover.
+// Varre a tabela marca_dagua, detecta pendências (offset_visto > offset_processado)
+// e sinaliza para que observar.cjs processe na sessão atual.
+function recuperarSessoes() {
+  try {
+    const dados = resolverDados();
+    if (!dados) {
+      process.exit(0);
+    }
+
+    // Decisão D16 (reversibilidade da fase 1): se o banco não existe, é degradação
+    // graciosa — a fase 1 é leitura pura e nunca cria estado. Exit 0, sem erro.
+    if (!fs.existsSync(dados.caminhoDb)) {
+      process.exit(0);
+    }
+
+    let conexao;
+    try {
+      conexao = abrirBanco(dados.caminhoDb);
+      criarSchema(conexao);
+    } catch (e) {
+      // Banco não abrível — degradação silenciosa.
+      process.exit(0);
+    }
+
+    try {
+      // Varre todas as marcas da tabela.
+      // Nota: offset_processado pode não existir em DBs legados (antes da migração).
+      // SQLite retorna NULL para colunas inexistentes, mas se a migração rodou,
+      // offset_processado existe com default 0.
+      const stmtLer = conexao.prepare(`
+        SELECT id, projeto, sessao, arquivo, offset,
+               COALESCE(offset_processado, 0) as offset_processado
+        FROM marca_dagua
+      `);
+      const marcas = stmtLer.all();
+
+      // Tarefa 11 (D14): detecta e **sinaliza** pendência, MAS NUNCA avança offset.
+      // O offset só avança após a passada de observação (tarefa 12) processar e gravar.
+      // Sinalização: console.log de pendência detectada.
+      // A passada de observação (observar.cjs) roda em SessionStart e verifica
+      // se há pendências a processar.
+      for (const marca of marcas) {
+        try {
+          const tamanhoAtual = lerOffset(marca.arquivo);
+
+          // Se o arquivo cresceu além do offset_processado (não offset_visto),
+          // há observações pendentes para gerar.
+          if (tamanhoAtual > marca.offset_processado) {
+            // Sinaliza que há pendência nesta sessão.
+            // O formato é estruturado para ser parsável por testes.
+            console.log(`PENDENCIA: sessao=${marca.sessao} projeto=${marca.projeto} offset_processado=${marca.offset_processado} tamanho_atual=${tamanhoAtual}`);
+          }
+        } catch (e) {
+          // Erro ao processar marca específica — continua com próxima.
+        }
+      }
+
+      process.exit(0);
+    } finally {
+      conexao.close();
+    }
+  } catch (e) {
+    // Qualquer erro não antecipado — degradação silenciosa.
+    process.exit(0);
+  }
+}
+
+// Main: lê evento, resolve caminhos, grava marca.
+// Detecta se está rodando em modo --recover (SessionStart) ou modo normal (Stop/SessionEnd).
+function main() {
+  // Modo recuperação: SessionStart com --recover
+  if (process.argv.includes('--recover')) {
+    recuperarSessoes();
+    return;
+  }
+
+  // Modo normal: grava marca d'água (Stop/SessionEnd)
+  try {
+    const evento = lerEvento();
+    const sessionId = evento.session_id;
+
+    // Sem sessão, sem dados.
+    if (!sessionId) {
+      process.exit(0);
+    }
+
+    // Resolve raiz de dados.
+    const dados = resolverDados();
+    if (!dados) {
+      process.exit(0);
+    }
+
+    // Resolve caminho do transcrito.
+    const caminhoTranscrito = resolverTranscrito(evento);
+    if (!caminhoTranscrito) {
+      process.exit(0);
+    }
+
+    // Abre banco e cria schema se necessário.
+    let conexao;
+    try {
+      conexao = abrirBanco(dados.caminhoDb);
+      criarSchema(conexao);
+    } catch (e) {
+      // Banco não abrível — degradação.
+      process.exit(0);
+    }
+
+    try {
+      // Extrai projeto e offset.
+      // Fonte 1: campo project do evento (pode estar vazio)
+      // Fonte 2: extrair do caminho do transcrito (formato: projects/<projeto>/<sessao>)
+      // Fallback: nome da pasta raiz de dados
+      let projeto = evento.project;
+      if (!projeto) {
+        projeto = extrairProjeto(caminhoTranscrito);
+      }
+      if (!projeto) {
+        projeto = path.basename(dados.raiz);
+      }
+
+      const offset = lerOffset(caminhoTranscrito);
+
+      // Grava marca d'água.
+      gravarMarca(conexao, {
+        projeto,
+        sessao: sessionId,
+        arquivo: caminhoTranscrito,
+        offset,
+      });
+    } finally {
+      conexao.close();
+    }
+
+    process.exit(0);
+  } catch (e) {
+    // Qualquer erro não antecipado — degradação.
+    process.exit(0);
+  }
+}
+
+if (require.main === module) {
+  main();
+}
+
+module.exports = { gravarMarca, resolverTranscrito, lerOffset };

@@ -656,6 +656,91 @@ function checarBranches() {
     'rode: node scripts/limpar-branches.cjs (lista; so remove com --remover)');
 }
 
+// ---------------------------------------------------------------- 10. esquema
+/**
+ * Checagem de esquema do banco de dados.
+ *
+ * Achado 2 (2026-08-19): o schema mudou para UNIQUE(projeto, origem), mas
+ * bancos existentes que tinham constraint diferente não migravam. A checagem
+ * aqui detecta o descompasso ANTES que a aplicação encontre violações.
+ *
+ * Verificações:
+ * - Tabela observacoes tem UNIQUE(projeto, origem)?
+ * - Coluna offset_processado existe em marca_dagua?
+ *
+ * Tarefa 18 (D21): fala com banco via adaptador abrirBancoSomenteLeitura,
+ * removendo duplicação de acesso ao sqlite3.
+ */
+function checarEsquema() {
+  let raizDados;
+  try {
+    const { resolverRaiz } = require('../hooks/lib/raiz.cjs');
+    const { raiz } = resolverRaiz({ plugin: RAIZ_CODIGO });
+    raizDados = raiz;
+  } catch {
+    return; // sem raiz de dados: nada a checar
+  }
+
+  if (!raizDados) {
+    return; // sem raiz: nada a checar
+  }
+
+  const caminhoDb = path.join(raizDados, 'rainforest.db');
+  if (!fs.existsSync(caminhoDb)) {
+    return; // sem banco: nada a checar
+  }
+
+  // Tarefa 18: Usar adaptador (memoria.cjs) em vez de carregar driver direto
+  let abrirBancoSomenteLeitura, verificarConstraintUniqueProjetoOrigem;
+  try {
+    ({ abrirBancoSomenteLeitura, verificarConstraintUniqueProjetoOrigem } = require('../scripts/memoria.cjs'));
+  } catch {
+    return; // não consegui carregar adaptador: nada a checar
+  }
+
+  const db = abrirBancoSomenteLeitura(caminhoDb);
+  if (!db) {
+    return; // banco indisponível: degradação silenciosa
+  }
+
+  try {
+    const problemas = [];
+
+    // Verificação 1: observacoes tem UNIQUE(projeto, origem)?
+    if (!verificarConstraintUniqueProjetoOrigem(db)) {
+      problemas.push('observacoes sem UNIQUE(projeto, origem) — bancos legados precisam migrar');
+    }
+
+    // Verificação 2: marca_dagua tem offset_processado?
+    try {
+      const colunas = db.prepare('PRAGMA table_info(marca_dagua)').all();
+      const temOffset = colunas.some(c => c.name === 'offset_processado');
+
+      if (!temOffset) {
+        problemas.push('marca_dagua sem coluna offset_processado — migração de tarefa 11 ausente');
+      }
+    } catch (e) {
+      problemas.push(`erro ao verificar marca_dagua: ${e.message}`);
+    }
+
+    if (problemas.length > 0) {
+      return alerta('esquema de banco', problemas.join('; '),
+        'rode: node scripts/memoria.cjs iniciar — a migração é automática e idempotente');
+    }
+    ok('esquema de banco', 'observacoes com UNIQUE(projeto, origem), marca_dagua com offset_processado');
+  } catch (e) {
+    // Erro grave ao abrir banco: não é schema, é arquivo corrompido ou inacessível
+    alerta('esquema de banco', `nao consegui ler banco: ${e.message}`,
+      'o banco pode estar corrompido; procure um backup em .rainforest-*/');
+  } finally {
+    try {
+      db.close();
+    } catch {
+      // Ignorar erro ao fechar
+    }
+  }
+}
+
 // ---------------------------------------------------------------- saida
 
 function main() {
@@ -668,6 +753,7 @@ function main() {
   checarClaudeMem();
   checarAutocompact();
   checarBranches();
+  checarEsquema();
 
   if (process.argv.includes('--json')) {
     console.log(JSON.stringify(achados, null, 2));
