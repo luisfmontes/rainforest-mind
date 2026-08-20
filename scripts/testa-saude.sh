@@ -54,7 +54,23 @@ checa() { # nome, esperado(nivel), esperado(trecho), obtido
   fi
 }
 
-M="$SBP/cfg/plugins/marketplaces/$(basename "$SRC")"
+# Espelha `manifestoDoPlugin` do saude.cjs: quem nomeia a pasta do clone e o
+# MANIFESTO, e o basename e so o ultimo recurso. A bateria PRECISA nomear igual ao
+# produto — se ela montar o clone num lugar onde o `saude.cjs` nao vai olhar, as
+# situacoes B/C/D caem sem que haja defeito nenhum no codigo. Ver o cenario K.
+nome_do_manifesto() {
+  node -e '
+    const fs = require("fs"), path = require("path"), raiz = process.argv[1];
+    let nome = path.basename(raiz);
+    try {
+      const m = JSON.parse(fs.readFileSync(path.join(raiz, ".claude-plugin", "plugin.json"), "utf8"));
+      if (m && typeof m.name === "string" && m.name.trim()) nome = m.name.trim();
+    } catch { /* sem manifesto legivel: fica o basename, igual ao produto */ }
+    console.log(nome);
+  ' "$1"
+}
+
+M="$SBP/cfg/plugins/marketplaces/$(nome_do_manifesto "$SRC")"
 mkdir -p "$SBP/cfg/plugins/marketplaces" "$SBP/dados"
 
 ver() { # opcional: caminho da fonte a rodar (default: $SRC, o repo real)
@@ -90,7 +106,10 @@ criar_fonte_sintetica() {
   # Manifesto com o nome IGUAL ao basename da pasta: as situacoes A-D ja assumiam
   # o basename, e o nome agora sai daqui (ver `manifestoDoPlugin`). Igualar os dois
   # mantem A-D medindo o que sempre mediram e libera E-G para usar o manifesto.
-  printf '{"name":"fonte-sintetica","version":"1.0.0"}' > "$FONTE/.claude-plugin/plugin.json"
+  # O nome sai do proprio basename em vez de literal: assim a igualdade e estrutural
+  # — renomear $FONTE nao pode deixar $MF apontando para uma pasta que o produto
+  # nunca vai procurar, que e o defeito que o cenario K guarda.
+  printf '{"name":"%s","version":"1.0.0"}' "$(basename "$FONTE")" > "$FONTE/.claude-plugin/plugin.json"
   git init -q "$FONTE"
   git -C "$FONTE" -c user.email=t@t -c user.name=t add -A >/dev/null 2>&1
   git -C "$FONTE" -c user.email=t@t -c user.name=t commit -qm "inicial" >/dev/null 2>&1
@@ -323,6 +342,53 @@ fi
 rm -rf "$MUT"
 
 rm -rf "$DADOS_LEGADO"
+
+echo
+echo "== a BATERIA tambem nao pode depender do nome da propria pasta =="
+# O cenario H cobra do PRODUTO a disciplina de tirar o nome do manifesto. Ninguem a
+# cobrava do arnes, e em 2026-08-20 ele estava justamente sem ela: a mesma bateria,
+# no mesmo commit, dava `18 ok` no checkout (pasta `rainforest-mind`) e
+# `13 ok, 5 falha(s)` em qualquer copia com outro nome. O 2x2 que isolou a causa:
+#
+#   checkout principal | .git diretorio | pasta rainforest-mind | 18 ok
+#   clone comum        | .git diretorio | pasta nome-qualquer   | 13 ok, 5 falhas
+#   worktree linkado   | .git arquivo   | pasta wt-27           | 13 ok, 5 falhas
+#   worktree linkado   | .git arquivo   | pasta rainforest-mind | 18 ok
+#
+# Ser worktree nao tinha nada a ver (era a suspeita do Issue #27, e estava errada):
+# `basename "$SRC"` nomeava o clone do marketplace, o `saude.cjs` o procurava pelo
+# nome do MANIFESTO, e nas pastas com outro nome ele nao achava nada e respondia
+# "rodando direto do repo" — o ramo de sucesso. As 5 falhas pareciam defeito de
+# codigo. Vermelho que nao e defeito e pior que vermelho nenhum: ensina a ignorar
+# a bateria, e a esteira deste plugin roda em pasta de outro nome por desenho.
+#
+# Custo: esta secao roda a bateria inteira mais uma vez (~20s). E o preco de provar
+# o veredito na bancada de verdade em vez de deduzi-lo do fonte.
+if [ -z "${RFM_TESTA_SAUDE_ANINHADA:-}" ]; then
+  COPIA="$SBP/copia-com-outro-nome"
+  rm -rf "$COPIA"; mkdir -p "$COPIA"
+  # Sem o `.git`: copiar o diretorio e desperdicio, e copiar o `.git` ARQUIVO de um
+  # worktree produziria uma copia apontando para o gitdir do original. A copia vira
+  # repo proprio, de um commit so — e o que A-D precisam. E o conteudo vem da ARVORE
+  # DE TRABALHO, nao de `git clone`, senao a bateria aninhada rodaria o codigo
+  # COMMITADO e ficaria verde para uma edicao ainda por commitar.
+  ( cd "$SRC" && tar -cf - --exclude=./.git . ) | ( cd "$COPIA" && tar -xf - )
+  git init -q "$COPIA"
+  git -C "$COPIA" -c user.email=t@t -c user.name=t add -A >/dev/null 2>&1
+  git -C "$COPIA" -c user.email=t@t -c user.name=t commit -qm "copia para a bateria aninhada" >/dev/null 2>&1
+  K="$( cd "$COPIA" && RFM_TESTA_SAUDE_ANINHADA=1 bash "$COPIA/scripts/testa-saude.sh" 2>&1 | tail -1 )"
+  case "$K" in
+    *"0 falha(s)"*)
+      ok=$((ok+1)); echo "  ok   K. de pasta com outro nome a bateria da o mesmo veredito" ;;
+    *)
+      falhou=$((falhou+1))
+      echo "  FALHA K. de pasta com outro nome a bateria muda de veredito"
+      echo "        veio: $K" ;;
+  esac
+  rm -rf "$COPIA"
+else
+  echo "  (K. pulado: esta e a execucao aninhada)"
+fi
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
