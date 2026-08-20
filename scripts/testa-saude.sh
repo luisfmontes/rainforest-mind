@@ -245,23 +245,51 @@ echo
 echo "== MUTACAO: cegar o discriminador de raiz =="
 # Se as raizes forem sempre iguais, B deixa de ser detectado e volta a cair na
 # contagem impossivel — que era exatamente o estado anterior ao conserto.
-cp "$SRC/scripts/saude.cjs" "$SBP/original.cjs"
+#
+# Ate 2026-08-20 esta secao mutava "$SRC/scripts/saude.cjs" NO LUGAR e confiava
+# no `cp` de volta, algumas linhas depois, para restaurar. Mas o unico
+# `trap ... EXIT` do arquivo (la em cima) apaga $SBP — e era em $SBP que a copia
+# do original ficava guardada. Um Ctrl-C, um timeout de ferramenta ou um crash
+# na janela entre a mutacao e a restauracao deixava o saude.cjs do REPO DE
+# VERDADE com o discriminador de parentesco cego, em silencio: nada quebra
+# visivelmente, o /saude so para de detectar clone sem parentesco. Troca pelo
+# padrao que os dois blocos abaixo (mutacao J e mutacao do CLAUDE_CONFIG_DIR)
+# ja usavam: mutar uma COPIA, nunca o fonte do repo. Isso dispensa restauracao
+# e torna a interrupcao inofensiva — nao ha mais janela nenhuma para vazar.
+#
+# A copia precisa ser repo git COM manifesto, senao a checagem nem chega no
+# ramo de parentesco: saude.cjs parte de RAIZ_CODIGO (dirname do dirname do
+# script rodado), usa manifestoDoPlugin(RAIZ_CODIGO) para achar o nome, procura
+# o clone em marketplaces/<nome> dentro da config dir, confere
+# `git rev-parse --is-inside-work-tree` e so entao calcula raizDe(RAIZ_CODIGO).
+# Por isso a copia leva scripts/, skills/ e .claude-plugin/plugin.json, e vira
+# commit proprio com `git init` — a raiz dela fica propria e diferente da de
+# $M (o clone sem parentesco montado la em cima, linhas 236-237), que e
+# exatamente o que a situacao B precisa para ser detectada.
+MUTR="$(mktemp -d)"
+cp -r "$SRC/scripts" "$MUTR/scripts"
+cp -r "$SRC/skills" "$MUTR/skills"
+mkdir -p "$MUTR/.claude-plugin"
+cp "$SRC/.claude-plugin/plugin.json" "$MUTR/.claude-plugin/plugin.json"
+git init -q "$MUTR"
+git -C "$MUTR" -c user.email=t@t -c user.name=t add -A >/dev/null 2>&1
+git -C "$MUTR" -c user.email=t@t -c user.name=t commit -qm "copia para a mutacao de raiz" >/dev/null 2>&1
 node -e "
   const fs=require('fs'), p=process.argv[1];
   const s=fs.readFileSync(p,'utf8'), a='raizAqui !== raizLa';
   if(!s.includes(a)) { console.error('MUTACAO NAO APLICADA'); process.exit(1); }
   fs.writeFileSync(p, s.replace(a, 'false'));
-" "$SRC/scripts/saude.cjs"
+" "$MUTR/scripts/saude.cjs"
 if [ $? -ne 0 ]; then falhou=$((falhou+1)); echo "  FALHA nao consegui aplicar a mutacao"; else
-  S="$(ver)"
+  S="$(ver "$MUTR")"
   if echo "$S" | grep -q "sem parentesco"; then
     falhou=$((falhou+1)); echo "  FALHA com a mutacao, B continuou detectado — o teste nao prova nada"
   else
     ok=$((ok+1)); echo "  ok   cegado o discriminador, B deixa de ser detectado (era ele mesmo)"
   fi
 fi
-cp "$SBP/original.cjs" "$SRC/scripts/saude.cjs"
-checa "e restaurado, B volta a ser ALERTA"         "alerta" "sem parentesco"     "$(ver)"
+rm -rf "$MUTR"
+checa "controle: fonte intacta (nunca mutada) continua acusando B" "alerta" "sem parentesco" "$(ver)"
 
 echo
 echo "== esquema de banco: detecta falta de UNIQUE (Tarefa 23 - item 6) =="
