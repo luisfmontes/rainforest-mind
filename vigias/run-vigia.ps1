@@ -140,12 +140,23 @@ if (-not $claude) { $claude = (Get-Command claude -ErrorAction SilentlyContinue)
 if (-not $claude) {
     Stop-ComErro "claude.exe nao encontrado: defina RFM_CLAUDE_EXE ou claudeExe em $configPath"
 }
-# Modelo por vigia. Haiku é o padrão e por ora serve para todos: o mapa fica
-# vazio de propósito. Em 2026-08-08 o jardineiro perdeu 3 de 5 rondas e a culpa
-# pareceu do modelo — subir para sonnet não mudou nada, porque a causa era a
-# entrega do prompt, não a capacidade. Só subir aqui com prova, depois de
-# descartar truncamento e encoding.
-$modelos = @{}
+# Modelo por vigia. Haiku é o padrão e serve para quase todos. Em 2026-08-08 o
+# jardineiro perdeu 3 de 5 rondas e a culpa pareceu do modelo — subir para sonnet
+# não mudou nada, porque a causa era a entrega do prompt, não a capacidade. Só
+# subir aqui com prova, depois de descartar truncamento e encoding.
+#
+# 2026-08-20, sentinela-foco: a prova apareceu. Com o gmail já reabilitado no
+# comms-vigia, `claude -p --model haiku` achou mcp__gmail-leitura__list_inbox_threads
+# pelo ToolSearch, não conseguiu chamar, e inventou duas causas no mesmo turno.
+# O MESMO prompt (por STDIN, mesmo -Cwd, mesma sessão não-interativa) com
+# --model sonnet voltou com 50 threads reais da inbox. Truncamento e encoding
+# estão descartados porque os dois modelos receberam os mesmos bytes pelo mesmo
+# caminho — o que muda é atravessar ToolSearch até a chamada da tool diferida.
+# Vale só para quem depende de tool MCP diferida: o whatsapp não é diferido, e
+# por isso os vigias que só mandam mensagem continuam em haiku.
+$modelos = @{
+    'sentinela-foco' = 'sonnet'
+}
 $modelo = if ($modelos.ContainsKey($Vigia)) { $modelos[$Vigia] } else { 'haiku' }
 "modelo: $modelo" | Out-File -Append -Encoding utf8 $log
 # Tamanho do prompt no log: a evidencia de entrega vem do harness, nao do
