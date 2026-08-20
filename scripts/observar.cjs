@@ -23,9 +23,16 @@
 
 const fs = require('fs');
 const path = require('path');
+const { spawn } = require('child_process');
+const os = require('os');
 const { abrirBanco, criarSchema, resolverCaminhos } = require(
   path.join(__dirname, 'memoria.cjs')
 );
+
+// Teto conservador de argumento para CLI claude
+// Medição: ENAMETOOLONG ocorre entre 16.908 e 33.708 caracteres
+// Usar 16.000 como teto conservador para ficar bem abaixo do limite
+const TETO_ARGUMENTO = 16000;
 
 // Resolve caminhos da raiz de dados.
 function resolverDados() {
@@ -119,6 +126,53 @@ function lerTranscrito(caminhoTranscrito, offsetInicio) {
   }
 }
 
+// Lê trecho do transcrito com rastreamento de offset por evento.
+// Retorna array de objetos {evento, offsetFim} para fatiamento.
+function lerTranscritoComOffsets(caminhoTranscrito, offsetInicio) {
+  try {
+    if (!fs.existsSync(caminhoTranscrito)) {
+      return [];
+    }
+
+    // Ler arquivo como Buffer para trabalhar com offsets em bytes
+    const buffer = fs.readFileSync(caminhoTranscrito);
+    // Converter a partir do byte offsetInicio
+    const conteudo = buffer.toString('utf8', offsetInicio);
+
+    // Dividir em linhas
+    const linhas = conteudo.split('\n');
+    const eventosComOffsets = [];
+    let offsetAtual = offsetInicio;
+
+    for (const linha of linhas) {
+      if (!linha.trim()) {
+        // Linha vazia: avançar offset pelo tamanho em bytes
+        const linhaEmBytes = Buffer.byteLength(linha + '\n', 'utf8');
+        offsetAtual += linhaEmBytes;
+        continue;
+      }
+
+      try {
+        const evento = JSON.parse(linha);
+        // Calcular quantos bytes esta linha ocupa
+        const linhaEmBytes = Buffer.byteLength(linha + '\n', 'utf8');
+        offsetAtual += linhaEmBytes;
+        eventosComOffsets.push({ evento, offsetFim: offsetAtual });
+      } catch (e) {
+        // Linha malformada: avançar offset mesmo assim
+        console.error(`AVISO: linha malformada no transcrito (${e.message})`);
+        const linhaEmBytes = Buffer.byteLength(linha + '\n', 'utf8');
+        offsetAtual += linhaEmBytes;
+      }
+    }
+
+    return eventosComOffsets;
+  } catch (e) {
+    console.error(`AVISO: erro ao ler transcrito com offsets: ${e.message}`);
+    return [];
+  }
+}
+
 // Formata eventos para passar à LLM.
 // Extrai conteúdo relevante de cada evento (prompts, respostas, chamadas de ferramenta).
 // Schema real dos transcritos (Claude Code):
@@ -165,6 +219,36 @@ function formatarParaLLM(eventos) {
   return resumo.join('\n');
 }
 
+// Acha o executável `claude` varrendo o PATH, sem subir processo para descobrir
+// (nada de `where`/`which`: este arquivo existe para tirar spawn do caminho).
+// Devolve caminho absoluto ou null. `RFM_CLAUDE_EXECUTAVEL` sobrepõe, para quem
+// tem o CLI fora do PATH.
+function acharExecutavelClaude() {
+  if (process.env.RFM_CLAUDE_EXECUTAVEL) {
+    return process.env.RFM_CLAUDE_EXECUTAVEL;
+  }
+  const ehWindows = process.platform === 'win32';
+  const separador = ehWindows ? ';' : ':';
+  const extensoes = ehWindows
+    ? (process.env.PATHEXT || '.EXE;.CMD;.BAT').split(';').map((e) => e.toLowerCase())
+    : [''];
+  for (const dir of (process.env.PATH || '').split(separador)) {
+    if (!dir) continue;
+    for (const ext of extensoes) {
+      const alvo = path.join(dir, `claude${ext}`);
+      try {
+        if (fs.statSync(alvo).isFile()) {
+          if (!ehWindows) fs.accessSync(alvo, fs.constants.X_OK);
+          return alvo;
+        }
+      } catch {
+        // Caminho inexistente ou sem permissão: segue procurando.
+      }
+    }
+  }
+  return null;
+}
+
 // Chamada à LLM isolada atrás de função para permitir mock em testes.
 // Retorna promise com observação (string) ou null se falhar.
 async function chamarLLM(textoDaPassada) {
@@ -180,57 +264,101 @@ async function chamarLLM(textoDaPassada) {
     }
   }
 
-  // ====== ESTRUTURA DE CHAMADA ISOLADA ======
-  // Este é o ponto que ficará isolado atrás de função quando a credencial chegar.
+  // Invocar CLI claude com spawn, de um diretório neutro (D6): o transcrito é
+  // conteúdo NÃO CONFIÁVEL, e o resumidor não tem por que enxergar o repositório
+  // de quem está rodando. As ferramentas já estão negadas abaixo; o `cwd` é a
+  // segunda tranca.
   //
-  // Hoje, retorna null para indicar que LLM não está disponível.
-  // Quando a credencial estiver configurada (API key, host), a função
-  // será descomentada para fazer a chamada real.
-  //
-  // Estrutura:
-  //   1. Ler credencial de variável de ambiente ou arquivo de config
-  //   2. Chamar API da Anthropic (endpoint /messages)
-  //   3. Parsear resposta e extrair texto
-  //   4. Retornar observação ou null se falhar
-  //
-  // Exemplo pseudocódigo (descomentado quando credencial chegar):
-  //
-  // const chave = process.env.ANTHROPIC_API_KEY || readConfigFile('...').apiKey;
-  // if (!chave) {
-  //   console.error('ERRO: ANTHROPIC_API_KEY não configurada');
-  //   return null; // Deixa marca intacta para próxima tentativa
-  // }
-  //
-  // const prompt = `Resuma a seguinte interação em uma observação curta (1-2 frases):\n\n${textoDaPassada}`;
-  // try {
-  //   const resposta = await fetch('https://api.anthropic.com/v1/messages', {
-  //     method: 'POST',
-  //     headers: {
-  //       'x-api-key': chave,
-  //       'content-type': 'application/json',
-  //       'anthropic-version': '2023-06-01',
-  //     },
-  //     body: JSON.stringify({
-  //       model: 'claude-opus-4-1-20250805', // ou o modelo atual
-  //       max_tokens: 256,
-  //       messages: [{ role: 'user', content: prompt }],
-  //     }),
-  //   });
-  //   if (!resposta.ok) {
-  //     console.error(`API error: ${resposta.status}`);
-  //     return null;
-  //   }
-  //   const dados = await resposta.json();
-  //   const observacao = dados.content?.[0]?.text || null;
-  //   return observacao;
-  // } catch (e) {
-  //   console.error(`Erro ao chamar LLM: ${e.message}`);
-  //   return null; // Deixa marca intacta
-  // }
+  // E o `cwd` neutro exige resolver o executável ANTES: no Windows, `spawn`
+  // com `cwd` explícito não acha `claude` pelo PATH e devolve ENOENT — medido
+  // em 2026-08-20. Com o caminho absoluto do executável, `cwd` neutro funciona
+  // e a autenticação continua valendo (também medido: 4,5 s, exit 0, OAuth).
+  const executavel = acharExecutavelClaude();
+  if (!executavel) {
+    console.error('AVISO: não encontrei o executável `claude` no PATH');
+    return null;
+  }
+  const tempDir = os.tmpdir();
 
-  // Por enquanto, simular timeout/indisponibilidade
-  console.error('AVISO: LLM não disponível (credencial não configurada)');
-  return null;
+  // Se o texto está acima do teto, algo deu errado no fatiamento
+  if (textoDaPassada.length > TETO_ARGUMENTO) {
+    console.error(`AVISO: texto acima do teto (${textoDaPassada.length} > ${TETO_ARGUMENTO})`);
+    return null;
+  }
+
+  // As quebras de linha vão inteiras: argumento aceita `\n` (medido), e achatar
+  // o trecho em uma linha só apaga a estrutura de turno que o resumo usa.
+  const prompt = `Resuma a seguinte interação em uma observação curta (1-2 frases):\n\n${textoDaPassada}`;
+
+  return new Promise((resolve) => {
+    const timeout = 60000; // 60 segundos
+    const timer = setTimeout(() => {
+      console.error('AVISO: chamada à LLM expirou (timeout 60s)');
+      resolve(null);
+    }, timeout);
+
+    try {
+      // O PROMPT VEM PRIMEIRO, E ISSO NÃO É ESTILO. `--disallowedTools` é
+      // variádico: com o prompt depois dele, o CLI engole o texto como se fosse
+      // nome de ferramenta e sai com exit 1 — medido em 2026-08-20, com
+      // `Permission deny rule "responda" matches no known tool`. Mesma armadilha
+      // do `--mcp-config`. Não reordene.
+      const child = spawn(executavel, [
+        prompt,
+        '-p',
+        '--model', 'claude-haiku-4-5-20251001',
+        '--setting-sources', '',
+        '--permission-mode', 'dontAsk',
+        '--disallowedTools', 'Read,Write,Edit,Bash,Glob,Grep,WebFetch,WebSearch,Task,NotebookEdit',
+      ], {
+        cwd: tempDir,
+        windowsHide: true,
+        timeout: timeout + 5000,
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      child.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      child.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      child.stdin.end();
+
+      child.on('error', (error) => {
+        clearTimeout(timer);
+        console.error(`AVISO: erro ao chamar claude: ${error.message}`);
+        resolve(null);
+      });
+
+      child.on('close', (code) => {
+        clearTimeout(timer);
+
+        if (code !== 0) {
+          console.error(`AVISO: claude retornou exit code ${code}`);
+          if (stderr) debug(`stderr da LLM: ${stderr}`);
+          resolve(null);
+          return;
+        }
+
+        if (!stdout || !stdout.trim()) {
+          console.error('AVISO: LLM retornou saída vazia');
+          resolve(null);
+          return;
+        }
+
+        resolve(stdout.trim());
+      });
+    } catch (e) {
+      clearTimeout(timer);
+      console.error(`AVISO: erro ao invocar claude: ${e.message}`);
+      resolve(null);
+    }
+  });
 }
 
 // Grava observação no banco.
@@ -287,6 +415,7 @@ function debug(msg) {
 }
 
 // Processa uma marca d'água específica: lê, formata, passa à LLM, grava observação.
+// Com fatiamento: se o texto é maior que TETO_ARGUMENTO, divide em múltiplas chamadas.
 // Retorna true se processou com sucesso, false se pulou ou falhou.
 async function processarMarca(conexao, marca) {
   // Calcular a janela: ler a partir de offset_processado (até onde foi processado).
@@ -295,68 +424,128 @@ async function processarMarca(conexao, marca) {
   const offsetProcessado = marca.offset_processado || 0;
   debug(`janela: [${offsetProcessado}, ${marca.offset}]`);
 
-  // Ler transcrito a partir de offset_processado
-  const eventos = lerTranscrito(marca.arquivo, offsetProcessado);
-  debug(`eventos lidos: ${eventos.length}`);
+  // Ler transcrito com rastreamento de offset
+  const eventosComOffsets = lerTranscritoComOffsets(marca.arquivo, offsetProcessado);
+  debug(`eventos lidos: ${eventosComOffsets.length}`);
 
-  if (eventos.length === 0) {
+  if (eventosComOffsets.length === 0) {
     console.log(`nenhum evento novo no transcrito (sessao=${marca.sessao})`);
     return false;
   }
 
-  // Formatar para LLM
-  const textoDaPassada = formatarParaLLM(eventos);
-  debug(`texto para LLM: ${textoDaPassada.substring(0, 100)}...`);
+  // Fatiar eventos em chunks que não excedem TETO_ARGUMENTO quando formatados
+  const fatias = [];
+  let fatiaAtual = [];
+  let tamanhoAtual = 0;
+  let offsetFimAtual = offsetProcessado;
 
-  // Rejeitar prompt vazio (tarefa 15: não gravar lixo no banco)
-  if (!textoDaPassada || !textoDaPassada.trim()) {
-    console.log(`prompt vazio: nenhuma observacao para gravar (sessao=${marca.sessao})`);
-    return false;
+  for (const { evento, offsetFim } of eventosComOffsets) {
+    const textoEvento = formatarParaLLM([evento]);
+    // Se adicionar este evento ultrapassaria o teto E já temos eventos na fatia atual
+    if (tamanhoAtual + textoEvento.length > TETO_ARGUMENTO && fatiaAtual.length > 0) {
+      // Fechar fatia atual e começar nova
+      fatias.push({ eventos: fatiaAtual, offsetFim: offsetFimAtual });
+      fatiaAtual = [evento];
+      tamanhoAtual = textoEvento.length;
+      offsetFimAtual = offsetFim;
+    } else {
+      fatiaAtual.push(evento);
+      tamanhoAtual += textoEvento.length;
+      offsetFimAtual = offsetFim;
+    }
   }
 
-  // Chamar LLM
-  console.log(`processando ${eventos.length} evento(s) (sessao=${marca.sessao})...`);
-  const observacao = await chamarLLM(textoDaPassada);
-  debug(`observacao da LLM: ${observacao ? observacao.substring(0, 50) : 'null'}`);
-
-  if (!observacao) {
-    // Falha na LLM — marca intacta, tenta novamente depois
-    console.log(`LLM retornou null, marca dagua nao avanca (sessao=${marca.sessao})`);
-    return false;
+  // Adicionar última fatia se houver
+  if (fatiaAtual.length > 0) {
+    fatias.push({ eventos: fatiaAtual, offsetFim: offsetFimAtual });
   }
 
-  // Gravar observação
-  // Origem inclui offset_processado para granularidade — permite múltiplas observações
-  // por sessão sem colisão (Achado 5 revisado: discriminador granular, não por sessão inteira).
-  const gravouOk = gravarObservacao(conexao, {
-    projeto: marca.projeto,
-    conteudo: observacao,
-    origem: `sessao:${marca.sessao}:offset:${marca.offset_processado}`,
-  });
-  debug(`gravou ok: ${gravouOk}`);
+  debug(`dividido em ${fatias.length} fatia(s)`);
 
-  if (!gravouOk) {
-    // Falha ao gravar — marca intacta
-    console.log(`erro ao gravar observacao, marca dagua nao avanca (sessao=${marca.sessao})`);
-    return false;
+  // Processar cada fatia, dentro de um ORÇAMENTO DE TEMPO por execução.
+  //
+  // Por que o orçamento existe: o hook que chama este script tem teto de 120 s.
+  // O teto interno de UMA chamada é 60 s (65 s de hard-kill do filho), então
+  // duas fatias no pior caso já somam 130 s e o harness mata o processo no meio.
+  // Elevar o teto do hook não resolve, porque N cresce com o tamanho do
+  // transcrito e não tem limite superior.
+  //
+  // Parar por orçamento não perde trabalho: a marca d'água avança POR FATIA
+  // (logo abaixo), então a próxima sessão retoma exatamente de onde esta parou.
+  // Com a latência medida (~5 a 7 s por chamada), 90 s dão cerca de 12 fatias
+  // por execução — um transcrito muito grande leva algumas sessões para ser
+  // digerido, e isso é preferível a ser morto no meio a cada vez.
+  // `TESTADOR_ORCAMENTO_MS` existe para a bateria conseguir estourar o orçamento
+  // sem esperar 90 s de verdade — mesmo papel do `TESTADOR_CHAMAR_LLM`.
+  const ORCAMENTO_MS = Number(process.env.TESTADOR_ORCAMENTO_MS) || 90000;
+  const inicioDaPassada = Date.now();
+  let ultimoOffsetProcessado = marca.offset_processado;
+
+  for (let i = 0; i < fatias.length; i++) {
+    const decorrido = Date.now() - inicioDaPassada;
+    if (i > 0 && decorrido > ORCAMENTO_MS) {
+      console.log(
+        `orcamento de ${ORCAMENTO_MS}ms atingido apos ${i} fatia(s) de ${fatias.length}; ` +
+        `o resto fica para a proxima sessao (marca em ${ultimoOffsetProcessado})`
+      );
+      break;
+    }
+    const { eventos, offsetFim } = fatias[i];
+    const textoDaPassada = formatarParaLLM(eventos);
+    debug(`fatia ${i + 1}/${fatias.length}: ${eventos.length} evento(s), ${textoDaPassada.length} caracteres`);
+
+    // Rejeitar prompt vazio (tarefa 15: não gravar lixo no banco)
+    if (!textoDaPassada || !textoDaPassada.trim()) {
+      console.log(`prompt vazio em fatia ${i + 1}: nenhuma observacao para gravar`);
+      continue;
+    }
+
+    // Chamar LLM
+    console.log(`processando fatia ${i + 1}/${fatias.length} com ${eventos.length} evento(s) (sessao=${marca.sessao})...`);
+    const observacao = await chamarLLM(textoDaPassada);
+    debug(`observacao da LLM: ${observacao ? observacao.substring(0, 50) : 'null'}`);
+
+    if (!observacao) {
+      // Falha na LLM — marca intacta, tenta novamente depois
+      console.log(`LLM retornou null em fatia ${i + 1}, marca dagua nao avanca (sessao=${marca.sessao})`);
+      return false;
+    }
+
+    // Gravar observação
+    // Origem inclui offset_fim para granularidade — permite múltiplas observações
+    // por sessão sem colisão (Achado 5 revisado: discriminador granular, não por sessão inteira).
+    const gravouOk = gravarObservacao(conexao, {
+      projeto: marca.projeto,
+      conteudo: observacao,
+      origem: `sessao:${marca.sessao}:offset:${offsetFim}`,
+    });
+    debug(`gravou ok (fatia ${i + 1}): ${gravouOk}`);
+
+    if (!gravouOk) {
+      // Falha ao gravar — marca intacta
+      console.log(`erro ao gravar observacao em fatia ${i + 1}, marca dagua nao avanca (sessao=${marca.sessao})`);
+      return false;
+    }
+
+    // Avançar offset_processado APÓS cada fatia processada com sucesso
+    // Tarefa 6 (D6): marca d'água avança por fatia, não de uma vez no fim
+    const avancoOk = avancarMarca(conexao, {
+      projeto: marca.projeto,
+      sessao: marca.sessao,
+      offsetProcessado: offsetFim,
+    });
+    ultimoOffsetProcessado = offsetFim;
+    debug(`avanco ok (fatia ${i + 1}): ${avancoOk}`);
+
+    if (!avancoOk) {
+      // Falha ao avançar — aviso, mas observação já foi gravada
+      console.log(`AVISO: observacao gravada em fatia ${i + 1} mas offset_processado nao avancou (sessao=${marca.sessao})`);
+      return false;
+    }
   }
 
-  // CRÍTICO 3: Só avança offset_processado DEPOIS de gravar com sucesso.
-  // Se falhar em qualquer ponto anterior, fica intacto e tenta novamente.
-  const avancoOk = avancarMarca(conexao, {
-    projeto: marca.projeto,
-    sessao: marca.sessao,
-    offsetProcessado: marca.offset, // Avança até offset_visto (fim do que foi visto)
-  });
-  debug(`avanco ok: ${avancoOk}`);
-
-  if (!avancoOk) {
-    // Falha ao avançar — aviso, mas observação já foi gravada
-    console.log(`AVISO: observacao gravada mas offset_processado nao avancou (sessao=${marca.sessao})`);
-    return false;
-  }
-
-  console.log(`ok: observacao gravada e offset_processado avancado para sessao ${marca.sessao}`);
+  const pluralFatias = fatias.length > 1 ? 'fatias' : 'fatia';
+  console.log(`ok: observacao gravada em ${fatias.length} ${pluralFatias} para sessao ${marca.sessao}`);
   return true;
 }
 
