@@ -400,6 +400,7 @@ flowchart LR
 | `/saude` | Só o que os checadores oficiais não sabem: de quem é a raiz, margem da injeção, esteira parada, worktree órfão |
 | `modo-dev` | Disciplina de dev sob demanda (acima) |
 | `depurar` | Loop de feedback antes de hipótese (acima) |
+| `analisar` | Análise de dados em notebook: uma pergunta por vez, célula curta, e **revisão crítica do achado** (`n` visível, share vs. risco, explicação alternativa) antes de virar conclusão |
 | `executor` | Implementação mecânica em haiku, com o método embutido no system prompt |
 | `revisor` | Review/QA em sonnet: evidência primária, achado só com cenário de falha, veredito integra/não-integra |
 | `tester` | Testes em sonnet: extrai o contrato, escreve o que falta, pelo menos um adversarial |
