@@ -110,7 +110,25 @@ atende: D15
 arquivos: `docs/rainforest/design/2026-08-17-memoria-e-dados-do-rainforest.md`
 depende de: nenhuma
 paralela: sim
-pronto quando: a Issue existe no repo do claude-mem com os números medidos colados (15.331 `PostToolUse` em 8 dias, três processos por evento, `SKIP_TOOLS` lido só dentro do `worker-service.cjs`), e o design registra o link. **Texto escrito junto com o Luís antes de enviar** — publicação em repo de terceiro não sai sozinha.
+pronto quando: ~~a Issue existe no repo do claude-mem com os números medidos colados (15.331 `PostToolUse` em 8 dias, três processos por evento, `SKIP_TOOLS` lido só dentro do `worker-service.cjs`), e o design registra o link. **Texto escrito junto com o Luís antes de enviar** — publicação em repo de terceiro não sai sozinha.~~ **Régua substituída — ver emenda abaixo.** O design registra a decisão de **não** abrir a Issue, com o link da que já existe e o motivo, e nomeia o que fazer no lugar.
+
+> **Emenda de 2026-08-19 (noite), decidida com o Luís.** A régua original mandava
+> abrir Issue no `thedotmack/claude-mem` pedindo filtro antes do spawn. Conferido
+> em 2026-08-17, essa Issue **já existe** e é do próprio mantenedor:
+> [#3605 `[plan-17] Hook Wrapper Contract`](https://github.com/thedotmack/claude-mem/issues/3605),
+> descrevendo o mecanismo com mais precisão do que a nossa medição — inclusive o
+> segundo login shell por invocação e o pipe de descoberta que estoura no MSYS.
+> Abrir a nossa seria duplicata: ruído no tracker de outra pessoa, não contribuição.
+>
+> Some-se a isso o rumo confirmado nesta data: o caminho do rainforest é a **fase
+> 2**, em que a captura passa a ser nossa e os hooks do claude-mem saem da máquina.
+> Acompanhar Issue de spawn de um plugin que vai ser desligado é trabalho sem
+> destino.
+>
+> Régua nova, e é ela que o `verificar` mede: o design registra a decisão de não
+> abrir, o link da #3605, e o que fazer no lugar. Fica explícito que a régua mudou
+> — critério ajustado em silêncio é o que esta esteira passou o dia inteiro
+> pagando para descobrir.
 
 ## Emenda de 2026-08-19 — tarefas 14 a 16
 
