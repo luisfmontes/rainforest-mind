@@ -179,9 +179,12 @@ else
 fi
 
 echo "[8] memoria-marca.cjs (modo normal) com banco corrompido..."
-# O transcrito tem que EXISTIR: sem ele o hook faz early-return e nunca chega a
-# abrir o banco — medido, o check ficava verde mesmo com a degradação do hook
-# removida, porque o caminho do banco não era alcançado.
+# O transcrito existe só para o payload ser o mesmo que o harness manda. Ele NÃO
+# é o que leva o hook até o banco: `resolverTranscrito` (memoria-marca.cjs:57)
+# devolve `evento.transcript_path` sem checar `existsSync`, e medindo com o hook
+# mutado o resultado é idêntico nos dois casos (exit 1, alcançando `abrirBanco`)
+# com o arquivo presente ou ausente. Uma versão anterior deste comentário dizia
+# o contrário — a causa do check ficar verde era outra, e está logo acima.
 printf '%s\n' '{"type":"user","message":{"role":"user","content":"oi"}}' > "$TEMP_DIR/teste.jsonl"
 EVENTO_MARCA='{"session_id":"teste-degradacao","transcript_path":"'"$TEMP_DIR"'/teste.jsonl","cwd":"'"$TEMP_DIR"'"}'
 MARCA_NORMAL_CODE=0
