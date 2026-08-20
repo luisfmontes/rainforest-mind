@@ -28,6 +28,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
 const CODIGO_ROOT = path.resolve(__dirname, '..');
 const { resolverRaiz } = require('../hooks/lib/raiz.cjs');
@@ -365,9 +366,154 @@ function removerProjeto(slug) {
   }
 }
 
+// ---------------------------------------------------------------- versionamento
+
+/**
+ * Transforma a raiz de dados num repositório git, com .gitignore que ignora
+ * o banco SQLite (binário que muda a cada minuto).
+ *
+ * Atende D3 e D7 do design. É idempotente: rodar duas vezes não quebra nem
+ * duplica commit. Se o repositório já existe:
+ * - Garante que .gitignore tem os padrões corretos
+ * - Desrastreia arquivos que deveriam estar ignorados (ex: .db versionado antes)
+ * - Nunca perde dados — apenas remove do rastreamento
+ *
+ * exit 0: repositorio foi criado, atualizado, ou ja estava correto
+ * exit 1: raiz nao existe ou erro ao criar/atualizar repo
+ */
+function versionar() {
+  const { raiz, nivel } = resolverRaiz({ plugin: CODIGO_ROOT });
+
+  if (!raiz) {
+    console.error('erro: nao ha pasta de dados — rode primeiro: node scripts/setup.cjs --criar');
+    process.exit(1);
+  }
+
+  const gitDir = path.join(raiz, '.git');
+  const gitignorePath = path.join(raiz, '.gitignore');
+
+  // Conteúdo esperado do .gitignore — fonte única
+  const gitignoreConteudo = `# Dados do rainforest-mind (banco principal + backups)
+# Binario que muda a cada minuto — git nao da diff legivel dele
+# Cobre rainforest.db* (banco principal e seus journals)
+# e .rainforest-*/ (backups e outros dados persistidos)
+rainforest.db*
+.rainforest-*/
+`;
+
+  try {
+    // Se repositório não existe, criar
+    if (!fs.existsSync(gitDir)) {
+      // Cria .gitignore antes de init, mas não sobrescreve se já existe
+      // (permite que o usuário tenha escrito conteúdo customizado antes de chamar versionar)
+      if (!fs.existsSync(gitignorePath)) {
+        fs.writeFileSync(gitignorePath, gitignoreConteudo, 'utf8');
+      } else {
+        // Arquivo já existe: garantir que tem os padrões
+        const conteudoAtual = fs.readFileSync(gitignorePath, 'utf8');
+        if (!conteudoAtual.includes('rainforest.db*')) {
+          fs.appendFileSync(gitignorePath, '\n' + gitignoreConteudo, 'utf8');
+        }
+      }
+
+      // Inicializa repositorio e faz commit inicial
+      execSync('git init', { cwd: raiz, stdio: 'pipe' });
+      execSync('git add -A', { cwd: raiz, stdio: 'pipe' });
+      execSync('git commit -m "Versionamento inicial: estrutura de dados do rainforest"', {
+        cwd: raiz,
+        stdio: 'pipe',
+      });
+      console.log(`repositorio criado em: ${raiz}`);
+      return;
+    }
+
+    // Repositório já existe — tornar idempotente
+    console.log(`repositorio ja existe em: ${raiz}`);
+
+    // 1. Garantir que .gitignore tem os padrões corretos (Achado 3)
+    let gitignoreAtualizado = false;
+    if (!fs.existsSync(gitignorePath)) {
+      fs.writeFileSync(gitignorePath, gitignoreConteudo, 'utf8');
+      gitignoreAtualizado = true;
+      console.log('  .gitignore criado com padrões atualizados');
+    } else {
+      // Verificar se tem os padrões esperados
+      const conteudoAtual = fs.readFileSync(gitignorePath, 'utf8');
+      if (!conteudoAtual.includes('rainforest.db*')) {
+        // Anexar padrões faltando ao final
+        fs.appendFileSync(gitignorePath, '\n' + gitignoreConteudo, 'utf8');
+        gitignoreAtualizado = true;
+        console.log('  .gitignore atualizado com padrões faltando');
+      }
+    }
+
+    // 2. Desrastrear arquivos que deveriam estar ignorados (Achado 3)
+    // Isto acontece quando alguém rodou versionar antes do .gitignore estar correto
+    // e commitou rainforest.db ou backups.
+    try {
+      const arquivosRastreados = execSync('git ls-files', { cwd: raiz, encoding: 'utf8' })
+        .split('\n')
+        .filter(f => f.trim());
+
+      const arquivosIgnorados = ['rainforest.db', 'rainforest.db-shm', 'rainforest.db-wal'];
+      const arquivosDesrastrear = arquivosRastreados.filter(f => {
+        return arquivosIgnorados.some(padrão => {
+          // Verificar se arquivo casa com padrão (direto ou como wildcard)
+          return f === padrão || f.startsWith(padrão);
+        });
+      });
+
+      if (arquivosDesrastrear.length > 0) {
+        console.log(`  desrastreando ${arquivosDesrastrear.length} arquivo(s) que deveriam estar ignorados:`);
+        for (const arquivo of arquivosDesrastrear) {
+          execSync(`git rm --cached "${arquivo}"`, { cwd: raiz, stdio: 'pipe' });
+          console.log(`    ${arquivo}`);
+        }
+        // Fazer commit para formalizar a remoção do histórico
+        execSync('git add .gitignore', { cwd: raiz, stdio: 'pipe' });
+        execSync('git commit -m "Desrastrear arquivos que deveriam estar ignorados (banco + journals)"', {
+          cwd: raiz,
+          stdio: 'pipe',
+        });
+        console.log('  commit: arquivos desrastreados formalizado');
+      }
+    } catch (e) {
+      // Se falhar ao listar ou desrastrear, log mas nao trava
+      if (process.env.DEBUG_SETUP) {
+        console.error(`  AVISO: erro ao verificar rastreamento: ${e.message}`);
+      }
+    }
+
+    if (gitignoreAtualizado) {
+      try {
+        execSync('git add .gitignore', { cwd: raiz, stdio: 'pipe' });
+        execSync('git commit -m "Atualizar .gitignore com padrões atuais"', {
+          cwd: raiz,
+          stdio: 'pipe',
+        });
+        console.log('  commit: .gitignore atualizado');
+      } catch (e) {
+        // Falha ao commitar .gitignore (pode nao ter mudanças se ja estava atualizado)
+        if (process.env.DEBUG_SETUP) {
+          console.error(`  AVISO: erro ao commitar .gitignore: ${e.message}`);
+        }
+      }
+    }
+  } catch (e) {
+    console.error(`erro ao processar repositorio: ${e.message}`);
+    process.exit(1);
+  }
+}
+
 // ---------------------------------------------------------------- CLI
 
 function main() {
+  // `versionar` como subcomando posicional (argv[2])
+  if (process.argv[2] === 'versionar') {
+    versionar();
+    return;
+  }
+
   if (tem('criar')) {
     criar();
     console.log('');

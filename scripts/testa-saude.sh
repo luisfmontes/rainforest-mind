@@ -245,5 +245,85 @@ cp "$SBP/original.cjs" "$SRC/scripts/saude.cjs"
 checa "e restaurado, B volta a ser ALERTA"         "alerta" "sem parentesco"     "$(ver)"
 
 echo
+echo "== esquema de banco: detecta falta de UNIQUE (Tarefa 23 - item 6) =="
+# Teste I: banco com esquema legado (sem UNIQUE constraint em observacoes)
+DADOS_LEGADO=".rainforest-saude-legado"
+rm -rf "$DADOS_LEGADO" && mkdir -p "$DADOS_LEGADO"
+( cd "$DADOS_LEGADO" && node << 'MKLEGACY'
+const { DatabaseSync } = require('node:sqlite');
+const db = new DatabaseSync('./rainforest.db');
+
+db.exec(`
+  CREATE TABLE observacoes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    projeto TEXT NOT NULL,
+    conteudo TEXT NOT NULL,
+    criada_em TEXT NOT NULL,
+    origem TEXT
+  );
+  CREATE TABLE marca_dagua (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    projeto TEXT NOT NULL,
+    sessao TEXT NOT NULL,
+    arquivo TEXT NOT NULL,
+    offset INTEGER DEFAULT 0,
+    offset_processado INTEGER DEFAULT 0
+  );
+  CREATE TABLE resumos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    projeto TEXT NOT NULL,
+    conteudo TEXT NOT NULL,
+    criada_em TEXT NOT NULL,
+    origem TEXT
+  );
+  CREATE TABLE prompts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    projeto TEXT NOT NULL,
+    conteudo TEXT NOT NULL,
+    criada_em TEXT NOT NULL,
+    origem TEXT
+  );
+`);
+
+db.close();
+MKLEGACY
+)
+
+DADOS_LEGADO_ABS="$(cd "$DADOS_LEGADO" && pwd)"
+I="$(RFM_ROOT="$DADOS_LEGADO_ABS" node "$SRC/scripts/saude.cjs" --json 2>/dev/null | node -e 'let d=""; process.stdin.on("data", c => d += c).on("end", () => { try { const a = JSON.parse(d).find(x => x.item === "esquema de banco"); console.log(a ? a.nivel + " " + a.detalhe : "ausente"); } catch(e) { console.log("erro"); } })')"
+checa "I. banco legado acusa falta de UNIQUE"     "alerta" "UNIQUE" "$I"
+
+# Mutação de verdade: o alerta do teste I tem que vir da checagem, e não de
+# outro caminho do /saude que por acaso mencione UNIQUE. A versão anterior
+# deste bloco greppava o nome da função no fonte — o que continua verde se a
+# chamada existir e não fizer efeito, que é o defeito exato que a tarefa 22
+# passou o dia extinguindo. Aqui a checagem é removida numa CÓPIA e o /saude
+# roda contra o mesmo banco legado: se ainda acusar, o teste I não prova nada.
+echo
+echo "== MUTACAO: desabilitar a checagem de UNIQUE numa copia =="
+MUT="$(mktemp -d)"
+cp -r "$SRC/scripts" "$MUT/scripts"
+sed -i 's/if (!verificarConstraintUniqueProjetoOrigem(db)) {/if (false) { \/* MUTACAO *\//' "$MUT/scripts/saude.cjs"
+
+if grep -q "MUTACAO" "$MUT/scripts/saude.cjs"; then
+  J="$(RFM_ROOT="$DADOS_LEGADO_ABS" node "$MUT/scripts/saude.cjs" --json 2>/dev/null | node -e 'let d=""; process.stdin.on("data", c => d += c).on("end", () => { try { const a = JSON.parse(d).find(x => x.item === "esquema de banco"); console.log(a ? a.nivel + " " + a.detalhe : "ausente"); } catch(e) { console.log("erro"); } })')"
+  case "$J" in
+    *UNIQUE*)
+      falhou=$((falhou+1))
+      echo "  FALHA J. copia sem a checagem AINDA acusa UNIQUE — o alerta do teste I vem de outro lugar"
+      echo "        saida: $J" ;;
+    *)
+      ok=$((ok+1))
+      echo "  ok   J. copia sem a checagem para de acusar (o alerta do I vem mesmo da checagem)" ;;
+  esac
+else
+  falhou=$((falhou+1))
+  echo "  FALHA J. a mutacao nao casou com o fonte — o alvo do sed mudou, e este teste virou decorativo"
+fi
+rm -rf "$MUT"
+
+rm -rf "$DADOS_LEGADO"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]
