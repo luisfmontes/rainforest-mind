@@ -362,9 +362,9 @@ Os vigias headless carregam a versão resumida no `vigias/_comum.md`.
 
 **11. Worktree de subagente: isolado E com base conferida.** Subagente que edita
 roda **sempre** com `isolation: "worktree"`, git destrutivo proibido, e só depois
-de commitar na branch de trabalho — nunca na `main`. A base do worktree vem errada
-de forma **intermitente**: o briefing informa o hash, e a integração confere com
-`scripts/conferir-entrega.cjs`, nunca pelo relato.
+de commitar na branch de trabalho **sua** — nunca a `main`, nunca a alheia. A
+base vem errada de forma **intermitente**: o briefing informa o hash, e a
+integração confere com `conferir-entrega.cjs`, nunca pelo relato.
 <!-- detalhe -->
 Subagente que
 edita arquivos roda **sempre** com `isolation: "worktree"` — nunca direto na
@@ -381,6 +381,38 @@ sessão na branch padrão cria a branch primeiro. Vale principalmente pro
 junto da implementação — ou nunca, se o trabalho morrer no meio, porque
 design órfão aponta pra nada. O worktree do agente nasce dessa branch, e é o
 hash dela que vai no briefing.
+
+**A branch tem dono, e "não é a `main`" não prova que é sua.** A forma binária
+(`main` proibida, "a branch de trabalho" certa) pressupõe uma sessão por
+repositório: "a" branch de trabalho, no singular, é a sua por definição. O
+terceiro estado existe — branch de trabalho de **outra** sessão — e a regra
+binária dá autorização por eliminação: você confere que não está na `main`,
+passa, e commita em cima do trabalho alheio.
+
+Antes do **primeiro commit de um trabalho novo**, a branch atual é sua só se as
+duas valerem:
+
+- não há esteira aberta cujo slug (`<data>-<branch>`) case com o nome dela — o
+  `/saude` responde isso em uma linha, e desde a Issue #25 ele diz **`ESTA
+  branch tem dono`** em vez de só contar trabalhos abertos;
+- o working tree não tem modificação de outro dono.
+
+Qualquer uma falhando, o trabalho novo começa em branch nova, tirada da base —
+não daqui.
+
+> 2026-08-20: os dois instrumentos tinham o fato antes do commit. O `/saude`
+> imprimiu `esteira: 1 trabalho(s) em aberto -> revisar` 20 minutos antes, e o
+> `git status` mostrou 4 arquivos de outro dono — que a sessão **verbalizou**
+> ("essas outras mudanças são do trabalho em aberto da esteira, não minhas"),
+> aplicou corretamente ao `git add` por caminho, e não aplicou à branch. O fato
+> chegou, foi dito em voz alta, e não alcançou a decisão adjacente.
+>
+> O custo não foi o commit no lugar errado: foi **duas** perturbações. Quando a
+> correção veio, a outra sessão já tinha commitado por cima, e sair exigiu
+> `rebase --onto` + `push --force-with-lease`, trocando o hash do commit dela.
+> Commit no lugar errado perturba uma vez; com trabalho por cima, perturba de
+> novo na hora de sair — e é isso que faz a checagem valer antes do primeiro
+> commit, não depois.
 
 Isolamento não garante base certa: o worktree pode nascer do `main` ou de um
 commit **anterior ao trabalho do dia**, e o defeito é **intermitente** — não
