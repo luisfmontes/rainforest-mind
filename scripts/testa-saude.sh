@@ -248,7 +248,7 @@ echo "== MUTACAO: cegar o discriminador de raiz =="
 #
 # Ate 2026-08-20 esta secao mutava "$SRC/scripts/saude.cjs" NO LUGAR e confiava
 # no `cp` de volta, algumas linhas depois, para restaurar. Mas o unico
-# `trap ... EXIT` do arquivo (lá em cima) apaga $SBP — e era em $SBP que a copia
+# `trap ... EXIT` do arquivo (la em cima) apaga $SBP — e era em $SBP que a copia
 # do original ficava guardada. Um Ctrl-C, um timeout de ferramenta ou um crash
 # na janela entre a mutacao e a restauracao deixava o saude.cjs do REPO DE
 # VERDADE com o discriminador de parentesco cego, em silencio: nada quebra
