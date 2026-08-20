@@ -328,5 +328,49 @@ else
 fi
 
 echo
+echo "== 7. origem FIEL: text vazio, conteudo em title/subtitle =="
+# Esta seção existe porque as fixtures acima mentem sobre a origem real. Elas
+# preenchem `text`, e na base de verdade — medida em 2026-08-20 sobre 10.092
+# observações — `text` está VAZIO em TODAS. O conteúdo mora em `title` (10.092
+# preenchidos) e `subtitle` (9.848). Com a fixture infiel, o importador que lia
+# só `text` passava em tudo e importava 10.092 linhas em branco. Fixture que não
+# reproduz o preenchimento da origem não testa importação, testa a si mesma.
+ORIGEM_FIEL="$(mktemp -d)/fiel.db"
+ORIGEM="$ORIGEM_FIEL" node --no-warnings <<'FIXTURE_FIEL'
+const { DatabaseSync } = require('node:sqlite');
+const db = new DatabaseSync(process.env.ORIGEM);
+db.exec(`CREATE TABLE observations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, memory_session_id TEXT, project TEXT,
+  text TEXT, type TEXT, title TEXT, subtitle TEXT, facts TEXT, narrative TEXT,
+  created_at TEXT NOT NULL, created_at_epoch INTEGER, content_hash TEXT
+);`);
+// text = '' (como na origem real), conteudo em title + subtitle
+db.prepare(`INSERT INTO observations (text, title, subtitle, project, created_at, content_hash)
+  VALUES ('', ?, ?, 'proj-fiel', '2026-08-20T05:00:00Z', ?)`)
+  .run('Titulo que carrega o conteudo', 'Subtitulo com o detalhe', 'hash-fiel-1');
+db.close();
+FIXTURE_FIEL
+
+CAIXA_FIEL="$(mktemp -d)"
+TESTADOR_ORIGEM_CLAUDE_MEM="$ORIGEM_FIEL" RFM_ROOT="$CAIXA_FIEL" node "$SRC/scripts/importar-claude-mem.cjs" > /dev/null 2>&1
+# O `cd` é necessário: caminho POSIX embutido em `node -e` NÃO passa pela
+# conversão do MSYS (ela só vale para argumento e variável de ambiente), e o
+# require estoura. Com o cd, o require é relativo e não tem caminho no texto.
+CONTEUDO_FIEL=$(cd "$SRC" && RFM_ROOT="$CAIXA_FIEL" node --no-warnings -e "
+const { abrirBancoSomenteLeitura } = require('./scripts/memoria.cjs');
+const db = abrirBancoSomenteLeitura(process.env.RFM_ROOT + '/rainforest.db');
+if (!db) { process.stdout.write('SEM-BANCO'); process.exit(0); }
+const r = db.prepare('SELECT conteudo FROM observacoes').get();
+db.close();
+process.stdout.write(r ? JSON.stringify(r.conteudo) : 'SEM-LINHA');
+")
+
+if echo "$CONTEUDO_FIEL" | grep -q "Titulo que carrega o conteudo" && echo "$CONTEUDO_FIEL" | grep -q "Subtitulo com o detalhe"; then
+  ok=$((ok+1)); echo "  ok   conteudo veio de title + subtitle quando text esta vazio"
+else
+  falhou=$((falhou+1)); echo "  FALHA conteudo importado nao tem title/subtitle: $CONTEUDO_FIEL"
+fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

@@ -23,7 +23,7 @@ const os = require('os');
 
 // Importar funções reutilizáveis de memoria.cjs (D2, D8 — zero duplicação de lógica,
 // driver isolado no adaptador).
-const { resolverCaminhos, abrirBanco, abrirBancoSomenteLeitura, criarSchema } = require('./memoria.cjs');
+const { resolverCaminhos, abrirBanco, abrirBancoSomenteLeitura, criarSchema, popularFts5 } = require('./memoria.cjs');
 
 // Encontrar o banco de origem (claude-mem.db) em ~/.claude-mem/
 // Por testes: permite override via TESTADOR_ORIGEM_CLAUDE_MEM
@@ -57,12 +57,29 @@ function normalizarProjeto(projetoOrigem) {
 
 // Busca observações da origem (tabela `observations`)
 // Tarefa 2 (D2, D4): Inclui coluna `project` da origem para preservação linha a linha.
+// Monta o `conteudo` de uma observação da origem. Ordem de preferência:
+// `text` (se um dia voltar a ser preenchido), senão `title` + `subtitle`, que é
+// onde o conteúdo realmente está. Título e subtítulo são curtos de propósito —
+// é o formato que a D11 do desenho anterior calibrou para o bloco de abertura,
+// e é o mesmo texto que alimenta a busca FTS. O `narrative` fica de fora: são
+// 9.847 linhas de texto longo que inchariam cada linha do bloco injetado.
+function montarConteudo(obs) {
+  const texto = (obs.text || '').trim();
+  if (texto) return texto;
+  const partes = [(obs.title || '').trim(), (obs.subtitle || '').trim()];
+  return partes.filter(Boolean).join('\n');
+}
+
 function buscarObservacoes(conexaoOrigem) {
   try {
-    // Esquema da origem (D5): id, text, created_at, content_hash, project
-    // Se coluna project não existe (origem antiga), trata como null — SQL retorna NULL para coluna inexistente
+    // O CONTEÚDO NÃO MORA EM `text`. Medido em 2026-08-20 sobre a base real:
+    // `text` está VAZIO nas 10.092 linhas; quem tem conteúdo é `title` (10.092),
+    // `subtitle` (9.848) e `narrative` (9.847). A primeira versão deste
+    // importador lia só `text` e importou 10.092 observações vazias — contagem
+    // perfeita, conteúdo nenhum. Apareceu só quando o bloco de memória da
+    // sessão saiu com 14 linhas em branco.
     const resultado = conexaoOrigem.prepare(`
-      SELECT id, text, created_at, content_hash, project
+      SELECT id, text, title, subtitle, created_at, content_hash, project
       FROM observations
       ORDER BY id ASC
     `).all();
@@ -72,7 +89,7 @@ function buscarObservacoes(conexaoOrigem) {
     // tentar sem a coluna project (compatibilidade com origin antiga)
     try {
       const resultado = conexaoOrigem.prepare(`
-        SELECT id, text, created_at, content_hash, NULL as project
+        SELECT id, text, title, subtitle, created_at, content_hash, NULL as project
         FROM observations
         ORDER BY id ASC
       `).all();
@@ -119,7 +136,7 @@ function importarObservacoes(conexaoOrigem, conexaoDestino, projetoFallback) {
 
       stmt.run({
         projeto: projetoFinal,
-        conteudo: obs.text || '',
+        conteudo: montarConteudo(obs),
         criada_em: obs.created_at || new Date().toISOString(),
         // Discriminador estável: identifica origem e evita reimportação
         origem: `claude-mem:${obs.id}:${obs.content_hash || 'unknown'}`,
@@ -175,7 +192,14 @@ function main() {
       const importadas = importarObservacoes(conexaoOrigem, conexaoDestino, projeto);
 
       if (importadas > 0) {
-        console.log(`✓ ${importadas} observação(ões) importada(s)`);
+        // O índice FTS5 NÃO se mantém sozinho: o INSERT acima não passa por
+        // gatilho nenhum. Sem esta reconstrução, a importação termina com
+        // "10.092 importadas" e `buscar` devolve `[]` para qualquer termo —
+        // corpus inteiro invisível, sem erro em lugar nenhum. Medido em
+        // 2026-08-20: 0 linhas no índice contra 10.092 observações. São ~5 s
+        // para 10 mil linhas, e só roda quando algo entrou.
+        popularFts5(conexaoDestino);
+        console.log(`✓ ${importadas} observação(ões) importada(s) e indexada(s)`);
       }
     } finally {
       conexaoDestino.close();

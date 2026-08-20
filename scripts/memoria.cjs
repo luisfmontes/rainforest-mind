@@ -1092,4 +1092,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { abrirBanco, abrirBancoSomenteLeitura, criarSchema, extrairSchema, resolverCaminhos, verificarConstraintUniqueProjetoOrigem };
+module.exports = { abrirBanco, abrirBancoSomenteLeitura, criarSchema, extrairSchema, popularFts5, resolverCaminhos, verificarConstraintUniqueProjetoOrigem };
