@@ -163,6 +163,23 @@ function coletar(baseOverride) {
 
   const atual = git(['rev-parse', '--abbrev-ref', 'HEAD']).saida;
 
+  // A branch PADRAO do repositorio, seja qual for a `--base`. Ela nunca e residuo de
+  // worktree de agente, que e o alvo declarado deste script — e sem esta linha ela
+  // vira alvo com facilidade, porque a classificacao esta CERTA e ainda assim leva
+  // ao lugar errado: com `--base <branch-de-trabalho>`, a branch de trabalho saiu da
+  // `main`, logo a `main` esta contida nela, logo a `main` satisfaz "ja esta na base"
+  // e cai em `resolvida-remota`, que e removivel por desenho.
+  //
+  // Aconteceu em 2026-08-19 (Issue #23), no `fechar` de uma esteira cujo trabalho
+  // ainda nao tinha chegado a `main`: sairam as 11 branches de agente (certo) e a
+  // `main` local junto, e o passo seguinte morreu com `fatal: ambiguous argument
+  // 'main..HEAD'`. Ali nao houve perda porque `origin/main` estava intacta; num repo
+  // em que a padrao so exista localmente, ou com commit nao empurrado, e perda.
+  //
+  // Estar na `main` NAO protege: no incidente a pessoa estava na branch de trabalho,
+  // e e por isso que a classe `atual` nao pegou o caso.
+  const padrao = descobrirBase(null);
+
   // Branch com worktree aberto o git RECUSA apagar — e recusa certo. Marcar aqui
   // evita propor uma remoção que vai falhar, que é pior que não propor.
   const emUso = new Set();
@@ -188,6 +205,7 @@ function coletar(baseOverride) {
 
     if (b.nome === base) b.classe = 'base';
     else if (b.nome === atual) b.classe = 'atual';
+    else if (padrao && b.nome === padrao) b.classe = 'padrao';
     else if (emUso.has(b.nome)) b.classe = 'em-uso';
     else if (b.sumiu) b.classe = b.mergeada ? 'sumiu-mergeada' : 'sumiu-divergente';
     else if (b.mergeada) b.classe = b.upstream ? 'resolvida-remota' : 'resolvida-local';
@@ -229,6 +247,7 @@ const REMOVIVEIS = new Set(['resolvida-local', 'resolvida-remota', 'sumiu-mergea
 const EXPLICA = {
   base: 'a base — nunca',
   atual: 'e onde voce esta agora',
+  padrao: 'e a branch padrao do repositorio — nunca e residuo, seja qual for a --base',
   'em-uso': 'tem worktree aberto (o git recusaria)',
   'resolvida-local': 'ja esta na base e nunca foi empurrada — residuo de worktree de agente',
   'resolvida-remota': 'ja esta na base, e o remoto ainda existe',
@@ -324,7 +343,7 @@ function main() {
   console.log(`Modo de remocao: ${forcar ? 'git branch -D (FORCA)' : 'git branch -d (recusa nao mergeada)'}`);
   console.log('');
 
-  for (const classe of ['viva', 'mergeada-por-squash', 'sumiu-divergente', 'sumiu-mergeada', 'resolvida-remota', 'resolvida-local', 'em-uso', 'atual', 'base']) {
+  for (const classe of ['viva', 'mergeada-por-squash', 'sumiu-divergente', 'sumiu-mergeada', 'resolvida-remota', 'resolvida-local', 'em-uso', 'atual', 'padrao', 'base']) {
     const lista = porClasse[classe];
     if (!lista || !lista.length) continue;
     console.log(`${classe} (${lista.length}) — ${EXPLICA[classe]}`);

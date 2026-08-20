@@ -307,5 +307,68 @@ tem     "e a branch com & no nome roda e aparece na saida" "$S12" "zz&yy"
 GH_LOG=""
 
 echo
+echo "== 13. a branch PADRAO nunca entra na remocao, seja qual for a --base (Issue #23) =="
+# 2026-08-19, estagio `fechar` de uma esteira cujo trabalho ainda nao tinha chegado a
+# main: `--base memoria-e-dados-do-rainforest --remover` apagou as 11 branches de
+# agente (certo) e a `main` local junto. A classificacao nao tinha defeito de logica —
+# a branch de trabalho SAIU da main, entao a main esta contida nela, entao a main
+# satisfaz "ja esta na base" e cai em resolvida-remota, que e removivel por desenho.
+#
+# O passo seguinte do `fechar` morreu com `fatal: ambiguous argument 'main..HEAD'`.
+# Ali nao houve perda porque origin/main estava intacta, mas num repo em que a branch
+# padrao so exista localmente, ou com commit ainda nao empurrado, e perda de verdade.
+#
+# A protecao nao pode depender de a pessoa estar na main: no incidente ela estava na
+# branch de trabalho, e e por isso que a main nao caiu em 'atual'. Por isso o cenario
+# abaixo faz checkout da propria base antes de medir.
+montar
+(
+  cd "$SBP/local"
+  git checkout -qb outra-base
+  git push -q -u origin outra-base
+  git checkout -q outra-base
+)
+alvos_base()  { roda --sem-fetch --json --base "$1" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.stringify(JSON.parse(d).alvos)))"; }
+classe_base2() { roda --sem-fetch --json --base "$1" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const b=JSON.parse(d).refs.find(x=>x.nome===process.argv[1]);console.log(b?b.classe:'(ausente)')})" "$2"; }
+
+nao_tem "com --base noutra ref, a main NAO entra nos alvos"      "$(alvos_base outra-base)" '"main"'
+tem     "e e classificada como padrao, nao como resolvida"       "$(classe_base2 outra-base main)" "padrao"
+nao_tem "nem com --forcar a main entra"                          "$(roda --sem-fetch --json --forcar --base outra-base | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.stringify(JSON.parse(d).alvos)))")" '"main"'
+
+# E a remocao de verdade, que e o que doeu. A remocao precisa ter ACONTECIDO: se ela
+# fosse cancelada, a main sobreviveria por motivo nenhum e este bloco ficaria verde
+# sem provar nada — foi essa a forma do falso verde de 2026-08-19.
+S13="$(roda --sem-fetch --remover --forcar --base outra-base)"
+tem     "a remocao de verdade rodou (nao foi cancelada)"         "$S13" "REMOVENDO"
+nao_tem "e a main nao aparece entre as removidas"                "$S13" "ok      main"
+tem     "depois de remover de verdade, a main continua no repo"  "$(git -C "$SBP/local" branch --list main)" "main"
+
+echo
+echo "== 14. MUTACAO: sabotar a protecao da branch padrao =="
+# Se a main sobreviveu por acaso (por estar mergeada de um jeito que nao classifica,
+# por exemplo) e nao pela trava, a secao 13 passa verde sem provar nada. Aqui a
+# protecao e removida do fonte e a main TEM que voltar a ser removivel.
+montar
+(
+  cd "$SBP/local"
+  git checkout -qb outra-base
+  git push -q -u origin outra-base
+  git checkout -q outra-base
+)
+cp "$SRC/scripts/limpar-branches.cjs" "$SBP/original3.cjs"
+node -e "
+  const fs=require('fs'), p=process.argv[1];
+  const s=fs.readFileSync(p,'utf8');
+  const alvo = \"else if (padrao && b.nome === padrao) b.classe = 'padrao';\";
+  if(!s.includes(alvo)) { console.error('MUTACAO NAO APLICADA: alvo ausente'); process.exit(1); }
+  fs.writeFileSync(p, s.replace(alvo, ''));
+" "$SRC/scripts/limpar-branches.cjs"
+if [ $? -ne 0 ]; then falhou=$((falhou+1)); echo "  FALHA nao consegui aplicar a mutacao"; else
+  tem "sem a protecao, a main volta a entrar nos alvos (prova que era a trava)" "$(alvos_base outra-base)" '"main"'
+fi
+cp "$SBP/original3.cjs" "$SRC/scripts/limpar-branches.cjs"
+nao_tem "e o script foi restaurado (main protegida de novo)" "$(alvos_base outra-base)" '"main"'
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]
