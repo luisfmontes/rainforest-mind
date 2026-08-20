@@ -615,7 +615,57 @@ else
   falhou=$((falhou+1)); echo "  FALHA falsificacao nao vale: $CHAMADAS_MUT chamada(s), maior de $MAIOR_MUT, teto $TETO"
 fi
 
-rm -rf "$FATIA_DIR" "$CAIXA_MUT"
+echo
+echo "  8.c — orcamento de tempo: para no meio e deixa a marca no que ja processou"
+# Por que: o hook tem teto de 120 s e uma chamada pode levar até 65 s. Com N
+# fatias sequenciais, o harness mataria o processo no meio. O orçamento faz a
+# passada parar sozinha e devolver o resto para a próxima sessão — o que só é
+# seguro porque a marca avança POR fatia.
+ORC_DIR="$(mktemp -d)"; mkdir -p "$ORC_DIR/projects/proj-fatia"
+cp "$FATIA_DIR/projects/proj-fatia/sgrande.jsonl" "$ORC_DIR/projects/proj-fatia/sgrande.jsonl" 2>/dev/null
+cat > "$ORC_DIR/duble-lento.cjs" <<'DUBLE_LENTO'
+module.exports.chamarLLM = async (texto) => {
+  // Mais lento que o orçamento do teste, para estourar já na primeira fatia.
+  await new Promise((r) => setTimeout(r, 250));
+  return 'resumo lento de ' + texto.length;
+};
+DUBLE_LENTO
+RFM_ROOT="$ORC_DIR" node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+(cd "$SRC" && RFM_ROOT="$ORC_DIR" TAM_GRANDE="$TAM_GRANDE" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const db = abrirBanco(process.env.RFM_ROOT + '/rainforest.db');
+db.prepare('INSERT INTO marca_dagua (projeto,sessao,arquivo,offset,offset_processado,processada_em) VALUES (?,?,?,?,?,?)')
+  .run('proj-fatia','sgrande',process.env.RFM_ROOT + '/projects/proj-fatia/sgrande.jsonl',Number(process.env.TAM_GRANDE),0,'2026-08-20T05:00:00Z');
+db.close();
+")
+SAIDA_ORC=$(RFM_ROOT="$ORC_DIR" TESTADOR_ORCAMENTO_MS=100 TESTADOR_CHAMAR_LLM="$ORC_DIR/duble-lento.cjs" \
+  node "$SRC/scripts/observar.cjs" 2>&1)
+ESTADO_ORC=$(cd "$SRC" && RFM_ROOT="$ORC_DIR" node --no-warnings -e "
+const { abrirBancoSomenteLeitura } = require('./scripts/memoria.cjs');
+const db = abrirBancoSomenteLeitura(process.env.RFM_ROOT + '/rainforest.db');
+const m = db.prepare('SELECT offset_processado o FROM marca_dagua').get();
+const n = db.prepare('SELECT count(*) c FROM observacoes').get().c;
+db.close();
+process.stdout.write((m ? m.o : 'sem-marca') + ':' + n);
+")
+OFFSET_ORC="${ESTADO_ORC%%:*}"; OBS_ORC="${ESTADO_ORC##*:}"
+
+# O que prova o orçamento: parou ANTES do fim (menos observações que fatias) e
+# a marca ficou num ponto INTERMEDIÁRIO — nem 0 (não perdeu o que fez) nem o
+# fim do arquivo (não fingiu ter terminado).
+if echo "$SAIDA_ORC" | grep -q "orcamento de 100ms atingido"; then
+  ok=$((ok+1)); echo "  ok    a passada anunciou a parada por orcamento"
+else
+  falhou=$((falhou+1)); echo "  FALHA nao houve parada por orcamento: $(echo "$SAIDA_ORC" | tail -1)"
+fi
+
+if [ "$OBS_ORC" -ge 1 ] && [ "$OBS_ORC" -lt "$NUM_CHAMADAS" ] && [ "$OFFSET_ORC" -gt 0 ] && [ "$OFFSET_ORC" -lt "$TAM_GRANDE" ]; then
+  ok=$((ok+1)); echo "  ok    parou no meio: $OBS_ORC de $NUM_CHAMADAS fatias, marca em $OFFSET_ORC de $TAM_GRANDE"
+else
+  falhou=$((falhou+1)); echo "  FALHA esperava parada intermediaria, veio $OBS_ORC observacao(oes) e marca em $OFFSET_ORC de $TAM_GRANDE"
+fi
+
+rm -rf "$FATIA_DIR" "$CAIXA_MUT" "$ORC_DIR"
 
 # ============ Resultado final ============
 echo

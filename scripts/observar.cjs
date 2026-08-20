@@ -462,8 +462,34 @@ async function processarMarca(conexao, marca) {
 
   debug(`dividido em ${fatias.length} fatia(s)`);
 
-  // Processar cada fatia
+  // Processar cada fatia, dentro de um ORÇAMENTO DE TEMPO por execução.
+  //
+  // Por que o orçamento existe: o hook que chama este script tem teto de 120 s.
+  // O teto interno de UMA chamada é 60 s (65 s de hard-kill do filho), então
+  // duas fatias no pior caso já somam 130 s e o harness mata o processo no meio.
+  // Elevar o teto do hook não resolve, porque N cresce com o tamanho do
+  // transcrito e não tem limite superior.
+  //
+  // Parar por orçamento não perde trabalho: a marca d'água avança POR FATIA
+  // (logo abaixo), então a próxima sessão retoma exatamente de onde esta parou.
+  // Com a latência medida (~5 a 7 s por chamada), 90 s dão cerca de 12 fatias
+  // por execução — um transcrito muito grande leva algumas sessões para ser
+  // digerido, e isso é preferível a ser morto no meio a cada vez.
+  // `TESTADOR_ORCAMENTO_MS` existe para a bateria conseguir estourar o orçamento
+  // sem esperar 90 s de verdade — mesmo papel do `TESTADOR_CHAMAR_LLM`.
+  const ORCAMENTO_MS = Number(process.env.TESTADOR_ORCAMENTO_MS) || 90000;
+  const inicioDaPassada = Date.now();
+  let ultimoOffsetProcessado = marca.offset_processado;
+
   for (let i = 0; i < fatias.length; i++) {
+    const decorrido = Date.now() - inicioDaPassada;
+    if (i > 0 && decorrido > ORCAMENTO_MS) {
+      console.log(
+        `orcamento de ${ORCAMENTO_MS}ms atingido apos ${i} fatia(s) de ${fatias.length}; ` +
+        `o resto fica para a proxima sessao (marca em ${ultimoOffsetProcessado})`
+      );
+      break;
+    }
     const { eventos, offsetFim } = fatias[i];
     const textoDaPassada = formatarParaLLM(eventos);
     debug(`fatia ${i + 1}/${fatias.length}: ${eventos.length} evento(s), ${textoDaPassada.length} caracteres`);
@@ -508,6 +534,7 @@ async function processarMarca(conexao, marca) {
       sessao: marca.sessao,
       offsetProcessado: offsetFim,
     });
+    ultimoOffsetProcessado = offsetFim;
     debug(`avanco ok (fatia ${i + 1}): ${avancoOk}`);
 
     if (!avancoOk) {
