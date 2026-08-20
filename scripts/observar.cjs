@@ -263,7 +263,8 @@ async function chamarLLM(textoDaPassada) {
         '--permission-mode', 'dontAsk',
         '--disallowedTools', 'Read,Write,Edit,Bash,Glob,Grep,WebFetch,WebSearch,Task,NotebookEdit',
       ], {
-        cwd: tempDir,
+        // Não especificar cwd para herdar do processo pai
+        // (claude precisa acessar .claude.config para autenticação)
         windowsHide: true,
         timeout: timeout + 5000,
       });
@@ -292,6 +293,7 @@ async function chamarLLM(textoDaPassada) {
 
         if (code !== 0) {
           console.error(`AVISO: claude retornou exit code ${code}`);
+          if (stderr) debug(`stderr da LLM: ${stderr}`);
           resolve(null);
           return;
         }
