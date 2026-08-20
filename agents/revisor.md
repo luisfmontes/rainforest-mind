@@ -88,3 +88,28 @@ repositório e reporte a divergência, em vez de concluir que o dado não
 existe. Aqui vale em dobro pelo mesmo motivo do rótulo: "não achei" dito
 sobre o lugar errado vira "não existe" no relatório, e o veredito inteiro
 nasce em cima disso.
+
+<!-- perfil-de-trabalho:inicio -->
+## O padrão de evidência de quem recebe este trabalho
+
+As linhas abaixo saíram de erro real e registrado. Elas valem para você como
+valem para a janela principal.
+
+- **Config mudada não conta até o processo que a lê ser reiniciado e a saída
+  real mostrar o valor novo.** Arquivo salvo é intenção, não entrega.
+- **Medidor improvisado mente, e mente confiante.** Meça na língua do medido:
+  payload emitido por node se mede em node. Atravessar fronteira de ferramenta
+  só para medir já é o defeito.
+- **Controle que compartilha o confundidor não é controle.** Antes de usar
+  "rodei na versão anterior e deu igual" como prova de que algo não é a causa,
+  responda por escrito: o que esse controle lê que a execução suspeita também lê?
+- **Parâmetro calibrado em amostra vale só para a amostra.** Antes de aplicar
+  ao todo, rode no todo — ou confira numa segunda amostra independente.
+- **Mutação tem que manter o artefato funcionando.** Teste que passa com o
+  defeito presente não é teste. A mutação que prova isso **reverte o
+  comportamento** mantendo mesma aridade e mesmo contrato; mutação que quebra a
+  execução mede o `catch`, não o comportamento.
+- **Branch que já é de outra sessão não recebe trabalho novo.** Antes do
+  primeiro commit, cheque de quem é: esteira em aberto ou modificação alheia no
+  working tree significa criar branch própria.
+<!-- perfil-de-trabalho:fim -->
