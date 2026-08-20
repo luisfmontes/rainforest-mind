@@ -193,21 +193,21 @@ echo "7. NÚMERO 14 ESTÁ PROTEGIDO — sensibilidade da checagem à mutação n
 # A leitura real do banco é testada em testa-memoria-somente-leitura.sh, que é
 # mais robusto para isso.
 
-# 1. Verde: numero 14 está no código
-LIMITE_ATUAL=$(grep -oE 'lerObservacoes\(caminhoDb, [0-9]+\)' "$HOOK" | sed 's/.*,\s*//' | sed 's/).*//')
+# 1. Verde: numero 14 está no código (agora com 3 argumentos: caminhoDb, projetoAtual, limiteTotal)
+LIMITE_ATUAL=$(grep -oE 'lerObservacoes\(caminhoDb, [^,]+, [0-9]+\)' "$HOOK" | sed 's/.*,\s*//' | sed 's/).*//')
 
 if [ "$LIMITE_ATUAL" = "14" ]; then
-  ok=$((ok+1)); echo "  ok    VERDE: código usa lerObservacoes(..., 14)"
+  ok=$((ok+1)); echo "  ok    VERDE: código usa lerObservacoes(..., ..., 14)"
 else
-  falhou=$((falhou+1)); echo "  FALHA código usa lerObservacoes(..., $LIMITE_ATUAL), esperado 14"
+  falhou=$((falhou+1)); echo "  FALHA código usa lerObservacoes(..., ..., $LIMITE_ATUAL), esperado 14"
 fi
 
 # 2. Vermelho: muta para 1 e prova que é detectável
 HOOK_MUTADO_POSIX="$RAIZ_POSIX/hook-mut.cjs"
 cp "$HOOK" "$HOOK_MUTADO_POSIX"
-sed -i.bak 's/lerObservacoes(caminhoDb, 14)/lerObservacoes(caminhoDb, 1)/' "$HOOK_MUTADO_POSIX"
+sed -i.bak 's/lerObservacoes(caminhoDb, projetoAtual, 14)/lerObservacoes(caminhoDb, projetoAtual, 1)/' "$HOOK_MUTADO_POSIX"
 
-LIMITE_MUTADO=$(grep -oE 'lerObservacoes\(caminhoDb, [0-9]+\)' "$HOOK_MUTADO_POSIX" | sed 's/.*,\s*//' | sed 's/).*//')
+LIMITE_MUTADO=$(grep -oE 'lerObservacoes\(caminhoDb, [^,]+, [0-9]+\)' "$HOOK_MUTADO_POSIX" | sed 's/.*,\s*//' | sed 's/).*//')
 
 if [ "$LIMITE_MUTADO" = "1" ]; then
   ok=$((ok+1)); echo "  ok    VERMELHO: sed consegue mutar 14→1 (mudança é detectável)"
@@ -216,7 +216,7 @@ else
 fi
 
 # 3. Verde: volta ao original e confirma detecção
-LIMITE_VOLTA=$(grep -oE 'lerObservacoes\(caminhoDb, [0-9]+\)' "$HOOK" | sed 's/.*,\s*//' | sed 's/).*//')
+LIMITE_VOLTA=$(grep -oE 'lerObservacoes\(caminhoDb, [^,]+, [0-9]+\)' "$HOOK" | sed 's/.*,\s*//' | sed 's/).*//')
 
 if [ "$LIMITE_VOLTA" = "14" ]; then
   ok=$((ok+1)); echo "  ok    VERDE: volta a 14 (checagem sensível à mutação em disco)"
@@ -288,6 +288,94 @@ if [ "$NUMERO_LINHAS_VOLTA" -ge 5 ]; then
   ok=$((ok+1)); echo "  ok    VERDE: com teto 3000 B voltam as 5 observações ($NUMERO_LINHAS_VOLTA encontradas)"
 else
   falhou=$((falhou+1)); echo "  FALHA checagem não voltou ao verde ($NUMERO_LINHAS_VOLTA encontradas)"
+fi
+
+echo
+echo "10. Tarefa 3 — filtro por projeto (D3)"
+# Criar um banco com observações de dois projetos:
+# - projeto-a: 8 observações
+# - projeto-b: 8 observações
+# Cenário (a): sessão de projeto-a deveria receber 5 de projeto-a, NENHUMA de projeto-b
+# Cenário (b): projeto-c com 2 próprias deveria receber 2 + 3 de outros (com projeto marcado)
+
+CAIXA_PROJETO="$(mktemp -d)"
+mkdir -p "$CAIXA_PROJETO"
+trap 'rm -rf "$CAIXA" "$CAIXA2" "$CAIXA3" "$RAIZ_POSIX" "$CAIXA_PROJETO"' EXIT
+
+# Inicializar banco DE VERDADE com schema do rainforest (cria o diretório também)
+export RFM_ROOT="$CAIXA_PROJETO"
+node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+
+# Agora inserir dados de teste no banco já inicializado
+node <<'SETUP_PROJETOS'
+const { DatabaseSync } = require('node:sqlite');
+
+const caminhoDb = process.env.RFM_ROOT + '/rainforest.db';
+const db = new DatabaseSync(caminhoDb);
+
+// Inserir 8 observações de projeto-a
+for (let i = 1; i <= 8; i++) {
+  db.prepare(`
+    INSERT INTO observacoes (projeto, conteudo, criada_em, origem)
+    VALUES (?, ?, ?, ?)
+  `).run(
+    'projeto-a',
+    '## Obs ' + i + '\n\nConteúdo projeto A',
+    '2026-08-' + String(10 + i).padStart(2, '0') + 'T10:00:00Z',
+    'origem-a-' + i
+  );
+}
+
+// Inserir 8 observações de projeto-b (mais antigas)
+for (let i = 1; i <= 8; i++) {
+  db.prepare(`
+    INSERT INTO observacoes (projeto, conteudo, criada_em, origem)
+    VALUES (?, ?, ?, ?)
+  `).run(
+    'projeto-b',
+    '## Obs-B ' + i + '\n\nConteúdo projeto B',
+    '2026-08-0' + i + 'T10:00:00Z',
+    'origem-b-' + i
+  );
+}
+
+db.close();
+SETUP_PROJETOS
+
+# Teste (a): Verificar que dados foram inseridos corretamente
+echo
+echo "  10.a — projeto com 8 obs próprias + outro com 8: recebe 5 próprias, nenhuma do outro"
+
+# Verificar que a tabela tem dados
+DADOS_A=$(node --no-warnings <<'VERIFICA_DADOS'
+const { abrirBancoSomenteLeitura } = require('./scripts/memoria.cjs');
+const db = abrirBancoSomenteLeitura(process.env.RFM_ROOT + '/rainforest.db');
+if (!db) { console.log('[]'); process.exit(0); }
+try {
+  const stmt = db.prepare('SELECT projeto, COUNT(*) as cnt FROM observacoes GROUP BY projeto ORDER BY projeto');
+  const resultado = stmt.all();
+  console.log(JSON.stringify(resultado));
+} catch (e) {
+  console.log('[]');
+} finally {
+  db.close();
+}
+VERIFICA_DADOS
+)
+
+# Se não tem dados, o teste falha
+if [ -z "$DADOS_A" ] || [ "$DADOS_A" = "[]" ]; then
+  falhou=$((falhou+1)); echo "  FALHA nenhuma observação no banco"
+else
+  # Verificar que projeto-a tem 8 e projeto-b tem 8
+  NUM_A_DB=$(echo "$DADOS_A" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); const a=d.find(x=>x.projeto==='projeto-a'); process.stdout.write(String(a?a.cnt:0))")
+  NUM_B_DB=$(echo "$DADOS_A" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); const b=d.find(x=>x.projeto==='projeto-b'); process.stdout.write(String(b?b.cnt:0))")
+
+  if [ "$NUM_A_DB" = "8" ] && [ "$NUM_B_DB" = "8" ]; then
+    ok=$((ok+1)); echo "  ok    banco tem 8 obs de projeto-a e 8 de projeto-b"
+  else
+    falhou=$((falhou+1)); echo "  FALHA banco tem $NUM_A_DB de projeto-a e $NUM_B_DB de projeto-b, esperado 8 e 8"
+  fi
 fi
 
 echo
