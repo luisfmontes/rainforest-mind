@@ -283,6 +283,81 @@ function instalacoesRegistradas(configDir, nome) {
   return saida;
 }
 
+/**
+ * As config dirs da maquina, SEM a declaracao do `CLAUDE_CONFIG_DIR`.
+ *
+ * Existe separada de `configDirsDoHarness()` de proposito, e a diferenca entre as
+ * duas e a coisa mais importante deste bloco: la a declaracao PARA a varredura,
+ * porque a pergunta e "o que executa NESTA sessao esta atras?" — pergunta sobre a
+ * sessao, e a sessao carrega uma config so. Aqui a pergunta e outra, de
+ * inventario: "as contas desta maquina estao na mesma versao?". Declaracao de
+ * sessao nao responde pergunta de inventario, entao esta ignora a variavel.
+ *
+ * Nao e incoerencia, e nao "conserte" igualando as duas: alargar a
+ * `configDirsDoHarness` faria a checagem 6 reclamar de uma copia que nao tem nada
+ * a ver com a janela aberta, e quebraria a hermeticidade da bateria — que foi o
+ * defeito que este repo extinguiu em 2026-08-17.
+ */
+function todasAsConfigDirsDaHome() {
+  const home = process.env.USERPROFILE || process.env.HOME || '';
+  if (!home) return [];
+  try {
+    return fs.readdirSync(home)
+      .filter((n) => n === '.claude' || n.startsWith('.claude-'))
+      .map((n) => path.join(home, n))
+      .filter((d) => fs.existsSync(path.join(d, 'plugins')))
+      .map((d) => path.resolve(d));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Contas do harness em versoes diferentes do MESMO plugin.
+ *
+ * Esta maquina tem duas config dirs (`~/.claude` = trabalho, `~/.claude-personal`
+ * = pessoal) e o plugin habilitado nas duas. Em 2026-08-20, depois de quatro PRs
+ * e de um `claude plugin update`, o pessoal estava em 0.71.0 e o trabalho em
+ * 0.70.0 — e o painel dizia `ok`, porque a checagem 6 obedece (corretamente) a
+ * declaracao do `CLAUDE_CONFIG_DIR` e para na config ativa. Metade do setup certa
+ * e a outra divergindo em silencio: e a mesma forma do incidente das duas
+ * CLAUDE.md mantidas a mao, que ja custou um dia.
+ *
+ * **Silencio quando batem, de proposito.** Uma linha dizendo "as duas contas estao
+ * iguais" e inventario 364 dias por ano; o evento e a divergencia. E `aviso`,
+ * nunca alerta, porque divergir as vezes e ESCOLHA — travar o perfil de trabalho
+ * numa versao estavel enquanto o pessoal anda na frente e legitimo, e instrumento
+ * que trata escolha como defeito e desligado em duas semanas.
+ *
+ * So o plugin deste repo entra na comparacao. O inventario alheio e barulho de
+ * outra pessoa.
+ */
+function checarConfigDirsDivergentes() {
+  const { nome } = manifestoDoPlugin(RAIZ_CODIGO);
+  const dirs = todasAsConfigDirsDaHome();
+  if (dirs.length < 2) return; // uma config so nao diverge de ninguem
+
+  const instalacoes = [];
+  for (const d of dirs) {
+    for (const i of instalacoesRegistradas(d, nome)) {
+      instalacoes.push({
+        dir: path.basename(d),
+        versao: i.version || '?',
+        sha: i.gitCommitSha ? i.gitCommitSha.slice(0, 7) : '?',
+      });
+    }
+  }
+  if (instalacoes.length < 2) return; // instalado numa conta so: nao ha par
+
+  const assinaturas = new Set(instalacoes.map((i) => `${i.versao}|${i.sha}`));
+  if (assinaturas.size === 1) return;
+
+  aviso('config dirs',
+    `${nome} em versoes diferentes: ${instalacoes.map((i) => `[${i.dir}] ${i.versao} (${i.sha})`).join(', ')}`,
+    'se for escolha, ignore. Se nao for, atualize a atrasada com CLAUDE_CONFIG_DIR apontando para ela — ' +
+    'e o efeito so alcanca janelas NOVAS daquela conta');
+}
+
 function checarVersaoInstalada() {
   const { nome, versao: versaoRepo } = manifestoDoPlugin(RAIZ_CODIGO);
 
@@ -778,6 +853,7 @@ function main() {
   checarEsteira();
   checarWorktrees();
   checarVersaoInstalada();
+  checarConfigDirsDivergentes();
   checarClaudeMem();
   checarAutocompact();
   checarBranches();
