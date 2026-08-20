@@ -31,19 +31,22 @@
     ],
     "em": "2026-08-19",
     "em_2": "2026-08-19",
-    "nota": "tarefa 23 fechada: backup recusa banco ilegivel; baterias 21/23 medem o que dizem medir"
+    "nota": "achado critico da 6a revisao fechado na janela principal: bateria da 21 media banco ausente"
   },
   "revisar": {
-    "status": "reprovado",
-    "achados": 5,
-    "criticos": 1,
-    "base": "d91c2fd",
-    "head": "916eafb",
+    "status": "ok",
+    "achados": 1,
+    "criticos": 0,
+    "base": "1053793",
+    "head": "70106cd",
     "em": "2026-08-19",
-    "nota": "5a revisao: regressao no backup causada pelo conserto da 21"
+    "nota": "7a revisao integra; achado baixo (comentario com causa errada) corrigido"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "17 baterias + criterios nao-bateria das 23 tarefas, exit medido sem pipe",
+    "saida": "todas exit=0; orcamento do hook 7977 B de 8000; grep node:sqlite lista so memoria.cjs; versionar deixa git ls-files sem .db; design com medicao 5/10/14/20 e codigo em 14; exporta-hooks derivou entrada nova plantada em copia; tarefa 13 pela regua emendada",
+    "em": "2026-08-19"
   },
   "fechar": {
     "status": "pendente"
