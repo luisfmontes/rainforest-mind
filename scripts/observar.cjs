@@ -219,6 +219,36 @@ function formatarParaLLM(eventos) {
   return resumo.join('\n');
 }
 
+// Acha o executável `claude` varrendo o PATH, sem subir processo para descobrir
+// (nada de `where`/`which`: este arquivo existe para tirar spawn do caminho).
+// Devolve caminho absoluto ou null. `RFM_CLAUDE_EXECUTAVEL` sobrepõe, para quem
+// tem o CLI fora do PATH.
+function acharExecutavelClaude() {
+  if (process.env.RFM_CLAUDE_EXECUTAVEL) {
+    return process.env.RFM_CLAUDE_EXECUTAVEL;
+  }
+  const ehWindows = process.platform === 'win32';
+  const separador = ehWindows ? ';' : ':';
+  const extensoes = ehWindows
+    ? (process.env.PATHEXT || '.EXE;.CMD;.BAT').split(';').map((e) => e.toLowerCase())
+    : [''];
+  for (const dir of (process.env.PATH || '').split(separador)) {
+    if (!dir) continue;
+    for (const ext of extensoes) {
+      const alvo = path.join(dir, `claude${ext}`);
+      try {
+        if (fs.statSync(alvo).isFile()) {
+          if (!ehWindows) fs.accessSync(alvo, fs.constants.X_OK);
+          return alvo;
+        }
+      } catch {
+        // Caminho inexistente ou sem permissão: segue procurando.
+      }
+    }
+  }
+  return null;
+}
+
 // Chamada à LLM isolada atrás de função para permitir mock em testes.
 // Retorna promise com observação (string) ou null se falhar.
 async function chamarLLM(textoDaPassada) {
@@ -234,7 +264,20 @@ async function chamarLLM(textoDaPassada) {
     }
   }
 
-  // Invocar CLI claude com spawn
+  // Invocar CLI claude com spawn, de um diretório neutro (D6): o transcrito é
+  // conteúdo NÃO CONFIÁVEL, e o resumidor não tem por que enxergar o repositório
+  // de quem está rodando. As ferramentas já estão negadas abaixo; o `cwd` é a
+  // segunda tranca.
+  //
+  // E o `cwd` neutro exige resolver o executável ANTES: no Windows, `spawn`
+  // com `cwd` explícito não acha `claude` pelo PATH e devolve ENOENT — medido
+  // em 2026-08-20. Com o caminho absoluto do executável, `cwd` neutro funciona
+  // e a autenticação continua valendo (também medido: 4,5 s, exit 0, OAuth).
+  const executavel = acharExecutavelClaude();
+  if (!executavel) {
+    console.error('AVISO: não encontrei o executável `claude` no PATH');
+    return null;
+  }
   const tempDir = os.tmpdir();
 
   // Se o texto está acima do teto, algo deu errado no fatiamento
@@ -243,9 +286,9 @@ async function chamarLLM(textoDaPassada) {
     return null;
   }
 
-  // Normalizar quebras de linha para espaços no prompt para evitar problemas com CLI
-  const textoNormalizado = textoDaPassada.replace(/\n/g, ' ');
-  const prompt = `Resuma a seguinte interação em uma observação curta (1-2 frases): ${textoNormalizado}`;
+  // As quebras de linha vão inteiras: argumento aceita `\n` (medido), e achatar
+  // o trecho em uma linha só apaga a estrutura de turno que o resumo usa.
+  const prompt = `Resuma a seguinte interação em uma observação curta (1-2 frases):\n\n${textoDaPassada}`;
 
   return new Promise((resolve) => {
     const timeout = 60000; // 60 segundos
@@ -255,7 +298,12 @@ async function chamarLLM(textoDaPassada) {
     }, timeout);
 
     try {
-      const child = spawn('claude', [
+      // O PROMPT VEM PRIMEIRO, E ISSO NÃO É ESTILO. `--disallowedTools` é
+      // variádico: com o prompt depois dele, o CLI engole o texto como se fosse
+      // nome de ferramenta e sai com exit 1 — medido em 2026-08-20, com
+      // `Permission deny rule "responda" matches no known tool`. Mesma armadilha
+      // do `--mcp-config`. Não reordene.
+      const child = spawn(executavel, [
         prompt,
         '-p',
         '--model', 'claude-haiku-4-5-20251001',
@@ -263,8 +311,7 @@ async function chamarLLM(textoDaPassada) {
         '--permission-mode', 'dontAsk',
         '--disallowedTools', 'Read,Write,Edit,Bash,Glob,Grep,WebFetch,WebSearch,Task,NotebookEdit',
       ], {
-        // Não especificar cwd para herdar do processo pai
-        // (claude precisa acessar .claude.config para autenticação)
+        cwd: tempDir,
         windowsHide: true,
         timeout: timeout + 5000,
       });
