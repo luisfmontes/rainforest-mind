@@ -496,6 +496,127 @@ fi
 
 rm -rf "$MUT14_DIR"
 
+# ============ Fatiamento por teto de argumento (tarefa 6) ============
+# Esta seção não existia, e a entrega da tarefa 6 foi commitada afirmando que
+# esta bateria passava: `git diff 1a1dae5..ad79433 -- scripts/testa-observar.sh`
+# devolvia ZERO linhas. O comportamento funcionava — provado à mão —, mas nada
+# no CI segurava uma regressão. O modo de falha que isso deixaria passar é caro
+# e silencioso: transcrito grande (o caso comum) estoura `ENAMETOOLONG`, nenhuma
+# observação é gravada, e não há erro na tela — para sempre, a cada sessão.
+echo
+echo "== 8. trecho maior que o teto vira N chamadas, e a marca avanca por fatia =="
+
+FATIA_DIR="$(mktemp -d)"
+CONTA_LOG="$FATIA_DIR/chamadas.log"
+: > "$CONTA_LOG"
+
+# Dublê que registra o tamanho de cada chamada recebida.
+cat > "$FATIA_DIR/duble-conta.cjs" <<'DUBLE_CONTA'
+const fs = require('fs');
+module.exports.chamarLLM = async (texto) => {
+  fs.appendFileSync(process.env.DUBLE_CONTA_LOG, texto.length + '\n');
+  return 'resumo da fatia de ' + texto.length + ' caracteres';
+};
+DUBLE_CONTA
+
+mkdir -p "$FATIA_DIR/projects/proj-fatia"
+TRANSCRITO_GRANDE="$FATIA_DIR/projects/proj-fatia/sgrande.jsonl"
+TRANSCRITO_GRANDE="$TRANSCRITO_GRANDE" node --no-warnings <<'GERA_GRANDE'
+const fs = require('fs');
+const alvo = process.env.TRANSCRITO_GRANDE;
+const linhas = [];
+// 60 pares pergunta/resposta de ~300 caracteres cada: ~57 kB, mais de 3x o teto.
+for (let i = 1; i <= 60; i++) {
+  linhas.push(JSON.stringify({type:'user',message:{role:'user',content:'Pergunta '+i+': '+'x'.repeat(300)},timestamp:'2026-08-20T05:00:00Z',sessionId:'sgrande',version:'2.1.0',cwd:'test'}));
+  linhas.push(JSON.stringify({type:'assistant',message:{role:'assistant',content:[{type:'text',text:'Resposta '+i+': '+'y'.repeat(300)}]},timestamp:'2026-08-20T05:00:01Z',sessionId:'sgrande',version:'2.1.0',cwd:'test'}));
+}
+fs.writeFileSync(alvo, linhas.join('\n') + '\n');
+GERA_GRANDE
+TAM_GRANDE=$(wc -c < "$TRANSCRITO_GRANDE")
+
+RFM_ROOT="$FATIA_DIR" node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+(cd "$SRC" && RFM_ROOT="$FATIA_DIR" TRANSCRITO_GRANDE="$TRANSCRITO_GRANDE" TAM_GRANDE="$TAM_GRANDE" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const db = abrirBanco(process.env.RFM_ROOT + '/rainforest.db');
+db.prepare('INSERT INTO marca_dagua (projeto,sessao,arquivo,offset,offset_processado,processada_em) VALUES (?,?,?,?,?,?)')
+  .run('proj-fatia','sgrande',process.env.TRANSCRITO_GRANDE,Number(process.env.TAM_GRANDE),0,'2026-08-20T05:00:00Z');
+db.close();
+")
+
+RFM_ROOT="$FATIA_DIR" DUBLE_CONTA_LOG="$CONTA_LOG" TESTADOR_CHAMAR_LLM="$FATIA_DIR/duble-conta.cjs" \
+  node "$SRC/scripts/observar.cjs" > /dev/null 2>&1
+SAIDA_FATIA=$?
+
+TETO=$(grep -o 'TETO_ARGUMENTO = [0-9]*' "$SRC/scripts/observar.cjs" | grep -o '[0-9]*')
+NUM_CHAMADAS=$(grep -c . "$CONTA_LOG")
+MAIOR_FATIA=$(sort -n "$CONTA_LOG" | tail -1)
+
+if [ "$SAIDA_FATIA" -eq 0 ] && [ "$NUM_CHAMADAS" -gt 1 ]; then
+  ok=$((ok+1)); echo "  ok    transcrito de $TAM_GRANDE bytes virou $NUM_CHAMADAS chamadas"
+else
+  falhou=$((falhou+1)); echo "  FALHA esperava mais de 1 chamada, veio $NUM_CHAMADAS (exit $SAIDA_FATIA)"
+fi
+
+if [ -n "$MAIOR_FATIA" ] && [ "$MAIOR_FATIA" -le "$TETO" ]; then
+  ok=$((ok+1)); echo "  ok    nenhuma fatia passou do teto (maior: $MAIOR_FATIA de $TETO)"
+else
+  falhou=$((falhou+1)); echo "  FALHA fatia de $MAIOR_FATIA passou do teto de $TETO"
+fi
+
+# A marca tem que chegar ao fim do arquivo, e o número de observações tem que
+# bater com o número de fatias — é isso que prova avanço POR fatia, e não um
+# único avanço no fim.
+ESTADO_FATIA=$(cd "$SRC" && RFM_ROOT="$FATIA_DIR" node --no-warnings -e "
+const { abrirBancoSomenteLeitura } = require('./scripts/memoria.cjs');
+const db = abrirBancoSomenteLeitura(process.env.RFM_ROOT + '/rainforest.db');
+const m = db.prepare('SELECT offset_processado o FROM marca_dagua').get();
+const n = db.prepare('SELECT count(*) c FROM observacoes').get().c;
+db.close();
+process.stdout.write((m ? m.o : 'sem-marca') + ':' + n);
+")
+if [ "$ESTADO_FATIA" = "$TAM_GRANDE:$NUM_CHAMADAS" ]; then
+  ok=$((ok+1)); echo "  ok    marca em $TAM_GRANDE e $NUM_CHAMADAS observacoes gravadas (uma por fatia)"
+else
+  falhou=$((falhou+1)); echo "  FALHA esperava '$TAM_GRANDE:$NUM_CHAMADAS', veio '$ESTADO_FATIA'"
+fi
+
+echo
+echo "  8.b — FALSIFICACAO: sem fatiamento, a chamada unica estoura o teto"
+# A mutação é o teto artificialmente alto — o mesmo caminho de código, sem o
+# corte. Se a chamada única NÃO passar do teto real medido, o fixture não é
+# grande o bastante e a prova acima não vale nada.
+: > "$CONTA_LOG"
+CAIXA_MUT="$(mktemp -d)"; mkdir -p "$CAIXA_MUT/projects/proj-fatia"
+cp "$TRANSCRITO_GRANDE" "$CAIXA_MUT/projects/proj-fatia/sgrande.jsonl"
+RFM_ROOT="$CAIXA_MUT" node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+(cd "$SRC" && RFM_ROOT="$CAIXA_MUT" TAM_GRANDE="$TAM_GRANDE" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const db = abrirBanco(process.env.RFM_ROOT + '/rainforest.db');
+db.prepare('INSERT INTO marca_dagua (projeto,sessao,arquivo,offset,offset_processado,processada_em) VALUES (?,?,?,?,?,?)')
+  .run('proj-fatia','sgrande',process.env.RFM_ROOT + '/projects/proj-fatia/sgrande.jsonl',Number(process.env.TAM_GRANDE),0,'2026-08-20T05:00:00Z');
+db.close();
+")
+# A cópia leva `scripts/` E `hooks/`: o `memoria.cjs` faz require de
+# `../hooks/lib/raiz.cjs`, então copiar só `scripts/` deixa a cópia sem resolver
+# módulo e o teste "passaria" com zero chamadas — vacuidade pela porta dos fundos.
+ARVORE_MUT="$CAIXA_MUT/arvore"
+mkdir -p "$ARVORE_MUT"
+cp -r "$SRC/scripts" "$ARVORE_MUT/scripts"
+cp -r "$SRC/hooks" "$ARVORE_MUT/hooks"
+sed -i 's/^const TETO_ARGUMENTO = [0-9]*;/const TETO_ARGUMENTO = 9999999;/' "$ARVORE_MUT/scripts/observar.cjs"
+RFM_ROOT="$CAIXA_MUT" DUBLE_CONTA_LOG="$CONTA_LOG" TESTADOR_CHAMAR_LLM="$FATIA_DIR/duble-conta.cjs" \
+  node "$ARVORE_MUT/scripts/observar.cjs" > /dev/null 2>&1
+CHAMADAS_MUT=$(grep -c . "$CONTA_LOG")
+MAIOR_MUT=$(sort -n "$CONTA_LOG" | tail -1)
+
+if [ "$CHAMADAS_MUT" = "1" ] && [ -n "$MAIOR_MUT" ] && [ "$MAIOR_MUT" -gt "$TETO" ]; then
+  ok=$((ok+1)); echo "  ok    VERMELHO: com teto alto vira 1 chamada de $MAIOR_MUT caracteres, acima do teto de $TETO"
+else
+  falhou=$((falhou+1)); echo "  FALHA falsificacao nao vale: $CHAMADAS_MUT chamada(s), maior de $MAIOR_MUT, teto $TETO"
+fi
+
+rm -rf "$FATIA_DIR" "$CAIXA_MUT"
+
 # ============ Resultado final ============
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

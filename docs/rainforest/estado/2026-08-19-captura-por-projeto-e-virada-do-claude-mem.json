@@ -17,10 +17,23 @@
     "em": "2026-08-19"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "tarefas": 7,
+    "tarefas_ok": 6,
+    "pendentes": [
+      "Tarefa 7 (virada: desligar o claude-mem) depende de publicar a branch e da palavra do Luis"
+    ],
+    "nota": "tarefas 1 a 6; a 6 entregue sem bateria, ver revisar",
+    "em": "2026-08-20"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "achados": 3,
+    "criticos": 1,
+    "base": "1a1dae5",
+    "head": "ad79433",
+    "nota": "critico: tarefa 6 (fatiamento) sem bateria - diff de testa-observar.sh e vazio",
+    "em": "2026-08-20"
   },
   "verificar": {
     "status": "pendente"

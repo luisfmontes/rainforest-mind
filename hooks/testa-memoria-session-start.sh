@@ -437,10 +437,16 @@ else
   falhou=$((falhou+1)); echo "  FALHA bloco tem $NUM_C de projeto-c, esperado 2"
 fi
 
-if [ "$NUM_OUTROS_C" -ge "10" ]; then
-  ok=$((ok+1)); echo "  ok    bloco completa com 12+ de outros projetos"
+# EXATAMENTE 12, não `>= 10`. O bloco tem 14 linhas e 2 são de projeto-c, então
+# aritmeticamente as outras só podem ser 12 — a margem de 10 aceitava duas
+# linhas SEM rótulo de projeto, que é justamente a regressão de formatação que
+# esta seção existe para pegar. A mensagem de erro já dizia "esperado >= 12"
+# enquanto o teste comparava com 10; onde o texto e o número divergem, é o
+# número que manda, e ele estava frouxo.
+if [ "$NUM_OUTROS_C" = "12" ]; then
+  ok=$((ok+1)); echo "  ok    bloco completa com exatamente 12 de outros projetos, todas rotuladas"
 else
-  falhou=$((falhou+1)); echo "  FALHA bloco tem $NUM_OUTROS_C de outros, esperado >= 12"
+  falhou=$((falhou+1)); echo "  FALHA bloco tem $NUM_OUTROS_C rotuladas de outros projetos, esperado exatamente 12"
 fi
 
 echo
