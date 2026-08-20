@@ -75,13 +75,28 @@ pronto quando: os quatro itens abaixo, cada um com comando e saída colados:
   d) `cwd` da chamada é diretório neutro, nunca o do projeto — para o transcrito, que é conteúdo não confiável, não conseguir puxar arquivo do repositório de quem estiver rodando.
 falsificação: com a LLM falhando (dublê que devolve `null`), **nenhuma observação vazia é gravada** e a marca d'água **não avança** — `SELECT count(*) FROM observacoes` fica em 0 e o `offset_processado` fica onde estava. Rodar e colar.
 
-### 6. Teto por chamada e fatiamento do trecho [tipo: implementar]
+### 6. Teto por chamada, fatiamento e orçamento de tempo [tipo: implementar]
 atende: D6
-arquivos: `scripts/observar.cjs`, `scripts/testa-observar.sh`
+arquivos: `scripts/observar.cjs`, `scripts/testa-observar.sh`, `hooks/hooks.json`
 depende de: 5
 paralela: nao
 pronto quando: `bash scripts/testa-observar.sh` sai 0 com um trecho de fixture **maior que o teto** (o limite medido é `ENAMETOOLONG` entre 16.908 e 33.708 caracteres de argumento; adote teto conservador e deixe-o nomeado numa constante): o dublê conta as chamadas e recebe **mais de uma**, nenhuma delas acima do teto, e a marca d'água avança **por fatia processada**, não de uma vez no fim.
 falsificação: com o teto elevado artificialmente acima do trecho, a chamada única tem que estourar `ENAMETOOLONG` — se não estourar, o teste não está exercitando o caminho que a constante existe para evitar.
+
+> **Emenda de 2026-08-20 (manhã), vinda da revisão.** A tarefa ganha o
+> `hooks/hooks.json` e um **orçamento de tempo por passada**. O motivo é
+> aritmético e a primeira redação não o viu: o hook tinha teto de 30 s enquanto
+> uma chamada espera 60 s, e subir o teto do hook para 120 s resolve **uma**
+> chamada, não **N**. Duas fatias no pior caso somam 130 s, e N cresce com o
+> tamanho do transcrito sem limite superior — não existe valor de timeout que
+> feche a conta. A passada passa a parar sozinha aos 90 s e devolver o resto
+> para a próxima sessão, o que só é seguro porque a marca d'água já avançava por
+> fatia.
+>
+> Régua nova, e é ela que o `verificar` mede: com dublê lento e
+> `TESTADOR_ORCAMENTO_MS` pequeno, a passada anuncia a parada e a marca fica em
+> ponto **intermediário** — nem 0, que seria perder o que já fez, nem o fim do
+> arquivo, que seria fingir que terminou.
 
 ### 7. A virada: importar, provar, desligar [tipo: configurar]
 atende: D5
