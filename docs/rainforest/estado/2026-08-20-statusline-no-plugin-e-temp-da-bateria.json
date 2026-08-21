@@ -1,0 +1,44 @@
+{
+  "slug": "2026-08-20-statusline-no-plugin-e-temp-da-bateria",
+  "titulo": "Statusline versionada no plugin e temporarios da bateria de saude",
+  "criado_em": "2026-08-20",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-08-20-statusline-no-plugin-e-temp-da-bateria.md",
+    "em": "2026-08-21"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-08-20-statusline-no-plugin-e-temp-da-bateria.md",
+    "tarefas": 8,
+    "paralelas": [
+      1,
+      2,
+      3,
+      6
+    ],
+    "em": "2026-08-21"
+  },
+  "executar": {
+    "status": "ok",
+    "tarefas_ok": 9,
+    "tarefas": 9,
+    "em": "2026-08-21",
+    "rodada": 4,
+    "achados_corrigidos": 4
+  },
+  "revisar": {
+    "status": "reprovado",
+    "achados": 2,
+    "em": "2026-08-21"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
