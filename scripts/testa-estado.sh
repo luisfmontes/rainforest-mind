@@ -61,7 +61,11 @@ echo "== 2. o caminho feliz NAO e barrado =="
 esperado "marcar design aprovado"   0 $E marcar --slug t1 --estagio design    --status aprovado
 esperado "marcar plano ok"          0 $E marcar --slug t1 --estagio plano     --status ok
 esperado "exigir executar agora ok" 0 $E exigir --slug t1 --estagio executar
-esperado "marcar executar ok"       0 $E marcar --slug t1 --estagio executar  --status ok
+# O `exigir` acima ARMA a catraca de mutacao, entao o fechamento feliz daqui em
+# diante declara `mutacao`. Antes da catraca esta linha nao tinha --json; ela
+# mudou porque o contrato mudou, e um caminho feliz que nao declara mutacao
+# deixou de ser caminho feliz.
+esperado "marcar executar ok"       0 $E marcar --slug t1 --estagio executar  --status ok --json '{"mutacao":[{"tarefa":1,"resultado":"vermelho"}]}'
 esperado "marcar revisar ok"        0 $E marcar --slug t1 --estagio revisar   --status ok
 esperado "marcar verificar ok"      0 $E marcar --slug t1 --estagio verificar --status ok
 esperado "marcar fechar ok"         0 $E marcar --slug t1 --estagio fechar    --status ok
@@ -276,6 +280,89 @@ esperado "backstop-6: exigir com dois rastreados sujos" 0 $E_REPO exigir --slug 
 # Ninguem sujou nada novo: bravo.txt so subiu da linha 2 para a linha 1.
 (cd "$SBP/test-repo" && echo "conteudo-alpha" > alpha.txt)
 esperado "backstop-6: sujeira que so mudou de posicao nao e mutacao" 0 $E_REPO marcar --slug backstop-6 --estagio revisar --status ok --json '{"achados":0,"base":"HEAD","head":"HEAD"}'
+
+echo
+echo "== 11. catraca de mutacao no fechamento de executar (D6, D9, D10) =="
+# Em 2026-08-21 um agente entregou 49/49 verde com a trava recusando o caminho
+# feliz SEMPRE: ele colou saida de mutacao no relato, e o relato era a unica
+# coisa que alguem conferia. Agora o campo e cobrado pelo `marcar`, que e
+# externo ao agente e sai 2.
+#
+# Caixa propria: a secao 10 deixou RFM_ESTADO_ROOT apontando para o test-repo, e
+# nada aqui precisa de git.
+export RFM_ESTADO_ROOT="$SBP/catraca"
+mkdir -p "$RFM_ESTADO_ROOT"
+
+prep_catraca() { # slug — chega ate executar COM a catraca armada pelo exigir
+  $E iniciar --slug "$1" >/dev/null
+  $E marcar --slug "$1" --estagio design --status aprovado >/dev/null
+  $E marcar --slug "$1" --estagio plano  --status ok >/dev/null
+  $E exigir --slug "$1" --estagio executar >/dev/null
+}
+
+prep_sem_catraca() { # slug — esteira ja aberta antes da catraca existir
+  $E iniciar --slug "$1" >/dev/null
+  $E marcar --slug "$1" --estagio design --status aprovado >/dev/null
+  $E marcar --slug "$1" --estagio plano  --status ok >/dev/null
+}
+
+prep_catraca cat-1
+esperado "sem o campo mutacao, recusa" 2 \
+  $E marcar --slug cat-1 --estagio executar --status ok --json '{"tarefas_ok":2,"tarefas":2}'
+# Recusa que nao diz o nome do campo manda o agente adivinhar, e adivinhacao
+# volta como `--forcar`.
+msg=$($E marcar --slug cat-1 --estagio executar --status ok --json '{"tarefas_ok":2,"tarefas":2}' 2>&1)
+igual "a recusa nomeia o campo 'mutacao'" "sim" \
+  "$(case "$msg" in *mutacao*) echo sim;; *) echo nao;; esac)"
+
+prep_catraca cat-2
+esperado "com um item vermelho, fecha" 0 \
+  $E marcar --slug cat-2 --estagio executar --status ok --json '{"tarefas_ok":2,"tarefas":2,"mutacao":[{"tarefa":1,"resultado":"vermelho"}]}'
+
+# `n/a` com motivo e resposta aceita (D9): tarefa de doc nao tem comportamento a
+# inverter, e exigir o impossivel cria o habito do --forcar.
+prep_catraca cat-3
+esperado "n/a COM motivo fecha" 0 \
+  $E marcar --slug cat-3 --estagio executar --status ok --json '{"tarefas_ok":2,"tarefas":2,"mutacao":[{"tarefa":4,"resultado":"n/a","motivo":"tarefa so reescreve doc"}]}'
+
+# ...mas `n/a` seco seria a palavra mais curta ate o exit 0.
+prep_catraca cat-4
+esperado "n/a SEM motivo recusa" 2 \
+  $E marcar --slug cat-4 --estagio executar --status ok --json '{"tarefas_ok":2,"tarefas":2,"mutacao":[{"tarefa":4,"resultado":"n/a"}]}'
+
+# Bateria que fica verde com o conserto invertido e o defeito que a catraca
+# mede; declarar isso como sucesso e o caminho de fuga obvio.
+prep_catraca cat-5
+esperado "resultado 'verde' nao e resposta aceita" 2 \
+  $E marcar --slug cat-5 --estagio executar --status ok --json '{"tarefas_ok":2,"tarefas":2,"mutacao":[{"tarefa":1,"resultado":"verde"}]}'
+
+# Só o fechamento `ok` cobra: quem entregou meia esteira ou reprovou precisa
+# poder registrar isso sem prova de mutacao que ainda nao existe.
+prep_catraca cat-6
+esperado "parcial nao exige o campo"    0 $E marcar --slug cat-6 --estagio executar --status parcial   --json '{"tarefas_ok":3,"tarefas":5}'
+esperado "reprovado nao exige o campo"  0 $E marcar --slug cat-6 --estagio executar --status reprovado
+
+# D10: travar retroativo quebra esteira em andamento. Sem o marcador do `exigir`
+# nao ha como saber se o estagio abriu antes ou depois da catraca — entao avisa.
+prep_sem_catraca cat-7
+esperado "executar aberto antes da catraca fecha mesmo assim" 0 \
+  $E marcar --slug cat-7 --estagio executar --status ok --json '{"tarefas_ok":2,"tarefas":2}'
+prep_sem_catraca cat-8
+aviso=$($E marcar --slug cat-8 --estagio executar --status ok --json '{"tarefas_ok":2,"tarefas":2}' 2>&1)
+igual "e passar calado seria pior que travar" "sim" \
+  "$(case "$aviso" in *aviso:*catraca*) echo sim;; *) echo nao;; esac)"
+
+echo
+echo "== 12. MUTACAO — sem a recusa da catraca, o caso 11 para de pegar =="
+cp scripts/estado.cjs scripts/estado-catraca-mutante.cjs
+sed -i "s|function verificarCatracaMutacao(slug, bloco, extra) {|function verificarCatracaMutacao(slug, bloco, extra) { return null; // MUTADO|" scripts/estado-catraca-mutante.cjs
+prep_catraca cat-mut
+saida=$(node scripts/estado-catraca-mutante.cjs marcar --slug cat-mut --estagio executar --status ok --json '{"tarefas_ok":2,"tarefas":2}' 2>&1); mut=$?
+if [ "$mut" = "0" ]; then
+  ok=$((ok+1)); echo "  ok   sem verificarCatracaMutacao o fechamento vazio passa (ela e load-bearing)"
+else
+  falhou=$((falhou+1)); echo "  FALHA mutacao nao teve efeito — nao e a catraca que recusa (exit $mut)"
+fi
 
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

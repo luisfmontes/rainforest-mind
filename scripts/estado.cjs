@@ -275,6 +275,87 @@ function verificarMutacao(slug, snapshot_anterior) {
   }
 }
 
+// ------------------------------ catraca de mutacao no executar (D6, D9, D10)
+//
+// Em 2026-08-21 um agente cumpriu todos os criterios falsificaveis do briefing,
+// colou saida de mutacao no relato e entregou 49/49 verde — e a trava que ele
+// dizia ter invertido recusava o caminho feliz SEMPRE. A bateria nao sabia
+// falhar, e o fechamento nao cobrava prova nenhuma disso: a catraca era prosa
+// no briefing, e prosa e conferida pelo mesmo agente que ela deveria barrar. E
+// a oitava vez que a familia "bateria que nao sabe falhar" volta ao acervo.
+//
+// Por isso o campo `mutacao` e cobrado AQUI, no `marcar --estagio executar
+// --status ok`, que e o gargalo unico por onde a esteira inteira ja passa —
+// mesma forma da trava de `base`/`head` do `revisar`, logo abaixo, e mesmo
+// exit 2. O que o agente declara no campo nao vira verdade por ser declarado:
+// quem re-roda a mutacao e a integracao (D8). O campo existe para que exista
+// alvo declarado a re-rodar, e para que "esqueci" pare de sair 0.
+//
+// Duas frouxidoes deliberadas, cada uma fechando um jeito conhecido de a trava
+// morrer no primeiro dia de pressa:
+//
+//   1. `n/a` com `motivo` e resposta aceita (D9). Tarefa de doc nao tem
+//      comportamento a inverter, e exigir o impossivel cria o habito do
+//      `--forcar`, que mata a trava inteira em vez de uma tarefa. Sem `motivo`,
+//      porem, `n/a` seria so a palavra mais curta ate o exit 0 — por isso ele e
+//      obrigatorio, e vazio nao conta.
+//
+//   2. Slug cujo `executar` foi aberto antes desta mudanca avisa e passa (D10).
+//      Mesmo desenho do backstop acima: travar retroativo quebra esteira em
+//      andamento. O sinal de "aberto depois" e o marcador que o `exigir
+//      --estagio executar` passa a gravar no proprio arquivo de estado, no
+//      lugar onde o `revisar` ja grava o instantaneo dele — e o unico registro
+//      que existe do momento em que o estagio abriu.
+
+/** Resultados aceitos. `verde` fica de fora de proposito: bateria que continua
+ *  verde com o conserto invertido e exatamente o defeito que a catraca mede. */
+const RESULTADOS_MUTACAO = ['vermelho', 'n/a'];
+
+const COMO_DECLARAR = "Ex.: --json '{\"tarefas_ok\":2,\"tarefas\":2,\"mutacao\":["
+  + '{"tarefa":1,"resultado":"vermelho"},'
+  + '{"tarefa":4,"resultado":"n/a","motivo":"tarefa so reescreve doc"}]}\'';
+
+/** @returns {string|null} mensagem de recusa, ou null se passou/nao se aplica */
+function verificarCatracaMutacao(slug, bloco, extra) {
+  if (!bloco || !bloco.catraca_mutacao) {
+    console.warn(`aviso: catraca de mutacao nao armada para ${slug} — este 'executar' foi aberto antes dela existir. Fechando sem prova de que as baterias sabem falhar. Rode 'exigir --estagio executar' antes de executar.`);
+    return null;
+  }
+
+  const lista = extra && extra.mutacao;
+  if (!Array.isArray(lista) || lista.length === 0) {
+    return "RECUSADO: fechar 'executar' exige 'mutacao' no --json: uma lista, um item por tarefa do plano.\n"
+      + 'Sem ela, "a bateria passou" nao distingue bateria que testa de bateria que nao\n'
+      + 'sabe falhar, e foi assim que uma entrega quebrada saiu daqui 49/49 verde.\n'
+      + COMO_DECLARAR;
+  }
+
+  for (let i = 0; i < lista.length; i += 1) {
+    const item = lista[i];
+    const onde = `mutacao[${i}]`;
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      return `RECUSADO: ${onde} nao e um objeto.\n${COMO_DECLARAR}`;
+    }
+    if (item.tarefa === undefined || item.tarefa === null || String(item.tarefa).trim() === '') {
+      return `RECUSADO: ${onde} nao diz de que 'tarefa' e. E um item por tarefa do plano, e sem\n`
+        + `o numero nao da para cruzar a lista com o plano nem re-rodar a mutacao certa.\n${COMO_DECLARAR}`;
+    }
+    const resultado = item.resultado === undefined ? '(ausente)' : String(item.resultado);
+    if (!RESULTADOS_MUTACAO.includes(item.resultado)) {
+      return `RECUSADO: ${onde} (tarefa ${item.tarefa}) tem resultado '${resultado}' — use ${RESULTADOS_MUTACAO.join(' ou ')}.\n`
+        + `Bateria que fica VERDE com o conserto invertido nao prova nada: ela nao sabe\n`
+        + `falhar, e por isso 'verde' nao e resposta aceita aqui.\n${COMO_DECLARAR}`;
+    }
+    if (item.resultado === 'n/a' && (typeof item.motivo !== 'string' || item.motivo.trim() === '')) {
+      return `RECUSADO: ${onde} (tarefa ${item.tarefa}) e 'n/a' sem 'motivo'.\n`
+        + `'n/a' aceito sem justificativa e so a palavra mais curta ate o exit 0, e a\n`
+        + `catraca inteira morre na primeira pressa. Diga por que nao ha o que inverter.\n${COMO_DECLARAR}`;
+    }
+  }
+
+  return null;
+}
+
 // ------------------------------------------------- trava de fechamento (D5)
 //
 // Fechar estágio roda a checagem correspondente do `conferir-esteira.cjs`, e
@@ -414,6 +495,14 @@ function main() {
         gravar(slug, estado);
         console.log(`snapshot capturado: HEAD=${snapshot.head.substring(0, 7)}, ${snapshot.caminhos_sujos.length} arquivo(s) sujo(s)`);
       }
+      // Armar a catraca ao exigir executar. Este marcador e o unico jeito de
+      // distinguir estagio aberto DEPOIS da catraca de estagio que ja estava em
+      // andamento quando ela nasceu — o segundo so avisa (D10).
+      if (estagio === 'executar') {
+        estado.executar = { ...estado.executar, catraca_mutacao: hoje() };
+        gravar(slug, estado);
+        console.log("catraca armada: fechar este 'executar' com 'ok' vai exigir o campo 'mutacao' no --json.");
+      }
       return;
     }
     // Exit 2, não 1: é a mesma convenção dos gates deste repo, e o que separa
@@ -465,6 +554,16 @@ function main() {
         const recusa_mutacao = verificarMutacao(slug, estado.revisar && estado.revisar.snapshot);
         if (recusa_mutacao) {
           console.error(recusa_mutacao);
+          process.exit(2);
+        }
+      }
+      // Só o fechamento `ok` cobra: `parcial` e `reprovado` nao passam por aqui,
+      // e nao podem passar — quem entregou meia esteira ou reprovou nao deve
+      // ficar sem como registrar isso.
+      if (estagio === 'executar') {
+        const recusa_catraca = verificarCatracaMutacao(slug, estado.executar, extra);
+        if (recusa_catraca) {
+          console.error(recusa_catraca);
           process.exit(2);
         }
       }
