@@ -161,5 +161,72 @@ else
   falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — nao e a varredura que decide (veio '$MUTA')"
 fi
 
+echo
+echo "== 10. backstop de mutacao no revisar (Issue #4) =="
+
+# Prepara um repositorio minimo para testar, DENTRO da caixa
+mkdir -p "$SBP/test-repo"
+(
+  cd "$SBP/test-repo"
+  git init >/dev/null
+  git config user.email "test@test" >/dev/null
+  git config user.name "Test" >/dev/null
+  echo "initial" > initial.txt
+  git add . && git commit -m "initial" >/dev/null
+)
+
+# TODOS os testes rodam com RFM_ESTADO_ROOT apontando para test-repo
+# Nota: precisamos exportar para que o sh -c veja a variavel
+export RFM_ESTADO_ROOT="$SBP/test-repo"
+E_REPO="node scripts/estado.cjs"
+
+# Caso 1: exigir revisar => nada muda => marcar ok PASSA
+echo "  preparando caso 1..."
+$E_REPO iniciar --slug backstop-1 >/dev/null
+$E_REPO marcar --slug backstop-1 --estagio design --status aprovado >/dev/null
+$E_REPO marcar --slug backstop-1 --estagio plano --status ok >/dev/null
+$E_REPO marcar --slug backstop-1 --estagio executar --status ok >/dev/null
+# Executar rodaria no test-repo, vamos simular que criou algo capturando snapshot
+esperado "backstop: exigir revisar captura snapshot" 0 $E_REPO exigir --slug backstop-1 --estagio revisar
+esperado "backstop: marcar ok passa quando nada mudou" 0 $E_REPO marcar --slug backstop-1 --estagio revisar --status ok --json '{"achados":0,"base":"HEAD","head":"HEAD"}'
+
+# Caso 2: exigir revisar => commit novo => marcar ok FALHA
+echo "  preparando caso 2..."
+$E_REPO iniciar --slug backstop-2 >/dev/null
+$E_REPO marcar --slug backstop-2 --estagio design --status aprovado >/dev/null
+$E_REPO marcar --slug backstop-2 --estagio plano --status ok >/dev/null
+$E_REPO marcar --slug backstop-2 --estagio executar --status ok >/dev/null
+esperado "backstop-2: exigir revisar" 0 $E_REPO exigir --slug backstop-2 --estagio revisar
+# Fazer um commit novo (simula outro dev commitando)
+(cd "$SBP/test-repo" && echo "mudanca" >> initial.txt && git add . && git commit -m "novo commit" >/dev/null)
+esperado "backstop-2: marcar ok falha quando HEAD mudou" 2 $E_REPO marcar --slug backstop-2 --estagio revisar --status ok --json '{"achados":0,"base":"HEAD","head":"HEAD"}'
+
+# Caso 3: exigir revisar => arquivo rastreado modificado => marcar ok FALHA
+echo "  preparando caso 3..."
+# Reverter o commit anterior para o caso 3
+(cd "$SBP/test-repo" && git reset --hard HEAD~1 >/dev/null)
+$E_REPO iniciar --slug backstop-3 >/dev/null
+$E_REPO marcar --slug backstop-3 --estagio design --status aprovado >/dev/null
+$E_REPO marcar --slug backstop-3 --estagio plano --status ok >/dev/null
+$E_REPO marcar --slug backstop-3 --estagio executar --status ok >/dev/null
+esperado "backstop-3: exigir revisar" 0 $E_REPO exigir --slug backstop-3 --estagio revisar
+# Modificar um arquivo rastreado (simula revisor editando)
+(cd "$SBP/test-repo" && echo "arquivo modificado" >> initial.txt)
+esperado "backstop-3: marcar ok falha quando arquivo ficou sujo" 2 $E_REPO marcar --slug backstop-3 --estagio revisar --status ok --json '{"achados":0,"base":"HEAD","head":"HEAD"}'
+
+# Caso 4: exigir revisar com arvore JA SUJA => nenhuma sujeira nova => marcar ok PASSA
+echo "  preparando caso 4..."
+# Desfazer a mudanca anterior
+(cd "$SBP/test-repo" && git checkout -- initial.txt)
+# Criar um arquivo extra sujo ANTES de exigir (simula lixo pre-existente do usuario)
+(cd "$SBP/test-repo" && echo "lixo" > lixo-preexistente.txt)
+$E_REPO iniciar --slug backstop-4 >/dev/null
+$E_REPO marcar --slug backstop-4 --estagio design --status aprovado >/dev/null
+$E_REPO marcar --slug backstop-4 --estagio plano --status ok >/dev/null
+$E_REPO marcar --slug backstop-4 --estagio executar --status ok >/dev/null
+esperado "backstop-4: exigir revisar com arvore suja" 0 $E_REPO exigir --slug backstop-4 --estagio revisar
+# Nao fazer mudanca nenhuma, sujeira pre-existente nao reprova
+esperado "backstop-4: marcar ok passa com sujeira preexistente" 0 $E_REPO marcar --slug backstop-4 --estagio revisar --status ok --json '{"achados":0,"base":"HEAD","head":"HEAD"}'
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
