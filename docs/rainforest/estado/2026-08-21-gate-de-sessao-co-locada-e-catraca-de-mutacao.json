@@ -10,7 +10,16 @@
     "em": "2026-08-21"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-08-21-gate-de-sessao-co-locada-e-catraca-de-mutacao.md",
+    "tarefas": 6,
+    "paralelas": [
+      1,
+      3,
+      4,
+      5
+    ],
+    "em": "2026-08-21"
   },
   "executar": {
     "status": "pendente"
