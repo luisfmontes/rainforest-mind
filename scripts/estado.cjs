@@ -181,25 +181,54 @@ function faltando(estado, estagio) {
 //
 // Sujeira pré-existente é legítima e não recusa — usuário pode ter outro
 // trabalho em andamento no mesmo clone.
+//
+// DOIS defeitos que a primeira versão desta trava tinha, e que a bateria dela
+// não pegava. Ficam registrados porque os dois são armadilha de fixture, não
+// de código:
+//
+//   1. `statusOutput.trim()` antes do `split` comia o espaço inicial da
+//      PRIMEIRA linha. Porcelain de arquivo rastreado e modificado vem como
+//      ` M caminho` — com espaço na frente —, então `substring(3)` cortava um
+//      caractere a mais e `docs/...` virava `ocs/...`. Só na primeira linha, e
+//      só para arquivo rastreado: untracked vem `?? caminho`, sem espaço
+//      inicial, e o fixture só tinha untracked. Pior que a mensagem errada: o
+//      MESMO arquivo produzia chave diferente conforme a posição na saída, o
+//      que gera falso positivo sozinho.
+//
+//   2. O `exigir` capturava o instantâneo e logo depois `gravar()` escrevia o
+//      próprio instantâneo no arquivo de estado — que é VERSIONADO neste repo.
+//      Resultado: o arquivo de estado ficava sujo DEPOIS do instantâneo, e o
+//      `marcar ok` seguinte o via como caminho novo e recusava o caminho feliz,
+//      sempre. O fixture não pegou porque nunca commitava o estado: lá o
+//      arquivo já estava sujo (untracked) antes do instantâneo, e portanto
+//      dentro dele. A bookkeeping da própria trava não pode ser evidência
+//      contra o revisor, então ela sai dos dois conjuntos.
+
+/** Caminhos que a própria trava suja, e que por isso não contam como mutação. */
+function caminhosDaPropriaTrava(slug) {
+  const rel = path.relative(RAIZ, path.join(DIR_ESTADO, `${slug}.json`));
+  return new Set([rel.replace(/\\/g, '/')]);
+}
+
+/** Caminhos sujos do repo, normalizados. Sem `.trim()` no bloco: ver defeito 1. */
+function caminhosSujos() {
+  const saida = execSync('git status --porcelain', { cwd: RAIZ, encoding: 'utf8' });
+  return saida
+    .split(/\r?\n/)
+    .filter((linha) => linha.length > 0)
+    .map((linha) => {
+      const partes = linha.substring(3).split(' -> ');
+      const caminho = partes.length > 1 ? partes[1] : partes[0];
+      return caminho.replace(/\\/g, '/');
+    })
+    .sort();
+}
 
 function capturarSnapshot() {
   try {
-    const head = execSync('git rev-parse HEAD', { cwd: RAIZ, encoding: 'utf8' }).trim();
-    const statusOutput = execSync('git status --porcelain', { cwd: RAIZ, encoding: 'utf8' });
-    const caminhosSujos = statusOutput
-      .trim()
-      .split('\n')
-      .filter(line => line.length > 0)
-      .map(line => {
-        // Normalizar caminhos com \ para / e descartar o rótulo de status
-        const path = line.substring(3).split(' -> ')[0];
-        return path.replace(/\\/g, '/');
-      })
-      .sort();
-
     return {
-      head,
-      caminhos_sujos: caminhosSujos,
+      head: execSync('git rev-parse HEAD', { cwd: RAIZ, encoding: 'utf8' }).trim(),
+      caminhos_sujos: caminhosSujos(),
     };
   } catch (err) {
     console.error(`erro ao capturar snapshot: ${err.message}`);
@@ -207,7 +236,7 @@ function capturarSnapshot() {
   }
 }
 
-function verificarMutacao(estagio, slug, snapshot_anterior) {
+function verificarMutacao(slug, snapshot_anterior) {
   if (!snapshot_anterior || typeof snapshot_anterior !== 'object') {
     // Instantâneo não existe: slug que fechou revisar sem ter passado pelo
     // exigir novo. Avise, mas não trave — retroativamente travar quebra trabalho
@@ -218,16 +247,6 @@ function verificarMutacao(estagio, slug, snapshot_anterior) {
 
   try {
     const head_agora = execSync('git rev-parse HEAD', { cwd: RAIZ, encoding: 'utf8' }).trim();
-    const statusOutput = execSync('git status --porcelain', { cwd: RAIZ, encoding: 'utf8' });
-    const caminhosSujos = statusOutput
-      .trim()
-      .split('\n')
-      .filter(line => line.length > 0)
-      .map(line => {
-        const path = line.substring(3).split(' -> ')[0];
-        return path.replace(/\\/g, '/');
-      })
-      .sort();
 
     // Verificar se HEAD mudou
     if (head_agora !== snapshot_anterior.head) {
@@ -238,10 +257,11 @@ function verificarMutacao(estagio, slug, snapshot_anterior) {
     }
 
     // Verificar se novos caminhos sujos apareceram
+    const propria = caminhosDaPropriaTrava(slug);
     const sujos_antes = new Set(snapshot_anterior.caminhos_sujos || []);
-    const sujos_agora = new Set(caminhosSujos);
 
-    const novos_sujos = [...sujos_agora].filter(c => !sujos_antes.has(c));
+    const novos_sujos = caminhosSujos()
+      .filter((c) => !sujos_antes.has(c) && !propria.has(c));
     if (novos_sujos.length > 0) {
       return `RECUSADO: novos arquivos sujaram durante a revisao: ${novos_sujos.join(', ')}.\n`
         + `O repositorio foi mutado enquanto voce revisava. O revisor nao edita em lugar nenhum\n`
@@ -442,7 +462,7 @@ function main() {
     if (status === (FECHADO[estagio] || 'ok')) {
       // Verificar mutacao ANTES de conferirFechamento, porque é independente
       if (estagio === 'revisar') {
-        const recusa_mutacao = verificarMutacao(estagio, slug, estado.revisar && estado.revisar.snapshot);
+        const recusa_mutacao = verificarMutacao(slug, estado.revisar && estado.revisar.snapshot);
         if (recusa_mutacao) {
           console.error(recusa_mutacao);
           process.exit(2);

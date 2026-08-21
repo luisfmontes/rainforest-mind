@@ -84,6 +84,12 @@ recusa (exit 2) se:
    (outro trabalho em andamento no mesmo clone) e não reprova. Só caminho novo
    recusa.
 
+   Uma exceção, e ela é o próprio mecanismo: `docs/rainforest/estado/<slug>.json`
+   sai da comparação. É o `exigir` que o suja, ao gravar ali o instantâneo que
+   acabou de tirar — e o arquivo é versionado neste repo. Sem a exceção a trava
+   recusa o caminho feliz **sempre**, porque acusa de mutação a escrita que ela
+   mesma fez. A bookkeeping da trava não pode ser evidência contra o revisor.
+
 Se o instantâneo não existir (slug que fechou `revisar` sem passar pelo novo
 `exigir`), **avise e não trave** — travar retroativo quebra trabalho em andamento.
 O instantâneo fica gravado no arquivo de estado (`docs/rainforest/estado/<slug>.json`)

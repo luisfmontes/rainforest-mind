@@ -228,5 +228,54 @@ esperado "backstop-4: exigir revisar com arvore suja" 0 $E_REPO exigir --slug ba
 # Nao fazer mudanca nenhuma, sujeira pre-existente nao reprova
 esperado "backstop-4: marcar ok passa com sujeira preexistente" 0 $E_REPO marcar --slug backstop-4 --estagio revisar --status ok --json '{"achados":0,"base":"HEAD","head":"HEAD"}'
 
+# Caso 5: arquivo de estado VERSIONADO (como neste repo) => caminho feliz PASSA.
+# Os casos 1 a 4 nunca commitavam o estado, entao o arquivo ja estava sujo
+# (untracked) antes do instantaneo e caia dentro dele. No repo real ele e
+# rastreado e limpo: o proprio `exigir` o suja ao gravar o instantaneo, e a
+# primeira versao da trava recusava o caminho feliz SEMPRE. Fixture que nao
+# reproduz o repo real deixa a trava verde e quebrada.
+echo "  preparando caso 5..."
+(cd "$SBP/test-repo" && rm -f lixo-preexistente.txt)
+$E_REPO iniciar --slug backstop-5 >/dev/null
+$E_REPO marcar --slug backstop-5 --estagio design --status aprovado >/dev/null
+$E_REPO marcar --slug backstop-5 --estagio plano --status ok >/dev/null
+$E_REPO marcar --slug backstop-5 --estagio executar --status ok >/dev/null
+(cd "$SBP/test-repo" && git add -A && git commit -qm "estado versionado" >/dev/null 2>&1)
+esperado "backstop-5: arvore limpa e estado versionado" 0 $E_REPO exigir --slug backstop-5 --estagio revisar
+esperado "backstop-5: marcar ok passa (o exigir sujou o proprio estado)" 0 $E_REPO marcar --slug backstop-5 --estagio revisar --status ok --json '{"achados":0,"base":"HEAD","head":"HEAD"}'
+
+# Caso 6: sujeira que MUDA DE POSICAO na saida do porcelain nao vira mutacao.
+# Porcelain de rastreado-modificado vem com espaco na frente (` M caminho`).
+# A primeira versao dava `.trim()` no bloco inteiro antes do split, o que comia
+# esse espaco SO da primeira linha e cortava um caractere a mais do caminho.
+# Efeito: o mesmo arquivo produzia chave diferente conforme a posicao — some um
+# arquivo sujo de cima da lista e o de baixo "vira" caminho novo, sem ninguem
+# ter tocado nele.
+#
+# O arranjo aqui e load-bearing, e custou uma versao errada deste teste. O
+# `git status --porcelain` NAO ordena por caminho: lista as mudancas de arquivo
+# RASTREADO primeiro e as untracked depois, qualquer que seja o nome. A primeira
+# versao punha um untracked chamado `0-lixo.txt` na frente contando com ordem
+# alfabetica; ele caia no fim da saida, o rastreado era a linha 1 nas DUAS
+# medicoes, o defeito se cancelava e o teste passava sem provar nada.
+#
+# Para o rastreado mudar de posicao entre as duas medicoes precisa haver DOIS
+# rastreados sujos, e o primeiro voltar ao conteudo commitado no meio.
+echo "  preparando caso 6..."
+(cd "$SBP/test-repo" \
+  && echo "conteudo-alpha" > alpha.txt \
+  && echo "conteudo-bravo" > bravo.txt \
+  && git add -A && git commit -qm "dois rastreados" >/dev/null 2>&1)
+(cd "$SBP/test-repo" && echo "sujo" >> alpha.txt && echo "sujo" >> bravo.txt)
+$E_REPO iniciar --slug backstop-6 >/dev/null
+$E_REPO marcar --slug backstop-6 --estagio design --status aprovado >/dev/null
+$E_REPO marcar --slug backstop-6 --estagio plano --status ok >/dev/null
+$E_REPO marcar --slug backstop-6 --estagio executar --status ok >/dev/null
+esperado "backstop-6: exigir com dois rastreados sujos" 0 $E_REPO exigir --slug backstop-6 --estagio revisar
+# O primeiro volta ao conteudo commitado (sem git destrutivo — so reescreve).
+# Ninguem sujou nada novo: bravo.txt so subiu da linha 2 para a linha 1.
+(cd "$SBP/test-repo" && echo "conteudo-alpha" > alpha.txt)
+esperado "backstop-6: sujeira que so mudou de posicao nao e mutacao" 0 $E_REPO marcar --slug backstop-6 --estagio revisar --status ok --json '{"achados":0,"base":"HEAD","head":"HEAD"}'
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
