@@ -21,8 +21,10 @@ CHECADOR="$RAIZ/scripts/conferir-esteira.cjs"
 ESTADO="$RAIZ/scripts/estado.cjs"
 REAL_D="$RAIZ/docs/rainforest/design/decisao-que-evapora-na-esteira.md"
 REAL_P="$RAIZ/docs/rainforest/planos/decisao-que-evapora-na-esteira.md"
+NOVO_D="$RAIZ/docs/rainforest/design/2026-08-21-gate-de-sessao-co-locada-e-catraca-de-mutacao.md"
+NOVO_P="$RAIZ/docs/rainforest/planos/2026-08-21-gate-de-sessao-co-locada-e-catraca-de-mutacao.md"
 
-for f in "$CHECADOR" "$ESTADO" "$REAL_D" "$REAL_P"; do
+for f in "$CHECADOR" "$ESTADO" "$REAL_D" "$REAL_P" "$NOVO_D" "$NOVO_P"; do
   [ -f "$f" ] || { echo "FALHA: nao achei $f"; exit 1; }
 done
 
@@ -32,7 +34,28 @@ trap 'rm -rf "$S"' EXIT
 mkdir -p "$S/docs/rainforest/design" "$S/docs/rainforest/planos"
 D="$S/docs/rainforest/design/t.md"
 P="$S/docs/rainforest/planos/t.md"
-restaura(){ cp "$REAL_D" "$D"; cp "$REAL_P" "$P"; }
+
+# `plano_no_formato <origem> <destino>` — copia o plano acrescentando o bloco
+# `mutacao:` a cada tarefa.
+#
+# O plano fixture desta secao e' de 2026-08-13 e e' ANTERIOR ao campo `mutacao:`,
+# que a `cobertura` passou a exigir em 2026-08-21. A injecao acontece so na
+# copia: o arquivo versionado e' o registro de um trabalho ja fechado e nao se
+# reescreve para agradar checagem nova.
+#
+# Sem isto, toda mutilacao desta secao passaria a recusar tambem por falta de
+# `mutacao:`, e cada caso ficaria verde com o check que ele testa apagado — que
+# e' exatamente o Achado 2 da revisao de 2026-08-13, repetido de outro jeito.
+plano_no_formato(){
+  awk '/^pronto quando:/ {
+         print "mutacao:";
+         print "  arquivo: `scripts/conferir-esteira.cjs`";
+         print "  de: a checagem que esta tarefa instala";
+         print "  para: um no-op";
+         print "  bateria: `bash scripts/testa-conferir-esteira.sh`"
+       } {print}' "$1" > "$2"
+}
+restaura(){ cp "$REAL_D" "$D"; plano_no_formato "$REAL_P" "$P"; }
 
 # exige <exit-esperado> <rotulo> <comando...>
 exige(){
@@ -43,6 +66,20 @@ exige(){
     ok=$((ok+1)); printf '  ok    %s (exit=%s)\n' "$rotulo" "$got"
   else
     falhou=$((falhou+1)); printf '  FALHA %s: esperado exit=%s, veio exit=%s\n' "$rotulo" "$esperado" "$got"
+  fi
+}
+
+# exige_msg <regex> <rotulo> <comando...>
+# Exit code so' diz QUE recusou. Recusa que nao diz QUAL tarefa esta errada faz
+# quem le abrir o plano inteiro procurando, e o atalho para isso e' desligar a
+# trava. Por isso o texto da recusa tem caso proprio.
+exige_msg(){
+  local regex="$1" rotulo="$2"; shift 2
+  local saida; saida="$("$@" 2>&1)"
+  if printf '%s\n' "$saida" | grep -q "$regex"; then
+    ok=$((ok+1)); printf '  ok    %s\n' "$rotulo"
+  else
+    falhou=$((falhou+1)); printf '  FALHA %s: saida nao casa /%s/:\n%s\n' "$rotulo" "$regex" "$saida"
   fi
 }
 CHK(){ RFM_ESTADO_ROOT="$W" node "$CHECADOR" "$@"; }
@@ -76,7 +113,8 @@ restaura
 exige 0 "cobertura real passa" CHK cobertura --slug t
 
 # A tarefa 2 e' a unica que atende D5; tirando ela, D5 fica orfa.
-restaura; awk '/^### 2\. /{p=1} /^### 3\. /{p=0} !p' "$REAL_P" > "$P"
+restaura; awk '/^### 2\. /{p=1} /^### 3\. /{p=0} !p' "$REAL_P" > "$S/sem-tarefa-2.md"
+plano_no_formato "$S/sem-tarefa-2.md" "$P"
 exige 2 "decisao sem tarefa recusa" CHK cobertura --slug t
 
 # Os dois casos abaixo mutam a TAREFA 3 (`atende: D1, D7`) e não a primeira que
@@ -125,7 +163,8 @@ exige 0 "plano com cobertura fecha" E marcar --slug t --estagio plano --status o
 exige 0 "executar nao tem checagem" E marcar --slug t --estagio executar --status ok
 exige 2 "revisar ok SEM base/head recusa (D4)" E marcar --slug t --estagio revisar --status ok --json '{"achados":0}'
 
-restaura; awk '/^### 2\. /{p=1} /^### 3\. /{p=0} !p' "$REAL_P" > "$P"
+restaura; awk '/^### 2\. /{p=1} /^### 3\. /{p=0} !p' "$REAL_P" > "$S/sem-tarefa-2.md"
+plano_no_formato "$S/sem-tarefa-2.md" "$P"
 rm -f "$S/docs/rainforest/estado/t.json"; E iniciar --slug t >/dev/null 2>&1
 E marcar --slug t --estagio design --status aprovado >/dev/null 2>&1
 exige 2 "plano com decisao orfa NAO fecha" E marcar --slug t --estagio plano --status ok
@@ -199,6 +238,50 @@ else
   echo "  FALHA nao consegui montar o repositorio de fixture"; falhou=$((falhou+1))
 fi
 rm -rf "$G"
+
+echo
+echo "== 7. catraca de mutacao: toda tarefa declara o alvo (D7, D9) =="
+# Fixture proprio, e proposital: o plano de 2026-08-21 nasceu ja no formato, com
+# `mutacao:` nas 6 tarefas. Reaproveitar o fixture antigo — que so tem o bloco
+# porque a bateria o injeta — mediria a injecao, nao o formato.
+#
+# O que estes casos impedem: em 2026-08-21 um agente entregou 49/49 verde com a
+# trava recusando o caminho feliz sempre. A bateria nao sabia falhar, e o plano
+# nao dizia o que ela deveria ter falhado. Sem alvo declarado, a integracao nao
+# tem o que re-rodar e o veredito volta a ser o relato de quem implementou.
+N="$(mktemp -d)"; NW="$(cygpath -m "$N" 2>/dev/null || printf '%s' "$N")"
+mkdir -p "$N/docs/rainforest/design" "$N/docs/rainforest/planos"
+ND="$N/docs/rainforest/design/t.md"; NP="$N/docs/rainforest/planos/t.md"
+NCHK(){ RFM_ESTADO_ROOT="$NW" node "$CHECADOR" "$@"; }
+
+cp "$NOVO_D" "$ND"; cp "$NOVO_P" "$NP"
+exige 0 'plano no formato novo passa (6 tarefas com mutacao:)' NCHK cobertura --slug t
+
+# Tira o bloco da tarefa 3 e SO' dele: a tarefa 3 atende D11, que nenhuma outra
+# atende, entao mexer no `atende:` orfanaria a decisao e a recusa viria do check
+# errado. Aqui o unico defeito do documento e' o bloco ausente.
+cp "$NOVO_P" "$N/inteiro.md"
+awk '/^### 3\./{t=1} /^### 4\./{t=0}
+     {if (t && /^mutacao:/) {drop=1; next} if (t && drop) {if (/^  /) next; drop=0} print}' \
+     "$N/inteiro.md" > "$NP"
+exige 2 'tarefa sem bloco mutacao: recusa' NCHK cobertura --slug t
+exige_msg 'tarefa 3\.' 'a recusa NOMEIA a tarefa sem bloco' NCHK cobertura --slug t
+
+# A tarefa 6 e' de doc: nao ha comportamento a inverter, e `n/a` com motivo e'
+# resposta aceita (D9). Exigir o impossivel de tarefa de doc cria o habito do
+# `--forcar`, e trava que se contorna por habito nao trava mais nada.
+awk '/^### 6\./{t=1}
+     {if (t && /^mutacao:/) {print "mutacao: n/a"; print "  motivo: doc nao tem comportamento a inverter"; drop=1; next}
+      if (t && drop) {if (/^  /) next; drop=0} print}' "$N/inteiro.md" > "$NP"
+exige 0 'mutacao: n/a COM motivo passa' NCHK cobertura --slug t
+
+# ...e o preco do escape e' o motivo escrito. Sem ele, `n/a` viraria a saida
+# barata de toda tarefa.
+awk '/^### 6\./{t=1}
+     {if (t && /^mutacao:/) {print "mutacao: n/a"; drop=1; next}
+      if (t && drop) {if (/^  /) next; drop=0} print}' "$N/inteiro.md" > "$NP"
+exige 2 'mutacao: n/a SEM motivo recusa' NCHK cobertura --slug t
+rm -rf "$N"
 
 echo
 echo "-----------------------------------------"

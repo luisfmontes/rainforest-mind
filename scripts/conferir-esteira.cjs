@@ -12,6 +12,11 @@
  * (opção em "Avaliado e descartado"), D4 (creep reprova), D6 (arquivo → glob),
  * D7 (script único com subcomandos).
  *
+ * Desenho de 2026-08-21 (gate de sessão co-locada e catraca de mutação): D7
+ * (o alvo da mutação é DECLARADO pela tarefa, nunca inferido) e D9 (toda
+ * tarefa declara, e `n/a` com motivo é resposta aceita) — cobrados no
+ * subcomando `cobertura`.
+ *
  * Uso:
  *   node scripts/conferir-esteira.cjs design --slug <s>
  *   node scripts/conferir-esteira.cjs cobertura --slug <s>
@@ -160,6 +165,7 @@ function cmdDesign() {
  * Decisão sem tarefa → recusa.
  * Tarefa com atende: vazio/ausente → recusa.
  * Tarefa citando D<n> inexistente → recusa.
+ * Tarefa sem bloco `mutacao:` → recusa, nomeando a tarefa.
  */
 function cmdCobertura() {
   const slug = arg('slug');
@@ -211,6 +217,23 @@ function cmdCobertura() {
           erros.push(`tarefa ${numero}. ${nome} cita D${d} que não existe no design`);
         }
       }
+    }
+
+    // A catraca de mutação. Em 2026-08-21 um agente cumpriu TODOS os critérios
+    // falsificáveis do briefing, colou saída de validação por mutação e entregou
+    // 49/49 verde — com a trava que ele acabara de escrever recusando o caminho
+    // feliz sempre. Não foi caso isolado: 10 de 18 entregas do acervo têm o mesmo
+    // formato de defeito (`obs-2026-08-17-dez-baterias-que-nao-sabiam-falhar`),
+    // e uma bateria só vista PASSANDO não foi verificada.
+    //
+    // O que faltava não era rigor de quem executa, era o alvo: sem o plano dizer
+    // qual linha inverter e qual bateria tem de ficar vermelha, a integração não
+    // tem o que re-rodar, e o veredito volta a ser a prosa de quem implementou —
+    // exatamente o arranjo que o cabeçalho do `conferir-entrega.cjs` já condena.
+    // Inferir o alvo sozinho seria outro projeto; declarar é uma linha do plano.
+    const falha_mutacao = conferirBlocoMutacao(tarefa.mutacao);
+    if (falha_mutacao) {
+      erros.push(`tarefa ${numero}. ${nome} ${falha_mutacao}`);
     }
   }
 
@@ -270,28 +293,115 @@ function extrairTarefas(conteudo) {
       const numero = parseInt(match[1], 10);
       const nome = match[2].trim();
 
-      // Procura campo atende: nas próximas linhas
-      let atende = '';
+      // Corpo da tarefa: até a próxima tarefa ou seção
+      const corpo = [];
       for (let j = i + 1; j < linhas.length; j++) {
-        const proxima = linhas[j];
-
-        // Para quando chegar na próxima tarefa ou seção
-        if (proxima.startsWith('###') || proxima.startsWith('##')) {
+        if (linhas[j].startsWith('###') || linhas[j].startsWith('##')) {
           break;
         }
+        corpo.push(linhas[j]);
+      }
 
-        // Procura "atende: ..."
+      // Procura campo atende: no corpo (o primeiro vale)
+      let atende = '';
+      for (const proxima of corpo) {
         if (proxima.startsWith('atende:')) {
           atende = proxima.substring('atende:'.length).trim();
           break;
         }
       }
 
-      tarefas.push({ numero, nome, atende });
+      tarefas.push({ numero, nome, atende, mutacao: extrairMutacao(corpo) });
     }
   }
 
   return tarefas;
+}
+
+/**
+ * Lê o bloco `mutacao:` de uma tarefa. Devolve `null` quando a tarefa não o
+ * declara — que é o caso que o `cobertura` recusa.
+ *
+ * Forma:
+ *   mutacao:
+ *     arquivo: `<caminho>`
+ *     de: <padrão a inverter>
+ *     para: <substituto>
+ *     bateria: `<comando>`
+ *
+ * O casamento é por INÍCIO de linha, nunca por substring: `pronto quando:` cita
+ * `mutacao:` entre crases em plano que fale da própria trava, e reconhecer isso
+ * como declaração daria por cumprida uma tarefa que só menciona a palavra.
+ */
+function extrairMutacao(corpo) {
+  const i = corpo.findIndex(l => l.startsWith('mutacao:'));
+  if (i === -1) {
+    return null;
+  }
+
+  const bloco = {
+    inline: corpo[i].substring('mutacao:'.length).trim(),
+    campos: {},
+  };
+
+  // Subcampos são as linhas INDENTADAS logo abaixo; a primeira linha em branco
+  // ou de campo de topo (`pronto quando:`) fecha o bloco.
+  for (let j = i + 1; j < corpo.length; j++) {
+    const sub = corpo[j];
+    if (!/^\s+\S/.test(sub)) {
+      break;
+    }
+    const campo = sub.match(/^\s+([\wÀ-ÿ-]+):\s*(.*)$/);
+    if (!campo) {
+      break;
+    }
+    bloco.campos[campo[1].toLowerCase()] = campo[2].trim();
+  }
+
+  // `motivo:` sem indentação, logo abaixo de `mutacao: n/a`, também conta. É a
+  // forma que sai naturalmente da mão de quem escreve o plano, e recusá-la seria
+  // falso positivo — e trava que recusa declaração legítima é trava desligada
+  // pelo hábito do `--forcar`, que é o que D9 do design manda evitar.
+  if (bloco.campos.motivo === undefined) {
+    const solto = corpo.find(l => l.startsWith('motivo:'));
+    if (solto) {
+      bloco.campos.motivo = solto.substring('motivo:'.length).trim();
+    }
+  }
+
+  return bloco;
+}
+
+/**
+ * Confere um bloco `mutacao:` já extraído. Devolve `null` quando está conforme,
+ * ou a frase que completa "tarefa <n>. <nome> ..." na lista de erros.
+ */
+function conferirBlocoMutacao(bloco) {
+  if (!bloco) {
+    return 'não declara `mutacao:` (arquivo, de, para, bateria — ou `n/a` com `motivo:`)';
+  }
+
+  const campos = bloco.campos;
+  const vazio = v => v === undefined || v.trim() === '';
+  const na = v => v !== undefined && v.trim().toLowerCase() === 'n/a';
+
+  // `n/a` nas duas formas que o plano usa: no valor de `mutacao:` ou marcando
+  // `de:`/`para:`. Tarefa de doc não tem comportamento a inverter (D9), e o
+  // preço do escape é o motivo escrito.
+  if (na(bloco.inline) || (na(campos.de) && na(campos.para))) {
+    if (vazio(campos.motivo)) {
+      return 'declara `mutacao: n/a` sem `motivo:`';
+    }
+    return null;
+  }
+
+  for (const campo of ['arquivo', 'de', 'para', 'bateria']) {
+    if (vazio(campos[campo])) {
+      return `declara \`mutacao:\` sem \`${campo}:\``;
+    }
+  }
+
+  return null;
 }
 
 // ================================================================ creep
