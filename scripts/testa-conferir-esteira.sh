@@ -284,6 +284,55 @@ exige 2 'mutacao: n/a SEM motivo recusa' NCHK cobertura --slug t
 rm -rf "$N"
 
 echo
+echo "== 8. normalizacao de CRLF e ignorar cerca de codigo =="
+# Fixture proprio para testar CRLF e cercas
+O="$(mktemp -d)"; OW="$(cygpath -m "$O" 2>/dev/null || printf '%s' "$O")"
+mkdir -p "$O/docs/rainforest/design" "$O/docs/rainforest/planos"
+OD="$O/docs/rainforest/design/t.md"; OP="$O/docs/rainforest/planos/t.md"
+OCHK(){ RFM_ESTADO_ROOT="$OW" node "$CHECADOR" "$@"; }
+
+# Caso 1: plano e design reais em CRLF devem passar
+cp "$NOVO_D" "$OD"; cp "$NOVO_P" "$OP"
+# Converte para CRLF
+node "$RAIZ/to-crlf.js" "$OD"
+node "$RAIZ/to-crlf.js" "$OP"
+exige 0 "plano e design em CRLF passam" OCHK cobertura --slug t
+
+# Caso 2: mutacao: dentro de cerca de codigo deve ser ignorado (recusa)
+# Usa o design e plano reais, mas modifica tarefa 5 para por mutacao: so em cerca
+cp "$NOVO_D" "$OD"; cp "$NOVO_P" "$OP.tmp"
+# Modifica a tarefa 5 para deixar mutacao: so em cerca
+awk '
+/^### 5\. Formato/ { in_task5 = 1; print; next }
+in_task5 && /^### [0-9]/ { in_task5 = 0 }
+in_task5 && /^mutacao:/ {
+  while (getline > 0 && /^  /) { }
+  if ($0 !~ /^###/) {
+    print ""
+    print "Aqui tem uma cerca:"
+    print ""
+    print "\`\`\`"
+    print "mutacao:"
+    print "  arquivo: scripts/conferir-esteira.cjs"
+    print "  de: x"
+    print "  para: y"
+    print "  bateria: bash test.sh"
+    print "\`\`\`"
+    print ""
+  }
+  print
+  next
+}
+{ print }
+' "$OP.tmp" > "$OP"
+node "$RAIZ/to-crlf.js" "$OD"
+node "$RAIZ/to-crlf.js" "$OP"
+exige 2 "mutacao: so em cerca (em CRLF) recusa" OCHK cobertura --slug t
+exige_msg 'tarefa 5\.' 'nomeia tarefa' OCHK cobertura --slug t
+
+rm -rf "$O"
+
+echo
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]
