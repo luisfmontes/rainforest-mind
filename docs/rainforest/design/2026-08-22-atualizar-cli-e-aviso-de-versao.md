@@ -95,6 +95,18 @@ Apurado em 2026-08-22, antes de decidir qualquer coisa:
   e a bateria monta um exe falso, um `winget` falso no PATH, e confere rename,
   rollback e limpeza de backup.
 
+- **D9 — o script se auto-cura do estado "so `.bak`, sem `claude.exe`", e so
+  quando ha exatamente um backup** — porque: o `trap` de emergencia cobre morte
+  por sinal, mas `SIGKILL` e queda de energia nenhum script bash cobre. Morrendo
+  entre o rename e a instalacao, sobra exatamente o pior estado da D2. Ate a
+  revisao, a proxima execucao so dizia "executavel nao encontrado" e saia — a
+  maquina ficava sem CLI ate alguem descobrir sozinho que bastava renomear o
+  `.bak`, que e justamente o conhecimento que este script existe para guardar.
+  Com **dois ou mais** backups ele para e nomeia os candidatos: adivinhar qual
+  binario de 300 MB promover e pior que perguntar. E `--conferir` diagnostica
+  sem restaurar, porque o modo que promete nao mudar nada nao pode virar o
+  unico que muda. Decidido depois da revisao, com o estado reproduzido.
+
 ## Avaliado e descartado
 
 - **Ligar o autoupdater embutido (tirar `DISABLE_AUTOUPDATER`)** — o binario e

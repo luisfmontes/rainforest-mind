@@ -114,3 +114,28 @@ mutada, sai **diferente de 0** (provado nas duas direcoes, uma mutacao de cada
 vez — invocador que so propaga o codigo da primeira e o defeito que esta tarefa
 existe para nao ter); e `ls scripts/testa-*.sh hooks/testa-*.sh | grep -c .`
 devolve **38** (eram 37 depois da esteira de ontem).
+
+### 7. A auto-cura do estado interrompido [tipo: implementar]
+atende: D9
+arquivos: `scripts/atualizar-cli.sh`, `scripts/testa-atualizar-cli.sh`
+depende de: 1, 2
+paralela: nao
+nasceu: na revisao, do achado de que `kill -9` entre o rename e a instalacao
+deixa a maquina sem CLI e a reexecucao nao se recupera.
+pronto quando: contra a arvore sintetica, montando o estado interrompido
+direto (pasta com `.bak` e sem `claude.exe`, sem matar processo nenhum — o que
+importa e como o script **reage** ao estado, nao como se chega nele):
+(a) com **um** `.bak`: o script restaura, segue a atualizacao ate o fim, sai
+**0**, a pasta fica com o `claude.exe` novo e **um** `.bak`, e a saida cita a
+auto-cura;
+(b) com **dois** `.bak`: sai **diferente de 0** sem promover nenhum, os dois
+continuam la, e a saida nomeia os candidatos **e** diz que nao da para
+adivinhar — a assercao tem de olhar **qual** erro foi dado, nao so o desfecho,
+porque trocar `-eq 1` por `-ge 1` produz exit != 0 pelo caminho errado e com
+estado final identico;
+(c) `--conferir` no estado interrompido: sai **0**, diz o que restauraria, e o
+`.bak` continua sendo `.bak`;
+(d) pasta sem exe e sem backup nenhum: erro antigo, sem alegar cura.
+E as quatro mutacoes morrem: apagar o `mv` que restaura, `-eq 1` -> `-ge 1`,
+sumir com o ramo de ambiguidade, e tirar a saida cedo do `--conferir`. As seis
+mutacoes de rollback da tarefa 2 continuam morrendo.
