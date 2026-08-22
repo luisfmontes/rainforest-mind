@@ -35,7 +35,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { spawnSync } = require('child_process');
+const { spawnSync, execSync } = require('child_process');
 
 // A raiz aqui é a do PROJETO em que se trabalha, e **não** a cadeia de dados do
 // rainforest (`hooks/lib/raiz.cjs`). São dois tipos de estado diferentes, e
@@ -164,6 +164,115 @@ function proximo(estado) {
 
 function faltando(estado, estagio) {
   return (PRE_REQUISITOS[estagio] || []).filter((r) => !estaFechado(r, estado[r]));
+}
+
+// ---------------------------------------- backstop de mutação no revisar (Issue #4)
+//
+// Problema: em 2026-08-13, um revisor mutou `gerar_updater_projeto.py` direto no
+// diretório principal, o `gate-worktree.cjs` bloqueou o `git checkout --` do
+// revert — corretamente, pela letra da trava — e ele desfez por fora do git,
+// sem rastro auditável. A trava de worktree estava certa; o caminho de proteção
+// no REVISAR é que não existia.
+//
+// Solução: capturar instantâneo (HEAD + caminhos sujos) quando `exigir revisar`
+// roda, e comparar quando `marcar revisar ok` roda. Duas recusas distintas:
+//   1. HEAD mexeu — qualquer movimento reprova, porque muda a base do diff
+//   2. Caminho sujo NOVO — apareceu depois, não estava no instantâneo
+//
+// Sujeira pré-existente é legítima e não recusa — usuário pode ter outro
+// trabalho em andamento no mesmo clone.
+//
+// DOIS defeitos que a primeira versão desta trava tinha, e que a bateria dela
+// não pegava. Ficam registrados porque os dois são armadilha de fixture, não
+// de código:
+//
+//   1. `statusOutput.trim()` antes do `split` comia o espaço inicial da
+//      PRIMEIRA linha. Porcelain de arquivo rastreado e modificado vem como
+//      ` M caminho` — com espaço na frente —, então `substring(3)` cortava um
+//      caractere a mais e `docs/...` virava `ocs/...`. Só na primeira linha, e
+//      só para arquivo rastreado: untracked vem `?? caminho`, sem espaço
+//      inicial, e o fixture só tinha untracked. Pior que a mensagem errada: o
+//      MESMO arquivo produzia chave diferente conforme a posição na saída, o
+//      que gera falso positivo sozinho.
+//
+//   2. O `exigir` capturava o instantâneo e logo depois `gravar()` escrevia o
+//      próprio instantâneo no arquivo de estado — que é VERSIONADO neste repo.
+//      Resultado: o arquivo de estado ficava sujo DEPOIS do instantâneo, e o
+//      `marcar ok` seguinte o via como caminho novo e recusava o caminho feliz,
+//      sempre. O fixture não pegou porque nunca commitava o estado: lá o
+//      arquivo já estava sujo (untracked) antes do instantâneo, e portanto
+//      dentro dele. A bookkeeping da própria trava não pode ser evidência
+//      contra o revisor, então ela sai dos dois conjuntos.
+
+/** Caminhos que a própria trava suja, e que por isso não contam como mutação. */
+function caminhosDaPropriaTrava(slug) {
+  const rel = path.relative(RAIZ, path.join(DIR_ESTADO, `${slug}.json`));
+  return new Set([rel.replace(/\\/g, '/')]);
+}
+
+/** Caminhos sujos do repo, normalizados. Sem `.trim()` no bloco: ver defeito 1. */
+function caminhosSujos() {
+  const saida = execSync('git status --porcelain', { cwd: RAIZ, encoding: 'utf8' });
+  return saida
+    .split(/\r?\n/)
+    .filter((linha) => linha.length > 0)
+    .map((linha) => {
+      const partes = linha.substring(3).split(' -> ');
+      const caminho = partes.length > 1 ? partes[1] : partes[0];
+      return caminho.replace(/\\/g, '/');
+    })
+    .sort();
+}
+
+function capturarSnapshot() {
+  try {
+    return {
+      head: execSync('git rev-parse HEAD', { cwd: RAIZ, encoding: 'utf8' }).trim(),
+      caminhos_sujos: caminhosSujos(),
+    };
+  } catch (err) {
+    console.error(`erro ao capturar snapshot: ${err.message}`);
+    process.exit(1);
+  }
+}
+
+function verificarMutacao(slug, snapshot_anterior) {
+  if (!snapshot_anterior || typeof snapshot_anterior !== 'object') {
+    // Instantâneo não existe: slug que fechou revisar sem ter passado pelo
+    // exigir novo. Avise, mas não trave — retroativamente travar quebra trabalho
+    // em andamento.
+    console.warn(`aviso: instantâneo de revisar nao encontrado para ${slug}. Nao ha como provar ausencia de mutacao. Rode 'exigir --estagio revisar' antes de revisar.`);
+    return null;
+  }
+
+  try {
+    const head_agora = execSync('git rev-parse HEAD', { cwd: RAIZ, encoding: 'utf8' }).trim();
+
+    // Verificar se HEAD mudou
+    if (head_agora !== snapshot_anterior.head) {
+      return `RECUSADO: HEAD mudou durante a revisao: ${snapshot_anterior.head} -> ${head_agora}.\n`
+        + `A base do diff foi alterada. A revisao foi feita contra outra arvore e nao e mais valida.\n`
+        + `Outra janela commitou, ou voce commitou sem querer no diretorio principal.\n`
+        + `Rode 'exigir --estagio revisar' novamente para capturar o novo snapshot e revise novamente.`;
+    }
+
+    // Verificar se novos caminhos sujos apareceram
+    const propria = caminhosDaPropriaTrava(slug);
+    const sujos_antes = new Set(snapshot_anterior.caminhos_sujos || []);
+
+    const novos_sujos = caminhosSujos()
+      .filter((c) => !sujos_antes.has(c) && !propria.has(c));
+    if (novos_sujos.length > 0) {
+      return `RECUSADO: novos arquivos sujaram durante a revisao: ${novos_sujos.join(', ')}.\n`
+        + `O repositorio foi mutado enquanto voce revisava. O revisor nao edita em lugar nenhum\n`
+        + `muito menos no diretorio principal. Desfaca as mudancas e rode a revisao novamente.`;
+    }
+
+    return null;
+  } catch (err) {
+    console.error(`erro ao verificar mutacao: ${err.message}`);
+    process.exit(1);
+  }
 }
 
 // ------------------------------------------------- trava de fechamento (D5)
@@ -298,6 +407,13 @@ function main() {
     const falta = faltando(estado, estagio);
     if (!falta.length) {
       console.log(`ok: pre-requisitos de '${estagio}' fechados`);
+      // Capturar snapshot ao exigir revisar, para detectar mutacao depois
+      if (estagio === 'revisar') {
+        const snapshot = capturarSnapshot();
+        estado.revisar = { ...estado.revisar, snapshot };
+        gravar(slug, estado);
+        console.log(`snapshot capturado: HEAD=${snapshot.head.substring(0, 7)}, ${snapshot.caminhos_sujos.length} arquivo(s) sujo(s)`);
+      }
       return;
     }
     // Exit 2, não 1: é a mesma convenção dos gates deste repo, e o que separa
@@ -344,6 +460,14 @@ function main() {
     // Depois do `--json`, porque o `revisar` tira `base` e `head` de lá; e antes
     // do `gravar`, porque estado que já foi para o disco não desfecha.
     if (status === (FECHADO[estagio] || 'ok')) {
+      // Verificar mutacao ANTES de conferirFechamento, porque é independente
+      if (estagio === 'revisar') {
+        const recusa_mutacao = verificarMutacao(slug, estado.revisar && estado.revisar.snapshot);
+        if (recusa_mutacao) {
+          console.error(recusa_mutacao);
+          process.exit(2);
+        }
+      }
       const recusa = conferirFechamento(estagio, slug, extra);
       if (recusa) {
         console.error(recusa);
