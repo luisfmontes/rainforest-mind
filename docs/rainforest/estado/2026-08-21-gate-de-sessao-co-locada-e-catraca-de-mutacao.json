@@ -22,7 +22,38 @@
     "em": "2026-08-21"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-08-21",
+    "tarefas_ok": 6,
+    "tarefas": 6,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "tarefa so reescreve skills/executar/SKILL.md; a falsificacao foi o casamento das flags com o uso real do script"
+      }
+    ],
+    "em": "2026-08-21"
   },
   "revisar": {
     "status": "pendente"
