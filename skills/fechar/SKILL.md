@@ -1,6 +1,6 @@
 ---
 name: fechar
-description: Use no estágio 'fechar' da esteira rainforest-mind — depois de 'verificar' fechado, é o fim da esteira, com commit, remoção de worktrees, e a pergunta de destino ao usuário. Nunca decide o destino por conta própria.
+description: Use no estágio 'fechar' do fluxo rainforest-mind — depois de 'verificar' fechado, é o fim do fluxo, com commit, remoção de worktrees, e a pergunta de destino ao usuário. Nunca decide o destino por conta própria.
 ---
 
 # Fechar
@@ -20,7 +20,7 @@ Quatro passos, nesta ordem.
 
 Confira `git status` na branch de trabalho. Comite o que restou, com
 mensagem que diz **o que** mudou e **por quê** (não "fechamento da
-esteira" sozinho). `git add -A` é **proibido**: o hook
+fluxo" sozinho). `git add -A` é **proibido**: o hook
 `gate-staging-total.cjs` barra com exit 2 fora de worktree linkado —
 adicione por caminho.
 
@@ -30,11 +30,11 @@ assuma que um arquivo modificado é seu porque está lá.
 
 ## 2. Limpar o repositório local
 
-Arquivo temporário, log e artefato de teste que a **própria esteira**
+Arquivo temporário, log e artefato de teste que o **próprio fluxo**
 gerou e que não é entrega (harness descartável da fase de execução, log de
 comando rodado à mão, etc.) — apague. **Confira de quem é antes de
 apagar**: outra sessão trabalha no mesmo working tree (`git worktree list`
-mostra quem mais está ativo), e o que não foi esta esteira que criou fica
+mostra quem mais está ativo), e o que não foi este fluxo que criou fica
 de pé.
 
 ## 3. Remover os worktrees deste trabalho

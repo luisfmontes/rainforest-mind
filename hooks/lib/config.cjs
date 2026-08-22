@@ -1,7 +1,7 @@
 // Configuração do rainforest, em camadas — o que está ligado, e onde.
 //
 // Por que existe: até 2026-08-11 tudo era obrigatório. Os dois gates de git valiam
-// em QUALQUER repositório da máquina, a esteira aparecia para quem nunca vai
+// em QUALQUER repositório da máquina, o fluxo aparecia para quem nunca vai
 // desenvolver, e a única saída era a de emergência (`RAINFOREST_GATE_OFF=1` ou um
 // arquivo `.rainforest-gate-off` na raiz). Saída de emergência serve para o
 // incidente, não para a preferência: quem quer o radar e não quer o gate não tinha
@@ -40,7 +40,7 @@ const CHAVES = {
     padrao: true,
     descricao: 'barra `git add -A` e `git commit -a`',
   },
-  esteira: {
+  fluxo: {
     padrao: true,
     descricao: 'os sete estágios (brainstorm → plano → … → fechar)',
   },
@@ -99,6 +99,25 @@ const CHAVES = {
   },
 };
 
+/**
+ * Nomes ANTIGOS que ainda são lidos do config em disco, por chave atual.
+ *
+ * Renomear chave de config é mudança silenciosa por natureza: o arquivo do
+ * usuario continua no disco dizendo `"esteira": false`, o código passa a
+ * perguntar por `fluxo`, ninguém casa, e o padrão `true` religa a trava sem uma
+ * linha de aviso. Quem desligou fica sabendo pelo comportamento.
+ *
+ * Então o nome novo é o que se escreve (`/setup`, docs, `CHAVES`), e o velho
+ * continua sendo LIDO — com precedência menor que a do novo dentro do mesmo
+ * arquivo, para que quem já migrou não seja arrastado de volta pela linha
+ * antiga que esqueceu de apagar.
+ *
+ * `esteira` → `fluxo` em 2026-08-22, quando o termo mudou no plugin inteiro.
+ */
+const ALIASES = {
+  fluxo: ['esteira'],
+};
+
 function lerJson(p) {
   try {
     return JSON.parse(fs.readFileSync(p, 'utf8'));
@@ -139,21 +158,36 @@ function resolverConfig(o = {}) {
   const cfgProjeto = lerJson(doProjeto);
   const cfgUsuario = doUsuario ? lerJson(doUsuario) : null;
 
+  // Nome novo primeiro, aliases depois: dentro do MESMO arquivo, quem já migrou
+  // manda. Devolve `undefined` quando nenhum dos nomes traz booleano, para o
+  // arquivo seguinte da cadeia ser consultado.
+  const buscar = (cfg, chave) => {
+    if (!cfg) return undefined;
+    for (const nome of [chave, ...(ALIASES[chave] || [])]) {
+      if (typeof cfg[nome] === 'boolean') return { valor: cfg[nome], nome };
+    }
+    return undefined;
+  };
+
   const valores = {};
   const origem = {};
   for (const [chave, def] of Object.entries(CHAVES)) {
+    const noProjeto = buscar(cfgProjeto, chave);
+    const noUsuario = buscar(cfgUsuario, chave);
     if (env.RAINFOREST_GATE_OFF && chave.startsWith('gate-')) {
       // A saída de emergência continua sendo a mais forte, e continua valendo para
       // os dois gates de uma vez. Ela existe para o incidente — quem a usa quer
       // desligar tudo agora, não escolher.
       valores[chave] = false;
       origem[chave] = 'RAINFOREST_GATE_OFF';
-    } else if (cfgProjeto && typeof cfgProjeto[chave] === 'boolean') {
-      valores[chave] = cfgProjeto[chave];
-      origem[chave] = 'projeto';
-    } else if (cfgUsuario && typeof cfgUsuario[chave] === 'boolean') {
-      valores[chave] = cfgUsuario[chave];
-      origem[chave] = 'usuario';
+    } else if (noProjeto) {
+      valores[chave] = noProjeto.valor;
+      // A origem diz o nome ANTIGO quando foi ele que decidiu — senão o `/saude`
+      // manda procurar por `fluxo` num arquivo que só tem `esteira`.
+      origem[chave] = noProjeto.nome === chave ? 'projeto' : `projeto (${noProjeto.nome})`;
+    } else if (noUsuario) {
+      valores[chave] = noUsuario.valor;
+      origem[chave] = noUsuario.nome === chave ? 'usuario' : `usuario (${noUsuario.nome})`;
     } else {
       valores[chave] = def.padrao;
       origem[chave] = 'padrao';

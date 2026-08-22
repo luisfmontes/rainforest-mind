@@ -1,6 +1,6 @@
 ---
 name: verificar
-description: Use no estágio 'verificar' da esteira rainforest-mind — depois de 'executar' e 'revisar' fechados, roda o critério de cada tarefa do plano contra o artefato real e decide ok ou reprovado. Nunca redige critério novo, só executa o que o plano já definiu.
+description: Use no estágio 'verificar' do fluxo rainforest-mind — depois de 'executar' e 'revisar' fechados, roda o critério de cada tarefa do plano contra o artefato real e decide ok ou reprovado. Nunca redige critério novo, só executa o que o plano já definiu.
 ---
 
 # Verificar
@@ -18,12 +18,12 @@ comando nomeia o estágio bloqueado.
 Antes de aplicar a regra que sustenta esta skill, carregue
 `Skill(rainforest-mind)` e leia a **regra 12** inteira (a elaboração —
 incidentes, cuidados finos — fica atrás do `<!-- detalhe -->` e não vem na
-injeção de abertura). Esta skill é a regra 12 virando estágio da esteira:
+injeção de abertura). Esta skill é a regra 12 virando estágio do fluxo:
 mesmo princípio, aplicado a um artefato específico em vez de a um agente.
 
 ## O que valida
 
-Uma tarefa por vez, na ordem do plano (`docs/rainforest/` da esteira em
+Uma tarefa por vez, na ordem do plano (`docs/rainforest/` do fluxo em
 curso). O critério de cada tarefa **já veio pronto de lá** — comando exato
 e saída esperada, definidos no estágio `plano`. Aqui ele é **executado**,
 nunca redigido nem afrouxado: se o plano não deixou um critério
@@ -67,7 +67,7 @@ node scripts/estado.cjs marcar --slug <slug> --estagio verificar --status reprov
 ```
 
 `reprovado` devolve o trabalho ao estágio `executar` — é o mecanismo da
-esteira, não uma anotação: a tarefa reprovada precisa ser corrigida e
+fluxo, não uma anotação: a tarefa reprovada precisa ser corrigida e
 reentrar em `revisar` antes de voltar aqui.
 
 ## Condição de parada

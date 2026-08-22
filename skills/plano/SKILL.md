@@ -1,11 +1,11 @@
 ---
 name: plano
-description: Use depois que o design de um trabalho está aprovado na esteira do rainforest-mind, para transformar decisões fechadas em tarefas executáveis — nunca antes da primeira linha de código.
+description: Use depois que o design de um trabalho está aprovado no fluxo do rainforest-mind, para transformar decisões fechadas em tarefas executáveis — nunca antes da primeira linha de código.
 ---
 
 # Plano
 
-Segundo estágio da esteira (design → plano → executar → revisar → verificar
+Segundo estágio do fluxo (design → plano → executar → revisar → verificar
 → fechar). Lê o design aprovado e escreve tarefas **tipadas**, cada uma com
 sua dependência declarada — é essa marcação que o estágio `executar` usa
 para despachar em paralelo; sem ela o paralelismo vira adivinhação.
@@ -40,23 +40,65 @@ atende: D1, D2
 arquivos: `<padrão ou caminho>`
 depende de: nenhuma
 paralela: sim
+mutacao:
+  arquivo: `<arquivo onde a mutação entra>`
+  de: <o padrão exato a inverter>
+  para: <o substituto>
+  bateria: `<comando que tem de ficar VERMELHO com a mutação aplicada>`
 pronto quando: com `<entrada real do sistema>`, `<efeito verificável>` — provado por `<comando exato>` devolvendo `<saída esperada>`
 
-### 2. <nome da tarefa> [tipo: ...]
+### 2. <nome da tarefa> [tipo: docs]
 atende: D3
 arquivos: `<padrão ou caminho>`
 depende de: 1
 paralela: nao
+mutacao: n/a
+  motivo: <por que esta tarefa não tem comportamento a inverter>
 pronto quando: com `<entrada real do sistema>`, `<efeito verificável>` — provado por `<comando exato>` devolvendo `<saída esperada>`
 ```
 
-Cada tarefa leva: **tipo**, `atende:` (lista de `D<n>` do design que esta tarefa realiza), `arquivos:` (caminhos ou globs que ela pode tocar), `depende de:` (números das tarefas antecessoras ou "nenhuma"), `paralela: sim|nao` (só "sim" quando `depende de: nenhuma`) e critério de pronto **falsificável** — comando e saída esperada, nunca "funcionar bem" ou "funcionar corretamente", e nunca "a bateria sai 0" (ver abaixo: o critério nomeia a entrada real do sistema, não o instrumento).
+Cada tarefa leva: **tipo**, `atende:` (lista de `D<n>` do design que esta tarefa realiza), `arquivos:` (caminhos ou globs que ela pode tocar), `depende de:` (números das tarefas antecessoras ou "nenhuma"), `paralela: sim|nao` (só "sim" quando `depende de: nenhuma`), `mutacao:` (o alvo da validação por mutação, abaixo) e critério de pronto **falsificável** — comando e saída esperada, nunca "funcionar bem" ou "funcionar corretamente", e nunca "a bateria sai 0" (ver abaixo: o critério nomeia a entrada real do sistema, não o instrumento).
 
 ### Campos obrigatórios: `atende:` e `arquivos:`
 
 - **`atende:` vazio é recusa**: tarefa sem `atende:`, ou com `atende:` vazio, não entra no plano — se não atende nenhuma decisão, ela não deveria estar aqui.
 - **`arquivos:` sem glob largo**: declare caminhos concretos ou padrões específicos. Glob largo como `hooks/**` não descreve o que você toca — é achado do `revisar`, não atalho.
 - **Cobertura nos dois sentidos**: decisão do design sem tarefa barra o plano, e tarefa citando `D<n>` inexistente também barra.
+
+### Campo obrigatório: `mutacao:` — o alvo é declarado, nunca inferido
+
+Toda tarefa declara **qual linha inverter e qual bateria tem de ficar vermelha**
+quando ela for invertida. Quem sabe o que inverter é quem escreveu o conserto —
+por isso o alvo mora no plano, e não na cabeça de quem executa depois.
+
+```
+mutacao:
+  arquivo: `hooks/gate-worktree.cjs`
+  de: o `process.exit(2)` do ramo de sessão co-locada
+  para: `process.exit(0)`
+  bateria: `bash hooks/testa-gate-worktree.sh`
+```
+
+- **`de:` é o padrão exato**, não a intenção. Padrão que não casa com o fonte
+  não vira "bateria vermelha" — vira recusa, com o veredito certo pelo motivo
+  certo.
+- **`bateria:` é o comando que tem de FALHAR** com a mutação aplicada. Se
+  continuar verde, a bateria não mede o que a tarefa entregou.
+- **O relato de mutação do agente não fecha a tarefa.** A integração re-roda, e
+  só o exit code dela vale.
+
+**`mutacao: n/a` com `motivo:` é resposta aceita.** Tarefa de doc não tem
+comportamento a inverter; a falsificação dela é outra (casar com a interface
+real, por exemplo). Exigir o impossível cria o hábito do `--forcar`, e trava que
+se contorna por hábito não trava mais nada. O que **não** vale é `n/a` sem
+motivo: o preço do escape é escrever por que ele cabe.
+
+> 2026-08-21: um agente cumpriu todos os critérios falsificáveis do briefing,
+> colou saída de validação por mutação e entregou 49/49 verde — com a trava que
+> ele acabara de escrever recusando o caminho feliz **sempre**. Não foi caso
+> isolado: 10 de 18 entregas do acervo têm o mesmo formato de defeito
+> (`obs-2026-08-17-dez-baterias-que-nao-sabiam-falhar`). O que faltava não era
+> rigor de quem executa — era o plano dizer o alvo, para haver o que re-rodar.
 
 **Proibido placeholder.** Tarefa com "TBD", "a definir" ou critério de
 pronto vago não entra no plano — falta decisão, e decisão que falta volta
@@ -99,6 +141,12 @@ ela só não é mais o que a tarefa promete.
 
 A partir de 2026-08-13, `node scripts/estado.cjs marcar --estagio plano --status ok` recusa plano que não tenha cobertura completa: testa se toda decisão `D<n>` do design tem tarefa no plano com `atende: D<n>`, e se toda tarefa do plano cita apenas `D<n>` existentes. Sem cobertura completa, o comando sai com exit 2.
 
+A partir de 2026-08-21 a mesma checagem cobra o bloco `mutacao:`: tarefa sem o bloco é recusada **pelo número**, e `mutacao: n/a` sem `motivo:` também. Rode antes de fechar:
+
+```
+node scripts/conferir-fluxo.cjs cobertura --slug <slug>
+```
+
 ## Fechar
 
 ```
@@ -111,5 +159,5 @@ tarefa marcada no plano e o `executar` que faz depois — não aqui.
 
 ---
 
-Segundo estágio da esteira rainforest-mind. `exigir`/`marcar` vêm de
+Segundo estágio do fluxo rainforest-mind. `exigir`/`marcar` vêm de
 `scripts/estado.cjs` — leia-o antes de citar uma flag que ele não tem.

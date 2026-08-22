@@ -308,7 +308,7 @@ GH_LOG=""
 
 echo
 echo "== 13. a branch PADRAO nunca entra na remocao, seja qual for a --base (Issue #23) =="
-# 2026-08-19, estagio `fechar` de uma esteira cujo trabalho ainda nao tinha chegado a
+# 2026-08-19, estagio `fechar` de um fluxo cujo trabalho ainda nao tinha chegado a
 # main: `--base memoria-e-dados-do-rainforest --remover` apagou as 11 branches de
 # agente (certo) e a `main` local junto. A classificacao nao tinha defeito de logica —
 # a branch de trabalho SAIU da main, entao a main esta contida nela, entao a main

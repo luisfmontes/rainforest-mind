@@ -1,9 +1,9 @@
 ---
-description: Primeiro estágio da esteira — entrevista adversarial em árvore de decisão, até não sobrar suposição, e grava o design
+description: Primeiro estágio do fluxo — entrevista adversarial em árvore de decisão, até não sobrar suposição, e grava o design
 argument-hint: [o assunto a decidir — vazio usa o que está na mesa]
 ---
 
-Conduza o estágio **brainstorm** da esteira sobre `$ARGUMENTS` — ou, se vazio,
+Conduza o estágio **brainstorm** do fluxo sobre `$ARGUMENTS` — ou, se vazio,
 sobre o plano/decisão que já está na mesa nesta conversa.
 
 Carregue `Skill(brainstorm)` e siga o método de lá: registrar o trabalho no
