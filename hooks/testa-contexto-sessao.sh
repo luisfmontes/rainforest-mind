@@ -25,6 +25,15 @@ RAIZ="$(cygpath -m "$RAIZ_POSIX" 2>/dev/null || printf '%s' "$RAIZ_POSIX")"
 trap 'rm -rf "$RAIZ_POSIX"' EXIT
 echo "(caixa de areia: $RAIZ)"
 
+# O IRMAO VAI JUNTO. Toda sabotagem deste arquivo faz `cp "$LIB" "$RAIZ_POSIX/..."`
+# e roda a COPIA — e desde 2026-08-21 a lib faz `require('./raiz.cjs')`, que resolve
+# ao lado do arquivo que a copia, nao ao lado do original. Sem esta linha o mutante
+# morre com MODULE_NOT_FOUND antes de rodar uma linha de logica, e o pior e o que a
+# bateria faz com isso: a secao de mutacao compara a saida do mutante com a esperada,
+# ve que "diferiu" e credita `ok` — passa VERDE por nao ter conseguido executar nada,
+# que e exatamente a familia de defeito que ela existe para pegar.
+cp "$SRC/hooks/lib/raiz.cjs" "$RAIZ_POSIX/raiz.cjs"
+
 ok=0; falhou=0
 
 # Driver: le os textos de env e imprime o contexto montado. Fica em arquivo (e nao
@@ -1262,7 +1271,143 @@ S="$(outra_janela "[{\"cwd\":\"C:/projetos/a/../a-secreto/x\",\"prompt_ts\":$((A
 checa "ACHADO 4: C:/projetos/a/../a-secreto/x nao casa C:/projetos/a (.. resolvido)" tem "false" "$S"
 
 echo
-echo "17.1 MUTACOES — as quatro sabotagens do briefing, cada uma tem que quebrar a asserção correspondente"
+echo "18. SESSAO CO-LOCADA — quem MAIS esta neste mesmo cwd (D1, D3, D4)"
+# O incidente (2026-08-21): duas janelas no mesmo diretorio, `git checkout -b` numa
+# delas arrancou a outra da branch em que ela trabalhava, e ela commitou tres vezes
+# na branch alheia sem saber. As tres coisas que este bloco tem que provar sao as
+# tres que fariam a trava mentir:
+#   a) quem pergunta nunca se conta como co-locada (as duas entradas do incidente
+#      tinham `cwd` IDENTICO — sem excluir a propria, toda sessao acha co-locada);
+#   b) sessao PARADA continua dona (D3): dono de branch dura mais que atencao, e
+#      uma janela pausada foi exatamente o caso real;
+#   c) a fonte e o `sessoes.json` da raiz de DADOS, nunca o do repositorio (D4) —
+#      o versionado tem uma entrada de 2026-08-12 e nao recebe escrita, entao quem
+#      ler dele fica verde para sempre sem nunca ter olhado o dado vivo.
+# Fixture PROPRIO: o arquivo real do usuario muda a cada heartbeat, e bateria que
+# depende dele passa ou falha conforme quantas janelas estavam abertas na hora.
+
+COL_DADOS_POSIX="$RAIZ_POSIX/dados-colocada"; mkdir -p "$COL_DADOS_POSIX"
+COL_DADOS="$(cygpath -m "$COL_DADOS_POSIX" 2>/dev/null || printf '%s' "$COL_DADOS_POSIX")"
+COL_REPO_POSIX="$RAIZ_POSIX/repo-com-sessoes-morto"; mkdir -p "$COL_REPO_POSIX"
+COL_REPO="$(cygpath -m "$COL_REPO_POSIX" 2>/dev/null || printf '%s' "$COL_REPO_POSIX")"
+COL_VAZIO_POSIX="$RAIZ_POSIX/dados-sem-sessoes"; mkdir -p "$COL_VAZIO_POSIX"
+COL_VAZIO="$(cygpath -m "$COL_VAZIO_POSIX" 2>/dev/null || printf '%s' "$COL_VAZIO_POSIX")"
+COL_QUEBRADO_POSIX="$RAIZ_POSIX/dados-json-quebrado"; mkdir -p "$COL_QUEBRADO_POSIX"
+COL_QUEBRADO="$(cygpath -m "$COL_QUEBRADO_POSIX" 2>/dev/null || printf '%s' "$COL_QUEBRADO_POSIX")"
+printf '{ isto nao e json' > "$COL_QUEBRADO_POSIX/sessoes.json"
+
+AGORA_COL=1787356000000
+
+# A semeadura e feita por node, e nao por heredoc de shell, porque o dado que
+# importa aqui e a BARRA INVERTIDA: o harness manda `C:\Projetos\x`, o resto do
+# mundo manda `C:/Projetos/x`, e o ponto do fixture e que os dois sejam a mesma
+# pasta. Aspas de shell comem `\` sem avisar — ja custou uma medicao errada neste
+# mesmo arquivo (secao 17), e por isso o cwd construido e IMPRESSO antes de qualquer
+# afirmacao sobre ele.
+cat > "$RAIZ_POSIX/semear-colocada.cjs" <<'EOF'
+const fs = require('fs');
+const BS = String.fromCharCode(92);
+const agora = Number(process.env.FIX_AGORA);
+const RM = 'C:' + BS + 'Projetos' + BS + 'rainforest-mind';
+const estado = {
+  // Trabalhando (prompt_ts mais novo), cwd na forma do harness.
+  'sess-a': { cwd: RM, prompt_ts: agora - 60000, stop_ts: agora - 120000 },
+  // PARADA (stop_ts mais novo) e em outra grafia do MESMO caminho. Conta (D3).
+  'sess-b-parada': { cwd: 'c:/projetos/rainforest-mind', prompt_ts: agora - 500000, stop_ts: agora - 1000 },
+  'sess-c-sabia': { cwd: 'C:' + BS + 'Projetos' + BS + 'sabia', prompt_ts: agora - 1000, stop_ts: 0 },
+  // Fora da janela de 4h: nao e mais dona de nada.
+  'sess-velha': { cwd: RM, prompt_ts: agora - 5 * 3600 * 1000, stop_ts: agora - 5 * 3600 * 1000 },
+  // Exatamente no limite. A janela e aberta (`< janelaMs`), entao esta ja saiu.
+  'sess-no-limite': { cwd: RM, prompt_ts: agora - 4 * 3600 * 1000, stop_ts: 0 },
+  // Rastro de subagente, nao janela do usuario.
+  'sess-de-agente': { cwd: RM + BS + '.claude' + BS + 'worktrees' + BS + 'agent-abc', prompt_ts: agora - 1000, stop_ts: 0 },
+  'sess-viva-no-repo': { cwd: process.env.FIX_REPO, prompt_ts: agora - 1000, stop_ts: 0 },
+};
+fs.writeFileSync(process.env.FIX_DADOS + '/sessoes.json', JSON.stringify(estado, null, 1));
+// O sessoes.json MORTO que mora na raiz do repositorio. Quem resolver o caminho por
+// conta propria le este e nao ve nenhuma das sessoes vivas acima.
+fs.writeFileSync(process.env.FIX_REPO + '/sessoes.json', JSON.stringify({
+  'sess-do-repo-morto': { cwd: process.env.FIX_REPO, prompt_ts: agora - 1000, stop_ts: 0 },
+}, null, 1));
+process.stdout.write(JSON.stringify({ cwd_de_sess_a: estado['sess-a'].cwd }));
+EOF
+CWD_COL="$(FIX_AGORA=$AGORA_COL FIX_DADOS="$COL_DADOS" FIX_REPO="$COL_REPO" node "$RAIZ_POSIX/semear-colocada.cjs")"
+echo "  (confirmando o fixture antes de afirmar: $CWD_COL)"
+
+cat > "$RAIZ_POSIX/driver-colocada.cjs" <<'EOF'
+const fs = require('fs');
+const lib = require(process.env.LIB_PATH);
+const estado = JSON.parse(fs.readFileSync(process.env.FIX_DADOS + '/sessoes.json', 'utf8'));
+const r = lib.sessoesColocadas(estado, {
+  cwd: process.env.FIX_CWD,
+  sessionId: process.env.FIX_ID,
+  agora: Number(process.env.FIX_AGORA),
+});
+// Ordem alfabetica na SAIDA: a ordem de verdade e por recencia, e travar as duas
+// coisas na mesma assercao faz a checagem de conteudo quebrar por motivo de ordem.
+process.stdout.write(
+  'ids=[' + r.map((s) => s.session_id).sort().join(',') + ']' +
+  ' paradas=[' + r.filter((s) => s.parada).map((s) => s.session_id).sort().join(',') + ']'
+);
+EOF
+colocada() { # cwd, session_id, [agora], [lib]
+  LIB_PATH="${4:-$LIB}" FIX_CWD="$1" FIX_ID="$2" FIX_AGORA="${3:-$AGORA_COL}" FIX_DADOS="$COL_DADOS" \
+    node "$RAIZ_POSIX/driver-colocada.cjs" 2>&1
+}
+
+S_COL1="$(colocada 'C:/Projetos/rainforest-mind' 'sess-a')"
+checa "co-locada: session_id de uma das duas devolve EXATAMENTE a outra" tem "ids=[sess-b-parada]" "$S_COL1"
+# D3 literal: a que sobrou esta PARADA, e e por isso que ela ainda e dona.
+checa "co-locada: entrada parada (stop_ts > prompt_ts) dentro da janela CONTA" tem "paradas=[sess-b-parada]" "$S_COL1"
+# A grafia das duas entradas e diferente (`C:\Projetos\...` vs `c:/projetos/...`).
+# Comparar cru trataria as duas janelas do incidente como pastas diferentes.
+checa "co-locada: barra invertida e caixa alta casam com barra normal e minuscula" nao_tem "ids=[]" "$S_COL1"
+
+S_COL2="$(colocada 'C:/Projetos/rainforest-mind' 'nao-existe-0000')"
+checa "co-locada: session_id inexistente devolve AS DUAS"           tem     "ids=[sess-a,sess-b-parada]" "$S_COL2"
+checa "co-locada: entrada fora das 4h nao conta"                    nao_tem "sess-velha"                 "$S_COL2"
+checa "co-locada: entrada exatamente nas 4h nao conta"              nao_tem "sess-no-limite"             "$S_COL2"
+checa "co-locada: worktree de subagente nao e janela do usuario"    nao_tem "sess-de-agente"             "$S_COL2"
+
+checa "co-locada: cwd de C:/Projetos/sabia devolve VAZIO" tem "ids=[] paradas=[]" \
+  "$(colocada 'C:/Projetos/sabia' 'sess-c-sabia')"
+# cwd vazio nao pode virar coringa: casar todo mundo faria o gate barrar sempre, e
+# trava que barra sempre e trava desligada no primeiro dia.
+checa "co-locada: cwd vazio devolve vazio (nao casa todo mundo)" tem "ids=[]" \
+  "$(colocada '' 'sess-a')"
+
+# O ADAPTADOR: resolve a raiz de dados e le o arquivo de la.
+cat > "$RAIZ_POSIX/driver-colocada-adaptador.cjs" <<'EOF'
+const lib = require(process.env.LIB_PATH);
+const r = lib.sessaoColocada({
+  cwd: process.env.FIX_CWD,
+  sessionId: process.env.FIX_ID,
+  agora: Number(process.env.FIX_AGORA),
+});
+process.stdout.write('ids=[' + r.map((s) => s.session_id).sort().join(',') + ']');
+EOF
+adaptador() { # RFM_ROOT, cwd, session_id
+  RFM_ROOT="$1" LIB_PATH="$LIB" FIX_CWD="$2" FIX_ID="$3" FIX_AGORA="$AGORA_COL" \
+    node "$RAIZ_POSIX/driver-colocada-adaptador.cjs" 2>&1
+}
+checa "co-locada: adaptador le o sessoes.json da raiz de dados resolvida" tem "ids=[sess-b-parada]" \
+  "$(adaptador "$COL_DADOS" 'C:/Projetos/rainforest-mind' 'sess-a')"
+# D4, o tropeço de heartbeat.cjs:13-17 pela terceira vez: o cwd da pergunta TEM um
+# sessoes.json ao lado, com uma entrada que casaria. Ler dele e o defeito.
+S_COL_D4="$(adaptador "$COL_DADOS" "$COL_REPO" 'nao-existe-0000')"
+checa "co-locada: le a raiz de DADOS, nao o sessoes.json ao lado do cwd" tem     "ids=[sess-viva-no-repo]" "$S_COL_D4"
+checa "co-locada: a entrada do sessoes.json morto do repo nao aparece"   nao_tem "sess-do-repo-morto"      "$S_COL_D4"
+
+# FAIL-OPEN. Trava que barra por nao conseguir medir e trava que o usuario desliga.
+SAIDA_COL_SEM="$(adaptador "$COL_VAZIO" 'C:/Projetos/rainforest-mind' 'sess-a'; echo "EXIT=$?")"
+checa "co-locada: sessoes.json ausente devolve vazio (fail-open)"    tem "ids=[]"  "$SAIDA_COL_SEM"
+checa "co-locada: sessoes.json ausente nao quebra o processo"        tem "EXIT=0"  "$SAIDA_COL_SEM"
+SAIDA_COL_QBR="$(adaptador "$COL_QUEBRADO" 'C:/Projetos/rainforest-mind' 'sess-a'; echo "EXIT=$?")"
+checa "co-locada: sessoes.json corrompido devolve vazio (fail-open)" tem "ids=[]"  "$SAIDA_COL_QBR"
+checa "co-locada: sessoes.json corrompido nao quebra o processo"     tem "EXIT=0"  "$SAIDA_COL_QBR"
+
+echo
+echo "17.1 MUTACOES — as sabotagens do briefing, cada uma tem que quebrar a asserção correspondente"
 # Padrao: sabota uma COPIA da lib (nunca o LIB original), roda a MESMA fixture
 # contra ela, e mostra a saida divergindo. A chamada de `checa` dentro de um
 # SUBSHELL `( ... )` imprime a linha "FALHA ..." de verdade (prova textual de
@@ -1375,6 +1520,23 @@ else
     echo "  FALHA sabotagem sem efeito — o anuncio da 2a isencao sobreviveu ao return cedo"
   else
     ok=$((ok+1)); echo "  ok    sabotagem expos que o return cedo suprime o anuncio da 2a isencao (independência e load-bearing)"
+  fi
+fi
+
+echo "  -- SABOTAGEM 5: sessoesColocadas nunca acha co-locada (a comparacao de cwd vira false)"
+cp "$LIB" "$RAIZ_POSIX/lib-mut-colocada.cjs"
+sed -i 's/normalizarCwd(s\.cwd) === alvo/false/' "$RAIZ_POSIX/lib-mut-colocada.cjs"
+if grep -qF 'normalizarCwd(s.cwd) === alvo' "$RAIZ_POSIX/lib-mut-colocada.cjs"; then
+  falhou=$((falhou+1)); echo "  FALHA ANCORA NAO BATE na sabotagem 5 — a comparacao nao foi trocada, a copia intocada"
+  echo "         nao prova que a co-locacao e load-bearing"
+else
+  S_MUT5="$(colocada 'C:/Projetos/rainforest-mind' 'sess-a' "$AGORA_COL" "$RAIZ_POSIX/lib-mut-colocada.cjs")"
+  echo "  (saida do mutante: $S_MUT5 — a assercao real espera 'ids=[sess-b-parada]')"
+  ( checa "co-locada: session_id de uma das duas devolve EXATAMENTE a outra" tem "ids=[sess-b-parada]" "$S_MUT5" )
+  if [ "$S_MUT5" = "ids=[] paradas=[]" ]; then
+    ok=$((ok+1)); echo "  ok    mutacao expos a co-locacao (o gate de checkout ficaria mudo no caso das Issues #25 e #38)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — a comparacao de cwd nao e o que a assercao mede (saida: $S_MUT5)"
   fi
 fi
 
