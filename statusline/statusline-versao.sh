@@ -22,7 +22,12 @@ if [ -d "$LOCK" ]; then
   rmdir "$LOCK" 2>/dev/null
 fi
 mkdir "$LOCK" 2>/dev/null || exit 0
-trap 'rmdir "$LOCK" 2>/dev/null' EXIT
+# O .tmp de staging entra no trap junto com o lock: se o `mv` final falhar
+# (permissao, antivirus segurando o arquivo), sem isto sobra um orfao nomeado
+# por PID a cada execucao — o mesmo tipo de vazamento silencioso que a decisao
+# D3 tratou do lado do .bak.
+TEMP_CACHE="$CACHE.$$.tmp"
+trap 'rmdir "$LOCK" 2>/dev/null; rm -f "$TEMP_CACHE" 2>/dev/null' EXIT
 
 command -v curl >/dev/null 2>&1 || exit 0
 
@@ -37,7 +42,6 @@ fi
 
 # Grava atomicamente por arquivo temporario + mv: truncamento nao descarta
 # cache valido se curl falha no meio.
-TEMP_CACHE="$CACHE.$$.tmp"
 printf '%s' "$VALOR" > "$TEMP_CACHE" || exit 0
 mv "$TEMP_CACHE" "$CACHE" 2>/dev/null || exit 0
 

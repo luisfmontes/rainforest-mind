@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 """Bateria do segmento de versao da statusline. Falsificavel: cada caso diz o
 rotulo esperado, e o teste FALHA se a implementacao devolver outra coisa."""
+import atexit
 import io
 import json
 import os
 import re
+import shutil
 import sys
 import tempfile
 
@@ -18,6 +20,17 @@ import tempfile
 # escrever o cache de versao de verdade.
 FAKE_TEMP = tempfile.mkdtemp(prefix="statusline-versao-teste-")
 os.environ["TEMP"] = FAKE_TEMP
+# Sem isto, cada execucao deixa um diretorio para tras — inclusive no CI, a
+# cada push. Medido: 16 orfaos acumulados antes de alguem reparar.
+atexit.register(lambda: shutil.rmtree(FAKE_TEMP, ignore_errors=True))
+
+# Cinto e suspensorio contra chamada de rede real durante o teste. O caso
+# "sem cache" faz `os.path.getmtime` levantar, e o `except` do fonte dispara o
+# refresher DE VERDADE: medido, um `curl.exe` por execucao, buscando o CDN e
+# gravando um cache de 7 bytes aqui dentro. Endereco morto neutraliza a rede
+# caso o refresher chegue a rodar; o REFRESHER_VERSAO inexistente, logo abaixo
+# do exec, impede que ele chegue a ser disparado.
+os.environ["RAINFOREST_VERSAO_URL"] = "http://127.0.0.1:1/x"
 
 FONTE = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "statusline.py"
@@ -28,6 +41,12 @@ ANSI = re.compile(r"\x1b\[[0-9;]*m")
 # caminho relativo a si mesmo, e sem isso o exec estoura NameError.
 ns = {"__name__": "bateria", "__file__": FONTE}
 exec(compile(open(FONTE, encoding="utf-8").read(), FONTE, "exec"), ns)
+
+# `dispara_refresh_versao` so abre processo se o refresher existir no disco.
+# Apontando para um caminho que nao existe, o segmento segue exercitado
+# inteiro e nenhum subprocesso e aberto — o que esta bateria prova e
+# `segmento_versao`, nao o disparo do refresher.
+ns["REFRESHER_VERSAO"] = os.path.join(FAKE_TEMP, "refresher-que-nao-existe.sh")
 
 _contador_transcript = [0]
 

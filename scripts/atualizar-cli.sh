@@ -201,7 +201,15 @@ printf "Sucesso: versao subiu de %s para %s\n" "$VERSAO_ATUAL" "$VERSAO_NOVA"
 # imediatamente anterior = o que acabou de ser criado). Apagar os mais antigos.
 # 265 MB por release acumulando em silencio e vazamento de disco.
 BACKUPS=$(find "$PACOTE" -maxdepth 1 -name "claude-*.exe.bak" -type f | sort -V)
-BACKUP_COUNT=$(echo "$BACKUPS" | grep -c . || echo 0)
+# `grep -c .` ja imprime 0 com entrada vazia — so sai com status 1 nesse caso,
+# e um `|| echo 0` depois disso DUPLICARIA a linha ("0\n0"), fazendo o teste
+# numerico abaixo estourar com "integer expression expected". Por isso o
+# resultado e capturado e so entao usado. A bateria ao lado ja documentava
+# este gotcha na sua propria funcao contar_bak, sem ter conferido o alvo.
+# O `|| true` fica DENTRO da substituicao, e nao depois: `grep -c` sai 1 com
+# entrada vazia, e com `set -e` ligado isso mataria o script no assinalamento.
+# Dentro, ele so zera o status — a saida "0" que o grep ja imprimiu e mantida.
+BACKUP_COUNT=$(echo "$BACKUPS" | grep -c . || true)
 
 if [ "$BACKUP_COUNT" -gt 1 ]; then
   # Manter apenas o mais novo (que e o que acabou de ser renomeado).
