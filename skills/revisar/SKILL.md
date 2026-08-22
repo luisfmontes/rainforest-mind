@@ -67,6 +67,34 @@ pela letra da trava — e ele desfez reescrevendo o arquivo por fora do git,
 o que funcionou e não deixou rastro auditável (Issue #4). A trava não estava
 errada; o caminho é que não existia.
 
+### Backstop de mutação (Issue #4)
+
+A partir de 2026-08-21, `exigir --estagio revisar` **captura um instantâneo**:
+o `HEAD` do repositório e a lista de caminhos sujos (`git status --porcelain`).
+Depois, `marcar --estagio revisar --status ok` **compara** esse instantâneo e
+recusa (exit 2) se:
+
+1. **HEAD mexeu** — qualquer movimento reprova. Se o HEAD andou, a base do diff
+   que você revisou mudou, e a revisão foi feita contra outra árvore. A mensagem
+   distingue "você commitou" de "outra janela commitou" e diz o que fazer: re-rode
+   `exigir revisar` e revise novamente.
+
+2. **Caminho sujo NOVO** — arquivo que não estava no instantâneo mas aparece agora.
+   A comparação usa **conjuntos, não contagem**: sujeira pré-existente é legítima
+   (outro trabalho em andamento no mesmo clone) e não reprova. Só caminho novo
+   recusa.
+
+   Uma exceção, e ela é o próprio mecanismo: `docs/rainforest/estado/<slug>.json`
+   sai da comparação. É o `exigir` que o suja, ao gravar ali o instantâneo que
+   acabou de tirar — e o arquivo é versionado neste repo. Sem a exceção a trava
+   recusa o caminho feliz **sempre**, porque acusa de mutação a escrita que ela
+   mesma fez. A bookkeeping da trava não pode ser evidência contra o revisor.
+
+Se o instantâneo não existir (slug que fechou `revisar` sem passar pelo novo
+`exigir`), **avise e não trave** — travar retroativo quebra trabalho em andamento.
+O instantâneo fica gravado no arquivo de estado (`docs/rainforest/estado/<slug>.json`)
+e sobrevive entre sessões.
+
 ## Creep: medido contra o plano, não contra o gosto
 
 **Creep é código sem tarefa correspondente no plano.** Arquivo que você tocou mas que não se encaixa em nenhum glob de `arquivos:` de tarefa nenhuma é achado e reprova a revisão.
@@ -104,11 +132,13 @@ sem commit novo, `head` que não existe, worktree que não foi integrado —
 vale mais que produzir um veredito sobre o que a memória da conversa
 lembra ter sido feito.
 
-### Trava de cobertura de creep
+### Trava de cobertura de creep e mutação
 
 A partir de 2026-08-13, `node scripts/estado.cjs marcar --estagio revisar --status ok` recusa se o `--json` não incluir `base` e `head` — são os dois pontos que definem o diff e permitem provar ausência de creep. Sem eles, fechar a revisão sem poder provar que o diff não toca arquivo fora do plano é o buraco que a trava fecha.
 
+A partir de 2026-08-21, a mesma chamada também recusa se o repositório foi mutado desde `exigir --estagio revisar`: HEAD diferente ou arquivo novo sujo. Ver seção anterior para detalhes.
+
 **`reprovado` não exige nada disso**, e é deliberado: reprovar já devolve o
 trabalho para o `executar`, então não há veredito de ausência de creep para
-provar. A trava existe para impedir que se declare "sem creep" sem o diff — não
-para burocratizar a recusa.
+provar. A trava existe para impedir que se declare "sem creep" ou "sem mutação"
+sem poder comprová-lo — não para burocratizar a recusa.

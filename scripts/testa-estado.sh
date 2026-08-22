@@ -161,5 +161,121 @@ else
   falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — nao e a varredura que decide (veio '$MUTA')"
 fi
 
+echo
+echo "== 10. backstop de mutacao no revisar (Issue #4) =="
+
+# Prepara um repositorio minimo para testar, DENTRO da caixa
+mkdir -p "$SBP/test-repo"
+(
+  cd "$SBP/test-repo"
+  git init >/dev/null
+  git config user.email "test@test" >/dev/null
+  git config user.name "Test" >/dev/null
+  echo "initial" > initial.txt
+  git add . && git commit -m "initial" >/dev/null
+)
+
+# TODOS os testes rodam com RFM_ESTADO_ROOT apontando para test-repo
+# Nota: precisamos exportar para que o sh -c veja a variavel
+export RFM_ESTADO_ROOT="$SBP/test-repo"
+E_REPO="node scripts/estado.cjs"
+
+# Caso 1: exigir revisar => nada muda => marcar ok PASSA
+echo "  preparando caso 1..."
+$E_REPO iniciar --slug backstop-1 >/dev/null
+$E_REPO marcar --slug backstop-1 --estagio design --status aprovado >/dev/null
+$E_REPO marcar --slug backstop-1 --estagio plano --status ok >/dev/null
+$E_REPO marcar --slug backstop-1 --estagio executar --status ok >/dev/null
+# Executar rodaria no test-repo, vamos simular que criou algo capturando snapshot
+esperado "backstop: exigir revisar captura snapshot" 0 $E_REPO exigir --slug backstop-1 --estagio revisar
+esperado "backstop: marcar ok passa quando nada mudou" 0 $E_REPO marcar --slug backstop-1 --estagio revisar --status ok --json '{"achados":0,"base":"HEAD","head":"HEAD"}'
+
+# Caso 2: exigir revisar => commit novo => marcar ok FALHA
+echo "  preparando caso 2..."
+$E_REPO iniciar --slug backstop-2 >/dev/null
+$E_REPO marcar --slug backstop-2 --estagio design --status aprovado >/dev/null
+$E_REPO marcar --slug backstop-2 --estagio plano --status ok >/dev/null
+$E_REPO marcar --slug backstop-2 --estagio executar --status ok >/dev/null
+esperado "backstop-2: exigir revisar" 0 $E_REPO exigir --slug backstop-2 --estagio revisar
+# Fazer um commit novo (simula outro dev commitando)
+(cd "$SBP/test-repo" && echo "mudanca" >> initial.txt && git add . && git commit -m "novo commit" >/dev/null)
+esperado "backstop-2: marcar ok falha quando HEAD mudou" 2 $E_REPO marcar --slug backstop-2 --estagio revisar --status ok --json '{"achados":0,"base":"HEAD","head":"HEAD"}'
+
+# Caso 3: exigir revisar => arquivo rastreado modificado => marcar ok FALHA
+echo "  preparando caso 3..."
+# Reverter o commit anterior para o caso 3
+(cd "$SBP/test-repo" && git reset --hard HEAD~1 >/dev/null)
+$E_REPO iniciar --slug backstop-3 >/dev/null
+$E_REPO marcar --slug backstop-3 --estagio design --status aprovado >/dev/null
+$E_REPO marcar --slug backstop-3 --estagio plano --status ok >/dev/null
+$E_REPO marcar --slug backstop-3 --estagio executar --status ok >/dev/null
+esperado "backstop-3: exigir revisar" 0 $E_REPO exigir --slug backstop-3 --estagio revisar
+# Modificar um arquivo rastreado (simula revisor editando)
+(cd "$SBP/test-repo" && echo "arquivo modificado" >> initial.txt)
+esperado "backstop-3: marcar ok falha quando arquivo ficou sujo" 2 $E_REPO marcar --slug backstop-3 --estagio revisar --status ok --json '{"achados":0,"base":"HEAD","head":"HEAD"}'
+
+# Caso 4: exigir revisar com arvore JA SUJA => nenhuma sujeira nova => marcar ok PASSA
+echo "  preparando caso 4..."
+# Desfazer a mudanca anterior
+(cd "$SBP/test-repo" && git checkout -- initial.txt)
+# Criar um arquivo extra sujo ANTES de exigir (simula lixo pre-existente do usuario)
+(cd "$SBP/test-repo" && echo "lixo" > lixo-preexistente.txt)
+$E_REPO iniciar --slug backstop-4 >/dev/null
+$E_REPO marcar --slug backstop-4 --estagio design --status aprovado >/dev/null
+$E_REPO marcar --slug backstop-4 --estagio plano --status ok >/dev/null
+$E_REPO marcar --slug backstop-4 --estagio executar --status ok >/dev/null
+esperado "backstop-4: exigir revisar com arvore suja" 0 $E_REPO exigir --slug backstop-4 --estagio revisar
+# Nao fazer mudanca nenhuma, sujeira pre-existente nao reprova
+esperado "backstop-4: marcar ok passa com sujeira preexistente" 0 $E_REPO marcar --slug backstop-4 --estagio revisar --status ok --json '{"achados":0,"base":"HEAD","head":"HEAD"}'
+
+# Caso 5: arquivo de estado VERSIONADO (como neste repo) => caminho feliz PASSA.
+# Os casos 1 a 4 nunca commitavam o estado, entao o arquivo ja estava sujo
+# (untracked) antes do instantaneo e caia dentro dele. No repo real ele e
+# rastreado e limpo: o proprio `exigir` o suja ao gravar o instantaneo, e a
+# primeira versao da trava recusava o caminho feliz SEMPRE. Fixture que nao
+# reproduz o repo real deixa a trava verde e quebrada.
+echo "  preparando caso 5..."
+(cd "$SBP/test-repo" && rm -f lixo-preexistente.txt)
+$E_REPO iniciar --slug backstop-5 >/dev/null
+$E_REPO marcar --slug backstop-5 --estagio design --status aprovado >/dev/null
+$E_REPO marcar --slug backstop-5 --estagio plano --status ok >/dev/null
+$E_REPO marcar --slug backstop-5 --estagio executar --status ok >/dev/null
+(cd "$SBP/test-repo" && git add -A && git commit -qm "estado versionado" >/dev/null 2>&1)
+esperado "backstop-5: arvore limpa e estado versionado" 0 $E_REPO exigir --slug backstop-5 --estagio revisar
+esperado "backstop-5: marcar ok passa (o exigir sujou o proprio estado)" 0 $E_REPO marcar --slug backstop-5 --estagio revisar --status ok --json '{"achados":0,"base":"HEAD","head":"HEAD"}'
+
+# Caso 6: sujeira que MUDA DE POSICAO na saida do porcelain nao vira mutacao.
+# Porcelain de rastreado-modificado vem com espaco na frente (` M caminho`).
+# A primeira versao dava `.trim()` no bloco inteiro antes do split, o que comia
+# esse espaco SO da primeira linha e cortava um caractere a mais do caminho.
+# Efeito: o mesmo arquivo produzia chave diferente conforme a posicao — some um
+# arquivo sujo de cima da lista e o de baixo "vira" caminho novo, sem ninguem
+# ter tocado nele.
+#
+# O arranjo aqui e load-bearing, e custou uma versao errada deste teste. O
+# `git status --porcelain` NAO ordena por caminho: lista as mudancas de arquivo
+# RASTREADO primeiro e as untracked depois, qualquer que seja o nome. A primeira
+# versao punha um untracked chamado `0-lixo.txt` na frente contando com ordem
+# alfabetica; ele caia no fim da saida, o rastreado era a linha 1 nas DUAS
+# medicoes, o defeito se cancelava e o teste passava sem provar nada.
+#
+# Para o rastreado mudar de posicao entre as duas medicoes precisa haver DOIS
+# rastreados sujos, e o primeiro voltar ao conteudo commitado no meio.
+echo "  preparando caso 6..."
+(cd "$SBP/test-repo" \
+  && echo "conteudo-alpha" > alpha.txt \
+  && echo "conteudo-bravo" > bravo.txt \
+  && git add -A && git commit -qm "dois rastreados" >/dev/null 2>&1)
+(cd "$SBP/test-repo" && echo "sujo" >> alpha.txt && echo "sujo" >> bravo.txt)
+$E_REPO iniciar --slug backstop-6 >/dev/null
+$E_REPO marcar --slug backstop-6 --estagio design --status aprovado >/dev/null
+$E_REPO marcar --slug backstop-6 --estagio plano --status ok >/dev/null
+$E_REPO marcar --slug backstop-6 --estagio executar --status ok >/dev/null
+esperado "backstop-6: exigir com dois rastreados sujos" 0 $E_REPO exigir --slug backstop-6 --estagio revisar
+# O primeiro volta ao conteudo commitado (sem git destrutivo — so reescreve).
+# Ninguem sujou nada novo: bravo.txt so subiu da linha 2 para a linha 1.
+(cd "$SBP/test-repo" && echo "conteudo-alpha" > alpha.txt)
+esperado "backstop-6: sujeira que so mudou de posicao nao e mutacao" 0 $E_REPO marcar --slug backstop-6 --estagio revisar --status ok --json '{"achados":0,"base":"HEAD","head":"HEAD"}'
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
