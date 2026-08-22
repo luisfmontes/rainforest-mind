@@ -126,9 +126,9 @@ depende de: nenhuma
 paralela: sim
 mutacao:
   arquivo: `scripts/estado.cjs`
-  de: a recusa quando a catraca não está armada e o slug é novo
-  para: o `console.warn` + `return null` da rodada 1
-  bateria: `bash scripts/testa-estado.sh`
+  de: o `require('./conferir-esteira.cjs')` que empresta o leitor de plano
+  para: um parser próprio de `### <n>.` que não conhece cerca de código
+  bateria: `bash scripts/testa-conferir-esteira.sh`
 pronto quando: (a) um slug criado agora, cujo `executar` nunca passou por `exigir`, **recusa** com exit **2** em vez de avisar — o aviso de D10 fica só para estado em disco anterior a 2026-08-21, provado com um JSON de estado datado antes disso saindo **0**; (b) com o plano deste slug em disco (6 tarefas), `marcar --estagio executar --status ok` sai **2** para lista com 1 item, para lista citando tarefa 99, e para lista com o mesmo número duplicado — e **0** para 6 itens distintos cobrindo 1..6; (c) sem plano em disco, avisa e sai **0** (fail-open, como o resto do arquivo); (d) `skills/executar/SKILL.md` deixa de prometer o que o código não faz — o que ele disser sobre "um item por tarefa" tem de ser exatamente o que (b) mede. Exit codes colados.
 
 ### 10. `conferir-esteira` lê CRLF e ignora cerca de código [tipo: implementar]

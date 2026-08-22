@@ -132,7 +132,14 @@ pesa mais: o relato é justamente a peça que a catraca desconfia.
 | `0` | mutação casou e bateria **VERMELHA** | única aprovação: a bateria sabe falhar |
 | `2` | mutação casou e bateria **VERDE** | reprovado — a bateria não mede o conserto |
 | `3` | `MUTACAO NAO APLICADA` — o `--de` não existe no fonte | a declaração está errada; nada foi medido |
+| `4` | não dá para MEDIR — a bateria já falha no fonte íntegro, ou o `--de` casa mais de uma vez | conserte o baseline (ou desambigue o `--de`) e rode de novo; nada foi mutado |
 | `1` | erro de uso, ou bateria sem veredito (estouro de tempo / sinal) | não é aprovação nem reprovação |
+
+O `4` recusa **antes** de tocar no fonte, e cobre os dois jeitos de a medição
+não existir: bateria vermelha no íntegro (o vermelho depois da mutação não
+provaria nada, porque já era vermelho) e `--de` ambíguo (a inversão cairia num
+trecho que não é o que a tarefa declarou, e D11 manda recusar quando a mutação
+não casa com o fonte).
 
 `2` e `3` são códigos **diferentes de propósito**: "a bateria é fraca" e "a
 declaração de mutação está errada" pedem conserto em lugares distintos, e o
