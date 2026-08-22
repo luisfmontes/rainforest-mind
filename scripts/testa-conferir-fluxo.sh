@@ -198,7 +198,7 @@ echo
 echo "== 5. a trava nao pode capturar quem nao usa o fluxo =="
 # Invariante do plano: projeto sem design/plano continua fechando estagio como
 # antes. Sem isto, a trava deixaria de apertar quem esta no fluxo e passaria a
-# tornar o fluxo obrigatoria — que e' outra coisa, e ninguem decidiu isso.
+# tornar o fluxo obrigatorio — que e' outra coisa, e ninguem decidiu isso.
 V="$(mktemp -d)"; VW="$(cygpath -m "$V" 2>/dev/null || printf '%s' "$V")"
 VE(){ RFM_ESTADO_ROOT="$VW" node "$ESTADO" "$@"; }
 VE iniciar --slug vazio >/dev/null 2>&1

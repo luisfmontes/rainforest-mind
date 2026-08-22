@@ -397,7 +397,7 @@ flowchart LR
 | `/semear` | Propõe o que criar **neste** repositório a partir do que ele já tropeçou — cada proposta cita o registro que a origina |
 | `/setup` | Monta a pasta de dados e liga/desliga os gates e o fluxo, por projeto ou para tudo |
 | `/ponte` | Gera `CLAUDE.md`, `AGENTS.md` (Codex) ou `GEMINI.md` (Gemini CLI) num repo, do mesmo SKILL.md — alvos declarados no `/setup`, e cada um diz o que **não** atravessa |
-| `/saude` | Só o que os checadores oficiais não sabem: de quem é a raiz, margem da injeção, fluxo parada, worktree órfão |
+| `/saude` | Só o que os checadores oficiais não sabem: de quem é a raiz, margem da injeção, fluxo parado, worktree órfão |
 | `modo-dev` | Disciplina de dev sob demanda (acima) |
 | `depurar` | Loop de feedback antes de hipótese (acima) |
 | `analisar` | Análise de dados em notebook: uma pergunta por vez, célula curta, e **revisão crítica do achado** (`n` visível, share vs. risco, explicação alternativa) antes de virar conclusão |

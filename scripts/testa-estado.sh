@@ -307,7 +307,7 @@ prep_catraca() { # slug — chega ate executar COM a catraca armada pelo exigir
   $E exigir --slug "$1" --estagio executar >/dev/null
 }
 
-prep_sem_catraca() { # slug — fluxo ja aberta antes da catraca existir
+prep_sem_catraca() { # slug — fluxo ja aberto antes da catraca existir
   $E iniciar --slug "$1" >/dev/null
   $E marcar --slug "$1" --estagio design --status aprovado >/dev/null
   $E marcar --slug "$1" --estagio plano  --status ok >/dev/null
