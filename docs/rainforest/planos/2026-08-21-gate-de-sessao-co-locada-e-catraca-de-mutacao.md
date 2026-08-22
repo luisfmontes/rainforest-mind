@@ -86,3 +86,59 @@ mutacao:
   para: n/a
   motivo: doc não tem comportamento a inverter; a falsificação é o casamento com a interface real do script, verificado abaixo
 pronto quando: a seção nova de `skills/executar/SKILL.md` cita `conferir-mutacao.cjs` com **as mesmas flags que o script realmente aceita** — provado rodando `node scripts/conferir-mutacao.cjs` sem argumentos, colando o texto de uso, e conferindo que toda flag citada na skill aparece nele; e diz explicitamente que o relato de mutação do agente **não fecha a tarefa**, sendo o exit code da integração o veredito. Nenhuma flag citada na doc pode faltar no script, e nenhuma flag obrigatória do script pode faltar na doc.
+
+## Rodada 2 — reparo dos 14 achados do `revisar`
+
+A rodada 1 fechou com 38 baterias verdes, catraca 5/5 vermelha e zero creep, e
+mesmo assim **não realizou** D2, D6, D9 e D11: a revisão achou 14 formas de
+satisfazer as travas por fora. As tarefas abaixo realizam as mesmas decisões
+do design — não são escopo novo, e por isso citam os mesmos `D<n>` e os mesmos
+`arquivos:`. O que mudou foi a descoberta de que a rodada 1 as cumpriu no papel.
+
+### 7. Âncora do gate deixa de casar "checkout" em texto livre [tipo: implementar]
+atende: D2, D5
+arquivos: `hooks/gate-worktree.cjs`, `hooks/testa-gate-worktree.sh`
+depende de: nenhuma
+paralela: sim
+mutacao:
+  arquivo: `hooks/gate-worktree.cjs`
+  de: a âncora nova, que exige `checkout`/`switch` na posição de subcomando
+  para: a âncora antiga `/\bgit\b[^\n;&|]*?\b(checkout|switch)\b/`
+  bateria: `bash hooks/testa-gate-worktree.sh`
+pronto quando: com o payload real do `PreToolUse` e duas sessões co-locadas, o gate sai **0** para `git commit -m "checkout later"`, `git commit -m "add login switch"`, `git checkout -- a.txt`, `git checkout a.txt` e `git log --grep=checkout`; sai **2** para `git checkout -b nova`, `git switch -c nova`, `git checkout main` e `git co -b nova`. Os nove exit codes colados, e cada um dos nove como caso na bateria.
+
+### 8. Catraca de mutação exige baseline verde e ocorrência única [tipo: implementar]
+atende: D11
+arquivos: `scripts/conferir-mutacao.cjs`, `scripts/testa-conferir-mutacao.sh`
+depende de: nenhuma
+paralela: sim
+mutacao:
+  arquivo: `scripts/conferir-mutacao.cjs`
+  de: a recusa por baseline não-verde
+  para: `null` (segue direto para a mutação, como na rodada 1)
+  bateria: `bash scripts/testa-conferir-mutacao.sh`
+pronto quando: o script roda a bateria **antes** de mutar e recusa com exit próprio se ela não sair 0 — provado com (a) `--bateria 'bash scripts/testa-bateria-que-nao-existe.sh'` saindo **≠ 0** e a mensagem nomeando o baseline, não "VERMELHA"; (b) uma bateria que já falha no fonte íntegro saindo **≠ 0** com a mesma mensagem; (c) `--de` com 2 ocorrências no arquivo saindo **≠ 0** nomeando a contagem, em vez de inverter as duas; (d) o caminho feliz de sempre — mutação de 1 ocorrência com baseline verde — continuando a sair **0**. Exit codes colados. Documentar no uso qual shell o `--bateria` recebe no Windows (`shell:true` = `cmd.exe`), ou passar a invocar bash explicitamente.
+
+### 9. A catraca de `executar` não se desarma, e a lista bate com o plano [tipo: implementar]
+atende: D6, D8, D9, D10
+arquivos: `scripts/estado.cjs`, `scripts/testa-estado.sh`, `skills/executar/SKILL.md`
+depende de: nenhuma
+paralela: sim
+mutacao:
+  arquivo: `scripts/estado.cjs`
+  de: a recusa quando a catraca não está armada e o slug é novo
+  para: o `console.warn` + `return null` da rodada 1
+  bateria: `bash scripts/testa-estado.sh`
+pronto quando: (a) um slug criado agora, cujo `executar` nunca passou por `exigir`, **recusa** com exit **2** em vez de avisar — o aviso de D10 fica só para estado em disco anterior a 2026-08-21, provado com um JSON de estado datado antes disso saindo **0**; (b) com o plano deste slug em disco (6 tarefas), `marcar --estagio executar --status ok` sai **2** para lista com 1 item, para lista citando tarefa 99, e para lista com o mesmo número duplicado — e **0** para 6 itens distintos cobrindo 1..6; (c) sem plano em disco, avisa e sai **0** (fail-open, como o resto do arquivo); (d) `skills/executar/SKILL.md` deixa de prometer o que o código não faz — o que ele disser sobre "um item por tarefa" tem de ser exatamente o que (b) mede. Exit codes colados.
+
+### 10. `conferir-esteira` lê CRLF e ignora cerca de código [tipo: implementar]
+atende: D7, D9
+arquivos: `scripts/conferir-esteira.cjs`, `scripts/testa-conferir-esteira.sh`
+depende de: nenhuma
+paralela: sim
+mutacao:
+  arquivo: `scripts/conferir-esteira.cjs`
+  de: a normalização de CRLF na leitura do markdown
+  para: a leitura crua da rodada 1
+  bateria: `bash scripts/testa-conferir-esteira.sh`
+pronto quando: (a) o plano real deste slug convertido para CRLF, byte a byte idêntico ao original depois de normalizar, sai **0** — hoje sai **2** com "declara `mutacao:` sem `arquivo:`"; (b) o mesmo vale para o design em CRLF, que hoje faz as decisões `D<n>` sumirem; (c) um plano cujo `mutacao:` de uma tarefa aparece **só dentro de uma cerca de código** sai **2** nomeando aquela tarefa — hoje sai 0. Saídas coladas, e os três casos como fixtures na bateria.
