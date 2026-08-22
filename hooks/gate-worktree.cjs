@@ -51,7 +51,9 @@ const path = require("node:path");
 
 const FERRAMENTAS_DE_ESCRITA = new Set(["Write", "Edit", "MultiEdit", "NotebookEdit"]);
 // Subcomandos de git que mexem no estado do checkout. `git stash`/`pop` foi a falha N1.
-const GIT_QUE_MEXE = /\bgit\b[^\n;&|]*?\b(stash|checkout|switch|reset|merge|rebase|commit|clean|cherry-pick|revert)\b/;
+// Reconhece a posição correta do subcomando (após git e opções globais), não dentro de
+// strings, mensagens de commit ou padrões de grep.
+const GIT_QUE_MEXE = /\bgit\b(?:\s+-[a-zA-Z](?:\s\S+)?|--[\w-]+(?:=\S+)?)*\s+(stash|checkout|switch|co|reset|merge|rebase|commit|clean|cherry-pick|revert)\b/;
 /**
  * Subcomandos que movem o HEAD do CHECKOUT — os unicos que a trava de sessao
  * co-locada cobre, e o recorte e deliberado (D2 do design de 2026-08-21).
@@ -60,8 +62,16 @@ const GIT_QUE_MEXE = /\bgit\b[^\n;&|]*?\b(stash|checkout|switch|reset|merge|reba
  * inteiro barraria as duas sessoes simetricamente — inclusive a DONA legitima da
  * branch, que so quer commitar no trabalho dela. Trava que atrapalha quem esta
  * certo vira trava desligada, e ai ela nao protege mais ninguem.
+ *
+ * Reconhece a posição correta do subcomando (após git e opções globais) e
+ * distingue formas que movem HEAD (`-b`, `-B`, `-c`, `-C`, `--orphan`, `--detach`,
+ * ou nome de branch sem extensão) daquelas que restauram arquivo (`--` ou nomes
+ * com dots como extensões). Quando ambíguo, escolhe não barrar (conservador).
+ * O alias `co` é incluído porque é um alias comum para `checkout`.
+ * Caso deixado de fora: tags/refs com dots (v1.0) são tratados como ambiguos
+ * e não são matched, para evitar falso positivo com filenames.
  */
-const GIT_QUE_MOVE_O_HEAD = /\bgit\b[^\n;&|]*?\b(checkout|switch)\b/;
+const GIT_QUE_MOVE_O_HEAD = /\bgit\b(?:\s+-[a-zA-Z](?:\s\S+)?|--[\w-]+(?:=\S+)?)*\s+(checkout|switch|co)\b\s+(?:-[bBcC]|--(?:orphan|detach)|(?!--)[a-zA-Z0-9_-]+(?![a-zA-Z0-9_\-./]))/;
 
 function git(dir, args) {
   try {

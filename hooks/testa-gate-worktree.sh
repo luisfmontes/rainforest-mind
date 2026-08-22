@@ -317,5 +317,25 @@ else
 fi
 
 echo
+echo "== casos do conserto da âncora: checkout/switch na posição certa =="
+# A âncora antiga casava "checkout"/"switch" em QUALQUER lugar do comando.
+# A nova reconhece a posição de subcomando e distingue HEAD-moving de file-restore.
+# Sao 9 casos novos: 5 que devem PASSAR (exit 0) e 4 que devem BARRAR (exit 2).
+# Testam a gate de sessao co-locada (GIT_QUE_MOVE_O_HEAD), nao a write-protect (GIT_QUE_MEXE).
+
+monta_sessoes "$EU|$(esc "$R")|1|1" "$OUTRA|$(esc "$R")|15|2"
+
+gatec "commit com 'checkout' na mensagem PASSA"    0 "$(p "git commit -m \"checkout later\"" "$R")"
+gatec "commit com 'switch' na mensagem PASSA"      0 "$(p "git commit -m \"add login switch\"" "$R")"
+gatec "checkout -- arquivo PASSA (nao move HEAD)"  0 "$(p "git checkout -- a.txt" "$R")"
+gatec "checkout de caminho PASSA (ambiguo)"        0 "$(p "git checkout a.txt" "$R")"
+gatec "log --grep=checkout PASSA (nao e subcomando)" 0 "$(p "git log --grep=checkout" "$R")"
+
+gatec "checkout -b nova BARRA (cria branch)"       2 "$(p "git checkout -b nova" "$R")"
+gatec "switch -c nova BARRA (cria branch)"         2 "$(p "git switch -c nova" "$R")"
+gatec "checkout main BARRA (move HEAD)"            2 "$(p "git checkout main" "$R")"
+gatec "co -b nova BARRA (alias, cria branch)"      2 "$(p "git co -b nova" "$R")"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
