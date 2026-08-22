@@ -42,11 +42,13 @@
  *   0  mutação casou E bateria VERMELHA  — a bateria sabe falhar
  *   2  mutação casou e bateria VERDE     — recusa: a bateria não mede o conserto
  *   3  MUTACAO NAO APLICADA              — o trecho `--de` não existe no fonte
+ *   4  baseline não-verde                — recusa: bateria já falha no fonte íntegro
  *   1  erro de uso, ou bateria sem veredito (estouro de tempo / sinal)
  *
- * O 2 e o 3 são códigos DIFERENTES de propósito: quem chama este script de
- * dentro de outra checagem precisa poder distinguir "a bateria é fraca" de "a
- * declaração de mutação está errada" sem depender de ler a mensagem.
+ * O 2, 3 e 4 são códigos DIFERENTES de propósito: quem chama este script de
+ * dentro de outra checagem precisa poder distinguir "a bateria é fraca" (2) de
+ * "a declaração de mutação está errada" (3) de "a bateria já está quebrada" (4)
+ * sem depender de ler a mensagem.
  */
 
 const fs = require('fs');
@@ -64,11 +66,15 @@ const USO = `uso: node scripts/conferir-mutacao.cjs --arquivo <caminho> --de <tr
   --raiz     <pasta>    diretório de trabalho da bateria (padrão: cwd)
   --timeout  <ms>       teto de tempo da bateria (padrão: ${TIMEOUT_PADRAO})
 
-exit: 0 mutação casou e bateria VERMELHA | 2 bateria VERDE | 3 MUTACAO NAO APLICADA | 1 erro de uso
+exit: 0 mutação casou e bateria VERMELHA | 2 bateria VERDE | 3 MUTACAO NAO APLICADA |
+     4 baseline não-verde | 1 erro de uso
 
 Git Bash (MSYS) come uma barra de argumento que COMEÇA com \`//\`: \`// coment\`
 chega aqui como \`/ coment\` e não casa. Medido em 2026-08-21 ao mutar um
-comentário. Inclua um caractere antes das barras, ou exporte MSYS_NO_PATHCONV=1.`;
+comentário. Inclua um caractere antes das barras, ou exporte MSYS_NO_PATHCONV=1.
+
+Bateria: esperado rodar via shell. No Unix é /bin/sh; no Windows (cmd.exe) use
+bash explicitamente (ex.: \`bash scripts/testa.sh\`), ou exporte SHELL=/bin/bash.`;
 
 function erroUso(msg) {
   console.error(`erro: ${msg}`);
@@ -132,7 +138,23 @@ function armarRestauracao(caminho, original) {
   }
 }
 
-// =================================================================== Execução
+// ================================ Execução, com baseline verde
+
+function rodaBateria(bateria, raiz, timeout, qual) {
+  const inicio = Date.now();
+  const r = spawnSync(bateria, {
+    shell: true,
+    cwd: raiz,
+    encoding: 'utf8',
+    // stdin fechado: bateria que lê payload do stdin recebe EOF em vez de
+    // pendurar (relatório de 2026-08-19, seção 6).
+    stdio: ['ignore', 'pipe', 'pipe'],
+    timeout,
+    maxBuffer: 32 * 1024 * 1024,
+  });
+  const duracao = Date.now() - inicio;
+  return { r, duracao, qual };
+}
 
 function main() {
   if (process.argv.length <= 2) {
@@ -172,9 +194,55 @@ function main() {
   const pedacos = texto.split(de);
   const ocorrencias = pedacos.length - 1;
 
-  // D11 — antes de escrever qualquer byte e antes de rodar qualquer bateria.
-  // Se o padrão não casa, NÃO há mutação, e o resultado da bateria (qualquer
-  // que fosse) não diz nada sobre o conserto.
+  console.log(`arquivo : ${alvo}`);
+  console.log(`de      : ${JSON.stringify(de)}`);
+  console.log(`para    : ${JSON.stringify(para)}`);
+  console.log(`raiz    : ${raiz}`);
+  console.log(`bateria : ${bateria}`);
+  console.log('');
+
+  // ========================================================== Fase 1: baseline
+  // Roda a bateria no fonte ÍNTEGRO. Se não sair 0, a prova não será válida,
+  // porque qualquer alteração pode deixar a bateria vermelha sem relação com
+  // o comportamento que você quer testar. D11 estendido.
+  const baselineRes = rodaBateria(bateria, raiz, timeout, 'baseline');
+  const baselineExit = baselineRes.r.status;
+  const baselineDuracao = baselineRes.duracao;
+
+  const baselineSaida = ultimasLinhas(`${baselineRes.r.stdout || ''}${baselineRes.r.stderr || ''}`, 20);
+  console.log(`--- bateria baseline (fonte íntegro) em ${baselineDuracao} ms ---`);
+  if (baselineSaida) console.log(baselineSaida);
+  console.log('---------------------------------');
+  console.log('');
+
+  // Verificação de baseline: a bateria tem que sair 0 no fonte íntegro.
+  if (baselineRes.r.error && baselineRes.r.error.code === 'ETIMEDOUT') {
+    console.error(`RECUSADO: baseline estourou o teto de ${timeout} ms.`);
+    console.error('  A bateria não consegue rodar no fonte íntegro sem pendurar.');
+    console.error('  Arrume o comando da bateria ou aumente o timeout.');
+    process.exit(4);
+  }
+  if (baselineRes.r.error) {
+    console.error(`RECUSADO: baseline não consegui executar — ${baselineRes.r.error.message}`);
+    process.exit(4);
+  }
+  if (baselineRes.r.status === null) {
+    console.error(`RECUSADO: baseline morta pelo sinal ${baselineRes.r.signal}, sem exit code.`);
+    process.exit(4);
+  }
+  if (baselineExit !== 0) {
+    console.error(`RECUSADO: baseline NAO-VERDE (exit ${baselineExit}).`);
+    console.error('  A bateria não sai 0 no fonte íntegro. Qualquer mutação pode deixá-la');
+    console.error('  vermelha por motivo diverso do comportamento que você quer medir.');
+    console.error('  Conserte a bateria ou o source antes de invocar esta catraca.');
+    process.exit(4);
+  }
+
+  console.log(`ok: baseline VERDE (exit 0 após ${baselineDuracao} ms).`);
+  console.log('');
+
+  // ====================================================== Fase 2: conferência
+  // D11 — antes de escrever qualquer byte. Se o padrão não casa, NÃO há mutação.
   if (ocorrencias === 0) {
     console.error('MUTACAO NAO APLICADA');
     console.error(`  arquivo: ${alvo}`);
@@ -192,54 +260,65 @@ function main() {
     process.exit(3);
   }
 
-  console.log(`arquivo : ${alvo}`);
-  console.log(`de      : ${JSON.stringify(de)}`);
-  console.log(`para    : ${JSON.stringify(para)}`);
-  console.log(`casou   : ${ocorrencias} ocorrência(s) — todas invertidas`);
-  console.log(`bateria : ${bateria}`);
-  console.log(`raiz    : ${raiz}`);
+  // Recusa múltiplas ocorrências: o split deixa de ser um-para-um.
+  if (ocorrencias > 1) {
+    console.error(`RECUSADO: --de casa ${ocorrencias} vez(es), não 1.`);
+    console.error('  Múltiplas ocorrências deixam a mutação ambígua. Refine o padrão');
+    console.error('  para casar uma só, ou use --de e --para com delimitadores únicos.');
+    process.exit(4);
+  }
+
+  console.log(`casou   : ${ocorrencias} ocorrência — inversão aplicável`);
   console.log('');
 
+  // ======================================================== Fase 3: mutação
   armarRestauracao(alvo, original);
-  fs.writeFileSync(alvo, pedacos.join(para), 'utf8');
 
-  const r = spawnSync(bateria, {
-    shell: true,
-    cwd: raiz,
-    encoding: 'utf8',
-    // stdin fechado: bateria que lê payload do stdin recebe EOF em vez de
-    // pendurar (relatório de 2026-08-19, seção 6).
-    stdio: ['ignore', 'pipe', 'pipe'],
-    timeout,
-    maxBuffer: 32 * 1024 * 1024,
-  });
+  let temErroEscrita = false;
+  try {
+    fs.writeFileSync(alvo, pedacos.join(para), 'utf8');
+  } catch (err) {
+    temErroEscrita = true;
+    console.error(`ERRO AO MUTAR: ${err.message}`);
+    if (err.code === 'EACCES') {
+      console.error('  Arquivo somente-leitura ou sem permissão de escrita.');
+    }
+    restaurar();
+    process.exit(1);
+  }
+
+  // ============================================ Fase 4: bateria pós-mutação
+  const posRes = rodaBateria(bateria, raiz, timeout, 'pós-mutação');
+  const posExit = posRes.r.status;
+  const posDuracao = posRes.duracao;
+
+  const posSaida = ultimasLinhas(`${posRes.r.stdout || ''}${posRes.r.stderr || ''}`, 20);
+  console.log(`--- bateria pós-mutação em ${posDuracao} ms ---`);
+  if (posSaida) console.log(posSaida);
+  console.log('---------------------------------');
+  console.log('');
 
   // Restaura ANTES de decidir e imprimir: nenhum caminho abaixo pode escapar
   // com o fonte mutado.
   restaurar();
 
-  const saida = ultimasLinhas(`${r.stdout || ''}${r.stderr || ''}`, 20);
-  console.log('--- últimas linhas da bateria ---');
-  if (saida) console.log(saida);
-  console.log('---------------------------------');
-  console.log('');
-
-  const estourou = r.error && r.error.code === 'ETIMEDOUT';
+  // ============================================== Fase 5: veredito final
+  const estourou = posRes.r.error && posRes.r.error.code === 'ETIMEDOUT';
   if (estourou) {
     console.error(`BATERIA SEM VEREDITO: estourou o teto de ${timeout} ms e foi morta.`);
     console.error('  fonte restaurado. Sem exit code da bateria não há prova nenhuma.');
     process.exit(1);
   }
-  if (r.error) {
-    console.error(`BATERIA SEM VEREDITO: não consegui executar o comando — ${r.error.message}`);
+  if (posRes.r.error) {
+    console.error(`BATERIA SEM VEREDITO: não consegui executar o comando — ${posRes.r.error.message}`);
     process.exit(1);
   }
-  if (r.status === null) {
-    console.error(`BATERIA SEM VEREDITO: morta pelo sinal ${r.signal}, sem exit code.`);
+  if (posRes.r.status === null) {
+    console.error(`BATERIA SEM VEREDITO: morta pelo sinal ${posRes.r.signal}, sem exit code.`);
     process.exit(1);
   }
 
-  if (r.status === 0) {
+  if (posExit === 0) {
     console.error('RECUSADO: bateria VERDE com o comportamento invertido (exit 0).');
     console.error('  A mutação casou e foi aplicada — o fonte estava se comportando ao');
     console.error('  contrário enquanto a bateria rodava, e ela aprovou assim mesmo.');
@@ -247,7 +326,8 @@ function main() {
     process.exit(2);
   }
 
-  console.log(`ok: bateria VERMELHA com o comportamento invertido (exit ${r.status}).`);
+  console.log(`ok: bateria VERMELHA com o comportamento invertido (exit ${posExit}).`);
+  console.log(`    Baseline: ${baselineDuracao} ms (exit 0) → Mutação: ${posDuracao} ms (exit ${posExit})`);
   console.log('    A bateria sabe falhar, e o fonte foi restaurado.');
   process.exit(0);
 }
