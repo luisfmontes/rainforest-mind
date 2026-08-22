@@ -168,6 +168,13 @@ que a **integração** obteve ao re-rodar `conferir-mutacao.cjs` — o campo
 existe para que haja alvo declarado a re-rodar e para que "esqueci" pare de
 sair 0, não para transformar o relato do agente em veredito.
 
+**Validação da cobertura**: o campo `mutacao` deve cobrir **todas as tarefas**
+do plano (`docs/rainforest/planos/<slug>.md`) — nenhuma ausente, nenhuma
+duplicada, nenhuma inexistente. Se o plano não existir, a validação avisa e
+passa (fail-open); se os dados divergirem, a marcação recusa com exit 2.
+Tarefas do plano são os itens numerados no formato `### <n>. ` do markdown
+(ex.: `### 1. Implementar feature`, `### 2. Testes`).
+
 `parcial` é o estado honesto e **não libera `revisar`** — `exigir` do
 próximo estágio recusa com exit 2 enquanto `executar` não estiver `ok`.
 É assim que "5 de 7" para de virar "pronto" sem ninguém decidir isso.
