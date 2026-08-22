@@ -31,12 +31,19 @@
     "achados_corrigidos": 4
   },
   "revisar": {
-    "status": "reprovado",
-    "achados": 2,
-    "em": "2026-08-21"
+    "status": "ok",
+    "achados": 0,
+    "em": "2026-08-21",
+    "base": "3035e1e8faec9af42071b7e262f53631661faf9a",
+    "head": "bc523131b70ced573f307569499f538290be263c",
+    "rodadas": 4
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "9 criterios rodados na arvore de entrega (bc52313)",
+    "saida": "T1 REFRESHER de __file__ sem .claude + barra com pessoal/Opus 5 exit 0; T2 SINTETICA/MAISNOVA/mudo exit 0 com raiz nua; T3 criterio transitorio (vermelho-primeiro, o proprio plano declara que a T4 conserta) — provado no momento em que rodou, 8/9 exit 1; T4+T9 16/16 exit 0; T5 glob=37 e invocador exit 0; T6 testa-saude 28 ok exit 0 e os quatro mktemp no array do trap unico; T7 --conferir md5 identico, instalacao deixa so o shim byte a byte igual, trava exit 1 com os 5 intactos; T8 10 arquivos no diff contra a main e uma branch so",
+    "ressalva": "T3 e o unico criterio nao reproduzivel na arvore final, por desenho do proprio plano",
+    "em": "2026-08-21"
   },
   "fechar": {
     "status": "pendente"
