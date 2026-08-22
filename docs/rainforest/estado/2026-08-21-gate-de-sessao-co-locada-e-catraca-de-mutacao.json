@@ -76,16 +76,21 @@
     "em": "2026-08-22"
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "b70ee301ce1c071ef3c8bebc68b05ffeb10a0efd",
+      "head": "afda63401fecd1f4e8191c89e8f3530b129b4eb0",
       "caminhos_sujos": []
     },
-    "achados": 14,
-    "em": "2026-08-21"
+    "achados": 4,
+    "em": "2026-08-22",
+    "base": "4445cc2325bdfdbdbff6457c8742b4f9434bc28e",
+    "head": "afda63401fecd1f4e8191c89e8f3530b129b4eb0"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "10 criterios do plano rodados um a um contra o artefato real: helper com fixture de 6 sessoes; gate por stdin no formato PreToolUse (5+9 casos); conferir-mutacao.cjs contra as arvores de 53fa44d e 0272cdf (3 casos) e contra fixture de baseline/ocorrencia (4 casos); estado.cjs marcar em caixa RFM_ESTADO_ROOT (13 casos); conferir-esteira cobertura sobre o design/plano reais, em LF e CRLF (7 casos)",
+    "saida": "41 sub-casos, 41 no exit code esperado; suite 38/38 verde; creep exit 0 com base 4445cc2",
+    "em": "2026-08-22"
   },
   "fechar": {
     "status": "pendente"
