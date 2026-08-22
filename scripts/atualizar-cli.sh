@@ -46,14 +46,22 @@ fi
 CLAUDE_EXE="$PACOTE/claude.exe"
 
 # Passo 1: Ler a versao atual executando o binario. Execucao, nao metadado.
+# Binario pode imprimir "X.Y.Z (Claude Code)" ou outro formato — extrair so o N.N.N.
 if [ ! -f "$CLAUDE_EXE" ]; then
   printf "Erro: executavel nao encontrado: %s\n" "$CLAUDE_EXE" >&2
   exit 1
 fi
 
-VERSAO_ATUAL=$("$CLAUDE_EXE" --version 2>/dev/null || echo "")
-if [ -z "$VERSAO_ATUAL" ]; then
+VERSAO_ATUAL_RAW=$("$CLAUDE_EXE" --version 2>/dev/null || echo "")
+if [ -z "$VERSAO_ATUAL_RAW" ]; then
   printf "Erro: nao consegui ler a versao atual\n" >&2
+  exit 1
+fi
+
+# Extrair apenas o padrão N.N.N (ex.: "2.1.231" de "2.1.231 (Claude Code)").
+VERSAO_ATUAL=$(echo "$VERSAO_ATUAL_RAW" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "")
+if [ -z "$VERSAO_ATUAL" ]; then
+  printf "Erro: versao nao e um numero valido (N.N.N): %s\n" "$VERSAO_ATUAL_RAW" >&2
   exit 1
 fi
 
@@ -73,12 +81,22 @@ fi
 # Passo 2: Preparar rollback — guardar o caminho do backup a ser criado.
 CLAUDE_BAK="$PACOTE/claude-$VERSAO_ATUAL.exe.bak"
 
-# Trap para limpeza em caso de erro antes do rollback estar ativo.
-cleanup_temp() {
-  # Nenhum arquivo temporario neste script, mas esta aqui para consistencia.
-  true
+# Trap para rollback de emergencia. Se o script morrer com set -e enquanto
+# claude.exe nao existe e .bak existe, renomeia de volta — evita deixar PATH
+# apontando para pasta vazia (o pior estado possivel).
+trap_rollback_emergencia() {
+  # So entra aqui se o script saiu diferente de zero.
+  if [ ! -f "$CLAUDE_EXE" ] && [ -f "$CLAUDE_BAK" ]; then
+    # Executavel desapareceu enquanto .bak existe — situacao anormal.
+    printf "Emergencia: claude.exe desapareceu, restaurando de backup\n" >&2
+    if mv "$CLAUDE_BAK" "$CLAUDE_EXE" 2>/dev/null; then
+      printf "Rollback de emergencia: claude-%s.exe.bak -> claude.exe\n" "$VERSAO_ATUAL" >&2
+    else
+      printf "Erro: nao consegui restaurar de emergencia\n" >&2
+    fi
+  fi
 }
-trap cleanup_temp EXIT
+trap trap_rollback_emergencia EXIT
 
 # Passo 3: Renomear o exe para liberar o caminho. No Windows, nao da para APAGAR
 # um exe em uso, mas da para MOVER, e os processos vivos seguem lendo o arquivo movido.
@@ -109,9 +127,19 @@ if [ ! -f "$CLAUDE_EXE" ]; then
   exit 1
 fi
 
-VERSAO_NOVA=$("$CLAUDE_EXE" --version 2>/dev/null || echo "")
-if [ -z "$VERSAO_NOVA" ]; then
+VERSAO_NOVA_RAW=$("$CLAUDE_EXE" --version 2>/dev/null || echo "")
+if [ -z "$VERSAO_NOVA_RAW" ]; then
   printf "Erro: nao consegui ler a versao do novo executavel\n" >&2
+  # Rollback.
+  mv "$CLAUDE_BAK" "$CLAUDE_EXE"
+  printf "Rollback: claude-%s.exe.bak -> claude.exe\n" "$VERSAO_ATUAL"
+  exit 1
+fi
+
+# Extrair apenas o padrão N.N.N (ex.: "2.1.239" de "2.1.239 (Claude Code)").
+VERSAO_NOVA=$(echo "$VERSAO_NOVA_RAW" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "")
+if [ -z "$VERSAO_NOVA" ]; then
+  printf "Erro: versao nova nao e um numero valido (N.N.N): %s\n" "$VERSAO_NOVA_RAW" >&2
   # Rollback.
   mv "$CLAUDE_BAK" "$CLAUDE_EXE"
   printf "Rollback: claude-%s.exe.bak -> claude.exe\n" "$VERSAO_ATUAL"
