@@ -368,6 +368,97 @@ nao_tem "o rollback controlado resolveu sozinho, sem cair no trap de emergencia"
         "$SAIDA" "Emergencia"
 caso_fim
 
+# Monta o estado que sobra quando a maquina morre entre o rename e a
+# instalacao: a pasta tem backup e NAO tem claude.exe. E o pior estado que a
+# decisao D2 nomeia, e o unico que nenhum trap consegue evitar (SIGKILL, queda
+# de energia). Aqui ele e montado direto, sem matar processo nenhum — o que
+# importa e como o script REAGE a esse estado, nao como se chega nele.
+estado_interrompido() {
+  local dir="$1"
+  shift
+  mkdir -p "$dir"
+  local versao
+  for versao in "$@"; do
+    printf '#!/bin/bash\necho "%s (Claude Code)"\n' "$versao" > "$dir/claude-$versao.exe.bak"
+    chmod +x "$dir/claude-$versao.exe.bak"
+  done
+}
+
+# (k) Auto-cura: so um backup e nenhum claude.exe. O script restaura sozinho e
+# segue a atualizacao ate o fim, em vez de so reclamar e sair.
+caso_inicio "auto-cura — claude.exe ausente com um backup so"
+PACOTE="$SBP/caso-k/pacote"
+estado_interrompido "$PACOTE" "2.1.231"
+rodar ATUALIZAR_CLI_PACOTE="$PACOTE" ATUALIZAR_CLI_WINGET="$INSTALADOR_FALSO" \
+      MOCK_ATUALIZADOR_VERSAO_NOVA=9.9.9
+igual "sai 0" "$EXIT" "0"
+tem "avisa que auto-curou" "$SAIDA" "Auto-cura"
+if [ -f "$PACOTE/claude.exe" ]; then
+  echo "  ok    claude.exe existe ao final"
+  igual "e o exe novo, versao 9.9.9" "$(bash "$PACOTE/claude.exe" --version)" "9.9.9 (Claude Code)"
+else
+  echo "  FALHA claude.exe nao existe ao final"
+  CASO_FALHOU=1
+fi
+igual "exatamente um .bak sobra" "$(contar_bak "$PACOTE")" "1"
+caso_fim
+
+# (l) Ambiguidade: dois backups e nenhum claude.exe. Adivinhar qual binario de
+# 300 MB promover e pior que parar — o script tem de sair != 0 SEM tocar em nada.
+caso_inicio "dois backups e nenhum claude.exe — para, nao adivinha"
+PACOTE="$SBP/caso-l/pacote"
+estado_interrompido "$PACOTE" "2.1.220" "2.1.231"
+rodar ATUALIZAR_CLI_PACOTE="$PACOTE" ATUALIZAR_CLI_WINGET="$INSTALADOR_FALSO"
+[ "$EXIT" -ne 0 ] && echo "  ok    sai diferente de 0" || { echo "  FALHA sai 0 (esperava diferente de 0)"; CASO_FALHOU=1; }
+igual "os dois .bak continuam la, intocados" "$(contar_bak "$PACOTE")" "2"
+if [ -f "$PACOTE/claude.exe" ]; then
+  echo "  FALHA promoveu um backup por conta propria"
+  CASO_FALHOU=1
+else
+  echo "  ok    nao promoveu nenhum backup"
+fi
+tem "nomeia os candidatos para a escolha ser do usuario" "$SAIDA" "claude-2.1.231.exe.bak"
+# As duas assercoes abaixo existem porque o desfecho sozinho nao distingue
+# "parou de proposito" de "tentou restaurar e o mv falhou". Trocando o
+# `-eq 1` por `-ge 1`, o script entra no ramo de restauracao, passa os DOIS
+# caminhos num argumento so, o mv falha, e o resultado final fica identico:
+# exit != 0, dois .bak, nenhum claude.exe. Sem olhar QUAL erro ele deu, essa
+# mutacao sobrevive — medido.
+tem "diz que nao da para adivinhar" "$SAIDA" "adivinhar qual promover"
+nao_tem "nem chega a tentar restaurar" "$SAIDA" "nao consegui restaurar"
+caso_fim
+
+# (m) --conferir no estado interrompido: diagnostica e NAO mexe. Modo que
+# promete nao mudar nada nao pode virar o unico que muda.
+caso_inicio "--conferir no estado interrompido diagnostica sem restaurar"
+PACOTE="$SBP/caso-m/pacote"
+estado_interrompido "$PACOTE" "2.1.231"
+SAIDA="$(env ATUALIZAR_CLI_PACOTE="$PACOTE" ATUALIZAR_CLI_WINGET="$INSTALADOR_FALSO" \
+         bash "$ALVO" --conferir 2>&1)"
+EXIT=$?
+igual "sai 0" "$EXIT" "0"
+tem "diz o que restauraria" "$SAIDA" "Restauraria"
+nao_tem "nao diz que restaurou" "$SAIDA" "Auto-cura"
+igual "o .bak continua sendo .bak" "$(contar_bak "$PACOTE")" "1"
+if [ -f "$PACOTE/claude.exe" ]; then
+  echo "  FALHA --conferir criou claude.exe"
+  CASO_FALHOU=1
+else
+  echo "  ok    nao criou claude.exe"
+fi
+caso_fim
+
+# (n) Pasta vazia de verdade: sem claude.exe e sem backup nenhum. Nao ha o que
+# curar, e o erro antigo continua sendo a resposta certa.
+caso_inicio "pasta sem exe e sem backup — erro, sem inventar cura"
+PACOTE="$SBP/caso-n/pacote"
+mkdir -p "$PACOTE"
+rodar ATUALIZAR_CLI_PACOTE="$PACOTE" ATUALIZAR_CLI_WINGET="$INSTALADOR_FALSO"
+[ "$EXIT" -ne 0 ] && echo "  ok    sai diferente de 0" || { echo "  FALHA sai 0 (esperava diferente de 0)"; CASO_FALHOU=1; }
+tem "diz que nao encontrou o executavel" "$SAIDA" "executavel nao encontrado"
+nao_tem "nao alega ter auto-curado" "$SAIDA" "Auto-cura"
+caso_fim
+
 # ------------------------------------------------------------------ resultado
 echo
 echo "-----------------------------------------"

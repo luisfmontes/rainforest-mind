@@ -45,12 +45,52 @@ fi
 # Localiza o executavel da CLI.
 CLAUDE_EXE="$PACOTE/claude.exe"
 
+# Passo 0.5: Auto-cura do estado interrompido.
+#
+# O trap de emergencia cobre o script morrendo por sinal, mas nao cobre
+# SIGKILL nem queda de energia — nenhum script bash cobre. Se a maquina morrer
+# entre o rename e a instalacao, sobra so o .bak, sem claude.exe: e o pior
+# estado possivel que a decisao D2 nomeia, com o PATH apontando para uma pasta
+# sem executavel. Sem isto, a proxima execucao apenas dizia "executavel nao
+# encontrado" e saia, deixando a maquina sem CLI ate alguem descobrir sozinho
+# que bastava renomear o .bak — que e justamente o conhecimento que este
+# script existe para guardar.
+#
+# Restaura so quando ha exatamente UM backup. Com dois ou mais, qual e o bom
+# vira adivinhacao, e adivinhar qual binario de 300 MB promover e pior que
+# parar e perguntar.
+if [ ! -f "$CLAUDE_EXE" ]; then
+  BAKS=$(find "$PACOTE" -maxdepth 1 -name "claude-*.exe.bak" -type f | sort -V)
+  BAKS_N=$(echo "$BAKS" | grep -c . || true)
+
+  if [ "$BAKS_N" -eq 1 ]; then
+    if [ $CONFERIR -eq 1 ]; then
+      printf "Estado interrompido: claude.exe ausente, um backup presente.\n"
+      printf "  Restauraria: %s -> claude.exe\n" "$(basename "$BAKS")"
+      printf "  (modo --conferir: nada foi mudado)\n"
+      exit 0
+    fi
+    printf "Estado interrompido detectado: claude.exe ausente, um backup presente.\n" >&2
+    if ! mv "$BAKS" "$CLAUDE_EXE"; then
+      printf "Erro: nao consegui restaurar %s\n" "$(basename "$BAKS")" >&2
+      exit 1
+    fi
+    printf "Auto-cura: %s -> claude.exe\n" "$(basename "$BAKS")" >&2
+
+  elif [ "$BAKS_N" -gt 1 ]; then
+    printf "Erro: claude.exe ausente e %d backups na pasta — nao da para\n" "$BAKS_N" >&2
+    printf "adivinhar qual promover. Escolha um e renomeie a mao:\n" >&2
+    echo "$BAKS" | while read -r b; do printf "  %s\n" "$(basename "$b")" >&2; done
+    exit 1
+
+  else
+    printf "Erro: executavel nao encontrado: %s\n" "$CLAUDE_EXE" >&2
+    exit 1
+  fi
+fi
+
 # Passo 1: Ler a versao atual executando o binario. Execucao, nao metadado.
 # Binario pode imprimir "X.Y.Z (Claude Code)" ou outro formato — extrair so o N.N.N.
-if [ ! -f "$CLAUDE_EXE" ]; then
-  printf "Erro: executavel nao encontrado: %s\n" "$CLAUDE_EXE" >&2
-  exit 1
-fi
 
 VERSAO_ATUAL_RAW=$("$CLAUDE_EXE" --version 2>/dev/null || echo "")
 if [ -z "$VERSAO_ATUAL_RAW" ]; then
