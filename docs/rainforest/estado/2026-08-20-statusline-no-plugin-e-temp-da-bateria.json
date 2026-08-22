@@ -46,6 +46,11 @@
     "em": "2026-08-21"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "acao": "pr",
+    "pr": 40,
+    "merge": "eebf631",
+    "ci": "as 37 baterias passaram no run 32539214477, com scripts/testa-statusline.sh VERDE em 16/16",
+    "em": "2026-08-21"
   }
 }
