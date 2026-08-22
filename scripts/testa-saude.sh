@@ -43,7 +43,8 @@
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SBP="$(mktemp -d)"
-trap 'rm -rf "$SBP"' EXIT
+TEMPS=("$SBP")
+trap 'rm -rf "${TEMPS[@]}"' EXIT
 
 ok=0; falhou=0
 checa() { # nome, esperado(nivel), esperado(trecho), obtido
@@ -267,6 +268,7 @@ echo "== MUTACAO: cegar o discriminador de raiz =="
 # $M (o clone sem parentesco montado la em cima, linhas 236-237), que e
 # exatamente o que a situacao B precisa para ser detectada.
 MUTR="$(mktemp -d)"
+TEMPS+=("$MUTR")
 cp -r "$SRC/scripts" "$MUTR/scripts"
 cp -r "$SRC/skills" "$MUTR/skills"
 mkdir -p "$MUTR/.claude-plugin"
@@ -349,6 +351,7 @@ checa "I. banco legado acusa falta de UNIQUE"     "alerta" "UNIQUE" "$I"
 echo
 echo "== MUTACAO: desabilitar a checagem de UNIQUE numa copia =="
 MUT="$(mktemp -d)"
+TEMPS+=("$MUT")
 cp -r "$SRC/scripts" "$MUT/scripts"
 sed -i 's/if (!verificarConstraintUniqueProjetoOrigem(db)) {/if (false) { \/* MUTACAO *\//' "$MUT/scripts/saude.cjs"
 
@@ -428,6 +431,7 @@ rm -rf "$HOMEDIVERGE"
 monta_conta ".claude"       "0.70.0" "df1b135aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 monta_conta ".claude-outra" "0.71.0" "1369ca5bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 MUTCD="$(mktemp -d)"
+TEMPS+=("$MUTCD")
 cp -r "$SRC/scripts" "$MUTCD/scripts"
 node -e "
   const fs=require('fs'), p=process.argv[1];
