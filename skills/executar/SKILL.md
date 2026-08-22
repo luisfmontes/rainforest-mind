@@ -91,6 +91,60 @@ caminho, número — re-derive de `git` antes de usar. Passou a checagem
 mecânica, rode o critério de sucesso do briefing e olhe a saída real; suíte
 verde relatada não é evidência.
 
+## A catraca de mutação: quem roda não é quem julga
+
+O agente roda a catraca **para iterar** — é assim que ele descobre, ainda
+dentro do worktree, que a bateria dele não sabe falhar. Mas **o relato dele
+não fecha a tarefa**. A integração **re-roda** `conferir-mutacao.cjs` na volta,
+e **o exit code dela é o veredito**. Bateria relatada vermelha e não re-rodada
+é bateria não medida.
+
+Isto é o P1 do relatório de método de 2026-08-08, já colado no cabeçalho de
+`conferir-entrega.cjs`:
+
+> "Enquanto o veredito de uma checagem for redigido pelo mesmo agente que ela
+> deveria travar, ela não trava nada."
+
+Em **2026-08-21** isso se repetiu, e é por causa desse dia que esta seção
+existe: o agente rodou mutação, relatou mutação, colou saída de mutação, e
+entregou quebrado — 49 de 49 verde, com a trava que ele dizia ter invertido
+recusando o caminho feliz **sempre**. A bateria não sabia falhar; o relato
+não tinha como revelar isso, porque quem o escreveu foi quem seria barrado.
+
+Para cada tarefa que o plano marcou com `mutacao:`, a integração roda:
+
+```
+node scripts/conferir-mutacao.cjs --raiz <worktree> --arquivo <fonte> \
+    --de '<trecho literal a inverter>' --para '<o que entra no lugar>' \
+    --bateria '<comando da bateria>' [--timeout <ms>]
+```
+
+`--arquivo`, `--de`, `--para` e `--bateria` são **obrigatórios**; `--raiz`
+(diretório de trabalho da bateria, padrão o cwd) e `--timeout` (teto em ms,
+padrão 300000) são opcionais. Rodar sem argumento nenhum imprime o uso e sai 1.
+
+Os quatro valores saem do bloco `mutacao:` **da tarefa do plano**, nunca do
+relato do agente — é a mesma regra de re-derivar identificador, e aqui ela
+pesa mais: o relato é justamente a peça que a catraca desconfia.
+
+| exit | significa | o que fazer |
+|---|---|---|
+| `0` | mutação casou e bateria **VERMELHA** | única aprovação: a bateria sabe falhar |
+| `2` | mutação casou e bateria **VERDE** | reprovado — a bateria não mede o conserto |
+| `3` | `MUTACAO NAO APLICADA` — o `--de` não existe no fonte | a declaração está errada; nada foi medido |
+| `1` | erro de uso, ou bateria sem veredito (estouro de tempo / sinal) | não é aprovação nem reprovação |
+
+`2` e `3` são códigos **diferentes de propósito**: "a bateria é fraca" e "a
+declaração de mutação está errada" pedem conserto em lugares distintos, e o
+`3` nunca pode ser lido como reprovação da bateria — em 2026-08-19 um `sed`
+com alvo errado deixou a bateria vermelha por outro motivo e o resultado quase
+virou prova. Veredito certo pelo motivo errado é pior que veredito errado,
+porque ninguém volta a olhar.
+
+No Git Bash, argumento que **começa** com `//` chega ao script com uma barra
+só (`'// coment'` vira `'/ coment'`) e não casa, dando `3` sem culpa do fonte.
+Ponha um caractere antes das barras, ou exporte `MSYS_NO_PATHCONV=1`.
+
 ## Fechamento
 
 Enquanto faltar tarefa:
@@ -102,8 +156,17 @@ node scripts/estado.cjs marcar --slug <slug> --estagio executar --status parcial
 Todas fechadas, e só então:
 
 ```
-node scripts/estado.cjs marcar --slug <slug> --estagio executar --status ok --json '{"tarefas_ok":M,"tarefas":M}'
+node scripts/estado.cjs marcar --slug <slug> --estagio executar --status ok --json '{"tarefas_ok":M,"tarefas":M,"mutacao":[{"tarefa":1,"resultado":"vermelho"},{"tarefa":4,"resultado":"n/a","motivo":"tarefa so reescreve doc"}]}'
 ```
+
+O campo `mutacao` é **obrigatório no `ok`** (e só nele: `parcial` e
+`reprovado` não o cobram) — um item por tarefa do plano. `resultado` aceita
+`vermelho` ou `n/a`, e `n/a` exige `motivo` não vazio. **`verde` não é
+resposta aceita**: bateria que continua verde com o conserto invertido é
+exatamente o defeito que a catraca mede. O que se declara aqui é o resultado
+que a **integração** obteve ao re-rodar `conferir-mutacao.cjs` — o campo
+existe para que haja alvo declarado a re-rodar e para que "esqueci" pare de
+sair 0, não para transformar o relato do agente em veredito.
 
 `parcial` é o estado honesto e **não libera `revisar`** — `exigir` do
 próximo estágio recusa com exit 2 enquanto `executar` não estiver `ok`.
