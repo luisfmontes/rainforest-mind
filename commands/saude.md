@@ -7,7 +7,7 @@ Rode `node scripts/saude.cjs` e apresente o resultado.
 O que ele checa, e por quê cada um está aqui: **de quem é a raiz de dados** (quem
 instala e não configura recebe o foco e as ideias de quem publicou o plugin), a
 **margem do orçamento de injeção** (sem margem, prazo e marco caem fora da
-abertura em silêncio), a **integridade do `ideias.jsonl`**, **trabalho da esteira
+abertura em silêncio), a **integridade do `ideias.jsonl`**, **trabalho do fluxo
 parado no meio**, **worktree de agente pendurado**, e se o **plugin instalado
 está atrás do repo** — em 2026-08-11 esteve 18 commits atrás, e sete skills
 escritas naquele dia não valiam em sessão nova.

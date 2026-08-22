@@ -81,7 +81,7 @@ tem duas ferramentas fazendo a mesma coisa, uma delas pior.
 Apresente as propostas numeradas, cada uma com: **o que impede**, **a evidência**
 (id ou arquivo), **o mecanismo** e **como se saberia**. Então **pare**.
 
-Ele escolhe. O que ele aceitar vira trabalho — pela esteira, se for grande
+Ele escolhe. O que ele aceitar vira trabalho — pelo fluxo, se for grande
 (`Skill(brainstorm)`), ou direto, se for pequeno. O que ele não escolher agora
 **é plantado** com gancho de retorno (regra 6), não descartado: proposta boa em
 hora errada é semente, não lixo.

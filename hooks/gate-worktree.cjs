@@ -23,13 +23,22 @@
  * despacho do Task: intercepta-se a escrita, ja sabendo quem esta escrevendo.
  *
  * ESCOPO, de proposito estreito:
- *   - so age quando ha `agent_id` — a janela principal nunca e barrada;
+ *   - so age quando ha `agent_id` — a janela principal nunca e barrada, EXCETO
+ *     no caso de sessao co-locada abaixo;
  *   - escrita de arquivo (Write/Edit/MultiEdit/NotebookEdit) para dentro de
  *     repo git que NAO e worktree linkado;
  *   - Bash: so a lista curta de comandos que mexem no estado do repo
  *     (stash, checkout, switch, reset, merge, rebase, commit, clean) — foi
  *     `git stash`/`pop` que moveu o HEAD do usuario na falha N1. Leitura passa.
  *   - fora de repo git (scratchpad, temp) passa sempre.
+ *
+ * SEGUNDA TRAVA, e esta e da JANELA PRINCIPAL (2026-08-21, Issues #25 e #38):
+ * duas janelas do Claude Code abertas no MESMO diretorio, `git checkout -b` numa
+ * delas arrancou a outra da branch em que ela trabalhava — e ela commitou tres
+ * vezes na branch alheia sem perceber. Onze registros do acervo na mesma familia,
+ * e o texto da regra 11 tinha sido seguido corretamente: a saida que ele prescrevia
+ * ("branch nova, tirada da base") E o ato que causa o dano. HEAD e do CHECKOUT,
+ * nao da janela. Aqui isso vira exit 2, com `git worktree add` como saida.
  *
  * Saidas de emergencia, as duas nomeadas na mensagem de bloqueio:
  *   - env RAINFOREST_GATE_OFF=1  → desliga na sessao inteira;
@@ -42,7 +51,126 @@ const path = require("node:path");
 
 const FERRAMENTAS_DE_ESCRITA = new Set(["Write", "Edit", "MultiEdit", "NotebookEdit"]);
 // Subcomandos de git que mexem no estado do checkout. `git stash`/`pop` foi a falha N1.
-const GIT_QUE_MEXE = /\bgit\b[^\n;&|]*?\b(stash|checkout|switch|reset|merge|rebase|commit|clean|cherry-pick|revert)\b/;
+const VERBOS_QUE_MEXEM = new Set([
+  "stash", "checkout", "switch", "co", "reset", "merge", "rebase",
+  "commit", "clean", "cherry-pick", "revert",
+]);
+// Separadores de comando. Cada segmento tem o seu proprio subcomando e o seu proprio
+// cwd — e por isso a travessia do `alvosBash` e a mesma usada para achar o verbo.
+const SEPARADORES = /&&|\|\||;|\n|\|/;
+// Opcoes globais do git, as que vem ANTES do subcomando. As de valor separado
+// (`-C <dir>`, `-c <k=v>`) precisam comer o proprio argumento, senao o valor delas
+// e lido como se fosse o subcomando.
+const GLOBAIS_COM_VALOR = new Set([
+  "-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path",
+]);
+
+/**
+ * Quebra a linha de comando em palavras respeitando aspas simples e duplas.
+ * E o que impede `git commit -m "checkout later"` de virar um checkout: o texto
+ * da mensagem sai como UMA palavra, e nao como candidato a subcomando.
+ */
+function palavras(cmd) {
+  const out = [];
+  let atual = "";
+  let aspa = null;
+  let temAlgo = false;
+  for (let i = 0; i < cmd.length; i += 1) {
+    const c = cmd[i];
+    if (aspa) {
+      if (c === aspa) aspa = null;
+      else atual += c;
+      temAlgo = true;
+    } else if (c === '"' || c === "'") {
+      aspa = c;
+      temAlgo = true;
+    } else if (/\s/.test(c)) {
+      if (temAlgo) out.push(atual);
+      atual = "";
+      temAlgo = false;
+    } else {
+      atual += c;
+      temAlgo = true;
+    }
+  }
+  if (temAlgo) out.push(atual);
+  return out;
+}
+
+/**
+ * Acha o subcomando de `git` num segmento, com os argumentos dele.
+ * @returns {{verbo: string, args: string[]}|null}
+ */
+function subcomandoGit(cmd) {
+  const w = palavras(cmd);
+  for (let i = 0; i < w.length; i += 1) {
+    if (w[i] !== "git" && !/[\\/]git(\.exe)?$/.test(w[i])) continue;
+    let j = i + 1;
+    while (j < w.length && w[j].startsWith("-")) {
+      if (GLOBAIS_COM_VALOR.has(w[j])) j += 2;
+      else j += 1;
+    }
+    return j < w.length ? { verbo: w[j], args: w.slice(j + 1) } : null;
+  }
+  return null;
+}
+
+/** Primeiro verbo de git da linha inteira que caia no conjunto dado, ou null. */
+function verboNaLinha(comando, conjunto) {
+  for (const seg of comando.split(SEPARADORES)) {
+    const s = subcomandoGit(seg);
+    if (s && conjunto.has(s.verbo)) return s.verbo;
+  }
+  return null;
+}
+
+/**
+ * Verbos que movem o HEAD do CHECKOUT — os unicos que a trava de sessao co-locada
+ * cobre, e o recorte e deliberado (D2 do design de 2026-08-21).
+ *
+ * `commit`, `merge`, `rebase` e `reset` ficam de FORA. Barrar os verbos que MEXEM
+ * inteiros barraria as duas sessoes simetricamente — inclusive a DONA legitima da
+ * branch, que so quer commitar no trabalho dela. Trava que atrapalha quem esta
+ * certo vira trava desligada, e ai ela nao protege mais ninguem.
+ */
+const VERBOS_QUE_MOVEM = new Set(["checkout", "switch", "co"]);
+// Restauram arquivo, nao movem o HEAD.
+const FLAGS_DE_RESTAURO = new Set(["-p", "--patch", "--", "--ours", "--theirs", "--merge", "-m"]);
+// Movem o HEAD sem sombra de duvida.
+const FLAGS_QUE_MOVEM = new Set(["-b", "-B", "-c", "-C", "--orphan", "--detach", "-d", "--track", "-t", "--guess"]);
+
+/**
+ * Este comando move o HEAD do checkout em `cwd`?
+ *
+ * A licao das duas tentativas anteriores: decidir isto pela FORMA lexica do
+ * argumento e indecidivel — `agente/t7` e `docs/x.md` tem a mesma cara. A primeira
+ * casava a palavra em qualquer lugar e barrava `git commit -m "checkout later"`;
+ * a segunda exigia nome sem ponto nem barra e deixava passar `git checkout
+ * agente/t7`, que e literalmente o comando do incidente.
+ *
+ * O que resolve: quem decide TEM o cwd. Caminho existe em disco e e verificavel;
+ * ref nao existe em disco. E o que sobrar ambiguo BARRA, porque barrar errado
+ * custa uma mensagem explicando o worktree e deixar passar errado custa o HEAD da
+ * outra sessao andando debaixo dela.
+ */
+function moveOHead(cmd, cwd, existe = fs.existsSync) {
+  const s = subcomandoGit(cmd);
+  if (!s || !VERBOS_QUE_MOVEM.has(s.verbo)) return false;
+  const args = s.args;
+
+  // `--` em qualquer posicao: o que vem depois e caminho, e a forma
+  // `git checkout <tree-ish> -- <paths>` nao move o HEAD.
+  if (args.includes("--")) return false;
+
+  for (const a of args) {
+    if (FLAGS_QUE_MOVEM.has(a)) return true;
+    if (FLAGS_DE_RESTAURO.has(a)) return false;
+  }
+
+  const posicionais = args.filter((a) => !a.startsWith("-"));
+  if (posicionais.length === 0) return true; // `git switch` pelado: pergunta ao git, barra
+  return !posicionais.every((a) => existe(path.resolve(cwd, a)));
+}
 
 function git(dir, args) {
   try {
@@ -156,9 +284,24 @@ const GIT_DIR_EXPLICITO = /\bgit\b[^\n;&|]*?(?:-C|--work-tree(?:=|\s+))\s*(?:"([
  * `cd -`) marca o diretorio corrente como INCERTO, e dai em diante os alvos incluem
  * tambem o cwd registrado. Na duvida o gate barra — falso positivo custa uma ida e
  * volta, falso negativo custa o estado do usuario.
+ *
+ * O `casa` e parametro desde 2026-08-21 porque a trava de sessao co-locada olha um
+ * recorte MENOR de verbos (so os que movem o HEAD). Reescrever esta travessia para ela
+ * duplicaria o parser de `cd` — e e o parser de `cd`, nao a lista de verbos, que
+ * concentra os dois modos de falha que este comentario descreve.
+ *
+ * `casa` recebe `(segmento, cwdDoSegmento)` — o cwd vai junto porque decidir se um
+ * `git checkout X` move o HEAD depende de X existir em disco, e so esta travessia
+ * sabe em que diretorio o segmento vai rodar.
+ *
+ * Devolve `{dir, verbo}` por alvo: quem bloqueia precisa nomear o verbo na mensagem,
+ * e o verbo e do SEGMENTO que casou, nao da linha inteira.
  */
-function alvosBash(comando, cwdInicial) {
-  const segmentos = comando.split(/&&|\|\||;|\n|\|/);
+function alvosBash(comando, cwdInicial, casa = (seg) => {
+  const s = subcomandoGit(seg);
+  return !!s && VERBOS_QUE_MEXEM.has(s.verbo);
+}) {
+  const segmentos = comando.split(SEPARADORES);
   let atual = cwdInicial;
   let incerto = false;
   const alvos = [];
@@ -183,20 +326,111 @@ function alvosBash(comando, cwdInicial) {
       atual = path.resolve(atual, destino);
       continue;
     }
-    if (!GIT_QUE_MEXE.test(seg)) continue;
+    if (!casa(seg, atual)) continue;
+    const s = subcomandoGit(seg);
+    const verbo = s ? s.verbo : "?";
 
     const exp = seg.match(GIT_DIR_EXPLICITO);
     if (exp) {
       const p = exp[1] || exp[2] || exp[3];
       // `-C` com variavel: nao da para resolver — cai no conservador.
-      if (/[$`]/.test(p)) { alvos.push(cwdInicial); continue; }
-      alvos.push(path.resolve(atual, p));
+      if (/[$`]/.test(p)) { alvos.push({ dir: cwdInicial, verbo }); continue; }
+      alvos.push({ dir: path.resolve(atual, p), verbo });
       continue;
     }
-    alvos.push(atual);
-    if (incerto) alvos.push(cwdInicial);
+    alvos.push({ dir: atual, verbo });
+    if (incerto) alvos.push({ dir: cwdInicial, verbo });
   }
   return alvos;
+}
+
+/**
+ * Mensagem da trava de sessao co-locada. Publico: a JANELA PRINCIPAL.
+ *
+ * Aqui as escotilhas SAO nomeadas, ao contrario da mensagem ao subagente. O P1 do
+ * relatorio de 2026-08-11 e sobre AUTORIDADE, nao sobre segredo: um implementador
+ * despachado leu o nome do arquivo de escape na propria mensagem de bloqueio e se
+ * desligou a trava. Quem le ESTA mensagem e quem tem a autoridade de decidir seguir
+ * — e uma trava que barra sem dizer como sair e uma trava que o usuario arranca.
+ */
+function bloqueiaColocada(verbo, toplevel, outras, agora) {
+  const lista = outras
+    .map((s) => {
+      const min = Math.round((agora - s.ultimo_ts) / 60000);
+      return `  - ${s.session_id} — ${s.parada ? "parada" : "ativa"} ha ${min} min`;
+    })
+    .join("\n");
+
+  process.stderr.write(
+    `BLOQUEADO pelo gate de sessao co-locada do rainforest-mind.\n\n` +
+    `Comando: git ${verbo} — move o HEAD deste checkout.\n` +
+    `Repo: ${toplevel}\n` +
+    `Outra(s) sessao(oes) do Claude Code neste MESMO diretorio:\n${lista}\n\n` +
+    `HEAD e do CHECKOUT, nao da janela: trocar de branch aqui troca para as duas.\n` +
+    `Em 2026-08-21 foi exatamente isso — um \`git checkout -b\` arrancou a outra sessao\n` +
+    `da branch dela, e ela commitou tres vezes na branch alheia sem perceber\n` +
+    `(Issues #25 e #38, 11 registros do acervo na mesma familia).\n\n` +
+    `A SAIDA e um checkout so seu, que ninguem mais compartilha:\n` +
+    `  git worktree add .claude/worktrees/<nome> -b <branch>\n` +
+    `  cd .claude/worktrees/<nome>\n` +
+    `Assim as duas sessoes ficam donas do proprio HEAD, e nenhuma move o da outra.\n\n` +
+    `Se voce SABE que a outra sessao nao esta trabalhando aqui, tem tres saidas:\n` +
+    `  - node scripts/setup.cjs --desligar gate-worktree --escopo projeto (preferida);\n` +
+    `  - RAINFOREST_GATE_OFF=1 no ambiente da sessao (desliga na sessao inteira);\n` +
+    `  - arquivo .rainforest-gate-off na raiz do repo (desliga so naquele repo).\n`
+  );
+  process.exit(2);
+}
+
+/**
+ * A trava de sessao co-locada. Volta sem fazer nada quando nao se aplica; nao volta
+ * quando barra.
+ *
+ * FALHA PARA O LADO DE LIBERAR em tudo que ela nao consegue medir — sem `session_id`
+ * no evento, sem `sessoes.json`, sem raiz de dados, fora de repo git. E o mesmo
+ * principio que o `estadoDoRepo` ja aplica quando o git nao responde, e aqui ele pesa
+ * mais: esta e a UNICA condicao do arquivo que pode barrar a janela principal, e um
+ * falso positivo aqui trava o trabalho de quem esta sozinho no repo.
+ *
+ * O `session_id` e o que distingue quem pergunta de quem esta la — as duas entradas
+ * do incidente tinham `cwd` identico, entao `cwd` sozinho nao serve (D5). O hook
+ * recebe o campo; quem prova e `hooks/heartbeat.cjs:50`, que escreve as chaves do
+ * `sessoes.json` com ele.
+ */
+function gateDeSessaoColocada(ev, cwd) {
+  if (ev.tool_name !== "Bash") return;
+  const comando = (ev.tool_input || {}).command;
+  if (typeof comando !== "string") return;
+  // Recusa barata antes de tocar em disco: a linha tem algum verbo que possa mover
+  // o HEAD? Quem decide de verdade e o `moveOHead` la embaixo, com o cwd do segmento.
+  if (!verboNaLinha(comando, VERBOS_QUE_MOVEM)) return;
+  if (!ev.session_id) return;
+
+  const agora = Date.now();
+  let outras;
+  try {
+    outras = require("./lib/contexto-sessao.cjs")
+      .sessaoColocada({ cwd, sessionId: ev.session_id, agora });
+  } catch {
+    return;
+  }
+  if (!Array.isArray(outras) || !outras.length) return;
+
+  // O `checkout` precisa cair NESTE checkout para doer. `cd .claude/worktrees/x &&
+  // git checkout -b y` e justamente a saida que a mensagem de bloqueio recomenda, e
+  // barra-la seria fechar a porta e a janela ao mesmo tempo: o worktree tem toplevel
+  // proprio, entao ele nao casa com o daqui e passa. O parser de `cd` do `alvosBash`
+  // ja resolve o encadeamento, incluindo o conservadorismo do `cd` nao-resolvivel.
+  const daqui = estadoDoRepo(cwd);
+  if (!daqui) return; // fora de repo git: nao ha HEAD para mover
+  if (fs.existsSync(path.join(daqui.toplevel, ".rainforest-gate-off"))) return;
+
+  for (const alvo of alvosBash(comando, cwd, moveOHead)) {
+    const estado = estadoDoRepo(dirDe(alvo.dir));
+    if (!estado) continue;
+    if (estado.toplevel !== daqui.toplevel) continue;
+    bloqueiaColocada(alvo.verbo, daqui.toplevel, outras, agora);
+  }
 }
 
 function main() {
@@ -207,8 +441,6 @@ function main() {
     process.exit(0); // payload ilegivel nunca trava o trabalho do usuario
   }
 
-  // A janela principal e livre: o gate existe para quem foi despachado.
-  if (!ev.agent_id) process.exit(0);
   if (process.env.RAINFOREST_GATE_OFF) process.exit(0);
 
   const cwdDoEvento = ev.cwd || process.cwd();
@@ -217,6 +449,20 @@ function main() {
   // mora em hooks/lib/config.cjs e falha para o lado de LIGAR - config ilegivel
   // nao pode virar trava desligada em silencio.
   try { if (!require("./lib/config.cjs").ligado("gate-worktree", { projeto: cwdDoEvento })) process.exit(0); } catch {}
+
+  // AS DUAS SAIDAS DE EMERGENCIA SUBIRAM PARA CA em 2026-08-21, e a ordem e o ponto:
+  // elas ficavam DEPOIS do `if (!ev.agent_id)`, entao a janela principal saia antes
+  // de o toggle ser sequer lido. Enquanto o gate so barrava subagente isso nao tinha
+  // efeito visivel; com a trava de sessao co-locada teria — `--desligar gate-worktree`
+  // deixaria de desligar o unico ramo que barra a janela principal, que e o ramo em
+  // que desligar mais importa. Saida de emergencia que so vale para metade das travas
+  // do arquivo e saida quebrada.
+  if (!ev.agent_id) {
+    // A janela principal e livre em quase tudo — o gate existe para quem foi
+    // despachado. A excecao mora aqui, e ela nao volta quando barra.
+    gateDeSessaoColocada(ev, cwdDoEvento);
+    process.exit(0);
+  }
 
   const entrada = ev.tool_input || {};
   const nome = ev.tool_name;
@@ -228,10 +474,10 @@ function main() {
     const alvo = entrada.file_path || entrada.notebook_path || null;
     if (alvo) { alvos = [alvo]; motivo = `Escrita (${nome}) em ${alvo}`; }
   } else if (nome === "Bash" && typeof entrada.command === "string") {
-    const m = entrada.command.match(GIT_QUE_MEXE);
-    if (!m) process.exit(0);
-    alvos = alvosBash(entrada.command, cwd);
-    motivo = `Comando que mexe no estado do repo: git ${m[1]}`;
+    const verbo = verboNaLinha(entrada.command, VERBOS_QUE_MEXEM);
+    if (!verbo) process.exit(0);
+    alvos = alvosBash(entrada.command, cwd).map((a) => a.dir);
+    motivo = `Comando que mexe no estado do repo: git ${verbo}`;
   }
 
   if (!alvos.length) process.exit(0);

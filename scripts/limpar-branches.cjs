@@ -170,7 +170,7 @@ function coletar(baseOverride) {
   // `main`, logo a `main` esta contida nela, logo a `main` satisfaz "ja esta na base"
   // e cai em `resolvida-remota`, que e removivel por desenho.
   //
-  // Aconteceu em 2026-08-19 (Issue #23), no `fechar` de uma esteira cujo trabalho
+  // Aconteceu em 2026-08-19 (Issue #23), no `fechar` de um fluxo cujo trabalho
   // ainda nao tinha chegado a `main`: sairam as 11 branches de agente (certo) e a
   // `main` local junto, e o passo seguinte morreu com `fatal: ambiguous argument
   // 'main..HEAD'`. Ali nao houve perda porque `origin/main` estava intacta; num repo

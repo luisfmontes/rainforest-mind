@@ -1,5 +1,7 @@
 'use strict';
+const fs = require('fs');
 const path = require('path');
+const { resolverRaiz } = require('./raiz.cjs');
 
 /**
  * contexto-sessao.cjs — motor puro do SessionStart (foco-session-start.cjs).
@@ -9,6 +11,16 @@ const path = require('path');
  * a mesma do sonar-engine.cjs de um plugin interno de cliente, e existe pelo mesmo motivo: sem
  * ela, testar a injeção exige subir uma sessão de verdade — e o que não se testa
  * barato não se testa.
+ *
+ * UMA EXCEÇÃO, declarada (2026-08-21): `sessaoColocada` lê o `sessoes.json` da raiz
+ * de dados. O motor puro dela é `sessoesColocadas`, que continua recebendo o estado
+ * já parseado e é onde a bateria mede. A leitura mora aqui, e não no chamador, pelo
+ * motivo que `hooks/heartbeat.cjs:12-20` já pagou: quando quem lê e quem escreve o
+ * mesmo arquivo resolvem o caminho por conta própria, a divergência não aparece como
+ * erro — aparece como dado que sumiu, em silêncio, e o radar cega inteiro. Esta é a
+ * terceira peça a olhar esse arquivo; ela usa a MESMA `resolverRaiz` das outras duas.
+ * Este comentário existe porque documentação que contradiz o arquivo em que mora é
+ * pior que documentação ausente.
  *
  * Origem (2026-08-09): diff contra o session-context-lib.cjs de um plugin interno de cliente,
  * ancestral deste hook. Três coisas vieram de lá — teto mecânico de tamanho,
@@ -581,6 +593,107 @@ function ehWorktreeDeAgente(cwd) {
   return /[\\/]\.claude[\\/]worktrees[\\/]agent-/.test(cwd);
 }
 
+/**
+ * Janela em que uma sessão ainda é DONA do `cwd` dela, em ms.
+ *
+ * Quatro horas, e é longo de propósito: dono de branch dura mais que atenção. Em
+ * 2026-08-21 o usuario pausou a outra janela por um tempo, e ela continuou dona da
+ * branch — uma janela de 15 min teria liberado o `git checkout` exatamente no
+ * momento em que ele ia doer. Entrada PARADA (`stop_ts > prompt_ts`) conta igual.
+ */
+const JANELA_COLOCADA_MS = 4 * 3600 * 1000;
+
+/**
+ * Normaliza `cwd` para comparação por IGUALDADE. Nunca por prefixo.
+ *
+ * `\` vira `/` e tudo vira minúscula porque o mesmo diretório chega escrito das duas
+ * formas no Windows — o harness manda `C:\Projetos\x`, o FOCO.md e os scripts mandam
+ * `C:/Projetos/x`, e comparar cru trata os dois como pastas diferentes.
+ */
+function normalizarCwd(caminho) {
+  if (!caminho) return '';
+  const barras = String(caminho).replace(/\\/g, '/');
+  return path.posix.normalize(barras).replace(/(?!^)\/+$/, '').toLowerCase();
+}
+
+/**
+ * Motor puro: quais OUTRAS sessões estão no MESMO `cwd`, dentro da janela.
+ *
+ * O INCIDENTE (2026-08-21, Issues #25 e #38, 11 registros no acervo): duas janelas
+ * abertas no mesmo diretório, um `git checkout -b` numa delas arrancou a OUTRA da
+ * branch em que ela estava trabalhando — e ela commitou três vezes na branch alheia
+ * sem saber. As duas vezes que isso aconteceu, o que as sessões tinham em comum era
+ * o `cwd` idêntico, e é por isso que a medida é essa e não "mesmo repositório":
+ * `git-common-dir` pegaria também quem está numa worktree própria, que é justamente
+ * o comportamento que o método quer premiar, e trava que atrapalha vira trava
+ * desligada.
+ *
+ * Vivacidade é SÓ TEMPO, e não é escolha de desenho: das 5 entradas reais do
+ * `sessoes.json` em 2026-08-21, ZERO tinham `pid` — o filtro `!s.pid || estaVivo(s.pid)`
+ * do `sessoesVivas` logo abaixo nunca dispara. Fingir que há checagem de processo
+ * aqui seria descrever um mecanismo que não existe.
+ *
+ * @param {object} state          conteúdo do sessoes.json (objeto indexado por session_id)
+ * @param {object} o
+ * @param {string} o.cwd          diretório da sessão que está perguntando
+ * @param {string} [o.sessionId]  session_id de quem pergunta — SEMPRE excluído do resultado
+ * @param {number} [o.agora]      timestamp de referência (default: Date.now())
+ * @param {number} [o.janelaMs]   janela de dono (default: JANELA_COLOCADA_MS)
+ * @returns {Array<{session_id: string, cwd: string, ultimo_ts: number, parada: boolean}>}
+ */
+function sessoesColocadas(state, o = {}) {
+  const alvo = normalizarCwd(o.cwd);
+  if (!alvo) return [];
+  const agora = Number.isFinite(o.agora) ? o.agora : Date.now();
+  const janelaMs = Number.isFinite(o.janelaMs) ? o.janelaMs : JANELA_COLOCADA_MS;
+  // Sem `session_id` no evento, quem pergunta não se distingue de quem está lá: as
+  // duas entradas do incidente tinham `cwd` idêntico. O chamador é quem decide o que
+  // fazer com isso (o gate libera, por fail-open); aqui só não se exclui ninguém.
+  const eu = o.sessionId || '';
+
+  return Object.entries(state || {})
+    .filter(([id, s]) => id !== eu && s && s.cwd)
+    // Worktree de subagente é rastro MEU, não janela dele — mesmo motivo pelo qual
+    // ela já sai do radar da regra 17.
+    .filter(([, s]) => !ehWorktreeDeAgente(s.cwd))
+    .filter(([, s]) => normalizarCwd(s.cwd) === alvo)
+    .map(([id, s]) => ({
+      session_id: id,
+      cwd: s.cwd,
+      ultimo_ts: Math.max(s.prompt_ts || 0, s.stop_ts || 0),
+      // Parada = o último evento foi o Claude terminando o turno. Continua dona.
+      parada: (s.stop_ts || 0) > (s.prompt_ts || 0),
+    }))
+    .filter((s) => agora - s.ultimo_ts < janelaMs)
+    .sort((a, b) => b.ultimo_ts - a.ultimo_ts);
+}
+
+/**
+ * Adaptador: resolve a raiz de DADOS, lê o `sessoes.json` de lá e delega.
+ *
+ * A raiz sai da `resolverRaiz`, nunca de um `path.join` com a raiz do repositório —
+ * é o tropeço de `hooks/heartbeat.cjs:12-20` repetido pela terceira vez. O
+ * `sessoes.json` versionado no repo tem UMA entrada, de 2026-08-12, e não recebe
+ * escrita há tempo nenhum: quem ler dele acha que nunca há sessão paralela, e a
+ * trava fica verde para sempre sem nunca ter olhado o dado vivo.
+ *
+ * FALHA PARA O LADO DE LIBERAR: arquivo ausente, ilegível, JSON quebrado ou raiz não
+ * resolvida devolvem lista vazia. É o mesmo princípio de fail-open que o gate já
+ * aplica quando o git não responde — trava que barra por não conseguir medir é trava
+ * que o usuário desliga no primeiro dia.
+ */
+function sessaoColocada(o = {}) {
+  let state;
+  try {
+    const raiz = o.raiz || resolverRaiz({ cwd: o.cwd }).raiz;
+    if (!raiz) return [];
+    state = JSON.parse(fs.readFileSync(path.join(raiz, 'sessoes.json'), 'utf8'));
+  } catch {
+    return [];
+  }
+  return sessoesColocadas(state, o);
+}
+
 function sessoesVivas(state, agora, janelaMs, vivo) {
   const estaVivo = typeof vivo === 'function' ? vivo : processoVivo;
   return Object.entries(state || {})
@@ -1072,6 +1185,10 @@ module.exports = {
   priorizarFoco,
   sessoesVivas,
   ehWorktreeDeAgente,
+  JANELA_COLOCADA_MS,
+  normalizarCwd,
+  sessoesColocadas,
+  sessaoColocada,
   processoVivo,
   resumirSessoes,
   travarOrcamento,

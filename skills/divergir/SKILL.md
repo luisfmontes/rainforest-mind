@@ -81,11 +81,11 @@ todas as ideias **sem saber de que frame veio cada uma** e devolve:
 Esta skill **não decide e não escreve código**. Ela entrega o material, e a
 decisão é do usuário (regra 16) — apresentada como decisão numerada, com
 recomendada. Fechada a escolha, o `brainstorm` converge em cima dela e grava o
-design; a esteira segue dali.
+design; o fluxo segue dali.
 
-Ela também **não é estágio da esteira** e não aparece no `estado.cjs`: é
+Ela também **não é estágio do fluxo** e não aparece no `estado.cjs`: é
 invocável sozinha, a qualquer momento, como `semear` e `arqueologia`. Amarrar
-um oitavo estágio numa esteira de sete, para um mecanismo que ainda não provou
+um oitavo estágio num fluxo de sete, para um mecanismo que ainda não provou
 mudar decisão nenhuma, é caro na hora errada.
 
 ## O que falsificaria esta skill
