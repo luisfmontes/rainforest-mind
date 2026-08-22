@@ -22,7 +22,7 @@
  * Uso:
  *   node scripts/setup.cjs                              # estado, não escreve nada
  *   node scripts/setup.cjs --criar                      # monta a pasta de dados
- *   node scripts/setup.cjs --ligar esteira
+ *   node scripts/setup.cjs --ligar fluxo
  *   node scripts/setup.cjs --desligar gate-staging --escopo projeto
  */
 
@@ -149,7 +149,7 @@ function criar() {
   fs.mkdirSync(destino, { recursive: true });
   const feito = [];
   // Nunca sobrescreve: a pasta é a memória do usuário, e setup que roda de novo
-  // não pode apagar o que já existe. É a mesma razão de o `iniciar` da esteira
+  // não pode apagar o que já existe. É a mesma razão de o `iniciar` do fluxo
   // recusar slug repetido.
   //
   // O `projetos.json` nasce com DUAS entradas e não vazio: vocabulário vazio

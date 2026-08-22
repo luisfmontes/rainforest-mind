@@ -5,7 +5,7 @@ description: Use antes do `brainstorm` quando a área que a demanda toca é cód
 
 # Arqueologia
 
-Estágio **zero** da esteira, e **opcional**. O `brainstorm` supõe que já se sabe do
+Estágio **zero** do fluxo, e **opcional**. O `brainstorm` supõe que já se sabe do
 que se está falando. Em código legado essa suposição é falsa, e aí ele fecha
 decisão sobre terreno que ninguém viu.
 
@@ -14,7 +14,7 @@ esta etapa em lugar nenhum: ela não aparece na retomada e não barra estágio
 nenhum. O gatilho é *"a área da demanda não tem mapa"*, nunca *"sempre"*.
 
 Adaptada da skill `arqueologia` de um plugin interno de cliente, escrita pelo mesmo
-autor — lá ela é o estágio 1 da esteira deles, e os quatro mecanismos abaixo
+autor — lá ela é o estágio 1 do fluxo deles, e os quatro mecanismos abaixo
 vêm de lá.
 
 ## O escopo é a fatia, e isso é trava

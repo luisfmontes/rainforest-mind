@@ -392,7 +392,7 @@ passa, e commita em cima do trabalho alheio.
 Antes do **primeiro commit de um trabalho novo**, a branch atual é sua só se as
 duas valerem:
 
-- não há esteira aberta cujo slug (`<data>-<branch>`) case com o nome dela — o
+- não há fluxo aberto cujo slug (`<data>-<branch>`) case com o nome dela — o
   `/saude` responde isso em uma linha, e desde a Issue #25 ele diz **`ESTA
   branch tem dono`** em vez de só contar trabalhos abertos;
 - o working tree não tem modificação de outro dono.
@@ -401,9 +401,9 @@ Qualquer uma falhando, o trabalho novo começa em branch nova, tirada da base �
 não daqui.
 
 > 2026-08-20: os dois instrumentos tinham o fato antes do commit. O `/saude`
-> imprimiu `esteira: 1 trabalho(s) em aberto -> revisar` 20 minutos antes, e o
+> imprimiu `fluxo: 1 trabalho(s) em aberto -> revisar` 20 minutos antes, e o
 > `git status` mostrou 4 arquivos de outro dono — que a sessão **verbalizou**
-> ("essas outras mudanças são do trabalho em aberto da esteira, não minhas"),
+> ("essas outras mudanças são do trabalho em aberto do fluxo, não minhas"),
 > aplicou corretamente ao `git add` por caminho, e não aplicou à branch. O fato
 > chegou, foi dito em voz alta, e não alcançou a decisão adjacente.
 >
@@ -852,7 +852,7 @@ documentada, nunca concluindo que o dado não existe.
 > 2026-08-13 o briefing que escopou a busca ao repo do plugin quando
 > `skills/brainstorm/SKILL.md:63` diz que o design mora na raiz do projeto em
 > que se trabalha — o agente respondeu "não existe par no disco" com evidência
-> correta, e havia dois em outro repo. No mesmo dia, a versão dentro da esteira:
+> correta, e havia dois em outro repo. No mesmo dia, a versão dentro do fluxo:
 > três de treze critérios do plano `2026-08-12-fechamento-produtividade-cliente-teto`
 > apontavam para arquivo onde o código não foi parar e selecionavam zero testes
 > (`exit 5`, `exit 4`). O `verificar` pegou os três.

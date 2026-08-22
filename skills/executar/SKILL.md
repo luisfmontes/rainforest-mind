@@ -1,6 +1,6 @@
 ---
 name: executar
-description: Executa um plano da esteira despachando agentes — a fatia paralela quando o plano marca tarefas independentes, serial quando não marca. Use depois que `plano` fechou `ok`, nunca para decidir arquitetura ou escrever o plano.
+description: Executa um plano do fluxo despachando agentes — a fatia paralela quando o plano marca tarefas independentes, serial quando não marca. Use depois que `plano` fechou `ok`, nunca para decidir arquitetura ou escrever o plano.
 ---
 
 # Executar

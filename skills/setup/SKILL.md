@@ -1,6 +1,6 @@
 ---
 name: setup
-description: Carregue na primeira vez que o rainforest roda numa máquina, ou quando o usuário quiser ligar/desligar uma peça — os dois gates de git ou a esteira, por projeto ou para tudo. Também quando o `/saude` acusar que a pasta de dados não existe ou é a do plugin.
+description: Carregue na primeira vez que o rainforest roda numa máquina, ou quando o usuário quiser ligar/desligar uma peça — os dois gates de git ou o fluxo, por projeto ou para tudo. Também quando o `/saude` acusar que a pasta de dados não existe ou é a do plugin.
 ---
 
 # Setup
@@ -52,7 +52,7 @@ node scripts/setup.cjs --ligar    <chave> [--escopo projeto|usuario]
 |---|---|
 | `gate-worktree` | barra escrita de subagente fora de worktree isolado |
 | `gate-staging` | barra `git add -A` e `git commit -a` |
-| `esteira` | os sete estágios, de `brainstorm` a `fechar` |
+| `fluxo` | os sete estágios, de `brainstorm` a `fechar` |
 
 **O escopo é a parte que exige a palavra dele**, e a pergunta é sempre a mesma:
 *isto vale só neste repositório, ou em tudo?* `--escopo projeto` vence o de

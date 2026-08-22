@@ -59,7 +59,7 @@ custo de contexto sai.
 
 ## Planeja antes de implementar
 
-`/brainstorm` é uma entrevista adversarial e o primeiro estágio da esteira. Ele mapeia o assunto como **árvore de
+`/brainstorm` é uma entrevista adversarial e o primeiro estágio do fluxo. Ele mapeia o assunto como **árvore de
 decisão** e pergunta só o que dá pra perguntar agora — a *fronteira*, o
 conjunto de decisões cujos pré-requisitos já fecharam. Pergunta que depende de
 outra ainda aberta espera a rodada seguinte, em vez de te obrigar a chutar.
@@ -81,7 +81,7 @@ A regra que sustenta isso: **descobrir fato é trabalho do assistente, nunca
 seu.** Pergunta que o ambiente responde — o que tem no arquivo, qual versão
 está instalada, o que o log diz — vira busca dele, não pergunta pra você.
 
-## A esteira: sete estágios que não dá para pular
+## O fluxo: sete estágios que não dá para pular
 
 `/brainstorm` é o primeiro de sete. Cada um é uma skill invocável sozinha — dá
 para entrar no meio, que é o caso normal de quem retoma trabalho.
@@ -96,10 +96,10 @@ flowchart LR
     V --> F["fechar<br/>commit + limpeza"]
     R -.->|"reprovado"| E
     V -.->|"reprovado"| E
-    L["limpar"] -.->|"manutenção,<br/>fora da esteira"| F
+    L["limpar"] -.->|"manutenção,<br/>fora do fluxo"| F
 ```
 
-**O que faz isso ser esteira e não conselho:** cada estágio abre rodando
+**O que faz isso ser fluxo e não conselho:** cada estágio abre rodando
 `estado.cjs exigir`, e esse comando **sai com código 2** quando o anterior não
 fechou. Não é o modelo lendo uma instrução e decidindo obedecer — é comando
 externo, pelo mesmo motivo dos outros gates deste repo.
@@ -122,7 +122,7 @@ na compactação — roda `estado.cjs proximo --slug <slug>` e sabe onde parou:
 |---|---|---|
 | Design aprovado, com o porquê de cada decisão | `docs/rainforest/design/<slug>.md` | **sim** |
 | Plano, com dependência e critério falsificável por tarefa | `docs/rainforest/planos/<slug>.md` | **sim** |
-| Estado da esteira, com o veredito de cada estágio | `docs/rainforest/estado/<slug>.json` | **sim** |
+| Estado do fluxo, com o veredito de cada estágio | `docs/rainforest/estado/<slug>.json` | **sim** |
 
 Os três são versionados de propósito: é por eles que **outro dev pega a
 atividade no meio**. Fora do git fica só a tagarelice — worktrees, briefs de
@@ -297,7 +297,7 @@ O mesmo princípio nos scripts, para o que hook nenhum alcança:
 | `scripts/limpar-branches.cjs` | confere o local contra o remoto e classifica por dois eixos (upstream **e** merge); nunca remove branch viva, e exigir estar na base em dia é trava |
 | `scripts/conferir-relatorio.cjs` | **sai com código 2** quando o rascunho tem telefone, JID, e-mail, caminho de home ou credencial — antes de virar Issue público |
 | `scripts/conferir-entrega.cjs` | roda na janela principal **depois** da entrega do agente: hash de base, isolamento e citação conferidos na fonte, não no relato. `--espera <caminho>` (repetível) confere o que a tarefa prometia **na árvore do commit** — `ls`/`cat` do agente provam o disco, e `git status` não lista ignorado |
-| `scripts/conferir-esteira.cjs` | fecha as três costuras entre artefatos vizinhos da esteira, **com exit 2**: `design` (as seções obrigatórias e as decisões `D1..Dn` sem buraco nem repetição), `cobertura` (toda decisão virou tarefa **e** toda tarefa atende decisão que existe) e `creep` (arquivo no diff que não casa com o `arquivos:` de tarefa nenhuma). Chamado pelo `estado.cjs marcar` no fechamento de estágio — só age onde o design/plano existe, e nunca torna a esteira obrigatória |
+| `scripts/conferir-fluxo.cjs` | fecha as três costuras entre artefatos vizinhos do fluxo, **com exit 2**: `design` (as seções obrigatórias e as decisões `D1..Dn` sem buraco nem repetição), `cobertura` (toda decisão virou tarefa **e** toda tarefa atende decisão que existe) e `creep` (arquivo no diff que não casa com o `arquivos:` de tarefa nenhuma). Chamado pelo `estado.cjs marcar` no fechamento de estágio — só age onde o design/plano existe, e nunca torna o fluxo obrigatório |
 | `scripts/setup.cjs` | monta a pasta de dados, liga/desliga o que é opcional **e configura o caminho de cada projeto** — e marca no estado o caminho que **não existe** nesta máquina, que era falha silenciosa |
 | `scripts/ponte.cjs` | **gera** o `AGENTS.md` (Codex) e o `GEMINI.md` (Gemini CLI) a partir do mesmo SKILL.md que o hook injeta — e recusa gerar se não achar as regras, em vez de escrever meia ponte |
 | `scripts/orcamento.cjs` | mede em **byte** as quatro fontes que o plugin põe na abertura (saída do hook, descriptions de skills, de commands e de agentes), compara com dois tetos (o `ORCAMENTO_BYTES` do hook, lido de `hooks/lib/contexto-sessao.cjs`, e um agregado de 14.000 B), e sai com exit 1 quando estoura — entra no laço do `CONTRIBUTING.md:11` como o gate que acusa quando o plugin engordar além do orçamento |
@@ -342,7 +342,7 @@ pior que não ter ponte:
 |---|---|
 | gate de worktree e gate de `git add -A` (hook `PreToolUse`, exit 2) | **texto** — não existe `PreToolUse` nesses hosts, então é combinado, não trava |
 | injeção de SessionStart | o próprio arquivo gerado, que o host lê a cada sessão |
-| `estado.cjs exigir` (gate da esteira, exit 2) | **igual** — é comando de shell |
+| `estado.cjs exigir` (gate do fluxo, exit 2) | **igual** — é comando de shell |
 | `conferir-entrega.cjs` (regra 12, exit 1) | **igual** |
 | `conferir-relatorio.cjs` (anonimização, exit 2) | **igual** |
 | `/ideia`, `/foco`, `/semear` | os CLIs `ideias.cjs`, `foco.cjs`, `semear.cjs` |
@@ -393,11 +393,11 @@ flowchart LR
 | `revisar` | Estágio 4: contexto zerado, escopo fixado pelo diff de três pontos, o relato de quem implementou não é fonte |
 | `verificar` | Estágio 5: roda o artefato real e cola a saída — o critério veio pronto do plano e não se afrouxa aqui |
 | `fechar` | Estágio 6: commit, limpeza do repo, remoção dos worktrees, destino da branch com você decidindo, e writeback no FOCO.md |
-| `limpar` | Manutenção fora da esteira: worktree órfão da sessão que nunca chegou ao `fechar` — e a **branch**, que sobrevive ao worktree e ninguém vê |
+| `limpar` | Manutenção fora do fluxo: worktree órfão da sessão que nunca chegou ao `fechar` — e a **branch**, que sobrevive ao worktree e ninguém vê |
 | `/semear` | Propõe o que criar **neste** repositório a partir do que ele já tropeçou — cada proposta cita o registro que a origina |
-| `/setup` | Monta a pasta de dados e liga/desliga os gates e a esteira, por projeto ou para tudo |
+| `/setup` | Monta a pasta de dados e liga/desliga os gates e o fluxo, por projeto ou para tudo |
 | `/ponte` | Gera `CLAUDE.md`, `AGENTS.md` (Codex) ou `GEMINI.md` (Gemini CLI) num repo, do mesmo SKILL.md — alvos declarados no `/setup`, e cada um diz o que **não** atravessa |
-| `/saude` | Só o que os checadores oficiais não sabem: de quem é a raiz, margem da injeção, esteira parada, worktree órfão |
+| `/saude` | Só o que os checadores oficiais não sabem: de quem é a raiz, margem da injeção, fluxo parada, worktree órfão |
 | `modo-dev` | Disciplina de dev sob demanda (acima) |
 | `depurar` | Loop de feedback antes de hipótese (acima) |
 | `analisar` | Análise de dados em notebook: uma pergunta por vez, célula curta, e **revisão crítica do achado** (`n` visível, share vs. risco, explicação alternativa) antes de virar conclusão |
@@ -453,7 +453,7 @@ claude plugin install rainforest-mind@rainforest-mind
 Ou aponte `--plugin-dir` para a pasta do repo em desenvolvimento.
 
 **Runtime: só Node no caminho de execução.** Os hooks, os gates, o `/ideia`, o
-`/saude`, a esteira e a medição de jornada rodam em Node. O Claude Code não
+`/saude`, o fluxo e a medição de jornada rodam em Node. O Claude Code não
 garante Node nem Python (a lista oficial de dependências adicionais tem
 `ripgrep` e mais nada), então a meta é **uma** dependência, não duas.
 

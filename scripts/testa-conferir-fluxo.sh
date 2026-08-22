@@ -1,12 +1,12 @@
 #!/bin/bash
-# Bateria do `conferir-esteira.cjs` e da trava de fechamento do `estado.cjs`.
-# Uso: bash scripts/testa-conferir-esteira.sh
+# Bateria do `conferir-fluxo.cjs` e da trava de fechamento do `estado.cjs`.
+# Uso: bash scripts/testa-conferir-fluxo.sh
 #
 # Tarefa 3 do plano `docs/rainforest/planos/decisao-que-evapora-na-esteira.md`.
 #
 # O QUE ESTA BATERIA EXISTE PARA IMPEDIR, e por que quase todo caso e' negativo:
 # uma checagem so vista PASSANDO nao foi verificada. Em 2026-08-13, tres entregas
-# seguidas nesta mesma esteira mostraram apenas o lado verde e as tres estavam
+# seguidas neste mesmo fluxo mostraram apenas o lado verde e as tres estavam
 # erradas — uma delas com uma assercao que passava identica contra o codigo antigo.
 # Por isso aqui cada recusa tem caso proprio: se a checagem parar de recusar, a
 # bateria cai, e nao ha como isso passar despercebido.
@@ -17,7 +17,7 @@
 
 set -u
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CHECADOR="$RAIZ/scripts/conferir-esteira.cjs"
+CHECADOR="$RAIZ/scripts/conferir-fluxo.cjs"
 ESTADO="$RAIZ/scripts/estado.cjs"
 REAL_D="$RAIZ/docs/rainforest/design/decisao-que-evapora-na-esteira.md"
 REAL_P="$RAIZ/docs/rainforest/planos/decisao-que-evapora-na-esteira.md"
@@ -49,10 +49,10 @@ P="$S/docs/rainforest/planos/t.md"
 plano_no_formato(){
   awk '/^pronto quando:/ {
          print "mutacao:";
-         print "  arquivo: `scripts/conferir-esteira.cjs`";
+         print "  arquivo: `scripts/conferir-fluxo.cjs`";
          print "  de: a checagem que esta tarefa instala";
          print "  para: um no-op";
-         print "  bateria: `bash scripts/testa-conferir-esteira.sh`"
+         print "  bateria: `bash scripts/testa-conferir-fluxo.sh`"
        } {print}' "$1" > "$2"
 }
 restaura(){ cp "$REAL_D" "$D"; plano_no_formato "$REAL_P" "$P"; }
@@ -142,7 +142,7 @@ if git -C "$RAIZ" cat-file -e e1a6824^{commit} 2>/dev/null && git -C "$RAIZ" cat
   # `decisao-que-evapora-na-esteira` — o primeiro trabalho seguinte a entrar na
   # branch coloca no diff arquivos que o plano dele nao declara, e o creep passa
   # a acusar CORRETAMENTE, derrubando um teste que nao tem nada a ver.
-  # Aconteceu em 2026-08-14, ao integrar a esteira do orcamento de token: 21 ok
+  # Aconteceu em 2026-08-14, ao integrar o fluxo do orcamento de token: 21 ok
   # na main, 20 ok / 1 falha na branch seguinte. Mesma familia do fixture do
   # testa-saude.sh: teste que afirma sobre o estado corrente do repo envelhece
   # sozinho. `f9fe746` e o squash do PR #9, ou seja, exatamente a ponta daquele
@@ -195,10 +195,10 @@ E marcar --slug t --estagio design --status aprovado >/dev/null 2>&1
 exige 2 "plano com decisao orfa NAO fecha" E marcar --slug t --estagio plano --status ok
 
 echo
-echo "== 5. a trava nao pode capturar quem nao usa a esteira =="
+echo "== 5. a trava nao pode capturar quem nao usa o fluxo =="
 # Invariante do plano: projeto sem design/plano continua fechando estagio como
-# antes. Sem isto, a trava deixaria de apertar quem esta na esteira e passaria a
-# tornar a esteira obrigatoria — que e' outra coisa, e ninguem decidiu isso.
+# antes. Sem isto, a trava deixaria de apertar quem esta no fluxo e passaria a
+# tornar o fluxo obrigatoria — que e' outra coisa, e ninguem decidiu isso.
 V="$(mktemp -d)"; VW="$(cygpath -m "$V" 2>/dev/null || printf '%s' "$V")"
 VE(){ RFM_ESTADO_ROOT="$VW" node "$ESTADO" "$@"; }
 VE iniciar --slug vazio >/dev/null 2>&1
@@ -345,7 +345,7 @@ in_task5 && /^mutacao:/ {
     print ""
     print "\`\`\`"
     print "mutacao:"
-    print "  arquivo: scripts/conferir-esteira.cjs"
+    print "  arquivo: scripts/conferir-fluxo.cjs"
     print "  de: x"
     print "  para: y"
     print "  bateria: bash test.sh"

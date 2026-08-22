@@ -1,10 +1,10 @@
 #!/bin/bash
-# Bateria do scripts/estado.cjs — a maquina de estados da esteira.
+# Bateria do scripts/estado.cjs — a maquina de estados do fluxo.
 # Uso: bash scripts/testa-estado.sh
 #
 # O que esta bateria precisa provar, nesta ordem de importancia:
 #   1. que `exigir` RECUSA com exit 2 quando o pre-requisito nao fechou. E a unica
-#      coisa que separa esta esteira de prosa: no superpowers a transicao e texto que
+#      coisa que separa este fluxo de prosa: no superpowers a transicao e texto que
 #      o modelo le e obedece, e <HARD-GATE> e tag XML sem parser;
 #   2. que `marcar` recusa FECHAR um estagio pulando os anteriores — senao
 #      `marcar verificar ok` pularia a revisao inteira em silencio;
@@ -307,7 +307,7 @@ prep_catraca() { # slug — chega ate executar COM a catraca armada pelo exigir
   $E exigir --slug "$1" --estagio executar >/dev/null
 }
 
-prep_sem_catraca() { # slug — esteira ja aberta antes da catraca existir
+prep_sem_catraca() { # slug — fluxo ja aberta antes da catraca existir
   $E iniciar --slug "$1" >/dev/null
   $E marcar --slug "$1" --estagio design --status aprovado >/dev/null
   $E marcar --slug "$1" --estagio plano  --status ok >/dev/null
@@ -351,7 +351,7 @@ prep_catraca cat-5
 esperado "resultado 'verde' nao e resposta aceita" 2 \
   $E marcar --slug cat-5 --estagio executar --status ok --json '{"tarefas_ok":2,"tarefas":2,"mutacao":[{"tarefa":1,"resultado":"verde"}]}'
 
-# Só o fechamento `ok` cobra: quem entregou meia esteira ou reprovou precisa
+# Só o fechamento `ok` cobra: quem entregou meio fluxo ou reprovou precisa
 # poder registrar isso sem prova de mutacao que ainda nao existe.
 prep_catraca cat-6
 esperado "parcial nao exige o campo"    0 $E marcar --slug cat-6 --estagio executar --status parcial   --json '{"tarefas_ok":3,"tarefas":5}'

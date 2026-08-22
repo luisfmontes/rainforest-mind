@@ -1,6 +1,6 @@
 ---
 name: revisar
-description: Revisão independente de uma entrega da esteira, contra o diff real — nunca pelo relato de quem implementou. Use depois que `executar` fechou `ok`, antes de `verificar`.
+description: Revisão independente de uma entrega do fluxo, contra o diff real — nunca pelo relato de quem implementou. Use depois que `executar` fechou `ok`, antes de `verificar`.
 ---
 
 # Revisar

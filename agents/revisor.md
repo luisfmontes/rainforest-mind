@@ -116,7 +116,7 @@ valem para a janela principal.
   ainda infla o placar, e imprime "saída vermelha CONSEGUIDA" ao lado de
   `0 falha(s)`.
 - **Branch que já é de outra sessão não recebe trabalho novo.** Antes do
-  primeiro commit, cheque de quem é: esteira em aberto ou modificação alheia no
+  primeiro commit, cheque de quem é: fluxo em aberto ou modificação alheia no
   working tree significa criar branch própria.
 - **`git -C` mente sobre onde você está.** Num diretório que não é
   repositório, ele sobe para o pai **em silêncio** e responde por lá. Confira

@@ -1,6 +1,6 @@
 ---
 name: limpar
-description: Manutenção do rastro da esteira rainforest-mind — worktree órfão, estado concluído e arquivo temporário. Invocável sozinha a qualquer momento, nunca bloqueia (exigir --estagio limpar sempre passa). Nunca remove worktree com alteração pendente sem a palavra do usuário.
+description: Manutenção do rastro do fluxo rainforest-mind — worktree órfão, estado concluído e arquivo temporário. Invocável sozinha a qualquer momento, nunca bloqueia (exigir --estagio limpar sempre passa). Nunca remove worktree com alteração pendente sem a palavra do usuário.
 ---
 
 # Limpar
@@ -77,7 +77,7 @@ Sem `--remover` ele só lista, em oito classes. As que importam:
   classificação estava *certa* e levava ao lugar errado — ver logo abaixo.
 
 E a base é escolhível: `--base <ref>` mede contra a ref que você passar, em vez
-de `origin/HEAD`. É o que permite limpar resíduo de agente numa esteira cujo
+de `origin/HEAD`. É o que permite limpar resíduo de agente num fluxo cujo
 trabalho ainda não chegou à `main` — sem isso, tudo que vive só na branch de
 trabalho aparece como `viva`.
 

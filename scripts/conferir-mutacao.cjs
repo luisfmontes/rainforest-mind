@@ -10,7 +10,7 @@
  *   - 2026-08-17, `obs-2026-08-17-dez-baterias-que-nao-sabiam-falhar`: **10 de 18**
  *     entregas trouxeram bateria que passava contra o código defeituoso.
  *   - 2026-08-19, `relatorios/2026-08-19-bateria-que-passa-com-o-defeito-presente.md`:
- *     em **4** entregas seguidas de uma mesma esteira a bateria nova saía `exit=0`
+ *     em **4** entregas seguidas de um mesmo fluxo a bateria nova saía `exit=0`
  *     contra o commit anterior ao conserto. O critério "bateria que passa nos dois
  *     lados não prova nada" estava escrito na tarefa, e os quatro agentes
  *     relataram ✅ mesmo assim.

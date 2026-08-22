@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Estado da esteira — máquina de estados persistida, uma por trabalho.
+ * Estado do fluxo — máquina de estados persistida, uma por trabalho.
  *
- * Por que existe: a esteira tem sete estágios e nenhuma memória entre sessões. Sem um
+ * Por que existe: o fluxo tem sete estágios e nenhuma memória entre sessões. Sem um
  * arquivo, "em que pé está isso?" se responde relendo a conversa — que é justamente o
  * que a compactação leva embora, e o que a sessão nova não tem.
  *
@@ -91,14 +91,14 @@ const STATUS_EXECUCAO = ['pendente', 'parcial', 'ok', 'reprovado'];
 // Quem exige quem. `exigir` recusa se qualquer pré-requisito não estiver fechado.
 const PRE_REQUISITOS = {
   arqueologia: [], // estagio zero: nunca e barrado, e nunca barra ninguem
-  design: [], // primeiro da esteira: não depende de nada, mas precisa constar aqui —
+  design: [], // primeiro do fluxo: não depende de nada, mas precisa constar aqui —
               // esta tabela é também a lista de estágios que `marcar` aceita
   plano: ['design'],
   executar: ['design', 'plano'],
   revisar: ['executar'],
   verificar: ['revisar'],
   fechar: ['verificar'],
-  limpar: [], // manutenção, não é estágio da esteira: nunca bloqueia
+  limpar: [], // manutenção, não é estágio do fluxo: nunca bloqueia
 };
 
 const FECHADO = { design: 'aprovado', plano: 'ok' };
@@ -285,7 +285,7 @@ function verificarMutacao(slug, snapshot_anterior) {
 // a oitava vez que a familia "bateria que nao sabe falhar" volta ao acervo.
 //
 // Por isso o campo `mutacao` e cobrado AQUI, no `marcar --estagio executar
-// --status ok`, que e o gargalo unico por onde a esteira inteira ja passa —
+// --status ok`, que e o gargalo unico por onde o fluxo inteiro ja passa —
 // mesma forma da trava de `base`/`head` do `revisar`, logo abaixo, e mesmo
 // exit 2. O que o agente declara no campo nao vira verdade por ser declarado:
 // quem re-roda a mutacao e a integracao (D8). O campo existe para que exista
@@ -301,7 +301,7 @@ function verificarMutacao(slug, snapshot_anterior) {
 //      obrigatorio, e vazio nao conta.
 //
 //   2. Slug cujo `executar` foi aberto antes desta mudanca avisa e passa (D10).
-//      Mesmo desenho do backstop acima: travar retroativo quebra esteira em
+//      Mesmo desenho do backstop acima: travar retroativo quebra fluxo em
 //      andamento. O sinal de "aberto depois" e o marcador que o `exigir
 //      --estagio executar` passa a gravar no proprio arquivo de estado, no
 //      lugar onde o `revisar` ja grava o instantaneo dele — e o unico registro
@@ -322,7 +322,7 @@ const COMO_DECLARAR = "Ex.: --json '{\"tarefas_ok\":2,\"tarefas\":2,\"mutacao\":
 /**
  * Números das tarefas do plano, ou `null` quando não há plano em disco.
  *
- * A leitura é EMPRESTADA do `conferir-esteira.cjs`, não reescrita aqui. A primeira
+ * A leitura é EMPRESTADA do `conferir-fluxo.cjs`, não reescrita aqui. A primeira
  * versão desta checagem tinha parser próprio, e ele divergia em duas coisas: não
  * pulava cerca de código (`### 3.` dentro de um bloco ``` virava tarefa fantasma) e
  * não normalizava CRLF. O efeito era o pior possível para uma trava — recusar
@@ -339,7 +339,7 @@ function extrairNumerosTarefa(slug) {
   // medir, e uma exceção aqui recusaria por motivo que não é do usuário.
   let extrairTarefas, lerMarkdown;
   try {
-    ({ extrairTarefas, lerMarkdown } = require('./conferir-esteira.cjs'));
+    ({ extrairTarefas, lerMarkdown } = require('./conferir-fluxo.cjs'));
   } catch (e) {
     console.warn(`aviso: nao consegui carregar o leitor de plano (${e.message}) — a lista de mutacao nao sera cruzada com o plano.`);
     return new Set();
@@ -453,22 +453,22 @@ function verificarCatracaMutacao(slug, bloco, estado, extra) {
 
 // ------------------------------------------------- trava de fechamento (D5)
 //
-// Fechar estágio roda a checagem correspondente do `conferir-esteira.cjs`, e
+// Fechar estágio roda a checagem correspondente do `conferir-fluxo.cjs`, e
 // recusa com exit 2 se ela falhar. O motivo de a trava morar AQUI, e não numa
 // instrução dentro da skill: enquanto o veredito for redigido pelo mesmo agente
 // que ele deveria travar, ele não trava nada — é o mesmo argumento que fez este
 // arquivo existir, e em 2026-08-13 ele se provou três vezes numa tarde, com um
 // agente aprovando a própria entrega em três rodadas seguidas.
 //
-// `marcar` é o gargalo único por onde a esteira inteira já passa, e já recusava
+// `marcar` é o gargalo único por onde o fluxo inteiro já passa, e já recusava
 // com exit 2 por pré-requisito aberto. A trava nova é a mesma forma, não
 // mecanismo novo.
 //
 // **Só age quando o arquivo alvo existe.** Projeto que não usa design/plano não
 // pode passar a ser barrado por uma checagem sobre arquivos que ele nunca teve —
 // isso é invariante, não detalhe: a trava foi desenhada para apertar quem já
-// está na esteira, nunca para tornar a esteira obrigatória.
-const CHECADOR = path.join(__dirname, 'conferir-esteira.cjs');
+// está no fluxo, nunca para tornar o fluxo obrigatório.
+const CHECADOR = path.join(__dirname, 'conferir-fluxo.cjs');
 
 function docDe(tipo, slug) {
   return path.join(RAIZ, 'docs', 'rainforest', tipo, `${slug}.md`);
@@ -653,7 +653,7 @@ function main() {
         }
       }
       // Só o fechamento `ok` cobra: `parcial` e `reprovado` nao passam por aqui,
-      // e nao podem passar — quem entregou meia esteira ou reprovou nao deve
+      // e nao podem passar — quem entregou meio fluxo ou reprovou nao deve
       // ficar sem como registrar isso.
       if (estagio === 'executar') {
         const recusa_catraca = verificarCatracaMutacao(slug, estado.executar, estado, extra);

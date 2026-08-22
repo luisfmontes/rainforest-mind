@@ -1,11 +1,11 @@
 ---
 name: plano
-description: Use depois que o design de um trabalho está aprovado na esteira do rainforest-mind, para transformar decisões fechadas em tarefas executáveis — nunca antes da primeira linha de código.
+description: Use depois que o design de um trabalho está aprovado no fluxo do rainforest-mind, para transformar decisões fechadas em tarefas executáveis — nunca antes da primeira linha de código.
 ---
 
 # Plano
 
-Segundo estágio da esteira (design → plano → executar → revisar → verificar
+Segundo estágio do fluxo (design → plano → executar → revisar → verificar
 → fechar). Lê o design aprovado e escreve tarefas **tipadas**, cada uma com
 sua dependência declarada — é essa marcação que o estágio `executar` usa
 para despachar em paralelo; sem ela o paralelismo vira adivinhação.
@@ -144,7 +144,7 @@ A partir de 2026-08-13, `node scripts/estado.cjs marcar --estagio plano --status
 A partir de 2026-08-21 a mesma checagem cobra o bloco `mutacao:`: tarefa sem o bloco é recusada **pelo número**, e `mutacao: n/a` sem `motivo:` também. Rode antes de fechar:
 
 ```
-node scripts/conferir-esteira.cjs cobertura --slug <slug>
+node scripts/conferir-fluxo.cjs cobertura --slug <slug>
 ```
 
 ## Fechar
@@ -159,5 +159,5 @@ tarefa marcada no plano e o `executar` que faz depois — não aqui.
 
 ---
 
-Segundo estágio da esteira rainforest-mind. `exigir`/`marcar` vêm de
+Segundo estágio do fluxo rainforest-mind. `exigir`/`marcar` vêm de
 `scripts/estado.cjs` — leia-o antes de citar uma flag que ele não tem.

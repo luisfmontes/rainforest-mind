@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Conferir esteira — validação de fechamento entre design, plano e código.
+ * Conferir fluxo — validação de fechamento entre design, plano e código.
  *
- * Por que existe: a esteira não tem checagem de fechamento entre artefatos
+ * Por que existe: o fluxo não tem checagem de fechamento entre artefatos
  * vizinhos. Decisão do design pode não virar tarefa, opção refutada não tem
  * onde morar, e código sem tarefa correspondente atravessa o revisar como se
  * fosse estilo. As três costuras fecham aqui com checagem que trava, não com
@@ -18,9 +18,9 @@
  * subcomando `cobertura`.
  *
  * Uso:
- *   node scripts/conferir-esteira.cjs design --slug <s>
- *   node scripts/conferir-esteira.cjs cobertura --slug <s>
- *   node scripts/conferir-esteira.cjs creep --slug <s> --base <ref> --head <ref>
+ *   node scripts/conferir-fluxo.cjs design --slug <s>
+ *   node scripts/conferir-fluxo.cjs cobertura --slug <s>
+ *   node scripts/conferir-fluxo.cjs creep --slug <s> --base <ref> --head <ref>
  *
  * Exit: 0 passou, 2 recusa deliberada, 1 erro de uso.
  */
@@ -487,7 +487,7 @@ function cmdCreep() {
     globs.push(...gs);
   }
 
-  // Isentos: os artefatos que a PRÓPRIA esteira escreve para ESTE trabalho.
+  // Isentos: os artefatos que o PRÓPRIO fluxo escreve para ESTE trabalho.
   // Eles nunca aparecem no `arquivos:` de tarefa nenhuma — quem os escreve é o
   // brainstorm, o plano e o `estado.cjs` —, então sem isenção a checagem acusaria
   // o próprio rastro dela e nunca passaria.
