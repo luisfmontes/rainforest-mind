@@ -56,7 +56,13 @@
     "em": "2026-08-21"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "458418d1eabd495adf90e0498fdb991dab9ce08a",
+      "caminhos_sujos": []
+    },
+    "achados": 14,
+    "em": "2026-08-21"
   },
   "verificar": {
     "status": "pendente"
