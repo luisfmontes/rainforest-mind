@@ -1,0 +1,30 @@
+{
+  "slug": "2026-08-22-atualizar-cli-e-aviso-de-versao",
+  "titulo": "Atualizar a CLI por script, e a barra avisar quando a sessao esta atrasada",
+  "criado_em": "2026-08-22",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/2026-08-22-atualizar-cli-e-aviso-de-versao.md",
+    "em": "2026-08-22"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-08-22-atualizar-cli-e-aviso-de-versao.md",
+    "em": "2026-08-22"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
