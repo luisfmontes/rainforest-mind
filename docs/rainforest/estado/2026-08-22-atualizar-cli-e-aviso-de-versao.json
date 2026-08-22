@@ -20,10 +20,15 @@
     "em": "2026-08-22"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "achados": 7,
+    "base": "ba1d2f2e1ef62103d4c29d48a5afcfe9ba590043",
+    "head": "6d5af2673303faacd28317d6a77388f414201e85",
+    "em": "2026-08-22"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "em": "2026-08-22"
   },
   "fechar": {
     "status": "pendente"
