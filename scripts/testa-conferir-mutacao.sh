@@ -90,6 +90,32 @@ sleep 20
 exit 1
 BAT
 
+# Bateria inteligente para teste de timeout: baseline rapido, pos-mutacao lenta.
+# Se arquivo tem a marca TIMEOUT-TEST-MARK, dorme e sai 1; senao sai 0 rapidamente.
+cat > "$CAIXA/bateria-timeout.sh" <<'BAT'
+#!/bin/bash
+if grep -q 'TIMEOUT-TEST-MARK' fonte.cjs; then
+  sleep 20
+  exit 1
+fi
+exit 0
+BAT
+
+# Bateria que le stdin mas tem baseline verde: lê stdin e verifica arquivo.
+# Se arquivo foi mutado (process.exit(2) desapareceu), sai 1.
+# Senão sai 0. Prova que stdin é lido mesmo quando mutado.
+cat > "$CAIXA/bateria-stdin-verde.sh" <<'BAT'
+#!/bin/bash
+cat > /dev/null  # le stdin ate EOF sem pendurar
+if grep -q 'process.exit(2)' fonte.cjs; then
+  echo "baseline: encontrou process.exit(2)"
+  exit 0
+else
+  echo "mutacao detectada: process.exit(2) desapareceu"
+  exit 1
+fi
+BAT
+
 PRISTINO="$S/fonte.pristino"
 cp "$CAIXA/fonte.cjs" "$PRISTINO"
 
@@ -145,12 +171,12 @@ exige 3 "padrao inexistente recusa, com bateria verde" \
 tem "usa a mensagem literal do precedente" "MUTACAO NAO APLICADA"
 nao_tem "e nunca chama isso de bateria vermelha" "VERMELHA"
 
-# 3b: O CASO QUE JUSTIFICA A GUARDA. A bateria esta vermelha por conta propria e
-# o padrao nao casa: sem a guarda o script sairia 0 e o agente colaria "mutei,
-# ficou vermelho" com a mutacao nunca tendo acontecido.
-exige 3 "padrao inexistente recusa MESMO com a bateria ja vermelha" \
+# 3b: O CASO QUE JUSTIFICA A GUARDA. A bateria esta vermelha por conta propria:
+# com a verificacao de baseline, sai 4 (baseline nao-verde) antes de chegar ao
+# padrão não-aplicado.
+exige 4 "bateria ja vermelha recusa com baseline nao-verde" \
   CHK --arquivo fonte.cjs --de 'process.exit(7);' --para 'process.exit(0);' --bateria 'bash bateria-quebrada.sh'
-tem "e diz que a bateria nem rodou" "NAO foi executada"
+tem "e diz que baseline nao-verde" "baseline NAO-VERDE"
 
 echo
 echo "== 4. bateria VERDE com o comportamento invertido: recusa =="
@@ -168,17 +194,50 @@ tem "a espia confirma que viu" "vi a marca"
 echo
 echo "== 6. stdin fechado e teto de tempo =="
 exige 0 "bateria que le stdin recebe EOF em vez de pendurar" \
-  CHK --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' --bateria 'bash bateria-stdin.sh'
-tem "a bateria chegou ao fim do stdin" "li o stdin ate o fim"
+  CHK --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' --bateria 'bash bateria-stdin-verde.sh'
+tem "a bateria detectou a mutacao" "mutacao detectada"
 
 exige 1 "bateria que estoura o teto nao vira veredito" \
-  CHK --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' \
-      --bateria 'bash bateria-lenta.sh' --timeout 2000
+  CHK --arquivo fonte.cjs --de 'const campo' --para 'const campo // TIMEOUT-TEST-MARK' \
+      --bateria 'bash bateria-timeout.sh' --timeout 2000
 tem "diz que ficou sem veredito" "SEM VEREDITO"
 nao_tem "e nao aprova por estouro" "ok: bateria VERMELHA"
 
 echo
-echo "== 7. erro de uso: nunca silencioso, nunca 0 =="
+echo "== 7. baseline não-verde: bateria que já falha no fonte íntegro =="
+exige 4 "bateria que ja falha recusa com exit=4" \
+  CHK --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' --bateria 'bash bateria-quebrada.sh'
+tem "diz que baseline nao-verde" "baseline NAO-VERDE"
+nao_tem "e nao rodou a mutacao" "casou"
+
+exige 3 "padrao que nao casa com bateria VERDE recusa com exit=3" \
+  CHK --arquivo fonte.cjs --de 'process.exit(9);' --para 'process.exit(0);' --bateria 'bash bateria.sh'
+tem "diz MUTACAO NAO APLICADA" "MUTACAO NAO APLICADA"
+
+echo
+echo "== 8. múltiplas ocorrências: padrão que casa mais de uma vez =="
+# Criaremos um fixture com uma sequência que aparece exatamente duas vezes
+cat > "$CAIXA/multi.cjs" <<'FONTE'
+const a = 'MARK';
+const b = 'MARK';
+FONTE
+cp "$CAIXA/multi.cjs" "$S/multi.pristino"
+
+exige 4 "padrão que casa 2 vezes recusa com exit=4" \
+  CHK --arquivo multi.cjs --de 'MARK' --para 'NOVO' --bateria 'bash bateria.sh'
+tem "diz que casa multiplas vezes" "casa 2"
+tem "recusa" "RECUSADO"
+nao_tem "nao diz VERMELHA" "VERMELHA"
+
+if ! cmp -s "$CAIXA/multi.cjs" "$S/multi.pristino"; then
+  falhou=$((falhou+1)); printf '  FALHA: multi.cjs nao foi restaurado apos recusa\n'
+  cp "$S/multi.pristino" "$CAIXA/multi.cjs"
+else
+  ok=$((ok+1)); printf '  ok    multi.cjs restaurado apos recusa\n'
+fi
+
+echo
+echo "== 9. erro de uso: nunca silencioso, nunca 0 =="
 exige 1 "sem argumento nenhum imprime o uso" node "$SCRIPT"
 tem "o uso nomeia --arquivo" "--arquivo"
 tem "o uso nomeia --de"      "--de "
