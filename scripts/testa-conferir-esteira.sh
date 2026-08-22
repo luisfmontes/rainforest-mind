@@ -160,7 +160,32 @@ E(){ RFM_ESTADO_ROOT="$W" node "$ESTADO" "$@"; }
 restaura; rm -f "$S/docs/rainforest/estado/t.json"; E iniciar --slug t >/dev/null 2>&1
 exige 0 "design conforme fecha" E marcar --slug t --estagio design --status aprovado
 exige 0 "plano com cobertura fecha" E marcar --slug t --estagio plano --status ok
-exige 0 "executar nao tem checagem" E marcar --slug t --estagio executar --status ok
+# D6 inverteu esta linha. Ate 2026-08-21 o `executar` era o unico estagio sem
+# checagem no fechamento, e este caso se chamava "executar nao tem checagem". Agora
+# ele tem: a catraca de mutacao. Sao tres portas em serie, e cada uma fecha um jeito
+# diferente de sair verde sem prova.
+MUT5='[{"tarefa":1,"resultado":"vermelho"},{"tarefa":2,"resultado":"vermelho"},{"tarefa":3,"resultado":"vermelho"},{"tarefa":4,"resultado":"n/a","motivo":"doc"},{"tarefa":5,"resultado":"n/a","motivo":"doc"}]'
+
+# 1a porta: catraca que nunca foi armada. Quem pula o `exigir` pula a leitura do
+# que a catraca cobra, e fechar assim seria fechar por desconhecimento.
+exige 2 "executar SEM catraca armada recusa (D6)" E marcar --slug t --estagio executar --status ok
+E exigir --slug t --estagio executar >/dev/null 2>&1
+# 2a porta: catraca armada, lista ausente. "As baterias passaram" nao distingue
+# bateria que testa de bateria que nao sabe falhar.
+exige 2 "executar com catraca armada mas SEM lista recusa" E marcar --slug t --estagio executar --status ok
+# 3a porta: lista que nao cobre o plano inteiro. Tarefa omitida e a mais barata de
+# esconder, entao a lista se cruza com o plano, tarefa a tarefa.
+exige 2 "lista que pula tarefa do plano recusa" E marcar --slug t --estagio executar --status ok \
+  --json '{"mutacao":[{"tarefa":1,"resultado":"vermelho"}]}'
+exige 2 "lista com tarefa que nao existe no plano recusa" E marcar --slug t --estagio executar --status ok \
+  --json "{\"mutacao\":$(printf '%s' "$MUT5" | sed 's/\]$/,{"tarefa":99,"resultado":"vermelho"}]/')}"
+# Numero repetido cobriria o plano inteiro pela contagem e deixaria uma tarefa de
+# fora — e a forma mais barata de satisfazer a cobertura sem ter mutado nada.
+exige 2 "mesma tarefa duas vezes na lista recusa" E marcar --slug t --estagio executar --status ok \
+  --json '{"mutacao":[{"tarefa":1,"resultado":"vermelho"},{"tarefa":1,"resultado":"vermelho"},{"tarefa":2,"resultado":"vermelho"},{"tarefa":3,"resultado":"vermelho"},{"tarefa":4,"resultado":"n/a","motivo":"doc"}]}'
+exige 0 "executar com catraca armada e lista completa fecha" E marcar --slug t --estagio executar --status ok \
+  --json "{\"tarefas_ok\":5,\"tarefas\":5,\"mutacao\":$MUT5}"
+
 exige 2 "revisar ok SEM base/head recusa (D4)" E marcar --slug t --estagio revisar --status ok --json '{"achados":0}'
 
 restaura; awk '/^### 2\. /{p=1} /^### 3\. /{p=0} !p' "$REAL_P" > "$S/sem-tarefa-2.md"
@@ -291,11 +316,18 @@ mkdir -p "$O/docs/rainforest/design" "$O/docs/rainforest/planos"
 OD="$O/docs/rainforest/design/t.md"; OP="$O/docs/rainforest/planos/t.md"
 OCHK(){ RFM_ESTADO_ROOT="$OW" node "$CHECADOR" "$@"; }
 
+# Converte o arquivo para CRLF no lugar. Inline de proposito: um helper em arquivo
+# separado seria um fonte a mais fora do `arquivos:` da tarefa, e a primeira versao
+# desta bateria chamava um `to-crlf.js` que nunca foi commitado — a bateria morria
+# com "Cannot find module" e o placar dizia 28 ok / 1 falha, nao "faltou arquivo".
+para_crlf(){
+  node -e "const f=require('fs'),p=process.argv[1];f.writeFileSync(p,f.readFileSync(p,'utf8').replace(/\r?\n/g,'\r\n'))" "$1"
+}
+
 # Caso 1: plano e design reais em CRLF devem passar
 cp "$NOVO_D" "$OD"; cp "$NOVO_P" "$OP"
-# Converte para CRLF
-node "$RAIZ/to-crlf.js" "$OD"
-node "$RAIZ/to-crlf.js" "$OP"
+para_crlf "$OD"
+para_crlf "$OP"
 exige 0 "plano e design em CRLF passam" OCHK cobertura --slug t
 
 # Caso 2: mutacao: dentro de cerca de codigo deve ser ignorado (recusa)
@@ -325,10 +357,56 @@ in_task5 && /^mutacao:/ {
 }
 { print }
 ' "$OP.tmp" > "$OP"
-node "$RAIZ/to-crlf.js" "$OD"
-node "$RAIZ/to-crlf.js" "$OP"
+para_crlf "$OD"
+para_crlf "$OP"
 exige 2 "mutacao: so em cerca (em CRLF) recusa" OCHK cobertura --slug t
 exige_msg 'tarefa 5\.' 'nomeia tarefa' OCHK cobertura --slug t
+
+# Caso 3: cabecalho de tarefa DENTRO de cerca nao e tarefa. Um plano que documenta o
+# proprio formato — e este repositorio faz isso o tempo todo — tem `### 9. <nome>`
+# dentro de um bloco de exemplo. Contar isso como tarefa cria uma tarefa fantasma que
+# ninguem pode cumprir: `cobertura` cobra um bloco `mutacao:` dela, e o `estado.cjs`
+# cobra que a lista de mutacao a cubra. As duas travas recusam entrega correta, e a
+# mensagem aponta um numero que nao existe no plano.
+cp "$NOVO_D" "$OD"; cp "$NOVO_P" "$OP"
+cat >> "$OP" <<'CERCA'
+
+## Anexo: o formato de uma tarefa
+
+```markdown
+### 99. Tarefa de exemplo [tipo: implementar]
+atende: D1
+mutacao:
+  arquivo: `x`
+```
+CERCA
+exige 0 "cabecalho de tarefa dentro de cerca nao vira tarefa" OCHK cobertura --slug t
+exige_msg '10 tarefa' 'o placar conta 10 tarefas, nao 11' OCHK cobertura --slug t
+if OCHK cobertura --slug t 2>&1 | grep -q '99'; then
+  falhou=$((falhou+1)); echo "  FALHA a tarefa fantasma 99 apareceu no placar"
+else
+  ok=$((ok+1)); echo "  ok    a tarefa fantasma 99 nao aparece no placar"
+fi
+
+# ...e a MESMA leitura vale no `estado.cjs`, que e a outra trava que cruza lista de
+# mutacao contra plano. Os dois liam o plano com parsers diferentes, e o do estado
+# nao pulava cerca: a entrega correta era recusada com "lista nao cobre tarefa 99",
+# um numero que nao existe no plano. Este caso e o que prende os dois no mesmo
+# parser — sem ele, o `estado.cjs` pode voltar a ter parser proprio e a suite
+# continua verde.
+OE(){ RFM_ESTADO_ROOT="$OW" node "$ESTADO" "$@"; }
+LISTA_10='['
+for i in 1 2 3 4 5 6 7 8 9 10; do
+  [ "$i" = 1 ] || LISTA_10="$LISTA_10,"
+  LISTA_10="$LISTA_10{\"tarefa\":$i,\"resultado\":\"vermelho\"}"
+done
+LISTA_10="$LISTA_10]"
+OE iniciar --slug t >/dev/null 2>&1
+OE marcar --slug t --estagio design --status aprovado >/dev/null 2>&1
+OE marcar --slug t --estagio plano  --status ok >/dev/null 2>&1
+OE exigir --slug t --estagio executar >/dev/null 2>&1
+exige 0 "estado.cjs tambem ignora a cerca ao cruzar a lista" OE marcar --slug t \
+  --estagio executar --status ok --json "{\"tarefas_ok\":10,\"tarefas\":10,\"mutacao\":$LISTA_10}"
 
 rm -rf "$O"
 

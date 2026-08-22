@@ -51,27 +51,126 @@ const path = require("node:path");
 
 const FERRAMENTAS_DE_ESCRITA = new Set(["Write", "Edit", "MultiEdit", "NotebookEdit"]);
 // Subcomandos de git que mexem no estado do checkout. `git stash`/`pop` foi a falha N1.
-// Reconhece a posição correta do subcomando (após git e opções globais), não dentro de
-// strings, mensagens de commit ou padrões de grep.
-const GIT_QUE_MEXE = /\bgit\b(?:\s+-[a-zA-Z](?:\s\S+)?|--[\w-]+(?:=\S+)?)*\s+(stash|checkout|switch|co|reset|merge|rebase|commit|clean|cherry-pick|revert)\b/;
+const VERBOS_QUE_MEXEM = new Set([
+  "stash", "checkout", "switch", "co", "reset", "merge", "rebase",
+  "commit", "clean", "cherry-pick", "revert",
+]);
+// Separadores de comando. Cada segmento tem o seu proprio subcomando e o seu proprio
+// cwd — e por isso a travessia do `alvosBash` e a mesma usada para achar o verbo.
+const SEPARADORES = /&&|\|\||;|\n|\|/;
+// Opcoes globais do git, as que vem ANTES do subcomando. As de valor separado
+// (`-C <dir>`, `-c <k=v>`) precisam comer o proprio argumento, senao o valor delas
+// e lido como se fosse o subcomando.
+const GLOBAIS_COM_VALOR = new Set([
+  "-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path",
+]);
+
 /**
- * Subcomandos que movem o HEAD do CHECKOUT — os unicos que a trava de sessao
- * co-locada cobre, e o recorte e deliberado (D2 do design de 2026-08-21).
+ * Quebra a linha de comando em palavras respeitando aspas simples e duplas.
+ * E o que impede `git commit -m "checkout later"` de virar um checkout: o texto
+ * da mensagem sai como UMA palavra, e nao como candidato a subcomando.
+ */
+function palavras(cmd) {
+  const out = [];
+  let atual = "";
+  let aspa = null;
+  let temAlgo = false;
+  for (let i = 0; i < cmd.length; i += 1) {
+    const c = cmd[i];
+    if (aspa) {
+      if (c === aspa) aspa = null;
+      else atual += c;
+      temAlgo = true;
+    } else if (c === '"' || c === "'") {
+      aspa = c;
+      temAlgo = true;
+    } else if (/\s/.test(c)) {
+      if (temAlgo) out.push(atual);
+      atual = "";
+      temAlgo = false;
+    } else {
+      atual += c;
+      temAlgo = true;
+    }
+  }
+  if (temAlgo) out.push(atual);
+  return out;
+}
+
+/**
+ * Acha o subcomando de `git` num segmento, com os argumentos dele.
+ * @returns {{verbo: string, args: string[]}|null}
+ */
+function subcomandoGit(cmd) {
+  const w = palavras(cmd);
+  for (let i = 0; i < w.length; i += 1) {
+    if (w[i] !== "git" && !/[\\/]git(\.exe)?$/.test(w[i])) continue;
+    let j = i + 1;
+    while (j < w.length && w[j].startsWith("-")) {
+      if (GLOBAIS_COM_VALOR.has(w[j])) j += 2;
+      else j += 1;
+    }
+    return j < w.length ? { verbo: w[j], args: w.slice(j + 1) } : null;
+  }
+  return null;
+}
+
+/** Primeiro verbo de git da linha inteira que caia no conjunto dado, ou null. */
+function verboNaLinha(comando, conjunto) {
+  for (const seg of comando.split(SEPARADORES)) {
+    const s = subcomandoGit(seg);
+    if (s && conjunto.has(s.verbo)) return s.verbo;
+  }
+  return null;
+}
+
+/**
+ * Verbos que movem o HEAD do CHECKOUT — os unicos que a trava de sessao co-locada
+ * cobre, e o recorte e deliberado (D2 do design de 2026-08-21).
  *
- * `commit`, `merge`, `rebase` e `reset` ficam de FORA. Barrar o `GIT_QUE_MEXE`
- * inteiro barraria as duas sessoes simetricamente — inclusive a DONA legitima da
+ * `commit`, `merge`, `rebase` e `reset` ficam de FORA. Barrar os verbos que MEXEM
+ * inteiros barraria as duas sessoes simetricamente — inclusive a DONA legitima da
  * branch, que so quer commitar no trabalho dela. Trava que atrapalha quem esta
  * certo vira trava desligada, e ai ela nao protege mais ninguem.
- *
- * Reconhece a posição correta do subcomando (após git e opções globais) e
- * distingue formas que movem HEAD (`-b`, `-B`, `-c`, `-C`, `--orphan`, `--detach`,
- * ou nome de branch sem extensão) daquelas que restauram arquivo (`--` ou nomes
- * com dots como extensões). Quando ambíguo, escolhe não barrar (conservador).
- * O alias `co` é incluído porque é um alias comum para `checkout`.
- * Caso deixado de fora: tags/refs com dots (v1.0) são tratados como ambiguos
- * e não são matched, para evitar falso positivo com filenames.
  */
-const GIT_QUE_MOVE_O_HEAD = /\bgit\b(?:\s+-[a-zA-Z](?:\s\S+)?|--[\w-]+(?:=\S+)?)*\s+(checkout|switch|co)\b\s+(?:-[bBcC]|--(?:orphan|detach)|(?!--)[a-zA-Z0-9_-]+(?![a-zA-Z0-9_\-./]))/;
+const VERBOS_QUE_MOVEM = new Set(["checkout", "switch", "co"]);
+// Restauram arquivo, nao movem o HEAD.
+const FLAGS_DE_RESTAURO = new Set(["-p", "--patch", "--", "--ours", "--theirs", "--merge", "-m"]);
+// Movem o HEAD sem sombra de duvida.
+const FLAGS_QUE_MOVEM = new Set(["-b", "-B", "-c", "-C", "--orphan", "--detach", "-d", "--track", "-t", "--guess"]);
+
+/**
+ * Este comando move o HEAD do checkout em `cwd`?
+ *
+ * A licao das duas tentativas anteriores: decidir isto pela FORMA lexica do
+ * argumento e indecidivel — `agente/t7` e `docs/x.md` tem a mesma cara. A primeira
+ * casava a palavra em qualquer lugar e barrava `git commit -m "checkout later"`;
+ * a segunda exigia nome sem ponto nem barra e deixava passar `git checkout
+ * agente/t7`, que e literalmente o comando do incidente.
+ *
+ * O que resolve: quem decide TEM o cwd. Caminho existe em disco e e verificavel;
+ * ref nao existe em disco. E o que sobrar ambiguo BARRA, porque barrar errado
+ * custa uma mensagem explicando o worktree e deixar passar errado custa o HEAD da
+ * outra sessao andando debaixo dela.
+ */
+function moveOHead(cmd, cwd, existe = fs.existsSync) {
+  const s = subcomandoGit(cmd);
+  if (!s || !VERBOS_QUE_MOVEM.has(s.verbo)) return false;
+  const args = s.args;
+
+  // `--` em qualquer posicao: o que vem depois e caminho, e a forma
+  // `git checkout <tree-ish> -- <paths>` nao move o HEAD.
+  if (args.includes("--")) return false;
+
+  for (const a of args) {
+    if (FLAGS_QUE_MOVEM.has(a)) return true;
+    if (FLAGS_DE_RESTAURO.has(a)) return false;
+  }
+
+  const posicionais = args.filter((a) => !a.startsWith("-"));
+  if (posicionais.length === 0) return true; // `git switch` pelado: pergunta ao git, barra
+  return !posicionais.every((a) => existe(path.resolve(cwd, a)));
+}
 
 function git(dir, args) {
   try {
@@ -186,13 +285,23 @@ const GIT_DIR_EXPLICITO = /\bgit\b[^\n;&|]*?(?:-C|--work-tree(?:=|\s+))\s*(?:"([
  * tambem o cwd registrado. Na duvida o gate barra — falso positivo custa uma ida e
  * volta, falso negativo custa o estado do usuario.
  *
- * O `padrao` e parametro desde 2026-08-21 porque a trava de sessao co-locada olha um
+ * O `casa` e parametro desde 2026-08-21 porque a trava de sessao co-locada olha um
  * recorte MENOR de verbos (so os que movem o HEAD). Reescrever esta travessia para ela
  * duplicaria o parser de `cd` — e e o parser de `cd`, nao a lista de verbos, que
  * concentra os dois modos de falha que este comentario descreve.
+ *
+ * `casa` recebe `(segmento, cwdDoSegmento)` — o cwd vai junto porque decidir se um
+ * `git checkout X` move o HEAD depende de X existir em disco, e so esta travessia
+ * sabe em que diretorio o segmento vai rodar.
+ *
+ * Devolve `{dir, verbo}` por alvo: quem bloqueia precisa nomear o verbo na mensagem,
+ * e o verbo e do SEGMENTO que casou, nao da linha inteira.
  */
-function alvosBash(comando, cwdInicial, padrao = GIT_QUE_MEXE) {
-  const segmentos = comando.split(/&&|\|\||;|\n|\|/);
+function alvosBash(comando, cwdInicial, casa = (seg) => {
+  const s = subcomandoGit(seg);
+  return !!s && VERBOS_QUE_MEXEM.has(s.verbo);
+}) {
+  const segmentos = comando.split(SEPARADORES);
   let atual = cwdInicial;
   let incerto = false;
   const alvos = [];
@@ -217,18 +326,20 @@ function alvosBash(comando, cwdInicial, padrao = GIT_QUE_MEXE) {
       atual = path.resolve(atual, destino);
       continue;
     }
-    if (!padrao.test(seg)) continue;
+    if (!casa(seg, atual)) continue;
+    const s = subcomandoGit(seg);
+    const verbo = s ? s.verbo : "?";
 
     const exp = seg.match(GIT_DIR_EXPLICITO);
     if (exp) {
       const p = exp[1] || exp[2] || exp[3];
       // `-C` com variavel: nao da para resolver — cai no conservador.
-      if (/[$`]/.test(p)) { alvos.push(cwdInicial); continue; }
-      alvos.push(path.resolve(atual, p));
+      if (/[$`]/.test(p)) { alvos.push({ dir: cwdInicial, verbo }); continue; }
+      alvos.push({ dir: path.resolve(atual, p), verbo });
       continue;
     }
-    alvos.push(atual);
-    if (incerto) alvos.push(cwdInicial);
+    alvos.push({ dir: atual, verbo });
+    if (incerto) alvos.push({ dir: cwdInicial, verbo });
   }
   return alvos;
 }
@@ -290,8 +401,9 @@ function gateDeSessaoColocada(ev, cwd) {
   if (ev.tool_name !== "Bash") return;
   const comando = (ev.tool_input || {}).command;
   if (typeof comando !== "string") return;
-  const m = comando.match(GIT_QUE_MOVE_O_HEAD);
-  if (!m) return;
+  // Recusa barata antes de tocar em disco: a linha tem algum verbo que possa mover
+  // o HEAD? Quem decide de verdade e o `moveOHead` la embaixo, com o cwd do segmento.
+  if (!verboNaLinha(comando, VERBOS_QUE_MOVEM)) return;
   if (!ev.session_id) return;
 
   const agora = Date.now();
@@ -313,11 +425,11 @@ function gateDeSessaoColocada(ev, cwd) {
   if (!daqui) return; // fora de repo git: nao ha HEAD para mover
   if (fs.existsSync(path.join(daqui.toplevel, ".rainforest-gate-off"))) return;
 
-  for (const alvo of alvosBash(comando, cwd, GIT_QUE_MOVE_O_HEAD)) {
-    const estado = estadoDoRepo(dirDe(alvo));
+  for (const alvo of alvosBash(comando, cwd, moveOHead)) {
+    const estado = estadoDoRepo(dirDe(alvo.dir));
     if (!estado) continue;
     if (estado.toplevel !== daqui.toplevel) continue;
-    bloqueiaColocada(m[1], daqui.toplevel, outras, agora);
+    bloqueiaColocada(alvo.verbo, daqui.toplevel, outras, agora);
   }
 }
 
@@ -362,10 +474,10 @@ function main() {
     const alvo = entrada.file_path || entrada.notebook_path || null;
     if (alvo) { alvos = [alvo]; motivo = `Escrita (${nome}) em ${alvo}`; }
   } else if (nome === "Bash" && typeof entrada.command === "string") {
-    const m = entrada.command.match(GIT_QUE_MEXE);
-    if (!m) process.exit(0);
-    alvos = alvosBash(entrada.command, cwd);
-    motivo = `Comando que mexe no estado do repo: git ${m[1]}`;
+    const verbo = verboNaLinha(entrada.command, VERBOS_QUE_MEXEM);
+    if (!verbo) process.exit(0);
+    alvos = alvosBash(entrada.command, cwd).map((a) => a.dir);
+    motivo = `Comando que mexe no estado do repo: git ${verbo}`;
   }
 
   if (!alvos.length) process.exit(0);

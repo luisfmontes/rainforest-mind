@@ -319,27 +319,36 @@ const COMO_DECLARAR = "Ex.: --json '{\"tarefas_ok\":2,\"tarefas\":2,\"mutacao\":
   + '{"tarefa":1,"resultado":"vermelho"},'
   + '{"tarefa":4,"resultado":"n/a","motivo":"tarefa so reescreve doc"}]}\'';
 
-/** Extrai números de tarefas do arquivo de plano. Retorna um Set de números. */
+/**
+ * Números das tarefas do plano, ou `null` quando não há plano em disco.
+ *
+ * A leitura é EMPRESTADA do `conferir-esteira.cjs`, não reescrita aqui. A primeira
+ * versão desta checagem tinha parser próprio, e ele divergia em duas coisas: não
+ * pulava cerca de código (`### 3.` dentro de um bloco ``` virava tarefa fantasma) e
+ * não normalizava CRLF. O efeito era o pior possível para uma trava — recusar
+ * entrega correta, com uma mensagem apontando uma tarefa que não existe.
+ */
 function extrairNumerosTarefa(slug) {
   const arquivo_plano = path.join(RAIZ, 'docs', 'rainforest', 'planos', `${slug}.md`);
   if (!fs.existsSync(arquivo_plano)) {
     return null; // plano nao existe
   }
 
-  const conteudo = fs.readFileSync(arquivo_plano, 'utf8');
-  const linhas = conteudo.split('\n');
-  const numeros = new Set();
-
-  for (const linha of linhas) {
-    // Tarefa comeca com ### <n>. <nome>
-    const match = linha.match(/^### (\d+)\./);
-    if (match) {
-      const numero = parseInt(match[1], 10);
-      numeros.add(numero);
-    }
+  // Emprestar leitura cria uma dependência, e dependência que falta não pode
+  // derrubar o `marcar`: o resto deste arquivo avisa e libera quando não consegue
+  // medir, e uma exceção aqui recusaria por motivo que não é do usuário.
+  let extrairTarefas, lerMarkdown;
+  try {
+    ({ extrairTarefas, lerMarkdown } = require('./conferir-esteira.cjs'));
+  } catch (e) {
+    console.warn(`aviso: nao consegui carregar o leitor de plano (${e.message}) — a lista de mutacao nao sera cruzada com o plano.`);
+    return new Set();
   }
 
-  return numeros.size > 0 ? numeros : new Set();
+  const conteudo = lerMarkdown(arquivo_plano);
+  if (conteudo === null) return null;
+
+  return new Set(extrairTarefas(conteudo).map((t) => t.numero));
 }
 
 /** @returns {string|null} mensagem de recusa, ou null se passou/nao se aplica */

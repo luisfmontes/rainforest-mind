@@ -262,12 +262,49 @@ function cmdCobertura() {
   console.log(`ok: cobertura válida — ${decisoes_design.size} decisão(ões), ${tarefas.length} tarefa(s)`);
 }
 
+/**
+ * Marca quais linhas caem dentro de cerca de código — triplo backtick ou triplo
+ * til, sempre na coluna 0. A cerca de abertura e a de fechamento contam como
+ * dentro: nenhuma das duas é conteúdo do documento.
+ *
+ * Mora aqui, e não dentro de cada parser, porque a divergência entre parsers foi
+ * o defeito: o bloco `mutacao:` já ignorava cerca, e `### 3.` dentro de cerca
+ * continuava virando tarefa fantasma. Um documento tem uma leitura só.
+ */
+function mascaraDeCerca(linhas) {
+  const dentro = new Array(linhas.length).fill(false);
+  let tipo = null; // 'backtick' | 'til' | null
+
+  for (let i = 0; i < linhas.length; i++) {
+    const abre = /^`{3,}/.test(linhas[i]) ? 'backtick'
+      : /^~{3,}/.test(linhas[i]) ? 'til'
+        : null;
+
+    if (tipo) {
+      dentro[i] = true;
+      // Cerca só fecha com o MESMO caractere que a abriu: um bloco ```
+      // pode conter ~~~ como texto, e vice-versa.
+      if (abre === tipo) tipo = null;
+      continue;
+    }
+    if (abre) {
+      tipo = abre;
+      dentro[i] = true;
+    }
+  }
+
+  return dentro;
+}
+
 function extrairDecisoes(conteudo) {
   const decisoes = new Set();
   const linhas = conteudo.split('\n');
+  const cerca = mascaraDeCerca(linhas);
   let em_decisoes = false;
 
-  for (const linha of linhas) {
+  for (let i = 0; i < linhas.length; i++) {
+    if (cerca[i]) continue;
+    const linha = linhas[i];
     if (linha === '## Decisões fechadas') {
       em_decisoes = true;
       continue;
@@ -290,8 +327,10 @@ function extrairDecisoes(conteudo) {
 function extrairTarefas(conteudo) {
   const tarefas = [];
   const linhas = conteudo.split('\n');
+  const cerca = mascaraDeCerca(linhas);
 
   for (let i = 0; i < linhas.length; i++) {
+    if (cerca[i]) continue;
     const linha = linhas[i];
 
     // Tarefa começa com ### <n>. <nome>
@@ -300,25 +339,28 @@ function extrairTarefas(conteudo) {
       const numero = parseInt(match[1], 10);
       const nome = match[2].trim();
 
-      // Corpo da tarefa: até a próxima tarefa ou seção
+      // Corpo da tarefa: até a próxima tarefa ou seção — cabeçalho dentro de
+      // cerca não fecha a tarefa, pelo mesmo motivo que não abre uma.
       const corpo = [];
+      const corpo_cerca = [];
       for (let j = i + 1; j < linhas.length; j++) {
-        if (linhas[j].startsWith('###') || linhas[j].startsWith('##')) {
+        if (!cerca[j] && (linhas[j].startsWith('###') || linhas[j].startsWith('##'))) {
           break;
         }
         corpo.push(linhas[j]);
+        corpo_cerca.push(cerca[j]);
       }
 
       // Procura campo atende: no corpo (o primeiro vale)
       let atende = '';
-      for (const proxima of corpo) {
-        if (proxima.startsWith('atende:')) {
-          atende = proxima.substring('atende:'.length).trim();
+      for (let k = 0; k < corpo.length; k++) {
+        if (!corpo_cerca[k] && corpo[k].startsWith('atende:')) {
+          atende = corpo[k].substring('atende:'.length).trim();
           break;
         }
       }
 
-      tarefas.push({ numero, nome, atende, mutacao: extrairMutacao(corpo) });
+      tarefas.push({ numero, nome, atende, mutacao: extrairMutacao(corpo, corpo_cerca) });
     }
   }
 
@@ -341,50 +383,10 @@ function extrairTarefas(conteudo) {
  * como declaração daria por cumprida uma tarefa que só menciona a palavra.
  * Ignora linhas que aparecem dentro de cerca de código (triplos backticks ou tils).
  */
-function extrairMutacao(corpo) {
-  // Detecta cercas de código (backticks ou tils) e marca quais linhas estão dentro delas
-  const dentro_cerca = new Array(corpo.length).fill(false);
-  let em_cerca = false;
-  let tipo_cerca = null; // 'backtick' ou 'til'
-
-  for (let i = 0; i < corpo.length; i++) {
-    const linha = corpo[i];
-    const backticks = linha.match(/^`{3,}/);
-    const tils = linha.match(/^~{3,}/);
-
-    // Se estamos dentro de uma cerca, marca esta linha como dentro
-    // ANTES de checar abertura/fechamento
-    if (em_cerca) {
-      dentro_cerca[i] = true;
-    }
-
-    // Verifica abertura/fechamento de cerca
-    if (backticks) {
-      if (!em_cerca) {
-        // Abertura de cerca
-        em_cerca = true;
-        tipo_cerca = 'backtick';
-        dentro_cerca[i] = true; // A linha de abertura também conta como dentro
-      } else if (tipo_cerca === 'backtick') {
-        // Fechamento de cerca
-        em_cerca = false;
-        tipo_cerca = null;
-        // dentro_cerca[i] já foi marcado acima
-      }
-    } else if (tils) {
-      if (!em_cerca) {
-        // Abertura de cerca
-        em_cerca = true;
-        tipo_cerca = 'til';
-        dentro_cerca[i] = true; // A linha de abertura também conta como dentro
-      } else if (tipo_cerca === 'til') {
-        // Fechamento de cerca
-        em_cerca = false;
-        tipo_cerca = null;
-        // dentro_cerca[i] já foi marcado acima
-      }
-    }
-  }
+function extrairMutacao(corpo, cerca) {
+  // A máscara vem de quem leu o documento inteiro. Recalcular aqui sobre o corpo
+  // recortado daria resposta diferente quando a cerca abre antes da tarefa.
+  const dentro_cerca = cerca || mascaraDeCerca(corpo);
 
   // Procura `mutacao:` fora de cerca de código
   const i = corpo.findIndex((l, idx) => l.startsWith('mutacao:') && !dentro_cerca[idx]);
@@ -416,7 +418,7 @@ function extrairMutacao(corpo) {
   // falso positivo — e trava que recusa declaração legítima é trava desligada
   // pelo hábito do `--forcar`, que é o que D9 do design manda evitar.
   if (bloco.campos.motivo === undefined) {
-    const solto = corpo.find(l => l.startsWith('motivo:'));
+    const solto = corpo.find((l, idx) => l.startsWith('motivo:') && !dentro_cerca[idx]);
     if (solto) {
       bloco.campos.motivo = solto.substring('motivo:'.length).trim();
     }
@@ -656,4 +658,8 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { globMatches };
+// `extrairTarefas` e `lerMarkdown` saem daqui porque o `estado.cjs` precisa da MESMA
+// leitura do plano para cruzar a catraca de mutação com a lista de tarefas. Um
+// segundo parser divergiria — e divergiu: a primeira versão daquela checagem contava
+// `### 3.` dentro de cerca como tarefa e recusava entrega correta.
+module.exports = { globMatches, extrairTarefas, lerMarkdown, mascaraDeCerca };

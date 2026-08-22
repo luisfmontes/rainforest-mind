@@ -233,8 +233,9 @@ gatec "switch -c idem (o verbo novo do mesmo ato)" 2 "$(p "git switch -c x" "$R"
 gatec "a outra sessao PARADA ha 2 min ainda barra" 2 "$(p "git checkout -b x" "$R")"
 
 echo "-- deve PASSAR (exit 0) — cada um destes travaria quem esta certo --"
-# D2: so os verbos que movem o HEAD. Barrar o GIT_QUE_MEXE inteiro barraria as duas
-# sessoes simetricamente, inclusive a DONA legitima da branch, que so quer commitar.
+# D2: so os verbos que movem o HEAD (VERBOS_QUE_MOVEM). Barrar o VERBOS_QUE_MEXEM
+# inteiro barraria as duas sessoes simetricamente, inclusive a DONA legitima da
+# branch, que so quer commitar no trabalho dela.
 gatec "commit no mesmo cwd co-locado"             0 "$(p "git commit -m x" "$R")"
 gatec "merge no mesmo cwd co-locado"              0 "$(p "git merge outra" "$R")"
 gatec "rebase no mesmo cwd co-locado"             0 "$(p "git rebase main" "$R")"
@@ -318,10 +319,17 @@ fi
 
 echo
 echo "== casos do conserto da âncora: checkout/switch na posição certa =="
-# A âncora antiga casava "checkout"/"switch" em QUALQUER lugar do comando.
-# A nova reconhece a posição de subcomando e distingue HEAD-moving de file-restore.
-# Sao 9 casos novos: 5 que devem PASSAR (exit 0) e 4 que devem BARRAR (exit 2).
-# Testam a gate de sessao co-locada (GIT_QUE_MOVE_O_HEAD), nao a write-protect (GIT_QUE_MEXE).
+# A âncora antiga casava "checkout"/"switch" em QUALQUER lugar do comando e barrava
+# `git commit -m "checkout later"`. A segunda tentativa exigia nome sem ponto nem
+# barra — e deixou passar `git checkout agente/t7`, que e o comando do incidente.
+#
+# A que vale reconhece a posição de subcomando (aspas nao viram argumento) e decide
+# HEAD-moving vs file-restore pelo DISCO: caminho existe, ref nao. `$R/a.txt` existe
+# desde a linha 36, e e o que faz o caso do `checkout a.txt` significar alguma coisa.
+# O que sobra ambiguo BARRA — barrar errado custa uma mensagem, passar errado custa
+# o HEAD da outra sessao.
+#
+# Testam a trava de sessao co-locada (`moveOHead`), nao a write-protect.
 
 monta_sessoes "$EU|$(esc "$R")|1|1" "$OUTRA|$(esc "$R")|15|2"
 
@@ -331,10 +339,30 @@ gatec "checkout -- arquivo PASSA (nao move HEAD)"  0 "$(p "git checkout -- a.txt
 gatec "checkout de caminho PASSA (ambiguo)"        0 "$(p "git checkout a.txt" "$R")"
 gatec "log --grep=checkout PASSA (nao e subcomando)" 0 "$(p "git log --grep=checkout" "$R")"
 
+gatec "status PASSA (nem e verbo que move)"        0 "$(p "git status" "$R")"
+gatec "checkout HEAD -- arquivo PASSA"             0 "$(p "git checkout HEAD -- a.txt" "$R")"
+gatec "checkout -p PASSA (restaura em pedaco)"     0 "$(p "git checkout -p" "$R")"
+
 gatec "checkout -b nova BARRA (cria branch)"       2 "$(p "git checkout -b nova" "$R")"
 gatec "switch -c nova BARRA (cria branch)"         2 "$(p "git switch -c nova" "$R")"
 gatec "checkout main BARRA (move HEAD)"            2 "$(p "git checkout main" "$R")"
 gatec "co -b nova BARRA (alias, cria branch)"      2 "$(p "git co -b nova" "$R")"
+
+# Os SEIS buracos que a segunda tentativa deixou passar. O primeiro e o comando
+# literal do incidente de 2026-08-21: branch com barra tem a mesma cara de caminho,
+# e so o disco desempata.
+gatec "checkout agente/t7 BARRA (branch com barra)" 2 "$(p "git checkout agente/t7" "$R")"
+gatec "switch feature/login BARRA"                  2 "$(p "git switch feature/login" "$R")"
+gatec "checkout origin/main BARRA (ref remota)"     2 "$(p "git checkout origin/main" "$R")"
+gatec "checkout v1.0 BARRA (tag tem ponto)"         2 "$(p "git checkout v1.0" "$R")"
+gatec "--no-pager checkout -b BARRA (opcao global)" 2 "$(p "git --no-pager checkout -b nova" "$R")"
+gatec "checkout @{-1} BARRA (branch anterior)"      2 "$(p "git checkout @{-1}" "$R")"
+
+# E os que so a decisao por disco resolve.
+gatec "checkout de caminho inexistente BARRA"       2 "$(p "git checkout nao-existe.txt" "$R")"
+gatec "switch pelado BARRA (o git decide, nos nao)" 2 "$(p "git switch" "$R")"
+gatec "-C com valor nao vira subcomando"            2 "$(p "git -c core.pager=cat switch main" "$R")"
+gatec "checkout no fim de encadeamento BARRA"       2 "$(p "git status && git checkout main" "$R")"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

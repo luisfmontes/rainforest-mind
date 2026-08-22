@@ -325,6 +325,14 @@ igual "a recusa nomeia o campo 'mutacao'" "sim" \
 prep_catraca cat-2
 esperado "com um item vermelho, fecha" 0 \
   $E marcar --slug cat-2 --estagio executar --status ok --json '{"tarefas_ok":2,"tarefas":2,"mutacao":[{"tarefa":1,"resultado":"vermelho"}]}'
+# ...e fecha porque NAO HA plano em disco nesta caixa. O cruzamento lista x plano
+# so acontece quando ha plano para cruzar; sem ele a trava avisa e libera, como o
+# resto deste arquivo faz quando nao consegue medir. Trava que reprova por nao
+# conseguir medir e trava que se desliga no primeiro `--forcar`.
+prep_catraca cat-2b
+semplano=$($E marcar --slug cat-2b --estagio executar --status ok --json '{"tarefas_ok":2,"tarefas":2,"mutacao":[{"tarefa":1,"resultado":"vermelho"}]}' 2>&1)
+igual "sem plano em disco, avisa em vez de recusar" "sim" \
+  "$(case "$semplano" in *"plano nao encontrado"*) echo sim;; *) echo nao;; esac)"
 
 # `n/a` com motivo e resposta aceita (D9): tarefa de doc nao tem comportamento a
 # inverter, e exigir o impossivel cria o habito do --forcar.

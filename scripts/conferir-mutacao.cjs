@@ -42,7 +42,9 @@
  *   0  mutação casou E bateria VERMELHA  — a bateria sabe falhar
  *   2  mutação casou e bateria VERDE     — recusa: a bateria não mede o conserto
  *   3  MUTACAO NAO APLICADA              — o trecho `--de` não existe no fonte
- *   4  baseline não-verde                — recusa: bateria já falha no fonte íntegro
+ *   4  não dá para MEDIR                  — recusa antes de mutar: a bateria já falha
+ *                                          no fonte íntegro, ou `--de` casa mais de
+ *                                          uma vez e a inversão fica ambígua
  *   1  erro de uso, ou bateria sem veredito (estouro de tempo / sinal)
  *
  * O 2, 3 e 4 são códigos DIFERENTES de propósito: quem chama este script de
@@ -67,7 +69,7 @@ const USO = `uso: node scripts/conferir-mutacao.cjs --arquivo <caminho> --de <tr
   --timeout  <ms>       teto de tempo da bateria (padrão: ${TIMEOUT_PADRAO})
 
 exit: 0 mutação casou e bateria VERMELHA | 2 bateria VERDE | 3 MUTACAO NAO APLICADA |
-     4 baseline não-verde | 1 erro de uso
+     4 não dá para medir (baseline não-verde, ou --de ambíguo) | 1 erro de uso
 
 Git Bash (MSYS) come uma barra de argumento que COMEÇA com \`//\`: \`// coment\`
 chega aqui como \`/ coment\` e não casa. Medido em 2026-08-21 ao mutar um
