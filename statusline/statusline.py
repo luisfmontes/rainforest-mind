@@ -29,11 +29,17 @@ CACHE_JORNADA = os.path.join(
     os.environ.get("TEMP", os.path.join(HOME, "AppData", "Local", "Temp")),
     "claude-statusline-jornada.txt",
 )
+CACHE_VERSAO = os.path.join(
+    os.environ.get("TEMP", os.path.join(HOME, "AppData", "Local", "Temp")),
+    "claude-statusline-versao.txt",
+)
 # statusline.py agora esta no plugin com statusline-jornada.sh ao lado.
 # Caminho relativo ao arquivo evita dependencia de ~/.claude que sera apagado.
 REFRESHER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "statusline-jornada.sh")
+REFRESHER_VERSAO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "statusline-versao.sh")
 FOCO = os.path.join(HOME, ".rainforest", "FOCO.md")
 IDADE_MAX_CACHE = 90  # segundos
+IDADE_MAX_CACHE_VERSAO = 6 * 3600  # 6 horas para cache de versao
 GIT_TIMEOUT = 1.5
 
 # ---------------------------------------------------------------- cores ----
@@ -273,6 +279,136 @@ def segmento_prazo():
     return c(rotulo, cor)
 
 
+# ---------------------------------------------------------------- versao ---
+def le_cache_versao():
+    """Le cache de versao estavel da CLI. Retorna string ou vazio se falhar."""
+    try:
+        with open(CACHE_VERSAO, "r", encoding="utf-8") as fh:
+            return fh.read().strip()
+    except Exception:
+        return ""
+
+
+def le_versao_transcript(transcript_path):
+    """Le a versao da sessao do transcript, lendo apenas os ultimos 8 KB.
+
+    Procura de tras para frente pela primeira linha JSONL valida com
+    um campo "version". Ignora linhas JSON invalidas.
+    """
+    if not transcript_path:
+        return ""
+
+    try:
+        # Abre arquivo para ler cauda.
+        with open(transcript_path, "rb") as fh:
+            fh.seek(0, 2)  # vai ao fim
+            tamanho = fh.tell()
+
+            # Le no maximo 8 KB do final.
+            tamanho_leitura = min(8192, tamanho)
+            fh.seek(tamanho - tamanho_leitura)
+            cauda = fh.read().decode("utf-8", errors="ignore")
+
+        # Processa linhas de tras para frente.
+        linhas = cauda.splitlines()
+        for linha in reversed(linhas):
+            if not linha.strip():
+                continue
+            try:
+                obj = json.loads(linha)
+                versao = obj.get("version")
+                if versao and isinstance(versao, str):
+                    return versao.strip()
+            except Exception:
+                # Linha com JSON invalido, continua para a anterior.
+                continue
+
+        return ""
+    except Exception:
+        return ""
+
+
+def compara_versoes(v1, v2):
+    """Compara duas versoes numericamente, componente a componente.
+
+    Retorna -1 se v1 < v2, 0 se v1 == v2, 1 se v1 > v2.
+    Retorna None se versoes sao incomparaveis (componentes nao numericos).
+    """
+    try:
+        p1 = [int(x) for x in v1.split(".")]
+        p2 = [int(x) for x in v2.split(".")]
+    except Exception:
+        return None
+
+    # Compara componente a componente.
+    for i in range(max(len(p1), len(p2))):
+        c1 = p1[i] if i < len(p1) else 0
+        c2 = p2[i] if i < len(p2) else 0
+        if c1 < c2:
+            return -1
+        if c1 > c2:
+            return 1
+
+    return 0
+
+
+def dispara_refresh_versao():
+    """Dispara refresher de versao em segundo plano, mesmo molde do jornada."""
+    bash = "C:/Program Files/Git/bin/bash.exe"
+    if not (os.path.exists(bash) and os.path.exists(REFRESHER_VERSAO)):
+        return
+    try:
+        subprocess.Popen(
+            [bash, REFRESHER_VERSAO.replace("\\", "/")],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL,
+            creationflags=getattr(subprocess, "DETACHED_PROCESS", 0),
+        )
+    except Exception:
+        pass
+
+
+def segmento_versao(transcript_path):
+    """Avisa quando a versao da sessao esta atras do estavel publicado.
+
+    Le cache de versao estavel; se estiver velho (> 6 horas), dispara
+    refresher em segundo plano. Compara com versao da sessao lida do
+    transcript. Se estiver atrasada, retorna segmento com versao e sinal
+    de atraso. Qualquer falha retorna string vazia.
+    """
+    versao_sessao = le_versao_transcript(transcript_path)
+    if not versao_sessao:
+        return ""
+
+    # Confere idade do cache; se velho, dispara refresh.
+    agora = datetime.datetime.now()
+    try:
+        idade = agora.timestamp() - os.path.getmtime(CACHE_VERSAO)
+        if idade > IDADE_MAX_CACHE_VERSAO:
+            dispara_refresh_versao()
+    except Exception:
+        dispara_refresh_versao()
+
+    # Le cache de versao estavel.
+    versao_estavel = le_cache_versao()
+    if not versao_estavel:
+        return ""
+
+    # Compara numericamente.
+    cmp = compara_versoes(versao_sessao, versao_estavel)
+    if cmp is None:
+        # Versoes incomparaveis, nao mostra nada.
+        return ""
+
+    if cmp < 0:
+        # Sessao esta atrasada. Mostra versao da sessao e sinal de atraso.
+        return c(versao_sessao + " \u21e9", AMARELO)
+
+    # Versoes iguais ou sessao adiantada: sem segmento.
+    return ""
+
+
 # ------------------------------------------------------------------ main ---
 def main():
     try:
@@ -281,6 +417,7 @@ def main():
         dados = {}
 
     cwd = dados.get("cwd") or dados.get("workspace", {}).get("current_dir") or "."
+    transcript_path = dados.get("transcript_path")
 
     segmentos = [segmento_local(cwd), segmento_perfil(dados)]
 
@@ -302,6 +439,7 @@ def main():
         segmentos.append(" ".join(partes_limite))
 
     segmentos.append(segmento_tempo())
+    segmentos.append(segmento_versao(transcript_path))
     segmentos.append(segmento_prazo())
 
     print(SEP.join([s for s in segmentos if s]))
