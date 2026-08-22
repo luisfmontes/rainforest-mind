@@ -110,11 +110,18 @@ contar_bak() {
   printf '%s' "$n"
 }
 
-# O executavel de "instalador" de mentira. Comportamento controlado por duas
+# O executavel de "instalador" de mentira. Comportamento controlado por
 # variaveis de ambiente lidas em tempo de execucao (herdadas do processo que
 # chama o alvo, nunca expandidas na criacao deste arquivo):
-#   MOCK_ATUALIZADOR_FALHA=1        -> sai 1 sem gravar nada (simula falha)
-#   MOCK_ATUALIZADOR_VERSAO_NOVA=X  -> grava um claude.exe novo com versao X
+#   MOCK_ATUALIZADOR_FALHA=1           -> sai 1 sem gravar nada (simula falha)
+#   MOCK_ATUALIZADOR_SEM_GRAVAR=1      -> sai 0 mas NAO grava claude.exe (diz
+#                                          que deu certo e some com o exe)
+#   MOCK_ATUALIZADOR_EXE_MUDO=1        -> grava um claude.exe que sai != 0 sem
+#                                          imprimir nada (nao responde --version)
+#   MOCK_ATUALIZADOR_TEXTO_INVALIDO=1  -> grava um claude.exe que imprime texto
+#                                          sem nenhum N.N.N (nao e uma versao)
+#   MOCK_ATUALIZADOR_VERSAO_NOVA=X     -> (default) grava um claude.exe novo
+#                                          com versao X, no formato real
 # A pasta onde gravar vem de ATUALIZAR_CLI_PACOTE, a mesma variavel que o
 # proprio scripts/atualizar-cli.sh usa e que este mock recebe herdada.
 INSTALADOR_FALSO="$SBP/instalador-falso"
@@ -122,6 +129,20 @@ cat > "$INSTALADOR_FALSO" <<'EOF'
 #!/bin/bash
 if [ "${MOCK_ATUALIZADOR_FALHA:-0}" = "1" ]; then
   exit 1
+fi
+if [ "${MOCK_ATUALIZADOR_SEM_GRAVAR:-0}" = "1" ]; then
+  # "Deu certo" mas nao grava nada — o PATH fica sem claude.exe algum.
+  exit 0
+fi
+if [ "${MOCK_ATUALIZADOR_EXE_MUDO:-0}" = "1" ]; then
+  printf '#!/bin/bash\nexit 3\n' > "$ATUALIZAR_CLI_PACOTE/claude.exe"
+  chmod +x "$ATUALIZAR_CLI_PACOTE/claude.exe"
+  exit 0
+fi
+if [ "${MOCK_ATUALIZADOR_TEXTO_INVALIDO:-0}" = "1" ]; then
+  printf '#!/bin/bash\necho "Claude Code (build interno)"\n' > "$ATUALIZAR_CLI_PACOTE/claude.exe"
+  chmod +x "$ATUALIZAR_CLI_PACOTE/claude.exe"
+  exit 0
 fi
 VERSAO="${MOCK_ATUALIZADOR_VERSAO_NOVA:-9.9.9}"
 printf '#!/bin/bash\necho "%s (Claude Code)"\n' "$VERSAO" > "$ATUALIZAR_CLI_PACOTE/claude.exe"
@@ -279,6 +300,72 @@ rodar ATUALIZAR_CLI_PACOTE="$PACOTE" ATUALIZAR_CLI_WINGET="$INSTALADOR_FALSO" \
 igual "sai 0 (comparacao numerica, nao textual)" "$EXIT" "0"
 tem   "a saida confirma o sucesso" "$SAIDA" "Sucesso"
 igual "exatamente um .bak sobra" "$(contar_bak "$PACOTE")" "1"
+caso_fim
+
+# (h) ADVERSARIAL: o instalador diz que deu certo (sai 0) e nao grava nada.
+# E o ramo "novo executavel nao foi instalado" (linha ~125 do alvo) — PATH sem
+# claude.exe algum, o pior estado possivel segundo o proprio comentario do
+# script. Nenhum dos cinco cenarios do plano chega aqui: eles ou fazem o
+# instalador falhar (b) ou o fazem gravar algo (a, c, d). Este e o instalador
+# que MENTE que funcionou.
+caso_inicio "ADVERSARIAL — instalador sai 0 sem gravar claude.exe algum"
+PACOTE="$SBP/caso-h/pacote"
+novo_pacote "$PACOTE" "2.1.231"
+cp "$PACOTE/claude.exe" "$SBP/caso-h/original.exe"
+rodar ATUALIZAR_CLI_PACOTE="$PACOTE" ATUALIZAR_CLI_WINGET="$INSTALADOR_FALSO" \
+      MOCK_ATUALIZADOR_SEM_GRAVAR=1
+[ "$EXIT" -ne 0 ] && echo "  ok    sai diferente de 0" || { echo "  FALHA sai 0 (esperava diferente de 0)"; CASO_FALHOU=1; }
+if [ -f "$PACOTE/claude.exe" ] && diff -q "$SBP/caso-h/original.exe" "$PACOTE/claude.exe" >/dev/null 2>&1; then
+  echo "  ok    claude.exe restaurado, conteudo identico ao original (diff)"
+else
+  echo "  FALHA claude.exe restaurado diverge do original (ou nao existe)"
+  CASO_FALHOU=1
+fi
+igual "zero .bak sobrando" "$(contar_bak "$PACOTE")" "0"
+nao_tem "o rollback controlado resolveu sozinho, sem cair no trap de emergencia" \
+        "$SAIDA" "Emergencia"
+caso_fim
+
+# (i) ADVERSARIAL: o exe novo existe mas nao responde --version (sai != 0 sem
+# imprimir nada). E o ramo "nao consegui ler a versao do novo executavel"
+# (linha ~134 do alvo) — o exe esta la, so nao fala.
+caso_inicio "ADVERSARIAL — exe novo nao responde --version"
+PACOTE="$SBP/caso-i/pacote"
+novo_pacote "$PACOTE" "2.1.231"
+cp "$PACOTE/claude.exe" "$SBP/caso-i/original.exe"
+rodar ATUALIZAR_CLI_PACOTE="$PACOTE" ATUALIZAR_CLI_WINGET="$INSTALADOR_FALSO" \
+      MOCK_ATUALIZADOR_EXE_MUDO=1
+[ "$EXIT" -ne 0 ] && echo "  ok    sai diferente de 0" || { echo "  FALHA sai 0 (esperava diferente de 0)"; CASO_FALHOU=1; }
+if [ -f "$PACOTE/claude.exe" ] && diff -q "$SBP/caso-i/original.exe" "$PACOTE/claude.exe" >/dev/null 2>&1; then
+  echo "  ok    claude.exe restaurado, conteudo identico ao original (diff)"
+else
+  echo "  FALHA claude.exe restaurado diverge do original (ou nao existe)"
+  CASO_FALHOU=1
+fi
+igual "zero .bak sobrando" "$(contar_bak "$PACOTE")" "0"
+nao_tem "o rollback controlado resolveu sozinho, sem cair no trap de emergencia" \
+        "$SAIDA" "Emergencia"
+caso_fim
+
+# (j) ADVERSARIAL: o exe novo imprime algo que nao e uma versao (sem N.N.N).
+# E o ramo "versao nova nao e um numero valido" (linha ~144 do alvo) — o exe
+# fala, mas nao fala versao.
+caso_inicio "ADVERSARIAL — exe novo imprime texto sem N.N.N"
+PACOTE="$SBP/caso-j/pacote"
+novo_pacote "$PACOTE" "2.1.231"
+cp "$PACOTE/claude.exe" "$SBP/caso-j/original.exe"
+rodar ATUALIZAR_CLI_PACOTE="$PACOTE" ATUALIZAR_CLI_WINGET="$INSTALADOR_FALSO" \
+      MOCK_ATUALIZADOR_TEXTO_INVALIDO=1
+[ "$EXIT" -ne 0 ] && echo "  ok    sai diferente de 0" || { echo "  FALHA sai 0 (esperava diferente de 0)"; CASO_FALHOU=1; }
+if [ -f "$PACOTE/claude.exe" ] && diff -q "$SBP/caso-j/original.exe" "$PACOTE/claude.exe" >/dev/null 2>&1; then
+  echo "  ok    claude.exe restaurado, conteudo identico ao original (diff)"
+else
+  echo "  FALHA claude.exe restaurado diverge do original (ou nao existe)"
+  CASO_FALHOU=1
+fi
+igual "zero .bak sobrando" "$(contar_bak "$PACOTE")" "0"
+nao_tem "o rollback controlado resolveu sozinho, sem cair no trap de emergencia" \
+        "$SAIDA" "Emergencia"
 caso_fim
 
 # ------------------------------------------------------------------ resultado
