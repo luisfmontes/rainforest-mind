@@ -52,7 +52,14 @@ function lerMarkdown(arquivo) {
   if (!fs.existsSync(arquivo)) {
     return null;
   }
-  return fs.readFileSync(arquivo, 'utf8');
+  let conteudo = fs.readFileSync(arquivo, 'utf8');
+  // Remove BOM se houver (UTF-8 BOM é U+FEFF, três bytes: EF BB BF)
+  if (conteudo.charCodeAt(0) === 0xFEFF) {
+    conteudo = conteudo.slice(1);
+  }
+  // Normaliza CRLF para LF
+  conteudo = conteudo.replace(/\r\n/g, '\n');
+  return conteudo;
 }
 
 // ================================================================ design
@@ -332,9 +339,55 @@ function extrairTarefas(conteudo) {
  * O casamento é por INÍCIO de linha, nunca por substring: `pronto quando:` cita
  * `mutacao:` entre crases em plano que fale da própria trava, e reconhecer isso
  * como declaração daria por cumprida uma tarefa que só menciona a palavra.
+ * Ignora linhas que aparecem dentro de cerca de código (triplos backticks ou tils).
  */
 function extrairMutacao(corpo) {
-  const i = corpo.findIndex(l => l.startsWith('mutacao:'));
+  // Detecta cercas de código (backticks ou tils) e marca quais linhas estão dentro delas
+  const dentro_cerca = new Array(corpo.length).fill(false);
+  let em_cerca = false;
+  let tipo_cerca = null; // 'backtick' ou 'til'
+
+  for (let i = 0; i < corpo.length; i++) {
+    const linha = corpo[i];
+    const backticks = linha.match(/^`{3,}/);
+    const tils = linha.match(/^~{3,}/);
+
+    // Se estamos dentro de uma cerca, marca esta linha como dentro
+    // ANTES de checar abertura/fechamento
+    if (em_cerca) {
+      dentro_cerca[i] = true;
+    }
+
+    // Verifica abertura/fechamento de cerca
+    if (backticks) {
+      if (!em_cerca) {
+        // Abertura de cerca
+        em_cerca = true;
+        tipo_cerca = 'backtick';
+        dentro_cerca[i] = true; // A linha de abertura também conta como dentro
+      } else if (tipo_cerca === 'backtick') {
+        // Fechamento de cerca
+        em_cerca = false;
+        tipo_cerca = null;
+        // dentro_cerca[i] já foi marcado acima
+      }
+    } else if (tils) {
+      if (!em_cerca) {
+        // Abertura de cerca
+        em_cerca = true;
+        tipo_cerca = 'til';
+        dentro_cerca[i] = true; // A linha de abertura também conta como dentro
+      } else if (tipo_cerca === 'til') {
+        // Fechamento de cerca
+        em_cerca = false;
+        tipo_cerca = null;
+        // dentro_cerca[i] já foi marcado acima
+      }
+    }
+  }
+
+  // Procura `mutacao:` fora de cerca de código
+  const i = corpo.findIndex((l, idx) => l.startsWith('mutacao:') && !dentro_cerca[idx]);
   if (i === -1) {
     return null;
   }
