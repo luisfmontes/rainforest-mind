@@ -65,12 +65,12 @@ EMERG="$(RAINFOREST_GATE_OFF=1 RFM_ROOT="$SB/lar/.rainforest" node -e "
   process.stdout.write(r.valores['gate-staging'] + ' ' + r.origem['gate-staging']);
 " 2>&1)"
 igual "emergencia vence ate o projeto ligado" "false RAINFOREST_GATE_OFF" "$EMERG"
-# A esteira nao e gate: a saida de emergencia dos gates nao pode desliga-la junto.
-ESTEIRA="$(RAINFOREST_GATE_OFF=1 node -e "
+# O fluxo nao e gate: a saida de emergencia dos gates nao pode desliga-la junto.
+FLUXO="$(RAINFOREST_GATE_OFF=1 node -e "
   const { resolverConfig } = require('$SRC_WIN/hooks/lib/config.cjs');
-  process.stdout.write(String(resolverConfig({ projeto: '$PROJ' }).valores.esteira));
+  process.stdout.write(String(resolverConfig({ projeto: '$PROJ' }).valores.fluxo));
 " 2>&1)"
-igual "emergencia NAO desliga a esteira" "true" "$ESTEIRA"
+igual "emergencia NAO desliga o fluxo" "true" "$FLUXO"
 
 echo
 echo "== 3. config ilegivel deixa a trava LIGADA =="
@@ -168,6 +168,53 @@ if (d.padrao !== false) { console.error('padrao nao e falso: '+d.padrao); proces
 " 2>/dev/null; then ok=$((ok+1)); echo "  ok   $chave existe e nasce DESLIGADA"
   else falhou=$((falhou+1)); echo "  FALHA $chave ausente ou ligada por padrao"; fi
 done
+
+echo
+echo "== 8. o nome antigo continua sendo LIDO (esteira -> fluxo) =="
+# Renomear chave de config e mudanca silenciosa por natureza: o config do usuario
+# em disco continua dizendo `"esteira": false`, o codigo passa a perguntar por
+# `fluxo`, ninguem casa, e o padrao `true` RELIGA o que ele tinha desligado. Quem
+# desligou descobre pelo comportamento. Por isso o alias, e por isso esta secao.
+flx() { # config_projeto_json, config_usuario_json
+  mkdir -p "$SBP/lar/.rainforest" "$SBP/proj/.rainforest"
+  printf '%s' "$1" > "$SBP/proj/.rainforest/config.json"
+  printf '%s' "$2" > "$SBP/lar/.rainforest/config.json"
+  RFM_ROOT="$SB/lar/.rainforest" node -e "
+    const { resolverConfig } = require('$SRC_WIN/hooks/lib/config.cjs');
+    const r = resolverConfig({ projeto: '$PROJ' });
+    process.stdout.write(r.valores.fluxo + ' ' + r.origem.fluxo);
+  " 2>&1
+}
+igual "so o nome antigo: o valor dele vale"   "false usuario (esteira)" "$(flx '{}' '{"esteira":false}')"
+igual "so o nome antigo, no projeto"          "false projeto (esteira)" "$(flx '{"esteira":false}' '{}')"
+igual "nome novo vence o antigo no MESMO arquivo" "true usuario" "$(flx '{}' '{"fluxo":true,"esteira":false}')"
+igual "nome novo no projeto vence antigo do usuario" "true projeto" "$(flx '{"fluxo":true}' '{"esteira":false}')"
+igual "nenhum dos dois: padrao"               "true padrao"  "$(flx '{}' '{}')"
+
+# MUTACAO — tirar o alias tem de fazer o primeiro caso RELIGAR sozinho. Sem isto,
+# a secao inteira passaria verde num codigo que nunca leu o nome antigo.
+cp "$SRC/hooks/lib/config.cjs" "$SBP/config-sem-alias.cjs"
+node - "$SBP/config-sem-alias.cjs" <<'JS'
+const fs = require("fs");
+const alvo = process.argv[2];
+const antes = fs.readFileSync(alvo, "utf8");
+const de = "  fluxo: ['esteira'],";
+if (!antes.includes(de)) throw new Error("ancora do alias sumiu");
+fs.writeFileSync(alvo, antes.replace(de, ""), "utf8");
+JS
+mkdir -p "$SBP/lar/.rainforest" "$SBP/proj/.rainforest"
+printf '{}' > "$SBP/proj/.rainforest/config.json"
+printf '{"esteira":false}' > "$SBP/lar/.rainforest/config.json"
+SEM="$(RFM_ROOT="$SB/lar/.rainforest" node -e "
+  const { resolverConfig } = require('$SB/config-sem-alias.cjs');
+  process.stdout.write(String(resolverConfig({ projeto: '$PROJ' }).valores.fluxo));
+" 2>&1)"
+if [ "$SEM" = "true" ]; then
+  ok=$((ok+1)); echo "  ok   sem o alias, quem tinha 'esteira:false' seria RELIGADO (o alias e load-bearing)"
+else
+  falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — nao e o alias que segura (veio '$SEM')"
+fi
+rm -f "$SBP/proj/.rainforest/config.json" "$SBP/lar/.rainforest/config.json"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

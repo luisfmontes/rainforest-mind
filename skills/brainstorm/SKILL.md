@@ -1,11 +1,11 @@
 ---
 name: brainstorm
-description: Use quando um trabalho novo entra na esteira do rainforest-mind e ainda não tem design aprovado — primeiro estágio, antes de qualquer plano ou código.
+description: Use quando um trabalho novo entra no fluxo do rainforest-mind e ainda não tem design aprovado — primeiro estágio, antes de qualquer plano ou código.
 ---
 
 # Brainstorm
 
-Primeiro estágio da esteira (design → plano → executar → revisar → verificar
+Primeiro estágio do fluxo (design → plano → executar → revisar → verificar
 → fechar). É o `/grill` renomeado e promovido: mesmo método, mais o registro de estado
 nas duas pontas. O método está inteiro aqui — não se dilui.
 
@@ -102,7 +102,7 @@ node scripts/estado.cjs marcar --slug <slug> --estagio design --status aprovado 
 
 Só depois que ele confirmou o entendimento. Marcar `aprovado` sem a palavra
 dele é assinar a aprovação no lugar de quem aprova — e é o que destranca o
-`plano`, o `executar` e todo o resto da esteira.
+`plano`, o `executar` e todo o resto do fluxo.
 
 ### Trava de formato
 
@@ -110,6 +110,6 @@ A partir de 2026-08-13, `node scripts/estado.cjs marcar --estagio design --statu
 
 ---
 
-Estágio 1 da esteira rainforest-mind. Método adaptado de `grilling`/`grill-me`
+Estágio 1 do fluxo rainforest-mind. Método adaptado de `grilling`/`grill-me`
 (mattpocock/skills, MIT). Chamado por `/brainstorm` — era `/grill` até
 2026-08-11.

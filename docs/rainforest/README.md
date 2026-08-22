@@ -1,6 +1,6 @@
-# Artefatos da esteira
+# Artefatos do fluxo
 
-A esteira tem sete estágios — **brainstorm → plano → executar → revisar →
+O fluxo tem sete estágios — **brainstorm → plano → executar → revisar →
 verificar → fechar**, mais **limpar** — e cada um deixa rastro. Este diretório
 guarda os três artefatos que **outra pessoa precisa receber** para pegar o
 trabalho no meio. Fora do git fica só a tagarelice da execução.
@@ -17,7 +17,7 @@ documentos nascem lá, ao lado do código que eles descrevem.
 |---|---|---|---|
 | Design aprovado | `<projeto>/docs/rainforest/design/<slug>.md` | **sim** | `brainstorm` |
 | Plano de implementação | `<projeto>/docs/rainforest/planos/<slug>.md` | **sim** | `plano` |
-| Estado da esteira | `<projeto>/docs/rainforest/estado/<slug>.json` | **sim** | `scripts/estado.cjs` |
+| Estado do fluxo | `<projeto>/docs/rainforest/estado/<slug>.json` | **sim** | `scripts/estado.cjs` |
 | Worktrees do trabalho | `<projeto>/.claude/worktrees/` | não | `executar`, limpos pelo `limpar` |
 
 O **slug** é `AAAA-MM-DD-<tema-em-kebab>` e é o mesmo nas três linhas — é ele
@@ -26,7 +26,7 @@ que amarra design, plano e estado ao mesmo trabalho.
 ### Por que no projeto e não aqui
 
 Existem **dois** tipos de estado, e confundi-los foi um defeito real, pego em
-2026-08-11 antes de a esteira rodar em campo:
+2026-08-11 antes de o fluxo rodar em campo:
 
 | | Onde mora | Por quê |
 |---|---|---|
@@ -65,7 +65,7 @@ roda `proximo --slug <slug>` e sabe exatamente onde parou e por quê.
 
 Porque são as duas coisas que alguém vai querer contestar depois: *por que
 decidimos assim* e *o que combinamos fazer*. Decisão sem histórico vira decisão
-refeita — e refazer decisão fechada é o desperdício que a esteira existe para
+refeita — e refazer decisão fechada é o desperdício que o fluxo existe para
 cortar.
 
 O design registra **o porquê de cada decisão**, não só o resultado. O plano

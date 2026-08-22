@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Estado da esteira — máquina de estados persistida, uma por trabalho.
+ * Estado do fluxo — máquina de estados persistida, uma por trabalho.
  *
- * Por que existe: a esteira tem sete estágios e nenhuma memória entre sessões. Sem um
+ * Por que existe: o fluxo tem sete estágios e nenhuma memória entre sessões. Sem um
  * arquivo, "em que pé está isso?" se responde relendo a conversa — que é justamente o
  * que a compactação leva embora, e o que a sessão nova não tem.
  *
@@ -91,14 +91,14 @@ const STATUS_EXECUCAO = ['pendente', 'parcial', 'ok', 'reprovado'];
 // Quem exige quem. `exigir` recusa se qualquer pré-requisito não estiver fechado.
 const PRE_REQUISITOS = {
   arqueologia: [], // estagio zero: nunca e barrado, e nunca barra ninguem
-  design: [], // primeiro da esteira: não depende de nada, mas precisa constar aqui —
+  design: [], // primeiro do fluxo: não depende de nada, mas precisa constar aqui —
               // esta tabela é também a lista de estágios que `marcar` aceita
   plano: ['design'],
   executar: ['design', 'plano'],
   revisar: ['executar'],
   verificar: ['revisar'],
   fechar: ['verificar'],
-  limpar: [], // manutenção, não é estágio da esteira: nunca bloqueia
+  limpar: [], // manutenção, não é estágio do fluxo: nunca bloqueia
 };
 
 const FECHADO = { design: 'aprovado', plano: 'ok' };
@@ -275,24 +275,200 @@ function verificarMutacao(slug, snapshot_anterior) {
   }
 }
 
+// ------------------------------ catraca de mutacao no executar (D6, D9, D10)
+//
+// Em 2026-08-21 um agente cumpriu todos os criterios falsificaveis do briefing,
+// colou saida de mutacao no relato e entregou 49/49 verde — e a trava que ele
+// dizia ter invertido recusava o caminho feliz SEMPRE. A bateria nao sabia
+// falhar, e o fechamento nao cobrava prova nenhuma disso: a catraca era prosa
+// no briefing, e prosa e conferida pelo mesmo agente que ela deveria barrar. E
+// a oitava vez que a familia "bateria que nao sabe falhar" volta ao acervo.
+//
+// Por isso o campo `mutacao` e cobrado AQUI, no `marcar --estagio executar
+// --status ok`, que e o gargalo unico por onde o fluxo inteiro ja passa —
+// mesma forma da trava de `base`/`head` do `revisar`, logo abaixo, e mesmo
+// exit 2. O que o agente declara no campo nao vira verdade por ser declarado:
+// quem re-roda a mutacao e a integracao (D8). O campo existe para que exista
+// alvo declarado a re-rodar, e para que "esqueci" pare de sair 0.
+//
+// Duas frouxidoes deliberadas, cada uma fechando um jeito conhecido de a trava
+// morrer no primeiro dia de pressa:
+//
+//   1. `n/a` com `motivo` e resposta aceita (D9). Tarefa de doc nao tem
+//      comportamento a inverter, e exigir o impossivel cria o habito do
+//      `--forcar`, que mata a trava inteira em vez de uma tarefa. Sem `motivo`,
+//      porem, `n/a` seria so a palavra mais curta ate o exit 0 — por isso ele e
+//      obrigatorio, e vazio nao conta.
+//
+//   2. Slug cujo `executar` foi aberto antes desta mudanca avisa e passa (D10).
+//      Mesmo desenho do backstop acima: travar retroativo quebra fluxo em
+//      andamento. O sinal de "aberto depois" e o marcador que o `exigir
+//      --estagio executar` passa a gravar no proprio arquivo de estado, no
+//      lugar onde o `revisar` ja grava o instantaneo dele — e o unico registro
+//      que existe do momento em que o estagio abriu.
+//
+//   3. A lista `mutacao` deve cobrir TODAS as tarefas do plano, sem duplicatas,
+//      e sem citar tarefas inexistentes. Plano que nao existe em disco avisa
+//      e passa (fail-open).
+
+/** Resultados aceitos. `verde` fica de fora de proposito: bateria que continua
+ *  verde com o conserto invertido e exatamente o defeito que a catraca mede. */
+const RESULTADOS_MUTACAO = ['vermelho', 'n/a'];
+
+const COMO_DECLARAR = "Ex.: --json '{\"tarefas_ok\":2,\"tarefas\":2,\"mutacao\":["
+  + '{"tarefa":1,"resultado":"vermelho"},'
+  + '{"tarefa":4,"resultado":"n/a","motivo":"tarefa so reescreve doc"}]}\'';
+
+/**
+ * Números das tarefas do plano, ou `null` quando não há plano em disco.
+ *
+ * A leitura é EMPRESTADA do `conferir-fluxo.cjs`, não reescrita aqui. A primeira
+ * versão desta checagem tinha parser próprio, e ele divergia em duas coisas: não
+ * pulava cerca de código (`### 3.` dentro de um bloco ``` virava tarefa fantasma) e
+ * não normalizava CRLF. O efeito era o pior possível para uma trava — recusar
+ * entrega correta, com uma mensagem apontando uma tarefa que não existe.
+ */
+function extrairNumerosTarefa(slug) {
+  const arquivo_plano = path.join(RAIZ, 'docs', 'rainforest', 'planos', `${slug}.md`);
+  if (!fs.existsSync(arquivo_plano)) {
+    return null; // plano nao existe
+  }
+
+  // Emprestar leitura cria uma dependência, e dependência que falta não pode
+  // derrubar o `marcar`: o resto deste arquivo avisa e libera quando não consegue
+  // medir, e uma exceção aqui recusaria por motivo que não é do usuário.
+  let extrairTarefas, lerMarkdown;
+  try {
+    ({ extrairTarefas, lerMarkdown } = require('./conferir-fluxo.cjs'));
+  } catch (e) {
+    console.warn(`aviso: nao consegui carregar o leitor de plano (${e.message}) — a lista de mutacao nao sera cruzada com o plano.`);
+    return new Set();
+  }
+
+  const conteudo = lerMarkdown(arquivo_plano);
+  if (conteudo === null) return null;
+
+  return new Set(extrairTarefas(conteudo).map((t) => t.numero));
+}
+
+/** @returns {string|null} mensagem de recusa, ou null se passou/nao se aplica */
+function verificarCatracaMutacao(slug, bloco, estado, extra) {
+  // Recusar para slug novo se a catraca nao foi armada
+  if (!bloco || !bloco.catraca_mutacao) {
+    const criado_em = estado && estado.criado_em;
+    // Comparacao de strings date: YYYY-MM-DD
+    // '2026-08-20' < '2026-08-21' < '2026-08-22', etc.
+    const eh_novo = criado_em && criado_em >= '2026-08-21';
+
+    if (eh_novo) {
+      // Slug criado EM ou DEPOIS de 2026-08-21 (quando a catraca nasceu),
+      // mas sem ter passado por exigir para armar a catraca.
+      // Se nao passou por exigir, nao tem como armar.
+      return "RECUSADO: catraca de mutacao nao armada para " + slug + ". "
+        + "Este 'executar' precisa ter passado por 'exigir --estagio executar' "
+        + "para armar a catraca. Rode novamente: node scripts/estado.cjs exigir "
+        + "--slug " + slug + " --estagio executar";
+    } else {
+      // Slug criado ANTES de 2026-08-21, ou sem data gravada (muito antigo).
+      // D10: nao ha como saber se foi aberto antes ou depois, entao avisa.
+      console.warn(`aviso: catraca de mutacao nao armada para ${slug} — este 'executar' foi aberto antes dela existir. Fechando sem prova de que as baterias sabem falhar. Rode 'exigir --estagio executar' antes de executar.`);
+      return null;
+    }
+  }
+
+  const lista = extra && extra.mutacao;
+  if (!Array.isArray(lista) || lista.length === 0) {
+    return "RECUSADO: fechar 'executar' exige 'mutacao' no --json: uma lista, um item por tarefa do plano.\n"
+      + 'Sem ela, "a bateria passou" nao distingue bateria que testa de bateria que nao\n'
+      + 'sabe falhar, e foi assim que uma entrega quebrada saiu daqui 49/49 verde.\n'
+      + COMO_DECLARAR;
+  }
+
+  // Extrair numeros de tarefas do plano
+  const nums_plano = extrairNumerosTarefa(slug);
+
+  // Se nao ha plano em disco, avisa e passa
+  if (nums_plano === null) {
+    console.warn(`aviso: plano nao encontrado para ${slug} — nao ha como validar lista de mutacao contra plano. Prosseguindo sem validacao.`);
+  } else if (nums_plano.size > 0) {
+    // Validar lista contra plano
+    const nums_lista = new Set();
+    const tarefas_vistas = new Set();
+
+    // Cooletar todos os numeros declarados na lista
+    for (const item of lista) {
+      const tarefa_num = item.tarefa;
+      if (tarefas_vistas.has(tarefa_num)) {
+        return `RECUSADO: tarefa ${tarefa_num} aparece mais de uma vez na lista 'mutacao'.\n`
+          + `Cada tarefa deve aparecer exatamente uma vez.\n${COMO_DECLARAR}`;
+      }
+      tarefas_vistas.add(tarefa_num);
+      nums_lista.add(tarefa_num);
+    }
+
+    // Validar que todas as tarefas da lista existem no plano
+    for (const num of nums_lista) {
+      if (!nums_plano.has(num)) {
+        return `RECUSADO: lista 'mutacao' cita tarefa ${num} que nao existe no plano.\n`
+          + `Tarefas do plano: ${Array.from(nums_plano).sort((a, b) => a - b).join(', ')}.\n${COMO_DECLARAR}`;
+      }
+    }
+
+    // Validar que todas as tarefas do plano estao na lista
+    for (const num of nums_plano) {
+      if (!nums_lista.has(num)) {
+        return `RECUSADO: lista 'mutacao' nao cobre tarefa ${num} do plano.\n`
+          + `Tarefas do plano: ${Array.from(nums_plano).sort((a, b) => a - b).join(', ')}.\n`
+          + `Tarefas na lista: ${Array.from(nums_lista).sort((a, b) => a - b).join(', ')}.\n${COMO_DECLARAR}`;
+      }
+    }
+  }
+
+  // Validar estrutura de cada item
+  for (let i = 0; i < lista.length; i += 1) {
+    const item = lista[i];
+    const onde = `mutacao[${i}]`;
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      return `RECUSADO: ${onde} nao e um objeto.\n${COMO_DECLARAR}`;
+    }
+    if (item.tarefa === undefined || item.tarefa === null || String(item.tarefa).trim() === '') {
+      return `RECUSADO: ${onde} nao diz de que 'tarefa' e. E um item por tarefa do plano, e sem\n`
+        + `o numero nao da para cruzar a lista com o plano nem re-rodar a mutacao certa.\n${COMO_DECLARAR}`;
+    }
+    const resultado = item.resultado === undefined ? '(ausente)' : String(item.resultado);
+    if (!RESULTADOS_MUTACAO.includes(item.resultado)) {
+      return `RECUSADO: ${onde} (tarefa ${item.tarefa}) tem resultado '${resultado}' — use ${RESULTADOS_MUTACAO.join(' ou ')}.\n`
+        + `Bateria que fica VERDE com o conserto invertido nao prova nada: ela nao sabe\n`
+        + `falhar, e por isso 'verde' nao e resposta aceita aqui.\n${COMO_DECLARAR}`;
+    }
+    if (item.resultado === 'n/a' && (typeof item.motivo !== 'string' || item.motivo.trim() === '')) {
+      return `RECUSADO: ${onde} (tarefa ${item.tarefa}) e 'n/a' sem 'motivo'.\n`
+        + `'n/a' aceito sem justificativa e so a palavra mais curta ate o exit 0, e a\n`
+        + `catraca inteira morre na primeira pressa. Diga por que nao ha o que inverter.\n${COMO_DECLARAR}`;
+    }
+  }
+
+  return null;
+}
+
 // ------------------------------------------------- trava de fechamento (D5)
 //
-// Fechar estágio roda a checagem correspondente do `conferir-esteira.cjs`, e
+// Fechar estágio roda a checagem correspondente do `conferir-fluxo.cjs`, e
 // recusa com exit 2 se ela falhar. O motivo de a trava morar AQUI, e não numa
 // instrução dentro da skill: enquanto o veredito for redigido pelo mesmo agente
 // que ele deveria travar, ele não trava nada — é o mesmo argumento que fez este
 // arquivo existir, e em 2026-08-13 ele se provou três vezes numa tarde, com um
 // agente aprovando a própria entrega em três rodadas seguidas.
 //
-// `marcar` é o gargalo único por onde a esteira inteira já passa, e já recusava
+// `marcar` é o gargalo único por onde o fluxo inteiro já passa, e já recusava
 // com exit 2 por pré-requisito aberto. A trava nova é a mesma forma, não
 // mecanismo novo.
 //
 // **Só age quando o arquivo alvo existe.** Projeto que não usa design/plano não
 // pode passar a ser barrado por uma checagem sobre arquivos que ele nunca teve —
 // isso é invariante, não detalhe: a trava foi desenhada para apertar quem já
-// está na esteira, nunca para tornar a esteira obrigatória.
-const CHECADOR = path.join(__dirname, 'conferir-esteira.cjs');
+// está no fluxo, nunca para tornar o fluxo obrigatório.
+const CHECADOR = path.join(__dirname, 'conferir-fluxo.cjs');
 
 function docDe(tipo, slug) {
   return path.join(RAIZ, 'docs', 'rainforest', tipo, `${slug}.md`);
@@ -414,6 +590,14 @@ function main() {
         gravar(slug, estado);
         console.log(`snapshot capturado: HEAD=${snapshot.head.substring(0, 7)}, ${snapshot.caminhos_sujos.length} arquivo(s) sujo(s)`);
       }
+      // Armar a catraca ao exigir executar. Este marcador e o unico jeito de
+      // distinguir estagio aberto DEPOIS da catraca de estagio que ja estava em
+      // andamento quando ela nasceu — o segundo so avisa (D10).
+      if (estagio === 'executar') {
+        estado.executar = { ...estado.executar, catraca_mutacao: hoje() };
+        gravar(slug, estado);
+        console.log("catraca armada: fechar este 'executar' com 'ok' vai exigir o campo 'mutacao' no --json.");
+      }
       return;
     }
     // Exit 2, não 1: é a mesma convenção dos gates deste repo, e o que separa
@@ -465,6 +649,16 @@ function main() {
         const recusa_mutacao = verificarMutacao(slug, estado.revisar && estado.revisar.snapshot);
         if (recusa_mutacao) {
           console.error(recusa_mutacao);
+          process.exit(2);
+        }
+      }
+      // Só o fechamento `ok` cobra: `parcial` e `reprovado` nao passam por aqui,
+      // e nao podem passar — quem entregou meio fluxo ou reprovou nao deve
+      // ficar sem como registrar isso.
+      if (estagio === 'executar') {
+        const recusa_catraca = verificarCatracaMutacao(slug, estado.executar, estado, extra);
+        if (recusa_catraca) {
+          console.error(recusa_catraca);
           process.exit(2);
         }
       }

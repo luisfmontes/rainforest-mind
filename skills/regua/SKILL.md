@@ -109,7 +109,7 @@ Três saídas, e só três:
   é resultado, não fracasso: descobrir em uma rodada que a régua não discrimina
   é o barato desta skill.
 
-Esta skill **não é estágio da esteira** e não aparece no `estado.cjs` — é
+Esta skill **não é estágio do fluxo** e não aparece no `estado.cjs` — é
 invocável sozinha, como `divergir`, `semear` e `arqueologia`. Ela também pode
 alimentar o `plano`: a régua vira o critério de aceite da tarefa que não tinha
 nenhum, e aí o `verificar` volta a ter o que rodar.

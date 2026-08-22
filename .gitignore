@@ -16,7 +16,7 @@ vigia.config.json
 .ideias.lock
 *.jsonl.tmp
 
-# O estado da esteira e VERSIONADO (docs/rainforest/estado/) - e por ele que outro
+# O estado do fluxo e VERSIONADO (docs/rainforest/estado/) - e por ele que outro
 # dev retoma a atividade. Fora do git fica so a tagarelice: worktrees e temporarios.
 
 # Os DADOS do usuario sairam do repo em 2026-08-11 e moram em ~/.rainforest.

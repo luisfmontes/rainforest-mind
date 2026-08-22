@@ -450,38 +450,38 @@ fi
 rm -rf "$MUTCD" "$HOMEDIVERGE"
 
 echo
-echo "== a esteira diz de QUEM e a branch, nao so que ha trabalho aberto (Issue #25) =="
+echo "== o fluxo diz de QUEM e a branch, nao so que ha trabalho aberto (Issue #25) =="
 # 2026-08-20: esta checagem imprimiu `1 trabalho(s) em aberto -> revisar` 20 minutos
 # antes de a sessao commitar naquela mesma branch — que era de outra sessao. Ela tinha
 # as duas metades do fato (o slug e `<data>-<branch>`) e publicou so uma, enquadrada
-# como estado da esteira. A correcao custou `rebase --onto` + `push --force-with-lease`
+# como estado do fluxo. A correcao custou `rebase --onto` + `push --force-with-lease`
 # porque a outra sessao ja tinha commitado por cima.
-ESTEIRA="$SBP/repo-com-esteira"
-rm -rf "$ESTEIRA"; mkdir -p "$ESTEIRA/docs/rainforest/estado"
-git init -q -b branch-de-outro "$ESTEIRA"
-( cd "$ESTEIRA" && git config user.email t@t && git config user.name t \
+FLUXO="$SBP/repo-com-fluxo"
+rm -rf "$FLUXO"; mkdir -p "$FLUXO/docs/rainforest/estado"
+git init -q -b branch-de-outro "$FLUXO"
+( cd "$FLUXO" && git config user.email t@t && git config user.name t \
   && echo x > x.txt && git add . && git commit -qm inicial ) >/dev/null 2>&1
 printf '{"slug":"2026-01-02-branch-de-outro","titulo":"trabalho de outra sessao","design":{"status":"aprovado"}}' \
-  > "$ESTEIRA/docs/rainforest/estado/2026-01-02-branch-de-outro.json"
+  > "$FLUXO/docs/rainforest/estado/2026-01-02-branch-de-outro.json"
 
-esteira_em() { # $1 = branch onde por o HEAD antes de medir
-  ( cd "$ESTEIRA" \
+fluxo_em() { # $1 = branch onde por o HEAD antes de medir
+  ( cd "$FLUXO" \
     && { git checkout -q "$1" 2>/dev/null || git checkout -q -b "$1"; } \
-    && CLAUDE_CONFIG_DIR="$SBP/cfg" RFM_ROOT="$SBP/dados" RFM_ESTADO_ROOT="$ESTEIRA" \
+    && CLAUDE_CONFIG_DIR="$SBP/cfg" RFM_ROOT="$SBP/dados" RFM_ESTADO_ROOT="$FLUXO" \
        node "$SRC/scripts/saude.cjs" --json 2>/dev/null ) | node -e "
       let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{
-        const a=JSON.parse(d).find(x=>x.item==='esteira');
+        const a=JSON.parse(d).find(x=>x.item==='fluxo');
         console.log(a ? a.nivel+' '+a.detalhe : 'ausente');
       })"
 }
 
-L1="$(esteira_em branch-de-outro)"
+L1="$(fluxo_em branch-de-outro)"
 checa "L. na branch do trabalho, avisa que ela tem dono" "aviso" "ESTA branch tem dono" "$L1"
 checa "L. e nomeia o trabalho e o estagio"               "aviso" "2026-01-02-branch-de-outro  -> plano" "$L1"
 
 # O outro lado, que e o que impede o aviso de virar ruido permanente: fora da branch
 # do trabalho, ele NAO aparece. Sem esta metade, bastaria imprimir o texto sempre.
-L2="$(esteira_em uma-branch-minha)"
+L2="$(fluxo_em uma-branch-minha)"
 if echo "$L2" | grep -qF "ESTA branch tem dono"; then
   falhou=$((falhou+1)); echo "  FALHA L. noutra branch, o aviso de dono apareceu assim mesmo"
 else
@@ -506,7 +506,7 @@ echo "== a BATERIA tambem nao pode depender do nome da propria pasta =="
 # nome do MANIFESTO, e nas pastas com outro nome ele nao achava nada e respondia
 # "rodando direto do repo" — o ramo de sucesso. As 5 falhas pareciam defeito de
 # codigo. Vermelho que nao e defeito e pior que vermelho nenhum: ensina a ignorar
-# a bateria, e a esteira deste plugin roda em pasta de outro nome por desenho.
+# a bateria, e o fluxo deste plugin roda em pasta de outro nome por desenho.
 #
 # Custo: esta secao roda a bateria inteira mais uma vez (~20s). E o preco de provar
 # o veredito na bancada de verdade em vez de deduzi-lo do fonte.

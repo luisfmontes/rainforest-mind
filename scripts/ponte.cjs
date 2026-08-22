@@ -25,7 +25,7 @@
  * ter ponte:
  *
  *   atravessa (e MECANISMO, porque e comando de shell com exit code):
- *     scripts/estado.cjs exigir ......... o gate da esteira, exit 2
+ *     scripts/estado.cjs exigir ......... o gate do fluxo, exit 2
  *     scripts/conferir-entrega.cjs ...... a checagem da regra 12, exit 1
  *     scripts/conferir-relatorio.cjs .... anonimizacao antes de publicar, exit 2
  *     scripts/ideias.cjs ................ porta unica de escrita do ideias.jsonl
@@ -152,7 +152,7 @@ function raizDeDados() {
 
 function corpo(agente, nucleo, dados) {
   const cli = [
-    ["`node <plugin>/scripts/estado.cjs exigir --slug <slug> --estagio <e>`", "gate da esteira — **exit 2** quando o estagio anterior nao fechou"],
+    ["`node <plugin>/scripts/estado.cjs exigir --slug <slug> --estagio <e>`", "gate do fluxo — **exit 2** quando o estagio anterior nao fechou"],
     ["`node <plugin>/scripts/conferir-entrega.cjs --worktree <wt> --base <hash>`", "a checagem da regra 12 sobre entrega de agente — **exit 1** se reprovar"],
     ["`node <plugin>/scripts/conferir-relatorio.cjs <arquivo>`", "**exit 2** se o texto tem telefone, e-mail, caminho de home ou credencial"],
     // Sem `|` dentro do code span: em tabela markdown ele quebra a celula.
