@@ -306,6 +306,10 @@ function verificarMutacao(slug, snapshot_anterior) {
 //      --estagio executar` passa a gravar no proprio arquivo de estado, no
 //      lugar onde o `revisar` ja grava o instantaneo dele — e o unico registro
 //      que existe do momento em que o estagio abriu.
+//
+//   3. A lista `mutacao` deve cobrir TODAS as tarefas do plano, sem duplicatas,
+//      e sem citar tarefas inexistentes. Plano que nao existe em disco avisa
+//      e passa (fail-open).
 
 /** Resultados aceitos. `verde` fica de fora de proposito: bateria que continua
  *  verde com o conserto invertido e exatamente o defeito que a catraca mede. */
@@ -315,11 +319,52 @@ const COMO_DECLARAR = "Ex.: --json '{\"tarefas_ok\":2,\"tarefas\":2,\"mutacao\":
   + '{"tarefa":1,"resultado":"vermelho"},'
   + '{"tarefa":4,"resultado":"n/a","motivo":"tarefa so reescreve doc"}]}\'';
 
+/** Extrai números de tarefas do arquivo de plano. Retorna um Set de números. */
+function extrairNumerosTarefa(slug) {
+  const arquivo_plano = path.join(RAIZ, 'docs', 'rainforest', 'planos', `${slug}.md`);
+  if (!fs.existsSync(arquivo_plano)) {
+    return null; // plano nao existe
+  }
+
+  const conteudo = fs.readFileSync(arquivo_plano, 'utf8');
+  const linhas = conteudo.split('\n');
+  const numeros = new Set();
+
+  for (const linha of linhas) {
+    // Tarefa comeca com ### <n>. <nome>
+    const match = linha.match(/^### (\d+)\./);
+    if (match) {
+      const numero = parseInt(match[1], 10);
+      numeros.add(numero);
+    }
+  }
+
+  return numeros.size > 0 ? numeros : new Set();
+}
+
 /** @returns {string|null} mensagem de recusa, ou null se passou/nao se aplica */
-function verificarCatracaMutacao(slug, bloco, extra) {
+function verificarCatracaMutacao(slug, bloco, estado, extra) {
+  // Recusar para slug novo se a catraca nao foi armada
   if (!bloco || !bloco.catraca_mutacao) {
-    console.warn(`aviso: catraca de mutacao nao armada para ${slug} — este 'executar' foi aberto antes dela existir. Fechando sem prova de que as baterias sabem falhar. Rode 'exigir --estagio executar' antes de executar.`);
-    return null;
+    const criado_em = estado && estado.criado_em;
+    // Comparacao de strings date: YYYY-MM-DD
+    // '2026-08-20' < '2026-08-21' < '2026-08-22', etc.
+    const eh_novo = criado_em && criado_em >= '2026-08-21';
+
+    if (eh_novo) {
+      // Slug criado EM ou DEPOIS de 2026-08-21 (quando a catraca nasceu),
+      // mas sem ter passado por exigir para armar a catraca.
+      // Se nao passou por exigir, nao tem como armar.
+      return "RECUSADO: catraca de mutacao nao armada para " + slug + ". "
+        + "Este 'executar' precisa ter passado por 'exigir --estagio executar' "
+        + "para armar a catraca. Rode novamente: node scripts/estado.cjs exigir "
+        + "--slug " + slug + " --estagio executar";
+    } else {
+      // Slug criado ANTES de 2026-08-21, ou sem data gravada (muito antigo).
+      // D10: nao ha como saber se foi aberto antes ou depois, entao avisa.
+      console.warn(`aviso: catraca de mutacao nao armada para ${slug} — este 'executar' foi aberto antes dela existir. Fechando sem prova de que as baterias sabem falhar. Rode 'exigir --estagio executar' antes de executar.`);
+      return null;
+    }
   }
 
   const lista = extra && extra.mutacao;
@@ -330,6 +375,47 @@ function verificarCatracaMutacao(slug, bloco, extra) {
       + COMO_DECLARAR;
   }
 
+  // Extrair numeros de tarefas do plano
+  const nums_plano = extrairNumerosTarefa(slug);
+
+  // Se nao ha plano em disco, avisa e passa
+  if (nums_plano === null) {
+    console.warn(`aviso: plano nao encontrado para ${slug} — nao ha como validar lista de mutacao contra plano. Prosseguindo sem validacao.`);
+  } else if (nums_plano.size > 0) {
+    // Validar lista contra plano
+    const nums_lista = new Set();
+    const tarefas_vistas = new Set();
+
+    // Cooletar todos os numeros declarados na lista
+    for (const item of lista) {
+      const tarefa_num = item.tarefa;
+      if (tarefas_vistas.has(tarefa_num)) {
+        return `RECUSADO: tarefa ${tarefa_num} aparece mais de uma vez na lista 'mutacao'.\n`
+          + `Cada tarefa deve aparecer exatamente uma vez.\n${COMO_DECLARAR}`;
+      }
+      tarefas_vistas.add(tarefa_num);
+      nums_lista.add(tarefa_num);
+    }
+
+    // Validar que todas as tarefas da lista existem no plano
+    for (const num of nums_lista) {
+      if (!nums_plano.has(num)) {
+        return `RECUSADO: lista 'mutacao' cita tarefa ${num} que nao existe no plano.\n`
+          + `Tarefas do plano: ${Array.from(nums_plano).sort((a, b) => a - b).join(', ')}.\n${COMO_DECLARAR}`;
+      }
+    }
+
+    // Validar que todas as tarefas do plano estao na lista
+    for (const num of nums_plano) {
+      if (!nums_lista.has(num)) {
+        return `RECUSADO: lista 'mutacao' nao cobre tarefa ${num} do plano.\n`
+          + `Tarefas do plano: ${Array.from(nums_plano).sort((a, b) => a - b).join(', ')}.\n`
+          + `Tarefas na lista: ${Array.from(nums_lista).sort((a, b) => a - b).join(', ')}.\n${COMO_DECLARAR}`;
+      }
+    }
+  }
+
+  // Validar estrutura de cada item
   for (let i = 0; i < lista.length; i += 1) {
     const item = lista[i];
     const onde = `mutacao[${i}]`;
@@ -561,7 +647,7 @@ function main() {
       // e nao podem passar — quem entregou meia esteira ou reprovou nao deve
       // ficar sem como registrar isso.
       if (estagio === 'executar') {
-        const recusa_catraca = verificarCatracaMutacao(slug, estado.executar, extra);
+        const recusa_catraca = verificarCatracaMutacao(slug, estado.executar, estado, extra);
         if (recusa_catraca) {
           console.error(recusa_catraca);
           process.exit(2);

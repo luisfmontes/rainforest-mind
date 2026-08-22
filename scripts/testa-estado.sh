@@ -76,11 +76,12 @@ echo "== 3. parcial nao conta como fechado =="
 $E iniciar --slug t2 >/dev/null
 $E marcar --slug t2 --estagio design --status aprovado >/dev/null
 $E marcar --slug t2 --estagio plano  --status ok >/dev/null
+$E exigir --slug t2 --estagio executar >/dev/null
 $E marcar --slug t2 --estagio executar --status parcial --json '{"tarefas_ok":3,"tarefas":5}' >/dev/null
 igual "retomada aponta o estagio parcial" "executar" "$($E proximo --slug t2)"
 esperado "revisar recusado com executar parcial" 2 $E exigir --slug t2 --estagio revisar
 # reprovado tambem nao fecha — revisao que reprovou nao libera o proximo
-$E marcar --slug t2 --estagio executar --status ok >/dev/null
+$E marcar --slug t2 --estagio executar --status ok --json '{"mutacao":[{"tarefa":1,"resultado":"vermelho"}]}' >/dev/null
 $E marcar --slug t2 --estagio revisar --status reprovado >/dev/null
 esperado "verificar recusado com revisar reprovado" 2 $E exigir --slug t2 --estagio verificar
 igual "retomada aponta o reprovado" "revisar" "$($E proximo --slug t2)"
@@ -189,7 +190,8 @@ echo "  preparando caso 1..."
 $E_REPO iniciar --slug backstop-1 >/dev/null
 $E_REPO marcar --slug backstop-1 --estagio design --status aprovado >/dev/null
 $E_REPO marcar --slug backstop-1 --estagio plano --status ok >/dev/null
-$E_REPO marcar --slug backstop-1 --estagio executar --status ok >/dev/null
+$E_REPO exigir --slug backstop-1 --estagio executar >/dev/null
+$E_REPO marcar --slug backstop-1 --estagio executar --status ok --json '{"mutacao":[{"tarefa":1,"resultado":"vermelho"}]}' >/dev/null
 # Executar rodaria no test-repo, vamos simular que criou algo capturando snapshot
 esperado "backstop: exigir revisar captura snapshot" 0 $E_REPO exigir --slug backstop-1 --estagio revisar
 esperado "backstop: marcar ok passa quando nada mudou" 0 $E_REPO marcar --slug backstop-1 --estagio revisar --status ok --json '{"achados":0,"base":"HEAD","head":"HEAD"}'
@@ -199,7 +201,8 @@ echo "  preparando caso 2..."
 $E_REPO iniciar --slug backstop-2 >/dev/null
 $E_REPO marcar --slug backstop-2 --estagio design --status aprovado >/dev/null
 $E_REPO marcar --slug backstop-2 --estagio plano --status ok >/dev/null
-$E_REPO marcar --slug backstop-2 --estagio executar --status ok >/dev/null
+$E_REPO exigir --slug backstop-2 --estagio executar >/dev/null
+$E_REPO marcar --slug backstop-2 --estagio executar --status ok --json '{"mutacao":[{"tarefa":1,"resultado":"vermelho"}]}' >/dev/null
 esperado "backstop-2: exigir revisar" 0 $E_REPO exigir --slug backstop-2 --estagio revisar
 # Fazer um commit novo (simula outro dev commitando)
 (cd "$SBP/test-repo" && echo "mudanca" >> initial.txt && git add . && git commit -m "novo commit" >/dev/null)
@@ -212,7 +215,8 @@ echo "  preparando caso 3..."
 $E_REPO iniciar --slug backstop-3 >/dev/null
 $E_REPO marcar --slug backstop-3 --estagio design --status aprovado >/dev/null
 $E_REPO marcar --slug backstop-3 --estagio plano --status ok >/dev/null
-$E_REPO marcar --slug backstop-3 --estagio executar --status ok >/dev/null
+$E_REPO exigir --slug backstop-3 --estagio executar >/dev/null
+$E_REPO marcar --slug backstop-3 --estagio executar --status ok --json '{"mutacao":[{"tarefa":1,"resultado":"vermelho"}]}' >/dev/null
 esperado "backstop-3: exigir revisar" 0 $E_REPO exigir --slug backstop-3 --estagio revisar
 # Modificar um arquivo rastreado (simula revisor editando)
 (cd "$SBP/test-repo" && echo "arquivo modificado" >> initial.txt)
@@ -227,7 +231,8 @@ echo "  preparando caso 4..."
 $E_REPO iniciar --slug backstop-4 >/dev/null
 $E_REPO marcar --slug backstop-4 --estagio design --status aprovado >/dev/null
 $E_REPO marcar --slug backstop-4 --estagio plano --status ok >/dev/null
-$E_REPO marcar --slug backstop-4 --estagio executar --status ok >/dev/null
+$E_REPO exigir --slug backstop-4 --estagio executar >/dev/null
+$E_REPO marcar --slug backstop-4 --estagio executar --status ok --json '{"mutacao":[{"tarefa":1,"resultado":"vermelho"}]}' >/dev/null
 esperado "backstop-4: exigir revisar com arvore suja" 0 $E_REPO exigir --slug backstop-4 --estagio revisar
 # Nao fazer mudanca nenhuma, sujeira pre-existente nao reprova
 esperado "backstop-4: marcar ok passa com sujeira preexistente" 0 $E_REPO marcar --slug backstop-4 --estagio revisar --status ok --json '{"achados":0,"base":"HEAD","head":"HEAD"}'
@@ -243,7 +248,8 @@ echo "  preparando caso 5..."
 $E_REPO iniciar --slug backstop-5 >/dev/null
 $E_REPO marcar --slug backstop-5 --estagio design --status aprovado >/dev/null
 $E_REPO marcar --slug backstop-5 --estagio plano --status ok >/dev/null
-$E_REPO marcar --slug backstop-5 --estagio executar --status ok >/dev/null
+$E_REPO exigir --slug backstop-5 --estagio executar >/dev/null
+$E_REPO marcar --slug backstop-5 --estagio executar --status ok --json '{"mutacao":[{"tarefa":1,"resultado":"vermelho"}]}' >/dev/null
 (cd "$SBP/test-repo" && git add -A && git commit -qm "estado versionado" >/dev/null 2>&1)
 esperado "backstop-5: arvore limpa e estado versionado" 0 $E_REPO exigir --slug backstop-5 --estagio revisar
 esperado "backstop-5: marcar ok passa (o exigir sujou o proprio estado)" 0 $E_REPO marcar --slug backstop-5 --estagio revisar --status ok --json '{"achados":0,"base":"HEAD","head":"HEAD"}'
@@ -274,7 +280,8 @@ echo "  preparando caso 6..."
 $E_REPO iniciar --slug backstop-6 >/dev/null
 $E_REPO marcar --slug backstop-6 --estagio design --status aprovado >/dev/null
 $E_REPO marcar --slug backstop-6 --estagio plano --status ok >/dev/null
-$E_REPO marcar --slug backstop-6 --estagio executar --status ok >/dev/null
+$E_REPO exigir --slug backstop-6 --estagio executar >/dev/null
+$E_REPO marcar --slug backstop-6 --estagio executar --status ok --json '{"mutacao":[{"tarefa":1,"resultado":"vermelho"}]}' >/dev/null
 esperado "backstop-6: exigir com dois rastreados sujos" 0 $E_REPO exigir --slug backstop-6 --estagio revisar
 # O primeiro volta ao conteudo commitado (sem git destrutivo — so reescreve).
 # Ninguem sujou nada novo: bravo.txt so subiu da linha 2 para a linha 1.
@@ -342,20 +349,43 @@ prep_catraca cat-6
 esperado "parcial nao exige o campo"    0 $E marcar --slug cat-6 --estagio executar --status parcial   --json '{"tarefas_ok":3,"tarefas":5}'
 esperado "reprovado nao exige o campo"  0 $E marcar --slug cat-6 --estagio executar --status reprovado
 
-# D10: travar retroativo quebra esteira em andamento. Sem o marcador do `exigir`
-# nao ha como saber se o estagio abriu antes ou depois da catraca — entao avisa.
+# A: Slug criado agora, sem exigir, recusa (exit 2) — nao avisa
 prep_sem_catraca cat-7
-esperado "executar aberto antes da catraca fecha mesmo assim" 0 \
+esperado "executar novo sem exigir recusa" 2 \
   $E marcar --slug cat-7 --estagio executar --status ok --json '{"tarefas_ok":2,"tarefas":2}'
-prep_sem_catraca cat-8
-aviso=$($E marcar --slug cat-8 --estagio executar --status ok --json '{"tarefas_ok":2,"tarefas":2}' 2>&1)
-igual "e passar calado seria pior que travar" "sim" \
-  "$(case "$aviso" in *aviso:*catraca*) echo sim;; *) echo nao;; esac)"
+recusa=$($E marcar --slug cat-7 --estagio executar --status ok --json '{"tarefas_ok":2,"tarefas":2}' 2>&1)
+igual "a recusa nomeia 'exigir'" "sim" \
+  "$(case "$recusa" in *exigir*) echo sim;; *) echo nao;; esac)"
+
+# D10: Estado antigo (antes de 2026-08-21), sem exigir, avisa + passa
+# Para simular, cria estado manualmente com data antiga
+# Nota: DIR_ESTADO = path.join(RAIZ, 'docs', 'rainforest', 'estado'), entao RFM_ESTADO_ROOT=$SBP/catraca
+# procura em $SBP/catraca/docs/rainforest/estado/
+mkdir -p "$SBP/catraca/docs/rainforest/estado"
+cat > "$SBP/catraca/docs/rainforest/estado/cat-old.json" <<'EOF'
+{
+  "slug": "cat-old",
+  "titulo": "cat-old",
+  "criado_em": "2026-08-20",
+  "arqueologia": { "status": "pendente" },
+  "design": { "status": "aprovado", "em": "2026-08-20" },
+  "plano": { "status": "ok", "em": "2026-08-20" },
+  "executar": { "status": "pendente" },
+  "revisar": { "status": "pendente" },
+  "verificar": { "status": "pendente" },
+  "fechar": { "status": "pendente" }
+}
+EOF
+esperado "estado antigo sem catraca avisa e passa" 0 \
+  $E marcar --slug cat-old --estagio executar --status ok --json '{"tarefas_ok":2,"tarefas":2}'
+aviso=$($E marcar --slug cat-old --estagio executar --status ok --json '{"tarefas_ok":2,"tarefas":2}' 2>&1)
+igual "o aviso menciona abertura anterior" "sim" \
+  "$(case "$aviso" in *antes*) echo sim;; *) echo nao;; esac)"
 
 echo
 echo "== 12. MUTACAO — sem a recusa da catraca, o caso 11 para de pegar =="
 cp scripts/estado.cjs scripts/estado-catraca-mutante.cjs
-sed -i "s|function verificarCatracaMutacao(slug, bloco, extra) {|function verificarCatracaMutacao(slug, bloco, extra) { return null; // MUTADO|" scripts/estado-catraca-mutante.cjs
+sed -i "s|function verificarCatracaMutacao(slug, bloco, estado, extra) {|function verificarCatracaMutacao(slug, bloco, estado, extra) { return null; // MUTADO|" scripts/estado-catraca-mutante.cjs
 prep_catraca cat-mut
 saida=$(node scripts/estado-catraca-mutante.cjs marcar --slug cat-mut --estagio executar --status ok --json '{"tarefas_ok":2,"tarefas":2}' 2>&1); mut=$?
 if [ "$mut" = "0" ]; then
