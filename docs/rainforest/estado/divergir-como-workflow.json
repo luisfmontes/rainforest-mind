@@ -137,7 +137,13 @@
     ]
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "tarefas": 12,
+    "rodada_de_prova": "wf_503029af-899",
+    "comando": "12 criterios rodados contra o artefato real, sem pipe",
+    "saida": "T1 node -e das quatro chaves -> ok, exit 0 (contra a rodada NOVA; a antiga reprovaria, devolve o nome aposentado). T2/T4/T7-T12 testa-divergencias.sh exit 0, 46 ok; testa-conferir-divergencia.sh exit 0, 22 ok. T3 grep secao -> 1, grep seis frames -> 6. T5 divergir-frames 2, tres secoes de julgamento 1 cada, divergencias.cjs 2. T6 conferir-divergencia.cjs no rastro novo -> exit 0, isolamento intacto; abrir grava status aberta com 23 ideias. T7 payload forjado -> exit 1. T8 as duas medidas convivem com valores distintos. T9 fechar em linha legada -> exit 1, linha fica aberta. T10 reparar -> exit 0, valor original preservado contra o palpite do stdin, origem mantida. T11 e T12 cobertos pelas asserceos novas da bateria.",
+    "nota": "a prova da T6 rodou em RFM_ROOT temporario de proposito: a rodada foi disparada para satisfazer o portao, nao porque o usuario pediu uma divergencia, e grava-la no acervo real contaminaria o teste de falsificacao com uma decisao que nunca existiu. O acervo segue com 1 linha.",
+    "em": "2026-08-23"
   },
   "fechar": {
     "status": "pendente"
