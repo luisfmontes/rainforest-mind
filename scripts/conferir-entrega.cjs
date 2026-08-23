@@ -164,6 +164,7 @@ const OPCOES = {
   commit: { dest: "commit", padrao: "HEAD" },
   "repo-principal": { dest: "repo_principal" },
   "head-antes": { dest: "head_antes" },
+  "sujo-antes": { dest: "sujo_antes" },
   "permite-sujeira": { dest: "permite_sujeira", flag: true },
   paralelo: { dest: "paralelo", flag: true },
   // Repetivel: o briefing costuma prometer mais de um arquivo por tarefa.
@@ -216,6 +217,36 @@ function arquivosAgente(c, wt, base, commit) {
   return new Set(linhas.map((l) => l.replace(/\\/g, "/").toLowerCase()));
 }
 
+/** Extrai conjunto de caminhos sujos ANTES do despacho (do arquivo porcelain). */
+function caminhosSujoAntes(arquivo) {
+  try {
+    const conteudo = fs.readFileSync(arquivo, "utf8").trim();
+    if (!conteudo) return new Set();
+    const linhas = conteudo.split(/\r?\n/).filter((l) => l.length > 0);
+    return new Set(linhas.map((l) => {
+      // Descarta 3 primeiros caracteres do status, trata rename ("A -> B")
+      let p = l.slice(3);
+      const partes = p.split(" -> ");
+      p = partes.length > 1 ? partes[1] : partes[0];
+      // Remove aspas se o porcelain escapou a linha (caracteres especiais)
+      if (p.startsWith('"') && p.endsWith('"')) {
+        p = p.slice(1, -1);
+        // Desescapa sequências de escape
+        p = p.replace(/\\(.)/g, (m, c) => {
+          if (c === "n") return "\n";
+          if (c === "t") return "\t";
+          if (c === '"') return '"';
+          if (c === "\\") return "\\";
+          return c;
+        });
+      }
+      return p.replace(/\\/g, "/").toLowerCase();
+    }));
+  } catch (e) {
+    return null; // arquivo inexistente ou ilegível
+  }
+}
+
 function main() {
   const a = parseArgs(process.argv.slice(2));
   const c = new Conferencia();
@@ -224,6 +255,16 @@ function main() {
   if (!ehDir(wt)) {
     process.stderr.write(`erro: worktree '${wt}' nao existe\n`);
     return 2;
+  }
+
+  // Valida --sujo-antes antes de tudo
+  if (a.sujo_antes) {
+    try {
+      fs.readFileSync(a.sujo_antes, "utf8");
+    } catch (e) {
+      process.stderr.write(`erro: --sujo-antes arquivo '${a.sujo_antes}' inexistente ou ilegível\n`);
+      return 2;
+    }
   }
 
   // ------------------------------------------------------------------
@@ -311,7 +352,44 @@ function main() {
     const [, stp] = c.mostra(principal, "status", "--porcelain");
     const linhasStp = stp ? stp.split(/\r?\n/).filter((l) => l.length > 0) : [];
 
-    if (a.paralelo && linhasStp.length) {
+    // Processa sujo-antes se fornecido (validado na main())
+    if (a.sujo_antes) {
+      const sujoAntes = caminhosSujoAntes(a.sujo_antes);
+      // Extrai caminhos sujos AGORA
+      const caminhosSujos = linhasStp.map((l) => {
+        let p = l.slice(3);
+        const partes = p.split(" -> ");
+        p = partes.length > 1 ? partes[1] : partes[0];
+        // Remove aspas se escapado
+        if (p.startsWith('"') && p.endsWith('"')) {
+          p = p.slice(1, -1);
+          p = p.replace(/\\(.)/g, (m, c) => {
+            if (c === "n") return "\n";
+            if (c === "t") return "\t";
+            if (c === '"') return '"';
+            if (c === "\\") return "\\";
+            return c;
+          });
+        }
+        return p.replace(/\\/g, "/").toLowerCase();
+      });
+
+      // Calcula diferença: quais caminhos são NOVOS (não estavam antes)?
+      const novo = caminhosSujos.filter((p) => !sujoAntes.has(p));
+
+      if (novo.length) {
+        c.falha(
+          `${novo.length} arquivo(s) sujo(s) NEW no principal (nao estava antes): ` +
+            novo.slice(0, 5).join(", ")
+        );
+      } else if (linhasStp.length) {
+        c.aviso(
+          `${linhasStp.length} alteracao(oes) no principal, mas todas ja estavam sujas antes do despacho`
+        );
+      } else {
+        c.ok("diretorio principal intacto");
+      }
+    } else if (a.paralelo && linhasStp.length) {
       // Modo cruzamento: extrai arquivos que o agente tocou
       const arquivos = arquivosAgente(c, wt, a.base, a.commit);
       const caminhosSujos = linhasStp.map((l) => {
@@ -334,9 +412,9 @@ function main() {
         );
       }
     } else if (linhasStp.length) {
-      c.falha(
-        `${linhasStp.length} alteracao(oes) no diretorio principal do usuario — o agente ` +
-          "devia estar isolado no worktree. Foi a falha N1 de 2026-08-08."
+      c.aviso(
+        "sem `--sujo-antes` esta metade nao trava; a sujeira abaixo pode ser do agente ou ja estar aqui — nao da para distinguir. " +
+        `Captura o porcelain ANTES do despacho e passa com --sujo-antes para ativar esta trava.`
       );
     } else {
       c.ok("diretorio principal intacto");
