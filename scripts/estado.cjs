@@ -350,6 +350,14 @@ function verificarMutacao(slug, snapshot_anterior) {
  *  verde com o conserto invertido e exatamente o defeito que a catraca mede. */
 const RESULTADOS_MUTACAO = ['vermelho', 'n/a'];
 
+/** A `fixture` passou a ser exigida em 2026-08-23 (Issue #53, P2). Fluxo cuja
+ *  catraca foi armada ANTES disso tem plano escrito sem o campo: exigir dele
+ *  seria travar retroativo, que e o que a D10 evita para a catraca em si. Divida
+ *  herdada AVISA e passa; armada depois, derruba. Mesmo idioma do
+ *  `GANCHO_EXIGIDO_DESDE` do `ideias.cjs`, e pelo mesmo motivo: anistia que
+ *  esconde vira esquecimento, entao o aviso sai em toda execucao. */
+const FIXTURE_EXIGIDA_DESDE = '2026-08-23';
+
 const COMO_DECLARAR = "Ex.: --json '{\"tarefas_ok\":2,\"tarefas\":2,\"mutacao\":["
   + '{"tarefa":1,"resultado":"vermelho","fixture":"nome-do-caso-de-teste"},'
   + '{"tarefa":4,"resultado":"n/a","motivo":"tarefa so reescreve doc"}]}\'';
@@ -411,6 +419,7 @@ function verificarCatracaMutacao(slug, bloco, estado, extra) {
     }
   }
 
+  const exigeFixture = String(bloco.catraca_mutacao || "") >= FIXTURE_EXIGIDA_DESDE;
   const lista = extra && extra.mutacao;
   if (!Array.isArray(lista) || lista.length === 0) {
     return "RECUSADO: fechar 'executar' exige 'mutacao' no --json: uma lista, um item por tarefa do plano.\n"
@@ -482,10 +491,18 @@ function verificarCatracaMutacao(slug, bloco, estado, extra) {
         + `catraca inteira morre na primeira pressa. Diga por que nao ha o que inverter.\n${COMO_DECLARAR}`;
     }
     if (item.resultado === 'vermelho' && (typeof item.fixture !== 'string' || item.fixture.trim() === '')) {
+      if (!exigeFixture) {
+        console.warn(
+          `aviso: ${onde} (tarefa ${item.tarefa}) e 'vermelho' sem 'fixture' — divida herdada, ` +
+          `a catraca deste fluxo foi armada em ${bloco.catraca_mutacao} e o campo passou a ser ` +
+          `exigido em ${FIXTURE_EXIGIDA_DESDE}. Passa, mas a mutacao fica sem o caso que a exercita.`
+        );
+        continue;
+      }
       return `RECUSADO: ${onde} (tarefa ${item.tarefa}) e 'vermelho' sem 'fixture'.\n`
-        + `Bateria que fica vermelha com a mutacao invertida prova que ela sabe falhar, mas sem\n`
-        + `nomear qual caso de teste exercita a mutacao, nao ha como re-rodar durante a integracao.\n`
-        + `Diga qual caso exercita o comportamento que foi invertido.\n${COMO_DECLARAR}`;
+        + `Bateria vermelha prova que ela sabe falhar, mas nao prova que ficou vermelha PELO\n`
+        + `motivo certo: sem o caso nomeado, vermelho vindo de outro lugar passa por prova, e\n`
+        + `veredito certo pelo motivo errado e pior que veredito errado.\n${COMO_DECLARAR}`;
     }
   }
 

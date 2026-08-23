@@ -436,6 +436,16 @@ cat > "$SBP/catraca/docs/rainforest/estado/cat-old-fixture.json" <<'EOF'
   "fechar": { "status": "pendente" }
 }
 EOF
+# D10: catraca ARMADA ANTES da exigencia de fixture — divida herdada, avisa e passa.
+# O caso acima cobre o fluxo SEM catraca nenhuma; este cobre o que armou ontem e
+# tem plano escrito sem o campo. Travar esse quebraria fluxo em andamento.
+prep_catraca cat-armada-antes
+node -e 'const f=process.argv[1];const j=JSON.parse(require("fs").readFileSync(f,"utf8"));j.executar.catraca_mutacao="2026-08-22";require("fs").writeFileSync(f,JSON.stringify(j,null,2));' "$SBP/catraca/docs/rainforest/estado/cat-armada-antes.json"
+esperado "catraca armada antes da exigencia: vermelho sem fixture avisa e passa" 0 \
+  $E marcar --slug cat-armada-antes --estagio executar --status ok --json '{"tarefas_ok":2,"tarefas":2,"mutacao":[{"tarefa":1,"resultado":"vermelho"}]}'
+aviso_herdada=$($E marcar --slug cat-armada-antes --estagio executar --status ok --json '{"tarefas_ok":2,"tarefas":2,"mutacao":[{"tarefa":1,"resultado":"vermelho"}]}' 2>&1)
+igual "o aviso diz que e divida herdada" "sim" \
+  "$(case "$aviso_herdada" in *herdada*) echo sim;; *) echo nao;; esac)"
 esperado "estado antigo com vermelho sem fixture avisa e passa" 0 \
   $E marcar --slug cat-old-fixture --estagio executar --status ok --json '{"tarefas_ok":2,"tarefas":2,"mutacao":[{"tarefa":1,"resultado":"vermelho"}]}'
 aviso_old=$($E marcar --slug cat-old-fixture --estagio executar --status ok --json '{"tarefas_ok":2,"tarefas":2,"mutacao":[{"tarefa":1,"resultado":"vermelho"}]}' 2>&1)
