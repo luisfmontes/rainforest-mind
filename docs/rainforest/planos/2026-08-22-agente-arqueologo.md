@@ -81,7 +81,7 @@ do agente. A bateria daquela mutação passa a ser a da tarefa 7. Emendar é o
 
 ### 6. Rodada real do arqueologo contra fonte legado [tipo: teste]
 atende: D5, D7, D10
-arquivos: `docs/rainforest/mapas/`
+arquivos: `docs/rainforest/mapas/COBERTURA.md`, `docs/rainforest/mapas/IAG67M12/*.md`
 depende de: 1, 3, 4, 5
 paralela: nao
 mutacao: n/a
