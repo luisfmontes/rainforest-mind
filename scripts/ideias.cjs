@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 "use strict";
-/* Port de scripts/ideias.py — escrita segura no ideias.jsonl, sem dependencia
- * externa (so biblioteca padrao do Node). Mesma interface de linha de comando,
- * mesmo comportamento, mesmos codigos de saida do original em Python.
+/* Nasceu como port do antigo gemeo em Python (aposentado em 2026-08-22, depois
+ * de provar que o port nao perdeu garantia nenhuma) — escrita segura no
+ * ideias.jsonl, sem dependencia externa (so biblioteca padrao do Node). Mesma
+ * interface de linha de comando, mesmo comportamento, mesmos codigos de saida
+ * do original em Python.
  *
- * As oito garantias do original (ver scripts/ideias.py para o porque de cada
- * uma) sao preservadas aqui:
- *   1. Trava de arquivo (mesmo nome .ideias.lock do Python, coexistem)
+ * As oito garantias do port original sao preservadas aqui:
+ *   1. Trava de arquivo (mesmo nome .ideias.lock que o Python usava)
  *   2. Releitura do arquivo VIVO no instante da escrita
  *   3. Backup antes de qualquer escrita
  *   4. Escrita em temporario + rename atomico
@@ -41,9 +42,8 @@ const TRAVA = path.join(RAIZ, ".ideias.lock"); // mesmo nome que o Python usa
 
 // `gancho` e obrigatorio so aqui, no .cjs — regra 6 da skill exige que toda
 // ideia plantada leve o gatilho concreto de retorno, e ate aqui isso vivia sem
-// validacao dentro da prosa do `ao_colher`. O ideias.py fica congelado no
-// contrato antigo de proposito (ele so existe para provar as oito garantias do
-// port); o gancho e recurso novo, so do .cjs.
+// validacao dentro da prosa do `ao_colher`. O gancho e exigencia que nunca
+// existiu no gemeo em Python (aposentado em 2026-08-22) — nasceu direto aqui.
 const CAMPOS_OBRIGATORIOS = ["id", "titulo", "descricao", "contexto", "projeto", "gancho"];
 const CAMPOS_PROIBIDOS_NO_INPUT = [
   "status", "plantada_em", "colhida_em", "unificada_em", "unificada_em_id",

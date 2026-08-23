@@ -93,10 +93,7 @@ node scripts/ideias.cjs normalizar-projetos [--mapear id=slug,...] [--aplicar]
 
 Node porque o plugin é instalado por outra gente: os hooks já exigem Node, e o
 Claude Code não garante Python (a lista oficial de dependências extras tem
-`ripgrep` e mais nada). O `scripts/ideias.py` continua no repo como gêmeo — a
-mesma bateria roda contra os dois (`IDEIAS="python scripts/ideias.py" bash
-scripts/testa-ideias.sh`), e é assim que se prova que o port não perdeu nada.
-Escrita nova vai pelo `.cjs`.
+`ripgrep` e mais nada). Escrita nova vai pelo `.cjs`.
 
 **O `conferir` separa dívida herdada de problema novo, e só falha no segundo.**
 `gancho` passou a ser cobrado em 2026-08-11 (`GANCHO_EXIGIDO_DESDE`, no

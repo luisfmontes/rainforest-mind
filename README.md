@@ -472,15 +472,18 @@ exigiam `conferir-entrega.py` na integração de toda entrega de agente, e
 não tinha a trava da regra 12 — tinha o texto dela. Trava que não trava é o único
 defeito que este repo não aceita, então o script virou `conferir-entrega.cjs`.
 
-Três scripts ficam como **gêmeos** dos ports, e não como legado morto:
+Dois scripts ficam como **gêmeos** dos ports, e não como legado morto:
 
 | Gêmeo | O que ele prova |
 |---|---|
-| `ideias.py` | a mesma bateria roda contra os dois — `IDEIAS="python scripts/ideias.py" bash scripts/testa-ideias.sh` — e é isso que mostra que o port não perdeu nenhuma das oito garantias |
-| `conferir-entrega.py` | idem, com `CONFERIR="python scripts/conferir-entrega.py" bash scripts/testa-conferir-entrega.sh` — **23 casos**, e as falhas encenadas (as seis dos relatórios mais o arquivo que some por `.gitignore`) reprovam nos dois |
+| `conferir-entrega.py` | a mesma bateria roda contra os dois — `CONFERIR="python scripts/conferir-entrega.py" bash scripts/testa-conferir-entrega.sh` — **23 casos**, e as falhas encenadas (as seis dos relatórios mais o arquivo que some por `.gitignore`) reprovam nos dois |
 | `jornada.py` | os dois medem o mesmo dia e devolvem os mesmos números, lacuna por lacuna |
 
-Apagar o gêmeo seria apagar a única prova de que o port está certo.
+Apagar o gêmeo seria apagar a única prova de que o port está certo. O
+terceiro gêmeo — o do `ideias.cjs` — foi aposentado em 2026-08-22: a bateria
+gêmea tinha parado de provar equivalência (saía 53 ok / 5 falhas, pulando 5
+seções inteiras como "recurso novo só do .cjs") e virou manutenção sem
+retorno.
 
 **Nenhuma regra depende de plugin de terceiro.** A regra 8 media a jornada com
 um plugin de cliente até 2026-08-11; hoje mede com `node scripts/jornada.cjs`,

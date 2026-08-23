@@ -17,8 +17,9 @@
  * mensagens HUMANAS consecutivas do usuario: cada prompt dele prova que ele estava
  * ali naquele instante. Lacuna acima do corte e pausa, nao trabalho, e sai da
  * conta. O script original (jornada.py) ficava preso a Python, que nao esta mais
- * no caminho de execucao de nada neste plugin desde que o ideias.py foi portado
- * para .cjs — este port fecha essa dependencia.
+ * no caminho de execucao de nada neste plugin desde que o gemeo do ideias foi
+ * portado para .cjs (2026-08-11; esse gemeo foi aposentado em 2026-08-22) —
+ * este port fecha essa dependencia.
  *
  * DUAS ARMADILHAS, as duas medidas no repo em 2026-08-09 (ver jornada.py)
  * -------------------------------------------------------------------------
