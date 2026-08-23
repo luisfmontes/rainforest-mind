@@ -168,8 +168,13 @@ Para decidir se cala, o radar depende de dois dados, ambos opcionais:
   mesmo que a mesma clareira esteja viva em outra janela.
 
 - **`expediente` no `config.json`** — dias da semana e horário de trabalho.
-  Forma: `"expediente": {"dias": [1,2,3,4,5], "de": "08:00", "ate": "18:00"}`.
-  Dias usa a convenção de `Date.getDay()` — 0 = domingo, 1 = segunda, etc.
+  Forma de uma faixa só (continua valendo): `"expediente": {"dias": [1,2,3,4,5],
+  "de": "08:00", "ate": "18:00"}`. Forma de N faixas, para expediente com
+  intervalo (ex.: almoço): `"expediente": {"dias": [1,2,3,4,5], "faixas":
+  [{"de": "08:00", "ate": "12:00"}, {"de": "14:00", "ate": "18:00"}]}` — com
+  `faixas`, o horário entre 12:00 e 14:00 deixa de contar como expediente.
+  Dias usa a convenção de `Date.getDay()` — 0 = domingo, 1 = segunda, etc., e
+  vale para todas as faixas por igual (não há faixas diferentes por dia).
   O radar usa isso para saber se é hora de trabalho ou tempo pessoal.
   Sem este campo, o radar cobra desvio fora do horário, mesmo que o foco seja
   marcado como `[trabalho]`.
