@@ -35,7 +35,7 @@ mutacao:
   de: a faixa cinzenta `>= 0.4 && < 0.6` que devolve `indefinido`
   para: faixa vazia (`>= 0.4 && < 0.4`)
   bateria: `bash scripts/testa-triagem.sh`
-pronto quando: com um fonte na faixa cinzenta (`templates/OG/.../IAG04V02.tlpp`, 52,5% de repetição, 30 linhas/função) o script devolve `"classe":"indefinido"`, e com dois caminhos distintos de conteúdo idêntico (`receituario/BASE/.../nfesefaz.prw` e `receituario/COTRIEL/.../nfesefaz.prw`, 13.650 linhas cada) devolve o mesmo `hash` e marca o segundo como duplicata — provado por validação por mutação: trocando o corte de repetição de `0.5` para `0.99` em `triagem.cjs`, `bash scripts/testa-triagem.sh` sai diferente de 0; restaurado, sai 0.
+pronto quando: com um fonte na faixa cinzenta (`templates/EST/Laudos de Lotes/V - Validacao/IAG04V02.tlpp`, 52,5% de repetição, 30 linhas/função) o script devolve `"classe":"indefinido"`, e com dois caminhos distintos de conteúdo idêntico (`receituario/BASE/.../nfesefaz.prw` e `receituario/COTRIEL/.../nfesefaz.prw`, 13.650 linhas cada) devolve o mesmo `hash` e marca o segundo como duplicata — provado por validação por mutação: trocando o corte de repetição de `0.5` para `0.99` em `triagem.cjs`, `bash scripts/testa-triagem.sh` sai diferente de 0; restaurado, sai 0.
 
 ### 3. Método na skill: passadas, triagem, fatia intra-arquivo e fragmento [tipo: docs]
 atende: D2, D5, D6, D7, D8, D10

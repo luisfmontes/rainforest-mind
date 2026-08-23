@@ -144,6 +144,11 @@ fi
 # ---------------------------------------------------------------------------
 
 ok=0
+# Foto do estado da arvore ANTES de qualquer caso: a prova de que a bateria nao
+# deixou rastro e a COMPARACAO antes/depois. Exigir arvore limpa faz o teste
+# quebrar por sujeira alheia (um estado.json nao commitado), que e falha do
+# ambiente e nao da bateria.
+STATUS_ANTES=$(git status --short 2>/dev/null)
 falhou=0
 
 marca() {
@@ -330,12 +335,15 @@ echo
 echo "== fora do temp, nada muda =="
 # Prova de que a bateria nao escreveu nada fora do CAIXA temporario nem em
 # docs/rainforest/mapas/ do repositorio.
-STATUS_FORA=$(git status --short -- . ':!scripts/testa-arqueologo-ponta-a-ponta.sh' 2>/dev/null)
+STATUS_DEPOIS=$(git status --short 2>/dev/null)
+STATUS_FORA=$(diff <(printf '%s
+' "$STATUS_ANTES") <(printf '%s
+' "$STATUS_DEPOIS") | grep '^>' || true)
 if [ -z "$STATUS_FORA" ]; then
-  ok=$((ok + 1)); echo "  ok   git status limpo fora do proprio script da bateria"
+  ok=$((ok + 1)); echo "  ok   a bateria nao acrescentou nada ao git status"
 else
   falhou=$((falhou + 1))
-  echo "  FALHA git status sujo fora do script da bateria:"
+  echo "  FALHA a bateria acrescentou arquivo ao git status:"
   echo "$STATUS_FORA" | sed 's/^/       /'
 fi
 
