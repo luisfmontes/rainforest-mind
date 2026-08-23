@@ -427,6 +427,7 @@ function avaliarConfigDir(configDir, nome, versaoRepo) {
 function avaliarInstalacoes(instalacoes, versaoRepo, nome) {
   if (!instalacoes.length) return null;
   const atras = [];
+  const indeterminados = [];
   for (const i of instalacoes) {
     const partes = [];
     if (versaoRepo && i.version && i.version !== versaoRepo) {
@@ -438,15 +439,32 @@ function avaliarInstalacoes(instalacoes, versaoRepo, nome) {
       // interrogacao: vira a frase que descreve o que se sabe.
       if (n.status === 0 && Number(n.out) > 0) partes.push(`${n.out} commit(s) atras`);
       else if (n.status !== 0) partes.push(`instalada de um commit que este repo nao conhece (${i.gitCommitSha.slice(0, 7)})`);
+    } else {
+      // O campo simplesmente NAO EXISTE no registro (diferente de existir e nao
+      // bater — esse e o `else if` acima). Sem ele nao ha o que comparar: nao e
+      // "em dia" nem "atras", e um `ok` silencioso aqui e um `ok` que nao
+      // conferiu nada. Fica de fora do `atras` porque a frase "esta atras" seria
+      // uma afirmacao que este ramo nao tem base para fazer.
+      indeterminados.push(i.version ? `versao ${i.version} sem 'gitCommitSha' no registro` : `sem 'gitCommitSha' no registro`);
     }
     if (partes.length) atras.push(partes.join(', '));
   }
-  if (!atras.length) return null;
-  return {
-    nivel: 'aviso',
-    detalhe: `o que EXECUTA esta atras: ${[...new Set(atras)].join('; ')}`,
-    acao: `rode: claude plugin update ${nome} — e abra uma janela NOVA, o efeito nao alcanca as abertas`,
-  };
+  if (atras.length) {
+    return {
+      nivel: 'aviso',
+      detalhe: `o que EXECUTA esta atras: ${[...new Set(atras)].join('; ')}`,
+      acao: `rode: claude plugin update ${nome} — e abra uma janela NOVA, o efeito nao alcanca as abertas`,
+    };
+  }
+  if (indeterminados.length) {
+    return {
+      nivel: 'aviso',
+      detalhe: `nao da para saber se o que EXECUTA esta em dia: ${[...new Set(indeterminados)].join('; ')}`,
+      acao: 'o registro nao guarda o commit da instalacao para comparar com o repo — '
+        + 'confira a mao (data de instalacao, `claude plugin details`) se e uma copia recente',
+    };
+  }
+  return null;
 }
 
 function avaliarClone(instalado, nome) {

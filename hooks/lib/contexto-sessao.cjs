@@ -1093,8 +1093,20 @@ function pastasDoFoco(textoDoFoco) {
  * Devolver null (não sei) permite ao chamador distinguir entre "não é expediente"
  * (cobrança justificada) e "não tenho dado" (anúncio). A diferença impede silêncio.
  *
- * Expediente é dias da semana + faixa horária, sem feriado (D8). Forma esperada:
- * `{"dias": [1,2,3,4,5], "de": "08:00", "ate": "18:00"}`.
+ * Expediente é dias da semana + uma ou mais faixas horárias, sem feriado (D8).
+ * Forma antiga (uma faixa, ainda válida): `{"dias": [1,2,3,4,5], "de": "08:00",
+ * "ate": "18:00"}` — config já escrito no disco do usuário usa esta forma, e
+ * não pode virar erro nem mudar de significado.
+ * Forma nova (N faixas, ex.: intervalo de almoço): `{"dias": [1,2,3,4,5],
+ * "faixas": [{"de": "08:00", "ate": "12:00"}, {"de": "14:00", "ate": "18:00"}]}`.
+ * `faixas` foi escolhido em vez de `de`/`ate` aceitando array porque preserva
+ * o par de campos como está — zero ambiguidade sobre "de" é escalar ou lista — e
+ * porque config sem `faixas` cai direto no fallback de uma faixa só, sem exigir
+ * migração. `dias` continua único para todas as faixas (não há "faixas
+ * diferentes por dia"): ninguém pediu jornada assimétrica por dia da semana, e
+ * bifurcar o schema para isso hoje é escopo que a YAGNI recomenda cortar — se
+ * aparecer, o schema atual comporta virar um array de `{dias, faixas}` sem
+ * quebrar o que já existe.
  * Dias usa convenção de Date.getDay(): 0 = domingo, 1 = segunda, ..., 6 = sábado.
  *
  * @param {Date} agora timestamp a ser avaliado
@@ -1113,10 +1125,13 @@ function dentroDoExpediente(agora, config) {
   // Dia da semana não está na lista de trabalho.
   if (!Array.isArray(exp.dias) || !exp.dias.includes(dia)) return false;
 
-  // Hora está fora da faixa.
-  if (agoras < exp.de || agoras >= exp.ate) return false;
+  // N faixas (forma nova) ou uma faixa só de/ate (forma antiga, fallback).
+  const faixas = Array.isArray(exp.faixas) && exp.faixas.length
+    ? exp.faixas
+    : [{ de: exp.de, ate: exp.ate }];
 
-  return true;
+  // Dentro do expediente se a hora cair em QUALQUER faixa declarada.
+  return faixas.some((faixa) => agoras >= faixa.de && agoras < faixa.ate);
 }
 
 /**
