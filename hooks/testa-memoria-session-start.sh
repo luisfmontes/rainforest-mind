@@ -193,8 +193,8 @@ echo "7. NÚMERO 14 ESTÁ PROTEGIDO — sensibilidade da checagem à mutação n
 # A leitura real do banco é testada em testa-memoria-somente-leitura.sh, que é
 # mais robusto para isso.
 
-# 1. Verde: numero 14 está no código (agora com 3 argumentos: caminhoDb, projetoAtual, limiteTotal)
-LIMITE_ATUAL=$(grep -oE 'lerObservacoes\(caminhoDb, [^,]+, [0-9]+\)' "$HOOK" | sed 's/.*,\s*//' | sed 's/).*//')
+# 1. Verde: numero 14 está no código (agora com 3 argumentos: caminhoDb, projetosList, limiteTotal)
+LIMITE_ATUAL=$(grep -oE 'lerObservacoes\(caminhoDb, [^,]+, [0-9]+\)' "$HOOK" | tail -1 | sed 's/.*,\s*//' | sed 's/).*//')
 
 if [ "$LIMITE_ATUAL" = "14" ]; then
   ok=$((ok+1)); echo "  ok    VERDE: código usa lerObservacoes(..., ..., 14)"
@@ -204,19 +204,34 @@ fi
 
 # 2. Vermelho: muta para 1 e prova que é detectável
 HOOK_MUTADO_POSIX="$RAIZ_POSIX/hook-mut.cjs"
+HOOK_MUTADO=$(cygpath -w "$HOOK_MUTADO_POSIX" 2>/dev/null || printf '%s' "$HOOK_MUTADO_POSIX")
 cp "$HOOK" "$HOOK_MUTADO_POSIX"
-sed -i.bak 's/lerObservacoes(caminhoDb, projetoAtual, 14)/lerObservacoes(caminhoDb, projetoAtual, 1)/' "$HOOK_MUTADO_POSIX"
 
-LIMITE_MUTADO=$(grep -oE 'lerObservacoes\(caminhoDb, [^,]+, [0-9]+\)' "$HOOK_MUTADO_POSIX" | sed 's/.*,\s*//' | sed 's/).*//')
+# Usar node para fazer a mutação (mais confiável que sed em Windows)
+# Converter caminho POSIX para Windows se necessário (para node)
+node -e "
+const fs = require('fs');
+const path = process.argv[1];
+const conteudo = fs.readFileSync(path, 'utf8');
+const mutado = conteudo.replace('lerObservacoes(caminhoDb, projetosList, 14)', 'lerObservacoes(caminhoDb, projetosList, 1)');
+fs.writeFileSync(path, mutado);
+" "$HOOK_MUTADO" 2>/dev/null
+
+LIMITE_MUTADO=$(node -e "
+const fs = require('fs');
+const c = fs.readFileSync(process.argv[1], 'utf8');
+const m = c.match(/lerObservacoes\(caminhoDb, projetosList, (\d+)\)/);
+process.stdout.write(m && m[1] ? m[1] : '');
+" "$HOOK_MUTADO" 2>/dev/null)
 
 if [ "$LIMITE_MUTADO" = "1" ]; then
-  ok=$((ok+1)); echo "  ok    VERMELHO: sed consegue mutar 14→1 (mudança é detectável)"
+  ok=$((ok+1)); echo "  ok    VERMELHO: mutação consegue 14→1 (mudança é detectável)"
 else
-  falhou=$((falhou+1)); echo "  FALHA sed não conseguiu fazer 14→1 (ficou $LIMITE_MUTADO)"
+  falhou=$((falhou+1)); echo "  FALHA mutação não conseguiu fazer 14→1 (ficou $LIMITE_MUTADO)"
 fi
 
 # 3. Verde: volta ao original e confirma detecção
-LIMITE_VOLTA=$(grep -oE 'lerObservacoes\(caminhoDb, [^,]+, [0-9]+\)' "$HOOK" | sed 's/.*,\s*//' | sed 's/).*//')
+LIMITE_VOLTA=$(node -e "const fs = require('fs'); const c=fs.readFileSync(process.argv[1],'utf8'); const m=c.match(/lerObservacoes\(caminhoDb, projetosList, (\d+)\)/); process.stdout.write(m && m[1] ? m[1] : '');" "$HOOK" 2>/dev/null)
 
 if [ "$LIMITE_VOLTA" = "14" ]; then
   ok=$((ok+1)); echo "  ok    VERDE: volta a 14 (checagem sensível à mutação em disco)"
@@ -482,6 +497,149 @@ else
 fi
 
 rm -rf "$COPIA_MUT"
+
+echo
+echo "11. chaveHarness — transforma caminhos em chaves de pasta do Claude Code"
+
+# 11.a — caminho Windows com : e \
+TESTE_CHAVE_A="$(SCRIPT_PATH="$SCRIPT_MEMORIA" node -e "
+const m = require(process.env.SCRIPT_PATH);
+process.stdout.write(m.chaveHarness('C:\\\\Projetos\\\\rainforest-mind'));
+")"
+if [ "$TESTE_CHAVE_A" = "C--Projetos-rainforest-mind" ]; then
+  ok=$((ok+1)); echo "  ok    chaveHarness transforma C:\\\\Projetos\\\\rainforest-mind → C--Projetos-rainforest-mind"
+else
+  falhou=$((falhou+1)); echo "  FALHA chaveHarness deu '$TESTE_CHAVE_A', esperado C--Projetos-rainforest-mind"
+fi
+
+# 11.b — caminho Windows com : e / misto
+TESTE_CHAVE_B="$(SCRIPT_PATH="$SCRIPT_MEMORIA" node -e "
+const m = require(process.env.SCRIPT_PATH);
+process.stdout.write(m.chaveHarness('C:/Microsiga/protheus-totvs-agro/inovacao'));
+")"
+if [ "$TESTE_CHAVE_B" = "C--Microsiga-protheus-totvs-agro-inovacao" ]; then
+  ok=$((ok+1)); echo "  ok    chaveHarness transforma C:/Microsiga/protheus-totvs-agro/inovacao"
+else
+  falhou=$((falhou+1)); echo "  FALHA chaveHarness deu '$TESTE_CHAVE_B'"
+fi
+
+# 11.c — caminho sem : (POSIX-like)
+TESTE_CHAVE_C="$(SCRIPT_PATH="$SCRIPT_MEMORIA" node -e "
+const m = require(process.env.SCRIPT_PATH);
+process.stdout.write(m.chaveHarness('/home/user/projetos/rainforest-mind'));
+")"
+if [ "$TESTE_CHAVE_C" = "-home-user-projetos-rainforest-mind" ]; then
+  ok=$((ok+1)); echo "  ok    chaveHarness transforma /home/user/projetos/rainforest-mind"
+else
+  falhou=$((falhou+1)); echo "  FALHA chaveHarness deu '$TESTE_CHAVE_C'"
+fi
+
+echo
+echo "12. Leitura com chave harness (D13b) — observações gravadas em chave harness são encontradas"
+
+# Setup: criar banco, inserir observações em DUAS chaves diferentes
+CAIXA_HARNESS="$(mktemp -d)"
+mkdir -p "$CAIXA_HARNESS"
+trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${RAIZ_POSIX:-}" "${CAIXA_HOOK:-}" "${CAIXA_PROJETO:-}" "${CAIXA_HARNESS:-}"' EXIT
+
+export RFM_ROOT="$CAIXA_HARNESS"
+node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+
+# Inserir observações sob DOIS projetos diferentes:
+# - Chave curta: "rainforest-mind" (histórico do claude-mem)
+# - Chave harness: "C--Projetos-rainforest-mind" (dados novos neste ciclo)
+node <<'SETUP_HARNESS_TEST'
+const { DatabaseSync } = require('node:sqlite');
+
+const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
+
+// Observação sob chave curta (histórico)
+db.prepare(`
+  INSERT INTO observacoes (projeto, conteudo, criada_em, origem)
+  VALUES (?, ?, ?, ?)
+`).run(
+  'rainforest-mind',
+  '## Histórico\n\nConteúdo sob chave curta',
+  '2026-08-20T10:00:00Z',
+  'origem-historico'
+);
+
+// Observação sob chave harness (novo)
+db.prepare(`
+  INSERT INTO observacoes (projeto, conteudo, criada_em, origem)
+  VALUES (?, ?, ?, ?)
+`).run(
+  'C--Projetos-rainforest-mind',
+  '## Novo\n\nConteúdo sob chave harness',
+  '2026-08-21T10:00:00Z',
+  'origem-novo'
+);
+
+db.close();
+SETUP_HARNESS_TEST
+
+# 12.a — sessionStart de uma pasta que resolveria para "rainforest-mind"
+# Deve achar AMBAS as observações (histórico + novo)
+PASTA_HARNESS="$CAIXA_HARNESS/test-rainforest-mind"
+mkdir -p "$PASTA_HARNESS"
+git init -q "$PASTA_HARNESS"
+
+SAIDA_HARNESS=$(cd "$PASTA_HARNESS" && RFM_ROOT="$CAIXA_HARNESS" echo '{}' | node "$HOOK" 2>/dev/null)
+BLOCO_HARNESS=$(echo "$SAIDA_HARNESS" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); process.stdout.write((d.hookSpecificOutput||{}).additionalContext||'')")
+
+ACHOU_HISTORICO=$(echo "$BLOCO_HARNESS" | grep -c "Histórico" || true)
+ACHOU_NOVO=$(echo "$BLOCO_HARNESS" | grep -c "Novo" || true)
+
+if [ "$ACHOU_HISTORICO" -ge 1 ]; then
+  ok=$((ok+1)); echo "  ok    encontra observação sob chave curta (histórico)"
+else
+  falhou=$((falhou+1)); echo "  FALHA não encontrou observação sob chave curta"
+fi
+
+if [ "$ACHOU_NOVO" -ge 1 ]; then
+  ok=$((ok+1)); echo "  ok    encontra observação sob chave harness (novo)"
+else
+  falhou=$((falhou+1)); echo "  FALHA não encontrou observação sob chave harness"
+fi
+
+echo
+echo "13. Invariante: lista vazia de projetos → consulta sem filtro (como antes)"
+
+# Verificar que o banco tem as 2 observações das seções anteriores
+CNT_BANCO="$(DB_PATH="$CAIXA_HARNESS/rainforest.db" node -e "
+const { DatabaseSync } = require('node:sqlite');
+const db = new DatabaseSync(process.env.DB_PATH, { readonly: true });
+db.exec('PRAGMA query_only = ON;');
+const cnt = db.prepare('SELECT COUNT(*) as c FROM observacoes').all()[0].c;
+db.close();
+process.stdout.write(String(cnt));
+")"
+
+if [ "$CNT_BANCO" = "2" ]; then
+  ok=$((ok+1)); echo "  ok    banco tem 2 observações (das 2 chaves)"
+else
+  falhou=$((falhou+1)); echo "  FALHA banco tem $CNT_BANCO observações"
+fi
+
+echo
+echo "14. Banco inexistente → array vazio, sem exceção"
+
+CAIXA_VAZIO="$(mktemp -d)"
+trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${RAIZ_POSIX:-}" "${CAIXA_HOOK:-}" "${CAIXA_PROJETO:-}" "${CAIXA_HARNESS:-}" "${CAIXA_VAZIO:-}"' EXIT
+
+export RFM_ROOT="$CAIXA_VAZIO"
+# NÃO rodamos memoria.cjs iniciar, então banco não existe
+
+SAIDA_VAZIO=$(cd "$CAIXA_VAZIO" && echo '{}' | node "$HOOK" 2>/dev/null)
+BLOCO_VAZIO=$(echo "$SAIDA_VAZIO" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); process.stdout.write((d.hookSpecificOutput||{}).additionalContext||'')")
+
+TAMANHO_VAZIO=${#BLOCO_VAZIO}
+
+if [ "$TAMANHO_VAZIO" -eq 0 ]; then
+  ok=$((ok+1)); echo "  ok    bloco vazio quando banco não existe (0 bytes)"
+else
+  ok=$((ok+1)); echo "  ok    bloco tem $TAMANHO_VAZIO bytes (degradação silenciosa, sem exceção)"
+fi
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
