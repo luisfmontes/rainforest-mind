@@ -47,7 +47,16 @@ const TRAVA = path.join(RAIZ, ".divergencias.lock");
 // `critico_viu_ancoragem` — que nao existem em schema nenhum — foram
 // aceitos e gravados numa rodada real, so porque a denylist abaixo nao os
 // citava por nome).
-const CAMPOS_OBRIGATORIOS_ABRIR = ["id", "enunciado", "shortlist", "escolha_nao_obvia", "refutacao"];
+// D11: duas medidas de ancoragem, dois nomes. `critico_bateu_na_primeira_da_rodada`
+// vem do critico (mede se ELE convergiu para a primeira ideia da rodada) e e
+// exigido aqui, junto com `ideias` (as ideias cruas da fase 1) — sem elas uma
+// linha fechada nao e auditavel depois. `bate_com_a_primeira_ideia` continua
+// sendo so do `fechar`: mede se a escolha do USUARIO bate com o que ancorava
+// a conversa, e so o usuario sabe qual era.
+const CAMPOS_OBRIGATORIOS_ABRIR = [
+  "id", "enunciado", "shortlist", "escolha_nao_obvia", "refutacao",
+  "critico_bateu_na_primeira_da_rodada", "ideias",
+];
 // Campos que so o script carimba — quem manda pela entrada esta tentando
 // forjar o que e do proprio registrador (mesmo motivo do ideias.cjs). Fica
 // como mensagem de erro mais especifica; quem cair fora dela E fora da
@@ -63,6 +72,7 @@ const CAMPOS_PERMITIDOS_FECHAR = ["escolha", "bate_com_a_primeira_ideia"];
 const RE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ORDEM_CANONICA = [
   "id", "enunciado", "shortlist", "escolha_nao_obvia", "refutacao",
+  "critico_bateu_na_primeira_da_rodada", "ideias",
   "status", "aberta_em", "fechada_em", "escolha", "bate_com_a_primeira_ideia",
 ];
 
@@ -340,7 +350,15 @@ function validarEntradaAbrir(obj) {
         `so ${CAMPOS_OBRIGATORIOS_ABRIR.join(", ")} sao permitidos.`
     );
   }
-  const faltando = CAMPOS_OBRIGATORIOS_ABRIR.filter((c) => !obj[c]);
+  // `critico_bateu_na_primeira_da_rodada` (booleano) e `ideias` (array nao
+  // vazio) nao passam no crivo generico `!obj[c]`: `false` e falsy mas e uma
+  // resposta valida, e `[]` e truthy mas nao e uma lista de ideias de verdade.
+  // Cada um checa o proprio tipo; os demais seguem o crivo generico de sempre.
+  const faltando = CAMPOS_OBRIGATORIOS_ABRIR.filter((c) => {
+    if (c === "critico_bateu_na_primeira_da_rodada") return typeof obj[c] !== "boolean";
+    if (c === "ideias") return !Array.isArray(obj[c]) || obj[c].length === 0;
+    return !obj[c];
+  });
   if (faltando.length) {
     throw new Erro(`campo(s) obrigatorio(s) faltando ou vazio(s): ${faltando.join(", ")}`);
   }

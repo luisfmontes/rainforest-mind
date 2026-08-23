@@ -94,7 +94,7 @@ confere_nao_alvo() { # nome, valor-antes
 
 echo "== 1. entrada invalida e recusada ANTES de tocar o arquivo (abrir) =="
 md5_antes=$(md5sum divergencias.jsonl | cut -d' ' -f1)
-base='"enunciado":"e","shortlist":["a","b"],"escolha_nao_obvia":"a","refutacao":"r"'
+base='"enunciado":"e","shortlist":["a","b"],"escolha_nao_obvia":"a","refutacao":"r","critico_bateu_na_primeira_da_rodada":true,"ideias":[{"frame":"restricao-dura","ideia":"a","porque":"pa"},{"frame":"inversao","ideia":"b","porque":"pb"}]'
 
 esperado "recusa stdin vazio" 1 bash -c '$DIV abrir < /dev/null'
 esperado "recusa JSON malformado" 1 bash -c 'echo "{nao json" | $DIV abrir'
@@ -108,21 +108,31 @@ echo "{\"id\":\"fixture-01\",$base}" > f.json
 esperado "recusa id duplicado (ja existe na fixture)" 1 bash -c '$DIV abrir < f.json'
 echo "{\"id\":\"teste-campo-inventado\",$base,\"origem\":\"nao existe em schema nenhum\"}" > f.json
 esperado "tarefa 7: recusa abrir com campo inventado (allowlist, nao so denylist)" 1 bash -c '$DIV abrir < f.json'
+echo '{"id":"teste-sem-ideias","enunciado":"e","shortlist":["a","b"],"escolha_nao_obvia":"a","refutacao":"r","critico_bateu_na_primeira_da_rodada":true}' > f.json
+esperado "tarefa 8: recusa abrir sem ideias (campo obrigatorio novo)" 1 bash -c '$DIV abrir < f.json'
+echo '{"id":"teste-ideias-vazia","enunciado":"e","shortlist":["a","b"],"escolha_nao_obvia":"a","refutacao":"r","critico_bateu_na_primeira_da_rodada":true,"ideias":[]}' > f.json
+esperado "tarefa 8: recusa abrir com ideias vazia (array truthy, mas sem ideia nenhuma)" 1 bash -c '$DIV abrir < f.json'
+echo '{"id":"teste-critico-nao-booleano","enunciado":"e","shortlist":["a","b"],"escolha_nao_obvia":"a","refutacao":"r","critico_bateu_na_primeira_da_rodada":"sim","ideias":[{"frame":"x","ideia":"i","porque":"p"}]}' > f.json
+esperado "tarefa 8: recusa abrir com critico_bateu_na_primeira_da_rodada fora do booleano" 1 bash -c '$DIV abrir < f.json'
 
 if [ "$md5_antes" = "$(md5sum divergencias.jsonl | cut -d' ' -f1)" ]
-then ok=$((ok+1)); echo "  ok   arquivo intocado apos as 7 recusas (md5 igual)"
+then ok=$((ok+1)); echo "  ok   arquivo intocado apos as 10 recusas (md5 igual)"
 else falhou=$((falhou+1)); echo "  FALHA o arquivo mudou apesar de todas as recusas"; fi
 
 echo
 echo "== 2. caminho feliz: abrir + fechar =="
 antes_2=$(tres_nao_alvo)
-echo "{\"id\":\"rodada-um\",\"enunciado\":\"onde por o cache do agregado diario\",\"shortlist\":[\"tabela materializada\",\"view indexada\",\"cache em memoria\"],\"escolha_nao_obvia\":\"view indexada\",\"refutacao\":\"a tabela materializada parece obvia mas duplica a fonte da verdade e cria deriva de dado\"}" > rodada.json
+echo "{\"id\":\"rodada-um\",\"enunciado\":\"onde por o cache do agregado diario\",\"shortlist\":[\"tabela materializada\",\"view indexada\",\"cache em memoria\"],\"escolha_nao_obvia\":\"view indexada\",\"refutacao\":\"a tabela materializada parece obvia mas duplica a fonte da verdade e cria deriva de dado\",\"critico_bateu_na_primeira_da_rodada\":true,\"ideias\":[{\"frame\":\"restricao-dura\",\"ideia\":\"tabela materializada\",\"porque\":\"p1\"},{\"frame\":\"inversao\",\"ideia\":\"view indexada\",\"porque\":\"p2\"},{\"frame\":\"incentivo\",\"ideia\":\"cache em memoria\",\"porque\":\"p3\"}]}" > rodada.json
 esperado "abrir (contagem 3 -> 4)" 0 bash -c '$DIV abrir < rodada.json'
 prova "linha aberta com status e data carimbada pelo script (local)" '
 const l=O("divergencias.jsonl"), o=acha(l,"rodada-um");
 ok(o.status==="aberta" && o.aberta_em===hoje(), JSON.stringify(o));
 ok(o.escolha_nao_obvia==="view indexada", o.escolha_nao_obvia);
 ok(l.length===Number(process.env.BASE)+1, String(l.length));'
+prova "tarefa 8: critico_bateu_na_primeira_da_rodada e ideias persistidos pelo abrir" '
+const l=O("divergencias.jsonl"), o=acha(l,"rodada-um");
+ok(o.critico_bateu_na_primeira_da_rodada===true, "critico_bateu_na_primeira_da_rodada nao persistiu: "+JSON.stringify(o.critico_bateu_na_primeira_da_rodada));
+ok(Array.isArray(o.ideias) && o.ideias.length===3, "ideias nao persistiu ou veio com tamanho errado: "+JSON.stringify(o.ideias));'
 confere_nao_alvo "depois do abrir" "$antes_2"
 
 antes_fechar=$(tres_nao_alvo)
@@ -134,6 +144,12 @@ ok(o.status==="fechado" && o.fechada_em===hoje(), JSON.stringify(o));
 ok(o.escolha==="view indexada" && o.bate_com_a_primeira_ideia===false, JSON.stringify(o));
 ok(o.enunciado==="onde por o cache do agregado diario", "fechar mexeu em campo que nao era dele");
 ok(l.length===Number(process.env.BASE)+1, String(l.length));'
+prova "tarefa 8: as duas medidas de ancoragem convivem, com valores distintos, na linha fechada" '
+const l=O("divergencias.jsonl"), o=acha(l,"rodada-um");
+ok(o.critico_bateu_na_primeira_da_rodada===true, "critico_bateu_na_primeira_da_rodada sumiu ou mudou no fechar: "+JSON.stringify(o.critico_bateu_na_primeira_da_rodada));
+ok(o.bate_com_a_primeira_ideia===false, "bate_com_a_primeira_ideia nao veio do fechar: "+JSON.stringify(o.bate_com_a_primeira_ideia));
+ok(o.critico_bateu_na_primeira_da_rodada!==o.bate_com_a_primeira_ideia, "as duas medidas vieram com o mesmo valor — o teste nao discrimina os dois campos");
+ok(Array.isArray(o.ideias) && o.ideias.length===3, "ideias nao sobreviveu ao fechar: "+JSON.stringify(o.ideias));'
 confere_nao_alvo "depois do fechar" "$antes_fechar"
 
 echo

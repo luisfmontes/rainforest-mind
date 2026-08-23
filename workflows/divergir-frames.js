@@ -130,8 +130,8 @@ const ideiasCruas = framesComResposta.flatMap(r => r.ideias.map(i => ({ frame: r
 
 // A primeira ideia da rodada, na ordem determinística de FRAMES (antes de
 // qualquer embaralhamento) — é a referência de ancoragem que o crítico
-// precisa para responder "bate_com_a_primeira_ideia", sem que isso revele
-// de que frame ela veio.
+// precisa para responder "critico_bateu_na_primeira_da_rodada", sem que isso
+// revele de que frame ela veio.
 const primeiraIdeiaDaRodada = ideiasCruas[0]
 
 // Embaralhamento determinístico por intercalação de índice entre frames —
@@ -152,7 +152,7 @@ const listaNumerada = ideiasEmbaralhadas.map((it, idx) => `${idx + 1}. ${it.idei
 
 const CRITICO_SCHEMA = {
   type: 'object',
-  required: ['shortlist', 'escolha_nao_obvia', 'bate_com_a_primeira_ideia', 'refutacao'],
+  required: ['shortlist', 'escolha_nao_obvia', 'critico_bateu_na_primeira_da_rodada', 'refutacao'],
   properties: {
     shortlist: {
       type: 'array',
@@ -169,9 +169,9 @@ const CRITICO_SCHEMA = {
       type: 'string',
       description: 'O caminho que sobreviveu e que ninguém teria proposto de primeira, com o porquê',
     },
-    bate_com_a_primeira_ideia: {
+    critico_bateu_na_primeira_da_rodada: {
       type: 'boolean',
-      description: 'Verdadeiro se a escolha não-óbvia é a mesma ideia apontada como "primeira ideia desta rodada" no prompt',
+      description: 'Verdadeiro se a escolha não-óbvia é a mesma ideia apontada como "primeira ideia desta rodada" no prompt — mede se o próprio crítico convergiu para a primeira coisa que apareceu, não se bate com o que ancorava a conversa do usuário (isso é outro campo, gravado no fechar)',
     },
     refutacao: {
       type: 'string',
@@ -195,7 +195,7 @@ Sua tarefa:
 1. Agrupamento — colapse em uma só entrada da shortlist as ideias que são a mesma coisa com nome diferente.
 2. Shortlist com o critério explícito de corte para cada entrada que sobreviver.
 3. A escolha não-óbvia — dentre a shortlist, o caminho que sobreviveu e que ninguém teria proposto de primeira, com o porquê.
-4. Diga em bate_com_a_primeira_ideia se a sua escolha não-óbvia é a mesma ideia apontada acima como "primeira ideia produzida nesta rodada". Se for, isso é o resultado mais valioso da rodada — a ancoragem não custou nada desta vez — e não um problema a esconder.
+4. Diga em critico_bateu_na_primeira_da_rodada se a sua escolha não-óbvia é a mesma ideia apontada acima como "primeira ideia produzida nesta rodada". Se for, isso é o resultado mais valioso da rodada — a ancoragem não custou nada desta vez — e não um problema a esconder.
 5. Refutação do sedutor-mas-quebrado — a ideia (dentre todas as listadas, não só a shortlist) que soa ótima e falha na primeira semana, com cenário concreto de falha: entrada, estado, sequência. "Eu faria diferente" não refuta nada.
 
 Você não decide pelo usuário e não escreve código — isso não é seu trabalho.`
@@ -217,7 +217,7 @@ if (!critico) {
 return {
   shortlist: critico.shortlist,
   escolha_nao_obvia: critico.escolha_nao_obvia,
-  bate_com_a_primeira_ideia: critico.bate_com_a_primeira_ideia,
+  critico_bateu_na_primeira_da_rodada: critico.critico_bateu_na_primeira_da_rodada,
   refutacao: critico.refutacao,
   ideias: ideiasCruas,
 }
