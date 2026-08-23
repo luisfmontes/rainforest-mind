@@ -63,6 +63,17 @@ function encontrarGit(inicio = process.cwd()) {
   return null;
 }
 
+// Deriva a chave de projeto que o harness do Claude Code usa para armazenar projetos.
+// Formato harness: paths com \ / e : são trocados por -.
+// Ex: C:\Projetos\rainforest-mind → C--Projetos-rainforest-mind
+//     C:\Microsiga\protheus-totvs-agro\inovacao → C--Microsiga-protheus-totvs-agro-inovacao
+// Função pura, sem I/O.
+function chaveHarness(diretorio) {
+  if (!diretorio) return '';
+  // Normalizar separadores (\ e /) e : para -
+  return diretorio.replace(/[\\/:]/g, '-');
+}
+
 function resolverCaminhos() {
   const { raiz } = resolverRaiz({
     plugin: path.resolve(__dirname, '..'),
@@ -74,9 +85,10 @@ function resolverCaminhos() {
     process.exit(1);
   }
 
-  // Tarefa 1 (D1): O projeto vem do diretório da sessão, não da raiz de dados.
+  // Tarefa 1 (D13): O projeto vem do diretório da sessão, não da raiz de dados.
   // Suba a árvore procurando .git (arquivo ou diretório); basename desse diretório é o projeto.
   // Fallback: basename do cwd se .git não encontrado (sessão fora de repositório).
+  // Decisão D13 define que a matéria-prima é projects/<projeto>/<sessão>.jsonl no harness.
   let projeto;
   const cwd = process.cwd();
   const topLevel = encontrarGit(cwd);
@@ -88,7 +100,16 @@ function resolverCaminhos() {
 
   const caminhoDb = path.join(raiz, 'rainforest.db');
 
-  return { raiz, caminhoDb, projeto };
+  // Retornar AMBAS as chaves: `projeto` (curta, para compatibilidade) e `projetos`
+  // (array com chave harness + chave curta, sem duplicatas, sem vazias).
+  // Permite que o leitor consulte ambas, mantendo histórico sob chave curta
+  // enquanto novos dados vêm em chave harness.
+  const chaveHarness_valor = topLevel ? chaveHarness(topLevel) : '';
+  const projetosCandidatas = [chaveHarness_valor, projeto].filter(
+    (p, i, arr) => p && arr.indexOf(p) === i // sem duplicatas, sem vazias
+  );
+
+  return { raiz, caminhoDb, projeto, projetos: projetosCandidatas };
 }
 
 // Abre conexão com o banco. Cria se não existe. Retorna a conexão.
@@ -1092,4 +1113,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { abrirBanco, abrirBancoSomenteLeitura, criarSchema, extrairSchema, popularFts5, resolverCaminhos, verificarConstraintUniqueProjetoOrigem };
+module.exports = { abrirBanco, abrirBancoSomenteLeitura, chaveHarness, criarSchema, extrairSchema, popularFts5, resolverCaminhos, verificarConstraintUniqueProjetoOrigem };

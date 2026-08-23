@@ -10,10 +10,12 @@ const { montarMemoria } = require('./lib/memoria-sessao.cjs');
 const { resolverRaiz } = require('./lib/raiz.cjs');
 const { abrirBanco, resolverCaminhos } = require(path.join(__dirname, '..', 'scripts', 'memoria.cjs'));
 
-// Lê observações recentes do banco de memória, filtrando por projeto.
-// Tarefa 3 (D3): top 5 do projeto atual, completa com outros se houver menos.
+// Lê observações recentes do banco de memória, filtrando por lista de projetos.
+// Tarefa 3 (D3): top 5 dos projetos atuais (múltiplas chaves), completa com outros se houver menos.
+// Correção D13b: leitor consulta AMBAS as chaves (harness e curta) para não perder histórico.
 // Banco ausente, vazio ou corrompido: retorna array vazio (degradação graceful).
-function lerObservacoes(caminhoDb, projetoAtual, limiteTotal = 5) {
+// Parâmetro `projetosList`: array de strings (chaves), ou null/vazio → sem filtro.
+function lerObservacoes(caminhoDb, projetosList, limiteTotal = 5) {
   try {
     // Se o banco não existe, array vazio é o resultado esperado.
     if (!fs.existsSync(caminhoDb)) {
@@ -27,9 +29,8 @@ function lerObservacoes(caminhoDb, projetoAtual, limiteTotal = 5) {
     }
 
     try {
-      // Tarefa 3 (D3): Se projeto não resolveu, busca sem filtro (fallback).
-      // WHERE projeto = NULL nunca casa em SQL, então precisamos da busca sem filtro.
-      if (!projetoAtual) {
+      // Tarefa 3 (D3): Se lista de projetos está vazia ou nula, busca sem filtro (fallback).
+      if (!projetosList || projetosList.length === 0) {
         const queryTudo = `
           SELECT id, projeto, conteudo, criada_em
           FROM observacoes
@@ -41,16 +42,18 @@ function lerObservacoes(caminhoDb, projetoAtual, limiteTotal = 5) {
         return resultado;
       }
 
-      // Tarefa 3 (D3): Busca as observações do projeto atual, até o limite.
+      // Tarefa 3 (D3): Busca as observações dos projetos na lista, até o limite.
+      // Monta dinamicamente: WHERE projeto IN (?, ?, ...)
+      const placeholders = projetosList.map(() => '?').join(', ');
       const queryPropio = `
         SELECT id, projeto, conteudo, criada_em
         FROM observacoes
-        WHERE projeto = ?
+        WHERE projeto IN (${placeholders})
         ORDER BY criada_em DESC
         LIMIT ?
       `;
       const stmtPropio = conexao.prepare(queryPropio);
-      const obsProprio = stmtPropio.all(projetoAtual, limiteTotal) || [];
+      const obsProprio = stmtPropio.all(...projetosList, limiteTotal) || [];
 
       // Se temos o limite, devolver só as próprias.
       if (obsProprio.length >= limiteTotal) {
@@ -59,15 +62,16 @@ function lerObservacoes(caminhoDb, projetoAtual, limiteTotal = 5) {
 
       // Senão, completar com outras mais recentes (de outros projetos).
       const vagas = limiteTotal - obsProprio.length;
+      const placeholdersNot = projetosList.map(() => '?').join(', ');
       const queryOutros = `
         SELECT id, projeto, conteudo, criada_em
         FROM observacoes
-        WHERE projeto != ?
+        WHERE projeto NOT IN (${placeholdersNot})
         ORDER BY criada_em DESC
         LIMIT ?
       `;
       const stmtOutros = conexao.prepare(queryOutros);
-      const obsOutros = stmtOutros.all(projetoAtual, vagas) || [];
+      const obsOutros = stmtOutros.all(...projetosList, vagas) || [];
 
       // Combinar: próprias primeiro (mais importantes), depois outros.
       // O projeto já está marcado no campo `projeto`, então formatarObservacao
@@ -91,30 +95,39 @@ const { raiz: RAIZ_RESOLVIDA } = resolverRaiz({
 const ROOT = RAIZ_RESOLVIDA || path.resolve(__dirname, '..');
 const caminhoDb = path.join(ROOT, 'rainforest.db');
 
-// Tarefa 3 (D3): Resolve o projeto da sessão atual para filtro.
+// Tarefa 3 (D3): Resolve os projetos da sessão atual para filtro.
+// Retorna array com chave harness + chave curta (sem duplicatas).
 // Se não conseguir resolver (fora de repositório), usa null e a consulta devolve todas.
-let projetoAtual = null;
+// Correção D13b: consultar ambas as chaves para não perder histórico sob chave curta.
+let projetosList = null;
+// Apelidos de exibição: o banco guarda a chave de pasta do harness, que é longa.
+// O rótulo mostra o nome curto do projeto, e o teto de bytes rende mais linhas.
+let apelidos = null;
 try {
-  const { projeto } = resolverCaminhos();
-  projetoAtual = projeto;
+  const { projetos } = resolverCaminhos();
+  projetosList = projetos;
+  if (Array.isArray(projetos) && projetos.length > 1) {
+    // projetos = [chaveHarness, nomeCurto]; o primeiro exibe como o segundo.
+    apelidos = { [projetos[0]]: projetos[projetos.length - 1] };
+  }
 } catch {
   // Não conseguir resolver não é erro — continua sem filtro.
 }
 
 // Lê observações residentes.
-// Tarefa 3 (D3): Filtra por projeto, completa com outros se houver vagas.
+// Tarefa 3 (D3): Filtra por lista de projetos, completa com outros se houver vagas.
 // Decisão D11: carregar múltiplas observações curtas (título + subtítulo)
 // em vez de uma observação completa. Número calibrado pela medição.
 let observacoes = [];
 try {
-  observacoes = lerObservacoes(caminhoDb, projetoAtual, 14);
+  observacoes = lerObservacoes(caminhoDb, projetosList, 14);
 } catch {
   // Qualquer erro imprevisto: bloco vazio, nunca erro.
   observacoes = [];
 }
 
 // Monta o bloco de memória.
-const bloco = montarMemoria({ observacoes });
+const bloco = montarMemoria({ observacoes, apelidos });
 
 // JSON, não texto cru (regra 12 do hook foco-session-start).
 // O harness lê `additionalContext` e o stdout ao redor não conta para o teto.
