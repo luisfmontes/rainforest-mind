@@ -81,6 +81,14 @@ A ordem no relatório é fixa: **comando, saída colada, então o veredito**
 — nessa sequência, item por item. Veredito antes da saída não conta como
 verificação, mesmo que a saída venha depois no texto.
 
+**Critério numerado do briefing é contrato de retorno, não sugestão de
+formato.** O relatório traz **um bloco por número**, com o comando
+**literal do briefing** e a saída colada. Retorno que renumera, funde ou
+substitui um critério é **entrega incompleta** — devolve antes de
+integrar, mesmo que o número apresentado no lugar seja verdadeiro (Issue
+#61: somar casos de teste de três baterias e chamar o total de "42+",
+ou rodar 2 de 42 baterias e devolver com o rótulo do laço inteiro).
+
 **Toda afirmação sai rotulada, uma palavra antes dela:**
 
 | Rótulo | Quando |
