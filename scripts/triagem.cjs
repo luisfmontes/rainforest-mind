@@ -79,10 +79,22 @@ function extractFunctions(lines) {
 
 /**
  * Classifica o arquivo com base em repRatio e densidade
+ * Nota: densidade === Infinity (nfunc === 0) NÃO pode decidir sozinha a classe.
+ * Só a perna de repetição (repRatio >= 0.6) pode classificar nesse caso.
+ * Se nfunc === 0, não há funções declaradas, então não pode ser 'logica'.
  */
-function classify(repRatio, density) {
-  if (repRatio >= 0.6 || density >= 300) {
+function classify(repRatio, density, nfunc) {
+  // Se há repetição alta, é dado-como-codigo
+  if (repRatio >= 0.6) {
     return 'dado-como-codigo';
+  }
+  // Se não há funções (nfunc === 0, density === Infinity), não deixar a densidade infinita decidir
+  if (nfunc > 0 && density >= 300) {
+    return 'dado-como-codigo';
+  }
+  // Se não há funções, não pode ser 'logica' — fica indefinido
+  if (nfunc === 0) {
+    return 'indefinido';
   }
   if (repRatio < 0.4) {
     return 'logica';
@@ -117,7 +129,7 @@ function triageFile(filePath) {
     const hash = crypto.createHash('sha1').update(content, 'latin1').digest('hex');
 
     // Classificar
-    const classe = classify(repRatio, densidade);
+    const classe = classify(repRatio, densidade, nfunc);
 
     return {
       arquivo: filePath,
@@ -202,23 +214,11 @@ async function main() {
       for (const file of files) {
         const result = triageFile(file);
 
-        // Verificar duplicata
-        if (hashMap.has(result.hash)) {
-          const canonicalPath = hashMap.get(result.hash);
-          if (canonicalPath < file) {
-            // Caminho existente é canônico
-            result.duplicataDe = canonicalPath;
-          } else {
-            // Novo caminho é canônico, marcar o antigo
-            const prevResult = results.find(r => r.arquivo === canonicalPath);
-            if (prevResult) {
-              prevResult.duplicataDe = file;
-            }
-            hashMap.set(result.hash, file);
-          }
-        } else {
-          hashMap.set(result.hash, file);
+        // Registrar hash para detecção de duplicata na passada final
+        if (!hashMap.has(result.hash)) {
+          hashMap.set(result.hash, []);
         }
+        hashMap.get(result.hash).push(result.arquivo);
 
         results.push(result);
       }
@@ -226,6 +226,24 @@ async function main() {
 
     // Ordenar por arquivo
     results.sort((a, b) => a.arquivo.localeCompare(b.arquivo));
+
+    // Passada final: resolver todas as duplicatas para o canônico final
+    // O canônico é o caminho alfabeticamente menor de cada grupo de hashes iguais
+    for (const [hash, pathsWithSameHash] of hashMap.entries()) {
+      if (pathsWithSameHash.length > 1) {
+        // Ordenar alfabeticamente e pegar o primeiro (canônico)
+        const sortedPaths = pathsWithSameHash.sort();
+        const canonical = sortedPaths[0];
+
+        // Marcar todos os outros como duplicatas do canônico
+        for (const path of sortedPaths.slice(1)) {
+          const result = results.find(r => r.arquivo === path);
+          if (result) {
+            result.duplicataDe = canonical;
+          }
+        }
+      }
+    }
 
     // Output
     if (outputJson) {
@@ -236,7 +254,7 @@ async function main() {
         bytes: r.bytes,
         nfunc: r.nfunc,
         repRatio: r.repRatio,
-        densidade: r.densidade === 'Infinity' ? Infinity : r.densidade,
+        densidade: r.nfunc === 0 ? null : (r.densidade === 'Infinity' ? Infinity : r.densidade),
         hash: r.hash,
         classe: r.classe,
         ...(r.duplicataDe && { duplicataDe: r.duplicataDe })

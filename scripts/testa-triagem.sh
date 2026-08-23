@@ -250,6 +250,92 @@ esperado "sem argumento nenhum" 1 node "$TRIAGEM"
 esperado "arquivo inexistente" 1 node "$TRIAGEM" "$TMP/nao-existe-mesmo.prw"
 
 echo
+echo "== 8b. cadeia de duplicata com 4 arquivos — todos apontam para o canônico final =="
+# Reproduz o defeito A: quando há uma cadeia de duplicatas, os intermediários devem
+# apontar para o canônico final (menor alfabeticamente), não para o "anterior" que é
+# também duplicata. Ordem processada: C, B, D, A com conteúdo idêntico.
+# O canônico deve ser A (menor alfabeticamente), e C, B, D devem todos apontar para A.
+FIX_CHAIN_C="$TMP/chain-c.prw"
+FIX_CHAIN_B="$TMP/chain-b.prw"
+FIX_CHAIN_D="$TMP/chain-d.prw"
+FIX_CHAIN_A="$TMP/chain-a.prw"
+
+# Conteúdo idêntico (cópia do fixture C de "muitas funções")
+for f in "$FIX_CHAIN_C" "$FIX_CHAIN_B" "$FIX_CHAIN_D" "$FIX_CHAIN_A"; do
+  awk 'BEGIN{
+    for (i=1;i<=40;i++) {
+      print "function Funcao" i "()"
+      print "local nRet" i " := " i
+      print "nRet" i " += " i
+      print "Return nRet" i
+    }
+  }' > "$f"
+done
+
+esperado "triagem roda sem erro (cadeia C B D A)" 0 \
+  triar "$TMP/chain.json" "$FIX_CHAIN_C" "$FIX_CHAIN_B" "$FIX_CHAIN_D" "$FIX_CHAIN_A"
+
+# Encontrar índices (JSON vem ordenado alfabeticamente por arquivo)
+achar_chain_idx() {
+  node -e '
+    const fs=require("fs");
+    const arr=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));
+    const i=arr.findIndex(x=>x.arquivo.includes("chain-" + process.argv[2] + ".prw"));
+    console.log(i);
+  ' "$TMP/chain.json" "$1"
+}
+IX_A="$(achar_chain_idx a)"
+IX_B="$(achar_chain_idx b)"
+IX_C="$(achar_chain_idx c)"
+IX_D="$(achar_chain_idx d)"
+
+# Todos devem ter o mesmo hash
+HASH_A="$(campo "$TMP/chain.json" "$IX_A" hash)"
+HASH_B="$(campo "$TMP/chain.json" "$IX_B" hash)"
+HASH_C="$(campo "$TMP/chain.json" "$IX_C" hash)"
+HASH_D="$(campo "$TMP/chain.json" "$IX_D" hash)"
+igual "chain-a e chain-b: mesmo hash" "$HASH_A" "$HASH_B"
+igual "chain-b e chain-c: mesmo hash" "$HASH_B" "$HASH_C"
+igual "chain-c e chain-d: mesmo hash" "$HASH_C" "$HASH_D"
+
+# Chain-a (alfabeticamente menor) é o canônico — os outros devem apontar para ele
+FILE_CHAIN_A="$(campo "$TMP/chain.json" "$IX_A" arquivo)"
+DUPDE_CHAIN_A="$(campo "$TMP/chain.json" "$IX_A" duplicataDe)"
+DUPDE_CHAIN_B="$(campo "$TMP/chain.json" "$IX_B" duplicataDe)"
+DUPDE_CHAIN_C="$(campo "$TMP/chain.json" "$IX_C" duplicataDe)"
+DUPDE_CHAIN_D="$(campo "$TMP/chain.json" "$IX_D" duplicataDe)"
+
+igual "chain-a NÃO carrega duplicataDe (é o canônico)" "__AUSENTE__" "$DUPDE_CHAIN_A"
+igual "chain-b aponta para chain-a (canônico final)" "$FILE_CHAIN_A" "$DUPDE_CHAIN_B"
+igual "chain-c aponta para chain-a (canônico final)" "$FILE_CHAIN_A" "$DUPDE_CHAIN_C"
+igual "chain-d aponta para chain-a (canônico final)" "$FILE_CHAIN_A" "$DUPDE_CHAIN_D"
+
+echo
+echo "== 8c. arquivo vazio — nfunc = 0, não é dado-como-codigo por densidade infinita =="
+# Arquivo vazio teria densidade = Infinity, mas NÃO deve ser classificado como
+# dado-como-codigo só por isso. Só a perna de repetição (alta) poderia decidir.
+FIX_VAZIO="$TMP/vazio.prw"
+touch "$FIX_VAZIO"
+esperado "triagem roda sem erro (arquivo vazio)" 0 triar "$TMP/vazio.json" "$FIX_VAZIO"
+igual "nfunc = 0 em arquivo vazio" "0" "$(campo "$TMP/vazio.json" 0 nfunc)"
+igual "classe ≠ dado-como-codigo (repetição não é alta)" "indefinido" "$(campo "$TMP/vazio.json" 0 classe)"
+DENS_VAZIO="$(campo "$TMP/vazio.json" 0 densidade)"
+igual "densidade = null (nfunc === 0)" "null" "$DENS_VAZIO"
+
+echo
+echo "== 8d. arquivo binário — nfunc = 0, não é dado-como-codigo por densidade infinita =="
+# Arquivo com bytes aleatórios (não decodifica como latin1 legível, mas o script
+# trata como latin1 mesmo assim) também terá nfunc = 0 e densidade = Infinity.
+# Mesma regra: não deve ser dado-como-codigo.
+FIX_BIN="$TMP/binario.prw"
+dd if=/dev/urandom of="$FIX_BIN" bs=1 count=100 2>/dev/null
+esperado "triagem roda sem erro (arquivo binário)" 0 triar "$TMP/binario.json" "$FIX_BIN"
+igual "nfunc = 0 em arquivo binário" "0" "$(campo "$TMP/binario.json" 0 nfunc)"
+igual "classe ≠ dado-como-codigo (repetição não é alta)" "indefinido" "$(campo "$TMP/binario.json" 0 classe)"
+DENS_BIN="$(campo "$TMP/binario.json" 0 densidade)"
+igual "densidade = null (nfunc === 0)" "null" "$DENS_BIN"
+
+echo
 echo "== 9. PROVA CONTRA O FONTE REAL (pulada se o inovacao não existir aqui) =="
 # Só roda se a pasta existir de verdade nesta máquina — a bateria não pode
 # depender disso (o worktree que revisa/verifica pode não ter o inovacao ao
