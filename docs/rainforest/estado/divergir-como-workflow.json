@@ -146,6 +146,10 @@
     "em": "2026-08-23"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "acao": "pr",
+    "pr": 59,
+    "nota": "destino nao foi perguntado nas tres opcoes porque o usuario tem preferencia permanente registrada por PR, e respondeu por PR nesta sessao",
+    "em": "2026-08-23"
   }
 }
