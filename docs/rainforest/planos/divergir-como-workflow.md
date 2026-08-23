@@ -153,8 +153,9 @@ mutacao:
 ### 12. A asserção do payload forjado para de passar por vacuidade [tipo: teste]
 atende: D7, D9
 arquivos: `scripts/testa-divergencias.sh`
-depende de: nenhuma
-paralela: sim
+depende de: 11
+paralela: nao
+nota: declarada `paralela: sim` no primeiro rascunho desta emenda, junto com a 11 — as duas tocam `scripts/testa-divergencias.sh`. É **o mesmo erro** que a nota da rodada 2 já tinha diagnosticado e corrigido para as tarefas 7/8, repetido duas rodadas depois. Pego pela quarta revisão. Que a regra estivesse escrita no próprio arquivo, a poucas linhas de distância, não impediu a reincidência — o que sugere que ela precisa virar checagem do conferidor de plano, não parágrafo.
 pronto quando: a asserção deixa de varrer a mensagem de erro com `grep -q "id"` e passa a conferir os campos efetivamente recusados — hoje ela casa incondicionalmente, porque `id` é substring de `permitidos`, que está no texto fixo da mensagem — provado por, com a lista de campos permitidos do `fechar` invertida, a bateria **reprovar** nessa asserção
 mutacao:
   arquivo: `scripts/divergencias.cjs`
