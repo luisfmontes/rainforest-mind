@@ -24,9 +24,12 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-08-22",
-    "tarefas_ok": 4,
+    "tarefas_ok": 5,
     "tarefas": 6,
-    "em": "2026-08-22"
+    "em": "2026-08-22",
+    "pendentes": [
+      "tarefa-6: rodada ponta a ponta, gasta 7 despachos"
+    ]
   },
   "revisar": {
     "status": "pendente"
