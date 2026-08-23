@@ -204,3 +204,41 @@ E o teste que a skill já definia continua de pé, agora possível: em três
 rodadas gravadas, se `bate_com_a_primeira_ideia` for verdadeiro nas três, a
 skill não paga o custo e sai. Este design não muda esse veredito — só torna
 mensurável o que antes era opinião.
+
+### Enunciado-isca
+
+Dois scripts deste plugin fazem append num `.jsonl` compartilhado em
+`~/.rainforest/`: `scripts/ideias.cjs`, hoje, e o `divergencias.cjs` que este
+próprio design manda criar (D7). Ambos podem ser chamados por sessões
+paralelas do Claude Code, escrevendo ao mesmo tempo. Depois dos dois appends
+quebrados de 2026-08-08 — linha cortada no meio do arquivo —, alguém precisa
+decidir como impedir isso de novo. A resposta que qualquer um aceita de
+primeira: colocar um lock de arquivo em volta do `fs.appendFileSync` e pronto.
+
+- `restricao-dura` — se só houvesse UMA escrita física por rodada permitida, a
+  resposta vira "não escreva N vezes direto no disco compartilhado": acumule
+  em memória e grave uma vez só, no fim.
+- `inversao` — a garantia não é da aplicação, é do sistema de arquivos: escreva
+  num arquivo temporário e troque com `rename` atômico (como
+  `scripts/ideias.cjs:349` já faz), o lock vira proteção só da troca, não da
+  escrita inteira.
+- `incentivo` — um lock bloqueante incentiva quem está com pressa a matar a
+  sessão para não esperar liberar, e o `.lock` órfão trava todo mundo depois —
+  o próprio lock premia o atalho que deveria impedir.
+- `ja-existe` — um arquivo-banco de verdade (SQLite em modo WAL, por exemplo)
+  já resolve escrita concorrente segura; não precisa reinventar trava nem
+  `.jsonl` — "não construa" é a resposta.
+- `modo-de-falha` — comece do arquivo já corrompido no meio da rodada (o
+  desastre de 2026-08-08) e desenhe para ele ser irrelevante: backup antes de
+  escrever, como `scripts/ideias.cjs:341-349` faz antes do rename atômico, para
+  que a sessão morrer no meio nunca destrua o arquivo original.
+- `premissa` — por que N sessões escrevem direto no mesmo arquivo
+  compartilhado? A resposta certa pode ser nenhuma escrever direto — só a
+  janela principal grava, que é literalmente a D7 deste design.
+
+A isca é "basta um lock de arquivo em volta do append": ela seduz porque
+resolve o caso feliz de dois processos coordenados e é a resposta de manual
+para concorrência, mas esconde que travar não impede escrita parcial se o
+processo morre com o lock preso, não repara o que já corrompeu, e não
+questiona se deveria haver N escritores no mesmo arquivo para começo de
+conversa.
