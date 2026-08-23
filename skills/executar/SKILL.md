@@ -42,6 +42,8 @@ paralelismo desperdiçado, não cautela.
 conflitam entre si, e foi por isso que o superpowers proibiu paralelo de
 implementadores. Aqui não precisa proibir porque a trava existe.
 
+**Antes de despachar:** a base do worktree nasce na ponta da `origin/main`, não no commit de trabalho. Confira com `git merge-base --is-ancestor origin/main HEAD`; não sendo ancestral, traga a `main` para a branch com `git merge --ff-only origin/main` antes de despachar — a branch de trabalho tem que estar adiantada (ou igualada) em relação ao `origin/main`.
+
 O briefing de cada agente leva, sempre:
 - **O hash da base** (regra 11) e a instrução de conferir na primeira ação:
   `git rev-parse --show-toplevel` (PARE se for a raiz do repositório principal),
