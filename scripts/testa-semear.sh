@@ -49,7 +49,7 @@ echo
 echo "== 1. acha o historico mesmo com o campo projeto escrito de varios jeitos =="
 tem "acha a observacao com nome limpo"        "$S" "OBS-LIMPO"
 tem "acha a observacao com caminho no campo"  "$S" "OBS-CAMINHO"
-tem "conta as duas"                           "$S" "OBSERVACOES (2)"
+tem "conta as duas, do total de 3 no acervo"  "$S" "OBSERVACOES (2 de 3)"
 
 echo
 echo "== 2. nao traz evidencia de outro projeto =="
@@ -61,7 +61,7 @@ tem     "ideia aberta aparece"        "$S" "IDEIA-ABERTA"
 nao_tem "ideia ja colhida nao aparece" "$S" "IDEIA-FECHADA"
 # Observacao NAO pode aparecer duas vezes: ela ja tem bloco proprio, e repetir
 # infla a lista de "nao reproponha" com coisa que nao e proposta.
-tem     "abertas conta so a ideia, nao a observacao" "$S" "IDEIAS ABERTAS (1)"
+tem     "abertas conta so a ideia, nao a observacao" "$S" "IDEIAS ABERTAS (1 de 1)"
 
 echo
 echo "== 4. relatorio do projeto entra =="
@@ -136,6 +136,73 @@ NOVO="$( cd "$SBP" && CLAUDE_PROJECT_DIR="$SB/proj-virgem" RFM_ROOT="$SB/dados" 
 tem "diz que nao ha historico"          "$NOVO" "SEM HISTORICO"
 tem "aponta a arqueologia como a outra fonte" "$NOVO" "Skill(arqueologia)"
 tem "e o recomendador oficial para stack"     "$NOVO" "claude-automation-recommender"
+
+# Setup comum das secoes 10-12: um vocabulario (projetos.json) de verdade. Ate
+# aqui as secoes rodaram sem `projetos.json` (raiz so tem ideias.jsonl) porque
+# essa e' a condicao que faz a secao 9 (projeto novo) funcionar sem recusar. Os
+# tres defeitos abaixo (obs `semear-deriva-projeto-do-cwd-e-quebra-em-worktree`,
+# 2026-08-21) so aparecem quando ha vocabulario para consultar.
+mkdir -p "$SBP/dados-vocab" "$SBP/gitrepo-principal"
+cp "$SBP/dados/ideias.jsonl" "$SBP/dados-vocab/ideias.jsonl"
+( cd "$SBP/gitrepo-principal" && git init -q && git config user.email t@t.com \
+  && git config user.name t && git commit -q --allow-empty -m init )
+GITREPO_WIN="$(cygpath -m "$SBP/gitrepo-principal" 2>/dev/null || printf '%s' "$SBP/gitrepo-principal")"
+cat > "$SBP/dados-vocab/projetos.json" <<EOF
+{
+  "meu-projeto": { "caminho": null, "apelidos": [] },
+  "outro-projeto-qualquer": { "caminho": null, "apelidos": [] },
+  "projeto-do-repo": { "caminho": "$GITREPO_WIN", "apelidos": [] }
+}
+EOF
+
+echo
+echo "== 10. slug POSICIONAL tem o mesmo efeito que --projeto =="
+# O commands/semear.md documenta '[vazio olha o projeto atual; ou o slug de
+# outro]' — o argumento posicional, sem flag. Antes do conserto ele nao tinha
+# efeito nenhum (defeito 'a' da obs de 2026-08-21).
+POSICIONAL="$( cd "$SBP/proj" && RFM_ROOT="$SB/dados-vocab" CLAUDE_PROJECT_DIR="$SB/proj-generico-sem-registro" \
+  node "$SRC/scripts/semear.cjs" meu-projeto 2>&1 )"
+COM_FLAG="$( cd "$SBP/proj" && RFM_ROOT="$SB/dados-vocab" CLAUDE_PROJECT_DIR="$SB/proj-generico-sem-registro" \
+  node "$SRC/scripts/semear.cjs" --projeto meu-projeto 2>&1 )"
+tem "posicional acha a observacao"        "$POSICIONAL" "OBS-LIMPO"
+tem "posicional conta igual ao --projeto" "$POSICIONAL" "OBSERVACOES (2 de 3)"
+if [ "$POSICIONAL" = "$COM_FLAG" ]; then
+  ok=$((ok+1)); echo "  ok   posicional e --projeto produzem a MESMA saida"
+else
+  falhou=$((falhou+1)); echo "  FALHA posicional e --projeto divergem"
+fi
+
+echo
+echo "== 11. slug explicito fora do projetos.json RECUSA, nao devolve vazio =="
+# Vazio com exit 0 parece resposta legitima sem ser (defeito 'c' da mesma obs).
+# Slug explicito que ninguem registrou tem que parar o script, nao devolver
+# tres blocos (0).
+FANTASMA_OUT="$( cd "$SBP/proj" && RFM_ROOT="$SB/dados-vocab" CLAUDE_PROJECT_DIR="$SB/proj-generico-sem-registro" \
+  node "$SRC/scripts/semear.cjs" projeto-fantasma-inexistente 2>&1 )"
+FANTASMA_EXIT=$?
+tem     "recusa avisa RECUSADO"                    "$FANTASMA_OUT" "RECUSADO"
+tem     "recusa cita o slug pedido"                "$FANTASMA_OUT" "projeto-fantasma-inexistente"
+nao_tem "recusa nao imprime bloco de acervo vazio" "$FANTASMA_OUT" "OBSERVACOES"
+if [ "$FANTASMA_EXIT" != 0 ]; then
+  ok=$((ok+1)); echo "  ok   exit != 0 na recusa (exit=$FANTASMA_EXIT)"
+else
+  falhou=$((falhou+1)); echo "  FALHA exit 0 na recusa (deveria ser != 0)"
+fi
+
+echo
+echo "== 12. worktree linkado resolve pelo repositorio PRINCIPAL, nao pelo nome do worktree =="
+# O defeito real: cwd num worktree linkado (`.claude/worktrees/regua`) fazia o
+# basename virar 'regua', que nao e' slug de projeto nenhum. O worktree tem o
+# MESMO `git rev-parse --git-common-dir` do repositorio principal — e' por ai
+# que se resolve (defeito 'b' da mesma obs).
+git -C "$SBP/gitrepo-principal" worktree add --detach -q "$SBP/worktrees/nome-que-nao-e-o-slug" \
+  || git -C "$SBP/gitrepo-principal" worktree add --detach "$SBP/worktrees/nome-que-nao-e-o-slug"
+WORKTREE_OUT="$( cd "$SBP/worktrees/nome-que-nao-e-o-slug" && RFM_ROOT="$SB/dados-vocab" \
+  node "$SRC/scripts/semear.cjs" 2>&1 )"
+tem     "resolve para o slug do repositorio, nao para o nome do worktree" \
+  "$WORKTREE_OUT" "projeto: projeto-do-repo"
+nao_tem "nao fica preso no basename do worktree (o defeito original)" \
+  "$WORKTREE_OUT" "projeto: nome-que-nao-e-o-slug"
 
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
