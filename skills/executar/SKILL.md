@@ -68,10 +68,19 @@ teammate ocioso pendurado.
 
 ## Integração confere na fonte
 
-Entrega de agente não se aceita pelo relato (regra 12). Ao receber:
+Entrega de agente não se aceita pelo relato (regra 12). **Antes de despachar**,
+capture o estado do repo principal:
 
 ```
-node scripts/conferir-entrega.cjs --worktree <wt> --base <hash> --head-antes <hash-antes-do-despacho> \
+PORCELAIN_ANTES="/tmp/porcelain-antes.txt"
+git -C <principal> status --porcelain > "$PORCELAIN_ANTES"
+```
+
+Ao receber a entrega, rode:
+
+```
+node scripts/conferir-entrega.cjs --worktree <wt> --base <hash> \
+    --head-antes <hash-antes-do-despacho> --sujo-antes "$PORCELAIN_ANTES" \
     [--paralelo] --espera <caminho-que-a-tarefa-prometia> [--espera <outro>]
 ```
 
