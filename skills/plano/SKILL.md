@@ -109,7 +109,10 @@ para o `brainstorm`; não se resolve inventando aqui.
 **"`bash <bateria>` sai 0" não é critério de pronto.** Essa forma mede o
 instrumento, não o sistema — e o instrumento é escrito por quem precisa dele
 verde, então enquanto o critério apontar para ele, a saída mais barata sempre
-será ajustar o instrumento. A forma que vale:
+será ajustar o instrumento. **Teste que pula por infraestrutura ausente é
+vermelho disfarçado**: quando o próprio teste monta o que precisa, zero `skipped`
+é critério de aceite (teste que não precisa de infraestrutura externa pode pular
+honestamente). A forma que vale:
 
 ```
 pronto quando: com <entrada real do sistema>, <efeito verificável> — provado por `<comando>`
