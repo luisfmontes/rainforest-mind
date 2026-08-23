@@ -94,9 +94,18 @@ node scripts/conferir-entrega.cjs --worktree <wt> --base <hash> \
     [--paralelo] --espera <caminho-que-a-tarefa-prometia> [--espera <outro>]
 ```
 
-Passe `--paralelo` em despachos paralelos; a flag afrouxa a checagem 4 para
-só reprovar sujeira que cruza com os arquivos do commit, deixando o resto como
-aviso.
+**`--sujo-antes` e `--paralelo` respondem a perguntas diferentes, e por isso os
+dois existem** (decidido em 2026-08-23, fechando a P4 da Issue #42):
+
+| flag | a pergunta que ela responde | precisa de |
+|---|---|---|
+| `--sujo-antes` | apareceu sujeira que **não estava aqui** antes do despacho? | o porcelain capturado antes |
+| `--paralelo` | a sujeira cruza com os **arquivos que o agente tocou**? | nada — deriva do commit |
+
+Sujeira nova num arquivo que o agente **não** tocou: `--paralelo` aprova,
+`--sujo-antes` reprova. Nenhuma das duas cobre a outra. Em despacho paralelo,
+passe as duas — `--sujo-antes` é a trava e `--paralelo` é o filtro que evita
+reprovar por trabalho da janela vizinha.
 
 `--espera` confere na **árvore do commit**, não no disco: `ls -la` e `cat` do
 agente provam que o arquivo existe, nunca que ele foi commitado, e

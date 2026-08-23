@@ -37,6 +37,14 @@ exatamente a categoria do arquivo que faltava.
 Cada checagem imprime o comando literal e a saida CRUA antes do veredito: quem
 ler o relatorio confere a conclusao contra a evidencia, sem confiar na conclusao.
 
+AS DUAS METADES DA CHECAGEM 4 NAO SE SUBSTITUEM (decidido em 2026-08-23, P4 da
+Issue #42). `--sujo-antes` pergunta "apareceu caminho que nao estava aqui antes
+do despacho?" e precisa do porcelain capturado antes; `--paralelo` pergunta "a
+sujeira cruza com os arquivos que o agente tocou?" e deriva isso do proprio
+commit. Sujeira NOVA num arquivo que o agente NAO tocou: `--paralelo` aprova,
+`--sujo-antes` reprova. A proposta original perguntava se o segundo aposentava o
+primeiro; a medida diz que nao, e a nota fica aqui para a pergunta nao voltar.
+
 Uso tipico, com o que a janela principal ja sabia antes de despachar:
 
   python scripts/conferir-entrega.py \
