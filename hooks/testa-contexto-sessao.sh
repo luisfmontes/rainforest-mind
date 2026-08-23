@@ -1080,6 +1080,51 @@ checa "pastasDoFoco: campo VAZIO (forma do FOCO_MODELO) devolve []" tem "[]" \
 checa "pastasDoFoco: campo so com espacos devolve []" tem "[]" \
   "$(pastas "$(printf 'Pastas:   \n\n## Ativo\n')")"
 
+# ISSUE #63 (2026-08-23): o FOCO.md real declara a segunda pasta numa linha de
+# CONTINUACAO indentada, e o regex antigo (`^Pastas:[ \t]*(.*)$` numa unica
+# linha) devolvia 1 de 2 em silencio — a isencao 1 nunca disparava para quem
+# trabalhava o foco na segunda pasta. Forma exata da issue:
+#   Pastas: C:/Microsiga/protheus-totvs-agro/inovacao/.claude/worktrees/gestao-projetos-template
+#           C:/Microsiga/protheus-totvs-agro/tbc-licensing
+checa "pastasDoFoco: continuacao indentada devolve as DUAS pastas" tem \
+  '["C:/Microsiga/protheus-totvs-agro/inovacao/.claude/worktrees/gestao-projetos-template","C:/Microsiga/protheus-totvs-agro/tbc-licensing"]' \
+  "$(pastas 'Pastas: C:/Microsiga/protheus-totvs-agro/inovacao/.claude/worktrees/gestao-projetos-template
+        C:/Microsiga/protheus-totvs-agro/tbc-licensing
+
+## Ativo
+')"
+# A continuacao PARA na primeira linha nao indentada — nao pode atravessar para
+# o proximo heading e engolir "## Ativo" como se fosse uma terceira pasta.
+checa "pastasDoFoco: continuacao nao atravessa para o heading seguinte" nao_tem "## Ativo" \
+  "$(pastas 'Pastas: C:/a
+        C:/b
+## Ativo
+')"
+checa "pastasDoFoco: continuacao para no heading, as duas pastas de cima ficam" tem '["C:/a","C:/b"]' \
+  "$(pastas 'Pastas: C:/a
+        C:/b
+## Ativo
+')"
+# O GUARDA DOCUMENTADO no comentario original continua valendo depois da
+# reescrita: `pastasDoFoco("Pastas:\n\n## Ativo\n")` -> `[]`. Ja coberto acima
+# ("campo VAZIO"), reafirmado aqui com o texto literal do comentario da lib.
+checa "pastasDoFoco: guarda de linha em branco nao atravessa (forma do comentario da lib)" tem "[]" \
+  "$(pastas "$(printf 'Pastas:\n\n## Ativo\n')")"
+
+echo "17.2 MUTACAO — desligar a leitura de continuacao tem que voltar a perder a 2a pasta"
+cp "$LIB" "$RAIZ_POSIX/lib-mut-pastas.cjs"
+sed -i 's#if (/\^\[ \\t\]+\\S/.test(linhas\[i\])) partes.push(linhas\[i\]);#if (/^NUNCA-CASA-Issue63$/.test(linhas[i])) partes.push(linhas[i]);#' "$RAIZ_POSIX/lib-mut-pastas.cjs"
+S_MUT_PASTAS="$(pastas 'Pastas: C:/Microsiga/protheus-totvs-agro/inovacao/.claude/worktrees/gestao-projetos-template
+        C:/Microsiga/protheus-totvs-agro/tbc-licensing
+
+## Ativo
+' "$RAIZ_POSIX/lib-mut-pastas.cjs")"
+if echo "$S_MUT_PASTAS" | grep -qF "tbc-licensing"; then
+  falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — a leitura de continuacao nao e o que traz a 2a pasta (saida: $S_MUT_PASTAS)"
+else
+  ok=$((ok+1)); echo "  ok    mutacao expos a leitura de continuacao (sem ela a 2a pasta some em silencio, saida: $S_MUT_PASTAS)"
+fi
+
 cat > "$RAIZ_POSIX/driver-expediente.cjs" <<'EOF'
 const lib = require(process.env.LIB_PATH);
 const [y, m, d, h, mi] = process.env.FIX_QUANDO.split(',').map(Number);
@@ -1463,6 +1508,143 @@ checa "co-locada: sessoes.json ausente nao quebra o processo"        tem "EXIT=0
 SAIDA_COL_QBR="$(adaptador "$COL_QUEBRADO" 'C:/Projetos/rainforest-mind' 'sess-a'; echo "EXIT=$?")"
 checa "co-locada: sessoes.json corrompido devolve vazio (fail-open)" tem "ids=[]"  "$SAIDA_COL_QBR"
 checa "co-locada: sessoes.json corrompido nao quebra o processo"     tem "EXIT=0"  "$SAIDA_COL_QBR"
+
+echo
+echo "19. IDENTIDADE DO FOCO NAO E DESCARTADA INTEIRA (Issue #63)"
+# Defeito medido em 2026-08-23: `priorizarFoco` preenche por rank de forma
+# gulosa e descartava o bloco INTEIRO quando ele nao cabia. O primeiro
+# paragrafo de "## Ativo" (identidade: titulo, natureza, projeto, pastas,
+# prioridade, prazo final, criterio de pronto) e o bloco de MAIOR prioridade
+# (rank 1) e o que mais chegava a ~1,3 KB contra um teto de ~1,2 KB — entao
+# era exatamente ele que caia fora, e os ponteiros de rank 4 (bem mais
+# baratos) entravam no lugar. NAO e estouro de orcamento: e composicao.
+#
+# ARMADILHA DA ISSUE: "Template ABAPA" ja aparece HOJE dentro do ponteiro
+# "(Fora desta injeção por espaço: ...)" — um grep pela string do bloco que
+# saiu passa com o defeito intacto. A prova certa e uma string que so existe
+# DENTRO do bloco de identidade (aqui, a data do prazo) aparecendo como
+# CONTEUDO, fora do trecho do ponteiro.
+
+# 19.1 — teste DIRETO de priorizarFoco, teto fixo e independente dos tetos
+# globais (ORCAMENTO_BYTES/FOCO_MAX_BYTES): a identidade sozinha pesa ~991 B
+# (conferido com node antes de escrever o fixture), o essencial (titulo +
+# linha de prazo) pesa bem menos que 450 — a margem e de sobra, nao de fio da
+# navalha, e o unico fator que muda contra o codigo antigo e a presenca do
+# corte por dentro.
+FILLER_CRITERIO="$(printf 'Criterio de pronto bem detalhado, com texto de enchimento. %.0s' $(seq 1 15))"
+FOCO_IDENTIDADE_DIRETA="## Ativo
+Último avanço datado: 2026-08-09.
+
+**Identidade grande de teste** \`[trabalho]\`
+Prioridade: alta
+Critério de pronto: $FILLER_CRITERIO
+Prazo final: 2026-08-25.
+
+Marcos (as datas sao as reunioes):
+- **Entrega 1 — 14/08**: marco de cronograma."
+S_ID="$(prioriza "$FOCO_IDENTIDADE_DIRETA" 450)"
+checa "(a) prazo da identidade chega como CONTEUDO"      tem     "2026-08-25"                    "$S_ID"
+checa "(a) titulo da identidade sobrevive"               tem     "Identidade grande de teste"    "$S_ID"
+checa "(a) o criterio de pronto (gordo) cede a vez"      nao_tem "Criterio de pronto bem"        "$S_ID"
+checa "(a) o corte por dentro e anunciado"               tem     "identidade cortada por espaço" "$S_ID"
+checa "(a) o resto do bloco (Marcos) continua cabendo"   tem     "Entrega 1 — 14/08"             "$S_ID"
+
+# 19.2 — fim a fim via montarContexto, com a MESMA forma do FOCO.md real: um
+# SKILL grande o bastante para deixar ~1,2 KB de sobra para o foco (a conta
+# real da issue), e uma identidade multi-linha que passa de 1,2 KB. Numero
+# tunado contra os tetos de HOJE (ORCAMENTO_BYTES=8000, FOCO_MAX_BYTES=2600):
+# quebra de proposito se os tetos mudarem sem o fixture acompanhar.
+REGRA_GRANDE="$(printf 'Regra numerada de teste, com texto representativo do tamanho real de uma regra do SKILL.md. %.0s' $(seq 1 68))"
+SKILL_GRANDE="# Skill
+## As regras
+$REGRA_GRANDE
+## Comando
+irrelevante"
+ENCHIMENTO_ID="$(printf 'Critério de pronto detalhado com bastante texto para engordar o parágrafo. %.0s' $(seq 1 18))"
+FOCO_IDENTIDADE_GRANDE="# Foco
+
+## Ativo
+
+**Foco real de teste** \`[trabalho]\`
+Projeto: Y
+Pastas: Z
+Prioridade: alta
+Critério de pronto: $ENCHIMENTO_ID
+Prazo final: 2026-08-25.
+
+## Fora de escopo
+conteudo-fora-de-escopo"
+S_E2E="$(montar "$SKILL_GRANDE" "$FOCO_IDENTIDADE_GRANDE")"
+checa "(a) e2e: prazo chega na injecao como conteudo"    tem "2026-08-25"          "$S_E2E"
+checa "(a) e2e: cabecalho ## Ativo nao fica orfao"       tem "## Ativo"            "$S_E2E"
+# SO O CORPO (antes do ponteiro "Fora desta injeção"): garante que o prazo
+# nao esta so dentro do NOME de um bloco que saiu, e sim como conteudo real.
+CORPO_E2E="$(echo "$S_E2E" | sed '/Fora desta injeção/,$d')"
+checa "(a) e2e: o prazo esta no CORPO, nao so no ponteiro" tem "2026-08-25"        "$CORPO_E2E"
+
+# 19.3 — invariante (b): quando NEM o essencial cabe (titulo sozinho, numa
+# unica linha, maior que qualquer teto possivel), o bloco NUNCA sai
+# so-cabecalho-e-ponteiro — vale o mesmo aviso explicito do caso abaixo do
+# piso.
+TITULO_FILLER="$(printf 'Foco com titulo enorme de proposito %.0s' $(seq 1 30))"
+FOCO_TITULO_GIGANTE="# Foco
+
+## Ativo
+
+**${TITULO_FILLER}** \`[trabalho]\` prazo final 2026-08-25.
+
+## Fora de escopo
+X"
+S_TIT="$(montar "$SKILL_GRANDE" "$FOCO_TITULO_GIGANTE")"
+checa "(b) nem o essencial cabendo, dispara o aviso explicito"   tem     "O foco não coube nesta injeção"                "$S_TIT"
+checa "(b) o aviso e o MESMO do caso abaixo do piso"             tem     "Leia o FOCO.md antes de medir desvio de escopo" "$S_TIT"
+checa "(b) NUNCA emite bloco so-cabecalho-e-ponteiro"            nao_tem "Fora desta injeção"                             "$S_TIT"
+
+# 19.4 — unidade de focoSoTemPonteiro: cabecalho + os dois ponteiros de
+# omissao, sem nenhuma linha de conteudo real, e "so ponteiro"; a mesma forma
+# com uma linha de conteudo no meio, nao e.
+cat > "$RAIZ_POSIX/driver-so-ponteiro.cjs" <<'EOF'
+const lib = require(process.env.LIB_PATH);
+process.stdout.write(String(lib.focoSoTemPonteiro(process.env.FIX_TEXTO)));
+EOF
+so_ponteiro() { LIB_PATH="${2:-$LIB}" FIX_TEXTO="$1" node "$RAIZ_POSIX/driver-so-ponteiro.cjs" 2>&1; }
+SO_PONTEIRO_TXT="# Foco
+
+(Seções do FOCO.md omitidas desta injeção: X, Y. Elas continuam no arquivo — leia.)
+
+(Fora desta injeção por espaço: A; B. **Leia o FOCO.md** antes de afirmar prazo, marco ou avanço.)"
+checa "focoSoTemPonteiro: so cabecalho + ponteiros -> true"  tem "true"  "$(so_ponteiro "$SO_PONTEIRO_TXT")"
+COM_CONTEUDO_TXT="# Foco
+
+**Foco de teste** \`[trabalho]\` — prazo final 2026-08-25.
+
+(Fora desta injeção por espaço: A; B. **Leia o FOCO.md** antes de afirmar prazo, marco ou avanço.)"
+checa "focoSoTemPonteiro: com uma linha de conteudo -> false" tem "false" "$(so_ponteiro "$COM_CONTEUDO_TXT")"
+
+echo
+echo "19.5 MUTACAO — desfazer o corte por dentro tem que quebrar o item 19.1/19.2"
+# Sabota uma COPIA: desliga a marcacao de identidade (a condicao nunca casa
+# "Ativo"), o que devolve `priorizarFoco` ao comportamento antigo — descarte
+# do bloco inteiro quando ele nao cabe.
+cp "$LIB" "$RAIZ_POSIX/lib-mut-identidade.cjs"
+sed -i "s/secaoAtual === 'Ativo' \&\&/secaoAtual === 'NUNCA-CASA-Issue63' \&\&/" "$RAIZ_POSIX/lib-mut-identidade.cjs"
+S_MUT_ID="$(LIB_PATH="$RAIZ_POSIX/lib-mut-identidade.cjs" FIX_FOCO="$FOCO_IDENTIDADE_DIRETA" TETO=450 node "$RAIZ_POSIX/driver-foco.cjs" 2>&1)"
+if echo "$S_MUT_ID" | grep -qF "2026-08-25"; then
+  falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — o corte por dentro nao e o que faz o prazo sobreviver (saida: $S_MUT_ID)"
+else
+  ok=$((ok+1)); echo "  ok    mutacao expos o corte por dentro (sem ele o prazo volta a cair fora)"
+fi
+
+echo
+echo "19.6 MUTACAO — desligar a invariante do item 19.3 tem que voltar o pointer-only"
+cp "$LIB" "$RAIZ_POSIX/lib-mut-invariante.cjs"
+sed -i 's/if (focoSoTemPonteiro(foco)) foco = avisoFocoNaoCoube(tetoFoco);/if (false \&\& focoSoTemPonteiro(foco)) foco = avisoFocoNaoCoube(tetoFoco);/' "$RAIZ_POSIX/lib-mut-invariante.cjs"
+S_MUT_INV="$(montar "$SKILL_GRANDE" "$FOCO_TITULO_GIGANTE" "$RAIZ_POSIX/lib-mut-invariante.cjs")"
+if echo "$S_MUT_INV" | grep -qF "O foco não coube nesta injeção"; then
+  falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — a invariante nao e o que substitui o bloco pointer-only (saida: $S_MUT_INV)"
+else
+  ok=$((ok+1)); echo "  ok    mutacao expos a invariante (sem ela o bloco pointer-only volta a sair calado)"
+fi
 
 echo
 echo "17.1 MUTACOES — as sabotagens do briefing, cada uma tem que quebrar a asserção correspondente"
