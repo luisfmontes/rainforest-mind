@@ -1,5 +1,5 @@
 #!/bin/bash
-# Bateria do ideias.py. Roda numa caixa de areia com uma COPIA do jsonl —
+# Bateria de scripts/ideias.cjs. Roda numa caixa de areia com uma COPIA do jsonl —
 # nada aqui toca o arquivo real. Uso: bash scripts/testa-ideias.sh
 #
 # O teste que importa e o de mutacao, no bloco 3: ele sabota a conferencia
@@ -21,7 +21,6 @@ export IDEIAS="${IDEIAS:-node scripts/ideias.cjs}"
 export RFM_ROOT="$SB"
 
 mkdir -p "$SB/scripts" "$SB/hooks/lib"
-cp "$SRC/scripts/ideias.py" "$SB/scripts/"
 cp "$SRC/scripts/ideias.cjs" "$SB/scripts/"
 # O vocabulario de projeto virou lib em 2026-08-12 (o setup.cjs tambem mexe no
 # projetos.json, e duas implementacoes divergem em silencio). O require dela e DURO
@@ -223,7 +222,7 @@ esperado "recusa colher sem resultado" 1 bash -c 'echo "{}" | $IDEIAS colher --i
 esperado "recusa id inexistente" 1 bash -c '$IDEIAS colher --id nao-existe < r.json'
 
 # editar: ideia muda antes de ser colhida. Sem este comando a correcao virava
-# edicao a mao no jsonl, que e o que o ideias.py existe para impedir.
+# edicao a mao no jsonl, que e o que a porta unica de escrita existe para impedir.
 echo "{\"id\":\"teste-editar\",\"titulo\":\"Antes\",\"descricao\":\"d\",\"contexto\":\"c\",\"projeto\":\"sandbox\",\"gancho\":\"g\"}" > fe.json
 esperado "plantar a que sera editada" 0 bash -c '$IDEIAS plantar < fe.json'
 echo '{"titulo":"Depois","ao_colher":"passo novo"}' > ed.json
@@ -376,12 +375,10 @@ contem_saida
 echo
 echo "== 3. mutacao: a conferencia byte a byte trava mesmo? =="
 cp ideias.jsonl pre-mutacao.jsonl
-# O mutante tem que sabotar a implementacao que $IDEIAS de fato roda — senao o
-# bloco vira teatro: sabota o .py, roda o .cjs, e a gravacao passa limpa.
-case "$IDEIAS" in
-  *ideias.cjs*) MUTANTE_ALVO="scripts/ideias.cjs" ;;
-  *)            MUTANTE_ALVO="scripts/ideias.py"  ;;
-esac
+# O mutante sabota a implementacao que $IDEIAS de fato roda. O gemeo em Python
+# foi aposentado em 2026-08-22 — scripts/ideias.cjs e a unica implementacao
+# agora, entao o alvo nao depende mais de ramificar por $IDEIAS.
+MUTANTE_ALVO="scripts/ideias.cjs"
 echo "  (mutando $MUTANTE_ALVO — o que \$IDEIAS executa)"
 MUTANTE_ALVO="$MUTANTE_ALVO" node - <<'JS'
 const fs = require("fs");
@@ -474,9 +471,9 @@ echo
 echo "== 5. gancho: o gatilho de retorno vira campo obrigatorio (regra 6) =="
 # Regra 6 da skill exige que toda ideia plantada leve o gancho de retorno
 # concreto — ate aqui isso vivia sem validacao, dentro da prosa do ao_colher.
-# O ideias.py fica congelado no contrato antigo de proposito (ver comentario
-# em scripts/ideias.cjs); gancho e recurso novo, so do .cjs. Mesmo padrao do
-# bloco 4: pula quando $IDEIAS aponta para outra implementacao.
+# Gancho e exigencia que nunca existiu no gemeo em Python (aposentado em
+# 2026-08-22) — nasceu direto no .cjs. Mesmo padrao do bloco 4: pula quando
+# $IDEIAS aponta para outra implementacao.
 case "$IDEIAS" in
   *ideias.cjs*)
     # O bloco 3 deixa o mutante instalado em scripts/ideias.cjs de proposito (a
