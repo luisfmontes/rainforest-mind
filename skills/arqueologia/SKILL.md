@@ -94,20 +94,30 @@ claro que a passada de regra implícita vai render menos que `LACUNA`.
 ## Triagem antes de ler
 
 Arquivo grande sem índice é trabalho perdido. Antes de abrir: `node scripts/triagem.cjs <arquivo>`
-devolve três números reais — linhas, funções, taxa de repetição — e classifica a
-estratégia de leitura:
+devolve números reais — linhas, funções, densidade e taxa de repetição — e
+uma **classe**. Ela para aí: a classe é o que o script conclui, a estratégia de
+leitura é o que **você** decide a partir dela.
 
-- `dado-como-codigo` (repetição > 92%): lê por **amostragem estrutural**. Exemplo:
-  `updiag.prw`, 27.992 linhas e 18 funções. Com esse tamanho, a função média tem
-  1.555 linhas. Afirmação: `CONFIRMADO` em amostra, não em totalidade.
-- `logica` (repetição < 60%): lê por **bloco de funções** — passa 1, 2, 3 inteiras.
-  Exemplo: `IAG67M12.prw`, 13.692 linhas e 219 funções. Com esse tamanho, a função
-  média tem 63 linhas. Afirmação: `CONFIRMADO` em cada função lida.
-- `indefinido` (repetição entre 40% e 60%): **torne a questão mais simples** —
-  reduza a fatia, procure um subconjunto de funções, ou volte à janela com
-  `LACUNA`. Script não escolhe lado; a janela faz.
+As três classes, com o corte exato:
 
-Triagem mede, não recomenda — é seguro deixar o resultado para a janela decidir.
+| classe | corte | o que a janela costuma fazer |
+|---|---|---|
+| `dado-como-codigo` | repetição ≥ 60% **ou** densidade ≥ 300 linhas/função | amostragem estrutural: `CONFIRMADO` vale para a amostra, nunca para a totalidade |
+| `logica` | repetição < 40% | bloco de funções inteiras: `CONFIRMADO` por função lida |
+| `indefinido` | repetição entre 40% e 60% | volta para o usuário — reduza a fatia ou escolha o lado à mão |
+
+Os cortes não são arbitrados. Medidos sobre os 628 fontes de um repositório
+Protheus real em 2026-08-22: a repetição tem mediana de 9%, p90 de 36% e p99 de
+82%, e as duas famílias se separam sozinhas — os `UPD*` ficam acima de 92%
+(`updiag.prw`: 27.992 linhas, 18 funções, 96,7%) e a lógica fica perto de 32%
+(`IAG67M12.prw`: 13.692 linhas, 219 funções, 32,3%). Sobram 14 arquivos entre
+40% e 60% que não caem limpo em nenhum lado — e é por eles que `indefinido`
+existe. Forçar um deles para `dado-como-codigo` faria alguém ler por amostragem
+um arquivo que é lógica, e o erro só apareceria no fim do mapa.
+
+"Repetição" aqui é a proporção de linhas não vazias cuja forma normalizada
+(literais de string trocados por marcador, espaços colapsados) aparece cinco
+vezes ou mais no arquivo.
 
 ## Fatia dentro de um arquivo
 
