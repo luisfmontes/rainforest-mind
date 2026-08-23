@@ -402,5 +402,109 @@ else
   falhou=$((falhou+1)); echo "  FALHA mutacao nao teve efeito — nao e a catraca que recusa (exit $mut)"
 fi
 
+echo
+echo "== 13. 'pendentes' nao sobrevive ao fechamento terminal-positivo =="
+# Defeito real: `marcar` fundia o bloco anterior do estagio com o `--json` novo
+# em vez de substituir (`estado[estagio] = { ...estado[estagio], ...extra,
+# status, em: hoje() }`). Um `pendentes` gravado num `parcial` atravessava o
+# `ok` seguinte, e o registro final dizia "completo" (status ok) e "com
+# pendencia" (pendentes presente) ao mesmo tempo — um revisor independente nao
+# conseguiu decidir se o trabalho estava feito por causa disso.
+# Sem RFM_ESTADO_ROOT: cai no cwd ($SBP), igual as secoes 1-9. Caminho RELATIVO
+# de proposito nas verificacoes abaixo — bash e o `node -e` que le de volta
+# compartilham o mesmo cwd, e um caminho absoluto vindo de `mktemp -d` (estilo
+# MSYS, "/tmp/...") embutido dentro de um argumento de `node -e` atravessa a
+# fronteira para um binario nativo do Windows e pode nao ser traduzido: foi
+# assim que a primeira versao deste teste falhou por 'ENOENT', apontando para
+# um caminho que a propria escrita nunca usou.
+unset RFM_ESTADO_ROOT
+ARQ_T_PEND="docs/rainforest/estado/t-pend.json"
+
+$E iniciar --slug t-pend >/dev/null
+$E marcar --slug t-pend --estagio design --status aprovado \
+  --json '{"arquivo":"docs/rainforest/design/t-pend.md"}' >/dev/null
+$E marcar --slug t-pend --estagio plano  --status ok \
+  --json '{"arquivo":"docs/rainforest/planos/t-pend.md"}' >/dev/null
+$E exigir  --slug t-pend --estagio executar >/dev/null
+$E marcar --slug t-pend --estagio executar --status parcial \
+  --json '{"tarefas_ok":5,"tarefas":6,"pendentes":["tarefa-6: falta rodar"]}' >/dev/null
+$E marcar --slug t-pend --estagio executar --status ok \
+  --json '{"tarefas_ok":6,"tarefas":6,"mutacao":[{"tarefa":1,"resultado":"vermelho"}]}' >/dev/null
+
+igual "pendentes NAO sobrevive ao fechamento ok" "sumiu" "$(node -e "
+const e = JSON.parse(require('fs').readFileSync('$ARQ_T_PEND', 'utf8'));
+console.log('pendentes' in e.executar ? 'sobreviveu' : 'sumiu');
+")"
+igual "status fechou ok mesmo assim" "ok" \
+  "$(node -e "console.log(JSON.parse(require('fs').readFileSync('$ARQ_T_PEND', 'utf8')).executar.status)")"
+igual "tarefas_ok do --json de fechamento venceu" "6" \
+  "$(node -e "console.log(JSON.parse(require('fs').readFileSync('$ARQ_T_PEND', 'utf8')).executar.tarefas_ok)")"
+igual "catraca_mutacao (armada pelo exigir) sobrevive ao fechamento" "sim" \
+  "$(node -e "console.log(JSON.parse(require('fs').readFileSync('$ARQ_T_PEND', 'utf8')).executar.catraca_mutacao ? 'sim' : 'nao')")"
+igual "arquivo do plano sobrevive" "docs/rainforest/planos/t-pend.md" \
+  "$(node -e "console.log(JSON.parse(require('fs').readFileSync('$ARQ_T_PEND', 'utf8')).plano.arquivo)")"
+
+# pendentes REPASSADO explicitamente no --json do fechamento e decisao de quem
+# chama, nao vazamento do merge: continua presente porque foi pedido, nao
+# porque sobrou do bloco anterior.
+$E iniciar --slug t-pend2 >/dev/null
+$E marcar --slug t-pend2 --estagio design --status aprovado >/dev/null
+$E marcar --slug t-pend2 --estagio plano  --status ok >/dev/null
+$E exigir  --slug t-pend2 --estagio executar >/dev/null
+$E marcar --slug t-pend2 --estagio executar --status parcial \
+  --json '{"tarefas_ok":1,"tarefas":2,"pendentes":["tarefa-2: falta"]}' >/dev/null
+$E marcar --slug t-pend2 --estagio executar --status ok \
+  --json '{"tarefas_ok":2,"tarefas":2,"pendentes":["nota: revisado depois"],"mutacao":[{"tarefa":1,"resultado":"vermelho"},{"tarefa":2,"resultado":"vermelho"}]}' >/dev/null
+igual "pendentes explicito no --json do ok sobrevive (intencao, nao vazamento)" \
+  "nota: revisado depois" \
+  "$(node -e "console.log(JSON.parse(require('fs').readFileSync('docs/rainforest/estado/t-pend2.json', 'utf8')).executar.pendentes[0])")"
+
+# snapshot do revisar (armado pelo exigir) tambem sobrevive ao fechamento ok.
+# Repositorio PROPRIO, nao o "test-repo" da secao 10: aquele leva um "git reset
+# --hard HEAD~1" no preparo do caso 3, que apaga do disco qualquer arquivo
+# gravado so na "novo commit" (caso do backstop-1.json e backstop-2.json) —
+# reusa-lo aqui daria FALHA por um motivo que nao e o desta secao.
+mkdir -p "$SBP/snapshot-fix"
+(cd "$SBP/snapshot-fix" && git init -q && git config user.email t@t && git config user.name T && echo x > a.txt && git add . && git commit -qm inicial)
+export RFM_ESTADO_ROOT="$SBP/snapshot-fix"
+$E iniciar --slug t-snap >/dev/null
+$E marcar --slug t-snap --estagio design --status aprovado >/dev/null
+$E marcar --slug t-snap --estagio plano  --status ok >/dev/null
+$E exigir  --slug t-snap --estagio executar >/dev/null
+$E marcar --slug t-snap --estagio executar --status ok \
+  --json '{"tarefas_ok":1,"tarefas":1,"mutacao":[{"tarefa":1,"resultado":"vermelho"}]}' >/dev/null
+$E exigir  --slug t-snap --estagio revisar >/dev/null
+$E marcar --slug t-snap --estagio revisar --status ok \
+  --json '{"achados":0,"base":"HEAD","head":"HEAD"}' >/dev/null
+igual "snapshot (armado pelo exigir revisar) sobrevive ao fechamento" "sim" \
+  "$(node -e "const e=JSON.parse(require('fs').readFileSync('snapshot-fix/docs/rainforest/estado/t-snap.json','utf8')); console.log(e.revisar.snapshot ? 'sim' : 'nao')")"
+unset RFM_ESTADO_ROOT
+
+echo
+echo "== 14. MUTACAO — sem apagar 'pendentes' no fechamento, o caso 13 para de pegar =="
+cp scripts/estado.cjs scripts/estado-pendentes-mutante.cjs
+sed -i "s/if (!(campo in extra)) delete base\[campo\];/\/\/ MUTADO: nao apaga mais nada/" scripts/estado-pendentes-mutante.cjs
+# Ainda sem RFM_ESTADO_ROOT (default cwd) — mesmo motivo da secao 13. Slug
+# proprio evita colisao com t-pend/t-pend2.
+EM="node scripts/estado-pendentes-mutante.cjs"
+$EM iniciar --slug t-pend-mut >/dev/null
+$EM marcar --slug t-pend-mut --estagio design --status aprovado >/dev/null
+$EM marcar --slug t-pend-mut --estagio plano  --status ok >/dev/null
+$EM exigir  --slug t-pend-mut --estagio executar >/dev/null
+$EM marcar --slug t-pend-mut --estagio executar --status parcial \
+  --json '{"tarefas_ok":5,"tarefas":6,"pendentes":["tarefa-6: falta rodar"]}' >/dev/null
+$EM marcar --slug t-pend-mut --estagio executar --status ok \
+  --json '{"tarefas_ok":6,"tarefas":6,"mutacao":[{"tarefa":1,"resultado":"vermelho"}]}' >/dev/null
+mutres=$(node -e "
+const e = JSON.parse(require('fs').readFileSync('docs/rainforest/estado/t-pend-mut.json', 'utf8'));
+console.log('pendentes' in e.executar ? 'sobreviveu' : 'sumiu');
+")
+if [ "$mutres" = "sobreviveu" ]; then
+  ok=$((ok+1)); echo "  ok   sem o delete, pendentes volta a vazar (o conserto e load-bearing)"
+else
+  falhou=$((falhou+1)); echo "  FALHA mutacao nao teve efeito — pendentes sumiu mesmo com o delete desligado (veio '$mutres')"
+fi
+rm -f scripts/estado-pendentes-mutante.cjs
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

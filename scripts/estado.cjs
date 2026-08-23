@@ -111,6 +111,41 @@ function estaFechado(estagio, bloco) {
   return bloco.status === (FECHADO[estagio] || 'ok');
 }
 
+// `marcar` funde o bloco anterior do estágio com o `--json` novo (ver o comentário
+// em cima do `estado[estagio] = ...` mais abaixo) porque a maioria dos campos deve
+// sobreviver a uma transição — `catraca_mutacao`, `snapshot`, `arquivo`. Mas
+// `pendentes` é o inverso: ele descreve a INCOMPLETUDE do fechamento anterior
+// (`parcial`), e sobreviver a um fechamento terminal-positivo posterior (`ok` de
+// `executar`, `aprovado` de `design`, etc.) produz um objeto que se diz completo e
+// lista pendência ao mesmo tempo — achado real de um revisor independente, que não
+// conseguiu decidir se o trabalho estava feito.
+//
+// A correção não é allowlist de campos persistentes: o plano
+// `decisao-que-evapora-na-esteira` fixou como invariante que `--json` continua
+// aceitando metadado arbitrário, sem lista fechada que rejeite (ou, por extensão,
+// que apague em silêncio) chave que essa lista não previu. `pendentes` é hoje o
+// único campo do vocabulário do fluxo que descreve incompletude — ver
+// `skills/executar/SKILL.md`, seção "Condição de parada" — por isso a lista
+// abaixo tem um item só. Um campo novo com o mesmo papel entra aqui quando nascer.
+const CAMPOS_EFEMEROS = ['pendentes'];
+
+/**
+ * Bloco anterior do estágio, pronto para ser fundido com o `--json` novo. Ao
+ * fechar com status terminal-positivo, remove os `CAMPOS_EFEMEROS` que o bloco
+ * anterior tinha e que o `--json` novo não repetiu — do contrário eles
+ * atravessam a fusão feita no `marcar` (abaixo, em `estado[estagio] = ...`) e
+ * sobrevivem à transição que deveriam ter fechado.
+ */
+function baseParaFundir(estagio, blocoAnterior, statusNovo, extra) {
+  if (!blocoAnterior) return blocoAnterior;
+  if (!estaFechado(estagio, { status: statusNovo })) return blocoAnterior;
+  const base = { ...blocoAnterior };
+  for (const campo of CAMPOS_EFEMEROS) {
+    if (!(campo in extra)) delete base[campo];
+  }
+  return base;
+}
+
 function hoje() {
   // Relógio LOCAL. toISOString() é UTC e já gravou data no futuro neste repo.
   const d = new Date();
@@ -668,7 +703,11 @@ function main() {
         process.exit(2);
       }
     }
-    estado[estagio] = { ...estado[estagio], ...extra, status, em: hoje() };
+    // `campos efemeros` (pendentes) somem do bloco anterior quando o fechamento e
+    // terminal-positivo e o --json novo nao os repete — ver `baseParaFundir` e o
+    // comentario de `CAMPOS_EFEMEROS`. O resto do bloco anterior sobrevive normal.
+    const baseAnterior = baseParaFundir(estagio, estado[estagio], status, extra);
+    estado[estagio] = { ...baseAnterior, ...extra, status, em: hoje() };
     gravar(slug, estado);
     console.log(`${estagio}: ${status}`);
     const p = proximo(estado);
