@@ -204,5 +204,53 @@ tem     "resolve para o slug do repositorio, nao para o nome do worktree" \
 nao_tem "nao fica preso no basename do worktree (o defeito original)" \
   "$WORKTREE_OUT" "projeto: nome-que-nao-e-o-slug"
 
+echo
+echo "== 13. caminho registrado em forma CURTA (alias 8.3 do Windows) ainda casa com o real =="
+# Achado na CI (windows-latest, run 32665203220): o TEMP do runner vem como
+# `C:\Users\RUNNER~1\...`, forma curta 8.3. `path.resolve()` NUNCA expande
+# esse alias — e' string pura, nunca toca o disco — mas o
+# `git rev-parse --git-common-dir` expande, porque resolve pelo filesystem de
+# verdade. O caminho registrado no projetos.json pode chegar em QUALQUER uma
+# das duas formas; a comparacao (`caminhoCanonico`, via
+# `fs.realpathSync.native`) tem que ser imune a isso.
+LONGO_POSIX="$SBP/um-nome-de-diretorio-comprido-o-bastante-pra-ganhar-alias-83"
+mkdir -p "$LONGO_POSIX"
+LONGO_WIN="$(cygpath -w "$LONGO_POSIX")"
+CURTO_WIN="$(powershell.exe -NoProfile -Command "(New-Object -ComObject Scripting.FileSystemObject).GetFolder('$LONGO_WIN').ShortPath" | tr -d '\r')"
+if [ "$CURTO_WIN" = "$LONGO_WIN" ]; then
+  echo "  (pulado: este disco nao gera alias 8.3 para este caminho — nada a provar aqui)"
+else
+  ( cd "$LONGO_POSIX" && git init -q && git config user.email t@t.com && git config user.name t \
+    && git commit -q --allow-empty -m init )
+  git -C "$LONGO_POSIX" worktree add --detach -q "$SBP/worktree-do-alias-83"
+  mkdir -p "$SBP/dados-83"
+  printf '' > "$SBP/dados-83/ideias.jsonl"
+  CURTO_M="$(cygpath -m "$CURTO_WIN")"
+  cat > "$SBP/dados-83/projetos.json" <<EOF
+{ "projeto-do-alias-83": { "caminho": "$CURTO_M", "apelidos": [] } }
+EOF
+  ALIAS_OUT="$( cd "$SBP/worktree-do-alias-83" && RFM_ROOT="$SB/dados-83" node "$SRC/scripts/semear.cjs" 2>&1 )"
+  tem "resolve o slug mesmo com o caminho registrado na forma curta 8.3" \
+    "$ALIAS_OUT" "projeto: projeto-do-alias-83"
+
+  echo
+  echo "== 13b. MUTACAO — trocar caminhoCanonico por path.resolve puro perde o alias 8.3 =="
+  cp "$SRC/scripts/semear.cjs" "$SBP/semear-mutante-83.cjs"
+  node - "$SBP/semear-mutante-83.cjs" <<'JS'
+const fs = require("fs");
+const alvo = process.argv[2];
+const antes = fs.readFileSync(alvo, "utf8");
+const de = "    return fs.realpathSync.native(p).toLowerCase();";
+if (!antes.includes(de)) throw new Error("ancora do caminhoCanonico sumiu");
+fs.writeFileSync(alvo, antes.replace(de, "    return path.resolve(p).toLowerCase(); // MUTADO"), "utf8");
+JS
+  MUT83="$( cd "$SBP/worktree-do-alias-83" && RFM_ROOT="$SB/dados-83" node "$SBP/semear-mutante-83.cjs" 2>&1 )"
+  if echo "$MUT83" | grep -qF "projeto: projeto-do-alias-83"; then
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — nao e' o realpathSync.native que resolve o alias 8.3"
+  else
+    ok=$((ok+1)); echo "  ok   sem o realpathSync.native, o alias 8.3 volta a NAO casar (o conserto e' load-bearing)"
+  fi
+fi
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

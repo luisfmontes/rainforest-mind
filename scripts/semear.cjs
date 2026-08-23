@@ -103,17 +103,41 @@ function lerVocabulario(raiz) {
   }
 }
 
+/**
+ * Forma canonica de um caminho, para comparar dois caminhos que podem chegar
+ * em formas de texto diferentes apontando pro MESMO diretorio. `path.resolve`
+ * so mexe em string (normaliza `.`/`..`, junta segmentos) — nunca consulta o
+ * disco, e por isso nunca desfaz um alias 8.3 do Windows (`RUNNER~1`). O
+ * `git rev-parse --git-common-dir`, por outro lado, desfaz: reproduzido em
+ * 2026-08-23 criando um diretorio de nome comprido, montando um worktree a
+ * partir do alias curto (`C--PRO~2\...`) e comparando as duas saidas — o
+ * `--git-common-dir` veio na forma LONGA mesmo tendo sido criado a partir da
+ * curta. `fs.realpathSync.native` desfaz o mesmo alias (mesma prova, mesma
+ * sessao) porque consulta o filesystem de verdade — e' o lado que faltava
+ * normalizar. Caminho que nao existe mais no disco (projeto movido, apagado)
+ * cai pro `path.resolve` puro: perde a imunidade a 8.3 nesse caso, mas nao
+ * quebra a comparacao textual que ja funcionava antes.
+ */
+function caminhoCanonico(p) {
+  if (!p) return null;
+  try {
+    return fs.realpathSync.native(p).toLowerCase();
+  } catch {
+    return path.resolve(p).toLowerCase();
+  }
+}
+
 /** Slug do alvo pedido: nome do slug, apelido dele, ou pasta registrada. */
 function slugDoAlvo(alvo, vocab, dir) {
   if (!vocab) return null;
   if (Object.prototype.hasOwnProperty.call(vocab, alvo)) return alvo;
   const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
   const alvoNorm = norm(alvo);
-  const dirNorm = dir ? path.resolve(dir).toLowerCase() : null;
+  const dirNorm = dir ? caminhoCanonico(dir) : null;
   for (const [slug, v] of Object.entries(vocab)) {
     const apelidos = Array.isArray(v && v.apelidos) ? v.apelidos : [];
     if ([slug, ...apelidos].some((t) => norm(t) === alvoNorm)) return slug;
-    if (dirNorm && v && v.caminho && path.resolve(v.caminho).toLowerCase() === dirNorm) return slug;
+    if (dirNorm && v && v.caminho && caminhoCanonico(v.caminho) === dirNorm) return slug;
   }
   return null;
 }
