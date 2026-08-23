@@ -74,7 +74,7 @@ if (-not $destino) {
 $promptFile = Join-Path $root "vigias\$Vigia.md"
 if (-not (Test-Path $promptFile)) { exit 1 }
 # -Encoding UTF8 é obrigatório: sem ele o Get-Content lê o arquivo como ANSI e
-# todo acento chega ao modelo como mojibake (Ã§, â€"). Verificado em 2026-08-08.
+# todo acento chega ao modelo como mojibake (Ã§, â€"). Verificado em 2026-08-08. rf-encoding-exemplo: bytes acima sao exemplo documentado do sintoma, nao mojibake real.
 $prompt = Get-Content -Raw -Encoding UTF8 $promptFile
 # Execução manual fora do agendamento. Marcar a mensagem como teste não
 # funciona: o envio é uma tool do modelo, e ele ignorou a marca nas duas
