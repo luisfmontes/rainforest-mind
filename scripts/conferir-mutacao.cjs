@@ -26,7 +26,7 @@
  * estava errado, a bateria ficou vermelha por outro motivo, e o resultado teria
  * sido lido como prova. Veredito certo pelo motivo errado é pior que veredito
  * errado, porque ninguém volta a olhar. Precedente literal do texto
- * `MUTACAO NAO APLICADA`: `scripts/testa-conferir-relatorio.sh:126`.
+ * `MUTACAO NAO APLICADA`: `scripts/testa-conferir-publicacao.sh:126`.
  *
  * STDIN FECHADO E TETO DE TEMPO existem pelo incidente da seção 6 do relatório de
  * 2026-08-19: uma bateria que lia payload do stdin pendurou o terminal por dez

@@ -105,7 +105,7 @@ a saída é **subtrair**, não aumentar o teto.
 
 Issue com o comando exato e a saída colada vale dez vezes uma descrição. Se o
 relato vier de uma sessão sua com o próprio plugin, rode
-`node scripts/conferir-relatorio.cjs <arquivo>` antes de publicar: ele **sai com
+`node scripts/conferir-publicacao.cjs <arquivo>` antes de publicar: ele **sai com
 código 2** se houver telefone, JID, e-mail, caminho de home ou credencial no
 texto.
 

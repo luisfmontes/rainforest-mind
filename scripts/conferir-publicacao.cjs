@@ -2,7 +2,7 @@
 /**
  * Confere um relatório ANTES de ele sair da máquina — e RECUSA, em vez de avisar.
  *
- * POR QUE EXISTE, com data. O `commands/relatorio.md` mandava, desde sempre:
+ * POR QUE EXISTE, com data. O `commands/feedback.md` mandava, desde sempre:
  * "se o achado citar credencial, dado de cliente ou fonte de cliente, anonimize
  * antes de gravar". A regra estava escrita, era clara, e mesmo assim, em
  * 2026-08-10, um relatório foi gravado e commitado contendo:
@@ -18,7 +18,7 @@
  *
  * E o custo do vazamento MUDOU: enquanto o relatório era markdown num repo
  * privado, um deslize dava para corrigir antes de alguém ver. Agora o
- * `/relatorio` abre Issue — que é público no instante em que é criado, e que
+ * `/feedback` abre Issue — que é público no instante em que é criado, e que
  * fica no índice de busca mesmo depois de editado. Não há "corrigir antes".
  *
  * O QUE ELE NÃO FAZ, e é importante dizer: ele não detecta NOME DE PESSOA. Não
@@ -28,9 +28,9 @@
  * seguro", diz "não achei o que sei procurar", e lembra do resto.
  *
  * Uso:
- *   node scripts/conferir-relatorio.cjs <arquivo>     # exit 2 se achar algo
- *   cat rascunho.md | node scripts/conferir-relatorio.cjs -
- *   node scripts/conferir-relatorio.cjs <arquivo> --json
+ *   node scripts/conferir-publicacao.cjs <arquivo>     # exit 2 se achar algo
+ *   cat rascunho.md | node scripts/conferir-publicacao.cjs -
+ *   node scripts/conferir-publicacao.cjs <arquivo> --json
  */
 
 const fs = require('fs');
@@ -141,7 +141,7 @@ function main() {
   const json = args.includes('--json');
   const alvo = args.find((a) => !a.startsWith('--'));
   if (!alvo) {
-    console.error('uso: node scripts/conferir-relatorio.cjs <arquivo>|- [--json]');
+    console.error('uso: node scripts/conferir-publicacao.cjs <arquivo>|- [--json]');
     process.exit(1);
   }
 

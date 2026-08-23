@@ -1,8 +1,8 @@
 #!/bin/bash
-# Bateria do scripts/conferir-relatorio.cjs — a trava que confere o relatorio antes
+# Bateria do scripts/conferir-publicacao.cjs — a trava que confere o relatorio antes
 # de ele sair da maquina.
 #
-# Ela existe porque a versao ESCRITA da mesma regra falhou. O `commands/relatorio.md`
+# Ela existe porque a versao ESCRITA da mesma regra falhou. O `commands/feedback.md`
 # mandava anonimizar dado de cliente desde sempre, e em 2026-08-10 um relatorio foi
 # gravado e commitado com telefone e nome completo de terceiro. A bateria tem que
 # provar que a versao em codigo pega o que a versao em texto deixou passar.
@@ -29,8 +29,8 @@ tem()     { if echo "$2" | grep -qF "$3"; then ok=$((ok+1)); echo "  ok   $1"; e
 nao_tem() { if echo "$2" | grep -qF "$3"; then falhou=$((falhou+1)); echo "  FALHA $1 (achou '$3')"; else ok=$((ok+1)); echo "  ok   $1"; fi; }
 saiu()    { if [ "$2" = "$3" ]; then ok=$((ok+1)); echo "  ok   $1"; else falhou=$((falhou+1)); echo "  FALHA $1 (exit $2, esperava $3)"; fi; }
 
-roda() { node "$SRC/scripts/conferir-relatorio.cjs" "$1" 2>&1; }
-codigo() { node "$SRC/scripts/conferir-relatorio.cjs" "$1" >/dev/null 2>&1; echo $?; }
+roda() { node "$SRC/scripts/conferir-publicacao.cjs" "$1" 2>&1; }
+codigo() { node "$SRC/scripts/conferir-publicacao.cjs" "$1" >/dev/null 2>&1; echo $?; }
 
 echo "== 1. cada forma de dado sensivel =="
 
@@ -118,18 +118,18 @@ saiu "nome de pessoa sozinho passa mesmo (limitacao provada)" "$(codigo "$SBP/no
 echo
 echo "== 4. MUTACAO: transformar a recusa em aviso =="
 # Se o exit 2 sumir, o script vira relatorio bonito que nao para nada — e o
-# `commands/relatorio.md` seguiria em frente publicando o Issue.
-cp "$SRC/scripts/conferir-relatorio.cjs" "$SBP/original.cjs"
+# `commands/feedback.md` seguiria em frente publicando o Issue.
+cp "$SRC/scripts/conferir-publicacao.cjs" "$SBP/original.cjs"
 node -e "
   const fs=require('fs'), p=process.argv[1];
   const s=fs.readFileSync(p,'utf8'), a='  process.exit(2);';
   if(!s.includes(a)) { console.error('MUTACAO NAO APLICADA'); process.exit(1); }
   fs.writeFileSync(p, s.replace(a, '  process.exit(0);'));
-" "$SRC/scripts/conferir-relatorio.cjs"
+" "$SRC/scripts/conferir-publicacao.cjs"
 if [ $? -ne 0 ]; then falhou=$((falhou+1)); echo "  FALHA nao consegui aplicar a mutacao"; else
   saiu "com a recusa sabotada, o JID passa (prova que o exit 2 era a trava)" "$(codigo "$SBP/jid.md")" "0"
 fi
-cp "$SBP/original.cjs" "$SRC/scripts/conferir-relatorio.cjs"
+cp "$SBP/original.cjs" "$SRC/scripts/conferir-publicacao.cjs"
 saiu "e restaurado, volta a recusar" "$(codigo "$SBP/jid.md")" "2"
 
 echo

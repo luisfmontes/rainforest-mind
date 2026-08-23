@@ -27,7 +27,7 @@
  *   atravessa (e MECANISMO, porque e comando de shell com exit code):
  *     scripts/estado.cjs exigir ......... o gate do fluxo, exit 2
  *     scripts/conferir-entrega.cjs ...... a checagem da regra 12, exit 1
- *     scripts/conferir-relatorio.cjs .... anonimizacao antes de publicar, exit 2
+ *     scripts/conferir-publicacao.cjs .... anonimizacao antes de publicar, exit 2
  *     scripts/ideias.cjs ................ porta unica de escrita do ideias.jsonl
  *     scripts/foco.cjs / saude.cjs / semear.cjs / limpar-branches.cjs
  *
@@ -154,7 +154,7 @@ function corpo(agente, nucleo, dados) {
   const cli = [
     ["`node <plugin>/scripts/estado.cjs exigir --slug <slug> --estagio <e>`", "gate do fluxo — **exit 2** quando o estagio anterior nao fechou"],
     ["`node <plugin>/scripts/conferir-entrega.cjs --worktree <wt> --base <hash>`", "a checagem da regra 12 sobre entrega de agente — **exit 1** se reprovar"],
-    ["`node <plugin>/scripts/conferir-relatorio.cjs <arquivo>`", "**exit 2** se o texto tem telefone, e-mail, caminho de home ou credencial"],
+    ["`node <plugin>/scripts/conferir-publicacao.cjs <arquivo>`", "**exit 2** se o texto tem telefone, e-mail, caminho de home ou credencial"],
     // Sem `|` dentro do code span: em tabela markdown ele quebra a celula.
     ["`node <plugin>/scripts/ideias.cjs plantar, colher, listar, conferir`", "porta unica de escrita do `ideias.jsonl` (trava, backup, atomico, conferido)"],
     ["`node <plugin>/scripts/foco.cjs caminho, rotacionar`", "onde mora o foco, e o teto do bloco de avancos"],
