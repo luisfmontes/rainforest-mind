@@ -91,10 +91,21 @@ monta a decisão numerada para o usuário é a janela principal, nunca o grafo.
 E o grafo **não grava a rodada**: script de workflow não tem acesso a disco.
 Quem grava é a janela principal, chamando `node scripts/divergencias.cjs abrir`
 (entrada por stdin, com `id` e `enunciado` de quem chama, mais `shortlist`,
-`escolha_nao_obvia` e `refutacao` — o que a Fase 2 acabou de devolver) assim
-que o crítico responde, e depois `node scripts/divergencias.cjs fechar --id <id>`
+`escolha_nao_obvia`, `refutacao`, `critico_bateu_na_primeira_da_rodada` e
+`ideias` — tudo que a Fase 2 acabou de devolver, sem descartar nada) assim que
+o crítico responde, e depois `node scripts/divergencias.cjs fechar --id <id>`
 (entrada por stdin, com `escolha` e `bate_com_a_primeira_ideia`) quando o
 usuário decidir.
+
+Repare que são **duas medidas de ancoragem diferentes**, com nomes diferentes
+de propósito: `critico_bateu_na_primeira_da_rodada` mede se o próprio crítico
+convergiu para a primeira ideia **da rodada** — grava no `abrir`, porque é
+resultado do grafo. `bate_com_a_primeira_ideia` mede se a escolha final **do
+usuário** bate com a ideia que já ancorava **a conversa** antes de o
+`divergir` ser invocado — só o usuário sabe qual era, por isso continua vindo
+de fora no `fechar`. Colapsar os dois num campo só mediria o crítico no lugar
+de medir a ancoragem que o teste de falsificação desta skill quer saber.
+Ambos os comandos recusam qualquer campo fora dessa lista.
 
 ## Condição de parada
 

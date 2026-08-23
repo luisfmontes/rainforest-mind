@@ -41,16 +41,38 @@ const DIR_BACKUP = path.join(RAIZ, ".divergencias-backups");
 const TRAVA = path.join(RAIZ, ".divergencias.lock");
 
 // Campos que o `abrir` exige na entrada — o que o critico da fase 2 do grafo
-// devolve, mais o enunciado que deu origem a rodada e o id da linha.
-const CAMPOS_OBRIGATORIOS_ABRIR = ["id", "enunciado", "shortlist", "escolha_nao_obvia", "refutacao"];
+// devolve, mais o enunciado que deu origem a rodada e o id da linha. Dobra
+// como ALLOWLIST tambem: o `abrir` nao tem campo opcional nenhum, entao todo
+// nome fora desta lista e recusado (achado do `revisar`: sem isto, `origem` e
+// `critico_viu_ancoragem` — que nao existem em schema nenhum — foram
+// aceitos e gravados numa rodada real, so porque a denylist abaixo nao os
+// citava por nome).
+// D11: duas medidas de ancoragem, dois nomes. `critico_bateu_na_primeira_da_rodada`
+// vem do critico (mede se ELE convergiu para a primeira ideia da rodada) e e
+// exigido aqui, junto com `ideias` (as ideias cruas da fase 1) — sem elas uma
+// linha fechada nao e auditavel depois. `bate_com_a_primeira_ideia` continua
+// sendo so do `fechar`: mede se a escolha do USUARIO bate com o que ancorava
+// a conversa, e so o usuario sabe qual era.
+const CAMPOS_OBRIGATORIOS_ABRIR = [
+  "id", "enunciado", "shortlist", "escolha_nao_obvia", "refutacao",
+  "critico_bateu_na_primeira_da_rodada", "ideias",
+];
 // Campos que so o script carimba — quem manda pela entrada esta tentando
-// forjar o que e do proprio registrador (mesmo motivo do ideias.cjs).
+// forjar o que e do proprio registrador (mesmo motivo do ideias.cjs). Fica
+// como mensagem de erro mais especifica; quem cair fora dela E fora da
+// allowlist acima cai no erro generico de "campo nao aceito".
 const CAMPOS_PROIBIDOS_NO_INPUT_ABRIR = [
   "status", "aberta_em", "fechada_em", "escolha", "bate_com_a_primeira_ideia",
 ];
+// Allowlist da entrada do `fechar` — o achado do `revisar` que abriu a tarefa
+// 7: sem isto, `Object.assign(obj, entrada)` deixava qualquer campo da
+// entrada (inclusive `id` e `shortlist`, que sao do `abrir`) sobrescrever a
+// linha existente em silencio. So estes dois sao aceitos.
+const CAMPOS_PERMITIDOS_FECHAR = ["escolha", "bate_com_a_primeira_ideia"];
 const RE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ORDEM_CANONICA = [
   "id", "enunciado", "shortlist", "escolha_nao_obvia", "refutacao",
+  "critico_bateu_na_primeira_da_rodada", "ideias",
   "status", "aberta_em", "fechada_em", "escolha", "bate_com_a_primeira_ideia",
 ];
 
@@ -319,7 +341,24 @@ function validarEntradaAbrir(obj) {
         "e o script, no momento certo. Remova e rode de novo."
     );
   }
-  const faltando = CAMPOS_OBRIGATORIOS_ABRIR.filter((c) => !obj[c]);
+  const naoPermitidos = Object.keys(obj).filter(
+    (c) => !CAMPOS_OBRIGATORIOS_ABRIR.includes(c)
+  );
+  if (naoPermitidos.length) {
+    throw new Erro(
+      `campo(s) ${naoPermitidos.join(", ")} nao e(sao) aceito(s) na entrada de abrir — ` +
+        `so ${CAMPOS_OBRIGATORIOS_ABRIR.join(", ")} sao permitidos.`
+    );
+  }
+  // `critico_bateu_na_primeira_da_rodada` (booleano) e `ideias` (array nao
+  // vazio) nao passam no crivo generico `!obj[c]`: `false` e falsy mas e uma
+  // resposta valida, e `[]` e truthy mas nao e uma lista de ideias de verdade.
+  // Cada um checa o proprio tipo; os demais seguem o crivo generico de sempre.
+  const faltando = CAMPOS_OBRIGATORIOS_ABRIR.filter((c) => {
+    if (c === "critico_bateu_na_primeira_da_rodada") return typeof obj[c] !== "boolean";
+    if (c === "ideias") return !Array.isArray(obj[c]) || obj[c].length === 0;
+    return !obj[c];
+  });
   if (faltando.length) {
     throw new Erro(`campo(s) obrigatorio(s) faltando ou vazio(s): ${faltando.join(", ")}`);
   }
@@ -352,6 +391,16 @@ function cmdFechar(args) {
   const entrada = lerStdin();
   if (typeof entrada !== "object" || entrada === null || Array.isArray(entrada)) {
     throw new Erro("o JSON da entrada precisa ser um objeto");
+  }
+  const naoPermitidos = Object.keys(entrada).filter(
+    (c) => !CAMPOS_PERMITIDOS_FECHAR.includes(c)
+  );
+  if (naoPermitidos.length) {
+    throw new Erro(
+      `campo(s) ${naoPermitidos.join(", ")} nao e(sao) aceito(s) na entrada de fechar — ` +
+        `so ${CAMPOS_PERMITIDOS_FECHAR.join(", ")} sao permitidos. Quem sobrescreve id, ` +
+        "shortlist e o resto da rodada e o `abrir`, nao o `fechar`."
+    );
   }
   if (typeof entrada.escolha !== "string" || !entrada.escolha.trim()) {
     throw new Erro(
