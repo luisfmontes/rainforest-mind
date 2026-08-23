@@ -78,23 +78,23 @@ function extractFunctions(lines) {
 }
 
 /**
- * Classifica o arquivo com base em repRatio e densidade
- * Nota: densidade === Infinity (nfunc === 0) NÃO pode decidir sozinha a classe.
- * Só a perna de repetição (repRatio >= 0.6) pode classificar nesse caso.
- * Se nfunc === 0, não há funções declaradas, então não pode ser 'logica'.
+ * Classifica o arquivo com base em repRatio e densidade.
+ *
+ * Decisão: Se nfunc === 0 (sem funções declaradas), não há lógica de programa.
+ * Arquivo sem função é sempre 'indefinido', independentemente de repetição ou densidade.
  */
 function classify(repRatio, density, nfunc) {
+  // Guard: arquivo sem funções é sempre indefinido
+  if (nfunc === 0) {
+    return 'indefinido';
+  }
   // Se há repetição alta, é dado-como-codigo
   if (repRatio >= 0.6) {
     return 'dado-como-codigo';
   }
-  // Se não há funções (nfunc === 0, density === Infinity), não deixar a densidade infinita decidir
-  if (nfunc > 0 && density >= 300) {
+  // Se densidade é alta (nfunc > 0 garantido pelo guard acima), é dado-como-codigo
+  if (density >= 300) {
     return 'dado-como-codigo';
-  }
-  // Se não há funções, não pode ser 'logica' — fica indefinido
-  if (nfunc === 0) {
-    return 'indefinido';
   }
   if (repRatio < 0.4) {
     return 'logica';

@@ -323,17 +323,34 @@ DENS_VAZIO="$(campo "$TMP/vazio.json" 0 densidade)"
 igual "densidade = null (nfunc === 0)" "null" "$DENS_VAZIO"
 
 echo
-echo "== 8d. arquivo binário — nfunc = 0, não é dado-como-codigo por densidade infinita =="
-# Arquivo com bytes aleatórios (não decodifica como latin1 legível, mas o script
-# trata como latin1 mesmo assim) também terá nfunc = 0 e densidade = Infinity.
-# Mesma regra: não deve ser dado-como-codigo.
-FIX_BIN="$TMP/binario.prw"
-dd if=/dev/urandom of="$FIX_BIN" bs=1 count=100 2>/dev/null
-esperado "triagem roda sem erro (arquivo binário)" 0 triar "$TMP/binario.json" "$FIX_BIN"
-igual "nfunc = 0 em arquivo binário" "0" "$(campo "$TMP/binario.json" 0 nfunc)"
-igual "classe ≠ dado-como-codigo (repetição não é alta)" "indefinido" "$(campo "$TMP/binario.json" 0 classe)"
-DENS_BIN="$(campo "$TMP/binario.json" 0 densidade)"
-igual "densidade = null (nfunc === 0)" "null" "$DENS_BIN"
+echo "== 8d. arquivo binário repetitivo — nfunc = 0, não é dado-como-codigo mesmo com repetição =="
+# Arquivo com padrão binário repetido 200 linhas (formato legítimo com header/padding alinhado).
+# Mesmo com repRatio alto, não deve ser dado-como-codigo porque nfunc === 0.
+# O guard deve sempre devolver 'indefinido' quando não há funções.
+FIX_BIN_REP="$TMP/binario-repetitivo.prw"
+# Criar padrão binário \x00\x01\x02\x03 em 200 linhas
+{
+  for i in $(seq 1 200); do
+    printf '\x00\x01\x02\x03\n'
+  done
+} > "$FIX_BIN_REP"
+esperado "triagem roda sem erro (arquivo binário repetitivo)" 0 triar "$TMP/binario-rep.json" "$FIX_BIN_REP"
+igual "nfunc = 0 em arquivo binário repetitivo" "0" "$(campo "$TMP/binario-rep.json" 0 nfunc)"
+igual "classe ≠ dado-como-codigo apesar de repetição" "indefinido" "$(campo "$TMP/binario-rep.json" 0 classe)"
+DENS_BIN_REP="$(campo "$TMP/binario-rep.json" 0 densidade)"
+igual "densidade = null (nfunc === 0)" "null" "$DENS_BIN_REP"
+
+echo
+echo "== 8e. arquivo binário aleatório — nfunc = 0, baixa repetição, ainda é indefinido =="
+# Arquivo com bytes aleatórios também tem nfunc = 0 e densidade = Infinity.
+# Mesma regra: não deve ser dado-como-codigo, pois o guard cobre nfunc === 0.
+FIX_BIN_RAND="$TMP/binario-aleatorio.prw"
+dd if=/dev/urandom of="$FIX_BIN_RAND" bs=1 count=100 2>/dev/null
+esperado "triagem roda sem erro (arquivo binário aleatório)" 0 triar "$TMP/binario-rand.json" "$FIX_BIN_RAND"
+igual "nfunc = 0 em arquivo binário aleatório" "0" "$(campo "$TMP/binario-rand.json" 0 nfunc)"
+igual "classe ≠ dado-como-codigo (mesmo com baixa repetição)" "indefinido" "$(campo "$TMP/binario-rand.json" 0 classe)"
+DENS_BIN_RAND="$(campo "$TMP/binario-rand.json" 0 densidade)"
+igual "densidade = null (nfunc === 0)" "null" "$DENS_BIN_RAND"
 
 echo
 echo "== 9. PROVA CONTRA O FONTE REAL (pulada se o inovacao não existir aqui) =="
