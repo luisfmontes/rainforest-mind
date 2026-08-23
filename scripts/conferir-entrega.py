@@ -355,11 +355,25 @@ def main() -> int:
                 _, contagem = c.mostra(principal, "rev-list", "--count", f"{a.head_antes}..HEAD")
                 c.aviso(f"o HEAD do principal avancou {contagem} commit(s) desde o despacho")
             else:
-                # Recuo ou movimento lateral: falha
-                c.falha(
-                    f"o HEAD do repo principal era {a.head_antes} e virou {head_agora[:12]} — algo moveu "
-                    "o HEAD do usuario (stash/pop, checkout). Falha N1 de 2026-08-08."
-                )
+                # Recuo ou movimento lateral: conferir se toca arquivos do agente
+                arquivos_novo_head = arquivosAgente(c, principal, a.head_antes, "HEAD")
+                arquivos_entrega = arquivosAgente(c, wt, a.base, a.commit)
+
+                # Conferir interseção
+                tem_intersecao = bool(arquivos_novo_head & arquivos_entrega)
+
+                if tem_intersecao:
+                    # Conflito: o novo HEAD toca arquivos que o agente tocou
+                    c.falha(
+                        f"o HEAD do repo principal era {a.head_antes} e virou {head_agora[:12]} — "
+                        "movimento toca arquivos que o agente editou (conflito). Falha N1 de 2026-08-08."
+                    )
+                else:
+                    # Movimento alheio: o novo HEAD não toca arquivos do agente
+                    c.aviso(
+                        f"o HEAD do repo principal foi para {head_agora[:12]} (não é avanço), "
+                        "mas não toca os arquivos da entrega — outra janela trabalhando"
+                    )
     else:
         c.abre("Repo principal")
         c.aviso("nao identifiquei um repo principal distinto do worktree — checagens 4 e 5 puladas")

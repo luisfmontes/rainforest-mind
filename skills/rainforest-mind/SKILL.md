@@ -363,8 +363,8 @@ Os vigias headless carregam a versão resumida no `vigias/_comum.md`.
 **11. Worktree de subagente: isolado E com base conferida.** Subagente que edita
 roda **sempre** com `isolation: "worktree"`, git destrutivo proibido, e só depois
 de commitar na branch de trabalho **sua** — nunca a `main`, nunca a alheia. A
-base vem errada de forma **intermitente**: o briefing informa o hash, e a
-integração confere com `conferir-entrega.cjs`, nunca pelo relato.
+base nasce na ponta da `origin/main`, não no commit de trabalho: o briefing
+informa o hash, a integração confere com `conferir-entrega.cjs`.
 <!-- detalhe -->
 Subagente que
 edita arquivos roda **sempre** com `isolation: "worktree"` — nunca direto na
