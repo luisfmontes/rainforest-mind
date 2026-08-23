@@ -12,27 +12,29 @@
   "plano": {
     "status": "ok",
     "arquivo": "docs/rainforest/planos/divergir-como-workflow.md",
-    "tarefas": 10,
+    "tarefas": 12,
     "paralelas": [
       1,
       2,
       3,
-      4
+      4,
+      11,
+      12
     ],
     "em": "2026-08-23"
   },
   "executar": {
     "status": "ok",
     "catraca_mutacao": "2026-08-23",
-    "tarefas_ok": 10,
-    "tarefas": 10,
+    "tarefas_ok": 12,
+    "tarefas": 12,
     "em": "2026-08-23",
     "pendentes": [],
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "motivo": "vazamento do frame 1 nos 2-6: conferidor exit 2 no rastro mutado, 0 no real"
+        "motivo": "vazamento do frame 1 nos 2-6: conferidor exit 2 no mutado, 0 no real"
       },
       {
         "tarefa": 2,
@@ -72,12 +74,22 @@
       {
         "tarefa": 9,
         "resultado": "vermelho",
-        "motivo": "validarRegistroFechado removida do fechar: exit 1, 5 asserceos caidas"
+        "motivo": "validarRegistroFechado removida: exit 1, 5 asserceos caidas"
       },
       {
         "tarefa": 10,
         "resultado": "vermelho",
-        "motivo": "renomeio trocado pelo padrao do stdin: exit 1, e as falhas nomeiam que o valor original tem que vencer"
+        "motivo": "renomeio trocado pelo padrao do stdin: exit 1, falhas nomeando que o valor original tem que vencer"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "motivo": "guarda removida: exit 1, cai a assercao do valor novo ja valido sobrevivendo ao residual"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "motivo": "allowlist do fechar invertida: exit 1, 7 asserceos caidas. Refeita com backup por copia — a primeira rodada foi contaminada por um git checkout que apagou conserto nao commitado"
       }
     ]
   },
