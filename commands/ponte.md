@@ -54,7 +54,7 @@ Três coisas que o script já garante, e que você não precisa checar de novo:
 Ao terminar, diga em uma linha o que a ponte **não** leva: os dois gates de git
 usam o `PreToolUse` do Claude Code e viram texto nesses hosts. O que continua
 mecânico é o que tem exit code por comando de shell — `estado.cjs exigir`,
-`conferir-entrega.cjs`, `conferir-relatorio.cjs` —, e o arquivo gerado já traz a
+`conferir-entrega.cjs`, `conferir-publicacao.cjs` —, e o arquivo gerado já traz a
 tabela.
 
 Bateria: `bash scripts/testa-ponte.sh` (inclui mutação: SKILL.md sabotado tem que
