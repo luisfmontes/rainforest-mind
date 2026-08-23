@@ -102,6 +102,10 @@
     "em": "2026-08-23"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "acao": "pr",
+    "pr": 52,
+    "nota": "destino nao foi perguntado: o usuario ja fechou de forma permanente que branch sempre vira PR",
+    "em": "2026-08-23"
   }
 }
