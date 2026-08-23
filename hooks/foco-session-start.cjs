@@ -193,8 +193,9 @@ try {
   // ociosidade é por foco). O que fazer com isso é a regra 17, e reescrevê-la
   // aqui custava ~370 B em toda sessão que tem janela paralela aberta. A dedução
   // por pasta e o teto do bloco moram na lib, onde a bateria os alcança.
+  const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
   const oci = (foco.match(/Ociosidade máxima:\s*(\d+)\s*min/i) || [])[1] || '45';
-  sessoes = resumirSessoes(entradas, oci);
+  sessoes = resumirSessoes(entradas, oci, undefined, projectDir);
 } catch {}
 
 // Lê config.json e computa o veredito de isenção de desvio (tarefa 3)

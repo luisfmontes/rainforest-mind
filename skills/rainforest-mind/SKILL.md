@@ -389,16 +389,21 @@ terceiro estado existe — branch de trabalho de **outra** sessão — e a regra
 binária dá autorização por eliminação: você confere que não está na `main`,
 passa, e commita em cima do trabalho alheio.
 
-Antes do **primeiro commit de um trabalho novo**, a branch atual é sua só se as
-duas valerem:
+Antes de **trocar de branch** — e de novo antes do **primeiro commit**, porque a
+outra sessão pode ter movido o HEAD debaixo de você — a branch atual é sua só se
+as duas valerem:
 
 - não há fluxo aberto cujo slug (`<data>-<branch>`) case com o nome dela — o
   `/saude` responde isso em uma linha, e desde a Issue #25 ele diz **`ESTA
   branch tem dono`** em vez de só contar trabalhos abertos;
 - o working tree não tem modificação de outro dono.
 
-Qualquer uma falhando, o trabalho novo começa em branch nova, tirada da base —
-não daqui.
+Qualquer uma falhando, o trabalho novo começa num worktree novo via `git
+worktree add` — cada sessão fica dona do próprio HEAD. Em diretório
+compartilhado, `git checkout -b` move o HEAD do diretório inteiro e derruba a
+outra sessão. O gate de sessão co-locada (`hooks/gate-worktree.cjs`) já recusa
+`checkout`/`switch` com exit code 2 quando há outra sessão viva no mesmo
+diretório, e a mensagem oferece `git worktree add` como saída.
 
 > 2026-08-20: os dois instrumentos tinham o fato antes do commit. O `/saude`
 > imprimiu `fluxo: 1 trabalho(s) em aberto -> revisar` 20 minutos antes, e o
