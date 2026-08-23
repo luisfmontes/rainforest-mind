@@ -351,7 +351,7 @@ function verificarMutacao(slug, snapshot_anterior) {
 const RESULTADOS_MUTACAO = ['vermelho', 'n/a'];
 
 const COMO_DECLARAR = "Ex.: --json '{\"tarefas_ok\":2,\"tarefas\":2,\"mutacao\":["
-  + '{"tarefa":1,"resultado":"vermelho"},'
+  + '{"tarefa":1,"resultado":"vermelho","fixture":"nome-do-caso-de-teste"},'
   + '{"tarefa":4,"resultado":"n/a","motivo":"tarefa so reescreve doc"}]}\'';
 
 /**
@@ -480,6 +480,12 @@ function verificarCatracaMutacao(slug, bloco, estado, extra) {
       return `RECUSADO: ${onde} (tarefa ${item.tarefa}) e 'n/a' sem 'motivo'.\n`
         + `'n/a' aceito sem justificativa e so a palavra mais curta ate o exit 0, e a\n`
         + `catraca inteira morre na primeira pressa. Diga por que nao ha o que inverter.\n${COMO_DECLARAR}`;
+    }
+    if (item.resultado === 'vermelho' && (typeof item.fixture !== 'string' || item.fixture.trim() === '')) {
+      return `RECUSADO: ${onde} (tarefa ${item.tarefa}) e 'vermelho' sem 'fixture'.\n`
+        + `Bateria que fica vermelha com a mutacao invertida prova que ela sabe falhar, mas sem\n`
+        + `nomear qual caso de teste exercita a mutacao, nao ha como re-rodar durante a integracao.\n`
+        + `Diga qual caso exercita o comportamento que foi invertido.\n${COMO_DECLARAR}`;
     }
   }
 

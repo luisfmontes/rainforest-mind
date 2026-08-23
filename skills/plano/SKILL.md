@@ -45,6 +45,7 @@ mutacao:
   de: <o padrão exato a inverter>
   para: <o substituto>
   bateria: `<comando que tem de ficar VERMELHO com a mutação aplicada>`
+  fixture: <nome-do-caso-de-teste-que-exercita-essa-mutacao>
 pronto quando: com `<entrada real do sistema>`, `<efeito verificável>` — provado por `<comando exato>` devolvendo `<saída esperada>`
 
 ### 2. <nome da tarefa> [tipo: docs]
@@ -77,7 +78,7 @@ mutacao:
   de: o `process.exit(2)` do ramo de sessão co-locada
   para: `process.exit(0)`
   bateria: `bash hooks/testa-gate-worktree.sh`
-  fixture: `testa-gate-worktree.sh, line 23-30 (o ramo co-locado que dispara a saída)`
+  fixture: `testa-gate-worktree.sh, linhas 23-30 (o ramo co-locado que dispara a saída)`
 ```
 
 - **`de:` é o padrão exato**, não a intenção. Padrão que não casa com o fonte
@@ -93,7 +94,9 @@ mutacao:
   `conferir-mutacao.cjs` prova só que a bateria virou (`--de`, `--para`, `--bateria`);
   ele não conhece caso de teste, e escrever que conhece mandaria confiar numa trava
   que não existe. Quando a bateria souber rodar um caso sozinho, é o comando dela que
-  vai em `bateria:`, e aí o exit code passa a valer pelo caso.
+  vai em `bateria:`, e aí o exit code passa a valer pelo caso. **Obrigatória quando
+  `resultado` é `vermelho`**, e o `estado.cjs` recusa sem ela; `n/a` não tem
+  comportamento a inverter, então não tem caso a nomear.
 - **O relato de mutação do agente não fecha a tarefa.** A integração re-roda, e
   só o exit code dela vale.
 
