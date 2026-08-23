@@ -37,10 +37,21 @@ CACHE_VERSAO = os.path.join(
 # Caminho relativo ao arquivo evita dependencia de ~/.claude que sera apagado.
 REFRESHER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "statusline-jornada.sh")
 REFRESHER_VERSAO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "statusline-versao.sh")
+# ATENCAO, divergencia conhecida (2026-08-23): este caminho e CHUMBADO no HOME,
+# enquanto `resolver_raiz_dados()` — usada pelo segmento de sessao co-locada —
+# percorre a cadeia inteira (RFM_ROOT > projeto/.rainforest > ~/.rainforest >
+# plugin), a mesma de `hooks/lib/raiz.cjs`. Ou seja: num projeto com
+# `.rainforest` proprio, o segmento de prazo le o FOCO.md do HOME e o de janelas
+# le o sessoes.json do projeto. Nao foi unificado junto com o segmento novo
+# porque `FOCO` e constante de modulo, resolvida na importacao e sem `cwd` a mao,
+# e trocar isso muda em silencio qual FOCO.md a barra passa a ler.
 FOCO = os.path.join(HOME, ".rainforest", "FOCO.md")
 IDADE_MAX_CACHE = 90  # segundos
 IDADE_MAX_CACHE_VERSAO = 6 * 3600  # 6 horas para cache de versao
 GIT_TIMEOUT = 1.5
+SESSOES_JSON_TIMEOUT = 1.0
+# 4 horas: janela em que uma sessão é dona do cwd dela (contexto-sessao.cjs:604)
+JANELA_COLOCADA_MS = 4 * 3600 * 1000
 
 # ---------------------------------------------------------------- cores ----
 RESET = "\033[0m"
@@ -279,6 +290,130 @@ def segmento_prazo():
     return c(rotulo, cor)
 
 
+# --------------------------------------------------------- co-locada ---
+def normalizar_cwd(caminho):
+    """Normaliza caminho para comparação: barras, minusculas."""
+    if not caminho:
+        return ""
+    normalizado = caminho.replace("\\", "/").lower()
+    # Remove trailing slashes
+    while normalizado.endswith("/"):
+        normalizado = normalizado[:-1]
+    return normalizado
+
+
+def eh_worktree_de_agente(cwd):
+    """Verifica se é worktree de subagente (deve ser filtrado)."""
+    if not cwd:
+        return False
+    caminho = cwd.replace("\\", "/")
+    return "/.claude/worktrees/agent-" in caminho
+
+
+def resolver_raiz_dados(cwd):
+    """Resolve a raiz de dados (FOCO.md, ideias.jsonl).
+
+    Ordem: RFM_ROOT > projeto/.rainforest > ~/.rainforest > plugin
+    Retorna None se nenhum for encontrado.
+    """
+    # 1. RFM_ROOT
+    rfm_root = os.environ.get("RFM_ROOT", "").strip()
+    if rfm_root:
+        foco_path = os.path.join(rfm_root, "FOCO.md")
+        ideias_path = os.path.join(rfm_root, "ideias.jsonl")
+        if os.path.exists(foco_path) or os.path.exists(ideias_path):
+            return rfm_root
+
+    # 2. Projeto: cwd/.rainforest
+    projeto_raiz = os.path.join(cwd, ".rainforest") if cwd else None
+    if projeto_raiz:
+        foco_path = os.path.join(projeto_raiz, "FOCO.md")
+        ideias_path = os.path.join(projeto_raiz, "ideias.jsonl")
+        if os.path.exists(foco_path) or os.path.exists(ideias_path):
+            return projeto_raiz
+
+    # 3. Global: ~/.rainforest
+    home = os.path.expanduser("~")
+    usuario_raiz = os.path.join(home, ".rainforest")
+    foco_path = os.path.join(usuario_raiz, "FOCO.md")
+    ideias_path = os.path.join(usuario_raiz, "ideias.jsonl")
+    if os.path.exists(foco_path) or os.path.exists(ideias_path):
+        return usuario_raiz
+
+    # 4. Plugin (self/FOCO.md)
+    plugin_raiz = os.path.dirname(os.path.abspath(__file__))
+    foco_path = os.path.join(plugin_raiz, "FOCO.md")
+    ideias_path = os.path.join(plugin_raiz, "ideias.jsonl")
+    if os.path.exists(foco_path) or os.path.exists(ideias_path):
+        return plugin_raiz
+
+    return None
+
+
+def segmento_co_locada(cwd):
+    """Avisa quando há outra sessão no mesmo cwd.
+
+    Lê sessoes.json da raiz de dados, filtra sessões vivas no mesmo cwd
+    (excluindo a própria, que não conseguimos identificar com certeza).
+    Se houver 2+, mostra aviso.
+    Falhas silenciosas: arquivo ausente, JSON quebrado, etc.
+    """
+    if not cwd:
+        return ""
+
+    try:
+        raiz = resolver_raiz_dados(cwd)
+        if not raiz:
+            return ""
+
+        sessoes_path = os.path.join(raiz, "sessoes.json")
+        if not os.path.exists(sessoes_path):
+            return ""
+
+        # Ler e parsear
+        with open(sessoes_path, "r", encoding="utf-8") as fh:
+            state = json.load(fh)
+        if not isinstance(state, dict):
+            return ""
+
+        # Normalizar cwd para comparação
+        cwd_normalizado = normalizar_cwd(cwd)
+
+        # Contar sessões vivas no mesmo cwd
+        agora = datetime.datetime.now().timestamp() * 1000  # millisegundos
+        sessoes_vivas = []
+
+        for session_id, dados in state.items():
+            if not isinstance(dados, dict):
+                continue
+            if not dados.get("cwd"):
+                continue
+
+            # Filtrar worktree de agente
+            if eh_worktree_de_agente(dados["cwd"]):
+                continue
+
+            # Comparar cwd (normalizado)
+            if normalizar_cwd(dados["cwd"]) != cwd_normalizado:
+                continue
+
+            # Verificar se viva (dentro da janela)
+            ultimo_ts = max(dados.get("prompt_ts") or 0, dados.get("stop_ts") or 0)
+            if agora - ultimo_ts < JANELA_COLOCADA_MS:
+                sessoes_vivas.append(session_id)
+
+        # Se houver 2+ sessões no mesmo cwd, mostrar aviso
+        # (não conseguimos identificar a própria com certeza, então contamos tudo)
+        if len(sessoes_vivas) >= 2:
+            return c("⚠ %d janelas aqui" % len(sessoes_vivas), AMARELO)
+
+        return ""
+
+    except Exception:
+        # Falha silenciosa
+        return ""
+
+
 # ---------------------------------------------------------------- versao ---
 def le_cache_versao():
     """Le cache de versao estavel da CLI. Retorna string ou vazio se falhar."""
@@ -439,6 +574,7 @@ def main():
         segmentos.append(" ".join(partes_limite))
 
     segmentos.append(segmento_tempo())
+    segmentos.append(segmento_co_locada(cwd))
     segmentos.append(segmento_versao(transcript_path))
     segmentos.append(segmento_prazo())
 
