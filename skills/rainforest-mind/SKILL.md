@@ -389,7 +389,9 @@ terceiro estado existe — branch de trabalho de **outra** sessão — e a regra
 binária dá autorização por eliminação: você confere que não está na `main`,
 passa, e commita em cima do trabalho alheio.
 
-Antes de **trocar de branch**, a branch atual é sua só se as duas valerem:
+Antes de **trocar de branch** — e de novo antes do **primeiro commit**, porque a
+outra sessão pode ter movido o HEAD debaixo de você — a branch atual é sua só se
+as duas valerem:
 
 - não há fluxo aberto cujo slug (`<data>-<branch>`) case com o nome dela — o
   `/saude` responde isso em uma linha, e desde a Issue #25 ele diz **`ESTA
