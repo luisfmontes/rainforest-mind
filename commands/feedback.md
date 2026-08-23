@@ -82,6 +82,12 @@ medido: cole. Descrever permite narrar por cima; colar não.
 node scripts/conferir-publicacao.cjs <arquivo>
 ```
 
+O caminho acima vale com a sessão no próprio repo do plugin. Do lado do seu
+trabalho ela quase nunca está, e aí o script se acha no plugin instalado —
+`ls -d ~/.claude*/plugins/cache/rainforest-mind/rainforest-mind/*/`, versão mais
+alta. Não achando nenhum dos dois, **não publique em silêncio**: leia o rascunho
+à mão e diga em uma linha que o gate não rodou.
+
 Ele **sai com código 2** e recusa quando acha telefone, JID de WhatsApp, e-mail,
 caminho de pasta pessoal ou credencial. Isto não é zelo: até 2026-08-10 este
 comando dizia por escrito "anonimize dado de cliente antes de gravar", e um

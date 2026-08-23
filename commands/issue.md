@@ -38,20 +38,37 @@ Se existir, comente nela com a evidência nova em vez de abrir outra.
 
 ## 4. Conferência de dado sensível
 
-**Antes de publicar**, rode:
+**Antes de publicar**, rode o gate. Ele **sai com código 2** e recusa quando acha
+telefone, JID de WhatsApp, e-mail, caminho de pasta pessoal ou credencial. É o
+mesmo gate do `/feedback`, e vale aqui pelo mesmo motivo, com um agravante: o
+repositório costuma ser de cliente, e Issue é pública no instante em que nasce —
+fica no índice de busca mesmo depois de editada. Não há "corrigir antes".
+
+**O script mora no plugin, e a sessão quase nunca está no repo dele.** É por isso
+que o caminho não é fixo: resolva nesta ordem, e pare na primeira que existir.
 
 ```
+# 1. sessão no próprio repo do plugin
 node scripts/conferir-publicacao.cjs <arquivo>
+
+# 2. plugin instalado — pegue a versão mais alta, não a primeira da lista
+ls -d ~/.claude*/plugins/cache/rainforest-mind/rainforest-mind/*/
+node <caminho-da-maior-versao>/scripts/conferir-publicacao.cjs <arquivo>
 ```
 
-Ele **sai com código 2** quando acha telefone, JID, e-mail, caminho de pasta
-pessoal ou credencial — regra que não vale para `/feedback` é **obrigatória aqui**.
-Issue é pública no instante em que nasce e fica no índice para sempre.
+**Não achou nenhuma das duas: não publique em silêncio.** Leia o rascunho à mão
+procurando as cinco formas acima, e **diga em uma linha que o gate não rodou** —
+regra bloqueada pelo ambiente se anuncia, porque o silêncio faz a pessoa
+acreditar que ele rodou.
 
 **O que ele não vê:** nome de pessoa, cliente e sistema interno. Leia o rascunho
 procurando isso antes de mandar.
 
 ## 5. O corpo da Issue
+
+O **título é o erro em uma frase, não o tema.** `ADVPL: erro ao gravar` é tema;
+`Grava contrato com filial vazia quando o usuário troca de filial no meio` é erro.
+O título é o que decide se alguém abre a Issue.
 
 ```markdown
 **Data:** AAAA-MM-DD
