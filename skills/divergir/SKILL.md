@@ -31,16 +31,23 @@ defendendo a primeira ideia em vez de comparando.
 
 ## Fase 1 — divergir, sem ninguém se ver
 
-`Agent` em paralelo, **um por frame**, todos com o MESMO enunciado do problema
-e **contexto zero entre si**. Nenhum recebe a saída de outro; nenhum é nomeado.
-Use `rainforest-mind:planejador` (sonnet, devolve abordagem e nunca código, e
-já rotula `CONFIRMADO`/`INFERIDO`/`LACUNA`).
+Invoque o workflow `rainforest-mind:divergir-frames` (`workflows/divergir-frames.js`)
+com o enunciado do problema em `args`. Ele dispara seis `agent()` em paralelo,
+**um por frame**, todos com o MESMO enunciado e **contexto zero entre si** —
+nenhum recebe a saída de outro, nenhum é nomeado. Cada frame roda como
+`rainforest-mind:planejador` (sonnet, devolve abordagem e nunca código, e já
+rotula `CONFIRMADO`/`INFERIDO`/`LACUNA`).
 
-O isolamento **é** o mecanismo. Se os frames rodarem em sequência na mesma
-janela, ou se um vir o resultado do outro, a skill não faz nada que um prompt
-comum já não faça — e aí não vale o custo.
+O isolamento **é** o mecanismo. Antes, isso dependia de eu ler esta prosa e
+cumprir; agora quem garante que os seis não se veem é o código do workflow, não
+a minha disciplina — se os frames rodassem em sequência na mesma janela, ou se
+um visse o resultado do outro, a skill não faria nada que um prompt comum já
+não faça, e aí não valeria o custo.
 
-Seis frames, escolhidos para serem ortogonais e não sinônimos:
+Seis frames, escolhidos para serem ortogonais e não sinônimos. A tabela abaixo
+documenta o que cada lente pergunta, para quem está decidindo se usa a skill;
+o texto exato de cada prompt mora em `workflows/divergir-frames.js` — se os
+dois divergirem, o script manda:
 
 | Frame | A pergunta que ele faz |
 |---|---|
@@ -61,9 +68,12 @@ ideia não divergiu, opinou.
 
 ## Fase 2 — focar, por um crítico que também nasce zerado
 
-Um `Agent` novo, **nunca `fork`** de nenhum dos frames e nunca da janela que
-despachou: quem herda a narrativa de quem gerou valida a narrativa. Ele recebe
-todas as ideias **sem saber de que frame veio cada uma** e devolve:
+O mesmo workflow, depois da Fase 1, despacha um `agent()` novo como
+`rainforest-mind:revisor` — **nunca `fork`** de nenhum dos frames e nunca da
+janela que despachou: quem herda a narrativa de quem gerou valida a narrativa.
+Ele recebe todas as ideias embaralhadas e **sem o campo de origem** (o script
+descarta qual frame gerou qual ideia antes de montar o prompt do crítico) e
+devolve:
 
 1. **Agrupamento** — ideias que são a mesma coisa com nome diferente colapsam.
 2. **Refutação do sedutor-mas-quebrado** — a ideia que soa ótima e falha na
@@ -75,6 +85,16 @@ todas as ideias **sem saber de que frame veio cada uma** e devolve:
    proposto de primeira, com o porquê. Se a escolha não-óbvia for igual à
    primeira ideia da conversa, **diga isso**: é o resultado mais valioso da
    rodada, porque significa que a ancoragem não custou nada desta vez.
+
+O retorno do workflow é esse objeto do crítico mais as ideias cruas — quem
+monta a decisão numerada para o usuário é a janela principal, nunca o grafo.
+E o grafo **não grava a rodada**: script de workflow não tem acesso a disco.
+Quem grava é a janela principal, chamando `node scripts/divergencias.cjs abrir`
+(entrada por stdin, com `id` e `enunciado` de quem chama, mais `shortlist`,
+`escolha_nao_obvia` e `refutacao` — o que a Fase 2 acabou de devolver) assim
+que o crítico responde, e depois `node scripts/divergencias.cjs fechar --id <id>`
+(entrada por stdin, com `escolha` e `bate_com_a_primeira_ideia`) quando o
+usuário decidir.
 
 ## Condição de parada
 
