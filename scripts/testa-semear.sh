@@ -49,7 +49,7 @@ echo
 echo "== 1. acha o historico mesmo com o campo projeto escrito de varios jeitos =="
 tem "acha a observacao com nome limpo"        "$S" "OBS-LIMPO"
 tem "acha a observacao com caminho no campo"  "$S" "OBS-CAMINHO"
-tem "conta as duas"                           "$S" "OBSERVACOES (2)"
+tem "conta as duas, do total de 3 no acervo"  "$S" "OBSERVACOES (2 de 3)"
 
 echo
 echo "== 2. nao traz evidencia de outro projeto =="
@@ -61,7 +61,7 @@ tem     "ideia aberta aparece"        "$S" "IDEIA-ABERTA"
 nao_tem "ideia ja colhida nao aparece" "$S" "IDEIA-FECHADA"
 # Observacao NAO pode aparecer duas vezes: ela ja tem bloco proprio, e repetir
 # infla a lista de "nao reproponha" com coisa que nao e proposta.
-tem     "abertas conta so a ideia, nao a observacao" "$S" "IDEIAS ABERTAS (1)"
+tem     "abertas conta so a ideia, nao a observacao" "$S" "IDEIAS ABERTAS (1 de 1)"
 
 echo
 echo "== 4. relatorio do projeto entra =="
@@ -136,6 +136,121 @@ NOVO="$( cd "$SBP" && CLAUDE_PROJECT_DIR="$SB/proj-virgem" RFM_ROOT="$SB/dados" 
 tem "diz que nao ha historico"          "$NOVO" "SEM HISTORICO"
 tem "aponta a arqueologia como a outra fonte" "$NOVO" "Skill(arqueologia)"
 tem "e o recomendador oficial para stack"     "$NOVO" "claude-automation-recommender"
+
+# Setup comum das secoes 10-12: um vocabulario (projetos.json) de verdade. Ate
+# aqui as secoes rodaram sem `projetos.json` (raiz so tem ideias.jsonl) porque
+# essa e' a condicao que faz a secao 9 (projeto novo) funcionar sem recusar. Os
+# tres defeitos abaixo (obs `semear-deriva-projeto-do-cwd-e-quebra-em-worktree`,
+# 2026-08-21) so aparecem quando ha vocabulario para consultar.
+mkdir -p "$SBP/dados-vocab" "$SBP/gitrepo-principal"
+cp "$SBP/dados/ideias.jsonl" "$SBP/dados-vocab/ideias.jsonl"
+( cd "$SBP/gitrepo-principal" && git init -q && git config user.email t@t.com \
+  && git config user.name t && git commit -q --allow-empty -m init )
+GITREPO_WIN="$(cygpath -m "$SBP/gitrepo-principal" 2>/dev/null || printf '%s' "$SBP/gitrepo-principal")"
+cat > "$SBP/dados-vocab/projetos.json" <<EOF
+{
+  "meu-projeto": { "caminho": null, "apelidos": [] },
+  "outro-projeto-qualquer": { "caminho": null, "apelidos": [] },
+  "projeto-do-repo": { "caminho": "$GITREPO_WIN", "apelidos": [] }
+}
+EOF
+
+echo
+echo "== 10. slug POSICIONAL tem o mesmo efeito que --projeto =="
+# O commands/semear.md documenta '[vazio olha o projeto atual; ou o slug de
+# outro]' — o argumento posicional, sem flag. Antes do conserto ele nao tinha
+# efeito nenhum (defeito 'a' da obs de 2026-08-21).
+POSICIONAL="$( cd "$SBP/proj" && RFM_ROOT="$SB/dados-vocab" CLAUDE_PROJECT_DIR="$SB/proj-generico-sem-registro" \
+  node "$SRC/scripts/semear.cjs" meu-projeto 2>&1 )"
+COM_FLAG="$( cd "$SBP/proj" && RFM_ROOT="$SB/dados-vocab" CLAUDE_PROJECT_DIR="$SB/proj-generico-sem-registro" \
+  node "$SRC/scripts/semear.cjs" --projeto meu-projeto 2>&1 )"
+tem "posicional acha a observacao"        "$POSICIONAL" "OBS-LIMPO"
+tem "posicional conta igual ao --projeto" "$POSICIONAL" "OBSERVACOES (2 de 3)"
+if [ "$POSICIONAL" = "$COM_FLAG" ]; then
+  ok=$((ok+1)); echo "  ok   posicional e --projeto produzem a MESMA saida"
+else
+  falhou=$((falhou+1)); echo "  FALHA posicional e --projeto divergem"
+fi
+
+echo
+echo "== 11. slug explicito fora do projetos.json RECUSA, nao devolve vazio =="
+# Vazio com exit 0 parece resposta legitima sem ser (defeito 'c' da mesma obs).
+# Slug explicito que ninguem registrou tem que parar o script, nao devolver
+# tres blocos (0).
+FANTASMA_OUT="$( cd "$SBP/proj" && RFM_ROOT="$SB/dados-vocab" CLAUDE_PROJECT_DIR="$SB/proj-generico-sem-registro" \
+  node "$SRC/scripts/semear.cjs" projeto-fantasma-inexistente 2>&1 )"
+FANTASMA_EXIT=$?
+tem     "recusa avisa RECUSADO"                    "$FANTASMA_OUT" "RECUSADO"
+tem     "recusa cita o slug pedido"                "$FANTASMA_OUT" "projeto-fantasma-inexistente"
+nao_tem "recusa nao imprime bloco de acervo vazio" "$FANTASMA_OUT" "OBSERVACOES"
+if [ "$FANTASMA_EXIT" != 0 ]; then
+  ok=$((ok+1)); echo "  ok   exit != 0 na recusa (exit=$FANTASMA_EXIT)"
+else
+  falhou=$((falhou+1)); echo "  FALHA exit 0 na recusa (deveria ser != 0)"
+fi
+
+echo
+echo "== 12. worktree linkado resolve pelo repositorio PRINCIPAL, nao pelo nome do worktree =="
+# O defeito real: cwd num worktree linkado (`.claude/worktrees/regua`) fazia o
+# basename virar 'regua', que nao e' slug de projeto nenhum. O worktree tem o
+# MESMO `git rev-parse --git-common-dir` do repositorio principal — e' por ai
+# que se resolve (defeito 'b' da mesma obs).
+git -C "$SBP/gitrepo-principal" worktree add --detach -q "$SBP/worktrees/nome-que-nao-e-o-slug" \
+  || git -C "$SBP/gitrepo-principal" worktree add --detach "$SBP/worktrees/nome-que-nao-e-o-slug"
+WORKTREE_OUT="$( cd "$SBP/worktrees/nome-que-nao-e-o-slug" && RFM_ROOT="$SB/dados-vocab" \
+  node "$SRC/scripts/semear.cjs" 2>&1 )"
+tem     "resolve para o slug do repositorio, nao para o nome do worktree" \
+  "$WORKTREE_OUT" "projeto: projeto-do-repo"
+nao_tem "nao fica preso no basename do worktree (o defeito original)" \
+  "$WORKTREE_OUT" "projeto: nome-que-nao-e-o-slug"
+
+echo
+echo "== 13. caminho registrado em forma CURTA (alias 8.3 do Windows) ainda casa com o real =="
+# Achado na CI (windows-latest, run 32665203220): o TEMP do runner vem como
+# `C:\Users\RUNNER~1\...`, forma curta 8.3. `path.resolve()` NUNCA expande
+# esse alias — e' string pura, nunca toca o disco — mas o
+# `git rev-parse --git-common-dir` expande, porque resolve pelo filesystem de
+# verdade. O caminho registrado no projetos.json pode chegar em QUALQUER uma
+# das duas formas; a comparacao (`caminhoCanonico`, via
+# `fs.realpathSync.native`) tem que ser imune a isso.
+LONGO_POSIX="$SBP/um-nome-de-diretorio-comprido-o-bastante-pra-ganhar-alias-83"
+mkdir -p "$LONGO_POSIX"
+LONGO_WIN="$(cygpath -w "$LONGO_POSIX")"
+CURTO_WIN="$(powershell.exe -NoProfile -Command "(New-Object -ComObject Scripting.FileSystemObject).GetFolder('$LONGO_WIN').ShortPath" | tr -d '\r')"
+if [ "$CURTO_WIN" = "$LONGO_WIN" ]; then
+  echo "  (pulado: este disco nao gera alias 8.3 para este caminho — nada a provar aqui)"
+else
+  ( cd "$LONGO_POSIX" && git init -q && git config user.email t@t.com && git config user.name t \
+    && git commit -q --allow-empty -m init )
+  git -C "$LONGO_POSIX" worktree add --detach -q "$SBP/worktree-do-alias-83"
+  mkdir -p "$SBP/dados-83"
+  printf '' > "$SBP/dados-83/ideias.jsonl"
+  CURTO_M="$(cygpath -m "$CURTO_WIN")"
+  cat > "$SBP/dados-83/projetos.json" <<EOF
+{ "projeto-do-alias-83": { "caminho": "$CURTO_M", "apelidos": [] } }
+EOF
+  ALIAS_OUT="$( cd "$SBP/worktree-do-alias-83" && RFM_ROOT="$SB/dados-83" node "$SRC/scripts/semear.cjs" 2>&1 )"
+  tem "resolve o slug mesmo com o caminho registrado na forma curta 8.3" \
+    "$ALIAS_OUT" "projeto: projeto-do-alias-83"
+
+  echo
+  echo "== 13b. MUTACAO — trocar caminhoCanonico por path.resolve puro perde o alias 8.3 =="
+  cp "$SRC/scripts/semear.cjs" "$SBP/semear-mutante-83.cjs"
+  node - "$SBP/semear-mutante-83.cjs" <<'JS'
+const fs = require("fs");
+const alvo = process.argv[2];
+const antes = fs.readFileSync(alvo, "utf8");
+const de = "    return fs.realpathSync.native(p).toLowerCase();";
+if (!antes.includes(de)) throw new Error("ancora do caminhoCanonico sumiu");
+fs.writeFileSync(alvo, antes.replace(de, "    return path.resolve(p).toLowerCase(); // MUTADO"), "utf8");
+JS
+  MUT83="$( cd "$SBP/worktree-do-alias-83" && RFM_ROOT="$SB/dados-83" node "$SBP/semear-mutante-83.cjs" 2>&1 )"
+  if echo "$MUT83" | grep -qF "projeto: projeto-do-alias-83"; then
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — nao e' o realpathSync.native que resolve o alias 8.3"
+  else
+    ok=$((ok+1)); echo "  ok   sem o realpathSync.native, o alias 8.3 volta a NAO casar (o conserto e' load-bearing)"
+  fi
+fi
 
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

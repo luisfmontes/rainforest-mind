@@ -21,12 +21,14 @@
  *
  * Uso:
  *   node scripts/semear.cjs                    # do projeto atual
- *   node scripts/semear.cjs --projeto <slug>   # de outro
+ *   node scripts/semear.cjs <slug>              # de outro, posicional
+ *   node scripts/semear.cjs --projeto <slug>   # de outro, com flag
  *   node scripts/semear.cjs --json
  */
 
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 
 const CODIGO_ROOT = path.resolve(__dirname, '..');
 const PROJETO_DIR = process.env.CLAUDE_PROJECT_DIR || process.cwd();
@@ -34,6 +36,41 @@ const PROJETO_DIR = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 function arg(nome) {
   const i = process.argv.indexOf(`--${nome}`);
   return i >= 0 ? process.argv[i + 1] : null;
+}
+
+/** Primeiro argumento posicional (nao-flag) — o slug passado sem `--projeto`. */
+function argPosicional() {
+  const posicionais = process.argv.slice(2).filter((a, i, arr) => {
+    if (a.startsWith('--')) return false;
+    if (i > 0 && arr[i - 1].startsWith('--')) return false; // valor de uma flag
+    return true;
+  });
+  return posicionais[0] || null;
+}
+
+/**
+ * Worktree linkado (regra 11) e exatamente onde o metodo manda o trabalho
+ * acontecer — e e exatamente onde `path.basename(cwd)` erra o projeto: o nome
+ * do worktree (`.claude/worktrees/regua`) nao e o slug do repositorio
+ * (`rainforest-mind`). `git rev-parse --git-common-dir` aponta pro `.git` do
+ * repositorio PRINCIPAL mesmo de dentro do worktree; dono do commit
+ * `semear-deriva-projeto-do-cwd-e-quebra-em-worktree` (2026-08-21).
+ *
+ * Fora de um repositorio git, ou em repo comum (sem worktree), cai no proprio
+ * PROJETO_DIR sem diferenca de comportamento.
+ */
+function raizProjetoGit(dir) {
+  try {
+    const saida = execFileSync('git', ['rev-parse', '--git-common-dir'], {
+      cwd: dir,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).toString().trim();
+    if (!saida) return dir;
+    const comum = path.isAbsolute(saida) ? saida : path.resolve(dir, saida);
+    return path.basename(comum) === '.git' ? path.dirname(comum) : dir;
+  } catch {
+    return dir;
+  }
 }
 
 function raizDados() {
@@ -66,17 +103,41 @@ function lerVocabulario(raiz) {
   }
 }
 
+/**
+ * Forma canonica de um caminho, para comparar dois caminhos que podem chegar
+ * em formas de texto diferentes apontando pro MESMO diretorio. `path.resolve`
+ * so mexe em string (normaliza `.`/`..`, junta segmentos) — nunca consulta o
+ * disco, e por isso nunca desfaz um alias 8.3 do Windows (`RUNNER~1`). O
+ * `git rev-parse --git-common-dir`, por outro lado, desfaz: reproduzido em
+ * 2026-08-23 criando um diretorio de nome comprido, montando um worktree a
+ * partir do alias curto (`C--PRO~2\...`) e comparando as duas saidas — o
+ * `--git-common-dir` veio na forma LONGA mesmo tendo sido criado a partir da
+ * curta. `fs.realpathSync.native` desfaz o mesmo alias (mesma prova, mesma
+ * sessao) porque consulta o filesystem de verdade — e' o lado que faltava
+ * normalizar. Caminho que nao existe mais no disco (projeto movido, apagado)
+ * cai pro `path.resolve` puro: perde a imunidade a 8.3 nesse caso, mas nao
+ * quebra a comparacao textual que ja funcionava antes.
+ */
+function caminhoCanonico(p) {
+  if (!p) return null;
+  try {
+    return fs.realpathSync.native(p).toLowerCase();
+  } catch {
+    return path.resolve(p).toLowerCase();
+  }
+}
+
 /** Slug do alvo pedido: nome do slug, apelido dele, ou pasta registrada. */
 function slugDoAlvo(alvo, vocab, dir) {
   if (!vocab) return null;
   if (Object.prototype.hasOwnProperty.call(vocab, alvo)) return alvo;
   const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
   const alvoNorm = norm(alvo);
-  const dirNorm = dir ? path.resolve(dir).toLowerCase() : null;
+  const dirNorm = dir ? caminhoCanonico(dir) : null;
   for (const [slug, v] of Object.entries(vocab)) {
     const apelidos = Array.isArray(v && v.apelidos) ? v.apelidos : [];
     if ([slug, ...apelidos].some((t) => norm(t) === alvoNorm)) return slug;
-    if (dirNorm && v && v.caminho && path.resolve(v.caminho).toLowerCase() === dirNorm) return slug;
+    if (dirNorm && v && v.caminho && caminhoCanonico(v.caminho) === dirNorm) return slug;
   }
   return null;
 }
@@ -89,9 +150,19 @@ function combina(valorDoRegistro, alvo) {
 }
 
 function main() {
-  const alvo = arg('projeto') || path.basename(PROJETO_DIR);
+  // Slug explicito (flag ou posicional) vence o cwd. Sem ele, o padrao nao e
+  // mais `path.basename(PROJETO_DIR)` puro: PROJETO_DIR pode ser um worktree
+  // linkado (`.claude/worktrees/<nome>`), e o nome do worktree nao e o slug do
+  // repositorio. `raizProjetoGit` sobe ate o repositorio principal via
+  // `git rev-parse --git-common-dir` antes de tirar o basename.
+  const slugExplicito = arg('projeto') || argPosicional();
+  const projetoRaiz = raizProjetoGit(PROJETO_DIR);
+  const alvo = slugExplicito || path.basename(projetoRaiz);
   const raiz = raizDados();
-  const saida = { projeto: alvo, observacoes: [], abertas: [], relatorios: [], mapas: [], avisos: [] };
+  const saida = {
+    projeto: alvo, observacoes: [], totalObservacoes: 0, abertas: [], totalAbertas: 0,
+    relatorios: [], mapas: [], avisos: [],
+  };
 
   if (!raiz) {
     saida.avisos.push('sem pasta de dados — rode: node scripts/setup.cjs --criar');
@@ -104,7 +175,29 @@ function main() {
       saida.avisos.push(`nao consegui ler ${jsonl}`);
     }
     const vocab = lerVocabulario(raiz);
-    const slug = slugDoAlvo(alvo, vocab, PROJETO_DIR);
+    // O casamento por diretorio registrado (`v.caminho`) so vale para o alvo
+    // IMPLICITO (derivado do cwd/worktree) — e' o que resolve, por exemplo, um
+    // projeto cujo diretorio nao se chama como o slug. Quando o pedido e
+    // EXPLICITO (flag ou posicional), casar por diretorio ignoraria o que foi
+    // digitado e devolveria outro projeto qualquer so por coincidir o cwd —
+    // e um slug explicito errado tem que RECUSAR, nao ser substituido em silencio.
+    const slug = slugDoAlvo(alvo, vocab, slugExplicito ? null : projetoRaiz);
+
+    // Na duvida, RECUSA — so quando o pedido foi EXPLICITO (flag ou posicional)
+    // e existe vocabulario para consultar. Slug desconhecido devolvendo acervo
+    // vazio com exit 0 e o modo de falha que este repo nao aceita: parece
+    // resposta legitima sem ser. Projeto novo/nao registrado SEM pedido
+    // explicito continua no fluxo normal (bloco "SEM HISTORICO" mais abaixo) —
+    // e o caso de quem acabou de instalar, nao uma duvida.
+    if (vocab && slugExplicito && !slug) {
+      console.error(`RECUSADO: '${slugExplicito}' nao esta no projetos.json.`);
+      console.error(
+        `registre: node scripts/ideias.cjs projetos --registrar <slug> --caminho "<caminho-do-projeto>"`
+      );
+      console.error('ou rode sem slug para usar o projeto do diretorio atual.');
+      process.exit(1);
+    }
+
     if (slug && slug !== alvo) saida.projeto = `${slug} (pedido como '${alvo}')`;
     const doProjeto = slug
       ? linhas.filter((o) => o.projeto === slug || combina(o.projeto, slug))
@@ -112,19 +205,25 @@ function main() {
     if (vocab && !slug) {
       saida.avisos.push(
         `'${alvo}' nao esta no projetos.json — comparacao difusa, pode trazer de outro projeto. ` +
-          `registre: node scripts/ideias.cjs projetos --registrar <slug> --caminho "${PROJETO_DIR}"`
+          `registre: node scripts/ideias.cjs projetos --registrar <slug> --caminho "${projetoRaiz}"`
       );
     }
 
     // OBSERVAÇÃO é o registro de quando o usuario teve de corrigir a saída (regra 13).
     // É a fonte mais densa que existe aqui: cada linha é um defeito que já
     // aconteceu neste projeto, com o `ao_colher` dizendo o que fazer a respeito.
+    // Contagem em "N de M" (CONTRIBUTING: contagem diz de qual conjunto saiu) —
+    // M e o total de observacoes no acervo inteiro, de todos os projetos.
+    saida.totalObservacoes = linhas.filter((o) => o.tipo === 'observacao').length;
     saida.observacoes = doProjeto
       .filter((o) => o.tipo === 'observacao')
       .map((o) => ({ id: o.id, titulo: o.titulo, status: o.status, ao_colher: o.ao_colher || '' }));
 
     // Ideia ABERTA já é uma proposta que alguém fez e ninguém executou. Propor de
     // novo o que já está plantado é ruído, e o pior tipo: parece trabalho novo.
+    saida.totalAbertas = linhas
+      .filter((o) => o.status === 'plantada' || o.status === 'em-colheita')
+      .filter((o) => o.tipo !== 'observacao').length;
     saida.abertas = doProjeto
       .filter((o) => o.status === 'plantada' || o.status === 'em-colheita')
       .filter((o) => o.tipo !== 'observacao')
@@ -176,7 +275,7 @@ function main() {
   for (const a of saida.avisos) console.log(`  aviso: ${a}`);
 
   console.log('');
-  console.log(`OBSERVACOES (${saida.observacoes.length}) — o que ja deu errado aqui`);
+  console.log(`OBSERVACOES (${saida.observacoes.length} de ${saida.totalObservacoes}) — o que ja deu errado aqui`);
   if (!saida.observacoes.length) console.log('  (nenhuma)');
   for (const o of saida.observacoes) {
     console.log(`  [${o.status}] ${o.id}`);
@@ -184,7 +283,7 @@ function main() {
   }
 
   console.log('');
-  console.log(`IDEIAS ABERTAS (${saida.abertas.length}) — ja propostas, nao repropor`);
+  console.log(`IDEIAS ABERTAS (${saida.abertas.length} de ${saida.totalAbertas}) — ja propostas, nao repropor`);
   if (!saida.abertas.length) console.log('  (nenhuma)');
   for (const o of saida.abertas) console.log(`  ${o.id} — ${o.titulo}`);
 
