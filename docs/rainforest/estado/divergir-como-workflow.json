@@ -81,11 +81,13 @@
     },
     "achados": 3,
     "lista": [
-      "1. divergencias.cjs cmdFechar faz Object.assign sem allowlist — id e shortlist forjaveis pelo stdin de fechar; reproduzido",
-      "2. bate_com_a_primeira_ideia tem semantica diferente no workflow e no script, o valor computado e descartado, e as ideias cruas nao sao persistidas — o teste de falsificacao fica sem lastro",
-      "3. estado.json com tarefas_ok 6/6 e pendentes ainda listando a tarefa 6"
+      "1. serializar nao impoe schema na escrita: fechar le a linha do disco sem validar e so valida o diff, entao linha legada vira fechado sem ideias e carregando campo fora de schema — reproduzido",
+      "2. criterio de pronto da tarefa 1 no plano ficou obsoleto: pede bate_com_a_primeira_ideia no retorno do workflow, que a tarefa 8 renomeou para critico_bateu_na_primeira_da_rodada — o verificar reprovaria codigo correto",
+      "3. secao Contrato do script no design ainda diz que o critico devolve bate_com_a_primeira_ideia, contradizendo a D11 no mesmo arquivo"
     ],
-    "em": "2026-08-23"
+    "em": "2026-08-23",
+    "rodada": 2,
+    "anteriores": "os 3 da rodada 1 confirmados fechados"
   },
   "verificar": {
     "status": "pendente"

@@ -144,8 +144,16 @@ precisa das seis saídas juntas para agrupar.
 
 **Fase 2 — focar.** Um `agent()` com `agentType: "rainforest-mind:revisor"`,
 recebendo as ideias **embaralhadas e sem o campo de origem**. Devolve schema
-com `shortlist`, `escolha_nao_obvia`, `bate_com_a_primeira_ideia`, e um campo
-de texto livre com a refutação do sedutor-mas-quebrado.
+com `shortlist`, `escolha_nao_obvia`, `critico_bateu_na_primeira_da_rodada`, e
+um campo de texto livre com a refutação do sedutor-mas-quebrado.
+
+> O nome deste último booleano mudou na rodada 2, pela **D11**. Ele é a medida
+> do **crítico** — se a escolha não-óbvia dele é a primeira ideia da rodada — e
+> não deve ser confundido com o `bate_com_a_primeira_ideia`, que é do `fechar`
+> e mede a escolha do **usuário** contra o que ancorava a conversa. Esta seção
+> ficou com o nome antigo por duas rodadas depois de a D11 entrar, e foi
+> achado do segundo `revisar`: acrescentar decisão nova não basta, o contrato
+> que a descreve tem que acompanhar, senão o documento contradiz a si mesmo.
 
 **Saída:** o objeto do crítico mais as ideias cruas. Quem monta a decisão
 numerada para o usuário é a janela principal, não o grafo — a skill não decide

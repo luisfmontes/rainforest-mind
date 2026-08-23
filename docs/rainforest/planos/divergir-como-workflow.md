@@ -31,7 +31,8 @@ atende: D2, D3, D5, D6, D8, D10
 arquivos: `workflows/divergir-frames.js`
 depende de: nenhuma
 paralela: sim
-pronto quando: com o enunciado de um problema real passado em `args`, a invocação de `rainforest-mind:divergir-frames` devolve objeto com as quatro chaves `shortlist`, `escolha_nao_obvia`, `bate_com_a_primeira_ideia` e `refutacao`, e `escolha_nao_obvia` não vem vazio — provado por gravar o retorno em `/tmp/div.json` e `node -e "const o=require('/tmp/div.json'); const f=['shortlist','escolha_nao_obvia','bate_com_a_primeira_ideia','refutacao'].filter(k=>!(k in o)); if(f.length||!o.escolha_nao_obvia){console.error('faltou:',f);process.exit(1)} console.log('ok')"` devolvendo `ok` e exit 0
+pronto quando: com o enunciado de um problema real passado em `args`, a invocação de `rainforest-mind:divergir-frames` devolve objeto com as quatro chaves `shortlist`, `escolha_nao_obvia`, `critico_bateu_na_primeira_da_rodada` e `refutacao`, e `escolha_nao_obvia` não vem vazio — provado por gravar o retorno em `div.json` e `node -e "const o=require('./div.json'); const f=['shortlist','escolha_nao_obvia','critico_bateu_na_primeira_da_rodada','refutacao'].filter(k=>!(k in o)); if(f.length||!o.escolha_nao_obvia){console.error('faltou:',f);process.exit(1)} console.log('ok')"` devolvendo `ok` e exit 0
+nota: o nome do quarto campo era `bate_com_a_primeira_ideia` quando esta tarefa foi escrita, e a tarefa 8 o renomeou pela **D11**. O critério ficou apontando para o nome velho e só foi pego pelo segundo `revisar` — rodado literalmente, ele reprovaria código correto no `verificar`. Renomear campo exige varrer os critérios de pronto que o citam, não só o código.
 mutacao:
   arquivo: `workflows/divergir-frames.js`
   de: cada um dos seis `agent()` da fase 1 recebe só o enunciado vindo de `args`
