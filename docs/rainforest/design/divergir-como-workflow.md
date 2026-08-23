@@ -97,6 +97,33 @@ O último fato é o que deu forma à decisão D7.
   A refutação é argumento com cenário concreto; amputada em campo curto ela
   piora, e a skill exige que seja concreta.
 
+- **D11 — São duas medidas de ancoragem, com dois nomes, gravadas em momentos diferentes.**
+  Acrescentada em 2026-08-23, depois de o `revisar` reprovar a entrega com este
+  como segundo achado.
+
+  A D9 falava de **um** campo `bate_com_a_primeira_ideia`, e a implementação
+  revelou que o nome cobre duas perguntas diferentes:
+
+  - o **crítico** calcula, de graça e dentro do grafo, se a escolha não-óbvia
+    dele é a primeira ideia **da rodada** (`ideiasCruas[0]`, do frame
+    `restricao-dura`) — isso mede se o próprio crítico convergiu para a
+    primeira coisa que apareceu;
+  - o **design** pedia se a escolha final **do usuário** bate com a ideia que
+    ancorava **a conversa** antes de o `divergir` ser invocado — isso mede se a
+    skill pagou o custo, e é o teste de falsificação inteiro.
+
+  São perguntas distintas, e o mesmo nome nas duas fez o valor do crítico ser
+  descartado (proibido no `abrir`) sem que nada dissesse como recalculá-lo no
+  `fechar`. Agora:
+
+  - `critico_bateu_na_primeira_da_rodada` — vem do crítico, gravado no
+    **`abrir`**, junto com as **`ideias` cruas**, que passam a ser persistidas.
+    Sem elas, uma linha fechada não tem como ser conferida depois, e o teste de
+    falsificação fica sem lastro — foi o que o `revisar` apontou.
+  - `bate_com_a_primeira_ideia` — continua sendo do **`fechar`**, e continua
+    sendo a comparação com a ideia que ancorava a conversa. Só o usuário sabe
+    qual era, então continua vindo de fora.
+
 Decidido sem subir ao usuário (consistência, vetável): o `divergencias.jsonl`
 mora na **pasta de dados** (`~/.rainforest/`), ao lado do `ideias.jsonl` e do
 `FOCO.md`, não no repo — é onde dado de sessão já vive, e é o que faz o arquivo
@@ -138,6 +165,7 @@ numerada para o usuário é a janela principal, não o grafo — a skill não de
 | **Gravar a rodada no design doc do fluxo** | O teste de falsificação compara três rodadas, e prosa espalhada em três documentos não é comparável |
 | **Gravar num momento só** | No fim do grafo, o registro nunca sabe o que o usuário escolheu — some o campo que o teste precisa. Só na decisão dele, perde-se a rodada inteira (e os sete despachos) se ele decidir noutra sessão |
 | **Schema no crítico inteiro, inclusive na refutação** | O cenário de falha viraria campo curto, e a skill exige que ele seja concreto (entrada, estado, sequência) |
+| **Colapsar as duas medidas de ancoragem num campo só** (alternativa da D11) | Seria mais simples, mas o campo passaria a medir **o crítico** em vez de medir a ancoragem da conversa — o oposto do que o teste de falsificação da skill quer saber. Simplicidade que troca a pergunta não é simplicidade |
 
 ## Fora de escopo
 
@@ -178,14 +206,22 @@ numerada para o usuário é a janela principal, não o grafo — a skill não de
 ## Em aberto
 
 - **O `divergencias.cjs` ganha um subcomando `conferir`**, como o `ideias.cjs`?
-  Provavelmente sim, mas só faz sentido depois de existir arquivo com linha
-  suficiente para conferir. Decidir no `plano`.
-- **Qual é o enunciado-isca do teste de isolamento.** O critério está definido
-  abaixo, mas o problema concreto que provoca convergência ainda precisa ser
-  escrito. Tarefa do `plano`.
-- **Se o `verificar` desta entrega consegue ler o journal da execução** para
-  provar o isolamento, ou se a prova tem que ser montada de outro jeito. Fato a
-  apurar no `plano`, não decisão do usuário.
+  Continua em aberto. Agora existe uma linha real no arquivo, então a pergunta
+  é respondível — mas o `revisar` mostrou que há coisa mais urgente na frente
+  (o `fechar` sem allowlist), e `conferir` não é o que fecha esse buraco.
+- ~~Qual é o enunciado-isca~~ — **fechado**: escrito na seção "Enunciado-isca"
+  abaixo, pela tarefa 3.
+- ~~Se dá para ler o journal para provar o isolamento~~ — **fechado no `plano`,
+  com a resposta contrária à suposição**: o `journal.jsonl` só grava `started`
+  e `result`, sem prompt. O prompt está na primeira linha de cada
+  `agent-<id>.jsonl`. A prova é feita ali, e rodou: exit 0 contra o rastro real
+  e exit 2 contra o rastro mutado.
+- **A permissividade de entrada é maior que o achado 1.** O `revisar` pegou o
+  `fechar` sobrescrevendo campo imutável, mas o `abrir` também só tem
+  *denylist*: ele aceitou `critico_viu_ancoragem` e `origem`, campos que não
+  existem em schema nenhum, na primeira gravação real. Se a correção do achado
+  1 deve virar allowlist nos **dois** comandos, ou só no `fechar`, é decisão a
+  tomar quando a tarefa for escrita.
 
 ### O que falsificaria esta conversão
 

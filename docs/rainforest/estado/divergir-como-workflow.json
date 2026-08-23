@@ -7,19 +7,21 @@
   },
   "design": {
     "status": "aprovado",
-    "em": "2026-08-22"
+    "em": "2026-08-23"
   },
   "plano": {
     "status": "ok",
     "arquivo": "docs/rainforest/planos/divergir-como-workflow.md",
-    "tarefas": 6,
+    "tarefas": 8,
     "paralelas": [
       1,
       2,
       3,
-      4
+      4,
+      7,
+      8
     ],
-    "em": "2026-08-22"
+    "em": "2026-08-23"
   },
   "executar": {
     "status": "ok",

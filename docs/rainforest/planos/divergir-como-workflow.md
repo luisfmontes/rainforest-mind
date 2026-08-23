@@ -89,6 +89,30 @@ pronto quando: invocando a skill `divergir` com o enunciado-isca da tarefa 3, o 
 mutacao: n/a
 motivo: tarefa de integração — ela não entrega artefato próprio, exercita os das tarefas 1, 2 e 4 juntos, e as mutações desses três já estão declaradas em cada uma. Uma mutação aqui seria mutação de um deles, contada duas vezes.
 
+### 7. Allowlist na entrada do `fechar` [tipo: implementar]
+atende: D7, D9
+arquivos: `scripts/divergencias.cjs`, `scripts/testa-divergencias.sh`
+depende de: nenhuma
+paralela: sim
+pronto quando: com o stdin `{"escolha":"y","bate_com_a_primeira_ideia":true,"id":"FORJADO","shortlist":["sequestrada"]}` mandado para `fechar --id <rodada existente>`, o comando **recusa com exit != 0** nomeando os campos não permitidos, e a linha no `.jsonl` continua com o `id` e a `shortlist` originais byte a byte — provado por `bash scripts/testa-divergencias.sh` devolvendo exit 0 com a asserção nova verde
+mutacao:
+  arquivo: `scripts/divergencias.cjs`
+  de: a allowlist de campos aceitos no `fechar`
+  para: removida, voltando ao `Object.assign(obj, entrada)` cru
+  bateria: `scripts/testa-divergencias.sh` — tem que reprovar na asserção do payload forjado
+
+### 8. Desdobrar as duas medidas de ancoragem [tipo: implementar]
+atende: D11, D4, D8, D10
+arquivos: `workflows/divergir-frames.js`, `scripts/divergencias.cjs`, `scripts/testa-divergencias.sh`, `skills/divergir/SKILL.md`
+depende de: nenhuma
+paralela: sim
+pronto quando: `abrir` passa a **exigir e persistir** `critico_bateu_na_primeira_da_rodada` (booleano) e `ideias` (lista das ideias cruas), o schema do crítico no workflow devolve o campo com o nome novo, e `fechar` continua exigindo `bate_com_a_primeira_ideia` — provado por, num `$RFM_ROOT` temporário, `abrir` seguido de `fechar` produzir uma linha que contém **os dois** campos com valores distintos e a lista `ideias` não vazia, conferido por `node -e` lendo o `.jsonl`; e por `bash scripts/testa-divergencias.sh` exit 0
+mutacao:
+  arquivo: `scripts/divergencias.cjs`
+  de: a persistência da lista `ideias` no `abrir`
+  para: o campo descartado silenciosamente, como hoje
+  bateria: `scripts/testa-divergencias.sh` — tem que reprovar na asserção que exige `ideias` não vazia na linha gravada
+
 ## Notas de execução
 
 - **Tarefas 1, 2, 3 e 4 são paralelas** — nenhuma depende de outra e tocam
@@ -99,3 +123,19 @@ motivo: tarefa de integração — ela não entrega artefato próprio, exercita 
   design) **não entra neste plano**: só faz sentido com arquivo que já tenha
   linha suficiente para conferir, e depois da tarefa 6 haverá uma. Volta como
   ideia plantada, não como tarefa com placeholder.
+
+### Rodada 2 — tarefas 7 e 8, acrescentadas em 2026-08-23
+
+Vieram do `revisar`, que reprovou a primeira rodada com três achados. As duas
+são **paralelas entre si** e independentes das seis primeiras: a 7 conserta a
+porta de escrita, a 8 conserta a semântica do campo de ancoragem.
+
+O **terceiro achado fica de fora deste plano, de propósito**. Ele é real e a
+raiz está localizada — `scripts/estado.cjs:671` faz
+`{ ...estado[estagio], ...extra, status }`, então o `pendentes` gravado num
+`parcial` sobrevive à transição para `ok` e produz um registro que se
+contradiz (`tarefas_ok: 6` de `6` com pendência listada). Mas isso é defeito da
+**maquinaria do fluxo**, não desta entrega: vale para qualquer trabalho que
+passe por `parcial`, e nenhuma das onze decisões deste design fala de estado.
+Bundlá-lo aqui seria o creep que o próprio `revisar` existe para pegar. Sai como
+trabalho próprio, com branch e PR separados.
