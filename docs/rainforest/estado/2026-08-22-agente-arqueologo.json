@@ -21,43 +21,59 @@
     "em": "2026-08-22"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-08-22",
-    "tarefas_ok": 5,
+    "tarefas_ok": 8,
     "tarefas": 8,
     "em": "2026-08-23",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "detalhe": "corte 0.6->0.99 em triagem.cjs: testa-triagem.sh cai de 41 ok para 39 ok / 2 falhas"
+        "detalhe": "corte 0.6->0.99: testa-triagem 57 ok -> vermelho"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "detalhe": "mesma mutacao rodada por mim na integracao, e a da faixa cinzenta: 38 ok / 3 falhas"
+        "detalhe": "faixa cinzenta esvaziada: 3 falhas"
       },
       {
         "tarefa": 3,
         "resultado": "n/a",
-        "motivo": "texto de skill, sem ramo de execucao a inverter; o comportamento descrito e exercitado pela tarefa 5"
+        "motivo": "texto de skill; exercitado pela tarefa 6, que produziu mapa real seguindo-o"
       },
       {
         "tarefa": 4,
         "resultado": "vermelho",
-        "detalhe": "testa-perfil.sh ja carrega as proprias mutacoes: alteracao dentro do bloco e agente sem bloco derrubam o conferir (exit 1)"
+        "detalhe": "linha Skill(arqueologia) removida: testa-gate-do-agente 12 ok -> 10 ok/2 falhas (mutacao rodada por mim na integracao)"
       },
       {
         "tarefa": 5,
         "resultado": "vermelho",
-        "detalhe": "regra 2 desligada: 9 ok -> 7 ok / 2 falhas; e touch antes da foto do git status: 9 ok -> 8 ok / 1 falha"
+        "detalhe": "regra 2 desligada: 9 ok -> 7 ok/2 falhas"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "execucao de prova; o instrumento e o validador da tarefa 5. 51 CONFIRMADO, 75 citacoes, 0 apontando para linha vazia ou inexistente"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "detalhe": "tabela da skill colada no agente: 12 ok -> 11 ok/1 falha, alem da mutacao da linha da skill"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "detalhe": "canonico invertido (sortedPaths[0] -> ultimo): 57 ok -> 51 ok/6 falhas"
       }
     ],
     "pendentes": [
       "6: rodada real",
       "7: gate do agente",
       "8: consertos do triagem"
-    ]
+    ],
+    "achado_aberto": "o validador reprova linha que usa a palavra CONFIRMADO como vocabulario do metodo, sem citacao — falso positivo relatado pela tarefa 6, contornado reescrevendo a linha"
   },
   "revisar": {
     "status": "reprovado",
