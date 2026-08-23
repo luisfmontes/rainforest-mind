@@ -107,12 +107,52 @@ else
 fi
 
 echo
+echo "== 4b. regressao do PR #69: o proprio conferidor reprovava a si mesmo =="
+# CI vermelha no PR #69: `conferir-encoding.cjs` (comentario de cabecalho citando
+# a assinatura em prosa) e `testa-conferir-encoding.sh` (fixture com bytes de
+# mojibake literais no fonte) reprovavam CONTRA SI MESMOS quando a arvore
+# mesclada com a main (#67/#68/#70/#71) entrava na varredura. Caso 4 acima ja
+# prova a arvore inteira limpa; este caso nomeia os dois arquivos, para a
+# regressao especifica nao voltar a se esconder atras de um "exit 0" agregado.
+saiu "conferir-encoding.cjs, sozinho, nao reprova mais a si mesmo" \
+     "$(codigo "$SCRIPT")" "0"
+saiu "testa-conferir-encoding.sh, sozinho, nao reprova mais (fixture por escape)" \
+     "$(codigo "$RAIZ/scripts/testa-conferir-encoding.sh")" "0"
+
+echo
+echo "== 4c. a supressao (rf-encoding-exemplo) nao virou cegueira geral =="
+# O risco nomeado da escolha de desenho: um marcador que suprime a linha inteira
+# podia esconder um mojibake REAL que caisse na mesma linha por acidente. Este
+# caso planta mojibake de verdade numa linha SEM o marcador e exige que continue
+# reprovando — se este caso ficar verde por engano (exit 0), a supressao parou
+# de ser pontual e virou um jeito de desligar a checagem.
+REPO_CEGUEIRA="$SB/repo-cegueira"
+mkdir -p "$REPO_CEGUEIRA"
+(
+  cd "$REPO_CEGUEIRA" || exit 1
+  git init -q
+  git config user.email "t@t.invalid"
+  git config user.name "bateria"
+  git config core.autocrlf false
+  printf 'texto normal, sem marcador nenhum aqui.\n' > sem-marcador.md
+  printf '\xc3\x83\xc2\xa9 mojibake real, sem marcador de supressao.\n' >> sem-marcador.md
+  git add -A
+  git commit -q -m "fixture sem marcador"
+)
+C5="$(cd "$REPO_CEGUEIRA" && node "$SCRIPT" >/dev/null 2>&1; echo $?)"
+saiu "mojibake real sem marcador continua reprovando (supressao e pontual)" "$C5" "2"
+
+echo
 echo "== 5. MUTACAO: desligar a deteccao de mojibake tem que derrubar a bateria =="
 # Fixture SO com mojibake, sem BOM — isolado do caso 1, que reprova por DOIS
 # motivos (mojibake e BOM) e por isso nao serviria para provar que o mojibake
 # especificamente foi o que a mutacao desligou.
 SO_MOJIBAKE="$SB/so-mojibake.md"
-printf 'O problema nÃ£o Ã© falta de ideia. Ã‰ o que recebe luz agora.\n' > "$SO_MOJIBAKE"
+# Gerada por escape hexadecimal, nao por bytes literais no fonte (PR #69,
+# CI vermelha): o proprio conferir-encoding.cjs reprovava ESTE arquivo,
+# porque o texto corrompido literal aqui era exatamente o padrao que ele
+# cata. Confirmado byte a byte identico ao literal anterior antes de trocar.
+printf 'O problema n\xc3\x83\xc2\xa3o \xc3\x83\xc2\xa9 falta de ideia. \xc3\x83\xe2\x80\xb0 o que recebe luz agora.\n' > "$SO_MOJIBAKE"
 saiu "fixture so-mojibake reprova antes da mutacao (controle)" "$(codigo "$SO_MOJIBAKE")" "2"
 cp "$SCRIPT" "$SB/original.cjs"
 node -e "

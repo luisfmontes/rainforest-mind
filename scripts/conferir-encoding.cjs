@@ -58,7 +58,7 @@
  *
  * FALSO POSITIVO MEDIDO, e a supressao que ele ganhou (nao inventada, achada rodando
  * este script contra a arvore inteira na base): `vigias/run-vigia.ps1:77` documenta
- * a PROPRIA assinatura de mojibake num comentario ("...mojibake (Ã§, â€")..."),
+ * a PROPRIA assinatura de mojibake num comentario (rf-encoding-exemplo: "...mojibake (Ã§, â€")..."),
  * como exemplo para quem le o script entender o sintoma. E texto correto, em UTF-8
  * legitimo, que so bate no detector porque o detector faz exatamente o que devia:
  * reconhecer a sequencia. Apertar a heuristica para excluir este caso especifico
@@ -68,6 +68,9 @@
  * puro, funciona dentro de comentario de qualquer linguagem) faz este script pular
  * a linha que o contem. Sem o marcador, a linha reprova normalmente — a excecao e
  * nomeada e visivel no arquivo que a usa, nao escondida numa lista neste script.
+ * ESTE PARAGRAFO precisou do mesmo marcador (PR #69, CI vermelha): citar a
+ * assinatura aqui, em prosa, e o mesmo caso do run-vigia.ps1 — o proprio
+ * conferidor reprovando a si mesmo por descrever o que reprova.
  *
  * BOM — arquivo de texto rastreado comecando com EF BB BF (BOM de UTF-8) reprova.
  * O `Out-File -Encoding utf8` do PowerShell grava BOM por padrao; e a segunda
