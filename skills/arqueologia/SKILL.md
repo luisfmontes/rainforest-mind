@@ -69,6 +69,108 @@ a janela principal não precisa do conteúdo, precisa do mapa. Despache, e escol
 o agente pela função — **não invente agente novo antes de provar que os sete não
 cobrem**. O `Explore` nativo acha; ele não mapeia, e a diferença é o artefato.
 
+## Três passadas sobre o arquivo
+
+**Superfície**: o que o arquivo é — entradas, `#include`, inventário de funções e
+suas assinaturas. Lê o topo, escaneia linhas-chave, produz tabela de referência.
+Afirmação: `CONFIRMADO` com `arquivo:linha` apontando para `#include` e declaração
+de função. Toma minutos.
+
+**Mecanismo**: o que cada bloco de funções faz — entrada, processamento,
+saída, erro. Lê corpo da função, traça fluxo de chamadas internas. Afirmação:
+`CONFIRMADO` (uma função que chama outra) com `arquivo:linha` de cada chamada.
+Regra prática: se o arquivo tem `N` funções, são `N` afirmações, uma por função
+descrita. Toma mais tempo que superfície.
+
+**Regra implícita**: que regra de negócio o código encarna, que ninguém escreveu.
+Exemplo: "o sistema recusa operação fora do período fiscal" — procure o
+`GetSX8Recesso()` ou equivalente no código que confere datas. Afirmação:
+`INFERIDO` porque quem escreveu não deixou o porquê, e `LACUNA` porque a regra
+não vem claramente de um lugar só. Grava em `## Regras implícitas` dentro do
+mapa, sujeita a reconferência. As três passadas rodam em sequência, não em
+paralelo — e não rodam todas em um arquivo pequeno: reduza a fatia se ficar
+claro que a passada de regra implícita vai render menos que `LACUNA`.
+
+## Triagem antes de ler
+
+Arquivo grande sem índice é trabalho perdido. Antes de abrir: `node scripts/triagem.cjs <arquivo>`
+devolve três números reais — linhas, funções, taxa de repetição — e classifica a
+estratégia de leitura:
+
+- `dado-como-codigo` (repetição > 92%): lê por **amostragem estrutural**. Exemplo:
+  `updiag.prw`, 27.992 linhas e 18 funções. Com esse tamanho, a função média tem
+  1.555 linhas. Afirmação: `CONFIRMADO` em amostra, não em totalidade.
+- `logica` (repetição < 60%): lê por **bloco de funções** — passa 1, 2, 3 inteiras.
+  Exemplo: `IAG67M12.prw`, 13.692 linhas e 219 funções. Com esse tamanho, a função
+  média tem 63 linhas. Afirmação: `CONFIRMADO` em cada função lida.
+- `indefinido` (repetição entre 40% e 60%): **torne a questão mais simples** —
+  reduza a fatia, procure um subconjunto de funções, ou volte à janela com
+  `LACUNA`. Script não escolhe lado; a janela faz.
+
+Triagem mede, não recomenda — é seguro deixar o resultado para a janela decidir.
+
+## Fatia dentro de um arquivo
+
+Arquivo grande se corta por **função ancora**. A âncora escreve-se `.prw#<funcao>` — ou `.tlpp#<funcao>` conforme a extensão:
+
+```
+IAG67M12.prw#A67ValidSaldo
+```
+
+A faixa de linhas pode ser anotada como referência conferível (ex.: "linhas 1021-1089
+na versão de 2026-08-22"), mas **nunca como identidade da fatia**. Razão: a faixa
+apodrece no primeiro `#include` que entra no topo. Nome de função sobrevive, e está
+sujeito ao mecanismo de conferência: se a função foi renomeada (antiga `A67ValidSaldo`,
+nova `ValidarSaldoAgricola`), a segunda passagem da tabela de conferência marca
+"a referência mudou, o comportamento não" — nenhum achado, apenas nota.
+
+## Teto de bloco e fragmento em pasta
+
+Um **bloco** (unidade de gravação) não passa de **40.000 caracteres**. A função
+ancora só define onde cortar; o tamanho real vai variar por arquivo.
+
+Medido em verdade: `IAG67M12.prw` com 219 funções rende **14 blocos** de
+~40KB cada. No mesmo teto, `danfeii.prw` com 321 funções rende **4 blocos**
+— a função varia 4x de tamanho entre arquivos, então contar função não funciona.
+Em bytes, os dois ficam despacháveis e comparáveis.
+
+Quando a fatia não cabe numa sessão (mapa > 15KB, muito mais de três passadas),
+o agente grava cada bloco assim:
+
+```
+docs/rainforest/mapas/<fatia>/<bloco>.md
+```
+
+A pasta é permanente. O `COBERTURA.md` passa a indexar pasta além de arquivo:
+
+| Fatia | Arquivo | Blocos | Profundidade | Data | Nota |
+|---|---|---|---|---|---|
+| `iadm-2505-nfe` | `nfesefaz.prw` | 14 | mecanismo + regra | 2026-08-22 | 36 duplicatas marcadas por hash |
+| `iadm-2505-nfe` | `danfeii.prw` | 4 | mecanismo | 2026-08-22 | irmaos de `nfesefaz` (hash idêntico) |
+
+Fragmento sem pasta volta ao documento único. Fragmento em pasta, no consolidado
+ou na reconferência, se refere por pasta — não por arquivo individual.
+
+## Regras implícitas
+
+Passada que extrai regra de negócio grava em `## Regras implícitas` dentro do
+próprio mapa — **não em arquivo `adrs/` separado**. Razão: regra de legado é
+quase sempre `INFERIDO` porque quem escreveu não deixou o porquê. Arquivo chamado
+`adrs/` dá aparência de **decisão registrada** a uma **inferência** — o avesso
+do que a escala de confiança existe para evitar. Dentro do mapa, herda a escala
+e fica sujeita a reconferência junto com a afirmação que a originou.
+
+Exemplo de entrada:
+
+```
+## Regras implícitas
+
+**Período fiscal fechado barra operação** — lê `GetSX8Recesso()` no topo, confere
+se a data está na faixa bloqueada. `INFERIDO`, porque a regra vem do padrão de
+entrada da função, não de comentário no código (CONFIRMADO: `nfesefaz.prw#MontaNFe`,
+linhas 156-159).
+```
+
 ## Fechar
 
 ```
