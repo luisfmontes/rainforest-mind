@@ -20,7 +20,7 @@ depende de: nenhuma
 paralela: sim
 mutacao:
   arquivo: `scripts/triagem.cjs`
-  de: o corte de repetição `0.5` que separa dado-como-codigo de logica
+  de: o corte de repetição `0.6` acima do qual a classe é dado-como-codigo
   para: `0.99`
   bateria: `bash scripts/testa-triagem.sh`
 pronto quando: com cópias de `templates/Expordics/updiag.prw` (27.992 linhas, 18 funções, 96,7% de repetição) e `templates/OG/Fechamento_Financeiro/M - Miscelanea/IAG67M12.prw` (13.692 linhas, 219 funções, 32,3%) num diretório temporário, o script classifica o primeiro como `dado-como-codigo` e o segundo como `logica`, e devolve a contagem de funções por regex ancorada de declaração (não por ocorrência da palavra `function`) — provado por `node scripts/triagem.cjs <copia> --json` devolvendo `"classe":"dado-como-codigo","nfunc":18` e `"classe":"logica","nfunc":219`. O script **não** emite estratégia de leitura (D4): a chave `estrategia` não existe na saída.
