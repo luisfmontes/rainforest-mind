@@ -12,7 +12,7 @@
   "plano": {
     "status": "ok",
     "arquivo": "docs/rainforest/planos/divergir-como-workflow.md",
-    "tarefas": 8,
+    "tarefas": 10,
     "paralelas": [
       1,
       2,

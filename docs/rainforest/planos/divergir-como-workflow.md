@@ -114,6 +114,30 @@ mutacao:
   para: o campo descartado silenciosamente, como hoje
   bateria: `scripts/testa-divergencias.sh` — tem que reprovar na asserção que exige `ideias` não vazia na linha gravada
 
+### 9. O `fechar` valida o registro inteiro, não só o diff [tipo: implementar]
+atende: D12, D4, D7
+arquivos: `scripts/divergencias.cjs`, `scripts/testa-divergencias.sh`
+depende de: nenhuma
+paralela: sim
+pronto quando: com um `.jsonl` contendo uma linha anterior à D11 (sem `ideias`, sem `critico_bateu_na_primeira_da_rodada`, com os campos `critico_viu_ancoragem` e `origem`), `fechar --id <ela>` **recusa com exit != 0** nomeando o que está fora do schema, e a linha continua `status: "aberta"` byte a byte — provado por `bash scripts/testa-divergencias.sh` exit 0 com a asserção nova verde
+mutacao:
+  arquivo: `scripts/divergencias.cjs`
+  de: a validação do registro completo depois da fusão, no `fechar`
+  para: removida, voltando a validar só o diff da entrada
+  bateria: `scripts/testa-divergencias.sh` — tem que reprovar na asserção da linha legada
+
+### 10. Subcomando de reparo para linha legada [tipo: implementar]
+atende: D12
+arquivos: `scripts/divergencias.cjs`, `scripts/testa-divergencias.sh`
+depende de: 9
+paralela: nao
+pronto quando: com a mesma linha legada da tarefa 9 e um stdin trazendo `ideias` e `critico_bateu_na_primeira_da_rodada`, o subcomando de reparo produz uma linha que passa na validação da tarefa 9 — com `critico_viu_ancoragem` **renomeado** (valor preservado, não recriado), `origem` **mantido**, e as demais linhas do arquivo byte a byte idênticas; e `fechar` naquela linha passa a sair 0 — provado por `bash scripts/testa-divergencias.sh` exit 0 com as asserções novas verdes
+mutacao:
+  arquivo: `scripts/divergencias.cjs`
+  de: o renomeio de `critico_viu_ancoragem` para `critico_bateu_na_primeira_da_rodada` no reparo
+  para: o campo apenas descartado, e o novo criado com valor padrão
+  bateria: `scripts/testa-divergencias.sh` — tem que reprovar na asserção que exige o VALOR original preservado, não um padrão
+
 ## Notas de execução
 
 - **Tarefas 1, 2, 3 e 4 são paralelas** — nenhuma depende de outra e tocam

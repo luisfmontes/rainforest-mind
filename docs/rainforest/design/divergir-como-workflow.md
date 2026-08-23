@@ -124,6 +124,35 @@ O último fato é o que deu forma à decisão D7.
     sendo a comparação com a ideia que ancorava a conversa. Só o usuário sabe
     qual era, então continua vindo de fora.
 
+- **D12 — O `fechar` valida o registro inteiro, e linha legada se migra por subcomando.**
+  Acrescentada em 2026-08-23, do primeiro achado da **segunda** revisão.
+
+  A allowlist da D11 valida a **entrada** de `abrir` e `fechar`. Não valida o
+  **registro que vai para o disco**: o `fechar` lê a linha existente sem
+  conferir nada e só valida o diff que chega pelo stdin, e o `serializar` tem
+  um laço de passagem livre que grava qualquer campo já presente no objeto.
+  Reproduzido: fechar uma linha anterior à D11 produz um `status: "fechado"`
+  **sem `ideias` e sem `critico_bateu_na_primeira_da_rodada`** — sem o lastro
+  que a D4 existe para garantir — e carregando campos que não existem em
+  schema nenhum.
+
+  Duas peças, e uma não serve sem a outra:
+
+  - **`fechar` passa a validar o registro completo depois da fusão**, não só o
+    diff. Registro fora do schema é recusado com exit != 0, nunca gravado.
+  - **Nasce um subcomando de reparo**, porque com o `fechar` estrito a linha
+    legada fica impossível de fechar, e escrita à mão é proibida neste repo
+    desde os dois appends quebrados de 2026-08-08. O reparo recebe por stdin o
+    que falta e traz a linha ao schema corrente.
+
+  **`origem` entra no schema como campo opcional** em vez de ser descartado.
+  Ele guarda de que rodada do grafo a linha veio e se o isolamento foi
+  conferido — é proveniência auditável, e jogar fora dado real para satisfazer
+  um schema é o schema servindo a si mesmo. Já o `critico_viu_ancoragem`, que
+  foi nome improvisado antes da D11, **se renomeia** para
+  `critico_bateu_na_primeira_da_rodada`: é o mesmo dado com o nome errado, não
+  um campo a perder.
+
 Decidido sem subir ao usuário (consistência, vetável): o `divergencias.jsonl`
 mora na **pasta de dados** (`~/.rainforest/`), ao lado do `ideias.jsonl` e do
 `FOCO.md`, não no repo — é onde dado de sessão já vive, e é o que faz o arquivo
