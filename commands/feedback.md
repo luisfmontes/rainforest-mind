@@ -18,7 +18,7 @@ sobre quem pode consertar.
 | **o plugin** — regra que não disparou, gate que barrou errado, skill que fez besteira, script que mentiu | **Issue** em `luisfmontes/rainforest-mind` | é o único canal que chega em quem mantém o plugin |
 | **o seu trabalho** — bug do seu projeto, agente que errou numa task daquele repo, processo da sua equipe | **markdown** em `<seu-repo>/relatorios/` | é assunto do seu projeto, e o acervo é seu |
 
-**Por que o Issue existe.** Enquanto o `/relatorio` só gravava markdown, o
+**Por que o Issue existe.** Enquanto o `/feedback` só gravava markdown, o
 relatório nascia no repositório de quem estava trabalhando — privado, na máquina
 dessa pessoa. Um defeito do plugin encontrado por outro dev morria ali, e quem
 mantém o plugin nunca ficava sabendo. Defeito que ninguém reporta é
@@ -79,7 +79,7 @@ medido: cole. Descrever permite narrar por cima; colar não.
 **Antes de publicar qualquer coisa, rode:**
 
 ```
-node scripts/conferir-relatorio.cjs <arquivo>
+node scripts/conferir-publicacao.cjs <arquivo>
 ```
 
 Ele **sai com código 2** e recusa quando acha telefone, JID de WhatsApp, e-mail,
