@@ -84,14 +84,20 @@ function extrairTituloESubtitulo(conteudo) {
  * Formato: [data (projeto)] título — subtítulo
  *
  * @param {object} obs observação do banco
+ * @param {object} [apelidos] mapa chave-do-banco -> nome curto para exibição
  * @returns {string} linha formatada
  */
-function formatarObservacao(obs) {
+function formatarObservacao(obs, apelidos) {
   if (!obs) return '';
   const { conteudo, projeto, criada_em } = obs;
   // criada_em é timestamp ISO; tira a hora para economizar bytes.
   const data = (criada_em || '').split('T')[0] || '';
-  const proj = projeto ? ` (${projeto})` : '';
+  // O rótulo exibe o apelido curto quando há um. A chave que o banco guarda é a
+  // pasta do harness (`C--Projetos-rainforest-mind`), ~12 bytes a mais por linha
+  // que o nome curto — e o bloco tem teto duro. Medido em 2026-08-22: a chave
+  // longa derrubou a injeção de 15 observações para 12.
+  const nome = (apelidos && apelidos[projeto]) || projeto;
+  const proj = nome ? ` (${nome})` : '';
 
   // Extrai título e subtítulo do conteúdo
   const { titulo, subtitulo } = extrairTituloESubtitulo(conteudo);
@@ -109,10 +115,12 @@ function formatarObservacao(obs) {
  *
  * @param {object} o
  * @param {array} [o.observacoes] array de observações do banco
+ * @param {object} [o.apelidos] mapa chave-do-banco -> nome curto para exibição
  * @returns {string} bloco montado, dentro do teto de bytes
  */
 function montarMemoria(o) {
   const observacoes = Array.isArray(o?.observacoes) ? o.observacoes : [];
+  const apelidos = (o && typeof o.apelidos === 'object' && o.apelidos) || null;
 
   // Se vazio, devolve bloco vazio (não injetar item de contexto desnecessário).
   if (!observacoes.length) {
@@ -123,7 +131,7 @@ function montarMemoria(o) {
   const cabecalho = '## Memória (corpus residentes)\n';
 
   // Formata cada observação como linha curta (título + subtítulo).
-  const linhas = observacoes.map(formatarObservacao).filter(Boolean);
+  const linhas = observacoes.map((obs) => formatarObservacao(obs, apelidos)).filter(Boolean);
   const corpo = linhas.join('\n');
 
   // Ponteiro para busca sob demanda (D11 — reduz observações residentes mas mantém acesso ao corpus).
