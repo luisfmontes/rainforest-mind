@@ -74,8 +74,10 @@
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "4148dc4a6453467581cbc892aaa5e012ebd7b84f",
-      "caminhos_sujos": []
+      "head": "ce18e38e788c480c13e215b1dcc05eaecdbbd1d7",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/divergir-como-workflow.json"
+      ]
     },
     "achados": 3,
     "lista": [
