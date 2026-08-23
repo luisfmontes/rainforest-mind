@@ -36,7 +36,7 @@ nunca de memória. README não responde contra si.
    `C:\Projetos\rainforest-mind\relatorios\AAAA-MM-DD-batedor-<assunto>.md` e acrescente
    uma linha por repo avaliado na tabela do `livro-de-repos.md` (data, veredito, **em
    qual pergunta reprovou**, último push visto). Commite e publique os dois — commit é
-   parte de escrever, igual ao `/relatorio`:
+   parte de escrever, igual ao `/feedback`:
    `git -C C:\Projetos\rainforest-mind add relatorios/<arquivo> vigias/livro-de-repos.md`,
    commit com `Batedor: <achado em uma linha>`, e push. Nunca `git add -A`.
 

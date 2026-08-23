@@ -19,7 +19,7 @@
  * ela — eu sabia, e digitei assim mesmo, duas vezes na mesma noite. Texto nao
  * alcanca esse modo de falha. Exit code alcanca.
  *
- * NAO adianta consertar na origem. Um `/relatorio` que commitasse na hora teria
+ * NAO adianta consertar na origem. Um `/feedback` que commitasse na hora teria
  * commitado na `skill-em-ingles` do mesmo jeito, porque o working tree e
  * compartilhado e era a MINHA janela que tinha trocado a branch. O conserto so
  * funciona no lado de quem faz o staging.
