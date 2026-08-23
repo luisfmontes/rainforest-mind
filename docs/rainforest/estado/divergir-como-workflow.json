@@ -24,50 +24,60 @@
   "executar": {
     "status": "ok",
     "catraca_mutacao": "2026-08-23",
-    "tarefas_ok": 8,
-    "tarefas": 8,
+    "tarefas_ok": 10,
+    "tarefas": 10,
     "em": "2026-08-23",
     "pendentes": [],
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "motivo": "vazamento do frame 1 nos frames 2-6: conferidor saiu 2 no rastro mutado e 0 no real"
+        "motivo": "vazamento do frame 1 nos 2-6: conferidor exit 2 no rastro mutado, 0 no real"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "motivo": "comparacao dos seis prompts sempre-verdadeira: bateria 20 ok / 2 falhas"
+        "motivo": "comparacao sempre-verdadeira: 20 ok / 2 falhas"
       },
       {
         "tarefa": 3,
         "resultado": "n/a",
-        "motivo": "tarefa so escreve doc"
+        "motivo": "so doc"
       },
       {
         "tarefa": 4,
         "resultado": "vermelho",
-        "motivo": "conferencia byte a byte removida: bateria com 4 falhas"
+        "motivo": "conferencia byte a byte removida: 4 falhas"
       },
       {
         "tarefa": 5,
         "resultado": "n/a",
-        "motivo": "tarefa so edita a SKILL.md"
+        "motivo": "so doc"
       },
       {
         "tarefa": 6,
         "resultado": "n/a",
-        "motivo": "tarefa de integracao"
+        "motivo": "integracao"
       },
       {
         "tarefa": 7,
         "resultado": "vermelho",
-        "motivo": "allowlist do fechar passou a aceitar id e shortlist: bateria exit 1; restaurada com git diff vazio"
+        "motivo": "allowlist do fechar aceitando id e shortlist: exit 1"
       },
       {
         "tarefa": 8,
         "resultado": "vermelho",
-        "motivo": "delete novo.ideias antes de serializar: bateria 33 ok / 2 falhas nomeando a tarefa 8. A primeira tentativa (tirar ideias da ORDEM_CANONICA) foi no-op porque serializar tem laco de passagem livre — trocada por mutacao fiel"
+        "motivo": "delete novo.ideias antes de serializar: 33 ok / 2 falhas"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "motivo": "validarRegistroFechado removida do fechar: exit 1, 5 asserceos caidas"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "vermelho",
+        "motivo": "renomeio trocado pelo padrao do stdin: exit 1, e as falhas nomeiam que o valor original tem que vencer"
       }
     ]
   },
