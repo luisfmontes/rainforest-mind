@@ -55,7 +55,7 @@ mutacao:
   arquivo: `agents/arqueologo.md`
   de: a linha que manda carregar `Skill(arqueologia)`
   para: linha removida
-  bateria: `bash scripts/testa-perfil.sh`
+  bateria: `bash scripts/testa-gate-do-agente.sh` (a bateria antes declarada aqui, `testa-perfil.sh`, confere só o bloco de perfil e **não** morde esta mutação — achado 2 da revisão de 2026-08-23)
 pronto quando: com o arquivo no lugar, o frontmatter tem exatamente `name`, `description`, `model` com `model: sonnet`, o corpo manda carregar `Skill(arqueologia)` em vez de repetir o método, e o bloco de perfil aparece uma vez só vindo do gerador — provado por `node scripts/perfil.cjs --conferir` (ou o modo de conferência que o script tiver) sem divergência, e por `bash scripts/testa-perfil.sh` verde com o agente novo incluído na contagem.
 
 ### 5. Prova ponta a ponta em cópia [tipo: teste]
@@ -69,3 +69,45 @@ mutacao:
   para: conferência trocada por `true`
   bateria: `bash scripts/testa-arqueologo-ponta-a-ponta.sh` com um mapa de fixture que cita uma linha inexistente
 pronto quando: com cópia de `IAG67M12.prw` num diretório temporário e a fatia de um bloco, a rodada produz `docs/rainforest/mapas/<fatia>/<bloco>.md` contendo ao menos uma afirmação `CONFIRMADO` cujo `arquivo:linha` **existe no fonte** — provado por script que relê a linha citada na cópia e confirma que ela não está vazia; e o bloco produzido não passa de 40.000 caracteres, medido por `wc -c`. Nenhum arquivo fora do diretório temporário e de `docs/rainforest/mapas/` é criado ou alterado, verificado por `git status --short` limpo fora desses caminhos.
+
+## Emenda de 2026-08-23 — achados da revisão
+
+A revisão independente reprovou com quatro achados. Os dois primeiros são falha
+de **critério**, não de execução: a tarefa 5 mediu outra coisa que não o que
+prometia, e a mutação declarada da tarefa 4 aponta para uma bateria incapaz de
+mordê-la — `scripts/testa-perfil.sh` confere só o bloco de perfil, nunca o corpo
+do agente. A bateria daquela mutação passa a ser a da tarefa 7. Emendar é o
+único jeito de destravar: justificar em prosa não conta.
+
+### 6. Rodada real do arqueologo contra fonte legado [tipo: teste]
+atende: D5, D7, D10
+arquivos: `docs/rainforest/mapas/`
+depende de: 1, 3, 4, 5
+paralela: nao
+mutacao: n/a
+  motivo: é execução de prova, não código com ramo a inverter — o instrumento que a julga é o validador da tarefa 5, cuja mutação já está declarada lá.
+pronto quando: com cópia de `templates/OG/Fechamento_Financeiro/M - Miscelanea/IAG67M12.prw` num diretório temporário, um despacho real do agente `arqueologo` sobre **um** bloco produz `docs/rainforest/mapas/<fatia>/<bloco>.md`, e `scripts/testa-arqueologo-ponta-a-ponta.sh` rodado **sobre esse mapa real** (não sobre fixture) sai 0 — provado colando o caminho do mapa, o `wc -c` do bloco abaixo de 40.000, e ao menos um `CONFIRMADO` cuja linha citada, relida na cópia, não está vazia.
+
+### 7. Gate que reprova agente duplicando a skill [tipo: teste]
+atende: D1, D2
+arquivos: `scripts/testa-gate-do-agente.sh`
+depende de: 4
+paralela: nao
+mutacao:
+  arquivo: `agents/arqueologo.md`
+  de: a linha que manda carregar a skill de arqueologia
+  para: linha removida
+  bateria: `bash scripts/testa-gate-do-agente.sh`
+pronto quando: com `agents/arqueologo.md` íntegro a bateria sai 0; removida a linha que carrega a skill, ela sai diferente de 0; e com a tabela de conferência da skill copiada para dentro do agente (duplicação do método, que é o que D2 proíbe), ela também sai diferente de 0 — provado colando as três saídas.
+
+### 8. Consertos do triagem apontados pela revisão [tipo: implementar]
+atende: D9, D11
+arquivos: `scripts/triagem.cjs`, `scripts/testa-triagem.sh`
+depende de: 1, 2
+paralela: nao
+mutacao:
+  arquivo: `scripts/triagem.cjs`
+  de: o apontamento direto de `duplicataDe` para o canônico
+  para: a reatribuição em cadeia (o comportamento de hoje)
+  bateria: `bash scripts/testa-triagem.sh`
+pronto quando: com quatro cópias idênticas passadas na ordem `C B D A`, todas as três não canônicas apontam `duplicataDe` para `A` — hoje `C` e `D` apontam para `B`, que é ele próprio uma duplicata; e com arquivo vazio ou binário, a classe **não** é `dado-como-codigo` e o `--json` não devolve `densidade: null` silenciosamente — provado por `node scripts/triagem.cjs` nos dois cenários, com a saída colada.

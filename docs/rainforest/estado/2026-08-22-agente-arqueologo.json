@@ -21,10 +21,10 @@
     "em": "2026-08-22"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-08-22",
     "tarefas_ok": 5,
-    "tarefas": 5,
+    "tarefas": 8,
     "em": "2026-08-23",
     "mutacao": [
       {
@@ -52,16 +52,29 @@
         "resultado": "vermelho",
         "detalhe": "regra 2 desligada: 9 ok -> 7 ok / 2 falhas; e touch antes da foto do git status: 9 ok -> 8 ok / 1 falha"
       }
+    ],
+    "pendentes": [
+      "6: rodada real",
+      "7: gate do agente",
+      "8: consertos do triagem"
     ]
   },
   "revisar": {
-    "status": "pendente",
+    "status": "reprovado",
     "snapshot": {
       "head": "3291f808c680d6406f091c020a0d93e0ad39a8f7",
       "caminhos_sujos": [
         "docs/rainforest/estado/2026-08-22-agente-arqueologo.json"
       ]
-    }
+    },
+    "achados": 4,
+    "lista": [
+      "1: tarefa 5 nao fez a prova ponta a ponta que o plano pede — o validador testa fixture sintetica, e a rodada real do arqueologo contra IAG67M12.prw nunca aconteceu",
+      "2: a mutacao declarada para a tarefa 4 nao morde — testa-perfil.sh so confere o bloco de perfil, nunca a linha Skill(arqueologia) de agents/arqueologo.md",
+      "3: triagem.cjs encadeia duplicataDe em grupo de 3+ membros em vez de apontar para o canonico (reproduzido; 0 grupos assim no corpus de hoje)",
+      "4: triagem.cjs com nfunc=0 devolve densidade null no --json e classifica arquivo vazio ou binario como dado-como-codigo"
+    ],
+    "em": "2026-08-23"
   },
   "verificar": {
     "status": "pendente"
