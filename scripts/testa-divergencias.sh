@@ -172,9 +172,16 @@ echo "== 3b. tarefa 7: fechar recusa payload forjado (id/shortlist tentando sequ
 antes_3b=$(tres_nao_alvo)
 saida_forjada=$(echo '{"escolha":"y","bate_com_a_primeira_ideia":true,"id":"FORJADO","shortlist":["sequestrada"]}' | $DIV fechar --id fixture-02 2>&1)
 got_forjada=$?
-if [ "$got_forjada" != 0 ] && echo "$saida_forjada" | grep -q "id" && echo "$saida_forjada" | grep -q "shortlist"
-then ok=$((ok+1)); echo "  ok   fechar recusa payload forjado nomeando id e shortlist (exit $got_forjada)"
-else falhou=$((falhou+1)); echo "  FALHA fechar aceitou ou nao nomeou os campos forjados (exit $got_forjada)"; echo "$saida_forjada" | sed 's/^/         /'
+# A versao anterior desta assercao varria a mensagem com `grep -q "id"` e
+# `grep -q "shortlist"`, e passava por VACUIDADE em dois niveis: a mensagem tem
+# um sufixo fixo que cita "id, shortlist" independentemente do que foi recusado,
+# e "id" ainda por cima e substring de "permitidos", que tambem esta no texto
+# fixo. Ela casava sempre. Agora se extrai a parte DINAMICA — a lista que o
+# codigo de fato computou — e se compara com a esperada.
+recusados=$(echo "$saida_forjada" | sed -n 's/.*campo(s) \(.*\) nao e(sao) aceito.*/\1/p')
+if [ "$got_forjada" != 0 ] && [ "$recusados" = "id, shortlist" ]
+then ok=$((ok+1)); echo "  ok   fechar recusa payload forjado nomeando exatamente 'id, shortlist' (exit $got_forjada)"
+else falhou=$((falhou+1)); echo "  FALHA fechar aceitou, ou recusou a lista errada (exit $got_forjada, recusados='$recusados')"; echo "$saida_forjada" | sed 's/^/         /'
 fi
 confere_nao_alvo "depois do payload forjado (fixture-02 e as demais nao-alvo intocadas)" "$antes_3b"
 prova "fixture-02 continua com id e shortlist originais — nao foi sequestrada" '
@@ -238,6 +245,23 @@ prova "legada fechada com sucesso, schema completo, valor do critico intacto" '
 const o=acha(O("divergencias.jsonl"),"legada");
 ok(o.status==="fechado", "nao fechou: "+JSON.stringify(o.status));
 ok(o.critico_bateu_na_primeira_da_rodada===false, "valor mudou durante o fechar: "+JSON.stringify(o.critico_bateu_na_primeira_da_rodada));'
+
+echo
+echo "== 3e. tarefa 11: linha com os DOIS nomes — o valor novo ja valido vence =="
+# Achado da terceira revisao. A migracao de `ideias` sempre teve guarda ("so
+# preenche se estiver vazio"); a do booleano nao tinha, entao o nome VELHO
+# vencia sempre — inclusive quando o novo ja carregava o valor certo. Uma linha
+# assim nao nasce de nenhum caminho de codigo atual, so de migracao pela metade
+# ou edicao a mao; e por isso mesmo que o reparo precisa ser conservador nela.
+cat >> divergencias.jsonl <<'LINHA'
+{"id":"dupla","enunciado":"e","shortlist":["s"],"escolha_nao_obvia":"x","refutacao":"r","critico_bateu_na_primeira_da_rodada":true,"critico_viu_ancoragem":false,"ideias":[{"frame":"premissa","ideia":"i","porque":"p"}],"status":"aberta","aberta_em":"2026-08-23"}
+LINHA
+echo '{"ideias":[{"frame":"premissa","ideia":"i","porque":"p"}],"critico_bateu_na_primeira_da_rodada":false}' > reparo-dupla.json
+esperado "reparar aceita a linha de nome duplo" 0 bash -c '$DIV reparar --id dupla < reparo-dupla.json'
+prova "o valor novo ja valido (true) SOBREVIVE ao residual (false) e ao stdin (false)" '
+const o=acha(O("divergencias.jsonl"),"dupla");
+ok(o.critico_bateu_na_primeira_da_rodada===true, "o valor bom foi sobrescrito, veio: "+JSON.stringify(o.critico_bateu_na_primeira_da_rodada));
+ok(!("critico_viu_ancoragem" in o), "o campo velho tem que sair de qualquer forma, tendo vencido ou nao");'
 
 echo
 echo "== 4. mutacao: a conferencia byte a byte trava mesmo? =="

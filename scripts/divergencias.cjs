@@ -550,7 +550,16 @@ function cmdReparar(args) {
     // um palpite). O booleano da entrada so e usado quando a linha NAO tem
     // nem o nome velho nem o novo — aí nao ha historico nenhum a preservar.
     if (Object.prototype.hasOwnProperty.call(obj, "critico_viu_ancoragem")) {
-      obj.critico_bateu_na_primeira_da_rodada = obj.critico_viu_ancoragem;
+      // MESMA GUARDA da migracao de `ideias` logo acima, e ela faltava aqui:
+      // o nome velho so vence quando o novo ainda NAO tem valor valido. Sem
+      // isso, uma linha que carregasse os dois nomes perderia o dado bom para
+      // o residual — reproduzido na terceira revisao, com `true` correto sendo
+      // sobrescrito por um `false` que so restou de uma migracao pela metade.
+      // O `delete` fica fora do `if`: o campo velho sai sempre, tendo vencido
+      // ou nao, porque ele nao existe no schema corrente de jeito nenhum.
+      if (typeof obj.critico_bateu_na_primeira_da_rodada !== "boolean") {
+        obj.critico_bateu_na_primeira_da_rodada = obj.critico_viu_ancoragem;
+      }
       delete obj.critico_viu_ancoragem;
     } else if (typeof obj.critico_bateu_na_primeira_da_rodada !== "boolean") {
       obj.critico_bateu_na_primeira_da_rodada = entrada.critico_bateu_na_primeira_da_rodada;

@@ -138,6 +138,30 @@ mutacao:
   para: o campo apenas descartado, e o novo criado com valor padrão
   bateria: `scripts/testa-divergencias.sh` — tem que reprovar na asserção que exige o VALOR original preservado, não um padrão
 
+### 11. O reparo não sobrescreve valor novo já válido [tipo: implementar]
+atende: D12
+arquivos: `scripts/divergencias.cjs`, `scripts/testa-divergencias.sh`
+depende de: nenhuma
+paralela: sim
+pronto quando: com uma linha carregando **os dois** nomes — `critico_bateu_na_primeira_da_rodada: true` (já correto) e `critico_viu_ancoragem: false` (residual) — o reparo **preserva o `true`** e apaga só o campo velho, espelhando a guarda que a migração de `ideias` já tem — provado por `bash scripts/testa-divergencias.sh` exit 0 com a asserção nova verde
+mutacao:
+  arquivo: `scripts/divergencias.cjs`
+  de: a guarda que só renomeia quando o campo novo ainda não é booleano
+  para: removida, voltando a deixar o campo velho vencer sempre
+  bateria: `scripts/testa-divergencias.sh` — tem que reprovar na asserção da linha com nome duplo
+
+### 12. A asserção do payload forjado para de passar por vacuidade [tipo: teste]
+atende: D7, D9
+arquivos: `scripts/testa-divergencias.sh`
+depende de: nenhuma
+paralela: sim
+pronto quando: a asserção deixa de varrer a mensagem de erro com `grep -q "id"` e passa a conferir os campos efetivamente recusados — hoje ela casa incondicionalmente, porque `id` é substring de `permitidos`, que está no texto fixo da mensagem — provado por, com a lista de campos permitidos do `fechar` invertida, a bateria **reprovar** nessa asserção
+mutacao:
+  arquivo: `scripts/divergencias.cjs`
+  de: `CAMPOS_PERMITIDOS_FECHAR` com `escolha` e `bate_com_a_primeira_ideia`
+  para: invertida para `id` e `shortlist`, fazendo o comando recusar os campos legítimos e aceitar os forjados
+  bateria: `scripts/testa-divergencias.sh` — tem que reprovar; hoje a sub-asserção do grep sobreviveria
+
 ## Notas de execução
 
 - **Tarefas 1, 2, 3 e 4 são paralelas** — nenhuma depende de outra e tocam
