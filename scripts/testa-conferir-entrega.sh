@@ -94,9 +94,13 @@ contem "  ... nomeando a falha N3" "N3" "${CONF_CMD[@]}" --worktree "$WT" --base
 git -C "$WT" checkout -q -- rastreado.txt
 
 # 5 — mexeu no diretorio principal (N1)
+# Captura porcelain ANTES (deve estar vazio neste ponto)
+PORCELAIN_ANTES_5="$RAIZ/porcelain-antes-5.txt"
+git -C "$R" status --porcelain > "$PORCELAIN_ANTES_5"
 echo intruso > "$R/intruso.txt"
 esperado "alteracao no diretorio principal do usuario" 1 \
-  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES"
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES" \
+  --sujo-antes "$PORCELAIN_ANTES_5"
 rm "$R/intruso.txt"
 
 # 6 — HEAD do principal movido (N1, o stash/pop)
@@ -246,6 +250,43 @@ else
   esperado "  ... e a forma longa segue aprovando (controle)" 0 \
     "${CONF_CMD[@]}" --worktree "$WT83_LONGO" --base "$BASE83"
 fi
+
+echo
+echo "== --sujo-antes: cenario real de sujeira pre-existente =="
+
+# Caso 1: suja o principal ANTES, captura o porcelain, agente NAO toca -> exit 0
+echo intruso-pre > "$R/intruso-pre.txt"
+PORCELAIN_ANTES="$RAIZ/porcelain-antes.txt"
+git -C "$R" status --porcelain > "$PORCELAIN_ANTES"
+# (agente nao toca em intruso-pre.txt, a worktree so toca feito.txt que ja foi commitado)
+esperado "sujo-antes: sujeira pre-existente, agente nao toca -> exit 0" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES" \
+  --sujo-antes "$PORCELAIN_ANTES"
+
+# Caso 2: mesma situacao, mas agente TOCA novo arquivo no principal -> exit 1 (novo)
+echo novo-do-agente > "$R/novo-do-agente.txt"
+esperado "sujo-antes: agente toca novo arquivo no principal -> reprova" 1 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES" \
+  --sujo-antes "$PORCELAIN_ANTES"
+contem "  ... dizendo que e NEW" "NEW" \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --sujo-antes "$PORCELAIN_ANTES"
+rm "$R/novo-do-agente.txt"
+
+# Caso 3 (controle): mesmo cenario do caso 1 SEM --sujo-antes -> aviso, exit 0
+esperado "SEM sujo-antes: sujeira pre-existente vira AVISO, nao falha" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES"
+contem "  ... com aviso explicando que nao trava sem --sujo-antes" "nao trava" \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES"
+
+# Caso 4: arquivo inexistente em --sujo-antes -> erro de uso, exit 2
+esperado "--sujo-antes inexistente -> erro de uso, exit 2" 2 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" \
+  --sujo-antes "$RAIZ/arquivo-que-nao-existe.txt"
+contem "  ... mencionando arquivo inexistente" "inexistente" \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" \
+  --sujo-antes "$RAIZ/arquivo-que-nao-existe.txt"
+
+rm "$R/intruso-pre.txt"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

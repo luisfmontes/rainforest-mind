@@ -118,6 +118,38 @@ def arquivosAgente(c: Conferencia, wt: str, base: str | None, commit: str) -> se
     return {l.replace("\\", "/").lower() for l in linhas}
 
 
+def caminhosSujoAntes(arquivo: str) -> set[str] | None:
+    """Extrai conjunto de caminhos sujos ANTES do despacho (do arquivo porcelain)."""
+    try:
+        with open(arquivo, "r", encoding="utf-8") as f:
+            conteudo = f.read().strip()
+        if not conteudo:
+            return set()
+
+        caminhos = set()
+        for linha in conteudo.split("\n"):
+            if not linha.strip():
+                continue
+            # Descarta 3 primeiros caracteres do status, trata rename ("A -> B")
+            p = linha[3:]
+            partes = p.split(" -> ")
+            p = partes[-1] if len(partes) > 1 else partes[0]
+            # Remove aspas se o porcelain escapou (caracteres especiais)
+            if p.startswith('"') and p.endswith('"'):
+                p = p[1:-1]
+                # Desescapa sequências de escape
+                p = (
+                    p.replace("\\n", "\n")
+                    .replace("\\t", "\t")
+                    .replace('\\"', '"')
+                    .replace("\\\\", "\\")
+                )
+            caminhos.add(p.replace("\\", "/").lower())
+        return caminhos
+    except (FileNotFoundError, OSError, IOError):
+        return None
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         prog="conferir-entrega.py",
@@ -128,6 +160,7 @@ def main() -> int:
     ap.add_argument("--commit", default="HEAD", help="commit entregue (default: HEAD do worktree)")
     ap.add_argument("--repo-principal", help="default: deduzido do git-common-dir do worktree")
     ap.add_argument("--head-antes", help="HEAD do repo principal ANTES do despacho, para pegar HEAD movido")
+    ap.add_argument("--sujo-antes", help="arquivo com porcelain do repo principal ANTES do despacho")
     ap.add_argument("--espera", action="append", default=[], metavar="CAMINHO",
                     help="caminho que a tarefa prometia criar; repetivel. Confere na ARVORE DO "
                          "COMMIT, nao no disco — `ls`/`cat` do agente provam o disco")
@@ -143,6 +176,12 @@ def main() -> int:
     if not Path(wt).is_dir():
         print(f"erro: worktree '{wt}' nao existe", file=sys.stderr)
         return 2
+
+    # Valida --sujo-antes antes de tudo
+    if a.sujo_antes:
+        if not Path(a.sujo_antes).is_file():
+            print(f"erro: --sujo-antes arquivo '{a.sujo_antes}' inexistente ou ilegível", file=sys.stderr)
+            return 2
 
     # ------------------------------------------------------------------
     c.abre("Onde ele mexeu — o worktree e mesmo um worktree?")
@@ -218,7 +257,41 @@ def main() -> int:
         _, stp = c.mostra(principal, "status", "--porcelain")
         linhas_stp = [l for l in (stp or "").split("\n") if l.strip()]
 
-        if a.paralelo and linhas_stp:
+        # Processa sujo-antes se fornecido (validado na main())
+        if a.sujo_antes:
+            sujo_antes = caminhosSujoAntes(a.sujo_antes)
+            # Extrai caminhos sujos AGORA
+            caminhos_sujos = []
+            for l in linhas_stp:
+                p = l[3:]
+                partes = p.split(" -> ")
+                p = partes[-1] if len(partes) > 1 else partes[0]
+                # Remove aspas se escapado
+                if p.startswith('"') and p.endswith('"'):
+                    p = p[1:-1]
+                    p = (
+                        p.replace("\\n", "\n")
+                        .replace("\\t", "\t")
+                        .replace('\\"', '"')
+                        .replace("\\\\", "\\")
+                    )
+                caminhos_sujos.append(p.replace("\\", "/").lower())
+
+            # Calcula diferença: quais caminhos são NOVOS (não estavam antes)?
+            novo = [p for p in caminhos_sujos if p not in sujo_antes]
+
+            if novo:
+                c.falha(
+                    f"{len(novo)} arquivo(s) sujo(s) NEW no principal (nao estava antes): " +
+                    ", ".join(novo[:5])
+                )
+            elif linhas_stp:
+                c.aviso(
+                    f"{len(linhas_stp)} alteracao(oes) no principal, mas todas ja estavam sujas antes do despacho"
+                )
+            else:
+                c.ok("diretorio principal intacto")
+        elif a.paralelo and linhas_stp:
             # Modo cruzamento: extrai arquivos que o agente tocou
             arquivos = arquivosAgente(c, wt, a.base, a.commit)
             caminhos_sujos = []
@@ -241,9 +314,9 @@ def main() -> int:
                     f"{len(linhas_stp)} alteracao(oes) no principal, nenhuma nos arquivos do agente"
                 )
         elif linhas_stp:
-            c.falha(
-                f"{len(linhas_stp)} alteracao(oes) no diretorio principal do usuario — o agente "
-                "devia estar isolado no worktree. Foi a falha N1 de 2026-08-08."
+            c.aviso(
+                "sem `--sujo-antes` esta metade nao trava; a sujeira abaixo pode ser do agente ou ja estar aqui — nao da para distinguir. "
+                "Captura o porcelain ANTES do despacho e passa com --sujo-antes para ativar esta trava."
             )
         else:
             c.ok("diretorio principal intacto")
