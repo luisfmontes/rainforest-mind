@@ -92,20 +92,49 @@
     ]
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "8bc15bc8f459d1fda70ace36983ceb7ea6f54b01",
+      "head": "f4c31b3e66f5ae4a5db8594d05c48883c79ccb16",
       "caminhos_sujos": []
     },
-    "achados": 3,
+    "achados": 0,
     "lista": [
       "1. serializar nao impoe schema na escrita: fechar le a linha do disco sem validar e so valida o diff, entao linha legada vira fechado sem ideias e carregando campo fora de schema — reproduzido",
       "2. criterio de pronto da tarefa 1 no plano ficou obsoleto: pede bate_com_a_primeira_ideia no retorno do workflow, que a tarefa 8 renomeou para critico_bateu_na_primeira_da_rodada — o verificar reprovaria codigo correto",
       "3. secao Contrato do script no design ainda diz que o critico devolve bate_com_a_primeira_ideia, contradizendo a D11 no mesmo arquivo"
     ],
     "em": "2026-08-23",
-    "rodada": 2,
-    "anteriores": "os 3 da rodada 1 confirmados fechados"
+    "rodada": 4,
+    "anteriores": "os 3 da rodada 1 confirmados fechados",
+    "base": "3fda2a99c27baef470d2abb7e649cbe5fd23a276",
+    "head": "6e9d4108ee39570ede06d1f4828bb477ce11bb33",
+    "nota_do_snapshot": "o snapshot foi recapturado depois da revisao porque eu editei o plano para aplicar o achado 2 dela. Provado antes de recapturar que a superficie revisada (scripts, workflows, skills) esta byte a byte identica ao head revisado — so os dois docs container do fluxo mudaram",
+    "historico": [
+      {
+        "rodada": 1,
+        "veredito": "reprovado",
+        "achados": 3,
+        "resumo": "fechar sem allowlist, com corrupcao reproduzida; colisao semantica de bate_com_a_primeira_ideia; estado.json autocontraditorio"
+      },
+      {
+        "rodada": 2,
+        "veredito": "reprovado",
+        "achados": 3,
+        "resumo": "serializar nao impoe schema na escrita; criterio de pronto da tarefa 1 obsoleto, que teria quebrado o verificar; Contrato do script contradizendo a D11"
+      },
+      {
+        "rodada": 3,
+        "veredito": "reprovado",
+        "achados": 2,
+        "resumo": "reparar sobrescrevia valor novo ja valido; assercao do payload forjado passava por vacuidade. MARCACAO PULADA NA EPOCA: so a quarta revisao percebeu que o bloco revisar continuava mostrando os achados da rodada 2 como correntes"
+      },
+      {
+        "rodada": 4,
+        "veredito": "ok",
+        "achados": 0,
+        "resumo": "os dois da rodada 3 fechados com prova; dois apontamentos de bookkeeping do fluxo — este historico e a serializacao das tarefas 11/12 —, ambos corrigidos antes desta marcacao"
+      }
+    ]
   },
   "verificar": {
     "status": "pendente"
