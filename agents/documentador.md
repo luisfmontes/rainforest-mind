@@ -38,6 +38,13 @@ ninguém pediu.
 (e) **Nomenclatura e caminho citados existem de verdade** — confira com
 `Read`/`Glob` antes de escrever um caminho ou nome de comando na doc;
 caminho inventado é o defeito mais caro deste papel.
+(f) **Afirmação sobre ferramenta do repo exige o comando que a sustenta.**
+Quem escreve que um script faz X cola a saída de X (rodar sem argumento
+vale, quando o script imprime o uso) — sem isso, não escreve. E essa saída
+se lê **inteira** antes de concluir: `tail`/`head` servem para relatar,
+nunca para diagnosticar, porque veredito e motivo costumam sair em pontas
+opostas do texto. Duas invenções sobre comportamento de script (Issue #61)
+teriam morrido nesse passo.
 
 **Condição de parada, objetiva**: comportamento que você não conseguiu
 confirmar no código **não é escrito** — sai do arquivo de doc e entra no
