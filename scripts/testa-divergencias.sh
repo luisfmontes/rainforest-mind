@@ -106,9 +106,11 @@ echo "{\"id\":\"teste-um\",$base,\"status\":\"aberta\"}" > f.json
 esperado "recusa status vindo da entrada (quem carimba e o script)" 1 bash -c '$DIV abrir < f.json'
 echo "{\"id\":\"fixture-01\",$base}" > f.json
 esperado "recusa id duplicado (ja existe na fixture)" 1 bash -c '$DIV abrir < f.json'
+echo "{\"id\":\"teste-campo-inventado\",$base,\"origem\":\"nao existe em schema nenhum\"}" > f.json
+esperado "tarefa 7: recusa abrir com campo inventado (allowlist, nao so denylist)" 1 bash -c '$DIV abrir < f.json'
 
 if [ "$md5_antes" = "$(md5sum divergencias.jsonl | cut -d' ' -f1)" ]
-then ok=$((ok+1)); echo "  ok   arquivo intocado apos as 6 recusas (md5 igual)"
+then ok=$((ok+1)); echo "  ok   arquivo intocado apos as 7 recusas (md5 igual)"
 else falhou=$((falhou+1)); echo "  FALHA o arquivo mudou apesar de todas as recusas"; fi
 
 echo
@@ -148,6 +150,22 @@ confere_nao_alvo "depois dos seis erros" "$antes_3"
 prova "fixture-02 continua aberta — nenhuma das recusas fechou por engano" '
 const o=acha(O("divergencias.jsonl"),"fixture-02");
 ok(o.status==="aberta", JSON.stringify(o));'
+
+echo
+echo "== 3b. tarefa 7: fechar recusa payload forjado (id/shortlist tentando sequestrar a linha) =="
+antes_3b=$(tres_nao_alvo)
+saida_forjada=$(echo '{"escolha":"y","bate_com_a_primeira_ideia":true,"id":"FORJADO","shortlist":["sequestrada"]}' | $DIV fechar --id fixture-02 2>&1)
+got_forjada=$?
+if [ "$got_forjada" != 0 ] && echo "$saida_forjada" | grep -q "id" && echo "$saida_forjada" | grep -q "shortlist"
+then ok=$((ok+1)); echo "  ok   fechar recusa payload forjado nomeando id e shortlist (exit $got_forjada)"
+else falhou=$((falhou+1)); echo "  FALHA fechar aceitou ou nao nomeou os campos forjados (exit $got_forjada)"; echo "$saida_forjada" | sed 's/^/         /'
+fi
+confere_nao_alvo "depois do payload forjado (fixture-02 e as demais nao-alvo intocadas)" "$antes_3b"
+prova "fixture-02 continua com id e shortlist originais — nao foi sequestrada" '
+const o=acha(O("divergencias.jsonl"),"fixture-02");
+ok(o.id==="fixture-02", "id foi sequestrado: "+JSON.stringify(o.id));
+ok(igual(o.shortlist,["ideia c","ideia d"]), "shortlist foi sequestrada: "+JSON.stringify(o.shortlist));
+ok(o.status==="aberta", "status mudou por engano: "+o.status);'
 
 echo
 echo "== 4. mutacao: a conferencia byte a byte trava mesmo? =="
