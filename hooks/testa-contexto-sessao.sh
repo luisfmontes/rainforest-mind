@@ -1147,6 +1147,16 @@ checa "dentroDoExpediente: dia fora dos dias (sab 10:00)"          tem "false" "
 # dado sumiu — silencio dentro de silencio.
 checa "dentroDoExpediente: sem expediente no config devolve null (nao false)" tem "null" "$(expediente '2026,8,10,10,0' '{}')"
 
+# Forma NOVA: `faixas` (N faixas), caso concreto que motivou a mudanca — seg-sex
+# 8h-12h e 14h-18h, com o almoco (12h-14h) fora do expediente. Antes desta
+# mudanca so existia uma faixa, e 13h em dia util virava expediente por engano.
+CONFIG_EXPEDIENTE_FAIXAS='{"expediente":{"dias":[1,2,3,4,5],"faixas":[{"de":"08:00","ate":"12:00"},{"de":"14:00","ate":"18:00"}]}}'
+checa "dentroDoExpediente: faixas - dentro da 1a faixa (seg 10:00)"        tem "true"  "$(expediente '2026,8,10,10,0' "$CONFIG_EXPEDIENTE_FAIXAS")"
+checa "dentroDoExpediente: faixas - almoco fora das duas faixas (seg 13:00)" tem "false" "$(expediente '2026,8,10,13,0' "$CONFIG_EXPEDIENTE_FAIXAS")"
+checa "dentroDoExpediente: faixas - dentro da 2a faixa (seg 15:00)"        tem "true"  "$(expediente '2026,8,10,15,0' "$CONFIG_EXPEDIENTE_FAIXAS")"
+checa "dentroDoExpediente: faixas - fora de todas as faixas (seg 20:00)"  tem "false" "$(expediente '2026,8,10,20,0' "$CONFIG_EXPEDIENTE_FAIXAS")"
+checa "dentroDoExpediente: faixas - dia fora dos dias (dom 10:00)"        tem "false" "$(expediente '2026,8,9,10,0' "$CONFIG_EXPEDIENTE_FAIXAS")"
+
 cat > "$RAIZ_POSIX/driver-outra-janela.cjs" <<'EOF'
 const lib = require(process.env.LIB_PATH);
 const sessoes = JSON.parse(process.env.FIX_SESSOES);
@@ -1778,6 +1788,18 @@ else
   else
     falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — a comparacao de cwd nao e o que a assercao mede (saida: $S_MUT5)"
   fi
+fi
+
+echo "  -- SABOTAGEM 6: dentroDoExpediente so considera a 1a faixa quando ha N faixas"
+cp "$LIB" "$RAIZ_POSIX/lib-mut-faixas.cjs"
+sed -i 's/? exp\.faixas/? [exp.faixas[0]]/' "$RAIZ_POSIX/lib-mut-faixas.cjs"
+S_MUT6="$(expediente '2026,8,10,15,0' "$CONFIG_EXPEDIENTE_FAIXAS" "$RAIZ_POSIX/lib-mut-faixas.cjs")"
+echo "  (saida do mutante em seg 15:00, 2a faixa 14-18: $S_MUT6 — a assercao real espera 'true')"
+( checa "dentroDoExpediente: faixas - dentro da 2a faixa (seg 15:00)" tem "true" "$S_MUT6" )
+if [ "$S_MUT6" = "false" ]; then
+  ok=$((ok+1)); echo "  ok    mutacao expos que so a 1a faixa valia (a 2a faixa, com o almoco no meio, ficaria sempre fora)"
+else
+  falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — restringir a 1a faixa nao e o que a assercao mede (saida: $S_MUT6)"
 fi
 
 echo
