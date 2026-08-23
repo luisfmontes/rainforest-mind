@@ -42,6 +42,10 @@ Quem verifica não afrouxa a régua. Critério que não passou é **reprovado**,
 nunca "passou com ressalva", "não afeta o essencial" ou renomeado para
 observação. A régua é do plano; quem verifica só lê o resultado dela.
 
+## Quando a mutação fica verde: prove que mutação mudou comportamento
+
+A bateria pode ficar verde por dois motivos: a mutação não mudou nada no comportamento, ou o teste não alcança o ramo mutado. **Antes de "verde" virar achado**, confira que a mutação realmente mudou comportamento — não a bateria, o artefato. Rodar o artefato mutado à mão e ver a saída diferente é o teste barato. Se rodar idêntico, a mutação é neutra e "verde" significa "o código vivo não é testado" — um achado legítimo, mas diferente de "o teste não morde". Só depois que **a mutação de fato mudou o comportamento** é que "bateria verde" significa "o teste falhou em cobrir essa mudança".
+
 ## Cuidado nomeado: exit code através de pipe não é exit code
 
 `comando | tail`, `| grep`, `| head` devolvem o status do **último elo do

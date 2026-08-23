@@ -164,7 +164,7 @@ exige 0 "plano com cobertura fecha" E marcar --slug t --estagio plano --status o
 # checagem no fechamento, e este caso se chamava "executar nao tem checagem". Agora
 # ele tem: a catraca de mutacao. Sao tres portas em serie, e cada uma fecha um jeito
 # diferente de sair verde sem prova.
-MUT5='[{"tarefa":1,"resultado":"vermelho"},{"tarefa":2,"resultado":"vermelho"},{"tarefa":3,"resultado":"vermelho"},{"tarefa":4,"resultado":"n/a","motivo":"doc"},{"tarefa":5,"resultado":"n/a","motivo":"doc"}]'
+MUT5='[{"tarefa":1,"resultado":"vermelho","fixture":"t1"},{"tarefa":2,"resultado":"vermelho","fixture":"t2"},{"tarefa":3,"resultado":"vermelho","fixture":"t3"},{"tarefa":4,"resultado":"n/a","motivo":"doc"},{"tarefa":5,"resultado":"n/a","motivo":"doc"}]'
 
 # 1a porta: catraca que nunca foi armada. Quem pula o `exigir` pula a leitura do
 # que a catraca cobra, e fechar assim seria fechar por desconhecimento.
@@ -176,13 +176,13 @@ exige 2 "executar com catraca armada mas SEM lista recusa" E marcar --slug t --e
 # 3a porta: lista que nao cobre o plano inteiro. Tarefa omitida e a mais barata de
 # esconder, entao a lista se cruza com o plano, tarefa a tarefa.
 exige 2 "lista que pula tarefa do plano recusa" E marcar --slug t --estagio executar --status ok \
-  --json '{"mutacao":[{"tarefa":1,"resultado":"vermelho"}]}'
+  --json '{"mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t1"}]}'
 exige 2 "lista com tarefa que nao existe no plano recusa" E marcar --slug t --estagio executar --status ok \
-  --json "{\"mutacao\":$(printf '%s' "$MUT5" | sed 's/\]$/,{"tarefa":99,"resultado":"vermelho"}]/')}"
+  --json "{\"mutacao\":$(printf '%s' "$MUT5" | sed 's/\]$/,{"tarefa":99,"resultado":"vermelho","fixture":"t99"}]/')}"
 # Numero repetido cobriria o plano inteiro pela contagem e deixaria uma tarefa de
 # fora — e a forma mais barata de satisfazer a cobertura sem ter mutado nada.
 exige 2 "mesma tarefa duas vezes na lista recusa" E marcar --slug t --estagio executar --status ok \
-  --json '{"mutacao":[{"tarefa":1,"resultado":"vermelho"},{"tarefa":1,"resultado":"vermelho"},{"tarefa":2,"resultado":"vermelho"},{"tarefa":3,"resultado":"vermelho"},{"tarefa":4,"resultado":"n/a","motivo":"doc"}]}'
+  --json '{"mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t1"},{"tarefa":1,"resultado":"vermelho","fixture":"t1"},{"tarefa":2,"resultado":"vermelho","fixture":"t2"},{"tarefa":3,"resultado":"vermelho","fixture":"t3"},{"tarefa":4,"resultado":"n/a","motivo":"doc"}]}'
 exige 0 "executar com catraca armada e lista completa fecha" E marcar --slug t --estagio executar --status ok \
   --json "{\"tarefas_ok\":5,\"tarefas\":5,\"mutacao\":$MUT5}"
 
@@ -398,7 +398,7 @@ OE(){ RFM_ESTADO_ROOT="$OW" node "$ESTADO" "$@"; }
 LISTA_10='['
 for i in 1 2 3 4 5 6 7 8 9 10; do
   [ "$i" = 1 ] || LISTA_10="$LISTA_10,"
-  LISTA_10="$LISTA_10{\"tarefa\":$i,\"resultado\":\"vermelho\"}"
+  LISTA_10="$LISTA_10{\"tarefa\":$i,\"resultado\":\"vermelho\",\"fixture\":\"t$i\"}"
 done
 LISTA_10="$LISTA_10]"
 OE iniciar --slug t >/dev/null 2>&1

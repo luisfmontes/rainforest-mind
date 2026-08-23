@@ -103,11 +103,34 @@ esperado "alteracao no diretorio principal do usuario" 1 \
   --sujo-antes "$PORCELAIN_ANTES_5"
 rm "$R/intruso.txt"
 
-# 6 — HEAD do principal movido (N1, o stash/pop)
+# 6 — HEAD do principal recuou mas NÃO toca arquivos do agente (movimento alheio)
 git -C "$R" checkout -q HEAD~1
-esperado "HEAD do repo principal movido durante a tarefa" 1 \
+esperado "HEAD do repo principal recuou, movimento alheio (nao toca entrega)" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES"
+contem "  ... e o aviso menciona movimento alheio" "outra janela trabalhando" \
   "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES"
 git -C "$R" checkout -q "$HEAD_ANTES"
+
+# 6b — HEAD do principal recuou E toca um arquivo que o agente tocou (conflito)
+# Para isso, agente edita um arquivo que já existe no principal
+git -C "$WT" checkout -q "$BASE"
+echo editado > "$WT/a.txt"
+git -C "$WT" add .; git -C "$WT" commit -qm "edita arquivo existente"
+NOVO_COMMIT=$(git -C "$WT" rev-parse HEAD)
+# Agora no principal, adiciona um commit DEPOIS de BASE que toca a.txt
+echo outro > "$R/a.txt"
+git -C "$R" commit -qa -m "outro commit que toca a.txt"
+# Recua o HEAD do principal: vai tocar a.txt
+git -C "$R" checkout -q "$BASE"
+esperado "HEAD do repo principal recuou E toca arquivo da entrega (conflito)" 1 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$(git -C "$R" rev-parse HEAD@{1})" \
+  --commit "$NOVO_COMMIT"
+contem "  ... e o aviso menciona conflito" "conflito" \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$(git -C "$R" rev-parse HEAD@{1})" \
+  --commit "$NOVO_COMMIT"
+# Volta ao estado inicial
+git -C "$R" checkout -q "$(git -C "$R" rev-parse HEAD@{1})"
+git -C "$WT" checkout -q trabalho
 
 # 6b — HEAD do principal AVANCOU no caminho DEFAULT, sem --paralelo. Buraco de
 # cobertura achado por revisao independente em 2026-08-15: a logica de
@@ -185,9 +208,9 @@ contem "  ... e o aviso menciona o avanco" "avancou" \
   "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES" --paralelo
 git -C "$R" reset -q --hard "$HEAD_ANTES"
 
-# b — HEAD do principal recuou + --paralelo -> continua reprovado (avanco != qualquer movimento)
+# b — HEAD do principal recuou + --paralelo, movimento alheio (nao toca entrega)
 git -C "$R" checkout -q HEAD~1
-esperado "paralelo: HEAD do principal recuou -> reprovado mesmo assim" 1 \
+esperado "paralelo: HEAD do principal recuou, movimento alheio -> aviso" 0 \
   "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES" --paralelo
 git -C "$R" checkout -q "$HEAD_ANTES"
 

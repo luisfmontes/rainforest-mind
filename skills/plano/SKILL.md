@@ -45,6 +45,7 @@ mutacao:
   de: <o padrão exato a inverter>
   para: <o substituto>
   bateria: `<comando que tem de ficar VERMELHO com a mutação aplicada>`
+  fixture: <nome-do-caso-de-teste-que-exercita-essa-mutacao>
 pronto quando: com `<entrada real do sistema>`, `<efeito verificável>` — provado por `<comando exato>` devolvendo `<saída esperada>`
 
 ### 2. <nome da tarefa> [tipo: docs]
@@ -62,7 +63,7 @@ Cada tarefa leva: **tipo**, `atende:` (lista de `D<n>` do design que esta tarefa
 ### Campos obrigatórios: `atende:` e `arquivos:`
 
 - **`atende:` vazio é recusa**: tarefa sem `atende:`, ou com `atende:` vazio, não entra no plano — se não atende nenhuma decisão, ela não deveria estar aqui.
-- **`arquivos:` sem glob largo**: declare caminhos concretos ou padrões específicos. Glob largo como `hooks/**` não descreve o que você toca — é achado do `revisar`, não atalho.
+- **`arquivos:` sem glob largo**: declare caminhos concretos ou padrões específicos. Glob largo como `hooks/**` não descreve o que você toca — é achado do `revisar`, não atalho. **`arquivos:` nomeia arquivos que a tarefa toca, não pastas**: `skills/executar/SKILL.md`, não `skills/**`; `scripts/conferir-entrega.cjs` e `scripts/conferir-entrega.py`, não `scripts/**`. Arquivo por arquivo.
 - **Cobertura nos dois sentidos**: decisão do design sem tarefa barra o plano, e tarefa citando `D<n>` inexistente também barra.
 
 ### Campo obrigatório: `mutacao:` — o alvo é declarado, nunca inferido
@@ -77,6 +78,7 @@ mutacao:
   de: o `process.exit(2)` do ramo de sessão co-locada
   para: `process.exit(0)`
   bateria: `bash hooks/testa-gate-worktree.sh`
+  fixture: `testa-gate-worktree.sh, linhas 23-30 (o ramo co-locado que dispara a saída)`
 ```
 
 - **`de:` é o padrão exato**, não a intenção. Padrão que não casa com o fonte
@@ -84,6 +86,17 @@ mutacao:
   certo.
 - **`bateria:` é o comando que tem de FALHAR** com a mutação aplicada. Se
   continuar verde, a bateria não mede o que a tarefa entregou.
+- **`fixture:` nomeia qual caso de teste exercita a mutação** — arquivo, função ou
+  intervalo de linhas. Não basta a **bateria** ficar vermelha: o ramo mutado tem de
+  ser alcançado por um caso específico, senão o vermelho pode vir de outro lugar, e
+  veredito certo pelo motivo errado é pior que veredito errado — ninguém volta a
+  olhar. **Quem confere isso é a integração, lendo qual linha ficou vermelha.** O
+  `conferir-mutacao.cjs` prova só que a bateria virou (`--de`, `--para`, `--bateria`);
+  ele não conhece caso de teste, e escrever que conhece mandaria confiar numa trava
+  que não existe. Quando a bateria souber rodar um caso sozinho, é o comando dela que
+  vai em `bateria:`, e aí o exit code passa a valer pelo caso. **Obrigatória quando
+  `resultado` é `vermelho`**, e o `estado.cjs` recusa sem ela; `n/a` não tem
+  comportamento a inverter, então não tem caso a nomear.
 - **O relato de mutação do agente não fecha a tarefa.** A integração re-roda, e
   só o exit code dela vale.
 
@@ -112,7 +125,7 @@ verde, então enquanto o critério apontar para ele, a saída mais barata sempre
 será ajustar o instrumento. **Teste que pula por infraestrutura ausente é
 vermelho disfarçado**: quando o próprio teste monta o que precisa, zero `skipped`
 é critério de aceite (teste que não precisa de infraestrutura externa pode pular
-honestamente). A forma que vale:
+honestamente). **Tarefa de tipo `docs` não pode ter critério que seja presença de uma string** — qualquer trecho citado é satisfazível digitando o trecho e fim. O critério tem que conferir **coerência com a decisão**: números do texto casa com números do design, prescrições do texto implementam as prescrições decididas, argumentação segue a lógica do design. A forma que vale:
 
 ```
 pronto quando: com <entrada real do sistema>, <efeito verificável> — provado por `<comando>`
