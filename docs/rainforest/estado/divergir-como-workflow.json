@@ -24,42 +24,50 @@
   "executar": {
     "status": "ok",
     "catraca_mutacao": "2026-08-23",
-    "tarefas_ok": 6,
-    "tarefas": 6,
+    "tarefas_ok": 8,
+    "tarefas": 8,
     "em": "2026-08-23",
-    "pendentes": [
-      "tarefa-6: rodada ponta a ponta, gasta 7 despachos"
-    ],
+    "pendentes": [],
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "motivo": "vazamento da saida do frame 1 nos frames 2-6 injetado no grafo: conferir-divergencia.cjs saiu 2 com RECUSADO no rastro mutado e 0 no rastro real; script restaurado com git diff vazio"
+        "motivo": "vazamento do frame 1 nos frames 2-6: conferidor saiu 2 no rastro mutado e 0 no real"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "motivo": "comparacao dos seis prompts trocada por sempre-verdadeira: bateria caiu para 20 ok / 2 falhas, restaurada com git diff vazio"
+        "motivo": "comparacao dos seis prompts sempre-verdadeira: bateria 20 ok / 2 falhas"
       },
       {
         "tarefa": 3,
         "resultado": "n/a",
-        "motivo": "tarefa so escreve doc — nao ha comportamento a inverter"
+        "motivo": "tarefa so escreve doc"
       },
       {
         "tarefa": 4,
         "resultado": "vermelho",
-        "motivo": "conferencia byte a byte das linhas nao-alvo removida: bateria caiu com 4 falhas, restaurada com git diff vazio"
+        "motivo": "conferencia byte a byte removida: bateria com 4 falhas"
       },
       {
         "tarefa": 5,
         "resultado": "n/a",
-        "motivo": "tarefa so edita a SKILL.md — o comportamento que ela aciona e o da tarefa 1"
+        "motivo": "tarefa so edita a SKILL.md"
       },
       {
         "tarefa": 6,
         "resultado": "n/a",
-        "motivo": "tarefa de integracao — exercita artefatos cujas mutacoes estao declaradas em 1, 2 e 4"
+        "motivo": "tarefa de integracao"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "motivo": "allowlist do fechar passou a aceitar id e shortlist: bateria exit 1; restaurada com git diff vazio"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "motivo": "delete novo.ideias antes de serializar: bateria 33 ok / 2 falhas nomeando a tarefa 8. A primeira tentativa (tirar ideias da ORDEM_CANONICA) foi no-op porque serializar tem laco de passagem livre — trocada por mutacao fiel"
       }
     ]
   },
