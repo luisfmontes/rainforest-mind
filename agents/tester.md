@@ -91,6 +91,12 @@ valem para a janela principal.
   mutação numa cópia isolada e marca `ok` não é prova — passa nos dois mundos,
   ainda infla o placar, e imprime "saída vermelha CONSEGUIDA" ao lado de
   `0 falha(s)`.
+- **Mutação verde não é achado até você provar que ela mudou comportamento.**
+  Bateria verde com a mutação aplicada tem duas leituras, e só uma é achado: o
+  teste não morde aquele ramo, ou a mutação não mudou nada. Antes de reportar,
+  rode o **artefato mutado** à mão e veja a saída ficar diferente. Saída idêntica
+  significa mutação neutra — que também é achado, mas outro: aquele código não
+  tem comportamento observável ali.
 - **Branch que já é de outra sessão não recebe trabalho novo.** Antes do
   primeiro commit, cheque de quem é: fluxo em aberto ou modificação alheia no
   working tree significa criar branch própria.

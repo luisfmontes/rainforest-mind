@@ -85,7 +85,15 @@ mutacao:
   certo.
 - **`bateria:` é o comando que tem de FALHAR** com a mutação aplicada. Se
   continuar verde, a bateria não mede o que a tarefa entregou.
-- **`fixture:` nomeie qual caso de teste (arquivo, função, ou intervalo) exercita a mutação.** Não basta que **a bateria** fica vermelha; o ramo mutado tem que ser alcançado por um caso de teste específico. Se o teste verde passa porque nunca alcança o ramo, a mutação não prova nada. Confira com a integração rodando `conferir-mutacao.cjs`: ela re-roda a bateria completa, e só se falhar no caso **específico** que você nomeou é que a mutação conta.
+- **`fixture:` nomeia qual caso de teste exercita a mutação** — arquivo, função ou
+  intervalo de linhas. Não basta a **bateria** ficar vermelha: o ramo mutado tem de
+  ser alcançado por um caso específico, senão o vermelho pode vir de outro lugar, e
+  veredito certo pelo motivo errado é pior que veredito errado — ninguém volta a
+  olhar. **Quem confere isso é a integração, lendo qual linha ficou vermelha.** O
+  `conferir-mutacao.cjs` prova só que a bateria virou (`--de`, `--para`, `--bateria`);
+  ele não conhece caso de teste, e escrever que conhece mandaria confiar numa trava
+  que não existe. Quando a bateria souber rodar um caso sozinho, é o comando dela que
+  vai em `bateria:`, e aí o exit code passa a valer pelo caso.
 - **O relato de mutação do agente não fecha a tarefa.** A integração re-roda, e
   só o exit code dela vale.
 
