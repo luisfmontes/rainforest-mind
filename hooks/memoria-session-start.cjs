@@ -100,9 +100,16 @@ const caminhoDb = path.join(ROOT, 'rainforest.db');
 // Se não conseguir resolver (fora de repositório), usa null e a consulta devolve todas.
 // Correção D13b: consultar ambas as chaves para não perder histórico sob chave curta.
 let projetosList = null;
+// Apelidos de exibição: o banco guarda a chave de pasta do harness, que é longa.
+// O rótulo mostra o nome curto do projeto, e o teto de bytes rende mais linhas.
+let apelidos = null;
 try {
   const { projetos } = resolverCaminhos();
   projetosList = projetos;
+  if (Array.isArray(projetos) && projetos.length > 1) {
+    // projetos = [chaveHarness, nomeCurto]; o primeiro exibe como o segundo.
+    apelidos = { [projetos[0]]: projetos[projetos.length - 1] };
+  }
 } catch {
   // Não conseguir resolver não é erro — continua sem filtro.
 }
@@ -120,7 +127,7 @@ try {
 }
 
 // Monta o bloco de memória.
-const bloco = montarMemoria({ observacoes });
+const bloco = montarMemoria({ observacoes, apelidos });
 
 // JSON, não texto cru (regra 12 do hook foco-session-start).
 // O harness lê `additionalContext` e o stdout ao redor não conta para o teto.

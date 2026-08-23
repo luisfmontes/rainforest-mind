@@ -642,5 +642,46 @@ else
 fi
 
 echo
+echo "15. Rótulo usa o apelido curto, não a chave de pasta do harness"
+
+CAIXA_APELIDO="$(mktemp -d)"
+trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${RAIZ_POSIX:-}" "${CAIXA_HOOK:-}" "${CAIXA_PROJETO:-}" "${CAIXA_HARNESS:-}" "${CAIXA_VAZIO:-}" "${CAIXA_APELIDO:-}"' EXIT
+
+export RFM_ROOT="$CAIXA_APELIDO"
+node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+
+PASTA_APELIDO="$CAIXA_APELIDO/projeto-de-teste"
+mkdir -p "$PASTA_APELIDO"
+git init -q "$PASTA_APELIDO"
+
+# Grava a observação sob a chave EXATA que o harness usaria para essa pasta.
+(cd "$PASTA_APELIDO" && SRC="$SRC" node -e "
+  const { DatabaseSync } = require('node:sqlite');
+  const { chaveHarness } = require(process.env.SRC + '/scripts/memoria.cjs');
+  const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
+  db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
+    .run(chaveHarness(process.cwd()), '## Marcador de apelido', '2026-08-22T10:00:00Z', 'sessao:teste:offset:1');
+  db.close();
+")
+
+SAIDA_APELIDO=$(cd "$PASTA_APELIDO" && echo '{}' | node "$HOOK" 2>/dev/null)
+BLOCO_APELIDO=$(echo "$SAIDA_APELIDO" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); process.stdout.write((d.hookSpecificOutput||{}).additionalContext||'')")
+
+ACHOU_CURTO=$(echo "$BLOCO_APELIDO" | grep -c "(projeto-de-teste)" || true)
+ACHOU_LONGO=$(echo "$BLOCO_APELIDO" | grep -c -- "(C--" || true)
+
+if [ "$ACHOU_CURTO" -ge 1 ]; then
+  ok=$((ok+1)); echo "  ok    rótulo exibe o nome curto do projeto"
+else
+  falhou=$((falhou+1)); echo "  FALHA rótulo não exibiu o nome curto; bloco: $BLOCO_APELIDO"
+fi
+
+if [ "$ACHOU_LONGO" -eq 0 ] && [ -n "$BLOCO_APELIDO" ]; then
+  ok=$((ok+1)); echo "  ok    chave de pasta do harness não vaza para o rótulo"
+else
+  falhou=$((falhou+1)); echo "  FALHA chave longa vazou no rótulo; bloco: $BLOCO_APELIDO"
+fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]
