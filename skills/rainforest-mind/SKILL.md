@@ -749,10 +749,10 @@ quando o `download_media` falha — perguntar o caminho ao usuário vem antes de
 insistir no bridge. Em 2026-08-10 o bridge devolvia 403 para **toda** mídia,
 inclusive uma de 14 minutos atrás, então não é expiração.
 
-**15. Agente não altera o ambiente do usuário.** Subagente **não** instala software,
-não mexe em PATH, env, config, serviço **nem dado fora do worktree** — ferramenta
-ausente, **para e reporta**. Vale para a janela principal: instalação pergunta antes.
-Env se lê por `printenv NOME`, nunca por dump filtrado.
+**15. Ninguém altera o ambiente do usuário.** Agente e janela: sem instalar, PATH,
+env, config, serviço **nem dado fora do worktree**; ferramenta ausente para e
+reporta, instalar pergunta. Processo morre pelo PID desta sessão — por nome ou
+porta mata o alheio. Env por `printenv NOME`, nunca dump filtrado. ↳
 <!-- detalhe -->
 O worktree da regra 11 isola o
 repositório, não a máquina — e a proibição de git destrutivo foi lida como

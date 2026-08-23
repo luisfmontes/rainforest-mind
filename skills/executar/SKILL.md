@@ -43,8 +43,9 @@ conflitam entre si, e foi por isso que o superpowers proibiu paralelo de
 implementadores. Aqui não precisa proibir porque a trava existe.
 
 O briefing de cada agente leva, sempre:
-- **O hash da base** (regra 11) e a instrução de conferir na primeira ação
-  (`git log -1`), abortando se divergir — só hash velho conhecido autoriza
+- **O hash da base** (regra 11) e a instrução de conferir na primeira ação:
+  `git rev-parse --show-toplevel` (PARE se for a raiz do repositório principal),
+  depois `git log -1`, abortando se divergir — só hash velho conhecido autoriza
   `git merge --ff-only`.
 - **O hash velho conhecido, já nomeado, desde o primeiro despacho.** O HEAD
   do `main` (ou o commit imediatamente anterior ao início do trabalho) é
@@ -58,6 +59,11 @@ O briefing de cada agente leva, sempre:
   abaixo — sem eles, arquivo que o agente cria e nunca chega ao commit passa
   por todas as outras checagens.
 - **Git destrutivo proibido** e commit só na branch de trabalho, nunca `main`.
+- **O hash da base é executado `git rev-parse`, nunca digitado.** Briefing que
+  monta do zero (despacho novo) calcula `--base` com `git rev-parse HEAD` na hora,
+  não com hash lembrado ou copiado — identificador que vem de memória é o começo
+  de toda auditoria. Retomada de agente re-verifica a base: `git log -1` no
+  worktree dele e compara com o hash do briefing.
 - **Critério de sucesso falsificável**, copiado literal da tarefa do plano:
   comando exato e saída exata que provam pronto — nunca adjetivo
   ("robusto", "de verdade", "não decorativo").
@@ -76,7 +82,9 @@ PORCELAIN_ANTES="/tmp/porcelain-antes.txt"
 git -C <principal> status --porcelain > "$PORCELAIN_ANTES"
 ```
 
-Ao receber a entrega, rode:
+Ao receber a entrega, **antes de rodar a conferência, verifique que o worktree
+ainda existe** — um agente que responde "não consigo commitar" é sinal de
+isolamento perdido, não de gate barrando. Então rode:
 
 ```
 node scripts/conferir-entrega.cjs --worktree <wt> --base <hash> \
