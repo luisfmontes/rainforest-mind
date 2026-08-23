@@ -426,6 +426,48 @@ function nomeDoBloco(bloco) {
 }
 
 /**
+ * Corta a IDENTIDADE do foco ativo (o primeiro bloco `**...**` logo abaixo do
+ * cabeçalho `## Ativo`) por DENTRO em vez de descartá-la inteira quando ela
+ * sozinha não cabe no teto — Issue #63, medido em 2026-08-23.
+ *
+ * O primeiro parágrafo de "## Ativo" (título, natureza, projeto, pastas,
+ * prioridade, prazo final, critério de pronto) chega a ~1,3 KB contra um teto
+ * de ~1,2 KB. Ele é o bloco de MAIOR prioridade de conteúdo (rank 1) — e era
+ * exatamente o que caía fora inteiro, com os ponteiros de rank 4 (bem mais
+ * baratos) entrando no lugar dele. Não é estouro de orçamento: é composição.
+ *
+ * Preserva a PRIMEIRA linha (título — e é nela que a natureza `[trabalho]` ou
+ * `[pessoal]` normalmente mora) e qualquer linha com data (prazo, o que a
+ * regra 3 mede). O resto vira um aviso de corte; o FOCO.md continua inteiro em
+ * disco.
+ *
+ * @param {string} bloco    texto do bloco de identidade
+ * @param {number} maxBytes espaço disponível, em bytes
+ * @returns {string} versão cortada que cabe em `maxBytes`, ou '' se nem a
+ *   primeira linha coubesse
+ */
+function cortarIdentidade(bloco, maxBytes) {
+  const linhas = String(bloco || '').split('\n');
+  if (!linhas.length || !linhas[0].trim() || maxBytes <= 0) return '';
+
+  const RE_ESSENCIAL = /\d{4}-\d{2}-\d{2}|\[(trabalho|pessoal)\]/;
+  const essencial = [linhas[0]];
+  for (let i = 1; i < linhas.length; i++) {
+    if (RE_ESSENCIAL.test(linhas[i])) essencial.push(linhas[i]);
+  }
+
+  const cortou = essencial.length < linhas.length;
+  const aviso = cortou ? '\n(identidade cortada por espaço — o restante está no FOCO.md.)' : '';
+  const texto = essencial.join('\n') + aviso;
+  if (Buffer.byteLength(texto, 'utf8') <= maxBytes) return texto;
+
+  // Nem o essencial + aviso coube: corta bruto, SEM o aviso — ele custaria
+  // exatamente o espaço que falta, e título pela metade é melhor que título
+  // pela metade mais um aviso truncado no meio de uma palavra.
+  return cortarBytes(essencial.join('\n'), maxBytes);
+}
+
+/**
  * Encaixa o foco no teto tirando os blocos MENOS importantes primeiro, e nomeando
  * o que saiu. A ordem original é preservada na saída — prioridade decide quem
  * fica, não onde fica.
@@ -458,12 +500,23 @@ function priorizarFoco(focoResumido, teto) {
   // 13/08" é um item de lista igual a qualquer outro se olhado sozinho, e é a seção
   // que diz que ele é um compromisso com prazo.
   let secaoAtual = '';
+  // O primeiro bloco `**...**` logo abaixo de "## Ativo" é a IDENTIDADE do foco
+  // (título, natureza, prazo...) — o único que ganha corte por dentro em vez de
+  // descarte inteiro quando não cabe (Issue #63). `identidadeUsada` some ao
+  // trocar de heading, para não marcar um segundo bloco em negrito da mesma
+  // seção como se fosse a identidade.
+  let identidadeUsada = false;
   const blocos = partes
     .filter((b) => !RE_PONTEIRO_SECOES.test(b))
     .map((b, ordem) => {
-      if (/^#{1,2} /.test(b)) secaoAtual = b.split('\n')[0].replace(/^#+\s*/, '').trim();
+      if (/^#{1,2} /.test(b)) {
+        secaoAtual = b.split('\n')[0].replace(/^#+\s*/, '').trim();
+        identidadeUsada = false;
+      }
       const regra = PRIORIDADE_FOCO.find((p) => p.teste(b, secaoAtual));
-      return { texto: b, ordem, rank: regra ? regra.rank : 9, secao: secaoAtual };
+      const identidade = !identidadeUsada && secaoAtual === 'Ativo' && /^\*\*/.test(b);
+      if (identidade) identidadeUsada = true;
+      return { texto: b, ordem, rank: regra ? regra.rank : 9, secao: secaoAtual, identidade };
     });
 
   const fila = [...blocos].sort((a, b) => a.rank - b.rank || a.ordem - b.ordem);
@@ -490,6 +543,20 @@ function priorizarFoco(focoResumido, teto) {
     if (fora.length === 0 && usado + custo <= teto - reserva) {
       mantidos.push(bloco);
       usado += custo;
+    } else if (bloco.identidade && fora.length === 0) {
+      // A identidade do foco ativo NUNCA é descartada inteira quando não cabe
+      // — ela é cortada por DENTRO, preservando título, natureza e prazo
+      // (Issue #63). Se nem o essencial couber, cai no `else` como qualquer
+      // outro bloco que não coube.
+      const espacoLivre = teto - reserva - usado;
+      const cortado = cortarIdentidade(bloco.texto, espacoLivre);
+      const custoCortado = cortado ? Buffer.byteLength(cortado, 'utf8') + 2 : Infinity;
+      if (cortado && custoCortado <= espacoLivre) {
+        mantidos.push({ ...bloco, texto: cortado });
+        usado += custoCortado;
+      } else {
+        fora.push(bloco);
+      }
     } else {
       fora.push(bloco);
     }
@@ -803,6 +870,29 @@ function resumirSessoes(entradas, ociosidade, teto = TETOS.SESSOES_MAX_BYTES, cw
     `Ociosidade máxima deste foco: ${ociosidade} min.\n`;
 }
 
+/**
+ * Um bloco de foco sem NENHUMA linha de conteúdo — só cabeçalho, "Último avanço
+ * datado:" e/ou os dois ponteiros de omissão — é indistinguível de "não há foco
+ * declarado" para quem lê, e pode ser uma afirmação FALSA (Issue #63, medido em
+ * 2026-08-23: "## Ativo" saía removido por orfandade e só os ponteiros de espaço
+ * sobravam, com um foco de prazo em dois dias por trás).
+ */
+function focoSoTemPonteiro(texto) {
+  const linhas = String(texto || '').split('\n').map((l) => l.trim()).filter(Boolean);
+  if (!linhas.length) return true;
+  return linhas.every((l) =>
+    /^#{1,2} /.test(l) ||
+    /^Último avanço datado:/.test(l) ||
+    /^\(Seções do FOCO\.md omitidas/.test(l) ||
+    /^\(Fora desta injeção por espaço/.test(l));
+}
+
+/** Aviso explícito de foco que não coube — mesmo texto para o piso e para o caso pointer-only (Issue #63). */
+function avisoFocoNaoCoube(tetoFoco) {
+  return `⚠️ O foco não coube nesta injeção (${tetoFoco} B livres, piso ${TETOS.FOCO_MIN_BYTES} B).\n` +
+    '**Leia o FOCO.md antes de medir desvio de escopo ou afirmar o que está em andamento** (regra 3).';
+}
+
 /** Teto duro, com aviso explícito de que houve corte. Nunca corta em silêncio. */
 function limitar(texto, max, nomeDoBloco) {
   const s = String(texto || '');
@@ -928,12 +1018,17 @@ ${regras}
     // ficaria de fora, com o bloco parecendo completo. O piso não vira alocação
     // forçada (isso estouraria o orçamento e faria a trava acusar as regras por um
     // defeito que é do foco); vira aviso.
-    foco = `⚠️ O foco não coube nesta injeção (${tetoFoco} B livres, piso ${TETOS.FOCO_MIN_BYTES} B).\n` +
-      '**Leia o FOCO.md antes de medir desvio de escopo ou afirmar o que está em andamento** (regra 3).';
+    foco = avisoFocoNaoCoube(tetoFoco);
   } else {
     // Por prioridade, não por posição: cortar de cima para baixo deixava marcos e
     // prazos de fora de toda sessão enquanto a prosa do topo sobrevivia inteira.
     foco = priorizarFoco(focoResumido, tetoFoco);
+    // Invariante (Issue #63): mesmo com teto acima do piso, a composição pode
+    // deixar o bloco sem NENHUM conteúdo real (identidade cortada demais,
+    // "## Ativo" removido por orfandade, só ponteiros sobrando) — o mesmo aviso
+    // explícito do caso abaixo do piso vale aqui, em vez de um bloco que parece
+    // completo e não é.
+    if (focoSoTemPonteiro(foco)) foco = avisoFocoNaoCoube(tetoFoco);
   }
 
   return travarOrcamento(cabecalho + foco + rodape);
@@ -945,22 +1040,48 @@ ${regras}
  * Precedente de extração por regex do FOCO.md (hooks/foco-session-start.cjs:196):
  * `Ociosidade máxima:\s*(\d+)\s*min`. Mesmo padrão aqui.
  *
- * O campo "Pastas:" é uma linha com lista separada por vírgula, que o usuário
- * escreve no topo do FOCO.md. Exemplo: `Pastas: C:/a, C:/b`.
+ * O campo "Pastas:" é uma lista separada por vírgula (`Pastas: C:/a, C:/b`) OU a
+ * primeira linha seguida de linhas de CONTINUAÇÃO indentadas — a forma que o
+ * usuário usa quando a entrega tem mais de uma pasta:
+ *   Pastas: C:/a
+ *           C:/b
+ *
+ * Medido na Issue #63 (2026-08-23): com só a primeira linha extraída, a segunda
+ * pasta ficava invisível em silêncio, e a isenção 1 (D6/regra 17) nunca disparava
+ * para a sessão trabalhando ali — o radar cobrava desvio de escopo indevidamente.
  *
  * @param {string} textoDoFoco conteúdo do FOCO.md
  * @returns {string[]} array de caminhos aparados, ou [] se o campo não existe
  */
 function pastasDoFoco(textoDoFoco) {
   const texto = String(textoDoFoco || '');
-  // `[ \t]*` (nunca `\s*`) entre os dois-pontos e o conteúdo: `\s` inclui quebra
-  // de linha, e um `Pastas:` seguido de linha em branco (a forma exata que o
-  // `scripts/setup.cjs` semeia) atravessava para o próximo heading não-vazio —
-  // `pastasDoFoco("Pastas:\n\n## Ativo\n")` devolvia `["## Ativo"]` em vez de `[]`,
-  // e a isenção 1 (D6/regra 17) tratava isso como pasta configurada de verdade.
-  const match = texto.match(/^Pastas:[ \t]*(.*)$/m);
-  if (!match || !match[1].trim()) return [];
-  return match[1].split(',').map((s) => s.trim()).filter(Boolean);
+  const linhas = texto.split('\n');
+  const idx = linhas.findIndex((l) => /^Pastas:/.test(l));
+  if (idx === -1) return [];
+
+  // `[ \t]*` (nunca `\s*`) entre os dois-pontos e o conteúdo da PRIMEIRA linha:
+  // `\s` inclui quebra de linha, e um `Pastas:` seguido de linha em branco (a
+  // forma exata que o `scripts/setup.cjs` semeia) atravessava para o próximo
+  // heading não-vazio — `pastasDoFoco("Pastas:\n\n## Ativo\n")` devolvia
+  // `["## Ativo"]` em vez de `[]`, e a isenção 1 (D6/regra 17) tratava isso
+  // como pasta configurada de verdade. O GUARDA CONTINUA VALENDO: linha em
+  // branco não é linha de continuação (não casa `/^[ \t]+\S/` abaixo), então
+  // ela interrompe a busca antes de alcançar o próximo heading.
+  const primeira = linhas[idx].replace(/^Pastas:[ \t]*/, '');
+  const partes = [];
+  if (primeira.trim()) partes.push(primeira);
+
+  // Linhas de CONTINUAÇÃO: indentadas (começam com espaço/tab) e não vazias.
+  // Para na primeira linha que não bate — em branco ou sem indentação (novo
+  // heading, nova prosa) — para não atravessar seção, o mesmo cuidado do
+  // guarda acima.
+  for (let i = idx + 1; i < linhas.length; i++) {
+    if (/^[ \t]+\S/.test(linhas[i])) partes.push(linhas[i]);
+    else break;
+  }
+
+  if (!partes.length) return [];
+  return partes.join(',').split(',').map((s) => s.trim()).filter(Boolean);
 }
 
 /**
@@ -1197,6 +1318,9 @@ module.exports = {
   limitarBytes,
   cortarBytes,
   priorizarFoco,
+  cortarIdentidade,
+  focoSoTemPonteiro,
+  avisoFocoNaoCoube,
   sessoesVivas,
   ehWorktreeDeAgente,
   JANELA_COLOCADA_MS,
