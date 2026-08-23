@@ -69,6 +69,15 @@ O briefing de cada agente leva, sempre:
 - **Critério de sucesso falsificável**, copiado literal da tarefa do plano:
   comando exato e saída exata que provam pronto — nunca adjetivo
   ("robusto", "de verdade", "não decorativo").
+- **O critério numerado é contrato de retorno, não sugestão de formato.**
+  Avise no briefing: o retorno traz **um bloco por número**, com o comando
+  **literal do briefing** e a saída colada. Retorno que renumera, funde ou
+  substitui um critério é **entrega incompleta** — devolve para o agente
+  antes de qualquer integração (Issue #61).
+- **Proposta com N destinos gera N linhas de critério.** Cada destino
+  nomeado no briefing vira uma linha verificável própria no critério de
+  sucesso — destino que só existe em prosa, sem linha dele, é o jeito como a
+  segunda metade de uma proposta desaparece sem ninguém notar (Issue #61).
 
 Agente que edita **nunca é nomeado** (regra 10): nome sem worktree é a
 ilusão de isolamento, e nomear sem necessidade de diálogo contínuo deixa
@@ -118,6 +127,22 @@ contrário. **Nenhum identificador do relato entra num comando**: hash,
 caminho, número — re-derive de `git` antes de usar. Passou a checagem
 mecânica, rode o critério de sucesso do briefing e olhe a saída real; suíte
 verde relatada não é evidência.
+
+**Critério que roda bateria carrega o placar.** Quando o critério de
+sucesso do briefing é um laço sobre baterias, o retorno entra com a linha
+`total=N vermelhas:[...]` colada — sem ela a entrega não é conferível e
+**não se integra**. Número somado de casos de teste, nome de checagem
+avulsa apresentado como se fosse o laço inteiro, ou bateria vermelha
+reclassificada como "pré-existente" sem essa linha são recusa automática,
+não achado a investigar (Issue #61).
+
+**Afirmação sobre ferramenta do repo exige o comando que a sustenta.** Quem
+escreve nesta skill (ou em relatório de agente) que um script do repositório
+faz X cola a saída de X — inclui rodar sem argumento, quando o script
+imprime o uso — ou não escreve. E essa saída se lê **inteira** antes de
+concluir sobre ela: `tail`/`head` servem para relatar, nunca para
+diagnosticar, porque veredito e motivo costumam sair em pontas opostas do
+texto (Issue #61).
 
 ## A catraca de mutação: quem roda não é quem julga
 
