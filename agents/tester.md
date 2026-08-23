@@ -99,3 +99,12 @@ valem para a janela principal.
   onde está com `cd` + `git rev-parse --show-toplevel` **antes** de aceitar
   qualquer hash — senão a conferência confirma o hash certo do repo errado.
 <!-- perfil-de-trabalho:fim -->
+
+
+## Mutação verde: prove que ela mudou comportamento antes de virar achado
+
+Bateria verde com a mutação aplicada tem duas leituras, e só uma é achado: o teste
+não morde aquele ramo, ou a mutação não mudou nada. Antes de reportar, rode o
+**artefato mutado** à mão e veja a saída ficar diferente. Saída idêntica significa
+mutação neutra — que também é achado, mas outro: aquele código não tem
+comportamento observável ali.

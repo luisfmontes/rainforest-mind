@@ -446,11 +446,35 @@ function main() {
         const [, contagem] = c.mostra(principal, "rev-list", "--count", `${a.head_antes}..HEAD`);
         c.aviso(`o HEAD do principal avancou ${contagem} commit(s) desde o despacho`);
       } else {
-        // Recuo ou movimento lateral: falha
-        c.falha(
-          `o HEAD do repo principal era ${a.head_antes} e virou ${headAgora.slice(0, 12)} — algo moveu ` +
-            "o HEAD do usuario (stash/pop, checkout). Falha N1 de 2026-08-08."
-        );
+        // Recuo ou movimento lateral: conferir se toca arquivos do agente
+        const arquivosDoCommitNovoHead = arquivosAgente(c, principal, a.head_antes, "HEAD");
+        const arquivosEntrega = arquivosAgente(c, wt, a.base, a.commit);
+
+        // Conferir interseção (normalizar para lowercase/forward-slash como em arquivosAgente)
+        const arquivosEntregaNorm = new Set(Array.from(arquivosEntrega).map(a =>
+          a.replace(/\\/g, "/").toLowerCase()
+        ));
+        let temIntersecao = false;
+        for (const arq of arquivosDoCommitNovoHead) {
+          if (arquivosEntregaNorm.has(arq)) {
+            temIntersecao = true;
+            break;
+          }
+        }
+
+        if (temIntersecao) {
+          // Conflito: o novo HEAD toca arquivos que o agente tocou
+          c.falha(
+            `o HEAD do repo principal era ${a.head_antes} e virou ${headAgora.slice(0, 12)} — ` +
+            "movimento toca arquivos que o agente editou (conflito). Falha N1 de 2026-08-08."
+          );
+        } else {
+          // Movimento alheio: o novo HEAD não toca arquivos do agente
+          c.aviso(
+            `o HEAD do repo principal foi para ${headAgora.slice(0, 12)} (não é avanço), ` +
+            "mas não toca os arquivos da entrega — outra janela trabalhando"
+          );
+        }
       }
     }
   } else {
