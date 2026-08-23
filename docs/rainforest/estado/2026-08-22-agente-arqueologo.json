@@ -78,10 +78,8 @@
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "3291f808c680d6406f091c020a0d93e0ad39a8f7",
-      "caminhos_sujos": [
-        "docs/rainforest/estado/2026-08-22-agente-arqueologo.json"
-      ]
+      "head": "eb4b03afe9e6dbc699f46a9fdef6d89a7c54576f",
+      "caminhos_sujos": []
     },
     "achados": 4,
     "lista": [
