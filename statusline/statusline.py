@@ -37,6 +37,14 @@ CACHE_VERSAO = os.path.join(
 # Caminho relativo ao arquivo evita dependencia de ~/.claude que sera apagado.
 REFRESHER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "statusline-jornada.sh")
 REFRESHER_VERSAO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "statusline-versao.sh")
+# ATENCAO, divergencia conhecida (2026-08-23): este caminho e CHUMBADO no HOME,
+# enquanto `resolver_raiz_dados()` — usada pelo segmento de sessao co-locada —
+# percorre a cadeia inteira (RFM_ROOT > projeto/.rainforest > ~/.rainforest >
+# plugin), a mesma de `hooks/lib/raiz.cjs`. Ou seja: num projeto com
+# `.rainforest` proprio, o segmento de prazo le o FOCO.md do HOME e o de janelas
+# le o sessoes.json do projeto. Nao foi unificado junto com o segmento novo
+# porque `FOCO` e constante de modulo, resolvida na importacao e sem `cwd` a mao,
+# e trocar isso muda em silencio qual FOCO.md a barra passa a ler.
 FOCO = os.path.join(HOME, ".rainforest", "FOCO.md")
 IDADE_MAX_CACHE = 90  # segundos
 IDADE_MAX_CACHE_VERSAO = 6 * 3600  # 6 horas para cache de versao
