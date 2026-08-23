@@ -7,21 +7,149 @@
   },
   "design": {
     "status": "aprovado",
-    "em": "2026-08-22"
+    "em": "2026-08-23"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/divergir-como-workflow.md",
+    "tarefas": 12,
+    "paralelas": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "em": "2026-08-23"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-08-23",
+    "tarefas_ok": 12,
+    "tarefas": 12,
+    "em": "2026-08-23",
+    "pendentes": [],
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "motivo": "vazamento do frame 1 nos 2-6: conferidor exit 2 no mutado, 0 no real"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "motivo": "comparacao sempre-verdadeira: 20 ok / 2 falhas"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "so doc"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "motivo": "conferencia byte a byte removida: 4 falhas"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "so doc"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "integracao"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "motivo": "allowlist do fechar aceitando id e shortlist: exit 1"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "motivo": "delete novo.ideias antes de serializar: 33 ok / 2 falhas"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "motivo": "validarRegistroFechado removida: exit 1, 5 asserceos caidas"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "vermelho",
+        "motivo": "renomeio trocado pelo padrao do stdin: exit 1, falhas nomeando que o valor original tem que vencer"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "motivo": "guarda removida: exit 1, cai a assercao do valor novo ja valido sobrevivendo ao residual"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "motivo": "allowlist do fechar invertida: exit 1, 7 asserceos caidas. Refeita com backup por copia — a primeira rodada foi contaminada por um git checkout que apagou conserto nao commitado"
+      }
+    ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "snapshot": {
+      "head": "f4c31b3e66f5ae4a5db8594d05c48883c79ccb16",
+      "caminhos_sujos": []
+    },
+    "achados": 0,
+    "lista": [
+      "1. serializar nao impoe schema na escrita: fechar le a linha do disco sem validar e so valida o diff, entao linha legada vira fechado sem ideias e carregando campo fora de schema — reproduzido",
+      "2. criterio de pronto da tarefa 1 no plano ficou obsoleto: pede bate_com_a_primeira_ideia no retorno do workflow, que a tarefa 8 renomeou para critico_bateu_na_primeira_da_rodada — o verificar reprovaria codigo correto",
+      "3. secao Contrato do script no design ainda diz que o critico devolve bate_com_a_primeira_ideia, contradizendo a D11 no mesmo arquivo"
+    ],
+    "em": "2026-08-23",
+    "rodada": 4,
+    "anteriores": "os 3 da rodada 1 confirmados fechados",
+    "base": "3fda2a99c27baef470d2abb7e649cbe5fd23a276",
+    "head": "6e9d4108ee39570ede06d1f4828bb477ce11bb33",
+    "nota_do_snapshot": "o snapshot foi recapturado depois da revisao porque eu editei o plano para aplicar o achado 2 dela. Provado antes de recapturar que a superficie revisada (scripts, workflows, skills) esta byte a byte identica ao head revisado — so os dois docs container do fluxo mudaram",
+    "historico": [
+      {
+        "rodada": 1,
+        "veredito": "reprovado",
+        "achados": 3,
+        "resumo": "fechar sem allowlist, com corrupcao reproduzida; colisao semantica de bate_com_a_primeira_ideia; estado.json autocontraditorio"
+      },
+      {
+        "rodada": 2,
+        "veredito": "reprovado",
+        "achados": 3,
+        "resumo": "serializar nao impoe schema na escrita; criterio de pronto da tarefa 1 obsoleto, que teria quebrado o verificar; Contrato do script contradizendo a D11"
+      },
+      {
+        "rodada": 3,
+        "veredito": "reprovado",
+        "achados": 2,
+        "resumo": "reparar sobrescrevia valor novo ja valido; assercao do payload forjado passava por vacuidade. MARCACAO PULADA NA EPOCA: so a quarta revisao percebeu que o bloco revisar continuava mostrando os achados da rodada 2 como correntes"
+      },
+      {
+        "rodada": 4,
+        "veredito": "ok",
+        "achados": 0,
+        "resumo": "os dois da rodada 3 fechados com prova; dois apontamentos de bookkeeping do fluxo — este historico e a serializacao das tarefas 11/12 —, ambos corrigidos antes desta marcacao"
+      }
+    ]
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "tarefas": 12,
+    "rodada_de_prova": "wf_503029af-899",
+    "comando": "12 criterios rodados contra o artefato real, sem pipe",
+    "saida": "T1 node -e das quatro chaves -> ok, exit 0 (contra a rodada NOVA; a antiga reprovaria, devolve o nome aposentado). T2/T4/T7-T12 testa-divergencias.sh exit 0, 46 ok; testa-conferir-divergencia.sh exit 0, 22 ok. T3 grep secao -> 1, grep seis frames -> 6. T5 divergir-frames 2, tres secoes de julgamento 1 cada, divergencias.cjs 2. T6 conferir-divergencia.cjs no rastro novo -> exit 0, isolamento intacto; abrir grava status aberta com 23 ideias. T7 payload forjado -> exit 1. T8 as duas medidas convivem com valores distintos. T9 fechar em linha legada -> exit 1, linha fica aberta. T10 reparar -> exit 0, valor original preservado contra o palpite do stdin, origem mantida. T11 e T12 cobertos pelas asserceos novas da bateria.",
+    "nota": "a prova da T6 rodou em RFM_ROOT temporario de proposito: a rodada foi disparada para satisfazer o portao, nao porque o usuario pediu uma divergencia, e grava-la no acervo real contaminaria o teste de falsificacao com uma decisao que nunca existiu. O acervo segue com 1 linha.",
+    "em": "2026-08-23"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "acao": "pr",
+    "pr": 59,
+    "nota": "destino nao foi perguntado nas tres opcoes porque o usuario tem preferencia permanente registrada por PR, e respondeu por PR nesta sessao",
+    "em": "2026-08-23"
   }
 }

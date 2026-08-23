@@ -97,6 +97,62 @@ O último fato é o que deu forma à decisão D7.
   A refutação é argumento com cenário concreto; amputada em campo curto ela
   piora, e a skill exige que seja concreta.
 
+- **D11 — São duas medidas de ancoragem, com dois nomes, gravadas em momentos diferentes.**
+  Acrescentada em 2026-08-23, depois de o `revisar` reprovar a entrega com este
+  como segundo achado.
+
+  A D9 falava de **um** campo `bate_com_a_primeira_ideia`, e a implementação
+  revelou que o nome cobre duas perguntas diferentes:
+
+  - o **crítico** calcula, de graça e dentro do grafo, se a escolha não-óbvia
+    dele é a primeira ideia **da rodada** (`ideiasCruas[0]`, do frame
+    `restricao-dura`) — isso mede se o próprio crítico convergiu para a
+    primeira coisa que apareceu;
+  - o **design** pedia se a escolha final **do usuário** bate com a ideia que
+    ancorava **a conversa** antes de o `divergir` ser invocado — isso mede se a
+    skill pagou o custo, e é o teste de falsificação inteiro.
+
+  São perguntas distintas, e o mesmo nome nas duas fez o valor do crítico ser
+  descartado (proibido no `abrir`) sem que nada dissesse como recalculá-lo no
+  `fechar`. Agora:
+
+  - `critico_bateu_na_primeira_da_rodada` — vem do crítico, gravado no
+    **`abrir`**, junto com as **`ideias` cruas**, que passam a ser persistidas.
+    Sem elas, uma linha fechada não tem como ser conferida depois, e o teste de
+    falsificação fica sem lastro — foi o que o `revisar` apontou.
+  - `bate_com_a_primeira_ideia` — continua sendo do **`fechar`**, e continua
+    sendo a comparação com a ideia que ancorava a conversa. Só o usuário sabe
+    qual era, então continua vindo de fora.
+
+- **D12 — O `fechar` valida o registro inteiro, e linha legada se migra por subcomando.**
+  Acrescentada em 2026-08-23, do primeiro achado da **segunda** revisão.
+
+  A allowlist da D11 valida a **entrada** de `abrir` e `fechar`. Não valida o
+  **registro que vai para o disco**: o `fechar` lê a linha existente sem
+  conferir nada e só valida o diff que chega pelo stdin, e o `serializar` tem
+  um laço de passagem livre que grava qualquer campo já presente no objeto.
+  Reproduzido: fechar uma linha anterior à D11 produz um `status: "fechado"`
+  **sem `ideias` e sem `critico_bateu_na_primeira_da_rodada`** — sem o lastro
+  que a D4 existe para garantir — e carregando campos que não existem em
+  schema nenhum.
+
+  Duas peças, e uma não serve sem a outra:
+
+  - **`fechar` passa a validar o registro completo depois da fusão**, não só o
+    diff. Registro fora do schema é recusado com exit != 0, nunca gravado.
+  - **Nasce um subcomando de reparo**, porque com o `fechar` estrito a linha
+    legada fica impossível de fechar, e escrita à mão é proibida neste repo
+    desde os dois appends quebrados de 2026-08-08. O reparo recebe por stdin o
+    que falta e traz a linha ao schema corrente.
+
+  **`origem` entra no schema como campo opcional** em vez de ser descartado.
+  Ele guarda de que rodada do grafo a linha veio e se o isolamento foi
+  conferido — é proveniência auditável, e jogar fora dado real para satisfazer
+  um schema é o schema servindo a si mesmo. Já o `critico_viu_ancoragem`, que
+  foi nome improvisado antes da D11, **se renomeia** para
+  `critico_bateu_na_primeira_da_rodada`: é o mesmo dado com o nome errado, não
+  um campo a perder.
+
 Decidido sem subir ao usuário (consistência, vetável): o `divergencias.jsonl`
 mora na **pasta de dados** (`~/.rainforest/`), ao lado do `ideias.jsonl` e do
 `FOCO.md`, não no repo — é onde dado de sessão já vive, e é o que faz o arquivo
@@ -117,8 +173,16 @@ precisa das seis saídas juntas para agrupar.
 
 **Fase 2 — focar.** Um `agent()` com `agentType: "rainforest-mind:revisor"`,
 recebendo as ideias **embaralhadas e sem o campo de origem**. Devolve schema
-com `shortlist`, `escolha_nao_obvia`, `bate_com_a_primeira_ideia`, e um campo
-de texto livre com a refutação do sedutor-mas-quebrado.
+com `shortlist`, `escolha_nao_obvia`, `critico_bateu_na_primeira_da_rodada`, e
+um campo de texto livre com a refutação do sedutor-mas-quebrado.
+
+> O nome deste último booleano mudou na rodada 2, pela **D11**. Ele é a medida
+> do **crítico** — se a escolha não-óbvia dele é a primeira ideia da rodada — e
+> não deve ser confundido com o `bate_com_a_primeira_ideia`, que é do `fechar`
+> e mede a escolha do **usuário** contra o que ancorava a conversa. Esta seção
+> ficou com o nome antigo por duas rodadas depois de a D11 entrar, e foi
+> achado do segundo `revisar`: acrescentar decisão nova não basta, o contrato
+> que a descreve tem que acompanhar, senão o documento contradiz a si mesmo.
 
 **Saída:** o objeto do crítico mais as ideias cruas. Quem monta a decisão
 numerada para o usuário é a janela principal, não o grafo — a skill não decide
@@ -138,6 +202,7 @@ numerada para o usuário é a janela principal, não o grafo — a skill não de
 | **Gravar a rodada no design doc do fluxo** | O teste de falsificação compara três rodadas, e prosa espalhada em três documentos não é comparável |
 | **Gravar num momento só** | No fim do grafo, o registro nunca sabe o que o usuário escolheu — some o campo que o teste precisa. Só na decisão dele, perde-se a rodada inteira (e os sete despachos) se ele decidir noutra sessão |
 | **Schema no crítico inteiro, inclusive na refutação** | O cenário de falha viraria campo curto, e a skill exige que ele seja concreto (entrada, estado, sequência) |
+| **Colapsar as duas medidas de ancoragem num campo só** (alternativa da D11) | Seria mais simples, mas o campo passaria a medir **o crítico** em vez de medir a ancoragem da conversa — o oposto do que o teste de falsificação da skill quer saber. Simplicidade que troca a pergunta não é simplicidade |
 
 ## Fora de escopo
 
@@ -178,14 +243,22 @@ numerada para o usuário é a janela principal, não o grafo — a skill não de
 ## Em aberto
 
 - **O `divergencias.cjs` ganha um subcomando `conferir`**, como o `ideias.cjs`?
-  Provavelmente sim, mas só faz sentido depois de existir arquivo com linha
-  suficiente para conferir. Decidir no `plano`.
-- **Qual é o enunciado-isca do teste de isolamento.** O critério está definido
-  abaixo, mas o problema concreto que provoca convergência ainda precisa ser
-  escrito. Tarefa do `plano`.
-- **Se o `verificar` desta entrega consegue ler o journal da execução** para
-  provar o isolamento, ou se a prova tem que ser montada de outro jeito. Fato a
-  apurar no `plano`, não decisão do usuário.
+  Continua em aberto. Agora existe uma linha real no arquivo, então a pergunta
+  é respondível — mas o `revisar` mostrou que há coisa mais urgente na frente
+  (o `fechar` sem allowlist), e `conferir` não é o que fecha esse buraco.
+- ~~Qual é o enunciado-isca~~ — **fechado**: escrito na seção "Enunciado-isca"
+  abaixo, pela tarefa 3.
+- ~~Se dá para ler o journal para provar o isolamento~~ — **fechado no `plano`,
+  com a resposta contrária à suposição**: o `journal.jsonl` só grava `started`
+  e `result`, sem prompt. O prompt está na primeira linha de cada
+  `agent-<id>.jsonl`. A prova é feita ali, e rodou: exit 0 contra o rastro real
+  e exit 2 contra o rastro mutado.
+- **A permissividade de entrada é maior que o achado 1.** O `revisar` pegou o
+  `fechar` sobrescrevendo campo imutável, mas o `abrir` também só tem
+  *denylist*: ele aceitou `critico_viu_ancoragem` e `origem`, campos que não
+  existem em schema nenhum, na primeira gravação real. Se a correção do achado
+  1 deve virar allowlist nos **dois** comandos, ou só no `fechar`, é decisão a
+  tomar quando a tarefa for escrita.
 
 ### O que falsificaria esta conversão
 
@@ -204,3 +277,41 @@ E o teste que a skill já definia continua de pé, agora possível: em três
 rodadas gravadas, se `bate_com_a_primeira_ideia` for verdadeiro nas três, a
 skill não paga o custo e sai. Este design não muda esse veredito — só torna
 mensurável o que antes era opinião.
+
+### Enunciado-isca
+
+Dois scripts deste plugin fazem append num `.jsonl` compartilhado em
+`~/.rainforest/`: `scripts/ideias.cjs`, hoje, e o `divergencias.cjs` que este
+próprio design manda criar (D7). Ambos podem ser chamados por sessões
+paralelas do Claude Code, escrevendo ao mesmo tempo. Depois dos dois appends
+quebrados de 2026-08-08 — linha cortada no meio do arquivo —, alguém precisa
+decidir como impedir isso de novo. A resposta que qualquer um aceita de
+primeira: colocar um lock de arquivo em volta do `fs.appendFileSync` e pronto.
+
+- `restricao-dura` — se só houvesse UMA escrita física por rodada permitida, a
+  resposta vira "não escreva N vezes direto no disco compartilhado": acumule
+  em memória e grave uma vez só, no fim.
+- `inversao` — a garantia não é da aplicação, é do sistema de arquivos: escreva
+  num arquivo temporário e troque com `rename` atômico (como
+  `scripts/ideias.cjs:349` já faz), o lock vira proteção só da troca, não da
+  escrita inteira.
+- `incentivo` — um lock bloqueante incentiva quem está com pressa a matar a
+  sessão para não esperar liberar, e o `.lock` órfão trava todo mundo depois —
+  o próprio lock premia o atalho que deveria impedir.
+- `ja-existe` — um arquivo-banco de verdade (SQLite em modo WAL, por exemplo)
+  já resolve escrita concorrente segura; não precisa reinventar trava nem
+  `.jsonl` — "não construa" é a resposta.
+- `modo-de-falha` — comece do arquivo já corrompido no meio da rodada (o
+  desastre de 2026-08-08) e desenhe para ele ser irrelevante: backup antes de
+  escrever, como `scripts/ideias.cjs:341-349` faz antes do rename atômico, para
+  que a sessão morrer no meio nunca destrua o arquivo original.
+- `premissa` — por que N sessões escrevem direto no mesmo arquivo
+  compartilhado? A resposta certa pode ser nenhuma escrever direto — só a
+  janela principal grava, que é literalmente a D7 deste design.
+
+A isca é "basta um lock de arquivo em volta do append": ela seduz porque
+resolve o caso feliz de dois processos coordenados e é a resposta de manual
+para concorrência, mas esconde que travar não impede escrita parcial se o
+processo morre com o lock preso, não repara o que já corrompeu, e não
+questiona se deveria haver N escritores no mesmo arquivo para começo de
+conversa.
