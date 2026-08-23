@@ -23,7 +23,9 @@ cima reverte trabalho alheio). Briefing sem hash de base → reporte isso
 como primeiro achado antes de seguir.
 
 **Prove o worktree, não presuma.** A saída do `--show-toplevel` da primeira
-ação vai **colada no relatório**.
+ação vai **colada no relatório**. **Ao retomar depois de qualquer pausa**, a
+checagem se **repete**: rode `git rev-parse --show-toplevel` de novo e cole a
+saída nova — o worktree pode ter desaparecido enquanto você estava fora.
 Caminho que não seja o worktree que você recebeu — e sim o diretório
 principal do repo — é **PARE e reporte**, mesmo tratamento da base
 divergente. Incidente 2026-08-08 (repo `inovacao`): agente despachado com

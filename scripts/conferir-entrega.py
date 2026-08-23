@@ -50,9 +50,13 @@ Exit 0 so quando tudo passa.
 from __future__ import annotations
 
 import argparse
+import re
 import subprocess
 import sys
 from pathlib import Path
+
+# Rastro que o proprio fluxo grava no principal durante o despacho (Issue #51).
+EXCLUIDOS = re.compile(r"^docs[\\/]rainforest[\\/]estado[\\/].*\.json$", re.IGNORECASE)
 
 
 class Conferencia:
@@ -117,6 +121,22 @@ def arquivosAgente(c: Conferencia, wt: str, base: str | None, commit: str) -> se
     linhas = [l for l in (saida or "").split("\n") if l.strip()]
     return {l.replace("\\", "/").lower() for l in linhas}
 
+
+def caminho_da_linha(l: str) -> str:
+    """Caminho de uma linha do porcelain: descarta o status, resolve rename e desfaz
+    o escape com aspas que o git usa para caractere fora do ASCII."""
+    p = l[3:]
+    partes = p.split(" -> ")
+    p = partes[-1] if len(partes) > 1 else partes[0]
+    if p.startswith('"') and p.endswith('"'):
+        p = p[1:-1]
+        p = (
+            p.replace("\\n", "\n")
+            .replace("\\t", "\t")
+            .replace('\\"', '"')
+            .replace("\\\\", "\\")
+        )
+    return p
 
 def caminhosSujoAntes(arquivo: str) -> set[str] | None:
     """Extrai conjunto de caminhos sujos ANTES do despacho (do arquivo porcelain)."""
@@ -257,45 +277,44 @@ def main() -> int:
         _, stp = c.mostra(principal, "status", "--porcelain")
         linhas_stp = [l for l in (stp or "").split("\n") if l.strip()]
 
-        # Processa sujo-antes se fornecido (validado na main())
+        # O rastro do PROPRIO metodo nao e sujeira do agente: `estado.cjs marcar`
+        # grava docs/rainforest/estado/*.json no principal DURANTE o despacho, e ate
+        # 2026-08-23 isso reprovava a entrega (Issue #51). A exclusao e estreita e
+        # NOMEADA, e o que sai vira aviso com os caminhos: exclusao silenciosa e como
+        # uma checagem morre sem ninguem notar.
+        linhas_excluidas = [l for l in linhas_stp if EXCLUIDOS.match(caminho_da_linha(l))]
+        linhas_nao_excluidas = [l for l in linhas_stp if not EXCLUIDOS.match(caminho_da_linha(l))]
+        if linhas_excluidas:
+            c.aviso(
+                f"{len(linhas_excluidas)} arquivo(s) em docs/rainforest/estado/*.json — rastro "
+                "do proprio fluxo, excluido(s) desta checagem: "
+                + ", ".join(caminho_da_linha(l) for l in linhas_excluidas[:5])
+            )
+
         if a.sujo_antes:
             sujo_antes = caminhosSujoAntes(a.sujo_antes)
-            # Extrai caminhos sujos AGORA
-            caminhos_sujos = []
-            for l in linhas_stp:
-                p = l[3:]
-                partes = p.split(" -> ")
-                p = partes[-1] if len(partes) > 1 else partes[0]
-                # Remove aspas se escapado
-                if p.startswith('"') and p.endswith('"'):
-                    p = p[1:-1]
-                    p = (
-                        p.replace("\\n", "\n")
-                        .replace("\\t", "\t")
-                        .replace('\\"', '"')
-                        .replace("\\\\", "\\")
-                    )
-                caminhos_sujos.append(p.replace("\\", "/").lower())
-
-            # Calcula diferença: quais caminhos são NOVOS (não estavam antes)?
+            # Compara CONJUNTO DE CAMINHOS, nao a linha inteira: o mesmo arquivo vai de
+            # `??` para ` M` sem ninguem ter tocado nele.
+            caminhos_sujos = [
+                caminho_da_linha(l).replace("\\", "/").lower() for l in linhas_nao_excluidas
+            ]
             novo = [p for p in caminhos_sujos if p not in sujo_antes]
-
             if novo:
                 c.falha(
                     f"{len(novo)} arquivo(s) sujo(s) NEW no principal (nao estava antes): " +
                     ", ".join(novo[:5])
                 )
-            elif linhas_stp:
+            elif linhas_nao_excluidas:
                 c.aviso(
-                    f"{len(linhas_stp)} alteracao(oes) no principal, mas todas ja estavam sujas antes do despacho"
+                    f"{len(linhas_nao_excluidas)} alteracao(oes) no principal, mas todas ja estavam sujas antes do despacho"
                 )
             else:
                 c.ok("diretorio principal intacto")
-        elif a.paralelo and linhas_stp:
+        elif a.paralelo and linhas_nao_excluidas:
             # Modo cruzamento: extrai arquivos que o agente tocou
             arquivos = arquivosAgente(c, wt, a.base, a.commit)
             caminhos_sujos = []
-            for l in linhas_stp:
+            for l in linhas_nao_excluidas:
                 # Descarta 3 primeiros caracteres do status, trata rename
                 p = l[3:]
                 partes = p.split(" -> ")
@@ -311,12 +330,13 @@ def main() -> int:
                 )
             else:
                 c.aviso(
-                    f"{len(linhas_stp)} alteracao(oes) no principal, nenhuma nos arquivos do agente"
+                    f"{len(linhas_nao_excluidas)} alteracao(oes) no principal, nenhuma nos arquivos do agente"
                 )
-        elif linhas_stp:
+        elif linhas_nao_excluidas:
             c.aviso(
-                "sem `--sujo-antes` esta metade nao trava; a sujeira abaixo pode ser do agente ou ja estar aqui — nao da para distinguir. "
-                "Captura o porcelain ANTES do despacho e passa com --sujo-antes para ativar esta trava."
+                "sem `--sujo-antes` esta metade nao trava; a sujeira abaixo pode ser do agente "
+                "ou ja estar aqui — nao da para distinguir. Captura o porcelain ANTES do "
+                "despacho e passa com --sujo-antes para ativar esta trava."
             )
         else:
             c.ok("diretorio principal intacto")

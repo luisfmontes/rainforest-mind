@@ -352,47 +352,58 @@ function main() {
     const [, stp] = c.mostra(principal, "status", "--porcelain");
     const linhasStp = stp ? stp.split(/\r?\n/).filter((l) => l.length > 0) : [];
 
-    // Processa sujo-antes se fornecido (validado na main())
+    // O rastro do PROPRIO metodo nao e sujeira do agente: `estado.cjs marcar` grava
+    // docs/rainforest/estado/*.json no principal DURANTE o despacho, e ate 2026-08-23
+    // isso reprovava a entrega — a ferramenta do metodo reprovando o metodo (Issue #51).
+    // A exclusao e estreita e NOMEADA (so esse diretorio, so .json) e o que sai vira
+    // aviso com os caminhos: exclusao silenciosa e como uma checagem morre sem ninguem
+    // notar.
+    const EXCLUIDOS = /^docs[\\/]rainforest[\\/]estado[\\/].*\.json$/i;
+    // Caminho de uma linha do porcelain: descarta o status, resolve rename e desfaz o
+    // escape com aspas que o git usa para caractere fora do ASCII.
+    const caminhoDaLinha = (l) => {
+      let p = l.slice(3);
+      const partes = p.split(" -> ");
+      p = partes.length > 1 ? partes[1] : partes[0];
+      if (p.startsWith('"') && p.endsWith('"')) {
+        p = p.slice(1, -1).replace(/\\(.)/g, (m, ch) => (ch === "n" ? "\n" : ch === "t" ? "\t" : ch));
+      }
+      return p;
+    };
+    const norma = (x) => x.replace(/\\/g, "/").toLowerCase();
+
+    const linhasExcluidas = linhasStp.filter((l) => EXCLUIDOS.test(caminhoDaLinha(l)));
+    const linhasNaoExcluidas = linhasStp.filter((l) => !EXCLUIDOS.test(caminhoDaLinha(l)));
+    if (linhasExcluidas.length) {
+      c.aviso(
+        `${linhasExcluidas.length} arquivo(s) em docs/rainforest/estado/*.json — rastro do ` +
+          "proprio fluxo, excluido(s) desta checagem: " +
+          linhasExcluidas.slice(0, 5).map(caminhoDaLinha).join(", ")
+      );
+    }
+
     if (a.sujo_antes) {
       const sujoAntes = caminhosSujoAntes(a.sujo_antes);
-      // Extrai caminhos sujos AGORA
-      const caminhosSujos = linhasStp.map((l) => {
-        let p = l.slice(3);
-        const partes = p.split(" -> ");
-        p = partes.length > 1 ? partes[1] : partes[0];
-        // Remove aspas se escapado
-        if (p.startsWith('"') && p.endsWith('"')) {
-          p = p.slice(1, -1);
-          p = p.replace(/\\(.)/g, (m, c) => {
-            if (c === "n") return "\n";
-            if (c === "t") return "\t";
-            if (c === '"') return '"';
-            if (c === "\\") return "\\";
-            return c;
-          });
-        }
-        return p.replace(/\\/g, "/").toLowerCase();
-      });
-
-      // Calcula diferença: quais caminhos são NOVOS (não estavam antes)?
-      const novo = caminhosSujos.filter((p) => !sujoAntes.has(p));
-
+      // Compara CONJUNTO DE CAMINHOS, nao a linha inteira: o mesmo arquivo vai de `??`
+      // para ` M` sem ninguem ter tocado nele.
+      const caminhosSujos = linhasNaoExcluidas.map((l) => norma(caminhoDaLinha(l)));
+      const novo = caminhosSujos.filter((x) => !sujoAntes.has(x));
       if (novo.length) {
         c.falha(
           `${novo.length} arquivo(s) sujo(s) NEW no principal (nao estava antes): ` +
             novo.slice(0, 5).join(", ")
         );
-      } else if (linhasStp.length) {
+      } else if (linhasNaoExcluidas.length) {
         c.aviso(
-          `${linhasStp.length} alteracao(oes) no principal, mas todas ja estavam sujas antes do despacho`
+          `${linhasNaoExcluidas.length} alteracao(oes) no principal, mas todas ja estavam sujas antes do despacho`
         );
       } else {
         c.ok("diretorio principal intacto");
       }
-    } else if (a.paralelo && linhasStp.length) {
+    } else if (a.paralelo && linhasNaoExcluidas.length) {
       // Modo cruzamento: extrai arquivos que o agente tocou
       const arquivos = arquivosAgente(c, wt, a.base, a.commit);
-      const caminhosSujos = linhasStp.map((l) => {
+      const caminhosSujos = linhasNaoExcluidas.map((l) => {
         // Descarta 3 primeiros caracteres do status, trata rename
         let p = l.slice(3);
         const partes = p.split(" -> ");
@@ -408,13 +419,14 @@ function main() {
         );
       } else {
         c.aviso(
-          `${linhasStp.length} alteracao(oes) no principal, nenhuma nos arquivos do agente`
+          `${linhasNaoExcluidas.length} alteracao(oes) no principal, nenhuma nos arquivos do agente`
         );
       }
-    } else if (linhasStp.length) {
+    } else if (linhasNaoExcluidas.length) {
       c.aviso(
-        "sem `--sujo-antes` esta metade nao trava; a sujeira abaixo pode ser do agente ou ja estar aqui — nao da para distinguir. " +
-        `Captura o porcelain ANTES do despacho e passa com --sujo-antes para ativar esta trava.`
+        "sem `--sujo-antes` esta metade nao trava; a sujeira abaixo pode ser do agente ou ja " +
+          "estar aqui — nao da para distinguir. Captura o porcelain ANTES do despacho e passa " +
+          "com --sujo-antes para ativar esta trava."
       );
     } else {
       c.ok("diretorio principal intacto");
