@@ -1,0 +1,27 @@
+{
+  "slug": "divergir-como-workflow",
+  "titulo": "Converter o divergir num script de Workflow — grafo em codigo, nao em prosa",
+  "criado_em": "2026-08-22",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "em": "2026-08-22"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
