@@ -98,7 +98,12 @@ const ORDEM_CANONICA = [
 ];
 const RE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-class Erro extends Error {}
+// Trava de arquivo e rotina de leitura (sleepSync, Trava, comTrava, lerVivo,
+// parseLinhas, indicePorId) saem daqui — eram copia quase byte a byte com
+// scripts/divergencias.cjs, e carregavam os mesmos dois defeitos (issue de
+// 2026-08-23). Ver hooks/lib/trava-jsonl.cjs para o porque de cada um.
+const TravaJsonl = require("../hooks/lib/trava-jsonl.cjs");
+const { Erro, comTrava: comTravaComum, lerVivo: lerVivoComum, parseLinhas: parseLinhasComum, indicePorId: indicePorIdComum } = TravaJsonl;
 
 // --------------------------------------------------------------------------
 // vocabulario de projeto — slug fechado, caminho FORA do dado
@@ -203,115 +208,25 @@ function parseISODate(s) {
 }
 
 // --------------------------------------------------------------------------
-// sleep sincrono (para o poll da trava, sem bloquear em callback)
+// trava e leitura — implementadas em hooks/lib/trava-jsonl.cjs (comum com o
+// divergencias.cjs). Aqui so wrappers que ja amarram TRAVA e ALVO, para nao
+// mudar a assinatura que o resto deste arquivo chama.
 // --------------------------------------------------------------------------
-
-function sleepSync(ms) {
-  const sab = new SharedArrayBuffer(4);
-  const ia = new Int32Array(sab);
-  Atomics.wait(ia, 0, 0, ms);
-}
-
-// --------------------------------------------------------------------------
-// trava e leitura
-// --------------------------------------------------------------------------
-
-class Trava {
-  // Trava de arquivo entre sessoes paralelas. Stale acima de 120s e quebrada.
-  constructor(caminho, esperaSeg = 10.0) {
-    this.caminho = caminho;
-    this.esperaSeg = esperaSeg;
-    this.fd = null;
-  }
-
-  entrar() {
-    const limite = Date.now() + this.esperaSeg * 1000;
-    for (;;) {
-      try {
-        this.fd = fs.openSync(this.caminho, "wx");
-        fs.writeSync(this.fd, `${process.pid} ${new Date().toISOString()}\n`);
-        return this;
-      } catch (e) {
-        if (e.code !== "EEXIST") throw e;
-        let idadeSeg;
-        try {
-          idadeSeg = (Date.now() - fs.statSync(this.caminho).mtimeMs) / 1000;
-        } catch (e2) {
-          // trava sumiu entre o EEXIST e o stat — tenta de novo
-          continue;
-        }
-        if (idadeSeg > 120) {
-          process.stderr.write(
-            `aviso: trava com ${idadeSeg.toFixed(0)}s (orfa) — quebrando\n`
-          );
-          try {
-            fs.unlinkSync(this.caminho);
-          } catch (e3) {
-            /* ja sumiu, segue */
-          }
-          continue;
-        }
-        if (Date.now() > limite) {
-          throw new Erro(
-            `outra sessao esta escrevendo (trava em ${this.caminho} ha ${idadeSeg.toFixed(0)}s). ` +
-              "Tente de novo em instantes."
-          );
-        }
-        sleepSync(200);
-      }
-    }
-  }
-
-  sair() {
-    if (this.fd !== null) {
-      fs.closeSync(this.fd);
-      this.fd = null;
-    }
-    try {
-      fs.unlinkSync(this.caminho);
-    } catch (e) {
-      /* ja sumiu, tudo bem */
-    }
-  }
-}
 
 function comTrava(fn) {
-  const trava = new Trava(TRAVA);
-  trava.entrar();
-  try {
-    return fn();
-  } finally {
-    trava.sair();
-  }
+  return comTravaComum(TRAVA, fn);
 }
 
 function lerVivo() {
-  // Le o arquivo VIVO agora. Nunca reaproveitar leitura de antes da operacao.
-  if (!fs.existsSync(ALVO)) {
-    throw new Erro(`nao achei ${ALVO}`);
-  }
-  const bruto = fs.readFileSync(ALVO, "utf8");
-  return bruto.split("\n").filter((l) => l.trim().length > 0);
+  return lerVivoComum(ALVO, { exigeExistir: true });
 }
 
 function parseLinhas(linhas) {
-  const saida = [];
-  linhas.forEach((l, idx) => {
-    try {
-      saida.push(JSON.parse(l));
-    } catch (e) {
-      throw new Erro(`linha ${idx + 1} nao e JSON valido: ${e.message}`);
-    }
-  });
-  return saida;
+  return parseLinhasComum(linhas, ALVO);
 }
 
 function indicePorId(linhas, alvoId) {
-  const objs = parseLinhas(linhas);
-  for (let i = 0; i < objs.length; i++) {
-    if (objs[i] && objs[i].id === alvoId) return i;
-  }
-  throw new Erro(`id '${alvoId}' nao existe no arquivo`);
+  return indicePorIdComum(linhas, alvoId, ALVO);
 }
 
 function serializar(obj) {

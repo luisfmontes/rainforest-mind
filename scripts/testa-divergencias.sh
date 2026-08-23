@@ -24,6 +24,10 @@ export RFM_ROOT="$SB"
 
 mkdir -p "$SB/scripts" "$SB/hooks/lib"
 cp "$SRC/scripts/divergencias.cjs" "$SB/scripts/"
+# Trava e leitura viraram lib comum com o ideias.cjs em 2026-08-23 — o
+# require dela e DURO (sem try/catch, ao contrario do raiz.cjs acima), entao
+# falta aqui derruba a bateria inteira, nao so o teste que dependeria dela.
+cp "$SRC/hooks/lib/trava-jsonl.cjs" "$SB/hooks/lib/"
 cd "$SB" || exit 1
 
 # O jsonl da caixa e FIXTURE GERADA, nunca copia do arquivo do usuario (regra
@@ -298,6 +302,108 @@ esperado "mutante recusado tambem no fechar (alvo e uma linha, nao o fim do arqu
 if cmp -s divergencias.jsonl pre-mutacao.jsonl
 then ok=$((ok+1)); echo "  ok   fechar tambem reverteu byte a byte"
 else falhou=$((falhou+1)); echo "  FALHA o fechar gravou por cima do mutante"; fi
+
+echo
+echo "== 5. defeito A: parseLinhas tolera a ULTIMA linha invalida, recusa a do meio nomeando onde =="
+# lib comum com o ideias.cjs (hooks/lib/trava-jsonl.cjs) — ver bloco 9/10 da
+# bateria irma (testa-ideias.sh) para o mesmo defeito exercitado la.
+cp divergencias.jsonl pre-defeito-a.jsonl
+
+# linha do MEIO corrompida — o `abrir` le o arquivo inteiro (parseLinhas em
+# antes) so para checar id duplicado, e isso basta para acionar o defeito.
+node - <<'JS'
+const fs = require("fs");
+const linhas = fs.readFileSync("divergencias.jsonl", "utf8").split("\n").filter((l) => l.trim());
+const meio = Math.floor(linhas.length / 2);
+linhas.splice(meio, 0, '{"id":"corrompida-no-meio-do-arquivo", quebrada de proposito');
+fs.writeFileSync("divergencias.jsonl", linhas.join("\n") + "\n", "utf8");
+fs.writeFileSync("linha-do-meio.txt", String(meio + 1), "utf8");
+JS
+linha_meio=$(cat linha-do-meio.txt)
+# Snapshot APOS corromper e ANTES de tentar abrir — o md5 abaixo prova que a
+# TENTATIVA de abrir nao mexeu em nada, nao que o arquivo nunca mudou (ele
+# mudou, de proposito, pela corrupcao acima).
+cp divergencias.jsonl pre-tentativa.jsonl
+echo "{\"id\":\"nao-deve-abrir\",$base}" > f.json
+esperado "linha do MEIO corrompida continua erro (abrir recusa antes de escrever)" 1 bash -c '$DIV abrir < f.json'
+saida_meio=$(bash -c '$DIV abrir < f.json' 2>&1)
+if echo "$saida_meio" | grep -q "linha $linha_meio "
+then ok=$((ok+1)); echo "  ok   a mensagem nomeia o numero da linha ($linha_meio)"
+else falhou=$((falhou+1)); echo "  FALHA a mensagem nao nomeou a linha $linha_meio"; echo "$saida_meio" | sed 's/^/         /'; fi
+if echo "$saida_meio" | grep -q "divergencias.jsonl"
+then ok=$((ok+1)); echo "  ok   a mensagem nomeia o caminho do arquivo"
+else falhou=$((falhou+1)); echo "  FALHA a mensagem nao nomeou o arquivo"; echo "$saida_meio" | sed 's/^/         /'; fi
+if echo "$saida_meio" | grep -q "corrompida-no-meio-do-arquivo"
+then ok=$((ok+1)); echo "  ok   a mensagem traz o trecho ofensor"
+else falhou=$((falhou+1)); echo "  FALHA a mensagem nao trouxe o trecho ofensor"; echo "$saida_meio" | sed 's/^/         /'; fi
+if [ "$(md5sum divergencias.jsonl | cut -d' ' -f1)" = "$(md5sum pre-tentativa.jsonl | cut -d' ' -f1)" ]
+then ok=$((ok+1)); echo "  ok   a tentativa de abrir nao escreveu nada (arquivo com a corrupcao intocado)"
+else falhou=$((falhou+1)); echo "  FALHA a tentativa de abrir mudou o arquivo"; fi
+cp pre-defeito-a.jsonl divergencias.jsonl
+rm -f pre-tentativa.jsonl
+
+# ultima linha invalida, direto na funcao (nao ha comando de LEITURA pura
+# neste script — abrir/fechar/reparar escrevem, e reescrever moveria a linha
+# tolerada para o meio, que e outro caso). Prova a tolerancia na funcao real.
+prova "parseLinhas tolera a ultima linha quando invalida (funcao real, sem CLI)" '
+const { parseLinhas } = require("./hooks/lib/trava-jsonl.cjs");
+const objs = parseLinhas(["{\"id\":\"ok\"}", "{\"id\":\"truncada\", incomp"], "caminho/de/teste.jsonl");
+ok(objs.length === 1 && objs[0].id === "ok", "devia ter tolerado a ultima e mantido so a primeira, veio: "+JSON.stringify(objs));'
+rm -f linha-do-meio.txt pre-defeito-a.jsonl
+
+echo
+echo "== 6. defeito B: a trava so morre com PROVA de que o dono morreu =="
+cat > teste-defeito-b.js <<'JS'
+const { Trava } = require("./hooks/lib/trava-jsonl.cjs");
+const fs = require("fs");
+const path = require("path");
+const { spawnSync } = require("child_process");
+
+function falha(msg) { console.error("FALHA: " + msg); process.exit(1); }
+
+// 1) dono VIVO (esta propria sessao node), lock envelhecido de proposito para
+// alem dos 120s — prova que a IDADE sozinha nao derruba mais o lock.
+const lockViva = path.resolve("trava-teste-viva.lock");
+fs.writeFileSync(lockViva, `${process.pid} ${new Date().toISOString()}\n`, "utf8");
+const bemVelho = new Date(Date.now() - 200 * 1000);
+fs.utimesSync(lockViva, bemVelho, bemVelho);
+
+const t1 = new Trava(lockViva, 0.5); // espera curta so para o teste nao travar
+let roubou = false;
+try {
+  t1.entrar();
+  roubou = true;
+} catch (e) {
+  if (!/outra sessao/.test(e.message)) falha("erro inesperado no dono vivo: " + e.message);
+}
+if (roubou) { fs.unlinkSync(lockViva); falha("lock de dono VIVO foi roubado mesmo com 200s de idade"); }
+if (!fs.existsSync(lockViva)) falha("lock de dono vivo desapareceu sem ter sido roubado por este teste");
+fs.unlinkSync(lockViva);
+console.log("ok-dono-vivo-preservado");
+
+// 2) dono MORTO — pid de um processo ja encerrado, lock FRESCO (idade bem
+// menor que 120s), para provar que quem derruba e a PROVA de morte, nunca a
+// idade sozinha.
+const filho = spawnSync(process.execPath, ["-e", "process.exit(0)"]);
+const pidMorto = filho.pid;
+const lockMorta = path.resolve("trava-teste-morta.lock");
+fs.writeFileSync(lockMorta, `${pidMorto} ${new Date().toISOString()}\n`, "utf8");
+const t2 = new Trava(lockMorta, 5);
+t2.entrar(); // nao pode lancar — recupera o lock do pid morto mesmo fresco
+t2.sair();
+if (fs.existsSync(lockMorta)) falha("lock de dono morto nao foi liberado apos sair()");
+console.log("ok-dono-morto-recuperado");
+JS
+saida_b=$(node teste-defeito-b.js 2>&1); got_b=$?
+if [ "$got_b" = 0 ] && echo "$saida_b" | grep -q "ok-dono-vivo-preservado" && echo "$saida_b" | grep -q "ok-dono-morto-recuperado"
+then
+  ok=$((ok+2))
+  echo "  ok   trava de dono VIVO nao e roubada mesmo passando dos 120s"
+  echo "  ok   trava de PID morto e recuperada mesmo com lock fresco (idade nao e o criterio)"
+else
+  falhou=$((falhou+1)); echo "  FALHA defeito B (exit $got_b):"; echo "$saida_b" | sed 's/^/         /'
+fi
+rm -f teste-defeito-b.js trava-teste-viva.lock trava-teste-morta.lock
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

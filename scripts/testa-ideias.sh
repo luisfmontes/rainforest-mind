@@ -28,6 +28,10 @@ cp "$SRC/scripts/ideias.cjs" "$SB/scripts/"
 # caixa de areia tem que espelhar a forma do plugin. `raiz.cjs` NAO entra aqui: o
 # bloco 4 a copia de proposito no meio da bateria, para exercitar a cadeia.
 cp "$SRC/hooks/lib/projetos.cjs" "$SB/hooks/lib/"
+# Trava e leitura viraram lib comum com o divergencias.cjs em 2026-08-23 — o
+# require dela tambem e DURO (sem try/catch), entao falta aqui derruba a
+# bateria inteira, nao so o teste que dependeria dela.
+cp "$SRC/hooks/lib/trava-jsonl.cjs" "$SB/hooks/lib/"
 SRC_WIN="$(cygpath -m "$SRC" 2>/dev/null || printf '%s' "$SRC")"
 # O jsonl da caixa e FIXTURE GERADA, e nao copia do arquivo do usuario.
 #
@@ -930,6 +934,103 @@ JS
     echo "  (pulado: descartada e status novo, so do .cjs)"
     ;;
 esac
+
+echo
+echo "== 9. defeito A: parseLinhas tolera a ULTIMA linha invalida, recusa a do meio nomeando onde =="
+# Usa a copia LIMPA (scripts/ideias-limpo.cjs): o bloco 3 deixou o mutante
+# instalado em scripts/ideias.cjs de proposito, e este bloco nao tem nada a
+# ver com aquele teste.
+cp ideias.jsonl pre-defeito-a.jsonl
+n_base=$(node -e "process.stdout.write(String(require('fs').readFileSync('pre-defeito-a.jsonl','utf8').split('\n').filter((l)=>l.trim()).length))")
+
+# ultima linha truncada, SEM newline final — o caso real de escrita em
+# andamento (outra sessao no meio do fs.writeFileSync).
+printf '{"id":"truncada-em-andamento","titulo":"me' >> ideias.jsonl
+esperado "ultima linha truncada e TOLERADA (listar segue funcionando)" 0 $IDEIAS_LIMPO listar --status todos --tipo todos
+saida_tol=$($IDEIAS_LIMPO listar --status todos --tipo todos 2>&1)
+if echo "$saida_tol" | grep -qE "^${n_base} no total"
+then ok=$((ok+1)); echo "  ok   a linha truncada NAO entrou na contagem ($n_base no total) — ignorada, nao lancada"
+else falhou=$((falhou+1)); echo "  FALHA contagem nao bate com $n_base"; echo "$saida_tol" | sed 's/^/         /' | tail -3; fi
+cp pre-defeito-a.jsonl ideias.jsonl
+
+# linha do MEIO corrompida — continua erro, agora nomeando linha, arquivo e
+# o trecho ofensor (o erro de antes dizia so "para sempre", sem dizer onde).
+node - <<'JS'
+const fs = require("fs");
+const linhas = fs.readFileSync("ideias.jsonl", "utf8").split("\n").filter((l) => l.trim());
+const meio = Math.floor(linhas.length / 2);
+linhas.splice(meio, 0, '{"id":"corrompida-no-meio-do-arquivo", quebrada de proposito');
+fs.writeFileSync("ideias.jsonl", linhas.join("\n") + "\n", "utf8");
+fs.writeFileSync("linha-do-meio.txt", String(meio + 1), "utf8");
+JS
+linha_meio=$(cat linha-do-meio.txt)
+esperado "linha do MEIO corrompida continua erro" 1 $IDEIAS_LIMPO listar --status todos --tipo todos
+saida_meio=$($IDEIAS_LIMPO listar --status todos --tipo todos 2>&1)
+if echo "$saida_meio" | grep -q "linha $linha_meio "
+then ok=$((ok+1)); echo "  ok   a mensagem nomeia o numero da linha ($linha_meio)"
+else falhou=$((falhou+1)); echo "  FALHA a mensagem nao nomeou a linha $linha_meio"; echo "$saida_meio" | sed 's/^/         /'; fi
+if echo "$saida_meio" | grep -q "ideias.jsonl"
+then ok=$((ok+1)); echo "  ok   a mensagem nomeia o caminho do arquivo"
+else falhou=$((falhou+1)); echo "  FALHA a mensagem nao nomeou o arquivo"; echo "$saida_meio" | sed 's/^/         /'; fi
+if echo "$saida_meio" | grep -q "corrompida-no-meio-do-arquivo"
+then ok=$((ok+1)); echo "  ok   a mensagem traz o trecho ofensor"
+else falhou=$((falhou+1)); echo "  FALHA a mensagem nao trouxe o trecho ofensor"; echo "$saida_meio" | sed 's/^/         /'; fi
+cp pre-defeito-a.jsonl ideias.jsonl
+rm -f linha-do-meio.txt pre-defeito-a.jsonl
+
+echo
+echo "== 10. defeito B: a trava so morre com PROVA de que o dono morreu =="
+cat > teste-defeito-b.js <<'JS'
+const { Trava } = require("./hooks/lib/trava-jsonl.cjs");
+const fs = require("fs");
+const path = require("path");
+const { spawnSync } = require("child_process");
+
+function falha(msg) { console.error("FALHA: " + msg); process.exit(1); }
+
+// 1) dono VIVO (esta propria sessao node), lock envelhecido de proposito para
+// alem dos 120s — prova que a IDADE sozinha nao derruba mais o lock.
+const lockViva = path.resolve("trava-teste-viva.lock");
+fs.writeFileSync(lockViva, `${process.pid} ${new Date().toISOString()}\n`, "utf8");
+const bemVelho = new Date(Date.now() - 200 * 1000);
+fs.utimesSync(lockViva, bemVelho, bemVelho);
+
+const t1 = new Trava(lockViva, 0.5); // espera curta so para o teste nao travar
+let roubou = false;
+try {
+  t1.entrar();
+  roubou = true;
+} catch (e) {
+  if (!/outra sessao/.test(e.message)) falha("erro inesperado no dono vivo: " + e.message);
+}
+if (roubou) { fs.unlinkSync(lockViva); falha("lock de dono VIVO foi roubado mesmo com 200s de idade"); }
+if (!fs.existsSync(lockViva)) falha("lock de dono vivo desapareceu sem ter sido roubado por este teste");
+fs.unlinkSync(lockViva);
+console.log("ok-dono-vivo-preservado");
+
+// 2) dono MORTO — pid de um processo ja encerrado, lock FRESCO (idade bem
+// menor que 120s), para provar que quem derruba e a PROVA de morte, nunca a
+// idade sozinha.
+const filho = spawnSync(process.execPath, ["-e", "process.exit(0)"]);
+const pidMorto = filho.pid;
+const lockMorta = path.resolve("trava-teste-morta.lock");
+fs.writeFileSync(lockMorta, `${pidMorto} ${new Date().toISOString()}\n`, "utf8");
+const t2 = new Trava(lockMorta, 5);
+t2.entrar(); // nao pode lancar — recupera o lock do pid morto mesmo fresco
+t2.sair();
+if (fs.existsSync(lockMorta)) falha("lock de dono morto nao foi liberado apos sair()");
+console.log("ok-dono-morto-recuperado");
+JS
+saida_b=$(node teste-defeito-b.js 2>&1); got_b=$?
+if [ "$got_b" = 0 ] && echo "$saida_b" | grep -q "ok-dono-vivo-preservado" && echo "$saida_b" | grep -q "ok-dono-morto-recuperado"
+then
+  ok=$((ok+2))
+  echo "  ok   trava de dono VIVO nao e roubada mesmo passando dos 120s"
+  echo "  ok   trava de PID morto e recuperada mesmo com lock fresco (idade nao e o criterio)"
+else
+  falhou=$((falhou+1)); echo "  FALHA defeito B (exit $got_b):"; echo "$saida_b" | sed 's/^/         /'
+fi
+rm -f teste-defeito-b.js trava-teste-viva.lock trava-teste-morta.lock
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
