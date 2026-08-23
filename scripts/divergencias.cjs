@@ -69,10 +69,37 @@ const CAMPOS_PROIBIDOS_NO_INPUT_ABRIR = [
 // entrada (inclusive `id` e `shortlist`, que sao do `abrir`) sobrescrever a
 // linha existente em silencio. So estes dois sao aceitos.
 const CAMPOS_PERMITIDOS_FECHAR = ["escolha", "bate_com_a_primeira_ideia"];
+// Campos que so `fechar` grava, alem dos que `abrir` ja exige (acima). D12:
+// o `fechar` passa a validar o REGISTRO COMPLETO depois da fusao, nao so o
+// diff que chegou pela entrada — sem isto, uma linha anterior a D11 (sem
+// `ideias`, sem `critico_bateu_na_primeira_da_rodada`, carregando o nome
+// improvisado `critico_viu_ancoragem`) fechava do mesmo jeito, exit 0, sem o
+// lastro que a D4 existe para garantir. Achado do segundo `revisar`.
+const CAMPOS_OBRIGATORIOS_FECHADO = [
+  "status", "aberta_em", "fechada_em", "escolha", "bate_com_a_primeira_ideia",
+];
+// D12: `origem` entra no schema do registro COMPLETO como campo OPCIONAL —
+// proveniencia auditavel (de que rodada do grafo a linha veio), nao
+// descartada so para satisfazer um schema mais estreito. Continua PROIBIDO
+// na entrada de `abrir` (CAMPOS_OBRIGATORIOS_ABRIR nao o lista, e a allowlist
+// generica de `validarEntradaAbrir` rejeita qualquer campo fora dela) — isto
+// e so sobre o que o registro gravado pode conter.
+const CAMPOS_OPCIONAIS_REGISTRO = ["origem"];
+const CAMPOS_VALIDOS_REGISTRO = new Set([
+  ...CAMPOS_OBRIGATORIOS_ABRIR,
+  ...CAMPOS_OBRIGATORIOS_FECHADO,
+  ...CAMPOS_OPCIONAIS_REGISTRO,
+]);
+// Allowlist da entrada do `reparar` (tarefa 10) — o que uma linha legada
+// (anterior a D11) pode estar sem: as `ideias` cruas (nunca persistidas antes
+// da D11, e sem elas uma linha fechada nao e auditavel) e o booleano do
+// critico. So estes dois; ver cmdReparar para o porque do segundo so ser
+// usado quando NAO ha `critico_viu_ancoragem` para renomear.
+const CAMPOS_PERMITIDOS_REPARAR = ["ideias", "critico_bateu_na_primeira_da_rodada"];
 const RE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ORDEM_CANONICA = [
   "id", "enunciado", "shortlist", "escolha_nao_obvia", "refutacao",
-  "critico_bateu_na_primeira_da_rodada", "ideias",
+  "critico_bateu_na_primeira_da_rodada", "ideias", "origem",
   "status", "aberta_em", "fechada_em", "escolha", "bate_com_a_primeira_ideia",
 ];
 
@@ -328,6 +355,24 @@ function lerStdin() {
   }
 }
 
+const CAMPOS_BOOLEANOS = ["critico_bateu_na_primeira_da_rodada", "bate_com_a_primeira_ideia"];
+
+function camposObrigatoriosAusentes(obj, campos) {
+  // Mesmo crivo em dois lugares agora (validarEntradaAbrir e
+  // validarRegistroFechado): os dois booleanos de ancoragem (D11) e `ideias`
+  // (array nao vazio) nao passam no crivo generico `!obj[c]` — `false` e
+  // falsy mas e resposta valida (foi exatamente isto que fez `fechar` com
+  // `bate_com_a_primeira_ideia:false` ser lido como "ausente" na primeira
+  // versao desta funcao), e `[]` e truthy mas nao e lista de ideias de
+  // verdade. Extraido para as chamadas nunca divergirem (foi exatamente uma
+  // divergencia de nome que motivou a D11).
+  return campos.filter((c) => {
+    if (CAMPOS_BOOLEANOS.includes(c)) return typeof obj[c] !== "boolean";
+    if (c === "ideias") return !Array.isArray(obj[c]) || obj[c].length === 0;
+    return !obj[c];
+  });
+}
+
 function validarEntradaAbrir(obj) {
   if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
     throw new Erro("o JSON da entrada precisa ser um objeto");
@@ -350,20 +395,67 @@ function validarEntradaAbrir(obj) {
         `so ${CAMPOS_OBRIGATORIOS_ABRIR.join(", ")} sao permitidos.`
     );
   }
-  // `critico_bateu_na_primeira_da_rodada` (booleano) e `ideias` (array nao
-  // vazio) nao passam no crivo generico `!obj[c]`: `false` e falsy mas e uma
-  // resposta valida, e `[]` e truthy mas nao e uma lista de ideias de verdade.
-  // Cada um checa o proprio tipo; os demais seguem o crivo generico de sempre.
-  const faltando = CAMPOS_OBRIGATORIOS_ABRIR.filter((c) => {
-    if (c === "critico_bateu_na_primeira_da_rodada") return typeof obj[c] !== "boolean";
-    if (c === "ideias") return !Array.isArray(obj[c]) || obj[c].length === 0;
-    return !obj[c];
-  });
+  const faltando = camposObrigatoriosAusentes(obj, CAMPOS_OBRIGATORIOS_ABRIR);
   if (faltando.length) {
     throw new Erro(`campo(s) obrigatorio(s) faltando ou vazio(s): ${faltando.join(", ")}`);
   }
   if (!RE_ID.test(obj.id)) {
     throw new Erro(`id '${obj.id}' nao e kebab-case ([a-z0-9] separado por hifen)`);
+  }
+}
+
+// D12 (tarefa 9) — o `fechar` valida o REGISTRO COMPLETO depois da fusao, nao
+// so o diff que a entrada trouxe. Ate aqui `cmdFechar` lia a linha existente
+// com JSON.parse sem conferir nada, e `serializar` tinha um lace de passagem
+// livre que gravava qualquer campo ja presente no objeto — uma linha anterior
+// a D11 (sem `ideias`, sem `critico_bateu_na_primeira_da_rodada`, carregando
+// `critico_viu_ancoragem`) fechava do mesmo jeito, exit 0, sem o lastro que a
+// D4 existe para garantir. Chamada em cmdFechar DEPOIS da fusao e ANTES de
+// `gravar` — se lancar, a linha nunca chega a ser reescrita.
+function validarRegistroFechado(obj) {
+  const problemas = [];
+  const foraDoSchema = Object.keys(obj).filter((k) => !CAMPOS_VALIDOS_REGISTRO.has(k));
+  if (foraDoSchema.length) {
+    problemas.push(`campo(s) fora do schema: ${foraDoSchema.join(", ")}`);
+  }
+  const faltando = camposObrigatoriosAusentes(
+    obj,
+    CAMPOS_OBRIGATORIOS_ABRIR.concat(CAMPOS_OBRIGATORIOS_FECHADO)
+  );
+  if (faltando.length) {
+    problemas.push(`campo(s) obrigatorio(s) ausente(s) ou invalido(s): ${faltando.join(", ")}`);
+  }
+  if (problemas.length) {
+    throw new Erro(
+      `'${obj.id}' nao fecha — registro nao passa no schema completo: ${problemas.join("; ")}. ` +
+        "Rode 'node scripts/divergencias.cjs reparar --id <id>' para trazer a linha ao schema " +
+        "corrente antes de fechar."
+    );
+  }
+}
+
+// Allowlist da entrada do `reparar` (tarefa 10) — mesma disciplina do abrir/
+// fechar: so os dois campos que uma linha legada pode estar sem.
+function validarEntradaReparar(entrada) {
+  if (typeof entrada !== "object" || entrada === null || Array.isArray(entrada)) {
+    throw new Erro("o JSON da entrada precisa ser um objeto");
+  }
+  const naoPermitidos = Object.keys(entrada).filter(
+    (c) => !CAMPOS_PERMITIDOS_REPARAR.includes(c)
+  );
+  if (naoPermitidos.length) {
+    throw new Erro(
+      `campo(s) ${naoPermitidos.join(", ")} nao e(sao) aceito(s) na entrada de reparar — ` +
+        `so ${CAMPOS_PERMITIDOS_REPARAR.join(", ")} sao permitidos.`
+    );
+  }
+  if (!Array.isArray(entrada.ideias) || entrada.ideias.length === 0) {
+    throw new Erro('reparar exige {"ideias": [...]} nao vazio na entrada');
+  }
+  if (typeof entrada.critico_bateu_na_primeira_da_rodada !== "boolean") {
+    throw new Erro(
+      'reparar exige {"critico_bateu_na_primeira_da_rodada": true|false} na entrada'
+    );
   }
 }
 
@@ -422,10 +514,67 @@ function cmdFechar(args) {
     Object.assign(obj, entrada);
     obj.status = "fechado";
     obj.fechada_em = hoje();
+    validarRegistroFechado(obj);
     const depois = antes.slice();
     depois[i] = serializar(obj);
     console.log(`fechando '${args.id}' (linha ${i + 1})`);
     gravar(antes, depois, new Set([i]), "fechar");
+  });
+}
+
+// Tarefa 10 (D12) — subcomando de reparo para linha legada. Com o `fechar`
+// estrito da tarefa 9, uma linha anterior a D11 fica IMPOSSIVEL de fechar —
+// e escrita a mao no .jsonl e proibida neste repo desde os dois appends
+// quebrados de 2026-08-08. `reparar` recebe por stdin o que uma linha legada
+// nao tem como recuperar sozinha (`ideias`, nunca persistidas antes da D11) e
+// migra o campo cujo nome so estava errado.
+//
+// Nome escolhido: `reparar`, o mesmo do irmao `ideias.cjs` — mesma operacao
+// (trazer uma linha antiga ao schema corrente), mesmo verbo.
+function cmdReparar(args) {
+  const entrada = lerStdin();
+  validarEntradaReparar(entrada);
+  comTrava(() => {
+    const antes = lerVivo();
+    const i = indicePorId(antes, args.id);
+    const obj = JSON.parse(antes[i]);
+
+    if (!Array.isArray(obj.ideias) || obj.ideias.length === 0) {
+      obj.ideias = entrada.ideias;
+    }
+
+    // D11/D12: `critico_viu_ancoragem` foi nome improvisado ANTES da D11 —
+    // mesmo dado, nome errado, nao um campo a perder. RENOMEAR preserva o
+    // VALOR ORIGINAL; nunca descartar o campo velho e criar o novo com um
+    // valor vindo de outro lugar (isso apagaria o dado real e o trocaria por
+    // um palpite). O booleano da entrada so e usado quando a linha NAO tem
+    // nem o nome velho nem o novo — aí nao ha historico nenhum a preservar.
+    if (Object.prototype.hasOwnProperty.call(obj, "critico_viu_ancoragem")) {
+      obj.critico_bateu_na_primeira_da_rodada = obj.critico_viu_ancoragem;
+      delete obj.critico_viu_ancoragem;
+    } else if (typeof obj.critico_bateu_na_primeira_da_rodada !== "boolean") {
+      obj.critico_bateu_na_primeira_da_rodada = entrada.critico_bateu_na_primeira_da_rodada;
+    }
+
+    // O reparo promete trazer a linha ao schema CORRENTE — confere antes de
+    // gravar, para nunca escrever uma linha que o proprio reparo deixou pela
+    // metade (mesmo schema que validarRegistroFechado usa para a linha
+    // completa, exceto pelos campos que so `fechar` grava).
+    const foraDoSchema = Object.keys(obj).filter((k) => !CAMPOS_VALIDOS_REGISTRO.has(k));
+    if (foraDoSchema.length) {
+      throw new Erro(`reparo nao cobriu tudo — ainda fora do schema: ${foraDoSchema.join(", ")}`);
+    }
+    const faltando = camposObrigatoriosAusentes(obj, CAMPOS_OBRIGATORIOS_ABRIR);
+    if (faltando.length) {
+      throw new Erro(
+        `reparo nao cobriu tudo — ainda ausente(s) ou invalido(s): ${faltando.join(", ")}`
+      );
+    }
+
+    const depois = antes.slice();
+    depois[i] = serializar(obj);
+    console.log(`reparando '${args.id}' (linha ${i + 1})`);
+    gravar(antes, depois, new Set([i]), "reparar");
   });
 }
 
@@ -436,6 +585,7 @@ function cmdFechar(args) {
 const SUBCOMANDOS = {
   abrir: { requerId: false, fn: cmdAbrir },
   fechar: { requerId: true, fn: cmdFechar },
+  reparar: { requerId: true, fn: cmdReparar },
 };
 
 function erroArgs(msg) {

@@ -184,7 +184,70 @@ ok(igual(o.shortlist,["ideia c","ideia d"]), "shortlist foi sequestrada: "+JSON.
 ok(o.status==="aberta", "status mudou por engano: "+o.status);'
 
 echo
+echo "== 3c. tarefa 9: fechar recusa registro legado que nao passa no schema completo =="
+# Fixture sintetica da linha real do usuario: anterior a D11, sem 'ideias' e
+# sem 'critico_bateu_na_primeira_da_rodada', com o nome improvisado
+# 'critico_viu_ancoragem' e 'origem' — reproducao do defeito que o `revisar`
+# achou (fechar uma linha assim saia exit 0, sem o lastro que a D4 exige).
+node - <<'JS'
+const fs = require("fs");
+const legada = {"id":"legada","enunciado":"e","shortlist":["s"],"escolha_nao_obvia":"x","refutacao":"r","critico_viu_ancoragem":false,"origem":"run wf_xxx","status":"aberta","aberta_em":"2026-08-23"};
+fs.appendFileSync("divergencias.jsonl", JSON.stringify(legada) + "\n", "utf8");
+JS
+antes_9=$(cat divergencias.jsonl)
+saida_legada=$(echo '{"escolha":"y","bate_com_a_primeira_ideia":true}' | $DIV fechar --id legada 2>&1)
+got_legada=$?
+if [ "$got_legada" != 0 ] \
+  && echo "$saida_legada" | grep -q "critico_viu_ancoragem" \
+  && echo "$saida_legada" | grep -q "critico_bateu_na_primeira_da_rodada" \
+  && echo "$saida_legada" | grep -q "ideias"
+then ok=$((ok+1)); echo "  ok   fechar recusa linha legada nomeando o que esta fora do schema (exit $got_legada)"
+else falhou=$((falhou+1)); echo "  FALHA fechar nao recusou a linha legada ou nao nomeou os campos (exit $got_legada)"; echo "$saida_legada" | sed 's/^/         /'
+fi
+if [ "$antes_9" = "$(cat divergencias.jsonl)" ]
+then ok=$((ok+1)); echo "  ok   arquivo inteiro intocado apos a recusa (byte a byte)"
+else falhou=$((falhou+1)); echo "  FALHA o arquivo mudou apesar da recusa"; fi
+prova "legada continua 'aberta', sem os campos novos, com o nome velho intacto" '
+const o=acha(O("divergencias.jsonl"),"legada");
+ok(o.status==="aberta", "status mudou: "+JSON.stringify(o.status));
+ok(o.critico_viu_ancoragem===false, "critico_viu_ancoragem sumiu ou mudou: "+JSON.stringify(o.critico_viu_ancoragem));
+ok(!("critico_bateu_na_primeira_da_rodada" in o), "critico_bateu_na_primeira_da_rodada nao deveria existir ainda");
+ok(!("ideias" in o), "ideias nao deveria existir ainda");'
+
+echo
+echo "== 3d. tarefa 10: reparar migra a linha legada, e so entao fechar sai 0 =="
+antes_10=$(tres_nao_alvo)
+# critico_bateu_na_primeira_da_rodada vai TRUE no stdin, DIFERENTE do valor
+# real (false, em critico_viu_ancoragem) — de proposito: se o reparo so
+# copiasse o valor do stdin em vez de renomear o campo velho, a prova abaixo
+# pegaria a farsa (o valor gravado teria que ser false, o original, nao o
+# true que mandei).
+echo '{"ideias":[{"frame":"restricao-dura","ideia":"i1","porque":"p1"},{"frame":"inversao","ideia":"i2","porque":"p2"}],"critico_bateu_na_primeira_da_rodada":true}' > reparo.json
+esperado "reparar migra a linha legada" 0 bash -c '$DIV reparar --id legada < reparo.json'
+confere_nao_alvo "depois do reparar" "$antes_10"
+prova "reparar RENOMEIA preservando o valor original (false), nao o padrao do stdin (true)" '
+const o=acha(O("divergencias.jsonl"),"legada");
+ok(o.critico_bateu_na_primeira_da_rodada===false, "valor nao preservado, veio: "+JSON.stringify(o.critico_bateu_na_primeira_da_rodada));
+ok(!("critico_viu_ancoragem" in o), "critico_viu_ancoragem deveria ter sumido");
+ok(o.origem==="run wf_xxx", "origem deveria ter sido mantido: "+JSON.stringify(o.origem));
+ok(Array.isArray(o.ideias) && o.ideias.length===2, "ideias nao chegou: "+JSON.stringify(o.ideias));
+ok(o.status==="aberta", "reparar nao deveria mudar o status: "+o.status);'
+esperado "fechar na linha reparada agora sai 0" 0 \
+  bash -c 'echo "{\"escolha\":\"y\",\"bate_com_a_primeira_ideia\":true}" | $DIV fechar --id legada'
+prova "legada fechada com sucesso, schema completo, valor do critico intacto" '
+const o=acha(O("divergencias.jsonl"),"legada");
+ok(o.status==="fechado", "nao fechou: "+JSON.stringify(o.status));
+ok(o.critico_bateu_na_primeira_da_rodada===false, "valor mudou durante o fechar: "+JSON.stringify(o.critico_bateu_na_primeira_da_rodada));'
+
+echo
 echo "== 4. mutacao: a conferencia byte a byte trava mesmo? =="
+# Linha ABERTA e com o schema COMPLETO (ideias + critico_bateu_na_primeira_da_
+# rodada), so para este bloco: fixture-02 e legada como fixture-01/03 (sem os
+# campos da D11) e a tarefa 9 a recusaria no `fechar` por schema incompleto —
+# o que provaria a validacao nova, nao a conferencia byte a byte que este
+# bloco existe para testar.
+echo "{\"id\":\"rodada-para-fechar-mutante\",$base}" > fpm.json
+esperado "abrir linha completa para o teste de mutacao do fechar" 0 bash -c '$DIV abrir < fpm.json'
 cp divergencias.jsonl pre-mutacao.jsonl
 echo "  (mutando scripts/divergencias.cjs na caixa — o que \$DIV executa)"
 node - <<'JS'
@@ -207,7 +270,7 @@ else falhou=$((falhou+1)); echo "  FALHA o mutante corrompeu o arquivo e nada re
 # nova ao final): se a conferencia so travasse no abrir, o fechar passaria
 # batido — e ele e o unico comando que reescreve conteudo no lugar.
 esperado "mutante recusado tambem no fechar (alvo e uma linha, nao o fim do arquivo)" 1 \
-  bash -c 'echo "{\"escolha\":\"x\",\"bate_com_a_primeira_ideia\":true}" | $DIV fechar --id fixture-02'
+  bash -c 'echo "{\"escolha\":\"x\",\"bate_com_a_primeira_ideia\":true}" | $DIV fechar --id rodada-para-fechar-mutante'
 if cmp -s divergencias.jsonl pre-mutacao.jsonl
 then ok=$((ok+1)); echo "  ok   fechar tambem reverteu byte a byte"
 else falhou=$((falhou+1)); echo "  FALHA o fechar gravou por cima do mutante"; fi
