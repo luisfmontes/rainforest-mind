@@ -729,8 +729,9 @@ function processoVivo(pid) {
  *
  * @param {Array<{cwd?: string, trabalhando?: boolean, minutos?: number}>} entradas
  * @param {string} ociosidade minutos de ociosidade máxima do foco ativo
+ * @param {string} [cwdAtual] cwd da sessão atual para marcar linhas co-locadas
  */
-function resumirSessoes(entradas, ociosidade, teto = TETOS.SESSOES_MAX_BYTES) {
+function resumirSessoes(entradas, ociosidade, teto = TETOS.SESSOES_MAX_BYTES, cwdAtual) {
   const lista = Array.isArray(entradas) ? entradas.filter(Boolean) : [];
   if (!lista.length) return '';
 
@@ -744,14 +745,27 @@ function resumirSessoes(entradas, ociosidade, teto = TETOS.SESSOES_MAX_BYTES) {
     else porPasta.set(pasta, { ...atual, janelas: atual.janelas + 1 });
   }
 
-  const linhas = [...porPasta.values()]
-    .sort((a, b) => a.minutos - b.minutos)
+  // Separar sessões co-locadas das remotas, se cwdAtual foi fornecido.
+  const sessoesPorTipo = [...porPasta.values()].reduce((acc, p) => {
+    if (cwdAtual && p.pasta === cwdAtual) {
+      acc.colocadas.push(p);
+    } else {
+      acc.remotas.push(p);
+    }
+    return acc;
+  }, { colocadas: [], remotas: [] });
+
+  // Ordenar remotas por tempo. Colocadas ficam todas na frente, sem sort.
+  sessoesPorTipo.remotas.sort((a, b) => a.minutos - b.minutos);
+
+  const linhas = [...sessoesPorTipo.colocadas, ...sessoesPorTipo.remotas]
     .map((p) => {
       const estado = p.trabalhando
         ? `Claude trabalhando (turno em curso há ${p.minutos} min)`
         : `esperando o usuario há ${p.minutos} min`;
       const extras = p.janelas > 1 ? ` [${p.janelas} janelas nesta pasta; estado da mais recente]` : '';
-      return `- ${p.pasta} — ${estado}${extras}`;
+      const marca = cwdAtual && p.pasta === cwdAtual ? 'MESMO DIRETORIO — git checkout aqui move o HEAD da janela dela · ' : '';
+      return `- ${marca}${p.pasta} — ${estado}${extras}`;
     });
 
   // Corte em DOIS passos, e o primeiro é por quantidade, não por bytes.

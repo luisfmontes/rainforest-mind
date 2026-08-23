@@ -529,6 +529,64 @@ else
 fi
 
 echo
+echo "9a. SESSOES CO-LOCADAS — marcadas, em primeiro lugar, sobrevivem ao corte"
+# Driver para testar resumirSessoes com cwdAtual (novo parâmetro P3)
+cat > "$RAIZ_POSIX/driver-colocadas.cjs" <<'EOF'
+const lib = require(process.env.LIB_PATH);
+const entradas = JSON.parse(process.env.FIX_SESSOES);
+const cwdAtual = process.env.CWD_ATUAL;
+const bloco = lib.resumirSessoes(entradas, '15', undefined, cwdAtual);
+process.stdout.write(bloco + `\nBYTES=${Buffer.byteLength(bloco, 'utf8')}\n`);
+EOF
+sessoes_colocadas() { LIB_PATH="${2:-$LIB}" FIX_SESSOES="$1" CWD_ATUAL="$3" node "$RAIZ_POSIX/driver-colocadas.cjs" 2>&1; }
+
+# Teste 9a.1: sessão co-locada marcada e em primeiro lugar
+COLOCADAS_TEST='[{"cwd":"C:\\Projetos\\outra","trabalhando":false,"minutos":100},
+                 {"cwd":"C:\\Projetos\\rfm","trabalhando":false,"minutos":50},
+                 {"cwd":"C:\\Projetos\\outra","trabalhando":false,"minutos":200}]'
+S="$(sessoes_colocadas "$COLOCADAS_TEST" "$LIB" "C:\\Projetos\\rfm")"
+checa "co-locada aparece com marca MESMO DIRETORIO"  tem     "MESMO DIRETORIO"              "$S"
+checa "co-locada menciona efeito prático (git checkout)" tem "git checkout aqui move"     "$S"
+PRIMEIRA_LINHA="$(echo "$S" | grep "Outras sess" -A 1 | tail -1)"
+if echo "$PRIMEIRA_LINHA" | grep -q "MESMO DIRETORIO"; then
+  ok=$((ok+1)); echo "  ok    co-locada vem PRIMEIRA na lista"
+else
+  falhou=$((falhou+1)); echo "  FALHA co-locada vem PRIMEIRA na lista"
+  echo "         primeira linha: $PRIMEIRA_LINHA"
+fi
+
+# Teste 9a.2: compatibilidade — sem cwdAtual comportamento igual ao de hoje
+S_SEM_CWD="$(sessoes "$COLOCADAS_TEST")"
+S_COM_CWD_OUTRA="$(sessoes_colocadas "$COLOCADAS_TEST" "$LIB" "C:\\Projetos\\pasta-inexistente")"
+checa "sem cwdAtual ou cwdAtual ausente, sem marca"   nao_tem "MESMO DIRETORIO"            "$S_SEM_CWD"
+checa "cwdAtual que nao existe, sem marca"            nao_tem "MESMO DIRETORIO"            "$S_COM_CWD_OUTRA"
+
+# Teste 9a.3: co-locada sobrevive ao corte com muitas pastas
+MUITAS_COM_COLOCADA="$(node -e "
+const p = Array.from({length: 15}, (_, i) => ({
+  cwd: 'C:\\\\Projetos\\\\pasta-numero-' + i,
+  trabalhando: false,
+  minutos: i * 10 + 5
+}));
+p.push({cwd: 'C:\\\\Projetos\\\\rfm', trabalhando: true, minutos: 1});
+process.stdout.write(JSON.stringify(p));
+")"
+S="$(sessoes_colocadas "$MUITAS_COM_COLOCADA" "$LIB" "C:\\Projetos\\rfm")"
+PRIMEIRA_LINHA_COM_TUR="$(echo "$S" | grep "Outras sess" -A 1 | tail -1)"
+if echo "$PRIMEIRA_LINHA_COM_TUR" | grep -q "MESMO DIRETORIO"; then
+  ok=$((ok+1)); echo "  ok    co-locada com turno em curso aparece primeiro"
+else
+  falhou=$((falhou+1)); echo "  FALHA co-locada com turno em curso aparece primeiro"
+fi
+checa "co-locada sobrevive ao corte de teto"         tem     "MESMO DIRETORIO"              "$S"
+# Mesmo que haja corte de outras pastas, a co-locada NAO aparece na msg de omissão
+if echo "$S" | grep -q "C:\\\\Projetos\\\\rfm.*outra(s) pasta"; then
+  falhou=$((falhou+1)); echo "  FALHA co-locada nao aparece na mensagem de omissao"
+else
+  ok=$((ok+1)); echo "  ok    co-locada nao aparece na mensagem de omissao de pastas"
+fi
+
+echo
 echo "10. FOCO POR PRIORIDADE — o que a regra 3 mede sobrevive ao corte"
 # O corte do foco era por POSICAO e parava no meio do "Criterio de pronto": os
 # marcos e prazos nao chegavam a sessao nenhuma, enquanto a prosa do topo (que
