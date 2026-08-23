@@ -104,8 +104,8 @@ mutacao:
 ### 8. Desdobrar as duas medidas de ancoragem [tipo: implementar]
 atende: D11, D4, D8, D10
 arquivos: `workflows/divergir-frames.js`, `scripts/divergencias.cjs`, `scripts/testa-divergencias.sh`, `skills/divergir/SKILL.md`
-depende de: nenhuma
-paralela: sim
+depende de: 7
+paralela: nao
 pronto quando: `abrir` passa a **exigir e persistir** `critico_bateu_na_primeira_da_rodada` (booleano) e `ideias` (lista das ideias cruas), o schema do crítico no workflow devolve o campo com o nome novo, e `fechar` continua exigindo `bate_com_a_primeira_ideia` — provado por, num `$RFM_ROOT` temporário, `abrir` seguido de `fechar` produzir uma linha que contém **os dois** campos com valores distintos e a lista `ideias` não vazia, conferido por `node -e` lendo o `.jsonl`; e por `bash scripts/testa-divergencias.sh` exit 0
 mutacao:
   arquivo: `scripts/divergencias.cjs`
@@ -126,9 +126,16 @@ mutacao:
 
 ### Rodada 2 — tarefas 7 e 8, acrescentadas em 2026-08-23
 
-Vieram do `revisar`, que reprovou a primeira rodada com três achados. As duas
-são **paralelas entre si** e independentes das seis primeiras: a 7 conserta a
-porta de escrita, a 8 conserta a semântica do campo de ancoragem.
+Vieram do `revisar`, que reprovou a primeira rodada com três achados: a 7
+conserta a porta de escrita, a 8 conserta a semântica do campo de ancoragem.
+
+As duas são **seriais, não paralelas** — e isso foi correção de um erro do
+primeiro rascunho desta emenda, que as declarava paralelas. Ambas tocam
+`scripts/divergencias.cjs` e `scripts/testa-divergencias.sh`; dois worktrees
+editando os mesmos dois arquivos é conflito na integração, não paralelismo. A
+regra que o plano já tinha — `paralela: sim` só quando `depende de: nenhuma` —
+não basta sozinha: independência de **ordem** não implica disjunção de
+**arquivos**, e é a segunda que decide se dá para paralelizar.
 
 O **terceiro achado fica de fora deste plano, de propósito**. Ele é real e a
 raiz está localizada — `scripts/estado.cjs:671` faz
