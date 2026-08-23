@@ -9,7 +9,7 @@ sessoes.json
 # O modelo versionado é vigias/vigia.config.exemplo.json.
 vigia.config.json
 
-# Backups automáticos do scripts/ideias.py — um por gravação, ficam locais.
+# Backups automáticos do scripts/ideias.cjs — um por gravação, ficam locais.
 .ideias-backups/
 
 # Trava entre sessões paralelas e temporário da escrita atômica.

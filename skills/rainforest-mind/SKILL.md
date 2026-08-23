@@ -900,8 +900,8 @@ hora de gravar.
 
 No `ideias.jsonl` isso é código desde
 2026-08-08: `node scripts/ideias.cjs {plantar|colher|iniciar|unificar|
-listar|conferir}` (portado do `ideias.py` em 2026-08-11, para tirar Python do
-caminho de execução; o `.py` fica como gêmeo e a bateria roda contra os dois)
+listar|conferir}` (portado do gêmeo em Python em 2026-08-11, para tirar Python
+do caminho de execução; o gêmeo provou o port e foi aposentado em 2026-08-22)
 faz trava entre sessões, releitura do arquivo vivo, backup,
 escrita atômica, carimbo de data pelo relógio **local** e conferência byte a
 byte das linhas não-alvo, revertendo com exit ≠ 0. **Não edite o arquivo à
