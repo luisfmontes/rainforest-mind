@@ -182,6 +182,36 @@ checa "F. e nomeia a versao instalada"                "aviso" "0.9.0 instalada c
 rm -f "$SBP/cfg/plugins/installed_plugins.json"
 
 echo
+echo "== gitCommitSha AUSENTE do registro nao pode virar ok silencioso (Issue: sha ausente) =="
+# O campo pode faltar de tres jeitos, e so dois tinham tratamento antes deste
+# bloco: desconhecido (F, acima: aviso "nao conhece") e ausencia estrutural do
+# proprio registro (config dir/instalacao inexistente, tratada como "nao ha
+# achado" em avaliarConfigDir). O terceiro — o campo `gitCommitSha` simplesmente
+# nao existe no item — caia no `if (i.gitCommitSha)` como falso e nao deixava
+# rastro nenhum: virava `ok` calado, um ok que nao conferiu nada.
+criar_fonte_sintetica
+rm -rf "$MF"; git clone -q "$FONTE" "$MF" 2>/dev/null   # clone em dia, irrelevante aqui
+cat > "$SBP/cfg/plugins/installed_plugins.json" <<JSON
+{"version":2,"plugins":{"fonte-sintetica@teste":[{"scope":"user",
+ "installPath":"$SBP/cfg/plugins/cache/teste/fonte-sintetica/1.0.0",
+ "version":"1.0.0"}]}}
+JSON
+F2="$(ver "$FONTE")"
+checa "F2. gitCommitSha ausente vira aviso de indeterminacao" "aviso" "nao da para saber se o que EXECUTA esta em dia" "$F2"
+checa "F2. e diz QUAL campo falta"                            "aviso" "sem 'gitCommitSha' no registro" "$F2"
+
+# Caminho feliz: sha presente e IGUAL ao HEAD nao pode ganhar ruido por causa do
+# conserto acima — regressao aqui e o risco real desta mudanca.
+HEAD_FONTE="$(git -C "$FONTE" rev-parse HEAD)"
+cat > "$SBP/cfg/plugins/installed_plugins.json" <<JSON
+{"version":2,"plugins":{"fonte-sintetica@teste":[{"scope":"user",
+ "installPath":"$SBP/cfg/plugins/cache/teste/fonte-sintetica/1.0.0",
+ "version":"1.0.0","gitCommitSha":"$HEAD_FONTE"}]}}
+JSON
+checa "F2. sha igual ao HEAD continua ok, sem ruido" "ok" "skills do repo" "$(ver "$FONTE")"
+rm -f "$SBP/cfg/plugins/installed_plugins.json"
+
+echo
 echo "== as duas config dirs, nao so uma =="
 # `CLAUDE_CONFIG_DIR || ~/.claude` olhava UMA. Esta maquina tem duas com o plugin
 # habilitado, e elas divergem em silencio — foi o que ja custou as regras da
