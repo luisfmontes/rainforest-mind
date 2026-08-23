@@ -9,8 +9,8 @@
  * Enquanto ele era Python, a promessa do README ("so Node no caminho de execucao,
  * e o Claude Code nao garante Python") era falsa — bastava um dev sem Python para
  * a regra 12 virar texto sem mecanismo, do lado errado da unica coisa que este
- * repo nao aceita: trava que nao trava. O .py fica como GEMEO, no mesmo desenho de
- * ideias.py e jornada.py: a mesma bateria roda contra os dois, e e isso que prova
+ * repo nao aceita: trava que nao trava. O .py fica como GEMEO, no mesmo desenho do
+ * jornada.py: a mesma bateria roda contra os dois, e e isso que prova
  * que o port nao perdeu checagem nenhuma.
  *
  * O P1 do relatorio de metodo de 2026-08-08 (o acervo e do usuario, fora do repo):
