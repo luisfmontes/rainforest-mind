@@ -912,10 +912,11 @@ function focoSoTemPonteiro(texto) {
     /^\(Fora desta injeção por espaço/.test(l));
 }
 
-/** Aviso explícito de foco que não coube — mesmo texto para o piso e para o caso pointer-only (Issue #63). */
-function avisoFocoNaoCoube(tetoFoco) {
-  return `⚠️ O foco não coube nesta injeção (${tetoFoco} B livres, piso ${TETOS.FOCO_MIN_BYTES} B).\n` +
-    '**Leia o FOCO.md antes de medir desvio de escopo ou afirmar o que está em andamento** (regra 3).';
+/** Aviso explícito de foco que não coube — distingue causa. */
+function avisoFocoNaoCoube(tetoFoco, causa) {
+  const m = '**Leia o FOCO.md antes de medir desvio de escopo ou afirmar o que está em andamento** (regra 3).';
+  return (causa === 'ponteiro' ? `⚠️ O foco saiu com só ponteiros nesta injeção (${tetoFoco} B, removido pela priorização).\n` :
+    `⚠️ O foco não coube nesta injeção (${tetoFoco} B livres, piso ${TETOS.FOCO_MIN_BYTES} B).\n`) + m;
 }
 
 /** Teto duro, com aviso explícito de que houve corte. Nunca corta em silêncio. */
@@ -1044,17 +1045,13 @@ ${regras}
     // ficaria de fora, com o bloco parecendo completo. O piso não vira alocação
     // forçada (isso estouraria o orçamento e faria a trava acusar as regras por um
     // defeito que é do foco); vira aviso.
-    foco = avisoFocoNaoCoube(tetoFoco);
+    foco = avisoFocoNaoCoube(tetoFoco, 'piso');
   } else {
     // Por prioridade, não por posição: cortar de cima para baixo deixava marcos e
     // prazos de fora de toda sessão enquanto a prosa do topo sobrevivia inteira.
     foco = priorizarFoco(focoResumido, tetoFoco);
-    // Invariante (Issue #63): mesmo com teto acima do piso, a composição pode
-    // deixar o bloco sem NENHUM conteúdo real (identidade cortada demais,
-    // "## Ativo" removido por orfandade, só ponteiros sobrando) — o mesmo aviso
-    // explícito do caso abaixo do piso vale aqui, em vez de um bloco que parece
-    // completo e não é.
-    if (focoSoTemPonteiro(foco)) foco = avisoFocoNaoCoube(tetoFoco);
+    // Invariante: só ponteiros dispara aviso distinto (Issue #63).
+    if (focoSoTemPonteiro(foco)) foco = avisoFocoNaoCoube(tetoFoco, 'ponteiro');
   }
 
   return travarOrcamento(cabecalho + foco + rodape);

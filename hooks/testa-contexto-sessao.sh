@@ -1833,9 +1833,13 @@ FOCO_TITULO_GIGANTE="# Foco
 ## Fora de escopo
 X"
 S_TIT="$(montar "$SKILL_GRANDE" "$FOCO_TITULO_GIGANTE")"
-checa "(b) nem o essencial cabendo, dispara o aviso explicito"   tem     "O foco não coube nesta injeção"                "$S_TIT"
-checa "(b) o aviso e o MESMO do caso abaixo do piso"             tem     "Leia o FOCO.md antes de medir desvio de escopo" "$S_TIT"
+checa "(b) nem o essencial cabendo, dispara o aviso explicito"   tem     "O foco saiu com só ponteiros nesta injeção"    "$S_TIT"
+checa "(b) o aviso para ponteiro-only tem a instrucao"           tem     "Leia o FOCO.md antes de medir desvio de escopo" "$S_TIT"
 checa "(b) NUNCA emite bloco so-cabecalho-e-ponteiro"            nao_tem "Fora desta injeção"                             "$S_TIT"
+# Prova da distinção entre os dois casos: cada causa produz sua frase
+checa "(b) caso ponteiro-only NAO usa a frase do piso"            nao_tem "B livres, piso"                                "$S_TIT"
+checa "(b.1) o aviso piso menciona o piso (num crítico)"          tem     "piso 700"                                       "$(node -e "const lib = require('./hooks/lib/contexto-sessao.cjs'); console.log(lib.avisoFocoNaoCoube(650, 'piso'))" 2>&1)"
+checa "(b.1) o aviso piso NAO menciona priorização"               nao_tem "priorização"                                   "$(node -e "const lib = require('./hooks/lib/contexto-sessao.cjs'); console.log(lib.avisoFocoNaoCoube(650, 'piso'))" 2>&1)"
 
 # 19.4 — unidade de focoSoTemPonteiro: cabecalho + os dois ponteiros de
 # omissao, sem nenhuma linha de conteudo real, e "so ponteiro"; a mesma forma
