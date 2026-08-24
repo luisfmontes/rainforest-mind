@@ -27,9 +27,9 @@ trap 'rm -rf "$RAIZ_POSIX"' EXIT
 echo "(caixa de areia: $RAIZ)"
 
 # Raiz gorda: sandbox com um FOCO.md de ~2.500 B para testes de mutacao
-# (RAIZ_NEUTRA -> RAIZ_GORDA revela defeitos por medida, nao por erro de shell).
+# (RAIZ_NEUTRA -> RAIZ_GORDA revela defeitos por conteudo, nao por medida de tamanho).
 RAIZ_GORDA_POSIX="$(mktemp -d)"
-node -e "const fs = require('fs'); const sess = Array.from({length:500}, (_, i) => ({session_id:'gorda'+i, cwd:'C:/gorda/projetos/'+i, prompt_ts:$(date +%s), stop_ts:$(date +%s)})); const cfg = {WHATSAPP_API_BASE_URL:'http://127.0.0.1:59421', expediente: {seg: ['09:00', '18:00'], ter: ['09:00', '18:00'], qua: ['09:00', '18:00'], qui: ['09:00', '18:00'], sex: ['09:00', '18:00']}, FOCO_MAX_BYTES: 1000}; fs.writeFileSync(process.argv[1]+'/FOCO.md','# Foco\n## Ativo\n\n'+'Conteudo repetido para atingir tamanho de teste.\n'.repeat(100)); fs.writeFileSync(process.argv[1]+'/sessoes.json',JSON.stringify(sess)); fs.writeFileSync(process.argv[1]+'/config.json',JSON.stringify(cfg))" "$RAIZ_GORDA_POSIX"
+node -e "const fs = require('fs'); fs.writeFileSync(process.argv[1]+'/FOCO.md','# Foco\n## Ativo\n\nConteudo para distinguir raiz com FOCO.md de raiz vazia.\n'.repeat(100))" "$RAIZ_GORDA_POSIX"
 RAIZ_GORDA="$(cygpath -m "$RAIZ_GORDA_POSIX" 2>/dev/null || printf '%s' "$RAIZ_GORDA_POSIX")"
 
 # Raiz neutra: sandbox vazia para testes que nao devem variar entre maquinas.
@@ -348,14 +348,16 @@ const c = (j.hookSpecificOutput || {}).additionalContext;
 if (typeof c !== 'string') { console.log('sem_contexto 0 0 0'); process.exit(0); }
 const regras = (c.match(/\*\*\d+\./g) || []).length;
 const travou = c.includes('ACIMA DO ORÇAMENTO') ? 'travou' : 'coube';
+fs.writeFileSync(process.env.CONTEXTO, c);
 console.log(`ok ${Buffer.byteLength(c, 'utf8')} ${lib.TETOS.ORCAMENTO_BYTES} ${regras} ${travou}`);
 EOF
-LEITURA="$(LIB_PATH="$LIB" SAIDA="$RAIZ_POSIX/saida-hook.json" node "$RAIZ_POSIX/checa-hook.cjs")"
+LEITURA="$(LIB_PATH="$LIB" SAIDA="$RAIZ_POSIX/saida-hook.json" CONTEXTO="$RAIZ_POSIX/contexto.txt" node "$RAIZ_POSIX/checa-hook.cjs")"
 FORMATO="$(echo "$LEITURA" | cut -d' ' -f1)"
 BYTES="$(echo "$LEITURA" | cut -d' ' -f2)"
 TETO="$(echo "$LEITURA" | cut -d' ' -f3)"
 NREGRAS="$(echo "$LEITURA" | cut -d' ' -f4)"
 TRAVOU="$(echo "$LEITURA" | cut -d' ' -f5)"
+CONTEXTO_COMPLETO="$(cat "$RAIZ_POSIX/contexto.txt" 2>/dev/null)"
 
 if [ "$EXIT_HOOK" = "0" ]; then ok=$((ok+1)); echo "  ok    o hook real roda com exit 0"
 else falhou=$((falhou+1)); echo "  FALHA o hook real saiu com exit $EXIT_HOOK"; fi
@@ -385,6 +387,14 @@ if [ -n "$NREGRAS" ] && [ "$NREGRAS" -ge 17 ] 2>/dev/null; then
   ok=$((ok+1)); echo "  ok    as 17 regras cabem no orcamento (chegaram $NREGRAS)"
 else
   falhou=$((falhou+1)); echo "  FALHA so $NREGRAS regras no payload — alguma nao esta valendo em sessao nenhuma"
+fi
+
+# Asserção de conteudo: RAIZ_NEUTRA (vazia) produz sempre "nenhum foco declarado".
+# A mutação trocando para RAIZ_GORDA (com FOCO.md) revela o defeito (conteudo muda).
+if echo "$CONTEXTO_COMPLETO" | grep -q "(nenhum foco declarado"; then
+  ok=$((ok+1)); echo "  ok    raiz neutra (vazia) nao injeta foco (nenhum foco declarado)"
+else
+  falhou=$((falhou+1)); echo "  FALHA raiz neutra deveria produzir 'nenhum foco declarado' mas nao produziu"
 fi
 
 # CATRACA DOS NUCLEOS. As duas checagens acima nao dao retorno a quem EDITA regra,
