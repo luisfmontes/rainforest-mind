@@ -1,0 +1,109 @@
+{
+  "slug": "2026-08-24-skills-finas-com-references",
+  "titulo": "Skills finas com references: consultar uma regra deve custar menos de 3k tokens",
+  "criado_em": "2026-08-24",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-08-24-skills-finas-com-references.md",
+    "em": "2026-08-24"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-08-24-skills-finas-com-references.md",
+    "tarefas": 7,
+    "paralelas": [
+      1,
+      3,
+      6
+    ],
+    "em": "2026-08-24"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-08-24",
+    "tarefas_ok": 8,
+    "tarefas": 8,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "catraca de tamanho do SKILL.md: FALHA SKILL.md passou da catraca (11628 B > 11000 B)"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "trava D6: FALHA D6: nucleo emitido contem 1 ocorrencia(s) de seta dupla"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "trava D4: FALHA D4: cabecalho NAO manda carregar a skill inteira"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "meta-teste da propria catraca: FALHA engordar regra-12.md nao fez a catraca acusar"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "sabotagem 7: FALHA mutacao sem efeito — devolver o arrow literal nao produziu seta dupla"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "secao 4 D8: FALHA total agregado nao muda quando references/ aparece (D8)"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "tarefa de docs: texto de interface, sem ramo a inverter. Falsificada por coerencia pelo medir-skill.cjs --conferir-description, que sai 1 quando o numero citado diverge mais de 10% do real"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "n/a",
+        "motivo": "tarefa de docs acrescentada na terceira rodada de conserto, por creep encontrado na varredura. Falsificada pela varredura do git grep, que e mecanica e nao se satisfaz digitando trecho"
+      }
+    ],
+    "em": "2026-08-24"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "9620253f5d9f8dff7737c97b250d98feb802c6a3",
+      "caminhos_sujos": []
+    },
+    "achados": 1,
+    "lista": [
+      "1: hooks/lib/contexto-sessao.cjs:190 — o docstring de extrairNucleo repete a frase que a rodada 2 mandou tirar do SKILL.md, no coracao da funcao que a entrega redesenhou",
+      "2 e 3: o plano cita contexto-sessao.cjs:139 (INICIO_REGRA mora em :164) e testa-contexto-sessao.sh:1036 (hoje e apenas fechamento de bloco)",
+      "4: o plano atribui ao conferir-encoding.cjs o escopo do preflight do CI — a linha 81 e comentario descrevendo o preflight, e o script varre git ls-files do repo inteiro"
+    ],
+    "em": "2026-08-24",
+    "rodada": 3,
+    "severidade": "divida",
+    "base": "ff01cbb6b8f7916221b58be30f501885f66a7a48",
+    "head": "9620253f5d9f8dff7737c97b250d98feb802c6a3",
+    "rodadas": 4,
+    "divida": "planos/2026-08-24-...md:8 diz que a rodada 3 achou tres ponteiros mortos; eram dois — testa-contexto-sessao.sh:372 apontava para a linha certa. Numero afirmado em prosa sem conferir, dentro do paragrafo que existe para dizer que isso apodrece. Conserto no fechar.",
+    "limite_conhecido": "o criterio da tarefa 8 e literal em tres frases, nao semantico: invoque Skill(...), leia o SKILL.md inteiro, abra a skill completa nao seriam pegos. Registrado pelo revisor, aceito como limite e nao como defeito desta entrega."
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "os 8 criterios do plano, rodados contra o artefato real em 9620253",
+    "saida": "T1 references=17 regras=17 | T2 setas-duplas=0 | T3 cita references/=true, manda carregar a skill=false, payload=7590 B <= 8000 | T4 7.5 verde e engordar regra-12.md em 3000 B derruba citando o nome (FALHA regra-12.md passou da catraca de reference 11884 B > 10500 B), restaurado | T5 7.6 verde nas quatro invariantes | T6 ok:21 falhou:0 exit 0 com raiz neutra | T7 --conferir-description ok | T8 varredura vazia",
+    "ressalva_t1": "O criterio da T1 cita nucleo=5593 e hoje o parser devolve 5589. NAO afrouxei a regua: rodei o parser contra o SKILL.md do proprio commit da T1 (2359af0) e ele devolve 5593 B — a T1 cumpriu o que prometeu. Os 4 B a menos sao a T2, autorizada pela D6 (tirar o arrow literal da regra 15), e a secao O que nao pode quebrar do plano ja registra isso como queda esperada. A licao, registrada e nao consertada: criterio com numero absoluto em plano de varias tarefas pode ser invalidado por tarefa posterior autorizada — o numero devia ter sido relativo a tarefa, nao ao repositorio.",
+    "nao_conferido": "Nenhum. Todos os 8 rodaram neste ambiente.",
+    "em": "2026-08-24"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "pr",
+    "pr": 80,
+    "observacao": "destino nao perguntado: o dono tem decisao permanente de que destino de branch e sempre PR, e o #80 ja estava aberto desde o design",
+    "em": "2026-08-24"
+  }
+}
