@@ -128,3 +128,56 @@ mutacao: n/a
   `arquivo:linha` citado tem de existir e conter o que a tabela afirma, e é isso que o
   critério de pronto executa.
 pronto quando: todo par `arquivo:linha` citado no corpo da #81 existe no repositório e a linha contém o padrão que a tabela atribui a ela — provado por script que extrai os pares de `gh issue view 81 --json body` e roda `sed -n '<linha>p' <arquivo>` em cada um, imprimindo `5/5 conferem` e saindo 0
+
+---
+
+## Emenda de 2026-08-24 — as duas tarefas dos consertos laterais
+
+Estas duas tarefas não estavam no plano original. Entraram durante o `executar`,
+por decisão do dono, quando os defeitos apareceram na frente do trabalho em
+andamento. Estão registradas aqui — e não justificadas em prosa — porque é a
+emenda do plano que torna o crescimento de escopo auditável: sem ela, os arquivos
+apareceriam no diff da revisão sem tarefa correspondente, que é a definição de
+creep.
+
+### 6. `conferir-mutacao.cjs` recusa pós-mutação desproporcionalmente curta [tipo: implementar]
+atende: D9
+arquivos: `scripts/conferir-mutacao.cjs`, `scripts/testa-conferir-mutacao.sh`, `skills/executar/SKILL.md`
+depende de: nenhuma
+paralela: nao
+
+Exit 5 novo, disparado quando a bateria pós-mutação sai != 0 **e** dura menos de
+10% do baseline, com piso absoluto de 1.000 ms para não acusar ruído. A ordem
+importa e é parte da tarefa: o ramo do exit 2 (bateria VERDE) decide **antes**,
+porque bateria que aprovou o fonte invertido já tem veredito próprio e a duração
+não muda isso. A tabela de exits do cabeçalho e a da skill `executar` ganham a
+linha do 5.
+
+mutacao:
+  arquivo: `scripts/conferir-mutacao.cjs`
+  de: `baselineDuracao >= PISO_ABSOLUTO_MS && posDuracao < baselineDuracao * 0.1`
+  para: `false`
+  bateria: `bash scripts/testa-conferir-mutacao.sh`
+  fixture: `scripts/testa-conferir-mutacao.sh`, caso 10 ("suspeita de corte de shell: pós-mutação desproporcionalmente curta") — com a heurística desligada o caso espera 5 e recebe 0
+pronto quando: com uma bateria que roda ~2 s no fonte íntegro e morre em milissegundos com `unbound variable` no fonte invertido, o `conferir-mutacao.cjs` recusa em vez de aprovar — provado por `bash scripts/testa-conferir-mutacao.sh` cobrindo os casos 10 (exit 5), 12 (baseline abaixo do piso não dispara) e 13 (bateria verde e rápida sai 2, não 5) e devolvendo `falhou: 0`
+
+### 7. `avisoFocoNaoCoube` distingue as duas causas [tipo: implementar]
+atende: D10
+arquivos: `hooks/lib/contexto-sessao.cjs`
+depende de: nenhuma
+paralela: nao
+
+O ramo do piso (`:1041`) e o ramo `focoSoTemPonteiro` (`:1055`) compartilhavam uma
+frase, e para o segundo os números da mensagem negavam a conclusão dela. Cada
+causa passa a dizer o que de fato aconteceu, e as duas continuam terminando com a
+instrução de ler o FOCO.md, porque em ambos os casos o bloco está incompleto e a
+regra 3 depende dele. Nenhuma constante muda. As asserções novas moram em
+`hooks/testa-contexto-sessao.sh`, já coberto pela tarefa 4.
+
+mutacao:
+  arquivo: `hooks/lib/contexto-sessao.cjs`
+  de: `avisoFocoNaoCoube(tetoFoco, 'ponteiro')`
+  para: `avisoFocoNaoCoube(tetoFoco, 'piso')`
+  bateria: `bash hooks/testa-contexto-sessao.sh`
+  fixture: `hooks/testa-contexto-sessao.sh` — as asserções de distinção, que exigem que a frase de uma causa NÃO apareça quando é a outra; com o ramo pointer-only devolvido à frase do piso, 3 asserções caem (239 ok, 3 falhou), baseline 32.141 ms contra pós-mutação 35.494 ms
+pronto quando: com uma raiz de dados contendo `FOCO.md` de ~2.000 B, o bloco `## Foco declarado` do payload descreve priorização sem conteúdo e não afirma falta de espaço com um número maior que o piso — provado por `RFM_ROOT=<raiz> node hooks/foco-session-start.cjs` e lendo o bloco, que hoje devolve "saiu com só ponteiros nesta injeção (1546 B, removido pela priorização)"

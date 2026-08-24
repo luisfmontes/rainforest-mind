@@ -1050,7 +1050,16 @@ ${regras}
     // Por prioridade, não por posição: cortar de cima para baixo deixava marcos e
     // prazos de fora de toda sessão enquanto a prosa do topo sobrevivia inteira.
     foco = priorizarFoco(focoResumido, tetoFoco);
-    // Invariante: só ponteiros dispara aviso distinto (Issue #63).
+    // Invariante (Issue #63): mesmo com teto acima do piso, a composição pode
+    // deixar o bloco sem NENHUM conteúdo real (identidade cortada demais,
+    // "## Ativo" removido por orfandade, só ponteiros sobrando) — vale um aviso
+    // explícito, em vez de um bloco que parece completo e não é.
+    //
+    // A causa vai junto desde 2026-08-24, e é o ponto todo: até então este ramo
+    // e o do piso dividiam a mesma frase, e aqui ela mentia. Com FOCO.md de
+    // ~2.000 B o hook dizia "não coube (1546 B livres, piso 700 B)" — 1546 é
+    // MAIOR que 700, então pela própria mensagem cabia. Não faltou espaço:
+    // faltou conteúdo priorizável, e a saída para quem lê é outra.
     if (focoSoTemPonteiro(foco)) foco = avisoFocoNaoCoube(tetoFoco, 'ponteiro');
   }
 

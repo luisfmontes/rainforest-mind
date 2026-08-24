@@ -110,6 +110,35 @@ agregado (raiz neutra): 13.096 / 14.000 → folga 904 B (6,5%)
   a entrega faz o próximo leitor achar que três dos consertos foram escopo esticado
   sem motivo.
 
+As duas decisões abaixo não vieram do brainstorm: vieram de defeitos que apareceram
+**durante** a execução deste plano, na frente do dono do repositório. Entraram por
+decisão dele, com a razão dita em uma frase — ferramenta que atrapalha o trabalho em
+andamento se conserta na hora, não se planta. Ficam registradas aqui, e não em prosa
+de rodapé, para que o crescimento de escopo seja auditável em vez de aparecer como
+arquivo sem tarefa no diff da revisão.
+
+- **D9 — `conferir-mutacao.cjs` recusa pós-mutação desproporcionalmente curta
+  (exit 5).** — porquê: quatro entregas de agente deste mesmo fluxo saíram exit 0
+  na catraca com a bateria vermelha pelo motivo errado — morrendo no shell
+  (`RAIZ_GORDA: unbound variable`) antes de rodar asserção nenhuma. Baseline
+  29.982 ms contra pós-mutação 281 ms; 4.733 contra 212; 9.298 contra 244. O
+  número que denuncia já era impresso pelo próprio script e não era usado. Barra
+  em vez de só avisar porque os quatro casos **foram aprovados** com exit 0, e
+  aviso que não barra é exatamente o que já não funcionou. Piso absoluto de 1 s
+  para não acusar ruído, e a mensagem nomeia o caso honesto — bateria que falha
+  legitimamente na primeira asserção também é curta.
+
+- **D10 — `avisoFocoNaoCoube` distingue as duas causas que compartilhavam uma
+  frase.** — porquê: medido em 2026-08-24, o hook emitiu *"O foco não coube nesta
+  injeção (1546 B livres, piso 700 B)"* — e 1546 é maior que 700, ou seja, os
+  números da mensagem negam a conclusão dela. A causa está no comentário de
+  `hooks/lib/contexto-sessao.cjs:915`, que já dizia "mesmo texto para o piso e
+  para o caso pointer-only (Issue #63)": o ramo do piso (`:1041`) e o ramo
+  `focoSoTemPonteiro` (`:1055`) descrevem situações opostas — falta de espaço
+  contra espaço suficiente sem conteúdo priorizável — e pedem saídas diferentes de
+  quem lê. É o mesmo gênero de defeito da #79, que este trabalho existe para
+  corrigir: mensagem que manda consertar no lugar errado.
+
 ## Avaliado e descartado
 
 - **Subir `NUCLEOS_MAX_BYTES` e `ORCAMENTO_BYTES` juntos** — era a recomendação

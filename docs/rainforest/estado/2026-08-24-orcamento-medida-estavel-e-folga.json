@@ -13,7 +13,7 @@
   "plano": {
     "status": "ok",
     "arquivo": "docs/rainforest/planos/2026-08-24-orcamento-medida-estavel-e-folga.md",
-    "tarefas": 5,
+    "tarefas": 7,
     "paralelas": [
       1,
       3,
@@ -24,34 +24,44 @@
   "executar": {
     "status": "ok",
     "catraca_mutacao": "2026-08-24",
-    "tarefas_ok": 5,
-    "tarefas": 5,
+    "tarefas_ok": 7,
+    "tarefas": 7,
     "em": "2026-08-24",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "scripts/testa-folga.sh, secao 2 dentro da banda avisa sem reprovar — avaliarFolga(5589,5600) volta ok em vez de aviso; 4 assercoes caem, baseline 907 ms contra pos-mutacao 809 ms"
+        "fixture": "scripts/testa-folga.sh secao 2 dentro da banda avisa sem reprovar — avaliarFolga(5589,5600) volta ok em vez de aviso; 4 assercoes caem, baseline 907 ms contra 809 ms"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "scripts/testa-orcamento.sh, secao 1 caminho verde raiz neutra — com RAIZ_VAZIA apontando para a raiz gorda o orcamento estoura e 5 assercoes caem; baseline 6900 ms contra pos-mutacao 5093 ms"
+        "fixture": "scripts/testa-orcamento.sh secao 1 caminho verde raiz neutra — 5 assercoes caem; baseline 6900 ms contra 5093 ms"
       },
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "hooks/testa-memoria-session-start.sh, secao 5 Orcamento do foco nao aumentou (D10) — a assercao hook de foco continua <= 8000 B mede acima de 8000 e cai; baseline 7488 ms contra pos-mutacao 7413 ms"
+        "fixture": "hooks/testa-memoria-session-start.sh secao 5 (D10) — a assercao hook de foco continua <= 8000 B mede acima e cai; baseline 7488 ms contra 7413 ms"
       },
       {
         "tarefa": 4,
         "resultado": "vermelho",
-        "fixture": "hooks/testa-contexto-sessao.sh, secao 7 — a assercao de conteudo raiz neutra nao injeta foco (nenhum foco declarado) cai porque a raiz gorda troca o bloco pelo aviso de foco; 1 assercao, baseline 38093 ms contra pos-mutacao 31306 ms"
+        "fixture": "hooks/testa-contexto-sessao.sh secao 7 — a assercao de conteudo nenhum foco declarado cai; 1 assercao, baseline 38093 ms contra 31306 ms"
       },
       {
         "tarefa": 5,
         "resultado": "n/a",
-        "motivo": "tarefa so edita o corpo de uma Issue no GitHub — nao ha ramo de codigo a inverter; a falsificacao foi conferir os pares arquivo:linha do corpo publicado contra o repo, extraidos do corpo e nao digitados, 10/10 conferem"
+        "motivo": "tarefa so edita o corpo de uma Issue no GitHub — nao ha ramo de codigo a inverter; a falsificacao foi conferir os pares arquivo:linha do corpo publicado contra o repo, extraidos e nao digitados, 10/10"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "scripts/testa-conferir-mutacao.sh caso 10 suspeita de corte de shell — com a heuristica desligada o caso espera 5 e recebe 0; 3 assercoes caem, baseline 16524 ms contra 18020 ms"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "hooks/testa-contexto-sessao.sh — as assercoes de distincao de causa; com o ramo pointer-only devolvido a frase do piso, 3 assercoes caem, baseline 32141 ms contra 35494 ms"
       }
     ]
   },
