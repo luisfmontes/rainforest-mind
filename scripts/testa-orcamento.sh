@@ -66,13 +66,17 @@ echo; echo "1b. invariancia — medição neutra nao muda mesmo com raiz pesada 
 # Primeira medição de raiz vazia (baseline)
 SAIDA_VAZIA_1="$(RFM_ROOT="$RAIZ_VAZIA" node "$SRC/scripts/orcamento.cjs" 2>&1)"; CODIGO_VAZIA_1=$?
 TOTAL_VAZIA_1="$(echo "$SAIDA_VAZIA_1" | sed -n 's/^Total: \([0-9]\+\) B$/\1/p')"
-# RAIZ_GORDA já foi plantada com FOCO.md no setup acima (linhas 35-36)
-# Segunda medição de raiz vazia (depois de RAIZ_GORDA já existir)
+# Medição com RAIZ_GORDA para comprovar que ela é detectada e muda o resultado
+SAIDA_GORDA="$(RFM_ROOT="$RAIZ_GORDA" node "$SRC/scripts/orcamento.cjs" 2>&1)"; CODIGO_GORDA=$?
+TOTAL_GORDA="$(echo "$SAIDA_GORDA" | sed -n 's/^Total: \([0-9]\+\) B$/\1/p')"
+# Segunda medição de raiz vazia (confirma que continua igual mesmo com RAIZ_GORDA no disco)
 SAIDA_VAZIA_2="$(RFM_ROOT="$RAIZ_VAZIA" node "$SRC/scripts/orcamento.cjs" 2>&1)"; CODIGO_VAZIA_2=$?
 TOTAL_VAZIA_2="$(echo "$SAIDA_VAZIA_2" | sed -n 's/^Total: \([0-9]\+\) B$/\1/p')"
 igual "primeira medição neutra sai 0" "$CODIGO_VAZIA_1" "0"
+if [ "$CODIGO_GORDA" != "0" ]; then ok=$((ok+1)); echo "  ok   raiz gorda é detectada (exit diferente de 0)"; else falhou=$((falhou+1)); echo "  FALHA raiz gorda é detectada (exit diferente de 0)"; fi
+if [ "$TOTAL_GORDA" -gt "$TOTAL_VAZIA_1" ]; then ok=$((ok+1)); echo "  ok   raiz gorda tem total maior"; else falhou=$((falhou+1)); echo "  FALHA raiz gorda tem total maior"; fi
 igual "segunda medição neutra ainda sai 0 (mesmo com RAIZ_GORDA plantada)" "$CODIGO_VAZIA_2" "0"
-igual "total nao muda (neutralizacao provada, independente de raiz alternativa)" "$TOTAL_VAZIA_2" "$TOTAL_VAZIA_1"
+igual "total neutro nao muda (neutralizacao provada, independente de raiz alternativa)" "$TOTAL_VAZIA_2" "$TOTAL_VAZIA_1"
 
 # ------------------------------------------------- 1c. valores congelados (D6)
 echo; echo "1c. valores congelados (D6) — constantes no teto nao mudam"
