@@ -32,8 +32,9 @@ set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SBP="$(mktemp -d)"
 SBP2="$(mktemp -d)"
-RAIZ_VAZIA="$(mktemp -d)"
 RAIZ_GORDA="$(mktemp -d)"
+node -e "require('fs').writeFileSync(process.argv[1]+'/FOCO.md','# Foco\n\n'+'x'.repeat(2500))" "$RAIZ_GORDA"
+RAIZ_VAZIA="$(mktemp -d)"
 MUT="$SRC/scripts/.orcamento-mutante-teste.cjs"
 trap 'rm -rf "$SBP" "$SBP2" "$RAIZ_VAZIA" "$RAIZ_GORDA" "$MUT"' EXIT
 echo "(caixa de areia: $SBP)"
@@ -65,9 +66,8 @@ echo; echo "1b. invariancia — medição neutra nao muda mesmo com raiz pesada 
 # Primeira medição de raiz vazia (baseline)
 SAIDA_VAZIA_1="$(RFM_ROOT="$RAIZ_VAZIA" node "$SRC/scripts/orcamento.cjs" 2>&1)"; CODIGO_VAZIA_1=$?
 TOTAL_VAZIA_1="$(echo "$SAIDA_VAZIA_1" | sed -n 's/^Total: \([0-9]\+\) B$/\1/p')"
-# Plantação de RAIZ_GORDA com FOCO.md pesado
-node -e "require('fs').writeFileSync(process.argv[1]+'/FOCO.md','# Foco\n\n'+'x'.repeat(2500))" "$RAIZ_GORDA"
-# Segunda medição de raiz vazia (depois de plantar GORDA)
+# RAIZ_GORDA já foi plantada com FOCO.md no setup acima (linhas 35-36)
+# Segunda medição de raiz vazia (depois de RAIZ_GORDA já existir)
 SAIDA_VAZIA_2="$(RFM_ROOT="$RAIZ_VAZIA" node "$SRC/scripts/orcamento.cjs" 2>&1)"; CODIGO_VAZIA_2=$?
 TOTAL_VAZIA_2="$(echo "$SAIDA_VAZIA_2" | sed -n 's/^Total: \([0-9]\+\) B$/\1/p')"
 igual "primeira medição neutra sai 0" "$CODIGO_VAZIA_1" "0"
@@ -88,28 +88,23 @@ else
   falhou=$((falhou+1)); echo "  FALHA D6: constantes mudaram. tetoFoco real e 1.841 B contra 2.600 nominais (nucleos comeram); NUCLEOS=$NUCLEOS_CHECK, ORCAMENTO=$ORCAMENTO_CHECK, FOCO_MAX=$FOCO_MAX_CHECK, FOCO_MIN=$FOCO_MIN_CHECK, TETO_AGR=$TETO_AGREGADO_CHECK"
 fi
 
-# ------------------------------------------------- 1d. banda de aviso — limiar nao dispara aviso em raiz neutra
+# ------------------------------------------------- 1d. banda de aviso — avisos nao disparam exit 1
 echo; echo "1d. banda de aviso — avisos nao disparam exit 1"
 # Com raiz neutra, total esta ok (exit 0). Agora testa o comportamento de aviso
 # configurando um teto que faça a medição cair na banda de aviso (5% por padrão).
-# A medição neutra é ~13.096 B. Queremos um teto onde 13.096 fica entre (teto - limiar) e teto.
-# Se teto = 13.500, limiar = 675, então folga = 404 B, que é < limiar, logo 'aviso'.
-# Mas o importante é que aviso sai com exit 0.
+# A medição neutra é ~13.126 B. Queremos um teto onde 13.126 fica entre (teto - limiar) e teto.
+# Se teto = 13.500, limiar = 675, então folga = 374 B, que é < limiar, logo 'aviso'.
+# Aviso tem de aparecer em stderr E exit tem de ser 0 (aviso nao vira erro).
 SAIDA_AVISO="$(RFM_ROOT="$RAIZ_VAZIA" node "$SRC/scripts/orcamento.cjs" --teto 13500 2>&1)"; CODIGO_AVISO=$?
-if grep -qF "Aviso de folga em agregado" "$SAIDA_AVISO"; then
-  igual "aviso de folga mensagem detectada, mas exit é 0" "$CODIGO_AVISO" "0"
-  ok=$((ok+1)); echo "  ok   perna vermelha (estouro) continua exit 1, aviso nao muda exit"
-else
-  # Pode ser que nao tenha aviso (depende dos valores reais), mas o exit deve ser 0
-  igual "sem aviso ou com aviso, exit continua 0 dentro da banda" "$CODIGO_AVISO" "0"
-fi
+tem "aviso de folga em agregado aparece na mensagem" "$SAIDA_AVISO" "Aviso de folga em agregado"
+igual "mas exit é 0, aviso nao vira erro" "$CODIGO_AVISO" "0"
 
 # ------------------------------------------------- 2. caminho vermelho
 echo; echo "2. caminho vermelho — --teto 1000"
 SAIDA2="$(node "$SRC/scripts/orcamento.cjs" --teto 1000 2>&1)"; CODIGO2=$?
 igual "sai 1" "$CODIGO2" "1"
 tem "acusa o estouro do teto agregado" "$SAIDA2" "Estouro de agregado"
-tem "estouro cita o teto pedido (1000 B)" "$SAIDA2" "de 1000 bytes"
+tem "estouro cita o teto pedido (1000 B)" "$SAIDA2" "> 1000 B"
 
 # ------------------------------------------------- 3. regressao: fonte zerada em CRLF
 echo; echo "3. regressao — frontmatter CRLF nao pode medir 0 B"
