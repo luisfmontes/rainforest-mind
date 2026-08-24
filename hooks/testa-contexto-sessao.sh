@@ -23,7 +23,6 @@ LIB_FOLGA="$SRC/hooks/lib/folga.cjs"
 
 RAIZ_POSIX="$(mktemp -d)"
 RAIZ="$(cygpath -m "$RAIZ_POSIX" 2>/dev/null || printf '%s' "$RAIZ_POSIX")"
-trap 'rm -rf "$RAIZ_POSIX"' EXIT
 echo "(caixa de areia: $RAIZ)"
 
 # Raiz gorda: sandbox com um FOCO.md de ~2.500 B para testes de mutacao
@@ -35,7 +34,7 @@ RAIZ_GORDA="$(cygpath -m "$RAIZ_GORDA_POSIX" 2>/dev/null || printf '%s' "$RAIZ_G
 # Raiz neutra: sandbox vazia para testes que nao devem variar entre maquinas.
 RAIZ_NEUTRA="$(mktemp -d)"
 
-trap 'rm -rf "$RAIZ_POSIX" "$RAIZ_GORDA_POSIX"' EXIT
+trap 'rm -rf "$RAIZ_POSIX" "$RAIZ_GORDA_POSIX" "$RAIZ_NEUTRA"' EXIT
 
 # O IRMAO VAI JUNTO. Toda sabotagem deste arquivo faz `cp "$LIB" "$RAIZ_POSIX/..."`
 # e roda a COPIA — e desde 2026-08-21 a lib faz `require('./raiz.cjs')`, que resolve
@@ -1919,12 +1918,17 @@ fi
 echo
 echo "19.6 MUTACAO — desligar a invariante do item 19.3 tem que voltar o pointer-only"
 cp "$LIB" "$RAIZ_POSIX/lib-mut-invariante.cjs"
-sed -i 's/if (focoSoTemPonteiro(foco)) foco = avisoFocoNaoCoube(tetoFoco);/if (false \&\& focoSoTemPonteiro(foco)) foco = avisoFocoNaoCoube(tetoFoco);/' "$RAIZ_POSIX/lib-mut-invariante.cjs"
-S_MUT_INV="$(montar "$SKILL_GRANDE" "$FOCO_TITULO_GIGANTE" "$RAIZ_POSIX/lib-mut-invariante.cjs")"
-if echo "$S_MUT_INV" | grep -qF "O foco não coube nesta injeção"; then
-  falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — a invariante nao e o que substitui o bloco pointer-only (saida: $S_MUT_INV)"
+sed -i "s/if (focoSoTemPonteiro(foco)) foco = avisoFocoNaoCoube(tetoFoco, 'ponteiro');/if (false \&\& focoSoTemPonteiro(foco)) foco = avisoFocoNaoCoube(tetoFoco, 'ponteiro');/" "$RAIZ_POSIX/lib-mut-invariante.cjs"
+# Guarda: verifica se a mutacao realmente aplicou
+if diff "$LIB" "$RAIZ_POSIX/lib-mut-invariante.cjs" > /dev/null; then
+  falhou=$((falhou+1)); echo "  FALHA o sed nao encontrou a linha a mutar — mutacao nao aplicou nada, teste invalhdo"
 else
-  ok=$((ok+1)); echo "  ok    mutacao expos a invariante (sem ela o bloco pointer-only volta a sair calado)"
+  S_MUT_INV="$(montar "$SKILL_GRANDE" "$FOCO_TITULO_GIGANTE" "$RAIZ_POSIX/lib-mut-invariante.cjs")"
+  if echo "$S_MUT_INV" | grep -qF "O foco saiu com só ponteiros"; then
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — a invariante nao e o que substitui o bloco pointer-only (saida: $S_MUT_INV)"
+  else
+    ok=$((ok+1)); echo "  ok    mutacao expos a invariante (sem ela o bloco pointer-only volta a sair calado)"
+  fi
 fi
 
 echo
@@ -1940,38 +1944,53 @@ echo "17.1 MUTACOES — as sabotagens do briefing, cada uma tem que quebrar a as
 echo "  -- SABOTAGEM 1: dentroDoExpediente devolve false em vez de null quando falta expediente"
 cp "$LIB" "$RAIZ_POSIX/lib-mut-expediente.cjs"
 sed -i 's/if (!config || !config.expediente) return null;/if (!config || !config.expediente) return false;/' "$RAIZ_POSIX/lib-mut-expediente.cjs"
-S_MUT1="$(expediente '2026,8,10,10,0' '{}' "$RAIZ_POSIX/lib-mut-expediente.cjs")"
-echo "  (saida do mutante: $S_MUT1 — a assercao real espera 'null')"
-( checa "dentroDoExpediente: sem expediente no config devolve null (nao false)" tem "null" "$S_MUT1" )
-if [ "$S_MUT1" != "null" ]; then
-  ok=$((ok+1)); echo "  ok    mutacao expos o colapso null->false (D6 inteiro depende disso)"
+# Guarda: verifica se a mutacao realmente aplicou
+if diff "$LIB" "$RAIZ_POSIX/lib-mut-expediente.cjs" > /dev/null; then
+  falhou=$((falhou+1)); echo "  FALHA o sed nao encontrou a linha a mutar — mutacao nao aplicou nada, teste invalido"
 else
-  falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — null->false nao e o que a assercao mede"
+  S_MUT1="$(expediente '2026,8,10,10,0' '{}' "$RAIZ_POSIX/lib-mut-expediente.cjs")"
+  echo "  (saida do mutante: $S_MUT1 — a assercao real espera 'null')"
+  ( checa "dentroDoExpediente: sem expediente no config devolve null (nao false)" tem "null" "$S_MUT1" )
+  if [ "$S_MUT1" != "null" ]; then
+    ok=$((ok+1)); echo "  ok    mutacao expos o colapso null->false (D6 inteiro depende disso)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — null->false nao e o que a assercao mede"
+  fi
 fi
 
 echo "  -- SABOTAGEM 2: focoAtivoEmOutraJanela compara caminho com includes (substring) em vez de igualdade"
 cp "$LIB" "$RAIZ_POSIX/lib-mut-includes.cjs"
 sed -i 's/cwdNormalizado === pasta/cwdNormalizado.includes(pasta)/' "$RAIZ_POSIX/lib-mut-includes.cjs"
-S_MUT2="$(outra_janela "[{\"cwd\":\"C:/abc\",\"prompt_ts\":$((AGORA_FIXO-1000))}]" '["C:/a"]' 15 "$AGORA_FIXO" "$RAIZ_POSIX/lib-mut-includes.cjs")"
-echo "  (saida do mutante: $S_MUT2 — a assercao real espera 'false')"
-( checa "focoAtivoEmOutraJanela: C:/abc nao casa C:/a por prefixo" tem "false" "$S_MUT2" )
-if [ "$S_MUT2" = "true" ]; then
-  ok=$((ok+1)); echo "  ok    mutacao expos o casamento por prefixo (C:/abc passou a isentar contra C:/a)"
+# Guarda: verifica se a mutacao realmente aplicou
+if diff "$LIB" "$RAIZ_POSIX/lib-mut-includes.cjs" > /dev/null; then
+  falhou=$((falhou+1)); echo "  FALHA o sed nao encontrou a linha a mutar — mutacao nao aplicou nada, teste invalido"
 else
-  falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — includes() nao e o que a assercao mede"
+  S_MUT2="$(outra_janela "[{\"cwd\":\"C:/abc\",\"prompt_ts\":$((AGORA_FIXO-1000))}]" '["C:/a"]' 15 "$AGORA_FIXO" "$RAIZ_POSIX/lib-mut-includes.cjs")"
+  echo "  (saida do mutante: $S_MUT2 — a assercao real espera 'false')"
+  ( checa "focoAtivoEmOutraJanela: C:/abc nao casa C:/a por prefixo" tem "false" "$S_MUT2" )
+  if [ "$S_MUT2" = "true" ]; then
+    ok=$((ok+1)); echo "  ok    mutacao expos o casamento por prefixo (C:/abc passou a isentar contra C:/a)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — includes() nao e o que a assercao mede"
+  fi
 fi
 
 echo "  -- SABOTAGEM 3: focoAtivoEmOutraJanela usa stop_ts em vez de prompt_ts como sinal humano"
 cp "$LIB" "$RAIZ_POSIX/lib-mut-stopts.cjs"
 sed -i 's/const { cwd, prompt_ts } = sessao;/const { cwd, stop_ts: prompt_ts } = sessao;/' "$RAIZ_POSIX/lib-mut-stopts.cjs"
-FIX_STOP="[{\"cwd\":\"C:/a\",\"prompt_ts\":$((AGORA_FIXO - 999999999)),\"stop_ts\":$((AGORA_FIXO-1000))}]"
-S_MUT3="$(outra_janela "$FIX_STOP" '["C:/a"]' 15 "$AGORA_FIXO" "$RAIZ_POSIX/lib-mut-stopts.cjs")"
-echo "  (saida do mutante: $S_MUT3 — a assercao real espera 'false')"
-( checa "focoAtivoEmOutraJanela: prompt_ts frio e o que conta, nao stop_ts" tem "false" "$S_MUT3" )
-if [ "$S_MUT3" = "true" ]; then
-  ok=$((ok+1)); echo "  ok    mutacao expos a troca prompt_ts->stop_ts (sinal errado passou a isentar)"
+# Guarda: verifica se a mutacao realmente aplicou
+if diff "$LIB" "$RAIZ_POSIX/lib-mut-stopts.cjs" > /dev/null; then
+  falhou=$((falhou+1)); echo "  FALHA o sed nao encontrou a linha a mutar — mutacao nao aplicou nada, teste invalido"
 else
-  falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — a troca de campo nao e o que a assercao mede"
+  FIX_STOP="[{\"cwd\":\"C:/a\",\"prompt_ts\":$((AGORA_FIXO - 999999999)),\"stop_ts\":$((AGORA_FIXO-1000))}]"
+  S_MUT3="$(outra_janela "$FIX_STOP" '["C:/a"]' 15 "$AGORA_FIXO" "$RAIZ_POSIX/lib-mut-stopts.cjs")"
+  echo "  (saida do mutante: $S_MUT3 — a assercao real espera 'false')"
+  ( checa "focoAtivoEmOutraJanela: prompt_ts frio e o que conta, nao stop_ts" tem "false" "$S_MUT3" )
+  if [ "$S_MUT3" = "true" ]; then
+    ok=$((ok+1)); echo "  ok    mutacao expos a troca prompt_ts->stop_ts (sinal errado passou a isentar)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — a troca de campo nao e o que a assercao mede"
+  fi
 fi
 
 echo "  -- SABOTAGEM 4: anuncio de uma isenção suprime o veredito da outra (defeito do D6 original)"
@@ -2064,13 +2083,18 @@ fi
 echo "  -- SABOTAGEM 6: dentroDoExpediente so considera a 1a faixa quando ha N faixas"
 cp "$LIB" "$RAIZ_POSIX/lib-mut-faixas.cjs"
 sed -i 's/? exp\.faixas/? [exp.faixas[0]]/' "$RAIZ_POSIX/lib-mut-faixas.cjs"
-S_MUT6="$(expediente '2026,8,10,15,0' "$CONFIG_EXPEDIENTE_FAIXAS" "$RAIZ_POSIX/lib-mut-faixas.cjs")"
-echo "  (saida do mutante em seg 15:00, 2a faixa 14-18: $S_MUT6 — a assercao real espera 'true')"
-( checa "dentroDoExpediente: faixas - dentro da 2a faixa (seg 15:00)" tem "true" "$S_MUT6" )
-if [ "$S_MUT6" = "false" ]; then
-  ok=$((ok+1)); echo "  ok    mutacao expos que so a 1a faixa valia (a 2a faixa, com o almoco no meio, ficaria sempre fora)"
+# Guarda: verifica se a mutacao realmente aplicou
+if diff "$LIB" "$RAIZ_POSIX/lib-mut-faixas.cjs" > /dev/null; then
+  falhou=$((falhou+1)); echo "  FALHA o sed nao encontrou a linha a mutar — mutacao nao aplicou nada, teste invalido"
 else
-  falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — restringir a 1a faixa nao e o que a assercao mede (saida: $S_MUT6)"
+  S_MUT6="$(expediente '2026,8,10,15,0' "$CONFIG_EXPEDIENTE_FAIXAS" "$RAIZ_POSIX/lib-mut-faixas.cjs")"
+  echo "  (saida do mutante em seg 15:00, 2a faixa 14-18: $S_MUT6 — a assercao real espera 'true')"
+  ( checa "dentroDoExpediente: faixas - dentro da 2a faixa (seg 15:00)" tem "true" "$S_MUT6" )
+  if [ "$S_MUT6" = "false" ]; then
+    ok=$((ok+1)); echo "  ok    mutacao expos que so a 1a faixa valia (a 2a faixa, com o almoco no meio, ficaria sempre fora)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — restringir a 1a faixa nao e o que a assercao mede (saida: $S_MUT6)"
+  fi
 fi
 
 echo "  -- SABOTAGEM 7: devolver a seta (↳) literal ao nucleo da regra 15 (D6)"
