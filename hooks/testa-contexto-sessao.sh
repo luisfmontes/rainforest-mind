@@ -579,12 +579,21 @@ echo "7.7. FORMATO DO H1 EM references/ — titulo sintetizado, nao prosa trunca
 # O ** orfao e' o sinal mais confiavel de truncagem, entao a assercao ASTERISCOS
 # abaixo e' a principal. O bullet "titulo nao termina em ponto final" do contrato
 # original foi implementado como PONTOORFAO, restrito a essa mesma assinatura
-# (ponto-final colado a ** orfao) -- nao a qualquer titulo que termine em ponto:
-# regra-17.md termina em ponto por design ("...janela parada e' o alerta.") e e' um
-# dos dois titulos sãos hoje (o outro e' regra-04.md, "# Regra 4" sem titulo, regra
-# auto-suficiente). Um check literal de "nunca termina em ponto" acusaria os dois —
-# achado registrado no relato desta entrega, nao consertado aqui por ser fora do
-# escopo desta asserção.
+# (ponto-final colado a ** orfao) -- nao a qualquer titulo que termine em ponto.
+#
+# HISTORICO DO ACHADO: na base em que esta secao nasceu, regra-17.md terminava em
+# ponto por design ("...janela parada e' o alerta.") e era um dos dois titulos sãos
+# -- um check literal de "nunca termina em ponto" teria acusado um titulo correto.
+# Isso foi reportado como achado de premissa, e a rodada que consertou os 15 titulos
+# truncados (commit 9a62232, branch design/skills-finas-com-references) padronizou
+# regra-17.md removendo o ponto por causa dele: hoje TODOS os 17 titulos terminam
+# sem ponto. PONTOORFAO continua restrito (nao virou "nunca termina em ponto")
+# porque este worktree segue isolado da base 9a62232 (regra 11: subagente nao
+# funde a propria branch) -- apertar o check aqui acusaria regra-17.md so' porque
+# ESTE worktree ainda carrega o titulo antigo, um falso positivo local, nao um
+# defeito do artefato. Depois que as duas branches integrarem, "nunca termina em
+# ponto" vira o check mais simples e correto — mas isso e' trabalho de quem integra,
+# nao desta asserção isolada.
 cat > "$RAIZ_POSIX/checa-titulos.cjs" <<'EOF'
 const fs = require('fs');
 const path = require('path');
@@ -2159,8 +2168,15 @@ cat > "$RAIZ_POSIX/sabotar-titulo-regra17.cjs" <<'SABOTA_EOF'
 const fs = require('fs');
 const alvo = process.argv[2];
 let texto = fs.readFileSync(alvo, 'utf8');
-const achar = '# Regra 17 — Multi-janela: paralelo é intenção, janela parada é o alerta.';
-const trocar = '# Regra 17 — Multi-janela: paralelo é intenção, janela parada é o alerta.** O usuário';
+// Ancora SEM o ponto final de proposito: o titulo de regra-17.md mudou de
+// "...o alerta." para "...o alerta" quando os 15 titulos truncados foram
+// consertados (commit 9a62232, branch design/skills-finas-com-references) --
+// o proprio achado desta secao motivou a padronizacao. .includes()/.replace()
+// casam por substring, entao a ancora sem ponto bate nas DUAS formas (com ou
+// sem o ponto sobrando depois dela); so a presenca de "** " apos "alerta" e'
+// o que importa para o mutante.
+const achar = '# Regra 17 — Multi-janela: paralelo é intenção, janela parada é o alerta';
+const trocar = '# Regra 17 — Multi-janela: paralelo é intenção, janela parada é o alerta** O usuário';
 if (!texto.includes(achar)) { console.error('ANCORA NAO BATE em ' + alvo); process.exit(1); }
 texto = texto.replace(achar, trocar);
 fs.writeFileSync(alvo, texto);
