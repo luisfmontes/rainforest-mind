@@ -26,14 +26,15 @@ RAIZ="$(cygpath -m "$RAIZ_POSIX" 2>/dev/null || printf '%s' "$RAIZ_POSIX")"
 trap 'rm -rf "$RAIZ_POSIX"' EXIT
 echo "(caixa de areia: $RAIZ)"
 
-# Raiz neutra: sandbox vazia para testes que nao devem variar entre maquinas.
-RAIZ_NEUTRA="$(mktemp -d)"
-
 # Raiz gorda: sandbox com um FOCO.md de ~2.500 B para testes de mutacao
 # (RAIZ_NEUTRA -> RAIZ_GORDA revela defeitos por medida, nao por erro de shell).
 RAIZ_GORDA_POSIX="$(mktemp -d)"
-node -e "require('fs').writeFileSync(process.argv[1]+'/FOCO.md','# Foco\n\n'+'x'.repeat(2500))" "$RAIZ_GORDA_POSIX"
+node -e "const fs = require('fs'); const sess = Array.from({length:500}, (_, i) => ({session_id:'gorda'+i, cwd:'C:/gorda/projetos/'+i, prompt_ts:$(date +%s), stop_ts:$(date +%s)})); const cfg = {WHATSAPP_API_BASE_URL:'http://127.0.0.1:59421', expediente: {seg: ['09:00', '18:00'], ter: ['09:00', '18:00'], qua: ['09:00', '18:00'], qui: ['09:00', '18:00'], sex: ['09:00', '18:00']}, FOCO_MAX_BYTES: 1000}; fs.writeFileSync(process.argv[1]+'/FOCO.md','# Foco\n## Ativo\n\n'+'Conteudo repetido para atingir tamanho de teste.\n'.repeat(100)); fs.writeFileSync(process.argv[1]+'/sessoes.json',JSON.stringify(sess)); fs.writeFileSync(process.argv[1]+'/config.json',JSON.stringify(cfg))" "$RAIZ_GORDA_POSIX"
 RAIZ_GORDA="$(cygpath -m "$RAIZ_GORDA_POSIX" 2>/dev/null || printf '%s' "$RAIZ_GORDA_POSIX")"
+
+# Raiz neutra: sandbox vazia para testes que nao devem variar entre maquinas.
+RAIZ_NEUTRA="$(mktemp -d)"
+
 trap 'rm -rf "$RAIZ_POSIX" "$RAIZ_GORDA_POSIX"' EXIT
 
 # O IRMAO VAI JUNTO. Toda sabotagem deste arquivo faz `cp "$LIB" "$RAIZ_POSIX/..."`
