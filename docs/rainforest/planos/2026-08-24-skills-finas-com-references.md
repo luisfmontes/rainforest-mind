@@ -100,7 +100,8 @@ mutacao:
   para: uma varredura recursiva de markdown dentro de `skills/<dir>/`, que passaria a somar os arquivos de `references/`
   bateria: `bash scripts/testa-orcamento.sh`
   fixture: a asserção que compara o total agregado com e sem a pasta `references/` presente, exigindo que os dois sejam iguais
-pronto quando: com os 17 arquivos reais em `references/`, o total agregado medido pelo `orcamento.cjs` é idêntico ao total medido com a pasta ausente, e continua abaixo do teto de 14.000 B — provado por `bash scripts/testa-orcamento.sh` saindo 0 com a asserção de igualdade verde
+pronto quando: com os 17 arquivos reais em `references/`, o total agregado medido pelo `orcamento.cjs` é idêntico ao total medido com a pasta ausente — provado por `bash scripts/testa-orcamento.sh` saindo 0 **com a raiz de dados neutralizada** (`RFM_ROOT` apontando para pasta vazia, que é a condição do runner de CI), e com a asserção de igualdade nomeada na saída
+corrigido em 2026-08-24, depois de a revisão independente reprovar por este critério: a redação original também exigia "continua abaixo do teto de 14.000 B", medido com a raiz de dados **do desenvolvedor**. Isso é inalcançável aqui e não por causa desta entrega — o agregado já estava em 14.220 B na base, estouro de +220 B que vem do `FOCO.md` e do radar de sessões da máquina, não de conteúdo versionado (medido: 13.294 B com a raiz neutra). É a issue #81, e ela é dona desse número. O critério agora mede o **repositório** em vez da mesa. O que esta entrega devia a esse orçamento — os 86 B que a tarefa 7 acrescentou ao `description` — foi devolvido na rodada de conserto, para que a entrega seja neutra sobre um teto que ela não quebrou.
 
 ### 7. Acertar o `description` da skill e o ponteiro do `ponte.cjs` [tipo: docs]
 atende: D3, D4

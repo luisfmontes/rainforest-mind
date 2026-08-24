@@ -66,7 +66,17 @@
     "em": "2026-08-24"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "7e0e7e8063cf9473e26d7ad1beccb20e4622a710",
+      "caminhos_sujos": []
+    },
+    "achados": 2,
+    "lista": [
+      "1: scripts/testa-orcamento.sh sai 1 no HEAD revisado — o CONTRIBUTING exige todas as baterias verdes, e o pronto-quando da tarefa 6 pede exit 0. A tarefa 7 acrescentou 86 B ao description e piorou um teto que ja estava estourado em 220 B (issue #81)",
+      "2: 15 dos 17 references/regra-NN.md tem o H1 corrompido — o titulo foi sintetizado a partir do nucleo e ficou truncado no meio, deixando ** solto emendado no comeco da prosa. Só a regra 17 (corrigida a mao) e a 4 (caso especial) estao certas"
+    ],
+    "em": "2026-08-24"
   },
   "verificar": {
     "status": "pendente"
