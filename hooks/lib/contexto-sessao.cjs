@@ -977,7 +977,7 @@ function travarOrcamento(payload, orcamento = TETOS.ORCAMENTO_BYTES) {
 function montarContexto(o) {
   const regras = blocoRegras(extrairNucleo(filtrarRegras(o.skillText)), o.caminhoSkill || '(caminho não informado)');
   const caminho = o.caminhoSkill || `${o.root || ''}\\skills\\rainforest-mind\\SKILL.md`;
-  const pastaReferences = path.join(path.dirname(caminho), 'references');
+  const pastaReferences = path.join(path.dirname(caminho), 'references').replace(/\\/g, '/');
 
   // O imóvel mais caro do payload é o começo: é o único pedaço que sobrevive a um
   // corte. Ele carrega a CONVOCAÇÃO, não a identidade — "quem eu sou" não faz nada
