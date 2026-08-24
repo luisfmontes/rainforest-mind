@@ -4,22 +4,35 @@ Design: docs/rainforest/design/2026-08-24-skills-finas-com-references.md
 
 ## O que não pode quebrar
 
+> **Referência aqui é por símbolo, não por linha.** A redação original desta seção citava
+> `arquivo:linha`, e a terceira revisão independente achou **três** ponteiros já mortos —
+> as próprias tarefas 4 e 5 inseriram 402 linhas em `testa-contexto-sessao.sh` e empurraram
+> tudo para baixo. Número de linha em documento apodrece por construção; nome de símbolo,
+> não. Corrigido em 2026-08-24 tirando os números, não atualizando-os.
+
 - **Os núcleos injetados não mudam um byte.** Medição de referência, com o parser real:
   `nucleos bytes = 5593`, `regras contadas = 17`. A folga sobre `NUCLEOS_MAX_BYTES` é de
   7 B — qualquer texto que escorregue para antes de um `<!-- detalhe -->` derruba a suíte.
+  (A tarefa 2 baixou o núcleo para **5.589 B** ao tirar o `↳` literal da regra 15, e a
+  folga subiu para 11 B. É queda esperada e autorizada pela D6, não regressão.)
 - **O literal `## As regras` continua no `SKILL.md`.** Verificado por mutação: trocá-lo
   zera o payload de núcleo e a sessão sobe com "FALHA AO CARREGAR AS REGRAS".
-- **O formato de início de regra continua** para as 17 — é o lookahead de `INICIO_REGRA`
-  (`hooks/lib/contexto-sessao.cjs:139`) e é contado em `hooks/testa-contexto-sessao.sh:372`
-  e `:1036`.
-- **A linha `Última revisão:` continua no `SKILL.md`.** Lida em
-  `hooks/foco-session-start.cjs:167` num `if` sem `else` — sair dali desliga o aviso
-  bimestral em silêncio.
+- **O formato de início de regra continua** para as 17 — é o lookahead da constante
+  `INICIO_REGRA`, em `hooks/lib/contexto-sessao.cjs`, e a contagem é a asserção
+  `as 17 regras cabem no orcamento`, em `hooks/testa-contexto-sessao.sh`.
+- **A linha `Última revisão:` continua no `SKILL.md`.** Lida por `hooks/foco-session-start.cjs`
+  num `if` sem `else` — sair dali desliga o aviso bimestral em silêncio.
 - **A seção `## Comando /foco` continua no `SKILL.md`.** Não é estrutural para o tamanho
-  (mutá-la devolve os mesmos 5.593 B), mas `hooks/testa-contexto-sessao.sh:412` usa o
-  literal `## Comando` como ponto de injeção do teste de mutação da catraca.
-- **Todo arquivo novo nasce em LF, UTF-8 sem BOM.** `scripts/conferir-encoding.cjs:81`
-  varre `skills` e `hooks` por `git ls-files --eol`.
+  (mutá-la devolve o mesmo número de bytes de núcleo), mas o teste de mutação da catraca de
+  núcleos, em `hooks/testa-contexto-sessao.sh`, usa o literal `## Comando` como ponto de
+  injeção da regra gorda.
+- **Todo arquivo novo nasce em LF, UTF-8 sem BOM.** Dois mecanismos, e eles não são
+  duplicata: o **preflight** de `.github/workflows/baterias.yml` roda
+  `git ls-files --eol skills hooks` — só essas duas pastas —, e `scripts/conferir-encoding.cjs`
+  varre a lista **inteira** de arquivos rastreados, cobrindo o que o preflight deixa de
+  fora. A redação original desta linha atribuía ao script o escopo estreito do preflight;
+  o erro veio de eu ler o relato de um agente, que citava a linha do comentário onde o
+  preflight é **descrito**, e tomá-lo como o comportamento do script.
 
 ## Tarefas
 
@@ -111,3 +124,16 @@ paralela: nao
 mutacao: n/a
   motivo: é texto de interface, não comportamento — não há ramo a inverter. A falsificação dela é de coerência e está no critério de pronto: o número do texto tem de casar com os bytes medidos no arquivo real, e a prescrição do texto tem de ser a que a tarefa 3 implementou, não uma frase que se satisfaça sendo digitada.
 pronto quando: o custo citado no `description` do `SKILL.md` casa, dentro de 10%, com o tamanho real do arquivo depois da quebra, e o texto que o `ponte.cjs` grava manda ler o arquivo da regra em vez de `skills/rainforest-mind/SKILL.md` — provado por `node scripts/medir-skill.cjs --conferir-description` devolvendo `ok`, e por `node scripts/ponte.cjs` gerando um `AGENTS.md` cujo bloco de contrato cita `references/` e não cita mais o `SKILL.md` como destino de leitura
+
+### 8. As outras skills param de mandar carregar a skill [tipo: docs]
+atende: D4
+arquivos: `skills/executar/SKILL.md`, `skills/verificar/SKILL.md`
+depende de: 3
+paralela: nao
+mutacao: n/a
+  motivo: texto de instrução em skill, sem ramo a inverter. A falsificação é de coerência e está no critério de pronto: a varredura do repositório inteiro é mecânica e não se satisfaz digitando trecho nenhum.
+pronto quando: uma varredura de todos os arquivos rastreados não acha nenhum texto **afirmando como mecanismo atual** que se carrega `Skill(rainforest-mind)` para consultar a elaboração de uma regra, ou que a elaboração mora no `SKILL.md` — provado por `git grep -n -e 'carregue .Skill(rainforest-mind)' -e 'carrega sob demanda' -e 'elaboração continua no SKILL' -- ':!docs/rainforest/' | grep -vE ':[0-9]+:> '` devolvendo saída vazia
+
+Duas exclusões, e as duas são de categoria, não de conveniência. **`docs/rainforest/`** guarda os artefatos do fluxo — design, plano, estado —, que registram a decisão no instante em que foi tomada e descrevem o estado anterior de propósito; tratá-los como spec viva confunde histórico com contrato. E **linha de blockquote** (`> `) é incidente datado citado literalmente: `skills/rainforest-mind/references/regra-16.md` conta o estouro de 2026-08-10 reproduzindo o que foi explicado naquele dia, e reescrever a citação para o mecanismo de hoje falsificaria o registro. O critério mede o que o repositório **afirma**, não o que ele **relata ter afirmado**.
+
+**Tarefa acrescentada em 2026-08-24**, na terceira rodada de conserto, porque a varredura do achado principal encontrou a mesma frase obsoleta em duas skills que **nenhuma tarefa deste plano declarava tocar** — `skills/executar/SKILL.md` e `skills/verificar/SKILL.md`. Isso é creep pela definição da skill `revisar`: arquivo no diff que não casa com nenhum `arquivos:`. A saída registrada para creep é emendar o plano com a tarefa que faltava, e não justificar em prosa que "era necessário" — é a emenda que deixa o rastro de que o escopo cresceu conscientemente. As duas skills mandavam carregar a skill inteira para ler a regra 12, exatamente o que a D4 eliminou; deixá-las como estavam faria o plugin distribuir instrução que contradiz o próprio mecanismo.
