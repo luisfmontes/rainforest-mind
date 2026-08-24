@@ -19,6 +19,7 @@
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LIB="$SRC/hooks/lib/contexto-sessao.cjs"
+LIB_FOLGA="$SRC/hooks/lib/folga.cjs"
 
 RAIZ_POSIX="$(mktemp -d)"
 RAIZ="$(cygpath -m "$RAIZ_POSIX" 2>/dev/null || printf '%s' "$RAIZ_POSIX")"
@@ -405,7 +406,16 @@ BYTES_N="$(echo "$LEITURA_N" | cut -d' ' -f1)"
 TETO_N="$(echo "$LEITURA_N" | cut -d' ' -f2)"
 
 # Avaliar folga com a biblioteca, decisao D4/D5.
-AVALIACAO="$(node "$SRC/hooks/lib/avalia-folga.cjs" "$BYTES_N" "$TETO_N" "nucleos" "tirar do FOCO" "subir o agregado" "adicionar regra noutro nucleo")"
+cat > "$RAIZ_POSIX/avalia-folga.cjs" <<'EOF'
+const folga = require(process.env.FOLGA_LIB);
+const valor = parseInt(process.argv[2], 10);
+const teto = parseInt(process.argv[3], 10);
+const nome = process.argv[4] || 'teto';
+const alternativas = process.argv.slice(5);
+const resultado = folga.avaliarFolga(valor, teto, { nome, alternativas });
+console.log(`${resultado.estado}|${resultado.folga}|${resultado.limiar}|${resultado.mensagem}`);
+EOF
+AVALIACAO="$(FOLGA_LIB="$LIB_FOLGA" node "$RAIZ_POSIX/avalia-folga.cjs" "$BYTES_N" "$TETO_N" "nucleos" "tirar do FOCO" "subir o agregado" "adicionar regra noutro nucleo")"
 ESTADO_N="$(echo "$AVALIACAO" | cut -d'|' -f1)"
 FOLGA_N="$(echo "$AVALIACAO" | cut -d'|' -f2)"
 LIMIAR_N="$(echo "$AVALIACAO" | cut -d'|' -f3)"
