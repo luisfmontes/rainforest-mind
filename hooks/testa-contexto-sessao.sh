@@ -566,6 +566,103 @@ checa "D5: SKILL.md real contem o literal '## Comando /foco'"    tem "## Comando
 checa "D5: SKILL.md real contem o literal 'Ultima revisao:'"     tem "Última revisão:"    "$SKILL_REAL_TXT"
 
 echo
+echo "7.7. FORMATO DO H1 EM references/ — titulo sintetizado, nao prosa truncada com ** orfao"
+# Cada regra-NN.md recebeu um H1 sintetizado a partir da regra que ele elabora. O
+# defeito real (achado por revisor humano-equivalente, nao pego pelas 233 assercoes
+# que ja existiam nesta bateria): em 15 dos 17, o H1 saiu truncado no meio da prosa
+# do corpo, com um ** orfao emendado logo apos o primeiro ponto final --
+#   # Regra 1 — Responder tudo, na ordem — e no FIM do turno.** N pedidos → N respostas
+# em vez de um titulo curto de verdade. E' exatamente o texto que um agente le ao
+# consultar uma regra pelo cabecalho (D4/D9) -- titulo quebrado, 17 lugares para
+# desconfiar.
+#
+# O ** orfao e' o sinal mais confiavel de truncagem, entao a assercao ASTERISCOS
+# abaixo e' a principal. O bullet "titulo nao termina em ponto final" do contrato
+# original foi implementado como PONTOORFAO, restrito a essa mesma assinatura
+# (ponto-final colado a ** orfao) -- nao a qualquer titulo que termine em ponto:
+# regra-17.md termina em ponto por design ("...janela parada e' o alerta.") e e' um
+# dos dois titulos sãos hoje (o outro e' regra-04.md, "# Regra 4" sem titulo, regra
+# auto-suficiente). Um check literal de "nunca termina em ponto" acusaria os dois —
+# achado registrado no relato desta entrega, nao consertado aqui por ser fora do
+# escopo desta asserção.
+cat > "$RAIZ_POSIX/checa-titulos.cjs" <<'EOF'
+const fs = require('fs');
+const path = require('path');
+const dir = process.env.REFERENCES_DIR;
+const arquivos = fs.readdirSync(dir).filter(f => /^regra-\d+\.md$/.test(f)).sort();
+const linhas = [];
+const acusados = new Set();
+for (const f of arquivos) {
+  const numeroArquivo = parseInt(f.match(/^regra-(\d+)\.md$/)[1], 10);
+  const conteudo = fs.readFileSync(path.join(dir, f), 'utf8');
+  const primeiraLinha = conteudo.split(/\r?\n/, 1)[0];
+  const m = primeiraLinha.match(/^# Regra (\d+)(?: — (.+))?$/);
+  if (!m) {
+    acusados.add(f);
+    linhas.push(`FORMATO ${f}: primeira linha nao casa com "# Regra <n> — <titulo>" (ou "# Regra <n>" sem titulo) — linha: ${primeiraLinha}`);
+    continue;
+  }
+  const numeroTitulo = parseInt(m[1], 10);
+  const titulo = m[2]; // undefined quando o arquivo nao tem titulo (ex.: regra-04.md)
+  if (numeroTitulo !== numeroArquivo) {
+    acusados.add(f);
+    linhas.push(`NUMERO ${f}: titulo abre com "Regra ${numeroTitulo}" mas o arquivo e' o da regra ${numeroArquivo} — linha: ${primeiraLinha}`);
+  }
+  if (titulo !== undefined) {
+    if (titulo.includes('**')) {
+      acusados.add(f);
+      linhas.push(`ASTERISCOS ${f}: titulo contem ** (cabecalho truncado, com o inicio da prosa do corpo colado) — linha: ${primeiraLinha}`);
+    }
+    if (/\.\*\*/.test(titulo)) {
+      acusados.add(f);
+      linhas.push(`PONTOORFAO ${f}: titulo tem ponto final seguido de ** orfao (assinatura da truncagem) — linha: ${primeiraLinha}`);
+    }
+  }
+}
+console.log(`TOTAL=${arquivos.length} ACUSADOS=${acusados.size} ARQUIVOS=${[...acusados].join(',')}`);
+for (const l of linhas) console.log(l);
+EOF
+SAIDA_TITULOS="$(REFERENCES_DIR="$REFERENCES_REAIS" node "$RAIZ_POSIX/checa-titulos.cjs")"
+RESUMO_TITULOS="$(echo "$SAIDA_TITULOS" | head -1)"
+echo "  (leitura: $RESUMO_TITULOS)"
+
+LINHAS_FORMATO="$(echo "$SAIDA_TITULOS" | grep '^FORMATO ' || true)"
+if [ -z "$LINHAS_FORMATO" ]; then
+  ok=$((ok+1)); echo "  ok    todo H1 de references/ casa com \"# Regra <n> — <titulo>\" ou \"# Regra <n>\" sem titulo"
+else
+  falhou=$((falhou+1)); echo "  FALHA H1 fora do formato esperado em references/:"
+  echo "$LINHAS_FORMATO" | sed 's/^/         /'
+fi
+
+LINHAS_ASTERISCOS="$(echo "$SAIDA_TITULOS" | grep '^ASTERISCOS ' || true)"
+QTD_ASTERISCOS="$(echo "$SAIDA_TITULOS" | grep -c '^ASTERISCOS ' || true)"
+if [ -z "$LINHAS_ASTERISCOS" ]; then
+  ok=$((ok+1)); echo "  ok    nenhum titulo de references/ contem ** (0 cabecalhos truncados)"
+else
+  falhou=$((falhou+1)); echo "  FALHA $QTD_ASTERISCOS titulo(s) de references/ contem ** — cabecalho truncado com prosa do corpo colada:"
+  echo "$LINHAS_ASTERISCOS" | sed 's/^/         /'
+fi
+
+LINHAS_PONTOORFAO="$(echo "$SAIDA_TITULOS" | grep '^PONTOORFAO ' || true)"
+if [ -z "$LINHAS_PONTOORFAO" ]; then
+  ok=$((ok+1)); echo "  ok    nenhum titulo de references/ termina em ponto final colado a ** orfao"
+else
+  falhou=$((falhou+1)); echo "  FALHA titulo(s) com ponto final + ** orfao (assinatura da truncagem):"
+  echo "$LINHAS_PONTOORFAO" | sed 's/^/         /'
+fi
+
+LINHAS_NUMERO="$(echo "$SAIDA_TITULOS" | grep '^NUMERO ' || true)"
+if [ -z "$LINHAS_NUMERO" ]; then
+  ok=$((ok+1)); echo "  ok    o numero do titulo bate com o numero do nome do arquivo, em todo references/"
+else
+  falhou=$((falhou+1)); echo "  FALHA numero do titulo nao bate com o do nome do arquivo:"
+  echo "$LINHAS_NUMERO" | sed 's/^/         /'
+fi
+# MUTACAO desta assercao: secao 17.1, SABOTAGEM 11 (corrompe o titulo de regra-17.md,
+# hoje um dos dois sãos, numa copia — checa-titulos.cjs e $REFERENCES_REAIS ja existem
+# aqui em diante).
+
+echo
 echo "8. NUCLEO E DETALHE — a elaboracao fica fora, e a regra cortada se anuncia"
 SKILL_NUCLEO="# Skill
 ## As regras
@@ -2051,6 +2148,43 @@ else
     falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — devolver a instrucao antiga nao apareceu no cabecalho"
   fi
 fi
+
+echo "  -- SABOTAGEM 11: corromper o titulo de regra-17.md, hoje um dos dois sãos (secao 7.7)"
+# Prova que a assercao de formato do H1 pega corrupcao NOVA, e nao so re-declara o
+# que ja sabia sobre os 15 arquivos ja quebrados. Copia $REFERENCES_REAIS inteiro
+# (nunca o original rastreado), cola um ** orfao no titulo de regra-17.md com o
+# mesmo padrao dos 15 -- ponto final seguido de ** e prosa colada -- e roda a MESMA
+# checa-titulos.cjs contra a copia mutada.
+cat > "$RAIZ_POSIX/sabotar-titulo-regra17.cjs" <<'SABOTA_EOF'
+const fs = require('fs');
+const alvo = process.argv[2];
+let texto = fs.readFileSync(alvo, 'utf8');
+const achar = '# Regra 17 — Multi-janela: paralelo é intenção, janela parada é o alerta.';
+const trocar = '# Regra 17 — Multi-janela: paralelo é intenção, janela parada é o alerta.** O usuário';
+if (!texto.includes(achar)) { console.error('ANCORA NAO BATE em ' + alvo); process.exit(1); }
+texto = texto.replace(achar, trocar);
+fs.writeFileSync(alvo, texto);
+SABOTA_EOF
+REFS_MUT_R17="$RAIZ_POSIX/references-mut-r17"
+rm -rf "$REFS_MUT_R17"
+cp -r "$REFERENCES_REAIS" "$REFS_MUT_R17"
+node "$RAIZ_POSIX/sabotar-titulo-regra17.cjs" "$REFS_MUT_R17/regra-17.md"
+EXIT_SABOTA11=$?
+if [ "$EXIT_SABOTA11" != "0" ]; then
+  falhou=$((falhou+1))
+  echo "  FALHA ANCORA NAO BATE na sabotagem 11 (exit $EXIT_SABOTA11) — mutador nao mutou nada,"
+  echo "         a copia intocada nao prova que a assercao morde titulo novo corrompido"
+else
+  SAIDA_MUT11="$(REFERENCES_DIR="$REFS_MUT_R17" node "$RAIZ_POSIX/checa-titulos.cjs")"
+  echo "  (saida do mutante: $(echo "$SAIDA_MUT11" | head -1) — a assercao real espera regra-17.md FORA da lista)"
+  echo "$SAIDA_MUT11" | grep '^ASTERISCOS regra-17\.md' | sed 's/^/  /'
+  if echo "$SAIDA_MUT11" | grep -q '^ASTERISCOS regra-17\.md:'; then
+    ok=$((ok+1)); echo "  ok    mutacao expos que a assercao pega corrupcao NOVA, mesmo num titulo hoje são (regra-17.md)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — corromper o titulo de regra-17.md nao fez a assercao acusa-lo"
+  fi
+fi
+rm -rf "$REFS_MUT_R17"
 
 echo
 echo "-----------------------------------------"
