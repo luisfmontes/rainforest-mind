@@ -82,10 +82,11 @@ depende de: 1, 2, 3
 paralela: nao
 mutacao:
   arquivo: `hooks/testa-contexto-sessao.sh`
-  de: a asserção que exige zero ocorrências de seta dupla no núcleo emitido
-  para: a mesma asserção aceitando qualquer quantidade
+  de: `const setasDuplas = (nucleo.match(/↳\s↳/g) || []).length;` — a linha que MEDE a seta dupla
+  para: `const setasDuplas = 0;` — a medição fica cega
   bateria: `bash hooks/testa-contexto-sessao.sh`
-  fixture: a fixture de seta dupla, que injeta um `↳` literal no fim de um núcleo e exige que a suíte acuse
+  fixture: a sabotagem 7, que devolve o `↳` literal ao núcleo da regra 15 numa cópia e exige que a medição acuse `setas-duplas=1`
+  corrigido em 2026-08-24, na integração: o alvo declarado originalmente era "a asserção que exige zero ocorrências, aceitando qualquer quantidade". Rodado, deu **exit 2 (bateria VERDE)** — e o motivo não era a bateria ser fraca. A sabotagem 7 guarda a **medição**, não o operador de comparação da asserção; nenhuma das 233 asserções desta suíte é guardada contra si mesma, e essa é a norma do arquivo, não um defeito desta entrega. Mirar na medição devolveu **exit 0 (vermelha)**. Falsificar tarefa de teste é cegar o que ela mede, não afrouxar o `if` que lê a medida.
 pronto quando: com o `SKILL.md` real, a suíte afirma as quatro invariantes — zero setas duplas, 5.593 B de núcleo, `## As regras` presente, e o cabeçalho citando `references/` — e mutar cada uma delas no arquivo real deixa a suíte vermelha pela asserção correspondente, nomeada na saída — provado por `bash hooks/testa-contexto-sessao.sh` saindo 0, e por cada uma das quatro mutações produzindo o nome da sua asserção na saída de falha
 
 ### 6. O gate de orçamento agregado ignora `references/` [tipo: teste]

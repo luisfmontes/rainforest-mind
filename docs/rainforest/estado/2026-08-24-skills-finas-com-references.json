@@ -22,7 +22,48 @@
     "em": "2026-08-24"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-08-24",
+    "tarefas_ok": 7,
+    "tarefas": 7,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "catraca de tamanho do SKILL.md: FALHA SKILL.md passou da catraca (11628 B > 11000 B)"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "trava D6: FALHA D6: nucleo emitido contem 1 ocorrencia(s) de seta dupla"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "trava D4: FALHA D4: cabecalho NAO manda carregar a skill inteira"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "meta-teste da propria catraca: FALHA engordar regra-12.md nao fez a catraca acusar"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "sabotagem 7: FALHA mutacao sem efeito — devolver o arrow literal nao produziu seta dupla"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "secao 4 D8: FALHA total agregado nao muda quando references/ aparece (D8)"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "tarefa de docs: texto de interface, sem ramo a inverter. A falsificacao dela e de coerencia e existe: medir-skill.cjs --conferir-description sai 1 quando o numero citado diverge mais de 10% do tamanho real, demonstrado com o numero sabotado para 50k"
+      }
+    ],
+    "em": "2026-08-24"
   },
   "revisar": {
     "status": "pendente"
