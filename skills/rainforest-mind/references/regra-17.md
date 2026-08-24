@@ -1,4 +1,4 @@
-# Regra 17 — Multi-janela: paralelo é intenção, janela parada é o alerta.** Sessão paralela
+# Regra 17 — Multi-janela: paralelo é intenção, janela parada é o alerta.
 
 O usuário
 roda várias sessões ao mesmo tempo (heartbeat em `sessoes.json`, injetado na
