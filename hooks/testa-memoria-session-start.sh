@@ -18,12 +18,15 @@ SCRIPT_MEMORIA="$SRC/scripts/memoria.cjs"
 RAIZ_POSIX="$(mktemp -d)"
 RAIZ="$(cygpath -m "$RAIZ_POSIX" 2>/dev/null || printf '%s' "$RAIZ_POSIX")"
 
+# Raiz gorda com FOCO.md de ~2500 B para teste de mutação (deve vir antes de RAIZ_NEUTRA)
+RAIZ_GORDA="$(mktemp -d)"
+{
+  printf '# Foco\n\n'
+  printf 'x%.0s' {1..2500}
+} > "$RAIZ_GORDA/FOCO.md"
+
 # Raiz neutra para medir sem dados do usuário
 RAIZ_NEUTRA="$(mktemp -d)"
-
-# Raiz gorda com FOCO.md de ~2500 B para teste de mutação
-RAIZ_GORDA="$(mktemp -d)"
-node -e "require('fs').writeFileSync(process.argv[1]+'/FOCO.md','# Foco\n\n'+'x'.repeat(2500))" "$RAIZ_GORDA"
 
 trap 'rm -rf "$RAIZ_POSIX" "$RAIZ_NEUTRA" "$RAIZ_GORDA"' EXIT
 echo "(caixa de areia: $RAIZ)"
@@ -145,12 +148,13 @@ if [ ! -f "$SRC/scripts/orcamento.cjs" ]; then
   ok=$((ok+1)); echo "  ok    (orcamento.cjs não existe ainda, skip)"
 else
   ORCAMENTO_SAIDA="$(RFM_ROOT="$RAIZ_NEUTRA" node "$SRC/scripts/orcamento.cjs" 2>&1)"
+  ORCAMENTO_EXIT=$?
   # Procura a linha "Hook (additionalContext): NNN B" e extrai o número.
   HOOK_BYTES="$(echo "$ORCAMENTO_SAIDA" | grep -oE 'Hook.*: ([0-9]+) B' | grep -oE '[0-9]+' | head -1)"
-  if [ -n "$HOOK_BYTES" ] && [ "$HOOK_BYTES" -le 8000 ]; then
+  if [ -n "$HOOK_BYTES" ] && [ "$HOOK_BYTES" -le 8000 ] && [ "$ORCAMENTO_EXIT" -eq 0 ]; then
     ok=$((ok+1)); echo "  ok    hook de foco continua <= 8000 B ($HOOK_BYTES B)"
   else
-    falhou=$((falhou+1)); echo "  FALHA hook de foco passou de 8000 B ou script não rodou"
+    falhou=$((falhou+1)); echo "  FALHA hook de foco passou de 8000 B ou script não rodou (exit=$ORCAMENTO_EXIT)"
     echo "         $ORCAMENTO_SAIDA"
   fi
 fi
