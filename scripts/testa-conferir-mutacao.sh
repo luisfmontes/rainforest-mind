@@ -116,6 +116,20 @@ else
 fi
 BAT
 
+# Bateria que roda ~2s no baseline e morre em milissegundos quando há erro de shell.
+# Usada no caso 10.
+cat > "$CAIXA/bateria-lenta-ou-falha.sh" <<'BAT'
+#!/bin/bash
+# Se o arquivo contiver ERRO-MUTACAO (adicionada pela mutacao),
+# sai quase instantaneamente com erro (simula corte de shell).
+# Senao, dorme 2 segundos (simula trabalho) e sai com sucesso.
+if grep -q 'ERRO-MUTACAO' shell-lento.cjs; then
+  exit 1
+fi
+sleep 2
+exit 0
+BAT
+
 PRISTINO="$S/fonte.pristino"
 cp "$CAIXA/fonte.cjs" "$PRISTINO"
 
@@ -252,6 +266,49 @@ exige 1 "arquivo inexistente recusa" \
   CHK --arquivo nao-existe.cjs --de 'a' --para 'b' --bateria 'bash bateria.sh'
 exige 1 "falta --bateria recusa" \
   CHK --arquivo fonte.cjs --de 'a' --para 'b'
+
+echo
+echo "== 10. suspeita de corte de shell: pós-mutação desproporcionalmente curta =="
+# Fixture que simula o defeito de 2026-08-24: baseline ~2s, pós-mutação morre em ~10ms
+cat > "$CAIXA/shell-lento.cjs" <<'FONTE'
+#!/usr/bin/env node
+const valor = process.argv[2] || '';
+console.log('ok');
+FONTE
+
+exige 5 "pós-mutação curta demais (< 10% baseline) dispara exit=5" \
+  CHK --arquivo shell-lento.cjs --de "console.log('ok');" \
+      --para "console.log('ERRO-MUTACAO'); console.log('ok');" \
+      --bateria 'bash bateria-lenta-ou-falha.sh' --timeout 5000
+tem "relata SUSPEITA DE CORTE DE SHELL" "SUSPEITA DE CORTE"
+tem "mostra as duas duracoes" "Baseline:"
+tem "diz como confirmar" "Confirme rodando"
+
+echo
+echo "== 12. baseline abaixo do piso absoluto (1000ms) — heurística não dispara =="
+# Bateria que roda rápido (~100ms) no baseline. Mesmo que pós-mutação saia em ~10ms
+# (razão 0.1 = 10%), o baseline abaixo de 1s faz a heurística NÃO disparar.
+cat > "$CAIXA/bateria-rapida.sh" <<'BAT'
+#!/bin/bash
+# Se tem marca, sai quase instantaneamente com erro; senao, sai rápido em 100ms
+if grep -q 'MARCA-RÁPIDO' fonte-rapida.cjs; then
+  exit 1
+fi
+sleep 0.1
+exit 0
+BAT
+
+cat > "$CAIXA/fonte-rapida.cjs" <<'FONTE'
+#!/usr/bin/env node
+const x = 1;
+FONTE
+
+exige 0 "baseline < 1s não dispara heurística mesmo com razão 0.1" \
+  CHK --arquivo fonte-rapida.cjs --de "const x = 1;" --para "const x = 1; // MARCA-RÁPIDO" \
+      --bateria 'bash bateria-rapida.sh' --timeout 5000
+tem "aprova normalmente" "ok: bateria VERMELHA"
+nao_tem "não reclama de corte" "SUSPEITA"
+tem "baseline e pós no log" "Baseline:"
 
 echo
 echo "-----------------------------------------"
