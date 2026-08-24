@@ -66,24 +66,32 @@
     ]
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "cf26731fb9e6b39aa34d3086acf7bd849cdcec59",
+      "head": "d5209e9b2862b817fc9a1da0c0d83f54892db7d1",
       "caminhos_sujos": []
     },
-    "achados": 4,
+    "achados": 0,
     "base": "c29377e0980a055c3ce28b8f7ffc3512dd5d033e",
-    "head": "cf26731fb9e6b39aa34d3086acf7bd849cdcec59",
+    "head": "d5209e9b2862b817fc9a1da0c0d83f54892db7d1",
     "lista": [
       "1. testa-orcamento.sh:64-75 secao 1b compara RAIZ_VAZIA consigo mesma; RAIZ_GORDA e criada e nunca usada como RFM_ROOT — a assercao que provaria a neutralizacao e vazia",
       "2. testa-contexto-sessao.sh:38 o trap substitui o da linha 26 e nao cobre RAIZ_NEUTRA (linha 36) — vaza um mktemp -d por execucao, violando o invariante do plano",
       "3. testa-contexto-sessao.sh:1922 o sed da guarda 19.6 procura avisoFocoNaoCoube(tetoFoco); e a tarefa 7 mudou a assinatura para (tetoFoco, ponteiro) — grep -c devolve 0, a mutacao nao aplica e a secao imprime ok sobre nada",
       "4. testa-conferir-mutacao.sh:153 exige() sempre confere fonte.cjs, mas os casos 10/12/13 mutam shell-lento.cjs, fonte-rapida.cjs e fonte-verde.cjs — a linha fonte restaurado e trivialmente verdadeira; o caso 8 ja mostra o padrao certo na linha 246"
     ],
-    "em": "2026-08-24"
+    "em": "2026-08-24",
+    "nota": "4 achados na primeira rodada, todos consertados e re-conferidos contra o codigo em d5209e9; creep conferido contra os globs das 7 tarefas, 11 arquivos de codigo batem um a um"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "criterio": "tarefa 4 exige a linha de aviso da catraca com 11 E 280; tarefa 5 exige que todo par arquivo:linha do corpo da #81 exista e contenha o que a tabela afirma",
+    "comando": "os 7 criterios de pronto do plano, um por um, contra o artefato real; mais o laco das 46 baterias",
+    "saida": "C1 aviso aviso ok | C2 orcamento_exit=1 e bateria_exit=0 na mesma execucao | C3 memoria 36 ok e injecao 45 ok, os dois exit 0 | C4 280 aparece 1x, reduz 0x, exit 0 | C5 10/10 pares resolvem em c29377e, issue OPEN | C6 ok 70 falhou 0 com os casos 10/12/13 | C7 saiu com so ponteiros (1546 B, removido pela priorizacao) | suite total=46 vermelhas:[] | encoding CONFERIDO",
+    "faltou": "1) a mensagem de avaliarFolga nao inclui o limiar: o objeto tem limiar=280 mas a mensagem so diz 11 de 5600 bytes, entao quem le nao sabe quao perto esta de virar aviso nem de estourar. 2) o corpo da #81 aponta para linhas que a propria correcao invalidou — ponteiro morto no mesmo dia, exatamente o defeito que a auditoria do ideias.jsonl encontrou em 5 ideias antigas",
+    "criterios_ok": "1 (aviso aviso ok), 2 (orcamento 1 / bateria 0), 3 (36 ok e 45 ok), 6 (70 ok com os casos 10/12/13), 7 (saiu com so ponteiros, 1546 B)",
+    "em": "2026-08-24",
+    "nota": "reprovou na primeira passada em C4 (limiar 280 ausente da mensagem) e C5 (ponteiro morto: a #81 citava testa-orcamento.sh:46 e :57, que a propria correcao esvaziou). Os dois consertados e re-rodados."
   },
   "fechar": {
     "status": "pendente"
