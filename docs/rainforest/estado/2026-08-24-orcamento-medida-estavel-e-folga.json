@@ -66,7 +66,21 @@
     ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "cf26731fb9e6b39aa34d3086acf7bd849cdcec59",
+      "caminhos_sujos": []
+    },
+    "achados": 4,
+    "base": "c29377e0980a055c3ce28b8f7ffc3512dd5d033e",
+    "head": "cf26731fb9e6b39aa34d3086acf7bd849cdcec59",
+    "lista": [
+      "1. testa-orcamento.sh:64-75 secao 1b compara RAIZ_VAZIA consigo mesma; RAIZ_GORDA e criada e nunca usada como RFM_ROOT — a assercao que provaria a neutralizacao e vazia",
+      "2. testa-contexto-sessao.sh:38 o trap substitui o da linha 26 e nao cobre RAIZ_NEUTRA (linha 36) — vaza um mktemp -d por execucao, violando o invariante do plano",
+      "3. testa-contexto-sessao.sh:1922 o sed da guarda 19.6 procura avisoFocoNaoCoube(tetoFoco); e a tarefa 7 mudou a assinatura para (tetoFoco, ponteiro) — grep -c devolve 0, a mutacao nao aplica e a secao imprime ok sobre nada",
+      "4. testa-conferir-mutacao.sh:153 exige() sempre confere fonte.cjs, mas os casos 10/12/13 mutam shell-lento.cjs, fonte-rapida.cjs e fonte-verde.cjs — a linha fonte restaurado e trivialmente verdadeira; o caso 8 ja mostra o padrao certo na linha 246"
+    ],
+    "em": "2026-08-24"
   },
   "verificar": {
     "status": "pendente"
