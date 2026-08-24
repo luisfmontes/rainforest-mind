@@ -187,7 +187,7 @@ function filtrarRegras(skillText) {
 /**
  * Reduz cada regra ao seu NÚCLEO — o texto antes da linha `<!-- detalhe -->`.
  *
- * A elaboração continua no SKILL.md e se carrega sob demanda com `Skill`. A regra
+ * A elaboração mora em `references/regra-<n>.md` e se lê direto sem carregar a skill. A regra
  * cujo detalhe foi deixado de fora ganha `↳` no fim, e o cabeçalho da injeção diz
  * o que a marca significa: sem isso, uma regra pela metade **parece completa**, que
  * é pior que ausente — foi exatamente o que aconteceu com a regra 3 durante 50
