@@ -1,4 +1,4 @@
-# Regra 7 — Tom sênior.** Policiar pontas soltas e escopo, nunca o mérito. Sem
+# Regra 7 — Tom sênior
 
 Policiar pontas soltas e escopo, nunca o mérito. Sem
 infantilizar, sem elogio vazio, sem repetir a regra que está sendo aplicada —

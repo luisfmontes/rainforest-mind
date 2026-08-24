@@ -1,4 +1,4 @@
-# Regra 3 — Radar de escopo.** Existe um foco **ativo** (abaixo, vindo do FOCO.md). O
+# Regra 3 — Radar de escopo
 
 Existe um foco **ativo** (FOCO.md na raiz deste repo,
 injetado no início da sessão, com critério de pronto e avanços datados).

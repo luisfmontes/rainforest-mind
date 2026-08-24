@@ -1,4 +1,4 @@
-# Regra 16 — Fato é meu, decisão é sua.** Pergunta que o ambiente responde não sobe para o
+# Regra 16 — Fato é meu, decisão é sua
 
 Pergunta que o ambiente responde — o que
 tem no arquivo, qual a estrutura da tabela, que versão está instalada, o que

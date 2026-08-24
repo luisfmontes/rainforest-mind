@@ -1,4 +1,4 @@
-# Regra 11 — Worktree de subagente: isolado E com base conferida.** Subagente que edita
+# Regra 11 — Worktree de subagente: isolado E com base conferida
 
 Subagente que
 edita arquivos roda **sempre** com `isolation: "worktree"` — nunca direto na

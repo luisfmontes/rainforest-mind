@@ -1,4 +1,4 @@
-# Regra 2 — Escolha + adição = as duas coisas, confirmadas.** Escolha dele + emenda dele
+# Regra 2 — Escolha + adição = as duas coisas, confirmadas
 
 Quando o usuário escolhe
 uma opção E emenda algo próprio, a resposta abre confirmando os dois:

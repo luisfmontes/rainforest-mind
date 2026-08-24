@@ -1,6 +1,6 @@
 ---
 name: rainforest-mind
-description: Carregue quando precisar da ELABORAÇÃO de uma regra marcada com ↳ na abertura — critério fino, comando exato, ou o incidente datado que a originou. O núcleo das 17 regras chega injetado em toda sessão; cada elaboração mora em `references/regra-<n>.md` e custa menos de 3k tokens — leia o arquivo direto, não carregue a skill inteira (~2,7k tokens).
+description: O núcleo das 17 regras chega injetado em toda sessão; cada elaboração mora em `references/regra-<n>.md` — consultar não exige carregar esta skill, leia o arquivo direto (~2,7k tokens).
 ---
 
 # Rainforest Mind

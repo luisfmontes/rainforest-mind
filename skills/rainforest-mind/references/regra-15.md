@@ -1,4 +1,4 @@
-# Regra 15 — Ninguém altera o ambiente do usuário.** Agente e janela: sem instalar, PATH,
+# Regra 15 — Ninguém altera o ambiente do usuário
 
 O worktree da regra 11 isola o
 repositório, não a máquina — e a proibição de git destrutivo foi lida como

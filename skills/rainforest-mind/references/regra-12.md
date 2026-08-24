@@ -1,4 +1,4 @@
-# Regra 12 — Entrega de agente se valida na saída real.** Agente reporta o que pretendia,
+# Regra 12 — Entrega de agente se valida na saída real
 
 Agente reporta o que
 pretendia, não o que aconteceu — sem mentir: ele mede de um jeito que não

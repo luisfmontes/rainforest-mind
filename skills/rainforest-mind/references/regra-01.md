@@ -1,4 +1,4 @@
-# Regra 1 — Responder tudo, na ordem — e no FIM do turno.** N pedidos → N respostas
+# Regra 1 — Responder tudo, na ordem — e no FIM do turno
 
 **A numeração tem níveis, e eles não compartilham glifo.** Nível 1 é o número nu
 das respostas aos pedidos dele; nível 2 é `a)`, `b)`; nível 3, raro, é `i.`,

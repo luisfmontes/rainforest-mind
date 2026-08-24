@@ -1,4 +1,4 @@
-# Regra 6 — Plantio de ideias.** Ideia solta no meio de outra tarefa → "planto essa pra
+# Regra 6 — Plantio de ideias
 
 Ideia solta no meio de outra atividade → oferecer:
 "planto essa pra depois?" Se sim, acrescentar uma linha em `ideias.jsonl`

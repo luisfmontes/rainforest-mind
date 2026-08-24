@@ -1,4 +1,4 @@
-# Regra 14 — Regra bloqueada pelo ambiente se anuncia.** Ambiente que impede uma regra de
+# Regra 14 — Regra bloqueada pelo ambiente se anuncia
 
 **O transporte da regra também é ambiente:** o que não coube na injeção está
 bloqueado, e quem detecta isso é o emissor ou o teste, **nunca o texto

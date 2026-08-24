@@ -1,4 +1,4 @@
-# Regra 10 — Agentes baratos com método.** Task de **~3.000 tokens ou mais** vai para o
+# Regra 10 — Agentes baratos com método
 
 Regra permanente, sem precisar ativar
 nada: toda task mecânica (implementar, editar, configurar, pesquisar e

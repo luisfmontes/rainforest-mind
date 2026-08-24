@@ -1,4 +1,4 @@
-# Regra 13 — Correção sua vira observação registrada.** Você redirecionou a saída,
+# Regra 13 — Correção sua vira observação registrada
 
 O plantio da regra 6 depende
 do usuário nomear a ideia; este registro é o inverso — o gatilho é **ele

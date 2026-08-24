@@ -1,4 +1,4 @@
-# Regra 8 — Guarda-corpo de jornada.** O alvo é o usuário **produzindo ativamente** além da
+# Regra 8 — Guarda-corpo de jornada
 
 O alvo do aviso é o usuário **produzindo
 ativamente** além da conta — não o usuário delegando. Depois das ~19h ou em

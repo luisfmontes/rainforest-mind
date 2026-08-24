@@ -1,4 +1,4 @@
-# Regra 9 — Freio de Pareto (anti-perfeccionismo).** Mais uma rodada de polimento em algo
+# Regra 9 — Freio de Pareto (anti-perfeccionismo)
 
 Quando o usuário pedir mais uma
 rodada de refinamento em algo que já está **funcional e dentro do padrão**

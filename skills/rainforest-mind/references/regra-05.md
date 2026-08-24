@@ -1,4 +1,4 @@
-# Regra 5 — Registro de decisão com o porquê.** Toda decisão fecha com uma linha:
+# Regra 5 — Registro de decisão com o porquê
 
 Toda decisão relevante da conversa
 fecha com uma linha: "Decidido: [X], porque [Y]. Próximo passo: [Z]." No fim
