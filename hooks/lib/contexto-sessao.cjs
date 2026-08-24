@@ -116,6 +116,31 @@ const TETOS = {
    * bloco curto e não-vazio, e essa falha é tão grave quanto o vazio.
    */
   REGRAS_MIN_CHARS: 500,
+  /**
+   * Teto do MAIOR arquivo de `skills/rainforest-mind/references/`, em BYTES —
+   * é o custo de CONSULTAR a elaboração de uma regra (D9, issue #73: "menos de
+   * 3k tokens, medido"). 10.500 B equivalem a ~3,0k tokens. O maior arquivo
+   * hoje é `regra-12.md`, com 8.919 B — **15% de folga**.
+   *
+   * A margem fica ESCRITA aqui, e não implícita, por dois incidentes desta
+   * mesma semana com o mesmo formato: o `NUCLEOS_MAX_BYTES` abaixo chegou a
+   * 7 B do teto sem ninguém perceber até virar a issue #79, e o teto agregado
+   * do `orcamento.cjs` está estourado em +220 B na máquina do dono e verde no
+   * CI (issue #81) — o mesmo tipo de descuido, de novo. Se esta margem cair
+   * perto de zero, é hora de decidir encurtar `references/regra-NN.md` ou
+   * subir o teto de propósito — nunca de deixar a folga sumir calada.
+   */
+  REFERENCE_MAX_BYTES: 10500,
+  /**
+   * Teto do `skills/rainforest-mind/SKILL.md` inteiro, em BYTES — é o custo de
+   * carregar o ÍNDICE (núcleos + ponteiros) antes de decidir qual
+   * `references/regra-NN.md` vale a pena abrir. Ele mede 9.545 B hoje, contra
+   * este teto de 11.000 B — **13% de folga**.
+   *
+   * Mesma margem escrita, e não implícita, pelo mesmo motivo do
+   * `REFERENCE_MAX_BYTES` acima: ver o comentário dele.
+   */
+  SKILL_MAX_BYTES: 11000,
 };
 
 /**

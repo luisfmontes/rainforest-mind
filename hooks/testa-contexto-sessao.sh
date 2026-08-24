@@ -446,6 +446,74 @@ else
 fi
 
 echo
+echo "7.5. CATRACA DE REFERENCES E SKILL.md — custo de CONSULTAR uma regra (D9)"
+# O criterio da issue #73 e "consultar a elaboracao de uma regra custa menos de
+# 3k tokens, MEDIDO". Sem teste esse numero vale no dia da entrega e apodrece
+# depois -- foi assim que o "~16,8k tokens" do description do SKILL.md virou um
+# numero que nao deriva de nada e nao e verificado por nada. Esta catraca mede
+# dois artefatos reais contra dois tetos: o MAIOR arquivo de references/ (o que
+# se paga para consultar UMA regra) e o SKILL.md inteiro (o que se paga para
+# decidir QUAL regra abrir).
+cat > "$RAIZ_POSIX/checa-references.cjs" <<'EOF'
+const fs = require('fs');
+const path = require('path');
+const lib = require(process.env.LIB_PATH);
+const dir = process.env.REFERENCES_DIR;
+let maiorArq = '(nenhum)';
+let maiorBytes = 0;
+for (const f of fs.readdirSync(dir)) {
+  if (!f.endsWith('.md')) continue;
+  const b = fs.statSync(path.join(dir, f)).size;
+  if (b > maiorBytes) { maiorBytes = b; maiorArq = f; }
+}
+const skillBytes = fs.statSync(process.env.SKILL).size;
+console.log(`${maiorArq} ${maiorBytes} ${lib.TETOS.REFERENCE_MAX_BYTES} ${skillBytes} ${lib.TETOS.SKILL_MAX_BYTES}`);
+EOF
+REFERENCES_REAIS="$SRC/skills/rainforest-mind/references"
+SKILL_REAL="$SRC/skills/rainforest-mind/SKILL.md"
+LEITURA_R="$(LIB_PATH="$LIB" REFERENCES_DIR="$REFERENCES_REAIS" SKILL="$SKILL_REAL" node "$RAIZ_POSIX/checa-references.cjs")"
+MAIOR_ARQ="$(echo "$LEITURA_R" | cut -d' ' -f1)"
+MAIOR_BYTES="$(echo "$LEITURA_R" | cut -d' ' -f2)"
+TETO_REF="$(echo "$LEITURA_R" | cut -d' ' -f3)"
+SKILL_BYTES="$(echo "$LEITURA_R" | cut -d' ' -f4)"
+TETO_SKILL="$(echo "$LEITURA_R" | cut -d' ' -f5)"
+
+if [ -n "$MAIOR_BYTES" ] && [ "$MAIOR_BYTES" -le "$TETO_REF" ] 2>/dev/null; then
+  ok=$((ok+1)); echo "  ok    maior reference ($MAIOR_ARQ, $MAIOR_BYTES B) cabe na catraca (<= $TETO_REF B, folga $((TETO_REF-MAIOR_BYTES)) B)"
+else
+  falhou=$((falhou+1)); echo "  FALHA $MAIOR_ARQ passou da catraca de reference ($MAIOR_BYTES B > $TETO_REF B)"
+  echo "         consultar essa regra deixou de custar menos de 3k tokens (D9/issue #73)."
+  echo "         encurte $MAIOR_ARQ, ou suba REFERENCE_MAX_BYTES de proposito, com a conta escrita."
+fi
+
+if [ -n "$SKILL_BYTES" ] && [ "$SKILL_BYTES" -le "$TETO_SKILL" ] 2>/dev/null; then
+  ok=$((ok+1)); echo "  ok    SKILL.md cabe na catraca ($SKILL_BYTES B <= $TETO_SKILL B, folga $((TETO_SKILL-SKILL_BYTES)) B)"
+else
+  falhou=$((falhou+1)); echo "  FALHA SKILL.md passou da catraca ($SKILL_BYTES B > $TETO_SKILL B)"
+  echo "         o indice ficou pesado demais para decidir qual references/regra-NN.md abrir."
+fi
+
+# MUTACAO -- a catraca de reference so vale se ela for o que reprova. Roda numa
+# COPIA sandbox dentro do worktree (nunca no arquivo rastreado: o teste normal
+# acima ja usa o artefato real, regra 12; a mutacao segue o mesmo padrao das
+# outras deste arquivo -- copia, nunca o original). Engordar regra-12.md em
+# 3.000 B tem que fazer a MESMA medicao acusar, citando o arquivo pelo nome.
+REFS_MUTADO="$RAIZ_POSIX/references-mutado"
+rm -rf "$REFS_MUTADO"
+cp -r "$REFERENCES_REAIS" "$REFS_MUTADO"
+node -e "require('fs').appendFileSync(process.argv[1], 'x'.repeat(3000))" "$REFS_MUTADO/regra-12.md"
+LEITURA_RM="$(LIB_PATH="$LIB" REFERENCES_DIR="$REFS_MUTADO" SKILL="$SKILL_REAL" node "$RAIZ_POSIX/checa-references.cjs")"
+MAIOR_ARQ_M="$(echo "$LEITURA_RM" | cut -d' ' -f1)"
+MAIOR_BYTES_M="$(echo "$LEITURA_RM" | cut -d' ' -f2)"
+echo "  (saida do mutante: $LEITURA_RM — regra-12.md com +3.000 B)"
+if [ "$MAIOR_ARQ_M" = "regra-12.md" ] && [ -n "$MAIOR_BYTES_M" ] && [ "$MAIOR_BYTES_M" -gt "$TETO_REF" ] 2>/dev/null; then
+  ok=$((ok+1)); echo "  ok    regra-12.md engordada em 3.000 B faz a catraca acusar, citando o arquivo (o teto e load-bearing)"
+else
+  falhou=$((falhou+1)); echo "  FALHA engordar regra-12.md nao fez a catraca acusar — o teto nao esta medindo nada"
+fi
+rm -rf "$REFS_MUTADO"
+
+echo
 echo "8. NUCLEO E DETALHE — a elaboracao fica fora, e a regra cortada se anuncia"
 SKILL_NUCLEO="# Skill
 ## As regras
