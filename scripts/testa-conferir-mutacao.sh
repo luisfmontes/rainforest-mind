@@ -275,6 +275,7 @@ cat > "$CAIXA/shell-lento.cjs" <<'FONTE'
 const valor = process.argv[2] || '';
 console.log('ok');
 FONTE
+cp "$CAIXA/shell-lento.cjs" "$S/shell-lento.pristino"
 
 exige 5 "pós-mutação curta demais (< 10% baseline) dispara exit=5" \
   CHK --arquivo shell-lento.cjs --de "console.log('ok');" \
@@ -283,6 +284,13 @@ exige 5 "pós-mutação curta demais (< 10% baseline) dispara exit=5" \
 tem "relata SUSPEITA DE CORTE DE SHELL" "SUSPEITA DE CORTE"
 tem "mostra as duas duracoes" "Baseline:"
 tem "diz como confirmar" "Confirme rodando"
+
+if ! cmp -s "$CAIXA/shell-lento.cjs" "$S/shell-lento.pristino"; then
+  falhou=$((falhou+1)); printf '  FALHA: shell-lento.cjs nao foi restaurado apos recusa\n'
+  cp "$S/shell-lento.pristino" "$CAIXA/shell-lento.cjs"
+else
+  ok=$((ok+1)); printf '  ok    shell-lento.cjs restaurado apos recusa\n'
+fi
 
 echo
 echo "== 12. baseline abaixo do piso absoluto (1000ms) — heurística não dispara =="
@@ -302,6 +310,7 @@ cat > "$CAIXA/fonte-rapida.cjs" <<'FONTE'
 #!/usr/bin/env node
 const x = 1;
 FONTE
+cp "$CAIXA/fonte-rapida.cjs" "$S/fonte-rapida.pristino"
 
 exige 0 "baseline < 1s não dispara heurística mesmo com razão 0.1" \
   CHK --arquivo fonte-rapida.cjs --de "const x = 1;" --para "const x = 1; // MARCA-RÁPIDO" \
@@ -309,6 +318,13 @@ exige 0 "baseline < 1s não dispara heurística mesmo com razão 0.1" \
 tem "aprova normalmente" "ok: bateria VERMELHA"
 nao_tem "não reclama de corte" "SUSPEITA"
 tem "baseline e pós no log" "Baseline:"
+
+if ! cmp -s "$CAIXA/fonte-rapida.cjs" "$S/fonte-rapida.pristino"; then
+  falhou=$((falhou+1)); printf '  FALHA: fonte-rapida.cjs nao foi restaurado apos mutacao\n'
+  cp "$S/fonte-rapida.pristino" "$CAIXA/fonte-rapida.cjs"
+else
+  ok=$((ok+1)); printf '  ok    fonte-rapida.cjs restaurado apos mutacao\n'
+fi
 
 echo
 echo "== 13. bateria VERDE e rápida: o 2 vence o 5, e a ordem é o que decide =="
@@ -337,12 +353,20 @@ cat > "$CAIXA/fonte-verde.cjs" <<'FONTE'
 #!/usr/bin/env node
 const y = 2;
 FONTE
+cp "$CAIXA/fonte-verde.cjs" "$S/fonte-verde.pristino"
 
 exige 2 "verde e rápida recusa por bateria VERDE (2), não por corte de shell (5)" \
   CHK --arquivo fonte-verde.cjs --de "const y = 2;" --para "const y = 2; // MARCA-VERDE-RAPIDO" \
       --bateria 'bash bateria-verde-rapida.sh' --timeout 10000
 tem "acusa a bateria verde" "RECUSADO: bateria VERDE"
 nao_tem "não confunde com corte de shell" "SUSPEITA DE CORTE"
+
+if ! cmp -s "$CAIXA/fonte-verde.cjs" "$S/fonte-verde.pristino"; then
+  falhou=$((falhou+1)); printf '  FALHA: fonte-verde.cjs nao foi restaurado apos recusa\n'
+  cp "$S/fonte-verde.pristino" "$CAIXA/fonte-verde.cjs"
+else
+  ok=$((ok+1)); printf '  ok    fonte-verde.cjs restaurado apos recusa\n'
+fi
 
 echo
 echo "-----------------------------------------"
