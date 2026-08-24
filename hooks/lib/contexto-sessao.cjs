@@ -977,6 +977,7 @@ function travarOrcamento(payload, orcamento = TETOS.ORCAMENTO_BYTES) {
 function montarContexto(o) {
   const regras = blocoRegras(extrairNucleo(filtrarRegras(o.skillText)), o.caminhoSkill || '(caminho não informado)');
   const caminho = o.caminhoSkill || `${o.root || ''}\\skills\\rainforest-mind\\SKILL.md`;
+  const pastaReferences = path.join(path.dirname(caminho), 'references');
 
   // O imóvel mais caro do payload é o começo: é o único pedaço que sobrevive a um
   // corte. Ele carrega a CONVOCAÇÃO, não a identidade — "quem eu sou" não faz nada
@@ -985,8 +986,8 @@ function montarContexto(o) {
 
 **Isto é o NÚCLEO das regras, não o texto completo.** Regra marcada com ↳ tem
 elaboração que não está aqui — critérios finos, comandos exatos, incidentes.
-**Antes de aplicar uma regra marcada, carregue \`Skill(rainforest-mind)\`**
-(${caminho}).
+**Antes de aplicar uma regra marcada, leia a elaboração:**
+\`${pastaReferences}/regra-<n>.md\` (onde \`<n>\` é o número da regra).
 
 ## Regras (aplicar em toda resposta)
 ${regras}
