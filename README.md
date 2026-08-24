@@ -417,8 +417,10 @@ flowchart LR
 
 ## As 17 regras
 
-Resumo; o detalhe vive em
-[`skills/rainforest-mind/SKILL.md`](skills/rainforest-mind/SKILL.md).
+Resumo; o **núcleo** vive em
+[`skills/rainforest-mind/SKILL.md`](skills/rainforest-mind/SKILL.md),
+e a **elaboração** de cada regra em
+[`skills/rainforest-mind/references/regra-<n>.md`](skills/rainforest-mind/references).
 
 | # | Regra | Em uma frase |
 |---|-------|--------------|
@@ -513,7 +515,7 @@ consequências disso, as duas de 2026-08-12:
 
 ## Ajuste fino
 
-- As regras vivem em [`skills/rainforest-mind/SKILL.md`](skills/rainforest-mind/SKILL.md) — edite e a mudança vale na próxima sessão.
+- O **núcleo** das regras vive em [`skills/rainforest-mind/SKILL.md`](skills/rainforest-mind/SKILL.md) — edite e a mudança vale na próxima sessão. A **elaboração** de cada regra vive em [`skills/rainforest-mind/references/regra-<n>.md`](skills/rainforest-mind/references) — edite lá quando precisar de critério fino, comando exato ou incidente datado.
 - **Incidente datado vai em blockquote.** O hook remove as linhas que começam
   com `>` antes de injetar: a narrativa continua no arquivo, ao lado da regra
   que fundamenta, e sai do custo de toda sessão. Instrução nunca entra na

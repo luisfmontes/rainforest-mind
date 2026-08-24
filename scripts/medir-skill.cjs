@@ -71,3 +71,37 @@ for (const ref of references) {
 
 const output = `nucleo=${nucleoBytes} regras=${rulesCount} references=${referencesCount} setas-duplas=${doubleArrowsCount} skill-bytes=${skillBytes} maior-reference=${maiorReference}:${maiorTamanho}`;
 console.log(output);
+
+// Flag --conferir-description: valida que o numero de tokens no description bate com a realidade
+const args = process.argv.slice(2);
+if (args.includes('--conferir-description')) {
+  const BYTES_PER_TOKEN = 3.480; // taxa do repositorio: 58.540 B = 16.8k tokens
+
+  // Extrair o numero de tokens citado no description
+  // Formato esperado: "~2,7k tokens" ou "~16,8k tokens"
+  const descriptionMatch = skillContent.match(/description:\s*(.+?)(?:\n|$)/);
+  if (!descriptionMatch) {
+    console.error('Erro: nao achei o description no frontmatter');
+    process.exit(1);
+  }
+
+  const description = descriptionMatch[1];
+  const citedMatch = description.match(/~([\d,]+)k\s+tokens/);
+  if (!citedMatch) {
+    console.error('Erro: nao achei o custo em tokens no description (formato esperado: ~X,Xk tokens)');
+    process.exit(1);
+  }
+
+  const citedTokensStr = citedMatch[1].replace(',', '.');
+  const citedTokens = parseFloat(citedTokensStr) * 1000;
+  const actualTokens = skillBytes / BYTES_PER_TOKEN;
+  const percentDiff = Math.abs(citedTokens - actualTokens) / actualTokens * 100;
+
+  if (percentDiff < 10) {
+    console.log('ok');
+    process.exit(0);
+  } else {
+    console.log(`divergencia: ${citedTokensStr}k tokens citados, ${(actualTokens/1000).toFixed(1)}k tokens reais (${percentDiff.toFixed(1)}% de diferenca)`);
+    process.exit(1);
+  }
+}
