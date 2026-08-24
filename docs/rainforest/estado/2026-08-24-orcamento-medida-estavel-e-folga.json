@@ -94,6 +94,12 @@
     "nota": "reprovou na primeira passada em C4 (limiar 280 ausente da mensagem) e C5 (ponteiro morto: a #81 citava testa-orcamento.sh:46 e :57, que a propria correcao esvaziou). Os dois consertados e re-rodados."
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "acao": "pr",
+    "pr": 85,
+    "url": "https://github.com/luisfmontes/rainforest-mind/pull/85",
+    "worktrees_removidos": 11,
+    "branches_removidas": 11,
+    "em": "2026-08-24"
   }
 }
