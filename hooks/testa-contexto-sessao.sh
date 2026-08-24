@@ -25,6 +25,16 @@ RAIZ="$(cygpath -m "$RAIZ_POSIX" 2>/dev/null || printf '%s' "$RAIZ_POSIX")"
 trap 'rm -rf "$RAIZ_POSIX"' EXIT
 echo "(caixa de areia: $RAIZ)"
 
+# Raiz neutra: sandbox vazia para testes que nao devem variar entre maquinas.
+RAIZ_NEUTRA="$(mktemp -d)"
+
+# Raiz gorda: sandbox com um FOCO.md de ~2.500 B para testes de mutacao
+# (RAIZ_NEUTRA -> RAIZ_GORDA revela defeitos por medida, nao por erro de shell).
+RAIZ_GORDA_POSIX="$(mktemp -d)"
+node -e "require('fs').writeFileSync(process.argv[1]+'/FOCO.md','# Foco\n\n'+'x'.repeat(2500))" "$RAIZ_GORDA_POSIX"
+RAIZ_GORDA="$(cygpath -m "$RAIZ_GORDA_POSIX" 2>/dev/null || printf '%s' "$RAIZ_GORDA_POSIX")"
+trap 'rm -rf "$RAIZ_POSIX" "$RAIZ_GORDA_POSIX"' EXIT
+
 # O IRMAO VAI JUNTO. Toda sabotagem deste arquivo faz `cp "$LIB" "$RAIZ_POSIX/..."`
 # e roda a COPIA — e desde 2026-08-21 a lib faz `require('./raiz.cjs')`, que resolve
 # ao lado do arquivo que a copia, nao ao lado do original. Sem esta linha o mutante
@@ -323,7 +333,7 @@ echo "7. ORCAMENTO DE ENTREGA — o teto em bytes, que e o que faz a regra chega
 # (texto cru em vez de JSON) e o tamanho final com dependencias e sessoes juntas.
 # Testar so o motor deixaria os dois de fora (regra 12: valide o artefato real).
 SRC_WIN="$(cygpath -m "$SRC" 2>/dev/null || printf '%s' "$SRC")"
-RFM_ROOT="$SRC_WIN" node "$SRC/hooks/foco-session-start.cjs" > "$RAIZ_POSIX/saida-hook.json" 2>/dev/null
+RFM_ROOT="$RAIZ_NEUTRA" node "$SRC/hooks/foco-session-start.cjs" > "$RAIZ_POSIX/saida-hook.json" 2>/dev/null
 EXIT_HOOK=$?
 
 cat > "$RAIZ_POSIX/checa-hook.cjs" <<'EOF'
@@ -394,12 +404,21 @@ LEITURA_N="$(LIB_PATH="$LIB" SKILL="$SRC/skills/rainforest-mind/SKILL.md" node "
 BYTES_N="$(echo "$LEITURA_N" | cut -d' ' -f1)"
 TETO_N="$(echo "$LEITURA_N" | cut -d' ' -f2)"
 
-if [ -n "$BYTES_N" ] && [ "$BYTES_N" -le "$TETO_N" ] 2>/dev/null; then
-  ok=$((ok+1)); echo "  ok    os nucleos cabem na catraca ($BYTES_N B <= $TETO_N B, folga $((TETO_N-BYTES_N)) B)"
+# Avaliar folga com a biblioteca, decisao D4/D5.
+AVALIACAO="$(node "$SRC/hooks/lib/avalia-folga.cjs" "$BYTES_N" "$TETO_N" "nucleos" "tirar do FOCO" "subir o agregado" "adicionar regra noutro nucleo")"
+ESTADO_N="$(echo "$AVALIACAO" | cut -d'|' -f1)"
+FOLGA_N="$(echo "$AVALIACAO" | cut -d'|' -f2)"
+LIMIAR_N="$(echo "$AVALIACAO" | cut -d'|' -f3)"
+MSG_N="$(echo "$AVALIACAO" | cut -d'|' -f4-)"
+
+if [ "$ESTADO_N" = "ok" ] || [ "$ESTADO_N" = "aviso" ]; then
+  ok=$((ok+1)); echo "  ok    os nucleos cabem na catraca ($BYTES_N B <= $TETO_N B, folga $FOLGA_N B)"
+  if [ "$ESTADO_N" = "aviso" ]; then
+    echo "         $MSG_N"
+  fi
 else
   falhou=$((falhou+1)); echo "  FALHA os nucleos passaram da catraca ($BYTES_N B > $TETO_N B)"
-  echo "         cada byte aqui e um byte a menos de FOCO.md em TODA sessao."
-  echo "         pague por subtracao noutro nucleo, ou suba NUCLEOS_MAX_BYTES de proposito."
+  echo "         $MSG_N"
 fi
 
 # A catraca so vale se ela for o que reprova. Com uma regra gorda a mais, o mesmo
@@ -1256,7 +1275,7 @@ ctx_hook() { # $@ = env extra; imprime o additionalContext
   env "$@" node "$SRC/hooks/foco-session-start.cjs" 2>/dev/null \
     | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{process.stdout.write(JSON.parse(s).hookSpecificOutput.additionalContext)}catch{process.stdout.write('SEM_CONTEXTO')}})"
 }
-SEM_DEP="$(ctx_hook -u WHATSAPP_API_BASE_URL "RFM_ROOT=$SRC_WIN" "CLAUDE_CONFIG_DIR=$CAIXA_DEP" "RFM_SETTINGS_PATH=$CAIXA_DEP/settings.json")"
+SEM_DEP="$(ctx_hook -u WHATSAPP_API_BASE_URL "RFM_ROOT=$RAIZ_NEUTRA" "CLAUDE_CONFIG_DIR=$CAIXA_DEP" "RFM_SETTINGS_PATH=$CAIXA_DEP/settings.json")"
 checa "sem declaracao, nao ha bloco de dependencias" nao_tem "Dependências de ambiente" "$SEM_DEP"
 checa "sem declaracao, nao fala de bridge"           nao_tem "bridge WhatsApp"           "$SEM_DEP"
 checa "sem declaracao, nao fala de claude-mem"       nao_tem "claude-mem"                "$SEM_DEP"
@@ -1265,7 +1284,7 @@ checa "e as regras continuam chegando"               tem     "**17."            
 # Declarada e apontando para porta morta: o bloco volta, e volta dizendo FORA.
 # Porta alta e improvavel de propósito — o teste nao pode depender do que a
 # maquina tem de pe.
-COM_DEP="$(ctx_hook "WHATSAPP_API_BASE_URL=http://127.0.0.1:59421" "RFM_ROOT=$SRC_WIN" "CLAUDE_CONFIG_DIR=$CAIXA_DEP" "RFM_SETTINGS_PATH=$CAIXA_DEP/settings.json")"
+COM_DEP="$(ctx_hook "WHATSAPP_API_BASE_URL=http://127.0.0.1:59421" "RFM_ROOT=$RAIZ_NEUTRA" "CLAUDE_CONFIG_DIR=$CAIXA_DEP" "RFM_SETTINGS_PATH=$CAIXA_DEP/settings.json")"
 checa "declarada, o bloco existe"                    tem     "Dependências de ambiente" "$COM_DEP"
 checa "declarada e morta, diz FORA"                  tem     "bridge WhatsApp FORA"     "$COM_DEP"
 checa "declarada, a URL declarada e a que aparece"   tem     "127.0.0.1:59421"          "$COM_DEP"
