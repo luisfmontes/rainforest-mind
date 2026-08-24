@@ -1,0 +1,28 @@
+{
+  "slug": "2026-08-24-skills-finas-com-references",
+  "titulo": "Skills finas com references: consultar uma regra deve custar menos de 3k tokens",
+  "criado_em": "2026-08-24",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-08-24-skills-finas-com-references.md",
+    "em": "2026-08-24"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
