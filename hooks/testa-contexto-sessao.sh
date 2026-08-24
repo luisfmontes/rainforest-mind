@@ -514,6 +514,58 @@ fi
 rm -rf "$REFS_MUTADO"
 
 echo
+echo "7.6. AS QUATRO INVARIANTES DA QUEBRA (D4/D5/D6/D7) — contra o SKILL.md REAL"
+# A tarefa 5 do plano trava quatro coisas que a quebra em references/ prometeu nao
+# alterar. As tres primeiras medem o SKILL.md e o parser reais (nao fixture); a
+# quarta (cabecalho cita references/) e o item 0 deste arquivo, reescrito la
+# embaixo na secao 8 -- listada aqui so para nao se perder no meio da leitura.
+
+# D6 -- seta unica: o nucleo emitido nao pode conter "seta dupla" (↳ ↳). O defeito
+# historico era extrairNucleo() acrescentar UMA seta a um nucleo que ja terminava
+# com ↳ literal no arquivo -- a regra 15 chegava como "↳ ↳" em toda sessao.
+cat > "$RAIZ_POSIX/checa-invariantes.cjs" <<'EOF'
+const fs = require('fs');
+const lib = require(process.env.LIB_PATH);
+const skill = fs.readFileSync(process.env.SKILL, 'utf8');
+const nucleo = lib.extrairNucleo(lib.filtrarRegras(skill));
+const setasDuplas = (nucleo.match(/↳\s↳/g) || []).length;
+console.log(`${Buffer.byteLength(nucleo, 'utf8')} ${setasDuplas}`);
+EOF
+LEITURA_INV="$(LIB_PATH="$LIB" SKILL="$SKILL_REAL" node "$RAIZ_POSIX/checa-invariantes.cjs")"
+NUCLEO_BYTES_REAL="$(echo "$LEITURA_INV" | cut -d' ' -f1)"
+SETAS_DUPLAS_REAL="$(echo "$LEITURA_INV" | cut -d' ' -f2)"
+
+if [ "$SETAS_DUPLAS_REAL" = "0" ]; then
+  ok=$((ok+1)); echo "  ok    D6: nucleo emitido nao contem seta dupla (↳ ↳) — 0 ocorrencias"
+else
+  falhou=$((falhou+1)); echo "  FALHA D6: nucleo emitido contem $SETAS_DUPLAS_REAL ocorrencia(s) de seta dupla (↳ ↳)"
+  echo "         a regra 15 voltou a terminar com ↳ literal no SKILL.md — extrairNucleo acrescenta a segunda."
+fi
+
+# D7 -- nucleo inalterado: a quebra em references/ prometeu nao devolver folga
+# nenhuma ao orcamento de nucleo. O numero e o contrato (issue #79): a folga
+# sobre NUCLEOS_MAX_BYTES (5.600) e de 11 B, e esta asercao existe para acusar
+# se algum dia alguem, de boa fe, "aproveitar" bytes que a quebra teria liberado.
+NUCLEO_ESPERADO=5589
+if [ "$NUCLEO_BYTES_REAL" = "$NUCLEO_ESPERADO" ]; then
+  ok=$((ok+1)); echo "  ok    D7: nucleo emitido mede exatamente $NUCLEO_BYTES_REAL B (contrato: $NUCLEO_ESPERADO B)"
+else
+  falhou=$((falhou+1)); echo "  FALHA D7: nucleo emitido mede $NUCLEO_BYTES_REAL B, o contrato exige exatamente $NUCLEO_ESPERADO B"
+  echo "         a quebra em references/ nao pode mudar nem 1 byte do que ja era injetado antes dela."
+fi
+
+# D5 -- literais estruturais. '## As regras' e o mais importante: verificado por
+# mutacao no design, troca-lo zera o payload de nucleo e a sessao sobe com
+# "FALHA AO CARREGAR AS REGRAS". '## Comando /foco' e o ponto de injecao do teste
+# de mutacao da catraca (secao 12 deste arquivo). 'Ultima revisao:' e lida por
+# hooks/foco-session-start.cjs:167 num `if` sem `else` -- some dali e o aviso
+# bimestral desliga em silencio.
+SKILL_REAL_TXT="$(cat "$SKILL_REAL")"
+checa "D5: SKILL.md real contem o literal '## As regras'"        tem "## As regras"       "$SKILL_REAL_TXT"
+checa "D5: SKILL.md real contem o literal '## Comando /foco'"    tem "## Comando /foco"   "$SKILL_REAL_TXT"
+checa "D5: SKILL.md real contem o literal 'Ultima revisao:'"     tem "Última revisão:"    "$SKILL_REAL_TXT"
+
+echo
 echo "8. NUCLEO E DETALHE — a elaboracao fica fora, e a regra cortada se anuncia"
 SKILL_NUCLEO="# Skill
 ## As regras
@@ -534,7 +586,8 @@ S="$(montar "$SKILL_NUCLEO" '')"
 checa "nucleo da regra chega"              tem     "Nucleo que precisa chegar"      "$S"
 checa "elaboracao NAO chega"               nao_tem "ELABORACAO-QUE-NAO-DEVE-CHEGAR" "$S"
 checa "regra cortada ganha a seta"         tem     "↳"                              "$S"
-checa "cabecalho explica a seta"           tem     "Skill(rainforest-mind)"         "$S"
+checa "D4: cabecalho manda ler o arquivo da regra"   tem     "regra-<n>.md"         "$S"
+checa "D4: cabecalho NAO manda carregar a skill inteira" nao_tem "Skill(rainforest-mind)" "$S"
 checa "regra sem marca entra inteira"      tem     "entra inteira"                  "$S"
 
 echo
@@ -1868,6 +1921,135 @@ if [ "$S_MUT6" = "false" ]; then
   ok=$((ok+1)); echo "  ok    mutacao expos que so a 1a faixa valia (a 2a faixa, com o almoco no meio, ficaria sempre fora)"
 else
   falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — restringir a 1a faixa nao e o que a assercao mede (saida: $S_MUT6)"
+fi
+
+echo "  -- SABOTAGEM 7: devolver a seta (↳) literal ao nucleo da regra 15 (D6)"
+# Padrao identico as sabotagens 4/5: copia o artefato REAL (aqui, o SKILL.md, nao
+# a lib), sabota com um script node que confere a ancora antes de trocar, roda a
+# MESMA medicao (checa-invariantes.cjs) contra a copia mutada, e exige que a
+# contagem de seta dupla deixe de ser zero.
+cat > "$RAIZ_POSIX/sabotar-seta.cjs" <<'SABOTA_EOF'
+const fs = require('fs');
+const alvo = process.argv[2];
+let texto = fs.readFileSync(alvo, 'utf8');
+const achar = 'nunca dump filtrado.\n<!-- detalhe -->';
+const trocar = 'nunca dump filtrado. ↳\n<!-- detalhe -->';
+if (!texto.includes(achar)) { console.error('ANCORA NAO BATE em ' + alvo); process.exit(1); }
+texto = texto.split(achar).join(trocar);
+fs.writeFileSync(alvo, texto);
+SABOTA_EOF
+cp "$SKILL_REAL" "$RAIZ_POSIX/skill-mut-seta.md"
+node "$RAIZ_POSIX/sabotar-seta.cjs" "$RAIZ_POSIX/skill-mut-seta.md"
+EXIT_SABOTA7=$?
+if [ "$EXIT_SABOTA7" != "0" ]; then
+  falhou=$((falhou+1))
+  echo "  FALHA ANCORA NAO BATE na sabotagem 7 (exit $EXIT_SABOTA7) — mutador nao mutou nada,"
+  echo "         a copia intocada nao prova que a seta unica e load-bearing"
+else
+  LEITURA_MUT7="$(LIB_PATH="$LIB" SKILL="$RAIZ_POSIX/skill-mut-seta.md" node "$RAIZ_POSIX/checa-invariantes.cjs")"
+  SETAS_DUPLAS_MUT7="$(echo "$LEITURA_MUT7" | cut -d' ' -f2)"
+  echo "  (saida do mutante: setas-duplas=$SETAS_DUPLAS_MUT7 — a assercao real espera 0)"
+  if [ -n "$SETAS_DUPLAS_MUT7" ] && [ "$SETAS_DUPLAS_MUT7" != "0" ]; then
+    ok=$((ok+1)); echo "  ok    mutacao expos a seta dupla (D6: o ↳ literal de volta a regra 15 vira ↳ ↳ na injecao)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — devolver o ↳ literal nao produziu seta dupla"
+  fi
+fi
+rm -f "$RAIZ_POSIX/skill-mut-seta.md"
+
+echo "  -- SABOTAGEM 8: acrescentar ~100 B ao nucleo da regra 1 (D7)"
+cat > "$RAIZ_POSIX/sabotar-nucleo.cjs" <<'SABOTA_EOF'
+const fs = require('fs');
+const alvo = process.argv[2];
+let texto = fs.readFileSync(alvo, 'utf8');
+const achar = 'todo turno**.\n<!-- detalhe -->';
+const trocar = 'todo turno**. ' + 'x'.repeat(100) + '\n<!-- detalhe -->';
+if (!texto.includes(achar)) { console.error('ANCORA NAO BATE em ' + alvo); process.exit(1); }
+texto = texto.split(achar).join(trocar);
+fs.writeFileSync(alvo, texto);
+SABOTA_EOF
+cp "$SKILL_REAL" "$RAIZ_POSIX/skill-mut-nucleo.md"
+node "$RAIZ_POSIX/sabotar-nucleo.cjs" "$RAIZ_POSIX/skill-mut-nucleo.md"
+EXIT_SABOTA8=$?
+if [ "$EXIT_SABOTA8" != "0" ]; then
+  falhou=$((falhou+1))
+  echo "  FALHA ANCORA NAO BATE na sabotagem 8 (exit $EXIT_SABOTA8) — mutador nao mutou nada,"
+  echo "         a copia intocada nao prova que o numero do nucleo e load-bearing"
+else
+  LEITURA_MUT8="$(LIB_PATH="$LIB" SKILL="$RAIZ_POSIX/skill-mut-nucleo.md" node "$RAIZ_POSIX/checa-invariantes.cjs")"
+  NUCLEO_BYTES_MUT8="$(echo "$LEITURA_MUT8" | cut -d' ' -f1)"
+  echo "  (saida do mutante: nucleo=$NUCLEO_BYTES_MUT8 B — a assercao real exige exatamente $NUCLEO_ESPERADO B)"
+  if [ -n "$NUCLEO_BYTES_MUT8" ] && [ "$NUCLEO_BYTES_MUT8" != "$NUCLEO_ESPERADO" ]; then
+    ok=$((ok+1)); echo "  ok    mutacao expos o desvio do nucleo (D7: a quebra em references/ nao pode mudar 1 byte sequer)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — engordar o nucleo da regra 1 nao mudou a medicao"
+  fi
+fi
+rm -f "$RAIZ_POSIX/skill-mut-nucleo.md"
+
+echo "  -- SABOTAGEM 9: trocar '## As regras' por outro texto (D5)"
+cat > "$RAIZ_POSIX/sabotar-secao.cjs" <<'SABOTA_EOF'
+const fs = require('fs');
+const alvo = process.argv[2];
+let texto = fs.readFileSync(alvo, 'utf8');
+const achar = '## As regras';
+const trocar = '## As diretrizes';
+if (!texto.includes(achar)) { console.error('ANCORA NAO BATE em ' + alvo); process.exit(1); }
+texto = texto.split(achar).join(trocar);
+fs.writeFileSync(alvo, texto);
+SABOTA_EOF
+cp "$SKILL_REAL" "$RAIZ_POSIX/skill-mut-secao.md"
+node "$RAIZ_POSIX/sabotar-secao.cjs" "$RAIZ_POSIX/skill-mut-secao.md"
+EXIT_SABOTA9=$?
+if [ "$EXIT_SABOTA9" != "0" ]; then
+  falhou=$((falhou+1))
+  echo "  FALHA ANCORA NAO BATE na sabotagem 9 (exit $EXIT_SABOTA9) — mutador nao mutou nada,"
+  echo "         a copia intocada nao prova que '## As regras' e load-bearing"
+else
+  # Roda o parser DE VERDADE (montarContexto), nao so grep no texto: o que
+  # importa e' que trocar o literal derruba o carregamento na sessao real.
+  SKILL_MUTADO_TXT="$(cat "$RAIZ_POSIX/skill-mut-secao.md")"
+  S_MUT9="$(montar "$SKILL_MUTADO_TXT" '')"
+  if echo "$S_MUT9" | grep -qF "FALHA AO CARREGAR AS REGRAS"; then
+    echo "  (saida do mutante: FALHA AO CARREGAR AS REGRAS — a assercao real nao pode ver isto)"
+    ok=$((ok+1)); echo "  ok    mutacao expos que '## As regras' e load-bearing (sem ele a sessao sobe sem regra nenhuma)"
+  else
+    echo "  (saida do mutante: nao disparou o alarme)"
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — trocar '## As regras' nao derrubou o carregamento"
+  fi
+fi
+rm -f "$RAIZ_POSIX/skill-mut-secao.md"
+
+echo "  -- SABOTAGEM 10: devolver 'Skill(rainforest-mind)' ao cabecalho (D4)"
+cat > "$RAIZ_POSIX/sabotar-cabecalho.cjs" <<'SABOTA_EOF'
+const fs = require('fs');
+const alvo = process.argv[2];
+let texto = fs.readFileSync(alvo, 'utf8');
+// O arquivo fonte e' um template literal JS (backtick), entao os backticks QUE
+// APARECEM DENTRO dele vem escapados com backslash no arquivo -- \` literal, nao
+// backtick nu. A ancora e a troca tem de casar com os bytes reais do arquivo,
+// nao com o que o template produziria depois de avaliado.
+const achar = '\\`${pastaReferences}/regra-<n>.md\\` (onde \\`<n>\\` é o número da regra).';
+const trocar = 'carregue \\`Skill(rainforest-mind)\\` antes de aplicar a regra marcada.';
+if (!texto.includes(achar)) { console.error('ANCORA NAO BATE em ' + alvo); process.exit(1); }
+texto = texto.split(achar).join(trocar);
+fs.writeFileSync(alvo, texto);
+SABOTA_EOF
+cp "$LIB" "$RAIZ_POSIX/lib-mut-cabecalho.cjs"
+node "$RAIZ_POSIX/sabotar-cabecalho.cjs" "$RAIZ_POSIX/lib-mut-cabecalho.cjs"
+EXIT_SABOTA10=$?
+if [ "$EXIT_SABOTA10" != "0" ]; then
+  falhou=$((falhou+1))
+  echo "  FALHA ANCORA NAO BATE na sabotagem 10 (exit $EXIT_SABOTA10) — mutador nao mutou nada,"
+  echo "         a copia intocada nao prova que o cabecalho citar references/ e load-bearing"
+else
+  S_MUT10="$(montar "$SKILL_OK" '' "$RAIZ_POSIX/lib-mut-cabecalho.cjs")"
+  echo "  (saida do mutante contem 'Skill(rainforest-mind)': $(echo "$S_MUT10" | grep -qF 'Skill(rainforest-mind)' && echo sim || echo nao))"
+  if echo "$S_MUT10" | grep -qF "Skill(rainforest-mind)"; then
+    ok=$((ok+1)); echo "  ok    mutacao expos o cabecalho voltando a mandar carregar a skill inteira (D4)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — devolver a instrucao antiga nao apareceu no cabecalho"
+  fi
 fi
 
 echo
