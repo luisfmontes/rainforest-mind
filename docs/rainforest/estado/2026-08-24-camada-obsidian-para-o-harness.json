@@ -1,0 +1,28 @@
+{
+  "slug": "2026-08-24-camada-obsidian-para-o-harness",
+  "titulo": "Substituir a camada Obsidian do sistema de conhecimento pelo que o harness oferece",
+  "criado_em": "2026-08-24",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-08-24-camada-obsidian-para-o-harness.md",
+    "em": "2026-08-24"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
