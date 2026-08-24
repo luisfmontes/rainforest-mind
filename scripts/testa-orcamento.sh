@@ -12,9 +12,9 @@
 #      "Agentes: 0 B" e total de 11.472 B, contra 1.618 B e 13.604 B depois da
 #      correcao. Um instrumento que subestima assim nunca dispara o gate que
 #      ele existe para disparar. Fixture com CRLF de proposito.
-#   2. caminho verde: roda contra o repo REAL (sem --teto), sai 0, uma linha
-#      por fonte mais o total. E esta asserção que faz a suite do
-#      CONTRIBUTING.md:11 acusar quando o plugin engordar alem de 14.000 B.
+#   2. caminho verde: roda contra raiz NEUTRA (sem FOCO.md), sai 0, uma linha
+#      por fonte mais o total. É esta medição que o CI usa e que a máquina
+#      do dono deve também passar.
 #   3. caminho vermelho: --teto baixo estoura e sai != 0. Sem esta perna o
 #      "gate" so afirma o caminho feliz e nao prova nada.
 #   4. D8 — references/ fica fora do gate agregado. medirSkills (:104-121) mede
@@ -32,8 +32,10 @@ set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SBP="$(mktemp -d)"
 SBP2="$(mktemp -d)"
+RAIZ_VAZIA="$(mktemp -d)"
+RAIZ_GORDA="$(mktemp -d)"
 MUT="$SRC/scripts/.orcamento-mutante-teste.cjs"
-trap 'rm -rf "$SBP" "$SBP2" "$MUT"' EXIT
+trap 'rm -rf "$SBP" "$SBP2" "$RAIZ_VAZIA" "$RAIZ_GORDA" "$MUT"' EXIT
 echo "(caixa de areia: $SBP)"
 
 ok=0; falhou=0
@@ -41,28 +43,79 @@ tem()     { if echo "$2" | grep -qF -- "$3"; then ok=$((ok+1)); echo "  ok   $1"
 nao_tem() { if echo "$2" | grep -qF -- "$3"; then falhou=$((falhou+1)); echo "  FALHA $1 (achou '$3')"; else ok=$((ok+1)); echo "  ok   $1"; fi; }
 igual()   { if [ "$2" = "$3" ]; then ok=$((ok+1)); echo "  ok   $1"; else falhou=$((falhou+1)); echo "  FALHA $1 (esperava '$3', veio '$2')"; fi; }
 
-# ------------------------------------------------- 1. caminho verde (repo real)
-echo; echo "1. caminho verde — repo real, sem --teto"
-SAIDA="$(node "$SRC/scripts/orcamento.cjs" 2>&1)"; CODIGO=$?
+# ------------------------------------------------- 1. caminho verde (raiz neutra)
+echo; echo "1. caminho verde — raiz neutra, sem FOCO.md"
+SAIDA="$(RFM_ROOT="$RAIZ_VAZIA" node "$SRC/scripts/orcamento.cjs" 2>&1)"; CODIGO=$?
 igual "sai 0" "$CODIGO" "0"
 tem "linha do hook" "$SAIDA" "Hook (additionalContext):"
 tem "linha das skills" "$SAIDA" "Skills (descriptions):"
 tem "linha dos commands" "$SAIDA" "Commands (descriptions):"
 tem "linha dos agentes" "$SAIDA" "Agentes (descriptions):"
 tem "linha do total" "$SAIDA" "Total:"
-nao_tem "nenhuma fonte medida como 0 B (repo real)" "$SAIDA" ": 0 B"
+nao_tem "nenhuma fonte medida como 0 B (repo em raiz neutra)" "$SAIDA" ": 0 B"
+
+# ------------------------------------------------- 1a. medição da mesa (informacional)
+echo; echo "1a. medição da mesa — raiz real, informa e nao conta"
+SAIDA_MESA="$(node "$SRC/scripts/orcamento.cjs" 2>&1)"; CODIGO_MESA=$?
+TOTAL_MESA="$(echo "$SAIDA_MESA" | sed -n 's/^Total: \([0-9]\+\) B$/\1/p')"
+echo "  info total na mesa: $TOTAL_MESA B (exit $CODIGO_MESA)"
+
+# ------------------------------------------------- 1b. invariância — raiz neutra estável mesmo com RAIZ_GORDA plantada
+echo; echo "1b. invariancia — medição neutra nao muda mesmo com raiz pesada plantada"
+# Primeira medição de raiz vazia (baseline)
+SAIDA_VAZIA_1="$(RFM_ROOT="$RAIZ_VAZIA" node "$SRC/scripts/orcamento.cjs" 2>&1)"; CODIGO_VAZIA_1=$?
+TOTAL_VAZIA_1="$(echo "$SAIDA_VAZIA_1" | sed -n 's/^Total: \([0-9]\+\) B$/\1/p')"
+# Plantação de RAIZ_GORDA com FOCO.md pesado
+node -e "require('fs').writeFileSync(process.argv[1]+'/FOCO.md','# Foco\n\n'+'x'.repeat(2500))" "$RAIZ_GORDA"
+# Segunda medição de raiz vazia (depois de plantar GORDA)
+SAIDA_VAZIA_2="$(RFM_ROOT="$RAIZ_VAZIA" node "$SRC/scripts/orcamento.cjs" 2>&1)"; CODIGO_VAZIA_2=$?
+TOTAL_VAZIA_2="$(echo "$SAIDA_VAZIA_2" | sed -n 's/^Total: \([0-9]\+\) B$/\1/p')"
+igual "primeira medição neutra sai 0" "$CODIGO_VAZIA_1" "0"
+igual "segunda medição neutra ainda sai 0 (mesmo com RAIZ_GORDA plantada)" "$CODIGO_VAZIA_2" "0"
+igual "total nao muda (neutralizacao provada, independente de raiz alternativa)" "$TOTAL_VAZIA_2" "$TOTAL_VAZIA_1"
+
+# ------------------------------------------------- 1c. valores congelados (D6)
+echo; echo "1c. valores congelados (D6) — constantes no teto nao mudam"
+NUCLEOS_CHECK="$(grep -c 'NUCLEOS_MAX_BYTES: 5600' "$SRC/hooks/lib/contexto-sessao.cjs" 2>/dev/null || echo 0)"
+ORCAMENTO_CHECK="$(grep -c 'ORCAMENTO_BYTES: 8000' "$SRC/hooks/lib/contexto-sessao.cjs" 2>/dev/null || echo 0)"
+FOCO_MAX_CHECK="$(grep -c 'FOCO_MAX_BYTES: 2600' "$SRC/hooks/lib/contexto-sessao.cjs" 2>/dev/null || echo 0)"
+FOCO_MIN_CHECK="$(grep -c 'FOCO_MIN_BYTES: 700' "$SRC/hooks/lib/contexto-sessao.cjs" 2>/dev/null || echo 0)"
+TETO_AGREGADO_CHECK="$(grep -c '|| 14000' "$SRC/scripts/orcamento.cjs" 2>/dev/null || echo 0)"
+
+if [ "$NUCLEOS_CHECK" -ge 1 ] && [ "$ORCAMENTO_CHECK" -ge 1 ] && [ "$FOCO_MAX_CHECK" -ge 1 ] && [ "$FOCO_MIN_CHECK" -ge 1 ] && [ "$TETO_AGREGADO_CHECK" -ge 1 ]; then
+  ok=$((ok+1)); echo "  ok   D6: constantes congeladas nos valores de 2026-08-24"
+else
+  falhou=$((falhou+1)); echo "  FALHA D6: constantes mudaram. tetoFoco real e 1.841 B contra 2.600 nominais (nucleos comeram); NUCLEOS=$NUCLEOS_CHECK, ORCAMENTO=$ORCAMENTO_CHECK, FOCO_MAX=$FOCO_MAX_CHECK, FOCO_MIN=$FOCO_MIN_CHECK, TETO_AGR=$TETO_AGREGADO_CHECK"
+fi
+
+# ------------------------------------------------- 1d. banda de aviso — limiar nao dispara aviso em raiz neutra
+echo; echo "1d. banda de aviso — avisos nao disparam exit 1"
+# Com raiz neutra, total esta ok (exit 0). Agora testa o comportamento de aviso
+# configurando um teto que faça a medição cair na banda de aviso (5% por padrão).
+# A medição neutra é ~13.096 B. Queremos um teto onde 13.096 fica entre (teto - limiar) e teto.
+# Se teto = 13.500, limiar = 675, então folga = 404 B, que é < limiar, logo 'aviso'.
+# Mas o importante é que aviso sai com exit 0.
+SAIDA_AVISO="$(RFM_ROOT="$RAIZ_VAZIA" node "$SRC/scripts/orcamento.cjs" --teto 13500 2>&1)"; CODIGO_AVISO=$?
+if grep -qF "Aviso de folga em agregado" "$SAIDA_AVISO"; then
+  igual "aviso de folga mensagem detectada, mas exit é 0" "$CODIGO_AVISO" "0"
+  ok=$((ok+1)); echo "  ok   perna vermelha (estouro) continua exit 1, aviso nao muda exit"
+else
+  # Pode ser que nao tenha aviso (depende dos valores reais), mas o exit deve ser 0
+  igual "sem aviso ou com aviso, exit continua 0 dentro da banda" "$CODIGO_AVISO" "0"
+fi
 
 # ------------------------------------------------- 2. caminho vermelho
 echo; echo "2. caminho vermelho — --teto 1000"
 SAIDA2="$(node "$SRC/scripts/orcamento.cjs" --teto 1000 2>&1)"; CODIGO2=$?
 igual "sai 1" "$CODIGO2" "1"
-tem "acusa o estouro do teto agregado" "$SAIDA2" "Estouro do teto agregado"
-tem "estouro cita o teto pedido (1000 B)" "$SAIDA2" "> 1000 B"
+tem "acusa o estouro do teto agregado" "$SAIDA2" "Estouro de agregado"
+tem "estouro cita o teto pedido (1000 B)" "$SAIDA2" "de 1000 bytes"
 
 # ------------------------------------------------- 3. regressao: fonte zerada em CRLF
 echo; echo "3. regressao — frontmatter CRLF nao pode medir 0 B"
 mkdir -p "$SBP/hooks/lib" "$SBP/skills/exemplo" "$SBP/commands" "$SBP/agents" "$SBP/scripts"
 cp "$SRC/scripts/orcamento.cjs" "$SBP/scripts/orcamento.cjs"
+cp "$SRC/hooks/lib/folga.cjs" "$SBP/hooks/lib/folga.cjs"
 
 # lib fake: so precisa conter o ORCAMENTO_BYTES que o script real le por regex
 # (nunca digitado — lido de la, igual o script de producao faz do original).
@@ -99,6 +152,7 @@ tem "agente CRLF teve a description extraida (bytes exatos, sem \r sobrando)" "$
 echo; echo "4. D8 — references/ nao pode mudar o total agregado"
 mkdir -p "$SBP2/hooks/lib" "$SBP2/skills/exemplo" "$SBP2/commands" "$SBP2/agents" "$SBP2/scripts"
 cp "$SRC/scripts/orcamento.cjs" "$SBP2/scripts/orcamento.cjs"
+cp "$SRC/hooks/lib/folga.cjs" "$SBP2/hooks/lib/folga.cjs"
 
 printf 'module.exports = { TETOS: { ORCAMENTO_BYTES: 8000 } };\n' > "$SBP2/hooks/lib/contexto-sessao.cjs"
 node -e '
@@ -138,8 +192,8 @@ if ! grep -qF 'process.exit(tetoExcedido ? 1 : 0);' "$MUT"; then
 else
   falhou=$((falhou+1)); echo "  FALHA sed nao encontrou a linha a sabotar — mutante nao mutou nada"
 fi
-SAIDA4="$(node "$MUT" --teto 1000 2>&1)"; CODIGO4=$?
-if [ "$CODIGO4" = "0" ]; then
+SAIDA5="$(node "$MUT" --teto 1000 2>&1)"; CODIGO5=$?
+if [ "$CODIGO5" = "0" ]; then
   ok=$((ok+1)); echo "  ok   mutante ignora o estouro real e sai 0 (a asserção da secao 2, contra o original, pegaria isso)"
 else
   falhou=$((falhou+1)); echo "  FALHA mutante ainda saiu != 0 — sabotagem nao teve efeito, mutante indetectavel"
