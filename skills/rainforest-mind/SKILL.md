@@ -143,7 +143,7 @@ Elaboração: references/regra-14.md
 **15. Ninguém altera o ambiente do usuário.** Agente e janela: sem instalar, PATH,
 env, config, serviço **nem dado fora do worktree**; ferramenta ausente para e
 reporta, instalar pergunta. Processo morre pelo PID desta sessão — por nome ou
-porta mata o alheio. Env por `printenv NOME`, nunca dump filtrado. ↳
+porta mata o alheio. Env por `printenv NOME`, nunca dump filtrado.
 <!-- detalhe -->
 Elaboração: references/regra-15.md
 
