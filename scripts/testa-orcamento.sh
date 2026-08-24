@@ -17,6 +17,13 @@
 #      CONTRIBUTING.md:11 acusar quando o plugin engordar alem de 14.000 B.
 #   3. caminho vermelho: --teto baixo estoura e sai != 0. Sem esta perna o
 #      "gate" so afirma o caminho feliz e nao prova nada.
+#   4. D8 — references/ fica fora do gate agregado. medirSkills (:104-121) mede
+#      so o SKILL.md de cada pasta; references/ nao e contexto residente, so
+#      entra quando alguem le um arquivo especifico. Fixture com e sem
+#      references/ pesado (~10 KB) tem de medir o MESMO total — se algum dia o
+#      medidor passar a varrer a pasta inteira, esta asserção acusa antes do
+#      gate reprovar a propria quebra de skills-finas-com-references no dia
+#      seguinte a entrega.
 #
 # A ultima secao e MUTACAO: sabota uma COPIA do orcamento.cjs para ignorar o
 # teto — o original em scripts/orcamento.cjs nunca e tocado.
@@ -24,8 +31,9 @@
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SBP="$(mktemp -d)"
+SBP2="$(mktemp -d)"
 MUT="$SRC/scripts/.orcamento-mutante-teste.cjs"
-trap 'rm -rf "$SBP" "$MUT"' EXIT
+trap 'rm -rf "$SBP" "$SBP2" "$MUT"' EXIT
 echo "(caixa de areia: $SBP)"
 
 ok=0; falhou=0
@@ -87,8 +95,43 @@ tem "skill mediu exatamente os bytes da description" "$SAIDA3" "Skills (descript
 tem "command mediu exatamente os bytes da description" "$SAIDA3" "Commands (descriptions): $BYTES_CMD B"
 tem "agente CRLF teve a description extraida (bytes exatos, sem \r sobrando)" "$SAIDA3" "Agentes (descriptions): $BYTES_AGENTE B"
 
-# ------------------------------------------------- 4. mutacao (a bateria tem de acusar)
-echo; echo "4. mutacao — copia do orcamento sabotada para ignorar o teto"
+# ------------------------------------------------- 4. D8 — references/ fora do gate agregado
+echo; echo "4. D8 — references/ nao pode mudar o total agregado"
+mkdir -p "$SBP2/hooks/lib" "$SBP2/skills/exemplo" "$SBP2/commands" "$SBP2/agents" "$SBP2/scripts"
+cp "$SRC/scripts/orcamento.cjs" "$SBP2/scripts/orcamento.cjs"
+
+printf 'module.exports = { TETOS: { ORCAMENTO_BYTES: 8000 } };\n' > "$SBP2/hooks/lib/contexto-sessao.cjs"
+node -e '
+  const fs = require("fs");
+  fs.writeFileSync(process.argv[1], "#!/usr/bin/env node\nconsole.log(JSON.stringify({hookSpecificOutput:{additionalContext:\"x\".repeat(500)}}));\n");
+' "$SBP2/hooks/foco-session-start.cjs"
+printf -- '---\nname: exemplo\ndescription: Skill de exemplo para a fixture do D8\n---\ncorpo\n' > "$SBP2/skills/exemplo/SKILL.md"
+
+# cenario A: pasta de skill SEM references/
+SAIDA4A="$(node "$SBP2/scripts/orcamento.cjs" 2>&1)"; CODIGO4A=$?
+TOTAL_4A="$(echo "$SAIDA4A" | sed -n 's/^Total: \([0-9]\+\) B$/\1/p')"
+
+# cenario B: a MESMA pasta, agora com references/ pesado (~10 KB — grande o
+# suficiente para que somar os arquivos mudasse o total de forma inequivoca).
+mkdir -p "$SBP2/skills/exemplo/references"
+node -e '
+  const fs = require("fs");
+  const path = require("path");
+  const dir = process.argv[1];
+  for (const n of [1, 2]) {
+    fs.writeFileSync(path.join(dir, "regra-" + n + ".md"), "x".repeat(5120));
+  }
+' "$SBP2/skills/exemplo/references"
+
+SAIDA4B="$(node "$SBP2/scripts/orcamento.cjs" 2>&1)"; CODIGO4B=$?
+TOTAL_4B="$(echo "$SAIDA4B" | sed -n 's/^Total: \([0-9]\+\) B$/\1/p')"
+
+igual "cenario A (sem references/) sai 0" "$CODIGO4A" "0"
+igual "cenario B (com references/ de ~10 KB) sai 0" "$CODIGO4B" "0"
+igual "total agregado nao muda quando references/ aparece (D8)" "$TOTAL_4B" "$TOTAL_4A"
+
+# ------------------------------------------------- 5. mutacao (a bateria tem de acusar)
+echo; echo "5. mutacao — copia do orcamento sabotada para ignorar o teto"
 sed 's/process\.exit(tetoExcedido ? 1 : 0);/process.exit(0);/' "$SRC/scripts/orcamento.cjs" > "$MUT"
 if ! grep -qF 'process.exit(tetoExcedido ? 1 : 0);' "$MUT"; then
   ok=$((ok+1)); echo "  ok   sabotagem aplicada na copia (scripts/orcamento.cjs original intocado)"

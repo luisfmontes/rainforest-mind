@@ -194,8 +194,7 @@ arquivo nasce para ser commitado no repo de outra pessoa.
 
 O que segue e o **nucleo** de cada regra. Regra marcada com \`↳\` tem elaboracao
 que nao esta aqui — criterio fino, comando exato, incidente datado —, e ela mora
-em \`skills/rainforest-mind/SKILL.md\`. Antes de aplicar uma regra marcada, **leia
-esse arquivo**.
+em \`skills/rainforest-mind/references/regra-<n>.md\` (onde \`<n>\` e o numero da regra). Antes de aplicar uma regra marcada, **leia esse arquivo**.
 
 ${nucleo}
 `;

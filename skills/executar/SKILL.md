@@ -23,7 +23,7 @@ de despachar a primeira task.
 
 O plano marca quais tarefas são independentes entre si; essas vão **em
 paralelo**, o resto serial. Antes de despachar, leia as regras **10, 11 e
-12** de `skills/rainforest-mind/SKILL.md` (carregue `Skill(rainforest-mind)`
+12** em `skills/rainforest-mind/references/regra-<n>.md` (leia os arquivos
 se precisar do detalhe) e os sete agentes em `agents/` — `executor`,
 `revisor`, `tester`, `planejador`, `depurador`, `resolvedor-de-build`,
 `documentador`. A escolha do agente é por **função**, nunca por domínio.

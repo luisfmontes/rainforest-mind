@@ -15,11 +15,11 @@ Exit 2 significa que `executar` ou `revisar` ainda não fecharam — pare e
 rode o que falta antes, não force `marcar` por cima. A própria saída do
 comando nomeia o estágio bloqueado.
 
-Antes de aplicar a regra que sustenta esta skill, carregue
-`Skill(rainforest-mind)` e leia a **regra 12** inteira (a elaboração —
-incidentes, cuidados finos — fica atrás do `<!-- detalhe -->` e não vem na
-injeção de abertura). Esta skill é a regra 12 virando estágio do fluxo:
-mesmo princípio, aplicado a um artefato específico em vez de a um agente.
+Antes de aplicar a regra que sustenta esta skill, leia a **regra 12** em
+`skills/rainforest-mind/references/regra-12.md` (a elaboração —
+incidentes, cuidados finos — está lá completa). Esta skill é a regra 12
+virando estágio do fluxo: mesmo princípio, aplicado a um artefato específico
+em vez de a um agente.
 
 ## O que valida
 

@@ -446,6 +446,232 @@ else
 fi
 
 echo
+echo "7.5. CATRACA DE REFERENCES E SKILL.md — custo de CONSULTAR uma regra (D9)"
+# O criterio da issue #73 e "consultar a elaboracao de uma regra custa menos de
+# 3k tokens, MEDIDO". Sem teste esse numero vale no dia da entrega e apodrece
+# depois -- foi assim que o "~16,8k tokens" do description do SKILL.md virou um
+# numero que nao deriva de nada e nao e verificado por nada. Esta catraca mede
+# dois artefatos reais contra dois tetos: o MAIOR arquivo de references/ (o que
+# se paga para consultar UMA regra) e o SKILL.md inteiro (o que se paga para
+# decidir QUAL regra abrir).
+cat > "$RAIZ_POSIX/checa-references.cjs" <<'EOF'
+const fs = require('fs');
+const path = require('path');
+const lib = require(process.env.LIB_PATH);
+const dir = process.env.REFERENCES_DIR;
+let maiorArq = '(nenhum)';
+let maiorBytes = 0;
+for (const f of fs.readdirSync(dir)) {
+  if (!f.endsWith('.md')) continue;
+  const b = fs.statSync(path.join(dir, f)).size;
+  if (b > maiorBytes) { maiorBytes = b; maiorArq = f; }
+}
+const skillBytes = fs.statSync(process.env.SKILL).size;
+console.log(`${maiorArq} ${maiorBytes} ${lib.TETOS.REFERENCE_MAX_BYTES} ${skillBytes} ${lib.TETOS.SKILL_MAX_BYTES}`);
+EOF
+REFERENCES_REAIS="$SRC/skills/rainforest-mind/references"
+SKILL_REAL="$SRC/skills/rainforest-mind/SKILL.md"
+LEITURA_R="$(LIB_PATH="$LIB" REFERENCES_DIR="$REFERENCES_REAIS" SKILL="$SKILL_REAL" node "$RAIZ_POSIX/checa-references.cjs")"
+MAIOR_ARQ="$(echo "$LEITURA_R" | cut -d' ' -f1)"
+MAIOR_BYTES="$(echo "$LEITURA_R" | cut -d' ' -f2)"
+TETO_REF="$(echo "$LEITURA_R" | cut -d' ' -f3)"
+SKILL_BYTES="$(echo "$LEITURA_R" | cut -d' ' -f4)"
+TETO_SKILL="$(echo "$LEITURA_R" | cut -d' ' -f5)"
+
+if [ -n "$MAIOR_BYTES" ] && [ "$MAIOR_BYTES" -le "$TETO_REF" ] 2>/dev/null; then
+  ok=$((ok+1)); echo "  ok    maior reference ($MAIOR_ARQ, $MAIOR_BYTES B) cabe na catraca (<= $TETO_REF B, folga $((TETO_REF-MAIOR_BYTES)) B)"
+else
+  falhou=$((falhou+1)); echo "  FALHA $MAIOR_ARQ passou da catraca de reference ($MAIOR_BYTES B > $TETO_REF B)"
+  echo "         consultar essa regra deixou de custar menos de 3k tokens (D9/issue #73)."
+  echo "         encurte $MAIOR_ARQ, ou suba REFERENCE_MAX_BYTES de proposito, com a conta escrita."
+fi
+
+if [ -n "$SKILL_BYTES" ] && [ "$SKILL_BYTES" -le "$TETO_SKILL" ] 2>/dev/null; then
+  ok=$((ok+1)); echo "  ok    SKILL.md cabe na catraca ($SKILL_BYTES B <= $TETO_SKILL B, folga $((TETO_SKILL-SKILL_BYTES)) B)"
+else
+  falhou=$((falhou+1)); echo "  FALHA SKILL.md passou da catraca ($SKILL_BYTES B > $TETO_SKILL B)"
+  echo "         o indice ficou pesado demais para decidir qual references/regra-NN.md abrir."
+fi
+
+# MUTACAO -- a catraca de reference so vale se ela for o que reprova. Roda numa
+# COPIA sandbox dentro do worktree (nunca no arquivo rastreado: o teste normal
+# acima ja usa o artefato real, regra 12; a mutacao segue o mesmo padrao das
+# outras deste arquivo -- copia, nunca o original). Engordar regra-12.md em
+# 3.000 B tem que fazer a MESMA medicao acusar, citando o arquivo pelo nome.
+REFS_MUTADO="$RAIZ_POSIX/references-mutado"
+rm -rf "$REFS_MUTADO"
+cp -r "$REFERENCES_REAIS" "$REFS_MUTADO"
+node -e "require('fs').appendFileSync(process.argv[1], 'x'.repeat(3000))" "$REFS_MUTADO/regra-12.md"
+LEITURA_RM="$(LIB_PATH="$LIB" REFERENCES_DIR="$REFS_MUTADO" SKILL="$SKILL_REAL" node "$RAIZ_POSIX/checa-references.cjs")"
+MAIOR_ARQ_M="$(echo "$LEITURA_RM" | cut -d' ' -f1)"
+MAIOR_BYTES_M="$(echo "$LEITURA_RM" | cut -d' ' -f2)"
+echo "  (saida do mutante: $LEITURA_RM — regra-12.md com +3.000 B)"
+if [ "$MAIOR_ARQ_M" = "regra-12.md" ] && [ -n "$MAIOR_BYTES_M" ] && [ "$MAIOR_BYTES_M" -gt "$TETO_REF" ] 2>/dev/null; then
+  ok=$((ok+1)); echo "  ok    regra-12.md engordada em 3.000 B faz a catraca acusar, citando o arquivo (o teto e load-bearing)"
+else
+  falhou=$((falhou+1)); echo "  FALHA engordar regra-12.md nao fez a catraca acusar — o teto nao esta medindo nada"
+fi
+rm -rf "$REFS_MUTADO"
+
+echo
+echo "7.6. AS QUATRO INVARIANTES DA QUEBRA (D4/D5/D6/D7) — contra o SKILL.md REAL"
+# A tarefa 5 do plano trava quatro coisas que a quebra em references/ prometeu nao
+# alterar. As tres primeiras medem o SKILL.md e o parser reais (nao fixture); a
+# quarta (cabecalho cita references/) e o item 0 deste arquivo, reescrito la
+# embaixo na secao 8 -- listada aqui so para nao se perder no meio da leitura.
+
+# D6 -- seta unica: o nucleo emitido nao pode conter "seta dupla" (↳ ↳). O defeito
+# historico era extrairNucleo() acrescentar UMA seta a um nucleo que ja terminava
+# com ↳ literal no arquivo -- a regra 15 chegava como "↳ ↳" em toda sessao.
+cat > "$RAIZ_POSIX/checa-invariantes.cjs" <<'EOF'
+const fs = require('fs');
+const lib = require(process.env.LIB_PATH);
+const skill = fs.readFileSync(process.env.SKILL, 'utf8');
+const nucleo = lib.extrairNucleo(lib.filtrarRegras(skill));
+const setasDuplas = (nucleo.match(/↳\s↳/g) || []).length;
+console.log(`${Buffer.byteLength(nucleo, 'utf8')} ${setasDuplas}`);
+EOF
+LEITURA_INV="$(LIB_PATH="$LIB" SKILL="$SKILL_REAL" node "$RAIZ_POSIX/checa-invariantes.cjs")"
+NUCLEO_BYTES_REAL="$(echo "$LEITURA_INV" | cut -d' ' -f1)"
+SETAS_DUPLAS_REAL="$(echo "$LEITURA_INV" | cut -d' ' -f2)"
+
+if [ "$SETAS_DUPLAS_REAL" = "0" ]; then
+  ok=$((ok+1)); echo "  ok    D6: nucleo emitido nao contem seta dupla (↳ ↳) — 0 ocorrencias"
+else
+  falhou=$((falhou+1)); echo "  FALHA D6: nucleo emitido contem $SETAS_DUPLAS_REAL ocorrencia(s) de seta dupla (↳ ↳)"
+  echo "         a regra 15 voltou a terminar com ↳ literal no SKILL.md — extrairNucleo acrescenta a segunda."
+fi
+
+# D7 -- nucleo inalterado: a quebra em references/ prometeu nao devolver folga
+# nenhuma ao orcamento de nucleo. O numero e o contrato (issue #79): a folga
+# sobre NUCLEOS_MAX_BYTES (5.600) e de 11 B, e esta asercao existe para acusar
+# se algum dia alguem, de boa fe, "aproveitar" bytes que a quebra teria liberado.
+NUCLEO_ESPERADO=5589
+if [ "$NUCLEO_BYTES_REAL" = "$NUCLEO_ESPERADO" ]; then
+  ok=$((ok+1)); echo "  ok    D7: nucleo emitido mede exatamente $NUCLEO_BYTES_REAL B (contrato: $NUCLEO_ESPERADO B)"
+else
+  falhou=$((falhou+1)); echo "  FALHA D7: nucleo emitido mede $NUCLEO_BYTES_REAL B, o contrato exige exatamente $NUCLEO_ESPERADO B"
+  echo "         a quebra em references/ nao pode mudar nem 1 byte do que ja era injetado antes dela."
+fi
+
+# D5 -- literais estruturais. '## As regras' e o mais importante: verificado por
+# mutacao no design, troca-lo zera o payload de nucleo e a sessao sobe com
+# "FALHA AO CARREGAR AS REGRAS". '## Comando /foco' e o ponto de injecao do teste
+# de mutacao da catraca (secao 12 deste arquivo). 'Ultima revisao:' e lida por
+# hooks/foco-session-start.cjs:167 num `if` sem `else` -- some dali e o aviso
+# bimestral desliga em silencio.
+SKILL_REAL_TXT="$(cat "$SKILL_REAL")"
+checa "D5: SKILL.md real contem o literal '## As regras'"        tem "## As regras"       "$SKILL_REAL_TXT"
+checa "D5: SKILL.md real contem o literal '## Comando /foco'"    tem "## Comando /foco"   "$SKILL_REAL_TXT"
+checa "D5: SKILL.md real contem o literal 'Ultima revisao:'"     tem "Última revisão:"    "$SKILL_REAL_TXT"
+
+echo
+echo "7.7. FORMATO DO H1 EM references/ — titulo sintetizado, nao prosa truncada com ** orfao"
+# Cada regra-NN.md recebeu um H1 sintetizado a partir da regra que ele elabora. O
+# defeito real (achado por revisor humano-equivalente, nao pego pelas 233 assercoes
+# que ja existiam nesta bateria): em 15 dos 17, o H1 saiu truncado no meio da prosa
+# do corpo, com um ** orfao emendado logo apos o primeiro ponto final --
+#   # Regra 1 — Responder tudo, na ordem — e no FIM do turno.** N pedidos → N respostas
+# em vez de um titulo curto de verdade. E' exatamente o texto que um agente le ao
+# consultar uma regra pelo cabecalho (D4/D9) -- titulo quebrado, 17 lugares para
+# desconfiar.
+#
+# O ** orfao e' o sinal mais confiavel de truncagem, entao a assercao ASTERISCOS
+# abaixo e' a principal. O bullet "titulo nao termina em ponto final" do contrato
+# original foi implementado como PONTOORFAO, restrito a essa mesma assinatura
+# (ponto-final colado a ** orfao) -- nao a qualquer titulo que termine em ponto.
+#
+# HISTORICO DO ACHADO: na base em que esta secao nasceu, regra-17.md terminava em
+# ponto por design ("...janela parada e' o alerta.") e era um dos dois titulos sãos
+# -- um check literal de "nunca termina em ponto" teria acusado um titulo correto.
+# Isso foi reportado como achado de premissa, e a rodada que consertou os 15 titulos
+# truncados (commit 9a62232, branch design/skills-finas-com-references) padronizou
+# regra-17.md removendo o ponto por causa dele: hoje TODOS os 17 titulos terminam
+# sem ponto. PONTOORFAO continua restrito (nao virou "nunca termina em ponto")
+# porque este worktree segue isolado da base 9a62232 (regra 11: subagente nao
+# funde a propria branch) -- apertar o check aqui acusaria regra-17.md so' porque
+# ESTE worktree ainda carrega o titulo antigo, um falso positivo local, nao um
+# defeito do artefato. Depois que as duas branches integrarem, "nunca termina em
+# ponto" vira o check mais simples e correto — mas isso e' trabalho de quem integra,
+# nao desta asserção isolada.
+cat > "$RAIZ_POSIX/checa-titulos.cjs" <<'EOF'
+const fs = require('fs');
+const path = require('path');
+const dir = process.env.REFERENCES_DIR;
+const arquivos = fs.readdirSync(dir).filter(f => /^regra-\d+\.md$/.test(f)).sort();
+const linhas = [];
+const acusados = new Set();
+for (const f of arquivos) {
+  const numeroArquivo = parseInt(f.match(/^regra-(\d+)\.md$/)[1], 10);
+  const conteudo = fs.readFileSync(path.join(dir, f), 'utf8');
+  const primeiraLinha = conteudo.split(/\r?\n/, 1)[0];
+  const m = primeiraLinha.match(/^# Regra (\d+)(?: — (.+))?$/);
+  if (!m) {
+    acusados.add(f);
+    linhas.push(`FORMATO ${f}: primeira linha nao casa com "# Regra <n> — <titulo>" (ou "# Regra <n>" sem titulo) — linha: ${primeiraLinha}`);
+    continue;
+  }
+  const numeroTitulo = parseInt(m[1], 10);
+  const titulo = m[2]; // undefined quando o arquivo nao tem titulo (ex.: regra-04.md)
+  if (numeroTitulo !== numeroArquivo) {
+    acusados.add(f);
+    linhas.push(`NUMERO ${f}: titulo abre com "Regra ${numeroTitulo}" mas o arquivo e' o da regra ${numeroArquivo} — linha: ${primeiraLinha}`);
+  }
+  if (titulo !== undefined) {
+    if (titulo.includes('**')) {
+      acusados.add(f);
+      linhas.push(`ASTERISCOS ${f}: titulo contem ** (cabecalho truncado, com o inicio da prosa do corpo colado) — linha: ${primeiraLinha}`);
+    }
+    if (/\.\*\*/.test(titulo)) {
+      acusados.add(f);
+      linhas.push(`PONTOORFAO ${f}: titulo tem ponto final seguido de ** orfao (assinatura da truncagem) — linha: ${primeiraLinha}`);
+    }
+  }
+}
+console.log(`TOTAL=${arquivos.length} ACUSADOS=${acusados.size} ARQUIVOS=${[...acusados].join(',')}`);
+for (const l of linhas) console.log(l);
+EOF
+SAIDA_TITULOS="$(REFERENCES_DIR="$REFERENCES_REAIS" node "$RAIZ_POSIX/checa-titulos.cjs")"
+RESUMO_TITULOS="$(echo "$SAIDA_TITULOS" | head -1)"
+echo "  (leitura: $RESUMO_TITULOS)"
+
+LINHAS_FORMATO="$(echo "$SAIDA_TITULOS" | grep '^FORMATO ' || true)"
+if [ -z "$LINHAS_FORMATO" ]; then
+  ok=$((ok+1)); echo "  ok    todo H1 de references/ casa com \"# Regra <n> — <titulo>\" ou \"# Regra <n>\" sem titulo"
+else
+  falhou=$((falhou+1)); echo "  FALHA H1 fora do formato esperado em references/:"
+  echo "$LINHAS_FORMATO" | sed 's/^/         /'
+fi
+
+LINHAS_ASTERISCOS="$(echo "$SAIDA_TITULOS" | grep '^ASTERISCOS ' || true)"
+QTD_ASTERISCOS="$(echo "$SAIDA_TITULOS" | grep -c '^ASTERISCOS ' || true)"
+if [ -z "$LINHAS_ASTERISCOS" ]; then
+  ok=$((ok+1)); echo "  ok    nenhum titulo de references/ contem ** (0 cabecalhos truncados)"
+else
+  falhou=$((falhou+1)); echo "  FALHA $QTD_ASTERISCOS titulo(s) de references/ contem ** — cabecalho truncado com prosa do corpo colada:"
+  echo "$LINHAS_ASTERISCOS" | sed 's/^/         /'
+fi
+
+LINHAS_PONTOORFAO="$(echo "$SAIDA_TITULOS" | grep '^PONTOORFAO ' || true)"
+if [ -z "$LINHAS_PONTOORFAO" ]; then
+  ok=$((ok+1)); echo "  ok    nenhum titulo de references/ termina em ponto final colado a ** orfao"
+else
+  falhou=$((falhou+1)); echo "  FALHA titulo(s) com ponto final + ** orfao (assinatura da truncagem):"
+  echo "$LINHAS_PONTOORFAO" | sed 's/^/         /'
+fi
+
+LINHAS_NUMERO="$(echo "$SAIDA_TITULOS" | grep '^NUMERO ' || true)"
+if [ -z "$LINHAS_NUMERO" ]; then
+  ok=$((ok+1)); echo "  ok    o numero do titulo bate com o numero do nome do arquivo, em todo references/"
+else
+  falhou=$((falhou+1)); echo "  FALHA numero do titulo nao bate com o do nome do arquivo:"
+  echo "$LINHAS_NUMERO" | sed 's/^/         /'
+fi
+# MUTACAO desta assercao: secao 17.1, SABOTAGEM 11 (corrompe o titulo de regra-17.md,
+# hoje um dos dois sãos, numa copia — checa-titulos.cjs e $REFERENCES_REAIS ja existem
+# aqui em diante).
+
+echo
 echo "8. NUCLEO E DETALHE — a elaboracao fica fora, e a regra cortada se anuncia"
 SKILL_NUCLEO="# Skill
 ## As regras
@@ -466,7 +692,8 @@ S="$(montar "$SKILL_NUCLEO" '')"
 checa "nucleo da regra chega"              tem     "Nucleo que precisa chegar"      "$S"
 checa "elaboracao NAO chega"               nao_tem "ELABORACAO-QUE-NAO-DEVE-CHEGAR" "$S"
 checa "regra cortada ganha a seta"         tem     "↳"                              "$S"
-checa "cabecalho explica a seta"           tem     "Skill(rainforest-mind)"         "$S"
+checa "D4: cabecalho manda ler o arquivo da regra"   tem     "regra-<n>.md"         "$S"
+checa "D4: cabecalho NAO manda carregar a skill inteira" nao_tem "Skill(rainforest-mind)" "$S"
 checa "regra sem marca entra inteira"      tem     "entra inteira"                  "$S"
 
 echo
@@ -1801,6 +2028,179 @@ if [ "$S_MUT6" = "false" ]; then
 else
   falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — restringir a 1a faixa nao e o que a assercao mede (saida: $S_MUT6)"
 fi
+
+echo "  -- SABOTAGEM 7: devolver a seta (↳) literal ao nucleo da regra 15 (D6)"
+# Padrao identico as sabotagens 4/5: copia o artefato REAL (aqui, o SKILL.md, nao
+# a lib), sabota com um script node que confere a ancora antes de trocar, roda a
+# MESMA medicao (checa-invariantes.cjs) contra a copia mutada, e exige que a
+# contagem de seta dupla deixe de ser zero.
+cat > "$RAIZ_POSIX/sabotar-seta.cjs" <<'SABOTA_EOF'
+const fs = require('fs');
+const alvo = process.argv[2];
+let texto = fs.readFileSync(alvo, 'utf8');
+const achar = 'nunca dump filtrado.\n<!-- detalhe -->';
+const trocar = 'nunca dump filtrado. ↳\n<!-- detalhe -->';
+if (!texto.includes(achar)) { console.error('ANCORA NAO BATE em ' + alvo); process.exit(1); }
+texto = texto.split(achar).join(trocar);
+fs.writeFileSync(alvo, texto);
+SABOTA_EOF
+cp "$SKILL_REAL" "$RAIZ_POSIX/skill-mut-seta.md"
+node "$RAIZ_POSIX/sabotar-seta.cjs" "$RAIZ_POSIX/skill-mut-seta.md"
+EXIT_SABOTA7=$?
+if [ "$EXIT_SABOTA7" != "0" ]; then
+  falhou=$((falhou+1))
+  echo "  FALHA ANCORA NAO BATE na sabotagem 7 (exit $EXIT_SABOTA7) — mutador nao mutou nada,"
+  echo "         a copia intocada nao prova que a seta unica e load-bearing"
+else
+  LEITURA_MUT7="$(LIB_PATH="$LIB" SKILL="$RAIZ_POSIX/skill-mut-seta.md" node "$RAIZ_POSIX/checa-invariantes.cjs")"
+  SETAS_DUPLAS_MUT7="$(echo "$LEITURA_MUT7" | cut -d' ' -f2)"
+  echo "  (saida do mutante: setas-duplas=$SETAS_DUPLAS_MUT7 — a assercao real espera 0)"
+  if [ -n "$SETAS_DUPLAS_MUT7" ] && [ "$SETAS_DUPLAS_MUT7" != "0" ]; then
+    ok=$((ok+1)); echo "  ok    mutacao expos a seta dupla (D6: o ↳ literal de volta a regra 15 vira ↳ ↳ na injecao)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — devolver o ↳ literal nao produziu seta dupla"
+  fi
+fi
+rm -f "$RAIZ_POSIX/skill-mut-seta.md"
+
+echo "  -- SABOTAGEM 8: acrescentar ~100 B ao nucleo da regra 1 (D7)"
+cat > "$RAIZ_POSIX/sabotar-nucleo.cjs" <<'SABOTA_EOF'
+const fs = require('fs');
+const alvo = process.argv[2];
+let texto = fs.readFileSync(alvo, 'utf8');
+const achar = 'todo turno**.\n<!-- detalhe -->';
+const trocar = 'todo turno**. ' + 'x'.repeat(100) + '\n<!-- detalhe -->';
+if (!texto.includes(achar)) { console.error('ANCORA NAO BATE em ' + alvo); process.exit(1); }
+texto = texto.split(achar).join(trocar);
+fs.writeFileSync(alvo, texto);
+SABOTA_EOF
+cp "$SKILL_REAL" "$RAIZ_POSIX/skill-mut-nucleo.md"
+node "$RAIZ_POSIX/sabotar-nucleo.cjs" "$RAIZ_POSIX/skill-mut-nucleo.md"
+EXIT_SABOTA8=$?
+if [ "$EXIT_SABOTA8" != "0" ]; then
+  falhou=$((falhou+1))
+  echo "  FALHA ANCORA NAO BATE na sabotagem 8 (exit $EXIT_SABOTA8) — mutador nao mutou nada,"
+  echo "         a copia intocada nao prova que o numero do nucleo e load-bearing"
+else
+  LEITURA_MUT8="$(LIB_PATH="$LIB" SKILL="$RAIZ_POSIX/skill-mut-nucleo.md" node "$RAIZ_POSIX/checa-invariantes.cjs")"
+  NUCLEO_BYTES_MUT8="$(echo "$LEITURA_MUT8" | cut -d' ' -f1)"
+  echo "  (saida do mutante: nucleo=$NUCLEO_BYTES_MUT8 B — a assercao real exige exatamente $NUCLEO_ESPERADO B)"
+  if [ -n "$NUCLEO_BYTES_MUT8" ] && [ "$NUCLEO_BYTES_MUT8" != "$NUCLEO_ESPERADO" ]; then
+    ok=$((ok+1)); echo "  ok    mutacao expos o desvio do nucleo (D7: a quebra em references/ nao pode mudar 1 byte sequer)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — engordar o nucleo da regra 1 nao mudou a medicao"
+  fi
+fi
+rm -f "$RAIZ_POSIX/skill-mut-nucleo.md"
+
+echo "  -- SABOTAGEM 9: trocar '## As regras' por outro texto (D5)"
+cat > "$RAIZ_POSIX/sabotar-secao.cjs" <<'SABOTA_EOF'
+const fs = require('fs');
+const alvo = process.argv[2];
+let texto = fs.readFileSync(alvo, 'utf8');
+const achar = '## As regras';
+const trocar = '## As diretrizes';
+if (!texto.includes(achar)) { console.error('ANCORA NAO BATE em ' + alvo); process.exit(1); }
+texto = texto.split(achar).join(trocar);
+fs.writeFileSync(alvo, texto);
+SABOTA_EOF
+cp "$SKILL_REAL" "$RAIZ_POSIX/skill-mut-secao.md"
+node "$RAIZ_POSIX/sabotar-secao.cjs" "$RAIZ_POSIX/skill-mut-secao.md"
+EXIT_SABOTA9=$?
+if [ "$EXIT_SABOTA9" != "0" ]; then
+  falhou=$((falhou+1))
+  echo "  FALHA ANCORA NAO BATE na sabotagem 9 (exit $EXIT_SABOTA9) — mutador nao mutou nada,"
+  echo "         a copia intocada nao prova que '## As regras' e load-bearing"
+else
+  # Roda o parser DE VERDADE (montarContexto), nao so grep no texto: o que
+  # importa e' que trocar o literal derruba o carregamento na sessao real.
+  SKILL_MUTADO_TXT="$(cat "$RAIZ_POSIX/skill-mut-secao.md")"
+  S_MUT9="$(montar "$SKILL_MUTADO_TXT" '')"
+  if echo "$S_MUT9" | grep -qF "FALHA AO CARREGAR AS REGRAS"; then
+    echo "  (saida do mutante: FALHA AO CARREGAR AS REGRAS — a assercao real nao pode ver isto)"
+    ok=$((ok+1)); echo "  ok    mutacao expos que '## As regras' e load-bearing (sem ele a sessao sobe sem regra nenhuma)"
+  else
+    echo "  (saida do mutante: nao disparou o alarme)"
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — trocar '## As regras' nao derrubou o carregamento"
+  fi
+fi
+rm -f "$RAIZ_POSIX/skill-mut-secao.md"
+
+echo "  -- SABOTAGEM 10: devolver 'Skill(rainforest-mind)' ao cabecalho (D4)"
+cat > "$RAIZ_POSIX/sabotar-cabecalho.cjs" <<'SABOTA_EOF'
+const fs = require('fs');
+const alvo = process.argv[2];
+let texto = fs.readFileSync(alvo, 'utf8');
+// O arquivo fonte e' um template literal JS (backtick), entao os backticks QUE
+// APARECEM DENTRO dele vem escapados com backslash no arquivo -- \` literal, nao
+// backtick nu. A ancora e a troca tem de casar com os bytes reais do arquivo,
+// nao com o que o template produziria depois de avaliado.
+const achar = '\\`${pastaReferences}/regra-<n>.md\\` (onde \\`<n>\\` é o número da regra).';
+const trocar = 'carregue \\`Skill(rainforest-mind)\\` antes de aplicar a regra marcada.';
+if (!texto.includes(achar)) { console.error('ANCORA NAO BATE em ' + alvo); process.exit(1); }
+texto = texto.split(achar).join(trocar);
+fs.writeFileSync(alvo, texto);
+SABOTA_EOF
+cp "$LIB" "$RAIZ_POSIX/lib-mut-cabecalho.cjs"
+node "$RAIZ_POSIX/sabotar-cabecalho.cjs" "$RAIZ_POSIX/lib-mut-cabecalho.cjs"
+EXIT_SABOTA10=$?
+if [ "$EXIT_SABOTA10" != "0" ]; then
+  falhou=$((falhou+1))
+  echo "  FALHA ANCORA NAO BATE na sabotagem 10 (exit $EXIT_SABOTA10) — mutador nao mutou nada,"
+  echo "         a copia intocada nao prova que o cabecalho citar references/ e load-bearing"
+else
+  S_MUT10="$(montar "$SKILL_OK" '' "$RAIZ_POSIX/lib-mut-cabecalho.cjs")"
+  echo "  (saida do mutante contem 'Skill(rainforest-mind)': $(echo "$S_MUT10" | grep -qF 'Skill(rainforest-mind)' && echo sim || echo nao))"
+  if echo "$S_MUT10" | grep -qF "Skill(rainforest-mind)"; then
+    ok=$((ok+1)); echo "  ok    mutacao expos o cabecalho voltando a mandar carregar a skill inteira (D4)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — devolver a instrucao antiga nao apareceu no cabecalho"
+  fi
+fi
+
+echo "  -- SABOTAGEM 11: corromper o titulo de regra-17.md, hoje um dos dois sãos (secao 7.7)"
+# Prova que a assercao de formato do H1 pega corrupcao NOVA, e nao so re-declara o
+# que ja sabia sobre os 15 arquivos ja quebrados. Copia $REFERENCES_REAIS inteiro
+# (nunca o original rastreado), cola um ** orfao no titulo de regra-17.md com o
+# mesmo padrao dos 15 -- ponto final seguido de ** e prosa colada -- e roda a MESMA
+# checa-titulos.cjs contra a copia mutada.
+cat > "$RAIZ_POSIX/sabotar-titulo-regra17.cjs" <<'SABOTA_EOF'
+const fs = require('fs');
+const alvo = process.argv[2];
+let texto = fs.readFileSync(alvo, 'utf8');
+// Ancora SEM o ponto final de proposito: o titulo de regra-17.md mudou de
+// "...o alerta." para "...o alerta" quando os 15 titulos truncados foram
+// consertados (commit 9a62232, branch design/skills-finas-com-references) --
+// o proprio achado desta secao motivou a padronizacao. .includes()/.replace()
+// casam por substring, entao a ancora sem ponto bate nas DUAS formas (com ou
+// sem o ponto sobrando depois dela); so a presenca de "** " apos "alerta" e'
+// o que importa para o mutante.
+const achar = '# Regra 17 — Multi-janela: paralelo é intenção, janela parada é o alerta';
+const trocar = '# Regra 17 — Multi-janela: paralelo é intenção, janela parada é o alerta** O usuário';
+if (!texto.includes(achar)) { console.error('ANCORA NAO BATE em ' + alvo); process.exit(1); }
+texto = texto.replace(achar, trocar);
+fs.writeFileSync(alvo, texto);
+SABOTA_EOF
+REFS_MUT_R17="$RAIZ_POSIX/references-mut-r17"
+rm -rf "$REFS_MUT_R17"
+cp -r "$REFERENCES_REAIS" "$REFS_MUT_R17"
+node "$RAIZ_POSIX/sabotar-titulo-regra17.cjs" "$REFS_MUT_R17/regra-17.md"
+EXIT_SABOTA11=$?
+if [ "$EXIT_SABOTA11" != "0" ]; then
+  falhou=$((falhou+1))
+  echo "  FALHA ANCORA NAO BATE na sabotagem 11 (exit $EXIT_SABOTA11) — mutador nao mutou nada,"
+  echo "         a copia intocada nao prova que a assercao morde titulo novo corrompido"
+else
+  SAIDA_MUT11="$(REFERENCES_DIR="$REFS_MUT_R17" node "$RAIZ_POSIX/checa-titulos.cjs")"
+  echo "  (saida do mutante: $(echo "$SAIDA_MUT11" | head -1) — a assercao real espera regra-17.md FORA da lista)"
+  echo "$SAIDA_MUT11" | grep '^ASTERISCOS regra-17\.md' | sed 's/^/  /'
+  if echo "$SAIDA_MUT11" | grep -q '^ASTERISCOS regra-17\.md:'; then
+    ok=$((ok+1)); echo "  ok    mutacao expos que a assercao pega corrupcao NOVA, mesmo num titulo hoje são (regra-17.md)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — corromper o titulo de regra-17.md nao fez a assercao acusa-lo"
+  fi
+fi
+rm -rf "$REFS_MUT_R17"
 
 echo
 echo "-----------------------------------------"
