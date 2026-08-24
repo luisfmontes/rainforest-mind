@@ -120,7 +120,7 @@ const TETOS = {
    * Teto do MAIOR arquivo de `skills/rainforest-mind/references/`, em BYTES —
    * é o custo de CONSULTAR a elaboração de uma regra (D9, issue #73: "menos de
    * 3k tokens, medido"). 10.500 B equivalem a ~3,0k tokens. O maior arquivo
-   * hoje é `regra-12.md`, com 8.919 B — **15% de folga**.
+   * hoje é `regra-12.md`, com 8.884 B — **15% de folga**.
    *
    * A margem fica ESCRITA aqui, e não implícita, por dois incidentes desta
    * mesma semana com o mesmo formato: o `NUCLEOS_MAX_BYTES` abaixo chegou a
@@ -134,7 +134,7 @@ const TETOS = {
   /**
    * Teto do `skills/rainforest-mind/SKILL.md` inteiro, em BYTES — é o custo de
    * carregar o ÍNDICE (núcleos + ponteiros) antes de decidir qual
-   * `references/regra-NN.md` vale a pena abrir. Ele mede 9.545 B hoje, contra
+   * `references/regra-NN.md` vale a pena abrir. Ele mede 9.535 B hoje, contra
    * este teto de 11.000 B — **13% de folga**.
    *
    * Mesma margem escrita, e não implícita, pelo mesmo motivo do

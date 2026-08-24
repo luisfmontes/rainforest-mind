@@ -29,7 +29,8 @@ qualquer coisa além disso é assunto de profissional de saúde, não deste plug
 Cada regra tem duas partes, separadas pela linha `<!-- detalhe -->`: antes dela
 vem o **núcleo** (o que fazer, em forma imperativa), depois vem a **elaboração**
 (incidentes, critérios finos, comandos, o porquê). A abertura de sessão injeta
-**só os núcleos** — a elaboração se carrega sob demanda com `Skill`.
+**só os núcleos** via hook; a elaboração mora em `references/regra-<n>.md` e é
+consultada lendo o arquivo direto — não exige carregar esta skill.
 
 A divisão não é estética, é de entrega: o harness tem um teto por hook, e até
 2026-08-10 este arquivo era emitido inteiro e cortado a ~6% dele em **50 de 50
