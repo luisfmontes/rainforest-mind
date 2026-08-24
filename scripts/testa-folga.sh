@@ -52,6 +52,13 @@ igual "folga === limiar (280) é 'ok'" "$SAIDA5A" "ok"
 SAIDA5B="$(node -e "const {avaliarFolga}=require('./hooks/lib/folga.cjs'); console.log(avaliarFolga(5321, 5600).estado)")"
 igual "folga === limiar - 1 (279) é 'aviso'" "$SAIDA5B" "aviso"
 
+# ------------------------------------------------- 6. mensagem de aviso contém o limiar
+echo; echo "6. mensagem de aviso contém o limiar"
+SAIDA6="$(node -e "const {avaliarFolga}=require('./hooks/lib/folga.cjs'); const r=avaliarFolga(5589, 5600, {nome:'nucleos', alternativas:['tirar do FOCO']}); console.log(r.mensagem)")"
+tem "mensagem contém folga (11)" "$SAIDA6" "11"
+tem "mensagem contém teto (5600)" "$SAIDA6" "5600"
+tem "mensagem contém limiar (280)" "$SAIDA6" "280"
+
 echo; echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ] || exit 1

@@ -24,14 +24,14 @@ function mensagemAlerta(estado, teto, folga, limiar, nome, alternativas) {
     : `Aviso de folga em ${nome}: `;
 
   // Para estouro: mostra valor, teto e excesso explícitos (e.g., "14462 B > 14000 B (+462 B)")
-  // Para aviso: mostra folga restante (e.g., "404 de 13500 bytes")
+  // Para aviso: mostra folga restante e limiar (e.g., "11 de 5600 bytes (limiar: 280 B)")
   let numerosMsg;
   if (estado === 'estouro') {
     const valor = teto - folga; // folga é negativo, então valor = teto + Math.abs(folga)
     const excesso = Math.abs(folga);
     numerosMsg = `${valor} B > ${teto} B (+${excesso} B)`;
   } else {
-    numerosMsg = `${folga} de ${teto} bytes.`;
+    numerosMsg = `${folga} de ${teto} bytes (limiar: ${limiar} B).`;
   }
 
   let msg = prefixo + numerosMsg;
