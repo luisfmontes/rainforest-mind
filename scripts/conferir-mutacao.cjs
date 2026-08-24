@@ -326,27 +326,35 @@ function main() {
     process.exit(1);
   }
 
-  // Verificação de corte de shell: suspeita quando pós-mutação é desproporcionalmente
-  // curta (< 10% do baseline), sugerindo que a bateria morreu antes de medir.
-  // Só aplica quando o baseline é tempo suficiente (>= 1 s) para distinguir de ruído.
-  const PISO_ABSOLUTO_MS = 1000;
-  if (baselineDuracao >= PISO_ABSOLUTO_MS && posDuracao < baselineDuracao * 0.1) {
-    const percentual = Math.round((posDuracao / baselineDuracao) * 100);
-    console.error(`SUSPEITA DE CORTE DE SHELL: pós-mutação ${posDuracao} ms (${percentual}% do baseline).`);
-    console.error(`  Baseline: ${baselineDuracao} ms | Pós-mutação: ${posDuracao} ms`);
-    console.error('  A bateria saiu com exit != 0, mas desproporcionalmente rápido.');
-    console.error('  Suspeita: erro no shell (unbound variable, comando não encontrado).');
-    console.error('  Confirme rodando a bateria pós-mutação à mão e olhando o tempo/erro.');
-    console.error('  Se a bateria sair 0, ignorar este aviso; se >= 1 s, aumentar piso.');
-    process.exit(5);
-  }
-
   if (posExit === 0) {
     console.error('RECUSADO: bateria VERDE com o comportamento invertido (exit 0).');
     console.error('  A mutação casou e foi aplicada — o fonte estava se comportando ao');
     console.error('  contrário enquanto a bateria rodava, e ela aprovou assim mesmo.');
     console.error('  Esta bateria não mede o conserto. Escreva o caso que o defeito quebrava.');
     process.exit(2);
+  }
+
+  // Verificação de corte de shell: suspeita quando pós-mutação é desproporcionalmente
+  // curta (< 10% do baseline), sugerindo que a bateria morreu antes de medir.
+  // Só aplica quando o baseline é tempo suficiente (>= 1 s) para distinguir de ruído.
+  //
+  // A ORDEM importa e não é estética: este bloco vem DEPOIS do `posExit === 0`
+  // de propósito. Bateria que saiu VERDE já tem veredito próprio — o 2 — e ele
+  // vale independente da duração. Antes desta ordem, uma pós-mutação verde e
+  // rápida saía 5 com a mensagem "a bateria saiu com exit != 0", que é falsa
+  // sobre o que acabou de acontecer. Veredito certo pelo motivo errado é o
+  // defeito que este script inteiro existe para não cometer.
+  const PISO_ABSOLUTO_MS = 1000;
+  if (baselineDuracao >= PISO_ABSOLUTO_MS && posDuracao < baselineDuracao * 0.1) {
+    const percentual = Math.round((posDuracao / baselineDuracao) * 100);
+    console.error(`SUSPEITA DE CORTE DE SHELL: pós-mutação ${posDuracao} ms (${percentual}% do baseline).`);
+    console.error(`  Baseline: ${baselineDuracao} ms | Pós-mutação: ${posDuracao} ms`);
+    console.error(`  A bateria saiu ${posExit}, mas desproporcionalmente rápido.`);
+    console.error('  Suspeita: erro no shell (unbound variable, comando não encontrado).');
+    console.error('  Confirme rodando a bateria pós-mutação à mão e olhando o tempo/erro.');
+    console.error('  Se ela chegar a imprimir placar, o vermelho é legítimo e o piso');
+    console.error('  absoluto é que está baixo demais para esta bateria.');
+    process.exit(5);
   }
 
   console.log(`ok: bateria VERMELHA com o comportamento invertido (exit ${posExit}).`);

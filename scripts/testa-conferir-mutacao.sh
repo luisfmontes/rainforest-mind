@@ -311,6 +311,40 @@ nao_tem "não reclama de corte" "SUSPEITA"
 tem "baseline e pós no log" "Baseline:"
 
 echo
+echo "== 13. bateria VERDE e rápida: o 2 vence o 5, e a ordem é o que decide =="
+# A heurística de corte de shell (caso 10) e a recusa por bateria verde (caso 4)
+# podem disparar na MESMA execução: pós-mutação verde E desproporcionalmente
+# rápida. O veredito correto é 2 — "esta bateria não mede o conserto" — porque
+# bateria que aprovou o fonte invertido já está condenada, e a duração não muda
+# isso. O 5 diria "a bateria saiu != 0, mas rápido demais", afirmando sobre a
+# execução algo que não aconteceu.
+#
+# Este caso existe porque a primeira versão da heurística ficava ANTES do ramo
+# do exit 2 e devolvia 5 aqui. Inverter a ordem é o conserto; sem este caso,
+# alguém inverte de novo e a suíte não acusa.
+cat > "$CAIXA/bateria-verde-rapida.sh" <<'BAT'
+#!/bin/bash
+# Com a marca (fonte mutado): sai VERDE quase instantaneamente.
+# Sem a marca (baseline): sai VERDE, porém devagar — acima do piso de 1 s.
+if grep -q 'MARCA-VERDE-RAPIDO' fonte-verde.cjs; then
+  exit 0
+fi
+sleep 2
+exit 0
+BAT
+
+cat > "$CAIXA/fonte-verde.cjs" <<'FONTE'
+#!/usr/bin/env node
+const y = 2;
+FONTE
+
+exige 2 "verde e rápida recusa por bateria VERDE (2), não por corte de shell (5)" \
+  CHK --arquivo fonte-verde.cjs --de "const y = 2;" --para "const y = 2; // MARCA-VERDE-RAPIDO" \
+      --bateria 'bash bateria-verde-rapida.sh' --timeout 10000
+tem "acusa a bateria verde" "RECUSADO: bateria VERDE"
+nao_tem "não confunde com corte de shell" "SUSPEITA DE CORTE"
+
+echo
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]
