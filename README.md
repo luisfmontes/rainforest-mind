@@ -282,6 +282,7 @@ noite, sabendo que não devia. O que sobrou das duas noites:
 |---|---|---|
 | `gate-worktree.cjs` | escrita de subagente em repo git que não é worktree linkado, e git que mexe no checkout | só subagente — a janela principal passa |
 | `gate-staging-total.cjs` | `git add -A/--all/./:/`, `-u`, e `git commit -a/-am` | **também a janela principal**, que foi onde os dois incidentes ocorreram |
+| `gate-publicacao-destino.cjs` | escrita de dados sensíveis (JID, telefone, email, credencial) em arquivo rastreado por git | **qualquer ferramenta que escreve** (`Write`, `Edit`, `MultiEdit`) — impede vazamento em repo público |
 
 Valem em **qualquer** repo git da máquina, porque o hábito é que é o problema,
 não o repositório. A mensagem de bloqueio não só recusa: a de staging roda
@@ -290,9 +291,9 @@ trava que só diz "não" vira trava desligada. Saídas de emergência, nomeadas 
 própria mensagem: `RAINFOREST_GATE_OFF=1` no ambiente, ou um arquivo
 `.rainforest-gate-off` na raiz do repo.
 
-Cada uma tem bateria própria (`hooks/testa-gate-*.sh`, **68 casos** — 30 e 38)
-que roda o hook de verdade contra repos git montados na hora. A maioria dos
-casos testa o que deve **passar**: falso positivo aqui atrapalha todo repo.
+Cada uma tem bateria própria (`hooks/testa-gate-*.sh`) que roda o hook de verdade
+contra repos git montados na hora. A maioria dos casos testa o que deve **passar**:
+falso positivo aqui atrapalha todo repo.
 
 O mesmo princípio nos scripts, para o que hook nenhum alcança:
 
