@@ -1,0 +1,31 @@
+{
+  "slug": "2026-08-25-regua-do-batedor-enxertar",
+  "titulo": "Issue #93: a régua do batedor mede INSTALAR, mas o que a gente faz é ENXERTAR",
+  "criado_em": "2026-08-25",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-08-25-regua-do-batedor-enxertar.md",
+    "em": "2026-08-25"
+  },
+  "plano": {
+    "status": "ok",
+    "tarefas": 4,
+    "doc": "docs/rainforest/planos/2026-08-25-regua-do-batedor-enxertar.md",
+    "em": "2026-08-25"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
