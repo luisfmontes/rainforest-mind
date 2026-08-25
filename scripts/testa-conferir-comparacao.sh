@@ -108,6 +108,35 @@ tem "mostra o HEAD que coincide" "HEAD coincide"
 tem "cita a Issue #101 / o mecanismo do cwd" "cwd de uma chamada de shell anterior vazou"
 EXIT_DEGENERADA=2
 
+
+echo
+echo "== 1b. O VETOR REAL DA HERANCA: lado omitido nao pode virar process.cwd() =="
+# O caso 1 acima prova que dois lados IGUAIS sao recusados. Mas a heranca de cwd
+# da Issue #101 nao chega como dois caminhos iguais escritos de proposito: ela
+# chega como caminho NENHUM. Alguem roda `cd <worktree> && bateria`, e a chamada
+# seguinte roda so `bateria` — o shell ainda esta la, e os dois lados viram um so
+# sem ninguem digitar nada.
+#
+# A defesa e estrutural: `--antes` e `--depois` sao OBRIGATORIOS, e nao ha default
+# para `process.cwd()`. Este caso existe para que ela nao seja desfeita por
+# conveniencia depois — "se nao passar, usa o diretorio atual" e uma linha que
+# parece gentileza e reabre a issue inteira em silencio, sem quebrar nenhum outro
+# teste desta bateria.
+#
+# Rodado de DENTRO de um worktree valido de proposito: se houvesse fallback para
+# cwd, os dois lados resolveriam para um repositorio de verdade e a chamada
+# passaria — e o defeito so apareceria em producao.
+exige 1 "sem --depois recusa (nao cai no cwd herdado)" \
+  env -C "$WT_ANTIGO" node "$SCRIPT" --antes "$WT_ANTIGO" --comando "$COMANDO_DISCRIMINA"
+tem "diz qual lado faltou" "falta --depois"
+nao_tem "nao inventou um lado a partir do cwd" "toplevel coincide"
+
+exige 1 "sem --antes recusa (nao cai no cwd herdado)" \
+  env -C "$WT_ANTIGO" node "$SCRIPT" --depois "$WT_NOVO" --comando "$COMANDO_DISCRIMINA"
+tem "diz qual lado faltou (antes)" "falta --antes"
+
+exige 1 "sem nenhum dos dois recusa" \
+  env -C "$WT_ANTIGO" node "$SCRIPT" --comando "$COMANDO_DISCRIMINA"
 echo
 echo "== 2. CAMINHO FELIZ: dois worktrees de verdade, comandos que discriminam =="
 exige 0 "worktrees diferentes, comando falha no antigo e passa no novo" \
