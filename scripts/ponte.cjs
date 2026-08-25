@@ -44,12 +44,27 @@
 
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 
 const CODIGO_ROOT = path.resolve(__dirname, "..");
 const CAMINHO_SKILL = path.join(CODIGO_ROOT, "skills", "rainforest-mind", "SKILL.md");
 
-const INICIO = "<!-- rainforest-mind:inicio — GERADO por scripts/ponte.cjs, nao edite a mao -->";
 const FIM = "<!-- rainforest-mind:fim -->";
+
+/** Hash curto (16 primeiros caracteres) do SKILL.md para deteccao de edicao manual. */
+function hashSkillMd() {
+  try {
+    const conteudo = fs.readFileSync(CAMINHO_SKILL, "utf8");
+    return crypto.createHash("sha256").update(conteudo).digest("hex").slice(0, 16);
+  } catch {
+    return null;
+  }
+}
+
+function inicioComHash(hash) {
+  if (!hash) return "<!-- rainforest-mind:inicio — GERADO por scripts/ponte.cjs, nao edite a mao -->";
+  return `<!-- rainforest-mind:inicio — GERADO por scripts/ponte.cjs, nao edite a mao — hash:${hash} -->`;
+}
 
 const AGENTES = {
   // `claude` e o terceiro alvo, e nao e redundante: quem usa Claude Code SEM o
@@ -186,7 +201,7 @@ ${cli}
 
 \`<plugin>\` e a pasta do rainforest-mind nesta maquina. Sua pasta de dados
 (FOCO.md, ideias.jsonl, projetos.json) **nao se chumba aqui**: descubra com
-\`node <plugin>/scripts/ideias.cjs conferir\`, que imprime o caminho resolvido${dados ? "" : ", e monte com `node <plugin>/scripts/setup.cjs --criar` se ainda nao existir"}.
+\`node <plugin>/scripts/ideias.cjs conferir\`, que imprime o caminho resolvido, e monte com \`node <plugin>/scripts/setup.cjs --criar\` se ainda nao existir.
 Caminho de home dentro de arquivo versionado vaza a maquina de quem gerou — e este
 arquivo nasce para ser commitado no repo de outra pessoa.
 
@@ -200,8 +215,9 @@ ${nucleo}
 `;
 }
 
-function escrever(alvoArquivo, blocoNovo, aplicar) {
-  const marcado = `${INICIO}\n${blocoNovo.trim()}\n${FIM}\n`;
+function escrever(alvoArquivo, blocoNovo, aplicar, hash) {
+  const inicio = inicioComHash(hash);
+  const marcado = `${inicio}\n${blocoNovo.trim()}\n${FIM}\n`;
   let anterior = null;
   try {
     anterior = fs.readFileSync(alvoArquivo, "utf8");
@@ -209,13 +225,18 @@ function escrever(alvoArquivo, blocoNovo, aplicar) {
     anterior = null;
   }
 
+  // Para substituicao de bloco existente, procura tanto a forma com hash quanto sem.
+  const temMarcadorAtual = anterior && (anterior.includes(inicio) || anterior.includes("<!-- rainforest-mind:inicio"));
+
   let saida;
   let acao;
   if (anterior === null) {
     saida = marcado;
     acao = "cria";
-  } else if (anterior.includes(INICIO) && anterior.includes(FIM)) {
-    const antes = anterior.slice(0, anterior.indexOf(INICIO));
+  } else if (temMarcadorAtual && anterior.includes(FIM)) {
+    // Encontra o inicio do bloco, seja com ou sem hash
+    const inicioIdx = anterior.indexOf("<!-- rainforest-mind:inicio");
+    const antes = anterior.slice(0, inicioIdx);
     const depois = anterior.slice(anterior.indexOf(FIM) + FIM.length).replace(/^\n+/, "");
     saida = `${antes}${marcado}${depois ? `\n${depois}` : ""}`;
     acao = "substitui o bloco gerado";
@@ -272,12 +293,13 @@ function main() {
   const aplicar = tem("aplicar");
   const nucleo = nucleoDasRegras();
   const dados = raizDeDados();
+  const hash = hashSkillMd();
 
-  console.log(`fonte das regras: ${path.relative(CODIGO_ROOT, CAMINHO_SKILL)} (nucleo com ${Buffer.byteLength(nucleo, "utf8")} B)`);
+  console.log(`fonte das regras: ${path.relative(CODIGO_ROOT, CAMINHO_SKILL)} (nucleo com ${Buffer.byteLength(nucleo, "utf8")} B)${hash ? ` — hash ${hash}` : ""}`);
   for (const k of chaves) {
     const agente = AGENTES[k];
     const destino = path.join(alvo, agente.arquivo);
-    const r = escrever(destino, corpo(agente, nucleo, dados), aplicar);
+    const r = escrever(destino, corpo(agente, nucleo, dados), aplicar, hash);
     console.log(`  ${agente.arquivo}: ${r.acao} — ${r.bytes} B ${r.gravado ? "GRAVADO" : "(ensaio)"}`);
     console.log(`    ${destino}`);
   }

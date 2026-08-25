@@ -59,3 +59,18 @@ tabela.
 
 Bateria: `bash scripts/testa-ponte.sh` (inclui mutação: SKILL.md sabotado tem que
 fazer o script recusar).
+
+## Catraca de hash — arquivo derivado permanece derivado
+
+O bloco gerado contém um **hash do SKILL.md no momento da geração**, permitindo
+detectar se o arquivo foi editado à mão ou se ficou para trás. Rode `bash scripts/testa-conferir-ponte.sh`
+para testar os quatro cenários:
+
+1. Bloco bate com SKILL.md atual → verde, exit 0
+2. Bloco tem hash e hash bate, mas conteúdo diverge → vermelho (editado à mão)
+3. Bloco tem hash que não bate SKILL.md atual → vermelho (SKILL.md mudou)
+4. Bloco legado sem hash e com divergência → vermelho (ambíguo, precisa regerar)
+
+Use `node scripts/conferir-ponte.cjs <arquivo>` para verificar se um
+`CLAUDE.md`, `AGENTS.md` ou `GEMINI.md` está em sincronia com o `SKILL.md`
+do repositório (ou do plugin, se não existir SKILL.md local).
