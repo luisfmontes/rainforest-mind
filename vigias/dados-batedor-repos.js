@@ -50,7 +50,7 @@ const PLUGIN = path.resolve(__dirname, '..');
 //   que cala quando falha. Se raiz nao resolver (null), o script tinha o
 //   mesmo modo de falha (zero calado, exit 0).
 //
-//   Conserto: usar resolvedor canonica (hook/lib/raiz.cjs) e guardar quando
+//   Conserto: usar resolvedor canonico (hooks/lib/raiz.cjs) e guardar quando
 //   raiz nao resolve — aviso em stderr, IDEIAS/OBSERVACOES marcadas como
 //   indisponivel na saida, nunca como zero de verdade. Zero real so quando
 //   conseguiu ler e realmente nao ha ideias abertas.
