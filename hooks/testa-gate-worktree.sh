@@ -51,6 +51,25 @@ gate "subagente roda git stash no principal (N1)" 2 "$(printf '{"agent_id":"ag-1
 gate "subagente roda git checkout no principal"   2 "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"git checkout main"}}' "$(esc "$R")")"
 
 echo
+echo "== redirecionamento e ferramentas de escrita em Bash (Issue #88) =="
+gate "echo para arquivo FORA do worktree (novo)"     2 "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"echo x > '"'"'%s/novo.txt'"'"'"}}' "$(esc "$R")" "$(esc "$R")")"
+gate "echo >> append FORA do worktree"               2 "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"echo x >> '"'"'%s/novo.txt'"'"'"}}' "$(esc "$R")" "$(esc "$R")")"
+gate "tee para arquivo FORA do worktree"             2 "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"echo x | tee '"'"'%s/novo.txt'"'"'"}}' "$(esc "$R")" "$(esc "$R")")"
+gate "sed -i arquivo FORA do worktree"               2 "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"sed -i '"'"'s/x/y/'"'"' '"'"'%s/a.txt'"'"'"}}' "$(esc "$R")" "$(esc "$R")")"
+gate "cp para FORA do worktree"                      2 "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"cp '"'"'%s/a.txt'"'"' '"'"'%s/copia.txt'"'"'"}}' "$(esc "$R")" "$(esc "$R")" "$(esc "$R")")"
+gate "mv para FORA do worktree"                      2 "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"mv '"'"'%s/a.txt'"'"' '"'"'%s/renomeado.txt'"'"'"}}' "$(esc "$R")" "$(esc "$R")" "$(esc "$R")")"
+gate "criar .rainforest-gate-off (escape file)"      2 "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"echo 1 > '"'"'%s/.rainforest-gate-off'"'"'"}}' "$(esc "$R")" "$(esc "$R")")"
+
+echo
+echo "== redirecionamento e escrita DENTRO do worktree PASSA =="
+gate "echo para arquivo dentro do worktree"          0 "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"echo x > '"'"'%s/novo.txt'"'"'"}}' "$(esc "$WT")" "$(esc "$WT")")"
+gate "echo >> append dentro do worktree"             0 "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"echo x >> '"'"'%s/novo.txt'"'"'"}}' "$(esc "$WT")" "$(esc "$WT")")"
+gate "tee dentro do worktree"                        0 "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"echo x | tee '"'"'%s/novo.txt'"'"'"}}' "$(esc "$WT")" "$(esc "$WT")")"
+gate "sed -i dentro do worktree"                     0 "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"sed -i '"'"'s/x/y/'"'"' '"'"'%s/a.txt'"'"'"}}' "$(esc "$WT")" "$(esc "$WT")")"
+gate "cp dentro do worktree"                         0 "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"cp '"'"'%s/a.txt'"'"' '"'"'%s/copia.txt'"'"'"}}' "$(esc "$WT")" "$(esc "$WT")" "$(esc "$WT")")"
+gate "mv dentro do worktree"                         0 "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"mv '"'"'%s/a.txt'"'"' '"'"'%s/renomeado.txt'"'"'"}}' "$(esc "$WT")" "$(esc "$WT")" "$(esc "$WT")")"
+
+echo
 echo "== deve PASSAR (exit 0) — falso positivo aqui para o trabalho do usuario =="
 gate "JANELA PRINCIPAL escrevendo no repo (sem agent_id)" 0 \
   "$(printf '{"tool_name":"Write","cwd":"%s","tool_input":{"file_path":"%s"}}' "$(esc "$R")" "$(esc "$R/x.txt")")"
@@ -92,6 +111,37 @@ gate "cd para variavel nao resolvivel: barra por conservadorismo" 2 \
   "$(b "cd \$ALVO && git commit -m x" "$R")"
 gate "cd para fora de repo git && git commit"            0 \
   "$(b "cd $FORA && git commit -m x" "$R")"
+
+echo
+echo "== mutacao: prova que a inspeção funciona (Issue #88) =="
+# MUTACAO CIRURGICA, e o "cirurgica" e o ponto todo.
+#
+# A primeira versao desta secao fazia `sed '/alvosBashEscrita/d'`, que apaga TAMBEM
+# a linha da declaracao da funcao e deixa um `{` orfao: o mutante nao compilava.
+# `node --check` acusava SyntaxError, o processo morria com exit 1, e a assercao
+# `[ "$rc" != "0" ]` creditava `ok` — por CRASH, nao por protecao removida. E o
+# mesmo modo de falha que o comentario do testa-contexto-sessao.sh ja documenta:
+# mutante que nao roda faz a bateria passar verde sem ter medido nada.
+#
+# Aqui a mutacao troca o CORPO da funcao por `return []` — JS valido, funcao viva,
+# protecao neutralizada. E a assercao inverte: o mutante tem de sair com exit 0
+# (deixou passar). Exit != 0 agora e FALHA, porque so pode significar crash.
+GATE_MUTADO="$RAIZ/gate-sem-escrita.cjs"
+node -e '
+const fs = require("fs");
+let t = fs.readFileSync(process.argv[1], "utf8");
+const achar = "function alvosBashEscrita(comando, cwdInicial) {";
+if (!t.includes(achar)) { console.error("ANCORA NAO BATE"); process.exit(1); }
+t = t.replace(achar, achar + "\n  return [];");
+fs.writeFileSync(process.argv[2], t);
+' "$GATE" "$GATE_MUTADO"
+if ! node --check "$GATE_MUTADO" 2>/dev/null; then
+  falhou=$((falhou+1)); echo "  FALHA mutante nao compila — a secao mediria crash, nao protecao"
+else
+  saida=$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"echo x > '"'"'%s/novo.txt'"'"'"}}' "$(esc "$R")" "$(esc "$R")" | node "$GATE_MUTADO" 2>&1); rc=$?
+  if [ "$rc" = "0" ]; then ok=$((ok+1)); echo "  ok   mutacao expos a inspecao: com alvosBashEscrita neutralizada, a escrita fora PASSA"
+  else falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito ou mutante quebrado (exit $rc): $saida"; fi
+fi
 
 echo "== saidas de emergencia =="
 saida=$(printf '%s' "$(j Write file_path "$(esc "$R/novo.txt")")" | RAINFOREST_GATE_OFF=1 node "$GATE" 2>&1); rc=$?
