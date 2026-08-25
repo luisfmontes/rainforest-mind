@@ -20,10 +20,42 @@
     "em": "2026-08-25"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-08-25",
+    "tarefas": 4,
+    "tarefas_ok": 3,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-auditor-de-seguranca.sh, caso 1: A10 com o titulo da edicao 2021"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "e o proprio instrumento; as mutacoes que a provam estao nas tarefas 1 e 3"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-auditor-de-seguranca.sh, caso 5: obrigacao de declarar a regua pulada removida"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "atualizar titulo e corpo de PR no GitHub nao tem comportamento local a inverter"
+      }
+    ],
+    "em": "2026-08-25"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "pendente",
+    "snapshot": {
+      "head": "c2bc8afb3e80713f08d6ce0e36931c1d40fc676a",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-08-25-auditor-de-seguranca-tres-reguas.json"
+      ]
+    }
   },
   "verificar": {
     "status": "pendente"
