@@ -101,6 +101,24 @@ diz: que instalar foi avaliado e por onde caiu, e qual pergunta reabre numa revi
 A coluna "Reprovou em" passa a ser lida **junto** da trilha em que a reprovação
 aconteceu — "reprovou em 2 e 3" não significa nada sem saber que era a régua de Instalar.
 
+**A sintaxe da celula, exata**, porque e ela que o `scripts/conferir-livro-de-repos.cjs`
+recusa quando nao bate:
+
+```
+<Trilha>[ -> <Trilha>...]: <veredito>     ex.: Instalar -> Enxertar: enxerta
+fora da ancora                            (reprovou na pergunta 1, sem cascata)
+```
+
+O veredito depois dos dois-pontos e o da trilha **final** do caminho, e so pode ser um do
+vocabulario fechado dela. Caminho sem veredito, veredito sem caminho, ou veredito que nao
+pertence a trilha final: os tres sao recusa, cada um com exit code proprio.
+
+Isto esta escrito **aqui**, e nao no `batedor-repos.md`, de proposito: em 2026-08-25 o
+checador nasceu com a sintaxe so dentro do proprio codigo, e quem escrevia o procedimento
+nao tinha como saber qual era — duas tarefas paralelas do mesmo plano teriam produzido um
+livro que o checador recusa na primeira linha nova de verdade. Regra que mora em dois
+lugares diverge; esta mora aqui, e o procedimento aponta.
+
 ## Revisita por trilha final
 
 O gatilho continua duplo e obrigatório — 60+ dias **e** push posterior ao registrado —, só
