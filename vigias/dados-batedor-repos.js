@@ -36,11 +36,36 @@ const PLUGIN = path.resolve(__dirname, '..');
 
 // A raiz de DADOS (onde mora ideias.jsonl) sai de resolverRaiz(), nao de um
 // literal. A cadeia de 4 niveis cobre RFM_ROOT > projeto > usuario > plugin.
-const { raiz: RAIZ_DADOS } = resolverRaiz({ plugin: PLUGIN });
+//
+// Historico do defeito (issue #110):
+//
+//   Anterior a 2026-08-11: literal `'C:\Projetos\rainforest-mind'` e nao havia
+//   separacao entre raiz de dados e raiz do plugin.
+//
+//   2026-08-25: reescrita do arquivo perdeu as barras escapadas. Em JS, `\P`
+//   nao e escape (some), e `\r` e escape (vira CR). O resultado foi
+//   `C:Projetos<CR>ainforest-mind`, fs.readFileSync lancou, o `catch {}`
+//   devolvia [], e a ancora inteira da ronda morria com exit 0 — silencio
+//   total, nenhum sinal de erro. Problema: nem literal aqui nem resolvedor
+//   que cala quando falha. Se raiz nao resolver (null), o script tinha o
+//   mesmo modo de falha (zero calado, exit 0).
+//
+//   Conserto: usar resolvedor canonica (hook/lib/raiz.cjs) e guardar quando
+//   raiz nao resolve — aviso em stderr, IDEIAS/OBSERVACOES marcadas como
+//   indisponivel na saida, nunca como zero de verdade. Zero real so quando
+//   conseguiu ler e realmente nao ha ideias abertas.
+const resolved = resolverRaiz({ plugin: PLUGIN });
+const RAIZ_DADOS = resolved.raiz;
+
+if (!RAIZ_DADOS) {
+  // Sem dados, a ancora da ronda esta invalida. Avisar antes da saida de dados.
+  console.error(`[${new Date().toISOString()}] raiz de dados nao resolveu (RFM_ROOT, <projeto>/.rainforest, ~/.rainforest, plugin) — IDEIAS e OBSERVACOES indisponíveis nesta execucao`);
+}
 
 
 /** Lê arquivo da raiz de DADOS (ideias.jsonl, FOCO.md). */
 function lerLinhasDados(rel) {
+  if (!RAIZ_DADOS) return [];
   try { return fs.readFileSync(path.join(RAIZ_DADOS, rel), 'utf8').split(/\r?\n/); }
   catch { return []; }
 }
@@ -162,10 +187,15 @@ if (process.argv.includes('--json')) {
 } else {
   const { ideias, observacoes, propostas, erros_24h, fila_de_repos } = dados;
   console.log(`teto de repos nesta ronda: ${TETO_REPOS}`);
-  console.log(`\nIDEIAS ABERTAS (${ideias.length}) — ancora principal`);
-  ideias.forEach((i) => console.log(`  [${i.dias ?? '?'}d] ${i.titulo}\n        ${i.id} · ${i.projeto}`));
-  console.log(`\nOBSERVACOES DA REGRA 13 ABERTAS (${observacoes.length})`);
-  observacoes.forEach((o) => console.log(`  [${o.dias ?? '?'}d] ${o.titulo}\n        ${o.id}`));
+  if (RAIZ_DADOS) {
+    console.log(`\nIDEIAS ABERTAS (${ideias.length}) — ancora principal`);
+    ideias.forEach((i) => console.log(`  [${i.dias ?? '?'}d] ${i.titulo}\n        ${i.id} · ${i.projeto}`));
+    console.log(`\nOBSERVACOES DA REGRA 13 ABERTAS (${observacoes.length})`);
+    observacoes.forEach((o) => console.log(`  [${o.dias ?? '?'}d] ${o.titulo}\n        ${o.id}`));
+  } else {
+    console.log(`\nIDEIAS ABERTAS (indisponível — raiz de dados nao resolveu)`);
+    console.log(`\nOBSERVACOES DA REGRA 13 ABERTAS (indisponível — raiz de dados nao resolveu)`);
+  }
   console.log(`\nPROPOSTAS NOS 4 RELATORIOS MAIS RECENTES (${propostas.length})`);
   propostas.forEach((p) => console.log(`  ${p.tag} ${p.titulo}\n        ${p.relatorio}`));
   console.log(`\nERROS DE VIGIA NAS ULTIMAS 24H (${erros_24h.length})`);

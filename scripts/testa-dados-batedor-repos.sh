@@ -87,4 +87,43 @@ echo "Ideias com RFM_ROOT alternativo: $IDEIAS_ALT (esperado: 3)"
 echo "✓ TESTE 3 passou"
 echo
 
+# ==============================================================================
+# TESTE 4: raiz de dados ausente — saida marca como indisponivel, nao como zero
+# ==============================================================================
+echo "=== TESTE 4: Raiz de dados ausente ==="
+
+# Limpa a caixa de areia: sem ~/.rainforest, sem projeto/.rainforest
+rm -rf "$SANDBOX/.rainforest"
+
+export HOME="$SANDBOX"
+export USERPROFILE="$SANDBOX"
+unset RFM_ROOT
+unset CLAUDE_PROJECT_DIR
+
+# Testa num diretorio vazio (sem .rainforest de projeto)
+TEMPWORK=$(mktemp -d)
+trap "rm -rf $TEMPWORK" RETURN
+cd "$TEMPWORK"
+
+SAIDA_AUSENTE=$(node "$REPO_ROOT/vigias/dados-batedor-repos.js" 2>&1)
+IDEIAS_AUS=$(echo "$SAIDA_AUSENTE" | grep "^IDEIAS ABERTAS" | head -1)
+OBS_AUS=$(echo "$SAIDA_AUSENTE" | grep "^OBSERVACOES DA REGRA 13 ABERTAS" | head -1)
+STDERR_AUS=$(echo "$SAIDA_AUSENTE" | grep "raiz de dados nao resolveu" | head -1)
+
+echo "Saida de IDEIAS: $IDEIAS_AUS"
+echo "Saida de OBSERVACOES: $OBS_AUS"
+echo "Aviso em stderr: $(test -n "$STDERR_AUS" && echo "SIM" || echo "NAO")"
+
+# Verifica que nao diz "(0)" — diz "indisponivel"
+echo "$IDEIAS_AUS" | grep -q "indisponível" || { echo "FALHA: IDEIAS_ABERTAS nao marcado como indisponivel"; exit 1; }
+echo "$OBS_AUS" | grep -q "indisponível" || { echo "FALHA: OBSERVACOES nao marcado como indisponivel"; exit 1; }
+[ -n "$STDERR_AUS" ] || { echo "FALHA: aviso em stderr ausente"; exit 1; }
+
+# Verifica que nao reporta "(0)"
+echo "$IDEIAS_AUS" | grep -q "(0)" && { echo "FALHA: IDEIAS reportou (0) em vez de indisponivel"; exit 1; }
+echo "$OBS_AUS" | grep -q "(0)" && { echo "FALHA: OBSERVACOES reportou (0) em vez de indisponivel"; exit 1; }
+
+echo "✓ TESTE 4 passou (raiz ausente marca como indisponível, aviso em stderr)"
+echo
+
 echo "=== Todos os testes passaram ==="
