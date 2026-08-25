@@ -1,0 +1,167 @@
+#!/bin/bash
+# Bateria de vigias/fila-de-repos.jsonl, lida por vigias/dados-batedor-repos.js.
+# Uso: bash scripts/testa-fila-de-repos.sh
+#
+# Tarefa 1 do plano docs/rainforest/planos/2026-08-25-regua-do-batedor-enxertar.md
+# (D4, D5 do design 2026-08-25-regua-do-batedor-enxertar.md).
+#
+# O QUE ESTA BATERIA EXISTE PARA IMPEDIR: entrada sem `trilha` (ou com trilha
+# fora do vocabulario fechado instalar|enxertar|ler) virar 'instalar' por
+# default silencioso. O default natural seria esse — e' a regua de hoje —, e
+# assumi-lo devolveria o desenho ao ponto de partida EM SILENCIO, justamente
+# para as entradas que ninguem revisou (D5). Sem o bloco 1 abaixo, os demais
+# blocos provariam so que o caminho feliz funciona.
+#
+# Toda fixture nasce em mktemp -d e morre no trap: esta bateria NUNCA toca a
+# raiz de dados do usuario nem o vigias/fila-de-repos.jsonl real do repo.
+
+set -u
+RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ALVO_REL="vigias/dados-batedor-repos.js"
+[ -f "$RAIZ/$ALVO_REL" ] || { echo "FALHA: nao achei $RAIZ/$ALVO_REL"; exit 1; }
+
+ok=0; falhou=0
+S="$(mktemp -d)"
+W="$(cygpath -m "$S" 2>/dev/null || printf '%s' "$S")"
+trap 'rm -rf "$S"' EXIT
+
+mkdir -p "$S/vigias"
+cp "$RAIZ/$ALVO_REL" "$S/vigias/dados-batedor-repos.js"
+export RFM_ROOT="$W"
+
+fila() { # escreve a fila da caixa a partir do stdin (heredoc de quem chama)
+  cat > "$S/vigias/fila-de-repos.jsonl"
+}
+
+rodar() { # roda o script contra a caixa e grava saida em $S/saida.json / .err
+  node "$S/vigias/dados-batedor-repos.js" --json > "$S/saida.json" 2>"$S/saida.err"
+  echo $?
+}
+
+PRELUDIO='const fs=require("fs");
+const D=JSON.parse(fs.readFileSync(process.env.SAIDA,"utf8"));
+const F=D.fila_de_repos;
+const ok=(c,m)=>{if(!c)throw new Error(m||"assert falhou");};
+'
+export SAIDA="$S/saida.json"
+
+prova() { # nome, script node que lanca Error se falhar (le $SAIDA via PRELUDIO)
+  local nome="$1"; shift
+  if node -e "$PRELUDIO$1" >/dev/null 2>&1; then
+    ok=$((ok+1)); echo "  ok   $nome"
+  else
+    falhou=$((falhou+1)); echo "  FALHA $nome"
+    node -e "$PRELUDIO$1" 2>&1 | grep -v "^ *at \|^Node.js v" | tail -6 | sed 's/^/         /'
+  fi
+}
+
+echo "== 1. entrada sem trilha e recusada e nao vira instalar (fixture do plano) =="
+# A fixture exata do criterio de sucesso: uma 'instalar', uma sem trilha e uma
+# com trilha fora do vocabulario ('comprar').
+fila <<'JSONL'
+{"candidato": "repo-instalavel", "ancora": "resolve o problema ancorado A", "trilha": "instalar", "plantada_em": "2026-08-01"}
+{"candidato": "repo-sem-trilha", "ancora": "resolve o problema ancorado B"}
+{"candidato": "repo-trilha-invalida", "ancora": "resolve o problema ancorado C", "trilha": "comprar"}
+JSONL
+exit_1="$(rodar)"
+if [ "$exit_1" = "0" ]; then ok=$((ok+1)); echo "  ok   script sai 0 mesmo com recusas (recusa e' por entrada, nao aborta a leitura)"
+else falhou=$((falhou+1)); echo "  FALHA script saiu $exit_1"; cat "$S/saida.err" | sed 's/^/         /'; fi
+
+prova "exatamente 1 utilizavel e 2 recusadas" '
+ok(F.utilizaveis.length===1, "utilizaveis: "+F.utilizaveis.length);
+ok(F.recusados.length===2, "recusados: "+F.recusados.length);'
+
+prova "a utilizavel e' o repo-instalavel, com a trilha instalar" '
+ok(F.utilizaveis[0].candidato==="repo-instalavel");
+ok(F.utilizaveis[0].trilha==="instalar", F.utilizaveis[0].trilha);'
+
+prova "as duas recusas nomeiam o candidato certo" '
+const nomes=F.recusados.map((r)=>r.candidato);
+ok(nomes.includes("repo-sem-trilha"), JSON.stringify(nomes));
+ok(nomes.includes("repo-trilha-invalida"), JSON.stringify(nomes));'
+
+prova "a recusa de repo-sem-trilha nomeia o que falta (o campo trilha)" '
+const r=F.recusados.find((x)=>x.candidato==="repo-sem-trilha");
+ok(r && /trilha/.test(r.motivo), JSON.stringify(r));'
+
+prova "a recusa de repo-trilha-invalida nomeia o valor invalido" '
+const r=F.recusados.find((x)=>x.candidato==="repo-trilha-invalida");
+ok(r && r.motivo.includes("comprar"), JSON.stringify(r));'
+
+# O ponto central do criterio de sucesso: a saida nao contem "instalar" para
+# NENHUMA das duas recusadas — nem no --json nem no texto (D5). Sem este
+# bloco, um default silencioso de 'instalar' escrito so no motivo passaria.
+prova "a saida NAO contem a string 'instalar' em nenhuma das duas recusadas (JSON)" '
+for (const r of F.recusados) {
+  ok(!JSON.stringify(r).includes("instalar"), "recusa contaminada: "+JSON.stringify(r));
+}'
+
+saida_texto=$(node "$S/vigias/dados-batedor-repos.js" 2>&1)
+echo "$saida_texto" > "$S/saida-texto.txt"
+if echo "$saida_texto" | grep -q "RECUSADO repo-sem-trilha.*instalar"; then
+  falhou=$((falhou+1)); echo "  FALHA a linha de recusa de repo-sem-trilha (texto) cita 'instalar'"
+else ok=$((ok+1)); echo "  ok   a linha de recusa de repo-sem-trilha (texto) nao cita 'instalar'"
+fi
+if echo "$saida_texto" | grep -q "RECUSADO repo-trilha-invalida.*instalar"; then
+  falhou=$((falhou+1)); echo "  FALHA a linha de recusa de repo-trilha-invalida (texto) cita 'instalar'"
+else ok=$((ok+1)); echo "  ok   a linha de recusa de repo-trilha-invalida (texto) nao cita 'instalar'"
+fi
+
+echo
+echo "== 2. as tres trilhas do vocabulario fechado passam =="
+fila <<'JSONL'
+{"candidato": "repo-instalar", "ancora": "ancora A", "trilha": "instalar"}
+{"candidato": "repo-enxertar", "ancora": "ancora B", "trilha": "enxertar"}
+{"candidato": "repo-ler", "ancora": "ancora C", "trilha": "ler"}
+JSONL
+rodar >/dev/null
+prova "as tres entram como utilizaveis, cada uma com a trilha certa" '
+ok(F.utilizaveis.length===3, "utilizaveis: "+F.utilizaveis.length);
+ok(F.recusados.length===0, "recusados: "+F.recusados.length);
+const porNome={}; for (const u of F.utilizaveis) porNome[u.candidato]=u.trilha;
+ok(porNome["repo-instalar"]==="instalar");
+ok(porNome["repo-enxertar"]==="enxertar");
+ok(porNome["repo-ler"]==="ler");'
+
+echo
+echo "== 3. recusa e' por ENTRADA: JSON invalido numa linha nao derruba as outras =="
+fila <<'JSONL'
+{"candidato": "repo-ok-antes", "ancora": "ancora A", "trilha": "instalar"}
+{isto nao e json valido}
+{"candidato": "repo-ok-depois", "ancora": "ancora B", "trilha": "ler"}
+JSONL
+exit_3="$(rodar)"
+if [ "$exit_3" = "0" ]; then ok=$((ok+1)); echo "  ok   script sai 0 mesmo com uma linha de JSON invalido"
+else falhou=$((falhou+1)); echo "  FALHA script saiu $exit_3"; cat "$S/saida.err" | sed 's/^/         /'; fi
+prova "as duas linhas validas passam, e a invalida vira 1 recusa nomeada" '
+ok(F.utilizaveis.length===2, "utilizaveis: "+F.utilizaveis.length);
+ok(F.recusados.length===1, "recusados: "+F.recusados.length);
+const nomesUtil=F.utilizaveis.map((u)=>u.candidato);
+ok(nomesUtil.includes("repo-ok-antes"), JSON.stringify(nomesUtil));
+ok(nomesUtil.includes("repo-ok-depois"), JSON.stringify(nomesUtil));
+ok(/JSON invalido/.test(F.recusados[0].motivo), JSON.stringify(F.recusados[0]));'
+
+echo
+echo "== 4. linha em branco e ignorada (nao conta como entrada nem recusa) =="
+fila <<'JSONL'
+{"candidato": "repo-unico", "ancora": "ancora A", "trilha": "instalar"}
+
+JSONL
+rodar >/dev/null
+prova "so a linha real conta; a linha em branco nao vira recusa" '
+ok(F.utilizaveis.length===1, "utilizaveis: "+F.utilizaveis.length);
+ok(F.recusados.length===0, "recusados: "+F.recusados.length);'
+
+echo
+echo "== 5. fila ausente nao derruba o resto do apurador =="
+rm -f "$S/vigias/fila-de-repos.jsonl"
+exit_5="$(rodar)"
+if [ "$exit_5" = "0" ]; then ok=$((ok+1)); echo "  ok   script sai 0 sem o arquivo da fila"
+else falhou=$((falhou+1)); echo "  FALHA script saiu $exit_5 sem o arquivo da fila"; cat "$S/saida.err" | sed 's/^/         /'; fi
+prova "fila vazia: zero utilizaveis, zero recusadas" '
+ok(F.utilizaveis.length===0, "utilizaveis: "+F.utilizaveis.length);
+ok(F.recusados.length===0, "recusados: "+F.recusados.length);'
+
+echo
+echo "== resultado: $ok ok, $falhou falha(s) =="
+[ "$falhou" -eq 0 ]

@@ -71,18 +71,64 @@ function errosRecentes() {
     });
 }
 
+const TRILHAS_VALIDAS = ['instalar', 'enxertar', 'ler'];
+
+// Fila de repos do batedor (D4 do design 2026-08-25): candidato + ancora +
+// trilha DECLARADOS antes da busca (D1) — a trilha escolhida depois de ver o
+// candidato e a trilha em que ele passa.
+//
+// Entrada SEM trilha, ou com trilha fora do vocabulario fechado (instalar |
+// enxertar | ler), RECUSA aquele candidato, nomeando o que falta (D5). Nunca
+// assume 'instalar' por omissao: o default natural seria esse, que e a regua
+// de hoje, e assumi-lo devolveria o desenho ao ponto de partida EM SILENCIO —
+// justamente para as entradas que ninguem revisou. Recusa e por ENTRADA: os
+// outros candidatos da fila seguem normalmente.
+function filaDeRepos() {
+  const utilizaveis = [];
+  const recusados = [];
+  lerLinhas('vigias/fila-de-repos.jsonl').forEach((linhaBruta, i) => {
+    if (!linhaBruta.trim()) return;
+    const numero = i + 1;
+    let d;
+    try {
+      d = JSON.parse(linhaBruta);
+    } catch (e) {
+      recusados.push({ candidato: `(linha ${numero})`, motivo: `JSON invalido na linha ${numero}: ${e.message}` });
+      return;
+    }
+    const candidato = (d && d.candidato) ? String(d.candidato) : `(linha ${numero} sem campo "candidato")`;
+    let trilha = d ? d.trilha : undefined;
+    if (trilha === undefined || trilha === null || trilha === '') {
+      recusados.push({ candidato, motivo: 'falta o campo "trilha" nesta entrada' });
+      return;
+    }
+    if (!TRILHAS_VALIDAS.includes(trilha)) {
+      recusados.push({ candidato, motivo: `trilha "${trilha}" fora do vocabulario fechado da fila` });
+      return;
+    }
+    utilizaveis.push({
+      candidato,
+      ancora: (d && d.ancora) || null,
+      trilha,
+      plantada_em: (d && d.plantada_em) || null,
+    });
+  });
+  return { utilizaveis, recusados };
+}
+
 const dados = {
   gerado_para: 'batedor',
   teto_repos: TETO_REPOS,
   ...ideiasAbertas(),
   propostas: propostasDeRelatorio(),
   erros_24h: errosRecentes(),
+  fila_de_repos: filaDeRepos(),
 };
 
 if (process.argv.includes('--json')) {
   console.log(JSON.stringify(dados, null, 2));
 } else {
-  const { ideias, observacoes, propostas, erros_24h } = dados;
+  const { ideias, observacoes, propostas, erros_24h, fila_de_repos } = dados;
   console.log(`teto de repos nesta ronda: ${TETO_REPOS}`);
   console.log(`\nIDEIAS ABERTAS (${ideias.length}) — ancora principal`);
   ideias.forEach((i) => console.log(`  [${i.dias ?? '?'}d] ${i.titulo}\n        ${i.id} · ${i.projeto}`));
@@ -92,4 +138,7 @@ if (process.argv.includes('--json')) {
   propostas.forEach((p) => console.log(`  ${p.tag} ${p.titulo}\n        ${p.relatorio}`));
   console.log(`\nERROS DE VIGIA NAS ULTIMAS 24H (${erros_24h.length})`);
   erros_24h.forEach((e) => console.log(`  ${e}`));
+  console.log(`\nFILA DE REPOS — ${fila_de_repos.utilizaveis.length} utilizavel(is), ${fila_de_repos.recusados.length} recusada(s)`);
+  fila_de_repos.utilizaveis.forEach((c) => console.log(`  [${c.trilha}] ${c.candidato}\n        ancora: ${c.ancora ?? '(sem ancora)'}`));
+  fila_de_repos.recusados.forEach((r) => console.log(`  RECUSADO ${r.candidato}: ${r.motivo}`));
 }
