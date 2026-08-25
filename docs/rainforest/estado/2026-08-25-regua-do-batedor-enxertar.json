@@ -60,7 +60,11 @@
     "em": "2026-08-25"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "tarefas_ok": 4,
+    "tarefas": 4,
+    "nota": "criterio da tarefa 4 (grep de string) e gramavel e foi gramado com declaracao; conteudo conferido a mao",
+    "em": "2026-08-25"
   },
   "fechar": {
     "status": "pendente"
