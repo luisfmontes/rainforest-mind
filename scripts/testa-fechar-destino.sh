@@ -89,8 +89,15 @@ igual "Resolve #5, closes #8 → 5 8 (palavras diferentes)" "$RESULT_2E" "5 8"
 # Trocar um exemplo do texto por um errado deixa AQUI vermelho.
 echo; echo "2f. os exemplos escritos no SKILL.md classificam como o texto promete"
 
-# Todo trecho entre crases que contenha "#<numero>" é um exemplo de corpo de PR.
-mapfile -t EXEMPLOS < <(grep -o '`[^`]*#[0-9][^`]*`' "$SRC/skills/fechar/SKILL.md" | sed 's/^`//; s/`$//')
+# A extração é ESCOPADA ao parágrafo das palavras-chave, com a mesma disciplina
+# da seção 1. Varrer o arquivo inteiro atrás de crase-com-#numero pegaria
+# qualquer frase legítima que citasse uma issue em outro ponto do texto — e a
+# bateria acusaria regressão por motivo desconexo do que ela protege. Vermelho
+# por motivo errado ensina quem mantém a ignorar o vermelho.
+mapfile -t EXEMPLOS < <(
+  sed -n '/O GitHub reconhece/,/^$/p' "$SRC/skills/fechar/SKILL.md" \
+    | grep -o '`[^`]*#[0-9][^`]*`' | sed 's/^`//; s/`$//'
+)
 
 igual "o SKILL.md traz exatamente 3 exemplos de corpo de PR" "${#EXEMPLOS[@]}" "3"
 

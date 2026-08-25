@@ -101,8 +101,18 @@ tem "o motivo (ambiente de cliente) esta nomeado" "$CORPO" "autorização escrit
 
 # ------------------------------------------------- 5. segredo por nome
 echo; echo "5. segredo se reporta por nome, nunca por valor"
-tem "proibicao de transcrever valor de segredo" "$CORPO" "Nunca**
-transcreva o valor"
+# O texto e' prosa em markdown e a quebra de linha dele e' cosmetica: casar com a
+# quebra exata deixaria a bateria vermelha depois de um simples reflow de
+# paragrafo, com a garantia intacta. Compara-se o corpo COM AS QUEBRAS
+# ACHATADAS, entao a asserção segue as palavras e nao a largura da coluna.
+#
+# E ha um motivo mais duro: `grep -F` com quebra de linha DENTRO do padrao trata
+# as duas linhas como ALTERNATIVAS, nao como sequencia. A versao anterior desta
+# asserção passava se qualquer uma das metades casasse -- era um OR acidental
+# vestido de frase. Achatar o corpo transforma a frase inteira num padrao de uma
+# linha so', e aí a asserção passa a exigir o que diz exigir.
+CORPO_PLANO="$(echo "$CORPO" | tr '\n' ' ' | tr -s ' ')"
+tem "proibicao de transcrever valor de segredo" "$CORPO_PLANO" "**Nunca transcreva o valor**"
 tem "o historico do git entra na varredura" "$CORPO" "--diff-filter=A"
 
 # ------------------------------------------------- 6. formato do relatorio
