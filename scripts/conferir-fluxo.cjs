@@ -27,7 +27,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 // A raiz é a do PROJETO em que se trabalha, mesma cadeia do estado.cjs
 const RAIZ = process.env.RFM_ESTADO_ROOT
@@ -504,11 +504,23 @@ function cmdCreep() {
     `docs/rainforest/estado/${slug}.json`,
   ];
 
-  // Pega diff
+  // Pega diff.
+  //
+  // `execFileSync` com LISTA de argumentos, e nunca `execSync` com string montada:
+  // string invoca um shell de verdade, e `base`/`head` chegam aqui vindos do
+  // `--json` de quem fecha o estágio `revisar`. Nome de branch aceita `;`, `` ` ``,
+  // `$()`, `&` e `|` — o git só proíbe espaço e alguns símbolos no `refname` —,
+  // então uma branch chamada `feature;calc` passada como `--head` fazia o shell
+  // executar `calc` com os privilégios do processo do fluxo (Issue #89, achado da
+  // primeira execução do `auditor-de-seguranca` contra este próprio repo).
+  //
+  // O mais amargo é que o caminho seguro já existia e era abandonado no último
+  // passo: o valor viaja como array por `spawnSync` em `estado.cjs:552-563`, e só
+  // aqui era remontado como string. `hooks/gate-worktree.cjs` já usava
+  // `execFileSync` — era assimetria dentro da mesma base de código.
   let diff_arquivos = [];
   try {
-    const cmd = `git diff --name-only ${base}...${head}`;
-    const output = execSync(cmd, { cwd: RAIZ, encoding: 'utf8' });
+    const output = execFileSync('git', ['diff', '--name-only', `${base}...${head}`], { cwd: RAIZ, encoding: 'utf8' });
     diff_arquivos = output.trim().split('\n').filter(f => f.length > 0);
   } catch (err) {
     console.error(`erro ao rodar git diff: ${err.message}`);
