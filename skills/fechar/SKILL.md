@@ -47,17 +47,18 @@ git worktree prune
 Invoque a skill `limpar` para isso — ela já separa o que tem trabalho
 pendente do que está limpo, e decide o que remove sem perguntar.
 
-## 4. Perguntar o destino
+## 4. Abrir PR
 
-Três opções numeradas, e **para**:
+O destino da branch é sempre PR — decisão já tomada (MEMORY.md,
+`Destino-de-branch-é-sempre-PR`). Abra o PR sem oferecer menu.
 
-1. Merge local
-2. Abrir PR
-3. Manter a branch como está
-
-**Não decida por ele.** Mesmo que uma opção pareça óbvia (branch pequena,
-sem conflito), a escolha entre merge, PR e manter é dele — nomear as três
-e esperar a resposta é o próprio ponto deste passo.
+**Corpo do PR — palavras-chave de fechamento.** O GitHub reconhece, em
+**inglês e case-insensitive**, estas palavras antes de cada número de issue:
+`close`, `closes`, `closed`, `fix`, `fixes`, `fixed`, `resolve`, `resolves`,
+`resolved`. A **palavra precisa repetir antes de cada número**, senão fecha só
+a primeira: `Closes #81, closes #79` funciona; `Closes #81 e #79` fecha só
+a #81. Incidente 2026-08-24 (PR #85): usou `Fecha #81 e #79` em português —
+nenhuma palavra-chave foi reconhecida e as duas issues continuaram abertas.
 
 ## Depois: writeback
 
