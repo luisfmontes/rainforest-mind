@@ -56,8 +56,18 @@ nunca de memória. README não responde contra si.
    (ex.: `Instalar → Enxertar`), conforme a seção "Formato da linha" do livro — não só a
    trilha final. A coluna "Reprovou em" se lê **junto** da trilha em que a reprovação
    aconteceu: "reprovou em 2 e 3" não diz nada sozinho, precisa dizer que era a régua de
-   Instalar (ou de Enxertar, ou de Ler). Commite e publique os dois — commit é parte de
-   escrever, igual ao `/feedback`:
+   Instalar (ou de Enxertar, ou de Ler).
+
+   Antes de commitar, rode a catraca:
+   `node C:\Projetos\rainforest-mind\scripts\conferir-livro-de-repos.cjs`. Ela recusa
+   célula de veredito que não siga a sintaxe exata da seção "Formato da linha" do livro,
+   e recusa veredito fora do vocabulário fechado da trilha. Exit != 0 quer dizer que a
+   **linha** está errada, não que o repo está errado: conserte a linha e rode de novo. Ela
+   só olha linha com data POSTERIOR ao corte de 2026-08-25 — as 40 antigas foram julgadas
+   sob a régua velha e não se rejulga, pela mesma anistia da seção "Por que a pergunta 4
+   aceita código".
+
+   Commite e publique os dois — commit é parte de escrever, igual ao `/feedback`:
    `git -C C:\Projetos\rainforest-mind add relatorios/<arquivo> vigias/livro-de-repos.md`,
    commit com `Batedor: <achado em uma linha>`, e push. Nunca `git add -A`.
 
