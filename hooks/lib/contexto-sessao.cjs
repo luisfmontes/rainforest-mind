@@ -388,8 +388,38 @@ function iparAvancoRecente(secao) {
  * ninguém faz na abertura. O ponteiro nomeia o que saiu — omissão anunciada é
  * recuperável, omissão silenciosa vira afirmação errada sobre o que já foi decidido.
  */
+/**
+ * CRLF -> LF. Existe como funcao nomeada, e nao inline, porque ela e a UNIDADE do
+ * arquivo: dois lugares ja precisaram dela (o bloco de regras em 2026-08-13, o
+ * bloco de foco em 2026-08-25) e o terceiro vai precisar tambem.
+ */
+function normalizarFimDeLinha(texto) {
+  return String(texto || '').replace(/\r\n/g, '\n');
+}
+
 function resumirFoco(focoText) {
-  const texto = resumirAvancos(String(focoText || '')).trim();
+  // CRLF -> LF ANTES de qualquer coisa, pelo mesmo motivo que `filtrarRegras` faz
+  // no bloco de regras — e o FOCO.md ficou de fora daquele conserto, em
+  // 2026-08-13, sem ninguem notar.
+  //
+  // Aqui o custo nao e byte desperdicado, e sim o corte por PRIORIDADE parar de
+  // funcionar INTEIRO. O `priorizarFoco` separa blocos por linha em branco, com
+  // um split que exige dois avancos de linha ADJACENTES. Linha em branco em
+  // arquivo CRLF nao tem os dois adjacentes: tem retorno-de-carro no meio. Num
+  // FOCO.md com CRLF (o padrao de quem edita no Windows) a secao "## Ativo"
+  // inteira chega como UM bloco de ~2 KB em vez de quatro paragrafos, nada cabe
+  // no teto, e o bloco de foco degrada para "so ponteiros" — em TODA sessao.
+  //
+  // Medido em 2026-08-25 contra o FOCO.md real, que tinha 135 CRLF:
+  //   como estava (CRLF): 3 blocos, "## Ativo" com 1976 B  -> so ponteiros
+  //   normalizado  (LF) : 9 blocos, identidade com 1317 B  -> conteudo real
+  //
+  // Era a causa raiz da Issue #74. O sintoma parecia orcamento apertado e o
+  // arquivo parecia grande demais; o arquivo cabia. Quem nao cabia era o bloco
+  // que a falta de normalizacao tinha grudado — e o mesmo defeito de 2026-08-13,
+  // no arquivo vizinho, ja tinha ensinado que unidade errada nao da erro, da
+  // numero diferente em maquina diferente.
+  const texto = resumirAvancos(normalizarFimDeLinha(focoText)).trim();
   if (!texto) return '';
 
   const partes = texto.split(/\n(?=## )/);

@@ -2512,6 +2512,38 @@ fi
 rm -f "$RAIZ_POSIX/lib-mut-estrategia.cjs"
 
 echo
+echo "== 21. CRLF no FOCO.md nao pode desligar o corte por prioridade (Issue #74) =="
+# O `priorizarFoco` separa blocos por LINHA EM BRANCO, e o split exige dois avancos
+# de linha adjacentes. Em arquivo CRLF a linha em branco nao tem os dois adjacentes,
+# entao a secao "## Ativo" inteira chega como UM bloco: nada cabe no teto e o foco
+# degrada para "so ponteiros" em TODA sessao. Medido no FOCO.md real em 2026-08-25:
+# 3 blocos com CRLF contra 9 com LF.
+#
+# Este caso compara os DOIS mundos com o MESMO conteudo — so o fim de linha muda.
+# Comparar contra um numero fixo nao serviria: o resultado depende do teto, e o
+# defeito nao e "saiu pequeno", e "saiu identico ao de um arquivo vazio".
+FOCO_LF=$(printf '# Foco\n\n## Ativo\n\n**Projeto de Teste** `[trabalho]` — declarado 2026-08-01.\nCriterio de pronto: a bateria passar.\n\nMarcos:\n- Marco unico em 2026-09-01.\n')
+FOCO_CRLF=$(printf '%s' "$FOCO_LF" | sed 's/$/\r/')
+
+saida_lf=$(node -e '
+const L=require(process.argv[1]);
+const r=L.resumirFoco(process.argv[2]).trim();
+console.log(JSON.stringify({blocos:r.split(/\n{2,}/).length, soPonteiro:L.focoSoTemPonteiro(L.priorizarFoco(r,250))}));
+' "$LIB" "$FOCO_LF")
+saida_crlf=$(node -e '
+const L=require(process.argv[1]);
+const r=L.resumirFoco(process.argv[2]).trim();
+console.log(JSON.stringify({blocos:r.split(/\n{2,}/).length, soPonteiro:L.focoSoTemPonteiro(L.priorizarFoco(r,250))}));
+' "$LIB" "$FOCO_CRLF")
+
+checa "21.1 com LF o foco se divide em blocos"      nao_tem '"blocos":1' "$saida_lf"
+checa "21.2 com CRLF divide igual ao LF"            tem     "$saida_lf"  "$saida_crlf"
+# Nao existe um "21.3 com CRLF o foco nao vira so ponteiro". Ele foi escrito, passou
+# limpo, e passou TAMBEM com a normalizacao removida — nao discriminava nada, e teste
+# que fica verde com a protecao desligada e ruido que da falsa confianca. Quem carrega
+# a prova aqui e o 21.2: com CRLF a divisao tem que dar o MESMO resultado que com LF.
+
+echo
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" = "0" ] || exit 1
