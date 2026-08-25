@@ -111,6 +111,17 @@ const TETOS = {
    */
   SESSOES_PASTAS_LISTADAS: 3,
   /**
+   * Teto da LEGENDA VISÍVEL (o `systemMessage`), em BYTES.
+   *
+   * Canal diferente do `additionalContext`, e o orçamento também: o binário do
+   * harness conta `systemMessageChars` e `additionalContextChars` separados, então
+   * este teto NÃO disputa bytes com as regras nem com o foco. O número é pequeno
+   * por outro motivo — quem lê é o usuario, na abertura, de relance. Legenda que
+   * não cabe num olhar vira parede de texto e para de ser lida, e aí ela custa
+   * atenção sem devolver estado.
+   */
+  LEGENDA_MAX_BYTES: 700,
+  /**
    * Piso do bloco de regras. Abaixo disto considera-se que NÃO carregou.
    * Não é `if (!regras)`: SKILL.md truncado ou heading renomeado produzem
    * bloco curto e não-vazio, e essa falha é tão grave quanto o vazio.
@@ -1354,8 +1365,112 @@ function computarVeredito(textoDoFoco, sessoes, config, agora) {
   return linhas.join('\n');
 }
 
+/**
+ * Título do foco ativo — o negrito da seção `## Ativo`, sem a natureza e sem a
+ * data de declaração.
+ *
+ * Reusa o mesmo recorte de `naturezaDoFocoAtivo` de propósito: se as duas funções
+ * discordassem sobre qual linha é o foco ativo, a legenda mostraria um foco e o
+ * radar mediria outro.
+ *
+ * @param {string} textoDoFoco conteúdo do FOCO.md
+ * @returns {string} título, ou '' quando não há foco declarado
+ */
+function tituloDoFocoAtivo(textoDoFoco) {
+  const texto = String(textoDoFoco || '');
+  const inicioAtivo = texto.search(/^## Ativo/m);
+  if (inicioAtivo === -1) return '';
+
+  const depois = texto.slice(inicioAtivo + 8);
+  const fimSecao = depois.search(/^## /m);
+  const secaoAtivo = fimSecao === -1 ? depois : depois.slice(0, fimSecao);
+
+  const linhaEmNegrito = secaoAtivo.match(/^\*\*(.+?)\*\*.*$/m);
+  if (!linhaEmNegrito) return '';
+  return linhaEmNegrito[1].trim();
+}
+
+/**
+ * Monta a LEGENDA VISÍVEL da abertura — o texto que vai no `systemMessage` e é a
+ * única coisa que o usuario VÊ quando a sessão sobe.
+ *
+ * Por que existe (2026-08-25): os dois hooks de SessionStart emitiam só
+ * `additionalContext`. Isso entra no contexto do modelo e **não aparece na tela**
+ * — o usuario abria a sessão e via tela vazia, sem saber se o plugin subiu, qual
+ * foco estava ativo ou se havia janela dele esperando. O estado existia e não
+ * chegava a quem decide com ele. O `systemMessage` é o canal que o binário do
+ * harness declara como `"Warning message shown to the user"`, disponível em todos
+ * os hooks.
+ *
+ * É PURA: entra estado já medido, sai texto. Quem lê arquivo é o adaptador.
+ *
+ * O que entra é só o que muda a próxima decisão dele: qual foco, se esta janela
+ * está dentro dele, quantas janelas dele esperam resposta, e o que está bloqueado
+ * (regra 14). O que NÃO entra: as regras (o modelo as recebe pelo outro canal, e o
+ * usuario não precisa relê-las toda abertura).
+ *
+ * @param {object} o
+ * @param {string} [o.focoText]   conteúdo do FOCO.md
+ * @param {Array<{cwd?: string, trabalhando?: boolean, minutos?: number}>} [o.entradas] sessões vivas
+ * @param {string} [o.cwdAtual]   diretório desta sessão
+ * @param {Array<string>} [o.bloqueios] dependências fora do ar (regra 14)
+ * @param {number} [o.teto]       teto em bytes (default: TETOS.LEGENDA_MAX_BYTES)
+ * @returns {string} legenda, ou '' quando não há nada que valha a tela
+ */
+function montarLegenda(o) {
+  const focoText = String((o && o.focoText) || '');
+  const entradas = Array.isArray(o && o.entradas) ? o.entradas.filter(Boolean) : [];
+  const bloqueios = Array.isArray(o && o.bloqueios) ? o.bloqueios.filter(Boolean) : [];
+  const teto = Number.isFinite(o && o.teto) ? o.teto : TETOS.LEGENDA_MAX_BYTES;
+  const linhas = [];
+
+  // Linha do foco. Sem foco declarado a linha continua valendo: ela é o único
+  // sinal de que o plugin subiu, e traz o comando que resolve a falta.
+  const titulo = tituloDoFocoAtivo(focoText);
+  const natureza = naturezaDoFocoAtivo(focoText);
+  if (titulo) {
+    const marca = natureza ? ` [${natureza}]` : '';
+    // "Esta janela está no foco?" se responde por PASTA, igual à isenção da regra
+    // 17 — e só quando o FOCO.md declara as pastas. Sem `Pastas:` a pergunta é
+    // indeterminada, e afirmar qualquer das duas seria inventar.
+    const pastas = pastasDoFoco(focoText).map(normalizarCwd).filter(Boolean);
+    const aqui = normalizarCwd((o && o.cwdAtual) || '');
+    let lugar = '';
+    if (pastas.length && aqui) {
+      const dentro = pastas.some((p) => aqui === p || aqui.startsWith(p + '/'));
+      lugar = dentro ? ' · esta janela está NO foco' : ' · esta janela está fora dele';
+    }
+    linhas.push(`🌳 foco: ${titulo}${marca}${lugar}`);
+  } else {
+    linhas.push('🌳 rainforest-mind ativo · nenhum foco declarado (`/foco <texto>` declara)');
+  }
+
+  // Linha das janelas. Só o que a regra 17 pergunta: quantas existem e se alguma
+  // está parada esperando ele. Nome de pasta fica fora — isso o modelo já tem
+  // pelo `additionalContext`, e aqui custaria a linha inteira.
+  if (entradas.length) {
+    const esperando = entradas.filter((e) => !e.trabalhando);
+    const trabalhando = entradas.length - esperando.length;
+    const partes = [`${entradas.length} janela(s) viva(s)`];
+    if (trabalhando) partes.push(`${trabalhando} com Claude trabalhando`);
+    if (esperando.length) {
+      const maisParada = esperando.reduce((n, e) => Math.max(n, Number.isFinite(e.minutos) ? e.minutos : 0), 0);
+      partes.push(`${esperando.length} esperando você (a mais parada há ${maisParada} min)`);
+    }
+    linhas.push(`🪟 ${partes.join(' · ')}`);
+  }
+
+  // Regra 14: o que está bloqueado se ANUNCIA. Silêncio faz o usuario acreditar
+  // que a regra rodou — e este é o canal em que ele de fato lê o anúncio.
+  for (const b of bloqueios) linhas.push(`⚠️ ${b}`);
+
+  return limitarBytes(linhas.join('\n'), teto, 'Legenda');
+}
+
 module.exports = {
   TETOS,
+  tituloDoFocoAtivo,
+  montarLegenda,
   filtrarRegras,
   extrairNucleo,
   blocoRegras,
