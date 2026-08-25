@@ -166,16 +166,28 @@ fi
 # Issue #74 — `separar`: FOCO.md monolitico -> FOCO.md (tatico) + ESTRATEGIA.md
 # ============================================================================
 #
+# RODADA 2 (retrabalho): a bateria original roteava por LINHA, e a fixture
+# tinha uma linha por sentenca -- por construcao, nao podia expor o defeito
+# real (prosa com quebra dura em ~80 colunas, varias linhas por frase). Contra
+# o FOCO.md de verdade do usuario, o roteamento por linha cortava frases no
+# meio. A partir daqui o roteamento e por PARAGRAFO (bloco separado por linha
+# em branco) -- um paragrafo vai INTEIRO para um lado ou outro, nunca partido.
+#
 # O que esta bateria precisa provar, na mesma ordem de gravidade da secao acima:
 #   10. sem --aplicar nao escreve nada (mesma garantia de sempre);
 #   11. os campos que o HOOK le por regex direto do FOCO.md (titulo/natureza,
 #       Pastas:, Ociosidade maxima:, Critério de pronto, Marcos, Avancos,
-#       Compromissos com prazo) ficam no arquivo TATICO; a prosa de negocio e
-#       as secoes nao-residentes vao para o ESTRATEGIA.md;
+#       Compromissos com prazo) ficam no arquivo TATICO; um paragrafo de prosa
+#       SEPARADO (com linha em branco antes e depois) vai inteiro pro
+#       ESTRATEGIA.md, junto com as secoes nao-residentes;
 #   12. nada se perde — toda linha do original esta em UM dos dois arquivos;
 #   13. `separar` e migracao de UMA VEZ: recusa sobrescrever ESTRATEGIA.md;
-#   14. MUTACAO — desligar a deteccao da secao "Ativo" tem que fazer a prosa
-#       de negocio (que hoje sai do tatico) voltar a ficar no FOCO.md.
+#   14. PROSA QUEBRADA EM VARIAS LINHAS (o caso que faltava): um paragrafo de
+#       contexto com quebra dura de linha, como o arquivo real, sobrevive
+#       INTEIRO e JUNTO no ESTRATEGIA.md -- nenhuma linha isolada, nenhuma
+#       frase cortada no meio;
+#   15. MUTACAO — desligar o roteamento por PARAGRAFO (faze-lo decidir por
+#       LINHA de novo) tem que voltar a partir o paragrafo de prosa.
 
 montar_split() {
   rm -rf "$SBP/dados"; mkdir -p "$SBP/dados"
@@ -186,12 +198,12 @@ montar_split() {
       "## Ativo", "",
       "Prosa-meta sintetica sobre o formato do arquivo, sem campo tatico nenhum aqui.", "",
       "**Projeto Teste Separar** `[trabalho]` \u2014 declarado 2026-08-01.",
-      "Prosa de contexto de negocio, com uma justificativa historica que nao muda toda semana.",
       "Pastas: C:/tmp/a",
       "        C:/tmp/b",
       "Ociosidade m\u00e1xima: 10 min.",
       "Prazo: entrega em 2026-09-01.",
       "Crit\u00e9rio de pronto: a bateria passar.", "",
+      "Prosa de contexto de negocio, com uma justificativa historica que nao muda toda semana.", "",
       "Marcos (cronograma):",
       "- Marco 1 -- 2026-08-10.", "",
       "Avan\u00e7os:",
@@ -218,7 +230,7 @@ else
   ok=$((ok+1)); echo "  ok   nao criou ESTRATEGIA.md no ensaio"
 fi
 
-echo; echo "11. separar --aplicar: campos taticos ficam no FOCO.md, prosa vai pro ESTRATEGIA.md"
+echo; echo "11. separar --aplicar: campos taticos ficam no FOCO.md, paragrafo de prosa vai inteiro pro ESTRATEGIA.md"
 node "$SRC/scripts/foco.cjs" separar --raiz "$SBP/dados" --aplicar > /dev/null
 FOCOS="$(cat "$SBP/dados/FOCO.md")"
 EST="$(cat "$SBP/dados/ESTRATEGIA.md")"
@@ -230,8 +242,8 @@ tem "Critério de pronto fica no tatico"           "$FOCOS" "Critério de pronto
 tem "Marcos ficam no tatico"                      "$FOCOS" "Marco 1"
 tem "Avancos ficam no tatico"                     "$FOCOS" "primeiro avanco"
 tem "Compromissos com prazo fica no tatico"       "$FOCOS" "compromisso preservado"
-nao_tem "prosa de negocio sai do tatico"          "$FOCOS" "justificativa"
-tem "prosa de negocio vai pro estrategico"        "$EST" "justificativa"
+nao_tem "paragrafo de prosa sai do tatico"        "$FOCOS" "justificativa"
+tem "paragrafo de prosa vai pro estrategico"      "$EST" "justificativa"
 tem "Nao especificado vai pro estrategico"        "$EST" "nevoa preservada"
 tem "Fora de escopo vai pro estrategico"          "$EST" "descarte preservado"
 tem "Frentes vai pro estrategico"                 "$EST" "frente preservada"
@@ -256,19 +268,96 @@ SAIDA="$(node "$SRC/scripts/foco.cjs" separar --raiz "$SBP/dados" --aplicar 2>&1
 tem "recusa com mensagem clara" "$SAIDA" "já existe"
 igual "sai com erro (nao silencioso)" "$CODIGO" "1"
 
-echo; echo "14. MUTACAO — desligar a deteccao da secao Ativo tem que devolver a prosa ao tatico"
-montar_split
-MUT="$SBP/foco-mut-secoes.cjs"
-sed "s/if (nome === 'Ativo') {/if (nome === 'Ativo-NUNCA-Issue74') {/" "$SRC/scripts/foco.cjs" > "$MUT"
-if diff -q "$SRC/scripts/foco.cjs" "$MUT" > /dev/null; then
-  falhou=$((falhou+1)); echo "  FALHA o sed nao encontrou a linha a mutar -- teste invalido"
+echo; echo "14. prosa quebrada em varias linhas (o caso que faltava) nao e cortada no meio"
+montar_quebrada() {
+  rm -rf "$SBP/dados"; mkdir -p "$SBP/dados"
+  node -e '
+    const fs = require("fs");
+    const foco = [
+      "# Foco", "",
+      "## Ativo", "",
+      "**Projeto Prosa Quebrada** `[trabalho]` \u2014 declarado 2026-08-01.",
+      "Pastas: C:/tmp/quebrado",
+      "Crit\u00e9rio de pronto: a bateria passar.", "",
+      "Esta e uma prosa de contexto de negocio propositalmente quebrada em varias",
+      "linhas curtas, imitando o arquivo real do usuario, que envolve justificativa",
+      "historica e nao deveria ser cortada no meio de nenhuma frase durante o",
+      "processo de separacao entre o arquivo tatico e o estrategico.", "",
+      "Marcos (cronograma):",
+      "- Marco 1 -- 2026-08-10.", ""
+    ].join("\n");
+    fs.writeFileSync(process.argv[1] + "/FOCO.md", foco, "utf8");
+  ' "$SBP/dados"
+}
+montar_quebrada
+node "$SRC/scripts/foco.cjs" separar --raiz "$SBP/dados" --aplicar > /dev/null
+FOCOQ="$(cat "$SBP/dados/FOCO.md")"
+ESTQ="$(cat "$SBP/dados/ESTRATEGIA.md")"
+tem "identidade (com Pastas e Criterio) fica inteira no tatico" "$FOCOQ" "Projeto Prosa Quebrada"
+tem "Criterio de pronto continua no mesmo paragrafo tatico"     "$FOCOQ" "Critério de pronto"
+nao_tem "nenhuma linha da prosa quebrada vaza pro tatico"       "$FOCOQ" "justificativa"
+CONFERE="$(node -e '
+  const fs = require("fs");
+  const raiz = process.argv[1];
+  const foco = fs.readFileSync(raiz + "/FOCO.md", "utf8");
+  const est = fs.readFileSync(raiz + "/ESTRATEGIA.md", "utf8");
+  // O paragrafo de prosa quebrada, EXATAMENTE como foi escrito (4 linhas
+  // coladas por \n) -- se sobreviveu inteiro e junto, este bloco aparece
+  // como substring continua em UM dos dois arquivos.
+  const paragrafo = [
+    "Esta e uma prosa de contexto de negocio propositalmente quebrada em varias",
+    "linhas curtas, imitando o arquivo real do usuario, que envolve justificativa",
+    "historica e nao deveria ser cortada no meio de nenhuma frase durante o",
+    "processo de separacao entre o arquivo tatico e o estrategico.",
+  ].join("\n");
+  const noFoco = foco.includes(paragrafo);
+  const noEst = est.includes(paragrafo);
+  console.log(JSON.stringify({ noFoco, noEst }));
+' "$SBP/dados")"
+tem "o paragrafo de 4 linhas sobrevive INTEIRO e JUNTO (nao partido)" "$CONFERE" '"noEst":true'
+tem "e nao ficou nenhum pedaco dele no tatico"                        "$CONFERE" '"noFoco":false'
+
+echo; echo "15. MUTACAO — desligar o roteamento por PARAGRAFO tem que voltar a partir a prosa quebrada"
+montar_quebrada
+MUT="$SBP/foco-mut-paragrafo.cjs"
+# sed com classes de regex dentro de regex (\n{2,}) e fragil de escapar
+# corretamente em shell; a troca e feita em JS puro, por substring exata.
+node -e '
+  const fs = require("fs");
+  const src = process.argv[1], dst = process.argv[2];
+  const t = fs.readFileSync(src, "utf8");
+  const alvo = ".split(/\\n{2,}/)";
+  const novo = ".split(/\\n/)";
+  if (!t.includes(alvo)) { console.error("ANCORA_NAO_ENCONTRADA"); process.exit(1); }
+  fs.writeFileSync(dst, t.split(alvo).join(novo), "utf8");
+' "$SRC/scripts/foco.cjs" "$MUT"
+if [ ! -s "$MUT" ] || diff -q "$SRC/scripts/foco.cjs" "$MUT" > /dev/null; then
+  falhou=$((falhou+1)); echo "  FALHA a mutacao nao encontrou o split por paragrafo -- teste invalido"
 else
   node "$MUT" separar --raiz "$SBP/dados" --aplicar > /dev/null 2>&1
   FOCOM="$(cat "$SBP/dados/FOCO.md" 2>/dev/null)"
-  if grep -qF -- "justificativa" <<< "$FOCOM"; then
-    ok=$((ok+1)); echo "  ok   mutacao expos que o split de Ativo e o que tira a prosa do tatico"
+  # Com o roteamento voltando a ser por LINHA, a primeira linha da prosa
+  # quebrada ("Esta e uma prosa...") nao comeca com `**` -- deixa de ser
+  # reconhecida como continuacao do paragrafo de identidade e cai solta;
+  # o sintoma observavel e a prosa aparecer FRAGMENTADA (a primeira linha
+  # separada das demais) em vez de sobreviver inteira e junta no estrategico.
+  ESTM="$(cat "$SBP/dados/ESTRATEGIA.md" 2>/dev/null)"
+  CONFEREM="$(node -e '
+    const fs = require("fs");
+    const raiz = process.argv[1];
+    const est = fs.existsSync(raiz + "/ESTRATEGIA.md") ? fs.readFileSync(raiz + "/ESTRATEGIA.md", "utf8") : "";
+    const paragrafo = [
+      "Esta e uma prosa de contexto de negocio propositalmente quebrada em varias",
+      "linhas curtas, imitando o arquivo real do usuario, que envolve justificativa",
+      "historica e nao deveria ser cortada no meio de nenhuma frase durante o",
+      "processo de separacao entre o arquivo tatico e o estrategico.",
+    ].join("\n");
+    console.log(JSON.stringify({ paragrafoIntacto: est.includes(paragrafo) }));
+  ' "$SBP/dados")"
+  if echo "$CONFEREM" | grep -qF '"paragrafoIntacto":false'; then
+    ok=$((ok+1)); echo "  ok   mutacao expos que o roteamento por paragrafo e o que mantem a prosa inteira"
   else
-    falhou=$((falhou+1)); echo "  FALHA mutante passou despercebido: a prosa continuou saindo do tatico mesmo sem o tratamento especial de Ativo"
+    falhou=$((falhou+1)); echo "  FALHA mutante passou despercebido: a prosa continuou intacta mesmo roteando por linha"
   fi
 fi
 rm -f "$MUT"

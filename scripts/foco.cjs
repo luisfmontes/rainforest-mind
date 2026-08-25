@@ -314,83 +314,77 @@ function caminho() {
 // ============================================================================
 // Issue #74 — `separar`: FOCO.md monolítico -> FOCO.md (tático) + ESTRATEGIA.md
 // ============================================================================
+//
+// RODADA 2 (retrabalho): a primeira versão roteava LINHA A LINHA, e contra o
+// FOCO.md real do usuário (prosa com quebra dura em ~80 colunas) isso partia
+// frases no meio — cinco parágrafos cortados, com metades órfãs nos dois
+// arquivos. "Nada se perde" (a conservação de bytes) não bastava: os dois
+// arquivos ficavam ilegíveis, e a fragmentação da identidade fazia o
+// `priorizarFoco` deixar de reconhecê-la (ela para de começar com `**` quando
+// a primeira linha sobrevivente é prosa solta), reintroduzindo exatamente o
+// "só ponteiros" que a issue existe para resolver.
+//
+// A unidade agora é o PARÁGRAFO (bloco separado por linha em branco), nunca a
+// linha. Um parágrafo vai inteiro para um lado ou para o outro. Dentro de
+// `## Ativo`, o PRIMEIRO parágrafo que começa com `**` é a identidade — a
+// mesma regra que `priorizarFoco` usa (`secaoAtual === 'Ativo' && /^\*\*/`) —
+// e fica no tático INTEIRO, com a linha em branco antes dele preservada (é
+// essa linha em branco que faz o parágrafo seguinte ser reconhecido como
+// bloco próprio). Qualquer outro parágrafo da região (prosa-meta, contexto de
+// negócio) vai inteiro para o ESTRATEGIA.md.
+//
+// CONSEQUÊNCIA ACEITA, não escondida: quando a identidade mistura campo
+// tático (Pastas:, Critério de pronto) com prosa de negócio NO MESMO
+// parágrafo — o formato real do usuário faz isso —, a prosa vai junto pro
+// lado tático, porque não dá para cortar dentro do parágrafo sem repetir o
+// defeito que motivou este retrabalho. Isso pode fazer a identidade sozinha
+// estourar o orçamento do bloco de foco; `separar` não tenta consertar
+// reescrevendo a prosa do usuário — ele MEDE e AVISA (`medirAjusteIdentidade`
+// abaixo), e quem decide o que cortar é o usuário, olhando o aviso.
 
 /**
- * Campos da identidade que o HOOK lê por regex direto do texto do FOCO.md —
- * `pastasDoFoco`, `ociosidadeDoFoco`, `naturezaDoFocoAtivo`, `tituloDoFocoAtivo`
- * em `hooks/lib/contexto-sessao.cjs`. Têm que sobreviver no arquivo TÁTICO:
- * mandar um destes para o ESTRATEGIA.md não é "mover prosa", é quebrar a regra
- * 17 e a legenda em silêncio, porque o hook só lê o FOCO.md.
+ * Divide a região de IDENTIDADE/PROSA de `## Ativo` (tudo antes de "Marcos" e
+ * "Avanços:") em PARÁGRAFOS — nunca em linhas — e separa o primeiro parágrafo
+ * que começa com `**` (a identidade, mesma regra do `priorizarFoco`) do resto
+ * (prosa-meta e contexto de negócio, que vão inteiros para o ESTRATEGIA.md).
+ *
+ * @param {string} regiao texto entre o cabeçalho `## Ativo` e o bloco "Marcos"
+ * @returns {{identidade: string, prosa: string}}
  */
-const RE_CAMPO_TATICO = /^(Pastas:|Ociosidade máxima:|Critério de pronto|Criterio de pronto)/i;
-/** Data (prazo, próximo marco) em qualquer formato que o restante do arquivo usa. */
-const RE_DATA_IDENTIDADE = /\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}/;
-/** A linha em negrito que declara a natureza — é a mesma que `naturezaDoFocoAtivo` procura. */
-const RE_NATUREZA = /\[(trabalho|pessoal)\]/;
-/** Linha de CONTINUAÇÃO (indentada) de um campo tático de várias linhas (ex.: `Pastas:` com 2 pastas). */
-const RE_CONTINUACAO = /^[ \t]+\S/;
+function dividirPorParagrafo(regiao) {
+  const paragrafos = String(regiao || '')
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean);
 
-/**
- * Separa a região de PROSA/IDENTIDADE de `## Ativo` (tudo antes de "Marcos" e
- * "Avanços:") em duas: linhas ESSENCIAIS (o hook lê por regex, ficam no
- * FOCO.md) e PROSA (contexto de negócio, histórico — vai para o ESTRATEGIA.md).
- *
- * Linha por linha, nunca por parágrafo: é assim que o título/natureza/data
- * ficam junto de prosa no MESMO parágrafo (o formato real do usuário faz
- * isso) sem arrastar a prosa inteira para o lado tático.
- *
- * Regra, em ordem:
- *   1. a PRIMEIRA linha que declara a natureza (`[trabalho]`/`[pessoal]`) é o
- *      título — sempre essencial, e tudo ANTES dela (prosa-meta explicando o
- *      formato do arquivo) é sempre prosa;
- *   2. depois do título, linha em branco é prosa;
- *   3. campo tático (`Pastas:`, `Ociosidade máxima:`, `Critério de pronto`) ou
- *      linha com data (prazo/próximo marco) é essencial;
- *   4. linha indentada logo após uma linha essencial é CONTINUAÇÃO dela
- *      (`Pastas:` com duas pastas quebra em duas linhas) — essencial também;
- *   5. o resto é prosa.
- */
-function separarIdentidade(regiao) {
-  const linhas = String(regiao || '').split('\n');
-  const essenciais = [];
+  let identidade = '';
   const prosa = [];
-  let tituloAchado = false;
-  let ultimaEssencial = false;
-
-  for (const linha of linhas) {
-    const vazia = !linha.trim();
-    let essencial;
-    if (!tituloAchado && RE_NATUREZA.test(linha)) {
-      essencial = true;
-      tituloAchado = true;
-    } else if (!tituloAchado) {
-      essencial = false; // prosa-meta antes do título
-    } else if (vazia) {
-      essencial = false;
-    } else if (RE_CAMPO_TATICO.test(linha) || RE_DATA_IDENTIDADE.test(linha)) {
-      essencial = true;
-    } else if (RE_CONTINUACAO.test(linha) && ultimaEssencial) {
-      essencial = true;
+  let identidadeAchada = false;
+  for (const p of paragrafos) {
+    if (!identidadeAchada && /^\*\*/.test(p)) {
+      identidade = p;
+      identidadeAchada = true;
     } else {
-      essencial = false;
+      prosa.push(p);
     }
-    (essencial ? essenciais : prosa).push(linha);
-    if (!vazia) ultimaEssencial = essencial;
   }
-
-  return { essencial: essenciais.join('\n').trim(), prosa: prosa.join('\n').trim() };
+  return { identidade, prosa: prosa.join('\n\n') };
 }
 
 /**
  * Divide o texto de `## Ativo` (com o cabeçalho `## Ativo` incluso) em quatro
- * pedaços: o cabeçalho, a identidade ESSENCIAL, o bloco "Marcos" (inteiro,
- * intocado) e o bloco "Avanços:" (inteiro, intocado — ele já tem cadência
- * própria via `rotacionar`, acima). A PROSA que sobra da identidade é o quinto
- * pedaço, e vai para o ESTRATEGIA.md.
+ * pedaços: o cabeçalho, a identidade (parágrafo inteiro, ver
+ * `dividirPorParagrafo`), o bloco "Marcos" (inteiro, intocado) e o bloco
+ * "Avanços:" (inteiro, intocado — ele já tem cadência própria via
+ * `rotacionar`, acima). A PROSA que sobra é o quinto pedaço, para o
+ * ESTRATEGIA.md.
  *
- * Marcos e Avanços não passam por `separarIdentidade`: são listas, não prosa,
- * e o hook já os resume NA INJEÇÃO (`resumirMarcos`, `resumirAvancos`) sem
- * precisar que o arquivo em disco mude de forma.
+ * Marcos e Avanços continuam recortados por MARCADOR (não por parágrafo):
+ * são listas, o hook já os resume na injeção (`resumirMarcos`,
+ * `resumirAvancos`) sem precisar que o arquivo em disco mude de forma, e o
+ * corte por marcador é o mesmo que `resumirMarcos`/`recortarBloco` já usam —
+ * reaproveitar a convenção evita uma segunda definição do que é "o bloco
+ * Marcos" divergindo da primeira.
  */
 function dividirAtivo(secaoAtivo) {
   const cabecalhoMatch = String(secaoAtivo || '').match(/^## Ativo[ \t]*\n?/);
@@ -417,8 +411,8 @@ function dividirAtivo(secaoAtivo) {
     resto = resto.slice(0, idxMarcos) + cauda;
   }
 
-  const { essencial, prosa } = separarIdentidade(resto);
-  return { cabecalho, essencial, blocoMarcos, blocoAvancos, prosa };
+  const { identidade, prosa } = dividirPorParagrafo(resto);
+  return { cabecalho, essencial: identidade, blocoMarcos, blocoAvancos, prosa };
 }
 
 /**
@@ -427,14 +421,24 @@ function dividirAtivo(secaoAtivo) {
  * disco; quem faz I/O é `separar()`, abaixo, seguindo a mesma divisão
  * motor/adaptador de `hooks/lib/contexto-sessao.cjs`.
  *
- * NADA SE PERDE: toda seção e toda linha do original está em UM dos dois
- * textos devolvidos — o que muda é só o arquivo, nunca o conteúdo. As únicas
- * exceções são estruturais e pequenas (o título `# Estratégia` do arquivo
- * novo, e o cabeçalho "## Ativo (contexto)" que dá um lar para a prosa que
- * saiu de dentro de `## Ativo`) — nenhuma delas apaga uma frase do usuário.
+ * NADA SE PERDE: toda seção e todo parágrafo do original está em UM dos dois
+ * textos devolvidos, sempre INTEIRO — o que muda é só o arquivo, nunca o
+ * conteúdo nem a forma da frase. As únicas exceções são estruturais e
+ * pequenas (o título `# Estratégia` do arquivo novo, e o cabeçalho "## Ativo
+ * (contexto)" que dá um lar para a prosa que saiu de dentro de `## Ativo`) —
+ * nenhuma delas apaga ou reparte uma frase do usuário.
+ *
+ * CRLF: se o original usa `\r\n` (o arquivo real do usuário usa), a saída dos
+ * dois arquivos é normalizada de volta para `\r\n` — todo o processamento
+ * interno roda em `\n` (é a unidade que `split`/`match` deste arquivo inteiro
+ * assume), e converter só na saída evita misturar as duas convenções no
+ * mesmo arquivo, que é o defeito que a rodada passada introduziu.
  */
 function dividirFoco(textoOriginal) {
-  const texto = String(textoOriginal || '');
+  const bruto = String(textoOriginal || '');
+  const usaCRLF = /\r\n/.test(bruto);
+  const texto = bruto.replace(/\r\n/g, '\n');
+
   const blocos = texto.split(/\n(?=## )/);
 
   let preambulo = '';
@@ -470,18 +474,112 @@ function dividirFoco(textoOriginal) {
     ].filter(Boolean).join('\n\n'));
   }
   partesFoco.push(...taticas);
-  const foco = `${partesFoco.filter(Boolean).join('\n\n')}\n`;
+  let foco = `${partesFoco.filter(Boolean).join('\n\n')}\n`;
 
   const partesEstrategia = ['# Estratégia'];
   if (ativoDividido && ativoDividido.prosa) {
     partesEstrategia.push(`## Ativo (contexto)\n\n${ativoDividido.prosa}`);
   }
   partesEstrategia.push(...estrategicas);
-  const estrategia = `${partesEstrategia.filter(Boolean).join('\n\n')}\n`;
+  let estrategia = `${partesEstrategia.filter(Boolean).join('\n\n')}\n`;
+  let identidadeTexto = ativoDividido ? ativoDividido.essencial : '';
 
-  return { foco, estrategia };
+  if (usaCRLF) {
+    foco = foco.replace(/\n/g, '\r\n');
+    estrategia = estrategia.replace(/\n/g, '\r\n');
+    identidadeTexto = identidadeTexto.replace(/\n/g, '\r\n');
+  }
+
+  return { foco, estrategia, identidade: identidadeTexto };
 }
 
+/**
+ * Marcas que `hooks/lib/contexto-sessao.cjs` emite quando o bloco de foco (ou
+ * a identidade dentro dele) não coube na injeção. Mesma lista do critério de
+ * aceite da issue — usada aqui para MEDIR, não para decidir nada em produção.
+ */
+const RE_MARCA_CORTE = /O foco saiu com só ponteiros|O foco não coube|identidade cortada por espaço/;
+
+/**
+ * Mede se o parágrafo de IDENTIDADE do `## Ativo` tático cabe na injeção real
+ * — rodando o MESMO `montarContexto` que o hook usa, com o SKILL.md de
+ * verdade lido do disco, em vez de reimplementar a conta do orçamento (que já
+ * mora em `hooks/lib/contexto-sessao.cjs` e diverge se copiada aqui).
+ *
+ * NENHUM ARQUIVO É ESCRITO por esta função — ela só monta candidatos EM
+ * MEMÓRIA e olha o texto que `montarContexto` devolveria.
+ *
+ * Quando a identidade não cabe inteira, faz uma busca binária por CARACTERE
+ * no próprio parágrafo para achar o maior prefixo que ainda passa sem marca
+ * de corte — não para usar esse prefixo em lugar nenhum (`separar` nunca
+ * reescreve a prosa do usuário), só para reportar a conta: quantos bytes
+ * cabem, quantos faltam.
+ *
+ * @param {object} o
+ * @param {string} o.focoCandidato   o texto que IRIA para o FOCO.md tático
+ * @param {string} o.identidade      só o parágrafo de identidade, para medir o déficit
+ * @param {string} [o.root]          raiz real (entra no custo fixo do rodapé — não usar placeholder)
+ * @param {boolean} [o.temEstrategia]
+ * @param {string} [o.estrategiaPath]
+ * @returns {{identidadeBytes: number, cabe: boolean, maxBytes: number, deficit: number}}
+ */
+function medirAjusteIdentidade(o) {
+  const { montarContexto } = require('../hooks/lib/contexto-sessao.cjs');
+  const caminhoSkill = path.join(LOCAL, 'skills', 'rainforest-mind', 'SKILL.md');
+  let skillText = '';
+  try { skillText = fs.readFileSync(caminhoSkill, 'utf8'); } catch { /* sem SKILL.md, mede mesmo assim */ }
+  const raizFallback = o.estrategiaPath ? path.dirname(o.estrategiaPath) : 'C:\\medicao-separar';
+
+  const identidadeBytes = bytes(o.identidade || '');
+  if (!o.identidade) return { identidadeBytes: 0, cabe: true, maxBytes: 0, deficit: 0 };
+
+  const rodar = (focoTexto) => montarContexto({
+    skillText,
+    focoText: focoTexto,
+    caminhoSkill,
+    // O `root` real, NAO um placeholder curto: ele entra na linha "Arquivos
+    // de apoio" do rodape, que e CUSTO FIXO do orcamento -- um placeholder
+    // mais curto que o caminho real SUBESTIMA esse custo e reporta "cabe"
+    // quando a injecao de verdade vai cortar. Medido nesta rodada: com
+    // placeholder a identidade cabia inteira; com o `raiz` real (mais longo)
+    // a mesma identidade sai cortada -- a diferenca era so o tamanho do
+    // caminho no rodape.
+    root: o.root || raizFallback,
+    temEstrategia: Boolean(o.temEstrategia),
+    estrategiaPath: o.estrategiaPath,
+  });
+
+  const trocarIdentidade = (idTexto) => {
+    // Troca só o parágrafo de identidade dentro do candidato real, mantendo
+    // Marcos/Avanços/demais seções exatamente como `separar` os produziu —
+    // a medição tem que refletir o MESMO orçamento que o resto do arquivo
+    // tático já está consumindo, não um cenário isolado e mais folgado.
+    return o.identidade
+      ? o.focoCandidato.replace(o.identidade, idTexto)
+      : o.focoCandidato;
+  };
+
+  const cabeInteira = (idTexto) => {
+    if (!idTexto) return true;
+    const ctx = rodar(trocarIdentidade(idTexto));
+    const primeiraLinha = idTexto.split('\n')[0];
+    return ctx.includes(primeiraLinha) && !RE_MARCA_CORTE.test(ctx);
+  };
+
+  if (cabeInteira(o.identidade)) {
+    return { identidadeBytes, cabe: true, maxBytes: identidadeBytes, deficit: 0 };
+  }
+
+  const chars = Array.from(o.identidade);
+  let baixo = 0;
+  let alto = chars.length;
+  while (baixo < alto) {
+    const meio = Math.ceil((baixo + alto) / 2);
+    if (cabeInteira(chars.slice(0, meio).join(''))) baixo = meio; else alto = meio - 1;
+  }
+  const maxBytes = bytes(chars.slice(0, baixo).join(''));
+  return { identidadeBytes, cabe: false, maxBytes, deficit: identidadeBytes - maxBytes };
+}
 function separar() {
   const raiz = valorDe('raiz') || RAIZ_PADRAO;
   const alvoFoco = path.join(raiz, 'FOCO.md');
@@ -492,12 +590,34 @@ function separar() {
   }
 
   const original = fs.readFileSync(alvoFoco, 'utf8');
-  const { foco, estrategia } = dividirFoco(original);
+  const { foco, estrategia, identidade } = dividirFoco(original);
+
+  // A CONTA, não o conserto (Issue #74, retrabalho): "separar" nunca reescreve
+  // a prosa do usuário para caber no orçamento — quando o parágrafo de
+  // identidade (mantido INTEIRO, ver dividirAtivo/dividirPorParagrafo) não
+  // cabe na injeção real, isso é medido e IMPRESSO, para o usuário decidir o
+  // que cortar. temEstrategia:true porque a medição é sobre o cenário PÓS-
+  // split (é para lá que ESTRATEGIA.md está indo).
+  const ajuste = medirAjusteIdentidade({
+    focoCandidato: foco, identidade, root: raiz, temEstrategia: true, estrategiaPath: alvoEstrategia,
+  });
+
   const relato = {
     raiz, foco: alvoFoco, estrategia: alvoEstrategia,
     antes: bytes(original), focoDepois: bytes(foco), estrategiaDepois: bytes(estrategia),
+    identidadeBytes: ajuste.identidadeBytes, identidadeCabe: ajuste.cabe,
+    identidadeMaxBytes: ajuste.maxBytes, identidadeDeficit: ajuste.deficit,
     aplicado: false,
   };
+
+  const linhaConta = ajuste.identidadeBytes === 0
+    ? null
+    : ajuste.cabe
+      ? `Identidade do foco ativo: ${ajuste.identidadeBytes} B — cabe inteira na injeção.`
+      : `⚠️ Identidade do foco ativo: ${ajuste.identidadeBytes} B, mas só ${ajuste.maxBytes} B cabem na ` +
+        `injeção real — faltam cortar ~${ajuste.deficit} B (o parágrafo mistura campo tático com ` +
+        `prosa de negócio; "separar" não reescreve a frase do usuário — corte manual no FOCO.md ` +
+        `depois do split, ou aceite o aviso de corte na injeção).`;
 
   if (tem('json') && !tem('aplicar')) {
     console.log(JSON.stringify({ ...relato, planoFoco: foco, planoEstrategia: estrategia }, null, 2));
@@ -507,6 +627,7 @@ function separar() {
   if (!tem('aplicar')) {
     console.log(`FOCO.md hoje: ${relato.antes} B.`);
     console.log(`Plano: ${alvoFoco} (${relato.focoDepois} B) + ${alvoEstrategia} (${relato.estrategiaDepois} B).`);
+    if (linhaConta) console.log(linhaConta);
     console.log('');
     console.log(`--- ${alvoFoco} (tático) ---`);
     console.log(foco);
@@ -528,6 +649,7 @@ function separar() {
   }
   console.log(`FOCO.md dividido: ${alvoFoco} (${relato.antes} B -> ${relato.focoDepois} B) ` +
     `+ ${alvoEstrategia} (${relato.estrategiaDepois} B).`);
+  if (linhaConta) console.log(linhaConta);
 }
 
 function main() {
@@ -544,6 +666,6 @@ function main() {
 if (require.main === module) main();
 module.exports = {
   rotacionar, separar, caminho, main,
-  dividirFoco, dividirAtivo, separarIdentidade,
+  dividirFoco, dividirAtivo, dividirPorParagrafo, medirAjusteIdentidade,
   RAIZ_PADRAO,
 };
