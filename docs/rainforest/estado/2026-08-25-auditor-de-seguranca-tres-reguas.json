@@ -51,10 +51,8 @@
   "revisar": {
     "status": "pendente",
     "snapshot": {
-      "head": "c2bc8afb3e80713f08d6ce0e36931c1d40fc676a",
-      "caminhos_sujos": [
-        "docs/rainforest/estado/2026-08-25-auditor-de-seguranca-tres-reguas.json"
-      ]
+      "head": "ba854fc0d6650eb53c8c6e920741c09d6fb09ad4",
+      "caminhos_sujos": []
     }
   },
   "verificar": {
