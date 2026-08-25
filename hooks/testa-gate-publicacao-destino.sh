@@ -10,6 +10,8 @@
 #   4. conteúdo limpo em arquivo versionado → passa (exit 0)
 #   5. escape (RAINFOREST_GATE_OFF=1) → passa mesmo com conteúdo sujo (exit 0)
 #   6. progress.jsonl versionado recebendo JID → barrado (exit 2)
+#   7. marcador "rainforest-gate: dados-de-exemplo" dispensa conferência (exit 0)
+#   8. sem marcador, conteúdo sujo é barrado — marcador não vaza para vizinhos (exit 2)
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -142,6 +144,24 @@ else
   echo "  FALHA .rainforest-gate-off não liberou (exit $rc)"
 fi
 rm "$R/.rainforest-gate-off"
+
+echo
+echo "== Teste do marcador rainforest-gate: dados-de-exemplo =="
+CONTEUDO_COM_MARCADOR="#!/bin/bash
+# rainforest-gate: dados-de-exemplo
+# Bateria com dados de teste
+jid=\"$JID_REAL\"
+tel=\"$TEL_REAL\"
+echo OK"
+gate "Write com marcador + JID/tel → passa (exit 0)" 0 "$(write "$R/bateria-teste.sh" "$CONTEUDO_COM_MARCADOR")"
+
+echo
+echo "== Teste que marcador não vaza para arquivo vizinho =="
+CONTEUDO_SEM_MARCADOR="#!/bin/bash
+# Arquivo sem marcador
+jid=\"$JID_REAL\"
+echo OK"
+gate "Write sem marcador + JID → barrado (exit 2)" 2 "$(write "$R/outro-script.sh" "$CONTEUDO_SEM_MARCADOR")"
 
 echo
 echo "== Verificação: gate-staging-total continua verde =="

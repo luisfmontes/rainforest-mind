@@ -64,6 +64,18 @@ function estaGitignorado(dir, arquivo) {
 }
 
 /**
+ * Detecta se o arquivo tem o marcador que dispensa a conferência de publicação.
+ * Marcador: qualquer linha contendo `rainforest-gate: dados-de-exemplo`.
+ *
+ * Razão: alguns arquivos de teste (como testa-conferir-publicacao.sh) PRECISAM conter
+ * dados sensíveis reais de exemplo para testar a trava. O marcador fica junto do arquivo,
+ * aparece no diff, e exige decisão deliberada — nenhuma lista de caminhos cresce em silêncio.
+ */
+function temMarcadorDados(conteudo) {
+  return /rainforest-gate:\s*dados-de-exemplo/i.test(conteudo);
+}
+
+/**
  * Roda conferir-publicacao.cjs em modo JSON e retorna o resultado parseado.
  * Retorna { achados: [...], cego: [...] } ou null se não conseguir rodar.
  *
@@ -166,6 +178,8 @@ function main() {
 
         if (estaGitignorado(dir, a)) continue; // gitignorado passa
 
+        if (temMarcadorDados(c)) continue; // marcador de dados-de-exemplo passa
+
         const resultado = conferirConteudo(c);
         if (resultado && resultado.achados && resultado.achados.length) {
           bloqueia(resultado.achados, a);
@@ -188,6 +202,9 @@ function main() {
 
   // Confere se é arquivo gitignorado
   if (estaGitignorado(dir, arquivo)) process.exit(0); // ignorado passa
+
+  // Confere se tem marcador de dados-de-exemplo (para testes de bateria)
+  if (temMarcadorDados(conteudo)) process.exit(0); // marcador dispensa conferência
 
   // Confere se o arquivo está na raiz do repo ou em subdiretório
   try {

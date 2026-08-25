@@ -291,9 +291,9 @@ trava que só diz "não" vira trava desligada. Saídas de emergência, nomeadas 
 própria mensagem: `RAINFOREST_GATE_OFF=1` no ambiente, ou um arquivo
 `.rainforest-gate-off` na raiz do repo.
 
-Cada uma tem bateria própria (`hooks/testa-gate-*.sh`) que roda o hook de verdade
-contra repos git montados na hora. A maioria dos casos testa o que deve **passar**:
-falso positivo aqui atrapalha todo repo.
+Cada uma tem bateria própria (`hooks/testa-gate-*.sh`, **77 casos**: 38 + 25 + 14)
+que roda o hook de verdade contra repos git montados na hora. A maioria dos casos
+testa o que deve **passar**: falso positivo aqui atrapalha todo repo.
 
 O mesmo princípio nos scripts, para o que hook nenhum alcança:
 
