@@ -345,6 +345,99 @@ function alvosBash(comando, cwdInicial, casa = (seg) => {
 }
 
 /**
+ * Detecta escrita em Bash via redirecionamento ou ferramentas comuns.
+ * Resolve alvos e retorna {dir, tipo} para cada um.
+ *
+ * Tipos: ">", ">>", "tee", "sed", "cp", "mv", e construcoes nao-resolvidas.
+ * Mantem a mesma seguranca do `alvosBash`: `cd` que nao resolve vira INCERTO
+ * e conservadorismo inclui cwdInicial nos alvos.
+ */
+function alvosBashEscrita(comando, cwdInicial) {
+  const segmentos = comando.split(SEPARADORES);
+  let atual = cwdInicial;
+  let incerto = false;
+  const alvos = [];
+
+  for (const seg of segmentos) {
+    // `cd` precisa ser tratado igual ao `alvosBash`
+    const cd = seg.match(CD);
+    if (cd) {
+      const destino = cd[1] || cd[2] || cd[3];
+      if (/[$`]/.test(destino) || /^~/.test(destino) || destino === "-") { incerto = true; continue; }
+      atual = path.resolve(atual, destino);
+      continue;
+    }
+
+    // Redirecionamento `> arquivo` ou `>> arquivo`
+    const redirect = seg.match(/>\s*(?:"([^"]+)"|'([^']+)'|([^\s>&|]+))/);
+    if (redirect) {
+      const alvo = redirect[1] || redirect[2] || redirect[3];
+      if (alvo && !/[$`]/.test(alvo)) {
+        alvos.push({ dir: path.resolve(atual, alvo), tipo: redirect[0].startsWith(">>") ? ">>" : ">" });
+      } else if (alvo && /[$`]/.test(alvo)) {
+        alvos.push({ dir: atual, tipo: ">" });
+      }
+      continue;
+    }
+
+    // `tee arquivo` ou `tee -a arquivo`
+    const teeMatch = seg.match(/\btee\b(?:\s+-[a-z])*\s+(?:"([^"]+)"|'([^']+)'|([^\s>&|]+))/);
+    if (teeMatch) {
+      const alvo = teeMatch[1] || teeMatch[2] || teeMatch[3];
+      if (alvo && !/[$`]/.test(alvo)) {
+        alvos.push({ dir: path.resolve(atual, alvo), tipo: "tee" });
+      } else if (alvo && /[$`]/.test(alvo)) {
+        alvos.push({ dir: atual, tipo: "tee" });
+      }
+      continue;
+    }
+
+    // `sed -i arquivo` ou `sed -i.backup arquivo`
+    const sedMatch = seg.match(/\bsed\b\s+-[a-z]*i[a-z]*(?:\s+[^\s]+)?\s+(?:"([^"]+)"|'([^']+)'|([^\s>&|]+))/);
+    if (sedMatch) {
+      const alvo = sedMatch[1] || sedMatch[2] || sedMatch[3];
+      if (alvo && !/[$`]/.test(alvo)) {
+        alvos.push({ dir: path.resolve(atual, alvo), tipo: "sed" });
+      } else if (alvo && /[$`]/.test(alvo)) {
+        alvos.push({ dir: atual, tipo: "sed" });
+      }
+      continue;
+    }
+
+    // `cp origem destino`
+    const cpMatch = seg.match(/\bcp\b(?:\s+-[a-zA-Z]+)*\s+(?:"[^"]+"|'[^']+'|[^\s>&|]+)\s+(?:"([^"]+)"|'([^']+)'|([^\s>&|]+))/);
+    if (cpMatch) {
+      const alvo = cpMatch[1] || cpMatch[2] || cpMatch[3];
+      if (alvo && !/[$`]/.test(alvo)) {
+        alvos.push({ dir: path.resolve(atual, alvo), tipo: "cp" });
+      } else if (alvo && /[$`]/.test(alvo)) {
+        alvos.push({ dir: atual, tipo: "cp" });
+      }
+      continue;
+    }
+
+    // `mv origem destino`
+    const mvMatch = seg.match(/\bmv\b(?:\s+-[a-zA-Z]+)*\s+(?:"[^"]+"|'[^']+'|[^\s>&|]+)\s+(?:"([^"]+)"|'([^']+)'|([^\s>&|]+))/);
+    if (mvMatch) {
+      const alvo = mvMatch[1] || mvMatch[2] || mvMatch[3];
+      if (alvo && !/[$`]/.test(alvo)) {
+        alvos.push({ dir: path.resolve(atual, alvo), tipo: "mv" });
+      } else if (alvo && /[$`]/.test(alvo)) {
+        alvos.push({ dir: atual, tipo: "mv" });
+      }
+      continue;
+    }
+  }
+
+  // Conservadorismo: se houver `cd` nao-resolvivel, incluir cwdInicial tambem
+  if (incerto && alvos.length > 0) {
+    alvos.push({ dir: cwdInicial, tipo: "?" });
+  }
+
+  return alvos;
+}
+
+/**
  * Mensagem da trava de sessao co-locada. Publico: a JANELA PRINCIPAL.
  *
  * Aqui as escotilhas SAO nomeadas, ao contrario da mensagem ao subagente. O P1 do
@@ -475,9 +568,17 @@ function main() {
     if (alvo) { alvos = [alvo]; motivo = `Escrita (${nome}) em ${alvo}`; }
   } else if (nome === "Bash" && typeof entrada.command === "string") {
     const verbo = verboNaLinha(entrada.command, VERBOS_QUE_MEXEM);
-    if (!verbo) process.exit(0);
-    alvos = alvosBash(entrada.command, cwd).map((a) => a.dir);
-    motivo = `Comando que mexe no estado do repo: git ${verbo}`;
+    if (verbo) {
+      alvos = alvosBash(entrada.command, cwd).map((a) => a.dir);
+      motivo = `Comando que mexe no estado do repo: git ${verbo}`;
+    } else {
+      // Inspecionar redirecionamentos e ferramentas de escrita
+      const alvosEscrita = alvosBashEscrita(entrada.command, cwd);
+      if (alvosEscrita.length > 0) {
+        alvos = alvosEscrita.map((a) => a.dir);
+        motivo = `Escrita via Bash (redirecionamento ou ferramenta)`;
+      }
+    }
   }
 
   if (!alvos.length) process.exit(0);
