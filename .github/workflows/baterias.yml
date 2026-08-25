@@ -24,16 +24,39 @@
 
 name: baterias
 
-# Branch se confere pelo PR; `main` se confere no merge. `push:` sem filtro somado
-# ao `pull_request:` faria DUAS execucoes por push em toda branch com PR aberto —
-# num repo privado, com minuto de Windows valendo 2x, isso dobra a conta para
-# provar a mesma arvore duas vezes.
+# SO no PR, e nao mais no push para `main`. Em 2026-08-25 a conta de Actions
+# bateu 90% da cota da conta (1.802 de 2.000 min) e o workflow foi desligado na
+# mao. Medido no mesmo dia: 168 execucoes em agosto, 6,7 min de relogio em media,
+# e minuto de Windows em repo PRIVADO fatura 2x — ~13,3 min faturados por run,
+# que e a cota inteira.
+#
+# O gatilho `push: branches: [main]` saiu porque ele re-prova a MESMA arvore que
+# o PR acabou de provar: com merge linear, o commit que entra na `main` tem a
+# mesma arvore do head do PR aprovado. Isso corta ~metade das execucoes. O preco
+# esta escrito: se duas PRs forem mergeadas em paralelo, a arvore resultante da
+# `main` nao foi provada por ninguem — o antidoto e exigir a branch atualizada
+# antes do merge, nao pagar um run em toda entrada.
+#
+# `workflow_dispatch` fica, e passa a ser o jeito de conferir a `main` de
+# proposito quando valer a pena.
+#
+# O que NAO da para fazer aqui, e a razao esta escrita para ninguem tentar de
+# novo: `paths-ignore` para arquivo `.md`. Neste repositorio as skills SAO .md, e
+# `scripts/orcamento.cjs` mede o tamanho em bytes de `SKILL.md` e dos
+# `references/regra-NN.md` contra tetos. Mudanca "so de doc" quebra a catraca de
+# bytes com frequencia — foi assim que a Issue #79 nasceu. Filtrar por caminho
+# aqui desligaria justamente o teste que a mudanca de doc precisa.
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
+
+# Push novo na mesma PR cancela o run anterior — ele ia provar uma arvore que
+# nao existe mais. Em agosto a branch `auditor-de-api-owasp` sozinha acendeu o
+# runner 4 vezes; com isto teria acendido uma.
+concurrency:
+  group: baterias-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
