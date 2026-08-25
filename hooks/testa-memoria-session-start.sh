@@ -696,6 +696,120 @@ else
   falhou=$((falhou+1)); echo "  FALHA chave longa vazou no rótulo; bloco: $BLOCO_APELIDO"
 fi
 
+
+echo
+echo "-- a LEGENDA VISIVEL da memoria (systemMessage) --"
+# Ate 2026-08-25 o corpus era injetado so no `additionalContext`: o MODELO abria a
+# sessao sabendo onde tinha parado, e o USUARIO abria olhando para uma tela vazia.
+# Quem precisa lembrar do fio da meada e' ele.
+#
+# O que esta parte precisa provar:
+#   1. que a legenda mostra as marcas MAIS RECENTES, e so as duas primeiras;
+#   2. que sem marca nenhuma ela devolve VAZIO — o hook depende disso para nao
+#      pintar uma caixa em branco na tela;
+#   3. que ela nao rouba bytes do bloco injetado (canal e teto separados);
+#   4. que a linha longa e' cortada com reticencia, nunca partindo caractere.
+
+cat > "$RAIZ_POSIX/driver-legenda-memoria.cjs" <<'EOF'
+const lib = require(process.env.LIB_PATH);
+process.stdout.write(lib.montarLegendaMemoria(JSON.parse(process.env.OBS)));
+EOF
+
+legenda_memoria() { LIB_PATH="${LIB_LEGENDA:-$LIB}" OBS="$1" node "$RAIZ_POSIX/driver-legenda-memoria.cjs" 2>&1; }
+
+OBS_TRES='{"observacoes":[
+ {"conteudo":"## Marca mais recente\n\nsubtitulo da recente","projeto":"C--Projetos-rainforest-mind","criada_em":"2026-08-25T10:00:00Z"},
+ {"conteudo":"## Marca do meio\n\nsubtitulo do meio","projeto":"C--Projetos-rainforest-mind","criada_em":"2026-08-24T10:00:00Z"},
+ {"conteudo":"## Marca antiga\n\nsubtitulo antigo","projeto":"C--Projetos-rainforest-mind","criada_em":"2026-08-20T10:00:00Z"}],
+ "apelidos":{"C--Projetos-rainforest-mind":"rainforest-mind"}}'
+
+S="$(legenda_memoria "$OBS_TRES")"
+if echo "$S" | grep -qF "Marca mais recente"; then
+  ok=$((ok+1)); echo "  ok    legenda traz a marca mais recente"
+else
+  falhou=$((falhou+1)); echo "  FALHA legenda perdeu a marca mais recente; saida: $S"
+fi
+
+if echo "$S" | grep -qF "Marca do meio"; then
+  ok=$((ok+1)); echo "  ok    legenda traz a segunda marca"
+else
+  falhou=$((falhou+1)); echo "  FALHA legenda perdeu a segunda marca; saida: $S"
+fi
+
+if echo "$S" | grep -qF "Marca antiga"; then
+  falhou=$((falhou+1)); echo "  FALHA legenda passou de 2 marcas — a terceira e' do outro canal; saida: $S"
+else
+  ok=$((ok+1)); echo "  ok    a terceira marca fica no additionalContext, fora da tela"
+fi
+
+if echo "$S" | grep -qF "25/08"; then
+  ok=$((ok+1)); echo "  ok    legenda data a marca em dia/mes"
+else
+  falhou=$((falhou+1)); echo "  FALHA legenda sem data legivel; saida: $S"
+fi
+
+if echo "$S" | grep -qF "rainforest-mind" && ! echo "$S" | grep -qF "C--Projetos"; then
+  ok=$((ok+1)); echo "  ok    legenda usa o apelido curto, nao a chave do harness"
+else
+  falhou=$((falhou+1)); echo "  FALHA apelido nao aplicado na legenda; saida: $S"
+fi
+
+S_VAZIA="$(legenda_memoria '{"observacoes":[]}')"
+if [ -z "$S_VAZIA" ]; then
+  ok=$((ok+1)); echo "  ok    sem marca a legenda e' vazia (o hook nao pinta caixa em branco)"
+else
+  falhou=$((falhou+1)); echo "  FALHA legenda vazia devolveu texto: '$S_VAZIA'"
+fi
+
+LONGA="$(node -e 'const t="titulo enorme ".repeat(40);process.stdout.write(JSON.stringify({observacoes:[{conteudo:"## "+t,projeto:"p",criada_em:"2026-08-25T10:00:00Z"}]}))')"
+S_LONGA="$(legenda_memoria "$LONGA")"
+BYTES_LONGA="$(printf '%s' "$S_LONGA" | wc -c)"
+if [ "$BYTES_LONGA" -le 160 ]; then
+  ok=$((ok+1)); echo "  ok    linha longa cortada no teto de linha (mediu $BYTES_LONGA B)"
+else
+  falhou=$((falhou+1)); echo "  FALHA linha longa passou do teto de linha (mediu $BYTES_LONGA B)"
+fi
+
+if echo "$S_LONGA" | grep -qF "…"; then
+  ok=$((ok+1)); echo "  ok    corte de linha e' anunciado com reticencia"
+else
+  falhou=$((falhou+1)); echo "  FALHA corte de linha silencioso; saida: $S_LONGA"
+fi
+
+# O hook de verdade: os DOIS canais no mesmo JSON, e o injetado intocado.
+CAIXA_LEGENDA="$(mktemp -d)"
+PASTA_LEGENDA="$CAIXA_LEGENDA/projeto-legenda"
+mkdir -p "$PASTA_LEGENDA"
+git init -q "$PASTA_LEGENDA"
+RFM_ROOT="$CAIXA_LEGENDA" node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+RFM_ROOT="$CAIXA_LEGENDA" node <<'SETUP_LEGENDA'
+const { DatabaseSync } = require('node:sqlite');
+const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
+db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
+  .run('projeto-legenda', '## Marca visivel na tela\n\nsubtitulo', '2026-08-25T10:00:00Z', 'teste');
+db.close();
+SETUP_LEGENDA
+
+SAIDA_HOOK=$(cd "$PASTA_LEGENDA" && echo '{}' | RFM_ROOT="$CAIXA_LEGENDA" node "$HOOK" 2>/dev/null)
+TEM_SYS=$(echo "$SAIDA_HOOK" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8'));process.stdout.write(typeof d.systemMessage==='string'&&d.systemMessage?'sim':'nao')" 2>/dev/null || echo "nao")
+SYS_NO_LUGAR=$(echo "$SAIDA_HOOK" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8'));process.stdout.write((d.hookSpecificOutput||{}).systemMessage?'aninhado':'topo')" 2>/dev/null || echo "?")
+
+if [ "$TEM_SYS" = "sim" ]; then
+  ok=$((ok+1)); echo "  ok    o hook emite systemMessage quando ha marca"
+else
+  falhou=$((falhou+1)); echo "  FALHA hook nao emitiu systemMessage; saida: $SAIDA_HOOK"
+fi
+
+# O campo mora no TOPO do JSON, irmao de hookSpecificOutput — nao dentro dele.
+# Aninhado, o harness ignora em silencio e a tela volta a ficar vazia sem ninguem
+# perceber: o hook continua saindo com exit 0 e o additionalContext continua certo.
+if [ "$SYS_NO_LUGAR" = "topo" ]; then
+  ok=$((ok+1)); echo "  ok    systemMessage no topo do JSON (aninhado o harness ignora calado)"
+else
+  falhou=$((falhou+1)); echo "  FALHA systemMessage aninhado em hookSpecificOutput — o harness nao le ali"
+fi
+rm -rf "$CAIXA_LEGENDA"
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]
