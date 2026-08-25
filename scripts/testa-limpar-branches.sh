@@ -26,7 +26,14 @@
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SBP="$(mktemp -d)"
-trap 'rm -rf "$SBP"' EXIT
+# A secao 16 SABOTA `scripts/limpar-branches.cjs` no lugar e restaura no fim. Se a
+# bateria for interrompida no meio (Ctrl-C, crash, timeout), o script fica MUTADO no
+# repositorio — e um `limpar-branches` sabotado responde `false` para toda deteccao
+# de conteudo, o que e silencioso e nao aparece em nenhum status. O trap restaura a
+# copia intacta em qualquer saida, e o `rm` do sandbox vem depois.
+ORIGINAL_LIMPAR="$SBP/limpar-branches.original.cjs"
+cp "$SRC/scripts/limpar-branches.cjs" "$ORIGINAL_LIMPAR"
+trap '[ -f "$ORIGINAL_LIMPAR" ] && cp "$ORIGINAL_LIMPAR" "$SRC/scripts/limpar-branches.cjs"; rm -rf "$SBP"' EXIT
 echo "(caixa de areia: $SBP)"
 
 ok=0; falhou=0
