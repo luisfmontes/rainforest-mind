@@ -26,7 +26,14 @@
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SBP="$(mktemp -d)"
-trap 'rm -rf "$SBP"' EXIT
+# A secao 16 SABOTA `scripts/limpar-branches.cjs` no lugar e restaura no fim. Se a
+# bateria for interrompida no meio (Ctrl-C, crash, timeout), o script fica MUTADO no
+# repositorio — e um `limpar-branches` sabotado responde `false` para toda deteccao
+# de conteudo, o que e silencioso e nao aparece em nenhum status. O trap restaura a
+# copia intacta em qualquer saida, e o `rm` do sandbox vem depois.
+ORIGINAL_LIMPAR="$SBP/limpar-branches.original.cjs"
+cp "$SRC/scripts/limpar-branches.cjs" "$ORIGINAL_LIMPAR"
+trap '[ -f "$ORIGINAL_LIMPAR" ] && cp "$ORIGINAL_LIMPAR" "$SRC/scripts/limpar-branches.cjs"; rm -rf "$SBP"' EXIT
 echo "(caixa de areia: $SBP)"
 
 ok=0; falhou=0
@@ -368,6 +375,83 @@ if [ $? -ne 0 ]; then falhou=$((falhou+1)); echo "  FALHA nao consegui aplicar a
 fi
 cp "$SBP/original3.cjs" "$SRC/scripts/limpar-branches.cjs"
 nao_tem "e o script foi restaurado (main protegida de novo)" "$(alvos_base outra-base)" '"main"'
+
+echo
+echo "== 15. squash SEM upstream: o mesmo furo do caso 7, so que sem PR pra achar (Issue #82) =="
+# As branches worktree-agent-* de subagente NUNCA tem upstream (regra 11 as poe em
+# worktree isolado; 'fechar'/'limpar' removem o worktree e deixam so a branch local
+# para tras). Quando o PR que leva o mesmo conteudo e mesclado por squash, a branch
+# local orfa nao esta em `--merged` (squash nao gera ancestralidade) e nunca teve
+# upstream — nunca entra no filtro `b.classe === 'viva' && b.upstream` (linha 220 de
+# limpar-branches.cjs) que aciona a checagem de PR. Fica 'viva' para sempre. Medido
+# de verdade com o PR #80 (2026-08-24): 11 branches de agente, conteudo comprovadamente
+# na main, classificadas 'trabalho vivo'.
+#
+# ESTE BLOCO E VERMELHO DE PROPOSITO ATE O CONSERTO ENTRAR — nao ha ainda comparacao
+# de conteudo no fonte. `mergeada-por-conteudo` e uma PROPOSTA de nome de classe, nao
+# um contrato ja implementado; quem fechar a Issue #82 ajusta esta bateria junto do
+# fonte, e so ENTAO este bloco fica verde.
+#
+# A tecnica escolhida na depuracao da Issue #82, com evidencia (nao a unica prototipada
+# — patch-id perdeu, ver o motivo abaixo): `git cherry-pick --no-commit
+# <merge-base>..<branch>` seguido de `git diff --quiet HEAD`, rodado num
+# `git worktree add --detach` isolado (nunca no checkout do usuario) e sempre
+# desfeito com `git worktree remove --force` depois. Precisa de `--forcar` para
+# remover, mesma familia de `sumiu-divergente` e `mergeada-por-squash` (o `-d`
+# recusaria: a base local nao contem esses commits por ancestralidade).
+#
+# Por que patch-id perdeu: ele so prova identidade contra UM commit especifico da
+# base, e squash real costuma nao caber nisso — testado num segundo sandbox onde o
+# mesmo diff da branch chega na base partido em dois commits (squash + fixup
+# posterior). Nenhum dos dois patch-id isolados bateu com o patch-id da branch, e a
+# tecnica teria mantido a branch 'viva' por engano (falso negativo, nao falso
+# positivo — mas ainda assim a lista fica incompleta). O cherry-pick cumulativo
+# contra a ponta atual da base nao tem esse problema: ele testa exatamente a
+# pergunta que importa, "sobra alguma coisa desta branch que a base de hoje ainda
+# nao tem", nao "existe um commit identico".
+montar_squash_sem_upstream() {
+  montar
+  (
+    cd "$SBP/local"
+    # a branch de subagente: LOCAL ONLY, nunca teve upstream
+    git checkout -qb worktree-agent-conteudo main
+    echo conteudo > conteudo.txt; git add .; git commit -qm "obra do subagente"
+    git checkout -q main
+    git merge -q --squash worktree-agent-conteudo
+    git commit -qm "obra do subagente, squash (#998)"
+    git push -q origin main
+
+    # o contraste, na MESMA execucao: commit que nao esta na main por caminho nenhum
+    git checkout -qb worktree-agent-sem-merge main
+    echo "nunca mesclado" > sem-merge.txt; git add .; git commit -qm "trabalho solto"
+    git checkout -q main
+  )
+}
+montar_squash_sem_upstream
+
+tem "conteudo squashado sem upstream vira removivel"       "$(classe worktree-agent-conteudo)"  "mergeada-por-conteudo"
+tem "e o commit solto, na MESMA execucao, continua viva"    "$(classe worktree-agent-sem-merge)" "viva"
+
+echo
+echo "== 16. MUTACAO da secao 15: sabotar a comparacao de conteudo (Issue #82) =="
+# Se a branch squash-sem-upstream sobrevive por acaso e nao pela trava de
+# deteccao de conteudo, este bloco passa verde e a bateria inteira nao vale nada.
+# Ele sabota a funcao mergeadosPorConteudo e exige que o caso 1 da secao 15 FALHE.
+montar_squash_sem_upstream
+cp "$SRC/scripts/limpar-branches.cjs" "$SBP/original4.cjs"
+node -e "
+  const fs=require('fs'), p=process.argv[1];
+  const s=fs.readFileSync(p,'utf8');
+  const alvo = \"resultado[b.nome] = diff.status === 0;\";
+  if(!s.includes(alvo)) { console.error('MUTACAO NAO APLICADA: alvo ausente'); process.exit(1); }
+  fs.writeFileSync(p, s.replace(alvo, \"resultado[b.nome] = false;\"));
+" "$SRC/scripts/limpar-branches.cjs"
+if [ $? -ne 0 ]; then falhou=$((falhou+1)); echo "  FALHA nao consegui aplicar a mutacao"; else
+  tem "com a deteccao sabotada, worktree-agent-conteudo volta a ser viva (prova que a deteccao era a trava)" "$(classe worktree-agent-conteudo)" "viva"
+fi
+cp "$SBP/original4.cjs" "$SRC/scripts/limpar-branches.cjs"
+montar_squash_sem_upstream
+nao_tem "e o script foi restaurado (worktree-agent-conteudo volta a ser mergeada-por-conteudo)" "$(classe worktree-agent-conteudo)" "viva"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
