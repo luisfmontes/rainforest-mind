@@ -13,6 +13,113 @@ coisa. Teto de **3 revisitas por rodada**.
 Repo **adotado** tem pergunta diferente na revisita: não é "melhorou?", é
 **"ainda vale o que custa?"**.
 
+## Trilha: a âncora escolhe antes da busca
+
+A trilha (`instalar` | `enxertar` | `ler`) é propriedade do **problema**, não do repo, e a
+âncora a declara **antes** de a busca começar — nunca no momento de avaliar o candidato.
+Trilha escolhida no momento de avaliar é escolhida **depois** de ver o candidato, e aí vira
+a trilha em que ele passa.
+
+É o defeito que a seção "Fila da primeira rodada", mais abaixo neste livro, já documenta:
+*"o veredito adiantado vira a hipótese que a avaliação tenta confirmar"* — e naquela rodada
+**dois dos três candidatos morreram na âncora, não no repo**, com tese escrita a partir de
+README, antes de ler código.
+
+## Cascata: Instalar → Enxertar → Ler
+
+A trilha final nasce de uma cascata, e cada degrau carrega veredito próprio: **Instalar**
+(`instala` | `nao instala`), **Enxertar** (`enxerta` | `nao enxerta`) e **Ler**
+(`vale voltar` | `nao vale voltar`). Sem cascata, um repo que reprova em instalar mas tem
+peça forte sairia `não acopla`, que é falso — instalar nunca esteve na mesa, e o veredito
+honesto é `não instala, mas enxerta`.
+
+A pergunta 1 (*"resolve o problema ancorado?"*) é comum às três trilhas, e é ela o **freio**
+da cascata. Reprovou nela, acabou: sai `fora da ancora`, sem cascata nenhuma, porque não
+resolve problema que o usuário tem.
+
+Passou na 1 e reprovou nas perguntas de instalação (2, 3 ou 5)? Aí desce para Enxertar,
+porque colisão de hook e granularidade de instalador são irrelevantes para quem vai
+reimplementar o mecanismo lido, não instalar o pacote. E há fundo de poço: reprovando
+também na pergunta 2 de Ler (*"está legível o bastante para valer voltar?"*), o veredito é
+`não vale voltar` — não há degrau mais abaixo.
+
+**Descer exige evidência positiva em cada degrau, nunca só ausência de reprovação no
+degrau acima.**
+
+## Perguntas de Enxertar e de Ler
+
+**Enxertar** (reimplementar o mecanismo):
+
+1. resolve o problema ancorado?
+2. o mecanismo foi **lido no código**, não no README?
+3. o que exatamente a licença proíbe?
+4. o custo de reimplementar cabe, contra o que entrega?
+
+**Ler** (só a ideia):
+
+1. resolve o problema ancorado?
+2. está legível o bastante para valer voltar?
+
+A pergunta 1 é comum às três trilhas de propósito — é ela o freio da cascata.
+
+A pergunta 3 de Enxertar não reprova: é **fato registrado**, nunca veredito
+([[licenca-e-fato-nao-veredito]]), o mesmo princípio que este livro já aplica nas linhas do
+`evolution-foundation/evolution-api` e do `volcengine/OpenViking`. O motivo não é só
+formal — Enxertar é reimplementar a partir do mecanismo lido, e o que licença proíbe é
+**copiar**. Manter a licença como pergunta que reprova recriaria, dentro da trilha nova, o
+mesmo erro que a régua por trilha existe para consertar: medir contra um caminho (copiar)
+que não está na mesa de quem vai reimplementar.
+
+## Vocabulário de veredito: sete strings, fechado
+
+O veredito de cada trilha só pode ser um destes sete:
+
+```
+Instalar   ->  instala      |  nao instala
+Enxertar   ->  enxerta      |  nao enxerta
+Ler        ->  vale voltar  |  nao vale voltar
+terminal   ->  fora da ancora        (reprovou na pergunta 1, sem cascata)
+```
+
+**O meio-termo sumiu de propósito.** "Tem peça aproveitável" existia porque não havia
+trilha para ela; com a cascata, "tem peça" **é** a trilha Enxertar — deixa de ser
+consolação de quem reprovou e vira o resultado de primeira classe.
+
+A evidência é contagem, não opinião: das 40 linhas com data da tabela "Avaliados" abaixo,
+**seis** carregam veredito que não é nem `adotado` nem `não acopla` — `olhar de perto`,
+`testar, custo zero (npx)`, `ler, não copiar`, `referência de estrutura`,
+`índice de descoberta` e `candidato, não avaliado`. Este livro já dizia em prosa qual era
+o default e que "tem peça" era veredito legítimo; a prosa teve 40 oportunidades e falhou
+em 6.
+
+## Formato da linha: o caminho da cascata
+
+A linha da tabela "Avaliados" registra o **caminho** da cascata, não só a trilha final —
+por exemplo `Instalar → Enxertar`. O caminho diz duas coisas que a trilha final sozinha não
+diz: que instalar foi avaliado e por onde caiu, e qual pergunta reabre numa revisita.
+
+A coluna "Reprovou em" passa a ser lida **junto** da trilha em que a reprovação
+aconteceu — "reprovou em 2 e 3" não significa nada sem saber que era a régua de Instalar.
+
+## Revisita por trilha final
+
+O gatilho continua duplo e obrigatório — 60+ dias **e** push posterior ao registrado —, só
+a pergunta muda:
+
+| trilha final | pergunta da revisita |
+|---|---|
+| Instalar, adotado | "ainda vale o que custa?" |
+| Instalar, não instala | "a reprovação caiu?" |
+| Enxertar | "a peça já foi enxertada, ou ainda está plantada?" — responde-se no `ideias.jsonl`, não no repo de terceiro |
+
+`Ler` fica fora desta tabela porque **não se revisita**: repo de peça plantada há 60 dias
+não pede revisita do repo, pede colheita da ideia; e ponteiro de leitura já respondeu o que
+tinha para responder — reavaliá-lo gasta teto de revisita com quem não tem pergunta.
+
+As seis perguntas abaixo, e a tabela "Avaliados" que segue, não mudam com esta régua: elas
+estão certas para o modo de uso que medem, e o defeito nunca foi a régua de instalar — foi
+aplicá-la a quem não ia instalar.
+
 ## As seis perguntas
 
 | # | Pergunta | Reprova quando |
