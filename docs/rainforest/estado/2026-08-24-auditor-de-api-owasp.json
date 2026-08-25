@@ -22,7 +22,43 @@
     "em": "2026-08-24"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-08-24",
+    "tarefas": 6,
+    "tarefas_ok": 5,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-auditor-de-api.sh, caso 1: API7 — Server Side Request Forgery"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "esta tarefa e o proprio instrumento; a mutacao que prova que ela sabe falhar esta na tarefa 1 e roda contra agents/auditor-de-api.md"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-fechar-destino.sh, caso 1: Fecha NAO esta no conjunto canonico"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "orcamento.cjs, assercao de teto agregado: 14322 B > 14000 B com a description inflada"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "despacho de validacao contra repo de terceiro em leitura; nao ha linha deste repo a inverter, e inverter linha do tbc-licensing e proibido pelo invariante"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "o plantio grava em ~/.rainforest/ideias.jsonl, fora deste repositorio"
+      }
+    ],
+    "em": "2026-08-24"
   },
   "revisar": {
     "status": "pendente"
