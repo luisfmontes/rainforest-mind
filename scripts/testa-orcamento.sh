@@ -73,7 +73,20 @@ TOTAL_GORDA="$(echo "$SAIDA_GORDA" | sed -n 's/^Total: \([0-9]\+\) B$/\1/p')"
 SAIDA_VAZIA_2="$(RFM_ROOT="$RAIZ_VAZIA" node "$SRC/scripts/orcamento.cjs" 2>&1)"; CODIGO_VAZIA_2=$?
 TOTAL_VAZIA_2="$(echo "$SAIDA_VAZIA_2" | sed -n 's/^Total: \([0-9]\+\) B$/\1/p')"
 igual "primeira medição neutra sai 0" "$CODIGO_VAZIA_1" "0"
-if [ "$CODIGO_GORDA" != "0" ]; then ok=$((ok+1)); echo "  ok   raiz gorda é detectada (exit diferente de 0)"; else falhou=$((falhou+1)); echo "  FALHA raiz gorda é detectada (exit diferente de 0)"; fi
+# O sinal de "raiz gorda" deixou de poder ser o EXIT CODE, em 2026-08-25, e a razao
+# nao e afrouxamento: o hook e limitado POR CONSTRUCAO a ORCAMENTO_BYTES (8.000),
+# porque `tetoFoco = ORCAMENTO - fixo`. O maximo que o agregado pode atingir e
+# 8.000 + as descricoes (~6.752) = ~14.752 B, abaixo do teto de 15.000 — nenhum
+# FOCO.md, por maior que seja, faz o agregado estourar. Manter a assercao de exit
+# aqui seria manter um teste que so pode ficar vermelho, e o caminho vermelho de
+# verdade ja e coberto pela secao 2 (`--teto 1000`).
+#
+# O que continua discriminando: a raiz gorda empurra o HOOK ate encostar no teto
+# dele. Raiz vazia nao encosta. Se a medicao parar de reagir ao tamanho do FOCO.md
+# — que e o defeito que esta secao existe para pegar —, os dois ficam iguais.
+HOOK_GORDA="$(echo "$SAIDA_GORDA" | sed -n 's/^Hook (additionalContext): \([0-9]\+\) B$/\1/p')"
+HOOK_VAZIA="$(echo "$SAIDA_VAZIA_1" | sed -n 's/^Hook (additionalContext): \([0-9]\+\) B$/\1/p')"
+if [ "$HOOK_GORDA" -gt "$HOOK_VAZIA" ]; then ok=$((ok+1)); echo "  ok   raiz gorda e detectada (hook $HOOK_GORDA B > vazia $HOOK_VAZIA B)"; else falhou=$((falhou+1)); echo "  FALHA raiz gorda nao mexeu no hook: gorda=$HOOK_GORDA vazia=$HOOK_VAZIA"; fi
 if [ "$TOTAL_GORDA" -gt "$TOTAL_VAZIA_1" ]; then ok=$((ok+1)); echo "  ok   raiz gorda tem total maior"; else falhou=$((falhou+1)); echo "  FALHA raiz gorda tem total maior"; fi
 igual "segunda medição neutra ainda sai 0 (mesmo com RAIZ_GORDA plantada)" "$CODIGO_VAZIA_2" "0"
 igual "total neutro nao muda (neutralizacao provada, independente de raiz alternativa)" "$TOTAL_VAZIA_2" "$TOTAL_VAZIA_1"
@@ -84,10 +97,10 @@ NUCLEOS_CHECK="$(grep -c 'NUCLEOS_MAX_BYTES: 5600' "$SRC/hooks/lib/contexto-sess
 ORCAMENTO_CHECK="$(grep -c 'ORCAMENTO_BYTES: 8000' "$SRC/hooks/lib/contexto-sessao.cjs" 2>/dev/null || echo 0)"
 FOCO_MAX_CHECK="$(grep -c 'FOCO_MAX_BYTES: 2600' "$SRC/hooks/lib/contexto-sessao.cjs" 2>/dev/null || echo 0)"
 FOCO_MIN_CHECK="$(grep -c 'FOCO_MIN_BYTES: 700' "$SRC/hooks/lib/contexto-sessao.cjs" 2>/dev/null || echo 0)"
-TETO_AGREGADO_CHECK="$(grep -c '|| 14000' "$SRC/scripts/orcamento.cjs" 2>/dev/null || echo 0)"
+TETO_AGREGADO_CHECK="$(grep -c '|| 15000' "$SRC/scripts/orcamento.cjs" 2>/dev/null || echo 0)"
 
 if [ "$NUCLEOS_CHECK" -ge 1 ] && [ "$ORCAMENTO_CHECK" -ge 1 ] && [ "$FOCO_MAX_CHECK" -ge 1 ] && [ "$FOCO_MIN_CHECK" -ge 1 ] && [ "$TETO_AGREGADO_CHECK" -ge 1 ]; then
-  ok=$((ok+1)); echo "  ok   D6: constantes congeladas nos valores de 2026-08-24"
+  ok=$((ok+1)); echo "  ok   D6: constantes congeladas (agregado revisado em 2026-08-25, Issue #74)"
 else
   falhou=$((falhou+1)); echo "  FALHA D6: constantes mudaram. tetoFoco real e 1.841 B contra 2.600 nominais (nucleos comeram); NUCLEOS=$NUCLEOS_CHECK, ORCAMENTO=$ORCAMENTO_CHECK, FOCO_MAX=$FOCO_MAX_CHECK, FOCO_MIN=$FOCO_MIN_CHECK, TETO_AGR=$TETO_AGREGADO_CHECK"
 fi

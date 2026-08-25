@@ -162,6 +162,14 @@ const CAMINHO_SKILL = path.join(CODIGO_ROOT, 'skills', 'rainforest-mind', 'SKILL
 const foco = readSafe(path.join(ROOT, 'FOCO.md'));
 const skill = readSafe(CAMINHO_SKILL);
 
+// Issue #74: ESTRATEGIA.md é opcional — `scripts/foco.cjs separar` que o cria.
+// Só a EXISTÊNCIA importa aqui (é o adaptador que faz I/O); o conteúdo dele não
+// é lido pelo hook, e não deveria: a promessa da issue é que a prosa estável
+// (histórico, frentes, concluídos) para de disputar orçamento com o tático, não
+// que ela some — quem quiser lê-la abre o arquivo.
+const CAMINHO_ESTRATEGIA = path.join(ROOT, 'ESTRATEGIA.md');
+const temEstrategia = fs.existsSync(CAMINHO_ESTRATEGIA);
+
 // Aviso de revisão bimestral a partir da linha "Última revisão: YYYY-MM-DD"
 let revisao = '';
 const m = skill.match(/Última revisão:\s*(\d{4}-\d{2}-\d{2})/);
@@ -266,6 +274,8 @@ function doConsoleLog(pluginsStatus, whatsappStatus) {
     sessoes,
     revisao,
     dependencias,
+    temEstrategia,
+    estrategiaPath: temEstrategia ? CAMINHO_ESTRATEGIA : null,
   });
 
   // JSON, não texto cru — e a diferença não é de estilo.

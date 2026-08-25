@@ -11,7 +11,7 @@
  *
  * Tetos:
  * - Hook sozinho: ORCAMENTO_BYTES de hooks/lib/contexto-sessao.cjs
- * - Agregado (todas as fontes somadas): 14000 B
+ * - Agregado (todas as fontes somadas): 15000 B
  * - --teto <n> sobrescreve o teto agregado
  *
  * Saída: uma linha por fonte medida, uma linha de total, e — quando estoura —
@@ -162,7 +162,31 @@ function medirAgentes() {
 function main() {
   const orcamentoDaLib = lerOrcamentoDaLib();
   const tetoHook = orcamentoDaLib;
-  const tetoAgregado = Number(valorDe('teto') || 14000);
+  /**
+   * Teto AGREGADO, em bytes. Subiu de 14.000 para 15.000 em 2026-08-25, e a conta
+   * vai escrita porque subir teto neste repo e decisao consciente, nunca default.
+   *
+   * O 14.000 era o unico teto do projeto SEM justificativa escrita — os outros
+   * carregam de onde sairam. Ele foi calibrado num mundo em que o bloco de foco
+   * chegava vazio: a Issue #74 mostrou que `priorizarFoco` nunca rodava num
+   * FOCO.md com CRLF, entao o hook media ~6,8 KB e o agregado fechava folgado.
+   *
+   * Com o foco funcionando o numero e OUTRO, e e estrutural: em `montarContexto`,
+   * `tetoFoco = ORCAMENTO - fixo`, ou seja, o bloco de foco preenche por
+   * construcao o que sobra. O hook passa a encostar em ~8.000 B em TODA sessao, e
+   * o agregado vira ~8.000 + as descricoes (skills 3.601 + comandos 1.111 +
+   * agentes 2.040 = 6.752) ≈ 14.750 B. Contra 14.000, o estouro seria permanente.
+   *
+   * Nao e numero novo escondido: a Issue #81 ja registrava +220 B na maquina do
+   * dono com o CI verde, porque o CI roda com fixture de ~6,3 KB e nao com o
+   * FOCO.md de quem usa. O conserto do CRLF so empurrou +220 para +720 ao fazer
+   * o foco ocupar a cota que sempre foi dele.
+   *
+   * 15.000 da ~250 B de folga sobre o piso estrutural de ~14.750. Apertado de
+   * proposito: continua doendo escrever descricao gorda, que e o trabalho que
+   * este teto existe para fazer. Quem quiser passar daqui paga por SUBTRACAO.
+   */
+  const tetoAgregado = Number(valorDe('teto') || 15000);
 
   const bytesHook = medirHook();
   const bytesSkills = medirSkills();
@@ -182,8 +206,19 @@ function main() {
   let tetoExcedido = false;
 
   // Avaliar hook
+  // O hook e limitado POR CONSTRUCAO: `tetoFoco = ORCAMENTO - fixo`, entao
+  // `fixo + foco <= ORCAMENTO` sempre, e o `travarOrcamento` e so a rede. Medir
+  // FOLGA aqui contra uma banda de 5% (400 B) so fazia sentido quando o bloco de
+  // foco NAO usava a propria cota: hoje ele usa, o hook para a 32 B do teto, e o
+  // aviso dispararia em toda sessao dizendo que esta tudo apertado quando na
+  // verdade esta tudo funcionando. Aviso que nunca cala e aviso que ninguem le.
+  //
+  // O ESTOURO continua valendo, e e o invariante de verdade: se o hook passar de
+  // ORCAMENTO_BYTES, quem cortou foi o `travarOrcamento`, e isso e defeito.
+  // `banda: 0` mantem o estouro e aposenta o aviso de folga.
   const resultadoHook = avaliarFolga(bytesHook, tetoHook, {
     nome: 'teto do hook',
+    banda: 0,
     alternativas: ['tirar do additionalContext']
   });
   if (resultadoHook.mensagem) {
@@ -194,8 +229,18 @@ function main() {
   }
 
   // Avaliar agregado
+  // Banda explicita, e nao os 5% do padrao. Com teto de 15.000 os 5% dariam 750 B
+  // de limiar, contra um piso ESTRUTURAL de ~14.750 — ou seja, o aviso dispararia
+  // em toda sessao, pelo mesmo motivo que o do hook acabou de ser aposentado logo
+  // acima: aviso que nunca cala e aviso que ninguem le, e ele gasta a atencao que
+  // o estouro de verdade vai precisar.
+  //
+  // 300 B e o quanto vale ser avisado: cabe uma descricao de agente inteira
+  // (2.040 B / 9 = ~227 B em media), entao o aviso significa "a proxima descricao
+  // que voce escrever nao cabe", que e acionavel. Acima disso, silencio.
   const resultadoAgregado = avaliarFolga(totalBytes, tetoAgregado, {
     nome: 'agregado',
+    banda: 300 / tetoAgregado,
     alternativas: ['tirar do FOCO', 'subir o teto']
   });
   if (resultadoAgregado.mensagem) {
