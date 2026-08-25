@@ -45,12 +45,17 @@
  *   4  não dá para MEDIR                  — recusa antes de mutar: a bateria já falha
  *                                          no fonte íntegro, ou `--de` casa mais de
  *                                          uma vez e a inversão fica ambígua
+ *   5  suspeita de corte de shell         — pós-mutação desproporcionalmente curta
+ *                                          (< 10% do baseline ou < 1 s), sugerindo
+ *                                          que a bateria morreu antes de medir.
+ *                                          Confirme rodando-a à mão: se sair 0,
+ *                                          ignorar; se >= 1 s, aumentar piso absoluto
  *   1  erro de uso, ou bateria sem veredito (estouro de tempo / sinal)
  *
- * O 2, 3 e 4 são códigos DIFERENTES de propósito: quem chama este script de
+ * O 2, 3, 4 e 5 são códigos DIFERENTES de propósito: quem chama este script de
  * dentro de outra checagem precisa poder distinguir "a bateria é fraca" (2) de
  * "a declaração de mutação está errada" (3) de "a bateria já está quebrada" (4)
- * sem depender de ler a mensagem.
+ * de "suspeita de falha de shell" (5) sem depender de ler a mensagem.
  */
 
 const fs = require('fs');
@@ -69,7 +74,8 @@ const USO = `uso: node scripts/conferir-mutacao.cjs --arquivo <caminho> --de <tr
   --timeout  <ms>       teto de tempo da bateria (padrão: ${TIMEOUT_PADRAO})
 
 exit: 0 mutação casou e bateria VERMELHA | 2 bateria VERDE | 3 MUTACAO NAO APLICADA |
-     4 não dá para medir (baseline não-verde, ou --de ambíguo) | 1 erro de uso
+     4 não dá para medir (baseline não-verde, ou --de ambíguo) | 5 corte de shell
+     (pós-mutação < 10% do baseline ou < 1 s) | 1 erro de uso
 
 Git Bash (MSYS) come uma barra de argumento que COMEÇA com \`//\`: \`// coment\`
 chega aqui como \`/ coment\` e não casa. Medido em 2026-08-21 ao mutar um
@@ -326,6 +332,29 @@ function main() {
     console.error('  contrário enquanto a bateria rodava, e ela aprovou assim mesmo.');
     console.error('  Esta bateria não mede o conserto. Escreva o caso que o defeito quebrava.');
     process.exit(2);
+  }
+
+  // Verificação de corte de shell: suspeita quando pós-mutação é desproporcionalmente
+  // curta (< 10% do baseline), sugerindo que a bateria morreu antes de medir.
+  // Só aplica quando o baseline é tempo suficiente (>= 1 s) para distinguir de ruído.
+  //
+  // A ORDEM importa e não é estética: este bloco vem DEPOIS do `posExit === 0`
+  // de propósito. Bateria que saiu VERDE já tem veredito próprio — o 2 — e ele
+  // vale independente da duração. Antes desta ordem, uma pós-mutação verde e
+  // rápida saía 5 com a mensagem "a bateria saiu com exit != 0", que é falsa
+  // sobre o que acabou de acontecer. Veredito certo pelo motivo errado é o
+  // defeito que este script inteiro existe para não cometer.
+  const PISO_ABSOLUTO_MS = 1000;
+  if (baselineDuracao >= PISO_ABSOLUTO_MS && posDuracao < baselineDuracao * 0.1) {
+    const percentual = Math.round((posDuracao / baselineDuracao) * 100);
+    console.error(`SUSPEITA DE CORTE DE SHELL: pós-mutação ${posDuracao} ms (${percentual}% do baseline).`);
+    console.error(`  Baseline: ${baselineDuracao} ms | Pós-mutação: ${posDuracao} ms`);
+    console.error(`  A bateria saiu ${posExit}, mas desproporcionalmente rápido.`);
+    console.error('  Suspeita: erro no shell (unbound variable, comando não encontrado).');
+    console.error('  Confirme rodando a bateria pós-mutação à mão e olhando o tempo/erro.');
+    console.error('  Se ela chegar a imprimir placar, o vermelho é legítimo e o piso');
+    console.error('  absoluto é que está baixo demais para esta bateria.');
+    process.exit(5);
   }
 
   console.log(`ok: bateria VERMELHA com o comportamento invertido (exit ${posExit}).`);
