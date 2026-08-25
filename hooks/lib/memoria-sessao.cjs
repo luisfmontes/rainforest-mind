@@ -31,8 +31,23 @@ const TETOS = {
   LEGENDA_MAX_BYTES: 420,
   /** Quantas marcas a legenda mostra. O resto continua no `additionalContext`. */
   LEGENDA_MARCAS: 2,
-  /** Teto de UMA linha da legenda, em BYTES — corte mudo, a linha já é um resumo. */
-  LEGENDA_LINHA_MAX_BYTES: 150,
+  /**
+   * Teto de UMA linha da legenda, em CARACTERES — não em bytes.
+   *
+   * A unidade importa, e ela estava errada até 2026-08-25: o teto era de 150 BYTES,
+   * mas quem corta a linha é o TERMINAL, que conta caractere. Com acento e emoji,
+   * 150 bytes viraram 143 caracteres, e o harness ainda prefixa
+   * `SessionStart:startup says: ` (27 caracteres) na primeira linha do bloco — 170
+   * de largura, cortados com `…` no meio da frase. Medido em captura de tela dele.
+   *
+   * É a mesma família do `AVANCOS_MAX_BYTES` de `contexto-sessao.cjs`: parâmetro cuja
+   * unidade não é a unidade do problema continua parecendo certo enquanto mente.
+   *
+   * 90 é dimensionado para o pior caso — primeira linha, com prefixo, em terminal de
+   * 120 colunas. E é disciplina, não só limite: legenda que não cabe num olhar para
+   * de ser lida.
+   */
+  LEGENDA_LINHA_MAX_CHARS: 90,
 };
 
 /**
@@ -62,6 +77,25 @@ function limitarBytes(texto, maxBytes, nomeDoBloco) {
   const aviso = `\n\n[${nomeDoBloco} truncado no teto de ${maxBytes} bytes — o arquivo em disco está inteiro, leia-o se precisar do resto.]`;
   const espaco = Math.max(0, maxBytes - Buffer.byteLength(aviso, 'utf8'));
   return cortarBytes(s, espaco).trimEnd() + aviso;
+}
+
+/**
+ * Corta em CARACTERES (code points), acrescentando `…` quando cortou.
+ *
+ * `Array.from` e não `slice`: emoji fora do plano básico ocupa dois code units, e
+ * `slice` por índice de string parte o par substituto no meio — o terminal desenha o
+ * losango de caractere inválido. O teto conta o `…` dentro do limite, para que o
+ * resultado nunca passe do que foi pedido.
+ *
+ * @param {string} texto
+ * @param {number} maxChars teto em caracteres, incluindo a reticência
+ * @returns {string}
+ */
+function cortarCaracteres(texto, maxChars) {
+  const s = String(texto || '');
+  const chars = Array.from(s);
+  if (chars.length <= maxChars) return s;
+  return chars.slice(0, Math.max(0, maxChars - 1)).join('').trimEnd() + '…';
 }
 
 /**
@@ -194,8 +228,12 @@ function montarLegendaMemoria(o) {
     const linha = `🧠 ${data}${nome ? ` ${nome}` : ''} — ${texto}`;
     // Corte MUDO aqui, ao contrário do teto do bloco: a linha já é um resumo de
     // resumo, e um aviso de truncamento por linha custaria mais que o texto.
-    const cortada = cortarBytes(linha, TETOS.LEGENDA_LINHA_MAX_BYTES);
-    return cortada.length < linha.length ? cortada.trimEnd() + '…' : linha;
+    //
+    // Por CARACTERE, e com `Array.from` em vez de `slice`: emoji fora do plano básico
+    // ocupa dois code units em JS, e cortar por índice de string parte o par
+    // substituto no meio — o terminal desenha o losango de caractere inválido, que é
+    // pior que a linha longa que se queria evitar.
+    return cortarCaracteres(linha, TETOS.LEGENDA_LINHA_MAX_CHARS);
   }).filter(Boolean);
 
   if (!linhas.length) return '';
@@ -210,4 +248,5 @@ module.exports = {
   extrairTituloESubtitulo,
   limitarBytes,
   cortarBytes,
+  cortarCaracteres,
 };
