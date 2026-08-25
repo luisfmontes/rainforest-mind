@@ -426,8 +426,25 @@ tem "conteudo squashado sem upstream vira removivel"       "$(classe worktree-ag
 tem "e o commit solto, na MESMA execucao, continua viva"    "$(classe worktree-agent-sem-merge)" "viva"
 
 echo
-echo "== 16. MUTACAO da secao 15: PENDENTE — depende do conserto existir =="
-echo "  (nao ha comparacao de conteudo no fonte ainda para sabotar; ver Issue #82)"
+echo "== 16. MUTACAO da secao 15: sabotar a comparacao de conteudo (Issue #82) =="
+# Se a branch squash-sem-upstream sobrevive por acaso e nao pela trava de
+# deteccao de conteudo, este bloco passa verde e a bateria inteira nao vale nada.
+# Ele sabota a funcao mergeadosPorConteudo e exige que o caso 1 da secao 15 FALHE.
+montar_squash_sem_upstream
+cp "$SRC/scripts/limpar-branches.cjs" "$SBP/original4.cjs"
+node -e "
+  const fs=require('fs'), p=process.argv[1];
+  const s=fs.readFileSync(p,'utf8');
+  const alvo = \"resultado[b.nome] = diff.status === 0;\";
+  if(!s.includes(alvo)) { console.error('MUTACAO NAO APLICADA: alvo ausente'); process.exit(1); }
+  fs.writeFileSync(p, s.replace(alvo, \"resultado[b.nome] = false;\"));
+" "$SRC/scripts/limpar-branches.cjs"
+if [ $? -ne 0 ]; then falhou=$((falhou+1)); echo "  FALHA nao consegui aplicar a mutacao"; else
+  tem "com a deteccao sabotada, worktree-agent-conteudo volta a ser viva (prova que a deteccao era a trava)" "$(classe worktree-agent-conteudo)" "viva"
+fi
+cp "$SBP/original4.cjs" "$SRC/scripts/limpar-branches.cjs"
+montar_squash_sem_upstream
+nao_tem "e o script foi restaurado (worktree-agent-conteudo volta a ser mergeada-por-conteudo)" "$(classe worktree-agent-conteudo)" "viva"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

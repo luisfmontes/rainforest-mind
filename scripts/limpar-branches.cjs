@@ -104,6 +104,72 @@ function descobrirBase(override) {
 }
 
 /**
+ * Squash sem upstream — a mesma situação do mergeada-por-squash, só que a branch
+ * nunca teve upstream (típico de worktree-agent-* que foi apagado, deixando a
+ * branch local órfã). Não há PR pra checkar, então testamos o conteúdo direto:
+ * `git cherry-pick --no-commit` em um worktree isolado e `git diff --quiet`.
+ *
+ * Devolve mapa { nome -> true/false/null }, onde `true` = mergeada por conteúdo,
+ * `false` = não mergeada (trabalho vivo de verdade), `null` = erro ao verificar
+ * (ex.: cherry-pick falhou, worktree não se criou, etc.). `null` NUNCA vira remoção;
+ * quem chama trata como "continua viva".
+ */
+function mergeadosPorConteudo(refs, base) {
+  const resultado = {};
+  const candidatas = refs.filter((b) => b.classe === 'viva' && !b.upstream);
+
+  if (!candidatas.length) return resultado;
+
+  for (const b of candidatas) {
+    // Cria worktree isolado em temp — será removido no final, mesmo com erro
+    const tempWT = `/tmp/worktree-${b.nome}-${Date.now()}`;
+
+    // Tenta criar o worktree
+    let wtOk = true;
+    const addWT = spawnSync('git', ['worktree', 'add', '--detach', tempWT, 'HEAD'],
+      { cwd: REPO, encoding: 'utf8' });
+
+    if (addWT.status !== 0) {
+      wtOk = false;
+      resultado[b.nome] = null; // Não conseguiu verificar
+    } else {
+      // cherry-pick sem commit dos commits da branch que não estão na base
+      const mergeBase = spawnSync('git', ['merge-base', base, b.nome],
+        { cwd: REPO, encoding: 'utf8' });
+
+      if (mergeBase.status === 0 && mergeBase.stdout) {
+        const mb = mergeBase.stdout.trim();
+        const pickRange = `${mb}..${b.nome}`;
+
+        // tenta cherry-pick no worktree
+        const pick = spawnSync('git', ['cherry-pick', '--no-commit', pickRange],
+          { cwd: tempWT, encoding: 'utf8' });
+
+        // se cherry-pick falhou, considere como não-mergeada (trabalho vivo)
+        if (pick.status !== 0) {
+          resultado[b.nome] = false;
+        } else {
+          // Se cherry-pick bem-sucedido, verifica se há diff
+          const diff = spawnSync('git', ['diff', '--quiet', 'HEAD'],
+            { cwd: tempWT, encoding: 'utf8' });
+
+          // diff --quiet exit 0 = sem diff = mergeada por conteúdo
+          resultado[b.nome] = diff.status === 0;
+        }
+      } else {
+        resultado[b.nome] = null; // merge-base falhou
+      }
+    }
+
+    // Remove o worktree em qualquer caso
+    spawnSync('git', ['worktree', 'remove', '--force', tempWT],
+      { cwd: REPO, encoding: 'utf8' });
+  }
+
+  return resultado;
+}
+
+/**
  * Squash apaga os commits originais da base — a única marca que sobra é o PR em
  * si, com estado `merged`. Por isso esta checagem só entra depois que os dois sinais
  * de git (`--merged` e `gone`) já disseram `viva`: nunca é o primeiro critério, é o
@@ -228,6 +294,16 @@ function coletar(baseOverride) {
     }
   }
 
+  // Terceira passada, so em cima de quem ainda e 'viva' e NAO tem upstream:
+  // mesma interseccao "squash", so que sem PR pra achar. Testa por conteudo
+  // em worktree isolado: cherry-pick + diff.
+  const mergeadosConteudo = mergeadosPorConteudo(refs, base);
+  for (const b of refs) {
+    if (b.classe === 'viva' && !b.upstream && mergeadosConteudo[b.nome] === true) {
+      b.classe = 'mergeada-por-conteudo';
+    }
+  }
+
   return { base, atual, refs, ghFalhou };
 }
 
@@ -242,7 +318,7 @@ function coletar(baseOverride) {
 // arquivo, o ultimo item deste Set seguido do fechamento do array, para sabotar a
 // lista sem tocar no teste. Por isso o item sumiu-x fica por ultimo aqui, e o item
 // novo entra antes dele, nao depois.
-const REMOVIVEIS = new Set(['resolvida-local', 'resolvida-remota', 'sumiu-mergeada', 'mergeada-por-squash', 'sumiu-divergente']);
+const REMOVIVEIS = new Set(['resolvida-local', 'resolvida-remota', 'sumiu-mergeada', 'mergeada-por-squash', 'mergeada-por-conteudo', 'sumiu-divergente']);
 
 const EXPLICA = {
   base: 'a base — nunca',
@@ -254,6 +330,7 @@ const EXPLICA = {
   'sumiu-mergeada': 'o remoto foi apagado e o trabalho esta na base',
   'sumiu-divergente': 'o remoto foi apagado mas a base NAO contem estes commits (tipico de squash merge) — so o -D apaga',
   'mergeada-por-squash': 'o PR foi mergeado por squash e o remoto ainda existe — a base NAO contem estes commits (gh confirmou o merge) — so o -D apaga',
+  'mergeada-por-conteudo': 'o conteudo entrou na base por squash, mas a branch nao tem upstream (worktree de agente) — so o -D apaga',
   viva: 'nao esta na base e o remoto esta de pe — trabalho vivo',
 };
 
@@ -329,10 +406,10 @@ function main() {
   // O `-d` recusa o que a base não contém. Só `sumiu-divergente` cai nesse caso, e
   // é exatamente ele que o comando original do usuario resolvia com `-D`.
   const alvos = refs.filter((b) => REMOVIVEIS.has(b.classe));
-  const precisamForca = alvos.filter((b) => b.classe === 'sumiu-divergente' || b.classe === 'mergeada-por-squash');
+  const precisamForca = alvos.filter((b) => b.classe === 'sumiu-divergente' || b.classe === 'mergeada-por-squash' || b.classe === 'mergeada-por-conteudo');
   const vaoSair = forcar
     ? alvos
-    : alvos.filter((b) => b.classe !== 'sumiu-divergente' && b.classe !== 'mergeada-por-squash');
+    : alvos.filter((b) => b.classe !== 'sumiu-divergente' && b.classe !== 'mergeada-por-squash' && b.classe !== 'mergeada-por-conteudo');
 
   if (tem('json')) {
     console.log(JSON.stringify({ base, atual, forcar, refs, alvos: vaoSair.map((b) => b.nome) }, null, 2));
@@ -343,7 +420,7 @@ function main() {
   console.log(`Modo de remocao: ${forcar ? 'git branch -D (FORCA)' : 'git branch -d (recusa nao mergeada)'}`);
   console.log('');
 
-  for (const classe of ['viva', 'mergeada-por-squash', 'sumiu-divergente', 'sumiu-mergeada', 'resolvida-remota', 'resolvida-local', 'em-uso', 'atual', 'padrao', 'base']) {
+  for (const classe of ['viva', 'mergeada-por-squash', 'mergeada-por-conteudo', 'sumiu-divergente', 'sumiu-mergeada', 'resolvida-remota', 'resolvida-local', 'em-uso', 'atual', 'padrao', 'base']) {
     const lista = porClasse[classe];
     if (!lista || !lista.length) continue;
     console.log(`${classe} (${lista.length}) — ${EXPLICA[classe]}`);
