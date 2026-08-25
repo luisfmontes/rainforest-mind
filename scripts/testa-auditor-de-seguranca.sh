@@ -171,8 +171,46 @@ tem "URL da API Security 2023" "$CORPO" "owasp.org/API-Security/editions/2023"
 tem "a trava de licenca esta declarada" "$CORPO" "CC BY-SA 4.0"
 nao_tem "nao ha boilerplate de licenca da OWASP colado" "$CORPO" "Creative Commons Attribution-ShareAlike"
 
-# ------------------------------------------------- 8. orcamento
-echo; echo "8. a description cabe no orcamento"
+# ------------------------------------------------- 8. referencia cruzada intacta
+# Este caso existe por um achado real da revisao de 2026-08-25: a emenda inseriu
+# uma etapa nova no meio do metodo, TODAS as letras seguintes andaram uma casa, e
+# tres referencias cruzadas continuaram apontando para a letra velha -- "compare o
+# inventario da etapa (a)" passou a apontar para "Decida quais reguas se aplicam".
+# O texto ficou coerente aos olhos e errado no conteudo, e nada travava.
+echo; echo "8. toda referencia a etapa/item aponta para uma etapa que existe"
+
+LETRAS_EXISTENTES="$(echo "$CORPO" | grep -oE '^### \([a-z]\)' | grep -oE '\([a-z]\)' | tr -d '()' | sort -u | tr '\n' ' ')"
+REFERIDAS="$(echo "$CORPO" | grep -oE '(etapa|item) \([a-z]\)' | grep -oE '\([a-z]\)' | tr -d '()' | sort -u)"
+
+if [ -z "$REFERIDAS" ]; then
+  falhou=$((falhou+1)); echo "  FALHA nao achei referencia nenhuma a etapa/item — o padrao mudou e este caso parou de medir"
+fi
+
+for L in $REFERIDAS; do
+  if echo " $LETRAS_EXISTENTES " | grep -qF " $L "; then
+    ok=$((ok+1)); echo "  ok   referencia a ($L) aponta para etapa existente"
+  else
+    falhou=$((falhou+1)); echo "  FALHA referencia a ($L) nao existe como etapa — a numeracao andou e a referencia ficou para tras"
+  fi
+done
+
+# As duas referencias que quebraram de fato ficam cravadas, porque existir a letra
+# nao basta: ela tem que apontar para a etapa CERTA.
+tem "o inventario e' referido pela etapa que o monta" "$CORPO_PLANO" "inventário da etapa (b)"
+tem "segredo-por-nome e' referido pelo item que o define" "$CORPO_PLANO" "nunca por valor (item (h))"
+
+# ------------------------------------------------- 9. deduplicacao entre reguas
+# A02 e API8 tem o MESMO nome ("Security Misconfiguration") e padroes quase
+# identicos: sem instrucao de deduplicacao, o mesmo achado sai duas vezes com
+# identificadores diferentes, inflando contagem e veredito.
+echo; echo "9. achado que cai nas duas reguas se reporta uma vez"
+tem "a colisao A02 x API8 esta nomeada" "$CORPO_PLANO" "Security Misconfiguration\` têm o mesmo nome"
+tem "manda reportar no lugar mais especifico" "$CORPO_PLANO" "Reporte no lugar mais específico"
+tem "manda deixar referencia cruzada na outra secao" "$CORPO_PLANO" "referência cruzada"
+tem "manda contar uma vez" "$CORPO_PLANO" "**Conte uma vez.**"
+
+# ------------------------------------------------- 10. orcamento
+echo; echo "10. a description cabe no orcamento"
 DESC="$(sed -n 's/^description: *//p' "$AGENTE" | head -n 1)"
 TAM="$(printf '%s' "$DESC" | wc -c | tr -d ' ')"
 if [ "$TAM" -gt 0 ] && [ "$TAM" -le 300 ]; then

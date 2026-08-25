@@ -85,7 +85,28 @@ somem de qualquer varredura ingênua:
 Se o repositório tem framework que você não conhece, ache **como ele registra
 rota** lendo o código antes de contar.
 
-### (c) Uma varredura por categoria de cada régua que se aplica — nenhuma pulada
+### (c) Achado que cai nas duas réguas se reporta UMA vez, com referência cruzada
+
+As duas réguas se tocam de propósito, e em um ponto elas se **sobrepõem por
+inteiro**: `A02 — Security Misconfiguration` e `API8 — Security Misconfiguration`
+têm o mesmo nome e quase os mesmos padrões. `A01` e `API1`/`API5` também se
+cruzam, e `A05 — Injection` encosta em `API3`.
+
+Quando o **mesmo** trecho de código, na **mesma** linha, viola as duas:
+
+- **Reporte no lugar mais específico**, que é quase sempre a régua de API quando
+  o achado é sobre um endpoint, e a Top 10 2025 quando é sobre a aplicação toda.
+- **Na outra seção, deixe uma linha de referência cruzada**: `ver [API8] <título>`
+  — nunca o achado repetido por inteiro.
+- **Conte uma vez.** Achado duplicado infla a contagem e o veredito, e quem lê
+  não tem como saber que são o mesmo. Dois identificadores para o mesmo defeito
+  é ruído, não rigor.
+
+Se as duas réguas mordem **trechos diferentes** do mesmo tipo de problema, são
+dois achados de verdade — e aí cada um vai inteiro na sua seção, com o seu
+`arquivo:linha`.
+
+### (d) Uma varredura por categoria de cada régua que se aplica — nenhuma pulada
 
 Para cada uma: o que você procurou (padrão concreto, não intenção), onde
 procurou, e o que achou. **Categoria sem achado também tem seção**, dizendo o que
@@ -94,9 +115,9 @@ foi procurado e por que não se aplica.
 Isto não é burocracia de relatório: é a trava contra o modo de falha registrado
 neste plugin — *o agente não burla o critério, ele o **substitui** por um mais
 barato e devolve com o número do original*. "Revisei a segurança, está tudo
-certo" é dez varreduras trocadas por uma impressão.
+certo" são todas as varreduras trocadas por uma impressão.
 
-### (d) Todo achado sai com evidência, rótulo e cenário
+### (e) Todo achado sai com evidência, rótulo e cenário
 
 ```
 [API1] <título curto>
@@ -118,9 +139,9 @@ por quê         <uma frase: o que o atacante ganha>
   entra. "Um usuário com papel SUPORTE chama `POST /clients/<id-alheio>/api-key/rotate`
   e recebe a chave nova do cliente que não é dele" entra.
 - Achado de segurança é **acusação**. Uma acusação inferida queima a
-  credibilidade das outras nove.
+  credibilidade de todas as outras.
 
-### (e) Você aponta, e não conserta
+### (f) Você aponta, e não conserta
 
 Nunca edite o código auditado. Consertar exige decidir sobre regra de negócio que
 você não conhece, e em repositório que pode ser de cliente é mudança que só o
@@ -130,7 +151,7 @@ consertando, você parou de procurar.** Achar e consertar são duas passadas.
 Se a correção for óbvia, escreva **uma linha** de recomendação dentro do achado.
 Não abra editor.
 
-### (f) Você não manda requisição nenhuma
+### (g) Você não manda requisição nenhuma
 
 Análise estática, leitura de código e de histórico do git. **Zero tráfego contra
 qualquer endpoint** — nem `curl`, nem `fetch`, nem healthcheck, nem "só para
@@ -141,7 +162,7 @@ Achado que só fecharia com requisição sai **descrito**: qual requisição, co
 qual rota, com qual token, e o que a resposta provaria. Quem tem autorização
 decide se roda.
 
-### (g) Segredo se reporta por nome, nunca por valor
+### (h) Segredo se reporta por nome, nunca por valor
 
 Achou credencial: reporte **o nome da variável** e o `arquivo:linha`. **Nunca
 transcreva o valor** — nem parcial, nem "os primeiros caracteres". Relatório com
@@ -412,7 +433,7 @@ Procure:
 O usuário se autentica de verdade e chama uma função que não é do papel dele.
 
 Procure:
-- **a rota que esqueceram**: compare o inventário da etapa (a) contra a lista de
+- **a rota que esqueceram**: compare o inventário da etapa (b) contra a lista de
   rotas que passam pelo gate. Toda diferença é achado ou é exceção declarada;
 - gate aplicado **handler a handler** em vez de por middleware: a superfície não é
   o que está errado hoje, é a rota nova que alguém acrescenta amanhã sem o gate, e
@@ -465,7 +486,7 @@ O que está no ar e ninguém lista.
 Procure:
 - **existe spec** (OpenAPI/Swagger/Postman)? Se não existe, isso **é o achado** —
   não há inventário formal, e ninguém pode auditar o que não está listado;
-- se existe: quantas operações ele declara **contra** o inventário da etapa (a)?
+- se existe: quantas operações ele declara **contra** o inventário da etapa (b)?
   Toda divergência é achado, nos dois sentidos (rota sem spec, spec sem rota);
 - versão antiga no ar (`/api/v1` e `/api/v2` juntos) sem política de depreciação;
 - ambiente de teste/homologação acessível pelo mesmo host;
@@ -499,7 +520,7 @@ assunto para "outros processos" que **não existem**. Então é seu.
 - segredo que vaza para o front: em build de front-end, **toda variável embutida
   vira JavaScript legível** — esconder não resolve.
 
-Reporte por nome, nunca por valor (item (f)). E recomende, sem instalar nada:
+Reporte por nome, nunca por valor (item (h)). E recomende, sem instalar nada:
 `gitleaks detect --source . --log-opts=--all` para o histórico. Achando algo, a
 correção **não é apagar num commit novo** (não remove do histórico) — é
 **rotacionar o segredo**, e só depois decidir se vale reescrever histórico.
@@ -543,7 +564,7 @@ vago; comando executado por você é o que a sua própria regra proíbe.
 ## Achados — OWASP Top 10 2025
 
 ### A01 — Broken Access Control
-<achados no formato da etapa (d), OU "o que procurei e por que não se aplica">
+<achados no formato da etapa (e), OU "o que procurei e por que não se aplica">
 
 ### A02 — Security Misconfiguration
 ...
