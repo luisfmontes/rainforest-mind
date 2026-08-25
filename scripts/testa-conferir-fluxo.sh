@@ -410,6 +410,86 @@ exige 0 "estado.cjs tambem ignora a cerca ao cruzar a lista" OE marcar --slug t 
 
 rm -rf "$O"
 
+
+echo
+echo "== 7. creep nao invoca shell: --base/--head nao executam comando (Issue #89) =="
+# O defeito (achado do agente `auditor-de-seguranca` contra este proprio repo em
+# 2026-08-25): a linha do diff era `execSync` com a string `git diff --name-only
+# ${base}...${head}`. execSync com STRING invoca um shell de verdade, e base/head
+# chegam do `--json` de quem fecha o estagio `revisar`.
+#
+# O caminho seguro ja existia e era abandonado no ultimo passo: o valor viaja como
+# ARRAY por spawnSync em estado.cjs:552-563, e so aqui era remontado como string.
+#
+# A assercao NAO e sobre exit code -- o comando falha nos dois casos, porque o ref
+# e invalido. E sobre o EFEITO COLATERAL: se um shell rodou, o sentinela existe.
+# Testar por exit code aqui daria verde com o defeito de pe.
+
+CAIXA_INJ="$(mktemp -d)"
+# O sentinela nasce no CWD do comando (que e a RAIZ), com nome relativo, e nao num
+# mktemp. Motivo medido: o `execSync` do Node no Windows chama o ComSpec (cmd.exe),
+# e o caminho POSIX que o `mktemp -d` devolve (/tmp/tmp.XXXX) vira C:	mp... para o
+# cmd — o redirecionamento falhava por pasta inexistente, nenhum sentinela aparecia,
+# e a SABOTAGEM passava verde sem ter provado nada. Nome relativo nao precisa de
+# traducao de caminho e os dois lados (bash e cmd) concordam sobre onde ele esta.
+SENTINELA_NOME="sentinela-injecao-89.txt"
+SENTINELA="$RAIZ/$SENTINELA_NOME"
+
+rm -f "$SENTINELA"
+node "$CHECADOR" creep --slug decisao-que-evapora-na-esteira \
+  --base HEAD --head "x&echo INJETADO > $SENTINELA_NOME" >/dev/null 2>&1
+if [ -f "$SENTINELA" ]; then
+  falhou=$((falhou+1))
+  echo "  FALHA um shell foi invocado: o sentinela existe ($SENTINELA)."
+  echo "        E o sintoma de execSync com string; o certo e execFileSync com lista."
+else
+  ok=$((ok+1)); echo "  ok    --head com metacaractere de shell nao executou nada"
+fi
+
+# Mesma coisa pelo --base, que vem da mesma cadeia e tinha o mesmo buraco.
+rm -f "$SENTINELA"
+node "$CHECADOR" creep --slug decisao-que-evapora-na-esteira \
+  --base "x&echo INJETADO > $SENTINELA_NOME" --head HEAD >/dev/null 2>&1
+if [ -f "$SENTINELA" ]; then
+  falhou=$((falhou+1)); echo "  FALHA --base tambem invoca shell"
+else
+  ok=$((ok+1)); echo "  ok    --base com metacaractere de shell nao executou nada"
+fi
+
+echo "  -- SABOTAGEM: devolver o execSync com string e exigir que a assercao caia"
+# Trava que nunca foi vista travando nao e evidencia de nada. O mutante volta a
+# montar o comando como string; se o sentinela NAO aparecer nele, este teste esta
+# medindo outra coisa.
+MUT_CHECADOR="$CAIXA_INJ/conferir-fluxo-mut.cjs"
+cp "$CHECADOR" "$MUT_CHECADOR"
+cat > "$CAIXA_INJ/sabotar-injecao.cjs" <<'SABOTA_INJ_EOF'
+const fs = require('fs');
+const alvo = process.argv[2];
+let t = fs.readFileSync(alvo, 'utf8');
+const achar = "const output = execFileSync('git', ['diff', '--name-only', `${base}...${head}`], { cwd: RAIZ, encoding: 'utf8' });";
+const trocar = "const output = require('child_process').execSync(`git diff --name-only ${base}...${head}`, { cwd: RAIZ, encoding: 'utf8' });";
+if (!t.includes(achar)) { console.error('ANCORA NAO BATE em ' + alvo); process.exit(1); }
+fs.writeFileSync(alvo, t.replace(achar, trocar));
+SABOTA_INJ_EOF
+node "$CAIXA_INJ/sabotar-injecao.cjs" "$MUT_CHECADOR"
+EXIT_SABOTA_INJ=$?
+if [ "$EXIT_SABOTA_INJ" != "0" ]; then
+  falhou=$((falhou+1)); echo "  FALHA ANCORA NAO BATE — a copia intocada nao prova nada"
+else
+  rm -f "$SENTINELA"
+  RFM_ESTADO_ROOT="$RAIZ" node "$MUT_CHECADOR" creep --slug decisao-que-evapora-na-esteira \
+    --base HEAD --head "x&echo INJETADO > $SENTINELA_NOME" >/dev/null 2>&1
+  if [ -f "$SENTINELA" ]; then
+    ok=$((ok+1)); echo "  ok    mutacao expos que a assercao mede a INVOCACAO DE SHELL, nao o exit code"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — voltar o execSync com string nao criou o sentinela"
+  fi
+fi
+# O sentinela do mutante nasce na RAIZ (repo real): limpar e obrigatorio, senao a
+# bateria deixa arquivo nao rastreado atras de si e o proximo git status mente.
+rm -f "$SENTINELA"
+rm -rf "$CAIXA_INJ"
+
 echo
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
