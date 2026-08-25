@@ -114,13 +114,34 @@ gate "cd para fora de repo git && git commit"            0 \
 
 echo
 echo "== mutacao: prova que a inspeção funciona (Issue #88) =="
-# Criar uma versao do gate SEM a inspeção de alvosBashEscrita para provar que
-# o teste anterior era de verdade.
+# MUTACAO CIRURGICA, e o "cirurgica" e o ponto todo.
+#
+# A primeira versao desta secao fazia `sed '/alvosBashEscrita/d'`, que apaga TAMBEM
+# a linha da declaracao da funcao e deixa um `{` orfao: o mutante nao compilava.
+# `node --check` acusava SyntaxError, o processo morria com exit 1, e a assercao
+# `[ "$rc" != "0" ]` creditava `ok` — por CRASH, nao por protecao removida. E o
+# mesmo modo de falha que o comentario do testa-contexto-sessao.sh ja documenta:
+# mutante que nao roda faz a bateria passar verde sem ter medido nada.
+#
+# Aqui a mutacao troca o CORPO da funcao por `return []` — JS valido, funcao viva,
+# protecao neutralizada. E a assercao inverte: o mutante tem de sair com exit 0
+# (deixou passar). Exit != 0 agora e FALHA, porque so pode significar crash.
 GATE_MUTADO="$RAIZ/gate-sem-escrita.cjs"
-sed '/alvosBashEscrita/d' "$GATE" > "$GATE_MUTADO"
-saida=$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"echo x > '"'"'%s/novo.txt'"'"'"}}' "$(esc "$R")" "$(esc "$R")" | node "$GATE_MUTADO" 2>&1); rc=$?
-if [ "$rc" != "0" ]; then ok=$((ok+1)); echo "  ok   SEM alvosBashEscrita: deixa passar (exit $rc)"
-else falhou=$((falhou+1)); echo "  FALHA mutacao nao funcionou (ainda barrou)"; fi
+node -e '
+const fs = require("fs");
+let t = fs.readFileSync(process.argv[1], "utf8");
+const achar = "function alvosBashEscrita(comando, cwdInicial) {";
+if (!t.includes(achar)) { console.error("ANCORA NAO BATE"); process.exit(1); }
+t = t.replace(achar, achar + "\n  return [];");
+fs.writeFileSync(process.argv[2], t);
+' "$GATE" "$GATE_MUTADO"
+if ! node --check "$GATE_MUTADO" 2>/dev/null; then
+  falhou=$((falhou+1)); echo "  FALHA mutante nao compila — a secao mediria crash, nao protecao"
+else
+  saida=$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"echo x > '"'"'%s/novo.txt'"'"'"}}' "$(esc "$R")" "$(esc "$R")" | node "$GATE_MUTADO" 2>&1); rc=$?
+  if [ "$rc" = "0" ]; then ok=$((ok+1)); echo "  ok   mutacao expos a inspecao: com alvosBashEscrita neutralizada, a escrita fora PASSA"
+  else falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito ou mutante quebrado (exit $rc): $saida"; fi
+fi
 
 echo "== saidas de emergencia =="
 saida=$(printf '%s' "$(j Write file_path "$(esc "$R/novo.txt")")" | RAINFOREST_GATE_OFF=1 node "$GATE" 2>&1); rc=$?
