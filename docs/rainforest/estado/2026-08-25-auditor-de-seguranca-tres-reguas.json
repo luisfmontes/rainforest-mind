@@ -49,16 +49,29 @@
     "em": "2026-08-25"
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "ba854fc0d6650eb53c8c6e920741c09d6fb09ad4",
+      "head": "9a4d6850fb0b98821cce27f26033cf288533f5e7",
       "caminhos_sujos": []
-    }
+    },
+    "base": "99dddae4e155d2638b1153ed81afd5abe6c8ab34",
+    "head": "9a4d6850fb0b98821cce27f26033cf288533f5e7",
+    "passadas": 2,
+    "achados": 6,
+    "consertados": 6,
+    "nota": "Base e o commit onde o fluxo de ontem fechou (99dddae), nao origin/main: a branch carrega DOIS fluxos e skills/fechar/SKILL.md e de ontem. Passada 1: referencias cruzadas quebradas pelo deslocamento de letras, colisao A02xAPI8 sem regra de deduplicacao, frases presas ao numero antigo. Passada 2: a trava criada na passada 1 conferia existencia da letra e nao o destino, e o grep -F no corpo inteiro deixava uma ocorrencia correta mascarar outra quebrada; prosa contradizia a tabela; falha 4 sem linha de traducao. Os 6 consertados. As duas mutacoes que a passada 2 previu que passariam foram executadas depois do conserto e REPROVAM, nomeando a contagem (1 de 2).",
+    "em": "2026-08-25"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/testa-auditor-de-seguranca.sh; despacho real do agente contra C:/Projetos/rainforest-mind (alvo SEM API); node scripts/orcamento.cjs; node scripts/perfil.cjs --conferir; node scripts/conferir-encoding.cjs",
+    "saida": "86 ok / 0 falhou exit 0. Tarefa 1: num repo sem endpoint nenhum o agente produziu as dez secoes da Top 10 2025 e as cinco falhas endereçadas -- o defeito que originou a emenda nao reproduz. Tarefa 3: declarou a regua de API PULADA com o que procurou e nao achou (grep por http.createServer, express(), fastify(, app.listen, WSRESTFUL, graphql, grpc sem ocorrencia de codigo), em vez de omitir. Achou 3 vulnerabilidades reais no proprio plugin, conferidas por mim lendo o codigo, viraram Issues #88 e #89. Orcamento 13648 de 14000 exit 0; perfil ok nos 9 agentes; encoding limpo.",
+    "em": "2026-08-25"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "acao": "pr",
+    "pr": 87,
+    "em": "2026-08-25"
   }
 }
