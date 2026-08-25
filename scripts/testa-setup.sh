@@ -247,6 +247,44 @@ else
   falhou=$((falhou+1)); echo "  FALHA segunda passada quebrou o estado"; echo "       $saida_status2" | sed 's/^/       /'
 fi
 
+# Nome de arquivo que SEPARA `execFileSync` de `execSync` interpolado — e, medido
+# em 2026-08-25, o UNICO que separa. Issue #100.
+#
+# O conserto trocou `execSync(\`git rm --cached "${arquivo}"\`)` por
+# `execFileSync('git', ['rm', '--cached', arquivo])`. Para o teste provar a troca, o
+# nome precisa ser um que o SHELL estrague e o argv nao. No Windows `execSync` roda
+# pelo `cmd.exe`, e la dentro:
+#   - espaco, `&` e `$( )` sao TODOS protegidos pelas aspas duplas -> NAO separam;
+#   - `%VAR%` e expandido MESMO dentro das aspas -> separa.
+# Com o mutante, `git rm --cached "rainforest.db%PATH%"` vira o PATH inteiro
+# expandido, o git erra, o erro morre no `catch` do bloco, e o arquivo CONTINUA
+# rastreado. Com `execFileSync` o nome chega literal e o arquivo sai.
+#
+# O `add -f` nao e detalhe: `versionar` ja escreveu `rainforest.db*` no .gitignore,
+# entao `git add` sem `-f` recusa o arquivo em SILENCIO — e o teste ficaria verde
+# nos dois lados sem nunca ter rastreado nada. Foi assim que a primeira tentativa
+# deste caso nasceu vazia. Dai a checagem de cenario montado abaixo ser um FALHA e
+# nao um skip: teste que nao montou o cenario nao esta testando.
+CAIXA7c="$CAIXA/versionamento-nome-shell"; mkdir -p "$CAIXA7c"
+CAIXA7c_WIN="$(cygpath -m "$CAIXA7c" 2>/dev/null || printf '%s' "$CAIXA7c")"
+export RFM_ROOT="$CAIXA7c_WIN"
+$SETUP versionar >/dev/null 2>&1
+NOME_SHELL='rainforest.db%PATH%'
+: > "$CAIXA7c/$NOME_SHELL"
+git -C "$CAIXA7c" add -f "$NOME_SHELL" >/dev/null 2>&1
+git -C "$CAIXA7c" -c user.email=t@t -c user.name=t commit -m "rastreia nome com %VAR%" >/dev/null 2>&1
+if [ -z "$(git -C "$CAIXA7c" ls-files | grep -F "$NOME_SHELL")" ]; then
+  falhou=$((falhou+1)); echo "  FALHA cenario nao montou: '$NOME_SHELL' nunca foi rastreado (faltou add -f?)"
+else
+  $SETUP versionar >/dev/null 2>&1
+  if [ -z "$(git -C "$CAIXA7c" ls-files | grep -F "$NOME_SHELL")" ]; then
+    ok=$((ok+1)); echo "  ok   nome com %VAR% e desrastreado (execFileSync nao passa pelo shell)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA '$NOME_SHELL' continua rastreado — o nome foi pelo shell"
+  fi
+fi
+export RFM_ROOT="$CAIXA7_WIN"
+
 # MUTACAO: verifica que o padrão antigo causaria o vazamento (prova inversa)
 CAIXA7m="$CAIXA/versionamento-mutante"; mkdir -p "$CAIXA7m/.rainforest-backups"
 CAIXA7m_WIN="$(cygpath -m "$CAIXA7m" 2>/dev/null || printf '%s' "$CAIXA7m")"
