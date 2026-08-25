@@ -19,11 +19,22 @@
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LIB="$SRC/hooks/lib/contexto-sessao.cjs"
+LIB_FOLGA="$SRC/hooks/lib/folga.cjs"
 
 RAIZ_POSIX="$(mktemp -d)"
 RAIZ="$(cygpath -m "$RAIZ_POSIX" 2>/dev/null || printf '%s' "$RAIZ_POSIX")"
-trap 'rm -rf "$RAIZ_POSIX"' EXIT
 echo "(caixa de areia: $RAIZ)"
+
+# Raiz gorda: sandbox com um FOCO.md de ~2.500 B para testes de mutacao
+# (RAIZ_NEUTRA -> RAIZ_GORDA revela defeitos por conteudo, nao por medida de tamanho).
+RAIZ_GORDA_POSIX="$(mktemp -d)"
+node -e "const fs = require('fs'); fs.writeFileSync(process.argv[1]+'/FOCO.md','# Foco\n## Ativo\n\nConteudo para distinguir raiz com FOCO.md de raiz vazia.\n'.repeat(100))" "$RAIZ_GORDA_POSIX"
+RAIZ_GORDA="$(cygpath -m "$RAIZ_GORDA_POSIX" 2>/dev/null || printf '%s' "$RAIZ_GORDA_POSIX")"
+
+# Raiz neutra: sandbox vazia para testes que nao devem variar entre maquinas.
+RAIZ_NEUTRA="$(mktemp -d)"
+
+trap 'rm -rf "$RAIZ_POSIX" "$RAIZ_GORDA_POSIX" "$RAIZ_NEUTRA"' EXIT
 
 # O IRMAO VAI JUNTO. Toda sabotagem deste arquivo faz `cp "$LIB" "$RAIZ_POSIX/..."`
 # e roda a COPIA — e desde 2026-08-21 a lib faz `require('./raiz.cjs')`, que resolve
@@ -323,7 +334,7 @@ echo "7. ORCAMENTO DE ENTREGA — o teto em bytes, que e o que faz a regra chega
 # (texto cru em vez de JSON) e o tamanho final com dependencias e sessoes juntas.
 # Testar so o motor deixaria os dois de fora (regra 12: valide o artefato real).
 SRC_WIN="$(cygpath -m "$SRC" 2>/dev/null || printf '%s' "$SRC")"
-RFM_ROOT="$SRC_WIN" node "$SRC/hooks/foco-session-start.cjs" > "$RAIZ_POSIX/saida-hook.json" 2>/dev/null
+RFM_ROOT="$RAIZ_NEUTRA" node "$SRC/hooks/foco-session-start.cjs" > "$RAIZ_POSIX/saida-hook.json" 2>/dev/null
 EXIT_HOOK=$?
 
 cat > "$RAIZ_POSIX/checa-hook.cjs" <<'EOF'
@@ -336,14 +347,16 @@ const c = (j.hookSpecificOutput || {}).additionalContext;
 if (typeof c !== 'string') { console.log('sem_contexto 0 0 0'); process.exit(0); }
 const regras = (c.match(/\*\*\d+\./g) || []).length;
 const travou = c.includes('ACIMA DO ORÇAMENTO') ? 'travou' : 'coube';
+fs.writeFileSync(process.env.CONTEXTO, c);
 console.log(`ok ${Buffer.byteLength(c, 'utf8')} ${lib.TETOS.ORCAMENTO_BYTES} ${regras} ${travou}`);
 EOF
-LEITURA="$(LIB_PATH="$LIB" SAIDA="$RAIZ_POSIX/saida-hook.json" node "$RAIZ_POSIX/checa-hook.cjs")"
+LEITURA="$(LIB_PATH="$LIB" SAIDA="$RAIZ_POSIX/saida-hook.json" CONTEXTO="$RAIZ_POSIX/contexto.txt" node "$RAIZ_POSIX/checa-hook.cjs")"
 FORMATO="$(echo "$LEITURA" | cut -d' ' -f1)"
 BYTES="$(echo "$LEITURA" | cut -d' ' -f2)"
 TETO="$(echo "$LEITURA" | cut -d' ' -f3)"
 NREGRAS="$(echo "$LEITURA" | cut -d' ' -f4)"
 TRAVOU="$(echo "$LEITURA" | cut -d' ' -f5)"
+CONTEXTO_COMPLETO="$(cat "$RAIZ_POSIX/contexto.txt" 2>/dev/null)"
 
 if [ "$EXIT_HOOK" = "0" ]; then ok=$((ok+1)); echo "  ok    o hook real roda com exit 0"
 else falhou=$((falhou+1)); echo "  FALHA o hook real saiu com exit $EXIT_HOOK"; fi
@@ -375,6 +388,14 @@ else
   falhou=$((falhou+1)); echo "  FALHA so $NREGRAS regras no payload — alguma nao esta valendo em sessao nenhuma"
 fi
 
+# Asserção de conteudo: RAIZ_NEUTRA (vazia) produz sempre "nenhum foco declarado".
+# A mutação trocando para RAIZ_GORDA (com FOCO.md) revela o defeito (conteudo muda).
+if echo "$CONTEXTO_COMPLETO" | grep -q "(nenhum foco declarado"; then
+  ok=$((ok+1)); echo "  ok    raiz neutra (vazia) nao injeta foco (nenhum foco declarado)"
+else
+  falhou=$((falhou+1)); echo "  FALHA raiz neutra deveria produzir 'nenhum foco declarado' mas nao produziu"
+fi
+
 # CATRACA DOS NUCLEOS. As duas checagens acima nao dao retorno a quem EDITA regra,
 # e foi assim que 2026-08-12 aconteceu: um nucleo ganhou ~60 B e nada reclamou. Nao
 # reclama porque as regras entram ANTES do foco -- `sobra = ORCAMENTO - fixo`, e o
@@ -394,12 +415,30 @@ LEITURA_N="$(LIB_PATH="$LIB" SKILL="$SRC/skills/rainforest-mind/SKILL.md" node "
 BYTES_N="$(echo "$LEITURA_N" | cut -d' ' -f1)"
 TETO_N="$(echo "$LEITURA_N" | cut -d' ' -f2)"
 
-if [ -n "$BYTES_N" ] && [ "$BYTES_N" -le "$TETO_N" ] 2>/dev/null; then
-  ok=$((ok+1)); echo "  ok    os nucleos cabem na catraca ($BYTES_N B <= $TETO_N B, folga $((TETO_N-BYTES_N)) B)"
+# Avaliar folga com a biblioteca, decisao D4/D5.
+cat > "$RAIZ_POSIX/avalia-folga.cjs" <<'EOF'
+const folga = require(process.env.FOLGA_LIB);
+const valor = parseInt(process.argv[2], 10);
+const teto = parseInt(process.argv[3], 10);
+const nome = process.argv[4] || 'teto';
+const alternativas = process.argv.slice(5);
+const resultado = folga.avaliarFolga(valor, teto, { nome, alternativas });
+console.log(`${resultado.estado}|${resultado.folga}|${resultado.limiar}|${resultado.mensagem}`);
+EOF
+AVALIACAO="$(FOLGA_LIB="$LIB_FOLGA" node "$RAIZ_POSIX/avalia-folga.cjs" "$BYTES_N" "$TETO_N" "nucleos" "tirar do FOCO" "subir o agregado" "adicionar regra noutro nucleo")"
+ESTADO_N="$(echo "$AVALIACAO" | cut -d'|' -f1)"
+FOLGA_N="$(echo "$AVALIACAO" | cut -d'|' -f2)"
+LIMIAR_N="$(echo "$AVALIACAO" | cut -d'|' -f3)"
+MSG_N="$(echo "$AVALIACAO" | cut -d'|' -f4-)"
+
+if [ "$ESTADO_N" = "ok" ] || [ "$ESTADO_N" = "aviso" ]; then
+  ok=$((ok+1)); echo "  ok    os nucleos cabem na catraca ($BYTES_N B <= $TETO_N B, folga $FOLGA_N B)"
+  if [ "$ESTADO_N" = "aviso" ]; then
+    echo "         $MSG_N"
+  fi
 else
   falhou=$((falhou+1)); echo "  FALHA os nucleos passaram da catraca ($BYTES_N B > $TETO_N B)"
-  echo "         cada byte aqui e um byte a menos de FOCO.md em TODA sessao."
-  echo "         pague por subtracao noutro nucleo, ou suba NUCLEOS_MAX_BYTES de proposito."
+  echo "         $MSG_N"
 fi
 
 # A catraca so vale se ela for o que reprova. Com uma regra gorda a mais, o mesmo
@@ -1256,7 +1295,7 @@ ctx_hook() { # $@ = env extra; imprime o additionalContext
   env "$@" node "$SRC/hooks/foco-session-start.cjs" 2>/dev/null \
     | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{process.stdout.write(JSON.parse(s).hookSpecificOutput.additionalContext)}catch{process.stdout.write('SEM_CONTEXTO')}})"
 }
-SEM_DEP="$(ctx_hook -u WHATSAPP_API_BASE_URL "RFM_ROOT=$SRC_WIN" "CLAUDE_CONFIG_DIR=$CAIXA_DEP" "RFM_SETTINGS_PATH=$CAIXA_DEP/settings.json")"
+SEM_DEP="$(ctx_hook -u WHATSAPP_API_BASE_URL "RFM_ROOT=$RAIZ_NEUTRA" "CLAUDE_CONFIG_DIR=$CAIXA_DEP" "RFM_SETTINGS_PATH=$CAIXA_DEP/settings.json")"
 checa "sem declaracao, nao ha bloco de dependencias" nao_tem "Dependências de ambiente" "$SEM_DEP"
 checa "sem declaracao, nao fala de bridge"           nao_tem "bridge WhatsApp"           "$SEM_DEP"
 checa "sem declaracao, nao fala de claude-mem"       nao_tem "claude-mem"                "$SEM_DEP"
@@ -1265,7 +1304,7 @@ checa "e as regras continuam chegando"               tem     "**17."            
 # Declarada e apontando para porta morta: o bloco volta, e volta dizendo FORA.
 # Porta alta e improvavel de propósito — o teste nao pode depender do que a
 # maquina tem de pe.
-COM_DEP="$(ctx_hook "WHATSAPP_API_BASE_URL=http://127.0.0.1:59421" "RFM_ROOT=$SRC_WIN" "CLAUDE_CONFIG_DIR=$CAIXA_DEP" "RFM_SETTINGS_PATH=$CAIXA_DEP/settings.json")"
+COM_DEP="$(ctx_hook "WHATSAPP_API_BASE_URL=http://127.0.0.1:59421" "RFM_ROOT=$RAIZ_NEUTRA" "CLAUDE_CONFIG_DIR=$CAIXA_DEP" "RFM_SETTINGS_PATH=$CAIXA_DEP/settings.json")"
 checa "declarada, o bloco existe"                    tem     "Dependências de ambiente" "$COM_DEP"
 checa "declarada e morta, diz FORA"                  tem     "bridge WhatsApp FORA"     "$COM_DEP"
 checa "declarada, a URL declarada e a que aparece"   tem     "127.0.0.1:59421"          "$COM_DEP"
@@ -1833,9 +1872,13 @@ FOCO_TITULO_GIGANTE="# Foco
 ## Fora de escopo
 X"
 S_TIT="$(montar "$SKILL_GRANDE" "$FOCO_TITULO_GIGANTE")"
-checa "(b) nem o essencial cabendo, dispara o aviso explicito"   tem     "O foco não coube nesta injeção"                "$S_TIT"
-checa "(b) o aviso e o MESMO do caso abaixo do piso"             tem     "Leia o FOCO.md antes de medir desvio de escopo" "$S_TIT"
+checa "(b) nem o essencial cabendo, dispara o aviso explicito"   tem     "O foco saiu com só ponteiros nesta injeção"    "$S_TIT"
+checa "(b) o aviso para ponteiro-only tem a instrucao"           tem     "Leia o FOCO.md antes de medir desvio de escopo" "$S_TIT"
 checa "(b) NUNCA emite bloco so-cabecalho-e-ponteiro"            nao_tem "Fora desta injeção"                             "$S_TIT"
+# Prova da distinção entre os dois casos: cada causa produz sua frase
+checa "(b) caso ponteiro-only NAO usa a frase do piso"            nao_tem "B livres, piso"                                "$S_TIT"
+checa "(b.1) o aviso piso menciona o piso (num crítico)"          tem     "piso 700"                                       "$(node -e "const lib = require('./hooks/lib/contexto-sessao.cjs'); console.log(lib.avisoFocoNaoCoube(650, 'piso'))" 2>&1)"
+checa "(b.1) o aviso piso NAO menciona priorização"               nao_tem "priorização"                                   "$(node -e "const lib = require('./hooks/lib/contexto-sessao.cjs'); console.log(lib.avisoFocoNaoCoube(650, 'piso'))" 2>&1)"
 
 # 19.4 — unidade de focoSoTemPonteiro: cabecalho + os dois ponteiros de
 # omissao, sem nenhuma linha de conteudo real, e "so ponteiro"; a mesma forma
@@ -1875,12 +1918,17 @@ fi
 echo
 echo "19.6 MUTACAO — desligar a invariante do item 19.3 tem que voltar o pointer-only"
 cp "$LIB" "$RAIZ_POSIX/lib-mut-invariante.cjs"
-sed -i 's/if (focoSoTemPonteiro(foco)) foco = avisoFocoNaoCoube(tetoFoco);/if (false \&\& focoSoTemPonteiro(foco)) foco = avisoFocoNaoCoube(tetoFoco);/' "$RAIZ_POSIX/lib-mut-invariante.cjs"
-S_MUT_INV="$(montar "$SKILL_GRANDE" "$FOCO_TITULO_GIGANTE" "$RAIZ_POSIX/lib-mut-invariante.cjs")"
-if echo "$S_MUT_INV" | grep -qF "O foco não coube nesta injeção"; then
-  falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — a invariante nao e o que substitui o bloco pointer-only (saida: $S_MUT_INV)"
+sed -i "s/if (focoSoTemPonteiro(foco)) foco = avisoFocoNaoCoube(tetoFoco, 'ponteiro');/if (false \&\& focoSoTemPonteiro(foco)) foco = avisoFocoNaoCoube(tetoFoco, 'ponteiro');/" "$RAIZ_POSIX/lib-mut-invariante.cjs"
+# Guarda: verifica se a mutacao realmente aplicou
+if diff "$LIB" "$RAIZ_POSIX/lib-mut-invariante.cjs" > /dev/null; then
+  falhou=$((falhou+1)); echo "  FALHA o sed nao encontrou a linha a mutar — mutacao nao aplicou nada, teste invalhdo"
 else
-  ok=$((ok+1)); echo "  ok    mutacao expos a invariante (sem ela o bloco pointer-only volta a sair calado)"
+  S_MUT_INV="$(montar "$SKILL_GRANDE" "$FOCO_TITULO_GIGANTE" "$RAIZ_POSIX/lib-mut-invariante.cjs")"
+  if echo "$S_MUT_INV" | grep -qF "O foco saiu com só ponteiros"; then
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — a invariante nao e o que substitui o bloco pointer-only (saida: $S_MUT_INV)"
+  else
+    ok=$((ok+1)); echo "  ok    mutacao expos a invariante (sem ela o bloco pointer-only volta a sair calado)"
+  fi
 fi
 
 echo
@@ -1896,38 +1944,53 @@ echo "17.1 MUTACOES — as sabotagens do briefing, cada uma tem que quebrar a as
 echo "  -- SABOTAGEM 1: dentroDoExpediente devolve false em vez de null quando falta expediente"
 cp "$LIB" "$RAIZ_POSIX/lib-mut-expediente.cjs"
 sed -i 's/if (!config || !config.expediente) return null;/if (!config || !config.expediente) return false;/' "$RAIZ_POSIX/lib-mut-expediente.cjs"
-S_MUT1="$(expediente '2026,8,10,10,0' '{}' "$RAIZ_POSIX/lib-mut-expediente.cjs")"
-echo "  (saida do mutante: $S_MUT1 — a assercao real espera 'null')"
-( checa "dentroDoExpediente: sem expediente no config devolve null (nao false)" tem "null" "$S_MUT1" )
-if [ "$S_MUT1" != "null" ]; then
-  ok=$((ok+1)); echo "  ok    mutacao expos o colapso null->false (D6 inteiro depende disso)"
+# Guarda: verifica se a mutacao realmente aplicou
+if diff "$LIB" "$RAIZ_POSIX/lib-mut-expediente.cjs" > /dev/null; then
+  falhou=$((falhou+1)); echo "  FALHA o sed nao encontrou a linha a mutar — mutacao nao aplicou nada, teste invalido"
 else
-  falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — null->false nao e o que a assercao mede"
+  S_MUT1="$(expediente '2026,8,10,10,0' '{}' "$RAIZ_POSIX/lib-mut-expediente.cjs")"
+  echo "  (saida do mutante: $S_MUT1 — a assercao real espera 'null')"
+  ( checa "dentroDoExpediente: sem expediente no config devolve null (nao false)" tem "null" "$S_MUT1" )
+  if [ "$S_MUT1" != "null" ]; then
+    ok=$((ok+1)); echo "  ok    mutacao expos o colapso null->false (D6 inteiro depende disso)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — null->false nao e o que a assercao mede"
+  fi
 fi
 
 echo "  -- SABOTAGEM 2: focoAtivoEmOutraJanela compara caminho com includes (substring) em vez de igualdade"
 cp "$LIB" "$RAIZ_POSIX/lib-mut-includes.cjs"
 sed -i 's/cwdNormalizado === pasta/cwdNormalizado.includes(pasta)/' "$RAIZ_POSIX/lib-mut-includes.cjs"
-S_MUT2="$(outra_janela "[{\"cwd\":\"C:/abc\",\"prompt_ts\":$((AGORA_FIXO-1000))}]" '["C:/a"]' 15 "$AGORA_FIXO" "$RAIZ_POSIX/lib-mut-includes.cjs")"
-echo "  (saida do mutante: $S_MUT2 — a assercao real espera 'false')"
-( checa "focoAtivoEmOutraJanela: C:/abc nao casa C:/a por prefixo" tem "false" "$S_MUT2" )
-if [ "$S_MUT2" = "true" ]; then
-  ok=$((ok+1)); echo "  ok    mutacao expos o casamento por prefixo (C:/abc passou a isentar contra C:/a)"
+# Guarda: verifica se a mutacao realmente aplicou
+if diff "$LIB" "$RAIZ_POSIX/lib-mut-includes.cjs" > /dev/null; then
+  falhou=$((falhou+1)); echo "  FALHA o sed nao encontrou a linha a mutar — mutacao nao aplicou nada, teste invalido"
 else
-  falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — includes() nao e o que a assercao mede"
+  S_MUT2="$(outra_janela "[{\"cwd\":\"C:/abc\",\"prompt_ts\":$((AGORA_FIXO-1000))}]" '["C:/a"]' 15 "$AGORA_FIXO" "$RAIZ_POSIX/lib-mut-includes.cjs")"
+  echo "  (saida do mutante: $S_MUT2 — a assercao real espera 'false')"
+  ( checa "focoAtivoEmOutraJanela: C:/abc nao casa C:/a por prefixo" tem "false" "$S_MUT2" )
+  if [ "$S_MUT2" = "true" ]; then
+    ok=$((ok+1)); echo "  ok    mutacao expos o casamento por prefixo (C:/abc passou a isentar contra C:/a)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — includes() nao e o que a assercao mede"
+  fi
 fi
 
 echo "  -- SABOTAGEM 3: focoAtivoEmOutraJanela usa stop_ts em vez de prompt_ts como sinal humano"
 cp "$LIB" "$RAIZ_POSIX/lib-mut-stopts.cjs"
 sed -i 's/const { cwd, prompt_ts } = sessao;/const { cwd, stop_ts: prompt_ts } = sessao;/' "$RAIZ_POSIX/lib-mut-stopts.cjs"
-FIX_STOP="[{\"cwd\":\"C:/a\",\"prompt_ts\":$((AGORA_FIXO - 999999999)),\"stop_ts\":$((AGORA_FIXO-1000))}]"
-S_MUT3="$(outra_janela "$FIX_STOP" '["C:/a"]' 15 "$AGORA_FIXO" "$RAIZ_POSIX/lib-mut-stopts.cjs")"
-echo "  (saida do mutante: $S_MUT3 — a assercao real espera 'false')"
-( checa "focoAtivoEmOutraJanela: prompt_ts frio e o que conta, nao stop_ts" tem "false" "$S_MUT3" )
-if [ "$S_MUT3" = "true" ]; then
-  ok=$((ok+1)); echo "  ok    mutacao expos a troca prompt_ts->stop_ts (sinal errado passou a isentar)"
+# Guarda: verifica se a mutacao realmente aplicou
+if diff "$LIB" "$RAIZ_POSIX/lib-mut-stopts.cjs" > /dev/null; then
+  falhou=$((falhou+1)); echo "  FALHA o sed nao encontrou a linha a mutar — mutacao nao aplicou nada, teste invalido"
 else
-  falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — a troca de campo nao e o que a assercao mede"
+  FIX_STOP="[{\"cwd\":\"C:/a\",\"prompt_ts\":$((AGORA_FIXO - 999999999)),\"stop_ts\":$((AGORA_FIXO-1000))}]"
+  S_MUT3="$(outra_janela "$FIX_STOP" '["C:/a"]' 15 "$AGORA_FIXO" "$RAIZ_POSIX/lib-mut-stopts.cjs")"
+  echo "  (saida do mutante: $S_MUT3 — a assercao real espera 'false')"
+  ( checa "focoAtivoEmOutraJanela: prompt_ts frio e o que conta, nao stop_ts" tem "false" "$S_MUT3" )
+  if [ "$S_MUT3" = "true" ]; then
+    ok=$((ok+1)); echo "  ok    mutacao expos a troca prompt_ts->stop_ts (sinal errado passou a isentar)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — a troca de campo nao e o que a assercao mede"
+  fi
 fi
 
 echo "  -- SABOTAGEM 4: anuncio de uma isenção suprime o veredito da outra (defeito do D6 original)"
@@ -2020,13 +2083,18 @@ fi
 echo "  -- SABOTAGEM 6: dentroDoExpediente so considera a 1a faixa quando ha N faixas"
 cp "$LIB" "$RAIZ_POSIX/lib-mut-faixas.cjs"
 sed -i 's/? exp\.faixas/? [exp.faixas[0]]/' "$RAIZ_POSIX/lib-mut-faixas.cjs"
-S_MUT6="$(expediente '2026,8,10,15,0' "$CONFIG_EXPEDIENTE_FAIXAS" "$RAIZ_POSIX/lib-mut-faixas.cjs")"
-echo "  (saida do mutante em seg 15:00, 2a faixa 14-18: $S_MUT6 — a assercao real espera 'true')"
-( checa "dentroDoExpediente: faixas - dentro da 2a faixa (seg 15:00)" tem "true" "$S_MUT6" )
-if [ "$S_MUT6" = "false" ]; then
-  ok=$((ok+1)); echo "  ok    mutacao expos que so a 1a faixa valia (a 2a faixa, com o almoco no meio, ficaria sempre fora)"
+# Guarda: verifica se a mutacao realmente aplicou
+if diff "$LIB" "$RAIZ_POSIX/lib-mut-faixas.cjs" > /dev/null; then
+  falhou=$((falhou+1)); echo "  FALHA o sed nao encontrou a linha a mutar — mutacao nao aplicou nada, teste invalido"
 else
-  falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — restringir a 1a faixa nao e o que a assercao mede (saida: $S_MUT6)"
+  S_MUT6="$(expediente '2026,8,10,15,0' "$CONFIG_EXPEDIENTE_FAIXAS" "$RAIZ_POSIX/lib-mut-faixas.cjs")"
+  echo "  (saida do mutante em seg 15:00, 2a faixa 14-18: $S_MUT6 — a assercao real espera 'true')"
+  ( checa "dentroDoExpediente: faixas - dentro da 2a faixa (seg 15:00)" tem "true" "$S_MUT6" )
+  if [ "$S_MUT6" = "false" ]; then
+    ok=$((ok+1)); echo "  ok    mutacao expos que so a 1a faixa valia (a 2a faixa, com o almoco no meio, ficaria sempre fora)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — restringir a 1a faixa nao e o que a assercao mede (saida: $S_MUT6)"
+  fi
 fi
 
 echo "  -- SABOTAGEM 7: devolver a seta (↳) literal ao nucleo da regra 15 (D6)"

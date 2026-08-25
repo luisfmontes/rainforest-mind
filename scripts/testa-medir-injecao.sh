@@ -42,8 +42,13 @@
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SBP="$(mktemp -d)"
-trap 'rm -rf "$SBP"' EXIT
+
+# Raiz neutra para medir sem dados do usuário
+RAIZ_NEUTRA="$(mktemp -d)"
+
+trap 'rm -rf "$SBP" "$RAIZ_NEUTRA"' EXIT
 echo "(caixa de areia: $SBP)"
+echo "(raiz neutra: $RAIZ_NEUTRA)"
 
 ALVO="$SRC/scripts/medir-injecao.py"
 
@@ -158,7 +163,7 @@ PY
 if [ -z "$MARCADOR" ]; then
   falhou=$((falhou+1)); echo "  FALHA nao encontrei RAINFOREST_MARKER em medir-injecao.py"
 else
-  CONTEXTO_HOOK="$(cd "$SRC" && node hooks/foco-session-start.cjs 2>&1 | node -e '
+  CONTEXTO_HOOK="$(cd "$SRC" && RFM_ROOT="$RAIZ_NEUTRA" node hooks/foco-session-start.cjs 2>&1 | node -e '
     let data = "";
     process.stdin.on("data", (c) => (data += c));
     process.stdin.on("end", () => {
