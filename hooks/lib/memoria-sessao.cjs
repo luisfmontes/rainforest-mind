@@ -20,6 +20,19 @@
 const TETOS = {
   /** Teto do bloco inteiro de memória. */
   MEMORIA_MAX_BYTES: 3000,
+  /**
+   * Teto da LEGENDA VISÍVEL de memória (o `systemMessage`), em BYTES.
+   *
+   * Canal separado do `additionalContext` — o harness conta os dois em métricas
+   * distintas —, então este teto não disputa bytes com as 14 observações
+   * injetadas. É pequeno porque a legenda responde UMA pergunta ("onde eu tinha
+   * parado?"), não substitui o corpus.
+   */
+  LEGENDA_MAX_BYTES: 420,
+  /** Quantas marcas a legenda mostra. O resto continua no `additionalContext`. */
+  LEGENDA_MARCAS: 2,
+  /** Teto de UMA linha da legenda, em BYTES — corte mudo, a linha já é um resumo. */
+  LEGENDA_LINHA_MAX_BYTES: 150,
 };
 
 /**
@@ -143,9 +156,56 @@ function montarMemoria(o) {
   return limitarBytes(texto, TETOS.MEMORIA_MAX_BYTES, 'Memória');
 }
 
+/**
+ * Monta a LEGENDA VISÍVEL da memória — o texto do `systemMessage`, que é o que o
+ * usuario VÊ na abertura. O `montarMemoria` acima continua sendo o que o MODELO
+ * recebe; são dois canais e dois públicos.
+ *
+ * Por que existe (2026-08-25): o corpus era injetado em silêncio no
+ * `additionalContext`. O modelo abria a sessão sabendo onde tinha parado, e o
+ * usuario abria a sessão olhando para uma tela vazia. Quem precisa lembrar do
+ * fio da meada é ele.
+ *
+ * @param {object} o
+ * @param {array} [o.observacoes] observações do banco, mais recentes primeiro
+ * @param {object} [o.apelidos] mapa chave-do-banco -> nome curto
+ * @param {number} [o.quantas] quantas marcas mostrar (default: TETOS.LEGENDA_MARCAS)
+ * @param {number} [o.teto] teto em bytes (default: TETOS.LEGENDA_MAX_BYTES)
+ * @returns {string} legenda, ou '' quando não há marca nenhuma
+ */
+function montarLegendaMemoria(o) {
+  const observacoes = Array.isArray(o?.observacoes) ? o.observacoes.filter(Boolean) : [];
+  if (!observacoes.length) return '';
+  const apelidos = (o && typeof o.apelidos === 'object' && o.apelidos) || null;
+  const quantas = Number.isFinite(o?.quantas) ? o.quantas : TETOS.LEGENDA_MARCAS;
+  const teto = Number.isFinite(o?.teto) ? o.teto : TETOS.LEGENDA_MAX_BYTES;
+
+  const linhas = observacoes.slice(0, Math.max(0, quantas)).map((obs) => {
+    // Data curta: quem lê na abertura quer "quando", não o ano — e o ano custa
+    // 5 dos 150 bytes da linha.
+    const iso = String(obs.criada_em || '').split('T')[0];
+    const partes = iso.split('-');
+    const data = partes.length === 3 ? `${partes[2]}/${partes[1]}` : iso;
+    const nome = (apelidos && apelidos[obs.projeto]) || obs.projeto || '';
+    const { titulo, subtitulo } = extrairTituloESubtitulo(obs.conteudo);
+    // Título vazio acontece (observação só com corpo): o subtítulo assume, em vez
+    // de sair uma linha com data e nada.
+    const texto = titulo || subtitulo || '(sem título)';
+    const linha = `🧠 ${data}${nome ? ` ${nome}` : ''} — ${texto}`;
+    // Corte MUDO aqui, ao contrário do teto do bloco: a linha já é um resumo de
+    // resumo, e um aviso de truncamento por linha custaria mais que o texto.
+    const cortada = cortarBytes(linha, TETOS.LEGENDA_LINHA_MAX_BYTES);
+    return cortada.length < linha.length ? cortada.trimEnd() + '…' : linha;
+  }).filter(Boolean);
+
+  if (!linhas.length) return '';
+  return limitarBytes(linhas.join('\n'), teto, 'Legenda da memória');
+}
+
 module.exports = {
   TETOS,
   montarMemoria,
+  montarLegendaMemoria,
   formatarObservacao,
   extrairTituloESubtitulo,
   limitarBytes,

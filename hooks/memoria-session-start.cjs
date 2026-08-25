@@ -6,7 +6,7 @@
 // que é puro e tem bateria própria (hooks/testa-memoria-session-start.sh).
 const fs = require('fs');
 const path = require('path');
-const { montarMemoria } = require('./lib/memoria-sessao.cjs');
+const { montarMemoria, montarLegendaMemoria } = require('./lib/memoria-sessao.cjs');
 const { resolverRaiz } = require('./lib/raiz.cjs');
 const { abrirBanco, resolverCaminhos } = require(path.join(__dirname, '..', 'scripts', 'memoria.cjs'));
 
@@ -131,9 +131,17 @@ const bloco = montarMemoria({ observacoes, apelidos });
 
 // JSON, não texto cru (regra 12 do hook foco-session-start).
 // O harness lê `additionalContext` e o stdout ao redor não conta para o teto.
-console.log(JSON.stringify({
+// A legenda é o MESMO corpus, outro público: `additionalContext` é o que o modelo
+// recebe (14 marcas), `systemMessage` é o que o usuario VÊ (as 2 mais recentes).
+// Até 2026-08-25 só existia o primeiro, e a abertura era muda para ele.
+const legenda = montarLegendaMemoria({ observacoes, apelidos });
+
+const saida = {
   hookSpecificOutput: {
     hookEventName: 'SessionStart',
     additionalContext: bloco,
   },
-}));
+};
+// Sem marca nenhuma, campo ausente: caixa vazia na tela é pior que tela limpa.
+if (legenda) saida.systemMessage = legenda;
+console.log(JSON.stringify(saida));

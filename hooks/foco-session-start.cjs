@@ -7,7 +7,7 @@
 const fs = require('fs');
 const path = require('path');
 const net = require('net');
-const { montarContexto, resumirSessoes, sessoesVivas, computarVeredito, pastasDoFoco } = require('./lib/contexto-sessao.cjs');
+const { montarContexto, montarLegenda, resumirSessoes, sessoesVivas, computarVeredito, pastasDoFoco } = require('./lib/contexto-sessao.cjs');
 const { resolverRaiz } = require('./lib/raiz.cjs');
 
 // Dados (FOCO/IDEIAS) vivem no repo de trabalho, não na cópia em cache do plugin.
@@ -175,6 +175,10 @@ if (m) {
 // Sessões paralelas (heartbeat: prompt_ts = o usuario agiu, stop_ts = Claude
 // terminou o turno e está esperando)
 let sessoes = '';
+// Fora do try porque a LEGENDA visível também usa (montarLegenda): sessões vivas
+// são medida, e a mesma medida serve aos dois canais. Ler o `sessoes.json` duas
+// vezes daria duas respostas diferentes na mesma abertura.
+let entradasVivas = [];
 try {
   const state = JSON.parse(fs.readFileSync(path.join(ROOT, 'sessoes.json'), 'utf8'));
   const agora = Date.now();
@@ -196,6 +200,7 @@ try {
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
   const oci = (foco.match(/Ociosidade máxima:\s*(\d+)\s*min/i) || [])[1] || '45';
   sessoes = resumirSessoes(entradas, oci, undefined, projectDir);
+  entradasVivas = entradas;
 } catch {}
 
 // Lê config.json e computa o veredito de isenção de desvio (tarefa 3)
@@ -273,12 +278,38 @@ function doConsoleLog(pluginsStatus, whatsappStatus) {
   // truncamento nenhum, enquanto 32 KB de texto cru daqui viraram 2,2 KB.
   // Todos os outros hooks de SessionStart desta máquina já emitiam JSON; este era
   // o único de texto cru, e o único truncado.
-  console.log(JSON.stringify({
+  // DOIS canais, e a diferença é de PÚBLICO, não de formato.
+  //
+  // `additionalContext` vai para o contexto do MODELO e não aparece na tela — foi
+  // por isso que, até 2026-08-25, a abertura era uma tela vazia para o usuario
+  // enquanto o modelo recebia 7 KB de estado. `systemMessage` é o campo que o
+  // binário do harness declara como "Warning message shown to the user", e as duas
+  // contagens são separadas na telemetria dele (`systemMessageChars` e
+  // `additionalContextChars`), então a legenda NÃO tira bytes do orçamento das
+  // regras.
+  const bloqueios = [];
+  if (whatsappStatus && whatsappStatus.status && whatsappStatus.status !== 'ok') {
+    bloqueios.push(`bridge WhatsApp ${whatsappStatus.status} (${whatsappStatus.url}) — envio de mensagem indisponível`);
+  }
+  const legenda = montarLegenda({
+    focoText: foco,
+    entradas: entradasVivas,
+    cwdAtual: process.env.CLAUDE_PROJECT_DIR || process.cwd(),
+    bloqueios,
+  });
+
+  const saida = {
     hookSpecificOutput: {
       hookEventName: 'SessionStart',
       additionalContext: contexto,
     },
-  }));
+  };
+  // Guarda, não caso esperado: hoje a legenda do foco NUNCA sai vazia (sem foco
+  // declarado ela vira a linha de "nenhum foco declarado", que é justamente o
+  // sinal de que o plugin subiu). O guarda existe para o dia em que alguém baixar
+  // o teto a zero — `systemMessage: ''` pinta caixa vazia, que é pior que nada.
+  if (legenda) saida.systemMessage = legenda;
+  console.log(JSON.stringify(saida));
 }
 
 // Sem bridge declarada não há I/O nenhum a esperar: imprime na hora, sem sonda de
