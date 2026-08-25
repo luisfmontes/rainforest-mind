@@ -209,8 +209,23 @@ tem "manda reportar no lugar mais especifico" "$CORPO_PLANO" "Reporte no lugar m
 tem "manda deixar referencia cruzada na outra secao" "$CORPO_PLANO" "referência cruzada"
 tem "manda contar uma vez" "$CORPO_PLANO" "**Conte uma vez.**"
 
-# ------------------------------------------------- 10. orcamento
-echo; echo "10. a description cabe no orcamento"
+# ------------------------------------------------- 10. alvo sem web e severidade
+# As tres travas desta secao vieram da PRIMEIRA execucao real do agente num alvo
+# sem API (o proprio rainforest-mind, 2026-08-25). Ele seguiu o metodo e reportou
+# tres pontos em que o arquivo, sozinho, nao bastava -- e os tres sao do mesmo
+# tipo: instrucao escrita so' em vocabulario de aplicacao web.
+echo; echo "10. o metodo serve a alvo que nao e' web, e severidade tem criterio"
+tem "manda TRADUZIR as cinco falhas para alvo sem navegador" "$CORPO_PLANO" "Alvo que não é web: traduza, não pule"
+tem "'nao se aplica' sem traducao tentada e' recusado" "$CORPO_PLANO" "sem a tradução tentada é indistinguível"
+tem "A05 cobre argumento de CLI virando shell" "$CORPO_PLANO" "a fonte não é o request — é o argumento"
+tem "A05 nomeia a defesa (lista de argumentos, sem shell)" "$CORPO" "execFileSync"
+tem "A05 avisa que nome de branch aceita metacaractere" "$CORPO_PLANO" "nome de arquivo e identificador aceitam metacaractere"
+tem "severidade tem criterio, nao sensacao" "$CORPO_PLANO" "A severidade tem critério, não é sensação"
+tem "criterio de severidade e' ganho + pre-condicao" "$CORPO_PLANO" "o que o atacante ganha"
+tem "a fronteira critica/alta esta decidida" "$CORPO_PLANO" "sem autenticação de terceiro, é \`alta\`, não \`crítica\`"
+
+# ------------------------------------------------- 11. orcamento
+echo; echo "11. a description cabe no orcamento"
 DESC="$(sed -n 's/^description: *//p' "$AGENTE" | head -n 1)"
 TAM="$(printf '%s' "$DESC" | wc -c | tr -d ' ')"
 if [ "$TAM" -gt 0 ] && [ "$TAM" -le 300 ]; then

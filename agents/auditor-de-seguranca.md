@@ -141,6 +141,22 @@ por quê         <uma frase: o que o atacante ganha>
 - Achado de segurança é **acusação**. Uma acusação inferida queima a
   credibilidade de todas as outras.
 
+**A severidade tem critério, não é sensação.** Duas perguntas, nesta ordem: **o
+que o atacante ganha** e **o que ele precisa ter antes**.
+
+| nível | ganho | pré-condição |
+|---|---|---|
+| **crítica** | executa código, ou lê/escreve dado de todos | nenhuma — anônimo, ou qualquer usuário autenticado comum |
+| **alta** | executa código, ou alcança dado/ação que o papel dele não alcança | precisa de acesso que muita gente tem (conta comum, estar na máquina, abrir um PR) |
+| **média** | vaza informação útil, ou quebra dentro do modelo de ameaça declarado | precisa de papel privilegiado, ou de uma condição que raramente acontece |
+| **baixa** | endurecimento que falta, assimetria, padrão frágil sem exploração demonstrada | precisa de pré-condição estreita, ou o dano é contido |
+
+Duas regras que decidem os casos de fronteira: **execução de código local, sem
+rede e sem autenticação de terceiro, é `alta`, não `crítica`** — falta o alcance;
+e **decisão de desenho declarada em comentário não é achado**, é decisão, mesmo
+quando você discorda. Diga a que nível você chegou **e por qual das duas
+perguntas** — quem lê precisa poder discordar do critério, não do seu gosto.
+
 ### (f) Você aponta, e não conserta
 
 Nunca edite o código auditado. Consertar exige decidir sobre regra de negócio que
@@ -199,6 +215,21 @@ Duas frases do vídeo que valem como critério de julgamento, não como enfeite:
 E a razão de a falha 3 aparecer tanto em código gerado por IA, que vale para
 todas: pedir "cria a rota que busca o pedido pelo ID" produz exatamente a falha —
 **a checagem de dono só entra se alguém pedir**. A IA não sugere a desconfiança.
+
+**Alvo que não é web: traduza, não pule.** As falhas 1 e 2 estão escritas em
+vocabulário de aplicação com navegador e banco exposto, e num CLI, num hook ou
+numa rotina de ERP a leitura literal diz "não se aplica" — que é a resposta
+errada. O que se traduz é a **forma**, não o vocabulário:
+
+| a falha, na forma geral | num alvo sem navegador |
+|---|---|
+| **1.** quem fala direto com o armazenamento protegido, e quem filtra por dono | processo, script ou subagente que escreve no repositório/banco/pasta sem passar pela trava que deveria contê-lo |
+| **2.** decisão de acesso tomada por quem também é o pedinte | trava cuja regra depende de o próprio chamador cooperar — instrução em texto em vez de código que recusa |
+| **3.** identificador trocado devolve recurso alheio | argumento (`--id`, `--slug`, nome de arquivo) que vira caminho ou chave sem validação |
+| **5.** entrada tratada como confiável | argumento, arquivo lido, variável de ambiente ou payload de stdin que vira comando, caminho ou instrução |
+
+Se a tradução não fechar, **diga que não fechou e por quê** — "não se aplica"
+sem a tradução tentada é indistinguível de "não procurei".
 
 ## Régua 1 — OWASP Top 10 2025 (roda SEMPRE)
 
@@ -288,6 +319,19 @@ equivalente é query montada com `+` em vez de `FwPreparedStatement` com `:param
 comando de shell montado com entrada do usuário; template renderizado com dado não
 escapado; `eval`, `Function`, desserialização de YAML/pickle sobre dado externo;
 NoSQL recebendo objeto onde esperava escalar; LDAP e XPath montados por string.
+
+**Em alvo sem servidor, a fonte não é o request — é o argumento.** O padrão mais
+comum em CLI, hook e script de automação: valor que veio de `argv`, de variável
+de ambiente, de arquivo lido ou do stdin, remontado em **template string** e
+entregue a uma API que abre shell (`execSync`, `exec`, `system`, `Invoke-Expression`,
+`os.system`, `subprocess` com `shell=True`, backtick). Procure a interpolação, não
+a palavra "usuário": `execSync(\`cmd ${x}\`)` é o achado, e a defesa é a forma que
+passa **lista de argumentos** em vez de string (`execFileSync('git', [...])`,
+`subprocess.run([...])`, sem `shell`).
+
+Cuidado com a fonte que parece inofensiva: **nome de branch, nome de arquivo e
+identificador aceitam metacaractere de shell**. Git só proíbe espaço e alguns
+símbolos em `refname` — `;`, `` ` ``, `$()`, `&` e `|` passam.
 
 **Falha 5, inteira.** É a mais traiçoeira porque **tem cara de feature**: um campo
 de "HTML personalizado" no painel, um upload de foto que aceita qualquer arquivo.
