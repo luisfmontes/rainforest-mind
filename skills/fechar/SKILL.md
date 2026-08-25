@@ -1,6 +1,6 @@
 ---
 name: fechar
-description: Use no estágio 'fechar' do fluxo rainforest-mind — depois de 'verificar' fechado, é o fim do fluxo, com commit, remoção de worktrees, e a pergunta de destino ao usuário. Nunca decide o destino por conta própria.
+description: Use no estágio 'fechar' do fluxo rainforest-mind — depois de 'verificar' fechado, é o fim do fluxo: commit, remoção dos worktrees e abertura do PR, que é o destino padrão de toda branch.
 ---
 
 # Fechar
@@ -49,8 +49,14 @@ pendente do que está limpo, e decide o que remove sem perguntar.
 
 ## 4. Abrir PR
 
-O destino da branch é sempre PR — decisão já tomada (MEMORY.md,
-`Destino-de-branch-é-sempre-PR`). Abra o PR sem oferecer menu.
+**O destino da branch é sempre PR.** Abra o PR e informe o número — sem menu,
+sem pergunta. O menu de três opções que ficava aqui foi removido em 2026-08-24:
+a escolha já estava feita em toda rodada, e perguntar o que já está respondido
+só custava um turno.
+
+Isso não tira a palavra do usuário: se **ele** disser outra coisa (mergear
+direto, manter a branch), vale o que ele disse, e é isso que vai em `acao` no
+fechamento do estágio.
 
 **Corpo do PR — palavras-chave de fechamento.** O GitHub reconhece, em
 **inglês e case-insensitive**, estas palavras antes de cada número de issue:
@@ -87,8 +93,10 @@ node scripts/estado.cjs marcar --slug <slug> --estagio fechar --status ok \
   --json '{"acao":"merge|pr|manteve"}'
 ```
 
-`acao` é a resposta que o usuário deu no passo 4 — nunca a que pareceria mais
-razoável.
+`acao` é o que **de fato aconteceu** no passo 4: `pr` no caminho normal, e
+`merge` ou `manteve` só quando o usuário pediu outra coisa. Nunca a que
+pareceria mais razoável em retrospecto — o registro serve para saber o que foi
+feito, não para justificar.
 
 O `marcar ... fechar ok` grava o estado no JSON, sujando o `git status`. Se
 houver pendência, o commit se repete: os passos 1 a 3 fizeram sua parte, e o
@@ -97,5 +105,5 @@ estágio só termina com a árvore limpa.
 ## Condição de parada
 
 Árvore suja com algo alheio ao trabalho: pare e mostre, nunca commite por
-cima. E a pergunta do passo 4 não tem resposta padrão — sem ela, o estágio
-não fecha.
+cima. E o passo 4 não fecha sem o PR existir: `acao: "pr"` sem número de PR é
+estágio marcado por cima de trabalho que não aconteceu.

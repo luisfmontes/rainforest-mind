@@ -81,6 +81,35 @@ CORPO_2E="Resolve #5, closes #8"
 RESULT_2E="$(classificar_pr_body "$CORPO_2E")"
 igual "Resolve #5, closes #8 → 5 8 (palavras diferentes)" "$RESULT_2E" "5 8"
 
+# ------------------------------------------------- 2f. os EXEMPLOS DO SKILL.md
+# Os casos 2a-2e acima são strings escritas nesta bateria: eles provam que o
+# classificador funciona, mas NENHUMA edição no SKILL.md os deixa vermelhos —
+# a bateria estaria desacoplada justamente do arquivo que diz revisar.
+# Esta seção fecha isso: os três exemplos saem do SKILL.md e são classificados.
+# Trocar um exemplo do texto por um errado deixa AQUI vermelho.
+echo; echo "2f. os exemplos escritos no SKILL.md classificam como o texto promete"
+
+# Todo trecho entre crases que contenha "#<numero>" é um exemplo de corpo de PR.
+mapfile -t EXEMPLOS < <(grep -o '`[^`]*#[0-9][^`]*`' "$SRC/skills/fechar/SKILL.md" | sed 's/^`//; s/`$//')
+
+igual "o SKILL.md traz exatamente 3 exemplos de corpo de PR" "${#EXEMPLOS[@]}" "3"
+
+if [ "${#EXEMPLOS[@]}" -eq 3 ]; then
+  # 1º: o que funciona (repete a palavra) -> fecha as duas
+  R1="$(classificar_pr_body "${EXEMPLOS[0]}")"
+  QTD1="$(echo "$R1" | wc -w | tr -d ' ')"
+  igual "exemplo 1 do texto ('${EXEMPLOS[0]}') fecha 2 issues" "$QTD1" "2"
+
+  # 2º: a armadilha (não repete a palavra) -> fecha só a primeira
+  R2="$(classificar_pr_body "${EXEMPLOS[1]}")"
+  QTD2="$(echo "$R2" | wc -w | tr -d ' ')"
+  igual "exemplo 2 do texto ('${EXEMPLOS[1]}') fecha só 1 issue" "$QTD2" "1"
+
+  # 3º: o incidente de 2026-08-24, em português -> não fecha nada
+  R3="$(classificar_pr_body "${EXEMPLOS[2]}")"
+  igual "exemplo 3 do texto ('${EXEMPLOS[2]}') não fecha issue nenhuma" "$R3" ""
+fi
+
 # ------------------------------------------------- 3. Passo 4 não oferece "Merge local" como opção
 echo; echo "3. Passo 4 não oferece 'Merge local' como opção"
 CONTEUDO_SKILL="$(cat "$SRC/skills/fechar/SKILL.md")"
@@ -90,16 +119,55 @@ nao_tem "não há '3. Manter a branch'" "$CONTEUDO_SKILL" "3. Manter a branch"
 tem "há referência a 'Abrir PR'" "$CONTEUDO_SKILL" "Abrir PR"
 tem "há referência a 'destino da branch é sempre PR'" "$CONTEUDO_SKILL" "destino da branch é sempre PR"
 
-# ------------------------------------------------- 4. Valores de acao aceitos
-echo; echo "4. Valores de acao mencionados são aceitos pelo estado.cjs"
-# O estado.cjs não valida o valor de acao — aceita qualquer coisa no --json
-# Portanto, qualquer valor que o SKILL.md mencione é válido por definição
+# ------------------------------------------------- 4. Valores de acao coerentes
+echo; echo "4. Os valores de acao da prosa batem com os do comando, no mesmo arquivo"
+# A versão anterior desta seção somava `ok` num laço sobre uma lista cravada
+# AQUI DENTRO, sem ler nada e sem condição nenhuma: nenhuma edição no SKILL.md
+# ou no estado.cjs a deixava vermelha. Ela inflava o placar em 3 e não media
+# coisa alguma. O que dá para medir de verdade é COERÊNCIA INTERNA: a prosa do
+# fechamento nomeia valores de `acao`, e o comando logo acima traz a lista
+# `merge|pr|manteve`. Se um lado mudar e o outro não, quem seguir a skill grava
+# um valor que o exemplo não prevê — e é isso que fica vermelho aqui.
+#
+# O estado.cjs NÃO valida o valor de acao (confirmado lendo o script: o --json
+# entra como objeto livre). Por isso a trava não pode ser "o estado.cjs recusa" —
+# essa trava não existe, e escrever que existe seria mandar confiar em nada.
 
-VALORES_SKILL="merge pr manteve"
-for valor in $VALORES_SKILL; do
-  ok=$((ok+1))
-  echo "  ok   acao='$valor' é aceito (estado.cjs não valida)"
+# Valores citados na LISTA do comando: --json '{"acao":"merge|pr|manteve"}'
+DO_COMANDO="$(grep -o '"acao":"[^"]*"' "$SRC/skills/fechar/SKILL.md" | head -n 1 | sed 's/.*:"//; s/"$//' | tr '|' ' ')"
+# Valores citados na PROSA logo abaixo do comando (palavras entre crases).
+DA_PROSA="$(sed -n '/^`acao` é o que/,/^$/p' "$SRC/skills/fechar/SKILL.md" | grep -o '`[a-z]\+`' | sed 's/`//g' | grep -vw acao | sort -u | tr '\n' ' ')"
+
+if [ -z "$DO_COMANDO" ]; then
+  falhou=$((falhou+1)); echo "  FALHA nao achei a lista de acao no comando do SKILL.md"
+fi
+if [ -z "$DA_PROSA" ]; then
+  falhou=$((falhou+1)); echo "  FALHA nao achei valor de acao citado na prosa do SKILL.md"
+fi
+
+for valor in $DA_PROSA; do
+  if echo " $DO_COMANDO " | grep -qF " $valor "; then
+    ok=$((ok+1)); echo "  ok   acao='$valor' citado na prosa esta na lista do comando"
+  else
+    falhou=$((falhou+1)); echo "  FALHA acao='$valor' esta na prosa mas NAO na lista do comando ($DO_COMANDO)"
+  fi
 done
+
+for valor in $DO_COMANDO; do
+  if echo " $DA_PROSA " | grep -qF " $valor "; then
+    ok=$((ok+1)); echo "  ok   acao='$valor' da lista do comando esta explicado na prosa"
+  else
+    falhou=$((falhou+1)); echo "  FALHA acao='$valor' esta na lista do comando mas NAO na prosa"
+  fi
+done
+
+# O caminho normal virou PR: se 'pr' sumir dos dois lados, a skill perdeu o
+# proprio passo 4.
+if echo " $DO_COMANDO " | grep -qF " pr "; then
+  ok=$((ok+1)); echo "  ok   'pr' continua entre os valores de acao"
+else
+  falhou=$((falhou+1)); echo "  FALHA 'pr' sumiu dos valores de acao — o passo 4 abre PR"
+fi
 
 # ------------------------------------------------- 5. Incidente documentado
 echo; echo "5. Incidente 2026-08-24 documentado no SKILL.md"
