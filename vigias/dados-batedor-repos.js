@@ -15,8 +15,6 @@
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = process.env.RFM_ROOT || 'C:\Projetos\rainforest-mind';
-
 // PLUGIN e ROOT nao sao a mesma coisa, e a `fila-de-repos.jsonl` foi o caso que
 // obrigou a separar aqui — o `run-vigia.ps1` ja separa desde 2026-08-11
 // ("O PLUGIN e sempre a pasta acima deste script, mesmo quando $root aponta para
@@ -34,6 +32,23 @@ const ROOT = process.env.RFM_ROOT || 'C:\Projetos\rainforest-mind';
 // O caminho cravado tambem e o que faz teste de worktree mentir: a bateria passa
 // com RFM_ROOT apontando para a caixa de areia, e producao le outro lugar.
 const PLUGIN = path.resolve(__dirname, '..');
+
+// O default de ROOT e o PLUGIN, e nao um caminho cravado. Duas razoes, e a segunda
+// custou esta entrega:
+//
+//   1. `run-vigia.ps1` ja diz por que: "a raiz sai da localizacao do proprio script,
+//      nao de um caminho fixo: este repositorio e publico e nenhum caminho desta
+//      maquina deve estar nele".
+//   2. O caminho cravado era `'C:\Projetos\rainforest-mind'` e uma reescrita desta
+//      linha em 2026-08-25 perdeu as barras escapadas. Em JS `\P` nao e escape e a
+//      barra SOME; `\r` E escape e vira carriage-return. O literal virou
+//      `C:Projetos<CR>ainforest-mind`, `fs.readFileSync` passou a lancar, o `catch`
+//      silencioso devolveu [] — e `ideiasAbertas`, `propostasDeRelatorio` e
+//      `errosRecentes` passaram a reportar ZERO sem nenhum sinal de erro, exit 0.
+//      Ou seja: a ancora inteira da ronda morreu calada. String de caminho com
+//      escape e um jeito de errar que nao da erro; sem literal, nao ha o que escapar.
+const ROOT = process.env.RFM_ROOT || PLUGIN;
+
 
 function lerLinhas(rel) {
   try { return fs.readFileSync(path.join(ROOT, rel), 'utf8').split(/\r?\n/); }

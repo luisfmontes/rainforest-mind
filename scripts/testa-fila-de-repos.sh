@@ -190,6 +190,43 @@ prova "com RFM_ROOT em pasta vazia, a fila ao lado do script continua sendo lida
 ok(F.utilizaveis.length===1, "utilizaveis: "+F.utilizaveis.length+" (0 = leu pelo RFM_ROOT, nao pela pasta do plugin)");
 ok(F.utilizaveis[0].candidato==="repo-ao-lado-do-script", F.utilizaveis[0].candidato);
 ok(F.utilizaveis[0].trilha==="enxertar", F.utilizaveis[0].trilha);'
+
+echo
+echo "== 7. SEM RFM_ROOT: o caminho default e o de PRODUCAO, e nao era testado =="
+# Os 16 casos acima fazem `export RFM_ROOT="$W"` no topo do arquivo, entao NENHUM
+# deles exercita o fallback. E o fallback e justamente a condicao real: a tarefa
+# agendada chama `run-vigia.ps1` sem definir RFM_ROOT, e o `run-vigia.ps1` so LE a
+# variavel, nunca a define para o node filho.
+#
+# O que essa cegueira deixou passar, em 2026-08-25: o literal do caminho cravado
+# perdeu as barras escapadas numa reescrita. Em JS `\P` nao e escape e a barra
+# SOME; `\r` E escape e vira carriage-return. `C:\Projetos\rainforest-mind` virou
+# `C:Projetos<CR>ainforest-mind`, o `fs.readFileSync` passou a lancar, o `catch`
+# silencioso devolveu [], e ideias/propostas/erros passaram a reportar ZERO com
+# exit 0. A ancora inteira da ronda morreu calada, e as 16 assercoes seguiram
+# verdes porque nenhuma roda sem a variavel.
+#
+# Este caso roda com `env -u RFM_ROOT` e prova que o default resolve para a pasta
+# ACIMA do script — nao para um literal, que e o que nao ha mais como escapar errado.
+mkdir -p "$S/relatorios"
+cat > "$S/ideias.jsonl" <<'JSONL'
+{"id":"prova-do-fallback","titulo":"ideia so para provar que o default acha o arquivo","status":"plantada","projeto":"rainforest-mind","tipo":"ideia","plantada_em":"2026-08-25"}
+JSONL
+fila <<'JSONL'
+{"candidato": "repo-do-fallback", "ancora": "prova o caminho default", "trilha": "ler", "plantada_em": "2026-08-25"}
+JSONL
+env -u RFM_ROOT node "$S/vigias/dados-batedor-repos.js" --json > "$S/saida.json" 2>"$S/saida.err"
+rc_sem_root=$?
+if [ "$rc_sem_root" = "0" ]; then ok=$((ok+1)); echo "  ok   roda sem RFM_ROOT sem estourar"
+else falhou=$((falhou+1)); echo "  FALHA saiu $rc_sem_root sem RFM_ROOT"; sed 's/^/         /' "$S/saida.err"; fi
+
+prova "sem RFM_ROOT, o ideias.jsonl ao lado do script E lido (o default nao esta quebrado)" '
+ok(D.ideias.length===1, "ideias: "+D.ideias.length+" (0 = o caminho default nao resolve; foi assim que a ancora morreu calada em 2026-08-25)");
+ok(D.ideias[0].id==="prova-do-fallback", D.ideias[0].id);'
+
+prova "sem RFM_ROOT, a fila tambem continua sendo lida" '
+ok(F.utilizaveis.length===1, "utilizaveis: "+F.utilizaveis.length);
+ok(F.utilizaveis[0].trilha==="ler", F.utilizaveis[0].trilha);'
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]
