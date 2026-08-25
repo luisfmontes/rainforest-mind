@@ -153,7 +153,22 @@ function hoje() {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
+/**
+ * Valida slug para impedir path traversal e escapes para fora de DIR_ESTADO.
+ * RECUSA explicitamente (lança erro) quando o slug é vazio ou contém `/`, `\` ou `..`.
+ * Recusa é erro de quem chamou, e corrigir por baixo esconde o defeito.
+ */
+function validarSlug(slug) {
+  if (!slug || typeof slug !== 'string' || slug.trim() === '') {
+    throw new Error('slug vazio ou inválido');
+  }
+  if (slug.includes('/') || slug.includes('\\') || slug.includes('..')) {
+    throw new Error(`slug inválido: contém caracteres proibidos (/, \\, ou ..) — ${slug}`);
+  }
+}
+
 function caminho(slug) {
+  validarSlug(slug);
   return path.join(DIR_ESTADO, `${slug}.json`);
 }
 
@@ -602,6 +617,12 @@ function main() {
   }
 
   const slug = arg('slug');
+  try {
+    validarSlug(slug);
+  } catch (err) {
+    console.error(`erro: ${err.message}`);
+    process.exit(1);
+  }
 
   if (cmd === 'iniciar') {
     if (ler(slug)) {

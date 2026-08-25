@@ -95,6 +95,10 @@ esperado "status invalido para design"    1 $E marcar --slug t2 --estagio design
 esperado "json malformado"                1 $E marcar --slug t2 --estagio revisar --status ok --json "{nao json"
 esperado "slug inexistente"               1 $E ler --slug nao-existe
 esperado "iniciar duas vezes"             1 $E iniciar --slug t2
+esperado "slug com path traversal ../../x" 1 $E iniciar --slug '../../x'
+esperado "slug com barra /: x/y"          1 $E iniciar --slug 'x/y'
+esperado "slug com backslash: x\\y"       1 $E iniciar --slug 'x\y'
+esperado "slug vazio"                     1 $E iniciar --slug ''
 
 echo
 echo "== 5. o estado sobrevive e e retomavel =="
