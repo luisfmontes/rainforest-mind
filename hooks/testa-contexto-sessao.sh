@@ -2270,6 +2270,137 @@ else
 fi
 rm -rf "$REFS_MUT_R17"
 
+
+echo
+echo "8. a LEGENDA VISIVEL (systemMessage) — o unico canal que o usuario VE na abertura"
+# Por que esta secao existe: ate 2026-08-25 os dois hooks de SessionStart emitiam so
+# `additionalContext`, que vai para o contexto do modelo e NAO aparece na tela. O
+# usuario abria a sessao e via nada — sem saber se o plugin subiu, qual foco estava
+# ativo, ou se havia janela dele parada esperando resposta. O estado existia e nao
+# chegava a quem decide com ele.
+#
+# O que esta secao precisa provar:
+#   1. que a legenda diz de qual foco se trata, com a natureza;
+#   2. que ela responde "esta janela esta no foco?" pela PASTA, e que ela CALA
+#      quando o FOCO.md nao declara `Pastas:` — afirmar qualquer das duas ali seria
+#      inventar estado;
+#   3. que ela conta janela parada esperando o usuario (regra 17);
+#   4. que dependencia bloqueada aparece na TELA e nao so no contexto (regra 14);
+#   5. que ela nao carrega as regras — isso e' do outro canal, e repetir custaria a
+#      tela inteira sem mudar nenhuma decisao dele.
+# A mutacao no fim desliga a comparacao de pasta e exige que o item 2 pare de pegar.
+
+cat > "$RAIZ_POSIX/driver-legenda.cjs" <<'EOF'
+const lib = require(process.env.LIB_PATH);
+process.stdout.write(lib.montarLegenda({
+  focoText: process.env.FIX_FOCO || '',
+  entradas: JSON.parse(process.env.FIX_ENTRADAS || '[]'),
+  cwdAtual: process.env.FIX_CWD || '',
+  bloqueios: JSON.parse(process.env.FIX_BLOQUEIOS || '[]'),
+}));
+EOF
+
+legenda() { # foco, entradas(json), cwd, bloqueios(json)
+  LIB_PATH="${LIB_LEGENDA:-$LIB}" FIX_FOCO="$1" FIX_ENTRADAS="${2:-[]}" FIX_CWD="${3:-}" \
+    FIX_BLOQUEIOS="${4:-[]}" node "$RAIZ_POSIX/driver-legenda.cjs"
+}
+
+FOCO_COM_PASTAS='# Foco
+
+## Ativo
+
+**Template ABAPA — V1 funcionando** `[trabalho]` — declarado 2026-08-06.
+Pastas: C:/Microsiga/protheus-totvs-agro/inovacao
+        C:/Microsiga/protheus-totvs-agro/tbc-licensing
+Ociosidade máxima: 15 min.
+'
+
+FOCO_SEM_PASTAS='# Foco
+
+## Ativo
+
+**Descanso do rainforest** `[pessoal]` — declarado 2026-08-20.
+'
+
+S="$(legenda "$FOCO_COM_PASTAS" '[]' 'C:\Projetos\rainforest-mind')"
+checa "legenda nomeia o foco ativo"          tem     "Template ABAPA"            "$S"
+checa "legenda traz a natureza do foco"      tem     "[trabalho]"                "$S"
+checa "janela fora das pastas se declara"    tem     "esta janela está fora dele" "$S"
+checa "legenda NAO repete as regras"         nao_tem "Responder tudo, na ordem"  "$S"
+
+S="$(legenda "$FOCO_COM_PASTAS" '[]' 'C:\Microsiga\protheus-totvs-agro\inovacao\worktrees\x')"
+checa "subpasta do foco conta como dentro"   tem     "esta janela está NO foco"  "$S"
+
+S="$(legenda "$FOCO_SEM_PASTAS" '[]' 'C:\Projetos\rainforest-mind')"
+checa "sem Pastas: a legenda nao afirma dentro" nao_tem "NO foco"                "$S"
+checa "sem Pastas: a legenda nao afirma fora"   nao_tem "fora dele"              "$S"
+checa "foco pessoal aparece com a natureza"     tem     "[pessoal]"              "$S"
+
+S="$(legenda '' '[]' 'C:\Projetos\rainforest-mind')"
+checa "sem foco declarado a legenda ainda pinta" tem    "rainforest-mind ativo"  "$S"
+checa "sem foco declarado ensina o comando"      tem    "/foco"                  "$S"
+
+ENTRADAS='[{"cwd":"C:/a","trabalhando":true,"minutos":7},{"cwd":"C:/b","trabalhando":false,"minutos":81},{"cwd":"C:/c","trabalhando":false,"minutos":5}]'
+S="$(legenda "$FOCO_COM_PASTAS" "$ENTRADAS" 'C:\Projetos\rainforest-mind')"
+checa "conta as janelas vivas"               tem     "3 janela(s) viva(s)"       "$S"
+checa "separa quem esta trabalhando"         tem     "1 com Claude trabalhando"  "$S"
+checa "conta quem espera o usuario"          tem     "2 esperando você"          "$S"
+checa "diz ha quanto tempo a mais parada"    tem     "81 min"                    "$S"
+
+S="$(legenda "$FOCO_COM_PASTAS" '[]' 'C:\Projetos\rainforest-mind' '["bridge WhatsApp FORA (http://localhost:3005/api) — envio indisponível"]')"
+checa "bloqueio da regra 14 aparece na tela" tem     "bridge WhatsApp FORA"      "$S"
+checa "bloqueio diz o efeito pratico"        tem     "envio indisponível"        "$S"
+
+# Teto: a legenda e' o que o usuario le de relance. Parede de texto para de ser lida,
+# e a partir dai ela custa atencao sem devolver estado.
+S="$(legenda "$FOCO_COM_PASTAS" '[]' 'C:\Projetos\rainforest-mind')"
+BYTES="$(printf '%s' "$S" | wc -c)"
+if [ "$BYTES" -le 700 ]; then
+  ok=$((ok+1)); echo "  ok    legenda cabe no teto de 700 B (mediu $BYTES B)"
+else
+  falhou=$((falhou+1)); echo "  FALHA legenda estourou o teto de 700 B (mediu $BYTES B)"
+fi
+
+MUITAS="$(node -e 'const a=[];for(let i=0;i<40;i++)a.push({cwd:"C:/p"+i,trabalhando:false,minutos:i});process.stdout.write(JSON.stringify(a))')"
+S="$(legenda "$FOCO_COM_PASTAS" "$MUITAS" 'C:\Projetos\rainforest-mind')"
+BYTES="$(printf '%s' "$S" | wc -c)"
+if [ "$BYTES" -le 700 ]; then
+  ok=$((ok+1)); echo "  ok    40 janelas nao estouram o teto (mediu $BYTES B)"
+else
+  falhou=$((falhou+1)); echo "  FALHA 40 janelas estouraram o teto (mediu $BYTES B)"
+fi
+
+echo "  -- SABOTAGEM 12: fazer a legenda afirmar SEMPRE que a janela esta no foco"
+# A assercao que importa aqui nao e' "tem texto", e' "o texto e' VERDADE". Uma legenda
+# que diz "esta janela esta NO foco" para toda janela passaria em qualquer checagem de
+# presenca, e mentiria justamente na sessao em que ele precisa do aviso de desvio.
+# O mutante troca a comparacao de pasta por `true` e o teste do item 2 tem que cair.
+LIB_MUT_LEGENDA="$RAIZ_POSIX/contexto-sessao-mut-legenda.cjs"
+cp "$LIB" "$LIB_MUT_LEGENDA"
+node -e '
+const fs = require("fs");
+const alvo = process.argv[1];
+let t = fs.readFileSync(alvo, "utf8");
+const achar = "const dentro = pastas.some((p) => aqui === p || aqui.startsWith(p + \u0027/\u0027));";
+const trocar = "const dentro = true;";
+if (!t.includes(achar)) { console.error("ANCORA NAO BATE"); process.exit(1); }
+fs.writeFileSync(alvo, t.replace(achar, trocar));
+' "$LIB_MUT_LEGENDA"
+EXIT_SABOTA12=$?
+if [ "$EXIT_SABOTA12" != "0" ]; then
+  falhou=$((falhou+1))
+  echo "  FALHA ANCORA NAO BATE na sabotagem 12 (exit $EXIT_SABOTA12) — a copia intocada nao prova nada"
+else
+  S_MUT="$(LIB_LEGENDA="$LIB_MUT_LEGENDA" legenda "$FOCO_COM_PASTAS" '[]' 'C:\Projetos\rainforest-mind')"
+  echo "  (saida do mutante: $(echo "$S_MUT" | head -1))"
+  if echo "$S_MUT" | grep -qF "esta janela está NO foco"; then
+    ok=$((ok+1)); echo "  ok    mutacao expos que a assercao mede a PASTA, e nao so a presenca de texto"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — desligar a comparacao de pasta nao mudou a legenda"
+  fi
+fi
+rm -f "$LIB_MUT_LEGENDA"
+
 echo
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
