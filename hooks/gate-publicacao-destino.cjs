@@ -64,15 +64,24 @@ function estaGitignorado(dir, arquivo) {
 }
 
 /**
- * Detecta se o arquivo tem o marcador que dispensa a conferência de publicação.
+ * Detecta se o arquivo **em disco** tem o marcador que dispensa a conferência.
  * Marcador: qualquer linha contendo `rainforest-gate: dados-de-exemplo`.
  *
- * Razão: alguns arquivos de teste (como testa-conferir-publicacao.sh) PRECISAM conter
- * dados sensíveis reais de exemplo para testar a trava. O marcador fica junto do arquivo,
- * aparece no diff, e exige decisão deliberada — nenhuma lista de caminhos cresce em silêncio.
+ * LEITURA DO DISCO, não do conteúdo que chega: isto fecha dois furos:
+ *   - Edit no arquivo com marcador passa, mesmo se new_string não o tem;
+ *   - Write de arquivo novo com marcador embutido é barrado, porque não tem arquivo em disco.
+ *
+ * Arquivo inexistente, sem permissão ou erro de leitura → sem marcador → segue para
+ * conferência. Errar para o lado de conferir, nunca de liberar.
  */
-function temMarcadorDados(conteudo) {
-  return /rainforest-gate:\s*dados-de-exemplo/i.test(conteudo);
+function temMarcadorDados(caminhoDoArquivo) {
+  try {
+    const conteudo = fs.readFileSync(caminhoDoArquivo, "utf8");
+    return /rainforest-gate:\s*dados-de-exemplo/i.test(conteudo);
+  } catch {
+    // Arquivo inexistente, sem permissão, ou erro de leitura: sem marcador
+    return false;
+  }
 }
 
 /**
@@ -178,7 +187,7 @@ function main() {
 
         if (estaGitignorado(dir, a)) continue; // gitignorado passa
 
-        if (temMarcadorDados(c)) continue; // marcador de dados-de-exemplo passa
+        if (temMarcadorDados(a)) continue; // marcador de dados-de-exemplo passa
 
         const resultado = conferirConteudo(c);
         if (resultado && resultado.achados && resultado.achados.length) {
@@ -204,7 +213,7 @@ function main() {
   if (estaGitignorado(dir, arquivo)) process.exit(0); // ignorado passa
 
   // Confere se tem marcador de dados-de-exemplo (para testes de bateria)
-  if (temMarcadorDados(conteudo)) process.exit(0); // marcador dispensa conferência
+  if (temMarcadorDados(arquivo)) process.exit(0); // marcador dispensa conferência
 
   // Confere se o arquivo está na raiz do repo ou em subdiretório
   try {

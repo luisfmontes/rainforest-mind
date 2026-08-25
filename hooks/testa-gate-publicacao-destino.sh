@@ -146,22 +146,15 @@ fi
 rm "$R/.rainforest-gate-off"
 
 echo
-echo "== Teste do marcador rainforest-gate: dados-de-exemplo =="
-CONTEUDO_COM_MARCADOR="#!/bin/bash
-# rainforest-gate: dados-de-exemplo
-# Bateria com dados de teste
-jid=\"$JID_REAL\"
-tel=\"$TEL_REAL\"
-echo OK"
-gate "Write com marcador + JID/tel → passa (exit 0)" 0 "$(write "$R/bateria-teste.sh" "$CONTEUDO_COM_MARCADOR")"
+echo "== Teste do marcador: Edit em arquivo com marcador em disco ===="
+# Arquivo com marcador EM DISCO passa, mesmo se new_string não o tem
+gate "Edit no scripts/testa-conferir-publicacao.sh (marcador em disco) + JID → passa (exit 0)" 0 "$(printf '{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"scripts/testa-conferir-publicacao.sh\",\"old_string\":\"x\",\"new_string\":\"jid=\\\"5547991234567@s.whatsapp.net\\\"\"}}' | sed 's|scripts/|'"$(esc "$SRC")"'/scripts/|')"
 
 echo
-echo "== Teste que marcador não vaza para arquivo vizinho =="
-CONTEUDO_SEM_MARCADOR="#!/bin/bash
-# Arquivo sem marcador
-jid=\"$JID_REAL\"
-echo OK"
-gate "Write sem marcador + JID → barrado (exit 2)" 2 "$(write "$R/outro-script.sh" "$CONTEUDO_SEM_MARCADOR")"
+echo "== Teste do marcador: Write de arquivo novo com marcador no conteúdo =="
+# Write de arquivo novo: marcador NO CONTEÚDO, mas NÃO EM DISCO = barrado
+gate "Write arquivo novo (sem em disco) com marcador no conteúdo + JID → barrado (exit 2)" 2 "$(write "$R/arquivo-com-marcador.sh" "# rainforest-gate: dados-de-exemplo
+jid=\"5547991234567@s.whatsapp.net\"")"
 
 echo
 echo "== Verificação: gate-staging-total continua verde =="
