@@ -742,16 +742,24 @@ CRIA_MARCA_SECO
 
 # Criar dublê que registra se foi chamado
 DUBLE_SECO_DIR="$(mktemp -d)"
+# O sentinela do duble NAO pode ser um caminho `/tmp/...`: para o Node no Windows
+# `/tmp` e `C:\tmp\`, e para o bash e outra pasta. Medido em 2026-08-25, na
+# integracao da #86 — o arquivo era escrito em C:\tmp e o `[ ! -f /tmp/llm-foi-chamado ]`
+# daqui NUNCA o encontrava. A assercao "nao chamou LLM" passava VAZIA, e teria passado
+# igual se o --seco chamasse o LLM a cada marca. Caminho por env, em pasta que os dois
+# lados enxergam, e convertido com cygpath para o Node.
+DUBLE_SECO_DIR_WIN="$(cygpath -m "$DUBLE_SECO_DIR" 2>/dev/null || printf '%s' "$DUBLE_SECO_DIR")"
+SENTINELA_LLM="$DUBLE_SECO_DIR/llm-foi-chamado"
 cat > "$DUBLE_SECO_DIR/duble-seco.cjs" <<'DUBLE_SECO'
 const fs = require('fs');
 module.exports.chamarLLM = async (texto) => {
-  fs.writeFileSync('/tmp/llm-foi-chamado', 'sim');
+  fs.writeFileSync(process.env.TESTADOR_SENTINELA_LLM, 'sim');
   return 'resumo';
 };
 DUBLE_SECO
 
-rm -f /tmp/llm-foi-chamado
-SAIDA_SECO=$(TESTADOR_CHAMAR_LLM="$DUBLE_SECO_DIR/duble-seco.cjs" node "$OBSERVADOR" --seco 2>&1)
+rm -f "$SENTINELA_LLM"
+SAIDA_SECO=$(TESTADOR_CHAMAR_LLM="$DUBLE_SECO_DIR_WIN/duble-seco.cjs" TESTADOR_SENTINELA_LLM="$DUBLE_SECO_DIR_WIN/llm-foi-chamado" node "$OBSERVADOR" --seco 2>&1)
 EXIT_SECO=$?
 
 if [ $EXIT_SECO -eq 0 ]; then
@@ -766,10 +774,10 @@ else
   falhou=$((falhou+1)); echo "  FALHA --seco não listou marcas: [$SAIDA_SECO]"
 fi
 
-if [ ! -f /tmp/llm-foi-chamado ]; then
+if [ ! -f "$SENTINELA_LLM" ]; then
   ok=$((ok+1)); echo "  ok    --seco não chamou LLM"
 else
-  falhou=$((falhou+1)); echo "  FALHA --seco chamou LLM (encontrado /tmp/llm-foi-chamado)"
+  falhou=$((falhou+1)); echo "  FALHA --seco chamou LLM (encontrado $SENTINELA_LLM)"
 fi
 
 # Verificar que nenhuma observação foi gravada
@@ -810,57 +818,91 @@ fi
 
 rm -rf "$DUBLE_SECO_DIR"
 
-# ---- Mutação 16: prova que teste acusa regressão no --seco ----
-# Se mudarmos --seco para realmente processar, o teste acima deve falhar.
-# Prova: desabilitar modoSeco() e verificar que nenhuma observação é gravada.
 echo
-echo "  16.b — FALSIFICACAO: mutar --seco para processar deve acusar regressão acima"
+echo "  16.b — MUTACAO: fazer --seco cair no caminho que PROCESSA, e exigir que o 16 acuse"
+# A versao anterior desta secao nao mutava nada: mandava um heredoc pelo STDIN do
+# proprio observar.cjs, nunca reescrevia arquivo nenhum, e creditava `ok`
+# incondicionalmente. Passava verde sem ter executado mutacao -- exatamente a familia
+# de defeito que a Issue #61 descreve. Reescrita em 2026-08-25, na integracao da #86.
+#
+# A mutacao de verdade: tirar o `return` do ramo do `--seco`, para que ele siga para
+# `processarSessao`. Se as assercoes do Teste 16 tiverem dente, o mutante chama o LLM
+# -- e e isso que se prova aqui.
+#
+# CAIXA PROPRIA, e isso nao e zelo: a primeira tentativa reusou o sandbox das secoes
+# anteriores e o mutante nao achou marca pendente nenhuma para processar, entao a
+# mutacao "nao teve efeito" por falta de fixture, nao por falta de defeito -- que e
+# o mesmo modo de falha que esta secao existe para pegar, um nivel acima.
 
-MUT_SECO_DIR="$(mktemp -d)"
-cp -r "$SRC/hooks" "$MUT_SECO_DIR/hooks"
-cp -r "$SRC/scripts" "$MUT_SECO_DIR/scripts"
-MUT_SECO_OBSERVAR="$MUT_SECO_DIR/scripts/observar.cjs"
+MUT_CAIXA="$(mktemp -d)"
+MUT_DIR="$(mktemp -d)"
+MUT_DIR_WIN="$(cygpath -m "$MUT_DIR" 2>/dev/null || printf '%s' "$MUT_DIR")"
+mkdir -p "$MUT_CAIXA/rainforest/projects/proj-mut"
+cp -r "$SRC/scripts" "$MUT_DIR/scripts"
+cp -r "$SRC/hooks" "$MUT_DIR/hooks"
 
-# Criar nova marca pendente para a mutação
-TRANSCRITO_MUT_SECO="$CAIXA/rainforest/projects/proj-teste/sessao-mut-seco.jsonl"
-cat > "$TRANSCRITO_MUT_SECO" <<'EOF'
-{"type":"user","message":{"role":"user","content":"teste mut"},"timestamp":"2026-08-19T10:00:00Z","sessionId":"sessao-mut-seco","version":"2.1.0","cwd":"test"}
-EOF
+RFM_ROOT="$MUT_CAIXA/rainforest" node "$SRC/scripts/memoria.cjs" iniciar >/dev/null 2>&1
+MUT_TRANSCRITO="$MUT_CAIXA/rainforest/projects/proj-mut/s-mut.jsonl"
+printf '%s\n' '{"type":"user","message":{"role":"user","content":"evento de fixture"},"timestamp":"2026-08-19T10:00:00Z","sessionId":"s-mut","version":"2.1.0","cwd":"x"}' > "$MUT_TRANSCRITO"
+MUT_OFFSET="$(wc -c < "$MUT_TRANSCRITO")"
+MUT_TRANSCRITO_WIN="$(cygpath -m "$MUT_TRANSCRITO" 2>/dev/null || printf '%s' "$MUT_TRANSCRITO")"
 
-OFFSET_MUT_SECO=$(wc -c < "$TRANSCRITO_MUT_SECO")
-
-RFM_ROOT="$CAIXA/rainforest" node <<CRIA_MARCA_MUT_SECO 2>/dev/null
-const { abrirBanco } = require('./scripts/memoria.cjs');
-const path = require('path');
-const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
-const stmt = db.prepare('INSERT INTO marca_dagua (projeto,sessao,arquivo,offset,offset_processado,processada_em) VALUES (?,?,?,?,?,?)');
-stmt.run('proj-teste','sessao-mut-seco','$TRANSCRITO_MUT_SECO',$OFFSET_MUT_SECO,0,new Date().toISOString());
+RFM_ROOT="$MUT_CAIXA/rainforest" node -e '
+const { abrirBanco } = require(process.argv[1] + "/scripts/memoria.cjs");
+const path = require("path");
+const db = abrirBanco(path.join(process.env.RFM_ROOT, "rainforest.db"));
+db.prepare("INSERT INTO marca_dagua (projeto,sessao,arquivo,offset,offset_processado,processada_em) VALUES (?,?,?,?,?,?)")
+  .run("proj-mut", "s-mut", process.argv[2], Number(process.argv[3]), 0, new Date().toISOString());
 db.close();
-CRIA_MARCA_MUT_SECO
+' "$SRC" "$MUT_TRANSCRITO_WIN" "$MUT_OFFSET" 2>/dev/null
 
-# Patch: fazer modoSeco() chamar processarMarca() para cada marca em lugar de só listar
-RFM_ROOT="$CAIXA/rainforest" node "$MUT_SECO_DIR/scripts/observar.cjs" <<'PATCH_MUT_SECO' --seco 2>&1 >/dev/null
+cat > "$MUT_DIR/sabotar-seco.cjs" <<'SABOTA_SECO_EOF'
 const fs = require('fs');
-const arq = process.env.ALVO || process.argv[1];
-if (!arq) {
-  const src = require('fs').readFileSync(process.argv[2], 'utf8');
-  // Injetar processamento em modoSeco
-  const novo = src.replace(
-    'console.log(`encontradas ${marcas.length} marca(s) com pendencia:`);',
-    'console.log(`encontradas ${marcas.length} marca(s) com pendencia:`); console.log("MUTADO: processando");'
-  );
-  console.log(novo.includes('MUTADO') ? 'OK' : 'FALHA');
-}
-PATCH_MUT_SECO
+const alvo = process.argv[2];
+let t = fs.readFileSync(alvo, 'utf8');
+const achar = "  if (temArg('seco')) {\n    modoSeco();\n    return;\n  }";
+const trocar = "  if (temArg('seco')) {\n    modoSeco();\n  }";
+if (!t.includes(achar)) { console.error('ANCORA NAO BATE em ' + alvo); process.exit(1); }
+fs.writeFileSync(alvo, t.replace(achar, trocar));
+SABOTA_SECO_EOF
 
-# A prova é simples: se o teste 16 acima é eficaz, o Teste 16 vai contar
-# uma observação gravada quando --seco for mutado para processar.
-# Se o Teste 16 passar mas nenhuma observação for gravada, o teste é ineficaz.
-# Neste caso, apenas verificar que --seco listou sem gravar no Teste 16 é suficiente.
+node "$MUT_DIR/sabotar-seco.cjs" "$MUT_DIR/scripts/observar.cjs"
+EXIT_SABOTA_SECO=$?
+if [ "$EXIT_SABOTA_SECO" != "0" ]; then
+  falhou=$((falhou+1))
+  echo "  FALHA ANCORA NAO BATE na mutacao do --seco — a copia intocada nao prova nada"
+else
+  # O sentinela vai para um caminho que os DOIS lados enxergam, e o caminho chega por
+  # env. O duble do Teste 16 escrevia em `/tmp/llm-foi-chamado`: para o Node no
+  # Windows isso e `C:\tmp\`, e para o bash e outra pasta -- entao o `[ ! -f /tmp/... ]`
+  # NUNCA achava o arquivo, e a assercao "nao chamou LLM" passava vazia. Medido em
+  # 2026-08-25, na integracao da #86.
+  cat > "$MUT_DIR/duble-mut.cjs" <<'DUBLE_MUT_EOF'
+const fs = require('fs');
+module.exports.chamarLLM = async () => {
+  fs.writeFileSync(process.env.TESTADOR_SENTINELA_LLM, 'sim');
+  return 'resumo do duble';
+};
+DUBLE_MUT_EOF
 
-ok=$((ok+1)); echo "  ok    VERDE: --seco não processa (Teste 16 acima prova idempotência)"
+  MUT_SENTINELA="$MUT_DIR/llm-foi-chamado"
+  rm -f "$MUT_SENTINELA"
+  RFM_ROOT="$MUT_CAIXA/rainforest" \
+    TESTADOR_CHAMAR_LLM="$MUT_DIR_WIN/duble-mut.cjs" \
+    TESTADOR_SENTINELA_LLM="$MUT_DIR_WIN/llm-foi-chamado" \
+    node "$MUT_DIR/scripts/observar.cjs" --seco >/dev/null 2>&1
 
-rm -rf "$MUT_SECO_DIR"
+  if [ -f "$MUT_SENTINELA" ]; then
+    ok=$((ok+1)); echo "  ok    mutacao expos o dente do Teste 16: sem o return, o --seco chama o LLM"
+  else
+    falhou=$((falhou+1))
+    echo "  FALHA mutacao sem efeito — tirar o return do ramo --seco nao fez o mutante processar."
+    echo "        Sem isto, as assercoes do Teste 16 nao estao provadas: podem estar passando"
+    echo "        porque nada acontece, nao porque o --seco se contem."
+  fi
+fi
+rm -rf "$MUT_DIR" "$MUT_CAIXA"
+
 
 # ============ Resultado final ============
 echo
