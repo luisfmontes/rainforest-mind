@@ -2342,8 +2342,8 @@ checa "sem foco declarado ensina o comando"      tem    "/foco"                 
 
 ENTRADAS='[{"cwd":"C:/a","trabalhando":true,"minutos":7},{"cwd":"C:/b","trabalhando":false,"minutos":81},{"cwd":"C:/c","trabalhando":false,"minutos":5}]'
 S="$(legenda "$FOCO_COM_PASTAS" "$ENTRADAS" 'C:\Projetos\rainforest-mind')"
-checa "conta as janelas vivas"               tem     "3 janela(s) viva(s)"       "$S"
-checa "separa quem esta trabalhando"         tem     "1 com Claude trabalhando"  "$S"
+checa "conta as janelas vivas"               tem     "3 janelas"                 "$S"
+checa "separa quem esta trabalhando"         tem     "1 trabalhando"             "$S"
 checa "conta quem espera o usuario"          tem     "2 esperando você"          "$S"
 checa "diz ha quanto tempo a mais parada"    tem     "81 min"                    "$S"
 
@@ -2368,6 +2368,38 @@ if [ "$BYTES" -le 700 ]; then
   ok=$((ok+1)); echo "  ok    40 janelas nao estouram o teto (mediu $BYTES B)"
 else
   falhou=$((falhou+1)); echo "  FALHA 40 janelas estouraram o teto (mediu $BYTES B)"
+fi
+
+# Largura: a legenda e a UNICA coisa que ele VE, e quem corta na tela e o terminal,
+# que conta CARACTERE. O harness ainda prefixa `SessionStart:startup says: ` (27
+# caracteres) na primeira linha do bloco. Ate 2026-08-25 o teto era em BYTES (150), e
+# na captura de tela dele a linha saiu com 143 caracteres + 27 de prefixo = 170 de
+# largura, cortada com `…` no meio da frase. Parametro cuja unidade nao e a unidade do
+# problema continua parecendo certo enquanto mente — mesma familia do AVANCOS_MAX_BYTES.
+FOCO_TITULO_LONGO='# Foco
+
+## Ativo
+
+**Um titulo de foco deliberadamente longo para estourar qualquer teto razoavel de largura de terminal e forcar o corte** `[trabalho]` — declarado 2026-08-25.
+Pastas: C:/algum/lugar
+Ociosidade máxima: 15 min.
+'
+S="$(legenda "$FOCO_TITULO_LONGO" "$MUITAS" 'C:\Projetos\rainforest-mind' '["bridge WhatsApp FORA (http://localhost:3005/api) — envio de mensagem indisponivel para sempre e ainda por cima com um texto longo demais"]')"
+LARGURA_MAX=0
+while IFS= read -r linha; do
+  n="$(printf '%s' "$linha" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(String(Array.from(s).length)))")"
+  [ "$n" -gt "$LARGURA_MAX" ] && LARGURA_MAX="$n"
+done <<< "$S"
+if [ "$LARGURA_MAX" -le 90 ]; then
+  ok=$((ok+1)); echo "  ok    nenhuma linha da legenda passa de 90 caracteres (maior: $LARGURA_MAX)"
+else
+  falhou=$((falhou+1)); echo "  FALHA linha de $LARGURA_MAX caracteres — o terminal vai cortar com reticencia"
+fi
+
+if echo "$S" | grep -q "…"; then
+  ok=$((ok+1)); echo "  ok    o corte de largura e ANUNCIADO com reticencia (nao some calado)"
+else
+  falhou=$((falhou+1)); echo "  FALHA titulo longo nao foi cortado, ou foi cortado em silencio"
 fi
 
 echo "  -- SABOTAGEM 12: fazer a legenda afirmar SEMPRE que a janela esta no foco"

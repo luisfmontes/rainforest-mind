@@ -122,6 +122,13 @@ const TETOS = {
    */
   LEGENDA_MAX_BYTES: 700,
   /**
+   * Teto de UMA linha da legenda, em CARACTERES — não em bytes, e a unidade é o
+   * ponto: quem corta na tela é o TERMINAL, que conta caractere, e o harness ainda
+   * prefixa `SessionStart:startup says: ` (27 caracteres) na primeira linha do bloco.
+   * 90 cabe no pior caso (primeira linha, com prefixo, terminal de 120 colunas).
+   */
+  LEGENDA_LINHA_MAX_CHARS: 90,
+  /**
    * Piso do bloco de regras. Abaixo disto considera-se que NÃO carregou.
    * Não é `if (!regras)`: SKILL.md truncado ou heading renomeado produzem
    * bloco curto e não-vazio, e essa falha é tão grave quanto o vazio.
@@ -948,6 +955,20 @@ function limitarBytes(texto, maxBytes, nomeDoBloco) {
 }
 
 /** Corta em `max` BYTES sem partir um caractere multibyte no meio. */
+/**
+ * Corta em CARACTERES (code points), com reticencia quando cortou.
+ *
+ * `Array.from` e nao `slice`: emoji fora do plano basico ocupa dois code units, e
+ * cortar por indice de string parte o par substituto no meio — o terminal desenha o
+ * losango de caractere invalido, que e pior que a linha longa que se queria evitar.
+ */
+function cortarCaracteres(texto, maxChars) {
+  const s = String(texto || '');
+  const chars = Array.from(s);
+  if (chars.length <= maxChars) return s;
+  return chars.slice(0, Math.max(0, maxChars - 1)).join('').trimEnd() + '…';
+}
+
 function cortarBytes(texto, max) {
   const s = String(texto || '');
   if (Buffer.byteLength(s, 'utf8') <= max) return s;
@@ -1451,11 +1472,16 @@ function montarLegenda(o) {
   if (entradas.length) {
     const esperando = entradas.filter((e) => !e.trabalhando);
     const trabalhando = entradas.length - esperando.length;
-    const partes = [`${entradas.length} janela(s) viva(s)`];
-    if (trabalhando) partes.push(`${trabalhando} com Claude trabalhando`);
+    // Redação enxuta de propósito: a versão longa ("N janela(s) viva(s) · N com Claude
+    // trabalhando · N esperando você (a mais parada há N min)") batia em 90 caracteres
+    // com 5 janelas e saía cortada justamente no número dos minutos, que é o dado que
+    // decide se a janela do foco esfriou. Cortar a informação mais nova para caber a
+    // moldura é o pior corte possível.
+    const partes = [`${entradas.length} janelas`];
+    if (trabalhando) partes.push(`${trabalhando} trabalhando`);
     if (esperando.length) {
       const maisParada = esperando.reduce((n, e) => Math.max(n, Number.isFinite(e.minutos) ? e.minutos : 0), 0);
-      partes.push(`${esperando.length} esperando você (a mais parada há ${maisParada} min)`);
+      partes.push(`${esperando.length} esperando você (mais parada: ${maisParada} min)`);
     }
     linhas.push(`🪟 ${partes.join(' · ')}`);
   }
@@ -1464,7 +1490,13 @@ function montarLegenda(o) {
   // que a regra rodou — e este é o canal em que ele de fato lê o anúncio.
   for (const b of bloqueios) linhas.push(`⚠️ ${b}`);
 
-  return limitarBytes(linhas.join('\n'), teto, 'Legenda');
+  // Cada linha cortada por CARACTERE antes do teto do bloco, porque quem corta na
+  // tela é o TERMINAL, que conta caractere — e o harness ainda prefixa
+  // `SessionStart:startup says: ` (27 caracteres) na primeira linha. Sem isto, um
+  // título de foco longo saía cortado com `…` no meio da frase, e a linha das
+  // janelas ficava ilegível. Medido em captura de tela de 2026-08-25.
+  const cabidas = linhas.map((l) => cortarCaracteres(l, TETOS.LEGENDA_LINHA_MAX_CHARS));
+  return limitarBytes(cabidas.join('\n'), teto, 'Legenda');
 }
 
 module.exports = {
@@ -1479,6 +1511,7 @@ module.exports = {
   limitar,
   limitarBytes,
   cortarBytes,
+  cortarCaracteres,
   priorizarFoco,
   cortarIdentidade,
   focoSoTemPonteiro,
