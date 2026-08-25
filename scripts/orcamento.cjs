@@ -23,6 +23,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const { avaliarFolga } = require('../hooks/lib/folga.cjs');
 
 const LOCAL = path.resolve(__dirname, '..');
 
@@ -177,14 +178,30 @@ function main() {
   console.log(`Agentes (descriptions): ${bytesAgentes} B`);
   console.log(`Total: ${totalBytes} B`);
 
-  // Verifica tetos e acusa estouros
+  // Verifica tetos e acusa estouros/avisos
   let tetoExcedido = false;
-  if (bytesHook > tetoHook) {
-    console.error(`Estouro do teto do hook: ${bytesHook} B > ${tetoHook} B (+${bytesHook - tetoHook} B)`);
+
+  // Avaliar hook
+  const resultadoHook = avaliarFolga(bytesHook, tetoHook, {
+    nome: 'teto do hook',
+    alternativas: ['tirar do additionalContext']
+  });
+  if (resultadoHook.mensagem) {
+    console.error(resultadoHook.mensagem);
+  }
+  if (resultadoHook.estado === 'estouro') {
     tetoExcedido = true;
   }
-  if (totalBytes > tetoAgregado) {
-    console.error(`Estouro do teto agregado: ${totalBytes} B > ${tetoAgregado} B (+${totalBytes - tetoAgregado} B)`);
+
+  // Avaliar agregado
+  const resultadoAgregado = avaliarFolga(totalBytes, tetoAgregado, {
+    nome: 'agregado',
+    alternativas: ['tirar do FOCO', 'subir o teto']
+  });
+  if (resultadoAgregado.mensagem) {
+    console.error(resultadoAgregado.mensagem);
+  }
+  if (resultadoAgregado.estado === 'estouro') {
     tetoExcedido = true;
   }
 

@@ -116,6 +116,20 @@ else
 fi
 BAT
 
+# Bateria que roda ~2s no baseline e morre em milissegundos quando há erro de shell.
+# Usada no caso 10.
+cat > "$CAIXA/bateria-lenta-ou-falha.sh" <<'BAT'
+#!/bin/bash
+# Se o arquivo contiver ERRO-MUTACAO (adicionada pela mutacao),
+# sai quase instantaneamente com erro (simula corte de shell).
+# Senao, dorme 2 segundos (simula trabalho) e sai com sucesso.
+if grep -q 'ERRO-MUTACAO' shell-lento.cjs; then
+  exit 1
+fi
+sleep 2
+exit 0
+BAT
+
 PRISTINO="$S/fonte.pristino"
 cp "$CAIXA/fonte.cjs" "$PRISTINO"
 
@@ -252,6 +266,107 @@ exige 1 "arquivo inexistente recusa" \
   CHK --arquivo nao-existe.cjs --de 'a' --para 'b' --bateria 'bash bateria.sh'
 exige 1 "falta --bateria recusa" \
   CHK --arquivo fonte.cjs --de 'a' --para 'b'
+
+echo
+echo "== 10. suspeita de corte de shell: pós-mutação desproporcionalmente curta =="
+# Fixture que simula o defeito de 2026-08-24: baseline ~2s, pós-mutação morre em ~10ms
+cat > "$CAIXA/shell-lento.cjs" <<'FONTE'
+#!/usr/bin/env node
+const valor = process.argv[2] || '';
+console.log('ok');
+FONTE
+cp "$CAIXA/shell-lento.cjs" "$S/shell-lento.pristino"
+
+exige 5 "pós-mutação curta demais (< 10% baseline) dispara exit=5" \
+  CHK --arquivo shell-lento.cjs --de "console.log('ok');" \
+      --para "console.log('ERRO-MUTACAO'); console.log('ok');" \
+      --bateria 'bash bateria-lenta-ou-falha.sh' --timeout 5000
+tem "relata SUSPEITA DE CORTE DE SHELL" "SUSPEITA DE CORTE"
+tem "mostra as duas duracoes" "Baseline:"
+tem "diz como confirmar" "Confirme rodando"
+
+if ! cmp -s "$CAIXA/shell-lento.cjs" "$S/shell-lento.pristino"; then
+  falhou=$((falhou+1)); printf '  FALHA: shell-lento.cjs nao foi restaurado apos recusa\n'
+  cp "$S/shell-lento.pristino" "$CAIXA/shell-lento.cjs"
+else
+  ok=$((ok+1)); printf '  ok    shell-lento.cjs restaurado apos recusa\n'
+fi
+
+echo
+echo "== 12. baseline abaixo do piso absoluto (1000ms) — heurística não dispara =="
+# Bateria que roda rápido (~100ms) no baseline. Mesmo que pós-mutação saia em ~10ms
+# (razão 0.1 = 10%), o baseline abaixo de 1s faz a heurística NÃO disparar.
+cat > "$CAIXA/bateria-rapida.sh" <<'BAT'
+#!/bin/bash
+# Se tem marca, sai quase instantaneamente com erro; senao, sai rápido em 100ms
+if grep -q 'MARCA-RÁPIDO' fonte-rapida.cjs; then
+  exit 1
+fi
+sleep 0.1
+exit 0
+BAT
+
+cat > "$CAIXA/fonte-rapida.cjs" <<'FONTE'
+#!/usr/bin/env node
+const x = 1;
+FONTE
+cp "$CAIXA/fonte-rapida.cjs" "$S/fonte-rapida.pristino"
+
+exige 0 "baseline < 1s não dispara heurística mesmo com razão 0.1" \
+  CHK --arquivo fonte-rapida.cjs --de "const x = 1;" --para "const x = 1; // MARCA-RÁPIDO" \
+      --bateria 'bash bateria-rapida.sh' --timeout 5000
+tem "aprova normalmente" "ok: bateria VERMELHA"
+nao_tem "não reclama de corte" "SUSPEITA"
+tem "baseline e pós no log" "Baseline:"
+
+if ! cmp -s "$CAIXA/fonte-rapida.cjs" "$S/fonte-rapida.pristino"; then
+  falhou=$((falhou+1)); printf '  FALHA: fonte-rapida.cjs nao foi restaurado apos mutacao\n'
+  cp "$S/fonte-rapida.pristino" "$CAIXA/fonte-rapida.cjs"
+else
+  ok=$((ok+1)); printf '  ok    fonte-rapida.cjs restaurado apos mutacao\n'
+fi
+
+echo
+echo "== 13. bateria VERDE e rápida: o 2 vence o 5, e a ordem é o que decide =="
+# A heurística de corte de shell (caso 10) e a recusa por bateria verde (caso 4)
+# podem disparar na MESMA execução: pós-mutação verde E desproporcionalmente
+# rápida. O veredito correto é 2 — "esta bateria não mede o conserto" — porque
+# bateria que aprovou o fonte invertido já está condenada, e a duração não muda
+# isso. O 5 diria "a bateria saiu != 0, mas rápido demais", afirmando sobre a
+# execução algo que não aconteceu.
+#
+# Este caso existe porque a primeira versão da heurística ficava ANTES do ramo
+# do exit 2 e devolvia 5 aqui. Inverter a ordem é o conserto; sem este caso,
+# alguém inverte de novo e a suíte não acusa.
+cat > "$CAIXA/bateria-verde-rapida.sh" <<'BAT'
+#!/bin/bash
+# Com a marca (fonte mutado): sai VERDE quase instantaneamente.
+# Sem a marca (baseline): sai VERDE, porém devagar — acima do piso de 1 s.
+if grep -q 'MARCA-VERDE-RAPIDO' fonte-verde.cjs; then
+  exit 0
+fi
+sleep 2
+exit 0
+BAT
+
+cat > "$CAIXA/fonte-verde.cjs" <<'FONTE'
+#!/usr/bin/env node
+const y = 2;
+FONTE
+cp "$CAIXA/fonte-verde.cjs" "$S/fonte-verde.pristino"
+
+exige 2 "verde e rápida recusa por bateria VERDE (2), não por corte de shell (5)" \
+  CHK --arquivo fonte-verde.cjs --de "const y = 2;" --para "const y = 2; // MARCA-VERDE-RAPIDO" \
+      --bateria 'bash bateria-verde-rapida.sh' --timeout 10000
+tem "acusa a bateria verde" "RECUSADO: bateria VERDE"
+nao_tem "não confunde com corte de shell" "SUSPEITA DE CORTE"
+
+if ! cmp -s "$CAIXA/fonte-verde.cjs" "$S/fonte-verde.pristino"; then
+  falhou=$((falhou+1)); printf '  FALHA: fonte-verde.cjs nao foi restaurado apos recusa\n'
+  cp "$S/fonte-verde.pristino" "$CAIXA/fonte-verde.cjs"
+else
+  ok=$((ok+1)); printf '  ok    fonte-verde.cjs restaurado apos recusa\n'
+fi
 
 echo
 echo "-----------------------------------------"

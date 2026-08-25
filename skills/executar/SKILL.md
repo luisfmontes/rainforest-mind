@@ -186,6 +186,7 @@ pesa mais: o relato é justamente a peça que a catraca desconfia.
 | `2` | mutação casou e bateria **VERDE** | reprovado — a bateria não mede o conserto |
 | `3` | `MUTACAO NAO APLICADA` — o `--de` não existe no fonte | a declaração está errada; nada foi medido |
 | `4` | não dá para MEDIR — a bateria já falha no fonte íntegro, ou o `--de` casa mais de uma vez | conserte o baseline (ou desambigue o `--de`) e rode de novo; nada foi mutado |
+| `5` | suspeita de CORTE DE SHELL — pós-mutação < 10% baseline (ou < 1 s) | confirme rodando a bateria pós-mutação à mão; se sair 0, ignorar; se durar >= 1 s, aumentar piso |
 | `1` | erro de uso, ou bateria sem veredito (estouro de tempo / sinal) | não é aprovação nem reprovação |
 
 O `4` recusa **antes** de tocar no fonte, e cobre os dois jeitos de a medição
