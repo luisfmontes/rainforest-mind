@@ -1,0 +1,91 @@
+{
+  "slug": "2026-08-24-auditor-de-api-owasp",
+  "titulo": "Agente auditor de API contra OWASP API Security Top 10 2023",
+  "criado_em": "2026-08-24",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-08-24-auditor-de-api-owasp.md",
+    "em": "2026-08-24"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-08-24-auditor-de-api-owasp.md",
+    "tarefas": 6,
+    "paralelas": [
+      1,
+      3,
+      6
+    ],
+    "em": "2026-08-24"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-08-24",
+    "tarefas": 6,
+    "tarefas_ok": 5,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-auditor-de-api.sh, caso 1: API7 — Server Side Request Forgery"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "esta tarefa e o proprio instrumento; a mutacao que prova que ela sabe falhar esta na tarefa 1 e roda contra agents/auditor-de-api.md"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-fechar-destino.sh, caso 1: Fecha NAO esta no conjunto canonico"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "orcamento.cjs, assercao de teto agregado: 14322 B > 14000 B com a description inflada"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "despacho de validacao contra repo de terceiro em leitura; nao ha linha deste repo a inverter, e inverter linha do tbc-licensing e proibido pelo invariante"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "o plantio grava em ~/.rainforest/ideias.jsonl, fora deste repositorio"
+      }
+    ],
+    "em": "2026-08-24"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "7dc076030f25c4669a1ca1fd7ff9564271b2901f",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-08-24-auditor-de-api-owasp.json"
+      ]
+    },
+    "base": "c68bd1e8c0f95229b6587284abbb446ebd395669",
+    "head": "7dc076030f25c4669a1ca1fd7ff9564271b2901f",
+    "passadas": 2,
+    "achados": 6,
+    "consertados": 6,
+    "nota": "Passada 1 reprovou com 3 (incoerencia fora do diff no fechar, referencia pendurada a MEMORY.md, secao tautologica). Passada 2 aprovou com 3 de divida (estatistica ancorante no agente, extracao 2f sem escopo, asserção acoplada a quebra de linha que era um OR acidental do grep -F). Os 6 consertados em b3a9dbb, 7ba6b5d e 7dc0760. O delta entre a arvore revisada na passada 2 e este HEAD e exatamente a prescricao dela, validada por 4 mutacoes com saida colada.",
+    "em": "2026-08-24"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash scripts/testa-auditor-de-api.sh; bash scripts/testa-fechar-destino.sh; node scripts/orcamento.cjs; node scripts/perfil.cjs --conferir; despacho real do agente contra C:/Microsiga/protheus-totvs-agro/tbc-licensing",
+    "saida": "27 ok/0 falhou exit 0; 34 ok/0 falhou exit 0; Total 13627 de 14000 exit 0; ok os 9 agentes carregam o bloco; relatorio com as 10 secoes API1-API10 e 6 achados com arquivo:linha. Criterio da tarefa 5 exigia reabrir cada citacao: 5 das 6 conferem exatas (actionResult.ts:3-10 devolve e.message cru; withAdmin.ts loga e devolve generico; blockEstablishmentAction recebe clientId e so revalidateClient o usa; AdminUser sem clientId no schema; next.config.js sem CSP). A 6a divergiu no NUMERO: relatorio disse ci.yml:26, o npm audit --omit=dev --audit-level=high esta na linha 38 -- conteudo identico, linha errada. Registrado como imprecisao do relatorio, nao do achado. Arvore do tbc-licensing intocada (git status vazio).",
+    "em": "2026-08-24"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "pr",
+    "pr": 87,
+    "em": "2026-08-24"
+  }
+}
