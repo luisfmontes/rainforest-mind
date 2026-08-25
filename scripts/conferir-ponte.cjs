@@ -56,13 +56,21 @@ const crypto = require('crypto');
 // O SKILL.md pode estar em dois lugares:
 // 1. Se o arquivo sendo conferido é um repo com SKILL.md (repo de teste) → usa aquele
 // 2. Senão → usa o SKILL.md do plugin
-function resolverSkillMd(arquivoConferido) {
-  const diretorioArquivo = path.dirname(path.resolve(arquivoConferido));
-  const skillNoMesmoDir = path.join(diretorioArquivo, 'SKILL.md');
-  if (fs.existsSync(skillNoMesmoDir)) {
-    return skillNoMesmoDir;
-  }
-  // Fallback para o SKILL.md do plugin
+/**
+ * Onde mora a VERDADE contra a qual o derivado e conferido.
+ *
+ * E sempre o SKILL.md do plugin, e nunca um SKILL.md que por acaso esteja ao lado do
+ * arquivo conferido. A primeira versao procurava no mesmo diretorio primeiro, e isso
+ * e um caminho de resposta ERRADA em silencio: o arquivo derivado nasce para viver no
+ * repositorio de OUTRA pessoa, onde nao ha SKILL.md nenhum — mas se houvesse um, por
+ * qualquer motivo, a conferencia passaria a medir contra a fonte errada sem dizer
+ * nada, e um "CONFERIDO" e' justamente o que ninguem vai investigar.
+ *
+ * O override existe so' para a bateria, que precisa mexer na fonte sem tocar no
+ * SKILL.md real do plugin — e ele e' EXPLICITO (--skill), nunca inferido.
+ */
+function resolverSkillMd(_arquivoConferido, skillExplicito) {
+  if (skillExplicito) return path.resolve(skillExplicito);
   const pluginRoot = path.resolve(__dirname, '..');
   return path.join(pluginRoot, 'skills', 'rainforest-mind', 'SKILL.md');
 }
@@ -264,10 +272,15 @@ function linhasDivergentes(atual, esperado) {
 function main() {
   const args = process.argv.slice(2);
   const json = args.includes('--json');
-  const alvo = args.find((a) => !a.startsWith('--'));
+  // Override explicito da fonte, so para a bateria — ver resolverSkillMd.
+  const iSkill = args.indexOf('--skill');
+  const skillExplicito = iSkill !== -1 && args[iSkill + 1] ? args[iSkill + 1] : null;
+  // O valor de --skill NAO pode ser confundido com o arquivo alvo: sem esta exclusao,
+  // `conferir-ponte.cjs --skill x.md CLAUDE.md` conferiria `x.md`.
+  const alvo = args.find((a, i) => !a.startsWith('--') && !(i > 0 && args[i - 1] === '--skill'));
 
   if (!alvo) {
-    console.error('uso: node scripts/conferir-ponte.cjs <arquivo>|- [--json]');
+    console.error('uso: node scripts/conferir-ponte.cjs <arquivo>|- [--json] [--skill <caminho>]');
     process.exit(1);
   }
 
@@ -293,7 +306,7 @@ function main() {
   }
 
   // Resolve o caminho do SKILL.md
-  const caminhoSkill = resolverSkillMd(alvo);
+  const caminhoSkill = resolverSkillMd(alvo, skillExplicito);
 
   // Gera o que seria produzido agora
   let nucleoEsperado;

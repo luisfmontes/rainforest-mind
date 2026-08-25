@@ -6,7 +6,7 @@
 # Uso: bash scripts/testa-conferir-ponte.sh
 # Saída: 0 se todas as baterias passarem, 1 se falhar
 
-PLUGIN_DIR="C:\Projetos\rainforest-mind\.claude\worktrees\agent-aff97fb23fcc0138d"
+PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO_TESTE=$(mktemp -d)
 trap "rm -rf '$REPO_TESTE'" EXIT
 
@@ -55,9 +55,19 @@ node "$PLUGIN_DIR/scripts/ponte.cjs" --alvo "$REPO_TESTE" --agente claude --apli
 
 # CENÁRIO 3: Mudar regra no SKILL.md sem regerar → vermelho (ficou para trás)
 echo "3. Mudar SKILL.md sem regerar → esperado vermelho (ficou para trás)"
-echo "" >> "$REPO_TESTE/SKILL.md"
-echo "## Uma regra nova que sumiu" >> "$REPO_TESTE/SKILL.md"
-resultado=$(node "$PLUGIN_DIR/scripts/conferir-ponte.cjs" "$REPO_TESTE/CLAUDE.md" 2>&1)
+# A fonte da verdade e o SKILL.md DO PLUGIN, nunca um que esteja ao lado do arquivo
+# conferido — ver o comentario de resolverSkillMd. Entao a bateria nao pode mexer no
+# SKILL.md do repo de ensaio e esperar efeito: ela faz uma COPIA alterada e aponta a
+# conferencia para ela com --skill, que existe exatamente para isto.
+SKILL_ANDOU="$REPO_TESTE/SKILL-andou.md"
+cp "$PLUGIN_DIR/skills/rainforest-mind/SKILL.md" "$SKILL_ANDOU"
+# A alteracao tem de cair DENTRO do que a ponte extrai. Acrescentar heading no fim do
+# arquivo mudava o SKILL.md e NAO mudava o bloco gerado — e nesse caso "CONFERIDO" e a
+# resposta certa, porque o derivado continua em dia. O fixture errado fazia o teste
+# cobrar do checador uma recusa que ele nao devia dar.
+sed -i "s/^**1. Responder tudo, na ordem/**1. RESPONDER TUDO, EM OUTRA ORDEM/" "$SKILL_ANDOU"
+grep -q "EM OUTRA ORDEM" "$SKILL_ANDOU" || echo "   AVISO: fixture do cenario 3 nao alterou o SKILL_ANDOU"
+resultado=$(node "$PLUGIN_DIR/scripts/conferir-ponte.cjs" "$REPO_TESTE/CLAUDE.md" --skill "$SKILL_ANDOU" 2>&1)
 if echo "$resultado" | grep -q "ficou para trás\|SKILL.md mudou"; then
   echo "   ✓ Vermelho conforme esperado (detectou SKILL.md desatualizado)"
 else
@@ -88,10 +98,26 @@ echo ""
 
 # MUTAÇÃO: Sabota a comparação, verifica que o caso verde para de pegar
 echo "5. Mutação: sabota a comparação no conferir-ponte.cjs"
-CONFERIR_SABOTADO=$(mktemp)
+# Extensao .cjs obrigatoria: `node --check` num arquivo SEM extensao tenta resolver como
+# ESM e morre com ERR_UNKNOWN_FILE_EXTENSION — a guarda acusaria "nao compila" num
+# mutante perfeitamente valido.
+CONFERIR_SABOTADO="$(mktemp)".cjs
 cat "$PLUGIN_DIR/scripts/conferir-ponte.cjs" | \
   sed 's/if (textoIgual(conteudoAtual, conteudoEsperado))/if (false)/' > "$CONFERIR_SABOTADO"
 chmod +x "$CONFERIR_SABOTADO"
+
+# Duas guardas, e as duas nasceram de mutacao falsa vista nesta mesma sessao: uma que
+# nunca reescrevia arquivo, e outra cujo mutante nao compilava e creditava `ok` por
+# crash. Aqui a direcao da falha ja e segura (mutante identico ou quebrado faz o teste
+# REPROVAR), mas o diagnostico sem elas e ilegivel.
+if diff -q "$PLUGIN_DIR/scripts/conferir-ponte.cjs" "$CONFERIR_SABOTADO" >/dev/null 2>&1; then
+  echo "   ✗ FALHOU: a sabotagem nao mudou nada — a ancora do sed nao bate mais"
+  rm -f "$CONFERIR_SABOTADO"; exit 1
+fi
+if ! node --check "$CONFERIR_SABOTADO" 2>/dev/null; then
+  echo "   ✗ FALHOU: o mutante nao compila — o teste mediria crash, nao comportamento"
+  rm -f "$CONFERIR_SABOTADO"; exit 1
+fi
 
 bash -c "cd '$REPO_TESTE' && git checkout SKILL.md 2>/dev/null || true"
 node "$PLUGIN_DIR/scripts/ponte.cjs" --alvo "$REPO_TESTE" --agente claude --aplicar >/dev/null 2>&1
