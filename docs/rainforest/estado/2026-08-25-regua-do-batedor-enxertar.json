@@ -17,7 +17,33 @@
     "em": "2026-08-25"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-08-25",
+    "tarefas_ok": 4,
+    "tarefas": 4,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "scripts/testa-fila-de-repos.sh, caso 6 — a fila ao lado do script com RFM_ROOT em pasta vazia"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "reescreve o cabecalho do livro-de-repos.md; o comportamento invertivel e o do checador, que e a tarefa 3"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "scripts/testa-conferir-livro-de-repos.sh, caso do veredito inventado pos-corte, mais a mutacao da data de corte"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "procedimento em prosa lido por um vigia; a trava do que ele produz e o checador da tarefa 3"
+      }
+    ],
+    "em": "2026-08-25"
   },
   "revisar": {
     "status": "pendente"
