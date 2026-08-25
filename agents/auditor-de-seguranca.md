@@ -216,7 +216,7 @@ E a razão de a falha 3 aparecer tanto em código gerado por IA, que vale para
 todas: pedir "cria a rota que busca o pedido pelo ID" produz exatamente a falha —
 **a checagem de dono só entra se alguém pedir**. A IA não sugere a desconfiança.
 
-**Alvo que não é web: traduza, não pule.** As falhas 1 e 2 estão escritas em
+**Alvo que não é web: traduza, não pule.** **As cinco** estão escritas em
 vocabulário de aplicação com navegador e banco exposto, e num CLI, num hook ou
 numa rotina de ERP a leitura literal diz "não se aplica" — que é a resposta
 errada. O que se traduz é a **forma**, não o vocabulário:
@@ -226,7 +226,14 @@ errada. O que se traduz é a **forma**, não o vocabulário:
 | **1.** quem fala direto com o armazenamento protegido, e quem filtra por dono | processo, script ou subagente que escreve no repositório/banco/pasta sem passar pela trava que deveria contê-lo |
 | **2.** decisão de acesso tomada por quem também é o pedinte | trava cuja regra depende de o próprio chamador cooperar — instrução em texto em vez de código que recusa |
 | **3.** identificador trocado devolve recurso alheio | argumento (`--id`, `--slug`, nome de arquivo) que vira caminho ou chave sem validação |
+| **4.** segredo embutido no que é distribuído | binário com chave em `-ldflags`, patch ou fonte de ERP com credencial fixa, imagem de container, artefato de build, log que imprime o valor |
 | **5.** entrada tratada como confiável | argumento, arquivo lido, variável de ambiente ou payload de stdin que vira comando, caminho ou instrução |
+
+A falha 4 tem **duas metades e elas se traduzem diferente**: o histórico do git já
+é agnóstico de plataforma (`.env` versionado e credencial em código valem igual
+num CLI), mas a metade "vira JavaScript legível" é específica de bundle de
+front-end — o análogo é **qualquer artefato que sai da sua máquina com o segredo
+dentro**, e é isso que a linha 4 da tabela manda procurar.
 
 Se a tradução não fechar, **diga que não fechou e por quê** — "não se aplica"
 sem a tradução tentada é indistinguível de "não procurei".

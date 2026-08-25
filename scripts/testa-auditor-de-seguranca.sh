@@ -180,24 +180,56 @@ nao_tem "nao ha boilerplate de licenca da OWASP colado" "$CORPO" "Creative Commo
 echo; echo "8. toda referencia a etapa/item aponta para uma etapa que existe"
 
 LETRAS_EXISTENTES="$(echo "$CORPO" | grep -oE '^### \([a-z]\)' | grep -oE '\([a-z]\)' | tr -d '()' | sort -u | tr '\n' ' ')"
-REFERIDAS="$(echo "$CORPO" | grep -oE '(etapa|item) \([a-z]\)' | grep -oE '\([a-z]\)' | tr -d '()' | sort -u)"
+TOTAL_REF="$(echo "$CORPO" | grep -cE '(etapa|item) \([a-z]\)')"
 
-if [ -z "$REFERIDAS" ]; then
+if [ "$TOTAL_REF" -eq 0 ]; then
   falhou=$((falhou+1)); echo "  FALHA nao achei referencia nenhuma a etapa/item — o padrao mudou e este caso parou de medir"
 fi
 
-for L in $REFERIDAS; do
+# Parte 1: toda letra referida existe como etapa. Pega o caso grosseiro
+# (referencia a uma letra que nao existe).
+for L in $(echo "$CORPO" | grep -oE '(etapa|item) \([a-z]\)' | grep -oE '\([a-z]\)' | tr -d '()' | sort -u); do
   if echo " $LETRAS_EXISTENTES " | grep -qF " $L "; then
     ok=$((ok+1)); echo "  ok   referencia a ($L) aponta para etapa existente"
   else
-    falhou=$((falhou+1)); echo "  FALHA referencia a ($L) nao existe como etapa — a numeracao andou e a referencia ficou para tras"
+    falhou=$((falhou+1)); echo "  FALHA referencia a ($L) nao existe como etapa"
   fi
 done
 
-# As duas referencias que quebraram de fato ficam cravadas, porque existir a letra
-# nao basta: ela tem que apontar para a etapa CERTA.
-tem "o inventario e' referido pela etapa que o monta" "$CORPO_PLANO" "inventário da etapa (b)"
-tem "segredo-por-nome e' referido pelo item que o define" "$CORPO_PLANO" "nunca por valor (item (h))"
+# Parte 2: TODA ocorrencia de cada frase aponta para a letra CERTA.
+#
+# A primeira versao desta secao parava na parte 1 mais duas asserções `tem` de
+# substring — e a revisao de 2026-08-25 mostrou que isso tinha o mesmo furo que a
+# secao existe para pegar. Dois buracos, os dois reais:
+#   (a) letra que EXISTE mas aponta para a etapa errada passava. Trocar
+#       "etapa (b)" por "etapa (d)" mantinha tudo verde, porque (d) existe.
+#   (b) `grep -F` procura a substring no corpo INTEIRO. "inventário da etapa (b)"
+#       aparece DUAS vezes; quebrar uma continuava verde por causa da outra.
+# Por isso aqui se conta ocorrencia por ocorrencia, e a letra esperada e' cravada
+# por frase — nao por presenca.
+# Comparação por STRING FIXA de ponta a ponta, sem regex: a frase carrega
+# parenteses e asterisco, e escapar isso a mao foi onde a primeira tentativa
+# quebrou. `total` conta toda ocorrencia da frase seguida de "(", `certas` conta
+# as que trazem a letra esperada, e a diferenca sao as erradas.
+confere_ref() {
+  local rotulo="$1" frase="$2" esperada="$3" minimo="$4"
+  local certas erradas total
+  total="$(echo "$CORPO_PLANO" | grep -oF "$frase (" | wc -l | tr -d ' ')"
+  certas="$(echo "$CORPO_PLANO" | grep -oF "$frase ($esperada)" | wc -l | tr -d ' ')"
+  erradas=$((total - certas))
+  if [ "$total" -lt "$minimo" ]; then
+    falhou=$((falhou+1)); echo "  FALHA $rotulo: esperava ao menos $minimo ocorrencia(s) de '$frase (X)', achei $total — a frase mudou e este caso parou de medir"
+  elif [ "$erradas" -gt 0 ]; then
+    falhou=$((falhou+1)); echo "  FALHA $rotulo: $erradas de $total ocorrencia(s) de '$frase' NAO apontam para ($esperada)"
+  else
+    ok=$((ok+1)); echo "  ok   $rotulo: as $total ocorrencia(s) de '$frase' apontam para ($esperada)"
+  fi
+}
+
+confere_ref "o inventario e' referido pela etapa que o monta" "inventário da etapa" "b" 2
+confere_ref "o formato de achado e' referido pela etapa que o define" "formato da etapa" "e" 1
+confere_ref "segredo-por-nome e' referido pelo item que o define" "nunca por valor (item" "h" 1
+confere_ref "a regua pulada e' referida pela etapa que a decide" "motivo** (item" "a" 1
 
 # ------------------------------------------------- 9. deduplicacao entre reguas
 # A02 e API8 tem o MESMO nome ("Security Misconfiguration") e padroes quase
@@ -217,6 +249,22 @@ tem "manda contar uma vez" "$CORPO_PLANO" "**Conte uma vez.**"
 echo; echo "10. o metodo serve a alvo que nao e' web, e severidade tem criterio"
 tem "manda TRADUZIR as cinco falhas para alvo sem navegador" "$CORPO_PLANO" "Alvo que não é web: traduza, não pule"
 tem "'nao se aplica' sem traducao tentada e' recusado" "$CORPO_PLANO" "sem a tradução tentada é indistinguível"
+
+# A tabela de traducao tem que cobrir AS CINCO. A primeira versao cobria 1, 2, 3
+# e 5 -- a falha 4 (segredo) ficou de fora sem nenhuma nota dizendo que era
+# proposital, e a propria regra do arquivo ("se a traducao nao fechar, diga que
+# nao fechou") nunca chegava a ser aplicada a ela porque ela nao entrava no
+# exercicio. Achado da segunda revisao de 2026-08-25.
+TRADUCAO="$(echo "$CORPO" | sed -n '/^| a falha, na forma geral |/,/^$/p')"
+igual "a tabela de traducao cobre as CINCO falhas" "$(echo "$TRADUCAO" | grep -cE '^\| \*\*[1-5]\.\*\* ')" "5"
+for n in 1 2 3 4 5; do
+  if echo "$TRADUCAO" | grep -qE "^\| \*\*${n}\.\*\* "; then
+    ok=$((ok+1)); echo "  ok   falha $n tem linha na tabela de traducao"
+  else
+    falhou=$((falhou+1)); echo "  FALHA falha $n nao tem traducao para alvo sem navegador"
+  fi
+done
+tem "a falha 4 tem as duas metades separadas na traducao" "$CORPO_PLANO" "duas metades e elas se traduzem diferente"
 tem "A05 cobre argumento de CLI virando shell" "$CORPO_PLANO" "a fonte não é o request — é o argumento"
 tem "A05 nomeia a defesa (lista de argumentos, sem shell)" "$CORPO" "execFileSync"
 tem "A05 avisa que nome de branch aceita metacaractere" "$CORPO_PLANO" "nome de arquivo e identificador aceitam metacaractere"
