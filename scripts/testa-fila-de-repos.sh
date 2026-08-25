@@ -162,6 +162,34 @@ prova "fila vazia: zero utilizaveis, zero recusadas" '
 ok(F.utilizaveis.length===0, "utilizaveis: "+F.utilizaveis.length);
 ok(F.recusados.length===0, "recusados: "+F.recusados.length);'
 
+
+echo
+echo "== 6. a fila e CONTEUDO DO REPO: acha-se mesmo com RFM_ROOT em outro lugar =="
+# Os cinco blocos acima nao distinguem as duas raizes, e nao e defeito deles: a
+# caixa de areia serve de RFM_ROOT E de pasta do plugin ao mesmo tempo, entao
+# ROOT e PLUGIN coincidem e qualquer uma das duas passa.
+#
+# So que em producao elas NAO coincidem, e medido em 2026-08-25 a fila nao era
+# lida em nenhuma das duas invocacoes reais:
+#   RFM_ROOT=~/.rainforest -> procurava em ~/.rainforest/vigias/ -> nao existe
+#   sem RFM_ROOT           -> ROOT cravado no repo PRINCIPAL     -> worktree invisivel
+# Nas duas, "0 utilizavel(is), 0 recusada(s)" com o arquivo em disco ao lado.
+#
+# Este bloco e o unico que separa as duas: a fila fica ao lado do script, e o
+# RFM_ROOT aponta para uma pasta VAZIA. Quem le por ROOT acha zero; quem le pelo
+# PLUGIN acha a entrada.
+OUTRA="$(mktemp -d)"
+OUTRA_W="$(cygpath -m "$OUTRA" 2>/dev/null || printf '%s' "$OUTRA")"
+fila <<'JSONL'
+{"candidato": "repo-ao-lado-do-script", "ancora": "prova que a fila e conteudo do repo", "trilha": "enxertar", "plantada_em": "2026-08-25"}
+JSONL
+RFM_ROOT="$OUTRA_W" node "$S/vigias/dados-batedor-repos.js" --json > "$S/saida.json" 2>"$S/saida.err"
+rm -rf "$OUTRA"
+
+prova "com RFM_ROOT em pasta vazia, a fila ao lado do script continua sendo lida" '
+ok(F.utilizaveis.length===1, "utilizaveis: "+F.utilizaveis.length+" (0 = leu pelo RFM_ROOT, nao pela pasta do plugin)");
+ok(F.utilizaveis[0].candidato==="repo-ao-lado-do-script", F.utilizaveis[0].candidato);
+ok(F.utilizaveis[0].trilha==="enxertar", F.utilizaveis[0].trilha);'
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]

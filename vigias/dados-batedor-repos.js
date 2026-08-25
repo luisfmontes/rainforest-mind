@@ -15,13 +15,37 @@
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = process.env.RFM_ROOT || 'C:\\Projetos\\rainforest-mind';
-const TETO_REPOS = 3;   // teto de repos por ronda; o excedente vai declarado
+const ROOT = process.env.RFM_ROOT || 'C:\Projetos\rainforest-mind';
+
+// PLUGIN e ROOT nao sao a mesma coisa, e a `fila-de-repos.jsonl` foi o caso que
+// obrigou a separar aqui — o `run-vigia.ps1` ja separa desde 2026-08-11
+// ("O PLUGIN e sempre a pasta acima deste script, mesmo quando $root aponta para
+// a pasta de DADOS").
+//
+// `ideias.jsonl` e DADO do usuario e mora em RFM_ROOT (`~/.rainforest`). A fila,
+// os relatorios e o `vigias/ERROS.md` sao CONTEUDO DO REPOSITORIO e moram ao lado
+// deste script. Ler os dois grupos da mesma raiz quebra sempre um dos dois:
+//
+//   medido em 2026-08-25, com a fila recem-criada e uma entrada dentro dela:
+//     RFM_ROOT=~/.rainforest  -> procura em ~/.rainforest/vigias/  -> nao existe
+//     sem RFM_ROOT            -> ROOT cravado no repo PRINCIPAL    -> worktree invisivel
+//   nas duas, "0 utilizavel(is), 0 recusada(s)" com o arquivo em disco ao lado.
+//
+// O caminho cravado tambem e o que faz teste de worktree mentir: a bateria passa
+// com RFM_ROOT apontando para a caixa de areia, e producao le outro lugar.
+const PLUGIN = path.resolve(__dirname, '..');
 
 function lerLinhas(rel) {
   try { return fs.readFileSync(path.join(ROOT, rel), 'utf8').split(/\r?\n/); }
   catch { return []; }
 }
+
+/** Igual a `lerLinhas`, mas ancorada no PLUGIN — para o que e conteudo do repo. */
+function lerLinhasDoPlugin(rel) {
+  try { return fs.readFileSync(path.join(PLUGIN, rel), 'utf8').split(/\r?\n/); }
+  catch { return []; }
+}
+const TETO_REPOS = 3;   // teto de repos por ronda; o excedente vai declarado
 
 function ideiasAbertas() {
   const out = { ideias: [], observacoes: [] };
@@ -86,7 +110,7 @@ const TRILHAS_VALIDAS = ['instalar', 'enxertar', 'ler'];
 function filaDeRepos() {
   const utilizaveis = [];
   const recusados = [];
-  lerLinhas('vigias/fila-de-repos.jsonl').forEach((linhaBruta, i) => {
+  lerLinhasDoPlugin('vigias/fila-de-repos.jsonl').forEach((linhaBruta, i) => {
     if (!linhaBruta.trim()) return;
     const numero = i + 1;
     let d;
