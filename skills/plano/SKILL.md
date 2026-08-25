@@ -171,26 +171,40 @@ decidir, e essa informação basta?*
 ```
 Tarefa: página de pareamento por conta no MCP de WhatsApp
 
-❌ Critério MAL escrito (mede o comando, não a pessoa):
-pronto quando: com `curl localhost:3005/qr`, a resposta é válida — provado por 
+❌ Nível 1 — mede o comando, não a pessoa:
+pronto quando: com `curl localhost:3005/qr`, a resposta tem um `<h2>` — provado por
 `grep -q 'h2' <(curl -s localhost:3005/qr)`
 
-Problema: resposta "válida" não diz se a pessoa consegue distinguir as contas.
-A página pode ter um título idêntico nas duas contas e passar verde.
+Problema: um `<h2>` em cada página satisfaz o critério, mas não distingue contas.
 
-✅ Critério BEM escrito (mede a informação que a pessoa vê):
-pronto quando: com as duas contas pareadas em portas diferentes (3005 e 3006), 
-a pessoa consegue distinguir qual QR é de qual conta — provado por 
-`! diff <(curl -s localhost:3005/qr) <(curl -s localhost:3006/qr)` 
-retornando diferença no título ou identificador visível
+⚠️ Nível 2 — PARECE medir a pessoa, mas não mede:
+pronto quando: com as duas contas pareadas em portas diferentes (3005 e 3006),
+as páginas são diferentes — provado por
+`! diff <(curl -s localhost:3005/qr) <(curl -s localhost:3006/qr)` retorna verdadeiro
 
-Prova: as duas páginas NÃO são idênticas; se fossem, a pessoa com o telefone 
-na mão não saberia qual QR usar em qual conta.
+Problema: o `diff` fica verde com um `<title>` distinto entre as duas contas.
+A pessoa com o telefone na mão está olhando o **corpo** da página para escanear
+o QR — um `<title>` que ninguém vê não a ajuda. Esse critério passa verde,
+o QR fica idêntico na prática, e a pessoa não consegue decidir qual conta.
+**É o erro que a regra 12 pegou ao consertar a página real** — o teste passava
+porque o `<title>` era único, e nada mais.
+
+✅ Nível 3 — mede a informação que a pessoa precisa:
+pronto quando: com as duas contas pareadas em portas diferentes (3005 e 3006),
+cada página **no corpo visível** contém um identificador da conta — provado por
+`grep -q 'Account: 5551234567' <(curl -s localhost:3005/qr)` E
+`grep -q 'Account: 5559876543' <(curl -s localhost:3006/qr)` E
+`! diff <(curl -s localhost:3005/qr | grep -oE 'Account: [0-9]+') <(curl -s localhost:3006/qr | grep -oE 'Account: [0-9]+')'`
+
+Prova: a pessoa vê **qual número de conta** é cada QR; nessa informação falha,
+o critério falha, ainda que as páginas difiram por qualquer outro motivo.
 ```
 
-A pergunta está colada no critério: "a pessoa consegue distinguir?", "o título mostra
-de qual conta é?", "a mensagem de erro diz o que fazer?" — tudo isso é falsificável
-por comando, e tudo isso mede a pessoa, não o instrumento.
+A pergunta está colada no critério **antes** de escrever o `assert`: "qual
+informação a pessoa precisa?", "onde ela fica visível?", "e o critério falha
+quando essa informação desaparece?" — tudo isso é falsificável por comando, e
+tudo isso mede a pessoa, não o instrumento, não o test harness, não uma
+diferença qualquer que satisfaz o `diff`.
 
 ### Trava de cobertura
 
