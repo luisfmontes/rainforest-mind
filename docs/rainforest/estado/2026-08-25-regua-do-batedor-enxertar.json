@@ -25,7 +25,7 @@
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "scripts/testa-fila-de-repos.sh, caso 6 — a fila ao lado do script com RFM_ROOT em pasta vazia"
+        "fixture": "scripts/testa-fila-de-repos.sh — tres catracas: caso 1 (recusa sem trilha vs default instalar, a do plano/D5), caso 6 (fila lida pelo PLUGIN vs pelo ROOT) e caso 7 (literal de caminho quebrado, sem RFM_ROOT)"
       },
       {
         "tarefa": 2,
@@ -35,7 +35,7 @@
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "scripts/testa-conferir-livro-de-repos.sh, caso do veredito inventado pos-corte, mais a mutacao da data de corte"
+        "fixture": "scripts/testa-conferir-livro-de-repos.sh — veredito inventado pos-corte, mais a mutacao da data de corte para 2000-01-01 que prova a anistia de D8"
       },
       {
         "tarefa": 4,
