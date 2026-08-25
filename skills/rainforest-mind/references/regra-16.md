@@ -33,6 +33,11 @@ premissas que aceitou sem conferir, e **lugar vazio não prova ausência** —
 briefing que aponta para o lugar errado se corrige alargando para a convenção
 documentada, nunca concluindo que o dado não existe.
 
+**Recomendação sobre branch, worktree ou fluxo consulta regra 17.** Lista de
+sessões vivas está em `sessoes.json`. O que estiver sob outra janela sai da
+rodada (paralelo é intenção dele) ou entra bloqueado. Invadir trabalho alheio
+custa mais que silêncio.
+
 > A classe apareceu cinco vezes em seis dias antes de virar regra, sempre com a
 > evidência a um comando de distância: `eliminar-a-entrega-antes-de-culpar-o-modelo`
 > (2026-08-08), `estacao-prometida-no-readme-sem-campo-no-script` (2026-08-11),

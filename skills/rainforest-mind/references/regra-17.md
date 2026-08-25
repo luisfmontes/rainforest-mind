@@ -29,5 +29,9 @@ byte das linhas não-alvo, revertendo com exit ≠ 0. **Não edite o arquivo à
 mão nem com script improvisado**, e não passe data nenhuma — quem carimba é
 ele. Escreva o JSON de entrada com ferramenta de escrita de arquivo, nunca
 por heredoc do shell: o shell come as barras do caminho do Windows. Nos
-arquivos ainda sem trava (`FOCO.md`, `sessoes.json`) vale a versão manual:
+arquivos ainda sem trava (FOCO.md, `sessoes.json`) vale a versão manual:
 reler o vivo, append de uma linha, conferir que a contagem subiu 1.
+
+**Enlace com regra 16:** antes de recomendar mudança em branch/worktree/fluxo,
+a regra 16 consulta este radar (sessoes.json). Paralelo ativo sai da rodada ou
+entra bloqueado.
