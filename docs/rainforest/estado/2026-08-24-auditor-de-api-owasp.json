@@ -61,10 +61,26 @@
     "em": "2026-08-24"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "snapshot": {
+      "head": "7dc076030f25c4669a1ca1fd7ff9564271b2901f",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-08-24-auditor-de-api-owasp.json"
+      ]
+    },
+    "base": "c68bd1e8c0f95229b6587284abbb446ebd395669",
+    "head": "7dc076030f25c4669a1ca1fd7ff9564271b2901f",
+    "passadas": 2,
+    "achados": 6,
+    "consertados": 6,
+    "nota": "Passada 1 reprovou com 3 (incoerencia fora do diff no fechar, referencia pendurada a MEMORY.md, secao tautologica). Passada 2 aprovou com 3 de divida (estatistica ancorante no agente, extracao 2f sem escopo, asserção acoplada a quebra de linha que era um OR acidental do grep -F). Os 6 consertados em b3a9dbb, 7ba6b5d e 7dc0760. O delta entre a arvore revisada na passada 2 e este HEAD e exatamente a prescricao dela, validada por 4 mutacoes com saida colada.",
+    "em": "2026-08-24"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/testa-auditor-de-api.sh; bash scripts/testa-fechar-destino.sh; node scripts/orcamento.cjs; node scripts/perfil.cjs --conferir; despacho real do agente contra C:/Microsiga/protheus-totvs-agro/tbc-licensing",
+    "saida": "27 ok/0 falhou exit 0; 34 ok/0 falhou exit 0; Total 13627 de 14000 exit 0; ok os 9 agentes carregam o bloco; relatorio com as 10 secoes API1-API10 e 6 achados com arquivo:linha. Criterio da tarefa 5 exigia reabrir cada citacao: 5 das 6 conferem exatas (actionResult.ts:3-10 devolve e.message cru; withAdmin.ts loga e devolve generico; blockEstablishmentAction recebe clientId e so revalidateClient o usa; AdminUser sem clientId no schema; next.config.js sem CSP). A 6a divergiu no NUMERO: relatorio disse ci.yml:26, o npm audit --omit=dev --audit-level=high esta na linha 38 -- conteudo identico, linha errada. Registrado como imprecisao do relatorio, nao do achado. Arvore do tbc-licensing intocada (git status vazio).",
+    "em": "2026-08-24"
   },
   "fechar": {
     "status": "pendente"
