@@ -44,6 +44,24 @@ aritmética — número que não fecha no relato é gatilho de auditoria.
 > mas isso vivia só na cabeça dela. Saiu bem, e mesmo assim é mudança no
 > computador dele sem a palavra dele, descoberta só no relatório final.
 
+**Reescrita de histórico em rede de fork — o objeto continua resolvível.**
+
+Quando um commit que contém dado sensível (número de telefone, JID, identificador)
+é gravado em repo público e precisa ser removido, `git filter-branch` (ou
+`git-filter-repo`) parece o caminho: reescreve o histórico, força um push, e pronto.
+**Não funciona em rede de fork.** Forks compartilham o `object store` do repositório
+— o objeto do commit continua servido por SHA em **todos** os repositórios da rede,
+inclusive no upstream que você não controla, mesmo depois do rewrite e do force push.
+A única solução é um chamado ao Support do GitHub; o agente precisa nomear os dois
+repositórios (upstream e fork) e, dependendo da visibilidade, o histórico será
+comprimido ou bloqueado. O rewrite sem contato com Support é ilusão de remover dados.
+
+A lição operacional é que **a hora de agir é antes do commit**. Depois não existe
+desfazer de verdade — há apenas mitigação. No caso concreto que levou a esta nota,
+`git-filter-repo` não existia na máquina, e em vez de instalar usou-se o
+`filter-branch` que já vem no git — zero mudança de ambiente, que é a regra 15
+funcionando; mesmo assim, o rewrite sozinho não bastou, e o Support precisou intervir.
+
 **Inspecionar ambiente nunca por dump filtrado.** Para ver o que está
 setado, use `printenv NOME` para nomes específicos ou `compgen -e`, que só
 devolve nomes por construção. `printenv | cut -d= -f1` **parece** seguro e

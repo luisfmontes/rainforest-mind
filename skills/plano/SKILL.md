@@ -153,6 +153,45 @@ ela só não é mais o que a tarefa promete.
 > (`referencias/2026-08-11-everything-claude-code.md:131`), incluindo o
 > mecanismo pelo qual a suíte não pega. O repo documentou e caiu nela.
 
+### Critério de superfície humana
+
+**Quando a tarefa produz algo que uma pessoa lê para decidir**, o plano exige ao menos
+um critério cuja pergunta seja sobre a pessoa: *qual informação ela vê no momento de
+decidir, e essa informação basta?*
+
+**Gatilho — tarefa TEM superfície humana quando:**
+- Devolve uma página web, uma interface de CLI ou prompt
+- Produz uma mensagem de erro ou aviso que o usuário vê
+- Gera um QR code, código, identificador ou qualquer artefato visual que a pessoa usa para tomar ação
+- Emite log, relatório ou resultado pensado para **leitura humana**, não para integração
+
+**A forma continua falsificável.** O que muda é o que se pergunta antes de escrever o
+`assert` — não há afrouxamento da exigência. Exemplos para a mesma tarefa:
+
+```
+Tarefa: página de pareamento por conta no MCP de WhatsApp
+
+❌ Critério MAL escrito (mede o comando, não a pessoa):
+pronto quando: com `curl localhost:3005/qr`, a resposta é válida — provado por 
+`grep -q 'h2' <(curl -s localhost:3005/qr)`
+
+Problema: resposta "válida" não diz se a pessoa consegue distinguir as contas.
+A página pode ter um título idêntico nas duas contas e passar verde.
+
+✅ Critério BEM escrito (mede a informação que a pessoa vê):
+pronto quando: com as duas contas pareadas em portas diferentes (3005 e 3006), 
+a pessoa consegue distinguir qual QR é de qual conta — provado por 
+`! diff <(curl -s localhost:3005/qr) <(curl -s localhost:3006/qr)` 
+retornando diferença no título ou identificador visível
+
+Prova: as duas páginas NÃO são idênticas; se fossem, a pessoa com o telefone 
+na mão não saberia qual QR usar em qual conta.
+```
+
+A pergunta está colada no critério: "a pessoa consegue distinguir?", "o título mostra
+de qual conta é?", "a mensagem de erro diz o que fazer?" — tudo isso é falsificável
+por comando, e tudo isso mede a pessoa, não o instrumento.
+
 ### Trava de cobertura
 
 A partir de 2026-08-13, `node scripts/estado.cjs marcar --estagio plano --status ok` recusa plano que não tenha cobertura completa: testa se toda decisão `D<n>` do design tem tarefa no plano com `atende: D<n>`, e se toda tarefa do plano cita apenas `D<n>` existentes. Sem cobertura completa, o comando sai com exit 2.
