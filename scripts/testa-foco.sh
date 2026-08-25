@@ -162,6 +162,117 @@ else
   falhou=$((falhou+1)); echo "  FALHA mutante passou despercebido: o corte nao depende do teto"
 fi
 
+# ============================================================================
+# Issue #74 — `separar`: FOCO.md monolitico -> FOCO.md (tatico) + ESTRATEGIA.md
+# ============================================================================
+#
+# O que esta bateria precisa provar, na mesma ordem de gravidade da secao acima:
+#   10. sem --aplicar nao escreve nada (mesma garantia de sempre);
+#   11. os campos que o HOOK le por regex direto do FOCO.md (titulo/natureza,
+#       Pastas:, Ociosidade maxima:, Critério de pronto, Marcos, Avancos,
+#       Compromissos com prazo) ficam no arquivo TATICO; a prosa de negocio e
+#       as secoes nao-residentes vao para o ESTRATEGIA.md;
+#   12. nada se perde — toda linha do original esta em UM dos dois arquivos;
+#   13. `separar` e migracao de UMA VEZ: recusa sobrescrever ESTRATEGIA.md;
+#   14. MUTACAO — desligar a deteccao da secao "Ativo" tem que fazer a prosa
+#       de negocio (que hoje sai do tatico) voltar a ficar no FOCO.md.
+
+montar_split() {
+  rm -rf "$SBP/dados"; mkdir -p "$SBP/dados"
+  node -e '
+    const fs = require("fs");
+    const foco = [
+      "# Foco", "",
+      "## Ativo", "",
+      "Prosa-meta sintetica sobre o formato do arquivo, sem campo tatico nenhum aqui.", "",
+      "**Projeto Teste Separar** `[trabalho]` \u2014 declarado 2026-08-01.",
+      "Prosa de contexto de negocio, com uma justificativa historica que nao muda toda semana.",
+      "Pastas: C:/tmp/a",
+      "        C:/tmp/b",
+      "Ociosidade m\u00e1xima: 10 min.",
+      "Prazo: entrega em 2026-09-01.",
+      "Crit\u00e9rio de pronto: a bateria passar.", "",
+      "Marcos (cronograma):",
+      "- Marco 1 -- 2026-08-10.", "",
+      "Avan\u00e7os:",
+      "- 2026-08-01: primeiro avanco.", "",
+      "## N\u00e3o especificado ainda", "", "- nevoa preservada", "",
+      "## Fora de escopo", "", "- descarte preservado", "",
+      "## Compromissos com prazo", "", "- compromisso preservado 2026-09-01", "",
+      "## Frentes", "", "- frente preservada", "",
+      "## Conclu\u00eddos", "", "- concluido preservado", "",
+    ].join("\n");
+    fs.writeFileSync(process.argv[1] + "/FOCO.md", foco, "utf8");
+    fs.writeFileSync(process.argv[1] + "/ORIGINAL.md", foco, "utf8");
+  ' "$SBP/dados"
+}
+
+echo; echo "10. separar: dry-run nao escreve nada"
+montar_split
+SAIDA="$(node "$SRC/scripts/foco.cjs" separar --raiz "$SBP/dados" 2>&1)"
+tem "mostra o plano" "$SAIDA" "Plano:"
+tem "avisa que precisa de --aplicar" "$SAIDA" "--aplicar"
+if [ -e "$SBP/dados/ESTRATEGIA.md" ]; then
+  falhou=$((falhou+1)); echo "  FALHA criou ESTRATEGIA.md no ensaio"
+else
+  ok=$((ok+1)); echo "  ok   nao criou ESTRATEGIA.md no ensaio"
+fi
+
+echo; echo "11. separar --aplicar: campos taticos ficam no FOCO.md, prosa vai pro ESTRATEGIA.md"
+node "$SRC/scripts/foco.cjs" separar --raiz "$SBP/dados" --aplicar > /dev/null
+FOCOS="$(cat "$SBP/dados/FOCO.md")"
+EST="$(cat "$SBP/dados/ESTRATEGIA.md")"
+tem "titulo/natureza/data ficam no tatico"        "$FOCOS" "Projeto Teste Separar"
+tem "Pastas: fica no tatico"                      "$FOCOS" "Pastas: C:/tmp/a"
+tem "continuacao de Pastas fica no tatico"        "$FOCOS" "C:/tmp/b"
+tem "Ociosidade fica no tatico"                   "$FOCOS" "Ociosidade máxima: 10 min"
+tem "Critério de pronto fica no tatico"           "$FOCOS" "Critério de pronto"
+tem "Marcos ficam no tatico"                      "$FOCOS" "Marco 1"
+tem "Avancos ficam no tatico"                     "$FOCOS" "primeiro avanco"
+tem "Compromissos com prazo fica no tatico"       "$FOCOS" "compromisso preservado"
+nao_tem "prosa de negocio sai do tatico"          "$FOCOS" "justificativa"
+tem "prosa de negocio vai pro estrategico"        "$EST" "justificativa"
+tem "Nao especificado vai pro estrategico"        "$EST" "nevoa preservada"
+tem "Fora de escopo vai pro estrategico"          "$EST" "descarte preservado"
+tem "Frentes vai pro estrategico"                 "$EST" "frente preservada"
+tem "Concluidos vai pro estrategico"              "$EST" "concluido preservado"
+nao_tem "estrategico nao carrega Compromissos"    "$EST" "compromisso preservado"
+
+echo; echo "12. separar: nada se perde (toda linha do original esta em um dos dois arquivos)"
+PERDIDAS="$(node -e '
+  const fs = require("fs");
+  const raiz = process.argv[1];
+  const orig = fs.readFileSync(raiz + "/ORIGINAL.md", "utf8");
+  const foco = fs.readFileSync(raiz + "/FOCO.md", "utf8");
+  const est = fs.readFileSync(raiz + "/ESTRATEGIA.md", "utf8");
+  const linhas = orig.split("\n").map((l) => l.trim()).filter(Boolean);
+  const perdidas = linhas.filter((l) => !foco.includes(l) && !est.includes(l));
+  console.log(perdidas.length ? perdidas.join(" | ") : "nenhuma");
+' "$SBP/dados")"
+igual "toda linha original esta em um dos dois arquivos" "$PERDIDAS" "nenhuma"
+
+echo; echo "13. separar: recusa sobrescrever ESTRATEGIA.md existente"
+SAIDA="$(node "$SRC/scripts/foco.cjs" separar --raiz "$SBP/dados" --aplicar 2>&1)"; CODIGO=$?
+tem "recusa com mensagem clara" "$SAIDA" "já existe"
+igual "sai com erro (nao silencioso)" "$CODIGO" "1"
+
+echo; echo "14. MUTACAO — desligar a deteccao da secao Ativo tem que devolver a prosa ao tatico"
+montar_split
+MUT="$SBP/foco-mut-secoes.cjs"
+sed "s/if (nome === 'Ativo') {/if (nome === 'Ativo-NUNCA-Issue74') {/" "$SRC/scripts/foco.cjs" > "$MUT"
+if diff -q "$SRC/scripts/foco.cjs" "$MUT" > /dev/null; then
+  falhou=$((falhou+1)); echo "  FALHA o sed nao encontrou a linha a mutar -- teste invalido"
+else
+  node "$MUT" separar --raiz "$SBP/dados" --aplicar > /dev/null 2>&1
+  FOCOM="$(cat "$SBP/dados/FOCO.md" 2>/dev/null)"
+  if grep -qF -- "justificativa" <<< "$FOCOM"; then
+    ok=$((ok+1)); echo "  ok   mutacao expos que o split de Ativo e o que tira a prosa do tatico"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mutante passou despercebido: a prosa continuou saindo do tatico mesmo sem o tratamento especial de Ativo"
+  fi
+fi
+rm -f "$MUT"
+
 echo; echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ] || exit 1

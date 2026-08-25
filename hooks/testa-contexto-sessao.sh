@@ -2434,6 +2434,84 @@ fi
 rm -f "$LIB_MUT_LEGENDA"
 
 echo
+echo "20. ESTRATEGIA.md — ponteiro residente e compatibilidade para trás (Issue #74)"
+# O split físico (scripts/foco.cjs separar) tira as seções não-residentes de
+# dentro do FOCO.md; o motor só precisa saber SE `ESTRATEGIA.md` existe para
+# acrescentar UMA linha curta apontando pra lá — quem lê disco é o adaptador,
+# `montarContexto` recebe `temEstrategia`/`estrategiaPath` já prontos.
+# SEM `ESTRATEGIA.md` (temEstrategia omitido ou false) o comportamento tem que
+# ser IDÊNTICO ao de hoje — nem um byte a mais: é a mesma garantia que o resto
+# desta bateria já cobre para FOCO.md monolítico.
+
+cat > "$RAIZ_POSIX/driver-estrategia.cjs" <<'EOF'
+const lib = require(process.env.LIB_PATH);
+process.stdout.write(lib.montarContexto({
+  skillText: process.env.FIX_SKILL || '',
+  focoText: process.env.FIX_FOCO || '',
+  caminhoSkill: 'C:\\fake\\SKILL.md',
+  root: 'C:\\fake',
+  temEstrategia: process.env.FIX_TEM_ESTRATEGIA === '1',
+  estrategiaPath: process.env.FIX_ESTRATEGIA_PATH || undefined,
+}));
+EOF
+contexto_estrategia() { # skill, foco, temEstrategia(0|1), estrategiaPath, [lib]
+  LIB_PATH="${5:-$LIB}" FIX_SKILL="$1" FIX_FOCO="$2" FIX_TEM_ESTRATEGIA="$3" FIX_ESTRATEGIA_PATH="$4" node "$RAIZ_POSIX/driver-estrategia.cjs" 2>&1
+}
+
+# 20.1 — SEM ESTRATEGIA.md: saída IDÊNTICA ao `montar()` de sempre, byte a byte.
+S_SEM="$(montar "$SKILL_OK" "$FOCO_MUITOS")"
+S_SEM_EXPLICITO="$(contexto_estrategia "$SKILL_OK" "$FOCO_MUITOS" "0" "")"
+checa "20.1 sem ESTRATEGIA.md: nenhum ponteiro novo aparece"        nao_tem "📎 Estratégia" "$S_SEM"
+checa_igual "20.1 omitir temEstrategia == passar false explícito (compat)" "$S_SEM" "$S_SEM_EXPLICITO"
+
+# 20.2 — COM ESTRATEGIA.md: ganha a linha residente, curta, com o caminho.
+S_COM="$(contexto_estrategia "$SKILL_OK" "$FOCO_MUITOS" "1" 'C:\fake\ESTRATEGIA.md')"
+checa "20.2 com ESTRATEGIA.md: ganha a linha residente"  tem "📎 Estratégia" "$S_COM"
+checa "20.2 a linha aponta pro caminho recebido"         tem 'C:\fake\ESTRATEGIA.md' "$S_COM"
+
+# 20.3 — pós-split de verdade: seção que SAIU do FOCO.md (fisicamente ausente
+# do texto, como faz `scripts/foco.cjs separar`) não gera mais o ponteiro
+# GORDO de "seções omitidas" — ele só existe quando a seção ESTÁ no texto e o
+# resumo a troca por ponteiro (`resumirFoco`); seção ausente não tem o que
+# omitir.
+FOCO_SEM_FORA_DE_ESCOPO="# Foco
+
+## Ativo
+
+Foco de teste, já dividido — sem a seção Fora de escopo aqui dentro."
+S_POS_SPLIT="$(contexto_estrategia "$SKILL_OK" "$FOCO_SEM_FORA_DE_ESCOPO" "1" 'C:\fake\ESTRATEGIA.md')"
+checa "20.3 pós-split: some o ponteiro gordo de seções omitidas" nao_tem "Seções do FOCO.md omitidas" "$S_POS_SPLIT"
+checa "20.3 pós-split: o ponteiro curto do ESTRATEGIA.md continua" tem "📎 Estratégia" "$S_POS_SPLIT"
+
+# 20.4 — o ponteiro é RESERVADO no orçamento antes do foco ser priorizado
+# (mesma lógica do `reserva` em `priorizarFoco`) — nunca sai cortado no meio,
+# mesmo com um FOCO.md grande o bastante para o resto do bloco ser priorizado.
+S_GRANDE="$(contexto_estrategia "$SKILL_OK" "$FOCO_MUITOS" "1" 'C:\fake\ESTRATEGIA.md')"
+LINHA_ESTRATEGIA="$(echo "$S_GRANDE" | grep '📎 Estratégia')"
+if [[ "$LINHA_ESTRATEGIA" == *"ESTRATEGIA.md" ]]; then
+  ok=$((ok+1)); echo "  ok    20.4 a linha do ESTRATEGIA.md fecha completa mesmo com o foco grande"
+else
+  falhou=$((falhou+1)); echo "  FALHA 20.4 linha do ESTRATEGIA.md saiu truncada: $LINHA_ESTRATEGIA"
+fi
+
+echo
+echo "20.5 MUTAÇÃO — desligar o append do ponteiro tem que derrubar o item 20.2"
+cp "$LIB" "$RAIZ_POSIX/lib-mut-estrategia.cjs"
+sed -i "s/if (pastaEstrategia) foco += pastaEstrategia;/if (false) foco += pastaEstrategia;/" "$RAIZ_POSIX/lib-mut-estrategia.cjs"
+if diff "$LIB" "$RAIZ_POSIX/lib-mut-estrategia.cjs" > /dev/null; then
+  falhou=$((falhou+1)); echo "  FALHA o sed não encontrou a linha a mutar — mutação não aplicou nada, teste inválido"
+else
+  S_MUT_EST="$(contexto_estrategia "$SKILL_OK" "$FOCO_MUITOS" "1" 'C:\fake\ESTRATEGIA.md' "$RAIZ_POSIX/lib-mut-estrategia.cjs")"
+  echo "  (o mutante ainda tem '📎 Estratégia'? $(echo "$S_MUT_EST" | grep -qF '📎 Estratégia' && echo sim || echo não))"
+  if echo "$S_MUT_EST" | grep -qF "📎 Estratégia"; then
+    falhou=$((falhou+1)); echo "  FALHA mutação sem efeito — desligar o append não tirou o ponteiro"
+  else
+    ok=$((ok+1)); echo "  ok    mutação expôs que o ponteiro depende do append (sem ele, some calado)"
+  fi
+fi
+rm -f "$RAIZ_POSIX/lib-mut-estrategia.cjs"
+
+echo
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" = "0" ] || exit 1

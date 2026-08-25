@@ -1031,6 +1031,11 @@ function travarOrcamento(payload, orcamento = TETOS.ORCAMENTO_BYTES) {
  * @param {string} [o.sessoes]      bloco do radar multi-janela
  * @param {string} [o.revisao]      aviso de revisão vencida
  * @param {string} [o.dependencias] bloco de dependências de ambiente
+ * @param {boolean} [o.temEstrategia] Issue #74: true quando `ESTRATEGIA.md` existe
+ *   ao lado do FOCO.md (adaptador verifica — esta função é pura, não lê disco).
+ *   Quando true, o bloco de foco ganha uma linha curta e RESIDENTE apontando
+ *   para o arquivo. Compatibilidade para trás: omitido/false não muda nada do
+ *   comportamento de hoje (FOCO.md monolítico continua idêntico).
  */
 function montarContexto(o) {
   const regras = blocoRegras(extrairNucleo(filtrarRegras(o.skillText)), o.caminhoSkill || '(caminho não informado)');
@@ -1063,9 +1068,21 @@ ${regras}
   blocoRodape.push(`Arquivos de apoio: ${o.root || ''}\\FOCO.md e ${o.root || ''}\\ideias.jsonl (uma ideia por linha)`);
   const rodape = '\n\n' + blocoRodape.join('\n\n');
 
+  // Issue #74: ponteiro RESIDENTE para o ESTRATEGIA.md, quando o adaptador
+  // confirmou que o arquivo existe ao lado do FOCO.md. Reservado ANTES de
+  // calcular o teto do foco — não depois — porque um ponteiro acrescentado
+  // por cima do bloco já cheio é exatamente o jeito de estourar o teto que
+  // este arquivo inteiro existe para evitar (mesmo motivo do `reserva` em
+  // `priorizarFoco`). Ausente/false: `custoEstrategia` é 0 e nada muda —
+  // é a garantia de compatibilidade para trás com FOCO.md monolítico.
+  const pastaEstrategia = o.temEstrategia
+    ? `\n\n📎 Estratégia (contexto de negócio, frentes, concluídos): ${o.estrategiaPath || 'ESTRATEGIA.md'}`
+    : '';
+  const custoEstrategia = pastaEstrategia ? Buffer.byteLength(pastaEstrategia, 'utf8') : 0;
+
   const fixo = Buffer.byteLength(cabecalho + rodape, 'utf8');
   const sobra = TETOS.ORCAMENTO_BYTES - fixo;
-  const tetoFoco = Math.min(TETOS.FOCO_MAX_BYTES, Math.max(0, sobra));
+  const tetoFoco = Math.max(0, Math.min(TETOS.FOCO_MAX_BYTES, Math.max(0, sobra)) - custoEstrategia);
 
   const focoResumido = resumirFoco(o.focoText).trim();
   let foco;
@@ -1094,6 +1111,8 @@ ${regras}
     // faltou conteúdo priorizável, e a saída para quem lê é outra.
     if (focoSoTemPonteiro(foco)) foco = avisoFocoNaoCoube(tetoFoco, 'ponteiro');
   }
+
+  if (pastaEstrategia) foco += pastaEstrategia;
 
   return travarOrcamento(cabecalho + foco + rodape);
 }
@@ -1501,6 +1520,7 @@ function montarLegenda(o) {
 
 module.exports = {
   TETOS,
+  SECOES_RESIDENTES,
   tituloDoFocoAtivo,
   montarLegenda,
   filtrarRegras,
