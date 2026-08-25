@@ -11,9 +11,12 @@
  * recuperação em caso de falha da LLM.
  *
  * Uso:
- *   node scripts/observar.cjs [--sessao <id>] [--projeto <nome>]
+ *   node scripts/observar.cjs [--sessao <id>] [--projeto <nome>] [--help] [--seco]
  *
- * Se --sessao não for informado, processa a marca mais recente não-processada.
+ * Sem --sessao: processa TODAS as marcas com pendência (varredura de manutenção).
+ * Com --sessao: processa apenas aquela sessão.
+ * --help: imprime uso e sai (exit 0), sem tocar banco.
+ * --seco: lista marcas pendentes e o que seria processado, sem LLM nem gravação.
  * Retorna exit 0 se sucesso, exit 1 se falha crítica (banco, I/O).
  * Se falha apenas a LLM: exit 0, marca intacta, tenta novamente depois.
  *
@@ -608,12 +611,68 @@ async function processarSessao(sessao, projeto) {
 
 // ---- CLI
 
+// Imprime ajuda e sai
+function imprimirAjuda() {
+  console.log('Passada de LLM: transforma trecho de transcrito em observação gravada.');
+  console.log('');
+  console.log('Uso: node scripts/observar.cjs [--sessao <id>] [--projeto <nome>] [--help] [--seco]');
+  console.log('');
+  console.log('  --sessao <id>     Processa apenas a sessão especificada.');
+  console.log('  --projeto <nome>  Projeto a processar (padrão: $PROJ do ambiente).');
+  console.log('  --help            Imprime este texto e sai (exit 0).');
+  console.log('  --seco            Lista marcas pendentes sem chamar LLM nem gravar nada.');
+  console.log('');
+  console.log('Sem argumentos: processa TODAS as marcas com pendência (varredura).');
+  process.exit(0);
+}
+
+// Lista marcas pendentes sem processar (modo seco)
+function modoSeco() {
+  try {
+    const { caminhoDb } = resolverDados();
+    const conexao = abrirBanco(caminhoDb);
+    const marcas = lerMarcasPendentes(conexao);
+    conexao.close();
+
+    if (marcas.length === 0) {
+      console.log('nenhuma marca com pendencia');
+      return;
+    }
+
+    console.log(`encontradas ${marcas.length} marca(s) com pendencia:`);
+    for (const marca of marcas) {
+      const pendencia = marca.offset - (marca.offset_processado || 0);
+      console.log(`  sessao=${marca.sessao}, projeto=${marca.projeto}, pendencia=${pendencia} bytes`);
+    }
+  } catch (e) {
+    console.error(`ERRO ao listar marcas pendentes: ${e.message}`);
+    process.exit(1);
+  }
+}
+
 function main() {
   // Parser simples de argumentos
   function arg(nome) {
     const i = process.argv.indexOf(`--${nome}`);
-    if (i === -1 || i + 1 >= process.argv.length) return null;
+    if (i === -1) return null;
+    if (i + 1 >= process.argv.length) return null;
     return process.argv[i + 1];
+  }
+
+  function temArg(nome) {
+    return process.argv.includes(`--${nome}`);
+  }
+
+  // Verificar --help (pode ser único ou combinado)
+  if (temArg('help')) {
+    imprimirAjuda();
+    return;
+  }
+
+  // Verificar --seco (não processa, apenas lista)
+  if (temArg('seco')) {
+    modoSeco();
+    return;
   }
 
   const sessao = arg('sessao');
