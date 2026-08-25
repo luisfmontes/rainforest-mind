@@ -388,8 +388,38 @@ function iparAvancoRecente(secao) {
  * ninguém faz na abertura. O ponteiro nomeia o que saiu — omissão anunciada é
  * recuperável, omissão silenciosa vira afirmação errada sobre o que já foi decidido.
  */
+/**
+ * CRLF -> LF. Existe como funcao nomeada, e nao inline, porque ela e a UNIDADE do
+ * arquivo: dois lugares ja precisaram dela (o bloco de regras em 2026-08-13, o
+ * bloco de foco em 2026-08-25) e o terceiro vai precisar tambem.
+ */
+function normalizarFimDeLinha(texto) {
+  return String(texto || '').replace(/\r\n/g, '\n');
+}
+
 function resumirFoco(focoText) {
-  const texto = resumirAvancos(String(focoText || '')).trim();
+  // CRLF -> LF ANTES de qualquer coisa, pelo mesmo motivo que `filtrarRegras` faz
+  // no bloco de regras — e o FOCO.md ficou de fora daquele conserto, em
+  // 2026-08-13, sem ninguem notar.
+  //
+  // Aqui o custo nao e byte desperdicado, e sim o corte por PRIORIDADE parar de
+  // funcionar INTEIRO. O `priorizarFoco` separa blocos por linha em branco, com
+  // um split que exige dois avancos de linha ADJACENTES. Linha em branco em
+  // arquivo CRLF nao tem os dois adjacentes: tem retorno-de-carro no meio. Num
+  // FOCO.md com CRLF (o padrao de quem edita no Windows) a secao "## Ativo"
+  // inteira chega como UM bloco de ~2 KB em vez de quatro paragrafos, nada cabe
+  // no teto, e o bloco de foco degrada para "so ponteiros" — em TODA sessao.
+  //
+  // Medido em 2026-08-25 contra o FOCO.md real, que tinha 135 CRLF:
+  //   como estava (CRLF): 3 blocos, "## Ativo" com 1976 B  -> so ponteiros
+  //   normalizado  (LF) : 9 blocos, identidade com 1317 B  -> conteudo real
+  //
+  // Era a causa raiz da Issue #74. O sintoma parecia orcamento apertado e o
+  // arquivo parecia grande demais; o arquivo cabia. Quem nao cabia era o bloco
+  // que a falta de normalizacao tinha grudado — e o mesmo defeito de 2026-08-13,
+  // no arquivo vizinho, ja tinha ensinado que unidade errada nao da erro, da
+  // numero diferente em maquina diferente.
+  const texto = resumirAvancos(normalizarFimDeLinha(focoText)).trim();
   if (!texto) return '';
 
   const partes = texto.split(/\n(?=## )/);
@@ -1031,6 +1061,11 @@ function travarOrcamento(payload, orcamento = TETOS.ORCAMENTO_BYTES) {
  * @param {string} [o.sessoes]      bloco do radar multi-janela
  * @param {string} [o.revisao]      aviso de revisão vencida
  * @param {string} [o.dependencias] bloco de dependências de ambiente
+ * @param {boolean} [o.temEstrategia] Issue #74: true quando `ESTRATEGIA.md` existe
+ *   ao lado do FOCO.md (adaptador verifica — esta função é pura, não lê disco).
+ *   Quando true, o bloco de foco ganha uma linha curta e RESIDENTE apontando
+ *   para o arquivo. Compatibilidade para trás: omitido/false não muda nada do
+ *   comportamento de hoje (FOCO.md monolítico continua idêntico).
  */
 function montarContexto(o) {
   const regras = blocoRegras(extrairNucleo(filtrarRegras(o.skillText)), o.caminhoSkill || '(caminho não informado)');
@@ -1063,9 +1098,21 @@ ${regras}
   blocoRodape.push(`Arquivos de apoio: ${o.root || ''}\\FOCO.md e ${o.root || ''}\\ideias.jsonl (uma ideia por linha)`);
   const rodape = '\n\n' + blocoRodape.join('\n\n');
 
+  // Issue #74: ponteiro RESIDENTE para o ESTRATEGIA.md, quando o adaptador
+  // confirmou que o arquivo existe ao lado do FOCO.md. Reservado ANTES de
+  // calcular o teto do foco — não depois — porque um ponteiro acrescentado
+  // por cima do bloco já cheio é exatamente o jeito de estourar o teto que
+  // este arquivo inteiro existe para evitar (mesmo motivo do `reserva` em
+  // `priorizarFoco`). Ausente/false: `custoEstrategia` é 0 e nada muda —
+  // é a garantia de compatibilidade para trás com FOCO.md monolítico.
+  const pastaEstrategia = o.temEstrategia
+    ? `\n\n📎 Estratégia (contexto de negócio, frentes, concluídos): ${o.estrategiaPath || 'ESTRATEGIA.md'}`
+    : '';
+  const custoEstrategia = pastaEstrategia ? Buffer.byteLength(pastaEstrategia, 'utf8') : 0;
+
   const fixo = Buffer.byteLength(cabecalho + rodape, 'utf8');
   const sobra = TETOS.ORCAMENTO_BYTES - fixo;
-  const tetoFoco = Math.min(TETOS.FOCO_MAX_BYTES, Math.max(0, sobra));
+  const tetoFoco = Math.max(0, Math.min(TETOS.FOCO_MAX_BYTES, Math.max(0, sobra)) - custoEstrategia);
 
   const focoResumido = resumirFoco(o.focoText).trim();
   let foco;
@@ -1094,6 +1141,8 @@ ${regras}
     // faltou conteúdo priorizável, e a saída para quem lê é outra.
     if (focoSoTemPonteiro(foco)) foco = avisoFocoNaoCoube(tetoFoco, 'ponteiro');
   }
+
+  if (pastaEstrategia) foco += pastaEstrategia;
 
   return travarOrcamento(cabecalho + foco + rodape);
 }
@@ -1501,6 +1550,7 @@ function montarLegenda(o) {
 
 module.exports = {
   TETOS,
+  SECOES_RESIDENTES,
   tituloDoFocoAtivo,
   montarLegenda,
   filtrarRegras,
