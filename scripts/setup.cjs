@@ -28,7 +28,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 
 const CODIGO_ROOT = path.resolve(__dirname, '..');
 const { resolverRaiz } = require('../hooks/lib/raiz.cjs');
@@ -466,7 +466,7 @@ rainforest.db*
       if (arquivosDesrastrear.length > 0) {
         console.log(`  desrastreando ${arquivosDesrastrear.length} arquivo(s) que deveriam estar ignorados:`);
         for (const arquivo of arquivosDesrastrear) {
-          execSync(`git rm --cached "${arquivo}"`, { cwd: raiz, stdio: 'pipe' });
+          execFileSync('git', ['rm', '--cached', arquivo], { cwd: raiz, stdio: 'pipe' });
           console.log(`    ${arquivo}`);
         }
         // Fazer commit para formalizar a remoção do histórico
