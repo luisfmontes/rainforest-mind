@@ -46,7 +46,18 @@
     "em": "2026-08-25"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "snapshot": {
+      "head": "e3f857b8c343a7ed3185e53c4a71b3ed4ebe955c",
+      "caminhos_sujos": []
+    },
+    "achados": 3,
+    "bloqueou": 1,
+    "base": "0c7aafa75217deb63729f67bdfefde55be7a084c",
+    "head": "94e94f6",
+    "corrigido": "ROOT com literal de caminho quebrado — default passa a ser o PLUGIN; bateria 16 -> 19 casos",
+    "registrado": "ideias.jsonl nunca e encontrado na ronda agendada — defeito PRE-EXISTENTE, vira issue",
+    "em": "2026-08-25"
   },
   "verificar": {
     "status": "pendente"
