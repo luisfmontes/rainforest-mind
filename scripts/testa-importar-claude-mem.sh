@@ -371,6 +371,112 @@ else
   falhou=$((falhou+1)); echo "  FALHA conteudo importado nao tem title/subtitle: $CONTEUDO_FIEL"
 fi
 
+
+echo
+echo "-- abrirBancoSomenteLeitura abre em somente-leitura DE VERDADE --"
+# O defeito que esta secao existe para pegar (2026-08-25): a funcao passava
+# `{ readonly: true }` (minusculo) para o node:sqlite, que IGNORA opcao desconhecida
+# em silencio e abre o banco em leitura E escrita. O nome certo e `readOnly`.
+#
+# Por que nenhum teste pegava: o `PRAGMA query_only = ON` logo abaixo barra escrita
+# de SQL nos DOIS casos, entao qualquer teste de INSERT passa verde com o bug de pe.
+# A diferenca so aparece quando se desliga o query_only — e ela e' real, porque o que
+# o query_only NAO barra e' o checkpoint de WAL no close(). Foi assim que uma auditoria
+# que so queria CONTAR linhas do claude-mem.db absorveu o WAL de 4 MB do banco que
+# estava auditando.
+#
+# A assercao, portanto, e' a que distingue: com query_only DESLIGADO, escrever tem que
+# continuar impossivel. Se alguem devolver o `readonly` minusculo, este teste cai.
+
+BANCO_RO="$CAIXA/somente-leitura.db"
+export BANCO_RO
+node <<'SETUP_RO'
+const { DatabaseSync } = require('node:sqlite');
+const db = new DatabaseSync(process.env.BANCO_RO);
+db.exec('CREATE TABLE t (x INTEGER)');
+db.exec('INSERT INTO t VALUES (1)');
+db.close();
+SETUP_RO
+
+RESULTADO_RO="$(BANCO_RO="$BANCO_RO" SRC="$SRC" node -e "
+const { abrirBancoSomenteLeitura } = require(process.env.SRC + '/scripts/memoria.cjs');
+const c = abrirBancoSomenteLeitura(process.env.BANCO_RO);
+if (!c) { process.stdout.write('NAO-ABRIU'); process.exit(0); }
+let comPragma, semPragma;
+try { c.exec('INSERT INTO t VALUES (2)'); comPragma = 'ESCREVEU'; } catch { comPragma = 'bloqueou'; }
+try { c.exec('PRAGMA query_only = OFF; INSERT INTO t VALUES (3)'); semPragma = 'ESCREVEU'; } catch { semPragma = 'bloqueou'; }
+c.close();
+process.stdout.write(comPragma + '/' + semPragma);
+" 2>/dev/null)"
+
+case "$RESULTADO_RO" in
+  bloqueou/bloqueou)
+    ok=$((ok+1)); echo "  ok   escrita bloqueada COM e SEM o query_only (o modo do arquivo e' que segura)" ;;
+  bloqueou/ESCREVEU)
+    falhou=$((falhou+1))
+    echo "  FALHA so o query_only segurava — o banco abriu em leitura E escrita."
+    echo "        E o sintoma exato de \`{ readonly: true }\` no lugar de \`{ readOnly: true }\`:"
+    echo "        opcao desconhecida e ignorada calada pelo node:sqlite." ;;
+  NAO-ABRIU)
+    falhou=$((falhou+1)); echo "  FALHA abrirBancoSomenteLeitura devolveu null para banco valido" ;;
+  *)
+    falhou=$((falhou+1)); echo "  FALHA resultado inesperado: '$RESULTADO_RO'" ;;
+esac
+
+# Segunda metade, e e' a que prova que a primeira nao passa por acidente: o arquivo
+# nao pode mudar um byte por ter sido aberto e fechado.
+BYTES_ANTES="$(wc -c < "$BANCO_RO")"
+BANCO_RO="$BANCO_RO" SRC="$SRC" node -e "
+const { abrirBancoSomenteLeitura } = require(process.env.SRC + '/scripts/memoria.cjs');
+const c = abrirBancoSomenteLeitura(process.env.BANCO_RO);
+if (c) { c.prepare('SELECT COUNT(*) c FROM t').get(); c.close(); }
+" >/dev/null 2>&1
+BYTES_DEPOIS="$(wc -c < "$BANCO_RO")"
+if [ "$BYTES_ANTES" = "$BYTES_DEPOIS" ]; then
+  ok=$((ok+1)); echo "  ok   abrir, ler e fechar nao alterou o arquivo ($BYTES_ANTES B)"
+else
+  falhou=$((falhou+1)); echo "  FALHA o arquivo mudou de $BYTES_ANTES para $BYTES_DEPOIS so por ter sido lido"
+fi
+
+echo "  -- SABOTAGEM: devolver o \`readonly\` minusculo e exigir que a assercao caia"
+# O IRMAO VAI JUNTO: memoria.cjs faz require("../hooks/lib/raiz.cjs"), que resolve ao lado
+# do arquivo COPIADO. Sem recriar a arvore, o mutante morre com MODULE_NOT_FOUND antes de
+# rodar uma linha — e a bateria creditaria 'ok' por nao ter conseguido executar nada.
+mkdir -p "$CAIXA/mut/scripts" "$CAIXA/mut/hooks/lib"
+MUT_MEMORIA="$CAIXA/mut/scripts/memoria-mut.cjs"
+cp "$SRC/scripts/memoria.cjs" "$MUT_MEMORIA"
+cp "$SRC/hooks/lib/raiz.cjs" "$CAIXA/mut/hooks/lib/raiz.cjs"
+node -e '
+const fs = require("fs");
+const alvo = process.argv[1];
+let t = fs.readFileSync(alvo, "utf8");
+const achar = "new DatabaseSync(caminhoDb, { readOnly: true })";
+const trocar = "new DatabaseSync(caminhoDb, { readonly: true })";
+if (!t.includes(achar)) { console.error("ANCORA NAO BATE"); process.exit(1); }
+fs.writeFileSync(alvo, t.replace(achar, trocar));
+' "$MUT_MEMORIA"
+EXIT_SABOTA_RO=$?
+if [ "$EXIT_SABOTA_RO" != "0" ]; then
+  falhou=$((falhou+1)); echo "  FALHA ANCORA NAO BATE — a copia intocada nao prova nada"
+else
+  MUT_RESULTADO="$(BANCO_RO="$BANCO_RO" MUT="$MUT_MEMORIA" node -e "
+const { abrirBancoSomenteLeitura } = require(process.env.MUT);
+const c = abrirBancoSomenteLeitura(process.env.BANCO_RO);
+if (!c) { process.stdout.write('NAO-ABRIU'); process.exit(0); }
+let r;
+try { c.exec('PRAGMA query_only = OFF; INSERT INTO t VALUES (99)'); r = 'ESCREVEU'; } catch { r = 'bloqueou'; }
+c.close();
+process.stdout.write(r);
+" 2>/dev/null)"
+  echo "  (mutante com \`readonly\` minusculo: $MUT_RESULTADO)"
+  if [ "$MUT_RESULTADO" = "ESCREVEU" ]; then
+    ok=$((ok+1)); echo "  ok   mutacao expos que a assercao mede o MODO do arquivo, nao o query_only"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — voltar o nome errado da opcao nao mudou nada"
+  fi
+fi
+rm -rf "$CAIXA/mut"
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
