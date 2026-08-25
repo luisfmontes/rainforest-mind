@@ -45,9 +45,12 @@ somem de qualquer varredura ingênua:
 
 - **Server Actions** (Next.js): `'use server'` + `export async function`. **São
   POST endereçáveis por HTTP**, recebem argumentos vindos do cliente, e um
-  scanner que só lê `route.ts` perde todas. Num repositório real auditado em
-  2026-08-24 eram **19 handlers de rota contra 36 Server Actions** — dois terços
-  da superfície invisível, e era nelas que a falha se concentrava.
+  scanner que só lê `route.ts` perde todas. Num painel Next.js auditado em
+  2026-08-24, os handlers de rota eram **metade** do que as Server Actions —
+  dois terços da superfície ficava invisível, e era nelas que a falha se
+  concentrava. **Conte no repositório à sua frente**: a proporção acima é para
+  você desconfiar do número baixo, nunca para você reusar. Número de exemplo
+  virando número de relatório é o erro mais caro desta etapa.
 - Handlers de framework por convenção de arquivo (`route.ts`, `+server.ts`,
   `page.tsx` com carregamento no servidor, `loader`/`action` do Remix).
 - RPC, GraphQL resolvers, tRPC procedures, gRPC services, WebSocket handlers.
