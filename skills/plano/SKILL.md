@@ -194,7 +194,7 @@ pronto quando: com as duas contas pareadas em portas diferentes (3005 e 3006),
 cada página **no corpo visível** contém um identificador da conta — provado por
 `grep -q 'Account: acc_demo_001' <(curl -s localhost:3005/qr)` E
 `grep -q 'Account: acc_demo_002' <(curl -s localhost:3006/qr)` E
-`! diff <(curl -s localhost:3005/qr | grep -oE 'Account: acc_demo_[0-9]+') <(curl -s localhost:3006/qr | grep -oE 'Account: acc_demo_[0-9]+')'`
+`! diff <(curl -s localhost:3005/qr | grep -oE 'Account: acc_demo_[0-9]+') <(curl -s localhost:3006/qr | grep -oE 'Account: acc_demo_[0-9]+')`
 
 Prova: a pessoa vê **qual número de conta** é cada QR; nessa informação falha,
 o critério falha, ainda que as páginas difiram por qualquer outro motivo.
