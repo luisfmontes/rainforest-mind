@@ -137,9 +137,10 @@ function abrirBanco(caminhoDb) {
 // Decisão D8 (driver isolado no adaptador): todos acessos a node:sqlite via este módulo.
 //
 // Uso: importação de bancos externos, auditorias, backups, leitura de transcritos.
-// Tolera WAL aberto por escrita concorrente — pragmas PRAGMA query_only + modo readonly
-// impedem qualquer escrita, mesmo se o banco tiver PRAGMA journal_mode = WAL ativo em outro
-// processo.
+// Tolera WAL aberto por escrita concorrente — o modo somente-leitura do SQLite mais o
+// PRAGMA query_only impedem escrita, mesmo com PRAGMA journal_mode = WAL ativo em outro
+// processo. Ver o comentário dentro da função: até 2026-08-25 esta promessa era falsa,
+// porque o nome da opção estava errado e o `node:sqlite` a ignorava calado.
 //
 // Parâmetros:
 //   caminhoDb (string): caminho do arquivo do banco
@@ -149,8 +150,22 @@ function abrirBanco(caminhoDb) {
 function abrirBancoSomenteLeitura(caminhoDb) {
   try {
     const DatabaseSync = require('node:sqlite').DatabaseSync;
-    const conexao = new DatabaseSync(caminhoDb, { readonly: true });
-    // PRAGMA query_only: trata qualquer tentativa de escrita como erro
+    // `readOnly`, com O maiúsculo — o `node:sqlite` IGNORA opção desconhecida em
+    // silêncio, então `{ readonly: true }` (como estava até 2026-08-25) abria o
+    // banco em LEITURA E ESCRITA sem avisar ninguém. Medido no Node v22.16.0
+    // desta máquina: com `readonly` minúsculo, `PRAGMA query_only = OFF` seguido
+    // de INSERT **grava**; com `readOnly`, o SQLite recusa com "attempt to write
+    // a readonly database". A bateria assere exatamente isso.
+    //
+    // O `query_only` abaixo escondia o defeito: ele barra escrita de SQL nos dois
+    // casos, então nenhum teste de INSERT pegava a diferença. O que ele NÃO barra
+    // é o checkpoint de WAL no `close()` — e foi assim que uma auditoria de
+    // 2026-08-25, que só queria contar linhas do `claude-mem.db`, absorveu o WAL
+    // de 4 MB do banco que estava auditando. Dado nenhum se perdeu, mas quem abre
+    // "somente leitura" não deve poder alterar um byte do arquivo.
+    const conexao = new DatabaseSync(caminhoDb, { readOnly: true });
+    // PRAGMA query_only: segunda tranca, não a primeira. Fica porque dá mensagem
+    // de erro melhor para escrita de SQL, mas o que garante o arquivo é o modo.
     conexao.exec('PRAGMA query_only = ON;');
     return conexao;
   } catch (e) {
