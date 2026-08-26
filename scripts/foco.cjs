@@ -326,27 +326,36 @@ function backup() {
 
   if (!fs.existsSync(alvoFoco)) morrer(`não achei o FOCO.md em ${raiz}`);
 
-  const carimbo = carimboAgora();
-
   // Cria diretório se não existir
   fs.mkdirSync(dirBackup, { recursive: true });
 
-  // Caminho do novo backup — cópia byte a byte do original
-  const alvoBackup = path.join(dirBackup, `foco-${carimbo}.md`);
+  // Duas chamadas no MESMO milissegundo escreviam o mesmo nome, e a primeira
+  // cópia sumia sem erro, sem log e sem indício — `totalBackups` saía igual nos
+  // dois casos. Achado na revisão da #118 (2026-08-26) congelando o relógio.
+  // Improvável pelo agendador, que roda uma vez por dia; possível por duas
+  // execuções manuais. Perda silenciosa de backup não se aceita por ser rara.
+  let alvoBackup = path.join(dirBackup, `foco-${carimboAgora()}.md`);
+  for (let n = 2; fs.existsSync(alvoBackup); n++) {
+    alvoBackup = path.join(dirBackup, `foco-${carimboAgora()}-${n}.md`);
+  }
   fs.copyFileSync(alvoFoco, alvoBackup);
 
-  // --- rodízio: deleta TODAS as cópias antigas enquanto houver excesso ---
-  let arquivos = fs.readdirSync(dirBackup)
-    .filter(f => f.startsWith('foco-') && f.endsWith('.md'))
-    .sort();
+  // Só entra no rodízio o que TEM forma de carimbo. O filtro anterior era
+  // `foco-` + `.md`, e isso deixava um `foco-README.md` ocupar vaga do teto
+  // para sempre: em ASCII o dígito vem antes da letra, então ele ordenava
+  // depois de todos os carimbos e nunca era o "mais antigo" — evacuava as
+  // cópias reais e sobrevivia. Reproduzido na revisão da #118: três cópias
+  // datadas e um `foco-README.md`, teto 2, e o README foi o que sobrou.
+  // Arquivo fora do formato é IGNORADO, não apagado: a pasta é nossa, mas
+  // apagar o que não reconhecemos é pior do que deixar quieto.
+  const DE_BACKUP = /^foco-\d{8}-\d{6}-\d{3}(-\d+)?\.md$/;
+  const listar = () => fs.readdirSync(dirBackup).filter((f) => DE_BACKUP.test(f)).sort();
 
+  // --- rodízio: apaga as mais antigas enquanto houver excesso ---
+  let arquivos = listar();
   while (arquivos.length > teto) {
-    const maisAntigo = path.join(dirBackup, arquivos[0]);
-    fs.unlinkSync(maisAntigo);
-    // Relê a lista após apagar, porque a ordem mudou
-    arquivos = fs.readdirSync(dirBackup)
-      .filter(f => f.startsWith('foco-') && f.endsWith('.md'))
-      .sort();
+    fs.unlinkSync(path.join(dirBackup, arquivos[0]));
+    arquivos = listar();
   }
 
   const original = fs.readFileSync(alvoFoco, 'utf8');

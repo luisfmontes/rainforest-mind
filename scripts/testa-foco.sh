@@ -176,7 +176,7 @@ montar
 rm -rf "$SBP/dados/.foco-backups"; mkdir -p "$SBP/dados/.foco-backups"
 # Monta 8 cópias dentro do diretório
 for i in 1 2 3 4 5 6 7 8; do
-  printf 'teste %d\n' $i > "$SBP/dados/.foco-backups/foco-2026-01-0${i}-000000-000.md"
+  printf 'teste %d\n' $i > "$SBP/dados/.foco-backups/foco-2026010${i}-000000-000.md"
   sleep 0.01  # Garante order por sort
 done
 COUNT_ANTES="$(ls "$SBP/dados/.foco-backups/foco-"*.md 2>/dev/null | wc -l)"
@@ -213,7 +213,7 @@ montar
 rm -rf "$SBP/dados/.foco-backups"; mkdir -p "$SBP/dados/.foco-backups"
 # Monta 8 cópias
 for i in 1 2 3 4 5 6 7 8; do
-  printf 'teste %d\n' $i > "$SBP/dados/.foco-backups/foco-2026-01-0${i}-000000-000.md"
+  printf 'teste %d\n' $i > "$SBP/dados/.foco-backups/foco-2026010${i}-000000-000.md"
   sleep 0.01
 done
 MUT_BACKUP="$SBP/foco-mutante-backup.cjs"
@@ -452,6 +452,51 @@ else
   fi
 fi
 rm -f "$MUT"
+
+# ---------------------------------------------------------------------------
+# Os dois achados da revisao da #118 (2026-08-26). Os dois eram do rodizio, e
+# nenhum dos dois era alcancavel pelos casos que ja existiam aqui — os antigos
+# so montavam o cenario a partir de pasta limpa e com uma chamada de cada vez.
+
+echo; echo "== 13. arquivo fora do formato nao ocupa vaga do teto nem e apagado =="
+CX="$SBP/estranho"; mkdir -p "$CX/.foco-backups"; printf 'foco
+' > "$CX/FOCO.md"
+for i in 1 2 3; do printf 'v%s' $i > "$CX/.foco-backups/foco-2026080$i-000000-000.md"; done
+printf 'leia-me' > "$CX/.foco-backups/foco-README.md"
+node "$SRC/scripts/foco.cjs" backup --raiz "$CX" --teto 2 > /dev/null 2>&1
+DATADAS=$(ls "$CX/.foco-backups" | grep -cE '^foco-[0-9]{8}-[0-9]{6}-[0-9]{3}(-[0-9]+)?\.md$')
+igual "o teto conta so as copias datadas" "$DATADAS" "2"
+if [ -f "$CX/.foco-backups/foco-README.md" ]; then
+  ok=$((ok+1)); echo "  ok   o arquivo estranho foi ignorado, nao apagado"
+else
+  falhou=$((falhou+1)); echo "  FALHA apagou um arquivo que nao e nosso"
+fi
+
+echo; echo "== 14. duas chamadas no mesmo milissegundo nao se sobrescrevem =="
+# Relogio congelado num processo separado: e o unico jeito deterministico de
+# forcar a colisao. Sem isto, a perda da primeira copia e silenciosa — sem erro,
+# sem log, e o proprio relato de totalBackups sai igual nos dois casos.
+CX2="$SBP/colisao"; mkdir -p "$CX2"
+COL=$(node -e '
+const path=require("path"),fs=require("fs");
+const raiz=process.argv[1], src=process.argv[2];
+const Real=Date;
+class Congelado extends Real {
+  constructor(...a){ if(a.length) return new Real(...a); return new Real(2026,0,1,10,20,30,123); }
+  static now(){ return new Real(2026,0,1,10,20,30,123).getTime(); }
+}
+global.Date=Congelado;
+const {backup}=require(path.join(src,"scripts","foco.cjs"));
+process.argv=[process.argv[0],"foco.cjs","backup","--raiz",raiz];
+fs.writeFileSync(path.join(raiz,"FOCO.md"),"versao 1"); backup();
+fs.writeFileSync(path.join(raiz,"FOCO.md"),"versao 2"); backup();
+const dir=path.join(raiz,".foco-backups");
+const fs2=fs.readdirSync(dir).sort();
+console.error(JSON.stringify({n:fs2.length,conteudos:fs2.map(f=>fs.readFileSync(path.join(dir,f),"utf8")).sort()}));
+' "$CX2" "$SRC" 2>&1 >/dev/null | tail -1)
+igual "as duas versoes sobreviveram" "$(echo "$COL" | grep -o '"n":[0-9]*')" '"n":2'
+tem "a versao 1 nao se perdeu" "$COL" 'versao 1'
+tem "a versao 2 esta la"       "$COL" 'versao 2'
 
 echo; echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
