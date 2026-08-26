@@ -131,6 +131,19 @@ function valorDe(nome) {
 
 const bytes = (s) => Buffer.byteLength(s, 'utf8');
 
+function pad(n, len = 2) {
+  return String(n).padStart(len, '0');
+}
+
+function carimboAgora() {
+  const d = new Date();
+  return (
+    `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-` +
+    `${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}-` +
+    `${pad(d.getMilliseconds(), 3)}`
+  );
+}
+
 function morrer(msg) {
   console.error(`erro: ${msg}`);
   process.exit(1);
@@ -296,6 +309,69 @@ function concluir(relato, msg, movidas = []) {
   if (relato.jaNoHistorico) {
     console.log(`\n(${relato.jaNoHistorico} entrada(s) já estavam no AVANCOS.md e não foram duplicadas.)`);
   }
+}
+
+/**
+ * Faz backup do FOCO.md para .foco-backups/foco-<timestamp>.md.
+ * Implementa rodízio: mantém até --teto cópias (padrão 10), deletando a mais antiga.
+ * FOCO.md ausente: exit 1, avisa qual arquivo não achou, não cria diretório nenhum.
+ */
+function backup() {
+  const raiz = valorDe('raiz') || RAIZ_PADRAO;
+  const teto = Number(valorDe('teto') || 10);
+  if (!Number.isFinite(teto) || teto <= 0) morrer('--teto precisa ser um número positivo');
+
+  const alvoFoco = path.join(raiz, 'FOCO.md');
+  const dirBackup = path.join(raiz, '.foco-backups');
+
+  if (!fs.existsSync(alvoFoco)) morrer(`não achei o FOCO.md em ${raiz}`);
+
+  // Cria diretório se não existir
+  fs.mkdirSync(dirBackup, { recursive: true });
+
+  // Duas chamadas no MESMO milissegundo escreviam o mesmo nome, e a primeira
+  // cópia sumia sem erro, sem log e sem indício — `totalBackups` saía igual nos
+  // dois casos. Achado na revisão da #118 (2026-08-26) congelando o relógio.
+  // Improvável pelo agendador, que roda uma vez por dia; possível por duas
+  // execuções manuais. Perda silenciosa de backup não se aceita por ser rara.
+  let alvoBackup = path.join(dirBackup, `foco-${carimboAgora()}.md`);
+  for (let n = 2; fs.existsSync(alvoBackup); n++) {
+    alvoBackup = path.join(dirBackup, `foco-${carimboAgora()}-${n}.md`);
+  }
+  fs.copyFileSync(alvoFoco, alvoBackup);
+
+  // Só entra no rodízio o que TEM forma de carimbo. O filtro anterior era
+  // `foco-` + `.md`, e isso deixava um `foco-README.md` ocupar vaga do teto
+  // para sempre: em ASCII o dígito vem antes da letra, então ele ordenava
+  // depois de todos os carimbos e nunca era o "mais antigo" — evacuava as
+  // cópias reais e sobrevivia. Reproduzido na revisão da #118: três cópias
+  // datadas e um `foco-README.md`, teto 2, e o README foi o que sobrou.
+  // Arquivo fora do formato é IGNORADO, não apagado: a pasta é nossa, mas
+  // apagar o que não reconhecemos é pior do que deixar quieto.
+  const DE_BACKUP = /^foco-\d{8}-\d{6}-\d{3}(-\d+)?\.md$/;
+  const listar = () => fs.readdirSync(dirBackup).filter((f) => DE_BACKUP.test(f)).sort();
+
+  // --- rodízio: apaga as mais antigas enquanto houver excesso ---
+  let arquivos = listar();
+  while (arquivos.length > teto) {
+    fs.unlinkSync(path.join(dirBackup, arquivos[0]));
+    arquivos = listar();
+  }
+
+  const original = fs.readFileSync(alvoFoco, 'utf8');
+  const relato = {
+    raiz, teto, foco: alvoFoco, backup: alvoBackup,
+    bytes: bytes(original), totalBackups: arquivos.length,
+  };
+
+  if (tem('json')) {
+    console.log(JSON.stringify(relato, null, 2));
+    return;
+  }
+
+  console.log(`backup: ${alvoBackup}`);
+  console.log(`  ${bytes(original)} bytes do FOCO.md`);
+  console.log(`  cópias guardadas: ${arquivos.length}/${teto}`);
 }
 
 /**
@@ -656,16 +732,18 @@ function main() {
   const comando = process.argv[2];
   if (comando === 'rotacionar') return rotacionar();
   if (comando === 'separar') return separar();
+  if (comando === 'backup') return backup();
   if (comando === 'caminho') return caminho();
   console.error('uso: node scripts/foco.cjs rotacionar [--aplicar] [--teto N] [--raiz DIR] [--json]');
   console.error('     node scripts/foco.cjs separar [--aplicar] [--raiz DIR] [--json]');
+  console.error('     node scripts/foco.cjs backup [--teto N] [--raiz DIR] [--json]');
   console.error('     node scripts/foco.cjs caminho [--raiz DIR] [--json]');
   process.exit(2);
 }
 
 if (require.main === module) main();
 module.exports = {
-  rotacionar, separar, caminho, main,
+  rotacionar, separar, backup, caminho, main,
   dividirFoco, dividirAtivo, dividirPorParagrafo, medirAjusteIdentidade,
   RAIZ_PADRAO,
 };

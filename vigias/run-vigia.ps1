@@ -176,15 +176,24 @@ $prompt | & $claude -p --model $modelo --dangerously-skip-permissions 2>&1 |
 # commit 720585f, com a mensagem "Backup diario do estado (sentinela)". Modo de
 # teste que escreve no repositório do usuário não é teste — é a ronda de verdade
 # com o envio desligado.
-if ($Vigia -eq 'sentinela-foco' -and $Teste) {
-    "modo teste: backup do estado (git add/commit/push) NAO executado" |
-      Out-File -Append -Encoding utf8 $log
-}
-if ($Vigia -eq 'sentinela-foco' -and -not $Teste) {
-    git -C $root add FOCO.md ideias.jsonl vigias/ERROS.md 2>$null
-    $staged = git -C $root diff --cached --name-only
-    if ($staged) {
-        git -C $root commit -m "Backup diario do estado (sentinela)" | Out-File -Append -Encoding utf8 $log
-        git -C $root push origin main 2>&1 | Out-File -Append -Encoding utf8 $log
-    }
-}
+# O backup do estado saiu deste arquivo em 2026-08-26 (Issue #118) e virou o
+# vigias/backup-estado.ps1. Dois motivos, e o segundo e o que importa:
+#
+# 1. O que estava aqui nao fazia backup. `git -C $root add FOCO.md ideias.jsonl`
+#    nao podia funcionar em raiz nenhuma — a pasta de dados nao e repositorio
+#    git, e esses dois arquivos nao sao versionados no plugin. O `2>$null`
+#    engolia a falha, sobrava o vigias/ERROS.md (que E rastreado aqui), e a
+#    tarefa agendada commitava e empurrava sozinha para a `main` de um
+#    repositorio PUBLICO: bb77232 (10/08) e 17ba994 (07/08). As tres linhas
+#    que sairam eram `git -C $root add ...`, `git -C $root commit -m ...` e
+#    `git push origin main`. Elas estao escritas aqui de proposito: a trava
+#    de scripts/testa-backup-estado.sh olha linha de EXECUCAO, e o caso que
+#    prova isso e justamente este comentario continuar verde.
+#
+# 2. Enquanto o bloco morava aqui, ele so era alcancavel depois da bridge do
+#    WhatsApp, do claude.exe e do toggle — ou seja, prova-lo por execucao
+#    exigiria enviar uma mensagem de verdade. Separado, ele roda numa caixa de
+#    areia e a bateria executa o artefato em vez de descreve-lo.
+$argsBackup = @('-Vigia', $Vigia, '-Root', $root, '-Plugin', $plugin, '-Log', $log)
+if ($Teste) { $argsBackup += '-Teste' }
+& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $plugin 'vigias\backup-estado.ps1') @argsBackup

@@ -12,6 +12,9 @@ vigia.config.json
 # Backups automáticos do scripts/ideias.cjs — um por gravação, ficam locais.
 .ideias-backups/
 
+# Backups automáticos do scripts/foco.cjs — rodízio local, nunca versionado.
+.foco-backups/
+
 # Trava entre sessões paralelas e temporário da escrita atômica.
 .ideias.lock
 *.jsonl.tmp
