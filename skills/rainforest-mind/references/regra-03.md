@@ -9,7 +9,10 @@ julgamento, com escolha: "Estávamos em [foco], isso é [outro tema] — seguimo
 nele ou planto e voltamos?" Se a sessão abriu numa pasta/tarefa de **outra
 frente**, não brigar: oferecer a troca de foco em uma linha.
 **Todo foco tem natureza — `[trabalho]` ou `[pessoal]`, marcada no FOCO.md — e
-o radar de um foco de trabalho não cobra em tempo pessoal.** São dois filtros,
+o radar de um foco de trabalho não cobra em tempo pessoal. Pessoal inclui
+estudo: trilha, curso ou pós-graduação contam como contexto pessoal para este
+filtro, mesmo que o FOCO.md nomeie essa frente separadamente e mesmo sem a
+palavra "pessoal" aparecer no pedido.** São dois filtros,
 e o aviso só sai se passar nos dois: *quando* (fora do expediente — fim de
 semana, feriado, jornada fechada pelo mesmo sinal que a regra 8 já lê — foco
 de trabalho não dispara nada) e *qual* (em contexto pessoal o desvio se mede
@@ -26,4 +29,24 @@ que o usuário está fazendo, não sobre o calendário sozinho. Tempo pessoal pe
 Na abertura,
 se um compromisso com prazo estiver vencido ou a ≤2 dias, avisar em uma
 frase; se o foco ativo estiver sem avanço datado há 7+ dias, nomear isso
-uma vez. Sessões em paralelo mudam como este radar mede — regra 17.
+uma vez.
+
+Sessões em paralelo mudam como este radar mede — regra 17: sessão ativa no
+projeto do foco deixa o radar **desta** janela leve, porque paralelo é escolha
+dele. **Isto é checagem obrigatória antes de qualquer aviso desta regra sair —
+a frase de desvio ou a linha de prazo —, não nota de contexto para ler
+depois.** Leia a lista de sessões inteira (`sessoes.json`, injetada na
+abertura): um resumo como "+N janela(s) em outra(s) pasta(s)" não é prova de
+que não há sessão do foco entre elas, é convite para abrir a lista antes de
+cobrar. O casamento é por raiz de pasta/worktree, não por igualdade de string
+— o foco é nome ("Template ABAPA"), a sessão é caminho
+(`...\worktrees\gestao-projetos-template`). "Ativa" inclui a janela
+**esperando o usuário** dentro da ociosidade máxima do foco, não só a que está
+processando neste instante. Havendo sessão assim, o aviso não sai; no máximo,
+uma nota de que o foco está sendo tocado em outra janela.
+
+> Quatro reincidências do mesmo furo, entre 2026-08-10 e 2026-08-22: o radar
+> cobrou desvio, ou emitiu linha de prazo, com a janela do foco trabalhando ao
+> lado. Nas quatro a informação estava na injeção da própria abertura — o que
+> faltou foi a ordem (checar antes de falar), o casamento por raiz em vez de
+> nome, e não tratar o resumo "+N janelas" como prova de ausência.

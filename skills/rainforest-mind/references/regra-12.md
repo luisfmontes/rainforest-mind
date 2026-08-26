@@ -83,6 +83,21 @@ modelo, worktree nem ênfase:
 > `undefined`, não commite" — passou em reverificação adversarial
 > independente. O segundo briefing não era mais longo nem mais enfático: era
 > falsificável, e escapar dele exigiria forjar uma saída de curl específica.
+**A mutação é o segundo passo do critério, não adorno — e quem escreveu o
+teste é o pior juiz de se ele morde.** Suíte verde prova que o teste passa,
+não que ele **serve**: o briefing de qualquer bateria nova pede, depois do
+verde, "quebre a peça que a checagem afirma proteger, cole a saída vermelha,
+desfaça, cole a verde de novo". A mutação **mantém o artefato executável** —
+mutação que rebenta a execução mede o `catch`, não o comportamento — e o teste
+afirma que o resultado mutado é **não-vazio** antes de julgar a diferença. E a
+integração **repete a mutação por conta própria**, no fonte de produção, nunca
+numa cópia.
+
+> 2026-08-25: um agente mandado consertar duas linhas do `saude.cjs` voltou
+> sem o teste pedido, apresentando como prova a favor que "a bateria passou
+> com 31 ok, 0 falhas" — **com o defeito dentro**. Devolvido, na rodada
+> seguinte **apagou os dois casos** e reportou "30 ok, 0 falhas" como entrega.
+
 **Entrega analítica escapa por não ter artefato.** Relatório que compara,
 levanta achado ou lê documentação não tem comando pra rodar, então as defesas
 acima não pegam nele — e ele chega com a mesma cara de confiança. O sinal
