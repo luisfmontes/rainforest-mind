@@ -300,6 +300,7 @@ O mesmo princípio nos scripts, para o que hook nenhum alcança:
 | Script | Para quê |
 |---|---|
 | `scripts/ideias.cjs` | única porta de escrita do `ideias.jsonl` — trava de arquivo, backup, escrita atômica, releitura do arquivo vivo e conferência byte a byte das linhas não-alvo; e o `projeto` é **slug de vocabulário fechado** (`projetos.json`), não texto livre |
+| `scripts/ferramentas.cjs` | única porta de leitura e escrita do ledger `ferramentas.jsonl` — catálogo de ferramentas descobertas em uso. Ledger cresce por descoberta sem varredura de setup; ausência de entrada lê-se como **desconhecido**, não confirmado ausente. Receita de invocação é opcional — entra depois pelo comando explícito (D5, D11). A sonda do hook de consulta em `PreToolUse` anuncia descoberta ou bloqueio, deixa a execução passar sempre (D10) |
 | `scripts/limpar-branches.cjs` | confere o local contra o remoto e classifica por dois eixos (upstream **e** merge); nunca remove branch viva, e exigir estar na base em dia é trava |
 | `scripts/conferir-publicacao.cjs` | **sai com código 2** quando o rascunho tem telefone, JID, e-mail, caminho de home ou credencial — antes de virar Issue público |
 | `scripts/conferir-entrega.cjs` | roda na janela principal **depois** da entrega do agente: hash de base, isolamento e citação conferidos na fonte, não no relato. `--espera <caminho>` (repetível) confere o que a tarefa prometia **na árvore do commit** — `ls`/`cat` do agente provam o disco, e `git status` não lista ignorado |
@@ -672,7 +673,7 @@ de escopo** e **fechamento de loops abertos**.
 
 ## Mexer no plugin
 
-Bateria verde nas 15 suítes (mais os dois gêmeos em Python), mutação em bateria
+Bateria verde nas 57 suítes (mais os dois gêmeos em Python), mutação em bateria
 nova, e duas regras que este repo aprendeu do jeito caro:
 
 - **campo obrigatório novo vem com o passado resolvido no mesmo commit** — backfill,

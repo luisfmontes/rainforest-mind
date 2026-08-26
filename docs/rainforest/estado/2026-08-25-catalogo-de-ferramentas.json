@@ -1,0 +1,86 @@
+{
+  "slug": "2026-08-25-catalogo-de-ferramentas",
+  "titulo": "Catalogo de ferramentas: a janela sabe antes de tentar (#76)",
+  "criado_em": "2026-08-25",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "em": "2026-08-25"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-08-25-catalogo-de-ferramentas.md",
+    "tarefas": 5,
+    "paralelas": [
+      1
+    ],
+    "em": "2026-08-25"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-08-25",
+    "tarefas_ok": 5,
+    "tarefas": 5,
+    "em": "2026-08-25",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "CRITERIO 3 (registrar com campo de negativa e recusado) em scripts/testa-ferramentas.sh"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "os dois casos de exit 0 em hooks/testa-ferramentas-consulta.sh (13 ok, 2 falhas com o exit final invertido)"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "ferramentas-consulta esta em bloco proprio com matcher Bash, em hooks/testa-config.sh"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "SessionStart continua com 4 hooks, em hooks/testa-ferramentas-nao-toca-abertura.sh"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "texto nao tem ramo de execucao a inverter; a falsificacao dele e casar com a interface real, conferida contra a saida medida do hook"
+      }
+    ]
+  },
+  "revisar": {
+    "status": "ok",
+    "achados": 5,
+    "bloqueantes": 0,
+    "base": "2e77f796cad99fd895a75b5646ee12c9ca4a9421",
+    "head": "6dd57f5569f695b6ff6226ab656e7f8f40d1fc42",
+    "todos_corrigidos": true,
+    "resumo": "cd engolia o executavel real (whisper-cli nunca conferido, alarme falso que nao convergia); mutacoes so no plano e nao nas baterias; incerteza colapsada em ausencia; parser posicional com receita opcional; plano.tarefas velho no estado",
+    "em": "2026-08-25"
+  },
+  "verificar": {
+    "status": "ok",
+    "tarefas_ok": 5,
+    "tarefas": 5,
+    "reprovadas_na_primeira_passada": [
+      "tarefa 5: README dizia 15 suites, o repo tem 57"
+    ],
+    "achados_adversariais": [
+      "tarefa 2: caminho entre aspas com espaco quebrava a extracao — falso alarme na forma canonica do caso motivador"
+    ],
+    "suite": "57 de 57 verdes na passada do tester; as 4 baterias tocadas depois reconferidas verdes",
+    "em": "2026-08-25"
+  },
+  "fechar": {
+    "status": "ok",
+    "pr": 116,
+    "commits": 22,
+    "worktrees_removidos": true,
+    "suite": "57 de 57 verdes",
+    "em": "2026-08-25"
+  }
+}
