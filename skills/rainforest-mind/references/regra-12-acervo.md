@@ -87,7 +87,7 @@ regra apontam para cá. Ordem cronológica.
 > número que citou: mentiu por **omissão do artefato que contradizia os
 > números citados**. Quem pegou foi `FALHA 2 entrada(s) nao commitada(s)`. O
 > agravante: o código de produção estava certo, e as falhas eram dos testes
-> novos — ele tinha uma entrega boa e a escondeu junto com o problema; (3) o relatório lista
+> novos — ele tinha uma entrega boa e a escondeu junto com o problema.
 
 > 2026-08-20: grep de 15 âncoras contra a fita de uma reunião achou 14
 > exatas, 1 deslocada e 1 **inventada** — justamente a única que o agente

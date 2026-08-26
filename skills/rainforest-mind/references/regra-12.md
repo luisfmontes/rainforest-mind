@@ -40,6 +40,7 @@ verdadeiro por leitura, e só a comparação com o **estado do worktree** separa
 os dois. A checagem de **entrada não commitada é reprovação**, não aviso;
 (acervo: 2026-08-19)
 
+(3) o relatório lista
 **cada item do briefing** com feito/não-feito — "próximas fases" não
 pedidas e números que não somam são gatilho de auditoria, não detalhe;
 (4) agentes concorrentes **não compartilham a mesma instância de browser**
