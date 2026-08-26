@@ -66,12 +66,22 @@ arquivos: `hooks/testa-ferramentas-nao-toca-abertura.sh`
 depende de: 3
 paralela: nao
 mutacao:
-  arquivo: `hooks/testa-ferramentas-nao-toca-abertura.sh`
-  de: o limite de bytes contra o qual a saída do `foco-session-start.cjs` é comparada
-  para: um limite folgado o bastante para aceitar qualquer crescimento
+  arquivo: `hooks/hooks.json`
+  de: o bloco de `SessionStart`, sem o hook de ferramentas
+  para: o mesmo bloco com o `ferramentas-consulta.cjs` acrescentado
   bateria: `bash hooks/testa-ferramentas-nao-toca-abertura.sh`
-  fixture: o caso "a saída da abertura não cresceu" da própria bateria
-pronto quando: rodando `node hooks/foco-session-start.cjs` na máquina, a saída em bytes é **igual ou menor** que a medida de referência de 8.085 B gravada na bateria, e a linha `Dependências de ambiente (regra 14)` com a checagem da bridge continua presente e vinda de `foco-session-start.cjs` — provado por `bash hooks/testa-ferramentas-nao-toca-abertura.sh`
+  fixture: o caso "nada de ferramentas entrou na abertura" da própria bateria
+pronto quando: `node hooks/foco-session-start.cjs` não produz **nenhum** byte vindo deste trabalho — nenhuma menção ao ledger, ao hook de ferramentas ou a entrada de catálogo na saída —, o `SessionStart` do `hooks.json` continua com os mesmos 4 hooks de antes, e a linha `Dependências de ambiente (regra 14)` com a checagem da bridge continua presente e vinda de `foco-session-start.cjs` — provado por `bash hooks/testa-ferramentas-nao-toca-abertura.sh`
+
+> **Critério corrigido em 2026-08-25, e a correção é o achado.** A versão anterior
+> comparava a saída da abertura contra um teto absoluto de 8.085 B. Medido depois da
+> tarefa 3: a saída está em **8.430 B**, e nenhum dos 345 B veio deste trabalho —
+> `git diff origin/main HEAD -- hooks/foco-session-start.cjs hooks/lib/contexto-sessao.cjs`
+> é vazio, e a única ocorrência da palavra "ferramenta" na saída é o texto da regra 15.
+> O payload varia com o FOCO.md, com o corpus de memória e com o bloco multi-janela —
+> ou seja, com **dado do usuário**. Um teto absoluto ficaria vermelho por motivo alheio
+> e mediria a coisa errada. O que a D1 promete é que **este trabalho** contribui zero
+> para a abertura, e é isso que se afere.
 
 ### 5. README e elaboração da regra 14 [tipo: docs]
 atende: D3, D4
