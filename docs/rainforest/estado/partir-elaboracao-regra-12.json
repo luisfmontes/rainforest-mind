@@ -6,10 +6,12 @@
     "status": "pendente"
   },
   "design": {
-    "status": "pendente"
+    "status": "aprovado",
+    "em": "2026-08-26"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "em": "2026-08-26"
   },
   "executar": {
     "status": "pendente"
