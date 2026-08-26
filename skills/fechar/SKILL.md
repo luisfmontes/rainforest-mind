@@ -66,6 +66,44 @@ a primeira: `Closes #81, closes #79` funciona; `Closes #81 e #79` fecha só
 a #81. Incidente 2026-08-24 (PR #85): usou `Fecha #81 e #79` em português —
 nenhuma palavra-chave foi reconhecida e as duas issues continuaram abertas.
 
+**A branch remota sai sozinha no merge.** O repositório tem
+`delete_branch_on_merge` ligado desde 2026-08-26, então o `gh pr merge` apaga a
+`origin/<branch>` sem `--delete-branch`. Isso **não** alcança a branch local nem
+o worktree — os dois continuam sendo trabalho do passo 2 e do passo 3, e é
+justamente a metade que sobrevive e ninguém vê. Fork deste repositório não herda
+a configuração: quem clonar liga com
+`gh api -X PATCH repos/<dono>/<repo> -f delete_branch_on_merge=true`.
+
+## 5. Conferir se a versão ficou para trás
+
+Depois do PR aberto, no repositório do **plugin**:
+
+```
+node scripts/conferir-versao.cjs
+```
+
+`exit 0` segue; **`exit 2` para e sobe uma linha** para o usuário, com o número
+de commits acumulados e a recomendação de subir a versão — e **qual casa**: PATCH
+se o lote só consertou, MINOR se entrou coisa nova ou mudou contrato (a tabela
+está no `CONTRIBUTING.md`). Não suba a versão por
+conta própria — release é decisão dele, e o commit de bump é entrega própria.
+
+O motivo é que o plugin que **executa** não é o clone: é o cache
+`~/.claude/plugins/cache/<marketplace>/<plugin>/<versão>/`, indexado pela
+versão. Sem bump não existe versão nova para o `claude plugin update` buscar, e
+o trabalho fica na `main` sem chegar em máquina nenhuma — inclusive na do
+usuário.
+
+> 2026-08-26: o `plugin.json` estava em 0.77.0 desde o dia anterior e a `main`
+> tinha 18 commits além disso — quatro PRs de regra, três defeitos de produção,
+> uma trava de borda nova. Nada rodando. O `/saude` já dizia "o que EXECUTA está
+> atrás: 18 commit(s) atrás"; ninguém olhava no momento em que dava para agir.
+> A regra do bump não estava escrita em lugar nenhum — nem aqui, nem no
+> `CONTRIBUTING.md`, nem nas 17 regras. Era hábito, e hábito não dispara.
+
+Fora do repositório do plugin, o comando sai `0` dizendo que não deu para medir.
+Falha **aberta** de propósito: isto não é guarda-corpo de segurança.
+
 ## Depois: writeback
 
 Se este trabalho avançou o **foco ativo** (FOCO.md, seção Ativo), acrescente

@@ -101,6 +101,37 @@ O bloco de núcleos tem teto em bytes (`NUCLEOS_MAX_BYTES`), e é catraca: cresc
 regra dói na hora de escrever, não na hora de ler. Se o seu texto não couber,
 a saída é **subtrair**, não aumentar o teto.
 
+## Versão: o release é entrega própria, e o PATCH existe
+
+O bump vai num **commit próprio**, com título `Versao <x.y.z>: <o que o lote
+entregou>`, e é o último passo do lote — não vai de carona no commit da feature.
+
+Qual casa mexe:
+
+| casa | quando | exemplo |
+|---|---|---|
+| **PATCH** (`0.78.0` → `0.78.1`) | o lote só **conserta** — defeito, texto errado, número desatualizado. Nada mudou de forma para quem já leu o README | correção de contagem, conserto de trava que já existia |
+| **MINOR** (`0.78.1` → `0.79.0`) | entrou coisa nova, ou mudou o contrato de algo — trava nova, regra nova, comando novo, campo obrigatório | a trava de repo alheio; a partição de uma elaboração em duas |
+| **MAJOR** | ainda não. O `0.` da frente é SemVer dizendo *"o contrato pode mudar sem aviso"*, e isso continua verdade enquanto as 17 regras mudam de forma | — |
+
+Até 2026-08-26 **todo** release foi MINOR, inclusive os que só consertavam
+defeito — o PATCH existia e nunca foi usado. A distinção não é burocracia: o
+número é o único sinal que diz se quem instala precisa reler o README ou não.
+
+**Dois lugares repetem o número e têm que andar juntos:** o
+`.claude-plugin/plugin.json` e o badge de versão no topo do `README.md`.
+
+E o motivo de o bump não ser opcional: o plugin que **executa** não é este clone,
+é o cache `~/.claude/plugins/cache/<marketplace>/<plugin>/<versão>/`, indexado
+pela versão. Sem bump, o `claude plugin update` não tem versão nova para buscar e
+o trabalho fica na `main` sem chegar em máquina nenhuma. Quem mede isso é
+`node scripts/conferir-versao.cjs` (exit 2 acima do teto), chamado pelo `fechar`.
+
+> 2026-08-26: o `plugin.json` ficou em 0.77.0 com **18 commits** de trabalho
+> mergeado além dele — quatro PRs de regra, três defeitos de produção, uma trava
+> de borda nova, nada rodando. O `/saude` já dizia "o que EXECUTA está atrás: 18
+> commit(s) atrás". Faltava a regra estar escrita, e é este parágrafo.
+
 ## Issue e PR
 
 Issue com o comando exato e a saída colada vale dez vezes uma descrição. Se o
