@@ -1,4 +1,5 @@
 #!/bin/bash
+# rainforest-gate: dados-de-exemplo
 # Bateria do scripts/conferir-publicacao.cjs — a trava que confere o relatorio antes
 # de ele sair da maquina.
 #
