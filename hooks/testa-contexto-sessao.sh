@@ -637,11 +637,11 @@ cat > "$RAIZ_POSIX/checa-titulos.cjs" <<'EOF'
 const fs = require('fs');
 const path = require('path');
 const dir = process.env.REFERENCES_DIR;
-const arquivos = fs.readdirSync(dir).filter(f => /^regra-\d+\.md$/.test(f)).sort();
+const arquivos = fs.readdirSync(dir).filter(f => /^regra-\d+(-acervo)?\.md$/.test(f)).sort();
 const linhas = [];
 const acusados = new Set();
 for (const f of arquivos) {
-  const numeroArquivo = parseInt(f.match(/^regra-(\d+)\.md$/)[1], 10);
+  const numeroArquivo = parseInt(f.match(/^regra-(\d+)(-acervo)?\.md$/)[1], 10);
   const conteudo = fs.readFileSync(path.join(dir, f), 'utf8');
   const primeiraLinha = conteudo.split(/\r?\n/, 1)[0];
   const m = primeiraLinha.match(/^# Regra (\d+)(?: — (.+))?$/);
