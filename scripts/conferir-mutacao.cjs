@@ -164,6 +164,38 @@ function rodaBateria(bateria, raiz, timeout, qual) {
   return { r, duracao, qual };
 }
 
+// O piso e a razao moram AQUI, e nao dentro do main(), porque o que precisa ser
+// provado e a REGRA — piso de 1 s, razao de 10%, e onde ficam as fronteiras — e
+// regra se prova com entrada, nao com cronometro.
+//
+// Ate 2026-08-26 os dois casos da bateria que exercitavam esta decisao montavam
+// fixtures cuja DURACAO definia o veredito esperado: `sleep 2` de um lado,
+// `sleep 0.1` do outro. Sob carga da maquina o spawn de processo no Git Bash
+// empurrava as medidas para o outro lado da fronteira, e a bateria da catraca de
+// mutacao — o instrumento pelo qual todas as outras entregas provam que os
+// testes medem alguma coisa — ficava vermelha sem defeito nenhum. Issue #121:
+// duas varreduras completas da mesma arvore, uma com essa bateria vermelha e
+// outra com zero vermelhas.
+//
+// NAO existe variavel de ambiente para ajustar estes numeros, e isso e escolha:
+// um PISO_ABSOLUTO_MS sobrescrivivel e uma chave para desligar a heuristica em
+// producao sem querer.
+const PISO_ABSOLUTO_MS = 1000;
+const RAZAO_DE_CORTE = 0.1;
+
+/**
+ * A pos-mutacao foi desproporcionalmente curta a ponto de sugerir que a bateria
+ * morreu antes de medir?
+ *
+ * Duas condicoes, e as duas importam:
+ *   - o baseline precisa ser tempo suficiente (>= 1 s) para a razao distinguir
+ *     sinal de ruido de spawn;
+ *   - a pos-mutacao precisa ficar abaixo de 10% dele.
+ */
+function suspeitaDeCorte(baselineDuracao, posDuracao) {
+  return baselineDuracao >= PISO_ABSOLUTO_MS && posDuracao < baselineDuracao * RAZAO_DE_CORTE;
+}
+
 function main() {
   if (process.argv.length <= 2) {
     console.error(USO);
@@ -344,8 +376,7 @@ function main() {
   // rápida saía 5 com a mensagem "a bateria saiu com exit != 0", que é falsa
   // sobre o que acabou de acontecer. Veredito certo pelo motivo errado é o
   // defeito que este script inteiro existe para não cometer.
-  const PISO_ABSOLUTO_MS = 1000;
-  if (baselineDuracao >= PISO_ABSOLUTO_MS && posDuracao < baselineDuracao * 0.1) {
+  if (suspeitaDeCorte(baselineDuracao, posDuracao)) {
     const percentual = Math.round((posDuracao / baselineDuracao) * 100);
     console.error(`SUSPEITA DE CORTE DE SHELL: pós-mutação ${posDuracao} ms (${percentual}% do baseline).`);
     console.error(`  Baseline: ${baselineDuracao} ms | Pós-mutação: ${posDuracao} ms`);
@@ -363,4 +394,6 @@ function main() {
   process.exit(0);
 }
 
-main();
+if (require.main === module) main();
+
+module.exports = { suspeitaDeCorte, PISO_ABSOLUTO_MS, RAZAO_DE_CORTE };

@@ -1,0 +1,78 @@
+{
+  "slug": "2026-08-26-catraca-por-relogio",
+  "titulo": "2026-08-26-catraca-por-relogio",
+  "criado_em": "2026-08-26",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "issue": 121,
+    "decisoes": 5,
+    "em": "2026-08-26"
+  },
+  "plano": {
+    "status": "ok",
+    "tarefas": 2,
+    "em": "2026-08-26"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-08-26",
+    "tarefas": 2,
+    "tarefas_ok": 2,
+    "bateria": "scripts/testa-conferir-mutacao.sh (83 ok, 0 falhou; era 70)",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "arquivo": "scripts/conferir-mutacao.cjs",
+        "de": "baselineDuracao >= PISO_ABSOLUTO_MS",
+        "para": "baselineDuracao > PISO_ABSOLUTO_MS",
+        "fixture": "a fronteira do piso: 1000 dispara, 999 nao",
+        "resultado": "vermelho"
+      },
+      {
+        "tarefa": 2,
+        "arquivo": "scripts/testa-conferir-mutacao.sh",
+        "de": "veredito_pulos() { [ \"${1:-0}\" -lt 2 ]; }",
+        "para": "veredito_pulos() { true; }",
+        "fixture": "a trava do pulo duplo, provada com numero",
+        "resultado": "vermelho"
+      }
+    ],
+    "em": "2026-08-26"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "ebf88104aadff866d8ea69920905dab5c3a4a3c8",
+      "caminhos_sujos": []
+    },
+    "revisor": "independente, worktree proprio",
+    "veredito_inicial": "NAO INTEGRA",
+    "achados": 2,
+    "corrigidos": 2,
+    "achado_principal": "exige_e2e definida e nunca chamada — D3/D4/D5 eram codigo morto; reproduzido sob carga com ok:80 falhou:3",
+    "tarefa_nova": 3,
+    "base": "d8a697a",
+    "head": "ebf88104aadff866d8ea69920905dab5c3a4a3c8",
+    "em": "2026-08-26"
+  },
+  "verificar": {
+    "status": "ok",
+    "tarefas": 3,
+    "aprovadas": 3,
+    "reprovadas": 0,
+    "suite": "59 de 59 verdes",
+    "bateria": "84 ok, 0 falhou (era 70)",
+    "sob_carga": "77 ok, 0 falhou, 1 PULADO nomeando as duracoes",
+    "em": "2026-08-26"
+  },
+  "fechar": {
+    "status": "ok",
+    "pr": "a abrir",
+    "suite": "59 de 59 verdes",
+    "mutacoes": 3,
+    "em": "2026-08-26"
+  }
+}
