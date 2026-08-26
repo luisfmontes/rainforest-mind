@@ -217,5 +217,47 @@ fi
 rm -f "$SBP/proj/.rainforest/config.json" "$SBP/lar/.rainforest/config.json"
 
 echo
+echo "== hooks.json: o hook de ferramentas so dispara em Bash =="
+# O bloco PreToolUse dos gates NAO tem matcher, e dispara em toda chamada de
+# ferramenta — sao 3 processos do SO por tool call. O hook de ferramentas serve
+# so ao `Bash` (D9 da #76), entao entra em bloco proprio com matcher: sem isso
+# ele encareceria TODO tool call para servir um caso so.
+#
+# Caminho por argv, nunca interpolado no fonte do node: caminho do Windows tem
+# `\` e `:` e vira sintaxe quebrada dentro de string de script.
+hjson() { node -e "$1" "$SRC/hooks/hooks.json" 2>&1; }
+
+MATCHER="$(hjson '
+  const h = require(process.argv[1]).hooks;
+  const blocos = (h.PreToolUse || []).filter(b => b.hooks.some(x => x.command.includes("ferramentas-consulta.cjs")));
+  process.stdout.write(blocos.length === 1 ? String(blocos[0].matcher) : "blocos:" + blocos.length);
+')"
+if [ "$MATCHER" = "Bash" ]; then
+  ok=$((ok+1)); echo "  ok   ferramentas-consulta esta em bloco proprio com matcher Bash"
+else
+  falhou=$((falhou+1)); echo "  FALHA matcher do ferramentas-consulta veio '$MATCHER', esperava 'Bash'"
+fi
+
+OUTROS="$(hjson '
+  const h = require(process.argv[1]).hooks;
+  const semMatcher = (h.PreToolUse || []).filter(b => b.matcher === undefined);
+  process.stdout.write(String(semMatcher.reduce((n,b) => n + b.hooks.length, 0)));
+')"
+if [ "$OUTROS" = "3" ]; then
+  ok=$((ok+1)); echo "  ok   os tres gates sem matcher seguem intactos"
+else
+  falhou=$((falhou+1)); echo "  FALHA gates sem matcher: $OUTROS, esperava 3"
+fi
+
+# `PostToolUse` e PROIBIDO neste repo: 15.331 eventos em oito dias, um processo
+# do SO cada (design de 2026-08-17, D12). A #76 quase reintroduziu o evento.
+POST="$(hjson 'process.stdout.write(String("PostToolUse" in require(process.argv[1]).hooks));')"
+if [ "$POST" = "false" ]; then
+  ok=$((ok+1)); echo "  ok   PostToolUse continua fora do hooks.json"
+else
+  falhou=$((falhou+1)); echo "  FALHA PostToolUse no hooks.json (veio '$POST')"
+fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
