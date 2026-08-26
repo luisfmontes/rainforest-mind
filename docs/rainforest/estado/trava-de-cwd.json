@@ -14,8 +14,33 @@
     "em": "2026-08-26"
   },
   "executar": {
-    "status": "pendente",
-    "catraca_mutacao": "2026-08-26"
+    "status": "ok",
+    "catraca_mutacao": "2026-08-26",
+    "tarefas": 4,
+    "tarefas_ok": 4,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "diretiva de prazo movida para fora do if no fonte de producao — exit 1, as 4 assercoes novas acusam mais 4 colaterais; restaurado exit 0 ok: 277"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "devolver \"continua saindo, sempre\" ao README — criterio exit 1 com readme_contradiz: true"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "inverter comparacao de commonDir — exit 1, 12 ok 9 falhas dos DOIS lados; e devolver if(!ev.agent_id)exit(0) — exit 1, 19 ok 2 falhas nos casos de janela principal"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "devolver a justificativa falsa a regra 13 — criterio exit 1 com ainda_afirma_o_falso: true"
+      }
+    ],
+    "em": "2026-08-26"
   },
   "revisar": {
     "status": "pendente"

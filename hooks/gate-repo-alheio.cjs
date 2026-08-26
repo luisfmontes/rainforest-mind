@@ -83,11 +83,17 @@ function estadoDoRepo(dir) {
   }
 }
 
-function dirDe(alvo) {
+function dirDe(alvo, cwdDoEvento) {
+  // `file_path` relativo se resolve contra o cwd do EVENTO, nao do processo do
+  // hook: os dois nao sao o mesmo, e resolver contra o do processo faz um alvo
+  // relativo cair fora de git por acidente — o gate entao libera pelo motivo
+  // errado, sem nunca ter avaliado o caminho de verdade. Herdado do molde do
+  // gate-worktree.cjs, achado pelo revisar em 2026-08-26.
+  const abs = path.isAbsolute(alvo) ? alvo : path.resolve(cwdDoEvento, alvo);
   try {
-    return fs.existsSync(alvo) && fs.statSync(alvo).isDirectory() ? alvo : path.dirname(alvo);
+    return fs.existsSync(abs) && fs.statSync(abs).isDirectory() ? abs : path.dirname(abs);
   } catch {
-    return path.dirname(alvo);
+    return path.dirname(abs);
   }
 }
 
@@ -169,7 +175,7 @@ function main() {
   if (!estadoSessao) process.exit(0); // fora de repo git: sempre passa
 
   for (const alvo of alvos) {
-    const dirDoAlvo = dirDe(alvo);
+    const dirDoAlvo = dirDe(alvo, cwdDoEvento);
     const estadoAlvo = estadoDoRepo(dirDoAlvo);
 
     if (!estadoAlvo) continue; // fora de repo git: passa
@@ -184,6 +190,18 @@ function main() {
 
     // Extra: se toplevel for igual, também passa (redundante, mas seguro)
     if (normalizarCaminho(estadoAlvo.toplevel) === normalizarCaminho(estadoSessao.toplevel)) continue;
+
+    // SUBMODULO e repo aninhado passam. Para o git eles sao repositorio
+    // diferente — git-dir proprio em `<repo>/.git/modules/<sub>` —, mas nao sao
+    // trabalho ALHEIO: estao DENTRO do checkout desta sessao, e quem edita ali
+    // esta editando o proprio projeto. "Repo alheio" significa fora da arvore
+    // desta sessao, e o teste e' esse, nao a identidade do git-dir. Comparacao
+    // por fronteira de caminho: o `/` no fim evita casar `.../repo-outro` com
+    // `.../repo`. Achado pelo revisar em 2026-08-26; nem o design nem o plano
+    // tinham considerado submodulo.
+    const dentroDaSessao = normalizarCaminho(estadoAlvo.toplevel) + "/";
+    const raizDaSessao = normalizarCaminho(estadoSessao.toplevel) + "/";
+    if (dentroDaSessao.startsWith(raizDaSessao)) continue;
 
     // Verifica escape por arquivo .rainforest-gate-off
     if (fs.existsSync(path.join(estadoAlvo.toplevel, ".rainforest-gate-off"))) continue;

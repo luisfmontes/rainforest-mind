@@ -298,11 +298,11 @@ trava que só diz "não" vira trava desligada. Saídas de emergência, nomeadas 
 própria mensagem: `RAINFOREST_GATE_OFF=1` no ambiente, ou um arquivo
 `.rainforest-gate-off` na raiz do repo.
 
-Cada uma tem bateria própria (`hooks/testa-gate-*.sh`, **175 casos**: 100 de
-worktree + 38 de staging + 21 de repo alheio + 16 de publicação) que roda o hook
+Cada uma tem bateria própria (`hooks/testa-gate-*.sh`, **181 casos**: 100 de
+worktree + 38 de staging + 27 de repo alheio + 16 de publicação) que roda o hook
 de verdade contra repos git montados na hora. A maioria dos casos testa o que
 deve **passar**: falso positivo aqui atrapalha todo repo — a trava de repo alheio
-é o exemplo, com 15 dos 21 casos provando que ela **não** barra.
+é o exemplo, com 21 dos 27 casos provando que ela **não** barra.
 
 E a trava de repo alheio traz uma lição que custou uma rodada de conserto: a
 primeira versão dela copiou do `gate-worktree.cjs` a guarda `if (!ev.agent_id)

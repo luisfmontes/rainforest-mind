@@ -44,6 +44,19 @@ echo v1 > "$R2/b.txt"; git -C "$R2" add .; git -C "$R2" commit -qm base
 # Caminho fora de repo git
 FORA="$RAIZ/sem-git"; mkdir -p "$FORA"
 
+# Submodulo de verdade dentro do repo da sessao. Para o git e repositorio
+# DIFERENTE (git-dir em R1/.git/modules/sub), e foi por isso que a primeira
+# versao da trava barrava escrita legitima ali. Achado pelo revisar em
+# 2026-08-26 — nem o design nem o plano tinham considerado submodulo.
+git -c protocol.file.allow=always -C "$R1" submodule add -q "$R2" sub >/dev/null 2>&1
+TEM_SUB=0; [ -d "$R1/sub" ] && TEM_SUB=1
+
+# Repo aninhado SEM relacao de submodulo: `git init` na mao dentro do
+# checkout da sessao. Mesmo ponto de codigo, e passa pela mesma razao —
+# esta DENTRO da arvore desta sessao, entao nao e trabalho alheio.
+ANIN="$R1/aninhado"; git init -q "$ANIN"; git -C "$ANIN" config user.email t@t
+git -C "$ANIN" config user.name t; git -C "$ANIN" config commit.gpgsign false
+
 esc() { printf '%s' "$1" | sed 's|\\|/|g'; }
 
 # payload de SUBAGENTE que escreve em alvo especifico
@@ -79,6 +92,30 @@ gate "edita em worktree linkado do MESMO repo"       0 "$(j Edit "$WT1/a.txt" "$
 gate "JANELA PRINCIPAL escreve no repo da sessao"   0 "$(p Write "$R1/novo.txt" "$R1")"
 gate "JANELA PRINCIPAL escreve fora de repo git"    0 "$(p Write "$FORA/nota.txt" "$R1")"
 gate "JANELA PRINCIPAL em worktree do MESMO repo"   0 "$(p Write "$WT1/novo.txt" "$R1")"
+gate "escreve em repo ANINHADO dentro da sessao"   0 "$(j Write "$ANIN/x.txt" "$R1")"
+gate "JANELA PRINCIPAL em repo aninhado"           0 "$(p Write "$ANIN/x.txt" "$R1")"
+if [ "$TEM_SUB" = 1 ]; then
+  gate "escreve dentro de SUBMODULO do repo da sessao" 0 "$(j Write "$R1/sub/x.txt" "$R1")"
+  gate "JANELA PRINCIPAL dentro de submodulo"          0 "$(p Write "$R1/sub/b.txt" "$R1")"
+else
+  echo "  (pulado: git submodule add nao funcionou nesta maquina — 2 casos NAO rodaram)"
+fi
+
+# `file_path` RELATIVO, com o processo do hook rodando FORA de git: o alvo
+# tem que ser resolvido contra o cwd do EVENTO, nao contra o do processo.
+# Resolvendo contra o do processo, o gate cai em "fora de git" e libera pelo
+# motivo errado, sem nunca avaliar o caminho. Achado pelo revisar.
+# O processo roda em $FORA/fundo, DUAS pastas fundo, de proposito: em $FORA o
+# relativo "../outro" resolveria por acidente contra $RAIZ/outro, que e o R2 —
+# e a mutacao do conserto passaria verde. Foi o que aconteceu na primeira
+# tentativa deste caso. Aqui "../outro" nao existe, e so o cwd do EVENTO resolve.
+mkdir -p "$FORA/fundo"
+saida=$(cd "$FORA/fundo" && printf '%s' "$(j Write "../outro/b.txt" "$R1")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   relativo resolve contra o cwd do EVENTO, e barra (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA relativo nao foi avaliado: esperava 2, veio $rc"; fi
+saida=$(cd "$FORA/fundo" && printf '%s' "$(j Write "a.txt" "$R1")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   relativo no proprio repo da sessao passa (exit 0)"
+else falhou=$((falhou+1)); echo "  FALHA relativo no proprio repo barrou: esperava 0, veio $rc"; fi
 
 echo
 echo "== tool_name que nao e escrita passa =="
