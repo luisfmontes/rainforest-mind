@@ -12,3 +12,15 @@ só cresce deixa de ser lido: em 2026-08-12 o FOCO.md tinha 15,4 KB, dos quais
 mesma varredura pergunta em uma linha **"alguma observação desta sessão?"**
 (regra 13) — é no fecho que aparece o que não foi registrado no meio do
 trabalho.
+
+**Trabalho fora da sessão não aparece sozinho — o fecho vai buscar.** Tendo o
+plugin de apontamento de horas, o mesmo binário da regra 8 aponta trecho do dia
+sem registro; roda no fecho, sem esperar ele levantar o assunto. Cuidado ao
+apresentar: diferença entre jornada efetiva e soma das atividades **não é**
+hora perdida por padrão — sessão paralela é rateada entre chamados, e afirmar o
+contrário inventa hora que não existe. Só se nomeia como ausência o que o
+comando aponta como tal.
+
+> 2026-08-14: "hoje eu fiquei o dia todo nessa STEC-120 mesmo fora da sessão" só
+> apareceu porque ele contou. A checagem achou 18 min reais de lacuna — o resto
+> era rateio entre chamados paralelos.

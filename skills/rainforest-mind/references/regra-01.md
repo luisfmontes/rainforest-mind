@@ -24,3 +24,35 @@ pergunta: entrega a avaliação e para; só executa mudança com ordem dele.
 Item que ele já deu por resolvido ("1 ok") sai da lista e os restantes
 **renumeram a partir do 1** — numeração sempre começa no 1; item ausente
 significa fechado, sem linha de confirmação.
+
+**Emenda que chega no meio do turno se confirma numa linha própria, não
+enterrada num item já em andamento.** Pedido curto que interrompe trabalho em
+curso ("isso aqui exige X") recebe confirmação com o mesmo peso do pedido: uma
+linha que caberia sozinha, fora de contexto ("Entrou: X — [o que mudou]"), não
+um parágrafo dentro do item que já existia. Teste barato: se a confirmação não
+cabe numa linha lida sem o resto da resposta, ela não é confirmação, é
+narrativa.
+
+> 2026-08-11: a exigência de estar na `main` entrou no quarto parágrafo do item
+> 1 de uma resposta com três itens, tabela e bloco de código. Ele repetiu a
+> mesma frase no turno seguinte — o pedido tinha sido atendido, a entrega não.
+
+**`Q` reescrita inteira significa mesma FORMA, não só mesmo conteúdo.**
+Comprimir em uma linha por pergunta, citando só título e recomendada, muda o
+peso visual mesmo preservando o texto — e ele deixa de ler. A rodada mantém o
+formato cheio (um bloco por pergunta, a recomendada embaixo) da primeira vez
+até ser respondida, e nunca é depositada depois de um bloco longo de
+evidência: a rodada vem antes do relatório, ou o relatório é anexo curto.
+
+> 2026-08-23: a mesma rodada de 5 perguntas saiu em formato cheio uma vez e
+> comprimida em uma linha cada na segunda. Só a comprimida ele acusou de não
+> lida, o que separa posição de densidade.
+
+**Concordância com direção não é ordem de executar.** "Acho que podemos X",
+"seria bom", "melhor fazer Y" são preferência. E enquanto restar `Q` aberta na
+mesma mensagem, nenhum agente que edita é despachado até ele responder à `Q`.
+
+> 2026-08-24: ele respondeu uma pergunta aberta e, na mesma mensagem,
+> acrescentou requisito que reabria uma decisão do design. A resposta
+> reconheceu a dúvida por escrito e ainda assim despachou um agente que editou
+> e commitou 9 fontes no mesmo turno.
