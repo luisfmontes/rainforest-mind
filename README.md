@@ -193,11 +193,17 @@ cobra demais você percebe e reclama — foi exatamente assim que este defeito
 apareceu. Anúncio e veredito são mutuamente exclusivos: não há como julgar sem
 dado.
 
-**A isenção cala só o aviso de desvio de escopo.** O aviso de prazo — vencido
-ou a ≤2 dias — continua saindo, sempre. São coisas diferentes: saber num sábado
-que algo vence na segunda é informação e não custa nada; ser cobrado no sábado
-por estar lendo outra coisa é o que incomoda. Uma isenção que silenciasse o
-radar inteiro trocaria um defeito por outro.
+**A isenção não silencia o prazo — muda o tom dele.** O aviso de desvio de
+escopo cala. O de prazo — vencido ou a ≤2 dias — continua saindo, como **nota**
+de que o foco está sendo tocado naquela outra janela, nunca como cobrança
+dirigida a esta. São coisas diferentes: saber num sábado que algo vence na
+segunda é informação e não custa nada; ser cobrado no sábado por estar lendo
+outra coisa é o que incomoda. Uma isenção que silenciasse o radar inteiro
+trocaria um defeito por outro; uma que cobrasse igual não teria consertado nada.
+
+E prazo é aviso de **abertura**. No fecho de sessão não sai em hipótese nenhuma,
+nem como lembrete acrescentado por iniciativa própria: no fim do turno não há o
+que fazer com um prazo, só o que sentir.
 
 E quando o ambiente **impede** uma regra — permissão negada, hook fora do ar,
 ferramenta ausente —, ele diz numa linha em vez de falhar em silêncio. Regra
@@ -283,6 +289,7 @@ noite, sabendo que não devia. O que sobrou das duas noites:
 | `gate-worktree.cjs` | escrita de subagente em repo git que não é worktree linkado, e git que mexe no checkout | só subagente — a janela principal passa |
 | `gate-staging-total.cjs` | `git add -A/--all/./:/`, `-u`, e `git commit -a/-am` | **também a janela principal**, que foi onde os dois incidentes ocorreram |
 | `gate-publicacao-destino.cjs` | escrita de dados sensíveis (JID, telefone, email, credencial) em arquivo rastreado por git | **qualquer ferramenta que escreve** (`Write`, `Edit`, `MultiEdit`) — impede vazamento em repo público |
+| `gate-repo-alheio.cjs` | escrita cujo destino está dentro de **outro repositório git** que não o da sessão | **também a janela principal**, que foi onde o incidente ocorreu — caminho fora de git e worktree do mesmo repo passam |
 
 Valem em **qualquer** repo git da máquina, porque o hábito é que é o problema,
 não o repositório. A mensagem de bloqueio não só recusa: a de staging roda
@@ -291,9 +298,19 @@ trava que só diz "não" vira trava desligada. Saídas de emergência, nomeadas 
 própria mensagem: `RAINFOREST_GATE_OFF=1` no ambiente, ou um arquivo
 `.rainforest-gate-off` na raiz do repo.
 
-Cada uma tem bateria própria (`hooks/testa-gate-*.sh`, **79 casos**: 38 + 25 + 16)
-que roda o hook de verdade contra repos git montados na hora. A maioria dos casos
-testa o que deve **passar**: falso positivo aqui atrapalha todo repo.
+Cada uma tem bateria própria (`hooks/testa-gate-*.sh`, **181 casos**: 100 de
+worktree + 38 de staging + 27 de repo alheio + 16 de publicação) que roda o hook
+de verdade contra repos git montados na hora. A maioria dos casos testa o que
+deve **passar**: falso positivo aqui atrapalha todo repo — a trava de repo alheio
+é o exemplo, com 21 dos 27 casos provando que ela **não** barra.
+
+E a trava de repo alheio traz uma lição que custou uma rodada de conserto: a
+primeira versão dela copiou do `gate-worktree.cjs` a guarda `if (!ev.agent_id)
+process.exit(0)`, que lá está certa — aquela trava é sobre isolamento de
+subagente, que é problema de subagente. Aqui o incidente é de **janela
+principal**: uma sessão cujo `cwd` era outro repositório foi consertar este
+plugin dali mesmo, e deixou trabalho não commitado num worktree que se perdeu.
+Molde se copia; recorte, não.
 
 O mesmo princípio nos scripts, para o que hook nenhum alcança:
 

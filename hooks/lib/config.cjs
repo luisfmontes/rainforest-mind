@@ -40,6 +40,14 @@ const CHAVES = {
     padrao: true,
     descricao: 'barra `git add -A` e `git commit -a`',
   },
+  'gate-publicacao': {
+    padrao: true,
+    descricao: 'barra escrita de dados sensíveis em arquivo rastreado',
+  },
+  'gate-repo-alheio': {
+    padrao: true,
+    descricao: 'barra escrita cujo destino está dentro de outro repositório git',
+  },
   fluxo: {
     padrao: true,
     descricao: 'os sete estágios (brainstorm → plano → … → fechar)',

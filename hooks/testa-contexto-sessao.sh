@@ -1509,6 +1509,11 @@ checa "computarVeredito: sem dado, NAO isenta (sem veredito junto)" nao_tem "NÃ
 S="$(veredito "$FOCO_COM_PASTAS" "[{\"cwd\":\"C:/a\",\"prompt_ts\":$((AGORA_SEG-1000))}]" "$CONFIG_EXPEDIENTE" "$AGORA_SEG")"
 checa "computarVeredito: com dado e condicao satisfeita, emite veredito" tem     "NÃO cobrar desvio de escopo" "$S"
 checa "computarVeredito: so isencao 1 ativa, sem anuncio da 2"         nao_tem "ausente"                     "$S"
+checa "computarVeredito: isencao 1 dispara emite diretiva de prazo"    tem     "Apresentar avisos de prazo"   "$S"
+
+# Teste (c): Pastas ausente → a diretiva de prazo NÃO sai
+S="$(veredito "$FOCO_SEM_PASTAS" '[]' "$CONFIG_EXPEDIENTE" "$AGORA_SEG")"
+checa "computarVeredito: Pastas ausente, nao sai diretiva de prazo"    nao_tem "Apresentar avisos de prazo"   "$S"
 
 # Dado completo, condicao nenhuma satisfeita: nem veredito nem anuncio. Os DOIS
 # saem vazios juntos tambem conta como "nunca saem juntos" — string vazia nao
@@ -1519,6 +1524,7 @@ if [ -z "$S" ]; then
 else
   falhou=$((falhou+1)); echo "  FALHA computarVeredito esperava vazio (dado completo, sem condicao), veio: '$S'"
 fi
+checa "computarVeredito: nada se aplica, nao sai diretiva de prazo"      nao_tem "Apresentar avisos de prazo" "$S"
 
 # CASO REAL: Pastas: presente, expediente ausente, janela viva na pasta do foco
 # → sai veredito (isenção 1 determinada) E anúncio (isenção 2 indeterminada)
@@ -1572,6 +1578,7 @@ Avanços:
 S="$(veredito "$FOCO_BOILERPLATE_TRABALHO" '[]' "$CONFIG_EXPEDIENTE" "$AGORA_SAB")"
 checa "ACHADO 1 feliz: foco [trabalho] com boilerplate, fora do expediente" tem "tempo pessoal" "$S"
 checa "ACHADO 1 feliz: emite veredito" tem "NÃO cobrar desvio" "$S"
+checa "computarVeredito: so isencao 2 (tempo pessoal), sem diretiva de prazo" nao_tem "Apresentar avisos de prazo" "$S"
 
 # ACHADO 2 / ACHADO 6: sem config.json, com Pastas: ausente
 # Deve sair anúncio da isenção indeterminada

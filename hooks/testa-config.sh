@@ -243,10 +243,10 @@ OUTROS="$(hjson '
   const semMatcher = (h.PreToolUse || []).filter(b => b.matcher === undefined);
   process.stdout.write(String(semMatcher.reduce((n,b) => n + b.hooks.length, 0)));
 ')"
-if [ "$OUTROS" = "3" ]; then
-  ok=$((ok+1)); echo "  ok   os tres gates sem matcher seguem intactos"
+if [ "$OUTROS" = "4" ]; then
+  ok=$((ok+1)); echo "  ok   os quatro gates sem matcher seguem intactos"
 else
-  falhou=$((falhou+1)); echo "  FALHA gates sem matcher: $OUTROS, esperava 3"
+  falhou=$((falhou+1)); echo "  FALHA gates sem matcher: $OUTROS, esperava 4"
 fi
 
 # `PostToolUse` e PROIBIDO neste repo: 15.331 eventos em oito dias, um processo
