@@ -326,29 +326,33 @@ function backup() {
 
   if (!fs.existsSync(alvoFoco)) morrer(`não achei o FOCO.md em ${raiz}`);
 
-  const original = fs.readFileSync(alvoFoco, 'utf8');
   const carimbo = carimboAgora();
 
   // Cria diretório se não existir
   fs.mkdirSync(dirBackup, { recursive: true });
 
-  // Caminho do novo backup
+  // Caminho do novo backup — cópia byte a byte do original
   const alvoBackup = path.join(dirBackup, `foco-${carimbo}.md`);
-  fs.writeFileSync(alvoBackup, original, 'utf8');
+  fs.copyFileSync(alvoFoco, alvoBackup);
 
-  // --- rodízio: deleta a cópia mais antiga se ultrapassou o teto ---
-  const arquivos = fs.readdirSync(dirBackup)
+  // --- rodízio: deleta TODAS as cópias antigas enquanto houver excesso ---
+  let arquivos = fs.readdirSync(dirBackup)
     .filter(f => f.startsWith('foco-') && f.endsWith('.md'))
     .sort();
 
-  if (arquivos.length > teto) {
+  while (arquivos.length > teto) {
     const maisAntigo = path.join(dirBackup, arquivos[0]);
     fs.unlinkSync(maisAntigo);
+    // Relê a lista após apagar, porque a ordem mudou
+    arquivos = fs.readdirSync(dirBackup)
+      .filter(f => f.startsWith('foco-') && f.endsWith('.md'))
+      .sort();
   }
 
+  const original = fs.readFileSync(alvoFoco, 'utf8');
   const relato = {
     raiz, teto, foco: alvoFoco, backup: alvoBackup,
-    bytes: bytes(original), totalBackups: arquivos.length > teto ? teto : arquivos.length,
+    bytes: bytes(original), totalBackups: arquivos.length,
   };
 
   if (tem('json')) {
@@ -358,7 +362,7 @@ function backup() {
 
   console.log(`backup: ${alvoBackup}`);
   console.log(`  ${bytes(original)} bytes do FOCO.md`);
-  console.log(`  cópias guardadas: ${Math.min(arquivos.length, teto)}/${teto}`);
+  console.log(`  cópias guardadas: ${arquivos.length}/${teto}`);
 }
 
 /**

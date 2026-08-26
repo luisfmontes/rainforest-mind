@@ -170,20 +170,21 @@ else
   falhou=$((falhou+1)); echo "  FALHA nenhum arquivo de backup foi criado"
 fi
 
-# ------------------------------------------------------- 10. rodízio do backup guarda no máximo o teto de cópias
+# ------------------------------------------------------- 10. rodízio converge para o teto numa execução
 echo; echo "10. o rodizio do backup guarda no maximo o teto de copias"
 montar
-TETO=3
-for i in 1 2 3 4 5; do
-  sleep 0.1  # Garante timestamps diferentes
-  node "$SRC/scripts/foco.cjs" backup --teto $TETO --raiz "$SBP/dados" > /dev/null 2>&1
+rm -rf "$SBP/dados/.foco-backups"; mkdir -p "$SBP/dados/.foco-backups"
+# Monta 8 cópias dentro do diretório
+for i in 1 2 3 4 5 6 7 8; do
+  printf 'teste %d\n' $i > "$SBP/dados/.foco-backups/foco-2026-01-0${i}-000000-000.md"
+  sleep 0.01  # Garante order por sort
 done
-COUNT="$(ls "$SBP/dados/.foco-backups/foco-"*.md 2>/dev/null | wc -l)"
-if [ "$COUNT" -eq "$TETO" ]; then
-  ok=$((ok+1)); echo "  ok   após rodar 5 vezes com teto $TETO, restam exatamente $TETO backups"
-else
-  falhou=$((falhou+1)); echo "  FALHA esperava $TETO backups, encontrou $COUNT"
-fi
+COUNT_ANTES="$(ls "$SBP/dados/.foco-backups/foco-"*.md 2>/dev/null | wc -l)"
+# Roda UMA vez com teto 3 — deve convergir para 3
+TETO=3
+node "$SRC/scripts/foco.cjs" backup --teto $TETO --raiz "$SBP/dados" > /dev/null 2>&1
+COUNT_DEPOIS="$(ls "$SBP/dados/.foco-backups/foco-"*.md 2>/dev/null | wc -l)"
+igual "diretorio tinha 8, teto e 3, apos uma execucao sobram exatamente 3" "$COUNT_DEPOIS" "3"
 
 # ------------------------------------------------------- 11. backup: FOCO.md ausente
 echo; echo "11. backup com FOCO.md ausente"
@@ -199,12 +200,45 @@ fi
 
 # ------------------------------------------------------- 12. .foco-backups está no .gitignore
 echo; echo "12. git check-ignore .foco-backups"
-(cd "$SRC" && git check-ignore ".foco-backups" > /dev/null 2>&1)
+(cd "$SRC" && git check-ignore ".foco-backups/test.md" > /dev/null 2>&1)
 if [ $? -eq 0 ]; then
   ok=$((ok+1)); echo "  ok   .foco-backups é ignorado pelo git"
 else
   falhou=$((falhou+1)); echo "  FALHA .foco-backups não está no .gitignore"
 fi
+
+# ------------------------------------------------------- 13. MUTACAO do backup (desligar o laço de poda)
+echo; echo "13. mutacao backup (a bateria tem de acusar)"
+montar
+rm -rf "$SBP/dados/.foco-backups"; mkdir -p "$SBP/dados/.foco-backups"
+# Monta 8 cópias
+for i in 1 2 3 4 5 6 7 8; do
+  printf 'teste %d\n' $i > "$SBP/dados/.foco-backups/foco-2026-01-0${i}-000000-000.md"
+  sleep 0.01
+done
+MUT_BACKUP="$SBP/foco-mutante-backup.cjs"
+# Mutação: trocar "while (arquivos.length > teto)" por "while (false)"
+node -e "
+  const fs = require('fs');
+  const content = fs.readFileSync(process.argv[1], 'utf8');
+  const mutated = content.replace(
+    /while \(arquivos\.length > teto\)/,
+    'while (false)'
+  );
+  if (content === mutated) {
+    console.error('MUTACAO_NAO_ENCONTRADA');
+    process.exit(1);
+  }
+  fs.writeFileSync(process.argv[2], mutated, 'utf8');
+" "$SRC/scripts/foco.cjs" "$MUT_BACKUP"
+node "$MUT_BACKUP" backup --teto 3 --raiz "$SBP/dados" > /dev/null 2>&1
+COUNT_MUT="$(ls "$SBP/dados/.foco-backups/foco-"*.md 2>/dev/null | wc -l)"
+if [ "$COUNT_MUT" -gt 3 ]; then
+  ok=$((ok+1)); echo "  ok   desligar o laço de poda mantem tudo (mutante detectavel)"
+else
+  falhou=$((falhou+1)); echo "  FALHA mutante passou despercebido: a poda rodou mesmo com while(false)"
+fi
+rm -f "$MUT_BACKUP"
 
 # ------------------------------------------------------- 9. MUTACAO
 echo; echo "9. mutacao (a bateria tem de acusar)"
