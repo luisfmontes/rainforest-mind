@@ -64,6 +64,11 @@
     "em": "2026-08-26"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "pr": 128,
+    "branch": "fix/trava-de-cwd",
+    "worktrees_removidos": 2,
+    "nota": "a main andou duas vezes durante o fluxo (d5d24b6 -> d8a697a -> 7aab7d2, outra sessao); PR 128 MERGEABLE CLEAN. A D7 foi plantada, nao construida. Falta so a colheita das tres observacoes, que e depois do merge.",
+    "em": "2026-08-26"
   }
 }
