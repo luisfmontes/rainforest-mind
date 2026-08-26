@@ -153,6 +153,59 @@ ela só não é mais o que a tarefa promete.
 > (`referencias/2026-08-11-everything-claude-code.md:131`), incluindo o
 > mecanismo pelo qual a suíte não pega. O repo documentou e caiu nela.
 
+### Critério de superfície humana
+
+**Quando a tarefa produz algo que uma pessoa lê para decidir**, o plano exige ao menos
+um critério cuja pergunta seja sobre a pessoa: *qual informação ela vê no momento de
+decidir, e essa informação basta?*
+
+**Gatilho — tarefa TEM superfície humana quando:**
+- Devolve uma página web, uma interface de CLI ou prompt
+- Produz uma mensagem de erro ou aviso que o usuário vê
+- Gera um QR code, código, identificador ou qualquer artefato visual que a pessoa usa para tomar ação
+- Emite log, relatório ou resultado pensado para **leitura humana**, não para integração
+
+**A forma continua falsificável.** O que muda é o que se pergunta antes de escrever o
+`assert` — não há afrouxamento da exigência. Exemplos para a mesma tarefa:
+
+```
+Tarefa: página de pareamento por conta no MCP de WhatsApp
+
+❌ Nível 1 — mede o comando, não a pessoa:
+pronto quando: com `curl localhost:3005/qr`, a resposta tem um `<h2>` — provado por
+`grep -q 'h2' <(curl -s localhost:3005/qr)`
+
+Problema: um `<h2>` em cada página satisfaz o critério, mas não distingue contas.
+
+⚠️ Nível 2 — PARECE medir a pessoa, mas não mede:
+pronto quando: com as duas contas pareadas em portas diferentes (3005 e 3006),
+as páginas são diferentes — provado por
+`! diff <(curl -s localhost:3005/qr) <(curl -s localhost:3006/qr)` retorna verdadeiro
+
+Problema: o `diff` fica verde com um `<title>` distinto entre as duas contas.
+A pessoa com o telefone na mão está olhando o **corpo** da página para escanear
+o QR — um `<title>` que ninguém vê não a ajuda. Esse critério passa verde,
+o QR fica idêntico na prática, e a pessoa não consegue decidir qual conta.
+**É o erro que a regra 12 pegou ao consertar a página real** — o teste passava
+porque o `<title>` era único, e nada mais.
+
+✅ Nível 3 — mede a informação que a pessoa precisa:
+pronto quando: com as duas contas pareadas em portas diferentes (3005 e 3006),
+cada página **no corpo visível** contém um identificador da conta — provado por
+`grep -q 'Account: acc_demo_001' <(curl -s localhost:3005/qr)` E
+`grep -q 'Account: acc_demo_002' <(curl -s localhost:3006/qr)` E
+`! diff <(curl -s localhost:3005/qr | grep -oE 'Account: acc_demo_[0-9]+') <(curl -s localhost:3006/qr | grep -oE 'Account: acc_demo_[0-9]+')`
+
+Prova: a pessoa vê **qual número de conta** é cada QR; nessa informação falha,
+o critério falha, ainda que as páginas difiram por qualquer outro motivo.
+```
+
+A pergunta está colada no critério **antes** de escrever o `assert`: "qual
+informação a pessoa precisa?", "onde ela fica visível?", "e o critério falha
+quando essa informação desaparece?" — tudo isso é falsificável por comando, e
+tudo isso mede a pessoa, não o instrumento, não o test harness, não uma
+diferença qualquer que satisfaz o `diff`.
+
 ### Trava de cobertura
 
 A partir de 2026-08-13, `node scripts/estado.cjs marcar --estagio plano --status ok` recusa plano que não tenha cobertura completa: testa se toda decisão `D<n>` do design tem tarefa no plano com `atende: D<n>`, e se toda tarefa do plano cita apenas `D<n>` existentes. Sem cobertura completa, o comando sai com exit 2.
