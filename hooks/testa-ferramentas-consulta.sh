@@ -244,6 +244,13 @@ caso "cd encadeado confere a ferramenta de verdade" "cd /tmp && whisper-cli --mo
 caso "sudo -u pula o usuario"                       "sudo -u alguem nao-existe-abc"    "nao-existe-abc"
 caso "atribuicao de env nao vira executavel"        "FOO=1 nao-existe-abc"             "nao-existe-abc"
 
+# Caminho entre aspas com espaco e a forma CANONICA do caso motivador da #76 —
+# o whisper-cli mora em "C:\Program Files\...". A tokenizacao por espaco puro
+# quebrava isso em dois e o hook anunciava que `C:\Program` nao existia: falso
+# alarme no unico caso que a issue nomeia. Achado do `verificar`, 2026-08-25.
+caso "caminho entre aspas com espaco fica inteiro" '"C:\Program Files\ferramenta faltante\x.exe" --f' "Program Files"
+caso "cd com aspas nao engole o comando seguinte" 'cd "/c/Program Files" && nao-existe-abc' "nao-existe-abc"
+
 echo ""
 echo "== MUTACAO embutida: o exit final e quem garante o exit 0 =="
 # O plano DECLARA esta mutacao, mas declaracao nao e regressao: sem o caso

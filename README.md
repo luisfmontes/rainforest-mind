@@ -673,7 +673,7 @@ de escopo** e **fechamento de loops abertos**.
 
 ## Mexer no plugin
 
-Bateria verde nas 15 suítes (mais os dois gêmeos em Python), mutação em bateria
+Bateria verde nas 57 suítes (mais os dois gêmeos em Python), mutação em bateria
 nova, e duas regras que este repo aprendeu do jeito caro:
 
 - **campo obrigatório novo vem com o passado resolvido no mesmo commit** — backfill,

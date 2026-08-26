@@ -83,13 +83,28 @@ const FLAGS_COM_VALOR = new Set(["-u", "-g", "-U", "-C", "--user", "--group", "-
 function extrairExecutavel(comando) {
   if (!comando || typeof comando !== "string") return null;
 
-  for (const segmento of comando.split(/\s*(?:&&|\|\||;|\|)\s*/)) {
-    const tokens = segmento.trim().split(/\s+/).filter(Boolean);
+  // Tokeniza ANTES de separar segmento, e respeitando aspas. O `split(/\s+/)`
+  // que estava aqui quebrava `"C:\Program Files\whisper-cli\whisper.exe"` em
+  // dois, e o hook anunciava que `C:\Program` nao existia — falso alarme na
+  // forma canonica do proprio caso que motivou a #76. Achado do `verificar`
+  // em 2026-08-25.
+  const bruto = comando.match(/"[^"]*"|'[^']*'|\S+/g) || [];
+  const SEPARADOR = new Set(["&&", "||", ";", "|", "&"]);
+
+  const segmentos = [[]];
+  for (const t of bruto) {
+    if (SEPARADOR.has(t)) segmentos.push([]);
+    else segmentos[segmentos.length - 1].push(t);
+  }
+
+  const semAspas = (t) => t.replace(/^["']|["']$/g, "");
+
+  for (const tokens of segmentos) {
     let i = 0;
 
     // Prefixos que nao sao o comando: atribuicao de env, e wrappers com flags.
     while (i < tokens.length) {
-      const t = tokens[i].replace(/^["']|["']$/g, "");
+      const t = semAspas(tokens[i]);
       if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(t)) { i++; continue; }      // VAR=valor
       if (t === "sudo" || t === "env" || t === "command" || t === "nohup" || t === "time") { i++; continue; }
       if (t.startsWith("-")) { i += FLAGS_COM_VALOR.has(t) ? 2 : 1; continue; }
@@ -97,8 +112,8 @@ function extrairExecutavel(comando) {
     }
 
     if (i >= tokens.length) continue;
-    const alvo = tokens[i].replace(/^["']|["']$/g, "");
-    if (!alvo || alvo.startsWith("#") || /^[|;>&`$()]/.test(alvo)) continue;
+    const alvo = semAspas(tokens[i]);
+    if (!alvo || alvo.startsWith("#") || /^[>`$()]/.test(alvo)) continue;
     if (BUILTINS.has(alvo)) continue;   // builtin: segmento inteiro nao interessa
 
     return alvo;
@@ -106,6 +121,7 @@ function extrairExecutavel(comando) {
 
   return null;
 }
+
 
 /**
  * Lê o ledger ferramentas.jsonl em processo (sem subprocess).
