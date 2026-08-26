@@ -1,0 +1,28 @@
+{
+  "slug": "trava-de-cwd",
+  "titulo": "Trava de cwd: as tres observacoes que prescrevem o mesmo mecanismo",
+  "criado_em": "2026-08-26",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "em": "2026-08-26"
+  },
+  "plano": {
+    "status": "ok",
+    "em": "2026-08-26"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
