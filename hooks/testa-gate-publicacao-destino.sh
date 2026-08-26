@@ -38,6 +38,15 @@ echo "v1" > "$R/a.txt"; git -C "$R" add a.txt; git -C "$R" commit -qm base
 # Prepare diretórios para testes fora de repo
 FORA="$RAIZ/sem-git"; mkdir -p "$FORA"
 
+# Payload montado por `node` com os valores chegando em `argv`, nunca por printf.
+# Em 2026-08-25 os casos do marcador ficaram VERDES com a guarda desligada: o
+# printf com aspas triplamente escapadas entregava JSON invalido, o `JSON.parse`
+# do hook caia no catch e saia 0 — o exit esperado, pelo motivo errado. Valor em
+# argv nao tem nivel de escape para errar.
+pay() { # tool, file_path, conteudo(content|new_string), [old_string]
+  node -e 'const [t,fp,c,o]=process.argv.slice(1);const ti=t==="Write"?{file_path:fp,content:c}:{file_path:fp,old_string:o||"x",new_string:c};console.log(JSON.stringify({cwd:process.env.PAY_CWD||"",hook_event_name:"PreToolUse",tool_name:t,tool_input:ti}))' "$1" "$2" "$3" "${4:-}"
+}
+
 esc() { printf '%s' "$1" | sed 's|\\|/|g'; }
 
 # Helper para montar payload de Write
@@ -146,17 +155,26 @@ fi
 rm "$R/.rainforest-gate-off"
 
 echo
-echo "== Teste do marcador: Edit em arquivo com marcador em disco ===="
-# Arquivo com marcador EM DISCO passa, mesmo se new_string não o tem
-gate "Edit no scripts/testa-conferir-publicacao.sh (marcador em disco) + JID → passa (exit 0)" 0 "$(printf '{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"scripts/testa-conferir-publicacao.sh\",\"old_string\":\"x\",\"new_string\":\"jid=\\\"5547991234567@s.whatsapp.net\\\"\"}}' | sed 's|scripts/|'"$(esc "$SRC")"'/scripts/|')"
+echo "== Teste do marcador: le o DISCO, nao o conteudo que chega =="
+# O arquivo real tem o marcador no topo; o fragmento do Edit nao tem. Se o gate
+# lesse o conteudo que chega, este caso barraria — foi o furo de 5480ce4^.
+gate "Edit em arquivo COM marcador em disco, fragmento sem marcador -> passa" 0   "$(pay Edit "$(esc "$SRC")/scripts/testa-conferir-publicacao.sh" 'jid="5547991234567@s.whatsapp.net"')"
 
-echo
-echo "== Teste do marcador: Write de arquivo novo com marcador no conteúdo =="
-# Write de arquivo novo: marcador NO CONTEÚDO, mas NÃO EM DISCO = barrado
-gate "Write arquivo novo (sem em disco) com marcador no conteúdo + JID → barrado (exit 2)" 2 "$(write "$R/arquivo-com-marcador.sh" "# rainforest-gate: dados-de-exemplo
-jid=\"5547991234567@s.whatsapp.net\"")"
+# O espelho, e o que faz a mutacao doer dos dois lados: arquivo vizinho SEM
+# marcador, mesmo conteudo, tem de barrar. Marcador que vazasse para o diretorio
+# deixaria este verde.
+gate "Edit em arquivo vizinho SEM marcador, mesmo conteudo -> barrado" 2   "$(pay Edit "$(esc "$SRC")/scripts/conferir-publicacao.cjs" 'jid="5547991234567@s.whatsapp.net"')"
 
-echo
+# Arquivo novo trazendo o marcador no proprio conteudo: nao existe em disco,
+# entao nao ha marcador — auto-isencao num unico write nao passa.
+gate "Write de arquivo novo com marcador embutido -> barrado" 2   "$(pay Write "$(esc "$R")/arquivo-com-marcador.sh" '# rainforest-gate: dados-de-exemplo
+jid="5547991234567@s.whatsapp.net"')"
+
+# Entrada malformada nunca derruba a sessao: sai 0. E o comportamento certo, e
+# tambem o que escondeu os casos acima quando o payload vinha quebrado — por isso
+# ele fica travado por um caso proprio, e nao suposto.
+gate "payload invalido -> sai 0 sem derrubar" 0 '{"invalid": json}'
+
 echo "== Verificação: gate-staging-total continua verde =="
 echo "Rodando: bash hooks/testa-gate-staging-total.sh"
 if bash "$SRC/hooks/testa-gate-staging-total.sh" > /tmp/test-staging.log 2>&1; then
