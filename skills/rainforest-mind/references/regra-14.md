@@ -105,3 +105,16 @@ que produz o veredito, e sai **um** anúncio só, com uma das três formas:
 checagem que olhou o ambiente. Foi exatamente esse o defeito da primeira versão,
 em 2026-08-25: ela anunciava `ferramenta ausente: 'git'` numa máquina onde o `git`
 existe, porque confundia ausência de linha com ausência de ferramenta.
+
+**Ferramenta declarada e ainda assim indisponível pede checar o processo vivo,
+não só o registro do MCP.** O `system/init` diz se a sessão *registrou* o
+servidor; não diz se o processo por trás dele (bridge local, serviço externo)
+está de pé. Antes de recomendar "habilite o MCP" como se fosse configuração
+ausente, distinguir os três consertos: configurado e não carregado nesta sessão
+(recarregar), não configurado (habilitar de fato), ou processo caído (religar o
+processo, não a configuração). Cada um pede uma ação diferente dele.
+
+> 2026-08-23: "não há MCP de WhatsApp nesta sessão" era fato correto e
+> recomendação errada — o servidor estava declarado no escopo usuário, com dois
+> pares uv+python rodando para outras sessões e a bridge escutando na 3005.
+> Faltava esta sessão carregar, não configurar do zero.
