@@ -104,6 +104,40 @@ function descobrirBase(override) {
 }
 
 /**
+ * Confirma se a remota de fato sumiu, usando `git ls-remote` de verdade.
+ * O `fetch --prune` deixa ` gone]` no track, mas não prova nada: se a rede caiu,
+ * ou a credencial expirou, o reflexo local fica desatualizado.
+ *
+ * Devolve mapa { nome -> true/false/null }, onde:
+ *   `true` = ls-remote confirmou que a remota não existe
+ *   `false` = ls-remote confirmou que a remota EXISTE (o ` gone]` é ilusão local)
+ *   `null` = ls-remote falhou (sem rede, sem credencial, etc) — não conseguimos apurar
+ *
+ * `null` NUNCA vira remoção; quem chama trata como "continua viva" (até conseguir rede).
+ */
+function confirmarRemotaSumiu(refs) {
+  const resultado = {};
+  const candidatas = refs.filter((b) => b.sumiu);
+
+  if (!candidatas.length) return resultado;
+
+  for (const b of candidatas) {
+    const r = spawnSync('git', ['ls-remote', '--heads', 'origin', b.nome],
+      { cwd: REPO, encoding: 'utf8' });
+
+    if (r.status !== 0) {
+      // Falha de rede, credencial, ou qualquer outro erro em leitura da remota
+      resultado[b.nome] = null;
+    } else {
+      // exit 0: temos resposta do remoto. Vazia = não existe, com conteúdo = existe
+      resultado[b.nome] = !r.stdout.trim();
+    }
+  }
+
+  return resultado;
+}
+
+/**
  * Squash sem upstream — a mesma situação do mergeada-por-squash, só que a branch
  * nunca teve upstream (típico de worktree-agent-* que foi apagado, deixando a
  * branch local órfã). Não há PR pra checkar, então testamos o conteúdo direto:
@@ -278,6 +312,24 @@ function coletar(baseOverride) {
     else b.classe = 'viva';
   }
 
+  // Confirmação por ls-remote: o ` gone]` é só opinião local. Pergunte ao remoto.
+  // Se a remota EXISTE, a branch volta a ser 'viva' (o reflexo local está desatualizado).
+  // Se ls-remote FALHA, não conseguimos apurar — a branch fica como estava.
+  let lsRemoteFalhou = false;
+  const remotoConfirmado = confirmarRemotaSumiu(refs);
+  for (const b of refs) {
+    if ((b.classe === 'sumiu-mergeada' || b.classe === 'sumiu-divergente') &&
+        remotoConfirmado[b.nome] === false) {
+      // A remota ainda EXISTE — o ` gone]` é ilusão. Reclassifica como viva.
+      b.classe = 'viva';
+    } else if ((b.classe === 'sumiu-mergeada' || b.classe === 'sumiu-divergente') &&
+               remotoConfirmado[b.nome] === null) {
+      // Não conseguimos apurar — marca que falhamos.
+      lsRemoteFalhou = true;
+      // Não reclassifica — deixa em sumiu, mas sabe-se que é incerto.
+    }
+  }
+
   // Segunda passada, so em cima de quem ainda e 'viva' e tem upstream: e a
   // interseccao "squash + remoto sobrevivente" que nenhum dos dois sinais acima
   // enxerga. A consulta e UMA, feita antes do laco — nao uma por branch — e o
@@ -304,7 +356,7 @@ function coletar(baseOverride) {
     }
   }
 
-  return { base, atual, refs, ghFalhou };
+  return { base, atual, refs, ghFalhou, lsRemoteFalhou };
 }
 
 /**
@@ -347,7 +399,7 @@ function main() {
     if (!f.ok) console.log('aviso: `git fetch --prune` falhou — a leitura pode estar velha\n');
   }
 
-  const { base, atual, refs, ghFalhou } = coletar(argValor('base'));
+  const { base, atual, refs, ghFalhou, lsRemoteFalhou } = coletar(argValor('base'));
   const forcar = tem('forcar') || forcarConfigurado();
   let remover = tem('remover');
 
@@ -358,6 +410,16 @@ function main() {
     console.log(
       "aviso: `gh pr list` nao respondeu (gh ausente, sem autenticacao, ou saida != 0) — " +
       "branch(es) candidata(s) a mergeada-por-squash continuam 'viva', sem checagem de PR\n",
+    );
+  }
+
+  // ls-remote falhou: não conseguimos confirmar se a remota sumiu. Branches em
+  // `sumiu-*` podem ainda existir no remoto. Avisar para que o usuário tente de novo
+  // quando tiver rede/credencial.
+  if (lsRemoteFalhou && !tem('json')) {
+    console.log(
+      "aviso: `git ls-remote` nao respondeu (sem rede, sem autenticacao, ou saida != 0) — " +
+      "branch(es) em 'sumiu-*' podem ainda existir no remoto\n",
     );
   }
 

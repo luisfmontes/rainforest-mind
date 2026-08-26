@@ -408,7 +408,7 @@ function avaliarConfigDir(configDir, nome, versaoRepo) {
   if (!fs.existsSync(instalado)) {
     return doInstall || { dir: configDir, nivel: 'ok', detalhe: 'instalacao em dia com o repo' };
   }
-  const doClone = avaliarClone(instalado, nome);
+  const doClone = avaliarClone(instalado, nome, instalacoes);
   // Aviso do install vem junto do clone: sao artefatos diferentes, e o clone em
   // dia com o install atrasado e justamente o caso que ninguem procura.
   if (doInstall && doClone.nivel === 'ok') return { ...doInstall, dir: configDir };
@@ -428,6 +428,7 @@ function avaliarInstalacoes(instalacoes, versaoRepo, nome) {
   if (!instalacoes.length) return null;
   const atras = [];
   const indeterminados = [];
+  const chavesAtras = new Set();
   for (const i of instalacoes) {
     const partes = [];
     if (versaoRepo && i.version && i.version !== versaoRepo) {
@@ -447,13 +448,19 @@ function avaliarInstalacoes(instalacoes, versaoRepo, nome) {
       // uma afirmacao que este ramo nao tem base para fazer.
       indeterminados.push(i.version ? `versao ${i.version} sem 'gitCommitSha' no registro` : `sem 'gitCommitSha' no registro`);
     }
-    if (partes.length) atras.push(partes.join(', '));
+    if (partes.length) {
+      atras.push(partes.join(', '));
+      // A chave de QUEM esta atras, nao a primeira do registro: o mesmo plugin pode
+      // ter entrada de mais de um marketplace, e mandar atualizar a errada nao
+      // conserta nada. Havendo mais de uma atras, todas sao nomeadas.
+      chavesAtras.add(i.chave || nome);
+    }
   }
   if (atras.length) {
     return {
       nivel: 'aviso',
       detalhe: `o que EXECUTA esta atras: ${[...new Set(atras)].join('; ')}`,
-      acao: `rode: claude plugin update ${nome} — e abra uma janela NOVA, o efeito nao alcanca as abertas`,
+      acao: `rode: claude plugin update ${[...chavesAtras].join(' e ') || nome} — e abra uma janela NOVA, o efeito nao alcanca as abertas`,
     };
   }
   if (indeterminados.length) {
@@ -467,7 +474,7 @@ function avaliarInstalacoes(instalacoes, versaoRepo, nome) {
   return null;
 }
 
-function avaliarClone(instalado, nome) {
+function avaliarClone(instalado, nome, instalacoes) {
   // O CONTEÚDO do clone é o que carrega — e não bastava comparar commits.
   //
   // Em 2026-08-11 diagnostiquei isto errado duas vezes seguidas. Primeiro culpei o
@@ -552,7 +559,16 @@ function avaliarClone(instalado, nome) {
     }
   }
 
-  const atualiza = `rode: claude plugin marketplace update ${nome} — e abra uma janela NOVA, o efeito nao alcanca as abertas`;
+  // O comando `marketplace update` recebe o nome do MARKETPLACE, nao a chave
+  // `<plugin>@<marketplace>` — sao dois comandos diferentes. E a origem sai do
+  // registro lido, nao da primeira entrada: o mesmo plugin pode vir de mais de
+  // um marketplace, e nesse caso os dois sao nomeados em vez de um ser escolhido
+  // em silencio.
+  const marketplaces = [...new Set(
+    (instalacoes || []).map((i) => i.chave && i.chave.split('@')[1]).filter(Boolean)
+  )];
+  const marketplace = marketplaces.join(' ou ') || nome;
+  const atualiza = `rode: claude plugin marketplace update ${marketplace} — e abra uma janela NOVA, o efeito nao alcanca as abertas`;
 
   // Sem parentesco vem ANTES da checagem de skill: mesmo com todas as skills no
   // lugar, o clone está preso a uma história que não existe mais, e o comando de
