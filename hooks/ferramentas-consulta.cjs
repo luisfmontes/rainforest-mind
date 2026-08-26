@@ -28,7 +28,7 @@
  * Incidente 2026-08-19: payload montado via `node argv`, nunca `printf`.
  */
 
-const { execSync } = require("node:child_process");
+const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -105,45 +105,54 @@ function consultarLedger(raiz, executavel) {
 /**
  * Sonda barata do executável: which (ou command -v em bash).
  * Retorna {achado: true/false, caminho?: string}.
- * O caminho é usado como receita quando gravamos.
+ * O caminho achado NAO vira receita: a sonda prova existencia, nao invocacao.
  */
-function sodarExecutavel(executavel) {
+function sondarExecutavel(executavel) {
   try {
-    // Usa `where` no Windows, `which` em Unix
-    const cmd =
-      process.platform === "win32"
-        ? `where ${JSON.stringify(executavel)}`
-        : `command -v ${JSON.stringify(executavel)}`;
+    // Argumentos em ARRAY, nunca string de shell interpolada. O nome do
+    // executavel vem da linha de comando que a janela montou — valor de fora —
+    // e monta-lo numa string de shell e a Issue #100 outra vez, fechada neste
+    // repo em 2026-08-25.
+    //
+    // `command -v` e builtin, entao no Unix precisa de shell: o valor vai como
+    // ARGUMENTO POSICIONAL (`"$1"`), nunca dentro do script.
+    const saida = process.platform === "win32"
+      ? execFileSync("where", [executavel], { encoding: "utf8", timeout: 2000, stdio: ["ignore", "pipe", "ignore"] })
+      : execFileSync("sh", ["-c", 'command -v -- "$1"', "sh", executavel], { encoding: "utf8", timeout: 2000, stdio: ["ignore", "pipe", "ignore"] });
 
-    const saida = execSync(cmd, {
-      encoding: "utf8",
-      timeout: 2000,
-    }).trim();
-
-    return { achado: true, caminho: saida };
+    // O `where` devolve UMA LINHA POR OCORRENCIA. Isso e resultado de busca, nao
+    // receita — e nao vai para o ledger (D11). Fica so como sinal de que achou.
+    return { achado: Boolean(saida.trim()) };
   } catch {
     return { achado: false };
   }
 }
 
 /**
- * Grava entrada no ledger.
- * Formato: {nome, receita, descoberto, data}.
- * Receita = caminho retornado pela sonda (which/command -v).
- * Retorna {ok: true/false, motivo?: string}.
+ * Grava o fato positivo no ledger, pela porta unica.
+ * Formato: {nome, descoberto, data} — SEM receita (D11).
+ * Retorna {ok: true/false}.
  */
-function gravarNoLedger(raiz, executavel, caminho) {
+function gravarNoLedger(raiz, executavel, _caminhoDaSonda) {
   try {
     const script = path.join(__dirname, "..", "scripts", "ferramentas.cjs");
+
+    // SEM `receita`, e o parametro da sonda entra aqui so para ficar explicito
+    // que ele NAO e usado (D11). A sonda prova que o executavel existe; ela nao
+    // sabe como invoca-lo. Em 2026-08-25 a primeira versao gravou a saida crua
+    // do `where` como receita — dois caminhos concatenados, com um CR no meio —
+    // e receita inventada custa mais que receita ausente. A receita entra
+    // depois, pelo `registrar` explicito, quando alguem souber a invocacao.
     const entrada = {
       nome: executavel,
-      receita: caminho || executavel, // Caminho da sonda, ou nome como fallback
       descoberto: "sonda-consulta",
       data: new Date().toISOString().split("T")[0],
     };
 
-    // Chama o script de escrita
-    execSync(`node "${script}" registrar --json`, {
+    // `execFileSync` com argumentos em array, nunca `execSync` com o caminho
+    // interpolado numa string de shell: e a regressao exata da Issue #100,
+    // fechada neste repo em 2026-08-25.
+    execFileSync(process.execPath, [script, "registrar", "--json"], {
       input: JSON.stringify(entrada),
       stdio: ["pipe", "ignore", "ignore"],
       timeout: 5000,
@@ -153,10 +162,11 @@ function gravarNoLedger(raiz, executavel, caminho) {
 
     return { ok: true };
   } catch {
-    // Falha de escrita não derruba nada (D10)
+    // Falha de escrita nao derruba nada (D10)
     return { ok: false };
   }
 }
+
 
 /**
  * Anuncia ferramenta conforme o resultado da sonda.
@@ -217,7 +227,7 @@ function main() {
   }
 
   // D12 — Não está no ledger: roda sonda de verdade
-  const sonda = sodarExecutavel(executavel);
+  const sonda = sondarExecutavel(executavel);
 
   if (sonda.achado) {
     // Acha a ferramenta — grava e anuncia
