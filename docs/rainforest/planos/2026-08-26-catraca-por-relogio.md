@@ -29,6 +29,27 @@ mutacao:
   fixture: o caso "a fronteira do piso: 1000 dispara, 999 nao" de `scripts/testa-conferir-mutacao.sh`
 pronto quando: `suspeitaDeCorte(baseline, pos)` está exportada e a bateria a chama com números fixos cobrindo as quatro fronteiras — piso exato (1000) e um abaixo (999), razão exata (10%) e um acima —, sem cronômetro nenhum; e a mutação que troca `>=` por `>` no piso deixa a bateria **vermelha**, provando que a fronteira está medida e não só a região
 
+### 3. O anúncio tem de estar LIGADO aos casos reais [tipo: implementar]
+atende: D3, D5
+arquivos: `scripts/testa-conferir-mutacao.sh`
+depende de: 2
+paralela: nao
+mutacao:
+  arquivo: `scripts/testa-conferir-mutacao.sh`
+  de: o `anuncia_pulo` do ramo "abaixo do piso"
+  para: o mesmo, precedido de `falhou=$((falhou+1))`
+  bateria: `bash scripts/testa-conferir-mutacao.sh`
+  fixture: o caso "o anuncio esta LIGADO nos casos e2e, e anuncia em vez de reprovar" de `scripts/testa-conferir-mutacao.sh`
+
+> Esta tarefa nasceu da revisão, e nasceu porque eu entreguei o mecanismo
+> **morto**: `exige_e2e` ficou definida e nunca chamada, os casos 10 e 12
+> continuaram no `exige` puro, e a bateria saiu verde. O revisor reproduziu sob
+> carga: `ok: 80 falhou: 3` — o defeito da #121 intacto, na branch que alegava
+> consertá-lo. A causa foi minha: fiz duas substituições sem asserção e não
+> conferi que aplicaram.
+
+pronto quando: existe prova de **comportamento** — `exige_e2e` chamada com uma saída fabricada em que a pré-condição não vale, exigindo que anuncie e conte o pulo, sem depender de carga — e prova de **fiação**, conferindo que os casos 10 e 12 chamam `exige_e2e` e não `exige`; e a bateria roda com a máquina saturada de propósito e sai **verde**, com `PULADO` nomeando as durações medidas, provado com a saída colada
+
 ### 2. Os casos de ponta a ponta anunciam quando a pré-condição de tempo não valeu [tipo: implementar]
 atende: D3, D4, D5
 arquivos: `scripts/testa-conferir-mutacao.sh`

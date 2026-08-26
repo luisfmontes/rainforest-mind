@@ -166,6 +166,18 @@ pulados_e2e=0
 veredito_pulos() { [ "${1:-0}" -lt 2 ]; }
 # Le "Baseline: NNNN ms" da saida do conferir-mutacao.cjs. Vazio se nao achou.
 baseline_medido() { grep -oE 'Baseline: [0-9]+ ms' "$SAIDA" | grep -oE '[0-9]+' | head -1; }
+# A pos-mutacao aparece em duas formas, conforme o ramo: "Mutação: NNNN ms" no
+# caminho aprovado e "Pós-mutação: NNNN ms" no caminho da suspeita.
+pos_medida() { grep -oE '(Mutação|Pós-mutação): [0-9]+ ms' "$SAIDA" | grep -oE '[0-9]+' | head -1; }
+ultimo_pulou=0
+# As assercoes que acompanham um caso e2e so fazem sentido se o caso RODOU. Se
+# ele foi pulado, elas olham a saida de outro ramo e acusariam falha que nao
+# existe — foi assim que a primeira versao desta entrega saiu `falhou: 3` sob
+# carga, com a mesma cara do defeito que ela conserta.
+tem_se_rodou()     { if [ "$ultimo_pulou" -eq 1 ]; then printf '         (assercao pulada junto: %s)
+' "$1"; else tem "$@"; fi; }
+nao_tem_se_rodou() { if [ "$ultimo_pulou" -eq 1 ]; then printf '         (assercao pulada junto: %s)
+' "$1"; else nao_tem "$@"; fi; }
 anuncia_pulo() {
   pulados_e2e=$((pulados_e2e+1))
   printf '  PULADO %s
@@ -185,14 +197,20 @@ anuncia_pulo() {
 #        verdade para a afirmacao dele fazer sentido.
 exige_e2e(){
   local esperado="$1" rotulo="$2" precisa="$3"; shift 3
+  ultimo_pulou=0
   "$@" > "$SAIDA" 2>&1
   local got=$? base; base="$(baseline_medido)"
   if [ "$got" -eq "$esperado" ]; then
     ok=$((ok+1)); printf '  ok    %s (exit=%s, baseline=%sms)
 ' "$rotulo" "$got" "${base:-?}"
   elif [ -n "$base" ] && [ "$precisa" = 'acima-do-piso' ] && [ "$base" -lt 1000 ]; then
+    ultimo_pulou=1
     anuncia_pulo "$rotulo" "baseline medido ${base}ms, abaixo do piso de 1000ms — o caso precisa de baseline ACIMA"
+  elif [ -n "$base" ] && [ -n "$(pos_medida)" ] && [ "$precisa" = 'acima-do-piso' ] && [ "$(( $(pos_medida) * 10 ))" -ge "$base" ]; then
+    ultimo_pulou=1
+    anuncia_pulo "$rotulo" "pos-mutacao $(pos_medida)ms contra baseline ${base}ms — passou dos 10%, o caso precisa de razao ABAIXO de 10%"
   elif [ -n "$base" ] && [ "$precisa" = 'abaixo-do-piso' ] && [ "$base" -ge 1000 ]; then
+    ultimo_pulou=1
     anuncia_pulo "$rotulo" "baseline medido ${base}ms, no piso de 1000ms ou acima — o caso precisa de baseline ABAIXO"
   else
     falhou=$((falhou+1)); printf '  FALHA %s: esperado exit=%s, veio exit=%s (baseline=%sms)
@@ -372,6 +390,47 @@ for n in 2 3; do
 ' "$n"; fi
 done
 
+echo "== 9d. o anuncio esta LIGADO nos casos e2e, e anuncia em vez de reprovar =="
+# Duas provas, e as duas precisam existir.
+#
+# (a) COMPORTAMENTO: chamo exige_e2e com uma saida fabricada em que a
+#     pre-condicao de tempo NAO vale, e exijo que ela ANUNCIE em vez de contar
+#     falha. Deterministico — nao depende de a maquina estar ocupada.
+#
+# (b) FIACAO: confiro que os casos 10 e 12 chamam exige_e2e, e nao o exige puro.
+#     Isto e grep de fonte, que normalmente nao prova nada — aqui prova a UNICA
+#     coisa que (a) nao alcanca. Na primeira versao desta entrega o exige_e2e
+#     ficou definido e nunca chamado: mecanismo inteiro morto, bateria verde, e
+#     sob carga ela saiu `falhou: 3` com a mesma cara do defeito que conserta.
+falso_conferidor() {
+  # Finge o conferir-mutacao.cjs: imprime um baseline ABAIXO do piso e sai 0.
+  printf 'ok: bateria VERMELHA com o comportamento invertido (exit 1).
+'
+  printf '    Baseline: 500 ms (exit 0) → Mutação: 40 ms (exit 1)
+'
+  return 0
+}
+antes_ok=$ok; antes_falhou=$falhou; antes_pulos=$pulados_e2e
+exige_e2e 5 "fixture: baseline abaixo do piso quando o caso precisa de ACIMA" acima-do-piso falso_conferidor
+if [ "$falhou" -eq "$antes_falhou" ] && [ "$pulados_e2e" -eq "$((antes_pulos+1))" ]; then
+  ok=$((ok+1)); printf '  ok    anunciou em vez de reprovar, e contou o pulo
+'
+else
+  falhou=$((falhou+1)); printf '  FALHA devia anunciar: falhou %s->%s, pulos %s->%s
+' "$antes_falhou" "$falhou" "$antes_pulos" "$pulados_e2e"
+fi
+pulados_e2e=$antes_pulos; ultimo_pulou=0   # o fixture nao suja o contador real
+
+for alvo in 'pós-mutação curta demais' 'baseline < 1s não dispara'; do
+  if grep -F "$alvo" "$0" | grep -q '^exige_e2e '; then
+    ok=$((ok+1)); printf '  ok    o caso "%s" chama exige_e2e
+' "$alvo"
+  else
+    falhou=$((falhou+1)); printf '  FALHA o caso "%s" NAO chama exige_e2e — o anuncio esta desligado
+' "$alvo"
+  fi
+done
+
 echo "== 10. suspeita de corte de shell: pós-mutação desproporcionalmente curta =="
 # Fixture que simula o defeito de 2026-08-24: baseline ~2s, pós-mutação morre em ~10ms
 cat > "$CAIXA/shell-lento.cjs" <<'FONTE'
@@ -381,13 +440,13 @@ console.log('ok');
 FONTE
 cp "$CAIXA/shell-lento.cjs" "$S/shell-lento.pristino"
 
-exige 5 "pós-mutação curta demais (< 10% baseline) dispara exit=5" \
+exige_e2e 5 "pós-mutação curta demais (< 10% baseline) dispara exit=5" acima-do-piso \
   CHK --arquivo shell-lento.cjs --de "console.log('ok');" \
       --para "console.log('ERRO-MUTACAO'); console.log('ok');" \
       --bateria 'bash bateria-lenta-ou-falha.sh' --timeout 15000
-tem "relata SUSPEITA DE CORTE DE SHELL" "SUSPEITA DE CORTE"
-tem "mostra as duas duracoes" "Baseline:"
-tem "diz como confirmar" "Confirme rodando"
+tem_se_rodou "relata SUSPEITA DE CORTE DE SHELL" "SUSPEITA DE CORTE"
+tem_se_rodou "mostra as duas duracoes" "Baseline:"
+tem_se_rodou "diz como confirmar" "Confirme rodando"
 
 if ! cmp -s "$CAIXA/shell-lento.cjs" "$S/shell-lento.pristino"; then
   falhou=$((falhou+1)); printf '  FALHA: shell-lento.cjs nao foi restaurado apos recusa\n'
@@ -416,12 +475,12 @@ const x = 1;
 FONTE
 cp "$CAIXA/fonte-rapida.cjs" "$S/fonte-rapida.pristino"
 
-exige 0 "baseline < 1s não dispara heurística mesmo com razão 0.1" \
+exige_e2e 0 "baseline < 1s não dispara heurística mesmo com razão 0.1" abaixo-do-piso \
   CHK --arquivo fonte-rapida.cjs --de "const x = 1;" --para "const x = 1; // MARCA-RÁPIDO" \
       --bateria 'bash bateria-rapida.sh' --timeout 5000
-tem "aprova normalmente" "ok: bateria VERMELHA"
-nao_tem "não reclama de corte" "SUSPEITA"
-tem "baseline e pós no log" "Baseline:"
+tem_se_rodou "aprova normalmente" "ok: bateria VERMELHA"
+nao_tem_se_rodou "não reclama de corte" "SUSPEITA"
+tem_se_rodou "baseline e pós no log" "Baseline:"
 
 if ! cmp -s "$CAIXA/fonte-rapida.cjs" "$S/fonte-rapida.pristino"; then
   falhou=$((falhou+1)); printf '  FALHA: fonte-rapida.cjs nao foi restaurado apos mutacao\n'
