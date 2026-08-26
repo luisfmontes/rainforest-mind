@@ -76,6 +76,44 @@ else
   FALHA=$((FALHA + 1))
 fi
 
+# ==== CRITERIO 4b: receita e OPCIONAL, e quebra de linha e recusada ====
+# Nasceu do defeito de 2026-08-25: com `receita` obrigatoria, o hook de consulta
+# foi forcado a inventar uma e gravou a saida crua do `where` — dois caminhos
+# concatenados, com um CR no meio. Receita inventada custa mais que ausente.
+echo ""
+echo "=== CRITERIO 4b: receita opcional, e sem saida crua de comando ==="
+
+node -e "console.log(JSON.stringify({nome:'sem-receita',descoberto:'sonda-consulta'}))"   | node "$NODE_SCRIPT" registrar --json >/dev/null 2>&1
+SEM_RECEITA_EXIT=$?
+LINHA=$(grep '"nome":"sem-receita"' "$RFM_ROOT/ferramentas.jsonl" 2>/dev/null)
+CONSULTA=$(node "$NODE_SCRIPT" consultar sem-receita 2>/dev/null)
+
+if [ "$SEM_RECEITA_EXIT" -eq 0 ] && [ -n "$LINHA" ] && ! printf '%s' "$LINHA" | grep -q '"receita"'; then
+  echo "✓ registrar sem receita: aceito, e a linha nao ganha campo 'receita'"
+  OK=$((OK + 1))
+else
+  echo "✗ FALHA: exit=$SEM_RECEITA_EXIT linha=$LINHA"
+  FALHA=$((FALHA + 1))
+fi
+
+if [ -n "$CONSULTA" ] && [ "$CONSULTA" != "desconhecido" ]; then
+  echo "✓ consultar entrada sem receita: nao diz 'desconhecido' ($CONSULTA)"
+  OK=$((OK + 1))
+else
+  echo "✗ FALHA: consulta de entrada sem receita devolveu '$CONSULTA'"
+  FALHA=$((FALHA + 1))
+fi
+
+node -e "console.log(JSON.stringify({nome:'crua',receita:'a'+String.fromCharCode(10)+'b',descoberto:'t'}))" | node "$NODE_SCRIPT" registrar --json >/dev/null 2>&1
+CRUA_EXIT=$?
+if [ "$CRUA_EXIT" -eq 2 ]; then
+  echo "✓ receita com quebra de linha: recusada (exit 2)"
+  OK=$((OK + 1))
+else
+  echo "✗ FALHA: receita com quebra de linha saiu $CRUA_EXIT, esperava 2"
+  FALHA=$((FALHA + 1))
+fi
+
 # ==== CRITÉRIO 5 ====
 echo ""
 echo "=== CRITÉRIO 5: Placar final ==="

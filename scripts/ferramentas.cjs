@@ -147,8 +147,24 @@ function validarEntrada(obj) {
   if (!obj.nome || typeof obj.nome !== "string") {
     throw new Erro("campo 'nome' obrigatorio e deve ser string");
   }
-  if (!obj.receita || typeof obj.receita !== "string") {
-    throw new Erro("campo 'receita' obrigatorio e deve ser string");
+  // A `receita` e OPCIONAL, e isso e decisao, nao folga.
+  //
+  // A D5 diz que a entrada util e nome + receita + como descoberto + data, e a
+  // D11 diz que o hook de consulta grava SEM receita — inferir a invocacao a
+  // partir de uma sonda e adivinhacao. Com o campo obrigatorio, as duas nao
+  // cabem juntas, e a saida que sobra e a pior: em 2026-08-25 o hook foi
+  // forcado a inventar uma, e gravou a saida crua do `where` — dois caminhos
+  // concatenados num campo so, com um CR no meio. Receita inventada custa
+  // mais que receita ausente.
+  //
+  // Entrada sem receita e fato positivo legitimo: "existe, achado assim, nesta
+  // data". A receita entra depois, pelo `registrar` explicito, quando alguem
+  // souber a invocacao de verdade. O que continua proibido e mentir sobre ela.
+  if (obj.receita !== undefined && typeof obj.receita !== "string") {
+    throw new Erro("campo 'receita', quando presente, deve ser string");
+  }
+  if (typeof obj.receita === "string" && /[\r\n]/.test(obj.receita)) {
+    throw new Erro("campo 'receita' nao pode ter quebra de linha — saida crua de comando nao e receita");
   }
   if (!obj.descoberto || typeof obj.descoberto !== "string") {
     throw new Erro("campo 'descoberto' obrigatorio e deve ser string");
@@ -156,12 +172,10 @@ function validarEntrada(obj) {
 }
 
 function serializar(obj) {
-  const ordenado = {
-    nome: obj.nome,
-    receita: obj.receita,
-    descoberto: obj.descoberto,
-    data: obj.data,
-  };
+  const ordenado = { nome: obj.nome };
+  if (obj.receita !== undefined) ordenado.receita = obj.receita;
+  ordenado.descoberto = obj.descoberto;
+  ordenado.data = obj.data;
   const linha = JSON.stringify(ordenado);
   JSON.parse(linha); // validar JSON
   return linha;
@@ -246,17 +260,13 @@ function cmdRegistrar(args) {
     entrada = lerStdin();
     entrada.data = entrada.data || hoje();
   } else {
-    if (!args.nome || !args.receita || !args.descoberto) {
+    if (!args.nome || !args.descoberto) {
       throw new Erro(
-        "registrar exige: node scripts/ferramentas.cjs registrar <nome> <receita> <descoberta>"
+        "registrar exige: node scripts/ferramentas.cjs registrar <nome> [receita] <descoberta>"
       );
     }
-    entrada = {
-      nome: args.nome,
-      receita: args.receita,
-      descoberto: args.descoberto,
-      data: hoje(),
-    };
+    entrada = { nome: args.nome, descoberto: args.descoberto, data: hoje() };
+    if (args.receita) entrada.receita = args.receita;
   }
 
   validarEntrada(entrada);
@@ -303,7 +313,9 @@ function cmdConsultar(args) {
     process.exit(0);
   }
 
-  console.log(encontrado.receita);
+  // Sem receita, a entrada ainda e um fato: existe e foi achado. Dizer isso e
+  // diferente de dizer "desconhecido" — e quem le precisa distinguir os dois.
+  console.log(encontrado.receita || `conhecido, sem receita (descoberto: ${encontrado.descoberto})`);
   process.exit(0);
 }
 
