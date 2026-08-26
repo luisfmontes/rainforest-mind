@@ -1429,6 +1429,13 @@ function computarVeredito(textoDoFoco, sessoes, config, agora) {
     linhas.push(`**NÃO cobrar desvio de escopo nesta sessão** — ${vereditos.join(' e ')}.`);
   }
 
+  // Segunda diretiva (regra 3 + regra 17): o prazo NAO cala, muda de tom. Sai só
+  // com a isenção 1 — em `tempo pessoal` sozinho, ou com `Pastas:`/`Ociosidade`
+  // ausentes, o radar já anuncia indeterminação e a nota seria palpite.
+  if (vereditos.includes('foco ativo em outra janela')) {
+    linhas.push('**Apresentar avisos de prazo como nota** — o foco está sendo tocado em outra janela.');
+  }
+
   // Anúncios: um por isenção indeterminada (podem sair com veredito ou sozinhos)
   linhas.push(...anuncios);
 
