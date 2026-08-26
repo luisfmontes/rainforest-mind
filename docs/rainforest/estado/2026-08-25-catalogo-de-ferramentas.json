@@ -53,7 +53,14 @@
     ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "achados": 5,
+    "bloqueantes": 0,
+    "base": "2e77f796cad99fd895a75b5646ee12c9ca4a9421",
+    "head": "6dd57f5569f695b6ff6226ab656e7f8f40d1fc42",
+    "todos_corrigidos": true,
+    "resumo": "cd engolia o executavel real (whisper-cli nunca conferido, alarme falso que nao convergia); mutacoes so no plano e nao nas baterias; incerteza colapsada em ausencia; parser posicional com receita opcional; plano.tarefas velho no estado",
+    "em": "2026-08-25"
   },
   "verificar": {
     "status": "pendente"
