@@ -1,0 +1,31 @@
+{
+  "slug": "2026-08-26-backup-do-sentinela",
+  "titulo": "2026-08-26-backup-do-sentinela",
+  "criado_em": "2026-08-26",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "pendente",
+    "issue": 118,
+    "decisoes": 5,
+    "doc": "docs/rainforest/design/2026-08-26-backup-do-sentinela.md",
+    "aguarda": "aprovacao do Luis na D4",
+    "em": "2026-08-26"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
