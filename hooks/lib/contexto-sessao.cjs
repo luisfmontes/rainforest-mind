@@ -1390,6 +1390,7 @@ function computarVeredito(textoDoFoco, sessoes, config, agora) {
   // Analisa cada isenção INDEPENDENTEMENTE (D6 corrigido)
   const vereditos = [];
   const anuncios = [];
+  let focoAtivoEmOutraJanelaDeterminado = false;
 
   // ISENÇÃO 1: Foco ativo em outra janela (regra 17)
   // Precisa de: Pastas: configurado E Ociosidade máxima: declarada
@@ -1401,6 +1402,7 @@ function computarVeredito(textoDoFoco, sessoes, config, agora) {
     anuncios.push('Ociosidade máxima: ausente no FOCO.md — o radar não pode determinar se o foco está ativo em outra janela.');
   } else {
     // Determinada: pode decidir
+    focoAtivoEmOutraJanelaDeterminado = true;
     if (focoAtivoEmOutraJanela(sessoes, pastas, ociosidade, agora)) {
       vereditos.push('foco ativo em outra janela');
     }
@@ -1427,6 +1429,11 @@ function computarVeredito(textoDoFoco, sessoes, config, agora) {
   // Veredito: se há motivos aplicáveis
   if (vereditos.length) {
     linhas.push(`**NÃO cobrar desvio de escopo nesta sessão** — ${vereditos.join(' e ')}.`);
+  }
+
+  // Segunda diretiva: avisar sobre prazos como nota quando isenção 1 dispara
+  if (focoAtivoEmOutraJanelaDeterminado && vereditos.includes('foco ativo em outra janela')) {
+    linhas.push('**Apresentar avisos de prazo como nota** — o foco está sendo tocado em outra janela.');
   }
 
   // Anúncios: um por isenção indeterminada (podem sair com veredito ou sozinhos)
