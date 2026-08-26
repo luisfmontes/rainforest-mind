@@ -108,6 +108,12 @@
     "em": "2026-08-26"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "pr": 122,
+    "commits": 8,
+    "suite": "58 de 58 verdes",
+    "mutacoes": 7,
+    "worktrees_removidos": true,
+    "em": "2026-08-26"
   }
 }
