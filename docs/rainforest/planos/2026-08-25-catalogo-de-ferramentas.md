@@ -23,7 +23,14 @@ Design: docs/rainforest/design/2026-08-25-catalogo-de-ferramentas.md
 
 ### 1. Porta única do ledger: `scripts/ferramentas.cjs` [tipo: implementar]
 atende: D2, D3, D5, D11, D13
-arquivos: `scripts/ferramentas.cjs`, `scripts/testa-ferramentas.sh`
+arquivos: `scripts/ferramentas.cjs`, `scripts/testa-ferramentas.sh`, `.gitignore`
+
+> `.gitignore` entrou nesta tarefa em 2026-08-25, durante a integração: um
+> `ferramentas.jsonl` chegou a ser commitado, com dois caminhos desta máquina
+> dentro. O arquivo é dado do usuário e mora em `~/.rainforest`; a raiz certa
+> depende de quem chama, e quem confere erra tanto quanto quem implementa — foi
+> uma conferência manual que o criou. A trava não supõe disciplina de ninguém, e
+> por isso pertence a esta tarefa, que é a que decide onde o ledger mora.
 depende de: nenhuma
 paralela: sim
 mutacao:
