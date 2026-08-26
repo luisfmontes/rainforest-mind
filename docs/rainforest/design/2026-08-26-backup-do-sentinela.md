@@ -99,6 +99,26 @@ Nada disso sai da máquina.
   calada — é o argumento que o próprio `run-vigia.ps1` já usa, no comentário do
   toggle, para chamar o Node em vez de reimplementar a cadeia de três níveis.
 
+- **D7 — a cauda de backup sai do `run-vigia.ps1` e vira `vigias/backup-estado.ps1`.**
+  Porque: enquanto o bloco morava no fim do `run-vigia.ps1`, chegar nele exigia
+  node no PATH, o toggle `vigias` ligado, destino de WhatsApp configurado, a
+  bridge de pé na porta 3005 e o `claude.exe` respondendo — ou seja, uma bateria
+  que provasse o bloco **por execução enviaria uma mensagem de WhatsApp de
+  verdade**. A primeira tentativa desta tarefa contornou isso fabricando uma
+  cópia do bloco e rodando a cópia; com `git push origin main` reintroduzido no
+  arquivo real, essa bateria saía `9 ok, 0 falha(s)`. Separado, o pedaço roda
+  numa caixa sem bridge, sem claude e sem toggle, e passa a ser provável por
+  execução. Esta decisão nasceu **durante** a execução, em 2026-08-26, porque o
+  critério que o plano tinha escrito não era alcançável com segurança.
+
+- **D8 — o `vigias/backup-estado.ps1` é ASCII puro.**
+  Porque: o PowerShell 5.1 lê `.ps1` sem BOM como CP-1252. Um travessão em UTF-8
+  (`E2 80 94`) chega como três caracteres, e o último deles é uma aspa curva que
+  **abre uma string**. Três travessões nos comentários deixaram o parser com
+  string não terminada, reportando erro a 60 linhas da causa. É a mesma família
+  do `` que quebrou um fallback em 2026-08-25 e do `` que comeu um pedaço
+  de caminho hoje: caractere que parece decoração e é sintaxe.
+
 ## Avaliado e descartado
 
 - **Transformar `~/.rainforest` em repositório git com remota privada.** Dá

@@ -26,7 +26,54 @@
     "em": "2026-08-26"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-08-26",
+    "tarefas": 5,
+    "tarefas_ok": 5,
+    "bateria_nova": "scripts/testa-backup-estado.sh (20 ok, 0 falhou)",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "arquivo": "vigias/backup-estado.ps1",
+        "de": "if ($codigo -ne 0) {",
+        "para": "if ($false) {",
+        "fixture": "falha de backup FALA no ERROS.md",
+        "resultado": "vermelho"
+      },
+      {
+        "tarefa": 2,
+        "arquivo": "scripts/foco.cjs",
+        "de": "while (arquivos.length > teto) {",
+        "para": "while (false) {",
+        "fixture": "o rodizio do backup guarda no maximo o teto de copias",
+        "resultado": "vermelho"
+      },
+      {
+        "tarefa": 3,
+        "arquivo": "vigias/run-vigia.ps1",
+        "de": "$argsBackup = @(",
+        "para": "git -C $root push origin main + linha original",
+        "fixture": "o run-vigia.ps1 nao volta a commitar nem empurrar",
+        "resultado": "vermelho"
+      },
+      {
+        "tarefa": 4,
+        "arquivo": "vigias/backup-estado.ps1",
+        "de": "$foco = Join-Path $Plugin",
+        "para": "git push origin main + linha original",
+        "fixture": "nenhum git no backup-estado.ps1, fora de comentario",
+        "resultado": "vermelho"
+      },
+      {
+        "tarefa": 5,
+        "arquivo": "vigias/backup-estado.ps1",
+        "de": "$TETO_COPIAS = 30",
+        "para": "$TETO_COPIAS = 7",
+        "fixture": "o _comum.md nao pode divergir do codigo",
+        "resultado": "vermelho"
+      }
+    ],
+    "em": "2026-08-26"
   },
   "revisar": {
     "status": "pendente"

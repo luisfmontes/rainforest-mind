@@ -23,18 +23,28 @@ Design: docs/rainforest/design/2026-08-26-backup-do-sentinela.md
 
 ## Tarefas
 
-### 1. O bloco de commit e push sai, e a falha passa a falar [tipo: implementar]
-atende: D1, D2, D3, D5
-arquivos: `vigias/run-vigia.ps1`, `scripts/testa-run-vigia-backup.sh`
+### 1. A cauda de backup sai do run-vigia.ps1 e vira vigias/backup-estado.ps1 [tipo: implementar]
+atende: D1, D2, D3, D5, D7, D8
+arquivos: `vigias/run-vigia.ps1`, `vigias/backup-estado.ps1`, `scripts/testa-backup-estado.sh`
+
+> Reescrita em 2026-08-26, durante a execução. A redação anterior mandava provar
+> rodando o caminho `sentinela-foco` inteiro numa caixa — e isso **não é
+> alcançável com segurança**: para chegar no bloco é preciso a bridge do WhatsApp
+> de pé e o `claude.exe` respondendo, então a bateria enviaria uma mensagem de
+> verdade. O agente que recebeu o critério original contornou fabricando uma
+> cópia do bloco e rodando a cópia; a bateria dele saía `9 ok, 0 falha(s)` com
+> `git push origin main` de volta no arquivo real. O critério errado era meu, e a
+> saída é a D7: extrair o pedaço para que ele seja executável de verdade.
+
 depende de: nenhuma
 paralela: sim
 mutacao:
-  arquivo: `vigias/run-vigia.ps1`
-  de: a chamada de backup do bloco `sentinela-foco`, que substituiu o `git add`/`commit`/`push`
-  para: `git -C $root add FOCO.md ideias.jsonl vigias/ERROS.md 2>$null; git -C $root commit -m "Backup diario do estado (sentinela)"; git -C $root push origin main`
-  bateria: `bash scripts/testa-run-vigia-backup.sh`
-  fixture: o caso "o sentinela nao commita nem empurra em raiz nenhuma" de `scripts/testa-run-vigia-backup.sh`
-pronto quando: num repositório git de caixa montado pela própria bateria, rodar o caminho `sentinela-foco` fora de `-Teste` **com** `RFM_ROOT` e **sem** `RFM_ROOT`, e provar por `git log --oneline` das duas raízes que a contagem de commits é **idêntica** antes e depois — nenhum commit novo, nenhum push tentado (remota da caixa apontando para pasta local, e `git log` dela conferido); e, forçando o backup a falhar (raiz de dados somente-leitura), provar que uma linha nomeando a falha aparece no `ERROS.md` com o mesmo formato `- <data> [<vigia>]: <motivo>` dos outros erros do script — colando o conteúdo do arquivo, não o relato
+  arquivo: `vigias/backup-estado.ps1`
+  de: `if ($codigo -ne 0) {`
+  para: `if ($false) {`
+  bateria: `bash scripts/testa-backup-estado.sh`
+  fixture: o caso "falha de backup FALA no ERROS.md" de `scripts/testa-backup-estado.sh`
+pronto quando: a bateria **executa** o `vigias/backup-estado.ps1` real numa caixa de `mktemp -d` com dois repositórios git que **têm commit** (senão `git log` falha nas duas pontas e a comparação passa por vazio — foi assim que a primeira versão ficou verde) e remota apontando para pasta local; e prova que a contagem de commits é idêntica antes e depois nos quatro repositórios, que `-Teste` não escreve backup nenhum, e que forçar a falha põe uma linha no `ERROS.md` no formato `- <data> [<vigia>]: <motivo>` — com o conteúdo do arquivo colado, não o relato
 
 ### 2. Backup rotativo do FOCO.md: `node scripts/foco.cjs backup` [tipo: implementar]
 atende: D4, D6
@@ -60,41 +70,50 @@ terminado em barra só casa diretório e o diretório pode não existir na hora 
 pergunta; a primeira redação deste critério dizia `.foco-backups` e fez a bateria
 da tarefa 2 acusar falha onde o `.gitignore` estava correto
 
-### 3. O sentinela chama o backup, e a bateria prova que ele chama [tipo: implementar]
-atende: D4, D6
-arquivos: `vigias/run-vigia.ps1`, `scripts/testa-run-vigia-backup.sh`
+### 3. O run-vigia.ps1 chama o backup extraído [tipo: implementar]
+atende: D4, D6, D7
+arquivos: `vigias/run-vigia.ps1`
 depende de: 1, 2
 paralela: nao
 mutacao:
   arquivo: `vigias/run-vigia.ps1`
-  de: a linha que invoca `node scripts/foco.cjs backup` no fim do `sentinela-foco`
-  para: um comentário (linha removida do caminho de execução)
-  bateria: `bash scripts/testa-run-vigia-backup.sh`
-  fixture: o caso "o sentinela chama o backup do FOCO.md" de `scripts/testa-run-vigia-backup.sh`
-pronto quando: rodando o caminho `sentinela-foco` fora de `-Teste` contra uma caixa com `FOCO.md`, aparece **um** arquivo novo em `<caixa>/.foco-backups/` — contado por `ls | wc -l` antes e depois —, e rodando com `-Teste` **nenhum** aparece, com a linha "modo teste" no log; o teto de cópias vai na chamada como número explícito, não como padrão implícito (D4 e o `Em aberto` do design sobre as 293 cópias sem poda)
+  de: `$argsBackup = @(`
+  para: `git -C $root push origin main` seguido da linha original
+  bateria: `bash scripts/testa-backup-estado.sh`
+  fixture: o caso "o run-vigia.ps1 nao volta a commitar nem empurrar" de `scripts/testa-backup-estado.sh`
+pronto quando: o `run-vigia.ps1` invoca o `backup-estado.ps1` passando `-Vigia`, `-Root`, `-Plugin`, `-Log` e repassando o `-Teste`, por vetor de argumentos e não por interpolação; o teto de cópias vai como número explícito dentro do `backup-estado.ps1`, com o porquê escrito; e a chamada é ASCII puro, sem travessão e sem escape que o PowerShell 5.1 leia como aspa
 
-### 4. Trava: `git push` não volta ao run-vigia.ps1 [tipo: implementar]
-atende: D1
-arquivos: `scripts/testa-run-vigia-backup.sh`
+### 4. Trava: git add, commit e push não voltam ao run-vigia.ps1 [tipo: implementar]
+atende: D1, D7
+arquivos: `scripts/testa-backup-estado.sh`
 depende de: 1
 paralela: nao
 mutacao:
-  arquivo: `vigias/run-vigia.ps1`
-  de: um comentário qualquer do arquivo
-  para: `git -C $root push origin main`
-  bateria: `bash scripts/testa-run-vigia-backup.sh`
-  fixture: o caso "nenhum git push no run-vigia.ps1" de `scripts/testa-run-vigia-backup.sh`
-pronto quando: a bateria varre o `vigias/run-vigia.ps1` procurando `git push` e `git commit` **em linha de execução, não em comentário**, e fica vermelha quando qualquer um dos dois é reintroduzido — provado aplicando a mutação acima e colando a saída vermelha, e provado no sentido contrário deixando a mesma string num comentário e mostrando que continua verde
+  arquivo: `vigias/backup-estado.ps1`
+  de: `$foco = Join-Path $Plugin "scriptsoco.cjs"`
+  para: `git push origin main` seguido da linha original
+  bateria: `bash scripts/testa-backup-estado.sh`
+  fixture: o caso "nenhum git no backup-estado.ps1, fora de comentario" de `scripts/testa-backup-estado.sh`
+pronto quando: a trava varre **linha de execução**, não o arquivo inteiro, nos dois `.ps1`; fica vermelha quando `git add`, `git commit` ou `git push` voltam ao caminho executado; e fica **verde** com as mesmas strings no comentário que explica por que elas saíram — provado nos dois sentidos, porque uma trava que obriga a apagar a explicação é uma trava que apaga a razão
 
-### 5. Documentar o que mudou no vigia [tipo: documentar]
-atende: D1, D2, D3, D4, D5, D6
-arquivos: `vigias/_comum.md`
+### 5. Documentar o que mudou no vigia, e amarrar a doc ao código [tipo: documentar]
+atende: D1, D2, D3, D4, D5, D6, D7, D8
+arquivos: `vigias/_comum.md`, `scripts/testa-backup-estado.sh`
+
+> Reescrita em 2026-08-26. A redação anterior mandava provar esta tarefa com
+> `scripts/testa-conferir-encoding.sh`, e o `conferir-mutacao.cjs` recusou: essa
+> bateria mede acento, não conteúdo — apagando a linha inteira ela continuava
+> verde. Teste de prosa também não serve. O que serve é o único número que vive
+> em **dois** lugares: o teto de cópias, declarado no `backup-estado.ps1` e
+> prometido no `_comum.md`. Se um mudar e o outro não, o vigia lê uma promessa
+> que o código não cumpre.
+
 depende de: 3, 4
 paralela: nao
 mutacao:
-  arquivo: `vigias/_comum.md`
-  de: a linha que diz que o sentinela não commita nem empurra
-  para: uma linha em branco
-  bateria: `bash scripts/testa-conferir-encoding.sh`
-  fixture: o caso de acentuação de `vigias/_comum.md` em `scripts/testa-conferir-encoding.sh`
-pronto quando: `vigias/_comum.md` diz, em texto, que o sentinela **não** commita nem empurra e que o backup do `FOCO.md` é local e rotativo, com o número do teto escrito; e `bash scripts/testa-conferir-encoding.sh` fica verde, provando que os acentos sobreviveram à edição — foi um diff sem acento que criou retrabalho em 2026-08-25
+  arquivo: `vigias/backup-estado.ps1`
+  de: `$TETO_COPIAS = 30`
+  para: `$TETO_COPIAS = 7`
+  bateria: `bash scripts/testa-backup-estado.sh`
+  fixture: o caso "o _comum.md nao pode divergir do codigo" de `scripts/testa-backup-estado.sh`
+pronto quando: o `vigias/_comum.md` diz, em texto, que o sentinela **não** commita nem empurra, que o backup é local e rotativo do `FOCO.md`, e o teto em número; a bateria extrai o teto do `.ps1` e exige o mesmo número no `.md`, ficando vermelha quando os dois divergem; e `bash scripts/testa-conferir-encoding.sh` fica verde, provando que os acentos sobreviveram à edição
