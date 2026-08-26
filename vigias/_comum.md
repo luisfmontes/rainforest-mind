@@ -54,3 +54,24 @@ plantadas, quantas colhidas, quantos dias) sai de contar o campo do arquivo
 naquele momento — não de estimativa nem do que você já tinha escrito antes
 na mesma mensagem. Contagem errada é o erro que mais passa despercebido,
 porque número parece fato.
+
+**O sentinela não commita nem empurra nada.** Até 2026-08-26 a ronda do
+`sentinela-foco` terminava com `git add`, `git commit` e `git push origin main`
+sobre a raiz que calhasse de estar valendo. Como a tarefa agendada não define
+`RFM_ROOT`, essa raiz era o próprio repositório do plugin — que é **público** —
+e a tarefa empurrava sozinha, sem ninguém olhando, nos commits `bb77232` e
+`17ba994`. Pior: o backup que dava nome àquela mensagem nunca aconteceu, porque
+o `FOCO.md` e o `ideias.jsonl` não são versionados ali e o erro do `git add`
+era engolido por `2>$null`. Se você vir git em qualquer vigia, é regressão.
+
+**O backup do estado é local, rotativo e do `FOCO.md`.** Quem faz é o
+`vigias/backup-estado.ps1`, chamando `node scripts/foco.cjs backup`, que guarda
+até **30** cópias em `<raiz de dados>/.foco-backups/` e apaga as mais antigas
+até caber no teto. O número está escrito no script de propósito: o
+`.ideias-backups` chegou a 293 arquivos por herdar um teto implícito, que é um
+rodízio que não roda. Nada disso sai da máquina — cópia fora da máquina não
+existe, e nenhum vigia deve inventar uma.
+
+**Falha de backup fala.** Se o backup não rodar, uma linha aparece no
+`vigias/ERROS.md` no mesmo formato dos outros erros: `- <data> [<vigia>]:
+<motivo>`. Silêncio aqui já custou 19 dias de defeito invisível.
