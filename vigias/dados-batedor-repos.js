@@ -14,6 +14,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { resolverRaiz } = require('../hooks/lib/raiz.cjs');
 
 // PLUGIN e ROOT nao sao a mesma coisa, e a `fila-de-repos.jsonl` foi o caso que
 // obrigou a separar aqui — o `run-vigia.ps1` ja separa desde 2026-08-11
@@ -33,29 +34,43 @@ const path = require('path');
 // com RFM_ROOT apontando para a caixa de areia, e producao le outro lugar.
 const PLUGIN = path.resolve(__dirname, '..');
 
-// O default de ROOT e o PLUGIN, e nao um caminho cravado. Duas razoes, e a segunda
-// custou esta entrega:
+// A raiz de DADOS (onde mora ideias.jsonl) sai de resolverRaiz(), nao de um
+// literal. A cadeia de 4 niveis cobre RFM_ROOT > projeto > usuario > plugin.
 //
-//   1. `run-vigia.ps1` ja diz por que: "a raiz sai da localizacao do proprio script,
-//      nao de um caminho fixo: este repositorio e publico e nenhum caminho desta
-//      maquina deve estar nele".
-//   2. O caminho cravado era `'C:\Projetos\rainforest-mind'` e uma reescrita desta
-//      linha em 2026-08-25 perdeu as barras escapadas. Em JS `\P` nao e escape e a
-//      barra SOME; `\r` E escape e vira carriage-return. O literal virou
-//      `C:Projetos<CR>ainforest-mind`, `fs.readFileSync` passou a lancar, o `catch`
-//      silencioso devolveu [] — e `ideiasAbertas`, `propostasDeRelatorio` e
-//      `errosRecentes` passaram a reportar ZERO sem nenhum sinal de erro, exit 0.
-//      Ou seja: a ancora inteira da ronda morreu calada. String de caminho com
-//      escape e um jeito de errar que nao da erro; sem literal, nao ha o que escapar.
-const ROOT = process.env.RFM_ROOT || PLUGIN;
+// Historico do defeito (issue #110):
+//
+//   Anterior a 2026-08-11: literal `'C:\Projetos\rainforest-mind'` e nao havia
+//   separacao entre raiz de dados e raiz do plugin.
+//
+//   2026-08-25: reescrita do arquivo perdeu as barras escapadas. Em JS, `\P`
+//   nao e escape (some), e `\r` e escape (vira CR). O resultado foi
+//   `C:Projetos<CR>ainforest-mind`, fs.readFileSync lancou, o `catch {}`
+//   devolvia [], e a ancora inteira da ronda morria com exit 0 — silencio
+//   total, nenhum sinal de erro. Problema: nem literal aqui nem resolvedor
+//   que cala quando falha. Se raiz nao resolver (null), o script tinha o
+//   mesmo modo de falha (zero calado, exit 0).
+//
+//   Conserto: usar resolvedor canonico (hooks/lib/raiz.cjs) e guardar quando
+//   raiz nao resolve — aviso em stderr, IDEIAS/OBSERVACOES marcadas como
+//   indisponivel na saida, nunca como zero de verdade. Zero real so quando
+//   conseguiu ler e realmente nao ha ideias abertas.
+const resolved = resolverRaiz({ plugin: PLUGIN });
+const RAIZ_DADOS = resolved.raiz;
+
+if (!RAIZ_DADOS) {
+  // Sem dados, a ancora da ronda esta invalida. Avisar antes da saida de dados.
+  console.error(`[${new Date().toISOString()}] raiz de dados nao resolveu (RFM_ROOT, <projeto>/.rainforest, ~/.rainforest, plugin) — IDEIAS e OBSERVACOES indisponíveis nesta execucao`);
+}
 
 
-function lerLinhas(rel) {
-  try { return fs.readFileSync(path.join(ROOT, rel), 'utf8').split(/\r?\n/); }
+/** Lê arquivo da raiz de DADOS (ideias.jsonl, FOCO.md). */
+function lerLinhasDados(rel) {
+  if (!RAIZ_DADOS) return [];
+  try { return fs.readFileSync(path.join(RAIZ_DADOS, rel), 'utf8').split(/\r?\n/); }
   catch { return []; }
 }
 
-/** Igual a `lerLinhas`, mas ancorada no PLUGIN — para o que e conteudo do repo. */
+/** Lê arquivo do PLUGIN — para conteudo versionado do repo. */
 function lerLinhasDoPlugin(rel) {
   try { return fs.readFileSync(path.join(PLUGIN, rel), 'utf8').split(/\r?\n/); }
   catch { return []; }
@@ -64,7 +79,7 @@ const TETO_REPOS = 3;   // teto de repos por ronda; o excedente vai declarado
 
 function ideiasAbertas() {
   const out = { ideias: [], observacoes: [] };
-  for (const linha of lerLinhas('ideias.jsonl')) {
+  for (const linha of lerLinhasDados('ideias.jsonl')) {
     if (!linha.trim()) continue;
     let d;
     try { d = JSON.parse(linha); } catch { continue; }
@@ -86,8 +101,11 @@ function ideiasAbertas() {
 // pega o titulo da proposta e o destino que ela nomeia; quem julga se foi
 // cumprido e o batedor, lendo o destino. O script NAO decide isso — decidir aqui
 // seria inventar veredito a partir de regex.
+//
+// relatorios/ e conteudo versionado do repositorio, nao dados do usuario — sempre
+// ancorado no PLUGIN, nunca na raiz de dados.
 function propostasDeRelatorio() {
-  const dir = path.join(ROOT, 'relatorios');
+  const dir = path.join(PLUGIN, 'relatorios');
   let arquivos = [];
   try { arquivos = fs.readdirSync(dir).filter((f) => f.endsWith('.md')); } catch { return []; }
   const props = [];
@@ -102,7 +120,7 @@ function propostasDeRelatorio() {
 
 function errosRecentes() {
   const limite = Date.now() - 24 * 3600 * 1000;
-  return lerLinhas('vigias/ERROS.md')
+  return lerLinhasDoPlugin('vigias/ERROS.md')
     .filter((l) => l.startsWith('- '))
     .filter((l) => {
       const m = l.match(/^- (\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/);
@@ -169,10 +187,15 @@ if (process.argv.includes('--json')) {
 } else {
   const { ideias, observacoes, propostas, erros_24h, fila_de_repos } = dados;
   console.log(`teto de repos nesta ronda: ${TETO_REPOS}`);
-  console.log(`\nIDEIAS ABERTAS (${ideias.length}) — ancora principal`);
-  ideias.forEach((i) => console.log(`  [${i.dias ?? '?'}d] ${i.titulo}\n        ${i.id} · ${i.projeto}`));
-  console.log(`\nOBSERVACOES DA REGRA 13 ABERTAS (${observacoes.length})`);
-  observacoes.forEach((o) => console.log(`  [${o.dias ?? '?'}d] ${o.titulo}\n        ${o.id}`));
+  if (RAIZ_DADOS) {
+    console.log(`\nIDEIAS ABERTAS (${ideias.length}) — ancora principal`);
+    ideias.forEach((i) => console.log(`  [${i.dias ?? '?'}d] ${i.titulo}\n        ${i.id} · ${i.projeto}`));
+    console.log(`\nOBSERVACOES DA REGRA 13 ABERTAS (${observacoes.length})`);
+    observacoes.forEach((o) => console.log(`  [${o.dias ?? '?'}d] ${o.titulo}\n        ${o.id}`));
+  } else {
+    console.log(`\nIDEIAS ABERTAS (indisponível — raiz de dados nao resolveu)`);
+    console.log(`\nOBSERVACOES DA REGRA 13 ABERTAS (indisponível — raiz de dados nao resolveu)`);
+  }
   console.log(`\nPROPOSTAS NOS 4 RELATORIOS MAIS RECENTES (${propostas.length})`);
   propostas.forEach((p) => console.log(`  ${p.tag} ${p.titulo}\n        ${p.relatorio}`));
   console.log(`\nERROS DE VIGIA NAS ULTIMAS 24H (${erros_24h.length})`);
