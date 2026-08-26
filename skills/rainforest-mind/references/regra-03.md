@@ -31,19 +31,30 @@ se um compromisso com prazo estiver vencido ou a ≤2 dias, avisar em uma
 frase; se o foco ativo estiver sem avanço datado há 7+ dias, nomear isso
 uma vez.
 
+**Na abertura, e só nela.** No fecho de sessão a linha de prazo não se emite em
+hipótese nenhuma, nem como lembrete acrescentado por conta própria — no fim do
+turno não há o que fazer com um prazo, só o que sentir.
+
+> 2026-08-11: no fechamento de uma sessão longa, depois de ele já ter respondido
+> "não" para a pergunta de observações da regra 13, um lembrete do prazo de sexta
+> foi acrescentado por iniciativa própria. A janela do foco estava ativa ao lado,
+> e o radar do mesmo turno já dizia isso.
+
 Sessões em paralelo mudam como este radar mede — regra 17: sessão ativa no
 projeto do foco deixa o radar **desta** janela leve, porque paralelo é escolha
 dele. **Isto é checagem obrigatória antes de qualquer aviso desta regra sair —
-a frase de desvio ou a linha de prazo —, não nota de contexto para ler
-depois.** Leia a lista de sessões inteira (`sessoes.json`, injetada na
+a frase de desvio e a linha de prazo —, não nota de contexto para ler
+depois.** O que ela decide, porém, é diferente para cada um: a frase de desvio
+**não sai**; a linha de prazo **sai**, como nota de que o foco está sendo tocado
+naquela janela, nunca como cobrança dirigida a esta. O hook diz as duas coisas
+na mesma diretiva — não é julgamento seu. Leia a lista de sessões inteira (`sessoes.json`, injetada na
 abertura): um resumo como "+N janela(s) em outra(s) pasta(s)" não é prova de
 que não há sessão do foco entre elas, é convite para abrir a lista antes de
 cobrar. O casamento é por raiz de pasta/worktree, não por igualdade de string
 — o foco é nome ("Template ABAPA"), a sessão é caminho
 (`...\worktrees\gestao-projetos-template`). "Ativa" inclui a janela
 **esperando o usuário** dentro da ociosidade máxima do foco, não só a que está
-processando neste instante. Havendo sessão assim, o aviso não sai; no máximo,
-uma nota de que o foco está sendo tocado em outra janela.
+processando neste instante. Havendo sessão assim, a frase de desvio não sai.
 
 > Quatro reincidências do mesmo furo, entre 2026-08-10 e 2026-08-22: o radar
 > cobrou desvio, ou emitiu linha de prazo, com a janela do foco trabalhando ao

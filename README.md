@@ -193,11 +193,17 @@ cobra demais você percebe e reclama — foi exatamente assim que este defeito
 apareceu. Anúncio e veredito são mutuamente exclusivos: não há como julgar sem
 dado.
 
-**A isenção cala só o aviso de desvio de escopo.** O aviso de prazo — vencido
-ou a ≤2 dias — continua saindo, sempre. São coisas diferentes: saber num sábado
-que algo vence na segunda é informação e não custa nada; ser cobrado no sábado
-por estar lendo outra coisa é o que incomoda. Uma isenção que silenciasse o
-radar inteiro trocaria um defeito por outro.
+**A isenção não silencia o prazo — muda o tom dele.** O aviso de desvio de
+escopo cala. O de prazo — vencido ou a ≤2 dias — continua saindo, como **nota**
+de que o foco está sendo tocado naquela outra janela, nunca como cobrança
+dirigida a esta. São coisas diferentes: saber num sábado que algo vence na
+segunda é informação e não custa nada; ser cobrado no sábado por estar lendo
+outra coisa é o que incomoda. Uma isenção que silenciasse o radar inteiro
+trocaria um defeito por outro; uma que cobrasse igual não teria consertado nada.
+
+E prazo é aviso de **abertura**. No fecho de sessão não sai em hipótese nenhuma,
+nem como lembrete acrescentado por iniciativa própria: no fim do turno não há o
+que fazer com um prazo, só o que sentir.
 
 E quando o ambiente **impede** uma regra — permissão negada, hook fora do ar,
 ferramenta ausente —, ele diz numa linha em vez de falhar em silêncio. Regra
