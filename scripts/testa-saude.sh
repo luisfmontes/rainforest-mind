@@ -83,6 +83,15 @@ ver() { # opcional: caminho da fonte a rodar (default: $SRC, o repo real)
         console.log(a ? a.nivel+' '+a.detalhe : 'ausente');
       })"
 }
+ver_acao() { # igual ao ver(), mas devolve a ACAO — o ver() so traz nivel+detalhe
+  local fonte="${1:-$SRC}"
+  ( cd "$fonte" && CLAUDE_CONFIG_DIR="$SBP/cfg" RFM_ROOT="$SBP/dados" \
+    node "$fonte/scripts/saude.cjs" --json 2>/dev/null ) | node -e "
+      let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{
+        const a=JSON.parse(d).find(x=>x.item==='plugin instalado');
+        console.log(a && a.acao ? a.acao : 'sem acao');
+      })"
+}
 git_clone() { rm -rf "$M"; git clone -q "$SRC" "$M" 2>/dev/null; }
 commit_no_clone() { git -C "$M" -c user.email=t@t -c user.name=t "$@" >/dev/null 2>&1; }
 
@@ -567,5 +576,85 @@ else
 fi
 
 echo
+echo
+echo
+echo "== acao de plugin update traz a chave qualificada do registro =="
+# O comando `claude plugin update` recebe a chave `<plugin>@<marketplace>`, e ela
+# sai do installed_plugins.json lido — nunca de literal no codigo, senao a linha
+# mente na maquina de quem instalou o plugin de outra origem.
+criar_fonte_sintetica
+SHA_VELHO="$(git -C "$FONTE" rev-parse HEAD)"
+for i in 1 2; do
+  git -C "$FONTE" -c user.email=t@t -c user.name=t commit -q --allow-empty -m "depois do install $i" >/dev/null 2>&1
+done
+rm -rf "$MF"; git clone -q "$FONTE" "$MF" 2>/dev/null
+cat > "$SBP/cfg/plugins/installed_plugins.json" <<JSON
+{"version":2,"plugins":{"fonte-sintetica@marketplace-teste":[{"scope":"user",
+ "installPath":"$SBP/cfg/plugins/cache/marketplace-teste/fonte-sintetica/0.9.0",
+ "version":"0.9.0","gitCommitSha":"$SHA_VELHO"}]}}
+JSON
+ACAO_N="$(ver_acao "$FONTE")"
+if [ -z "$ACAO_N" ] || [ "$ACAO_N" = "sem acao" ]; then
+  falhou=$((falhou+1)); echo "  FALHA N. saida vazia — o cenario nao produziu acao nenhuma"
+elif echo "$ACAO_N" | grep -qF "plugin update fonte-sintetica@marketplace-teste"; then
+  ok=$((ok+1)); echo "  ok   N. acao de plugin update traz <plugin>@<marketplace> do registro"
+else
+  falhou=$((falhou+1)); echo "  FALHA N. acao sem a chave qualificada"; echo "       veio: $ACAO_N"
+fi
+rm -f "$SBP/cfg/plugins/installed_plugins.json"
+
+echo
+echo "== duas origens do mesmo plugin: nenhuma escolhida em silencio =="
+# O mesmo plugin pode ter entrada de mais de um marketplace — o comentario de
+# `instalacoesRegistradas` diz isso. Mandar atualizar so a primeira do registro e
+# escolher no escuro: as duas que estao atras precisam aparecer na acao.
+cat > "$SBP/cfg/plugins/installed_plugins.json" <<JSON
+{"version":2,"plugins":{
+ "fonte-sintetica@marketplace-teste":[{"scope":"user",
+  "installPath":"$SBP/cfg/plugins/cache/marketplace-teste/fonte-sintetica/0.9.0",
+  "version":"0.9.0","gitCommitSha":"$SHA_VELHO"}],
+ "fonte-sintetica@outro-marketplace":[{"scope":"user",
+  "installPath":"$SBP/cfg/plugins/cache/outro-marketplace/fonte-sintetica/0.9.0",
+  "version":"0.9.0","gitCommitSha":"$SHA_VELHO"}]}}
+JSON
+ACAO_O="$(ver_acao "$FONTE")"
+if [ -z "$ACAO_O" ] || [ "$ACAO_O" = "sem acao" ]; then
+  falhou=$((falhou+1)); echo "  FALHA O. saida vazia — o cenario nao produziu acao nenhuma"
+elif echo "$ACAO_O" | grep -qF "marketplace-teste" && echo "$ACAO_O" | grep -qF "outro-marketplace"; then
+  ok=$((ok+1)); echo "  ok   O. as duas origens aparecem, nenhuma escolhida em silencio"
+else
+  falhou=$((falhou+1)); echo "  FALHA O. so uma origem apareceu"; echo "       veio: $ACAO_O"
+fi
+rm -f "$SBP/cfg/plugins/installed_plugins.json"
+
+echo
+echo "== marketplace update recebe o MARKETPLACE, nao a chave inteira =="
+# `claude plugin marketplace update` e outro comando: o argumento dele e o nome do
+# marketplace, nao a chave `<plugin>@<marketplace>`. Cenario: clone atrasado (que e
+# quem produz essa acao) com a instalacao EM DIA, para isolar a acao do clone.
+criar_fonte_sintetica
+rm -rf "$MF"; git clone -q "$FONTE" "$MF" 2>/dev/null   # clone em dia...
+for i in 1 2 3; do
+  git -C "$FONTE" -c user.email=t@t -c user.name=t commit -q --allow-empty -m "fonte andou $i" >/dev/null 2>&1
+done                                                     # ...e agora atrasado
+SHA_NOVO="$(git -C "$FONTE" rev-parse HEAD)"
+cat > "$SBP/cfg/plugins/installed_plugins.json" <<JSON
+{"version":2,"plugins":{"fonte-sintetica@outro-marketplace":[{"scope":"user",
+ "installPath":"$SBP/cfg/plugins/cache/outro-marketplace/fonte-sintetica/1.0.0",
+ "version":"1.0.0","gitCommitSha":"$SHA_NOVO"}]}}
+JSON
+ACAO_P="$(ver_acao "$FONTE")"
+if [ -z "$ACAO_P" ] || [ "$ACAO_P" = "sem acao" ]; then
+  falhou=$((falhou+1)); echo "  FALHA P. saida vazia — o cenario nao produziu acao nenhuma"
+elif ! echo "$ACAO_P" | grep -qF "marketplace update"; then
+  falhou=$((falhou+1)); echo "  FALHA P. o cenario nao produziu a acao de marketplace update"; echo "       veio: $ACAO_P"
+elif echo "$ACAO_P" | grep -qF "marketplace update outro-marketplace" \
+  && ! echo "$ACAO_P" | grep -qF "marketplace update fonte-sintetica@"; then
+  ok=$((ok+1)); echo "  ok   P. marketplace update recebe so o marketplace"
+else
+  falhou=$((falhou+1)); echo "  FALHA P. usou a chave inteira no lugar do marketplace"; echo "       veio: $ACAO_P"
+fi
+rm -f "$SBP/cfg/plugins/installed_plugins.json"
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]

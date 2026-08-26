@@ -454,5 +454,90 @@ montar_squash_sem_upstream
 nao_tem "e o script foi restaurado (worktree-agent-conteudo volta a ser mergeada-por-conteudo)" "$(classe worktree-agent-conteudo)" "viva"
 
 echo
+echo "== 17. ls-remote confirma remota sumiu (Issue #...): branch fica sumiu-* =="
+# Cenario: o --prune fez o local perceber que a remota sumiu, e ls-remote confirma
+# que nao existe. A branch deve ficar em sumiu-mergeada ou sumiu-divergente, conforme
+# esteja ou nao mergeada.
+montar
+(
+  cd "$SBP/local"
+  git checkout -qb para-apagar
+  echo x > x.txt; git add .; git commit -qm x
+  git push -q -u origin para-apagar
+  git checkout -q main
+)
+# Simula que alguem apagou a remota
+git -C "$SBP/remoto" update-ref -d refs/heads/para-apagar
+# Agora --prune percebe que sumiu
+git -C "$SBP/local" fetch -q --prune
+classe_remota() { roda --sem-fetch --json | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const b=JSON.parse(d).refs.find(x=>x.nome===process.argv[1]);console.log(b?b.classe:'(ausente)')})" "$1"; }
+tem "com remota apagada, branch divergente fica sumiu-divergente" "$(classe_remota para-apagar)" "sumiu-divergente"
+
+echo
+echo "== 18. ls-remote ve remota viva: branch reclassificada de sumiu para viva =="
+# Cenario: o --prune diz gone, mas na verdade a remota ainda existe (descincronizacao
+# de rede, falha anterior de fetch, etc). ls-remote pergunta de verdade e descobre que
+# a remota ainda esta la. A branch volta a ser 'viva'.
+#
+# Simulacao: criar uma branch, fazer fetch com --prune, depois RECRIAR a remota sem
+# fazer fetch de novo. Agora o --prune local acha que sumiu, mas ela existe.
+montar
+(
+  cd "$SBP/local"
+  git checkout -qb falso-gone
+  echo y > y.txt; git add .; git commit -qm y
+  git push -q -u origin falso-gone
+  git checkout -q main
+)
+# Prune faz o local perceber que (fingimos que) sumiu
+git -C "$SBP/remoto" update-ref -d refs/heads/falso-gone
+git -C "$SBP/local" fetch -q --prune
+# Agora RECRIAR a remota — simula que ela nao sumiu de verdade
+git -C "$SBP/remoto" update-ref refs/heads/falso-gone "$(git -C "$SBP/local" rev-parse falso-gone)"
+# Sem fazer fetch de novo, o local acha que gone, mas ls-remote ve que existe
+tem "com gone local mas remota viva, branch volta a ser viva" "$(classe_remota falso-gone)" "viva"
+
+echo
+echo "== 19. MUTACAO: sabotar a confirmacao por ls-remote =="
+# Se a branch com gone local mas remota viva sobrevive por acaso e nao pela checagem
+# de ls-remote, este bloco passa verde sem provar nada. Aqui a checagem e removida
+# e a branch TEM que voltar a ser classificada como sumiu (o comportamento antigo).
+montar
+(
+  cd "$SBP/local"
+  git checkout -qb falso-gone-mutacao
+  echo yy > yy.txt; git add .; git commit -qm yy
+  git push -q -u origin falso-gone-mutacao
+  git checkout -q main
+)
+git -C "$SBP/remoto" update-ref -d refs/heads/falso-gone-mutacao
+git -C "$SBP/local" fetch -q --prune
+git -C "$SBP/remoto" update-ref refs/heads/falso-gone-mutacao "$(git -C "$SBP/local" rev-parse falso-gone-mutacao)"
+cp "$SRC/scripts/limpar-branches.cjs" "$SBP/original5.cjs"
+node -e "
+  const fs=require('fs'), p=process.argv[1];
+  const s=fs.readFileSync(p,'utf8');
+  const alvo = \"remotoConfirmado[b.nome] === false) {\";
+  if(!s.includes(alvo)) { console.error('MUTACAO NAO APLICADA: alvo ausente'); process.exit(1); }
+  fs.writeFileSync(p, s.replace(alvo, \"remotoConfirmado[b.nome] === true) {\"));
+" "$SRC/scripts/limpar-branches.cjs"
+if [ $? -ne 0 ]; then falhou=$((falhou+1)); echo "  FALHA nao consegui aplicar a mutacao"; else
+  tem "com a checagem sabotada, falso-gone volta a ser sumiu (prova que a checagem era a trava)" "$(classe_remota falso-gone-mutacao)" "sumiu-divergente"
+fi
+cp "$SBP/original5.cjs" "$SRC/scripts/limpar-branches.cjs"
+montar
+(
+  cd "$SBP/local"
+  git checkout -qb falso-gone-restaurado
+  echo yr > yr.txt; git add .; git commit -qm yr
+  git push -q -u origin falso-gone-restaurado
+  git checkout -q main
+)
+git -C "$SBP/remoto" update-ref -d refs/heads/falso-gone-restaurado
+git -C "$SBP/local" fetch -q --prune
+git -C "$SBP/remoto" update-ref refs/heads/falso-gone-restaurado "$(git -C "$SBP/local" rev-parse falso-gone-restaurado)"
+nao_tem "e o script foi restaurado (falso-gone volta a ser viva)" "$(classe_remota falso-gone-restaurado)" "sumiu-divergente"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]
