@@ -131,6 +131,19 @@ function valorDe(nome) {
 
 const bytes = (s) => Buffer.byteLength(s, 'utf8');
 
+function pad(n, len = 2) {
+  return String(n).padStart(len, '0');
+}
+
+function carimboAgora() {
+  const d = new Date();
+  return (
+    `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-` +
+    `${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}-` +
+    `${pad(d.getMilliseconds(), 3)}`
+  );
+}
+
 function morrer(msg) {
   console.error(`erro: ${msg}`);
   process.exit(1);
@@ -296,6 +309,56 @@ function concluir(relato, msg, movidas = []) {
   if (relato.jaNoHistorico) {
     console.log(`\n(${relato.jaNoHistorico} entrada(s) já estavam no AVANCOS.md e não foram duplicadas.)`);
   }
+}
+
+/**
+ * Faz backup do FOCO.md para .foco-backups/foco-<timestamp>.md.
+ * Implementa rodízio: mantém até --teto cópias (padrão 10), deletando a mais antiga.
+ * FOCO.md ausente: exit 1, avisa qual arquivo não achou, não cria diretório nenhum.
+ */
+function backup() {
+  const raiz = valorDe('raiz') || RAIZ_PADRAO;
+  const teto = Number(valorDe('teto') || 10);
+  if (!Number.isFinite(teto) || teto <= 0) morrer('--teto precisa ser um número positivo');
+
+  const alvoFoco = path.join(raiz, 'FOCO.md');
+  const dirBackup = path.join(raiz, '.foco-backups');
+
+  if (!fs.existsSync(alvoFoco)) morrer(`não achei o FOCO.md em ${raiz}`);
+
+  const original = fs.readFileSync(alvoFoco, 'utf8');
+  const carimbo = carimboAgora();
+
+  // Cria diretório se não existir
+  fs.mkdirSync(dirBackup, { recursive: true });
+
+  // Caminho do novo backup
+  const alvoBackup = path.join(dirBackup, `foco-${carimbo}.md`);
+  fs.writeFileSync(alvoBackup, original, 'utf8');
+
+  // --- rodízio: deleta a cópia mais antiga se ultrapassou o teto ---
+  const arquivos = fs.readdirSync(dirBackup)
+    .filter(f => f.startsWith('foco-') && f.endsWith('.md'))
+    .sort();
+
+  if (arquivos.length > teto) {
+    const maisAntigo = path.join(dirBackup, arquivos[0]);
+    fs.unlinkSync(maisAntigo);
+  }
+
+  const relato = {
+    raiz, teto, foco: alvoFoco, backup: alvoBackup,
+    bytes: bytes(original), totalBackups: arquivos.length > teto ? teto : arquivos.length,
+  };
+
+  if (tem('json')) {
+    console.log(JSON.stringify(relato, null, 2));
+    return;
+  }
+
+  console.log(`backup: ${alvoBackup}`);
+  console.log(`  ${bytes(original)} bytes do FOCO.md`);
+  console.log(`  cópias guardadas: ${Math.min(arquivos.length, teto)}/${teto}`);
 }
 
 /**
@@ -656,16 +719,18 @@ function main() {
   const comando = process.argv[2];
   if (comando === 'rotacionar') return rotacionar();
   if (comando === 'separar') return separar();
+  if (comando === 'backup') return backup();
   if (comando === 'caminho') return caminho();
   console.error('uso: node scripts/foco.cjs rotacionar [--aplicar] [--teto N] [--raiz DIR] [--json]');
   console.error('     node scripts/foco.cjs separar [--aplicar] [--raiz DIR] [--json]');
+  console.error('     node scripts/foco.cjs backup [--teto N] [--raiz DIR] [--json]');
   console.error('     node scripts/foco.cjs caminho [--raiz DIR] [--json]');
   process.exit(2);
 }
 
 if (require.main === module) main();
 module.exports = {
-  rotacionar, separar, caminho, main,
+  rotacionar, separar, backup, caminho, main,
   dividirFoco, dividirAtivo, dividirPorParagrafo, medirAjusteIdentidade,
   RAIZ_PADRAO,
 };

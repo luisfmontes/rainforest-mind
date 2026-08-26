@@ -149,6 +149,63 @@ tem "a data icada pelo hook e a mais recente" "$INJECAO" "2026-08-05"
 tem "o criterio de pronto continua chegando" "$INJECAO" "Criterio de pronto"
 tem "o ponteiro do historico chega junto" "$INJECAO" "AVANCOS.md"
 
+# ============================================================================
+# Issue #118 — `backup`: cria .foco-backups/foco-<timestamp>.md com rodízio
+# ============================================================================
+
+# ------------------------------------------------------- 9. backup: cria arquivo idêntico
+echo; echo "9. backup (cria arquivo idêntico ao original)"
+montar
+SAIDA="$(node "$SRC/scripts/foco.cjs" backup --raiz "$SBP/dados")"
+tem "anuncia que criou o backup" "$SAIDA" "backup:"
+BACKUP_FILE="$(ls "$SBP/dados/.foco-backups/foco-"*.md 2>/dev/null | head -1)"
+if [ -n "$BACKUP_FILE" ]; then
+  cmp "$SBP/dados/FOCO.md" "$BACKUP_FILE"
+  if [ $? -eq 0 ]; then
+    ok=$((ok+1)); echo "  ok   backup é byte a byte idêntico ao original (cmp)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA backup não é idêntico ao original"
+  fi
+else
+  falhou=$((falhou+1)); echo "  FALHA nenhum arquivo de backup foi criado"
+fi
+
+# ------------------------------------------------------- 10. rodízio do backup guarda no máximo o teto de cópias
+echo; echo "10. o rodizio do backup guarda no maximo o teto de copias"
+montar
+TETO=3
+for i in 1 2 3 4 5; do
+  sleep 0.1  # Garante timestamps diferentes
+  node "$SRC/scripts/foco.cjs" backup --teto $TETO --raiz "$SBP/dados" > /dev/null 2>&1
+done
+COUNT="$(ls "$SBP/dados/.foco-backups/foco-"*.md 2>/dev/null | wc -l)"
+if [ "$COUNT" -eq "$TETO" ]; then
+  ok=$((ok+1)); echo "  ok   após rodar 5 vezes com teto $TETO, restam exatamente $TETO backups"
+else
+  falhou=$((falhou+1)); echo "  FALHA esperava $TETO backups, encontrou $COUNT"
+fi
+
+# ------------------------------------------------------- 11. backup: FOCO.md ausente
+echo; echo "11. backup com FOCO.md ausente"
+rm -rf "$SBP/dados"; mkdir -p "$SBP/dados"
+SAIDA="$(node "$SRC/scripts/foco.cjs" backup --raiz "$SBP/dados" 2>&1)"; CODIGO=$?
+tem "nomeia o arquivo que não achou" "$SAIDA" "FOCO.md"
+igual "sai com código 1 (erro)" "$CODIGO" "1"
+if [ ! -d "$SBP/dados/.foco-backups" ]; then
+  ok=$((ok+1)); echo "  ok   não criou diretório .foco-backups"
+else
+  falhou=$((falhou+1)); echo "  FALHA criou diretório mesmo com erro"
+fi
+
+# ------------------------------------------------------- 12. .foco-backups está no .gitignore
+echo; echo "12. git check-ignore .foco-backups"
+(cd "$SRC" && git check-ignore ".foco-backups" > /dev/null 2>&1)
+if [ $? -eq 0 ]; then
+  ok=$((ok+1)); echo "  ok   .foco-backups é ignorado pelo git"
+else
+  falhou=$((falhou+1)); echo "  FALHA .foco-backups não está no .gitignore"
+fi
+
 # ------------------------------------------------------- 9. MUTACAO
 echo; echo "9. mutacao (a bateria tem de acusar)"
 montar
