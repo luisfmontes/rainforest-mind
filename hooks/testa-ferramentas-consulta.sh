@@ -223,6 +223,55 @@ else
   echo "  FALHA palavra 'ausente' aparece $count vezes"
 fi
 
+echo ""
+echo "== extracao do executavel: builtin e wrapper nao viram ferramenta =="
+# Medido em 2026-08-25, antes do conserto: `cd ..` anunciava "'..' nao
+# encontrado", e `cd /tmp && whisper-cli` anunciava "'/tmp'" — o whisper-cli, o
+# caso que motivou a #76 inteira, nunca era conferido. Pior: diretorio nunca
+# entra no ledger, entao o alarme falso NUNCA convergia; repetia em todo `cd`.
+caso() { # nome, comando, trecho esperado ("(silencio)" para nenhum anuncio)
+  local got
+  got=$(node -e 'console.log(JSON.stringify({cwd:process.cwd(),hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:process.argv[1]}}))' "$2" | node "$HOOK" 2>&1 | head -1)
+  got="${got:-(silencio)}"
+  case "$got" in
+    *"$3"*) ok=$((ok+1)); echo "  ok   $1" ;;
+    *) falhou=$((falhou+1)); echo "  FALHA $1: veio '$got'" ;;
+  esac
+}
+
+caso "cd sozinho nao anuncia nada"                  "cd .."                            "(silencio)"
+caso "cd encadeado confere a ferramenta de verdade" "cd /tmp && whisper-cli --model x" "whisper-cli"
+caso "sudo -u pula o usuario"                       "sudo -u alguem nao-existe-abc"    "nao-existe-abc"
+caso "atribuicao de env nao vira executavel"        "FOO=1 nao-existe-abc"             "nao-existe-abc"
+
+echo ""
+echo "== MUTACAO embutida: o exit final e quem garante o exit 0 =="
+# O plano DECLARA esta mutacao, mas declaracao nao e regressao: sem o caso
+# abaixo, quem inverter a linha no futuro roda a bateria verde. Achado da
+# revisao independente de 2026-08-25.
+MUT="$(mktemp -d)"
+cp "$HOOK" "$MUT/mutado.cjs"
+node -e '
+  const fs = require("fs"), p = process.argv[1], NL = String.fromCharCode(10);
+  const linhas = fs.readFileSync(p, "utf8").split(NL);
+  const i = linhas.findIndex((l) => l.indexOf("D10") >= 0 && l.indexOf("sempre sai 0") >= 0);
+  if (i < 0 || linhas[i + 1].indexOf("process.exit(0)") < 0) process.exit(3);
+  linhas[i + 1] = linhas[i + 1].replace("process.exit(0)", "process.exit(2)");
+  fs.writeFileSync(p, linhas.join(NL));
+' "$MUT/mutado.cjs"
+MUTOU=$(grep -c "process.exit(2)" "$MUT/mutado.cjs")
+if [ "$MUTOU" -gt 0 ]; then
+  RC=$(node -e 'console.log(JSON.stringify({cwd:process.cwd(),hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:"git status"}}))' | node "$MUT/mutado.cjs" >/dev/null 2>&1; echo $?)
+  if [ "$RC" != "0" ]; then
+    ok=$((ok+1)); echo "  ok   com o exit final invertido o hook recusa (exit $RC) — a guarda e load-bearing"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito: o exit 0 nao vem da linha que o plano declara"
+  fi
+else
+  falhou=$((falhou+1)); echo "  FALHA a mutacao nao casou no fonte — a declaracao do plano esta velha"
+fi
+rm -rf "$MUT"
+
 # ========== PLACAR FINAL ==========
 
 echo ""

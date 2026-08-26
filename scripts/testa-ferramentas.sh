@@ -114,6 +114,30 @@ else
   FALHA=$((FALHA + 1))
 fi
 
+# ==== MUTACAO embutida: a recusa por campo de negativa (D2) ====
+# O plano DECLARA esta mutacao, mas declaracao nao e regressao: sem o caso
+# abaixo, quem afrouxar a recusa no futuro roda a bateria verde. Achado da
+# revisao independente de 2026-08-25.
+echo ""
+echo "=== MUTACAO: a recusa por campo de negativa e load-bearing ==="
+MUT="$(mktemp -d)"
+cp "$NODE_SCRIPT" "$MUT/mutado.cjs"
+node -e '
+  const fs = require("fs"), p = process.argv[1], NL = String.fromCharCode(10);
+  const linhas = fs.readFileSync(p, "utf8").split(NL);
+  const i = linhas.findIndex((l) => l.indexOf("campo(s) de negativa nao sao permitidos") >= 0);
+  if (i < 0) process.exit(3);
+  linhas[i - 1] = "    if (false) throw new Erro(";   // desliga a recusa
+  fs.writeFileSync(p, linhas.join(NL));
+' "$MUT/mutado.cjs"
+MUT_RC=$(node -e 'console.log(JSON.stringify({nome:"mutante",receita:"x",descoberto:"t",ausente:true}))'   | node "$MUT/mutado.cjs" registrar --json >/dev/null 2>&1; echo $?)
+if [ "$MUT_RC" = "0" ]; then
+  OK=$((OK + 1)); echo "✓ com a recusa desligada, o campo de negativa PASSA (exit 0) — a guarda e quem barra"
+else
+  FALHA=$((FALHA + 1)); echo "✗ FALHA mutacao sem efeito: a recusa veio de outro lugar (exit $MUT_RC)"
+fi
+rm -rf "$MUT"
+
 # ==== CRITÉRIO 5 ====
 echo ""
 echo "=== CRITÉRIO 5: Placar final ==="

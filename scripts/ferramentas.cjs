@@ -341,9 +341,20 @@ function parseArgs(argv) {
 
   if (cmd === "registrar") {
     if (!args.json) {
-      args.nome = argv[i];
-      args.receita = argv[i + 1];
-      args.descoberto = argv[i + 2];
+      // A `receita` e opcional (D5), entao a forma posicional e ambigua por
+      // contagem: com 2 argumentos, o segundo e `descoberto`, nao `receita`.
+      // Antes desta correcao o parser cravava `receita = argv[i+1]` sempre, e
+      // `registrar <nome> <descoberto>` recusava com "descoberto obrigatorio" —
+      // mensagem que aponta o campo errado e manda o usuario procurar onde nao
+      // esta. Achado da revisao de 2026-08-25.
+      const posicionais = argv.slice(i).filter((a) => !a.startsWith("--"));
+      args.nome = posicionais[0];
+      if (posicionais.length >= 3) {
+        args.receita = posicionais[1];
+        args.descoberto = posicionais[2];
+      } else {
+        args.descoberto = posicionais[1];
+      }
     }
   } else if (cmd === "consultar") {
     args.nome = argv[i];

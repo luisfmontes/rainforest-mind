@@ -46,23 +46,62 @@ function resolverRaiz(cwd) {
   }
 }
 
+// Builtins e navegacao: nao sao ferramentas a conferir, e o argumento deles nao
+// e executavel nenhum. Lista FECHADA de proposito — o que nao esta aqui e
+// tratado como comando de verdade, que e o default seguro (no maximo se gasta
+// uma sonda a mais; o contrario seria deixar de conferir uma ferramenta real).
+const BUILTINS = new Set([
+  "cd", "export", "set", "unset", "source", ".", "pushd", "popd",
+  "umask", "alias", "unalias", "shift", "eval", "exec", "read", "echo",
+]);
+
+// Flags que CONSOMEM o proximo token. Sem isso, `sudo -u alguem foo` devolve
+// "alguem" — foi um dos dois defeitos que a revisao de 2026-08-25 pegou.
+const FLAGS_COM_VALOR = new Set(["-u", "-g", "-U", "-C", "--user", "--group", "--chdir"]);
+
 /**
- * Extrai o primeiro executável da linha de comando.
+ * Extrai o executável que a linha de comando vai realmente rodar.
+ *
+ * RECORTE DECLARADO, e ele e estreito de proposito: separa a linha por `&&`,
+ * `||`, `;` e `|`, e devolve o primeiro segmento cujo comando NAO e builtin.
+ * Nao cobre `$(subshell)`, crase, variavel expandida nem alias — cobrir isso
+ * exigiria executar a linha, que e exatamente o que este hook existe para
+ * evitar fazer as cegas.
+ *
+ * POR QUE ASSIM, com data. A primeira versao pegava o primeiro token que "nao
+ * parecia separador", pulando apenas o literal `cd`. Medido em 2026-08-25:
+ *
+ *   cd ..                                -> anunciava "'..' nao encontrado"
+ *   cd /tmp && whisper-cli --model x.bin -> anunciava "'/tmp' nao encontrado"
+ *   sudo -u alguem foo                   -> anunciava "'alguem' nao encontrado"
+ *
+ * Os dois primeiros sao o caso motivador da #76 saindo pior do que sem a
+ * feature: o `whisper-cli` nunca era conferido, a sonda era gasta num
+ * diretorio, e como diretorio nunca entra no ledger o alarme falso NUNCA
+ * convergia — repetia em todo `cd` da vida.
  */
 function extrairExecutavel(comando) {
   if (!comando || typeof comando !== "string") return null;
 
-  const partes = comando.split(/\s+/);
+  for (const segmento of comando.split(/\s*(?:&&|\|\||;|\|)\s*/)) {
+    const tokens = segmento.trim().split(/\s+/).filter(Boolean);
+    let i = 0;
 
-  for (const parte of partes) {
-    if (!parte || parte.startsWith("#") || parte.match(/^[|;>&`$()]/)) continue;
-    if (parte === "cd" || parte === "sudo" || parte === "sudo-u" || parte === "-u") continue;
-    if (parte.includes("=")) continue;
+    // Prefixos que nao sao o comando: atribuicao de env, e wrappers com flags.
+    while (i < tokens.length) {
+      const t = tokens[i].replace(/^["']|["']$/g, "");
+      if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(t)) { i++; continue; }      // VAR=valor
+      if (t === "sudo" || t === "env" || t === "command" || t === "nohup" || t === "time") { i++; continue; }
+      if (t.startsWith("-")) { i += FLAGS_COM_VALOR.has(t) ? 2 : 1; continue; }
+      break;
+    }
 
-    const sem_aspas = parte.replace(/^["']|["']$/g, "");
-    if (!sem_aspas || sem_aspas.match(/^[|;&><]/)) continue;
+    if (i >= tokens.length) continue;
+    const alvo = tokens[i].replace(/^["']|["']$/g, "");
+    if (!alvo || alvo.startsWith("#") || /^[|;>&`$()]/.test(alvo)) continue;
+    if (BUILTINS.has(alvo)) continue;   // builtin: segmento inteiro nao interessa
 
-    return sem_aspas;
+    return alvo;
   }
 
   return null;
@@ -123,10 +162,18 @@ function sondarExecutavel(executavel) {
     // O `where` devolve UMA LINHA POR OCORRENCIA. Isso e resultado de busca, nao
     // receita — e nao vai para o ledger (D11). Fica so como sinal de que achou.
     return { achado: Boolean(saida.trim()) };
-  } catch {
-    return { achado: false };
+  } catch (e) {
+    // NAO ACHAR e NAO CONSEGUIR CHECAR sao coisas diferentes, e colapsar as duas
+    // era o cabecalho deste arquivo prometendo um terceiro caminho que o codigo
+    // nao tinha (achado da revisao de 2026-08-25). O `where`/`command -v` sai
+    // com codigo != 0 quando NAO ACHA — isso e resposta. Timeout, falta do
+    // proprio `where`, ou erro de spawn nao sao resposta nenhuma: afirmar
+    // ausencia a partir dali seria a mesma mentira que a D2 existe para impedir.
+    const respondeu = typeof e.status === "number" && !e.signal;
+    return respondeu ? { achado: false } : { achado: false, incerto: true };
   }
 }
+
 
 /**
  * Grava o fato positivo no ledger, pela porta unica.
@@ -235,7 +282,7 @@ function main() {
     anunciar("disponivel", executavel);
   } else {
     // Não acha — anuncia bloqueio
-    anunciar("bloqueio", executavel);
+    anunciar(sonda.incerto ? "incerto" : "bloqueio", executavel);
   }
 
   // D10 — sempre sai 0
