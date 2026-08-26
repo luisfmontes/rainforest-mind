@@ -38,6 +38,15 @@ sessões** — as regras 4 a 17 nunca chegaram a sessão nenhuma. Quem move a li
 `<!-- detalhe -->` para baixo está gastando o orçamento de injeção de toda sessão;
 o teste `testa-contexto-sessao.sh` falha se o total passar do teto.
 
+A elaboração também tem teto, e por um motivo diferente: ela mede o custo de
+**consultar** uma regra (menos de 3k tokens, a catraca `REFERENCE_MAX_BYTES`).
+Encostando nele, a elaboração parte em dois — `regra-<n>.md` guarda o que fazer,
+e `regra-<n>-acervo.md` guarda o que aconteceu. O corte é o bloco `>` cuja
+primeira linha abre com data, e o parágrafo que perdeu incidente fica com uma
+linha `(acervo: <datas>)` apontando de volta. Vale **sob demanda**: cada regra
+parte quando encostar, nunca em mutirão — subir a catraca seria revogar o
+critério que ela existe para defender.
+
 ## As regras
 
 **1. Responder tudo, na ordem — e no FIM do turno.** N pedidos → N respostas

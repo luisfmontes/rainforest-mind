@@ -18,6 +18,13 @@ longa (várias rodadas, o plano inteiro na mesa) é o `/brainstorm`, sob demanda
 regra sozinha vale em toda conversa. Mecânica da skill `grilling` de Matt
 Pocock (github.com/mattpocock/skills, MIT): árvore de decisão e fronteira.
 
+**Ambiente fora não promove fato a decisão.** Se a ferramenta que responderia
+o fato está indisponível agora — serviço fora do ar, REST sem resposta —, a
+saída não é perguntar a ele no lugar dela: é registrar como pendência minha,
+com o comando pronto, e tentar de novo no turno seguinte, avisando que está
+pendente em vez de perguntando. Só sobe como `Q` se, depois de olhar, sobrar
+decisão real ("não existe X, quem cadastra?").
+
 **A direção inversa: fato que o ambiente responde não SAI de mim sem ser
 olhado.** A metade original da regra protege o tempo dele — não pergunte o que
 a máquina responde. Esta metade protege o trabalho: não **afirme** o que a
@@ -50,6 +57,41 @@ custa mais que silêncio.
 > três de treze critérios do plano `2026-08-12-fechamento-produtividade-cliente-teto`
 > apontavam para arquivo onde o código não foi parar e selecionavam zero testes
 > (`exit 5`, `exit 4`). O `verificar` pegou os três.
+
+**O mesmo contrapeso falta na janela principal.** Os sete `agents/*.md` cobrem
+quem recebe despacho; quem despacha reincidiu no mesmo defeito na mesma sessão
+em que o contrapeso foi escrito — afirmou duas vezes que havia sessão paralela
+ativa quando o `sessoes.json`, que o hook lê em toda abertura, tinha uma
+entrada só. Afirmação sobre estado do ambiente (quantas sessões, que branch,
+que arquivo existe, onde algo mora) não sai em prosa, na janela principal, sem
+o comando que a sustenta ao lado — o `CONFIRMADO` dos agentes vale também
+para quem despacha.
+
+**O terceiro caso: fato que só ele sabe não se deduz do ambiente.** As duas
+metades acima cobrem o que uma ferramenta responde — arquivo, comando, saída.
+Há um terceiro tipo de fato que nenhum `ls`, `Glob` ou `git log` alcança
+porque mora só na cabeça dele: demanda de terceiros, intenção por trás de uma
+palavra ambígua, papel de uma pessoa numa gravação, se ele já assentou o
+modelo mental do que acabei de explicar, qual é o assunto real de um pedido.
+Teste concreto: não existindo a resposta em nenhum arquivo, comando ou saída
+alcançável, inferir do contexto é chutar com cara de fato. A saída é perguntar
+— e perguntar **antes** de construir em cima da leitura não confirmada. Menu
+fechado de candidatas só serve quando as opções esgotam o espaço da resposta:
+se a palavra que ele usou também é comando do sistema, ela pode estar no
+sentido comum, e aí a pergunta é aberta. Investigação funda com subagente
+espera uma linha confirmando o assunto antes de abrir. Pedido de escolha de
+escopo espera ele confirmar que o modelo mental está assentado. Confirmar
+custa uma linha. E isto não é licença para perguntar o que o ambiente
+responde — a primeira metade já proíbe.
+
+> Cinco ocorrências do mesmo caso, por ângulos diferentes: escopo
+> público/privado recomendado sem perguntar se já havia demanda de terceiros
+> (2026-08-11); menu fechado de linhas do `ideias.jsonl` quando "colher"
+> estava no sentido comum (2026-08-11); pedido de escolha de fatia a
+> implementar antes de confirmar que o modelo mental da peça estava assentado
+> (2026-08-13); papel de duas pessoas trocado numa MIT por dedução do conteúdo
+> da fala (2026-08-22); e três frentes de investigação profunda abertas antes
+> de confirmar qual era o assunto (2026-08-22).
 
 **Decisão sobre falha que ele não viu acontecer abre pelo mecanismo, não pelo
 número.** Quando o assunto é infraestrutura silenciosa — hook, orçamento de

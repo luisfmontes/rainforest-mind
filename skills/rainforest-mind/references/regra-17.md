@@ -35,3 +35,21 @@ reler o vivo, append de uma linha, conferir que a contagem subiu 1.
 **Enlace com regra 16:** antes de recomendar mudança em branch/worktree/fluxo,
 a regra 16 consulta este radar (sessoes.json). Paralelo ativo sai da rodada ou
 entra bloqueado.
+
+**Pergunta ampla ("o que fazemos hoje?") se responde no escopo DESTA sessão,
+nunca no do foco visto de fora.** Sinal barato para saber se esta sessão é a do
+foco, antes de investigar qualquer coisa: comparar o `cwd` desta sessão com o
+campo Projeto do `FOCO.md`. Divergindo, a pergunta ampla não puxa para dentro
+daqui o trabalho que outra janela está fazendo.
+
+A comparação é **normalizada, nunca crua**: o harness manda `C:\Projetos\x` e
+o `FOCO.md` manda `C:/Projetos/x`, então barra invertida vira barra e tudo vira
+minúscula antes de comparar — e por igualdade, nunca por prefixo. É o que
+`normalizarCwd()` faz em `hooks/lib/contexto-sessao.cjs`; a olho, o cuidado é o
+mesmo. Comparar cru trata a mesma pasta como duas e responde "divergindo" quando
+esta sessão *é* a do foco.
+
+> 2026-08-13: "o que propõe para fazermos hoje?", perguntado numa sessão em
+> `C:\Projetos\rainforest-mind`, recebeu uma proposta inteira do trabalho que
+> OUTRA janela fazia em outro repositório. O `FOCO.md` já dizia "sessão nessa
+> pasta = sessão do foco", e esta sessão não estava na pasta.
