@@ -76,10 +76,36 @@
     "em": "2026-08-26"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "snapshot": {
+      "head": "0b03d89e98cb835300abc939c6458fe9fd801044",
+      "caminhos_sujos": []
+    },
+    "revisor": "independente, worktree proprio",
+    "veredito": "integra",
+    "achados": 2,
+    "corrigidos": 2,
+    "base": "6668028b870d0666c9c52b0a4bb2d2378aaa3006",
+    "head": "0b03d89e98cb835300abc939c6458fe9fd801044",
+    "mutacoes_novas": 2,
+    "casos_novos": [
+      "arquivo fora do formato nao ocupa vaga do teto nem e apagado",
+      "duas chamadas no mesmo milissegundo nao se sobrescrevem"
+    ],
+    "em": "2026-08-26"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "tarefas": 5,
+    "aprovadas": 5,
+    "reprovadas": 0,
+    "suite": "58 de 58 verdes",
+    "criterios": {
+      "t1_t3_t4": "scripts/testa-backup-estado.sh 20 ok 0 falhou — executa o .ps1 real numa caixa com dois repos que TEM commit",
+      "t2": "cmp exit 0 com acento; 3 copias com teto 3 apos 5 execucoes; FOCO.md ausente exit 1 sem criar diretorio; check-ignore casa .gitignore:16",
+      "t5": "testa-conferir-encoding.sh 18 ok; o teto 30 do .ps1 e o do _comum.md amarrados pela bateria"
+    },
+    "em": "2026-08-26"
   },
   "fechar": {
     "status": "pendente"
