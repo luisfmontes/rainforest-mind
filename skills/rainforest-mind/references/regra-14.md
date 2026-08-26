@@ -80,3 +80,22 @@ O cliente desktop salva o que chega, então o caminho local existe mesmo
 quando o `download_media` falha — perguntar o caminho ao usuário vem antes de
 insistir no bridge. Em 2026-08-10 o bridge devolvia 403 para **toda** mídia,
 inclusive uma de 14 minutos atrás, então não é expiração.
+
+## Catálogo de ferramentas — mudança na prática da regra 14
+
+**A checagem da bridge do WhatsApp segue separada deste mecanismo.** O catálogo
+de ferramentas (para ferramentas faltando em `Bash`) é novo e vive em
+`hooks/ferramentas-consulta.cjs`, separado de propósito da checagem de
+dependência declarada em `hooks/foco-session-start.cjs`. Unificar hoje misturaria
+refactor de hook com feature nova antes de o mecanismo novo se provar em
+produção. A dívida fica nomeada — não é esquecimento, é decisão. Há bateria que
+fica vermelha se alguém mover essa checagem (`hooks/testa-ferramentas-nao-toca-abertura.sh`).
+
+**Para executável de `Bash`, o bloqueio passa a ser anunciado antes da tentativa.**
+Antes: a regra 14 era apenas texto, e quem a lia errava de mesmo jeito (regra 14,
+parágrafo sobre "regra escrita não alcança"). Agora: hook de `PreToolUse` anuncia
+em stderr quando o executável não está no catálogo e anuncia novamente se a sonda
+ao vivo falha em encontrá-lo — tudo antes da tentativa de executar. **A afirmação
+de ausência só sai depois de uma checagem ao vivo**, nunca a partir de "o ledger
+não tem a entrada" sozinho. Entrada faltando no ledger = desconhecido, que dispara
+uma sonda. Sonda que falha = bloqueio real anunciado.
