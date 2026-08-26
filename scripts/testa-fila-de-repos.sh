@@ -25,8 +25,12 @@ S="$(mktemp -d)"
 W="$(cygpath -m "$S" 2>/dev/null || printf '%s' "$S")"
 trap 'rm -rf "$S"' EXIT
 
-mkdir -p "$S/vigias"
+# O alvo faz `require('../hooks/lib/raiz.cjs')` desde a #110 — a caixa precisa
+# da dependencia junto, senao o node morre em "Cannot find module" e as
+# asserçoes seguintes falham por JSON vazio, escondendo a causa real.
+mkdir -p "$S/vigias" "$S/hooks/lib"
 cp "$RAIZ/$ALVO_REL" "$S/vigias/dados-batedor-repos.js"
+cp "$RAIZ/hooks/lib/raiz.cjs" "$S/hooks/lib/raiz.cjs"
 export RFM_ROOT="$W"
 
 fila() { # escreve a fila da caixa a partir do stdin (heredoc de quem chama)
@@ -215,7 +219,15 @@ JSONL
 fila <<'JSONL'
 {"candidato": "repo-do-fallback", "ancora": "prova o caminho default", "trilha": "ler", "plantada_em": "2026-08-25"}
 JSONL
-env -u RFM_ROOT node "$S/vigias/dados-batedor-repos.js" --json > "$S/saida.json" 2>"$S/saida.err"
+# HOME/USERPROFILE apontam para uma pasta VAZIA da caixa. Sem isso, a cadeia de
+# raizes (RFM_ROOT > <projeto>/.rainforest > ~/.rainforest > plugin) resolve no
+# nivel 3 e o caso passa a ler o `~/.rainforest` REAL do usuario — a bateria
+# escaparia da caixa de areia justamente no unico caso que roda sem RFM_ROOT,
+# e o contrato do topo deste arquivo diz que ela NUNCA toca a maquina do usuario.
+# Com o home vazio, a cadeia cai no nivel 4 (o plugin, que aqui e a caixa) e o
+# `ideias.jsonl` ao lado do script volta a ser o que ela le.
+mkdir -p "$S/home-vazio"
+HOME="$W/home-vazio" USERPROFILE="$W/home-vazio" env -u RFM_ROOT -u CLAUDE_PROJECT_DIR node "$S/vigias/dados-batedor-repos.js" --json > "$S/saida.json" 2>"$S/saida.err"
 rc_sem_root=$?
 if [ "$rc_sem_root" = "0" ]; then ok=$((ok+1)); echo "  ok   roda sem RFM_ROOT sem estourar"
 else falhou=$((falhou+1)); echo "  FALHA saiu $rc_sem_root sem RFM_ROOT"; sed 's/^/         /' "$S/saida.err"; fi
