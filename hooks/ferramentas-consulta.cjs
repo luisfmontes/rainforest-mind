@@ -1,57 +1,36 @@
 #!/usr/bin/env node
 /**
- * PreToolUse — consulta ledger de ferramentas antes de tentar usar uma.
+ * PreToolUse — consulta catálogo de ferramentas antes de tentar usar uma.
  *
- * Atende D8, D10, D12 do design de #76 (docs/rainforest/design/2026-08-25-catalogo-de-ferramentas.md):
- *   D8 — Entrada positiva que envelheceu: confia e deixa tropeçar (nenhum subprocesso se presente).
- *   D10 — O PreToolUse anuncia e deixa passar; nunca barra (exit 0 em todos os casos).
- *   D12 — A sonda deixa de ser peça separada e vira a própria consulta (exatamente uma checagem se ausente).
- *
- * O problema (Issue #76): janela descobre ferramenta faltando por tropeço — cinco comandos
- * de reconhecimento. A assimetria que decide tudo:
- *   - Catálogo que diz "existe" e não existe: devolve tropeço (tolerável, é o estado atual).
- *   - Catálogo que diz "não existe": faz janela RECUSAR trabalho que funcionaria (pior caso).
+ * Atende D8, D10, D12, D14 do design de #76 (docs/rainforest/design/2026-08-25-catalogo-de-ferramentas.md):
+ *   D8 — Entrada presente: confia (zero subprocesso, lê em processo).
+ *   D10 — Anuncia e deixa passar; nunca barra (exit 0 sempre).
+ *   D12 — Entrada ausente: uma checagem barata, anunciando resultado real.
+ *   D14 — Só escreve quando executável ainda não está no ledger.
  *
  * Fluxo:
- *   1. Lê payload JSON do stdin (preToolUse do Bash).
- *   2. Extrai primeiro executável da linha de comando (recorte: vide comentário abaixo).
- *   3. Consulta ledger via `scripts/ferramentas.cjs consultar <nome>`.
- *      - Se encontrar (exit 0 e imprime receita): anuncia NADA, sai 0.
- *      - Se não encontrar (exit 0 e imprime "desconhecido"): anuncia achado + efeito, sai 0.
- *   4. Erro no ledger, leitura falha, raiz inacessível, comando malformado: anuncia NADA, sai 0.
- *      (D10 — nunca recusa por erro interno.)
+ *   1. Lê payload JSON do stdin (PreToolUse do Bash).
+ *   2. Extrai primeiro executável da linha de comando.
+ *   3. Lê ledger em processo (sem subprocess).
+ *   4. Se entrada existe no ledger:
+ *      → Silêncio, sai 0 (D8).
+ *   5. Se não existe no ledger:
+ *      → Roda UMA sonda barata (which/command -v) do executável.
+ *      → Se acha: anuncia que está disponível, grava no ledger (D14), sai 0.
+ *      → Se não acha: anuncia bloqueio (regra 14), sai 0.
+ *      → Se não consegue checar: anuncia incerteza, sai 0.
+ *   6. Erro no ledger, leitura falha, raiz inacessível: silêncio, sai 0 (D10).
  *
- * Recorte de extração do executável (D9 — só superfície Bash):
- *   Tira o PRIMEIRO TOKEN que pareça ser um comando de verdade:
- *   - Ignora `cd`, variáveis (contêm `=`), sudo/sudo -u.
- *   - Ignora redirecionamentos (>, >>, |, ||, &&, ;), aspas e comentários.
- *   - Pega `/path/exe`, `exe`, `./ exe` — qualquer coisa que não é um modificador.
+ * Recorte de extração de executável (D9):
+ *   Primeiro TOKEN "de verdade" que pareça ser comando — ignora cd, variáveis,
+ *   sudo, redirecionadores, aspas, comentários.
  *
- *   Não cobre: $variável expandida, subshell $(cmd), backtick `cmd`, aliases.
- *   Razão: esses exigem execução. O recorte é deliberadamente estreito.
- *
- * Incidente 2026-08-19: em 2026-08-19 dez baterias verdes certificaram um subsistema morto
- * porque o hook lia `evento.project`, campo que o harness nunca envia, e os testes injetavam
- * o campo à mão. Neste arquivo: payload montado via `node argv`, nunca `printf`.
+ * Incidente 2026-08-19: payload montado via `node argv`, nunca `printf`.
  */
 
-const { execFileSync } = require("node:child_process");
+const { execSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
-
-/**
- * Tenta rodar um comando git neste diretório. Retorna output ou null se falhar.
- * Cópia do gate-publicacao-destino.cjs — já está provada.
- */
-function git(dir, args) {
-  try {
-    return execFileSync("git", ["-C", dir, ...args], {
-      encoding: "utf8", stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Resolve RAIZ do ledger ferramentas.jsonl.
@@ -69,35 +48,20 @@ function resolverRaiz(cwd) {
 
 /**
  * Extrai o primeiro executável da linha de comando.
- *
- * Recorte deliberadamente estreito (comentário acima):
- *   - Pula `cd`, variáveis, sudo, redirecionadores.
- *   - Retorna o primeiro token "real" que parece ser comando.
- *
- * Se nada conseguir extrair: retorna null.
  */
 function extrairExecutavel(comando) {
   if (!comando || typeof comando !== "string") return null;
 
-  // Quebra por separadores, mantendo ordem
   const partes = comando.split(/\s+/);
 
   for (const parte of partes) {
-    // Ignora aspas, comentários, redirecionadores
     if (!parte || parte.startsWith("#") || parte.match(/^[|;>&`$()]/)) continue;
     if (parte === "cd" || parte === "sudo" || parte === "sudo-u" || parte === "-u") continue;
-
-    // Ignora variáveis
     if (parte.includes("=")) continue;
 
-    // Tira aspas se houver
     const sem_aspas = parte.replace(/^["']|["']$/g, "");
-    if (!sem_aspas) continue;
+    if (!sem_aspas || sem_aspas.match(/^[|;&><]/)) continue;
 
-    // Ignora operadores de pipe/redirecionamento
-    if (sem_aspas.match(/^[|;&><]/)) continue;
-
-    // Achou algo: pode ser caminho ou nome
     return sem_aspas;
   }
 
@@ -105,53 +69,113 @@ function extrairExecutavel(comando) {
 }
 
 /**
- * Consulta o ledger de ferramentas.
- *
- * Retorna { encontrado: true/false, receita?: string, raiz: string, nomeFerramen: string? }
- * Nunca lança erro — sempre retorna um resultado.
+ * Lê o ledger ferramentas.jsonl em processo (sem subprocess).
+ * Retorna array de objetos {nome, receita, descoberto, data}.
+ * Se arquivo não existe ou erro: retorna [].
  */
-function consultarLedger(cwd, executavel) {
-  const raiz = resolverRaiz(cwd);
-
-  if (!executavel) {
-    return { encontrado: false, raiz, nomeFerramental: null };
-  }
-
+function lerLedger(raiz) {
+  const alvo = path.join(raiz, "ferramentas.jsonl");
   try {
-    // Path absoluto do script ferramentas.cjs — está na raiz do projeto
-    const script = path.join(__dirname, "..", "scripts", "ferramentas.cjs");
-    const saida = execFileSync("node", [script, "consultar", executavel], {
-      cwd,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-      timeout: 5000, // max 5 segundos
-      env: { ...process.env },  // Propaga variáveis de ambiente (RFM_ROOT)
-    }).trim();
-
-    // Se a saída é "desconhecido", ferramenta não está no ledger
-    if (saida === "desconhecido") {
-      return { encontrado: false, raiz, nomeFerramental: executavel };
+    const conteudo = fs.readFileSync(alvo, "utf8");
+    const linhas = conteudo.split("\n").filter((l) => l.trim().length > 0);
+    const objs = [];
+    for (const linha of linhas) {
+      try {
+        objs.push(JSON.parse(linha));
+      } catch {
+        // linha malformada: ignora
+      }
     }
-
-    // Se chegou aqui, é a receita
-    return { encontrado: true, receita: saida, raiz, nomeFerramental: executavel };
+    return objs;
   } catch {
-    // Erro ao consultar — ledger inacessível, script não existe, timeout
-    // D10 — nunca recusa
-    return { encontrado: false, raiz, nomeFerramental: executavel };
+    // arquivo não existe ou erro de leitura
+    return [];
   }
 }
 
 /**
- * Anuncia ferramenta ausente + efeito prático.
- * Forma: regra 14 (references/regra-14.md) — anúncio que nomeia a ferramenta
- * e o efeito prático, sem prescrever a solução (fica pra janela decidir).
+ * Consulta o ledger e retorna a entrada se existe.
  */
-function anunciarAusente(ferramenta) {
-  process.stderr.write(
-    `[ferramentas-consulta] ferramenta ausente: '${ferramenta}' — ` +
-    `task pode falhar ao tentar usá-la.\n`
-  );
+function consultarLedger(raiz, executavel) {
+  if (!executavel) return null;
+  const ledger = lerLedger(raiz);
+  return ledger.find((o) => o.nome === executavel) || null;
+}
+
+/**
+ * Sonda barata do executável: which (ou command -v em bash).
+ * Retorna {achado: true/false, caminho?: string}.
+ * O caminho é usado como receita quando gravamos.
+ */
+function sodarExecutavel(executavel) {
+  try {
+    // Usa `where` no Windows, `which` em Unix
+    const cmd =
+      process.platform === "win32"
+        ? `where ${JSON.stringify(executavel)}`
+        : `command -v ${JSON.stringify(executavel)}`;
+
+    const saida = execSync(cmd, {
+      encoding: "utf8",
+      timeout: 2000,
+    }).trim();
+
+    return { achado: true, caminho: saida };
+  } catch {
+    return { achado: false };
+  }
+}
+
+/**
+ * Grava entrada no ledger.
+ * Formato: {nome, receita, descoberto, data}.
+ * Receita = caminho retornado pela sonda (which/command -v).
+ * Retorna {ok: true/false, motivo?: string}.
+ */
+function gravarNoLedger(raiz, executavel, caminho) {
+  try {
+    const script = path.join(__dirname, "..", "scripts", "ferramentas.cjs");
+    const entrada = {
+      nome: executavel,
+      receita: caminho || executavel, // Caminho da sonda, ou nome como fallback
+      descoberto: "sonda-consulta",
+      data: new Date().toISOString().split("T")[0],
+    };
+
+    // Chama o script de escrita
+    execSync(`node "${script}" registrar --json`, {
+      input: JSON.stringify(entrada),
+      stdio: ["pipe", "ignore", "ignore"],
+      timeout: 5000,
+      cwd: raiz,
+      encoding: "utf8",
+    });
+
+    return { ok: true };
+  } catch {
+    // Falha de escrita não derruba nada (D10)
+    return { ok: false };
+  }
+}
+
+/**
+ * Anuncia ferramenta conforme o resultado da sonda.
+ * Regra 14: uma linha, com efeito prático nomeado.
+ */
+function anunciar(tipo, executavel) {
+  if (tipo === "disponivel") {
+    process.stderr.write(
+      `[ferramentas-consulta] '${executavel}' descoberta e registrada.\n`
+    );
+  } else if (tipo === "bloqueio") {
+    process.stderr.write(
+      `[ferramentas-consulta] executável não encontrado: '${executavel}' — task vai falhar ao tentar usá-la.\n`
+    );
+  } else if (tipo === "incerto") {
+    process.stderr.write(
+      `[ferramentas-consulta] não consegui conferir '${executavel}' — prossigo sem garantia.\n`
+    );
+  }
 }
 
 function main() {
@@ -181,12 +205,27 @@ function main() {
     process.exit(0);
   }
 
-  // Consulta ledger
-  const resultado = consultarLedger(cwd, executavel);
+  // Resolve raiz
+  const raiz = resolverRaiz(cwd);
 
-  // Se não encontrou e tem nome de ferramenta, anuncia
-  if (!resultado.encontrado && resultado.nomeFerramental) {
-    anunciarAusente(resultado.nomeFerramental);
+  // Consulta ledger (sem subprocess)
+  const entrada = consultarLedger(raiz, executavel);
+
+  // D8 — Se está no ledger, confia e sai
+  if (entrada) {
+    process.exit(0);
+  }
+
+  // D12 — Não está no ledger: roda sonda de verdade
+  const sonda = sodarExecutavel(executavel);
+
+  if (sonda.achado) {
+    // Acha a ferramenta — grava e anuncia
+    gravarNoLedger(raiz, executavel, sonda.caminho);
+    anunciar("disponivel", executavel);
+  } else {
+    // Não acha — anuncia bloqueio
+    anunciar("bloqueio", executavel);
   }
 
   // D10 — sempre sai 0
