@@ -289,6 +289,7 @@ noite, sabendo que não devia. O que sobrou das duas noites:
 | `gate-worktree.cjs` | escrita de subagente em repo git que não é worktree linkado, e git que mexe no checkout | só subagente — a janela principal passa |
 | `gate-staging-total.cjs` | `git add -A/--all/./:/`, `-u`, e `git commit -a/-am` | **também a janela principal**, que foi onde os dois incidentes ocorreram |
 | `gate-publicacao-destino.cjs` | escrita de dados sensíveis (JID, telefone, email, credencial) em arquivo rastreado por git | **qualquer ferramenta que escreve** (`Write`, `Edit`, `MultiEdit`) — impede vazamento em repo público |
+| `gate-repo-alheio.cjs` | escrita cujo destino está dentro de **outro repositório git** que não o da sessão | **também a janela principal**, que foi onde o incidente ocorreu — caminho fora de git e worktree do mesmo repo passam |
 
 Valem em **qualquer** repo git da máquina, porque o hábito é que é o problema,
 não o repositório. A mensagem de bloqueio não só recusa: a de staging roda
@@ -297,9 +298,19 @@ trava que só diz "não" vira trava desligada. Saídas de emergência, nomeadas 
 própria mensagem: `RAINFOREST_GATE_OFF=1` no ambiente, ou um arquivo
 `.rainforest-gate-off` na raiz do repo.
 
-Cada uma tem bateria própria (`hooks/testa-gate-*.sh`, **79 casos**: 38 + 25 + 16)
-que roda o hook de verdade contra repos git montados na hora. A maioria dos casos
-testa o que deve **passar**: falso positivo aqui atrapalha todo repo.
+Cada uma tem bateria própria (`hooks/testa-gate-*.sh`, **175 casos**: 100 de
+worktree + 38 de staging + 21 de repo alheio + 16 de publicação) que roda o hook
+de verdade contra repos git montados na hora. A maioria dos casos testa o que
+deve **passar**: falso positivo aqui atrapalha todo repo — a trava de repo alheio
+é o exemplo, com 15 dos 21 casos provando que ela **não** barra.
+
+E a trava de repo alheio traz uma lição que custou uma rodada de conserto: a
+primeira versão dela copiou do `gate-worktree.cjs` a guarda `if (!ev.agent_id)
+process.exit(0)`, que lá está certa — aquela trava é sobre isolamento de
+subagente, que é problema de subagente. Aqui o incidente é de **janela
+principal**: uma sessão cujo `cwd` era outro repositório foi consertar este
+plugin dali mesmo, e deixou trabalho não commitado num worktree que se perdeu.
+Molde se copia; recorte, não.
 
 O mesmo princípio nos scripts, para o que hook nenhum alcança:
 
