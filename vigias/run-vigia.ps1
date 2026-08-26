@@ -43,7 +43,7 @@ if ($LASTEXITCODE -ne 0) {
 $cwd = if ($Cwd) { $Cwd } else { $root }
 if (-not (Test-Path $cwd)) {
     "- $(Get-Date -Format 'yyyy-MM-dd HH:mm') [$Vigia]: -Cwd nao existe: $cwd" |
-      Out-File -Append -Encoding utf8 (Join-Path $root "vigias\ERROS.md")
+      Out-File -Append -Encoding utf8 (Join-Path $plugin "vigias\ERROS.md")
     exit 1
 }
 Set-Location $cwd
@@ -60,9 +60,18 @@ function Get-LocalConfig([string]$Var, [string]$Chave) {
     if ($script:cfg -and $script:cfg.$Chave) { return $script:cfg.$Chave }
     return $null
 }
+# ERRO DE VIGIA VAI PARA O $plugin, NUNCA PARA O $root (Issue #112, 2026-08-26).
+# Ate hoje tres escritas usavam $root e uma usava $plugin. Sem RFM_ROOT as
+# quatro acertavam o mesmo arquivo por COINCIDENCIA, porque $root cai no
+# proprio plugin. Com RFM_ROOT definido elas se partiam: duas listas de erro,
+# nenhuma completa, e ninguem avisado.
+# O ERROS.md e rastreado neste repositorio e o vigias/dados-batedor-repos.js
+# le dele pelo lerLinhasDoPlugin. Ele e registro de falha do PLUGIN, nao dado
+# do usuario. Se voce escrever `Join-Path $root "vigias\ERROS.md"` de novo, a
+# bateria scripts/testa-erros-md-raiz.sh fica vermelha — de proposito.
 function Stop-ComErro([string]$Motivo) {
     "- $(Get-Date -Format 'yyyy-MM-dd HH:mm') [$Vigia]: $Motivo" |
-      Out-File -Append -Encoding utf8 (Join-Path $root "vigias\ERROS.md")
+      Out-File -Append -Encoding utf8 (Join-Path $plugin "vigias\ERROS.md")
     exit 1
 }
 
@@ -128,7 +137,7 @@ if (-not (Test-NetConnection $bridgeHost -Port $bridgePort -InformationLevel Qui
     }
     if (-not $up) {
         "- $(Get-Date -Format 'yyyy-MM-dd HH:mm') [$Vigia]: bridge nao subiu apos 60s (porta $bridgePort fechada)" |
-          Out-File -Append -Encoding utf8 (Join-Path $root "vigias\ERROS.md")
+          Out-File -Append -Encoding utf8 (Join-Path $plugin "vigias\ERROS.md")
         exit 1
     }
 }
