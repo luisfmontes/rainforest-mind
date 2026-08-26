@@ -52,10 +52,21 @@ j() { # tool, file_path, cwd
     "$(esc "$3")" "$1" "$(esc "$2")"
 }
 
+# payload de JANELA PRINCIPAL (SEM agent_id) — e' o caso do incidente de
+# 2026-08-23: a sessao cujo cwd era C:/Projetos/whatsapp-mcp foi consertar o
+# rainforest-mind dali mesmo. Nao ha subagente nenhum nessa historia, e um
+# gate que so olha subagente nao teria visto o defeito que existe para pegar.
+p() { # tool, file_path, cwd
+  printf '{"cwd":"%s","hook_event_name":"PreToolUse","tool_name":"%s","tool_input":{"file_path":"%s"}}' \
+    "$(esc "$3")" "$1" "$(esc "$2")"
+}
+
 echo "== deve BARRAR (exit 2) — escrita em repo alheio =="
 gate "subagente escreve em outro repo (Write)"       2 "$(j Write "$R2/novo.txt" "$R1")"
 gate "subagente escreve em outro repo (Edit)"        2 "$(j Edit "$R2/b.txt" "$R1")"
 gate "escrita em subdir do outro repo"               2 "$(j Write "$R2/dir/arquivo.txt" "$R1")"
+gate "JANELA PRINCIPAL escreve em outro repo (incidente)" 2 "$(p Write "$R2/novo.txt" "$R1")"
+gate "JANELA PRINCIPAL edita em outro repo"            2 "$(p Edit "$R2/b.txt" "$R1")"
 
 echo
 echo "== deve PASSAR (exit 0) — repo da sessao, fora de git, worktree do mesmo repo =="
@@ -65,6 +76,9 @@ gate "escreve em subdir do repo da sessao"           0 "$(j Write "$R1/dir/arqui
 gate "escreve fora de repo git"                      0 "$(j Write "$FORA/nota.txt" "$R1")"
 gate "escreve em worktree linkado do MESMO repo"     0 "$(j Write "$WT1/novo.txt" "$R1")"
 gate "edita em worktree linkado do MESMO repo"       0 "$(j Edit "$WT1/a.txt" "$R1")"
+gate "JANELA PRINCIPAL escreve no repo da sessao"   0 "$(p Write "$R1/novo.txt" "$R1")"
+gate "JANELA PRINCIPAL escreve fora de repo git"    0 "$(p Write "$FORA/nota.txt" "$R1")"
+gate "JANELA PRINCIPAL em worktree do MESMO repo"   0 "$(p Write "$WT1/novo.txt" "$R1")"
 
 echo
 echo "== tool_name que nao e escrita passa =="
@@ -86,8 +100,8 @@ echo
 echo "== casos-limite =="
 gate "payload vazio nunca trava"                     0 "{}"
 gate "payload ilegivel nunca trava"                  0 "isto nao e json"
-gate "ferramenta JANELA PRINCIPAL (sem agent_id)"    0 \
-  "$(printf '{"tool_name":"Write","cwd":"%s","tool_input":{"file_path":"%s"}}' "$(esc "$R1")" "$(esc "$R2/novo.txt")")"
+gate "janela principal sem cwd nunca trava"           0 \
+  "$(printf '{"tool_name":"Write","tool_input":{"file_path":"%s"}}' "$(esc "$R2/novo.txt")")"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

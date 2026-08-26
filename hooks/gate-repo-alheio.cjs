@@ -127,10 +127,20 @@ function main() {
 
   if (process.env.RAINFOREST_GATE_OFF) process.exit(0);
 
-  const cwdDoEvento = ev.cwd || process.cwd();
+  // Sem `cwd` no payload nao ha como saber qual e' o repo DESTA sessao, e cair
+  // em process.cwd() e' pior que nao decidir: o cwd do processo do hook nao e'
+  // necessariamente o da sessao, e barrar por um palpite barra trabalho legitimo.
+  // Mesma politica do payload ilegivel — na duvida, libera.
+  const cwdDoEvento = ev.cwd;
+  if (!cwdDoEvento) process.exit(0);
 
-  // JANELA PRINCIPAL (sem agent_id) passa sempre
-  if (!ev.agent_id) process.exit(0);
+  // A JANELA PRINCIPAL NAO PASSA. O incidente que justifica esta trava e' de
+  // janela principal: em 2026-08-23 uma sessao cujo cwd era C:/Projetos/whatsapp-mcp
+  // foi consertar o rainforest-mind dali mesmo, e deixou 39+/10- nao commitados num
+  // worktree que se perdeu. Copiar daqui a guarda `if (!ev.agent_id) exit(0)` do
+  // gate-worktree seria copiar o recorte errado: la a trava e' sobre ISOLAMENTO de
+  // subagente, que e' problema de subagente; aqui e' sobre escrever FORA DO PROJETO
+  // DESTA JANELA, que a janela principal faz igual — ou mais, porque e' ela que decide.
 
   // Toggle do setup
   try { if (!require("./lib/config.cjs").ligado("gate-repo-alheio", { projeto: cwdDoEvento })) process.exit(0); } catch {}
@@ -166,7 +176,10 @@ function main() {
 
     // Verifica se é o MESMO repo (comparando git-common-dir para worktrees)
     // Normaliza paths para comparação (windows vs unix separators)
-    const normalizarCaminho = (p) => p.replace(/\\/g, "/");
+    const normalizarCaminho = (p) => p.replace(/\\/g, "/").toLowerCase();
+    // A caixa desce junto: no Windows o mesmo diretorio chega escrito com caixa
+    // diferente, e comparar sem baixar trata um repo como dois. Mesma razao do
+    // normalizarCwd() em hooks/lib/contexto-sessao.cjs.
     if (normalizarCaminho(estadoAlvo.commonDir) === normalizarCaminho(estadoSessao.commonDir)) continue;
 
     // Extra: se toplevel for igual, também passa (redundante, mas seguro)
@@ -177,7 +190,7 @@ function main() {
 
     // É repo alheio: barra
     const motivo = `Escrita (${nome}) em ${alvo}`;
-    bloqueia(motivo, estadoAlvo.toplevel, `${ev.agent_type || "?"} (${ev.agent_id})`);
+    bloqueia(motivo, estadoAlvo.toplevel, (ev.agent_id ? `${ev.agent_type || "?"} (${ev.agent_id})` : "janela principal"));
   }
 
   process.exit(0);
