@@ -1,0 +1,57 @@
+{
+  "slug": "2026-08-26-raiz-do-erros-md",
+  "titulo": "2026-08-26-raiz-do-erros-md",
+  "criado_em": "2026-08-26",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "issue": 112,
+    "decisoes": 3,
+    "aprovado_por": "Luis",
+    "d1": "ERROS.md mora no PLUGIN",
+    "em": "2026-08-26"
+  },
+  "plano": {
+    "status": "ok",
+    "tarefas": 2,
+    "doc": "docs/rainforest/planos/2026-08-26-raiz-do-erros-md.md",
+    "em": "2026-08-26"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-08-26",
+    "tarefas": 2,
+    "tarefas_ok": 2,
+    "bateria_nova": "scripts/testa-erros-md-raiz.sh (8 ok, 0 falhou)",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "arquivo": "vigias/run-vigia.ps1",
+        "de": "a escrita do -Cwd inexistente com $plugin",
+        "para": "a mesma com $root",
+        "fixture": "chegou no caminho do -Cwd inexistente",
+        "resultado": "vermelho"
+      },
+      {
+        "tarefa": 2,
+        "arquivo": "vigias/run-vigia.ps1",
+        "de": "o comentario da regra",
+        "para": "Out-File ... (Join-Path $root vigias/ERROS.md)",
+        "fixture": "nenhuma escrita de ERROS.md usa a raiz de dados",
+        "resultado": "vermelho"
+      }
+    ],
+    "em": "2026-08-26"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
