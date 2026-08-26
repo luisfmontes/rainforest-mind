@@ -34,8 +34,8 @@ mutacao:
   fixture: o caso "registrar com campo de negativa é recusado" de `scripts/testa-ferramentas.sh`
 pronto quando: com um `ferramentas.jsonl` de caixa contendo a entrada real do caso da transcrição (`whisper-cli`, com receita apontando o binário fora do PATH e o `.bin` de modelo), `node scripts/ferramentas.cjs consultar whisper-cli` devolve a receita gravada e sai 0; `consultar` de nome ausente sai 0 imprimindo `desconhecido` e **nunca** a palavra `ausente`; `registrar` de uma entrada que carregue qualquer chave de negativa é recusado com exit 2 nomeando a chave; e `registrar` do mesmo nome duas vezes deixa **uma** linha, com a data da segunda — provado por `bash scripts/testa-ferramentas.sh` e pela contagem `wc -l` do arquivo da caixa antes e depois
 
-### 2. Consulta antes de tentar: `hooks/ferramentas-consulta.cjs` [tipo: implementar]
-atende: D8, D10, D12
+### 2. Consulta antes de tentar, e grava o que a sonda achar: `hooks/ferramentas-consulta.cjs` [tipo: implementar]
+atende: D5, D6, D8, D10, D11, D12, D14
 arquivos: `hooks/ferramentas-consulta.cjs`, `hooks/testa-ferramentas-consulta.sh`
 depende de: 1
 paralela: nao
@@ -47,36 +47,23 @@ mutacao:
   fixture: o caso "executável desconhecido não recusa a execução" de `hooks/testa-ferramentas-consulta.sh`
 pronto quando: com o JSON que o harness realmente envia num `PreToolUse` de `Bash` — extraído de transcrito real, não montado a partir da documentação —, o hook sai **0 em todos os casos**; com o executável presente no ledger ele não gasta nenhum subprocesso (provado contando processos filhos, ou pela ausência da sonda no rastro); com o executável ausente do ledger ele gasta **exatamente uma** checagem e imprime o anúncio nomeando a ferramenta e o efeito prático — provado por `bash hooks/testa-ferramentas-consulta.sh`
 
-### 3. Registro por descoberta: `hooks/ferramentas-registro.cjs` [tipo: implementar]
-atende: D6, D14
-arquivos: `hooks/ferramentas-registro.cjs`, `hooks/testa-ferramentas-registro.sh`
-depende de: 1
-paralela: nao
-mutacao:
-  arquivo: `hooks/ferramentas-registro.cjs`
-  de: a guarda que impede escrever quando o executável já está no ledger
-  para: escrita incondicional
-  bateria: `bash hooks/testa-ferramentas-registro.sh`
-  fixture: o caso "executável já registrado não é reescrito" de `hooks/testa-ferramentas-registro.sh`
-pronto quando: com o JSON que o harness realmente envia num `PostToolUse` de `Bash` bem-sucedido, um executável **ausente** do ledger ganha exatamente uma linha nova com nome, marca de sucesso e data — e **sem** campo de receita; o mesmo evento repetido não acrescenta linha nem altera o arquivo (comparação byte a byte); e evento de comando que **falhou** não escreve nada — provado por `bash hooks/testa-ferramentas-registro.sh` e por `cmp` do arquivo antes e depois da repetição
-
-### 4. Registro dos dois hooks em `hooks/hooks.json` [tipo: configurar]
+### 3. Registro do hook em `hooks/hooks.json` [tipo: configurar]
 atende: D7, D9
 arquivos: `hooks/hooks.json`, `hooks/testa-config.sh`
-depende de: 2, 3
+depende de: 2
 paralela: nao
 mutacao:
   arquivo: `hooks/hooks.json`
-  de: o `matcher` que restringe os dois hooks novos à ferramenta `Bash`
+  de: o `matcher: "Bash"` do hook novo
   para: matcher que casa com qualquer ferramenta
   bateria: `bash hooks/testa-config.sh`
-  fixture: o caso que afirma que os hooks de ferramentas só disparam em `Bash`, a acrescentar em `hooks/testa-config.sh`
-pronto quando: `hooks/hooks.json` continua sendo JSON válido e os dois hooks novos aparecem **apenas** sob `PreToolUse`/`PostToolUse` com matcher restrito a `Bash`, sem tocar nos três hooks já registrados — provado por `bash hooks/testa-config.sh` e por `node -e` contando as entradas de cada evento antes e depois
+  fixture: o caso que afirma que o hook de ferramentas só dispara em `Bash`, a acrescentar em `hooks/testa-config.sh`
+pronto quando: `hooks/hooks.json` continua sendo JSON válido e o hook novo aparece **apenas** sob `PreToolUse`, com `matcher: "Bash"`, e **nenhum** hook aparece sob `PostToolUse`, sem tocar nos três hooks já registrados — e `bash hooks/testa-memoria-marca.sh` continua verde, que é a trava que proíbe `PostToolUse` neste repo — provado por `bash hooks/testa-config.sh` e por `node -e` contando as entradas de cada evento antes e depois
 
-### 5. Catraca: a abertura não cresce e a bridge fica intacta [tipo: teste]
+### 4. Catraca: a abertura não cresce e a bridge fica intacta [tipo: teste]
 atende: D1, D4
 arquivos: `hooks/testa-ferramentas-nao-toca-abertura.sh`
-depende de: 4
+depende de: 3
 paralela: nao
 mutacao:
   arquivo: `hooks/testa-ferramentas-nao-toca-abertura.sh`
@@ -86,10 +73,10 @@ mutacao:
   fixture: o caso "a saída da abertura não cresceu" da própria bateria
 pronto quando: rodando `node hooks/foco-session-start.cjs` na máquina, a saída em bytes é **igual ou menor** que a medida de referência de 8.085 B gravada na bateria, e a linha `Dependências de ambiente (regra 14)` com a checagem da bridge continua presente e vinda de `foco-session-start.cjs` — provado por `bash hooks/testa-ferramentas-nao-toca-abertura.sh`
 
-### 6. README e elaboração da regra 14 [tipo: docs]
+### 5. README e elaboração da regra 14 [tipo: docs]
 atende: D3, D4
 arquivos: `README.md`, `skills/rainforest-mind/references/regra-14.md`
-depende de: 5
+depende de: 4
 paralela: nao
 mutacao: n/a
   motivo: texto não tem ramo de execução a inverter; a falsificação dele é casar com a interface real, que é o que o critério abaixo confere

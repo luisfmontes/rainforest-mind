@@ -46,16 +46,31 @@ a primeira ideia da rodada.
   hook com feature nova antes de o mecanismo novo se provar. Dívida nomeada em
   "Fora de escopo".
 
-- **D5 — Entrada = nome + receita de invocação + como foi descoberto + data.** —
-  porquê: o caso da transcrição prova que "existe" é o fato inútil. O que teria
-  poupado os cinco comandos era saber que o `whisper-cli` mora fora do PATH, ao lado
-  de um `.bin` de modelo. Receita que envelhece falha ruidoso — o comando quebra.
+- **D5 — Entrada = nome + como foi descoberto + data, e a receita de invocação é
+  OPCIONAL.** — porquê: o caso da transcrição prova que "existe" é o fato inútil, e
+  que a receita é o que poupa os cinco comandos (o `whisper-cli` mora fora do PATH,
+  ao lado de um `.bin` de modelo). Mas a receita **obrigatória** entra em contradição
+  direta com a D11, e a contradição foi medida em 2026-08-25: o hook de consulta,
+  forçado a preencher o campo, gravou a saída crua do `where` — dois caminhos
+  concatenados num campo só, com um CR no meio. Entrada sem receita é fato positivo
+  legítimo ("existe, achado assim, nesta data"); a receita entra depois, pelo comando
+  explícito, quando alguém souber a invocação de verdade. `consultar` distingue
+  "conhecido, sem receita" de "desconhecido" — não são a mesma resposta. Receita que
+  envelhece falha ruidoso; receita inventada, não.
 
-- **D6 — Dois escritores, com papéis separados.** Um `PostToolUse` grava **só fato
-  positivo** depois de sucesso observado; um comando explícito grava o que a máquina
-  não infere. — porquê: positivo-só é seguro por construção — o pior caso de uma
-  escrita automática errada é uma entrada velha que faz tropeçar, que é o
-  comportamento de hoje.
+- **D6 — Quem grava o fato positivo é a própria sonda do `PreToolUse`, e NÃO existe
+  hook de `PostToolUse`.** — porquê: a versão original desta decisão punha a escrita
+  num `PostToolUse`, e estava errada por um fato que o repo já tinha medido e eu não
+  conferi. `PostToolUse` é **proibido** aqui: todo hook do `hooks.json` é
+  `type: "command"` e sobe um processo do SO por evento, e o log mediu **15.331
+  `PostToolUse` em oito dias** (~1.900/dia, contra ~119 no `Stop`). Está na D12 do
+  design de 2026-08-17, e `hooks/testa-memoria-marca.sh` fica **vermelho** se qualquer
+  hook aparecer sob esse evento — a trava pegou o erro.
+  A troca melhorou o desenho, e é por isso que ela não é remendo: a D6 original usava
+  "comando bem-sucedido" como evidência de existência, que sempre foi sinal fraco (o
+  comando pode ter dado certo por outro motivo, e o token pode nem ser o executável).
+  A sonda que **acha** o executável é evidência direta. Grava só quando achou; sonda
+  que não achou, ou que não rodou, não grava nada.
 
 - **D7 — Quem faz a janela consultar é um hook, não texto de regra.** — porquê: texto
   é o que já existe e já falha; a regra 14 é texto, e a descoberta continua
@@ -70,6 +85,10 @@ a primeira ideia da rodada.
 - **D9 — Superfície da versão 1: só o executável do comando `Bash`.** — porquê: é onde
   o tropeço foi medido, e a única superfície em que o hook nomeia o alvo sem adivinhar.
   Chave de env e MCP têm volatilidade e forma de sonda diferentes.
+  **Consequência operacional, decidida em 2026-08-25:** o hook entra no `hooks.json`
+  com `matcher: "Bash"`. O bloco `PreToolUse` de hoje não tem matcher e já dispara 3
+  processos por chamada de **qualquer** ferramenta; somar um quarto sem matcher
+  encareceria todo tool call para servir só o `Bash`.
 
 - **D10 — O `PreToolUse` anuncia e deixa passar; nunca barra.** — porquê: barrar
   reintroduz a recusa silenciosa que é o pior caso da issue. Deixando passar, o pior
@@ -92,9 +111,10 @@ a primeira ideia da rodada.
   execução transformaria um inventário de dezenas de linhas num log de milhares, sem
   que nenhuma linha antiga sirva para alguma coisa.
 
-- **D14 — O `PostToolUse` só escreve quando o executável ainda não está no ledger.** —
-  porquê: decorre da D13. Escrever a cada comando bem-sucedido seria I/O no disco do
-  usuário a cada tool call para reafirmar o que já se sabe.
+- **D14 — Só se escreve quando o executável ainda não está no ledger.** — porquê:
+  decorre da D13 e, com a D6 revisada, é consequência do fluxo: só se chega à sonda
+  quando o ledger não tinha a entrada. Escrever a cada uso reafirmaria o que já se
+  sabe, ao custo de I/O no disco do usuário a cada chamada de ferramenta.
 
 ## Avaliado e descartado
 
