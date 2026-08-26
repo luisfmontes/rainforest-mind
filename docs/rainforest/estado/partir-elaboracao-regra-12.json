@@ -1,0 +1,26 @@
+{
+  "slug": "partir-elaboracao-regra-12",
+  "titulo": "Partir references/regra-12.md preservando o criterio D9 de 3k tokens por consulta",
+  "criado_em": "2026-08-26",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "pendente"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
