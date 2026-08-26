@@ -92,10 +92,16 @@ produção. A dívida fica nomeada — não é esquecimento, é decisão. Há ba
 fica vermelha se alguém mover essa checagem (`hooks/testa-ferramentas-nao-toca-abertura.sh`).
 
 **Para executável de `Bash`, o bloqueio passa a ser anunciado antes da tentativa.**
-Antes: a regra 14 era apenas texto, e quem a lia errava de mesmo jeito (regra 14,
-parágrafo sobre "regra escrita não alcança"). Agora: hook de `PreToolUse` anuncia
-em stderr quando o executável não está no catálogo e anuncia novamente se a sonda
-ao vivo falha em encontrá-lo — tudo antes da tentativa de executar. **A afirmação
-de ausência só sai depois de uma checagem ao vivo**, nunca a partir de "o ledger
-não tem a entrada" sozinho. Entrada faltando no ledger = desconhecido, que dispara
-uma sonda. Sonda que falha = bloqueio real anunciado.
+Antes: a regra 14 era apenas texto, e quem a lia errava do mesmo jeito. Agora, um
+hook de `PreToolUse` decide antes da tentativa, e a ordem importa: entrada faltando
+no ledger é **desconhecido**, e desconhecido dispara uma sonda ao vivo. É a sonda
+que produz o veredito, e sai **um** anúncio só, com uma das três formas:
+
+    [ferramentas-consulta] 'git' descoberta e registrada.
+    [ferramentas-consulta] executável não encontrado: 'nao-existe' — task vai falhar ao tentar usá-la.
+    (executável já no ledger: silêncio, e nenhum subprocesso)
+
+**A afirmação de ausência nunca sai de "o ledger não tem a entrada"** — só de uma
+checagem que olhou o ambiente. Foi exatamente esse o defeito da primeira versão,
+em 2026-08-25: ela anunciava `ferramenta ausente: 'git'` numa máquina onde o `git`
+existe, porque confundia ausência de linha com ausência de ferramenta.
