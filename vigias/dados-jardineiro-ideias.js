@@ -6,18 +6,21 @@
 // injeta a saída no prompt.
 const fs = require('fs');
 const path = require('path');
+const { resolverRaiz } = require('../hooks/lib/raiz.cjs');
 
-const ROOT = process.env.RFM_ROOT || 'C:\\Projetos\\rainforest-mind';
-const ARQ = path.join(ROOT, 'ideias.jsonl');
+const PLUGIN = path.resolve(__dirname, '..');
+const { raiz: RAIZ_DADOS } = resolverRaiz({ plugin: PLUGIN });
+const ARQ = RAIZ_DADOS ? path.join(RAIZ_DADOS, 'ideias.jsonl') : null;
 const hoje = new Date();
 const dia = (d) => Math.round((Date.UTC(hoje.getFullYear(), hoje.getMonth(), hoje.getDate())
   - Date.parse(d + 'T00:00:00Z')) / 86400000);
 
 let linhas;
 try {
+  if (!ARQ) throw new Error('raiz de dados nao encontrada');
   linhas = fs.readFileSync(ARQ, 'utf8').split(/\r?\n/).filter((l) => l.trim()).map(JSON.parse);
 } catch (e) {
-  console.log('FALHA AO LER ' + ARQ + ': ' + e.message);
+  console.log('FALHA AO LER ' + (ARQ || 'ideias.jsonl (raiz nao resolvida)') + ': ' + e.message);
   console.log('Diga na mensagem que a apuracao falhou — nao invente numero.');
   process.exit(0);
 }
