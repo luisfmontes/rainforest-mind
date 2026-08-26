@@ -36,3 +36,7 @@ ideias.jsonl
 # Bytecode do Python, gerado ao rodar scripts/medir-injecao.py.
 __pycache__/
 *.pyc
+
+# Dado do usuario: mora em ~/.rainforest, nunca no repo (publico). Entrou aqui
+# uma vez em 2026-08-25, escrito por bateria cuja raiz caiu no fallback do plugin.
+ferramentas.jsonl
