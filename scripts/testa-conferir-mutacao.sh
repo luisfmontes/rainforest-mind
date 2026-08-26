@@ -122,11 +122,15 @@ cat > "$CAIXA/bateria-lenta-ou-falha.sh" <<'BAT'
 #!/bin/bash
 # Se o arquivo contiver ERRO-MUTACAO (adicionada pela mutacao),
 # sai quase instantaneamente com erro (simula corte de shell).
-# Senao, dorme 2 segundos (simula trabalho) e sai com sucesso.
+# Senao, dorme 5 segundos (simula trabalho) e sai com sucesso.
+#
+# Eram 2 segundos ate 2026-08-26. Subiu para 5 (#121) porque o caminho curto
+# precisa ficar abaixo de 10% do baseline: com 2 s a folga era 200 ms, e spawn de
+# bash + grep + exit sob carga passa disso. Com 5 s a folga e 500 ms.
 if grep -q 'ERRO-MUTACAO' shell-lento.cjs; then
   exit 1
 fi
-sleep 2
+sleep 5
 exit 0
 BAT
 
@@ -140,6 +144,63 @@ CHK(){ node "$SCRIPT" --raiz "$WCAIXA" "$@"; }
 # Toda chamada confere DUAS coisas: o exit code e a restauracao do fonte. A
 # restauracao entra aqui, e nao em um caso proprio, porque um fonte deixado
 # mutado envenena todos os casos seguintes — e no uso real envenena o commit.
+# --- casos que ainda dependem de relogio -------------------------------------
+# Os dois casos de ponta a ponta abaixo afirmam algo SOBRE TEMPO: um que o
+# baseline ficou acima do piso, outro que ficou abaixo. Quando a maquina esta
+# ocupada, o spawn de processo no Git Bash move a medida para o outro lado da
+# fronteira e a afirmacao do caso deixa de ter pre-condicao — ele nao falhou,
+# ele nao rodou. Reprovar ai e vermelho que nao aponta defeito nenhum, e vermelho
+# assim e como se aprende a ignorar vermelho (#121).
+#
+# Entao: ANUNCIA, com a duracao medida e o limite, e nao conta como falha. O que
+# a regra tem de fronteira ja esta provado no caso 9b, sem cronometro.
+#
+# O escape do anuncio esta fechado no fim do arquivo: pular OS DOIS na mesma
+# execucao reprova o placar.
+pulados_e2e=0
+# O veredito do pulo duplo mora numa funcao para poder ser PROVADO com um numero,
+# em vez de depender de a maquina estar ocupada na hora do teste. A primeira
+# versao deixava isto solto no fim do arquivo e a catraca recusou, com razao:
+# desligando a trava a bateria continuava verde, porque numa execucao normal
+# pulados_e2e e 0 e o ramo nunca era exercitado (#121).
+veredito_pulos() { [ "${1:-0}" -lt 2 ]; }
+# Le "Baseline: NNNN ms" da saida do conferir-mutacao.cjs. Vazio se nao achou.
+baseline_medido() { grep -oE 'Baseline: [0-9]+ ms' "$SAIDA" | grep -oE '[0-9]+' | head -1; }
+anuncia_pulo() {
+  pulados_e2e=$((pulados_e2e+1))
+  printf '  PULADO %s
+' "$1"
+  printf '         %s
+' "$2"
+  printf '         Isto NAO e falha: a pre-condicao de tempo do caso nao valeu.
+'
+  printf '         A fronteira da regra esta provada no caso 9b, sem cronometro.
+'
+}
+
+# Como o `exige`, mas para os dois casos e2e de tempo: se o exit veio diferente
+# do esperado E a duracao medida mostra que a pre-condicao do caso nao valeu,
+# ANUNCIA em vez de contar falha. Se a pre-condicao valeu, e falha de verdade.
+#   $3 = 'acima-do-piso' | 'abaixo-do-piso' — o que o caso PRECISA que tenha sido
+#        verdade para a afirmacao dele fazer sentido.
+exige_e2e(){
+  local esperado="$1" rotulo="$2" precisa="$3"; shift 3
+  "$@" > "$SAIDA" 2>&1
+  local got=$? base; base="$(baseline_medido)"
+  if [ "$got" -eq "$esperado" ]; then
+    ok=$((ok+1)); printf '  ok    %s (exit=%s, baseline=%sms)
+' "$rotulo" "$got" "${base:-?}"
+  elif [ -n "$base" ] && [ "$precisa" = 'acima-do-piso' ] && [ "$base" -lt 1000 ]; then
+    anuncia_pulo "$rotulo" "baseline medido ${base}ms, abaixo do piso de 1000ms — o caso precisa de baseline ACIMA"
+  elif [ -n "$base" ] && [ "$precisa" = 'abaixo-do-piso' ] && [ "$base" -ge 1000 ]; then
+    anuncia_pulo "$rotulo" "baseline medido ${base}ms, no piso de 1000ms ou acima — o caso precisa de baseline ABAIXO"
+  else
+    falhou=$((falhou+1)); printf '  FALHA %s: esperado exit=%s, veio exit=%s (baseline=%sms)
+' "$rotulo" "$esperado" "$got" "${base:-?}"
+    sed 's/^/        | /' "$SAIDA" | tail -6
+  fi
+}
+
 exige(){
   local esperado="$1" rotulo="$2"; shift 2
   "$@" > "$SAIDA" 2>&1
@@ -268,6 +329,49 @@ exige 1 "falta --bateria recusa" \
   CHK --arquivo fonte.cjs --de 'a' --para 'b'
 
 echo
+echo "== 9b. a fronteira do piso e da razao, sem cronometro nenhum =="
+# Estes casos chamam a decisao DIRETO, com numeros fixos. Existem porque os casos
+# 10 e 12 abaixo dependem de relogio de parede, e relogio sob carga move o
+# veredito: em 2026-08-26 duas varreduras da MESMA arvore deram placares
+# diferentes, uma com esta bateria vermelha e outra com zero vermelhas (#121).
+# Fronteira se prova com entrada. O que sobra de cronometro nos casos 10 e 12 e
+# so a prova de que o fio inteiro liga.
+# `cygpath -m` porque o node no Windows nao resolve caminho POSIX do Git Bash:
+# require('/c/...') sai `Cannot find module`. O -m devolve C:/... com barra
+# normal, que o node aceita e o bash nao estraga com escape.
+SCRIPT_WIN="$(cygpath -m "$SCRIPT")"
+puro() { node -e "process.stdout.write(String(require('$SCRIPT_WIN').suspeitaDeCorte($1, $2)))"; }
+igual_puro() {
+  local rotulo="$1" got="$2" want="$3"
+  if [ "$got" = "$want" ]; then ok=$((ok+1)); printf '  ok    %s
+' "$rotulo"
+  else falhou=$((falhou+1)); printf '  FALHA %s (esperava %s, veio %s)
+' "$rotulo" "$want" "$got"; fi
+}
+igual_puro "a fronteira do piso: 1000 dispara, 999 nao (999)" "$(puro 999 50)"    "false"
+igual_puro "a fronteira do piso: 1000 dispara, 999 nao (1000)" "$(puro 1000 99)"  "true"
+igual_puro "a fronteira da razao: 10% exato NAO dispara"       "$(puro 1000 100)" "false"
+igual_puro "a fronteira da razao: um abaixo de 10% dispara"    "$(puro 1000 99)"  "true"
+igual_puro "baseline longo, pos folgada: nao dispara"          "$(puro 5000 600)" "false"
+igual_puro "baseline longo, pos curtissima: dispara"           "$(puro 5000 499)" "true"
+igual_puro "pos igual ao baseline: nunca dispara"              "$(puro 5000 5000)" "false"
+igual_puro "baseline zero: nao dispara"                        "$(puro 0 0)"      "false"
+
+echo
+echo "== 9c. a trava do pulo duplo, provada com numero =="
+for n in 0 1; do
+  if veredito_pulos "$n"; then ok=$((ok+1)); printf '  ok    %s pulo(s) nao reprova
+' "$n"
+  else falhou=$((falhou+1)); printf '  FALHA %s pulo(s) reprovou e nao devia
+' "$n"; fi
+done
+for n in 2 3; do
+  if veredito_pulos "$n"; then falhou=$((falhou+1)); printf '  FALHA %s pulos passou e nao devia
+' "$n"
+  else ok=$((ok+1)); printf '  ok    %s pulos reprova
+' "$n"; fi
+done
+
 echo "== 10. suspeita de corte de shell: pós-mutação desproporcionalmente curta =="
 # Fixture que simula o defeito de 2026-08-24: baseline ~2s, pós-mutação morre em ~10ms
 cat > "$CAIXA/shell-lento.cjs" <<'FONTE'
@@ -280,7 +384,7 @@ cp "$CAIXA/shell-lento.cjs" "$S/shell-lento.pristino"
 exige 5 "pós-mutação curta demais (< 10% baseline) dispara exit=5" \
   CHK --arquivo shell-lento.cjs --de "console.log('ok');" \
       --para "console.log('ERRO-MUTACAO'); console.log('ok');" \
-      --bateria 'bash bateria-lenta-ou-falha.sh' --timeout 5000
+      --bateria 'bash bateria-lenta-ou-falha.sh' --timeout 15000
 tem "relata SUSPEITA DE CORTE DE SHELL" "SUSPEITA DE CORTE"
 tem "mostra as duas duracoes" "Baseline:"
 tem "diz como confirmar" "Confirme rodando"
@@ -369,6 +473,21 @@ else
 fi
 
 echo
+# O escape do anuncio se fecha aqui. Um caso e2e pulado e a maquina ocupada; os
+# DOIS pulados na mesma execucao e a maquina ocupada demais para essa medicao
+# significar alguma coisa, e isso tem de parar o placar — senao "anuncia em vez
+# de reprovar" vira "nunca reprova".
+if ! veredito_pulos "$pulados_e2e"; then
+  falhou=$((falhou+1))
+  printf '  FALHA os DOIS casos e2e de tempo foram pulados na mesma execucao
+'
+  printf '        a maquina estava ocupada demais para esta medicao valer — rode de novo com a maquina livre
+'
+else
+  ok=$((ok+1)); printf '  ok    pular os dois e2e na mesma execucao reprova (pulados=%s)
+' "$pulados_e2e"
+fi
+
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]
