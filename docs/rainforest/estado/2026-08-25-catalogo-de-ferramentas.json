@@ -10,7 +10,13 @@
     "em": "2026-08-25"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-08-25-catalogo-de-ferramentas.md",
+    "tarefas": 6,
+    "paralelas": [
+      1
+    ],
+    "em": "2026-08-25"
   },
   "executar": {
     "status": "pendente"
