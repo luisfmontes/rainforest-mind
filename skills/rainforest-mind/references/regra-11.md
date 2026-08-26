@@ -13,8 +13,10 @@ não alcança, e por isso continua escrito.
 sessão na branch padrão cria a branch primeiro. Vale principalmente pro
 **design**: ele nasce na branch do trabalho que desenha, e a `main` só o vê
 junto da implementação — ou nunca, se o trabalho morrer no meio, porque
-design órfão aponta pra nada. O worktree do agente nasce dessa branch, e é o
-hash dela que vai no briefing.
+design órfão aponta pra nada. O worktree do agente **não** nasce dessa
+branch — nasce na ponta de `origin/main`, e é o hash de `origin/main` no
+momento do despacho que vai no briefing, nunca o hash do commit que você
+acabou de fazer.
 
 **A branch tem dono, e "não é a `main`" não prova que é sua.** A forma binária
 (`main` proibida, "a branch de trabalho" certa) pressupõe uma sessão por
@@ -53,9 +55,21 @@ diretório, e a mensagem oferece `git worktree add` como saída.
 > novo na hora de sair — e é isso que faz a checagem valer antes do primeiro
 > commit, não depois.
 
-Isolamento não garante base certa: o worktree pode nascer do `main` ou de um
-commit **anterior ao trabalho do dia**, e o defeito é **intermitente** — não
-dá pra assumir base certa nem base velha.
+Isolamento não garante base certa: o worktree nasce na ponta de `origin/main`,
+não no commit de trabalho — isso não é defeito intermitente, é o
+comportamento do harness. O que varia é ONDE a ponta de `origin/main` estava
+quando o worktree nasceu: ela pode ter avançado depois que a janela principal
+mediu o hash, ou o worktree pode ter nascido antes de um commit que a janela
+principal já considerava feito. Não dá pra assumir que o hash informado no
+briefing e o hash real de nascimento do worktree são o mesmo.
+
+> 2026-08-23: esteira url-doutor-e-ata-em-audio do Sabiá, dois despachos com
+> `isolation:worktree` — os dois worktrees nasceram na ponta da main
+> (`7e77e21`), não na branch de trabalho commitada (`1033218`) informada no
+> briefing. Os dois agentes diagnosticaram a divergência e pararam sem editar,
+> do jeito que a regra manda — mas o hash informado é que estava errado, não o
+> agente. Custo: ~113k tokens de subagente, zero linha entregue, redespacho das
+> duas tarefas.
 
 > 2026-08-07: 3 de 3 worktrees nasceram velhos, o pior 7 commits atrás,
 > antes de existir a spec que o agente devia ler; mesclar teria revertido as
