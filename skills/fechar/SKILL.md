@@ -83,7 +83,9 @@ node scripts/conferir-versao.cjs
 ```
 
 `exit 0` segue; **`exit 2` para e sobe uma linha** para o usuário, com o número
-de commits acumulados e a recomendação de subir a versão. Não suba a versão por
+de commits acumulados e a recomendação de subir a versão — e **qual casa**: PATCH
+se o lote só consertou, MINOR se entrou coisa nova ou mudou contrato (a tabela
+está no `CONTRIBUTING.md`). Não suba a versão por
 conta própria — release é decisão dele, e o commit de bump é entrega própria.
 
 O motivo é que o plugin que **executa** não é o clone: é o cache

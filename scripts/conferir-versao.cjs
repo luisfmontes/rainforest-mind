@@ -151,7 +151,9 @@ function main() {
       `'claude plugin update' buscar, entao o trabalho fica na main e nao chega\n` +
       `na maquina de ninguem — inclusive na sua.\n\n` +
       `Suba a versao no ${MANIFESTO} (e o badge do README, que repete o numero),\n` +
-      `num commit proprio, e depois:\n` +
+      `num commit proprio. PATCH se o lote so consertou, MINOR se entrou coisa\n` +
+      `nova ou mudou contrato — a tabela esta no CONTRIBUTING.md. Depois:
+` +
       `  claude plugin marketplace update <marketplace>\n` +
       `Abra uma janela NOVA — o efeito nao alcanca as abertas.\n\n` +
       `Se o acumulo for proposital, o teto e ajustavel: --teto N.`

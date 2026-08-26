@@ -734,6 +734,11 @@ nova, e duas regras que este repo aprendeu do jeito caro:
   **mostra** no `/setup` e quem checa no `/saude`. A porta do meio é mecânica: uma
   lista só (`ARQUIVOS`, no `setup.cjs`) é lida por quem semeia e por quem mostra, e
   a bateria compara o disco com a saída, com mutação.
+- **o release é entrega própria, e o PATCH existe** — bump em commit próprio,
+  `PATCH` quando o lote só conserta e `MINOR` quando entra coisa nova ou muda
+  contrato. Até 2026-08-26 todo release foi MINOR e o PATCH nunca foi usado; o
+  número é o único sinal que diz se quem instala precisa reler isto aqui. Quem
+  mede o atraso é o `conferir-versao.cjs`, chamado pelo `fechar`.
 
 Está tudo em [`CONTRIBUTING.md`](CONTRIBUTING.md), com o incidente que originou cada
 item.
