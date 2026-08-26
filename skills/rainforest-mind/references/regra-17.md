@@ -35,3 +35,14 @@ reler o vivo, append de uma linha, conferir que a contagem subiu 1.
 **Enlace com regra 16:** antes de recomendar mudança em branch/worktree/fluxo,
 a regra 16 consulta este radar (sessoes.json). Paralelo ativo sai da rodada ou
 entra bloqueado.
+
+**Pergunta ampla ("o que fazemos hoje?") se responde no escopo DESTA sessão,
+nunca no do foco visto de fora.** Sinal barato para saber se esta sessão é a do
+foco, antes de investigar qualquer coisa: comparar o `cwd` desta sessão com o
+campo Projeto do `FOCO.md`. Divergindo, a pergunta ampla não puxa para dentro
+daqui o trabalho que outra janela está fazendo.
+
+> 2026-08-13: "o que propõe para fazermos hoje?", perguntado numa sessão em
+> `C:\Projetos\rainforest-mind`, recebeu uma proposta inteira do trabalho que
+> OUTRA janela fazia em outro repositório. O `FOCO.md` já dizia "sessão nessa
+> pasta = sessão do foco", e esta sessão não estava na pasta.

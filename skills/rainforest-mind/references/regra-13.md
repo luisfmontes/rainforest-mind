@@ -35,3 +35,27 @@ uma sessão inteira de prejuízo antes de alguém escrever. Mecânica adotada da
 task-observer, de Eoghan Henn (rebelytics.com, CC BY 4.0): o gatilho e o
 ciclo de revisão, **não** o log paralelo — aqui a observação mora no mesmo
 `ideias.jsonl`, um lugar só pra olhar.
+
+**Antes de gravar, decidir se a correção revelou MÉTODO ou FATO.** Correção de
+método (jeito de fazer que muda o futuro) vira observação aqui, com `ao_colher`
+de verdade. Fato durável sobre o ambiente (o que um serviço faz, não o que
+fazer sobre ele) não tem `ao_colher` real e não pertence ao `ideias.jsonl` — vai
+para a memória da sessão ou para o `CLAUDE.md` do repositório em questão. Teste
+de uma frase: existe ação futura que isso destrava? Não existindo, não é ideia.
+Episódio misto separa em dois registros, cada metade no seu lugar — nunca
+espremer o fato dentro de um `ao_colher` inventado para preencher o campo.
+
+> 2026-08-14: uma linha escrita à mão no `ideias.jsonl` misturava fato ("o REST
+> volta sozinho em até 2 min") com método ("checar o ciclo normal antes de
+> afirmar falha"). Convertê-la preservando as duas dentro de uma observação foi
+> tratar de FORMA um problema de CATEGORIA: o fato não pertencia ali em forma
+> nenhuma.
+
+**Observação prescrita três vezes sem `colhida_em` é sinal de trava ausente,
+não de disciplina fraca.** Registrar de novo o mesmo `ao_colher` não fecha o
+laço: se uma checagem barata já foi prescrita em duas observações anteriores e
+nenhuma foi colhida, a terceira repetição vira mecanismo verificável por
+máquina, não mais uma linha no arquivo. E observação de **método** — que vale em
+qualquer pasta — não se arquiva sob um projeto só: fica marcada como
+transversal, porque arquivá-la sob um projeto a esconde justamente das sessões
+onde ela precisa reaparecer.
