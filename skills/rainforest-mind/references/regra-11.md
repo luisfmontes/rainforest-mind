@@ -85,6 +85,24 @@ Por isso o primeiro comando é `git rev-parse --show-toplevel`, e ele tem que
 bater com o worktree do briefing **antes** de qualquer hash ser aceito. O
 `conferir-entrega.cjs` já checa nessa ordem; o briefing é que não checava.
 
+Essa mesma armadilha morde de novo em dois lugares que não são o despacho.
+Quando a **janela principal** audita um worktree depois de um abort: o diretório
+pode ter sido auto-removido e virado pasta fantasma sem `.git`, e `git -C` nela
+responde pelo **repositório pai** como se fosse a resposta certa. E quando um
+comando git roda **durante a integração** com o cwd errado: Bash e PowerShell
+compartilham o diretório de trabalho da sessão, então um `cd` numa ferramenta
+vaza para a outra, e comando sem `-C` explícito responde por onde a sessão está,
+não por onde você pensa que está.
+
+A defesa é a mesma nos dois: nunca aceitar o resultado de um comando git sem
+antes imprimir e conferir o toplevel — e a branch, na integração — contra o
+esperado. Auditando worktree que pode ter sido removido, use `git worktree list`
+(o diretório tem que aparecer) ou a branch órfã, que sobrevive à remoção do
+diretório; nunca `git -C <dir>` direto. Em checagem pós-integração, todo comando
+`git` ou `gh` leva caminho absoluto explícito (`-C`, ou `--repo` no `gh`), e o
+critério de pronto da checagem é ela ter impresso onde rodou, ao lado do
+resultado.
+
 > 2026-08-19: a conferência devolveu o hash esperado e estava errada — o
 > diretório não era repositório, e o hash "confirmado" era o do repo
 > principal. O worktree tinha sido auto-removido por estar inalterado (o
