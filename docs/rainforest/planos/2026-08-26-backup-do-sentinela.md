@@ -54,7 +54,11 @@ mutacao:
   para: um `return` antes dela, que nunca poda
   bateria: `bash scripts/testa-foco.sh`
   fixture: o caso "o rodizio do backup guarda no maximo o teto de copias" de `scripts/testa-foco.sh`
-pronto quando: com `RFM_ROOT` numa caixa contendo um `FOCO.md` de conteúdo conhecido, `node scripts/foco.cjs backup` cria `<caixa>/.foco-backups/foco-<timestamp>.md` **byte a byte igual** ao original (provado por `cmp`), rodar N+1 vezes deixa exatamente N arquivos com as **mais novas** preservadas (provado por `ls` e pela data no nome), rodar com o `FOCO.md` ausente sai diferente de zero dizendo qual arquivo não achou — e não cria diretório nenhum —, e `git check-ignore .foco-backups` confirma que o destino está ignorado
+pronto quando: com `RFM_ROOT` numa caixa contendo um `FOCO.md` de conteúdo conhecido, `node scripts/foco.cjs backup` cria `<caixa>/.foco-backups/foco-<timestamp>.md` **byte a byte igual** ao original (provado por `cmp`), rodar N+1 vezes deixa exatamente N arquivos com as **mais novas** preservadas (provado por `ls` e pela data no nome), rodar com o `FOCO.md` ausente sai diferente de zero dizendo qual arquivo não achou — e não cria diretório nenhum —, e `git check-ignore .foco-backups/qualquer.md` confirma que o destino está
+ignorado — o caminho tem de ser **de dentro** do diretório, porque padrão
+terminado em barra só casa diretório e o diretório pode não existir na hora da
+pergunta; a primeira redação deste critério dizia `.foco-backups` e fez a bateria
+da tarefa 2 acusar falha onde o `.gitignore` estava correto
 
 ### 3. O sentinela chama o backup, e a bateria prova que ele chama [tipo: implementar]
 atende: D4, D6
