@@ -14,7 +14,8 @@
     "em": "2026-08-26"
   },
   "executar": {
-    "status": "pendente"
+    "status": "pendente",
+    "catraca_mutacao": "2026-08-26"
   },
   "revisar": {
     "status": "pendente"
