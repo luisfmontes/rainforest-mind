@@ -109,6 +109,13 @@ O que sobra é evidência limpa nos dois sentidos, e ela aponta para o plugin:
   que pode conter caminho de máquina. Não foi medido nesta entrega, e merece
   issue própria.
 
+- **O caminho da bridge não é provado por execução.** Das quatro escritas de
+  erro, três são provocadas de verdade pela bateria; a quarta — `bridge nao
+  subiu apos 60s` — dorme 60 segundos por desenho, e fica coberta só pela
+  trava estática. A implementação é idêntica às outras três, mas idêntico não
+  é provado. Estava dito no cabeçalho da bateria e **não** aqui, que é o
+  contrato; a revisão apontou a diferença e ela está corrigida.
+
 - **Se algum `ERROS.md` já existe hoje na pasta de dados** de alguma máquina com
   `RFM_ROOT` definido, esta mudança o deixa órfão: as escritas passam para o
   plugin e o que estava lá para de crescer, sem ninguém avisar. Nesta máquina não
