@@ -423,6 +423,12 @@ Resumo; o **núcleo** vive em
 e a **elaboração** de cada regra em
 [`skills/rainforest-mind/references/regra-<n>.md`](skills/rainforest-mind/references).
 
+> Repare no nome: a pasta das regras é `references`, em inglês, três níveis
+> abaixo. A `referencias/` da **raiz** é outra coisa — notas externas, dois
+> arquivos — e é ela que aparece primeiro num `ls`. Quem procura "as
+> referências das regras" acha a de dois arquivos e conclui que não está no
+> repositório.
+
 | # | Regra | Em uma frase |
 |---|-------|--------------|
 | 1 | Responder tudo, na ordem | N perguntas recebem N respostas numeradas, na mensagem final; item resolvido sai e a lista renumera do 1. Níveis não compartilham glifo (`1.` → `a)` → `i.`), e **`Q` aberta se reescreve inteira todo turno** — no terminal, rolar a tela para trás não é caminho |
