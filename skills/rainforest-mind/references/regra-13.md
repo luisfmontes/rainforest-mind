@@ -56,6 +56,14 @@ não de disciplina fraca.** Registrar de novo o mesmo `ao_colher` não fecha o
 laço: se uma checagem barata já foi prescrita em duas observações anteriores e
 nenhuma foi colhida, a terceira repetição vira mecanismo verificável por
 máquina, não mais uma linha no arquivo. E observação de **método** — que vale em
-qualquer pasta — não se arquiva sob um projeto só: fica marcada como
-transversal, porque arquivá-la sob um projeto a esconde justamente das sessões
-onde ela precisa reaparecer.
+qualquer pasta — não se arquiva sob a pasta onde por acaso apareceu: `projeto` é
+campo obrigatório, e o valor para ela é `solta`, que é justamente o slug de
+ideia sem projeto. Arquivá-la sob um repositório a esconde das sessões onde ela
+precisa reaparecer, que são todas as outras.
+
+> 2026-08-26: uma revisão pegou este parágrafo prescrevendo "fica marcada como
+> transversal" — mecanismo que não existe em lugar nenhum do plugin. As saídas
+> possíveis eram registrar `transversal` como slug de projeto, poluindo o
+> vocabulário controlado, ou escrever o campo à mão, violando a linha 11 desta
+> mesma regra. Prescrição não vale por ser sensata: vale quando a ferramenta
+> real a executa.
