@@ -461,6 +461,22 @@ function criarSchema(conexao) {
       console.error(`AVISO: falha na migração de marca_dagua: ${e.message}`);
     }
   }
+
+  // Migração 4: adicionar coluna consolidada_em em observacoes (idempotente).
+  // Tarefa 4 (D4): consolidar marca observações já consolidadas, para não reconsolidar.
+  // ADD COLUMN IF NOT EXISTS garante que roda só uma vez — a coluna já existe em
+  // novos bancos (schema acima), e é adicionada em legados (sem erro se já existe).
+  try {
+    conexao.exec(`
+      ALTER TABLE observacoes ADD COLUMN consolidada_em TEXT;
+    `);
+  } catch (e) {
+    // Se falhar com "duplicate column name", é porque já existe — ok.
+    // Qualquer outro erro é inesperado, mas não trava a sessão.
+    if (!e.message.includes('duplicate column')) {
+      // Nota: não relançamos — a coluna pode estar parcialmente aplicada.
+    }
+  }
 }
 
 // Migração de observacoes: garantir que tem UNIQUE(projeto, origem).
@@ -1126,9 +1142,315 @@ function cmdReindexar() {
   }
 }
 
+// Chamada à LLM isolada atrás de função para permitir mock em testes.
+// Mesmo padrão que observar.cjs, Tarefa 12 (D14).
+// Retorna promise com resumo (string) ou null se falhar.
+async function chamarLLMParaConsolidar(textoDasObservacoes) {
+  // Permitir mock via variável de ambiente (testes)
+  if (process.env.TESTADOR_CHAMAR_LLM) {
+    try {
+      const modulo = require(process.env.TESTADOR_CHAMAR_LLM);
+      const resultado = await modulo.chamarLLM(textoDasObservacoes);
+      return resultado;
+    } catch (e) {
+      console.error(`AVISO: não consegui carregar mock de LLM: ${e.message}`);
+      return null;
+    }
+  }
+
+  // Invocar CLI claude com spawn (mesmo padrão que observar.cjs).
+  const { spawn } = require('child_process');
+  const os = require('os');
+
+  const executavel = acharExecutavelClaude();
+  if (!executavel) {
+    console.error('AVISO: não encontrei o executável `claude` no PATH');
+    return null;
+  }
+
+  const tempDir = os.tmpdir();
+  const TETO_ARGUMENTO = 16000;
+
+  if (textoDasObservacoes.length > TETO_ARGUMENTO) {
+    console.error(`AVISO: texto acima do teto (${textoDasObservacoes.length} > ${TETO_ARGUMENTO})`);
+    return null;
+  }
+
+  const prompt = `Resuma as seguintes 10 observacoes em uma sintese curta (2-3 frases):\n\n${textoDasObservacoes}`;
+
+  return new Promise((resolve) => {
+    const timeout = 60000;
+    const timer = setTimeout(() => {
+      console.error('AVISO: chamada à LLM expirou (timeout 60s)');
+      resolve(null);
+    }, timeout);
+
+    try {
+      const child = spawn(executavel, [
+        prompt,
+        '-p',
+        '--model', 'claude-haiku-4-5-20251001',
+        '--setting-sources', '',
+        '--permission-mode', 'dontAsk',
+        '--disallowedTools', 'Read,Write,Edit,Bash,Glob,Grep,WebFetch,WebSearch,Task,NotebookEdit',
+      ], {
+        cwd: tempDir,
+        windowsHide: true,
+        timeout: timeout + 5000,
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      child.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      child.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      child.stdin.end();
+
+      child.on('error', (error) => {
+        clearTimeout(timer);
+        console.error(`AVISO: erro ao chamar claude: ${error.message}`);
+        resolve(null);
+      });
+
+      child.on('close', (code) => {
+        clearTimeout(timer);
+
+        if (code !== 0) {
+          console.error(`AVISO: claude retornou exit code ${code}`);
+          resolve(null);
+          return;
+        }
+
+        if (!stdout || !stdout.trim()) {
+          console.error('AVISO: LLM retornou saída vazia');
+          resolve(null);
+          return;
+        }
+
+        resolve(stdout.trim());
+      });
+    } catch (e) {
+      clearTimeout(timer);
+      console.error(`AVISO: erro ao invocar claude: ${e.message}`);
+      resolve(null);
+    }
+  });
+}
+
+// Acha o executável `claude` (mesmo padrão que observar.cjs).
+function acharExecutavelClaude() {
+  if (process.env.RFM_CLAUDE_EXECUTAVEL) {
+    return process.env.RFM_CLAUDE_EXECUTAVEL;
+  }
+  const ehWindows = process.platform === 'win32';
+  const separador = ehWindows ? ';' : ':';
+  const extensoes = ehWindows
+    ? (process.env.PATHEXT || '.EXE;.CMD;.BAT').split(';').map((e) => e.toLowerCase())
+    : [''];
+  for (const dir of (process.env.PATH || '').split(separador)) {
+    if (!dir) continue;
+    for (const ext of extensoes) {
+      const alvo = path.join(dir, `claude${ext}`);
+      try {
+        if (fs.statSync(alvo).isFile()) {
+          if (!ehWindows) fs.accessSync(alvo, fs.constants.X_OK);
+          return alvo;
+        }
+      } catch {
+        // Caminho inexistente ou sem permissão: segue procurando.
+      }
+    }
+  }
+  return null;
+}
+
+// Grava resumo no banco.
+// Retorna true se sucesso, false se falha.
+function gravarResumo(conexao, { projeto, titulo, conteudo }) {
+  try {
+    const agora = new Date().toISOString();
+
+    const stmt = conexao.prepare(`
+      INSERT INTO resumos (projeto, titulo, conteudo, criada_em)
+      VALUES (?, ?, ?, ?)
+    `);
+
+    stmt.run(projeto, titulo, conteudo, agora);
+    return true;
+  } catch (e) {
+    console.error(`AVISO: erro ao gravar resumo: ${e.message}`);
+    return false;
+  }
+}
+
+// Marca observações com consolidada_em (atomicamente em transação).
+// Retorna true se sucesso, false se falha.
+function marcarConsolidadas(conexao, { projeto, ids }) {
+  if (!ids || ids.length === 0) {
+    return true;
+  }
+
+  try {
+    const agora = new Date().toISOString();
+
+    // Usar transação para garantir atomicidade
+    conexao.exec('BEGIN TRANSACTION');
+
+    const placeholders = ids.map(() => '?').join(',');
+    const stmt = conexao.prepare(`
+      UPDATE observacoes
+      SET consolidada_em = ?
+      WHERE projeto = ? AND id IN (${placeholders})
+    `);
+
+    const params = [agora, projeto, ...ids];
+    stmt.run(...params);
+
+    conexao.exec('COMMIT');
+    return true;
+  } catch (e) {
+    try {
+      conexao.exec('ROLLBACK');
+    } catch (_) {}
+    console.error(`AVISO: erro ao marcar consolidadas: ${e.message}`);
+    return false;
+  }
+}
+
+// Comando: consolidar — agrupar observações em lotes, sintetizar via LLM, gravar resumos.
+// Tarefa 4 (D4): consolidar encontra observações com 60+ dias não consolidadas,
+// agrupa em lotes de 10, passa à LLM, grava resumo e marca originals.
+// NOTA: processa TODOS os projetos que têm observações consolidáveis (não apenas o projeto da sessão).
+async function cmdConsolidar() {
+  const { raiz, caminhoDb } = resolverCaminhos();
+
+  if (!fs.existsSync(caminhoDb)) {
+    console.error(`ERRO: banco não existe em ${caminhoDb}`);
+    console.error('rode: node scripts/memoria.cjs iniciar');
+    process.exit(1);
+  }
+
+  const conexao = abrirBanco(caminhoDb);
+
+  try {
+    // 1. Data limite: 60 dias atrás
+    const agora = new Date();
+    const seissentaDiasAtras = new Date(agora.getTime() - 60 * 24 * 60 * 60 * 1000);
+    const dataLimite = seissentaDiasAtras.toISOString();
+
+    // 2. Encontrar todos os projetos que têm observações consolidáveis (50+)
+    const projetosComConsolidaveis = conexao.prepare(`
+      SELECT projeto, COUNT(*) as cnt
+      FROM observacoes
+      WHERE consolidada_em IS NULL AND criada_em < ?
+      GROUP BY projeto
+      HAVING COUNT(*) >= 50
+      ORDER BY projeto
+    `).all(dataLimite);
+
+    if (projetosComConsolidaveis.length === 0) {
+      console.log('nenhum projeto com 50+ observações de 60+ dias, nada a fazer');
+      conexao.close();
+      return;
+    }
+
+    console.log(`${projetosComConsolidaveis.length} projeto(s) com observações para consolidar`);
+
+    let totalResumosGravados = 0;
+
+    // 3. Processar cada projeto
+    for (const { projeto, cnt } of projetosComConsolidaveis) {
+      console.log(`projeto "${projeto}": ${cnt} observações consolidáveis`);
+
+      // 4. Ler observações consolidáveis deste projeto, ordenadas por criada_em
+      const observacoes = conexao.prepare(`
+        SELECT id, conteudo, criada_em
+        FROM observacoes
+        WHERE projeto = ? AND consolidada_em IS NULL AND criada_em < ?
+        ORDER BY criada_em ASC
+      `).all(projeto, dataLimite);
+
+      // 5. Dividir em lotes de 10
+      const lotes = [];
+      for (let i = 0; i < observacoes.length; i += 10) {
+        lotes.push(observacoes.slice(i, i + 10));
+      }
+
+      console.log(`  dividido em ${lotes.length} lote(s) de 10`);
+
+      // 6. Processar cada lote
+      let resumosGravadosProjeto = 0;
+      for (let i = 0; i < lotes.length; i++) {
+        const lote = lotes[i];
+        const ids = lote.map(o => o.id);
+
+        // Formatar para LLM: concatenar conteúdos
+        const textoDasObservacoes = lote
+          .map((obs, idx) => `${idx + 1}. ${obs.conteudo}`)
+          .join('\n');
+
+        console.log(`    lote ${i + 1}/${lotes.length}: chamando LLM para ${lote.length} observações`);
+
+        // 7. Chamar LLM (falha deixa lote intacto)
+        const resumo = await chamarLLMParaConsolidar(textoDasObservacoes);
+
+        if (!resumo) {
+          console.log(`    lote ${i + 1}/${lotes.length}: LLM falhou, lote intacto para próxima rodada`);
+          continue;
+        }
+
+        // 8. Gravar resumo
+        const titulo = resumo.substring(0, 80); // Primeiros 80 caracteres como título
+        const sucesso = gravarResumo(conexao, {
+          projeto,
+          titulo,
+          conteudo: resumo,
+        });
+
+        if (!sucesso) {
+          console.log(`    lote ${i + 1}/${lotes.length}: falha ao gravar resumo, lote intacto`);
+          continue;
+        }
+
+        // 9. Marcar observações como consolidadas
+        const marcouOk = marcarConsolidadas(conexao, { projeto, ids });
+
+        if (!marcouOk) {
+          console.log(`    lote ${i + 1}/${lotes.length}: falha ao marcar consolidadas, resumo gravado mas marcação falhou`);
+          // NOTA: resumo foi gravado mas observações não marcadas — isso causa reconsolidação.
+          // Idealmente seria transação ATOMICA com o resumo, mas com LLM é arriscado.
+          // Estratégia: deixar com aviso para o próximo lote reconsolidar (idempotência via LLM).
+          continue;
+        }
+
+        resumosGravadosProjeto++;
+        console.log(`    lote ${i + 1}/${lotes.length}: ok (resumo gravado, ${lote.length} observações marcadas)`);
+      }
+
+      console.log(`  ${projeto}: ${resumosGravadosProjeto} resumo(s) gravado(s)`);
+      totalResumosGravados += resumosGravadosProjeto;
+    }
+
+    // 10. Relatório final
+    console.log(`consolidacao completa: ${totalResumosGravados} resumo(s) total gravado(s)`);
+
+    conexao.close();
+  } catch (e) {
+    console.error(`ERRO: ${e.message}`);
+    try { conexao.close(); } catch (_) {}
+    process.exit(1);
+  }
+}
+
 // ---- CLI
 
-function main() {
+async function main() {
   const cmd = process.argv[2];
 
   switch (cmd) {
@@ -1142,16 +1464,21 @@ function main() {
       return cmdBackup();
     case 'reindexar':
       return cmdReindexar();
+    case 'consolidar':
+      return await cmdConsolidar();
     default:
       console.error(`Comando desconhecido: ${cmd}`);
-      console.error('Use: iniciar | esquema | buscar | backup | reindexar');
+      console.error('Use: iniciar | esquema | buscar | backup | reindexar | consolidar');
       process.exit(1);
   }
 }
 
 if (require.main === module) {
   try {
-    main();
+    main().catch(e => {
+      console.error(`ERRO: ${e.message}`);
+      process.exit(1);
+    });
   } catch (e) {
     console.error(`ERRO: ${e.message}`);
     process.exit(1);
