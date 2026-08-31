@@ -755,22 +755,24 @@ function main() {
     });
     if (upstreamReaberto) {
       const bloco_upstream = estado[upstreamReaberto];
+      const estagio_reprovador = bloco_upstream.reaberto_por.estagio;
+      const bloco_reprovador = estado[estagio_reprovador];
 
-      // Verificar teto de tentativas: se já foi reprovado TETO_TENTATIVAS vezes,
-      // recusa mandando subir a decisão. `liberado_em` destrava uma vez.
-      const tentativas = bloco_upstream.tentativas || 0;
-      const liberado = bloco_upstream.liberado_em;
+      // Verificar teto de tentativas: se o estágio que reprovou atingiu TETO_TENTATIVAS,
+      // recusa mandando subir a decisão. `liberado_em` no bloco do reprovador destrava uma vez.
+      const tentativas = (bloco_reprovador && bloco_reprovador.tentativas) || 0;
+      const liberado = bloco_reprovador && bloco_reprovador.liberado_em;
 
       if (tentativas >= TETO_TENTATIVAS && !liberado) {
         console.error(
-          `RECUSADO: '${upstreamReaberto}' foi reprovado ${tentativas} vez(es), ` +
+          `RECUSADO: '${estagio_reprovador}' foi reprovado ${tentativas} vez(es), ` +
           `atingindo o teto de ${TETO_TENTATIVAS}. Decisão em escalação.`
         );
         process.exit(2);
       }
 
       console.error(
-        `RECUSADO: '${upstreamReaberto}' foi reaberto por reprovação em '${bloco_upstream.reaberto_por.estagio}' ` +
+        `RECUSADO: '${upstreamReaberto}' foi reaberto por reprovação em '${estagio_reprovador}' ` +
         `(${bloco_upstream.reaberto_por.data}). Rode '${upstreamReaberto}' antes.`
       );
       process.exit(2);
