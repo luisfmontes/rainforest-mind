@@ -45,14 +45,19 @@ function lerProjetoMd(alvo, incluirHash = false) {
   const caminhoProjetoMd = path.join(alvo, "docs", "rainforest", "projeto.md");
   try {
     const conteudo = fs.readFileSync(caminhoProjetoMd, "utf8");
-    // Procura pelos marcadores do bloco de projeto
+    // Procura pelos marcadores do bloco de projeto. O gerador escreve cada marcador
+    // ocupando a LINHA INTEIRA — a âncora multiline espelha isso: prosa que mencione
+    // o marcador no meio de uma frase nunca casa, e o fim considerado é o primeiro
+    // APÓS o início (tarefa 22, mesma família das 19 e 21).
     const marcadorInicio = "<!-- rainforest-mind:projeto:inicio -->";
     const marcadorFim = "<!-- rainforest-mind:projeto:fim -->";
-    const idxInicio = conteudo.indexOf(marcadorInicio);
-    const idxFim = conteudo.indexOf(marcadorFim);
-    if (idxInicio >= 0 && idxFim >= 0 && idxFim > idxInicio) {
+    const inicioMatch = conteudo.match(/^<!-- rainforest-mind:projeto:inicio -->\r?$/m);
+    const reFim = /^<!-- rainforest-mind:projeto:fim -->\r?$/gm;
+    if (inicioMatch) reFim.lastIndex = inicioMatch.index;
+    const fimMatch = inicioMatch ? reFim.exec(conteudo) : null;
+    if (inicioMatch && fimMatch) {
       // Extrai o bloco completo incluindo os marcadores
-      let bloco = conteudo.slice(idxInicio, idxFim + marcadorFim.length);
+      let bloco = conteudo.slice(inicioMatch.index, fimMatch.index + marcadorFim.length);
 
       // Se precisar incluir hash, substitui o marcador de início
       if (incluirHash) {
