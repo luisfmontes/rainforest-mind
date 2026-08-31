@@ -20,8 +20,12 @@
     "em": "2026-08-30"
   },
   "executar": {
-    "status": "pendente",
-    "catraca_mutacao": "2026-08-30"
+    "status": "parcial",
+    "catraca_mutacao": "2026-08-30",
+    "tarefas_ok": 1,
+    "tarefas": 4,
+    "nota": "T1 integrada por extracao dos 2 arquivos em escopo (a branch do agente deletava os 25 estados do projeto — nao mergeada); 1 devolucao antes: anistia inventada, bypass sem --json, 6 casos quebrados ditos pre-existentes; catraca re-rodada exit 0, vermelho no caso da fixture do plano",
+    "em": "2026-08-30"
   },
   "revisar": {
     "status": "pendente"
