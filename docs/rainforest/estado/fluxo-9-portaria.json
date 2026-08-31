@@ -1,0 +1,45 @@
+{
+  "slug": "fluxo-9-portaria",
+  "titulo": "Fluxo 9 — Portaria: admissão de subagente por manifesto",
+  "criado_em": "2026-08-30",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/fluxo-9-design-portaria.md",
+    "decisoes": {
+      "Q1": "hook registrado em .claude/settings.json versionado do repo",
+      "Q2": "fail-closed: sem estagio ativo nega com motivo instrutivo",
+      "Q3": "formato do payload do Task resolvido no executar — amostra real gravada em .rainforest/portaria/amostra.json e parser fixado nela"
+    },
+    "aprovado_por": "Luis, 2026-08-31, nas recomendadas do design",
+    "em": "2026-08-30"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/fluxo-9-portaria.md",
+    "tarefas": 9,
+    "paralelas": [
+      1,
+      2,
+      7
+    ],
+    "decisoes": {
+      "achado-2": "Opcao A fechada pelo Luis em 2026-08-31: fail-closed literal; o hook so e registrado na main com aceite por escrito do bloqueio de executor/documentador/resolvedor-de-build/tester, ou quando escreve:true com worktree existir. Tarefa 9 trava nessa pre-condicao."
+    },
+    "em": "2026-08-30"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
