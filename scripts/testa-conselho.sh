@@ -904,6 +904,275 @@ else
 fi
 
 echo ""
+echo "== CASO 15: parecer-sem-objecao-reprova-citando-membro =="
+TEMPDIR15="$RAIZ/test-parecer-sem-objecao"
+mkdir -p "$TEMPDIR15/.rainforest/conselho"
+
+# Create minimal membros.json
+cat > "$TEMPDIR15/.rainforest/conselho/membros.json" << 'EOF'
+{
+  "membros": [
+    {"nome": "cetico", "cmd": "cat '$FIXTURE_DIR/membro-sem-objecao.cjs' > {saida}", "ligado": true},
+    {"nome": "arquiteto", "cmd": "cat '$FIXTURE_DIR/membro-ok.cjs' > {saida}", "ligado": true},
+    {"nome": "usuario-final", "cmd": "cat '$FIXTURE_DIR/membro-ok.cjs' > {saida}", "ligado": true}
+  ]
+}
+EOF
+
+echo "# Questão de teste" > "$TEMPDIR15/questao.md"
+
+# Use fixture directory via environment
+FIXTURE_DIR="$SRC_M/scripts/fixtures/conselho"
+
+# Manually open a rodada
+bash -c "cd '$TEMPDIR15' && RFM_ESTADO_ROOT='$TEMPDIR15' node '$CONSELHO' abrir --questao questao.md" 2>/dev/null
+
+# Create specific parecer files
+RODADA_DIR15=$(ls -1d "$TEMPDIR15/.rainforest/conselho/202"* 2>/dev/null | head -1)
+if [ -n "$RODADA_DIR15" ]; then
+  # cetico with objecoes: []
+  cat > "$RODADA_DIR15/parecer-cetico.json" << 'EOF'
+{"posicao": "A", "argumentos": ["Arg 1"], "objecoes": [], "riscos": []}
+EOF
+  # arquiteto with objecoes: [obj]
+  cat > "$RODADA_DIR15/parecer-arquiteto.json" << 'EOF'
+{"posicao": "A", "argumentos": ["Arg 1"], "objecoes": ["Objecao 1"], "riscos": []}
+EOF
+  # usuario-final with objecoes: [obj]
+  cat > "$RODADA_DIR15/parecer-usuario-final.json" << 'EOF'
+{"posicao": "A", "argumentos": ["Arg 1"], "objecoes": ["Objecao 1"], "riscos": []}
+EOF
+
+  # Run conferir - should fail with cetico cited
+  saida=$(bash -c "cd '$TEMPDIR15' && RFM_ESTADO_ROOT='$TEMPDIR15' node '$CONSELHO' conferir --fase pareceres" 2>&1)
+  exit_code=$?
+
+  if [ "$exit_code" != "0" ]; then
+    ok=$((ok + 1))
+    echo "  ok   parecer sem objeção: exit != 0"
+
+    # Check that cetico is cited in output
+    if echo "$saida" | grep -q "cetico"; then
+      ok=$((ok + 1))
+      echo "  ok   mensagem cita membro cetico"
+    else
+      falhou=$((falhou + 1))
+      echo "  FALHA mensagem deveria citar cetico"
+      echo "$saida" | sed 's/^/         /'
+    fi
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA conferir deveria ter saído com erro para parecer sem objeção"
+  fi
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA não conseguiu encontrar diretório de rodada"
+fi
+
+echo ""
+echo "== CASO 16: sintese-invalida-reprova =="
+TEMPDIR16="$RAIZ/test-sintese-invalida"
+mkdir -p "$TEMPDIR16/.rainforest/conselho"
+
+# Create minimal membros.json
+cat > "$TEMPDIR16/.rainforest/conselho/membros.json" << 'EOF'
+{
+  "membros": [
+    {"nome": "cetico", "cmd": "cat '$FIXTURE_DIR/membro-ok.cjs' > {saida}", "ligado": true},
+    {"nome": "arquiteto", "cmd": "cat '$FIXTURE_DIR/membro-ok.cjs' > {saida}", "ligado": true},
+    {"nome": "usuario-final", "cmd": "cat '$FIXTURE_DIR/membro-ok.cjs' > {saida}", "ligado": true}
+  ]
+}
+EOF
+
+echo "# Questão de teste" > "$TEMPDIR16/questao.md"
+
+# Manually open a rodada
+bash -c "cd '$TEMPDIR16' && RFM_ESTADO_ROOT='$TEMPDIR16' node '$CONSELHO' abrir --questao questao.md" 2>/dev/null
+
+RODADA_DIR16=$(ls -1d "$TEMPDIR16/.rainforest/conselho/202"* 2>/dev/null | head -1)
+if [ -n "$RODADA_DIR16" ]; then
+  # Create INVALID sintese.json (missing ranking_agregado)
+  cat > "$RODADA_DIR16/sintese.json" << 'EOF'
+{"decisao_recomendada": "A", "fundamentos": ["F1"], "divergencias_nao_resolvidas": ["D1"]}
+EOF
+
+  # Run conferir --fase sintese - should fail pointing to missing field
+  saida=$(bash -c "cd '$TEMPDIR16' && RFM_ESTADO_ROOT='$TEMPDIR16' node '$CONSELHO' conferir --fase sintese" 2>&1)
+  exit_code=$?
+
+  if [ "$exit_code" != "0" ]; then
+    ok=$((ok + 1))
+    echo "  ok   sintese inválida: exit != 0"
+
+    # Check that error mentions ranking_agregado
+    if echo "$saida" | grep -q "ranking_agregado"; then
+      ok=$((ok + 1))
+      echo "  ok   mensagem aponta campo ranking_agregado"
+    else
+      falhou=$((falhou + 1))
+      echo "  FALHA mensagem deveria apontar ranking_agregado"
+      echo "$saida" | sed 's/^/         /'
+    fi
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA conferir deveria ter saído com erro para sintese inválida"
+  fi
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA não conseguiu encontrar diretório de rodada"
+fi
+
+echo ""
+echo "== CASO 17: terceira-reprovacao-abandona =="
+TEMPDIR17="$RAIZ/test-terceira-reprova"
+mkdir -p "$TEMPDIR17/.rainforest/conselho"
+
+# Create minimal membros.json
+cat > "$TEMPDIR17/.rainforest/conselho/membros.json" << 'EOF'
+{
+  "membros": [
+    {"nome": "cetico", "cmd": "echo bad", "ligado": true},
+    {"nome": "arquiteto", "cmd": "echo bad", "ligado": true},
+    {"nome": "usuario-final", "cmd": "echo bad", "ligado": true}
+  ]
+}
+EOF
+
+echo "# Questão de teste" > "$TEMPDIR17/questao.md"
+
+# Manually open a rodada
+bash -c "cd '$TEMPDIR17' && RFM_ESTADO_ROOT='$TEMPDIR17' node '$CONSELHO' abrir --questao questao.md" 2>/dev/null
+
+RODADA_DIR17=$(ls -1d "$TEMPDIR17/.rainforest/conselho/202"* 2>/dev/null | head -1)
+if [ -n "$RODADA_DIR17" ]; then
+  # Create invalid pareceres (empty JSON files)
+  echo "{}" > "$RODADA_DIR17/parecer-cetico.json"
+  echo "{}" > "$RODADA_DIR17/parecer-arquiteto.json"
+  echo "{}" > "$RODADA_DIR17/parecer-usuario-final.json"
+
+  # First conferir - should fail (tentativa = 1)
+  bash -c "cd '$TEMPDIR17' && RFM_ESTADO_ROOT='$TEMPDIR17' node '$CONSELHO' conferir --fase pareceres" 2>/dev/null
+  TENTATIVA_1=$?
+
+  # Check estado after first failure
+  if [ -f "$RODADA_DIR17/estado.json" ]; then
+    RESULTADO_1=$(grep -o '"resultado"' "$RODADA_DIR17/estado.json" 2>/dev/null || echo "")
+    if [ -z "$RESULTADO_1" ]; then
+      ok=$((ok + 1))
+      echo "  ok   após 1ª reprovação: sem ABANDONA"
+    else
+      falhou=$((falhou + 1))
+      echo "  FALHA após 1ª reprovação: não deveria ter ABANDONA"
+    fi
+  fi
+
+  # Second conferir - should fail (tentativa = 2)
+  bash -c "cd '$TEMPDIR17' && RFM_ESTADO_ROOT='$TEMPDIR17' node '$CONSELHO' conferir --fase pareceres" 2>/dev/null
+  TENTATIVA_2=$?
+
+  # Check estado after second failure
+  if [ -f "$RODADA_DIR17/estado.json" ]; then
+    RESULTADO_2=$(grep -o '"resultado"' "$RODADA_DIR17/estado.json" 2>/dev/null || echo "")
+    if [ -z "$RESULTADO_2" ]; then
+      ok=$((ok + 1))
+      echo "  ok   após 2ª reprovação: sem ABANDONA"
+    else
+      falhou=$((falhou + 1))
+      echo "  FALHA após 2ª reprovação: não deveria ter ABANDONA"
+    fi
+  fi
+
+  # Third conferir - should fail (tentativa = 3, ABANDONA!)
+  bash -c "cd '$TEMPDIR17' && RFM_ESTADO_ROOT='$TEMPDIR17' node '$CONSELHO' conferir --fase pareceres" 2>/dev/null
+  TENTATIVA_3=$?
+
+  # Check estado after third failure
+  if [ -f "$RODADA_DIR17/estado.json" ]; then
+    RESULTADO_3=$(grep '"resultado"' "$RODADA_DIR17/estado.json" 2>/dev/null || echo "")
+    if echo "$RESULTADO_3" | grep -q "ABANDONA"; then
+      ok=$((ok + 1))
+      echo "  ok   após 3ª reprovação: ABANDONA registrado"
+    else
+      falhou=$((falhou + 1))
+      echo "  FALHA após 3ª reprovação: deveria ter ABANDONA"
+      cat "$RODADA_DIR17/estado.json" | sed 's/^/         /'
+    fi
+  fi
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA não conseguiu encontrar diretório de rodada"
+fi
+
+echo ""
+echo "== CASO 18: sucesso-zera-contador =="
+TEMPDIR18="$RAIZ/test-sucesso-zera"
+mkdir -p "$TEMPDIR18/.rainforest/conselho"
+
+# Create minimal membros.json
+cat > "$TEMPDIR18/.rainforest/conselho/membros.json" << 'EOF'
+{
+  "membros": [
+    {"nome": "cetico", "cmd": "cat '$FIXTURE_DIR/membro-ok.cjs' > {saida}", "ligado": true},
+    {"nome": "arquiteto", "cmd": "cat '$FIXTURE_DIR/membro-ok.cjs' > {saida}", "ligado": true},
+    {"nome": "usuario-final", "cmd": "cat '$FIXTURE_DIR/membro-ok.cjs' > {saida}", "ligado": true}
+  ]
+}
+EOF
+
+echo "# Questão de teste" > "$TEMPDIR18/questao.md"
+
+# Manually open a rodada
+bash -c "cd '$TEMPDIR18' && RFM_ESTADO_ROOT='$TEMPDIR18' node '$CONSELHO' abrir --questao questao.md" 2>/dev/null
+
+RODADA_DIR18=$(ls -1d "$TEMPDIR18/.rainforest/conselho/202"* 2>/dev/null | head -1)
+if [ -n "$RODADA_DIR18" ]; then
+  # Create invalid pareceres to cause first failure
+  echo "{}" > "$RODADA_DIR18/parecer-cetico.json"
+  echo "{}" > "$RODADA_DIR18/parecer-arquiteto.json"
+  echo "{}" > "$RODADA_DIR18/parecer-usuario-final.json"
+
+  # First conferir - should fail (tentativa = 1)
+  bash -c "cd '$TEMPDIR18' && RFM_ESTADO_ROOT='$TEMPDIR18' node '$CONSELHO' conferir --fase pareceres" 2>/dev/null
+
+  # Now fix the pareceres - create valid ones
+  cat > "$RODADA_DIR18/parecer-cetico.json" << 'EOF'
+{"posicao": "A", "argumentos": ["Arg 1"], "objecoes": ["Obj 1"], "riscos": []}
+EOF
+  cat > "$RODADA_DIR18/parecer-arquiteto.json" << 'EOF'
+{"posicao": "A", "argumentos": ["Arg 1"], "objecoes": ["Obj 1"], "riscos": []}
+EOF
+  cat > "$RODADA_DIR18/parecer-usuario-final.json" << 'EOF'
+{"posicao": "A", "argumentos": ["Arg 1"], "objecoes": ["Obj 1"], "riscos": []}
+EOF
+
+  # Second conferir - should succeed and ZERO the counter
+  bash -c "cd '$TEMPDIR18' && RFM_ESTADO_ROOT='$TEMPDIR18' node '$CONSELHO' conferir --fase pareceres" 2>/dev/null
+  RESULTADO=$?
+
+  if [ "$RESULTADO" = "0" ]; then
+    # Check that tentativa was reset to 0
+    if [ -f "$RODADA_DIR18/estado.json" ]; then
+      TENTATIVA=$(grep -o '"pareceres": 0' "$RODADA_DIR18/estado.json" 2>/dev/null || echo "")
+      if [ -n "$TENTATIVA" ]; then
+        ok=$((ok + 1))
+        echo "  ok   após sucesso: tentativa zerada para 0"
+      else
+        falhou=$((falhou + 1))
+        echo "  FALHA após sucesso: tentativa deveria estar zerada"
+        cat "$RODADA_DIR18/estado.json" | sed 's/^/         /'
+      fi
+    fi
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA conferir deveria ter saído com sucesso"
+  fi
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA não conseguiu encontrar diretório de rodada"
+fi
+
+echo ""
 echo "== Resultado =="
 echo "total=$((ok + falhou)) vermelhas:[$falhou]"
 if [ "$falhou" -gt 0 ]; then
