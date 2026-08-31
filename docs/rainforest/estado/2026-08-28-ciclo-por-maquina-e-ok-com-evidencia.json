@@ -26,8 +26,8 @@
     "tarefas": 4,
     "nota": "T3 integrada apos 2 devolucoes (catraca exit 2 lida como sucesso; teto que nunca rodava no estagio exigido — bug achado pela integracao); fronteira 2/3 e liberar verificados em sandbox pela integracao; relato final tinha git-show fabricado, artefato real conferido ok",
     "em": "2026-08-30",
-    "comando": "bash scripts/testa-estado.sh && node scripts/conferir-mutacao.cjs (4x, um --de por tarefa, re-rodados pela integracao em cada worktree)",
-    "saida": "== resultado: 128 ok, 0 falhas == | mutacao T1/T2/T3/T4: 'ok: bateria VERMELHA com o comportamento invertido (exit 1)' nas 4, exit 0",
+    "comando": "bash scripts/testa-estado.sh (pos-conserto da revisao) + conferir-mutacao T2/T3 re-rodados",
+    "saida": "== resultado: 137 ok, 0 falhas == | T2 e T3: 'A bateria sabe falhar' exit 0",
     "mutacao": [
       {
         "tarefa": 1,
@@ -52,14 +52,20 @@
     ]
   },
   "revisar": {
-    "status": "pendente",
+    "status": "reprovado",
     "snapshot": {
       "head": "c40f031ca27d3e61e48713b63b483cfaadd697a9",
       "caminhos_sujos": [
         "relatorios/2026-08-28-batedor-repos.md",
         "vigias/ERROS.md"
       ]
-    }
+    },
+    "criterio": "invariante do plano: arqueologia e limpar nunca bloqueiam",
+    "comando": "node scripts/estado.cjs exigir --slug repro --estagio limpar (com executar.reaberto_por presente)",
+    "saida": "RECUSADO: 'executar' foi reaberto por reprovacao em 'verificar' — exit 2",
+    "faltou": "condicionar a checagem de reaberto_por/teto a EXECUCAO.includes(estagio); avisos: liberado_em nunca expira (re-armar no proximo reprovado) e auto-reprovacao de executar perde reaberto_por com mensagem falsa",
+    "em": "2026-08-30",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"

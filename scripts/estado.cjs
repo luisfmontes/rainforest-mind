@@ -790,19 +790,24 @@ function main() {
     // Verificar se há algum estágio de execução com reaberto_por preenchido
     // DIFERENTE do estágio sendo exigido. O próprio estágio reaberto PASSA aqui —
     // é o caminho de volta. A recusa vale só quando tentar exigir outro estágio
-    // enquanto há upstream reaberto pendente.
-    const upstreamReaberto = EXECUCAO.find((e) => {
-      if (e === estagio) return false; // permite exigir do próprio reaberto
-      const bloco = estado[e] || {};
-      return bloco.reaberto_por;
-    });
-    if (upstreamReaberto) {
-      const bloco_upstream = estado[upstreamReaberto];
-      console.error(
-        `RECUSADO: '${upstreamReaberto}' foi reaberto por reprovação em '${bloco_upstream.reaberto_por.estagio}' ` +
-        `(${bloco_upstream.reaberto_por.data}). Rode '${upstreamReaberto}' antes.`
-      );
-      process.exit(2);
+    // DE EXECUÇÃO enquanto há upstream reaberto pendente: `arqueologia`, `limpar`,
+    // `design` e `plano` nunca são bloqueados por reprovação alheia (invariante do
+    // plano do ciclo-por-máquina, pego por revisão em 2026-08-31 — a primeira
+    // versão vazava a recusa para todo estágio de PRE_REQUISITOS).
+    if (EXECUCAO.includes(estagio)) {
+      const upstreamReaberto = EXECUCAO.find((e) => {
+        if (e === estagio) return false; // permite exigir do próprio reaberto
+        const bloco = estado[e] || {};
+        return bloco.reaberto_por;
+      });
+      if (upstreamReaberto) {
+        const bloco_upstream = estado[upstreamReaberto];
+        console.error(
+          `RECUSADO: '${upstreamReaberto}' foi reaberto por reprovação em '${bloco_upstream.reaberto_por.estagio}' ` +
+          `(${bloco_upstream.reaberto_por.data}). Rode '${upstreamReaberto}' antes.`
+        );
+        process.exit(2);
+      }
     }
 
     const falta = faltando(estado, estagio);
@@ -925,9 +930,18 @@ function main() {
     if (status === 'reprovado') {
       // Incrementar tentativas no bloco do estágio sendo reprovado, preservando valor anterior
       blocoNovo.tentativas = (blocoNovo.tentativas || 0) + 1;
-      const upstream_reaberto = rebaixarUpstream(estado, estagio);
-      if (upstream_reaberto) {
-        console.log(`upstream '${upstream_reaberto}' reaberto por reprovação`);
+      // `liberar` destrava UMA rodada: a reprovação seguinte re-arma o teto.
+      // Sem isto, um liberar desarmava o teto para sempre (achado de revisão,
+      // 2026-08-31) e o loop podia reprovar indefinidamente sem subir decisão.
+      delete blocoNovo.liberado_em;
+      // Auto-reprovação (reprovar o próprio `executar`) não rebaixa ninguém: o
+      // rebaixamento seria sobrescrito por `estado[estagio] = blocoNovo` logo
+      // abaixo, gravando mensagem de sucesso sem efeito (achado de revisão).
+      if (upstreamImediato(estagio) !== estagio) {
+        const upstream_reaberto = rebaixarUpstream(estado, estagio);
+        if (upstream_reaberto) {
+          console.log(`upstream '${upstream_reaberto}' reaberto por reprovação`);
+        }
       }
     }
     // Limpar tentativas e liberado_em quando fecha com ok
