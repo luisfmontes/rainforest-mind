@@ -450,5 +450,58 @@ else
 fi
 
 echo
+echo "== (k) executa cada linha do bloco de exemplos de skills/ponte/SKILL.md =="
+REPO_K="$CAIXA/repo-k"
+mkdir -p "$REPO_K/.github/workflows"
+cat > "$REPO_K/package.json" <<'EOF'
+{
+  "name": "teste-k",
+  "scripts": {
+    "test": "npm test"
+  }
+}
+EOF
+cat > "$REPO_K/.github/workflows/ci.yml" <<'EOF'
+name: CI
+on: [push]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+EOF
+mkdir -p "$REPO_K/src"
+
+REPO_K_WIN="$(cygpath -m "$REPO_K" 2>/dev/null || printf '%s' "$REPO_K")"
+
+# Extrai o bloco shell-node-ponte-exemplos do SKILL.md
+SKILL_PONTE_FULL="$SRC/skills/ponte/SKILL.md"
+BLOCOS=$(sed -n '/```shell-node-ponte-exemplos/,/```/p' "$SKILL_PONTE_FULL" | sed '1d;$d' | grep -v '^#' | grep -v '^$')
+
+# Cria arquivo JSON de respostas
+RESPOSTAS_K="$CAIXA/respostas-k.json"
+cat > "$RESPOSTAS_K" <<'EOF'
+{
+  "pronto": "Testes passam",
+  "nao_toca": "Dependências",
+  "convencao": "Português",
+  "revisao": "Uma aprovação"
+}
+EOF
+RESPOSTAS_K_WIN="$(cygpath -m "$RESPOSTAS_K" 2>/dev/null || printf '%s' "$RESPOSTAS_K")"
+
+# Substitui placeholders e executa cada linha
+while IFS= read -r linha; do
+  # Ignora linhas vazias e comentários
+  [[ -z "$linha" || "$linha" =~ ^# ]] && continue
+
+  # Substitui placeholders
+  cmd=$(echo "$linha" | sed "s|/tmp/repo-exemplo|$REPO_K_WIN|g" | sed "s|/tmp/respostas.json|$RESPOSTAS_K_WIN|g")
+
+  if bash -c "$cmd" >/dev/null 2>&1; then
+    ok=$((ok+1)); echo "  ok   $cmd"
+  else
+    falhou=$((falhou+1)); echo "  FALHA $cmd"; fi
+done <<< "$BLOCOS"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
