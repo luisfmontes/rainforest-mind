@@ -24,14 +24,14 @@
     "em": "2026-08-31"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-08-31",
-    "tarefas_ok": 14,
-    "tarefas": 14,
-    "nota": "rodada 2 apos reprovacao: emendas 11-14 (E1-E4 da revisao) integradas no merge bc3cae7. 11: frase do setup.cjs incondicional — bloco gerado pelo codigo do 21266f79 volta a CONFERIDO exit 0 no checker novo. 12: sanitizarRespostas remove marcadores projeto:inicio/fim. 13: conferir-ponte usa lerProjetoMd do modulo (grep=3). 14: SKILL.md:102 descreve # Bloco do projeto. Creep removido (hooks/portaria.cjs, eda10c3). T1-T10 da rodada 1 preservadas no ledger.",
+    "tarefas_ok": 17,
+    "tarefas": 17,
+    "nota": "rodada 3: tarefas 15-17 integradas (merge 88df117). 15: resposta nao-string e recusada com erro (repro da rodada 2 agora sai exit 1 sem gravar) + validarMarcadoresProjetMd aborta com marcador duplicado. 16: path.resolve no lugar do regex de drive — caminho relativo agora CONFERIDO exit 0 (repro confirmada). 17: createHash zerado nos dois scripts, hashDoArquivo do modulo, caso 5.6 fixa 16 chars. Ripple emendado no plano (testa-ponte.sh na tarefa 17). Redespacho por worktree de base errada (21266f7) que sumiu apos o spawn — gate segurou, ff-only autorizado resolveu.",
     "em": "2026-08-31",
-    "comando": "baterias na arvore integrada + conferir-mutacao re-rodado pela integracao + conferir-entrega APROVADO",
-    "saida": "ponte 50/0, conferir-ponte 5/5, entrevista 54/0, integracoes 5/0, setup 59/0, saude 47/0; mutacoes 11/12/13 exit 0",
+    "comando": "baterias na arvore integrada + conferir-mutacao 15/16/17 re-rodado pela integracao + conferir-entrega APROVADO + repros dos 2 criticos da rodada 2 re-executadas",
+    "saida": "ponte 53/0, conferir-ponte 5/5, entrevista 61/0, integracoes 5/0, setup 59/0, saude 47/0; mutacoes 15/16/17 exit 0; array adversarial exit 1 sem gravar; caminho relativo CONFERIDO exit 0",
     "mutacao": [
       {
         "tarefa": 1,
@@ -102,12 +102,23 @@
         "tarefa": 14,
         "resultado": "n/a",
         "motivo": "docs; grep nos dois arquivos batendo"
+      },
+      {
+        "tarefa": 15,
+        "resultado": "vermelho",
+        "fixture": "caso (m) resposta que nao e string e recusada de testa-ponte-entrevista.sh"
+      },
+      {
+        "tarefa": 16,
+        "resultado": "vermelho",
+        "fixture": "caso (n) caminho relativo devolve mesmo veredito do absoluto de testa-ponte-entrevista.sh"
+      },
+      {
+        "tarefa": 17,
+        "resultado": "vermelho",
+        "fixture": "casos 5.5/5.6 hash unificado e 16 chars de testa-ponte.sh"
       }
-    ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-08-31"
-    }
+    ]
   },
   "revisar": {
     "status": "reprovado",
