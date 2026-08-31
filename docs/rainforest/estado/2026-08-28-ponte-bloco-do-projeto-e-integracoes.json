@@ -161,25 +161,28 @@
     ]
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "7025bd677bd1cd4efb4ee9f37deee6e4370b32c5",
+      "head": "0c375cd1314c035af459787c70ec3d56fc35129a",
       "caminhos_sujos": [
         "relatorios/2026-08-28-batedor-repos.md",
         "relatorios/2026-08-31-handover-fluxo-11-conselho.md",
         "vigias/ERROS.md"
       ]
     },
-    "achados": 2,
+    "achados": 0,
     "criticos": 1,
     "base": "21266f797a8d43d417a3d783b83de19f4df5c339",
-    "head": "1422b1438322a9d49531e1079ca1010904fbcf50",
-    "nota": "rodada 9: tarefa 24 confirmada correta para o bloco de regras, e idempotencia 3x byte a byte nos 3 agentes confirmada. Mas o corte do bloco de PROJETO adjacente em escrever() ainda usa indexOf sem ancora para o FIM: mencao inline ao marcador DENTRO do corpo do bloco (projeto.md editado a mao, uso legitimo) deixa rabo orfao a cada regeneracao (2->3 fins) e a catraca da CONFERIDO exit 0. Repro da sessao confirmada. Tarefa 25: ancora de linha inteira tambem nesse ponto.",
-    "em": "2026-08-31",
-    "tentativas": 9
+    "head": "0c375cd1314c035af459787c70ec3d56fc35129a",
+    "nota": "rodada 10 aprovada pelo decimo revisor zerado sobre 7025bd6; o unico commit alem do head revisado e a emenda 26 (plano+estado, docs do metodo). Conserto da T25 confirmado por execucao real; varredura ponto a ponto sem vulneravel; 8 invariantes; sem creep; 6 baterias verdes. Avisos nao-bloqueantes: sanitizarRespostas apaga mencao legitima sem avisar (UX deliberada da T12); FIM_PROJETO morta em 2 arquivos. Historico: 10 rodadas, 9 reprovacoes, todas reproduzidas pela sessao antes de aceitar.",
+    "em": "2026-08-31"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "6 baterias re-rodadas pela sessao no verificar (exit sem pipe) + provas pontuais: conferir-ponte sobre AGENTS.md recem-gerado (prova dos dois caminhos do corpo() da T1), raizDeDados() direto nao-null, grep T14 (SKILL.md:102 = # Bloco do projeto em ponte.cjs:337), grep T17 (createHash 0 em ponte.cjs e conferir-ponte.cjs, 1 no modulo)",
+    "saida": "ponte 60/0 exit 0; conferir-ponte 5/5 exit 0; entrevista 96/0 exit 0; integracoes 5/0 exit 0; setup 59/0 exit 0; saude 47/0 exit 0; CONFERIDO exit 0 no dual-path; cada tarefa 1-26 tem seu caso-fixture nomeado no ledger de mutacao do executar, todos vermelhos quando mutados (26 entradas, 3 n/a docs)",
+    "nota": "criterios do plano executados contra o artefato real; nenhuma mutacao verde para investigar (todas vermelhas no ledger)",
+    "em": "2026-08-31"
   },
   "fechar": {
     "status": "pendente"
