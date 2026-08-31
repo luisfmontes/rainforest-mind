@@ -76,7 +76,7 @@ pronto quando: gerando a ponte num alvo COM `docs/rainforest/projeto.md` fixture
 
 ### 5. `conferir-ponte.cjs` estende a catraca para o bloco de projeto [tipo: implementar]
 atende: D2
-arquivos: `scripts/conferir-ponte.cjs`, `scripts/testa-ponte-entrevista.sh`
+arquivos: `scripts/conferir-ponte.cjs`, `scripts/testa-ponte-entrevista.sh`, `hooks/lib/ponte-corpo.cjs`
 depende de: 1, 4
 paralela: nao
 mutacao:
