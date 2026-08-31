@@ -777,6 +777,42 @@ contem "  ... resposta literal sobreviveu no CLAUDE.md" "RESPOSTA_S_QUE_PRECISA_
 esperado "conferir da CONFERIDO" 0 node "$CONFERIR_PONTE" --skill "$SKILL_PONTE" "$REPO_S/CLAUDE.md"
 
 echo
+echo "== (t) TAREFA 25: mencao inline ao fim DENTRO do bloco nao deixa rabo orfao =="
+REPO_T="$CAIXA/repo-t"
+mkdir -p "$REPO_T"
+cat > "$REPO_T/package.json" <<'EOF'
+{
+  "name": "teste-t"
+}
+EOF
+
+RESPOSTAS_T="$CAIXA/respostas-t.json"
+cat > "$RESPOSTAS_T" <<'EOF'
+{
+  "pronto": "Testes passam",
+  "nao_toca": "Dependências",
+  "convencao": "Português",
+  "revisao": "Uma aprovação"
+}
+EOF
+
+REPO_T_WIN="$(cygpath -m "$REPO_T" 2>/dev/null || printf '%s' "$REPO_T")"
+RESPOSTAS_T_WIN="$(cygpath -m "$RESPOSTAS_T" 2>/dev/null || printf '%s' "$RESPOSTAS_T")"
+
+esperado "gera projeto.md" 0 $PONTE --entrevistar --gravar --respostas "$RESPOSTAS_T_WIN" --alvo "$REPO_T_WIN" --aplicar
+# Edita o projeto.md a mao pos-entrevista: mencao INLINE ao marcador de fim no meio da resposta
+sed -i 's|Testes passam|Testes passam. Nunca remova: <!-- rainforest-mind:projeto:fim --> aparece aqui so como exemplo.|' "$REPO_T/docs/rainforest/projeto.md"
+
+esperado "1a geracao" 0 $PONTE --alvo "$REPO_T_WIN" --agente claude --aplicar
+FINS_1=$(grep -c 'rainforest-mind:projeto:fim' "$REPO_T/CLAUDE.md")
+esperado "2a geracao (regenera)" 0 $PONTE --alvo "$REPO_T_WIN" --agente claude --aplicar
+cp "$REPO_T/CLAUDE.md" "$CAIXA/t-gen2"
+esperado "3a geracao (regenera de novo)" 0 $PONTE --alvo "$REPO_T_WIN" --agente claude --aplicar
+FINS_3=$(grep -c 'rainforest-mind:projeto:fim' "$REPO_T/CLAUDE.md")
+prova "  ... contagem de fins ESTAVEL entre 1a e 3a geracao" "[ \"$FINS_1\" = \"$FINS_3\" ]"
+prova "  ... 2a e 3a geracoes byte a byte identicas" "cmp -s '$REPO_T/CLAUDE.md' '$CAIXA/t-gen2'"
+
+echo
 echo "== (k) executa cada linha do bloco de exemplos de skills/ponte/SKILL.md =="
 REPO_K="$CAIXA/repo-k"
 mkdir -p "$REPO_K/.github/workflows"
