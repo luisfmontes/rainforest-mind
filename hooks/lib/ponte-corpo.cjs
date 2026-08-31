@@ -221,14 +221,7 @@ O que segue e o **nucleo** de cada regra. Regra marcada com \`↳\` tem elaborac
 que nao esta aqui — criterio fino, comando exato, incidente datado —, e ela mora
 em \`skills/rainforest-mind/references/regra-<n>.md\` (onde \`<n>\` e o numero da regra). Antes de aplicar uma regra marcada, **leia esse arquivo**.
 
-${nucleo}
-
-${
-  (() => {
-    const blocoProjetoComHash = lerProjetoMd(alvo, true);
-    return blocoProjetoComHash ? blocoProjetoComHash : "";
-  })()
-}`;
+${nucleo}`;
 }
 
 module.exports = { corpo, raizDeDados, AGENTES, nucleoDasRegras, lerProjetoMd, hashDoArquivo };

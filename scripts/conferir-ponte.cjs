@@ -303,7 +303,7 @@ function conferirBlocoProjetoGerado(texto, caminhoProjetoMd, raizAlvo) {
       // CASO 3: Hash não bate -> projeto.md andou, arquivo ficou para trás
       return {
         veredito: 'ficou-para-tras',
-        msg: 'O docs/rainforest/projeto.md mudou desde a última geração — bloco de projeto está desatualizado'
+        msg: 'Bloco de projeto ficou para trás — o docs/rainforest/projeto.md mudou desde a última geração'
       };
     }
   } else {
