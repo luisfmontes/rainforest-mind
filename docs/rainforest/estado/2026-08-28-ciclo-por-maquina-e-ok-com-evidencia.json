@@ -52,23 +52,28 @@
     ]
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "c40f031ca27d3e61e48713b63b483cfaadd697a9",
+      "head": "a7682e4953dabbc341066319e08a5d071418d3b6",
       "caminhos_sujos": [
         "relatorios/2026-08-28-batedor-repos.md",
         "vigias/ERROS.md"
       ]
     },
     "criterio": "invariante do plano: arqueologia e limpar nunca bloqueiam",
-    "comando": "node scripts/estado.cjs exigir --slug repro --estagio limpar (com executar.reaberto_por presente)",
-    "saida": "RECUSADO: 'executar' foi reaberto por reprovacao em 'verificar' — exit 2",
+    "comando": "revisao independente (sonnet) do diff 0521c61..a7682e4 + repros a mao dos 3 achados",
+    "saida": "APROVADO: critico e 2 avisos confirmados corrigidos por execucao; remanescentes: 2 sugestoes + 1 aviso intencional registrado",
     "faltou": "condicionar a checagem de reaberto_por/teto a EXECUCAO.includes(estagio); avisos: liberado_em nunca expira (re-armar no proximo reprovado) e auto-reprovacao de executar perde reaberto_por com mensagem falsa",
     "em": "2026-08-30",
-    "tentativas": 1
+    "base": "0521c615f18328b00cdedd2d9b34682bfd7d54ab",
+    "head": "a7682e4953dabbc341066319e08a5d071418d3b6",
+    "achados": 0
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "sandbox git com os 4 criterios do plano no HEAD a7682e4 + bash scripts/testa-estado.sh",
+    "saida": "D1: marcar ok sem comando/saida exit 2 nomeando os campos, com eles exit 0; D2: executar.status=parcial + reaberto_por apos reprovado, exigir verificar recusa nomeando executar; D3: 2a reprovacao exit 0, 3a exit 2, liberar destrava e reprovacao seguinte re-arma; D4: proximo cola criterio/comando/saida/faltou + proximo passo; bateria == resultado: 137 ok, 0 falhas ==",
+    "em": "2026-08-30"
   },
   "fechar": {
     "status": "pendente"
