@@ -342,10 +342,13 @@ db.close();
 LER_MARCA_VAZIO
 )
 
-if [ "$MARCA_OFFSET_VAZIO" = "0" ]; then
-  ok=$((ok+1)); echo "  ok    offset_processado permaneceu em 0 (marca não avancou)"
+# Contrato NOVO (2026-08-31): janela vazia esta PROCESSADA — a marca AVANCA.
+# O contrato antigo (marca parada) era o bug que deixou 7 sessoes em pendencia
+# eterna: fatia vazia dava continue sem avancar e o --seco reacusava para sempre.
+if [ "$MARCA_OFFSET_VAZIO" != "0" ]; then
+  ok=$((ok+1)); echo "  ok    offset_processado avancou para $MARCA_OFFSET_VAZIO (janela vazia = processada)"
 else
-  falhou=$((falhou+1)); echo "  FALHA offset_processado mudou para $MARCA_OFFSET_VAZIO (esperado 0)"
+  falhou=$((falhou+1)); echo "  FALHA offset_processado ficou em 0 — janela vazia virou pendencia eterna de novo"
 fi
 
 # ============ Teste 14: modo producao — SEM argumentos ============
