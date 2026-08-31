@@ -511,9 +511,19 @@ async function processarMarca(conexao, marca) {
     }
     debug(`fatia ${i + 1}/${fatias.length}: ${eventos.length} evento(s), ${textoDaPassada.length} caracteres`);
 
-    // Rejeitar prompt vazio (tarefa 15: não gravar lixo no banco)
+    // Rejeitar prompt vazio (tarefa 15: não gravar lixo no banco) — mas a
+    // marca AVANÇA: janela sem nada formatável está PROCESSADA, não pendente.
+    // Sem o avanço, a fatia vazia dava `continue` com a marca parada e a
+    // sessão virava pendência eterna — 7 das 34 pendências de 21-31/08
+    // plataram assim (a outra causa era o teto; ver o truncamento acima).
     if (!textoDaPassada || !textoDaPassada.trim()) {
-      console.log(`prompt vazio em fatia ${i + 1}: nenhuma observacao para gravar`);
+      console.log(`prompt vazio em fatia ${i + 1}: nenhuma observacao para gravar; marca avanca`);
+      avancarMarca(conexao, {
+        projeto: marca.projeto,
+        sessao: marca.sessao,
+        offsetProcessado: offsetFim,
+      });
+      ultimoOffsetProcessado = offsetFim;
       continue;
     }
 
