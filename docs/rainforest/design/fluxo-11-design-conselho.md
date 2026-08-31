@@ -131,11 +131,11 @@ Todos verificáveis em modo lint (fluxo 6): os CHECKs são comandos executáveis
 
 ---
 
-## Decisão aberta (Q1)
+## Decisão aberta (Q1) — FECHADA em 2026-08-31
 
-**Fluxo independente vs. passo opcional dentro do `design`.** Duas recomendações registradas em conversas distintas, para você fechar:
+**Fluxo independente vs. passo opcional dentro do `design`.** Duas recomendações registradas em conversas distintas:
 
 - *Conversa de origem:* **fluxo independente** — decisões de design são o caso principal, mas o conselho pode ser convocado no `revisar` também.
 - *Índice consolidado v2:* **passo opcional do `design`**, ativado por presença de `.rainforest/conselho/` — padrão opt-in das `rubricas/`, sem inflar o grafo.
 
-Ambas preservam o mecanismo; a diferença é só onde o gancho vive. Fechar antes do plano.
+**Fechada pelo Luís na recomendada do índice v2: passo opcional do `design`, ativado por presença de `.rainforest/conselho/`.** O mecanismo não muda; o gancho vive dentro do estágio `design`.
