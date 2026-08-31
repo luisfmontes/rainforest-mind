@@ -22,6 +22,7 @@ mkdir -p "$PLUG/scripts" "$PLUG/hooks/lib" "$PLUG/skills/rainforest-mind"
 cp "$SRC/scripts/ponte.cjs" "$PLUG/scripts/"
 cp "$SRC/hooks/lib/contexto-sessao.cjs" "$SRC/hooks/lib/raiz.cjs" "$SRC/hooks/lib/config.cjs" "$SRC/hooks/lib/projetos.cjs" "$SRC/hooks/lib/ponte-corpo.cjs" "$PLUG/hooks/lib/"
 cp "$SRC/scripts/setup.cjs" "$PLUG/scripts/"
+cp "$SRC/scripts/conferir-ponte.cjs" "$PLUG/scripts/"
 cp "$SRC/skills/rainforest-mind/SKILL.md" "$PLUG/skills/rainforest-mind/"
 # Pasta de DADOS propria: e nela que o /setup grava as chaves `ponte-*`, e e por
 # elas que a ponte decide o default. Nada aqui toca a configuracao real.
@@ -209,6 +210,38 @@ if [ ${#HASH1} -eq 16 ]; then
 else
   falhou=$((falhou+1)); echo "  FALHA hash nao tem 16 caracteres: ${#HASH1}"
 fi
+
+
+echo
+echo "== 5.7. TAREFA 24: prosa citando os marcadores de regras nao corrompe a regeneracao =="
+ALVO_T24="$CAIXA/alvo-t24"; mkdir -p "$ALVO_T24"
+# gera o bloco real primeiro
+$PONTE --alvo "$(cygpath -m "$ALVO_T24" 2>/dev/null || printf '%s' "$ALVO_T24")" --agente claude --aplicar > /dev/null 2>&1
+BLOCO_T24=$(cat "$ALVO_T24/CLAUDE.md")
+# remonta: prosa citando os marcadores ANTES do bloco real, e texto manual depois
+cat > "$ALVO_T24/CLAUDE.md" <<EOF24
+# Meu repo
+
+Este arquivo usa \`<!-- rainforest-mind:inicio -->\` e \`<!-- rainforest-mind:fim -->\` como delimitadores.
+
+$BLOCO_T24
+
+SENTINELA_T24_DEPOIS
+EOF24
+esperado "regenera com prosa citando marcadores de regras" 0 $PONTE --alvo "$(cygpath -m "$ALVO_T24" 2>/dev/null || printf '%s' "$ALVO_T24")" --agente claude --aplicar
+prova "prosa sobrevive intacta (frase inteira)" "grep -q 'como delimitadores' '$ALVO_T24/CLAUDE.md'"
+prova "texto manual pos-bloco sobrevive" "grep -q 'SENTINELA_T24_DEPOIS' '$ALVO_T24/CLAUDE.md'"
+prova "so um bloco de regras de linha inteira" "[ \$(grep -c '^<!-- rainforest-mind:inicio' '$ALVO_T24/CLAUDE.md') -eq 1 ]"
+esperado "conferir da CONFERIDO" 0 node "$PLUG/scripts/conferir-ponte.cjs" "$(cygpath -m "$ALVO_T24/CLAUDE.md" 2>/dev/null || printf '%s' "$ALVO_T24/CLAUDE.md")"
+
+echo
+echo "== 5.8. TAREFA 24: bloco de regras sem fim recusa a regeneracao =="
+ALVO_T24B="$CAIXA/alvo-t24b"; mkdir -p "$ALVO_T24B"
+$PONTE --alvo "$(cygpath -m "$ALVO_T24B" 2>/dev/null || printf '%s' "$ALVO_T24B")" --agente claude --aplicar > /dev/null 2>&1
+grep -v '^<!-- rainforest-mind:fim -->' "$ALVO_T24B/CLAUDE.md" > "$ALVO_T24B/CLAUDE.md.tmp" && mv "$ALVO_T24B/CLAUDE.md.tmp" "$ALVO_T24B/CLAUDE.md"
+cp "$ALVO_T24B/CLAUDE.md" "$CAIXA/t24b.bak"
+esperado "regenerar com regras truncadas falha" 1 $PONTE --alvo "$(cygpath -m "$ALVO_T24B" 2>/dev/null || printf '%s' "$ALVO_T24B")" --agente claude --aplicar
+prova "arquivo intocado byte a byte" "cmp -s '$ALVO_T24B/CLAUDE.md' '$CAIXA/t24b.bak'"
 
 echo
 echo "== 6. bordas =="

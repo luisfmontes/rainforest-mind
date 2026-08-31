@@ -99,15 +99,21 @@ function extrairHashDoMarcador(linha) {
  * Devolve: { linhas: [...], hashNoMarcador: "..." | null, temBloco: true/false }
  */
 function extrairBlocoGerado(texto) {
-  const inicioMatch = texto.match(/<!-- rainforest-mind:inicio[^>]*-->/);
-  if (!inicioMatch || !texto.includes(FIM)) {
+  // Marcador só casa ocupando a LINHA INTEIRA, e o fim é o primeiro APÓS o
+  // início — espelha a escrita (tarefa 24, mesma família das 19-22).
+  const inicioMatch = texto.match(/^<!-- rainforest-mind:inicio[^>]*-->\r?$/m);
+  if (!inicioMatch) {
+    return { linhas: [], hashNoMarcador: null, temBloco: false };
+  }
+  const reFim = /^<!-- rainforest-mind:fim -->\r?$/gm;
+  reFim.lastIndex = inicioMatch.index;
+  const fimMatch = reFim.exec(texto);
+  if (!fimMatch) {
     return { linhas: [], hashNoMarcador: null, temBloco: false };
   }
 
   const hashNoMarcador = extrairHashDoMarcador(inicioMatch[0]);
-  const inicioIdx = inicioMatch.index;
-  const fimIdx = texto.indexOf(FIM);
-  const blocoCompleto = texto.slice(inicioIdx, fimIdx + FIM.length);
+  const blocoCompleto = texto.slice(inicioMatch.index, fimMatch.index + fimMatch[0].length);
 
   // Extrai as linhas do conteúdo, sem os marcadores
   const linhas = blocoCompleto
