@@ -811,5 +811,49 @@ fi
 rm -rf "$CAIXA_LEGENDA"
 
 echo
+echo "16. Tarefa 2 — rodapé do bloco injetado ensina o buscar, dentro do teto"
+
+echo
+echo "  16.a — com observação, o bloco termina com rodapé ensinando o comando de busca"
+OBS_PARA_RODAPE='{"observacoes":[{"id":1,"projeto":"teste","conteudo":"## Teste rodapé\n\nSubtítulo test","criada_em":"2026-08-25T10:00:00"}]}'
+S_RODAPE="$(memoria "$OBS_PARA_RODAPE")"
+
+# A ÚLTIMA linha não-vazia do bloco deve conter o comando "node scripts/memoria.cjs buscar --texto"
+ULTIMA_LINHA="$(echo "$S_RODAPE" | tail -1)"
+if echo "$ULTIMA_LINHA" | grep -q "mais:.*node scripts/memoria.cjs buscar --texto"; then
+  ok=$((ok+1)); echo "  ok    ÚLTIMA linha do bloco inicia com 'mais:' e contém comando com --texto"
+else
+  falhou=$((falhou+1)); echo "  FALHA última linha não contém rodapé correto; achei: '$ULTIMA_LINHA'"
+fi
+
+if echo "$S_RODAPE" | grep -q '"<termo>"'; then
+  ok=$((ok+1)); echo "  ok    rodapé usa template <termo> para substituição do valor de busca"
+else
+  falhou=$((falhou+1)); echo "  FALHA rodapé sem template <termo>"
+fi
+
+echo
+echo "  16.b — sem observação nenhuma, o bloco não contém 'buscar'"
+S_SEM_OBS="$(memoria '{"observacoes":[]}')"
+if [ -z "$S_SEM_OBS" ]; then
+  ok=$((ok+1)); echo "  ok    bloco vazio sem nenhuma palavra (rodapé não aparece)"
+elif ! echo "$S_SEM_OBS" | grep -q "buscar"; then
+  ok=$((ok+1)); echo "  ok    bloco vazio e nem contém 'buscar'"
+else
+  falhou=$((falhou+1)); echo "  FALHA bloco vazio mas contém 'buscar'; achei: '$S_SEM_OBS'"
+fi
+
+echo
+echo "  16.c — total de bytes com rodapé fica ≤ 3000"
+BYTES_COM_RODAPE="$(printf '%s' "$S_RODAPE" | wc -c)"
+TETO_RODAPE="$(LIB_PATH="$LIB" node -e "process.stdout.write(String(require(process.env.LIB_PATH).TETOS.MEMORIA_MAX_BYTES))")"
+
+if [ "$BYTES_COM_RODAPE" -le "$TETO_RODAPE" ]; then
+  ok=$((ok+1)); echo "  ok    bloco com rodapé cabe no teto ($BYTES_COM_RODAPE B <= $TETO_RODAPE B)"
+else
+  falhou=$((falhou+1)); echo "  FALHA bloco com rodapé estoura teto ($BYTES_COM_RODAPE B > $TETO_RODAPE B)"
+fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]
