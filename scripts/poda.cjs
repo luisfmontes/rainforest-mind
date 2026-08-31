@@ -18,9 +18,12 @@ const https = require('https');
 const net = require('net');
 const fs = require('fs');
 const path = require('path');
+const { Transform } = require('stream');
 const { spawn } = require('child_process');
 
-const { caminhoPid, portaPadrao } = require('../hooks/lib/poda-dados.cjs');
+const { caminhoPid, portaPadrao, caminhoMetricas, caminhoContexto } = require('../hooks/lib/poda-dados.cjs');
+const { resolverConfig } = require('../hooks/lib/config.cjs');
+const { estagioAtivo } = require('../hooks/lib/poda-estagio.cjs');
 
 /**
  * Lê o pidfile e devolve {pid, porta, iniciadoEm} ou null.
@@ -52,6 +55,100 @@ function apagarPidfile(caminhoArq) {
     fs.unlinkSync(caminhoArq);
   } catch {
     // já não existe
+  }
+}
+
+/**
+ * Extrai o último uso (usage) de uma cópia do stream SSE.
+ * Retorna um Transform stream que passa os dados intactos e acumula o usage.
+ */
+function criarExtractorUsage() {
+  let ultimoUsage = null;
+  let buffer = '';
+
+  return {
+    stream: new Transform({
+      transform(chunk, encoding, callback) {
+        buffer += chunk.toString('utf8');
+
+        // Processa linhas completas do SSE
+        const linhas = buffer.split('\n');
+        buffer = linhas.pop(); // Última linha incompleta fica no buffer
+
+        for (const linha of linhas) {
+          if (linha.startsWith('data: ')) {
+            try {
+              const json = JSON.parse(linha.substring(6));
+              if (json.usage) {
+                ultimoUsage = json.usage;
+              }
+            } catch {
+              // linha não é JSON válido, ignora
+            }
+          }
+        }
+
+        // Passa o chunk intacto
+        callback(null, chunk);
+      },
+      flush(callback) {
+        // Processa última linha do buffer se houver
+        if (buffer && buffer.startsWith('data: ')) {
+          try {
+            const json = JSON.parse(buffer.substring(6));
+            if (json.usage) {
+              ultimoUsage = json.usage;
+            }
+          } catch {
+            // ignora
+          }
+        }
+        callback();
+      },
+    }),
+    getUsage: () => ultimoUsage,
+  };
+}
+
+/**
+ * Grava uma métrica em metricas.jsonl (atômico).
+ */
+function gravarMetrica(metrica, cwd, env) {
+  try {
+    const config = resolverConfig({ env, projeto: cwd });
+    if (!config.valores.poda) {
+      return; // chave desligada
+    }
+
+    const caminhoArq = caminhoMetricas({ env, cwd });
+    if (!caminhoArq) return;
+
+    fs.mkdirSync(path.dirname(caminhoArq), { recursive: true });
+    fs.appendFileSync(caminhoArq, JSON.stringify(metrica) + '\n', 'utf8');
+  } catch {
+    // falha silenciosa: métrica perdida, proxy continua
+  }
+}
+
+/**
+ * Atualiza contexto.json atomicamente (.tmp + rename).
+ */
+function atualizarContexto(contexto, cwd, env) {
+  try {
+    const config = resolverConfig({ env, projeto: cwd });
+    if (!config.valores.poda) {
+      return; // chave desligada
+    }
+
+    const caminhoArq = caminhoContexto({ env, cwd });
+    if (!caminhoArq) return;
+
+    fs.mkdirSync(path.dirname(caminhoArq), { recursive: true });
+    const tmp = `${caminhoArq}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(contexto, null, 2) + '\n', 'utf8');
+    fs.renameSync(tmp, caminhoArq);
+  } catch {
+    // falha silenciosa: contexto perdido, proxy continua
   }
 }
 
@@ -210,7 +307,27 @@ function servidorInterno(porta, env) {
   const isHttps = upstream.startsWith('https');
   const moduloUpstream = isHttps ? https : http;
 
+  // Resolve o cwd para localizar arquivos de dados
+  const cwd = env.CLAUDE_PROJECT_DIR || process.cwd();
+
+  // Resolve estágio UMA VEZ na partida
+  let estagioRaiz = null;
+  try {
+    const info = estagioAtivo({ cwd, env });
+    estagioRaiz = info ? info.estagio : null;
+  } catch {
+    estagioRaiz = null;
+  }
+
+  // Conta total de requisições
+  let contadorRequisicoes = 0;
+
   const server = http.createServer((req, res) => {
+    contadorRequisicoes++;
+
+    // Marca o início da requisição
+    const inicioRequisicao = Date.now();
+
     // Resolve URL do upstream
     const upstreamUrl = `${upstream}${req.url}`;
 
@@ -221,13 +338,55 @@ function servidorInterno(porta, env) {
       timeout: 30000,
     };
 
+    // Acumula o corpo da requisição para contar mensagens e bytes
+    let corpoRequisicao = Buffer.alloc(0);
+    let mensagensRequisicao = 0;
+
     // Faz requisição ao upstream
     const proxyReq = moduloUpstream.request(upstreamUrl, opcoes, (upstreamRes) => {
       // Copia status e headers da resposta
       res.writeHead(upstreamRes.statusCode, upstreamRes.headers);
 
-      // Repassa corpo por stream (sem bufferizar)
-      upstreamRes.pipe(res);
+      // Cria o extrator de usage
+      const extractorUsage = criarExtractorUsage();
+
+      // Repassa corpo por stream (sem bufferizar) via extrator
+      upstreamRes
+        .pipe(extractorUsage.stream)
+        .pipe(res);
+
+      // Quando a resposta termina, grava métricas
+      res.on('finish', () => {
+        const duracao = Date.now() - inicioRequisicao;
+        const usage = extractorUsage.getUsage();
+
+        // Grava métrica
+        const metrica = {
+          timestamp: new Date().toISOString(),
+          estagio: estagioRaiz,
+          mensagens: mensagensRequisicao,
+          bytes_corpo: corpoRequisicao.length,
+          duracao_ms: duracao,
+          usage: usage || {
+            input_tokens: 0,
+            output_tokens: 0,
+            cache_read_input_tokens: 0,
+            cache_creation_input_tokens: 0,
+          },
+        };
+
+        gravarMetrica(metrica, cwd, env);
+
+        // Atualiza contexto
+        const contexto = {
+          atualizadoEm: new Date().toISOString(),
+          estagio: estagioRaiz,
+          usage: metrica.usage,
+          requisicoes: contadorRequisicoes,
+        };
+
+        atualizarContexto(contexto, cwd, env);
+      });
     });
 
     // Trata erros na requisição ao upstream
@@ -239,8 +398,27 @@ function servidorInterno(porta, env) {
       res.end('Bad Gateway\n');
     });
 
-    // Repassa o corpo da requisição
-    req.pipe(proxyReq);
+    // Acumula o corpo da requisição e repassa
+    req.on('data', (chunk) => {
+      corpoRequisicao = Buffer.concat([corpoRequisicao, chunk]);
+      proxyReq.write(chunk);
+    });
+
+    req.on('end', () => {
+      // Tenta contar mensagens do body (heurística: procura por "content" array)
+      try {
+        const bodyStr = corpoRequisicao.toString('utf8');
+        const bodyJson = JSON.parse(bodyStr);
+        if (Array.isArray(bodyJson.messages)) {
+          // Cada objeto mensagem tem um array "content" com blocos
+          mensagensRequisicao = bodyJson.messages.length;
+        }
+      } catch {
+        // Body não é JSON ou não tem estrutura esperada, não conta
+      }
+
+      proxyReq.end();
+    });
 
     // Trata erro no pipe
     req.on('error', (e) => {
