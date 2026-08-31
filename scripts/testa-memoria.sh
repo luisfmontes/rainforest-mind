@@ -196,12 +196,17 @@ else
 fi
 
 echo
-echo "== 11. banco legacy (FTS sem content externo) funciona apos migração =="
-# Tarefa 1 (D24): Cria banco no schema ANTIGO (sem triggers, sem content externo),
-# executa criarSchema novo (que deve ser idempotente), e valida que buscar funciona.
+echo "== 11. banco legacy (FTS sem content=) migra de verdade: termo NUNCA indexado vira achavel =="
+# C1: a versão anterior deste teste inseria o termo NA PRÓPRIA FTS legada — o
+# buscar achava a linha mesmo sem migração nenhuma, e o teste passava com o
+# defeito presente (CREATE VIRTUAL TABLE IF NOT EXISTS é no-op sobre a tabela
+# antiga, que fica para sempre sem content= e sem o termo). Aqui a observação
+# entra SÓ em observacoes, nunca na FTS: sem a migração real (DROP + recriação
+# com content='observacoes' + rebuild), o buscar não tem como achá-la.
+# Duas asserções: (i) o DDL novo tem content='observacoes'; (ii) buscar acha o termo.
 CAIXA6="$(mktemp -d)"
 trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${CAIXA4:-}" "${CAIXA5:-}" "${CAIXA6:-}"' EXIT
-# Criar banco legacy manualmente (sem content externo, sem triggers)
+# Criar banco legacy manualmente (FTS sem content=, e a observação FORA dela)
 RFM_ROOT="$CAIXA6" node -e "
   const DatabaseSync = require('node:sqlite').DatabaseSync;
   const path = require('path');
@@ -219,18 +224,31 @@ RFM_ROOT="$CAIXA6" node -e "
     );
     CREATE VIRTUAL TABLE IF NOT EXISTS observacoes_fts USING fts5(conteudo);
     INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES ('proj', 'palavra chave LEGACY', datetime('now'), 'legacy-origem');
-    INSERT INTO observacoes_fts(rowid, conteudo) VALUES (1, 'palavra chave LEGACY');
   \`);
   db.close();
 " 2>/dev/null
-# Executar criarSchema novo (que migra triggers, content externo, etc)
+# Executar a migração (iniciar chama criarSchema, que detecta o DDL sem content=)
 RFM_ROOT="$CAIXA6" $MEMORIA iniciar > /dev/null 2>&1
-# Verificar que buscar encontra a observação
+# (i) o DDL da observacoes_fts agora aponta para o conteúdo externo
+DDL_FTS=$(RFM_ROOT="$CAIXA6" node --no-warnings -e "
+  const { abrirBancoSomenteLeitura } = require('./scripts/memoria.cjs');
+  const path = require('path');
+  const db = abrirBancoSomenteLeitura(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+  const r = db.prepare(\"SELECT sql FROM sqlite_master WHERE type='table' AND name='observacoes_fts'\").all();
+  db.close();
+  process.stdout.write((r[0] && r[0].sql) || '');
+" 2>/dev/null)
+if echo "$DDL_FTS" | grep -q "content='observacoes'"; then
+  ok=$((ok+1)); echo "  ok   DDL da observacoes_fts migrado para content='observacoes'"
+else
+  falhou=$((falhou+1)); echo "  FALHA DDL da FTS continua legado: $DDL_FTS"
+fi
+# (ii) buscar acha o termo que NUNCA entrou na FTS legada — só o rebuild real explica
 resultado=$(RFM_ROOT="$CAIXA6" $MEMORIA buscar --texto "LEGACY" --json 2>/dev/null)
 if echo "$resultado" | grep -q "LEGACY"; then
-  ok=$((ok+1)); echo "  ok   banco legacy migrado, buscar encontra observacao"
+  ok=$((ok+1)); echo "  ok   buscar acha o termo que nunca foi indexado na FTS legada (rebuild real)"
 else
-  falhou=$((falhou+1)); echo "  FALHA buscar nao encontrou observacao em banco legacy migrado"
+  falhou=$((falhou+1)); echo "  FALHA buscar nao achou o termo apos a migração do FTS legado"
 fi
 
 echo
@@ -520,6 +538,167 @@ if [ "$cntObs_falha" = "55" ] && [ "$cntResumidos_falha" = "0" ] && [ "$cntResum
   ok=$((ok+1)); echo "  ok   falha LLM lota lote intacto (obs=$cntObs_falha, resumidos=$cntResumidos_falha, resumos=$cntResumos_falha), segunda rodada consolida (marcadas=$cntResumidos_ok, resumos=$cntResumos_ok)"
 else
   falhou=$((falhou+1)); echo "  FALHA rodada com falha: obs=$cntObs_falha (esp 55), resumidos=$cntResumidos_falha (esp 0), resumos=$cntResumos_falha (esp 0); rodada OK: obs=$cntObs_ok (esp 55), resumidos=$cntResumidos_ok (esp 55), resumos=$cntResumos_ok (esp 6)"
+fi
+
+echo
+echo "== 19. C5: exatamente 50 observacoes NAO consolida (o gatilho e PASSAR de 50) =="
+# C5: a régua é "passarem de 50" — 50 não consolida, 51 consolida. A versão
+# anterior do código usava >= 50, e nenhum teste pisava na fronteira exata.
+# O dublê de LLM AQUI é essencial: se o limiar regredir para >= 50, o consolidar
+# chama o LLM e grava resumo — sem o dublê, a chamada real falharia e deixaria
+# resumos=0, escondendo a regressão atrás de um verde falso.
+CAIXA13="$(mktemp -d)"
+trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${CAIXA4:-}" "${CAIXA5:-}" "${CAIXA6:-}" "${CAIXA7:-}" "${CAIXA8:-}" "${CAIXA9:-}" "${CAIXA10:-}" "${CAIXA11:-}" "${CAIXA12:-}" "${CAIXA13:-}"' EXIT
+
+cat > "$CAIXA13/dubleLLM.cjs" <<'EOF'
+async function chamarLLM(texto) {
+  return "Síntese que não deveria existir com exatamente 50 observações";
+}
+module.exports = { chamarLLM };
+EOF
+
+RFM_ROOT="$CAIXA13" $MEMORIA iniciar > /dev/null 2>&1
+RFM_ROOT="$CAIXA13" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const sessentaEUmDias = new Date(Date.now() - 61 * 24 * 60 * 60 * 1000).toISOString();
+for (let i = 0; i < 50; i++) {
+  db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
+    .run('proj-fronteira', 'Obs ' + i, sessentaEUmDias, 'orig-' + i);
+}
+db.close();
+" 2>/dev/null
+
+RFM_ROOT="$CAIXA13" TESTADOR_CHAMAR_LLM="$CAIXA13/dubleLLM.cjs" $MEMORIA consolidar > /dev/null 2>&1
+
+RESULTADO_50=$(RFM_ROOT="$CAIXA13" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const cntResumos = db.prepare('SELECT COUNT(*) c FROM resumos').get().c;
+const cntMarcadas = db.prepare('SELECT COUNT(*) c FROM observacoes WHERE consolidada_em IS NOT NULL').get().c;
+db.close();
+process.stdout.write(cntResumos + ':' + cntMarcadas);
+" 2>/dev/null)
+
+if [ "$RESULTADO_50" = "0:0" ]; then
+  ok=$((ok+1)); echo "  ok   50 obs exatas: nenhum resumo, nenhuma marcada (fronteira respeitada)"
+else
+  falhou=$((falhou+1)); echo "  FALHA 50 obs exatas: esperava resumos:marcadas = 0:0, veio $RESULTADO_50"
+fi
+
+echo
+echo "== 20. C5: 51 observacoes consolida (primeiro valor acima da fronteira) =="
+CAIXA14="$(mktemp -d)"
+trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${CAIXA4:-}" "${CAIXA5:-}" "${CAIXA6:-}" "${CAIXA7:-}" "${CAIXA8:-}" "${CAIXA9:-}" "${CAIXA10:-}" "${CAIXA11:-}" "${CAIXA12:-}" "${CAIXA13:-}" "${CAIXA14:-}"' EXIT
+
+RFM_ROOT="$CAIXA14" $MEMORIA iniciar > /dev/null 2>&1
+RFM_ROOT="$CAIXA14" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const sessentaEUmDias = new Date(Date.now() - 61 * 24 * 60 * 60 * 1000).toISOString();
+for (let i = 0; i < 51; i++) {
+  db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
+    .run('proj-fronteira', 'Obs ' + i, sessentaEUmDias, 'orig-' + i);
+}
+db.close();
+" 2>/dev/null
+
+RFM_ROOT="$CAIXA14" TESTADOR_CHAMAR_LLM="$CAIXA13/dubleLLM.cjs" $MEMORIA consolidar > /dev/null 2>&1
+
+# 51 obs em lotes de 10 = 6 lotes (5 cheios + 1 de uma) = 6 resumos, 51 marcadas
+RESULTADO_51=$(RFM_ROOT="$CAIXA14" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const cntResumos = db.prepare('SELECT COUNT(*) c FROM resumos').get().c;
+const cntMarcadas = db.prepare('SELECT COUNT(*) c FROM observacoes WHERE consolidada_em IS NOT NULL').get().c;
+db.close();
+process.stdout.write(cntResumos + ':' + cntMarcadas);
+" 2>/dev/null)
+
+if [ "$RESULTADO_51" = "6:51" ]; then
+  ok=$((ok+1)); echo "  ok   51 obs: consolidou (6 resumos em lotes de 10, 51 marcadas)"
+else
+  falhou=$((falhou+1)); echo "  FALHA 51 obs: esperava resumos:marcadas = 6:51, veio $RESULTADO_51"
+fi
+
+echo
+echo "== 21. C4: falha na marcacao desfaz o resumo junto (transacao atomica) =="
+# C4: antes da transação única, o resumo era gravado ANTES da marcação — se a
+# marcação falhasse, ficava resumo órfão no banco e as observações voltavam a
+# ser consolidadas na rodada seguinte (resumo duplicado). A injeção aqui é um
+# gatilho BEFORE UPDATE OF consolidada_em que aborta a marcação: com a
+# transação atômica, nem o resumo nem a marca podem sobreviver à falha.
+CAIXA15="$(mktemp -d)"
+trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${CAIXA4:-}" "${CAIXA5:-}" "${CAIXA6:-}" "${CAIXA7:-}" "${CAIXA8:-}" "${CAIXA9:-}" "${CAIXA10:-}" "${CAIXA11:-}" "${CAIXA12:-}" "${CAIXA13:-}" "${CAIXA14:-}" "${CAIXA15:-}"' EXIT
+
+RFM_ROOT="$CAIXA15" $MEMORIA iniciar > /dev/null 2>&1
+RFM_ROOT="$CAIXA15" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const sessentaEUmDias = new Date(Date.now() - 61 * 24 * 60 * 60 * 1000).toISOString();
+for (let i = 0; i < 55; i++) {
+  db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
+    .run('proj-atomico', 'Obs ' + i, sessentaEUmDias, 'orig-' + i);
+}
+// Injeção de falha: qualquer tentativa de marcar consolidada_em aborta.
+db.exec(\`
+  CREATE TRIGGER falha_injetada_na_marca BEFORE UPDATE OF consolidada_em ON observacoes
+  BEGIN
+    SELECT RAISE(ABORT, 'falha injetada na marcacao');
+  END;
+\`);
+db.close();
+" 2>/dev/null
+
+# LLM saudável (dublê de CAIXA13): a falha vem SÓ da marcação
+RFM_ROOT="$CAIXA15" TESTADOR_CHAMAR_LLM="$CAIXA13/dubleLLM.cjs" $MEMORIA consolidar > /dev/null 2>&1
+
+RESULTADO_ATOMICO=$(RFM_ROOT="$CAIXA15" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const cntResumos = db.prepare('SELECT COUNT(*) c FROM resumos').get().c;
+const cntMarcadas = db.prepare('SELECT COUNT(*) c FROM observacoes WHERE consolidada_em IS NOT NULL').get().c;
+db.close();
+process.stdout.write(cntResumos + ':' + cntMarcadas);
+" 2>/dev/null)
+
+if [ "$RESULTADO_ATOMICO" = "0:0" ]; then
+  ok=$((ok+1)); echo "  ok   marcacao falhou e o ROLLBACK levou o resumo junto (resumos=0, marcadas=0)"
+else
+  falhou=$((falhou+1)); echo "  FALHA transacao vazou: esperava resumos:marcadas = 0:0, veio $RESULTADO_ATOMICO (resumo orfao = reconsolidacao dupla)"
+fi
+
+# Controle: removida a injeção, o MESMO banco consolida normal — prova que a
+# falha acima veio do gatilho, não de outro defeito que deixaria tudo em 0:0.
+RFM_ROOT="$CAIXA15" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+db.exec('DROP TRIGGER falha_injetada_na_marca;');
+db.close();
+" 2>/dev/null
+RFM_ROOT="$CAIXA15" TESTADOR_CHAMAR_LLM="$CAIXA13/dubleLLM.cjs" $MEMORIA consolidar > /dev/null 2>&1
+
+RESULTADO_CONTROLE=$(RFM_ROOT="$CAIXA15" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const cntResumos = db.prepare('SELECT COUNT(*) c FROM resumos').get().c;
+const cntMarcadas = db.prepare('SELECT COUNT(*) c FROM observacoes WHERE consolidada_em IS NOT NULL').get().c;
+db.close();
+process.stdout.write(cntResumos + ':' + cntMarcadas);
+" 2>/dev/null)
+
+if [ "$RESULTADO_CONTROLE" = "6:55" ]; then
+  ok=$((ok+1)); echo "  ok   controle: sem a injecao o mesmo banco consolida (6 resumos, 55 marcadas)"
+else
+  falhou=$((falhou+1)); echo "  FALHA controle: esperava 6:55 apos remover a injecao, veio $RESULTADO_CONTROLE"
 fi
 
 echo
