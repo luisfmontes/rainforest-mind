@@ -240,7 +240,7 @@ pronto quando: `node scripts/conferir-ponte.cjs CLAUDE.md` rodado de dentro do d
 
 ### 17. Um único cálculo de hash — as reimplementações locais saem [tipo: implementar]
 atende: D2 (aviso 3 da rodada 2 — mesma classe do incidente que motivou a T1)
-arquivos: `scripts/conferir-ponte.cjs`, `scripts/ponte.cjs`, `hooks/lib/ponte-corpo.cjs`
+arquivos: `scripts/conferir-ponte.cjs`, `scripts/ponte.cjs`, `hooks/lib/ponte-corpo.cjs`, `scripts/testa-ponte.sh`
 depende de: 16
 paralela: nao
 mutacao:
