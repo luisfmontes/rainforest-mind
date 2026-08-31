@@ -24,14 +24,14 @@
     "em": "2026-08-31"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-08-31",
-    "tarefas_ok": 19,
-    "tarefas": 19,
-    "nota": "rodada 5: tarefa 19 integrada. Remocao do bloco de projeto virou posicional (startsWith no pos-FIM) — fecha a familia dos vetores de mencao (fim R3, inicio R4). Repro da rodada 4 re-executada: 4 de 4 sentinelas sobrevivem; bloco gerado-adjacente continua substituido sem duplicar.",
+    "tarefas_ok": 20,
+    "tarefas": 20,
+    "nota": "rodada 6: tarefa 20 implementada pela propria sessao (abaixo do limiar da regra 10). Bloco truncado recusa regeneracao com erro em vez de duplicar calado.",
     "em": "2026-08-31",
-    "comando": "baterias na arvore integrada + conferir-mutacao da 19 re-rodado + conferir-entrega APROVADO + repro re-executada",
-    "saida": "ponte 53/0, conferir-ponte 5/5, entrevista 75/0, integracoes 5/0, setup 59/0, saude 47/0; mutacao 19 exit 0",
+    "comando": "baterias na arvore + conferir-mutacao da 20",
+    "saida": "ponte 53/0, conferir-ponte 5/5, entrevista 81/0, integracoes 5/0, setup 59/0, saude 47/0; mutacao 20 exit 0",
     "mutacao": [
       {
         "tarefa": 1,
@@ -41,7 +41,7 @@
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "caso (a) detecta stack Node de testa-ponte-entrevista.sh"
+        "fixture": "caso (a) detecta stack Node"
       },
       {
         "tarefa": 3,
@@ -51,27 +51,27 @@
       {
         "tarefa": 4,
         "resultado": "vermelho",
-        "fixture": "caso (i) bloco de projeto aparece/some/nao duplica"
+        "fixture": "caso (i) bloco aparece/some/nao duplica"
       },
       {
         "tarefa": 5,
         "resultado": "vermelho",
-        "fixture": "caso (j) bloco de projeto editado a mao e detectado"
+        "fixture": "caso (j) bloco editado a mao detectado"
       },
       {
         "tarefa": 6,
         "resultado": "vermelho",
-        "fixture": "bloco INTEGRACOES desligada por padrao de testa-setup.sh"
+        "fixture": "INTEGRACOES desligada por padrao de testa-setup.sh"
       },
       {
         "tarefa": 7,
         "resultado": "vermelho",
-        "fixture": "casos (a)/(b) servidor fixture loopback de testa-integracoes.sh"
+        "fixture": "casos (a)/(b) loopback de testa-integracoes.sh"
       },
       {
         "tarefa": 8,
         "resultado": "vermelho",
-        "fixture": "casos (c)/(d) pasta com e sem .venv de testa-integracoes.sh"
+        "fixture": "casos (c)/(d) .venv de testa-integracoes.sh"
       },
       {
         "tarefa": 9,
@@ -81,12 +81,12 @@
       {
         "tarefa": 10,
         "resultado": "n/a",
-        "motivo": "docs; caso k executa exemplos do SKILL.md"
+        "motivo": "docs; caso k executa exemplos"
       },
       {
         "tarefa": 11,
         "resultado": "vermelho",
-        "fixture": "caso 3.5 bloco identico com e sem dados de testa-ponte.sh"
+        "fixture": "caso 3.5 bloco identico com/sem dados"
       },
       {
         "tarefa": 12,
@@ -96,27 +96,27 @@
       {
         "tarefa": 13,
         "resultado": "vermelho",
-        "fixture": "casos (i)/(j)/(l) de conferencia do bloco de projeto"
+        "fixture": "casos (i)/(j)/(l) conferencia do bloco"
       },
       {
         "tarefa": 14,
         "resultado": "n/a",
-        "motivo": "docs; grep nos dois arquivos batendo"
+        "motivo": "docs; grep batendo"
       },
       {
         "tarefa": 15,
         "resultado": "vermelho",
-        "fixture": "caso (m) resposta nao-string recusada"
+        "fixture": "caso (m) nao-string recusada"
       },
       {
         "tarefa": 16,
         "resultado": "vermelho",
-        "fixture": "caso (n) caminho relativo mesmo veredito"
+        "fixture": "caso (n) caminho relativo"
       },
       {
         "tarefa": 17,
         "resultado": "vermelho",
-        "fixture": "casos 5.5/5.6 hash unificado de testa-ponte.sh"
+        "fixture": "casos 5.5/5.6 hash unificado"
       },
       {
         "tarefa": 18,
@@ -126,13 +126,14 @@
       {
         "tarefa": 19,
         "resultado": "vermelho",
-        "fixture": "caso (p) 4 sentinelas com mencao ao inicio e bloco deslocado"
+        "fixture": "caso (p) 4 sentinelas"
+      },
+      {
+        "tarefa": 20,
+        "resultado": "vermelho",
+        "fixture": "caso (q) bloco sem fim recusa regeneracao"
       }
-    ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-08-31"
-    }
+    ]
   },
   "revisar": {
     "status": "reprovado",
