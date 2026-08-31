@@ -84,29 +84,6 @@ function resolverSkillMd(_arquivoConferido, skillExplicito) {
 const FIM = '<!-- rainforest-mind:fim -->';
 const FIM_PROJETO = '<!-- rainforest-mind:projeto:fim -->';
 
-/**
- * Hash curto (16 primeiros caracteres) do SKILL.md para detecção de edição manual.
- */
-function hashSkillMd(caminhoSkill) {
-  try {
-    const conteudo = fs.readFileSync(caminhoSkill, 'utf8');
-    return crypto.createHash('sha256').update(conteudo).digest('hex').slice(0, 16);
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Hash curto (16 primeiros caracteres) do projeto.md para detecção de edição manual no bloco.
- */
-function hashProjetoMd(caminhoProjetoMd) {
-  try {
-    const conteudo = fs.readFileSync(caminhoProjetoMd, 'utf8');
-    return crypto.createHash('sha256').update(conteudo).digest('hex').slice(0, 16);
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Extrai hash do marcador de início, se existir.
@@ -273,7 +250,7 @@ function conferirBlocoProjetoGerado(texto, caminhoProjetoMd, raizAlvo) {
 
   // CASO 2/3: Há divergência
   if (hashNoMarcador) {
-    const hashAtualProjetoMd = hashProjetoMd(caminhoProjetoMd);
+    const hashAtualProjetoMd = hashDoArquivo(caminhoProjetoMd);
     if (hashNoMarcador === hashAtualProjetoMd) {
       // CASO 2: Hash bate, conteúdo não -> editado à mão
       const divergentes = linhasDivergentes(conteudoAtual, conteudoEsperado);
@@ -351,7 +328,7 @@ function main() {
     process.exit(1);
   }
 
-  const hashAtual = hashSkillMd(caminhoSkill);
+  const hashAtual = hashDoArquivo(caminhoSkill);
   const dados = raizDeDados();
 
   // Descobre qual agente baseado no nome do arquivo
@@ -386,11 +363,14 @@ function main() {
   // CASO 1: Bloco atual bate com o esperado -> VERDE
   if (textoIgual(conteudoAtual, conteudoEsperado)) {
     // Se o bloco de regras passou, confira também o bloco de projeto
-    const diretorioAlvo = path.dirname(alvo);
-    const caminhoProjetoMd = path.join(diretorioAlvo, 'docs', 'rainforest', 'projeto.md');
-
-    // Normalizar o caminho do alvo para passá-lo a corpo() se necessário
-    const raizAlvo = /^[A-Z]:/.test(diretorioAlvo) ? diretorioAlvo : null;
+    // Resolver o caminho do alvo para suportar caminhos relativos e POSIX
+    let raizAlvo = null;
+    if (alvo !== '-') {
+      const caminhoResolvido = path.resolve(alvo);
+      raizAlvo = path.dirname(caminhoResolvido);
+    }
+    const diretorioAlvo = raizAlvo;
+    const caminhoProjetoMd = raizAlvo ? path.join(raizAlvo, 'docs', 'rainforest', 'projeto.md') : null;
 
     const resultadoProjeto = conferirBlocoProjetoGerado(texto, caminhoProjetoMd, raizAlvo);
 
@@ -507,4 +487,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { extrairBlocoGerado, extrairBlocoProjetoGerado, hashSkillMd, hashProjetoMd, linhasDivergentes };
+module.exports = { extrairBlocoGerado, extrairBlocoProjetoGerado, linhasDivergentes };
