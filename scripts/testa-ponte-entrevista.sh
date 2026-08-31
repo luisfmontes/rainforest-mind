@@ -664,6 +664,43 @@ contem "  ... sentinela 4 (apos bloco) sobrevive" "SENTINELA_4_APOS_BLOCO_DESLOC
 prova "  ... ainda nao ha bloco de projeto gerado" "! grep -q 'rainforest-mind:projeto' '$REPO_P/CLAUDE.md' | grep -v deslocado"
 
 echo
+echo "== (q) TAREFA 20: bloco de projeto sem fim recusa a regeneracao com erro =="
+REPO_Q="$CAIXA/repo-q"
+mkdir -p "$REPO_Q"
+cat > "$REPO_Q/package.json" <<'EOF'
+{
+  "name": "teste-q"
+}
+EOF
+
+RESPOSTAS_Q="$CAIXA/respostas-q.json"
+cat > "$RESPOSTAS_Q" <<'EOF'
+{
+  "pronto": "Testes passam",
+  "nao_toca": "Dependências",
+  "convencao": "Português",
+  "revisao": "Uma aprovação"
+}
+EOF
+
+REPO_Q_WIN="$(cygpath -m "$REPO_Q" 2>/dev/null || printf '%s' "$REPO_Q")"
+RESPOSTAS_Q_WIN="$(cygpath -m "$RESPOSTAS_Q" 2>/dev/null || printf '%s' "$RESPOSTAS_Q")"
+
+# Gera com bloco de projeto real
+esperado "gera projeto.md" 0 $PONTE --entrevistar --gravar --respostas "$RESPOSTAS_Q_WIN" --alvo "$REPO_Q_WIN" --aplicar
+esperado "gera CLAUDE.md com bloco de projeto" 0 $PONTE --alvo "$REPO_Q_WIN" --agente claude --aplicar
+
+# Trunca o bloco à mão: apaga a linha do marcador de fim do projeto
+grep -v 'rainforest-mind:projeto:fim' "$REPO_Q/CLAUDE.md" > "$REPO_Q/CLAUDE.md.tmp" && mv "$REPO_Q/CLAUDE.md.tmp" "$REPO_Q/CLAUDE.md"
+cp "$REPO_Q/CLAUDE.md" "$CAIXA/claude-q-truncado.bak"
+
+# Regenerar tem de FALHAR com mensagem clara, sem gravar nada
+esperado "regenerar com bloco truncado falha" 1 $PONTE --alvo "$REPO_Q_WIN" --agente claude --aplicar
+contem "  ... erro menciona bloco truncado" "bloco de projeto truncado" $PONTE --alvo "$REPO_Q_WIN" --agente claude --aplicar
+prova "  ... arquivo intocado byte a byte" "cmp -s '$REPO_Q/CLAUDE.md' '$CAIXA/claude-q-truncado.bak'"
+prova "  ... nao duplicou bloco de projeto" "[ \$(grep -c 'rainforest-mind:projeto:inicio' '$REPO_Q/CLAUDE.md') -eq 1 ]"
+
+echo
 echo "== (k) executa cada linha do bloco de exemplos de skills/ponte/SKILL.md =="
 REPO_K="$CAIXA/repo-k"
 mkdir -p "$REPO_K/.github/workflows"

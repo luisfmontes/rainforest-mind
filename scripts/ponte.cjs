@@ -410,8 +410,15 @@ function escrever(alvoArquivo, blocoNovo, aplicar, hash, alvo) {
       if (fimProjetoIdx !== -1) {
         // Encontrou o fim. Remove o bloco inteiro
         depois = depois.slice(fimProjetoIdx + FIM_PROJETO.length).replace(/^\n+/, "");
+      } else {
+        // Bloco de projeto truncado (início sem fim). Gravar por cima duplicaria o
+        // bloco em silêncio — e "errada calada" é o pior estado. Recusa sem gravar.
+        erro(
+          `${path.basename(alvoArquivo)} tem um bloco de projeto truncado (` +
+            `<!-- rainforest-mind:projeto:inicio --> sem <!-- rainforest-mind:projeto:fim -->). ` +
+            `Restaure o marcador de fim ou remova o bloco à mão antes de regenerar.`
+        );
       }
-      // Se não encontrou o fim, não remove nada (bloco incompleto)
     }
     // Se não começa com o marcador, não remove nada (menção solta ou em outra posição)
 
