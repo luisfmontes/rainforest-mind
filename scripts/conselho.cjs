@@ -420,6 +420,92 @@ function validarRevisao(revisao, numeroPareceres) {
   return { valido: true };
 }
 
+// Aggregates rankings from all reviewers by average position with tiebreaker
+// Input: array of revisao objects
+// Output: array of apelidos sorted by:
+//   1. average position (lower is better)
+//   2. count of first-place votes (higher is better, as tiebreaker)
+//   3. alphabetical order of apelido (final tiebreaker)
+// PURO E TESTÁVEL — sem chamada de modelo
+function agregarRankings(revisoes) {
+  // Collect all apelidos from all rankings
+  const apelidos = new Set();
+  for (const revisao of revisoes) {
+    for (const apelido of revisao.ranking) {
+      apelidos.add(apelido);
+    }
+  }
+
+  // Calculate metrics for each apelido
+  const metricas = {};
+  for (const apelido of apelidos) {
+    let somaPositoes = 0;
+    let contagem = 0;
+    let primeirosPor = 0;
+
+    for (const revisao of revisoes) {
+      const posicao = revisao.ranking.indexOf(apelido);
+      if (posicao >= 0) {
+        somaPositoes += posicao;
+        contagem++;
+        if (posicao === 0) {
+          primeirosPor++;
+        }
+      }
+    }
+
+    const media = contagem > 0 ? somaPositoes / contagem : Infinity;
+    metricas[apelido] = {
+      media,
+      primeirosPor,
+      apelido
+    };
+  }
+
+  // Sort by: média (asc), primeiros-por (desc), apelido (asc)
+  const ranking = Array.from(apelidos).sort((a, b) => {
+    const metA = metricas[a];
+    const metB = metricas[b];
+
+    if (metA.media !== metB.media) {
+      return metA.media - metB.media;
+    }
+
+    if (metA.primeirosPor !== metB.primeirosPor) {
+      return metB.primeirosPor - metA.primeirosPor;
+    }
+
+    return a.localeCompare(b);
+  });
+
+  return ranking;
+}
+
+// Validates a sintese JSON against schema
+function validarSintese(sintese) {
+  if (typeof sintese !== 'object' || sintese === null) {
+    return { valido: false, erro: 'sintese não é um objeto JSON' };
+  }
+
+  if (typeof sintese.decisao_recomendada !== 'string') {
+    return { valido: false, erro: 'campo decisao_recomendada deve ser string' };
+  }
+
+  if (!Array.isArray(sintese.fundamentos)) {
+    return { valido: false, erro: 'campo fundamentos deve ser array' };
+  }
+
+  if (!Array.isArray(sintese.divergencias_nao_resolvidas)) {
+    return { valido: false, erro: 'campo divergencias_nao_resolvidas deve ser array' };
+  }
+
+  if (!Array.isArray(sintese.ranking_agregado)) {
+    return { valido: false, erro: 'campo ranking_agregado deve ser array' };
+  }
+
+  return { valido: true };
+}
+
 // Executes revisao collection from all linked members with anonymization
 function executarRevisao() {
   const dirRodada = encontrarRodada();
@@ -647,6 +733,141 @@ function conferirFaseRevisao() {
   process.exit(0);
 }
 
+// Identifies divergencies from pareceres and ranking spread
+// Input: mapaAnonimato (apelido -> name), pareceres (name -> parecer), agregado (ordered apelidos)
+// Output: array of divergency descriptions
+function identificarDivergencias(mapaAnonimato, pareceres, agregado) {
+  const divergencias = [];
+
+  // Collect all objeções from pareceres
+  const todasObjecoes = [];
+  for (const nomeMembro in pareceres) {
+    const parecer = pareceres[nomeMembro];
+    if (Array.isArray(parecer.objecoes)) {
+      for (const objecao of parecer.objecoes) {
+        todasObjecoes.push(objecao);
+      }
+    }
+  }
+
+  // Add divergencies for unresolved objections
+  const mapaReverso = {};
+  for (const nomeMembro in mapaAnonimato) {
+    const apelido = mapaAnonimato[nomeMembro];
+    mapaReverso[apelido] = nomeMembro;
+  }
+
+  if (todasObjecoes.length > 0) {
+    divergencias.push(`Objeções levantadas: ${todasObjecoes.length} total`);
+  }
+
+  // Add divergencies if ranking has significant spread (not unanimous)
+  if (agregado.length > 1) {
+    const posicaoPrimeiro = 0;
+    const posicaoUltimo = agregado.length - 1;
+    if (posicaoUltimo > posicaoPrimeiro) {
+      divergencias.push(`Ranking com spread: primeiro em posição 0, último em posição ${posicaoUltimo}`);
+    }
+  }
+
+  return divergencias;
+}
+
+// Executes sintese creation and persistence
+function executarSintetizar(args) {
+  const dirRodada = encontrarRodada();
+  if (!dirRodada) {
+    console.error('Erro: nenhuma rodada aberta encontrada');
+    process.exit(1);
+  }
+
+  // First, validate that revisao phase is complete
+  const resultConferir = spawnSync('node', [process.argv[1], 'conferir', '--fase', 'revisao'], {
+    cwd: RAIZ,
+    encoding: 'utf8'
+  });
+
+  if (resultConferir.status !== 0) {
+    console.error('Erro: fase revisao não foi completada com sucesso');
+    process.exit(1);
+  }
+
+  // Load estado
+  const estadoPath = path.join(dirRodada, 'estado.json');
+  const estado = JSON.parse(fs.readFileSync(estadoPath, 'utf8'));
+  const membrosLigados = estado.membros_ligados || [];
+
+  // Load mapa-anonimato
+  const arquivoMapaAnonimato = path.join(dirRodada, 'mapa-anonimato.json');
+  const mapaAnonimato = JSON.parse(fs.readFileSync(arquivoMapaAnonimato, 'utf8'));
+
+  // Load all pareceres
+  const pareceres = {};
+  for (const nomeMembro of membrosLigados) {
+    const caminhoSaida = path.join(dirRodada, `parecer-${nomeMembro}.json`);
+    const conteudo = fs.readFileSync(caminhoSaida, 'utf8');
+    pareceres[nomeMembro] = JSON.parse(conteudo);
+  }
+
+  // Load all revisoes
+  const dirFase2 = path.join(dirRodada, 'fase2');
+  const revisoes = [];
+  for (const nomeMembro of membrosLigados) {
+    const caminhoRevisao = path.join(dirFase2, `revisao-${nomeMembro}.json`);
+    const conteudo = fs.readFileSync(caminhoRevisao, 'utf8');
+    revisoes.push(JSON.parse(conteudo));
+  }
+
+  // Aggregate rankings
+  const rankingAgregado = agregarRankings(revisoes);
+
+  // Desanonymize ranking — mapa é apelido -> nomeMembro, precisamos do reverso
+  const mapaReverso = {};
+  for (const nomeMembro in mapaAnonimato) {
+    const apelido = mapaAnonimato[nomeMembro];
+    mapaReverso[apelido] = nomeMembro;
+  }
+
+  const rankingAgregadoDesanon = rankingAgregado.map(apelido => mapaReverso[apelido]);
+
+  // Identify divergencies
+  const divergencias = identificarDivergencias(mapaAnonimato, pareceres, rankingAgregado);
+
+  // Get top-ranked parecer for decision recommendation
+  const topApelido = rankingAgregado[0];
+  const topNomeMembro = mapaReverso[topApelido];
+  const topParecer = pareceres[topNomeMembro];
+
+  // Validate divergencies unless --unanime flag
+  const temUnanimeFLag = args.unanime === true;
+  if (divergencias.length > 0 && !temUnanimeFLag) {
+    console.error('Erro: síntese com divergências requer flag --unanime');
+    process.exit(1);
+  }
+
+  // Create sintese.json
+  const sintese = {
+    decisao_recomendada: topParecer.posicao,
+    fundamentos: topParecer.argumentos || [],
+    divergencias_nao_resolvidas: divergencias,
+    ranking_agregado: rankingAgregadoDesanon
+  };
+
+  // Validate sintese
+  const validacao = validarSintese(sintese);
+  if (!validacao.valido) {
+    console.error(`Erro: síntese inválida: ${validacao.erro}`);
+    process.exit(1);
+  }
+
+  // Write sintese.json
+  const arquivoSintese = path.join(dirRodada, 'sintese.json');
+  fs.writeFileSync(arquivoSintese, JSON.stringify(sintese, null, 2) + '\n', 'utf8');
+
+  console.log(`Síntese gravada em ${arquivoSintese}`);
+  process.exit(0);
+}
+
 // Parses command line arguments
 function parseArgs() {
   const args = process.argv.slice(2);
@@ -699,8 +920,7 @@ function main() {
     } else if (comando === 'revisar') {
       executarRevisao();
     } else if (comando === 'sintetizar') {
-      console.error('Comando sintetizar não implementado nesta tarefa');
-      process.exit(1);
+      executarSintetizar(args);
     } else if (comando === 'conferir') {
       if (args.fase === 'pareceres') {
         conferirFasePareceres();

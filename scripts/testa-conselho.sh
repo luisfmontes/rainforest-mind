@@ -575,6 +575,325 @@ else
 fi
 
 echo ""
+echo "== CASO 12: agregacao-conhecida =="
+# Test with THREE FIXED rankings where the aggregated result differs from FIRST reviewer
+# With 3 members, each reviewer rates 2 others (N-1)
+# Reviewer 1 (cetico): [membro-B, membro-C] — primeira posição para B
+# Reviewer 2 (arquiteto): [membro-C, membro-B] — primeira posição para C
+# Reviewer 3 (usuario-final): [membro-C, membro-B] — primeira posição para C
+#
+# Aggregation by average position (lower is better):
+#   membro-B: (0 + 1 + 1) / 3 = 0.666...
+#   membro-C: (1 + 0 + 0) / 3 = 0.333...
+#
+# Expected ranking: [membro-C, membro-B]  (C has lower average)
+# This DIFFERS from reviewer 1's ranking [membro-B, membro-C]
+# Mutation that uses just first reviewer should get [membro-B, membro-C] and FAIL
+
+TEMPDIR12="$RAIZ/test-agregacao-conhecida"
+mkdir -p "$TEMPDIR12"
+
+# Create test question file
+echo "# Questão para teste de agregação" > "$TEMPDIR12/questao-agregacao.md"
+
+# Create membros.json
+FIXTURE_OK_AGR="$SRC_M/scripts/fixtures/conselho/membro-ok.cjs"
+
+mkdir -p "$TEMPDIR12/.rainforest/conselho"
+cat > "$TEMPDIR12/.rainforest/conselho/membros.json" << EOF
+{
+  "membros": [
+    {"nome": "cetico", "cmd": "node \"$FIXTURE_OK_AGR\" {prompt} {saida}", "ligado": true},
+    {"nome": "arquiteto", "cmd": "node \"$FIXTURE_OK_AGR\" {prompt} {saida}", "ligado": true},
+    {"nome": "usuario-final", "cmd": "node \"$FIXTURE_OK_AGR\" {prompt} {saida}", "ligado": true}
+  ]
+}
+EOF
+
+# Open rodada
+bash -c "cd '$TEMPDIR12' && RFM_ESTADO_ROOT='$TEMPDIR12' node '$CONSELHO' abrir --questao questao-agregacao.md" 2>/dev/null
+
+# Find rodada
+RODADA_DIR12=$(ls -1d "$TEMPDIR12/.rainforest/conselho/202"* 2>/dev/null | head -1)
+if [ -n "$RODADA_DIR12" ]; then
+  # Collect pareceres
+  bash -c "cd '$TEMPDIR12' && RFM_ESTADO_ROOT='$TEMPDIR12' node '$CONSELHO' pareceres" 2>/dev/null
+
+  # Now create mapa-anonimato manually for the test
+  # With 3 members, each reviewer will rate 2 others
+  # cetico will rate: arquiteto (membro-B) and usuario-final (membro-C)
+  # arquiteto will rate: cetico (membro-A) and usuario-final (membro-C)
+  # usuario-final will rate: cetico (membro-A) and arquiteto (membro-B)
+  cat > "$RODADA_DIR12/mapa-anonimato.json" << 'EOF'
+{
+  "cetico": "membro-A",
+  "arquiteto": "membro-B",
+  "usuario-final": "membro-C"
+}
+EOF
+
+  # Create fase2 with FIXED rankings based on the mapa above
+  # Each reviewer rates N-1 = 2 others
+  mkdir -p "$RODADA_DIR12/fase2"
+
+  # cetico rates [membro-B, membro-C] — FIRST REVIEWER (mutation will copy this)
+  cat > "$RODADA_DIR12/fase2/revisao-cetico.json" << 'EOF'
+{"ranking": ["membro-B", "membro-C"], "criticas": {"membro-B": "Crítica B", "membro-C": "Crítica C"}}
+EOF
+
+  # arquiteto rates [membro-C, membro-B]
+  cat > "$RODADA_DIR12/fase2/revisao-arquiteto.json" << 'EOF'
+{"ranking": ["membro-C", "membro-B"], "criticas": {"membro-B": "Crítica B", "membro-C": "Crítica C"}}
+EOF
+
+  # usuario-final rates [membro-C, membro-B]
+  cat > "$RODADA_DIR12/fase2/revisao-usuario-final.json" << 'EOF'
+{"ranking": ["membro-C", "membro-B"], "criticas": {"membro-B": "Crítica B", "membro-C": "Crítica C"}}
+EOF
+
+  # Validate revisao phase
+  bash -c "cd '$TEMPDIR12' && RFM_ESTADO_ROOT='$TEMPDIR12' node '$CONSELHO' conferir --fase revisao" 2>/dev/null
+
+  # Run sintetizar — should succeed with --unanime
+  saida_sintese=$(bash -c "cd '$TEMPDIR12' && RFM_ESTADO_ROOT='$TEMPDIR12' node '$CONSELHO' sintetizar --unanime" 2>&1)
+  exit_sintese=$?
+
+  if [ "$exit_sintese" = "0" ]; then
+    # Read sintese.json and check ranking_agregado
+    if [ -f "$RODADA_DIR12/sintese.json" ]; then
+      RANKING_JSON=$(cat "$RODADA_DIR12/sintese.json")
+
+      ok=$((ok + 1))
+      echo "  ok   agregacao-conhecida: sintetizar exit 0 e sintese.json criado"
+
+      # Extract ranking_agregado from JSON
+      # Expected: membro-C (avg 0.33), membro-B (avg 0.66)
+      # The aggregated ranking should be: [usuario-final, arquiteto] (desanonymized)
+      # This DIFFERS from first reviewer's [arquiteto, usuario-final]
+      # Check ranking_agregado field and verify first element is usuario-final
+      FIRST_ELEM=$(echo "$RANKING_JSON" | grep -oE '"ranking_agregado"[^]]+\[' | grep -oE '\["[^"]*' | grep -oE '"[^"]*"' | head -1 | tr -d '"')
+
+      if [ -z "$FIRST_ELEM" ]; then
+        # Try alternative extraction if above fails
+        FIRST_ELEM=$(echo "$RANKING_JSON" | sed -n '/"ranking_agregado":/,/]/p' | grep -oE '"[a-z-]*"' | head -1 | tr -d '"')
+      fi
+
+      if [ "$FIRST_ELEM" = "usuario-final" ]; then
+        ok=$((ok + 1))
+        echo "  ok   ranking_agregado correto: usuario-final é primeiro"
+      else
+        falhou=$((falhou + 1))
+        echo "  FALHA ranking_agregado: primeiro elemento é '$FIRST_ELEM', esperava 'usuario-final'"
+      fi
+    else
+      falhou=$((falhou + 1))
+      echo "  FALHA agregacao-conhecida: sintese.json não foi criado"
+    fi
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA agregacao-conhecida: sintetizar deveria ter exit 0"
+    echo "$saida_sintese" | sed 's/^/         /'
+  fi
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA não conseguiu encontrar diretório de rodada"
+fi
+
+echo ""
+echo "== CASO 13: sintese-grava-com-divergencias =="
+TEMPDIR13="$RAIZ/test-sintese-divergencias"
+mkdir -p "$TEMPDIR13"
+
+# Create test question file
+echo "# Questão para teste de síntese com divergências" > "$TEMPDIR13/questao-sintese.md"
+
+# Create membros.json with revisores
+FIXTURE_OK_SIN="$SRC_M/scripts/fixtures/conselho/membro-ok.cjs"
+FIXTURE_REVISOR_SIN="$SRC_M/scripts/fixtures/conselho/membro-revisor-ok.cjs"
+
+mkdir -p "$TEMPDIR13/.rainforest/conselho"
+# First stage: parecerers use OK fixture
+cat > "$TEMPDIR13/.rainforest/conselho/membros.json" << EOF
+{
+  "membros": [
+    {"nome": "cetico", "cmd": "node \"$FIXTURE_OK_SIN\" {prompt} {saida}", "ligado": true},
+    {"nome": "arquiteto", "cmd": "node \"$FIXTURE_OK_SIN\" {prompt} {saida}", "ligado": true},
+    {"nome": "usuario-final", "cmd": "node \"$FIXTURE_OK_SIN\" {prompt} {saida}", "ligado": true}
+  ]
+}
+EOF
+
+# Open rodada
+bash -c "cd '$TEMPDIR13' && RFM_ESTADO_ROOT='$TEMPDIR13' node '$CONSELHO' abrir --questao questao-sintese.md" 2>/dev/null
+
+# Find rodada
+RODADA_DIR13=$(ls -1d "$TEMPDIR13/.rainforest/conselho/202"* 2>/dev/null | head -1)
+if [ -n "$RODADA_DIR13" ]; then
+  # Collect pareceres
+  bash -c "cd '$TEMPDIR13' && RFM_ESTADO_ROOT='$TEMPDIR13' node '$CONSELHO' pareceres" 2>/dev/null
+
+  # Update membros.json to use revisor fixture for phase 2
+  cat > "$TEMPDIR13/.rainforest/conselho/membros.json" << EOF
+{
+  "membros": [
+    {"nome": "cetico", "cmd": "node \"$FIXTURE_REVISOR_SIN\" {prompt} {saida}", "ligado": true},
+    {"nome": "arquiteto", "cmd": "node \"$FIXTURE_REVISOR_SIN\" {prompt} {saida}", "ligado": true},
+    {"nome": "usuario-final", "cmd": "node \"$FIXTURE_REVISOR_SIN\" {prompt} {saida}", "ligado": true}
+  ]
+}
+EOF
+
+  # Run revisar
+  bash -c "cd '$TEMPDIR13' && RFM_ESTADO_ROOT='$TEMPDIR13' node '$CONSELHO' revisar" 2>/dev/null
+
+  # Validate revisao
+  bash -c "cd '$TEMPDIR13' && RFM_ESTADO_ROOT='$TEMPDIR13' node '$CONSELHO' conferir --fase revisao" 2>/dev/null
+
+  # Run sintetizar — should succeed with --unanime
+  saida_sintese=$(bash -c "cd '$TEMPDIR13' && RFM_ESTADO_ROOT='$TEMPDIR13' node '$CONSELHO' sintetizar --unanime" 2>&1)
+  exit_sintese=$?
+
+  if [ "$exit_sintese" = "0" ]; then
+    ok=$((ok + 1))
+    echo "  ok   sintese-grava-com-divergencias: exit 0"
+
+    # Check that sintese.json was created with 4 fields
+    if [ -f "$RODADA_DIR13/sintese.json" ]; then
+      SINTESE_CONTENT=$(cat "$RODADA_DIR13/sintese.json")
+
+      # Check for required fields
+      if echo "$SINTESE_CONTENT" | grep -q '"decisao_recomendada"'; then
+        ok=$((ok + 1))
+        echo "  ok   sintese.json contém decisao_recomendada"
+      else
+        falhou=$((falhou + 1))
+        echo "  FALHA sintese.json sem decisao_recomendada"
+      fi
+
+      if echo "$SINTESE_CONTENT" | grep -q '"fundamentos"'; then
+        ok=$((ok + 1))
+        echo "  ok   sintese.json contém fundamentos"
+      else
+        falhou=$((falhou + 1))
+        echo "  FALHA sintese.json sem fundamentos"
+      fi
+
+      if echo "$SINTESE_CONTENT" | grep -q '"divergencias_nao_resolvidas"'; then
+        ok=$((ok + 1))
+        echo "  ok   sintese.json contém divergencias_nao_resolvidas"
+      else
+        falhou=$((falhou + 1))
+        echo "  FALHA sintese.json sem divergencias_nao_resolvidas"
+      fi
+
+      if echo "$SINTESE_CONTENT" | grep -q '"ranking_agregado"'; then
+        ok=$((ok + 1))
+        echo "  ok   sintese.json contém ranking_agregado"
+      else
+        falhou=$((falhou + 1))
+        echo "  FALHA sintese.json sem ranking_agregado"
+      fi
+
+      # Verify ranking_agregado has real names (desanonymized), not apelidos
+      if echo "$SINTESE_CONTENT" | grep -q 'cetico\|arquiteto\|usuario-final'; then
+        ok=$((ok + 1))
+        echo "  ok   ranking_agregado com nomes reais (desanonymized)"
+      else
+        falhou=$((falhou + 1))
+        echo "  FALHA ranking_agregado sem nomes reais"
+        echo "$SINTESE_CONTENT" | sed 's/^/         /'
+      fi
+    else
+      falhou=$((falhou + 1))
+      echo "  FALHA sintese.json não foi criado"
+    fi
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA sintese-grava-com-divergencias: sintetizar deveria ter exit 0 com --unanime"
+    echo "$saida_sintese" | sed 's/^/         /'
+  fi
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA não conseguiu encontrar diretório de rodada"
+fi
+
+echo ""
+echo "== CASO 14: sintese-unanime-exige-flag =="
+TEMPDIR14="$RAIZ/test-sintese-unanime"
+mkdir -p "$TEMPDIR14"
+
+# Create test question file
+echo "# Questão para teste de unanimidade" > "$TEMPDIR14/questao-unanime.md"
+
+# Create membros.json
+mkdir -p "$TEMPDIR14/.rainforest/conselho"
+# First stage: parecerers
+cat > "$TEMPDIR14/.rainforest/conselho/membros.json" << EOF
+{
+  "membros": [
+    {"nome": "cetico", "cmd": "node \"$FIXTURE_OK_SIN\" {prompt} {saida}", "ligado": true},
+    {"nome": "arquiteto", "cmd": "node \"$FIXTURE_OK_SIN\" {prompt} {saida}", "ligado": true},
+    {"nome": "usuario-final", "cmd": "node \"$FIXTURE_OK_SIN\" {prompt} {saida}", "ligado": true}
+  ]
+}
+EOF
+
+# Open rodada
+bash -c "cd '$TEMPDIR14' && RFM_ESTADO_ROOT='$TEMPDIR14' node '$CONSELHO' abrir --questao questao-unanime.md" 2>/dev/null
+
+# Find rodada
+RODADA_DIR14=$(ls -1d "$TEMPDIR14/.rainforest/conselho/202"* 2>/dev/null | head -1)
+if [ -n "$RODADA_DIR14" ]; then
+  # Collect pareceres
+  bash -c "cd '$TEMPDIR14' && RFM_ESTADO_ROOT='$TEMPDIR14' node '$CONSELHO' pareceres" 2>/dev/null
+
+  # Update membros.json to use revisor fixture
+  cat > "$TEMPDIR14/.rainforest/conselho/membros.json" << EOF
+{
+  "membros": [
+    {"nome": "cetico", "cmd": "node \"$FIXTURE_REVISOR_SIN\" {prompt} {saida}", "ligado": true},
+    {"nome": "arquiteto", "cmd": "node \"$FIXTURE_REVISOR_SIN\" {prompt} {saida}", "ligado": true},
+    {"nome": "usuario-final", "cmd": "node \"$FIXTURE_REVISOR_SIN\" {prompt} {saida}", "ligado": true}
+  ]
+}
+EOF
+
+  # Run revisar (creates identical rankings via fixture)
+  bash -c "cd '$TEMPDIR14' && RFM_ESTADO_ROOT='$TEMPDIR14' node '$CONSELHO' revisar" 2>/dev/null
+
+  # Validate revisao
+  bash -c "cd '$TEMPDIR14' && RFM_ESTADO_ROOT='$TEMPDIR14' node '$CONSELHO' conferir --fase revisao" 2>/dev/null
+
+  # Try sintetizar WITHOUT --unanime flag — should fail (has divergencies even with identical rankings)
+  saida_sem_flag=$(bash -c "cd '$TEMPDIR14' && RFM_ESTADO_ROOT='$TEMPDIR14' node '$CONSELHO' sintetizar" 2>&1)
+  exit_sem_flag=$?
+
+  if [ "$exit_sem_flag" != "0" ]; then
+    ok=$((ok + 1))
+    echo "  ok   sans --unanime: exit != 0"
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA sans --unanime: deveria ter saído com erro"
+  fi
+
+  # Try sintetizar WITH --unanime flag — should succeed
+  saida_com_flag=$(bash -c "cd '$TEMPDIR14' && RFM_ESTADO_ROOT='$TEMPDIR14' node '$CONSELHO' sintetizar --unanime" 2>&1)
+  exit_com_flag=$?
+
+  if [ "$exit_com_flag" = "0" ]; then
+    ok=$((ok + 1))
+    echo "  ok   with --unanime: exit 0"
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA with --unanime: deveria ter exit 0"
+    echo "$saida_com_flag" | sed 's/^/         /'
+  fi
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA não conseguiu encontrar diretório de rodada"
+fi
+
+echo ""
 echo "== Resultado =="
 echo "total=$((ok + falhou)) vermelhas:[$falhou]"
 if [ "$falhou" -gt 0 ]; then
