@@ -24,7 +24,7 @@
     "em": "2026-08-31"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-08-31",
     "tarefas_ok": 19,
     "tarefas": 19,
@@ -128,12 +128,16 @@
         "resultado": "vermelho",
         "fixture": "caso (p) 4 sentinelas com mencao ao inicio e bloco deslocado"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-08-31"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "a389ab6c34576b6c00f0f638361f2fe64d8c183a",
+      "head": "0115a490897ac12221c2335c80b31cdeadfe75a1",
       "caminhos_sujos": [
         "relatorios/2026-08-28-batedor-repos.md",
         "vigias/ERROS.md"
@@ -143,9 +147,9 @@
     "criticos": 1,
     "base": "21266f797a8d43d417a3d783b83de19f4df5c339",
     "head": "1422b1438322a9d49531e1079ca1010904fbcf50",
-    "nota": "rodada 4: mesmo genero da rodada 3, vetor do INICIO. escrever() pega o primeiro projeto:inicio e o primeiro fim depois dele sem exigir que sejam o mesmo bloco — mencao em prosa ao marcador de inicio ANTES de um bloco real faz o corte engolir a prosa E o bloco real. Repro da sessao: 3 de 4 sentinelas apagadas em silencio. Conserto definitivo na tarefa 19: so remove quando o pos-FIM COMECA com o bloco (posicao onde o gerador escreve); qualquer outra coisa e conteudo do dono.",
+    "nota": "rodada 5: bloco de projeto real truncado a mao (sem projeto:fim) duplica em silencio na regeneracao — permanente, sem aviso. Repro da sessao: 2 blocos apos regenerar, console so diz GRAVADO. Sem perda de dado (texto manual intacto); cenarios A (idempotencia 3x byte a byte) e C (mencao colada ao FIM sem fim nenhum) passaram limpos. Conserto na tarefa 20: aviso explicito no console quando o pos-FIM comeca com inicio sem fim, e o bloco novo nao entra (regeneracao recusa com erro em vez de gravar duplicata calada).",
     "em": "2026-08-31",
-    "tentativas": 4
+    "tentativas": 5
   },
   "verificar": {
     "status": "pendente"
