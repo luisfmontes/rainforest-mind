@@ -280,3 +280,18 @@ mutacao:
   bateria: `bash scripts/testa-ponte-entrevista.sh`
   fixture: caso novo "mencao ao inicio antes de bloco real nao apaga nada"
 pronto quando: em `escrever()`, o bloco de projeto antigo só é removido quando o pós-FIM (após aparar quebras de linha) COMEÇA com `<!-- rainforest-mind:projeto:inicio` — a posição onde o próprio gerador o escreve; o corte vai até o primeiro `<!-- rainforest-mind:projeto:fim -->` a partir daí. Menção a QUALQUER marcador em texto manual (antes, depois, com ou sem bloco real deslocado) não remove nada. Provado por caso novo com 4 sentinelas (antes da menção ao início, entre a menção e um bloco real deslocado, dentro do bloco deslocado, depois dele) — as 4 sobrevivem à regeneração; e os casos existentes (i)/(o) continuam verdes (bloco gerado-adjacente continua substituído sem duplicar)
+
+## Emenda da revisão rodada 5 (2026-08-31)
+
+### 20. Bloco de projeto truncado não duplica calado — regeneração recusa com erro [tipo: implementar]
+atende: invariante 1 e o lema do próprio ponte.cjs ("errada calada" é o pior estado)
+arquivos: `scripts/ponte.cjs`, `scripts/testa-ponte-entrevista.sh`
+depende de: nenhuma
+paralela: nao
+mutacao:
+  arquivo: `scripts/ponte.cjs`
+  de: a recusa com erro quando o pós-FIM começa com projeto:inicio sem projeto:fim
+  para: seguir gravando como antes (duplicata calada)
+  bateria: `bash scripts/testa-ponte-entrevista.sh`
+  fixture: caso novo "bloco de projeto sem fim recusa a regeneração com erro"
+pronto quando: em `escrever()`, quando o pós-FIM começa com `<!-- rainforest-mind:projeto:inicio` mas não há `<!-- rainforest-mind:projeto:fim -->` no restante, a regeneração desse arquivo FALHA com mensagem clara (bloco de projeto truncado — restaure o marcador de fim ou remova o bloco) e exit != 0, sem gravar nada nesse arquivo; provado por caso novo (gera com projeto, apaga a linha do fim à mão, regenera → exit != 0, arquivo intocado byte a byte, mensagem presente); cenários vizinhos continuam: menção solta sem bloco real segue gravando normal (casos o/p verdes)
