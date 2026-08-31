@@ -24,14 +24,66 @@
     "em": "2026-08-31"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-08-31",
-    "tarefas_ok": 8,
+    "tarefas_ok": 10,
     "tarefas": 10,
     "nota": "T2 e T6 integradas (T6 com correcao da integracao: descricao do sabia inventava proposito — corrigida contra o README real)",
     "em": "2026-08-31",
-    "comando": "caso k executa exemplos do SKILL; baterias na arvore integrada",
-    "saida": "entrevista 44/0, ponte 48/0, conferir-ponte 5/5; conferir-publicacao CONFERIDO"
+    "comando": "conferir-mutacao.cjs re-rodado pela integracao em cada tarefa; baterias na arvore integrada",
+    "saida": "saude 47/0, ponte 48/0, entrevista 44/0, integracoes 5/0, conferir-ponte 5/5, setup 59/0",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "caso mas ENSINA a descobrir de testa-ponte.sh"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "caso (a) detecta stack Node por package.json real de testa-ponte-entrevista.sh"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "caso (e) grava projeto.md atomicamente de testa-ponte-entrevista.sh"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "caso (i) bloco de projeto aparece/some/nao duplica de testa-ponte-entrevista.sh"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "caso (j) bloco de projeto editado a mao e detectado de testa-ponte-entrevista.sh"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "bloco INTEGRACOES declaravel desligada por padrao de testa-setup.sh"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "casos (a)/(b) servidor fixture loopback de testa-integracoes.sh"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "casos (c)/(d) pasta com e sem .venv de testa-integracoes.sh"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "casos R2/R2b integracao-sabia sem .venv de testa-saude.sh"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "n/a",
+        "motivo": "docs; a falsificacao e o caso k da bateria executando os exemplos do SKILL.md"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente"
