@@ -24,14 +24,14 @@
     "em": "2026-08-31"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-08-31",
-    "tarefas_ok": 21,
-    "tarefas": 21,
-    "nota": "rodada 7: tarefa 21 pela propria sessao (abaixo do limiar). Extracao da catraca virou posicional (ancora multiline de linha inteira) espelhando a T19; repro8 re-executada: CONFERIDO exit 0 com mencao em prosa, ficou-para-tras exit 2 quando projeto.md muda de verdade.",
+    "tarefas_ok": 23,
+    "tarefas": 23,
+    "nota": "rodada 8: tarefas 22-23 pela propria sessao. lerProjetoMd ancorado em linha inteira (fecha a familia posicional: T19 escrita, T21 leitura da catraca, T22 leitura do projeto.md); temBloco nos vereditos. Nota de metodo: a 1a rodada da mutacao 22 disse que a bateria nao media o conserto — o caso (s) nasceu dai; e o exit de mutacao passou a ser capturado sem pipe.",
     "em": "2026-08-31",
-    "comando": "baterias + conferir-mutacao da 21",
-    "saida": "ponte 53/0, conferir-ponte 5/5, entrevista 85/0, integracoes 5/0, setup 59/0, saude 47/0; mutacao 21 exit 0",
+    "comando": "baterias + conferir-mutacao 22/23 sem pipe",
+    "saida": "ponte 53/0, conferir-ponte 5/5, entrevista 90/0, integracoes 5/0, setup 59/0, saude 47/0; mutacoes 22 e 23 exit 0",
     "mutacao": [
       {
         "tarefa": 1,
@@ -41,27 +41,27 @@
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "caso (a) stack Node"
+        "fixture": "caso (a)"
       },
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "caso (e) atomicidade"
+        "fixture": "caso (e)"
       },
       {
         "tarefa": 4,
         "resultado": "vermelho",
-        "fixture": "caso (i) aparece/some/nao duplica"
+        "fixture": "caso (i)"
       },
       {
         "tarefa": 5,
         "resultado": "vermelho",
-        "fixture": "caso (j) editado a mao detectado"
+        "fixture": "caso (j)"
       },
       {
         "tarefa": 6,
         "resultado": "vermelho",
-        "fixture": "INTEGRACOES desligada por padrao"
+        "fixture": "testa-setup INTEGRACOES"
       },
       {
         "tarefa": 7,
@@ -136,13 +136,19 @@
       {
         "tarefa": 21,
         "resultado": "vermelho",
-        "fixture": "caso (r) mencao em prosa nao confunde a catraca"
+        "fixture": "caso (r)"
+      },
+      {
+        "tarefa": 22,
+        "resultado": "vermelho",
+        "fixture": "caso (s) prosa no projeto.md nao corrompe"
+      },
+      {
+        "tarefa": 23,
+        "resultado": "vermelho",
+        "fixture": "caso (r) linha de status na saida texto"
       }
-    ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-08-31"
-    }
+    ]
   },
   "revisar": {
     "status": "reprovado",
