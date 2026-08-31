@@ -81,7 +81,7 @@ decide. A forma do briefing e o encadeamento de vários despachos moram na skill
 
 ## A portaria — admissão por manifesto (fluxo 9)
 
-Desde 2026-08-31, subagente só roda se estiver declarado em `.rainforest/agentes.json` com o estágio ativo na sua lista. A decisão é tomada por código (hook `PreToolUse` que intercepta a tool `Task`), nunca por pergunta ao humano em runtime.
+Com a portaria registrada (ver 'Estado atual' abaixo), subagente só roda se estiver declarado em `.rainforest/agentes.json` com o estágio ativo na sua lista. A decisão é tomada por código (hook `PreToolUse` que intercepta a tool `Task`), nunca por pergunta ao humano em runtime.
 
 > **Regra 10 (reescrita):** Subagente só roda se estiver declarado em `.rainforest/agentes.json` e o estágio ativo constar na sua lista. A portaria decide por código; o humano nunca é perguntado em sessão. Exceção não existe em runtime — exceção é editar o manifesto, e edição de manifesto é mudança versionada que passa pelo `revisar`.
 
@@ -100,7 +100,7 @@ Exemplo:
 }
 ```
 
-**Fail-closed, sempre com motivo.** A portaria nega quando: manifesto ausente ou inválido (JSON malformado ou `versao` desconhecida), agente não declarado, sem estágio ativo (nenhum fluxo aberto que case com a branch), estágio ativo fora da lista `estagios` do agente, ou `escreve: false` mas o arquivo `.claude/agents/<nome>.md` declara tools fora da allowlist read-only (`Read`, `Grep`, `Glob`). Toda negação sai com motivo não vazio — negação muda é bug.
+**Fail-closed, sempre com motivo.** A portaria nega quando: manifesto ausente ou inválido (JSON malformado ou `versao` desconhecida), agente não declarado, sem estágio ativo (nenhum fluxo aberto que case com a branch), estágio ativo fora da lista `estagios` do agente, ou `escreve: false` mas o arquivo `agents/<nome>.md` declara tools fora da allowlist read-only (`Read`, `Grep`, `Glob`). Toda negação sai com motivo não vazio — negação muda é bug.
 
 **Log de despacho** (`.rainforest/portaria/despachos.jsonl`): append-only, uma linha JSON por decisão, aprovada ou negada. Cada linha é autocontida — legível isolada, sem precisar do resto do log para fazer sentido:
 ```json
@@ -108,7 +108,7 @@ Exemplo:
 {"ts":"2026-08-31T14:05:47Z","agente":"executor","estagio":"revisar","decisao":"deny","motivo":"agente 'executor' não consta no manifesto","sessao":"<id>"}
 ```
 
-O log é evidência de primeira classe: responde "quem rodou, quando, em qual estágio" com `cat`, e o recibo do fluxo 7 pode referenciá-lo. **Adicionado ao `.gitignore`** — `.rainforest/agentes.json` e `.rainforest/portaria/amostra.json` ficam versionados (documentação); o log de execução não.
+O log é evidência de primeira classe: responde "quem rodou, quando, em qual estágio" com `cat`, e o recibo do fluxo 7 pode referenciá-lo. Entra no `.gitignore` (tarefa 4 do plano) — `.rainforest/agentes.json` e `.rainforest/portaria/amostra.json` ficam versionados (documentação); o log de execução não.
 
 **Exceção é editar o manifesto.** Quem quer disparar agente não declarado edita `.rainforest/agentes.json`, passando a mudança pelo `revisar` — é o único jeito de aprovar novas declarações. Em runtime, sem edição no manifesto, não há pergunta ao humano.
 
