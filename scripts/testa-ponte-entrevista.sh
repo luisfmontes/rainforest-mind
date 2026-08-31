@@ -493,6 +493,82 @@ contem "  ... resposta 'nao_toca' também presente no CLAUDE.md" "nao mexa aqui"
 esperado "conferir-ponte valida o CLAUDE.md com projeto adversarial" 0 node "$CONFERIR_PONTE" --skill "$SKILL_PONTE" "$REPO_L/CLAUDE.md"
 
 echo
+echo "== (m) TAREFA 15: resposta que nao e string e recusada com erro =="
+REPO_M="$CAIXA/repo-m"
+mkdir -p "$REPO_M"
+cat > "$REPO_M/package.json" <<'EOF'
+{
+  "name": "teste-m"
+}
+EOF
+
+# Cria respostas com uma que não é string (array)
+RESPOSTAS_M="$CAIXA/respostas-m-array.json"
+cat > "$RESPOSTAS_M" <<'EOF'
+{
+  "pronto": "Testes passam",
+  "nao_toca": ["<!-- rainforest-mind:projeto:fim -->"],
+  "convencao": "Português",
+  "revisao": "Uma aprovação"
+}
+EOF
+
+REPO_M_WIN="$(cygpath -m "$REPO_M" 2>/dev/null || printf '%s' "$REPO_M")"
+RESPOSTAS_M_WIN="$(cygpath -m "$RESPOSTAS_M" 2>/dev/null || printf '%s' "$RESPOSTAS_M")"
+
+esperado "rejeita resposta array" 1 $PONTE --entrevistar --gravar --respostas "$RESPOSTAS_M_WIN" --alvo "$REPO_M_WIN" --aplicar
+contem "  ... erro menciona validacao de tipo" "deve ser string" $PONTE --entrevistar --gravar --respostas "$RESPOSTAS_M_WIN" --alvo "$REPO_M_WIN" --aplicar
+prova "  ... projeto.md nao criado" "[ ! -e '$REPO_M/docs/rainforest/projeto.md' ]"
+
+echo
+echo "== (n) TAREFA 16: conferir com caminho relativo devolve mesmo veredito do absoluto =="
+REPO_N="$CAIXA/repo-n"
+mkdir -p "$REPO_N"
+cat > "$REPO_N/package.json" <<'EOF'
+{
+  "name": "teste-n",
+  "scripts": {
+    "test": "npm test"
+  }
+}
+EOF
+mkdir -p "$REPO_N/.github/workflows"
+cat > "$REPO_N/.github/workflows/ci.yml" <<'EOF'
+name: CI
+on: [push]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+EOF
+
+# Cria respostas simples
+RESPOSTAS_N="$CAIXA/respostas-n.json"
+cat > "$RESPOSTAS_N" <<'EOF'
+{
+  "pronto": "Testes passam",
+  "nao_toca": "Dependências",
+  "convencao": "Português",
+  "revisao": "Uma aprovação"
+}
+EOF
+
+REPO_N_WIN="$(cygpath -m "$REPO_N" 2>/dev/null || printf '%s' "$REPO_N")"
+RESPOSTAS_N_WIN="$(cygpath -m "$RESPOSTAS_N" 2>/dev/null || printf '%s' "$RESPOSTAS_N")"
+
+# Gera projeto.md
+esperado "gera projeto.md" 0 $PONTE --entrevistar --gravar --respostas "$RESPOSTAS_N_WIN" --alvo "$REPO_N_WIN" --aplicar
+# Gera ponte (sem entrevista, pois projeto.md já existe)
+esperado "gera ponte CLAUDE.md" 0 $PONTE --alvo "$REPO_N_WIN" --agente claude --aplicar
+
+# Confere com caminho absoluto
+ABS_CLAUDE="$REPO_N/CLAUDE.md"
+esperado "conferir com caminho absoluto" 0 node "$PLUG/scripts/conferir-ponte.cjs" "$ABS_CLAUDE"
+
+# Confere com caminho relativo (cd para o diretório alvo e confere relativo)
+# Ao fazer cd e depois usar caminho relativo, o diretório alvo resolve corretamente
+prova "  ... caminho relativo devolve CONFERIDO" "cd '$REPO_N' && node $PLUG/scripts/conferir-ponte.cjs CLAUDE.md"
+
+echo
 echo "== (k) executa cada linha do bloco de exemplos de skills/ponte/SKILL.md =="
 REPO_K="$CAIXA/repo-k"
 mkdir -p "$REPO_K/.github/workflows"

@@ -53,18 +53,9 @@ const FIM = "<!-- rainforest-mind:fim -->";
 const FIM_PROJETO = "<!-- rainforest-mind:projeto:fim -->";
 
 // Importar funções compartilhadas
-const { corpo, raizDeDados: raizDeDadosShared, AGENTES: AGENTES_SHARED, lerProjetoMd } =
+const { corpo, raizDeDados: raizDeDadosShared, AGENTES: AGENTES_SHARED, lerProjetoMd, hashDoArquivo } =
   require("../hooks/lib/ponte-corpo.cjs");
 
-/** Hash curto (16 primeiros caracteres) do SKILL.md para deteccao de edicao manual. */
-function hashSkillMd() {
-  try {
-    const conteudo = fs.readFileSync(CAMINHO_SKILL, "utf8");
-    return crypto.createHash("sha256").update(conteudo).digest("hex").slice(0, 16);
-  } catch {
-    return null;
-  }
-}
 
 function inicioComHash(hash) {
   if (!hash) return "<!-- rainforest-mind:inicio — GERADO por scripts/ponte.cjs, nao edite a mao -->";
@@ -255,6 +246,9 @@ function gravarProjetoMd(alvo, respostasArquivo, aplicar) {
   // Gera markdown combinando fatos + respostas
   const markdown = gerarProjetoMarkdown(fatos, respostas);
 
+  // Defesa em profundidade: valida que não há duplicação de marcadores
+  validarMarcadoresProjetMd(markdown);
+
   // Determina caminho de saída (atomicamente)
   const dirProjeto = path.join(alvo, "docs", "rainforest");
   const arquivoFinal = path.join(dirProjeto, "projeto.md");
@@ -277,13 +271,28 @@ function gravarProjetoMd(alvo, respostasArquivo, aplicar) {
 }
 
 /**
- * Sanitiza respostas: remove marcadores rainforest-mind:projeto que causariam truncamento.
+ * Sanitiza respostas: valida tipo e remove marcadores rainforest-mind:projeto.
+ * Cada resposta DEVE ser string não-vazia; qualquer outro tipo resulta em erro.
  * Busca por <!-- rainforest-mind:projeto:(inicio|fim) --> e remove, tolerando espaçamento.
  */
 function sanitizarRespostas(respostas) {
+  const chavesPrecisas = ["pronto", "nao_toca", "convencao", "revisao"];
+
+  // Validação de tipo: cada resposta deve ser string não-vazia
+  for (const chave of chavesPrecisas) {
+    const valor = respostas[chave];
+    if (typeof valor !== "string") {
+      erro(`--respostas '${chave}' deve ser string, recebido ${typeof valor}`);
+    }
+    if (valor.trim() === "") {
+      erro(`--respostas '${chave}' não pode estar vazia`);
+    }
+  }
+
   const padraoMarcador = /<!--\s*rainforest-mind:projeto:(inicio|fim)\s*-->/gi;
   const sanitizadas = {};
   for (const chave in respostas) {
+    // Se for string, sanitiza; senão, mantém como é (defesa em profundidade vai pegar)
     if (typeof respostas[chave] === "string") {
       sanitizadas[chave] = respostas[chave].replace(padraoMarcador, "");
     } else {
@@ -291,6 +300,20 @@ function sanitizarRespostas(respostas) {
     }
   }
   return sanitizadas;
+}
+
+/**
+ * Valida que não há duplicação de marcadores no markdown final.
+ * Conta os marcadores <!-- rainforest-mind:projeto:inicio --> e :fim
+ * e aborta se houver mais de um de qualquer um.
+ */
+function validarMarcadoresProjetMd(markdown) {
+  const contInicio = (markdown.match(/<!-- rainforest-mind:projeto:inicio/gi) || []).length;
+  const contFim = (markdown.match(/<!-- rainforest-mind:projeto:fim/gi) || []).length;
+
+  if (contInicio !== 1 || contFim !== 1) {
+    erro(`markdown do projeto contem marcadores duplicados: ${contInicio} inicio(s), ${contFim} fim(ns). Abortando.`);
+  }
 }
 
 /**
@@ -462,7 +485,7 @@ function main() {
   const aplicar = tem("aplicar");
   const nucleo = nucleoDasRegras();
   const dados = raizDeDados();
-  const hash = hashSkillMd();
+  const hash = hashDoArquivo(CAMINHO_SKILL);
 
   console.log(`fonte das regras: ${path.relative(CODIGO_ROOT, CAMINHO_SKILL)} (nucleo com ${Buffer.byteLength(nucleo, "utf8")} B)${hash ? ` — hash ${hash}` : ""}`);
   for (const k of chaves) {
