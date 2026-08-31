@@ -84,6 +84,11 @@
     "em": "2026-08-31"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "gh pr create --base fluxo/ciclo-por-maquina",
+    "saida": "https://github.com/luisfmontes/rainforest-mind/pull/133",
+    "pr": 133,
+    "commit": "5520435",
+    "em": "2026-08-31"
   }
 }
