@@ -53,6 +53,12 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
+// Importar funções compartilhadas de ponte
+const { corpo, raizDeDados: raizDeDadosShared, AGENTES: AGENTES_SHARED } =
+  require('../hooks/lib/ponte-corpo.cjs');
+
+const CODIGO_ROOT = path.resolve(__dirname, '..');
+
 // O SKILL.md pode estar em dois lugares:
 // 1. Se o arquivo sendo conferido é um repo com SKILL.md (repo de teste) → usa aquele
 // 2. Senão → usa o SKILL.md do plugin
@@ -143,98 +149,13 @@ function nucleoDasRegras(caminhoSkill) {
   return nucleo;
 }
 
+// raizDeDados() foi movida para o módulo compartilhado, chamar de lá
 function raizDeDados() {
-  try {
-    return require(path.join(CODIGO_ROOT, 'hooks', 'lib', 'raiz.cjs')).resolverRaiz({ plugin: CODIGO_ROOT }).raiz || null;
-  } catch {
-    return null;
-  }
+  return raizDeDadosShared(CODIGO_ROOT);
 }
 
-/**
- * Definições dos agentes (AGENTES.claude, AGENTES.codex, AGENTES.gemini).
- */
-const AGENTES = {
-  claude: {
-    arquivo: 'CLAUDE.md',
-    nome: 'Claude Code (sem o plugin)',
-    comoLe: 'O Claude Code le o `CLAUDE.md` da raiz do repositorio em toda sessao.',
-    semTrava:
-      'As duas travas do rainforest-mind (agente fora de worktree isolado, `git add -A`) ' +
-      'sao hooks `PreToolUse` do PLUGIN. Este arquivo entrega as regras, nao os hooks: ' +
-      'sem o plugin instalado elas sao combinado, nao trava. Quem quiser as travas ' +
-      'instala o plugin — ai este arquivo fica redundante e pode sair.',
-  },
-  codex: {
-    arquivo: 'AGENTS.md',
-    nome: 'Codex',
-    comoLe: 'O Codex le o `AGENTS.md` da raiz do repositorio em toda sessao.',
-    semTrava:
-      'Duas travas do rainforest-mind rodam fora do modelo no Claude Code, como hook ' +
-      'com exit code: a que barra agente editando fora de worktree isolado, e a que ' +
-      'barra `git add -A`. Elas usam o `PreToolUse`, que **nao existe** neste host. ' +
-      'Aqui elas sao texto — ou seja, argumentaveis. Trate-as como combinado.',
-  },
-  gemini: {
-    arquivo: 'GEMINI.md',
-    nome: 'Gemini CLI',
-    comoLe: 'O Gemini CLI le o `GEMINI.md` da raiz do repositorio em toda sessao.',
-    semTrava:
-      'Duas travas do rainforest-mind rodam fora do modelo no Claude Code, como hook ' +
-      'com exit code: a que barra agente editando fora de worktree isolado, e a que ' +
-      'barra `git add -A`. Elas usam o `PreToolUse`, que **nao existe** neste host. ' +
-      'Aqui elas sao texto — ou seja, argumentaveis. Trate-as como combinado.',
-  },
-};
-
-function corpo(agente, nucleo, dados) {
-  const cli = [
-    ['`node <plugin>/scripts/estado.cjs exigir --slug <slug> --estagio <e>`', 'gate do fluxo — **exit 2** quando o estagio anterior nao fechou'],
-    ['`node <plugin>/scripts/conferir-entrega.cjs --worktree <wt> --base <hash>`', 'a checagem da regra 12 sobre entrega de agente — **exit 1** se reprovar'],
-    ['`node <plugin>/scripts/conferir-publicacao.cjs <arquivo>`', '**exit 2** se o texto tem telefone, e-mail, caminho de home ou credencial'],
-    ['`node <plugin>/scripts/ideias.cjs plantar, colher, listar, conferir`', 'porta unica de escrita do `ideias.jsonl` (trava, backup, atomico, conferido)'],
-    ['`node <plugin>/scripts/foco.cjs caminho, rotacionar`', 'onde mora o foco, e o teto do bloco de avancos'],
-    ['`node <plugin>/scripts/saude.cjs`', 'o que os checadores oficiais nao sabem'],
-    ['`node <plugin>/scripts/semear.cjs --projeto <slug>`', 'o historico deste projeto: observacoes, ideias abertas, relatorios'],
-  ]
-    .map(([c, p]) => `| ${c} | ${p} |`)
-    .join('\n');
-
-  return `# rainforest-mind — ponte para o ${agente.nome}
-
-${agente.comoLe} Este bloco e **gerado**: as regras moram em
-\`skills/rainforest-mind/SKILL.md\`, no plugin, e chegam aqui por
-\`node <plugin>/scripts/ponte.cjs --alvo . --agente ${Object.keys(AGENTES).find((k) => AGENTES[k] === agente)} --aplicar\`.
-Editar este bloco a mao cria uma segunda versao das regras que divergem em
-silencio — foi o que aconteceu com duas CLAUDE.md sincronizadas a mao em
-2026-08-10. Mude o SKILL.md e gere de novo.
-
-## O que NAO vale aqui, e voce precisa saber antes de confiar
-
-${agente.semTrava}
-
-O que continua sendo mecanismo, porque e comando com exit code, esta na tabela
-abaixo. Chame de verdade: **relato de que rodou nao e evidencia de que rodou.**
-
-| Comando | O que ele garante |
-|---|---|
-${cli}
-
-\`<plugin>\` e a pasta do rainforest-mind nesta maquina. Sua pasta de dados
-(FOCO.md, ideias.jsonl, projetos.json) **nao se chumba aqui**: descubra com
-\`node <plugin>/scripts/ideias.cjs conferir\`, que imprime o caminho resolvido${dados ? '' : ', e monte com `node <plugin>/scripts/setup.cjs --criar` se ainda nao existir'}.
-Caminho de home dentro de arquivo versionado vaza a maquina de quem gerou — e este
-arquivo nasce para ser commitado no repo de outra pessoa.
-
-## As regras
-
-O que segue e o **nucleo** de cada regra. Regra marcada com \`↳\` tem elaboracao
-que nao esta aqui — criterio fino, comando exato, incidente datado —, e ela mora
-em \`skills/rainforest-mind/references/regra-<n>.md\` (onde \`<n>\` e o numero da regra). Antes de aplicar uma regra marcada, **leia esse arquivo**.
-
-${nucleo}
-`;
-}
+// Usar AGENTES do módulo compartilhado
+const AGENTES = AGENTES_SHARED;
 
 /**
  * Compara dois textos e retorna se são iguais (removendo espaços em branco extras).
