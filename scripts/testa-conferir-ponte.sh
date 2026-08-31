@@ -8,7 +8,7 @@
 
 PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO_TESTE=$(mktemp -d)
-trap "rm -rf '$REPO_TESTE'" EXIT
+trap "rm -rf '$REPO_TESTE'; rm -f '$PLUGIN_DIR/scripts/conferir-ponte-sabotado.cjs'" EXIT
 
 # Inicializa repo em subshell para não sair do diretório
 bash -c "

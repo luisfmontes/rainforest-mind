@@ -105,6 +105,22 @@ prova "sem /home/ no gerado"      "! grep -q '/home/' '$ALVO/AGENTS.md'"
 prova "sem .rainforest chumbado"  "! grep -q '\.rainforest' '$ALVO/AGENTS.md'"
 prova "mas ENSINA a descobrir"    "grep -q 'ideias.cjs conferir' '$ALVO/AGENTS.md'"
 
+# Novo teste: quando a pasta de dados esta AUSENTE, o aviso aparece
+# Isso permite a catraca detectar se alguem remove a condicional
+ALVO_SEM_DADOS="$CAIXA/repo-sem-dados"
+mkdir -p "$ALVO_SEM_DADOS"
+ALVO_SEM_DADOS_WIN="$(cygpath -m "$ALVO_SEM_DADOS" 2>/dev/null || printf '%s' "$ALVO_SEM_DADOS")"
+# Usar USERPROFILE no lugar de HOME (Windows), apontando para dir sem .rainforest
+bash -c "
+  unset RFM_ROOT
+  export USERPROFILE='$CAIXA/user-vazio'
+  export HOME='$CAIXA/user-vazio'
+  mkdir -p \"\$USERPROFILE\"
+  cd '$ALVO_SEM_DADOS'  # rodar de um dir sem .rainforest
+  $PONTE --alvo '$ALVO_SEM_DADOS_WIN' --agente claude --aplicar >/dev/null 2>&1
+" 2>&1
+prova "com pasta de dados AUSENTE, mostra aviso de setup.cjs" "grep -q 'setup.cjs --criar' '$ALVO_SEM_DADOS/CLAUDE.md'"
+
 echo
 echo "== 4. regenerar substitui o bloco, e o que e de outra pessoa fica =="
 BYTES1=$(wc -c < "$ALVO/AGENTS.md")
