@@ -770,17 +770,17 @@ esperado "ciclo 3: exigir executar recusa exit 2" 2 $E_T3 exigir --slug t3-front
 esperado "liberar passa" 0 $E_T3 liberar --slug t3-frontier --estagio verificar
 esperado "apos liberar, exigir passa" 0 $E_T3 exigir --slug t3-frontier --estagio executar
 
-# Caso (b): OK zera o contador — novo ciclo comeca de 1
+# Caso (b): OK zera o contador — o REPROVADOR (verificar) fecha ok e o novo
+# ciclo comeca de 1. A versao anterior deste caso nunca fechava o verificar
+# e passava por causa do liberado_em residual (achado da revisao 2026-08-31,
+# corrigido junto com a limpeza do liberado_em na reprovacao seguinte).
 $E_T3 marcar --slug t3-frontier --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
 $E_T3 marcar --slug t3-frontier --estagio revisar --status ok >/dev/null
 $E_T3 exigir --slug t3-frontier --estagio verificar >/dev/null
+$E_T3 marcar --slug t3-frontier --estagio verificar --status ok --json '{"comando":"x","saida":"y"}' >/dev/null
+# verificar fechou ok: tentativas zerou. Reprova 1a vez do ciclo novo:
 $E_T3 marcar --slug t3-frontier --estagio verificar --status reprovado >/dev/null
-# Apos OK, contador zera — agora e 1a de novo
-$E_T3 marcar --slug t3-frontier --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
-$E_T3 marcar --slug t3-frontier --estagio revisar --status ok >/dev/null
-$E_T3 exigir --slug t3-frontier --estagio verificar >/dev/null
-$E_T3 marcar --slug t3-frontier --estagio verificar --status reprovado >/dev/null
-esperado "apos OK, contador zerou: exigir passa" 0 $E_T3 exigir --slug t3-frontier --estagio executar
+esperado "apos OK do reprovador, contador zerou: exigir passa" 0 $E_T3 exigir --slug t3-frontier --estagio executar
 
 # Ciclo 2 novo: segunda de novo
 $E_T3 marcar --slug t3-frontier --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
@@ -874,6 +874,66 @@ $E_T4 marcar --slug t4-refechado --estagio verificar --status ok --json '{"coman
 saida_depois_refecha=$($E_T4 proximo --slug t4-refechado 2>&1)
 expected_depois_refecha="fechar"
 igual "depois de refecha: volta a saida limpa" "$expected_depois_refecha" "$saida_depois_refecha"
+
+unset RFM_ESTADO_ROOT
+
+echo
+echo "== 19. reprovacao pendente nao vaza para fora da execucao (revisao 2026-08-31) =="
+# CRITICO da revisao: exigir de limpar/arqueologia/design/plano nao pode ser
+# bloqueado por reaberto_por alheio. E os dois avisos: liberar destrava UMA
+# rodada (reprovacao seguinte re-arma o teto) e auto-reprovacao de executar
+# nao imprime mensagem de rebaixamento sem efeito.
+
+mkdir -p "$SBP/revisao1"
+(cd "$SBP/revisao1" && git init -q && git config user.email t@t && git config user.name T && echo x > a.txt && git add . && git commit -qm inicial)
+export RFM_ESTADO_ROOT="$SBP/revisao1"
+E_R1="node scripts/estado.cjs"
+
+# Prepara um fluxo com reprovacao pendente (executar reaberto)
+$E_R1 iniciar --slug rev-vaza >/dev/null
+$E_R1 marcar --slug rev-vaza --estagio design --status aprovado >/dev/null
+$E_R1 marcar --slug rev-vaza --estagio plano  --status ok >/dev/null
+$E_R1 exigir --slug rev-vaza --estagio executar >/dev/null
+$E_R1 marcar --slug rev-vaza --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t"}]}' >/dev/null
+$E_R1 exigir --slug rev-vaza --estagio revisar >/dev/null
+$E_R1 marcar --slug rev-vaza --estagio revisar --status ok >/dev/null
+$E_R1 exigir --slug rev-vaza --estagio verificar >/dev/null
+$E_R1 marcar --slug rev-vaza --estagio verificar --status reprovado >/dev/null
+
+esperado "com reaberto pendente, exigir limpar passa"      0 $E_R1 exigir --slug rev-vaza --estagio limpar
+esperado "com reaberto pendente, exigir arqueologia passa" 0 $E_R1 exigir --slug rev-vaza --estagio arqueologia
+esperado "com reaberto pendente, exigir design passa"      0 $E_R1 exigir --slug rev-vaza --estagio design
+esperado "com reaberto pendente, exigir plano passa"       0 $E_R1 exigir --slug rev-vaza --estagio plano
+esperado "com reaberto pendente, exigir revisar recusa"    2 $E_R1 exigir --slug rev-vaza --estagio revisar
+
+# Aviso 2 da revisao: liberar destrava UMA rodada — a reprovacao seguinte re-arma o teto
+ciclo_rev() { # fecha executar+revisar e reprova verificar
+  $E_R1 exigir --slug rev-teto --estagio executar >/dev/null 2>&1
+  $E_R1 marcar --slug rev-teto --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t"}]}' >/dev/null
+  $E_R1 exigir --slug rev-teto --estagio revisar >/dev/null
+  $E_R1 marcar --slug rev-teto --estagio revisar --status ok >/dev/null
+  $E_R1 exigir --slug rev-teto --estagio verificar >/dev/null
+  $E_R1 marcar --slug rev-teto --estagio verificar --status reprovado >/dev/null
+}
+$E_R1 iniciar --slug rev-teto >/dev/null
+$E_R1 marcar --slug rev-teto --estagio design --status aprovado >/dev/null
+$E_R1 marcar --slug rev-teto --estagio plano  --status ok >/dev/null
+ciclo_rev; ciclo_rev; ciclo_rev   # 3 reprovacoes: teto atingido
+esperado "teto atingido: exigir executar recusa" 2 $E_R1 exigir --slug rev-teto --estagio executar
+$E_R1 liberar --slug rev-teto --estagio verificar >/dev/null
+esperado "apos liberar: exigir executar passa" 0 $E_R1 exigir --slug rev-teto --estagio executar
+ciclo_rev                          # 4a reprovacao consome o liberar
+esperado "reprovacao apos liberar re-arma o teto" 2 $E_R1 exigir --slug rev-teto --estagio executar
+
+# Aviso 4 da revisao: auto-reprovacao de executar nao anuncia rebaixamento sem efeito
+$E_R1 iniciar --slug rev-auto >/dev/null
+$E_R1 marcar --slug rev-auto --estagio design --status aprovado >/dev/null
+$E_R1 marcar --slug rev-auto --estagio plano  --status ok >/dev/null
+saida_auto=$($E_R1 marcar --slug rev-auto --estagio executar --status reprovado 2>&1)
+case "$saida_auto" in
+  *"upstream"*) igual "auto-reprovacao nao imprime rebaixamento falso" "sem-upstream" "$saida_auto" ;;
+  *)            igual "auto-reprovacao nao imprime rebaixamento falso" "ok" "ok" ;;
+esac
 
 unset RFM_ESTADO_ROOT
 
