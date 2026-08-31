@@ -24,9 +24,9 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-08-30",
-    "tarefas_ok": 2,
+    "tarefas_ok": 3,
     "tarefas": 5,
-    "nota": "T2 integrada apos 1 devolucao (rodape ensinava buscar posicional silenciosamente ignorado; corrigido para --texto, a interface real)",
+    "nota": "T4 integrada apos 1 devolucao (caso de falha de LLM afirmado no commit sem teste; secao 18 adicionada); catraca re-rodada pela integracao no checkout principal, exit 0",
     "em": "2026-08-31"
   },
   "revisar": {
