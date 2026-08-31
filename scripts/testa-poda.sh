@@ -197,6 +197,59 @@ else
 fi
 
 echo
+echo "== 5.1. TAREFA 3 (plano): corpo chega ao upstream byte a byte (hash sha256) =="
+HASH_ENVIADO=$(printf '%s' "$CORPO_TESTE" | node -e "const c=require('crypto');let b='';process.stdin.on('data',d=>b+=d).on('end',()=>console.log(c.createHash('sha256').update(b).digest('hex')))")
+SBP_WIN="$(cygpath -m "$SBP" 2>/dev/null || printf '%s' "$SBP")"
+HASH_RECEBIDO=$(node -e "
+const fs=require('fs');
+const linhas=fs.readFileSync('$SBP_WIN/fixture-log.jsonl','utf8').trim().split('\n');
+const primeira=JSON.parse(linhas[0]);
+console.log(require('crypto').createHash('sha256').update(primeira.body).digest('hex'));
+")
+igual "hash do corpo enviado == hash no upstream" "$HASH_ENVIADO" "$HASH_RECEBIDO"
+
+echo
+echo "== 5.2. TAREFA 3 (plano): header de auth chega INTACTO ao upstream =="
+AUTH_NO_UPSTREAM=$(node -e "
+const fs=require('fs');
+const linhas=fs.readFileSync('$SBP_WIN/fixture-log.jsonl','utf8').trim().split('\n');
+const primeira=JSON.parse(linhas[0]);
+console.log(primeira.headers['x-custom-auth'] || 'AUSENTE');
+")
+igual "x-custom-auth no upstream" "secret-12345" "$AUTH_NO_UPSTREAM"
+
+echo
+echo "== 5.3. TAREFA 3 (plano): resposta identica byte a byte (hash) =="
+CORPO_RESPOSTA_ESPERADO='{"ok":true}
+'
+HASH_ESPERADO=$(printf '%s' "$CORPO_RESPOSTA_ESPERADO" | node -e "const c=require('crypto');let b='';process.stdin.on('data',d=>b+=d).on('end',()=>console.log(c.createHash('sha256').update(b).digest('hex')))")
+RESPOSTA_CRUA=$(curl -s -X POST "http://127.0.0.1:$PORTA_PODA/v1/messages" -H "Content-Type: application/json" -d '{"x":1}')
+HASH_RESPOSTA=$(printf '%s\n' "$RESPOSTA_CRUA" | node -e "const c=require('crypto');let b='';process.stdin.on('data',d=>b+=d).on('end',()=>console.log(c.createHash('sha256').update(b).digest('hex')))")
+igual "hash da resposta atraves do proxy == hash do que o fixture manda" "$HASH_ESPERADO" "$HASH_RESPOSTA"
+
+echo
+echo "== 5.4. TAREFA 3 (plano): SSE flui em STREAM, nao bufferizado =="
+# O fixture /streaming-test manda 3 chunks com 50ms entre eles. Se o proxy
+# faz stream, os chunks chegam ESPACADOS no cliente (spread >= 60ms). Se
+# bufferiza, chegam todos juntos (spread ~0).
+SPREAD=$(node -e "
+const http=require('http');
+const t=[];
+http.get('http://127.0.0.1:$PORTA_PODA/streaming-test', res => {
+  res.on('data', () => t.push(Date.now()));
+  res.on('end', () => { console.log(t.length >= 2 ? t[t.length-1]-t[0] : -1); });
+}).on('error', () => console.log(-2));
+" )
+afirma "[ \"$SPREAD\" -ge 60 ]" "chunks chegam espacados (spread=${SPREAD}ms >= 60ms) — stream real"
+
+echo
+echo "== 5.5. TAREFA 3 (plano): proxy escuta SO em 127.0.0.1 =="
+BIND=$(netstat -an 2>/dev/null | grep ":$PORTA_PODA " | grep -i listen | head -1)
+afirma "echo '$BIND' | grep -q '127.0.0.1'" "porta $PORTA_PODA ligada em 127.0.0.1 (netstat: $BIND)"
+LOCAL_ADDR=$(echo "$BIND" | awk '{print $2}')
+afirma "! echo '$LOCAL_ADDR' | grep -q '^0.0.0.0'" "endereco local nao e 0.0.0.0 (local=$LOCAL_ADDR)"
+
+echo
 echo "== 6. Parar processo =="
 
 RFM_ROOT="$SBP/raiz-fixture" RFM_PODA_PORTA="$PORTA_PODA" \
