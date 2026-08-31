@@ -683,6 +683,24 @@ $E marcar --slug t-repr3 --estagio fechar --status ok >/dev/null
 igual "fluxo completo sem reprovacao nao tem reaberto_por" "nao" \
   "$(node -e "const e = JSON.parse(require('fs').readFileSync('docs/rainforest/estado/t-repr3.json', 'utf8')); console.log(e.executar.reaberto_por ? 'sim' : 'nao')")"
 
+# Caso (f): exigir do estagio reaberto passa (caminho de volta)
+$E iniciar --slug t-repr4 >/dev/null
+$E marcar --slug t-repr4 --estagio design --status aprovado >/dev/null
+$E marcar --slug t-repr4 --estagio plano  --status ok >/dev/null
+$E exigir --slug t-repr4 --estagio executar >/dev/null
+$E marcar --slug t-repr4 --estagio executar --status ok --json '{"comando":"node script.cjs","saida":"ok","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
+$E marcar --slug t-repr4 --estagio revisar --status ok >/dev/null
+$E exigir --slug t-repr4 --estagio verificar >/dev/null
+$E marcar --slug t-repr4 --estagio verificar --status reprovado >/dev/null
+esperado "exigir do estagio reaberto passa" 0 $E exigir --slug t-repr4 --estagio executar
+
+# Caso (g): ciclo completo reprovar-reabrir-refechar destrava o fluxo
+$E marcar --slug t-repr4 --estagio executar --status ok --json '{"comando":"node script.cjs","saida":"ok","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
+igual "reaberto_por foi limpo apos fechamento ok" "nao" \
+  "$(node -e "const e = JSON.parse(require('fs').readFileSync('docs/rainforest/estado/t-repr4.json', 'utf8')); console.log(e.executar.reaberto_por ? 'sim' : 'nao')")"
+# Agora o fluxo foi destravado: verificar (que reprovou) é exigivel novamente
+esperado "verificar agora exigivel novamente (ciclo destravou)" 0 $E exigir --slug t-repr4 --estagio verificar
+
 # Caso (e): estado antigo sem reaberto_por passa por exigir/proximo/marcar sem erro
 mkdir -p "$SBP/estado-antigo/docs/rainforest/estado"
 cat > "$SBP/estado-antigo/docs/rainforest/estado/t-old.json" <<'EOF'
