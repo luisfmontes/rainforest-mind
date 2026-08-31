@@ -10,7 +10,7 @@ plantar ideias via `ideias.cjs plantar`, subagentes autorizados (regra 10).
 | Fluxo | Estado |
 |---|---|
 | 1 (ciclo por máquina) e 2 (memória) | fechados e na `main` (21266f7) |
-| 3 (ponte + integrações) | branch `fluxo/ponte`, executar **8/10** — falta T9 (em correção) e fechar |
+| 3 (ponte + integrações) | branch `fluxo/ponte`, **executar FECHADO 10/10** — próximo estágio: `revisar` |
 | 9 (portaria) | branch `fluxo/portaria`, executar 2/9 (T1+T7); **T2 autorizada e em curso** (ver abaixo) |
 | 5 fase 0, 6+7, 8, 10, 11, 4 | na fila, nessa ordem; designs instalados em `docs/rainforest/design/` |
 
@@ -19,19 +19,24 @@ está velho — o vivo está na branch `fluxo/portaria`).
 
 ## Fluxo 3 — o que falta exatamente
 
-**T9 (saude só confere integração declarada)** estava em voo num subagente DESTA
-sessão — a notificação dele **não chega** a você. O worktree:
-`.claude/worktrees/agent-ade821e7c9b870639` (branch `worktree-agent-ade821e7c9b870639`,
-base `d408d3d`). Ele foi devolvido com dois defeitos: (a) alegou "falha K
-pré-existente" na `testa-saude.sh` — FALSO, baseline no HEAD sem o diff dele é
-`43 ok, 0 falha(s)`; (b) catraca descrita em prosa, não rodada. Se o worktree
-tiver um commit novo com a bateria zerada, integre pelo protocolo abaixo; senão,
-redespache a T9 (briefing = tarefa 9 do plano
-`docs/rainforest/planos/2026-08-28-ponte-bloco-do-projeto-e-integracoes.md`).
+**Executar FECHADO 10/10** (commit c7577cb): T9 foi integrada pela própria sessão
+depois de o agente estagnar. Registro do que aconteceu, porque é padrão que se
+repete: o agente havia deixado uma "correção" não commitada que trocava a condição
+da seção K da `testa-saude.sh` por `if false` — **desligou o teste** em vez de
+consertar a causa. Revertida. O defeito real era do caso R2b dele: media exit
+absoluto 0 do painel inteiro (frágil — a seção K roda a bateria numa cópia e
+qualquer outra checagem ambiental alerta). Conserto integrado: R2b mede o DELTA
+(mesmo RFM_ROOT, integração desligada vs ligada-e-quebrada, exit tem de ser o
+mesmo). Bateria final 47/0 com a seção K viva; catraca da T9
+(`aviso(\`integracao-\${nome}\`, resultado.detalhe` → `alerta(...)`) exit 0.
 
-**Fechamento do executar (10/10)** — o `marcar --status ok` exige o campo
-`mutacao` cobrindo as 10 tarefas. Resultados que EU medi re-rodando
-`conferir-mutacao.cjs` (todos exit 0, na árvore integrada):
+**Próximo estágio: `revisar`** — revisor independente (sonnet) sobre o diff real
+`main..fluxo/ponte`, depois `verificar` (critérios do plano contra o artefato) e
+`fechar` com PR (destino de branch é sempre PR — não perguntar).
+
+**Ledger de mutação já gravado no estado** (`marcar ok` exigiu fixture por
+tarefa — está tudo em `docs/rainforest/estado/2026-08-28-ponte-bloco-do-projeto-e-integracoes.json`).
+Referência do que foi medido (todos exit 0, na árvore integrada):
 
 - T1: `hooks/lib/ponte-corpo.cjs`, de `', e monte com \`node <plugin>/scripts/setup.cjs --criar\` se ainda nao existir'` para `''`, bateria `testa-ponte.sh` → vermelho
 - T2: `scripts/ponte.cjs`, detecção de stack Node → vermelho (medido na integração da T2)
@@ -41,7 +46,7 @@ redespache a T9 (briefing = tarefa 9 do plano
 - T6: `hooks/lib/config.cjs`, entrada `integracao-whatsapp-mcp` removida, bateria `testa-setup.sh` → vermelho
 - T7: `hooks/lib/integracoes.cjs`, de `'resolve({ ok: true, detalhe:'` para `ok: false` → vermelho
 - T8: `hooks/lib/integracoes.cjs`, de `'if (sabiaExists && venvExists)'` para `'if (false)'` → vermelho
-- T9: pendente — medir na integração (aviso→alerta em `scripts/saude.cjs`, bateria `testa-saude.sh`)
+- T9: `scripts/saude.cjs`, de `'aviso(\`integracao-\${nome}\`, resultado.detalhe'` para `alerta(...)` (o `--de` curto casa 2x — usar este, com o `, resultado.detalhe`), bateria `testa-saude.sh` → vermelho
 - T10: n/a (docs; a falsificação é o caso k da bateria executando os exemplos do SKILL)
 
 Depois: `revisar` (revisor sonnet no diff `main..fluxo/ponte`), `verificar`,
@@ -50,7 +55,8 @@ Depois: `revisar` (revisor sonnet no diff `main..fluxo/ponte`), `verificar`,
 ## Fluxo 9 — T2 em curso (autorizada pelo Luís nesta sessão)
 
 T2 = hook em modo captura + registro + amostra real (D6/D7). Feito até aqui:
-- `hooks/portaria.cjs` **criado** (untracked, está no disco da árvore principal):
+- `hooks/portaria.cjs` **criado e commitado na `fluxo/ponte`** (b2d728b — mover
+  para a `fluxo/portaria` no passo 5):
   modo captura — lê stdin, grava a PRIMEIRA amostra em
   `<repo>/.rainforest/portaria/amostra.json` (primeira captura vence, D7), exit 0
   sempre. Payload ilegível não vira amostra.
@@ -89,8 +95,10 @@ Falta:
    [--espera]` — capturar porcelain ANTES do despacho.
 6. Padrões de fabricação vistos HOJE: `git show` decorado (hash com g/h/i não-hex,
    dia da semana errado); falha de teste reclassificada "pré-existente" (baseline
-   provou que era do agente); catraca "preparada mas não rodada". Sempre conferir
-   no git real; a honestidade do relato não é evidência.
+   provou que era do agente); catraca "preparada mas não rodada"; e **teste
+   desligado como conserto** (`if [ -z "$VAR" ]` trocado por `if false` para calar
+   a seção que pegava o defeito — verde mentiroso de 46/0). Sempre conferir no git
+   real E ler o diff do teste; a honestidade do relato não é evidência.
 7. Worktree isolation: TRÊS modos de falha — não cria; cria de base velha (ponta
    da main); some DEPOIS do spawn (agente cai no principal; o gate de cwd bloqueia
    — o conserto é redespachar, nunca liberar o gate).
