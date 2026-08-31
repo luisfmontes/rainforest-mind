@@ -32,6 +32,9 @@ const { spawnSync } = require('child_process');
 const RAIZ_CODIGO = path.resolve(__dirname, '..');
 const achados = [];
 
+// ---- constantes de tempo
+const QUARENTA_E_OITO_HORAS_MS = 48 * 60 * 60 * 1000;
+
 function ok(item, detalhe) { achados.push({ nivel: 'ok', item, detalhe }); }
 function aviso(item, detalhe, acao) { achados.push({ nivel: 'aviso', item, detalhe, acao }); }
 function alerta(item, detalhe, acao) { achados.push({ nivel: 'alerta', item, detalhe, acao }); }
@@ -878,6 +881,138 @@ function checarEsquema() {
   }
 }
 
+// ---------------------------------------------------------------- 11. banco de memoria
+/**
+ * Checagem do banco de dados de memória do rainforest.
+ *
+ * Três verificações:
+ * 1. Banco abre e schema confere → ALERTA se falhar
+ * 2. count(observacoes) == count(observacoes_fts) → AVISO se divergir
+ * 3. Pendência de marca d'água (offset > offset_processado) com >48h → AVISO
+ *
+ * Banco ausente é estado legítimo ("instalação sem memória é ok").
+ */
+function checarMemoria() {
+  let raizDados;
+  try {
+    const { resolverRaiz } = require('../hooks/lib/raiz.cjs');
+    const { raiz } = resolverRaiz({ plugin: RAIZ_CODIGO });
+    raizDados = raiz;
+  } catch {
+    return; // sem raiz de dados: nada a checar
+  }
+
+  if (!raizDados) {
+    return; // sem raiz: nada a checar
+  }
+
+  const caminhoDb = path.join(raizDados, 'rainforest.db');
+  if (!fs.existsSync(caminhoDb)) {
+    return ok('banco de memoria', 'ausente (instalacao sem memoria e estado legitimo)');
+  }
+
+  // Tentar abrir o banco somente-leitura
+  let abrirBancoSomenteLeitura;
+  try {
+    ({ abrirBancoSomenteLeitura } = require('../scripts/memoria.cjs'));
+  } catch {
+    return; // não consegui carregar adaptador: nada a checar
+  }
+
+  const db = abrirBancoSomenteLeitura(caminhoDb);
+  if (!db) {
+    return alerta('banco de memoria', 'nao consegui abrir (arquivo corrompido ou inacessivel)',
+      'o banco pode estar corrompido; procure um backup em .rainforest-*/');
+  }
+
+  try {
+    const problemas = [];
+
+    // Verificação 1: tabelas existem e schema é válido
+    try {
+      const tabelas = db.prepare(`
+        SELECT name FROM sqlite_master
+        WHERE type='table' AND name IN ('observacoes', 'marca_dagua', 'observacoes_fts')
+      `).all();
+      const tabelasPresentes = tabelas.map(t => t.name);
+      if (!tabelasPresentes.includes('observacoes') || !tabelasPresentes.includes('marca_dagua')) {
+        problemas.push('schema incompleto (observacoes ou marca_dagua faltam)');
+      }
+    } catch (e) {
+      problemas.push(`erro ao verificar schema: ${e.message}`);
+    }
+
+    // Verificação 2: count(observacoes) == count(observacoes_fts)
+    // Índice vivo: se os dois não batem, o FTS descala
+    try {
+      const countObservacoes = db.prepare('SELECT COUNT(*) as n FROM observacoes').all()[0]?.n || 0;
+      const countFts = db.prepare('SELECT COUNT(*) as n FROM observacoes_fts').all()[0]?.n || 0;
+
+      if (countObservacoes !== countFts) {
+        problemas.push(`indice vivo diverge: observacoes=${countObservacoes} vs observacoes_fts=${countFts}`);
+      }
+    } catch (e) {
+      problemas.push(`erro ao verificar indice vivo: ${e.message}`);
+    }
+
+    // Verificação 3: pendência de marca d'água com >48h
+    // Offset visto > offset processado = há trabalho parado
+    // Se parado há mais de 48h, avisa. Menos de 48h não acusa (Q3).
+    try {
+      const marcas = db.prepare(`
+        SELECT processada_em, offset, offset_processado
+        FROM marca_dagua
+        WHERE offset > COALESCE(offset_processado, 0)
+      `).all();
+
+      for (const marca of marcas) {
+        if (!marca.processada_em) continue;
+        const tempoPassado = Date.now() - Date.parse(marca.processada_em);
+        if (tempoPassado > QUARENTA_E_OITO_HORAS_MS) {
+          problemas.push(`pipeline parado ha mais de 48h (marca: ${marca.processada_em})`);
+          break; // relatar só a primeira, não saturar
+        }
+      }
+    } catch (e) {
+      problemas.push(`erro ao verificar marca dagua: ${e.message}`);
+    }
+
+    // Reportar resultado
+    if (problemas.length > 0) {
+      const eh_critico = problemas.some(p => p.includes('schema incompleto') || p.includes('corrupto'));
+      const eh_aviso_indice = problemas.some(p => p.includes('indice vivo'));
+      const eh_aviso_pipeline = problemas.some(p => p.includes('pipeline parado'));
+
+      if (eh_critico) {
+        return alerta('banco de memoria', problemas.join('; '),
+          'rode: node scripts/memoria.cjs iniciar — a migração é automática e idempotente');
+      }
+
+      if (eh_aviso_indice) {
+        return aviso('banco de memoria', `${problemas.join('; ')} (rode memoria.cjs reindexar para reparar)`,
+          'rode: node scripts/memoria.cjs reindexar — reconstrói o FTS');
+      }
+
+      if (eh_aviso_pipeline) {
+        return aviso('banco de memoria', `${problemas.join('; ')} (rode observar.cjs para processar)`,
+          'rode: node scripts/observar.cjs — processa a fila de observações');
+      }
+    }
+
+    return ok('banco de memoria', 'schema valido, indice vivo, pipeline em dia');
+  } catch (e) {
+    // Erro grave ao auditar banco
+    return alerta('banco de memoria', `erro durante auditoria: ${e.message}`,
+      'o banco pode estar corrompido; procure um backup em .rainforest-*/');
+  } finally {
+    try {
+      db.close();
+    } catch {
+      // Ignorar erro ao fechar
+    }
+  }
+}
+
 // ---------------------------------------------------------------- saida
 
 function main() {
@@ -892,6 +1027,7 @@ function main() {
   checarAutocompact();
   checarBranches();
   checarEsquema();
+  checarMemoria();
 
   if (process.argv.includes('--json')) {
     console.log(JSON.stringify(achados, null, 2));
