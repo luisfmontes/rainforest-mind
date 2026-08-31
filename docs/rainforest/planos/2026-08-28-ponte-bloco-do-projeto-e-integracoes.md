@@ -1,0 +1,157 @@
+# Plano: a ponte ganha o bloco do projeto (entrevista + varredura), e o setup declara integrações opcionais
+
+Design: docs/rainforest/design/2026-08-28-ponte-bloco-do-projeto-e-integracoes.md
+
+**Achados que o briefing não tinha, e que mudam onde este plano mexe** (checados por leitura, não por suposição):
+
+1. **`skills/ponte/SKILL.md` não existe.** CONFIRMADO — só existe `commands/ponte.md`, um comando leve sem `Carregue Skill(...)`. Comparado com `commands/setup.md:6`, essa é a convenção do repo para comando que delega método a uma skill — e a ponte nunca ganhou a sua. O método de entrevista que D1 pede é hoje só o do `/brainstorm`. Este plano **cria** `skills/ponte/SKILL.md`.
+2. **O hook de abertura não faz "GET `http://localhost:3005/api`".** CONFIRMADO por `hooks/foco-session-start.cjs:100-159`: é `net.createConnection` (TCP puro) contra host/porta de `WHATSAPP_API_BASE_URL`, e só quando a env var está declarada. Não derruba a Q1 fechada (loopback aceito) — mas a checagem nova (Tarefa 7) segue a letra da Q1 (GET HTTP) e **respeita `WHATSAPP_API_BASE_URL` quando declarada**, sem travar cego em `localhost:3005`. Decisão técnica, assumida.
+3. **`C:/Projetos/whatsapp-mcp` e `C:/Projetos/sabia` são fatos desta máquina, não do plugin.** Caminho fixo não entra em código compartilhado; o mecanismo genérico é o `projetos.json` por slug (`hooks/lib/projetos.cjs`) — é o que a Tarefa 8 usa para `sabia`. Para `whatsapp-mcp` não há caminho a generalizar (a checagem é só a porta).
+4. **`scripts/ponte.cjs` e `scripts/conferir-ponte.cjs` têm o mesmo `corpo()` colado palavra por palavra** — e `scripts/conferir-ponte.cjs:148` referencia `CODIGO_ROOT`, que nunca é declarado ali (`ReferenceError` engolido pelo catch de `raizDeDados()`). Hoje dois defeitos se cancelam (o `dados` sai `null` e `ponte.cjs` nunca usa o parâmetro); qualquer um corrigido sozinho faria a catraca acusar "editado à mão" em toda ponte gerada. Como o plano precisa mexer em `corpo()` dos dois, a Tarefa 1 deduplica antes de acrescentar.
+
+## O que não pode quebrar
+
+- **Os blocos de regras já gerados continuam regeneráveis e a catraca do `conferir-ponte.cjs` mantém os mesmos 4 vereditos para o bloco de regras.** A extração do `corpo()` (Tarefa 1) e o segundo bloco (Tarefas 4/5) não mudam hash, texto nem comportamento do bloco `rainforest-mind:inicio`/`fim` existente.
+- **`ponte.cjs --alvo <dir> --aplicar` continua idêntico para quem nunca rodou `--entrevistar`.** Sem `docs/rainforest/projeto.md` no alvo, o bloco de projeto não entra — nenhuma pergunta, nenhum erro, nenhuma linha a mais.
+- **`/saude` sem nenhuma `integracao-*` ligada não ganha item nenhum de integração** — no `--json`, nenhum achado com `item` começando em `integracao`.
+- **Nenhuma checagem de integração faz rede externa** — só loopback (`127.0.0.1`/`localhost`, ou o que `WHATSAPP_API_BASE_URL` declarar) e leitura de disco/`projetos.json`. `integracao-sabia` não roda `sabia.py doutor` por padrão (checagem rasa — o `/saude` é barato de propósito).
+- **Integração declarada e quebrada é sempre `aviso`, nunca `alerta`** — não muda o exit code de `/saude` de 0 para 1 (D4).
+- **Nada é gravado fora de `--aplicar` explícito** — ensaio continua sem gravar.
+- **`docs/rainforest/projeto.md` e os blocos gerados nunca chumbam caminho de home nem credencial.**
+- **As chaves existentes de `hooks/lib/config.cjs` não mudam padrão nem descrição.**
+
+## Tarefas
+
+### 1. Extrai `corpo()`/`raizDeDados()` duplicados para `hooks/lib/ponte-corpo.cjs`, conserta o `CODIGO_ROOT` quebrado [tipo: implementar]
+atende: D2
+arquivos: `hooks/lib/ponte-corpo.cjs`, `scripts/ponte.cjs`, `scripts/conferir-ponte.cjs`
+depende de: nenhuma
+paralela: sim
+mutacao:
+  arquivo: `hooks/lib/ponte-corpo.cjs`
+  de: a condicional do aviso de pasta de dados ausente (movida de `conferir-ponte.cjs:225` para o módulo novo)
+  para: string vazia fixa (nunca avisa a ausência da pasta de dados)
+  bateria: `bash scripts/testa-ponte.sh`
+  fixture: o caso "mas ENSINA a descobrir" de `scripts/testa-ponte.sh` (linha ~106)
+pronto quando: `scripts/ponte.cjs` e `scripts/conferir-ponte.cjs` chamam a MESMA função `corpo()` de `hooks/lib/ponte-corpo.cjs` (provado gerando o mesmo `AGENTS.md` pelos dois caminhos e comparando byte a byte); `raizDeDados()` do módulo novo, com `RFM_ROOT` fixture real, devolve o caminho de verdade — não `null` por `ReferenceError` engolido — provado chamando a função direto; e `bash scripts/testa-ponte.sh` + `bash scripts/testa-conferir-ponte.sh` continuam 100% verdes após a extração
+
+### 2. Varredura pura do repositório alvo — `ponte.cjs --entrevistar --varredura` [tipo: implementar]
+atende: D1
+arquivos: `scripts/ponte.cjs`, `scripts/testa-ponte-entrevista.sh`
+depende de: nenhuma
+paralela: sim
+mutacao:
+  arquivo: `scripts/ponte.cjs`
+  de: a detecção de stack Node por `package.json` dentro de `varrerRepositorio`
+  para: `false` fixo
+  bateria: `bash scripts/testa-ponte-entrevista.sh`
+  fixture: caso "detecta stack Node por package.json real, com scripts.test e scripts.build"
+pronto quando: rodando `node scripts/ponte.cjs --entrevistar --varredura --alvo <repo fixture>` — com `package.json` (com `scripts.test`/`scripts.build`) e `.github/workflows/ci.yml` reais no fixture — a saída JSON nomeia `node`/`npm`, lista literalmente os comandos de `scripts.test` e `scripts.build` do fixture, e lista os diretórios de primeiro nível (ignorando `.git`/`node_modules`) — provado por `node -e` com `JSON.parse` comparando campo a campo; nada é escrito em disco (prova: `projeto.md` não existe no alvo depois)
+
+### 3. Grava `projeto.md` atomicamente — `ponte.cjs --entrevistar --gravar --respostas <arquivo> --aplicar` [tipo: implementar]
+atende: D1
+arquivos: `scripts/ponte.cjs`, `scripts/testa-ponte-entrevista.sh`
+depende de: 2
+paralela: nao
+mutacao:
+  arquivo: `scripts/ponte.cjs`
+  de: o `fs.renameSync` que promove o `.tmp` a `projeto.md`
+  para: linha comentada (a escrita para em `.tmp`, nunca promovida)
+  bateria: `bash scripts/testa-ponte-entrevista.sh`
+  fixture: caso "grava projeto.md atomicamente, e nao pela metade"
+pronto quando: com um `--respostas` fixture (4 respostas de Q numeradas: o que é "pronto" aqui, o que não se toca, convenção não escrita, política de revisão) e `--alvo` fixture, `--aplicar` cria `docs/rainforest/projeto.md` contendo as 4 respostas literais E os 3 fatos da varredura (stack, comando de teste, layout) — provado por grep de cada um dos 7 textos; sem `--aplicar`, nada é criado (ensaio); a mutação prova que `projeto.md` pela metade não sobrevive — só o `.tmp` órfão
+
+### 4. Bloco `rainforest-mind:projeto` no `corpo()`/`escrever()` compartilhado [tipo: implementar]
+atende: D2
+arquivos: `hooks/lib/ponte-corpo.cjs`, `scripts/ponte.cjs`
+depende de: 1
+paralela: nao
+mutacao:
+  arquivo: `hooks/lib/ponte-corpo.cjs`
+  de: a condição que decide incluir o bloco `rainforest-mind:projeto` quando `projeto.md` existe
+  para: `if (false)`
+  bateria: `bash scripts/testa-ponte-entrevista.sh`
+  fixture: caso "bloco de projeto aparece quando ha projeto.md no alvo, e some quando nao ha"
+pronto quando: gerando a ponte num alvo COM `docs/rainforest/projeto.md` fixture, o `AGENTS.md` tem os dois pares de marcador (regras + `rainforest-mind:projeto:inicio`/`fim`) e o bloco de projeto é o conteúdo REAL do fixture (grep do texto, não só do marcador); no MESMO alvo SEM `projeto.md`, só o primeiro par aparece (grep negativo); regenerar duas vezes não duplica marcador (contagem = 1 cada); e o bloco de projeto é byte-idêntico entre `CLAUDE.md`, `AGENTS.md` e `GEMINI.md` gerados do mesmo `projeto.md` (D2: só o bloco de regras varia por host)
+
+### 5. `conferir-ponte.cjs` estende a catraca para o bloco de projeto [tipo: implementar]
+atende: D2
+arquivos: `scripts/conferir-ponte.cjs`
+depende de: 1, 4
+paralela: nao
+mutacao:
+  arquivo: `scripts/conferir-ponte.cjs`
+  de: a comparação de hash do bloco `rainforest-mind:projeto` contra o hash de `docs/rainforest/projeto.md`
+  para: sempre `true` (a checagem nunca acusa)
+  bateria: `bash scripts/testa-ponte-entrevista.sh`
+  fixture: caso "bloco de projeto editado a mao e detectado, sem confundir com o bloco de regras"
+pronto quando: editando à mão uma linha DENTRO do bloco de projeto (regras intactas), `conferir-ponte.cjs` sai RECUSADO citando a linha divergente do bloco de PROJETO; regenerando o `projeto.md` fonte sem regerar o `AGENTS.md`, acusa "ficou para trás" nomeando o bloco de projeto; com os dois em dia sai CONFERIDO; e arquivo só com o bloco de regras (sem entrevista) continua CONFERIDO — não ter entrevistado não é erro
+
+### 6. Registro de integrações + toggles no setup [tipo: implementar]
+atende: D3
+arquivos: `hooks/lib/integracoes.cjs`, `hooks/lib/config.cjs`, `scripts/setup.cjs`, `scripts/testa-setup.sh`
+depende de: nenhuma
+paralela: sim
+mutacao:
+  arquivo: `hooks/lib/config.cjs`
+  de: a entrada `integracao-whatsapp-mcp` inteira do objeto de chaves
+  para: entrada removida
+  bateria: `bash scripts/testa-setup.sh`
+  fixture: bloco novo "INTEGRACOES: declaravel, desligada por padrao" em `scripts/testa-setup.sh`, no padrão do bloco 5 (PONTES)
+pronto quando: `node scripts/setup.cjs` (nada ligado) mostra a seção `INTEGRACOES` com `integracao-whatsapp-mcp` e `integracao-sabia` DESLIGADAS, cada uma com descrição de uma linha sem caminho desta máquina; `--ligar integracao-sabia --escopo usuario` liga só ela; e a mutação faz `integracao-whatsapp-mcp` sumir da seção sem afetar a outra
+
+### 7. Checagem de `whatsapp-mcp` — loopback, sem rede externa [tipo: implementar]
+atende: D4
+arquivos: `hooks/lib/integracoes.cjs`, `scripts/testa-integracoes.sh`
+depende de: 6
+paralela: nao
+mutacao:
+  arquivo: `hooks/lib/integracoes.cjs`
+  de: a linha que decide "bridge de pé" no `checar` do whatsapp-mcp
+  para: a decisão invertida
+  bateria: `bash scripts/testa-integracoes.sh`
+  fixture: um `http.createServer` de teste em `127.0.0.1:<porta livre>`
+pronto quando: com o servidor fixture no ar e `WHATSAPP_API_BASE_URL` apontando para ele, `checar()` devolve ok; derrubando o servidor, devolve não-ok com `acao` citando "suba a bridge no repositório local"; SEM a env var mas com o fixture em `127.0.0.1:3005`, também ok (o default) — os três chamando `checar()` direto via `node -e`; nenhuma chamada sai de loopback (o host usado nunca difere de `127.0.0.1`/`localhost`)
+
+### 8. Checagem de `sabia` — existência via `projetos.json` [tipo: implementar]
+atende: D4
+arquivos: `hooks/lib/integracoes.cjs`, `scripts/testa-integracoes.sh`
+depende de: 6
+paralela: nao
+mutacao:
+  arquivo: `hooks/lib/integracoes.cjs`
+  de: a checagem de existência da `.venv` no `checar` do sabia
+  para: `true` fixo
+  bateria: `bash scripts/testa-integracoes.sh`
+  fixture: pasta fixture com `sabia.py` e `.venv/`, e uma segunda sem `.venv/`
+pronto quando: com `projetos.json` fixture registrando `sabia` → pasta que TEM `sabia.py` e `.venv/`, `checar()` devolve ok "presente" (sem rodar `doutor`); apagando só a `.venv/`, devolve não-ok citando `python -m venv .venv && .venv/Scripts/pip install -r requirements.txt`; sem o slug registrado, devolve não-ok citando o registro via setup — os três chamando `checar()` direto com a raiz no fixture
+
+### 9. `/saude` só confere o que foi declarado [tipo: implementar]
+atende: D4
+arquivos: `scripts/saude.cjs`, `scripts/testa-saude.sh`
+depende de: 7, 8
+paralela: nao
+mutacao:
+  arquivo: `scripts/saude.cjs`
+  de: o `aviso(...)` da nova `checarIntegracoes`
+  para: `alerta(...)` com os mesmos argumentos
+  bateria: `bash scripts/testa-saude.sh`
+  fixture: ambiente fixture com `integracao-sabia` ligada e a pasta do sabia sem `.venv`
+pronto quando: `saude.cjs --json` SEM integração ligada não tem item com `item` começando em `integracao`; ligando `integracao-sabia` no fixture quebrado, aparece exatamente uma linha `aviso` para `integracao sabia` com a ação na linha seguinte (layout do painel), e o exit segue 0; a mutação faz o mesmo cenário virar `alerta` E exit 1 — provando que o teste mede o nível, não só a presença
+
+### 10. `skills/ponte/SKILL.md` — o método da entrevista, e a ponte com `commands/ponte.md` [tipo: docs]
+atende: D1
+arquivos: `skills/ponte/SKILL.md`, `commands/ponte.md`, `scripts/testa-ponte-entrevista.sh`
+depende de: 2, 3
+paralela: nao
+mutacao: n/a
+  motivo: documento de método sem lógica executável própria; a prova de não-divergência com o código é EXECUÇÃO real dos exemplos citados (abaixo), não mutação
+pronto quando: `skills/ponte/SKILL.md` traz um bloco de exemplos de linha de comando e um caso na bateria `scripts/testa-ponte-entrevista.sh` EXTRAI cada linha desse bloco e a EXECUTA contra um fixture, exigindo exit 0 — execução, não grep; quem lê o arquivo inteiro sabe, sem abrir outro, que a varredura roda ANTES de qualquer pergunta (regra 16), que o aprovado grava em `docs/rainforest/projeto.md` no alvo, e que a ponte sem entrevista segue funcionando; `commands/ponte.md` ganha `Carregue Skill(ponte)...` no padrão de `commands/setup.md:6` — provado por grep
+
+## Premissas aceitas sem conferir
+
+- Porta `3005` como default real e estável do bridge — aceito da Q1 fechada.
+- `sabia` como slug reservado em `projetos.json` — leitura literal da Q1.
+- `.github/workflows/*.yml` como fonte suficiente de comandos de CI na varredura — caso mais comum; outros CIs ficam de fora.
+- `mktemp -d`/git-bash disponíveis para as baterias novas, como nas existentes.
+- Marcadores `rainforest-mind:projeto:inicio/fim` sem colisão em instalações existentes — inferido dos dois scripts da ponte, sem varredura de terceiros.

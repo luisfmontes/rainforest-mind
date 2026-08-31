@@ -12,7 +12,16 @@
     "em": "2026-08-31"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-08-28-ponte-bloco-do-projeto-e-integracoes.md",
+    "tarefas": 10,
+    "paralelas": [
+      1,
+      2,
+      6
+    ],
+    "nota": "plano do planejador com 4 achados do repo real (skill da ponte inexistente, hook TCP nao HTTP, caminhos locais nao generalizam, corpo() duplicado com CODIGO_ROOT latente)",
+    "em": "2026-08-31"
   },
   "executar": {
     "status": "pendente"
