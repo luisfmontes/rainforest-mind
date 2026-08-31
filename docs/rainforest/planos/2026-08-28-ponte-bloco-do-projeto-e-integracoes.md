@@ -63,7 +63,7 @@ pronto quando: com um `--respostas` fixture (4 respostas de Q numeradas: o que Ã
 
 ### 4. Bloco `rainforest-mind:projeto` no `corpo()`/`escrever()` compartilhado [tipo: implementar]
 atende: D2
-arquivos: `hooks/lib/ponte-corpo.cjs`, `scripts/ponte.cjs`
+arquivos: `hooks/lib/ponte-corpo.cjs`, `scripts/ponte.cjs`, `scripts/testa-ponte-entrevista.sh`
 depende de: 1
 paralela: nao
 mutacao:
