@@ -744,6 +744,23 @@ function main() {
       process.exit(1);
     }
 
+    // Teto de tentativas: se ESTE estágio foi reaberto e quem o reprovou já
+    // acumulou TETO_TENTATIVAS, insistir precisa de decisão humana (liberar).
+    const blocoExigido = estado[estagio] || {};
+    if (blocoExigido.reaberto_por) {
+      const estagio_reprovador = blocoExigido.reaberto_por.estagio;
+      const bloco_reprovador = estado[estagio_reprovador] || {};
+      const tentativas = bloco_reprovador.tentativas || 0;
+      if (tentativas >= TETO_TENTATIVAS && !bloco_reprovador.liberado_em) {
+        console.error(
+          `RECUSADO: '${estagio_reprovador}' já reprovou ${tentativas} vez(es) — teto de ${TETO_TENTATIVAS} atingido. ` +
+          `Suba a decisão ao usuário: ou o critério está errado (plano) ou a decisão está errada (design). ` +
+          `Destrave explícito: node scripts/estado.cjs liberar --slug ${slug} --estagio ${estagio_reprovador}`
+        );
+        process.exit(2);
+      }
+    }
+
     // Verificar se há algum estágio de execução com reaberto_por preenchido
     // DIFERENTE do estágio sendo exigido. O próprio estágio reaberto PASSA aqui —
     // é o caminho de volta. A recusa vale só quando tentar exigir outro estágio
@@ -755,24 +772,8 @@ function main() {
     });
     if (upstreamReaberto) {
       const bloco_upstream = estado[upstreamReaberto];
-      const estagio_reprovador = bloco_upstream.reaberto_por.estagio;
-      const bloco_reprovador = estado[estagio_reprovador];
-
-      // Verificar teto de tentativas: se o estágio que reprovou atingiu TETO_TENTATIVAS,
-      // recusa mandando subir a decisão. `liberado_em` no bloco do reprovador destrava uma vez.
-      const tentativas = (bloco_reprovador && bloco_reprovador.tentativas) || 0;
-      const liberado = bloco_reprovador && bloco_reprovador.liberado_em;
-
-      if (tentativas >= TETO_TENTATIVAS && !liberado) {
-        console.error(
-          `RECUSADO: '${estagio_reprovador}' foi reprovado ${tentativas} vez(es), ` +
-          `atingindo o teto de ${TETO_TENTATIVAS}. Decisão em escalação.`
-        );
-        process.exit(2);
-      }
-
       console.error(
-        `RECUSADO: '${upstreamReaberto}' foi reaberto por reprovação em '${estagio_reprovador}' ` +
+        `RECUSADO: '${upstreamReaberto}' foi reaberto por reprovação em '${bloco_upstream.reaberto_por.estagio}' ` +
         `(${bloco_upstream.reaberto_por.data}). Rode '${upstreamReaberto}' antes.`
       );
       process.exit(2);
