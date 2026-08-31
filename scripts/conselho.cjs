@@ -139,6 +139,11 @@ function abrirRodada(caminhoQuestao, membrosLigados) {
       pareceres: { status: 'pendente' },
       revisao: { status: 'pendente' },
       sintese: { status: 'pendente' }
+    },
+    tentativas: {
+      pareceres: 0,
+      revisao: 0,
+      sintese: 0
     }
   };
 
@@ -190,6 +195,42 @@ function encontrarRodada() {
   }
 
   return path.join(DIR_CONSELHO, rodadas[0]);
+}
+
+// Updates attempt counter for a phase and returns whether ABANDONA is reached
+// Returns: { shouldAbandon: boolean, tentativa: number }
+function incrementarTentativaFase(estado, dirRodada, fase) {
+  if (!estado.tentativas) {
+    estado.tentativas = { pareceres: 0, revisao: 0, sintese: 0 };
+  }
+
+  estado.tentativas[fase] = (estado.tentativas[fase] || 0) + 1;
+  const tentativa = estado.tentativas[fase];
+
+  let shouldAbandon = false;
+  if (tentativa >= 3) {
+    estado.resultado = 'ABANDONA';
+    shouldAbandon = true;
+  }
+
+  // Write back estado
+  const estadoPath = path.join(dirRodada, 'estado.json');
+  fs.writeFileSync(estadoPath, JSON.stringify(estado, null, 2) + '\n', 'utf8');
+
+  return { shouldAbandon, tentativa };
+}
+
+// Resets attempt counter for a phase on success
+function zerarTentativaFase(estado, dirRodada, fase) {
+  if (!estado.tentativas) {
+    estado.tentativas = { pareceres: 0, revisao: 0, sintese: 0 };
+  }
+
+  estado.tentativas[fase] = 0;
+
+  // Write back estado
+  const estadoPath = path.join(dirRodada, 'estado.json');
+  fs.writeFileSync(estadoPath, JSON.stringify(estado, null, 2) + '\n', 'utf8');
 }
 
 // Validates a parecer JSON against schema
@@ -333,7 +374,7 @@ function conferirFasePareceres() {
     // Check file exists
     if (!fs.existsSync(caminhoSaida)) {
       temErro = true;
-      erros.push(`${nomeMembro}: parecer não encontrado`);
+      erros.push(`parecer do ${nomeMembro} não encontrado`);
       continue;
     }
 
@@ -341,7 +382,7 @@ function conferirFasePareceres() {
     const conteudo = fs.readFileSync(caminhoSaida, 'utf8');
     if (!conteudo || conteudo.trim().length === 0) {
       temErro = true;
-      erros.push(`${nomeMembro}: parecer vazio`);
+      erros.push(`parecer do ${nomeMembro} vazio`);
       continue;
     }
 
@@ -351,23 +392,41 @@ function conferirFasePareceres() {
       parecer = JSON.parse(conteudo);
     } catch (e) {
       temErro = true;
-      erros.push(`${nomeMembro}: JSON inválido (${e.message})`);
+      erros.push(`parecer do ${nomeMembro}: JSON inválido (${e.message})`);
       continue;
     }
 
     // Validate schema
     const validacao = validarParecer(parecer);
     if (!validacao.valido) {
+      // Explicitly cite member for objecoes: [] case
+      if (validacao.erro === 'objecoes deve ter ao menos 1 elemento') {
+        erros.push(`parecer do ${nomeMembro}: ${validacao.erro}`);
+      } else {
+        erros.push(`parecer do ${nomeMembro}: ${validacao.erro}`);
+      }
       temErro = true;
-      erros.push(`${nomeMembro}: ${validacao.erro}`);
       continue;
     }
   }
 
   if (temErro) {
+    // Increment attempt counter
+    const { shouldAbandon } = incrementarTentativaFase(estado, dirRodada, 'pareceres');
+
+    // Print errors
     erros.forEach(e => console.error(`Parecer inválido: ${e}`));
+
+    // If ABANDONA, print that too
+    if (shouldAbandon) {
+      console.error('Erro: terceira reprovação consecutiva na fase pareceres — rodada abandona');
+    }
+
     process.exit(1);
   }
+
+  // Success — reset counter
+  zerarTentativaFase(estado, dirRodada, 'pareceres');
 
   process.exit(0);
 }
@@ -726,9 +785,22 @@ function conferirFaseRevisao() {
   }
 
   if (temErro) {
+    // Increment attempt counter
+    const { shouldAbandon } = incrementarTentativaFase(estado, dirRodada, 'revisao');
+
+    // Print errors
     erros.forEach(e => console.error(`Revisão inválida: ${e}`));
+
+    // If ABANDONA, print that too
+    if (shouldAbandon) {
+      console.error('Erro: terceira reprovação consecutiva na fase revisao — rodada abandona');
+    }
+
     process.exit(1);
   }
+
+  // Success — reset counter
+  zerarTentativaFase(estado, dirRodada, 'revisao');
 
   process.exit(0);
 }
@@ -771,6 +843,74 @@ function identificarDivergencias(mapaAnonimato, pareceres, revisoes) {
   }
 
   return divergencias;
+}
+
+// Validates that sintese.json exists and is valid
+function conferirFaseSintese() {
+  const dirRodada = encontrarRodada();
+  if (!dirRodada) {
+    console.error('Erro: nenhuma rodada aberta encontrada');
+    process.exit(1);
+  }
+
+  const estadoPath = path.join(dirRodada, 'estado.json');
+  const estado = JSON.parse(fs.readFileSync(estadoPath, 'utf8'));
+
+  const caminhoSintese = path.join(dirRodada, 'sintese.json');
+
+  // Check file exists
+  if (!fs.existsSync(caminhoSintese)) {
+    // Increment attempt counter
+    incrementarTentativaFase(estado, dirRodada, 'sintese');
+    console.error('Parecer inválido: sintese.json não encontrado');
+    process.exit(1);
+  }
+
+  // Check file is not empty
+  const conteudo = fs.readFileSync(caminhoSintese, 'utf8');
+  if (!conteudo || conteudo.trim().length === 0) {
+    // Increment attempt counter
+    incrementarTentativaFase(estado, dirRodada, 'sintese');
+    console.error('Parecer inválido: sintese.json vazio');
+    process.exit(1);
+  }
+
+  // Try to parse JSON
+  let sintese;
+  try {
+    sintese = JSON.parse(conteudo);
+  } catch (e) {
+    // Increment attempt counter
+    incrementarTentativaFase(estado, dirRodada, 'sintese');
+    console.error(`Parecer inválido: sintese.json JSON inválido (${e.message})`);
+    process.exit(1);
+  }
+
+  // Validate schema
+  const validacao = validarSintese(sintese);
+  if (!validacao.valido) {
+    // Increment attempt counter
+    incrementarTentativaFase(estado, dirRodada, 'sintese');
+    console.error(`Parecer inválido: ${validacao.erro}`);
+    process.exit(1);
+  }
+
+  // Check for divergencias_nao_resolvidas or unanime flag
+  const temDivergencias = Array.isArray(sintese.divergencias_nao_resolvidas)
+    && sintese.divergencias_nao_resolvidas.length > 0;
+  const temUnanime = sintese.unanime === true;
+
+  if (!temDivergencias && !temUnanime) {
+    // Increment attempt counter
+    incrementarTentativaFase(estado, dirRodada, 'sintese');
+    console.error('Parecer inválido: síntese sem divergências não resolvidas exige unanime: true registrado');
+    process.exit(1);
+  }
+
+  // Success — reset counter
+  zerarTentativaFase(estado, dirRodada, 'sintese');
+
+  process.exit(0);
 }
 
 // Executes sintese creation and persistence
@@ -853,6 +993,11 @@ function executarSintetizar(args) {
     ranking_agregado: rankingAgregadoDesanon
   };
 
+  // Add unanime flag if used
+  if (temUnanimeFlag) {
+    sintese.unanime = true;
+  }
+
   // Validate sintese
   const validacao = validarSintese(sintese);
   if (!validacao.valido) {
@@ -926,6 +1071,8 @@ function main() {
         conferirFasePareceres();
       } else if (args.fase === 'revisao') {
         conferirFaseRevisao();
+      } else if (args.fase === 'sintese') {
+        conferirFaseSintese();
       } else {
         console.error('Comando conferir não implementado para esta fase');
         process.exit(1);
