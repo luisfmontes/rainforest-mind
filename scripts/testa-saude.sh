@@ -967,14 +967,27 @@ else
   falhou=$((falhou+1)); echo "  FALHA R2. integracao-sabia deveria virar aviso"
 fi
 
-# Verify exit code is 0 (aviso doesn't block)
+# O aviso nao pode MUDAR o exit (D4). Exit absoluto seria fragil: o painel checa
+# muito alem das integracoes (banco, plugin), e em ambiente copiado/aninhado outra
+# checagem pode alertar por conta propria — foi exatamente assim que a secao K pegou
+# a primeira versao deste caso. Mede-se o DELTA: mesmo RFM_ROOT, integracao
+# desligada vs ligada-e-quebrada, e o exit tem de ser o MESMO.
+cat > "$SBP/dados-integracao/config.json" <<EOF
+{"integracao-sabia":false}
+EOF
+RFM_ROOT="$SBP/dados-integracao" \
+  node "$SRC/scripts/saude.cjs" >/dev/null 2>&1
+R2_EXIT_BASE=$?
+cat > "$SBP/dados-integracao/config.json" <<EOF
+{"integracao-sabia":true}
+EOF
 RFM_ROOT="$SBP/dados-integracao" \
   node "$SRC/scripts/saude.cjs" >/dev/null 2>&1
 R2_EXIT=$?
-if [ "$R2_EXIT" = "0" ]; then
-  ok=$((ok+1)); echo "  ok   R2b. exit 0 (aviso nao bloqueia)"
+if [ "$R2_EXIT" = "$R2_EXIT_BASE" ]; then
+  ok=$((ok+1)); echo "  ok   R2b. integracao quebrada nao muda o exit (base $R2_EXIT_BASE, com aviso $R2_EXIT)"
 else
-  falhou=$((falhou+1)); echo "  FALHA R2b. exit deveria ser 0, foi $R2_EXIT"
+  falhou=$((falhou+1)); echo "  FALHA R2b. exit mudou: sem integracao $R2_EXIT_BASE, com aviso $R2_EXIT"
 fi
 
 # Cleanup
