@@ -175,6 +175,42 @@ cp "$CAIXA/SKILL.bak" "$PLUG/skills/rainforest-mind/SKILL.md"
 esperado "com o SKILL.md de volta, gera" 0 $PONTE --alvo "$(cygpath -m "$ALVO2" 2>/dev/null || printf '%s' "$ALVO2")" --aplicar
 
 echo
+echo "== 5.5. TAREFA 17: hash unificado — sem createHash duplicados =="
+if grep -n 'createHash' "$PLUG/scripts/ponte.cjs" "$PLUG/scripts/conferir-ponte.cjs" 2>/dev/null; then
+  falhou=$((falhou+1)); echo "  FALHA createHash encontrado nos scripts"
+else
+  ok=$((ok+1)); echo "  ok   nenhum createHash duplicado nos scripts"
+fi
+
+echo
+echo "== 5.6. TAREFA 17: hash é consistente entre gerações =="
+ALVO_HASH1="$CAIXA/alvo-hash-1"; mkdir -p "$ALVO_HASH1"
+ALVO_HASH2="$CAIXA/alvo-hash-2"; mkdir -p "$ALVO_HASH2"
+
+# Gera a ponte duas vezes
+$PONTE --alvo "$(cygpath -m "$ALVO_HASH1" 2>/dev/null || printf '%s' "$ALVO_HASH1")" --agente claude --aplicar > /dev/null 2>&1
+$PONTE --alvo "$(cygpath -m "$ALVO_HASH2" 2>/dev/null || printf '%s' "$ALVO_HASH2")" --agente claude --aplicar > /dev/null 2>&1
+
+# Extrai os hashes dos dois CLAUDE.md
+HASH1=$(grep -o 'hash:[0-9a-f]*' "$ALVO_HASH1/CLAUDE.md" | head -1 | cut -d: -f2 || true)
+HASH2=$(grep -o 'hash:[0-9a-f]*' "$ALVO_HASH2/CLAUDE.md" | head -1 | cut -d: -f2 || true)
+
+if [ -z "$HASH1" ] || [ -z "$HASH2" ]; then
+  falhou=$((falhou+1)); echo "  FALHA nao consegui extrair hashes dos arquivos"
+elif [ "$HASH1" = "$HASH2" ]; then
+  ok=$((ok+1)); echo "  ok   hash consistente entre gerações ($HASH1)"
+else
+  falhou=$((falhou+1)); echo "  FALHA hashes diferentes: $HASH1 vs $HASH2"
+fi
+
+# Verifica que o hash tem exatamente 16 caracteres (slice(0, 16))
+if [ ${#HASH1} -eq 16 ]; then
+  ok=$((ok+1)); echo "  ok   hash tem 16 caracteres (slice correto)"
+else
+  falhou=$((falhou+1)); echo "  FALHA hash nao tem 16 caracteres: ${#HASH1}"
+fi
+
+echo
 echo "== 6. bordas =="
 esperado "--alvo inexistente"   1 $PONTE --alvo "$CAIXA/nao-existe" --aplicar
 esperado "--alvo que e arquivo" 1 $PONTE --alvo "$ALVO_WIN/AGENTS.md" --aplicar
