@@ -24,7 +24,7 @@
     "em": "2026-08-31"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-08-31",
     "tarefas_ok": 20,
     "tarefas": 20,
@@ -133,12 +133,16 @@
         "resultado": "vermelho",
         "fixture": "caso (q) bloco sem fim recusa regeneracao"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-08-31"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "0115a490897ac12221c2335c80b31cdeadfe75a1",
+      "head": "bb6633e641c136bbd662ecf67aa4e148a7c8ca50",
       "caminhos_sujos": [
         "relatorios/2026-08-28-batedor-repos.md",
         "vigias/ERROS.md"
@@ -148,9 +152,9 @@
     "criticos": 1,
     "base": "21266f797a8d43d417a3d783b83de19f4df5c339",
     "head": "1422b1438322a9d49531e1079ca1010904fbcf50",
-    "nota": "rodada 5: bloco de projeto real truncado a mao (sem projeto:fim) duplica em silencio na regeneracao — permanente, sem aviso. Repro da sessao: 2 blocos apos regenerar, console so diz GRAVADO. Sem perda de dado (texto manual intacto); cenarios A (idempotencia 3x byte a byte) e C (mencao colada ao FIM sem fim nenhum) passaram limpos. Conserto na tarefa 20: aviso explicito no console quando o pos-FIM comeca com inicio sem fim, e o bloco novo nao entra (regeneracao recusa com erro em vez de gravar duplicata calada).",
+    "nota": "rodada 6: T20 confirmada real pelo revisor (e caso q nao-tautologico), mas o mesmo genero de defeito existe do lado da LEITURA: extrairBlocoProjetoGerado em conferir-ponte.cjs usa match() de primeira ocorrencia no texto inteiro — mencao em prosa aos marcadores ANTES do bloco real faz a catraca dar RECUSADO exit 2 (gerado antes da catraca de hash) num arquivo 100% em dia. Repro da sessao confirmada. Conserto na tarefa 21: extracao exige marcador ocupando a linha inteira (ancora multiline), como o gerador escreve; mencao em prosa nunca casa.",
     "em": "2026-08-31",
-    "tentativas": 5
+    "tentativas": 6
   },
   "verificar": {
     "status": "pendente"
