@@ -51,6 +51,10 @@ const CAMINHO_SKILL = path.join(CODIGO_ROOT, "skills", "rainforest-mind", "SKILL
 
 const FIM = "<!-- rainforest-mind:fim -->";
 
+// Importar funções compartilhadas
+const { corpo, raizDeDados: raizDeDadosShared, AGENTES: AGENTES_SHARED } =
+  require("../hooks/lib/ponte-corpo.cjs");
+
 /** Hash curto (16 primeiros caracteres) do SKILL.md para deteccao de edicao manual. */
 function hashSkillMd() {
   try {
@@ -66,42 +70,8 @@ function inicioComHash(hash) {
   return `<!-- rainforest-mind:inicio — GERADO por scripts/ponte.cjs, nao edite a mao — hash:${hash} -->`;
 }
 
-const AGENTES = {
-  // `claude` e o terceiro alvo, e nao e redundante: quem usa Claude Code SEM o
-  // plugin instalado nao tem regra nenhuma. E o caminho de quem vai receber o
-  // convite antes de instalar, e o unico caminho num repo compartilhado onde nao da
-  // para exigir plugin de ninguem.
-  claude: {
-    arquivo: "CLAUDE.md",
-    nome: "Claude Code (sem o plugin)",
-    comoLe: "O Claude Code le o `CLAUDE.md` da raiz do repositorio em toda sessao.",
-    semTrava:
-      "As duas travas do rainforest-mind (agente fora de worktree isolado, `git add -A`) " +
-      "sao hooks `PreToolUse` do PLUGIN. Este arquivo entrega as regras, nao os hooks: " +
-      "sem o plugin instalado elas sao combinado, nao trava. Quem quiser as travas " +
-      "instala o plugin — ai este arquivo fica redundante e pode sair.",
-  },
-  codex: {
-    arquivo: "AGENTS.md",
-    nome: "Codex",
-    comoLe: "O Codex le o `AGENTS.md` da raiz do repositorio em toda sessao.",
-    semTrava:
-      "Duas travas do rainforest-mind rodam fora do modelo no Claude Code, como hook " +
-      "com exit code: a que barra agente editando fora de worktree isolado, e a que " +
-      "barra `git add -A`. Elas usam o `PreToolUse`, que **nao existe** neste host. " +
-      "Aqui elas sao texto — ou seja, argumentaveis. Trate-as como combinado.",
-  },
-  gemini: {
-    arquivo: "GEMINI.md",
-    nome: "Gemini CLI",
-    comoLe: "O Gemini CLI le o `GEMINI.md` da raiz do repositorio em toda sessao.",
-    semTrava:
-      "Duas travas do rainforest-mind rodam fora do modelo no Claude Code, como hook " +
-      "com exit code: a que barra agente editando fora de worktree isolado, e a que " +
-      "barra `git add -A`. Elas usam o `PreToolUse`, que **nao existe** neste host. " +
-      "Aqui elas sao texto — ou seja, argumentaveis. Trate-as como combinado.",
-  },
-};
+// Usar AGENTES do módulo compartilhado
+const AGENTES = AGENTES_SHARED;
 
 /**
  * Quais alvos este install DECLAROU no `/setup` (chaves `ponte-*`).
@@ -157,12 +127,9 @@ function nucleoDasRegras() {
   return nucleo;
 }
 
+// raizDeDados() foi movida para o módulo compartilhado, chamar de lá
 function raizDeDados() {
-  try {
-    return require("../hooks/lib/raiz.cjs").resolverRaiz({ plugin: CODIGO_ROOT }).raiz || null;
-  } catch {
-    return null;
-  }
+  return raizDeDadosShared(CODIGO_ROOT);
 }
 
 /**
@@ -252,55 +219,6 @@ function varrerRepositorio(alvo) {
   return resultado;
 }
 
-function corpo(agente, nucleo, dados) {
-  const cli = [
-    ["`node <plugin>/scripts/estado.cjs exigir --slug <slug> --estagio <e>`", "gate do fluxo — **exit 2** quando o estagio anterior nao fechou"],
-    ["`node <plugin>/scripts/conferir-entrega.cjs --worktree <wt> --base <hash>`", "a checagem da regra 12 sobre entrega de agente — **exit 1** se reprovar"],
-    ["`node <plugin>/scripts/conferir-publicacao.cjs <arquivo>`", "**exit 2** se o texto tem telefone, e-mail, caminho de home ou credencial"],
-    // Sem `|` dentro do code span: em tabela markdown ele quebra a celula.
-    ["`node <plugin>/scripts/ideias.cjs plantar, colher, listar, conferir`", "porta unica de escrita do `ideias.jsonl` (trava, backup, atomico, conferido)"],
-    ["`node <plugin>/scripts/foco.cjs caminho, rotacionar`", "onde mora o foco, e o teto do bloco de avancos"],
-    ["`node <plugin>/scripts/saude.cjs`", "o que os checadores oficiais nao sabem"],
-    ["`node <plugin>/scripts/semear.cjs --projeto <slug>`", "o historico deste projeto: observacoes, ideias abertas, relatorios"],
-  ]
-    .map(([c, p]) => `| ${c} | ${p} |`)
-    .join("\n");
-
-  return `# rainforest-mind — ponte para o ${agente.nome}
-
-${agente.comoLe} Este bloco e **gerado**: as regras moram em
-\`skills/rainforest-mind/SKILL.md\`, no plugin, e chegam aqui por
-\`node <plugin>/scripts/ponte.cjs --alvo . --agente ${Object.keys(AGENTES).find((k) => AGENTES[k] === agente)} --aplicar\`.
-Editar este bloco a mao cria uma segunda versao das regras que divergem em
-silencio — foi o que aconteceu com duas CLAUDE.md sincronizadas a mao em
-2026-08-10. Mude o SKILL.md e gere de novo.
-
-## O que NAO vale aqui, e voce precisa saber antes de confiar
-
-${agente.semTrava}
-
-O que continua sendo mecanismo, porque e comando com exit code, esta na tabela
-abaixo. Chame de verdade: **relato de que rodou nao e evidencia de que rodou.**
-
-| Comando | O que ele garante |
-|---|---|
-${cli}
-
-\`<plugin>\` e a pasta do rainforest-mind nesta maquina. Sua pasta de dados
-(FOCO.md, ideias.jsonl, projetos.json) **nao se chumba aqui**: descubra com
-\`node <plugin>/scripts/ideias.cjs conferir\`, que imprime o caminho resolvido, e monte com \`node <plugin>/scripts/setup.cjs --criar\` se ainda nao existir.
-Caminho de home dentro de arquivo versionado vaza a maquina de quem gerou — e este
-arquivo nasce para ser commitado no repo de outra pessoa.
-
-## As regras
-
-O que segue e o **nucleo** de cada regra. Regra marcada com \`↳\` tem elaboracao
-que nao esta aqui — criterio fino, comando exato, incidente datado —, e ela mora
-em \`skills/rainforest-mind/references/regra-<n>.md\` (onde \`<n>\` e o numero da regra). Antes de aplicar uma regra marcada, **leia esse arquivo**.
-
-${nucleo}
-`;
-}
 
 function escrever(alvoArquivo, blocoNovo, aplicar, hash) {
   const inicio = inicioComHash(hash);
