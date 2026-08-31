@@ -22,12 +22,41 @@
     "em": "2026-08-30"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-08-30",
-    "tarefas_ok": 4,
+    "tarefas_ok": 5,
     "tarefas": 5,
     "nota": "T3 integrada apos 1 devolucao (fallback de FTS quebrado sob foco e teto de bytes com casadas nao tinham teste); catraca re-rodada pela integracao exit 0",
-    "em": "2026-08-31"
+    "em": "2026-08-31",
+    "comando": "bash scripts/testa-memoria.sh && bash hooks/testa-memoria-session-start.sh && bash scripts/testa-saude.sh + conferir-mutacao re-rodado pela integracao nas 5 tarefas",
+    "saida": "24 ok / 58 ok / 41 ok, 0 falhas nas tres; mutacoes T1-T5 todas 'bateria VERMELHA com o comportamento invertido' exit 0",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "observacao gravada aparece no buscar sem reindexar"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "o bloco termina ensinando o comando de busca"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "casada por FTS nao duplica observacao ja recente"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "consolidar duas vezes nao gera resumo duplicado"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "pendencia recente nao acusa pipeline parado"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente"
