@@ -103,3 +103,26 @@ que não confere (alerta), `count(observacoes) != count(observacoes_fts)`
 mais de 48 h (aviso, com a ação `observar.cjs`); banco simplesmente ausente é
 `ok` com nota (instalação sem memória é estado legítimo); pendência de menos
 de 48 h não acusa; no padrão dos `checar*` existentes, sem rede e sem escrita
+
+### 6. O pipeline do observar volta a andar: teto trunca e vazio avança [tipo: implementar]
+atende: D5
+arquivos: `scripts/observar.cjs`, `scripts/testa-observar.sh`
+depende de: 5
+paralela: nao
+mutacao:
+  arquivo: `scripts/observar.cjs`
+  de: o bloco de `avancarMarca` + `ultimoOffsetProcessado = offsetFim` dentro do ramo de prompt vazio
+  para: só o `continue` (o avanço removido)
+  bateria: `bash scripts/testa-observar.sh`
+  fixture: o caso "offset_processado avancou (janela vazia = processada)" de `scripts/testa-observar.sh`
+pronto quando: com um transcrito real cuja janela pendente tem um único
+evento acima de `TETO_ARGUMENTO`, a passada trunca o texto (com marcador
+explícito), grava observação e a marca avança — provado pelo caso 17 da
+bateria e pela fila real desta máquina drenando de 34 pendências para 0;
+e com janela cujo texto formatado é vazio, a marca avança sem gravar nada
+— provado pelo caso 13 (contrato novo) e por `observar.cjs --seco`
+devolvendo "nenhuma marca com pendencia" no banco real. Emenda registrada
+em 2026-08-31: a tarefa nasceu da operação (duas causas de pendência
+eterna achadas ao drenar o banco vivo), foi executada pela janela
+principal e revisada pelo revisor independente na 3ª rodada (2 avisos
+aceitos e documentados).

@@ -348,14 +348,53 @@ function criarSchema(conexao) {
 
   let sql = fs.readFileSync(caminhoSchema, 'utf8');
   // Remover comentários de linha SQL (--) antes de fazer split.
-  // Dividir por `;` não é parsing robusto, mas o arquivo é nosso e controlado.
-  // Para arquivos SQL arbitrários isso falharia com comentários dentro de strings,
-  // mas aqui temos apenas CREATE TABLE IF NOT EXISTS (idempotentes).
   sql = sql.split('\n').filter(linha => !linha.trim().startsWith('--')).join('\n');
-  const statements = sql
-    .split(';')
-    .map(s => s.trim())
-    .filter(s => s.length > 0);
+
+  // Parser especial para triggers: reconhecer BEGIN...END como blocos únicos.
+  // Estratégia: encontrar CREATE TRIGGER...BEGIN...END; e trata-lo como um statement único.
+  const statements = [];
+  let i = 0;
+  while (i < sql.length) {
+    // Procurar pelo próximo CREATE TRIGGER
+    const triggerMatch = sql.indexOf('CREATE TRIGGER', i);
+    if (triggerMatch === -1) {
+      // Nenhum trigger a partir daqui: processar o resto por split normal
+      const resto = sql.substring(i).trim();
+      if (resto.length > 0) {
+        const ultimos = resto
+          .split(';')
+          .map(s => s.trim())
+          .filter(s => s.length > 0);
+        statements.push(...ultimos);
+      }
+      break;
+    }
+
+    // Procurar por `;` antes do trigger (para capturar statements anteriores)
+    const prevSemicolon = sql.lastIndexOf(';', triggerMatch);
+    if (prevSemicolon > i) {
+      const antes = sql.substring(i, prevSemicolon).trim();
+      if (antes.length > 0) {
+        const stmts = antes
+          .split(';')
+          .map(s => s.trim())
+          .filter(s => s.length > 0);
+        statements.push(...stmts);
+      }
+    }
+
+    // Encontrar o final do trigger (END;)
+    const endIdx = sql.indexOf('END;', triggerMatch);
+    if (endIdx === -1) {
+      throw new Error(`Trigger sem fechamento encontrado em ${triggerMatch}`);
+    }
+
+    // Extrair o trigger inteiro
+    const trigger = sql.substring(triggerMatch, endIdx + 4).trim();
+    statements.push(trigger);
+
+    i = endIdx + 4;
+  }
 
   for (const stmt of statements) {
     try {
@@ -420,6 +459,81 @@ function criarSchema(conexao) {
     // Falha na migração não trava schema creation — log e continua.
     if (process.env.DEBUG_SCHEMA) {
       console.error(`AVISO: falha na migração de marca_dagua: ${e.message}`);
+    }
+  }
+
+  // Migração 4: adicionar coluna consolidada_em em observacoes (idempotente).
+  // Tarefa 4 (D4): consolidar marca observações já consolidadas, para não reconsolidar.
+  // ADD COLUMN IF NOT EXISTS garante que roda só uma vez — a coluna já existe em
+  // novos bancos (schema acima), e é adicionada em legados (sem erro se já existe).
+  try {
+    conexao.exec(`
+      ALTER TABLE observacoes ADD COLUMN consolidada_em TEXT;
+    `);
+  } catch (e) {
+    // Se falhar com "duplicate column name", é porque já existe — ok.
+    // Qualquer outro erro é inesperado, mas não trava a sessão.
+    if (!e.message.includes('duplicate column')) {
+      // Nota: não relançamos — a coluna pode estar parcialmente aplicada.
+    }
+  }
+
+  // Migração 5: migração do FTS legado (C1).
+  // Achado: CREATE VIRTUAL TABLE IF NOT EXISTS observacoes_fts é no-op quando
+  // a tabela ANTIGA (`fts5(conteudo)` sem content=) existe — banco nunca migra
+  // e buscar morre em silêncio (fase 2 não consegue achar observações recentes).
+  // Estratégia: detectar se o DDL de observacoes_fts NÃO contém content= →
+  // DROP TABLE observacoes_fts + recriar com content externo + rebuild FTS.
+  // Idempotente: segunda rodada é no-op (a tabela já terá content=).
+  try {
+    const temFTS = conexao.prepare(`
+      SELECT name FROM sqlite_master
+      WHERE type='table' AND name='observacoes_fts'
+    `).all().length > 0;
+
+    if (temFTS) {
+      // Ler o DDL da tabela virtual
+      const ddlRow = conexao.prepare(`
+        SELECT sql FROM sqlite_master
+        WHERE type='table' AND name='observacoes_fts'
+      `).all()[0];
+
+      if (ddlRow && ddlRow.sql) {
+        const ddl = ddlRow.sql.toLowerCase();
+        // Detectar se tem content=
+        if (!ddl.includes('content=')) {
+          // Tabela antiga sem content= — migrar
+          if (process.env.DEBUG_SCHEMA) {
+            console.error(`Migração FTS: detectada tabela observacoes_fts legada (sem content=)`);
+          }
+
+          // Apagar a tabela antiga
+          conexao.exec(`DROP TABLE observacoes_fts;`);
+
+          // Recriar com content externo
+          conexao.exec(`
+            CREATE VIRTUAL TABLE IF NOT EXISTS observacoes_fts USING fts5(
+              conteudo,
+              content='observacoes',
+              content_rowid='id'
+            );
+          `);
+
+          // Rebuild: fazer rebuild do índice FTS a partir da tabela externa
+          conexao.exec(`
+            INSERT INTO observacoes_fts(observacoes_fts) VALUES('rebuild');
+          `);
+
+          if (process.env.DEBUG_SCHEMA) {
+            console.error(`Migração FTS: tabela recriada com content externo e índice rebuildo`);
+          }
+        }
+      }
+    }
+  } catch (e) {
+    // Falha na migração FTS não trava — banco pode estar em estado inesperado
+    if (process.env.DEBUG_SCHEMA) {
+      console.error(`AVISO: falha na migração FTS: ${e.message}`);
     }
   }
 }
@@ -647,22 +761,14 @@ function extrairSchema(conexao) {
 }
 
 // Popula o índice FTS5 com observações existentes no banco.
+// Tarefa 1 (D24): Com conteúdo externo (content='observacoes'), usa comando 'rebuild'
+// em vez de DELETE+INSERT individual, por segurança e performance.
 function popularFts5(conexao) {
   try {
-    // Limpar índice anterior se existe (para reindexação).
-    try {
-      conexao.exec('DELETE FROM observacoes_fts');
-    } catch (e) {
-      // Ignorar se tabela não existe ainda (primeira execução).
-    }
-
-    // Inserir todas as observações no índice FTS5.
-    const linhas = conexao.prepare('SELECT id, conteudo FROM observacoes').all();
-    const stmt = conexao.prepare('INSERT INTO observacoes_fts(rowid, conteudo) VALUES (?, ?)');
-
-    for (const { id, conteudo } of linhas) {
-      stmt.run(id, conteudo);
-    }
+    // Reconstruir índice FTS5 do zero via comando 'rebuild'.
+    // Com conteúdo externo, o comando 'rebuild' reconstrói a partir da tabela
+    // observacoes sem duplicação ou risco de dessincronização.
+    conexao.exec('INSERT INTO observacoes_fts(observacoes_fts) VALUES(\'rebuild\')');
   } catch (e) {
     // Não é crítico falhar aqui; FTS5 pode ser reconstruída depois.
     // Mas logamos para debug.
@@ -1079,14 +1185,13 @@ function cmdReindexar() {
       }
     }
 
-    // Reconstruir índice FTS5 a partir das observações (que virão na fase 2).
+    // Reconstruir índice FTS5 a partir das observações.
+    // Tarefa 1 (D24): Com conteúdo externo, usa 'rebuild' em vez de DELETE.
     try {
-      conexao.exec('DELETE FROM observacoes_fts');
+      conexao.exec('INSERT INTO observacoes_fts(observacoes_fts) VALUES(\'rebuild\')');
     } catch (e) {
-      // Ignorar se não existe.
+      // Ignorar se não existe ou falha — não é crítico.
     }
-
-    popularFts5(conexao);
 
     console.log(`ok: índice derivado reconstruído (${caminhoDb})`);
     conexao.close();
@@ -1096,9 +1201,351 @@ function cmdReindexar() {
   }
 }
 
+// Chamada à LLM isolada atrás de função para permitir mock em testes.
+// Mesmo padrão que observar.cjs, Tarefa 12 (D14).
+// Retorna promise com resumo (string) ou null se falhar.
+async function chamarLLMParaConsolidar(textoDasObservacoes) {
+  // Permitir mock via variável de ambiente (testes)
+  if (process.env.TESTADOR_CHAMAR_LLM) {
+    try {
+      const modulo = require(process.env.TESTADOR_CHAMAR_LLM);
+      const resultado = await modulo.chamarLLM(textoDasObservacoes);
+      return resultado;
+    } catch (e) {
+      console.error(`AVISO: não consegui carregar mock de LLM: ${e.message}`);
+      return null;
+    }
+  }
+
+  // Invocar CLI claude com spawn (mesmo padrão que observar.cjs).
+  const { spawn } = require('child_process');
+  const os = require('os');
+
+  const executavel = acharExecutavelClaude();
+  if (!executavel) {
+    console.error('AVISO: não encontrei o executável `claude` no PATH');
+    return null;
+  }
+
+  const tempDir = os.tmpdir();
+  const TETO_ARGUMENTO = 16000;
+
+  if (textoDasObservacoes.length > TETO_ARGUMENTO) {
+    console.error(`AVISO: texto acima do teto (${textoDasObservacoes.length} > ${TETO_ARGUMENTO})`);
+    return null;
+  }
+
+  const prompt = `Resuma as seguintes 10 observacoes em uma sintese curta (2-3 frases):\n\n${textoDasObservacoes}`;
+
+  return new Promise((resolve) => {
+    const timeout = 60000;
+    const timer = setTimeout(() => {
+      console.error('AVISO: chamada à LLM expirou (timeout 60s)');
+      resolve(null);
+    }, timeout);
+
+    try {
+      const child = spawn(executavel, [
+        prompt,
+        '-p',
+        '--model', 'claude-haiku-4-5-20251001',
+        '--setting-sources', '',
+        '--permission-mode', 'dontAsk',
+        '--disallowedTools', 'Read,Write,Edit,Bash,Glob,Grep,WebFetch,WebSearch,Task,NotebookEdit',
+      ], {
+        cwd: tempDir,
+        windowsHide: true,
+        timeout: timeout + 5000,
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      child.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      child.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      child.stdin.end();
+
+      child.on('error', (error) => {
+        clearTimeout(timer);
+        console.error(`AVISO: erro ao chamar claude: ${error.message}`);
+        resolve(null);
+      });
+
+      child.on('close', (code) => {
+        clearTimeout(timer);
+
+        if (code !== 0) {
+          console.error(`AVISO: claude retornou exit code ${code}`);
+          resolve(null);
+          return;
+        }
+
+        if (!stdout || !stdout.trim()) {
+          console.error('AVISO: LLM retornou saída vazia');
+          resolve(null);
+          return;
+        }
+
+        resolve(stdout.trim());
+      });
+    } catch (e) {
+      clearTimeout(timer);
+      console.error(`AVISO: erro ao invocar claude: ${e.message}`);
+      resolve(null);
+    }
+  });
+}
+
+// Acha o executável `claude` (mesmo padrão que observar.cjs).
+function acharExecutavelClaude() {
+  if (process.env.RFM_CLAUDE_EXECUTAVEL) {
+    return process.env.RFM_CLAUDE_EXECUTAVEL;
+  }
+  const ehWindows = process.platform === 'win32';
+  const separador = ehWindows ? ';' : ':';
+  const extensoes = ehWindows
+    ? (process.env.PATHEXT || '.EXE;.CMD;.BAT').split(';').map((e) => e.toLowerCase())
+    : [''];
+  for (const dir of (process.env.PATH || '').split(separador)) {
+    if (!dir) continue;
+    for (const ext of extensoes) {
+      const alvo = path.join(dir, `claude${ext}`);
+      try {
+        if (fs.statSync(alvo).isFile()) {
+          if (!ehWindows) fs.accessSync(alvo, fs.constants.X_OK);
+          return alvo;
+        }
+      } catch {
+        // Caminho inexistente ou sem permissão: segue procurando.
+      }
+    }
+  }
+  return null;
+}
+
+// Grava resumo no banco.
+// Retorna true se sucesso, false se falha.
+function gravarResumo(conexao, { projeto, titulo, conteudo }) {
+  try {
+    const agora = new Date().toISOString();
+
+    const stmt = conexao.prepare(`
+      INSERT INTO resumos (projeto, titulo, conteudo, criada_em)
+      VALUES (?, ?, ?, ?)
+    `);
+
+    stmt.run(projeto, titulo, conteudo, agora);
+    return true;
+  } catch (e) {
+    console.error(`AVISO: erro ao gravar resumo: ${e.message}`);
+    return false;
+  }
+}
+
+// Marca observações com consolidada_em (atomicamente em transação).
+// Retorna true se sucesso, false se falha.
+function marcarConsolidadas(conexao, { projeto, ids }) {
+  if (!ids || ids.length === 0) {
+    return true;
+  }
+
+  try {
+    const agora = new Date().toISOString();
+
+    // Usar transação para garantir atomicidade
+    conexao.exec('BEGIN TRANSACTION');
+
+    const placeholders = ids.map(() => '?').join(',');
+    const stmt = conexao.prepare(`
+      UPDATE observacoes
+      SET consolidada_em = ?
+      WHERE projeto = ? AND id IN (${placeholders})
+    `);
+
+    const params = [agora, projeto, ...ids];
+    stmt.run(...params);
+
+    conexao.exec('COMMIT');
+    return true;
+  } catch (e) {
+    try {
+      conexao.exec('ROLLBACK');
+    } catch (_) {}
+    console.error(`AVISO: erro ao marcar consolidadas: ${e.message}`);
+    return false;
+  }
+}
+
+// C4: Consolida resumo + marca observações ATOMICAMENTE numa transação.
+// Se qualquer parte falha, ROLLBACK descarta ambas (nem resumo nem marca ficam gravados).
+// Retorna true se sucesso, false se falha.
+function consolidarAtomico(conexao, { projeto, titulo, conteudo, ids }) {
+  if (!ids || ids.length === 0) {
+    return true;
+  }
+
+  try {
+    const agora = new Date().toISOString();
+
+    // Uma transação única para ambas operações
+    conexao.exec('BEGIN TRANSACTION');
+
+    // 1. Gravar resumo
+    const stmtResumo = conexao.prepare(`
+      INSERT INTO resumos (projeto, titulo, conteudo, criada_em)
+      VALUES (?, ?, ?, ?)
+    `);
+    stmtResumo.run(projeto, titulo, conteudo, agora);
+
+    // 2. Marcar observações consolidadas
+    const placeholders = ids.map(() => '?').join(',');
+    const stmtMarca = conexao.prepare(`
+      UPDATE observacoes
+      SET consolidada_em = ?
+      WHERE projeto = ? AND id IN (${placeholders})
+    `);
+    const params = [agora, projeto, ...ids];
+    stmtMarca.run(...params);
+
+    // Commit: ambas operações persistem juntas
+    conexao.exec('COMMIT');
+    return true;
+  } catch (e) {
+    // Rollback: desfaz ambas se qualquer uma falhar
+    try {
+      conexao.exec('ROLLBACK');
+    } catch (_) {}
+    console.error(`AVISO: erro ao consolidar atomicamente: ${e.message}`);
+    return false;
+  }
+}
+
+// Comando: consolidar — agrupar observações em lotes, sintetizar via LLM, gravar resumos.
+// Tarefa 4 (D4): consolidar encontra observações com 60+ dias não consolidadas,
+// agrupa em lotes de 10, passa à LLM, grava resumo e marca originals.
+// NOTA: processa TODOS os projetos que têm observações consolidáveis (não apenas o projeto da sessão).
+async function cmdConsolidar() {
+  const { raiz, caminhoDb } = resolverCaminhos();
+
+  if (!fs.existsSync(caminhoDb)) {
+    console.error(`ERRO: banco não existe em ${caminhoDb}`);
+    console.error('rode: node scripts/memoria.cjs iniciar');
+    process.exit(1);
+  }
+
+  const conexao = abrirBanco(caminhoDb);
+
+  try {
+    // 1. Data limite: 60 dias atrás
+    const agora = new Date();
+    const seissentaDiasAtras = new Date(agora.getTime() - 60 * 24 * 60 * 60 * 1000);
+    const dataLimite = seissentaDiasAtras.toISOString();
+
+    // 2. Encontrar todos os projetos que têm observações consolidáveis (51+)
+    // C5: teto é "passarem de 50" — 50 não consolida, 51 consolida.
+    const projetosComConsolidaveis = conexao.prepare(`
+      SELECT projeto, COUNT(*) as cnt
+      FROM observacoes
+      WHERE consolidada_em IS NULL AND criada_em < ?
+      GROUP BY projeto
+      HAVING COUNT(*) > 50
+      ORDER BY projeto
+    `).all(dataLimite);
+
+    if (projetosComConsolidaveis.length === 0) {
+      console.log('nenhum projeto com 50+ observações de 60+ dias, nada a fazer');
+      conexao.close();
+      return;
+    }
+
+    console.log(`${projetosComConsolidaveis.length} projeto(s) com observações para consolidar`);
+
+    let totalResumosGravados = 0;
+
+    // 3. Processar cada projeto
+    for (const { projeto, cnt } of projetosComConsolidaveis) {
+      console.log(`projeto "${projeto}": ${cnt} observações consolidáveis`);
+
+      // 4. Ler observações consolidáveis deste projeto, ordenadas por criada_em
+      const observacoes = conexao.prepare(`
+        SELECT id, conteudo, criada_em
+        FROM observacoes
+        WHERE projeto = ? AND consolidada_em IS NULL AND criada_em < ?
+        ORDER BY criada_em ASC
+      `).all(projeto, dataLimite);
+
+      // 5. Dividir em lotes de 10
+      const lotes = [];
+      for (let i = 0; i < observacoes.length; i += 10) {
+        lotes.push(observacoes.slice(i, i + 10));
+      }
+
+      console.log(`  dividido em ${lotes.length} lote(s) de 10`);
+
+      // 6. Processar cada lote
+      let resumosGravadosProjeto = 0;
+      for (let i = 0; i < lotes.length; i++) {
+        const lote = lotes[i];
+        const ids = lote.map(o => o.id);
+
+        // Formatar para LLM: concatenar conteúdos
+        const textoDasObservacoes = lote
+          .map((obs, idx) => `${idx + 1}. ${obs.conteudo}`)
+          .join('\n');
+
+        console.log(`    lote ${i + 1}/${lotes.length}: chamando LLM para ${lote.length} observações`);
+
+        // 7. Chamar LLM (falha deixa lote intacto)
+        const resumo = await chamarLLMParaConsolidar(textoDasObservacoes);
+
+        if (!resumo) {
+          console.log(`    lote ${i + 1}/${lotes.length}: LLM falhou, lote intacto para próxima rodada`);
+          continue;
+        }
+
+        // 8. C4: Consolidar atomicamente (resumo + marca numa transação)
+        // Se falhar em qualquer parte, ROLLBACK desfaz ambas — nem resumo nem marca ficam.
+        const titulo = resumo.substring(0, 80); // Primeiros 80 caracteres como título
+        const sucesso = consolidarAtomico(conexao, {
+          projeto,
+          titulo,
+          conteudo: resumo,
+          ids,
+        });
+
+        if (!sucesso) {
+          console.log(`    lote ${i + 1}/${lotes.length}: falha ao consolidar atomicamente, lote intacto`);
+          continue;
+        }
+
+        resumosGravadosProjeto++;
+        console.log(`    lote ${i + 1}/${lotes.length}: ok (resumo gravado, ${lote.length} observações marcadas)`);
+      }
+
+      console.log(`  ${projeto}: ${resumosGravadosProjeto} resumo(s) gravado(s)`);
+      totalResumosGravados += resumosGravadosProjeto;
+    }
+
+    // 10. Relatório final
+    console.log(`consolidacao completa: ${totalResumosGravados} resumo(s) total gravado(s)`);
+
+    conexao.close();
+  } catch (e) {
+    console.error(`ERRO: ${e.message}`);
+    try { conexao.close(); } catch (_) {}
+    process.exit(1);
+  }
+}
+
 // ---- CLI
 
-function main() {
+async function main() {
   const cmd = process.argv[2];
 
   switch (cmd) {
@@ -1112,16 +1559,21 @@ function main() {
       return cmdBackup();
     case 'reindexar':
       return cmdReindexar();
+    case 'consolidar':
+      return await cmdConsolidar();
     default:
       console.error(`Comando desconhecido: ${cmd}`);
-      console.error('Use: iniciar | esquema | buscar | backup | reindexar');
+      console.error('Use: iniciar | esquema | buscar | backup | reindexar | consolidar');
       process.exit(1);
   }
 }
 
 if (require.main === module) {
   try {
-    main();
+    main().catch(e => {
+      console.error(`ERRO: ${e.message}`);
+      process.exit(1);
+    });
   } catch (e) {
     console.error(`ERRO: ${e.message}`);
     process.exit(1);
