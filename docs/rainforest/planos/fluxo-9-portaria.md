@@ -54,7 +54,7 @@ pronto quando: com o sandbox acima, `resolver({ cwd: sandbox })` devolve `null` 
 
 ### 2. Hook em modo captura + registro (D6) + amostra real (D7) [tipo: configurar]
 atende: D6, D7
-arquivos: `.claude/settings.json`, `hooks/portaria.cjs`
+arquivos: `.claude/settings.json`, `hooks/portaria.cjs`, `hooks/testa-portaria-captura.cjs`
 depende de: nenhuma
 paralela: sim
 mutacao:
