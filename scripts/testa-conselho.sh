@@ -382,6 +382,199 @@ else
 fi
 
 echo ""
+echo "== CASO 8: revisar-fecha-com-3 =="
+TEMPDIR8="$RAIZ/test-revisar-ok"
+mkdir -p "$TEMPDIR8"
+
+# Create test question file
+echo "# Questão para teste de revisão" > "$TEMPDIR8/questao-revisao.md"
+
+# Create membros.json com fixtures ok para parecer + revisor ok para revisão
+FIXTURE_OK_M="$SRC_M/scripts/fixtures/conselho/membro-ok.cjs"
+FIXTURE_REVISOR_OK="$SRC_M/scripts/fixtures/conselho/membro-revisor-ok.cjs"
+
+mkdir -p "$TEMPDIR8/.rainforest/conselho"
+cat > "$TEMPDIR8/.rainforest/conselho/membros.json" << EOF
+{
+  "membros": [
+    {"nome": "cetico", "cmd": "node \"$FIXTURE_OK_M\" {prompt} {saida}", "ligado": true},
+    {"nome": "arquiteto", "cmd": "node \"$FIXTURE_OK_M\" {prompt} {saida}", "ligado": true},
+    {"nome": "usuario-final", "cmd": "node \"$FIXTURE_OK_M\" {prompt} {saida}", "ligado": true}
+  ]
+}
+EOF
+
+# Open rodada
+bash -c "cd '$TEMPDIR8' && RFM_ESTADO_ROOT='$TEMPDIR8' node '$CONSELHO' abrir --questao questao-revisao.md" 2>/dev/null
+
+# Find the rodada directory
+RODADA_DIR8=$(ls -1d "$TEMPDIR8/.rainforest/conselho/202"* 2>/dev/null | head -1)
+if [ -n "$RODADA_DIR8" ]; then
+  # Collect pareceres
+  bash -c "cd '$TEMPDIR8' && RFM_ESTADO_ROOT='$TEMPDIR8' node '$CONSELHO' pareceres" 2>/dev/null
+
+  # Check pareceres phase
+  testa "revisar: fase pareceres válida" "0" \
+    bash -c "cd '$TEMPDIR8' && RFM_ESTADO_ROOT='$TEMPDIR8' node '$CONSELHO' conferir --fase pareceres"
+
+  # Now change membros.json to use revisores para a fase 2
+  cat > "$TEMPDIR8/.rainforest/conselho/membros.json" << EOF
+{
+  "membros": [
+    {"nome": "cetico", "cmd": "node \"$FIXTURE_REVISOR_OK\" {prompt} {saida}", "ligado": true},
+    {"nome": "arquiteto", "cmd": "node \"$FIXTURE_REVISOR_OK\" {prompt} {saida}", "ligado": true},
+    {"nome": "usuario-final", "cmd": "node \"$FIXTURE_REVISOR_OK\" {prompt} {saida}", "ligado": true}
+  ]
+}
+EOF
+
+  # Run revisar
+  testa "revisar: subcomando revisar coleta os 3" "0" \
+    bash -c "cd '$TEMPDIR8' && RFM_ESTADO_ROOT='$TEMPDIR8' node '$CONSELHO' revisar"
+
+  # Check that fase2 directory exists and has revisao files
+  if [ -d "$RODADA_DIR8/fase2" ]; then
+    REVISAO_COUNT=$(ls "$RODADA_DIR8/fase2"/revisao-*.json 2>/dev/null | wc -l)
+    if [ "$REVISAO_COUNT" = "3" ]; then
+      ok=$((ok + 1))
+      echo "  ok   3 arquivos de revisão criados"
+    else
+      falhou=$((falhou + 1))
+      echo "  FALHA $REVISAO_COUNT arquivos de revisão, esperava 3"
+    fi
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA diretório fase2 não foi criado"
+  fi
+
+  # Run conferir --fase revisao - should pass
+  testa "revisar: conferir fase revisao" "0" \
+    bash -c "cd '$TEMPDIR8' && RFM_ESTADO_ROOT='$TEMPDIR8' node '$CONSELHO' conferir --fase revisao"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA não conseguiu encontrar diretório de rodada"
+fi
+
+echo ""
+echo "== CASO 9: identidade-nao-vaza =="
+if [ -d "$RODADA_DIR8/fase2" ]; then
+  # Check that real member names do not appear in distributed files
+  GREP_RESULT=$(grep -rE 'cetico|arquiteto|usuario-final' "$RODADA_DIR8/fase2" 2>&1)
+  if [ -z "$GREP_RESULT" ]; then
+    ok=$((ok + 1))
+    echo "  ok   nenhum nome real na fase2"
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA nomes reais encontrados na fase2:"
+    echo "$GREP_RESULT" | sed 's/^/         /'
+  fi
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA não conseguiu verificar (fase2 não existe)"
+fi
+
+echo ""
+echo "== CASO 10: ranking-incompleto-reprova =="
+TEMPDIR10="$RAIZ/test-ranking-incompleto"
+mkdir -p "$TEMPDIR10"
+
+# Create test question file
+echo "# Questão para teste de ranking incompleto" > "$TEMPDIR10/questao-incompleto.md"
+
+# Create membros.json with ok parecers and one incomplete reviewer
+FIXTURE_OK_T10="$SRC_M/scripts/fixtures/conselho/membro-ok.cjs"
+FIXTURE_INCOMPLETO="$SRC_M/scripts/fixtures/conselho/membro-ranking-incompleto.cjs"
+
+mkdir -p "$TEMPDIR10/.rainforest/conselho"
+cat > "$TEMPDIR10/.rainforest/conselho/membros.json" << EOF
+{
+  "membros": [
+    {"nome": "cetico", "cmd": "node \"$FIXTURE_OK_T10\" {prompt} {saida}", "ligado": true},
+    {"nome": "arquiteto", "cmd": "node \"$FIXTURE_OK_T10\" {prompt} {saida}", "ligado": true},
+    {"nome": "usuario-final", "cmd": "node \"$FIXTURE_OK_T10\" {prompt} {saida}", "ligado": true}
+  ]
+}
+EOF
+
+# Open rodada
+bash -c "cd '$TEMPDIR10' && RFM_ESTADO_ROOT='$TEMPDIR10' node '$CONSELHO' abrir --questao questao-incompleto.md" 2>/dev/null
+
+# Find rodada
+RODADA_DIR10=$(ls -1d "$TEMPDIR10/.rainforest/conselho/202"* 2>/dev/null | head -1)
+if [ -n "$RODADA_DIR10" ]; then
+  # Collect pareceres
+  bash -c "cd '$TEMPDIR10' && RFM_ESTADO_ROOT='$TEMPDIR10' node '$CONSELHO' pareceres" 2>/dev/null
+
+  # Now manually create fase2 with incomplete ranking for one member
+  mkdir -p "$RODADA_DIR10/fase2"
+
+  # Create incomplete revisao for cetico
+  cat > "$RODADA_DIR10/fase2/revisao-cetico.json" << 'EOF'
+{"ranking": ["membro-A"], "criticas": {"membro-A": "Crítica"}}
+EOF
+
+  # Create complete revisoes for others
+  cat > "$RODADA_DIR10/fase2/revisao-arquiteto.json" << 'EOF'
+{"ranking": ["membro-A", "membro-B"], "criticas": {"membro-A": "Crítica A", "membro-B": "Crítica B"}}
+EOF
+
+  cat > "$RODADA_DIR10/fase2/revisao-usuario-final.json" << 'EOF'
+{"ranking": ["membro-A", "membro-B"], "criticas": {"membro-A": "Crítica A", "membro-B": "Crítica B"}}
+EOF
+
+  # Try to conferir - should fail
+  saida_conferir=$(bash -c "cd '$TEMPDIR10' && RFM_ESTADO_ROOT='$TEMPDIR10' node '$CONSELHO' conferir --fase revisao" 2>&1)
+  exit_conferir=$?
+
+  if [ "$exit_conferir" != "0" ]; then
+    ok=$((ok + 1))
+    echo "  ok   ranking incompleto reprovou com exit $exit_conferir"
+    # Check if it mentions the member
+    if echo "$saida_conferir" | grep -q "cetico"; then
+      ok=$((ok + 1))
+      echo "  ok   saída menciona o membro com ranking incompleto"
+    else
+      falhou=$((falhou + 1))
+      echo "  FALHA saída não menciona o membro"
+      echo "$saida_conferir" | sed 's/^/         /'
+    fi
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA conferir deveria ter saído com erro"
+  fi
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA não conseguiu encontrar diretório de rodada"
+fi
+
+echo ""
+echo "== CASO 11: cada-um-recebe-so-os-outros =="
+if [ -d "$RODADA_DIR8/fase2" ]; then
+  # Check that pacote-prompt for cetico does not contain parecer do cetico himself
+  PACOTE_CETICO="$RODADA_DIR8/fase2/pacote-prompt-cetico.json"
+
+  if [ -f "$PACOTE_CETICO" ]; then
+    # Extract posicao values from pareceres (they have distinguishing text)
+    POSICOES=$(grep -o '"posicao": "[^"]*' "$PACOTE_CETICO" | wc -l)
+    # Expected: 2 pareceres (from arquiteto and usuario-final), not 3
+
+    if [ "$POSICOES" = "2" ]; then
+      ok=$((ok + 1))
+      echo "  ok   cetico recebe 2 pareceres (dos outros 2 membros)"
+    else
+      falhou=$((falhou + 1))
+      echo "  FALHA cetico recebe $POSICOES pareceres, esperava 2"
+    fi
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA pacote-prompt-cetico.json não encontrado"
+  fi
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA não conseguiu verificar (fase2 não existe)"
+fi
+
+echo ""
 echo "== Resultado =="
 echo "total=$((ok + falhou)) vermelhas:[$falhou]"
 if [ "$falhou" -gt 0 ]; then
