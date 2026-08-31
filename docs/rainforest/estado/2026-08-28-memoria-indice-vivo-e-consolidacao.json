@@ -1,0 +1,36 @@
+{
+  "slug": "2026-08-28-memoria-indice-vivo-e-consolidacao",
+  "titulo": "Fluxo 2 — memoria: indice vivo, relevancia e consolidacao",
+  "criado_em": "2026-08-30",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/2026-08-28-memoria-indice-vivo-e-consolidacao.md",
+    "aprovado_por": "Luis, 2026-08-28 na conversa de origem (Q1-Q3 nas recomendadas); instalado em 2026-08-31",
+    "em": "2026-08-30"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-08-28-memoria-indice-vivo-e-consolidacao.md",
+    "tarefas": 5,
+    "paralelas": [
+      2
+    ],
+    "nota": "plano verbatim da origem; T1 primeiro, T2 paralela desde ja, T3-T5 apos T1",
+    "em": "2026-08-30"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
