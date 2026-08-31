@@ -414,6 +414,228 @@ rm -rf "$MUT"
 rm -rf "$DADOS_LEGADO"
 
 echo
+echo "== banco de memoria: observacoes, indice vivo e pipeline (Tarefa 5) =="
+# Teste Q: banco ok com observacoes e fts sincronizados
+DADOS_OK=".rainforest-saude-ok"
+rm -rf "$DADOS_OK" && mkdir -p "$DADOS_OK"
+( cd "$DADOS_OK" && node << 'MKBANCO_OK'
+const { DatabaseSync } = require('node:sqlite');
+const db = new DatabaseSync('./rainforest.db');
+
+db.exec(`
+  CREATE TABLE observacoes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    projeto TEXT NOT NULL,
+    conteudo TEXT NOT NULL,
+    criada_em TEXT NOT NULL,
+    origem TEXT,
+    UNIQUE(projeto, origem)
+  );
+
+  CREATE VIRTUAL TABLE observacoes_fts USING fts5(
+    conteudo,
+    content='observacoes',
+    content_rowid='id'
+  );
+
+  CREATE TABLE marca_dagua (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    projeto TEXT NOT NULL,
+    sessao TEXT NOT NULL,
+    arquivo TEXT NOT NULL,
+    offset INTEGER NOT NULL DEFAULT 0,
+    offset_processado INTEGER NOT NULL DEFAULT 0,
+    processada_em TEXT NOT NULL,
+    UNIQUE(projeto, sessao)
+  );
+
+  INSERT INTO observacoes (projeto, conteudo, criada_em, origem)
+  VALUES ('test', 'obs1', datetime('now'), 'orig1');
+
+  INSERT INTO observacoes_fts(rowid, conteudo)
+  VALUES (1, 'obs1');
+
+  INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em)
+  VALUES ('test', 'sess1', '/tmp/t.jsonl', 100, 100, datetime('now'));
+`);
+
+db.close();
+MKBANCO_OK
+)
+
+DADOS_OK_ABS="$(cd "$DADOS_OK" && pwd)"
+Q="$(RFM_ROOT="$DADOS_OK_ABS" node "$SRC/scripts/saude.cjs" --json 2>/dev/null | node -e 'let d=""; process.stdin.on("data", c => d += c).on("end", () => { try { const a = JSON.parse(d).find(x => x.item === "banco de memoria"); console.log(a ? a.nivel + " " + a.detalhe : "ausente"); } catch(e) { console.log("erro"); } })')"
+checa "Q. banco ok com fts sincronizado vira ok"         "ok" "schema valido" "$Q"
+
+# Teste Q2: banco ausente vira ok com nota
+Q2="$(RFM_ROOT="$DADOS_OK_ABS/../inexistente" node "$SRC/scripts/saude.cjs" --json 2>/dev/null | node -e 'let d=""; process.stdin.on("data", c => d += c).on("end", () => { try { const a = JSON.parse(d).find(x => x.item === "banco de memoria"); console.log(a ? a.nivel + " " + a.detalhe : "ausente"); } catch(e) { console.log("erro"); } })')"
+checa "Q2. banco ausente vira ok"                         "ok" "ausente" "$Q2"
+
+# Teste Q3: counts divergentes fabricados
+# Usar FTS sem content= para ter controle total sobre sincronizacao
+DADOS_DIVERGE=".rainforest-saude-diverge"
+rm -rf "$DADOS_DIVERGE" && mkdir -p "$DADOS_DIVERGE"
+( cd "$DADOS_DIVERGE" && node << 'MKBANCO_DIVERGE'
+const { DatabaseSync } = require('node:sqlite');
+const db = new DatabaseSync('./rainforest.db');
+
+db.exec(`
+  CREATE TABLE observacoes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    projeto TEXT NOT NULL,
+    conteudo TEXT NOT NULL,
+    criada_em TEXT NOT NULL,
+    origem TEXT,
+    UNIQUE(projeto, origem)
+  );
+
+  -- FTS independente (sem content=) para poder dessincaronizar
+  CREATE VIRTUAL TABLE observacoes_fts USING fts5(
+    conteudo
+  );
+
+  CREATE TABLE marca_dagua (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    projeto TEXT NOT NULL,
+    sessao TEXT NOT NULL,
+    arquivo TEXT NOT NULL,
+    offset INTEGER NOT NULL DEFAULT 0,
+    offset_processado INTEGER NOT NULL DEFAULT 0,
+    processada_em TEXT NOT NULL,
+    UNIQUE(projeto, sessao)
+  );
+
+  -- Inserir 2 observacoes
+  INSERT INTO observacoes (projeto, conteudo, criada_em, origem)
+  VALUES ('test', 'obs1', datetime('now'), 'orig1');
+  INSERT INTO observacoes (projeto, conteudo, criada_em, origem)
+  VALUES ('test', 'obs2', datetime('now'), 'orig2');
+
+  -- Inserir SO 1 no FTS (divergencia: 2 vs 1)
+  INSERT INTO observacoes_fts(conteudo)
+  VALUES ('obs1');
+`);
+
+db.close();
+MKBANCO_DIVERGE
+)
+
+DADOS_DIVERGE_ABS="$(cd "$DADOS_DIVERGE" && pwd)"
+Q3="$(RFM_ROOT="$DADOS_DIVERGE_ABS" node "$SRC/scripts/saude.cjs" --json 2>/dev/null | node -e 'let d=""; process.stdin.on("data", c => d += c).on("end", () => { try { const a = JSON.parse(d).find(x => x.item === "banco de memoria"); console.log(a ? a.nivel + " " + a.detalhe : "ausente"); } catch(e) { console.log("erro"); } })')"
+checa "Q3. counts divergentes viram aviso"               "aviso" "indice vivo" "$Q3"
+checa "Q3. e sugerem reindexar"                          "aviso" "reindexar" "$Q3"
+
+# Teste Q4: pendencia de 72h (mais que 48h)
+DADOS_PENDENTE_72H=".rainforest-saude-pendente-72h"
+rm -rf "$DADOS_PENDENTE_72H" && mkdir -p "$DADOS_PENDENTE_72H"
+( cd "$DADOS_PENDENTE_72H" && node << 'MKBANCO_PENDENTE_72H'
+const { DatabaseSync } = require('node:sqlite');
+const db = new DatabaseSync('./rainforest.db');
+
+// Data de 72 horas atras
+const data72hAtras = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+
+db.exec(`
+  CREATE TABLE observacoes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    projeto TEXT NOT NULL,
+    conteudo TEXT NOT NULL,
+    criada_em TEXT NOT NULL,
+    origem TEXT,
+    UNIQUE(projeto, origem)
+  );
+
+  CREATE VIRTUAL TABLE observacoes_fts USING fts5(
+    conteudo,
+    content='observacoes',
+    content_rowid='id'
+  );
+
+  CREATE TABLE marca_dagua (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    projeto TEXT NOT NULL,
+    sessao TEXT NOT NULL,
+    arquivo TEXT NOT NULL,
+    offset INTEGER NOT NULL DEFAULT 0,
+    offset_processado INTEGER NOT NULL DEFAULT 0,
+    processada_em TEXT NOT NULL,
+    UNIQUE(projeto, sessao)
+  );
+
+  -- offset > offset_processado (100 > 50 = ha pendencia)
+  -- processada_em = 72h atras
+  INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em)
+  VALUES ('test', 'sess1', '/tmp/t.jsonl', 100, 50, '${data72hAtras}');
+`);
+
+db.close();
+MKBANCO_PENDENTE_72H
+)
+
+DADOS_PENDENTE_72H_ABS="$(cd "$DADOS_PENDENTE_72H" && pwd)"
+Q4="$(RFM_ROOT="$DADOS_PENDENTE_72H_ABS" node "$SRC/scripts/saude.cjs" --json 2>/dev/null | node -e 'let d=""; process.stdin.on("data", c => d += c).on("end", () => { try { const a = JSON.parse(d).find(x => x.item === "banco de memoria"); console.log(a ? a.nivel + " " + a.detalhe : "ausente"); } catch(e) { console.log("erro"); } })')"
+checa "Q4. pendencia de 72h vira aviso"                  "aviso" "pipeline parado" "$Q4"
+checa "Q4. e sugere observar"                            "aviso" "observar" "$Q4"
+
+# Teste Q5: pendencia de 1h (menos que 48h) - NAO acusa
+DADOS_PENDENTE_1H=".rainforest-saude-pendente-1h"
+rm -rf "$DADOS_PENDENTE_1H" && mkdir -p "$DADOS_PENDENTE_1H"
+( cd "$DADOS_PENDENTE_1H" && node << 'MKBANCO_PENDENTE_1H'
+const { DatabaseSync } = require('node:sqlite');
+const db = new DatabaseSync('./rainforest.db');
+
+// Data de 1 hora atras
+const data1hAtras = new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString();
+
+db.exec(`
+  CREATE TABLE observacoes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    projeto TEXT NOT NULL,
+    conteudo TEXT NOT NULL,
+    criada_em TEXT NOT NULL,
+    origem TEXT,
+    UNIQUE(projeto, origem)
+  );
+
+  CREATE VIRTUAL TABLE observacoes_fts USING fts5(
+    conteudo,
+    content='observacoes',
+    content_rowid='id'
+  );
+
+  CREATE TABLE marca_dagua (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    projeto TEXT NOT NULL,
+    sessao TEXT NOT NULL,
+    arquivo TEXT NOT NULL,
+    offset INTEGER NOT NULL DEFAULT 0,
+    offset_processado INTEGER NOT NULL DEFAULT 0,
+    processada_em TEXT NOT NULL,
+    UNIQUE(projeto, sessao)
+  );
+
+  -- offset > offset_processado (100 > 50 = ha pendencia)
+  -- processada_em = 1h atras (MENOS que 48h, NAO deve acusar)
+  INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em)
+  VALUES ('test', 'sess1', '/tmp/t.jsonl', 100, 50, '${data1hAtras}');
+`);
+
+db.close();
+MKBANCO_PENDENTE_1H
+)
+
+DADOS_PENDENTE_1H_ABS="$(cd "$DADOS_PENDENTE_1H" && pwd)"
+Q5="$(RFM_ROOT="$DADOS_PENDENTE_1H_ABS" node "$SRC/scripts/saude.cjs" --json 2>/dev/null | node -e 'let d=""; process.stdin.on("data", c => d += c).on("end", () => { try { const a = JSON.parse(d).find(x => x.item === "banco de memoria"); console.log(a ? a.nivel + " " + a.detalhe : "ausente"); } catch(e) { console.log("erro"); } })')"
+if echo "$Q5" | grep -qF "pipeline parado"; then
+  falhou=$((falhou+1)); echo "  FALHA Q5. pendencia recente (1h) nao deve acusar pipeline parado"
+else
+  ok=$((ok+1)); echo "  ok   Q5. pendencia recente nao acusa pipeline parado"
+fi
+
+# Limpeza
+rm -rf "$DADOS_OK" "$DADOS_DIVERGE" "$DADOS_PENDENTE_72H" "$DADOS_PENDENTE_1H"
+
+echo
 echo "== contas do harness em versoes diferentes do mesmo plugin =="
 # 2026-08-20: depois de quatro PRs e de um `claude plugin update`, a config
 # pessoal estava em 0.71.0 e a de trabalho em 0.70.0 — e o painel dizia `ok`,
