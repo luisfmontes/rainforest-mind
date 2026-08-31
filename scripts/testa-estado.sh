@@ -800,5 +800,82 @@ esperado "estado antigo: 1a reprovacao passa" 0 $E_T3 exigir --slug t3-old --est
 
 unset RFM_ESTADO_ROOT
 
+echo
+echo "== 18. proximo imprime criterio, comando, saida e faltou do reprovado =="
+# Tarefa 4: com um reprovado como ultimo veredito, proximo imprime o bloco do
+# reprovado (criterio, comando, saida, faltou) junto do proximo passo.
+# Sem reprovacao pendente, a saida nao muda nem um byte.
+
+mkdir -p "$SBP/tarefa4"
+(cd "$SBP/tarefa4" && git init -q && git config user.email t@t && git config user.name T && echo x > a.txt && git add . && git commit -qm inicial)
+export RFM_ESTADO_ROOT="$SBP/tarefa4"
+E_T4="node scripts/estado.cjs"
+
+prep_t4() { # slug — chega até executar com catraca armada
+  $E_T4 iniciar --slug "$1" >/dev/null
+  $E_T4 marcar --slug "$1" --estagio design --status aprovado >/dev/null
+  $E_T4 marcar --slug "$1" --estagio plano  --status ok >/dev/null
+  $E_T4 exigir --slug "$1" --estagio executar >/dev/null
+}
+
+# Caso (a): com reprovacao pendente, proximo imprime criterio, comando, saida e faltou
+echo "  preparando caso (a)..."
+prep_t4 t4-reprovado
+$E_T4 marcar --slug t4-reprovado --estagio executar --status ok --json '{"comando":"node script.cjs","saida":"ok","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
+$E_T4 marcar --slug t4-reprovado --estagio revisar --status ok >/dev/null
+$E_T4 exigir --slug t4-reprovado --estagio verificar >/dev/null
+# Reprovar em verificar com criterio, comando, saida, faltou no --json
+$E_T4 marcar --slug t4-reprovado --estagio verificar --status reprovado --json '{"criterio":"R1","comando":"bash test.sh","saida":"failed","faltou":"output mismatch"}' >/dev/null
+
+# Agora proximo deve imprimir o bloco do reprovado
+saida_com_reprovado=$($E_T4 proximo --slug t4-reprovado 2>&1)
+# Verificar se a saida contem criterio, comando, saida, faltou E o proximo passo (executar)
+tem_criterio=$(case "$saida_com_reprovado" in *"criterio: R1"*) echo sim;; *) echo nao;; esac)
+tem_comando=$(case "$saida_com_reprovado" in *"comando: bash test.sh"*) echo sim;; *) echo nao;; esac)
+tem_saida=$(case "$saida_com_reprovado" in *"saida: failed"*) echo sim;; *) echo nao;; esac)
+tem_faltou=$(case "$saida_com_reprovado" in *"faltou: output mismatch"*) echo sim;; *) echo nao;; esac)
+tem_proximo=$(case "$saida_com_reprovado" in *"executar"*) echo sim;; *) echo nao;; esac)
+
+igual "com reprovado: imprime criterio" "sim" "$tem_criterio"
+igual "com reprovado: imprime comando" "sim" "$tem_comando"
+igual "com reprovado: imprime saida" "sim" "$tem_saida"
+igual "com reprovado: imprime faltou" "sim" "$tem_faltou"
+igual "com reprovado: imprime proximo passo (executar)" "sim" "$tem_proximo"
+
+# Caso (b): sem reprovacao pendente, a saida e BYTE-IDENTICA
+echo "  preparando caso (b)..."
+prep_t4 t4-limpo
+# Fluxo limpo sem reprovacao — capture a saida do proximo
+saida_sem_reprovado=$($E_T4 proximo --slug t4-limpo 2>&1)
+# prep_t4 ja passa por design aprovado e plano ok, entao proximo e executar
+expected_sem_reprovado="executar"
+igual "sem reprovado: saida e byte-identica ao esperado" "$expected_sem_reprovado" "$saida_sem_reprovado"
+
+# Caso (c): depois de re-fechar com ok, volta a saida limpa
+echo "  preparando caso (c)..."
+prep_t4 t4-refechado
+$E_T4 marcar --slug t4-refechado --estagio executar --status ok --json '{"comando":"node script.cjs","saida":"ok","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
+$E_T4 marcar --slug t4-refechado --estagio revisar --status ok >/dev/null
+$E_T4 exigir --slug t4-refechado --estagio verificar >/dev/null
+# Reprovar em verificar
+$E_T4 marcar --slug t4-refechado --estagio verificar --status reprovado --json '{"criterio":"R2","comando":"check.sh","saida":"nok","faltou":"assertion"}' >/dev/null
+# Capturar a saida com reprovado
+saida_antes_refecha=$($E_T4 proximo --slug t4-refechado 2>&1)
+tem_r2_antes=$(case "$saida_antes_refecha" in *"criterio: R2"*) echo sim;; *) echo nao;; esac)
+igual "antes de refecha: imprime R2" "sim" "$tem_r2_antes"
+
+# Re-executar e re-fechar (limpar o reaberto_por)
+$E_T4 marcar --slug t4-refechado --estagio executar --status ok --json '{"comando":"node script.cjs","saida":"ok","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
+$E_T4 marcar --slug t4-refechado --estagio revisar --status ok >/dev/null
+$E_T4 exigir --slug t4-refechado --estagio verificar >/dev/null
+$E_T4 marcar --slug t4-refechado --estagio verificar --status ok --json '{"comando":"bash verify.sh","saida":"pass"}' >/dev/null
+
+# Agora proximo deve voltar a saida limpa
+saida_depois_refecha=$($E_T4 proximo --slug t4-refechado 2>&1)
+expected_depois_refecha="fechar"
+igual "depois de refecha: volta a saida limpa" "$expected_depois_refecha" "$saida_depois_refecha"
+
+unset RFM_ESTADO_ROOT
+
 echo "== resultado: $ok ok, $falhou falhas =="
 [ "$falhou" = 0 ]

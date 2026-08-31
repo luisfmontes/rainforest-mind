@@ -211,6 +211,18 @@ function novo(slug, titulo) {
   };
 }
 
+/** Imprime o bloco do último estágio reprovado quando ele é o motivo do próximo passo.
+ *  Usado como ponto único de mutação: remover ou neutralizar esta chamada tira a feature. */
+function imprimirReprovado(estado, estagio_reprovador) {
+  const bloco = estado[estagio_reprovador];
+  if (!bloco) return;
+  // Imprime criterio, comando, saida e faltou do --json da reprovação
+  if (bloco.criterio) console.log(`criterio: ${bloco.criterio}`);
+  if (bloco.comando) console.log(`comando: ${bloco.comando}`);
+  if (bloco.saida) console.log(`saida: ${bloco.saida}`);
+  if (bloco.faltou) console.log(`faltou: ${bloco.faltou}`);
+}
+
 /** O primeiro estágio de execução ainda não fechado. É a definição de retomada. */
 function proximo(estado) {
   // `arqueologia` fica FORA desta lista: se entrasse, todo projeto sem mapa
@@ -218,6 +230,15 @@ function proximo(estado) {
   // obrigatorio pela porta dos fundos.
   for (const e of ['design', 'plano', ...EXECUCAO]) {
     if (!estaFechado(e, estado[e])) return e;
+  }
+  return null;
+}
+
+/** Encontra o estágio de execução que foi reaberto por reprovação. */
+function estagio_reprovado_pendente(estado) {
+  for (const e of EXECUCAO) {
+    const bloco = estado[e] || {};
+    if (bloco.reaberto_por) return e;
   }
   return null;
 }
@@ -733,6 +754,11 @@ function main() {
   if (cmd === 'proximo') {
     const p = proximo(estado);
     if (!p) return console.log('completo');
+    // Imprimir o bloco do reprovado pendente, se houver
+    const e_reprovado = estagio_reprovado_pendente(estado);
+    if (e_reprovado) {
+      imprimirReprovado(estado, estado[e_reprovado].reaberto_por.estagio);
+    }
     console.log(p);
     return;
   }
