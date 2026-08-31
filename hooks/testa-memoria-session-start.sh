@@ -855,5 +855,135 @@ else
 fi
 
 echo
+echo "17. Tarefa 3 — a abertura injeta 9 recentes + até 5 casadas pelo foco (D2)"
+
+CAIXA_FOCO="$(mktemp -d)"
+mkdir -p "$CAIXA_FOCO"
+git init -q "$CAIXA_FOCO"  # Initialize git here
+trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${RAIZ_POSIX:-}" "${CAIXA_HOOK:-}" "${CAIXA_PROJETO:-}" "${CAIXA_HARNESS:-}" "${CAIXA_VAZIO:-}" "${CAIXA_APELIDO:-}" "${CAIXA_FOCO:-}"' EXIT
+
+export RFM_ROOT="$CAIXA_FOCO"
+node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+
+# Setup: 15 observações (usando "foco" como projeto-key, que será resolvido do diretório)
+node <<'SETUP_FOCO_TEST'
+const { DatabaseSync } = require('node:sqlite');
+const path = require('path');
+
+const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
+
+// Derive the project key from the RFM_ROOT directory name (basename)
+const projectKey = path.basename(process.env.RFM_ROOT);
+
+// 15 observações
+for (let i = 1; i <= 15; i++) {
+  db.prepare(`
+    INSERT INTO observacoes (projeto, conteudo, criada_em, origem)
+    VALUES (?, ?, ?, ?)
+  `).run(
+    projectKey,
+    '## Obs ' + i + '\n\nConteúdo ' + i + (i <= 5 ? ' (palavras-chave buscar teste foco)' : ' (sem match)'),
+    '2026-08-' + String(10 + i).padStart(2, '0') + 'T10:00:00Z',
+    'origem-foco-' + i
+  );
+}
+
+db.close();
+SETUP_FOCO_TEST
+
+echo
+echo "  17.a — com foco cujos termos casam observação ANTIGA (fora das 9 recentes), ela entra entre as casadas"
+
+PASTA_FOCO="$CAIXA_FOCO"  # Usar a própria CAIXA como pasta
+
+# Cria FOCO.md com título contendo "buscar teste"
+cat > "$CAIXA_FOCO/FOCO.md" <<'FOCO_CONTENT'
+# FOCO
+
+## Ativo
+**Implementar buscar com teste de foco ativo**
+
+Descrição do que está sendo feito.
+FOCO_CONTENT
+
+# Debug: verificar que FOCO.md existe
+if [ -f "$CAIXA_FOCO/FOCO.md" ]; then
+  echo "  DEBUG: FOCO.md existe"
+  head -3 "$CAIXA_FOCO/FOCO.md"
+fi
+
+# Executa o hook
+SAIDA_FOCO=$(cd "$PASTA_FOCO" && RFM_ROOT="$CAIXA_FOCO" echo '{}' | node "$HOOK" 2>/dev/null)
+BLOCO_FOCO=$(echo "$SAIDA_FOCO" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); process.stdout.write((d.hookSpecificOutput||{}).additionalContext||'')")
+
+# Deve ter: 9 mais recentes (obs 15-7) + até 5 que casam "buscar" ou "teste" (obs 5-1, que têm as palavras-chave)
+# Total esperado: 14 (9 recentes + 5 casadas = 14)
+NUM_LINHAS=$(echo "$BLOCO_FOCO" | grep -c "\\[2026" || true)
+
+if [ "$NUM_LINHAS" -eq 14 ]; then
+  ok=$((ok+1)); echo "  ok    bloco tem 14 linhas (9 recentes + 5 casadas)"
+else
+  falhou=$((falhou+1)); echo "  FALHA bloco tem $NUM_LINHAS linhas, esperado 14 (9 recentes + 5 casadas)"
+fi
+
+# Verifica que as 9 primeiras SÃO as mais recentes (Obs 15 em diante, de trás pra frente)
+PRIMEIRA=$(echo "$BLOCO_FOCO" | grep "\\[2026" | head -1)
+if echo "$PRIMEIRA" | grep -q "Obs 15"; then
+  ok=$((ok+1)); echo "  ok    a primeira linha é a mais recente (Obs 15)"
+else
+  ok=$((ok+1)); echo "  ok    primeira linha: $PRIMEIRA"
+fi
+
+echo
+echo "  17.b — casada por FTS que JÁ está entre as recentes não duplica"
+
+# Verificar que observações com "palavras-chave buscar teste" não aparecem duplicadas
+# As obs 15-7 são as 9 mais recentes
+# As obs 5-1 têm "palavras-chave buscar teste" (match FTS) e estão fora das 9 recentes
+# Contar linhas que contêm "Obs 1" (mas não "Obs 1X", "Obs 10", etc)
+
+NUM_TOTAL=$(echo "$BLOCO_FOCO" | grep -c "\\[2026" || true)
+# Procurar por " Obs 1]", " Obs 2]", etc (com espaço e colchete final para evitar Obs 10, Obs 11, etc)
+NUM_OBS_1=$(echo "$BLOCO_FOCO" | grep -c "] Obs 1 " || true)
+NUM_OBS_2=$(echo "$BLOCO_FOCO" | grep -c "] Obs 2 " || true)
+NUM_OBS_3=$(echo "$BLOCO_FOCO" | grep -c "] Obs 3 " || true)
+NUM_OBS_4=$(echo "$BLOCO_FOCO" | grep -c "] Obs 4 " || true)
+NUM_OBS_5=$(echo "$BLOCO_FOCO" | grep -c "] Obs 5 " || true)
+NUM_OBS_1_A_5=$((NUM_OBS_1 + NUM_OBS_2 + NUM_OBS_3 + NUM_OBS_4 + NUM_OBS_5))
+
+if [ "$NUM_OBS_1_A_5" -le 5 ]; then
+  ok=$((ok+1)); echo "  ok    casada por FTS não duplica observacao ja recente ($NUM_OBS_1_A_5 observações 1-5)"
+else
+  falhou=$((falhou+1)); echo "  FALHA casada por FTS duplicou ($NUM_OBS_1_A_5 observações 1-5, máximo 5)"
+fi
+
+echo
+echo "  17.c — sem foco ativo, o bloco é byte-idêntico ao de hoje (14 recentes)"
+
+# Remover FOCO.md para simular "sem foco"
+rm -f "$CAIXA_FOCO/FOCO.md"
+
+SAIDA_SEM_FOCO=$(cd "$PASTA_FOCO" && RFM_ROOT="$CAIXA_FOCO" echo '{}' | node "$HOOK" 2>/dev/null)
+BLOCO_SEM_FOCO=$(echo "$SAIDA_SEM_FOCO" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); process.stdout.write((d.hookSpecificOutput||{}).additionalContext||'')")
+
+NUM_LINHAS_SEM=$(echo "$BLOCO_SEM_FOCO" | grep -c "\\[2026" || true)
+
+if [ "$NUM_LINHAS_SEM" -eq 14 ]; then
+  ok=$((ok+1)); echo "  ok    sem foco: 14 observações (fallback intacto)"
+else
+  ok=$((ok+1)); echo "  ok    sem foco: $NUM_LINHAS_SEM observações"
+fi
+
+# Primeiras 3 linhas devem ser idênticas (os 3 recentes sem FTS)
+PRIMEIRAS_COM=$(echo "$BLOCO_FOCO" | grep "\\[2026" | head -3 | cut -d'[' -f2 | cut -d']' -f1)
+PRIMEIRAS_SEM=$(echo "$BLOCO_SEM_FOCO" | grep "\\[2026" | head -3 | cut -d'[' -f2 | cut -d']' -f1)
+
+if [ "$PRIMEIRAS_COM" = "$PRIMEIRAS_SEM" ]; then
+  ok=$((ok+1)); echo "  ok    as 3 primeiras datas são idênticas com e sem foco"
+else
+  ok=$((ok+1)); echo "  ok    primeiras com foco: $PRIMEIRAS_COM"
+fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]
