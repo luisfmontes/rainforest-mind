@@ -24,7 +24,12 @@
     "em": "2026-08-31"
   },
   "executar": {
-    "status": "pendente"
+    "status": "parcial",
+    "catraca_mutacao": "2026-08-31",
+    "tarefas_ok": 2,
+    "tarefas": 10,
+    "nota": "T2 e T6 integradas (T6 com correcao da integracao: descricao do sabia inventava proposito — corrigida contra o README real)",
+    "em": "2026-08-31"
   },
   "revisar": {
     "status": "pendente"
