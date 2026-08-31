@@ -302,5 +302,148 @@ else
 fi
 
 echo
+echo "== 14. consolidar com 50+ observacoes de 60+ dias grava resumos e marca =="
+# Tarefa 4 (D4): Criar banco com 55 observações de 60+ dias não consolidadas,
+# rodar consolidar com dublê de LLM, verificar que:
+# - resumos foram gravados (lotes 10→1: 55/10 = 5 lotes)
+# - observações foram marcadas com consolidada_em
+# - count(observacoes) antes == count depois (NUNCA apaga linha)
+CAIXA9="$(mktemp -d)"
+trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${CAIXA4:-}" "${CAIXA5:-}" "${CAIXA6:-}" "${CAIXA7:-}" "${CAIXA8:-}" "${CAIXA9:-}"' EXIT
+
+# Criar dublê de LLM que retorna um resumo fixo
+cat > "$CAIXA9/dubleLLM.cjs" <<'EOF'
+async function chamarLLM(texto) {
+  // Simular resumo de LLM
+  return "Síntese do lote: tópicos consolidados com sucesso";
+}
+module.exports = { chamarLLM };
+EOF
+
+# Criar banco e popular com 55 observações de 60+ dias
+RFM_ROOT="$CAIXA9" $MEMORIA iniciar > /dev/null 2>&1
+RESULTADO=$(RFM_ROOT="$CAIXA9" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const agora = new Date();
+const sessentiaDias = new Date(agora.getTime() - 61 * 24 * 60 * 60 * 1000).toISOString();
+
+// Inserir 55 observações de 60+ dias atrás
+for (let i = 0; i < 55; i++) {
+  db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
+    .run('proj-test', 'Observação ' + i, sessentiaDias, 'origem-' + i);
+}
+
+const cntAntes = db.prepare('SELECT COUNT(*) c FROM observacoes').get().c;
+db.close();
+process.stdout.write(cntAntes.toString());
+" 2>/dev/null)
+
+cntAntes=$RESULTADO
+
+# Rodar consolidar com dublê de LLM
+RFM_ROOT="$CAIXA9" TESTADOR_CHAMAR_LLM="$CAIXA9/dubleLLM.cjs" $MEMORIA consolidar > /dev/null 2>&1
+
+# Verificar resultados
+RESULTADO=$(RFM_ROOT="$CAIXA9" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+
+const cntObs = db.prepare('SELECT COUNT(*) c FROM observacoes').get().c;
+const cntResumidos = db.prepare('SELECT COUNT(*) c FROM observacoes WHERE consolidada_em IS NOT NULL').get().c;
+const cntResumosGravados = db.prepare('SELECT COUNT(*) c FROM resumos').get().c;
+
+db.close();
+process.stdout.write(cntObs + ':' + cntResumidos + ':' + cntResumosGravados);
+" 2>/dev/null)
+
+cntObs=$(echo "$RESULTADO" | cut -d':' -f1)
+cntResumidos=$(echo "$RESULTADO" | cut -d':' -f2)
+cntResumosGravados=$(echo "$RESULTADO" | cut -d':' -f3)
+
+if [ "$cntAntes" = "$cntObs" ] && [ "$cntResumidos" = "55" ] && [ "$cntResumosGravados" = "6" ]; then
+  ok=$((ok+1)); echo "  ok   consolidacao: ${cntAntes} obs antes, ${cntObs} após (iguais), ${cntResumidos} marcadas, ${cntResumosGravados} resumos (55/10=5 lotes mais 1)"
+else
+  falhou=$((falhou+1)); echo "  FALHA consolidacao: antes=$cntAntes, obs=$cntObs, resumidos=$cntResumidos (esperava 55), resumos=$cntResumosGravados (esperava 5-6)"
+fi
+
+echo
+echo "== 15. consolidar duas vezes nao gera resumo duplicado =="
+# Tarefa 4 (D4): rodagem anterior já consolidou, segunda rodada não toca nada
+# porque todas as observações já estão marcadas com consolidada_em.
+RFM_ROOT="$CAIXA9" TESTADOR_CHAMAR_LLM="$CAIXA9/dubleLLM.cjs" $MEMORIA consolidar > /dev/null 2>&1
+
+RESULTADO2=$(RFM_ROOT="$CAIXA9" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const cntResumosApos = db.prepare('SELECT COUNT(*) c FROM resumos').get().c;
+db.close();
+process.stdout.write(cntResumosApos.toString());
+" 2>/dev/null)
+
+if [ "$RESULTADO2" = "$cntResumosGravados" ]; then
+  ok=$((ok+1)); echo "  ok   segunda consolidacao não criou novos resumos (manteve $cntResumosGravados)"
+else
+  falhou=$((falhou+1)); echo "  FALHA segunda consolidacao criou resumos novos: esperava $cntResumosGravados, veio $RESULTADO2"
+fi
+
+echo
+echo "== 16. consolidar com <50 observacoes nao faz nada =="
+# Tarefa 4 (D4): abaixo do gatilho de 50, sai sem gravar resumo nenhum
+CAIXA10="$(mktemp -d)"
+trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${CAIXA4:-}" "${CAIXA5:-}" "${CAIXA6:-}" "${CAIXA7:-}" "${CAIXA8:-}" "${CAIXA9:-}" "${CAIXA10:-}"' EXIT
+
+RFM_ROOT="$CAIXA10" $MEMORIA iniciar > /dev/null 2>&1
+# Inserir apenas 30 observações de 60+ dias
+RFM_ROOT="$CAIXA10" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const sessentiaDias = new Date(Date.now() - 61 * 24 * 60 * 60 * 1000).toISOString();
+
+for (let i = 0; i < 30; i++) {
+  db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
+    .run('proj-test', 'Obs ' + i, sessentiaDias, 'orig-' + i);
+}
+db.close();
+" 2>/dev/null
+
+RFM_ROOT="$CAIXA10" TESTADOR_CHAMAR_LLM="$CAIXA10/dubleLLM.cjs" $MEMORIA consolidar > /dev/null 2>&1
+
+RESULTADO3=$(RFM_ROOT="$CAIXA10" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const cntResumos = db.prepare('SELECT COUNT(*) c FROM resumos').get().c;
+db.close();
+process.stdout.write(cntResumos.toString());
+" 2>/dev/null)
+
+if [ "$RESULTADO3" = "0" ]; then
+  ok=$((ok+1)); echo "  ok   consolidar com <50 obs não grava resumo"
+else
+  falhou=$((falhou+1)); echo "  FALHA consolidar com <50 obs gravou $RESULTADO3 resumo(s), esperava 0"
+fi
+
+echo
+echo "== 17. criarSchema com coluna nova nao erra =="
+# Tarefa 4 (D4): migração idempotente — rodar criarSchema duas vezes não causa erro
+CAIXA11="$(mktemp -d)"
+trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${CAIXA4:-}" "${CAIXA5:-}" "${CAIXA6:-}" "${CAIXA7:-}" "${CAIXA8:-}" "${CAIXA9:-}" "${CAIXA10:-}" "${CAIXA11:-}"' EXIT
+
+RFM_ROOT="$CAIXA11" $MEMORIA iniciar > /dev/null 2>&1
+RFM_ROOT="$CAIXA11" $MEMORIA iniciar > /dev/null 2>&1
+got=$?
+
+if [ "$got" = "0" ]; then
+  ok=$((ok+1)); echo "  ok   criarSchema idempotente (duas execuções de iniciar, exit 0)"
+else
+  falhou=$((falhou+1)); echo "  FALHA criarSchema não foi idempotente, esperava exit 0, veio $got"
+fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

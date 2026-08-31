@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS observacoes (
   conteudo TEXT NOT NULL,
   criada_em TEXT NOT NULL,
   origem TEXT,
+  consolidada_em TEXT,
   UNIQUE(projeto, origem)
 );
 
