@@ -610,6 +610,60 @@ contem "  ... sentinela DEPOIS sobrevive" "SENTINELA_DEPOIS" cat "$REPO_O/CLAUDE
 contem "  ... mencao ao marcador de fim sobrevive" "é um marcador do sistema" cat "$REPO_O/CLAUDE.md"
 
 echo
+echo "== (p) TAREFA 19: mencao ao inicio antes de bloco real nao apaga nada =="
+REPO_P="$CAIXA/repo-p"
+mkdir -p "$REPO_P"
+cat > "$REPO_P/package.json" <<'EOF'
+{
+  "name": "teste-p"
+}
+EOF
+
+REPO_P_WIN="$(cygpath -m "$REPO_P" 2>/dev/null || printf '%s' "$REPO_P")"
+
+# Gera CLAUDE.md SEM projeto (sem gravar respostas, apenas bloco gerado)
+esperado "gera CLAUDE.md sem bloco de projeto" 0 $PONTE --alvo "$REPO_P_WIN" --agente claude --aplicar
+
+# Verifica que NÃO há bloco de projeto inicialmente
+prova "  ... CLAUDE.md sem bloco de projeto inicialmente" "! grep -q 'rainforest-mind:projeto:inicio' '$REPO_P/CLAUDE.md'"
+
+# Adiciona conteúdo manual com 4 sentinelas:
+# 1. Antes da menção ao marcador de início
+# 2. Entre a menção e um bloco deslocado (não-gerado)
+# 3. Dentro do bloco deslocado
+# 4. Depois do bloco deslocado
+# O objetivo é provar que NENHUMA dessas sentinelas é apagada pela regeneração
+cat >> "$REPO_P/CLAUDE.md" <<'EOF'
+
+[SENTINELA_1_ANTES_DA_MENCAO]
+
+## Notas sobre a arquitetura
+
+Documento descreve como usar <!-- rainforest-mind:projeto:inicio --> (este é um marcador do sistema).
+
+[SENTINELA_2_APOS_MENCAO]
+
+<!-- rainforest-mind:projeto:inicio — hash:deslocado -->
+[SENTINELA_3_DENTRO_DO_BLOCO_DESLOCADO]
+Conteúdo de um bloco de projeto deslocado (não é adjacente ao FIM, portanto não será apagado)
+<!-- rainforest-mind:projeto:fim -->
+
+[SENTINELA_4_APOS_BLOCO_DESLOCADO]
+EOF
+
+# Regenera (deve MANTER todas as sentinelas — nenhuma menção causa remoção porque nenhuma está logo após FIM)
+esperado "regenera, sentinelas sobrevivem" 0 $PONTE --alvo "$REPO_P_WIN" --agente claude --aplicar
+
+# Verifica que as 4 sentinelas ainda estão lá
+contem "  ... sentinela 1 (antes da mencao) sobrevive" "SENTINELA_1_ANTES_DA_MENCAO" cat "$REPO_P/CLAUDE.md"
+contem "  ... sentinela 2 (entre mencao e bloco) sobrevive" "SENTINELA_2_APOS_MENCAO" cat "$REPO_P/CLAUDE.md"
+contem "  ... sentinela 3 (dentro bloco deslocado) sobrevive" "SENTINELA_3_DENTRO_DO_BLOCO_DESLOCADO" cat "$REPO_P/CLAUDE.md"
+contem "  ... sentinela 4 (apos bloco) sobrevive" "SENTINELA_4_APOS_BLOCO_DESLOCADO" cat "$REPO_P/CLAUDE.md"
+
+# Verifica que ainda não há bloco de projeto gerado (porque nenhuma das menções está na posição correta)
+prova "  ... ainda nao ha bloco de projeto gerado" "! grep -q 'rainforest-mind:projeto' '$REPO_P/CLAUDE.md' | grep -v deslocado"
+
+echo
 echo "== (k) executa cada linha do bloco de exemplos de skills/ponte/SKILL.md =="
 REPO_K="$CAIXA/repo-k"
 mkdir -p "$REPO_K/.github/workflows"
