@@ -32,9 +32,12 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-08-31",
-    "tarefas_ok": 3,
+    "tarefas_ok": 4,
     "tarefas": 9,
-    "em": "2026-08-31"
+    "em": "2026-08-31",
+    "pendentes": [
+      "achado-para-revisar: mutacao mais dura que a do plano (matar so a comparacao de media, mantendo desempate) deixa a bateria verde — fixture do caso agregacao-conhecida nao separa media de primeiros-lugares"
+    ]
   },
   "revisar": {
     "status": "pendente"
