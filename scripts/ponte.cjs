@@ -165,6 +165,93 @@ function raizDeDados() {
   }
 }
 
+/**
+ * Varredura pura do repositório alvo — detecta stack, comandos, layout.
+ * Retorna objeto JSON. Não escreve nada em disco.
+ */
+function varrerRepositorio(alvo) {
+  const resultado = {
+    stack: "desconhecida",
+    scripts: [],
+    workflows: [],
+    layout: [],
+  };
+
+  // Detecta stack Node
+  const packageJsonPath = path.join(alvo, "package.json");
+  let packageJson = null;
+  try {
+    const conteudo = fs.readFileSync(packageJsonPath, "utf8");
+    packageJson = JSON.parse(conteudo);
+    resultado.stack = "node";
+    // Coleta scripts.test e scripts.build
+    if (packageJson.scripts) {
+      if (packageJson.scripts.test) {
+        resultado.scripts.push({
+          tipo: "test",
+          comando: packageJson.scripts.test,
+        });
+      }
+      if (packageJson.scripts.build) {
+        resultado.scripts.push({
+          tipo: "build",
+          comando: packageJson.scripts.build,
+        });
+      }
+    }
+  } catch {
+    // Tenta detectar Python
+    const requirementsTxt = path.join(alvo, "requirements.txt");
+    const pyprojectToml = path.join(alvo, "pyproject.toml");
+    try {
+      fs.statSync(requirementsTxt);
+      resultado.stack = "python";
+    } catch {
+      try {
+        fs.statSync(pyprojectToml);
+        resultado.stack = "python";
+      } catch {
+        // Tenta detectar Go
+        const goMod = path.join(alvo, "go.mod");
+        try {
+          fs.statSync(goMod);
+          resultado.stack = "go";
+        } catch {
+          // stack permanece "desconhecida"
+        }
+      }
+    }
+  }
+
+  // Coleta workflows de .github/workflows/*.yml
+  const workflowsDir = path.join(alvo, ".github", "workflows");
+  try {
+    const files = fs.readdirSync(workflowsDir);
+    for (const file of files) {
+      if (file.endsWith(".yml") || file.endsWith(".yaml")) {
+        resultado.workflows.push(file.replace(/\.(yml|yaml)$/, ""));
+      }
+    }
+  } catch {
+    // Diretório não existe ou não pode ser lido
+  }
+
+  // Coleta layout de 1º nível (ignora .git e node_modules)
+  try {
+    const entries = fs.readdirSync(alvo, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory() && entry.name !== ".git" && entry.name !== "node_modules") {
+        resultado.layout.push(entry.name);
+      }
+    }
+    resultado.layout.sort();
+  } catch {
+    // Diretório não pode ser lido
+  }
+
+  return resultado;
+}
+
 function corpo(agente, nucleo, dados) {
   const cli = [
     ["`node <plugin>/scripts/estado.cjs exigir --slug <slug> --estagio <e>`", "gate do fluxo — **exit 2** quando o estagio anterior nao fechou"],
@@ -262,6 +349,13 @@ function main() {
     erro(`--alvo '${alvo}' nao existe`);
   }
   if (!stat.isDirectory()) erro(`--alvo '${alvo}' nao e diretorio`);
+
+  // Roteamento: --entrevistar --varredura (sem mais bandeiras)
+  if (tem("entrevistar") && tem("varredura")) {
+    const resultado = varrerRepositorio(alvo);
+    console.log(JSON.stringify(resultado, null, 2));
+    return 0;
+  }
 
   // Sem `--agente`, valem os alvos DECLARADOS no /setup. `todos` continua existindo
   // como escolha explicita — o que saiu foi o "todos" como PADRAO: gerar arquivo em
