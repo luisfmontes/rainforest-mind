@@ -24,14 +24,14 @@
     "em": "2026-08-31"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-08-31",
-    "tarefas_ok": 23,
-    "tarefas": 23,
-    "nota": "rodada 8: tarefas 22-23 pela propria sessao. lerProjetoMd ancorado em linha inteira (fecha a familia posicional: T19 escrita, T21 leitura da catraca, T22 leitura do projeto.md); temBloco nos vereditos. Nota de metodo: a 1a rodada da mutacao 22 disse que a bateria nao media o conserto — o caso (s) nasceu dai; e o exit de mutacao passou a ser capturado sem pipe.",
+    "tarefas_ok": 24,
+    "tarefas": 24,
+    "nota": "rodada 9: tarefa 24 pela propria sessao. Bloco de REGRAS ganhou a mesma ancora posicional do de projeto (escrita, leitura e recusa de truncado). Repro da rodada 8 re-executada nos casos 5.7/5.8.",
     "em": "2026-08-31",
-    "comando": "baterias + conferir-mutacao 22/23 sem pipe",
-    "saida": "ponte 53/0, conferir-ponte 5/5, entrevista 90/0, integracoes 5/0, setup 59/0, saude 47/0; mutacoes 22 e 23 exit 0",
+    "comando": "baterias + conferir-mutacao da 24 sem pipe",
+    "saida": "ponte 60/0, conferir-ponte 5/5, entrevista 90/0, integracoes 5/0, setup 59/0, saude 47/0; mutacao 24 exit 0",
     "mutacao": [
       {
         "tarefa": 1,
@@ -141,18 +141,19 @@
       {
         "tarefa": 22,
         "resultado": "vermelho",
-        "fixture": "caso (s) prosa no projeto.md nao corrompe"
+        "fixture": "caso (s)"
       },
       {
         "tarefa": 23,
         "resultado": "vermelho",
-        "fixture": "caso (r) linha de status na saida texto"
+        "fixture": "caso (r) linha de status"
+      },
+      {
+        "tarefa": 24,
+        "resultado": "vermelho",
+        "fixture": "casos 5.7/5.8 de testa-ponte.sh"
       }
-    ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-08-31"
-    }
+    ]
   },
   "revisar": {
     "status": "reprovado",
