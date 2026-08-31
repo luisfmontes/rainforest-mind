@@ -31,7 +31,7 @@ teto de 3.000 B; o bloco injetado termina ensinando o comando de busca;
 `memoria.cjs consolidar` existe, grava em `resumos` e nunca apaga observação;
 e `/saude` acusa banco inacessível, índice defasado e pipeline parado.
 
-## Decisões
+## Decisões fechadas
 
 - **D1 — o FTS5 vira tabela de conteúdo externo (`content='observacoes'`),
   sincronizada por triggers de INSERT/UPDATE/DELETE criados no schema.**
