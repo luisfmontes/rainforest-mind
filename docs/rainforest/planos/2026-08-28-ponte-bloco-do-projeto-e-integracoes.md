@@ -67,16 +67,16 @@ arquivos: `hooks/lib/ponte-corpo.cjs`, `scripts/ponte.cjs`, `scripts/testa-ponte
 depende de: 1
 paralela: nao
 mutacao:
-  arquivo: `hooks/lib/ponte-corpo.cjs`
-  de: a condição que decide incluir o bloco `rainforest-mind:projeto` quando `projeto.md` existe
-  para: `if (false)`
+  arquivo: `scripts/ponte.cjs`
+  de: `blocoProjetoComHash ? ` + "`" + `${marcado}\n${blocoProjetoComHash}\n` + "`" + ` : marcado` (a condição do `escrever()` que decide incluir o bloco quando `projeto.md` existe — movida do `corpo()` para cá pela T5, que pôs hash no marcador)
+  para: `marcado` (nunca inclui o bloco)
   bateria: `bash scripts/testa-ponte-entrevista.sh`
-  fixture: caso "bloco de projeto aparece quando ha projeto.md no alvo, e some quando nao ha"
+  fixture: caso "bloco de projeto aparece quando ha projeto.md no alvo, e some quando nao ha" (caso i)
 pronto quando: gerando a ponte num alvo COM `docs/rainforest/projeto.md` fixture, o `AGENTS.md` tem os dois pares de marcador (regras + `rainforest-mind:projeto:inicio`/`fim`) e o bloco de projeto é o conteúdo REAL do fixture (grep do texto, não só do marcador); no MESMO alvo SEM `projeto.md`, só o primeiro par aparece (grep negativo); regenerar duas vezes não duplica marcador (contagem = 1 cada); e o bloco de projeto é byte-idêntico entre `CLAUDE.md`, `AGENTS.md` e `GEMINI.md` gerados do mesmo `projeto.md` (D2: só o bloco de regras varia por host)
 
 ### 5. `conferir-ponte.cjs` estende a catraca para o bloco de projeto [tipo: implementar]
 atende: D2
-arquivos: `scripts/conferir-ponte.cjs`, `scripts/testa-ponte-entrevista.sh`, `hooks/lib/ponte-corpo.cjs`
+arquivos: `scripts/conferir-ponte.cjs`, `scripts/testa-ponte-entrevista.sh`, `hooks/lib/ponte-corpo.cjs`, `scripts/ponte.cjs`
 depende de: 1, 4
 paralela: nao
 mutacao:
