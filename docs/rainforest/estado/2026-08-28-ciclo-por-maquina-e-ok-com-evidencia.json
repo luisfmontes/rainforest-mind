@@ -22,9 +22,9 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-08-30",
-    "tarefas_ok": 1,
+    "tarefas_ok": 2,
     "tarefas": 4,
-    "nota": "T1 integrada por extracao dos 2 arquivos em escopo (a branch do agente deletava os 25 estados do projeto — nao mergeada); 1 devolucao antes: anistia inventada, bypass sem --json, 6 casos quebrados ditos pre-existentes; catraca re-rodada exit 0, vermelho no caso da fixture do plano",
+    "nota": "T2 integrada apos 1 devolucao (deadlock: exigir bloqueava o proprio estagio reaberto e reaberto_por nunca era limpo); ciclo completo verificado pela integracao em sandbox git",
     "em": "2026-08-30"
   },
   "revisar": {
