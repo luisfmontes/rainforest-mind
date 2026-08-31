@@ -701,6 +701,46 @@ prova "  ... arquivo intocado byte a byte" "cmp -s '$REPO_Q/CLAUDE.md' '$CAIXA/c
 prova "  ... nao duplicou bloco de projeto" "[ \$(grep -c 'rainforest-mind:projeto:inicio' '$REPO_Q/CLAUDE.md') -eq 1 ]"
 
 echo
+echo "== (r) TAREFA 21: mencao em prosa aos marcadores nao confunde a catraca =="
+REPO_R="$CAIXA/repo-r"
+mkdir -p "$REPO_R"
+cat > "$REPO_R/package.json" <<'EOF'
+{
+  "name": "teste-r"
+}
+EOF
+
+RESPOSTAS_R="$CAIXA/respostas-r.json"
+cat > "$RESPOSTAS_R" <<'EOF'
+{
+  "pronto": "Testes passam",
+  "nao_toca": "Dependências",
+  "convencao": "Português",
+  "revisao": "Uma aprovação"
+}
+EOF
+
+# CLAUDE.md pre-existente SEM bloco de regras, com mencao em prosa aos DOIS marcadores
+cat > "$REPO_R/CLAUDE.md" <<'EOF'
+# Meu repo
+
+Doc do time: os blocos usam <!-- rainforest-mind:projeto:inicio --> e <!-- rainforest-mind:projeto:fim --> como delimitadores.
+EOF
+
+REPO_R_WIN="$(cygpath -m "$REPO_R" 2>/dev/null || printf '%s' "$REPO_R")"
+RESPOSTAS_R_WIN="$(cygpath -m "$RESPOSTAS_R" 2>/dev/null || printf '%s' "$RESPOSTAS_R")"
+
+esperado "gera projeto.md" 0 $PONTE --entrevistar --gravar --respostas "$RESPOSTAS_R_WIN" --alvo "$REPO_R_WIN" --aplicar
+esperado "acrescenta blocos ao CLAUDE.md pre-existente" 0 $PONTE --alvo "$REPO_R_WIN" --agente claude --aplicar
+
+# A catraca tem de reconhecer o bloco REAL (acrescentado no fim), nao a mencao em prosa
+esperado "conferir da CONFERIDO apesar da mencao em prosa" 0 node "$CONFERIR_PONTE" --skill "$SKILL_PONTE" "$REPO_R/CLAUDE.md"
+
+# E ainda morde: mudar o projeto.md por dentro tem de dar ficou-para-tras
+sed -i 's/Testes passam/Testes passam MUDOU/' "$REPO_R/docs/rainforest/projeto.md"
+esperado "conferir recusa apos projeto.md mudar (catraca morde)" 2 node "$CONFERIR_PONTE" --skill "$SKILL_PONTE" "$REPO_R/CLAUDE.md"
+
+echo
 echo "== (k) executa cada linha do bloco de exemplos de skills/ponte/SKILL.md =="
 REPO_K="$CAIXA/repo-k"
 mkdir -p "$REPO_K/.github/workflows"

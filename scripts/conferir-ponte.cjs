@@ -123,15 +123,22 @@ function extrairBlocoGerado(texto) {
  * Devolve: { linhas: [...], hashNoMarcador: "..." | null, temBloco: true/false }
  */
 function extrairBlocoProjetoGerado(texto) {
-  const inicioMatch = texto.match(/<!-- rainforest-mind:projeto:inicio[^>]*-->/);
-  if (!inicioMatch || !texto.includes(FIM_PROJETO)) {
+  // O gerador escreve cada marcador ocupando a LINHA INTEIRA — a âncora multiline
+  // espelha isso na leitura. Menção em prosa (marcador no meio de uma frase) nunca
+  // casa, e o fim considerado é o primeiro APÓS o início (tarefa 21).
+  const inicioMatch = texto.match(/^<!-- rainforest-mind:projeto:inicio[^>]*-->\r?$/m);
+  if (!inicioMatch) {
+    return { linhas: [], hashNoMarcador: null, temBloco: false };
+  }
+  const reFim = /^<!-- rainforest-mind:projeto:fim -->\r?$/gm;
+  reFim.lastIndex = inicioMatch.index;
+  const fimMatch = reFim.exec(texto);
+  if (!fimMatch) {
     return { linhas: [], hashNoMarcador: null, temBloco: false };
   }
 
   const hashNoMarcador = extrairHashDoMarcador(inicioMatch[0]);
-  const inicioIdx = inicioMatch.index;
-  const fimIdx = texto.indexOf(FIM_PROJETO);
-  const blocoCompleto = texto.slice(inicioIdx, fimIdx + FIM_PROJETO.length);
+  const blocoCompleto = texto.slice(inicioMatch.index, fimMatch.index + fimMatch[0].length);
 
   // Extrai as linhas do conteúdo, sem os marcadores
   const linhas = blocoCompleto
