@@ -250,3 +250,18 @@ mutacao:
   bateria: `bash scripts/testa-ponte.sh && bash scripts/testa-ponte-entrevista.sh`
   fixture: os casos existentes de hash de bloco
 pronto quando: o cálculo sha256-slice(16) existe UMA vez, exportado de `hooks/lib/ponte-corpo.cjs`, e `grep -n 'createHash' scripts/ponte.cjs scripts/conferir-ponte.cjs` devolve vazio; todas as baterias verdes; a mutação prova que o hash compartilhado é o que os dois scripts realmente usam
+
+## Emenda da revisão rodada 3 (2026-08-31)
+
+### 18. Regeneração só remove bloco de projeto REAL — texto manual que menciona o marcador sobrevive [tipo: implementar]
+atende: invariante 1 e a garantia do próprio código ("o que era dela continua intacto, byte a byte")
+arquivos: `scripts/ponte.cjs`, `scripts/testa-ponte-entrevista.sh`
+depende de: nenhuma
+paralela: nao
+mutacao:
+  arquivo: `scripts/ponte.cjs`
+  de: a exigência do marcador de INÍCIO do projeto na remoção do bloco antigo em `escrever()`
+  para: de volta ao corte cego por `depois.includes(FIM_PROJETO)`
+  bateria: `bash scripts/testa-ponte-entrevista.sh`
+  fixture: caso novo "texto manual que cita o marcador sobrevive a regeneração"
+pronto quando: em `escrever()`, o trecho removido do conteúdo pós-FIM é exatamente o bloco delimitado por `<!-- rainforest-mind:projeto:inicio` ... `<!-- rainforest-mind:projeto:fim -->` — e só quando o INÍCIO existe e vem ANTES do fim; menção solta ao marcador de fim em texto manual não remove nada. Provado por caso novo: CLAUDE.md gerado + notas manuais contendo a string literal do marcador de fim → segundo `--aplicar` → as notas sobrevivem byte a byte (sentinelas antes e depois da menção). E o achado 2 junto: a regeneração volta a separar o bloco do texto manual seguinte com linha em branco (`\n` restaurado como na base), provado comparando a saída da regeneração com bloco+texto manual — o texto não pode colar na linha do FIM

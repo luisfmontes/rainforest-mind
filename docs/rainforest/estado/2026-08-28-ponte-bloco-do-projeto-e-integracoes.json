@@ -24,7 +24,7 @@
     "em": "2026-08-31"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-08-31",
     "tarefas_ok": 17,
     "tarefas": 17,
@@ -118,24 +118,28 @@
         "resultado": "vermelho",
         "fixture": "casos 5.5/5.6 hash unificado e 16 chars de testa-ponte.sh"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-08-31"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "5d0be3506bd2279724846c9e6a0b14a25f00b508",
+      "head": "0bb4880c45773f23c804d41d0dacff996ee2c8b1",
       "caminhos_sujos": [
         "relatorios/2026-08-28-batedor-repos.md",
         "vigias/ERROS.md"
       ]
     },
-    "achados": 4,
-    "criticos": 2,
+    "achados": 2,
+    "criticos": 1,
     "base": "21266f797a8d43d417a3d783b83de19f4df5c339",
     "head": "1422b1438322a9d49531e1079ca1010904fbcf50",
-    "nota": "rodada 2: 2 criticos novos, ambos reproduzidos pela sessao de ponta a ponta. (1) sanitizarRespostas so filtra typeof string — resposta em ARRAY com o marcador passa cru, projeto.md ganha 2 marcadores de fim, CLAUDE.md gerado perde 2 das 4 respostas E conferir-ponte devolve CONFERIDO exit 0 (a catraca nao pega porque lerProjetoMd trunca igual dos dois lados). (2) raizAlvo em conferir-ponte.cjs:393 exige caminho absoluto com letra de drive — caminho relativo (uso documentado em commands/ponte.md) ou POSIX vira RECUSADO ficou-para-tras exit 2 em arquivo 100% em dia; reproduzido: absoluto CONFERIDO 0, relativo RECUSADO 2, mesmo arquivo. Aviso: hashDoArquivo importado e nunca usado, 3 reimplementacoes locais do mesmo sha256-slice(16). Informativo: mensagem de erro do A3 perdeu granularidade (nao bloqueia).",
+    "nota": "rodada 3: 1 critico reproduzido pela sessao. escrever() em scripts/ponte.cjs:402-407 corta cegamente ate a PRIMEIRA substring projeto:fim apos o FIM das regras, sem exigir o inicio correspondente — texto manual do dono do repo que apenas MENCIONE o marcador (documentacao, exemplo) e apagado em silencio na regeneracao. Repro: CLAUDE.md gerado + notas manuais citando o marcador, segundo --aplicar deleta o texto entre o FIM real e a mencao (sentinela sumiu, 144 bytes perdidos). Achado 2 (baixa): regeneracao perdeu o \n que separava o bloco do texto manual seguinte (divergencia do comportamento da base, sem perda de dado).",
     "em": "2026-08-31",
-    "tentativas": 2
+    "tentativas": 3
   },
   "verificar": {
     "status": "pendente"
