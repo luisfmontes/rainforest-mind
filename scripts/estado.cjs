@@ -126,11 +126,12 @@ function estaFechado(estagio, bloco) {
 // A correção não é allowlist de campos persistentes: o plano
 // `decisao-que-evapora-na-esteira` fixou como invariante que `--json` continua
 // aceitando metadado arbitrário, sem lista fechada que rejeite (ou, por extensão,
-// que apague em silêncio) chave que essa lista não previu. `pendentes` é hoje o
-// único campo do vocabulário do fluxo que descreve incompletude — ver
-// `skills/executar/SKILL.md`, seção "Condição de parada" — por isso a lista
-// abaixo tem um item só. Um campo novo com o mesmo papel entra aqui quando nascer.
-const CAMPOS_EFEMEROS = ['pendentes'];
+// que apague em silêncio) chave que essa lista não previu. Campos como `pendentes`
+// e `reaberto_por` descrevem incompletude — ver `skills/executar/SKILL.md`, seção
+// "Condição de parada" — por isso entram nesta lista. Um campo novo com o mesmo
+// papel entra aqui quando nascer. O rastro histórico da reprovação (criterio,
+// comando, saida, faltou) fica no bloco do estágio que reprovou e não é efêmero.
+const CAMPOS_EFEMEROS = ['pendentes', 'reaberto_por'];
 
 /**
  * Bloco anterior do estágio, pronto para ser fundido com o `--json` novo. Ao
@@ -738,8 +739,11 @@ function main() {
     }
 
     // Verificar se há algum estágio de execução com reaberto_por preenchido
-    // Se houver, bloqueia qualquer estágio que dependa de executar (que foi reaberto)
+    // DIFERENTE do estágio sendo exigido. O próprio estágio reaberto PASSA aqui —
+    // é o caminho de volta. A recusa vale só quando tentar exigir outro estágio
+    // enquanto há upstream reaberto pendente.
     const upstreamReaberto = EXECUCAO.find((e) => {
+      if (e === estagio) return false; // permite exigir do próprio reaberto
       const bloco = estado[e] || {};
       return bloco.reaberto_por;
     });
