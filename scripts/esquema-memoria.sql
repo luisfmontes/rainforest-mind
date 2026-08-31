@@ -89,4 +89,31 @@ CREATE INDEX IF NOT EXISTS idx_indice_ideias_projeto ON indice_ideias(projeto);
 CREATE INDEX IF NOT EXISTS idx_indice_ideias_id ON indice_ideias(ideia_id);
 
 -- Full-Text Search para busca rapida em observacoes
-CREATE VIRTUAL TABLE IF NOT EXISTS observacoes_fts USING fts5(conteudo);
+-- Tarefa 1 (D24): FTS5 com conteudo externo sincronizado por triggers.
+-- A tabela observacoes e a fonte de verdade; observacoes_fts apenas indexa.
+-- Triggers mantêm sincronização automática em INSERT/UPDATE/DELETE.
+CREATE VIRTUAL TABLE IF NOT EXISTS observacoes_fts USING fts5(
+  conteudo,
+  content='observacoes',
+  content_rowid='id'
+);
+
+-- Trigger: sincronizar INSERT em observacoes_fts após INSERT em observacoes
+CREATE TRIGGER IF NOT EXISTS observacoes_ai AFTER INSERT ON observacoes BEGIN
+  INSERT INTO observacoes_fts(rowid, conteudo)
+  VALUES (new.id, new.conteudo);
+END;
+
+-- Trigger: sincronizar UPDATE em observacoes_fts após UPDATE em observacoes
+CREATE TRIGGER IF NOT EXISTS observacoes_au AFTER UPDATE ON observacoes BEGIN
+  INSERT INTO observacoes_fts(observacoes_fts, rowid, conteudo)
+  VALUES('delete', old.id, old.conteudo);
+  INSERT INTO observacoes_fts(rowid, conteudo)
+  VALUES (new.id, new.conteudo);
+END;
+
+-- Trigger: sincronizar DELETE em observacoes_fts após DELETE em observacoes
+CREATE TRIGGER IF NOT EXISTS observacoes_ad AFTER DELETE ON observacoes BEGIN
+  INSERT INTO observacoes_fts(observacoes_fts, rowid, conteudo)
+  VALUES('delete', old.id, old.conteudo);
+END;
