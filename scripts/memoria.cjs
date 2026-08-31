@@ -477,6 +477,65 @@ function criarSchema(conexao) {
       // Nota: não relançamos — a coluna pode estar parcialmente aplicada.
     }
   }
+
+  // Migração 5: migração do FTS legado (C1).
+  // Achado: CREATE VIRTUAL TABLE IF NOT EXISTS observacoes_fts é no-op quando
+  // a tabela ANTIGA (`fts5(conteudo)` sem content=) existe — banco nunca migra
+  // e buscar morre em silêncio (fase 2 não consegue achar observações recentes).
+  // Estratégia: detectar se o DDL de observacoes_fts NÃO contém content= →
+  // DROP TABLE observacoes_fts + recriar com content externo + rebuild FTS.
+  // Idempotente: segunda rodada é no-op (a tabela já terá content=).
+  try {
+    const temFTS = conexao.prepare(`
+      SELECT name FROM sqlite_master
+      WHERE type='table' AND name='observacoes_fts'
+    `).all().length > 0;
+
+    if (temFTS) {
+      // Ler o DDL da tabela virtual
+      const ddlRow = conexao.prepare(`
+        SELECT sql FROM sqlite_master
+        WHERE type='table' AND name='observacoes_fts'
+      `).all()[0];
+
+      if (ddlRow && ddlRow.sql) {
+        const ddl = ddlRow.sql.toLowerCase();
+        // Detectar se tem content=
+        if (!ddl.includes('content=')) {
+          // Tabela antiga sem content= — migrar
+          if (process.env.DEBUG_SCHEMA) {
+            console.error(`Migração FTS: detectada tabela observacoes_fts legada (sem content=)`);
+          }
+
+          // Apagar a tabela antiga
+          conexao.exec(`DROP TABLE observacoes_fts;`);
+
+          // Recriar com content externo
+          conexao.exec(`
+            CREATE VIRTUAL TABLE IF NOT EXISTS observacoes_fts USING fts5(
+              conteudo,
+              content='observacoes',
+              content_rowid='id'
+            );
+          `);
+
+          // Rebuild: fazer rebuild do índice FTS a partir da tabela externa
+          conexao.exec(`
+            INSERT INTO observacoes_fts(observacoes_fts) VALUES('rebuild');
+          `);
+
+          if (process.env.DEBUG_SCHEMA) {
+            console.error(`Migração FTS: tabela recriada com content externo e índice rebuildo`);
+          }
+        }
+      }
+    }
+  } catch (e) {
+    // Falha na migração FTS não trava — banco pode estar em estado inesperado
+    if (process.env.DEBUG_SCHEMA) {
+      console.error(`AVISO: falha na migração FTS: ${e.message}`);
+    }
+  }
 }
 
 // Migração de observacoes: garantir que tem UNIQUE(projeto, origem).
@@ -1323,6 +1382,50 @@ function marcarConsolidadas(conexao, { projeto, ids }) {
   }
 }
 
+// C4: Consolida resumo + marca observações ATOMICAMENTE numa transação.
+// Se qualquer parte falha, ROLLBACK descarta ambas (nem resumo nem marca ficam gravados).
+// Retorna true se sucesso, false se falha.
+function consolidarAtomico(conexao, { projeto, titulo, conteudo, ids }) {
+  if (!ids || ids.length === 0) {
+    return true;
+  }
+
+  try {
+    const agora = new Date().toISOString();
+
+    // Uma transação única para ambas operações
+    conexao.exec('BEGIN TRANSACTION');
+
+    // 1. Gravar resumo
+    const stmtResumo = conexao.prepare(`
+      INSERT INTO resumos (projeto, titulo, conteudo, criada_em)
+      VALUES (?, ?, ?, ?)
+    `);
+    stmtResumo.run(projeto, titulo, conteudo, agora);
+
+    // 2. Marcar observações consolidadas
+    const placeholders = ids.map(() => '?').join(',');
+    const stmtMarca = conexao.prepare(`
+      UPDATE observacoes
+      SET consolidada_em = ?
+      WHERE projeto = ? AND id IN (${placeholders})
+    `);
+    const params = [agora, projeto, ...ids];
+    stmtMarca.run(...params);
+
+    // Commit: ambas operações persistem juntas
+    conexao.exec('COMMIT');
+    return true;
+  } catch (e) {
+    // Rollback: desfaz ambas se qualquer uma falhar
+    try {
+      conexao.exec('ROLLBACK');
+    } catch (_) {}
+    console.error(`AVISO: erro ao consolidar atomicamente: ${e.message}`);
+    return false;
+  }
+}
+
 // Comando: consolidar — agrupar observações em lotes, sintetizar via LLM, gravar resumos.
 // Tarefa 4 (D4): consolidar encontra observações com 60+ dias não consolidadas,
 // agrupa em lotes de 10, passa à LLM, grava resumo e marca originals.
@@ -1344,13 +1447,14 @@ async function cmdConsolidar() {
     const seissentaDiasAtras = new Date(agora.getTime() - 60 * 24 * 60 * 60 * 1000);
     const dataLimite = seissentaDiasAtras.toISOString();
 
-    // 2. Encontrar todos os projetos que têm observações consolidáveis (50+)
+    // 2. Encontrar todos os projetos que têm observações consolidáveis (51+)
+    // C5: teto é "passarem de 50" — 50 não consolida, 51 consolida.
     const projetosComConsolidaveis = conexao.prepare(`
       SELECT projeto, COUNT(*) as cnt
       FROM observacoes
       WHERE consolidada_em IS NULL AND criada_em < ?
       GROUP BY projeto
-      HAVING COUNT(*) >= 50
+      HAVING COUNT(*) > 50
       ORDER BY projeto
     `).all(dataLimite);
 
@@ -1405,27 +1509,18 @@ async function cmdConsolidar() {
           continue;
         }
 
-        // 8. Gravar resumo
+        // 8. C4: Consolidar atomicamente (resumo + marca numa transação)
+        // Se falhar em qualquer parte, ROLLBACK desfaz ambas — nem resumo nem marca ficam.
         const titulo = resumo.substring(0, 80); // Primeiros 80 caracteres como título
-        const sucesso = gravarResumo(conexao, {
+        const sucesso = consolidarAtomico(conexao, {
           projeto,
           titulo,
           conteudo: resumo,
+          ids,
         });
 
         if (!sucesso) {
-          console.log(`    lote ${i + 1}/${lotes.length}: falha ao gravar resumo, lote intacto`);
-          continue;
-        }
-
-        // 9. Marcar observações como consolidadas
-        const marcouOk = marcarConsolidadas(conexao, { projeto, ids });
-
-        if (!marcouOk) {
-          console.log(`    lote ${i + 1}/${lotes.length}: falha ao marcar consolidadas, resumo gravado mas marcação falhou`);
-          // NOTA: resumo foi gravado mas observações não marcadas — isso causa reconsolidação.
-          // Idealmente seria transação ATOMICA com o resumo, mas com LLM é arriscado.
-          // Estratégia: deixar com aviso para o próximo lote reconsolidar (idempotência via LLM).
+          console.log(`    lote ${i + 1}/${lotes.length}: falha ao consolidar atomicamente, lote intacto`);
           continue;
         }
 
