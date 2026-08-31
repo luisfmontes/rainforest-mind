@@ -422,11 +422,13 @@ function escrever(alvoArquivo, blocoNovo, aplicar, hash, alvo) {
     // Remove o bloco APENAS se após aparar quebras o pós-FIM começa com o marcador
     // (este é o local onde o próprio gerador o escreve)
     if (depois.startsWith("<!-- rainforest-mind:projeto:inicio")) {
-      // Encontra o fim do bloco a partir do começo
-      const fimProjetoIdx = depois.indexOf(FIM_PROJETO);
-      if (fimProjetoIdx !== -1) {
+      // Encontra o fim do bloco a partir do começo — marcador ocupando a LINHA
+      // INTEIRA (tarefa 25): menção inline dentro do corpo do bloco não é fim.
+      const reFimProj = /^<!-- rainforest-mind:projeto:fim -->\r?$/m;
+      const fimProjMatch = depois.match(reFimProj);
+      if (fimProjMatch) {
         // Encontrou o fim. Remove o bloco inteiro
-        depois = depois.slice(fimProjetoIdx + FIM_PROJETO.length).replace(/^\n+/, "");
+        depois = depois.slice(fimProjMatch.index + fimProjMatch[0].length).replace(/^\n+/, "");
       } else {
         // Bloco de projeto truncado (início sem fim). Gravar por cima duplicaria o
         // bloco em silêncio — e "errada calada" é o pior estado. Recusa sem gravar.
