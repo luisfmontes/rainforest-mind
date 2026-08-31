@@ -22,7 +22,12 @@
     "em": "2026-08-30"
   },
   "executar": {
-    "status": "pendente"
+    "status": "parcial",
+    "catraca_mutacao": "2026-08-30",
+    "tarefas_ok": 1,
+    "tarefas": 5,
+    "nota": "T1 integrada; catraca da integracao rodou mutacao de corpo (trigger no-op valido) e o vermelho veio do caso da fixture; demo real do buscar sem reindexar refeita pela integracao. T2 devolvida (rodape ensinava buscar posicional que o script ignora em silencio — interface real e --texto)",
+    "em": "2026-08-31"
   },
   "revisar": {
     "status": "pendente"
