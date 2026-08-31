@@ -81,11 +81,13 @@ $E exigir --slug t2 --estagio executar >/dev/null
 $E marcar --slug t2 --estagio executar --status parcial --json '{"tarefas_ok":3,"tarefas":5}' >/dev/null
 igual "retomada aponta o estagio parcial" "executar" "$($E proximo --slug t2)"
 esperado "revisar recusado com executar parcial" 2 $E exigir --slug t2 --estagio revisar
-# reprovado tambem nao fecha — revisao que reprovou nao libera o proximo
+# reprovado rebaixa o upstream — revisar reprovado reabre executar para parcial
 $E marcar --slug t2 --estagio executar --status ok --json '{"comando":"t2cmd","saida":"t2out","comando":"run","saida":"ok","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
-$E marcar --slug t2 --estagio revisar --status reprovado >/dev/null
-esperado "verificar recusado com revisar reprovado" 2 $E exigir --slug t2 --estagio verificar
-igual "retomada aponta o reprovado" "revisar" "$($E proximo --slug t2)"
+$E marcar --slug t2 --estagio revisar --status ok >/dev/null
+$E exigir --slug t2 --estagio verificar >/dev/null
+$E marcar --slug t2 --estagio verificar --status reprovado >/dev/null
+esperado "revisar recusado com verificar reprovado" 2 $E exigir --slug t2 --estagio revisar
+igual "retomada aponta o reaberto (executar)" "executar" "$($E proximo --slug t2)"
 
 echo
 echo "== 4. entrada invalida e recusada =="
@@ -626,6 +628,84 @@ esperado "comando vazio e recusado" 2 \
   $E marcar --slug t-ev4 --estagio executar --status ok --json '{"comando":"","saida":"ok","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}'
 esperado "saida so espacos e recusada" 2 \
   $E marcar --slug t-ev4 --estagio executar --status ok --json '{"comando":"cmd","saida":"   ","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}'
+
+echo
+echo "== 16. reprovado rebaixa o upstream imediato para parcial com rastro =="
+# Caso (a): com executar fechado ok, marcar verificar reprovado deixa executar com status parcial e reaberto_por
+$E iniciar --slug t-repr >/dev/null
+$E marcar --slug t-repr --estagio design --status aprovado >/dev/null
+$E marcar --slug t-repr --estagio plano  --status ok >/dev/null
+$E exigir  --slug t-repr --estagio executar >/dev/null
+# executar ok com evidencia e mutacao
+$E marcar --slug t-repr --estagio executar --status ok --json '{"comando":"node script.cjs","saida":"ok","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
+$E marcar --slug t-repr --estagio revisar --status ok >/dev/null
+$E exigir  --slug t-repr --estagio verificar >/dev/null
+# reprovado em verificar reabre executar
+$E marcar --slug t-repr --estagio verificar --status reprovado >/dev/null
+igual "executar em status parcial apos reprovacao em verificar" "parcial" \
+  "$(node -e "console.log(JSON.parse(require('fs').readFileSync('docs/rainforest/estado/t-repr.json', 'utf8')).executar.status)")"
+igual "executar tem reaberto_por.estagio === verificar" "verificar" \
+  "$(node -e "console.log(JSON.parse(require('fs').readFileSync('docs/rainforest/estado/t-repr.json', 'utf8')).executar.reaberto_por.estagio)")"
+igual "reaberto_por.data e ISO (2026-XX-XX)" "sim" \
+  "$(node -e "const d = JSON.parse(require('fs').readFileSync('docs/rainforest/estado/t-repr.json', 'utf8')).executar.reaberto_por.data; console.log(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(d) ? 'sim' : 'nao')")"
+
+# Caso (b): exigir verificar seguinte recusa exit 2 nomeando executar
+esperado "exigir verificar apos reprovacao recusa exit 2" 2 \
+  $E exigir --slug t-repr --estagio verificar
+msg_reopened=$($E exigir --slug t-repr --estagio verificar 2>&1)
+igual "recusa nomeia o upstream reaberto (executar)" "sim" \
+  "$(case "$msg_reopened" in *executar*) echo sim;; *) echo nao;; esac)"
+
+# Caso (c): reprovar revisar reabre executar pelo mesmo mecanismo
+$E iniciar --slug t-repr2 >/dev/null
+$E marcar --slug t-repr2 --estagio design --status aprovado >/dev/null
+$E marcar --slug t-repr2 --estagio plano  --status ok >/dev/null
+$E exigir  --slug t-repr2 --estagio executar >/dev/null
+$E marcar --slug t-repr2 --estagio executar --status ok --json '{"comando":"node script.cjs","saida":"ok","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
+$E exigir  --slug t-repr2 --estagio revisar >/dev/null
+# reprovado em revisar reabre executar
+$E marcar --slug t-repr2 --estagio revisar --status reprovado >/dev/null
+igual "revisar reprovado deixa executar em status parcial" "parcial" \
+  "$(node -e "console.log(JSON.parse(require('fs').readFileSync('docs/rainforest/estado/t-repr2.json', 'utf8')).executar.status)")"
+igual "reaberto_por.estagio === revisar" "revisar" \
+  "$(node -e "console.log(JSON.parse(require('fs').readFileSync('docs/rainforest/estado/t-repr2.json', 'utf8')).executar.reaberto_por.estagio)")"
+
+# Caso (d): fluxo fechado sem reprovacao nao ganha campo novo
+$E iniciar --slug t-repr3 >/dev/null
+$E marcar --slug t-repr3 --estagio design --status aprovado >/dev/null
+$E marcar --slug t-repr3 --estagio plano  --status ok >/dev/null
+$E exigir  --slug t-repr3 --estagio executar >/dev/null
+$E marcar --slug t-repr3 --estagio executar --status ok --json '{"comando":"cmd","saida":"output","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
+$E marcar --slug t-repr3 --estagio revisar --status ok >/dev/null
+$E exigir  --slug t-repr3 --estagio verificar >/dev/null
+$E marcar --slug t-repr3 --estagio verificar --status ok --json '{"comando":"bash test.sh","saida":"ok"}' >/dev/null
+$E marcar --slug t-repr3 --estagio fechar --status ok >/dev/null
+igual "fluxo completo sem reprovacao nao tem reaberto_por" "nao" \
+  "$(node -e "const e = JSON.parse(require('fs').readFileSync('docs/rainforest/estado/t-repr3.json', 'utf8')); console.log(e.executar.reaberto_por ? 'sim' : 'nao')")"
+
+# Caso (e): estado antigo sem reaberto_por passa por exigir/proximo/marcar sem erro
+mkdir -p "$SBP/estado-antigo/docs/rainforest/estado"
+cat > "$SBP/estado-antigo/docs/rainforest/estado/t-old.json" <<'EOF'
+{
+  "slug": "t-old",
+  "titulo": "t-old",
+  "criado_em": "2026-08-20",
+  "arqueologia": { "status": "pendente" },
+  "design": { "status": "aprovado" },
+  "plano": { "status": "ok" },
+  "executar": { "status": "ok", "comando": "node x", "saida": "ok", "mutacao": [{"tarefa": 1, "resultado": "vermelho", "fixture": "teste"}] },
+  "revisar": { "status": "ok" },
+  "verificar": { "status": "pendente" },
+  "fechar": { "status": "pendente" }
+}
+EOF
+export RFM_ESTADO_ROOT="$SBP/estado-antigo"
+E_OLD="node scripts/estado.cjs"
+esperado "proximo em estado antigo passa" 0 $E_OLD proximo --slug t-old
+igual "proximo aponta verificar" "verificar" "$($E_OLD proximo --slug t-old)"
+esperado "exigir em estado antigo passa" 0 $E_OLD exigir --slug t-old --estagio verificar
+esperado "marcar em estado antigo passa" 0 $E_OLD marcar --slug t-old --estagio verificar --status ok --json '{"comando":"bash","saida":"ok"}'
+unset RFM_ESTADO_ROOT
 
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

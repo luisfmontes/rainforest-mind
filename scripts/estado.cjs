@@ -219,6 +219,36 @@ function faltando(estado, estagio) {
   return (PRE_REQUISITOS[estagio] || []).filter((r) => !estaFechado(r, estado[r]));
 }
 
+/** O upstream imediato de um estágio — para reprovação, é o primeiro estágio de EXECUÇÃO.
+ *  Quando um estágio de execução é reprovado, o trabalho volta ao início da fase de execução
+ *  para ser refeit o. Para estágios de decisão (design, plano), não há upstream a reabrir. */
+function upstreamImediato(estagio) {
+  // Só há upstream para estágios de execução
+  if (!EXECUCAO.includes(estagio)) return null;
+  // O upstream é sempre executar (o primeiro de execução)
+  return 'executar';
+}
+
+/** Rebaixa o upstream imediato para `parcial` quando um estágio é reprovado. */
+function rebaixarUpstream(estado, estagio) {
+  const upstream = upstreamImediato(estagio);
+  if (!upstream) return null; // sem upstream, nada a rebaixar
+
+  // Rebaixar o upstream para parcial com rastro de quem reprovou
+  const bloco_upstream = estado[upstream] || {};
+  estado[upstream] = {
+    ...bloco_upstream,
+    status: 'parcial',
+    reaberto_por: {
+      estagio: estagio,
+      data: hoje(),
+    },
+    em: hoje(),
+  };
+
+  return upstream;
+}
+
 // ---------------------------------------- backstop de mutação no revisar (Issue #4)
 //
 // Problema: em 2026-08-13, um revisor mutou `gerar_updater_projeto.py` direto no
@@ -706,6 +736,22 @@ function main() {
       console.error(`erro: estagio desconhecido '${estagio}'`);
       process.exit(1);
     }
+
+    // Verificar se há algum estágio de execução com reaberto_por preenchido
+    // Se houver, bloqueia qualquer estágio que dependa de executar (que foi reaberto)
+    const upstreamReaberto = EXECUCAO.find((e) => {
+      const bloco = estado[e] || {};
+      return bloco.reaberto_por;
+    });
+    if (upstreamReaberto) {
+      const bloco_upstream = estado[upstreamReaberto];
+      console.error(
+        `RECUSADO: '${upstreamReaberto}' foi reaberto por reprovação em '${bloco_upstream.reaberto_por.estagio}' ` +
+        `(${bloco_upstream.reaberto_por.data}). Rode '${upstreamReaberto}' antes.`
+      );
+      process.exit(2);
+    }
+
     const falta = faltando(estado, estagio);
     if (!falta.length) {
       console.log(`ok: pre-requisitos de '${estagio}' fechados`);
@@ -748,15 +794,7 @@ function main() {
       console.error(`erro: status '${status}' invalido para '${estagio}' — use ${permitidos.join('|')}`);
       process.exit(1);
     }
-    // Fechar um estágio com pré-requisito aberto é o furo que o arquivo existe para
-    // impedir: sem isto, `marcar verificar ok` pularia a revisão inteira em silêncio.
-    if (status === (FECHADO[estagio] || 'ok')) {
-      const falta = faltando(estado, estagio);
-      if (falta.length) {
-        console.error(`RECUSADO: nao da para fechar '${estagio}' com ${falta.join(', ')} em aberto.`);
-        process.exit(2);
-      }
-    }
+    // Parsear JSON primeiro, antes de qualquer outra verificação
     let extra = {};
     const j = arg('json', false);
     if (j) {
@@ -765,6 +803,15 @@ function main() {
       } catch (err) {
         console.error(`erro: --json nao e JSON valido: ${err.message}`);
         process.exit(1);
+      }
+    }
+    // Fechar um estágio com pré-requisito aberto é o furo que o arquivo existe para
+    // impedir: sem isto, `marcar verificar ok` pularia a revisão inteira em silêncio.
+    if (status === (FECHADO[estagio] || 'ok')) {
+      const falta = faltando(estado, estagio);
+      if (falta.length) {
+        console.error(`RECUSADO: nao da para fechar '${estagio}' com ${falta.join(', ')} em aberto.`);
+        process.exit(2);
       }
     }
     // Depois do `--json`, porque o `revisar` tira `base` e `head` de lá; e antes
@@ -800,6 +847,14 @@ function main() {
         process.exit(2);
       }
     }
+    // Quando um estágio é reprovado, rebaixa o upstream imediato para parcial
+    if (status === 'reprovado') {
+      const upstream_reaberto = rebaixarUpstream(estado, estagio);
+      if (upstream_reaberto) {
+        console.log(`upstream '${upstream_reaberto}' reaberto por reprovação`);
+      }
+    }
+
     // `campos efemeros` (pendentes) somem do bloco anterior quando o fechamento e
     // terminal-positivo e o --json novo nao os repete — ver `baseParaFundir` e o
     // comentario de `CAMPOS_EFEMEROS`. O resto do bloco anterior sobrevive normal.
