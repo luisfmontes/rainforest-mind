@@ -24,14 +24,14 @@
     "em": "2026-08-31"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-08-31",
-    "tarefas_ok": 10,
-    "tarefas": 10,
-    "nota": "T2 e T6 integradas (T6 com correcao da integracao: descricao do sabia inventava proposito — corrigida contra o README real)",
+    "tarefas_ok": 14,
+    "tarefas": 14,
+    "nota": "rodada 2 apos reprovacao: emendas 11-14 (E1-E4 da revisao) integradas no merge bc3cae7. 11: frase do setup.cjs incondicional — bloco gerado pelo codigo do 21266f79 volta a CONFERIDO exit 0 no checker novo. 12: sanitizarRespostas remove marcadores projeto:inicio/fim. 13: conferir-ponte usa lerProjetoMd do modulo (grep=3). 14: SKILL.md:102 descreve # Bloco do projeto. Creep removido (hooks/portaria.cjs, eda10c3). T1-T10 da rodada 1 preservadas no ledger.",
     "em": "2026-08-31",
-    "comando": "conferir-mutacao.cjs re-rodado pela integracao em cada tarefa; baterias na arvore integrada",
-    "saida": "saude 47/0, ponte 48/0, entrevista 44/0, integracoes 5/0, conferir-ponte 5/5, setup 59/0",
+    "comando": "baterias na arvore integrada + conferir-mutacao re-rodado pela integracao + conferir-entrega APROVADO",
+    "saida": "ponte 50/0, conferir-ponte 5/5, entrevista 54/0, integracoes 5/0, setup 59/0, saude 47/0; mutacoes 11/12/13 exit 0",
     "mutacao": [
       {
         "tarefa": 1,
@@ -82,12 +82,28 @@
         "tarefa": 10,
         "resultado": "n/a",
         "motivo": "docs; a falsificacao e o caso k da bateria executando os exemplos do SKILL.md"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "caso 3.5 bloco identico com e sem dados resolvidos de testa-ponte.sh"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "caso (l) resposta com marcador nao trunca o bloco de testa-ponte-entrevista.sh"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "casos (i)/(j)/(l) de conferencia do bloco de projeto de testa-ponte-entrevista.sh"
+      },
+      {
+        "tarefa": 14,
+        "resultado": "n/a",
+        "motivo": "docs; grep nos dois arquivos batendo"
       }
-    ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-08-31"
-    }
+    ]
   },
   "revisar": {
     "status": "reprovado",
