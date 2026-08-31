@@ -227,5 +227,107 @@ esperado "rejeita JSON invalido" 1 $PONTE --entrevistar --gravar --respostas "$R
 prova "  ... projeto.md nao criado" "[ ! -e '$REPO_H/docs/rainforest/projeto.md' ]"
 
 echo
+echo "== (i) bloco de projeto aparece quando ha projeto.md no alvo, e some quando nao ha =="
+REPO_I="$CAIXA/repo-i"
+mkdir -p "$REPO_I/.github/workflows"
+cat > "$REPO_I/package.json" <<'EOF'
+{
+  "name": "teste-i",
+  "scripts": {
+    "test": "npm test"
+  }
+}
+EOF
+cat > "$REPO_I/.github/workflows/ci.yml" <<'EOF'
+name: CI
+on: [push]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+EOF
+mkdir -p "$REPO_I/src"
+
+# Cria projeto.md no alvo com marcadores de projeto
+mkdir -p "$REPO_I/docs/rainforest"
+cat > "$REPO_I/docs/rainforest/projeto.md" <<'EOF'
+<!-- rainforest-mind:projeto:inicio -->
+# Bloco do projeto
+
+## Fatos da varredura
+
+### Stack
+node
+
+### Comandos de teste/build
+- **test**: `npm test`
+
+### Layout (diretórios de 1º nível)
+- src
+
+## Respostas da entrevista
+
+### O que é "pronto" aqui
+Todos os testes passam
+
+### O que não se toca
+Dependências
+
+### Convenção não escrita
+Português
+
+### Política de revisão
+Uma aprovação
+<!-- rainforest-mind:projeto:fim -->
+EOF
+
+REPO_I_WIN="$(cygpath -m "$REPO_I" 2>/dev/null || printf '%s' "$REPO_I")"
+
+# Com projeto.md: dois pares de marcadores devem aparecer
+esperado "gera com projeto.md" 0 $PONTE --alvo "$REPO_I_WIN" --agente codex --aplicar
+contem "  ... tem bloco de projeto" "rainforest-mind:projeto:inicio" cat "$REPO_I/AGENTS.md"
+contem "  ... contém conteúdo do projeto" "Todos os testes passam" cat "$REPO_I/AGENTS.md"
+prova "  ... tem exatamente um marcador de início" "[ \$(grep -c 'rainforest-mind:projeto:inicio' '$REPO_I/AGENTS.md') -eq 1 ]"
+
+# Apaga projeto.md e regenera: o bloco deve sumir
+rm "$REPO_I/docs/rainforest/projeto.md"
+esperado "regenera sem projeto.md" 0 $PONTE --alvo "$REPO_I_WIN" --agente codex --aplicar
+prova "  ... bloco de projeto sumiu" "! grep -q 'rainforest-mind:projeto' '$REPO_I/AGENTS.md'"
+
+# Cria novamente e regenera 2x: não deve duplicar
+cat > "$REPO_I/docs/rainforest/projeto.md" <<'EOF'
+<!-- rainforest-mind:projeto:inicio -->
+# Bloco do projeto
+
+## Fatos da varredura
+
+### Stack
+node
+
+## Respostas da entrevista
+
+### O que é "pronto" aqui
+Pronto
+<!-- rainforest-mind:projeto:fim -->
+EOF
+
+$PONTE --alvo "$REPO_I_WIN" --agente codex --aplicar >/dev/null 2>&1
+contar1=$(grep -c 'rainforest-mind:projeto:inicio' "$REPO_I/AGENTS.md" 2>/dev/null || echo 0)
+$PONTE --alvo "$REPO_I_WIN" --agente codex --aplicar >/dev/null 2>&1
+contar2=$(grep -c 'rainforest-mind:projeto:inicio' "$REPO_I/AGENTS.md" 2>/dev/null || echo 0)
+if [ "$contar1" = 1 ] && [ "$contar2" = 1 ]; then ok=$((ok+1)); echo "  ok   regeneracao não duplica marcador"
+else falhou=$((falhou+1)); echo "  FALHA regeneracao duplicou: $contar1 -> $contar2"; fi
+
+# Verifica byte-identidade entre os agentes (bloco de projeto)
+$PONTE --alvo "$REPO_I_WIN" --agente claude --aplicar >/dev/null 2>&1
+$PONTE --alvo "$REPO_I_WIN" --agente codex --aplicar >/dev/null 2>&1
+$PONTE --alvo "$REPO_I_WIN" --agente gemini --aplicar >/dev/null 2>&1
+# Extrai o bloco de projeto de cada arquivo
+BLOCO_CLAUDE=$(sed -n '/<!-- rainforest-mind:projeto:inicio -->/,/<!-- rainforest-mind:projeto:fim -->/p' "$REPO_I/CLAUDE.md")
+BLOCO_CODEX=$(sed -n '/<!-- rainforest-mind:projeto:inicio -->/,/<!-- rainforest-mind:projeto:fim -->/p' "$REPO_I/AGENTS.md")
+BLOCO_GEMINI=$(sed -n '/<!-- rainforest-mind:projeto:inicio -->/,/<!-- rainforest-mind:projeto:fim -->/p' "$REPO_I/GEMINI.md")
+if [ "$BLOCO_CLAUDE" = "$BLOCO_CODEX" ] && [ "$BLOCO_CODEX" = "$BLOCO_GEMINI" ]; then ok=$((ok+1)); echo "  ok   bloco de projeto byte-identico entre agentes"
+else falhou=$((falhou+1)); echo "  FALHA bloco de projeto diverge entre agentes"; fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

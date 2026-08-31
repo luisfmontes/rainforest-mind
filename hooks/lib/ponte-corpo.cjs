@@ -12,6 +12,34 @@
 "use strict";
 
 const path = require("path");
+const fs = require("fs");
+
+/**
+ * Lê o conteúdo do bloco rainforest-mind:projeto:inicio/fim de projeto.md do alvo,
+ * se o arquivo existir. Retorna null se o arquivo não existe ou se o bloco não foi encontrado.
+ *
+ * @param {string} alvo - raiz do repositório alvo
+ * @returns {string|null} conteúdo completo do bloco entre os marcadores, ou null
+ */
+function lerProjetoMd(alvo) {
+  if (!alvo) return null;
+  const caminhoProjetoMd = path.join(alvo, "docs", "rainforest", "projeto.md");
+  try {
+    const conteudo = fs.readFileSync(caminhoProjetoMd, "utf8");
+    // Procura pelos marcadores do bloco de projeto
+    const marcadorInicio = "<!-- rainforest-mind:projeto:inicio -->";
+    const marcadorFim = "<!-- rainforest-mind:projeto:fim -->";
+    const idxInicio = conteudo.indexOf(marcadorInicio);
+    const idxFim = conteudo.indexOf(marcadorFim);
+    if (idxInicio >= 0 && idxFim >= 0 && idxFim > idxInicio) {
+      // Extrai o bloco completo incluindo os marcadores
+      return conteudo.slice(idxInicio, idxFim + marcadorFim.length);
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * O núcleo das regras, da mesma fonte e pelo mesmo caminho do hook de abertura.
@@ -97,9 +125,10 @@ const AGENTES = {
  * @param {object} agente - definição do agente (nome, arquivo, etc)
  * @param {string} nucleo - núcleo das regras, já extraído
  * @param {string|null} dados - raiz de dados, ou null se não encontrada
+ * @param {string|null} alvo - raiz do repositório alvo (para incluir projeto.md se existir)
  * @returns {string} conteúdo do bloco, pronto para escrita
  */
-function corpo(agente, nucleo, dados) {
+function corpo(agente, nucleo, dados, alvo = null) {
   const cli = [
     [
       "`node <plugin>/scripts/estado.cjs exigir --slug <slug> --estagio <e>`",
@@ -163,7 +192,8 @@ que nao esta aqui — criterio fino, comando exato, incidente datado —, e ela 
 em \`skills/rainforest-mind/references/regra-<n>.md\` (onde \`<n>\` e o numero da regra). Antes de aplicar uma regra marcada, **leia esse arquivo**.
 
 ${nucleo}
-`;
+
+${lerProjetoMd(alvo) ? lerProjetoMd(alvo) : ""}`;
 }
 
-module.exports = { corpo, raizDeDados, AGENTES, nucleoDasRegras };
+module.exports = { corpo, raizDeDados, AGENTES, nucleoDasRegras, lerProjetoMd };
