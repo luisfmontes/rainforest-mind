@@ -23,18 +23,18 @@
   },
   "executar": {
     "status": "ok",
-    "catraca_mutacao": "2026-08-30",
+    "catraca_mutacao": "2026-08-31",
     "tarefas_ok": 5,
     "tarefas": 5,
     "nota": "T3 integrada apos 1 devolucao (fallback de FTS quebrado sob foco e teto de bytes com casadas nao tinham teste); catraca re-rodada pela integracao exit 0",
     "em": "2026-08-31",
-    "comando": "bash scripts/testa-memoria.sh && bash hooks/testa-memoria-session-start.sh && bash scripts/testa-saude.sh + conferir-mutacao re-rodado pela integracao nas 5 tarefas",
-    "saida": "24 ok / 58 ok / 41 ok, 0 falhas nas tres; mutacoes T1-T5 todas 'bateria VERMELHA com o comportamento invertido' exit 0",
+    "comando": "3 baterias no checkout principal pos-conserto + catracas re-rodadas (5 originais + DROP da migracao C1)",
+    "saida": "testa-memoria 29 ok / testa-memoria-session-start 64 ok / testa-saude 43 ok, 0 falhas; catraca do DROP exit 0 (teste 11 novo fica vermelho); demo C1 real: banco legado migrado, DDL com content= e buscar achando o nunca-indexado",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "observacao gravada aparece no buscar sem reindexar"
+        "fixture": "teste 11 des-tautologizado: DDL migrado e buscar acha o nunca-indexado"
       },
       {
         "tarefa": 2,
@@ -59,7 +59,20 @@
     ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "d6b0a3cfeff8391c4449133375dade19981e3486",
+      "caminhos_sujos": [
+        "relatorios/2026-08-28-batedor-repos.md",
+        "vigias/ERROS.md"
+      ]
+    },
+    "criterio": "D1 migracao de banco legado + D5 alarme nao engole erro imprevisto",
+    "comando": "repro do revisor: banco legado -> iniciar -> buscar --texto NUNCAINDEXADA -> []; banco sem offset_processado -> checarMemoria -> ok",
+    "saida": "FTS segue 'fts5(conteudo)' sem content=, DROP inexistente no criarSchema, teste 11 tautologico; saude cai no fallthrough sem else e devolve ok com problema capturado",
+    "faltou": "migracao drop+recreate+rebuild real e idempotente; else final no checarMemoria (problema nao classificado = alerta); metade do D4 (injecao prefere resumo) sem implementacao; resumo+marcacao nao atomicos; teto de consolidacao >50",
+    "em": "2026-08-31",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
