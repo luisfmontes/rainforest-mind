@@ -353,3 +353,18 @@ mutacao:
   bateria: `bash scripts/testa-ponte.sh`
   fixture: caso novo "prosa citando os marcadores de regras nao corrompe a regeneracao"
 pronto quando: em `escrever()`, o bloco de regras existente é localizado por marcador que OCUPA A LINHA INTEIRA (início com ou sem hash; fim é o primeiro APÓS o início); prosa citando os marcadores no meio de frase não casa; início de regras sem fim (truncado à mão) RECUSA com erro e exit != 0 sem gravar, como a tarefa 20 fez no projeto. `extrairBlocoGerado` de `conferir-ponte.cjs` usa a mesma âncora. Provado por casos novos em `testa-ponte.sh`: (a) prosa antes do bloco real → regenerar substitui o bloco REAL no lugar, a prosa e o texto pós-bloco sobrevivem intactos, `conferir-ponte.cjs` dá CONFERIDO exit 0; (b) fim das regras apagado à mão → regenerar falha com mensagem, arquivo intocado byte a byte
+
+## Emenda da revisão rodada 9 (2026-08-31)
+
+### 25. O corte do bloco de projeto adjacente usa a MESMA âncora de linha inteira [tipo: implementar]
+atende: invariante 1; o último ponto sem âncora apontado pela varredura da rodada 9
+arquivos: `scripts/ponte.cjs`, `scripts/testa-ponte-entrevista.sh`
+depende de: nenhuma
+paralela: nao
+mutacao:
+  arquivo: `scripts/ponte.cjs`
+  de: a âncora de linha inteira na busca do fim do bloco de projeto adjacente em `escrever()`
+  para: de volta ao `indexOf(FIM_PROJETO)` plano
+  bateria: `bash scripts/testa-ponte-entrevista.sh`
+  fixture: caso novo "mencao inline ao fim DENTRO do bloco nao deixa rabo orfao"
+pronto quando: em `escrever()`, o fim do bloco de projeto adjacente é achado por marcador que OCUPA A LINHA INTEIRA (primeiro após o início, âncora multiline) — menção inline dentro do corpo do bloco não é fim. Provado por caso novo: projeto.md com menção inline ao marcador de fim no meio de uma resposta (editado à mão pós-entrevista) → gerar, regenerar, regenerar → a contagem de `rainforest-mind:projeto:fim` no CLAUDE.md é ESTÁVEL (2: o inline + o real) e a 2ª/3ª gerações são byte a byte idênticas
