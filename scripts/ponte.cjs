@@ -386,21 +386,38 @@ function escrever(alvoArquivo, blocoNovo, aplicar, hash, alvo) {
     anterior = null;
   }
 
-  // Para substituicao de bloco existente, procura tanto a forma com hash quanto sem.
-  const temMarcadorAtual = anterior && (anterior.includes(inicio) || anterior.includes("<!-- rainforest-mind:inicio"));
+  // Para substituicao de bloco existente, o marcador tem de OCUPAR A LINHA INTEIRA
+  // (com ou sem hash) — prosa citando o marcador no meio de frase nunca casa, e o
+  // fim considerado e o primeiro APOS o inicio (tarefa 24, mesma familia das 19-22).
+  const inicioRegrasMatch = anterior
+    ? anterior.match(/^<!-- rainforest-mind:inicio[^>]*-->\r?$/m)
+    : null;
+  let fimRegrasMatch = null;
+  if (inicioRegrasMatch) {
+    const reFimRegras = /^<!-- rainforest-mind:fim -->\r?$/gm;
+    reFimRegras.lastIndex = inicioRegrasMatch.index;
+    fimRegrasMatch = reFimRegras.exec(anterior);
+  }
 
   let saida;
   let acao;
   if (anterior === null) {
     saida = marcadoComProjeto;
     acao = "cria";
-  } else if (temMarcadorAtual && anterior.includes(FIM)) {
-    // Encontra o inicio do bloco, seja com ou sem hash
-    const inicioIdx = anterior.indexOf("<!-- rainforest-mind:inicio");
+  } else if (inicioRegrasMatch && !fimRegrasMatch) {
+    // Bloco de regras truncado (inicio sem fim). Acrescentar ou substituir por cima
+    // duplicaria o bloco em silencio — mesma recusa da tarefa 20 para o projeto.
+    erro(
+      `${path.basename(alvoArquivo)} tem um bloco de regras truncado (` +
+        `<!-- rainforest-mind:inicio --> sem <!-- rainforest-mind:fim -->). ` +
+        `Restaure o marcador de fim ou remova o bloco à mão antes de regenerar.`
+    );
+  } else if (inicioRegrasMatch && fimRegrasMatch) {
+    const inicioIdx = inicioRegrasMatch.index;
     const antes = anterior.slice(0, inicioIdx);
     // Remove o antigo bloco de projeto também se existir — mas APENAS se for um bloco real
     // Um bloco real começa com <!-- rainforest-mind:projeto:inicio e tem seu fim após esse início
-    let depois = anterior.slice(anterior.indexOf(FIM) + FIM.length).replace(/^\n+/, "");
+    let depois = anterior.slice(fimRegrasMatch.index + fimRegrasMatch[0].length).replace(/^\n+/, "");
 
     // Remove o bloco APENAS se após aparar quebras o pós-FIM começa com o marcador
     // (este é o local onde o próprio gerador o escreve)
