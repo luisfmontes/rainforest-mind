@@ -196,12 +196,17 @@ else
 fi
 
 echo
-echo "== 11. banco legacy (FTS sem content externo) funciona apos migração =="
-# Tarefa 1 (D24): Cria banco no schema ANTIGO (sem triggers, sem content externo),
-# executa criarSchema novo (que deve ser idempotente), e valida que buscar funciona.
+echo "== 11. banco legacy (FTS sem content=) migra de verdade: termo NUNCA indexado vira achavel =="
+# C1: a versão anterior deste teste inseria o termo NA PRÓPRIA FTS legada — o
+# buscar achava a linha mesmo sem migração nenhuma, e o teste passava com o
+# defeito presente (CREATE VIRTUAL TABLE IF NOT EXISTS é no-op sobre a tabela
+# antiga, que fica para sempre sem content= e sem o termo). Aqui a observação
+# entra SÓ em observacoes, nunca na FTS: sem a migração real (DROP + recriação
+# com content='observacoes' + rebuild), o buscar não tem como achá-la.
+# Duas asserções: (i) o DDL novo tem content='observacoes'; (ii) buscar acha o termo.
 CAIXA6="$(mktemp -d)"
 trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${CAIXA4:-}" "${CAIXA5:-}" "${CAIXA6:-}"' EXIT
-# Criar banco legacy manualmente (sem content externo, sem triggers)
+# Criar banco legacy manualmente (FTS sem content=, e a observação FORA dela)
 RFM_ROOT="$CAIXA6" node -e "
   const DatabaseSync = require('node:sqlite').DatabaseSync;
   const path = require('path');
@@ -219,18 +224,31 @@ RFM_ROOT="$CAIXA6" node -e "
     );
     CREATE VIRTUAL TABLE IF NOT EXISTS observacoes_fts USING fts5(conteudo);
     INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES ('proj', 'palavra chave LEGACY', datetime('now'), 'legacy-origem');
-    INSERT INTO observacoes_fts(rowid, conteudo) VALUES (1, 'palavra chave LEGACY');
   \`);
   db.close();
 " 2>/dev/null
-# Executar criarSchema novo (que migra triggers, content externo, etc)
+# Executar a migração (iniciar chama criarSchema, que detecta o DDL sem content=)
 RFM_ROOT="$CAIXA6" $MEMORIA iniciar > /dev/null 2>&1
-# Verificar que buscar encontra a observação
+# (i) o DDL da observacoes_fts agora aponta para o conteúdo externo
+DDL_FTS=$(RFM_ROOT="$CAIXA6" node --no-warnings -e "
+  const { abrirBancoSomenteLeitura } = require('./scripts/memoria.cjs');
+  const path = require('path');
+  const db = abrirBancoSomenteLeitura(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+  const r = db.prepare(\"SELECT sql FROM sqlite_master WHERE type='table' AND name='observacoes_fts'\").all();
+  db.close();
+  process.stdout.write((r[0] && r[0].sql) || '');
+" 2>/dev/null)
+if echo "$DDL_FTS" | grep -q "content='observacoes'"; then
+  ok=$((ok+1)); echo "  ok   DDL da observacoes_fts migrado para content='observacoes'"
+else
+  falhou=$((falhou+1)); echo "  FALHA DDL da FTS continua legado: $DDL_FTS"
+fi
+# (ii) buscar acha o termo que NUNCA entrou na FTS legada — só o rebuild real explica
 resultado=$(RFM_ROOT="$CAIXA6" $MEMORIA buscar --texto "LEGACY" --json 2>/dev/null)
 if echo "$resultado" | grep -q "LEGACY"; then
-  ok=$((ok+1)); echo "  ok   banco legacy migrado, buscar encontra observacao"
+  ok=$((ok+1)); echo "  ok   buscar acha o termo que nunca foi indexado na FTS legada (rebuild real)"
 else
-  falhou=$((falhou+1)); echo "  FALHA buscar nao encontrou observacao em banco legacy migrado"
+  falhou=$((falhou+1)); echo "  FALHA buscar nao achou o termo apos a migração do FTS legado"
 fi
 
 echo
