@@ -368,3 +368,14 @@ mutacao:
   bateria: `bash scripts/testa-ponte-entrevista.sh`
   fixture: caso novo "mencao inline ao fim DENTRO do bloco nao deixa rabo orfao"
 pronto quando: em `escrever()`, o fim do bloco de projeto adjacente é achado por marcador que OCUPA A LINHA INTEIRA (primeiro após o início, âncora multiline) — menção inline dentro do corpo do bloco não é fim. Provado por caso novo: projeto.md com menção inline ao marcador de fim no meio de uma resposta (editado à mão pós-entrevista) → gerar, regenerar, regenerar → a contagem de `rainforest-mind:projeto:fim` no CLAUDE.md é ESTÁVEL (2: o inline + o real) e a 2ª/3ª gerações são byte a byte idênticas
+
+## Emenda de fechamento (2026-08-31)
+
+### 26. Handover de sessão em relatorios/ [tipo: docs]
+atende: continuidade entre sessões (preferência registrada do Luís: commit antes de encerrar)
+arquivos: `relatorios/2026-08-31-handover-fluxos.md`
+depende de: nenhuma
+paralela: sim
+mutacao: n/a
+  motivo: relatório de handover, sem lógica executável
+pronto quando: o handover existe em relatorios/ e descreve o estado real dos fluxos no momento da escrita — conferível lendo o arquivo contra o estado dos fluxos
