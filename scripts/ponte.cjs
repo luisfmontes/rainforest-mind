@@ -402,18 +402,18 @@ function escrever(alvoArquivo, blocoNovo, aplicar, hash, alvo) {
     // Um bloco real começa com <!-- rainforest-mind:projeto:inicio e tem seu fim após esse início
     let depois = anterior.slice(anterior.indexOf(FIM) + FIM.length).replace(/^\n+/, "");
 
-    // Procura por um início de bloco de projeto real no pós-FIM
-    const inicioProjetoIdx = depois.indexOf("<!-- rainforest-mind:projeto:inicio");
-    if (inicioProjetoIdx !== -1) {
-      // Há um início de bloco no texto pós-FIM. Agora procura o fim DEPOIS desse início
-      const fimProjetoIdxAposInicio = depois.indexOf(FIM_PROJETO, inicioProjetoIdx);
-      if (fimProjetoIdxAposInicio !== -1) {
-        // Encontrou o fim após o início. Remove o bloco inteiro
-        depois = depois.slice(fimProjetoIdxAposInicio + FIM_PROJETO.length).replace(/^\n+/, "");
+    // Remove o bloco APENAS se após aparar quebras o pós-FIM começa com o marcador
+    // (este é o local onde o próprio gerador o escreve)
+    if (depois.startsWith("<!-- rainforest-mind:projeto:inicio")) {
+      // Encontra o fim do bloco a partir do começo
+      const fimProjetoIdx = depois.indexOf(FIM_PROJETO);
+      if (fimProjetoIdx !== -1) {
+        // Encontrou o fim. Remove o bloco inteiro
+        depois = depois.slice(fimProjetoIdx + FIM_PROJETO.length).replace(/^\n+/, "");
       }
-      // Se não encontrou o fim após o início, não remove nada (bloco incompleto)
+      // Se não encontrou o fim, não remove nada (bloco incompleto)
     }
-    // Se não há início, não remove nada (menção solta ao marcador de fim não causa remoção)
+    // Se não começa com o marcador, não remove nada (menção solta ou em outra posição)
 
     saida = `${antes}${marcadoComProjeto}${depois ? `\n${depois}` : ""}`;
     acao = "substitui o bloco gerado";
