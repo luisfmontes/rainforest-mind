@@ -183,7 +183,7 @@ function montarMemoria(o) {
 
   // Rodapé ensinando busca sob demanda (D11 — mantém acesso ao corpus completo).
   // Formato: linha única começando com "mais: " para economizar bytes.
-  const rodape = '\n\nmais: node scripts/memoria.cjs buscar "<termo>"';
+  const rodape = '\n\nmais: node scripts/memoria.cjs buscar --texto "<termo>"';
 
   const texto = cabecalho + corpo + rodape;
 

@@ -818,16 +818,16 @@ echo "  16.a — com observação, o bloco termina com rodapé ensinando o coman
 OBS_PARA_RODAPE='{"observacoes":[{"id":1,"projeto":"teste","conteudo":"## Teste rodapé\n\nSubtítulo test","criada_em":"2026-08-25T10:00:00"}]}'
 S_RODAPE="$(memoria "$OBS_PARA_RODAPE")"
 
-# A ÚLTIMA linha não-vazia do bloco deve conter o comando "node scripts/memoria.cjs buscar"
+# A ÚLTIMA linha não-vazia do bloco deve conter o comando "node scripts/memoria.cjs buscar --texto"
 ULTIMA_LINHA="$(echo "$S_RODAPE" | tail -1)"
-if echo "$ULTIMA_LINHA" | grep -q "mais:.*node scripts/memoria.cjs buscar"; then
-  ok=$((ok+1)); echo "  ok    ÚLTIMA linha do bloco inicia com 'mais:' e contém comando de busca"
+if echo "$ULTIMA_LINHA" | grep -q "mais:.*node scripts/memoria.cjs buscar --texto"; then
+  ok=$((ok+1)); echo "  ok    ÚLTIMA linha do bloco inicia com 'mais:' e contém comando com --texto"
 else
-  falhou=$((falhou+1)); echo "  FALHA última linha não contém rodapé; achei: '$ULTIMA_LINHA'"
+  falhou=$((falhou+1)); echo "  FALHA última linha não contém rodapé correto; achei: '$ULTIMA_LINHA'"
 fi
 
 if echo "$S_RODAPE" | grep -q '"<termo>"'; then
-  ok=$((ok+1)); echo "  ok    rodapé usa template <termo> para substituição"
+  ok=$((ok+1)); echo "  ok    rodapé usa template <termo> para substituição do valor de busca"
 else
   falhou=$((falhou+1)); echo "  FALHA rodapé sem template <termo>"
 fi
