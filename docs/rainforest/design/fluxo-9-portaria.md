@@ -6,14 +6,14 @@
 > hermes-agent) preservado; a seção "Validação externa" foi remontada a partir
 > da conversa de origem — conferir contra o arquivo original se houver dúvida.
 
-**Status:** rascunho para revisão
+**Status:** aprovado em 2026-08-31 (Q1–Q3 fechadas nas recomendadas pelo Luís; ver "Em aberto")
 **Depende de:** `estado.cjs` (leitura do estágio ativo). Conversa com o fluxo 6 (mesmo padrão de lint) e alimenta o fluxo 7 (log de despacho como evidência), mas não bloqueia nem é bloqueado por eles.
 **Origem:** decisão interna (conversa de 2026-08-29). Desenho validado contra hermes-agent (NousResearch, MIT) *depois* de pronto — convergência independente, não derivação. Uma ideia anotada para o futuro vem de lá e carrega atribuição (ver "fica de fora").
 **Stack:** Node puro, CommonJS, zero dependência, compatível com Windows.
 
 ---
 
-## Problema
+## Objetivo
 
 A regra 10 exige autorização humana de subagentes a cada sessão. O custo é pago toda sessão e o ganho é nenhum: a autorização humana não verifica nada — depois da terceira vez, aprova-se por cansaço. É regra em prosa operada por atenção humana, exatamente o que a casa proíbe ("exit code, não instrução").
 
@@ -22,6 +22,17 @@ A regra 10 exige autorização humana de subagentes a cada sessão. O custo é p
 Substituir **autorização por sessão** por **admissão por manifesto**, decidida por um hook `PreToolUse` que intercepta toda chamada de Task. A regra fica mais restritiva e some do caminho do humano ao mesmo tempo:
 
 > **Regra 10 (reescrita):** Subagente só roda se estiver declarado em `.rainforest/agentes.json` e o estágio ativo constar na sua lista. A portaria decide por código; o humano nunca é perguntado em sessão. Exceção não existe em runtime — exceção é editar o manifesto, e edição de manifesto é mudança versionada que passa pelo `revisar`.
+
+## Decisões fechadas
+
+- **D1 — Admissão por manifesto substitui autorização por sessão.** Hook `PreToolUse` com matcher na tool `Task` decide por código; o humano nunca é perguntado em runtime. Exceção é diff no manifesto, que passa pelo `revisar`.
+- **D2 — Manifesto `.rainforest/agentes.json`.** Por agente: `estagios` (em quais estágios do grafo pode ser despachado) e `escreve` (sempre `false` por ora — o campo existe para a exceção futura ser uma linha de diff, não mudança de schema).
+- **D3 — `portaria.cjs` decide fail-closed, sempre com motivo.** Manifesto ausente/inválido nega tudo; agente não declarado nega; sem estágio ativo nega (Q2 fechada); estágio ativo fora da lista do agente nega; `escreve: false` com tool fora da allowlist read-only (`Read`, `Grep`, `Glob`) no arquivo do agente nega. Toda negação sai com motivo não vazio — negação muda é bug.
+- **D4 — Log de despacho append-only** em `.rainforest/portaria/despachos.jsonl`: uma linha JSON autocontida por decisão (allow e deny), nunca reescrita — evidência de primeira classe para `colher` e para o recibo do fluxo 7.
+- **D5 — Modo lint (`portaria.cjs --lint`) roda no `plano`** com as cinco checagens manifesto×agentes×grafo (agente sem arquivo = erro; arquivo órfão = aviso; `escreve: false` com tool de escrita = erro; estágio desconhecido = erro; JSON inválido ou `versao` desconhecida = erro). Exit 0 só com zero erros.
+- **D6 — Hook registrado em `.claude/settings.json` versionado do projeto** (Q1 fechada): a regra da casa viaja com o repo.
+- **D7 — Parser fixado por amostra real** (Q3 fechada): o primeiro despacho de teste grava o payload real em `.rainforest/portaria/amostra.json`, o parser se fixa contra a amostra, e a amostra fica no repo como documentação.
+- **D8 — Regra 10 reescrita na doc** com o texto do quadro acima, e verificação manual única (sessão real despachando agente declarado sem prompt de autorização) registrada como evidência.
 
 ---
 
@@ -118,23 +129,24 @@ Todos os testes rodam offline, com payload simulado — não dependem de sessão
 
 ---
 
-## O que fica de fora e por quê
+## Avaliado e descartado
 
 - **Aprovação interativa de exceção** ("pergunta só quando não está no manifesto") — reintroduz o custo por sessão pela porta dos fundos e transforma negação em negociação. Exceção é diff no manifesto.
+- **"Smart approval" com LLM auxiliar** (padrão do hermes-agent) — julgamento de modelo como oráculo é o anti-padrão da casa; aqui quem admite é manifesto + estágio, por exit code.
+- **Cache de decisão** — a decisão custa duas leituras de arquivo pequeno; cache adiciona estado e um jeito novo de estar errado.
+
+## Fora de escopo
 - **Subagente que escreve** — quebra a cadeia de evidência do recibo (fluxo 7): o recibo assina o que a sessão principal produziu; escrita fora dela é escrita sem assinatura. Fica de fora **agora**, mas a reavaliação futura já tem caminho pronto: o padrão de worktree por filho do hermes-agent (`subagent_worktree.py`, NousResearch, MIT — por sua vez implementação clean-room da semântica documentada do Muse Code). Filho write-capable ganha worktree git próprio branched do HEAD, commita lá, worktree limpo é podado e worktree com trabalho é reportado; quem revisa e faz o merge é a sessão principal — ou seja, a assinatura do recibo acontece no merge e a cadeia de evidência sobrevive. Se um dia `escreve: true` entrar, é com worktree obrigatório, e a portaria checa a flag de isolamento antes de aprovar. Requer atribuição no header do script quando implementado.
 - **Teams dinâmicos / orquestração multi-nível** — o grafo é o rainforest; subagente é ferramenta de estágio, não segunda camada de arquitetura. Profundidade 1 é limite do harness e convém como limite de design.
 - **Portaria para outras tools (MCP, Bash)** — escopo é Task. Permissão de tool comum continua no `settings.json` nativo; duplicar isso aqui criaria dois donos para a mesma decisão.
-- **Cache de decisão** — a decisão custa duas leituras de arquivo pequeno; cache adiciona estado e um jeito novo de estar errado.
 
----
+## Em aberto
 
-## Qs (decisões abertas, com recomendação)
-
-**Q1 — Onde registrar o hook:** `.claude/settings.json` versionado vs `settings.local.json` pessoal. **Recomendo versionado**: regra da casa viaja com o repo; quem clona já chega governado.
-
-**Q2 — Sem estágio ativo:** fail-closed (nega) vs fail-open (aprova). **Recomendo fail-closed** com motivo instrutivo. Coerente com o resto: fora do grafo, nada roda.
-
-**Q3 — Campo do nome do agente no payload:** o formato exato do `tool_input` do Task (e o schema de resposta do hook — `permissionDecision` etc.) pode ter mudado desde jan/2026. **Recomendo resolver no `executar`**: primeiro despacho de teste grava o payload real em `.rainforest/portaria/amostra.json`, o parser é fixado contra a amostra, e a amostra fica no repo como documentação. P2–P5 pegam qualquer divergência futura.
+Nenhuma. Q1 (hook versionado), Q2 (fail-closed sem estágio ativo) e Q3 (parser
+fixado por amostra real no `executar`) foram fechadas nas recomendadas pelo Luís
+em 2026-08-31 e viraram D6, D3 e D7. As ideias de futuro (subagente escritor com
+worktree por filho; ver "Fora de escopo") estão plantadas em `ideias.jsonl` —
+`subagente-escritor-com-worktree-por-filho`.
 
 ---
 
