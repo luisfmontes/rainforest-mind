@@ -21,13 +21,13 @@
   "executar": {
     "status": "parcial",
     "tarefas": 9,
-    "tarefas_ok": 3,
-    "nota": "T1, T2, T4 integradas. T3 REJEITADA na integracao: bateria do proprio executor com 3 falhas (headers, pidfile, status) e suite que trava sem encerrar — relato dizia core confirmado; padrao reporta-intencao. Redespacho da T3 com a lista concreta de falhas.",
+    "tarefas_ok": 4,
+    "nota": "T1-T4 integradas. T3 na 2a tentativa: proxy do executor integro, mas a bateria dele nao media o plano (sem hash, sem timing SSE, mutacao verde) — completada pela integracao com os casos 5.1-5.5; mutacao de bufferizacao agora vermelha exit 0. Restam T5-T9.",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "caso raizPoda com RFM_ROOT valido de testa-poda-dados.sh"
+        "fixture": "caso raizPoda com RFM_ROOT valido"
       },
       {
         "tarefa": 2,
@@ -35,9 +35,14 @@
         "fixture": "bloco PODA de hooks/testa-config.sh"
       },
       {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "caso 5.4 timing SSE de testa-poda.sh"
+      },
+      {
         "tarefa": 4,
         "resultado": "vermelho",
-        "fixture": "caso dois trabalhos abertos um batendo de testa-poda-estagio.sh"
+        "fixture": "caso dois trabalhos abertos um batendo"
       }
     ],
     "em": "2026-08-31"
