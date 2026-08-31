@@ -19,7 +19,23 @@
     "em": "2026-08-31"
   },
   "executar": {
-    "status": "pendente"
+    "status": "parcial",
+    "tarefas": 9,
+    "tarefas_ok": 2,
+    "nota": "T2 e T4 integradas (merge). Chave poda padrao true (decisao A do Luis); estagioAtivo por branch<->slug com null em ambiguidade. Mutacoes re-rodadas pela integracao: T2 exit 0, T4 exit 0. Baterias na arvore integrada: config 38/0, poda-estagio 8/0, setup 49/0. Em voo: T1+T3 (outro executor).",
+    "mutacao": [
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "bloco PODA de hooks/testa-config.sh"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "caso dois trabalhos abertos um batendo de testa-poda-estagio.sh"
+      }
+    ],
+    "em": "2026-08-31"
   },
   "revisar": {
     "status": "pendente"
