@@ -105,6 +105,17 @@ const CHAVES = {
     padrao: false,
     descricao: 'usa `git branch -D` (apaga sem conferir merge) em vez de `-d`',
   },
+  // INTEGRACOES — repositórios opcionais do usuário com ciclo de release próprio.
+  // Cada uma tem stub `checar()` que devolve status — as checagens reais vêm depois.
+  // Declaráveis via `--ligar integracao-<nome>`, desligadas por padrão.
+  'integracao-whatsapp-mcp': {
+    padrao: false,
+    descricao: 'MCP para bridge WhatsApp local (127.0.0.1:3005)',
+  },
+  'integracao-sabia': {
+    padrao: false,
+    descricao: 'CLI Python para análise de código (Sabiá)',
+  },
 };
 
 /**
