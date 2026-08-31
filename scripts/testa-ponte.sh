@@ -20,7 +20,7 @@ trap 'rm -rf "$CAIXA"' EXIT
 PLUG="$CAIXA/plugin"
 mkdir -p "$PLUG/scripts" "$PLUG/hooks/lib" "$PLUG/skills/rainforest-mind"
 cp "$SRC/scripts/ponte.cjs" "$PLUG/scripts/"
-cp "$SRC/hooks/lib/contexto-sessao.cjs" "$SRC/hooks/lib/raiz.cjs" "$SRC/hooks/lib/config.cjs"    "$SRC/hooks/lib/projetos.cjs" "$PLUG/hooks/lib/"
+cp "$SRC/hooks/lib/contexto-sessao.cjs" "$SRC/hooks/lib/raiz.cjs" "$SRC/hooks/lib/config.cjs" "$SRC/hooks/lib/projetos.cjs" "$SRC/hooks/lib/ponte-corpo.cjs" "$PLUG/hooks/lib/"
 cp "$SRC/scripts/setup.cjs" "$PLUG/scripts/"
 cp "$SRC/skills/rainforest-mind/SKILL.md" "$PLUG/skills/rainforest-mind/"
 # Pasta de DADOS propria: e nela que o /setup grava as chaves `ponte-*`, e e por
