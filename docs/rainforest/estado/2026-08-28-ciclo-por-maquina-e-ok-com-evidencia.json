@@ -22,9 +22,9 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-08-30",
-    "tarefas_ok": 2,
+    "tarefas_ok": 3,
     "tarefas": 4,
-    "nota": "T2 integrada apos 1 devolucao (deadlock: exigir bloqueava o proprio estagio reaberto e reaberto_por nunca era limpo); ciclo completo verificado pela integracao em sandbox git",
+    "nota": "T3 integrada apos 2 devolucoes (catraca exit 2 lida como sucesso; teto que nunca rodava no estagio exigido — bug achado pela integracao); fronteira 2/3 e liberar verificados em sandbox pela integracao; relato final tinha git-show fabricado, artefato real conferido ok",
     "em": "2026-08-30"
   },
   "revisar": {
