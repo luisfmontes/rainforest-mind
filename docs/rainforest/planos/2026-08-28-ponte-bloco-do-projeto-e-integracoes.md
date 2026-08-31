@@ -295,3 +295,18 @@ mutacao:
   bateria: `bash scripts/testa-ponte-entrevista.sh`
   fixture: caso novo "bloco de projeto sem fim recusa a regeneração com erro"
 pronto quando: em `escrever()`, quando o pós-FIM começa com `<!-- rainforest-mind:projeto:inicio` mas não há `<!-- rainforest-mind:projeto:fim -->` no restante, a regeneração desse arquivo FALHA com mensagem clara (bloco de projeto truncado — restaure o marcador de fim ou remova o bloco) e exit != 0, sem gravar nada nesse arquivo; provado por caso novo (gera com projeto, apaga a linha do fim à mão, regenera → exit != 0, arquivo intocado byte a byte, mensagem presente); cenários vizinhos continuam: menção solta sem bloco real segue gravando normal (casos o/p verdes)
+
+## Emenda da revisão rodada 6 (2026-08-31)
+
+### 21. Extração do bloco na CATRACA é posicional como a escrita — menção em prosa nunca casa [tipo: implementar]
+atende: invariante 1; espelha a tarefa 19 no lado da leitura
+arquivos: `scripts/conferir-ponte.cjs`, `scripts/testa-ponte-entrevista.sh`
+depende de: nenhuma
+paralela: nao
+mutacao:
+  arquivo: `scripts/conferir-ponte.cjs`
+  de: a âncora de linha inteira na extração do bloco de projeto
+  para: de volta ao match de primeira ocorrência em qualquer posição
+  bateria: `bash scripts/testa-ponte-entrevista.sh`
+  fixture: caso novo "mencao em prosa aos marcadores nao confunde a catraca"
+pronto quando: `extrairBlocoProjetoGerado` só reconhece marcador que OCUPA A LINHA INTEIRA (âncora multiline, como o gerador escreve), e o fim considerado é o primeiro APÓS o início; menção em prosa (marcador no meio de uma frase) nunca casa. Provado por caso novo: CLAUDE.md pré-existente com menção em prosa aos dois marcadores + bloco real acrescentado pelo gerador → `conferir-ponte.cjs` devolve CONFERIDO exit 0; e mudar o projeto.md depois ainda dá ficou-para-trás (a catraca continua mordendo o bloco real)
