@@ -92,27 +92,73 @@ function lerObservacoesComFTS(caminhoDb, projetosList, termos) {
       }
 
       // Passo 2: Buscar casadas por FTS (máximo 5), filtrando as já-recentes por id
-      const idsRecentes = recentes.map(r => r.id);
-      const placeholdersIds = idsRecentes.map(() => '?').join(', ');
-      const termoFTS = termos.join(' OR '); // FTS5: termos separados por OR
+      // Se FTS falhar (tabela não existe ou corrompida), fazer fallback para 14 recentes
+      let casadas = [];
+      try {
+        const idsRecentes = recentes.map(r => r.id);
+        const placeholdersIds = idsRecentes.map(() => '?').join(', ');
+        const termoFTS = termos.join(' OR '); // FTS5: termos separados por OR
 
-      // A consulta FTS deve descartar as linhas que já estão em recentes
-      const queryCasadas = `
-        SELECT o.id, o.projeto, o.conteudo, o.criada_em
-        FROM observacoes o
-        WHERE o.id IN (
-          SELECT rowid FROM observacoes_fts
-          WHERE observacoes_fts MATCH ?
-        )
-        ${idsRecentes.length > 0 ? `AND o.id NOT IN (${placeholdersIds})` : ''}
-        ORDER BY o.criada_em DESC
-        LIMIT 5
-      `;
+        // A consulta FTS deve descartar as linhas que já estão em recentes
+        const queryCasadas = `
+          SELECT o.id, o.projeto, o.conteudo, o.criada_em
+          FROM observacoes o
+          WHERE o.id IN (
+            SELECT rowid FROM observacoes_fts
+            WHERE observacoes_fts MATCH ?
+          )
+          ${idsRecentes.length > 0 ? `AND o.id NOT IN (${placeholdersIds})` : ''}
+          ORDER BY o.criada_em DESC
+          LIMIT 5
+        `;
 
-      const stmtCasadas = conexao.prepare(queryCasadas);
-      const casadas = idsRecentes.length > 0
-        ? stmtCasadas.all(termoFTS, ...idsRecentes) || []
-        : stmtCasadas.all(termoFTS) || [];
+        const stmtCasadas = conexao.prepare(queryCasadas);
+        casadas = idsRecentes.length > 0
+          ? stmtCasadas.all(termoFTS, ...idsRecentes) || []
+          : stmtCasadas.all(termoFTS) || [];
+      } catch (e) {
+        // FTS indisponível (tabela não existe ou corrompida): fallback para 14 recentes
+        // Retorna 14 recentes SEM aplicar FTS (comportamento byte-idêntico ao fallback sem foco)
+        if (projetosList && projetosList.length > 0) {
+          const placeholders = projetosList.map(() => '?').join(', ');
+          const queryFallback = `
+            SELECT id, projeto, conteudo, criada_em
+            FROM observacoes
+            WHERE projeto IN (${placeholders})
+            ORDER BY criada_em DESC
+            LIMIT 14
+          `;
+          const stmtFallback = conexao.prepare(queryFallback);
+          const resultado = stmtFallback.all(...projetosList) || [];
+
+          // Se temos 14, devolver. Senão, completar com outros
+          if (resultado.length >= 14) {
+            return resultado.slice(0, 14);
+          }
+
+          const vagas = 14 - resultado.length;
+          const placeholdersNot = projetosList.map(() => '?').join(', ');
+          const queryOutros = `
+            SELECT id, projeto, conteudo, criada_em
+            FROM observacoes
+            WHERE projeto NOT IN (${placeholdersNot})
+            ORDER BY criada_em DESC
+            LIMIT ?
+          `;
+          const stmtOutros = conexao.prepare(queryOutros);
+          const outros = stmtOutros.all(...projetosList, vagas) || [];
+          return resultado.concat(outros);
+        } else {
+          const queryFallback = `
+            SELECT id, projeto, conteudo, criada_em
+            FROM observacoes
+            ORDER BY criada_em DESC
+            LIMIT 14
+          `;
+          const stmtFallback = conexao.prepare(queryFallback);
+          return stmtFallback.all() || [];
+        }
+      }
 
       // Combinar: recentes + casadas (máximo 14)
       return recentes.concat(casadas);
