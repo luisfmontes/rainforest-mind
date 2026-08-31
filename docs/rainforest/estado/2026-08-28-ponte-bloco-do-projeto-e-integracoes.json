@@ -24,7 +24,7 @@
     "em": "2026-08-31"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-08-31",
     "tarefas_ok": 10,
     "tarefas": 10,
@@ -83,10 +83,28 @@
         "resultado": "n/a",
         "motivo": "docs; a falsificacao e o caso k da bateria executando os exemplos do SKILL.md"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-08-31"
+    }
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "1422b1438322a9d49531e1079ca1010904fbcf50",
+      "caminhos_sujos": [
+        "relatorios/2026-08-28-batedor-repos.md",
+        "vigias/ERROS.md"
+      ]
+    },
+    "achados": 5,
+    "criticos": 2,
+    "base": "21266f797a8d43d417a3d783b83de19f4df5c339",
+    "head": "1422b1438322a9d49531e1079ca1010904fbcf50",
+    "nota": "2 criticos reproduzidos pela sessao com controle (nao pelo relato): (1) extracao do corpo() torna a frase de setup.cjs condicional a `dados` — o corpo() antigo recebia `dados` e nunca usava, e o raizDeDados() antigo do conferir-ponte estourava ReferenceError em CODIGO_ROOT nao-declarado; efeito: bloco gerado antes da branch vira RECUSADO editado-a-mao exit 2 no checker novo, CONFERIDO exit 0 no antigo, mesmo arquivo intocado — invariante 1 quebrada. (2) resposta da entrevista contendo o marcador projeto:fim trunca o CLAUDE.md gerado, 2 das 4 respostas somem sem erro. Creep: hooks/portaria.cjs (fluxo 9) nesta branch. Achado 3: lerProjetoMd/hashDoArquivo importados e nunca usados em conferir-ponte.cjs:57 (duplicacao que a T1 existia para eliminar). Achado 4: SKILL.md:102 promete titulo com nome do repo, ponte.cjs:317 emite # Bloco do projeto fixo.",
+    "em": "2026-08-31",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
