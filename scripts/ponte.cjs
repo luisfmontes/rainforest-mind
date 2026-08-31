@@ -398,13 +398,24 @@ function escrever(alvoArquivo, blocoNovo, aplicar, hash, alvo) {
     // Encontra o inicio do bloco, seja com ou sem hash
     const inicioIdx = anterior.indexOf("<!-- rainforest-mind:inicio");
     const antes = anterior.slice(0, inicioIdx);
-    // Remove o antigo bloco de projeto também se existir
+    // Remove o antigo bloco de projeto também se existir — mas APENAS se for um bloco real
+    // Um bloco real começa com <!-- rainforest-mind:projeto:inicio e tem seu fim após esse início
     let depois = anterior.slice(anterior.indexOf(FIM) + FIM.length).replace(/^\n+/, "");
-    if (depois.includes(FIM_PROJETO)) {
-      const idxFimProj = depois.indexOf(FIM_PROJETO);
-      depois = depois.slice(idxFimProj + FIM_PROJETO.length).replace(/^\n+/, "");
+
+    // Procura por um início de bloco de projeto real no pós-FIM
+    const inicioProjetoIdx = depois.indexOf("<!-- rainforest-mind:projeto:inicio");
+    if (inicioProjetoIdx !== -1) {
+      // Há um início de bloco no texto pós-FIM. Agora procura o fim DEPOIS desse início
+      const fimProjetoIdxAposInicio = depois.indexOf(FIM_PROJETO, inicioProjetoIdx);
+      if (fimProjetoIdxAposInicio !== -1) {
+        // Encontrou o fim após o início. Remove o bloco inteiro
+        depois = depois.slice(fimProjetoIdxAposInicio + FIM_PROJETO.length).replace(/^\n+/, "");
+      }
+      // Se não encontrou o fim após o início, não remove nada (bloco incompleto)
     }
-    saida = `${antes}${marcadoComProjeto}${depois ? `${depois}` : ""}`;
+    // Se não há início, não remove nada (menção solta ao marcador de fim não causa remoção)
+
+    saida = `${antes}${marcadoComProjeto}${depois ? `\n${depois}` : ""}`;
     acao = "substitui o bloco gerado";
   } else {
     // Arquivo escrito a mao por outra pessoa. Nunca sobrescrever: o bloco entra no

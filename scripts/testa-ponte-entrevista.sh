@@ -569,6 +569,47 @@ esperado "conferir com caminho absoluto" 0 node "$PLUG/scripts/conferir-ponte.cj
 prova "  ... caminho relativo devolve CONFERIDO" "cd '$REPO_N' && node $PLUG/scripts/conferir-ponte.cjs CLAUDE.md"
 
 echo
+echo "== (o) TAREFA 18: notas manuais com mencao ao marcador de fim sobrevivem a regeneracao =="
+REPO_O="$CAIXA/repo-o"
+mkdir -p "$REPO_O"
+cat > "$REPO_O/package.json" <<'EOF'
+{
+  "name": "teste-o"
+}
+EOF
+
+REPO_O_WIN="$(cygpath -m "$REPO_O" 2>/dev/null || printf '%s' "$REPO_O")"
+
+# Gera CLAUDE.md SEM projeto (sem gravar respostas, apenas bloco gerado)
+# Isso resulta em um arquivo com o bloco gerado MAS SEM o bloco de projeto
+esperado "gera CLAUDE.md sem bloco de projeto" 0 $PONTE --alvo "$REPO_O_WIN" --agente claude --aplicar
+
+# Verifica que NÃO há bloco de projeto inicialmente
+prova "  ... CLAUDE.md sem bloco de projeto inicialmente" "! grep -q 'rainforest-mind:projeto:inicio' '$REPO_O/CLAUDE.md'"
+
+# Adiciona notas manuais APÓS o FIM com menção ao marcador de fim (que pode confundir o corte cego)
+# Usa sentinelas para provar sobrevivência
+cat >> "$REPO_O/CLAUDE.md" <<'EOF'
+
+[SENTINELA_ANTES]
+
+## Notas manuais do dono do repo
+
+Alguns apontamentos sobre a arquitetura.
+Referência importante: <!-- rainforest-mind:projeto:fim --> é um marcador do sistema.
+
+[SENTINELA_DEPOIS]
+EOF
+
+# Regenera (deve MANTER o arquivo e NÃO remover as notas mesmo com a menção ao marcador)
+esperado "regenera, notas com marcador permanecem intactas" 0 $PONTE --alvo "$REPO_O_WIN" --agente claude --aplicar
+
+# Verifica que as sentinelas e a menção ao marcador ainda estão lá (não foram cortadas)
+contem "  ... sentinela ANTES sobrevive" "SENTINELA_ANTES" cat "$REPO_O/CLAUDE.md"
+contem "  ... sentinela DEPOIS sobrevive" "SENTINELA_DEPOIS" cat "$REPO_O/CLAUDE.md"
+contem "  ... mencao ao marcador de fim sobrevive" "é um marcador do sistema" cat "$REPO_O/CLAUDE.md"
+
+echo
 echo "== (k) executa cada linha do bloco de exemplos de skills/ponte/SKILL.md =="
 REPO_K="$CAIXA/repo-k"
 mkdir -p "$REPO_K/.github/workflows"
