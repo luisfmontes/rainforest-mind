@@ -52,7 +52,14 @@
     ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "pendente",
+    "snapshot": {
+      "head": "c40f031ca27d3e61e48713b63b483cfaadd697a9",
+      "caminhos_sujos": [
+        "relatorios/2026-08-28-batedor-repos.md",
+        "vigias/ERROS.md"
+      ]
+    }
   },
   "verificar": {
     "status": "pendente"
