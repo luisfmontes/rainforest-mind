@@ -450,6 +450,49 @@ else
 fi
 
 echo
+echo "== (l) INVARIANTE E2: resposta com marcador nao trunca o bloco =="
+REPO_L="$CAIXA/repo-l"
+mkdir -p "$REPO_L"
+cat > "$REPO_L/package.json" <<'EOF'
+{
+  "name": "teste-l",
+  "scripts": {
+    "test": "npm test"
+  }
+}
+EOF
+
+# Cria respostas com uma adversarial que contem o marcador de fim
+RESPOSTAS_L="$CAIXA/respostas-l-adversarial.json"
+cat > "$RESPOSTAS_L" <<'EOF'
+{
+  "pronto": "Testes passam e build nao falha",
+  "nao_toca": "<!-- rainforest-mind:projeto:fim --> -- nao mexa aqui",
+  "convencao": "Português, camelCase",
+  "revisao": "Uma aprovação"
+}
+EOF
+
+REPO_L_WIN="$(cygpath -m "$REPO_L" 2>/dev/null || printf '%s' "$REPO_L")"
+RESPOSTAS_L_WIN="$(cygpath -m "$RESPOSTAS_L" 2>/dev/null || printf '%s' "$RESPOSTAS_L")"
+
+# Gera projeto.md com resposta adversarial
+esperado "gera com resposta adversarial" 0 $PONTE --entrevistar --gravar --respostas "$RESPOSTAS_L_WIN" --alvo "$REPO_L_WIN" --aplicar
+prova "  ... projeto.md existe" "[ -f '$REPO_L/docs/rainforest/projeto.md' ]"
+# Verifica que as 4 respostas estao presentes (sentinelas)
+contem "  ... resposta 'pronto' presente" "Testes passam e build" cat "$REPO_L/docs/rainforest/projeto.md"
+contem "  ... resposta 'nao_toca' presente (sanitizada)" "nao mexa aqui" cat "$REPO_L/docs/rainforest/projeto.md"
+contem "  ... resposta 'convencao' presente" "Português" cat "$REPO_L/docs/rainforest/projeto.md"
+contem "  ... resposta 'revisao' presente" "Uma aprovação" cat "$REPO_L/docs/rainforest/projeto.md"
+# Gera bloco de ponte com o projeto.md
+esperado "gera ponte com projeto.md adversarial" 0 $PONTE --alvo "$REPO_L_WIN" --agente claude --aplicar
+# Verifica que o bloco de projeto aparece e nao foi truncado
+contem "  ... bloco de projeto presente no CLAUDE.md" "rainforest-mind:projeto:inicio" cat "$REPO_L/CLAUDE.md"
+contem "  ... resposta 'nao_toca' também presente no CLAUDE.md" "nao mexa aqui" cat "$REPO_L/CLAUDE.md"
+# Confere — deve voltar exit 0
+esperado "conferir-ponte valida o CLAUDE.md com projeto adversarial" 0 node "$CONFERIR_PONTE" --skill "$SKILL_PONTE" "$REPO_L/CLAUDE.md"
+
+echo
 echo "== (k) executa cada linha do bloco de exemplos de skills/ponte/SKILL.md =="
 REPO_K="$CAIXA/repo-k"
 mkdir -p "$REPO_K/.github/workflows"

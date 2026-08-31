@@ -211,7 +211,7 @@ ${cli}
 
 \`<plugin>\` e a pasta do rainforest-mind nesta maquina. Sua pasta de dados
 (FOCO.md, ideias.jsonl, projetos.json) **nao se chumba aqui**: descubra com
-\`node <plugin>/scripts/ideias.cjs conferir\`, que imprime o caminho resolvido${dados ? "" : ", e monte com `node <plugin>/scripts/setup.cjs --criar` se ainda nao existir"}.
+\`node <plugin>/scripts/ideias.cjs conferir\`, que imprime o caminho resolvido, e monte com \`node <plugin>/scripts/setup.cjs --criar\` se ainda nao existir.
 Caminho de home dentro de arquivo versionado vaza a maquina de quem gerou — e este
 arquivo nasce para ser commitado no repo de outra pessoa.
 

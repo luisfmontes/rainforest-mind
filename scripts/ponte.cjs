@@ -246,6 +246,9 @@ function gravarProjetoMd(alvo, respostasArquivo, aplicar) {
     }
   }
 
+  // Sanitiza respostas: remove marcadores perigosos que causariam truncamento
+  respostas = sanitizarRespostas(respostas);
+
   // Varredura pura (fatos: stack, comandos, layout)
   const fatos = varrerRepositorio(alvo);
 
@@ -271,6 +274,23 @@ function gravarProjetoMd(alvo, respostasArquivo, aplicar) {
   } catch (e) {
     erro(`erro ao gravar projeto.md atomicamente: ${e.message}`);
   }
+}
+
+/**
+ * Sanitiza respostas: remove marcadores rainforest-mind:projeto que causariam truncamento.
+ * Busca por <!-- rainforest-mind:projeto:(inicio|fim) --> e remove, tolerando espaçamento.
+ */
+function sanitizarRespostas(respostas) {
+  const padraoMarcador = /<!--\s*rainforest-mind:projeto:(inicio|fim)\s*-->/gi;
+  const sanitizadas = {};
+  for (const chave in respostas) {
+    if (typeof respostas[chave] === "string") {
+      sanitizadas[chave] = respostas[chave].replace(padraoMarcador, "");
+    } else {
+      sanitizadas[chave] = respostas[chave];
+    }
+  }
+  return sanitizadas;
 }
 
 /**

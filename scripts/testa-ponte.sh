@@ -122,6 +122,21 @@ bash -c "
 prova "com pasta de dados AUSENTE, mostra aviso de setup.cjs" "grep -q 'setup.cjs --criar' '$ALVO_SEM_DADOS/CLAUDE.md'"
 
 echo
+echo "== 3.5. INVARIANTE E1: bloco identico com e sem dados resolvidos =="
+# O bloco nao deve variar em funcao de COMO ele foi gerado.
+# Gera uma vez com pasta de dados (normal):
+$PONTE --alvo "$ALVO_WIN" --agente claude --aplicar >/dev/null 2>&1
+cp "$ALVO/CLAUDE.md" "$CAIXA/bloco-com-dados"
+# Gera de novo, mas com RFM_ROOT apontando para pasta que nao existe:
+bash -c "
+  export RFM_ROOT='$CAIXA/nao-existe'
+  $PONTE --alvo '$ALVO_WIN' --agente claude --aplicar >/dev/null 2>&1
+" 2>&1
+cp "$ALVO/CLAUDE.md" "$CAIXA/bloco-sem-dados"
+prova "bloco identico com e sem dados resolvidos" "cmp -s '$CAIXA/bloco-com-dados' '$CAIXA/bloco-sem-dados'"
+prova "frase do setup.cjs presente no bloco" "grep -q 'setup.cjs --criar' '$CAIXA/bloco-com-dados'"
+
+echo
 echo "== 4. regenerar substitui o bloco, e o que e de outra pessoa fica =="
 BYTES1=$(wc -c < "$ALVO/AGENTS.md")
 $PONTE --alvo "$ALVO_WIN" --agente codex --aplicar >/dev/null 2>&1

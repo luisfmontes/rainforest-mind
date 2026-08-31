@@ -99,7 +99,7 @@ node scripts/ponte.cjs --entrevistar --gravar \
 4. Com `--aplicar`, grava em `docs/rainforest/projeto.md` do alvo, atomicamente.
 
 **O arquivo gerado:**
-- Título: nome do repositório (nome do diretório).
+- Título: "Bloco do projeto".
 - Seção "Fatos da varredura": stack, scripts de test/build, workflows, layout.
 - Seção "Entrevista": as 4 perguntas + respostas.
 

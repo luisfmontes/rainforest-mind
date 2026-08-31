@@ -243,34 +243,17 @@ function conferirBlocoProjetoGerado(texto, caminhoProjetoMd, raizAlvo) {
     };
   }
 
-  // Lê o conteúdo do projeto.md
-  let conteudoProjetoMdFull = null;
-  try {
-    conteudoProjetoMdFull = fs.readFileSync(caminhoProjetoMd, 'utf8');
-  } catch {
-    // projeto.md não existe ou não pode ser lido — mas o bloco existe no arquivo
-    // Isso significa que o arquivo foi regenerado e o projeto.md sumiu
+  // Usa lerProjetoMd do módulo compartilhado para extrair o bloco de projeto.md
+  const blocoProjetoMdCompleto = lerProjetoMd(raizAlvo);
+
+  if (!blocoProjetoMdCompleto) {
+    // projeto.md não existe, não pode ser lido, ou não tem marcadores válidos
+    // mas o bloco existe no arquivo — o arquivo foi regenerado e o projeto.md sumiu
     return {
       veredito: 'ficou-para-tras',
-      msg: 'O arquivo tem bloco de projeto, mas docs/rainforest/projeto.md não existe ou não pode ser lido'
+      msg: 'O arquivo tem bloco de projeto, mas docs/rainforest/projeto.md não existe, não pode ser lido, ou tem marcadores inválidos'
     };
   }
-
-  // Extrai o bloco do projeto.md original
-  const marcadorInicioProj = '<!-- rainforest-mind:projeto:inicio -->';
-  const marcadorFimProj = '<!-- rainforest-mind:projeto:fim -->';
-  const idxInicio = conteudoProjetoMdFull.indexOf(marcadorInicioProj);
-  const idxFim = conteudoProjetoMdFull.indexOf(marcadorFimProj);
-
-  if (idxInicio < 0 || idxFim < 0 || idxFim <= idxInicio) {
-    return {
-      veredito: 'ficou-para-tras',
-      msg: 'O docs/rainforest/projeto.md não tem marcadores de projeto válidos'
-    };
-  }
-
-  // Extrai o conteúdo do bloco
-  const blocoProjetoMdCompleto = conteudoProjetoMdFull.slice(idxInicio, idxFim + marcadorFimProj.length);
   const linhasEsperadas = blocoProjetoMdCompleto
     .split(/\r?\n/)
     .slice(1, -1) // Remove linha do INICIO e linha do FIM
