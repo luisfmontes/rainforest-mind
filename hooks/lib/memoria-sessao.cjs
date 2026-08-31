@@ -181,10 +181,11 @@ function montarMemoria(o) {
   const linhas = observacoes.map((obs) => formatarObservacao(obs, apelidos)).filter(Boolean);
   const corpo = linhas.join('\n');
 
-  // Ponteiro para busca sob demanda (D11 — reduz observações residentes mas mantém acesso ao corpus).
-  const ponteiro = '\n\n(Para buscar no corpus completo: `node scripts/memoria.cjs buscar --texto <termo> --limite 5`)';
+  // Rodapé ensinando busca sob demanda (D11 — mantém acesso ao corpus completo).
+  // Formato: linha única começando com "mais: " para economizar bytes.
+  const rodape = '\n\nmais: node scripts/memoria.cjs buscar "<termo>"';
 
-  const texto = cabecalho + corpo + ponteiro;
+  const texto = cabecalho + corpo + rodape;
 
   // Teto em bytes com corte ANUNCIADO.
   return limitarBytes(texto, TETOS.MEMORIA_MAX_BYTES, 'Memória');
