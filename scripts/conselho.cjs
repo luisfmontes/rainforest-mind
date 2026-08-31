@@ -174,6 +174,199 @@ objeções concretas (obrigatório: mínimo uma) e riscos à adoção.`,
   return personas[nome] || '';
 }
 
+// Finds the most recent rodada directory or returns null
+function encontrarRodada() {
+  if (!fs.existsSync(DIR_CONSELHO)) {
+    return null;
+  }
+
+  const rodadas = fs.readdirSync(DIR_CONSELHO)
+    .filter(d => /^202\d{5}-/.test(d))
+    .sort()
+    .reverse();
+
+  if (rodadas.length === 0) {
+    return null;
+  }
+
+  return path.join(DIR_CONSELHO, rodadas[0]);
+}
+
+// Validates a parecer JSON against schema
+function validarParecer(parecer) {
+  if (typeof parecer !== 'object' || parecer === null) {
+    return { valido: false, erro: 'parecer não é um objeto JSON' };
+  }
+
+  if (typeof parecer.posicao !== 'string') {
+    return { valido: false, erro: 'campo posicao deve ser string' };
+  }
+
+  if (!Array.isArray(parecer.argumentos)) {
+    return { valido: false, erro: 'campo argumentos deve ser array' };
+  }
+
+  if (!Array.isArray(parecer.objecoes)) {
+    return { valido: false, erro: 'campo objecoes deve ser array' };
+  }
+
+  if (!Array.isArray(parecer.riscos)) {
+    return { valido: false, erro: 'campo riscos deve ser array' };
+  }
+
+  if (parecer.objecoes.length < 1) {
+    return { valido: false, erro: 'objecoes deve ter ao menos 1 elemento' };
+  }
+
+  return { valido: true };
+}
+
+// Executes parecer collection from all linked members
+function executarPareceres() {
+  const dirRodada = encontrarRodada();
+  if (!dirRodada) {
+    console.error('Erro: nenhuma rodada aberta encontrada');
+    process.exit(1);
+  }
+
+  const estadoPath = path.join(dirRodada, 'estado.json');
+  const estado = JSON.parse(fs.readFileSync(estadoPath, 'utf8'));
+  const membrosLigados = estado.membros_ligados || [];
+
+  const membros = resolverMembros();
+  const membrosMap = {};
+  membros.forEach(m => {
+    membrosMap[m.nome] = m;
+  });
+
+  let temErro = false;
+  const erros = [];
+
+  // Execute each linked member's command
+  for (const nomeMembro of membrosLigados) {
+    const membro = membrosMap[nomeMembro];
+    if (!membro) {
+      console.error(`Erro: membro ${nomeMembro} não encontrado em config`);
+      process.exit(1);
+    }
+
+    const caminhoPrompt = path.join(dirRodada, `prompt-${nomeMembro}.md`);
+    const caminhoSaida = path.join(dirRodada, `parecer-${nomeMembro}.json`);
+
+    // Replace placeholders in command
+    const cmd = membro.cmd
+      .replace('{prompt}', caminhoPrompt)
+      .replace('{saida}', caminhoSaida);
+
+    // Determine shell based on platform
+    const isWindows = process.platform === 'win32';
+    const shell = isWindows ? 'cmd.exe' : 'sh';
+    const shellArg = isWindows ? '/c' : '-c';
+
+    // Execute command
+    const resultado = spawnSync(shell, [shellArg, cmd], {
+      cwd: RAIZ,
+      encoding: 'utf8',
+      timeout: 30000  // 30 second timeout per member
+    });
+
+    if (resultado.error) {
+      temErro = true;
+      erros.push(`${nomeMembro}: timeout ou erro de execução`);
+      continue;
+    }
+
+    if (resultado.status !== 0) {
+      temErro = true;
+      erros.push(`${nomeMembro}: processo saiu com exit ${resultado.status}`);
+      continue;
+    }
+
+    // Check that output file was created and is not empty
+    if (!fs.existsSync(caminhoSaida)) {
+      temErro = true;
+      erros.push(`${nomeMembro}: arquivo de saída não foi criado`);
+      continue;
+    }
+
+    const conteudo = fs.readFileSync(caminhoSaida, 'utf8');
+    if (!conteudo || conteudo.trim().length === 0) {
+      temErro = true;
+      erros.push(`${nomeMembro}: saída vazia`);
+      continue;
+    }
+  }
+
+  if (temErro) {
+    erros.forEach(e => console.error(`  ${e}`));
+    process.exit(1);
+  }
+
+  console.log(`Pareceres coletados de ${membrosLigados.length} membros`);
+  process.exit(0);
+}
+
+// Validates that all parecer files in current rodada are valid
+function conferirFasePareceres() {
+  const dirRodada = encontrarRodada();
+  if (!dirRodada) {
+    console.error('Erro: nenhuma rodada aberta encontrada');
+    process.exit(1);
+  }
+
+  const estadoPath = path.join(dirRodada, 'estado.json');
+  const estado = JSON.parse(fs.readFileSync(estadoPath, 'utf8'));
+  const membrosLigados = estado.membros_ligados || [];
+
+  let temErro = false;
+  const erros = [];
+
+  // Check each linked member's parecer file
+  for (const nomeMembro of membrosLigados) {
+    const caminhoSaida = path.join(dirRodada, `parecer-${nomeMembro}.json`);
+
+    // Check file exists
+    if (!fs.existsSync(caminhoSaida)) {
+      temErro = true;
+      erros.push(`${nomeMembro}: parecer não encontrado`);
+      continue;
+    }
+
+    // Check file is not empty
+    const conteudo = fs.readFileSync(caminhoSaida, 'utf8');
+    if (!conteudo || conteudo.trim().length === 0) {
+      temErro = true;
+      erros.push(`${nomeMembro}: parecer vazio`);
+      continue;
+    }
+
+    // Try to parse JSON
+    let parecer;
+    try {
+      parecer = JSON.parse(conteudo);
+    } catch (e) {
+      temErro = true;
+      erros.push(`${nomeMembro}: JSON inválido (${e.message})`);
+      continue;
+    }
+
+    // Validate schema
+    const validacao = validarParecer(parecer);
+    if (!validacao.valido) {
+      temErro = true;
+      erros.push(`${nomeMembro}: ${validacao.erro}`);
+      continue;
+    }
+  }
+
+  if (temErro) {
+    erros.forEach(e => console.error(`Parecer inválido: ${e}`));
+    process.exit(1);
+  }
+
+  process.exit(0);
+}
+
 // Parses command line arguments
 function parseArgs() {
   const args = process.argv.slice(2);
@@ -221,6 +414,8 @@ function main() {
       const membrosLigados = validarQuorum(membros);
       abrirRodada(caminhoQuestao, membrosLigados);
       process.exit(0);
+    } else if (comando === 'pareceres') {
+      executarPareceres();
     } else if (comando === 'revisar') {
       console.error('Comando revisar não implementado nesta tarefa');
       process.exit(1);
@@ -228,8 +423,12 @@ function main() {
       console.error('Comando sintetizar não implementado nesta tarefa');
       process.exit(1);
     } else if (comando === 'conferir') {
-      console.error('Comando conferir não implementado nesta tarefa');
-      process.exit(1);
+      if (args.fase === 'pareceres') {
+        conferirFasePareceres();
+      } else {
+        console.error('Comando conferir não implementado para esta fase');
+        process.exit(1);
+      }
     } else {
       console.error(`Comando desconhecido: ${comando}`);
       process.exit(1);
