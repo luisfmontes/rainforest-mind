@@ -758,6 +758,7 @@ $E_T3 exigir --slug t3-frontier --estagio verificar >/dev/null
 $E_T3 marcar --slug t3-frontier --estagio verificar --status reprovado >/dev/null
 esperado "ciclo 2: exigir executar passa" 0 $E_T3 exigir --slug t3-frontier --estagio executar
 
+
 # Ciclo 3: terceira reprovacao — RECUSA exit 2
 $E_T3 marcar --slug t3-frontier --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
 $E_T3 marcar --slug t3-frontier --estagio revisar --status ok >/dev/null
