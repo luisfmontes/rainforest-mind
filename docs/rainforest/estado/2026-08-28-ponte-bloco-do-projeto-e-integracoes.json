@@ -24,14 +24,14 @@
     "em": "2026-08-31"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-08-31",
-    "tarefas_ok": 18,
-    "tarefas": 18,
-    "nota": "rodada 4: tarefa 18 integrada. escrever() so remove bloco de projeto REAL (inicio antes do fim); mencao solta ao marcador nao apaga nada — repro da rodada 3 re-executada: as duas sentinelas manuais sobrevivem, linha em branco apos o FIM restaurada, bloco real continua substituindo sem duplicar.",
+    "tarefas_ok": 19,
+    "tarefas": 19,
+    "nota": "rodada 5: tarefa 19 integrada. Remocao do bloco de projeto virou posicional (startsWith no pos-FIM) — fecha a familia dos vetores de mencao (fim R3, inicio R4). Repro da rodada 4 re-executada: 4 de 4 sentinelas sobrevivem; bloco gerado-adjacente continua substituido sem duplicar.",
     "em": "2026-08-31",
-    "comando": "baterias na arvore integrada + conferir-mutacao da 18 re-rodado pela integracao + conferir-entrega APROVADO + repro re-executada",
-    "saida": "ponte 53/0, conferir-ponte 5/5, entrevista 67/0, integracoes 5/0, setup 59/0, saude 47/0; mutacao 18 exit 0",
+    "comando": "baterias na arvore integrada + conferir-mutacao da 19 re-rodado + conferir-entrega APROVADO + repro re-executada",
+    "saida": "ponte 53/0, conferir-ponte 5/5, entrevista 75/0, integracoes 5/0, setup 59/0, saude 47/0; mutacao 19 exit 0",
     "mutacao": [
       {
         "tarefa": 1,
@@ -41,27 +41,27 @@
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "caso (a) detecta stack Node por package.json real de testa-ponte-entrevista.sh"
+        "fixture": "caso (a) detecta stack Node de testa-ponte-entrevista.sh"
       },
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "caso (e) grava projeto.md atomicamente de testa-ponte-entrevista.sh"
+        "fixture": "caso (e) grava projeto.md atomicamente"
       },
       {
         "tarefa": 4,
         "resultado": "vermelho",
-        "fixture": "caso (i) bloco de projeto aparece/some/nao duplica de testa-ponte-entrevista.sh"
+        "fixture": "caso (i) bloco de projeto aparece/some/nao duplica"
       },
       {
         "tarefa": 5,
         "resultado": "vermelho",
-        "fixture": "caso (j) bloco de projeto editado a mao e detectado de testa-ponte-entrevista.sh"
+        "fixture": "caso (j) bloco de projeto editado a mao e detectado"
       },
       {
         "tarefa": 6,
         "resultado": "vermelho",
-        "fixture": "bloco INTEGRACOES declaravel desligada por padrao de testa-setup.sh"
+        "fixture": "bloco INTEGRACOES desligada por padrao de testa-setup.sh"
       },
       {
         "tarefa": 7,
@@ -76,27 +76,27 @@
       {
         "tarefa": 9,
         "resultado": "vermelho",
-        "fixture": "casos R2/R2b integracao-sabia sem .venv de testa-saude.sh"
+        "fixture": "casos R2/R2b de testa-saude.sh"
       },
       {
         "tarefa": 10,
         "resultado": "n/a",
-        "motivo": "docs; caso k executa os exemplos do SKILL.md"
+        "motivo": "docs; caso k executa exemplos do SKILL.md"
       },
       {
         "tarefa": 11,
         "resultado": "vermelho",
-        "fixture": "caso 3.5 bloco identico com e sem dados resolvidos de testa-ponte.sh"
+        "fixture": "caso 3.5 bloco identico com e sem dados de testa-ponte.sh"
       },
       {
         "tarefa": 12,
         "resultado": "vermelho",
-        "fixture": "caso (l) resposta com marcador nao trunca o bloco de testa-ponte-entrevista.sh"
+        "fixture": "caso (l) marcador em resposta nao trunca"
       },
       {
         "tarefa": 13,
         "resultado": "vermelho",
-        "fixture": "casos (i)/(j)/(l) de conferencia do bloco de projeto de testa-ponte-entrevista.sh"
+        "fixture": "casos (i)/(j)/(l) de conferencia do bloco de projeto"
       },
       {
         "tarefa": 14,
@@ -106,28 +106,29 @@
       {
         "tarefa": 15,
         "resultado": "vermelho",
-        "fixture": "caso (m) resposta que nao e string e recusada de testa-ponte-entrevista.sh"
+        "fixture": "caso (m) resposta nao-string recusada"
       },
       {
         "tarefa": 16,
         "resultado": "vermelho",
-        "fixture": "caso (n) caminho relativo devolve mesmo veredito do absoluto de testa-ponte-entrevista.sh"
+        "fixture": "caso (n) caminho relativo mesmo veredito"
       },
       {
         "tarefa": 17,
         "resultado": "vermelho",
-        "fixture": "casos 5.5/5.6 hash unificado e 16 chars de testa-ponte.sh"
+        "fixture": "casos 5.5/5.6 hash unificado de testa-ponte.sh"
       },
       {
         "tarefa": 18,
         "resultado": "vermelho",
-        "fixture": "caso (o) notas manuais com mencao ao marcador sobrevivem de testa-ponte-entrevista.sh"
+        "fixture": "caso (o) mencao ao fim sobrevive"
+      },
+      {
+        "tarefa": 19,
+        "resultado": "vermelho",
+        "fixture": "caso (p) 4 sentinelas com mencao ao inicio e bloco deslocado"
       }
-    ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-08-31"
-    }
+    ]
   },
   "revisar": {
     "status": "reprovado",
