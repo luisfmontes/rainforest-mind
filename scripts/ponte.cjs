@@ -236,11 +236,11 @@ function varrerRepositorio(alvo) {
     // Diretório não existe ou não pode ser lido
   }
 
-  // Coleta layout de 1º nível (ignora .git e node_modules)
+  // Coleta layout de 1º nível (ignora .git, node_modules e docs — artefato gerado)
   try {
     const entries = fs.readdirSync(alvo, { withFileTypes: true });
     for (const entry of entries) {
-      if (entry.isDirectory() && entry.name !== ".git" && entry.name !== "node_modules") {
+      if (entry.isDirectory() && entry.name !== ".git" && entry.name !== "node_modules" && entry.name !== "docs") {
         resultado.layout.push(entry.name);
       }
     }
@@ -250,6 +250,113 @@ function varrerRepositorio(alvo) {
   }
 
   return resultado;
+}
+
+/**
+ * Grava docs/rainforest/projeto.md atomicamente a partir das respostas de entrevista.
+ * Lê arquivo JSON com 4 chaves: pronto, nao_toca, convencao, revisao.
+ * Chama varrerRepositorio() para obter os fatos (stack, comandos, layout).
+ * Gera markdown combinando fatos + respostas.
+ * Se aplicar=true, escreve atomicamente (tmp + rename) em alvo/docs/rainforest/projeto.md.
+ * Se aplicar=false, retorna o conteúdo gerado (stdout, sem gravar).
+ * Retorna {gravado, bytes, markdown} para relato.
+ */
+function gravarProjetoMd(alvo, respostasArquivo, aplicar) {
+  // Lê e valida JSON de respostas
+  let respostas;
+  try {
+    const conteudo = fs.readFileSync(respostasArquivo, "utf8");
+    respostas = JSON.parse(conteudo);
+  } catch (e) {
+    erro(`nao consegui ler ou parsear --respostas '${respostasArquivo}': ${e.message}`);
+  }
+
+  const chavesPrecisas = ["pronto", "nao_toca", "convencao", "revisao"];
+  for (const chave of chavesPrecisas) {
+    if (!(chave in respostas)) {
+      erro(`--respostas ausente chave obrigatoria: ${chave}`);
+    }
+  }
+
+  // Varredura pura (fatos: stack, comandos, layout)
+  const fatos = varrerRepositorio(alvo);
+
+  // Gera markdown combinando fatos + respostas
+  const markdown = gerarProjetoMarkdown(fatos, respostas);
+
+  // Determina caminho de saída (atomicamente)
+  const dirProjeto = path.join(alvo, "docs", "rainforest");
+  const arquivoFinal = path.join(dirProjeto, "projeto.md");
+  const arquivoTmp = arquivoFinal + ".tmp";
+
+  if (!aplicar) {
+    // Ensaio: apenas retorna o conteúdo
+    return { gravado: false, bytes: Buffer.byteLength(markdown, "utf8"), markdown };
+  }
+
+  // Grava atomicamente: tmp + rename
+  try {
+    fs.mkdirSync(dirProjeto, { recursive: true });
+    fs.writeFileSync(arquivoTmp, markdown, "utf8");
+    fs.renameSync(arquivoTmp, arquivoFinal);
+    return { gravado: true, bytes: Buffer.byteLength(markdown, "utf8"), markdown };
+  } catch (e) {
+    erro(`erro ao gravar projeto.md atomicamente: ${e.message}`);
+  }
+}
+
+/**
+ * Gera o conteúdo markdown de projeto.md a partir dos fatos da varredura + respostas.
+ * Formato: título, seção fatos, seção respostas. Legível, estável para hash.
+ */
+function gerarProjetoMarkdown(fatos, respostas) {
+  const marcadorInicio = "<!-- rainforest-mind:projeto:inicio -->";
+  const marcadorFim = "<!-- rainforest-mind:projeto:fim -->";
+
+  // Formata os fatos da varredura
+  const fatosText = [
+    `### Stack`,
+    `${fatos.stack}`,
+    ``,
+    `### Comandos de teste/build`,
+    fatos.scripts.length > 0
+      ? fatos.scripts.map((s) => `- **${s.tipo}**: \`${s.comando}\``).join("\n")
+      : "(nenhum script encontrado)",
+    ``,
+    `### Layout (diretórios de 1º nível)`,
+    fatos.layout.length > 0
+      ? fatos.layout.map((d) => `- ${d}`).join("\n")
+      : "(nenhum diretório relevante)",
+  ].join("\n");
+
+  // Formata as respostas
+  const respostasText = [
+    `### O que é "pronto" aqui`,
+    respostas.pronto || "(não respondido)",
+    ``,
+    `### O que não se toca`,
+    respostas.nao_toca || "(não respondido)",
+    ``,
+    `### Convenção não escrita`,
+    respostas.convencao || "(não respondido)",
+    ``,
+    `### Política de revisão`,
+    respostas.revisao || "(não respondido)",
+  ].join("\n");
+
+  return [
+    marcadorInicio,
+    `# Bloco do projeto`,
+    ``,
+    `## Fatos da varredura`,
+    ``,
+    fatosText,
+    ``,
+    `## Respostas da entrevista`,
+    ``,
+    respostasText,
+    marcadorFim,
+  ].join("\n");
 }
 
 function corpo(agente, nucleo, dados) {
@@ -354,6 +461,25 @@ function main() {
   if (tem("entrevistar") && tem("varredura")) {
     const resultado = varrerRepositorio(alvo);
     console.log(JSON.stringify(resultado, null, 2));
+    return 0;
+  }
+
+  // Roteamento: --entrevistar --gravar (grava projeto.md atomicamente)
+  if (tem("entrevistar") && tem("gravar")) {
+    const respostasArquivo = arg("respostas");
+    if (!respostasArquivo) erro("--entrevistar --gravar precisa de --respostas <arquivo>");
+
+    const aplicar = tem("aplicar");
+    const r = gravarProjetoMd(alvo, respostasArquivo, aplicar);
+
+    if (!aplicar) {
+      // Ensaio: imprime markdown no stdout
+      console.log(r.markdown);
+      return 0;
+    }
+
+    // Com --aplicar: relata e retorna 0
+    console.log(`projeto.md: ${r.gravado ? "gravado" : "nao gravado"} — ${r.bytes} B`);
     return 0;
   }
 
