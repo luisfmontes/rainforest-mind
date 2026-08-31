@@ -726,58 +726,78 @@ esperado "marcar em estado antigo passa" 0 $E_OLD marcar --slug t-old --estagio 
 unset RFM_ESTADO_ROOT
 
 echo
-echo "== 17. contador tentativas por estagio: teto de 3 com destrave ==
-# TAREFA 3: Tests para teto de 3 tentativas consecutivas, com destrave via liberar
+echo "== 17. contador tentativas: teto de 3 com destrave =="
+# TAREFA 3: Quatro casos — fronteira 2/3, OK zera, liberar, estado antigo
+# Sandbox com git init como nas tarefas anteriores
+
+mkdir -p "$SBP/tarefa3"
+(cd "$SBP/tarefa3" && git init -q && git config user.email t@t && git config user.name T && echo x > a.txt && git add . && git commit -qm inicial)
+export RFM_ESTADO_ROOT="$SBP/tarefa3"
+E_T3="node scripts/estado.cjs"
+
+prep_t3() { # slug — chega até executar com catraca armada
+  $E_T3 iniciar --slug "$1" >/dev/null
+  $E_T3 marcar --slug "$1" --estagio design --status aprovado >/dev/null
+  $E_T3 marcar --slug "$1" --estagio plano  --status ok >/dev/null
+  $E_T3 exigir --slug "$1" --estagio executar >/dev/null
+}
+
+# Caso (a): fronteira exata 2/3 — 2a passa (exit 0), 3a recusa (exit 2)
+prep_t3 t3-frontier
+# Ciclo 1: reprova em verificar
+$E_T3 marcar --slug t3-frontier --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
+$E_T3 marcar --slug t3-frontier --estagio revisar --status ok >/dev/null
+$E_T3 exigir --slug t3-frontier --estagio verificar >/dev/null
+$E_T3 marcar --slug t3-frontier --estagio verificar --status reprovado >/dev/null
+esperado "ciclo 1: exigir executar passa" 0 $E_T3 exigir --slug t3-frontier --estagio executar
+
+# Ciclo 2: reprova de novo
+$E_T3 marcar --slug t3-frontier --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
+$E_T3 marcar --slug t3-frontier --estagio revisar --status ok >/dev/null
+$E_T3 exigir --slug t3-frontier --estagio verificar >/dev/null
+$E_T3 marcar --slug t3-frontier --estagio verificar --status reprovado >/dev/null
+esperado "ciclo 2: exigir executar passa" 0 $E_T3 exigir --slug t3-frontier --estagio executar
+
+# Ciclo 3: terceira reprovacao — RECUSA exit 2
+$E_T3 marcar --slug t3-frontier --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
+$E_T3 marcar --slug t3-frontier --estagio revisar --status ok >/dev/null
+$E_T3 exigir --slug t3-frontier --estagio verificar >/dev/null
+$E_T3 marcar --slug t3-frontier --estagio verificar --status reprovado >/dev/null
+esperado "ciclo 3: exigir executar recusa exit 2" 2 $E_T3 exigir --slug t3-frontier --estagio executar
+
+# Caso (c): liberar grava liberado_em e destrava
+esperado "liberar passa" 0 $E_T3 liberar --slug t3-frontier --estagio verificar
+esperado "apos liberar, exigir passa" 0 $E_T3 exigir --slug t3-frontier --estagio executar
+
+# Caso (b): OK zera o contador — novo ciclo comeca de 1
+$E_T3 marcar --slug t3-frontier --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
+$E_T3 marcar --slug t3-frontier --estagio revisar --status ok >/dev/null
+$E_T3 exigir --slug t3-frontier --estagio verificar >/dev/null
+$E_T3 marcar --slug t3-frontier --estagio verificar --status reprovado >/dev/null
+# Apos OK, contador zera — agora e 1a de novo
+$E_T3 marcar --slug t3-frontier --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
+$E_T3 marcar --slug t3-frontier --estagio revisar --status ok >/dev/null
+$E_T3 exigir --slug t3-frontier --estagio verificar >/dev/null
+$E_T3 marcar --slug t3-frontier --estagio verificar --status reprovado >/dev/null
+esperado "apos OK, contador zerou: exigir passa" 0 $E_T3 exigir --slug t3-frontier --estagio executar
+
+# Ciclo 2 novo: segunda de novo
+$E_T3 marcar --slug t3-frontier --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
+$E_T3 marcar --slug t3-frontier --estagio revisar --status ok >/dev/null
+$E_T3 exigir --slug t3-frontier --estagio verificar >/dev/null
+$E_T3 marcar --slug t3-frontier --estagio verificar --status reprovado >/dev/null
+esperado "segundo de novo: exigir passa" 0 $E_T3 exigir --slug t3-frontier --estagio executar
+
+# Caso (d): estado antigo sem tentativas conta do zero
+mkdir -p "$SBP/tarefa3/docs/rainforest/estado"
+cat > "$SBP/tarefa3/docs/rainforest/estado/t3-old.json" <<'JSONEOF'
+{"slug":"t3-old","criado_em":"2026-08-20","design":{"status":"aprovado"},"plano":{"status":"ok"},"executar":{"status":"ok"},"revisar":{"status":"ok"},"verificar":{"status":"pendente"}}
+JSONEOF
+$E_T3 exigir --slug t3-old --estagio verificar >/dev/null
+$E_T3 marcar --slug t3-old --estagio verificar --status reprovado >/dev/null
+esperado "estado antigo: 1a reprovacao passa" 0 $E_T3 exigir --slug t3-old --estagio executar
+
 unset RFM_ESTADO_ROOT
-
-# Setup basico para os testes
-$E iniciar --slug t-tent >/dev/null
-$E marcar --slug t-tent --estagio design --status aprovado >/dev/null
-$E marcar --slug t-tent --estagio plano  --status ok >/dev/null
-$E exigir  --slug t-tent --estagio executar >/dev/null
-
-# 1a reprovacao — tentativas sobe para 1, exigir passa
-$E marcar --slug t-tent --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
-$E marcar --slug t-tent --estagio revisar --status ok >/dev/null
-$E exigir  --slug t-tent --estagio verificar >/dev/null
-$E marcar --slug t-tent --estagio verificar --status reprovado >/dev/null
-esperado "1a reprovacao: exigir passa" 0 $E exigir --slug t-tent --estagio executar
-
-# 2a reprovacao — tentativas sobe para 2, exigir passa
-$E marcar --slug t-tent --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
-$E marcar --slug t-tent --estagio revisar --status ok >/dev/null
-$E exigir  --slug t-tent --estagio verificar >/dev/null
-$E marcar --slug t-tent --estagio verificar --status reprovado >/dev/null
-esperado "2a reprovacao: exigir passa" 0 $E exigir --slug t-tent --estagio executar
-
-# 3a reprovacao — tentativas sobe para 3, exigir RECUSA exit 2
-$E marcar --slug t-tent --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
-$E marcar --slug t-tent --estagio revisar --status ok >/dev/null
-$E exigir  --slug t-tent --estagio verificar >/dev/null
-$E marcar --slug t-tent --estagio verificar --status reprovado >/dev/null
-esperado "3a reprovacao: exigir recusa exit 2" 2 $E exigir --slug t-tent --estagio executar
-msg_teto=$($E exigir --slug t-tent --estagio executar 2>&1)
-igual "recusa menciona teto" "sim" "$(case "$msg_teto" in *teto*) echo sim;; *) echo nao;; esac)"
-
-# liberar destrava uma vez
-esperado "liberar passa exit 0" 0 $E liberar --slug t-tent --estagio verificar
-esperado "apos liberar, exigir passa" 0 $E exigir --slug t-tent --estagio executar
-
-# OK zera o contador
-$E marcar --slug t-tent --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
-$E marcar --slug t-tent --estagio revisar --status ok >/dev/null
-$E exigir  --slug t-tent --estagio verificar >/dev/null
-$E marcar --slug t-tent --estagio verificar --status reprovado >/dev/null
-# Apos OK, contador zera — agora e 1a de novo, exigir passa
-esperado "apos OK, 4a reprovacao sai como 1a de novo" 0 $E exigir --slug t-tent --estagio executar
-
-# estado antigo sem tentativas conta do zero
-mkdir -p "docs/rainforest/estado"
-echo "{\"slug\":\"t-old-tent\",\"criado_em\":\"2026-08-20\",\"design\":{\"status\":\"aprovado\"},\"plano\":{\"status\":\"ok\"},\"executar\":{\"status\":\"ok\"},\"revisar\":{\"status\":\"ok\"},\"verificar\":{\"status\":\"pendente\"}}" > docs/rainforest/estado/t-old-tent.json
-$E exigir --slug t-old-tent --estagio verificar >/dev/null
-$E marcar --slug t-old-tent --estagio verificar --status reprovado >/dev/null
-esperado "estado antigo sem tentativas: 1a reprovacao passa" 0 $E exigir --slug t-old-tent --estagio executar
-"
 
 echo "== resultado: $ok ok, $falhou falhas =="
 [ "$falhou" = 0 ]
