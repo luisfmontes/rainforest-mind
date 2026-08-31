@@ -258,15 +258,20 @@ function executarPareceres() {
       .replace('{prompt}', caminhoPrompt)
       .replace('{saida}', caminhoSaida);
 
-    // Determine shell based on platform
+    // Shell explicito por plataforma. No Windows, /d /s /c com o comando inteiro
+    // entre aspas externas + windowsVerbatimArguments: sem isso o Node re-escapa
+    // o argumento e o cmd.exe mutila qualquer cmd que contenha aspas (caminho
+    // de fixture entre aspas falhava com exit 1 em todos os membros).
     const isWindows = process.platform === 'win32';
-    const shell = isWindows ? 'cmd.exe' : 'sh';
-    const shellArg = isWindows ? '/c' : '-c';
+    const spawnArgs = isWindows
+      ? ['cmd.exe', ['/d', '/s', '/c', `"${cmd}"`]]
+      : ['sh', ['-c', cmd]];
 
     // Execute command
-    const resultado = spawnSync(shell, [shellArg, cmd], {
+    const resultado = spawnSync(spawnArgs[0], spawnArgs[1], {
       cwd: RAIZ,
       encoding: 'utf8',
+      windowsVerbatimArguments: isWindows,
       timeout: 30000  // 30 second timeout per member
     });
 
