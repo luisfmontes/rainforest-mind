@@ -59,23 +59,29 @@
     ]
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "d6b0a3cfeff8391c4449133375dade19981e3486",
+      "head": "39c16af9c8de28ec6bfb20105a809753df0fc776",
       "caminhos_sujos": [
+        "docs/rainforest/estado/2026-08-28-memoria-indice-vivo-e-consolidacao.json",
         "relatorios/2026-08-28-batedor-repos.md",
         "vigias/ERROS.md"
       ]
     },
     "criterio": "D1 migracao de banco legado + D5 alarme nao engole erro imprevisto",
-    "comando": "repro do revisor: banco legado -> iniciar -> buscar --texto NUNCAINDEXADA -> []; banco sem offset_processado -> checarMemoria -> ok",
-    "saida": "FTS segue 'fts5(conteudo)' sem content=, DROP inexistente no criarSchema, teste 11 tautologico; saude cai no fallthrough sem else e devolve ok com problema capturado",
+    "comando": "revisao independente (sonnet), 3 rodadas: criticos reproduzidos e reconfirmados; delta do observar revisado com perguntas de perda de dado",
+    "saida": "APROVADO; 2 avisos aceitos e documentados (cauda truncada nao volta; janela de ponto-cego pulada permanente) + sugestao de codigo morto gravarResumo/marcarConsolidadas; emenda tarefa 6 cobre o creep",
     "faltou": "migracao drop+recreate+rebuild real e idempotente; else final no checarMemoria (problema nao classificado = alerta); metade do D4 (injecao prefere resumo) sem implementacao; resumo+marcacao nao atomicos; teto de consolidacao >50",
     "em": "2026-08-31",
-    "tentativas": 1
+    "base": "00ea6c43cfcf216a1ace960ab5fb209637aaddb2",
+    "head": "39c16af",
+    "achados": 0
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "criterios das 6 tarefas no HEAD 39c16af: 4 baterias + demo de banco legado + saude e --seco no banco real",
+    "saida": "T1: banco legado migra e buscar acha o nunca-indexado; T2: rodape buscar --texto no teto; T3: 9+5 com fallbacks e resumo preferido; T4: consolidar atomico, fronteira 50/51, falha de LLM intacta; T5: saude real ok (schema valido, indice vivo, pipeline em dia); T6: fila real 34->0, --seco sem pendencia; baterias 29/64/43/38, 0 falhas",
+    "em": "2026-08-31"
   },
   "fechar": {
     "status": "pendente"
