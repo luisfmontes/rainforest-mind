@@ -265,3 +265,18 @@ mutacao:
   bateria: `bash scripts/testa-ponte-entrevista.sh`
   fixture: caso novo "texto manual que cita o marcador sobrevive a regeneração"
 pronto quando: em `escrever()`, o trecho removido do conteúdo pós-FIM é exatamente o bloco delimitado por `<!-- rainforest-mind:projeto:inicio` ... `<!-- rainforest-mind:projeto:fim -->` — e só quando o INÍCIO existe e vem ANTES do fim; menção solta ao marcador de fim em texto manual não remove nada. Provado por caso novo: CLAUDE.md gerado + notas manuais contendo a string literal do marcador de fim → segundo `--aplicar` → as notas sobrevivem byte a byte (sentinelas antes e depois da menção). E o achado 2 junto: a regeneração volta a separar o bloco do texto manual seguinte com linha em branco (`\n` restaurado como na base), provado comparando a saída da regeneração com bloco+texto manual — o texto não pode colar na linha do FIM
+
+## Emenda da revisão rodada 4 (2026-08-31)
+
+### 19. Remoção do bloco antigo é posicional — só o bloco que o gerador escreveu [tipo: implementar]
+atende: invariante 1; fecha a família inteira dos vetores de menção (fim na R3, início na R4)
+arquivos: `scripts/ponte.cjs`, `scripts/testa-ponte-entrevista.sh`
+depende de: nenhuma
+paralela: nao
+mutacao:
+  arquivo: `scripts/ponte.cjs`
+  de: a exigência posicional (pós-FIM começa com o marcador de início do projeto)
+  para: de volta ao indexOf em qualquer posição
+  bateria: `bash scripts/testa-ponte-entrevista.sh`
+  fixture: caso novo "mencao ao inicio antes de bloco real nao apaga nada"
+pronto quando: em `escrever()`, o bloco de projeto antigo só é removido quando o pós-FIM (após aparar quebras de linha) COMEÇA com `<!-- rainforest-mind:projeto:inicio` — a posição onde o próprio gerador o escreve; o corte vai até o primeiro `<!-- rainforest-mind:projeto:fim -->` a partir daí. Menção a QUALQUER marcador em texto manual (antes, depois, com ou sem bloco real deslocado) não remove nada. Provado por caso novo com 4 sentinelas (antes da menção ao início, entre a menção e um bloco real deslocado, dentro do bloco deslocado, depois dele) — as 4 sobrevivem à regeneração; e os casos existentes (i)/(o) continuam verdes (bloco gerado-adjacente continua substituído sem duplicar)
