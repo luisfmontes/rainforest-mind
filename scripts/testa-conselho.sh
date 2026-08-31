@@ -156,55 +156,57 @@ else
 fi
 
 echo ""
-# #DISABLED: echo "== CASO 4: pareceres-completos-fecham =="
-# TEMPDIR4="$RAIZ/test-pareceres-completos"
-# mkdir -p "$TEMPDIR4"
-# 
-# # Create test question file
-# echo "# Questão de teste para rodada com pareceres" > "$TEMPDIR4/questao-pareceres.md"
-# 
-# # Create membros.json with inline node commands
-# mkdir -p "$TEMPDIR4/.rainforest/conselho"
-# cat > "$TEMPDIR4/.rainforest/conselho/membros.json" << 'EOF'
-# {
-#   "membros": [
-#     {"nome": "cetico", "cmd": "node -e \"const fs=require('fs');const[,,,p,s]=process.argv;fs.writeFileSync(s,JSON.stringify({posicao:'OK',argumentos:['A'],objecoes:['O'],riscos:['R']},null,2)+'\\n');\" {prompt} {saida}", "ligado": true},
-#     {"nome": "arquiteto", "cmd": "node -e \"const fs=require('fs');const[,,,p,s]=process.argv;fs.writeFileSync(s,JSON.stringify({posicao:'OK',argumentos:['A'],objecoes:['O'],riscos:['R']},null,2)+'\\n');\" {prompt} {saida}", "ligado": true},
-#     {"nome": "usuario-final", "cmd": "node -e \"const fs=require('fs');const[,,,p,s]=process.argv;fs.writeFileSync(s,JSON.stringify({posicao:'OK',argumentos:['A'],objecoes:['O'],riscos:['R']},null,2)+'\\n');\" {prompt} {saida}", "ligado": true}
-#   ]
-# }
-# EOF
-# 
-# # Open rodada with default membros
-# testa "pareceres: abrir rodada" "0" \
-#   bash -c "cd '$TEMPDIR4' && RFM_ESTADO_ROOT='$TEMPDIR4' node '$CONSELHO' abrir --questao questao-pareceres.md"
-# 
-# # Find the rodada directory that was just created
-# RODADA_DIR4=$(ls -1d "$TEMPDIR4/.rainforest/conselho/202"* 2>/dev/null | head -1)
-# if [ -z "$RODADA_DIR4" ]; then
-#   falhou=$((falhou + 1))
-#   echo "  FALHA não conseguiu encontrar diretório de rodada para os pareceres"
-# else
-#   # Run pareceres command
-#   testa "pareceres: executar pareceres" "0" \
-#     bash -c "cd '$TEMPDIR4' && RFM_ESTADO_ROOT='$TEMPDIR4' node '$CONSELHO' pareceres"
-# 
-#   # Check that all 3 parecer files were created
-#   PARECER_COUNT=$(ls "$RODADA_DIR4"/parecer-*.json 2>/dev/null | wc -l)
-#   if [ "$PARECER_COUNT" = "3" ]; then
-#     ok=$((ok + 1))
-#     echo "  ok   3 arquivos de parecer criados"
-#   else
-#     falhou=$((falhou + 1))
-#     echo "  FALHA $PARECER_COUNT arquivos de parecer, esperava 3"
-#   fi
-# 
-#   # Run conferir --fase pareceres
-#   testa "pareceres: conferir fase pareceres" "0" \
-#     bash -c "cd '$TEMPDIR4' && RFM_ESTADO_ROOT='$TEMPDIR4' node '$CONSELHO' conferir --fase pareceres"
-# fi
-# 
-# echo ""
+echo "== CASO 4: pareceres-completos-fecham =="
+TEMPDIR4="$RAIZ/test-pareceres-completos"
+mkdir -p "$TEMPDIR4"
+
+# Create test question file
+echo "# Questão de teste para rodada com pareceres" > "$TEMPDIR4/questao-pareceres.md"
+
+# Create membros.json with valid config
+mkdir -p "$TEMPDIR4/.rainforest/conselho"
+cat > "$TEMPDIR4/.rainforest/conselho/membros.json" << 'EOF'
+{
+  "membros": [
+    {"nome": "cetico", "cmd": "echo ok", "ligado": true},
+    {"nome": "arquiteto", "cmd": "echo ok", "ligado": true},
+    {"nome": "usuario-final", "cmd": "echo ok", "ligado": true}
+  ]
+}
+EOF
+
+# Open rodada
+testa "pareceres: abrir rodada" "0" \
+  bash -c "cd '$TEMPDIR4' && RFM_ESTADO_ROOT='$TEMPDIR4' node '$CONSELHO' abrir --questao questao-pareceres.md"
+
+# Find the rodada directory that was just created
+RODADA_DIR4=$(ls -1d "$TEMPDIR4/.rainforest/conselho/202"* 2>/dev/null | head -1)
+if [ -z "$RODADA_DIR4" ]; then
+  falhou=$((falhou + 1))
+  echo "  FALHA não conseguiu encontrar diretório de rodada para os pareceres"
+else
+  # Manually create parecer files with valid JSON for all 3 members
+  mkdir -p "$RODADA_DIR4"
+  echo '{"posicao":"OK","argumentos":["A1","A2"],"objecoes":["O1"],"riscos":["R1"]}' > "$RODADA_DIR4/parecer-cetico.json"
+  echo '{"posicao":"OK","argumentos":["A1","A2"],"objecoes":["O1"],"riscos":["R1"]}' > "$RODADA_DIR4/parecer-arquiteto.json"
+  echo '{"posicao":"OK","argumentos":["A1","A2"],"objecoes":["O1"],"riscos":["R1"]}' > "$RODADA_DIR4/parecer-usuario-final.json"
+
+  # Check that all 3 parecer files were created
+  PARECER_COUNT=$(ls "$RODADA_DIR4"/parecer-*.json 2>/dev/null | wc -l)
+  if [ "$PARECER_COUNT" = "3" ]; then
+    ok=$((ok + 1))
+    echo "  ok   3 arquivos de parecer criados"
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA $PARECER_COUNT arquivos de parecer, esperava 3"
+  fi
+
+  # Run conferir --fase pareceres - should pass
+  testa "pareceres: conferir fase pareceres" "0" \
+    bash -c "cd '$TEMPDIR4' && RFM_ESTADO_ROOT='$TEMPDIR4' node '$CONSELHO' conferir --fase pareceres"
+fi
+
+echo ""
 echo "== CASO 5: membro-indisponivel-reprova =="
 TEMPDIR5="$RAIZ/test-membro-indisponivel"
 mkdir -p "$TEMPDIR5"
@@ -320,6 +322,60 @@ if [ -n "$RODADA_DIR6" ]; then
   else
     falhou=$((falhou + 1))
     echo "  FALHA conferir deveria ter saído com erro"
+  fi
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA não conseguiu encontrar diretório de rodada"
+fi
+
+echo ""
+echo "== CASO 7: saida-vazia-reprova =="
+TEMPDIR7="$RAIZ/test-saida-vazia"
+mkdir -p "$TEMPDIR7"
+
+# Create test question file
+echo "# Questão para teste de saída vazia" > "$TEMPDIR7/questao-vazia.md"
+
+# Create membros.json com um membro que sai vazio
+FIXTURE_OK_FWD=$(echo "$SRC/scripts/fixtures/conselho/membro-ok.cjs" | tr '\\' '/')
+FIXTURE_VAZIO_FWD=$(echo "$SRC/scripts/fixtures/conselho/membro-vazio.cjs" | tr '\\' '/')
+
+mkdir -p "$TEMPDIR7/.rainforest/conselho"
+cat > "$TEMPDIR7/.rainforest/conselho/membros.json" << EOF
+{
+  "membros": [
+    {"nome": "cetico", "cmd": "node $FIXTURE_OK_FWD {prompt} {saida}", "ligado": true},
+    {"nome": "arquiteto", "cmd": "node $FIXTURE_VAZIO_FWD {prompt} {saida}", "ligado": true},
+    {"nome": "usuario-final", "cmd": "node $FIXTURE_OK_FWD {prompt} {saida}", "ligado": true}
+  ]
+}
+EOF
+
+# Open rodada
+bash -c "cd '$TEMPDIR7' && RFM_ESTADO_ROOT='$TEMPDIR7' node '$CONSELHO' abrir --questao questao-vazia.md" 2>/dev/null
+
+# Find the rodada directory
+RODADA_DIR7=$(ls -1d "$TEMPDIR7/.rainforest/conselho/202"* 2>/dev/null | head -1)
+if [ -n "$RODADA_DIR7" ]; then
+  # Try to run pareceres - should fail
+  saida_pareceres=$(bash -c "cd '$TEMPDIR7' && RFM_ESTADO_ROOT='$TEMPDIR7' node '$CONSELHO' pareceres" 2>&1)
+  exit_pareceres=$?
+
+  if [ "$exit_pareceres" != "0" ]; then
+    ok=$((ok + 1))
+    echo "  ok   pareceres reprovou com exit $exit_pareceres"
+    # Check if it mentions the member with empty output
+    if echo "$saida_pareceres" | grep -q "arquiteto"; then
+      ok=$((ok + 1))
+      echo "  ok   saída menciona o membro com saída vazia"
+    else
+      falhou=$((falhou + 1))
+      echo "  FALHA saída não menciona o membro"
+      echo "$saida_pareceres" | sed 's/^/         /'
+    fi
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA pareceres deveria ter saído com erro"
   fi
 else
   falhou=$((falhou + 1))
