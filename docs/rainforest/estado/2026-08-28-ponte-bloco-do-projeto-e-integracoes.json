@@ -1,0 +1,29 @@
+{
+  "slug": "2026-08-28-ponte-bloco-do-projeto-e-integracoes",
+  "titulo": "Fluxo 3 — ponte: bloco do projeto e integracoes declaraveis",
+  "criado_em": "2026-08-31",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/2026-08-28-ponte-bloco-do-projeto-e-integracoes.md",
+    "aprovado_por": "design de 28/08 com Qs na recomendada; Q1 fechada em 2026-08-31 com fatos apurados no ambiente (bridge 3005 + sabia.py doutor), conforme o LEIA-PRIMEIRO manda",
+    "em": "2026-08-31"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}

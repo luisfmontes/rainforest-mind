@@ -5,8 +5,9 @@ repositório" e "quero CLAUDE.md, AGENTS.md e GEMINI.md saindo de um
 entendimento só" — lido contra `skills/setup/SKILL.md`, `commands/setup.md` e
 `commands/ponte.md`.
 
-Data: 2026-08-28. Status: rascunho — Q1 aberta (depende de fato que só o
-usuário tem); demais decisões fechadas na recomendada.
+Data: 2026-08-28. Status: aprovado em 2026-08-31 — Q1 fechada com os fatos
+apurados no ambiente (abaixo, em "Em aberto"); demais decisões fechadas na
+recomendada em 28/08.
 
 ## Objetivo
 
@@ -43,7 +44,7 @@ linha cada, sem rede.
   `docs/rainforest/projeto.md`: versionado (outro dev herda o entendimento),
   editável (é a fonte, não o derivado), e a ponte deriva dele.
 
-## Decisões
+## Decisões fechadas
 
 - **D1 — a entrevista mora na ponte, não no setup.** `ponte.cjs --entrevistar`
   (conduzido pela skill, no estilo do `/brainstorm`): primeiro a **varredura**
@@ -110,10 +111,19 @@ linha cada, sem rede.
 
 ## Em aberto
 
-- **Q1 — o que define "presente e saudável" para cada integração?** Preciso de
-  dois fatos que só você tem: o repositório/instalação do **MCP do WhatsApp**
-  (é entrada de MCP no config do Claude Code? binário? serviço local?) e o do
-  **Sabiá** (mesmo tipo de pergunta) — e, para cada um, o comando local e
-  barato que prova que está de pé. ➡️ Recomendo o formato da resposta: uma
-  linha por integração, `nome; como detectar; ação de conserto` — com isso o
-  D4 fecha e o plano sai inteiro.
+- **Q1 — FECHADA em 2026-08-31, com os fatos apurados no ambiente:**
+  - `integracao-whatsapp-mcp`; **detecção:** GET `http://localhost:3005/api`
+    com timeout curto — qualquer resposta HTTP (um 404 inclusive) prova a
+    bridge de pé; é loopback puro, sem rede externa, e é a mesma checagem que
+    o hook de abertura do rainforest já faz. A arquitetura real: bridge Go
+    (whatsmeow) residente em 127.0.0.1:3005 + servidor MCP Python, repo
+    `C:/Projetos/whatsapp-mcp`. **Conserto:** subir a bridge no repositório
+    local (binário Go de `whatsapp-bridge/`, ou o serviço configurado da
+    máquina).
+  - `integracao-sabia`; **detecção:** rasa = existência de `sabia.py` e da
+    `.venv` no caminho registrado em `projetos.json` (hoje
+    `C:/Projetos/sabia`) — Sabiá é CLI Python local, sem serviço residente,
+    então "presente" é repo instalado, não porta. Profunda (opcional, mais
+    cara): exit 0 de `.venv/Scripts/python sabia.py doutor`, o autodiagnóstico
+    que o próprio repo mantém. **Conserto:** `python -m venv .venv &&
+    .venv/Scripts/pip install -r requirements.txt` e rodar o `doutor`.
