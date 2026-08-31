@@ -24,14 +24,14 @@
     "em": "2026-08-31"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-08-31",
-    "tarefas_ok": 24,
-    "tarefas": 24,
-    "nota": "rodada 9: tarefa 24 pela propria sessao. Bloco de REGRAS ganhou a mesma ancora posicional do de projeto (escrita, leitura e recusa de truncado). Repro da rodada 8 re-executada nos casos 5.7/5.8.",
+    "tarefas_ok": 25,
+    "tarefas": 25,
+    "nota": "rodada 10: tarefa 25 pela propria sessao — ultimo indexOf sem ancora do escrever() fechado (varredura da rodada 9 nao achou outros). Arquivos ja corrompidos antes do conserto estabilizam sem crescer.",
     "em": "2026-08-31",
-    "comando": "baterias + conferir-mutacao da 24 sem pipe",
-    "saida": "ponte 60/0, conferir-ponte 5/5, entrevista 90/0, integracoes 5/0, setup 59/0, saude 47/0; mutacao 24 exit 0",
+    "comando": "baterias + conferir-mutacao da 25 sem pipe",
+    "saida": "ponte 60/0, conferir-ponte 5/5, entrevista 96/0, integracoes 5/0, setup 59/0, saude 47/0; mutacao 25 exit 0",
     "mutacao": [
       {
         "tarefa": 1,
@@ -151,13 +151,14 @@
       {
         "tarefa": 24,
         "resultado": "vermelho",
-        "fixture": "casos 5.7/5.8 de testa-ponte.sh"
+        "fixture": "casos 5.7/5.8"
+      },
+      {
+        "tarefa": 25,
+        "resultado": "vermelho",
+        "fixture": "caso (t) mencao inline nao deixa rabo orfao"
       }
-    ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-08-31"
-    }
+    ]
   },
   "revisar": {
     "status": "reprovado",
