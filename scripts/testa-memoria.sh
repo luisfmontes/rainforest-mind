@@ -170,5 +170,137 @@ else
 fi
 
 echo
+echo "== 10. observacao gravada aparece no buscar SEM reindexar =="
+# Tarefa 1 (D24): Com conteúdo externo sincronizado por triggers, a observação
+# deve aparecer em buscar() sem precisar chamar reindexar() separadamente.
+# Criar banco limpo, inserir observação diretamente, buscar.
+CAIXA5="$(mktemp -d)"
+trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${CAIXA4:-}" "${CAIXA5:-}"' EXIT
+RFM_ROOT="$CAIXA5" $MEMORIA iniciar > /dev/null 2>&1
+# Inserir observação diretamente via SQL (simula caminho do observar.cjs)
+RFM_ROOT="$CAIXA5" node -e "
+  const { abrirBanco } = require('./scripts/memoria.cjs');
+  const path = require('path');
+  const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+  db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
+    .run('projeto1', 'Palavra unica TRIGGER123', new Date().toISOString(), 'test-origem');
+  db.close();
+" 2>/dev/null
+# Buscar sem chamar reindexar — deve achar a observação via FTS5 sincronizado
+resultado=$(RFM_ROOT="$CAIXA5" $MEMORIA buscar --texto "TRIGGER123" --json 2>/dev/null)
+if echo "$resultado" | grep -q "TRIGGER123"; then
+  ok=$((ok+1)); echo "  ok   observacao aparece em buscar sem reindexar (trigger FTS5 funcionando)"
+else
+  falhou=$((falhou+1)); echo "  FALHA observacao nao apareceu em buscar sem reindexar"
+  echo "         resultado: $resultado"
+fi
+
+echo
+echo "== 11. banco legacy (FTS sem content externo) funciona apos migração =="
+# Tarefa 1 (D24): Cria banco no schema ANTIGO (sem triggers, sem content externo),
+# executa criarSchema novo (que deve ser idempotente), e valida que buscar funciona.
+CAIXA6="$(mktemp -d)"
+trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${CAIXA4:-}" "${CAIXA5:-}" "${CAIXA6:-}"' EXIT
+# Criar banco legacy manualmente (sem content externo, sem triggers)
+RFM_ROOT="$CAIXA6" node -e "
+  const DatabaseSync = require('node:sqlite').DatabaseSync;
+  const path = require('path');
+  const fs = require('fs');
+  fs.mkdirSync(process.env.RFM_ROOT, { recursive: true });
+  const db = new DatabaseSync(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+  db.exec(\`
+    CREATE TABLE IF NOT EXISTS observacoes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      projeto TEXT NOT NULL,
+      conteudo TEXT NOT NULL,
+      criada_em TEXT NOT NULL,
+      origem TEXT,
+      UNIQUE(projeto, origem)
+    );
+    CREATE VIRTUAL TABLE IF NOT EXISTS observacoes_fts USING fts5(conteudo);
+    INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES ('proj', 'palavra chave LEGACY', datetime('now'), 'legacy-origem');
+    INSERT INTO observacoes_fts(rowid, conteudo) VALUES (1, 'palavra chave LEGACY');
+  \`);
+  db.close();
+" 2>/dev/null
+# Executar criarSchema novo (que migra triggers, content externo, etc)
+RFM_ROOT="$CAIXA6" $MEMORIA iniciar > /dev/null 2>&1
+# Verificar que buscar encontra a observação
+resultado=$(RFM_ROOT="$CAIXA6" $MEMORIA buscar --texto "LEGACY" --json 2>/dev/null)
+if echo "$resultado" | grep -q "LEGACY"; then
+  ok=$((ok+1)); echo "  ok   banco legacy migrado, buscar encontra observacao"
+else
+  falhou=$((falhou+1)); echo "  FALHA buscar nao encontrou observacao em banco legacy migrado"
+fi
+
+echo
+echo "== 12. UPDATE e DELETE mantêm count(observacoes) == count(observacoes_fts) =="
+# Tarefa 1 (D24): Triggers de UPDATE/DELETE mantêm sincronização.
+# Inserir, atualizar, deletar, verificar contagem em ambas tabelas.
+CAIXA7="$(mktemp -d)"
+trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${CAIXA4:-}" "${CAIXA5:-}" "${CAIXA6:-}" "${CAIXA7:-}"' EXIT
+RFM_ROOT="$CAIXA7" $MEMORIA iniciar > /dev/null 2>&1
+resultado=$(RFM_ROOT="$CAIXA7" node -e "
+  const { abrirBanco } = require('./scripts/memoria.cjs');
+  const path = require('path');
+  const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+  const agora = new Date().toISOString();
+
+  // Inserir 3 observações
+  db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
+    .run('p', 'conteudo 1', agora, 'o1');
+  db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
+    .run('p', 'conteudo 2', agora, 'o2');
+  db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
+    .run('p', 'conteudo 3', agora, 'o3');
+
+  // Atualizar primeira (trigger UPDATE: delete velho, insert novo)
+  db.prepare('UPDATE observacoes SET conteudo = ? WHERE id = 1')
+    .run('conteudo 1 ATUALIZADO');
+
+  // Deletar segunda (trigger DELETE)
+  db.prepare('DELETE FROM observacoes WHERE id = 2').run();
+
+  // Contar em ambas tabelas (devem ser iguais: 2 observações após operações)
+  const cntObs = db.prepare('SELECT COUNT(*) c FROM observacoes').get().c;
+  const cntFts = db.prepare('SELECT COUNT(*) c FROM observacoes_fts').get().c;
+
+  db.close();
+  process.stdout.write(cntObs + ':' + cntFts);
+" 2>/dev/null)
+if [ "$resultado" = "2:2" ]; then
+  ok=$((ok+1)); echo "  ok   UPDATE/DELETE sincronizados, contagens iguais (2:2)"
+else
+  falhou=$((falhou+1)); echo "  FALHA contagens divergiram ou não são (2:2), veio: $resultado"
+fi
+
+echo
+echo "== 13. criarSchema idempotente — segunda execução não erra =="
+# Tarefa 1 (D24): criarSchema deve ser seguro rodar duas vezes no mesmo banco.
+CAIXA8="$(mktemp -d)"
+trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${CAIXA4:-}" "${CAIXA5:-}" "${CAIXA6:-}" "${CAIXA7:-}" "${CAIXA8:-}"' EXIT
+RFM_ROOT="$CAIXA8" $MEMORIA iniciar > /dev/null 2>&1
+# Inserir observação
+RFM_ROOT="$CAIXA8" node -e "
+  const { abrirBanco } = require('./scripts/memoria.cjs');
+  const path = require('path');
+  const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+  db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
+    .run('p', 'idempotencia teste', new Date().toISOString(), 'o-idem');
+  db.close();
+" 2>/dev/null
+# Segunda execução de iniciar (que chama criarSchema de novo)
+RFM_ROOT="$CAIXA8" $MEMORIA iniciar > /dev/null 2>&1
+got=$?
+# Verificar que a observação ainda está lá
+resultado=$(RFM_ROOT="$CAIXA8" $MEMORIA buscar --texto "idempotencia" --json 2>/dev/null)
+if [ "$got" = "0" ] && echo "$resultado" | grep -q "idempotencia teste"; then
+  ok=$((ok+1)); echo "  ok   criarSchema idempotente, segunda execução ok"
+else
+  falhou=$((falhou+1)); echo "  FALHA criarSchema não foi idempotente"
+  echo "         exit code: $got, resultado: $resultado"
+fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

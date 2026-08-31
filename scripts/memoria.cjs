@@ -348,14 +348,53 @@ function criarSchema(conexao) {
 
   let sql = fs.readFileSync(caminhoSchema, 'utf8');
   // Remover comentários de linha SQL (--) antes de fazer split.
-  // Dividir por `;` não é parsing robusto, mas o arquivo é nosso e controlado.
-  // Para arquivos SQL arbitrários isso falharia com comentários dentro de strings,
-  // mas aqui temos apenas CREATE TABLE IF NOT EXISTS (idempotentes).
   sql = sql.split('\n').filter(linha => !linha.trim().startsWith('--')).join('\n');
-  const statements = sql
-    .split(';')
-    .map(s => s.trim())
-    .filter(s => s.length > 0);
+
+  // Parser especial para triggers: reconhecer BEGIN...END como blocos únicos.
+  // Estratégia: encontrar CREATE TRIGGER...BEGIN...END; e trata-lo como um statement único.
+  const statements = [];
+  let i = 0;
+  while (i < sql.length) {
+    // Procurar pelo próximo CREATE TRIGGER
+    const triggerMatch = sql.indexOf('CREATE TRIGGER', i);
+    if (triggerMatch === -1) {
+      // Nenhum trigger a partir daqui: processar o resto por split normal
+      const resto = sql.substring(i).trim();
+      if (resto.length > 0) {
+        const ultimos = resto
+          .split(';')
+          .map(s => s.trim())
+          .filter(s => s.length > 0);
+        statements.push(...ultimos);
+      }
+      break;
+    }
+
+    // Procurar por `;` antes do trigger (para capturar statements anteriores)
+    const prevSemicolon = sql.lastIndexOf(';', triggerMatch);
+    if (prevSemicolon > i) {
+      const antes = sql.substring(i, prevSemicolon).trim();
+      if (antes.length > 0) {
+        const stmts = antes
+          .split(';')
+          .map(s => s.trim())
+          .filter(s => s.length > 0);
+        statements.push(...stmts);
+      }
+    }
+
+    // Encontrar o final do trigger (END;)
+    const endIdx = sql.indexOf('END;', triggerMatch);
+    if (endIdx === -1) {
+      throw new Error(`Trigger sem fechamento encontrado em ${triggerMatch}`);
+    }
+
+    // Extrair o trigger inteiro
+    const trigger = sql.substring(triggerMatch, endIdx + 4).trim();
+    statements.push(trigger);
+
+    i = endIdx + 4;
+  }
 
   for (const stmt of statements) {
     try {
@@ -647,22 +686,14 @@ function extrairSchema(conexao) {
 }
 
 // Popula o índice FTS5 com observações existentes no banco.
+// Tarefa 1 (D24): Com conteúdo externo (content='observacoes'), usa comando 'rebuild'
+// em vez de DELETE+INSERT individual, por segurança e performance.
 function popularFts5(conexao) {
   try {
-    // Limpar índice anterior se existe (para reindexação).
-    try {
-      conexao.exec('DELETE FROM observacoes_fts');
-    } catch (e) {
-      // Ignorar se tabela não existe ainda (primeira execução).
-    }
-
-    // Inserir todas as observações no índice FTS5.
-    const linhas = conexao.prepare('SELECT id, conteudo FROM observacoes').all();
-    const stmt = conexao.prepare('INSERT INTO observacoes_fts(rowid, conteudo) VALUES (?, ?)');
-
-    for (const { id, conteudo } of linhas) {
-      stmt.run(id, conteudo);
-    }
+    // Reconstruir índice FTS5 do zero via comando 'rebuild'.
+    // Com conteúdo externo, o comando 'rebuild' reconstrói a partir da tabela
+    // observacoes sem duplicação ou risco de dessincronização.
+    conexao.exec('INSERT INTO observacoes_fts(observacoes_fts) VALUES(\'rebuild\')');
   } catch (e) {
     // Não é crítico falhar aqui; FTS5 pode ser reconstruída depois.
     // Mas logamos para debug.
@@ -1079,14 +1110,13 @@ function cmdReindexar() {
       }
     }
 
-    // Reconstruir índice FTS5 a partir das observações (que virão na fase 2).
+    // Reconstruir índice FTS5 a partir das observações.
+    // Tarefa 1 (D24): Com conteúdo externo, usa 'rebuild' em vez de DELETE.
     try {
-      conexao.exec('DELETE FROM observacoes_fts');
+      conexao.exec('INSERT INTO observacoes_fts(observacoes_fts) VALUES(\'rebuild\')');
     } catch (e) {
-      // Ignorar se não existe.
+      // Ignorar se não existe ou falha — não é crítico.
     }
-
-    popularFts5(conexao);
 
     console.log(`ok: índice derivado reconstruído (${caminhoDb})`);
     conexao.close();
