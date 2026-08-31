@@ -3,8 +3,9 @@
 > **Nota de renumeração (2026-08-30):** este design nasceu como "Fluxo 8" na
 > conversa de origem. Renumerado para **9** pelo `LEIA-PRIMEIRO-CONSOLIDADO-v2`
 > (o 8 pertence a handover+regente). Conteúdo da versão final (pós-análise
-> hermes-agent) preservado; a seção "Validação externa" foi remontada a partir
-> da conversa de origem — conferir contra o arquivo original se houver dúvida.
+> hermes-agent) preservado. A seção "Validação externa" foi conferida contra o
+> arquivo original (`fluxo-8-portaria-design.md`, baixado em 2026-08-31) e
+> restaurada na redação original — dúvida encerrada.
 
 **Status:** aprovado em 2026-08-31 (Q1–Q3 fechadas nas recomendadas pelo Luís; ver "Em aberto")
 **Depende de:** `estado.cjs` (leitura do estágio ativo). Conversa com o fluxo 6 (mesmo padrão de lint) e alimenta o fluxo 7 (log de despacho como evidência), mas não bloqueia nem é bloqueado por eles.
@@ -38,12 +39,12 @@ Substituir **autorização por sessão** por **admissão por manifesto**, decidi
 
 ## Validação externa — hermes-agent (NousResearch, MIT)
 
-Comparação feita *depois* do desenho pronto (clonado e lido em 2026-08-29). Quatro convergências independentes, todas em código de produção no `delegate_tool.py` deles:
+Este design foi comparado com o `delegate_tool.py` do hermes-agent depois de desenhado. Onde os dois convergem sem terem se combinado, é sinal de que o desenho está certo:
 
-1. **Contexto isolado + retorno só de resumo** — filho nasce com contexto limpo e o pai só vê o resumo.
-2. **Blocklist em código** — `DELEGATE_BLOCKED_TOOLS` hardcoded (sem delegação recursiva, sem interação com usuário, sem escrita na memória compartilhada): regra em código, não em prosa.
-3. **Fail-closed como default** — aprovação de subagente com auto-deny e log de auditoria, igual ao Q2 daqui.
-4. **Registro de despacho autocontido** — cada decisão logada legível isolada.
+- **Contexto isolado, retorno só de resumo** — o pai deles nunca vê tool calls intermediárias do filho. Igual ao contrato do Task no Claude Code, que a portaria assume.
+- **Blocklist em código, não em prosa** — `DELEGATE_BLOCKED_TOOLS` é um frozenset hardcoded (sem delegação recursiva, sem interação com usuário, sem escrita em memória compartilhada). Confirma a nossa checagem read-only por allowlist (`Read`, `Grep`, `Glob`) no lint e em runtime.
+- **Fail-closed como default** — subagente deles nasce com `auto_deny` para comandos perigosos, com log de auditoria; permitir é opt-in explícito de config. Confirma o Q2 e o log de despacho como evidência.
+- **Registro de despacho autocontido** — o resultado de delegação em background deles carrega o objetivo original, contexto, toolsets e timestamps, porque quem lê pode estar longe do momento do despacho. Adotado no schema do `despachos.jsonl`: cada linha carrega `agente`, `estagio`, `decisao`, `motivo` (quando deny) e `ts`, legível isolada com `cat`.
 
 **Onde diverge — e a divergência é o ponto:** no hermes, o *modelo* decide quando e o que delegar (loop livre, filhos `orchestrator` com profundidade 2, despacho em background), e existe "smart approval" — um LLM auxiliar aprovando comandos perigosos. Para um assistente geral, cabe. Para o rainforest, é o anti-padrão: julgamento de modelo como oráculo. Aqui quem admite é manifesto + estágio, decidido por exit code. Nada do modelo de orquestração deles entra.
 

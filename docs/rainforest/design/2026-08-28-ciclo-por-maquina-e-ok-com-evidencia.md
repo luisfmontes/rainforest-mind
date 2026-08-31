@@ -1,10 +1,5 @@
 # Design — o ciclo reprovado→executar vira máquina, e `ok` sem evidência não fecha
 
-> **Fluxo 1** na fila do `LEIA-PRIMEIRO-CONSOLIDADO-v2`. Recuperado da conversa
-> de origem em 2026-08-30. Duas costuras marcadas com ⚠ foram remontadas a
-> partir do contexto (o teor é fiel; a redação exata pode diferir do original).
-> Destino: `docs/rainforest/design/2026-08-28-ciclo-por-maquina-e-ok-com-evidencia.md`
-
 Origem: revisão externa do plugin (2026-08-28), lida contra a tese do próprio
 repo — "comando com exit code, não instrução". Três garantias centrais do fluxo
 ainda vivem só no texto das skills; este design as move para o `estado.cjs`.
@@ -20,14 +15,43 @@ Fechar três buracos entre o que as skills prometem e o que a máquina cobra:
 2. `reprovado` "devolve o trabalho ao executar" no texto de
    `skills/verificar/SKILL.md`, mas nenhuma linha do `estado.cjs` reabre o
    estágio upstream — a back-edge do grafo é conselho.
-3. ⚠ Não existe critério de parada no ciclo executar↔verificar: sem contador de
-   tentativas, um critério que reprova indefinidamente gira infinito gastando
-   token sem escalar a decisão ao usuário.
+3. Não existe teto de tentativas: verificar pode reprovar a mesma entrega
+   indefinidamente, girando executar↔verificar sem nunca subir a decisão para o
+   usuário — e reprovação repetida costuma significar critério errado, não
+   código errado.
+
+Pronto quando:
+
+- `node scripts/estado.cjs marcar --slug <s> --estagio verificar --status ok --json '{}'`
+  sai com código ≠ 0 e a mensagem nomeia os campos que faltaram;
+- o mesmo comando com `{"comando":"...","saida":"..."}` preenchidos fecha normal;
+- `marcar --estagio verificar --status reprovado` deixa `executar` não-fechado:
+  o `exigir --estagio verificar` seguinte recusa com exit 2 pedindo executar;
+- a terceira reprovação consecutiva do mesmo estágio faz `exigir --estagio
+  executar` recusar com exit 2, mandando subir a decisão ao usuário, e o
+  destrave é comando explícito que fica gravado no JSON de estado;
+- `estado.cjs proximo` com último veredito `reprovado` imprime o bloco do
+  reprovado (critério, comando, saída, faltou) junto do próximo passo;
+- `testa-estado.sh` cobre os quatro comportamentos e a varredura fica verde.
+
+## O mecanismo, nomeado
+
+Hoje (`scripts/estado.cjs`, ~linha 89 em diante):
+
+- `marcar` funde o `--json` novo com o bloco anterior e grava. Não há validação
+  de conteúdo além do status pertencer a `STATUS_EXECUCAO` — `ok` com `{}` fecha
+  o estágio tão bem quanto `ok` com evidência.
+- `PRE_REQUISITOS` só olha para frente. `estaFechado` decide se um pré-requisito
+  fechou; nada percorre o grafo no sentido contrário quando um estágio marca
+  `reprovado`. A "devolução" depende de o modelo ler a skill e obedecer.
+- Nenhum campo conta reprovações. `CAMPOS_EFEMEROS` mostra que já existe o
+  conceito de campo com ciclo de vida próprio — `tentativas` entra na mesma
+  família, com regra própria de limpeza.
 
 ## Decisões fechadas
 
-- **D1 — `marcar --status ok` nos estágios de execução recusa fechamento sem
-  `comando` e `saida` preenchidos no `--json`.** ⚠ (título remontado)
+- **D1 — `ok` em `executar` e `verificar` exige `comando` e `saida` não vazios
+  no `--json`; a validação é de presença, nunca de conteúdo.**
   Porque: a regra 12 diz que pronto se prova com comando e saída colados, e a
   única forma de a trava não virar teatro é a máquina recusar o fechamento sem
   eles. Presença, não conteúdo: quem julga se a saída prova o critério é o
