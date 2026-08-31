@@ -1,0 +1,35 @@
+{
+  "slug": "fluxo-11-conselho",
+  "titulo": "Fluxo 11 — Conselho: debate estruturado de decisões de design",
+  "criado_em": "2026-08-31",
+  "arqueologia": {
+    "status": "ok",
+    "motivo": "design ja aprovado herda arqueologia do consolidado v2; nada a mapear alem do proprio repo",
+    "em": "2026-08-31"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/fluxo-11-design-conselho.md",
+    "decisoes": {
+      "Q1": "passo opcional do estagio design, ativado por presenca de .rainforest/conselho/ (padrao opt-in das rubricas) — fechada pelo Luis em 2026-08-31",
+      "Q2": "membros externos (codex, gemini) na v1 como integracao declaravel desligada por padrao; membro ligado e indisponivel reprova (falha fechada); portao de quorum N>=3; objecoes>=1 vale para externo tambem — fechada pelo Luis em 2026-08-31, emenda no fim do design"
+    },
+    "aprovado_por": "Luis, proposta B em 2026-08-29; Q1 e Q2 em 2026-08-31",
+    "em": "2026-08-31"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}

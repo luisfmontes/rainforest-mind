@@ -82,7 +82,7 @@ Membro do conselho é um **executável declarado em config**, não um modelo har
 
 Contrato: recebe caminho do arquivo de prompt, escreve JSON de parecer no caminho de saída, exit 0 em sucesso. `conselho.cjs` valida o JSON contra o schema; JSON inválido = reprovado com mensagem apontando o campo.
 
-- **v1: só o adaptador Claude é implementado.** `codex exec` e `gemini -p` cabem no mesmo contrato via `child_process` sem nenhuma dependência npm — entram depois como **integração opcional declarável** (mesmo padrão do bridge/setup). O segundo adaptador valida a interface, como o repo AdvPL valida o contrato de território.
+- ~~**v1: só o adaptador Claude é implementado.**~~ **Superado pela emenda de 2026-08-31 (abaixo):** os adaptadores `codex` e `gemini` entram na v1 como integração declarável desligada por padrão. A frase original previa que "o segundo adaptador valida a interface" — a emenda antecipa essa validação porque os três custos que a adiavam foram pagos.
 - Comandos executados via `child_process.spawn` com shell explícito por plataforma — compatibilidade Windows é requisito, como no resto do repo.
 
 ---
@@ -104,7 +104,7 @@ Todos verificáveis em modo lint (fluxo 6): os CHECKs são comandos executáveis
 ## O que fica de fora e por quê
 
 - **Debate multi-rodada com convergência (proposta C):** valor marginal da rodada 2 é baixo e o custo triplica. Se a síntese acumular divergências recorrentes, reavaliar.
-- **Modelos externos na v1:** o contrato já os comporta; implementá-los agora adiciona chaves de API, custo e superfície Windows sem validar antes o núcleo.
+- ~~**Modelos externos na v1:** o contrato já os comporta; implementá-los agora adiciona chaves de API, custo e superfície Windows sem validar antes o núcleo.~~ **Caducou em 2026-08-31 — ver emenda ao fim:** os três custos citados foram pagos e medidos (uma chave, custo zero, Windows provado com saída real).
 - **UI web e OpenRouter do original:** o rainforest-mind é CLI, solo, zero-dependency. Nada disso sobrevive à tradução.
 - **Ranking com notas numéricas:** ordem total simples basta para agregação; notas convidam falsa precisão.
 - **Anonimização criptográfica:** embaralhamento + renome no script é suficiente para o caso solo; não há adversário real.
@@ -139,3 +139,58 @@ Todos verificáveis em modo lint (fluxo 6): os CHECKs são comandos executáveis
 - *Índice consolidado v2:* **passo opcional do `design`**, ativado por presença de `.rainforest/conselho/` — padrão opt-in das `rubricas/`, sem inflar o grafo.
 
 **Fechada pelo Luís na recomendada do índice v2: passo opcional do `design`, ativado por presença de `.rainforest/conselho/`.** O mecanismo não muda; o gancho vive dentro do estágio `design`.
+
+---
+
+## Emenda (Q2) — FECHADA em 2026-08-31: membros externos entram na v1
+
+A exclusão original em "O que fica de fora" listava três custos — chaves de API,
+custo e superfície Windows. Os três foram pagos e medidos em 2026-08-31, na
+máquina de referência, com saída real: **uma** chave (a do Gemini, no
+`local-credentials.json` pessoal do dev, nunca no repo), custo **zero**
+(AI Studio free tier + assinatura ChatGPT Plus que já existia) e os dois CLIs
+rodando headless no Windows. Fechada pelo Luís com a frase-critério: *"caso o
+dev só tenha um dos três, ele pode usar igual à nossa v1"*.
+
+Quatro decisões:
+
+1. **Adaptadores `codex` e `gemini` na v1, como integração declarável desligada
+   por padrão** — mesmo padrão `integracao-*` de `hooks/lib/config.cjs` +
+   `scripts/setup.cjs` (fluxo 3). O adaptador Claude é o único ligado por
+   padrão. Dev sem os CLIs externos usa o conselho exatamente como a v1
+   original previa — três personas Claude.
+2. **Membro ligado e indisponível reprova a fase (falha fechada).** Nunca
+   "segue com os que responderam" — conselho que aprova por ausência é o modo
+   de falha que a Fase 3 já combate com `divergencias_nao_resolvidas`.
+   Ausência se resolve **desligando** o membro no setup, não silenciando a falha.
+3. **Portão de quórum: N ≥ 3 membros ligados.** A Fase 2 é inexistente com N=1
+   e degenerada com N=2 (cada membro ranqueia um único parecer — ranking sem
+   informação). Com externos desligados, as três personas Claude garantem o
+   piso; ligar externos soma, nunca substitui abaixo de 3. Entra na tabela de
+   portões como `quorum-de-membros` (CHECK: `conferir --fase abrir`, falha:
+   reprovado listando membros ligados).
+4. **Membro externo não dispensa `objecoes >= 1`.** Descorrelação de
+   treinamento é bônus contra a convergência Claude-com-Claude, não substituto
+   da catraca mecânica.
+
+### Fatos operacionais medidos (2026-08-31, Windows 11, codex-cli 0.151.0, gemini-cli 0.57.0)
+
+O adaptador embute estes fatos; cada um custou uma falha real para descobrir:
+
+- **codex:** `codex exec -s read-only --skip-git-repo-check "<prompt>" < /dev/null`.
+  O `< /dev/null` é obrigatório — `codex exec` lê stdin além do argumento e
+  trava indefinidamente sob driver não-interativo. `exec resume` **não aceita
+  `-s`** (reconfirmado na 0.151.0): read-only ali só via `-c sandbox_mode=read-only`.
+  Auth: `codex login` (oauth ChatGPT); sem login, `codex login status` responde
+  `Not logged in` — é o probe do setup.
+- **gemini:** `gemini -m gemini-3.7-flash -p "<prompt>" --skip-trust --approval-mode plan < /dev/null`.
+  O modelo default (`gemini-2.0-flash`) é tier fraco — **fixar `-m`** com o
+  melhor modelo que a chave alcança. `--skip-trust` é necessário fora de pasta
+  confiada, senão o approval-mode é rebaixado para `default` e o read-only do
+  auditor evapora. Free tier devolve **503 sob demanda** com frequência; o
+  retry interno da CLI recupera, mas o adaptador trata saída vazia/erro como
+  reprovação do membro, nunca como parecer. Auth: `GEMINI_API_KEY` no ambiente
+  (o oauth "Code Assist for individuals" foi descontinuado — o servidor
+  responde `UNSUPPORTED_CLIENT` mandando migrar para o Antigravity). A chave
+  vem de fonte do dev (env ou credencial local declarada no cmd), **nunca de
+  arquivo versionado**.
