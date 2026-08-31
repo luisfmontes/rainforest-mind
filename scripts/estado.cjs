@@ -885,22 +885,22 @@ function main() {
         process.exit(2);
       }
     }
-    // Quando um estágio é reprovado, incrementa o contador e rebaixa o upstream
-    if (status === 'reprovado') {
-      // Incrementar tentativas no bloco do estágio sendo reprovado
-      extra.tentativas = (extra.tentativas || 0) + 1;
-      const upstream_reaberto = rebaixarUpstream(estado, estagio);
-      if (upstream_reaberto) {
-        console.log(`upstream '${upstream_reaberto}' reaberto por reprovação`);
-      }
-    }
-
     // `campos efemeros` (pendentes) somem do bloco anterior quando o fechamento e
     // terminal-positivo e o --json novo nao os repete — ver `baseParaFundir` e o
     // comentario de `CAMPOS_EFEMEROS`. O resto do bloco anterior sobrevive normal.
     // `tentativas` e `liberado_em` também somem no `ok`, mas a lógica é manual aqui.
     const baseAnterior = baseParaFundir(estagio, estado[estagio], status, extra);
     const blocoNovo = { ...baseAnterior, ...extra, status, em: hoje() };
+
+    // Quando um estágio é reprovado, incrementa o contador (DEPOIS de fundir com base)
+    if (status === 'reprovado') {
+      // Incrementar tentativas no bloco do estágio sendo reprovado, preservando valor anterior
+      blocoNovo.tentativas = (blocoNovo.tentativas || 0) + 1;
+      const upstream_reaberto = rebaixarUpstream(estado, estagio);
+      if (upstream_reaberto) {
+        console.log(`upstream '${upstream_reaberto}' reaberto por reprovação`);
+      }
+    }
     // Limpar tentativas e liberado_em quando fecha com ok
     if (status === (FECHADO[estagio] || 'ok')) {
       delete blocoNovo.tentativas;
