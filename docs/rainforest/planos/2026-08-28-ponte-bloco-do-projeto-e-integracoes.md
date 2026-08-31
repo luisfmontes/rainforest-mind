@@ -24,7 +24,7 @@ Design: docs/rainforest/design/2026-08-28-ponte-bloco-do-projeto-e-integracoes.m
 
 ### 1. Extrai `corpo()`/`raizDeDados()` duplicados para `hooks/lib/ponte-corpo.cjs`, conserta o `CODIGO_ROOT` quebrado [tipo: implementar]
 atende: D2
-arquivos: `hooks/lib/ponte-corpo.cjs`, `scripts/ponte.cjs`, `scripts/conferir-ponte.cjs`
+arquivos: `hooks/lib/ponte-corpo.cjs`, `scripts/ponte.cjs`, `scripts/conferir-ponte.cjs`, `scripts/testa-ponte.sh`, `scripts/testa-conferir-ponte.sh`
 depende de: nenhuma
 paralela: sim
 mutacao:
