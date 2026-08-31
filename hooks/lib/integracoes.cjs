@@ -15,7 +15,7 @@ const INTEGRACOES = {
     }),
   },
   sabia: {
-    descricao: 'CLI Python para análise de código (Sabiá)',
+    descricao: 'Sabiá: transcrição local de reunião com diarização (quem falou), CLI Python',
     checar: () => ({
       ok: true,
       detalhe: 'checagem entra na tarefa 7/8',
