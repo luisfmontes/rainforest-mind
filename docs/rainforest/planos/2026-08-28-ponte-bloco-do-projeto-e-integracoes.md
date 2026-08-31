@@ -338,3 +338,18 @@ mutacao:
   bateria: `bash scripts/testa-ponte-entrevista.sh`
   fixture: caso estendido do (r) conferindo a linha de status na saída texto
 pronto quando: `conferirBlocoProjetoGerado` retorna `temBloco: true` em todo veredito em que o bloco existe no arquivo, a saída texto imprime a linha de status do bloco de projeto, e um caso da bateria a confere por grep
+
+## Emenda da revisão rodada 8 (2026-08-31)
+
+### 24. A família posicional fecha também no bloco de REGRAS — escrita, leitura e truncado [tipo: implementar]
+atende: invariante 1; espelha 19/20/21 no bloco de regras (defeito pré-existente na base, exposto pela revisão da rodada 8)
+arquivos: `scripts/ponte.cjs`, `scripts/conferir-ponte.cjs`, `scripts/testa-ponte.sh`
+depende de: nenhuma
+paralela: nao
+mutacao:
+  arquivo: `scripts/ponte.cjs`
+  de: a âncora de linha inteira na localização do bloco de regras em `escrever()`
+  para: de volta ao `indexOf` em qualquer posição
+  bateria: `bash scripts/testa-ponte.sh`
+  fixture: caso novo "prosa citando os marcadores de regras nao corrompe a regeneracao"
+pronto quando: em `escrever()`, o bloco de regras existente é localizado por marcador que OCUPA A LINHA INTEIRA (início com ou sem hash; fim é o primeiro APÓS o início); prosa citando os marcadores no meio de frase não casa; início de regras sem fim (truncado à mão) RECUSA com erro e exit != 0 sem gravar, como a tarefa 20 fez no projeto. `extrairBlocoGerado` de `conferir-ponte.cjs` usa a mesma âncora. Provado por casos novos em `testa-ponte.sh`: (a) prosa antes do bloco real → regenerar substitui o bloco REAL no lugar, a prosa e o texto pós-bloco sobrevivem intactos, `conferir-ponte.cjs` dá CONFERIDO exit 0; (b) fim das regras apagado à mão → regenerar falha com mensagem, arquivo intocado byte a byte

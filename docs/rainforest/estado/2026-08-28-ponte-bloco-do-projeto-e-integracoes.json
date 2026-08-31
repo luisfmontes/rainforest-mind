@@ -24,7 +24,7 @@
     "em": "2026-08-31"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-08-31",
     "tarefas_ok": 23,
     "tarefas": 23,
@@ -148,24 +148,30 @@
         "resultado": "vermelho",
         "fixture": "caso (r) linha de status na saida texto"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-08-31"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "921162d40826d522c23003b49e815135394f96a1",
+      "head": "925504ed588f3aaab04fd7f04ee664f6185ebdba",
       "caminhos_sujos": [
+        "docs/rainforest/estado/2026-08-28-ponte-bloco-do-projeto-e-integracoes.json",
         "relatorios/2026-08-28-batedor-repos.md",
+        "relatorios/2026-08-31-handover-fluxo-11-conselho.md",
         "vigias/ERROS.md"
       ]
     },
-    "achados": 2,
+    "achados": 1,
     "criticos": 1,
     "base": "21266f797a8d43d417a3d783b83de19f4df5c339",
     "head": "1422b1438322a9d49531e1079ca1010904fbcf50",
-    "nota": "rodada 7: T21 confirmada real (caso r nao-tautologico), mas a MESMA classe sobrou em lerProjetoMd (ponte-corpo.cjs) — indexOf sem ancora. Prosa da equipe no topo do projeto.md (documento vivo, uso legitimo) faz a ESCRITA gravar um fragmento de prosa com hash como bloco, o conteudo real some calado, e a catraca da verde. Repro da sessao: sobreviveu=0, conferir CONFERIDO exit 0. Aviso 2: temBloco nunca setado em conferirBlocoProjetoGerado — linha de status humana nunca imprime. Conserto nas tarefas 22 e 23.",
+    "nota": "rodada 8: consertos 22/23 confirmados reais e casos nao-tautologicos, mas o gemeo do bloco de REGRAS ficou sem ancora (pre-existente na base, porem na mesma funcao corrigida 3 rodadas seguidas): escrever() acha inicio/fim por indexOf em qualquer posicao e extrairBlocoGerado por match sem ancora. Repro da sessao: prosa citando os marcadores antes do bloco real -> bloco novo colado no meio da frase, bloco velho orfao duplicado, conferir CONFERIDO exit 0. Tarefa 24 fecha a familia no bloco de regras (escrita + leitura + recusa de truncado, espelhando 19/20/21).",
     "em": "2026-08-31",
-    "tentativas": 7
+    "tentativas": 8
   },
   "verificar": {
     "status": "pendente"
