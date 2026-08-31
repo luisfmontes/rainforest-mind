@@ -30,6 +30,7 @@
  *   node scripts/estado.cjs marcar   --slug <slug> --estagio <e> --status <s> [--json '{...}']
  *   node scripts/estado.cjs proximo  --slug <slug>
  *   node scripts/estado.cjs exigir   --slug <slug> --estagio <e>
+ *   node scripts/estado.cjs liberar  --slug <slug> --estagio <e>
  *   node scripts/estado.cjs listar
  */
 
@@ -132,6 +133,11 @@ function estaFechado(estagio, bloco) {
 // papel entra aqui quando nascer. O rastro histórico da reprovação (criterio,
 // comando, saida, faltou) fica no bloco do estágio que reprovou e não é efêmero.
 const CAMPOS_EFEMEROS = ['pendentes', 'reaberto_por'];
+
+// Teto de tentativas de reprovação consecutiva. Na terceira, `exigir` do upstream
+// reaberto recusa com exit 2 mandando subir a decisão ao usuário. Constante
+// nomeada, sem env (Q3 do design).
+const TETO_TENTATIVAS = 3;
 
 /**
  * Bloco anterior do estágio, pronto para ser fundido com o `--json` novo. Ao
@@ -749,6 +755,20 @@ function main() {
     });
     if (upstreamReaberto) {
       const bloco_upstream = estado[upstreamReaberto];
+
+      // Verificar teto de tentativas: se já foi reprovado TETO_TENTATIVAS vezes,
+      // recusa mandando subir a decisão. `liberado_em` destrava uma vez.
+      const tentativas = bloco_upstream.tentativas || 0;
+      const liberado = bloco_upstream.liberado_em;
+
+      if (tentativas >= TETO_TENTATIVAS && !liberado) {
+        console.error(
+          `RECUSADO: '${upstreamReaberto}' foi reprovado ${tentativas} vez(es), ` +
+          `atingindo o teto de ${TETO_TENTATIVAS}. Decisão em escalação.`
+        );
+        process.exit(2);
+      }
+
       console.error(
         `RECUSADO: '${upstreamReaberto}' foi reaberto por reprovação em '${bloco_upstream.reaberto_por.estagio}' ` +
         `(${bloco_upstream.reaberto_por.data}). Rode '${upstreamReaberto}' antes.`
@@ -784,6 +804,20 @@ function main() {
     }
     console.error(`Rode o estagio '${falta[0]}' antes. Retomada: node scripts/estado.cjs proximo --slug ${slug}`);
     process.exit(2);
+  }
+
+  if (cmd === 'liberar') {
+    const estagio = arg('estagio');
+    if (!(estagio in PRE_REQUISITOS)) {
+      console.error(`erro: estagio desconhecido '${estagio}'`);
+      process.exit(1);
+    }
+    // Gravar liberado_em no bloco do estágio para destrava-lo uma vez
+    estado[estagio] = { ...estado[estagio], liberado_em: hoje() };
+    gravar(slug, estado);
+    console.log(`${estagio}: liberado em ${hoje()}`);
+    console.log(JSON.stringify(estado[estagio], null, 2));
+    return;
   }
 
   if (cmd === 'marcar') {
@@ -851,8 +885,10 @@ function main() {
         process.exit(2);
       }
     }
-    // Quando um estágio é reprovado, rebaixa o upstream imediato para parcial
+    // Quando um estágio é reprovado, incrementa o contador e rebaixa o upstream
     if (status === 'reprovado') {
+      // Incrementar tentativas no bloco do estágio sendo reprovado
+      extra.tentativas = (extra.tentativas || 0) + 1;
       const upstream_reaberto = rebaixarUpstream(estado, estagio);
       if (upstream_reaberto) {
         console.log(`upstream '${upstream_reaberto}' reaberto por reprovação`);
@@ -862,8 +898,15 @@ function main() {
     // `campos efemeros` (pendentes) somem do bloco anterior quando o fechamento e
     // terminal-positivo e o --json novo nao os repete — ver `baseParaFundir` e o
     // comentario de `CAMPOS_EFEMEROS`. O resto do bloco anterior sobrevive normal.
+    // `tentativas` e `liberado_em` também somem no `ok`, mas a lógica é manual aqui.
     const baseAnterior = baseParaFundir(estagio, estado[estagio], status, extra);
-    estado[estagio] = { ...baseAnterior, ...extra, status, em: hoje() };
+    const blocoNovo = { ...baseAnterior, ...extra, status, em: hoje() };
+    // Limpar tentativas e liberado_em quando fecha com ok
+    if (status === (FECHADO[estagio] || 'ok')) {
+      delete blocoNovo.tentativas;
+      delete blocoNovo.liberado_em;
+    }
+    estado[estagio] = blocoNovo;
     gravar(slug, estado);
     console.log(`${estagio}: ${status}`);
     const p = proximo(estado);
@@ -871,7 +914,7 @@ function main() {
     return;
   }
 
-  console.error('uso: iniciar | ler | marcar | proximo | exigir | listar');
+  console.error('uso: iniciar | ler | marcar | proximo | exigir | liberar | listar');
   process.exit(1);
 }
 
