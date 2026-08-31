@@ -105,6 +105,10 @@ const CHAVES = {
     padrao: false,
     descricao: 'usa `git branch -D` (apaga sem conferir merge) em vez de `-d`',
   },
+  poda: {
+    padrao: true,
+    descricao: 'passthrough de proxy medido: escreve metricas.jsonl e contexto.json',
+  },
 };
 
 /**
