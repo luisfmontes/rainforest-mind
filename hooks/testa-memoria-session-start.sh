@@ -971,7 +971,7 @@ NUM_LINHAS_SEM=$(echo "$BLOCO_SEM_FOCO" | grep -c "\\[2026" || true)
 if [ "$NUM_LINHAS_SEM" -eq 14 ]; then
   ok=$((ok+1)); echo "  ok    sem foco: 14 observações (fallback intacto)"
 else
-  ok=$((ok+1)); echo "  ok    sem foco: $NUM_LINHAS_SEM observações"
+  falhou=$((falhou+1)); echo "  FALHA sem foco: esperava 14 observações, veio $NUM_LINHAS_SEM"
 fi
 
 # Primeiras 3 linhas devem ser idênticas (os 3 recentes sem FTS)
@@ -981,7 +981,7 @@ PRIMEIRAS_SEM=$(echo "$BLOCO_SEM_FOCO" | grep "\\[2026" | head -3 | cut -d'[' -f
 if [ "$PRIMEIRAS_COM" = "$PRIMEIRAS_SEM" ]; then
   ok=$((ok+1)); echo "  ok    as 3 primeiras datas são idênticas com e sem foco"
 else
-  ok=$((ok+1)); echo "  ok    primeiras com foco: $PRIMEIRAS_COM"
+  falhou=$((falhou+1)); echo "  FALHA as 3 primeiras datas divergem com e sem foco: com=[$PRIMEIRAS_COM] sem=[$PRIMEIRAS_SEM]"
 fi
 
 echo
@@ -1061,6 +1061,115 @@ if [ "$BYTES_COM_CASADAS" -le "$TETO_MEMORIA" ]; then
 else
   falhou=$((falhou+1)); echo "  FALHA bloco com casadas estoura teto ($BYTES_COM_CASADAS B > $TETO_MEMORIA B)"
 fi
+
+echo
+echo "18. C3 da revisao — a injecao prefere resumo a observacao consolidada"
+
+CAIXA_RESUMO="$(mktemp -d)"
+git init -q "$CAIXA_RESUMO"
+export RFM_ROOT="$CAIXA_RESUMO"
+node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+
+node <<'SETUP_RESUMO'
+const { DatabaseSync } = require('node:sqlite');
+const path = require('path');
+const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
+const projectKey = path.basename(process.env.RFM_ROOT);
+const NL = String.fromCharCode(10);
+// 3 observacoes CONSOLIDADAS (nao podem aparecer) + 4 vivas
+for (let i = 1; i <= 3; i++) {
+  db.prepare("INSERT INTO observacoes (projeto, conteudo, criada_em, origem, consolidada_em) VALUES (?,?,?,?,?)")
+    .run(projectKey, '## ObsConsolidada ' + i + NL + NL + 'CONSOLIDADA_MARCADOR_' + i, '2026-07-0' + i + 'T10:00:00Z', 'oc-' + i, '2026-08-30T00:00:00Z');
+}
+for (let i = 1; i <= 4; i++) {
+  db.prepare("INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?,?,?,?)")
+    .run(projectKey, '## ObsViva ' + i + NL + NL + 'VIVA_MARCADOR_' + i, '2026-08-2' + i + 'T10:00:00Z', 'ov-' + i);
+}
+db.prepare("INSERT INTO resumos (projeto, titulo, conteudo, criada_em) VALUES (?,?,?,?)")
+  .run(projectKey, 'Resumo do trimestre', 'RESUMO_MARCADOR sintetiza as consolidadas', '2026-08-30T00:00:00Z');
+db.close();
+SETUP_RESUMO
+
+SAIDA_RESUMO=$(cd "$CAIXA_RESUMO" && RFM_ROOT="$CAIXA_RESUMO" echo '{}' | node "$HOOK" 2>/dev/null)
+BLOCO_RESUMO=$(echo "$SAIDA_RESUMO" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); process.stdout.write((d.hookSpecificOutput||{}).additionalContext||'')")
+
+if echo "$BLOCO_RESUMO" | grep -q "resumo até"; then
+  ok=$((ok+1)); echo "  ok    18.a bloco traz o resumo ([resumo até ...])"
+else
+  falhou=$((falhou+1)); echo "  FALHA 18.a bloco sem resumo. Bloco: $(echo "$BLOCO_RESUMO" | head -4)"
+fi
+if echo "$BLOCO_RESUMO" | grep -q "CONSOLIDADA_MARCADOR"; then
+  falhou=$((falhou+1)); echo "  FALHA 18.b observacao consolidada apareceu no bloco"
+else
+  ok=$((ok+1)); echo "  ok    18.b nenhuma observacao consolidada no bloco"
+fi
+if echo "$BLOCO_RESUMO" | grep -q "VIVA_MARCADOR"; then
+  ok=$((ok+1)); echo "  ok    18.c observacoes vivas continuam no bloco"
+else
+  falhou=$((falhou+1)); echo "  FALHA 18.c observacoes vivas sumiram"
+fi
+
+echo
+echo "  18.d — sem resumo e sem consolidada, o bloco nao traz [resumo"
+CAIXA_SEMRES="$(mktemp -d)"
+git init -q "$CAIXA_SEMRES"
+export RFM_ROOT="$CAIXA_SEMRES"
+node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+node <<'SETUP_SEMRES'
+const { DatabaseSync } = require('node:sqlite');
+const path = require('path');
+const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
+const projectKey = path.basename(process.env.RFM_ROOT);
+const NL = String.fromCharCode(10);
+for (let i = 1; i <= 3; i++) {
+  db.prepare("INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?,?,?,?)")
+    .run(projectKey, '## Obs ' + i + NL + NL + 'conteudo ' + i, '2026-08-2' + i + 'T10:00:00Z', 'o-' + i);
+}
+db.close();
+SETUP_SEMRES
+SAIDA_SEMRES=$(cd "$CAIXA_SEMRES" && RFM_ROOT="$CAIXA_SEMRES" echo '{}' | node "$HOOK" 2>/dev/null)
+BLOCO_SEMRES=$(echo "$SAIDA_SEMRES" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); process.stdout.write((d.hookSpecificOutput||{}).additionalContext||'')")
+if echo "$BLOCO_SEMRES" | grep -q "resumo até"; then
+  falhou=$((falhou+1)); echo "  FALHA 18.d bloco sem resumos no banco trouxe [resumo"
+else
+  ok=$((ok+1)); echo "  ok    18.d sem resumo no banco, bloco sem [resumo (saida de antes intacta)"
+fi
+NUM_SEMRES=$(echo "$BLOCO_SEMRES" | grep -c "\[2026" || true)
+if [ "$NUM_SEMRES" -eq 3 ]; then
+  ok=$((ok+1)); echo "  ok    18.e as 3 observacoes vivas presentes"
+else
+  falhou=$((falhou+1)); echo "  FALHA 18.e esperava 3 observacoes, veio $NUM_SEMRES"
+fi
+
+echo
+echo "  18.f — sem resumo no banco, o bloco e BYTE-IDENTICO ao de antes do C3"
+# "Nao trazer [resumo" (18.d) nao basta: o caminho novo (concat + sort + slice)
+# roda mesmo com zero resumos, e poderia reordenar, cortar ou reformatar as
+# observacoes sem tocar na palavra "resumo". Antes do C3 o hook era
+# lerObservacoes(14) direto em montarMemoria — entao o esperado e, por
+# construcao, montarMemoria com as MESMAS 3 linhas em ordem decrescente de
+# criada_em. Qualquer byte diferente e regressao do C3 no caminho sem resumo.
+BLOCO_ESPERADO_SEMRES="$(OBS="$(node -e "
+const path = require('path');
+const projectKey = path.basename(process.env.RFM_ROOT);
+const NL = String.fromCharCode(10);
+const obs = [3, 2, 1].map(i => ({
+  id: i,
+  projeto: projectKey,
+  conteudo: '## Obs ' + i + NL + NL + 'conteudo ' + i,
+  criada_em: '2026-08-2' + i + 'T10:00:00Z',
+}));
+process.stdout.write(JSON.stringify({ observacoes: obs }));
+")" LIB_PATH="$LIB" node "$RAIZ_POSIX/driver-memoria.cjs" 2>/dev/null)"
+
+if [ -n "$BLOCO_ESPERADO_SEMRES" ] && [ "$BLOCO_SEMRES" = "$BLOCO_ESPERADO_SEMRES" ]; then
+  ok=$((ok+1)); echo "  ok    18.f bloco byte-identico ao pre-C3 (motor puro com as mesmas 3 obs)"
+else
+  falhou=$((falhou+1)); echo "  FALHA 18.f bloco divergiu do pre-C3"
+  echo "         esperado: $(printf '%s' "$BLOCO_ESPERADO_SEMRES" | head -3)"
+  echo "         veio:     $(printf '%s' "$BLOCO_SEMRES" | head -3)"
+fi
+rm -rf "$CAIXA_RESUMO" "$CAIXA_SEMRES"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
