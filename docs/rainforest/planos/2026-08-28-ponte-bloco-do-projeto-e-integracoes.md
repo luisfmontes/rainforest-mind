@@ -207,3 +207,46 @@ depende de: nenhuma
 paralela: sim
 mutacao: n/a (docs)
 pronto quando: a linha "Título:" da seção "O arquivo gerado" descreve `# Bloco do projeto` (o que `gerarProjetoMarkdown` emite), provado por grep nos dois arquivos
+
+## Emendas da revisão rodada 2 (2026-08-31)
+
+A rodada 2 reprovou com 2 críticos novos, reproduzidos de ponta a ponta pela sessão.
+
+### 15. Resposta da entrevista é string ou é erro — o bypass por tipo fecha [tipo: implementar]
+atende: T3/T12 (critério "as 4 respostas literais" sob entrada adversarial, agora por tipo)
+arquivos: `scripts/ponte.cjs`, `scripts/testa-ponte-entrevista.sh`
+depende de: nenhuma
+paralela: nao (mesmo arquivo da 16 nas baterias)
+mutacao:
+  arquivo: `scripts/ponte.cjs`
+  de: a validação de tipo das respostas (rejeita não-string)
+  para: validação removida (qualquer tipo passa)
+  bateria: `bash scripts/testa-ponte-entrevista.sh`
+  fixture: caso novo "resposta que nao e string e recusada com erro"
+pronto quando: `--respostas` com valor não-string em qualquer das 4 chaves (ex.: array contendo o marcador de fim) sai com erro claro e exit != 0, sem gravar nada; E defesa em profundidade: depois de gerar o markdown do projeto.md, o gerador conta os marcadores — se houver mais de um `inicio` ou mais de um `fim` no conteúdo final, aborta com erro em vez de gravar; caso de bateria prova os dois
+
+### 16. `conferir-ponte.cjs` funciona com caminho relativo e POSIX [tipo: implementar]
+atende: T5/T13 (a catraca do bloco de projeto no uso documentado do CLI)
+arquivos: `scripts/conferir-ponte.cjs`, `scripts/testa-ponte-entrevista.sh`
+depende de: nenhuma
+paralela: nao
+mutacao:
+  arquivo: `scripts/conferir-ponte.cjs`
+  de: a resolução do diretório do alvo por `path.resolve`
+  para: de volta ao regex `/^[A-Z]:/` com `null` no não-casado
+  bateria: `bash scripts/testa-ponte-entrevista.sh`
+  fixture: caso novo "conferir com caminho relativo devolve o mesmo veredito do absoluto"
+pronto quando: `node scripts/conferir-ponte.cjs CLAUDE.md` rodado de dentro do diretório alvo (caminho relativo, sem cygpath) devolve o MESMO veredito e exit do caminho absoluto — CONFERIDO 0 em arquivo em dia; o regex de letra de drive sai do código (a resolução usa `path.resolve(alvo)`, que cobre relativo, POSIX e Windows); alvo `-` (stdin) continua funcionando como antes
+
+### 17. Um único cálculo de hash — as reimplementações locais saem [tipo: implementar]
+atende: D2 (aviso 3 da rodada 2 — mesma classe do incidente que motivou a T1)
+arquivos: `scripts/conferir-ponte.cjs`, `scripts/ponte.cjs`, `hooks/lib/ponte-corpo.cjs`
+depende de: 16
+paralela: nao
+mutacao:
+  arquivo: `hooks/lib/ponte-corpo.cjs`
+  de: o cálculo compartilhado de hash (sha256 slice 16)
+  para: slice(8) (hash mais curto)
+  bateria: `bash scripts/testa-ponte.sh && bash scripts/testa-ponte-entrevista.sh`
+  fixture: os casos existentes de hash de bloco
+pronto quando: o cálculo sha256-slice(16) existe UMA vez, exportado de `hooks/lib/ponte-corpo.cjs`, e `grep -n 'createHash' scripts/ponte.cjs scripts/conferir-ponte.cjs` devolve vazio; todas as baterias verdes; a mutação prova que o hash compartilhado é o que os dois scripts realmente usam
