@@ -735,10 +735,46 @@ esperado "acrescenta blocos ao CLAUDE.md pre-existente" 0 $PONTE --alvo "$REPO_R
 
 # A catraca tem de reconhecer o bloco REAL (acrescentado no fim), nao a mencao em prosa
 esperado "conferir da CONFERIDO apesar da mencao em prosa" 0 node "$CONFERIR_PONTE" --skill "$SKILL_PONTE" "$REPO_R/CLAUDE.md"
+# TAREFA 23: a linha de status humana do bloco de projeto imprime na saida texto
+contem "  ... linha de status do bloco de projeto na saida" "Bloco de projeto: conferido" node "$CONFERIR_PONTE" --skill "$SKILL_PONTE" "$REPO_R/CLAUDE.md"
 
 # E ainda morde: mudar o projeto.md por dentro tem de dar ficou-para-tras
 sed -i 's/Testes passam/Testes passam MUDOU/' "$REPO_R/docs/rainforest/projeto.md"
 esperado "conferir recusa apos projeto.md mudar (catraca morde)" 2 node "$CONFERIR_PONTE" --skill "$SKILL_PONTE" "$REPO_R/CLAUDE.md"
+
+echo
+echo "== (s) TAREFA 22: prosa no topo do projeto.md nao corrompe o bloco gravado =="
+REPO_S="$CAIXA/repo-s"
+mkdir -p "$REPO_S"
+cat > "$REPO_S/package.json" <<'EOF'
+{
+  "name": "teste-s"
+}
+EOF
+
+RESPOSTAS_S="$CAIXA/respostas-s.json"
+cat > "$RESPOSTAS_S" <<'EOF'
+{
+  "pronto": "RESPOSTA_S_QUE_PRECISA_SOBREVIVER",
+  "nao_toca": "Dependências",
+  "convencao": "Português",
+  "revisao": "Uma aprovação"
+}
+EOF
+
+REPO_S_WIN="$(cygpath -m "$REPO_S" 2>/dev/null || printf '%s' "$REPO_S")"
+RESPOSTAS_S_WIN="$(cygpath -m "$RESPOSTAS_S" 2>/dev/null || printf '%s' "$RESPOSTAS_S")"
+
+esperado "gera projeto.md" 0 $PONTE --entrevistar --gravar --respostas "$RESPOSTAS_S_WIN" --alvo "$REPO_S_WIN" --aplicar
+
+# Nota da equipe no TOPO do projeto.md, citando os dois marcadores em prosa (documento vivo)
+PROJ_S="$REPO_S/docs/rainforest/projeto.md"
+printf 'Nota da equipe: os marcadores sao <!-- rainforest-mind:projeto:inicio --> e <!-- rainforest-mind:projeto:fim -->. Nao mexer.\n\n%s' "$(cat "$PROJ_S")" > "$PROJ_S"
+
+# A escrita tem de gravar o bloco REAL, nao o fragmento da prosa
+esperado "gera CLAUDE.md com prosa no projeto.md" 0 $PONTE --alvo "$REPO_S_WIN" --agente claude --aplicar
+contem "  ... resposta literal sobreviveu no CLAUDE.md" "RESPOSTA_S_QUE_PRECISA_SOBREVIVER" cat "$REPO_S/CLAUDE.md"
+esperado "conferir da CONFERIDO" 0 node "$CONFERIR_PONTE" --skill "$SKILL_PONTE" "$REPO_S/CLAUDE.md"
 
 echo
 echo "== (k) executa cada linha do bloco de exemplos de skills/ponte/SKILL.md =="

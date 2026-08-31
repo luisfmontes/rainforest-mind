@@ -235,6 +235,7 @@ function conferirBlocoProjetoGerado(texto, caminhoProjetoMd, raizAlvo) {
     // mas o bloco existe no arquivo — o arquivo foi regenerado e o projeto.md sumiu
     return {
       veredito: 'ficou-para-tras',
+      temBloco: true,
       msg: 'O arquivo tem bloco de projeto, mas docs/rainforest/projeto.md não existe, não pode ser lido, ou tem marcadores inválidos'
     };
   }
@@ -251,6 +252,7 @@ function conferirBlocoProjetoGerado(texto, caminhoProjetoMd, raizAlvo) {
   if (textoIgual(conteudoAtual, conteudoEsperado)) {
     return {
       veredito: 'conferido',
+      temBloco: true,
       msg: 'Bloco de projeto está em sincronia com docs/rainforest/projeto.md'
     };
   }
@@ -263,6 +265,7 @@ function conferirBlocoProjetoGerado(texto, caminhoProjetoMd, raizAlvo) {
       const divergentes = linhasDivergentes(conteudoAtual, conteudoEsperado);
       return {
         veredito: 'editado-a-mao',
+        temBloco: true,
         msg: 'Bloco de projeto foi editado à mão — conteúdo diverge do docs/rainforest/projeto.md, mas o hash bate',
         linhasDivergentes: divergentes
       };
@@ -270,6 +273,7 @@ function conferirBlocoProjetoGerado(texto, caminhoProjetoMd, raizAlvo) {
       // CASO 3: Hash não bate -> projeto.md andou, arquivo ficou para trás
       return {
         veredito: 'ficou-para-tras',
+      temBloco: true,
         msg: 'Bloco de projeto ficou para trás — o docs/rainforest/projeto.md mudou desde a última geração'
       };
     }
@@ -277,6 +281,7 @@ function conferirBlocoProjetoGerado(texto, caminhoProjetoMd, raizAlvo) {
     // CASO 4: Sem hash e com divergência -> ambíguo
     return {
       veredito: 'ficou-para-tras',
+      temBloco: true,
       msg: 'Bloco de projeto foi gerado antes da catraca de hash — não dá para saber se foi editado ou se o docs/rainforest/projeto.md mudou'
     };
   }
