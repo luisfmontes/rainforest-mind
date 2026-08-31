@@ -437,7 +437,7 @@ function main() {
   for (const k of chaves) {
     const agente = AGENTES[k];
     const destino = path.join(alvo, agente.arquivo);
-    const r = escrever(destino, corpo(agente, nucleo, dados), aplicar, hash);
+    const r = escrever(destino, corpo(agente, nucleo, dados, alvo), aplicar, hash);
     console.log(`  ${agente.arquivo}: ${r.acao} — ${r.bytes} B ${r.gravado ? "GRAVADO" : "(ensaio)"}`);
     console.log(`    ${destino}`);
   }
