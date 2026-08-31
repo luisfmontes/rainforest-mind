@@ -105,6 +105,9 @@ const FECHADO = { design: 'aprovado', plano: 'ok' };
 // `dispensada` fecha a arqueologia tanto quanto `ok`: as duas significam que
 // alguem olhou e decidiu. Sao caminhos diferentes para o mesmo lugar.
 const FECHA_TAMBEM = { arqueologia: ['ok', 'dispensada'] };
+
+// Estágios de execução que exigem evidência (comando e saida) para fechar com ok
+const ESTAGIOS_EXIGEM_EVIDENCIA = ['executar', 'verificar'];
 function estaFechado(estagio, bloco) {
   if (!bloco || typeof bloco !== 'object') return false;
   if (FECHA_TAMBEM[estagio]) return FECHA_TAMBEM[estagio].includes(bloco.status);
@@ -524,6 +527,50 @@ function verificarCatracaMutacao(slug, bloco, estado, extra) {
   return null;
 }
 
+// --------------------------------- validação de evidência (comando e saida)
+//
+// Estágios de execução (`executar` e `verificar`) exigem que `comando` e `saida`
+// estejam preenchidos (string não vazia e não só espaço) para fechar com ok.
+// `revisar` e `fechar` não exigem esses campos. A validação vale para TODO
+// fechamento com ok, sem exceção por idade. Estado antigo (JSONs sem os campos)
+// continua legível — isso significa `exigir`/`proximo` não explodem, não que
+// fechamento antigo passa sem evidência.
+
+/** @returns {string|null} mensagem de recusa, ou null se passou/não se aplica */
+function validarEvidenciaNoFechamento(estagio, extra) {
+  // Só valida para os estágios que exigem
+  if (!ESTAGIOS_EXIGEM_EVIDENCIA.includes(estagio)) return null;
+
+  // Sem --json ou --json não é objeto, falta tudo
+  if (!extra || typeof extra !== 'object') {
+    return `RECUSADO: fechar '${estagio}' exige comando e saida no --json.\n`
+      + `Presença é tudo — strings vazias ou só espaço não contam.\n`
+      + `Exemplos:\n`
+      + `  node scripts/estado.cjs marcar --slug <slug> --estagio ${estagio} --status ok --json '{"comando":"node x.cjs","saida":"ok: 3 casos"}'\n`
+      + `  node scripts/estado.cjs marcar --slug <slug> --estagio ${estagio} --status ok --json '{"comando":"bash script.sh","saida":"resultado esperado"}'`;
+  }
+
+  const comando = extra.comando;
+  const saida = extra.saida;
+
+  // Ambos devem estar presentes e não vazios (permitindo espaço é furo)
+  const comandoVazio = comando === undefined || comando === null || String(comando).trim() === '';
+  const saidaVazio = saida === undefined || saida === null || String(saida).trim() === '';
+
+  if (comandoVazio || saidaVazio) {
+    const faltam = [];
+    if (comandoVazio) faltam.push('comando');
+    if (saidaVazio) faltam.push('saida');
+    return `RECUSADO: fechar '${estagio}' exige ${faltam.join(' e ')} no --json.\n`
+      + `Presença é tudo — strings vazias ou só espaço não contam.\n`
+      + `Exemplos:\n`
+      + `  node scripts/estado.cjs marcar --slug <slug> --estagio ${estagio} --status ok --json '{"comando":"node x.cjs","saida":"ok: 3 casos"}'\n`
+      + `  node scripts/estado.cjs marcar --slug <slug> --estagio ${estagio} --status ok --json '{"comando":"bash script.sh","saida":"resultado esperado"}'`;
+  }
+
+  return null;
+}
+
 // ------------------------------------------------- trava de fechamento (D5)
 //
 // Fechar estágio roda a checagem correspondente do `conferir-fluxo.cjs`, e
@@ -740,6 +787,12 @@ function main() {
           console.error(recusa_catraca);
           process.exit(2);
         }
+      }
+      // Validar evidência (comando e saida) para executar e verificar DEPOIS da catraca
+      const recusa_evidencia = validarEvidenciaNoFechamento(estagio, extra);
+      if (recusa_evidencia) {
+        console.error(recusa_evidencia);
+        process.exit(2);
       }
       const recusa = conferirFechamento(estagio, slug, extra);
       if (recusa) {
