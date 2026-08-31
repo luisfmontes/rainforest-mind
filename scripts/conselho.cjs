@@ -733,10 +733,10 @@ function conferirFaseRevisao() {
   process.exit(0);
 }
 
-// Identifies divergencies from pareceres and ranking spread
-// Input: mapaAnonimato (apelido -> name), pareceres (name -> parecer), agregado (ordered apelidos)
+// Identifies divergencies from pareceres and reviewer disagreement
+// Input: mapaAnonimato (apelido -> name), pareceres (name -> parecer), revisoes (array of revisao objects)
 // Output: array of divergency descriptions
-function identificarDivergencias(mapaAnonimato, pareceres, agregado) {
+function identificarDivergencias(mapaAnonimato, pareceres, revisoes) {
   const divergencias = [];
 
   // Collect all objeções from pareceres
@@ -750,23 +750,23 @@ function identificarDivergencias(mapaAnonimato, pareceres, agregado) {
     }
   }
 
-  // Add divergencies for unresolved objections
-  const mapaReverso = {};
-  for (const nomeMembro in mapaAnonimato) {
-    const apelido = mapaAnonimato[nomeMembro];
-    mapaReverso[apelido] = nomeMembro;
-  }
-
   if (todasObjecoes.length > 0) {
     divergencias.push(`Objeções levantadas: ${todasObjecoes.length} total`);
   }
 
-  // Add divergencies if ranking has significant spread (not unanimous)
-  if (agregado.length > 1) {
-    const posicaoPrimeiro = 0;
-    const posicaoUltimo = agregado.length - 1;
-    if (posicaoUltimo > posicaoPrimeiro) {
-      divergencias.push(`Ranking com spread: primeiro em posição 0, último em posição ${posicaoUltimo}`);
+  // Add divergencies if reviewers disagree on ranking (not all identical)
+  // Check if any two reviewers have different rankings
+  if (revisoes.length > 1) {
+    const primeiroRanking = JSON.stringify(revisoes[0].ranking);
+    let temDissenso = false;
+    for (let i = 1; i < revisoes.length; i++) {
+      if (JSON.stringify(revisoes[i].ranking) !== primeiroRanking) {
+        temDissenso = true;
+        break;
+      }
+    }
+    if (temDissenso) {
+      divergencias.push(`Ranking com divergência: revisores não concordam na ordem`);
     }
   }
 
@@ -831,17 +831,17 @@ function executarSintetizar(args) {
   const rankingAgregadoDesanon = rankingAgregado.map(apelido => mapaReverso[apelido]);
 
   // Identify divergencies
-  const divergencias = identificarDivergencias(mapaAnonimato, pareceres, rankingAgregado);
+  const divergencias = identificarDivergencias(mapaAnonimato, pareceres, revisoes);
 
   // Get top-ranked parecer for decision recommendation
   const topApelido = rankingAgregado[0];
   const topNomeMembro = mapaReverso[topApelido];
   const topParecer = pareceres[topNomeMembro];
 
-  // Validate divergencies unless --unanime flag
-  const temUnanimeFLag = args.unanime === true;
-  if (divergencias.length > 0 && !temUnanimeFLag) {
-    console.error('Erro: síntese com divergências requer flag --unanime');
+  // Validate divergencies — consenso sem divergências só com --unanime explícito
+  const temUnanimeFlag = args.unanime === true;
+  if (divergencias.length === 0 && !temUnanimeFlag) {
+    console.error('Erro: síntese sem divergências não resolvidas exige --unanime explícito');
     process.exit(1);
   }
 

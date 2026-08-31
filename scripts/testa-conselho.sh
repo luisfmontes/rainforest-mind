@@ -654,8 +654,8 @@ EOF
   # Validate revisao phase
   bash -c "cd '$TEMPDIR12' && RFM_ESTADO_ROOT='$TEMPDIR12' node '$CONSELHO' conferir --fase revisao" 2>/dev/null
 
-  # Run sintetizar — should succeed with --unanime
-  saida_sintese=$(bash -c "cd '$TEMPDIR12' && RFM_ESTADO_ROOT='$TEMPDIR12' node '$CONSELHO' sintetizar --unanime" 2>&1)
+  # Run sintetizar — should succeed WITHOUT --unanime (divergências presentes)
+  saida_sintese=$(bash -c "cd '$TEMPDIR12' && RFM_ESTADO_ROOT='$TEMPDIR12' node '$CONSELHO' sintetizar" 2>&1)
   exit_sintese=$?
 
   if [ "$exit_sintese" = "0" ]; then
@@ -664,7 +664,7 @@ EOF
       RANKING_JSON=$(cat "$RODADA_DIR12/sintese.json")
 
       ok=$((ok + 1))
-      echo "  ok   agregacao-conhecida: sintetizar exit 0 e sintese.json criado"
+      echo "  ok   agregacao-conhecida: sintetizar exit 0 SEM --unanime"
 
       # Extract ranking_agregado from JSON
       # Expected: membro-C (avg 0.33), membro-B (avg 0.66)
@@ -749,13 +749,13 @@ EOF
   # Validate revisao
   bash -c "cd '$TEMPDIR13' && RFM_ESTADO_ROOT='$TEMPDIR13' node '$CONSELHO' conferir --fase revisao" 2>/dev/null
 
-  # Run sintetizar — should succeed with --unanime
-  saida_sintese=$(bash -c "cd '$TEMPDIR13' && RFM_ESTADO_ROOT='$TEMPDIR13' node '$CONSELHO' sintetizar --unanime" 2>&1)
+  # Run sintetizar — should succeed WITHOUT --unanime (divergências presentes = honesto)
+  saida_sintese=$(bash -c "cd '$TEMPDIR13' && RFM_ESTADO_ROOT='$TEMPDIR13' node '$CONSELHO' sintetizar" 2>&1)
   exit_sintese=$?
 
   if [ "$exit_sintese" = "0" ]; then
     ok=$((ok + 1))
-    echo "  ok   sintese-grava-com-divergencias: exit 0"
+    echo "  ok   sintese-grava-com-divergencias: exit 0 SEM --unanime"
 
     # Check that sintese.json was created with 4 fields
     if [ -f "$RODADA_DIR13/sintese.json" ]; then
@@ -819,6 +819,8 @@ fi
 
 echo ""
 echo "== CASO 14: sintese-unanime-exige-flag =="
+# Cenário: pareceres SEM objeções + rankings idênticos = divergências VAZIAS
+# Esperado: sem --unanime → exit ≠ 0; com --unanime → exit 0
 TEMPDIR14="$RAIZ/test-sintese-unanime"
 mkdir -p "$TEMPDIR14"
 
@@ -827,7 +829,6 @@ echo "# Questão para teste de unanimidade" > "$TEMPDIR14/questao-unanime.md"
 
 # Create membros.json
 mkdir -p "$TEMPDIR14/.rainforest/conselho"
-# First stage: parecerers
 cat > "$TEMPDIR14/.rainforest/conselho/membros.json" << EOF
 {
   "membros": [
@@ -844,48 +845,57 @@ bash -c "cd '$TEMPDIR14' && RFM_ESTADO_ROOT='$TEMPDIR14' node '$CONSELHO' abrir 
 # Find rodada
 RODADA_DIR14=$(ls -1d "$TEMPDIR14/.rainforest/conselho/202"* 2>/dev/null | head -1)
 if [ -n "$RODADA_DIR14" ]; then
-  # Collect pareceres
-  bash -c "cd '$TEMPDIR14' && RFM_ESTADO_ROOT='$TEMPDIR14' node '$CONSELHO' pareceres" 2>/dev/null
-
-  # Update membros.json to use revisor fixture
-  cat > "$TEMPDIR14/.rainforest/conselho/membros.json" << EOF
-{
-  "membros": [
-    {"nome": "cetico", "cmd": "node \"$FIXTURE_REVISOR_SIN\" {prompt} {saida}", "ligado": true},
-    {"nome": "arquiteto", "cmd": "node \"$FIXTURE_REVISOR_SIN\" {prompt} {saida}", "ligado": true},
-    {"nome": "usuario-final", "cmd": "node \"$FIXTURE_REVISOR_SIN\" {prompt} {saida}", "ligado": true}
-  ]
-}
+  # Manually create PARECERES SEM OBJEÇÕES
+  mkdir -p "$RODADA_DIR14"
+  cat > "$RODADA_DIR14/parecer-cetico.json" << 'EOF'
+{"posicao": "Posição A", "argumentos": ["Arg 1", "Arg 2"], "objecoes": [], "riscos": []}
+EOF
+  cat > "$RODADA_DIR14/parecer-arquiteto.json" << 'EOF'
+{"posicao": "Posição A", "argumentos": ["Arg 1", "Arg 2"], "objecoes": [], "riscos": []}
+EOF
+  cat > "$RODADA_DIR14/parecer-usuario-final.json" << 'EOF'
+{"posicao": "Posição A", "argumentos": ["Arg 1", "Arg 2"], "objecoes": [], "riscos": []}
 EOF
 
-  # Run revisar (creates identical rankings via fixture)
-  bash -c "cd '$TEMPDIR14' && RFM_ESTADO_ROOT='$TEMPDIR14' node '$CONSELHO' revisar" 2>/dev/null
+  # Create mapa-anonimato
+  cat > "$RODADA_DIR14/mapa-anonimato.json" << 'EOF'
+{"cetico": "membro-A", "arquiteto": "membro-B", "usuario-final": "membro-C"}
+EOF
 
-  # Validate revisao
-  bash -c "cd '$TEMPDIR14' && RFM_ESTADO_ROOT='$TEMPDIR14' node '$CONSELHO' conferir --fase revisao" 2>/dev/null
+  # Create fase2 with IDENTICAL rankings (no spread, no divergencies)
+  mkdir -p "$RODADA_DIR14/fase2"
+  cat > "$RODADA_DIR14/fase2/revisao-cetico.json" << 'EOF'
+{"ranking": ["membro-B", "membro-C"], "criticas": {"membro-B": "Crítica B", "membro-C": "Crítica C"}}
+EOF
+  cat > "$RODADA_DIR14/fase2/revisao-arquiteto.json" << 'EOF'
+{"ranking": ["membro-B", "membro-C"], "criticas": {"membro-B": "Crítica B", "membro-C": "Crítica C"}}
+EOF
+  cat > "$RODADA_DIR14/fase2/revisao-usuario-final.json" << 'EOF'
+{"ranking": ["membro-B", "membro-C"], "criticas": {"membro-B": "Crítica B", "membro-C": "Crítica C"}}
+EOF
 
-  # Try sintetizar WITHOUT --unanime flag — should fail (has divergencies even with identical rankings)
+  # Try sintetizar WITHOUT --unanime flag — should fail (consenso fabricado sem divergências)
   saida_sem_flag=$(bash -c "cd '$TEMPDIR14' && RFM_ESTADO_ROOT='$TEMPDIR14' node '$CONSELHO' sintetizar" 2>&1)
   exit_sem_flag=$?
 
   if [ "$exit_sem_flag" != "0" ]; then
     ok=$((ok + 1))
-    echo "  ok   sans --unanime: exit != 0"
+    echo "  ok   sem divergências SEM --unanime: exit != 0"
   else
     falhou=$((falhou + 1))
-    echo "  FALHA sans --unanime: deveria ter saído com erro"
+    echo "  FALHA sem divergências SEM --unanime: deveria ter saído com erro"
   fi
 
-  # Try sintetizar WITH --unanime flag — should succeed
+  # Try sintetizar WITH --unanime flag — should succeed (escape explícito autorizado)
   saida_com_flag=$(bash -c "cd '$TEMPDIR14' && RFM_ESTADO_ROOT='$TEMPDIR14' node '$CONSELHO' sintetizar --unanime" 2>&1)
   exit_com_flag=$?
 
   if [ "$exit_com_flag" = "0" ]; then
     ok=$((ok + 1))
-    echo "  ok   with --unanime: exit 0"
+    echo "  ok   sem divergências COM --unanime: exit 0"
   else
     falhou=$((falhou + 1))
-    echo "  FALHA with --unanime: deveria ter exit 0"
+    echo "  FALHA sem divergências COM --unanime: deveria ter exit 0"
     echo "$saida_com_flag" | sed 's/^/         /'
   fi
 else
