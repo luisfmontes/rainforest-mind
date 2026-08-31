@@ -24,14 +24,14 @@
     "em": "2026-08-31"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-08-31",
-    "tarefas_ok": 17,
-    "tarefas": 17,
-    "nota": "rodada 3: tarefas 15-17 integradas (merge 88df117). 15: resposta nao-string e recusada com erro (repro da rodada 2 agora sai exit 1 sem gravar) + validarMarcadoresProjetMd aborta com marcador duplicado. 16: path.resolve no lugar do regex de drive — caminho relativo agora CONFERIDO exit 0 (repro confirmada). 17: createHash zerado nos dois scripts, hashDoArquivo do modulo, caso 5.6 fixa 16 chars. Ripple emendado no plano (testa-ponte.sh na tarefa 17). Redespacho por worktree de base errada (21266f7) que sumiu apos o spawn — gate segurou, ff-only autorizado resolveu.",
+    "tarefas_ok": 18,
+    "tarefas": 18,
+    "nota": "rodada 4: tarefa 18 integrada. escrever() so remove bloco de projeto REAL (inicio antes do fim); mencao solta ao marcador nao apaga nada — repro da rodada 3 re-executada: as duas sentinelas manuais sobrevivem, linha em branco apos o FIM restaurada, bloco real continua substituindo sem duplicar.",
     "em": "2026-08-31",
-    "comando": "baterias na arvore integrada + conferir-mutacao 15/16/17 re-rodado pela integracao + conferir-entrega APROVADO + repros dos 2 criticos da rodada 2 re-executadas",
-    "saida": "ponte 53/0, conferir-ponte 5/5, entrevista 61/0, integracoes 5/0, setup 59/0, saude 47/0; mutacoes 15/16/17 exit 0; array adversarial exit 1 sem gravar; caminho relativo CONFERIDO exit 0",
+    "comando": "baterias na arvore integrada + conferir-mutacao da 18 re-rodado pela integracao + conferir-entrega APROVADO + repro re-executada",
+    "saida": "ponte 53/0, conferir-ponte 5/5, entrevista 67/0, integracoes 5/0, setup 59/0, saude 47/0; mutacao 18 exit 0",
     "mutacao": [
       {
         "tarefa": 1,
@@ -81,7 +81,7 @@
       {
         "tarefa": 10,
         "resultado": "n/a",
-        "motivo": "docs; a falsificacao e o caso k da bateria executando os exemplos do SKILL.md"
+        "motivo": "docs; caso k executa os exemplos do SKILL.md"
       },
       {
         "tarefa": 11,
@@ -117,12 +117,13 @@
         "tarefa": 17,
         "resultado": "vermelho",
         "fixture": "casos 5.5/5.6 hash unificado e 16 chars de testa-ponte.sh"
+      },
+      {
+        "tarefa": 18,
+        "resultado": "vermelho",
+        "fixture": "caso (o) notas manuais com mencao ao marcador sobrevivem de testa-ponte-entrevista.sh"
       }
-    ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-08-31"
-    }
+    ]
   },
   "revisar": {
     "status": "reprovado",
