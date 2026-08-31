@@ -24,9 +24,9 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-08-30",
-    "tarefas_ok": 3,
+    "tarefas_ok": 4,
     "tarefas": 5,
-    "nota": "T4 integrada apos 1 devolucao (caso de falha de LLM afirmado no commit sem teste; secao 18 adicionada); catraca re-rodada pela integracao no checkout principal, exit 0",
+    "nota": "T3 integrada apos 1 devolucao (fallback de FTS quebrado sob foco e teto de bytes com casadas nao tinham teste); catraca re-rodada pela integracao exit 0",
     "em": "2026-08-31"
   },
   "revisar": {
