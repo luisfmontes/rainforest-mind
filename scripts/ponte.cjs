@@ -50,9 +50,10 @@ const CODIGO_ROOT = path.resolve(__dirname, "..");
 const CAMINHO_SKILL = path.join(CODIGO_ROOT, "skills", "rainforest-mind", "SKILL.md");
 
 const FIM = "<!-- rainforest-mind:fim -->";
+const FIM_PROJETO = "<!-- rainforest-mind:projeto:fim -->";
 
 // Importar funções compartilhadas
-const { corpo, raizDeDados: raizDeDadosShared, AGENTES: AGENTES_SHARED } =
+const { corpo, raizDeDados: raizDeDadosShared, AGENTES: AGENTES_SHARED, lerProjetoMd } =
   require("../hooks/lib/ponte-corpo.cjs");
 
 /** Hash curto (16 primeiros caracteres) do SKILL.md para deteccao de edicao manual. */
@@ -327,9 +328,14 @@ function gerarProjetoMarkdown(fatos, respostas) {
 }
 
 
-function escrever(alvoArquivo, blocoNovo, aplicar, hash) {
+function escrever(alvoArquivo, blocoNovo, aplicar, hash, alvo) {
   const inicio = inicioComHash(hash);
   const marcado = `${inicio}\n${blocoNovo.trim()}\n${FIM}\n`;
+
+  // Adiciona bloco de projeto após o FIM, se existir
+  const blocoProjetoComHash = lerProjetoMd(alvo, true);
+  const marcadoComProjeto = blocoProjetoComHash ? `${marcado}\n${blocoProjetoComHash}\n` : marcado;
+
   let anterior = null;
   try {
     anterior = fs.readFileSync(alvoArquivo, "utf8");
@@ -343,19 +349,24 @@ function escrever(alvoArquivo, blocoNovo, aplicar, hash) {
   let saida;
   let acao;
   if (anterior === null) {
-    saida = marcado;
+    saida = marcadoComProjeto;
     acao = "cria";
   } else if (temMarcadorAtual && anterior.includes(FIM)) {
     // Encontra o inicio do bloco, seja com ou sem hash
     const inicioIdx = anterior.indexOf("<!-- rainforest-mind:inicio");
     const antes = anterior.slice(0, inicioIdx);
-    const depois = anterior.slice(anterior.indexOf(FIM) + FIM.length).replace(/^\n+/, "");
-    saida = `${antes}${marcado}${depois ? `\n${depois}` : ""}`;
+    // Remove o antigo bloco de projeto também se existir
+    let depois = anterior.slice(anterior.indexOf(FIM) + FIM.length).replace(/^\n+/, "");
+    if (depois.includes(FIM_PROJETO)) {
+      const idxFimProj = depois.indexOf(FIM_PROJETO);
+      depois = depois.slice(idxFimProj + FIM_PROJETO.length).replace(/^\n+/, "");
+    }
+    saida = `${antes}${marcadoComProjeto}${depois ? `${depois}` : ""}`;
     acao = "substitui o bloco gerado";
   } else {
     // Arquivo escrito a mao por outra pessoa. Nunca sobrescrever: o bloco entra no
     // fim e o que era dela continua intacto, byte a byte.
-    saida = `${anterior.replace(/\n*$/, "")}\n\n${marcado}`;
+    saida = `${anterior.replace(/\n*$/, "")}\n\n${marcadoComProjeto}`;
     acao = "ACRESCENTA no fim (o arquivo ja existia sem marcador — nada dele foi apagado)";
   }
 
@@ -437,7 +448,7 @@ function main() {
   for (const k of chaves) {
     const agente = AGENTES[k];
     const destino = path.join(alvo, agente.arquivo);
-    const r = escrever(destino, corpo(agente, nucleo, dados, alvo), aplicar, hash);
+    const r = escrever(destino, corpo(agente, nucleo, dados, alvo), aplicar, hash, alvo);
     console.log(`  ${agente.arquivo}: ${r.acao} — ${r.bytes} B ${r.gravado ? "GRAVADO" : "(ensaio)"}`);
     console.log(`    ${destino}`);
   }

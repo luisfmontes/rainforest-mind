@@ -15,13 +15,32 @@ const path = require("path");
 const fs = require("fs");
 
 /**
+ * Calcula hash curto (16 caracteres) do conteúdo de um arquivo.
+ */
+function hashDoArquivo(caminho) {
+  try {
+    const conteudo = fs.readFileSync(caminho, "utf8");
+    const crypto = require("crypto");
+    return crypto
+      .createHash("sha256")
+      .update(conteudo)
+      .digest("hex")
+      .slice(0, 16);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Lê o conteúdo do bloco rainforest-mind:projeto:inicio/fim de projeto.md do alvo,
  * se o arquivo existir. Retorna null se o arquivo não existe ou se o bloco não foi encontrado.
+ * Se incluirHash for true, adiciona o hash do arquivo projeto.md ao marcador de início.
  *
  * @param {string} alvo - raiz do repositório alvo
+ * @param {boolean} incluirHash - se true, adiciona hash ao marcador de início
  * @returns {string|null} conteúdo completo do bloco entre os marcadores, ou null
  */
-function lerProjetoMd(alvo) {
+function lerProjetoMd(alvo, incluirHash = false) {
   if (!alvo) return null;
   const caminhoProjetoMd = path.join(alvo, "docs", "rainforest", "projeto.md");
   try {
@@ -33,7 +52,18 @@ function lerProjetoMd(alvo) {
     const idxFim = conteudo.indexOf(marcadorFim);
     if (idxInicio >= 0 && idxFim >= 0 && idxFim > idxInicio) {
       // Extrai o bloco completo incluindo os marcadores
-      return conteudo.slice(idxInicio, idxFim + marcadorFim.length);
+      let bloco = conteudo.slice(idxInicio, idxFim + marcadorFim.length);
+
+      // Se precisar incluir hash, substitui o marcador de início
+      if (incluirHash) {
+        const hash = hashDoArquivo(caminhoProjetoMd);
+        if (hash) {
+          const marcadorComHash = `<!-- rainforest-mind:projeto:inicio — hash:${hash} -->`;
+          bloco = bloco.replace(marcadorInicio, marcadorComHash);
+        }
+      }
+
+      return bloco;
     }
     return null;
   } catch {
@@ -191,9 +221,7 @@ O que segue e o **nucleo** de cada regra. Regra marcada com \`↳\` tem elaborac
 que nao esta aqui — criterio fino, comando exato, incidente datado —, e ela mora
 em \`skills/rainforest-mind/references/regra-<n>.md\` (onde \`<n>\` e o numero da regra). Antes de aplicar uma regra marcada, **leia esse arquivo**.
 
-${nucleo}
-
-${lerProjetoMd(alvo) ? lerProjetoMd(alvo) : ""}`;
+${nucleo}`;
 }
 
-module.exports = { corpo, raizDeDados, AGENTES, nucleoDasRegras, lerProjetoMd };
+module.exports = { corpo, raizDeDados, AGENTES, nucleoDasRegras, lerProjetoMd, hashDoArquivo };
