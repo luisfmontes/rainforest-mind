@@ -24,120 +24,121 @@
     "em": "2026-08-31"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-08-31",
-    "tarefas_ok": 20,
-    "tarefas": 20,
-    "nota": "rodada 6: tarefa 20 implementada pela propria sessao (abaixo do limiar da regra 10). Bloco truncado recusa regeneracao com erro em vez de duplicar calado.",
+    "tarefas_ok": 21,
+    "tarefas": 21,
+    "nota": "rodada 7: tarefa 21 pela propria sessao (abaixo do limiar). Extracao da catraca virou posicional (ancora multiline de linha inteira) espelhando a T19; repro8 re-executada: CONFERIDO exit 0 com mencao em prosa, ficou-para-tras exit 2 quando projeto.md muda de verdade.",
     "em": "2026-08-31",
-    "comando": "baterias na arvore + conferir-mutacao da 20",
-    "saida": "ponte 53/0, conferir-ponte 5/5, entrevista 81/0, integracoes 5/0, setup 59/0, saude 47/0; mutacao 20 exit 0",
+    "comando": "baterias + conferir-mutacao da 21",
+    "saida": "ponte 53/0, conferir-ponte 5/5, entrevista 85/0, integracoes 5/0, setup 59/0, saude 47/0; mutacao 21 exit 0",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "caso mas ENSINA a descobrir de testa-ponte.sh"
+        "fixture": "caso mas ENSINA a descobrir"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "caso (a) detecta stack Node"
+        "fixture": "caso (a) stack Node"
       },
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "caso (e) grava projeto.md atomicamente"
+        "fixture": "caso (e) atomicidade"
       },
       {
         "tarefa": 4,
         "resultado": "vermelho",
-        "fixture": "caso (i) bloco aparece/some/nao duplica"
+        "fixture": "caso (i) aparece/some/nao duplica"
       },
       {
         "tarefa": 5,
         "resultado": "vermelho",
-        "fixture": "caso (j) bloco editado a mao detectado"
+        "fixture": "caso (j) editado a mao detectado"
       },
       {
         "tarefa": 6,
         "resultado": "vermelho",
-        "fixture": "INTEGRACOES desligada por padrao de testa-setup.sh"
+        "fixture": "INTEGRACOES desligada por padrao"
       },
       {
         "tarefa": 7,
         "resultado": "vermelho",
-        "fixture": "casos (a)/(b) loopback de testa-integracoes.sh"
+        "fixture": "casos (a)/(b) loopback"
       },
       {
         "tarefa": 8,
         "resultado": "vermelho",
-        "fixture": "casos (c)/(d) .venv de testa-integracoes.sh"
+        "fixture": "casos (c)/(d) .venv"
       },
       {
         "tarefa": 9,
         "resultado": "vermelho",
-        "fixture": "casos R2/R2b de testa-saude.sh"
+        "fixture": "casos R2/R2b"
       },
       {
         "tarefa": 10,
         "resultado": "n/a",
-        "motivo": "docs; caso k executa exemplos"
+        "motivo": "docs; caso k"
       },
       {
         "tarefa": 11,
         "resultado": "vermelho",
-        "fixture": "caso 3.5 bloco identico com/sem dados"
+        "fixture": "caso 3.5"
       },
       {
         "tarefa": 12,
         "resultado": "vermelho",
-        "fixture": "caso (l) marcador em resposta nao trunca"
+        "fixture": "caso (l)"
       },
       {
         "tarefa": 13,
         "resultado": "vermelho",
-        "fixture": "casos (i)/(j)/(l) conferencia do bloco"
+        "fixture": "casos (i)/(j)/(l)"
       },
       {
         "tarefa": 14,
         "resultado": "n/a",
-        "motivo": "docs; grep batendo"
+        "motivo": "docs"
       },
       {
         "tarefa": 15,
         "resultado": "vermelho",
-        "fixture": "caso (m) nao-string recusada"
+        "fixture": "caso (m)"
       },
       {
         "tarefa": 16,
         "resultado": "vermelho",
-        "fixture": "caso (n) caminho relativo"
+        "fixture": "caso (n)"
       },
       {
         "tarefa": 17,
         "resultado": "vermelho",
-        "fixture": "casos 5.5/5.6 hash unificado"
+        "fixture": "casos 5.5/5.6"
       },
       {
         "tarefa": 18,
         "resultado": "vermelho",
-        "fixture": "caso (o) mencao ao fim sobrevive"
+        "fixture": "caso (o)"
       },
       {
         "tarefa": 19,
         "resultado": "vermelho",
-        "fixture": "caso (p) 4 sentinelas"
+        "fixture": "caso (p)"
       },
       {
         "tarefa": 20,
         "resultado": "vermelho",
-        "fixture": "caso (q) bloco sem fim recusa regeneracao"
+        "fixture": "caso (q)"
+      },
+      {
+        "tarefa": 21,
+        "resultado": "vermelho",
+        "fixture": "caso (r) mencao em prosa nao confunde a catraca"
       }
-    ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-08-31"
-    }
+    ]
   },
   "revisar": {
     "status": "reprovado",
