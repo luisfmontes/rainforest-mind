@@ -114,7 +114,7 @@ const CHAVES = {
   },
   'integracao-sabia': {
     padrao: false,
-    descricao: 'CLI Python para análise de código (Sabiá)',
+    descricao: 'Sabiá: transcrição local de reunião com diarização (quem falou), CLI Python',
   },
 };
 
