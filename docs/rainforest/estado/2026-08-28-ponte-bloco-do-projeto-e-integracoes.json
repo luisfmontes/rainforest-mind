@@ -26,12 +26,12 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-08-31",
-    "tarefas_ok": 6,
+    "tarefas_ok": 7,
     "tarefas": 10,
     "nota": "T2 e T6 integradas (T6 com correcao da integracao: descricao do sabia inventava proposito — corrigida contra o README real)",
     "em": "2026-08-31",
-    "comando": "conferir-mutacao.cjs T4 no worktree + baterias na arvore integrada",
-    "saida": "catraca exit 0 (35->31/4 vermelha); testa-ponte 48/0, entrevista 35/0, conferir-ponte 5/5"
+    "comando": "conferir-mutacao.cjs T5 (conferir-ponte) e T4 (alvo movido, ponte.cjs) na arvore integrada",
+    "saida": "2x exit 0; entrevista 41/0, ponte 48/0, conferir-ponte 5/5"
   },
   "revisar": {
     "status": "pendente"
