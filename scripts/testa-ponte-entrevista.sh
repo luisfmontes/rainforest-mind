@@ -16,7 +16,7 @@ trap 'rm -rf "$CAIXA"' EXIT
 # Copia do PLUGIN, para a ponte poder resolver o próprio caminho por __dirname
 PLUG="$CAIXA/plugin"
 mkdir -p "$PLUG/scripts" "$PLUG/hooks/lib" "$PLUG/skills/rainforest-mind"
-cp "$SRC/scripts/ponte.cjs" "$PLUG/scripts/"
+cp "$SRC/scripts/ponte.cjs" "$SRC/scripts/conferir-ponte.cjs" "$PLUG/scripts/"
 cp "$SRC/hooks/lib/contexto-sessao.cjs" "$SRC/hooks/lib/raiz.cjs" "$SRC/hooks/lib/config.cjs" "$SRC/hooks/lib/projetos.cjs" "$SRC/hooks/lib/ponte-corpo.cjs" "$PLUG/hooks/lib/"
 cp "$SRC/scripts/setup.cjs" "$PLUG/scripts/"
 cp "$SRC/skills/rainforest-mind/SKILL.md" "$PLUG/skills/rainforest-mind/"
@@ -327,6 +327,127 @@ BLOCO_CODEX=$(sed -n '/<!-- rainforest-mind:projeto:inicio -->/,/<!-- rainforest
 BLOCO_GEMINI=$(sed -n '/<!-- rainforest-mind:projeto:inicio -->/,/<!-- rainforest-mind:projeto:fim -->/p' "$REPO_I/GEMINI.md")
 if [ "$BLOCO_CLAUDE" = "$BLOCO_CODEX" ] && [ "$BLOCO_CODEX" = "$BLOCO_GEMINI" ]; then ok=$((ok+1)); echo "  ok   bloco de projeto byte-identico entre agentes"
 else falhou=$((falhou+1)); echo "  FALHA bloco de projeto diverge entre agentes"; fi
+
+echo
+echo "== (j) bloco de projeto editado a mao e detectado, sem confundir com o bloco de regras =="
+REPO_J="$CAIXA/repo-j"
+mkdir -p "$REPO_J/.github/workflows"
+cat > "$REPO_J/package.json" <<'EOF'
+{
+  "name": "teste-j",
+  "scripts": {
+    "test": "npm test"
+  }
+}
+EOF
+cat > "$REPO_J/.github/workflows/ci.yml" <<'EOF'
+name: CI
+on: [push]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+EOF
+mkdir -p "$REPO_J/docs/rainforest"
+
+# Cria projeto.md com conteúdo inicial
+cat > "$REPO_J/docs/rainforest/projeto.md" <<'EOF'
+<!-- rainforest-mind:projeto:inicio -->
+# Bloco do projeto
+
+## Fatos da varredura
+
+### Stack
+node
+
+## Respostas da entrevista
+
+### O que é "pronto" aqui
+Testes passam
+<!-- rainforest-mind:projeto:fim -->
+EOF
+
+REPO_J_WIN="$(cygpath -m "$REPO_J" 2>/dev/null || printf '%s' "$REPO_J")"
+
+# Gera AGENTS.md com o bloco de projeto
+$PONTE --alvo "$REPO_J_WIN" --agente codex --aplicar >/dev/null 2>&1
+
+# Referência ao conferir-ponte.cjs já copiado no cabeçalho
+CONFERIR_PONTE="$PLUG/scripts/conferir-ponte.cjs"
+SKILL_PONTE="$PLUG/skills/rainforest-mind/SKILL.md"
+
+# Edita manualmente uma linha DENTRO do bloco de projeto no arquivo gerado
+sed -i 's/Testes passam/Editado manualmente/' "$REPO_J/AGENTS.md"
+
+# Confere — deve acusar RECUSADO citando a linha divergente
+if node "$CONFERIR_PONTE" --skill "$SKILL_PONTE" "$REPO_J/AGENTS.md" 2>&1 | grep -q "Bloco de projeto foi editado à mão"; then
+  ok=$((ok+1)); echo "  ok   detecta edicao no bloco de projeto"
+else
+  falhou=$((falhou+1)); echo "  FALHA detecta edicao no bloco de projeto: nao achei 'Bloco de projeto foi editado à mão'"
+fi
+
+# Verifica que ainda reconhece RECUSADO (exit 2)
+if node "$CONFERIR_PONTE" --skill "$SKILL_PONTE" "$REPO_J/AGENTS.md" >/dev/null 2>&1; then
+  falhou=$((falhou+1)); echo "  FALHA exit 2 para edicao no projeto: esperava exit 2, veio 0"
+else
+  exitcode=$?
+  if [ "$exitcode" = 2 ]; then
+    ok=$((ok+1)); echo "  ok   exit 2 para edicao no projeto"
+  else
+    falhou=$((falhou+1)); echo "  FALHA exit 2 para edicao no projeto: esperava exit 2, veio $exitcode"
+  fi
+fi
+
+# Regenera projeto.md com conteúdo diferente, sem regerar AGENTS.md
+cat > "$REPO_J/docs/rainforest/projeto.md" <<'EOF'
+<!-- rainforest-mind:projeto:inicio -->
+# Bloco do projeto
+
+## Fatos da varredura
+
+### Stack
+node
+
+## Respostas da entrevista
+
+### O que é "pronto" aqui
+Testes passam e build OK
+<!-- rainforest-mind:projeto:fim -->
+EOF
+
+# Confere — deve acusar "ficou para trás" no bloco de projeto
+if node "$CONFERIR_PONTE" --skill "$SKILL_PONTE" "$REPO_J/AGENTS.md" 2>&1 | grep -q "ficou para trás"; then
+  ok=$((ok+1)); echo "  ok   detecta ficou-para-tras no projeto"
+else
+  falhou=$((falhou+1)); echo "  FALHA detecta ficou-para-tras no projeto: nao achei 'ficou para trás'"
+fi
+
+# Regenera AGENTS.md com o novo projeto.md
+$PONTE --alvo "$REPO_J_WIN" --agente codex --aplicar >/dev/null 2>&1
+
+# Confere — deve sair CONFERIDO
+if node "$CONFERIR_PONTE" --skill "$SKILL_PONTE" "$REPO_J/AGENTS.md" 2>&1 | grep -q "CONFERIDO"; then
+  ok=$((ok+1)); echo "  ok   volta a conferido depois de regerar"
+else
+  falhou=$((falhou+1)); echo "  FALHA volta a conferido depois de regerar: nao achei 'CONFERIDO'"
+fi
+
+# Verifica exit 0
+if node "$CONFERIR_PONTE" --skill "$SKILL_PONTE" "$REPO_J/AGENTS.md" >/dev/null 2>&1; then
+  ok=$((ok+1)); echo "  ok   exit 0 para conferido"
+else
+  exitcode=$?
+  falhou=$((falhou+1)); echo "  FALHA exit 0 para conferido: esperava exit 0, veio $exitcode"
+fi
+
+# Remove projeto.md e regenera — deve sair CONFERIDO mesmo sem bloco de projeto
+rm "$REPO_J/docs/rainforest/projeto.md"
+$PONTE --alvo "$REPO_J_WIN" --agente codex --aplicar >/dev/null 2>&1
+if node "$CONFERIR_PONTE" --skill "$SKILL_PONTE" "$REPO_J/AGENTS.md" >/dev/null 2>&1; then
+  ok=$((ok+1)); echo "  ok   conferido mesmo sem projeto.md"
+else
+  exitcode=$?
+  falhou=$((falhou+1)); echo "  FALHA conferido mesmo sem projeto.md: esperava exit 0, veio $exitcode"
+fi
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
