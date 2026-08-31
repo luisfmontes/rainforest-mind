@@ -9,6 +9,7 @@ set -u
 
 # Get source directory
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SRC_M="$(cygpath -m "$SRC" 2>/dev/null || printf '%s' "$SRC")"
 CONSELHO="$SRC/scripts/conselho.cjs"
 
 # Create sandbox
@@ -163,14 +164,15 @@ mkdir -p "$TEMPDIR4"
 # Create test question file
 echo "# Questão de teste para rodada com pareceres" > "$TEMPDIR4/questao-pareceres.md"
 
-# Create membros.json with valid config
+# Create membros.json apontando os 3 membros para a fixture membro-ok
+FIXTURE_OK4_JSON="$SRC_M/scripts/fixtures/conselho/membro-ok.cjs"
 mkdir -p "$TEMPDIR4/.rainforest/conselho"
-cat > "$TEMPDIR4/.rainforest/conselho/membros.json" << 'EOF'
+cat > "$TEMPDIR4/.rainforest/conselho/membros.json" << EOF
 {
   "membros": [
-    {"nome": "cetico", "cmd": "echo ok", "ligado": true},
-    {"nome": "arquiteto", "cmd": "echo ok", "ligado": true},
-    {"nome": "usuario-final", "cmd": "echo ok", "ligado": true}
+    {"nome": "cetico", "cmd": "node \"$FIXTURE_OK4_JSON\" {prompt} {saida}", "ligado": true},
+    {"nome": "arquiteto", "cmd": "node \"$FIXTURE_OK4_JSON\" {prompt} {saida}", "ligado": true},
+    {"nome": "usuario-final", "cmd": "node \"$FIXTURE_OK4_JSON\" {prompt} {saida}", "ligado": true}
   ]
 }
 EOF
@@ -185,11 +187,8 @@ if [ -z "$RODADA_DIR4" ]; then
   falhou=$((falhou + 1))
   echo "  FALHA não conseguiu encontrar diretório de rodada para os pareceres"
 else
-  # Manually create parecer files with valid JSON for all 3 members
-  mkdir -p "$RODADA_DIR4"
-  echo '{"posicao":"OK","argumentos":["A1","A2"],"objecoes":["O1"],"riscos":["R1"]}' > "$RODADA_DIR4/parecer-cetico.json"
-  echo '{"posicao":"OK","argumentos":["A1","A2"],"objecoes":["O1"],"riscos":["R1"]}' > "$RODADA_DIR4/parecer-arquiteto.json"
-  echo '{"posicao":"OK","argumentos":["A1","A2"],"objecoes":["O1"],"riscos":["R1"]}' > "$RODADA_DIR4/parecer-usuario-final.json"
+  # Run the REAL pareceres subcommand — o caminho feliz que este caso mede
+  testa "pareceres: subcomando pareceres coleta os 3" "0"     bash -c "cd '$TEMPDIR4' && RFM_ESTADO_ROOT='$TEMPDIR4' node '$CONSELHO' pareceres"
 
   # Check that all 3 parecer files were created
   PARECER_COUNT=$(ls "$RODADA_DIR4"/parecer-*.json 2>/dev/null | wc -l)
@@ -215,8 +214,8 @@ mkdir -p "$TEMPDIR5"
 echo "# Questão para teste de membro indisponível" > "$TEMPDIR5/questao-indisponivel.md"
 
 # Create membros.json with one failed member
-FIXTURE_OK="$SRC/scripts/fixtures/conselho/membro-ok.cjs"
-FIXTURE_FALHA="$SRC/scripts/fixtures/conselho/membro-falha.cjs"
+FIXTURE_OK="$SRC_M/scripts/fixtures/conselho/membro-ok.cjs"
+FIXTURE_FALHA="$SRC_M/scripts/fixtures/conselho/membro-falha.cjs"
 FIXTURE_OK_JSON=$(echo "$FIXTURE_OK" | sed 's/\\/\\\\/g')
 FIXTURE_FALHA_JSON=$(echo "$FIXTURE_FALHA" | sed 's/\\/\\\\/g')
 
@@ -337,8 +336,8 @@ mkdir -p "$TEMPDIR7"
 echo "# Questão para teste de saída vazia" > "$TEMPDIR7/questao-vazia.md"
 
 # Create membros.json com um membro que sai vazio
-FIXTURE_OK_FWD=$(echo "$SRC/scripts/fixtures/conselho/membro-ok.cjs" | tr '\\' '/')
-FIXTURE_VAZIO_FWD=$(echo "$SRC/scripts/fixtures/conselho/membro-vazio.cjs" | tr '\\' '/')
+FIXTURE_OK_FWD=$(echo "$SRC_M/scripts/fixtures/conselho/membro-ok.cjs" | tr '\\' '/')
+FIXTURE_VAZIO_FWD=$(echo "$SRC_M/scripts/fixtures/conselho/membro-vazio.cjs" | tr '\\' '/')
 
 mkdir -p "$TEMPDIR7/.rainforest/conselho"
 cat > "$TEMPDIR7/.rainforest/conselho/membros.json" << EOF
