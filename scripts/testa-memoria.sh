@@ -311,9 +311,13 @@ echo "== 14. consolidar com 50+ observacoes de 60+ dias grava resumos e marca ==
 CAIXA9="$(mktemp -d)"
 trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${CAIXA4:-}" "${CAIXA5:-}" "${CAIXA6:-}" "${CAIXA7:-}" "${CAIXA8:-}" "${CAIXA9:-}"' EXIT
 
-# Criar dublê de LLM que retorna um resumo fixo
+# Criar dublê de LLM que retorna um resumo fixo (ou null se TESTADOR_LLM_FALHAR=1)
 cat > "$CAIXA9/dubleLLM.cjs" <<'EOF'
 async function chamarLLM(texto) {
+  // Se env var TESTADOR_LLM_FALHAR=1, retorna null (simula falha)
+  if (process.env.TESTADOR_LLM_FALHAR === '1') {
+    return null;
+  }
   // Simular resumo de LLM
   return "Síntese do lote: tópicos consolidados com sucesso";
 }
@@ -442,6 +446,80 @@ if [ "$got" = "0" ]; then
   ok=$((ok+1)); echo "  ok   criarSchema idempotente (duas execuções de iniciar, exit 0)"
 else
   falhou=$((falhou+1)); echo "  FALHA criarSchema não foi idempotente, esperava exit 0, veio $got"
+fi
+
+echo
+echo "== 18. dublê simulando falha de LLM deixa lote intacto para próxima rodada =="
+# Tarefa 4 (D4): caso (d) — quando LLM falha, lote não é marcado, não são gravados resumos,
+# tudo fica disponível para reconsolidação. Rodada seguinte com LLM saudável consolida normalmente.
+CAIXA12="$(mktemp -d)"
+trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${CAIXA4:-}" "${CAIXA5:-}" "${CAIXA6:-}" "${CAIXA7:-}" "${CAIXA8:-}" "${CAIXA9:-}" "${CAIXA10:-}" "${CAIXA11:-}" "${CAIXA12:-}"' EXIT
+
+# Usar dublê de CAIXA9 que suporta falha via TESTADOR_LLM_FALHAR=1
+RFM_ROOT="$CAIXA12" $MEMORIA iniciar > /dev/null 2>&1
+
+# Inserir 55 observações de 60+ dias
+RFM_ROOT="$CAIXA12" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const sessentiaDias = new Date(Date.now() - 61 * 24 * 60 * 60 * 1000).toISOString();
+
+for (let i = 0; i < 55; i++) {
+  db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
+    .run('proj-test', 'Obs ' + i, sessentiaDias, 'orig-' + i);
+}
+db.close();
+" 2>/dev/null
+
+# Primeira rodada: LLM falha (TESTADOR_LLM_FALHAR=1)
+RFM_ROOT="$CAIXA12" TESTADOR_CHAMAR_LLM="$CAIXA9/dubleLLM.cjs" TESTADOR_LLM_FALHAR=1 $MEMORIA consolidar > /dev/null 2>&1
+
+# Verificar que nada foi gravado/marcado
+RESULTADO_FALHA=$(RFM_ROOT="$CAIXA12" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+
+const cntObs = db.prepare('SELECT COUNT(*) c FROM observacoes').get().c;
+const cntResumidos = db.prepare('SELECT COUNT(*) c FROM observacoes WHERE consolidada_em IS NOT NULL').get().c;
+const cntResumos = db.prepare('SELECT COUNT(*) c FROM resumos').get().c;
+
+db.close();
+process.stdout.write(cntObs + ':' + cntResumidos + ':' + cntResumos);
+" 2>/dev/null)
+
+cntObs_falha=$(echo "$RESULTADO_FALHA" | cut -d':' -f1)
+cntResumidos_falha=$(echo "$RESULTADO_FALHA" | cut -d':' -f2)
+cntResumos_falha=$(echo "$RESULTADO_FALHA" | cut -d':' -f3)
+
+# Segunda rodada: LLM saudável (TESTADOR_LLM_FALHAR não setado = null ou não existe)
+RFM_ROOT="$CAIXA12" TESTADOR_CHAMAR_LLM="$CAIXA9/dubleLLM.cjs" $MEMORIA consolidar > /dev/null 2>&1
+
+# Verificar que agora foi consolidado normalmente
+RESULTADO_OK=$(RFM_ROOT="$CAIXA12" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+
+const cntObs = db.prepare('SELECT COUNT(*) c FROM observacoes').get().c;
+const cntResumidos = db.prepare('SELECT COUNT(*) c FROM observacoes WHERE consolidada_em IS NOT NULL').get().c;
+const cntResumos = db.prepare('SELECT COUNT(*) c FROM resumos').get().c;
+
+db.close();
+process.stdout.write(cntObs + ':' + cntResumidos + ':' + cntResumos);
+" 2>/dev/null)
+
+cntObs_ok=$(echo "$RESULTADO_OK" | cut -d':' -f1)
+cntResumidos_ok=$(echo "$RESULTADO_OK" | cut -d':' -f2)
+cntResumos_ok=$(echo "$RESULTADO_OK" | cut -d':' -f3)
+
+# Validar: falha deixa lote intacto, rodada seguinte consolida
+if [ "$cntObs_falha" = "55" ] && [ "$cntResumidos_falha" = "0" ] && [ "$cntResumos_falha" = "0" ] && \
+   [ "$cntObs_ok" = "55" ] && [ "$cntResumidos_ok" = "55" ] && [ "$cntResumos_ok" = "6" ]; then
+  ok=$((ok+1)); echo "  ok   falha LLM lota lote intacto (obs=$cntObs_falha, resumidos=$cntResumidos_falha, resumos=$cntResumos_falha), segunda rodada consolida (marcadas=$cntResumidos_ok, resumos=$cntResumos_ok)"
+else
+  falhou=$((falhou+1)); echo "  FALHA rodada com falha: obs=$cntObs_falha (esp 55), resumidos=$cntResumidos_falha (esp 0), resumos=$cntResumos_falha (esp 0); rodada OK: obs=$cntObs_ok (esp 55), resumidos=$cntResumidos_ok (esp 55), resumos=$cntResumos_ok (esp 6)"
 fi
 
 echo
