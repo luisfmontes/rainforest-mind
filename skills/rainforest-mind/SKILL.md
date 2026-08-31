@@ -116,7 +116,7 @@ agente da **função**: `executor`, `planejador`, `revisor`, `tester`, `depurado
 `resolvedor-de-build`, `documentador`. Abaixo disso, despachar sai **mais caro**
 que fazer. A janela principal pensa. Agente que edita **nunca é nomeado**, e
 **nomeado só entrega por `SendMessage`** — termina e fica calado.
-Desde o fluxo 9, subagente só roda se estiver declarado em `.rainforest/agentes.json` com o estágio ativo na sua lista; a portaria decide por hook `PreToolUse` sem perguntar ao humano em runtime — exceção é editar o manifesto, que passa pelo `revisar`.
+Com a portaria registrada (fluxo 9), subagente só roda se estiver declarado em `.rainforest/agentes.json` com o estágio ativo na sua lista; a portaria decide por hook `PreToolUse` sem perguntar ao humano em runtime — exceção é editar o manifesto, que passa pelo `revisar`.
 <!-- detalhe -->
 Elaboração: references/regra-10.md
 
