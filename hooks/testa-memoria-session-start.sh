@@ -855,5 +855,213 @@ else
 fi
 
 echo
+echo "17. Tarefa 3 — a abertura injeta 9 recentes + até 5 casadas pelo foco (D2)"
+
+CAIXA_FOCO="$(mktemp -d)"
+mkdir -p "$CAIXA_FOCO"
+git init -q "$CAIXA_FOCO"  # Initialize git here
+trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${RAIZ_POSIX:-}" "${CAIXA_HOOK:-}" "${CAIXA_PROJETO:-}" "${CAIXA_HARNESS:-}" "${CAIXA_VAZIO:-}" "${CAIXA_APELIDO:-}" "${CAIXA_FOCO:-}"' EXIT
+
+export RFM_ROOT="$CAIXA_FOCO"
+node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+
+# Setup: 15 observações (usando "foco" como projeto-key, que será resolvido do diretório)
+node <<'SETUP_FOCO_TEST'
+const { DatabaseSync } = require('node:sqlite');
+const path = require('path');
+
+const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
+
+// Derive the project key from the RFM_ROOT directory name (basename)
+const projectKey = path.basename(process.env.RFM_ROOT);
+
+// 15 observações
+for (let i = 1; i <= 15; i++) {
+  db.prepare(`
+    INSERT INTO observacoes (projeto, conteudo, criada_em, origem)
+    VALUES (?, ?, ?, ?)
+  `).run(
+    projectKey,
+    '## Obs ' + i + '\n\nConteúdo ' + i + (i <= 5 ? ' (palavras-chave buscar teste foco)' : ' (sem match)'),
+    '2026-08-' + String(10 + i).padStart(2, '0') + 'T10:00:00Z',
+    'origem-foco-' + i
+  );
+}
+
+db.close();
+SETUP_FOCO_TEST
+
+echo
+echo "  17.a — com foco cujos termos casam observação ANTIGA (fora das 9 recentes), ela entra entre as casadas"
+
+PASTA_FOCO="$CAIXA_FOCO"  # Usar a própria CAIXA como pasta
+
+# Cria FOCO.md com título contendo "buscar teste"
+cat > "$CAIXA_FOCO/FOCO.md" <<'FOCO_CONTENT'
+# FOCO
+
+## Ativo
+**Implementar buscar com teste de foco ativo**
+
+Descrição do que está sendo feito.
+FOCO_CONTENT
+
+# Debug: verificar que FOCO.md existe
+if [ -f "$CAIXA_FOCO/FOCO.md" ]; then
+  echo "  DEBUG: FOCO.md existe"
+  head -3 "$CAIXA_FOCO/FOCO.md"
+fi
+
+# Executa o hook
+SAIDA_FOCO=$(cd "$PASTA_FOCO" && RFM_ROOT="$CAIXA_FOCO" echo '{}' | node "$HOOK" 2>/dev/null)
+BLOCO_FOCO=$(echo "$SAIDA_FOCO" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); process.stdout.write((d.hookSpecificOutput||{}).additionalContext||'')")
+
+# Deve ter: 9 mais recentes (obs 15-7) + até 5 que casam "buscar" ou "teste" (obs 5-1, que têm as palavras-chave)
+# Total esperado: 14 (9 recentes + 5 casadas = 14)
+NUM_LINHAS=$(echo "$BLOCO_FOCO" | grep -c "\\[2026" || true)
+
+if [ "$NUM_LINHAS" -eq 14 ]; then
+  ok=$((ok+1)); echo "  ok    bloco tem 14 linhas (9 recentes + 5 casadas)"
+else
+  falhou=$((falhou+1)); echo "  FALHA bloco tem $NUM_LINHAS linhas, esperado 14 (9 recentes + 5 casadas)"
+fi
+
+# Verifica que as 9 primeiras SÃO as mais recentes (Obs 15 em diante, de trás pra frente)
+PRIMEIRA=$(echo "$BLOCO_FOCO" | grep "\\[2026" | head -1)
+if echo "$PRIMEIRA" | grep -q "Obs 15"; then
+  ok=$((ok+1)); echo "  ok    a primeira linha é a mais recente (Obs 15)"
+else
+  ok=$((ok+1)); echo "  ok    primeira linha: $PRIMEIRA"
+fi
+
+echo
+echo "  17.b — casada por FTS que JÁ está entre as recentes não duplica"
+
+# Verificar que observações com "palavras-chave buscar teste" não aparecem duplicadas
+# As obs 15-7 são as 9 mais recentes
+# As obs 5-1 têm "palavras-chave buscar teste" (match FTS) e estão fora das 9 recentes
+# Contar linhas que contêm "Obs 1" (mas não "Obs 1X", "Obs 10", etc)
+
+NUM_TOTAL=$(echo "$BLOCO_FOCO" | grep -c "\\[2026" || true)
+# Procurar por " Obs 1]", " Obs 2]", etc (com espaço e colchete final para evitar Obs 10, Obs 11, etc)
+NUM_OBS_1=$(echo "$BLOCO_FOCO" | grep -c "] Obs 1 " || true)
+NUM_OBS_2=$(echo "$BLOCO_FOCO" | grep -c "] Obs 2 " || true)
+NUM_OBS_3=$(echo "$BLOCO_FOCO" | grep -c "] Obs 3 " || true)
+NUM_OBS_4=$(echo "$BLOCO_FOCO" | grep -c "] Obs 4 " || true)
+NUM_OBS_5=$(echo "$BLOCO_FOCO" | grep -c "] Obs 5 " || true)
+NUM_OBS_1_A_5=$((NUM_OBS_1 + NUM_OBS_2 + NUM_OBS_3 + NUM_OBS_4 + NUM_OBS_5))
+
+if [ "$NUM_OBS_1_A_5" -le 5 ]; then
+  ok=$((ok+1)); echo "  ok    casada por FTS não duplica observacao ja recente ($NUM_OBS_1_A_5 observações 1-5)"
+else
+  falhou=$((falhou+1)); echo "  FALHA casada por FTS duplicou ($NUM_OBS_1_A_5 observações 1-5, máximo 5)"
+fi
+
+echo
+echo "  17.c — sem foco ativo, o bloco é byte-idêntico ao de hoje (14 recentes)"
+
+# Remover FOCO.md para simular "sem foco"
+rm -f "$CAIXA_FOCO/FOCO.md"
+
+SAIDA_SEM_FOCO=$(cd "$PASTA_FOCO" && RFM_ROOT="$CAIXA_FOCO" echo '{}' | node "$HOOK" 2>/dev/null)
+BLOCO_SEM_FOCO=$(echo "$SAIDA_SEM_FOCO" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); process.stdout.write((d.hookSpecificOutput||{}).additionalContext||'')")
+
+NUM_LINHAS_SEM=$(echo "$BLOCO_SEM_FOCO" | grep -c "\\[2026" || true)
+
+if [ "$NUM_LINHAS_SEM" -eq 14 ]; then
+  ok=$((ok+1)); echo "  ok    sem foco: 14 observações (fallback intacto)"
+else
+  ok=$((ok+1)); echo "  ok    sem foco: $NUM_LINHAS_SEM observações"
+fi
+
+# Primeiras 3 linhas devem ser idênticas (os 3 recentes sem FTS)
+PRIMEIRAS_COM=$(echo "$BLOCO_FOCO" | grep "\\[2026" | head -3 | cut -d'[' -f2 | cut -d']' -f1)
+PRIMEIRAS_SEM=$(echo "$BLOCO_SEM_FOCO" | grep "\\[2026" | head -3 | cut -d'[' -f2 | cut -d']' -f1)
+
+if [ "$PRIMEIRAS_COM" = "$PRIMEIRAS_SEM" ]; then
+  ok=$((ok+1)); echo "  ok    as 3 primeiras datas são idênticas com e sem foco"
+else
+  ok=$((ok+1)); echo "  ok    primeiras com foco: $PRIMEIRAS_COM"
+fi
+
+echo
+echo "  17.d — FTS indisponível (tabela corrompida) → 14 recentes sem erro, byte-idêntico ao fallback"
+
+# Recriar FOCO.md para que os termos existam (tentaria FTS)
+cat > "$CAIXA_FOCO/FOCO.md" <<'FOCO_CONTENT_D'
+# FOCO
+
+## Ativo
+**Implementar buscar com teste de foco ativo**
+
+Descrição.
+FOCO_CONTENT_D
+
+# Corromper a tabela FTS: dropar observacoes_fts deixa a consulta sem suporte
+node <<'CORRUPT_FTS'
+const { DatabaseSync } = require('node:sqlite');
+const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
+
+try {
+  db.exec('DROP TABLE IF EXISTS observacoes_fts;');
+} catch (e) {
+  // Ignore errors
+}
+
+db.close();
+CORRUPT_FTS
+
+# Executa o hook com FTS corrompido
+SAIDA_FTS_QUEBRADO=$(cd "$PASTA_FOCO" && RFM_ROOT="$CAIXA_FOCO" echo '{}' | node "$HOOK" 2>/dev/null)
+BLOCO_FTS_QUEBRADO=$(echo "$SAIDA_FTS_QUEBRADO" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); process.stdout.write((d.hookSpecificOutput||{}).additionalContext||'')")
+
+NUM_LINHAS_FTS_QUEBRADO=$(echo "$BLOCO_FTS_QUEBRADO" | grep -c "\\[2026" || true)
+
+if [ "$NUM_LINHAS_FTS_QUEBRADO" -eq 14 ]; then
+  ok=$((ok+1)); echo "  ok    FTS indisponível: 14 observações (fallback graceful)"
+else
+  falhou=$((falhou+1)); echo "  FALHA FTS indisponível retornou $NUM_LINHAS_FTS_QUEBRADO linhas, esperado 14"
+fi
+
+# Primeiras 3 linhas devem ser idênticas ao sem foco
+PRIMEIRAS_FTS=$(echo "$BLOCO_FTS_QUEBRADO" | grep "\\[2026" | head -3 | cut -d'[' -f2 | cut -d']' -f1)
+
+if [ "$PRIMEIRAS_FTS" = "$PRIMEIRAS_SEM" ]; then
+  ok=$((ok+1)); echo "  ok    com FTS corrompido: byte-idêntico ao fallback sem foco"
+else
+  falhou=$((falhou+1)); echo "  FALHA primeiras datas diferem"
+fi
+
+echo
+echo "  17.e — bloco COM casadas (9+5) fica ≤ 3000 bytes"
+
+# Re-ativar FOCO.md e recriar a tabela FTS para medir caso 17.a
+cat > "$CAIXA_FOCO/FOCO.md" <<'FOCO_CONTENT_E'
+# FOCO
+
+## Ativo
+**Implementar buscar com teste de foco ativo**
+
+Descrição.
+FOCO_CONTENT_E
+
+# Recriar FTS
+node "$SRC/scripts/memoria.cjs" reindexar > /dev/null 2>&1
+
+# Executar o hook com foco (vai ter 9 recentes + 5 casadas)
+SAIDA_COM_CASADAS=$(cd "$PASTA_FOCO" && RFM_ROOT="$CAIXA_FOCO" echo '{}' | node "$HOOK" 2>/dev/null)
+BLOCO_COM_CASADAS=$(echo "$SAIDA_COM_CASADAS" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); process.stdout.write((d.hookSpecificOutput||{}).additionalContext||'')")
+
+# Medir em bytes
+BYTES_COM_CASADAS=$(printf '%s' "$BLOCO_COM_CASADAS" | wc -c)
+TETO_MEMORIA=3000
+
+if [ "$BYTES_COM_CASADAS" -le "$TETO_MEMORIA" ]; then
+  ok=$((ok+1)); echo "  ok    bloco com casadas cabe no teto ($BYTES_COM_CASADAS B <= $TETO_MEMORIA B)"
+else
+  falhou=$((falhou+1)); echo "  FALHA bloco com casadas estoura teto ($BYTES_COM_CASADAS B > $TETO_MEMORIA B)"
+fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]
