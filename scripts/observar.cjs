@@ -494,12 +494,36 @@ async function processarMarca(conexao, marca) {
       break;
     }
     const { eventos, offsetFim } = fatias[i];
-    const textoDaPassada = formatarParaLLM(eventos);
+    let textoDaPassada = formatarParaLLM(eventos);
+    // Um ÚNICO evento pode ser maior que o teto (tool output grande), e o
+    // fatiador não divide abaixo de um evento. Sem este corte, chamarLLM
+    // devolvia null pelo guarda do teto, a marca d'água nunca avançava e a
+    // sessão travava a fila PARA SEMPRE — 34 pendências acumuladas entre
+    // 21/08 e 31/08 tinham esta causa. O transcrito em disco fica íntegro;
+    // só o texto da passada é cortado, e a observação sai da cabeça do trecho.
+    if (textoDaPassada.length > TETO_ARGUMENTO) {
+      console.error(
+        `AVISO: fatia ${i + 1} acima do teto (${textoDaPassada.length} > ${TETO_ARGUMENTO}) — ` +
+        `truncando para a passada; o transcrito em disco nao muda`
+      );
+      textoDaPassada = textoDaPassada.slice(0, TETO_ARGUMENTO - 60) +
+        '\n[trecho truncado no teto de argumento da passada]';
+    }
     debug(`fatia ${i + 1}/${fatias.length}: ${eventos.length} evento(s), ${textoDaPassada.length} caracteres`);
 
-    // Rejeitar prompt vazio (tarefa 15: não gravar lixo no banco)
+    // Rejeitar prompt vazio (tarefa 15: não gravar lixo no banco) — mas a
+    // marca AVANÇA: janela sem nada formatável está PROCESSADA, não pendente.
+    // Sem o avanço, a fatia vazia dava `continue` com a marca parada e a
+    // sessão virava pendência eterna — 7 das 34 pendências de 21-31/08
+    // plataram assim (a outra causa era o teto; ver o truncamento acima).
     if (!textoDaPassada || !textoDaPassada.trim()) {
-      console.log(`prompt vazio em fatia ${i + 1}: nenhuma observacao para gravar`);
+      console.log(`prompt vazio em fatia ${i + 1}: nenhuma observacao para gravar; marca avanca`);
+      avancarMarca(conexao, {
+        projeto: marca.projeto,
+        sessao: marca.sessao,
+        offsetProcessado: offsetFim,
+      });
+      ultimoOffsetProcessado = offsetFim;
       continue;
     }
 

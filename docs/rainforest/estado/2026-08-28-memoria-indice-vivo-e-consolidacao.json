@@ -1,0 +1,94 @@
+{
+  "slug": "2026-08-28-memoria-indice-vivo-e-consolidacao",
+  "titulo": "Fluxo 2 — memoria: indice vivo, relevancia e consolidacao",
+  "criado_em": "2026-08-30",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/2026-08-28-memoria-indice-vivo-e-consolidacao.md",
+    "aprovado_por": "Luis, 2026-08-28 na conversa de origem (Q1-Q3 nas recomendadas); instalado em 2026-08-31",
+    "em": "2026-08-30"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-08-28-memoria-indice-vivo-e-consolidacao.md",
+    "tarefas": 5,
+    "paralelas": [
+      2
+    ],
+    "nota": "plano verbatim da origem; T1 primeiro, T2 paralela desde ja, T3-T5 apos T1",
+    "em": "2026-08-30"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-08-31",
+    "tarefas_ok": 5,
+    "tarefas": 5,
+    "nota": "T3 integrada apos 1 devolucao (fallback de FTS quebrado sob foco e teto de bytes com casadas nao tinham teste); catraca re-rodada pela integracao exit 0",
+    "em": "2026-08-31",
+    "comando": "3 baterias no checkout principal pos-conserto + catracas re-rodadas (5 originais + DROP da migracao C1)",
+    "saida": "testa-memoria 29 ok / testa-memoria-session-start 64 ok / testa-saude 43 ok, 0 falhas; catraca do DROP exit 0 (teste 11 novo fica vermelho); demo C1 real: banco legado migrado, DDL com content= e buscar achando o nunca-indexado",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "teste 11 des-tautologizado: DDL migrado e buscar acha o nunca-indexado"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "o bloco termina ensinando o comando de busca"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "casada por FTS nao duplica observacao ja recente"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "consolidar duas vezes nao gera resumo duplicado"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "pendencia recente nao acusa pipeline parado"
+      }
+    ]
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "39c16af9c8de28ec6bfb20105a809753df0fc776",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-08-28-memoria-indice-vivo-e-consolidacao.json",
+        "relatorios/2026-08-28-batedor-repos.md",
+        "vigias/ERROS.md"
+      ]
+    },
+    "criterio": "D1 migracao de banco legado + D5 alarme nao engole erro imprevisto",
+    "comando": "revisao independente (sonnet), 3 rodadas: criticos reproduzidos e reconfirmados; delta do observar revisado com perguntas de perda de dado",
+    "saida": "APROVADO; 2 avisos aceitos e documentados (cauda truncada nao volta; janela de ponto-cego pulada permanente) + sugestao de codigo morto gravarResumo/marcarConsolidadas; emenda tarefa 6 cobre o creep",
+    "faltou": "migracao drop+recreate+rebuild real e idempotente; else final no checarMemoria (problema nao classificado = alerta); metade do D4 (injecao prefere resumo) sem implementacao; resumo+marcacao nao atomicos; teto de consolidacao >50",
+    "em": "2026-08-31",
+    "base": "00ea6c43cfcf216a1ace960ab5fb209637aaddb2",
+    "head": "39c16af",
+    "achados": 0
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "criterios das 6 tarefas no HEAD 39c16af: 4 baterias + demo de banco legado + saude e --seco no banco real",
+    "saida": "T1: banco legado migra e buscar acha o nunca-indexado; T2: rodape buscar --texto no teto; T3: 9+5 com fallbacks e resumo preferido; T4: consolidar atomico, fronteira 50/51, falha de LLM intacta; T5: saude real ok (schema valido, indice vivo, pipeline em dia); T6: fila real 34->0, --seco sem pendencia; baterias 29/64/43/38, 0 falhas",
+    "em": "2026-08-31"
+  },
+  "fechar": {
+    "status": "ok",
+    "comando": "gh pr create --base fluxo/ciclo-por-maquina",
+    "saida": "https://github.com/luisfmontes/rainforest-mind/pull/133",
+    "pr": 133,
+    "commit": "5520435",
+    "em": "2026-08-31"
+  }
+}
