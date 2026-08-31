@@ -997,6 +997,12 @@ function checarMemoria() {
         return aviso('banco de memoria', `${problemas.join('; ')} (rode observar.cjs para processar)`,
           'rode: node scripts/observar.cjs — processa a fila de observações');
       }
+
+      // C2: erro imprevisto não vira ok
+      // Se chegou aqui e ainda tem problemas, é algo que nenhum pattern acima reconheceu.
+      // Reportar como ALERTA genérico com as mensagens coladas.
+      return alerta('banco de memoria', `erro imprevisto não classificado: ${problemas.join('; ')}`,
+        'verifique o banco com: node scripts/memoria.cjs esquema');
     }
 
     return ok('banco de memoria', 'schema valido, indice vivo, pipeline em dia');

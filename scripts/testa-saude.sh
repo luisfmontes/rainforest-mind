@@ -632,8 +632,56 @@ else
   ok=$((ok+1)); echo "  ok   Q5. pendencia recente nao acusa pipeline parado"
 fi
 
+# Teste Q6 (C2 da revisao): erro imprevisto nao vira ok
+# Banco com marca_dagua SEM offset_processado (schema pre-migracao): a checagem 3
+# lanca "no such column", o erro nao casa com nenhuma substring conhecida, e a
+# versao anterior caia no ok final — o alarme mentia exatamente no caso imprevisto.
+DADOS_IMPREVISTO=".rainforest-saude-imprevisto"
+rm -rf "$DADOS_IMPREVISTO" && mkdir -p "$DADOS_IMPREVISTO"
+( cd "$DADOS_IMPREVISTO" && node << 'MKBANCO_IMPREVISTO'
+const { DatabaseSync } = require('node:sqlite');
+const db = new DatabaseSync('./rainforest.db');
+db.exec(`
+  CREATE TABLE observacoes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    projeto TEXT NOT NULL,
+    conteudo TEXT NOT NULL,
+    criada_em TEXT NOT NULL,
+    origem TEXT,
+    UNIQUE(projeto, origem)
+  );
+  CREATE VIRTUAL TABLE observacoes_fts USING fts5(
+    conteudo,
+    content='observacoes',
+    content_rowid='id'
+  );
+  -- marca_dagua SEM offset_processado: estado real pre-migracao
+  CREATE TABLE marca_dagua (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    projeto TEXT NOT NULL,
+    sessao TEXT NOT NULL,
+    arquivo TEXT NOT NULL,
+    offset INTEGER NOT NULL DEFAULT 0,
+    processada_em TEXT NOT NULL,
+    UNIQUE(projeto, sessao)
+  );
+  INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, processada_em)
+  VALUES ('test', 'sess1', '/tmp/t.jsonl', 100, '2026-08-20T10:00:00Z');
+`);
+db.close();
+MKBANCO_IMPREVISTO
+)
+DADOS_IMPREVISTO_ABS="$(cd "$DADOS_IMPREVISTO" && pwd)"
+Q6="$(RFM_ROOT="$DADOS_IMPREVISTO_ABS" node "$SRC/scripts/saude.cjs" --json 2>/dev/null | node -e 'let d=""; process.stdin.on("data", c => d += c).on("end", () => { try { const a = JSON.parse(d).find(x => x.item === "banco de memoria"); console.log(a ? a.nivel + " " + a.detalhe : "ausente"); } catch(e) { console.log("erro"); } })')"
+# "Nao ser ok" nao basta: um aviso de indice por acaso tambem passaria. O que o
+# C2 promete e ALERTA vindo do ramo novo ("erro imprevisto"), carregando a
+# mensagem original — e o fixture mantem o resto do banco SAUDAVEL (FTS com
+# content= e contagens iguais) para nenhum outro padrao poder produzir o achado.
+checa "Q6. erro nao classificado vira ALERTA (nao ok, nao silencio)" "alerta" "erro imprevisto" "$Q6"
+checa "Q6. e o alerta carrega a mensagem original do erro"           "alerta" "erro ao verificar marca dagua" "$Q6"
+
 # Limpeza
-rm -rf "$DADOS_OK" "$DADOS_DIVERGE" "$DADOS_PENDENTE_72H" "$DADOS_PENDENTE_1H"
+rm -rf "$DADOS_OK" "$DADOS_DIVERGE" "$DADOS_PENDENTE_72H" "$DADOS_PENDENTE_1H" "$DADOS_IMPREVISTO"
 
 echo
 echo "== contas do harness em versoes diferentes do mesmo plugin =="
