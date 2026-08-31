@@ -54,7 +54,7 @@ const path = require('path');
 const crypto = require('crypto');
 
 // Importar funções compartilhadas de ponte
-const { corpo, raizDeDados: raizDeDadosShared, AGENTES: AGENTES_SHARED } =
+const { corpo, raizDeDados: raizDeDadosShared, AGENTES: AGENTES_SHARED, lerProjetoMd, hashDoArquivo } =
   require('../hooks/lib/ponte-corpo.cjs');
 
 const CODIGO_ROOT = path.resolve(__dirname, '..');
@@ -82,6 +82,7 @@ function resolverSkillMd(_arquivoConferido, skillExplicito) {
 }
 
 const FIM = '<!-- rainforest-mind:fim -->';
+const FIM_PROJETO = '<!-- rainforest-mind:projeto:fim -->';
 
 /**
  * Hash curto (16 primeiros caracteres) do SKILL.md para detecção de edição manual.
@@ -89,6 +90,18 @@ const FIM = '<!-- rainforest-mind:fim -->';
 function hashSkillMd(caminhoSkill) {
   try {
     const conteudo = fs.readFileSync(caminhoSkill, 'utf8');
+    return crypto.createHash('sha256').update(conteudo).digest('hex').slice(0, 16);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Hash curto (16 primeiros caracteres) do projeto.md para detecção de edição manual no bloco.
+ */
+function hashProjetoMd(caminhoProjetoMd) {
+  try {
+    const conteudo = fs.readFileSync(caminhoProjetoMd, 'utf8');
     return crypto.createHash('sha256').update(conteudo).digest('hex').slice(0, 16);
   } catch {
     return null;
@@ -118,6 +131,30 @@ function extrairBlocoGerado(texto) {
   const inicioIdx = inicioMatch.index;
   const fimIdx = texto.indexOf(FIM);
   const blocoCompleto = texto.slice(inicioIdx, fimIdx + FIM.length);
+
+  // Extrai as linhas do conteúdo, sem os marcadores
+  const linhas = blocoCompleto
+    .split(/\r?\n/)
+    .slice(1, -1) // Remove linha do INICIO e linha do FIM
+    .map(l => l.trim());
+
+  return { linhas, hashNoMarcador, temBloco: true };
+}
+
+/**
+ * Extrai o bloco de projeto entre rainforest-mind:projeto:inicio e rainforest-mind:projeto:fim.
+ * Devolve: { linhas: [...], hashNoMarcador: "..." | null, temBloco: true/false }
+ */
+function extrairBlocoProjetoGerado(texto) {
+  const inicioMatch = texto.match(/<!-- rainforest-mind:projeto:inicio[^>]*-->/);
+  if (!inicioMatch || !texto.includes(FIM_PROJETO)) {
+    return { linhas: [], hashNoMarcador: null, temBloco: false };
+  }
+
+  const hashNoMarcador = extrairHashDoMarcador(inicioMatch[0]);
+  const inicioIdx = inicioMatch.index;
+  const fimIdx = texto.indexOf(FIM_PROJETO);
+  const blocoCompleto = texto.slice(inicioIdx, fimIdx + FIM_PROJETO.length);
 
   // Extrai as linhas do conteúdo, sem os marcadores
   const linhas = blocoCompleto
@@ -188,6 +225,94 @@ function linhasDivergentes(atual, esperado) {
     }
   }
   return indices;
+}
+
+/**
+ * Confere o bloco de projeto (se existir).
+ * Retorna { veredito: 'conferido' | 'editado-a-mao' | 'ficou-para-tras' | 'sem-bloco' | 'sem-entrevista', msg, linhasDivergentes?: [...] }
+ */
+function conferirBlocoProjetoGerado(texto, caminhoProjetoMd, raizAlvo) {
+  // Extrai o bloco de projeto do arquivo gerado
+  const { linhas: linhasAtuais, hashNoMarcador, temBloco } = extrairBlocoProjetoGerado(texto);
+
+  // Se não tem bloco, é porque não há projeto.md no alvo — isso não é erro
+  if (!temBloco) {
+    return {
+      veredito: 'sem-bloco',
+      msg: 'Arquivo não contém bloco de projeto (nenhuma entrevista foi rodada)'
+    };
+  }
+
+  // Lê o conteúdo do projeto.md
+  let conteudoProjetoMdFull = null;
+  try {
+    conteudoProjetoMdFull = fs.readFileSync(caminhoProjetoMd, 'utf8');
+  } catch {
+    // projeto.md não existe ou não pode ser lido — mas o bloco existe no arquivo
+    // Isso significa que o arquivo foi regenerado e o projeto.md sumiu
+    return {
+      veredito: 'ficou-para-tras',
+      msg: 'O arquivo tem bloco de projeto, mas docs/rainforest/projeto.md não existe ou não pode ser lido'
+    };
+  }
+
+  // Extrai o bloco do projeto.md original
+  const marcadorInicioProj = '<!-- rainforest-mind:projeto:inicio -->';
+  const marcadorFimProj = '<!-- rainforest-mind:projeto:fim -->';
+  const idxInicio = conteudoProjetoMdFull.indexOf(marcadorInicioProj);
+  const idxFim = conteudoProjetoMdFull.indexOf(marcadorFimProj);
+
+  if (idxInicio < 0 || idxFim < 0 || idxFim <= idxInicio) {
+    return {
+      veredito: 'ficou-para-tras',
+      msg: 'O docs/rainforest/projeto.md não tem marcadores de projeto válidos'
+    };
+  }
+
+  // Extrai o conteúdo do bloco
+  const blocoProjetoMdCompleto = conteudoProjetoMdFull.slice(idxInicio, idxFim + marcadorFimProj.length);
+  const linhasEsperadas = blocoProjetoMdCompleto
+    .split(/\r?\n/)
+    .slice(1, -1) // Remove linha do INICIO e linha do FIM
+    .map(l => l.trim());
+
+  // Normaliza conteúdo para comparação
+  const conteudoAtual = linhasAtuais.join('\n');
+  const conteudoEsperado = linhasEsperadas.join('\n');
+
+  // CASO 1: Bloco bate -> VERDE
+  if (textoIgual(conteudoAtual, conteudoEsperado)) {
+    return {
+      veredito: 'conferido',
+      msg: 'Bloco de projeto está em sincronia com docs/rainforest/projeto.md'
+    };
+  }
+
+  // CASO 2/3: Há divergência
+  if (hashNoMarcador) {
+    const hashAtualProjetoMd = hashProjetoMd(caminhoProjetoMd);
+    if (hashNoMarcador === hashAtualProjetoMd) {
+      // CASO 2: Hash bate, conteúdo não -> editado à mão
+      const divergentes = linhasDivergentes(conteudoAtual, conteudoEsperado);
+      return {
+        veredito: 'editado-a-mao',
+        msg: 'Bloco de projeto foi editado à mão — conteúdo diverge do docs/rainforest/projeto.md, mas o hash bate',
+        linhasDivergentes: divergentes
+      };
+    } else {
+      // CASO 3: Hash não bate -> projeto.md andou, arquivo ficou para trás
+      return {
+        veredito: 'ficou-para-tras',
+        msg: 'Bloco de projeto ficou para trás — o docs/rainforest/projeto.md mudou desde a última geração'
+      };
+    }
+  } else {
+    // CASO 4: Sem hash e com divergência -> ambíguo
+    return {
+      veredito: 'ficou-para-tras',
+      msg: 'Bloco de projeto foi gerado antes da catraca de hash — não dá para saber se foi editado ou se o docs/rainforest/projeto.md mudou'
+    };
+  }
 }
 
 function main() {
@@ -277,16 +402,52 @@ function main() {
 
   // CASO 1: Bloco atual bate com o esperado -> VERDE
   if (textoIgual(conteudoAtual, conteudoEsperado)) {
+    // Se o bloco de regras passou, confira também o bloco de projeto
+    const diretorioAlvo = path.dirname(alvo);
+    const caminhoProjetoMd = path.join(diretorioAlvo, 'docs', 'rainforest', 'projeto.md');
+
+    // Normalizar o caminho do alvo para passá-lo a corpo() se necessário
+    const raizAlvo = /^[A-Z]:/.test(diretorioAlvo) ? diretorioAlvo : null;
+
+    const resultadoProjeto = conferirBlocoProjetoGerado(texto, caminhoProjetoMd, raizAlvo);
+
+    // Se há divergência no bloco de projeto, reporta como RECUSADO
+    if (resultadoProjeto.veredito === 'editado-a-mao' || resultadoProjeto.veredito === 'ficou-para-tras') {
+      if (json) {
+        console.log(JSON.stringify({
+          arquivo: alvo,
+          situacao: 'bloco-projeto-divergente',
+          projetoVeredito: resultadoProjeto.veredito,
+          msg: resultadoProjeto.msg,
+          linhasDivergentes: resultadoProjeto.linhasDivergentes
+        }, null, 2));
+      } else {
+        console.log(`RECUSADO — ${resultadoProjeto.msg}\n`);
+        if (resultadoProjeto.linhasDivergentes && resultadoProjeto.linhasDivergentes.length > 0) {
+          console.log('Primeiras linhas divergentes no bloco de projeto:');
+          for (const div of resultadoProjeto.linhasDivergentes.slice(0, 3)) {
+            console.log(`  linha ${div.numero}: ${div.atual}`);
+          }
+        }
+      }
+      process.exit(2);
+    }
+
+    // Caso contrário, bloco de projeto está OK (ou não existe)
     if (json) {
       console.log(JSON.stringify({
         arquivo: alvo,
         situacao: 'verde',
         hashNoMarcador,
         hashAtual,
-        msg: 'Bloco está em sincronia com o SKILL.md atual'
+        msg: 'Bloco está em sincronia com o SKILL.md atual',
+        projetoVeredito: resultadoProjeto.veredito
       }, null, 2));
     } else {
       console.log('CONFERIDO — bloco gerado bate com o SKILL.md atual.');
+      if (resultadoProjeto.temBloco) {
+        console.log(`Bloco de projeto: ${resultadoProjeto.veredito}`);
+      }
     }
     process.exit(0);
   }
@@ -363,4 +524,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { extrairBlocoGerado, hashSkillMd, linhasDivergentes };
+module.exports = { extrairBlocoGerado, extrairBlocoProjetoGerado, hashSkillMd, hashProjetoMd, linhasDivergentes };
