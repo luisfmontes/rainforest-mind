@@ -18,7 +18,16 @@
     "em": "2026-08-31"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/fluxo-11-conselho.md",
+    "tarefas": 9,
+    "paralelas": [
+      1
+    ],
+    "decisoes": {
+      "formato-canonico": "design canonico fluxo-11-conselho.md criado para o checador; o consolidado fluxo-11-design-conselho.md segue sendo a narrativa — divergencia se resolve a favor do consolidado"
+    },
+    "em": "2026-08-31"
   },
   "executar": {
     "status": "pendente"
