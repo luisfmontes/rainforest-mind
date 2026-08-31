@@ -30,6 +30,7 @@
  *   node scripts/estado.cjs marcar   --slug <slug> --estagio <e> --status <s> [--json '{...}']
  *   node scripts/estado.cjs proximo  --slug <slug>
  *   node scripts/estado.cjs exigir   --slug <slug> --estagio <e>
+ *   node scripts/estado.cjs liberar  --slug <slug> --estagio <e>
  *   node scripts/estado.cjs listar
  */
 
@@ -105,6 +106,9 @@ const FECHADO = { design: 'aprovado', plano: 'ok' };
 // `dispensada` fecha a arqueologia tanto quanto `ok`: as duas significam que
 // alguem olhou e decidiu. Sao caminhos diferentes para o mesmo lugar.
 const FECHA_TAMBEM = { arqueologia: ['ok', 'dispensada'] };
+
+// Estágios de execução que exigem evidência (comando e saida) para fechar com ok
+const ESTAGIOS_EXIGEM_EVIDENCIA = ['executar', 'verificar'];
 function estaFechado(estagio, bloco) {
   if (!bloco || typeof bloco !== 'object') return false;
   if (FECHA_TAMBEM[estagio]) return FECHA_TAMBEM[estagio].includes(bloco.status);
@@ -123,11 +127,17 @@ function estaFechado(estagio, bloco) {
 // A correção não é allowlist de campos persistentes: o plano
 // `decisao-que-evapora-na-esteira` fixou como invariante que `--json` continua
 // aceitando metadado arbitrário, sem lista fechada que rejeite (ou, por extensão,
-// que apague em silêncio) chave que essa lista não previu. `pendentes` é hoje o
-// único campo do vocabulário do fluxo que descreve incompletude — ver
-// `skills/executar/SKILL.md`, seção "Condição de parada" — por isso a lista
-// abaixo tem um item só. Um campo novo com o mesmo papel entra aqui quando nascer.
-const CAMPOS_EFEMEROS = ['pendentes'];
+// que apague em silêncio) chave que essa lista não previu. Campos como `pendentes`
+// e `reaberto_por` descrevem incompletude — ver `skills/executar/SKILL.md`, seção
+// "Condição de parada" — por isso entram nesta lista. Um campo novo com o mesmo
+// papel entra aqui quando nascer. O rastro histórico da reprovação (criterio,
+// comando, saida, faltou) fica no bloco do estágio que reprovou e não é efêmero.
+const CAMPOS_EFEMEROS = ['pendentes', 'reaberto_por'];
+
+// Teto de tentativas de reprovação consecutiva. Na terceira, `exigir` do upstream
+// reaberto recusa com exit 2 mandando subir a decisão ao usuário. Constante
+// nomeada, sem env (Q3 do design).
+const TETO_TENTATIVAS = 3;
 
 /**
  * Bloco anterior do estágio, pronto para ser fundido com o `--json` novo. Ao
@@ -201,6 +211,18 @@ function novo(slug, titulo) {
   };
 }
 
+/** Imprime o bloco do último estágio reprovado quando ele é o motivo do próximo passo.
+ *  Usado como ponto único de mutação: remover ou neutralizar esta chamada tira a feature. */
+function imprimirReprovado(estado, estagio_reprovador) {
+  const bloco = estado[estagio_reprovador];
+  if (!bloco) return;
+  // Imprime criterio, comando, saida e faltou do --json da reprovação
+  if (bloco.criterio) console.log(`criterio: ${bloco.criterio}`);
+  if (bloco.comando) console.log(`comando: ${bloco.comando}`);
+  if (bloco.saida) console.log(`saida: ${bloco.saida}`);
+  if (bloco.faltou) console.log(`faltou: ${bloco.faltou}`);
+}
+
 /** O primeiro estágio de execução ainda não fechado. É a definição de retomada. */
 function proximo(estado) {
   // `arqueologia` fica FORA desta lista: se entrasse, todo projeto sem mapa
@@ -212,8 +234,47 @@ function proximo(estado) {
   return null;
 }
 
+/** Encontra o estágio de execução que foi reaberto por reprovação. */
+function estagio_reprovado_pendente(estado) {
+  for (const e of EXECUCAO) {
+    const bloco = estado[e] || {};
+    if (bloco.reaberto_por) return e;
+  }
+  return null;
+}
+
 function faltando(estado, estagio) {
   return (PRE_REQUISITOS[estagio] || []).filter((r) => !estaFechado(r, estado[r]));
+}
+
+/** O upstream imediato de um estágio — para reprovação, é o primeiro estágio de EXECUÇÃO.
+ *  Quando um estágio de execução é reprovado, o trabalho volta ao início da fase de execução
+ *  para ser refeit o. Para estágios de decisão (design, plano), não há upstream a reabrir. */
+function upstreamImediato(estagio) {
+  // Só há upstream para estágios de execução
+  if (!EXECUCAO.includes(estagio)) return null;
+  // O upstream é sempre executar (o primeiro de execução)
+  return 'executar';
+}
+
+/** Rebaixa o upstream imediato para `parcial` quando um estágio é reprovado. */
+function rebaixarUpstream(estado, estagio) {
+  const upstream = upstreamImediato(estagio);
+  if (!upstream) return null; // sem upstream, nada a rebaixar
+
+  // Rebaixar o upstream para parcial com rastro de quem reprovou
+  const bloco_upstream = estado[upstream] || {};
+  estado[upstream] = {
+    ...bloco_upstream,
+    status: 'parcial',
+    reaberto_por: {
+      estagio: estagio,
+      data: hoje(),
+    },
+    em: hoje(),
+  };
+
+  return upstream;
 }
 
 // ---------------------------------------- backstop de mutação no revisar (Issue #4)
@@ -524,6 +585,50 @@ function verificarCatracaMutacao(slug, bloco, estado, extra) {
   return null;
 }
 
+// --------------------------------- validação de evidência (comando e saida)
+//
+// Estágios de execução (`executar` e `verificar`) exigem que `comando` e `saida`
+// estejam preenchidos (string não vazia e não só espaço) para fechar com ok.
+// `revisar` e `fechar` não exigem esses campos. A validação vale para TODO
+// fechamento com ok, sem exceção por idade. Estado antigo (JSONs sem os campos)
+// continua legível — isso significa `exigir`/`proximo` não explodem, não que
+// fechamento antigo passa sem evidência.
+
+/** @returns {string|null} mensagem de recusa, ou null se passou/não se aplica */
+function validarEvidenciaNoFechamento(estagio, extra) {
+  // Só valida para os estágios que exigem
+  if (!ESTAGIOS_EXIGEM_EVIDENCIA.includes(estagio)) return null;
+
+  // Sem --json ou --json não é objeto, falta tudo
+  if (!extra || typeof extra !== 'object') {
+    return `RECUSADO: fechar '${estagio}' exige comando e saida no --json.\n`
+      + `Presença é tudo — strings vazias ou só espaço não contam.\n`
+      + `Exemplos:\n`
+      + `  node scripts/estado.cjs marcar --slug <slug> --estagio ${estagio} --status ok --json '{"comando":"node x.cjs","saida":"ok: 3 casos"}'\n`
+      + `  node scripts/estado.cjs marcar --slug <slug> --estagio ${estagio} --status ok --json '{"comando":"bash script.sh","saida":"resultado esperado"}'`;
+  }
+
+  const comando = extra.comando;
+  const saida = extra.saida;
+
+  // Ambos devem estar presentes e não vazios (permitindo espaço é furo)
+  const comandoVazio = comando === undefined || comando === null || String(comando).trim() === '';
+  const saidaVazio = saida === undefined || saida === null || String(saida).trim() === '';
+
+  if (comandoVazio || saidaVazio) {
+    const faltam = [];
+    if (comandoVazio) faltam.push('comando');
+    if (saidaVazio) faltam.push('saida');
+    return `RECUSADO: fechar '${estagio}' exige ${faltam.join(' e ')} no --json.\n`
+      + `Presença é tudo — strings vazias ou só espaço não contam.\n`
+      + `Exemplos:\n`
+      + `  node scripts/estado.cjs marcar --slug <slug> --estagio ${estagio} --status ok --json '{"comando":"node x.cjs","saida":"ok: 3 casos"}'\n`
+      + `  node scripts/estado.cjs marcar --slug <slug> --estagio ${estagio} --status ok --json '{"comando":"bash script.sh","saida":"resultado esperado"}'`;
+  }
+
+  return null;
+}
+
 // ------------------------------------------------- trava de fechamento (D5)
 //
 // Fechar estágio roda a checagem correspondente do `conferir-fluxo.cjs`, e
@@ -649,6 +754,11 @@ function main() {
   if (cmd === 'proximo') {
     const p = proximo(estado);
     if (!p) return console.log('completo');
+    // Imprimir o bloco do reprovado pendente, se houver
+    const e_reprovado = estagio_reprovado_pendente(estado);
+    if (e_reprovado) {
+      imprimirReprovado(estado, estado[e_reprovado].reaberto_por.estagio);
+    }
     console.log(p);
     return;
   }
@@ -659,6 +769,47 @@ function main() {
       console.error(`erro: estagio desconhecido '${estagio}'`);
       process.exit(1);
     }
+
+    // Teto de tentativas: se ESTE estágio foi reaberto e quem o reprovou já
+    // acumulou TETO_TENTATIVAS, insistir precisa de decisão humana (liberar).
+    const blocoExigido = estado[estagio] || {};
+    if (blocoExigido.reaberto_por) {
+      const estagio_reprovador = blocoExigido.reaberto_por.estagio;
+      const bloco_reprovador = estado[estagio_reprovador] || {};
+      const tentativas = bloco_reprovador.tentativas || 0;
+      if (tentativas >= TETO_TENTATIVAS && !bloco_reprovador.liberado_em) {
+        console.error(
+          `RECUSADO: '${estagio_reprovador}' já reprovou ${tentativas} vez(es) — teto de ${TETO_TENTATIVAS} atingido. ` +
+          `Suba a decisão ao usuário: ou o critério está errado (plano) ou a decisão está errada (design). ` +
+          `Destrave explícito: node scripts/estado.cjs liberar --slug ${slug} --estagio ${estagio_reprovador}`
+        );
+        process.exit(2);
+      }
+    }
+
+    // Verificar se há algum estágio de execução com reaberto_por preenchido
+    // DIFERENTE do estágio sendo exigido. O próprio estágio reaberto PASSA aqui —
+    // é o caminho de volta. A recusa vale só quando tentar exigir outro estágio
+    // DE EXECUÇÃO enquanto há upstream reaberto pendente: `arqueologia`, `limpar`,
+    // `design` e `plano` nunca são bloqueados por reprovação alheia (invariante do
+    // plano do ciclo-por-máquina, pego por revisão em 2026-08-31 — a primeira
+    // versão vazava a recusa para todo estágio de PRE_REQUISITOS).
+    if (EXECUCAO.includes(estagio)) {
+      const upstreamReaberto = EXECUCAO.find((e) => {
+        if (e === estagio) return false; // permite exigir do próprio reaberto
+        const bloco = estado[e] || {};
+        return bloco.reaberto_por;
+      });
+      if (upstreamReaberto) {
+        const bloco_upstream = estado[upstreamReaberto];
+        console.error(
+          `RECUSADO: '${upstreamReaberto}' foi reaberto por reprovação em '${bloco_upstream.reaberto_por.estagio}' ` +
+          `(${bloco_upstream.reaberto_por.data}). Rode '${upstreamReaberto}' antes.`
+        );
+        process.exit(2);
+      }
+    }
+
     const falta = faltando(estado, estagio);
     if (!falta.length) {
       console.log(`ok: pre-requisitos de '${estagio}' fechados`);
@@ -689,6 +840,20 @@ function main() {
     process.exit(2);
   }
 
+  if (cmd === 'liberar') {
+    const estagio = arg('estagio');
+    if (!(estagio in PRE_REQUISITOS)) {
+      console.error(`erro: estagio desconhecido '${estagio}'`);
+      process.exit(1);
+    }
+    // Gravar liberado_em no bloco do estágio para destrava-lo uma vez
+    estado[estagio] = { ...estado[estagio], liberado_em: hoje() };
+    gravar(slug, estado);
+    console.log(`${estagio}: liberado em ${hoje()}`);
+    console.log(JSON.stringify(estado[estagio], null, 2));
+    return;
+  }
+
   if (cmd === 'marcar') {
     const estagio = arg('estagio');
     const status = arg('status');
@@ -701,15 +866,7 @@ function main() {
       console.error(`erro: status '${status}' invalido para '${estagio}' — use ${permitidos.join('|')}`);
       process.exit(1);
     }
-    // Fechar um estágio com pré-requisito aberto é o furo que o arquivo existe para
-    // impedir: sem isto, `marcar verificar ok` pularia a revisão inteira em silêncio.
-    if (status === (FECHADO[estagio] || 'ok')) {
-      const falta = faltando(estado, estagio);
-      if (falta.length) {
-        console.error(`RECUSADO: nao da para fechar '${estagio}' com ${falta.join(', ')} em aberto.`);
-        process.exit(2);
-      }
-    }
+    // Parsear JSON primeiro, antes de qualquer outra verificação
     let extra = {};
     const j = arg('json', false);
     if (j) {
@@ -718,6 +875,15 @@ function main() {
       } catch (err) {
         console.error(`erro: --json nao e JSON valido: ${err.message}`);
         process.exit(1);
+      }
+    }
+    // Fechar um estágio com pré-requisito aberto é o furo que o arquivo existe para
+    // impedir: sem isto, `marcar verificar ok` pularia a revisão inteira em silêncio.
+    if (status === (FECHADO[estagio] || 'ok')) {
+      const falta = faltando(estado, estagio);
+      if (falta.length) {
+        console.error(`RECUSADO: nao da para fechar '${estagio}' com ${falta.join(', ')} em aberto.`);
+        process.exit(2);
       }
     }
     // Depois do `--json`, porque o `revisar` tira `base` e `head` de lá; e antes
@@ -741,6 +907,12 @@ function main() {
           process.exit(2);
         }
       }
+      // Validar evidência (comando e saida) para executar e verificar DEPOIS da catraca
+      const recusa_evidencia = validarEvidenciaNoFechamento(estagio, extra);
+      if (recusa_evidencia) {
+        console.error(recusa_evidencia);
+        process.exit(2);
+      }
       const recusa = conferirFechamento(estagio, slug, extra);
       if (recusa) {
         console.error(recusa);
@@ -750,8 +922,34 @@ function main() {
     // `campos efemeros` (pendentes) somem do bloco anterior quando o fechamento e
     // terminal-positivo e o --json novo nao os repete — ver `baseParaFundir` e o
     // comentario de `CAMPOS_EFEMEROS`. O resto do bloco anterior sobrevive normal.
+    // `tentativas` e `liberado_em` também somem no `ok`, mas a lógica é manual aqui.
     const baseAnterior = baseParaFundir(estagio, estado[estagio], status, extra);
-    estado[estagio] = { ...baseAnterior, ...extra, status, em: hoje() };
+    const blocoNovo = { ...baseAnterior, ...extra, status, em: hoje() };
+
+    // Quando um estágio é reprovado, incrementa o contador (DEPOIS de fundir com base)
+    if (status === 'reprovado') {
+      // Incrementar tentativas no bloco do estágio sendo reprovado, preservando valor anterior
+      blocoNovo.tentativas = (blocoNovo.tentativas || 0) + 1;
+      // `liberar` destrava UMA rodada: a reprovação seguinte re-arma o teto.
+      // Sem isto, um liberar desarmava o teto para sempre (achado de revisão,
+      // 2026-08-31) e o loop podia reprovar indefinidamente sem subir decisão.
+      delete blocoNovo.liberado_em;
+      // Auto-reprovação (reprovar o próprio `executar`) não rebaixa ninguém: o
+      // rebaixamento seria sobrescrito por `estado[estagio] = blocoNovo` logo
+      // abaixo, gravando mensagem de sucesso sem efeito (achado de revisão).
+      if (upstreamImediato(estagio) !== estagio) {
+        const upstream_reaberto = rebaixarUpstream(estado, estagio);
+        if (upstream_reaberto) {
+          console.log(`upstream '${upstream_reaberto}' reaberto por reprovação`);
+        }
+      }
+    }
+    // Limpar tentativas e liberado_em quando fecha com ok
+    if (status === (FECHADO[estagio] || 'ok')) {
+      delete blocoNovo.tentativas;
+      delete blocoNovo.liberado_em;
+    }
+    estado[estagio] = blocoNovo;
     gravar(slug, estado);
     console.log(`${estagio}: ${status}`);
     const p = proximo(estado);
@@ -759,7 +957,7 @@ function main() {
     return;
   }
 
-  console.error('uso: iniciar | ler | marcar | proximo | exigir | listar');
+  console.error('uso: iniciar | ler | marcar | proximo | exigir | liberar | listar');
   process.exit(1);
 }
 
