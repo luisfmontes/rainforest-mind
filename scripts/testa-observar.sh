@@ -904,6 +904,64 @@ fi
 rm -rf "$MUT_DIR" "$MUT_CAIXA"
 
 
+# ============ Teste 17: evento único acima do teto não trava a marca d'água ============
+# Causa raiz das 34 pendências de 21-31/08: um tool output maior que
+# TETO_ARGUMENTO gerava fatia de 1 evento acima do teto, chamarLLM devolvia
+# null pelo guarda, e a marca nunca avançava — retentado e re-falhado a cada
+# sessão. A passada agora TRUNCA o texto (transcrito em disco intacto).
+echo
+echo "17. evento unico acima do teto e truncado, observacao gravada e marca avanca"
+
+GORDO_DIR=$(mktemp -d)
+export RFM_ROOT="$GORDO_DIR"
+node "$MEMORIA" iniciar >/dev/null 2>&1
+mkdir -p "$GORDO_DIR/projects/proj-gordo"
+TRANSCRITO_GORDO="$GORDO_DIR/projects/proj-gordo/sessao-gorda.jsonl"
+node <<'CRIA_GORDO' 2>/dev/null
+const fs = require('fs');
+const path = require('path');
+const caminho = path.join(process.env.RFM_ROOT, 'projects', 'proj-gordo', 'sessao-gorda.jsonl');
+// Um único evento com ~20000 caracteres de texto — acima do TETO_ARGUMENTO (16000)
+const gordo = 'PALAVRAGORDA '.repeat(1600);
+const linhas = [
+  JSON.stringify({type:'user',message:{role:'user',content:'inicio ' + gordo},timestamp:'2026-08-19T10:00:00Z',sessionId:'sessao-gorda',version:'2.1.0',cwd:'test'}),
+];
+fs.writeFileSync(caminho, linhas.join('\n') + '\n');
+CRIA_GORDO
+node <<'CRIA_MARCA_GORDA' 2>/dev/null
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const caminho = path.join(process.env.RFM_ROOT, 'projects', 'proj-gordo', 'sessao-gorda.jsonl');
+db.prepare('INSERT OR REPLACE INTO marca_dagua (projeto, sessao, arquivo, offset, processada_em) VALUES (?, ?, ?, ?, ?)')
+  .run('proj-gordo', 'sessao-gorda', caminho, 0, new Date().toISOString());
+db.close();
+CRIA_MARCA_GORDA
+
+export TESTADOR_CHAMAR_LLM="$DUBLIADOR_OK"
+SAIDA_GORDA=$(node "$OBSERVADOR" --sessao sessao-gorda --projeto proj-gordo 2>&1)
+EXIT_GORDO=$?
+OBS_GORDA=$(node -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const r = db.prepare(\"SELECT count(*) c FROM observacoes WHERE projeto='proj-gordo'\").get();
+const m = db.prepare(\"SELECT offset, COALESCE(offset_processado,0) op FROM marca_dagua WHERE sessao='sessao-gorda'\").get();
+console.log(r.c + ' ' + (m ? m.op : 'sem-marca'));
+db.close();
+" 2>/dev/null)
+CONTAGEM_GORDA=$(echo "$OBS_GORDA" | cut -d' ' -f1)
+OFFSET_GORDO=$(echo "$OBS_GORDA" | cut -d' ' -f2)
+
+if [ "$EXIT_GORDO" -eq 0 ] && [ "$CONTAGEM_GORDA" -ge 1 ] && [ "$OFFSET_GORDO" -gt 0 ]; then
+  ok=$((ok+1)); echo "  ok    evento gordo truncado: observacao gravada ($CONTAGEM_GORDA) e marca avancou (offset_processado=$OFFSET_GORDO)"
+else
+  falhou=$((falhou+1)); echo "  FALHA evento gordo travou: exit=$EXIT_GORDO obs=$CONTAGEM_GORDA offset_processado=$OFFSET_GORDO"
+  echo "$SAIDA_GORDA" | tail -3
+fi
+unset TESTADOR_CHAMAR_LLM
+rm -rf "$GORDO_DIR"
+
 # ============ Resultado final ============
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
