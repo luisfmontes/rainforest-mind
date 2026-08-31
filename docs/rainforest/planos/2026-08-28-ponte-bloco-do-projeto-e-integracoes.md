@@ -310,3 +310,31 @@ mutacao:
   bateria: `bash scripts/testa-ponte-entrevista.sh`
   fixture: caso novo "mencao em prosa aos marcadores nao confunde a catraca"
 pronto quando: `extrairBlocoProjetoGerado` só reconhece marcador que OCUPA A LINHA INTEIRA (âncora multiline, como o gerador escreve), e o fim considerado é o primeiro APÓS o início; menção em prosa (marcador no meio de uma frase) nunca casa. Provado por caso novo: CLAUDE.md pré-existente com menção em prosa aos dois marcadores + bloco real acrescentado pelo gerador → `conferir-ponte.cjs` devolve CONFERIDO exit 0; e mudar o projeto.md depois ainda dá ficou-para-trás (a catraca continua mordendo o bloco real)
+
+## Emendas da revisão rodada 7 (2026-08-31)
+
+### 22. `lerProjetoMd` só reconhece marcador de linha inteira — prosa no projeto.md não corrompe a escrita [tipo: implementar]
+atende: invariante 1; fecha a última instância da família posicional (T19 escrita do CLAUDE.md, T21 leitura da catraca, agora a leitura do projeto.md)
+arquivos: `hooks/lib/ponte-corpo.cjs`, `scripts/testa-ponte-entrevista.sh`
+depende de: nenhuma
+paralela: nao
+mutacao:
+  arquivo: `hooks/lib/ponte-corpo.cjs`
+  de: a âncora de linha inteira em `lerProjetoMd`
+  para: de volta ao `indexOf` sem âncora
+  bateria: `bash scripts/testa-ponte-entrevista.sh`
+  fixture: caso novo "prosa no topo do projeto.md nao corrompe o bloco gravado"
+pronto quando: `lerProjetoMd` acha os marcadores por âncora multiline de linha inteira (início e o primeiro fim APÓS ele); prosa mencionando os marcadores no projeto.md não muda o bloco extraído. Provado por caso novo: projeto.md gerado + nota da equipe no topo citando os dois marcadores → `--aplicar` grava o bloco REAL no CLAUDE.md (resposta literal presente), e `conferir-ponte.cjs` dá CONFERIDO exit 0
+
+### 23. `temBloco` no veredito da catraca — a linha de status humana volta a imprimir [tipo: implementar]
+atende: aviso 2 da rodada 7 (cosmético, sem mudança de exit)
+arquivos: `scripts/conferir-ponte.cjs`, `scripts/testa-ponte-entrevista.sh`
+depende de: 22
+paralela: nao
+mutacao:
+  arquivo: `scripts/conferir-ponte.cjs`
+  de: o `temBloco: true` nos retornos com bloco presente
+  para: removido
+  bateria: `bash scripts/testa-ponte-entrevista.sh`
+  fixture: caso estendido do (r) conferindo a linha de status na saída texto
+pronto quando: `conferirBlocoProjetoGerado` retorna `temBloco: true` em todo veredito em que o bloco existe no arquivo, a saída texto imprime a linha de status do bloco de projeto, e um caso da bateria a confere por grep
