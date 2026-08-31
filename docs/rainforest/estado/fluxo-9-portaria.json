@@ -35,8 +35,8 @@
     "catraca_mutacao": "2026-08-30",
     "tarefas_ok": 2,
     "tarefas": 9,
-    "nota": "T1 e T7 integradas (catraca re-rodada exit 0 na T1; T7 e docs). Pendentes: 2-6, 8, 9; T2 segurada por mexer no harness vivo",
-    "em": "2026-08-30"
+    "nota": "T2 quase fechada (df3b41c): hook de captura recuperado da fluxo/ponte, bateria testa-portaria-captura.cjs 9/0, catraca exit 0 (gravacao incondicional -> vermelho), settings.json versionado com matcher Task|Agent. FALTA o criterio final da T2: amostra REAL de um despacho — so colhe em sessao nova com settings.json no checkout principal. Pendentes: 2 (amostra real), 3-6, 8, 9. Branch mergeada com origin/main (estava 46 atras).",
+    "em": "2026-08-31"
   },
   "revisar": {
     "status": "pendente"
