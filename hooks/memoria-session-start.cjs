@@ -7,8 +7,169 @@
 const fs = require('fs');
 const path = require('path');
 const { montarMemoria, montarLegendaMemoria } = require('./lib/memoria-sessao.cjs');
+const { tituloDoFocoAtivo } = require('./lib/contexto-sessao.cjs');
 const { resolverRaiz } = require('./lib/raiz.cjs');
 const { abrirBanco, resolverCaminhos } = require(path.join(__dirname, '..', 'scripts', 'memoria.cjs'));
+
+// Extrai termos de busca do título do foco ativo.
+// Retorna array de termos (palavras com >2 caracteres, em minúsculas).
+// Tarefa 3 (D2): os termos vêm do TÍTULO do foco ativo (primeira linha em negrito).
+function extrairTermosDoBuscar(titulo) {
+  if (!titulo) return [];
+
+  // Stop words em português que não agregam significado na busca
+  const stopWords = new Set([
+    'a', 'o', 'de', 'da', 'do', 'e', 'ou', 'é', 'são', 'um', 'uma',
+    'que', 'no', 'na', 'com', 'por', 'para', 'em', 'se', 'à', 'ao',
+    'os', 'as', 'dos', 'das', 'ele', 'ela', 'eles', 'elas', 'nós',
+    'me', 'te', 'lhe', 'nos', 'vos', 'lhes', 'meu', 'teu', 'seu',
+    'nosso', 'vosso', 'dele', 'dela', 'deles', 'delas', 'este',
+    'esse', 'aquele', 'isto', 'isso', 'aquilo', 'já', 'ainda',
+    'quando', 'onde', 'como', 'qual', 'quais', 'quanto', 'quantos',
+  ]);
+
+  // Quebra o título em palavras, remove stop words e palavras curtas
+  const termos = titulo
+    .toLowerCase()
+    .split(/\s+/)
+    .map(p => p.replace(/[^a-záéíóúâêôãõçñ0-9]/g, '')) // Remove pontuação
+    .filter(p => p.length > 2 && !stopWords.has(p))
+    .slice(0, 5); // Máximo 5 termos para não explodir a busca FTS
+
+  return termos;
+}
+
+// Consulta o banco por observações recentes + casadas por FTS com os termos do foco.
+// Tarefa 3 (D2): 9 recentes + até 5 casadas com o foco (filtrando as já-recentes por id).
+// Retorna array com até 14 observações. Sem termos ou FTS indisponível: 14 recentes.
+function lerObservacoesComFTS(caminhoDb, projetosList, termos) {
+  try {
+    if (!fs.existsSync(caminhoDb)) return [];
+
+    const conexao = abrirBanco(caminhoDb);
+    if (!conexao) return [];
+
+    try {
+      // Passo 1: Buscar os 9 recentes (como antes)
+      const queryRecentes = projetosList && projetosList.length > 0
+        ? `
+          SELECT id, projeto, conteudo, criada_em
+          FROM observacoes
+          WHERE projeto IN (${projetosList.map(() => '?').join(', ')})
+          ORDER BY criada_em DESC
+          LIMIT 9
+        `
+        : `
+          SELECT id, projeto, conteudo, criada_em
+          FROM observacoes
+          ORDER BY criada_em DESC
+          LIMIT 9
+        `;
+
+      const stmtRecentes = conexao.prepare(queryRecentes);
+      const recentes = projetosList && projetosList.length > 0
+        ? stmtRecentes.all(...projetosList) || []
+        : stmtRecentes.all() || [];
+
+      // Se não temos termos ou resultado está em erro, devolva os recentes + completar com outros
+      if (!Array.isArray(termos) || termos.length === 0) {
+        // Fallback: completar com mais recentes até 14
+        const vagas = 14 - recentes.length;
+        if (vagas > 0 && projetosList && projetosList.length > 0) {
+          const placeholdersNot = projetosList.map(() => '?').join(', ');
+          const queryOutros = `
+            SELECT id, projeto, conteudo, criada_em
+            FROM observacoes
+            WHERE projeto NOT IN (${placeholdersNot})
+            ORDER BY criada_em DESC
+            LIMIT ?
+          `;
+          const stmtOutros = conexao.prepare(queryOutros);
+          const outros = stmtOutros.all(...projetosList, vagas) || [];
+          return recentes.concat(outros);
+        }
+        return recentes;
+      }
+
+      // Passo 2: Buscar casadas por FTS (máximo 5), filtrando as já-recentes por id
+      // Se FTS falhar (tabela não existe ou corrompida), fazer fallback para 14 recentes
+      let casadas = [];
+      try {
+        const idsRecentes = recentes.map(r => r.id);
+        const placeholdersIds = idsRecentes.map(() => '?').join(', ');
+        const termoFTS = termos.join(' OR '); // FTS5: termos separados por OR
+
+        // A consulta FTS deve descartar as linhas que já estão em recentes
+        const queryCasadas = `
+          SELECT o.id, o.projeto, o.conteudo, o.criada_em
+          FROM observacoes o
+          WHERE o.id IN (
+            SELECT rowid FROM observacoes_fts
+            WHERE observacoes_fts MATCH ?
+          )
+          ${idsRecentes.length > 0 ? `AND o.id NOT IN (${placeholdersIds})` : ''}
+          ORDER BY o.criada_em DESC
+          LIMIT 5
+        `;
+
+        const stmtCasadas = conexao.prepare(queryCasadas);
+        casadas = idsRecentes.length > 0
+          ? stmtCasadas.all(termoFTS, ...idsRecentes) || []
+          : stmtCasadas.all(termoFTS) || [];
+      } catch (e) {
+        // FTS indisponível (tabela não existe ou corrompida): fallback para 14 recentes
+        // Retorna 14 recentes SEM aplicar FTS (comportamento byte-idêntico ao fallback sem foco)
+        if (projetosList && projetosList.length > 0) {
+          const placeholders = projetosList.map(() => '?').join(', ');
+          const queryFallback = `
+            SELECT id, projeto, conteudo, criada_em
+            FROM observacoes
+            WHERE projeto IN (${placeholders})
+            ORDER BY criada_em DESC
+            LIMIT 14
+          `;
+          const stmtFallback = conexao.prepare(queryFallback);
+          const resultado = stmtFallback.all(...projetosList) || [];
+
+          // Se temos 14, devolver. Senão, completar com outros
+          if (resultado.length >= 14) {
+            return resultado.slice(0, 14);
+          }
+
+          const vagas = 14 - resultado.length;
+          const placeholdersNot = projetosList.map(() => '?').join(', ');
+          const queryOutros = `
+            SELECT id, projeto, conteudo, criada_em
+            FROM observacoes
+            WHERE projeto NOT IN (${placeholdersNot})
+            ORDER BY criada_em DESC
+            LIMIT ?
+          `;
+          const stmtOutros = conexao.prepare(queryOutros);
+          const outros = stmtOutros.all(...projetosList, vagas) || [];
+          return resultado.concat(outros);
+        } else {
+          const queryFallback = `
+            SELECT id, projeto, conteudo, criada_em
+            FROM observacoes
+            ORDER BY criada_em DESC
+            LIMIT 14
+          `;
+          const stmtFallback = conexao.prepare(queryFallback);
+          return stmtFallback.all() || [];
+        }
+      }
+
+      // Combinar: recentes + casadas (máximo 14)
+      return recentes.concat(casadas);
+    } finally {
+      conexao.close();
+    }
+  } catch (e) {
+    // Banco corrompido, erro ao abrir, etc.: degradação para array vazio.
+    return [];
+  }
+}
 
 // Lê observações recentes do banco de memória, filtrando por lista de projetos.
 // Tarefa 3 (D3): top 5 dos projetos atuais (múltiplas chaves), completa com outros se houver menos.
@@ -87,6 +248,11 @@ function lerObservacoes(caminhoDb, projetosList, limiteTotal = 5) {
   }
 }
 
+// Função auxiliar para ler arquivo com segurança
+function readSafe(p) {
+  try { return fs.readFileSync(p, 'utf8').trim(); } catch { return ''; }
+}
+
 // Resolve caminhos da raiz de dados.
 const { raiz: RAIZ_RESOLVIDA } = resolverRaiz({
   plugin: path.resolve(__dirname, '..'),
@@ -115,12 +281,22 @@ try {
 }
 
 // Lê observações residentes.
-// Tarefa 3 (D3): Filtra por lista de projetos, completa com outros se houver vagas.
-// Decisão D11: carregar múltiplas observações curtas (título + subtítulo)
-// em vez de uma observação completa. Número calibrado pela medição.
+// Tarefa 3 (D2): Se houver foco ativo, busca 9 recentes + até 5 casadas com os termos do foco.
+// Sem foco, sem termos ou FTS indisponível: 14 recentes como hoje (fallback).
 let observacoes = [];
 try {
-  observacoes = lerObservacoes(caminhoDb, projetosList, 14);
+  // Extrai os termos do foco ativo para FTS
+  const focoText = readSafe(path.join(ROOT, 'FOCO.md'));
+  const tituloFoco = tituloDoFocoAtivo(focoText);
+  const termosBusca = extrairTermosDoBuscar(tituloFoco);
+
+  // Se tem termos, usa a consulta com FTS (9 + até 5)
+  // Senão, usa o fallback de 14 recentes
+  if (termosBusca && termosBusca.length > 0) {
+    observacoes = lerObservacoesComFTS(caminhoDb, projetosList, termosBusca);
+  } else {
+    observacoes = lerObservacoes(caminhoDb, projetosList, 14);
+  }
 } catch {
   // Qualquer erro imprevisto: bloco vazio, nunca erro.
   observacoes = [];
