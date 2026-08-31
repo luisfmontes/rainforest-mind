@@ -161,11 +161,11 @@ pronto quando: `skills/ponte/SKILL.md` traz um bloco de exemplos de linha de com
 O `revisar` reprovou com controle reproduzido pela sessão (commit 242c0b4).
 Estas tarefas reabrem o `executar` e são o critério da nova rodada.
 
-### E1. Bloco gerado não depende da máquina de quem gera — restaura a frase incondicional [tipo: implementar]
+### 11. Bloco gerado não depende da máquina de quem gera — restaura a frase incondicional [tipo: implementar]
 atende: invariante 1 do plano (quebrada pelo C1 da revisão)
 arquivos: `hooks/lib/ponte-corpo.cjs`, `scripts/testa-ponte.sh`
 depende de: nenhuma
-paralela: nao (mesmo arquivo da E2)
+paralela: nao (mesmo arquivo da 12)
 mutacao:
   arquivo: `hooks/lib/ponte-corpo.cjs`
   de: a frase ", e monte com `node <plugin>/scripts/setup.cjs --criar` se ainda nao existir" emitida incondicionalmente
@@ -174,10 +174,10 @@ mutacao:
   fixture: caso novo "bloco gerado e identico com e sem pasta de dados resolvida"
 pronto quando: `corpo(agente, nucleo, dados)` devolve byte a byte o MESMO texto para `dados` resolvido e `dados=null` (provado por caso novo em `testa-ponte.sh` que compara as duas saídas — pode fixar `RFM_ROOT` num caminho inexistente numa das execuções); a frase do `setup.cjs --criar` presente no bloco gerado NESTA máquina (que resolve a pasta de dados); e um bloco gerado pelo código do commit `21266f79` (fixture congelada não é viável porque o núcleo do SKILL.md evolui — a prova é a identidade com/sem `dados`, que é a propriedade que o código antigo tinha)
 
-### E2. Resposta da entrevista não corrompe o bloco — sanitiza marcadores [tipo: implementar]
+### 12. Resposta da entrevista não corrompe o bloco — sanitiza marcadores [tipo: implementar]
 atende: T3 (critério "as 4 respostas literais" sob entrada adversarial)
 arquivos: `scripts/ponte.cjs`, `hooks/lib/ponte-corpo.cjs`, `scripts/testa-ponte-entrevista.sh`
-depende de: E1
+depende de: 11
 paralela: nao
 mutacao:
   arquivo: `scripts/ponte.cjs`
@@ -187,10 +187,10 @@ mutacao:
   fixture: caso novo "resposta contendo o marcador projeto:fim nao trunca o bloco"
 pronto quando: com `--respostas` contendo `<!-- rainforest-mind:projeto:fim -->` dentro de uma resposta, o `projeto.md` E o `CLAUDE.md` gerados contêm as 4 respostas (sentinelas por grep), o bloco de projeto fecha no marcador REAL (último do arquivo), e `conferir-ponte.cjs` devolve CONFERIDO exit 0 no arquivo gerado
 
-### E3. `conferir-ponte.cjs` usa o módulo compartilhado de verdade [tipo: implementar]
+### 13. `conferir-ponte.cjs` usa o módulo compartilhado de verdade [tipo: implementar]
 atende: D2 (achado 3 da revisão — duplicação que a T1 existia para eliminar)
 arquivos: `scripts/conferir-ponte.cjs`
-depende de: E2
+depende de: 12
 paralela: nao
 mutacao:
   arquivo: `scripts/conferir-ponte.cjs`
@@ -200,7 +200,7 @@ mutacao:
   fixture: os casos existentes de conferência do bloco de projeto
 pronto quando: `grep -c 'lerProjetoMd' scripts/conferir-ponte.cjs` ≥ 2 (import E uso), a extração à mão por `indexOf` dos marcadores de projeto removida do arquivo, e todas as baterias verdes
 
-### E4. SKILL.md descreve o título que o código gera [tipo: docs]
+### 14. SKILL.md descreve o título que o código gera [tipo: docs]
 atende: T10 (achado 4 da revisão)
 arquivos: `skills/ponte/SKILL.md`
 depende de: nenhuma
