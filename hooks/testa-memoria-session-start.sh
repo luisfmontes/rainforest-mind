@@ -985,5 +985,83 @@ else
 fi
 
 echo
+echo "  17.d — FTS indisponível (tabela corrompida) → 14 recentes sem erro, byte-idêntico ao fallback"
+
+# Recriar FOCO.md para que os termos existam (tentaria FTS)
+cat > "$CAIXA_FOCO/FOCO.md" <<'FOCO_CONTENT_D'
+# FOCO
+
+## Ativo
+**Implementar buscar com teste de foco ativo**
+
+Descrição.
+FOCO_CONTENT_D
+
+# Corromper a tabela FTS: dropar observacoes_fts deixa a consulta sem suporte
+node <<'CORRUPT_FTS'
+const { DatabaseSync } = require('node:sqlite');
+const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
+
+try {
+  db.exec('DROP TABLE IF EXISTS observacoes_fts;');
+} catch (e) {
+  // Ignore errors
+}
+
+db.close();
+CORRUPT_FTS
+
+# Executa o hook com FTS corrompido
+SAIDA_FTS_QUEBRADO=$(cd "$PASTA_FOCO" && RFM_ROOT="$CAIXA_FOCO" echo '{}' | node "$HOOK" 2>/dev/null)
+BLOCO_FTS_QUEBRADO=$(echo "$SAIDA_FTS_QUEBRADO" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); process.stdout.write((d.hookSpecificOutput||{}).additionalContext||'')")
+
+NUM_LINHAS_FTS_QUEBRADO=$(echo "$BLOCO_FTS_QUEBRADO" | grep -c "\\[2026" || true)
+
+if [ "$NUM_LINHAS_FTS_QUEBRADO" -eq 14 ]; then
+  ok=$((ok+1)); echo "  ok    FTS indisponível: 14 observações (fallback graceful)"
+else
+  falhou=$((falhou+1)); echo "  FALHA FTS indisponível retornou $NUM_LINHAS_FTS_QUEBRADO linhas, esperado 14"
+fi
+
+# Primeiras 3 linhas devem ser idênticas ao sem foco
+PRIMEIRAS_FTS=$(echo "$BLOCO_FTS_QUEBRADO" | grep "\\[2026" | head -3 | cut -d'[' -f2 | cut -d']' -f1)
+
+if [ "$PRIMEIRAS_FTS" = "$PRIMEIRAS_SEM" ]; then
+  ok=$((ok+1)); echo "  ok    com FTS corrompido: byte-idêntico ao fallback sem foco"
+else
+  falhou=$((falhou+1)); echo "  FALHA primeiras datas diferem"
+fi
+
+echo
+echo "  17.e — bloco COM casadas (9+5) fica ≤ 3000 bytes"
+
+# Re-ativar FOCO.md e recriar a tabela FTS para medir caso 17.a
+cat > "$CAIXA_FOCO/FOCO.md" <<'FOCO_CONTENT_E'
+# FOCO
+
+## Ativo
+**Implementar buscar com teste de foco ativo**
+
+Descrição.
+FOCO_CONTENT_E
+
+# Recriar FTS
+node "$SRC/scripts/memoria.cjs" reindexar > /dev/null 2>&1
+
+# Executar o hook com foco (vai ter 9 recentes + 5 casadas)
+SAIDA_COM_CASADAS=$(cd "$PASTA_FOCO" && RFM_ROOT="$CAIXA_FOCO" echo '{}' | node "$HOOK" 2>/dev/null)
+BLOCO_COM_CASADAS=$(echo "$SAIDA_COM_CASADAS" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); process.stdout.write((d.hookSpecificOutput||{}).additionalContext||'')")
+
+# Medir em bytes
+BYTES_COM_CASADAS=$(printf '%s' "$BLOCO_COM_CASADAS" | wc -c)
+TETO_MEMORIA=3000
+
+if [ "$BYTES_COM_CASADAS" -le "$TETO_MEMORIA" ]; then
+  ok=$((ok+1)); echo "  ok    bloco com casadas cabe no teto ($BYTES_COM_CASADAS B <= $TETO_MEMORIA B)"
+else
+  falhou=$((falhou+1)); echo "  FALHA bloco com casadas estoura teto ($BYTES_COM_CASADAS B > $TETO_MEMORIA B)"
+fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]
