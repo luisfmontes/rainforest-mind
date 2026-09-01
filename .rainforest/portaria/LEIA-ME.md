@@ -28,7 +28,7 @@ descobrir os campos que o despacho simples não mostra. Agente
 | `subagent_type` vem **com prefixo de plugin** (`rainforest-mind:executor`) | a chave do manifesto é o nome nu — o parser precisa tirar o prefixo `<plugin>:` |
 | `isolation` e `name` aparecem em `tool_input` quando usados | a checagem futura de `escreve: true` com worktree obrigatório tem onde olhar |
 | `session_id` está na raiz do payload | é o `sessao` da linha do `despachos.jsonl` (D4) |
-| `cwd` está na raiz do payload | o hook não depende só de `CLAUDE_PROJECT_DIR` |
+| `cwd` está na raiz do payload | o hook resolve raiz por precedência: `payload.cwd`, depois `CLAUDE_PROJECT_DIR`, depois `process.cwd()`, e normaliza para toplevel do git |
 
 Amostra é **documentação datada**, não estado vivo: não regenere, não
 sobrescreva. Se o harness mudar o schema, colha uma amostra **nova, com data

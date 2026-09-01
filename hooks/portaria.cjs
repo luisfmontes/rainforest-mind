@@ -15,9 +15,36 @@
 
 const fs = require("fs");
 const path = require("path");
+const { execFileSync } = require("child_process");
 
-function raizDoProjeto() {
-  return process.env.CLAUDE_PROJECT_DIR || process.cwd();
+/**
+ * Resolve a raiz do projeto seguindo precedência rigorosa:
+ * 1. payload.cwd (cwd da sessão que despachou — fonte da verdade)
+ * 2. process.env.CLAUDE_PROJECT_DIR
+ * 3. process.cwd() (último recurso)
+ *
+ * O valor escolhido é normalizado para o toplevel do git (`git rev-parse --show-toplevel`)
+ * porque payload.cwd pode ser um subdiretório do projeto. Se git falhar (não é repositório),
+ * o caminho é usado como veio.
+ */
+function raizDoProjeto(payload) {
+  let caminho;
+  if (payload && payload.cwd) {
+    caminho = payload.cwd;
+  } else if (process.env.CLAUDE_PROJECT_DIR) {
+    caminho = process.env.CLAUDE_PROJECT_DIR;
+  } else {
+    caminho = process.cwd();
+  }
+  try {
+    const toplevel = execFileSync("git", ["-C", caminho, "rev-parse", "--show-toplevel"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    return toplevel;
+  } catch {
+    return caminho;
+  }
 }
 
 function negar(motivo) {
@@ -35,6 +62,46 @@ function normalizarNomeAgente(nome) {
     return nome.split(":").pop();
   }
   return nome;
+}
+
+function parseToolsDoFrontmatter(frontmatter) {
+  // Tenta inline com vírgula: `tools: Read, Grep, Glob`
+  const inlineMatch = frontmatter.match(/^tools:\s*(.+)$/m);
+  if (inlineMatch) {
+    const toolsStr = inlineMatch[1].trim();
+    // Ignorar se é só o símbolo de bloco YAML (lista começa na próxima linha)
+    if (!toolsStr.startsWith("-")) {
+      const tools = toolsStr.split(",").map(t => t.trim()).filter(Boolean);
+      return tools;
+    }
+  }
+
+  // Tenta lista de bloco YAML
+  const blockMatch = frontmatter.match(/^tools:\s*\n((?:\s+-\s+.+\n?)+)/m);
+  if (blockMatch) {
+    const bloco = blockMatch[1];
+    const linhas = bloco.split("\n");
+    const tools = [];
+    for (const linha of linhas) {
+      const match = linha.match(/^\s*-\s+(\S+)/);
+      if (match) {
+        tools.push(match[1]);
+      }
+    }
+    return tools;
+  }
+
+  return [];
+}
+
+function validarToolsAowlist(tools) {
+  const allowlist = ["Read", "Grep", "Glob"];
+  for (const tool of tools) {
+    if (!allowlist.includes(tool)) {
+      return tool;
+    }
+  }
+  return null;
 }
 
 function obterDefinicaoAgente(raiz, nomeAgente, agentesDir) {
@@ -115,35 +182,39 @@ function gravarDespacho(raiz, decisao, agente, estagio, sessao, motivo) {
 }
 
 function main() {
-  const raiz = raizDoProjeto();
-
   // Ler payload do stdin
   let bruto = "";
   try {
     bruto = fs.readFileSync(0, "utf8");
   } catch {
-    negar("Não foi possível ler o payload do stdin");
+    // Stdin ilegível: libera sem log. A política é a mesma dos quatro gates irmãos.
+    process.exit(0);
   }
 
   if (!bruto.trim()) {
-    negar("Payload vazio");
+    // Payload vazio: libera sem log.
+    process.exit(0);
   }
 
   let payload;
   try {
     payload = JSON.parse(bruto);
   } catch {
-    negar("Payload JSON inválido");
+    // Payload JSON inválido: libera sem log.
+    process.exit(0);
   }
 
-  // Grava amostra (primeira captura vence)
-  gravarAmostra(raiz, payload);
+  // Agora temos payload válido — resolver a raiz DO PROJETO
+  const raiz = raizDoProjeto(payload);
 
   // Extrai nome do agente (com normalização)
   const nomeAgenteBruto = payload.tool_input && payload.tool_input.subagent_type;
   if (!nomeAgenteBruto) {
     negar("Campo tool_input.subagent_type ausente no payload");
   }
+
+  // Grava amostra (primeira captura vence) — SÓ após validar que subagent_type existe
+  gravarAmostra(raiz, payload);
 
   const nomeAgente = normalizarNomeAgente(nomeAgenteBruto);
   if (!nomeAgente) {
@@ -229,21 +300,14 @@ function main() {
       const fmMatch = def.match(/^---\n([\s\S]*?)\n---/);
       if (fmMatch) {
         const frontmatter = fmMatch[1];
-        const toolsMatch = frontmatter.match(/^tools:\s*(.+)$/m);
+        const tools = parseToolsDoFrontmatter(frontmatter);
 
-        if (toolsMatch) {
-          const toolsStr = toolsMatch[1];
-          const allowlist = ["Read", "Grep", "Glob"];
-
-          // Parse lista de tools (pode ser simples ou complexa)
-          const tools = toolsStr.split(",").map(t => t.trim());
-
-          for (const tool of tools) {
-            if (!allowlist.includes(tool)) {
-              const motivo = `agente '${nomeAgente}' com escreve:false declara tool fora da allowlist: ${tool}`;
-              gravarDespacho(raiz, "deny", nomeAgente, estagioAtivo, sessao, motivo);
-              negar(motivo);
-            }
+        if (tools.length > 0) {
+          const toolInvalido = validarToolsAowlist(tools);
+          if (toolInvalido) {
+            const motivo = `agente '${nomeAgente}' com escreve:false declara tool fora da allowlist: ${toolInvalido}`;
+            gravarDespacho(raiz, "deny", nomeAgente, estagioAtivo, sessao, motivo);
+            negar(motivo);
           }
         }
       }
@@ -342,21 +406,17 @@ function executarLint(manifestoPath, agentesDir) {
 
     // Checagem 3: escreve: false mas tool de escrita no frontmatter
     if (config && config.escreve === false) {
-      const def = obterDefinicaoAgente(process.env.CLAUDE_PROJECT_DIR || process.cwd(), nome, agentesDir);
+      const def = obterDefinicaoAgente(raizDoProjeto(), nome, agentesDir);
       if (def) {
         const fmMatch = def.match(/^---\n([\s\S]*?)\n---/);
         if (fmMatch) {
           const frontmatter = fmMatch[1];
-          const toolsMatch = frontmatter.match(/^tools:\s*(.+)$/m);
-          if (toolsMatch) {
-            const toolsStr = toolsMatch[1];
-            const allowlist = ["Read", "Grep", "Glob"];
-            const tools = toolsStr.split(",").map(t => t.trim());
-            for (const tool of tools) {
-              if (!allowlist.includes(tool)) {
-                console.error(`erro: agente '${nome}' com escreve:false declara tool fora da allowlist: ${tool}`);
-                erros++;
-              }
+          const tools = parseToolsDoFrontmatter(frontmatter);
+          if (tools.length > 0) {
+            const toolInvalido = validarToolsAowlist(tools);
+            if (toolInvalido) {
+              console.error(`erro: agente '${nome}' com escreve:false declara tool fora da allowlist: ${toolInvalido}`);
+              erros++;
             }
           }
         }
@@ -393,7 +453,7 @@ if (require.main === module) {
       }
     }
 
-    const raiz = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+    const raiz = raizDoProjeto();
     // Se o caminho for absoluto, usa como está; se for relativo, usa raiz
     const manifestoCompleto = path.isAbsolute(manifestoPath) ? manifestoPath : path.join(raiz, manifestoPath);
     const agentesCompleto = path.isAbsolute(agentesDir) ? agentesDir : path.join(raiz, agentesDir);
