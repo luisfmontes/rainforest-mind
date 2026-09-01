@@ -51,6 +51,44 @@ const MODELO = args.modelo || 'codex';
 const CLI_CMD_CUSTOM = args['cli-cmd']; // Para testes com fixtures
 
 /**
+ * Helper: obter raiz principal de repositório a partir do git-common-dir
+ *
+ * Usa git rev-parse --git-common-dir, que devolve o caminho do .git compartilhado (relativo ou
+ * absoluto). Mesmo de dentro de um worktree, git-common-dir aponta para o .git do repositório
+ * principal, não para o worktree. show-toplevel não serve aqui porque devolve o worktree quando
+ * rodado de dentro dele — o log desapareceria quando o worktree fosse deletado.
+ *
+ * Casos cobertos:
+ * - Repositório normal: git-common-dir == .git (relativo) → resolve com cwd → /repo → retorna /repo
+ * - Worktree: git-common-dir == /repo/.git (absoluto) → retorna /repo (o principal!)
+ * - Fora de repo: git rev-parse falha, retorna null, que leva a recusa
+ *
+ * Se git-common-dir for relativo (começa com .), resolve a partir do cwd.
+ */
+function getRootFromGitCommonDir() {
+  const gitCommonResult = spawnSync('git', ['rev-parse', '--git-common-dir'], {
+    encoding: 'utf8',
+    cwd: process.cwd()
+  });
+
+  if (gitCommonResult.status !== 0) {
+    return null; // Fora de repositório
+  }
+
+  let gitDir = gitCommonResult.stdout.trim();
+
+  // Se for relativo, resolver a partir do cwd
+  if (!path.isAbsolute(gitDir)) {
+    gitDir = path.resolve(process.cwd(), gitDir);
+  }
+
+  // gitDir é agora algo como '/repo/.git' ou 'C:/repo/.git' no Windows
+  // Remover /.git (ou \.git) do final para obter a raiz principal
+  const repoRoot = gitDir.replace(/[\/\\]\.git$/, '');
+  return repoRoot;
+}
+
+/**
  * Subcomando: registrar divergência com motivo
  *
  * Uso: node scripts/segunda-opiniao.cjs registrar-divergencia --veredito discordo --motivo "<texto>" --base <sha>
@@ -58,7 +96,7 @@ const CLI_CMD_CUSTOM = args['cli-cmd']; // Para testes com fixtures
  * D5: Quando veredito for "discordo" e a janela rejeitar, registra com motivo escrito.
  * Motivo vazio ou só whitespace = recusa (exit ≠ 0, nada gravado).
  *
- * Arquivo de log: .claude/logs/divergencias-segunda-opiniao.jsonl (ancorado na raiz do repo)
+ * Arquivo de log: .claude/logs/divergencias-segunda-opiniao.jsonl (ancorado na raiz do repo principal)
  * Cada linha é JSON: { timestamp, veredito, motivo, base, modelo }
  *
  * Recusa (exit ≠ 0) se não estiver dentro de um repositório git.
@@ -76,17 +114,12 @@ function registrarDivergencia() {
   }
 
   // Ancorar em raiz do repositório — recusar fora de repo git
-  const gitTopResult = spawnSync('git', ['rev-parse', '--show-toplevel'], {
-    encoding: 'utf8',
-    cwd: process.cwd()
-  });
+  const repoRoot = getRootFromGitCommonDir();
 
-  if (gitTopResult.status !== 0) {
+  if (!repoRoot) {
     console.error('Erro: registrar-divergencia precisa estar dentro de um repositório git');
     process.exit(1);
   }
-
-  const repoRoot = gitTopResult.stdout.trim();
   const logDir = path.join(repoRoot, '.claude', 'logs');
   const logFile = path.join(logDir, 'divergencias-segunda-opiniao.jsonl');
 

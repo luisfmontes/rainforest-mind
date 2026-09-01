@@ -714,6 +714,66 @@ else
   echo "  FALHA divergencia-sem-flag-motivo-recusa: deveria sair ≠ 0, saiu 0"
 fi
 
+echo ""
+echo "== CASO 19: divergencia-de-dentro-de-worktree-grava-no-principal =="
+
+# Teste em worktree — o log deve ir para raiz do repo principal, NÃO para o worktree
+# Isso testa o cenário normal de uso: revisar (que roda em worktree agente) rejeita,
+# registrar-divergencia é chamado de dentro do worktree, log deve ficar no principal
+TEMP_REPO_WORKTREE="$RAIZ/test-worktree-repo"
+mkdir -p "$TEMP_REPO_WORKTREE"
+cd "$TEMP_REPO_WORKTREE"
+git init --quiet
+git config user.email "test@<email>"
+git config user.name "Test"
+
+echo "content" > file.txt
+git add file.txt
+git commit --quiet -m "base"
+BASE_SHA_WORKTREE=$(git rev-parse HEAD)
+
+# Criar um worktree
+WORKTREE_PATH="$TEMP_REPO_WORKTREE/.github-worktree"
+git worktree add "$WORKTREE_PATH" -b worktree-branch HEAD > /dev/null 2>&1
+
+# Caminhos esperados
+LOG_IN_PRINCIPAL="$TEMP_REPO_WORKTREE/.claude/logs/divergencias-segunda-opiniao.jsonl"
+LOG_IN_WORKTREE="$WORKTREE_PATH/.claude/logs/divergencias-segunda-opiniao.jsonl"
+
+# Limpar logs se existirem
+rm -f "$LOG_IN_PRINCIPAL" "$LOG_IN_WORKTREE"
+
+# Registrar divergência RODANDO DE DENTRO DO WORKTREE
+(cd "$WORKTREE_PATH" && node "$SRC/scripts/segunda-opiniao.cjs" registrar-divergencia \
+  --veredito discordo \
+  --motivo "Teste de worktree" \
+  --base "$BASE_SHA_WORKTREE" > /dev/null 2>&1); EXIT_WORKTREE=$?
+
+# Deve sair com 0
+if [ "$EXIT_WORKTREE" = "0" ]; then
+  # Arquivo DEVE estar no repositório principal, NÃO no worktree
+  if [ -f "$LOG_IN_PRINCIPAL" ] && [ ! -f "$LOG_IN_WORKTREE" ]; then
+    if grep -q "\"motivo\":\"Teste de worktree\"" "$LOG_IN_PRINCIPAL"; then
+      ok=$((ok + 1))
+      echo "  ok   divergencia-de-dentro-de-worktree-grava-no-principal: arquivo em repo principal, não em worktree"
+    else
+      falhou=$((falhou + 1))
+      echo "  FALHA divergencia-de-dentro-de-worktree-grava-no-principal: conteúdo não bate"
+      cat "$LOG_IN_PRINCIPAL" | head -3
+    fi
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA divergencia-de-dentro-de-worktree-grava-no-principal: arquivo não onde deveria estar"
+    [ -f "$LOG_IN_PRINCIPAL" ] && echo "    (existe em principal)" || echo "    (não existe em principal - ERRADO)"
+    [ -f "$LOG_IN_WORKTREE" ] && echo "    (existe em worktree - ERRADO)" || echo "    (não existe em worktree - correto)"
+  fi
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA divergencia-de-dentro-de-worktree-grava-no-principal: deveria sair 0, saiu $EXIT_WORKTREE"
+fi
+
+# Limpar worktree
+git worktree remove "$WORKTREE_PATH" 2>/dev/null
 
 echo ""
 echo "== RESUMO =="
