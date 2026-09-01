@@ -31,7 +31,7 @@
     "em": "2026-08-30"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-01",
     "tarefas_ok": 9,
     "tarefas": 9,
@@ -41,8 +41,8 @@
       "achado-2": "Opcao A fechada pelo Luis em 2026-08-31 e ACEITE POR ESCRITO DADO em 2026-09-01 (resposta recomendado): executor, documentador, resolvedor-de-build e tester ficam bloqueados quando o hook entrar na main, ate a reavaliacao de escreve:true com worktree por filho. Registrado em skills/rainforest-mind/references/regra-10.md.",
       "escreve-false": "Q2 fechada pelo Luis em 2026-09-01 (recomendado): escreve:false continua como DECLARACAO, com a lacuna nomeada. Medido: nenhum dos nove agents/*.md declara tools:, entao a checagem 3 do lint nunca dispara contra os agentes reais. Por tools: Read,Grep,Glob nos tres admitidos foi recusado — o revisor precisa de Bash para reproduzir achado (regra 12). Divida escrita em references/regra-10.md."
     },
-    "comando": "node hooks/testa-portaria-portoes.cjs; node hooks/testa-portaria-nucleo.cjs; node hooks/testa-portaria-lint.cjs; node hooks/testa-portaria-captura.cjs; node hooks/testa-portaria-gitignore.cjs; node hooks/testa-estagio-ativo.cjs; bash scripts/testa-saude.sh; bash hooks/testa-contexto-sessao.sh; bash scripts/testa-conferir-fluxo.sh; bash scripts/testa-orcamento.sh; bash scripts/testa-ponte.sh; bash scripts/testa-estado.sh",
-    "saida": "portoes P1..P5: OK exit 0 | nucleo 30 ok 0 falha exit 0 | lint 14 ok 0 falha exit 0 | captura 9 ok 0 falha exit 0 | gitignore 9 ok 0 falha exit 0 | estagio-ativo 7 ok 0 falha exit 0 | saude 56 ok 0 falha exit 0 | contexto-sessao 277 ok 0 falha exit 0 | conferir-fluxo 41 ok 0 falha exit 0 | orcamento 29 ok 0 falha exit 0 | ponte 60 ok 0 falha exit 0 | estado 137 ok 0 falha exit 0 — todos rodados na arvore integrada, exit capturado sem pipe",
+    "comando": "node hooks/testa-portaria-nucleo.cjs; node hooks/testa-portaria-captura.cjs; node hooks/testa-portaria-lint.cjs; node hooks/testa-portaria-portoes.cjs; node hooks/testa-portaria-gitignore.cjs; node hooks/testa-portaria-tools-bloco.cjs; node hooks/testa-estagio-ativo.cjs; bash scripts/testa-saude.sh; node hooks/portaria.cjs --lint",
+    "saida": "rodada 2, arvore integrada: nucleo 35 ok 0 falha | captura 12 ok 0 falha | lint 14 ok 0 falha | portoes P1..P5 OK | gitignore 9 ok 0 falha | tools-bloco 3 ok 0 falha | estagio-ativo 7 ok 0 falha | saude 56 ok 0 falha | portaria --lint no repo real: exit 0, 6 avisos de orfao, 0 erro — todos exit 0, capturado sem pipe",
     "mutacao": [
       {
         "tarefa": 1,
@@ -57,7 +57,7 @@
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "sandbox sem .rainforest/agentes.json e payload real do harness — mutacao: manifesto ausente passa a aprovar (fail-open) em vez de negar; re-rodada na janela principal com inversao propria, 24 ok / 2 falha"
+        "fixture": "dois sandboxes git, A com manifesto+estagio que aprovam e B sem manifesto, com process.cwd() e CLAUDE_PROJECT_DIR em B e payload.cwd em A — mutacao: a precedencia deixa de ler payload.cwd; 30 ok / 5 falha. Mais duas rodadas na janela principal com conferir-mutacao.cjs: manifesto ausente passa a liberar (33 ok / 2 falha) e subagent_type ausente passa a liberar (10 ok / 2 falha). As tres exit 0"
       },
       {
         "tarefa": 4,
@@ -87,13 +87,9 @@
       {
         "tarefa": 9,
         "resultado": "n/a",
-        "motivo": "verificacao manual unica, um so episodio de evidencia — e ela NAO PODE rodar dentro do proprio estagio executar: o criterio exige um ALLOW para rainforest-mind:revisor, que so e admitido no estagio revisar, e nenhum dos tres agentes do manifesto tem executar na lista. Defeito de ordenacao do plano, achado na execucao. As duas negacoes ja foram provadas no worktree real com o manifesto real (revisor -> exit 2 citando estagio executar e permitidos revisar; executor -> exit 2 nao consta no manifesto). O allow e o 'sem prompt ao humano' sao colhidos no estagio revisar, imediatamente apos este fechamento, e ficam registrados no bloco revisar deste estado"
+        "motivo": "verificacao manual unica, colhida em 2026-09-01 no estagio revisar (ver relatorios/2026-09-01-fluxo-9-t9-verificacao-manual.md): revisor -> allow sem prompt, executor -> deny com o motivo chegando a sessao, mesma sessao nas duas linhas do despachos.jsonl. Nao pode rodar dentro do executar porque nenhum dos tres agentes do manifesto tem executar na lista — defeito de ordenacao do plano, achado na execucao"
       }
-    ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-01"
-    }
+    ]
   },
   "revisar": {
     "status": "reprovado",
