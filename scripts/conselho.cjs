@@ -527,7 +527,7 @@ function conferirFasePareceres() {
   zerarTentativaFase(estado, dirRodada, 'pareceres');
 
   // Mark phase as complete
-  // estado.fases.pareceres.status = 'ok'; (desabilitado)
+  estado.fases.pareceres.status = 'ok';
   fs.writeFileSync(estadoPath, JSON.stringify(estado, null, 2) + '\n', 'utf8');
 
   process.exit(0);
