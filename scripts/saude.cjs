@@ -881,6 +881,60 @@ function checarEsquema() {
   }
 }
 
+// ---------------------------------------------------------------- 10.5. integrações
+/**
+ * Checagem de integrações opcionais declaradas.
+ *
+ * Cada integração tem um stub `checar()` que devolve { ok, detalhe, acao? }.
+ * Esta função APENAS checa as que foram ligadas via config; desligadas não geram item nenhum.
+ *
+ * Quebrada vira AVISO (nunca ALERTA) com a ação na linha seguinte.
+ * Nenhuma rede externa — só o loopback que o checar() do módulo já faz.
+ */
+async function checarIntegracoes() {
+  let resolverConfig;
+  let INTEGRACOES;
+  try {
+    ({ resolverConfig } = require('../hooks/lib/config.cjs'));
+    ({ INTEGRACOES } = require('../hooks/lib/integracoes.cjs'));
+  } catch {
+    return; // sem módulos: nada a dizer
+  }
+
+  let config;
+  try {
+    config = resolverConfig();
+  } catch {
+    return; // config ilegível: nada a dizer
+  }
+
+  // Para cada integração declarada no módulo
+  const promessas = [];
+  for (const [nome, def] of Object.entries(INTEGRACOES)) {
+    const chave = `integracao-${nome}`;
+    // Desligada na config? Nenhum item
+    if (!config.valores[chave]) continue;
+
+    // Ligada: chama o checar()
+    promessas.push(
+      Promise.resolve(def.checar()).then((resultado) => {
+        if (!resultado.ok) {
+          // Quebrada → aviso, com a ação na linha seguinte
+          aviso(`integracao-${nome}`, resultado.detalhe || 'falha na checagem', resultado.acao);
+        } else {
+          // Ok
+          ok(`integracao-${nome}`, resultado.detalhe || 'ok');
+        }
+      }).catch(() => {
+        // Erro na checagem → aviso
+        aviso(`integracao-${nome}`, 'erro ao rodar checagem', 'verifique o módulo de integração');
+      })
+    );
+  }
+
+  await Promise.all(promessas);
+}
+
 // ---------------------------------------------------------------- 11. banco de memoria
 /**
  * Checagem do banco de dados de memória do rainforest.
@@ -1119,7 +1173,7 @@ function checarPoda(o = {}) {
 
 // ---------------------------------------------------------------- saida
 
-function main() {
+async function main() {
   checarRaiz();
   checarInjecao();
   checarIdeias();
@@ -1132,6 +1186,7 @@ function main() {
   checarBranches();
   checarEsquema();
   checarMemoria();
+  await checarIntegracoes();
   checarPoda();
 
   if (process.argv.includes('--json')) {
@@ -1154,5 +1209,8 @@ function main() {
   process.exit(achados.some((a) => a.nivel === 'alerta') ? 1 : 0);
 }
 
-if (require.main === module) main();
+if (require.main === module) main().catch((err) => {
+  console.error('Erro fatal:', err.message);
+  process.exit(1);
+});
 module.exports = { achados, checarPoda };

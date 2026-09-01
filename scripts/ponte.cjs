@@ -50,58 +50,20 @@ const CODIGO_ROOT = path.resolve(__dirname, "..");
 const CAMINHO_SKILL = path.join(CODIGO_ROOT, "skills", "rainforest-mind", "SKILL.md");
 
 const FIM = "<!-- rainforest-mind:fim -->";
+const FIM_PROJETO = "<!-- rainforest-mind:projeto:fim -->";
 
-/** Hash curto (16 primeiros caracteres) do SKILL.md para deteccao de edicao manual. */
-function hashSkillMd() {
-  try {
-    const conteudo = fs.readFileSync(CAMINHO_SKILL, "utf8");
-    return crypto.createHash("sha256").update(conteudo).digest("hex").slice(0, 16);
-  } catch {
-    return null;
-  }
-}
+// Importar funções compartilhadas
+const { corpo, raizDeDados: raizDeDadosShared, AGENTES: AGENTES_SHARED, lerProjetoMd, hashDoArquivo } =
+  require("../hooks/lib/ponte-corpo.cjs");
+
 
 function inicioComHash(hash) {
   if (!hash) return "<!-- rainforest-mind:inicio — GERADO por scripts/ponte.cjs, nao edite a mao -->";
   return `<!-- rainforest-mind:inicio — GERADO por scripts/ponte.cjs, nao edite a mao — hash:${hash} -->`;
 }
 
-const AGENTES = {
-  // `claude` e o terceiro alvo, e nao e redundante: quem usa Claude Code SEM o
-  // plugin instalado nao tem regra nenhuma. E o caminho de quem vai receber o
-  // convite antes de instalar, e o unico caminho num repo compartilhado onde nao da
-  // para exigir plugin de ninguem.
-  claude: {
-    arquivo: "CLAUDE.md",
-    nome: "Claude Code (sem o plugin)",
-    comoLe: "O Claude Code le o `CLAUDE.md` da raiz do repositorio em toda sessao.",
-    semTrava:
-      "As duas travas do rainforest-mind (agente fora de worktree isolado, `git add -A`) " +
-      "sao hooks `PreToolUse` do PLUGIN. Este arquivo entrega as regras, nao os hooks: " +
-      "sem o plugin instalado elas sao combinado, nao trava. Quem quiser as travas " +
-      "instala o plugin — ai este arquivo fica redundante e pode sair.",
-  },
-  codex: {
-    arquivo: "AGENTS.md",
-    nome: "Codex",
-    comoLe: "O Codex le o `AGENTS.md` da raiz do repositorio em toda sessao.",
-    semTrava:
-      "Duas travas do rainforest-mind rodam fora do modelo no Claude Code, como hook " +
-      "com exit code: a que barra agente editando fora de worktree isolado, e a que " +
-      "barra `git add -A`. Elas usam o `PreToolUse`, que **nao existe** neste host. " +
-      "Aqui elas sao texto — ou seja, argumentaveis. Trate-as como combinado.",
-  },
-  gemini: {
-    arquivo: "GEMINI.md",
-    nome: "Gemini CLI",
-    comoLe: "O Gemini CLI le o `GEMINI.md` da raiz do repositorio em toda sessao.",
-    semTrava:
-      "Duas travas do rainforest-mind rodam fora do modelo no Claude Code, como hook " +
-      "com exit code: a que barra agente editando fora de worktree isolado, e a que " +
-      "barra `git add -A`. Elas usam o `PreToolUse`, que **nao existe** neste host. " +
-      "Aqui elas sao texto — ou seja, argumentaveis. Trate-as como combinado.",
-  },
-};
+// Usar AGENTES do módulo compartilhado
+const AGENTES = AGENTES_SHARED;
 
 /**
  * Quais alvos este install DECLAROU no `/setup` (chaves `ponte-*`).
@@ -157,67 +119,266 @@ function nucleoDasRegras() {
   return nucleo;
 }
 
+// raizDeDados() foi movida para o módulo compartilhado, chamar de lá
 function raizDeDados() {
+  return raizDeDadosShared(CODIGO_ROOT);
+}
+
+/**
+ * Varredura pura do repositório alvo — detecta stack, comandos, layout.
+ * Retorna objeto JSON. Não escreve nada em disco.
+ */
+function varrerRepositorio(alvo) {
+  const resultado = {
+    stack: "desconhecida",
+    scripts: [],
+    workflows: [],
+    layout: [],
+  };
+
+  // Detecta stack Node
+  const packageJsonPath = path.join(alvo, "package.json");
+  let packageJson = null;
   try {
-    return require("../hooks/lib/raiz.cjs").resolverRaiz({ plugin: CODIGO_ROOT }).raiz || null;
+    const conteudo = fs.readFileSync(packageJsonPath, "utf8");
+    packageJson = JSON.parse(conteudo);
+    resultado.stack = "node";
+    // Coleta scripts.test e scripts.build
+    if (packageJson.scripts) {
+      if (packageJson.scripts.test) {
+        resultado.scripts.push({
+          tipo: "test",
+          comando: packageJson.scripts.test,
+        });
+      }
+      if (packageJson.scripts.build) {
+        resultado.scripts.push({
+          tipo: "build",
+          comando: packageJson.scripts.build,
+        });
+      }
+    }
   } catch {
-    return null;
+    // Tenta detectar Python
+    const requirementsTxt = path.join(alvo, "requirements.txt");
+    const pyprojectToml = path.join(alvo, "pyproject.toml");
+    try {
+      fs.statSync(requirementsTxt);
+      resultado.stack = "python";
+    } catch {
+      try {
+        fs.statSync(pyprojectToml);
+        resultado.stack = "python";
+      } catch {
+        // Tenta detectar Go
+        const goMod = path.join(alvo, "go.mod");
+        try {
+          fs.statSync(goMod);
+          resultado.stack = "go";
+        } catch {
+          // stack permanece "desconhecida"
+        }
+      }
+    }
+  }
+
+  // Coleta workflows de .github/workflows/*.yml
+  const workflowsDir = path.join(alvo, ".github", "workflows");
+  try {
+    const files = fs.readdirSync(workflowsDir);
+    for (const file of files) {
+      if (file.endsWith(".yml") || file.endsWith(".yaml")) {
+        resultado.workflows.push(file.replace(/\.(yml|yaml)$/, ""));
+      }
+    }
+  } catch {
+    // Diretório não existe ou não pode ser lido
+  }
+
+  // Coleta layout de 1º nível (ignora .git, node_modules e docs — artefato gerado)
+  try {
+    const entries = fs.readdirSync(alvo, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory() && entry.name !== ".git" && entry.name !== "node_modules" && entry.name !== "docs") {
+        resultado.layout.push(entry.name);
+      }
+    }
+    resultado.layout.sort();
+  } catch {
+    // Diretório não pode ser lido
+  }
+
+  return resultado;
+}
+
+/**
+ * Grava docs/rainforest/projeto.md atomicamente a partir das respostas de entrevista.
+ * Lê arquivo JSON com 4 chaves: pronto, nao_toca, convencao, revisao.
+ * Chama varrerRepositorio() para obter os fatos (stack, comandos, layout).
+ * Gera markdown combinando fatos + respostas.
+ * Se aplicar=true, escreve atomicamente (tmp + rename) em alvo/docs/rainforest/projeto.md.
+ * Se aplicar=false, retorna o conteúdo gerado (stdout, sem gravar).
+ * Retorna {gravado, bytes, markdown} para relato.
+ */
+function gravarProjetoMd(alvo, respostasArquivo, aplicar) {
+  // Lê e valida JSON de respostas
+  let respostas;
+  try {
+    const conteudo = fs.readFileSync(respostasArquivo, "utf8");
+    respostas = JSON.parse(conteudo);
+  } catch (e) {
+    erro(`nao consegui ler ou parsear --respostas '${respostasArquivo}': ${e.message}`);
+  }
+
+  const chavesPrecisas = ["pronto", "nao_toca", "convencao", "revisao"];
+  for (const chave of chavesPrecisas) {
+    if (!(chave in respostas)) {
+      erro(`--respostas ausente chave obrigatoria: ${chave}`);
+    }
+  }
+
+  // Sanitiza respostas: remove marcadores perigosos que causariam truncamento
+  respostas = sanitizarRespostas(respostas);
+
+  // Varredura pura (fatos: stack, comandos, layout)
+  const fatos = varrerRepositorio(alvo);
+
+  // Gera markdown combinando fatos + respostas
+  const markdown = gerarProjetoMarkdown(fatos, respostas);
+
+  // Defesa em profundidade: valida que não há duplicação de marcadores
+  validarMarcadoresProjetMd(markdown);
+
+  // Determina caminho de saída (atomicamente)
+  const dirProjeto = path.join(alvo, "docs", "rainforest");
+  const arquivoFinal = path.join(dirProjeto, "projeto.md");
+  const arquivoTmp = arquivoFinal + ".tmp";
+
+  if (!aplicar) {
+    // Ensaio: apenas retorna o conteúdo
+    return { gravado: false, bytes: Buffer.byteLength(markdown, "utf8"), markdown };
+  }
+
+  // Grava atomicamente: tmp + rename
+  try {
+    fs.mkdirSync(dirProjeto, { recursive: true });
+    fs.writeFileSync(arquivoTmp, markdown, "utf8");
+    fs.renameSync(arquivoTmp, arquivoFinal);
+    return { gravado: true, bytes: Buffer.byteLength(markdown, "utf8"), markdown };
+  } catch (e) {
+    erro(`erro ao gravar projeto.md atomicamente: ${e.message}`);
   }
 }
 
-function corpo(agente, nucleo, dados) {
-  const cli = [
-    ["`node <plugin>/scripts/estado.cjs exigir --slug <slug> --estagio <e>`", "gate do fluxo — **exit 2** quando o estagio anterior nao fechou"],
-    ["`node <plugin>/scripts/conferir-entrega.cjs --worktree <wt> --base <hash>`", "a checagem da regra 12 sobre entrega de agente — **exit 1** se reprovar"],
-    ["`node <plugin>/scripts/conferir-publicacao.cjs <arquivo>`", "**exit 2** se o texto tem telefone, e-mail, caminho de home ou credencial"],
-    // Sem `|` dentro do code span: em tabela markdown ele quebra a celula.
-    ["`node <plugin>/scripts/ideias.cjs plantar, colher, listar, conferir`", "porta unica de escrita do `ideias.jsonl` (trava, backup, atomico, conferido)"],
-    ["`node <plugin>/scripts/foco.cjs caminho, rotacionar`", "onde mora o foco, e o teto do bloco de avancos"],
-    ["`node <plugin>/scripts/saude.cjs`", "o que os checadores oficiais nao sabem"],
-    ["`node <plugin>/scripts/semear.cjs --projeto <slug>`", "o historico deste projeto: observacoes, ideias abertas, relatorios"],
-  ]
-    .map(([c, p]) => `| ${c} | ${p} |`)
-    .join("\n");
+/**
+ * Sanitiza respostas: valida tipo e remove marcadores rainforest-mind:projeto.
+ * Cada resposta DEVE ser string não-vazia; qualquer outro tipo resulta em erro.
+ * Busca por <!-- rainforest-mind:projeto:(inicio|fim) --> e remove, tolerando espaçamento.
+ */
+function sanitizarRespostas(respostas) {
+  const chavesPrecisas = ["pronto", "nao_toca", "convencao", "revisao"];
 
-  return `# rainforest-mind — ponte para o ${agente.nome}
+  // Validação de tipo: cada resposta deve ser string não-vazia
+  for (const chave of chavesPrecisas) {
+    const valor = respostas[chave];
+    if (typeof valor !== "string") {
+      erro(`--respostas '${chave}' deve ser string, recebido ${typeof valor}`);
+    }
+    if (valor.trim() === "") {
+      erro(`--respostas '${chave}' não pode estar vazia`);
+    }
+  }
 
-${agente.comoLe} Este bloco e **gerado**: as regras moram em
-\`skills/rainforest-mind/SKILL.md\`, no plugin, e chegam aqui por
-\`node <plugin>/scripts/ponte.cjs --alvo . --agente ${Object.keys(AGENTES).find((k) => AGENTES[k] === agente)} --aplicar\`.
-Editar este bloco a mao cria uma segunda versao das regras que divergem em
-silencio — foi o que aconteceu com duas CLAUDE.md sincronizadas a mao em
-2026-08-10. Mude o SKILL.md e gere de novo.
-
-## O que NAO vale aqui, e voce precisa saber antes de confiar
-
-${agente.semTrava}
-
-O que continua sendo mecanismo, porque e comando com exit code, esta na tabela
-abaixo. Chame de verdade: **relato de que rodou nao e evidencia de que rodou.**
-
-| Comando | O que ele garante |
-|---|---|
-${cli}
-
-\`<plugin>\` e a pasta do rainforest-mind nesta maquina. Sua pasta de dados
-(FOCO.md, ideias.jsonl, projetos.json) **nao se chumba aqui**: descubra com
-\`node <plugin>/scripts/ideias.cjs conferir\`, que imprime o caminho resolvido, e monte com \`node <plugin>/scripts/setup.cjs --criar\` se ainda nao existir.
-Caminho de home dentro de arquivo versionado vaza a maquina de quem gerou — e este
-arquivo nasce para ser commitado no repo de outra pessoa.
-
-## As regras
-
-O que segue e o **nucleo** de cada regra. Regra marcada com \`↳\` tem elaboracao
-que nao esta aqui — criterio fino, comando exato, incidente datado —, e ela mora
-em \`skills/rainforest-mind/references/regra-<n>.md\` (onde \`<n>\` e o numero da regra). Antes de aplicar uma regra marcada, **leia esse arquivo**.
-
-${nucleo}
-`;
+  const padraoMarcador = /<!--\s*rainforest-mind:projeto:(inicio|fim)\s*-->/gi;
+  const sanitizadas = {};
+  for (const chave in respostas) {
+    // Se for string, sanitiza; senão, mantém como é (defesa em profundidade vai pegar)
+    if (typeof respostas[chave] === "string") {
+      sanitizadas[chave] = respostas[chave].replace(padraoMarcador, "");
+    } else {
+      sanitizadas[chave] = respostas[chave];
+    }
+  }
+  return sanitizadas;
 }
 
-function escrever(alvoArquivo, blocoNovo, aplicar, hash) {
+/**
+ * Valida que não há duplicação de marcadores no markdown final.
+ * Conta os marcadores <!-- rainforest-mind:projeto:inicio --> e :fim
+ * e aborta se houver mais de um de qualquer um.
+ */
+function validarMarcadoresProjetMd(markdown) {
+  const contInicio = (markdown.match(/<!-- rainforest-mind:projeto:inicio/gi) || []).length;
+  const contFim = (markdown.match(/<!-- rainforest-mind:projeto:fim/gi) || []).length;
+
+  if (contInicio !== 1 || contFim !== 1) {
+    erro(`markdown do projeto contem marcadores duplicados: ${contInicio} inicio(s), ${contFim} fim(ns). Abortando.`);
+  }
+}
+
+/**
+ * Gera o conteúdo markdown de projeto.md a partir dos fatos da varredura + respostas.
+ * Formato: título, seção fatos, seção respostas. Legível, estável para hash.
+ */
+function gerarProjetoMarkdown(fatos, respostas) {
+  const marcadorInicio = "<!-- rainforest-mind:projeto:inicio -->";
+  const marcadorFim = "<!-- rainforest-mind:projeto:fim -->";
+
+  // Formata os fatos da varredura
+  const fatosText = [
+    `### Stack`,
+    `${fatos.stack}`,
+    ``,
+    `### Comandos de teste/build`,
+    fatos.scripts.length > 0
+      ? fatos.scripts.map((s) => `- **${s.tipo}**: \`${s.comando}\``).join("\n")
+      : "(nenhum script encontrado)",
+    ``,
+    `### Layout (diretórios de 1º nível)`,
+    fatos.layout.length > 0
+      ? fatos.layout.map((d) => `- ${d}`).join("\n")
+      : "(nenhum diretório relevante)",
+  ].join("\n");
+
+  // Formata as respostas
+  const respostasText = [
+    `### O que é "pronto" aqui`,
+    respostas.pronto || "(não respondido)",
+    ``,
+    `### O que não se toca`,
+    respostas.nao_toca || "(não respondido)",
+    ``,
+    `### Convenção não escrita`,
+    respostas.convencao || "(não respondido)",
+    ``,
+    `### Política de revisão`,
+    respostas.revisao || "(não respondido)",
+  ].join("\n");
+
+  return [
+    marcadorInicio,
+    `# Bloco do projeto`,
+    ``,
+    `## Fatos da varredura`,
+    ``,
+    fatosText,
+    ``,
+    `## Respostas da entrevista`,
+    ``,
+    respostasText,
+    marcadorFim,
+  ].join("\n");
+}
+
+
+function escrever(alvoArquivo, blocoNovo, aplicar, hash, alvo) {
   const inicio = inicioComHash(hash);
   const marcado = `${inicio}\n${blocoNovo.trim()}\n${FIM}\n`;
+
+  // Adiciona bloco de projeto após o FIM, se existir
+  const blocoProjetoComHash = lerProjetoMd(alvo, true);
+  const marcadoComProjeto = blocoProjetoComHash ? `${marcado}\n${blocoProjetoComHash}\n` : marcado;
+
   let anterior = null;
   try {
     anterior = fs.readFileSync(alvoArquivo, "utf8");
@@ -225,25 +386,67 @@ function escrever(alvoArquivo, blocoNovo, aplicar, hash) {
     anterior = null;
   }
 
-  // Para substituicao de bloco existente, procura tanto a forma com hash quanto sem.
-  const temMarcadorAtual = anterior && (anterior.includes(inicio) || anterior.includes("<!-- rainforest-mind:inicio"));
+  // Para substituicao de bloco existente, o marcador tem de OCUPAR A LINHA INTEIRA
+  // (com ou sem hash) — prosa citando o marcador no meio de frase nunca casa, e o
+  // fim considerado e o primeiro APOS o inicio (tarefa 24, mesma familia das 19-22).
+  const inicioRegrasMatch = anterior
+    ? anterior.match(/^<!-- rainforest-mind:inicio[^>]*-->\r?$/m)
+    : null;
+  let fimRegrasMatch = null;
+  if (inicioRegrasMatch) {
+    const reFimRegras = /^<!-- rainforest-mind:fim -->\r?$/gm;
+    reFimRegras.lastIndex = inicioRegrasMatch.index;
+    fimRegrasMatch = reFimRegras.exec(anterior);
+  }
 
   let saida;
   let acao;
   if (anterior === null) {
-    saida = marcado;
+    saida = marcadoComProjeto;
     acao = "cria";
-  } else if (temMarcadorAtual && anterior.includes(FIM)) {
-    // Encontra o inicio do bloco, seja com ou sem hash
-    const inicioIdx = anterior.indexOf("<!-- rainforest-mind:inicio");
+  } else if (inicioRegrasMatch && !fimRegrasMatch) {
+    // Bloco de regras truncado (inicio sem fim). Acrescentar ou substituir por cima
+    // duplicaria o bloco em silencio — mesma recusa da tarefa 20 para o projeto.
+    erro(
+      `${path.basename(alvoArquivo)} tem um bloco de regras truncado (` +
+        `<!-- rainforest-mind:inicio --> sem <!-- rainforest-mind:fim -->). ` +
+        `Restaure o marcador de fim ou remova o bloco à mão antes de regenerar.`
+    );
+  } else if (inicioRegrasMatch && fimRegrasMatch) {
+    const inicioIdx = inicioRegrasMatch.index;
     const antes = anterior.slice(0, inicioIdx);
-    const depois = anterior.slice(anterior.indexOf(FIM) + FIM.length).replace(/^\n+/, "");
-    saida = `${antes}${marcado}${depois ? `\n${depois}` : ""}`;
+    // Remove o antigo bloco de projeto também se existir — mas APENAS se for um bloco real
+    // Um bloco real começa com <!-- rainforest-mind:projeto:inicio e tem seu fim após esse início
+    let depois = anterior.slice(fimRegrasMatch.index + fimRegrasMatch[0].length).replace(/^\n+/, "");
+
+    // Remove o bloco APENAS se após aparar quebras o pós-FIM começa com o marcador
+    // (este é o local onde o próprio gerador o escreve)
+    if (depois.startsWith("<!-- rainforest-mind:projeto:inicio")) {
+      // Encontra o fim do bloco a partir do começo — marcador ocupando a LINHA
+      // INTEIRA (tarefa 25): menção inline dentro do corpo do bloco não é fim.
+      const reFimProj = /^<!-- rainforest-mind:projeto:fim -->\r?$/m;
+      const fimProjMatch = depois.match(reFimProj);
+      if (fimProjMatch) {
+        // Encontrou o fim. Remove o bloco inteiro
+        depois = depois.slice(fimProjMatch.index + fimProjMatch[0].length).replace(/^\n+/, "");
+      } else {
+        // Bloco de projeto truncado (início sem fim). Gravar por cima duplicaria o
+        // bloco em silêncio — e "errada calada" é o pior estado. Recusa sem gravar.
+        erro(
+          `${path.basename(alvoArquivo)} tem um bloco de projeto truncado (` +
+            `<!-- rainforest-mind:projeto:inicio --> sem <!-- rainforest-mind:projeto:fim -->). ` +
+            `Restaure o marcador de fim ou remova o bloco à mão antes de regenerar.`
+        );
+      }
+    }
+    // Se não começa com o marcador, não remove nada (menção solta ou em outra posição)
+
+    saida = `${antes}${marcadoComProjeto}${depois ? `\n${depois}` : ""}`;
     acao = "substitui o bloco gerado";
   } else {
     // Arquivo escrito a mao por outra pessoa. Nunca sobrescrever: o bloco entra no
     // fim e o que era dela continua intacto, byte a byte.
-    saida = `${anterior.replace(/\n*$/, "")}\n\n${marcado}`;
+    saida = `${anterior.replace(/\n*$/, "")}\n\n${marcadoComProjeto}`;
     acao = "ACRESCENTA no fim (o arquivo ja existia sem marcador — nada dele foi apagado)";
   }
 
@@ -262,6 +465,32 @@ function main() {
     erro(`--alvo '${alvo}' nao existe`);
   }
   if (!stat.isDirectory()) erro(`--alvo '${alvo}' nao e diretorio`);
+
+  // Roteamento: --entrevistar --varredura (sem mais bandeiras)
+  if (tem("entrevistar") && tem("varredura")) {
+    const resultado = varrerRepositorio(alvo);
+    console.log(JSON.stringify(resultado, null, 2));
+    return 0;
+  }
+
+  // Roteamento: --entrevistar --gravar (grava projeto.md atomicamente)
+  if (tem("entrevistar") && tem("gravar")) {
+    const respostasArquivo = arg("respostas");
+    if (!respostasArquivo) erro("--entrevistar --gravar precisa de --respostas <arquivo>");
+
+    const aplicar = tem("aplicar");
+    const r = gravarProjetoMd(alvo, respostasArquivo, aplicar);
+
+    if (!aplicar) {
+      // Ensaio: imprime markdown no stdout
+      console.log(r.markdown);
+      return 0;
+    }
+
+    // Com --aplicar: relata e retorna 0
+    console.log(`projeto.md: ${r.gravado ? "gravado" : "nao gravado"} — ${r.bytes} B`);
+    return 0;
+  }
 
   // Sem `--agente`, valem os alvos DECLARADOS no /setup. `todos` continua existindo
   // como escolha explicita — o que saiu foi o "todos" como PADRAO: gerar arquivo em
@@ -293,13 +522,13 @@ function main() {
   const aplicar = tem("aplicar");
   const nucleo = nucleoDasRegras();
   const dados = raizDeDados();
-  const hash = hashSkillMd();
+  const hash = hashDoArquivo(CAMINHO_SKILL);
 
   console.log(`fonte das regras: ${path.relative(CODIGO_ROOT, CAMINHO_SKILL)} (nucleo com ${Buffer.byteLength(nucleo, "utf8")} B)${hash ? ` — hash ${hash}` : ""}`);
   for (const k of chaves) {
     const agente = AGENTES[k];
     const destino = path.join(alvo, agente.arquivo);
-    const r = escrever(destino, corpo(agente, nucleo, dados), aplicar, hash);
+    const r = escrever(destino, corpo(agente, nucleo, dados, alvo), aplicar, hash, alvo);
     console.log(`  ${agente.arquivo}: ${r.acao} — ${r.bytes} B ${r.gravado ? "GRAVADO" : "(ensaio)"}`);
     console.log(`    ${destino}`);
   }
