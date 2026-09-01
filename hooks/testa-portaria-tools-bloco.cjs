@@ -133,5 +133,62 @@ console.log("== 2. tools lista de bloco com Write → nega ==");
   fs.rmSync(raiz, { recursive: true, force: true });
 }
 
+/* Os casos 3 em diante nasceram do CRITICO da rodada 2 da revisao. Os dois
+ * primeiros usavam so a variante INDENTADA, e o parser exigia indentacao: uma
+ * lista de bloco com o hifen na mesma coluna da chave — YAML valido — nao casava
+ * em regra nenhuma, virava lista vazia, e o chamador PULAVA a checagem. Duas
+ * declaracoes equivalentes davam deny e ALLOW. A cobertura por formato e o que
+ * fecha esse buraco, e a distincao dos tres estados do parser
+ * (nao-declarado / lido / declarado-e-ilegivel) e o que o caso 6 mede.
+ */
+
+/**
+ * @param {string} rotulo   nome do caso, impresso
+ * @param {string} corpoFm  o frontmatter do agente, sem os `---`
+ * @param {number} esperado exit esperado do hook
+ * @param {string|null} trechoStderr texto que a negacao tem de citar (ou null)
+ */
+function casoFormato(rotulo, corpoFm, esperado, trechoStderr) {
+  console.log(`== ${rotulo} ==`);
+  const raiz = caixa();
+  try {
+    iniciarGit(raiz, "fluxo/teste");
+    criarEstado(raiz, "teste", "revisar");
+    criarManifesto(raiz, {
+      versao: 1,
+      agentes: { alvo: { estagios: ["revisar"], escreve: false } },
+    });
+    criarAgente(raiz, "alvo", corpoFm);
+    const r = rodaHook(raiz, JSON.stringify({ session_id: "sf", tool_input: { subagent_type: "alvo" } }));
+    caso(`exit ${esperado}`, r.status === esperado, `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
+    if (trechoStderr) {
+      caso(`stderr cita '${trechoStderr}'`, r.stderr.includes(trechoStderr), `stderr: ${r.stderr}`);
+    }
+  } finally {
+    fs.rmSync(raiz, { recursive: true, force: true });
+  }
+}
+
+// O caso que a rodada 2 pegou: hifen SEM indentacao, com tool de escrita.
+casoFormato("3. lista de bloco SEM indentacao, com Write → nega", "tools:\n- Read\n- Write", 2, "Write");
+// A contraparte legitima do mesmo formato: sem indentacao e read-only → aprova.
+casoFormato("4. lista de bloco SEM indentacao, read-only → aprova", "tools:\n- Read\n- Grep", 0, null);
+// Inline com virgula, read-only.
+casoFormato("5. inline com virgula, read-only → aprova", "tools: Read, Grep, Glob", 0, null);
+// `tools: *` nao e lista de nomes: e TODAS as ferramentas. Cai no terceiro
+// estado (declarado e ilegivel) e nega — antes seria lido como o nome "*" e
+// negaria por allowlist, o que dava a resposta certa pelo motivo errado.
+casoFormato("6. 'tools: *' → nega por formato ilegivel", "tools: *", 2, "formato que a portaria nao le");
+// Ausencia de `tools:` NAO e formato ilegivel: e agente sem declaracao, e D3
+// passo 6 manda pular a checagem. Este caso e o que impede o conserto de virar
+// deny-por-tudo.
+casoFormato("7. sem chave 'tools:' → aprova (pula a checagem, D3 passo 6)", "model: sonnet", 0, null);
+// Nome entre aspas continua sendo nome.
+casoFormato("8. lista com nome entre aspas, com Write → nega", 'tools:\n- "Read"\n- "Write"', 2, "Write");
+// O bloco termina na primeira linha que nao e item: a chave seguinte nao pode
+// ser engolida como se fosse tool.
+casoFormato("9. bloco seguido de outra chave → aprova (bloco encerrou certo)", "tools:\n- Read\nmodel: sonnet", 0, null);
+
 console.log(`\n== resultado: ${ok} ok, ${falhou} falha(s) ==`);
+if (falhou === 0) console.log("todos os casos: OK");
 process.exit(falhou > 0 ? 1 : 0);

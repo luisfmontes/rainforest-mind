@@ -26,6 +26,24 @@ const { execFileSync } = require("child_process");
  * O valor escolhido é normalizado para o toplevel do git (`git rev-parse --show-toplevel`)
  * porque payload.cwd pode ser um subdiretório do projeto. Se git falhar (não é repositório),
  * o caminho é usado como veio.
+ *
+ * Sobre a subida silenciosa do `git -C`, que a revisão levantou (rodada 2, AVISO):
+ * `git -C <dir>` num diretório SEM `.git` próprio, mas aninhado em algum
+ * repositório, devolve o toplevel do repositório de fora com exit 0 — o
+ * `try/catch` só cobre "não há `.git` em lugar nenhum acima". A elaboração da
+ * regra 11 documenta essa armadilha, e aqui ela é o comportamento QUERIDO, não
+ * o acidente: `payload.cwd` é o cwd da sessão, então o repositório que o
+ * envolve É o projeto em que aquela sessão está trabalhando, e é o manifesto
+ * dele que deve valer. Subir é o que faz `payload.cwd` num subdiretório
+ * (`<worktree>/hooks`) resolver para a raiz do worktree.
+ *
+ * O caso que sobraria — `payload.cwd` cair dentro de um repositório NÃO
+ * relacionado que por coincidência tenha `.rainforest/agentes.json` e um fluxo
+ * aberto cujo slug case com a branch de lá — não foi construído de forma
+ * realista na revisão, e o caminho de falha é seguro: sem manifesto naquela
+ * raiz, a decisão é "manifesto ausente", que nega. Fica registrado aqui em vez
+ * de virar máquina nova, porque máquina para caso não demonstrado é código que
+ * ninguém sabe se funciona.
  */
 function raizDoProjeto(payload) {
   let caminho;
@@ -64,34 +82,66 @@ function normalizarNomeAgente(nome) {
   return nome;
 }
 
+/* Lê `tools:` do frontmatter do agente e devolve TRES estados, nao dois.
+ *
+ * A versao anterior devolvia uma lista, e lista vazia servia para duas coisas
+ * incompativeis: "o agente nao declara tools" e "declara, mas eu nao entendi o
+ * formato". Os dois caiam no mesmo `if (tools.length > 0)` do chamador, que
+ * PULA a checagem — ou seja, formato que o parser nao entendia virava
+ * liberacao. Foi o critico da rodada 2 da revisao, reproduzido em sandbox:
+ * duas declaracoes YAML equivalentes, uma com hifen indentado e outra com o
+ * hifen na mesma coluna da chave (as duas validas), davam deny e ALLOW.
+ *
+ *   { declarado: false, tools: null }  -> nao ha chave `tools:`; pula a
+ *                                        checagem, que e o que D3 passo 6 manda
+ *                                        para agente sem declaracao.
+ *   { declarado: true,  tools: [...] } -> entendi; confere contra a allowlist.
+ *   { declarado: true,  tools: null }  -> ha `tools:` e eu NAO consegui ler.
+ *                                        NEGA. Nao ha terceira opcao honesta:
+ *                                        nao da para afirmar que um agente e
+ *                                        read-only a partir de um texto que
+ *                                        nao foi lido.
+ *
+ * Formatos aceitos: inline com virgula (`tools: Read, Grep, Glob`) e lista de
+ * bloco YAML com ou sem indentacao. Quem escrever `tools: *` ou qualquer coisa
+ * que nao seja lista de nomes cai no terceiro estado, e nega — que e o certo:
+ * `*` e todas as ferramentas.
+ */
 function parseToolsDoFrontmatter(frontmatter) {
-  // Tenta inline com vírgula: `tools: Read, Grep, Glob`
-  const inlineMatch = frontmatter.match(/^tools:\s*(.+)$/m);
-  if (inlineMatch) {
-    const toolsStr = inlineMatch[1].trim();
-    // Ignorar se é só o símbolo de bloco YAML (lista começa na próxima linha)
-    if (!toolsStr.startsWith("-")) {
-      const tools = toolsStr.split(",").map(t => t.trim()).filter(Boolean);
-      return tools;
-    }
+  const chave = frontmatter.match(/^tools:[ \t]*(.*)$/m);
+  if (!chave) return { declarado: false, tools: null };
+
+  const resto = chave[1].trim();
+
+  // Inline com virgula, na mesma linha da chave.
+  if (resto && !resto.startsWith("-")) {
+    const tools = resto.split(",").map((t) => t.trim()).filter(Boolean);
+    // Nome de tool e identificador: letra, digito, `_` ou `-`. `*`, `all`,
+    // aspas, chaves de YAML de fluxo — nada disso e lista de nomes.
+    const todosSaoNomes = tools.length > 0 && tools.every((t) => /^[A-Za-z0-9_-]+$/.test(t));
+    return { declarado: true, tools: todosSaoNomes ? tools : null };
   }
 
-  // Tenta lista de bloco YAML
-  const blockMatch = frontmatter.match(/^tools:\s*\n((?:\s+-\s+.+\n?)+)/m);
-  if (blockMatch) {
-    const bloco = blockMatch[1];
-    const linhas = bloco.split("\n");
-    const tools = [];
-    for (const linha of linhas) {
-      const match = linha.match(/^\s*-\s+(\S+)/);
-      if (match) {
-        tools.push(match[1]);
-      }
+  // Lista de bloco: as linhas SEGUINTES a chave, comecando com `-`, com
+  // indentacao ou sem. YAML aceita as duas, e a versao anterior exigia
+  // indentacao — era exatamente o buraco.
+  const linhas = frontmatter.split("\n");
+  const iChave = linhas.findIndex((l) => /^tools:[ \t]*(.*)$/.test(l));
+  const tools = [];
+  for (let i = iChave + 1; i < linhas.length; i++) {
+    const linha = linhas[i];
+    if (!linha.trim()) continue;                 // linha vazia dentro do bloco
+    const item = linha.match(/^[ \t]*-[ \t]*(.+?)[ \t]*$/);
+    if (item) {
+      tools.push(item[1].replace(/^["']|["']$/g, ""));
+      continue;
     }
-    return tools;
+    break; // primeira linha que nao e item encerra o bloco (outra chave, etc.)
   }
 
-  return [];
+  if (!tools.length) return { declarado: true, tools: null };
+  const todosSaoNomes = tools.every((t) => /^[A-Za-z0-9_-]+$/.test(t));
+  return { declarado: true, tools: todosSaoNomes ? tools : null };
 }
 
 function validarToolsAowlist(tools) {
@@ -300,9 +350,19 @@ function main() {
       const fmMatch = def.match(/^---\n([\s\S]*?)\n---/);
       if (fmMatch) {
         const frontmatter = fmMatch[1];
-        const tools = parseToolsDoFrontmatter(frontmatter);
+        const { declarado, tools } = parseToolsDoFrontmatter(frontmatter);
 
-        if (tools.length > 0) {
+        if (declarado && tools === null) {
+          // Declara `tools:` e o formato nao foi lido. Nao da para afirmar
+          // read-only a partir de texto nao lido — nega, e diz o que fazer.
+          const motivo =
+            `agente '${nomeAgente}' com escreve:false declara 'tools:' em formato que a portaria nao le` +
+            ` — use lista de nomes (inline com virgula, ou um '- Nome' por linha)`;
+          gravarDespacho(raiz, "deny", nomeAgente, estagioAtivo, sessao, motivo);
+          negar(motivo);
+        }
+
+        if (declarado && tools) {
           const toolInvalido = validarToolsAowlist(tools);
           if (toolInvalido) {
             const motivo = `agente '${nomeAgente}' com escreve:false declara tool fora da allowlist: ${toolInvalido}`;
@@ -411,8 +471,14 @@ function executarLint(manifestoPath, agentesDir) {
         const fmMatch = def.match(/^---\n([\s\S]*?)\n---/);
         if (fmMatch) {
           const frontmatter = fmMatch[1];
-          const tools = parseToolsDoFrontmatter(frontmatter);
-          if (tools.length > 0) {
+          const { declarado, tools } = parseToolsDoFrontmatter(frontmatter);
+          if (declarado && tools === null) {
+            console.error(
+              `erro: agente '${nome}' com escreve:false declara 'tools:' em formato que a portaria nao le` +
+              ` — use lista de nomes (inline com virgula, ou um '- Nome' por linha)`
+            );
+            erros++;
+          } else if (declarado && tools) {
             const toolInvalido = validarToolsAowlist(tools);
             if (toolInvalido) {
               console.error(`erro: agente '${nome}' com escreve:false declara tool fora da allowlist: ${toolInvalido}`);
