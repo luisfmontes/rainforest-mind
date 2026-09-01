@@ -207,6 +207,56 @@ casos['(e) estado com plano.status "pendente"'] = function () {
   }
 };
 
+casos['(f) slug com numeracao de fluxo casa a branch sem ela'] = function () {
+  // O caso REAL deste repositorio, medido em 2026-09-01: o estado do fluxo 9 se
+  // chama `fluxo-9-portaria.json` e a branch dele e `fluxo/portaria`. A
+  // convencao `<data>-<branch>` da regra 11 nao previa a numeracao, e sem esta
+  // tolerancia o `resolver` devolvia `null` na branch de verdade — o que faz a
+  // portaria, que e fail-closed, negar TODO despacho no repositorio que a
+  // implementa. `fluxo-11-conselho` / `fluxo/conselho` tem a mesma forma.
+  const sandbox = criarSandbox();
+  try {
+    const estado = novoEstado('fluxo-9-portaria', 'Fluxo 9');
+    gravarEstado('fluxo-9-portaria', sandbox, estado);
+
+    criarBranch(sandbox, 'fluxo/portaria');
+
+    const resultado = resolver({ cwd: sandbox });
+
+    if (!resultado || resultado.slug !== 'fluxo-9-portaria' || resultado.estagio !== 'design') {
+      throw new Error(
+        `esperado { slug: 'fluxo-9-portaria', estagio: 'design' }, ` +
+        `obtido ${JSON.stringify(resultado)}`
+      );
+    }
+  } finally {
+    limparSandbox(sandbox);
+  }
+};
+
+casos['(g) numeracao de fluxo nao afrouxa a ambiguidade'] = function () {
+  // A tolerancia da (f) cria uma segunda forma de casar, e por isso ela tem de
+  // ser exercida contra a trava que existe: `fluxo-9-portaria` e `portaria`
+  // casam a MESMA branch, viram dois candidatos, e ambiguidade nega. Sem este
+  // caso, a (f) poderia ter sido implementada trocando a igualdade por um
+  // `includes` e ninguem veria.
+  const sandbox = criarSandbox();
+  try {
+    gravarEstado('fluxo-9-portaria', sandbox, novoEstado('fluxo-9-portaria', 'Fluxo 9'));
+    gravarEstado('2026-01-01-portaria', sandbox, novoEstado('2026-01-01-portaria', 'Outro'));
+
+    criarBranch(sandbox, 'fluxo/portaria');
+
+    const resultado = resolver({ cwd: sandbox });
+
+    if (resultado !== null) {
+      throw new Error(`esperado null (ambiguidade), obtido ${JSON.stringify(resultado)}`);
+    }
+  } finally {
+    limparSandbox(sandbox);
+  }
+};
+
 // ============================================================================
 // EXECUTAR TESTES
 // ============================================================================

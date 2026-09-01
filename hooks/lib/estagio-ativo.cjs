@@ -120,8 +120,20 @@ function resolver({ cwd }) {
     // Padrão: 2026-08-17-memoria-e-dados-do-rainforest
     const slugSemData = slug.replace(/^\d{4}-\d{2}-\d{2}-/, '');
 
-    // Verificar se o slug pós-data casa com a branch
-    if (slugSemData !== branchBase) continue;
+    // ...e sem o prefixo de numeracao de fluxo (`fluxo-<N>-`), que a convencao
+    // `<data>-<branch>` da regra 11 nao previa mas o repo passou a usar: o
+    // estado do fluxo 9 se chama `fluxo-9-portaria` e a branch dele e
+    // `fluxo/portaria`. Sem esta segunda forma, `resolver` devolvia `null` na
+    // branch real — medido em 2026-09-01 — e a portaria, que e fail-closed,
+    // negaria TODO despacho justamente no repositorio que a implementa.
+    //
+    // Ambiguidade continua negando: se `portaria.json` e `fluxo-9-portaria.json`
+    // existirem os dois com estagio aberto, os dois viram candidato e o
+    // `candidatos.length !== 1` la embaixo devolve `null`, como antes.
+    const slugSemNumeroDeFluxo = slugSemData.replace(/^fluxo-\d+-/, '');
+
+    // Verificar se alguma das duas formas do slug casa com a branch
+    if (slugSemData !== branchBase && slugSemNumeroDeFluxo !== branchBase) continue;
 
     // Verificar se há estágio aberto (próximo !== null)
     const prox = proximo(estado);
