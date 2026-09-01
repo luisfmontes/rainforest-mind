@@ -936,6 +936,49 @@ else
 fi
 rm -f "$SBP/cfg/plugins/installed_plugins.json"
 
+echo ""
+echo "== conselho: rodada-concluida-sem-aviso =="
+SB_CONS_COMPLETA="$(mktemp -d)"
+trap "rm -rf '$SB_CONS_COMPLETA'" RETURN
+mkdir -p "$SB_CONS_COMPLETA/.rainforest/conselho/20260831-completa"
+cat > "$SB_CONS_COMPLETA/.rainforest/conselho/20260831-completa/estado.json" <<'EOF'
+{"id": "20260831-completa", "fases": {"pareceres": {"status": "ok"}, "revisao": {"status": "ok"}, "sintese": {"status": "ok"}}}
+EOF
+SAUDE_OUT_COMPLETA="$(cd "$SB_CONS_COMPLETA" && node "$SRC/scripts/saude.cjs" 2>&1 || true)"
+if ! echo "$SAUDE_OUT_COMPLETA" | grep -q "conselho"; then
+  ok=$((ok+1)); echo "  ok   rodada concluida (3 fases ok) nao gera secao do conselho"
+else
+  falhou=$((falhou+1)); echo "  FALHA rodada concluida ainda aparece no saude: $(echo "$SAUDE_OUT_COMPLETA" | grep conselho | head -1)"
+fi
+
+echo ""
+echo "== conselho: seção ausente sem rodadas =="
+SB_CONS1="$(mktemp -d)"
+trap "rm -rf '$SB_CONS1'" RETURN
+# Rodar /saude em diretório vazio - não deve ter seção conselho
+SAUDE_OUT1="$(cd "$SB_CONS1" && node "$SRC/scripts/saude.cjs" 2>&1 || true)"
+if ! echo "$SAUDE_OUT1" | grep -q "conselho"; then
+  ok=$((ok+1)); echo "  ok   seção conselho ausente sem rodadas"
+else
+  falhou=$((falhou+1)); echo "  FALHA seção conselho apareceu sem rodadas"
+fi
+
+echo ""
+echo "== conselho: aviso com rodada ABANDONA =="
+SB_CONS2="$(mktemp -d)"
+trap "rm -rf '$SB_CONS2'" RETURN
+mkdir -p "$SB_CONS2/.rainforest/conselho/20260831-teste"
+cat > "$SB_CONS2/.rainforest/conselho/20260831-teste/estado.json" <<'EOF'
+{"id": "20260831-teste", "resultado": "ABANDONA", "fases": {"pareceres": {"status": "reprovada"}}}
+EOF
+# Rodar /saude - deve ter seção conselho com aviso sobre ABANDONA
+SAUDE_OUT2="$(cd "$SB_CONS2" && node "$SRC/scripts/saude.cjs" 2>&1 || true)"
+if echo "$SAUDE_OUT2" | grep -q "aviso.*conselho" && echo "$SAUDE_OUT2" | grep -q "ABANDONA"; then
+  ok=$((ok+1)); echo "  ok   aviso quando rodada ABANDONA"
+else
+  falhou=$((falhou+1)); echo "  FALHA deveria ter aviso com ABANDONA"; echo "$SAUDE_OUT2" | grep "conselho" || echo "(nenhuma linha com conselho)"
+fi
+
 echo
 echo "== integrações desligadas não geram item nenhum =="
 # Sem ligação: node scripts/saude.cjs --json não deve ter item com 'integracao' no nome
