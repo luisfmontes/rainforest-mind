@@ -59,6 +59,13 @@ mandar explicitamente aplicar as correções.
 
 Método destilado do fable-method (MIT, Sahir619/fable-method), ramo de review.
 
+## Segunda opinião externa
+
+Se a janela ativar segunda opinião de modelo externo (Codex ou Gemini), ela
+entra **ao lado, nunca no lugar** deste revisor. O veredito desta revisão
+permanece o primário — a segunda opinião aconselha, não decide. Ver `skills/revisar/SKILL.md`
+para entender quando e como a segunda opinião é chamada.
+
 (h) **Toda afirmação sai rotulada** — `CONFIRMADO` (você rodou e leu a saída,
 ou abriu o arquivo e viu a linha), `INFERIDO` (dedução razoável: convenção,
 padrão da linguagem) ou `LACUNA` (não sei, e diga o que faltou para saber).
