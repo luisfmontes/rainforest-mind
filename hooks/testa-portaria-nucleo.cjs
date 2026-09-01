@@ -648,6 +648,52 @@ console.log("== 15. falha interna nega (exit 2) em vez de crashar (exit 1) ==");
   fs.rmSync(raiz, { recursive: true, force: true });
 }
 
+/* == 16. nenhum `require` de arquivo do PROJETO no topo do módulo ==
+ *
+ * Apontado pela auditoria externa (codex-cli, 2026-09-01). A rede que transforma
+ * exceção em `exit 2` envolve a chamada de `main()`. `require` de módulo do
+ * projeto executado no TOPO do arquivo roda ANTES dessa rede — se ele lançar, o
+ * processo morre com exit 1, e exit 1 num `PreToolUse` deixa o despacho passar.
+ * Ou seja, mover um `require` para o topo, mesmo de boa fé, reabre exatamente o
+ * crítico da rodada 6, e nenhum outro teste veria.
+ *
+ * Hoje os dois `require` de projeto estão dentro de `main()` e de
+ * `executarLint()`, portanto cobertos. Esta asserção é a trava que mantém assim
+ * — é sobre a FORMA do arquivo, não sobre comportamento, e é de propósito: o
+ * comportamento que ela protege só se manifesta num modo de falha raro.
+ *
+ * Builtins do Node (`fs`, `path`, `child_process`) podem ficar no topo: eles não
+ * lançam por causa do estado do projeto.
+ */
+console.log("== 16. sem require de projeto no topo do modulo (rede so cobre main) ==");
+{
+  const fonte = fs.readFileSync(path.join(__dirname, "portaria.cjs"), "utf8");
+  const linhas = fonte.split("\n");
+  const BUILTINS = new Set(["fs", "path", "child_process", "os", "util", "crypto"]);
+  const forasDaRede = [];
+  let profundidade = 0;
+
+  for (let i = 0; i < linhas.length; i++) {
+    const linha = linhas[i];
+    const m = linha.match(/require\(\s*["']([^"']+)["']\s*\)/);
+    // Profundidade de chave ANTES desta linha: 0 = topo do módulo.
+    if (m && profundidade === 0) {
+      const alvo = m[1];
+      if (!BUILTINS.has(alvo)) forasDaRede.push(`${i + 1}: ${linha.trim()}`);
+    }
+    // Conta chaves ignorando as que estão dentro de string ou comentário de linha.
+    const semComentario = linha.replace(/\/\/.*$/, "").replace(/(["'`]).*?\1/g, "");
+    for (const ch of semComentario) {
+      if (ch === "{") profundidade++;
+      else if (ch === "}") profundidade--;
+    }
+  }
+
+  caso("nenhum require de projeto fora de funcao",
+    forasDaRede.length === 0,
+    `escapariam da rede: ${forasDaRede.join(" | ")}`);
+}
+
 console.log(`\n== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 
 if (falhou > 0) {

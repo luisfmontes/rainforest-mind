@@ -710,16 +710,33 @@ if (require.main === module) {
      * runtime que o D1 proíbe): é tirar o bloco do `.claude/settings.json`, que
      * é arquivo versionado e passa pelo `revisar` — a mesma porta do manifesto.
      */
-    try {
-      main();
-    } catch (err) {
+    /* A rede é síncrona, e por isso não basta sozinha.
+     *
+     * Auditoria externa (codex-cli, gpt-5.6-sol, 2026-09-01 — segunda família de
+     * modelo, pedida justamente porque o defeito da rodada 6 foi erro de
+     * raciocínio sobre contrato de plataforma, o tipo de viés que um revisor da
+     * mesma família tende a repetir): o `try/catch` pega exceção SÍNCRONA que
+     * escape de `main()`. Não pega `unhandledRejection` nem throw dentro de
+     * callback/timer — os dois derrubam o processo com exit 1, que é o mesmo
+     * fail-open de antes. `main()` é síncrono hoje; os handlers abaixo existem
+     * para que ele possa deixar de ser sem reabrir o buraco.
+     */
+    const negarPorFalhaInterna = (origem, err) => {
       const detalhe = (err && err.message) ? err.message : String(err);
       process.stderr.write(
-        `portaria: falha interna, e por isso o despacho foi NEGADO — ${detalhe}\n` +
+        `portaria: falha interna (${origem}), e por isso o despacho foi NEGADO — ${detalhe}\n` +
         `a portaria nega quando nao consegue decidir; crashar deixaria o despacho passar.\n` +
         `para destravar: conserte o erro acima, ou tire o bloco da portaria do .claude/settings.json.\n`
       );
       process.exit(2);
+    };
+    process.on("uncaughtException", (err) => negarPorFalhaInterna("excecao nao capturada", err));
+    process.on("unhandledRejection", (err) => negarPorFalhaInterna("promise rejeitada", err));
+
+    try {
+      main();
+    } catch (err) {
+      negarPorFalhaInterna("main", err);
     }
   }
 }
