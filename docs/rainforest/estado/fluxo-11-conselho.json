@@ -30,13 +30,13 @@
     "em": "2026-08-31"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-08-31",
-    "tarefas_ok": 9,
-    "tarefas": 9,
+    "tarefas_ok": 12,
+    "tarefas": 12,
     "em": "2026-08-31",
     "comando": "bash scripts/testa-conselho.sh && bash scripts/testa-saude.sh",
-    "saida": "total=62 vermelhas:[0] (exit 0); == resultado: 45 ok, 0 falha(s) == (exit 0); rodada real 5 membros: sintese.json gravado, portao sintese exit 0",
+    "saida": "total=74 vermelhas:[0] (exit 0); == resultado: 46 ok, 0 falha(s) == (exit 0)",
     "mutacao": [
       {
         "tarefa": 1,
@@ -56,7 +56,7 @@
       {
         "tarefa": 4,
         "resultado": "vermelho",
-        "fixture": "agregacao-conhecida (CASO 12; endurecida pelo CASO 22 agregacao-discorda-desempate)"
+        "fixture": "agregacao-conhecida (CASO 12; endurecida pelo CASO 22)"
       },
       {
         "tarefa": 5,
@@ -71,23 +71,34 @@
       {
         "tarefa": 7,
         "resultado": "n/a",
-        "motivo": "tarefa de doc: sem comportamento a inverter; coerencia conferida rodando cada comando citado"
+        "motivo": "tarefa de doc: sem comportamento a inverter"
       },
       {
         "tarefa": 8,
         "resultado": "n/a",
-        "motivo": "a tarefa e a propria bateria; a falsificacao foi re-rodar as mutacoes das tarefas 1-6 na integracao, todas vermelhas"
+        "motivo": "a tarefa e a propria bateria; falsificada re-rodando as mutacoes 1-6"
       },
       {
         "tarefa": 9,
         "resultado": "n/a",
-        "motivo": "validacao manual com CLIs reais (D11 proibe bateria com CLI); evidencia no relatorio 2026-08-31-conselho-validacao-externa.md"
+        "motivo": "validacao manual com CLIs reais; evidencia no relatorio"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "vermelho",
+        "fixture": "caminho-com-espaco (CASO 25)"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "fases-fecham-no-estado (CASO 27)"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "retry-seletivo-so-reexecuta-um (CASO 26, sentinela)"
       }
-    ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-08-31"
-    }
+    ]
   },
   "revisar": {
     "status": "reprovado",
