@@ -1172,6 +1172,10 @@ function parseArgs() {
  * stdin: conteúdo do prompt (recebe via rodarCli)
  * Lê stdout, extrai JSON do parecer, escreve em <saida>.
  * Falha: exit !== 0 SEM escrever <saida>
+ *
+ * Ponto de injeção (testes): CONSELHO_CMD_CODEX sobrescreve o comando padrão.
+ * Exemplo: CONSELHO_CMD_CODEX="node /caminho/fixture.cjs {prompt} {saida}"
+ * Em testes, injetar uma fixture para não chamar o binário real.
  */
 function adaptadorCodex() {
   const args = process.argv.slice(2);
@@ -1195,9 +1199,20 @@ function adaptadorCodex() {
     process.exit(1);
   }
 
+  // Usa comando injetado se definido (CONSELHO_CMD_CODEX), senão padrão.
+  // Em testes, injetar uma fixture para não chamar o binário real.
+  // Se injetado, substitui placeholders {prompt} e {saida}.
+  let cmd = process.env.CONSELHO_CMD_CODEX
+    || 'codex exec -s read-only --skip-git-repo-check';
+
+  // Substituir placeholders se fixture injetada
+  if (process.env.CONSELHO_CMD_CODEX) {
+    cmd = cmd.replace('{prompt}', `"${prompt}"`).replace('{saida}', `"${saida}"`);
+  }
+
   // Executa CLI via lib
   const resultado = rodarCli({
-    cmd: 'codex exec -s read-only --skip-git-repo-check',
+    cmd,
     entrada: conteudoPrompt,
     timeoutMs: TIMEOUT_MEMBRO_MS,
   });
@@ -1231,6 +1246,11 @@ function adaptadorCodex() {
  * GEMINI_API_KEY deve estar no ambiente (ausente = exit !== 0 com mensagem)
  * Lê stdout, extrai JSON, escreve em <saida>.
  * Falha: exit !== 0 SEM escrever <saida>
+ *
+ * Ponto de injeção (testes): CONSELHO_CMD_GEMINI sobrescreve o comando padrão.
+ * Exemplo: CONSELHO_CMD_GEMINI="node /caminho/fixture.cjs {prompt} {saida}"
+ * Fixture AINDA EXIGE credencial: guard barra a execução se faltasse,
+ * o que é a proteção que queremos testar.
  */
 function adaptadorGemini() {
   const args = process.argv.slice(2);
@@ -1259,9 +1279,20 @@ function adaptadorGemini() {
     process.exit(1);
   }
 
+  // Usa comando injetado se definido (CONSELHO_CMD_GEMINI), senão padrão.
+  // Em testes, injetar uma fixture para não chamar o binário real.
+  // Se injetado, substitui placeholders {prompt} e {saida}.
+  let cmd = process.env.CONSELHO_CMD_GEMINI
+    || 'gemini -m gemini-3.7-flash --skip-trust --approval-mode plan';
+
+  // Substituir placeholders se fixture injetada
+  if (process.env.CONSELHO_CMD_GEMINI) {
+    cmd = cmd.replace('{prompt}', `"${prompt}"`).replace('{saida}', `"${saida}"`);
+  }
+
   // Executa CLI via lib, passando o environment
   const resultado = rodarCli({
-    cmd: 'gemini -m gemini-3.7-flash --skip-trust --approval-mode plan',
+    cmd,
     entrada: conteudoPrompt,
     timeoutMs: TIMEOUT_MEMBRO_MS,
     env: process.env,
