@@ -259,5 +259,23 @@ else
 fi
 
 echo
+echo "== 9. PODA — escrita de metricas, nasce ligada =="
+poda() { # config_projeto_json, config_usuario_json
+  mkdir -p "$SBP/lar/.rainforest" "$SBP/proj/.rainforest"
+  printf '%s' "$1" > "$SBP/proj/.rainforest/config.json"
+  printf '%s' "$2" > "$SBP/lar/.rainforest/config.json"
+  RFM_ROOT="$SB/lar/.rainforest" node -e "
+    const { resolverConfig } = require('$SRC_WIN/hooks/lib/config.cjs');
+    const r = resolverConfig({ projeto: '$PROJ' });
+    process.stdout.write(r.valores.poda + ' ' + r.origem.poda);
+  " 2>&1
+}
+igual "sem config, poda e true (padrao)"              "true padrao"   "$(poda '{}' '{}')"
+igual "projeto sobrescreve para false"                "false projeto" "$(poda '{"poda":false}' '{}')"
+igual "usuario vale sem projeto"                      "true usuario"  "$(poda '{}' '{"poda":true}')"
+igual "projeto vence usuario"                         "false projeto" "$(poda '{"poda":false}' '{"poda":true}')"
+rm -f "$SBP/proj/.rainforest/config.json" "$SBP/lar/.rainforest/config.json"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

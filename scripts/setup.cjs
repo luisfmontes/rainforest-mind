@@ -272,6 +272,20 @@ function estado() {
     console.log(`                  node scripts/ponte.cjs --alvo <dir> --aplicar`);
   }
 
+  // INTEGRACOES: repositórios opcionais com ciclo de release próprio. Declaráveis
+  // e desligadas por padrão. O `/saude` confere só o que foi declarado.
+  const integracoes = Object.entries(CHAVES).filter(([k]) => k.startsWith('integracao-'));
+  const integracoesLigadas = integracoes.filter(([k]) => valores[k]);
+  console.log('');
+  console.log('INTEGRACOES (repositorios opcionais, declaraveis e desligadas por padrao)');
+  if (!integracoesLigadas.length) {
+    console.log('  nenhuma ligada');
+  }
+  for (const [chave, def] of integracoes) {
+    const marca = valores[chave] ? 'ligado   ' : 'DESLIGADO';
+    console.log(`  ${marca} ${chave.replace('integracao-', '').padEnd(14)} ${def.descricao}`);
+  }
+
   console.log('');
   console.log('PROJETOS (slug -> pasta; e o slug que vai no campo `projeto` das ideias)');
   if (raiz) listarProjetos(raiz);

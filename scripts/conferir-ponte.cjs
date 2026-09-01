@@ -53,6 +53,12 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
+// Importar funções compartilhadas de ponte
+const { corpo, raizDeDados: raizDeDadosShared, AGENTES: AGENTES_SHARED, lerProjetoMd, hashDoArquivo } =
+  require('../hooks/lib/ponte-corpo.cjs');
+
+const CODIGO_ROOT = path.resolve(__dirname, '..');
+
 // O SKILL.md pode estar em dois lugares:
 // 1. Se o arquivo sendo conferido é um repo com SKILL.md (repo de teste) → usa aquele
 // 2. Senão → usa o SKILL.md do plugin
@@ -76,18 +82,8 @@ function resolverSkillMd(_arquivoConferido, skillExplicito) {
 }
 
 const FIM = '<!-- rainforest-mind:fim -->';
+const FIM_PROJETO = '<!-- rainforest-mind:projeto:fim -->';
 
-/**
- * Hash curto (16 primeiros caracteres) do SKILL.md para detecção de edição manual.
- */
-function hashSkillMd(caminhoSkill) {
-  try {
-    const conteudo = fs.readFileSync(caminhoSkill, 'utf8');
-    return crypto.createHash('sha256').update(conteudo).digest('hex').slice(0, 16);
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Extrai hash do marcador de início, se existir.
@@ -103,15 +99,52 @@ function extrairHashDoMarcador(linha) {
  * Devolve: { linhas: [...], hashNoMarcador: "..." | null, temBloco: true/false }
  */
 function extrairBlocoGerado(texto) {
-  const inicioMatch = texto.match(/<!-- rainforest-mind:inicio[^>]*-->/);
-  if (!inicioMatch || !texto.includes(FIM)) {
+  // Marcador só casa ocupando a LINHA INTEIRA, e o fim é o primeiro APÓS o
+  // início — espelha a escrita (tarefa 24, mesma família das 19-22).
+  const inicioMatch = texto.match(/^<!-- rainforest-mind:inicio[^>]*-->\r?$/m);
+  if (!inicioMatch) {
+    return { linhas: [], hashNoMarcador: null, temBloco: false };
+  }
+  const reFim = /^<!-- rainforest-mind:fim -->\r?$/gm;
+  reFim.lastIndex = inicioMatch.index;
+  const fimMatch = reFim.exec(texto);
+  if (!fimMatch) {
     return { linhas: [], hashNoMarcador: null, temBloco: false };
   }
 
   const hashNoMarcador = extrairHashDoMarcador(inicioMatch[0]);
-  const inicioIdx = inicioMatch.index;
-  const fimIdx = texto.indexOf(FIM);
-  const blocoCompleto = texto.slice(inicioIdx, fimIdx + FIM.length);
+  const blocoCompleto = texto.slice(inicioMatch.index, fimMatch.index + fimMatch[0].length);
+
+  // Extrai as linhas do conteúdo, sem os marcadores
+  const linhas = blocoCompleto
+    .split(/\r?\n/)
+    .slice(1, -1) // Remove linha do INICIO e linha do FIM
+    .map(l => l.trim());
+
+  return { linhas, hashNoMarcador, temBloco: true };
+}
+
+/**
+ * Extrai o bloco de projeto entre rainforest-mind:projeto:inicio e rainforest-mind:projeto:fim.
+ * Devolve: { linhas: [...], hashNoMarcador: "..." | null, temBloco: true/false }
+ */
+function extrairBlocoProjetoGerado(texto) {
+  // O gerador escreve cada marcador ocupando a LINHA INTEIRA — a âncora multiline
+  // espelha isso na leitura. Menção em prosa (marcador no meio de uma frase) nunca
+  // casa, e o fim considerado é o primeiro APÓS o início (tarefa 21).
+  const inicioMatch = texto.match(/^<!-- rainforest-mind:projeto:inicio[^>]*-->\r?$/m);
+  if (!inicioMatch) {
+    return { linhas: [], hashNoMarcador: null, temBloco: false };
+  }
+  const reFim = /^<!-- rainforest-mind:projeto:fim -->\r?$/gm;
+  reFim.lastIndex = inicioMatch.index;
+  const fimMatch = reFim.exec(texto);
+  if (!fimMatch) {
+    return { linhas: [], hashNoMarcador: null, temBloco: false };
+  }
+
+  const hashNoMarcador = extrairHashDoMarcador(inicioMatch[0]);
+  const blocoCompleto = texto.slice(inicioMatch.index, fimMatch.index + fimMatch[0].length);
 
   // Extrai as linhas do conteúdo, sem os marcadores
   const linhas = blocoCompleto
@@ -143,98 +176,13 @@ function nucleoDasRegras(caminhoSkill) {
   return nucleo;
 }
 
+// raizDeDados() foi movida para o módulo compartilhado, chamar de lá
 function raizDeDados() {
-  try {
-    return require(path.join(CODIGO_ROOT, 'hooks', 'lib', 'raiz.cjs')).resolverRaiz({ plugin: CODIGO_ROOT }).raiz || null;
-  } catch {
-    return null;
-  }
+  return raizDeDadosShared(CODIGO_ROOT);
 }
 
-/**
- * Definições dos agentes (AGENTES.claude, AGENTES.codex, AGENTES.gemini).
- */
-const AGENTES = {
-  claude: {
-    arquivo: 'CLAUDE.md',
-    nome: 'Claude Code (sem o plugin)',
-    comoLe: 'O Claude Code le o `CLAUDE.md` da raiz do repositorio em toda sessao.',
-    semTrava:
-      'As duas travas do rainforest-mind (agente fora de worktree isolado, `git add -A`) ' +
-      'sao hooks `PreToolUse` do PLUGIN. Este arquivo entrega as regras, nao os hooks: ' +
-      'sem o plugin instalado elas sao combinado, nao trava. Quem quiser as travas ' +
-      'instala o plugin — ai este arquivo fica redundante e pode sair.',
-  },
-  codex: {
-    arquivo: 'AGENTS.md',
-    nome: 'Codex',
-    comoLe: 'O Codex le o `AGENTS.md` da raiz do repositorio em toda sessao.',
-    semTrava:
-      'Duas travas do rainforest-mind rodam fora do modelo no Claude Code, como hook ' +
-      'com exit code: a que barra agente editando fora de worktree isolado, e a que ' +
-      'barra `git add -A`. Elas usam o `PreToolUse`, que **nao existe** neste host. ' +
-      'Aqui elas sao texto — ou seja, argumentaveis. Trate-as como combinado.',
-  },
-  gemini: {
-    arquivo: 'GEMINI.md',
-    nome: 'Gemini CLI',
-    comoLe: 'O Gemini CLI le o `GEMINI.md` da raiz do repositorio em toda sessao.',
-    semTrava:
-      'Duas travas do rainforest-mind rodam fora do modelo no Claude Code, como hook ' +
-      'com exit code: a que barra agente editando fora de worktree isolado, e a que ' +
-      'barra `git add -A`. Elas usam o `PreToolUse`, que **nao existe** neste host. ' +
-      'Aqui elas sao texto — ou seja, argumentaveis. Trate-as como combinado.',
-  },
-};
-
-function corpo(agente, nucleo, dados) {
-  const cli = [
-    ['`node <plugin>/scripts/estado.cjs exigir --slug <slug> --estagio <e>`', 'gate do fluxo — **exit 2** quando o estagio anterior nao fechou'],
-    ['`node <plugin>/scripts/conferir-entrega.cjs --worktree <wt> --base <hash>`', 'a checagem da regra 12 sobre entrega de agente — **exit 1** se reprovar'],
-    ['`node <plugin>/scripts/conferir-publicacao.cjs <arquivo>`', '**exit 2** se o texto tem telefone, e-mail, caminho de home ou credencial'],
-    ['`node <plugin>/scripts/ideias.cjs plantar, colher, listar, conferir`', 'porta unica de escrita do `ideias.jsonl` (trava, backup, atomico, conferido)'],
-    ['`node <plugin>/scripts/foco.cjs caminho, rotacionar`', 'onde mora o foco, e o teto do bloco de avancos'],
-    ['`node <plugin>/scripts/saude.cjs`', 'o que os checadores oficiais nao sabem'],
-    ['`node <plugin>/scripts/semear.cjs --projeto <slug>`', 'o historico deste projeto: observacoes, ideias abertas, relatorios'],
-  ]
-    .map(([c, p]) => `| ${c} | ${p} |`)
-    .join('\n');
-
-  return `# rainforest-mind — ponte para o ${agente.nome}
-
-${agente.comoLe} Este bloco e **gerado**: as regras moram em
-\`skills/rainforest-mind/SKILL.md\`, no plugin, e chegam aqui por
-\`node <plugin>/scripts/ponte.cjs --alvo . --agente ${Object.keys(AGENTES).find((k) => AGENTES[k] === agente)} --aplicar\`.
-Editar este bloco a mao cria uma segunda versao das regras que divergem em
-silencio — foi o que aconteceu com duas CLAUDE.md sincronizadas a mao em
-2026-08-10. Mude o SKILL.md e gere de novo.
-
-## O que NAO vale aqui, e voce precisa saber antes de confiar
-
-${agente.semTrava}
-
-O que continua sendo mecanismo, porque e comando com exit code, esta na tabela
-abaixo. Chame de verdade: **relato de que rodou nao e evidencia de que rodou.**
-
-| Comando | O que ele garante |
-|---|---|
-${cli}
-
-\`<plugin>\` e a pasta do rainforest-mind nesta maquina. Sua pasta de dados
-(FOCO.md, ideias.jsonl, projetos.json) **nao se chumba aqui**: descubra com
-\`node <plugin>/scripts/ideias.cjs conferir\`, que imprime o caminho resolvido${dados ? '' : ', e monte com `node <plugin>/scripts/setup.cjs --criar` se ainda nao existir'}.
-Caminho de home dentro de arquivo versionado vaza a maquina de quem gerou — e este
-arquivo nasce para ser commitado no repo de outra pessoa.
-
-## As regras
-
-O que segue e o **nucleo** de cada regra. Regra marcada com \`↳\` tem elaboracao
-que nao esta aqui — criterio fino, comando exato, incidente datado —, e ela mora
-em \`skills/rainforest-mind/references/regra-<n>.md\` (onde \`<n>\` e o numero da regra). Antes de aplicar uma regra marcada, **leia esse arquivo**.
-
-${nucleo}
-`;
-}
+// Usar AGENTES do módulo compartilhado
+const AGENTES = AGENTES_SHARED;
 
 /**
  * Compara dois textos e retorna se são iguais (removendo espaços em branco extras).
@@ -267,6 +215,82 @@ function linhasDivergentes(atual, esperado) {
     }
   }
   return indices;
+}
+
+/**
+ * Confere o bloco de projeto (se existir).
+ * Retorna { veredito: 'conferido' | 'editado-a-mao' | 'ficou-para-tras' | 'sem-bloco' | 'sem-entrevista', msg, linhasDivergentes?: [...] }
+ */
+function conferirBlocoProjetoGerado(texto, caminhoProjetoMd, raizAlvo) {
+  // Extrai o bloco de projeto do arquivo gerado
+  const { linhas: linhasAtuais, hashNoMarcador, temBloco } = extrairBlocoProjetoGerado(texto);
+
+  // Se não tem bloco, é porque não há projeto.md no alvo — isso não é erro
+  if (!temBloco) {
+    return {
+      veredito: 'sem-bloco',
+      msg: 'Arquivo não contém bloco de projeto (nenhuma entrevista foi rodada)'
+    };
+  }
+
+  // Usa lerProjetoMd do módulo compartilhado para extrair o bloco de projeto.md
+  const blocoProjetoMdCompleto = lerProjetoMd(raizAlvo);
+
+  if (!blocoProjetoMdCompleto) {
+    // projeto.md não existe, não pode ser lido, ou não tem marcadores válidos
+    // mas o bloco existe no arquivo — o arquivo foi regenerado e o projeto.md sumiu
+    return {
+      veredito: 'ficou-para-tras',
+      temBloco: true,
+      msg: 'O arquivo tem bloco de projeto, mas docs/rainforest/projeto.md não existe, não pode ser lido, ou tem marcadores inválidos'
+    };
+  }
+  const linhasEsperadas = blocoProjetoMdCompleto
+    .split(/\r?\n/)
+    .slice(1, -1) // Remove linha do INICIO e linha do FIM
+    .map(l => l.trim());
+
+  // Normaliza conteúdo para comparação
+  const conteudoAtual = linhasAtuais.join('\n');
+  const conteudoEsperado = linhasEsperadas.join('\n');
+
+  // CASO 1: Bloco bate -> VERDE
+  if (textoIgual(conteudoAtual, conteudoEsperado)) {
+    return {
+      veredito: 'conferido',
+      temBloco: true,
+      msg: 'Bloco de projeto está em sincronia com docs/rainforest/projeto.md'
+    };
+  }
+
+  // CASO 2/3: Há divergência
+  if (hashNoMarcador) {
+    const hashAtualProjetoMd = hashDoArquivo(caminhoProjetoMd);
+    if (hashNoMarcador === hashAtualProjetoMd) {
+      // CASO 2: Hash bate, conteúdo não -> editado à mão
+      const divergentes = linhasDivergentes(conteudoAtual, conteudoEsperado);
+      return {
+        veredito: 'editado-a-mao',
+        temBloco: true,
+        msg: 'Bloco de projeto foi editado à mão — conteúdo diverge do docs/rainforest/projeto.md, mas o hash bate',
+        linhasDivergentes: divergentes
+      };
+    } else {
+      // CASO 3: Hash não bate -> projeto.md andou, arquivo ficou para trás
+      return {
+        veredito: 'ficou-para-tras',
+      temBloco: true,
+        msg: 'Bloco de projeto ficou para trás — o docs/rainforest/projeto.md mudou desde a última geração'
+      };
+    }
+  } else {
+    // CASO 4: Sem hash e com divergência -> ambíguo
+    return {
+      veredito: 'ficou-para-tras',
+      temBloco: true,
+      msg: 'Bloco de projeto foi gerado antes da catraca de hash — não dá para saber se foi editado ou se o docs/rainforest/projeto.md mudou'
+    };
+  }
 }
 
 function main() {
@@ -322,7 +346,7 @@ function main() {
     process.exit(1);
   }
 
-  const hashAtual = hashSkillMd(caminhoSkill);
+  const hashAtual = hashDoArquivo(caminhoSkill);
   const dados = raizDeDados();
 
   // Descobre qual agente baseado no nome do arquivo
@@ -356,16 +380,55 @@ function main() {
 
   // CASO 1: Bloco atual bate com o esperado -> VERDE
   if (textoIgual(conteudoAtual, conteudoEsperado)) {
+    // Se o bloco de regras passou, confira também o bloco de projeto
+    // Resolver o caminho do alvo para suportar caminhos relativos e POSIX
+    let raizAlvo = null;
+    if (alvo !== '-') {
+      const caminhoResolvido = path.resolve(alvo);
+      raizAlvo = path.dirname(caminhoResolvido);
+    }
+    const diretorioAlvo = raizAlvo;
+    const caminhoProjetoMd = raizAlvo ? path.join(raizAlvo, 'docs', 'rainforest', 'projeto.md') : null;
+
+    const resultadoProjeto = conferirBlocoProjetoGerado(texto, caminhoProjetoMd, raizAlvo);
+
+    // Se há divergência no bloco de projeto, reporta como RECUSADO
+    if (resultadoProjeto.veredito === 'editado-a-mao' || resultadoProjeto.veredito === 'ficou-para-tras') {
+      if (json) {
+        console.log(JSON.stringify({
+          arquivo: alvo,
+          situacao: 'bloco-projeto-divergente',
+          projetoVeredito: resultadoProjeto.veredito,
+          msg: resultadoProjeto.msg,
+          linhasDivergentes: resultadoProjeto.linhasDivergentes
+        }, null, 2));
+      } else {
+        console.log(`RECUSADO — ${resultadoProjeto.msg}\n`);
+        if (resultadoProjeto.linhasDivergentes && resultadoProjeto.linhasDivergentes.length > 0) {
+          console.log('Primeiras linhas divergentes no bloco de projeto:');
+          for (const div of resultadoProjeto.linhasDivergentes.slice(0, 3)) {
+            console.log(`  linha ${div.numero}: ${div.atual}`);
+          }
+        }
+      }
+      process.exit(2);
+    }
+
+    // Caso contrário, bloco de projeto está OK (ou não existe)
     if (json) {
       console.log(JSON.stringify({
         arquivo: alvo,
         situacao: 'verde',
         hashNoMarcador,
         hashAtual,
-        msg: 'Bloco está em sincronia com o SKILL.md atual'
+        msg: 'Bloco está em sincronia com o SKILL.md atual',
+        projetoVeredito: resultadoProjeto.veredito
       }, null, 2));
     } else {
       console.log('CONFERIDO — bloco gerado bate com o SKILL.md atual.');
+      if (resultadoProjeto.temBloco) {
+        console.log(`Bloco de projeto: ${resultadoProjeto.veredito}`);
+      }
     }
     process.exit(0);
   }
@@ -442,4 +505,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { extrairBlocoGerado, hashSkillMd, linhasDivergentes };
+module.exports = { extrairBlocoGerado, extrairBlocoProjetoGerado, linhasDivergentes };

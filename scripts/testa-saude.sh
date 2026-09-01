@@ -73,6 +73,10 @@ nome_do_manifesto() {
 
 M="$SBP/cfg/plugins/marketplaces/$(nome_do_manifesto "$SRC")"
 mkdir -p "$SBP/cfg/plugins/marketplaces" "$SBP/dados"
+# Os casos gerais nao sao da poda: desligar a chave (padrao true) para o
+# checarPoda nao injetar aviso em cenario alheio. Os casos da poda criam
+# a propria raiz com a chave ligada.
+printf '{"poda": false}' > "$SBP/dados/config.json"
 
 ver() { # opcional: caminho da fonte a rodar (default: $SRC, o repo real)
   local fonte="${1:-$SRC}"
@@ -337,6 +341,7 @@ echo "== esquema de banco: detecta falta de UNIQUE (Tarefa 23 - item 6) =="
 # Teste I: banco com esquema legado (sem UNIQUE constraint em observacoes)
 DADOS_LEGADO=".rainforest-saude-legado"
 rm -rf "$DADOS_LEGADO" && mkdir -p "$DADOS_LEGADO"
+printf '{"poda": false}' > "$DADOS_LEGADO/config.json"
 ( cd "$DADOS_LEGADO" && node << 'MKLEGACY'
 const { DatabaseSync } = require('node:sqlite');
 const db = new DatabaseSync('./rainforest.db');
@@ -418,6 +423,7 @@ echo "== banco de memoria: observacoes, indice vivo e pipeline (Tarefa 5) =="
 # Teste Q: banco ok com observacoes e fts sincronizados
 DADOS_OK=".rainforest-saude-ok"
 rm -rf "$DADOS_OK" && mkdir -p "$DADOS_OK"
+printf '{"poda": false}' > "$DADOS_OK/config.json"
 ( cd "$DADOS_OK" && node << 'MKBANCO_OK'
 const { DatabaseSync } = require('node:sqlite');
 const db = new DatabaseSync('./rainforest.db');
@@ -475,6 +481,7 @@ checa "Q2. banco ausente vira ok"                         "ok" "ausente" "$Q2"
 # Usar FTS sem content= para ter controle total sobre sincronizacao
 DADOS_DIVERGE=".rainforest-saude-diverge"
 rm -rf "$DADOS_DIVERGE" && mkdir -p "$DADOS_DIVERGE"
+printf '{"poda": false}' > "$DADOS_DIVERGE/config.json"
 ( cd "$DADOS_DIVERGE" && node << 'MKBANCO_DIVERGE'
 const { DatabaseSync } = require('node:sqlite');
 const db = new DatabaseSync('./rainforest.db');
@@ -528,6 +535,7 @@ checa "Q3. e sugerem reindexar"                          "aviso" "reindexar" "$Q
 # Teste Q4: pendencia de 72h (mais que 48h)
 DADOS_PENDENTE_72H=".rainforest-saude-pendente-72h"
 rm -rf "$DADOS_PENDENTE_72H" && mkdir -p "$DADOS_PENDENTE_72H"
+printf '{"poda": false}' > "$DADOS_PENDENTE_72H/config.json"
 ( cd "$DADOS_PENDENTE_72H" && node << 'MKBANCO_PENDENTE_72H'
 const { DatabaseSync } = require('node:sqlite');
 const db = new DatabaseSync('./rainforest.db');
@@ -580,6 +588,7 @@ checa "Q4. e sugere observar"                            "aviso" "observar" "$Q4
 # Teste Q5: pendencia de 1h (menos que 48h) - NAO acusa
 DADOS_PENDENTE_1H=".rainforest-saude-pendente-1h"
 rm -rf "$DADOS_PENDENTE_1H" && mkdir -p "$DADOS_PENDENTE_1H"
+printf '{"poda": false}' > "$DADOS_PENDENTE_1H/config.json"
 ( cd "$DADOS_PENDENTE_1H" && node << 'MKBANCO_PENDENTE_1H'
 const { DatabaseSync } = require('node:sqlite');
 const db = new DatabaseSync('./rainforest.db');
@@ -638,6 +647,7 @@ fi
 # versao anterior caia no ok final — o alarme mentia exatamente no caso imprevisto.
 DADOS_IMPREVISTO=".rainforest-saude-imprevisto"
 rm -rf "$DADOS_IMPREVISTO" && mkdir -p "$DADOS_IMPREVISTO"
+printf '{"poda": false}' > "$DADOS_IMPREVISTO/config.json"
 ( cd "$DADOS_IMPREVISTO" && node << 'MKBANCO_IMPREVISTO'
 const { DatabaseSync } = require('node:sqlite');
 const db = new DatabaseSync('./rainforest.db');
@@ -925,6 +935,286 @@ else
   falhou=$((falhou+1)); echo "  FALHA P. usou a chave inteira no lugar do marketplace"; echo "       veio: $ACAO_P"
 fi
 rm -f "$SBP/cfg/plugins/installed_plugins.json"
+
+echo ""
+echo "== conselho: rodada-concluida-sem-aviso =="
+SB_CONS_COMPLETA="$(mktemp -d)"
+trap "rm -rf '$SB_CONS_COMPLETA'" RETURN
+mkdir -p "$SB_CONS_COMPLETA/.rainforest/conselho/20260831-completa"
+cat > "$SB_CONS_COMPLETA/.rainforest/conselho/20260831-completa/estado.json" <<'EOF'
+{"id": "20260831-completa", "fases": {"pareceres": {"status": "ok"}, "revisao": {"status": "ok"}, "sintese": {"status": "ok"}}}
+EOF
+SAUDE_OUT_COMPLETA="$(cd "$SB_CONS_COMPLETA" && node "$SRC/scripts/saude.cjs" 2>&1 || true)"
+if ! echo "$SAUDE_OUT_COMPLETA" | grep -q "conselho"; then
+  ok=$((ok+1)); echo "  ok   rodada concluida (3 fases ok) nao gera secao do conselho"
+else
+  falhou=$((falhou+1)); echo "  FALHA rodada concluida ainda aparece no saude: $(echo "$SAUDE_OUT_COMPLETA" | grep conselho | head -1)"
+fi
+
+echo ""
+echo "== conselho: seção ausente sem rodadas =="
+SB_CONS1="$(mktemp -d)"
+trap "rm -rf '$SB_CONS1'" RETURN
+# Rodar /saude em diretório vazio - não deve ter seção conselho
+SAUDE_OUT1="$(cd "$SB_CONS1" && node "$SRC/scripts/saude.cjs" 2>&1 || true)"
+if ! echo "$SAUDE_OUT1" | grep -q "conselho"; then
+  ok=$((ok+1)); echo "  ok   seção conselho ausente sem rodadas"
+else
+  falhou=$((falhou+1)); echo "  FALHA seção conselho apareceu sem rodadas"
+fi
+
+echo ""
+echo "== conselho: aviso com rodada ABANDONA =="
+SB_CONS2="$(mktemp -d)"
+trap "rm -rf '$SB_CONS2'" RETURN
+mkdir -p "$SB_CONS2/.rainforest/conselho/20260831-teste"
+cat > "$SB_CONS2/.rainforest/conselho/20260831-teste/estado.json" <<'EOF'
+{"id": "20260831-teste", "resultado": "ABANDONA", "fases": {"pareceres": {"status": "reprovada"}}}
+EOF
+# Rodar /saude - deve ter seção conselho com aviso sobre ABANDONA
+SAUDE_OUT2="$(cd "$SB_CONS2" && node "$SRC/scripts/saude.cjs" 2>&1 || true)"
+if echo "$SAUDE_OUT2" | grep -q "aviso.*conselho" && echo "$SAUDE_OUT2" | grep -q "ABANDONA"; then
+  ok=$((ok+1)); echo "  ok   aviso quando rodada ABANDONA"
+else
+  falhou=$((falhou+1)); echo "  FALHA deveria ter aviso com ABANDONA"; echo "$SAUDE_OUT2" | grep "conselho" || echo "(nenhuma linha com conselho)"
+fi
+
+echo
+echo "== integrações desligadas não geram item nenhum =="
+# Sem ligação: node scripts/saude.cjs --json não deve ter item com 'integracao' no nome
+R1="$( RFM_ROOT="$SBP/dados" \
+  node "$SRC/scripts/saude.cjs" --json 2>/dev/null | node -e '
+    let d=""; process.stdin.on("data", c => d += c).on("end", () => {
+      try {
+        const items = JSON.parse(d).filter(x => x.item && x.item.startsWith("integracao")).length;
+        console.log(items);
+      } catch(e) { console.log("erro"); }
+    })' )"
+checa "R1. sem integracao ligada, zero items integracao*" "0" "0" "$R1"
+
+echo
+echo "== integracao-sabia ligada com pasta sem .venv vira aviso =="
+# Setup: pasta sabia com sabia.py, mas SEM .venv
+SABIA_DIR="$SBP/fixtures-sabia"
+mkdir -p "$SABIA_DIR"
+echo "def doutor(): pass" > "$SABIA_DIR/sabia.py"
+# NÃO criar .venv
+
+# Setup dados: integracao-sabia LIGADA + projeto registrado
+# IMPORTANTE: config.json fica em RFM_ROOT, não em CLAUDE_CONFIG_DIR
+mkdir -p "$SBP/dados-integracao"
+cat > "$SBP/dados-integracao/config.json" <<EOF
+{"integracao-sabia":true}
+EOF
+cat > "$SBP/dados-integracao/projetos.json" <<EOF
+{"sabia":{"caminho":"$SABIA_DIR"}}
+EOF
+
+R2="$( RFM_ROOT="$SBP/dados-integracao" \
+  node "$SRC/scripts/saude.cjs" 2>/dev/null )"
+
+# Verify that integracao-sabia appears as aviso
+if echo "$R2" | grep -q "aviso.*integracao-sabia"; then
+  ok=$((ok+1)); echo "  ok   R2. integracao-sabia sem .venv vira aviso"
+else
+  falhou=$((falhou+1)); echo "  FALHA R2. integracao-sabia deveria virar aviso"
+fi
+
+# O aviso nao pode MUDAR o exit (D4). Exit absoluto seria fragil: o painel checa
+# muito alem das integracoes (banco, plugin), e em ambiente copiado/aninhado outra
+# checagem pode alertar por conta propria — foi exatamente assim que a secao K pegou
+# a primeira versao deste caso. Mede-se o DELTA: mesmo RFM_ROOT, integracao
+# desligada vs ligada-e-quebrada, e o exit tem de ser o MESMO.
+cat > "$SBP/dados-integracao/config.json" <<EOF
+{"integracao-sabia":false}
+EOF
+RFM_ROOT="$SBP/dados-integracao" \
+  node "$SRC/scripts/saude.cjs" >/dev/null 2>&1
+R2_EXIT_BASE=$?
+cat > "$SBP/dados-integracao/config.json" <<EOF
+{"integracao-sabia":true}
+EOF
+RFM_ROOT="$SBP/dados-integracao" \
+  node "$SRC/scripts/saude.cjs" >/dev/null 2>&1
+R2_EXIT=$?
+if [ "$R2_EXIT" = "$R2_EXIT_BASE" ]; then
+  ok=$((ok+1)); echo "  ok   R2b. integracao quebrada nao muda o exit (base $R2_EXIT_BASE, com aviso $R2_EXIT)"
+else
+  falhou=$((falhou+1)); echo "  FALHA R2b. exit mudou: sem integracao $R2_EXIT_BASE, com aviso $R2_EXIT"
+fi
+
+# Cleanup
+rm -rf "$SBP/dados-integracao" "$SBP/fixtures-sabia"
+
+echo
+echo "== MUTACAO: trocar aviso por alerta em checarIntegracoes =="
+# Se as chamadas a aviso() forem trocadas por alerta(), os testes de integração
+# devem falhar (exit != 0). A mutação roda numa cópia.
+MUTINT="$(mktemp -d)"
+TEMPS+=("$MUTINT")
+cp -r "$SRC/scripts" "$MUTINT/scripts"
+node -e "
+  const fs=require('fs'), p=process.argv[1];
+  const s=fs.readFileSync(p,'utf8');
+  const target = 'aviso(\`integracao-';
+  if(!s.includes(target)) { console.error('MUTACAO NAO APLICADA'); process.exit(1); }
+  fs.writeFileSync(p, s.replace(/aviso\(\`integracao-/g, 'alerta(\`integracao-'));
+" "$MUTINT/scripts/saude.cjs"
+if [ $? -ne 0 ]; then
+  falhou=$((falhou+1)); echo "  FALHA nao consegui aplicar a mutacao"
+else
+  # Setup para teste com integração ligada: com alerta, deve sair com exit 1
+  SABIA_DIR_MUT="$MUTINT/fixtures-sabia"
+  mkdir -p "$SABIA_DIR_MUT"
+  echo "def doutor(): pass" > "$SABIA_DIR_MUT/sabia.py"
+
+  # Config vai em RFM_ROOT, não em cfg
+  mkdir -p "$MUTINT/dados"
+  cat > "$MUTINT/dados/config.json" <<'JSON3'
+{"integracao-sabia":true}
+JSON3
+
+  cat > "$MUTINT/dados/projetos.json" <<JSON4
+{"sabia":{"caminho":"$SABIA_DIR_MUT"}}
+JSON4
+
+  RFM_ROOT="$MUTINT/dados" \
+    node "$MUTINT/scripts/saude.cjs" >/dev/null 2>&1
+  S_EXIT=$?
+
+  if [ "$S_EXIT" = "1" ]; then
+    ok=$((ok+1)); echo "  ok   S. com alerta no lugar de aviso, exit=1 (alerta bloqueia)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA S. mutacao nao fez exit=1"; echo "       veio exit: $S_EXIT"
+  fi
+fi
+rm -rf "$MUTINT"
+echo "== poda: proxy de medição de custo =="
+
+# R1: com poda desligada, não aparece no JSON
+R1_TEST="$SBP/test-poda-off"
+mkdir -p "$R1_TEST/.rainforest"
+printf '{"poda":false}' > "$R1_TEST/.rainforest/config.json"
+R1="$( ( cd "$R1_TEST" && node "$SRC/scripts/saude.cjs" --json 2>/dev/null ) | node -e "
+  let d=''; process.stdin.on('data', c => d += c).on('end', () => {
+    try {
+      const a = JSON.parse(d).find(x => x.item === 'poda');
+      console.log(a ? 'ENCONTRADO' : 'ausente');
+    } catch { console.log('erro'); }
+  });
+" )"
+if [ "$R1" = "ausente" ]; then
+  ok=$((ok+1)); echo "  ok   R1. com poda desligado, nao aparece item"
+else
+  falhou=$((falhou+1)); echo "  FALHA R1. esperava ausente, veio: $R1"
+fi
+
+# R2: com poda ligada e sem pidfile, aparece aviso
+R2_TEST="$SBP/test-poda-on"
+mkdir -p "$R2_TEST"
+R2="$( ( cd "$R2_TEST" && node "$SRC/scripts/saude.cjs" --json 2>/dev/null ) | node -e "
+  let d=''; process.stdin.on('data', c => d += c).on('end', () => {
+    try {
+      const a = JSON.parse(d).find(x => x.item === 'poda');
+      console.log(a ? a.nivel : 'ausente');
+    } catch { console.log('erro'); }
+  });
+" )"
+if [ "$R2" = "aviso" ]; then
+  ok=$((ok+1)); echo "  ok   R2. sem poda.pid, aparece aviso"
+else
+  falhou=$((falhou+1)); echo "  FALHA R2. esperava aviso, veio: $R2"
+fi
+
+# R3: com pidfile mas porta morta, aparece aviso (não alerta)
+R3_TEST="$SBP/test-poda-dead-port"
+mkdir -p "$R3_TEST/.rainforest/poda"
+printf '{"pid":99999,"porta":19999}' > "$R3_TEST/.rainforest/poda/poda.pid"
+R3="$( ( cd "$R3_TEST" && RFM_ROOT="$R3_TEST/.rainforest" node "$SRC/scripts/saude.cjs" --json 2>/dev/null ) | node -e "
+  let d=''; process.stdin.on('data', c => d += c).on('end', () => {
+    try {
+      const a = JSON.parse(d).find(x => x.item === 'poda');
+      console.log(a ? a.nivel : 'ausente');
+    } catch { console.log('erro'); }
+  });
+" )"
+if [ "$R3" = "aviso" ]; then
+  ok=$((ok+1)); echo "  ok   R3. porta morta vira aviso (nao alerta)"
+else
+  falhou=$((falhou+1)); echo "  FALHA R3. esperava aviso, veio: $R3"
+fi
+
+# R4: o item poda é aviso, nunca alerta — o exit global não pode virar 1 POR CAUSA
+# DA PODA (medir o exit inteiro aqui seria frágil: na bateria aninhada do caso K a
+# cópia é um repo recém-init e outras seções produzem alerta legítimo).
+R4_NIVEIS="$( cd "$R3_TEST" && RFM_ROOT="$R3_TEST/.rainforest" node "$SRC/scripts/saude.cjs" --json 2>/dev/null | node -e '
+  let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
+    try {
+      const a=JSON.parse(d).filter(x=>x.item==="poda");
+      console.log(a.map(x=>x.nivel).join(",")||"ausente");
+    } catch { console.log("erro"); }
+  })' )"
+if [ "$R4_NIVEIS" = "aviso" ]; then
+  ok=$((ok+1)); echo "  ok   R4. item poda e exatamente um aviso (nunca alerta)"
+else
+  falhou=$((falhou+1)); echo "  FALHA R4. niveis do item poda: $R4_NIVEIS (esperava 'aviso')"
+fi
+
+# R5: caminho de SUCESSO com pidfile no formato REAL e porta viva — este caso
+# existe porque a rodada 2 da revisao pegou o /saude lendo `port` enquanto o
+# poda.cjs grava `porta`: o sucesso nunca tinha rodado, e o fixture antigo
+# casava o defeito do consumidor (tautologia).
+R5_TEST="$SBP/test-poda-viva"
+mkdir -p "$R5_TEST/.rainforest/poda"
+R5_PORTA=$((20000 + RANDOM % 40000))
+node -e "
+const http=require('http');
+const s=http.createServer((req,res)=>{res.writeHead(200);res.end('ok');});
+s.listen($R5_PORTA,'127.0.0.1',()=>console.log('pronto'));
+setTimeout(()=>process.exit(0), 20000);
+" &
+R5_SRV_PID=$!
+sleep 1
+printf '{"pid":%s,"porta":%s,"iniciadoEm":"2026-08-31T00:00:00Z"}' "$R5_SRV_PID" "$R5_PORTA" > "$R5_TEST/.rainforest/poda/poda.pid"
+printf '{"atualizadoEm":"2026-08-31T00:00:00Z","estagio":null,"usage":{},"requisicoes":7}' > "$R5_TEST/.rainforest/poda/contexto.json"
+R5="$( cd "$R5_TEST" && RFM_ROOT="$R5_TEST/.rainforest" ANTHROPIC_BASE_URL="http://127.0.0.1:$R5_PORTA" node "$SRC/scripts/saude.cjs" --json 2>/dev/null | node -e '
+  let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
+    try {
+      const a=JSON.parse(d).find(x=>x.item==="poda");
+      console.log(a ? a.nivel+"|"+a.detalhe : "ausente");
+    } catch { console.log("erro"); }
+  })' )"
+kill "$R5_SRV_PID" 2>/dev/null || true
+case "$R5" in
+  "ok|"*"7 requisi"*)
+    ok=$((ok+1)); echo "  ok   R5. caminho de sucesso: ok com contagem do contexto.json" ;;
+  *)
+    falhou=$((falhou+1)); echo "  FALHA R5. esperava ok com 7 requisicoes, veio: $R5" ;;
+esac
+
+# MUTAÇÃO: mudar aviso→alerta faz exit ir para 1
+MUTCOPIA="$(mktemp -d)"
+TEMPS+=("$MUTCOPIA")
+cp -r "$SRC/scripts" "$MUTCOPIA/scripts"
+node -e "
+  const fs=require('fs'), p=process.argv[1];
+  const s=fs.readFileSync(p,'utf8');
+  if(s.includes('nao responde')) {
+    const nu=s.replace('aviso(\'poda\', \`porta', 'alerta(\'poda\', \`porta');
+    fs.writeFileSync(p, nu);
+  }
+" "$MUTCOPIA/scripts/saude.cjs"
+( cd "$R3_TEST" && node "$MUTCOPIA/scripts/saude.cjs" --json 2>/dev/null >/dev/null )
+MUT_EXIT=$?
+if [ $MUT_EXIT -ne 0 ]; then
+  ok=$((ok+1)); echo "  ok   MUTACAO: aviso→alerta faz exit=1"
+else
+  falhou=$((falhou+1)); echo "  FALHA MUTACAO: exit deveria ser 1"
+fi
+rm -rf "$MUTCOPIA"
+
+# Limpeza
+rm -rf "$R1_TEST" "$R2_TEST" "$R3_TEST"
 
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]

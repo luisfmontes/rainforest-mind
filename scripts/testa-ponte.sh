@@ -20,8 +20,9 @@ trap 'rm -rf "$CAIXA"' EXIT
 PLUG="$CAIXA/plugin"
 mkdir -p "$PLUG/scripts" "$PLUG/hooks/lib" "$PLUG/skills/rainforest-mind"
 cp "$SRC/scripts/ponte.cjs" "$PLUG/scripts/"
-cp "$SRC/hooks/lib/contexto-sessao.cjs" "$SRC/hooks/lib/raiz.cjs" "$SRC/hooks/lib/config.cjs"    "$SRC/hooks/lib/projetos.cjs" "$PLUG/hooks/lib/"
+cp "$SRC/hooks/lib/contexto-sessao.cjs" "$SRC/hooks/lib/raiz.cjs" "$SRC/hooks/lib/config.cjs" "$SRC/hooks/lib/projetos.cjs" "$SRC/hooks/lib/ponte-corpo.cjs" "$PLUG/hooks/lib/"
 cp "$SRC/scripts/setup.cjs" "$PLUG/scripts/"
+cp "$SRC/scripts/conferir-ponte.cjs" "$PLUG/scripts/"
 cp "$SRC/skills/rainforest-mind/SKILL.md" "$PLUG/skills/rainforest-mind/"
 # Pasta de DADOS propria: e nela que o /setup grava as chaves `ponte-*`, e e por
 # elas que a ponte decide o default. Nada aqui toca a configuracao real.
@@ -105,6 +106,37 @@ prova "sem /home/ no gerado"      "! grep -q '/home/' '$ALVO/AGENTS.md'"
 prova "sem .rainforest chumbado"  "! grep -q '\.rainforest' '$ALVO/AGENTS.md'"
 prova "mas ENSINA a descobrir"    "grep -q 'ideias.cjs conferir' '$ALVO/AGENTS.md'"
 
+# Novo teste: quando a pasta de dados esta AUSENTE, o aviso aparece
+# Isso permite a catraca detectar se alguem remove a condicional
+ALVO_SEM_DADOS="$CAIXA/repo-sem-dados"
+mkdir -p "$ALVO_SEM_DADOS"
+ALVO_SEM_DADOS_WIN="$(cygpath -m "$ALVO_SEM_DADOS" 2>/dev/null || printf '%s' "$ALVO_SEM_DADOS")"
+# Usar USERPROFILE no lugar de HOME (Windows), apontando para dir sem .rainforest
+bash -c "
+  unset RFM_ROOT
+  export USERPROFILE='$CAIXA/user-vazio'
+  export HOME='$CAIXA/user-vazio'
+  mkdir -p \"\$USERPROFILE\"
+  cd '$ALVO_SEM_DADOS'  # rodar de um dir sem .rainforest
+  $PONTE --alvo '$ALVO_SEM_DADOS_WIN' --agente claude --aplicar >/dev/null 2>&1
+" 2>&1
+prova "com pasta de dados AUSENTE, mostra aviso de setup.cjs" "grep -q 'setup.cjs --criar' '$ALVO_SEM_DADOS/CLAUDE.md'"
+
+echo
+echo "== 3.5. INVARIANTE E1: bloco identico com e sem dados resolvidos =="
+# O bloco nao deve variar em funcao de COMO ele foi gerado.
+# Gera uma vez com pasta de dados (normal):
+$PONTE --alvo "$ALVO_WIN" --agente claude --aplicar >/dev/null 2>&1
+cp "$ALVO/CLAUDE.md" "$CAIXA/bloco-com-dados"
+# Gera de novo, mas com RFM_ROOT apontando para pasta que nao existe:
+bash -c "
+  export RFM_ROOT='$CAIXA/nao-existe'
+  $PONTE --alvo '$ALVO_WIN' --agente claude --aplicar >/dev/null 2>&1
+" 2>&1
+cp "$ALVO/CLAUDE.md" "$CAIXA/bloco-sem-dados"
+prova "bloco identico com e sem dados resolvidos" "cmp -s '$CAIXA/bloco-com-dados' '$CAIXA/bloco-sem-dados'"
+prova "frase do setup.cjs presente no bloco" "grep -q 'setup.cjs --criar' '$CAIXA/bloco-com-dados'"
+
 echo
 echo "== 4. regenerar substitui o bloco, e o que e de outra pessoa fica =="
 BYTES1=$(wc -c < "$ALVO/AGENTS.md")
@@ -142,6 +174,74 @@ prova "e nao gravou nada"                   "[ ! -e '$ALVO2/AGENTS.md' ]"
 esperado "recusa com regra de menos (piso de caracteres)" 1 $PONTE --alvo "$(cygpath -m "$ALVO2" 2>/dev/null || printf '%s' "$ALVO2")" --aplicar
 cp "$CAIXA/SKILL.bak" "$PLUG/skills/rainforest-mind/SKILL.md"
 esperado "com o SKILL.md de volta, gera" 0 $PONTE --alvo "$(cygpath -m "$ALVO2" 2>/dev/null || printf '%s' "$ALVO2")" --aplicar
+
+echo
+echo "== 5.5. TAREFA 17: hash unificado — sem createHash duplicados =="
+if grep -n 'createHash' "$PLUG/scripts/ponte.cjs" "$PLUG/scripts/conferir-ponte.cjs" 2>/dev/null; then
+  falhou=$((falhou+1)); echo "  FALHA createHash encontrado nos scripts"
+else
+  ok=$((ok+1)); echo "  ok   nenhum createHash duplicado nos scripts"
+fi
+
+echo
+echo "== 5.6. TAREFA 17: hash é consistente entre gerações =="
+ALVO_HASH1="$CAIXA/alvo-hash-1"; mkdir -p "$ALVO_HASH1"
+ALVO_HASH2="$CAIXA/alvo-hash-2"; mkdir -p "$ALVO_HASH2"
+
+# Gera a ponte duas vezes
+$PONTE --alvo "$(cygpath -m "$ALVO_HASH1" 2>/dev/null || printf '%s' "$ALVO_HASH1")" --agente claude --aplicar > /dev/null 2>&1
+$PONTE --alvo "$(cygpath -m "$ALVO_HASH2" 2>/dev/null || printf '%s' "$ALVO_HASH2")" --agente claude --aplicar > /dev/null 2>&1
+
+# Extrai os hashes dos dois CLAUDE.md
+HASH1=$(grep -o 'hash:[0-9a-f]*' "$ALVO_HASH1/CLAUDE.md" | head -1 | cut -d: -f2 || true)
+HASH2=$(grep -o 'hash:[0-9a-f]*' "$ALVO_HASH2/CLAUDE.md" | head -1 | cut -d: -f2 || true)
+
+if [ -z "$HASH1" ] || [ -z "$HASH2" ]; then
+  falhou=$((falhou+1)); echo "  FALHA nao consegui extrair hashes dos arquivos"
+elif [ "$HASH1" = "$HASH2" ]; then
+  ok=$((ok+1)); echo "  ok   hash consistente entre gerações ($HASH1)"
+else
+  falhou=$((falhou+1)); echo "  FALHA hashes diferentes: $HASH1 vs $HASH2"
+fi
+
+# Verifica que o hash tem exatamente 16 caracteres (slice(0, 16))
+if [ ${#HASH1} -eq 16 ]; then
+  ok=$((ok+1)); echo "  ok   hash tem 16 caracteres (slice correto)"
+else
+  falhou=$((falhou+1)); echo "  FALHA hash nao tem 16 caracteres: ${#HASH1}"
+fi
+
+
+echo
+echo "== 5.7. TAREFA 24: prosa citando os marcadores de regras nao corrompe a regeneracao =="
+ALVO_T24="$CAIXA/alvo-t24"; mkdir -p "$ALVO_T24"
+# gera o bloco real primeiro
+$PONTE --alvo "$(cygpath -m "$ALVO_T24" 2>/dev/null || printf '%s' "$ALVO_T24")" --agente claude --aplicar > /dev/null 2>&1
+BLOCO_T24=$(cat "$ALVO_T24/CLAUDE.md")
+# remonta: prosa citando os marcadores ANTES do bloco real, e texto manual depois
+cat > "$ALVO_T24/CLAUDE.md" <<EOF24
+# Meu repo
+
+Este arquivo usa \`<!-- rainforest-mind:inicio -->\` e \`<!-- rainforest-mind:fim -->\` como delimitadores.
+
+$BLOCO_T24
+
+SENTINELA_T24_DEPOIS
+EOF24
+esperado "regenera com prosa citando marcadores de regras" 0 $PONTE --alvo "$(cygpath -m "$ALVO_T24" 2>/dev/null || printf '%s' "$ALVO_T24")" --agente claude --aplicar
+prova "prosa sobrevive intacta (frase inteira)" "grep -q 'como delimitadores' '$ALVO_T24/CLAUDE.md'"
+prova "texto manual pos-bloco sobrevive" "grep -q 'SENTINELA_T24_DEPOIS' '$ALVO_T24/CLAUDE.md'"
+prova "so um bloco de regras de linha inteira" "[ \$(grep -c '^<!-- rainforest-mind:inicio' '$ALVO_T24/CLAUDE.md') -eq 1 ]"
+esperado "conferir da CONFERIDO" 0 node "$PLUG/scripts/conferir-ponte.cjs" "$(cygpath -m "$ALVO_T24/CLAUDE.md" 2>/dev/null || printf '%s' "$ALVO_T24/CLAUDE.md")"
+
+echo
+echo "== 5.8. TAREFA 24: bloco de regras sem fim recusa a regeneracao =="
+ALVO_T24B="$CAIXA/alvo-t24b"; mkdir -p "$ALVO_T24B"
+$PONTE --alvo "$(cygpath -m "$ALVO_T24B" 2>/dev/null || printf '%s' "$ALVO_T24B")" --agente claude --aplicar > /dev/null 2>&1
+grep -v '^<!-- rainforest-mind:fim -->' "$ALVO_T24B/CLAUDE.md" > "$ALVO_T24B/CLAUDE.md.tmp" && mv "$ALVO_T24B/CLAUDE.md.tmp" "$ALVO_T24B/CLAUDE.md"
+cp "$ALVO_T24B/CLAUDE.md" "$CAIXA/t24b.bak"
+esperado "regenerar com regras truncadas falha" 1 $PONTE --alvo "$(cygpath -m "$ALVO_T24B" 2>/dev/null || printf '%s' "$ALVO_T24B")" --agente claude --aplicar
+prova "arquivo intocado byte a byte" "cmp -s '$ALVO_T24B/CLAUDE.md' '$CAIXA/t24b.bak'"
 
 echo
 echo "== 6. bordas =="

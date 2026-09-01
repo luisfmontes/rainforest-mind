@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-0.78.0-1e5c3f?style=flat-square" alt="versão 0.78.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-0.79.0-1e5c3f?style=flat-square" alt="versão 0.79.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/revis%C3%A3o-bimestral-9fd8ba?style=flat-square" alt="revisão bimestral">
 </p>
@@ -342,6 +342,8 @@ O mesmo princípio nos scripts, para o que hook nenhum alcança:
 | `scripts/conferir-versao.cjs` | conta os commits desde o último bump de versão e **sai com 2** acima do teto (5 por padrão, `--teto N`) — porque o que EXECUTA não é o clone, é o cache `plugins/cache/<mkt>/<plugin>/<versão>/`, indexado pela versão: sem bump, o trabalho fica na `main` e não chega em máquina nenhuma. Chamado pelo `fechar` |
 | `scripts/setup.cjs` | monta a pasta de dados, liga/desliga o que é opcional **e configura o caminho de cada projeto** — e marca no estado o caminho que **não existe** nesta máquina, que era falha silenciosa |
 | `scripts/ponte.cjs` | **gera** o `CLAUDE.md` (Claude Code sem o plugin), o `AGENTS.md` (Codex) e o `GEMINI.md` (Gemini CLI) a partir do mesmo SKILL.md que o hook injeta — e recusa gerar se não achar as regras, em vez de escrever meia ponte |
+| `scripts/poda.cjs` | proxy **passthrough** local (`iniciar`/`parar`/`status`, só `127.0.0.1`) que mede o que passa — `metricas.jsonl` e `contexto.json` na raiz de dados, extraídos de uma CÓPIA do stream SSE, sem alterar nenhuma requisição nem resposta. A escrita respeita a chave `poda` do `config.json` (nasce ligada; desligar é o kill switch). **Não comprime nada** — compressão é fase 1, e só entra com o relatório da fase 0 em mãos |
+| `scripts/relatorio-poda.cjs` | o gate de saída da fase 0: **sai com exit ≠ 0** enquanto `metricas.jsonl` não cobrir 7 dias-calendário distintos; aberto, imprime tokens por estágio, cache hit agregado e a média de `duracao_ms` do proxy — e diz explicitamente que não compara com "sem proxy", porque isso não é mensurável retroativamente |
 | `scripts/orcamento.cjs` | mede em **byte** as quatro fontes que o plugin põe na abertura (saída do hook, descriptions de skills, de commands e de agentes), compara com dois tetos (o `ORCAMENTO_BYTES` do hook, lido de `hooks/lib/contexto-sessao.cjs`, e um agregado de 15.000 B, que subiu de 14.000 em 2026-08-25), e sai com exit 1 quando estoura — entra no laço do `CONTRIBUTING.md:11` como o gate que acusa quando o plugin engordar além do orçamento |
 | `scripts/medir-injecao.py` | custo real do prompt de abertura, lido do `usage` que a API devolve — token de verdade, sem estimativa. O modo `--repartir` reparte a abertura por fonte (skill_listing, deferred_tools_delta, agent_listing_delta, rainforest-mind) e marca o que é **medido** (total via API), o que é **estimado** (byte convertido por fator 3.11 do tokenizador OpenAI), e o que é **subconjunto** (rainforest-mind dentro das listagens) |
 
@@ -428,6 +430,7 @@ flowchart LR
 |-------|-----|
 | `divergir [problema]` | **Antes** do `brainstorm`, quando o espaço é largo e a primeira ideia já está ancorando: **seis** frames isolados em paralelo, sem se verem, e um crítico que também nasce zerado. Devolve material para decidir; não decide e não codifica |
 | `/brainstorm [assunto]` | Estágio 1: entrevista adversarial em árvore de decisão, rodada numerada com resposta recomendada — para **antes** de executar, e grava o design |
+| `conselho` | Debate estruturado dentro do design (opt-in via `.rainforest/conselho/`): personas avaliam cada decisão, revisões anonimizadas, síntese com portões mecânicos. Membros Claude ligados; Codex/Gemini opcionais. Terceira reprovação consecutiva abandona |
 | `/foco` | Estado da conversa: foco ativo, loops abertos, decisões tomadas |
 | `/foco <texto>` | Declara novo foco — injetado em toda sessão nova |
 | `/ideia <texto>` | Avalia contra o foco: dentro → entra confirmada; fora → planta com contexto e projeto |
