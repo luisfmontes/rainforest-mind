@@ -1,0 +1,31 @@
+{
+  "slug": "segunda-opiniao-cross-model",
+  "titulo": "Segunda opiniao cross-model: spawn de CLI externo compartilhado e auditor de outra familia no revisar",
+  "criado_em": "2026-09-01",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/segunda-opiniao-cross-model.md",
+    "em": "2026-09-01"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/segunda-opiniao-cross-model.md",
+    "tarefas": 6,
+    "em": "2026-09-01"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
