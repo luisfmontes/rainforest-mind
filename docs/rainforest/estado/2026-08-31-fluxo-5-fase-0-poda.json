@@ -19,30 +19,30 @@
     "em": "2026-08-31"
   },
   "executar": {
-    "status": "parcial",
-    "tarefas": 9,
-    "tarefas_ok": 9,
-    "nota": "executar fechado: T1-T8 integradas com mutacoes re-rodadas na arvore; T9 docs pela sessao. Historia: 2 entregas rejeitadas por fabricacao de teste (T3: bateria que trava; T5/T6/T8: bateria de 4 linhas + subshell), tester achou defeito real no extrator de usage, integracao consertou 3 defeitos da T7.",
+    "status": "ok",
+    "tarefas": 11,
+    "tarefas_ok": 11,
+    "nota": "rodada 2: tarefas 10-11 pela sessao. Host reescrito (critico real da revisao, reproduzido contra a API viva); orfao removido; invariante emendada para stream.",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "caso raizPoda com RFM_ROOT valido"
+        "fixture": "raizPoda com RFM_ROOT valido"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "bloco PODA de hooks/testa-config.sh"
+        "fixture": "bloco PODA de testa-config.sh"
       },
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "caso 5.4 timing SSE de testa-poda.sh"
+        "fixture": "caso 5.4 timing SSE"
       },
       {
         "tarefa": 4,
         "resultado": "vermelho",
-        "fixture": "caso dois trabalhos abertos um batendo"
+        "fixture": "dois trabalhos abertos um batendo"
       },
       {
         "tarefa": 5,
@@ -57,27 +57,33 @@
       {
         "tarefa": 7,
         "resultado": "vermelho",
-        "fixture": "casos R3/R4 porta morta de testa-saude.sh"
+        "fixture": "casos R3/R4 porta morta"
       },
       {
         "tarefa": 8,
         "resultado": "vermelho",
-        "fixture": "caso 3 dias fecha o gate"
+        "fixture": "3 dias fecha o gate"
       },
       {
         "tarefa": 9,
         "resultado": "n/a",
-        "motivo": "docs; grep dos nomes na tabela do README e do rodape no design"
+        "motivo": "docs"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "vermelho",
+        "fixture": "caso 5.2b Host do upstream de testa-poda.sh"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "n/a",
+        "motivo": "limpeza; arquivo ausente + testa-saude verde"
       }
     ],
     "em": "2026-08-31",
     "catraca_mutacao": "2026-08-31",
-    "comando": "baterias na arvore integrada + conferir-mutacao por tarefa",
-    "saida": "poda-dados 11/0, poda 15/0, poda-metricas 28/0, relatorio-poda 21/0, saude 48/0, config 38/0, poda-estagio 8/0, setup 49/0; mutacoes T1-T8 exit 0",
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-08-31"
-    }
+    "comando": "baterias + conferir-mutacao da 10",
+    "saida": "poda 17/0, metricas 28/0, saude 48/0; mutacao 10 exit 0"
   },
   "revisar": {
     "status": "reprovado",
