@@ -1,0 +1,18 @@
+{
+  "session_id": "f2dcfb07-e91a-44d9-bd21-d0c172a4e1d3",
+  "transcript_path": "C:\\Users\\Luis\\.claude\\projects\\C--Users-Luis-AppData-Local-Temp-claude-C--Projetos-rainforest-mind-d324cfdf-2704-4939-840a-06cd54c5a00d-scratchpad-amostra2\\f2dcfb07-e91a-44d9-bd21-d0c172a4e1d3.jsonl",
+  "cwd": "C:\\Users\\Luis\\AppData\\Local\\Temp\\claude\\C--Projetos-rainforest-mind\\d324cfdf-2704-4939-840a-06cd54c5a00d\\scratchpad\\amostra2",
+  "prompt_id": "9b8a9e31-dce5-4e03-8496-38969eff900b",
+  "permission_mode": "bypassPermissions",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Agent",
+  "tool_input": {
+    "description": "Sonda",
+    "prompt": "Responda apenas PING",
+    "subagent_type": "rainforest-mind:executor",
+    "model": "haiku",
+    "name": "sonda-um",
+    "isolation": "worktree"
+  },
+  "tool_use_id": "toolu_01Rxkoa6jKx1WEKoDWmJLvJq"
+}
