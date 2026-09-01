@@ -71,11 +71,8 @@ function extrairJson(stdout) {
       match = stdout.match(/({[\s\S]*})/);
     }
 
-    if (!match) {
-      return null;
-    }
-
-    const json = match[1];
+    // Fallback: tenta stdout cru se nenhuma regex casou
+    const json = match ? match[1] : stdout;
     return JSON.parse(json);
   } catch (e) {
     return null;
