@@ -1314,7 +1314,10 @@ mkdir -p "$TEMPDIR21"
 # Criar um arquivo de prompt fake
 echo "# Teste" > "$TEMPDIR21/prompt.md"
 
-# Injetar fixture para não chamar o binário real (D7: fixture sempre)
+# Injetar fixture para não chamar o binário real (D7: fixture sempre).
+# RFM_TEST=1 e OBRIGATORIO: sem ele a injecao e ignorada (guarda da revisao 1),
+# o adaptador cai no binario real e o caso passa pelo motivo errado — foi
+# exatamente o que o verificar pegou, com a mutacao do guard sobrevivendo.
 # O guard if (!process.env.GEMINI_API_KEY) deve BARRAR a execução ANTES
 # da fixture ser chamada — caso contrário, não há proteção testável.
 CONSELHO_CMD_GEMINI="node \"$SRC_M/scripts/fixtures/conselho/membro-gemini-fake.cjs\" {prompt} {saida}"
@@ -1322,7 +1325,7 @@ CONSELHO_CMD_GEMINI="node \"$SRC_M/scripts/fixtures/conselho/membro-gemini-fake.
 # Tentar rodar adaptador-gemini SEM GEMINI_API_KEY com fixture injetada
 # Deve sair com exit ≠ 0 (guard barra) e NÃO criar arquivo de saída
 testa "gemini-sem-credencial-falha: exit != 0" "1" \
-  bash -c "cd '$TEMPDIR21' && unset GEMINI_API_KEY; CONSELHO_CMD_GEMINI='$CONSELHO_CMD_GEMINI' node '$CONSELHO' adaptador-gemini prompt.md saida.json"
+  bash -c "cd '$TEMPDIR21' && unset GEMINI_API_KEY; RFM_TEST=1 CONSELHO_CMD_GEMINI='$CONSELHO_CMD_GEMINI' node '$CONSELHO' adaptador-gemini prompt.md saida.json"
 
 # Verificar que saida.json NÃO foi criado
 if [ ! -f "$TEMPDIR21/saida.json" ]; then

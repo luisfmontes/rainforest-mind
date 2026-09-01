@@ -58,10 +58,11 @@
     "saida": "ok: 9 falhou: 0 | Ok: 21 Falhou: 0 | total=105 vermelhas:[0] nas duas execucoes"
   },
   "revisar": {
-    "status": "reprovado",
-    "achados": 3,
+    "status": "ok",
+    "achados": 5,
     "em": "2026-09-01",
-    "tentativas": 3
+    "base": "cc1db6a5f051ec75bbf07870f49da217384ca320",
+    "head": "4e7353f05419e7a658fd25928c071dd7d1f44550"
   },
   "verificar": {
     "status": "pendente"
