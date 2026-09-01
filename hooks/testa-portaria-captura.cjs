@@ -91,7 +91,10 @@ console.log("== 1. primeira execucao grava a amostra ==");
   iniciarGit(raiz, "fluxo/teste");
   criarEstado(raiz, "teste", "revisar");
   criarManifesto(raiz, {
-    leitor: { estagios: ["revisar"], escreve: false },
+    versao: 1,
+    agentes: {
+      leitor: { estagios: ["revisar"], escreve: false },
+    },
   });
 
   const amostra = path.join(raiz, ".rainforest", "portaria", "amostra.json");
@@ -113,7 +116,10 @@ console.log("== 2. segunda execucao NAO sobrescreve ==");
   iniciarGit(raiz, "fluxo/teste");
   criarEstado(raiz, "teste", "revisar");
   criarManifesto(raiz, {
-    leitor: { estagios: ["revisar"], escreve: false },
+    versao: 1,
+    agentes: {
+      leitor: { estagios: ["revisar"], escreve: false },
+    },
   });
 
   const amostra = path.join(raiz, ".rainforest", "portaria", "amostra.json");
