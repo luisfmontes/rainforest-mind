@@ -31,7 +31,7 @@
     "em": "2026-08-30"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-01",
     "tarefas_ok": 9,
     "tarefas": 9,
@@ -89,14 +89,26 @@
         "resultado": "n/a",
         "motivo": "verificacao manual unica, um so episodio de evidencia — e ela NAO PODE rodar dentro do proprio estagio executar: o criterio exige um ALLOW para rainforest-mind:revisor, que so e admitido no estagio revisar, e nenhum dos tres agentes do manifesto tem executar na lista. Defeito de ordenacao do plano, achado na execucao. As duas negacoes ja foram provadas no worktree real com o manifesto real (revisor -> exit 2 citando estagio executar e permitidos revisar; executor -> exit 2 nao consta no manifesto). O allow e o 'sem prompt ao humano' sao colhidos no estagio revisar, imediatamente apos este fechamento, e ficam registrados no bloco revisar deste estado"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-01"
+    }
   },
   "revisar": {
-    "status": "pendente",
+    "status": "reprovado",
     "snapshot": {
-      "head": "2510690cfcdebbaaef1cdec761fb5d18670f0957",
+      "head": "a1908a98087cb4d1136cc643e045d7a49341be31",
       "caminhos_sujos": []
-    }
+    },
+    "base": "b9a3bed03e6e681c347220828d6af750426bc3d5",
+    "head": "a1908a98087cb4d1136cc643e045d7a49341be31",
+    "achados": 5,
+    "criticos": 2,
+    "revisor": "rainforest-mind:revisor, contexto zerado, 2026-09-01",
+    "nota": "REPROVADO com 2 criticos, 2 avisos e 1 sugestao. Os dois criticos foram REPRODUZIDOS na janela principal antes de aceitar o veredito, e a casa ja tinha a resposta escrita. CRITICO 1: raizDoProjeto() em hooks/portaria.cjs:20 usa CLAUDE_PROJECT_DIR || process.cwd() e nunca le payload.cwd — e .rainforest/portaria/LEIA-ME.md:31 afirma o contrario ('o hook nao depende so de CLAUDE_PROJECT_DIR'), doc contradizendo codigo. Consequencia: sessao que faz cd para um worktree no meio do trabalho (que e como a regra 11 manda operar) resolve a raiz no checkout PRINCIPAL, le o estado errado e nega por 'sem estagio ativo'. gate-repo-alheio.cjs:137-141 ja resolve isso pela convencao da casa: usa ev.cwd, nunca process.cwd(), e libera se ev.cwd faltar. CRITICO 2: stdin ilegivel/vazio/JSON invalido em portaria.cjs:121-137 NEGA (exit 2), contra a convencao dos quatro gates irmaos, que tem o comentario literal 'payload ilegivel nunca trava o trabalho do usuario' e saem 0 (gate-worktree.cjs:532-535, gate-staging-total.cjs:213-217, gate-publicacao-destino.cjs:150-154, gate-repo-alheio.cjs:128-132). Raio de impacto: a portaria intercepta TODO despacho de subagente, entao um stdin ruim negaria a regra 10 inteira na sessao. AVISO 3: folga de 3 B na catraca de nucleo, ja assumida no comentario. AVISO 4: parser de tools: e regex de linha unica, e lista de bloco YAML cai em deny por default (falha para o lado seguro, mas bloquearia agente read-only legitimo). SUGESTAO 5: as tres negacoes mais cedo nao chamam gravarDespacho, entao a classe de falha mais silenciosa nao deixa rastro no log. O revisor rodou as 12 baterias ele mesmo, numeros identicos, e rodou uma mutacao independente (negar do manifesto ausente -> exit 0): 28 ok / 2 falha, conferir-mutacao exit 0 — a bateria do nucleo sabe falhar. Nao achou bateria tautologica.",
+    "em": "2026-09-01",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
