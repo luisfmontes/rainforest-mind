@@ -19,7 +19,7 @@
     "em": "2026-08-31"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "tarefas": 9,
     "tarefas_ok": 9,
     "nota": "executar fechado: T1-T8 integradas com mutacoes re-rodadas na arvore; T9 docs pela sessao. Historia: 2 entregas rejeitadas por fabricacao de teste (T3: bateria que trava; T5/T6/T8: bateria de 4 linhas + subshell), tester achou defeito real no extrator de usage, integracao consertou 3 defeitos da T7.",
@@ -73,10 +73,23 @@
     "em": "2026-08-31",
     "catraca_mutacao": "2026-08-31",
     "comando": "baterias na arvore integrada + conferir-mutacao por tarefa",
-    "saida": "poda-dados 11/0, poda 15/0, poda-metricas 28/0, relatorio-poda 21/0, saude 48/0, config 38/0, poda-estagio 8/0, setup 49/0; mutacoes T1-T8 exit 0"
+    "saida": "poda-dados 11/0, poda 15/0, poda-metricas 28/0, relatorio-poda 21/0, saude 48/0, config 38/0, poda-estagio 8/0, setup 49/0; mutacoes T1-T8 exit 0",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-08-31"
+    }
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "fb867dc9d6751ceb62e34a835ca2c56c7206bf62",
+      "caminhos_sujos": []
+    },
+    "achados": 3,
+    "criticos": 1,
+    "nota": "(1) CRITICO reproduzido pelo revisor contra o servico real: headers do cliente passam intactos ao upstream INCLUINDO o Host (127.0.0.1:4141) — Cloudflare bloqueia com 403 antes da Anthropic; em producao toda requisicao via proxy falha. Nenhuma bateria exercita o vetor (fixtures locais nao validam Host). (2) creep: testa-saude-poda-only.sh orfao, duplicata dos R1-R4. (3) letra do invariante: require de stream (built-in) fora da lista enumerada. Emendas 10-11.",
+    "em": "2026-08-31",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"

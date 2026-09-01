@@ -168,3 +168,31 @@ pronto quando: a tabela de scripts do `README.md` (a partir da linha ~336) ganha
 - Que o formato dos eventos SSE da Anthropic (`message_start`, `message_delta` com `usage` incremental) não muda durante o ciclo desta fase — é o formato documentado hoje; mudança de formato cai no mesmo guarda-chuva do Risco 5 (nunca derruba a requisição, só para de extrair métrica).
 - Que `git bash`/`mktemp -d` seguem disponíveis nas baterias novas, como em todas as `testa-*.sh` existentes.
 - Que o `.github/workflows/baterias.yml` (citado no `README.md:591-594`) já roda `scripts/testa-*.sh` e `hooks/testa-*.sh` por convenção de nome — as baterias novas (`testa-poda*.sh`) entram na esteira de CI sem wiring adicional.
+
+## Emendas da revisão (2026-08-31)
+
+Nota de invariante: a lista de requires permitidos passa a incluir `stream`
+(built-in do Node, usado no tap de cópia do SSE) — o espírito "zero dependência
+npm" está mantido; a enumeração original só esqueceu o módulo.
+
+### 10. Header Host reescrito para o upstream — o proxy funciona contra a API real [tipo: implementar]
+atende: invariante "resposta nunca alterada" no caso REAL (achado 1 da revisão: Host do cliente vaza e a borda Cloudflare devolve 403)
+arquivos: `scripts/poda.cjs`, `scripts/testa-poda.sh`
+depende de: nenhuma
+paralela: nao
+mutacao:
+  arquivo: `scripts/poda.cjs`
+  de: a reescrita do header Host para o host do upstream
+  para: headers do cliente repassados intactos (Host inclusive)
+  bateria: `bash scripts/testa-poda.sh`
+  fixture: caso novo "Host recebido pelo upstream e o do upstream, nao o do cliente"
+pronto quando: os headers repassados ao upstream têm `host` = host[:porta] da URL de upstream (default `api.anthropic.com`), com TODOS os demais headers (auth incluso) intactos; caso novo na bateria com fixture que LOGA o Host recebido e o compara ao host do fixture — nunca ao `127.0.0.1:<porta-do-proxy>` que o cliente mandou
+
+### 11. Remove a bateria órfã da T7 [tipo: limpeza]
+atende: achado 2 da revisão (creep)
+arquivos: `scripts/testa-saude-poda-only.sh`
+depende de: nenhuma
+paralela: sim
+mutacao: n/a
+  motivo: remoção de arquivo duplicado; a prova é o arquivo ausente e os casos R1-R4 continuarem verdes em testa-saude.sh
+pronto quando: o arquivo não existe mais e `bash scripts/testa-saude.sh` continua 100% verde
