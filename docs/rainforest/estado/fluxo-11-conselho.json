@@ -30,13 +30,13 @@
     "em": "2026-08-31"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-08-31",
-    "tarefas_ok": 12,
-    "tarefas": 12,
-    "em": "2026-08-31",
+    "tarefas_ok": 13,
+    "tarefas": 13,
+    "em": "2026-09-01",
     "comando": "bash scripts/testa-conselho.sh && bash scripts/testa-saude.sh",
-    "saida": "total=74 vermelhas:[0] (exit 0); == resultado: 46 ok, 0 falha(s) == (exit 0)",
+    "saida": "total=81 vermelhas:[0] (exit 0); == resultado: 46 ok, 0 falha(s) == (exit 0)",
     "mutacao": [
       {
         "tarefa": 1,
@@ -97,12 +97,13 @@
         "tarefa": 12,
         "resultado": "vermelho",
         "fixture": "retry-seletivo-so-reexecuta-um (CASO 26, sentinela)"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "revisar-membro-retry (CASO 28)"
       }
-    ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-08-31"
-    }
+    ]
   },
   "revisar": {
     "status": "reprovado",
