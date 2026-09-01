@@ -1597,6 +1597,68 @@ else
 fi
 echo ""
 
+echo "== CASO 28: revisar-membro-retry (mapa reusado, pacote completo) =="
+TEMPDIR28="$RAIZ/test-revisar-membro"
+mkdir -p "$TEMPDIR28/.rainforest/conselho"
+FO28="$SRC_M/scripts/fixtures/conselho/membro-ok.cjs"
+FR28="$SRC_M/scripts/fixtures/conselho/membro-revisor-ok.cjs"
+cat > "$TEMPDIR28/.rainforest/conselho/membros.json" << EOF28
+{
+  "membros": [
+    {"nome": "cetico", "cmd": "node \"$FO28\" {prompt} {saida}", "ligado": true},
+    {"nome": "arquiteto", "cmd": "node \"$FO28\" {prompt} {saida}", "ligado": true},
+    {"nome": "usuario-final", "cmd": "node \"$FO28\" {prompt} {saida}", "ligado": true}
+  ]
+}
+EOF28
+echo "# Retry fase 2" > "$TEMPDIR28/q28.md"
+RODA28() { bash -c "cd '$TEMPDIR28' && RFM_ESTADO_ROOT='$TEMPDIR28' node '$CONSELHO' $1"; }
+RODA28 "abrir --questao q28.md" > /dev/null 2>&1
+RODA28 "pareceres" > /dev/null 2>&1
+node -e "const fs=require('fs');const p='$TEMPDIR28/.rainforest/conselho/membros.json';const j=JSON.parse(fs.readFileSync(p,'utf8'));j.membros.forEach(m=>m.cmd='node \"$FR28\" {prompt} {saida}');fs.writeFileSync(p,JSON.stringify(j,null,2));"
+RODA28 "revisar" > /dev/null 2>&1
+R28=$(ls -1d "$TEMPDIR28/.rainforest/conselho/202"* | head -1)
+MAPA_ANTES=$(cat "$R28/mapa-anonimato.json")
+rm -f "$R28/fase2/revisao-arquiteto.json"
+testa "revisar --membro arquiteto (retry)" "0" bash -c "cd '$TEMPDIR28' && RFM_ESTADO_ROOT='$TEMPDIR28' node '$CONSELHO' revisar --membro arquiteto"
+if [ "$(cat "$R28/mapa-anonimato.json")" = "$MAPA_ANTES" ]; then
+  ok=$((ok + 1)); echo "  ok   mapa de anonimato intacto no retry (3 entradas)"
+else
+  falhou=$((falhou + 1)); echo "  FALHA retry reescreveu o mapa: $(cat "$R28/mapa-anonimato.json")"
+fi
+if node -e "const j=require('$R28/fase2/pacote-prompt-arquiteto.json');process.exit(j.pareceres.length===2?0:1)"; then
+  ok=$((ok + 1)); echo "  ok   pacote do retry tem os 2 pareceres alheios"
+else
+  falhou=$((falhou + 1)); echo "  FALHA pacote do retry: $(node -e "console.log(require('$R28/fase2/pacote-prompt-arquiteto.json').pareceres.length)") pareceres"
+fi
+testa "portao da revisao fecha apos retry" "0" bash -c "cd '$TEMPDIR28' && RFM_ESTADO_ROOT='$TEMPDIR28' node '$CONSELHO' conferir --fase revisao"
+echo ""
+
+echo "== CASO 29: aspas-ja-presentes no cmd do dev =="
+TEMPDIR29="$RAIZ/test-aspas-presentes"
+mkdir -p "$TEMPDIR29/.rainforest/conselho"
+FO29="$SRC_M/scripts/fixtures/conselho/membro-ok.cjs"
+cat > "$TEMPDIR29/.rainforest/conselho/membros.json" << EOF29
+{
+  "membros": [
+    {"nome": "cetico", "cmd": "node \"$FO29\" \"{prompt}\" \"{saida}\"", "ligado": true},
+    {"nome": "arquiteto", "cmd": "node \"$FO29\" \"{prompt}\" \"{saida}\"", "ligado": true},
+    {"nome": "usuario-final", "cmd": "node \"$FO29\" \"{prompt}\" \"{saida}\"", "ligado": true}
+  ]
+}
+EOF29
+echo "# Aspas presentes" > "$TEMPDIR29/q29.md"
+testa "aspas-ja-presentes: abrir" "0" bash -c "cd '$TEMPDIR29' && RFM_ESTADO_ROOT='$TEMPDIR29' node '$CONSELHO' abrir --questao q29.md"
+testa "aspas-ja-presentes: pareceres sem aspas duplicadas" "0" bash -c "cd '$TEMPDIR29' && RFM_ESTADO_ROOT='$TEMPDIR29' node '$CONSELHO' pareceres"
+R29=$(ls -1d "$TEMPDIR29/.rainforest/conselho/202"* | head -1)
+N29=$(ls "$R29"/parecer-*.json 2>/dev/null | wc -l)
+if [ "$N29" = "3" ]; then
+  ok=$((ok + 1)); echo "  ok   3 pareceres com cmd ja-aspado"
+else
+  falhou=$((falhou + 1)); echo "  FALHA $N29 pareceres com cmd ja-aspado"
+fi
+echo ""
+
 echo "== Resultado =="
 echo "total=$((ok + falhou)) vermelhas:[$falhou]"
 if [ "$falhou" -gt 0 ]; then
