@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Membro fixture para testes — trava além do timeout.
- * Uso: node membro-que-trava-e-cortado.cjs <prompt> <saida>
+ * Revisor fixture para testes — trava além do timeout.
+ * Uso: node membro-revisor-que-trava-e-cortado.cjs <prompt> <saida>
  *
  * Dorme por 5 segundos (5000ms), destinado a ser usado com timeout curto (100ms)
  * ou timeout folgado (10000ms) em testes de timeout.
@@ -15,7 +15,7 @@ const fs = require('fs');
 function main() {
   const args = process.argv.slice(2);
   if (args.length !== 2) {
-    console.error('Uso: membro-que-trava-e-cortado.cjs <prompt> <saida>');
+    console.error('Uso: membro-revisor-que-trava-e-cortado.cjs <prompt> <saida>');
     process.exit(1);
   }
 
@@ -32,17 +32,16 @@ function main() {
     // This allows the timeout mechanism to interrupt if the timeout is shorter
     setTimeout(() => {
       // After sleep completes, write valid output and exit 0
-      const parecer = {
-        posicao: 'Parecer após timeout delay.',
-        argumentos: [
-          'Argumento 1',
-          'Argumento 2'
-        ],
-        objecoes: [],
-        riscos: []
+      const revisao = {
+        aceita: true,
+        justificativa: 'Revisão após timeout delay.',
+        sugestoes: [
+          'Sugestão 1',
+          'Sugestão 2'
+        ]
       };
 
-      fs.writeFileSync(caminhoSaida, JSON.stringify(parecer, null, 2) + '\n', 'utf8');
+      fs.writeFileSync(caminhoSaida, JSON.stringify(revisao, null, 2) + '\n', 'utf8');
       process.exit(0);
     }, 5000);
   } catch (err) {
