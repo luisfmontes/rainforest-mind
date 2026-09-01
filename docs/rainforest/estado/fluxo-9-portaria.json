@@ -42,7 +42,7 @@
       "escreve-false": "Q2 fechada pelo Luis em 2026-09-01 (recomendado): escreve:false continua como DECLARACAO, com a lacuna nomeada. Medido: nenhum dos nove agents/*.md declara tools:, entao a checagem 3 do lint nunca dispara contra os agentes reais. Por tools: Read,Grep,Glob nos tres admitidos foi recusado — o revisor precisa de Bash para reproduzir achado (regra 12). Divida escrita em references/regra-10.md."
     },
     "comando": "node hooks/testa-portaria-nucleo.cjs; node hooks/testa-portaria-captura.cjs; node hooks/testa-portaria-lint.cjs; node hooks/testa-portaria-portoes.cjs; node hooks/testa-portaria-gitignore.cjs; node hooks/testa-portaria-tools-bloco.cjs; node hooks/testa-estagio-ativo.cjs; bash scripts/testa-saude.sh; bash hooks/testa-contexto-sessao.sh; node hooks/portaria.cjs --lint",
-    "saida": "rodada 5, arvore integrada, 13 baterias: nucleo 39 | captura 12 | lint 14 | portoes P1..P5 OK | gitignore 9 | tools-bloco 23 | estagio-ativo 7/7 | saude 56 | contexto-sessao 277 | conferir-fluxo 41 | orcamento 29 | ponte 60 | estado 137 — todas 0 falha, exit 0 sem pipe; portaria --lint exit 0 (6 avisos, 0 erro)",
+    "saida": "rodada 6, arvore integrada: nucleo 45 | captura 12 | lint 26 | portoes P1..P5 OK | gitignore 9 | tools-bloco 23 | estagio-ativo 7/7 | saude 56 | contexto-sessao 277 | estado 137 | conferir-fluxo 41 — todas 0 falha, exit 0 sem pipe; portaria --lint exit 0 (6 avisos, 0 erro)",
     "mutacao": [
       {
         "tarefa": 1,
@@ -98,14 +98,13 @@
       "caminhos_sujos": []
     },
     "base": "b9a3bed03e6e681c347220828d6af750426bc3d5",
-    "head": "18c59fcc3859c93cabee037f401feb68fcabd594",
+    "head": "bdc229ce360cd397e7b995a3af252bbdedb5372b",
     "achados": 3,
-    "criticos": 2,
-    "revisor": "rainforest-mind:revisor, contexto zerado, rodada 4, 2026-09-01",
-    "nota": "REPROVADO na rodada 4 com 2 criticos e 1 aviso, os dois criticos REPRODUZIDOS na janela principal. A rodada foi redirecionada de proposito para os pontos frios (estagio-ativo.cjs e as baterias sem mutacao independente), e foi la que os achados sairam. CRITICO 1: testa-portaria-gitignore.cjs media o INDICE do git, nao a regra — check-ignore ignora o .gitignore para caminho ja rastreado, e os quatro caminhos da checagem 2 estao commitados, entao ela passava sozinha; trocar a regra pela larga (.rainforest/portaria/) deixava a bateria 9 ok / 0 falha. Conserto: --no-index; duas mutacoes agora exit 0 (6/3 e 7/2). CRITICO 2: escreve:false sem arquivo do agente era allow MUDO, indistinguivel de allow conferido, e o --lint acusava erro no mesmo manifesto (divergencia lint x runtime). Conserto nao e negar (repo consumidor do plugin nao tem agents/ local, negar quebraria a portaria fora deste repo): a linha de allow passa a trazer escreve_conferido:false quando a checagem nao pode ser feita. Duas mutacoes exit 0 (37/2 e 37/2). AVISO: estado_exports em estagio-ativo.cjs e carregado e nunca usado, e o comentario promete usar a logica oficial do estado.cjs que na verdade e reimplementada local — divida silenciosa, nao exploracao. NAO consertado nesta rodada, fica registrado. A divida do escreve:false em references passou a cobrir as DUAS portas. O texto estourou o teto de bytes do reference (11249 > 10500) e o arquivo foi PARTIDO como a regra 12 ja tinha sido: references/regra-10-portaria.md leva o mecanismo, regra-10.md fica com a regra e um ponteiro.",
+    "criticos": 1,
+    "revisor": "rainforest-mind:revisor, contexto zerado, rodada 5, 2026-09-01",
+    "nota": "REPROVADO na rodada 5 com 1 critico e 2 avisos, todos reproduzidos na janela principal e todos consertados. CRITICO: escreve === false e igualdade estrita, entao \"escreve\": \"false\" (string) e escreve AUSENTE desligavam a checagem de escrita inteira e liberavam agente que declarava tools: Write, Edit, Bash — com a linha de log sem a marca escreve_conferido, byte a byte igual a um allow conferido. Reabria o allow-que-mentia da rodada 4 por outra porta, e sem a marca que tornava aquela auditavel; o --lint tambem saia 0. Conserto: escreve nao-booleano nega no runtime e e erro no lint; escreve:true tambem nega, porque depende do worktree por filho, que nao existe. AVISO 2: o fallback local do resolver era copia byte-identica do estado.cjs coberta por teste nenhum (sabotar so a copia deixava a bateria verde) — REMOVIDO em vez de consertado, e agora sabotar o FECHADO do estado.cjs derruba a bateria do resolver. AVISO 3: o --lint nao via a forma de estagios e divergia do runtime; agora ausente/nao-lista/vazio e erro e lista so com estagio inalcancavel e aviso. Quatro catracas de mutacao pelo conferir-mutacao.cjs, todas exit 0. Onde o revisor procurou e NAO achou: mutou estagio-ativo.cjs pela primeira vez (tres mutacoes pegaram), mutou a idempotencia da amostra em captura (pegou), tracou o caminho principal de main() atras de excecao nao tratada alcancavel (nao ha), e procurou sequencia de despachos que produzisse allow que checagem isolada negaria (nao ha — a decisao e sem estado entre despachos).",
     "em": "2026-09-01",
-    "tentativas": 4,
-    "liberado_em": "2026-09-01"
+    "tentativas": 5
   },
   "verificar": {
     "status": "pendente"
