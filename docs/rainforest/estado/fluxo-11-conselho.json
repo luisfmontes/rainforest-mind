@@ -125,7 +125,10 @@
     "veredito": "APROVADO na rodada 3; revisor reproduziu o cenario do critico contra o codigo pre-conserto e viu o vermelho real"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "pass manual T1-T6 em sandbox (abrir/pareceres/conferir/revisar/sintetizar/setup-chave/saude) + bash scripts/testa-conselho.sh + bash scripts/testa-saude.sh",
+    "saida": "T1a exit=1 listando ligados; T2a/b exit=0; T2c exit=1 citando membros; T3a exit=0; grep identidade exit=1; T5a/T4a/T5b exit=0 com 4 campos e fases {pareceres:ok,revisao:ok,sintese:ok}; T6a codex entra com chave (4 membros); T6b saude mudo em rodada concluida; total=81 vermelhas:[0] exit 0; 46 ok 0 falhas exit 0; relatorio T9 com sintese real de 5 posicoes anexada",
+    "em": "2026-09-01"
   },
   "fechar": {
     "status": "pendente"
