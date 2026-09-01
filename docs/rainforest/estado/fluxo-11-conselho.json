@@ -32,11 +32,12 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-08-31",
-    "tarefas_ok": 6,
+    "tarefas_ok": 7,
     "tarefas": 9,
     "em": "2026-08-31",
     "pendentes": [
-      "achado-para-revisar: mutacao mais dura que a do plano (matar so a comparacao de media, mantendo desempate) deixa a bateria verde — fixture do caso agregacao-conhecida nao separa media de primeiros-lugares"
+      "achado-para-revisar: string de uso de conselho.cjs nao lista o subcomando pareceres",
+      "achado-para-revisar: fixture agregacao-conhecida nao separa media de desempate (T8 em curso deve fechar)"
     ]
   },
   "revisar": {
