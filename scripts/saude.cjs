@@ -1071,7 +1071,7 @@ function checarPoda(o = {}) {
     try {
       const r = spawnSync(process.execPath, ['-e', `
         const net = require('net');
-        const s = net.connect({ host: '127.0.0.1', port: ${Number(pidInfo.port)} }, () => {
+        const s = net.connect({ host: '127.0.0.1', port: ${Number(pidInfo.porta)} }, () => {
           s.destroy();
           process.exit(0);
         });
@@ -1089,18 +1089,16 @@ function checarPoda(o = {}) {
 
   if (!responde) {
     // Porta não responde — aviso, não alerta (mesma filosofia de claude-mem)
-    return aviso('poda', `porta ${pidInfo.port} não responde`,
+    return aviso('poda', `porta ${pidInfo.porta} não responde`,
       'o processo pode estar travado; verifique com: node scripts/poda.cjs status');
   }
 
   // Porta responde — agora conferir se ANTHROPIC_BASE_URL aponta pra ela
   const anthropicUrl = process.env.ANTHROPIC_BASE_URL || '';
-  const portaEsperada = portaPadrao();
-  const urlEsperada = `http://127.0.0.1:${pidInfo.port}`;
 
-  if (!anthropicUrl.includes(`127.0.0.1:${pidInfo.port}`) && !anthropicUrl.includes(`localhost:${pidInfo.port}`)) {
+  if (!anthropicUrl.includes(`127.0.0.1:${pidInfo.porta}`) && !anthropicUrl.includes(`localhost:${pidInfo.porta}`)) {
     // Porta está de pé, mas a env var não aponta pra ela
-    return aviso('poda', `porta ${pidInfo.port} responde, mas ANTHROPIC_BASE_URL não aponta para ela`,
+    return aviso('poda', `porta ${pidInfo.porta} responde, mas ANTHROPIC_BASE_URL não aponta para ela`,
       'as requisições desta sessão não passam pelo proxy');
   }
 
@@ -1116,7 +1114,7 @@ function checarPoda(o = {}) {
     }
   }
 
-  ok('poda', `porta ${pidInfo.port} responde, ${requisicoes} requisição(ões) registrada(s)`);
+  ok('poda', `porta ${pidInfo.porta} responde, ${requisicoes} requisição(ões) registrada(s)`);
 }
 
 // ---------------------------------------------------------------- saida
