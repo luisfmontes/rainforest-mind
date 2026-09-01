@@ -29,7 +29,7 @@
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "injecao-sem-declaracao-de-teste-e-ignorada"
+        "fixture": "injecao-codex-sem-declaracao-de-teste-e-ignorada"
       },
       {
         "tarefa": 3,
@@ -44,7 +44,7 @@
       {
         "tarefa": 5,
         "resultado": "vermelho",
-        "fixture": "divergencia-fora-de-repo-recusa"
+        "fixture": "divergencia-de-dentro-de-worktree-grava-no-principal"
       },
       {
         "tarefa": 6,
@@ -55,13 +55,13 @@
     "em": "2026-09-01",
     "catraca_mutacao": "2026-09-01",
     "comando": "bash scripts/testa-cli-externo.sh; bash scripts/testa-segunda-opiniao.sh; bash scripts/testa-conselho.sh",
-    "saida": "ok: 9 falhou: 0 | Ok: 20 Falhou: 0 | total=93 vermelhas:[0]"
+    "saida": "ok: 9 falhou: 0 | Ok: 21 Falhou: 0 | total=105 vermelhas:[0]"
   },
   "revisar": {
     "status": "reprovado",
-    "achados": 5,
+    "achados": 3,
     "em": "2026-09-01",
-    "tentativas": 1
+    "tentativas": 2
   },
   "verificar": {
     "status": "pendente"
