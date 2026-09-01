@@ -1348,10 +1348,10 @@ echo "# Teste com credencial" > "$TEMPDIR21b/prompt.md"
 # Mesma fixture, mesma variável de ambiente injetada
 export CONSELHO_CMD_GEMINI="node \"$SRC_M/scripts/fixtures/conselho/membro-gemini-fake.cjs\" {prompt} {saida}"
 
-# Rodar COM GEMINI_API_KEY definida (valor fake)
+# Rodar COM GEMINI_API_KEY definida (valor fake) e RFM_TEST=1 para usar injeção
 # Deve sair com exit 0 e CRIAR arquivo de saída
 # Export a variável para que bash -c a veja
-SAIDA_DEBUG=$(bash -c "cd '$TEMPDIR21b' && GEMINI_API_KEY='fake-key-for-testing' node '$CONSELHO' adaptador-gemini prompt.md saida.json" 2>&1)
+SAIDA_DEBUG=$(bash -c "cd '$TEMPDIR21b' && RFM_TEST=1 GEMINI_API_KEY='fake-key-for-testing' node '$CONSELHO' adaptador-gemini prompt.md saida.json" 2>&1)
 EXIT_DEBUG=$?
 
 if [ "$EXIT_DEBUG" = "0" ]; then
@@ -1795,6 +1795,59 @@ EOF31
 testa "timeout-revisao: revisar sai com exit 1 (cortado por timeout)" "1" bash -c "cd '$TEMPDIR31' && CONSELHO_TIMEOUT_MS=100 RFM_ESTADO_ROOT='$TEMPDIR31' node '$CONSELHO' revisar"
 # Executa revisar com timeout folgado (10000ms) — deve suceder
 testa "timeout-revisao: revisar sai com exit 0 (completa)" "0" bash -c "cd '$TEMPDIR31' && CONSELHO_TIMEOUT_MS=10000 RFM_ESTADO_ROOT='$TEMPDIR31' node '$CONSELHO' revisar"
+echo ""
+echo "== CASO 32: injecao-sem-declaracao-de-teste-e-ignorada =="
+TEMPDIR32="$RAIZ/test-injecao-sem-teste"
+mkdir -p "$TEMPDIR32"
+
+# Create prompt file for gemini adapter
+echo "# Prompt de teste" > "$TEMPDIR32/prompt.md"
+SAIDA32="$TEMPDIR32/saida.json"
+
+FIXTURE_MARCA="$SRC_M/scripts/fixtures/conselho/membro-marca-injecao.cjs"
+
+# Test: CONSELHO_CMD_GEMINI defined but WITHOUT RFM_TEST — should be IGNORED
+# Expected: Command fails because it tries to run real 'gemini' CLI (which doesn't exist)
+# NOT expected: The fixture marked file is created (which would prove injection was used)
+saida32=$( \
+  cd "$TEMPDIR32" && \
+  env -i \
+    PATH="$PATH" \
+    GEMINI_API_KEY="dummy-key-for-test" \
+    CONSELHO_CMD_GEMINI="node \"$FIXTURE_MARCA\" {prompt} {saida}" \
+    node "$CONSELHO" adaptador-gemini "$TEMPDIR32/prompt.md" "$SAIDA32" \
+  2>&1
+)
+exit32=$?
+
+# Should fail because tries to run 'gemini' (doesn't exist), not because fixture was called
+if [ "$exit32" != "0" ]; then
+  ok=$((ok + 1))
+  echo "  ok   injecao-sem-declaracao: falha esperada (exit $exit32)"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA injecao-sem-declaracao: deveria ter falhado"
+fi
+
+# Verify that the injection was NOT used (marker file should NOT exist)
+if [ ! -f "$TEMPDIR32/.marca-injecao-usada" ]; then
+  ok=$((ok + 1))
+  echo "  ok   injecao-sem-declaracao: injecao foi ignorada (sem marca)"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA injecao-sem-declaracao: injecao foi usada (marca existe)"
+fi
+
+# Verify that stderr does NOT contain injection message
+if ! echo "$saida32" | grep -q "Usando comando injetado"; then
+  ok=$((ok + 1))
+  echo "  ok   injecao-sem-declaracao: stderr sem mensagem de injeção"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA injecao-sem-declaracao: stderr contém mensagem de injeção"
+  echo "$saida32" | sed 's/^/         /' | head -10
+fi
+
 echo ""
 
 echo "total=$((ok + falhou)) vermelhas:[$falhou]"

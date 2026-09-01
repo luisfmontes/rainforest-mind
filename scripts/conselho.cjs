@@ -20,7 +20,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync, execSync } = require('child_process');
 const { resolverConfig } = require('../hooks/lib/config.cjs');
-const { rodarCli, extrairJson } = require('../hooks/lib/cli-externo.cjs');
+const { rodarCli } = require('../hooks/lib/cli-externo.cjs');
 
 // Raiz do projeto
 const RAIZ = process.env.RFM_ESTADO_ROOT
@@ -1183,15 +1183,16 @@ function adaptadorCodex() {
     process.exit(1);
   }
 
-  // Usa comando injetado se definido (CONSELHO_CMD_CODEX), senão padrão.
+  // Usa comando injetado se definido (CONSELHO_CMD_CODEX) E em modo de teste (RFM_TEST=1), senão padrão.
   // Em testes, injetar uma fixture para não chamar o binário real.
   // Se injetado, substitui placeholders {prompt} e {saida}.
-  let cmd = process.env.CONSELHO_CMD_CODEX
-    || 'codex exec -s read-only --skip-git-repo-check';
-
-  // Substituir placeholders se fixture injetada
-  if (process.env.CONSELHO_CMD_CODEX) {
+  let cmd;
+  if (process.env.RFM_TEST === '1' && process.env.CONSELHO_CMD_CODEX) {
+    cmd = process.env.CONSELHO_CMD_CODEX;
+    console.error('[adaptador-codex] Usando comando injetado via CONSELHO_CMD_CODEX (modo teste)');
     cmd = cmd.replace('{prompt}', `"${prompt}"`).replace('{saida}', `"${saida}"`);
+  } else {
+    cmd = 'codex exec -s read-only --skip-git-repo-check';
   }
 
   // Executa CLI via lib
@@ -1212,9 +1213,13 @@ function adaptadorCodex() {
   }
 
   // Extrai JSON
-  const parecer = extrairJson(resultado.stdout);
-  if (!parecer) {
-    console.error('adaptador-codex: JSON inválido');
+  let parecer;
+  try {
+    const match = resultado.stdout.match(/```json\s*([\s\S]*?)\s*```/) || resultado.stdout.match(/({[\s\S]*})/);
+    const json = match ? match[1] : resultado.stdout;
+    parecer = JSON.parse(json);
+  } catch (e) {
+    console.error(`adaptador-codex: JSON inválido: ${e.message}`);
     process.exit(1);
   }
 
@@ -1263,15 +1268,16 @@ function adaptadorGemini() {
     process.exit(1);
   }
 
-  // Usa comando injetado se definido (CONSELHO_CMD_GEMINI), senão padrão.
+  // Usa comando injetado se definido (CONSELHO_CMD_GEMINI) E em modo de teste (RFM_TEST=1), senão padrão.
   // Em testes, injetar uma fixture para não chamar o binário real.
   // Se injetado, substitui placeholders {prompt} e {saida}.
-  let cmd = process.env.CONSELHO_CMD_GEMINI
-    || 'gemini -m gemini-3.7-flash --skip-trust --approval-mode plan';
-
-  // Substituir placeholders se fixture injetada
-  if (process.env.CONSELHO_CMD_GEMINI) {
+  let cmd;
+  if (process.env.RFM_TEST === '1' && process.env.CONSELHO_CMD_GEMINI) {
+    cmd = process.env.CONSELHO_CMD_GEMINI;
+    console.error('[adaptador-gemini] Usando comando injetado via CONSELHO_CMD_GEMINI (modo teste)');
     cmd = cmd.replace('{prompt}', `"${prompt}"`).replace('{saida}', `"${saida}"`);
+  } else {
+    cmd = 'gemini -m gemini-3.7-flash --skip-trust --approval-mode plan';
   }
 
   // Executa CLI via lib, passando o environment
@@ -1293,9 +1299,13 @@ function adaptadorGemini() {
   }
 
   // Extrai JSON
-  const parecer = extrairJson(resultado.stdout);
-  if (!parecer) {
-    console.error('adaptador-gemini: JSON inválido');
+  let parecer;
+  try {
+    const match = resultado.stdout.match(/```json\s*([\s\S]*?)\s*```/) || resultado.stdout.match(/({[\s\S]*})/);
+    const json = match ? match[1] : resultado.stdout;
+    parecer = JSON.parse(json);
+  } catch (e) {
+    console.error(`adaptador-gemini: JSON inválido: ${e.message}`);
     process.exit(1);
   }
 
