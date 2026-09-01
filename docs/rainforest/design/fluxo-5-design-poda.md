@@ -100,3 +100,9 @@ Comprime apenas `tool_result` **novos** (último turno), uma vez, e o resultado 
 ## Ordem na fila
 
 Depois dos fluxos 1–4. Fase 0 é pequena e isolada — candidata a entrar num domingo junto com outro fluxo; fases 1 e 2 só com o relatório de evidência em mãos.
+
+---
+
+**Status (2026-08-31):** fase 0 entregue — plano em
+`docs/rainforest/planos/2026-08-31-fluxo-5-fase-0-poda.md`. Fases 1 e 2 seguem
+aguardando o relatório de 7 dias do `scripts/relatorio-poda.cjs`.

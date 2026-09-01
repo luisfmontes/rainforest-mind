@@ -3,6 +3,9 @@ description: Leva as regras para um repositório que outra pessoa usa com Codex 
 argument-hint: [caminho do repo — vazio para o repo atual]
 ---
 
+Carregue `Skill(ponte)` para a jornada com entrevista (varredura + 4 perguntas),
+ou rode diretamente para a clássica (só a ponte).
+
 Gera a **ponte** para outro agente — `CLAUDE.md` (Claude Code sem o plugin),
 `AGENTS.md` (Codex) ou `GEMINI.md` (Gemini CLI) —, a partir do mesmo
 `skills/rainforest-mind/SKILL.md` que o hook de abertura injeta no Claude Code.
