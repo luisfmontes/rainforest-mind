@@ -927,6 +927,21 @@ fi
 rm -f "$SBP/cfg/plugins/installed_plugins.json"
 
 echo ""
+echo "== conselho: rodada-concluida-sem-aviso =="
+SB_CONS_COMPLETA="$(mktemp -d)"
+trap "rm -rf '$SB_CONS_COMPLETA'" RETURN
+mkdir -p "$SB_CONS_COMPLETA/.rainforest/conselho/20260831-completa"
+cat > "$SB_CONS_COMPLETA/.rainforest/conselho/20260831-completa/estado.json" <<'EOF'
+{"id": "20260831-completa", "fases": {"pareceres": {"status": "pendente"}, "revisao": {"status": "pendente"}, "sintese": {"status": "pendente"}}}
+EOF
+SAUDE_OUT_COMPLETA="$(cd "$SB_CONS_COMPLETA" && node "$SRC/scripts/saude.cjs" 2>&1 || true)"
+if echo "$SAUDE_OUT_COMPLETA" | grep -q "parada na fase pareceres"; then
+  ok=$((ok+1)); echo "  ok   rodada pendente é acusada como parada"
+else
+  falhou=$((falhou+1)); echo "  FALHA rodada com status pendente não foi acusada como parada"
+fi
+
+echo ""
 echo "== conselho: seção ausente sem rodadas =="
 SB_CONS1="$(mktemp -d)"
 trap "rm -rf '$SB_CONS1'" RETURN

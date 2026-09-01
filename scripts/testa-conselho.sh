@@ -1476,6 +1476,80 @@ testa "cercado: pareceres com JSON em cerca fecham" "0"   bash -c "cd '$TEMPDIR2
 testa "cercado: conferir fase pareceres" "0"   bash -c "cd '$TEMPDIR24' && RFM_ESTADO_ROOT='$TEMPDIR24' node '$CONSELHO' conferir --fase pareceres"
 echo ""
 
+echo "== CASO 25: caminho-com-espaco =="
+TEMPDIR25="$RAIZ/pasta com espaco"
+mkdir -p "$TEMPDIR25/.rainforest/conselho"
+FIXTURE_ESPACO="$SRC_M/scripts/fixtures/conselho/membro-ok.cjs"
+cat > "$TEMPDIR25/.rainforest/conselho/membros.json" << EOF25
+{
+  "membros": [
+    {"nome": "cetico", "cmd": "node \"$FIXTURE_ESPACO\" {prompt} {saida}", "ligado": true},
+    {"nome": "arquiteto", "cmd": "node \"$FIXTURE_ESPACO\" {prompt} {saida}", "ligado": true},
+    {"nome": "usuario-final", "cmd": "node \"$FIXTURE_ESPACO\" {prompt} {saida}", "ligado": true}
+  ]
+}
+EOF25
+echo "# Questão com espaço no path" > "$TEMPDIR25/questao-espaco.md"
+testa "caminho-com-espaco: abrir" "0" bash -c "cd '$TEMPDIR25' && RFM_ESTADO_ROOT='$TEMPDIR25' node '$CONSELHO' abrir --questao questao-espaco.md"
+testa "caminho-com-espaco: pareceres" "0" bash -c "cd '$TEMPDIR25' && RFM_ESTADO_ROOT='$TEMPDIR25' node '$CONSELHO' pareceres"
+RODADA_DIR25=$(ls -1d "$TEMPDIR25/.rainforest/conselho"/202* 2>/dev/null | head -1)
+if [ -n "$RODADA_DIR25" ]; then
+  PARECER_COUNT25=$(ls -1 "$RODADA_DIR25/parecer-"*.json 2>/dev/null | wc -l)
+  if [ "$PARECER_COUNT25" -eq 3 ]; then
+    ok=$((ok + 1))
+    echo "  ok   3 pareceres criados com sucesso"
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA pareceres: $PARECER_COUNT25, esperava 3"
+  fi
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA rodada não encontrada"
+fi
+
+echo ""
+echo "== CASO 26: retry-seletivo-so-reexecuta-um =="
+TEMPDIR26="$RAIZ/test-retry-seletivo"
+mkdir -p "$TEMPDIR26/.rainforest/conselho"
+FIXTURE_RET="$SRC_M/scripts/fixtures/conselho/membro-ok.cjs"
+cat > "$TEMPDIR26/.rainforest/conselho/membros.json" << EOF26
+{
+  "membros": [
+    {"nome": "cetico", "cmd": "node \"$FIXTURE_RET\" {prompt} {saida}", "ligado": true},
+    {"nome": "arquiteto", "cmd": "node \"$FIXTURE_RET\" {prompt} {saida}", "ligado": true},
+    {"nome": "usuario-final", "cmd": "node \"$FIXTURE_RET\" {prompt} {saida}", "ligado": true}
+  ]
+}
+EOF26
+echo "# Questão para retry" > "$TEMPDIR26/questao-retry.md"
+testa "retry-seletivo: abrir" "0" bash -c "cd '$TEMPDIR26' && RFM_ESTADO_ROOT='$TEMPDIR26' node '$CONSELHO' abrir --questao questao-retry.md"
+testa "retry-seletivo: pareceres completo" "0" bash -c "cd '$TEMPDIR26' && RFM_ESTADO_ROOT='$TEMPDIR26' node '$CONSELHO' pareceres"
+testa "retry-seletivo: conferir fase" "0" bash -c "cd '$TEMPDIR26' && RFM_ESTADO_ROOT='$TEMPDIR26' node '$CONSELHO' conferir --fase pareceres"
+RODADA_DIR26=$(ls -1d "$TEMPDIR26/.rainforest/conselho"/202* 2>/dev/null | head -1)
+if [ -n "$RODADA_DIR26" ]; then
+  rm -f "$RODADA_DIR26/parecer-arquiteto.json"
+  testa "retry-seletivo: pareceres --membro arquiteto" "0" bash -c "cd '$TEMPDIR26' && RFM_ESTADO_ROOT='$TEMPDIR26' node '$CONSELHO' pareceres --membro arquiteto"
+  if [ -f "$RODADA_DIR26/parecer-arquiteto.json" ]; then
+    ok=$((ok + 1))
+    echo "  ok   parecer-arquiteto.json recriado"
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA parecer-arquiteto.json não foi recriado"
+  fi
+  INVALID_OUT=$(bash -c "cd '$TEMPDIR26' && RFM_ESTADO_ROOT='$TEMPDIR26' node '$CONSELHO' pareceres --membro invalido" 2>&1 || true)
+  if echo "$INVALID_OUT" | grep -q "Erro.*desconhecido"; then
+    ok=$((ok + 1))
+    echo "  ok   --membro inválido reprova com erro"
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA --membro inválido não reprovou corretamente"
+  fi
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA rodada não encontrada para retry"
+fi
+
+echo ""
 echo "== Resultado =="
 echo "total=$((ok + falhou)) vermelhas:[$falhou]"
 if [ "$falhou" -gt 0 ]; then
