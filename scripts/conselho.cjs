@@ -20,6 +20,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync, execSync } = require('child_process');
 const { resolverConfig } = require('../hooks/lib/config.cjs');
+const { rodarCli, extrairJson } = require('../hooks/lib/cli-externo.cjs');
 
 // Raiz do projeto
 const RAIZ = process.env.RFM_ESTADO_ROOT
@@ -397,24 +398,14 @@ function executarPareceres(args) {
       cmd = cmd.replace('{saida}', `"${caminhoSaida}"`);
     }
 
-    // Shell explicito por plataforma. No Windows, /d /s /c com o comando inteiro
-    // entre aspas externas + windowsVerbatimArguments: sem isso o Node re-escapa
-    // o argumento e o cmd.exe mutila qualquer cmd que contenha aspas (caminho
-    // de fixture entre aspas falhava com exit 1 em todos os membros).
-    const isWindows = process.platform === 'win32';
-    const spawnArgs = isWindows
-      ? ['cmd.exe', ['/d', '/s', '/c', `"${cmd}"`]]
-      : ['sh', ['-c', cmd]];
-
     // Execute command
-    const resultado = spawnSync(spawnArgs[0], spawnArgs[1], {
-      cwd: RAIZ,
-      encoding: 'utf8',
-      windowsVerbatimArguments: isWindows,
-      timeout: TIMEOUT_MEMBRO_MS  // por membro; CONSELHO_TIMEOUT_MS sobrepõe
+    const resultado = rodarCli({
+      cmd,
+      entrada: '',
+      timeoutMs: TIMEOUT_MEMBRO_MS  // por membro; CONSELHO_TIMEOUT_MS sobrepõe
     });
 
-    if (resultado.error) {
+    if (resultado.status === null) {
       temErro = true;
       erros.push(`${nomeMembro}: timeout ou erro de execução`);
       continue;
@@ -797,20 +788,14 @@ function executarRevisao(args) {
       cmd = cmd.replace('{saida}', `"${caminhoSaidaFase2}"`);
     }
 
-    const isWindows = process.platform === 'win32';
-    const spawnArgs = isWindows
-      ? ['cmd.exe', ['/d', '/s', '/c', `"${cmd}"`]]
-      : ['sh', ['-c', cmd]];
-
     // Execute command
-    const resultado = spawnSync(spawnArgs[0], spawnArgs[1], {
-      cwd: RAIZ,
-      encoding: 'utf8',
-      windowsVerbatimArguments: isWindows,
-      timeout: TIMEOUT_MEMBRO_MS
+    const resultado = rodarCli({
+      cmd,
+      entrada: '',
+      timeoutMs: TIMEOUT_MEMBRO_MS
     });
 
-    if (resultado.error) {
+    if (resultado.status === null) {
       temErro = true;
       erros.push(`${nomeMembro}: timeout ou erro de execução`);
       continue;
@@ -1167,10 +1152,14 @@ function parseArgs() {
 
 /**
  * Adaptador para Codex.
- * Executa: codex exec -s read-only --skip-git-repo-check "<prompt>"
- * stdin: fechado (spawn com stdio: ['ignore', ...])
- * Lê stdout, extrai JSON do parecer, valida, escreve em <saida>.
+ * Executa: codex exec -s read-only --skip-git-repo-check
+ * stdin: conteúdo do prompt (recebe via rodarCli)
+ * Lê stdout, extrai JSON do parecer, escreve em <saida>.
  * Falha: exit !== 0 SEM escrever <saida>
+ *
+ * Ponto de injeção (testes): CONSELHO_CMD_CODEX sobrescreve o comando padrão.
+ * Exemplo: CONSELHO_CMD_CODEX="node /caminho/fixture.cjs {prompt} {saida}"
+ * Em testes, injetar uma fixture para não chamar o binário real.
  */
 function adaptadorCodex() {
   const args = process.argv.slice(2);
@@ -1185,10 +1174,7 @@ function adaptadorCodex() {
     process.exit(1);
   }
 
-  // {prompt} é o CAMINHO do arquivo; o CLI recebe o CONTEÚDO via stdin —
-  // passar por argumento quebrava com aspas/quebras de linha no cmd.exe e
-  // mandava o path como pergunta (achado da T9). stdin fechado após a escrita
-  // também evita o travamento conhecido do codex exec com stdin aberto.
+  // Lê conteúdo do arquivo de prompt
   let conteudoPrompt;
   try {
     conteudoPrompt = fs.readFileSync(prompt, 'utf8');
@@ -1197,17 +1183,23 @@ function adaptadorCodex() {
     process.exit(1);
   }
 
-  const cmd = 'codex exec -s read-only --skip-git-repo-check';
-  const isWindows = process.platform === 'win32';
-  const spawnArgs = isWindows
-    ? ['cmd.exe', ['/d', '/s', '/c', `"${cmd}"`]]
-    : ['sh', ['-c', cmd]];
+  // Usa comando injetado se definido (CONSELHO_CMD_CODEX) E em modo de teste (RFM_TEST=1), senão padrão.
+  // Em testes, injetar uma fixture para não chamar o binário real.
+  // Se injetado, substitui placeholders {prompt} e {saida}.
+  let cmd;
+  if (process.env.RFM_TEST === '1' && process.env.CONSELHO_CMD_CODEX) {
+    cmd = process.env.CONSELHO_CMD_CODEX;
+    console.error('[adaptador-codex] Usando comando injetado via CONSELHO_CMD_CODEX (modo teste)');
+    cmd = cmd.replace('{prompt}', `"${prompt}"`).replace('{saida}', `"${saida}"`);
+  } else {
+    cmd = 'codex exec -s read-only --skip-git-repo-check';
+  }
 
-  const resultado = spawnSync(spawnArgs[0], spawnArgs[1], {
-    encoding: 'utf8',
-    input: conteudoPrompt,
-    windowsVerbatimArguments: isWindows,
-    timeout: TIMEOUT_MEMBRO_MS,
+  // Executa CLI via lib
+  const resultado = rodarCli({
+    cmd,
+    entrada: conteudoPrompt,
+    timeoutMs: TIMEOUT_MEMBRO_MS,
   });
 
   if (resultado.status !== 0) {
@@ -1215,36 +1207,35 @@ function adaptadorCodex() {
     process.exit(1);
   }
 
-  const stdout = resultado.stdout || '';
-  if (!stdout) {
+  if (!resultado.stdout) {
     console.error('adaptador-codex: saída vazia do CLI');
     process.exit(1);
   }
 
-  // Extrai JSON (tolerando ```json...```)
-  let parecer;
-  try {
-    const match = stdout.match(/```json\s*([\s\S]*?)\s*```/) || stdout.match(/({[\s\S]*})/);
-    const json = match ? match[1] : stdout;
-    parecer = JSON.parse(json);
-  } catch (e) {
-    console.error(`adaptador-codex: JSON inválido: ${e.message}`);
+  // Extrai JSON usando lib compartilhada
+  const parecer = extrairJson(resultado.stdout);
+  if (!parecer) {
+    console.error(`adaptador-codex: JSON inválido — stdout nao continha JSON extraivel (primeiros 200 chars): ${resultado.stdout.slice(0, 200)}`);
     process.exit(1);
   }
 
-  // A forma NÃO se valida aqui: na fase 1 a saída é parecer, na fase 2 é
-  // revisão — quem valida o schema é o portão da fase (conferir --fase).
+  // Escreve saída
   fs.writeFileSync(saida, JSON.stringify(parecer, null, 2) + '\n', 'utf8');
   process.exit(0);
 }
 
 /**
  * Adaptador para Gemini.
- * Executa: gemini -m gemini-3.7-flash -p "<prompt>" --skip-trust --approval-mode plan
- * stdin: fechado
+ * Executa: gemini -m gemini-3.7-flash --skip-trust --approval-mode plan
+ * stdin: conteúdo do prompt (recebe via rodarCli)
  * GEMINI_API_KEY deve estar no ambiente (ausente = exit !== 0 com mensagem)
- * Lê stdout, extrai JSON, valida, escreve em <saida>.
+ * Lê stdout, extrai JSON, escreve em <saida>.
  * Falha: exit !== 0 SEM escrever <saida>
+ *
+ * Ponto de injeção (testes): CONSELHO_CMD_GEMINI sobrescreve o comando padrão.
+ * Exemplo: CONSELHO_CMD_GEMINI="node /caminho/fixture.cjs {prompt} {saida}"
+ * Fixture AINDA EXIGE credencial: guard barra a execução se faltasse,
+ * o que é a proteção que queremos testar.
  */
 function adaptadorGemini() {
   const args = process.argv.slice(2);
@@ -1264,9 +1255,7 @@ function adaptadorGemini() {
     process.exit(1);
   }
 
-  // {prompt} é o CAMINHO do arquivo; o conteúdo vai via stdin (o -p com o
-  // path mandava o caminho como pergunta — achado da T9). Piped stdin roda
-  // o gemini em modo headless; o -m fixa o melhor modelo da chave.
+  // Lê conteúdo do arquivo de prompt
   let conteudoPrompt;
   try {
     conteudoPrompt = fs.readFileSync(prompt, 'utf8');
@@ -1275,18 +1264,24 @@ function adaptadorGemini() {
     process.exit(1);
   }
 
-  const cmd = 'gemini -m gemini-3.7-flash --skip-trust --approval-mode plan';
-  const isWindows = process.platform === 'win32';
-  const spawnArgs = isWindows
-    ? ['cmd.exe', ['/d', '/s', '/c', `"${cmd}"`]]
-    : ['sh', ['-c', cmd]];
+  // Usa comando injetado se definido (CONSELHO_CMD_GEMINI) E em modo de teste (RFM_TEST=1), senão padrão.
+  // Em testes, injetar uma fixture para não chamar o binário real.
+  // Se injetado, substitui placeholders {prompt} e {saida}.
+  let cmd;
+  if (process.env.RFM_TEST === '1' && process.env.CONSELHO_CMD_GEMINI) {
+    cmd = process.env.CONSELHO_CMD_GEMINI;
+    console.error('[adaptador-gemini] Usando comando injetado via CONSELHO_CMD_GEMINI (modo teste)');
+    cmd = cmd.replace('{prompt}', `"${prompt}"`).replace('{saida}', `"${saida}"`);
+  } else {
+    cmd = 'gemini -m gemini-3.7-flash --skip-trust --approval-mode plan';
+  }
 
-  const resultado = spawnSync(spawnArgs[0], spawnArgs[1], {
-    encoding: 'utf8',
-    input: conteudoPrompt,
-    env: { ...process.env },
-    windowsVerbatimArguments: isWindows,
-    timeout: TIMEOUT_MEMBRO_MS,
+  // Executa CLI via lib, passando o environment
+  const resultado = rodarCli({
+    cmd,
+    entrada: conteudoPrompt,
+    timeoutMs: TIMEOUT_MEMBRO_MS,
+    env: process.env,
   });
 
   if (resultado.status !== 0) {
@@ -1294,25 +1289,19 @@ function adaptadorGemini() {
     process.exit(1);
   }
 
-  const stdout = resultado.stdout || '';
-  if (!stdout) {
+  if (!resultado.stdout) {
     console.error('adaptador-gemini: saída vazia do CLI');
     process.exit(1);
   }
 
-  // Extrai JSON (tolerando ```json...```)
-  let parecer;
-  try {
-    const match = stdout.match(/```json\s*([\s\S]*?)\s*```/) || stdout.match(/({[\s\S]*})/);
-    const json = match ? match[1] : stdout;
-    parecer = JSON.parse(json);
-  } catch (e) {
-    console.error(`adaptador-gemini: JSON inválido: ${e.message}`);
+  // Extrai JSON usando lib compartilhada
+  const parecer = extrairJson(resultado.stdout);
+  if (!parecer) {
+    console.error(`adaptador-gemini: JSON inválido — stdout nao continha JSON extraivel (primeiros 200 chars): ${resultado.stdout.slice(0, 200)}`);
     process.exit(1);
   }
 
-  // A forma NÃO se valida aqui: na fase 1 a saída é parecer, na fase 2 é
-  // revisão — quem valida o schema é o portão da fase (conferir --fase).
+  // Escreve saída
   fs.writeFileSync(saida, JSON.stringify(parecer, null, 2) + '\n', 'utf8');
   process.exit(0);
 }
