@@ -932,13 +932,13 @@ SB_CONS_COMPLETA="$(mktemp -d)"
 trap "rm -rf '$SB_CONS_COMPLETA'" RETURN
 mkdir -p "$SB_CONS_COMPLETA/.rainforest/conselho/20260831-completa"
 cat > "$SB_CONS_COMPLETA/.rainforest/conselho/20260831-completa/estado.json" <<'EOF'
-{"id": "20260831-completa", "fases": {"pareceres": {"status": "pendente"}, "revisao": {"status": "pendente"}, "sintese": {"status": "pendente"}}}
+{"id": "20260831-completa", "fases": {"pareceres": {"status": "ok"}, "revisao": {"status": "ok"}, "sintese": {"status": "ok"}}}
 EOF
 SAUDE_OUT_COMPLETA="$(cd "$SB_CONS_COMPLETA" && node "$SRC/scripts/saude.cjs" 2>&1 || true)"
-if echo "$SAUDE_OUT_COMPLETA" | grep -q "parada na fase pareceres"; then
-  ok=$((ok+1)); echo "  ok   rodada pendente é acusada como parada"
+if ! echo "$SAUDE_OUT_COMPLETA" | grep -q "conselho"; then
+  ok=$((ok+1)); echo "  ok   rodada concluida (3 fases ok) nao gera secao do conselho"
 else
-  falhou=$((falhou+1)); echo "  FALHA rodada com status pendente não foi acusada como parada"
+  falhou=$((falhou+1)); echo "  FALHA rodada concluida ainda aparece no saude: $(echo "$SAUDE_OUT_COMPLETA" | grep conselho | head -1)"
 fi
 
 echo ""
