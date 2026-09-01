@@ -51,43 +51,6 @@ const CRITERIO_ARQUIVO = args.criterio;
 const MODELO = args.modelo || 'codex';
 const CLI_CMD_CUSTOM = args['cli-cmd']; // Para testes com fixtures
 
-/**
- * Helper: obter raiz principal de repositório a partir do git-common-dir
- *
- * Usa git rev-parse --git-common-dir, que devolve o caminho do .git compartilhado (relativo ou
- * absoluto). Mesmo de dentro de um worktree, git-common-dir aponta para o .git do repositório
- * principal, não para o worktree. show-toplevel não serve aqui porque devolve o worktree quando
- * rodado de dentro dele — o log desapareceria quando o worktree fosse deletado.
- *
- * Casos cobertos:
- * - Repositório normal: git-common-dir == .git (relativo) → resolve com cwd → /repo → retorna /repo
- * - Worktree: git-common-dir == /repo/.git (absoluto) → retorna /repo (o principal!)
- * - Fora de repo: git rev-parse falha, retorna null, que leva a recusa
- *
- * Se git-common-dir for relativo (começa com .), resolve a partir do cwd.
- */
-function getRootFromGitCommonDir() {
-  const gitCommonResult = spawnSync('git', ['rev-parse', '--git-common-dir'], {
-    encoding: 'utf8',
-    cwd: process.cwd()
-  });
-
-  if (gitCommonResult.status !== 0) {
-    return null; // Fora de repositório
-  }
-
-  let gitDir = gitCommonResult.stdout.trim();
-
-  // Se for relativo, resolver a partir do cwd
-  if (!path.isAbsolute(gitDir)) {
-    gitDir = path.resolve(process.cwd(), gitDir);
-  }
-
-  // gitDir é agora algo como '/repo/.git' ou 'C:/repo/.git' no Windows
-  // Remover /.git (ou \.git) do final para obter a raiz principal
-  const repoRoot = gitDir.replace(/[\/\\]\.git$/, '');
-  return repoRoot;
-}
 
 /**
  * Subcomando: registrar divergência com motivo

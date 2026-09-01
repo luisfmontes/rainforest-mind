@@ -813,23 +813,27 @@ fi
 # Limpar worktree
 git worktree remove "$WORKTREE_PATH" 2>/dev/null
 
+# Contar todas as fixtures do diretório e verificar se cada uma é referenciada
+echo "== AUDITORIA DE FIXTURES =="
+FIXTURES_DIR="$SRC/scripts/fixtures/segunda-opiniao"
+for fixture in "$FIXTURES_DIR"/*.cjs; do
+  fixture_name=$(basename "$fixture" .cjs)
+  # Conta so INVOCACAO real: linha nao-comentada citando o arquivo com extensao.
+  # Contar o nome cru deixava passar orfa cujo nome sobrevive so num comentario
+  # — a auditoria tinha o mesmo defeito que existe para pegar (revisao 4, achado 2).
+  count=$(grep -v "^[[:space:]]*#" "$SRC/scripts/testa-segunda-opiniao.sh" | grep -c "$fixture_name.cjs")
+  if [ -z "$count" ] || [ "$count" -eq 0 ]; then
+    falhou=$((falhou + 1))
+    echo "  FALHA: fixture órfã '$fixture_name' não é referenciada em testa-segunda-opiniao.sh"
+  fi
+done
+
 echo ""
 echo "== RESUMO =="
 echo "Ok: $ok"
 echo "Falhou: $falhou"
 echo ""
 
-# Contar todas as fixtures do diretório e verificar se cada uma é referenciada
-echo "== AUDITORIA DE FIXTURES =="
-FIXTURES_DIR="$SRC/scripts/fixtures/segunda-opiniao"
-for fixture in "$FIXTURES_DIR"/*.cjs; do
-  fixture_name=$(basename "$fixture" .cjs)
-  count=$(grep -c "$fixture_name" "$SRC/scripts/testa-segunda-opiniao.sh" 2>/dev/null | head -1)
-  if [ -z "$count" ] || [ "$count" -eq 0 ]; then
-    falhou=$((falhou + 1))
-    echo "  FALHA: fixture órfã '$fixture_name' não é referenciada em testa-segunda-opiniao.sh"
-  fi
-done
 
 echo ""
 
