@@ -10,14 +10,11 @@ SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC_M="$(cygpath -m "$SRC" 2>/dev/null || printf '%s' "$SRC")"
 
 
-# Usar diretório dentro do worktree em vez de /tmp
-RAIZ_BASE="$SRC/.rainforest/test-segunda-opiniao"
-rm -rf "$RAIZ_BASE" 2>/dev/null || true
+# Usar diretório temporário (fora do worktree para limpeza correta)
+RAIZ_BASE="/tmp/test-segunda-opiniao-$$"
 mkdir -p "$RAIZ_BASE"
-RAIZ_POSIX="$RAIZ_BASE/run-$$"
-mkdir -p "$RAIZ_POSIX"
-RAIZ="$(cygpath -m "$RAIZ_POSIX" 2>/dev/null || printf '%s' "$RAIZ_POSIX")"
-trap 'sleep 1; rm -rf "$RAIZ_POSIX" 2>/dev/null; rmdir "$RAIZ_BASE" 2>/dev/null || true' EXIT
+RAIZ="$RAIZ_BASE"
+trap 'sleep 1; rm -rf "$RAIZ_BASE" 2>/dev/null' EXIT
 
 echo "(caixa de areia: $RAIZ)"
 echo ""
@@ -510,7 +507,174 @@ else
 fi
 
 echo ""
-echo "== CASO 15: divergencia-sem-flag-motivo-recusa =="
+echo "== CASO 15: prompt-carrega-o-diff-de-tres-pontos =="
+
+TEMP_REPO_PROMPT_DIFF="$RAIZ/test-prompt-diff-repo"
+mkdir -p "$TEMP_REPO_PROMPT_DIFF"
+cd "$TEMP_REPO_PROMPT_DIFF"
+git init --quiet
+git config user.email "test@<email>"
+git config user.name "Test"
+
+# Criar um cenário com branches divergentes (para garantir que 3 pontos ≠ 2 pontos)
+cat > file1.txt << 'EOF'
+line 1
+line 2
+line 3
+EOF
+git add file1.txt
+git commit --quiet -m "common base"
+COMMON_SHA=$(git rev-parse HEAD)
+
+# Criar branch 1 (base para o teste)
+cat > file1.txt << 'EOF'
+line 1 modified on branch1
+line 2
+line 3
+EOF
+git add file1.txt
+git commit --quiet -m "branch1"
+BASE_SHA_PROMPT=$(git rev-parse HEAD)
+
+# Criar branch 2 a partir do COMMON
+git checkout "$COMMON_SHA" --quiet
+git checkout -b branch2 --quiet
+cat > file1.txt << 'EOF'
+line 1
+line 2 modified on branch2
+line 3
+EOF
+git add file1.txt
+git commit --quiet -m "branch2 v1"
+
+cat > file1.txt << 'EOF'
+line 1
+line 2 modified on branch2
+line 3 modified on branch2
+EOF
+git add file1.txt
+git commit --quiet -m "branch2 v2"
+HEAD_SHA_PROMPT=$(git rev-parse HEAD)
+
+CRITERIO_FILE_PROMPT="$TEMP_REPO_PROMPT_DIFF/criterio.md"
+cat > "$CRITERIO_FILE_PROMPT" << 'EOF'
+# Critério: validar diff de três pontos
+
+O diff deve usar merge-base (três pontos) e incluir todas as mudanças de base até head.
+EOF
+
+# Usar fixture que valida tamanho do prompt
+FIXTURE_VALIDAR_DIFF="$SRC_M/scripts/fixtures/segunda-opiniao/validar-diff-tamanho.cjs"
+PROMPT_OUTPUT=$(cd "$TEMP_REPO_PROMPT_DIFF" && node "$SRC/scripts/segunda-opiniao.cjs" --base "$BASE_SHA_PROMPT" --head "$HEAD_SHA_PROMPT" --criterio "$CRITERIO_FILE_PROMPT" --cli-cmd "node $FIXTURE_VALIDAR_DIFF" 2>&1)
+EXIT_PROMPT=$?
+
+# Contar linhas do diff esperado (três pontos)
+DIFF_TRES_PONTOS=$(cd "$TEMP_REPO_PROMPT_DIFF" && git diff "$BASE_SHA_PROMPT"..."$HEAD_SHA_PROMPT" | wc -l)
+# Fixture imprime: "Total de linhas no diff do prompt: <N>"
+LINHAS_NO_PROMPT=$(echo "$PROMPT_OUTPUT" | grep "Total de linhas no diff" | sed 's/.*: //g')
+
+if [ "$EXIT_PROMPT" = "0" ]; then
+  if [ "$LINHAS_NO_PROMPT" -eq "$DIFF_TRES_PONTOS" ]; then
+    ok=$((ok + 1))
+    echo "  ok   prompt-carrega-o-diff-de-tres-pontos: prompt tem $LINHAS_NO_PROMPT linhas (git diff <base>...<head> | wc -l = $DIFF_TRES_PONTOS)"
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA prompt-carrega-o-diff-de-tres-pontos: prompt tem $LINHAS_NO_PROMPT linhas, esperava $DIFF_TRES_PONTOS"
+    echo "$PROMPT_OUTPUT" | head -5
+  fi
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA prompt-carrega-o-diff-de-tres-pontos: exit deveria ser 0, foi $EXIT_PROMPT"
+  echo "$PROMPT_OUTPUT" | head -5
+fi
+
+echo ""
+echo "== CASO 16: divergencia-fora-de-repo-recusa =="
+
+# Teste fora de qualquer repositório git — git rev-parse --show-toplevel deve falhar
+# Usa scratchpad que está fora do working tree do rainforest-mind
+FORA_REPO="/tmp/segunda-opiniao-fora-repo-$$"
+rm -rf "$FORA_REPO"
+mkdir -p "$FORA_REPO"
+trap 'rm -rf "$FORA_REPO" 2>/dev/null' EXIT
+
+OUTPUT_FORA=$(cd "$FORA_REPO" && node "$SRC/scripts/segunda-opiniao.cjs" registrar-divergencia \
+  --veredito discordo \
+  --motivo "Rodando fora de repo" \
+  --base "abc123" 2>&1); EXIT_FORA=$?
+
+if [ "$EXIT_FORA" != "0" ]; then
+  if echo "$OUTPUT_FORA" | grep -q "dentro de um repositório git"; then
+    if [ ! -d "$FORA_REPO/.claude/logs" ]; then
+      ok=$((ok + 1))
+      echo "  ok   divergencia-fora-de-repo-recusa: exit ≠ 0, mensagem clara, nada gravado"
+    else
+      falhou=$((falhou + 1))
+      echo "  FALHA divergencia-fora-de-repo-recusa: não deveria gravar arquivo fora de repo"
+    fi
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA divergencia-fora-de-repo-recusa: mensagem não menciona repo git"
+    echo "$OUTPUT_FORA" | head -2
+  fi
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA divergencia-fora-de-repo-recusa: deveria sair ≠ 0, saiu 0"
+fi
+
+echo ""
+echo "== CASO 17: divergencia-log-ancorado-em-repo-raiz =="
+
+# Teste em subpasta do repositório — o log deve ir para raiz do repo, não para cwd
+TEMP_REPO_SUBPASTA="$RAIZ/test-log-subpasta-repo"
+mkdir -p "$TEMP_REPO_SUBPASTA"
+cd "$TEMP_REPO_SUBPASTA"
+git init --quiet
+git config user.email "test@<email>"
+git config user.name "Test"
+
+echo "content" > file.txt
+git add file.txt
+git commit --quiet -m "base"
+BASE_SHA_SUBPASTA=$(git rev-parse HEAD)
+
+# Criar subpasta dentro do repo e rodar de lá
+mkdir -p "$TEMP_REPO_SUBPASTA/subdir"
+REGISTRO_LOGFILE_RAIZ="$TEMP_REPO_SUBPASTA/.claude/logs/divergencias-segunda-opiniao.jsonl"
+REGISTRO_LOGFILE_SUBDIR="$TEMP_REPO_SUBPASTA/subdir/.claude/logs/divergencias-segunda-opiniao.jsonl"
+
+rm -f "$REGISTRO_LOGFILE_RAIZ" "$REGISTRO_LOGFILE_SUBDIR"
+
+# Registrar divergência rodando de dentro da subpasta
+(cd "$TEMP_REPO_SUBPASTA/subdir" && node "$SRC/scripts/segunda-opiniao.cjs" registrar-divergencia \
+  --veredito discordo \
+  --motivo "Log deve ir para raiz" \
+  --base "$BASE_SHA_SUBPASTA" > /dev/null 2>&1); EXIT_SUBPASTA=$?
+
+# Deve sair com 0
+if [ "$EXIT_SUBPASTA" = "0" ]; then
+  # Arquivo deve estar na raiz, NÃO na subpasta
+  if [ -f "$REGISTRO_LOGFILE_RAIZ" ] && [ ! -f "$REGISTRO_LOGFILE_SUBDIR" ]; then
+    if grep -q "\"motivo\":\"Log deve ir para raiz\"" "$REGISTRO_LOGFILE_RAIZ"; then
+      ok=$((ok + 1))
+      echo "  ok   divergencia-log-ancorado-em-repo-raiz: arquivo em $TEMP_REPO_SUBPASTA/.claude/logs/, não em subdir"
+    else
+      falhou=$((falhou + 1))
+      echo "  FALHA divergencia-log-ancorado-em-repo-raiz: conteúdo não bate"
+    fi
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA divergencia-log-ancorado-em-repo-raiz: arquivo deveria estar em raiz"
+    [ -f "$REGISTRO_LOGFILE_RAIZ" ] && echo "    (existe em raiz)" || echo "    (não existe em raiz)"
+    [ -f "$REGISTRO_LOGFILE_SUBDIR" ] && echo "    (existe em subdir - ERRADO)" || echo "    (não existe em subdir - correto)"
+  fi
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA divergencia-log-ancorado-em-repo-raiz: deveria sair 0, saiu $EXIT_SUBPASTA"
+fi
+
+echo ""
+echo "== CASO 18: divergencia-sem-flag-motivo-recusa =="
 
 TEMP_REPO_SEM_MOT="$RAIZ/test-divergencia-sem-motivo-repo"
 mkdir -p "$TEMP_REPO_SEM_MOT"
@@ -555,6 +719,19 @@ echo ""
 echo "== RESUMO =="
 echo "Ok: $ok"
 echo "Falhou: $falhou"
+echo ""
+
+# Contar todas as fixtures do diretório e verificar se cada uma é referenciada
+echo "== AUDITORIA DE FIXTURES =="
+FIXTURES_DIR="$SRC/scripts/fixtures/segunda-opiniao"
+for fixture in "$FIXTURES_DIR"/*.cjs; do
+  fixture_name=$(basename "$fixture" .cjs)
+  count=$(grep -c "$fixture_name" "$SRC/scripts/testa-segunda-opiniao.sh" 2>/dev/null | head -1)
+  if [ -z "$count" ] || [ "$count" -eq 0 ]; then
+    echo "  AVISO: fixture '$fixture_name' não é referenciada em testa-segunda-opiniao.sh"
+  fi
+done
+
 echo ""
 
 if [ "$falhou" -eq 0 ]; then
