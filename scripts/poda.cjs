@@ -335,10 +335,14 @@ function servidorInterno(porta, env) {
     // Resolve URL do upstream
     const upstreamUrl = `${upstream}${req.url}`;
 
-    // Opções de requisição ao upstream
+    // Opções de requisição ao upstream. O header Host do CLIENTE aponta para o
+    // proxy (127.0.0.1:porta) — repassá-lo intacto faz a borda do upstream real
+    // (Cloudflare, na Anthropic) recusar com 403 antes de a requisição chegar ao
+    // serviço (tarefa 10). Reescreve para o host do upstream; o resto passa intacto.
+    const headersUpstream = { ...req.headers, host: new URL(upstream).host };
     const opcoes = {
       method: req.method,
-      headers: req.headers,
+      headers: headersUpstream,
       timeout: 30000,
     };
 

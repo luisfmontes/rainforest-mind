@@ -36,7 +36,7 @@ const server = http.createServer((req, res) => {
   req.on('end', () => {
     // Filtra apenas headers importantes (evita serialização de objetos complexos)
     const headersImportantes = {};
-    ['content-type', 'content-length', 'x-custom-auth'].forEach(h => {
+    ['content-type', 'content-length', 'x-custom-auth', 'host'].forEach(h => {
       if (req.headers[h]) headersImportantes[h] = req.headers[h];
     });
 
@@ -217,6 +217,17 @@ const primeira=JSON.parse(linhas[0]);
 console.log(primeira.headers['x-custom-auth'] || 'AUSENTE');
 ")
 igual "x-custom-auth no upstream" "secret-12345" "$AUTH_NO_UPSTREAM"
+
+echo
+echo "== 5.2b. TAREFA 10: Host recebido pelo upstream e o do UPSTREAM, nao o do cliente =="
+HOST_NO_UPSTREAM=$(node -e "
+const fs=require('fs');
+const linhas=fs.readFileSync('$SBP_WIN/fixture-log.jsonl','utf8').trim().split('\n');
+const primeira=JSON.parse(linhas[0]);
+console.log(primeira.headers['host'] || 'AUSENTE');
+")
+igual "host no upstream e o do upstream" "127.0.0.1:$PORTA_UPSTREAM" "$HOST_NO_UPSTREAM"
+afirma "[ '$HOST_NO_UPSTREAM' != '127.0.0.1:$PORTA_PODA' ]" "host NAO e o do proxy que o cliente mandou"
 
 echo
 echo "== 5.3. TAREFA 3 (plano): resposta identica byte a byte (hash) =="
