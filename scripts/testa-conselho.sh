@@ -10,7 +10,7 @@ set -u
 # Get source directory
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC_M="$(cygpath -m "$SRC" 2>/dev/null || printf '%s' "$SRC")"
-CONSELHO="$SRC/scripts/conselho.cjs"
+CONSELHO="$SRC_M/scripts/conselho.cjs"
 
 # Create sandbox
 RAIZ_POSIX="$(mktemp -d)"
@@ -1286,17 +1286,22 @@ else
 fi
 
 echo ""
-echo "== CASO 21: adaptador-sem-chave-recusa =="
-TEMPDIR21="$RAIZ/test-adaptador-sem-chave"
+echo "== CASO 21: gemini-sem-credencial-falha =="
+TEMPDIR21="$RAIZ/test-gemini-credencial"
 mkdir -p "$TEMPDIR21"
 
 # Criar um arquivo de prompt fake
 echo "# Teste" > "$TEMPDIR21/prompt.md"
 
-# Tentar rodar adaptador-gemini SEM GEMINI_API_KEY
-# Deve sair com exit ≠ 0 e NÃO criar arquivo de saída
-testa "adaptador-gemini sem GEMINI_API_KEY: exit != 0" "1" \
-  bash -c "cd '$TEMPDIR21' && unset GEMINI_API_KEY; node '$CONSELHO' adaptador-gemini prompt.md saida.json"
+# Injetar fixture para não chamar o binário real (D7: fixture sempre)
+# O guard if (!process.env.GEMINI_API_KEY) deve BARRAR a execução ANTES
+# da fixture ser chamada — caso contrário, não há proteção testável.
+CONSELHO_CMD_GEMINI="node \"$SRC_M/scripts/fixtures/conselho/membro-gemini-fake.cjs\" {prompt} {saida}"
+
+# Tentar rodar adaptador-gemini SEM GEMINI_API_KEY com fixture injetada
+# Deve sair com exit ≠ 0 (guard barra) e NÃO criar arquivo de saída
+testa "gemini-sem-credencial-falha: exit != 0" "1" \
+  bash -c "cd '$TEMPDIR21' && unset GEMINI_API_KEY; CONSELHO_CMD_GEMINI='$CONSELHO_CMD_GEMINI' node '$CONSELHO' adaptador-gemini prompt.md saida.json"
 
 # Verificar que saida.json NÃO foi criado
 if [ ! -f "$TEMPDIR21/saida.json" ]; then
@@ -1305,6 +1310,44 @@ if [ ! -f "$TEMPDIR21/saida.json" ]; then
 else
   falhou=$((falhou + 1))
   echo "  FALHA arquivo de saída foi criado em falha"
+fi
+
+echo ""
+echo "== CASO 21b: gemini-com-credencial-sucede =="
+# Caso simétrico: COM credencial, o adaptador chega a chamar a fixture
+# e escreve saída com sucesso.
+TEMPDIR21b="$RAIZ/test-gemini-com-credencial"
+rm -f "$TEMPDIR21b/saida.json"  # Limpar de execução anterior se houver
+mkdir -p "$TEMPDIR21b"
+
+# Criar arquivo de prompt fake
+echo "# Teste com credencial" > "$TEMPDIR21b/prompt.md"
+
+# Mesma fixture, mesma variável de ambiente injetada
+export CONSELHO_CMD_GEMINI="node \"$SRC_M/scripts/fixtures/conselho/membro-gemini-fake.cjs\" {prompt} {saida}"
+
+# Rodar COM GEMINI_API_KEY definida (valor fake)
+# Deve sair com exit 0 e CRIAR arquivo de saída
+# Export a variável para que bash -c a veja
+SAIDA_DEBUG=$(bash -c "cd '$TEMPDIR21b' && GEMINI_API_KEY='fake-key-for-testing' node '$CONSELHO' adaptador-gemini prompt.md saida.json" 2>&1)
+EXIT_DEBUG=$?
+
+if [ "$EXIT_DEBUG" = "0" ]; then
+  ok=$((ok + 1))
+  echo "  ok   gemini-com-credencial-sucede: exit = 0 (exit 0)"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA gemini-com-credencial-sucede: exit = 0: esperava exit 0, veio $EXIT_DEBUG"
+  echo "         $SAIDA_DEBUG"
+fi
+
+# Verificar que saida.json FOI criado
+if [ -f "$TEMPDIR21b/saida.json" ]; then
+  ok=$((ok + 1))
+  echo "  ok   arquivo de saída foi criado (sucesso fechado)"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA arquivo de saída não foi criado em sucesso"
 fi
 
 echo ""
