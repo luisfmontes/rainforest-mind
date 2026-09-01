@@ -116,8 +116,8 @@ decisão (`D1`, `D2`, etc.) com três ou mais personas (Codex e Gemini são opci
 
 ```
 node scripts/conselho.cjs abrir --questao <caminho-da-decisao.md>
-node scripts/conselho.cjs pareceres          # (cada persona escreve um parecer)
-node scripts/conselho.cjs revisar            # (anônimos avaliam os pareceres alheios)
+node scripts/conselho.cjs pareceres [--membro <nome>]   # (cada persona escreve um parecer; --membro reexecuta só esse)
+node scripts/conselho.cjs revisar [--membro <nome>]     # (anônimos avaliam os pareceres alheios; --membro reexecuta só esse)
 node scripts/conselho.cjs sintetizar [--unanime]
 node scripts/conselho.cjs conferir --fase pareceres|revisao|sintese
 ```

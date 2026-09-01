@@ -297,6 +297,25 @@ function zerarTentativaFase(estado, dirRodada, fase) {
   fs.writeFileSync(estadoPath, JSON.stringify(estado, null, 2) + '\n', 'utf8');
 }
 
+// Filters membros based on --membro flag
+// If nomeMembro is specified, validates it exists in ligados and returns just that one
+// If not specified, returns all ligados
+// If specified but not found, prints error with available members and exits
+function filtrarMembros(membrosLigados, nomeMembro) {
+  if (!nomeMembro) {
+    return membrosLigados;
+  }
+
+  const encontrado = membrosLigados.find(m => m === nomeMembro);
+  if (!encontrado) {
+    const disponiveis = membrosLigados.join(', ') || '(nenhum)';
+    console.error(`Erro: membro desconhecido '${nomeMembro}'. Ligados: ${disponiveis}`);
+    process.exit(1);
+  }
+
+  return [encontrado];
+}
+
 // Validates a parecer JSON against schema
 function validarParecer(parecer) {
   if (typeof parecer !== 'object' || parecer === null) {
@@ -327,7 +346,7 @@ function validarParecer(parecer) {
 }
 
 // Executes parecer collection from all linked members
-function executarPareceres() {
+function executarPareceres(args) {
   const dirRodada = encontrarRodada();
   if (!dirRodada) {
     console.error('Erro: nenhuma rodada aberta encontrada');
@@ -336,7 +355,10 @@ function executarPareceres() {
 
   const estadoPath = path.join(dirRodada, 'estado.json');
   const estado = JSON.parse(fs.readFileSync(estadoPath, 'utf8'));
-  const membrosLigados = estado.membros_ligados || [];
+  let membrosLigados = estado.membros_ligados || [];
+
+  // Filter by --membro if specified
+  membrosLigados = filtrarMembros(membrosLigados, args && args.membro);
 
   const membros = resolverMembros();
   const membrosMap = {};
@@ -358,10 +380,22 @@ function executarPareceres() {
     const caminhoPrompt = path.join(dirRodada, `prompt-${nomeMembro}.md`);
     const caminhoSaida = path.join(dirRodada, `parecer-${nomeMembro}.json`);
 
-    // Replace placeholders in command
-    const cmd = membro.cmd
-      .replace('{prompt}', caminhoPrompt)
-      .replace('{saida}', caminhoSaida);
+    // Replace placeholders in command — envolver caminhos em aspas para suportar espaços
+    // Cuidado: se cmd JÁ tem "{prompt}" entre aspas (ex.: "{prompt}"), não duplicar
+    let cmd = membro.cmd;
+    if (cmd.includes('"{prompt}"')) {
+      // Já tem aspas: substituir o padrão "{prompt}" literalmente
+      cmd = cmd.replace('"{prompt}"', `"${caminhoPrompt}"`);
+    } else {
+      // Sem aspas: envolver o caminho
+      cmd = cmd.replace('{prompt}', `"${caminhoPrompt}"`);
+    }
+
+    if (cmd.includes('"{saida}"')) {
+      cmd = cmd.replace('"{saida}"', `"${caminhoSaida}"`);
+    } else {
+      cmd = cmd.replace('{saida}', `"${caminhoSaida}"`);
+    }
 
     // Shell explicito por plataforma. No Windows, /d /s /c com o comando inteiro
     // entre aspas externas + windowsVerbatimArguments: sem isso o Node re-escapa
@@ -489,8 +523,12 @@ function conferirFasePareceres() {
     process.exit(1);
   }
 
-  // Success — reset counter
+  // Success — reset counter and mark phase as ok
   zerarTentativaFase(estado, dirRodada, 'pareceres');
+
+  // Mark phase as complete
+  estado.fases.pareceres.status = 'ok';
+  fs.writeFileSync(estadoPath, JSON.stringify(estado, null, 2) + '\n', 'utf8');
 
   process.exit(0);
 }
@@ -630,7 +668,7 @@ function validarSintese(sintese) {
 }
 
 // Executes revisao collection from all linked members with anonymization
-function executarRevisao() {
+function executarRevisao(args) {
   const dirRodada = encontrarRodada();
   if (!dirRodada) {
     console.error('Erro: nenhuma rodada aberta encontrada');
@@ -650,7 +688,10 @@ function executarRevisao() {
 
   const estadoPath = path.join(dirRodada, 'estado.json');
   const estado = JSON.parse(fs.readFileSync(estadoPath, 'utf8'));
-  const membrosLigados = estado.membros_ligados || [];
+  let membrosLigados = estado.membros_ligados || [];
+
+  // Filter by --membro if specified
+  membrosLigados = filtrarMembros(membrosLigados, args && args.membro);
 
   const membros = resolverMembros();
   const membrosMap = {};
@@ -732,10 +773,22 @@ function executarRevisao() {
 
     const caminhoSaidaFase2 = path.join(dirFase2, `revisao-${nomeMembro}.json`);
 
-    // Replace placeholders in command
-    const cmd = membro.cmd
-      .replace('{prompt}', caminhoPromptFase2)
-      .replace('{saida}', caminhoSaidaFase2);
+    // Replace placeholders in command — envolver caminhos em aspas para suportar espaços
+    // Cuidado: se cmd JÁ tem "{prompt}" entre aspas (ex.: "{prompt}"), não duplicar
+    let cmd = membro.cmd;
+    if (cmd.includes('"{prompt}"')) {
+      // Já tem aspas: substituir o padrão "{prompt}" literalmente
+      cmd = cmd.replace('"{prompt}"', `"${caminhoPromptFase2}"`);
+    } else {
+      // Sem aspas: envolver o caminho
+      cmd = cmd.replace('{prompt}', `"${caminhoPromptFase2}"`);
+    }
+
+    if (cmd.includes('"{saida}"')) {
+      cmd = cmd.replace('"{saida}"', `"${caminhoSaidaFase2}"`);
+    } else {
+      cmd = cmd.replace('{saida}', `"${caminhoSaidaFase2}"`);
+    }
 
     const isWindows = process.platform === 'win32';
     const spawnArgs = isWindows
@@ -863,8 +916,12 @@ function conferirFaseRevisao() {
     process.exit(1);
   }
 
-  // Success — reset counter
+  // Success — reset counter and mark phase as ok
   zerarTentativaFase(estado, dirRodada, 'revisao');
+
+  // Mark phase as complete
+  estado.fases.revisao.status = 'ok';
+  fs.writeFileSync(estadoPath, JSON.stringify(estado, null, 2) + '\n', 'utf8');
 
   process.exit(0);
 }
@@ -971,8 +1028,12 @@ function conferirFaseSintese() {
     process.exit(1);
   }
 
-  // Success — reset counter
+  // Success — reset counter and mark phase as ok
   zerarTentativaFase(estado, dirRodada, 'sintese');
+
+  // Mark phase as complete
+  estado.fases.sintese.status = 'ok';
+  fs.writeFileSync(estadoPath, JSON.stringify(estado, null, 2) + '\n', 'utf8');
 
   process.exit(0);
 }
@@ -1283,9 +1344,9 @@ function main() {
       abrirRodada(caminhoQuestao, membrosLigados);
       process.exit(0);
     } else if (comando === 'pareceres') {
-      executarPareceres();
+      executarPareceres(args);
     } else if (comando === 'revisar') {
-      executarRevisao();
+      executarRevisao(args);
     } else if (comando === 'sintetizar') {
       executarSintetizar(args);
     } else if (comando === 'conferir') {
