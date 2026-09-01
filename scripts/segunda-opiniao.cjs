@@ -8,7 +8,7 @@
  * Comportamento:
  * - Monta prompt com git diff <base>...<head> (três pontos), critério falsificável, commit-base
  * - Chama CLI externo por rodarCli, mandando prompt por stdin
- * - Saída deve terminar com LINHA DE VEREDITO de vocabulário fechado
+ * - Saída: veredito (1 linha) na stdout + parecer completo (N linhas) na stderr
  * - Recusa (exit ≠ 0) se: falta --base/--head, diff vazio, veredito inválido
  * - Arbitra sempre: script aconselha, não manda
  *
@@ -16,12 +16,15 @@
  * - "concordo" — diff atende ao critério
  * - "discordo" — diff não atende ao critério
  * Qualquer outra última linha = erro, exit ≠ 0
+ *
+ * Timeout configurável por TIMEOUT_SEGUNDA_OPINIAO_MS (default 300000ms = 5min, alinhado ao conselho).
+ * Parecer preservado permite que tarefas posteriores (ex.: registro de discordância) capturem motivo da rejeição.
  */
 
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { rodarCli, extrairJson } = require('../hooks/lib/cli-externo.cjs');
+const { rodarCli } = require('../hooks/lib/cli-externo.cjs');
 
 // Parse argumentos
 const args = {};
@@ -114,11 +117,18 @@ if (!cmd) {
   }
 }
 
-// Chamar CLI externo
+// Chamar CLI externo com timeout configurável
+// Default 300000ms (5min) alinhado ao timeout do conselho (scripts/conselho.cjs:41 TIMEOUT_MEMBRO_MS).
+// Um diff de ~900 linhas não responde em 30s, e nenhuma fixture detectava isso.
+const timeoutMs = parseInt(process.env.TIMEOUT_SEGUNDA_OPINIAO_MS || '300000', 10);
+// Log do timeout para validação em testes (stderr, não polui stdout)
+if (process.env.TIMEOUT_SEGUNDA_OPINIAO_DEBUG) {
+  console.error(`[DEBUG] TIMEOUT_SEGUNDA_OPINIAO_MS=${timeoutMs}ms`);
+}
 const resultado = rodarCli({
   cmd,
   entrada: prompt,
-  timeoutMs: 30000,
+  timeoutMs,
   env: process.env
 });
 
@@ -136,7 +146,8 @@ if (!resultado.stdout || resultado.stdout.trim().length === 0) {
 }
 
 // Extrair última linha com conteúdo
-const linhas = resultado.stdout.trim().split('\n');
+const parecer = resultado.stdout.trim(); // Parecer completo preservado
+const linhas = parecer.split('\n');
 const ultimaLinha = linhas[linhas.length - 1].trim().toLowerCase();
 
 // Validar veredito contra vocabulário fechado
@@ -149,6 +160,11 @@ if (!vocabularioValido.includes(ultimaLinha)) {
   process.exit(1);
 }
 
-// Sucesso: imprimir veredito
-console.log(ultimaLinha);
+// Sucesso: imprimir veredito (stdout) + parecer completo (stderr)
+// Quem chama pode capturar ambos do mesmo rodar:
+//   stdout: veredito (1 linha, vocabulário fechado)
+//   stderr: parecer (N linhas, justificativa completa)
+// D5 do design: discordância rejeitada vai ao log com motivo — parecer fornece a matéria-prima.
+console.error(parecer); // parecer (stdout é reservado pro veredito)
+console.log(ultimaLinha); // veredito
 process.exit(0);
