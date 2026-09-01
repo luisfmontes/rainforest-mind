@@ -691,7 +691,11 @@ function executarRevisao(args) {
   let membrosLigados = estado.membros_ligados || [];
 
   // Filter by --membro if specified
-  membrosLigados = filtrarMembros(membrosLigados, args && args.membro);
+  // O pacote e o mapa se constroem sobre TODOS os membros da rodada; o
+  // filtro `--membro` restringe SÓ a execução. Filtrar antes corrompia o
+  // retry: o mapa era reescrito com um membro só e o pacote saía vazio
+  // (crítico da revisão, rodada 2).
+  const membrosExecutar = filtrarMembros(membrosLigados.slice(), args && args.membro);
 
   const membros = resolverMembros();
   const membrosMap = {};
@@ -715,31 +719,34 @@ function executarRevisao(args) {
     parecerArquivos.push(nomeMembro);
   }
 
-  // Shuffle pareceres and create anonymization map
-  // Fisher-Yates shuffle
-  for (let i = parecerArquivos.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [parecerArquivos[i], parecerArquivos[j]] = [parecerArquivos[j], parecerArquivos[i]];
-  }
-
-  // Create mapa-anonimato.json (internal, not distributed — store in dirRodada, NOT in dirFase2)
-  const mapaAnonimato = {};
-  const apelidos = [];
-  for (let i = 0; i < parecerArquivos.length; i++) {
-    const nomeMembro = parecerArquivos[i];
-    const apelido = `membro-${String.fromCharCode(65 + i)}`; // membro-A, membro-B, membro-C, ...
-    mapaAnonimato[nomeMembro] = apelido;
-    apelidos.push(apelido);
-  }
-
+  // No retry (--membro) o mapa existente é REUSADO: reconstruí-lo trocaria os
+  // apelidos das revisões já colhidas e reidentificaria por eliminação.
   const arquivoMapaAnonimato = path.join(dirRodada, 'mapa-anonimato.json');
-  fs.writeFileSync(arquivoMapaAnonimato, JSON.stringify(mapaAnonimato, null, 2) + '\n', 'utf8');
+  let mapaAnonimato;
+  if (args && args.membro && fs.existsSync(arquivoMapaAnonimato)) {
+    mapaAnonimato = JSON.parse(fs.readFileSync(arquivoMapaAnonimato, 'utf8'));
+  } else {
+    // Shuffle pareceres and create anonymization map (Fisher-Yates)
+    for (let i = parecerArquivos.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [parecerArquivos[i], parecerArquivos[j]] = [parecerArquivos[j], parecerArquivos[i]];
+    }
+
+    // mapa-anonimato.json é interno (dirRodada, NUNCA em dirFase2)
+    mapaAnonimato = {};
+    for (let i = 0; i < parecerArquivos.length; i++) {
+      const nomeMembro = parecerArquivos[i];
+      const apelido = `membro-${String.fromCharCode(65 + i)}`; // membro-A, membro-B, ...
+      mapaAnonimato[nomeMembro] = apelido;
+    }
+    fs.writeFileSync(arquivoMapaAnonimato, JSON.stringify(mapaAnonimato, null, 2) + '\n', 'utf8');
+  }
 
   let temErro = false;
   const erros = [];
 
-  // Execute each linked member's revisor command
-  for (const nomeMembro of membrosLigados) {
+  // Execute each member's revisor command (só os filtrados pelo retry)
+  for (const nomeMembro of membrosExecutar) {
     const membro = membrosMap[nomeMembro];
     if (!membro) {
       console.error(`Erro: membro ${nomeMembro} não encontrado em config`);
