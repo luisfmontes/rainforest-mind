@@ -926,5 +926,93 @@ else
 fi
 rm -f "$SBP/cfg/plugins/installed_plugins.json"
 
+echo
+echo "== poda: proxy de medição de custo =="
+
+# R1: com poda desligada, não aparece no JSON
+R1_TEST="$SBP/test-poda-off"
+mkdir -p "$R1_TEST/.rainforest"
+printf '{"poda":false}' > "$R1_TEST/.rainforest/config.json"
+R1="$( ( cd "$R1_TEST" && node "$SRC/scripts/saude.cjs" --json 2>/dev/null ) | node -e "
+  let d=''; process.stdin.on('data', c => d += c).on('end', () => {
+    try {
+      const a = JSON.parse(d).find(x => x.item === 'poda');
+      console.log(a ? 'ENCONTRADO' : 'ausente');
+    } catch { console.log('erro'); }
+  });
+" )"
+if [ "$R1" = "ausente" ]; then
+  ok=$((ok+1)); echo "  ok   R1. com poda desligado, nao aparece item"
+else
+  falhou=$((falhou+1)); echo "  FALHA R1. esperava ausente, veio: $R1"
+fi
+
+# R2: com poda ligada e sem pidfile, aparece aviso
+R2_TEST="$SBP/test-poda-on"
+mkdir -p "$R2_TEST"
+R2="$( ( cd "$R2_TEST" && node "$SRC/scripts/saude.cjs" --json 2>/dev/null ) | node -e "
+  let d=''; process.stdin.on('data', c => d += c).on('end', () => {
+    try {
+      const a = JSON.parse(d).find(x => x.item === 'poda');
+      console.log(a ? a.nivel : 'ausente');
+    } catch { console.log('erro'); }
+  });
+" )"
+if [ "$R2" = "aviso" ]; then
+  ok=$((ok+1)); echo "  ok   R2. sem poda.pid, aparece aviso"
+else
+  falhou=$((falhou+1)); echo "  FALHA R2. esperava aviso, veio: $R2"
+fi
+
+# R3: com pidfile mas porta morta, aparece aviso (não alerta)
+R3_TEST="$SBP/test-poda-dead-port"
+mkdir -p "$R3_TEST/.rainforest/poda"
+printf '{"pid":99999,"port":19999}' > "$R3_TEST/.rainforest/poda/poda.pid"
+R3="$( ( cd "$R3_TEST" && node "$SRC/scripts/saude.cjs" --json 2>/dev/null ) | node -e "
+  let d=''; process.stdin.on('data', c => d += c).on('end', () => {
+    try {
+      const a = JSON.parse(d).find(x => x.item === 'poda');
+      console.log(a ? a.nivel : 'ausente');
+    } catch { console.log('erro'); }
+  });
+" )"
+if [ "$R3" = "aviso" ]; then
+  ok=$((ok+1)); echo "  ok   R3. porta morta vira aviso (nao alerta)"
+else
+  falhou=$((falhou+1)); echo "  FALHA R3. esperava aviso, veio: $R3"
+fi
+
+# R4: exit deve ser 0 com aviso (só alerta faz exit 1)
+( cd "$R3_TEST" && node "$SRC/scripts/saude.cjs" --json 2>/dev/null >/dev/null )
+if [ $? -eq 0 ]; then
+  ok=$((ok+1)); echo "  ok   R4. exit=0 com aviso"
+else
+  falhou=$((falhou+1)); echo "  FALHA R4. exit foi 1, deveria ser 0"
+fi
+
+# MUTAÇÃO: mudar aviso→alerta faz exit ir para 1
+MUTCOPIA="$(mktemp -d)"
+TEMPS+=("$MUTCOPIA")
+cp -r "$SRC/scripts" "$MUTCOPIA/scripts"
+node -e "
+  const fs=require('fs'), p=process.argv[1];
+  const s=fs.readFileSync(p,'utf8');
+  if(s.includes('nao responde')) {
+    const nu=s.replace('aviso(\'poda\', \`porta', 'alerta(\'poda\', \`porta');
+    fs.writeFileSync(p, nu);
+  }
+" "$MUTCOPIA/scripts/saude.cjs"
+( cd "$R3_TEST" && node "$MUTCOPIA/scripts/saude.cjs" --json 2>/dev/null >/dev/null )
+MUT_EXIT=$?
+if [ $MUT_EXIT -ne 0 ]; then
+  ok=$((ok+1)); echo "  ok   MUTACAO: aviso→alerta faz exit=1"
+else
+  falhou=$((falhou+1)); echo "  FALHA MUTACAO: exit deveria ser 1"
+fi
+rm -rf "$MUTCOPIA"
+
+# Limpeza
+rm -rf "$R1_TEST" "$R2_TEST" "$R3_TEST"
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]
