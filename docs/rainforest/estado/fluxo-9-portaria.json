@@ -41,8 +41,8 @@
       "achado-2": "Opcao A fechada pelo Luis em 2026-08-31 e ACEITE POR ESCRITO DADO em 2026-09-01 (resposta recomendado): executor, documentador, resolvedor-de-build e tester ficam bloqueados quando o hook entrar na main, ate a reavaliacao de escreve:true com worktree por filho. Registrado em skills/rainforest-mind/references/regra-10.md.",
       "escreve-false": "Q2 fechada pelo Luis em 2026-09-01 (recomendado): escreve:false continua como DECLARACAO, com a lacuna nomeada. Medido: nenhum dos nove agents/*.md declara tools:, entao a checagem 3 do lint nunca dispara contra os agentes reais. Por tools: Read,Grep,Glob nos tres admitidos foi recusado — o revisor precisa de Bash para reproduzir achado (regra 12). Divida escrita em references/regra-10.md."
     },
-    "comando": "node hooks/testa-portaria-nucleo.cjs; node hooks/testa-portaria-captura.cjs; node hooks/testa-portaria-lint.cjs; node hooks/testa-portaria-portoes.cjs; node hooks/testa-portaria-gitignore.cjs; node hooks/testa-portaria-tools-bloco.cjs; node hooks/testa-estagio-ativo.cjs; bash scripts/testa-saude.sh; node hooks/portaria.cjs --lint",
-    "saida": "rodada 2, arvore integrada: nucleo 35 ok 0 falha | captura 12 ok 0 falha | lint 14 ok 0 falha | portoes P1..P5 OK | gitignore 9 ok 0 falha | tools-bloco 3 ok 0 falha | estagio-ativo 7 ok 0 falha | saude 56 ok 0 falha | portaria --lint no repo real: exit 0, 6 avisos de orfao, 0 erro — todos exit 0, capturado sem pipe",
+    "comando": "node hooks/testa-portaria-nucleo.cjs; node hooks/testa-portaria-captura.cjs; node hooks/testa-portaria-lint.cjs; node hooks/testa-portaria-portoes.cjs; node hooks/testa-portaria-gitignore.cjs; node hooks/testa-portaria-tools-bloco.cjs; node hooks/testa-estagio-ativo.cjs; bash scripts/testa-saude.sh; bash hooks/testa-contexto-sessao.sh; node hooks/portaria.cjs --lint",
+    "saida": "rodada 3, arvore integrada: nucleo 35 | captura 12 | lint 14 | portoes P1..P5 OK | gitignore 9 | tools-bloco 13 | estagio-ativo 7/7 | saude 56 | contexto-sessao 277 | portaria --lint exit 0 (6 avisos, 0 erro) — todas 0 falha, exit 0 capturado sem pipe",
     "mutacao": [
       {
         "tarefa": 1,
@@ -67,7 +67,7 @@
       {
         "tarefa": 5,
         "resultado": "vermelho",
-        "fixture": "test/fixtures/portaria/manifesto-escreve-inconsistente.json + test/fixtures/portaria/agentes/escritor.md (tools: Read, Write) — mutacao: a checagem 3 do lint nunca marca erro; re-rodada na janela principal, 12 ok / 2 falha"
+        "fixture": "fixtures do lint (manifesto-escreve-inconsistente + agentes/escritor.md) mais os nove formatos de tools: da bateria testa-portaria-tools-bloco.cjs — mutacoes: a checagem 3 do lint nunca marca erro (12 ok / 2 falha); o bloco volta a exigir indentacao (9 ok / 4 falha); declarado-e-ilegivel volta a pular em vez de negar (11 ok / 2 falha). As tres com conferir-mutacao.cjs, exit 0"
       },
       {
         "tarefa": 6,
@@ -94,17 +94,17 @@
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "a1908a98087cb4d1136cc643e045d7a49341be31",
+      "head": "a672aad7db46b62de4368486b70d45df2b43f02d",
       "caminhos_sujos": []
     },
     "base": "b9a3bed03e6e681c347220828d6af750426bc3d5",
-    "head": "a1908a98087cb4d1136cc643e045d7a49341be31",
-    "achados": 5,
-    "criticos": 2,
-    "revisor": "rainforest-mind:revisor, contexto zerado, 2026-09-01",
-    "nota": "REPROVADO com 2 criticos, 2 avisos e 1 sugestao. Os dois criticos foram REPRODUZIDOS na janela principal antes de aceitar o veredito, e a casa ja tinha a resposta escrita. CRITICO 1: raizDoProjeto() em hooks/portaria.cjs:20 usa CLAUDE_PROJECT_DIR || process.cwd() e nunca le payload.cwd — e .rainforest/portaria/LEIA-ME.md:31 afirma o contrario ('o hook nao depende so de CLAUDE_PROJECT_DIR'), doc contradizendo codigo. Consequencia: sessao que faz cd para um worktree no meio do trabalho (que e como a regra 11 manda operar) resolve a raiz no checkout PRINCIPAL, le o estado errado e nega por 'sem estagio ativo'. gate-repo-alheio.cjs:137-141 ja resolve isso pela convencao da casa: usa ev.cwd, nunca process.cwd(), e libera se ev.cwd faltar. CRITICO 2: stdin ilegivel/vazio/JSON invalido em portaria.cjs:121-137 NEGA (exit 2), contra a convencao dos quatro gates irmaos, que tem o comentario literal 'payload ilegivel nunca trava o trabalho do usuario' e saem 0 (gate-worktree.cjs:532-535, gate-staging-total.cjs:213-217, gate-publicacao-destino.cjs:150-154, gate-repo-alheio.cjs:128-132). Raio de impacto: a portaria intercepta TODO despacho de subagente, entao um stdin ruim negaria a regra 10 inteira na sessao. AVISO 3: folga de 3 B na catraca de nucleo, ja assumida no comentario. AVISO 4: parser de tools: e regex de linha unica, e lista de bloco YAML cai em deny por default (falha para o lado seguro, mas bloquearia agente read-only legitimo). SUGESTAO 5: as tres negacoes mais cedo nao chamam gravarDespacho, entao a classe de falha mais silenciosa nao deixa rastro no log. O revisor rodou as 12 baterias ele mesmo, numeros identicos, e rodou uma mutacao independente (negar do manifesto ausente -> exit 0): 28 ok / 2 falha, conferir-mutacao exit 0 — a bateria do nucleo sabe falhar. Nao achou bateria tautologica.",
+    "head": "a672aad7db46b62de4368486b70d45df2b43f02d",
+    "achados": 2,
+    "criticos": 1,
+    "revisor": "rainforest-mind:revisor, contexto zerado, rodada 2, 2026-09-01",
+    "nota": "REPROVADO na rodada 2 com 1 critico e 1 aviso. Os dois criticos da rodada 1 foram confirmados consertados. O critico NOVO e regressao do proprio conserto: parseToolsDoFrontmatter em hooks/portaria.cjs:79-92 exige indentacao antes do hifen no regex de bloco, entao lista de bloco YAML NAO-indentada (hifen na mesma coluna da chave, sintaxe valida) nao casa nem no inline nem no bloco, devolve lista vazia, e o gate if (tools.length > 0) PULA a checagem inteira — o mesmo caminho de codigo de \"arquivo do agente nao encontrado\". Resultado: escreve:false com Write LIBERA. Antes do conserto, o parser de linha unica negava qualquer formato de bloco: era AVISO porque falhava para o lado seguro, e o conserto inverteu para allow. REPRODUZIDO na janela principal em sandbox git, dois agentes identicos no mesmo manifesto: semindent (tools em lista sem indentacao, com Write) -> EXIT=0, stderr vazio; comindent (mesma lista com 2 espacos) -> EXIT=2 citando Write. O mesmo buraco no --lint: so o comindent aparece como erro. A bateria hooks/testa-portaria-tools-bloco.cjs sabe falhar para o que testa (mutacao pelo conferir-mutacao.cjs deixa 1 ok / 2 falha) mas nao tem caso para o formato que quebra. AVISO: raizDoProjeto usa git -C caminho rev-parse --show-toplevel, e git -C num diretorio sem .git proprio aninhado em OUTRO repositorio devolve o toplevel do repositorio de fora com exit 0 — a armadilha que a elaboracao da regra 11 documenta. O try/catch so cobre o caso \"nao ha .git acima\". O revisor nao conseguiu construir cenario realista de dano (os ancestrais dos diretorios de scratch desta maquina nao sao repositorios git, e o fallback cai em manifesto ausente, que nega) e por isso nao escalou. Nao ha bateria para o caso adversarial.",
     "em": "2026-09-01",
-    "tentativas": 1
+    "tentativas": 2
   },
   "verificar": {
     "status": "pendente"
