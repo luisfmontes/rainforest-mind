@@ -95,6 +95,14 @@ function iniciarGit(raiz, branch) {
   spawnSync("git", ["checkout", "-b", branch], { cwd: raiz });
 }
 
+// Envolver agentes em schema D2 (versao + agentes)
+function manifestoD2(agentes) {
+  return {
+    versao: 1,
+    agentes: agentes,
+  };
+}
+
 // == 1. Agente não declarado → exit 2, nome no stderr ==
 console.log("== 1. agente nao declarado ==");
 {
@@ -105,9 +113,9 @@ console.log("== 1. agente nao declarado ==");
   criarEstadoAtivo(raiz, "teste", "revisar");
 
   // Manifesto sem o agente 'executar'
-  criarManifesto(raiz, {
+  criarManifesto(raiz, manifestoD2({
     revisor: { estagios: ["revisar"], escreve: false },
-  });
+  }));
 
   const payload = {
     session_id: "teste-1",
@@ -135,9 +143,9 @@ console.log("== 2. agente declarado, estagio errado ==");
   iniciarGit(raiz, "fluxo/teste");
   criarEstadoAtivo(raiz, "teste", "executar"); // Stage ativo = executar
 
-  criarManifesto(raiz, {
+  criarManifesto(raiz, manifestoD2({
     revisor: { estagios: ["revisar", "verificar"], escreve: false }, // Só revisar/verificar permitido
-  });
+  }));
 
   const payload = {
     session_id: "teste-2",
@@ -161,9 +169,9 @@ console.log("== 3. agente declarado, estagio certo ==");
   iniciarGit(raiz, "fluxo/teste");
   criarEstadoAtivo(raiz, "teste", "revisar");
 
-  criarManifesto(raiz, {
+  criarManifesto(raiz, manifestoD2({
     revisor: { estagios: ["revisar"], escreve: false },
-  });
+  }));
 
   const sessaoId = "teste-3-sessao-xyz";
   const payload = {
@@ -261,9 +269,9 @@ console.log("== 6. normalizacao de prefixo ==");
   iniciarGit(raiz, "fluxo/teste");
   criarEstadoAtivo(raiz, "teste", "revisar");
 
-  criarManifesto(raiz, {
+  criarManifesto(raiz, manifestoD2({
     revisor: { estagios: ["revisar"], escreve: false },
-  });
+  }));
 
   const payload = {
     session_id: "teste-6",
@@ -297,9 +305,9 @@ console.log("== 7. sem estagio ativo ==");
   iniciarGit(raiz, "fluxo/outro"); // Branch = fluxo/outro
   criarEstadoAtivo(raiz, "teste", "revisar"); // Estado para fluxo-teste (não casa)
 
-  criarManifesto(raiz, {
+  criarManifesto(raiz, manifestoD2({
     revisor: { estagios: ["revisar"], escreve: false },
-  });
+  }));
 
   const payload = {
     session_id: "teste-7",
@@ -322,9 +330,9 @@ console.log("== 8. log append-only ==");
   iniciarGit(raiz, "fluxo/teste");
   criarEstadoAtivo(raiz, "teste", "revisar");
 
-  criarManifesto(raiz, {
+  criarManifesto(raiz, manifestoD2({
     revisor: { estagios: ["revisar"], escreve: false },
-  });
+  }));
 
   const payload = {
     session_id: "teste-8",
@@ -362,6 +370,63 @@ console.log("== 8. log append-only ==");
   } else {
     caso("log tem duas linhas", false, "log não criado");
   }
+
+  fs.rmSync(raiz, { recursive: true, force: true });
+}
+
+// == 9. Manifesto sem versao → exit 2 ==
+console.log("== 9. manifesto sem versao ==");
+{
+  const raiz = caixa();
+
+  iniciarGit(raiz, "fluxo/teste");
+  criarEstadoAtivo(raiz, "teste", "revisar");
+
+  // Manifesto sem versao
+  criarManifesto(raiz, {
+    agentes: {
+      revisor: { estagios: ["revisar"], escreve: false },
+    },
+  });
+
+  const payload = {
+    session_id: "teste-9",
+    tool_input: { subagent_type: "revisor" },
+  };
+
+  const r = rodaHook(raiz, JSON.stringify(payload));
+
+  caso("exit 2", r.status === 2, `exit=${r.status}`);
+  caso("stderr menciona versao", r.stderr.includes("versao"), `stderr: ${r.stderr}`);
+
+  fs.rmSync(raiz, { recursive: true, force: true });
+}
+
+// == 10. Manifesto com versao desconhecida (99) → exit 2 ==
+console.log("== 10. manifesto com versao desconhecida ==");
+{
+  const raiz = caixa();
+
+  iniciarGit(raiz, "fluxo/teste");
+  criarEstadoAtivo(raiz, "teste", "revisar");
+
+  // Manifesto com versao 99
+  criarManifesto(raiz, {
+    versao: 99,
+    agentes: {
+      revisor: { estagios: ["revisar"], escreve: false },
+    },
+  });
+
+  const payload = {
+    session_id: "teste-10",
+    tool_input: { subagent_type: "revisor" },
+  };
+
+  const r = rodaHook(raiz, JSON.stringify(payload));
+
+  caso("exit 2", r.status === 2, `exit=${r.status}`);
+  caso("stderr menciona versao 99", r.stderr.includes("99"), `stderr: ${r.stderr}`);
 
   fs.rmSync(raiz, { recursive: true, force: true });
 }
