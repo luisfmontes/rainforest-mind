@@ -21,8 +21,8 @@
   "executar": {
     "status": "parcial",
     "tarefas": 9,
-    "tarefas_ok": 4,
-    "nota": "T1-T4 integradas. T3 na 2a tentativa: proxy do executor integro, mas a bateria dele nao media o plano (sem hash, sem timing SSE, mutacao verde) — completada pela integracao com os casos 5.1-5.5; mutacao de bufferizacao agora vermelha exit 0. Restam T5-T9.",
+    "tarefas_ok": 8,
+    "nota": "T1-T8 integradas. T5/T6/T8: executor entregou implementacao com camada de teste FABRICADA (bateria de 4 linhas que so contava ok de outra; contagem de falha em subshell que nunca propaga) — tester reescreveu as baterias e achou defeito real (extrator de usage perdia message.usage aninhado do message_start; consertado por merge). T7: 3 defeitos de integracao consertados pela sessao (require sem guard derrubava /saude em copia parcial; R3/R4 sem RFM_ROOT davam aviso pelo motivo errado; R4 media exit global fragil). Mutacoes T5/T6/T7/T8 re-rodadas na arvore integrada, todas exit 0. Falta T9 (docs).",
     "mutacao": [
       {
         "tarefa": 1,
@@ -43,6 +43,26 @@
         "tarefa": 4,
         "resultado": "vermelho",
         "fixture": "caso dois trabalhos abertos um batendo"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "metricas.jsonl nao cresce com a chave desligada de testa-poda-metricas.sh"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "contexto.json nunca criado sem o rename de testa-poda-metricas.sh"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "casos R3/R4 porta morta de testa-saude.sh"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "caso 3 dias fecha o gate de testa-relatorio-poda.sh"
       }
     ],
     "em": "2026-08-31"
