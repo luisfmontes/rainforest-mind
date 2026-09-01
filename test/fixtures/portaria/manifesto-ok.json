@@ -1,0 +1,9 @@
+{
+  "versao": 1,
+  "agentes": {
+    "leitor": {
+      "estagios": ["executar", "revisar"],
+      "escreve": false
+    }
+  }
+}
