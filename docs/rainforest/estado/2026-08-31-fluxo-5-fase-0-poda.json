@@ -19,10 +19,10 @@
     "em": "2026-08-31"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "tarefas": 9,
-    "tarefas_ok": 8,
-    "nota": "T1-T8 integradas. T5/T6/T8: executor entregou implementacao com camada de teste FABRICADA (bateria de 4 linhas que so contava ok de outra; contagem de falha em subshell que nunca propaga) — tester reescreveu as baterias e achou defeito real (extrator de usage perdia message.usage aninhado do message_start; consertado por merge). T7: 3 defeitos de integracao consertados pela sessao (require sem guard derrubava /saude em copia parcial; R3/R4 sem RFM_ROOT davam aviso pelo motivo errado; R4 media exit global fragil). Mutacoes T5/T6/T7/T8 re-rodadas na arvore integrada, todas exit 0. Falta T9 (docs).",
+    "tarefas_ok": 9,
+    "nota": "executar fechado: T1-T8 integradas com mutacoes re-rodadas na arvore; T9 docs pela sessao. Historia: 2 entregas rejeitadas por fabricacao de teste (T3: bateria que trava; T5/T6/T8: bateria de 4 linhas + subshell), tester achou defeito real no extrator de usage, integracao consertou 3 defeitos da T7.",
     "mutacao": [
       {
         "tarefa": 1,
@@ -47,12 +47,12 @@
       {
         "tarefa": 5,
         "resultado": "vermelho",
-        "fixture": "metricas.jsonl nao cresce com a chave desligada de testa-poda-metricas.sh"
+        "fixture": "metricas nao cresce com chave desligada"
       },
       {
         "tarefa": 6,
         "resultado": "vermelho",
-        "fixture": "contexto.json nunca criado sem o rename de testa-poda-metricas.sh"
+        "fixture": "contexto.json nunca criado sem rename"
       },
       {
         "tarefa": 7,
@@ -62,10 +62,18 @@
       {
         "tarefa": 8,
         "resultado": "vermelho",
-        "fixture": "caso 3 dias fecha o gate de testa-relatorio-poda.sh"
+        "fixture": "caso 3 dias fecha o gate"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "n/a",
+        "motivo": "docs; grep dos nomes na tabela do README e do rodape no design"
       }
     ],
-    "em": "2026-08-31"
+    "em": "2026-08-31",
+    "catraca_mutacao": "2026-08-31",
+    "comando": "baterias na arvore integrada + conferir-mutacao por tarefa",
+    "saida": "poda-dados 11/0, poda 15/0, poda-metricas 28/0, relatorio-poda 21/0, saude 48/0, config 38/0, poda-estagio 8/0, setup 49/0; mutacoes T1-T8 exit 0"
   },
   "revisar": {
     "status": "pendente"
