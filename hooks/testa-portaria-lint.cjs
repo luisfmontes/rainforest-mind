@@ -146,6 +146,45 @@ console.log("== 8. manifesto com versao desconhecida ==");
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
 
+/* Casos da rodada 5 da revisão: a FORMA do manifesto, que nem o lint nem o
+ * runtime validavam. `escreve: "false"` (string) e `escreve` ausente desligavam
+ * a checagem 3 inteira — o lint saía 0 e o runtime liberava, com a linha de log
+ * byte a byte igual à de um allow conferido. Reabria o "allow que mentia" da
+ * rodada 4 por outra porta, e sem nem a marca que tornava aquela auditável.
+ *
+ * Os de `estagios` fecham a divergência lint↔runtime que o D5 promete não ter:
+ * manifesto que o runtime nega sempre passava no lint, e quem confia no gate do
+ * `plano` publicava agente indespachável sem aviso.
+ */
+function lintDeManifesto(rotulo, agentes, esperaExit, trecho) {
+  console.log(`== ${rotulo} ==`);
+  const tmpDir = fs.mkdtempSync(path.join(require("os").tmpdir(), "portaria-lint-forma-"));
+  try {
+    const mp = path.join(tmpDir, "manifesto.json");
+    fs.writeFileSync(mp, JSON.stringify({ versao: 1, agentes }, null, 2), "utf8");
+    const r = rodaLint(mp, path.join(FIXTURES, "agentes"));
+    const saida = (r.stderr || "") + (r.stdout || "");
+    caso(`exit ${esperaExit === 0 ? "0" : "≠ 0"}`,
+      esperaExit === 0 ? r.status === 0 : r.status !== 0, `exit=${r.status} saida=${saida}`);
+    if (trecho) caso(`saida cita '${trecho}'`, saida.includes(trecho), `saida: ${saida}`);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
+lintDeManifesto("escreve como STRING 'false' → erro",
+  { leitor: { estagios: ["revisar"], escreve: "false" } }, 1, "nao-booleano");
+lintDeManifesto("escreve AUSENTE → erro",
+  { leitor: { estagios: ["revisar"] } }, 1, "nao-booleano");
+lintDeManifesto("escreve: true → erro (nao suportado sem worktree)",
+  { leitor: { estagios: ["revisar"], escreve: true } }, 1, "nao e suportado");
+lintDeManifesto("estagios AUSENTE → erro",
+  { leitor: { escreve: false } }, 1, "nao e lista");
+lintDeManifesto("estagios VAZIO → erro",
+  { leitor: { estagios: [], escreve: false } }, 1, "vazio");
+lintDeManifesto("so 'arqueologia', que nunca fica ativo → aviso, exit 0",
+  { leitor: { estagios: ["arqueologia"], escreve: false } }, 0, "nunca ficam ativos");
+
 console.log(`\n== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 
 if (falhou > 0) {

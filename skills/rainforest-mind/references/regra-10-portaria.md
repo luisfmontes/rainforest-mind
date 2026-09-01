@@ -25,6 +25,8 @@ Exemplo:
 }
 ```
 
+**A FORMA do manifesto é conferida antes do conteúdo.** `escreve` tem de ser o booleano `false` — string `"false"`, ausente, ou qualquer outra coisa **nega**, com motivo instrutivo, no runtime e no `--lint`. `escreve: true` também nega: o campo existe no schema para a exceção futura ser uma linha de diff, mas o mecanismo que ela exige (worktree obrigatório por filho) não foi implementado. `estagios` ausente, não-lista ou vazio é **erro** no lint; lista que só contém estágio que nunca fica ativo (`arqueologia`) é **aviso**, porque o manifesto não está malformado, está inútil — o runtime negaria todo despacho daquele agente. Isto nasceu do crítico da rodada 5 da revisão: `escreve === false` é igualdade estrita, e qualquer outro valor desligava a checagem de escrita inteira, liberando em silêncio um agente que declarava `tools: Write, Edit, Bash` — com a linha de log idêntica à de um allow conferido.
+
 **Fail-closed, sempre com motivo.** A portaria nega quando: manifesto ausente ou inválido (JSON malformado ou `versao` desconhecida), agente não declarado, sem estágio ativo (nenhum fluxo aberto que case com a branch), estágio ativo fora da lista `estagios` do agente, ou `escreve: false` mas o arquivo `agents/<nome>.md` declara tools fora da allowlist read-only (`Read`, `Grep`, `Glob`). Toda negação sai com motivo não vazio — negação muda é bug.
 
 **Log de despacho** (`.rainforest/portaria/despachos.jsonl`): append-only, uma linha JSON por decisão, aprovada ou negada. Cada linha é autocontida — legível isolada, sem precisar do resto do log para fazer sentido:

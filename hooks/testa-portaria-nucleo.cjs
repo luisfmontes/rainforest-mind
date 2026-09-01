@@ -554,6 +554,52 @@ console.log("== 13. allow sem poder conferir escreve:false sai marcado ==");
   fs.rmSync(raiz, { recursive: true, force: true });
 }
 
+/* == 14. `escreve` tem de ser booleano — crítico da rodada 5 ==
+ *
+ * `escreve === false` é igualdade estrita, e até aqui QUALQUER outro valor caía
+ * fora do `if`: a checagem de escrita desligava inteira e o allow saía SEM a
+ * marca `escreve_conferido`, byte a byte igual ao de um agente conferido.
+ * Reabria o "allow que mentia" da rodada 4 por outra porta — e sem nem a marca,
+ * que era o que tornava aquela porta auditável. Os agentes destes casos
+ * declaram `tools: Write, Edit, Bash`, ou seja, seriam negados na hora se o
+ * `escreve` fosse o booleano de verdade.
+ */
+console.log("== 14. escreve nao-booleano nega, em vez de desligar a checagem ==");
+{
+  const raiz = caixa();
+  iniciarGit(raiz, "fluxo/teste");
+  criarEstadoAtivo(raiz, "teste", "revisar");
+  criarManifesto(raiz, manifestoD2({
+    strfalse: { estagios: ["revisar"], escreve: "false" },
+    semescreve: { estagios: ["revisar"] },
+    escrevetrue: { estagios: ["revisar"], escreve: true },
+    boolfalse: { estagios: ["revisar"], escreve: false },
+  }));
+  const dirAgentes = path.join(raiz, "agents");
+  fs.mkdirSync(dirAgentes, { recursive: true });
+  for (const n of ["strfalse", "semescreve", "escrevetrue"]) {
+    fs.writeFileSync(path.join(dirAgentes, `${n}.md`), `---\nname: ${n}\ntools: Write, Edit, Bash\n---\nc\n`, "utf8");
+  }
+  fs.writeFileSync(path.join(dirAgentes, "boolfalse.md"), "---\nname: boolfalse\ntools: Read, Grep\n---\nc\n", "utf8");
+
+  const r1 = rodaHook(raiz, JSON.stringify({ session_id: "t14", tool_input: { subagent_type: "strfalse" } }));
+  caso("escreve:'false' (string) nega", r1.status === 2, `exit=${r1.status} stderr=${r1.stderr}`);
+  caso("e o motivo diz que nao e booleano", r1.stderr.includes("nao-booleano"), r1.stderr);
+
+  const r2 = rodaHook(raiz, JSON.stringify({ session_id: "t14", tool_input: { subagent_type: "semescreve" } }));
+  caso("escreve ausente nega", r2.status === 2, `exit=${r2.status} stderr=${r2.stderr}`);
+
+  const r3 = rodaHook(raiz, JSON.stringify({ session_id: "t14", tool_input: { subagent_type: "escrevetrue" } }));
+  caso("escreve:true nega (depende do worktree, fora de escopo)", r3.status === 2, `exit=${r3.status} stderr=${r3.stderr}`);
+  caso("e diz que nao e suportado", r3.stderr.includes("nao e suportado"), r3.stderr);
+
+  // O booleano de verdade continua funcionando — o conserto nao virou deny-por-tudo.
+  const r4 = rodaHook(raiz, JSON.stringify({ session_id: "t14", tool_input: { subagent_type: "boolfalse" } }));
+  caso("escreve:false booleano com tools read-only aprova", r4.status === 0, `exit=${r4.status} stderr=${r4.stderr}`);
+
+  fs.rmSync(raiz, { recursive: true, force: true });
+}
+
 console.log(`\n== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 
 if (falhou > 0) {

@@ -395,6 +395,40 @@ function main() {
   // este repositorio, onde todo agente declarado TEM de ter arquivo, e ali a
   // ausencia e erro. A assimetria e desenho, o que estava errado era ela ser
   // invisivel.
+  // `escreve` tem de ser BOOLEANO, e a checagem disso vem antes de tudo.
+  //
+  // Critico da rodada 5. `escreve === false` e igualdade estrita, e ate aqui
+  // qualquer outro valor caia fora do `if` — a checagem de escrita inteira
+  // desligava, e o allow saia SEM a marca `escreve_conferido`, byte a byte igual
+  // ao de um agente conferido. Reproduzido: `"escreve": "false"` (string, o erro
+  // de digitacao mais provavel em JSON escrito a mao) e `escreve` AUSENTE, os
+  // dois liberando um agente cujo frontmatter declara `tools: Write, Edit, Bash`.
+  // Reabria por outra porta exatamente o "allow que mentia" que a rodada 4
+  // fechou — e sem nem a marca, que era o que tornava aquela porta auditavel.
+  //
+  // A regra e a mesma dos outros tres estados desta portaria: valor que nao da
+  // para interpretar nao vira permissao. Nega, com motivo instrutivo.
+  if (agentConfig.escreve !== false && agentConfig.escreve !== true) {
+    const valor = JSON.stringify(agentConfig.escreve);
+    const motivo =
+      `agente '${nomeAgente}' tem 'escreve' ausente ou nao-booleano no manifesto (veio ${valor})` +
+      ` — use o booleano false`;
+    gravarDespacho(raiz, "deny", nomeAgente, estagioAtivo, sessao, motivo);
+    negar(motivo);
+  }
+
+  // `escreve: true` existe no schema (D2) para que a excecao futura seja uma
+  // linha de diff, mas o mecanismo que ela exige — worktree obrigatorio por
+  // filho — nao foi implementado. Aceitar agora seria liberar escrita sem a
+  // trava que a torna aceitavel.
+  if (agentConfig.escreve === true) {
+    const motivo =
+      `agente '${nomeAgente}' declara 'escreve: true', que ainda nao e suportado` +
+      ` — depende do isolamento por worktree, fora de escopo no fluxo 9`;
+    gravarDespacho(raiz, "deny", nomeAgente, estagioAtivo, sessao, motivo);
+    negar(motivo);
+  }
+
   let escreveConferido = true;
   if (agentConfig.escreve === false) {
     const def = obterDefinicaoAgente(raiz, nomeAgente);
@@ -453,6 +487,16 @@ function executarLint(manifestoPath, agentesDir) {
   const { PRE_REQUISITOS } = estadoModule;
   const estadioValidos = new Set(
     Object.keys(PRE_REQUISITOS).filter(e => e !== "limpar")
+  );
+
+  // Estagio VALIDO nao e a mesma coisa que estagio ALCANCAVEL. `arqueologia`
+  // existe no grafo, mas o resolver de estagio ativo nunca o devolve — ele fica
+  // fora da lista de "proximo" por desenho (senao todo projeto sem mapa ficaria
+  // eternamente em "proximo: arqueologia" e o estagio opcional viraria
+  // obrigatorio pela porta dos fundos; ver hooks/lib/estagio-ativo.cjs). Agente
+  // restrito so a ele e indespachavel, e o lint tem de dizer isso.
+  const ESTAGIOS_ALCANCAVEIS = new Set(
+    [...estadioValidos].filter((e) => e !== "arqueologia")
   );
 
   let erros = 0;
@@ -523,6 +567,42 @@ function executarLint(manifestoPath, agentesDir) {
           erros++;
         }
       }
+    }
+
+    // Checagem 4b: a FORMA de `estagios`. Aviso 3 da rodada 5 — o lint aprovava
+    // manifesto que o runtime nega sempre, e o dev que confia num `--lint` verde
+    // (o gate que roda no `plano`) publicava agente indespachavel sem aviso.
+    if (config && !Array.isArray(config.estagios)) {
+      console.error(`erro: agente '${nome}' tem 'estagios' ausente ou que nao e lista — o runtime nega todo despacho dele`);
+      erros++;
+    } else if (config && config.estagios.length === 0) {
+      console.error(`erro: agente '${nome}' tem 'estagios' vazio — nunca podera ser despachado`);
+      erros++;
+    } else if (config && config.estagios.every((e) => !ESTAGIOS_ALCANCAVEIS.has(e))) {
+      // `arqueologia` e estagio de verdade, mas o resolver NUNCA o devolve como
+      // ativo (fica fora da lista de proximo por desenho, senao todo projeto sem
+      // mapa ficaria eternamente em "proximo: arqueologia"). Agente restrito so
+      // a ele passa no lint e nega em runtime, sempre. Aviso, nao erro: o
+      // manifesto nao esta malformado, esta inutil.
+      console.error(
+        `aviso: agente '${nome}' so declara estagio(s) que nunca ficam ativos ` +
+        `(${config.estagios.join(", ")}) — o runtime vai negar todo despacho dele`
+      );
+      avisos++;
+    }
+
+    // Checagem 4c: `escreve` tem de ser booleano — critico da rodada 5. Sem
+    // isto, `"escreve": "false"` (string) desligava a checagem 3 inteira e o
+    // lint saia 0, do mesmo jeito que o runtime liberava.
+    if (config && config.escreve !== false && config.escreve !== true) {
+      console.error(
+        `erro: agente '${nome}' tem 'escreve' ausente ou nao-booleano ` +
+        `(veio ${JSON.stringify(config.escreve)}) — use o booleano false`
+      );
+      erros++;
+    } else if (config && config.escreve === true) {
+      console.error(`erro: agente '${nome}' declara 'escreve: true', que ainda nao e suportado (depende do isolamento por worktree)`);
+      erros++;
     }
 
     // Checagem 3: escreve: false mas tool de escrita no frontmatter
