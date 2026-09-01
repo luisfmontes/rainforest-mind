@@ -66,6 +66,28 @@ function criarExtractorUsage() {
   let ultimoUsage = null;
   let buffer = '';
 
+  // O evento `message_start` real da Anthropic aninha o usage inicial em
+  // `message.usage` (input_tokens, cache_read_input_tokens,
+  // cache_creation_input_tokens, e um output_tokens ainda parcial). O
+  // `message_delta` manda um `usage` NO TOPO do evento, tipicamente só com o
+  // `output_tokens` final. Os dois precisam ser MESCLADOS — sobrescrever com
+  // o último `usage` visto (como uma versão anterior fazia) perde
+  // input_tokens/cache_* inteiros assim que o message_delta chega, porque o
+  // objeto dele não tem essas chaves.
+  function processarLinha(linha) {
+    if (!linha.startsWith('data: ')) return;
+    try {
+      const json = JSON.parse(linha.substring(6));
+      const usageAninhado = json.message && json.message.usage;
+      const usageTopo = json.usage;
+      if (usageAninhado || usageTopo) {
+        ultimoUsage = Object.assign({}, ultimoUsage, usageAninhado, usageTopo);
+      }
+    } catch {
+      // linha não é JSON válido, ignora
+    }
+  }
+
   return {
     stream: new Transform({
       transform(chunk, encoding, callback) {
@@ -76,16 +98,7 @@ function criarExtractorUsage() {
         buffer = linhas.pop(); // Última linha incompleta fica no buffer
 
         for (const linha of linhas) {
-          if (linha.startsWith('data: ')) {
-            try {
-              const json = JSON.parse(linha.substring(6));
-              if (json.usage) {
-                ultimoUsage = json.usage;
-              }
-            } catch {
-              // linha não é JSON válido, ignora
-            }
-          }
+          processarLinha(linha);
         }
 
         // Passa o chunk intacto
@@ -93,16 +106,7 @@ function criarExtractorUsage() {
       },
       flush(callback) {
         // Processa última linha do buffer se houver
-        if (buffer && buffer.startsWith('data: ')) {
-          try {
-            const json = JSON.parse(buffer.substring(6));
-            if (json.usage) {
-              ultimoUsage = json.usage;
-            }
-          } catch {
-            // ignora
-          }
-        }
+        processarLinha(buffer);
         callback();
       },
     }),
