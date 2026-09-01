@@ -105,6 +105,10 @@ const CHAVES = {
     padrao: false,
     descricao: 'usa `git branch -D` (apaga sem conferir merge) em vez de `-d`',
   },
+  poda: {
+    padrao: true,
+    descricao: 'passthrough de proxy medido: escreve metricas.jsonl e contexto.json',
+  },
   // INTEGRACOES — repositórios opcionais do usuário com ciclo de release próprio.
   // Cada uma tem stub `checar()` que devolve status — as checagens reais vêm depois.
   // Declaráveis via `--ligar integracao-<nome>`, desligadas por padrão.
