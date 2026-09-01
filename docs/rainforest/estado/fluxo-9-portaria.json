@@ -104,7 +104,8 @@
     "revisor": "rainforest-mind:revisor, contexto zerado, rodada 4, 2026-09-01",
     "nota": "REPROVADO na rodada 4 com 2 criticos e 1 aviso, os dois criticos REPRODUZIDOS na janela principal. A rodada foi redirecionada de proposito para os pontos frios (estagio-ativo.cjs e as baterias sem mutacao independente), e foi la que os achados sairam. CRITICO 1: testa-portaria-gitignore.cjs media o INDICE do git, nao a regra — check-ignore ignora o .gitignore para caminho ja rastreado, e os quatro caminhos da checagem 2 estao commitados, entao ela passava sozinha; trocar a regra pela larga (.rainforest/portaria/) deixava a bateria 9 ok / 0 falha. Conserto: --no-index; duas mutacoes agora exit 0 (6/3 e 7/2). CRITICO 2: escreve:false sem arquivo do agente era allow MUDO, indistinguivel de allow conferido, e o --lint acusava erro no mesmo manifesto (divergencia lint x runtime). Conserto nao e negar (repo consumidor do plugin nao tem agents/ local, negar quebraria a portaria fora deste repo): a linha de allow passa a trazer escreve_conferido:false quando a checagem nao pode ser feita. Duas mutacoes exit 0 (37/2 e 37/2). AVISO: estado_exports em estagio-ativo.cjs e carregado e nunca usado, e o comentario promete usar a logica oficial do estado.cjs que na verdade e reimplementada local — divida silenciosa, nao exploracao. NAO consertado nesta rodada, fica registrado. A divida do escreve:false em references passou a cobrir as DUAS portas. O texto estourou o teto de bytes do reference (11249 > 10500) e o arquivo foi PARTIDO como a regra 12 ja tinha sido: references/regra-10-portaria.md leva o mecanismo, regra-10.md fica com a regra e um ponteiro.",
     "em": "2026-09-01",
-    "tentativas": 4
+    "tentativas": 4,
+    "liberado_em": "2026-09-01"
   },
   "verificar": {
     "status": "pendente"
