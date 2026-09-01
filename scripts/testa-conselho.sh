@@ -1457,6 +1457,25 @@ else
 fi
 
 echo ""
+echo "== CASO 24: parecer-cercado-passa (parse tolerante a cerca de codigo) =="
+TEMPDIR24="$RAIZ/test-parecer-cercado"
+mkdir -p "$TEMPDIR24/.rainforest/conselho"
+FIXTURE_CERCADO="$SRC_M/scripts/fixtures/conselho/membro-json-cercado.cjs"
+cat > "$TEMPDIR24/.rainforest/conselho/membros.json" << EOF24
+{
+  "membros": [
+    {"nome": "cetico", "cmd": "node \"$FIXTURE_CERCADO\" {prompt} {saida}", "ligado": true},
+    {"nome": "arquiteto", "cmd": "node \"$FIXTURE_CERCADO\" {prompt} {saida}", "ligado": true},
+    {"nome": "usuario-final", "cmd": "node \"$FIXTURE_CERCADO\" {prompt} {saida}", "ligado": true}
+  ]
+}
+EOF24
+echo "# Questao cercada" > "$TEMPDIR24/questao-cercada.md"
+testa "cercado: abrir" "0"   bash -c "cd '$TEMPDIR24' && RFM_ESTADO_ROOT='$TEMPDIR24' node '$CONSELHO' abrir --questao questao-cercada.md"
+testa "cercado: pareceres com JSON em cerca fecham" "0"   bash -c "cd '$TEMPDIR24' && RFM_ESTADO_ROOT='$TEMPDIR24' node '$CONSELHO' pareceres"
+testa "cercado: conferir fase pareceres" "0"   bash -c "cd '$TEMPDIR24' && RFM_ESTADO_ROOT='$TEMPDIR24' node '$CONSELHO' conferir --fase pareceres"
+echo ""
+
 echo "== Resultado =="
 echo "total=$((ok + falhou)) vermelhas:[$falhou]"
 if [ "$falhou" -gt 0 ]; then
