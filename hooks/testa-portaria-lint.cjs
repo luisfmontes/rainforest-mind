@@ -182,6 +182,8 @@ lintDeManifesto("estagios AUSENTE → erro",
   { leitor: { escreve: false } }, 1, "nao e lista");
 lintDeManifesto("estagios VAZIO → erro",
   { leitor: { estagios: [], escreve: false } }, 1, "vazio");
+lintDeManifesto("entrada null no manifesto → erro",
+  { leitor: null }, 1, "nao tem objeto de configuracao");
 lintDeManifesto("so 'arqueologia', que nunca fica ativo → aviso, exit 0",
   { leitor: { estagios: ["arqueologia"], escreve: false } }, 0, "nunca ficam ativos");
 
