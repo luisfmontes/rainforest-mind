@@ -1,0 +1,22 @@
+{
+  "decisao_recomendada": "Manter o tiro único (A), porque divergência recorrente é evidência de que a QUESTÃO está mal formulada ou de que há conflito genuíno de valores — nenhum dos dois se resolve com mais rodadas de modelo — e o que falta hoje não é deliberação, é um mecanismo de fechamento humano barato.",
+  "fundamentos": [
+    "O gatilho de B é circular em relação ao problema que diz resolver: a divergência só é 'recorrente' depois de já ter sido apresentada ao humano em N sínteses distintas. Se o humano viu N vezes e não decidiu, o gargalo é atenção/decisão humana, não profundidade de deliberação dos modelos. Gastar 10 execuções de modelo para tratar um problema de atenção humana é resolver a coisa errada.",
+    "Convergência em comitê de LLM não é convergência epistêmica, é imitação. Na rodada 2 cada membro vê os pareceres e as críticas alheias; o efeito dominante documentado é ancoragem e cascata de maioria — o comitê passa a concordar com o argumento mais bem escrito, não com o mais correto. O delta de concordância que B/C produziriam é indistinguível de sicofancia agregada.",
+    "O campo `divergencias_nao_resolvidas` foi criado exatamente para impedir consenso fabricado. B e C são mecanismos cuja métrica de sucesso é reduzir esse campo — ou seja, otimizam contra o próprio instrumento de segurança. Um design em que o sucesso da feature é medido pela supressão do seu alarme é um design que vai suprimir o alarme.",
+    "Custo real de B não é 'mais uma rodada': é 15 execuções na base (3 fases × 5) + ~10 na rodada condicional, mais o custo permanente de manter um detector de recorrência e um segundo caminho de prompt. Para um dev solo, o custo dominante não é token — é latência e superfície de manutenção de uma ferramenta que ele mesmo mantém no tempo livre.",
+    "Para um dev solo, o desempate humano é a operação MAIS barata do sistema, não a mais cara: não há stakeholder para convencer, não há ata, não há reunião. A premissa implícita de B e C — 'decidir custa caro, delegar ao comitê sai mais barato' — vale em organização, não aqui. O comitê existe para gerar opções e expor riscos, não para poupar o dono da decisão.",
+    "C é dominada por A em quase todo cenário: o teto de rodadas será atingido justamente nas divergências que importam (as genuínas), produzindo a MESMA saída de A ao triplo do custo; e nas que não importam, produzirá consenso rápido — que A já produziria na fase de revisão cruzada."
+  ],
+  "divergencias_nao_resolvidas": [
+    "Objeções levantadas: 13 total",
+    "Ranking com divergência: revisores não concordam na ordem"
+  ],
+  "ranking_agregado": [
+    "cetico",
+    "arquiteto",
+    "usuario-final",
+    "codex",
+    "gemini"
+  ]
+}
