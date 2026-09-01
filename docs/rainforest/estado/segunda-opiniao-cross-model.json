@@ -59,10 +59,14 @@
   },
   "revisar": {
     "status": "ok",
-    "achados": 5,
+    "achados": 3,
     "em": "2026-09-01",
-    "base": "cc1db6a5f051ec75bbf07870f49da217384ca320",
-    "head": "4e7353f05419e7a658fd25928c071dd7d1f44550"
+    "base": "df5994c",
+    "head": "b09840eabe0c02021cf21ae0b1e79a5106f51476",
+    "snapshot": {
+      "head": "b09840eabe0c02021cf21ae0b1e79a5106f51476",
+      "caminhos_sujos": []
+    }
   },
   "verificar": {
     "status": "ok",
@@ -100,8 +104,8 @@
         "motivo": "tarefa so reescreve doc"
       }
     ],
-    "comando": "bash scratchpad/verificar.sh (baseline das 3 baterias + as 5 mutacoes declaradas do plano, contra o artefato final)",
-    "saida": "baseline: cli-externo exit=0 falhou:0 | segunda-opiniao exit=0 Falhou:0 | conselho exit=0 total=105 vermelhas:[0]. Mutacoes: T1 exit=1 falhou:1 | T2 exit=1 vermelhas:[2] | T3 exit=1 vermelhas:[1] | T4 exit=1 Falhou:1 | T5 exit=1 Falhou:1. Arvore restaurada.",
+    "comando": "bash scratchpad/verificar.sh contra b09840e (artefato com o conserto do prompt)",
+    "saida": "baseline cli-externo exit=0 | segunda-opiniao exit=0 | conselho exit=0 total=105 vermelhas:[0]. T1 exit=1 | T2 exit=1 vermelhas:[2] | T3 exit=1 vermelhas:[1] | T4 exit=1 | T5 exit=1. Arvore restaurada.",
     "em": "2026-09-01"
   },
   "fechar": {
