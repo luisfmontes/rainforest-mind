@@ -937,6 +937,115 @@ fi
 rm -f "$SBP/cfg/plugins/installed_plugins.json"
 
 echo
+echo "== integrações desligadas não geram item nenhum =="
+# Sem ligação: node scripts/saude.cjs --json não deve ter item com 'integracao' no nome
+R1="$( RFM_ROOT="$SBP/dados" \
+  node "$SRC/scripts/saude.cjs" --json 2>/dev/null | node -e '
+    let d=""; process.stdin.on("data", c => d += c).on("end", () => {
+      try {
+        const items = JSON.parse(d).filter(x => x.item && x.item.startsWith("integracao")).length;
+        console.log(items);
+      } catch(e) { console.log("erro"); }
+    })' )"
+checa "R1. sem integracao ligada, zero items integracao*" "0" "0" "$R1"
+
+echo
+echo "== integracao-sabia ligada com pasta sem .venv vira aviso =="
+# Setup: pasta sabia com sabia.py, mas SEM .venv
+SABIA_DIR="$SBP/fixtures-sabia"
+mkdir -p "$SABIA_DIR"
+echo "def doutor(): pass" > "$SABIA_DIR/sabia.py"
+# NÃO criar .venv
+
+# Setup dados: integracao-sabia LIGADA + projeto registrado
+# IMPORTANTE: config.json fica em RFM_ROOT, não em CLAUDE_CONFIG_DIR
+mkdir -p "$SBP/dados-integracao"
+cat > "$SBP/dados-integracao/config.json" <<EOF
+{"integracao-sabia":true}
+EOF
+cat > "$SBP/dados-integracao/projetos.json" <<EOF
+{"sabia":{"caminho":"$SABIA_DIR"}}
+EOF
+
+R2="$( RFM_ROOT="$SBP/dados-integracao" \
+  node "$SRC/scripts/saude.cjs" 2>/dev/null )"
+
+# Verify that integracao-sabia appears as aviso
+if echo "$R2" | grep -q "aviso.*integracao-sabia"; then
+  ok=$((ok+1)); echo "  ok   R2. integracao-sabia sem .venv vira aviso"
+else
+  falhou=$((falhou+1)); echo "  FALHA R2. integracao-sabia deveria virar aviso"
+fi
+
+# O aviso nao pode MUDAR o exit (D4). Exit absoluto seria fragil: o painel checa
+# muito alem das integracoes (banco, plugin), e em ambiente copiado/aninhado outra
+# checagem pode alertar por conta propria — foi exatamente assim que a secao K pegou
+# a primeira versao deste caso. Mede-se o DELTA: mesmo RFM_ROOT, integracao
+# desligada vs ligada-e-quebrada, e o exit tem de ser o MESMO.
+cat > "$SBP/dados-integracao/config.json" <<EOF
+{"integracao-sabia":false}
+EOF
+RFM_ROOT="$SBP/dados-integracao" \
+  node "$SRC/scripts/saude.cjs" >/dev/null 2>&1
+R2_EXIT_BASE=$?
+cat > "$SBP/dados-integracao/config.json" <<EOF
+{"integracao-sabia":true}
+EOF
+RFM_ROOT="$SBP/dados-integracao" \
+  node "$SRC/scripts/saude.cjs" >/dev/null 2>&1
+R2_EXIT=$?
+if [ "$R2_EXIT" = "$R2_EXIT_BASE" ]; then
+  ok=$((ok+1)); echo "  ok   R2b. integracao quebrada nao muda o exit (base $R2_EXIT_BASE, com aviso $R2_EXIT)"
+else
+  falhou=$((falhou+1)); echo "  FALHA R2b. exit mudou: sem integracao $R2_EXIT_BASE, com aviso $R2_EXIT"
+fi
+
+# Cleanup
+rm -rf "$SBP/dados-integracao" "$SBP/fixtures-sabia"
+
+echo
+echo "== MUTACAO: trocar aviso por alerta em checarIntegracoes =="
+# Se as chamadas a aviso() forem trocadas por alerta(), os testes de integração
+# devem falhar (exit != 0). A mutação roda numa cópia.
+MUTINT="$(mktemp -d)"
+TEMPS+=("$MUTINT")
+cp -r "$SRC/scripts" "$MUTINT/scripts"
+node -e "
+  const fs=require('fs'), p=process.argv[1];
+  const s=fs.readFileSync(p,'utf8');
+  const target = 'aviso(\`integracao-';
+  if(!s.includes(target)) { console.error('MUTACAO NAO APLICADA'); process.exit(1); }
+  fs.writeFileSync(p, s.replace(/aviso\(\`integracao-/g, 'alerta(\`integracao-'));
+" "$MUTINT/scripts/saude.cjs"
+if [ $? -ne 0 ]; then
+  falhou=$((falhou+1)); echo "  FALHA nao consegui aplicar a mutacao"
+else
+  # Setup para teste com integração ligada: com alerta, deve sair com exit 1
+  SABIA_DIR_MUT="$MUTINT/fixtures-sabia"
+  mkdir -p "$SABIA_DIR_MUT"
+  echo "def doutor(): pass" > "$SABIA_DIR_MUT/sabia.py"
+
+  # Config vai em RFM_ROOT, não em cfg
+  mkdir -p "$MUTINT/dados"
+  cat > "$MUTINT/dados/config.json" <<'JSON3'
+{"integracao-sabia":true}
+JSON3
+
+  cat > "$MUTINT/dados/projetos.json" <<JSON4
+{"sabia":{"caminho":"$SABIA_DIR_MUT"}}
+JSON4
+
+  RFM_ROOT="$MUTINT/dados" \
+    node "$MUTINT/scripts/saude.cjs" >/dev/null 2>&1
+  S_EXIT=$?
+
+  if [ "$S_EXIT" = "1" ]; then
+    ok=$((ok+1)); echo "  ok   S. com alerta no lugar de aviso, exit=1 (alerta bloqueia)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA S. mutacao nao fez exit=1"; echo "       veio exit: $S_EXIT"
+  fi
+fi
+rm -rf "$MUTINT"
 echo "== poda: proxy de medição de custo =="
 
 # R1: com poda desligada, não aparece no JSON
