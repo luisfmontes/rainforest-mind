@@ -591,6 +591,21 @@ function executarLint(manifestoPath, agentesDir) {
       avisos++;
     }
 
+    // Checagem 4d: entrada que não é objeto. `"agente": null` (ou string, ou
+    // número) passava calada no lint e era negada para sempre em runtime, porque
+    // `!manifesto.agentes[nome]` trata `null` como "não declarado". Buraco de
+    // aviso apontado na rodada 6, mesma família do "só arqueologia": o manifesto
+    // não está malformado o bastante para o runtime reclamar, mas o agente
+    // nunca roda e ninguém avisa.
+    if (!config || typeof config !== "object" || Array.isArray(config)) {
+      console.error(
+        `erro: agente '${nome}' nao tem objeto de configuracao no manifesto ` +
+        `(veio ${JSON.stringify(config)}) — o runtime nega todo despacho dele`
+      );
+      erros++;
+      continue;
+    }
+
     // Checagem 4c: `escreve` tem de ser booleano — critico da rodada 5. Sem
     // isto, `"escreve": "false"` (string) desligava a checagem 3 inteira e o
     // lint saia 0, do mesmo jeito que o runtime liberava.
@@ -666,6 +681,45 @@ if (require.main === module) {
     const agentesCompleto = path.isAbsolute(agentesDir) ? agentesDir : path.join(raiz, agentesDir);
     executarLint(manifestoCompleto, agentesCompleto);
   } else {
-    main();
+    /* Falha interna da portaria NEGA. Não crasha.
+     *
+     * Crítico da rodada 6 da revisão, e o erro era de raciocínio, não de
+     * digitação: a rodada 5 tirou o fallback do resolver com o argumento de que
+     * "se o estado.cjs não carregar, o certo é estourar alto e agora, porque a
+     * portaria é fail-closed". Estourar alto ela estoura — e ABRE.
+     *
+     * O contrato de hook do Claude Code é o que a própria casa já tinha escrito
+     * (README, tabela de travas mecânicas): **exit 2 barra**. Exit 0 passa, e
+     * qualquer outro código — 1 inclusive, que é o que uma exceção não tratada
+     * produz — é erro NÃO-BLOQUEANTE: o harness mostra o erro e a tool call
+     * SEGUE. Reproduzido: com `scripts/estado.cjs` fora do lugar, o hook saía 1
+     * com stack trace do Node, sem chamar `negar()` e sem gravar linha nenhuma
+     * no log — despacho aprovado em silêncio, sem passar por nenhuma das
+     * checagens que este arquivo inteiro existe para fazer.
+     *
+     * Era estritamente pior que o estado anterior: a versão com fallback nunca
+     * crashava, sempre chegava a uma decisão. Trocar "fallback sem teste" por
+     * "sem fallback e crashante" fechou um risco e abriu um maior.
+     *
+     * Por isso a rede fica AQUI, no topo, e não em try/catch espalhado: qualquer
+     * exceção que escape de `main()` — require quebrado, arquivo corrompido,
+     * bug futuro neste arquivo — vira exit 2 com motivo. Se a portaria não
+     * consegue decidir, admitir é exatamente a falha que ela existe para impedir.
+     *
+     * A saída de emergência não é variável de ambiente (isso seria a exceção em
+     * runtime que o D1 proíbe): é tirar o bloco do `.claude/settings.json`, que
+     * é arquivo versionado e passa pelo `revisar` — a mesma porta do manifesto.
+     */
+    try {
+      main();
+    } catch (err) {
+      const detalhe = (err && err.message) ? err.message : String(err);
+      process.stderr.write(
+        `portaria: falha interna, e por isso o despacho foi NEGADO — ${detalhe}\n` +
+        `a portaria nega quando nao consegue decidir; crashar deixaria o despacho passar.\n` +
+        `para destravar: conserte o erro acima, ou tire o bloco da portaria do .claude/settings.json.\n`
+      );
+      process.exit(2);
+    }
   }
 }

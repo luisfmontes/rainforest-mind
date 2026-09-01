@@ -600,6 +600,54 @@ console.log("== 14. escreve nao-booleano nega, em vez de desligar a checagem =="
   fs.rmSync(raiz, { recursive: true, force: true });
 }
 
+/* == 15. falha interna NEGA (exit 2), não crasha (exit 1) ==
+ *
+ * Crítico da rodada 6. Exit 2 num `PreToolUse` barra; exit 1 é erro
+ * NÃO-BLOQUEANTE e o despacho passa. Uma exceção não tratada produz exit 1 —
+ * então crashar não é fail-closed, é fail-OPEN, e sem sequer uma linha no log.
+ *
+ * O teste monta uma cópia da árvore do hook e QUEBRA a dependência interna
+ * (`scripts/estado.cjs` fora do lugar), que é o modo de falha real: arquivo
+ * ausente, erro de sintaxe introduzido em edição futura, I/O. Nada do repositório
+ * é tocado — a cópia mora em pasta temporária.
+ */
+console.log("== 15. falha interna nega (exit 2) em vez de crashar (exit 1) ==");
+{
+  const raiz = caixa();
+  iniciarGit(raiz, "fluxo/teste");
+  criarEstadoAtivo(raiz, "teste", "revisar");
+  criarManifesto(raiz, manifestoD2({ revisor: { estagios: ["revisar"], escreve: false } }));
+
+  // Cópia da árvore do plugin, para quebrar sem tocar no repositório.
+  const arvore = fs.mkdtempSync(path.join(os.tmpdir(), "portaria-quebrada-"));
+  fs.mkdirSync(path.join(arvore, "hooks", "lib"), { recursive: true });
+  fs.mkdirSync(path.join(arvore, "scripts"), { recursive: true });
+  const daqui = (rel) => path.join(__dirname, "..", rel);
+  fs.copyFileSync(daqui("hooks/portaria.cjs"), path.join(arvore, "hooks", "portaria.cjs"));
+  fs.copyFileSync(daqui("hooks/lib/estagio-ativo.cjs"), path.join(arvore, "hooks", "lib", "estagio-ativo.cjs"));
+  fs.copyFileSync(daqui("scripts/estado.cjs"), path.join(arvore, "scripts", "estado.cjs"));
+
+  const hookCopia = path.join(arvore, "hooks", "portaria.cjs");
+  const payload = JSON.stringify({ session_id: "t15", cwd: raiz, tool_input: { subagent_type: "revisor" } });
+  const roda = () => spawnSync(process.execPath, [hookCopia], { input: payload, encoding: "utf8" });
+
+  // Controle: a cópia intacta decide normalmente.
+  const inteiro = roda();
+  caso("copia intacta decide (exit 0 ou 2, nunca 1)", inteiro.status === 0 || inteiro.status === 2,
+    `exit=${inteiro.status} stderr=${inteiro.stderr}`);
+
+  // Agora quebra a dependência interna.
+  fs.rmSync(path.join(arvore, "scripts", "estado.cjs"));
+  const quebrado = roda();
+  caso("com a dependencia quebrada, exit 2 (nega) e nao 1 (passaria)",
+    quebrado.status === 2, `exit=${quebrado.status} stderr=${quebrado.stderr}`);
+  caso("e o stderr diz que negou por falha interna",
+    /falha interna/i.test(quebrado.stderr || ""), quebrado.stderr);
+
+  fs.rmSync(arvore, { recursive: true, force: true });
+  fs.rmSync(raiz, { recursive: true, force: true });
+}
+
 console.log(`\n== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 
 if (falhou > 0) {
