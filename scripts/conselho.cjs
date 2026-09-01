@@ -31,6 +31,11 @@ const ARQUIVO_MEMBROS = path.join(DIR_CONSELHO, 'membros.json');
 
 const QUORUM_MINIMO = 3;
 
+// Cmd padrao dos adaptadores embutidos: caminho ABSOLUTO deste script.
+// O spawn roda no projeto do usuario, e 'scripts/conselho.cjs' relativo so
+// existe no repo do proprio plugin (achado da rodada real da T9).
+const CMD_ADAPTADOR = (nome) => `node "${__filename}" adaptador-${nome} {prompt} {saida}`;
+
 // Timeout por execução de membro. Membro real (claude/codex/gemini) leva
 // 30-120s; fixture leva ms. Os 30s fixos matavam a rodada real (achado da T9).
 const TIMEOUT_MEMBRO_MS = Number(process.env.CONSELHO_TIMEOUT_MS) || 300000;
@@ -81,12 +86,12 @@ function gerarMembrosDefault() {
       },
       {
         nome: 'codex',
-        cmd: 'node scripts/conselho.cjs adaptador-codex {prompt} {saida}',
+        cmd: CMD_ADAPTADOR('codex'),
         ligado: false,
       },
       {
         nome: 'gemini',
-        cmd: 'node scripts/conselho.cjs adaptador-gemini {prompt} {saida}',
+        cmd: CMD_ADAPTADOR('gemini'),
         ligado: false,
       },
     ]
@@ -119,7 +124,7 @@ function resolverMembros() {
       } else {
         membros.push({
           nome: 'codex',
-          cmd: 'node scripts/conselho.cjs adaptador-codex {prompt} {saida}',
+          cmd: CMD_ADAPTADOR('codex'),
           ligado: true,
         });
       }
@@ -133,7 +138,7 @@ function resolverMembros() {
       } else {
         membros.push({
           nome: 'gemini',
-          cmd: 'node scripts/conselho.cjs adaptador-gemini {prompt} {saida}',
+          cmd: CMD_ADAPTADOR('gemini'),
           ligado: true,
         });
       }
