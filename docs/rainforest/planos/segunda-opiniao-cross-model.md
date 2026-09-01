@@ -53,7 +53,7 @@ mutacao:
   para: omitir o campo, deixando a chamada sem teto de tempo
   bateria: `bash scripts/testa-conselho.sh`
   fixture: caso `membro-que-trava-e-cortado` — fixture que dorme além do teto; a fase tem de reprovar por tempo em vez de pendurar
-pronto quando: `grep -c 'spawnSync' scripts/conselho.cjs` devolve 0 e `grep -c 'cmd.exe' scripts/conselho.cjs` devolve 0 — o padrão de shell por plataforma existe uma vez só no repo, em `hooks/lib/cli-externo.cjs`; `bash scripts/testa-conselho.sh` verde nas 29 casos. Provado pelos dois `grep` e pela saída da bateria.
+pronto quando: `grep -c "['cmd.exe'" scripts/conselho.cjs` devolve 0 e nenhum `spawnSync` sobra dentro de `executarPareceres` ou `executarRevisao` — as ocorrencias que restam sao o `require` do topo e as duas auto-invocacoes `spawnSync('node', ...)` de `conferir --fase`, que nao sao transporte de CLI externo e nao entram nesta tarefa (Emenda 2, 2026-09-01: o criterio original dizia `grep -c 'spawnSync'` = 0, que era literalmente inalcancavel e o `revisar` acusou) — o padrão de shell por plataforma existe uma vez só no repo, em `hooks/lib/cli-externo.cjs`; `bash scripts/testa-conselho.sh` verde nas 29 casos. Provado pelos dois `grep` e pela saída da bateria.
 
 ### 4. Segunda opinião: caminho próprio, com contrato de entrada e veredito de uma linha [tipo: implementar]
 atende: D4, D5, D7
