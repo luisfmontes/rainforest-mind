@@ -109,6 +109,17 @@ const CHAVES = {
     padrao: true,
     descricao: 'passthrough de proxy medido: escreve metricas.jsonl e contexto.json',
   },
+  // INTEGRACOES — repositórios opcionais do usuário com ciclo de release próprio.
+  // Cada uma tem stub `checar()` que devolve status — as checagens reais vêm depois.
+  // Declaráveis via `--ligar integracao-<nome>`, desligadas por padrão.
+  'integracao-whatsapp-mcp': {
+    padrao: false,
+    descricao: 'MCP para bridge WhatsApp local (127.0.0.1:3005)',
+  },
+  'integracao-sabia': {
+    padrao: false,
+    descricao: 'Sabiá: transcrição local de reunião com diarização (quem falou), CLI Python',
+  },
 };
 
 /**
