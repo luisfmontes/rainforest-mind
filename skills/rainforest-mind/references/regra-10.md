@@ -81,41 +81,8 @@ decide. A forma do briefing e o encadeamento de vários despachos moram na skill
 
 ## A portaria — admissão por manifesto (fluxo 9)
 
-Com a portaria registrada (ver 'Estado atual' abaixo), subagente só roda se estiver declarado em `.rainforest/agentes.json` com o estágio ativo na sua lista. A decisão é tomada por código (hook `PreToolUse` que intercepta a tool `Task`), nunca por pergunta ao humano em runtime.
+Subagente só roda se estiver declarado em `.rainforest/agentes.json` com o estágio ativo na sua lista. A decisão é tomada por código — hook `PreToolUse` (`hooks/portaria.cjs`) —, nunca por pergunta ao humano em runtime; exceção é editar o manifesto, e isso passa pelo `revisar`.
 
-> **Regra 10 (reescrita):** Subagente só roda se estiver declarado em `.rainforest/agentes.json` e o estágio ativo constar na sua lista. A portaria decide por código; o humano nunca é perguntado em sessão. Exceção não existe em runtime — exceção é editar o manifesto, e edição de manifesto é mudança versionada que passa pelo `revisar`.
-
-**O manifesto** (`.rainforest/agentes.json`) declara por agente:
-- `estagios`: em quais estágios do grafo (ex.: `["revisar"]`, `["design", "plano"]`) pode ser despachado.
-- `escreve`: por ora, sempre `false` — subagente não escreve, só relata.
-
-Exemplo:
-```json
-{
-  "versao": 1,
-  "agentes": {
-    "revisor":    { "estagios": ["revisar"], "escreve": false },
-    "planejador": { "estagios": ["design", "plano"], "escreve": false }
-  }
-}
-```
-
-**Fail-closed, sempre com motivo.** A portaria nega quando: manifesto ausente ou inválido (JSON malformado ou `versao` desconhecida), agente não declarado, sem estágio ativo (nenhum fluxo aberto que case com a branch), estágio ativo fora da lista `estagios` do agente, ou `escreve: false` mas o arquivo `agents/<nome>.md` declara tools fora da allowlist read-only (`Read`, `Grep`, `Glob`). Toda negação sai com motivo não vazio — negação muda é bug.
-
-**Log de despacho** (`.rainforest/portaria/despachos.jsonl`): append-only, uma linha JSON por decisão, aprovada ou negada. Cada linha é autocontida — legível isolada, sem precisar do resto do log para fazer sentido:
-```json
-{"ts":"2026-08-31T14:02:11Z","agente":"revisor","estagio":"revisar","decisao":"allow","sessao":"<id>"}
-{"ts":"2026-08-31T14:05:47Z","agente":"executor","estagio":"revisar","decisao":"deny","motivo":"agente 'executor' não consta no manifesto","sessao":"<id>"}
-```
-
-O log é evidência de primeira classe: responde "quem rodou, quando, em qual estágio" com `cat`, e o recibo do fluxo 7 pode referenciá-lo. Entra no `.gitignore` (tarefa 4 do plano) — `.rainforest/agentes.json` e `.rainforest/portaria/amostra.json` ficam versionados (documentação); o log de execução não.
-
-**Exceção é editar o manifesto.** Quem quer disparar agente não declarado edita `.rainforest/agentes.json`, passando a mudança pelo `revisar` — é o único jeito de aprovar novas declarações. Em runtime, sem edição no manifesto, não há pergunta ao humano.
-
-**Estado atual (Opção A: 2026-08-31).** Enquanto `escreve: false` for a única opção no schema e agentes escritores (`executor`, `documentador`, `resolvedor-de-build`, `tester`) não tiverem worktree próprio (extensão futura não implementada), esses quatro agentes não cabem no manifesto real — ficar de fora do manifesto significa serem bloqueados assim que o hook for registrado em `.claude/settings.json`. A Tarefa 9 do plano (fluxo 9) registra bloqueio explícito — o hook entra em produção (`main`) apenas com aceite por escrito do usuário de que sabe e aceitou que `executor`/`documentador`/`resolvedor-de-build`/`tester` param de rodar nesse instante, até a reavaliação futura de `escreve: true` com isolamento de worktree.
-
-**Aceite registrado (Luís, 2026-09-01).** O bloqueio da Opção A foi aceito: `executor`, `documentador`, `resolvedor-de-build` e `tester` param de rodar quando o hook entrar na `main`, até a reavaliação de `escreve: true` com worktree por filho. O manifesto real nasce com três agentes — `revisor` e `auditor-de-seguranca` (`["revisar"]`) e `planejador` (`["design", "plano"]`) —, e `arqueologo` e `depurador` também ficam de fora: o primeiro escreve em `docs/rainforest/mapas/` pela própria description, o segundo não foi avaliado ainda.
-
-**Dívida nomeada: `escreve: false` hoje é declaração, não trava.** A checagem 3 do lint (e a decisão 6 em runtime) leem `tools:` do frontmatter do agente e negam o que estiver fora de `Read`/`Grep`/`Glob`. Medido em 2026-09-01: **nenhum** dos nove arquivos em `agents/` declara `tools:` — todos herdam o conjunto inteiro de ferramentas, então a checagem nunca dispara contra os agentes reais e `escreve: false` afirma algo que o arquivo não sustenta. Fechar essa folga escrevendo `tools: Read, Grep, Glob` nos três admitidos custaria caro e foi recusado com razão: o `revisor` precisa de `Bash` para **reproduzir cada achado** antes de dar veredito, que é o que a regra 12 exige dele. A trava de verdade depende de uma allowlist que separe "roda comando" de "escreve arquivo", e isso não existe hoje no frontmatter. Até lá, a linha de defesa real é o manifesto + estágio, não o `escreve`.
+O mecanismo inteiro — schema do manifesto, as sete decisões do fail-closed, o log de despacho, o modo `--lint`, o aceite do bloqueio e as duas portas da dívida do `escreve: false` — mora em `references/regra-10-portaria.md`.
 
 Os vigias headless carregam a versão resumida no `vigias/_comum.md`.
