@@ -19,6 +19,7 @@ trap 'rm -rf "$RAIZ_POSIX"' EXIT
 
 echo "(caixa de areia: $RAIZ)"
 echo ""
+echo "== Resultado =="
 
 # Diretório de "dados" (~/.rainforest) vazio e isolado — usado pelos casos que
 # precisam de config REALMENTE padrão (nenhuma chave ligada em lugar nenhum),
@@ -70,6 +71,7 @@ testa "quorum-dois-membros: exit != 0" "1" \
   bash -c "cd '$TEMPDIR1' && node '$CONSELHO' abrir --questao questao.md"
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 2: abrir-padrao (sem membros.json) =="
 TEMPDIR2="$RAIZ/test-padrao"
 mkdir -p "$TEMPDIR2"
@@ -142,6 +144,7 @@ if [ -n "$RODADA_DIR" ]; then
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 3: atribuicao-no-cabecalho =="
 
 # Check that conselho.cjs header contains karpathy attribution
@@ -163,6 +166,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 4: pareceres-completos-fecham =="
 TEMPDIR4="$RAIZ/test-pareceres-completos"
 mkdir -p "$TEMPDIR4"
@@ -212,6 +216,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 5: membro-indisponivel-reprova =="
 TEMPDIR5="$RAIZ/test-membro-indisponivel"
 mkdir -p "$TEMPDIR5"
@@ -268,6 +273,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 6: json-invalido-reprova-apontando-campo =="
 TEMPDIR6="$RAIZ/test-json-invalido"
 mkdir -p "$TEMPDIR6"
@@ -334,6 +340,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 7: saida-vazia-reprova =="
 TEMPDIR7="$RAIZ/test-saida-vazia"
 mkdir -p "$TEMPDIR7"
@@ -388,6 +395,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 8: revisar-fecha-com-3 =="
 TEMPDIR8="$RAIZ/test-revisar-ok"
 mkdir -p "$TEMPDIR8"
@@ -462,6 +470,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 9: identidade-nao-vaza =="
 if [ -d "$RODADA_DIR8/fase2" ]; then
   # Check that real member names do not appear in distributed files
@@ -480,6 +489,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 10: ranking-incompleto-reprova =="
 TEMPDIR10="$RAIZ/test-ranking-incompleto"
 mkdir -p "$TEMPDIR10"
@@ -554,6 +564,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 11: cada-um-recebe-so-os-outros =="
 if [ -d "$RODADA_DIR8/fase2" ]; then
   # Check that pacote-prompt for cetico does not contain parecer do cetico himself
@@ -581,6 +592,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 12: agregacao-conhecida =="
 # Test with THREE FIXED rankings where the aggregated result differs from FIRST reviewer
 # With 3 members, each reviewer rates 2 others (N-1)
@@ -706,6 +718,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 13: sintese-grava-com-divergencias =="
 TEMPDIR13="$RAIZ/test-sintese-divergencias"
 mkdir -p "$TEMPDIR13"
@@ -824,6 +837,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 14: sintese-unanime-exige-flag =="
 # Cenário: pareceres SEM objeções + rankings idênticos = divergências VAZIAS
 # Esperado: sem --unanime → exit ≠ 0; com --unanime → exit 0
@@ -910,6 +924,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 15: parecer-sem-objecao-reprova-citando-membro =="
 TEMPDIR15="$RAIZ/test-parecer-sem-objecao"
 mkdir -p "$TEMPDIR15/.rainforest/conselho"
@@ -976,6 +991,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 16: sintese-invalida-reprova =="
 TEMPDIR16="$RAIZ/test-sintese-invalida"
 mkdir -p "$TEMPDIR16/.rainforest/conselho"
@@ -1030,6 +1046,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 17: terceira-reprovacao-abandona =="
 TEMPDIR17="$RAIZ/test-terceira-reprova"
 mkdir -p "$TEMPDIR17/.rainforest/conselho"
@@ -1111,6 +1128,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 18: sucesso-zera-contador =="
 TEMPDIR18="$RAIZ/test-sucesso-zera"
 mkdir -p "$TEMPDIR18/.rainforest/conselho"
@@ -1179,6 +1197,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 19: externo-desligado-fica-fora =="
 # ACHADO da tarefa 8 (auditoria): a versão anterior deste caso não exercitava
 # `abrir` nenhuma vez — o `node -e` só fazia `require(conselho.cjs)`, e como
@@ -1236,6 +1255,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 20: externo-ligado-entra =="
 TEMPDIR20="$RAIZ/test-externo-ligado"
 mkdir -p "$TEMPDIR20/.rainforest/conselho"
@@ -1286,6 +1306,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 21: gemini-sem-credencial-falha =="
 TEMPDIR21="$RAIZ/test-gemini-credencial"
 mkdir -p "$TEMPDIR21"
@@ -1313,6 +1334,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 21b: gemini-com-credencial-sucede =="
 # Caso simétrico: COM credencial, o adaptador chega a chamar a fixture
 # e escreve saída com sucesso.
@@ -1351,6 +1373,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 22: agregacao-discorda-desempate =="
 # ACHADO da tarefa 8 (auditoria + endurecimento pedido no item 2): o CASO 12
 # (agregacao-conhecida) usa 3 membros; com 3 membros e N-1=2 avaliações por
@@ -1469,6 +1492,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 23: lint-require-sem-npm =="
 # D14: nenhuma dependência npm entra no repo. Verifica que scripts/conselho.cjs
 # e as fixtures scripts/fixtures/conselho/*.cjs só fazem require() de módulo
@@ -1500,6 +1524,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 24: parecer-cercado-passa (parse tolerante a cerca de codigo) =="
 TEMPDIR24="$RAIZ/test-parecer-cercado"
 mkdir -p "$TEMPDIR24/.rainforest/conselho"
@@ -1518,6 +1543,7 @@ testa "cercado: abrir" "0"   bash -c "cd '$TEMPDIR24' && RFM_ESTADO_ROOT='$TEMPD
 testa "cercado: pareceres com JSON em cerca fecham" "0"   bash -c "cd '$TEMPDIR24' && RFM_ESTADO_ROOT='$TEMPDIR24' node '$CONSELHO' pareceres"
 testa "cercado: conferir fase pareceres" "0"   bash -c "cd '$TEMPDIR24' && RFM_ESTADO_ROOT='$TEMPDIR24' node '$CONSELHO' conferir --fase pareceres"
 echo ""
+echo "== Resultado =="
 
 echo "== CASO 25: caminho-com-espaco =="
 TEMPDIR25="$RAIZ/pasta com espaco"
@@ -1551,6 +1577,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 26: retry-seletivo-so-reexecuta-um =="
 TEMPDIR26="$RAIZ/test-retry-seletivo"
 mkdir -p "$TEMPDIR26/.rainforest/conselho"
@@ -1602,6 +1629,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 27: fases-fecham-no-estado (portao que passa marca a fase) =="
 TEMPDIR27="$RAIZ/test-fases-fecham"
 mkdir -p "$TEMPDIR27/.rainforest/conselho"
@@ -1639,6 +1667,7 @@ else
   falhou=$((falhou + 1)); echo "  FALHA estado das fases: $(node -e "const j=require('$EST27');console.log(JSON.stringify(j.fases))")"
 fi
 echo ""
+echo "== Resultado =="
 
 echo "== CASO 28: revisar-membro-retry (mapa reusado, pacote completo) =="
 TEMPDIR28="$RAIZ/test-revisar-membro"
@@ -1676,6 +1705,7 @@ else
 fi
 testa "portao da revisao fecha apos retry" "0" bash -c "cd '$TEMPDIR28' && RFM_ESTADO_ROOT='$TEMPDIR28' node '$CONSELHO' conferir --fase revisao"
 echo ""
+echo "== Resultado =="
 
 echo "== CASO 29: aspas-ja-presentes no cmd do dev =="
 TEMPDIR29="$RAIZ/test-aspas-presentes"
@@ -1701,6 +1731,7 @@ else
   falhou=$((falhou + 1)); echo "  FALHA $N29 pareceres com cmd ja-aspado"
 fi
 echo ""
+echo "== Resultado =="
 
 echo "== CASO 30: membro-que-trava-e-cortado (timeout rápido) =="
 TEMPDIR30="$RAIZ/test-timeout"
@@ -1719,9 +1750,53 @@ echo "# Questão com timeout" > "$TEMPDIR30/q30.md"
 testa "timeout-rápido: abrir" "0" bash -c "cd '$TEMPDIR30' && RFM_ESTADO_ROOT='$TEMPDIR30' node '$CONSELHO' abrir --questao q30.md"
 # Executa pareceres com timeout curto (100ms) — deve falhar
 testa "timeout-rápido: pareceres sai com exit 1 (cortado por timeout)" "1" bash -c "cd '$TEMPDIR30' && CONSELHO_TIMEOUT_MS=100 RFM_ESTADO_ROOT='$TEMPDIR30' node '$CONSELHO' pareceres"
+# Executa pareceres com timeout folgado (10000ms) — deve suceder
+testa "timeout-folgado: pareceres sai com exit 0 (completa)" "0" bash -c "cd '$TEMPDIR30' && CONSELHO_TIMEOUT_MS=10000 RFM_ESTADO_ROOT='$TEMPDIR30' node '$CONSELHO' pareceres"
+echo ""
+echo "== Resultado =="
+
+TEMPDIR31="$RAIZ/test-timeout-revisao"
+echo "== CASO 31: revisor-que-trava-e-cortado (timeout revisão) =="
+
+mkdir -p "$TEMPDIR31/.rainforest/conselho"
+FO_MEMBRO="$SRC_M/scripts/fixtures/conselho/membro-ok.cjs"
+FO31="$SRC_M/scripts/fixtures/conselho/membro-revisor-que-trava-e-cortado.cjs"
+
+# Create question file
+echo "# Questão para timeout de revisão" > "$TEMPDIR31/q31.md"
+
+# Create membros.json para pareceres
+cat > "$TEMPDIR31/.rainforest/conselho/membros.json" << EOF31
+{
+  "membros": [
+    {"nome": "cetico", "cmd": "node \"$FO_MEMBRO\" \"{prompt}\" \"{saida}\"", "ligado": true},
+    {"nome": "arquiteto", "cmd": "node \"$FO_MEMBRO\" \"{prompt}\" \"{saida}\"", "ligado": true},
+    {"nome": "usuario-final", "cmd": "node \"$FO_MEMBRO\" \"{prompt}\" \"{saida}\"", "ligado": true}
+  ]
+}
+EOF31
+
+# Open and collect pareceres
+testa "timeout-revisao: abrir" "0" bash -c "cd '$TEMPDIR31' && RFM_ESTADO_ROOT='$TEMPDIR31' node '$CONSELHO' abrir --questao q31.md"
+testa "timeout-revisao: pareceres" "0" bash -c "cd '$TEMPDIR31' && RFM_ESTADO_ROOT='$TEMPDIR31' node '$CONSELHO' pareceres"
+
+# Now update membros.json para usar revisor que trava
+cat > "$TEMPDIR31/.rainforest/conselho/membros.json" << EOF31
+{
+  "membros": [
+    {"nome": "cetico", "cmd": "node \"$FO31\" \"{prompt}\" \"{saida}\"", "ligado": true},
+    {"nome": "arquiteto", "cmd": "node \"$FO31\" \"{prompt}\" \"{saida}\"", "ligado": true},
+    {"nome": "usuario-final", "cmd": "node \"$FO31\" \"{prompt}\" \"{saida}\"", "ligado": true}
+  ]
+}
+EOF31
+
+# Executa revisar com timeout curto (100ms) — deve falhar
+testa "timeout-revisao: revisar sai com exit 1 (cortado por timeout)" "1" bash -c "cd '$TEMPDIR31' && CONSELHO_TIMEOUT_MS=100 RFM_ESTADO_ROOT='$TEMPDIR31' node '$CONSELHO' revisar"
+# Executa revisar com timeout folgado (10000ms) — deve suceder
+testa "timeout-revisao: revisar sai com exit 0 (completa)" "0" bash -c "cd '$TEMPDIR31' && CONSELHO_TIMEOUT_MS=10000 RFM_ESTADO_ROOT='$TEMPDIR31' node '$CONSELHO' revisar"
 echo ""
 
-echo "== Resultado =="
 echo "total=$((ok + falhou)) vermelhas:[$falhou]"
 if [ "$falhou" -gt 0 ]; then
   exit 1
