@@ -19,10 +19,10 @@
     "em": "2026-08-31"
   },
   "executar": {
-    "status": "parcial",
-    "tarefas": 11,
-    "tarefas_ok": 11,
-    "nota": "rodada 2: tarefas 10-11 pela sessao. Host reescrito (critico real da revisao, reproduzido contra a API viva); orfao removido; invariante emendada para stream.",
+    "status": "ok",
+    "tarefas": 12,
+    "tarefas_ok": 12,
+    "nota": "rodada 3: tarefa 12 pela sessao (port vs porta). Caminho de sucesso do /saude roda pela primeira vez (R5).",
     "mutacao": [
       {
         "tarefa": 1,
@@ -32,37 +32,37 @@
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "bloco PODA de testa-config.sh"
+        "fixture": "bloco PODA"
       },
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "caso 5.4 timing SSE"
+        "fixture": "5.4 timing SSE"
       },
       {
         "tarefa": 4,
         "resultado": "vermelho",
-        "fixture": "dois trabalhos abertos um batendo"
+        "fixture": "dois trabalhos um batendo"
       },
       {
         "tarefa": 5,
         "resultado": "vermelho",
-        "fixture": "metricas nao cresce com chave desligada"
+        "fixture": "metricas nao cresce desligada"
       },
       {
         "tarefa": 6,
         "resultado": "vermelho",
-        "fixture": "contexto.json nunca criado sem rename"
+        "fixture": "contexto sem rename"
       },
       {
         "tarefa": 7,
         "resultado": "vermelho",
-        "fixture": "casos R3/R4 porta morta"
+        "fixture": "R3/R4 porta morta"
       },
       {
         "tarefa": 8,
         "resultado": "vermelho",
-        "fixture": "3 dias fecha o gate"
+        "fixture": "3 dias fecha gate"
       },
       {
         "tarefa": 9,
@@ -72,22 +72,23 @@
       {
         "tarefa": 10,
         "resultado": "vermelho",
-        "fixture": "caso 5.2b Host do upstream de testa-poda.sh"
+        "fixture": "5.2b Host do upstream"
       },
       {
         "tarefa": 11,
         "resultado": "n/a",
-        "motivo": "limpeza; arquivo ausente + testa-saude verde"
+        "motivo": "limpeza"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "R5 caminho de sucesso + R3 formato real"
       }
     ],
     "em": "2026-08-31",
     "catraca_mutacao": "2026-08-31",
-    "comando": "baterias + conferir-mutacao da 10",
-    "saida": "poda 17/0, metricas 28/0, saude 48/0; mutacao 10 exit 0",
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-08-31"
-    }
+    "comando": "testa-saude 2x + conferir-mutacao da 12",
+    "saida": "saude 49/0; mutacao 12 exit 0"
   },
   "revisar": {
     "status": "reprovado",
