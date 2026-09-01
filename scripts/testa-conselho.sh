@@ -1528,6 +1528,8 @@ testa "retry-seletivo: conferir fase" "0" bash -c "cd '$TEMPDIR26' && RFM_ESTADO
 RODADA_DIR26=$(ls -1d "$TEMPDIR26/.rainforest/conselho"/202* 2>/dev/null | head -1)
 if [ -n "$RODADA_DIR26" ]; then
   rm -f "$RODADA_DIR26/parecer-arquiteto.json"
+  # Sentinela: se cetico/usuario-final forem REexecutados, a fixture sobrescreve e o marcador some
+  node -e "const fs=require('fs');for(const n of ['cetico','usuario-final']){const p='$RODADA_DIR26/parecer-'+n+'.json';const j=JSON.parse(fs.readFileSync(p,'utf8'));j.marcador_intacto=true;fs.writeFileSync(p,JSON.stringify(j,null,2));}"
   testa "retry-seletivo: pareceres --membro arquiteto" "0" bash -c "cd '$TEMPDIR26' && RFM_ESTADO_ROOT='$TEMPDIR26' node '$CONSELHO' pareceres --membro arquiteto"
   if [ -f "$RODADA_DIR26/parecer-arquiteto.json" ]; then
     ok=$((ok + 1))
@@ -1535,6 +1537,13 @@ if [ -n "$RODADA_DIR26" ]; then
   else
     falhou=$((falhou + 1))
     echo "  FALHA parecer-arquiteto.json não foi recriado"
+  fi
+  if node -e "const f=require('$RODADA_DIR26/parecer-cetico.json'),g=require('$RODADA_DIR26/parecer-usuario-final.json');process.exit(f.marcador_intacto===true&&g.marcador_intacto===true?0:1)"; then
+    ok=$((ok + 1))
+    echo "  ok   cetico e usuario-final NAO foram reexecutados (sentinela intacta)"
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA retry --membro reexecutou membro que nao devia (sentinela sumiu)"
   fi
   INVALID_OUT=$(bash -c "cd '$TEMPDIR26' && RFM_ESTADO_ROOT='$TEMPDIR26' node '$CONSELHO' pareceres --membro invalido" 2>&1 || true)
   if echo "$INVALID_OUT" | grep -q "Erro.*desconhecido"; then
