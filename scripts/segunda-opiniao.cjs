@@ -58,8 +58,10 @@ const CLI_CMD_CUSTOM = args['cli-cmd']; // Para testes com fixtures
  * D5: Quando veredito for "discordo" e a janela rejeitar, registra com motivo escrito.
  * Motivo vazio ou só whitespace = recusa (exit ≠ 0, nada gravado).
  *
- * Arquivo de log: .claude/logs/divergencias-segunda-opiniao.jsonl
+ * Arquivo de log: .claude/logs/divergencias-segunda-opiniao.jsonl (ancorado na raiz do repo)
  * Cada linha é JSON: { timestamp, veredito, motivo, base, modelo }
+ *
+ * Recusa (exit ≠ 0) se não estiver dentro de um repositório git.
  */
 function registrarDivergencia() {
   if (!args.veredito || !args.motivo || !args.base) {
@@ -73,7 +75,19 @@ function registrarDivergencia() {
     process.exit(1);
   }
 
-  const logDir = path.join(process.cwd(), '.claude', 'logs');
+  // Ancorar em raiz do repositório — recusar fora de repo git
+  const gitTopResult = spawnSync('git', ['rev-parse', '--show-toplevel'], {
+    encoding: 'utf8',
+    cwd: process.cwd()
+  });
+
+  if (gitTopResult.status !== 0) {
+    console.error('Erro: registrar-divergencia precisa estar dentro de um repositório git');
+    process.exit(1);
+  }
+
+  const repoRoot = gitTopResult.stdout.trim();
+  const logDir = path.join(repoRoot, '.claude', 'logs');
   const logFile = path.join(logDir, 'divergencias-segunda-opiniao.jsonl');
 
   // Criar diretório se não existir
