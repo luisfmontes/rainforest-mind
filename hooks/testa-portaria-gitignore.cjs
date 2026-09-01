@@ -40,9 +40,21 @@ function checa(rotulo, condicao, detalhe) {
   }
 }
 
-/** `git check-ignore -q <caminho>`: exit 0 = ignorado, 1 = nao ignorado. */
+/* `git check-ignore -q <caminho>`: exit 0 = ignorado, 1 = nao ignorado.
+ *
+ * `--no-index` NAO e detalhe: sem ele, este teste inteiro mentia. O git ignora
+ * o `.gitignore` para caminho que JA ESTA NO INDICE — arquivo rastreado sempre
+ * responde "nao ignorado", diga o `.gitignore` o que disser. Os quatro caminhos
+ * da checagem 2 estao commitados, entao a checagem passava sozinha: trocar a
+ * regra por `.rainforest/portaria/` — a "regra larga demais" que o cabecalho
+ * deste arquivo diz temer — deixava a bateria 9 ok / 0 falha, e a mutacao pelo
+ * `conferir-mutacao.cjs` saia 2 (VERDE com o comportamento invertido).
+ * Achado na rodada 4 da revisao, reproduzido com `git check-ignore -v` nos dois
+ * modos. Com `--no-index`, a resposta e a da REGRA, que e o que este teste
+ * afirma medir.
+ */
 function ignorado(rel) {
-  const r = spawnSync("git", ["check-ignore", "-q", "--", rel], { cwd: RAIZ });
+  const r = spawnSync("git", ["check-ignore", "-q", "--no-index", "--", rel], { cwd: RAIZ });
   return r.status === 0;
 }
 

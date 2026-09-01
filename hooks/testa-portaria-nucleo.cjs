@@ -512,6 +512,48 @@ console.log("== 12. normalização de raiz para subdiretório ==");
   fs.rmSync(raizA, { recursive: true, force: true });
 }
 
+/* == 13. allow que NAO pode conferir `escreve: false` sai marcado no log ==
+ *
+ * Critico 2 da rodada 4 da revisao. Quando o arquivo do agente nao existe, a
+ * checagem de escrita e pulada (e tem de ser: em repositorio de CONSUMIDOR do
+ * plugin nao ha `agents/` local) — mas o allow saia byte a byte igual ao de um
+ * agente conferido, e o log, que e evidencia de primeira classe (D4), afirmava
+ * mais do que sabia. Este caso exige que as duas linhas sejam DISTINGUIVEIS.
+ */
+console.log("== 13. allow sem poder conferir escreve:false sai marcado ==");
+{
+  const raiz = caixa();
+  iniciarGit(raiz, "fluxo/teste");
+  criarEstadoAtivo(raiz, "teste", "revisar");
+  criarManifesto(raiz, manifestoD2({
+    semarquivo: { estagios: ["revisar"], escreve: false },
+    comarquivo: { estagios: ["revisar"], escreve: false },
+  }));
+  // So `comarquivo` tem arquivo, e ele e read-only de verdade.
+  const dirAgentes = path.join(raiz, "agents");
+  fs.mkdirSync(dirAgentes, { recursive: true });
+  fs.writeFileSync(path.join(dirAgentes, "comarquivo.md"), "---\nname: comarquivo\ntools: Read, Grep\n---\nc\n", "utf8");
+
+  const r1 = rodaHook(raiz, JSON.stringify({ session_id: "t13", tool_input: { subagent_type: "semarquivo" } }));
+  const r2 = rodaHook(raiz, JSON.stringify({ session_id: "t13", tool_input: { subagent_type: "comarquivo" } }));
+  caso("os dois aprovam (pular a checagem nao vira deny)", r1.status === 0 && r2.status === 0,
+    `semarquivo=${r1.status} comarquivo=${r2.status}`);
+
+  const linhas = fs.readFileSync(path.join(raiz, ".rainforest", "portaria", "despachos.jsonl"), "utf8")
+    .split("\n").filter(Boolean).map((l) => JSON.parse(l));
+  const semArq = linhas.find((l) => l.agente === "semarquivo");
+  const comArq = linhas.find((l) => l.agente === "comarquivo");
+
+  caso("o allow NAO conferido traz escreve_conferido:false",
+    semArq && semArq.escreve_conferido === false, JSON.stringify(semArq));
+  caso("o allow conferido NAO traz o campo",
+    comArq && comArq.escreve_conferido === undefined, JSON.stringify(comArq));
+  caso("as duas linhas sao distinguiveis",
+    JSON.stringify(semArq && semArq.escreve_conferido) !== JSON.stringify(comArq && comArq.escreve_conferido));
+
+  fs.rmSync(raiz, { recursive: true, force: true });
+}
+
 console.log(`\n== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 
 if (falhou > 0) {
