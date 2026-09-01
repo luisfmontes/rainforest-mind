@@ -19,6 +19,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync, execSync } = require('child_process');
+const { resolverConfig } = require('../hooks/lib/config.cjs');
 
 // Raiz do projeto
 const RAIZ = process.env.RFM_ESTADO_ROOT
@@ -79,18 +80,56 @@ function gerarMembrosDefault() {
   };
 }
 
-// Loads or creates membros.json
+// Loads or creates membros.json, composing with config-driven external members
+// External members (codex, gemini) are added from config only if their chave is ligado.
+// Precedence: config chave > membros.json ligado field.
 function resolverMembros() {
   fs.mkdirSync(DIR_CONSELHO, { recursive: true });
 
   if (!fs.existsSync(ARQUIVO_MEMBROS)) {
     const padrao = gerarMembrosDefault();
     fs.writeFileSync(ARQUIVO_MEMBROS, JSON.stringify(padrao, null, 2) + '\n', 'utf8');
-    return padrao.membros;
   }
 
   const config = JSON.parse(fs.readFileSync(ARQUIVO_MEMBROS, 'utf8'));
-  return config.membros || [];
+  let membros = config.membros || [];
+
+  // Aplicar chaves de config: membros externos entram quando chave ligada
+  try {
+    const cfg = resolverConfig();
+
+    // Codex: entra se chave ligada
+    if (cfg.valores['conselho-codex']) {
+      const indice = membros.findIndex(m => m.nome === 'codex');
+      if (indice >= 0) {
+        membros[indice].ligado = true;
+      } else {
+        membros.push({
+          nome: 'codex',
+          cmd: 'node scripts/conselho.cjs adaptador-codex {prompt} {saida}',
+          ligado: true,
+        });
+      }
+    }
+
+    // Gemini: entra se chave ligada
+    if (cfg.valores['conselho-gemini']) {
+      const indice = membros.findIndex(m => m.nome === 'gemini');
+      if (indice >= 0) {
+        membros[indice].ligado = true;
+      } else {
+        membros.push({
+          nome: 'gemini',
+          cmd: 'node scripts/conselho.cjs adaptador-gemini {prompt} {saida}',
+          ligado: true,
+        });
+      }
+    }
+  } catch (e) {
+    // Se falhar na leitura de config, segue sem chaves ativadas
+  }
+
+  return membros;
 }
 
 // Validates quorum and returns list of linked members
@@ -1033,18 +1072,161 @@ function parseArgs() {
   return parsed;
 }
 
+/**
+ * Adaptador para Codex.
+ * Executa: codex exec -s read-only --skip-git-repo-check "<prompt>"
+ * stdin: fechado (spawn com stdio: ['ignore', ...])
+ * Lê stdout, extrai JSON do parecer, valida, escreve em <saida>.
+ * Falha: exit !== 0 SEM escrever <saida>
+ */
+function adaptadorCodex() {
+  const args = process.argv.slice(2);
+  const idx = args.indexOf('adaptador-codex');
+  if (idx < 0) return;
+
+  const prompt = args[idx + 1];
+  const saida = args[idx + 2];
+
+  if (!prompt || !saida) {
+    console.error('adaptador-codex: prompt e saida obrigatórios');
+    process.exit(1);
+  }
+
+  const cmd = `codex exec -s read-only --skip-git-repo-check "${prompt}"`;
+  const isWindows = process.platform === 'win32';
+  const spawnArgs = isWindows
+    ? ['cmd.exe', ['/d', '/s', '/c', `"${cmd}"`]]
+    : ['sh', ['-c', cmd]];
+
+  const resultado = spawnSync(spawnArgs[0], spawnArgs[1], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    windowsVerbatimArguments: isWindows,
+    timeout: 30000,
+  });
+
+  if (resultado.status !== 0) {
+    console.error(`adaptador-codex: exit ${resultado.status}`);
+    process.exit(1);
+  }
+
+  const stdout = resultado.stdout || '';
+  if (!stdout) {
+    console.error('adaptador-codex: saída vazia do CLI');
+    process.exit(1);
+  }
+
+  // Extrai JSON (tolerando ```json...```)
+  let parecer;
+  try {
+    const match = stdout.match(/```json\s*([\s\S]*?)\s*```/) || stdout.match(/({[\s\S]*})/);
+    const json = match ? match[1] : stdout;
+    parecer = JSON.parse(json);
+  } catch (e) {
+    console.error(`adaptador-codex: JSON inválido: ${e.message}`);
+    process.exit(1);
+  }
+
+  const validacao = validarParecer(parecer);
+  if (!validacao.valido) {
+    console.error(`adaptador-codex: ${validacao.erro}`);
+    process.exit(1);
+  }
+
+  fs.writeFileSync(saida, JSON.stringify(parecer, null, 2) + '\n', 'utf8');
+  process.exit(0);
+}
+
+/**
+ * Adaptador para Gemini.
+ * Executa: gemini -m gemini-3.7-flash -p "<prompt>" --skip-trust --approval-mode plan
+ * stdin: fechado
+ * GEMINI_API_KEY deve estar no ambiente (ausente = exit !== 0 com mensagem)
+ * Lê stdout, extrai JSON, valida, escreve em <saida>.
+ * Falha: exit !== 0 SEM escrever <saida>
+ */
+function adaptadorGemini() {
+  const args = process.argv.slice(2);
+  const idx = args.indexOf('adaptador-gemini');
+  if (idx < 0) return;
+
+  const prompt = args[idx + 1];
+  const saida = args[idx + 2];
+
+  if (!prompt || !saida) {
+    console.error('adaptador-gemini: prompt e saida obrigatórios');
+    process.exit(1);
+  }
+
+  if (!process.env.GEMINI_API_KEY) {
+    console.error('adaptador-gemini: GEMINI_API_KEY não definida no ambiente — gem ini CLI exige credencial');
+    process.exit(1);
+  }
+
+  const cmd = `gemini -m gemini-3.7-flash -p "${prompt}" --skip-trust --approval-mode plan`;
+  const isWindows = process.platform === 'win32';
+  const spawnArgs = isWindows
+    ? ['cmd.exe', ['/d', '/s', '/c', `"${cmd}"`]]
+    : ['sh', ['-c', cmd]];
+
+  const resultado = spawnSync(spawnArgs[0], spawnArgs[1], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: { ...process.env },
+    windowsVerbatimArguments: isWindows,
+    timeout: 30000,
+  });
+
+  if (resultado.status !== 0) {
+    console.error(`adaptador-gemini: exit ${resultado.status}`);
+    process.exit(1);
+  }
+
+  const stdout = resultado.stdout || '';
+  if (!stdout) {
+    console.error('adaptador-gemini: saída vazia do CLI');
+    process.exit(1);
+  }
+
+  // Extrai JSON (tolerando ```json...```)
+  let parecer;
+  try {
+    const match = stdout.match(/```json\s*([\s\S]*?)\s*```/) || stdout.match(/({[\s\S]*})/);
+    const json = match ? match[1] : stdout;
+    parecer = JSON.parse(json);
+  } catch (e) {
+    console.error(`adaptador-gemini: JSON inválido: ${e.message}`);
+    process.exit(1);
+  }
+
+  const validacao = validarParecer(parecer);
+  if (!validacao.valido) {
+    console.error(`adaptador-gemini: ${validacao.erro}`);
+    process.exit(1);
+  }
+
+  fs.writeFileSync(saida, JSON.stringify(parecer, null, 2) + '\n', 'utf8');
+  process.exit(0);
+}
+
 // Main command handler
 function main() {
   const args = parseArgs();
   const comando = process.argv[2];
 
   if (!comando) {
-    console.error('Uso: conselho.cjs <abrir|revisar|sintetizar|conferir> [opções]');
+    console.error('Uso: conselho.cjs <abrir|revisar|sintetizar|conferir|adaptador-codex|adaptador-gemini> [opções]');
     process.exit(1);
   }
 
   try {
-    if (comando === 'abrir') {
+    if (comando === 'adaptador-codex') {
+      adaptadorCodex();
+      return;
+    } else if (comando === 'adaptador-gemini') {
+      adaptadorGemini();
+      return;
+    } else if (comando === 'abrir') {
       if (!args.questao) {
         console.error('Erro: --questao é obrigatório');
         process.exit(1);

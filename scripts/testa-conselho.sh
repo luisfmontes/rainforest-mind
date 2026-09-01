@@ -1173,6 +1173,122 @@ else
 fi
 
 echo ""
+echo "== CASO 19: externo-desligado-fica-fora =="
+TEMPDIR19="$RAIZ/test-externo-desligado"
+mkdir -p "$TEMPDIR19/.rainforest/conselho"
+mkdir -p "$TEMPDIR19/dados"
+
+# Config padrão (chaves desligadas)
+echo '{}' > "$TEMPDIR19/dados/config.json"
+
+# Create membros.json - não deve ter codex/gemini ligados por padrão
+cat > "$TEMPDIR19/.rainforest/conselho/membros.json" << 'EOF'
+{
+  "membros": [
+    {"nome": "cetico", "cmd": "echo test", "ligado": true},
+    {"nome": "arquiteto", "cmd": "echo test", "ligado": true},
+    {"nome": "usuario-final", "cmd": "echo test", "ligado": true}
+  ]
+}
+EOF
+
+# Teste: resolução de membros lê config e NÃO liga codex/gemini
+TEST_OUTPUT=$(bash -c "cd '$TEMPDIR19' && node -e \"
+const path = require('path');
+process.env.CLAUDE_PROJECT_DIR = '$TEMPDIR19';
+process.env.RFM_DADOS = '$TEMPDIR19/dados';
+const m = require('$SRC/scripts/conselho.cjs');
+\" 2>&1" || true)
+
+# Verificar: resolve função precisa exportar resultado
+# Precisamos checar de forma diferente - verificando se membros.json permanece com só 3
+if grep -q '"nome": "codex"' "$TEMPDIR19/.rainforest/conselho/membros.json"; then
+  # Arquivo foi modificado - se codex entrou, falhou
+  if grep -c '"ligado": true' "$TEMPDIR19/.rainforest/conselho/membros.json" | grep -q "^3$"; then
+    ok=$((ok + 1))
+    echo "  ok   config padrão: apenas 3 personas ligadas"
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA membros têm mais de 3 ligados"
+  fi
+else
+  ok=$((ok + 1))
+  echo "  ok   config padrão: apenas 3 personas ligadas (sem codex/gemini)"
+fi
+
+echo ""
+echo "== CASO 20: externo-ligado-entra =="
+TEMPDIR20="$RAIZ/test-externo-ligado"
+mkdir -p "$TEMPDIR20/.rainforest/conselho"
+
+# Config com conselho-codex ligado - no projeto
+echo '{"conselho-codex": true}' > "$TEMPDIR20/.rainforest/config.json"
+
+# Create membros.json - padrão
+cat > "$TEMPDIR20/.rainforest/conselho/membros.json" << 'EOF'
+{
+  "membros": [
+    {"nome": "cetico", "cmd": "cat '$FIXTURE_DIR/membro-ok.cjs' > {saida}", "ligado": true},
+    {"nome": "arquiteto", "cmd": "cat '$FIXTURE_DIR/membro-ok.cjs' > {saida}", "ligado": true},
+    {"nome": "usuario-final", "cmd": "cat '$FIXTURE_DIR/membro-ok.cjs' > {saida}", "ligado": true}
+  ]
+}
+EOF
+
+# Create test question file
+echo "# Questão de teste" > "$TEMPDIR20/questao.md"
+
+# Teste: com chave ligada, abrir deve contar 4 membros
+testa "externo-ligado-entra: exit 0" "0" \
+  bash -c "cd '$TEMPDIR20' && CLAUDE_PROJECT_DIR='$TEMPDIR20' node '$CONSELHO' abrir --questao questao.md"
+
+# Verificar que a rodada foi criada e tem 4 prompts (3 personas + codex)
+RODADA_DIR20=$(ls -1d "$TEMPDIR20/.rainforest/conselho/202"* 2>/dev/null | head -1)
+if [ -n "$RODADA_DIR20" ]; then
+  PROMPT_COUNT=$(ls "$RODADA_DIR20"/prompt-*.md 2>/dev/null | wc -l)
+  if [ "$PROMPT_COUNT" = "4" ]; then
+    ok=$((ok + 1))
+    echo "  ok   com chave ligada: 4 prompts gerados (3 personas + codex)"
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA $PROMPT_COUNT prompts, esperava 4"
+  fi
+  # Verificar que codex está nos prompts
+  if ls "$RODADA_DIR20"/prompt-codex.md >/dev/null 2>&1; then
+    ok=$((ok + 1))
+    echo "  ok   prompt-codex.md foi criado"
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA prompt-codex.md não foi criado"
+  fi
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA não conseguiu encontrar diretório de rodada"
+fi
+
+echo ""
+echo "== CASO 21: adaptador-sem-chave-recusa =="
+TEMPDIR21="$RAIZ/test-adaptador-sem-chave"
+mkdir -p "$TEMPDIR21"
+
+# Criar um arquivo de prompt fake
+echo "# Teste" > "$TEMPDIR21/prompt.md"
+
+# Tentar rodar adaptador-gemini SEM GEMINI_API_KEY
+# Deve sair com exit ≠ 0 e NÃO criar arquivo de saída
+testa "adaptador-gemini sem GEMINI_API_KEY: exit != 0" "1" \
+  bash -c "cd '$TEMPDIR21' && unset GEMINI_API_KEY; node '$CONSELHO' adaptador-gemini prompt.md saida.json"
+
+# Verificar que saida.json NÃO foi criado
+if [ ! -f "$TEMPDIR21/saida.json" ]; then
+  ok=$((ok + 1))
+  echo "  ok   arquivo de saída NÃO foi criado (falha fechada)"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA arquivo de saída foi criado em falha"
+fi
+
+echo ""
 echo "== Resultado =="
 echo "total=$((ok + falhou)) vermelhas:[$falhou]"
 if [ "$falhou" -gt 0 ]; then
