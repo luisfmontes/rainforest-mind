@@ -44,7 +44,7 @@
       {
         "tarefa": 5,
         "resultado": "vermelho",
-        "fixture": "divergencia-de-dentro-de-worktree-grava-no-principal"
+        "fixture": "orfa-de-mentira (auditoria de fixtures, exit 1)"
       },
       {
         "tarefa": 6,
@@ -54,14 +54,14 @@
     ],
     "em": "2026-09-01",
     "catraca_mutacao": "2026-09-01",
-    "comando": "bash scripts/testa-cli-externo.sh; bash scripts/testa-segunda-opiniao.sh; bash scripts/testa-conselho.sh",
-    "saida": "ok: 9 falhou: 0 | Ok: 21 Falhou: 0 | total=105 vermelhas:[0]"
+    "comando": "bash scripts/testa-cli-externo.sh; bash scripts/testa-segunda-opiniao.sh; bash scripts/testa-conselho.sh (com e sem npm no PATH)",
+    "saida": "ok: 9 falhou: 0 | Ok: 21 Falhou: 0 | total=105 vermelhas:[0] nas duas execucoes"
   },
   "revisar": {
     "status": "reprovado",
     "achados": 3,
     "em": "2026-09-01",
-    "tentativas": 2
+    "tentativas": 3
   },
   "verificar": {
     "status": "pendente"
