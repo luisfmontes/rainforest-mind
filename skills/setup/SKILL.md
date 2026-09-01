@@ -53,6 +53,8 @@ node scripts/setup.cjs --ligar    <chave> [--escopo projeto|usuario]
 | `gate-worktree` | barra escrita de subagente fora de worktree isolado |
 | `gate-staging` | barra `git add -A` e `git commit -a` |
 | `fluxo` | os sete estágios, de `brainstorm` a `fechar` |
+| `conselho-codex` | Codex participa do conselho como membro externo (exige `codex` CLI) |
+| `conselho-gemini` | Gemini participa do conselho como membro externo (exige `GEMINI_API_KEY` no ambiente) |
 
 **O escopo é a parte que exige a palavra dele**, e a pergunta é sempre a mesma:
 *isto vale só neste repositório, ou em tudo?* `--escopo projeto` vence o de
