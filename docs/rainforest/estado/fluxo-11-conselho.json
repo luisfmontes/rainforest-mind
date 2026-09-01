@@ -30,15 +30,59 @@
     "em": "2026-08-31"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-08-31",
-    "tarefas_ok": 8,
+    "tarefas_ok": 9,
     "tarefas": 9,
     "em": "2026-08-31",
-    "pendentes": [
-      "achado-para-revisar: string de uso de conselho.cjs nao lista pareceres",
-      "achado-para-revisar (T8): conselho.cjs chama main() sem guarda require.main === module",
-      "achado-para-revisar (T8): casos 1-18 da bateria nao isolam RFM_ROOT do config real da maquina"
+    "comando": "bash scripts/testa-conselho.sh && bash scripts/testa-saude.sh",
+    "saida": "total=62 vermelhas:[0] (exit 0); == resultado: 45 ok, 0 falha(s) == (exit 0); rodada real 5 membros: sintese.json gravado, portao sintese exit 0",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "quorum-dois-membros (CASO 1)"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "membro-indisponivel-reprova (CASO 5)"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "identidade-nao-vaza (CASO 9)"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "agregacao-conhecida (CASO 12; endurecida pelo CASO 22 agregacao-discorda-desempate)"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "parecer-sem-objecao-reprova-citando-membro (CASO 15)"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "externo-desligado-fica-fora (CASO 19)"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "tarefa de doc: sem comportamento a inverter; coerencia conferida rodando cada comando citado"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "n/a",
+        "motivo": "a tarefa e a propria bateria; a falsificacao foi re-rodar as mutacoes das tarefas 1-6 na integracao, todas vermelhas"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "n/a",
+        "motivo": "validacao manual com CLIs reais (D11 proibe bateria com CLI); evidencia no relatorio 2026-08-31-conselho-validacao-externa.md"
+      }
     ]
   },
   "revisar": {
