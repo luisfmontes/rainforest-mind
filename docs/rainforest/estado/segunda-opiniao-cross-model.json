@@ -65,7 +65,44 @@
     "head": "4e7353f05419e7a658fd25928c071dd7d1f44550"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "tarefas_ok": 6,
+    "tarefas": 6,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "prompt-com-aspas-e-quebra-de-linha"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "gemini-sem-credencial-falha"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "membro-que-trava-e-cortado"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "veredito-fora-do-vocabulario"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "divergencia-com-motivo-so-whitespace-recusa"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "tarefa so reescreve doc"
+      }
+    ],
+    "comando": "bash scratchpad/verificar.sh (baseline das 3 baterias + as 5 mutacoes declaradas do plano, contra o artefato final)",
+    "saida": "baseline: cli-externo exit=0 falhou:0 | segunda-opiniao exit=0 Falhou:0 | conselho exit=0 total=105 vermelhas:[0]. Mutacoes: T1 exit=1 falhou:1 | T2 exit=1 vermelhas:[2] | T3 exit=1 vermelhas:[1] | T4 exit=1 Falhou:1 | T5 exit=1 Falhou:1. Arvore restaurada.",
+    "em": "2026-09-01"
   },
   "fechar": {
     "status": "pendente"
