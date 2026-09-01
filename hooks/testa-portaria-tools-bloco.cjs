@@ -189,6 +189,32 @@ casoFormato("8. lista com nome entre aspas, com Write → nega", 'tools:\n- "Rea
 // ser engolida como se fosse tool.
 casoFormato("9. bloco seguido de outra chave → aprova (bloco encerrou certo)", "tools:\n- Read\nmodel: sonnet", 0, null);
 
+/* Casos 10 em diante: o CRITICO da rodada 3 da revisao. Os casos 1-9 cobriam
+ * formato do VALOR e esqueceram o formato da CHAVE: `tools :`, com espaco antes
+ * dos dois-pontos, e YAML valido — `yaml.safe_load("tools :\n- Write\n")` devolve
+ * `{'tools': ['Write']}` — e o regex literal `/^tools:/` nao casava, entao a
+ * chave PRESENTE caia no estado "nao declarado" e a checagem era pulada.
+ * `escreve: false` com `Write` liberava, exatamente a classe da rodada 2 por
+ * outra porta. Reproduzido em sandbox antes de virar tarefa: a unica diferenca
+ * entre allow e deny era um espaco.
+ *
+ * O caso 12 fecha o outro achado da rodada 3: o ramo "chave presente, zero item
+ * lido" nao tinha teste nenhum, e a mutacao dele para `declarado: false` deixava
+ * esta bateria VERDE (conferir-mutacao.cjs saia 2). Correto no fonte, invisivel
+ * para a bateria — o tipo de coisa que a proxima edicao de boa fe reverte.
+ */
+
+casoFormato("10. chave 'tools :' (espaco antes dos dois-pontos), com Write → nega", "tools :\n- Read\n- Write", 2, "Write");
+casoFormato("11. chave 'tools\\t:' (tab antes dos dois-pontos), com Write → nega", "tools\t:\n- Read\n- Write", 2, "Write");
+casoFormato("12. chave presente e ZERO item lido → nega por ilegivel", "tools:\nmodel: sonnet", 2, "formato que a portaria nao le");
+casoFormato("13. chave 'tools :' read-only → aprova (o conserto nao virou deny-por-tudo)", "tools :\n- Read\n- Grep", 0, null);
+// Frontmatter em CRLF nao pode mudar o veredito: `\r` no fim da linha faria o
+// nome da tool virar "Write\r" e escapar da comparacao com a allowlist.
+casoFormato("14. frontmatter em CRLF, com Write → nega", "tools:\r\n- Read\r\n- Write", 2, "Write");
+// Uma chave que CONTEM 'tools' nao e a chave 'tools' — o varredor compara o nome
+// inteiro, e confundir as duas seria negar agente que nao declarou nada.
+casoFormato("15. chave 'extra-tools:' nao e 'tools:' → aprova", "extra-tools: Write\nmodel: sonnet", 0, null);
+
 console.log(`\n== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 if (falhou === 0) console.log("todos os casos: OK");
 process.exit(falhou > 0 ? 1 : 0);
