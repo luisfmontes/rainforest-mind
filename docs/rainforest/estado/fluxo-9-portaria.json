@@ -42,7 +42,7 @@
       "escreve-false": "Q2 fechada pelo Luis em 2026-09-01 (recomendado): escreve:false continua como DECLARACAO, com a lacuna nomeada. Medido: nenhum dos nove agents/*.md declara tools:, entao a checagem 3 do lint nunca dispara contra os agentes reais. Por tools: Read,Grep,Glob nos tres admitidos foi recusado — o revisor precisa de Bash para reproduzir achado (regra 12). Divida escrita em references/regra-10.md."
     },
     "comando": "node hooks/testa-portaria-nucleo.cjs; node hooks/testa-portaria-captura.cjs; node hooks/testa-portaria-lint.cjs; node hooks/testa-portaria-portoes.cjs; node hooks/testa-portaria-gitignore.cjs; node hooks/testa-portaria-tools-bloco.cjs; node hooks/testa-estagio-ativo.cjs; bash scripts/testa-saude.sh; bash hooks/testa-contexto-sessao.sh; node hooks/portaria.cjs --lint",
-    "saida": "rodada 3, arvore integrada: nucleo 35 | captura 12 | lint 14 | portoes P1..P5 OK | gitignore 9 | tools-bloco 13 | estagio-ativo 7/7 | saude 56 | contexto-sessao 277 | portaria --lint exit 0 (6 avisos, 0 erro) — todas 0 falha, exit 0 capturado sem pipe",
+    "saida": "rodada 4, arvore integrada, 13 baterias: nucleo 35 | captura 12 | lint 14 | portoes P1..P5 OK | gitignore 9 | tools-bloco 23 | estagio-ativo 7/7 | saude 56 | contexto-sessao 277 | conferir-fluxo 41 | orcamento 29 | ponte 60 | estado 137 — todas 0 falha, exit 0 sem pipe; portaria --lint no repo real exit 0 (6 avisos, 0 erro)",
     "mutacao": [
       {
         "tarefa": 1,
@@ -67,7 +67,7 @@
       {
         "tarefa": 5,
         "resultado": "vermelho",
-        "fixture": "fixtures do lint (manifesto-escreve-inconsistente + agentes/escritor.md) mais os nove formatos de tools: da bateria testa-portaria-tools-bloco.cjs — mutacoes: a checagem 3 do lint nunca marca erro (12 ok / 2 falha); o bloco volta a exigir indentacao (9 ok / 4 falha); declarado-e-ilegivel volta a pular em vez de negar (11 ok / 2 falha). As tres com conferir-mutacao.cjs, exit 0"
+        "fixture": "fixtures do lint mais os quinze formatos de tools: (chave e valor) da bateria testa-portaria-tools-bloco.cjs — mutacoes com conferir-mutacao.cjs, todas exit 0: checagem 3 do lint nunca marca erro (12 ok/2 falha); bloco volta a exigir indentacao (9 ok/4 falha); declarado-e-ilegivel volta a pular (11 ok/2 falha); varredor de chave volta a ser literal (18 ok/5 falha); zero-item volta a pular (21 ok/2 falha); strip do \r desaparece (21 ok/2 falha)"
       },
       {
         "tarefa": 6,
@@ -94,17 +94,17 @@
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "a672aad7db46b62de4368486b70d45df2b43f02d",
+      "head": "afe6dd56143e62f0235a1f0e805a48136456e490",
       "caminhos_sujos": []
     },
     "base": "b9a3bed03e6e681c347220828d6af750426bc3d5",
-    "head": "a672aad7db46b62de4368486b70d45df2b43f02d",
+    "head": "afe6dd56143e62f0235a1f0e805a48136456e490",
     "achados": 2,
-    "criticos": 1,
-    "revisor": "rainforest-mind:revisor, contexto zerado, rodada 2, 2026-09-01",
-    "nota": "REPROVADO na rodada 2 com 1 critico e 1 aviso. Os dois criticos da rodada 1 foram confirmados consertados. O critico NOVO e regressao do proprio conserto: parseToolsDoFrontmatter em hooks/portaria.cjs:79-92 exige indentacao antes do hifen no regex de bloco, entao lista de bloco YAML NAO-indentada (hifen na mesma coluna da chave, sintaxe valida) nao casa nem no inline nem no bloco, devolve lista vazia, e o gate if (tools.length > 0) PULA a checagem inteira — o mesmo caminho de codigo de \"arquivo do agente nao encontrado\". Resultado: escreve:false com Write LIBERA. Antes do conserto, o parser de linha unica negava qualquer formato de bloco: era AVISO porque falhava para o lado seguro, e o conserto inverteu para allow. REPRODUZIDO na janela principal em sandbox git, dois agentes identicos no mesmo manifesto: semindent (tools em lista sem indentacao, com Write) -> EXIT=0, stderr vazio; comindent (mesma lista com 2 espacos) -> EXIT=2 citando Write. O mesmo buraco no --lint: so o comindent aparece como erro. A bateria hooks/testa-portaria-tools-bloco.cjs sabe falhar para o que testa (mutacao pelo conferir-mutacao.cjs deixa 1 ok / 2 falha) mas nao tem caso para o formato que quebra. AVISO: raizDoProjeto usa git -C caminho rev-parse --show-toplevel, e git -C num diretorio sem .git proprio aninhado em OUTRO repositorio devolve o toplevel do repositorio de fora com exit 0 — a armadilha que a elaboracao da regra 11 documenta. O try/catch so cobre o caso \"nao ha .git acima\". O revisor nao conseguiu construir cenario realista de dano (os ancestrais dos diretorios de scratch desta maquina nao sao repositorios git, e o fallback cai em manifesto ausente, que nega) e por isso nao escalou. Nao ha bateria para o caso adversarial.",
+    "criticos": 2,
+    "revisor": "rainforest-mind:revisor, contexto zerado, rodada 3, 2026-09-01",
+    "nota": "REPROVADO na rodada 3 com 2 criticos, os dois REPRODUZIDOS na janela principal. CRITICO 1: o varredor da chave era busca literal /^tools:/, e `tools :` (espaco antes dos dois-pontos) e YAML valido — yaml.safe_load(\"tools :\n- Write\n\") devolve {tools: [Write]} — entao a chave PRESENTE caia no estado nao-declarado e a checagem era pulada; escreve:false com Write LIBERAVA. Mesma classe da rodada 2 por outra porta: a unica diferenca entre allow e deny era um espaco. Idem com tab. CRITICO 2: o ramo do parser \"chave presente e zero item lido\" nao tinha teste nenhum — a mutacao dele para declarado:false deixava a bateria VERDE (conferir-mutacao exit 2), fonte correto e invisivel para a prova. CONSERTO (janela principal, nao subagente): a deteccao da chave deixou de ser busca literal e passou a ser varredura de CHAVE DE TOPO (RE_CHAVE_DE_TOPO), escolhendo `tools` pelo NOME — espacamento em volta dos dois-pontos virou irrelevante por construcao, nao por mais um caso previsto. Duas rodadas na mesma funcao pela mesma classe foi o que motivou trocar a abordagem em vez de acrescentar regex. O `\r` de arquivo CRLF cai fora antes da comparacao, e a mutacao disso (MUT C) expos um bug LATENTE que ninguem tinha visto: sem o strip, frontmatter em CRLF com Write liberava. A bateria foi de 9 casos / 13 assercoes para 15 casos / 23 assercoes, cobrindo formato da CHAVE (espaco, tab, CRLF, chave que so contem tools) alem do formato do VALOR, mais o ramo do zero-item que estava sem teste. Tres catracas de mutacao, as tres com conferir-mutacao.cjs e as tres exit 0: varredor volta a ser literal (18 ok / 5 falha), zero-item volta a pular (21 ok / 2 falha), strip do \r desaparece (21 ok / 2 falha).",
     "em": "2026-09-01",
-    "tentativas": 2
+    "tentativas": 3
   },
   "verificar": {
     "status": "pendente"
