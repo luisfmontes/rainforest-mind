@@ -302,6 +302,7 @@ noite, sabendo que não devia. O que sobrou das duas noites:
 | `gate-staging-total.cjs` | `git add` com caminho total (`-A`, `--all`, `-u`, `--update`, `.`, `./`, `:/`, `*`), inclusive em flag combinada, e `git commit -a/-am/--all` | **também a janela principal**, que foi onde os dois incidentes ocorreram |
 | `gate-publicacao-destino.cjs` | escrita de dados sensíveis (JID, telefone, email, credencial) em arquivo rastreado por git | **qualquer ferramenta que escreve** (`Write`, `Edit`, `MultiEdit`) — impede vazamento em repo público |
 | `gate-repo-alheio.cjs` | escrita cujo destino está dentro de **outro repositório git** que não o da sessão | **também a janela principal**, que foi onde o incidente ocorreu — caminho fora de git e worktree do mesmo repo passam |
+| `portaria.cjs` | despacho de subagente que não está declarado em `.rainforest/agentes.json`, ou cujo estágio ativo não consta na lista dele; manifesto ausente ou inválido nega tudo (fail-closed) | **o despacho**, na janela que despacha — o humano não é perguntado em runtime, e exceção é diff no manifesto, que passa pelo `revisar`. Registrado só no `.claude/settings.json` **do projeto**, não na máquina |
 
 Valem em **qualquer** repo git da máquina, porque o hábito é que é o problema,
 não o repositório. A mensagem de bloqueio não só recusa: a de staging roda
