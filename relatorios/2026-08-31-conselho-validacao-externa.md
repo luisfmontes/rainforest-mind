@@ -99,6 +99,8 @@ Nenhum era visível por fixture — as 62 baterias estavam verdes antes e depois
 
 - `fases.*.status` do estado da rodada nunca sai de "pendente" — os portões
   zeram tentativas no sucesso mas não marcam a fase como fechada.
+  **[RESOLVIDO — T11: portão marca status='ok' ao passar]**
 - Instabilidade do free tier do gemini (503/429) faz a fase 2 custar
   retentativas; a falha fechada segura, mas o operador precisa retentar por
   membro para não queimar o teto de 3 do portão.
+  **[RESOLVIDO — T12: flag --membro <nome> reexecuta só esse]**
