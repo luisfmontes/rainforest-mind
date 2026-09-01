@@ -1,0 +1,16 @@
+{
+  "session_id": "fb604fd5-d013-4aad-9f53-4867bc9c126c",
+  "transcript_path": "C:\\Users\\Luis\\.claude\\projects\\C--Projetos-rainforest-mind--claude-worktrees-fluxo-portaria\\fb604fd5-d013-4aad-9f53-4867bc9c126c.jsonl",
+  "cwd": "C:\\Projetos\\rainforest-mind\\.claude\\worktrees\\fluxo-portaria",
+  "prompt_id": "598757c6-716c-4a1c-8d38-e52f76aac55f",
+  "permission_mode": "bypassPermissions",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Agent",
+  "tool_input": {
+    "description": "Test ping",
+    "prompt": "Responda apenas com a palavra PING",
+    "subagent_type": "general-purpose",
+    "model": "haiku"
+  },
+  "tool_use_id": "toolu_01UBv4C5G133otFr9huzK7ki"
+}
