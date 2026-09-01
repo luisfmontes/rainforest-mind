@@ -106,31 +106,57 @@ function normalizarNomeAgente(nome) {
  * bloco YAML com ou sem indentacao. Quem escrever `tools: *` ou qualquer coisa
  * que nao seja lista de nomes cai no terceiro estado, e nega — que e o certo:
  * `*` e todas as ferramentas.
+ *
+ * A DETECCAO DA CHAVE NAO E BUSCA LITERAL, e a razao e o historico: a rodada 2
+ * reprovou por indentacao (`- Nome` sem espaco antes do hifen), e a rodada 3
+ * reprovou o conserto dela por espacamento — `tools :`, com espaco antes dos
+ * dois-pontos, e YAML valido (`yaml.safe_load("tools :\n- Write\n")` devolve
+ * `{'tools': ['Write']}`) e o regex `/^tools:/` nao casava, entao a chave
+ * PRESENTE caia no estado "nao declarado" e a checagem era pulada. Duas rodadas
+ * na mesma funcao, o mesmo furo por portas diferentes.
+ *
+ * Perseguir variante de YAML com regex literal e jogo perdido, entao aqui a
+ * frontmatter e varrida por CHAVE DE TOPO — `<nome>` seguido de espacos
+ * opcionais, dois-pontos, e o resto da linha —, e `tools` e escolhida pelo
+ * nome. Qualquer espacamento em volta dos dois-pontos passa a ser irrelevante
+ * por construcao, e nao por mais um caso previsto. `\r` de arquivo em CRLF cai
+ * fora antes da comparacao.
  */
+const RE_CHAVE_DE_TOPO = /^([A-Za-z0-9_-]+)[ \t]*:[ \t]*(.*)$/;
+
 function parseToolsDoFrontmatter(frontmatter) {
-  const chave = frontmatter.match(/^tools:[ \t]*(.*)$/m);
-  if (!chave) return { declarado: false, tools: null };
+  // `\r` some para que arquivo em CRLF nao mude o resultado.
+  const linhas = String(frontmatter).split("\n").map((l) => l.replace(/\r$/, ""));
 
-  const resto = chave[1].trim();
-
-  // Inline com virgula, na mesma linha da chave.
-  if (resto && !resto.startsWith("-")) {
-    const tools = resto.split(",").map((t) => t.trim()).filter(Boolean);
-    // Nome de tool e identificador: letra, digito, `_` ou `-`. `*`, `all`,
-    // aspas, chaves de YAML de fluxo — nada disso e lista de nomes.
-    const todosSaoNomes = tools.length > 0 && tools.every((t) => /^[A-Za-z0-9_-]+$/.test(t));
-    return { declarado: true, tools: todosSaoNomes ? tools : null };
+  let iChave = -1;
+  let inline = "";
+  for (let i = 0; i < linhas.length; i++) {
+    const m = linhas[i].match(RE_CHAVE_DE_TOPO);
+    if (m && m[1] === "tools") {
+      iChave = i;
+      inline = m[2].trim();
+      break;
+    }
   }
 
-  // Lista de bloco: as linhas SEGUINTES a chave, comecando com `-`, com
-  // indentacao ou sem. YAML aceita as duas, e a versao anterior exigia
-  // indentacao — era exatamente o buraco.
-  const linhas = frontmatter.split("\n");
-  const iChave = linhas.findIndex((l) => /^tools:[ \t]*(.*)$/.test(l));
+  if (iChave === -1) return { declarado: false, tools: null };
+
+  // Nome de tool e identificador: letra, digito, `_` ou `-`. `*`, `all`, chave
+  // de YAML de fluxo — nada disso e lista de nomes, e cai no terceiro estado.
+  const soNomes = (lista) =>
+    lista.length > 0 && lista.every((t) => /^[A-Za-z0-9_-]+$/.test(t));
+
+  // Valor na MESMA linha da chave: lista inline separada por virgula.
+  if (inline && !inline.startsWith("-")) {
+    const tools = inline.split(",").map((t) => t.trim()).filter(Boolean);
+    return { declarado: true, tools: soNomes(tools) ? tools : null };
+  }
+
+  // Lista de bloco: as linhas SEGUINTES, com indentacao ou sem.
   const tools = [];
   for (let i = iChave + 1; i < linhas.length; i++) {
     const linha = linhas[i];
-    if (!linha.trim()) continue;                 // linha vazia dentro do bloco
+    if (!linha.trim()) continue; // linha vazia dentro do bloco
     const item = linha.match(/^[ \t]*-[ \t]*(.+?)[ \t]*$/);
     if (item) {
       tools.push(item[1].replace(/^["']|["']$/g, ""));
@@ -139,9 +165,10 @@ function parseToolsDoFrontmatter(frontmatter) {
     break; // primeira linha que nao e item encerra o bloco (outra chave, etc.)
   }
 
-  if (!tools.length) return { declarado: true, tools: null };
-  const todosSaoNomes = tools.every((t) => /^[A-Za-z0-9_-]+$/.test(t));
-  return { declarado: true, tools: todosSaoNomes ? tools : null };
+  // Chave presente e ZERO item lido — terceiro estado, nega. Este ramo ficou
+  // sem teste na rodada 3 (a mutacao para `declarado: false` deixava a bateria
+  // VERDE), e agora tem: caso 12 de testa-portaria-tools-bloco.cjs.
+  return { declarado: true, tools: soNomes(tools) ? tools : null };
 }
 
 function validarToolsAowlist(tools) {
