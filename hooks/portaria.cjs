@@ -231,7 +231,15 @@ function gravarAmostra(raiz, payload) {
   }
 }
 
-function gravarDespacho(raiz, decisao, agente, estagio, sessao, motivo) {
+/* Uma linha JSON autocontida por decisão (D4), append-only.
+ *
+ * `escreveConferido` só aparece na linha quando é `false`: linha de `allow` sem
+ * o campo significa allow conferido, que é o caso comum, e o log não paga um
+ * campo em toda linha para dizer "nada de anormal". Quando aparece, diz que a
+ * portaria aprovou SEM ter conseguido verificar o `escreve: false` do manifesto
+ * (arquivo do agente ausente, sem frontmatter, ou sem `tools:`).
+ */
+function gravarDespacho(raiz, decisao, agente, estagio, sessao, motivo, escreveConferido) {
   // Append-only log de despachos (D4)
   const dir = path.join(raiz, ".rainforest", "portaria");
   const logPath = path.join(dir, "despachos.jsonl");
@@ -249,6 +257,10 @@ function gravarDespacho(raiz, decisao, agente, estagio, sessao, motivo) {
 
     if (motivo) {
       entrada.motivo = motivo;
+    }
+
+    if (escreveConferido === false) {
+      entrada.escreve_conferido = false;
     }
 
     const linha = JSON.stringify(entrada) + "\n";
@@ -368,16 +380,34 @@ function main() {
     negar(motivo);
   }
 
-  // D3 passo 6: escreve: false com tools fora de allowlist → nega
+  // D3 passo 6: escreve: false com tools fora de allowlist → nega.
+  //
+  // `escreveConferido` existe por causa do critico 2 da rodada 4 da revisao: os
+  // dois caminhos de "pular a checagem" (arquivo do agente ausente, ou presente
+  // sem `tools:`) terminavam num allow byte a byte IGUAL ao de um agente que
+  // passou pela checagem de verdade. Quem lesse o `despachos.jsonl` depois nao
+  // tinha como distinguir "conferido e read-only" de "nao deu para conferir".
+  //
+  // Pular continua sendo o certo, e nao vira deny: em repositorio de CONSUMIDOR
+  // do plugin nao existe `agents/` local — os agentes vem do cache do plugin —,
+  // entao negar por arquivo ausente quebraria a portaria em todo repo que nao
+  // seja este. E por isso que o `--lint` diverge de proposito: ele e local a
+  // este repositorio, onde todo agente declarado TEM de ter arquivo, e ali a
+  // ausencia e erro. A assimetria e desenho, o que estava errado era ela ser
+  // invisivel.
+  let escreveConferido = true;
   if (agentConfig.escreve === false) {
     const def = obterDefinicaoAgente(raiz, nomeAgente);
+    if (!def) escreveConferido = false;
 
     if (def) {
       // Parse frontmatter para extrair tools (se declaradas)
       const fmMatch = def.match(/^---\n([\s\S]*?)\n---/);
+      if (!fmMatch) escreveConferido = false; // arquivo sem frontmatter
       if (fmMatch) {
         const frontmatter = fmMatch[1];
         const { declarado, tools } = parseToolsDoFrontmatter(frontmatter);
+        if (!declarado) escreveConferido = false; // sem `tools:` — nada a conferir
 
         if (declarado && tools === null) {
           // Declara `tools:` e o formato nao foi lido. Nao da para afirmar
@@ -399,11 +429,15 @@ function main() {
         }
       }
     }
-    // Se arquivo não encontrado, não falha — pula a checagem (D3 passo 6)
+    // Se arquivo não encontrado, não falha — pula a checagem (D3 passo 6),
+    // mas o allow sai MARCADO, e não indistinguível de um allow conferido.
   }
 
-  // Passou tudo → aprova (D3 passo 7)
-  gravarDespacho(raiz, "allow", nomeAgente, estagioAtivo, sessao);
+  // Passou tudo → aprova (D3 passo 7). `escreve_conferido: false` na linha do
+  // log quando a checagem de escrita não pôde ser feita — o log é evidência de
+  // primeira classe (D4), e evidência que não distingue "conferi" de "não deu
+  // para conferir" afirma mais do que sabe.
+  gravarDespacho(raiz, "allow", nomeAgente, estagioAtivo, sessao, null, escreveConferido);
   process.exit(0);
 }
 
