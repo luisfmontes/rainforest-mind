@@ -1112,7 +1112,19 @@ function adaptadorCodex() {
     process.exit(1);
   }
 
-  const cmd = `codex exec -s read-only --skip-git-repo-check "${prompt}"`;
+  // {prompt} é o CAMINHO do arquivo; o CLI recebe o CONTEÚDO via stdin —
+  // passar por argumento quebrava com aspas/quebras de linha no cmd.exe e
+  // mandava o path como pergunta (achado da T9). stdin fechado após a escrita
+  // também evita o travamento conhecido do codex exec com stdin aberto.
+  let conteudoPrompt;
+  try {
+    conteudoPrompt = fs.readFileSync(prompt, 'utf8');
+  } catch (e) {
+    console.error(`adaptador-codex: não leu o prompt: ${e.message}`);
+    process.exit(1);
+  }
+
+  const cmd = 'codex exec -s read-only --skip-git-repo-check';
   const isWindows = process.platform === 'win32';
   const spawnArgs = isWindows
     ? ['cmd.exe', ['/d', '/s', '/c', `"${cmd}"`]]
@@ -1120,7 +1132,7 @@ function adaptadorCodex() {
 
   const resultado = spawnSync(spawnArgs[0], spawnArgs[1], {
     encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
+    input: conteudoPrompt,
     windowsVerbatimArguments: isWindows,
     timeout: TIMEOUT_MEMBRO_MS,
   });
@@ -1147,12 +1159,8 @@ function adaptadorCodex() {
     process.exit(1);
   }
 
-  const validacao = validarParecer(parecer);
-  if (!validacao.valido) {
-    console.error(`adaptador-codex: ${validacao.erro}`);
-    process.exit(1);
-  }
-
+  // A forma NÃO se valida aqui: na fase 1 a saída é parecer, na fase 2 é
+  // revisão — quem valida o schema é o portão da fase (conferir --fase).
   fs.writeFileSync(saida, JSON.stringify(parecer, null, 2) + '\n', 'utf8');
   process.exit(0);
 }
@@ -1183,7 +1191,18 @@ function adaptadorGemini() {
     process.exit(1);
   }
 
-  const cmd = `gemini -m gemini-3.7-flash -p "${prompt}" --skip-trust --approval-mode plan`;
+  // {prompt} é o CAMINHO do arquivo; o conteúdo vai via stdin (o -p com o
+  // path mandava o caminho como pergunta — achado da T9). Piped stdin roda
+  // o gemini em modo headless; o -m fixa o melhor modelo da chave.
+  let conteudoPrompt;
+  try {
+    conteudoPrompt = fs.readFileSync(prompt, 'utf8');
+  } catch (e) {
+    console.error(`adaptador-gemini: não leu o prompt: ${e.message}`);
+    process.exit(1);
+  }
+
+  const cmd = 'gemini -m gemini-3.7-flash --skip-trust --approval-mode plan';
   const isWindows = process.platform === 'win32';
   const spawnArgs = isWindows
     ? ['cmd.exe', ['/d', '/s', '/c', `"${cmd}"`]]
@@ -1191,7 +1210,7 @@ function adaptadorGemini() {
 
   const resultado = spawnSync(spawnArgs[0], spawnArgs[1], {
     encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
+    input: conteudoPrompt,
     env: { ...process.env },
     windowsVerbatimArguments: isWindows,
     timeout: TIMEOUT_MEMBRO_MS,
@@ -1219,12 +1238,8 @@ function adaptadorGemini() {
     process.exit(1);
   }
 
-  const validacao = validarParecer(parecer);
-  if (!validacao.valido) {
-    console.error(`adaptador-gemini: ${validacao.erro}`);
-    process.exit(1);
-  }
-
+  // A forma NÃO se valida aqui: na fase 1 a saída é parecer, na fase 2 é
+  // revisão — quem valida o schema é o portão da fase (conferir --fase).
   fs.writeFileSync(saida, JSON.stringify(parecer, null, 2) + '\n', 'utf8');
   process.exit(0);
 }
