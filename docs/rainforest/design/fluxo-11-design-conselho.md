@@ -5,7 +5,7 @@
 > Conteúdo inalterado. A decisão aberta (fluxo independente vs. passo do
 > `design`) permanece aberta — recomendações registradas ao fim.
 
-**Status:** rascunho — proposta B aprovada em conversa (2026-08-29). Aguarda plano.
+**Status:** integrado (2026-08-31). Plano: [docs/rainforest/planos/fluxo-11-conselho.md](../../planos/fluxo-11-conselho.md). Estado: [docs/rainforest/estado/fluxo-11-conselho.json](../../estado/fluxo-11-conselho.json).
 **Dependências:** `estado.cjs` (registro de rodada e transições), padrão de contrato dos territórios (interface de membro), fluxo 7 (padrão do campo obrigatório `nao_provado`, reutilizado aqui como `divergencias_nao_resolvidas`).
 
 ---
