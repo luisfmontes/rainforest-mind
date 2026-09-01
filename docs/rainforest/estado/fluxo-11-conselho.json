@@ -32,12 +32,13 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-08-31",
-    "tarefas_ok": 7,
+    "tarefas_ok": 8,
     "tarefas": 9,
     "em": "2026-08-31",
     "pendentes": [
-      "achado-para-revisar: string de uso de conselho.cjs nao lista o subcomando pareceres",
-      "achado-para-revisar: fixture agregacao-conhecida nao separa media de desempate (T8 em curso deve fechar)"
+      "achado-para-revisar: string de uso de conselho.cjs nao lista pareceres",
+      "achado-para-revisar (T8): conselho.cjs chama main() sem guarda require.main === module",
+      "achado-para-revisar (T8): casos 1-18 da bateria nao isolam RFM_ROOT do config real da maquina"
     ]
   },
   "revisar": {
