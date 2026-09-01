@@ -53,11 +53,15 @@ function rodarCli(opts) {
 }
 
 /**
- * Extrai JSON de stdout, tolerando ```json...```
+ * Extrai JSON do stdout de um CLI externo.
+ * Tenta três abordagens em cascata:
+ * 1. Regex com cerca: ```json ... ``` (CLI output com markdown)
+ * 2. Regex simples: {...} (JSON com object literal)
+ * 3. Fallback: stdout cru (JSON puro sem marcação — arrays top-level, etc)
  *
- * Tenta:
- * 1. Regex dupla: ``` ```json ... ``` ``` (primeira captura)
- * 2. Regex simples: { ... } (primeira captura)
+ * Caso de uso do fallback: alguns CLIs retornam JSON puro sem markdown,
+ * incluindo arrays top-level ([...]) que não casam com as regex anteriores.
+ * Exemplo: CLI que emite "[1,2,3]" direto sem cerca ou wrapper de objeto.
  *
  * @param {string} stdout - Conteúdo para buscar JSON
  * @returns {Object|null} Objeto parseado ou null se não conseguir
@@ -72,6 +76,7 @@ function extrairJson(stdout) {
     }
 
     // Fallback: tenta stdout cru se nenhuma regex casou
+    // Rescata CLIs que retornam JSON puro (arrays top-level, etc)
     const json = match ? match[1] : stdout;
     return JSON.parse(json);
   } catch (e) {

@@ -168,6 +168,24 @@ testa('extrai JSON simples {...}', () => {
 
 console.log('');
 
+// ---- Teste 9: fallback-array-toplevel (exercita fallback do extrairJson) ----
+console.log('Teste 9: extrairJson com array top-level (fallback)');
+testa('extrai array JSON válido (exercita fallback)', () => {
+  // Array top-level puro: não tem "{" (segunda regex não casa)
+  // e não tem ```json``` (primeira regex não casa)
+  // Portanto só o fallback (const json = match ? match[1] : stdout) consegue parseá-lo
+  const stdout = '[1, 2, 3, 4, 5]';
+  const obj = extrairJson(stdout);
+  if (!Array.isArray(obj) || obj.length !== 5 || obj[0] !== 1) {
+    throw new Error(
+      `Array JSON não extraído via fallback: ${JSON.stringify(obj)}\n` +
+      `  Esperava: [1, 2, 3, 4, 5]`
+    );
+  }
+});
+
+console.log('');
+
 // ---- Cleanup ----
 fs.rmSync(TEMP_DIR, { recursive: true, force: true });
 
