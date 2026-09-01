@@ -10,7 +10,7 @@ set -u
 # Get source directory
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC_M="$(cygpath -m "$SRC" 2>/dev/null || printf '%s' "$SRC")"
-CONSELHO="$SRC/scripts/conselho.cjs"
+CONSELHO="$SRC_M/scripts/conselho.cjs"
 
 # Create sandbox
 RAIZ_POSIX="$(mktemp -d)"
@@ -19,6 +19,7 @@ trap 'rm -rf "$RAIZ_POSIX"' EXIT
 
 echo "(caixa de areia: $RAIZ)"
 echo ""
+echo "== Resultado =="
 
 # Diretório de "dados" (~/.rainforest) vazio e isolado — usado pelos casos que
 # precisam de config REALMENTE padrão (nenhuma chave ligada em lugar nenhum),
@@ -70,6 +71,7 @@ testa "quorum-dois-membros: exit != 0" "1" \
   bash -c "cd '$TEMPDIR1' && node '$CONSELHO' abrir --questao questao.md"
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 2: abrir-padrao (sem membros.json) =="
 TEMPDIR2="$RAIZ/test-padrao"
 mkdir -p "$TEMPDIR2"
@@ -142,6 +144,7 @@ if [ -n "$RODADA_DIR" ]; then
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 3: atribuicao-no-cabecalho =="
 
 # Check that conselho.cjs header contains karpathy attribution
@@ -163,6 +166,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 4: pareceres-completos-fecham =="
 TEMPDIR4="$RAIZ/test-pareceres-completos"
 mkdir -p "$TEMPDIR4"
@@ -212,6 +216,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 5: membro-indisponivel-reprova =="
 TEMPDIR5="$RAIZ/test-membro-indisponivel"
 mkdir -p "$TEMPDIR5"
@@ -268,6 +273,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 6: json-invalido-reprova-apontando-campo =="
 TEMPDIR6="$RAIZ/test-json-invalido"
 mkdir -p "$TEMPDIR6"
@@ -334,6 +340,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 7: saida-vazia-reprova =="
 TEMPDIR7="$RAIZ/test-saida-vazia"
 mkdir -p "$TEMPDIR7"
@@ -388,6 +395,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 8: revisar-fecha-com-3 =="
 TEMPDIR8="$RAIZ/test-revisar-ok"
 mkdir -p "$TEMPDIR8"
@@ -462,6 +470,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 9: identidade-nao-vaza =="
 if [ -d "$RODADA_DIR8/fase2" ]; then
   # Check that real member names do not appear in distributed files
@@ -480,6 +489,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 10: ranking-incompleto-reprova =="
 TEMPDIR10="$RAIZ/test-ranking-incompleto"
 mkdir -p "$TEMPDIR10"
@@ -554,6 +564,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 11: cada-um-recebe-so-os-outros =="
 if [ -d "$RODADA_DIR8/fase2" ]; then
   # Check that pacote-prompt for cetico does not contain parecer do cetico himself
@@ -581,6 +592,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 12: agregacao-conhecida =="
 # Test with THREE FIXED rankings where the aggregated result differs from FIRST reviewer
 # With 3 members, each reviewer rates 2 others (N-1)
@@ -706,6 +718,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 13: sintese-grava-com-divergencias =="
 TEMPDIR13="$RAIZ/test-sintese-divergencias"
 mkdir -p "$TEMPDIR13"
@@ -824,6 +837,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 14: sintese-unanime-exige-flag =="
 # Cenário: pareceres SEM objeções + rankings idênticos = divergências VAZIAS
 # Esperado: sem --unanime → exit ≠ 0; com --unanime → exit 0
@@ -910,6 +924,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 15: parecer-sem-objecao-reprova-citando-membro =="
 TEMPDIR15="$RAIZ/test-parecer-sem-objecao"
 mkdir -p "$TEMPDIR15/.rainforest/conselho"
@@ -976,6 +991,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 16: sintese-invalida-reprova =="
 TEMPDIR16="$RAIZ/test-sintese-invalida"
 mkdir -p "$TEMPDIR16/.rainforest/conselho"
@@ -1030,6 +1046,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 17: terceira-reprovacao-abandona =="
 TEMPDIR17="$RAIZ/test-terceira-reprova"
 mkdir -p "$TEMPDIR17/.rainforest/conselho"
@@ -1111,6 +1128,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 18: sucesso-zera-contador =="
 TEMPDIR18="$RAIZ/test-sucesso-zera"
 mkdir -p "$TEMPDIR18/.rainforest/conselho"
@@ -1179,6 +1197,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 19: externo-desligado-fica-fora =="
 # ACHADO da tarefa 8 (auditoria): a versão anterior deste caso não exercitava
 # `abrir` nenhuma vez — o `node -e` só fazia `require(conselho.cjs)`, e como
@@ -1236,6 +1255,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 20: externo-ligado-entra =="
 TEMPDIR20="$RAIZ/test-externo-ligado"
 mkdir -p "$TEMPDIR20/.rainforest/conselho"
@@ -1286,17 +1306,26 @@ else
 fi
 
 echo ""
-echo "== CASO 21: adaptador-sem-chave-recusa =="
-TEMPDIR21="$RAIZ/test-adaptador-sem-chave"
+echo "== Resultado =="
+echo "== CASO 21: gemini-sem-credencial-falha =="
+TEMPDIR21="$RAIZ/test-gemini-credencial"
 mkdir -p "$TEMPDIR21"
 
 # Criar um arquivo de prompt fake
 echo "# Teste" > "$TEMPDIR21/prompt.md"
 
-# Tentar rodar adaptador-gemini SEM GEMINI_API_KEY
-# Deve sair com exit ≠ 0 e NÃO criar arquivo de saída
-testa "adaptador-gemini sem GEMINI_API_KEY: exit != 0" "1" \
-  bash -c "cd '$TEMPDIR21' && unset GEMINI_API_KEY; node '$CONSELHO' adaptador-gemini prompt.md saida.json"
+# Injetar fixture para não chamar o binário real (D7: fixture sempre).
+# RFM_TEST=1 e OBRIGATORIO: sem ele a injecao e ignorada (guarda da revisao 1),
+# o adaptador cai no binario real e o caso passa pelo motivo errado — foi
+# exatamente o que o verificar pegou, com a mutacao do guard sobrevivendo.
+# O guard if (!process.env.GEMINI_API_KEY) deve BARRAR a execução ANTES
+# da fixture ser chamada — caso contrário, não há proteção testável.
+CONSELHO_CMD_GEMINI="node \"$SRC_M/scripts/fixtures/conselho/membro-gemini-fake.cjs\" {prompt} {saida}"
+
+# Tentar rodar adaptador-gemini SEM GEMINI_API_KEY com fixture injetada
+# Deve sair com exit ≠ 0 (guard barra) e NÃO criar arquivo de saída
+testa "gemini-sem-credencial-falha: exit != 0" "1" \
+  bash -c "cd '$TEMPDIR21' && unset GEMINI_API_KEY; RFM_TEST=1 CONSELHO_CMD_GEMINI='$CONSELHO_CMD_GEMINI' node '$CONSELHO' adaptador-gemini prompt.md saida.json"
 
 # Verificar que saida.json NÃO foi criado
 if [ ! -f "$TEMPDIR21/saida.json" ]; then
@@ -1308,6 +1337,46 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
+echo "== CASO 21b: gemini-com-credencial-sucede =="
+# Caso simétrico: COM credencial, o adaptador chega a chamar a fixture
+# e escreve saída com sucesso.
+TEMPDIR21b="$RAIZ/test-gemini-com-credencial"
+rm -f "$TEMPDIR21b/saida.json"  # Limpar de execução anterior se houver
+mkdir -p "$TEMPDIR21b"
+
+# Criar arquivo de prompt fake
+echo "# Teste com credencial" > "$TEMPDIR21b/prompt.md"
+
+# Mesma fixture, mesma variável de ambiente injetada
+export CONSELHO_CMD_GEMINI="node \"$SRC_M/scripts/fixtures/conselho/membro-gemini-fake.cjs\" {prompt} {saida}"
+
+# Rodar COM GEMINI_API_KEY definida (valor fake) e RFM_TEST=1 para usar injeção
+# Deve sair com exit 0 e CRIAR arquivo de saída
+# Export a variável para que bash -c a veja
+SAIDA_DEBUG=$(bash -c "cd '$TEMPDIR21b' && RFM_TEST=1 GEMINI_API_KEY='fake-key-for-testing' node '$CONSELHO' adaptador-gemini prompt.md saida.json" 2>&1)
+EXIT_DEBUG=$?
+
+if [ "$EXIT_DEBUG" = "0" ]; then
+  ok=$((ok + 1))
+  echo "  ok   gemini-com-credencial-sucede: exit = 0 (exit 0)"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA gemini-com-credencial-sucede: exit = 0: esperava exit 0, veio $EXIT_DEBUG"
+  echo "         $SAIDA_DEBUG"
+fi
+
+# Verificar que saida.json FOI criado
+if [ -f "$TEMPDIR21b/saida.json" ]; then
+  ok=$((ok + 1))
+  echo "  ok   arquivo de saída foi criado (sucesso fechado)"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA arquivo de saída não foi criado em sucesso"
+fi
+
+echo ""
+echo "== Resultado =="
 echo "== CASO 22: agregacao-discorda-desempate =="
 # ACHADO da tarefa 8 (auditoria + endurecimento pedido no item 2): o CASO 12
 # (agregacao-conhecida) usa 3 membros; com 3 membros e N-1=2 avaliações por
@@ -1426,6 +1495,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 23: lint-require-sem-npm =="
 # D14: nenhuma dependência npm entra no repo. Verifica que scripts/conselho.cjs
 # e as fixtures scripts/fixtures/conselho/*.cjs só fazem require() de módulo
@@ -1457,6 +1527,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 24: parecer-cercado-passa (parse tolerante a cerca de codigo) =="
 TEMPDIR24="$RAIZ/test-parecer-cercado"
 mkdir -p "$TEMPDIR24/.rainforest/conselho"
@@ -1475,6 +1546,7 @@ testa "cercado: abrir" "0"   bash -c "cd '$TEMPDIR24' && RFM_ESTADO_ROOT='$TEMPD
 testa "cercado: pareceres com JSON em cerca fecham" "0"   bash -c "cd '$TEMPDIR24' && RFM_ESTADO_ROOT='$TEMPDIR24' node '$CONSELHO' pareceres"
 testa "cercado: conferir fase pareceres" "0"   bash -c "cd '$TEMPDIR24' && RFM_ESTADO_ROOT='$TEMPDIR24' node '$CONSELHO' conferir --fase pareceres"
 echo ""
+echo "== Resultado =="
 
 echo "== CASO 25: caminho-com-espaco =="
 TEMPDIR25="$RAIZ/pasta com espaco"
@@ -1508,6 +1580,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 26: retry-seletivo-so-reexecuta-um =="
 TEMPDIR26="$RAIZ/test-retry-seletivo"
 mkdir -p "$TEMPDIR26/.rainforest/conselho"
@@ -1559,6 +1632,7 @@ else
 fi
 
 echo ""
+echo "== Resultado =="
 echo "== CASO 27: fases-fecham-no-estado (portao que passa marca a fase) =="
 TEMPDIR27="$RAIZ/test-fases-fecham"
 mkdir -p "$TEMPDIR27/.rainforest/conselho"
@@ -1596,6 +1670,7 @@ else
   falhou=$((falhou + 1)); echo "  FALHA estado das fases: $(node -e "const j=require('$EST27');console.log(JSON.stringify(j.fases))")"
 fi
 echo ""
+echo "== Resultado =="
 
 echo "== CASO 28: revisar-membro-retry (mapa reusado, pacote completo) =="
 TEMPDIR28="$RAIZ/test-revisar-membro"
@@ -1633,6 +1708,7 @@ else
 fi
 testa "portao da revisao fecha apos retry" "0" bash -c "cd '$TEMPDIR28' && RFM_ESTADO_ROOT='$TEMPDIR28' node '$CONSELHO' conferir --fase revisao"
 echo ""
+echo "== Resultado =="
 
 echo "== CASO 29: aspas-ja-presentes no cmd do dev =="
 TEMPDIR29="$RAIZ/test-aspas-presentes"
@@ -1658,8 +1734,329 @@ else
   falhou=$((falhou + 1)); echo "  FALHA $N29 pareceres com cmd ja-aspado"
 fi
 echo ""
+echo "== Resultado =="
+
+echo "== CASO 30: membro-que-trava-e-cortado (timeout rápido) =="
+TEMPDIR30="$RAIZ/test-timeout"
+mkdir -p "$TEMPDIR30/.rainforest/conselho"
+FO30="$SRC_M/scripts/fixtures/conselho/membro-que-trava-e-cortado.cjs"
+cat > "$TEMPDIR30/.rainforest/conselho/membros.json" << EOF30
+{
+  "membros": [
+    {"nome": "cetico", "cmd": "node \"$FO30\" \"{prompt}\" \"{saida}\"", "ligado": true},
+    {"nome": "arquiteto", "cmd": "node \"$FO30\" \"{prompt}\" \"{saida}\"", "ligado": true},
+    {"nome": "usuario-final", "cmd": "node \"$FO30\" \"{prompt}\" \"{saida}\"", "ligado": true}
+  ]
+}
+EOF30
+echo "# Questão com timeout" > "$TEMPDIR30/q30.md"
+testa "timeout-rápido: abrir" "0" bash -c "cd '$TEMPDIR30' && RFM_ESTADO_ROOT='$TEMPDIR30' node '$CONSELHO' abrir --questao q30.md"
+# Executa pareceres com timeout curto (100ms) — deve falhar
+testa "timeout-rápido: pareceres sai com exit 1 (cortado por timeout)" "1" bash -c "cd '$TEMPDIR30' && CONSELHO_TIMEOUT_MS=100 RFM_ESTADO_ROOT='$TEMPDIR30' node '$CONSELHO' pareceres"
+# Executa pareceres com timeout folgado (10000ms) — deve suceder
+testa "timeout-folgado: pareceres sai com exit 0 (completa)" "0" bash -c "cd '$TEMPDIR30' && CONSELHO_TIMEOUT_MS=10000 RFM_ESTADO_ROOT='$TEMPDIR30' node '$CONSELHO' pareceres"
+echo ""
+echo "== Resultado =="
+
+TEMPDIR31="$RAIZ/test-timeout-revisao"
+echo "== CASO 31: revisor-que-trava-e-cortado (timeout revisão) =="
+
+mkdir -p "$TEMPDIR31/.rainforest/conselho"
+FO_MEMBRO="$SRC_M/scripts/fixtures/conselho/membro-ok.cjs"
+FO31="$SRC_M/scripts/fixtures/conselho/membro-revisor-que-trava-e-cortado.cjs"
+
+# Create question file
+echo "# Questão para timeout de revisão" > "$TEMPDIR31/q31.md"
+
+# Create membros.json para pareceres
+cat > "$TEMPDIR31/.rainforest/conselho/membros.json" << EOF31
+{
+  "membros": [
+    {"nome": "cetico", "cmd": "node \"$FO_MEMBRO\" \"{prompt}\" \"{saida}\"", "ligado": true},
+    {"nome": "arquiteto", "cmd": "node \"$FO_MEMBRO\" \"{prompt}\" \"{saida}\"", "ligado": true},
+    {"nome": "usuario-final", "cmd": "node \"$FO_MEMBRO\" \"{prompt}\" \"{saida}\"", "ligado": true}
+  ]
+}
+EOF31
+
+# Open and collect pareceres
+testa "timeout-revisao: abrir" "0" bash -c "cd '$TEMPDIR31' && RFM_ESTADO_ROOT='$TEMPDIR31' node '$CONSELHO' abrir --questao q31.md"
+testa "timeout-revisao: pareceres" "0" bash -c "cd '$TEMPDIR31' && RFM_ESTADO_ROOT='$TEMPDIR31' node '$CONSELHO' pareceres"
+
+# Now update membros.json para usar revisor que trava
+cat > "$TEMPDIR31/.rainforest/conselho/membros.json" << EOF31
+{
+  "membros": [
+    {"nome": "cetico", "cmd": "node \"$FO31\" \"{prompt}\" \"{saida}\"", "ligado": true},
+    {"nome": "arquiteto", "cmd": "node \"$FO31\" \"{prompt}\" \"{saida}\"", "ligado": true},
+    {"nome": "usuario-final", "cmd": "node \"$FO31\" \"{prompt}\" \"{saida}\"", "ligado": true}
+  ]
+}
+EOF31
+
+# Executa revisar com timeout curto (100ms) — deve falhar
+testa "timeout-revisao: revisar sai com exit 1 (cortado por timeout)" "1" bash -c "cd '$TEMPDIR31' && CONSELHO_TIMEOUT_MS=100 RFM_ESTADO_ROOT='$TEMPDIR31' node '$CONSELHO' revisar"
+# Executa revisar com timeout folgado (10000ms) — deve suceder
+testa "timeout-revisao: revisar sai com exit 0 (completa)" "0" bash -c "cd '$TEMPDIR31' && CONSELHO_TIMEOUT_MS=10000 RFM_ESTADO_ROOT='$TEMPDIR31' node '$CONSELHO' revisar"
+echo ""
+echo "== CASO 32: injecao-sem-declaracao-de-teste-e-ignorada =="
+TEMPDIR32="$RAIZ/test-injecao-sem-teste"
+mkdir -p "$TEMPDIR32"
+
+# Create prompt file for gemini adapter
+echo "# Prompt de teste" > "$TEMPDIR32/prompt.md"
+SAIDA32="$TEMPDIR32/saida.json"
+
+FIXTURE_MARCA="$SRC_M/scripts/fixtures/conselho/membro-marca-injecao.cjs"
+
+# Test: CONSELHO_CMD_GEMINI defined but WITHOUT RFM_TEST — should be IGNORED
+# Expected: Command fails because it tries to run real 'gemini' CLI (which doesn't exist)
+# NOT expected: The fixture marked file is created (which would prove injection was used)
+# NOTE: PATH é podado para remover npm global (/AppData/Roaming/npm) — caso contrário
+# o binário real 'gemini' seria encontrado e o teste seria não-determinístico entre máquinas
+CLEAN_PATH=$(echo "$PATH" | tr ':' '\n' | grep -v "AppData/Roaming/npm" | paste -sd: -)
+saida32=$( \
+  cd "$TEMPDIR32" && \
+  env -i \
+    PATH="$CLEAN_PATH" \
+    GEMINI_API_KEY="dummy-key-for-test" \
+    CONSELHO_CMD_GEMINI="node \"$FIXTURE_MARCA\" {prompt} {saida}" \
+    node "$CONSELHO" adaptador-gemini "$TEMPDIR32/prompt.md" "$SAIDA32" \
+  2>&1
+)
+exit32=$?
+
+# Should fail because tries to run 'gemini' (doesn't exist), not because fixture was called
+if [ "$exit32" != "0" ]; then
+  ok=$((ok + 1))
+  echo "  ok   injecao-sem-declaracao: falha esperada (exit $exit32)"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA injecao-sem-declaracao: deveria ter falhado"
+fi
+
+# Verify that the injection was NOT used (marker file should NOT exist)
+if [ ! -f "$TEMPDIR32/.marca-injecao-usada" ]; then
+  ok=$((ok + 1))
+  echo "  ok   injecao-sem-declaracao: injecao foi ignorada (sem marca)"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA injecao-sem-declaracao: injecao foi usada (marca existe)"
+fi
+
+# Verify that stderr does NOT contain injection message
+if ! echo "$saida32" | grep -q "Usando comando injetado"; then
+  ok=$((ok + 1))
+  echo "  ok   injecao-sem-declaracao: stderr sem mensagem de injeção"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA injecao-sem-declaracao: stderr contém mensagem de injeção"
+  echo "$saida32" | sed 's/^/         /' | head -10
+fi
+
+echo ""
 
 echo "== Resultado =="
+echo "== CASO 33: injecao-codex-sem-declaracao-de-teste-e-ignorada =="
+TEMPDIR33="$RAIZ/test-injecao-codex-sem-teste"
+mkdir -p "$TEMPDIR33"
+
+# Create prompt file for codex adapter
+echo "# Prompt de teste" > "$TEMPDIR33/prompt.md"
+SAIDA33="$TEMPDIR33/saida.json"
+
+# Test: CONSELHO_CMD_CODEX defined but WITHOUT RFM_TEST — should be IGNORED
+# Expected: Command fails because it tries to run real 'codex' CLI (which doesn't exist)
+# NOT expected: The fixture marked file is created (which would prove injection was used)
+# NOTE: PATH é podado para remover npm global (/AppData/Roaming/npm) — caso contrário
+# o binário real 'codex' seria encontrado e o teste seria não-determinístico entre máquinas
+saida33=$( \
+  cd "$TEMPDIR33" && \
+  env -i \
+    PATH="$CLEAN_PATH" \
+    CONSELHO_CMD_CODEX="node \"$FIXTURE_MARCA\" {prompt} {saida}" \
+    node "$CONSELHO" adaptador-codex "$TEMPDIR33/prompt.md" "$SAIDA33" \
+  2>&1
+)
+exit33=$?
+
+# Should fail because tries to run 'codex' (doesn't exist), not because fixture was called
+if [ "$exit33" != "0" ]; then
+  ok=$((ok + 1))
+  echo "  ok   injecao-codex-sem-declaracao: falha esperada (exit $exit33)"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA injecao-codex-sem-declaracao: deveria ter falhado"
+fi
+
+# Verify that the injection was NOT used (marker file should NOT exist)
+if [ ! -f "$TEMPDIR33/.marca-injecao-usada" ]; then
+  ok=$((ok + 1))
+  echo "  ok   injecao-codex-sem-declaracao: injecao foi ignorada (sem marca)"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA injecao-codex-sem-declaracao: injecao foi usada (marca existe)"
+fi
+
+# Verify that stderr does NOT contain injection message
+if ! echo "$saida33" | grep -q "Usando comando injetado"; then
+  ok=$((ok + 1))
+  echo "  ok   injecao-codex-sem-declaracao: stderr sem mensagem de injeção"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA injecao-codex-sem-declaracao: stderr contém mensagem de injeção"
+  echo "$saida33" | sed 's/^/         /' | head -10
+fi
+
+echo ""
+
+echo "== Resultado =="
+echo "== CASO 33b: injecao-codex-com-teste-e-usada =="
+# Caso simétrico: COM RFM_TEST=1, o adaptador chega a chamar a fixture
+# e escreve saída com sucesso.
+TEMPDIR33b="$RAIZ/test-codex-com-teste"
+rm -f "$TEMPDIR33b/.marca-injecao-usada"  # Limpar de execução anterior se houver
+mkdir -p "$TEMPDIR33b"
+
+# Criar arquivo de prompt fake
+echo "# Teste com RFM_TEST=1" > "$TEMPDIR33b/prompt.md"
+
+# Mesma fixture de marca, mesma variável de ambiente injetada
+export CONSELHO_CMD_CODEX="node \"$FIXTURE_MARCA\" {prompt} {saida}"
+
+# Rodar COM RFM_TEST=1 para usar injeção
+# Deve sair com exit 0 e CRIAR arquivo de saída
+SAIDA_DEBUG_CODEX=$(bash -c "cd '$TEMPDIR33b' && RFM_TEST=1 node '$CONSELHO' adaptador-codex prompt.md saida.json" 2>&1)
+EXIT_DEBUG_CODEX=$?
+
+if [ "$EXIT_DEBUG_CODEX" = "0" ]; then
+  ok=$((ok + 1))
+  echo "  ok   injecao-codex-com-teste-e-usada: exit = 0 (exit 0)"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA injecao-codex-com-teste-e-usada: exit = 0: esperava exit 0, veio $EXIT_DEBUG_CODEX"
+  echo "         $SAIDA_DEBUG_CODEX"
+fi
+
+# Verificar que saida.json FOI criado
+if [ -f "$TEMPDIR33b/saida.json" ]; then
+  ok=$((ok + 1))
+  echo "  ok   arquivo de saída foi criado (sucesso fechado)"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA arquivo de saída não foi criado em sucesso"
+fi
+
+# Verificar que a marca FOI criada (injeção foi usada)
+if [ -f "$TEMPDIR33b/.marca-injecao-usada" ]; then
+  ok=$((ok + 1))
+  echo "  ok   injecao-codex-com-teste-e-usada: injecao foi usada (marca existe)"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA injecao-codex-com-teste-e-usada: injecao não foi usada (sem marca)"
+fi
+
+echo ""
+
+echo "== Resultado =="
+echo "== CASO 34: codex-fixture-retorna-json-valido =="
+# Teste que verifica que membro-codex-fake funciona e retorna JSON válido
+TEMPDIR34="$RAIZ/test-codex-fixture-valida"
+mkdir -p "$TEMPDIR34"
+
+echo "# Prompt de teste" > "$TEMPDIR34/prompt.md"
+SAIDA34="$TEMPDIR34/saida.json"
+
+# Rodar com membro-codex-fake injetado e RFM_TEST=1
+export CONSELHO_CMD_CODEX="node \"$SRC_M/scripts/fixtures/conselho/membro-codex-fake.cjs\" {prompt} {saida}"
+
+SAIDA_CODEX_FIXTURE=$(bash -c "cd '$TEMPDIR34' && RFM_TEST=1 node '$CONSELHO' adaptador-codex prompt.md saida.json" 2>&1)
+EXIT_CODEX_FIXTURE=$?
+
+if [ "$EXIT_CODEX_FIXTURE" = "0" ]; then
+  ok=$((ok + 1))
+  echo "  ok   codex-fixture-retorna-json-valido: exit = 0"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA codex-fixture-retorna-json-valido: exit = 0: esperava exit 0, veio $EXIT_CODEX_FIXTURE"
+fi
+
+if [ -f "$TEMPDIR34/saida.json" ]; then
+  ok=$((ok + 1))
+  echo "  ok   arquivo saida.json foi criado"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA arquivo saida.json não foi criado"
+fi
+
+# Verificar que o arquivo contém JSON válido com campos esperados
+if grep -q '"posicao"' "$TEMPDIR34/saida.json" && grep -q '"argumentos"' "$TEMPDIR34/saida.json"; then
+  ok=$((ok + 1))
+  echo "  ok   saida.json contém campos JSON válidos"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA saida.json não contém os campos esperados"
+fi
+
+echo ""
+
+echo "== Resultado =="
+echo "== CASO 35: json-invalido-em-adaptador-codex =="
+# Teste que verifica que um JSON inválido é devidamente rejeitado
+TEMPDIR35="$RAIZ/test-json-invalido-codex"
+mkdir -p "$TEMPDIR35"
+
+echo "# Prompt de teste" > "$TEMPDIR35/prompt.md"
+SAIDA35="$TEMPDIR35/saida.json"
+
+# Injetar uma fixture que retorna JSON inválido
+export CONSELHO_CMD_CODEX="node \"$SRC_M/scripts/fixtures/conselho/membro-stdout-json-invalido.cjs\" {prompt} {saida}"
+
+SAIDA_JSON_INVALIDO=$(bash -c "cd '$TEMPDIR35' && RFM_TEST=1 node '$CONSELHO' adaptador-codex prompt.md saida.json" 2>&1)
+EXIT_JSON_INVALIDO=$?
+
+if [ "$EXIT_JSON_INVALIDO" != "0" ]; then
+  ok=$((ok + 1))
+  echo "  ok   json-invalido-em-adaptador-codex: exit != 0 (rejeitado)"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA json-invalido-em-adaptador-codex: deveria ter falhado com exit != 0"
+fi
+
+if [ ! -f "$TEMPDIR35/saida.json" ]; then
+  ok=$((ok + 1))
+  echo "  ok   arquivo saida.json NÃO foi criado em falha (falha fechada)"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA arquivo saida.json foi criado mesmo com JSON inválido"
+fi
+
+if echo "$SAIDA_JSON_INVALIDO" | grep -q "JSON inválido"; then
+  ok=$((ok + 1))
+  echo "  ok   stderr contém mensagem de erro 'JSON inválido'"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA stderr não contém mensagem 'JSON inválido'"
+fi
+
+echo ""
+
+echo "== AUDITORIA DE FIXTURES =="
+FIXTURES_DIR="$SRC_M/scripts/fixtures/conselho"
+for fixture in "$FIXTURES_DIR"/*.cjs; do
+  fixture_name=$(basename "$fixture" .cjs)
+  # Conta so INVOCACAO real: linha nao-comentada citando o arquivo com extensao.
+  # Contar o nome cru deixava passar orfa cujo nome sobrevive so num comentario
+  # — a auditoria tinha o mesmo defeito que existe para pegar (revisao 4, achado 2).
+  count=$(grep -v "^[[:space:]]*#" "$SRC_M/scripts/testa-conselho.sh" | grep -c "$fixture_name.cjs")
+  if [ -z "$count" ] || [ "$count" -eq 0 ]; then
+    falhou=$((falhou + 1))
+    echo "  FALHA: fixture órfã '$fixture_name' não é referenciada em testa-conselho.sh"
+  fi
+done
+
+echo ""
+
 echo "total=$((ok + falhou)) vermelhas:[$falhou]"
 if [ "$falhou" -gt 0 ]; then
   exit 1
