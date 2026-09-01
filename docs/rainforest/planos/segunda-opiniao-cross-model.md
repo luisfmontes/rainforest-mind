@@ -18,7 +18,7 @@ Base: `cc1db6a` (ponta da `origin/main`, 0.79.0)
 
 ### 1. Transporte de CLI externo em `hooks/lib`, com bateria própria [tipo: implementar]
 atende: D1, D3, D7
-arquivos: `hooks/lib/cli-externo.cjs`, `scripts/testa-cli-externo.sh`, `scripts/fixtures/cli-externo/*.cjs`
+arquivos: `hooks/lib/cli-externo.cjs`, `scripts/testa-cli-externo.sh`, `scripts/testa-cli-externo.cjs`, `scripts/fixtures/cli-externo/*.cjs`
 depende de: nenhuma
 paralela: sim
 mutacao:
