@@ -28,7 +28,16 @@ const { rodarCli } = require('../hooks/lib/cli-externo.cjs');
 
 // Parse argumentos
 const args = {};
-for (let i = 2; i < process.argv.length; i++) {
+const subcomando = process.argv[2]; // Pode ser um subcomando
+let offsetArgs = 2;
+
+// Verificar se o primeiro argumento é um subcomando
+if (subcomando === 'registrar-divergencia') {
+  // Processar subcomando
+  offsetArgs = 3; // Começar após o subcomando
+}
+
+for (let i = offsetArgs; i < process.argv.length; i++) {
   if (process.argv[i].startsWith('--')) {
     const key = process.argv[i].substring(2);
     args[key] = process.argv[++i];
@@ -40,6 +49,62 @@ const HEAD = args.head;
 const CRITERIO_ARQUIVO = args.criterio;
 const MODELO = args.modelo || 'codex';
 const CLI_CMD_CUSTOM = args['cli-cmd']; // Para testes com fixtures
+
+/**
+ * Subcomando: registrar divergência com motivo
+ *
+ * Uso: node scripts/segunda-opiniao.cjs registrar-divergencia --veredito discordo --motivo "<texto>" --base <sha>
+ *
+ * D5: Quando veredito for "discordo" e a janela rejeitar, registra com motivo escrito.
+ * Motivo vazio ou só whitespace = recusa (exit ≠ 0, nada gravado).
+ *
+ * Arquivo de log: .claude/logs/divergencias-segunda-opiniao.jsonl
+ * Cada linha é JSON: { timestamp, veredito, motivo, base, modelo }
+ */
+function registrarDivergencia() {
+  if (!args.veredito || !args.motivo || !args.base) {
+    console.error('Erro: registrar-divergencia requer --veredito, --motivo e --base');
+    process.exit(1);
+  }
+
+  // D5: Validar que motivo não é vazio ou só whitespace
+  if (!args.motivo.trim()) {
+    console.error('Erro: motivo vazio é recusado');
+    process.exit(1);
+  }
+
+  const logDir = path.join(process.cwd(), '.claude', 'logs');
+  const logFile = path.join(logDir, 'divergencias-segunda-opiniao.jsonl');
+
+  // Criar diretório se não existir
+  if (!fs.existsSync(logDir)) {
+    fs.mkdirSync(logDir, { recursive: true });
+  }
+
+  // Registrar como JSONL
+  const registro = {
+    timestamp: new Date().toISOString(),
+    veredito: args.veredito,
+    motivo: args.motivo,
+    base: args.base,
+    modelo: MODELO
+  };
+
+  try {
+    fs.appendFileSync(logFile, JSON.stringify(registro) + '\n', 'utf8');
+    console.error(`Divergência registrada em ${logFile}`);
+    process.exit(0);
+  } catch (e) {
+    console.error(`Erro ao gravar divergência: ${e.message}`);
+    process.exit(1);
+  }
+}
+
+// Se é subcomando de registro, executar direto
+if (subcomando === 'registrar-divergencia') {
+  registrarDivergencia();
+  // Não retorna, pois registrarDivergencia chama process.exit
+}
 
 // Validar argumentos obrigatórios
 if (!BASE || !HEAD) {
@@ -132,16 +197,30 @@ const resultado = rodarCli({
   env: process.env
 });
 
-if (resultado.status !== 0) {
-  console.error(`Erro ao chamar ${MODELO}: status ${resultado.status}`);
+// D6: Falha fechada — modelo ligado e indisponível reprova, nunca segue sem ele
+// Detectar 3 modos de indisponibilidade com mensagens distintas
+
+// Modo 1: CLI sai com exit ≠ 0
+if (resultado.status !== 0 && resultado.status !== null) {
+  console.error(`Erro: modelo ligado mas indisponível (exit ≠ 0): ${resultado.status}`);
   if (resultado.stderr) {
     console.error(resultado.stderr);
   }
   process.exit(1);
 }
 
+// Modo 3: Timeout (resultado.status === null quando spawnSync tira timeout)
+if (resultado.status === null) {
+  console.error(`Erro: modelo ligado mas indisponível (timeout após ${timeoutMs}ms)`);
+  if (resultado.stderr) {
+    console.error(resultado.stderr);
+  }
+  process.exit(1);
+}
+
+// Modo 2: Stdout vazio (deve vir depois de status null check, pois null !== 0)
 if (!resultado.stdout || resultado.stdout.trim().length === 0) {
-  console.error(`Erro: ${MODELO} retornou saída vazia`);
+  console.error(`Erro: modelo ligado mas indisponível (stdout vazio)`);
   process.exit(1);
 }
 

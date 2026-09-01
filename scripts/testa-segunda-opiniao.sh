@@ -291,6 +291,219 @@ else
 fi
 
 echo ""
+echo "== CASO 10: externo-indisponivel-exit =="
+
+TEMP_REPO_INDISPONIVEL="$RAIZ/test-indisponivel-exit-repo"
+mkdir -p "$TEMP_REPO_INDISPONIVEL"
+cd "$TEMP_REPO_INDISPONIVEL"
+git init --quiet
+git config user.email "test@example.com"
+git config user.name "Test"
+
+echo "content" > file.txt
+git add file.txt
+git commit --quiet -m "base"
+BASE_SHA_INDISPONIVEL=$(git rev-parse HEAD)
+
+echo "modified" > file.txt
+git add file.txt
+git commit --quiet -m "head"
+HEAD_SHA_INDISPONIVEL=$(git rev-parse HEAD)
+
+CRITERIO_FILE_INDISPONIVEL="$TEMP_REPO_INDISPONIVEL/criterio.md"
+cat > "$CRITERIO_FILE_INDISPONIVEL" << 'EOF'
+# Critério: modificação válida
+Validar se a mudança é apropriada.
+EOF
+
+FIXTURE_EXIT="$SRC_M/scripts/fixtures/segunda-opiniao/externo-indisponivel-exit.cjs"
+OUTPUT_INDISPONIVEL=$(cd "$TEMP_REPO_INDISPONIVEL" && node "$SRC/scripts/segunda-opiniao.cjs" --base "$BASE_SHA_INDISPONIVEL" --head "$HEAD_SHA_INDISPONIVEL" --criterio "$CRITERIO_FILE_INDISPONIVEL" --cli-cmd "node $FIXTURE_EXIT" 2>&1); EXIT_INDISPONIVEL=$?
+if [ "$EXIT_INDISPONIVEL" != "0" ]; then
+  if echo "$OUTPUT_INDISPONIVEL" | grep -q "indisponível (exit ≠ 0)"; then
+    ok=$((ok + 1))
+    echo "  ok   externo-indisponivel-exit sai ≠ 0 com mensagem específica"
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA externo-indisponivel-exit: não tem mensagem '(exit ≠ 0)'"
+    echo "$OUTPUT_INDISPONIVEL" | head -5
+  fi
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA externo-indisponivel-exit: deveria sair ≠ 0, saiu 0"
+fi
+
+echo ""
+echo "== CASO 11: externo-indisponivel-vazio =="
+
+TEMP_REPO_VAZIO="$RAIZ/test-indisponivel-vazio-repo"
+mkdir -p "$TEMP_REPO_VAZIO"
+cd "$TEMP_REPO_VAZIO"
+git init --quiet
+git config user.email "test@example.com"
+git config user.name "Test"
+
+echo "content" > file.txt
+git add file.txt
+git commit --quiet -m "base"
+BASE_SHA_VAZIO=$(git rev-parse HEAD)
+
+echo "modified" > file.txt
+git add file.txt
+git commit --quiet -m "head"
+HEAD_SHA_VAZIO=$(git rev-parse HEAD)
+
+CRITERIO_FILE_VAZIO="$TEMP_REPO_VAZIO/criterio.md"
+cat > "$CRITERIO_FILE_VAZIO" << 'EOF'
+# Critério: modificação válida
+Validar se a mudança é apropriada.
+EOF
+
+FIXTURE_VAZIO="$SRC_M/scripts/fixtures/segunda-opiniao/externo-indisponivel-vazio.cjs"
+OUTPUT_VAZIO=$(cd "$TEMP_REPO_VAZIO" && node "$SRC/scripts/segunda-opiniao.cjs" --base "$BASE_SHA_VAZIO" --head "$HEAD_SHA_VAZIO" --criterio "$CRITERIO_FILE_VAZIO" --cli-cmd "node $FIXTURE_VAZIO" 2>&1); EXIT_VAZIO=$?
+if [ "$EXIT_VAZIO" != "0" ]; then
+  if echo "$OUTPUT_VAZIO" | grep -q "indisponível (stdout vazio)"; then
+    ok=$((ok + 1))
+    echo "  ok   externo-indisponivel-vazio sai ≠ 0 com mensagem específica"
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA externo-indisponivel-vazio: não tem mensagem '(stdout vazio)'"
+    echo "$OUTPUT_VAZIO" | head -5
+  fi
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA externo-indisponivel-vazio: deveria sair ≠ 0, saiu 0"
+fi
+
+echo ""
+echo "== CASO 12: externo-indisponivel-timeout =="
+
+TEMP_REPO_TIMEOUT2="$RAIZ/test-indisponivel-timeout-repo"
+mkdir -p "$TEMP_REPO_TIMEOUT2"
+cd "$TEMP_REPO_TIMEOUT2"
+git init --quiet
+git config user.email "test@example.com"
+git config user.name "Test"
+
+echo "content" > file.txt
+git add file.txt
+git commit --quiet -m "base"
+BASE_SHA_TIMEOUT2=$(git rev-parse HEAD)
+
+echo "modified" > file.txt
+git add file.txt
+git commit --quiet -m "head"
+HEAD_SHA_TIMEOUT2=$(git rev-parse HEAD)
+
+CRITERIO_FILE_TIMEOUT2="$TEMP_REPO_TIMEOUT2/criterio.md"
+cat > "$CRITERIO_FILE_TIMEOUT2" << 'EOF'
+# Critério: resposta rápida
+Modelo deve responder dentro do teto.
+EOF
+
+FIXTURE_TIMEOUT_INDISPONIVEL="$SRC_M/scripts/fixtures/segunda-opiniao/externo-indisponivel-timeout.cjs"
+OUTPUT_TIMEOUT_INDISPONIVEL=$(cd "$TEMP_REPO_TIMEOUT2" && TIMEOUT_SEGUNDA_OPINIAO_MS=100 node "$SRC/scripts/segunda-opiniao.cjs" --base "$BASE_SHA_TIMEOUT2" --head "$HEAD_SHA_TIMEOUT2" --criterio "$CRITERIO_FILE_TIMEOUT2" --cli-cmd "node $FIXTURE_TIMEOUT_INDISPONIVEL" 2>&1); EXIT_TIMEOUT_INDISPONIVEL=$?
+if [ "$EXIT_TIMEOUT_INDISPONIVEL" != "0" ]; then
+  if echo "$OUTPUT_TIMEOUT_INDISPONIVEL" | grep -q "indisponível (timeout"; then
+    ok=$((ok + 1))
+    echo "  ok   externo-indisponivel-timeout sai ≠ 0 com mensagem específica"
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA externo-indisponivel-timeout: não tem mensagem '(timeout'"
+    echo "$OUTPUT_TIMEOUT_INDISPONIVEL" | head -5
+  fi
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA externo-indisponivel-timeout: deveria sair ≠ 0, saiu 0"
+fi
+
+echo ""
+echo "== CASO 13: divergencia-registrada-com-motivo =="
+
+TEMP_REPO_REG="$RAIZ/test-divergencia-reg-repo"
+mkdir -p "$TEMP_REPO_REG"
+cd "$TEMP_REPO_REG"
+git init --quiet
+git config user.email "test@example.com"
+git config user.name "Test"
+
+echo "content" > file.txt
+git add file.txt
+git commit --quiet -m "base"
+BASE_SHA_REG=$(git rev-parse HEAD)
+
+REGISTRO_LOGFILE="$TEMP_REPO_REG/.claude/logs/divergencias-segunda-opiniao.jsonl"
+# Limpar log se existir
+rm -f "$REGISTRO_LOGFILE"
+
+# Registrar divergência
+node "$SRC/scripts/segunda-opiniao.cjs" registrar-divergencia \
+  --veredito discordo \
+  --motivo "Critério não foi atendido plenamente" \
+  --base "$BASE_SHA_REG" > /dev/null 2>&1; EXIT_REG=$?
+
+if [ "$EXIT_REG" = "0" ]; then
+  # Verificar se arquivo foi gravado
+  if [ -f "$REGISTRO_LOGFILE" ]; then
+    # Ler o registro e validar conteúdo
+    if grep -q "\"veredito\":\"discordo\"" "$REGISTRO_LOGFILE" && \
+       grep -q "\"motivo\":\"Critério não foi atendido plenamente\"" "$REGISTRO_LOGFILE" && \
+       grep -q "\"base\":\"$BASE_SHA_REG\"" "$REGISTRO_LOGFILE"; then
+      ok=$((ok + 1))
+      echo "  ok   divergencia-registrada-com-motivo: arquivo contém veredito, motivo e base"
+    else
+      falhou=$((falhou + 1))
+      echo "  FALHA divergencia-registrada-com-motivo: arquivo não tem conteúdo esperado"
+      cat "$REGISTRO_LOGFILE" | head -5
+    fi
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA divergencia-registrada-com-motivo: arquivo não foi criado em $REGISTRO_LOGFILE"
+  fi
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA divergencia-registrada-com-motivo: saiu $EXIT_REG em vez de 0"
+fi
+
+echo ""
+echo "== CASO 14: divergencia-sem-motivo-recusa =="
+
+TEMP_REPO_SEM_MOT="$RAIZ/test-divergencia-sem-motivo-repo"
+mkdir -p "$TEMP_REPO_SEM_MOT"
+cd "$TEMP_REPO_SEM_MOT"
+git init --quiet
+git config user.email "test@example.com"
+git config user.name "Test"
+
+echo "content" > file.txt
+git add file.txt
+git commit --quiet -m "base"
+BASE_SHA_SEM_MOT=$(git rev-parse HEAD)
+
+REGISTRO_LOGFILE_SEM_MOT="$TEMP_REPO_SEM_MOT/.claude/logs/divergencias-segunda-opiniao.jsonl"
+# Limpar log se existir
+rm -f "$REGISTRO_LOGFILE_SEM_MOT"
+
+# Tentar registrar com motivo vazio
+OUTPUT_SEM_MOT=$(cd "$TEMP_REPO_SEM_MOT" && node "$SRC/scripts/segunda-opiniao.cjs" registrar-divergencia \
+  --veredito discordo \
+  --motivo "" \
+  --base "$BASE_SHA_SEM_MOT" 2>&1); EXIT_SEM_MOT=$?
+
+if [ "$EXIT_SEM_MOT" != "0" ]; then
+  # Validar que nada foi gravado
+  if [ ! -f "$REGISTRO_LOGFILE_SEM_MOT" ]; then
+    ok=$((ok + 1))
+    echo "  ok   divergencia-sem-motivo-recusa: exit ≠ 0 e nada gravado"
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA divergencia-sem-motivo-recusa: arquivo não deveria ter sido criado"
+  fi
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA divergencia-sem-motivo-recusa: deveria sair ≠ 0, saiu 0"
+fi
+
+echo ""
 echo "== RESUMO =="
 echo "Ok: $ok"
 echo "Falhou: $falhou"
