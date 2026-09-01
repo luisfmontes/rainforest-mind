@@ -20,6 +20,12 @@ trap 'rm -rf "$RAIZ_POSIX"' EXIT
 echo "(caixa de areia: $RAIZ)"
 echo ""
 
+# Diretório de "dados" (~/.rainforest) vazio e isolado — usado pelos casos que
+# precisam de config REALMENTE padrão (nenhuma chave ligada em lugar nenhum),
+# sem depender do que estiver ligado no ~/.rainforest desta máquina real.
+DADOS_VAZIO="$RAIZ/dados-vazio"
+mkdir -p "$DADOS_VAZIO"
+
 ok=0
 falhou=0
 
@@ -1174,12 +1180,18 @@ fi
 
 echo ""
 echo "== CASO 19: externo-desligado-fica-fora =="
+# ACHADO da tarefa 8 (auditoria): a versão anterior deste caso não exercitava
+# `abrir` nenhuma vez — o `node -e` só fazia `require(conselho.cjs)`, e como
+# `main()` roda incondicionalmente no fim do módulo (sem guarda `require.main
+# === module`), aquele require chamava main() com `process.argv[2]` indefinido,
+# imprimia "Uso: ..." e saía com exit 1 ANTES de tocar em resolverMembros().
+# O teste então só comparava o membros.json que ELE MESMO escreveu — nunca
+# tocado pela produção — e por isso passava sempre, com qualquer implementação.
+# Reescrito para rodar `abrir` de verdade, com projeto e dados isolados (config
+# real desta máquina não deve vazar), e conferir os prompts realmente gerados —
+# no mesmo padrão do CASO 20 (externo-ligado-entra), só que no estado oposto.
 TEMPDIR19="$RAIZ/test-externo-desligado"
 mkdir -p "$TEMPDIR19/.rainforest/conselho"
-mkdir -p "$TEMPDIR19/dados"
-
-# Config padrão (chaves desligadas)
-echo '{}' > "$TEMPDIR19/dados/config.json"
 
 # Create membros.json - não deve ter codex/gemini ligados por padrão
 cat > "$TEMPDIR19/.rainforest/conselho/membros.json" << 'EOF'
@@ -1192,28 +1204,35 @@ cat > "$TEMPDIR19/.rainforest/conselho/membros.json" << 'EOF'
 }
 EOF
 
-# Teste: resolução de membros lê config e NÃO liga codex/gemini
-TEST_OUTPUT=$(bash -c "cd '$TEMPDIR19' && node -e \"
-const path = require('path');
-process.env.CLAUDE_PROJECT_DIR = '$TEMPDIR19';
-process.env.RFM_DADOS = '$TEMPDIR19/dados';
-const m = require('$SRC/scripts/conselho.cjs');
-\" 2>&1" || true)
+echo "# Questão de teste" > "$TEMPDIR19/questao.md"
 
-# Verificar: resolve função precisa exportar resultado
-# Precisamos checar de forma diferente - verificando se membros.json permanece com só 3
-if grep -q '"nome": "codex"' "$TEMPDIR19/.rainforest/conselho/membros.json"; then
-  # Arquivo foi modificado - se codex entrou, falhou
-  if grep -c '"ligado": true' "$TEMPDIR19/.rainforest/conselho/membros.json" | grep -q "^3$"; then
+# Roda `abrir` de verdade: CLAUDE_PROJECT_DIR sem .rainforest/config.json e
+# RFM_ROOT apontando para uma pasta de dados vazia (sem config.json) — as duas
+# camadas de config caem no padrão do código (conselho-codex/gemini = false).
+testa "externo-desligado-fica-fora: abrir exit 0" "0" \
+  bash -c "cd '$TEMPDIR19' && CLAUDE_PROJECT_DIR='$TEMPDIR19' RFM_ROOT='$DADOS_VAZIO' node '$CONSELHO' abrir --questao questao.md"
+
+RODADA_DIR19=$(ls -1d "$TEMPDIR19/.rainforest/conselho/202"* 2>/dev/null | head -1)
+if [ -n "$RODADA_DIR19" ]; then
+  PROMPT_COUNT19=$(ls "$RODADA_DIR19"/prompt-*.md 2>/dev/null | wc -l)
+  if [ "$PROMPT_COUNT19" = "3" ]; then
     ok=$((ok + 1))
-    echo "  ok   config padrão: apenas 3 personas ligadas"
+    echo "  ok   config padrão: 3 prompts gerados (sem externo)"
   else
     falhou=$((falhou + 1))
-    echo "  FALHA membros têm mais de 3 ligados"
+    echo "  FALHA $PROMPT_COUNT19 prompts gerados, esperava 3"
+  fi
+
+  if ls "$RODADA_DIR19"/prompt-codex.md >/dev/null 2>&1 || ls "$RODADA_DIR19"/prompt-gemini.md >/dev/null 2>&1; then
+    falhou=$((falhou + 1))
+    echo "  FALHA prompt de membro externo (codex/gemini) foi gerado sem a chave ligada"
+  else
+    ok=$((ok + 1))
+    echo "  ok   nenhum prompt de membro externo (codex/gemini) foi gerado"
   fi
 else
-  ok=$((ok + 1))
-  echo "  ok   config padrão: apenas 3 personas ligadas (sem codex/gemini)"
+  falhou=$((falhou + 1))
+  echo "  FALHA não conseguiu encontrar diretório de rodada"
 fi
 
 echo ""
@@ -1286,6 +1305,155 @@ if [ ! -f "$TEMPDIR21/saida.json" ]; then
 else
   falhou=$((falhou + 1))
   echo "  FALHA arquivo de saída foi criado em falha"
+fi
+
+echo ""
+echo "== CASO 22: agregacao-discorda-desempate =="
+# ACHADO da tarefa 8 (auditoria + endurecimento pedido no item 2): o CASO 12
+# (agregacao-conhecida) usa 3 membros; com 3 membros e N-1=2 avaliações por
+# candidato, a média só pode valer 0, 0.5 ou 1 — e essas três médias mapeiam
+# 1-para-1 com a contagem de primeiros-lugares (0<->2, 0.5<->1, 1<->0). Ou seja,
+# NUNCA existe discórdia entre "ordenar por média" e "ordenar só por
+# primeiros-lugares" com 3 membros: matar a comparação de média
+# (`if (metA.media !== metB.media) {...}` -> `if (false) {...}`) cai direto no
+# desempate por primeiros-lugares, que já concorda com a média — mutação
+# sobrevive (medido na integração da T4/T8: bateria fica verde com a mutação).
+#
+# Este caso usa 4 membros (N-1=3 avaliações por candidato), onde média e
+# primeiros-lugares PODEM discordar de verdade. Cálculo à mão:
+#
+#   Revisor arquiteto (avalia usuario-final=C, cetico=A, revisor-extra=D):
+#     ranking = [C, A, D]  ->  C=pos0, A=pos1, D=pos2
+#   Revisor usuario-final (avalia cetico=A, arquiteto=B, revisor-extra=D):
+#     ranking = [A, B, D]  ->  A=pos0, B=pos1, D=pos2
+#   Revisor cetico (avalia arquiteto=B, usuario-final=C, revisor-extra=D):
+#     ranking = [D, B, C]  ->  D=pos0, B=pos1, C=pos2
+#   Revisor revisor-extra (avalia cetico=A, arquiteto=B, usuario-final=C):
+#     ranking = [A, B, C]  ->  A=pos0, B=pos1, C=pos2
+#
+#   membro-A (cetico):        avaliado por arquiteto=1, usuario-final=0, revisor-extra=0
+#                              soma=1  média=1/3=0.333  primeirosPor=2
+#   membro-B (arquiteto):     avaliado por cetico=1, usuario-final=1, revisor-extra=1
+#                              soma=3  média=3/3=1.000  primeirosPor=0
+#   membro-C (usuario-final): avaliado por arquiteto=0, cetico=2, revisor-extra=2
+#                              soma=4  média=4/3=1.333  primeirosPor=1
+#   membro-D (revisor-extra): avaliado por arquiteto=2, usuario-final=2, cetico=0
+#                              soma=4  média=4/3=1.333  primeirosPor=1
+#
+#   Ranking CORRETO (média asc; empate C/D por primeirosPor igual (1) então
+#   alfabético): [A, B, C, D] = [cetico, arquiteto, usuario-final, revisor-extra]
+#
+#   Ranking com a MUTAÇÃO (média sempre "empatada" -> só primeirosPor desc,
+#   empate alfabético): primeirosPor A=2, C=1, D=1, B=0
+#     -> [A, C, D, B] = [cetico, usuario-final, revisor-extra, arquiteto]
+#
+#   Os dois arrays DIVERGEM (posições 2..4 trocadas) — esta fixture mata a
+#   mutação que "agregacao-conhecida" (CASO 12) deixa passar.
+TEMPDIR22="$RAIZ/test-agregacao-discorda"
+mkdir -p "$TEMPDIR22/.rainforest/conselho"
+
+FIXTURE_OK_T22="$SRC_M/scripts/fixtures/conselho/membro-ok.cjs"
+cat > "$TEMPDIR22/.rainforest/conselho/membros.json" << EOF
+{
+  "membros": [
+    {"nome": "cetico", "cmd": "node \"$FIXTURE_OK_T22\" {prompt} {saida}", "ligado": true},
+    {"nome": "arquiteto", "cmd": "node \"$FIXTURE_OK_T22\" {prompt} {saida}", "ligado": true},
+    {"nome": "usuario-final", "cmd": "node \"$FIXTURE_OK_T22\" {prompt} {saida}", "ligado": true},
+    {"nome": "revisor-extra", "cmd": "node \"$FIXTURE_OK_T22\" {prompt} {saida}", "ligado": true}
+  ]
+}
+EOF
+
+echo "# Questão para teste de desempate na agregação" > "$TEMPDIR22/questao-desempate.md"
+
+bash -c "cd '$TEMPDIR22' && RFM_ESTADO_ROOT='$TEMPDIR22' node '$CONSELHO' abrir --questao questao-desempate.md" 2>/dev/null
+
+RODADA_DIR22=$(ls -1d "$TEMPDIR22/.rainforest/conselho/202"* 2>/dev/null | head -1)
+if [ -n "$RODADA_DIR22" ]; then
+  bash -c "cd '$TEMPDIR22' && RFM_ESTADO_ROOT='$TEMPDIR22' node '$CONSELHO' pareceres" 2>/dev/null
+
+  cat > "$RODADA_DIR22/mapa-anonimato.json" << 'EOF'
+{
+  "cetico": "membro-A",
+  "arquiteto": "membro-B",
+  "usuario-final": "membro-C",
+  "revisor-extra": "membro-D"
+}
+EOF
+
+  mkdir -p "$RODADA_DIR22/fase2"
+
+  cat > "$RODADA_DIR22/fase2/revisao-arquiteto.json" << 'EOF'
+{"ranking": ["membro-C", "membro-A", "membro-D"], "criticas": {"membro-C": "Crítica C", "membro-A": "Crítica A", "membro-D": "Crítica D"}}
+EOF
+
+  cat > "$RODADA_DIR22/fase2/revisao-usuario-final.json" << 'EOF'
+{"ranking": ["membro-A", "membro-B", "membro-D"], "criticas": {"membro-A": "Crítica A", "membro-B": "Crítica B", "membro-D": "Crítica D"}}
+EOF
+
+  cat > "$RODADA_DIR22/fase2/revisao-cetico.json" << 'EOF'
+{"ranking": ["membro-D", "membro-B", "membro-C"], "criticas": {"membro-D": "Crítica D", "membro-B": "Crítica B", "membro-C": "Crítica C"}}
+EOF
+
+  cat > "$RODADA_DIR22/fase2/revisao-revisor-extra.json" << 'EOF'
+{"ranking": ["membro-A", "membro-B", "membro-C"], "criticas": {"membro-A": "Crítica A", "membro-B": "Crítica B", "membro-C": "Crítica C"}}
+EOF
+
+  testa "agregacao-discorda-desempate: conferir fase revisao" "0" \
+    bash -c "cd '$TEMPDIR22' && RFM_ESTADO_ROOT='$TEMPDIR22' node '$CONSELHO' conferir --fase revisao"
+
+  testa "agregacao-discorda-desempate: sintetizar exit 0" "0" \
+    bash -c "cd '$TEMPDIR22' && RFM_ESTADO_ROOT='$TEMPDIR22' node '$CONSELHO' sintetizar"
+
+  if [ -f "$RODADA_DIR22/sintese.json" ]; then
+    RANKING_REAL=$(node -e "const fs=require('fs'); const s=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); console.log(JSON.stringify(s.ranking_agregado));" "$RODADA_DIR22/sintese.json" 2>&1)
+    RANKING_ESPERADO='["cetico","arquiteto","usuario-final","revisor-extra"]'
+
+    if [ "$RANKING_REAL" = "$RANKING_ESPERADO" ]; then
+      ok=$((ok + 1))
+      echo "  ok   ranking_agregado bate com o cálculo à mão: $RANKING_REAL"
+    else
+      falhou=$((falhou + 1))
+      echo "  FALHA ranking_agregado='$RANKING_REAL', esperava '$RANKING_ESPERADO'"
+    fi
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA sintese.json não foi criado"
+  fi
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA não conseguiu encontrar diretório de rodada"
+fi
+
+echo ""
+echo "== CASO 23: lint-require-sem-npm =="
+# D14: nenhuma dependência npm entra no repo. Verifica que scripts/conselho.cjs
+# e as fixtures scripts/fixtures/conselho/*.cjs só fazem require() de módulo
+# nativo do Node (fs, path, child_process, os, ...) ou de caminho relativo
+# (./ ou ../). Qualquer outra coisa (um pacote de node_modules) é achado.
+NATIVOS_REGEX="^(assert|buffer|child_process|cluster|console|constants|crypto|dgram|dns|domain|events|fs|http|http2|https|inspector|module|net|os|path|perf_hooks|process|punycode|querystring|readline|repl|stream|string_decoder|sys|timers|tls|trace_events|tty|url|util|v8|vm|worker_threads|zlib|async_hooks)$"
+
+ACHADOS_LINT=""
+for ARQ_LINT in "$SRC/scripts/conselho.cjs" "$SRC"/scripts/fixtures/conselho/*.cjs; do
+  while IFS= read -r MODULO; do
+    [ -z "$MODULO" ] && continue
+    case "$MODULO" in
+      node:*|./*|../*) continue ;;
+    esac
+    if echo "$MODULO" | grep -qE "$NATIVOS_REGEX"; then
+      continue
+    fi
+    ACHADOS_LINT="${ACHADOS_LINT}$(basename "$ARQ_LINT"): require('$MODULO')"$'\n'
+  done < <(grep -oE "require\(['\"][^'\"]+['\"]\)" "$ARQ_LINT" | sed -E "s/require\(['\"]([^'\"]+)['\"]\)/\1/")
+done
+
+if [ -z "$ACHADOS_LINT" ]; then
+  ok=$((ok + 1))
+  echo "  ok   lint-require-sem-npm: nenhuma dependência externa em conselho.cjs/fixtures"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA lint-require-sem-npm: dependência(s) externa(s) encontrada(s):"
+  echo "$ACHADOS_LINT" | sed 's/^/         /'
 fi
 
 echo ""
