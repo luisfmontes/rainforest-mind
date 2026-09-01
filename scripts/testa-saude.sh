@@ -977,7 +977,7 @@ fi
 # R3: com pidfile mas porta morta, aparece aviso (não alerta)
 R3_TEST="$SBP/test-poda-dead-port"
 mkdir -p "$R3_TEST/.rainforest/poda"
-printf '{"pid":99999,"port":19999}' > "$R3_TEST/.rainforest/poda/poda.pid"
+printf '{"pid":99999,"porta":19999}' > "$R3_TEST/.rainforest/poda/poda.pid"
 R3="$( ( cd "$R3_TEST" && RFM_ROOT="$R3_TEST/.rainforest" node "$SRC/scripts/saude.cjs" --json 2>/dev/null ) | node -e "
   let d=''; process.stdin.on('data', c => d += c).on('end', () => {
     try {
@@ -1007,6 +1007,38 @@ if [ "$R4_NIVEIS" = "aviso" ]; then
 else
   falhou=$((falhou+1)); echo "  FALHA R4. niveis do item poda: $R4_NIVEIS (esperava 'aviso')"
 fi
+
+# R5: caminho de SUCESSO com pidfile no formato REAL e porta viva — este caso
+# existe porque a rodada 2 da revisao pegou o /saude lendo `port` enquanto o
+# poda.cjs grava `porta`: o sucesso nunca tinha rodado, e o fixture antigo
+# casava o defeito do consumidor (tautologia).
+R5_TEST="$SBP/test-poda-viva"
+mkdir -p "$R5_TEST/.rainforest/poda"
+R5_PORTA=$((20000 + RANDOM % 40000))
+node -e "
+const http=require('http');
+const s=http.createServer((req,res)=>{res.writeHead(200);res.end('ok');});
+s.listen($R5_PORTA,'127.0.0.1',()=>console.log('pronto'));
+setTimeout(()=>process.exit(0), 20000);
+" &
+R5_SRV_PID=$!
+sleep 1
+printf '{"pid":%s,"porta":%s,"iniciadoEm":"2026-08-31T00:00:00Z"}' "$R5_SRV_PID" "$R5_PORTA" > "$R5_TEST/.rainforest/poda/poda.pid"
+printf '{"atualizadoEm":"2026-08-31T00:00:00Z","estagio":null,"usage":{},"requisicoes":7}' > "$R5_TEST/.rainforest/poda/contexto.json"
+R5="$( cd "$R5_TEST" && RFM_ROOT="$R5_TEST/.rainforest" ANTHROPIC_BASE_URL="http://127.0.0.1:$R5_PORTA" node "$SRC/scripts/saude.cjs" --json 2>/dev/null | node -e '
+  let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
+    try {
+      const a=JSON.parse(d).find(x=>x.item==="poda");
+      console.log(a ? a.nivel+"|"+a.detalhe : "ausente");
+    } catch { console.log("erro"); }
+  })' )"
+kill "$R5_SRV_PID" 2>/dev/null || true
+case "$R5" in
+  "ok|"*"7 requisi"*)
+    ok=$((ok+1)); echo "  ok   R5. caminho de sucesso: ok com contagem do contexto.json" ;;
+  *)
+    falhou=$((falhou+1)); echo "  FALHA R5. esperava ok com 7 requisicoes, veio: $R5" ;;
+esac
 
 # MUTAÇÃO: mudar aviso→alerta faz exit ir para 1
 MUTCOPIA="$(mktemp -d)"
