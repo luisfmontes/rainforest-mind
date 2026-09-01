@@ -935,6 +935,60 @@ function checarConselho() {
   }
 }
 
+// ---------------------------------------------------------------- 10.5. integrações
+/**
+ * Checagem de integrações opcionais declaradas.
+ *
+ * Cada integração tem um stub `checar()` que devolve { ok, detalhe, acao? }.
+ * Esta função APENAS checa as que foram ligadas via config; desligadas não geram item nenhum.
+ *
+ * Quebrada vira AVISO (nunca ALERTA) com a ação na linha seguinte.
+ * Nenhuma rede externa — só o loopback que o checar() do módulo já faz.
+ */
+async function checarIntegracoes() {
+  let resolverConfig;
+  let INTEGRACOES;
+  try {
+    ({ resolverConfig } = require('../hooks/lib/config.cjs'));
+    ({ INTEGRACOES } = require('../hooks/lib/integracoes.cjs'));
+  } catch {
+    return; // sem módulos: nada a dizer
+  }
+
+  let config;
+  try {
+    config = resolverConfig();
+  } catch {
+    return; // config ilegível: nada a dizer
+  }
+
+  // Para cada integração declarada no módulo
+  const promessas = [];
+  for (const [nome, def] of Object.entries(INTEGRACOES)) {
+    const chave = `integracao-${nome}`;
+    // Desligada na config? Nenhum item
+    if (!config.valores[chave]) continue;
+
+    // Ligada: chama o checar()
+    promessas.push(
+      Promise.resolve(def.checar()).then((resultado) => {
+        if (!resultado.ok) {
+          // Quebrada → aviso, com a ação na linha seguinte
+          aviso(`integracao-${nome}`, resultado.detalhe || 'falha na checagem', resultado.acao);
+        } else {
+          // Ok
+          ok(`integracao-${nome}`, resultado.detalhe || 'ok');
+        }
+      }).catch(() => {
+        // Erro na checagem → aviso
+        aviso(`integracao-${nome}`, 'erro ao rodar checagem', 'verifique o módulo de integração');
+      })
+    );
+  }
+
+  await Promise.all(promessas);
+}
+
 // ---------------------------------------------------------------- 11. banco de memoria
 /**
  * Checagem do banco de dados de memória do rainforest.
@@ -1073,9 +1127,107 @@ function checarMemoria() {
   }
 }
 
+// ---------------------------------------------------------------- 11. poda
+/**
+ * Proxy de medição de custo — porta responde? env var desta sessão aponta pra ela?
+ *
+ * A chave `poda` liga/desliga a ESCRITA em disco (metricas.jsonl + contexto.json).
+ * Quando desligada, o proxy roda só passthrough — e não aparece aqui no checador.
+ *
+ * Se ligada: testa se o arquivo de PID existe, se a porta responde, e se
+ * ANTHROPIC_BASE_URL desta sessão aponta para ela.
+ *
+ * @param {object} [o] opções (para testes: permitem injetar config)
+ * @param {object} [o.env] default: process.env
+ * @param {string} [o.projeto] default: CLAUDE_PROJECT_DIR ou cwd
+ * @param {function} [o._resolverConfig] override de resolverConfig (para testes)
+ */
+function checarPoda(o = {}) {
+  // Falha ABERTA se os módulos não estiverem nesta árvore (cópia parcial do
+  // plugin, fixture de bateria): /saude nunca cai por causa de uma seção.
+  let resolverConfigReal, caminhoPid, caminhoContexto, portaPadrao;
+  try {
+    ({ resolverConfig: resolverConfigReal } = require('../hooks/lib/config.cjs'));
+    ({ caminhoPid, caminhoContexto, portaPadrao } = require('../hooks/lib/poda-dados.cjs'));
+  } catch {
+    return; // módulos ausentes: nada a reportar
+  }
+  const { spawnSync } = require('child_process');
+
+  const resolverConfig = o._resolverConfig || resolverConfigReal;
+  const config = resolverConfig({ env: o.env, projeto: o.projeto });
+  if (!config || config.valores.poda === false) {
+    return; // chave desligada: nada a reportar
+  }
+
+  const pidPath = caminhoPid();
+  if (!pidPath) {
+    return; // raiz não resolvida: nada a reportar
+  }
+
+  let pidInfo;
+  try {
+    pidInfo = JSON.parse(fs.readFileSync(pidPath, 'utf8'));
+  } catch {
+    // Arquivo de PID não existe ou é ilegível
+    return aviso('poda', 'processo não está rodando',
+      'rode: node scripts/poda.cjs iniciar');
+  }
+
+  // PID vivo não é evidência de porta viva — testar de verdade
+  const responde = (() => {
+    try {
+      const r = spawnSync(process.execPath, ['-e', `
+        const net = require('net');
+        const s = net.connect({ host: '127.0.0.1', port: ${Number(pidInfo.porta)} }, () => {
+          s.destroy();
+          process.exit(0);
+        });
+        s.setTimeout(2000, () => {
+          s.destroy();
+          process.exit(1);
+        });
+        s.on('error', () => process.exit(1));
+      `], { timeout: 6000 });
+      return r.status === 0;
+    } catch {
+      return false;
+    }
+  })();
+
+  if (!responde) {
+    // Porta não responde — aviso, não alerta (mesma filosofia de claude-mem)
+    return aviso('poda', `porta ${pidInfo.porta} não responde`,
+      'o processo pode estar travado; verifique com: node scripts/poda.cjs status');
+  }
+
+  // Porta responde — agora conferir se ANTHROPIC_BASE_URL aponta pra ela
+  const anthropicUrl = process.env.ANTHROPIC_BASE_URL || '';
+
+  if (!anthropicUrl.includes(`127.0.0.1:${pidInfo.porta}`) && !anthropicUrl.includes(`localhost:${pidInfo.porta}`)) {
+    // Porta está de pé, mas a env var não aponta pra ela
+    return aviso('poda', `porta ${pidInfo.porta} responde, mas ANTHROPIC_BASE_URL não aponta para ela`,
+      'as requisições desta sessão não passam pelo proxy');
+  }
+
+  // Tudo alinhado — contar requisições em contexto.json
+  const contextoPath = caminhoContexto();
+  let requisicoes = 0;
+  if (contextoPath) {
+    try {
+      const contexto = JSON.parse(fs.readFileSync(contextoPath, 'utf8'));
+      requisicoes = contexto.requisicoes || 0;
+    } catch {
+      // contexto.json não existe ou é ilegível — requisições = 0
+    }
+  }
+
+  ok('poda', `porta ${pidInfo.porta} responde, ${requisicoes} requisição(ões) registrada(s)`);
+}
+
 // ---------------------------------------------------------------- saida
 
-function main() {
+async function main() {
   checarRaiz();
   checarInjecao();
   checarIdeias();
@@ -1089,6 +1241,8 @@ function main() {
   checarConselho();
   checarEsquema();
   checarMemoria();
+  await checarIntegracoes();
+  checarPoda();
 
   if (process.argv.includes('--json')) {
     console.log(JSON.stringify(achados, null, 2));
@@ -1110,5 +1264,8 @@ function main() {
   process.exit(achados.some((a) => a.nivel === 'alerta') ? 1 : 0);
 }
 
-if (require.main === module) main();
-module.exports = { achados };
+if (require.main === module) main().catch((err) => {
+  console.error('Erro fatal:', err.message);
+  process.exit(1);
+});
+module.exports = { achados, checarPoda };

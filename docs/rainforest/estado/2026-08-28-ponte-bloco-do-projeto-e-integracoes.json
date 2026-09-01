@@ -1,0 +1,193 @@
+{
+  "slug": "2026-08-28-ponte-bloco-do-projeto-e-integracoes",
+  "titulo": "Fluxo 3 — ponte: bloco do projeto e integracoes declaraveis",
+  "criado_em": "2026-08-31",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/2026-08-28-ponte-bloco-do-projeto-e-integracoes.md",
+    "aprovado_por": "design de 28/08 com Qs na recomendada; Q1 fechada em 2026-08-31 com fatos apurados no ambiente (bridge 3005 + sabia.py doutor), conforme o LEIA-PRIMEIRO manda",
+    "em": "2026-08-31"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-08-28-ponte-bloco-do-projeto-e-integracoes.md",
+    "tarefas": 10,
+    "paralelas": [
+      1,
+      2,
+      6
+    ],
+    "nota": "plano do planejador com 4 achados do repo real (skill da ponte inexistente, hook TCP nao HTTP, caminhos locais nao generalizam, corpo() duplicado com CODIGO_ROOT latente)",
+    "em": "2026-08-31"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-08-31",
+    "tarefas_ok": 25,
+    "tarefas": 25,
+    "nota": "rodada 10: tarefa 25 pela propria sessao — ultimo indexOf sem ancora do escrever() fechado (varredura da rodada 9 nao achou outros). Arquivos ja corrompidos antes do conserto estabilizam sem crescer.",
+    "em": "2026-08-31",
+    "comando": "baterias + conferir-mutacao da 25 sem pipe",
+    "saida": "ponte 60/0, conferir-ponte 5/5, entrevista 96/0, integracoes 5/0, setup 59/0, saude 47/0; mutacao 25 exit 0",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "caso mas ENSINA a descobrir"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "caso (a)"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "caso (e)"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "caso (i)"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "caso (j)"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-setup INTEGRACOES"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "casos (a)/(b) loopback"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "casos (c)/(d) .venv"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "casos R2/R2b"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "n/a",
+        "motivo": "docs; caso k"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "caso 3.5"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "caso (l)"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "casos (i)/(j)/(l)"
+      },
+      {
+        "tarefa": 14,
+        "resultado": "n/a",
+        "motivo": "docs"
+      },
+      {
+        "tarefa": 15,
+        "resultado": "vermelho",
+        "fixture": "caso (m)"
+      },
+      {
+        "tarefa": 16,
+        "resultado": "vermelho",
+        "fixture": "caso (n)"
+      },
+      {
+        "tarefa": 17,
+        "resultado": "vermelho",
+        "fixture": "casos 5.5/5.6"
+      },
+      {
+        "tarefa": 18,
+        "resultado": "vermelho",
+        "fixture": "caso (o)"
+      },
+      {
+        "tarefa": 19,
+        "resultado": "vermelho",
+        "fixture": "caso (p)"
+      },
+      {
+        "tarefa": 20,
+        "resultado": "vermelho",
+        "fixture": "caso (q)"
+      },
+      {
+        "tarefa": 21,
+        "resultado": "vermelho",
+        "fixture": "caso (r)"
+      },
+      {
+        "tarefa": 22,
+        "resultado": "vermelho",
+        "fixture": "caso (s)"
+      },
+      {
+        "tarefa": 23,
+        "resultado": "vermelho",
+        "fixture": "caso (r) linha de status"
+      },
+      {
+        "tarefa": 24,
+        "resultado": "vermelho",
+        "fixture": "casos 5.7/5.8"
+      },
+      {
+        "tarefa": 25,
+        "resultado": "vermelho",
+        "fixture": "caso (t) mencao inline nao deixa rabo orfao"
+      }
+    ]
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "0c375cd1314c035af459787c70ec3d56fc35129a",
+      "caminhos_sujos": [
+        "relatorios/2026-08-28-batedor-repos.md",
+        "relatorios/2026-08-31-handover-fluxo-11-conselho.md",
+        "vigias/ERROS.md"
+      ]
+    },
+    "achados": 0,
+    "criticos": 1,
+    "base": "21266f797a8d43d417a3d783b83de19f4df5c339",
+    "head": "0c375cd1314c035af459787c70ec3d56fc35129a",
+    "nota": "rodada 10 aprovada pelo decimo revisor zerado sobre 7025bd6; o unico commit alem do head revisado e a emenda 26 (plano+estado, docs do metodo). Conserto da T25 confirmado por execucao real; varredura ponto a ponto sem vulneravel; 8 invariantes; sem creep; 6 baterias verdes. Avisos nao-bloqueantes: sanitizarRespostas apaga mencao legitima sem avisar (UX deliberada da T12); FIM_PROJETO morta em 2 arquivos. Historico: 10 rodadas, 9 reprovacoes, todas reproduzidas pela sessao antes de aceitar.",
+    "em": "2026-08-31"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "6 baterias re-rodadas pela sessao no verificar (exit sem pipe) + provas pontuais: conferir-ponte sobre AGENTS.md recem-gerado (prova dos dois caminhos do corpo() da T1), raizDeDados() direto nao-null, grep T14 (SKILL.md:102 = # Bloco do projeto em ponte.cjs:337), grep T17 (createHash 0 em ponte.cjs e conferir-ponte.cjs, 1 no modulo)",
+    "saida": "ponte 60/0 exit 0; conferir-ponte 5/5 exit 0; entrevista 96/0 exit 0; integracoes 5/0 exit 0; setup 59/0 exit 0; saude 47/0 exit 0; CONFERIDO exit 0 no dual-path; cada tarefa 1-26 tem seu caso-fixture nomeado no ledger de mutacao do executar, todos vermelhos quando mutados (26 entradas, 3 n/a docs)",
+    "nota": "criterios do plano executados contra o artefato real; nenhuma mutacao verde para investigar (todas vermelhas no ledger)",
+    "em": "2026-08-31"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "pr",
+    "pr": 135,
+    "em": "2026-08-31"
+  }
+}

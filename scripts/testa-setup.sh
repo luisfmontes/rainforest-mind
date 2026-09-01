@@ -137,7 +137,20 @@ esperado "desligar ponte-codex" 0 $SETUP --desligar ponte-codex --escopo usuario
 contem "  ... e volta a dizer que nao ha nenhuma" "nenhuma ligada" $SETUP
 
 echo
-echo "== 6. TODO arquivo que o setup semeia, o setup MOSTRA (a trava das duas portas) =="
+echo "== 6. INTEGRACOES: declaravel, desligada por padrao =="
+contem "a secao existe" "INTEGRACOES" $SETUP
+contem "  ... e diz que nenhuma esta ligada" "nenhuma ligada" bash -c "RFM_ROOT='$DADOS_WIN' node '$SRC/scripts/setup.cjs'"
+contem "  ... mostra integracao-whatsapp-mcp DESLIGADA" "DESLIGADO.*whatsapp-mcp" bash -c "RFM_ROOT='$DADOS_WIN' node '$SRC/scripts/setup.cjs'"
+contem "  ... mostra integracao-sabia DESLIGADA" "DESLIGADO.*sabia" bash -c "RFM_ROOT='$DADOS_WIN' node '$SRC/scripts/setup.cjs'"
+esperado "ligar integracao-sabia" 0 $SETUP --ligar integracao-sabia --escopo usuario
+contem "  ... sabia aparece LIGADA" "ligado.*sabia" $SETUP
+contem "  ... whatsapp-mcp continua DESLIGADO" "DESLIGADO.*whatsapp-mcp" $SETUP
+nao_contem "  ... descricao nao contem caminho absoluto" "C:" bash -c "RFM_ROOT='$DADOS_WIN' node '$SRC/scripts/setup.cjs' | grep -i integracao"
+esperado "desligar integracao-sabia" 0 $SETUP --desligar integracao-sabia --escopo usuario
+contem "  ... volta a dizer nenhuma ligada" "nenhuma ligada" $SETUP
+
+echo
+echo "== 7. TODO arquivo que o setup semeia, o setup MOSTRA (a trava das duas portas) =="
 # Este bloco existe porque o mesmo defeito aconteceu duas vezes em 2026-08-12:
 # nasceu o `projetos.json`, o `--criar` aprendeu a semea-lo, e o estado nunca soube
 # que ele existia — o usuario nao tinha onde ver a configuracao nova. Horas depois,
@@ -198,7 +211,7 @@ else
 fi
 
 echo
-echo "== 7. versionar: transforma raiz em repositorio git =="
+echo "== 9. versionar: transforma raiz em repositorio git =="
 CAIXA7="$CAIXA/versionamento"; mkdir -p "$CAIXA7"
 CAIXA7_WIN="$(cygpath -m "$CAIXA7" 2>/dev/null || printf '%s' "$CAIXA7")"
 export RFM_ROOT="$CAIXA7_WIN"
