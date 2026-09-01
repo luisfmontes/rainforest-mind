@@ -158,3 +158,16 @@ mutacao:
   bateria: `bash scripts/testa-conselho.sh`
   fixture: caso `retry-seletivo-so-reexecuta-um` (fixture que grava marcador por execução; `pareceres --membro cetico` só cria/atualiza o do cetico)
 pronto quando: com fase 1 completa e o parecer do arquiteto apagado, `node scripts/conselho.cjs pareceres --membro arquiteto` reexecuta SÓ o arquiteto (marcadores dos outros intactos) e o portão volta a fechar; `--membro` desconhecido reprova citando os membros ligados; o SKILL.md documenta a flag no lugar do workaround manual descrito no relatório da T9 — provado pelo caso da bateria e pelos comandos citados rodando.
+
+### 13. Retry da fase 2 reusa o mapa e o pacote completo [tipo: implementar]
+atende: D4, D9
+arquivos: `scripts/conselho.cjs`, `scripts/testa-conselho.sh`
+depende de: 12
+paralela: nao
+mutacao:
+  arquivo: `scripts/conselho.cjs`
+  de: no retry (`--membro`), o mapa de anonimato existente é REUSADO e o pacote é montado sobre TODOS os membros da rodada
+  para: reconstruir o mapa/pacote a partir só do membro filtrado
+  bateria: `bash scripts/testa-conselho.sh`
+  fixture: caso `revisar-membro-retry` (fase 2 completa, revisão do arquiteto apagada, `revisar --membro arquiteto` → pacote com N-1 pareceres, mapa com N entradas, `conferir --fase revisao` exit 0)
+pronto quando: com fase 2 completa e a revisão de um membro apagada, `node scripts/conselho.cjs revisar --membro <nome>` reexecuta só ele com pacote contendo os N-1 pareceres alheios, `mapa-anonimato.json` mantém as N entradas originais e o portão fecha exit 0 — provado pelo caso `revisar-membro-retry`; e cmd de membro que JÁ contém `"{prompt}"` entre aspas roda sem aspas duplicadas — provado pelo caso `aspas-ja-presentes` (fecha o aviso 2 da rodada 2).
