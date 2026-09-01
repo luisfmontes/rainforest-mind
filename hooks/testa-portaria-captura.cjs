@@ -134,24 +134,47 @@ console.log("== 2. segunda execucao NAO sobrescreve ==");
   fs.rmSync(raiz, { recursive: true, force: true });
 }
 
-// == 3. stdin vazio nao vira amostra (agora exit 2: fail-closed) ==
+// == 3. stdin vazio nao vira amostra (agora exit 0: libera) ==
 console.log("== 3. stdin vazio nao vira amostra ==");
 {
   const raiz = caixa();
   const amostra = path.join(raiz, ".rainforest", "portaria", "amostra.json");
   const r = rodaHook(raiz, "");
-  caso("exit 2 (fail-closed)", r.status === 2, `exit=${r.status}`);
+  caso("exit 0 (libera)", r.status === 0, `exit=${r.status}`);
   caso("amostra.json NAO existe", !fs.existsSync(amostra));
   fs.rmSync(raiz, { recursive: true, force: true });
 }
 
-// == 4. payload ilegivel nao vira amostra (agora exit 2: fail-closed) ==
+// == 4. payload ilegivel nao vira amostra (agora exit 0: libera) ==
 console.log("== 4. payload ilegivel nao vira amostra ==");
 {
   const raiz = caixa();
   const amostra = path.join(raiz, ".rainforest", "portaria", "amostra.json");
   const r = rodaHook(raiz, "{isso nao e json");
+  caso("exit 0 (libera)", r.status === 0, `exit=${r.status}`);
+  caso("amostra.json NAO existe", !fs.existsSync(amostra));
+  fs.rmSync(raiz, { recursive: true, force: true });
+}
+
+// == 5. subagent_type ausente continua negando (fail-closed) ==
+console.log("== 5. subagent_type ausente continua negando ==");
+{
+  const raiz = caixa();
+
+  iniciarGit(raiz, "fluxo/teste");
+  criarEstado(raiz, "teste", "revisar");
+  criarManifesto(raiz, {
+    versao: 1,
+    agentes: {
+      leitor: { estagios: ["revisar"], escreve: false },
+    },
+  });
+
+  const amostra = path.join(raiz, ".rainforest", "portaria", "amostra.json");
+  // Payload válido JSON mas SEM tool_input.subagent_type
+  const r = rodaHook(raiz, JSON.stringify({ session_id: "s1", tool_input: {} }));
   caso("exit 2 (fail-closed)", r.status === 2, `exit=${r.status}`);
+  caso("erro no stderr", r.stderr && r.stderr.includes("subagent_type"), `stderr: "${r.stderr}"`);
   caso("amostra.json NAO existe", !fs.existsSync(amostra));
   fs.rmSync(raiz, { recursive: true, force: true });
 }
