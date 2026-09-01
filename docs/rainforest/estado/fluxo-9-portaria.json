@@ -94,7 +94,7 @@
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "afe6dd56143e62f0235a1f0e805a48136456e490",
+      "head": "babe6ac562c5551675c4519bafa91780c94bcd49",
       "caminhos_sujos": []
     },
     "base": "b9a3bed03e6e681c347220828d6af750426bc3d5",
@@ -104,7 +104,8 @@
     "revisor": "rainforest-mind:revisor, contexto zerado, rodada 3, 2026-09-01",
     "nota": "REPROVADO na rodada 3 com 2 criticos, os dois REPRODUZIDOS na janela principal. CRITICO 1: o varredor da chave era busca literal /^tools:/, e `tools :` (espaco antes dos dois-pontos) e YAML valido — yaml.safe_load(\"tools :\n- Write\n\") devolve {tools: [Write]} — entao a chave PRESENTE caia no estado nao-declarado e a checagem era pulada; escreve:false com Write LIBERAVA. Mesma classe da rodada 2 por outra porta: a unica diferenca entre allow e deny era um espaco. Idem com tab. CRITICO 2: o ramo do parser \"chave presente e zero item lido\" nao tinha teste nenhum — a mutacao dele para declarado:false deixava a bateria VERDE (conferir-mutacao exit 2), fonte correto e invisivel para a prova. CONSERTO (janela principal, nao subagente): a deteccao da chave deixou de ser busca literal e passou a ser varredura de CHAVE DE TOPO (RE_CHAVE_DE_TOPO), escolhendo `tools` pelo NOME — espacamento em volta dos dois-pontos virou irrelevante por construcao, nao por mais um caso previsto. Duas rodadas na mesma funcao pela mesma classe foi o que motivou trocar a abordagem em vez de acrescentar regex. O `\r` de arquivo CRLF cai fora antes da comparacao, e a mutacao disso (MUT C) expos um bug LATENTE que ninguem tinha visto: sem o strip, frontmatter em CRLF com Write liberava. A bateria foi de 9 casos / 13 assercoes para 15 casos / 23 assercoes, cobrindo formato da CHAVE (espaco, tab, CRLF, chave que so contem tools) alem do formato do VALOR, mais o ramo do zero-item que estava sem teste. Tres catracas de mutacao, as tres com conferir-mutacao.cjs e as tres exit 0: varredor volta a ser literal (18 ok / 5 falha), zero-item volta a pular (21 ok / 2 falha), strip do \r desaparece (21 ok / 2 falha).",
     "em": "2026-09-01",
-    "tentativas": 3
+    "tentativas": 3,
+    "liberado_em": "2026-09-01"
   },
   "verificar": {
     "status": "pendente"
