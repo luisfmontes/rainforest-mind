@@ -25,6 +25,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { rodarCli } = require('../hooks/lib/cli-externo.cjs');
+const { resolverRaiz } = require('../hooks/lib/raiz.cjs');
 
 // Parse argumentos
 const args = {};
@@ -96,10 +97,12 @@ function getRootFromGitCommonDir() {
  * D5: Quando veredito for "discordo" e a janela rejeitar, registra com motivo escrito.
  * Motivo vazio ou só whitespace = recusa (exit ≠ 0, nada gravado).
  *
- * Arquivo de log: .claude/logs/divergencias-segunda-opiniao.jsonl (ancorado na raiz do repo principal)
+ * Arquivo de log: <raiz-de-dados>/.logs/divergencias-segunda-opiniao.jsonl
+ * Onde <raiz-de-dados> é resolvida por resolverRaiz (cadeia: RFM_ROOT → <projeto>/.rainforest → ~/.rainforest → repo plugin)
  * Cada linha é JSON: { timestamp, veredito, motivo, base, modelo }
  *
- * Recusa (exit ≠ 0) se não estiver dentro de um repositório git.
+ * Recusa (exit ≠ 0) se não houver raiz de dados disponível.
+ * Motivo vazio ou só whitespace também reprova (exit ≠ 0, nada gravado).
  */
 function registrarDivergencia() {
   if (!args.veredito || !args.motivo || !args.base) {
@@ -113,14 +116,15 @@ function registrarDivergencia() {
     process.exit(1);
   }
 
-  // Ancorar em raiz do repositório — recusar fora de repo git
-  const repoRoot = getRootFromGitCommonDir();
+  // Resolver raiz de dados (em ordem: RFM_ROOT, <projeto>/.rainforest, ~/.rainforest, plugin)
+  const { raiz, nivel, escopo } = resolverRaiz();
 
-  if (!repoRoot) {
-    console.error('Erro: registrar-divergencia precisa estar dentro de um repositório git');
+  if (!raiz) {
+    console.error('Erro: não foi possível resolver raiz de dados para gravar divergência');
     process.exit(1);
   }
-  const logDir = path.join(repoRoot, '.claude', 'logs');
+
+  const logDir = path.join(raiz, '.logs');
   const logFile = path.join(logDir, 'divergencias-segunda-opiniao.jsonl');
 
   // Criar diretório se não existir

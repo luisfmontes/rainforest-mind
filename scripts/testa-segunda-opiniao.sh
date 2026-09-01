@@ -47,7 +47,7 @@ TEMP_REPO="$RAIZ/test-concordo-repo"
 mkdir -p "$TEMP_REPO"
 cd "$TEMP_REPO"
 git init --quiet
-git config user.email "test@example.com"
+git config user.email "test@<email>"
 git config user.name "Test"
 
 echo "base file" > file.txt
@@ -85,7 +85,7 @@ TEMP_REPO2="$RAIZ/test-discordo-repo"
 mkdir -p "$TEMP_REPO2"
 cd "$TEMP_REPO2"
 git init --quiet
-git config user.email "test@example.com"
+git config user.email "test@<email>"
 git config user.name "Test"
 
 echo "initial" > file.txt
@@ -123,7 +123,7 @@ TEMP_REPO3="$RAIZ/test-invalido-repo"
 mkdir -p "$TEMP_REPO3"
 cd "$TEMP_REPO3"
 git init --quiet
-git config user.email "test@example.com"
+git config user.email "test@<email>"
 git config user.name "Test"
 
 echo "content" > file.txt
@@ -177,7 +177,7 @@ TEMP_REPO_TIMEOUT="$RAIZ/test-timeout-repo"
 mkdir -p "$TEMP_REPO_TIMEOUT"
 cd "$TEMP_REPO_TIMEOUT"
 git init --quiet
-git config user.email "test@example.com"
+git config user.email "test@<email>"
 git config user.name "Test"
 
 echo "content" > file.txt
@@ -242,7 +242,7 @@ TEMP_REPO_PARECER="$RAIZ/test-parecer-repo"
 mkdir -p "$TEMP_REPO_PARECER"
 cd "$TEMP_REPO_PARECER"
 git init --quiet
-git config user.email "test@example.com"
+git config user.email "test@<email>"
 git config user.name "Test"
 
 echo "file content" > file.txt
@@ -301,7 +301,7 @@ TEMP_REPO_INDISPONIVEL="$RAIZ/test-indisponivel-exit-repo"
 mkdir -p "$TEMP_REPO_INDISPONIVEL"
 cd "$TEMP_REPO_INDISPONIVEL"
 git init --quiet
-git config user.email "test@example.com"
+git config user.email "test@<email>"
 git config user.name "Test"
 
 echo "content" > file.txt
@@ -343,7 +343,7 @@ TEMP_REPO_VAZIO="$RAIZ/test-indisponivel-vazio-repo"
 mkdir -p "$TEMP_REPO_VAZIO"
 cd "$TEMP_REPO_VAZIO"
 git init --quiet
-git config user.email "test@example.com"
+git config user.email "test@<email>"
 git config user.name "Test"
 
 echo "content" > file.txt
@@ -385,7 +385,7 @@ TEMP_REPO_TIMEOUT2="$RAIZ/test-indisponivel-timeout-repo"
 mkdir -p "$TEMP_REPO_TIMEOUT2"
 cd "$TEMP_REPO_TIMEOUT2"
 git init --quiet
-git config user.email "test@example.com"
+git config user.email "test@<email>"
 git config user.name "Test"
 
 echo "content" > file.txt
@@ -427,7 +427,7 @@ TEMP_REPO_REG="$RAIZ/test-divergencia-reg-repo"
 mkdir -p "$TEMP_REPO_REG"
 cd "$TEMP_REPO_REG"
 git init --quiet
-git config user.email "test@example.com"
+git config user.email "test@<email>"
 git config user.name "Test"
 
 echo "content" > file.txt
@@ -435,7 +435,11 @@ git add file.txt
 git commit --quiet -m "base"
 BASE_SHA_REG=$(git rev-parse HEAD)
 
-REGISTRO_LOGFILE="$TEMP_REPO_REG/.claude/logs/divergencias-segunda-opiniao.jsonl"
+# Criar .rainforest para marcar raiz de dados
+mkdir -p "$TEMP_REPO_REG/.rainforest"
+touch "$TEMP_REPO_REG/.rainforest/FOCO.md"
+
+REGISTRO_LOGFILE="$TEMP_REPO_REG/.rainforest/.logs/divergencias-segunda-opiniao.jsonl"
 # Limpar log se existir
 rm -f "$REGISTRO_LOGFILE"
 
@@ -485,7 +489,11 @@ git add file.txt
 git commit --quiet -m "base"
 BASE_SHA_WHITESPACE=$(git rev-parse HEAD)
 
-REGISTRO_LOGFILE_WHITESPACE="$TEMP_REPO_WHITESPACE/.claude/logs/divergencias-segunda-opiniao.jsonl"
+# Criar .rainforest para marcar raiz de dados
+mkdir -p "$TEMP_REPO_WHITESPACE/.rainforest"
+touch "$TEMP_REPO_WHITESPACE/.rainforest/FOCO.md"
+
+REGISTRO_LOGFILE_WHITESPACE="$TEMP_REPO_WHITESPACE/.rainforest/.logs/divergencias-segunda-opiniao.jsonl"
 rm -f "$REGISTRO_LOGFILE_WHITESPACE"
 
 OUTPUT_WHITESPACE=$(cd "$TEMP_REPO_WHITESPACE" && node "$SRC/scripts/segunda-opiniao.cjs" registrar-divergencia \
@@ -589,43 +597,58 @@ else
 fi
 
 echo ""
-echo "== CASO 16: divergencia-fora-de-repo-recusa =="
+echo "== CASO 16: divergencia-log-em-raiz-isolada =="
 
-# Teste fora de qualquer repositório git — git rev-parse --show-toplevel deve falhar
-# Usa scratchpad que está fora do working tree do rainforest-mind
-FORA_REPO="/tmp/segunda-opiniao-fora-repo-$$"
+# Teste com RFM_ROOT apontando para raiz isolada (dentro do tmp)
+# Valida que o log vai para a raiz explícita, não para a global do usuário
+FORA_REPO="/tmp/segunda-opiniao-isolada-$$"
 rm -rf "$FORA_REPO"
 mkdir -p "$FORA_REPO"
 trap 'rm -rf "$FORA_REPO" 2>/dev/null' EXIT
 
-OUTPUT_FORA=$(cd "$FORA_REPO" && node "$SRC/scripts/segunda-opiniao.cjs" registrar-divergencia \
-  --veredito discordo \
-  --motivo "Rodando fora de repo" \
-  --base "abc123" 2>&1); EXIT_FORA=$?
+# Criar uma raiz de dados isolada e um repositório dentro do /tmp
+RAIZ_ISOLADA="$FORA_REPO/dados"
+mkdir -p "$RAIZ_ISOLADA"
+touch "$RAIZ_ISOLADA/FOCO.md"
 
-if [ "$EXIT_FORA" != "0" ]; then
-  if echo "$OUTPUT_FORA" | grep -q "dentro de um repositório git"; then
-    if [ ! -d "$FORA_REPO/.claude/logs" ]; then
-      ok=$((ok + 1))
-      echo "  ok   divergencia-fora-de-repo-recusa: exit ≠ 0, mensagem clara, nada gravado"
-    else
-      falhou=$((falhou + 1))
-      echo "  FALHA divergencia-fora-de-repo-recusa: não deveria gravar arquivo fora de repo"
-    fi
+REPO_ISOLADA="$FORA_REPO/repo"
+mkdir -p "$REPO_ISOLADA"
+cd "$REPO_ISOLADA"
+git init --quiet
+git config user.email "test@<email>"
+git config user.name "Test"
+
+echo "content" > file.txt
+git add file.txt
+git commit --quiet -m "base"
+BASE_SHA_ISOLADA=$(git rev-parse HEAD)
+
+# Registrar com RFM_ROOT apontando para raiz isolada
+OUTPUT_ISOLADA=$(cd "$REPO_ISOLADA" && RFM_ROOT="$RAIZ_ISOLADA" node "$SRC/scripts/segunda-opiniao.cjs" registrar-divergencia \
+  --veredito discordo \
+  --motivo "Rodando com RFM_ROOT isolado" \
+  --base "$BASE_SHA_ISOLADA" 2>&1); EXIT_ISOLADA=$?
+
+if [ "$EXIT_ISOLADA" = "0" ]; then
+  # Arquivo deve estar em RAIZ_ISOLADA/.logs, NÃO em ~/.rainforest
+  LOGFILE_ISOLADA="$RAIZ_ISOLADA/.logs/divergencias-segunda-opiniao.jsonl"
+  if [ -f "$LOGFILE_ISOLADA" ] && grep -q "\"motivo\":\"Rodando com RFM_ROOT isolado\"" "$LOGFILE_ISOLADA"; then
+    ok=$((ok + 1))
+    echo "  ok   divergencia-log-em-raiz-isolada: arquivo em RFM_ROOT/.logs/, não em ~/.rainforest"
   else
     falhou=$((falhou + 1))
-    echo "  FALHA divergencia-fora-de-repo-recusa: mensagem não menciona repo git"
-    echo "$OUTPUT_FORA" | head -2
+    echo "  FALHA divergencia-log-em-raiz-isolada: arquivo não criado em $LOGFILE_ISOLADA"
   fi
 else
   falhou=$((falhou + 1))
-  echo "  FALHA divergencia-fora-de-repo-recusa: deveria sair ≠ 0, saiu 0"
+  echo "  FALHA divergencia-log-em-raiz-isolada: deveria sair 0, saiu $EXIT_ISOLADA"
 fi
 
 echo ""
-echo "== CASO 17: divergencia-log-ancorado-em-repo-raiz =="
+echo "== CASO 17: divergencia-log-em-subpasta-de-repo =="
 
-# Teste em subpasta do repositório — o log deve ir para raiz do repo, não para cwd
+# Teste em subpasta do repositório — o log deve ir para raiz de dados resolvida, não para cwd
+# Usa RFM_ROOT para forçar raiz isolada dentro do RAIZ
 TEMP_REPO_SUBPASTA="$RAIZ/test-log-subpasta-repo"
 mkdir -p "$TEMP_REPO_SUBPASTA"
 cd "$TEMP_REPO_SUBPASTA"
@@ -638,39 +661,44 @@ git add file.txt
 git commit --quiet -m "base"
 BASE_SHA_SUBPASTA=$(git rev-parse HEAD)
 
+# Criar uma raiz de dados isolada para este repositório
+RAIZ_DADOS_SUBPASTA="$RAIZ/dados-subpasta"
+mkdir -p "$RAIZ_DADOS_SUBPASTA"
+touch "$RAIZ_DADOS_SUBPASTA/FOCO.md"
+
 # Criar subpasta dentro do repo e rodar de lá
 mkdir -p "$TEMP_REPO_SUBPASTA/subdir"
-REGISTRO_LOGFILE_RAIZ="$TEMP_REPO_SUBPASTA/.claude/logs/divergencias-segunda-opiniao.jsonl"
-REGISTRO_LOGFILE_SUBDIR="$TEMP_REPO_SUBPASTA/subdir/.claude/logs/divergencias-segunda-opiniao.jsonl"
+REGISTRO_LOGFILE_RAIZ="$RAIZ_DADOS_SUBPASTA/.logs/divergencias-segunda-opiniao.jsonl"
+REGISTRO_LOGFILE_SUBDIR="$TEMP_REPO_SUBPASTA/subdir/.logs/divergencias-segunda-opiniao.jsonl"
 
 rm -f "$REGISTRO_LOGFILE_RAIZ" "$REGISTRO_LOGFILE_SUBDIR"
 
-# Registrar divergência rodando de dentro da subpasta
-(cd "$TEMP_REPO_SUBPASTA/subdir" && node "$SRC/scripts/segunda-opiniao.cjs" registrar-divergencia \
+# Registrar divergência rodando de dentro da subpasta COM RFM_ROOT isolado
+(cd "$TEMP_REPO_SUBPASTA/subdir" && RFM_ROOT="$RAIZ_DADOS_SUBPASTA" node "$SRC/scripts/segunda-opiniao.cjs" registrar-divergencia \
   --veredito discordo \
-  --motivo "Log deve ir para raiz" \
+  --motivo "Log deve ir para raiz de dados, não subdir" \
   --base "$BASE_SHA_SUBPASTA" > /dev/null 2>&1); EXIT_SUBPASTA=$?
 
 # Deve sair com 0
 if [ "$EXIT_SUBPASTA" = "0" ]; then
-  # Arquivo deve estar na raiz, NÃO na subpasta
+  # Arquivo deve estar na raiz de dados, NÃO na subpasta
   if [ -f "$REGISTRO_LOGFILE_RAIZ" ] && [ ! -f "$REGISTRO_LOGFILE_SUBDIR" ]; then
-    if grep -q "\"motivo\":\"Log deve ir para raiz\"" "$REGISTRO_LOGFILE_RAIZ"; then
+    if grep -q "\"motivo\":\"Log deve ir para raiz de dados, não subdir\"" "$REGISTRO_LOGFILE_RAIZ"; then
       ok=$((ok + 1))
-      echo "  ok   divergencia-log-ancorado-em-repo-raiz: arquivo em $TEMP_REPO_SUBPASTA/.claude/logs/, não em subdir"
+      echo "  ok   divergencia-log-em-subpasta-de-repo: arquivo em raiz de dados, não em subdir"
     else
       falhou=$((falhou + 1))
-      echo "  FALHA divergencia-log-ancorado-em-repo-raiz: conteúdo não bate"
+      echo "  FALHA divergencia-log-em-subpasta-de-repo: conteúdo não bate"
     fi
   else
     falhou=$((falhou + 1))
-    echo "  FALHA divergencia-log-ancorado-em-repo-raiz: arquivo deveria estar em raiz"
-    [ -f "$REGISTRO_LOGFILE_RAIZ" ] && echo "    (existe em raiz)" || echo "    (não existe em raiz)"
+    echo "  FALHA divergencia-log-em-subpasta-de-repo: arquivo deveria estar em raiz de dados"
+    [ -f "$REGISTRO_LOGFILE_RAIZ" ] && echo "    (existe em raiz de dados)" || echo "    (não existe em raiz de dados)"
     [ -f "$REGISTRO_LOGFILE_SUBDIR" ] && echo "    (existe em subdir - ERRADO)" || echo "    (não existe em subdir - correto)"
   fi
 else
   falhou=$((falhou + 1))
-  echo "  FALHA divergencia-log-ancorado-em-repo-raiz: deveria sair 0, saiu $EXIT_SUBPASTA"
+  echo "  FALHA divergencia-log-em-subpasta-de-repo: deveria sair 0, saiu $EXIT_SUBPASTA"
 fi
 
 echo ""
@@ -688,7 +716,11 @@ git add file.txt
 git commit --quiet -m "base"
 BASE_SHA_SEM_MOT=$(git rev-parse HEAD)
 
-REGISTRO_LOGFILE_SEM_MOT="$TEMP_REPO_SEM_MOT/.claude/logs/divergencias-segunda-opiniao.jsonl"
+# Criar .rainforest para marcar raiz de dados
+mkdir -p "$TEMP_REPO_SEM_MOT/.rainforest"
+touch "$TEMP_REPO_SEM_MOT/.rainforest/FOCO.md"
+
+REGISTRO_LOGFILE_SEM_MOT="$TEMP_REPO_SEM_MOT/.rainforest/.logs/divergencias-segunda-opiniao.jsonl"
 rm -f "$REGISTRO_LOGFILE_SEM_MOT"
 
 OUTPUT_SEM_MOT=$(cd "$TEMP_REPO_SEM_MOT" && node "$SRC/scripts/segunda-opiniao.cjs" registrar-divergencia \
@@ -715,11 +747,12 @@ else
 fi
 
 echo ""
-echo "== CASO 19: divergencia-de-dentro-de-worktree-grava-no-principal =="
+echo "== CASO 19: divergencia-de-dentro-de-worktree-grava-em-raiz-dados =="
 
-# Teste em worktree — o log deve ir para raiz do repo principal, NÃO para o worktree
+# Teste em worktree — o log deve ir para raiz de dados, não desaparecer com worktree
 # Isso testa o cenário normal de uso: revisar (que roda em worktree agente) rejeita,
-# registrar-divergencia é chamado de dentro do worktree, log deve ficar no principal
+# registrar-divergencia é chamado de dentro do worktree, log deve ficar na raiz de dados
+# compartilhada (nível global ou projeto, não dentro do worktree)
 TEMP_REPO_WORKTREE="$RAIZ/test-worktree-repo"
 mkdir -p "$TEMP_REPO_WORKTREE"
 cd "$TEMP_REPO_WORKTREE"
@@ -732,44 +765,49 @@ git add file.txt
 git commit --quiet -m "base"
 BASE_SHA_WORKTREE=$(git rev-parse HEAD)
 
+# Criar uma raiz de dados compartilhada (nível principal, não no worktree)
+RAIZ_DADOS_WORKTREE="$RAIZ/dados-worktree"
+mkdir -p "$RAIZ_DADOS_WORKTREE"
+touch "$RAIZ_DADOS_WORKTREE/FOCO.md"
+
 # Criar um worktree
 WORKTREE_PATH="$TEMP_REPO_WORKTREE/.github-worktree"
 git worktree add "$WORKTREE_PATH" -b worktree-branch HEAD > /dev/null 2>&1
 
-# Caminhos esperados
-LOG_IN_PRINCIPAL="$TEMP_REPO_WORKTREE/.claude/logs/divergencias-segunda-opiniao.jsonl"
-LOG_IN_WORKTREE="$WORKTREE_PATH/.claude/logs/divergencias-segunda-opiniao.jsonl"
+# Caminhos esperados — o log vai para a raiz compartilhada, não morre com worktree
+LOG_IN_RAIZ="$RAIZ_DADOS_WORKTREE/.logs/divergencias-segunda-opiniao.jsonl"
+LOG_IN_WORKTREE="$WORKTREE_PATH/.logs/divergencias-segunda-opiniao.jsonl"
 
 # Limpar logs se existirem
-rm -f "$LOG_IN_PRINCIPAL" "$LOG_IN_WORKTREE"
+rm -f "$LOG_IN_RAIZ" "$LOG_IN_WORKTREE"
 
-# Registrar divergência RODANDO DE DENTRO DO WORKTREE
-(cd "$WORKTREE_PATH" && node "$SRC/scripts/segunda-opiniao.cjs" registrar-divergencia \
+# Registrar divergência RODANDO DE DENTRO DO WORKTREE COM RFM_ROOT
+(cd "$WORKTREE_PATH" && RFM_ROOT="$RAIZ_DADOS_WORKTREE" node "$SRC/scripts/segunda-opiniao.cjs" registrar-divergencia \
   --veredito discordo \
-  --motivo "Teste de worktree" \
+  --motivo "Teste de worktree — log não morre" \
   --base "$BASE_SHA_WORKTREE" > /dev/null 2>&1); EXIT_WORKTREE=$?
 
 # Deve sair com 0
 if [ "$EXIT_WORKTREE" = "0" ]; then
-  # Arquivo DEVE estar no repositório principal, NÃO no worktree
-  if [ -f "$LOG_IN_PRINCIPAL" ] && [ ! -f "$LOG_IN_WORKTREE" ]; then
-    if grep -q "\"motivo\":\"Teste de worktree\"" "$LOG_IN_PRINCIPAL"; then
+  # Arquivo DEVE estar na raiz compartilhada, NÃO no worktree
+  if [ -f "$LOG_IN_RAIZ" ] && [ ! -f "$LOG_IN_WORKTREE" ]; then
+    if grep -q "\"motivo\":\"Teste de worktree — log não morre\"" "$LOG_IN_RAIZ"; then
       ok=$((ok + 1))
-      echo "  ok   divergencia-de-dentro-de-worktree-grava-no-principal: arquivo em repo principal, não em worktree"
+      echo "  ok   divergencia-de-dentro-de-worktree-grava-em-raiz-dados: arquivo em raiz compartilhada, não em worktree"
     else
       falhou=$((falhou + 1))
-      echo "  FALHA divergencia-de-dentro-de-worktree-grava-no-principal: conteúdo não bate"
-      cat "$LOG_IN_PRINCIPAL" | head -3
+      echo "  FALHA divergencia-de-dentro-de-worktree-grava-em-raiz-dados: conteúdo não bate"
+      cat "$LOG_IN_RAIZ" | head -3
     fi
   else
     falhou=$((falhou + 1))
-    echo "  FALHA divergencia-de-dentro-de-worktree-grava-no-principal: arquivo não onde deveria estar"
-    [ -f "$LOG_IN_PRINCIPAL" ] && echo "    (existe em principal)" || echo "    (não existe em principal - ERRADO)"
+    echo "  FALHA divergencia-de-dentro-de-worktree-grava-em-raiz-dados: arquivo não onde deveria estar"
+    [ -f "$LOG_IN_RAIZ" ] && echo "    (existe em raiz compartilhada)" || echo "    (não existe em raiz compartilhada - ERRADO)"
     [ -f "$LOG_IN_WORKTREE" ] && echo "    (existe em worktree - ERRADO)" || echo "    (não existe em worktree - correto)"
   fi
 else
   falhou=$((falhou + 1))
-  echo "  FALHA divergencia-de-dentro-de-worktree-grava-no-principal: deveria sair 0, saiu $EXIT_WORKTREE"
+  echo "  FALHA divergencia-de-dentro-de-worktree-grava-em-raiz-dados: deveria sair 0, saiu $EXIT_WORKTREE"
 fi
 
 # Limpar worktree
@@ -788,7 +826,8 @@ for fixture in "$FIXTURES_DIR"/*.cjs; do
   fixture_name=$(basename "$fixture" .cjs)
   count=$(grep -c "$fixture_name" "$SRC/scripts/testa-segunda-opiniao.sh" 2>/dev/null | head -1)
   if [ -z "$count" ] || [ "$count" -eq 0 ]; then
-    echo "  AVISO: fixture '$fixture_name' não é referenciada em testa-segunda-opiniao.sh"
+    falhou=$((falhou + 1))
+    echo "  FALHA: fixture órfã '$fixture_name' não é referenciada em testa-segunda-opiniao.sh"
   fi
 done
 
