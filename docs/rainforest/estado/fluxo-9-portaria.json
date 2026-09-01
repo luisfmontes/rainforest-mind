@@ -94,7 +94,7 @@
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "bdc229ce360cd397e7b995a3af252bbdedb5372b",
+      "head": "85a1498bb6755872cc51006747359e1a3e9e435c",
       "caminhos_sujos": []
     },
     "base": "b9a3bed03e6e681c347220828d6af750426bc3d5",
@@ -104,7 +104,8 @@
     "revisor": "rainforest-mind:revisor, contexto zerado, rodada 5, 2026-09-01",
     "nota": "REPROVADO na rodada 5 com 1 critico e 2 avisos, todos reproduzidos na janela principal e todos consertados. CRITICO: escreve === false e igualdade estrita, entao \"escreve\": \"false\" (string) e escreve AUSENTE desligavam a checagem de escrita inteira e liberavam agente que declarava tools: Write, Edit, Bash — com a linha de log sem a marca escreve_conferido, byte a byte igual a um allow conferido. Reabria o allow-que-mentia da rodada 4 por outra porta, e sem a marca que tornava aquela auditavel; o --lint tambem saia 0. Conserto: escreve nao-booleano nega no runtime e e erro no lint; escreve:true tambem nega, porque depende do worktree por filho, que nao existe. AVISO 2: o fallback local do resolver era copia byte-identica do estado.cjs coberta por teste nenhum (sabotar so a copia deixava a bateria verde) — REMOVIDO em vez de consertado, e agora sabotar o FECHADO do estado.cjs derruba a bateria do resolver. AVISO 3: o --lint nao via a forma de estagios e divergia do runtime; agora ausente/nao-lista/vazio e erro e lista so com estagio inalcancavel e aviso. Quatro catracas de mutacao pelo conferir-mutacao.cjs, todas exit 0. Onde o revisor procurou e NAO achou: mutou estagio-ativo.cjs pela primeira vez (tres mutacoes pegaram), mutou a idempotencia da amostra em captura (pegou), tracou o caminho principal de main() atras de excecao nao tratada alcancavel (nao ha), e procurou sequencia de despachos que produzisse allow que checagem isolada negaria (nao ha — a decisao e sem estado entre despachos).",
     "em": "2026-09-01",
-    "tentativas": 5
+    "tentativas": 5,
+    "liberado_em": "2026-09-01"
   },
   "verificar": {
     "status": "pendente"
