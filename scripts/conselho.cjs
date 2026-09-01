@@ -1192,7 +1192,7 @@ function adaptadorGemini() {
   }
 
   if (!process.env.GEMINI_API_KEY) {
-    console.error('adaptador-gemini: GEMINI_API_KEY não definida no ambiente — gem ini CLI exige credencial');
+    console.error('adaptador-gemini: GEMINI_API_KEY não definida no ambiente — gemini CLI exige credencial');
     process.exit(1);
   }
 
