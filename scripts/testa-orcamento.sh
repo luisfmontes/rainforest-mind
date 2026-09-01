@@ -109,10 +109,20 @@ fi
 echo; echo "1d. banda de aviso — avisos nao disparam exit 1"
 # Com raiz neutra, total esta ok (exit 0). Agora testa o comportamento de aviso
 # configurando um teto que faça a medição cair na banda de aviso (5% por padrão).
-# A medição neutra é ~13.126 B. Queremos um teto onde 13.126 fica entre (teto - limiar) e teto.
-# Se teto = 13.500, limiar = 675, então folga = 374 B, que é < limiar, logo 'aviso'.
-# Aviso tem de aparecer em stderr E exit tem de ser 0 (aviso nao vira erro).
-SAIDA_AVISO="$(RFM_ROOT="$RAIZ_VAZIA" node "$SRC/scripts/orcamento.cjs" --teto 13500 2>&1)"; CODIGO_AVISO=$?
+# O que se prova aqui e o COMPORTAMENTO do aviso (aparece, e nao vira exit 1) —
+# nao o tamanho absoluto do agregado, que ja e coberto pela secao 2 (--teto 1000)
+# e pela catraca de nucleo em hooks/testa-contexto-sessao.sh.
+#
+# Ate 2026-09-01 o teto vinha chumbado em 13.500 B, calculado sobre uma medicao
+# neutra de ~13.126 B. O repo cresceu: em 01/09 a medicao neutra ja era 13.613 B,
+# e o teto chumbado virou ESTOURO em vez de aviso — a bateria ficou vermelha sem
+# que nada do que ela testa tivesse quebrado. O teto agora e DERIVADO da medicao,
+# entao ele acompanha o repo: teto = total + 1 B deixa folga 1 B, sempre abaixo
+# do limiar de 5%, logo sempre na banda de aviso.
+TOTAL_NEUTRO="$(RFM_ROOT="$RAIZ_VAZIA" node "$SRC/scripts/orcamento.cjs" 2>&1 | sed -n 's/^Total: \([0-9]\+\) B$/\1/p')"
+TETO_AVISO=$((TOTAL_NEUTRO + 1))
+echo "  info total neutro $TOTAL_NEUTRO B, teto derivado $TETO_AVISO B (folga 1 B, dentro da banda de aviso)"
+SAIDA_AVISO="$(RFM_ROOT="$RAIZ_VAZIA" node "$SRC/scripts/orcamento.cjs" --teto "$TETO_AVISO" 2>&1)"; CODIGO_AVISO=$?
 tem "aviso de folga em agregado aparece na mensagem" "$SAIDA_AVISO" "Aviso de folga em agregado"
 igual "mas exit é 0, aviso nao vira erro" "$CODIGO_AVISO" "0"
 
