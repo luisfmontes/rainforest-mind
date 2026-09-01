@@ -1010,7 +1010,7 @@ function executarSintetizar(args) {
   for (const nomeMembro of membrosLigados) {
     const caminhoSaida = path.join(dirRodada, `parecer-${nomeMembro}.json`);
     const conteudo = fs.readFileSync(caminhoSaida, 'utf8');
-    pareceres[nomeMembro] = JSON.parse(conteudo);
+    pareceres[nomeMembro] = parseJsonDeMembro(conteudo);
   }
 
   // Load all revisoes
@@ -1019,7 +1019,7 @@ function executarSintetizar(args) {
   for (const nomeMembro of membrosLigados) {
     const caminhoRevisao = path.join(dirFase2, `revisao-${nomeMembro}.json`);
     const conteudo = fs.readFileSync(caminhoRevisao, 'utf8');
-    revisoes.push(JSON.parse(conteudo));
+    revisoes.push(parseJsonDeMembro(conteudo));
   }
 
   // Aggregate rankings
