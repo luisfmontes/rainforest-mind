@@ -20,7 +20,7 @@
   "plano": {
     "status": "ok",
     "arquivo": "docs/rainforest/planos/fluxo-11-conselho.md",
-    "tarefas": 9,
+    "tarefas": 12,
     "paralelas": [
       1
     ],
