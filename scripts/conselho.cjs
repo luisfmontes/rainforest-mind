@@ -398,24 +398,14 @@ function executarPareceres(args) {
       cmd = cmd.replace('{saida}', `"${caminhoSaida}"`);
     }
 
-    // Shell explicito por plataforma. No Windows, /d /s /c com o comando inteiro
-    // entre aspas externas + windowsVerbatimArguments: sem isso o Node re-escapa
-    // o argumento e o cmd.exe mutila qualquer cmd que contenha aspas (caminho
-    // de fixture entre aspas falhava com exit 1 em todos os membros).
-    const isWindows = process.platform === 'win32';
-    const spawnArgs = isWindows
-      ? ['cmd.exe', ['/d', '/s', '/c', `"${cmd}"`]]
-      : ['sh', ['-c', cmd]];
-
     // Execute command
-    const resultado = spawnSync(spawnArgs[0], spawnArgs[1], {
-      cwd: RAIZ,
-      encoding: 'utf8',
-      windowsVerbatimArguments: isWindows,
-      timeout: TIMEOUT_MEMBRO_MS  // por membro; CONSELHO_TIMEOUT_MS sobrepõe
+    const resultado = rodarCli({
+      cmd,
+      entrada: '',
+      timeoutMs: TIMEOUT_MEMBRO_MS  // por membro; CONSELHO_TIMEOUT_MS sobrepõe
     });
 
-    if (resultado.error) {
+    if (resultado.status === null) {
       temErro = true;
       erros.push(`${nomeMembro}: timeout ou erro de execução`);
       continue;
@@ -798,20 +788,14 @@ function executarRevisao(args) {
       cmd = cmd.replace('{saida}', `"${caminhoSaidaFase2}"`);
     }
 
-    const isWindows = process.platform === 'win32';
-    const spawnArgs = isWindows
-      ? ['cmd.exe', ['/d', '/s', '/c', `"${cmd}"`]]
-      : ['sh', ['-c', cmd]];
-
     // Execute command
-    const resultado = spawnSync(spawnArgs[0], spawnArgs[1], {
-      cwd: RAIZ,
-      encoding: 'utf8',
-      windowsVerbatimArguments: isWindows,
-      timeout: TIMEOUT_MEMBRO_MS
+    const resultado = rodarCli({
+      cmd,
+      entrada: '',
+      timeoutMs: TIMEOUT_MEMBRO_MS
     });
 
-    if (resultado.error) {
+    if (resultado.status === null) {
       temErro = true;
       erros.push(`${nomeMembro}: timeout ou erro de execução`);
       continue;
