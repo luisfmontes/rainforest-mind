@@ -108,6 +108,33 @@ dele é assinar a aprovação no lugar de quem aprova — e é o que destranca o
 
 A partir de 2026-08-13, `node scripts/estado.cjs marcar --estagio design --status aprovado` recusa design que não siga o formato acima: seções obrigatórias, decisões marcadas como `**D<n> — ...**` com `n` sequencial de 1, sem buraco e sem repetido. Sem o formato, o comando sai com exit 2.
 
+## Conselho: debate estruturado de decisões (opt-in)
+
+Quando `.rainforest/conselho/` existe no projeto, o design pode convocar o
+conselho **antes de marcar aprovado** — um debate estruturado de cada
+decisão (`D1`, `D2`, etc.) com três ou mais personas (Codex e Gemini são opcionais):
+
+```
+node scripts/conselho.cjs abrir --questao <caminho-da-decisao.md>
+node scripts/conselho.cjs pareceres [--membro <nome>]   # (cada persona escreve um parecer; --membro reexecuta só esse)
+node scripts/conselho.cjs revisar [--membro <nome>]     # (anônimos avaliam os pareceres alheios; --membro reexecuta só esse)
+node scripts/conselho.cjs sintetizar [--unanime]
+node scripts/conselho.cjs conferir --fase pareceres|revisao|sintese
+```
+
+**Portões** (imperativos; terceira reprovação consecutiva na mesma fase abandona):
+- Parecer sem objeções `objecoes >= 1` → reprovado
+- Ranking de revisão incompleto ou com empate → reprovado
+- Síntese sem `divergencias_nao_resolvidas` (ou `--unanime` explícito) → reprovado
+
+**Opt-in:** sem o diretório, nada muda. Membro ligado indisponível reprova
+por falha fechada, nunca silencia — **desligar no `/setup`** se ele não está à
+mão.
+
+Membros Claude (`cetico`, `arquiteto`, `usuario-final`) ligados por padrão.
+Codex e Gemini desligados; ligar com `node scripts/setup.cjs --ligar conselho-codex`
+e `--ligar conselho-gemini` (requerem CLIs autenticados nesta máquina).
+
 ---
 
 Estágio 1 do fluxo rainforest-mind. Método adaptado de `grilling`/`grill-me`

@@ -105,6 +105,14 @@ const CHAVES = {
     padrao: false,
     descricao: 'usa `git branch -D` (apaga sem conferir merge) em vez de `-d`',
   },
+  'conselho-codex': {
+    padrao: false,
+    descricao: 'Codex participa do conselho como membro externo (exige `codex` CLI)',
+  },
+  'conselho-gemini': {
+    padrao: false,
+    descricao: 'Gemini participa do conselho como membro externo (exige `GEMINI_API_KEY` no ambiente)',
+  },
   poda: {
     padrao: true,
     descricao: 'passthrough de proxy medido: escreve metricas.jsonl e contexto.json',

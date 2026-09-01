@@ -430,6 +430,7 @@ flowchart LR
 |-------|-----|
 | `divergir [problema]` | **Antes** do `brainstorm`, quando o espaço é largo e a primeira ideia já está ancorando: **seis** frames isolados em paralelo, sem se verem, e um crítico que também nasce zerado. Devolve material para decidir; não decide e não codifica |
 | `/brainstorm [assunto]` | Estágio 1: entrevista adversarial em árvore de decisão, rodada numerada com resposta recomendada — para **antes** de executar, e grava o design |
+| `conselho` | Debate estruturado dentro do design (opt-in via `.rainforest/conselho/`): personas avaliam cada decisão, revisões anonimizadas, síntese com portões mecânicos. Membros Claude ligados; Codex/Gemini opcionais. Terceira reprovação consecutiva abandona |
 | `/foco` | Estado da conversa: foco ativo, loops abertos, decisões tomadas |
 | `/foco <texto>` | Declara novo foco — injetado em toda sessão nova |
 | `/ideia <texto>` | Avalia contra o foco: dentro → entra confirmada; fora → planta com contexto e projeto |
