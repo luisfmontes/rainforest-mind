@@ -1702,6 +1702,25 @@ else
 fi
 echo ""
 
+echo "== CASO 30: membro-que-trava-e-cortado (timeout rápido) =="
+TEMPDIR30="$RAIZ/test-timeout"
+mkdir -p "$TEMPDIR30/.rainforest/conselho"
+FO30="$SRC_M/scripts/fixtures/conselho/membro-que-trava-e-cortado.cjs"
+cat > "$TEMPDIR30/.rainforest/conselho/membros.json" << EOF30
+{
+  "membros": [
+    {"nome": "cetico", "cmd": "node \"$FO30\" \"{prompt}\" \"{saida}\"", "ligado": true},
+    {"nome": "arquiteto", "cmd": "node \"$FO30\" \"{prompt}\" \"{saida}\"", "ligado": true},
+    {"nome": "usuario-final", "cmd": "node \"$FO30\" \"{prompt}\" \"{saida}\"", "ligado": true}
+  ]
+}
+EOF30
+echo "# Questão com timeout" > "$TEMPDIR30/q30.md"
+testa "timeout-rápido: abrir" "0" bash -c "cd '$TEMPDIR30' && RFM_ESTADO_ROOT='$TEMPDIR30' node '$CONSELHO' abrir --questao q30.md"
+# Executa pareceres com timeout curto (100ms) — deve falhar
+testa "timeout-rápido: pareceres sai com exit 1 (cortado por timeout)" "1" bash -c "cd '$TEMPDIR30' && CONSELHO_TIMEOUT_MS=100 RFM_ESTADO_ROOT='$TEMPDIR30' node '$CONSELHO' pareceres"
+echo ""
+
 echo "== Resultado =="
 echo "total=$((ok + falhou)) vermelhas:[$falhou]"
 if [ "$falhou" -gt 0 ]; then
