@@ -106,18 +106,23 @@
     ]
   },
   "revisar": {
-    "status": "reprovado",
-    "achados": 2,
+    "status": "ok",
+    "achados": 1,
     "criticos": [
       "C: revisar --membro reconstroi mapa-anonimato so com o retriado, pacote vazio, nunca fecha e queima teto ate ABANDONA"
     ],
     "avisos": [
-      "A: pronto-quando das aspas ja-presentes (T10) sem caso na bateria"
+      "log Revisoes coletadas de N imprime o total da rodada mesmo em retry filtrado — cosmetico, registrado"
     ],
-    "base": "d6c1168",
-    "head": "73e359c",
-    "em": "2026-08-31",
-    "tentativas": 2
+    "base": "73e359c",
+    "head": "a71a2e2d4de435eb09003b653b3d86e55fd42f36",
+    "em": "2026-09-01",
+    "snapshot": {
+      "head": "a71a2e2d4de435eb09003b653b3d86e55fd42f36",
+      "caminhos_sujos": []
+    },
+    "rodadas": 3,
+    "veredito": "APROVADO na rodada 3; revisor reproduziu o cenario do critico contra o codigo pre-conserto e viu o vermelho real"
   },
   "verificar": {
     "status": "pendente"
