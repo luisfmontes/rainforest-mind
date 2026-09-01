@@ -31,6 +31,19 @@ const ARQUIVO_MEMBROS = path.join(DIR_CONSELHO, 'membros.json');
 
 const QUORUM_MINIMO = 3;
 
+// Timeout por execução de membro. Membro real (claude/codex/gemini) leva
+// 30-120s; fixture leva ms. Os 30s fixos matavam a rodada real (achado da T9).
+const TIMEOUT_MEMBRO_MS = Number(process.env.CONSELHO_TIMEOUT_MS) || 300000;
+
+// Lê JSON de saída de membro tolerando cerca de código (```json ... ```)
+// que modelos reais põem mesmo instruídos a não pôr (achado da T9).
+function parseJsonDeMembro(conteudo) {
+  let texto = String(conteudo).trim();
+  const cerca = texto.match(/^```(?:json)?\s*\n([\s\S]*?)\n```\s*$/);
+  if (cerca) texto = cerca[1].trim();
+  return JSON.parse(texto);
+}
+
 // Calculates a deterministic round ID based on date and question slug
 function calcularIdRodada(nomeArquivo) {
   const hoje = new Date();
@@ -164,7 +177,14 @@ function abrirRodada(caminhoQuestao, membrosLigados) {
   for (const membro of membrosLigados) {
     const nomePrompt = path.join(dirRodada, `prompt-${membro.nome}.md`);
     const persona = gerarPersona(membro.nome);
-    const conteudo = `${persona}\n\n## Questão\n\n${questao}`;
+    const contratoJson = [
+      '## Formato da resposta (obrigatório)',
+      '',
+      'Responda SOMENTE com um objeto JSON válido, sem cerca de código e sem texto fora dele:',
+      '',
+      '{"posicao": "sua posição em uma frase", "argumentos": ["..."], "objecoes": ["ao menos uma objeção concreta"], "riscos": ["..."]}',
+    ].join('\n');
+    const conteudo = `${persona}\n\n## Questão\n\n${questao}\n\n${contratoJson}`;
     fs.writeFileSync(nomePrompt, conteudo, 'utf8');
   }
 
@@ -352,7 +372,7 @@ function executarPareceres() {
       cwd: RAIZ,
       encoding: 'utf8',
       windowsVerbatimArguments: isWindows,
-      timeout: 30000  // 30 second timeout per member
+      timeout: TIMEOUT_MEMBRO_MS  // por membro; CONSELHO_TIMEOUT_MS sobrepõe
     });
 
     if (resultado.error) {
@@ -428,7 +448,7 @@ function conferirFasePareceres() {
     // Try to parse JSON
     let parecer;
     try {
-      parecer = JSON.parse(conteudo);
+      parecer = parseJsonDeMembro(conteudo);
     } catch (e) {
       temErro = true;
       erros.push(`parecer do ${nomeMembro}: JSON inválido (${e.message})`);
@@ -644,7 +664,7 @@ function executarRevisao() {
   for (const nomeMembro of membrosLigados) {
     const caminhoSaida = path.join(dirRodada, `parecer-${nomeMembro}.json`);
     const conteudo = fs.readFileSync(caminhoSaida, 'utf8');
-    const parecer = JSON.parse(conteudo);
+    const parecer = parseJsonDeMembro(conteudo);
     pareceres[nomeMembro] = parecer;
     parecerArquivos.push(nomeMembro);
   }
@@ -698,7 +718,7 @@ function executarRevisao() {
 
     // Create pacote-prompt for this member
     const pacotePrompt = {
-      instrucao: 'Você está revisando pareceres de colegas sobre uma decisão. Cada parecer é identificado por um apelido (membro-A, membro-B, etc.). Sua tarefa: ranquear os pareceres do melhor para o pior (sem empates) e oferecer uma crítica concisa para cada um.',
+      instrucao: 'Você está revisando pareceres de colegas sobre uma decisão. Cada parecer é identificado por um apelido (membro-A, membro-B, etc.). Sua tarefa: ranquear os pareceres do melhor para o pior (sem empates) e oferecer uma crítica concisa para cada um. Responda SOMENTE com um objeto JSON valido, sem cerca de codigo: {"ranking": ["membro-A", "membro-B"], "criticas": {"membro-A": "...", "membro-B": "..."}} — o ranking cobre TODOS os apelidos recebidos.',
       pareceres: pareceresDosOutros
     };
 
@@ -722,7 +742,7 @@ function executarRevisao() {
       cwd: RAIZ,
       encoding: 'utf8',
       windowsVerbatimArguments: isWindows,
-      timeout: 30000
+      timeout: TIMEOUT_MEMBRO_MS
     });
 
     if (resultado.error) {
@@ -807,7 +827,7 @@ function conferirFaseRevisao() {
     // Try to parse JSON
     let revisao;
     try {
-      revisao = JSON.parse(conteudo);
+      revisao = parseJsonDeMembro(conteudo);
     } catch (e) {
       temErro = true;
       erros.push(`${nomeMembro}: JSON inválido (${e.message})`);
@@ -917,7 +937,7 @@ function conferirFaseSintese() {
   // Try to parse JSON
   let sintese;
   try {
-    sintese = JSON.parse(conteudo);
+    sintese = parseJsonDeMembro(conteudo);
   } catch (e) {
     // Increment attempt counter
     incrementarTentativaFase(estado, dirRodada, 'sintese');
@@ -1102,7 +1122,7 @@ function adaptadorCodex() {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsVerbatimArguments: isWindows,
-    timeout: 30000,
+    timeout: TIMEOUT_MEMBRO_MS,
   });
 
   if (resultado.status !== 0) {
@@ -1174,7 +1194,7 @@ function adaptadorGemini() {
     stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env },
     windowsVerbatimArguments: isWindows,
-    timeout: 30000,
+    timeout: TIMEOUT_MEMBRO_MS,
   });
 
   if (resultado.status !== 0) {
