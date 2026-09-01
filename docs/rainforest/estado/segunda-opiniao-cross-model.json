@@ -105,6 +105,9 @@
     "em": "2026-09-01"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "pr": 140,
+    "url": "https://github.com/luisfmontes/rainforest-mind/pull/140",
+    "em": "2026-09-01"
   }
 }
