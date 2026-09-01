@@ -8,7 +8,7 @@
 
 PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO_TESTE=$(mktemp -d)
-trap "rm -rf '$REPO_TESTE'" EXIT
+trap "rm -rf '$REPO_TESTE'; rm -f '$PLUGIN_DIR/scripts/conferir-ponte-sabotado.cjs'" EXIT
 
 # Inicializa repo em subshell para não sair do diretório
 bash -c "
@@ -101,7 +101,8 @@ echo "5. Mutação: sabota a comparação no conferir-ponte.cjs"
 # Extensao .cjs obrigatoria: `node --check` num arquivo SEM extensao tenta resolver como
 # ESM e morre com ERR_UNKNOWN_FILE_EXTENSION — a guarda acusaria "nao compila" num
 # mutante perfeitamente valido.
-CONFERIR_SABOTADO="$(mktemp)".cjs
+# O arquivo sabotado precisa estar em scripts/ para conseguir fazer os requires
+CONFERIR_SABOTADO="$PLUGIN_DIR/scripts/conferir-ponte-sabotado.cjs"
 cat "$PLUGIN_DIR/scripts/conferir-ponte.cjs" | \
   sed 's/if (textoIgual(conteudoAtual, conteudoEsperado))/if (false)/' > "$CONFERIR_SABOTADO"
 chmod +x "$CONFERIR_SABOTADO"
