@@ -1286,8 +1286,8 @@ else
 fi
 
 echo ""
-echo "== CASO 21: adaptador-sem-chave-recusa =="
-TEMPDIR21="$RAIZ/test-adaptador-sem-chave"
+echo "== CASO 21: gemini-sem-credencial-falha =="
+TEMPDIR21="$RAIZ/test-gemini-credencial"
 mkdir -p "$TEMPDIR21"
 
 # Criar um arquivo de prompt fake
@@ -1295,7 +1295,7 @@ echo "# Teste" > "$TEMPDIR21/prompt.md"
 
 # Tentar rodar adaptador-gemini SEM GEMINI_API_KEY
 # Deve sair com exit ≠ 0 e NÃO criar arquivo de saída
-testa "adaptador-gemini sem GEMINI_API_KEY: exit != 0" "1" \
+testa "gemini-sem-credencial-falha: exit != 0" "1" \
   bash -c "cd '$TEMPDIR21' && unset GEMINI_API_KEY; node '$CONSELHO' adaptador-gemini prompt.md saida.json"
 
 # Verificar que saida.json NÃO foi criado
