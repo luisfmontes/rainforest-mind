@@ -117,3 +117,44 @@ paralela: nao
 mutacao: n/a
   motivo: validação manual de integração externa; o comportamento mutável já está coberto pelas tarefas 2 e 6, e bateria não pode depender de CLI instalado (D11)
 pronto quando: com os dois CLIs autenticados desta máquina e as chaves `conselho-codex`/`conselho-gemini` ligadas em escopo projeto, uma rodada real com questão real fecha as 3 fases com 5 membros, e o relatório cola a saída real: `sintese.json` gerado, `ranking_agregado` com 5 posições, e o cenário de indisponibilidade real (chave GEMINI_API_KEY removida do ambiente) reprovando a fase com motivo — provado pelo relatório com os comandos e saídas verbatim e o `sintese.json` da rodada de teste anexado.
+
+## Emenda pós-revisão (2026-08-31) — achados C1, C2 e A3 do revisor
+
+### 10. Aspas nos placeholders de caminho do cmd de membro [tipo: implementar]
+atende: D8, D14
+arquivos: `scripts/conselho.cjs`, `scripts/testa-conselho.sh`
+depende de: 9
+paralela: nao
+mutacao:
+  arquivo: `scripts/conselho.cjs`
+  de: a substituição de `{prompt}`/`{saida}` com o caminho ENTRE ASPAS
+  para: substituição com o caminho cru (sem aspas)
+  bateria: `bash scripts/testa-conselho.sh`
+  fixture: caso `caminho-com-espaco` (projeto em pasta com espaço no nome → pareceres exit 0)
+pronto quando: com o projeto do usuário numa pasta cujo caminho contém espaço (ex.: `pasta com espaco`), `abrir` + `pareceres` com os 3 membros fixture fecham exit 0 e os 3 `parecer-*.json` existem — provado pelo caso `caminho-com-espaco` da bateria e por rodada manual num mktemp com espaço; e cmd que JÁ contém `"{prompt}"` entre aspas no membros.json do dev não ganha aspas duplicadas.
+
+### 11. Fase fechada grava status e /saude só acusa rodada realmente parada [tipo: implementar]
+atende: D12
+arquivos: `scripts/conselho.cjs`, `scripts/saude.cjs`, `scripts/testa-conselho.sh`, `scripts/testa-saude.sh`
+depende de: 10
+paralela: nao
+mutacao:
+  arquivo: `scripts/conselho.cjs`
+  de: o portão que passa marca `fases.<fase>.status = 'ok'` no estado da rodada
+  para: não marcar
+  bateria: `bash scripts/testa-saude.sh`
+  fixture: caso novo `rodada-concluida-sem-aviso` (rodada com as 3 fases ok → saude sem seção do conselho)
+pronto quando: com uma rodada real completa (3 portões exit 0), o `estado.json` da rodada tem as 3 fases com status fechado e `node scripts/saude.cjs` NÃO imprime seção do conselho; com rodada aberta com fase pendente, imprime `parada na fase <f>` como aviso exit 0 — provado pelos dois cenários na bateria do saude e pela releitura do estado na bateria do conselho.
+
+### 12. Retry seletivo por membro nas fases 1 e 2 [tipo: implementar]
+atende: D9
+arquivos: `scripts/conselho.cjs`, `scripts/testa-conselho.sh`, `skills/brainstorm/SKILL.md`, `relatorios/2026-08-31-conselho-validacao-externa.md`
+depende de: 11
+paralela: nao
+mutacao:
+  arquivo: `scripts/conselho.cjs`
+  de: o filtro que restringe a execução ao membro passado em `--membro`
+  para: ignorar o filtro e executar todos
+  bateria: `bash scripts/testa-conselho.sh`
+  fixture: caso `retry-seletivo-so-reexecuta-um` (fixture que grava marcador por execução; `pareceres --membro cetico` só cria/atualiza o do cetico)
+pronto quando: com fase 1 completa e o parecer do arquiteto apagado, `node scripts/conselho.cjs pareceres --membro arquiteto` reexecuta SÓ o arquiteto (marcadores dos outros intactos) e o portão volta a fechar; `--membro` desconhecido reprova citando os membros ligados; o SKILL.md documenta a flag no lugar do workaround manual descrito no relatório da T9 — provado pelo caso da bateria e pelos comandos citados rodando.
