@@ -175,7 +175,14 @@ ${criterio}
 
 ${BASE}
 
-Sua tarefa: revise o diff acima contra o critério. Responda com UMA LINHA no final, exatamente:
+Sua tarefa: revise o diff acima contra o critério.
+
+Primeiro, explique seu raciocínio em até 10 linhas: o que o diff faz, se isso
+alcança o critério, e — se houver — por qual caminho o critério ainda poderia
+falhar. Esse texto é o que fica registrado quando a janela rejeita o seu
+parecer, então um veredito sem raciocínio não serve de motivo para ninguém.
+
+Depois, e só depois, emita a ÚLTIMA LINHA, sozinha, exatamente uma destas:
 - "concordo" (se o diff atende ao critério)
 - "discordo" (se o diff não atende ao critério)
 `;
