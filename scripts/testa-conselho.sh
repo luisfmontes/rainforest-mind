@@ -1550,6 +1550,44 @@ else
 fi
 
 echo ""
+echo "== CASO 27: fases-fecham-no-estado (portao que passa marca a fase) =="
+TEMPDIR27="$RAIZ/test-fases-fecham"
+mkdir -p "$TEMPDIR27/.rainforest/conselho"
+F27="$SRC_M/scripts/fixtures/conselho/membro-ok.cjs"
+R27="$SRC_M/scripts/fixtures/conselho/membro-revisor-ok.cjs"
+cat > "$TEMPDIR27/.rainforest/conselho/membros.json" << EOF27
+{
+  "membros": [
+    {"nome": "cetico", "cmd": "node \"$F27\" {prompt} {saida}", "ligado": true},
+    {"nome": "arquiteto", "cmd": "node \"$F27\" {prompt} {saida}", "ligado": true},
+    {"nome": "usuario-final", "cmd": "node \"$F27\" {prompt} {saida}", "ligado": true}
+  ]
+}
+EOF27
+echo "# Fases fecham" > "$TEMPDIR27/q27.md"
+RODA27() { bash -c "cd '$TEMPDIR27' && RFM_ESTADO_ROOT='$TEMPDIR27' node '$CONSELHO' $1"; }
+RODA27 "abrir --questao q27.md" > /dev/null 2>&1
+RODA27 "pareceres" > /dev/null 2>&1
+RODA27 "conferir --fase pareceres" > /dev/null 2>&1
+EST27=$(ls -1d "$TEMPDIR27/.rainforest/conselho/202"* | head -1)/estado.json
+if grep -q '"pareceres": {\s*"status": "ok"' "$EST27" || node -e "const j=require('$EST27');process.exit(j.fases.pareceres.status==='ok'?0:1)"; then
+  ok=$((ok + 1)); echo "  ok   portao de pareceres marcou a fase como ok no estado"
+else
+  falhou=$((falhou + 1)); echo "  FALHA fase pareceres continua '$(node -e "console.log(require('$EST27').fases.pareceres.status)")' apos portao exit 0"
+fi
+# troca os cmds para o revisor fixture e fecha as outras duas fases
+node -e "const fs=require('fs');const p='$TEMPDIR27/.rainforest/conselho/membros.json';const j=JSON.parse(fs.readFileSync(p,'utf8'));j.membros.forEach(m=>m.cmd='node \"$R27\" {prompt} {saida}');fs.writeFileSync(p,JSON.stringify(j,null,2));"
+RODA27 "revisar" > /dev/null 2>&1
+RODA27 "conferir --fase revisao" > /dev/null 2>&1
+RODA27 "sintetizar" > /dev/null 2>&1
+RODA27 "conferir --fase sintese" > /dev/null 2>&1
+if node -e "const j=require('$EST27');const f=j.fases;process.exit(f.pareceres.status==='ok'&&f.revisao.status==='ok'&&f.sintese.status==='ok'?0:1)"; then
+  ok=$((ok + 1)); echo "  ok   as 3 fases fechadas no estado apos os 3 portoes"
+else
+  falhou=$((falhou + 1)); echo "  FALHA estado das fases: $(node -e "const j=require('$EST27');console.log(JSON.stringify(j.fases))")"
+fi
+echo ""
+
 echo "== Resultado =="
 echo "total=$((ok + falhou)) vermelhas:[$falhou]"
 if [ "$falhou" -gt 0 ]; then
