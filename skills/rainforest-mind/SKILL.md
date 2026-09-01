@@ -111,12 +111,11 @@ segurança.
 <!-- detalhe -->
 Elaboração: references/regra-09.md
 
-**10. Agentes baratos com método.** Task de **~3.000 tokens ou mais** vai para o
-agente da **função**: `executor`, `planejador`, `revisor`, `tester`, `depurador`,
-`resolvedor-de-build`, `documentador`. Abaixo disso, despachar sai **mais caro**
-que fazer. A janela principal pensa. Agente que edita **nunca é nomeado**, e
-**nomeado só entrega por `SendMessage`** — termina e fica calado.
-Com a portaria registrada (fluxo 9), subagente só roda se estiver declarado em `.rainforest/agentes.json` com o estágio ativo na sua lista; a portaria decide por hook `PreToolUse` sem perguntar ao humano em runtime — exceção é editar o manifesto, que passa pelo `revisar`.
+**10. Agentes baratos, e só os admitidos.** Task de **3.000+ tokens** vai para o
+agente da **função**; abaixo disso despachar sai mais caro que fazer, e a janela
+principal pensa. Agente que edita **nunca é nomeado**, e **nomeado só entrega por
+`SendMessage`**. Rodar exige manifesto + **estágio ativo**: a portaria decide por
+código, sem perguntar em runtime — exceção é diff no manifesto.
 <!-- detalhe -->
 Elaboração: references/regra-10.md
 

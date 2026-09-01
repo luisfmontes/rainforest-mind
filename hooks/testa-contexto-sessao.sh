@@ -582,10 +582,25 @@ else
 fi
 
 # D7 -- nucleo inalterado: a quebra em references/ prometeu nao devolver folga
-# nenhuma ao orcamento de nucleo. O numero e o contrato (issue #79): a folga
-# sobre NUCLEOS_MAX_BYTES (5.600) e de 11 B, e esta asercao existe para acusar
-# se algum dia alguem, de boa fe, "aproveitar" bytes que a quebra teria liberado.
-NUCLEO_ESPERADO=5589
+# nenhuma ao orcamento de nucleo. O numero e o contrato (issue #79), e esta
+# asercao existe para acusar se algum dia alguem, de boa fe, "aproveitar" bytes
+# que a quebra teria liberado.
+#
+# 2026-09-01, fluxo 9 (portaria): 5.589 -> 5.597 B. A regra 10 passou a afirmar a
+# admissao por manifesto + estagio ativo (tarefa 7 do plano), o que e conteudo
+# NOVO, nao byte reaproveitado. A primeira redacao custava +280 B e estourou a
+# catraca (5.869 > 5.600) -- a entrada aqui e a segunda, que compensou o texto
+# novo encolhendo o resto da regra 10: a lista dos sete agentes saiu do nucleo
+# (continua em references/regra-10.md, e agora o manifesto e que e a lista viva)
+# e o caminho `.rainforest/agentes.json` desceu para a elaboracao -- este ultimo
+# tambem porque `scripts/testa-ponte.sh` proibe o literal `.rainforest` no
+# arquivo que a ponte gera para terceiros.
+#
+# A folga sobre NUCLEOS_MAX_BYTES (5.600) caiu de 11 para 3 B. Quem for mexer
+# aqui de novo: nao ha espaco: ou encolhe outra regra, ou sobe a catraca sabendo
+# que `tetoFoco = ORCAMENTO - fixo` e cada byte de nucleo sai do FOCO.md do
+# usuario.
+NUCLEO_ESPERADO=5597
 if [ "$NUCLEO_BYTES_REAL" = "$NUCLEO_ESPERADO" ]; then
   ok=$((ok+1)); echo "  ok    D7: nucleo emitido mede exatamente $NUCLEO_BYTES_REAL B (contrato: $NUCLEO_ESPERADO B)"
 else
