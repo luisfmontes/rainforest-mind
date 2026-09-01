@@ -431,6 +431,87 @@ console.log("== 10. manifesto com versao desconhecida ==");
   fs.rmSync(raiz, { recursive: true, force: true });
 }
 
+// == 11. raiz vem do payload.cwd, não do process.cwd() ==
+console.log("== 11. raiz vem do payload.cwd (CRÍTICO 1) ==");
+{
+  // Cria dois sandboxes:
+  //   A: com manifesto e estágio que aprovam
+  //   B: outro repo git, sem manifesto
+  const raizA = caixa();
+  const raizB = caixa();
+
+  iniciarGit(raizA, "fluxo/teste");
+  criarEstadoAtivo(raizA, "teste", "revisar");
+  criarManifesto(raizA, manifestoD2({
+    revisor: { estagios: ["revisar"], escreve: false },
+  }));
+
+  iniciarGit(raizB, "outro");
+
+  const payload = {
+    session_id: "teste-11",
+    tool_input: { subagent_type: "revisor" },
+    cwd: raizA, // A é no payload
+  };
+
+  // Roda o hook com:
+  //   - process.cwd() em B (seria negado se processo.cwd() fosse usado)
+  //   - CLAUDE_PROJECT_DIR apontando para B (seria negado se env fosse usado)
+  //   - payload.cwd apontando para A (aprovado, prova que payload vence)
+  const r = spawnSync(process.execPath, [HOOK], {
+    input: JSON.stringify(payload),
+    cwd: raizB, // Simula que o processo atual está em outro lugar
+    env: { ...process.env, CLAUDE_PROJECT_DIR: raizB },
+    encoding: "utf8",
+  });
+
+  caso("exit 0 (payload.cwd venceu)", r.status === 0, `exit=${r.status}`);
+
+  const logPathA = path.join(raizA, ".rainforest", "portaria", "despachos.jsonl");
+  caso("log gravado em A (payload.cwd)", fs.existsSync(logPathA));
+
+  const logPathB = path.join(raizB, ".rainforest", "portaria", "despachos.jsonl");
+  caso("log NÃO gravado em B", !fs.existsSync(logPathB));
+
+  fs.rmSync(raizA, { recursive: true, force: true });
+  fs.rmSync(raizB, { recursive: true, force: true });
+}
+
+// == 12. normalização de raiz para subdiretório ==
+console.log("== 12. normalização de raiz para subdiretório ==");
+{
+  const raizA = caixa();
+
+  iniciarGit(raizA, "fluxo/teste");
+  criarEstadoAtivo(raizA, "teste", "revisar");
+  criarManifesto(raizA, manifestoD2({
+    revisor: { estagios: ["revisar"], escreve: false },
+  }));
+
+  // Cria um subdiretório
+  const subdir = path.join(raizA, "hooks");
+  fs.mkdirSync(subdir, { recursive: true });
+
+  const payload = {
+    session_id: "teste-12",
+    tool_input: { subagent_type: "revisor" },
+    cwd: subdir, // Payload aponta para subdiretório, não raiz
+  };
+
+  const r = spawnSync(process.execPath, [HOOK], {
+    input: JSON.stringify(payload),
+    env: { ...process.env, CLAUDE_PROJECT_DIR: "" }, // Sem env
+    encoding: "utf8",
+  });
+
+  caso("exit 0 (mesmo com payload.cwd em subdir)", r.status === 0, `exit=${r.status}`);
+
+  const logPath = path.join(raizA, ".rainforest", "portaria", "despachos.jsonl");
+  caso("log gravado na raiz (normalizado)", fs.existsSync(logPath));
+
+  fs.rmSync(raizA, { recursive: true, force: true });
+}
+
 console.log(`\n== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 
 if (falhou > 0) {
