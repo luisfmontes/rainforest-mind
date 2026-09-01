@@ -1,0 +1,9 @@
+{
+  "versao": 1,
+  "agentes": {
+    "escritor": {
+      "estagios": ["executar"],
+      "escreve": false
+    }
+  }
+}

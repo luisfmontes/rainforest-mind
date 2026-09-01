@@ -1,0 +1,9 @@
+{
+  "versao": 1,
+  "agentes": {
+    "leitor": {
+      "estagios": ["executar"],
+      "escreve": false
+    }
+  }
+  ESTE NAO E JSON
