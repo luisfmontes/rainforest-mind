@@ -9,14 +9,21 @@ set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC_M="$(cygpath -m "$SRC" 2>/dev/null || printf '%s' "$SRC")"
 
-RAIZ_POSIX="$(mktemp -d)"
+
+# Usar diretório dentro do worktree em vez de /tmp
+RAIZ_BASE="$SRC/.rainforest/test-segunda-opiniao"
+rm -rf "$RAIZ_BASE" 2>/dev/null || true
+mkdir -p "$RAIZ_BASE"
+RAIZ_POSIX="$RAIZ_BASE/run-$$"
+mkdir -p "$RAIZ_POSIX"
 RAIZ="$(cygpath -m "$RAIZ_POSIX" 2>/dev/null || printf '%s' "$RAIZ_POSIX")"
-trap 'rm -rf "$RAIZ_POSIX"' EXIT
+trap 'sleep 1; rm -rf "$RAIZ_POSIX" 2>/dev/null; rmdir "$RAIZ_BASE" 2>/dev/null || true' EXIT
 
 echo "(caixa de areia: $RAIZ)"
 echo ""
 
 ok=0
+falhou=0
 falhou=0
 
 testa() {
@@ -465,13 +472,51 @@ else
 fi
 
 echo ""
-echo "== CASO 14: divergencia-sem-motivo-recusa =="
+
+echo ""
+echo "== CASO 14: divergencia-com-motivo-so-whitespace-recusa =="
+
+TEMP_REPO_WHITESPACE="$RAIZ/test-divergencia-whitespace-repo"
+mkdir -p "$TEMP_REPO_WHITESPACE"
+cd "$TEMP_REPO_WHITESPACE"
+git init --quiet
+git config user.email "test@<email>"
+git config user.name "Test"
+
+echo "content" > file.txt
+git add file.txt
+git commit --quiet -m "base"
+BASE_SHA_WHITESPACE=$(git rev-parse HEAD)
+
+REGISTRO_LOGFILE_WHITESPACE="$TEMP_REPO_WHITESPACE/.claude/logs/divergencias-segunda-opiniao.jsonl"
+rm -f "$REGISTRO_LOGFILE_WHITESPACE"
+
+OUTPUT_WHITESPACE=$(cd "$TEMP_REPO_WHITESPACE" && node "$SRC/scripts/segunda-opiniao.cjs" registrar-divergencia \
+  --veredito discordo \
+  --motivo "   " \
+  --base "$BASE_SHA_WHITESPACE" 2>&1); EXIT_WHITESPACE=$?
+
+if [ "$EXIT_WHITESPACE" != "0" ]; then
+  if [ ! -f "$REGISTRO_LOGFILE_WHITESPACE" ]; then
+    ok=$((ok + 1))
+    echo "  ok   divergencia-com-motivo-so-whitespace-recusa: exit ≠ 0 e nada gravado"
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA divergencia-com-motivo-so-whitespace-recusa: arquivo não deveria ter sido criado"
+  fi
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA divergencia-com-motivo-so-whitespace-recusa: deveria sair ≠ 0, saiu 0"
+fi
+
+echo ""
+echo "== CASO 15: divergencia-sem-flag-motivo-recusa =="
 
 TEMP_REPO_SEM_MOT="$RAIZ/test-divergencia-sem-motivo-repo"
 mkdir -p "$TEMP_REPO_SEM_MOT"
 cd "$TEMP_REPO_SEM_MOT"
 git init --quiet
-git config user.email "test@example.com"
+git config user.email "test@<email>"
 git config user.name "Test"
 
 echo "content" > file.txt
@@ -480,28 +525,31 @@ git commit --quiet -m "base"
 BASE_SHA_SEM_MOT=$(git rev-parse HEAD)
 
 REGISTRO_LOGFILE_SEM_MOT="$TEMP_REPO_SEM_MOT/.claude/logs/divergencias-segunda-opiniao.jsonl"
-# Limpar log se existir
 rm -f "$REGISTRO_LOGFILE_SEM_MOT"
 
-# Tentar registrar com motivo vazio
 OUTPUT_SEM_MOT=$(cd "$TEMP_REPO_SEM_MOT" && node "$SRC/scripts/segunda-opiniao.cjs" registrar-divergencia \
   --veredito discordo \
-  --motivo "" \
   --base "$BASE_SHA_SEM_MOT" 2>&1); EXIT_SEM_MOT=$?
 
 if [ "$EXIT_SEM_MOT" != "0" ]; then
-  # Validar que nada foi gravado
   if [ ! -f "$REGISTRO_LOGFILE_SEM_MOT" ]; then
-    ok=$((ok + 1))
-    echo "  ok   divergencia-sem-motivo-recusa: exit ≠ 0 e nada gravado"
+    if echo "$OUTPUT_SEM_MOT" | grep -q "requer --veredito, --motivo e --base"; then
+      ok=$((ok + 1))
+      echo "  ok   divergencia-sem-flag-motivo-recusa: exit ≠ 0, nada gravado, mensagem correta"
+    else
+      falhou=$((falhou + 1))
+      echo "  FALHA divergencia-sem-flag-motivo-recusa: mensagem não contém 'requer --veredito, --motivo e --base'"
+      echo "$OUTPUT_SEM_MOT" | head -3
+    fi
   else
     falhou=$((falhou + 1))
-    echo "  FALHA divergencia-sem-motivo-recusa: arquivo não deveria ter sido criado"
+    echo "  FALHA divergencia-sem-flag-motivo-recusa: arquivo não deveria ter sido criado"
   fi
 else
   falhou=$((falhou + 1))
-  echo "  FALHA divergencia-sem-motivo-recusa: deveria sair ≠ 0, saiu 0"
+  echo "  FALHA divergencia-sem-flag-motivo-recusa: deveria sair ≠ 0, saiu 0"
 fi
+
 
 echo ""
 echo "== RESUMO =="
