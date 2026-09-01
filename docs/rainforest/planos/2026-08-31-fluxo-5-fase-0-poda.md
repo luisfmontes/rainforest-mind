@@ -196,3 +196,16 @@ paralela: sim
 mutacao: n/a
   motivo: remoção de arquivo duplicado; a prova é o arquivo ausente e os casos R1-R4 continuarem verdes em testa-saude.sh
 pronto quando: o arquivo não existe mais e `bash scripts/testa-saude.sh` continua 100% verde
+
+### 12. `checarPoda` lê o pidfile que o `poda.cjs` REALMENTE grava [tipo: implementar]
+atende: T7/D4 (achado da revisão rodada 2: consumidor lia `port`, produtor grava `porta` — caminho de sucesso inatingível; fixture casava o defeito do consumidor)
+arquivos: `scripts/saude.cjs`, `scripts/testa-saude.sh`
+depende de: nenhuma
+paralela: nao
+mutacao:
+  arquivo: `scripts/saude.cjs`
+  de: a leitura da chave `porta` do pidfile
+  para: de volta a `port`
+  bateria: `bash scripts/testa-saude.sh`
+  fixture: caso novo R5 "caminho de sucesso com pidfile no formato REAL e porta viva"
+pronto quando: `checarPoda` lê `pidInfo.porta` (a chave que `gravarPidfile` escreve); as variáveis mortas `portaEsperada`/`urlEsperada` saem; o fixture do R3 grava o pidfile no formato REAL (`porta`); e um caso novo R5 sobe um servidor local vivo, grava pidfile real apontando pra ele, seta `ANTHROPIC_BASE_URL` para a porta e afere o item `poda` nível `ok` com a contagem de requisições — o caminho de sucesso roda pela primeira vez
