@@ -884,11 +884,12 @@ function checarEsquema() {
 // ---------------------------------------------------------------- 10.5 conselho
 /**
  * Checagem do conselho — rodadas abertas e ABANDONAs.
+ * Procura em process.cwd() para ser independente de onde o plugin está instalado.
  * Só relata aviso se houver rodada ABANDONA ou parada aberta sem progresso.
  * Seção ausente se não houver nada a relatar.
  */
 function checarConselho() {
-  const dirConselho = path.join(RAIZ_CODIGO, '.rainforest', 'conselho');
+  const dirConselho = path.join(process.cwd(), '.rainforest', 'conselho');
   if (!fs.existsSync(dirConselho)) {
     return; // sem conselho: seção ausente
   }
