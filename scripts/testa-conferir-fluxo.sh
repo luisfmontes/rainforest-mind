@@ -183,8 +183,15 @@ exige 2 "lista com tarefa que nao existe no plano recusa" E marcar --slug t --es
 # fora — e a forma mais barata de satisfazer a cobertura sem ter mutado nada.
 exige 2 "mesma tarefa duas vezes na lista recusa" E marcar --slug t --estagio executar --status ok \
   --json '{"mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t1"},{"tarefa":1,"resultado":"vermelho","fixture":"t1"},{"tarefa":2,"resultado":"vermelho","fixture":"t2"},{"tarefa":3,"resultado":"vermelho","fixture":"t3"},{"tarefa":4,"resultado":"n/a","motivo":"doc"}]}'
+# 4a porta, acrescentada em 2026-08-28 pelo ciclo-por-maquina: `executar` e
+# `verificar` so fecham com `comando` e `saida` no --json
+# (ESTAGIOS_EXIGEM_EVIDENCIA em scripts/estado.cjs:110). Esta bateria nao
+# acompanhou a mudanca e ficou VERMELHA na main desde entao — o caso abaixo
+# pedia exit 0 de um fechamento que o estado.cjs recusa, com razao, por falta de
+# evidencia. Corrigido em 2026-09-01: quem prova a catraca de mutacao passa pela
+# porta da evidencia tambem.
 exige 0 "executar com catraca armada e lista completa fecha" E marcar --slug t --estagio executar --status ok \
-  --json "{\"tarefas_ok\":5,\"tarefas\":5,\"mutacao\":$MUT5}"
+  --json "{\"tarefas_ok\":5,\"tarefas\":5,\"comando\":\"bash scripts/testa-x.sh\",\"saida\":\"ok: 5 falhou: 0\",\"mutacao\":$MUT5}"
 
 exige 2 "revisar ok SEM base/head recusa (D4)" E marcar --slug t --estagio revisar --status ok --json '{"achados":0}'
 
@@ -406,7 +413,8 @@ OE marcar --slug t --estagio design --status aprovado >/dev/null 2>&1
 OE marcar --slug t --estagio plano  --status ok >/dev/null 2>&1
 OE exigir --slug t --estagio executar >/dev/null 2>&1
 exige 0 "estado.cjs tambem ignora a cerca ao cruzar a lista" OE marcar --slug t \
-  --estagio executar --status ok --json "{\"tarefas_ok\":10,\"tarefas\":10,\"mutacao\":$LISTA_10}"
+  --estagio executar --status ok \
+  --json "{\"tarefas_ok\":10,\"tarefas\":10,\"comando\":\"bash scripts/testa-x.sh\",\"saida\":\"ok: 10 falhou: 0\",\"mutacao\":$LISTA_10}"
 
 rm -rf "$O"
 
