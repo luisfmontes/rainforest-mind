@@ -14,22 +14,33 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-// Imports dos exports do estado.cjs para usar a lógica oficial
-// de fechamento e determinação de próximo estágio.
-let estado_exports;
+// Lógica oficial de fechamento e de próximo estágio: vem do `estado.cjs`, que é
+// o dono dela.
+//
+// Até 2026-09-01 este `require` existia, o comentário dizia exatamente isto — e
+// o resultado era guardado numa variável que NINGUÉM lia. As funções abaixo eram
+// reimplementação local, idêntica por coincidência. A rodada 4 da revisão pegou:
+// código morto ao lado de um comentário que promete o contrário, e a promessa
+// era falsa. O custo não é o byte: é o dia em que o grafo ganhar um estágio no
+// `estado.cjs` e o resolver de estágio ativo não ficar sabendo — em silêncio, e
+// com `null` significando "sem estágio ativo", que a portaria trata como negar.
+//
+// Agora o import é de verdade, e as definições locais ficam SÓ como fallback
+// para o caso de o `estado.cjs` não estar alcançável (este arquivo é lib de
+// hook, e hook roda de cwd que não controlamos).
+let estadoOficial = null;
 try {
-  estado_exports = require('../scripts/estado.cjs');
+  estadoOficial = require('../../scripts/estado.cjs');
 } catch (_) {
-  // Se não conseguir carregar, tenta um nível acima
   try {
-    estado_exports = require('./scripts/estado.cjs');
+    estadoOficial = require('../scripts/estado.cjs');
   } catch (_2) {
-    // fallback: vamos definir as funções aqui
+    estadoOficial = null; // usa o fallback local abaixo
   }
 }
 
 // ============================================================================
-// IMPORTS/Fallbacks da lógica de estado.cjs
+// FALLBACK da lógica de estado.cjs — usado só se o require acima falhar
 // ============================================================================
 
 const DECISAO = {
@@ -41,19 +52,27 @@ const EXECUCAO = ['executar', 'revisar', 'verificar', 'fechar'];
 const FECHA_TAMBEM = { arqueologia: ['ok', 'dispensada'] };
 const FECHADO = { design: 'aprovado', plano: 'ok' };
 
-function estaFechado(estagio, bloco) {
+function estaFechadoLocal(estagio, bloco) {
   if (!bloco || typeof bloco !== 'object') return false;
   if (FECHA_TAMBEM[estagio]) return FECHA_TAMBEM[estagio].includes(bloco.status);
   return bloco.status === (FECHADO[estagio] || 'ok');
 }
 
-function proximo(estado) {
+function proximoLocal(estado) {
   // `arqueologia` fica FORA desta lista — se entrasse, todo projeto sem mapa
   // ficaria eternamente com "proximo: arqueologia"
   for (const e of ['design', 'plano', ...EXECUCAO]) {
-    if (!estaFechado(e, estado[e])) return e;
+    if (!estaFechadoLocal(e, estado[e])) return e;
   }
   return null;
+}
+
+/* O oficial vence; o local só entra se o `estado.cjs` não carregou. */
+function proximo(estado) {
+  if (estadoOficial && typeof estadoOficial.proximo === 'function') {
+    return estadoOficial.proximo(estado);
+  }
+  return proximoLocal(estado);
 }
 
 // ============================================================================
