@@ -33,10 +33,10 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-08-30",
-    "tarefas_ok": 2,
+    "tarefas_ok": 3,
     "tarefas": 9,
-    "nota": "T2 quase fechada (df3b41c): hook de captura recuperado da fluxo/ponte, bateria testa-portaria-captura.cjs 9/0, catraca exit 0 (gravacao incondicional -> vermelho), settings.json versionado com matcher Task|Agent. FALTA o criterio final da T2: amostra REAL de um despacho — so colhe em sessao nova com settings.json no checkout principal. Pendentes: 2 (amostra real), 3-6, 8, 9. Branch mergeada com origin/main (estava 46 atras).",
-    "em": "2026-08-31"
+    "nota": "T1, T7 e T2 fechadas. T2 fechou em 2026-09-01 com a amostra REAL colhida por sessao nova (claude -p headless) — .rainforest/portaria/amostra.json + amostra-com-isolation.json + LEIA-ME.md, commit 10801d0. Fatos medidos que mudam a T3: tool_name e Agent (nao Task); o nome vem em tool_input.subagent_type COM prefixo de plugin (rainforest-mind:executor) e a chave do manifesto e o nome nu; isolation e name aparecem em tool_input. Pendentes: 3, 4, 5, 6, 8, 9. DIVIDA DO MERGE com origin/main (3 baterias vermelhas que na main estao verdes, todas causadas pelo texto da T7 no nucleo): hooks/testa-contexto-sessao.sh (nucleo 5869 B > catraca 5600 B, contrato exige 5589 B), scripts/testa-ponte.sh (o literal .rainforest/agentes.json vaza para o arquivo gerado ao terceiro), scripts/testa-orcamento.sh (secao 1d com --teto 13500 chumbado; total neutro subiu de 13398 para 13613 B). Ja vermelhas NA MAIN, nao sao deste fluxo: testa-conferir-fluxo, testa-dados-batedor-repos, testa-triagem, testa-versao.",
+    "em": "2026-09-01"
   },
   "revisar": {
     "status": "pendente"
