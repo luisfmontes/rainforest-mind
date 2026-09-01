@@ -1850,6 +1850,201 @@ fi
 
 echo ""
 
+echo "== Resultado =="
+echo "== CASO 33: injecao-codex-sem-declaracao-de-teste-e-ignorada =="
+TEMPDIR33="$RAIZ/test-injecao-codex-sem-teste"
+mkdir -p "$TEMPDIR33"
+
+# Create prompt file for codex adapter
+echo "# Prompt de teste" > "$TEMPDIR33/prompt.md"
+SAIDA33="$TEMPDIR33/saida.json"
+
+# Test: CONSELHO_CMD_CODEX defined but WITHOUT RFM_TEST — should be IGNORED
+# Expected: Command fails because it tries to run real 'codex' CLI (which doesn't exist)
+# NOT expected: The fixture marked file is created (which would prove injection was used)
+saida33=$( \
+  cd "$TEMPDIR33" && \
+  env -i \
+    PATH="$PATH" \
+    CONSELHO_CMD_CODEX="node \"$FIXTURE_MARCA\" {prompt} {saida}" \
+    node "$CONSELHO" adaptador-codex "$TEMPDIR33/prompt.md" "$SAIDA33" \
+  2>&1
+)
+exit33=$?
+
+# Should fail because tries to run 'codex' (doesn't exist), not because fixture was called
+if [ "$exit33" != "0" ]; then
+  ok=$((ok + 1))
+  echo "  ok   injecao-codex-sem-declaracao: falha esperada (exit $exit33)"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA injecao-codex-sem-declaracao: deveria ter falhado"
+fi
+
+# Verify that the injection was NOT used (marker file should NOT exist)
+if [ ! -f "$TEMPDIR33/.marca-injecao-usada" ]; then
+  ok=$((ok + 1))
+  echo "  ok   injecao-codex-sem-declaracao: injecao foi ignorada (sem marca)"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA injecao-codex-sem-declaracao: injecao foi usada (marca existe)"
+fi
+
+# Verify that stderr does NOT contain injection message
+if ! echo "$saida33" | grep -q "Usando comando injetado"; then
+  ok=$((ok + 1))
+  echo "  ok   injecao-codex-sem-declaracao: stderr sem mensagem de injeção"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA injecao-codex-sem-declaracao: stderr contém mensagem de injeção"
+  echo "$saida33" | sed 's/^/         /' | head -10
+fi
+
+echo ""
+
+echo "== Resultado =="
+echo "== CASO 33b: injecao-codex-com-teste-e-usada =="
+# Caso simétrico: COM RFM_TEST=1, o adaptador chega a chamar a fixture
+# e escreve saída com sucesso.
+TEMPDIR33b="$RAIZ/test-codex-com-teste"
+rm -f "$TEMPDIR33b/.marca-injecao-usada"  # Limpar de execução anterior se houver
+mkdir -p "$TEMPDIR33b"
+
+# Criar arquivo de prompt fake
+echo "# Teste com RFM_TEST=1" > "$TEMPDIR33b/prompt.md"
+
+# Mesma fixture de marca, mesma variável de ambiente injetada
+export CONSELHO_CMD_CODEX="node \"$FIXTURE_MARCA\" {prompt} {saida}"
+
+# Rodar COM RFM_TEST=1 para usar injeção
+# Deve sair com exit 0 e CRIAR arquivo de saída
+SAIDA_DEBUG_CODEX=$(bash -c "cd '$TEMPDIR33b' && RFM_TEST=1 node '$CONSELHO' adaptador-codex prompt.md saida.json" 2>&1)
+EXIT_DEBUG_CODEX=$?
+
+if [ "$EXIT_DEBUG_CODEX" = "0" ]; then
+  ok=$((ok + 1))
+  echo "  ok   injecao-codex-com-teste-e-usada: exit = 0 (exit 0)"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA injecao-codex-com-teste-e-usada: exit = 0: esperava exit 0, veio $EXIT_DEBUG_CODEX"
+  echo "         $SAIDA_DEBUG_CODEX"
+fi
+
+# Verificar que saida.json FOI criado
+if [ -f "$TEMPDIR33b/saida.json" ]; then
+  ok=$((ok + 1))
+  echo "  ok   arquivo de saída foi criado (sucesso fechado)"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA arquivo de saída não foi criado em sucesso"
+fi
+
+# Verificar que a marca FOI criada (injeção foi usada)
+if [ -f "$TEMPDIR33b/.marca-injecao-usada" ]; then
+  ok=$((ok + 1))
+  echo "  ok   injecao-codex-com-teste-e-usada: injecao foi usada (marca existe)"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA injecao-codex-com-teste-e-usada: injecao não foi usada (sem marca)"
+fi
+
+echo ""
+
+echo "== Resultado =="
+echo "== CASO 34: codex-fixture-retorna-json-valido =="
+# Teste que verifica que membro-codex-fake funciona e retorna JSON válido
+TEMPDIR34="$RAIZ/test-codex-fixture-valida"
+mkdir -p "$TEMPDIR34"
+
+echo "# Prompt de teste" > "$TEMPDIR34/prompt.md"
+SAIDA34="$TEMPDIR34/saida.json"
+
+# Rodar com membro-codex-fake injetado e RFM_TEST=1
+export CONSELHO_CMD_CODEX="node \"$SRC_M/scripts/fixtures/conselho/membro-codex-fake.cjs\" {prompt} {saida}"
+
+SAIDA_CODEX_FIXTURE=$(bash -c "cd '$TEMPDIR34' && RFM_TEST=1 node '$CONSELHO' adaptador-codex prompt.md saida.json" 2>&1)
+EXIT_CODEX_FIXTURE=$?
+
+if [ "$EXIT_CODEX_FIXTURE" = "0" ]; then
+  ok=$((ok + 1))
+  echo "  ok   codex-fixture-retorna-json-valido: exit = 0"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA codex-fixture-retorna-json-valido: exit = 0: esperava exit 0, veio $EXIT_CODEX_FIXTURE"
+fi
+
+if [ -f "$TEMPDIR34/saida.json" ]; then
+  ok=$((ok + 1))
+  echo "  ok   arquivo saida.json foi criado"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA arquivo saida.json não foi criado"
+fi
+
+# Verificar que o arquivo contém JSON válido com campos esperados
+if grep -q '"posicao"' "$TEMPDIR34/saida.json" && grep -q '"argumentos"' "$TEMPDIR34/saida.json"; then
+  ok=$((ok + 1))
+  echo "  ok   saida.json contém campos JSON válidos"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA saida.json não contém os campos esperados"
+fi
+
+echo ""
+
+echo "== Resultado =="
+echo "== CASO 35: json-invalido-em-adaptador-codex =="
+# Teste que verifica que um JSON inválido é devidamente rejeitado
+TEMPDIR35="$RAIZ/test-json-invalido-codex"
+mkdir -p "$TEMPDIR35"
+
+echo "# Prompt de teste" > "$TEMPDIR35/prompt.md"
+SAIDA35="$TEMPDIR35/saida.json"
+
+# Injetar uma fixture que retorna JSON inválido
+export CONSELHO_CMD_CODEX="node \"$SRC_M/scripts/fixtures/conselho/membro-stdout-json-invalido.cjs\" {prompt} {saida}"
+
+SAIDA_JSON_INVALIDO=$(bash -c "cd '$TEMPDIR35' && RFM_TEST=1 node '$CONSELHO' adaptador-codex prompt.md saida.json" 2>&1)
+EXIT_JSON_INVALIDO=$?
+
+if [ "$EXIT_JSON_INVALIDO" != "0" ]; then
+  ok=$((ok + 1))
+  echo "  ok   json-invalido-em-adaptador-codex: exit != 0 (rejeitado)"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA json-invalido-em-adaptador-codex: deveria ter falhado com exit != 0"
+fi
+
+if [ ! -f "$TEMPDIR35/saida.json" ]; then
+  ok=$((ok + 1))
+  echo "  ok   arquivo saida.json NÃO foi criado em falha (falha fechada)"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA arquivo saida.json foi criado mesmo com JSON inválido"
+fi
+
+if echo "$SAIDA_JSON_INVALIDO" | grep -q "JSON inválido"; then
+  ok=$((ok + 1))
+  echo "  ok   stderr contém mensagem de erro 'JSON inválido'"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA stderr não contém mensagem 'JSON inválido'"
+fi
+
+echo ""
+
+echo "== AUDITORIA DE FIXTURES =="
+FIXTURES_DIR="$SRC_M/scripts/fixtures/conselho"
+for fixture in "$FIXTURES_DIR"/*.cjs; do
+  fixture_name=$(basename "$fixture" .cjs)
+  count=$(grep -c "$fixture_name" "$SRC_M/scripts/testa-conselho.sh" 2>/dev/null | head -1)
+  if [ -z "$count" ] || [ "$count" -eq 0 ]; then
+    echo "  AVISO: fixture '$fixture_name' não é referenciada em testa-conselho.sh"
+  fi
+done
+
+echo ""
+
 echo "total=$((ok + falhou)) vermelhas:[$falhou]"
 if [ "$falhou" -gt 0 ]; then
   exit 1
