@@ -73,6 +73,10 @@ nome_do_manifesto() {
 
 M="$SBP/cfg/plugins/marketplaces/$(nome_do_manifesto "$SRC")"
 mkdir -p "$SBP/cfg/plugins/marketplaces" "$SBP/dados"
+# Os casos gerais nao sao da poda: desligar a chave (padrao true) para o
+# checarPoda nao injetar aviso em cenario alheio. Os casos da poda criam
+# a propria raiz com a chave ligada.
+printf '{"poda": false}' > "$SBP/dados/config.json"
 
 ver() { # opcional: caminho da fonte a rodar (default: $SRC, o repo real)
   local fonte="${1:-$SRC}"
@@ -337,6 +341,7 @@ echo "== esquema de banco: detecta falta de UNIQUE (Tarefa 23 - item 6) =="
 # Teste I: banco com esquema legado (sem UNIQUE constraint em observacoes)
 DADOS_LEGADO=".rainforest-saude-legado"
 rm -rf "$DADOS_LEGADO" && mkdir -p "$DADOS_LEGADO"
+printf '{"poda": false}' > "$DADOS_LEGADO/config.json"
 ( cd "$DADOS_LEGADO" && node << 'MKLEGACY'
 const { DatabaseSync } = require('node:sqlite');
 const db = new DatabaseSync('./rainforest.db');
@@ -418,6 +423,7 @@ echo "== banco de memoria: observacoes, indice vivo e pipeline (Tarefa 5) =="
 # Teste Q: banco ok com observacoes e fts sincronizados
 DADOS_OK=".rainforest-saude-ok"
 rm -rf "$DADOS_OK" && mkdir -p "$DADOS_OK"
+printf '{"poda": false}' > "$DADOS_OK/config.json"
 ( cd "$DADOS_OK" && node << 'MKBANCO_OK'
 const { DatabaseSync } = require('node:sqlite');
 const db = new DatabaseSync('./rainforest.db');
@@ -475,6 +481,7 @@ checa "Q2. banco ausente vira ok"                         "ok" "ausente" "$Q2"
 # Usar FTS sem content= para ter controle total sobre sincronizacao
 DADOS_DIVERGE=".rainforest-saude-diverge"
 rm -rf "$DADOS_DIVERGE" && mkdir -p "$DADOS_DIVERGE"
+printf '{"poda": false}' > "$DADOS_DIVERGE/config.json"
 ( cd "$DADOS_DIVERGE" && node << 'MKBANCO_DIVERGE'
 const { DatabaseSync } = require('node:sqlite');
 const db = new DatabaseSync('./rainforest.db');
@@ -528,6 +535,7 @@ checa "Q3. e sugerem reindexar"                          "aviso" "reindexar" "$Q
 # Teste Q4: pendencia de 72h (mais que 48h)
 DADOS_PENDENTE_72H=".rainforest-saude-pendente-72h"
 rm -rf "$DADOS_PENDENTE_72H" && mkdir -p "$DADOS_PENDENTE_72H"
+printf '{"poda": false}' > "$DADOS_PENDENTE_72H/config.json"
 ( cd "$DADOS_PENDENTE_72H" && node << 'MKBANCO_PENDENTE_72H'
 const { DatabaseSync } = require('node:sqlite');
 const db = new DatabaseSync('./rainforest.db');
@@ -580,6 +588,7 @@ checa "Q4. e sugere observar"                            "aviso" "observar" "$Q4
 # Teste Q5: pendencia de 1h (menos que 48h) - NAO acusa
 DADOS_PENDENTE_1H=".rainforest-saude-pendente-1h"
 rm -rf "$DADOS_PENDENTE_1H" && mkdir -p "$DADOS_PENDENTE_1H"
+printf '{"poda": false}' > "$DADOS_PENDENTE_1H/config.json"
 ( cd "$DADOS_PENDENTE_1H" && node << 'MKBANCO_PENDENTE_1H'
 const { DatabaseSync } = require('node:sqlite');
 const db = new DatabaseSync('./rainforest.db');
@@ -638,6 +647,7 @@ fi
 # versao anterior caia no ok final — o alarme mentia exatamente no caso imprevisto.
 DADOS_IMPREVISTO=".rainforest-saude-imprevisto"
 rm -rf "$DADOS_IMPREVISTO" && mkdir -p "$DADOS_IMPREVISTO"
+printf '{"poda": false}' > "$DADOS_IMPREVISTO/config.json"
 ( cd "$DADOS_IMPREVISTO" && node << 'MKBANCO_IMPREVISTO'
 const { DatabaseSync } = require('node:sqlite');
 const db = new DatabaseSync('./rainforest.db');
@@ -968,7 +978,7 @@ fi
 R3_TEST="$SBP/test-poda-dead-port"
 mkdir -p "$R3_TEST/.rainforest/poda"
 printf '{"pid":99999,"port":19999}' > "$R3_TEST/.rainforest/poda/poda.pid"
-R3="$( ( cd "$R3_TEST" && node "$SRC/scripts/saude.cjs" --json 2>/dev/null ) | node -e "
+R3="$( ( cd "$R3_TEST" && RFM_ROOT="$R3_TEST/.rainforest" node "$SRC/scripts/saude.cjs" --json 2>/dev/null ) | node -e "
   let d=''; process.stdin.on('data', c => d += c).on('end', () => {
     try {
       const a = JSON.parse(d).find(x => x.item === 'poda');
@@ -982,12 +992,20 @@ else
   falhou=$((falhou+1)); echo "  FALHA R3. esperava aviso, veio: $R3"
 fi
 
-# R4: exit deve ser 0 com aviso (só alerta faz exit 1)
-( cd "$R3_TEST" && node "$SRC/scripts/saude.cjs" --json 2>/dev/null >/dev/null )
-if [ $? -eq 0 ]; then
-  ok=$((ok+1)); echo "  ok   R4. exit=0 com aviso"
+# R4: o item poda é aviso, nunca alerta — o exit global não pode virar 1 POR CAUSA
+# DA PODA (medir o exit inteiro aqui seria frágil: na bateria aninhada do caso K a
+# cópia é um repo recém-init e outras seções produzem alerta legítimo).
+R4_NIVEIS="$( cd "$R3_TEST" && RFM_ROOT="$R3_TEST/.rainforest" node "$SRC/scripts/saude.cjs" --json 2>/dev/null | node -e '
+  let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
+    try {
+      const a=JSON.parse(d).filter(x=>x.item==="poda");
+      console.log(a.map(x=>x.nivel).join(",")||"ausente");
+    } catch { console.log("erro"); }
+  })' )"
+if [ "$R4_NIVEIS" = "aviso" ]; then
+  ok=$((ok+1)); echo "  ok   R4. item poda e exatamente um aviso (nunca alerta)"
 else
-  falhou=$((falhou+1)); echo "  FALHA R4. exit foi 1, deveria ser 0"
+  falhou=$((falhou+1)); echo "  FALHA R4. niveis do item poda: $R4_NIVEIS (esperava 'aviso')"
 fi
 
 # MUTAÇÃO: mudar aviso→alerta faz exit ir para 1

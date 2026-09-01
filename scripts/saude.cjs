@@ -1035,8 +1035,15 @@ function checarMemoria() {
  * @param {function} [o._resolverConfig] override de resolverConfig (para testes)
  */
 function checarPoda(o = {}) {
-  const { resolverConfig: resolverConfigReal } = require('../hooks/lib/config.cjs');
-  const { caminhoPid, caminhoContexto, portaPadrao } = require('../hooks/lib/poda-dados.cjs');
+  // Falha ABERTA se os módulos não estiverem nesta árvore (cópia parcial do
+  // plugin, fixture de bateria): /saude nunca cai por causa de uma seção.
+  let resolverConfigReal, caminhoPid, caminhoContexto, portaPadrao;
+  try {
+    ({ resolverConfig: resolverConfigReal } = require('../hooks/lib/config.cjs'));
+    ({ caminhoPid, caminhoContexto, portaPadrao } = require('../hooks/lib/poda-dados.cjs'));
+  } catch {
+    return; // módulos ausentes: nada a reportar
+  }
   const { spawnSync } = require('child_process');
 
   const resolverConfig = o._resolverConfig || resolverConfigReal;
