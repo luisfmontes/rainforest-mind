@@ -153,7 +153,7 @@ segunda opinião é um passo **opcional** — liga-se por `--modelo codex` ou
 Quando ligada, consome:
 
 - `git diff <base>...<head>` (três pontos, o mesmo escopo que `revisar` já fixa
-  em linhas 34-44)
+  acima)
 - O critério falsificável do briefing (arquivo de texto)
 - O commit-base (SHA fornecido)
 
@@ -169,11 +169,11 @@ discordar e a janela rejeitar o parecer, a divergência vai ao log
 não desaparece, mas também não trava a entrega.
 
 **Indisponibilidade reprova.** Se o modelo está ligado mas não responde (exit
-≠ 0, stdout vazio, ou timeout), a second-opiniao.cjs sai com erro — nunca segue
+≠ 0, stdout vazio, ou timeout), o `segunda-opiniao.cjs` sai com erro — nunca segue
 em silêncio. Use `TIMEOUT_SEGUNDA_OPINIAO_MS` para calibrar timeout (default
 300000 ms = 5 min).
 
 Quando a segunda opinião concorda, a entrega prossegue com endorsement de
 ambos os auditores. Quando discorda e é aceita, o motivo fica registrado e
-visible para que revisões futuras de contexto relacionado saibam por quê a
+visível para que revisões futuras de contexto relacionado saibam por quê a
 aprovação do externo foi descartada.
