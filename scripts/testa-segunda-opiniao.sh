@@ -10,14 +10,11 @@ SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC_M="$(cygpath -m "$SRC" 2>/dev/null || printf '%s' "$SRC")"
 
 
-# Usar diretório dentro do worktree em vez de /tmp
-RAIZ_BASE="$SRC/.rainforest/test-segunda-opiniao"
-rm -rf "$RAIZ_BASE" 2>/dev/null || true
+# Usar diretório temporário (fora do worktree para limpeza correta)
+RAIZ_BASE="/tmp/test-segunda-opiniao-$$"
 mkdir -p "$RAIZ_BASE"
-RAIZ_POSIX="$RAIZ_BASE/run-$$"
-mkdir -p "$RAIZ_POSIX"
-RAIZ="$(cygpath -m "$RAIZ_POSIX" 2>/dev/null || printf '%s' "$RAIZ_POSIX")"
-trap 'sleep 1; rm -rf "$RAIZ_POSIX" 2>/dev/null; rmdir "$RAIZ_BASE" 2>/dev/null || true' EXIT
+RAIZ="$RAIZ_BASE"
+trap 'sleep 1; rm -rf "$RAIZ_BASE" 2>/dev/null' EXIT
 
 echo "(caixa de areia: $RAIZ)"
 echo ""
@@ -592,7 +589,41 @@ else
 fi
 
 echo ""
-echo "== CASO 16: divergencia-log-ancorado-em-repo-raiz =="
+echo "== CASO 16: divergencia-fora-de-repo-recusa =="
+
+# Teste fora de qualquer repositório git — git rev-parse --show-toplevel deve falhar
+# Usa scratchpad que está fora do working tree do rainforest-mind
+FORA_REPO="/tmp/segunda-opiniao-fora-repo-$$"
+rm -rf "$FORA_REPO"
+mkdir -p "$FORA_REPO"
+trap 'rm -rf "$FORA_REPO" 2>/dev/null' EXIT
+
+OUTPUT_FORA=$(cd "$FORA_REPO" && node "$SRC/scripts/segunda-opiniao.cjs" registrar-divergencia \
+  --veredito discordo \
+  --motivo "Rodando fora de repo" \
+  --base "abc123" 2>&1); EXIT_FORA=$?
+
+if [ "$EXIT_FORA" != "0" ]; then
+  if echo "$OUTPUT_FORA" | grep -q "dentro de um repositório git"; then
+    if [ ! -d "$FORA_REPO/.claude/logs" ]; then
+      ok=$((ok + 1))
+      echo "  ok   divergencia-fora-de-repo-recusa: exit ≠ 0, mensagem clara, nada gravado"
+    else
+      falhou=$((falhou + 1))
+      echo "  FALHA divergencia-fora-de-repo-recusa: não deveria gravar arquivo fora de repo"
+    fi
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA divergencia-fora-de-repo-recusa: mensagem não menciona repo git"
+    echo "$OUTPUT_FORA" | head -2
+  fi
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA divergencia-fora-de-repo-recusa: deveria sair ≠ 0, saiu 0"
+fi
+
+echo ""
+echo "== CASO 17: divergencia-log-ancorado-em-repo-raiz =="
 
 # Teste em subpasta do repositório — o log deve ir para raiz do repo, não para cwd
 TEMP_REPO_SUBPASTA="$RAIZ/test-log-subpasta-repo"
@@ -643,7 +674,7 @@ else
 fi
 
 echo ""
-echo "== CASO 17: divergencia-sem-flag-motivo-recusa =="
+echo "== CASO 18: divergencia-sem-flag-motivo-recusa =="
 
 TEMP_REPO_SEM_MOT="$RAIZ/test-divergencia-sem-motivo-repo"
 mkdir -p "$TEMP_REPO_SEM_MOT"
