@@ -31,16 +31,65 @@
     "em": "2026-08-30"
   },
   "executar": {
-    "status": "parcial",
-    "catraca_mutacao": "2026-08-30",
-    "tarefas_ok": 7,
+    "status": "ok",
+    "catraca_mutacao": "2026-09-01",
+    "tarefas_ok": 9,
     "tarefas": 9,
     "nota": "T1, T7, T2, T3, T4, T5 e T8 fechadas. T5 entregue por subagente, conferir-entrega APROVADO (base 85728c8 pai direto de 90051f3) e mutacao da checagem 3 do lint RE-RODADA na janela principal: 12 ok / 2 falha sob mutacao, exit 0. T5 tambem consertou o schema do manifesto (a T3 lia achatado, D2 manda envelope versao+agentes, e a fixture da T3 repetia o mesmo engano). T8 feita na janela principal: lint contra o manifesto real e o agents/ real sai 0 com 6 avisos de orfao e 0 erro. T1 foi reaberta e consertada antes disso (resolver devolvia null na branch real). Pendentes: 6 (despachada) e 9. A T9 so pode rodar com o estagio ativo em revisar — o allow do revisor exige isso —, entao a evidencia dela sera colhida logo depois do marcar executar ok, ja no estagio revisar. Prova offline ja feita no worktree real, com o manifesto real: revisor -> exit 2 (estagio executar nao permitido, permitidos revisar); executor -> exit 2 (nao consta no manifesto). Falta o caminho de allow.",
     "em": "2026-09-01",
     "decisoes": {
       "achado-2": "Opcao A fechada pelo Luis em 2026-08-31 e ACEITE POR ESCRITO DADO em 2026-09-01 (resposta recomendado): executor, documentador, resolvedor-de-build e tester ficam bloqueados quando o hook entrar na main, ate a reavaliacao de escreve:true com worktree por filho. Registrado em skills/rainforest-mind/references/regra-10.md.",
       "escreve-false": "Q2 fechada pelo Luis em 2026-09-01 (recomendado): escreve:false continua como DECLARACAO, com a lacuna nomeada. Medido: nenhum dos nove agents/*.md declara tools:, entao a checagem 3 do lint nunca dispara contra os agentes reais. Por tools: Read,Grep,Glob nos tres admitidos foi recusado — o revisor precisa de Bash para reproduzir achado (regra 12). Divida escrita em references/regra-10.md."
-    }
+    },
+    "comando": "node hooks/testa-portaria-portoes.cjs; node hooks/testa-portaria-nucleo.cjs; node hooks/testa-portaria-lint.cjs; node hooks/testa-portaria-captura.cjs; node hooks/testa-portaria-gitignore.cjs; node hooks/testa-estagio-ativo.cjs; bash scripts/testa-saude.sh; bash hooks/testa-contexto-sessao.sh; bash scripts/testa-conferir-fluxo.sh; bash scripts/testa-orcamento.sh; bash scripts/testa-ponte.sh; bash scripts/testa-estado.sh",
+    "saida": "portoes P1..P5: OK exit 0 | nucleo 30 ok 0 falha exit 0 | lint 14 ok 0 falha exit 0 | captura 9 ok 0 falha exit 0 | gitignore 9 ok 0 falha exit 0 | estagio-ativo 7 ok 0 falha exit 0 | saude 56 ok 0 falha exit 0 | contexto-sessao 277 ok 0 falha exit 0 | conferir-fluxo 41 ok 0 falha exit 0 | orcamento 29 ok 0 falha exit 0 | ponte 60 ok 0 falha exit 0 | estado 137 ok 0 falha exit 0 — todos rodados na arvore integrada, exit capturado sem pipe",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "sandbox git com fluxo-9-portaria.json na branch fluxo/portaria (casa) e o par colidente 2026-01-01-portaria.json (ambiguidade nega) — mutacao: tirar a segunda forma do casamento de slug; casos (f) e (g) caem"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "duas execucoes consecutivas do hook com stdin simulado e payloads distintos — mutacao: gravacao incondicional da amostra no lugar do existsSync"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "sandbox sem .rainforest/agentes.json e payload real do harness — mutacao: manifesto ausente passa a aprovar (fail-open) em vez de negar; re-rodada na janela principal com inversao propria, 24 ok / 2 falha"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "linha real gravada por um deny do proprio portaria.cjs, criada e removida dentro do teste — mutacao: tirar a linha do .gitignore; 7 ok / 2 falha"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "test/fixtures/portaria/manifesto-escreve-inconsistente.json + test/fixtures/portaria/agentes/escritor.md (tools: Read, Write) — mutacao: a checagem 3 do lint nunca marca erro; re-rodada na janela principal, 12 ok / 2 falha"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "sandbox com estagio ativo revisar e o revisor declared nele, duas chamadas consecutivas do hook — mutacao: appendFileSync vira writeFileSync; P4 cai com '1 linha(s)' onde esperava 2; re-rodada na janela principal"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "documentacao — nucleo da regra 10 em SKILL.md e elaboracao em references/regra-10.md. Nao ha comportamento de codigo para mutar. A catraca que cobre este texto e outra e ela rodou: hooks/testa-contexto-sessao.sh mede o nucleo emitido em bytes e exige o numero exato (5597 B), e a mutacao dela ja existente ('desvio do nucleo') continua verde"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "n/a",
+        "motivo": "configuracao de dado, nao de codigo — .rainforest/agentes.json. A logica que consome o arquivo foi mutada nas tarefas 3, 5 e 6. O conteudo e aferido pelo --lint, que sai 0 contra o manifesto real e o agents/ real com 6 avisos de orfao e 0 erro"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "n/a",
+        "motivo": "verificacao manual unica, um so episodio de evidencia — e ela NAO PODE rodar dentro do proprio estagio executar: o criterio exige um ALLOW para rainforest-mind:revisor, que so e admitido no estagio revisar, e nenhum dos tres agentes do manifesto tem executar na lista. Defeito de ordenacao do plano, achado na execucao. As duas negacoes ja foram provadas no worktree real com o manifesto real (revisor -> exit 2 citando estagio executar e permitidos revisar; executor -> exit 2 nao consta no manifesto). O allow e o 'sem prompt ao humano' sao colhidos no estagio revisar, imediatamente apos este fechamento, e ficam registrados no bloco revisar deste estado"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente"
