@@ -881,6 +881,59 @@ function checarEsquema() {
   }
 }
 
+// ---------------------------------------------------------------- 10.5 conselho
+/**
+ * Checagem do conselho — rodadas abertas e ABANDONAs.
+ * Só relata aviso se houver rodada ABANDONA ou parada aberta sem progresso.
+ * Seção ausente se não houver nada a relatar.
+ */
+function checarConselho() {
+  const dirConselho = path.join(RAIZ_CODIGO, '.rainforest', 'conselho');
+  if (!fs.existsSync(dirConselho)) {
+    return; // sem conselho: seção ausente
+  }
+
+  try {
+    const rodadas = fs.readdirSync(dirConselho)
+      .filter(d => /^202\d{5}-/.test(d))
+      .sort()
+      .reverse();
+
+    if (!rodadas.length) {
+      return; // nenhuma rodada: seção ausente
+    }
+
+    const problemas = [];
+    for (const rodada of rodadas) {
+      const estadoPath = path.join(dirConselho, rodada, 'estado.json');
+      if (!fs.existsSync(estadoPath)) continue;
+
+      let estado;
+      try {
+        estado = JSON.parse(fs.readFileSync(estadoPath, 'utf8'));
+      } catch {
+        continue;
+      }
+
+      if (estado.resultado === 'ABANDONA') {
+        problemas.push(`${rodada}: ABANDONA (3ª falha consecutiva na mesma fase)`);
+      } else if (estado.fases) {
+        // Rodada aberta parada (qualquer fase pendente)
+        const pendentes = Object.keys(estado.fases).filter(f => estado.fases[f].status === 'pendente');
+        if (pendentes.length > 0) {
+          problemas.push(`${rodada}: parada na fase ${pendentes[0]}`);
+        }
+      }
+    }
+
+    if (!problemas.length) return; // tudo bem: seção ausente
+
+    aviso('conselho', `${problemas.length} rodada(s) com aviso: ${problemas.join('; ')}`);
+  } catch {
+    // erro ao ler: silenciar
+  }
+}
+
 // ---------------------------------------------------------------- 11. banco de memoria
 /**
  * Checagem do banco de dados de memória do rainforest.
@@ -1032,6 +1085,7 @@ function main() {
   checarClaudeMem();
   checarAutocompact();
   checarBranches();
+  checarConselho();
   checarEsquema();
   checarMemoria();
 
