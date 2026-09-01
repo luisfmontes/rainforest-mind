@@ -1809,10 +1809,13 @@ FIXTURE_MARCA="$SRC_M/scripts/fixtures/conselho/membro-marca-injecao.cjs"
 # Test: CONSELHO_CMD_GEMINI defined but WITHOUT RFM_TEST — should be IGNORED
 # Expected: Command fails because it tries to run real 'gemini' CLI (which doesn't exist)
 # NOT expected: The fixture marked file is created (which would prove injection was used)
+# NOTE: PATH é podado para remover npm global (/AppData/Roaming/npm) — caso contrário
+# o binário real 'gemini' seria encontrado e o teste seria não-determinístico entre máquinas
+CLEAN_PATH=$(echo "$PATH" | tr ':' '\n' | grep -v "AppData/Roaming/npm" | paste -sd: -)
 saida32=$( \
   cd "$TEMPDIR32" && \
   env -i \
-    PATH="$PATH" \
+    PATH="$CLEAN_PATH" \
     GEMINI_API_KEY="dummy-key-for-test" \
     CONSELHO_CMD_GEMINI="node \"$FIXTURE_MARCA\" {prompt} {saida}" \
     node "$CONSELHO" adaptador-gemini "$TEMPDIR32/prompt.md" "$SAIDA32" \
@@ -1862,10 +1865,12 @@ SAIDA33="$TEMPDIR33/saida.json"
 # Test: CONSELHO_CMD_CODEX defined but WITHOUT RFM_TEST — should be IGNORED
 # Expected: Command fails because it tries to run real 'codex' CLI (which doesn't exist)
 # NOT expected: The fixture marked file is created (which would prove injection was used)
+# NOTE: PATH é podado para remover npm global (/AppData/Roaming/npm) — caso contrário
+# o binário real 'codex' seria encontrado e o teste seria não-determinístico entre máquinas
 saida33=$( \
   cd "$TEMPDIR33" && \
   env -i \
-    PATH="$PATH" \
+    PATH="$CLEAN_PATH" \
     CONSELHO_CMD_CODEX="node \"$FIXTURE_MARCA\" {prompt} {saida}" \
     node "$CONSELHO" adaptador-codex "$TEMPDIR33/prompt.md" "$SAIDA33" \
   2>&1
@@ -2039,7 +2044,8 @@ for fixture in "$FIXTURES_DIR"/*.cjs; do
   fixture_name=$(basename "$fixture" .cjs)
   count=$(grep -c "$fixture_name" "$SRC_M/scripts/testa-conselho.sh" 2>/dev/null | head -1)
   if [ -z "$count" ] || [ "$count" -eq 0 ]; then
-    echo "  AVISO: fixture '$fixture_name' não é referenciada em testa-conselho.sh"
+    falhou=$((falhou + 1))
+    echo "  FALHA: fixture órfã '$fixture_name' não é referenciada em testa-conselho.sh"
   fi
 done
 
