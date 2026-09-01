@@ -91,19 +91,24 @@
     "saida": "saude 49/0; mutacao 12 exit 0"
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "8ab259e4155b3f8f6932899fa33b5e0eb4a5c483",
+      "head": "14d32c67e07c4d86fb23570b17de1226c96077ad",
       "caminhos_sujos": []
     },
-    "achados": 1,
+    "achados": 0,
     "criticos": 1,
-    "nota": "rodada 2: Host confirmado consertado AO VIVO (401 JSON da Anthropic atraves do proxy com upstream default). Achado novo reproduzido: checarPoda le pidInfo.port mas o pidfile real grava porta — caminho de sucesso do /saude inatingivel (porta undefined nao responde com proxy saudavel); fixture do R3 escrevia port, casando o defeito do consumidor (tautologia). portaEsperada/urlEsperada mortas no mesmo trecho. Tarefa 12.",
+    "nota": "rodada 3 aprovada: conserto da 12 provado por mutacao de producao (R5 pega, 47/2), ramo base-url-errada exercitado manualmente (aviso correto), varredura produtor<->consumidor sem outro par divergente, 7 baterias 172/0, sem creep. Avisos nao-bloqueantes: falta caso automatizado R6 do ramo base-url-errada (criterio da T7 sera executado a mao no verificar); JSDoc de checarPoda promete injecao de env que nao alcanca caminhoPid (pre-existente, divida).",
     "em": "2026-08-31",
-    "tentativas": 2
+    "base": "21266f797a8d43d417a3d783b83de19f4df5c339",
+    "head": "14d32c67e07c4d86fb23570b17de1226c96077ad"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "7 baterias re-rodadas pela sessao no verificar + criterio manual da T7 (servidor vivo, pidfile real, ANTHROPIC_BASE_URL errada) + greps da T9 + revisor validou o proxy AO VIVO contra a API real (401 JSON da Anthropic, nao 403 da borda)",
+    "saida": "poda-dados 11/0, poda 17/0, metricas 28/0, relatorio 21/0, estagio 8/0, config 38/0, saude 49/0 — todos exit 0; ramo base-url-errada: aviso correto; README 2 mencoes, design com rodape, zero TOO_LARGE/85% nos fontes",
+    "nota": "criterios do plano executados contra o artefato real; ledger de mutacao completo (12 entradas, 3 n/a docs/limpeza); nenhuma mutacao verde pendente",
+    "em": "2026-08-31"
   },
   "fechar": {
     "status": "pendente"
