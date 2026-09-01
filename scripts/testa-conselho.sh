@@ -2042,7 +2042,10 @@ echo "== AUDITORIA DE FIXTURES =="
 FIXTURES_DIR="$SRC_M/scripts/fixtures/conselho"
 for fixture in "$FIXTURES_DIR"/*.cjs; do
   fixture_name=$(basename "$fixture" .cjs)
-  count=$(grep -c "$fixture_name" "$SRC_M/scripts/testa-conselho.sh" 2>/dev/null | head -1)
+  # Conta so INVOCACAO real: linha nao-comentada citando o arquivo com extensao.
+  # Contar o nome cru deixava passar orfa cujo nome sobrevive so num comentario
+  # — a auditoria tinha o mesmo defeito que existe para pegar (revisao 4, achado 2).
+  count=$(grep -v "^[[:space:]]*#" "$SRC_M/scripts/testa-conselho.sh" | grep -c "$fixture_name.cjs")
   if [ -z "$count" ] || [ "$count" -eq 0 ]; then
     falhou=$((falhou + 1))
     echo "  FALHA: fixture órfã '$fixture_name' não é referenciada em testa-conselho.sh"
