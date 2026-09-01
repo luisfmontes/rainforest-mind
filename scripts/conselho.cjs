@@ -20,7 +20,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync, execSync } = require('child_process');
 const { resolverConfig } = require('../hooks/lib/config.cjs');
-const { rodarCli } = require('../hooks/lib/cli-externo.cjs');
+const { rodarCli, extrairJson } = require('../hooks/lib/cli-externo.cjs');
 
 // Raiz do projeto
 const RAIZ = process.env.RFM_ESTADO_ROOT
@@ -1212,14 +1212,10 @@ function adaptadorCodex() {
     process.exit(1);
   }
 
-  // Extrai JSON
-  let parecer;
-  try {
-    const match = resultado.stdout.match(/```json\s*([\s\S]*?)\s*```/) || resultado.stdout.match(/({[\s\S]*})/);
-    const json = match ? match[1] : resultado.stdout;
-    parecer = JSON.parse(json);
-  } catch (e) {
-    console.error(`adaptador-codex: JSON inválido: ${e.message}`);
+  // Extrai JSON usando lib compartilhada
+  const parecer = extrairJson(resultado.stdout);
+  if (!parecer) {
+    console.error(`adaptador-codex: JSON inválido — stdout nao continha JSON extraivel (primeiros 200 chars): ${resultado.stdout.slice(0, 200)}`);
     process.exit(1);
   }
 
@@ -1298,14 +1294,10 @@ function adaptadorGemini() {
     process.exit(1);
   }
 
-  // Extrai JSON
-  let parecer;
-  try {
-    const match = resultado.stdout.match(/```json\s*([\s\S]*?)\s*```/) || resultado.stdout.match(/({[\s\S]*})/);
-    const json = match ? match[1] : resultado.stdout;
-    parecer = JSON.parse(json);
-  } catch (e) {
-    console.error(`adaptador-gemini: JSON inválido: ${e.message}`);
+  // Extrai JSON usando lib compartilhada
+  const parecer = extrairJson(resultado.stdout);
+  if (!parecer) {
+    console.error(`adaptador-gemini: JSON inválido — stdout nao continha JSON extraivel (primeiros 200 chars): ${resultado.stdout.slice(0, 200)}`);
     process.exit(1);
   }
 

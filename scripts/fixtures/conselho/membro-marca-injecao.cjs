@@ -40,8 +40,9 @@ function main() {
       riscos: []
     };
 
-    // Write saida file
-    fs.writeFileSync(caminhoSaida, JSON.stringify(parecer, null, 2) + '\n', 'utf8');
+    // Imprime JSON no stdout (como CLI real faria)
+    // O adaptador extrai isso e escreve no arquivo de saída
+    console.log(JSON.stringify(parecer, null, 2));
     process.exit(0);
   } catch (err) {
     console.error(`Erro: ${err.message}`);
