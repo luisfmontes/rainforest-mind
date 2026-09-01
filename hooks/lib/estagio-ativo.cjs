@@ -26,12 +26,17 @@ const { execSync } = require('child_process');
 // fallback — byte-idêntica ao oficial e **descoberta por teste nenhum**. A
 // rodada 5 provou: sabotar só a cópia deixava a bateria VERDE.
 //
-// Cópia sem teste ao lado do original é divergência esperando data. E o modo de
-// falha que ela protegia é pior do que o que ela causa: se o `estado.cjs` não
-// carregar, o certo é estourar aqui — alto e agora — e não devolver um estágio
-// calculado por uma lógica que ninguém provou. `null` significaria "sem estágio
-// ativo", e a portaria é fail-closed: o grafo cresceria e ela começaria a negar
-// tudo, em silêncio.
+// Cópia sem teste ao lado do original é divergência esperando data, e por isso
+// ela saiu. Mas o argumento que veio junto — "se o `estado.cjs` não carregar, o
+// certo é estourar alto e agora, porque a portaria é fail-closed" — estava
+// ERRADO, e a rodada 6 da revisão pegou: estourar aqui produz exit 1 no hook, e
+// exit 1 num `PreToolUse` é erro NÃO-BLOQUEANTE — o despacho passa. Estourar
+// abria a portaria, não fechava.
+//
+// O `require` continua sem `try/catch` de propósito: quem transforma exceção em
+// decisão é a rede no topo de `hooks/portaria.cjs`, que captura qualquer coisa
+// que escape de `main()` e sai com exit 2 e motivo. Uma rede só, no lugar onde
+// a decisão mora — e não `try/catch` espalhado devolvendo valor inventado.
 const { proximo } = require("../../scripts/estado.cjs");
 
 // ============================================================================
