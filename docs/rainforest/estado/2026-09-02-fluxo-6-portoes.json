@@ -1,0 +1,95 @@
+{
+  "slug": "2026-09-02-fluxo-6-portoes",
+  "titulo": "Fluxo 6 — portoes.cjs: oraculos executaveis com lint de autoria",
+  "criado_em": "2026-09-01",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "em": "2026-09-02",
+    "arquivo": "docs/rainforest/design/fluxo-6-design-portoes.md"
+  },
+  "plano": {
+    "status": "ok",
+    "em": "2026-09-02"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-02",
+    "comando": "bash scripts/testa-portoes-gate.sh && node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-02-fluxo-6-portoes.md --reverificar",
+    "saida": "== resultado: 22 ok, 0 falha(s) == ; TODOS OS PORTOES CUMPRIDOS — 6 portao(oes), exit 0",
+    "tarefas_ok": 6,
+    "tarefas": 6,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "portoes-sentinela + portoes-malformado-sem-evidencia"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "portoes-echo + portoes-contagem-zerada"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "portoes-exit-zero-sem-marcador + cwd relativo (R14b)"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "check-falho + evidencia-velha (G21: o gate re-executa)"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "tarefa so escreve README — sem comportamento de codigo para mutar"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "cobertura-viva2 + c1-mesma-chamada + via-link (realpath)"
+      }
+    ],
+    "em": "2026-09-02"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "fd7e50365bcef23a847a6fb5e483a381acce7deb",
+      "caminhos_sujos": [
+        "vigias/ERROS.md"
+      ]
+    },
+    "achados": 7,
+    "criticos": 2,
+    "avisos": 3,
+    "cross_model": 2,
+    "base": "b873eed",
+    "head": "fd7e503",
+    "revisor": "reprovou com C1+C2 criticos e A1-A3 avisos; todos reproduzidos e consertados",
+    "segunda_opiniao": "codex: discordou de 5 e 7 (recusa nao acumulava; cerca lexica furada por junction), consertados; re-rodada saiu concordo nos 7 criterios",
+    "em": "2026-09-02"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "o proprio gate: node scripts/estado.cjs marcar --estagio verificar --status ok (que agora roda portoes.cjs rodar --reverificar)",
+    "saida": "ver abaixo — os 6 portoes RE-EXECUTADOS, nenhum pulado",
+    "segunda_opiniao": "codex: concordo nos 7 criterios",
+    "em": "2026-09-02",
+    "criterio": "o gate do verificar re-executa os portoes",
+    "faltou": "o gate rodava sem --reverificar e pulou os 6 portoes com evidencia gravada — aprovou lendo o arquivo em vez de executar"
+  },
+  "fechar": {
+    "status": "ok",
+    "versao": "0.81.0",
+    "destino": "PR",
+    "relatorio": "relatorios/2026-09-02-o-conserto-que-nao-alcanca-o-uso-que-o-motivou.md",
+    "issues_a_abrir": [
+      "P6: reaberto_por/pendentes aceitos do --json e divergencia exigir/marcar (territorio do fluxo 1)"
+    ],
+    "em": "2026-09-02"
+  }
+}
