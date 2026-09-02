@@ -55,11 +55,23 @@ fi
 #    aparece nem onde, entao um badge novo, ou um trecho de texto que cite a
 #    versao, entra na checagem sozinho. Foi a ausencia disso que deixou o badge
 #    envelhecer.
-DIVERGENTES="$(grep -on '[0-9]\+\.[0-9]\+\.[0-9]\+' README.md | grep -v ":${VERSAO}$" || true)"
+#
+#    A varredura captura a corrida pontuada INTEIRA e so depois fica com as de
+#    tres partes. Sem isso, `127.0.0.1` — que aparece no README na linha do
+#    proxy da poda — casava como o "semver" 127.0.0, e esta bateria ficou
+#    VERMELHA na main acusando um divergente que nao existe. Medido em
+#    2026-09-01. `grep -P` com lookaround resolveria em uma linha, mas o grep do
+#    Git Bash recusa (`-P supports only unibyte and UTF-8 locales`), inclusive
+#    com LC_ALL=C — dai o awk.
+semvers_do_readme() {
+  grep -on '[0-9][0-9]*\(\.[0-9][0-9]*\)\{1,\}' README.md \
+    | awk -F: '{n=split($2,p,"."); if (n==3) print $1":"$2}'
+}
+DIVERGENTES="$(semvers_do_readme | grep -v ":${VERSAO}$" || true)"
 # `grep -c` conta LINHAS com ocorrencia, nao ocorrencias — e o badge tem duas na
 # mesma linha (o src da imagem e o alt). Contar por linha diria "1 semver" com
 # dois presentes, que e justamente o tipo de numero que engana quem le a saida.
-QUANTOS="$(grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+' README.md | wc -l | tr -d ' ')"
+QUANTOS="$(semvers_do_readme | wc -l | tr -d ' ')"
 
 if [ -z "$DIVERGENTES" ]; then
   ok=$((ok+1)); echo "  ok   os $QUANTOS semver(s) do README estao todos em $VERSAO"
