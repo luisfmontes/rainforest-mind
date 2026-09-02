@@ -1156,6 +1156,23 @@ function checarMemoria() {
 //
 // TUDO E SO LEITURA. Este checador nunca registra, altera, habilita nem dispara
 // tarefa agendada: mexer no Agendador e ambiente do usuario, e decisao dele.
+//
+// O QUE ELE CUSTA, medido em 2026-09-02 e escrito aqui porque quem paga tem de
+// saber que esta pagando:
+//
+//     node scripts/saude.cjs         0,8 s  ->  3,5 s   (4,3x)
+//     bash scripts/testa-saude.sh    110 s  ->  182 s   (+65%)
+//
+// Os ~2,5 s sao INTEIROS do `Get-ScheduledTask`, e nao ha versao rapida: a
+// partida do PowerShell e so 270 ms, filtrar por `-TaskPath` nao muda nada
+// (o cmdlet enumera e depois filtra), e o `schtasks /query /fo csv /v` e
+// PIOR - 3,4 s - alem de devolver nomes de coluna LOCALIZADOS, que quebrariam
+// num Windows em ingles. As tres alternativas foram medidas antes de escolher.
+//
+// Ficou como esta, e a conta e essa: 2,5 s por `/saude` contra dois vigias que
+// passaram vinte dias mortos sem ninguem notar. Se um dia incomodar, o caminho
+// e cache com prazo na raiz de dados (gatilho vencido nao muda de minuto a
+// minuto) - nao trocar de cmdlet.
 
 const DIAS_DE_ERRO_RECENTE = 7;
 

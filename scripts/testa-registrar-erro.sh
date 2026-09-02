@@ -60,7 +60,13 @@ win() { cygpath -w "$1"; }
 
 # O nome de usuario falso da caixa. Escolhido para nao existir em lugar nenhum:
 # se ele aparecer no ERROS.md, veio do caminho interpolado e o saneamento falhou.
-USUARIO_FALSO="usuario-que-nao-deve-vazar"
+# COM ESPACO, de proposito. A primeira versao usava `usuario-que-nao-deve-vazar`,
+# sem espaco nenhum, e por isso 26 de 26 asseracoes ficaram verdes em cima de um
+# vazamento real: o regex do saneamento parava no primeiro espaco, e no Windows o
+# nome de usuario com espaco e o caso mais comum que existe. A revisao independente
+# reproduziu rodando o backup-estado.ps1 de verdade, e a linha gravada trazia o
+# nome inteiro. A fixture agora contem a unica coisa que a original nao tinha.
+USUARIO_FALSO="Usuario Falso Que Nao Deve Vazar"
 
 montar() {
   rm -rf "$SB/plugin" "$SB/home" "$SB/$USUARIO_FALSO"
@@ -208,6 +214,31 @@ igual "mensagem sem caminho nenhum passa intacta" \
 igual "dois caminhos na mesma mensagem, os dois saneados" \
   "$(sanear 'de C:\a\um.txt para D:\b\dois.txt')" \
   'de <caminho>\um.txt para <caminho>\dois.txt'
+
+# --- ESPACO NO CAMINHO. O buraco que deixou a bateria verde em cima de um
+#     vazamento, achado pela revisao independente em 2026-09-02. Nenhuma fixture
+#     acima tinha espaco em segmento nenhum, e o regex antigo parava no primeiro.
+#     No Windows o nome de usuario com espaco e o caso MAIS comum que existe.
+#     (As fixtures usam pasta generica em vez da forma de diretorio pessoal pelo
+#     motivo ja explicado no cabecalho: o gate de publicacao recusa a outra, e com
+#     razao. O saneador casa qualquer caminho com letra de unidade.)
+igual "nome de pasta COM espaco nao sobrevive" \
+  "$(sanear 'erro em C:\pasta\Fulano De Tal\arquivo config.json')" \
+  'erro em <caminho>\arquivo config.json'
+igual "pasta com espaco no meio do caminho" \
+  "$(sanear 'launcher em C:\Program Files\Bridge\start.ps1 nao existe')" \
+  'launcher em <caminho>\start.ps1 nao existe'
+igual "varios segmentos com espaco em sequencia" \
+  "$(sanear 'config em C:\Meus Projetos\Fulano De Tal\vigia.config.json')" \
+  'config em <caminho>\vigia.config.json'
+# E a prova de que aceitar espaco nao fez o casador engolir a frase inteira: com
+# `:` fora do segmento intermediario, "um.txt para D:" nao pode virar um segmento.
+igual "aceitar espaco nao funde dois caminhos num marcador so" \
+  "$(sanear 'copiando de C:\um lugar\a.txt para D:\outro lugar\b.txt agora')" \
+  'copiando de <caminho>\a.txt para <caminho>\b.txt agora'
+igual "prosa depois do caminho continua prosa" \
+  "$(sanear 'raiz C:\pasta com espaco\dados\x.md e o resto da frase')" \
+  'raiz <caminho>\x.md e o resto da frase'
 
 echo
 echo "== D. a trava: nenhuma escrita escapa da porta unica =="
