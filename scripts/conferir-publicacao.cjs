@@ -96,9 +96,31 @@ const PADROES = [
   },
   {
     id: 'caminho-de-home',
-    re: /[A-Za-z]:\\Users\\[^\\\s"'`]+|\/(?:home|Users)\/[^/\s"'`]+/g,
+    // O segmento do usuário sai em grupo de captura para o `so_se` poder olhá-lo.
+    re: /[A-Za-z]:\\Users\\([^\\\s"'`]+)|\/(?:home|Users)\/([^/\s"'`]+)/g,
     o_que: 'caminho de pasta pessoal — carrega o nome de usuário da máquina',
     faca: 'use `<home>` ou um caminho relativo; o caminho absoluto raramente é o que prova o defeito',
+    // PLACEHOLDER NÃO É NOME DE NINGUÉM — a terceira regra desta lista a ganhar
+    // esta isenção, e pelo mesmo motivo das duas primeiras (Issue #149): a regra
+    // recusava a própria documentação do formato que ela ensina. O `faca` acima
+    // manda "use `<home>`", e o texto que obedecia era recusado igual.
+    //
+    // Medido em 2026-09-02: a varredura da árvore antes de tornar o repositório
+    // público devolveu 32 arquivos recusados, e `caminho-de-home` respondia por
+    // 17 deles — a maioria placeholder ou código que MANIPULA caminho de home.
+    // Gate que grita em 17 arquivos que nunca vão mudar ensina a ignorar a saída
+    // inteira, e é assim que ele deixa de pegar o 18º, que é real.
+    //
+    // A isenção é por FORMA, não por lista: `<qualquer coisa>`, `%VAR%` e
+    // `$VAR` nunca são nome de usuário em disco. Nome novo de placeholder que
+    // alguém invente amanhã já entra isento.
+    so_se: (m) => {
+      const nome = m[1] || m[2] || '';
+      const ehPlaceholder = /^<.*>$/.test(nome)
+        || /^%.*%$/.test(nome)
+        || nome.startsWith('$');
+      return !ehPlaceholder;
+    },
   },
   {
     id: 'credencial',
