@@ -7,21 +7,69 @@
   },
   "design": {
     "status": "aprovado",
-    "arquivo": "docs/rainforest/design/2026-09-01-vigias-parados.md",
+    "arquivo": "docs/rainforest/design/vigias.md",
     "em": "2026-09-01"
   },
   "plano": {
     "status": "ok",
-    "arquivo": "docs/rainforest/planos/2026-09-01-vigias-parados.md",
+    "arquivo": "docs/rainforest/planos/vigias.md",
     "tarefas": 7,
     "em": "2026-09-01"
   },
   "executar": {
-    "status": "pendente",
-    "catraca_mutacao": "2026-09-01"
+    "status": "ok",
+    "catraca_mutacao": "2026-09-01",
+    "tarefas": 7,
+    "tarefas_ok": 6,
+    "pendentes": [
+      "T7 reagendar — ambiente do usuario, autorizado, depois do verificar"
+    ],
+    "comando": "bash scripts/testa-registrar-erro.sh; bash scripts/testa-backup-estado.sh; bash scripts/testa-conferir-encoding.sh; bash scripts/testa-erros-md-raiz.sh; node scripts/conferir-encoding.cjs",
+    "saida": "26/0; 28/0; 27 ok 0 falha; 8/0; CONFERIDO exit 0",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "devolver --raiz de repositorio ao foco.cjs -> 21 ok / 7 falha"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "devolver Out-File -Append -> 20 ok / 2 falha"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "tirar Set-EncodingDeSaida -> 22 ok / 4 falha sob CP850 forcado"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "tirar Get-MotivoSaneado -> 19 ok / 3 falha, caminho real visivel"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "esvaziar FECHADORES_OEM -> fixture OEM passa; CP1252 continua reprovando"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "vermelha AGORA contra a maquina real: 2 de 6 tarefas sem NextRunTime"
+      }
+    ],
+    "em": "2026-09-02"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "pendente",
+    "snapshot": {
+      "head": "bd181ca62d79ad546c9d3949c6e0c3fb1614c0b1",
+      "caminhos_sujos": [
+        "docs/rainforest/design/vigias.md",
+        "docs/rainforest/estado/vigias.json",
+        "docs/rainforest/planos/vigias.md"
+      ]
+    }
   },
   "verificar": {
     "status": "pendente"
