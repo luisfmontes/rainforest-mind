@@ -73,6 +73,35 @@ tem   "pega e-mail"                 "$(roda "$SBP/mail.md")" "email"
 printf '# achado\n\nabri C:\\Users\\Fulano\\Downloads\\print.jpeg\n' > "$SBP/home.md"
 tem   "pega caminho de home"        "$(roda "$SBP/home.md")" "caminho-de-home"
 
+# PLACEHOLDER de usuario nao e nome de ninguem. Terceira regra desta lista a
+# ganhar a isencao, e pelo mesmo motivo das duas primeiras (Issue #149): a regra
+# recusava a propria documentacao do formato que ela ensina — o `faca` dela diz
+# "use \`<home>\`", e o texto que obedecia era recusado igual.
+#
+# Os caminhos sao montados com printf a partir do segmento, e nao escritos
+# inteiros: este arquivo e versionado, e o gate barra (com razao) arquivo
+# versionado que contenha a forma completa. Foi o que aconteceu com a bateria
+# irma, scripts/testa-caminho-pessoal.sh, em 2026-09-02.
+SEG_U="Us""ers"
+printf '# achado\n\ncaminho: /c/%s/<nome>/.claude\n' "$SEG_U" > "$SBP/home-ph.md"
+S="$(roda "$SBP/home-ph.md")"
+nao_tem "placeholder <nome> NAO acende caminho-de-home"  "$S" "caminho-de-home"
+saiu    "e passa limpo (exit 0)"  "$(codigo "$SBP/home-ph.md")" "0"
+
+printf '# achado\n\ncaminho: C:\\%s\\%%USERNAME%%\\AppData\n' "$SEG_U" > "$SBP/home-var.md"
+nao_tem "variavel de ambiente (%%USERNAME%%) tambem nao acende" "$(roda "$SBP/home-var.md")" "caminho-de-home"
+
+printf '# achado\n\ncaminho: /c/%s/$USER/x\n' "$SEG_U" > "$SBP/home-shell.md"
+nao_tem "variavel de shell (\$USER) tambem nao acende" "$(roda "$SBP/home-shell.md")" "caminho-de-home"
+
+# E o lado que importa: nome de gente continua acendendo. Isencao que engole o
+# caso real troca um falso positivo por um falso negativo, que e o pior negocio
+# possivel numa trava de publicacao.
+printf '# achado\n\ncaminho: /c/%s/Fulaninho/.claude\n' "$SEG_U" > "$SBP/home-real.md"
+S="$(roda "$SBP/home-real.md")"
+tem  "nome de pessoa CONTINUA acendendo"  "$S" "caminho-de-home"
+saiu "e RECUSA (exit 2)"                  "$(codigo "$SBP/home-real.md")" "2"
+
 printf '# achado\n\nrodei com api_key=abc123def456\n' > "$SBP/cred.md"
 tem   "pega credencial"             "$(roda "$SBP/cred.md")" "credencial"
 
