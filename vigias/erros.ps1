@@ -159,6 +159,21 @@ para a mesa.
 function Get-MotivoSaneado([string]$Motivo) {
     if (-not $Motivo) { return $Motivo }
 
+    # JID DE WHATSAPP, antes do caminho. Achado em 2026-09-02 lendo o ERROS.md
+    # commitado: ele carrega, em DUAS linhas, o JID real do grupo que recebe as
+    # rondas - num repositorio PUBLICO. As linhas nasceram de um erro de envio
+    # ("conta nao participa do grupo JID ..."), ou seja, exatamente pelo caminho
+    # que a Issue #124 descreve: mensagem montada em runtime com dado da maquina
+    # dentro. O `scripts/conferir-publicacao.cjs` ja tem regra dizendo que JID
+    # vira marcador; o que faltava era alguem aplica-la na ESCRITA.
+    #
+    # Cobre as duas formas: conversa direta (`<telefone>@s.whatsapp.net`, que
+    # carrega o numero com DDI e DDD) e grupo (`<id>@g.us`). A faixa de digitos
+    # vai ate 20 de proposito: JID de grupo tem 18, e a regra do
+    # conferir-publicacao.cjs para em 15 - por isso ela nunca pegou este caso.
+    # Ver a Issue aberta sobre alargar aquela regra tambem.
+    $Motivo = [regex]::Replace($Motivo, '\b\d{10,20}@(?:s\.whatsapp\.net|g\.us)\b', '<jid>')
+
     $avaliador = {
         param($m)
         $inteiro = $m.Value
