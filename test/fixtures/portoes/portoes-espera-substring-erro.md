@@ -1,6 +1,10 @@
-# Portões: marcador que é substring de mensagem de erro
+# Portões: marcador que É uma mensagem de erro tolerada
 
-- [ ] P1: o parser recusa entrada malformada com a mensagem certa
+# O perigo real não é a palavra "erro" no marcador — é o marcador SER uma linha
+# que o script imprime quando algo falhou e ele seguiu assim mesmo. O portão
+# fecha em cima da degradação, e o fluxo segue achando que está tudo certo.
+
+- [ ] P1: o serviço responde com o cache quente
   CHECK: node test/fixtures/portoes/scripts/sempre-ok.cjs
-  ESPERA: nenhum erro encontrado
+  ESPERA: falha ao conectar no cache, seguindo sem ele
   EVIDENCIA: pendente
