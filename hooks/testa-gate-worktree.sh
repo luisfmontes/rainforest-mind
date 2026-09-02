@@ -414,6 +414,67 @@ gatec "switch pelado BARRA (o git decide, nos nao)" 2 "$(p "git switch" "$R")"
 gatec "-C com valor nao vira subcomando"            2 "$(p "git -c core.pager=cat switch main" "$R")"
 gatec "checkout no fim de encadeamento BARRA"       2 "$(p "git status && git checkout main" "$R")"
 
+# ============================================================================
+# Conserto de 2026-09-01: `>` em texto nao e redirecionamento, e o scratchpad
+# da sessao e isento ainda que seja repo git.
+#
+# Os primeiros casos sao comandos REAIS que o gate barrou durante a avaliacao
+# dos repos trailhq/Graft e DeusData/codebase-memory-mcp. O primeiro nao tem
+# redirecionamento nenhum: o gatilho era o `>` de `<project>` dentro das aspas.
+#
+# ATENCAO ao helper: estes casos usam `b`/`gate` (payload com `agent_id`), nao
+# `p`/`gatec` (payload de sessao co-locada, que so olha verbo de git). A primeira
+# versao destes testes usou `p` e ficou verde por fora do caminho que queria
+# provar. E `jesc` existe porque `esc` so troca barra: comando com aspas duplas
+# quebrava o JSON, e o hook saia 0 por payload invalido — verde tautologico.
+# ============================================================================
+# `b` monta o payload pelo proprio node em vez de printf: comando com aspas
+# duplas quebrava o JSON montado a mao e o hook saia 0 por payload invalido —
+# oito casos ficaram verdes sem o gate ter olhado para eles.
+b() { # comando, cwd  -> payload de SUBAGENTE
+  node -e 'const [c,d]=process.argv.slice(1);process.stdout.write(JSON.stringify({agent_id:"ag-1",agent_type:"executor",cwd:d,hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:c}}))' "$1" "$2"
+}
+
+echo
+echo "== leitura com '>' no texto: deve PASSAR (exit 0) =="
+gate "grep com <project> no padrao (o caso real)"  0 "$(b 'grep -n "qualified_name\|<project>" README.md' "$R")"
+gate "grep descartando stderr com 2>/dev/null"     0 "$(b 'grep -rn "foo" src/ 2>/dev/null' "$R")"
+gate "grep com seta -> no padrao"                  0 "$(b 'grep -rn "node->start_line" src/' "$R")"
+gate "grep com => no padrao"                       0 "$(b "grep -rn 'p => p.dirExists' src/" "$R")"
+gate "echo de texto com > sem redirecionar"        0 "$(b 'echo "a -> b"' "$R")"
+gate "2>&1 nao e alvo de arquivo"                  0 "$(b "node script.js 2>&1" "$R")"
+gate "sed sem -i so imprime"                       0 "$(b "sed -n '1,5p' a.txt" "$R")"
+gate "tee citado dentro de padrao de busca"        0 "$(b 'grep -rn "tee arquivo" docs/' "$R")"
+
+echo
+echo "== redirecionamento de verdade: deve continuar BARRANDO (exit 2) =="
+gate "redirect real com > apos padrao que tem ->" 2 "$(b 'grep -n "a->b" x.txt > saida.txt' "$R")"
+gate "redirect colado no token (>saida.txt)"      2 "$(b "echo oi >saida.txt" "$R")"
+gate "stderr para arquivo (2>log.txt)"            2 "$(b "node x.js 2>log.txt" "$R")"
+gate "cp com tres origens para pasta destino"     2 "$(b "cp a.txt b.txt c.txt sub/" "$R")"
+gate "sed -i continua sendo escrita"              2 "$(b "sed -i 's/a/b/' a.txt" "$R")"
+gate "tee de verdade continua sendo escrita"      2 "$(b "echo x | tee saida.txt" "$R")"
+
+echo
+echo "== scratchpad da sessao: isento ainda que seja repo git (exit 0) =="
+SCRATCH="$RAIZ/claude/proj/sessao/scratchpad"
+mkdir -p "$SCRATCH"
+CLONE="$SCRATCH/repo-de-terceiro"
+git init -q "$CLONE"; git -C "$CLONE" config user.email t@t; git -C "$CLONE" config user.name t
+git -C "$CLONE" config commit.gpgsign false
+echo v1 > "$CLONE/README.md"; git -C "$CLONE" add . >/dev/null 2>&1; git -C "$CLONE" commit -qm base
+gate  "Write dentro de clone de terceiro no scratchpad" 0 "$(j Write file_path "$(esc "$CLONE/medir.py")")"
+gate  "redirect gravando script ao lado do clone"       0 "$(b "python medir.py > saida.txt" "$(esc "$CLONE")")"
+gate  "git checkout dentro do clone descartavel"        0 "$(b "git checkout -b teste" "$(esc "$CLONE")")"
+gatec "janela principal tambem passa no scratchpad"     0 "$(p "git checkout -b teste" "$(esc "$CLONE")")"
+
+echo
+echo "== a isencao e do scratchpad, NAO do temp inteiro (exit 2) =="
+# Se estas duas ficarem verdes com exit 0, a isencao voltou a ser larga demais e
+# a caixa de areia desta bateria inteira esta isenta — 100 casos viram teatro.
+gate "repo em temp SEM segmento scratchpad segue barrado"  2 "$(b "echo x > novo.txt" "$R")"
+gate "Write em repo em temp SEM scratchpad segue barrado"  2 "$(j Write file_path "$(esc "$R/outro.txt")")"
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
