@@ -137,6 +137,61 @@ comportamento" — quando a tarefa 6 existe justamente para a `cobertura` mudar 
 inerte para ativa. O modelo discordou com razão. Registro porque a tentação de
 contar isso como "falso positivo do revisor" é real, e seria falsear a conta.
 
+## 5 — E o gate novo, no seu primeiro uso real, aprovou lendo o arquivo
+
+O fluxo 6 instala um gate no `verificar`: com portões declarados, o `ok` só grava
+se os oráculos re-executarem e passarem. Ao fechar o `verificar` **deste próprio
+fluxo**, o gate rodou e imprimiu:
+
+```
+P0: cumprido (pulado; use --reverificar para re-executar)
+P1: cumprido (pulado; use --reverificar para re-executar)
+...
+TODOS OS PORTOES CUMPRIDOS — 6 portão(ões).
+verificar: ok
+```
+
+Seis "pulado", e um `ok`. O gate aprovou **lendo o arquivo**, porque os portões
+já tinham evidência gravada de execuções anteriores — sem `--reverificar`, o
+`rodar` pula todo portão cumprido, e essa é a semântica certa para uso manual.
+Como gate, é o defeito exato que o fluxo existe para fechar: aceitar evidência
+gravada é aceitar evidência colada, só em JSON em vez de prosa. E é a decisão D2
+do próprio design ao contrário — "o arquivo não é a verdade; a execução é".
+
+Achado por **usar** a coisa, não por revisar a coisa. Nem o revisor da mesma
+família nem a auditoria cross-model pegaram, e nenhum dos dois falhou: os dois
+liam o código do gate, e o código do gate estava certo — quem estava errado era
+a chamada. Só o fechamento real do estágio expunha isso.
+
+O caso que prova é o único que a re-execução distingue: um portão com evidência
+de **sucesso** gravada cujo `CHECK:` hoje **reprova**. Quem lê o arquivo aprova;
+quem executa, recusa.
+
+## 6 — Um campo de máquina aceitando texto livre, e o `undefined (undefined)`
+
+Ao reprovar o `verificar` de propósito, passei `reaberto_por` no `--json` como
+string. O campo é preenchido pela máquina e tem forma de objeto (`.estagio`,
+entre outros). O `marcar` aceitou a string sem checar nada, e o `exigir`
+seguinte imprimiu:
+
+```
+RECUSADO: 'executar' foi reaberto por reprovação em 'undefined' (undefined). Rode 'executar' antes.
+```
+
+Dois defeitos numa linha, os dois em `scripts/estado.cjs`, os dois **anteriores
+a este fluxo** e fora do escopo dele:
+
+1. **`marcar` deixa texto livre sobrescrever um campo que a máquina possui.** A
+   invariante "o `--json` aceita metadado arbitrário, sem allowlist que rejeite"
+   é deliberada e boa — mas `reaberto_por` e `pendentes` não são metadado do
+   usuário: são o mecanismo de reabertura. Escrevê-los à mão corrompe a máquina
+   de estados em silêncio.
+2. **`exigir` recusou e `marcar` deixou passar.** No mesmo estado, o `exigir
+   --estagio verificar` saiu RECUSADO e o `marcar --estagio verificar --status
+   ok` seguinte fechou. `marcar` confere `estaFechado` do upstream; `reaberto_por`
+   só é lido pelo `exigir`. Quem roda direto o `marcar` não é barrado — e o
+   contrato desta casa é que a trava vale por exit code, não por disciplina.
+
 ## O que deu certo
 
 - **A catraca de mutação pegou uma mutação FALSA minha.** Ao provar a cerca do
@@ -191,7 +246,23 @@ que o agente não fez nada.
 só entrega por `SendMessage`" — a nota prática de que a notificação de idle não
 é a entrega, e que se pede de volta em vez de re-despachar.
 
-**P5 — "Campo vazio não é campo ok" e "o instrumento responde" viram uma
+**P5 — Usar o artefato para fechar o próprio estágio, quando ele se aplica.**
+Não é o mesmo que P2. P2 é rodar a ferramenta contra o trabalho; isto é
+**fechar o estágio pela ferramenta** e olhar a saída do fechamento. Foi o que
+achou o gate aprovando por leitura — e nem o revisor da mesma família nem a
+auditoria cross-model pegaram, porque os dois liam o código do gate, que estava
+certo. Quem estava errada era a chamada.
+*Destino:* `skills/verificar/SKILL.md`, junto com P2.
+
+**P6 — Campos que a máquina possui não se aceitam do `--json`.** `reaberto_por`
+e `pendentes` são o mecanismo de reabertura, não metadado do usuário. A
+invariante de "sem allowlist que rejeite chave nova" continua valendo para
+metadado; estes dois são outra categoria. E `exigir` e `marcar` divergem sobre
+`reaberto_por`: um recusa, o outro deixa passar no mesmo estado.
+*Destino:* `scripts/estado.cjs` + `scripts/testa-estado.sh`. **Fora do escopo do
+fluxo 6** — é território do fluxo 1, e entra por Issue.
+
+**P7 — "Campo vazio não é campo ok" e "o instrumento responde" viram uma
 entrada só no acervo.** Já são quatro ocorrências datadas (Issue #142, os dois
 vigias mortos do handover de hoje, e os dois desta sessão). O acervo tem a
 heurística de medição uniforme; falta a irmã: **medição que não estoura não é
