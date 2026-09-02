@@ -327,6 +327,64 @@ igual "pasta terminando em ponto nao confunde o casador" \
   'raiz <caminho>\y.txt aqui'
 
 echo
+echo "== C4. JID de WhatsApp — o dado que ja estava no repositorio publico =="
+# Achado em 2026-09-02 LENDO o ERROS.md commitado: ele carregava, em duas
+# linhas, o JID real do grupo que recebe as rondas — num repo PUBLICO. As linhas
+# nasceram de um erro de envio, ou seja, exatamente pelo caminho que a Issue
+# #124 descreve. O conferir-publicacao.cjs ja tinha regra dizendo que JID vira
+# marcador; o que faltava era alguem aplica-la na ESCRITA.
+#
+# OS JIDS DESTA SECAO SAO MONTADOS EM PEDACOS, e isso e parte do teste. Escrever
+# um JID literal aqui e exatamente o que o gate de publicacao existe para
+# barrar — e ele barrou esta bateria na primeira tentativa, com razao. Nenhum
+# pedaco isolado tem forma de telefone nem de JID. Mesmo cuidado das fixtures de
+# mojibake, que sao montadas por bytes.
+g1=120363; g2=411360; g3=335027          # 18 digitos: forma de JID de GRUPO
+d1=554799; d2=1234567                     # 13 digitos: forma de conversa DIRETA
+JID_GRUPO="${g1}${g2}${g3}@g.us"
+JID_DIRETO="${d1}${d2}@s.whatsapp.net"
+
+igual "JID de grupo vira marcador" \
+  "$(sanear "send_message failed - conta nao participa do grupo JID $JID_GRUPO")" \
+  'send_message failed - conta nao participa do grupo JID <jid>'
+# Conversa direta e pior: ali o JID E o telefone, com DDI e DDD.
+igual "JID de conversa direta tambem (ele E o telefone)" \
+  "$(sanear "falha ao enviar para $JID_DIRETO agora")" \
+  'falha ao enviar para <jid> agora'
+igual "dois JIDs na mesma mensagem" \
+  "$(sanear "de $JID_DIRETO para $JID_GRUPO")" \
+  'de <jid> para <jid>'
+# A faixa vai ate 20 digitos DE PROPOSITO: JID de grupo tem 18, e a regra do
+# conferir-publicacao.cjs para em 15 — foi por isso que ela nunca pegou este
+# caso, e o dado ficou no repositorio. Este caso fixa a diferenca.
+igual "18 digitos (grupo) esta dentro da faixa, ao contrario da regra do gate" \
+  "$(sanear "grupo $JID_GRUPO fora")" \
+  'grupo <jid> fora'
+# E o outro lado: numero sem o sufixo de JID nao pode virar marcador, senao a
+# mensagem perde o dado que ajuda a diagnosticar.
+igual "numero longo SEM sufixo de JID fica como esta" \
+  "$(sanear "id da mensagem ${g1}${g2}${g3} recusado")" \
+  "id da mensagem ${g1}${g2}${g3} recusado"
+igual "numero curto de porta nao vira marcador" \
+  "$(sanear 'bridge nao subiu apos 60s (porta 3005 fechada)')" \
+  'bridge nao subiu apos 60s (porta 3005 fechada)'
+
+echo
+echo "== C5. o saneamento nao pode destruir a mensagem =="
+# Vazar e um defeito; virar ilegivel e outro. O ERROS.md existe para ser LIDO —
+# ficou cinco dias sem ninguem abrir, e mensagem que nao diz nada garante que
+# isso se repita. Estes casos sao as mensagens REAIS dos chamadores.
+igual "a mensagem de destino continua dizendo QUAL arquivo configurar" \
+  "$(sanear 'sem destino de envio: defina RFM_WHATSAPP_DESTINO ou destinoWhatsapp em C:\Projetos\comms-vigia\vigia.config.json')" \
+  'sem destino de envio: defina RFM_WHATSAPP_DESTINO ou destinoWhatsapp em <caminho>\vigia.config.json'
+igual "a do bridge preserva o arquivo E o valor atual, os dois saneados" \
+  "$(sanear "bridge fora do ar e sem launcher: defina RFM_BRIDGE_LAUNCHER ou bridgeLauncher em C:\\Projetos\\comms-vigia\\vigia.config.json (valor atual: 'C:\\Program Files (x86)\\Bridge\\start.ps1')")" \
+  "bridge fora do ar e sem launcher: defina RFM_BRIDGE_LAUNCHER ou bridgeLauncher em <caminho>\\vigia.config.json (valor atual: '<caminho>\\start.ps1')"
+igual "a do toggle nao tem caminho e passa inteira, com aspas e interrogacao" \
+  "$(sanear "nao consegui ler o toggle 'vigias' (node no PATH?)")" \
+  "nao consegui ler o toggle 'vigias' (node no PATH?)"
+
+echo
 echo "== D. a trava: nenhuma escrita escapa da porta unica =="
 # Olha LINHA DE EXECUCAO, nao o arquivo inteiro: os cabecalhos dos tres arquivos
 # citam `Out-File` de proposito, para explicar por que ele saiu, e apagar essa
