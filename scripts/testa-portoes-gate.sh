@@ -295,5 +295,49 @@ SAIDA="$(est marcar --slug a3-dentro --estagio plano --status ok \
 afirma "G17. o MESMO design, DENTRO da arvore, e' adotado e a cobertura RECUSA" \
   "$([ "$C" -ne 0 ] && printf '%s' "$SAIDA" | grep -q 'D2' && echo 1 || echo 0)"
 
+echo "== as recusas se ACUMULAM, nao param na primeira =="
+# Achado da auditoria cross-model de 2026-09-02: o retorno antecipado no lint
+# fazia um plano com portao mal autorado E decisao orfa mostrar so o primeiro
+# problema. Nada fechava indevidamente, mas "checagens independentes em
+# sequencia" era promessa nao cumprida — continuava uma cadeia, so que maior, e
+# custava duas idas para um fechamento.
+est iniciar --slug dois-problemas --titulo sandbox >/dev/null
+est marcar --slug dois-problemas --estagio design --status aprovado \
+  --json '{"arquivo":"docs/rainforest/design/com-orfa.md"}' >/dev/null
+cp "$FIX/portoes-echo.md" "$S/docs/rainforest/portoes/dois-problemas.md"
+cp "$S/docs/rainforest/planos/com-orfa.md" "$S/docs/rainforest/planos/dois-problemas.md"
+SAIDA="$(est marcar --slug dois-problemas --estagio plano --status ok \
+  --json '{"arquivo":"docs/rainforest/planos/dois-problemas.md"}')"; C=$?
+afirma "G18. plano com DOIS problemas recusa" "$([ "$C" -ne 0 ] && echo 1 || echo 0)"
+afirma "G19. e mostra os DOIS numa ida so (lint do portao E decisao orfa)" \
+  "$(printf '%s' "$SAIDA" | grep -q 'saída fixa' \
+    && printf '%s' "$SAIDA" | grep -q 'D2' && echo 1 || echo 0)"
+
+echo "== a cerca e' por realpath, nao por comparacao de string =="
+# `path.resolve` + `startsWith` e' teste LEXICO: uma junction dentro da raiz
+# apontando para fora passa nele, e o checador acaba lendo o arquivo externo.
+# No Windows qualquer usuario cria junction sem privilegio. Achado da auditoria
+# cross-model sobre a primeira versao desta mesma cerca, escrita horas antes.
+LINK="$S/docs/rainforest/design/atalho"
+CRIOU=0
+if [ "${OS:-}" = "Windows_NT" ]; then
+  cmd //c mklink //J "$(cygpath -w "$LINK")" "$(cygpath -w "$EXTERNO")" >/dev/null 2>&1 && CRIOU=1
+else
+  ln -s "$EXTERNO" "$LINK" 2>/dev/null && CRIOU=1
+fi
+if [ "$CRIOU" -eq 1 ]; then
+  cp "$S/docs/rainforest/planos/com-orfa.md" "$S/docs/rainforest/planos/via-link.md"
+  est iniciar --slug via-link --titulo sandbox >/dev/null
+  est marcar --slug via-link --estagio design --status aprovado \
+    --json '{"arquivo":"docs/rainforest/design/atalho/fora-da-arvore.md"}' >/dev/null
+  SAIDA="$(est marcar --slug via-link --estagio plano --status ok \
+    --json '{"arquivo":"docs/rainforest/planos/via-link.md"}')"; C=$?
+  afirma "G20. link DENTRO da raiz apontando para FORA nao e' adotado" \
+    "$([ "$C" -eq 0 ] && echo 1 || echo 0)"
+else
+  echo "  ok   G20. (pulado: nao consegui criar link nesta maquina)"
+  ok=$((ok+1))
+fi
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ] || exit 1
