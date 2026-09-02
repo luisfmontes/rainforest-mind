@@ -63,12 +63,8 @@
   "revisar": {
     "status": "pendente",
     "snapshot": {
-      "head": "bd181ca62d79ad546c9d3949c6e0c3fb1614c0b1",
-      "caminhos_sujos": [
-        "docs/rainforest/design/vigias.md",
-        "docs/rainforest/estado/vigias.json",
-        "docs/rainforest/planos/vigias.md"
-      ]
+      "head": "55feb7fcd8d68705878ad4a5981c5be1d2ed2011",
+      "caminhos_sujos": []
     }
   },
   "verificar": {
