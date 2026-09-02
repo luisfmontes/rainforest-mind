@@ -56,7 +56,17 @@ público.
 ## T2 — uma função de escrita só, cobrindo CRLF + OEM + caminho de máquina (D2, #124)
 
 **Toca:** `vigias/run-vigia.ps1` (4 sítios), `vigias/backup-estado.ps1` (2 sítios),
-`scripts/testa-registrar-erro.sh` (novo)
+`scripts/testa-registrar-erro.sh` (novo), `vigias/erros.ps1` (novo — a porta única),
+`scripts/testa-backup-estado.sh` e `scripts/testa-erros-md-raiz.sh`
+
+> **Emenda de 2026-09-02, feita depois da revisão.** Os três últimos não estavam
+> nesta lista quando o plano foi escrito. `vigias/erros.ps1` nasceu porque seis
+> cópias da mesma escrita não se consertam em seis lugares; as duas baterias
+> tiveram de ser tocadas porque o dot-source virou dependência de execução das
+> caixas de areia delas, e porque a trava da #112 filtrava só comentário de
+> linha e passou a acusar o bloco `<# #>` que explica a própria regra. É
+> consequência direta da T2, não escopo novo — mas o plano tem de dizer, senão o
+> rastro de "que arquivo esta tarefa podia tocar" fica furado.
 **Depende de:** nenhuma · **Paralelizável:** com T1 não (mesmo arquivo) — **serial após T1**
 
 Uma única função de escrita no `ERROS.md`, usada pelos seis sítios, com três
