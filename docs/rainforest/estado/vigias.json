@@ -61,14 +61,32 @@
     "em": "2026-09-02"
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "9adafc89f68e876c3a5aa95db587731db6719bf3",
+      "head": "39e216c07880a8b3850067b6ab9d7dcedd465a47",
       "caminhos_sujos": []
-    }
+    },
+    "base": "760bccc",
+    "head": "HEAD",
+    "achados": 7,
+    "revisor": "rainforest-mind:revisor — independente, 6 rodadas, 3 reprovacoes",
+    "veredito_em": "3d8ee1f",
+    "comando": "bash scripts/testa-registrar-erro.sh; bash scripts/testa-conferir-encoding.sh; bash scripts/testa-backup-estado.sh; bash scripts/testa-erros-md-raiz.sh; node scripts/conferir-encoding.cjs",
+    "saida": "62/0; 34 ok 0 falha; 28/0; 8/0; CONFERIDO exit 0 — conferidos de forma independente",
+    "em": "2026-09-02"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "base": "760bccc",
+    "head": "39e216c",
+    "tarefas": 7,
+    "tarefas_ok": 6,
+    "pendentes": [
+      "Tarefa 7 (reagendar as duas tarefas mortas) — altera o Agendador de Tarefas do Windows. Autorizada pelo usuario, NAO executada: as tarefas apontam para o checkout principal, que esta noutra branch, entao reagendar antes do merge devolve os vigias rodando com o codigo velho."
+    ],
+    "comando": "bash scripts/testa-backup-estado.sh; bash scripts/testa-registrar-erro.sh; bash scripts/testa-conferir-encoding.sh; bash scripts/testa-vigias-agendados.sh; node -e require(saude).checarVigias(); node scripts/medir-skill.cjs; git diff --numstat 760bccc..HEAD -- vigias/ERROS.md",
+    "saida": "T1: caso 8 verde, copia criada na raiz de DADOS, nada na raiz do plugin, 28/0. T2: sem CR, sem BOM, acento intacto sob CP850 FORCADO, caminho virou marcador, 62/0. T3: 34 ok 0 falha; backfill 7/7, 18 linhas na base e 18 agora, nenhuma removida. T4: VERMELHA de proposito, nomeando vigia-tickets-manha e vigia-tickets-tarde com NextRunTime vazio. T5: ALERTA vigias + AVISO vigias-erros ao vivo; git diff --stat hooks/ vazio. T6: regra-12.md 9821 B de teto 10500, sem partir.",
+    "em": "2026-09-02"
   },
   "fechar": {
     "status": "pendente"
