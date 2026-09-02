@@ -93,22 +93,46 @@ da maquina.
 Cobre caminho com letra de unidade (C:\...) e UNC (\\servidor\...). Nao cobre
 caminho relativo, que nao identifica maquina nem usuario.
 
-O SEGMENTO INTERMEDIARIO ACEITA ESPACO, e essa e a correcao de 2026-09-02.
-A primeira versao usava `[^\s"'')]*`, que PARA no primeiro espaco - e no Windows
-o nome de usuario com espaco e o caso mais comum que existe. Reproduzido pela
-revisao, rodando o backup-estado.ps1 de verdade com uma raiz que tinha espaco:
+A REGRA DE QUAIS CARACTERES ENTRAM NUM SEGMENTO, e as DUAS rodadas de vazamento
+que foram precisas para chegar nela. Vale ler antes de mexer aqui.
 
-  antes: ... nao achei o FOCO.md em <caminho>\Usuario Fernando Que Nao Deve Vazar\dados\nao-existe
+Rodada 1, o regex original: `[^\s"'')]*`. Ele PARA no primeiro espaco, e no
+Windows nome de pasta com espaco e o caso mais comum que existe. A revisao
+independente reproduziu rodando o backup-estado.ps1 de verdade:
 
-A letra de unidade era trocada e o nome sobrevivia inteiro, num arquivo
-RASTREADO em repositorio PUBLICO. A bateria nao pegou porque o usuario falso
-dela (`usuario-que-nao-deve-vazar`) e as fixtures de caminho nao tinham espaco
-em segmento nenhum: 26 de 26 verdes sem provar a propriedade que a Issue #124
-pede. Teste que nao mede.
+  ... nao achei o FOCO.md em <caminho>\Usuario Fernando Que Nao Deve Vazar\dados\nao-existe
 
-O `:` FICA DE FORA do segmento intermediario, e isso nao e detalhe: sem essa
-exclusao o casador atravessa `um.txt para D:\` como se fosse um segmento com
-espaco e engole DOIS caminhos distintos num marcador so.
+A letra de unidade saia e o nome sobrevivia inteiro, num arquivo RASTREADO em
+repositorio PUBLICO. A bateria nao pegou porque o usuario falso dela nao tinha
+espaco: 26 de 26 verdes sem provar a propriedade que a Issue #124 pede.
+
+Rodada 2, o conserto que ainda vazava: passou a aceitar espaco, mas continuou
+excluindo `(`, `)` e `'`. A revisao achou de novo, e os exemplos matam a
+questao - a pasta de programas de 32 bits, que existe em TODO Windows de 64
+bits e leva `(x86)` entre parenteses no nome, e sobrenome com apostrofo, que e
+comum. Os dois vazavam quase inteiros.
+
+A LICAO, e a regra que sai dela: eu estava confundindo dois conjuntos
+diferentes de caracteres. Os que DELIMITAM um caminho dentro de uma frase
+(aspa, apostrofo, parentese, virgula) nao sao os mesmos que podem estar DENTRO
+de um nome de pasta. Tratar os primeiros como se fossem impossiveis nos
+segundos e o que produziu as duas rodadas de vazamento.
+
+Entao a regra deixou de ser lista ad-hoc e passou a ser a do sistema de
+arquivos: o segmento intermediario exclui exatamente os caracteres que o
+Windows PROIBE num componente de caminho - `< > : " | ? *` - mais os
+separadores e a quebra de linha. Todo o resto e legal num nome de pasta e
+portanto entra: espaco, parentese, apostrofo, hifen, ponto, virgula,
+e-comercial, colchete.
+
+A FOLHA e mais estrita, e de proposito: alem dos proibidos, ela exclui os que
+delimitam o caminho na frase, porque e ali que a mensagem volta a ser prosa.
+Perder o `(1)` de `arquivo (1).txt` custa detalhe de exibicao; nao perder
+custaria a frase inteira dentro do marcador.
+
+O `:` FICA DE FORA do intermediario, e isso nao e detalhe: sem essa exclusao o
+casador atravessa `um.txt para D:\` como se fosse um segmento com espaco e
+engole DOIS caminhos distintos num marcador so.
 #>
 function Get-MotivoSaneado([string]$Motivo) {
     if (-not $Motivo) { return $Motivo }
@@ -128,7 +152,7 @@ function Get-MotivoSaneado([string]$Motivo) {
     # Letra de unidade OU UNC, depois zero ou mais segmentos intermediarios
     # (que ACEITAM espaco, mas nunca `:`, aspa ou parentese), e por fim a folha
     # (que nao aceita espaco: e onde a mensagem volta a ser prosa).
-    $re = '(?:[A-Za-z]:[\\/]|\\\\)(?:[^\\/"''():\r\n]*[\\/])*[^\\/\s"''():,;]*'
+    $re = '(?:[A-Za-z]:[\\/]|\\\\)(?:[^\\/:"<>|?*\r\n]*[\\/])*[^\\/:"<>|?*\r\n\s''(),;]*'
     return [regex]::Replace($Motivo, $re, $avaliador)
 }
 
