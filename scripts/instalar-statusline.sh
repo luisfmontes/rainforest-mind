@@ -106,7 +106,7 @@ if [ $FORCAR -eq 0 ]; then
 
   # Cache padrao: mesmo glob que o shim usa. A variavel recebe a raiz (sem
   # curinga de versao); a busca acrescenta o nivel de versao.
-  CACHE_ROOT="${RAINFOREST_STATUSLINE_CACHE:-/c/Users/Luis/.claude*/plugins/cache/rainforest-mind/rainforest-mind}"
+  CACHE_ROOT="${RAINFOREST_STATUSLINE_CACHE:-$(cd ~ 2>/dev/null && pwd || echo "$HOME")/.claude*/plugins/cache/rainforest-mind/rainforest-mind}"
 
   # Procurar statusline.py com mtime mais novo (sem aspas para o glob expandir).
   STATUSLINE=$(ls -1t $CACHE_ROOT/*/statusline/statusline.py 2>/dev/null | head -1 || true)
