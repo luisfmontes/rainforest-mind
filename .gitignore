@@ -43,3 +43,14 @@ __pycache__/
 # Dado do usuario: mora em ~/.rainforest, nunca no repo (publico). Entrou aqui
 # uma vez em 2026-08-25, escrito por bateria cuja raiz caiu no fallback do plugin.
 ferramentas.jsonl
+
+# Log de despacho da portaria (fluxo 9, D4): append-only, uma linha por decisao
+# de admissao de subagente. E' RASTRO DE EXECUCAO desta maquina — cresce a cada
+# despacho, nao descreve o plugin e nao serve para outro dev. Fica fora.
+#
+# O que NAO entra aqui, de proposito, e o teste da tarefa 4 cobra: o manifesto
+# `.rainforest/agentes.json` e as amostras `.rainforest/portaria/amostra*.json`
+# sao DOCUMENTACAO versionada (D2 e D7) — o manifesto e a regra que a portaria
+# aplica, e a amostra e o payload real em que o parser se fixou. Ignorar
+# qualquer um dos dois quebraria a portaria no clone de outra pessoa.
+.rainforest/portaria/despachos.jsonl

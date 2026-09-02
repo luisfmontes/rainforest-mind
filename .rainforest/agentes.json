@@ -1,0 +1,17 @@
+{
+  "versao": 1,
+  "agentes": {
+    "revisor": {
+      "estagios": ["revisar"],
+      "escreve": false
+    },
+    "auditor-de-seguranca": {
+      "estagios": ["revisar"],
+      "escreve": false
+    },
+    "planejador": {
+      "estagios": ["design", "plano"],
+      "escreve": false
+    }
+  }
+}

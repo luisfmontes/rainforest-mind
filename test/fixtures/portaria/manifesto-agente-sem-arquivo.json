@@ -1,0 +1,9 @@
+{
+  "versao": 1,
+  "agentes": {
+    "inexistente": {
+      "estagios": ["executar"],
+      "escreve": false
+    }
+  }
+}

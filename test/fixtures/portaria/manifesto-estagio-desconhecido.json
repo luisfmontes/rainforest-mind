@@ -1,0 +1,9 @@
+{
+  "versao": 1,
+  "agentes": {
+    "leitor": {
+      "estagios": ["executar", "estago_fantasma"],
+      "escreve": false
+    }
+  }
+}

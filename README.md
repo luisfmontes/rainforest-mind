@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-0.79.0-1e5c3f?style=flat-square" alt="versão 0.79.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-0.80.0-1e5c3f?style=flat-square" alt="versão 0.80.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/revis%C3%A3o-bimestral-9fd8ba?style=flat-square" alt="revisão bimestral">
 </p>
@@ -302,6 +302,7 @@ noite, sabendo que não devia. O que sobrou das duas noites:
 | `gate-staging-total.cjs` | `git add` com caminho total (`-A`, `--all`, `-u`, `--update`, `.`, `./`, `:/`, `*`), inclusive em flag combinada, e `git commit -a/-am/--all` | **também a janela principal**, que foi onde os dois incidentes ocorreram |
 | `gate-publicacao-destino.cjs` | escrita de dados sensíveis (JID, telefone, email, credencial) em arquivo rastreado por git | **qualquer ferramenta que escreve** (`Write`, `Edit`, `MultiEdit`) — impede vazamento em repo público |
 | `gate-repo-alheio.cjs` | escrita cujo destino está dentro de **outro repositório git** que não o da sessão | **também a janela principal**, que foi onde o incidente ocorreu — caminho fora de git e worktree do mesmo repo passam |
+| `portaria.cjs` | despacho de subagente que não está declarado em `.rainforest/agentes.json`, ou cujo estágio ativo não consta na lista dele; manifesto ausente ou inválido nega tudo (fail-closed) | **o despacho**, na janela que despacha — o humano não é perguntado em runtime, e exceção é diff no manifesto, que passa pelo `revisar`. Registrado só no `.claude/settings.json` **do projeto**, não na máquina |
 
 Valem em **qualquer** repo git da máquina, porque o hábito é que é o problema,
 não o repositório. A mensagem de bloqueio não só recusa: a de staging roda
@@ -488,7 +489,7 @@ e a **elaboração** de cada regra em
 | 7 | Tom sênior | Policia pontas soltas e escopo, nunca o mérito; aviso ancora na emoção do resultado, não na ameaça do prazo |
 | 8 | Guarda-corpo de jornada | Jornada real medida, não estimada: ~9h efetivas produzindo → um aviso, uma vez, com a hora, um ponto de parada e a checagem de corpo (água, comida, banheiro) de carona — nunca gatilho próprio. Perder a noção do tempo **dentro** da imersão é traço saudável; dificuldade de **começar ou trocar** é sinal diferente |
 | 9 | Freio de Pareto | Polimento do que já está pronto → "alguém que recebe isso fica prejudicado?"; se não, entrega ou planta |
-| 10 | Agentes baratos com método | Janela principal pensa; sete agentes por **função**, não por domínio (mais dois que executam skill, o `arqueologo` e o `auditor-de-seguranca`): `executor` e `resolvedor-de-build` (haiku), `documentador` (haiku), `planejador`, `revisor`, `tester` e `depurador` (sonnet). Agente que edita nunca é nomeado, e **nomeado só entrega por `SendMessage`** — termina e fica calado. Os sete carregam a **cláusula de premissa**: listam o que aceitaram do briefing sem conferir, e lugar vazio não vira "não existe" |
+| 10 | Agentes baratos, e só os admitidos | Janela principal pensa; sete agentes por **função**, não por domínio (mais dois que executam skill, o `arqueologo` e o `auditor-de-seguranca`): `executor` e `resolvedor-de-build` (haiku), `documentador` (haiku), `planejador`, `revisor`, `tester` e `depurador` (sonnet). Agente que edita nunca é nomeado, e **nomeado só entrega por `SendMessage`** — termina e fica calado. Os sete carregam a **cláusula de premissa**: listam o que aceitaram do briefing sem conferir, e lugar vazio não vira "não existe". **Admissão por manifesto** (fluxo 9): rodar exige estar declarado em `.rainforest/agentes.json` com o **estágio ativo** na lista — a portaria decide por hook `PreToolUse`, sem perguntar ao humano em runtime; exceção é diff no manifesto, que passa pelo `revisar` |
 | 11 | Worktree de subagente | Isolamento sempre, hash de base conferido na primeira ação e reconferido antes de integrar; integração por partes, nunca cópia de arquivo inteiro |
 | 12 | Entrega se valida na saída real | Critério de sucesso vai pronto no briefing, incluindo o teste que falsificaria a entrega; validação é rodar o artefato e olhar a saída. Suíte verde não é evidência; exit code lido através de pipe não é exit code |
 | 13 | Correção vira observação | Você corrigir a saída já é o sinal: registra silenciosamente, e no máximo uma mudança de regra por semana |
