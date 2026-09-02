@@ -92,20 +92,21 @@
     ]
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "09b87380a9a1fdec4650a23263a149891b4e546b",
+      "head": "3b0e35a6a419094d0e8c889fb00cf8273898cc8f",
       "caminhos_sujos": []
     },
-    "base": "b9a3bed03e6e681c347220828d6af750426bc3d5",
-    "head": "bdc229ce360cd397e7b995a3af252bbdedb5372b",
-    "achados": 3,
+    "base": "d63ef31e62dd0516b48038003cdc28ee8a718d28",
+    "head": "3b0e35a6a419094d0e8c889fb00cf8273898cc8f",
+    "achados": 0,
     "criticos": 1,
-    "revisor": "rainforest-mind:revisor, contexto zerado, rodada 5, 2026-09-01",
-    "nota": "REPROVADO na rodada 5 com 1 critico e 2 avisos, todos reproduzidos na janela principal e todos consertados. CRITICO: escreve === false e igualdade estrita, entao \"escreve\": \"false\" (string) e escreve AUSENTE desligavam a checagem de escrita inteira e liberavam agente que declarava tools: Write, Edit, Bash — com a linha de log sem a marca escreve_conferido, byte a byte igual a um allow conferido. Reabria o allow-que-mentia da rodada 4 por outra porta, e sem a marca que tornava aquela auditavel; o --lint tambem saia 0. Conserto: escreve nao-booleano nega no runtime e e erro no lint; escreve:true tambem nega, porque depende do worktree por filho, que nao existe. AVISO 2: o fallback local do resolver era copia byte-identica do estado.cjs coberta por teste nenhum (sabotar so a copia deixava a bateria verde) — REMOVIDO em vez de consertado, e agora sabotar o FECHADO do estado.cjs derruba a bateria do resolver. AVISO 3: o --lint nao via a forma de estagios e divergia do runtime; agora ausente/nao-lista/vazio e erro e lista so com estagio inalcancavel e aviso. Quatro catracas de mutacao pelo conferir-mutacao.cjs, todas exit 0. Onde o revisor procurou e NAO achou: mutou estagio-ativo.cjs pela primeira vez (tres mutacoes pegaram), mutou a idempotencia da amostra em captura (pegou), tracou o caminho principal de main() atras de excecao nao tratada alcancavel (nao ha), e procurou sequencia de despachos que produzisse allow que checagem isolada negaria (nao ha — a decisao e sem estado entre despachos).",
+    "revisor": "6 rodadas de rainforest-mind:revisor com contexto zerado + auditoria cross-model por codex-cli",
+    "nota": "FECHADO OK. Seis rodadas, dez criticos, todos reproduzidos na janela principal antes de aceitar veredito e todos consertados, cada um com bateria e catraca de mutacao propria. A trava de tentativas do estado.cjs disparou tres vezes e subiu a decisao ao Luis, que destravou as tres. A rodada 6 foi ESCOPADA a conferir os consertos da rodada 5, porque quem consertou foi a janela principal e sem revisor zerado seria auto-aprovacao — e ela achou o critico 9, o mais grave da esteira: crash saia exit 1, e exit 1 num PreToolUse e erro nao-bloqueante, entao crashar era fail-OPEN, o oposto do que o comentario que eu mesmo escrevi afirmava. Os criticos 10 (rede sincrona nao pega unhandledRejection) e a trava de require-no-topo vieram de AUDITORIA POR MODELO DE OUTRA FAMILIA, sugerida pelo Luis, pedida porque o critico 9 foi erro de raciocinio sobre contrato de plataforma — viés que revisor da mesma familia repete. Achado de carona, fora de revisao nenhuma: frontmatter em CRLF fazia Write virar Write\r e escapar da allowlist. Limite NOMEADO e nao fechado: erro de sintaxe no proprio portaria.cjs, node fora do PATH, ou timeout do hook nao passam pela rede que transforma excecao em exit 2 — cobrir exigiria wrapper externo. Bateria pos-merge com a main (39 commits, PR #140): 79 baterias, 3 falhas, todas pre-existentes e duas delas dependentes de dado local; a terceira (testa-versao) foi consertada neste fluxo porque deixaria o CI do PR vermelho por motivo alheio.",
     "em": "2026-09-01",
-    "tentativas": 5,
-    "liberado_em": "2026-09-01"
+    "rodadas": 6,
+    "criticos_no_total": 10,
+    "segunda_opiniao": "concordo — scripts/segunda-opiniao.cjs --modelo codex contra os sete criterios falsificaveis do diff (criterio em scratchpad, parecer ponto a ponto). O parecer nao identificou caminho que derrube nenhuma das sete afirmacoes."
   },
   "verificar": {
     "status": "pendente"
