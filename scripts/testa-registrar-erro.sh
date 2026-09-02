@@ -283,6 +283,50 @@ igual "apostrofo que DELIMITA o caminho continua delimitando" \
   "valor atual: '<caminho>\\b.ps1'"
 
 echo
+echo "== C3. formas que o casador nao enxergava — a varredura adversarial =="
+# As duas primeiras rodadas de vazamento foram achadas por revisao independente.
+# Esta terceira foi procurada de proposito, contra formas que ninguem tinha
+# tentado — e achou mais tres. Cada uma virou uma alternativa no abridor, e cada
+# uma tem caso aqui para nao voltar calada.
+
+# 1. O PIOR DELES. O `e:` de `file:` casava como letra de unidade: o casador
+#    comia `e:///`, punha o marcador ALI, e o caminho de verdade logo depois
+#    ficava INTOCADO. Produzia uma linha que PARECIA saneada — o modo de falha
+#    mais caro que existe num gate, porque some da inspecao visual.
+igual "esquema de URL nao pode ser confundido com letra de unidade" \
+  "$(sanear 'url file:///C:/pasta/Fulano/x.json invalida')" \
+  'url file:///<caminho>\x.json invalida'
+igual "e vale para qualquer esquema, nao so file" \
+  "$(sanear 'url http://host/C:/pasta/Fulano/x.json invalida')" \
+  'url http://host/<caminho>\x.json invalida'
+
+# 2. Prefixo estendido do Windows. O `\\` simples casava e travava no `?`,
+#    deixando o resto do caminho de fora.
+igual "prefixo estendido com letra de unidade" \
+  "$(sanear 'raiz \\?\C:\pasta\Fulano\x.json falhou')" \
+  'raiz <caminho>\x.json falhou'
+igual "prefixo estendido com UNC" \
+  "$(sanear 'raiz \\?\UNC\servidor\compart\Fulano\x.json falhou')" \
+  'raiz <caminho>\x.json falhou'
+
+# 3. Caminho relativo. O comentario da funcao afirmava que relativo "nao
+#    identifica maquina nem usuario" — e afirmava errado.
+igual "caminho relativo com .. tambem identifica pessoa" \
+  "$(sanear 'relativo ..\..\Users\Fulano\x.json nao existe')" \
+  'relativo <caminho>\x.json nao existe'
+
+# E o outro lado, para o abridor novo nao virar rede de arrasto:
+igual "reticencias em prosa nao viram caminho relativo" \
+  "$(sanear 'reticencias ... no meio da frase')" \
+  'reticencias ... no meio da frase'
+igual "variavel de ambiente nao expandida fica como esta (nao ha nome dentro)" \
+  "$(sanear 'raiz %USERPROFILE%\dados\z.txt nao existe')" \
+  'raiz %USERPROFILE%\dados\z.txt nao existe'
+igual "pasta terminando em ponto nao confunde o casador" \
+  "$(sanear 'raiz C:\pasta\Fulano.\dados\y.txt aqui')" \
+  'raiz <caminho>\y.txt aqui'
+
+echo
 echo "== D. a trava: nenhuma escrita escapa da porta unica =="
 # Olha LINHA DE EXECUCAO, nao o arquivo inteiro: os cabecalhos dos tres arquivos
 # citam `Out-File` de proposito, para explicar por que ele saiu, e apagar essa
