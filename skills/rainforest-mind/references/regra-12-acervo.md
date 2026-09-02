@@ -133,3 +133,13 @@ regra apontam para cá. Ordem cronológica.
 > bloco. O artefato real foi rodado, como a regra manda — o que falhou foi ler
 > a saída por substring em vez de pelo veredito. Um depurador foi despachado
 > para consertar o que não estava quebrado, e foi ele quem desmentiu.
+
+> 2026-09-01: `vigia-tickets-manha` e `vigia-tickets-tarde` estavam mortos
+> havia vinte dias e o Agendador de Tarefas do Windows respondia `State:
+> Ready`, `Enabled: True`, `LastTaskResult: 0` — os três campos que uma pessoa
+> checa, os três mentindo em coro. O gatilho tinha `EndBoundary` vencido em
+> 12/08, e o único sinal verdadeiro era o `NextRunTime` **vazio**. O
+> `vigias/ERROS.md` registrava a falha do backup em toda ronda desde 27/08,
+> em texto plano, com data e nome: ficou cinco dias sem ninguém abrir. Não
+> faltou instrumentação — faltou que alguém lesse, e que algo cobrasse a
+> leitura.
