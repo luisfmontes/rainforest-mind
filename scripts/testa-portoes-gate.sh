@@ -189,5 +189,111 @@ afirma "G10. COM design.arquivo, a cobertura dispara e RECUSA a decisao orfa" \
 afirma "G11. e a recusa nomeia a decisao que ficou sem tarefa" \
   "$(printf '%s' "$SAIDA" | grep -qi 'D1' && echo 1 || echo 0)"
 
+echo "== C1/C2: o gate enxerga o --json DA PROPRIA chamada =="
+# Achados C1 e C2 da revisao independente de 2026-09-02, reproduzidos antes de
+# consertar. `conferirFechamento` recebia o `estado` lido do DISCO, de antes da
+# fusao com o `--json` desta chamada. Como `design` nao tem estado intermediario
+# entre `pendente` e `aprovado`, a UNICA forma de anotar `arquivo` e' no mesmo
+# `marcar` que fecha o estagio — e nesse instante o gate era cego para ele: caia
+# no `docDe(tipo, slug)`, que nao existe, e a checagem nunca rodava. Exit 0, sem
+# erro nem aviso. O `docDoEstagio` da tarefa 6 existia justamente para esse caso
+# e nao alcancava o unico momento em que ele acontece.
+printf 'isto nao e um design valido, sem secoes nem decisoes\n' \
+  > "$S/docs/rainforest/design/malformado.md"
+est iniciar --slug c1-mesma-chamada --titulo sandbox >/dev/null
+SAIDA="$(est marcar --slug c1-mesma-chamada --estagio design --status aprovado \
+  --json '{"arquivo":"docs/rainforest/design/malformado.md"}')"; C=$?
+afirma "G12. design malformado declarado NA MESMA chamada e' RECUSADO" \
+  "$([ "$C" -ne 0 ] && echo 1 || echo 0)"
+afirma "G13. e a recusa vem da checagem estrutural, nao de um erro generico" \
+  "$(printf '%s' "$SAIDA" | grep -q 'seção obrigatória ausente' && echo 1 || echo 0)"
+
+# C2: mesma causa, lado do plano. Design com D1 e D2; plano so atende D1.
+cat > "$S/docs/rainforest/design/com-orfa.md" <<'FIM'
+# Design
+
+## Objetivo
+Sandbox.
+
+## Decisões fechadas
+- **D1 — a primeira coisa**
+- **D2 — a segunda coisa, que nenhuma tarefa vai atender**
+
+## Avaliado e descartado
+Nada.
+
+## Fora de escopo
+Nada.
+
+## Em aberto
+Nada.
+FIM
+cat > "$S/docs/rainforest/planos/com-orfa.md" <<'FIM'
+# Plano
+
+### 1. Faz a primeira coisa [tipo: implementar]
+atende: D1
+arquivos: `a/**`
+depende de: nenhuma
+paralela: sim
+mutacao:
+  arquivo: `a`
+  de: x
+  para: y
+  bateria: z
+pronto quando: sai 0
+FIM
+est iniciar --slug c2-plano --titulo sandbox >/dev/null
+est marcar --slug c2-plano --estagio design --status aprovado \
+  --json '{"arquivo":"docs/rainforest/design/com-orfa.md"}' >/dev/null
+SAIDA="$(est marcar --slug c2-plano --estagio plano --status ok \
+  --json '{"arquivo":"docs/rainforest/planos/com-orfa.md"}')"; C=$?
+afirma "G14. plano declarado NA MESMA chamada dispara a cobertura e RECUSA a orfa" \
+  "$([ "$C" -ne 0 ] && echo 1 || echo 0)"
+afirma "G15. e a recusa nomeia D2" \
+  "$(printf '%s' "$SAIDA" | grep -q 'D2' && echo 1 || echo 0)"
+
+echo "== A3: o arquivo declarado tem de viver na arvore do projeto =="
+# Sem a cerca, um design bem formado mas NUNCA versionado (um rascunho no temp)
+# era aceito como design "aprovado" do fluxo. Nao e' bypass de validacao — a
+# checagem estrutural ainda roda — mas quebra a garantia que da sentido ao
+# versionamento: quem vier depois nao consegue ler o que foi aprovado.
+# O par DENTRO/FORA com o MESMO conteudo e' o que isola a variavel. Um teste que
+# so olhasse o arquivo de estado nao mediria nada: o campo `arquivo` e' gravado
+# de qualquer jeito — a cerca decide se ele e' ADOTADO pelo gate, o que so
+# aparece no comportamento da checagem.
+#
+# O design usado tem D2 orfa, entao:
+#   adotado     -> a cobertura roda no `plano ok` e RECUSA
+#   nao adotado -> cai no fallback `<slug>.md`, que nao existe, e o plano FECHA
+# A diferenca entre os dois casos e' SO a localizacao do arquivo.
+# Diretorio IRMAO do sandbox, nao um subdiretorio dele: `$S` E' a raiz do
+# projeto nesta bateria (`RFM_ESTADO_ROOT`), entao um arquivo em `$S/fora.md`
+# esta DENTRO da arvore. A primeira versao deste caso errou exatamente isso e
+# reprovava por medir o cenario errado.
+EXTERNO="$(mktemp -d)"
+trap 'rm -rf "$S" "$EXTERNO"' EXIT
+FORA="$(cygpath -m "$EXTERNO" 2>/dev/null || printf '%s' "$EXTERNO")/fora-da-arvore.md"
+cp "$S/docs/rainforest/design/com-orfa.md" "$FORA"
+cp "$S/docs/rainforest/planos/com-orfa.md" "$S/docs/rainforest/planos/a3-fora.md"
+est iniciar --slug a3-fora --titulo sandbox >/dev/null
+est marcar --slug a3-fora --estagio design --status aprovado \
+  --json "{\"arquivo\":\"$FORA\"}" >/dev/null
+SAIDA="$(est marcar --slug a3-fora --estagio plano --status ok \
+  --json '{"arquivo":"docs/rainforest/planos/a3-fora.md"}')"; C=$?
+afirma "G16. design FORA da arvore nao e' adotado — a cobertura nao roda com ele" \
+  "$([ "$C" -eq 0 ] && echo 1 || echo 0)"
+
+# O espelho: o MESMO conteudo, DENTRO da arvore, e' adotado e a cobertura recusa.
+# Sem este caso, G16 passaria por qualquer motivo que impedisse a checagem.
+cp "$S/docs/rainforest/planos/com-orfa.md" "$S/docs/rainforest/planos/a3-dentro.md"
+est iniciar --slug a3-dentro --titulo sandbox >/dev/null
+est marcar --slug a3-dentro --estagio design --status aprovado \
+  --json '{"arquivo":"docs/rainforest/design/com-orfa.md"}' >/dev/null
+SAIDA="$(est marcar --slug a3-dentro --estagio plano --status ok \
+  --json '{"arquivo":"docs/rainforest/planos/a3-dentro.md"}')"; C=$?
+afirma "G17. o MESMO design, DENTRO da arvore, e' adotado e a cobertura RECUSA" \
+  "$([ "$C" -ne 0 ] && printf '%s' "$SAIDA" | grep -q 'D2' && echo 1 || echo 0)"
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ] || exit 1
