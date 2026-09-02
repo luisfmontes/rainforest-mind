@@ -26,7 +26,18 @@ command -v node >/dev/null 2>&1 || exit 0
 
 # A versao do plugin muda a cada atualizacao — pega a mais recente das duas
 # pastas de configuracao (trabalho e pessoal) em vez de fixar o numero.
-SCRIPT=$(ls -1t /c/Users/Luis/.claude*/plugins/cache/rainforest-mind/rainforest-mind/*/scripts/jornada.cjs 2>/dev/null | head -1)
+#
+# A raiz sai do HOME de quem roda, nunca de um nome chumbado. Ate 2026-09-02
+# este caminho tinha o home do autor escrito, e SEM variavel de escape: na
+# maquina de qualquer outra pessoa o glob nao casava, `SCRIPT` ficava vazio e a
+# linha seguinte saia 0 em silencio. Statusline que nao aparece e a falha mais
+# facil de nao notar que existe — nada quebra, so nao aparece.
+#
+# `cd ~ && pwd` e nao `$USERPROFILE`: o glob precisa da forma POSIX
+# (`/c/Users/<nome>`), e `$USERPROFILE` chega em forma Windows. Mesmo idioma do
+# `scripts/instalar-statusline.sh`.
+CACHE_ROOT="${RAINFOREST_STATUSLINE_CACHE:-$(cd ~ 2>/dev/null && pwd || echo "$HOME")/.claude*/plugins/cache/rainforest-mind/rainforest-mind}"
+SCRIPT=$(ls -1t $CACHE_ROOT/*/scripts/jornada.cjs 2>/dev/null | head -1)
 [ -n "$SCRIPT" ] || exit 0
 
 VALOR=$(node "$SCRIPT" 2>/dev/null | sed -n 's/^JORNADA EFETIVA[ .]*\([0-9]\+h[0-9]\+\).*/\1/p' | head -1)

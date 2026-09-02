@@ -11,7 +11,7 @@ set -u
 # cobre as duas pastas de configuracao (trabalho e pessoal). A variavel existe
 # para a bateria poder provar as tres bordas sem depender do plugin instalado.
 # Recebe a raiz (sem curinga de versao); a busca acrescenta o nivel de versao.
-CACHE_ROOT="${RAINFOREST_STATUSLINE_CACHE:-/c/Users/Luis/.claude*/plugins/cache/rainforest-mind/rainforest-mind}"
+CACHE_ROOT="${RAINFOREST_STATUSLINE_CACHE:-$(cd ~ 2>/dev/null && pwd || echo "$HOME")/.claude*/plugins/cache/rainforest-mind/rainforest-mind}"
 
 # Escolhe o statusline.py com mtime mais novo. Se a ordenacao do ls -1t sobre
 # o diretorio nao der isso de forma confiavel (edge cases de cache de disco ou
