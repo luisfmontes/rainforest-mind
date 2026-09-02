@@ -685,9 +685,29 @@ function docDoEstagio(tipo, slug, estado) {
     // versionamento: o design que autorizou o trabalho tem de estar no repo, ou
     // ninguém depois consegue ler o que foi aprovado. Achado A3 da revisão de
     // 2026-09-02.
-    const dentro = declarado === path.resolve(RAIZ)
-      || declarado.startsWith(path.resolve(RAIZ) + path.sep);
-    if (dentro && fs.existsSync(declarado)) return declarado;
+    // Por `realpath`, NÃO por comparação de string. `path.resolve` +
+    // `startsWith` é teste LÉXICO: um symlink (ou junction, que no Windows
+    // qualquer usuário cria sem privilégio) dentro da raiz apontando para fora
+    // passa nele — o caminho declarado "parece" interno e o checador acaba
+    // lendo o arquivo externo. Achado da auditoria cross-model (codex) em
+    // 2026-09-02, sobre a primeira versão desta mesma cerca, que eu tinha
+    // escrito no mesmo dia para fechar outro buraco.
+    //
+    // Os dois lados passam por `realpathSync`: comparar caminho resolvido com
+    // raiz não-resolvida daria falso negativo em máquina cuja raiz já está sob
+    // um link (o `/tmp` do macOS é o caso clássico).
+    let real;
+    let raizReal;
+    try {
+      real = fs.realpathSync(declarado);
+      raizReal = fs.realpathSync(RAIZ);
+    } catch (_) {
+      // Caminho inexistente ou ilegível: não adota, cai no fallback. Recusar
+      // aqui prenderia o estágio por um campo opcional.
+      return docDe(tipo, slug);
+    }
+    const dentro = real === raizReal || real.startsWith(raizReal + path.sep);
+    if (dentro) return real;
   }
   return docDe(tipo, slug);
 }
@@ -723,22 +743,32 @@ function rodarChecador(exe, args, estagio) {
 function conferirFechamento(estagio, slug, extra, estado) {
   if (!fs.existsSync(CHECADOR)) return null; // plugin antigo: não inventa trava
 
-  // Os PORTÕES rodam em sequência com as checagens abaixo, não em vez delas —
-  // por isso este bloco vem antes e retorna direto. Enquanto `conferirFechamento`
-  // foi uma cadeia `if/else if`, um estágio só podia ter UMA checagem, e `plano`
-  // agora tem duas: `cobertura` e o lint dos portões.
+  // Os PORTÕES rodam em sequência com as checagens abaixo, não em vez delas.
+  // Enquanto `conferirFechamento` foi uma cadeia `if/else if`, um estágio só
+  // podia ter UMA checagem, e `plano` agora tem duas: `cobertura` e o lint dos
+  // portões.
+  //
+  // As recusas se ACUMULAM em vez de retornarem na primeira. A versão anterior
+  // retornava direto no lint, e com isso um plano que tivesse portão mal
+  // autorado E decisão órfã só mostrava o segundo problema depois de a pessoa
+  // consertar o primeiro e rodar de novo — duas idas para um fechamento. Nada
+  // fechava indevidamente, mas "checagens independentes em sequência" era
+  // promessa não cumprida: continuava uma cadeia, só que mais longa. Achado da
+  // auditoria cross-model (codex) em 2026-09-02.
+  const recusas = [];
+
   if (fs.existsSync(PORTOES)) {
     const arquivoPortoes = portoesDe(slug);
     if (arquivoPortoes) {
       if (estagio === 'plano') {
-        const recusa = rodarChecador(PORTOES, ['lint', arquivoPortoes], estagio);
-        if (recusa) return recusa;
+        const r = rodarChecador(PORTOES, ['lint', arquivoPortoes], estagio);
+        if (r) recusas.push(r);
       } else if (estagio === 'verificar') {
         // O gate que o fluxo 6 existe para instalar: com portões declarados, a
         // evidência colada deixa de bastar. O `ok` só grava se os oráculos
         // re-executarem e passarem agora — não se alguém afirmar que passaram.
-        const recusa = rodarChecador(PORTOES, ['rodar', arquivoPortoes], estagio);
-        if (recusa) return recusa;
+        const r = rodarChecador(PORTOES, ['rodar', arquivoPortoes], estagio);
+        if (r) recusas.push(r);
       }
     }
   }
@@ -765,16 +795,22 @@ function conferirFechamento(estagio, slug, extra, estado) {
     const base = extra && extra.base;
     const head = extra && extra.head;
     if (!base || !head) {
-      return `RECUSADO: fechar 'revisar' exige 'base' e 'head' no --json.\n`
+      recusas.push(`RECUSADO: fechar 'revisar' exige 'base' e 'head' no --json.\n`
         + `Sem os dois pontos do diff nao ha como provar que o trabalho nao tocou\n`
-        + `arquivo fora do plano. Ex.: --json '{"achados":0,"base":"<ref>","head":"<ref>"}'`;
+        + `arquivo fora do plano. Ex.: --json '{"achados":0,"base":"<ref>","head":"<ref>"}'`);
+      args = null;
+    } else {
+      args = ['creep', '--slug', slug, '--base', String(base), '--head', String(head),
+        '--plano', docDoEstagio('planos', slug, estado)];
     }
-    args = ['creep', '--slug', slug, '--base', String(base), '--head', String(head),
-      '--plano', docDoEstagio('planos', slug, estado)];
   }
-  if (!args) return null;
 
-  return rodarChecador(CHECADOR, args, estagio);
+  if (args) {
+    const r = rodarChecador(CHECADOR, args, estagio);
+    if (r) recusas.push(r);
+  }
+
+  return recusas.length > 0 ? recusas.join('\n') : null;
 }
 
 // ---------------------------------------------------------------- CLI
