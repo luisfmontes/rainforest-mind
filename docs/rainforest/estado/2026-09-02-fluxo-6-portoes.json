@@ -15,7 +15,7 @@
     "em": "2026-09-02"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-02",
     "comando": "node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-02-fluxo-6-portoes.md",
     "saida": "P0..P5 CUMPRIDO — TODOS OS PORTOES CUMPRIDOS — 6 portao(oes). exit 0",
@@ -53,20 +53,39 @@
         "fixture": "cobertura-viva2 (docDoEstagio volta a ignorar design.arquivo)"
       }
     ],
-    "em": "2026-09-02"
-  },
-  "revisar": {
-    "status": "pendente",
-    "snapshot": {
-      "head": "1550a48dcd49c5a1b7c48e4c1d028994277d236f",
-      "caminhos_sujos": [
-        "docs/rainforest/estado/2026-09-02-fluxo-6-portoes.json",
-        "vigias/ERROS.md"
-      ]
+    "em": "2026-09-02",
+    "reaberto_por": {
+      "estagio": "verificar",
+      "data": "2026-09-02"
     }
   },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "fd7e50365bcef23a847a6fb5e483a381acce7deb",
+      "caminhos_sujos": [
+        "vigias/ERROS.md"
+      ]
+    },
+    "achados": 7,
+    "criticos": 2,
+    "avisos": 3,
+    "cross_model": 2,
+    "base": "b873eed",
+    "head": "fd7e503",
+    "revisor": "reprovou com C1+C2 criticos e A1-A3 avisos; todos reproduzidos e consertados",
+    "segunda_opiniao": "codex: discordou de 5 e 7 (recusa nao acumulava; cerca lexica furada por junction), consertados; re-rodada saiu concordo nos 7 criterios",
+    "em": "2026-09-02"
+  },
   "verificar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "comando": "node scripts/estado.cjs marcar --estagio verificar --status ok",
+    "saida": "P0..P5: cumprido (pulado; use --reverificar para re-executar)",
+    "segunda_opiniao": "codex: concordo nos 7 criterios",
+    "em": "2026-09-02",
+    "criterio": "o gate do verificar re-executa os portoes",
+    "faltou": "o gate rodava sem --reverificar e pulou os 6 portoes com evidencia gravada — aprovou lendo o arquivo em vez de executar",
+    "tentativas": 1
   },
   "fechar": {
     "status": "pendente"
