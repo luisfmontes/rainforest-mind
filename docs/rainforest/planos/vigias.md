@@ -1,6 +1,6 @@
 # Plano — vigias parados
 
-**Slug:** `vigias` · **Design:** `docs/rainforest/design/2026-09-01-vigias-parados.md`
+**Slug:** `vigias` · **Design:** `docs/rainforest/design/vigias.md`
 **Base:** `origin/main` @ `760bccc` · **Branch:** `fluxo/vigias`
 
 Sete tarefas. **Nenhum fan-out**: a portaria nega `escreve: true` por desenho, e nesta
