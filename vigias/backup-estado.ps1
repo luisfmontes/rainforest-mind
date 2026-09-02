@@ -93,7 +93,7 @@ function Registrar-Erro([string]$Motivo) {
 # manual levou o FOCO.md que o usuario tinha modificado e ainda nao commitado
 # para a main. Modo de teste que escreve no repositorio do usuario nao e teste.
 if ($Teste) {
-    if ($Log) { Write-LinhaEmLf -Caminho $Log -Linha "modo teste: backup do estado NAO executado" }
+    if ($Log) { [void](Write-LinhaEmLf -Caminho $Log -Linha "modo teste: backup do estado NAO executado") }
     exit 0
 }
 
@@ -120,5 +120,5 @@ if ($codigo -ne 0) {
     exit 1
 }
 
-if ($Log) { Write-LinhaEmLf -Caminho $Log -Linha "backup do estado: $($saida -join ' ')" }
+if ($Log) { [void](Write-LinhaEmLf -Caminho $Log -Linha "backup do estado: $($saida -join ' ')") }
 exit 0
