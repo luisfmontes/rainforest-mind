@@ -652,15 +652,92 @@ function docDe(tipo, slug) {
   return path.join(RAIZ, 'docs', 'rainforest', tipo, `${slug}.md`);
 }
 
+/**
+ * Caminho REAL do doc de um estágio.
+ *
+ * O estado grava `arquivo` no bloco do estágio (`design.arquivo`,
+ * `plano.arquivo`) quando o doc não se chama `<slug>.md` — e é o caso normal:
+ * nenhum design deste repositório se chama assim (`fluxo-9-design-portaria.md`,
+ * `fluxo-6-design-portoes.md`). Até 2026-09-02 `conferirFechamento` ignorava
+ * esse campo e só olhava `docDe(tipo, slug)`.
+ *
+ * A consequência foi medida, não suposta: a checagem `cobertura` — a que prova
+ * que toda decisão do design virou tarefa e que toda tarefa cita decisão real —
+ * **nunca disparou**, porque exige que os DOIS caminhos derivados do slug
+ * existam, e o do design nunca existia. Ela passou o fluxo 9 inteiro sem rodar
+ * uma vez. Trava registrada, testada e inerte: o estado sabia onde o arquivo
+ * estava, e o gate procurava noutro lugar.
+ *
+ * A ordem aqui é a mesma do `conferir-entrega.cjs`: perguntar onde a coisa está
+ * antes de perguntar se ela passa.
+ */
+function docDoEstagio(tipo, slug, estado) {
+  const bloco = estado && estado[tipo === 'planos' ? 'plano' : 'design'];
+  if (bloco && typeof bloco.arquivo === 'string' && bloco.arquivo) {
+    const declarado = path.isAbsolute(bloco.arquivo)
+      ? bloco.arquivo
+      : path.join(RAIZ, bloco.arquivo);
+    if (fs.existsSync(declarado)) return declarado;
+  }
+  return docDe(tipo, slug);
+}
+
+/**
+ * Caminho do arquivo de portões deste fluxo, ou null.
+ *
+ * Derivado do slug, sem campo novo no estado — decisão P1 do design do fluxo 6.
+ * Portões são opt-in: fluxo sem este arquivo fecha exatamente como antes.
+ */
+function portoesDe(slug) {
+  const p = path.join(RAIZ, 'docs', 'rainforest', 'portoes', `${slug}.md`);
+  return fs.existsSync(p) ? p : null;
+}
+
+const PORTOES = path.join(__dirname, 'portoes.cjs');
+
+/**
+ * Roda um dos checadores e devolve a recusa, ou null.
+ *
+ * Processo filho de propósito: a mensagem útil (qual decisão ficou órfã, que
+ * arquivo não casou com glob nenhum, qual portão não cumpriu) já está no
+ * checador, e reimplementá-la aqui criaria duas versões da mesma regra para
+ * divergirem.
+ */
+function rodarChecador(exe, args, estagio) {
+  const r = spawnSync(process.execPath, [exe, ...args], { stdio: 'inherit' });
+  if (r.status === 0) return null;
+  return `RECUSADO: '${estagio}' nao fecha enquanto a checagem acima nao passar.`;
+}
+
 /** @returns {string|null} mensagem de recusa, ou null se passou/não se aplica */
-function conferirFechamento(estagio, slug, extra) {
+function conferirFechamento(estagio, slug, extra, estado) {
   if (!fs.existsSync(CHECADOR)) return null; // plugin antigo: não inventa trava
 
+  // Os PORTÕES rodam em sequência com as checagens abaixo, não em vez delas —
+  // por isso este bloco vem antes e retorna direto. Enquanto `conferirFechamento`
+  // foi uma cadeia `if/else if`, um estágio só podia ter UMA checagem, e `plano`
+  // agora tem duas: `cobertura` e o lint dos portões.
+  if (fs.existsSync(PORTOES)) {
+    const arquivoPortoes = portoesDe(slug);
+    if (arquivoPortoes) {
+      if (estagio === 'plano') {
+        const recusa = rodarChecador(PORTOES, ['lint', arquivoPortoes], estagio);
+        if (recusa) return recusa;
+      } else if (estagio === 'verificar') {
+        // O gate que o fluxo 6 existe para instalar: com portões declarados, a
+        // evidência colada deixa de bastar. O `ok` só grava se os oráculos
+        // re-executarem e passarem agora — não se alguém afirmar que passaram.
+        const recusa = rodarChecador(PORTOES, ['rodar', arquivoPortoes], estagio);
+        if (recusa) return recusa;
+      }
+    }
+  }
+
   let args = null;
-  if (estagio === 'design' && fs.existsSync(docDe('design', slug))) {
-    args = ['design', '--slug', slug];
+  if (estagio === 'design' && fs.existsSync(docDoEstagio('design', slug, estado))) {
+    args = ['design', '--slug', slug, '--design', docDoEstagio('design', slug, estado)];
   } else if (estagio === 'plano'
-      && fs.existsSync(docDe('planos', slug))
+      && fs.existsSync(docDoEstagio('planos', slug, estado))
       // `cobertura` cruza os DOIS arquivos, então exigir só o plano prendia o
       // estágio para sempre num projeto que escreveu plano e nunca escreveu
       // design: o `marcar design aprovado` passava (sem design em disco não há o
@@ -668,9 +745,11 @@ function conferirFechamento(estagio, slug, extra) {
       // sem saída nenhuma. Achado 1 da revisão de 2026-08-13, reproduzido antes
       // de consertar. A regra é: a trava só age quando **tudo que a checagem lê**
       // existe — checar a presença do arquivo do estágio não basta.
-      && fs.existsSync(docDe('design', slug))) {
-    args = ['cobertura', '--slug', slug];
-  } else if (estagio === 'revisar' && fs.existsSync(docDe('planos', slug))) {
+      && fs.existsSync(docDoEstagio('design', slug, estado))) {
+    args = ['cobertura', '--slug', slug,
+      '--design', docDoEstagio('design', slug, estado),
+      '--plano', docDoEstagio('planos', slug, estado)];
+  } else if (estagio === 'revisar' && fs.existsSync(docDoEstagio('planos', slug, estado))) {
     // Sem os dois pontos do diff não há como provar ausência de creep, e fechar
     // a revisão sem essa prova é exatamente o buraco que a decisão D4 fecha.
     const base = extra && extra.base;
@@ -680,16 +759,12 @@ function conferirFechamento(estagio, slug, extra) {
         + `Sem os dois pontos do diff nao ha como provar que o trabalho nao tocou\n`
         + `arquivo fora do plano. Ex.: --json '{"achados":0,"base":"<ref>","head":"<ref>"}'`;
     }
-    args = ['creep', '--slug', slug, '--base', String(base), '--head', String(head)];
+    args = ['creep', '--slug', slug, '--base', String(base), '--head', String(head),
+      '--plano', docDoEstagio('planos', slug, estado)];
   }
   if (!args) return null;
 
-  // Processo filho de propósito: a mensagem útil (qual decisão ficou órfã, que
-  // arquivo não casou com glob nenhum) já está no checador, e reimplementá-la
-  // aqui criaria duas versões da mesma regra para divergirem.
-  const r = spawnSync(process.execPath, [CHECADOR, ...args], { stdio: 'inherit' });
-  if (r.status === 0) return null;
-  return `RECUSADO: '${estagio}' nao fecha enquanto a checagem acima nao passar.`;
+  return rodarChecador(CHECADOR, args, estagio);
 }
 
 // ---------------------------------------------------------------- CLI
@@ -913,7 +988,7 @@ function main() {
         console.error(recusa_evidencia);
         process.exit(2);
       }
-      const recusa = conferirFechamento(estagio, slug, extra);
+      const recusa = conferirFechamento(estagio, slug, extra, estado);
       if (recusa) {
         console.error(recusa);
         process.exit(2);
