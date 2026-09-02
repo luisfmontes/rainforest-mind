@@ -216,60 +216,44 @@ PT="$SB/portugues.md"
 printf -- 'A ronda nao achou o arquivo: acentuacao, coracao, versao, gestao.\nCom acento de verdade: n\xc3\xa3o, \xc3\xa9, \xc3\xba, \xc3\xa7\xc3\xa3o.\n' > "$PT"
 saiu "portugues acentuado em UTF-8 valido passa (exit 0)" "$(codigo "$PT")" "0"
 
-# O caso que a revisao independente achou em 2026-09-02, e que a versao anterior
-# desta secao NAO cobria: `tree` COMPACTO, sem o traco depois do conector. Ali o
-# caractere colado no U+251C e uma letra acentuada — `├área/`, `├épocas/` — que
-# ESTA na faixa 0x80-0xBF do CP850, e a rede acusava markdown legitimo.
-# O desempate e a POSICAO: mojibake nasce dentro de palavra (tem letra antes),
-# conector de arte nasce no comeco da linha ou depois de espaco.
+# O caso que a revisao independente achou em 2026-09-02: `tree` COMPACTO, sem o
+# traco depois do conector, produz `├área/`. Ele REPROVA, e isso e a decisao  (rf-encoding-exemplo)
+# — nao um descuido. Ver o comentario longo no achaMojibake: nao ha desempate
+# honesto em 2 caracteres, porque `├á` e ao mesmo tempo arte compacta e o  (rf-encoding-exemplo)
+# round-trip de `à`. A rede fica apertada e quem escreve arte compacta usa o
+# marcador, que e a saida que este script ja tinha para o caso.
 ARTE2="$SB/arte-compacta.md"
-printf -- 'estrutura do repo:\n\xe2\x94\x9c\xc3\xa1rea/\n\xe2\x94\x9c\xc3\xa9pocas/\n\xe2\x94\x94\xc3\xba\xc3\xbatil/\n' > "$ARTE2"
-saiu "tree COMPACTO com acento colado no conector passa (exit 0)" "$(codigo "$ARTE2")" "0"
+printf -- 'estrutura do repo:\n\xe2\x94\x9c\xc3\xa1rea/\n' > "$ARTE2"
+saiu "tree COMPACTO com acento colado no conector reprova (decisao, nao descuido)" "$(codigo "$ARTE2")" "2"
+ARTE3="$SB/arte-compacta-com-marcador.md"
+printf -- 'estrutura do repo:\n\xe2\x94\x9c\xc3\xa1rea/  <!-- rf-encoding-exemplo -->\n' > "$ARTE3"
+saiu "e a mesma linha COM o marcador passa (a saida existe e funciona)" "$(codigo "$ARTE3")" "0"
 
 echo
-echo "== 6d. o desempate de posicao nao pode virar cegueira =="
-# Afrouxar por posicao so vale se o defeito REAL continuar sendo pego. Tres
-# provas, uma por caminho do desempate.
+echo "== 6d. o preco de NAO desempatar por posicao, medido =="
+# Houve uma tentativa de afrouxar: fechador que e letra so acusaria com
+# caractere de palavra antes do abridor ("mojibake nasce dentro de palavra").
+# Foi DESFEITA porque o argumento e falso — toda palavra portuguesa que comeca
+# com maiuscula acentuada cai fora da rede. Estes casos existem para que a
+# tentativa nao volte sem alguem reproduzir isto primeiro.
+#   Area   -> <U+251C><U+00FC>rea       (0xc3 0x81 lido como CP850)
+#   Epoca  -> <U+251C><U+00EB>poca
+#   Indice -> <U+251C><U+00EC>ndice
+INICIO="$SB/mojibake-inicio-de-palavra.md"
+printf -- 'a \xe2\x94\x9c\xc3\xbcrea do projeto\n' > "$INICIO"
+saiu "mojibake no INICIO de palavra (sem letra antes) reprova" "$(codigo "$INICIO")" "2"
+LINHA="$SB/mojibake-inicio-de-linha.md"
+printf -- '\xe2\x94\x9c\xc3\xabpoca de mudanca\n' > "$LINHA"
+saiu "mojibake no INICIO da linha reprova" "$(codigo "$LINHA")" "2"
 DENTRO="$SB/mojibake-dentro-de-palavra.md"
 printf -- '- erro: n\xe2\x94\x9c\xc3\xbao achei o FOCO.md\n' > "$DENTRO"
-saiu "mojibake DENTRO de palavra (letra antes) reprova" "$(codigo "$DENTRO")" "2"
+saiu "mojibake DENTRO de palavra reprova" "$(codigo "$DENTRO")" "2"
 SIMBOLO="$SB/fechador-simbolo.md"
-# Fechador que nao e letra acusa mesmo no comeco da linha: nenhuma palavra tem
-# `┬` colado a `©`, e afrouxar ali abriria a fresta sem ganhar nada.
 printf -- '\xe2\x94\xac\xc2\xa9 no comeco da linha\n' > "$SIMBOLO"
-saiu "fechador SIMBOLO reprova mesmo sem letra antes" "$(codigo "$SIMBOLO")" "2"
+saiu "fechador SIMBOLO reprova" "$(codigo "$SIMBOLO")" "2"
 PAR3="$SB/par-de-tres-bytes.md"
-# O par de 3 bytes vem de travessao e aspa, que aparecem CERCADOS DE ESPACO no
-# texto original — exigir letra antes perderia o caso inteiro.
 printf -- 'travessao \xc3\x94\xc3\x87\xc3\xb6 cercado de espaco\n' > "$PAR3"
 saiu "par de 3 bytes reprova cercado de espaco" "$(codigo "$PAR3")" "2"
-
-echo
-echo "== 6e. MUTACAO: tirar o desempate faz a arte compacta reprovar =="
-saiu "arte compacta passa antes da mutacao (controle)" "$(codigo "$ARTE2")" "0"
-cp "$SCRIPT" "$SB/original-desempate.cjs"
-node -e "
-  const fs = require('fs');
-  const p = process.argv[1];
-  const s = fs.readFileSync(p, 'utf8');
-  const alvo = 'if (tam === 1 && EH_LETRA.test(String.fromCodePoint(prox))) {';
-  if (!s.includes(alvo)) { console.error('MUTACAO NAO APLICADA'); process.exit(1); }
-  fs.writeFileSync(p, s.replace(alvo, 'if (false) {'));
-" "$SCRIPT"
-if [ $? -ne 0 ]; then
-  falhou=$((falhou+1)); echo "  FALHA nao consegui aplicar a mutacao do desempate"
-else
-  C6E="$(codigo "$ARTE2")"
-  if [ "$C6E" = "2" ]; then
-    ok=$((ok+1)); echo "  ok   sem o desempate, a arte compacta REPROVA — prova que ele era a trava"
-  else
-    falhou=$((falhou+1)); echo "  FALHA mutacao aplicada mas a arte compacta ainda passa (exit $C6E)"
-  fi
-  # E a prova de que o desempate nao esta segurando o defeito real:
-  saiu "com o desempate desligado, o mojibake real continua reprovando" "$(codigo "$DENTRO")" "2"
-fi
-cp "$SB/original-desempate.cjs" "$SCRIPT"
-saiu "restaurado, a arte compacta volta a passar" "$(codigo "$ARTE2")" "0"
 
 echo
 echo "== 6c. MUTACAO: tirar a assinatura OEM tem que deixar a fixture passar =="

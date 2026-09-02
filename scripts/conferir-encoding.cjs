@@ -186,12 +186,6 @@ const OEM_CP437_80_BF = [
 
 const FECHADORES_OEM = new Set([...OEM_CP850_80_BF, ...OEM_CP437_80_BF]);
 
-// Usados pelo desempate de posicao do detector OEM (o porque esta la embaixo,
-// junto do `if`). Unicode-aware de proposito: `\w` do JavaScript e ASCII-only e
-// diria que `n` em `não` e palavra mas `ã` nao e.
-const EH_LETRA = /\p{L}/u;
-const EH_PALAVRA = /[\p{L}\p{N}]/u;
-
 // Abridores de 1 caractere: os bytes 0xC3 e 0xC2 lidos como OEM. Iguais nas duas
 // tabelas, por isso um par so.
 const ABRIDORES_OEM_1 = ['├', '┬'];
@@ -242,33 +236,38 @@ function achaMojibake(texto) {
       const prox = linha.codePointAt(j + tam);
       if (prox === undefined || !FECHADORES_OEM.has(prox)) continue;
 
-      // DESEMPATE, e ele existe por um falso positivo REAL, achado em revisao
-      // independente (2026-09-02): `tree` compacto, sem o traco depois do
-      // conector, produz `├área/` e `├épocas/` — markdown UTF-8 perfeitamente
-      // legitimo — e a rede acusava, porque `á` e `é` ESTAO na faixa 0x80-0xBF
-      // do CP850. E a diferenca entre esta familia e a CP1252: la os fechadores
+      // NAO HA DESEMPATE AQUI, E A AUSENCIA DELE E UMA DECISAO MEDIDA.
+      //
+      // A revisao independente achou um falso positivo real (2026-09-02): `tree`
+      // COMPACTO, sem o traco depois do conector, produz `├área/` — markdown  (rf-encoding-exemplo)
+      // UTF-8 legitimo — e esta rede acusa, porque `á` esta na faixa 0x80-0xBF
+      // do CP850. E a diferenca desta familia para a CP1252: la os fechadores
       // sao pontuacao tipografica, que nao aparece colada a letra em texto
-      // normal; aqui a tabela OEM tem LETRA acentuada dentro.
+      // normal; aqui a tabela OEM tem LETRA acentuada dentro, e o falso positivo
+      // e estrutural, nao um descuido.
       //
-      // O desempate e a POSICAO, nao mais um caractere na lista. Mojibake de
-      // round-trip nasce DENTRO de uma palavra — "nao" vira "n" + <caixa> + "o",
-      // sempre com letra antes. Conector de arte de caixa nasce no comeco da
-      // linha ou depois de espaco. Entao: fechador que e LETRA so acusa se o
-      // abridor tiver caractere de palavra ANTES dele.
+      // A PRIMEIRA CORRECAO FOI DESFEITA, e o porque vale mais que ela. Tentou-se
+      // desempatar por POSICAO: fechador que e letra so acusaria com caractere de
+      // palavra antes do abridor, com o argumento de que mojibake nasce dentro de
+      // palavra e conector de arte nasce em comeco de linha. Medido, o argumento
+      // e falso — TODA palavra portuguesa que comeca com maiuscula acentuada cai
+      // fora da rede:
       //
-      // Fechador que NAO e letra (© « ¬ ½ ▓ │ ┤ ...) continua acusando sempre:
-      // nenhuma palavra tem `├` colado a `©`, e afrouxar ali seria abrir a
-      // fresta sem ganhar nada.
+      //     Area -> ├ürea      Epoca  -> ├ëpoca     Indice -> ├ìndice  (rf-encoding-exemplo)
+      //     Ultima -> ├Ültima  Unico  -> ├Ünico     Orgao  -> ├ôrg├úo  (rf-encoding-exemplo)
       //
-      // O par de 3 bytes (`ÔÇ`/`ΓÇ`) tambem acusa sempre, e de proposito: ele
-      // vem de travessao e aspa tipografica, que aparecem CERCADOS DE ESPACO no
-      // texto original, entao exigir letra antes perderia o caso inteiro. Dois
-      // caracteres especificos adjacentes ja sao raros o bastante sozinhos.
-      if (tam === 1 && EH_LETRA.test(String.fromCodePoint(prox))) {
-        const anterior = j > 0 ? linha[j - 1] : '';
-        if (!EH_PALAVRA.test(anterior)) continue;
-      }
-
+      // Sao palavras comuns na documentacao deste repositorio. O desempate
+      // trocava um falso positivo raro e cosmetico por um falso negativo comum e
+      // caro, na direcao errada: falso positivo custa um marcador; falso negativo
+      // manda texto corrompido para um repo PUBLICO, que e exatamente o incidente
+      // (README com 387 linhas de mojibake, daee1d6) que fez este script existir.
+      //
+      // Nao ha desempate honesto disponivel em 2 caracteres: `├á` e ao mesmo tempo  (rf-encoding-exemplo)
+      // o comeco de "área" em arte compacta e o round-trip de `à`. Sao a mesma
+      // sequencia de bytes. Entao a rede fica apertada, e quem escrever arte de
+      // caixa compacta usa a saida que ja existe para isso — o marcador
+      // `rf-encoding-exemplo` na linha, nomeado e visivel no arquivo que o usa,
+      // como manda o cabecalho deste script. Ha caso de teste para os dois lados.
       const inicio = Math.max(0, j - 8);
       const trecho = linha.slice(inicio, j + tam + 2);
       achados.push({ linha: i + 1, trecho });
