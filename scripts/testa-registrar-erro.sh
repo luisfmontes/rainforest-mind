@@ -195,9 +195,15 @@ echo "== C2. o saneamento isolado, nos formatos que os chamadores produzem =="
 # Os tres sitios reais que interpolam caminho: $configPath (duas vezes) e
 # $bridgeLauncher. Exercitados direto na funcao, sem depender de provocar cada
 # erro de producao — que exigiria bridge de pe e claude respondendo.
+# O argumento entra numa string de ASPA SIMPLES do PowerShell, entao todo
+# apostrofo dele precisa ser DOBRADO antes. A primeira versao nao dobrava, e as
+# duas fixtures com apostrofo devolviam string VAZIA — o que parecia defeito do
+# saneador e era defeito do harness. Chamador quebrado que acusa o artefato e a
+# forma mais barata de perder uma hora, e este arquivo ja gastou uma assim.
 sanear() {
+  local arg=${1//\'/\'\'}
   powershell -NoProfile -ExecutionPolicy Bypass -Command \
-    ". '$(win "$SB/plugin/vigias/erros.ps1")'; Get-MotivoSaneado '$1'" 2>/dev/null | tr -d '\r'
+    ". '$(win "$SB/plugin/vigias/erros.ps1")'; Get-MotivoSaneado '$arg'" 2>/dev/null | tr -d '\r'
 }
 igual "caminho com letra de unidade vira marcador + folha" \
   "$(sanear 'sem destino: defina destinoWhatsapp em C:\pasta\Fulano\proj\vigia.config.json')" \
@@ -239,6 +245,42 @@ igual "aceitar espaco nao funde dois caminhos num marcador so" \
 igual "prosa depois do caminho continua prosa" \
   "$(sanear 'raiz C:\pasta com espaco\dados\x.md e o resto da frase')" \
   'raiz <caminho>\x.md e o resto da frase'
+
+# --- CARACTERE QUE PARECE DELIMITADOR MAS E PARTE DO NOME. Segunda rodada de
+#     vazamento, achada pela revisao em 2026-09-02. O conserto anterior aceitava
+#     espaco mas continuava excluindo `(`, `)` e `'` — e esses tres aparecem
+#     DENTRO de nome de pasta real com muita frequencia. A fixture antiga usava
+#     `C:\Program Files\Bridge\...`, ou seja, o caminho real mais comum do
+#     Windows testado na forma que NAO existe na pratica: a de 64 bits tem o
+#     `(x86)` entre parenteses.
+#
+#     A regra que saiu daqui: o segmento intermediario exclui exatamente o que o
+#     Windows PROIBE num componente (`< > : " | ? *`), e nada mais. Estes casos
+#     existem para que uma lista ad-hoc nao volte pela terceira vez.
+igual "parenteses no nome da pasta (a pasta de programas de 32 bits)" \
+  "$(sanear 'launcher em C:\Program Files (x86)\App\bridge.ps1 nao existe')" \
+  'launcher em <caminho>\bridge.ps1 nao existe'
+igual "parenteses E espaco no mesmo caminho" \
+  "$(sanear 'raiz C:\Program Files (x86)\App De Alguem\dados\nao-existe')" \
+  'raiz <caminho>\nao-existe'
+igual "apostrofo no nome da pasta (sobrenome comum)" \
+  "$(sanear "config em C:\\pasta\\O'Brien\\dados\\x.json falhou")" \
+  'config em <caminho>\x.json falhou'
+igual "hifen e acento no nome da pasta" \
+  "$(sanear 'pasta C:\Mary-Jane Smith\dados\y.txt aqui')" \
+  'pasta <caminho>\y.txt aqui'
+igual "e-comercial e colchete no nome da pasta" \
+  "$(sanear 'em C:\A & B [1]\dados\w.txt fim')" \
+  'em <caminho>\w.txt fim'
+# E o outro lado: os MESMOS caracteres, quando de fato delimitam o caminho na
+# frase, continuam sendo tratados como delimitador. E a distincao que as duas
+# rodadas de vazamento nao faziam.
+igual "parenteses que DELIMITA o caminho continua delimitando" \
+  "$(sanear 'mensagem (C:\pasta\Fulano\x.json) e o resto')" \
+  'mensagem (<caminho>\x.json) e o resto'
+igual "apostrofo que DELIMITA o caminho continua delimitando" \
+  "$(sanear "valor atual: 'C:\\pasta\\Fulano\\app\\b.ps1'")" \
+  "valor atual: '<caminho>\\b.ps1'"
 
 echo
 echo "== D. a trava: nenhuma escrita escapa da porta unica =="
