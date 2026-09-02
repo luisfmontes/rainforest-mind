@@ -7,6 +7,20 @@ $root = if ($env:RFM_ROOT) { $env:RFM_ROOT } else { Split-Path -Parent $PSScript
 # pasta de DADOS (RFM_ROOT). Os dois nao sao a mesma coisa desde 2026-08-11.
 $plugin = Split-Path -Parent $PSScriptRoot
 
+# A escrita no ERROS.md mora no vigias/erros.ps1, e este dot-source vem ANTES
+# de qualquer caminho que possa falhar - inclusive a leitura do toggle, que e
+# o primeiro erro possivel da ronda. Ate 2026-09-01 as quatro escritas deste
+# arquivo eram quatro copias da mesma linha de Out-File, com os mesmos tres
+# defeitos em cada uma (CRLF, mojibake OEM, caminho de maquina em repo
+# publico). O porque de cada um esta no cabecalho daquele arquivo.
+. (Join-Path $PSScriptRoot 'erros.ps1')
+# Uma vez so, e no topo: daqui para baixo TODA saida de processo nativo
+# (node, claude) e decodificada como UTF-8. Sem isto ela atravessa o
+# codepage OEM do console - que e o que a tarefa agendada usa - e o acento
+# chega corrompido ao ERROS.md e ao log. O mojibake que esta commitado no
+# ERROS.md desde 27/08 nasceu exatamente aqui.
+Set-EncodingDeSaida | Out-Null
+
 # TOGGLE `vigias` — as rondas nascem DESLIGADAS (chave em hooks/lib/config.cjs).
 # Quem instala o plugin sem PowerShell agendado, sem claude.exe no caminho e sem
 # destino de envio nao pode descobrir essas dependencias por erro em tarefa
@@ -27,8 +41,7 @@ if ($LASTEXITCODE -ne 0) {
         Write-Output "vigias desligado nesta configuracao - nada a fazer. Ligue com: node scripts/setup.cjs --ligar vigias"
         exit 0
     }
-    "- $(Get-Date -Format 'yyyy-MM-dd HH:mm') [$Vigia]: nao consegui ler o toggle 'vigias' (node no PATH?)" |
-      Out-File -Append -Encoding utf8 (Join-Path $plugin "vigias\ERROS.md")
+    Write-ErroDeVigia -Vigia $Vigia -Plugin $plugin -Motivo "nao consegui ler o toggle 'vigias' (node no PATH?)"
     exit 1
 }
 
@@ -42,8 +55,7 @@ if ($LASTEXITCODE -ne 0) {
 # nao esta na lista de desligados. Sem -Cwd, o comportamento antigo.
 $cwd = if ($Cwd) { $Cwd } else { $root }
 if (-not (Test-Path $cwd)) {
-    "- $(Get-Date -Format 'yyyy-MM-dd HH:mm') [$Vigia]: -Cwd nao existe: $cwd" |
-      Out-File -Append -Encoding utf8 (Join-Path $plugin "vigias\ERROS.md")
+    Write-ErroDeVigia -Vigia $Vigia -Plugin $plugin -Motivo "-Cwd nao existe: $cwd"
     exit 1
 }
 Set-Location $cwd
@@ -70,8 +82,7 @@ function Get-LocalConfig([string]$Var, [string]$Chave) {
 # do usuario. Se voce escrever `Join-Path $root "vigias\ERROS.md"` de novo, a
 # bateria scripts/testa-erros-md-raiz.sh fica vermelha — de proposito.
 function Stop-ComErro([string]$Motivo) {
-    "- $(Get-Date -Format 'yyyy-MM-dd HH:mm') [$Vigia]: $Motivo" |
-      Out-File -Append -Encoding utf8 (Join-Path $plugin "vigias\ERROS.md")
+    Write-ErroDeVigia -Vigia $Vigia -Plugin $plugin -Motivo $Motivo
     exit 1
 }
 
@@ -109,8 +120,7 @@ if (Test-Path $dadosScript) {
 $prompt += "`n`n## Destino de envio`n`nEnvie para o JID ``$destino``. Nao invente destino, nao procure outro chat: e este."
 
 $log = Join-Path $root "vigias\log-$Vigia.txt"
-"=== $(Get-Date -Format 'yyyy-MM-dd HH:mm') ===" | Out-File -Append -Encoding utf8 $log
-
+Write-LinhaEmLf -Caminho $log -Linha "=== $(Get-Date -Format 'yyyy-MM-dd HH:mm') ==="
 # Pré-checagem do bridge do WhatsApp. Desde 2026-08-07 ele roda NATIVO no Windows
 # na porta 3005: a instalação que vivia no WSL (porta 8765) foi removida, então
 # acordar o WSL não religa mais nada. A porta 8080 não serve nesta máquina — está
@@ -124,7 +134,7 @@ $bridgeHost = ([uri]$bridgeUrl).Host
 $bridgePort = ([uri]$bridgeUrl).Port
 $bridgeLauncher = Get-LocalConfig 'RFM_BRIDGE_LAUNCHER' 'bridgeLauncher'
 if (-not (Test-NetConnection $bridgeHost -Port $bridgePort -InformationLevel Quiet -WarningAction SilentlyContinue)) {
-    "bridge fora do ar - subindo o launcher nativo" | Out-File -Append -Encoding utf8 $log
+    Write-LinhaEmLf -Caminho $log -Linha "bridge fora do ar - subindo o launcher nativo"
     if ($bridgeLauncher -and (Test-Path $bridgeLauncher)) {
         Start-Process powershell -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-File",$bridgeLauncher -WindowStyle Hidden
     } else {
@@ -136,8 +146,7 @@ if (-not (Test-NetConnection $bridgeHost -Port $bridgePort -InformationLevel Qui
         if (Test-NetConnection $bridgeHost -Port $bridgePort -InformationLevel Quiet -WarningAction SilentlyContinue) { $up = $true; break }
     }
     if (-not $up) {
-        "- $(Get-Date -Format 'yyyy-MM-dd HH:mm') [$Vigia]: bridge nao subiu apos 60s (porta $bridgePort fechada)" |
-          Out-File -Append -Encoding utf8 (Join-Path $plugin "vigias\ERROS.md")
+        Write-ErroDeVigia -Vigia $Vigia -Plugin $plugin -Motivo "bridge nao subiu apos 60s (porta $bridgePort fechada)"
         exit 1
     }
 }
@@ -167,17 +176,20 @@ $modelos = @{
     'sentinela-foco' = 'sonnet'
 }
 $modelo = if ($modelos.ContainsKey($Vigia)) { $modelos[$Vigia] } else { 'haiku' }
-"modelo: $modelo" | Out-File -Append -Encoding utf8 $log
+Write-LinhaEmLf -Caminho $log -Linha "modelo: $modelo"
 # Tamanho do prompt no log: a evidencia de entrega vem do harness, nao do
 # modelo se auto-reportando. Em 2026-08-08 o jardineiro perdeu 3 de 5 rondas
 # e a suspeita caiu no modelo; a causa era o prompt chegando com 1379 de 2717
 # caracteres. Numero no log deixa isso visivel sem depender de ninguem.
-"prompt: $($prompt.Length) chars" | Out-File -Append -Encoding utf8 $log
+Write-LinhaEmLf -Caminho $log -Linha "prompt: $($prompt.Length) chars"
 # Prompt vai por STDIN, não como argumento: passado em argv ele é cortado no
 # meio (o jardineiro chegava com 1379 de 2717 caracteres, perdendo as rondas
 # 3 a 5). Passo que some do prompt vira passo que some do relatório.
+# Linha a linha pelo Write-LinhaEmLf, e nao por Out-File: o log tambem sofria
+# CRLF, e no dia em que alguem versionar o log ele quebra a catraca de
+# encoding do mesmo jeito que o ERROS.md quebrava.
 $prompt | & $claude -p --model $modelo --dangerously-skip-permissions 2>&1 |
-  Out-File -Append -Encoding utf8 $log
+  ForEach-Object { Write-LinhaEmLf -Caminho $log -Linha "$_" }
 
 # O backup do estado fica de fora da execução de teste. O -Teste bloqueava só o
 # envio, e este bloco rodava igual: em 2026-08-10 um teste manual levou o
@@ -203,6 +215,10 @@ $prompt | & $claude -p --model $modelo --dangerously-skip-permissions 2>&1 |
 #    WhatsApp, do claude.exe e do toggle — ou seja, prova-lo por execucao
 #    exigiria enviar uma mensagem de verdade. Separado, ele roda numa caixa de
 #    areia e a bateria executa o artefato em vez de descreve-lo.
-$argsBackup = @('-Vigia', $Vigia, '-Root', $root, '-Plugin', $plugin, '-Log', $log)
+# SEM -Root, de proposito (2026-09-01). Passar $root aqui era o defeito: sem
+# RFM_ROOT no ambiente, $root e a raiz do PLUGIN, e o foco.cjs precisa da raiz
+# de DADOS. O backup-estado.ps1 deixa o foco.cjs resolver pela cadeia canonica;
+# o porque completo esta no cabecalho de param() daquele arquivo.
+$argsBackup = @('-Vigia', $Vigia, '-Plugin', $plugin, '-Log', $log)
 if ($Teste) { $argsBackup += '-Teste' }
 & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $plugin 'vigias\backup-estado.ps1') @argsBackup
