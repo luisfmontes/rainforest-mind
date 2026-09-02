@@ -29,10 +29,11 @@ adiante). Vale para `run-vigia.ps1` também. **Hífen, nunca travessão.**
 
 ---
 
-## T1 — a raiz do backup do FOCO.md (D1)
-
-**Toca:** `vigias/run-vigia.ps1`, `scripts/testa-backup-estado.sh`
-**Depende de:** nenhuma · **Paralelizável:** sim
+### 1. A raiz do backup do FOCO.md [tipo: implementar]
+atende: D1
+arquivos: `vigias/run-vigia.ps1`, `vigias/backup-estado.ps1`, `scripts/testa-backup-estado.sh`
+depende de: nenhuma
+paralelizavel: sim
 
 `run-vigia.ps1:206` para de passar raiz de plugin como `-Root`. O `foco.cjs` já
 resolve a raiz de dados corretamente sozinho; o chamador é quem erra. Escolha a
@@ -53,11 +54,12 @@ público.
 
 ---
 
-## T2 — uma função de escrita só, cobrindo CRLF + OEM + caminho de máquina (D2, #124)
+### 2. Uma funcao de escrita so: CRLF + OEM + caminho de maquina [tipo: implementar]
 
-**Toca:** `vigias/run-vigia.ps1` (4 sítios), `vigias/backup-estado.ps1` (2 sítios),
-`scripts/testa-registrar-erro.sh` (novo), `vigias/erros.ps1` (novo — a porta única),
-`scripts/testa-backup-estado.sh` e `scripts/testa-erros-md-raiz.sh`
+atende: D2, V3, V4, Issue #124
+arquivos: `vigias/erros.ps1`, `vigias/run-vigia.ps1`, `vigias/backup-estado.ps1`, `scripts/testa-registrar-erro.sh`, `scripts/testa-backup-estado.sh`, `scripts/testa-erros-md-raiz.sh`
+depende de: 1
+paralelizavel: nao
 
 > **Emenda de 2026-09-02, feita depois da revisão.** Os três últimos não estavam
 > nesta lista quando o plano foi escrito. `vigias/erros.ps1` nasceu porque seis
@@ -104,11 +106,12 @@ quem escreve a mensagem.
 
 ---
 
-## T3 — o gate de encoding aprende a assinatura OEM, e o passado é backfill (D3)
 
-**Toca:** `scripts/conferir-encoding.cjs`, `scripts/testa-conferir-encoding.sh`,
-`vigias/ERROS.md`
-**Depende de:** nenhuma · **Paralelizável:** sim (não colide com T1/T2)
+### 3. O gate de encoding aprende a assinatura OEM, e o passado e backfill [tipo: implementar]
+atende: D3, V4
+arquivos: `scripts/conferir-encoding.cjs`, `scripts/testa-conferir-encoding.sh`, `vigias/ERROS.md`
+depende de: nenhuma
+paralelizavel: sim
 
 A detecção hoje só casa a assinatura CP1252 (`conferir-encoding.cjs:134`). Acrescentar
 a OEM com o **mesmo rigor mecânico**: não "contém `├`" (caractere legítimo em arte de
@@ -131,10 +134,12 @@ backup falha desde 28/08. Explique no commit que foi backfill mecânico.
 
 ---
 
-## T4 — bateria que reprova vigia agendado com `NextRunTime` vazio (D4)
 
-**Toca:** `scripts/testa-vigias-agendados.sh` (novo)
-**Depende de:** nenhuma · **Paralelizável:** sim
+### 4. Bateria que reprova vigia agendado com NextRunTime vazio [tipo: testar]
+atende: D4
+arquivos: `scripts/testa-vigias-agendados.sh`, `scripts/saude.cjs`
+depende de: nenhuma
+paralelizavel: sim
 
 Só leitura (`Get-ScheduledTaskInfo` / `Get-ScheduledTask`). **Proibido** registrar,
 alterar, habilitar, desabilitar ou disparar tarefa — isso é a T7, e só ela.
@@ -160,10 +165,12 @@ por que existe com o número (20 dias mortos, desde 11/08/2026).
 
 ---
 
-## T5 — o `ERROS.md` recente sobe pelo `conferir-saude` (D7)
 
-**Toca:** `scripts/saude.cjs`
-**Depende de:** T4 (mesmo arquivo de saúde, e reusa a checagem dela) · **Paralelizável:** não
+### 5. O ERROS.md recente sobe pelo conferir-saude [tipo: implementar]
+atende: D7
+arquivos: `scripts/saude.cjs`, `README.md`
+depende de: 4
+paralelizavel: nao
 
 Erro registrado que ninguém lê é igual a erro não registrado; este ficou cinco dias.
 O `conferir-saude` passa a contar erros de vigia nas últimas N rondas e a subir uma
@@ -183,10 +190,12 @@ autônoma.
 
 ---
 
-## T6 — "campo vazio não é campo ok" entra no acervo da regra 12 (D5)
 
-**Toca:** `skills/rainforest-mind/references/regra-12.md`
-**Depende de:** nenhuma · **Paralelizável:** sim (arquivo reservado a esta janela pelo handover)
+### 6. "Campo vazio nao e campo ok" entra no acervo da regra 12 [tipo: documentar]
+atende: D5
+arquivos: `skills/rainforest-mind/references/regra-12.md`, `skills/rainforest-mind/references/regra-12-acervo.md`
+depende de: nenhuma
+paralelizavel: sim
 
 Irmã da heurística que a Issue #142 plantou ("medição uniforme demais é suspeita").
 O agendador respondeu `Ready` / `Enabled: True` / `LastTaskResult: 0` para uma tarefa
@@ -206,10 +215,12 @@ lê-se como "nada de errado".
 
 ---
 
-## T7 — reagendar as duas tarefas mortas (D6)
 
-**Toca:** ambiente do usuário (Agendador de Tarefas do Windows). **Nenhum arquivo.**
-**Depende de:** T1-T6 todas verdes · **Paralelizável:** não · **ÚLTIMA**
+### 7. Reagendar as duas tarefas mortas [tipo: configurar]
+atende: D6
+arquivos: (nenhum — altera o Agendador de Tarefas do Windows, nao o repositorio)
+depende de: 1, 2, 3, 4, 5, 6
+paralelizavel: nao
 
 Regra 15: altera ambiente do usuário. **Autorizado por ele em 2026-09-01.**
 
