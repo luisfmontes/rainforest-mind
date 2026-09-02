@@ -71,7 +71,7 @@ function lerMarkdown(arquivo) {
  */
 function cmdDesign() {
   const slug = arg('slug');
-  const arquivo = path.join(RAIZ, 'docs', 'rainforest', 'design', `${slug}.md`);
+  const arquivo = arg('design', false) || path.join(RAIZ, 'docs', 'rainforest', 'design', `${slug}.md`);
 
   const conteudo = lerMarkdown(arquivo);
   if (!conteudo) {
@@ -178,7 +178,7 @@ function cmdCobertura() {
   const slug = arg('slug');
 
   // Lê design
-  const arquivo_design = path.join(RAIZ, 'docs', 'rainforest', 'design', `${slug}.md`);
+  const arquivo_design = arg('design', false) || path.join(RAIZ, 'docs', 'rainforest', 'design', `${slug}.md`);
   const conteudo_design = lerMarkdown(arquivo_design);
   if (!conteudo_design) {
     console.error(`RECUSADO: design não existe: ${arquivo_design}`);
@@ -186,7 +186,7 @@ function cmdCobertura() {
   }
 
   // Lê plano
-  const arquivo_plano = path.join(RAIZ, 'docs', 'rainforest', 'planos', `${slug}.md`);
+  const arquivo_plano = arg('plano', false) || path.join(RAIZ, 'docs', 'rainforest', 'planos', `${slug}.md`);
   const conteudo_plano = lerMarkdown(arquivo_plano);
   if (!conteudo_plano) {
     console.error(`RECUSADO: plano não existe: ${arquivo_plano}`);
@@ -472,7 +472,7 @@ function cmdCreep() {
   const head = arg('head');
 
   // Lê plano
-  const arquivo_plano = path.join(RAIZ, 'docs', 'rainforest', 'planos', `${slug}.md`);
+  const arquivo_plano = arg('plano', false) || path.join(RAIZ, 'docs', 'rainforest', 'planos', `${slug}.md`);
   const conteudo_plano = lerMarkdown(arquivo_plano);
   if (!conteudo_plano) {
     console.error(`RECUSADO: plano não existe: ${arquivo_plano}`);
@@ -498,10 +498,19 @@ function cmdCreep() {
   // dentro da pasta isenta. É a mesma forma do glob largo que a decisão D6 proíbe
   // numa tarefa, só que embutida no checador, onde nenhum `revisar` a veria.
   // Achado 4 da revisão de 2026-08-13.
+  // Os dois primeiros saem do caminho REAL quando ele veio por `--design`/`--plano`.
+  // Quase nenhum design deste repositório se chama `<slug>.md`
+  // (`fluxo-9-design-portaria.md`, `fluxo-6-design-portoes.md`), e derivar do slug
+  // fazia o design DO PRÓPRIO FLUXO aparecer como creep do fluxo — o arquivo que
+  // autoriza o trabalho acusado de estar fora dele.
+  const rel = (abs, padrao) => (abs
+    ? path.relative(RAIZ, abs).split(path.sep).join('/')
+    : padrao);
   const globs_isentos = [
-    `docs/rainforest/design/${slug}.md`,
-    `docs/rainforest/planos/${slug}.md`,
+    rel(arg('design', false), `docs/rainforest/design/${slug}.md`),
+    rel(arg('plano', false), `docs/rainforest/planos/${slug}.md`),
     `docs/rainforest/estado/${slug}.json`,
+    `docs/rainforest/portoes/${slug}.md`,
   ];
 
   // Pega diff.
