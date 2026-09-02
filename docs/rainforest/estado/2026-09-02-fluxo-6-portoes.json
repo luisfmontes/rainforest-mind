@@ -1,0 +1,27 @@
+{
+  "slug": "2026-09-02-fluxo-6-portoes",
+  "titulo": "Fluxo 6 — portoes.cjs: oraculos executaveis com lint de autoria",
+  "criado_em": "2026-09-01",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "em": "2026-09-01"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
