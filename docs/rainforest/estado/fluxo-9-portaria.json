@@ -109,7 +109,13 @@
     "segunda_opiniao": "concordo — scripts/segunda-opiniao.cjs --modelo codex contra os sete criterios falsificaveis do diff (criterio em scratchpad, parecer ponto a ponto). O parecer nao identificou caminho que derrube nenhuma das sete afirmacoes."
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "tarefas": 10,
+    "tarefas_ok": 10,
+    "comando": "node hooks/testa-estagio-ativo.cjs; node -e (le .rainforest/portaria/amostra.json); node hooks/testa-portaria-nucleo.cjs; git check-ignore -q .rainforest/portaria/despachos.jsonl; git check-ignore -q .rainforest/agentes.json; node hooks/testa-portaria-gitignore.cjs; node hooks/portaria.cjs --lint --manifesto test/fixtures/portaria/manifesto-escreve-inconsistente.json --agentes-dir test/fixtures/portaria/agentes; node hooks/portaria.cjs --lint --manifesto test/fixtures/portaria/manifesto-ok.json --agentes-dir test/fixtures/portaria/agentes; node hooks/testa-portaria-lint.cjs; node hooks/testa-portaria-portoes.cjs; node hooks/portaria.cjs --lint; node scripts/segunda-opiniao.cjs --base d63ef31 --head 0b7195d --criterio criterio-portaria.md --modelo codex",
+    "saida": "T1 7/7 exit 0 | T2 amostra JSON valida, tool_name=Agent e tool_input.subagent_type presentes | T3 49 ok exit 0 | T4 despachos.jsonl ignorado E agentes.json NAO ignorado, bateria 9 ok | T5 lint exit 1 citando escritor no manifesto inconsistente e exit 0 no manifesto-ok, lista de estagios derivada de PRE_REQUISITOS via require (portaria.cjs:481-489), bateria 28 ok | T6 P1..P5 OK exit 0 | T7 as tres afirmacoes verificaveis no par nucleo+elaboracao | T8 lint contra manifesto e agents/ REAIS exit 0, 6 avisos de orfao, 0 erro, admitidos revisor/auditor-de-seguranca/planejador | T9 relatorio com evidencia primaria do despachos.jsonl, allow do revisor e deny do executor na MESMA sessao | T10 conferir-fluxo sem creep, 33 arquivos cobertos | segunda opiniao cross-model: veredito concordo, ponto a ponto nos sete criterios | suite completa pos-merge: 79 baterias, 3 falhas, todas pre-existentes e nenhuma deste fluxo",
+    "nota": "Os dez criterios do plano rodados contra o ARTEFATO REAL, nao contra relato, com exit capturado sem pipe. Nada foi reprovado. O verificar nao redigiu criterio novo: rodou o que o plano ja definia, incluindo os dois comandos literais da tarefa 5. A segunda opiniao entrou pelo scripts/segunda-opiniao.cjs que a outra janela entregou no PR #140, em vez da chamada ad-hoc ao codex exec que eu tinha usado antes.",
+    "em": "2026-09-01"
   },
   "fechar": {
     "status": "pendente"
