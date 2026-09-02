@@ -238,8 +238,13 @@ function gravarAmostra(raiz, payload) {
  * campo em toda linha para dizer "nada de anormal". Quando aparece, diz que a
  * portaria aprovou SEM ter conseguido verificar o `escreve: false` do manifesto
  * (arquivo do agente ausente, sem frontmatter, ou sem `tools:`).
+ *
+ * `extra` acrescenta campos à linha. Existe para o allow de `escreve: true`
+ * registrar SOB QUE isolamento a escrita foi aprovada: um log que diz "agente
+ * que escreve rodou" sem dizer "isolado" não responde a pergunta pela qual ele
+ * é evidência de primeira classe.
  */
-function gravarDespacho(raiz, decisao, agente, estagio, sessao, motivo, escreveConferido) {
+function gravarDespacho(raiz, decisao, agente, estagio, sessao, motivo, escreveConferido, extra) {
   // Append-only log de despachos (D4)
   const dir = path.join(raiz, ".rainforest", "portaria");
   const logPath = path.join(dir, "despachos.jsonl");
@@ -261,6 +266,10 @@ function gravarDespacho(raiz, decisao, agente, estagio, sessao, motivo, escreveC
 
     if (escreveConferido === false) {
       entrada.escreve_conferido = false;
+    }
+
+    if (extra && typeof extra === "object") {
+      Object.assign(entrada, extra);
     }
 
     const linha = JSON.stringify(entrada) + "\n";
@@ -312,12 +321,44 @@ function main() {
 
   const sessao = payload.session_id || "desconhecida";
 
+  // O estágio ativo é resolvido AQUI, antes da primeira negação possível, e a
+  // ORDEM DAS DECISÕES não muda com isso: manifesto ausente continua negando
+  // antes de qualquer outra coisa. O que muda é o log.
+  //
+  // Até 2026-09-02 toda negação anterior ao passo 4 gravava `estagio: "?"`,
+  // porque o resolver só rodava depois. O log é evidência de primeira classe
+  // (D4), e a linha que não diz em que estágio a sessão estava não responde a
+  // pergunta para a qual ela existe — "quem rodou, quando, em qual estágio".
+  // Medido no dia em que isto foi consertado: cinco negações de `executor`, em
+  // duas sessões distintas, todas com `?`, e ninguém conseguia dizer pelo log
+  // se o problema era o agente ou o estágio.
+  //
+  // `resolver` devolve null quando nenhum fluxo aberto casa com a branch, e
+  // ESTOURA quando a instalação está quebrada (`scripts/estado.cjs` fora do
+  // lugar, erro de sintaxe, I/O). Os dois negam, mas por motivos diferentes, e
+  // aqui o erro é apenas GUARDADO — nunca engolido.
+  //
+  // A diferença não é cosmética. Antecipar esta resolução só para o log quase
+  // custou a mensagem do caso 15 da bateria: com um `catch` que zerasse o
+  // resultado, instalação quebrada passaria a negar dizendo "sem estágio ativo
+  // — abra um fluxo", mandando consertar o que não estava errado. O erro sobe
+  // no passo 4, onde a rede de `main` o transforma em exit 2 com "falha
+  // interna", que é a mensagem que aponta para o conserto certo.
+  let estResult = null;
+  let estErro = null;
+  try {
+    estResult = require("./lib/estagio-ativo.cjs").resolver({ cwd: raiz });
+  } catch (err) {
+    estErro = err;
+  }
+  const estagioLog = (estResult && estResult.estagio) || "?";
+
   // Carrega manifesto (D3 passo 2: ausente ou inválido → nega)
   const manifestoPath = path.join(raiz, ".rainforest", "agentes.json");
   let manifesto;
 
   if (!fs.existsSync(manifestoPath)) {
-    gravarDespacho(raiz, "deny", nomeAgente, "?", sessao, "manifesto ausente");
+    gravarDespacho(raiz, "deny", nomeAgente, estagioLog, sessao, "manifesto ausente");
     negar(`Manifesto não encontrado em ${manifestoPath}`);
   }
 
@@ -325,38 +366,42 @@ function main() {
     const brutoManifesto = fs.readFileSync(manifestoPath, "utf8");
     manifesto = JSON.parse(brutoManifesto);
   } catch {
-    gravarDespacho(raiz, "deny", nomeAgente, "?", sessao, "manifesto JSON inválido");
+    gravarDespacho(raiz, "deny", nomeAgente, estagioLog, sessao, "manifesto JSON inválido");
     negar("Manifesto JSON inválido");
   }
 
   // D3 passo 2b: validar versao e agentes (schema D2)
   if (manifesto.versao === undefined || manifesto.versao === null) {
-    gravarDespacho(raiz, "deny", nomeAgente, "?", sessao, "manifesto sem versao");
+    gravarDespacho(raiz, "deny", nomeAgente, estagioLog, sessao, "manifesto sem versao");
     negar("Manifesto sem versao");
   }
 
   if (manifesto.versao !== 1) {
-    gravarDespacho(raiz, "deny", nomeAgente, "?", sessao, `manifesto com versao desconhecida: ${manifesto.versao}`);
+    gravarDespacho(raiz, "deny", nomeAgente, estagioLog, sessao, `manifesto com versao desconhecida: ${manifesto.versao}`);
     negar(`Manifesto com versao desconhecida: ${manifesto.versao}`);
   }
 
   if (typeof manifesto.agentes !== "object" || manifesto.agentes === null || Array.isArray(manifesto.agentes)) {
-    gravarDespacho(raiz, "deny", nomeAgente, "?", sessao, "manifesto.agentes invalido");
+    gravarDespacho(raiz, "deny", nomeAgente, estagioLog, sessao, "manifesto.agentes invalido");
     negar("Manifesto.agentes inválido");
   }
 
   // D3 passo 3: agente não declarado → nega
   if (!manifesto.agentes[nomeAgente]) {
     const motivo = `agente '${nomeAgente}' não consta no manifesto`;
-    gravarDespacho(raiz, "deny", nomeAgente, "?", sessao, motivo);
+    gravarDespacho(raiz, "deny", nomeAgente, estagioLog, sessao, motivo);
     negar(motivo);
   }
 
   const agentConfig = manifesto.agentes[nomeAgente];
 
-  // D3 passo 4: sem estágio ativo → nega
-  const estReader = require("./lib/estagio-ativo.cjs");
-  const estResult = estReader.resolver({ cwd: raiz });
+  // D3 passo 4: sem estágio ativo → nega. `estResult` já foi resolvido acima,
+  // para o log das negações anteriores; a decisão é a mesma de sempre.
+  //
+  // Resolver que estourou não é "sem estágio ativo". O erro foi só adiado até
+  // aqui: sobe, e a rede de `main` o converte em exit 2 com "falha interna" —
+  // fail-closed com o motivo certo.
+  if (estErro) throw estErro;
 
   if (!estResult) {
     const motivo = "sem estágio ativo — abra um fluxo";
@@ -417,16 +462,66 @@ function main() {
     negar(motivo);
   }
 
-  // `escreve: true` existe no schema (D2) para que a excecao futura seja uma
-  // linha de diff, mas o mecanismo que ela exige — worktree obrigatorio por
-  // filho — nao foi implementado. Aceitar agora seria liberar escrita sem a
-  // trava que a torna aceitavel.
+  // `escreve: true` — o agente PODE escrever, e por isso a portaria exige aqui
+  // a trava que torna isso aceitavel, em vez de negar de saida.
+  //
+  // Ate 2026-09-02 este ramo era um deny duro: o campo existia no schema (D2)
+  // para que a excecao futura fosse uma linha de diff, mas o mecanismo que ela
+  // exige nao estava implementado. O custo dessa espera foi medido, e nao era
+  // o que se supunha. Com `executor`, `tester`, `documentador` e
+  // `resolvedor-de-build` fora do manifesto, os tres agentes admitidos cobriam
+  // `revisar`, `design` e `plano` — e NENHUM cobria `executar`. O estagio
+  // inteiro ficou sem agente admitido, a regra 10 (que manda despachar toda
+  // task mecanica no `executor`) ficou desligada, e nada dizia isso: duas
+  // sessoes distintas bateram na parede antes de alguem somar as duas pontas.
+  //
+  // As duas condicoes abaixo nao sao invencao: sao as regras 11 e 10 escritas
+  // em codigo, e as duas ja eram obrigatorias em prosa.
+  //
+  //   - regra 11: subagente que edita roda SEMPRE com `isolation: "worktree"`,
+  //     nunca na arvore de trabalho do usuario.
+  //   - regra 10: agente que edita NUNCA e nomeado. Nome sem worktree e a
+  //     ilusao de isolamento — medido em 2026-08-08, um despacho com `name` E
+  //     `isolation: "worktree"` rodou sem worktree nenhum (o meta do nomeado
+  //     nao traz `worktreePath`) e commitou no checkout principal do usuario,
+  //     enquanto o irmao sem nome, no mesmo despacho, foi isolado. Nomeado
+  //     ainda troca entrega inline por `SendMessage`, e a entrega some.
+  //
+  // Os dois campos chegam em `tool_input` quando usados — esta medido em
+  // `.rainforest/portaria/amostra-com-isolation.json`, e foi essa amostra que
+  // tornou a checagem possivel. Ausencia e negacao: a portaria nao infere
+  // isolamento que o payload nao afirma. E o que ela confere aqui e o PEDIDO,
+  // nao o worktree em disco — o hook roda ANTES do despacho, e nesse instante
+  // o worktree ainda nao existe. A conferencia do worktree real na volta e da
+  // integracao (`scripts/conferir-entrega.cjs`), e continua sendo.
   if (agentConfig.escreve === true) {
-    const motivo =
-      `agente '${nomeAgente}' declara 'escreve: true', que ainda nao e suportado` +
-      ` — depende do isolamento por worktree, fora de escopo no fluxo 9`;
-    gravarDespacho(raiz, "deny", nomeAgente, estagioAtivo, sessao, motivo);
-    negar(motivo);
+    const isolamento = payload.tool_input.isolation;
+    const nomeDado = payload.tool_input.name;
+
+    if (isolamento !== "worktree") {
+      const motivo =
+        `agente '${nomeAgente}' declara 'escreve: true' e so roda com isolation: "worktree"` +
+        ` (veio ${JSON.stringify(isolamento)}) — agente que edita nunca roda na arvore do usuario (regra 11)`;
+      gravarDespacho(raiz, "deny", nomeAgente, estagioAtivo, sessao, motivo);
+      negar(motivo);
+    }
+
+    if (typeof nomeDado === "string" && nomeDado.trim() !== "") {
+      const motivo =
+        `agente '${nomeAgente}' declara 'escreve: true' e foi despachado com name: ${JSON.stringify(nomeDado)}` +
+        ` — agente que edita nunca e nomeado (regra 10): nomeado vira teammate, o isolamento nao se aplica` +
+        ` e a entrega para de voltar inline`;
+      gravarDespacho(raiz, "deny", nomeAgente, estagioAtivo, sessao, motivo);
+      negar(motivo);
+    }
+
+    // Allow conferido, e a linha diz SOB QUE isolamento — sem isso o log
+    // registraria "agente que escreve rodou" sem registrar a unica coisa que
+    // tornou aquilo admissivel.
+    gravarDespacho(raiz, "allow", nomeAgente, estagioAtivo, sessao, null, undefined, {
+      isolation: isolamento,
+    });
+    process.exit(0);
   }
 
   let escreveConferido = true;
@@ -616,8 +711,17 @@ function executarLint(manifestoPath, agentesDir) {
       );
       erros++;
     } else if (config && config.escreve === true) {
-      console.error(`erro: agente '${nome}' declara 'escreve: true', que ainda nao e suportado (depende do isolamento por worktree)`);
-      erros++;
+      // `escreve: true` e valido desde 2026-09-02, mas o lint NAO consegue
+      // conferir a trava dele: ela mora no payload do despacho (isolation +
+      // name), que so existe em runtime. Dizer isso em voz alta e a mesma
+      // licao do `escreve_conferido` — a assimetria entre o que se confere e o
+      // que se pula e desenho; o defeito e ela ser invisivel. Aviso, nao erro:
+      // o manifesto esta correto, o lint e que nao alcanca.
+      console.error(
+        `aviso: agente '${nome}' declara 'escreve: true' — o lint nao ve isolamento; ` +
+        `a trava (isolation: "worktree" e despacho sem name) e conferida so em runtime`
+      );
+      avisos++;
     }
 
     // Checagem 3: escreve: false mas tool de escrita no frontmatter

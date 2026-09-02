@@ -176,8 +176,13 @@ lintDeManifesto("escreve como STRING 'false' → erro",
   { leitor: { estagios: ["revisar"], escreve: "false" } }, 1, "nao-booleano");
 lintDeManifesto("escreve AUSENTE → erro",
   { leitor: { estagios: ["revisar"] } }, 1, "nao-booleano");
-lintDeManifesto("escreve: true → erro (nao suportado sem worktree)",
-  { leitor: { estagios: ["revisar"], escreve: true } }, 1, "nao e suportado");
+// `escreve: true` virou valido em 2026-09-02. O lint NAO consegue conferir a
+// trava dele — ela mora no payload do despacho (isolation + name), que so
+// existe em runtime —, e por isso avisa em vez de aprovar calado: e a mesma
+// licao do `escreve_conferido`, que a assimetria entre conferir e pular tem de
+// ser visivel. Aviso nao muda exit code.
+lintDeManifesto("escreve: true → aviso, nao erro (a trava e de runtime)",
+  { leitor: { estagios: ["revisar"], escreve: true } }, 0, "o lint nao ve isolamento");
 lintDeManifesto("estagios AUSENTE → erro",
   { leitor: { escreve: false } }, 1, "nao e lista");
 lintDeManifesto("estagios VAZIO → erro",

@@ -12,6 +12,10 @@
     "planejador": {
       "estagios": ["design", "plano"],
       "escreve": false
+    },
+    "executor": {
+      "estagios": ["executar"],
+      "escreve": true
     }
   }
 }
