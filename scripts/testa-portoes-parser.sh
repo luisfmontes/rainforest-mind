@@ -97,6 +97,13 @@ caso "P7. id duplicado" 2 "$FIX/portoes-malformado-id-duplicado.md" "duplicado"
 caso "P8. CHECK sem ESPERA" 2 "$FIX/portoes-malformado-check-sem-espera.md" "sem ESPERA"
 caso "P9. ABANDONA sem razao" 2 "$FIX/portoes-malformado-abandona-sem-razao.md" "sem razão"
 caso "P10. arquivo sem portao nenhum" 2 "$FIX/portoes-vazio.md" "sem portão nenhum"
+# Achado A1 da revisao de 2026-09-02: `gravar()` so reescreve linha que ja existe,
+# entao um portao SEM linha EVIDENCIA era executado, reportado como CUMPRIDO e
+# marcado `[x]` — sem nada persistir. O `status` seguinte lia isso como
+# `inconsistente`, e o lint passava limpo antes disso. O arquivo VERSIONADO era
+# corrompido em silencio, por um caminho que nenhum dos tres modos denunciava.
+caso "P10b. portao executavel SEM linha EVIDENCIA" 2 \
+     "$FIX/portoes-malformado-sem-evidencia.md" "obrigatória"
 caso "P11. arquivo inexistente" 2 "$S/nao-existe.md" "não existe"
 
 echo "== estado: abandono e inconsistencia =="

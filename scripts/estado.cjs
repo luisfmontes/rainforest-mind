@@ -674,10 +674,20 @@ function docDe(tipo, slug) {
 function docDoEstagio(tipo, slug, estado) {
   const bloco = estado && estado[tipo === 'planos' ? 'plano' : 'design'];
   if (bloco && typeof bloco.arquivo === 'string' && bloco.arquivo) {
-    const declarado = path.isAbsolute(bloco.arquivo)
-      ? bloco.arquivo
-      : path.join(RAIZ, bloco.arquivo);
-    if (fs.existsSync(declarado)) return declarado;
+    const declarado = path.resolve(
+      path.isAbsolute(bloco.arquivo) ? bloco.arquivo : path.join(RAIZ, bloco.arquivo)
+    );
+    // CONFINADO à árvore do projeto. O `arquivo` vem de um campo de texto livre
+    // do estado, e sem esta cerca um caminho absoluto (ou com `../`) aceitava
+    // como design "aprovado" do fluxo um arquivo que nunca foi versionado — um
+    // rascunho no temp, por exemplo. Não vira bypass de validação (a checagem
+    // estrutural ainda roda contra ele), mas quebra a garantia que dá sentido ao
+    // versionamento: o design que autorizou o trabalho tem de estar no repo, ou
+    // ninguém depois consegue ler o que foi aprovado. Achado A3 da revisão de
+    // 2026-09-02.
+    const dentro = declarado === path.resolve(RAIZ)
+      || declarado.startsWith(path.resolve(RAIZ) + path.sep);
+    if (dentro && fs.existsSync(declarado)) return declarado;
   }
   return docDe(tipo, slug);
 }
@@ -988,7 +998,26 @@ function main() {
         console.error(recusa_evidencia);
         process.exit(2);
       }
-      const recusa = conferirFechamento(estagio, slug, extra, estado);
+      // O gate tem de enxergar o `--json` DESTA chamada, não só o que já estava
+      // gravado. Sem esta fusão, declarar `arquivo` no mesmo `marcar` que fecha
+      // o estágio — que é a única forma de fazê-lo, porque `design` não tem
+      // estado intermediário entre `pendente` e `aprovado` — deixava o gate
+      // cego para o caminho declarado: ele caía no `docDe(tipo, slug)`, que não
+      // existe, e a checagem estrutural nunca rodava. Exit 0, sem erro nem
+      // aviso. Achado por revisão independente em 2026-09-02, reproduzido antes
+      // de consertar: um design com uma linha de texto solto fechava como
+      // `aprovado`, enquanto a MESMA checagem rodada à mão contra o MESMO
+      // arquivo saía 2 com "seção obrigatória ausente".
+      //
+      // O `docDoEstagio` da tarefa 6 existia justamente para o caso do arquivo
+      // fora do padrão `<slug>.md` — e sem esta linha ele não alcançava o único
+      // momento em que esse caminho é declarado. A trava consertada continuava
+      // inerte pelo uso real que a motivou.
+      const estadoComExtra = {
+        ...estado,
+        [estagio]: { ...(estado[estagio] || {}), ...extra },
+      };
+      const recusa = conferirFechamento(estagio, slug, extra, estadoComExtra);
       if (recusa) {
         console.error(recusa);
         process.exit(2);

@@ -7,17 +7,63 @@
   },
   "design": {
     "status": "aprovado",
-    "em": "2026-09-01"
+    "em": "2026-09-02",
+    "arquivo": "docs/rainforest/design/fluxo-6-design-portoes.md"
   },
   "plano": {
     "status": "ok",
-    "em": "2026-09-01"
+    "em": "2026-09-02"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-09-02",
+    "comando": "node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-02-fluxo-6-portoes.md",
+    "saida": "P0..P5 CUMPRIDO — TODOS OS PORTOES CUMPRIDOS — 6 portao(oes). exit 0",
+    "tarefas_ok": 6,
+    "tarefas": 6,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "portoes-sentinela (status passa a executar o CHECK)"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "portoes-echo (remove o detector de saida fixa)"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "portoes-exit-zero-sem-marcador (cumprido cai para so exit 0)"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "check-falho (gate do verificar vira no-op)"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "tarefa so escreve README — sem comportamento de codigo para mutar"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "cobertura-viva2 (docDoEstagio volta a ignorar design.arquivo)"
+      }
+    ],
+    "em": "2026-09-02"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "pendente",
+    "snapshot": {
+      "head": "1550a48dcd49c5a1b7c48e4c1d028994277d236f",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-09-02-fluxo-6-portoes.json",
+        "vigias/ERROS.md"
+      ]
+    }
   },
   "verificar": {
     "status": "pendente"

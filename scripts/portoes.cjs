@@ -144,6 +144,24 @@ function parsear(conteudo) {
   }
 
   for (const p of portoes) {
+    // `EVIDENCIA:` é obrigatória em TODO portão, e isto foi achado, não desenho.
+    // `gravar()` só reescreve linha que já existe: um portão sem ela era
+    // executado, reportado como CUMPRIDO e tinha o checkbox marcado — mas a
+    // evidência não persistia. O `status` seguinte lia checkbox `[x]` com
+    // evidência ausente e dizia `inconsistente`, e o lint passava limpo antes
+    // disso. Resultado: o arquivo VERSIONADO era corrompido em silêncio, por um
+    // caminho que nenhum dos três modos denunciava na hora. Achado A1 da revisão
+    // de 2026-09-02. A escolha é recusar na leitura, não remendar na escrita:
+    // formato estrito recusa cedo, e `gravar()` continua sem inventar linha.
+    if (p.evidencia === null) {
+      throw new ErroDeParse(
+        `linha ${p.linha}: ${p.id} não tem linha EVIDENCIA. Ela é obrigatória — `
+        + `é onde o resultado da execução persiste, e sem ela o portão pode ser `
+        + `marcado como cumprido sem que nada disso fique gravado. Use `
+        + `'EVIDENCIA: pendente' enquanto não rodou.`
+      );
+    }
+
     const temCheck = p.check !== null && p.check !== '';
     const temEspera = p.espera !== null && p.espera !== '';
     if (temCheck !== temEspera) {
@@ -404,7 +422,15 @@ function executarCheck(check, espera, cwd) {
     cumprido: !estourou && exit === 0 && match,
     exit, match, estourou, saida,
     shell: sh.nome,
-    cwd,
+    // CWD relativo à raiz do repositório, nunca absoluto. O design pede o CWD
+    // gravado, e com razão — o mesmo CHECK dá resultado diferente conforme de
+    // onde roda. Mas o caminho ABSOLUTO é exatamente o "caminho de máquina" que
+    // o comentário de `gravar()`, duas funções abaixo, dá como motivo para nunca
+    // guardar output bruto: guardá-lo aqui contradiz a própria justificativa.
+    // `.` (a raiz) responde a pergunta que importa — "de onde isso rodou,
+    // relativo ao projeto?" — sem carregar o nome de usuário de ninguém.
+    // Achado A2 da revisão de 2026-09-02.
+    cwd: path.relative(process.cwd(), cwd).split(path.sep).join('/') || '.',
     fingerprint: require('crypto').createHash('sha256').update(saida).digest('hex').slice(0, 12),
   };
 }
