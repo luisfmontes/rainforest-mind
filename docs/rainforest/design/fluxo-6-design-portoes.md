@@ -113,3 +113,29 @@ Estado da guarda por sessão em `.rainforest/hook-estado.json`, com o mesmo sane
 
 - **P1:** onde vive `portoes.md` no layout real do repo — junto do plano do fluxo ou em `.rainforest/`? Claude Code decide olhando a árvore.
 - **P2:** o hook de Stop atual já bloqueia por estágio; o bloqueio por portão entra no mesmo hook ou é checagem só no gate do `ok`? Começar só no gate é mais barato e reversível.
+
+---
+
+## Perguntas abertas — resolvidas em 2026-09-02
+
+**P1 — onde vive o `portoes.md`: `docs/rainforest/portoes/<slug>.md`.**
+A árvore real não tem `docs/rainforest/fluxos/`; tem quatro irmãos indexados pelo
+mesmo slug — `design/`, `planos/`, `estado/`, `mapas/`. Um quinto irmão,
+`portoes/`, mantém a convenção e dá de graça a coisa que os dois ganchos do
+pipeline precisam: **o gate deriva o caminho do slug**, sem campo novo no estado,
+sem config, sem argumento a mais. `estado.cjs` já recebe `--slug` em todo comando;
+`portoes.cjs` passa a receber o arquivo por caminho explícito (para fixture de
+teste) e o gate monta `docs/rainforest/portoes/<slug>.md` sozinho.
+
+Consequência boa e não planejada: "o fluxo tem portões?" vira `existsSync` de um
+caminho derivado, que é exatamente o teste que o desenho opt-in pede.
+
+**P2 — o bloqueio por portão entra só no gate do `ok`.** É a recomendação do
+próprio design ("mais barato e reversível") e ela se sustenta: o hook de Stop é
+o lugar onde um defeito prende a sessão sem saída, e a guarda de 6 bloqueios
+existe justamente porque esse risco é real. Gate de `ok` erra para o lado seguro
+— o pior caso é um `ok` recusado, e a pessoa está na frente do teclado.
+
+Fica **fora do escopo deste fluxo**, nomeado e não esquecido: a guarda de
+progresso no hook de Stop (a seção acima continua valendo como desenho). Entra
+quando houver evidência de que o gate do `ok` sozinho não segura — não antes.
