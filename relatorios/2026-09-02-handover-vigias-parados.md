@@ -165,3 +165,24 @@ erro não registrado; este ficou cinco dias. Uma linha na abertura quando houver
 erro de vigia nas últimas N rondas.
 *Destino:* hook de SessionStart / `conferir-saude`. **Pendente** — decidir se é
 a abertura (que já está no teto de bytes) ou a saúde.
+
+## Cerca com a sessão paralela (fluxo 6 — portões)
+
+Medido em 2026-09-02, com o fluxo 6 aberto na branch `fluxo/portoes`. As duas
+frentes não se tocam em `vigias/`, `scripts/portoes.cjs` nem `scripts/estado.cjs`.
+Sobram dois pontos de encosto, e só o segundo morde:
+
+- `README.md` — você mexe em `## Vigias`, o fluxo 6 mexe nas seções do fluxo.
+  Hunks distintos, o git resolve sozinho.
+- **`skills/rainforest-mind/references/regra-12.md` — este arquivo é seu nesta
+  janela.** A P5 acima quer plantar "campo vazio não é campo ok" nele. Ele está
+  em **9.277 B contra um teto de 10.500 B**: 1,2 KB de folga. Dois autores
+  escrevendo nele não produzem conflito de git — produzem uma **bateria vermelha
+  depois do merge**, que é exatamente a dívida de merge que custou uma rodada
+  inteira no fluxo 9 em 2026-09-01. O fluxo 6 fica fora dele; se precisar
+  encostar, ele parte em `references/regra-12-<assunto>.md`, como já foi feito
+  com `regra-12-acervo.md` e `regra-10-portaria.md`.
+
+E a regra de convivência que hoje ensinou: **o custo do paralelo não é conflito de
+arquivo, é a base andando debaixo de quem está no meio da revisão.** Quem mergear
+primeiro avisa; o outro rebasa **antes** do `revisar`, nunca depois.
