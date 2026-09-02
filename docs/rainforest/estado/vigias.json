@@ -89,6 +89,20 @@
     "em": "2026-09-02"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "pr": 150,
+    "url": "https://github.com/luisfmontes/rainforest-mind/pull/150",
+    "commits": 19,
+    "arquivos": 17,
+    "fecha": "#124",
+    "issues_abertas": [
+      143,
+      144,
+      145,
+      146,
+      149
+    ],
+    "pendente": "Tarefa 7 (reagendar) — depende do merge, por ORDEM e nao por autorizacao: as tarefas apontam para o checkout principal",
+    "em": "2026-09-02"
   }
 }
