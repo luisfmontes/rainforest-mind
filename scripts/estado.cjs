@@ -767,7 +767,15 @@ function conferirFechamento(estagio, slug, extra, estado) {
         // O gate que o fluxo 6 existe para instalar: com portões declarados, a
         // evidência colada deixa de bastar. O `ok` só grava se os oráculos
         // re-executarem e passarem agora — não se alguém afirmar que passaram.
-        const r = rodarChecador(PORTOES, ['rodar', arquivoPortoes], estagio);
+        //
+        // `--reverificar` é OBRIGATÓRIO aqui, e isto foi achado usando o gate no
+        // fechamento deste próprio fluxo. Sem a flag, `rodar` pula todo portão
+        // que já tenha evidência gravada, e os seis saíram "cumprido (pulado)" —
+        // o gate aprovou lendo o arquivo em vez de executar. Aceitar evidência
+        // gravada é exatamente a evidência colada que os portões existem para
+        // substituir, só em JSON em vez de prosa. É também a decisão D2 do
+        // design ao contrário: "o arquivo não é a verdade; a execução é".
+        const r = rodarChecador(PORTOES, ['rodar', arquivoPortoes, '--reverificar'], estagio);
         if (r) recusas.push(r);
       }
     }
