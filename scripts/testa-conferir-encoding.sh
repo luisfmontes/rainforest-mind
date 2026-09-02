@@ -177,6 +177,77 @@ fi
 cp "$SB/original.cjs" "$SCRIPT"
 saiu "restaurado, volta a reprovar o fixture so-mojibake" "$(codigo "$SO_MOJIBAKE")" "2"
 
+echo "== 6. mojibake de codepage OEM (CP850/CP437) =="
+# A SEGUNDA familia de round-trip, cega ate 2026-09-01. O `vigias/ERROS.md`
+# commitado carregava esta assinatura desde 27/08 e este script saia exit 0 em
+# cima dela: a deteccao so conhecia CP1252, e a tarefa agendada do Windows roda
+# no codepage OEM do console.
+#
+# A fixture e montada por BYTES, nunca colando o caractere: e o mesmo cuidado do
+# caso 5 (PR #69), e aqui ele importa em dobro porque o proprio gate cataria
+# este arquivo se a assinatura estivesse literal no fonte.
+#   6e = 'n'   e2 94 9c = U+251C (0xC3 lido como OEM)   c3 ba = U+00FA (0xA3)
+# Ou seja: a palavra "nao" com til, depois do round-trip.
+OEM="$SB/oem-mojibake.md"
+printf -- '- erro: n\xe2\x94\x9c\xc3\xbao achei o FOCO.md\n' > "$OEM"
+S="$(roda "$OEM")"
+saiu "assinatura OEM de 2 bytes reprova"        "$(codigo "$OEM")" "2"
+tem  "e aponta mojibake"                        "$S" "mojibake"
+
+# O abridor do bloco 0xC2 (U+252C) e o par de 3 bytes (0xE2 0x80 lidos como OEM)
+# tambem entram na rede. Duas entradas para o par porque o primeiro caractere
+# diverge entre CP850 (U+00D4) e CP437 (U+0393).
+OEM2="$SB/oem-mojibake-2.md"
+printf -- 'texto \xe2\x94\xac\xc2\xa9 e travessao \xc3\x94\xc3\x87\xc3\xb6 aqui\n' > "$OEM2"
+saiu "abridor do bloco 0xC2 e o par de 3 bytes tambem reprovam" "$(codigo "$OEM2")" "2"
+
+echo
+echo "== 6b. FALSO POSITIVO: arte de caixa legitima NAO pode reprovar =="
+# A condicao nao e "contem U+251C" — esse caractere e legitimo em saida de
+# `tree`, em diagrama e em arte ASCII. E "U+251C IMEDIATAMENTE seguido de um
+# membro da tabela de round-trip". Saida de `tree` poe U+2500 depois, e U+2500
+# nao esta em tabela nenhuma das duas. Sem este caso, apertar a heuristica
+# depois nao teria como ser conferido.
+ARTE="$SB/arte-de-caixa.md"
+printf -- 'vigias/\n\xe2\x94\x9c\xe2\x94\x80\xe2\x94\x80 erros.ps1\n\xe2\x94\x9c\xe2\x94\x80\xe2\x94\x80 run-vigia.ps1\n\xe2\x94\x94\xe2\x94\x80\xe2\x94\x80 ERROS.md\n' > "$ARTE"
+saiu "arte de caixa estilo tree passa (exit 0)" "$(codigo "$ARTE")" "0"
+# Acentuacao portuguesa normal tambem nao pode acender nada.
+PT="$SB/portugues.md"
+printf -- 'A ronda nao achou o arquivo: acentuacao, coracao, versao, gestao.\nCom acento de verdade: n\xc3\xa3o, \xc3\xa9, \xc3\xba, \xc3\xa7\xc3\xa3o.\n' > "$PT"
+saiu "portugues acentuado em UTF-8 valido passa (exit 0)" "$(codigo "$PT")" "0"
+
+echo
+echo "== 6c. MUTACAO: tirar a assinatura OEM tem que deixar a fixture passar =="
+saiu "fixture OEM reprova antes da mutacao (controle)" "$(codigo "$OEM")" "2"
+cp "$SCRIPT" "$SB/original-oem.cjs"
+node -e "
+  const fs = require('fs');
+  const p = process.argv[1];
+  const s = fs.readFileSync(p, 'utf8');
+  const alvo = 'const FECHADORES_OEM = new Set([...OEM_CP850_80_BF, ...OEM_CP437_80_BF]);';
+  if (!s.includes(alvo)) { console.error('MUTACAO NAO APLICADA'); process.exit(1); }
+  fs.writeFileSync(p, s.replace(alvo, 'const FECHADORES_OEM = new Set([]);'));
+" "$SCRIPT"
+if [ $? -ne 0 ]; then
+  falhou=$((falhou+1)); echo "  FALHA nao consegui aplicar a mutacao OEM"
+else
+  C6="$(codigo "$OEM")"
+  if [ "$C6" = "0" ]; then
+    ok=$((ok+1)); echo "  ok   com a tabela OEM esvaziada, a fixture passa (exit 0) — prova que ela era a trava"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mutacao aplicada mas a fixture ainda reprova (exit $C6) — a guarda nao mede o que devia"
+  fi
+fi
+cp "$SB/original-oem.cjs" "$SCRIPT"
+saiu "restaurado, volta a reprovar a fixture OEM" "$(codigo "$OEM")" "2"
+# E a prova de que a mutacao OEM nao derruba a familia CP1252 junto: as duas
+# redes sao independentes, e uma nao pode estar segurando a outra. Reusa a
+# fixture do caso 5 em vez de gerar outra: a primeira versao desta secao criava
+# a sua propria, e os bytes literais dela faziam ESTE arquivo reprovar no gate.
+saiu "a familia CP1252 continua reprovando (as duas redes sao independentes)" "$(codigo "$SO_MOJIBAKE")" "2"
+
+echo
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]

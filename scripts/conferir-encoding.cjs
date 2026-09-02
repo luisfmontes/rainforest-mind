@@ -117,6 +117,83 @@ const CP1252_80_9F = [
 const FECHADORES = new Set(CP1252_80_9F);
 for (let b = 0xa0; b <= 0xbf; b++) FECHADORES.add(b);
 
+
+// ---------------------------------------------------------------------------
+// SEGUNDA FAMILIA: round-trip UTF-8 lido como CODEPAGE OEM (CP850 / CP437).
+// ---------------------------------------------------------------------------
+//
+// POR QUE EXISTE, com numero. Em 2026-09-01 o `vigias/ERROS.md` COMMITADO foi
+// medido byte a byte e continha, onde deveria estar a palavra "nao" com til:
+//   0x6e  +  0xe2 0x94 0x9c (U+251C)  +  0xc3 0xba (U+00FA)  +  0x6f
+// Isto e mojibake classico: a palavra saiu do node como UTF-8 (0x6e C3 A3 0x6f),
+// o PowerShell decodificou os bytes C3 A3 no codepage OEM do console e regravou
+// o resultado em UTF-8 valido. E este script saia **exit 0** em cima disso.
+//
+// O motivo da cegueira: ate aqui a deteccao so conhecia a assinatura CP1252
+// (`Ã`/`Â`/`â€`). A tarefa agendada do Windows nao roda em CP1252 — roda no
+// codepage OEM do console, que nesta maquina e o CP850. Mesma especie de peixe,
+// buraco diferente na rede. Vale registrar o que isso significa: todo exit 0
+// deste script antes desta data provava menos do que parecia.
+//
+// A MECANICA e identica a da CP1252, e por isso a forma do codigo e a mesma:
+// caractere acentuado portugues em UTF-8 sao 2 bytes, o primeiro 0xC3 (bloco
+// U+00C0-U+00FF) ou 0xC2 (bloco U+0080-U+00BF), o segundo em 0x80-0xBF. Lidos
+// como OEM:
+//   0xC3 -> U+251C  e  0xC2 -> U+252C   (IGUAIS em CP850 e CP437)
+// e o segundo byte vira UM dos caracteres da faixa 0x80-0xBF daquela tabela.
+// Pontuacao tipografica (travessao, aspa curva) e 3 bytes, 0xE2 0x80 0xXX, e o
+// par de abertura diverge entre as duas tabelas:
+//   CP850: 0xE2 -> U+00D4, 0x80 -> U+00C7   ("OC")
+//   CP437: 0xE2 -> U+0393, 0x80 -> U+00C7   ("GC")
+//
+// AS TABELAS SAO GERADAS, NAO DIGITADAS. Copia literal da faixa 0x80-0xBF de
+// cada codepage, produzida com `bytes([b]).decode('cp850')` / `'cp437'`. Foram
+// conferidas e DIVERGEM em 8 posicoes cada (CP850 tem U+00A9 U+00AE U+00C0
+// U+00C1 U+00C2 U+00D7 U+00D8 U+00F8 onde o CP437 tem U+20A7 U+2310 U+2555
+// U+2556 U+255B U+255C U+2561 U+2562), entao cobrir so uma deixaria a outra
+// passando. A rede e a UNIAO das duas: 72 caracteres.
+//
+// FALSO POSITIVO CONSIDERADO, e por que a condicao continua apertada: alguns
+// fechadores sao proprio desenho de caixa (U+2502, U+2524, U+2591...), entao em
+// tese arte ASCII poderia bater. Nao bate na pratica, porque a condicao NAO e
+// "contem U+251C" — e "U+251C IMEDIATAMENTE seguido de um membro da tabela".
+// Saida de `tree` poe U+2500 depois do U+251C, e U+2500 nao esta em tabela
+// nenhuma das duas. Ha um caso de teste para exatamente isso em
+// scripts/testa-conferir-encoding.sh, e o marcador `rf-encoding-exemplo`
+// continua sendo a saida para a linha que precisa citar a assinatura de
+// proposito.
+const OEM_CP850_80_BF = [
+  0x00c7, 0x00fc, 0x00e9, 0x00e2, 0x00e4, 0x00e0, 0x00e5, 0x00e7,
+  0x00ea, 0x00eb, 0x00e8, 0x00ef, 0x00ee, 0x00ec, 0x00c4, 0x00c5,
+  0x00c9, 0x00e6, 0x00c6, 0x00f4, 0x00f6, 0x00f2, 0x00fb, 0x00f9,
+  0x00ff, 0x00d6, 0x00dc, 0x00f8, 0x00a3, 0x00d8, 0x00d7, 0x0192,
+  0x00e1, 0x00ed, 0x00f3, 0x00fa, 0x00f1, 0x00d1, 0x00aa, 0x00ba,
+  0x00bf, 0x00ae, 0x00ac, 0x00bd, 0x00bc, 0x00a1, 0x00ab, 0x00bb,
+  0x2591, 0x2592, 0x2593, 0x2502, 0x2524, 0x00c1, 0x00c2, 0x00c0,
+  0x00a9, 0x2563, 0x2551, 0x2557, 0x255d, 0x00a2, 0x00a5, 0x2510,
+];
+
+const OEM_CP437_80_BF = [
+  0x00c7, 0x00fc, 0x00e9, 0x00e2, 0x00e4, 0x00e0, 0x00e5, 0x00e7,
+  0x00ea, 0x00eb, 0x00e8, 0x00ef, 0x00ee, 0x00ec, 0x00c4, 0x00c5,
+  0x00c9, 0x00e6, 0x00c6, 0x00f4, 0x00f6, 0x00f2, 0x00fb, 0x00f9,
+  0x00ff, 0x00d6, 0x00dc, 0x00a2, 0x00a3, 0x00a5, 0x20a7, 0x0192,
+  0x00e1, 0x00ed, 0x00f3, 0x00fa, 0x00f1, 0x00d1, 0x00aa, 0x00ba,
+  0x00bf, 0x2310, 0x00ac, 0x00bd, 0x00bc, 0x00a1, 0x00ab, 0x00bb,
+  0x2591, 0x2592, 0x2593, 0x2502, 0x2524, 0x2561, 0x2562, 0x2556,
+  0x2555, 0x2563, 0x2551, 0x2557, 0x255d, 0x255c, 0x255b, 0x2510,
+];
+
+const FECHADORES_OEM = new Set([...OEM_CP850_80_BF, ...OEM_CP437_80_BF]);
+
+// Abridores de 1 caractere: os bytes 0xC3 e 0xC2 lidos como OEM. Iguais nas duas
+// tabelas, por isso um par so.
+const ABRIDORES_OEM_1 = ['├', '┬'];
+// Abridores de 2 caracteres: o par 0xE2 0x80 lido como OEM, uma entrada por
+// codepage porque o primeiro caractere diverge.
+const ABRIDORES_OEM_2 = ['ÔÇ', 'ΓÇ'];
+
+
 /**
  * Varre um texto e devolve os achados de mojibake: "Ã"/"Â"/"â€" imediatamente
  * seguido de um caractere que SO aparece por round-trip UTF-8-como-CP1252.
@@ -139,6 +216,25 @@ function achaMojibake(texto) {
       if (!tam) continue;
       const prox = linha.codePointAt(j + tam);
       if (prox !== undefined && FECHADORES.has(prox)) {
+        const inicio = Math.max(0, j - 8);
+        const trecho = linha.slice(inicio, j + tam + 2);
+        achados.push({ linha: i + 1, trecho });
+      }
+    }
+    // Segunda passada: a familia OEM (CP850/CP437). Passada separada, e nao mais
+    // um ramo no `if` acima, porque as duas famílias tem tabelas de fechadores
+    // DIFERENTES — misturá-las num Set so faria a rede de uma pegar peixe da
+    // outra e o motivo do achado deixaria de ser rastreavel.
+    for (let j = 0; j < linha.length; j++) {
+      let tam = 0;
+      if (ABRIDORES_OEM_1.includes(linha[j])) {
+        tam = 1;
+      } else if (ABRIDORES_OEM_2.includes(linha.slice(j, j + 2))) {
+        tam = 2;
+      }
+      if (!tam) continue;
+      const prox = linha.codePointAt(j + tam);
+      if (prox !== undefined && FECHADORES_OEM.has(prox)) {
         const inicio = Math.max(0, j - 8);
         const trecho = linha.slice(inicio, j + tam + 2);
         achados.push({ linha: i + 1, trecho });

@@ -238,7 +238,9 @@ fi
 # A asserção casa 'achei o FOCO.md', SEM o 'nao' na frente — e isso não é
 # desleixo, é cicatriz. A primeira versão procurava 'nao achei o FOCO.md' e
 # passou VERDE debaixo da mutação, porque a linha que o vigia grava de verdade é
-# `n├úo achei o FOCO.md`: o texto sai do node em UTF-8, o PowerShell decodifica
+# `n├úo achei o FOCO.md` (rf-encoding-exemplo: assinatura citada de
+# proposito, e o sintoma que esta linha existe para explicar). O texto sai do
+# node em UTF-8, o PowerShell decodifica
 # no codepage OEM do console e regrava mojibake (o defeito V4 desta entrega).
 # Ou seja, o mojibake derrotou o teste que procurava o próprio defeito. O trecho
 # ASCII puro é o que sobrevive aos dois lados da corrupção.
