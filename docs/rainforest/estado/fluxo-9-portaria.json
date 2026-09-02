@@ -118,6 +118,10 @@
     "em": "2026-09-01"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "versao": "0.80.0",
+    "destino": "PR",
+    "nota": "Bump 0.80.0 (MINOR: mecanismo novo e regra 10 muda de contrato; cobre tambem o fluxo segunda-opiniao, PR #140, que entrou na main sem bump). conferir-versao exit 0, testa-versao 4 ok.",
+    "em": "2026-09-01"
   }
 }
