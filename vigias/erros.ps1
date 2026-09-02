@@ -133,6 +133,28 @@ custaria a frase inteira dentro do marcador.
 O `:` FICA DE FORA do intermediario, e isso nao e detalhe: sem essa exclusao o
 casador atravessa `um.txt para D:\` como se fosse um segmento com espaco e
 engole DOIS caminhos distintos num marcador so.
+
+Rodada 3, a varredura adversarial: as duas primeiras rodadas foram achadas por
+outra pessoa, entao esta foi feita de proposito contra formas que ninguem tinha
+tentado. Tres vazamentos a mais, e o primeiro e o pior de todos:
+
+  - `file:///C:/pasta/...` - o `e:` de `file:` casava como letra de unidade. O
+    casador comia `e:///`, punha marcador ALI, e o caminho de verdade logo
+    depois ficava intocado. Produzia uma linha que PARECIA saneada. Vale para
+    qualquer esquema (`http:`, `abc:`).
+  - `\\?\UNC\servidor\...` e `\\?\C:\...` - o prefixo estendido travava o
+    casador no `?`, e o resto sobrevivia.
+  - `..\..\Users\Fulano\x.json` - caminho relativo identifica pessoa do mesmo
+    jeito, e o comentario acima dizia o contrario.
+
+LIMITE CONHECIDO E ACEITO, nao buraco esquecido: a FOLHA e preservada de
+proposito, entao um nome de ARQUIVO que contenha nome de pessoa passa
+(`C:\x\relatorio-do-Fulano.pdf` -> `<caminho>\relatorio-do-Fulano.pdf`). E o
+mesmo compromisso explicado acima: sem a folha a mensagem nao diz o que faltou.
+Na pratica os chamadores interpolam nomes fixos - `vigia.config.json`,
+`bridge.ps1` - entao o risco e teorico. Se um dia um chamador interpolar caminho
+com nome de pessoa no ARQUIVO, e a folha que precisa mudar, e a decisao volta
+para a mesa.
 #>
 function Get-MotivoSaneado([string]$Motivo) {
     if (-not $Motivo) { return $Motivo }
@@ -140,20 +162,45 @@ function Get-MotivoSaneado([string]$Motivo) {
     $avaliador = {
         param($m)
         $inteiro = $m.Value
-        # Ultimo segmento depois de \ ou /. Caminho terminado em separador
-        # (uma PASTA) nao tem folha util: vira so o marcador.
-        $folha = ($inteiro -split '[\\/]' | Where-Object { $_ -ne '' } | Select-Object -Last 1)
-        if ($inteiro -match '[\\/]$' -or -not $folha -or $folha -match '^[A-Za-z]:$') {
+        # Ultimo segmento depois de \ ou /. Os segmentos que sao ESTRUTURA de
+        # caminho, e nao nome (`..`, `?`, `.`, `UNC`), nao servem de folha:
+        # devolve-los seria trocar um caminho por outro pedaco de caminho.
+        # Caminho terminado em separador (uma PASTA) tambem nao tem folha util.
+        $folha = ($inteiro -split '[\\/]' |
+                  Where-Object { $_ -ne '' -and $_ -ne '..' } |
+                  Select-Object -Last 1)
+        if ($inteiro -match '[\\/]$' -or -not $folha -or
+            $folha -match '^[A-Za-z]:$' -or $folha -match '^[?.]$' -or $folha -eq 'UNC') {
             return '<caminho>'
         }
         return "<caminho>\$folha"
     }
 
-    # Letra de unidade OU UNC, depois zero ou mais segmentos intermediarios
-    # (que ACEITAM espaco, mas nunca `:`, aspa ou parentese), e por fim a folha
-    # (que nao aceita espaco: e onde a mensagem volta a ser prosa).
-    $re = '(?:[A-Za-z]:[\\/]|\\\\)(?:[^\\/:"<>|?*\r\n]*[\\/])*[^\\/:"<>|?*\r\n\s''(),;]*'
-    return [regex]::Replace($Motivo, $re, $avaliador)
+    # ABRIDOR, quatro formas. A ORDEM IMPORTA: a mais especifica vem primeiro,
+    # senao o `\\` simples engole o prefixo estendido e para no `?`, deixando o
+    # resto do caminho intocado. As quatro sairam de uma varredura adversarial,
+    # e as tres ultimas eram vazamento de verdade:
+    #
+    #   1. prefixo estendido   \\?\C:\...   \\?\UNC\servidor\...   \\.\pipe\...
+    #   2. UNC simples         \\servidor\...
+    #   3. letra de unidade    C:\...   C:/...
+    #   4. relativo com ..     ..\..\Users\Fulano\...  <- identifica pessoa igual
+    #
+    # O `(?<![A-Za-z0-9])` da forma 3 NAO e zelo. Sem ele, o `e:` de `file:`
+    # casa como letra de unidade: o casador come `e:///`, devolve marcador ali, e
+    # o caminho REAL que vem logo depois fica INTOCADO. Vale para qualquer
+    # esquema de URL - `http:`, `abc:` - e era o pior dos vazamentos, porque
+    # produzia uma linha com marcador que PARECIA saneada.
+    $prefixo  = '\\\\[?.]\\(?:UNC\\)?(?:[A-Za-z]:[\\/])?'
+    $unc      = '\\\\'
+    $unidade  = '(?<![A-Za-z0-9])[A-Za-z]:[\\/]'
+    $relativo = '(?:\.\.[\\/])+'
+    $abridor  = "(?:$prefixo|$unc|$unidade|$relativo)"
+
+    $intermediario = '[^\\/:"<>|?*\r\n]*[\\/]'
+    $folhaRe       = "[^\\/:`"<>|?*\r\n\s'(),;]*"
+
+    return [regex]::Replace($Motivo, "$abridor(?:$intermediario)*$folhaRe", $avaliador)
 }
 
 <#
