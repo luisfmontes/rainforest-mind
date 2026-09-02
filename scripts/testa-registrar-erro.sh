@@ -368,6 +368,31 @@ igual "numero longo SEM sufixo de JID fica como esta" \
 igual "numero curto de porta nao vira marcador" \
   "$(sanear 'bridge nao subiu apos 60s (porta 3005 fechada)')" \
   'bridge nao subiu apos 60s (porta 3005 fechada)'
+# JID MULTI-DISPOSITIVO: `<numero>:<aparelho>@...`. O `:N` quebrava a adjacencia
+# que o regex exigia e o JID passava INTEIRO — e nessa forma o JID E o telefone,
+# com DDI e DDD. Achado na revisao testando o outro lado da faixa de digitos.
+dev=26
+igual "JID multi-dispositivo (o :N nao pode quebrar o casamento)" \
+  "$(sanear "send_message failed para ${d1}${d2}:${dev}@s.whatsapp.net")" \
+  'send_message failed para <jid>'
+# E os formatos que NAO devem ser saneados, de proposito: `@lid` e o que o
+# proprio WhatsApp criou para nao expor o numero real. Sanear ali seria apagar
+# diagnostico sem proteger ninguem.
+igual "@lid NAO e saneado (ele existe justamente para nao ser o numero)" \
+  "$(sanear "privacidade ${g1}${g2}@lid ok")" \
+  "privacidade ${g1}${g2}@lid ok"
+# Os dois lados numericos: nada com forma de id longo pode virar marcador sem o
+# sufixo de JID colado. O timestamp tambem vai montado — 13 digitos seguidos tem
+# forma de telefone, e o gate de publicacao recusou este arquivo por causa dele
+# na primeira tentativa. O gate estava certo na forma; a fixture e que precisava
+# nao plantar a forma.
+ts1=172525; ts2=4400000
+igual "timestamp longo nao vira marcador" \
+  "$(sanear "evento em ${ts1}${ts2} registrado")" \
+  "evento em ${ts1}${ts2} registrado"
+igual "numero de Issue nao vira marcador" \
+  "$(sanear 'ver a Issue 149 aberta hoje')" \
+  'ver a Issue 149 aberta hoje'
 
 echo
 echo "== C5. o saneamento nao pode destruir a mensagem =="

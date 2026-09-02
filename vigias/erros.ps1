@@ -172,7 +172,16 @@ function Get-MotivoSaneado([string]$Motivo) {
     # vai ate 20 de proposito: JID de grupo tem 18, e a regra do
     # conferir-publicacao.cjs para em 15 - por isso ela nunca pegou este caso.
     # Ver a Issue aberta sobre alargar aquela regra tambem.
-    $Motivo = [regex]::Replace($Motivo, '\b\d{10,20}@(?:s\.whatsapp\.net|g\.us)\b', '<jid>')
+    # O `(?::\d{1,3})?` cobre o JID MULTI-DISPOSITIVO, `<numero>:<aparelho>@...`.
+    # Sem ele o `:N` quebra a adjacencia que o regex exige e o JID passa inteiro -
+    # e ali o JID E O TELEFONE, com DDI e DDD. Achado na revisao (2026-09-02),
+    # testando o outro lado da faixa de digitos.
+    #
+    # NAO cobre `@lid`, `@broadcast` nem `@newsletter`, de proposito: o `@lid` e
+    # o formato que o proprio WhatsApp criou justamente para NAO expor o numero
+    # real, e os outros dois nao identificam uma pessoa 1:1. Sanear ali seria
+    # apagar informacao de diagnostico sem proteger ninguem.
+    $Motivo = [regex]::Replace($Motivo, '\b\d{10,20}(?::\d{1,3})?@(?:s\.whatsapp\.net|g\.us)\b', '<jid>')
 
     $avaliador = {
         param($m)
