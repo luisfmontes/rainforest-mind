@@ -239,8 +239,12 @@ function Write-ErroDeVigia {
         [string]$Log
     )
     $linha = "- $(Get-Date -Format 'yyyy-MM-dd HH:mm') [$Vigia]: $(Get-MotivoSaneado $Motivo)"
-    Write-LinhaEmLf -Caminho (Join-Path $Plugin "vigias\ERROS.md") -Linha $linha
-    if ($Log) { Write-LinhaEmLf -Caminho $Log -Linha $linha }
+    $gravou = Write-LinhaEmLf -Caminho (Join-Path $Plugin "vigias\ERROS.md") -Linha $linha
+    if ($Log) { [void](Write-LinhaEmLf -Caminho $Log -Linha $linha) }
+    # Se nem o ERROS.md aceitou a linha, o erro precisa aparecer em ALGUM lugar.
+    # A propria linha vai para o stderr: e o unico canal que sobra quando a porta
+    # de registro e que falhou, e e o que o log da tarefa agendada captura.
+    if (-not $gravou) { [Console]::Error.WriteLine($linha) }
 }
 
 <#
@@ -258,7 +262,46 @@ function Write-LinhaEmLf {
         [Parameter(Mandatory=$true)][string]$Caminho,
         [Parameter(Mandatory=$true)][AllowEmptyString()][string]$Linha
     )
-    $dir = Split-Path -Parent $Caminho
-    if ($dir -and -not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
-    [System.IO.File]::AppendAllText($Caminho, $Linha + "`n", $script:Utf8SemBom)
+    # O try/catch NAO e zelo defensivo generico, e o conserto de um defeito
+    # apontado na revisao (2026-09-02) que e a doenca desta entrega inteira,
+    # dentro da propria porta que existe para curar.
+    #
+    # Sem ele, uma falha REAL de escrita - disco cheio, ACL negada, arquivo
+    # travado por antivirus, caminho longo demais - sobe como excecao do .NET e
+    # derruba a ronda SEM registrar nada sobre o motivo. Tarefa que parece
+    # saudavel e nao faz o que devia: exatamente o V1 desta entrega, um andar
+    # acima. E a bateria de vigia agendado (T4) nao pegaria, porque ela olha
+    # `NextRunTime`, nao `LastTaskResult`.
+    #
+    # O canal de ultimo recurso e o stderr, e nao ha ironia nisso: quando a
+    # porta de registro e que falhou, escrever no lugar onde ela registraria
+    # seria tentar duas vezes o que ja nao funcionou. O stderr chega ao log da
+    # tarefa agendada, que e o unico canal que sobra.
+    #
+    # Devolve $true/$false em vez de lancar, para que o chamador possa decidir.
+    # Nao lanca NUNCA: derrubar a ronda porque uma LINHA DE LOG nao coube em
+    # disco seria trocar um defeito cosmetico por um defeito de operacao - o
+    # mesmo raciocinio do Set-EncodingDeSaida.
+    try {
+        $dir = Split-Path -Parent $Caminho
+        if ($dir -and -not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+        [System.IO.File]::AppendAllText($Caminho, $Linha + "`n", $script:Utf8SemBom)
+        return $true
+    } catch {
+        # A MENSAGEM DA EXCECAO TAMBEM PASSA PELO SANEAMENTO, e nao e zelo: o
+        # .NET monta o texto dele com o caminho COMPLETO dentro
+        # ("Nao foi possivel localizar uma parte do caminho 'C:\...'"), entao
+        # sanear so o `$Caminho` que eu passei deixava o vazamento entrar pela
+        # porta dos fundos. Achado ao consertar uma assercao desta bateria que
+        # passava por acidente - o teste quebrado escondia o defeito.
+        #
+        # O destino aqui e o stderr, que vai para o log da tarefa agendada, e
+        # `vigias/log-*.txt` esta no .gitignore - ou seja, isto NAO chega ao
+        # repositorio. Sanear mesmo assim, porque a funcao promete sanear, e
+        # promessa que vale so no caminho feliz e a doenca que esta entrega
+        # inteira existe para curar.
+        $motivo = Get-MotivoSaneado $_.Exception.Message
+        [Console]::Error.WriteLine("erro: nao consegui escrever em $(Get-MotivoSaneado $Caminho): $motivo")
+        return $false
+    }
 }

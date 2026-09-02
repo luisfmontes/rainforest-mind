@@ -1206,8 +1206,21 @@ function tarefasDeVigia() {
   if (status !== 0) return null;
   const linhas = out.split('\n').map((l) => l.trim()).filter(Boolean);
   return linhas.map((l) => {
-    const [nome, proxima] = l.split('\t');
-    return { nome: (nome || '').trim(), proxima: (proxima || '').trim() };
+    // Corta no ULTIMO tab, nao no primeiro. A versao anterior fazia
+    // `l.split('\t')` e ficava com os dois primeiros pedacos, o que assume que
+    // o NOME da tarefa nao contem tab. Apontado na revisao (2026-09-02): se
+    // contivesse, `proxima` receberia um fragmento do proprio nome — ou seja,
+    // NAO-vazio — e uma tarefa realmente morta passaria por viva, que e
+    // exatamente o defeito que este checador existe para pegar, invertido.
+    //
+    // Nao fui confirmar se o Agendador do Windows aceita tab em nome de tarefa:
+    // cortar pelo ultimo tab torna a pergunta irrelevante, porque o campo que
+    // o PowerShell acrescenta e SEMPRE o ultimo. Trava que depende de "o
+    // sistema provavelmente nao permite" e trava que ninguem conferiu.
+    const corte = l.lastIndexOf('\t');
+    const nome = corte === -1 ? l : l.slice(0, corte);
+    const proxima = corte === -1 ? '' : l.slice(corte + 1);
+    return { nome: nome.trim(), proxima: proxima.trim() };
   }).filter((t) => t.nome);
 }
 

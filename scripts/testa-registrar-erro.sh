@@ -385,6 +385,36 @@ igual "a do toggle nao tem caminho e passa inteira, com aspas e interrogacao" \
   "nao consegui ler o toggle 'vigias' (node no PATH?)"
 
 echo
+echo "== C6. escrita que FALHA nao pode matar a ronda em silencio =="
+# Achado na revisao (2026-09-02): sem try/catch, uma falha real de escrita
+# (disco cheio, ACL negada, arquivo travado, caminho longo demais) subia como
+# excecao do .NET e derrubava a ronda SEM registrar nada. Tarefa que parece
+# saudavel e nao faz o que devia — o V1 desta entrega, dentro da porta que
+# existe para curar exatamente isso.
+#
+# A falha e provocada de verdade: caminho que nao pode existir (um ARQUIVO no
+# lugar onde o codigo precisaria de uma PASTA). Nao ha mock aqui.
+montar
+BLOQUEIO="$SB/bloqueio"
+printf 'sou um arquivo, nao uma pasta
+' > "$BLOQUEIO"
+SAIDA_ERRO=$(powershell -NoProfile -ExecutionPolicy Bypass -Command   ". '$(win "$SB/plugin/vigias/erros.ps1")';    \$r = Write-LinhaEmLf -Caminho '$(win "$BLOQUEIO")\sub\x.md' -Linha 'teste';    Write-Output \"RETORNO=\$r\"" 2>&1 | tr -d '')
+printf '%s
+' "$SAIDA_ERRO" | sed 's/^/     /'
+printf '%s' "$SAIDA_ERRO" | grep -q 'RETORNO=False' && r=sim || r=nao
+verdade "a escrita que falha devolve False em vez de lancar" "$r"
+printf '%s' "$SAIDA_ERRO" | grep -q 'nao consegui escrever' && r=sim || r=nao
+verdade "e o motivo vai para o stderr, que e o canal que sobra" "$r"
+# O padrao e montado por printf para nao depender de quantas camadas de escape
+# o shell come: a primeira versao virava um padrao terminado em barra invertida
+# solta, o grep morria com "Trailing backslash", e a FALHA DO GREP era lida
+# como "nao achou" — a assercao passava por acidente, sem medir nada. Terceira
+# vez nesta entrega que um chamador quebrado se disfarca de artefato aprovado.
+PADRAO_UNIDADE="[A-Za-z]:$(printf '\\\\')"
+printf '%s' "$SAIDA_ERRO" | grep -qE "$PADRAO_UNIDADE" && r=sim || r=nao
+falso "o caminho no stderr tambem passa pelo saneamento" "$r"
+
+echo
 echo "== D. a trava: nenhuma escrita escapa da porta unica =="
 # Olha LINHA DE EXECUCAO, nao o arquivo inteiro: os cabecalhos dos tres arquivos
 # citam `Out-File` de proposito, para explicar por que ele saiu, e apagar essa
