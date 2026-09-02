@@ -1,0 +1,28 @@
+{
+  "slug": "2026-09-02-fluxo-7-recibo",
+  "titulo": "Fluxo 7 — recibo de colheita: identidade verificavel do artefato entregue",
+  "criado_em": "2026-09-02",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/fluxo-7-design-recibo.md",
+    "em": "2026-09-02"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
