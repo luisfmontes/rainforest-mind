@@ -282,6 +282,49 @@ else
 fi
 
 echo
+echo "== 10. o stdout sai LIMPO — o retorno do Write-LinhaEmLf nao vaza =="
+# O Write-LinhaEmLf devolve $true/$false de proposito, para o chamador decidir
+# (ver o comentario dele no erros.ps1). Quem nao consome esse retorno o joga no
+# stdout: em 2026-09-02 uma execucao manual do backup saiu com um `True` solto
+# antes da linha de log, e no run-vigia.ps1 o ForEach-Object da saida do claude
+# multiplicava isso por UMA LINHA DE RELATORIO. O Agendador descarta stdout,
+# entao nada quebrava — e por isso nenhuma bateria pegava. Este caso executa e
+# olha o stdout de verdade, que e o unico lugar onde o defeito aparecia.
+rodar_capturando() {  # rodar_capturando <raiz-de-dados>
+  RFM_ROOT="$(win "$1")" powershell -NoProfile -ExecutionPolicy Bypass     -File "$(win "$SB/plugin/vigias/backup-estado.ps1")"     -Vigia sentinela-foco -Plugin "$(win "$SB/plugin")"     -Log "$(win "$SB/plugin/vigias/log.txt")" 2>/dev/null
+}
+montar
+saida_stdout="$(rodar_capturando "$SB/dados")"
+igual "o backup nao imprime nada no stdout" "$saida_stdout" ""
+# E a caixa precisa provar que o backup REALMENTE rodou nesta passada, senao
+# stdout vazio por script morto passaria como stdout limpo.
+if [ -n "$(find "$SB/dados/.foco-backups" -name 'foco-*.md' 2>/dev/null)" ]; then
+  ok=$((ok+1)); echo "  ok    e o backup aconteceu — stdout vazio nao e script morto"
+else
+  falhou=$((falhou+1)); echo "  FALHA nenhum backup nesta passada: o stdout vazio nao prova nada"
+fi
+
+echo
+echo "== 11. a trava: nenhum Write-LinhaEmLf solto nos dois .ps1 =="
+# Mesmo desenho do caso 9: comentario nao acende a trava. Os dois arquivos
+# CITAM o Write-LinhaEmLf em comentario de proposito, para explicar por que o
+# log passa por ele em vez de Out-File — apagar a citacao para a trava passar
+# seria apagar a explicacao.
+for alvo in backup-estado run-vigia; do
+  soltas="$(grep -vE '^\s*#' "$SRC/vigias/$alvo.ps1" | grep -n 'Write-LinhaEmLf' | grep -v '\[void\](' | grep -v '=\s*Write-LinhaEmLf' || true)"
+  if [ -n "$soltas" ]; then
+    falhou=$((falhou+1)); echo "  FALHA $alvo.ps1 tem chamada solta: $soltas"
+  else
+    ok=$((ok+1)); echo "  ok    $alvo.ps1 consome todo retorno de Write-LinhaEmLf"
+  fi
+done
+if grep -E '^\s*#' "$SRC/vigias/run-vigia.ps1" | grep -q 'Write-LinhaEmLf'; then
+  ok=$((ok+1)); echo "  ok    o comentario cita 'Write-LinhaEmLf' e a trava nao acende por isso"
+else
+  falhou=$((falhou+1)); echo "  FALHA o comentario deveria citar 'Write-LinhaEmLf' — sem isso a trava nao esta provada nos dois sentidos"
+fi
+
+echo
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]
