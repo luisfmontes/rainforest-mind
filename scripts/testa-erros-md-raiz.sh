@@ -27,6 +27,8 @@ montar() {
   rm -rf "$SB/plugin" "$SB/dados"
   mkdir -p "$SB/plugin/vigias" "$SB/plugin/hooks/lib" "$SB/plugin/scripts" "$SB/dados/vigias"
   cp "$SRC/vigias/run-vigia.ps1" "$SB/plugin/vigias/run-vigia.ps1"
+  # Dependencia de execucao: o run-vigia.ps1 faz dot-source do erros.ps1.
+  cp "$SRC/vigias/erros.ps1" "$SB/plugin/vigias/erros.ps1"
   # O plugin da caixa precisa de scripts/ e hooks/ inteiros: o run-vigia.ps1
   # pergunta o toggle rodando `node scripts/setup.cjs --ligado vigias`, e sem isso
   # ele para na PRIMEIRA escrita de erro — que ja era a certa. A bateria ficaria
@@ -93,9 +95,24 @@ echo "== 3. nenhuma escrita de ERROS.md usa a raiz de dados =="
 # Linha de EXECUCAO, nao o arquivo inteiro: o comentario que explica a regra cita
 # `Join-Path $root "vigias\ERROS.md"` de proposito, e apagar o comentario para a
 # trava passar seria apagar a razao.
+# `sem_comentario` tira as DUAS formas de comentario do PowerShell: a linha
+# iniciada por `#` e o bloco `<# ... #>`. Ate 2026-09-01 esta trava so tirava a
+# primeira, e no dia em que a escrita virou uma porta unica (vigias/erros.ps1) ela
+# acusou o bloco de ajuda daquele arquivo, que cita `$root` justamente para
+# explicar a regra que a trava protege. Trava que nao distingue comentario de
+# execucao obriga a apagar a explicacao para ficar verde, que e o oposto do que
+# ela existe para fazer.
+sem_comentario() {
+  awk '
+    /<#/ { bloco=1 }
+    bloco { if (/#>/) bloco=0; next }
+    /^[ 	]*#/ { next }
+    { print }
+  ' "$1"
+}
 achou=0
 for f in "$SRC"/vigias/*.ps1; do
-  if grep -vE '^\s*#' "$f" | grep -F 'ERROS.md' | grep -qF '$root'; then
+  if sem_comentario "$f" | grep -F 'ERROS.md' | grep -qF '$root'; then
     achou=1; echo "        em $(basename "$f")"
   fi
 done

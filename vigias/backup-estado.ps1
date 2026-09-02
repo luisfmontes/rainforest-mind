@@ -31,9 +31,31 @@
 # Backup nao empurra. Se um dia existir copia fora da maquina, ela tem destino
 # proprio e nao passa por aqui.
 
+# NAO EXISTE MAIS UM -Root AQUI, e a ausencia dele e o conserto (2026-09-01).
+# Ate hoje este script recebia -Root e o repassava como `--raiz` para o foco.cjs.
+# Quem chamava era o run-vigia.ps1, que calculava a raiz assim:
+#   $root = if ($env:RFM_ROOT) { $env:RFM_ROOT } else { Split-Path -Parent $PSScriptRoot }
+# `RFM_ROOT` nao esta definida nesta maquina (`printenv RFM_ROOT` sai 1), nem na
+# sessao interativa nem na tarefa agendada, entao $root era SEMPRE a raiz do
+# repositorio do PLUGIN. E o foco.cjs resolve raiz de DADOS, nao de repositorio:
+# o FOCO.md mora em ~/.rainforest, nao no plugin. Resultado: toda ronda de todo
+# vigia terminava com `nao achei o FOCO.md em <raiz do plugin>` no ERROS.md,
+# desde 27/08 - o dia seguinte ao fechamento da Issue #118, que se chamava
+# justamente "O backup diario do sentinela nunca fez backup". A #118 tirou o
+# `git push` perigoso e criou este arquivo; o backup nunca chegou a funcionar.
+#
+# POR QUE NAO PASSAR A RAIZ CERTA, em vez de nao passar nada: o default do
+# foco.cjs JA e a cadeia canonica de 4 niveis (hooks/lib/raiz.cjs - RFM_ROOT,
+# <projeto>/.rainforest, ~/.rainforest, plugin auto-hospedado). Calcular a raiz
+# aqui em PowerShell seria a SEGUNDA copia dessa cadeia, mantida a mao, e copia
+# mantida a mao diverge calada - o mesmo argumento que o run-vigia.ps1 ja usa
+# para perguntar o toggle ao Node em vez de reimplementar a precedencia.
+#
+# Efeito colateral bom: a bateria passa a dirigir a caixa por RFM_ROOT, entao
+# ela exercita a resolucao DE VERDADE. Antes ela entregava a resposta pronta
+# via -Root, e por isso ficava verde enquanto a producao estava quebrada.
 param(
     [Parameter(Mandatory=$true)][string]$Vigia,
-    [Parameter(Mandatory=$true)][string]$Root,
     [Parameter(Mandatory=$true)][string]$Plugin,
     [string]$Log,
     [switch]$Teste
@@ -44,21 +66,34 @@ param(
 # um rodizio que nao roda. 30 cobre um mes de rondas diarias.
 $TETO_COPIAS = 30
 
+# A escrita mora no vigias/erros.ps1, dot-sourced aqui e no run-vigia.ps1.
+# Ate 2026-09-01 esta funcao era a SEXTA copia da mesma linha de Out-File, e os
+# tres defeitos dela (CRLF, mojibake OEM, caminho de maquina em repo publico)
+# moravam nas seis ao mesmo tempo. O porque completo de cada um esta no
+# cabecalho daquele arquivo.
+$libErros = Join-Path $PSScriptRoot 'erros.ps1'
+if (-not (Test-Path $libErros)) {
+    # Sem a porta de escrita nao ha como REGISTRAR que ela falta: o unico canal
+    # honesto que sobra e falar alto e sair diferente de zero, para o
+    # LastTaskResult do agendador guardar o sinal. A guarda existe porque a
+    # ausencia dela ja mordeu: quando esta porta nasceu, as caixas de areia das
+    # baterias nao copiavam o arquivo, o dot-source morria e o script inteiro
+    # calava - nenhum erro, nenhuma linha, exit 0 aparente. Morte silenciosa e a
+    # classe de defeito que esta entrega inteira existe para fechar.
+    [Console]::Error.WriteLine("erro: nao achei o erros.ps1 ao lado de $PSScriptRoot - a ronda nao roda sem a porta de escrita do ERROS.md")
+    exit 1
+}
+. $libErros
+
 function Registrar-Erro([string]$Motivo) {
-    # Mesmo formato dos outros erros do run-vigia.ps1. O ERROS.md fica no PLUGIN:
-    # e o que a execucao agendada produz hoje e e de onde o
-    # vigias/dados-batedor-repos.js le. A raiz definitiva e a Issue #112.
-    $linha = "- $(Get-Date -Format 'yyyy-MM-dd HH:mm') [$Vigia]: $Motivo"
-    $destino = Join-Path $Plugin "vigias\ERROS.md"
-    $linha | Out-File -Append -Encoding utf8 $destino
-    if ($Log) { $linha | Out-File -Append -Encoding utf8 $Log }
+    Write-ErroDeVigia -Vigia $Vigia -Motivo $Motivo -Plugin $Plugin -Log $Log
 }
 
 # O -Teste bloqueava so o envio, e o backup rodava igual. Em 2026-08-10 um teste
 # manual levou o FOCO.md que o usuario tinha modificado e ainda nao commitado
 # para a main. Modo de teste que escreve no repositorio do usuario nao e teste.
 if ($Teste) {
-    if ($Log) { "modo teste: backup do estado NAO executado" | Out-File -Append -Encoding utf8 $Log }
+    if ($Log) { Write-LinhaEmLf -Caminho $Log -Linha "modo teste: backup do estado NAO executado" }
     exit 0
 }
 
@@ -69,7 +104,15 @@ if (-not (Test-Path $foco)) {
 }
 
 # Sem `2>$null`: era ele que escondia a falha. Falha de backup fala.
-$saida = & node $foco backup --raiz $Root --teto $TETO_COPIAS 2>&1
+#
+# O Set-EncodingDeSaida ANTES do `& node` e o conserto do V4, e a ordem importa:
+# o PowerShell decodifica a saida de processo nativo no ato da captura, usando
+# [Console]::OutputEncoding. Numa tarefa agendada isso e o codepage OEM, entao
+# "nao" saia do node como UTF-8 e chegava aqui ja corrompido - e o ERROS.md
+# guarda esse mojibake desde 27/08. Consertar so a ESCRITA nao adiantaria: o
+# texto ja teria sido lido errado.
+Set-EncodingDeSaida | Out-Null
+$saida = & node $foco backup --teto $TETO_COPIAS 2>&1
 $codigo = $LASTEXITCODE
 
 if ($codigo -ne 0) {
@@ -77,5 +120,5 @@ if ($codigo -ne 0) {
     exit 1
 }
 
-if ($Log) { "backup do estado: $($saida -join ' ')" | Out-File -Append -Encoding utf8 $Log }
+if ($Log) { Write-LinhaEmLf -Caminho $Log -Linha "backup do estado: $($saida -join ' ')" }
 exit 0

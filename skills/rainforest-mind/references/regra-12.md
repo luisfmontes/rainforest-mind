@@ -63,6 +63,15 @@ nunca um grep de substring — bateria que exercita mutação imprime o vermelho
 esperado no meio do verde, e quem grepa `FALHA` lê defeito onde há prova.
 (acervo: 2026-08-11, 2026-08-22, 2026-08-26)
 
+(7) **campo vazio não é campo ok.** Instrumento que responde por registro —
+tarefa agendada, job, fila, endpoint de saúde — pode trazer todo campo de
+estado dizendo "saudável" e guardar a verdade num campo em **branco**. Branco
+lê-se como "nada de errado", nunca como "não vai acontecer": é o único formato
+de resposta que não dispara leitura. Os campos de estado provam o **passado**;
+antes de dar um registro por vivo, nomear qual campo prova a **próxima
+ocorrência** e conferir que ele está preenchido.
+(acervo: 2026-09-01)
+
 **Critério que nomeia um arquivo leva o caminho conferido.** Nome sem caminho,
 e cláusula "se existir", são licença para o agente concluir ausência onde só
 faltou olhar na convenção certa — "se existir" só entra quando a inexistência

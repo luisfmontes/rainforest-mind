@@ -1,0 +1,108 @@
+{
+  "slug": "vigias",
+  "titulo": "Vigias: dois mortos, backup que nunca rodou, log que suja o repo",
+  "criado_em": "2026-09-01",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/vigias.md",
+    "em": "2026-09-01"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/vigias.md",
+    "tarefas": 7,
+    "em": "2026-09-01"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-01",
+    "tarefas": 7,
+    "tarefas_ok": 6,
+    "pendentes": [
+      "T7 reagendar — ambiente do usuario, autorizado, depois do verificar"
+    ],
+    "comando": "bash scripts/testa-registrar-erro.sh; bash scripts/testa-backup-estado.sh; bash scripts/testa-conferir-encoding.sh; bash scripts/testa-erros-md-raiz.sh; node scripts/conferir-encoding.cjs",
+    "saida": "26/0; 28/0; 27 ok 0 falha; 8/0; CONFERIDO exit 0",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "devolver --raiz de repositorio ao foco.cjs -> 21 ok / 7 falha"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "devolver Out-File -Append -> 20 ok / 2 falha"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "tirar Set-EncodingDeSaida -> 22 ok / 4 falha sob CP850 forcado"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "tirar Get-MotivoSaneado -> 19 ok / 3 falha, caminho real visivel"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "esvaziar FECHADORES_OEM -> fixture OEM passa; CP1252 continua reprovando"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "vermelha AGORA contra a maquina real: 2 de 6 tarefas sem NextRunTime"
+      }
+    ],
+    "em": "2026-09-02"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "39e216c07880a8b3850067b6ab9d7dcedd465a47",
+      "caminhos_sujos": []
+    },
+    "base": "760bccc",
+    "head": "HEAD",
+    "achados": 7,
+    "revisor": "rainforest-mind:revisor — independente, 6 rodadas, 3 reprovacoes",
+    "veredito_em": "3d8ee1f",
+    "comando": "bash scripts/testa-registrar-erro.sh; bash scripts/testa-conferir-encoding.sh; bash scripts/testa-backup-estado.sh; bash scripts/testa-erros-md-raiz.sh; node scripts/conferir-encoding.cjs",
+    "saida": "62/0; 34 ok 0 falha; 28/0; 8/0; CONFERIDO exit 0 — conferidos de forma independente",
+    "em": "2026-09-02"
+  },
+  "verificar": {
+    "status": "ok",
+    "base": "760bccc",
+    "head": "39e216c",
+    "tarefas": 7,
+    "tarefas_ok": 6,
+    "pendentes": [
+      "Tarefa 7 (reagendar as duas tarefas mortas) — altera o Agendador de Tarefas do Windows. Autorizada pelo usuario, NAO executada: as tarefas apontam para o checkout principal, que esta noutra branch, entao reagendar antes do merge devolve os vigias rodando com o codigo velho."
+    ],
+    "comando": "bash scripts/testa-backup-estado.sh; bash scripts/testa-registrar-erro.sh; bash scripts/testa-conferir-encoding.sh; bash scripts/testa-vigias-agendados.sh; node -e require(saude).checarVigias(); node scripts/medir-skill.cjs; git diff --numstat 760bccc..HEAD -- vigias/ERROS.md",
+    "saida": "T1: caso 8 verde, copia criada na raiz de DADOS, nada na raiz do plugin, 28/0. T2: sem CR, sem BOM, acento intacto sob CP850 FORCADO, caminho virou marcador, 62/0. T3: 34 ok 0 falha; backfill 7/7, 18 linhas na base e 18 agora, nenhuma removida. T4: VERMELHA de proposito, nomeando vigia-tickets-manha e vigia-tickets-tarde com NextRunTime vazio. T5: ALERTA vigias + AVISO vigias-erros ao vivo; git diff --stat hooks/ vazio. T6: regra-12.md 9821 B de teto 10500, sem partir.",
+    "em": "2026-09-02"
+  },
+  "fechar": {
+    "status": "ok",
+    "pr": 150,
+    "url": "https://github.com/luisfmontes/rainforest-mind/pull/150",
+    "commits": 19,
+    "arquivos": 17,
+    "fecha": "#124",
+    "issues_abertas": [
+      143,
+      144,
+      145,
+      146,
+      149
+    ],
+    "pendente": "Tarefa 7 (reagendar) — depende do merge, por ORDEM e nao por autorizacao: as tarefas apontam para o checkout principal",
+    "em": "2026-09-02"
+  }
+}
