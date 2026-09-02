@@ -11,7 +11,17 @@
     "em": "2026-09-02"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-09-02-fluxo-7-recibo.md",
+    "entregaveis": [
+      "scripts/recibo.cjs",
+      "scripts/testa-recibo-mostrar.sh",
+      "scripts/testa-recibo-gravar.sh",
+      "scripts/testa-recibo-portoes.sh",
+      "scripts/testa-recibo-conferir.sh",
+      "scripts/testa-recibo-fechar.sh"
+    ],
+    "em": "2026-09-02"
   },
   "executar": {
     "status": "pendente"
