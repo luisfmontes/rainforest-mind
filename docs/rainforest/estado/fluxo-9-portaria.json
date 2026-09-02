@@ -31,15 +31,97 @@
     "em": "2026-08-30"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-09-01",
+    "tarefas_ok": 9,
+    "tarefas": 9,
+    "nota": "T1, T7, T2, T3, T4, T5 e T8 fechadas. T5 entregue por subagente, conferir-entrega APROVADO (base 85728c8 pai direto de 90051f3) e mutacao da checagem 3 do lint RE-RODADA na janela principal: 12 ok / 2 falha sob mutacao, exit 0. T5 tambem consertou o schema do manifesto (a T3 lia achatado, D2 manda envelope versao+agentes, e a fixture da T3 repetia o mesmo engano). T8 feita na janela principal: lint contra o manifesto real e o agents/ real sai 0 com 6 avisos de orfao e 0 erro. T1 foi reaberta e consertada antes disso (resolver devolvia null na branch real). Pendentes: 6 (despachada) e 9. A T9 so pode rodar com o estagio ativo em revisar — o allow do revisor exige isso —, entao a evidencia dela sera colhida logo depois do marcar executar ok, ja no estagio revisar. Prova offline ja feita no worktree real, com o manifesto real: revisor -> exit 2 (estagio executar nao permitido, permitidos revisar); executor -> exit 2 (nao consta no manifesto). Falta o caminho de allow.",
+    "em": "2026-09-01",
+    "decisoes": {
+      "achado-2": "Opcao A fechada pelo Luis em 2026-08-31 e ACEITE POR ESCRITO DADO em 2026-09-01 (resposta recomendado): executor, documentador, resolvedor-de-build e tester ficam bloqueados quando o hook entrar na main, ate a reavaliacao de escreve:true com worktree por filho. Registrado em skills/rainforest-mind/references/regra-10.md.",
+      "escreve-false": "Q2 fechada pelo Luis em 2026-09-01 (recomendado): escreve:false continua como DECLARACAO, com a lacuna nomeada. Medido: nenhum dos nove agents/*.md declara tools:, entao a checagem 3 do lint nunca dispara contra os agentes reais. Por tools: Read,Grep,Glob nos tres admitidos foi recusado — o revisor precisa de Bash para reproduzir achado (regra 12). Divida escrita em references/regra-10.md."
+    },
+    "comando": "node hooks/testa-portaria-nucleo.cjs; node hooks/testa-portaria-captura.cjs; node hooks/testa-portaria-lint.cjs; node hooks/testa-portaria-portoes.cjs; node hooks/testa-portaria-gitignore.cjs; node hooks/testa-portaria-tools-bloco.cjs; node hooks/testa-estagio-ativo.cjs; bash scripts/testa-saude.sh; bash hooks/testa-contexto-sessao.sh; node hooks/portaria.cjs --lint",
+    "saida": "rodada 6, arvore integrada: nucleo 45 | captura 12 | lint 26 | portoes P1..P5 OK | gitignore 9 | tools-bloco 23 | estagio-ativo 7/7 | saude 56 | contexto-sessao 277 | estado 137 | conferir-fluxo 41 — todas 0 falha, exit 0 sem pipe; portaria --lint exit 0 (6 avisos, 0 erro)",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "sandbox git com fluxo-9-portaria.json na branch fluxo/portaria (casa) e o par colidente 2026-01-01-portaria.json (ambiguidade nega) — mutacao: tirar a segunda forma do casamento de slug; casos (f) e (g) caem"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "duas execucoes consecutivas do hook com stdin simulado e payloads distintos — mutacao: gravacao incondicional da amostra no lugar do existsSync"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "dois sandboxes git, A com manifesto+estagio que aprovam e B sem manifesto, com process.cwd() e CLAUDE_PROJECT_DIR em B e payload.cwd em A — mutacao: a precedencia deixa de ler payload.cwd; 30 ok / 5 falha. Mais duas rodadas na janela principal com conferir-mutacao.cjs: manifesto ausente passa a liberar (33 ok / 2 falha) e subagent_type ausente passa a liberar (10 ok / 2 falha). As tres exit 0"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "linha real gravada por um deny do proprio portaria.cjs, com check-ignore --no-index (sem a flag o indice mascarava a regra e o teste nao sabia falhar — critico da rodada 4) — mutacoes: tirar a linha do .gitignore (7 ok/2 falha) e trocar por regra larga .rainforest/portaria/ (6 ok/3 falha), as duas exit 0"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "fixtures do lint mais os quinze formatos de tools: (chave e valor) da bateria testa-portaria-tools-bloco.cjs — mutacoes com conferir-mutacao.cjs, todas exit 0: checagem 3 do lint nunca marca erro (12 ok/2 falha); bloco volta a exigir indentacao (9 ok/4 falha); declarado-e-ilegivel volta a pular (11 ok/2 falha); varredor de chave volta a ser literal (18 ok/5 falha); zero-item volta a pular (21 ok/2 falha); strip do \r desaparece (21 ok/2 falha)"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "sandbox com estagio ativo revisar e o revisor declared nele, duas chamadas consecutivas do hook — mutacao: appendFileSync vira writeFileSync; P4 cai com '1 linha(s)' onde esperava 2; re-rodada na janela principal"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "documentacao — nucleo da regra 10 em SKILL.md e elaboracao em references/regra-10.md. Nao ha comportamento de codigo para mutar. A catraca que cobre este texto e outra e ela rodou: hooks/testa-contexto-sessao.sh mede o nucleo emitido em bytes e exige o numero exato (5597 B), e a mutacao dela ja existente ('desvio do nucleo') continua verde"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "n/a",
+        "motivo": "configuracao de dado, nao de codigo — .rainforest/agentes.json. A logica que consome o arquivo foi mutada nas tarefas 3, 5 e 6. O conteudo e aferido pelo --lint, que sai 0 contra o manifesto real e o agents/ real com 6 avisos de orfao e 0 erro"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "n/a",
+        "motivo": "verificacao manual unica, colhida em 2026-09-01 no estagio revisar (ver relatorios/2026-09-01-fluxo-9-t9-verificacao-manual.md): revisor -> allow sem prompt, executor -> deny com o motivo chegando a sessao, mesma sessao nas duas linhas do despachos.jsonl. Nao pode rodar dentro do executar porque nenhum dos tres agentes do manifesto tem executar na lista — defeito de ordenacao do plano, achado na execucao"
+      }
+    ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "snapshot": {
+      "head": "3b0e35a6a419094d0e8c889fb00cf8273898cc8f",
+      "caminhos_sujos": []
+    },
+    "base": "d63ef31e62dd0516b48038003cdc28ee8a718d28",
+    "head": "3b0e35a6a419094d0e8c889fb00cf8273898cc8f",
+    "achados": 0,
+    "criticos": 1,
+    "revisor": "6 rodadas de rainforest-mind:revisor com contexto zerado + auditoria cross-model por codex-cli",
+    "nota": "FECHADO OK. Seis rodadas, dez criticos, todos reproduzidos na janela principal antes de aceitar veredito e todos consertados, cada um com bateria e catraca de mutacao propria. A trava de tentativas do estado.cjs disparou tres vezes e subiu a decisao ao Luis, que destravou as tres. A rodada 6 foi ESCOPADA a conferir os consertos da rodada 5, porque quem consertou foi a janela principal e sem revisor zerado seria auto-aprovacao — e ela achou o critico 9, o mais grave da esteira: crash saia exit 1, e exit 1 num PreToolUse e erro nao-bloqueante, entao crashar era fail-OPEN, o oposto do que o comentario que eu mesmo escrevi afirmava. Os criticos 10 (rede sincrona nao pega unhandledRejection) e a trava de require-no-topo vieram de AUDITORIA POR MODELO DE OUTRA FAMILIA, sugerida pelo Luis, pedida porque o critico 9 foi erro de raciocinio sobre contrato de plataforma — viés que revisor da mesma familia repete. Achado de carona, fora de revisao nenhuma: frontmatter em CRLF fazia Write virar Write\r e escapar da allowlist. Limite NOMEADO e nao fechado: erro de sintaxe no proprio portaria.cjs, node fora do PATH, ou timeout do hook nao passam pela rede que transforma excecao em exit 2 — cobrir exigiria wrapper externo. Bateria pos-merge com a main (39 commits, PR #140): 79 baterias, 3 falhas, todas pre-existentes e duas delas dependentes de dado local; a terceira (testa-versao) foi consertada neste fluxo porque deixaria o CI do PR vermelho por motivo alheio.",
+    "em": "2026-09-01",
+    "rodadas": 6,
+    "criticos_no_total": 10,
+    "segunda_opiniao": "concordo — scripts/segunda-opiniao.cjs --modelo codex contra os sete criterios falsificaveis do diff (criterio em scratchpad, parecer ponto a ponto). O parecer nao identificou caminho que derrube nenhuma das sete afirmacoes."
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "tarefas": 10,
+    "tarefas_ok": 10,
+    "comando": "node hooks/testa-estagio-ativo.cjs; node -e (le .rainforest/portaria/amostra.json); node hooks/testa-portaria-nucleo.cjs; git check-ignore -q .rainforest/portaria/despachos.jsonl; git check-ignore -q .rainforest/agentes.json; node hooks/testa-portaria-gitignore.cjs; node hooks/portaria.cjs --lint --manifesto test/fixtures/portaria/manifesto-escreve-inconsistente.json --agentes-dir test/fixtures/portaria/agentes; node hooks/portaria.cjs --lint --manifesto test/fixtures/portaria/manifesto-ok.json --agentes-dir test/fixtures/portaria/agentes; node hooks/testa-portaria-lint.cjs; node hooks/testa-portaria-portoes.cjs; node hooks/portaria.cjs --lint; node scripts/segunda-opiniao.cjs --base d63ef31 --head 0b7195d --criterio criterio-portaria.md --modelo codex",
+    "saida": "T1 7/7 exit 0 | T2 amostra JSON valida, tool_name=Agent e tool_input.subagent_type presentes | T3 49 ok exit 0 | T4 despachos.jsonl ignorado E agentes.json NAO ignorado, bateria 9 ok | T5 lint exit 1 citando escritor no manifesto inconsistente e exit 0 no manifesto-ok, lista de estagios derivada de PRE_REQUISITOS via require (portaria.cjs:481-489), bateria 28 ok | T6 P1..P5 OK exit 0 | T7 as tres afirmacoes verificaveis no par nucleo+elaboracao | T8 lint contra manifesto e agents/ REAIS exit 0, 6 avisos de orfao, 0 erro, admitidos revisor/auditor-de-seguranca/planejador | T9 relatorio com evidencia primaria do despachos.jsonl, allow do revisor e deny do executor na MESMA sessao | T10 conferir-fluxo sem creep, 33 arquivos cobertos | segunda opiniao cross-model: veredito concordo, ponto a ponto nos sete criterios | suite completa pos-merge: 79 baterias, 3 falhas, todas pre-existentes e nenhuma deste fluxo",
+    "nota": "Os dez criterios do plano rodados contra o ARTEFATO REAL, nao contra relato, com exit capturado sem pipe. Nada foi reprovado. O verificar nao redigiu criterio novo: rodou o que o plano ja definia, incluindo os dois comandos literais da tarefa 5. A segunda opiniao entrou pelo scripts/segunda-opiniao.cjs que a outra janela entregou no PR #140, em vez da chamada ad-hoc ao codex exec que eu tinha usado antes.",
+    "em": "2026-09-01"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "versao": "0.80.0",
+    "destino": "PR",
+    "nota": "Bump 0.80.0 (MINOR: mecanismo novo e regra 10 muda de contrato; cobre tambem o fluxo segunda-opiniao, PR #140, que entrou na main sem bump). conferir-versao exit 0, testa-versao 4 ok.",
+    "em": "2026-09-01"
   }
 }
