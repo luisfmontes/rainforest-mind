@@ -96,6 +96,14 @@ afirma "R13. a EVIDENCIA nao tem campo de saida bruta" \
   "$(grep -q '"saida"' "$COPIA" && echo 0 || echo 1)"
 afirma "R14. mas TEM o fingerprint, que e' o substituto" \
   "$(grep -q '"fingerprint"' "$COPIA" && echo 1 || echo 0)"
+# Achado A2 da revisao de 2026-09-02: o `cwd` era gravado ABSOLUTO, que e' o
+# mesmo "caminho de maquina" que o comentario de gravar() da como motivo para
+# nunca guardar output bruto. Guarda-lo contradizia a propria justificativa.
+# A bateria roda a partir da raiz, entao o relativo correto e' exatamente ".".
+afirma "R14b. o cwd gravado e' RELATIVO a raiz, sem nome de usuario" \
+  "$(grep -q '"cwd":"\."' "$COPIA" && echo 1 || echo 0)"
+afirma "R14c. ...e o campo cwd continua existindo (nao foi 'consertado' apagando)" \
+  "$(grep -q '"cwd"' "$COPIA" && echo 1 || echo 0)"
 
 echo "== CHECK que reprova =="
 roda portoes-falha.md
