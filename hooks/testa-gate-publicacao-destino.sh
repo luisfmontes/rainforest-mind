@@ -64,8 +64,8 @@ edit() {
 }
 
 echo "== Preparação: dados sensíveis para testes =="
-JID_REAL="<jid-do-contato-2>"
-TEL_REAL="(00) 90000-0002"
+JID_REAL="5500900000001@s.whatsapp.net"
+TEL_REAL="(00) 90000-0001"
 EMAIL_REAL="teste@example.com"
 CONTEUDO_LIMPO="arquivo normal sem dados sensíveis"
 
@@ -158,17 +158,17 @@ echo
 echo "== Teste do marcador: le o DISCO, nao o conteudo que chega =="
 # O arquivo real tem o marcador no topo; o fragmento do Edit nao tem. Se o gate
 # lesse o conteudo que chega, este caso barraria — foi o furo de 5480ce4^.
-gate "Edit em arquivo COM marcador em disco, fragmento sem marcador -> passa" 0   "$(pay Edit "$(esc "$SRC")/scripts/testa-conferir-publicacao.sh" 'jid="<jid-do-contato-2>"')"
+gate "Edit em arquivo COM marcador em disco, fragmento sem marcador -> passa" 0   "$(pay Edit "$(esc "$SRC")/scripts/testa-conferir-publicacao.sh" 'jid="5500900000001@s.whatsapp.net"')"
 
 # O espelho, e o que faz a mutacao doer dos dois lados: arquivo vizinho SEM
 # marcador, mesmo conteudo, tem de barrar. Marcador que vazasse para o diretorio
 # deixaria este verde.
-gate "Edit em arquivo vizinho SEM marcador, mesmo conteudo -> barrado" 2   "$(pay Edit "$(esc "$SRC")/scripts/conferir-publicacao.cjs" 'jid="<jid-do-contato-2>"')"
+gate "Edit em arquivo vizinho SEM marcador, mesmo conteudo -> barrado" 2   "$(pay Edit "$(esc "$SRC")/scripts/conferir-publicacao.cjs" 'jid="5500900000001@s.whatsapp.net"')"
 
 # Arquivo novo trazendo o marcador no proprio conteudo: nao existe em disco,
 # entao nao ha marcador — auto-isencao num unico write nao passa.
 gate "Write de arquivo novo com marcador embutido -> barrado" 2   "$(pay Write "$(esc "$R")/arquivo-com-marcador.sh" '# rainforest-gate: dados-de-exemplo
-jid="<jid-do-contato-2>"')"
+jid="5500900000001@s.whatsapp.net"')"
 
 # Entrada malformada nunca derruba a sessao: sai 0. E o comportamento certo, e
 # tambem o que escondeu os casos acima quando o payload vinha quebrado — por isso

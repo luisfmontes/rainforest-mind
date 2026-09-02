@@ -486,6 +486,135 @@ for alvo in backup-estado.ps1 erros.ps1; do
   igual "$alvo e ASCII puro" "$n" "0"
 done
 
+# ==========================================================================
+# A trava que a bateria de .ps1 nao alcanca: PROSA mandando escrever o arquivo
+# ==========================================================================
+#
+# Issue #146. A trava acima fica vermelha se alguem acrescentar um
+# `Out-File -Append` em qualquer .ps1 de vigias/ — e ela nao olha, e nao teria
+# como olhar do mesmo jeito, uma instrucao em PROSA dentro de um .md.
+#
+# O `vigias/_comum.md` mandava o agente LLM acrescentar linha no ERROS.md por
+# conta propria, com o caminho literal da maquina. Esse chamador nao passa pela
+# porta: escreve sem saneamento de caminho, sem garantia de LF e sem garantia
+# de encoding — e e o menos previsivel de todos, porque e um modelo redigindo
+# texto livre com o vigia.config.json no contexto.
+#
+# O comentario de desenho da porta unica diz que sanear na ESCRITA, e nao na
+# disciplina de quem redige, e o que faz "a defesa valer para o chamador que
+# ainda nao existe". Este caso e o inverso: o chamador ja existia.
+#
+# A regra: em .md de vigias/, VERBO IMPERATIVO DE ESCRITA + ERROS.md na mesma
+# linha (ou nas duas seguintes) so passa se `registrar-erro.ps1` aparecer por
+# perto. LER o ERROS.md continua livre — a restricao e de escrita.
+echo
+echo "== prosa de vigias/*.md nao manda escrever o ERROS.md direto =="
+
+VERBOS='acrescente|escreva|adicione|grave|registre em|anote em|append|edite'
+achados_prosa=""
+for md in "$SRC"/vigias/*.md; do
+  [ -f "$md" ] || continue
+  # -A2: a instrucao costuma quebrar linha entre o verbo e o caminho, que foi
+  # exatamente a forma do _comum.md ("acrescente uma linha em\n`<caminho>`").
+  bloco=$(grep -niE "($VERBOS)" "$md" -A2 2>/dev/null || true)
+  printf '%s' "$bloco" | grep -qi 'ERROS\.md' || continue
+  # A isencao olha o ARQUIVO INTEIRO, nao a janela: um prompt que NOMEIA a porta
+  # ja mandou usar a porta, e o pedaco que proibe a escrita direta ("Nunca edite
+  # o ERROS.md") cai a varias linhas do comando e acendia a trava sozinho — a
+  # trava reprovando justamente o texto que a cumpre.
+  grep -qi 'registrar-erro\.ps1' "$md" && continue
+  achados_prosa="$achados_prosa $(basename "$md")"
+done
+
+if [ -z "$achados_prosa" ]; then
+  ok=$((ok+1)); echo "  ok    nenhum .md de vigias/ manda escrever o ERROS.md sem a porta"
+else
+  falhou=$((falhou+1))
+  echo "  FALHA .md mandando escrever o ERROS.md direto:$achados_prosa"
+  echo "        use: powershell -File <plugin>\\vigias\\registrar-erro.ps1 -Vigia <nome> -Motivo \"<erro>\""
+fi
+
+# O outro sentido, para a trava nao ser decorativa: uma prosa PLANTADA numa caixa
+# tem de acender. Sem isto, a checagem acima passaria igual se o grep estivesse
+# quebrado — que e o defeito que este repositorio ja catalogou quatro vezes.
+CAIXA_MD="$(mktemp -d)"
+mkdir -p "$CAIXA_MD/vigias"
+printf 'Se falhar, acrescente uma linha em\n`vigias/ERROS.md` no formato padrao.\n' > "$CAIXA_MD/vigias/falso.md"
+bloco_teste=$(grep -niE "($VERBOS)" "$CAIXA_MD/vigias/falso.md" -A2 2>/dev/null || true)
+if printf '%s' "$bloco_teste" | grep -qi 'ERROS\.md'; then
+  ok=$((ok+1)); echo "  ok    e a trava ACENDE numa prosa plantada (nao e decorativa)"
+else
+  falhou=$((falhou+1)); echo "  FALHA a trava nao acendeu na prosa plantada — o padrao nao mede nada"
+fi
+rm -rf "$CAIXA_MD"
+
+# ==========================================================================
+# O criterio 1 da Issue #146: PROVOCAR o caminho do agente numa caixa.
+# ==========================================================================
+#
+# Nao basta o prompt apontar para a porta: a porta tem de existir, rodar, e o
+# que sai dela tem de estar saneado. Isto EXECUTA o registrar-erro.ps1 com um
+# motivo que carrega caminho de maquina — que e exatamente a mensagem que um
+# LLM redige quando tem o vigia.config.json no contexto — e olha os BYTES do
+# arquivo que saiu.
+#
+# O -Plugin nao e passado de proposito: ele sai de $PSScriptRoot. Caminho que o
+# chamador nao informa e caminho que ele nao pode errar, e no caso do agente e
+# o caminho de maquina que some do prompt.
+echo
+echo "== o registrar-erro.ps1 executado de verdade, numa caixa =="
+
+CAIXA_RE="$(mktemp -d)"
+mkdir -p "$CAIXA_RE/vigias"
+cp "$SRC/vigias/erros.ps1" "$SRC/vigias/registrar-erro.ps1" "$CAIXA_RE/vigias/"
+
+MOTIVO_SUJO='bridge fora do ar: defina destinoWhatsapp em C:\Users\Fulano\AppData\Local\vigia.config.json'
+powershell -NoProfile -File "$CAIXA_RE/vigias/registrar-erro.ps1" \
+  -Vigia sentinela-foco -Motivo "$MOTIVO_SUJO" >/dev/null 2>&1
+igual "exit 0 (registrar falha nao derruba a ronda)" "$?" "0"
+
+ALVO_RE="$CAIXA_RE/vigias/ERROS.md"
+if [ -f "$ALVO_RE" ]; then
+  ok=$((ok+1)); echo "  ok    o ERROS.md foi criado pela porta"
+
+  CONTEUDO_RE="$(cat "$ALVO_RE")"
+  # O nome do usuario e o que nao pode sair. `Fulano` esta no motivo de entrada.
+  if printf '%s' "$CONTEUDO_RE" | grep -q 'Fulano'; then
+    falhou=$((falhou+1)); echo "  FALHA o nome do usuario sobreviveu ao saneamento: $CONTEUDO_RE"
+  else
+    ok=$((ok+1)); echo "  ok    o nome do usuario NAO esta no arquivo"
+  fi
+  if printf '%s' "$CONTEUDO_RE" | grep -qi 'C:.Users'; then
+    falhou=$((falhou+1)); echo "  FALHA o caminho de maquina sobreviveu: $CONTEUDO_RE"
+  else
+    ok=$((ok+1)); echo "  ok    o caminho de maquina NAO esta no arquivo"
+  fi
+  # E o controle: o motivo tem de continuar LEGIVEL. Saneamento que apaga a
+  # mensagem inteira "passa" nos dois casos acima e nao serve para nada.
+  if printf '%s' "$CONTEUDO_RE" | grep -q 'bridge fora do ar'; then
+    ok=$((ok+1)); echo "  ok    e o motivo continua legivel (o saneamento nao comeu a mensagem)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA o motivo sumiu junto com o caminho: $CONTEUDO_RE"
+  fi
+  # LF e sem BOM, por NODE: o grep do Git Bash normaliza CRLF antes de casar e
+  # responde "nao achei" num arquivo que É CRLF.
+  CRLF_RE=$(node -e 'const b=require("fs").readFileSync(process.argv[1]);console.log(b.includes(13)?"CR":"LF",b[0]===0xEF?"BOM":"SEMBOM")' "$ALVO_RE")
+  igual "gravou em LF, sem BOM" "$CRLF_RE" "LF SEMBOM"
+else
+  falhou=$((falhou+1)); echo "  FALHA a porta nao criou o ERROS.md"
+fi
+rm -rf "$CAIXA_RE"
+
+# A porta de entrada do agente tem de existir e ser ASCII puro, pela mesma razao
+# dos outros .ps1 (CP-1252 no PowerShell 5.1).
+if [ -f "$SRC/vigias/registrar-erro.ps1" ]; then
+  ok=$((ok+1)); echo "  ok    vigias/registrar-erro.ps1 existe"
+  n=$(LC_ALL=C grep -c '[^ -~	]' "$SRC/vigias/registrar-erro.ps1" 2>/dev/null || true)
+  igual "registrar-erro.ps1 e ASCII puro" "$n" "0"
+else
+  falhou=$((falhou+1)); echo "  FALHA vigias/registrar-erro.ps1 nao existe — o _comum.md aponta para ele"
+fi
+
 echo
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"

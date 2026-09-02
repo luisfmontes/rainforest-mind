@@ -14,7 +14,8 @@ Missão: os tickets da template que o usuario precisa entregar até terça
 4. Se a consulta ao Jira falhar por autenticação/rede, envie mesmo assim uma
    mensagem dizendo que o vigia não conseguiu ver o Jira (motivo em 1 linha)
    — silêncio parece "tudo bem" e não está.
-5. Se hoje for depois de 2026-08-11, registre em ERROS.md que esta tarefa
+5. Se hoje for depois de 2026-08-11, registre pela porta
+   (`registrar-erro.ps1`, ver `_comum.md`) que esta tarefa
    deveria ter expirado e não envie mensagem.
 
 Mensagem de WhatsApp curta conforme o _comum.md.

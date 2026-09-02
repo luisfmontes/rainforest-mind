@@ -19,13 +19,27 @@ mensagem de teste sem marca se confunde com a ronda de verdade no histórico.
 
 **Envio único:** chame `send_message` exatamente UMA vez. Se o resultado
 vier ambíguo (timeout, resposta estranha), NÃO reenvie — mensagem duplicada
-é pior que atrasada; registre em ERROS.md e encerre.
+é pior que atrasada; **registre pela porta** (abaixo) e encerre.
 
 **Pré-checagem:** antes de compor, chame `search_contacts` com query "o usuario".
 Se a tool falhar (bridge fora do ar) ou o `send_message` retornar erro,
-NÃO insista: acrescente uma linha em
-`C:\Projetos\rainforest-mind\vigias\ERROS.md` no formato
-`- AAAA-MM-DD HH:MM [nome-do-vigia]: <erro resumido>` e encerre.
+NÃO insista: **registre pela porta** (abaixo) e encerre.
+
+**Registrar erro é por comando, nunca escrevendo o arquivo.** Para registrar
+qualquer falha sua, rode:
+
+```
+powershell -File <raiz-do-plugin>\vigias\registrar-erro.ps1 -Vigia <seu-nome> -Motivo "<erro resumido>"
+```
+
+**Nunca** edite o `vigias/ERROS.md` com ferramenta de escrita. Ele é
+**versionado**, e o script é o que garante as três coisas que uma escrita
+direta não garante: fim de linha LF (o repositório inteiro reprova em CRLF),
+UTF-8 sem BOM, e **saneamento de caminho de máquina** — você tem o
+`vigia.config.json` e caminhos com o nome do usuário no seu contexto, e é você
+quem redige a mensagem. A raiz do plugin você já conhece: é a pasta que contém
+`vigias/`; não escreva caminho de máquina em lugar nenhum. Ler o `ERROS.md`
+continua livre — a restrição é de escrita. (Issue #146.)
 
 **Férias:** se o FOCO.md indicar que o usuario está de férias na data de hoje
 (seção "Contexto de calendário"), não envie nada e encerre em silêncio.
