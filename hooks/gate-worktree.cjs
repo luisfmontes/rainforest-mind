@@ -30,7 +30,17 @@
  *   - Bash: so a lista curta de comandos que mexem no estado do repo
  *     (stash, checkout, switch, reset, merge, rebase, commit, clean) — foi
  *     `git stash`/`pop` que moveu o HEAD do usuario na falha N1. Leitura passa.
- *   - fora de repo git (scratchpad, temp) passa sempre.
+ *   - fora de repo git passa sempre;
+ *   - dentro do SCRATCHPAD da sessao passa sempre, MESMO sendo repo git. Ate
+ *     2026-09-01 a isencao era so "nao e repo git", e clone de terceiro no
+ *     scratchpad E repo git: a avaliacao de repo alheio — justamente o trabalho
+ *     para o qual o scratchpad existe — rodava barrada, com a mensagem chamando
+ *     um clone descartavel de "diretorio de trabalho principal". O docblock ja
+ *     prometia "scratchpad, temp"; o codigo nao cumpria.
+ *     A isencao e do scratchpad, NAO do temp inteiro: a primeira tentativa deste
+ *     conserto isentou `os.tmpdir()` todo, e a caixa de areia da propria bateria
+ *     (`mktemp -d`) caiu dentro dela — 23 casos que deviam barrar passaram, e o
+ *     gate ficou inerte sem ninguem notar pela cor da suite.
  *
  * SEGUNDA TRAVA, e esta e da JANELA PRINCIPAL (2026-08-21, Issues #25 e #38):
  * duas janelas do Claude Code abertas no MESMO diretorio, `git checkout -b` numa
@@ -46,6 +56,7 @@
  */
 
 const { execFileSync } = require("node:child_process");
+const os = require("node:os");
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -208,6 +219,23 @@ function estadoDoRepo(dir) {
   };
 }
 
+// Raiz temporaria do sistema, normalizada uma vez. O scratchpad da sessao mora
+// abaixo dela, em `<temp>/claude/<projeto>/<sessao>/scratchpad`.
+const TEMP_DO_SISTEMA = path.resolve(os.tmpdir()).replace(/\\/g, "/").toLowerCase();
+
+/**
+ * O alvo esta dentro do scratchpad da sessao?
+ *
+ * Duas condicoes, e as DUAS sao necessarias: abaixo do temp do sistema E com um
+ * segmento `scratchpad` no caminho. So a primeira isentaria qualquer repo criado
+ * em temp — inclusive a caixa de areia desta bateria.
+ */
+function ehScratchpad(alvo) {
+  const n = path.resolve(alvo).replace(/\\/g, "/").toLowerCase();
+  if (n !== TEMP_DO_SISTEMA && !n.startsWith(TEMP_DO_SISTEMA + "/")) return false;
+  return n.split("/").includes("scratchpad");
+}
+
 function dirDe(alvo) {
   try {
     return fs.existsSync(alvo) && fs.statSync(alvo).isDirectory() ? alvo : path.dirname(alvo);
@@ -345,18 +373,78 @@ function alvosBash(comando, cwdInicial, casa = (seg) => {
 }
 
 /**
+ * Quebra em tokens preservando se cada um veio de DENTRO de aspas.
+ *
+ * `q: true` significa "este texto estava entre aspas" — e um `>` ali e TEXTO,
+ * nunca redirecionamento. E o conserto de 2026-09-01: um avaliador de repo de
+ * terceiro foi barrado rodando
+ *   grep -n "qualified_name\|<project>" README.md
+ * — comando sem redirecionamento nenhum. O gate casava o `>` de `<project>` no
+ * texto cru do comando. `->`, `=>`, generics e tag HTML sao rotina em busca de
+ * codigo, entao o falso positivo era diario e empurrava o agente a reescrever
+ * comando legitimo ate passar. `palavras()` ja sabia respeitar aspas para achar
+ * subcomando de git; a deteccao de escrita e que tinha ficado no regex cru.
+ */
+function tokensComAspas(cmd) {
+  const out = [];
+  let atual = "", aspa = null, temAlgo = false, citado = false;
+  for (let i = 0; i < cmd.length; i += 1) {
+    const c = cmd[i];
+    if (aspa) {
+      if (c === aspa) aspa = null;
+      else atual += c;
+      temAlgo = true;
+    } else if (c === '"' || c === "'") {
+      aspa = c; temAlgo = true; citado = true;
+    } else if (/\s/.test(c)) {
+      if (temAlgo) out.push({ v: atual, q: citado });
+      atual = ""; temAlgo = false; citado = false;
+    } else {
+      atual += c; temAlgo = true;
+    }
+  }
+  if (temAlgo) out.push({ v: atual, q: citado });
+  return out;
+}
+
+// Operador de redirecionamento ANCORADO no inicio do token: `>a`, `>>a`, `2>a`,
+// `&>a`. A ancora e o que salva `foo->bar` e `x=>y`, que nunca comecam com `>`.
+const OPERADOR_REDIRECT = /^(?:[0-9]*|&)(>>?)(.*)$/;
+
+/** Nome de comando, ignorando caminho: `/usr/bin/tee` conta como `tee`. */
+function ehComando(tok, nome) {
+  return !tok.q && new RegExp("(^|[\\\\/])" + nome + "(\\.exe)?$").test(tok.v);
+}
+
+/** Posicionais de um segmento a partir do indice do comando (pula flags). */
+function posicionaisApos(toks, i) {
+  return toks.slice(i + 1).filter((t) => !t.v.startsWith("-"));
+}
+
+/**
  * Detecta escrita em Bash via redirecionamento ou ferramentas comuns.
  * Resolve alvos e retorna {dir, tipo} para cada um.
  *
  * Tipos: ">", ">>", "tee", "sed", "cp", "mv", e construcoes nao-resolvidas.
  * Mantem a mesma seguranca do `alvosBash`: `cd` que nao resolve vira INCERTO
  * e conservadorismo inclui cwdInicial nos alvos.
+ *
+ * Tudo aqui decide por TOKEN, nunca por match no texto cru — ver o docblock de
+ * `tokensComAspas`.
  */
 function alvosBashEscrita(comando, cwdInicial) {
   const segmentos = comando.split(SEPARADORES);
   let atual = cwdInicial;
   let incerto = false;
   const alvos = [];
+
+  // Resolve o alvo contra o cwd corrente; construcao com $ ou ` fica INCERTA e
+  // aponta para o proprio diretorio, que e o lado seguro.
+  const empurra = (alvo, tipo) => {
+    if (!alvo) return;
+    if (/[$`]/.test(alvo)) alvos.push({ dir: atual, tipo });
+    else alvos.push({ dir: path.resolve(atual, alvo), tipo });
+  };
 
   for (const seg of segmentos) {
     // `cd` precisa ser tratado igual ao `alvosBash`
@@ -368,64 +456,50 @@ function alvosBashEscrita(comando, cwdInicial) {
       continue;
     }
 
-    // Redirecionamento `> arquivo` ou `>> arquivo`
-    const redirect = seg.match(/>\s*(?:"([^"]+)"|'([^']+)'|([^\s>&|]+))/);
-    if (redirect) {
-      const alvo = redirect[1] || redirect[2] || redirect[3];
-      if (alvo && !/[$`]/.test(alvo)) {
-        alvos.push({ dir: path.resolve(atual, alvo), tipo: redirect[0].startsWith(">>") ? ">>" : ">" });
-      } else if (alvo && /[$`]/.test(alvo)) {
-        alvos.push({ dir: atual, tipo: ">" });
+    const toks = tokensComAspas(seg);
+
+    // Redirecionamento: `> arq`, `>>arq`, `2>arq`. `2>&1` e `>&2` duplicam
+    // descritor e nao escrevem em arquivo nenhum — nao sao alvo.
+    for (let i = 0; i < toks.length; i += 1) {
+      if (toks[i].q) continue;
+      const m = toks[i].v.match(OPERADOR_REDIRECT);
+      if (!m) continue;
+      const tipo = m[1] === ">>" ? ">>" : ">";
+      let alvo = m[2];
+      if (alvo.startsWith("&")) continue;
+      if (!alvo) {
+        const prox = toks[i + 1];
+        if (!prox) continue;
+        alvo = prox.v;
+        i += 1;
       }
-      continue;
+      empurra(alvo, tipo);
     }
 
-    // `tee arquivo` ou `tee -a arquivo`
-    const teeMatch = seg.match(/\btee\b(?:\s+-[a-z])*\s+(?:"([^"]+)"|'([^']+)'|([^\s>&|]+))/);
-    if (teeMatch) {
-      const alvo = teeMatch[1] || teeMatch[2] || teeMatch[3];
-      if (alvo && !/[$`]/.test(alvo)) {
-        alvos.push({ dir: path.resolve(atual, alvo), tipo: "tee" });
-      } else if (alvo && /[$`]/.test(alvo)) {
-        alvos.push({ dir: atual, tipo: "tee" });
+    for (let i = 0; i < toks.length; i += 1) {
+      // `tee arquivo`, `tee -a arquivo`
+      if (ehComando(toks[i], "tee")) {
+        const pos = posicionaisApos(toks, i);
+        if (pos.length) empurra(pos[0].v, "tee");
+        break;
       }
-      continue;
-    }
-
-    // `sed -i arquivo` ou `sed -i.backup arquivo`
-    const sedMatch = seg.match(/\bsed\b\s+-[a-z]*i[a-z]*(?:\s+[^\s]+)?\s+(?:"([^"]+)"|'([^']+)'|([^\s>&|]+))/);
-    if (sedMatch) {
-      const alvo = sedMatch[1] || sedMatch[2] || sedMatch[3];
-      if (alvo && !/[$`]/.test(alvo)) {
-        alvos.push({ dir: path.resolve(atual, alvo), tipo: "sed" });
-      } else if (alvo && /[$`]/.test(alvo)) {
-        alvos.push({ dir: atual, tipo: "sed" });
+      // `sed -i arquivo` — so com a flag de edicao no lugar. O alvo e o ULTIMO
+      // posicional: antes dele vem a expressao, que pode ser varios argumentos.
+      if (ehComando(toks[i], "sed")) {
+        const temInPlace = toks.slice(i + 1).some((t) => !t.q && /^-[a-z]*i/.test(t.v));
+        if (!temInPlace) break;
+        const pos = posicionaisApos(toks, i);
+        if (pos.length) empurra(pos[pos.length - 1].v, "sed");
+        break;
       }
-      continue;
-    }
-
-    // `cp origem destino`
-    const cpMatch = seg.match(/\bcp\b(?:\s+-[a-zA-Z]+)*\s+(?:"[^"]+"|'[^']+'|[^\s>&|]+)\s+(?:"([^"]+)"|'([^']+)'|([^\s>&|]+))/);
-    if (cpMatch) {
-      const alvo = cpMatch[1] || cpMatch[2] || cpMatch[3];
-      if (alvo && !/[$`]/.test(alvo)) {
-        alvos.push({ dir: path.resolve(atual, alvo), tipo: "cp" });
-      } else if (alvo && /[$`]/.test(alvo)) {
-        alvos.push({ dir: atual, tipo: "cp" });
+      // `cp origem destino`, `mv origem destino` — o destino e o ultimo posicional,
+      // que e o que vale tambem para `cp a b c pasta/`.
+      if (ehComando(toks[i], "cp") || ehComando(toks[i], "mv")) {
+        const tipo = ehComando(toks[i], "cp") ? "cp" : "mv";
+        const pos = posicionaisApos(toks, i);
+        if (pos.length >= 2) empurra(pos[pos.length - 1].v, tipo);
+        break;
       }
-      continue;
-    }
-
-    // `mv origem destino`
-    const mvMatch = seg.match(/\bmv\b(?:\s+-[a-zA-Z]+)*\s+(?:"[^"]+"|'[^']+'|[^\s>&|]+)\s+(?:"([^"]+)"|'([^']+)'|([^\s>&|]+))/);
-    if (mvMatch) {
-      const alvo = mvMatch[1] || mvMatch[2] || mvMatch[3];
-      if (alvo && !/[$`]/.test(alvo)) {
-        alvos.push({ dir: path.resolve(atual, alvo), tipo: "mv" });
-      } else if (alvo && /[$`]/.test(alvo)) {
-        alvos.push({ dir: atual, tipo: "mv" });
-      }
-      continue;
     }
   }
 
@@ -584,6 +658,7 @@ function main() {
   if (!alvos.length) process.exit(0);
 
   for (const alvo of alvos) {
+    if (ehScratchpad(alvo)) continue; // scratchpad da sessao: livre, ainda que seja repo git
     const estado = estadoDoRepo(dirDe(alvo));
     if (!estado) continue;           // fora de repo git: livre
     if (estado.ehWorktree) continue; // worktree linkado: era pra ser isso mesmo
