@@ -132,7 +132,7 @@ if (Test-Path $dadosScript) {
 $prompt += "`n`n## Destino de envio`n`nEnvie para o JID ``$destino``. Nao invente destino, nao procure outro chat: e este."
 
 $log = Join-Path $root "vigias\log-$Vigia.txt"
-Write-LinhaEmLf -Caminho $log -Linha "=== $(Get-Date -Format 'yyyy-MM-dd HH:mm') ==="
+[void](Write-LinhaEmLf -Caminho $log -Linha "=== $(Get-Date -Format 'yyyy-MM-dd HH:mm') ===")
 # Pré-checagem do bridge do WhatsApp. Desde 2026-08-07 ele roda NATIVO no Windows
 # na porta 3005: a instalação que vivia no WSL (porta 8765) foi removida, então
 # acordar o WSL não religa mais nada. A porta 8080 não serve nesta máquina — está
@@ -146,7 +146,7 @@ $bridgeHost = ([uri]$bridgeUrl).Host
 $bridgePort = ([uri]$bridgeUrl).Port
 $bridgeLauncher = Get-LocalConfig 'RFM_BRIDGE_LAUNCHER' 'bridgeLauncher'
 if (-not (Test-NetConnection $bridgeHost -Port $bridgePort -InformationLevel Quiet -WarningAction SilentlyContinue)) {
-    Write-LinhaEmLf -Caminho $log -Linha "bridge fora do ar - subindo o launcher nativo"
+    [void](Write-LinhaEmLf -Caminho $log -Linha "bridge fora do ar - subindo o launcher nativo")
     if ($bridgeLauncher -and (Test-Path $bridgeLauncher)) {
         Start-Process powershell -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-File",$bridgeLauncher -WindowStyle Hidden
     } else {
@@ -188,12 +188,12 @@ $modelos = @{
     'sentinela-foco' = 'sonnet'
 }
 $modelo = if ($modelos.ContainsKey($Vigia)) { $modelos[$Vigia] } else { 'haiku' }
-Write-LinhaEmLf -Caminho $log -Linha "modelo: $modelo"
+[void](Write-LinhaEmLf -Caminho $log -Linha "modelo: $modelo")
 # Tamanho do prompt no log: a evidencia de entrega vem do harness, nao do
 # modelo se auto-reportando. Em 2026-08-08 o jardineiro perdeu 3 de 5 rondas
 # e a suspeita caiu no modelo; a causa era o prompt chegando com 1379 de 2717
 # caracteres. Numero no log deixa isso visivel sem depender de ninguem.
-Write-LinhaEmLf -Caminho $log -Linha "prompt: $($prompt.Length) chars"
+[void](Write-LinhaEmLf -Caminho $log -Linha "prompt: $($prompt.Length) chars")
 # Prompt vai por STDIN, não como argumento: passado em argv ele é cortado no
 # meio (o jardineiro chegava com 1379 de 2717 caracteres, perdendo as rondas
 # 3 a 5). Passo que some do prompt vira passo que some do relatório.
@@ -201,7 +201,7 @@ Write-LinhaEmLf -Caminho $log -Linha "prompt: $($prompt.Length) chars"
 # CRLF, e no dia em que alguem versionar o log ele quebra a catraca de
 # encoding do mesmo jeito que o ERROS.md quebrava.
 $prompt | & $claude -p --model $modelo --dangerously-skip-permissions 2>&1 |
-  ForEach-Object { Write-LinhaEmLf -Caminho $log -Linha "$_" }
+  ForEach-Object { [void](Write-LinhaEmLf -Caminho $log -Linha "$_") }
 
 # O backup do estado fica de fora da execução de teste. O -Teste bloqueava só o
 # envio, e este bloco rodava igual: em 2026-08-10 um teste manual levou o
