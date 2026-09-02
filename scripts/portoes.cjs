@@ -253,6 +253,20 @@ const ESPERA_TRIVIAL = new Set(['ok', 'done', '0', 'sucesso', 'success', 'pass',
 /** Termos que aparecem em MENSAGEM DE ERRO — casar com eles é casar com a falha. */
 const TERMOS_DE_ERRO = /\b(erro|error|fail|failed|falha|exception|traceback|refused|recusado)\b/i;
 
+/**
+ * ...exceto quando o termo vem CONTADO E ZERADO: `0 falha(s)`, `0 erros`,
+ * `nenhum erro`. Aí ele não é mensagem de erro, é a AFIRMAÇÃO DE AUSÊNCIA dele —
+ * e é justamente a forma mais forte de marcador que existe, porque só aparece
+ * quando a contagem fechou em zero.
+ *
+ * Isto não é refinamento teórico: quando os portões DESTE fluxo foram submetidos
+ * ao próprio lint, os quatro que apontam para uma bateria da casa acusaram aviso,
+ * porque o formato canônico daqui é `== resultado: N ok, 0 falha(s) ==`. Um
+ * detector que dispara contra o padrão correto do repositório não é rigoroso: ele
+ * é ruído, e a primeira coisa que ruído ensina é a ignorar o detector.
+ */
+const RE_CONTAGEM_ZERADA = /\b(0|zero|nenhum[a]?|sem)\s+\w*\s*(erro|error|fail|failed|falha|exception)/i;
+
 /** Ferramentas que não existem no Windows puro. O design proíbe depender delas. */
 const RE_FERRAMENTA_UNIX = /(^|[|&;(\s])(grep|tail|head|sed|awk|tr|cut|wc)(\s|$)/;
 
@@ -310,7 +324,7 @@ function cmdLint(arquivo, strict) {
         + `aparece quando todas as asserções passaram.`
       );
     } else {
-      if (TERMOS_DE_ERRO.test(espera)) {
+      if (TERMOS_DE_ERRO.test(espera) && !RE_CONTAGEM_ZERADA.test(espera)) {
         avisos.push(
           `${p.id}: ESPERA contém termo de mensagem de erro ("${espera}"). `
           + `Se o marcador aparece também numa falha parcial, o portão fecha em cima do erro.`

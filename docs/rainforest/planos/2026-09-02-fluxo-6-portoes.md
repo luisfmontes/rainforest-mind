@@ -24,7 +24,7 @@ Design: `docs/rainforest/design/fluxo-6-design-portoes.md` (seção final "Pergu
 ## Tarefas
 
 ### 1. Parser + `status` (nunca executa) [tipo: implementar]
-atende: Formato do arquivo, Comandos (`status`)
+atende: D1, D3
 arquivos: `scripts/portoes.cjs`, `scripts/testa-portoes-parser.sh`, `test/fixtures/portoes/**`
 depende de: nenhuma
 paralela: sim
@@ -43,7 +43,7 @@ mutacao:
 pronto quando: `bash scripts/testa-portoes-parser.sh` devolve `== resultado: N ok, 0 falha(s) ==` e exit 0, cobrindo: (a) `portoes-ok.md` parseia e `status` sai 0; (b) `portoes-crlf.md` parseia igual a `portoes-ok.md`; (c) os três `portoes-malformado-*.md` saem exit 2, cada um citando o defeito certo; (d) `portoes-abandona.md` reporta `abandonado`, exit 0; (e) o caso da sentinela.
 
 ### 2. `lint` (a peça de maior valor) [tipo: implementar]
-atende: Formato do arquivo (seção "O lint")
+atende: D4
 arquivos: `scripts/portoes.cjs`, `scripts/testa-portoes-lint.sh`, `test/fixtures/portoes/**`
 depende de: 1
 paralela: sim
@@ -64,7 +64,7 @@ mutacao:
 pronto quando: `bash scripts/testa-portoes-lint.sh` devolve `== resultado: N ok, 0 falha(s) ==` e exit 0, cobrindo: `portoes-ok.md` limpo; `portoes-echo.md`, `portoes-titulo-atividade.md`, `portoes-espera-trivial.md` reprovando (exit 1) com o motivo certo; `portoes-espera-substring-erro.md`, `portoes-espera-numero-cru.md`, `portoes-grep.md` passando sem `--strict` (exit 0 com aviso) e reprovando com `--strict`; `portoes-sentinela.md` sob `lint` não cria a sentinela.
 
 ### 3. `rodar` (execução, evidência, abandono) [tipo: implementar]
-atende: Comandos (`rodar`, `rodar --reverificar`), Portabilidade
+atende: D2, D5, D6
 arquivos: `scripts/portoes.cjs`, `scripts/testa-portoes-rodar.sh`, `test/fixtures/portoes/**`
 depende de: 1
 paralela: sim
@@ -83,7 +83,7 @@ mutacao:
 pronto quando: `bash scripts/testa-portoes-rodar.sh` devolve `== resultado: N ok, 0 falha(s) ==` e exit 0, cobrindo: `portoes-ok.md` fecha exit 0 com `EVIDENCIA:` de fingerprint (nunca output bruto); `portoes-falha.md` não marca `[x]`, exit 1; `portoes-abandona.md` não executa o `CHECK` abandonado e sai 1 com `DEVOLUCAO OBRIGATORIA` mesmo com os outros cumpridos; `portoes-crlf-saida.md` fecha exit 0; `portoes-timeout.md` com `PORTOES_TIMEOUT_MS` baixo mata `devagar.cjs` sem travar a bateria; `--reverificar` re-executa e regrava `EVIDENCIA:`; **e** `portoes-sentinela.md` sob `rodar` **cria** a sentinela — prova cruzada de que o não-executar das Tarefas 1 e 2 não é script quebrado.
 
 ### 4. Encaixe no pipeline — dois ganchos em `estado.cjs` [tipo: implementar]
-atende: Encaixe no pipeline
+atende: D7, D8
 arquivos: `scripts/estado.cjs`, `scripts/testa-portoes-gate.sh`
 depende de: 2, 3
 paralela: nao
@@ -102,7 +102,7 @@ mutacao:
 pronto quando: `bash scripts/testa-portoes-gate.sh` devolve `== resultado: N ok, 0 falha(s) ==` e exit 0, cobrindo: (a) fluxo sem `portoes.md` fecha `plano ok` e `verificar ok` igual a hoje; (b) lint-erro → `marcar plano ok` recusa (exit 2) citando a saída do lint; (c) lint-limpo → fecha; (d) `CHECK` falho → `marcar verificar ok` recusa; (e) todos os `CHECK`s passando → fecha; (f) o caso da mutação.
 
 ### 5. Documentação [tipo: docs]
-atende: Atribuição obrigatória, Créditos
+atende: D10
 arquivos: `README.md`
 depende de: 4
 paralela: nao
@@ -112,6 +112,39 @@ mutacao: n/a
 Conteúdo: a tabela "Travas mecânicas" ganha uma linha para `scripts/portoes.cjs` (mesma forma da linha de `conferir-fluxo.cjs`, `README.md:343`: o que audita, quando dispara, exit codes), e "Créditos" (`README.md:721-729`) ganha o bullet de atribuição a unlazy/Leonxlnx (MIT), no formato dos bullets existentes.
 
 pronto quando: o trecho novo responde por leitura semântica o que `portoes.cjs` audita (oráculo executável, não prosa colada), os dois pontos de disparo (`plano`/lint, `verificar`/rodar) e que é opt-in por fluxo; e o bullet de Créditos nomeia unlazy e Leonxlnx com a licença MIT.
+
+### 6. A cobertura deixa de ser inerte [tipo: implementar]
+atende: D9
+arquivos: `scripts/estado.cjs`, `scripts/conferir-fluxo.cjs`, `scripts/testa-portoes-gate.sh`, `docs/rainforest/design/fluxo-6-design-portoes.md`
+depende de: 4
+paralela: nao
+
+Escopo: `conferirFechamento` resolve o caminho do doc de cada estágio pelo campo
+`arquivo` gravado no bloco do estado (`design.arquivo`, `plano.arquivo`), caindo
+no `docDe(tipo, slug)` de sempre quando o campo não existe ou aponta para arquivo
+ausente. `conferir-fluxo.cjs` ganha `--design` e `--plano` opcionais nos três
+subcomandos, e as isenções de creep passam a usar o caminho real — antes o design
+do próprio fluxo era acusado de creep do fluxo.
+
+Por que entra aqui e não numa Issue: a T4 já reescreve exatamente essa função, e
+instalar dois ganchos novos numa função cujo gancho existente é comprovadamente
+inerte é construir em cima do problema. O design deste fluxo ganha a seção
+`# Design formal` para que a trava consertada dispare NESTE fluxo — consertar a
+`cobertura` e não submeter este trabalho a ela seria repetir o defeito.
+
+mutacao:
+  arquivo: `scripts/estado.cjs`
+  de: `docDoEstagio` lê o `arquivo` do bloco do estado antes de cair no slug
+  para: `const bloco = null` — volta a derivar sempre do slug
+  bateria: `bash scripts/testa-portoes-gate.sh`
+  fixture: `cobertura-viva2` — fluxo cujo design se chama `fluxo-x-design.md` e
+  cujo plano tem decisão órfã. Com o conserto, `marcar plano ok` RECUSA citando D1;
+  com a mutação, fecha em silêncio, que é o comportamento de antes de hoje.
+
+pronto quando: `bash scripts/testa-portoes-gate.sh` devolve `== resultado: N ok, 0 falha(s) ==`
+e exit 0, com G9 (sem `design.arquivo`, a cobertura não dispara — o defeito
+reproduzido), G10 (com o campo, dispara e recusa) e G11 (a recusa nomeia a decisão
+órfã). E `testa-conferir-fluxo.sh` e `testa-estado.sh` continuam verdes.
 
 ## Divergências do design
 

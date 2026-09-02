@@ -27,7 +27,7 @@ FIXN="$(cygpath -m "$FIX" 2>/dev/null || printf '%s' "$FIX")"
 for f in "$P" "$FIX/portoes-ok.md" "$FIX/portoes-echo.md" \
          "$FIX/portoes-titulo-atividade.md" "$FIX/portoes-espera-trivial.md" \
          "$FIX/portoes-espera-substring-erro.md" "$FIX/portoes-espera-numero-cru.md" \
-         "$FIX/portoes-grep.md" "$FIX/portoes-sentinela.md" \
+         "$FIX/portoes-grep.md" "$FIX/portoes-contagem-zerada.md" "$FIX/portoes-sentinela.md" \
          "$FIX/portoes-malformado-id-duplicado.md"; do
   [ -f "$f" ] || { echo "FALHA: nao achei $f"; exit 1; }
 done
@@ -78,6 +78,18 @@ caso "L11. CHECK com ferramenta Unix passa sem --strict" 0 \
      "$FIX/portoes-grep.md" "ferramenta Unix"
 caso "L12. ...e reprova com --strict" 1 \
      "$FIX/portoes-grep.md" "LINT REPROVADO" "--strict"
+
+echo "== contagem ZERADA nao e mensagem de erro =="
+# Achado ao submeter os portoes DESTE fluxo ao proprio lint: o formato canonico
+# de bateria desta casa e' `== resultado: N ok, 0 falha(s) ==`, e o detector de
+# termo de erro disparava contra ele — quatro avisos nos quatro portoes que
+# apontam para uma bateria. Detector que acusa o padrao CORRETO do repositorio
+# nao e' rigoroso: e' ruido, e a primeira coisa que ruido ensina e' a ignorar o
+# detector. `0 falha(s)` nao e' mensagem de erro, e' AFIRMACAO DE AUSENCIA dele.
+caso "L16. '0 falha(s)' nao levanta aviso — e afirmacao de ausencia" 0 \
+     "$FIX/portoes-contagem-zerada.md" "0 aviso"
+caso "L17. ...nem mesmo com --strict" 0 \
+     "$FIX/portoes-contagem-zerada.md" "LINT OK" "--strict"
 
 echo "== malformado nao vira veredito de lint =="
 # exit 2 e' "nao consegui ler", nao "reprovei". Confundir os dois foi o modo de
