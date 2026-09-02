@@ -113,3 +113,73 @@ Estado da guarda por sessão em `.rainforest/hook-estado.json`, com o mesmo sane
 
 - **P1:** onde vive `portoes.md` no layout real do repo — junto do plano do fluxo ou em `.rainforest/`? Claude Code decide olhando a árvore.
 - **P2:** o hook de Stop atual já bloqueia por estágio; o bloqueio por portão entra no mesmo hook ou é checagem só no gate do `ok`? Começar só no gate é mais barato e reversível.
+
+---
+
+## Perguntas abertas — resolvidas em 2026-09-02
+
+**P1 — onde vive o `portoes.md`: `docs/rainforest/portoes/<slug>.md`.**
+A árvore real não tem `docs/rainforest/fluxos/`; tem quatro irmãos indexados pelo
+mesmo slug — `design/`, `planos/`, `estado/`, `mapas/`. Um quinto irmão,
+`portoes/`, mantém a convenção e dá de graça a coisa que os dois ganchos do
+pipeline precisam: **o gate deriva o caminho do slug**, sem campo novo no estado,
+sem config, sem argumento a mais. `estado.cjs` já recebe `--slug` em todo comando;
+`portoes.cjs` passa a receber o arquivo por caminho explícito (para fixture de
+teste) e o gate monta `docs/rainforest/portoes/<slug>.md` sozinho.
+
+Consequência boa e não planejada: "o fluxo tem portões?" vira `existsSync` de um
+caminho derivado, que é exatamente o teste que o desenho opt-in pede.
+
+**P2 — o bloqueio por portão entra só no gate do `ok`.** É a recomendação do
+próprio design ("mais barato e reversível") e ela se sustenta: o hook de Stop é
+o lugar onde um defeito prende a sessão sem saída, e a guarda de 6 bloqueios
+existe justamente porque esse risco é real. Gate de `ok` erra para o lado seguro
+— o pior caso é um `ok` recusado, e a pessoa está na frente do teclado.
+
+Fica **fora do escopo deste fluxo**, nomeado e não esquecido: a guarda de
+progresso no hook de Stop (a seção acima continua valendo como desenho). Entra
+quando houver evidência de que o gate do `ok` sozinho não segura — não antes.
+
+---
+
+# Design formal (para a checagem `cobertura`)
+
+Esta seção existe porque a checagem `cobertura` deixou de ser inerte em
+2026-09-02 (tarefa 6). Antes disso ela nunca disparava — o gate derivava o
+caminho do design de `<slug>.md` e nenhum design deste repositório se chama
+assim. Consertar a trava e não submeter este próprio fluxo a ela seria repetir
+exatamente o defeito que a tarefa 6 corrige.
+
+## Objetivo
+
+Trocar evidência colada por oráculo re-executável no ciclo do rainforest, e
+auditar a autoria do oráculo — que é a parte que nenhuma execução consegue
+conferir sozinha.
+
+## Decisões fechadas
+
+- **D1 — o arquivo de portões vive em `docs/rainforest/portoes/<slug>.md`.** Quinto irmão dos quatro já indexados pelo slug (`design/`, `planos/`, `estado/`, `mapas/`); o gate deriva o caminho do slug, sem campo novo no estado, e "este fluxo tem portões?" vira um `existsSync`.
+- **D2 — cumprido é exit 0 E match do `ESPERA:`, os dois.** Só exit 0 aceita script que morre feliz sem ter medido; só match aceita script que imprime a frase certa e depois estoura.
+- **D3 — `status` e `lint` nunca executam `CHECK:` nenhum.** São os modos que se roda PARA DECIDIR se vale executar; se eles executam, a decisão já foi tomada por baixo.
+- **D4 — o lint audita a autoria do portão, com erro e aviso separados.** Erro é o que não tem leitura inocente (saída fixa, marcador trivial, título que nomeia atividade); aviso é o que costuma estar errado mas às vezes não, e `--strict` o promove.
+- **D5 — abandono é terminal mas nunca é conclusão.** Qualquer `ABANDONA:` força exit 1 com `DEVOLUCAO OBRIGATORIA`, mesmo com todos os outros portões cumpridos: um exit 0 enterraria a desistência e o fluxo seguiria como completo.
+- **D6 — a evidência guarda fingerprint, nunca output bruto.** O arquivo é versionado, e saída de sucesso carrega caminho de máquina, token de ambiente e às vezes nome de cliente.
+- **D7 — os dois ganchos rodam em sequência com as checagens existentes, não em vez delas.** `conferirFechamento` deixa de ser cadeia `if/else if`, porque `plano` passa a ter duas checagens.
+- **D8 — portões são opt-in por fluxo.** Sem `portoes.md`, `plano` e `verificar` fecham exatamente como antes. Trava nova que torna o fluxo obrigatório é pior que trava nenhuma.
+- **D9 — o gate resolve o caminho do doc pelo `arquivo` gravado no estado, com o slug como fallback.** Sem isso a `cobertura` fica inerte, que é o estado em que ela passou o fluxo 9 inteiro.
+- **D10 — o README ganha a linha de trava mecânica e o crédito ao unlazy (MIT), Leonxlnx.** Atribuição é obrigação da licença, não cortesia.
+
+## Avaliado e descartado
+
+- **Modelo de aprovação de comandos herdados** (`~/.unlazy/approved`, binding de shell/CWD/PATH). Faz sentido para ledger de terceiro; aqui os portões nascem no `plano` da própria sessão. Revisitar se entrar território multi-repo.
+- **`OWNS:`, waves, dispatch paralelo, `--jobs`.** O pipeline é sequencial por desenho.
+- **Fixture de CRLF versionado.** O `.gitattributes` exige LF e o `conferir-encoding.cjs` recusa o repositório inteiro ao achar CRLF na árvore — versionar um acenderia uma bateria vermelha permanente para testar outra. Gerado em tempo de bateria.
+
+## Fora de escopo
+
+- Guarda de progresso no hook de Stop. O desenho continua válido acima; entra quando houver evidência de que o gate do `ok` sozinho não segura.
+- Bump de versão: passo do estágio `fechar`, fora das tarefas.
+
+## Em aberto
+
+- Se o gate do `plano` deve usar `--strict`. Hoje não usa: os três avisos ainda não têm tempo de estrada suficiente para virar bloqueio, e um aviso que trava sem histórico vira exceção pedida na primeira semana.
