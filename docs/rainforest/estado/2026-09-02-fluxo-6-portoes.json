@@ -15,32 +15,32 @@
     "em": "2026-09-02"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-02",
-    "comando": "node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-02-fluxo-6-portoes.md",
-    "saida": "P0..P5 CUMPRIDO — TODOS OS PORTOES CUMPRIDOS — 6 portao(oes). exit 0",
+    "comando": "bash scripts/testa-portoes-gate.sh && node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-02-fluxo-6-portoes.md --reverificar",
+    "saida": "== resultado: 22 ok, 0 falha(s) == ; TODOS OS PORTOES CUMPRIDOS — 6 portao(oes), exit 0",
     "tarefas_ok": 6,
     "tarefas": 6,
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "portoes-sentinela (status passa a executar o CHECK)"
+        "fixture": "portoes-sentinela + portoes-malformado-sem-evidencia"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "portoes-echo (remove o detector de saida fixa)"
+        "fixture": "portoes-echo + portoes-contagem-zerada"
       },
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "portoes-exit-zero-sem-marcador (cumprido cai para so exit 0)"
+        "fixture": "portoes-exit-zero-sem-marcador + cwd relativo (R14b)"
       },
       {
         "tarefa": 4,
         "resultado": "vermelho",
-        "fixture": "check-falho (gate do verificar vira no-op)"
+        "fixture": "check-falho + evidencia-velha (G21: o gate re-executa)"
       },
       {
         "tarefa": 5,
@@ -50,14 +50,10 @@
       {
         "tarefa": 6,
         "resultado": "vermelho",
-        "fixture": "cobertura-viva2 (docDoEstagio volta a ignorar design.arquivo)"
+        "fixture": "cobertura-viva2 + c1-mesma-chamada + via-link (realpath)"
       }
     ],
-    "em": "2026-09-02",
-    "reaberto_por": {
-      "estagio": "verificar",
-      "data": "2026-09-02"
-    }
+    "em": "2026-09-02"
   },
   "revisar": {
     "status": "ok",
@@ -78,14 +74,13 @@
     "em": "2026-09-02"
   },
   "verificar": {
-    "status": "reprovado",
-    "comando": "node scripts/estado.cjs marcar --estagio verificar --status ok",
-    "saida": "P0..P5: cumprido (pulado; use --reverificar para re-executar)",
+    "status": "ok",
+    "comando": "o proprio gate: node scripts/estado.cjs marcar --estagio verificar --status ok (que agora roda portoes.cjs rodar --reverificar)",
+    "saida": "ver abaixo — os 6 portoes RE-EXECUTADOS, nenhum pulado",
     "segunda_opiniao": "codex: concordo nos 7 criterios",
     "em": "2026-09-02",
     "criterio": "o gate do verificar re-executa os portoes",
-    "faltou": "o gate rodava sem --reverificar e pulou os 6 portoes com evidencia gravada — aprovou lendo o arquivo em vez de executar",
-    "tentativas": 1
+    "faltou": "o gate rodava sem --reverificar e pulou os 6 portoes com evidencia gravada — aprovou lendo o arquivo em vez de executar"
   },
   "fechar": {
     "status": "pendente"
