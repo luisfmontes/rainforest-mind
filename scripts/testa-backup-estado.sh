@@ -50,6 +50,12 @@ montar() {
   cp "$SRC/hooks/lib/raiz.cjs" "$SB/plugin/hooks/lib/raiz.cjs"
   cp "$SRC/hooks/lib/contexto-sessao.cjs" "$SB/plugin/hooks/lib/contexto-sessao.cjs"
   cp "$SRC/vigias/backup-estado.ps1" "$SB/plugin/vigias/backup-estado.ps1"
+  # O erros.ps1 e dependencia de EXECUCAO, nao acessorio: o backup-estado.ps1
+  # faz dot-source dele. Sem a copia, o dot-source morre e o script inteiro
+  # cala - foi o que aconteceu quando a porta unica de escrita nasceu, e a
+  # bateria caiu de 28 para 25 medindo uma caixa quebrada em vez do artefato.
+  # E a mesma licao da #110 que o comentario acima ja registra.
+  cp "$SRC/vigias/erros.ps1" "$SB/plugin/vigias/erros.ps1"
   printf 'foco de caixa\n' > "$SB/dados/FOCO.md"
 
   # Caixa do caminho de PRODUCAO (caso 8): um "projeto" com `.rainforest/FOCO.md`,

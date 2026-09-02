@@ -13,7 +13,19 @@ $plugin = Split-Path -Parent $PSScriptRoot
 # arquivo eram quatro copias da mesma linha de Out-File, com os mesmos tres
 # defeitos em cada uma (CRLF, mojibake OEM, caminho de maquina em repo
 # publico). O porque de cada um esta no cabecalho daquele arquivo.
-. (Join-Path $PSScriptRoot 'erros.ps1')
+$libErros = Join-Path $PSScriptRoot 'erros.ps1'
+if (-not (Test-Path $libErros)) {
+    # Sem a porta de escrita nao ha como REGISTRAR que ela falta: o unico canal
+    # honesto que sobra e falar alto e sair diferente de zero, para o
+    # LastTaskResult do agendador guardar o sinal. A guarda existe porque a
+    # ausencia dela ja mordeu: quando esta porta nasceu, as caixas de areia das
+    # baterias nao copiavam o arquivo, o dot-source morria e o script inteiro
+    # calava - nenhum erro, nenhuma linha, exit 0 aparente. Morte silenciosa e a
+    # classe de defeito que esta entrega inteira existe para fechar.
+    [Console]::Error.WriteLine("erro: nao achei o erros.ps1 ao lado de $PSScriptRoot - a ronda nao roda sem a porta de escrita do ERROS.md")
+    exit 1
+}
+. $libErros
 # Uma vez so, e no topo: daqui para baixo TODA saida de processo nativo
 # (node, claude) e decodificada como UTF-8. Sem isto ela atravessa o
 # codepage OEM do console - que e o que a tarefa agendada usa - e o acento

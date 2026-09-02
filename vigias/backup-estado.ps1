@@ -71,7 +71,19 @@ $TETO_COPIAS = 30
 # tres defeitos dela (CRLF, mojibake OEM, caminho de maquina em repo publico)
 # moravam nas seis ao mesmo tempo. O porque completo de cada um esta no
 # cabecalho daquele arquivo.
-. (Join-Path $PSScriptRoot 'erros.ps1')
+$libErros = Join-Path $PSScriptRoot 'erros.ps1'
+if (-not (Test-Path $libErros)) {
+    # Sem a porta de escrita nao ha como REGISTRAR que ela falta: o unico canal
+    # honesto que sobra e falar alto e sair diferente de zero, para o
+    # LastTaskResult do agendador guardar o sinal. A guarda existe porque a
+    # ausencia dela ja mordeu: quando esta porta nasceu, as caixas de areia das
+    # baterias nao copiavam o arquivo, o dot-source morria e o script inteiro
+    # calava - nenhum erro, nenhuma linha, exit 0 aparente. Morte silenciosa e a
+    # classe de defeito que esta entrega inteira existe para fechar.
+    [Console]::Error.WriteLine("erro: nao achei o erros.ps1 ao lado de $PSScriptRoot - a ronda nao roda sem a porta de escrita do ERROS.md")
+    exit 1
+}
+. $libErros
 
 function Registrar-Erro([string]$Motivo) {
     Write-ErroDeVigia -Vigia $Vigia -Motivo $Motivo -Plugin $Plugin -Log $Log
