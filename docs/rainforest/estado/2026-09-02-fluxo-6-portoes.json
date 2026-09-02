@@ -83,6 +83,13 @@
     "faltou": "o gate rodava sem --reverificar e pulou os 6 portoes com evidencia gravada — aprovou lendo o arquivo em vez de executar"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "versao": "0.81.0",
+    "destino": "PR",
+    "relatorio": "relatorios/2026-09-02-o-conserto-que-nao-alcanca-o-uso-que-o-motivou.md",
+    "issues_a_abrir": [
+      "P6: reaberto_por/pendentes aceitos do --json e divergencia exigir/marcar (territorio do fluxo 1)"
+    ],
+    "em": "2026-09-02"
   }
 }
