@@ -589,9 +589,13 @@ console.log("== 14. escreve nao-booleano nega, em vez de desligar a checagem =="
   const r2 = rodaHook(raiz, JSON.stringify({ session_id: "t14", tool_input: { subagent_type: "semescreve" } }));
   caso("escreve ausente nega", r2.status === 2, `exit=${r2.status} stderr=${r2.stderr}`);
 
+  // `escreve: true` e valido desde 2026-09-02, mas SEM `isolation` no despacho
+  // continua negando — o caso 17 cobre a trava inteira. O que este caso guarda
+  // e que o booleano `true` nao cai mais no ramo do "nao-booleano".
   const r3 = rodaHook(raiz, JSON.stringify({ session_id: "t14", tool_input: { subagent_type: "escrevetrue" } }));
-  caso("escreve:true nega (depende do worktree, fora de escopo)", r3.status === 2, `exit=${r3.status} stderr=${r3.stderr}`);
-  caso("e diz que nao e suportado", r3.stderr.includes("nao e suportado"), r3.stderr);
+  caso("escreve:true sem isolation nega", r3.status === 2, `exit=${r3.status} stderr=${r3.stderr}`);
+  caso("e nega por ISOLAMENTO, nao por 'nao-booleano'",
+    r3.stderr.includes("isolation") && !r3.stderr.includes("nao-booleano"), r3.stderr);
 
   // O booleano de verdade continua funcionando — o conserto nao virou deny-por-tudo.
   const r4 = rodaHook(raiz, JSON.stringify({ session_id: "t14", tool_input: { subagent_type: "boolfalse" } }));
@@ -692,6 +696,138 @@ console.log("== 16. sem require de projeto no topo do modulo (rede so cobre main
   caso("nenhum require de projeto fora de funcao",
     forasDaRede.length === 0,
     `escapariam da rede: ${forasDaRede.join(" | ")}`);
+}
+
+/* == 17. `escreve: true`: a trava e isolation + ausencia de name ==
+ *
+ * Ate 2026-09-02 este ramo era um deny duro, e o custo apareceu longe daqui:
+ * com os quatro agentes escritores fora do manifesto, NENHUM agente cobria o
+ * estagio `executar`, e a regra 10 ficou desligada sem que nada dissesse isso.
+ * Duas sessoes distintas bateram na parede antes de alguem somar as pontas.
+ *
+ * As duas condicoes nao sao invencao da portaria: sao as regras 11 (worktree
+ * sempre) e 10 (agente que edita nunca e nomeado) escritas em codigo. E o que
+ * a portaria confere e o PEDIDO, nao o worktree em disco — ela roda ANTES do
+ * despacho, quando o worktree ainda nao existe. Conferir o worktree real na
+ * volta e da integracao (scripts/conferir-entrega.cjs), e continua sendo.
+ */
+console.log("== 17. escreve:true exige isolation worktree e recusa name ==");
+{
+  const raiz = caixa();
+  iniciarGit(raiz, "fluxo/teste");
+  criarEstadoAtivo(raiz, "teste", "executar");
+  criarManifesto(raiz, manifestoD2({
+    escritor: { estagios: ["executar"], escreve: true },
+  }));
+  const dirAgentes = path.join(raiz, "agents");
+  fs.mkdirSync(dirAgentes, { recursive: true });
+  fs.writeFileSync(path.join(dirAgentes, "escritor.md"),
+    "---\nname: escritor\ntools: Write, Edit, Bash\n---\nc\n", "utf8");
+
+  const despacha = (entrada) => rodaHook(raiz, JSON.stringify({
+    session_id: "t17",
+    tool_input: { subagent_type: "escritor", ...entrada },
+  }));
+
+  const semIso = despacha({});
+  caso("sem isolation nega", semIso.status === 2, `exit=${semIso.status} stderr=${semIso.stderr}`);
+  caso("e o motivo nomeia isolation", semIso.stderr.includes('isolation: "worktree"'), semIso.stderr);
+
+  const isoErrado = despacha({ isolation: "remote" });
+  caso("isolation diferente de worktree nega", isoErrado.status === 2,
+    `exit=${isoErrado.status} stderr=${isoErrado.stderr}`);
+
+  const comNome = despacha({ isolation: "worktree", name: "sonda-um" });
+  caso("worktree MAS nomeado nega", comNome.status === 2,
+    `exit=${comNome.status} stderr=${comNome.stderr}`);
+  caso("e o motivo nomeia o name recebido", comNome.stderr.includes("sonda-um"), comNome.stderr);
+
+  const nomeVazio = despacha({ isolation: "worktree", name: "   " });
+  caso("name so com espaco nao conta como nome", nomeVazio.status === 0,
+    `exit=${nomeVazio.status} stderr=${nomeVazio.stderr}`);
+
+  const bom = despacha({ isolation: "worktree" });
+  caso("worktree e sem nome APROVA", bom.status === 0, `exit=${bom.status} stderr=${bom.stderr}`);
+
+  // O log tem de dizer SOB QUE isolamento a escrita foi admitida: allow de
+  // agente que escreve sem esse campo nao responde a pergunta pela qual o log
+  // e evidencia de primeira classe.
+  const logPath = path.join(raiz, ".rainforest", "portaria", "despachos.jsonl");
+  const linhas = fs.readFileSync(logPath, "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  const ultima = linhas[linhas.length - 1];
+  caso("a ultima linha e o allow", ultima.decisao === "allow", JSON.stringify(ultima));
+  caso("e registra isolation: worktree", ultima.isolation === "worktree", JSON.stringify(ultima));
+  caso("e NAO traz escreve_conferido (allow conferido)",
+    ultima.escreve_conferido === undefined, JSON.stringify(ultima));
+  caso("as tres negacoes ficaram no log",
+    linhas.filter((l) => l.decisao === "deny").length === 3,
+    JSON.stringify(linhas.map((l) => l.decisao)));
+
+  // A ORDEM das decisoes nao mudou: estagio fora da lista nega ANTES de chegar
+  // na checagem de escrita, mesmo com o despacho perfeito.
+  const raiz2 = caixa();
+  iniciarGit(raiz2, "fluxo/teste");
+  criarEstadoAtivo(raiz2, "teste", "revisar");
+  criarManifesto(raiz2, manifestoD2({ escritor: { estagios: ["executar"], escreve: true } }));
+  const foraDoEstagio = rodaHook(raiz2, JSON.stringify({
+    session_id: "t17b",
+    tool_input: { subagent_type: "escritor", isolation: "worktree" },
+  }));
+  caso("estagio fora da lista nega mesmo com worktree", foraDoEstagio.status === 2,
+    `exit=${foraDoEstagio.status} stderr=${foraDoEstagio.stderr}`);
+  caso("e nega pelo ESTAGIO, nao pelo isolamento",
+    foraDoEstagio.stderr.includes("permitido"), foraDoEstagio.stderr);
+
+  fs.rmSync(raiz, { recursive: true, force: true });
+  fs.rmSync(raiz2, { recursive: true, force: true });
+}
+
+/* == 18. negacao anterior ao passo 4 registra o estagio REAL ==
+ *
+ * O log e evidencia de primeira classe (D4), e ate 2026-09-02 toda negacao
+ * anterior a resolucao do estagio gravava `estagio: "?"`. Medido no dia do
+ * conserto: cinco negacoes de `executor`, em duas sessoes distintas, todas com
+ * `?` — nenhuma respondia "em qual estagio", que e um terco da pergunta que
+ * o log existe para responder.
+ *
+ * A ORDEM das decisoes continua a mesma: agente ausente do manifesto nega
+ * antes de tudo. O que mudou e so o que se grava.
+ */
+console.log("== 18. deny por agente ausente registra o estagio ativo, nao '?' ==");
+{
+  const raiz = caixa();
+  iniciarGit(raiz, "fluxo/teste");
+  criarEstadoAtivo(raiz, "teste", "executar");
+  criarManifesto(raiz, manifestoD2({ revisor: { estagios: ["revisar"], escreve: false } }));
+
+  const r = rodaHook(raiz, JSON.stringify({
+    session_id: "t18",
+    tool_input: { subagent_type: "naodeclarado" },
+  }));
+  caso("agente ausente do manifesto continua negando", r.status === 2,
+    `exit=${r.status} stderr=${r.stderr}`);
+
+  const logPath = path.join(raiz, ".rainforest", "portaria", "despachos.jsonl");
+  const linha = JSON.parse(fs.readFileSync(logPath, "utf8").trim().split("\n").pop());
+  caso("e a linha grava o estagio ativo", linha.estagio === "executar", JSON.stringify(linha));
+  caso("e o motivo continua sendo o do manifesto",
+    (linha.motivo || "").includes("manifesto"), JSON.stringify(linha));
+
+  // Sem fluxo aberto nenhum, '?' volta a ser a verdade — e nao uma lacuna.
+  const raiz2 = caixa();
+  iniciarGit(raiz2, "fluxo/teste");
+  criarManifesto(raiz2, manifestoD2({ revisor: { estagios: ["revisar"], escreve: false } }));
+  const r2 = rodaHook(raiz2, JSON.stringify({
+    session_id: "t18b",
+    tool_input: { subagent_type: "naodeclarado" },
+  }));
+  caso("sem fluxo aberto tambem nega", r2.status === 2, `exit=${r2.status}`);
+  const linha2 = JSON.parse(fs.readFileSync(
+    path.join(raiz2, ".rainforest", "portaria", "despachos.jsonl"), "utf8").trim().split("\n").pop());
+  caso("e o estagio volta a ser '?' (nao ha estagio)", linha2.estagio === "?", JSON.stringify(linha2));
+
+  fs.rmSync(raiz, { recursive: true, force: true });
+  fs.rmSync(raiz2, { recursive: true, force: true });
 }
 
 console.log(`\n== resultado: ${ok} ok, ${falhou} falha(s) ==`);
