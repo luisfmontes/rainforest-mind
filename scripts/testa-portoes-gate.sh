@@ -295,6 +295,33 @@ SAIDA="$(est marcar --slug a3-dentro --estagio plano --status ok \
 afirma "G17. o MESMO design, DENTRO da arvore, e' adotado e a cobertura RECUSA" \
   "$([ "$C" -ne 0 ] && printf '%s' "$SAIDA" | grep -q 'D2' && echo 1 || echo 0)"
 
+echo "== o gate do verificar RE-EXECUTA, nao aceita evidencia gravada =="
+# Achado ao usar o gate no fechamento do proprio fluxo 6: sem `--reverificar`,
+# `rodar` pula todo portao que ja tenha evidencia, e os seis sairam
+# "cumprido (pulado)". O gate aprovou LENDO o arquivo em vez de executar —
+# exatamente a evidencia colada que os portoes existem para substituir, so em
+# JSON em vez de prosa. E' a decisao D2 do design ao contrario.
+#
+# O fixture e' o caso que so a re-execucao distingue: um portao com evidencia
+# de SUCESSO gravada, mas cujo CHECK hoje REPROVA. Quem le o arquivo aprova;
+# quem executa, recusa.
+novo_fluxo evidencia-velha
+cat > "$S/docs/rainforest/portoes/evidencia-velha.md" <<FIM
+# Portões: evidencia de sucesso gravada, CHECK que hoje reprova
+
+- [x] P1: o modulo de cobranca passa em todas as assercoes
+  CHECK: node test/fixtures/portoes/scripts/sempre-falha.cjs
+  ESPERA: VERIFICACAO PASSOU
+  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"deadbeef1234"}
+FIM
+est marcar --slug evidencia-velha --estagio plano --status ok >/dev/null
+prepara_ate_revisar evidencia-velha
+SAIDA="$(est marcar --slug evidencia-velha --estagio verificar --status ok --json '{"comando":"bash x.sh","saida":"ok"}')"; C=$?
+afirma "G21. verificar RECUSA portao com evidencia velha cujo CHECK hoje reprova" \
+  "$([ "$C" -ne 0 ] && echo 1 || echo 0)"
+afirma "G22. e a saida mostra que ele foi EXECUTADO, nao pulado" \
+  "$(printf '%s' "$SAIDA" | grep -q 'pulado' && echo 0 || echo 1)"
+
 echo "== as recusas se ACUMULAM, nao param na primeira =="
 # Achado da auditoria cross-model de 2026-09-02: o retorno antecipado no lint
 # fazia um plano com portao mal autorado E decisao orfa mostrar so o primeiro

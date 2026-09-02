@@ -28,7 +28,7 @@ o fluxo 9 inteiro sem rodar uma vez.
 
 - [x] P4: os dois ganchos agem, e a cobertura deixou de ser inerte
   CHECK: bash scripts/testa-portoes-gate.sh
-  ESPERA: 20 ok, 0 falha(s)
+  ESPERA: 22 ok, 0 falha(s)
   EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"c206c62fff5c"}
 
 - [x] P5: o pipeline existente não regrediu
