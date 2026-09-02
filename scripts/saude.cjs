@@ -1127,6 +1127,135 @@ function checarMemoria() {
   }
 }
 
+// ---------------------------------------------------------------- vigias
+//
+// DUAS perguntas sobre os vigias, e as duas nasceram de defeito medido em
+// 2026-09-01. Ficam juntas porque um checador que ve so uma delas produz a
+// leitura errada da outra: "zero erro registrado" e otimo quando o vigia roda,
+// e e o pior sinal possivel quando ele esta morto.
+//
+// 1. VIGIA AGENDADO QUE NAO VAI RODAR MAIS.
+//    `vigia-tickets-manha` e `vigia-tickets-tarde` estavam mortos desde
+//    11/08/2026, com gatilho de `EndBoundary` vencido em 12/08. O Agendador do
+//    Windows nao desabilita a tarefa nem marca erro: `State: Ready`,
+//    `Enabled: True`, `LastTaskResult: 0`. Os TRES campos que uma pessoa checa
+//    mentem em coro. O unico que denuncia e o `NextRunTime`, que fica VAZIO -
+//    e campo em branco le-se como "nada de errado". Vinte dias assim.
+//    Isto e irmao do que a Issue #142 plantou ("medicao uniforme demais e
+//    suspeita"): ali o instrumento respondia a mesma coisa para tudo, aqui ele
+//    responde nada. Campo vazio nao e campo ok.
+//
+// 2. ERRO REGISTRADO QUE NINGUEM LEU.
+//    O `vigias/ERROS.md` gravou "backup do FOCO.md falhou" em toda ronda de
+//    todo vigia desde 27/08, com data e nome, em texto plano. O defeito ficou
+//    cinco dias no arquivo sem ninguem abrir. O que faltou nao foi
+//    instrumentacao, foi leitura - entao a contagem sobe aqui.
+//    NAO sobe pela injecao de abertura: aquele payload ja bate no teto de bytes
+//    do harness, e foi por isso que as regras 4 a 17 nunca chegaram a sessao
+//    nenhuma. Mais uma linha la empurra outra coisa para fora.
+//
+// TUDO E SO LEITURA. Este checador nunca registra, altera, habilita nem dispara
+// tarefa agendada: mexer no Agendador e ambiente do usuario, e decisao dele.
+
+const DIAS_DE_ERRO_RECENTE = 7;
+
+/**
+ * Tarefas agendadas do Windows que rodam um vigia deste plugin.
+ *
+ * Casadas pela ACAO (o argumento cita `run-vigia.ps1`), nunca por uma lista de
+ * nomes: nome de tarefa e escolha de quem instalou, e uma lista fixa aqui
+ * envelheceria calada no dia em que alguem registrasse um vigia novo.
+ *
+ * Devolve `null` - e nao lista vazia - quando NAO DA para perguntar (nao ha
+ * PowerShell, ou o comando falhou). Os dois estados sao diferentes: lista vazia
+ * significa "perguntei e nao ha tarefa nenhuma", que e o normal de quem usa o
+ * plugin sem agendar nada, e nao pode virar alerta.
+ */
+function tarefasDeVigia() {
+  const ps = 'powershell';
+  const script = [
+    "$ErrorActionPreference='Stop';",
+    "Get-ScheduledTask | Where-Object { $_.Actions.Arguments -match 'run-vigia\.ps1' } |",
+    // Separador por [char]9 e nao por `t: dentro de string de ASPA SIMPLES o
+    // PowerShell NAO interpreta o acento grave, entao '{0}`t{1}' produzia o
+    // texto literal "nome`tdata" e o split do lado do Node devolvia a linha
+    // inteira como nome, com o campo `proxima` sempre vazio - ou seja, TODA
+    // tarefa parecia morta. Falso alerta e o mesmo defeito que este checador
+    // existe para pegar, virado do avesso.
+    "ForEach-Object { $i = $_ | Get-ScheduledTaskInfo;",
+    "  $_.TaskName + [char]9 + $i.NextRunTime }",
+  ].join(' ');
+  const { status, out } = rodar(ps, ['-NoProfile', '-NonInteractive', '-Command', script]);
+  if (status !== 0) return null;
+  const linhas = out.split('\n').map((l) => l.trim()).filter(Boolean);
+  return linhas.map((l) => {
+    const [nome, proxima] = l.split('\t');
+    return { nome: (nome || '').trim(), proxima: (proxima || '').trim() };
+  }).filter((t) => t.nome);
+}
+
+/** Erros de vigia registrados nos ultimos N dias, lidos do ERROS.md do plugin. */
+function errosRecentes(dias) {
+  const arquivo = path.join(RAIZ_CODIGO, 'vigias', 'ERROS.md');
+  if (!fs.existsSync(arquivo)) return null;
+  let texto;
+  try { texto = fs.readFileSync(arquivo, 'utf8'); } catch { return null; }
+  const corte = new Date(Date.now() - dias * 24 * 60 * 60 * 1000);
+  const achadas = [];
+  for (const linha of texto.split(/\r?\n/)) {
+    // Formato gravado pelo vigias/erros.ps1: "- AAAA-MM-DD HH:MM [vigia]: motivo"
+    const m = linha.match(/^- (\d{4}-\d{2}-\d{2}) \d{2}:\d{2} \[([^\]]+)\]: (.*)$/);
+    if (!m) continue;
+    const quando = new Date(`${m[1]}T00:00:00`);
+    if (isNaN(quando.getTime()) || quando < corte) continue;
+    achadas.push({ data: m[1], vigia: m[2], motivo: m[3] });
+  }
+  return achadas;
+}
+
+function checarVigias() {
+  // Toggle DESLIGADO nao e problema: as rondas nascem desligadas, e quem nao
+  // agendou nada nao pode receber alerta sobre agendamento que nao existe.
+  const setup = path.join(RAIZ_CODIGO, 'scripts', 'setup.cjs');
+  if (fs.existsSync(setup)) {
+    const { status } = rodar(process.execPath, [setup, '--ligado', 'vigias']);
+    if (status !== 0) return; // desligado, ou nao deu para perguntar
+  }
+
+  const tarefas = tarefasDeVigia();
+  if (tarefas === null) {
+    // Sem PowerShell nao da para responder, e afirmar "esta tudo bem" seria o
+    // mesmo modo de falha que este checador existe para pegar.
+    aviso('vigias', 'nao consegui consultar o Agendador de Tarefas',
+      'so vale no Windows com PowerShell no PATH');
+  } else if (tarefas.length === 0) {
+    ok('vigias', 'toggle ligado, nenhuma tarefa agendada para os vigias');
+  } else {
+    const mortas = tarefas.filter((t) => !t.proxima);
+    if (mortas.length) {
+      alerta('vigias',
+        `${mortas.length} de ${tarefas.length} tarefa(s) sem proxima execucao: ${mortas.map((t) => t.nome).join(', ')}`,
+        'gatilho vencido (EndBoundary) ou desabilitado - a tarefa aparece Ready e nunca roda; reagende');
+    } else {
+      ok('vigias', `${tarefas.length} tarefa(s) agendada(s), todas com proxima execucao`);
+    }
+  }
+
+  const erros = errosRecentes(DIAS_DE_ERRO_RECENTE);
+  if (erros === null) return;
+  if (erros.length === 0) {
+    ok('vigias-erros', `nenhum erro de vigia nos ultimos ${DIAS_DE_ERRO_RECENTE} dias`);
+  } else {
+    const porVigia = {};
+    for (const e of erros) porVigia[e.vigia] = (porVigia[e.vigia] || 0) + 1;
+    const resumo = Object.entries(porVigia).map(([v, n]) => `${v} (${n})`).join(', ');
+    aviso('vigias-erros',
+      `${erros.length} erro(s) nos ultimos ${DIAS_DE_ERRO_RECENTE} dias: ${resumo}`,
+      'leia vigias/ERROS.md - o ultimo defeito ficou cinco dias registrado sem ninguem abrir');
+  }
+}
+
+// ---------------------------------------------------------------- poda
 // ---------------------------------------------------------------- 11. poda
 /**
  * Proxy de medição de custo — porta responde? env var desta sessão aponta pra ela?
@@ -1241,6 +1370,7 @@ async function main() {
   checarConselho();
   checarEsquema();
   checarMemoria();
+  checarVigias();
   await checarIntegracoes();
   checarPoda();
 
@@ -1268,4 +1398,4 @@ if (require.main === module) main().catch((err) => {
   console.error('Erro fatal:', err.message);
   process.exit(1);
 });
-module.exports = { achados, checarPoda };
+module.exports = { achados, checarPoda, checarVigias, tarefasDeVigia, errosRecentes };
