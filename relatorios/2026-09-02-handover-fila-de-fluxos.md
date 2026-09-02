@@ -4,6 +4,22 @@ Substitui `2026-09-01-handover-fila-de-fluxos.md`, que está desatualizado em tu
 o que importa: os fluxos 9 e 6 fecharam, a frente dos vigias nasceu e fechou, e a
 versão andou de 0.79.0 para 0.81.0.
 
+## Antes de qualquer coisa: o principal fica na main
+
+**O checkout principal de `C:/Projetos/rainforest-mind` fica SEMPRE na `main`.**
+Trabalho de branch vai para worktree: `git worktree add .claude/worktrees/<slug> <branch>`.
+
+Não é organização — tem consequência medida. Os vigias agendados resolvem a raiz
+por `Split-Path -Parent $PSScriptRoot`, ou seja rodam contra o **checkout
+principal**; com ele numa branch de trabalho, o sentinela roda contra código não
+mergeado. E sessões paralelas se co-locam nesse diretório.
+
+Esta seção existe porque **eu errei isso hoje**: trabalhei os fluxos 6 e 7 com o
+principal nas branches, por horas, e o Luís corrigiu. O preço apareceu na
+limpeza: o `vigias/ERROS.md` que o vigia escreveu na minha árvore ficou preso
+numa base velha e carregava um JID de WhatsApp que a outra frente havia acabado
+de remover do repositório público — commitar teria desfeito o conserto deles.
+
 > Se você só for ler um parágrafo: a `main` está em **`70f75ec`**, versão
 > **0.81.0**, com nada aberto. O fluxo 7 (recibo) está **no meio do `executar`,
 > 0 de 7 tarefas fechadas** — `scripts/recibo.cjs` está escrito e passa em fumaça
@@ -48,8 +64,9 @@ versão anterior, e o `portoes.cjs` não vale como trava injetada.
 
 ## Fluxo 7 (recibo) — o próximo passo exato
 
-**Primeiro:** `git rebase origin/main` na `fluxo/recibo`. A branch nasceu de
-`859b566`, antes do merge do #150.
+**O rebase ja foi feito** (2026-09-02): a branch `fluxo/recibo` esta em cima de
+`70f75ec` e reempurrada com `--force-with-lease`. O worktree tambem ja existe, em
+`.claude/worktrees/fluxo-recibo` — trabalhe la, nao no principal.
 
 Design: `docs/rainforest/design/fluxo-7-design-recibo.md` — leia a seção final
 `# Design formal`, que resolve três desencontros e fixa **D1–D10**. Decisões
