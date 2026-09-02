@@ -186,6 +186,12 @@ const OEM_CP437_80_BF = [
 
 const FECHADORES_OEM = new Set([...OEM_CP850_80_BF, ...OEM_CP437_80_BF]);
 
+// Usados pelo desempate de posicao do detector OEM (o porque esta la embaixo,
+// junto do `if`). Unicode-aware de proposito: `\w` do JavaScript e ASCII-only e
+// diria que `n` em `não` e palavra mas `ã` nao e.
+const EH_LETRA = /\p{L}/u;
+const EH_PALAVRA = /[\p{L}\p{N}]/u;
+
 // Abridores de 1 caractere: os bytes 0xC3 e 0xC2 lidos como OEM. Iguais nas duas
 // tabelas, por isso um par so.
 const ABRIDORES_OEM_1 = ['├', '┬'];
@@ -234,11 +240,38 @@ function achaMojibake(texto) {
       }
       if (!tam) continue;
       const prox = linha.codePointAt(j + tam);
-      if (prox !== undefined && FECHADORES_OEM.has(prox)) {
-        const inicio = Math.max(0, j - 8);
-        const trecho = linha.slice(inicio, j + tam + 2);
-        achados.push({ linha: i + 1, trecho });
+      if (prox === undefined || !FECHADORES_OEM.has(prox)) continue;
+
+      // DESEMPATE, e ele existe por um falso positivo REAL, achado em revisao
+      // independente (2026-09-02): `tree` compacto, sem o traco depois do
+      // conector, produz `├área/` e `├épocas/` — markdown UTF-8 perfeitamente
+      // legitimo — e a rede acusava, porque `á` e `é` ESTAO na faixa 0x80-0xBF
+      // do CP850. E a diferenca entre esta familia e a CP1252: la os fechadores
+      // sao pontuacao tipografica, que nao aparece colada a letra em texto
+      // normal; aqui a tabela OEM tem LETRA acentuada dentro.
+      //
+      // O desempate e a POSICAO, nao mais um caractere na lista. Mojibake de
+      // round-trip nasce DENTRO de uma palavra — "nao" vira "n" + <caixa> + "o",
+      // sempre com letra antes. Conector de arte de caixa nasce no comeco da
+      // linha ou depois de espaco. Entao: fechador que e LETRA so acusa se o
+      // abridor tiver caractere de palavra ANTES dele.
+      //
+      // Fechador que NAO e letra (© « ¬ ½ ▓ │ ┤ ...) continua acusando sempre:
+      // nenhuma palavra tem `├` colado a `©`, e afrouxar ali seria abrir a
+      // fresta sem ganhar nada.
+      //
+      // O par de 3 bytes (`ÔÇ`/`ΓÇ`) tambem acusa sempre, e de proposito: ele
+      // vem de travessao e aspa tipografica, que aparecem CERCADOS DE ESPACO no
+      // texto original, entao exigir letra antes perderia o caso inteiro. Dois
+      // caracteres especificos adjacentes ja sao raros o bastante sozinhos.
+      if (tam === 1 && EH_LETRA.test(String.fromCodePoint(prox))) {
+        const anterior = j > 0 ? linha[j - 1] : '';
+        if (!EH_PALAVRA.test(anterior)) continue;
       }
+
+      const inicio = Math.max(0, j - 8);
+      const trecho = linha.slice(inicio, j + tam + 2);
+      achados.push({ linha: i + 1, trecho });
     }
   });
   return achados;

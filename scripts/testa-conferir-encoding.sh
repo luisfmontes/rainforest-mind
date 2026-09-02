@@ -216,6 +216,61 @@ PT="$SB/portugues.md"
 printf -- 'A ronda nao achou o arquivo: acentuacao, coracao, versao, gestao.\nCom acento de verdade: n\xc3\xa3o, \xc3\xa9, \xc3\xba, \xc3\xa7\xc3\xa3o.\n' > "$PT"
 saiu "portugues acentuado em UTF-8 valido passa (exit 0)" "$(codigo "$PT")" "0"
 
+# O caso que a revisao independente achou em 2026-09-02, e que a versao anterior
+# desta secao NAO cobria: `tree` COMPACTO, sem o traco depois do conector. Ali o
+# caractere colado no U+251C e uma letra acentuada — `├área/`, `├épocas/` — que
+# ESTA na faixa 0x80-0xBF do CP850, e a rede acusava markdown legitimo.
+# O desempate e a POSICAO: mojibake nasce dentro de palavra (tem letra antes),
+# conector de arte nasce no comeco da linha ou depois de espaco.
+ARTE2="$SB/arte-compacta.md"
+printf -- 'estrutura do repo:\n\xe2\x94\x9c\xc3\xa1rea/\n\xe2\x94\x9c\xc3\xa9pocas/\n\xe2\x94\x94\xc3\xba\xc3\xbatil/\n' > "$ARTE2"
+saiu "tree COMPACTO com acento colado no conector passa (exit 0)" "$(codigo "$ARTE2")" "0"
+
+echo
+echo "== 6d. o desempate de posicao nao pode virar cegueira =="
+# Afrouxar por posicao so vale se o defeito REAL continuar sendo pego. Tres
+# provas, uma por caminho do desempate.
+DENTRO="$SB/mojibake-dentro-de-palavra.md"
+printf -- '- erro: n\xe2\x94\x9c\xc3\xbao achei o FOCO.md\n' > "$DENTRO"
+saiu "mojibake DENTRO de palavra (letra antes) reprova" "$(codigo "$DENTRO")" "2"
+SIMBOLO="$SB/fechador-simbolo.md"
+# Fechador que nao e letra acusa mesmo no comeco da linha: nenhuma palavra tem
+# `┬` colado a `©`, e afrouxar ali abriria a fresta sem ganhar nada.
+printf -- '\xe2\x94\xac\xc2\xa9 no comeco da linha\n' > "$SIMBOLO"
+saiu "fechador SIMBOLO reprova mesmo sem letra antes" "$(codigo "$SIMBOLO")" "2"
+PAR3="$SB/par-de-tres-bytes.md"
+# O par de 3 bytes vem de travessao e aspa, que aparecem CERCADOS DE ESPACO no
+# texto original — exigir letra antes perderia o caso inteiro.
+printf -- 'travessao \xc3\x94\xc3\x87\xc3\xb6 cercado de espaco\n' > "$PAR3"
+saiu "par de 3 bytes reprova cercado de espaco" "$(codigo "$PAR3")" "2"
+
+echo
+echo "== 6e. MUTACAO: tirar o desempate faz a arte compacta reprovar =="
+saiu "arte compacta passa antes da mutacao (controle)" "$(codigo "$ARTE2")" "0"
+cp "$SCRIPT" "$SB/original-desempate.cjs"
+node -e "
+  const fs = require('fs');
+  const p = process.argv[1];
+  const s = fs.readFileSync(p, 'utf8');
+  const alvo = 'if (tam === 1 && EH_LETRA.test(String.fromCodePoint(prox))) {';
+  if (!s.includes(alvo)) { console.error('MUTACAO NAO APLICADA'); process.exit(1); }
+  fs.writeFileSync(p, s.replace(alvo, 'if (false) {'));
+" "$SCRIPT"
+if [ $? -ne 0 ]; then
+  falhou=$((falhou+1)); echo "  FALHA nao consegui aplicar a mutacao do desempate"
+else
+  C6E="$(codigo "$ARTE2")"
+  if [ "$C6E" = "2" ]; then
+    ok=$((ok+1)); echo "  ok   sem o desempate, a arte compacta REPROVA — prova que ele era a trava"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mutacao aplicada mas a arte compacta ainda passa (exit $C6E)"
+  fi
+  # E a prova de que o desempate nao esta segurando o defeito real:
+  saiu "com o desempate desligado, o mojibake real continua reprovando" "$(codigo "$DENTRO")" "2"
+fi
+cp "$SB/original-desempate.cjs" "$SCRIPT"
+saiu "restaurado, a arte compacta volta a passar" "$(codigo "$ARTE2")" "0"
+
 echo
 echo "== 6c. MUTACAO: tirar a assinatura OEM tem que deixar a fixture passar =="
 saiu "fixture OEM reprova antes da mutacao (controle)" "$(codigo "$OEM")" "2"

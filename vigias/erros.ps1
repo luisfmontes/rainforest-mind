@@ -92,6 +92,23 @@ da maquina.
 
 Cobre caminho com letra de unidade (C:\...) e UNC (\\servidor\...). Nao cobre
 caminho relativo, que nao identifica maquina nem usuario.
+
+O SEGMENTO INTERMEDIARIO ACEITA ESPACO, e essa e a correcao de 2026-09-02.
+A primeira versao usava `[^\s"'')]*`, que PARA no primeiro espaco - e no Windows
+o nome de usuario com espaco e o caso mais comum que existe. Reproduzido pela
+revisao, rodando o backup-estado.ps1 de verdade com uma raiz que tinha espaco:
+
+  antes: ... nao achei o FOCO.md em <caminho>\Usuario Fernando Que Nao Deve Vazar\dados\nao-existe
+
+A letra de unidade era trocada e o nome sobrevivia inteiro, num arquivo
+RASTREADO em repositorio PUBLICO. A bateria nao pegou porque o usuario falso
+dela (`usuario-que-nao-deve-vazar`) e as fixtures de caminho nao tinham espaco
+em segmento nenhum: 26 de 26 verdes sem provar a propriedade que a Issue #124
+pede. Teste que nao mede.
+
+O `:` FICA DE FORA do segmento intermediario, e isso nao e detalhe: sem essa
+exclusao o casador atravessa `um.txt para D:\` como se fosse um segmento com
+espaco e engole DOIS caminhos distintos num marcador so.
 #>
 function Get-MotivoSaneado([string]$Motivo) {
     if (-not $Motivo) { return $Motivo }
@@ -108,9 +125,10 @@ function Get-MotivoSaneado([string]$Motivo) {
         return "<caminho>\$folha"
     }
 
-    # Letra de unidade OU UNC, seguido de qualquer coisa que nao seja espaco,
-    # aspa ou fecha-parenteses (os delimitadores que as mensagens de fato usam).
-    $re = '(?:[A-Za-z]:[\\/]|\\\\)[^\s"'')]*'
+    # Letra de unidade OU UNC, depois zero ou mais segmentos intermediarios
+    # (que ACEITAM espaco, mas nunca `:`, aspa ou parentese), e por fim a folha
+    # (que nao aceita espaco: e onde a mensagem volta a ser prosa).
+    $re = '(?:[A-Za-z]:[\\/]|\\\\)(?:[^\\/"''():\r\n]*[\\/])*[^\\/\s"''():,;]*'
     return [regex]::Replace($Motivo, $re, $avaliador)
 }
 
