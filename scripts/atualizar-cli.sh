@@ -13,8 +13,11 @@
 
 set -e -u
 
-# Pasta do pacote do WinGet, substituivel por variavel de ambiente.
-PACOTE="${ATUALIZAR_CLI_PACOTE:-/c/Users/Luis/AppData/Local/Microsoft/WinGet/Packages/Anthropic.ClaudeCode_Microsoft.Winget.Source_8wekyb3d8bbwe}"
+# Pasta do pacote do WinGet, substituivel por variavel de ambiente. A raiz sai
+# do HOME de quem roda: ter um nome chumbado no DEFAULT faz o script funcionar
+# so na maquina de quem o escreveu, e a variavel de escape vira obrigatoria em
+# vez de opcional — que e o oposto do que "substituivel" quer dizer.
+PACOTE="${ATUALIZAR_CLI_PACOTE:-$(cd ~ 2>/dev/null && pwd || echo "$HOME")/AppData/Local/Microsoft/WinGet/Packages/Anthropic.ClaudeCode_Microsoft.Winget.Source_8wekyb3d8bbwe}"
 
 # Nome do executavel winget, substituivel por variavel de ambiente (facilita teste).
 WINGET_CMD="${ATUALIZAR_CLI_WINGET:-winget}"
