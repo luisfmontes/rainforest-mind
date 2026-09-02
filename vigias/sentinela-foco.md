@@ -23,7 +23,8 @@ já não estava), leia-o e monte o briefing matinal do usuario:
    nomeando (remetente + assunto curto). Zero não lidos = "inbox limpo".
    NUNCA envie, responda, arquive, rotule ou apague email — o vigia lê e
    reporta; rascunho é trabalho de sessão com o usuario. Se a tool falhar
-   após as tentativas, registre em ERROS.md e siga o briefing sem a triagem.
+   após as tentativas, registre pela porta (`registrar-erro.ps1`, ver
+   `_comum.md`) e siga o briefing sem a triagem.
 5. Feche com UMA pergunta: "qual o primeiro passo concreto de hoje no
    [foco]?" — nomeando o usuario, nunca "me responde".
 6. Leia C:\Projetos\rainforest-mind\vigias\ERROS.md (se existir). Se houver
