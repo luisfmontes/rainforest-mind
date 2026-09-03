@@ -319,6 +319,157 @@ echo "== (s) true && gh pr create --body com closes #7 COM marcador → exit 0 (
 EXIT_S=$?
 [ $EXIT_S -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_S)"
 
+# Caso (t): `(gh issue close 12)` → exit 2 (grupo/subshell vira segmento)
+echo
+echo "== (t) (gh issue close 12) → exit 2 (grupo) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"(gh issue close 12)"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-t"
+EXIT_T=$?
+[ $EXIT_T -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_T)"
+
+# Caso (u): `x=$(gh issue close 12)` → exit 2 (substituição de comando vira segmento)
+echo
+echo "== (u) x=\$(gh issue close 12) → exit 2 (substituição) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"x=$(gh issue close 12)"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-u"
+EXIT_U=$?
+[ $EXIT_U -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_U)"
+
+# Caso (v): `{ gh issue close 12; }` → exit 2 (grupo com chaves vira segmento)
+echo
+echo "== (v) { gh issue close 12; } → exit 2 (grupo com chaves) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"{ gh issue close 12; }"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-v"
+EXIT_V=$?
+[ $EXIT_V -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_V)"
+
+# Caso (w): `env gh issue close 12` → exit 2 (prefixo que repassa o comando)
+echo
+echo "== (w) env gh issue close 12 → exit 2 (prefixo env) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"env gh issue close 12"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-w"
+EXIT_W=$?
+[ $EXIT_W -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_W)"
+
+# Caso (x): `command gh issue close 12` → exit 2 (prefixo command)
+echo
+echo "== (x) command gh issue close 12 → exit 2 (prefixo command) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"command gh issue close 12"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-x"
+EXIT_X=$?
+[ $EXIT_X -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_X)"
+
+# Caso (y): `eval "gh issue close 12"` → exit 2 (recursiona no conteúdo do eval)
+echo
+echo "== (y) eval \"gh issue close 12\" → exit 2 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"eval \"gh issue close 12\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-y"
+EXIT_Y=$?
+[ $EXIT_Y -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_Y)"
+ERR_Y="$(cat "$SBP/err-y")"
+echo "$ERR_Y" | grep -q "scripts/fechar-issue.cjs" && test_ok "stderr aponta script" || test_fail "stderr não aponta script"
+
+# Caso (z): `nohup gh issue close 12` → exit 2 (prefixo nohup)
+echo
+echo "== (z) nohup gh issue close 12 → exit 2 (prefixo nohup) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"nohup gh issue close 12"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-z"
+EXIT_Z=$?
+[ $EXIT_Z -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_Z)"
+
+# Caso (aa): `timeout 5 gh issue close 12` → exit 2 (prefixo timeout + duração)
+echo
+echo "== (aa) timeout 5 gh issue close 12 → exit 2 (prefixo timeout) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"timeout 5 gh issue close 12"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-aa"
+EXIT_AA=$?
+[ $EXIT_AA -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_AA)"
+
+# Caso (ab): `xargs gh issue close 12` → exit 2 (prefixo xargs)
+echo
+echo "== (ab) xargs gh issue close 12 → exit 2 (prefixo xargs) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"xargs gh issue close 12"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ab"
+EXIT_AB=$?
+[ $EXIT_AB -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_AB)"
+
+# Caso (ac): `pwsh -c "gh issue close 12"` → exit 2 (flag -Command abreviada)
+echo
+echo "== (ac) pwsh -c \"gh issue close 12\" → exit 2 (flag abreviada) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"pwsh -c \"gh issue close 12\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ac"
+EXIT_AC=$?
+[ $EXIT_AC -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_AC)"
+ERR_AC="$(cat "$SBP/err-ac")"
+echo "$ERR_AC" | grep -q "scripts/fechar-issue.cjs" && test_ok "stderr aponta script" || test_fail "stderr não aponta script"
+
+# Caso (ad): `powershell -EncodedCommand <base64>` → exit 2 (ilegível, base64)
+echo
+echo "== (ad) powershell -EncodedCommand <base64> → exit 2 (ilegível) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"powershell -EncodedCommand Z2ggaXNzdWUgY2xvc2UgMTI="}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ad"
+EXIT_AD=$?
+[ $EXIT_AD -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_AD)"
+ERR_AD="$(cat "$SBP/err-ad")"
+echo "$ERR_AD" | grep -q "ilegível" && test_ok "mensagem de -EncodedCommand ilegível" || test_fail "mensagem incorreta"
+
+# Caso (ae): `X=1 gh pr create --body "... closes #7"` COM marcador → exit 0
+# (prefixo de atribuição não muda o caminho feliz)
+echo
+echo "== (ae) X=1 gh pr create --body com closes #7 COM marcador → exit 0 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=1
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"X=1 gh pr create --body \"resumo da entrega, closes #7\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ae"
+EXIT_AE=$?
+[ $EXIT_AE -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_AE)"
+
+# Caso (af): `git commit -m "(gh issue close 12)"` → exit 0 (citado, é texto)
+echo
+echo "== (af) git commit -m \"(gh issue close 12)\" → exit 0 (citado) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"git commit -m \"(gh issue close 12)\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-af"
+EXIT_AF=$?
+[ $EXIT_AF -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_AF)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

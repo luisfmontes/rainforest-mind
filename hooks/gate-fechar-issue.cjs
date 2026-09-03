@@ -17,7 +17,6 @@ const path = require("node:path");
 
 const { MARCADOR } = require("./lib/marcador-evidencia.cjs");
 const { executar } = require("./lib/resolver-executavel.cjs");
-const { segmentosComAspas } = require("./lib/cwd-efetivo.cjs");
 
 /**
  * Normaliza o nome de um executável: remove caminho, extensão e aspas.
@@ -67,16 +66,148 @@ function tokenizar(comando) {
  * Verifica se os subcomandos contêm uma sequência específica (case-insensitive).
  */
 function temSubcomando(subcomandos, padrao) {
-  for (let i = 0; i <= subcomandos.length - padrao.length; i++) {
+  return indiceSequencia(subcomandos, padrao) !== -1;
+}
+
+/**
+ * Índice da primeira ocorrência de `padrao` como sub-sequência CONTÍGUA
+ * (case-insensitive) em `tokens`, ou -1 se não achar.
+ */
+function indiceSequencia(tokens, padrao) {
+  for (let i = 0; i <= tokens.length - padrao.length; i++) {
     if (
-      subcomandos
+      tokens
         .slice(i, i + padrao.length)
         .every((s, idx) => s.toLowerCase() === padrao[idx].toLowerCase())
     ) {
-      return true;
+      return i;
     }
   }
-  return false;
+  return -1;
+}
+
+/**
+ * Separa um comando em segmentos, respeitando aspas simples/duplas.
+ * Delimitadores fora de aspas: `;`, `&&`, `||`, `|`, quebra de linha — e
+ * também `(`, `)`, `{`, `}` (subshell, grupo, ou o `(` de uma substituição
+ * `$(...)`), que aqui SEMPRE fecham o segmento corrente e abrem um novo: o
+ * conteúdo de dentro vira segmento próprio, verificável como qualquer outro.
+ *
+ * É deliberadamente mais agressivo que a função homônima de
+ * `lib/cwd-efetivo.cjs` (que só MARCA incerto, porque ali importa rastrear
+ * o cwd através do subshell — dividir mudaria essa semântica). Aqui o
+ * objetivo é só garantir que um `gh ...` escondido lá dentro apareça como
+ * segmento verificável; não precisa entender a sintaxe do subshell/grupo.
+ */
+function segmentosParaGate(cmd) {
+  const segmentos = [];
+  let atual = "";
+  let aspa = null;
+
+  for (let i = 0; i < cmd.length; i++) {
+    const c = cmd[i];
+
+    if (aspa) {
+      if (c === aspa) aspa = null;
+      atual += c;
+      continue;
+    }
+    if (c === '"' || c === "'") {
+      aspa = c;
+      atual += c;
+      continue;
+    }
+    if (c === "&" && cmd[i + 1] === "&") {
+      if (atual.trim()) segmentos.push(atual);
+      atual = "";
+      i++;
+      continue;
+    }
+    if (c === "|" && cmd[i + 1] === "|") {
+      if (atual.trim()) segmentos.push(atual);
+      atual = "";
+      i++;
+      continue;
+    }
+    if (c === ";" || c === "|" || c === "\n" || c === "(" || c === ")" || c === "{" || c === "}") {
+      if (atual.trim()) segmentos.push(atual);
+      atual = "";
+      continue;
+    }
+    atual += c;
+  }
+
+  if (atual.trim()) segmentos.push(atual);
+  return segmentos;
+}
+
+// Prefixos que apenas repassam o comando adiante, sem executar nada por
+// conta própria. Chave normalizada por `normalizarExecutavel`.
+const PREFIXOS_QUE_PASSAM_ADIANTE = new Set([
+  "env", "command", "exec", "nohup", "nice", "timeout", "xargs", "sudo", "time",
+]);
+
+/**
+ * `NOME=valor` no início do segmento — atribuição de variável antes do
+ * comando de verdade (`X=1 gh pr create ...`).
+ */
+function ehAtribuicao(tok) {
+  return /^[A-Za-z_][A-Za-z0-9_]*=/.test(tok);
+}
+
+/**
+ * Avança por cima de prefixos que só repassam o comando adiante (item 2 do
+ * conserto): atribuições `X=1`, `env` (com `NOME=valor` e `-C dir`),
+ * `command`, `exec`, `nohup`, `nice [-n N]`, `timeout <dur>`, `xargs
+ * [flags]`, `sudo`, `time` — em qualquer combinação encadeada. Devolve o
+ * índice do primeiro token que já não é prefixo (o comando efetivo);
+ * pode ser `tokens.length` se o segmento for só prefixos.
+ */
+function pularPrefixos(tokens) {
+  let i = 0;
+  for (;;) {
+    if (i >= tokens.length) return i;
+    if (ehAtribuicao(tokens[i])) {
+      i += 1;
+      continue;
+    }
+
+    const exe = normalizarExecutavel(tokens[i]);
+
+    if (exe === "env") {
+      i += 1;
+      while (i < tokens.length && (ehAtribuicao(tokens[i]) || tokens[i].startsWith("-"))) {
+        if (tokens[i] === "-C" && i + 1 < tokens.length) {
+          i += 2;
+        } else {
+          i += 1;
+        }
+      }
+      continue;
+    }
+    if (exe === "nice") {
+      i += 1;
+      if (tokens[i] === "-n" && i + 1 < tokens.length) i += 2;
+      continue;
+    }
+    if (exe === "timeout") {
+      i += 1;
+      while (i < tokens.length && tokens[i].startsWith("-")) i += 1;
+      if (i < tokens.length) i += 1; // a duração
+      continue;
+    }
+    if (exe === "xargs") {
+      i += 1;
+      while (i < tokens.length && tokens[i].startsWith("-")) i += 1;
+      continue;
+    }
+    if (PREFIXOS_QUE_PASSAM_ADIANTE.has(exe)) {
+      i += 1;
+      continue;
+    }
+
+    return i;
+  }
 }
 
 /**
@@ -177,15 +308,14 @@ function bloqueia(motivo) {
 
 // Executáveis que encapsulam uma string de comando, e a flag que a introduz.
 // Chave normalizada por `normalizarExecutavel` (sem caminho/extensão/aspas).
+// `pwsh`/`powershell` e `cmd` são tratados à parte em `desempacotarWrapper`
+// porque aceitam abreviação de flag (`-c`, `-co`, `-com`, ... / `/c`, `/k`).
 const WRAPPERS_DE_COMANDO = {
   bash: "-c",
   sh: "-c",
   zsh: "-c",
   ksh: "-c",
   dash: "-c",
-  pwsh: "-command",
-  powershell: "-command",
-  cmd: "/c",
 };
 
 /**
@@ -201,25 +331,69 @@ function extrairPrimeiroToken(str) {
 }
 
 /**
- * Se `segmento` é uma invocação de `bash -c`/`sh -c`/`pwsh -Command`/
- * `powershell -Command`/`cmd /c` (executável reconhecido + flag certa),
- * devolve a string de comando encapsulada (sem UM nível de aspas externas,
- * se houver). Devolve null se `segmento` não é um desses wrappers.
+ * `tok` é uma abreviação válida de `nomeCompleto` (ex.: "-c", "-co", "-com"
+ * para "-command")? O PowerShell aceita qualquer prefixo não-ambíguo de uma
+ * flag; aqui a checagem é conservadora — basta ser prefixo de `nomeCompleto`
+ * com pelo menos 2 caracteres (o `-` e uma letra), case-insensitive.
+ */
+function casaPrefixoDeFlag(tok, nomeCompleto) {
+  const t = String(tok || "").toLowerCase();
+  return t.length >= 2 && t[0] === "-" && nomeCompleto.toLowerCase().startsWith(t);
+}
+
+function desempacota(interno) {
+  interno = interno.trim();
+  const aspas = /^"([\s\S]*)"$/.exec(interno) || /^'([\s\S]*)'$/.exec(interno);
+  return aspas ? aspas[1] : interno;
+}
+
+/**
+ * Se `segmento` é uma invocação de `eval`, `bash -c`/`sh -c`/`zsh -c`/
+ * `ksh -c`/`dash -c`, `pwsh`/`powershell` com qualquer abreviação de
+ * `-Command` (`-c`, `-co`, `-com`, ...), ou `cmd /c`/`cmd /k` (executável
+ * reconhecido + flag certa), devolve a string de comando encapsulada (sem
+ * UM nível de aspas externas, se houver). Devolve null se `segmento` não é
+ * um desses wrappers.
+ *
+ * `pwsh`/`powershell -EncodedCommand` (ou qualquer abreviação dela — `-e`,
+ * `-ec`, `-enc`, ...) chega em base64: ilegível por definição, bloqueia
+ * direto aqui, sem tentar decodificar.
  */
 function desempacotarWrapper(segmento) {
   const p1 = extrairPrimeiroToken(segmento);
   if (!p1) return null;
   const exe = normalizarExecutavel(p1.tok);
-  const flagEsperada = WRAPPERS_DE_COMANDO[exe];
-  if (!flagEsperada) return null;
+
+  if (exe === "eval") {
+    return desempacota(p1.resto);
+  }
 
   const p2 = extrairPrimeiroToken(p1.resto);
-  if (!p2 || p2.tok.toLowerCase() !== flagEsperada) return null;
+  if (!p2) return null;
 
-  let interno = p2.resto.trim();
-  const aspas = /^"([\s\S]*)"$/.exec(interno) || /^'([\s\S]*)'$/.exec(interno);
-  if (aspas) interno = aspas[1];
-  return interno;
+  if (exe === "pwsh" || exe === "powershell") {
+    if (casaPrefixoDeFlag(p2.tok, "-encodedcommand")) {
+      bloqueia(
+        `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
+        `Razão: '-EncodedCommand' codifica o comando em base64; não consigo ler o que roda ` +
+        `dentro com segurança (ilegível).\n\n` +
+        `Rode o comando 'gh' diretamente, sem -EncodedCommand.\n`
+      );
+    }
+    if (!casaPrefixoDeFlag(p2.tok, "-command")) return null;
+    return desempacota(p2.resto);
+  }
+
+  if (exe === "cmd") {
+    const flag = p2.tok.toLowerCase();
+    if (flag !== "/c" && flag !== "/k") return null;
+    return desempacota(p2.resto);
+  }
+
+  const flagEsperada = WRAPPERS_DE_COMANDO[exe];
+  if (!flagEsperada) return null;
+  if (p2.tok.toLowerCase() !== flagEsperada) return null;
+  return desempacota(p2.resto);
 }
 
 /**
@@ -232,89 +406,138 @@ function contemConstrucaoIlegivel(str) {
 }
 
 /**
+ * Aplica as checagens D15/D16 a uma invocação de `gh` já identificada:
+ * `segmento` é o texto bruto (para extrair `--body`/`--body-file`) e
+ * `subcomandos` são os tokens que vêm depois de `gh`.
+ */
+function verificarComandoGh(segmento, subcomandos) {
+  // Caso (a): `gh issue close <n>` → exit 2
+  if (temSubcomando(subcomandos, ["issue", "close"])) {
+    bloqueia(
+      `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
+      `Razão: 'gh issue close' direto não registra a evidência de pronto.\n\n` +
+      `Use:\n` +
+      `  node scripts/fechar-issue.cjs <número> --comando "<seu-comando>" --saida "<saída-ou-arquivo>"\n\n` +
+      `O script registra o comentário com a evidência antes de fechar.\n`
+    );
+  }
+
+  // Caso (b) e (c): `gh pr create` ou `gh pr merge` → verificar corpo
+  if (temSubcomando(subcomandos, ["pr", "create"]) || temSubcomando(subcomandos, ["pr", "merge"])) {
+    const corpoDoPR = extrairCorpoDoPR(segmento);
+
+    // Corpo ilegível (não consegue ler com segurança)
+    if (!corpoDoPR.legivel) {
+      if (corpoDoPR.tipo === "arquivo") {
+        bloqueia(
+          `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
+          `Razão: não consegui ler o arquivo de corpo do PR.\n\n` +
+          `Use --body "texto" ou --body-file <arquivo-legível>.\n`
+        );
+      } else if (corpoDoPR.tipo === "direto" && (corpoDoPR.conteudo.includes("$(") || corpoDoPR.conteudo.includes("`"))) {
+        bloqueia(
+          `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
+          `Razão: o corpo do PR contém substituição de comando (\\$(...) ou backticks), não consegui ler com segurança.\n\n` +
+          `Use --body "texto-plano" ou --body-file <arquivo> com o corpo já expandido.\n`
+        );
+      } else {
+        bloqueia(
+          `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
+          `Razão: o corpo do PR vem de editor interativo (sem --body ou --body-file).\n\n` +
+          `Se o corpo cita 'closes #N', a checagem não consegue ler.\n` +
+          `Use --body "texto" ou --body-file <arquivo> para incluir a informação de fechamento.\n`
+        );
+      }
+    }
+
+    // Corpo legível: verificar Issues citadas
+    const issues = extrairIssuesCitadas(corpoDoPR.conteudo || "");
+    for (const issue of issues) {
+      if (!temMarcadorEvidencia(issue)) {
+        bloqueia(
+          `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
+          `Razão: Issue #${issue} não tem comentário com a evidência de pronto.\n\n` +
+          `O critério de pronto deve ter sido rodado e colado em comentário.\n` +
+          `Use:\n` +
+          `  node scripts/fechar-issue.cjs ${issue} --comando "<seu-comando>" --saida "<saída-ou-arquivo>"\n\n` +
+          `Depois crie o PR com o corpo citando closes #${issue}.\n`
+        );
+      }
+    }
+  }
+}
+
+/**
+ * `exe` (já normalizado) é um prefixo que sabemos que só repassa o comando
+ * adiante, ou um wrapper que sabemos desempacotar? Usado só pela checagem
+ * de "wrapper desconhecido" (item 4) — o efeito de am prefixo/wrapper
+ * RECONHECIDO já foi resolvido por `pularPrefixos`/`desempacotarWrapper`, e
+ * não deve ganhar uma segunda chance aqui: se o mecanismo específico dele
+ * falhar (ou for mutado), a bateria tem que sentir, não ser socorrida por
+ * este retorno de segurança genérico.
+ */
+function ehPrefixoOuWrapperConhecido(exe) {
+  return (
+    exe === "gh" ||
+    exe === "eval" ||
+    exe === "pwsh" ||
+    exe === "powershell" ||
+    exe === "cmd" ||
+    PREFIXOS_QUE_PASSAM_ADIANTE.has(exe) ||
+    !!WRAPPERS_DE_COMANDO[exe]
+  );
+}
+
+/**
  * Aplica as checagens D15/D16 a UM segmento do comando (já separado por
- * `;`, `&&`, `||`, `|` via `segmentosComAspas`). Se o segmento não é `gh`
- * diretamente, mas é um wrapper (`bash -c`, etc.), recursiona na string
- * interna — que pode ela mesma ter vários segmentos encadeados.
+ * `;`, `&&`, `||`, `|`, `(`, `)`, `{`, `}` via `segmentosParaGate`).
+ *
+ * Ordem:
+ *   1. `gh` como comando efetivo — direto ou atrás de um prefixo que só
+ *      repassa (`env`, `nohup`, `timeout <dur>`, `xargs`, `X=1`, ...).
+ *   2. Wrapper que encapsula uma string (`eval`, `bash -c`, `pwsh -Command`
+ *      abreviado, `cmd /c`/`/k`) — recursiona no conteúdo interno, que pode
+ *      ele mesmo ter vários segmentos encadeados.
+ *   3. Wrapper DESCONHECIDO (nem `gh`, nem prefixo, nem wrapper dos itens
+ *      1/2): rede de segurança final — se a sequência não citada
+ *      `gh issue close`/`gh pr create`/`gh pr merge` aparece em qualquer
+ *      posição do segmento, trata como comando mesmo assim.
  */
 function processarSegmento(segmento) {
   const tokens = tokenizar(segmento);
   if (tokens.length === 0) return;
 
-  if (normalizarExecutavel(tokens[0]) === "gh") {
-    const subcomandos = tokens.slice(1);
-
-    // Caso (a): `gh issue close <n>` → exit 2
-    if (temSubcomando(subcomandos, ["issue", "close"])) {
-      bloqueia(
-        `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
-        `Razão: 'gh issue close' direto não registra a evidência de pronto.\n\n` +
-        `Use:\n` +
-        `  node scripts/fechar-issue.cjs <número> --comando "<seu-comando>" --saida "<saída-ou-arquivo>"\n\n` +
-        `O script registra o comentário com a evidência antes de fechar.\n`
-      );
-    }
-
-    // Caso (b) e (c): `gh pr create` ou `gh pr merge` → verificar corpo
-    if (temSubcomando(subcomandos, ["pr", "create"]) || temSubcomando(subcomandos, ["pr", "merge"])) {
-      const corpoDoPR = extrairCorpoDoPR(segmento);
-
-      // Corpo ilegível (não consegue ler com segurança)
-      if (!corpoDoPR.legivel) {
-        if (corpoDoPR.tipo === "arquivo") {
-          bloqueia(
-            `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
-            `Razão: não consegui ler o arquivo de corpo do PR.\n\n` +
-            `Use --body "texto" ou --body-file <arquivo-legível>.\n`
-          );
-        } else if (corpoDoPR.tipo === "direto" && (corpoDoPR.conteudo.includes("$(") || corpoDoPR.conteudo.includes("`"))) {
-          bloqueia(
-            `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
-            `Razão: o corpo do PR contém substituição de comando (\\$(...) ou backticks), não consegui ler com segurança.\n\n` +
-            `Use --body "texto-plano" ou --body-file <arquivo> com o corpo já expandido.\n`
-          );
-        } else {
-          bloqueia(
-            `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
-            `Razão: o corpo do PR vem de editor interativo (sem --body ou --body-file).\n\n` +
-            `Se o corpo cita 'closes #N', a checagem não consegue ler.\n` +
-            `Use --body "texto" ou --body-file <arquivo> para incluir a informação de fechamento.\n`
-          );
-        }
-      }
-
-      // Corpo legível: verificar Issues citadas
-      const issues = extrairIssuesCitadas(corpoDoPR.conteudo || "");
-      for (const issue of issues) {
-        if (!temMarcadorEvidencia(issue)) {
-          bloqueia(
-            `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
-            `Razão: Issue #${issue} não tem comentário com a evidência de pronto.\n\n` +
-            `O critério de pronto deve ter sido rodado e colado em comentário.\n` +
-            `Use:\n` +
-            `  node scripts/fechar-issue.cjs ${issue} --comando "<seu-comando>" --saida "<saída-ou-arquivo>"\n\n` +
-            `Depois crie o PR com o corpo citando closes #${issue}.\n`
-          );
-        }
-      }
-    }
+  const i = pularPrefixos(tokens);
+  if (i < tokens.length && normalizarExecutavel(tokens[i]) === "gh") {
+    verificarComandoGh(segmento, tokens.slice(i + 1));
     return;
   }
 
   const interno = desempacotarWrapper(segmento);
-  if (interno === null) return;
-
-  if (contemConstrucaoIlegivel(interno)) {
-    bloqueia(
-      `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
-      `Razão: comando encapsulado (bash -c/sh -c/pwsh -Command/cmd /c) contém variável ou ` +
-      `substituição de comando; não consigo ler o que roda dentro com segurança (ilegível).\n\n` +
-      `Rode o comando 'gh' diretamente, sem encapsular, ou expanda a variável antes de chamar.\n`
-    );
+  if (interno !== null) {
+    if (contemConstrucaoIlegivel(interno)) {
+      bloqueia(
+        `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
+        `Razão: comando encapsulado (eval/bash -c/sh -c/pwsh -Command/cmd /c) contém variável ou ` +
+        `substituição de comando; não consigo ler o que roda dentro com segurança (ilegível).\n\n` +
+        `Rode o comando 'gh' diretamente, sem encapsular, ou expanda a variável antes de chamar.\n`
+      );
+    }
+    for (const sub of segmentosParaGate(interno)) {
+      processarSegmento(sub);
+    }
+    return;
   }
 
-  for (const sub of segmentosComAspas(interno)) {
-    processarSegmento(sub);
+  const primeiro = tokens.length ? normalizarExecutavel(tokens[0]) : null;
+  if (primeiro !== null && !ehPrefixoOuWrapperConhecido(primeiro)) {
+    for (const padrao of [["gh", "issue", "close"], ["gh", "pr", "create"], ["gh", "pr", "merge"]]) {
+      const idx = indiceSequencia(tokens, padrao);
+      if (idx !== -1) {
+        verificarComandoGh(segmento, tokens.slice(idx + 1));
+        return;
+      }
+    }
   }
 }
 
@@ -349,7 +572,7 @@ function main() {
   const comando = (ev.tool_input && ev.tool_input.command) || "";
   if (!comando) process.exit(0);
 
-  for (const segmento of segmentosComAspas(comando)) {
+  for (const segmento of segmentosParaGate(comando)) {
     processarSegmento(segmento);
   }
 
