@@ -12,38 +12,37 @@ interrompido, agente que travou, sessão fechada no meio.
 
 ## 1. Listar o que existe
 
-```
-git worktree list
-```
-
-Para cada worktree que não é o repositório principal, entre nele e confira
-o estado:
+Use o script que entende a diferença entre worktree de verdade e diretório
+órfão:
 
 ```
-git -C <caminho> status --porcelain
+node scripts/limpar-worktrees.cjs
 ```
 
-Separe em dois grupos: **limpo** (porcelain vazio, nada para commitar) e
-**com alteração pendente** (qualquer coisa na saída, staged ou não).
+O script lista todos os worktrees registrados e do disco, classifica cada um
+como:
+
+- **limpo**: pode ser removido (sem `.git` próprio ou sem alterações)
+- **sujo**: tem alterações — nunca remover sozinho
+- **órfão**: diretório sem `.git` próprio (responde pelo pai)
+
+**Por que `git -C <dir> status --porcelain` não é suficiente:** quando `<dir>`
+não tem `.git` próprio, o git responde pelo repositório pai, mascarando que o
+diretório é órfão (Issue #142). O script confere, por `realpath`, se o
+`toplevel` lido DE DENTRO do diretório bate com o próprio diretório.
 
 ## 2. Remover só o que está limpo
 
-Worktree limpo remove **sem perguntar**:
+Worktree classificado como **limpo** remove sem perguntar:
 
 ```
-git worktree remove <caminho>
+node scripts/limpar-worktrees.cjs --remover
 ```
 
-Worktree com alteração pendente **nunca é removido sozinho** — mostre ao
-usuário **o que há dentro** (`git -C <caminho> status --porcelain` e, se
-ajudar a decidir, `git -C <caminho> diff --stat`) e deixe a decisão com
-ele: recuperar, descartar, ou deixar por enquanto.
+Worktree **sujo** ou **órfão** nunca é removido — o script não toca neles.
 
-Depois de remover, sempre:
-
-```
-git worktree prune
-```
+**Worktree com alteração pendente (sujo)**: mostre ao usuário o que há
+dentro e deixe a decisão — recuperar, descartar, ou deixar por enquanto.
 
 ## 3. A branch, que sobrevive ao worktree
 
