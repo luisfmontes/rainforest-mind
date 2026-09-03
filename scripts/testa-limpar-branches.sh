@@ -209,10 +209,25 @@ STUB
 # classificacao tivesse quebrado — foi o que aconteceu na primeira tentativa.
 roda_gh()    { ( cd "$SBP/local" && PATH="$SBP/bin:$SEM_GH_PATH" GH_LOG="${GH_LOG:-}" CLAUDE_PROJECT_DIR="$SBP/local" node "$SRC/scripts/limpar-branches.cjs" "$@" 2>&1 ); }
 roda_sem_gh(){ ( cd "$SBP/local" && PATH="$SEM_GH_PATH"          CLAUDE_PROJECT_DIR="$SBP/local" node "$SRC/scripts/limpar-branches.cjs" "$@" 2>&1 ); }
-alvos_gh()   { roda_gh --sem-fetch --json "$@" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.stringify(JSON.parse(d).alvos)))"; }
-classe_gh()  { roda_gh --sem-fetch --json | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const b=JSON.parse(d).refs.find(x=>x.nome===process.argv[1]);console.log(b?b.classe:'(ausente)')})" "$1"; }
+# Issue #161: quem vai fazer JSON.parse le SO o stdout. As duas funcoes acima
+# capturam 2>&1 porque as assercoes de texto precisam ver a mensagem de erro; mas
+# em Node 24 o fallback 'shell: true' do limpar-branches.cjs emite DEP0190 no
+# stderr, e com 2>&1 o aviso entrava no meio do JSON (SyntaxError na posicao
+# 1193). O CI pinava Node 22 e nunca via. Dado por stdout, diagnostico por stderr.
+roda_gh_json()     { ( cd "$SBP/local" && PATH="$SBP/bin:$SEM_GH_PATH" GH_LOG="${GH_LOG:-}" CLAUDE_PROJECT_DIR="$SBP/local" node "$SRC/scripts/limpar-branches.cjs" "$@" 2>/dev/null ); }
+roda_sem_gh_json() { ( cd "$SBP/local" && PATH="$SEM_GH_PATH"          CLAUDE_PROJECT_DIR="$SBP/local" node "$SRC/scripts/limpar-branches.cjs" "$@" 2>/dev/null ); }
+alvos_gh()   { roda_gh_json --sem-fetch --json "$@" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.stringify(JSON.parse(d).alvos)))"; }
+classe_gh()  { roda_gh_json --sem-fetch --json | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const b=JSON.parse(d).refs.find(x=>x.nome===process.argv[1]);console.log(b?b.classe:'(ausente)')})" "$1"; }
 
 tem "squash-vivo vira mergeada-por-squash (nao viva)" "$(classe_gh squash-vivo)" "mergeada-por-squash"
+# Issue #161 (P3): injeta ruido no stderr do proprio node sob teste. Se alguem
+# voltar a capturar 2>&1 antes do JSON.parse, este caso morre — e o DEP0190 do
+# Node 24 e so o primeiro aviso que o runtime vai inventar.
+RUIDO="$SBP/ruido.cjs"
+cat > "$RUIDO" <<'JS'
+process.stderr.write("DeprecationWarning: ruido de proposito (Issue #161)\n");
+JS
+tem "ruido no stderr do node nao contamina o JSON (Issue #161)" "$(NODE_OPTIONS="--require $(cygpath -m "$RUIDO" 2>/dev/null || printf '%s' "$RUIDO")" classe_gh squash-vivo)" "mergeada-por-squash"
 S7="$(roda_gh --sem-fetch)"
 tem "o nome da classe aparece na saida" "$S7" "mergeada-por-squash"
 
@@ -231,7 +246,7 @@ echo "== 9. gh indisponivel: a candidata volta a ser viva, exit continua 0 =="
 # Simula gh ausente SO dentro deste bloco, com um PATH restrito montado nas proprias
 # funcoes roda_sem_gh/classe_sem_gh acima — nunca mexe no PATH da maquina.
 montar_squash_vivo
-classe_sem_gh() { roda_sem_gh --sem-fetch --json | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const b=JSON.parse(d).refs.find(x=>x.nome===process.argv[1]);console.log(b?b.classe:'(ausente)')})" "$1"; }
+classe_sem_gh() { roda_sem_gh_json --sem-fetch --json | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const b=JSON.parse(d).refs.find(x=>x.nome===process.argv[1]);console.log(b?b.classe:'(ausente)')})" "$1"; }
 tem "sem gh, squash-vivo volta a classificar como viva" "$(classe_sem_gh squash-vivo)" "viva"
 S10="$(roda_sem_gh --sem-fetch)"
 tem "e avisa que a checagem de PR nao rodou"          "$S10" "gh pr list"
