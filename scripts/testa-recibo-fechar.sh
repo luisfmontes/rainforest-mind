@@ -31,6 +31,11 @@ trap 'rm -rf "$S"' EXIT
 mkdir -p "$S/docs/rainforest/design" "$S/docs/rainforest/planos" \
          "$S/docs/rainforest/portoes" "$S/docs/rainforest/estado"
 
+# R1: Copia os oráculos para a sandbox (portoes.cjs roda com cwd: RAIZ da sandbox)
+mkdir -p "$S/test/fixtures/portoes/scripts"
+cp "$FIX/scripts/sempre-ok.cjs" "$S/test/fixtures/portoes/scripts/"
+cp "$FIX/scripts/sempre-falha.cjs" "$S/test/fixtures/portoes/scripts/"
+
 # Inicializar sandbox como repo git para permitir git diff no revisar
 (cd "$S" && git init >/dev/null 2>&1 && \
  git config user.email "test@example" >/dev/null 2>&1 && \
@@ -171,6 +176,37 @@ afirma "F5. fechar RECUSA quando portao CHECK falha (exit != 0)" \
   "$([ "$C" -ne 0 ] && echo 1 || echo 0)"
 afirma "F5b. nenhum recibo foi gravado quando portao reprova" \
   "$([ ! -f "$S/.rainforest/colheita/com-portao-falho-recibo.json" ] && echo 1 || echo 0)"
+
+echo "== F6: CHECK com sempre-ok.cjs passa e grava recibo com portoes =="
+novo_fluxo com-portao-ok
+echo "conteudo" > "$S/docs/rainforest/arquivo-portao-ok.txt"
+(cd "$S" && git add "docs/rainforest/arquivo-portao-ok.txt" >/dev/null 2>&1 && \
+ git commit -m "arquivo" >/dev/null 2>&1)
+cat > "$S/docs/rainforest/estado/com-portao-ok.json" <<'FIM'
+{
+  "slug": "com-portao-ok",
+  "design": {"status": "aprovado"},
+  "plano": {"status": "ok", "entregaveis": ["docs/rainforest/arquivo-portao-ok.txt"]},
+  "executar": {"status": "ok"},
+  "revisar": {"status": "ok"},
+  "verificar": {"status": "ok"}
+}
+FIM
+cat > "$S/docs/rainforest/portoes/com-portao-ok.md" <<FIM
+# Portões: sandbox com CHECK que passa
+
+- [ ] P1: o verificador passa
+  CHECK: node test/fixtures/portoes/scripts/sempre-ok.cjs
+  ESPERA: VERIFICACAO PASSOU
+  EVIDENCIA: pendente
+FIM
+prepara_ate_verificar com-portao-ok
+SAIDA="$(est marcar --slug com-portao-ok --estagio fechar --status ok \
+  --json '{"nao_provado":["revisao visual"]}')"; C=$?
+afirma "F6. fechar com portao sempre-ok EXIT 0" \
+  "$([ "$C" -eq 0 ] && echo 1 || echo 0)"
+afirma "F6b. recibo foi gravado em .rainforest/colheita/" \
+  "$([ -f "$S/.rainforest/colheita/com-portao-ok-recibo.json" ] && echo 1 || echo 0)"
 
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ] || exit 1

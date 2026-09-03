@@ -73,5 +73,10 @@ afirma "T1c3. exit 2 para slug com contrabarra" "$([ "$C" -eq 2 ] && echo 1 || e
 SAIDA="$(rec mostrar "slug/../travessia" 2>&1)"; C=$?
 afirma "T1c4. exit 2 para slug com .." "$([ "$C" -eq 2 ] && echo 1 || echo 0)"
 
+SAIDA="$(rec mostrar "x:ads" 2>&1)"; C=$?
+afirma "T1c5. exit 2 para slug com dois-pontos" "$([ "$C" -eq 2 ] && echo 1 || echo 0)"
+afirma "T1c6. stderr menciona 'slug invalido'" \
+  "$(printf '%s' "$SAIDA" | grep -q "slug invalido" && echo 1 || echo 0)"
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ] || exit 1
