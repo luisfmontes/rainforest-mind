@@ -71,6 +71,21 @@ function resolverRaiz() {
 }
 
 /**
+ * Normaliza um caminho para comparação robusta entre separadores
+ * (`/` vs `\`) e variação de caixa de letra de drive no Windows.
+ * Prefere `realpath` nativo (resolve symlink e caixa real do disco);
+ * cai para `path.resolve` + lowercase (no Windows) se o caminho não existir.
+ */
+function normalizarCaminho(p) {
+  try {
+    return fs.realpathSync.native(p);
+  } catch {
+    const resolvido = path.resolve(p);
+    return process.platform === "win32" ? resolvido.toLowerCase() : resolvido;
+  }
+}
+
+/**
  * Lista os worktrees registrados em `git worktree list --porcelain`.
  * Retorna array de caminhos (sem a raiz principal, que é o repositório em si).
  */
@@ -82,13 +97,15 @@ function listarWorktreesRegistrados(raiz) {
       stdio: ["ignore", "pipe", "ignore"],
     });
 
+    const raizNormalizada = normalizarCaminho(raiz);
     const caminhos = [];
     const linhas = output.split("\n");
     for (const linha of linhas) {
       if (linha.startsWith("worktree ")) {
         const caminho = linha.slice("worktree ".length).trim();
-        // Nunca inclui a raiz principal
-        if (caminho !== raiz) {
+        // Nunca inclui a raiz principal (compara normalizado, não string crua:
+        // git porcelain sempre usa "/", --raiz pode chegar com "\")
+        if (normalizarCaminho(caminho) !== raizNormalizada) {
           caminhos.push(caminho);
         }
       }

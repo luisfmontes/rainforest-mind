@@ -44,6 +44,14 @@ git -C "$R" config commit.gpgsign false
 echo v1 > "$R/a.txt"; git -C "$R" add a.txt; git -C "$R" commit -qm base
 WT="$RAIZ/wt"; git -C "$R" worktree add -q -b trabalho "$WT" >/dev/null 2>&1
 FORA="$RAIZ/sem-git"; mkdir -p "$FORA"
+# Tarefa 2 (Rev3): um segundo repositorio de VERDADE (nao `git worktree add` —
+# esse tem gitDir com "/worktrees/" e o gate o ignora de proposito, linha
+# "so o dono escreve la"). Simula o worktree do fluxo: repo proprio, raiz
+# diferente da do evento, para provar que a mensagem cita o caminho EFETIVO.
+WT2="$RAIZ/wt-fluxo"; git init -q "$WT2"
+git -C "$WT2" config user.email t@t; git -C "$WT2" config user.name t
+git -C "$WT2" config commit.gpgsign false
+echo v1 > "$WT2/a.txt"; git -C "$WT2" add a.txt; git -C "$WT2" commit -qm base
 mkdir -p "$R/sub"  # Tarefa 2: criar subdir para teste de cd efetivo
 
 esc() { printf '%s' "$1" | sed 's|\\|/|g'; }
@@ -110,6 +118,23 @@ gate "git add -A fora de repo git"                0 "$(b 'git add -A' "$(esc "$F
 gate "ferramenta que nao e Bash (Write)"          0 "$(printf '{"cwd":"%s","tool_name":"Write","tool_input":{"file_path":"%s"}}' "$(esc "$R")" "$(esc "$R/x.txt")")"
 gate "payload vazio nunca trava"                  0 "{}"
 gate "payload ilegivel nunca trava"               0 "isto nao e json"
+
+echo
+echo "== Tarefa 2 (Rev3): a mensagem de bloqueio cita o caminho EFETIVO lido, nao o cwd do evento =="
+msg2=$(printf '%s' "$(b 'cd '"$(esc "$WT2")"' && git add -A' "$(esc "$R")")" | node "$GATE" 2>&1); rc2=$?
+if [ "$rc2" = 2 ]; then ok=$((ok+1)); echo "  ok   cd <worktree-do-fluxo> && git add -A (cwd no principal) barra (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA esperava exit 2, veio $rc2"; printf '%s' "$msg2" | sed 's/^/         /' | head -8; fi
+if printf '%s' "$msg2" | grep -qF -- "$WT2"; then
+  ok=$((ok+1)); echo "  ok   stderr cita o caminho do worktree EFETIVO ($WT2)"
+else
+  falhou=$((falhou+1)); echo "  FALHA stderr NAO cita o caminho efetivo"
+  printf '%s' "$msg2" | sed 's/^/         /' | head -8
+fi
+if printf '%s' "$msg2" | grep -qF -- "Repo: $R"; then
+  falhou=$((falhou+1)); echo "  FALHA stderr cita o cwd do EVENTO ($R) como Repo, em vez do efetivo"
+else
+  ok=$((ok+1)); echo "  ok   stderr NAO cita o cwd do evento como Repo"
+fi
 
 echo
 echo "== saidas de emergencia =="
