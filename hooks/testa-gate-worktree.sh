@@ -132,6 +132,7 @@ echo "== mutacao: prova que a inspeção funciona (Issue #88) =="
 # Aqui a mutacao troca o CORPO da funcao por `return []` — JS valido, funcao viva,
 # protecao neutralizada. E a assercao inverte: o mutante tem de sair com exit 0
 # (deixou passar). Exit != 0 agora e FALHA, porque so pode significar crash.
+cp -r "$SRC/hooks/lib" "$RAIZ/lib"
 GATE_MUTADO="$RAIZ/gate-sem-escrita.cjs"
 node -e '
 const fs = require("fs");
