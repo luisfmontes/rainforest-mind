@@ -128,10 +128,10 @@ informa o hash, a integração confere com `conferir-entrega.cjs`.
 Elaboração: references/regra-11.md
 
 **12. Entrega de agente se valida na saída real.** Agente reporta o que pretendia,
-não o que aconteceu. Validar **executando o artefato real e olhando a saída** —
-suíte verde e relato não são evidência. O critério de sucesso vai no briefing e é
-**falsificável**. **Nenhum identificador do relato entra num comando** — re-derive
-de `git`/`gh`. ✅ sem comando e saída colados = **não feito**.
+não o que houve. Validar **rodando o artefato real e lendo a saída** — suíte verde
+e relato não provam. Critério vai no briefing, **falsificável**. **Nenhum
+identificador do relato entra num comando** — re-derive de `git`/`gh`. ✅ sem
+comando e saída colados = **não feito**; **exit ≠ 0 nunca é sucesso**.
 <!-- detalhe -->
 Elaboração: references/regra-12.md
 
