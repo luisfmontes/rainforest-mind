@@ -35,10 +35,112 @@
     "em": "2026-09-03"
   },
   "executar": {
-    "status": "pendente"
+    "status": "parcial",
+    "catraca_mutacao": "2026-09-03",
+    "tarefas_ok": 14,
+    "tarefas": 14,
+    "comando": "for f in hooks/testa-cwd-efetivo.sh hooks/testa-gate-staging-total.sh hooks/testa-portaria.sh scripts/testa-limpar-worktrees.sh scripts/testa-conferir-entrega.sh hooks/testa-gate-worktree.sh scripts/testa-backup-gravar.sh scripts/testa-backup-conferir.sh scripts/testa-backup-estado.sh scripts/testa-fechar-issue.sh hooks/testa-gate-fechar-issue.sh hooks/testa-config.sh; do bash $f >/dev/null 2>&1; echo \"$f exit=$?\"; done (+ scripts/testa-saude.sh na mutacao da T10: 59 ok)",
+    "saida": "hooks/testa-cwd-efetivo.sh exit=0\nhooks/testa-gate-staging-total.sh exit=0\nhooks/testa-portaria.sh exit=0\nscripts/testa-limpar-worktrees.sh exit=0\nscripts/testa-conferir-entrega.sh exit=0\nhooks/testa-gate-worktree.sh exit=0\nscripts/testa-backup-gravar.sh exit=0\nscripts/testa-backup-conferir.sh exit=0\nscripts/testa-backup-estado.sh exit=0\nscripts/testa-fechar-issue.sh exit=1\nhooks/testa-gate-fechar-issue.sh exit=0\nhooks/testa-config.sh exit=0",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "til no meio do caminho 8.3 vira incerto e o commit legitimo no worktree e barrado"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "cd <worktree> && git add -A com ev.cwd no principal; sem o cwd efetivo o gate decide pelo principal"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "dois worktrees do mesmo repo, um com fluxo aberto; a funcao que lista outros worktrees devolve [] e o caso (c) cai"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "subdiretorio sem .git ao lado de worktree real; com a classe orfao virando limpo o script o trataria como removivel"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "commit que apaga 25 arquivos fora do --escopo; com a comparacao desligada a entrega aprova"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "porcelain-antes com BOM e primeira linha ` M`: com o trim do conteudo inteiro (lado arquivo) ou do stdout do git (lado agora) o caminho perde a primeira letra e a checagem 4 reprova"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "codex exec --yolo de subagente fora de worktree; com a lista sem codex o gate libera"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "destino com 32 zips antigos; rotacao desligada deixa 33"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "entregavel editado com o mesmo tamanho; conferir sem comparar sha256 aprova"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "vermelho",
+        "fixture": "RFM_BACKUP_DESTINO sandbox com zip de 5 dias; com a checagem de idade desligada o /saude reporta ok"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "RFM_BACKUP_DESTINO sandbox; sem a chamada ao backup.cjs a pasta fica vazia"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "stub gh cujo issue comment falha; sem a ordem certa o script fecha a Issue mesmo assim"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "payload gh issue close direto; com o if do matchClose desligado o hook libera"
+      },
+      {
+        "tarefa": 14,
+        "resultado": "vermelho",
+        "fixture": "stub devolve corpo sem a secao de criterio; sem a checagem o script comenta e fecha"
+      }
+    ],
+    "em": "2026-09-03",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-03"
+    }
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "8fc3f6630ffd4d24ef5e2dfdc1b83e0f0ac10193",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-09-03-guardas.json"
+      ]
+    },
+    "achados": 7,
+    "base": "408af94de7c22492b0815ebed19b4072426a7976",
+    "head": "8fc3f6630ffd4d24ef5e2dfdc1b83e0f0ac10193",
+    "lista": [
+      "F1 cwd-efetivo: git -C repetido usa o primeiro, o git usa o ultimo",
+      "F2 cwd-efetivo: separador dentro de aspas corrompe o cd",
+      "F3 gate-fechar-issue: gh.exe/gh.cmd/\"gh\" escapam do regex",
+      "F4 gate-fechar-issue: --body com $( ) captura corpo truncado e libera",
+      "F5 testa-gate-fechar-issue: trava anti-gh-real em subshell nao aborta",
+      "F6 backup-estado.ps1: caminho com usuario vai para ERROS.md versionado",
+      "F7 fechar-issue: --saida-arquivo sem confinamento ao repositorio"
+    ],
+    "em": "2026-09-03",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
