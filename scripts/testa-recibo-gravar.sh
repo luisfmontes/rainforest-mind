@@ -204,6 +204,22 @@ afirma "T2h2. stderr contem 'caminho UNC'" \
   "$(printf '%s' "$SAIDA" | grep -q "caminho UNC" && echo 1 || echo 0)"
 afirma "T2h3. executou em menos de 3 segundos (sem tentativa de rede)" \
   "$([ "$FIM_TEMPO" -lt 3 ] && echo 1 || echo 0)"
+# Rodada 2 do revisar: o Windows normaliza separador misto (`\/host`, `/\host`)
+# para UNC antes de resolver. A cerca tem de pegar qualquer par de separadores.
+cat > "$S/docs/rainforest/estado/com-unc-misto.json" <<FIM
+{
+  "slug": "com-unc-misto",
+  "plano": {
+    "entregaveis": ["\\\\/host-inexistente/share/y"]
+  }
+}
+FIM
+INICIO="$SECONDS"
+SAIDA="$(rec gravar --slug com-unc-misto --nao-provado '["algo"]')"; C=$?
+FIM_TEMPO=$((SECONDS - INICIO))
+afirma "T2h4. UNC com separador misto tambem sai 2 com 'caminho UNC'" \
+  "$([ "$C" -eq 2 ] && printf '%s' "$SAIDA" | grep -q "caminho UNC" && echo 1 || echo 0)"
+afirma "T2h5. e em menos de 3 segundos" "$([ "$FIM_TEMPO" -lt 3 ] && echo 1 || echo 0)"
 
 echo "== T2i. recibo anterior somente-leitura: exit 2, RECUSADO, sem stack trace, sem .tmp =="
 mkdir -p "$S/docs/arquivo-i"
