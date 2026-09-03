@@ -44,6 +44,7 @@ git -C "$R" config commit.gpgsign false
 echo v1 > "$R/a.txt"; git -C "$R" add a.txt; git -C "$R" commit -qm base
 WT="$RAIZ/wt"; git -C "$R" worktree add -q -b trabalho "$WT" >/dev/null 2>&1
 FORA="$RAIZ/sem-git"; mkdir -p "$FORA"
+mkdir -p "$R/sub"  # Tarefa 2: criar subdir para teste de cd efetivo
 
 esc() { printf '%s' "$1" | sed 's|\\|/|g'; }
 # payload da JANELA PRINCIPAL (sem agent_id) — o caso dos dois incidentes
@@ -64,6 +65,7 @@ gate "git commit --all"                               2 "$(b 'git commit --all')
 gate "encadeado: cd x && git add -A"                  2 "$(b 'cd sub && git add -A')"
 gate "git -C <repo> add -A (cwd em outro lugar)"      2 "$(printf '{"cwd":"%s","tool_name":"Bash","tool_input":{"command":"git -C %s add -A"}}' "$(esc "$FORA")" "$(esc "$R")")"
 gate "SUBAGENTE: git add -A no principal"             2 "$(ba 'git add -A')"
+gate "D2: cd <worktree> && git add -A (cwd no principal, WT limpo)" 0 "$(b 'cd '"$(esc "$WT")"' && git add -A' "$(esc "$R")")"
 
 echo
 echo "== a ajuda faz parte do mecanismo: a mensagem MOSTRA o que varreria? =="
