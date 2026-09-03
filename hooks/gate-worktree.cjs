@@ -59,7 +59,7 @@ const { execFileSync } = require("node:child_process");
 const os = require("node:os");
 const fs = require("node:fs");
 const path = require("node:path");
-const { resolverCwdEfetivo, toplevelConfinado, CD, extrairUltimoDirGit, contemSubshellOuGrupo, segmentosComAspas, SEPARADORES } = require(path.join(__dirname, "lib", "cwd-efetivo.cjs"));
+const { cwdPorSegmento, toplevelConfinado, CD, extrairUltimoDirGit, contemSubshellOuGrupo, segmentosComAspas, SEPARADORES } = require(path.join(__dirname, "lib", "cwd-efetivo.cjs"));
 const CLIS_QUE_ESCREVEM = require(path.join(__dirname, "lib", "clis-que-escrevem.cjs"));
 
 const FERRAMENTAS_DE_ESCRITA = new Set(["Write", "Edit", "MultiEdit", "NotebookEdit"]);
@@ -318,6 +318,17 @@ function bloqueia(motivo, toplevel, agente) {
  *
  * Devolve `{dir, verbo}` por alvo: quem bloqueia precisa nomear o verbo na mensagem,
  * e o verbo e do SEGMENTO que casou, nao da linha inteira.
+ *
+ * NAO trocada por `cwdPorSegmento` (rodada 5, lote 3): esta funcao ja acerta o cwd
+ * POR SEGMENTO — e exatamente o H1 que motivou `cwdPorSegmento` nascer, so que aqui
+ * ja existia desde a extracao original. O que falta (H2: `pushd`/`popd`/`env -C`)
+ * nao tem caso na bateria para o ramo VERBOS_QUE_MEXEM (so para o ramo de CLI e
+ * para `gate-staging-total.cjs`), e trocar esta travessia por `cwdPorSegmento`
+ * quebraria o contrato de `{dir, verbo}` por alvo (que carrega MULTIPLOS alvos por
+ * segmento quando incerto, e o `casa()` decide por cwd+disco) sem ganho medido —
+ * duplicar a abstracao por simetria, sem um caso vermelho que peça a troca, e o
+ * refactor escondido que a regra (d) proibe. Fica registrado para quando um H
+ * futuro precisar de pushd/env -C tambem no ramo git-que-mexe.
  */
 function alvosBash(comando, cwdInicial, casa = (seg) => {
   const s = subcomandoGit(seg);
@@ -426,45 +437,113 @@ function posicionaisApos(toks, i) {
   return toks.slice(i + 1).filter((t) => !t.v.startsWith("-"));
 }
 
+// Wrappers que REPASSAM o comando adiante, na MESMA posicao de comando — o
+// nome da CLI aparece DEPOIS deles. H3 (rodada 5, lote 3, 2026-09-03): antes
+// disto, `procuraCLI` casava o nome em QUALQUER posicao do segmento (so
+// pulando token citado em posicao de argumento), e `grep -rn claude .` virava
+// falso positivo — "claude" ali e um PADRAO DE BUSCA, argumento do grep,
+// nunca um comando.
+const WRAPPERS_QUE_REPASSAM = new Set([
+  "env", "command", "exec", "nohup", "nice", "timeout", "xargs", "sudo", "time",
+]);
+
 /**
- * Procura por CLI externa que escreve (codex, gemini, claude, aider, cursor, copilot).
- * Retorna o nome da CLI encontrada, ou null.
+ * Acha o INDICE do token que e a posicao de comando de um segmento
+ * tokenizado, pulando os wrappers conhecidos (e os argumentos deles que
+ * consomem valor). `null` se o segmento acaba dentro dos proprios wrappers
+ * (`env` sozinho, sem comando depois).
  *
- * Token citado so e IGNORADO em posicao de ARGUMENTO (`echo "codex"`): ali e
- * texto. Em posicao de COMANDO — primeiro token de cada segmento separado por
- * `;`, `&&`, `||`, `|` — um token citado (`"codex" exec --yolo`) e comando de
- * verdade disfarcado de string, e ate 2026-09-03 passava batido porque o
- * `if (tok.q) continue` pulava TODO token citado, sem olhar a posicao.
+ * `env`: pula `NOME=valor` (um ou mais) e `-C <dir>`/`--chdir=<dir>`.
+ * `nice`: pula `-n <N>` (ou `-N` colado).
+ * `timeout`: pula as flags (`-s`, `--signal=...`) e a duracao posicional.
+ * Os demais (`command`, `exec`, `nohup`, `xargs`, `sudo`, `time`) so pulam o
+ * proprio nome — o comando de verdade e o token seguinte.
+ */
+function posicaoDeComando(toks) {
+  let i = 0;
+  while (i < toks.length && !toks[i].q && WRAPPERS_QUE_REPASSAM.has(toks[i].v)) {
+    const wrapper = toks[i].v;
+    i += 1;
+    if (wrapper === "env") {
+      while (i < toks.length && !toks[i].q && /^[A-Za-z_][A-Za-z0-9_]*=/.test(toks[i].v)) i += 1;
+      while (i < toks.length && !toks[i].q && toks[i].v === "-C") i += 2;
+      while (i < toks.length && !toks[i].q && /^--chdir(=.*)?$/.test(toks[i].v)) {
+        i += toks[i].v.includes("=") ? 1 : 2;
+      }
+    } else if (wrapper === "nice") {
+      if (i < toks.length && !toks[i].q && toks[i].v === "-n") i += 2;
+      else if (i < toks.length && !toks[i].q && /^-n\d+$/.test(toks[i].v)) i += 1;
+    } else if (wrapper === "timeout") {
+      while (i < toks.length && !toks[i].q && toks[i].v.startsWith("-")) i += 1;
+      if (i < toks.length) i += 1; // a duracao
+    }
+  }
+  return i < toks.length ? i : null;
+}
+
+/**
+ * Acha CLI(s) numa string de comando ja isolada — reusado pela recursao de
+ * `eval`/`bash -c` em `procuraCLI`. Conteudo com `$(`, crase ou `$VAR` nao da
+ * pra resolver estaticamente (o script dentro do eval pode rodar QUALQUER
+ * coisa): marca INCERTO em vez de so olhar se um nome conhecido aparece.
+ */
+function achadasEmString(str, clis) {
+  if (/[$`]/.test(str)) return [{ nome: "?", incerto: true }];
+  return procuraCLI(str, clis);
+}
+
+/**
+ * Procura por CLI externa que escreve (codex, gemini, claude, aider, cursor,
+ * copilot), em POSICAO DE COMANDO — primeiro token do segmento, ou o
+ * primeiro token depois de um wrapper conhecido que repassa o comando
+ * adiante (`env`, `command`, `exec`, `nohup`, `nice`, `timeout`, `xargs`,
+ * `sudo`, `time`). Retorna `[{nome, indiceSegmento, incerto?}]` — um item
+ * por achado, na ordem dos segmentos.
  *
  * Segmentacao usa `segmentosComAspas` (respeita aspas), nao `comando.split`
  * cru: `echo "abc ; codex exec --yolo"` tem um `;` DENTRO da string, que o
  * split ingenuo tratava como separador de verdade e criava um segmento
  * `codex exec --yolo"` fantasma — falso positivo num `echo` de texto.
  *
- * `$'codex'`/`$"codex"` (ANSI-C / locale quoting): o bash expande para o
+ * Token citado em posicao de COMANDO continua contando (R2): `"codex" exec
+ * --yolo` e comando de verdade disfarcado de string.
+ *
+ * `$'codex'`/`$"codex"` (ANSI-C / locale quoting, A4): o bash expande para o
  * literal `codex`, mas o `$` fica FORA da aspa em `tokensComAspas` e gruda no
- * valor (`$codex`), escapando da lista. Em posicao de COMANDO, um token
- * citado cujo valor comeca com `$` perde o `$` — só ali, nunca em posicao de
- * argumento, e nunca quando o token INTEIRO nao veio de aspa nenhuma (um
- * `$VAR` sem aspas continua incerto de proposito, nao vira nome de CLI).
+ * valor (`$codex`), escapando da lista. Na posicao de comando, um token
+ * citado cujo valor comeca com `$` perde o `$`.
+ *
+ * `eval "..."`/`bash -c "..."` (H3): o comando de verdade esta DENTRO da
+ * string citada — recursiona `achadasEmString` sobre o conteudo, no MESMO
+ * `indiceSegmento` (mesmo cwd do segmento que contem o `eval`/`bash -c`).
  */
 function procuraCLI(comando, clis) {
   const segmentos = segmentosComAspas(comando);
-  for (const seg of segmentos) {
+  const achadas = [];
+  segmentos.forEach((seg, indiceSegmento) => {
     const toks = tokensComAspas(seg);
-    for (let i = 0; i < toks.length; i += 1) {
-      const tok = toks[i];
-      if (tok.q && i !== 0) continue; // citado em posicao de argumento: ignora
-      let v = tok.v;
-      if (i === 0 && tok.q && v.startsWith("$")) v = v.slice(1);
-      // Extrair nome do token, ignorando caminho e extensão .exe
-      const nome = v.split(/[\\/]/).pop().replace(/\.exe$/, "");
-      if (clis.includes(nome)) {
-        return nome;
+    const i = posicaoDeComando(toks);
+    if (i === null) return;
+    const tok = toks[i];
+    let v = tok.v;
+    if (tok.q && v.startsWith("$")) v = v.slice(1); // $'codex' (A4)
+    const nome = v.split(/[\\/]/).pop().replace(/\.exe$/, "");
+
+    if (nome === "eval" && toks[i + 1]) {
+      for (const a of achadasEmString(toks[i + 1].v, clis)) achadas.push({ ...a, indiceSegmento });
+      return;
+    }
+    if (nome === "bash") {
+      const idxC = toks.findIndex((t, idx) => idx > i && !t.q && t.v === "-c");
+      if (idxC !== -1 && toks[idxC + 1]) {
+        for (const a of achadasEmString(toks[idxC + 1].v, clis)) achadas.push({ ...a, indiceSegmento });
+        return;
       }
     }
-  }
-  return null;
+
+    if (clis.includes(nome)) achadas.push({ nome, indiceSegmento });
+  });
+  return achadas;
 }
 
 /**
@@ -703,33 +782,49 @@ function main() {
         alvos = alvosEscrita.map((a) => a.dir);
         motivo = `Escrita via Bash (redirecionamento ou ferramenta)`;
       } else {
-        // Procurar por CLI externa que escreve
-        const cli = procuraCLI(entrada.command, CLIS_QUE_ESCREVEM);
-        if (cli) {
-          const cwdEfetivo = resolverCwdEfetivo(entrada.command, cwd);
-          if (cwdEfetivo.incerto) {
-            // `cd` que nao resolve (variavel, subshell, `cd -`) pode levar a
-            // QUALQUER diretorio, inclusive o principal: `cd $(pwd)/../principal
-            // && codex exec --yolo` de dentro do worktree fica incerto, o cwd
-            // efetivo cai de volta no proprio worktree (legitimo) e o gate
-            // liberava. Mesmo espirito conservador do `alvosBash` (que soma o
-            // cwdInicial aos alvos quando incerto), mas aqui somar nao basta:
-            // o destino em si e desconhecido, entao bloqueia direto, sem
-            // passar pela classificacao de worktree que depende do proprio
-            // cwd que nao da pra confiar.
-            if (!ehScratchpad(cwd)) {
-              const estadoAqui = estadoDoRepo(cwd);
-              if (estadoAqui && !fs.existsSync(path.join(estadoAqui.toplevel, ".rainforest-gate-off"))) {
+        // Procurar por CLI externa que escreve. H1 (rodada 5): cada CLI
+        // achada tem o cwd do PROPRIO segmento (`cwdPorSegmento`), nao o cwd
+        // FINAL da linha inteira (`resolverCwdEfetivo` antigo) — e o que
+        // fecha `codex exec --yolo && cd <worktree>` rodado no principal: o
+        // `codex` roda no principal, mas o cwd final (depois do `cd`) e o
+        // worktree, e o gate liberava lendo o lugar errado. Mais de uma CLI
+        // na mesma linha, cada uma com o seu proprio cwd — bloqueia na
+        // PRIMEIRA que estiver fora de worktree (bloqueia() sai o processo).
+        const achadas = procuraCLI(entrada.command, CLIS_QUE_ESCREVEM);
+        if (achadas.length) {
+          const porSegmento = cwdPorSegmento(entrada.command, cwd);
+          for (const achado of achadas) {
+            const doSegmento = porSegmento[achado.indiceSegmento] || { cwd, incerto: true };
+            const incerto = achado.incerto || doSegmento.incerto;
+            if (incerto) {
+              // `cd` que nao resolve (variavel, subshell, `cd -`), `popd`
+              // sem `pushd`, ou conteudo dinamico de `eval`/`bash -c` podem
+              // levar a QUALQUER diretorio ou rodar QUALQUER CLI, inclusive
+              // no principal: bloqueia direto, sem passar pela classificacao
+              // de worktree que dependeria do proprio cwd que nao da pra
+              // confiar.
+              if (!ehScratchpad(cwd)) {
+                const estadoAqui = estadoDoRepo(cwd);
+                if (estadoAqui && !fs.existsSync(path.join(estadoAqui.toplevel, ".rainforest-gate-off"))) {
+                  bloqueia(
+                    achado.incerto
+                      ? `Comando dinamico (eval/bash -c) com conteudo nao resolvivel — pode rodar CLI que escreve`
+                      : `CLI que escreve (${achado.nome}) com cd nao resolvido — destino desconhecido`,
+                    estadoAqui.toplevel,
+                    `${ev.agent_type || "?"} (${ev.agent_id})`
+                  );
+                }
+              }
+            } else if (!ehScratchpad(doSegmento.cwd)) {
+              const estado = estadoDoRepo(dirDe(doSegmento.cwd));
+              if (estado && !estado.ehWorktree && !fs.existsSync(path.join(estado.toplevel, ".rainforest-gate-off"))) {
                 bloqueia(
-                  `CLI que escreve (${cli}) com cd nao resolvido — destino desconhecido`,
-                  estadoAqui.toplevel,
+                  `CLI que escreve (${achado.nome})`,
+                  estado.toplevel,
                   `${ev.agent_type || "?"} (${ev.agent_id})`
                 );
               }
             }
-          } else {
-            alvos = [cwdEfetivo.cwd];
-            motivo = `CLI que escreve (${cli})`;
           }
         }
       }

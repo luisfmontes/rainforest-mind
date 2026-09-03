@@ -16,6 +16,17 @@ const CD = /^\s*cd\s+(?:--\s+)?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s*$/;
 const GIT_DIR_EXPLICITO = /\bgit\b[^\n;&|]*?(?:-C|--work-tree(?:=|\s+))\s*(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))/;
 // Separadores de comando.
 const SEPARADORES = /&&|\|\||;|\n|\|/;
+// `pushd X`: muda o cwd corrente igual `cd X`, mas empilha o cwd de antes
+// para o `popd` desfazer (H2, rodada 5 do lote 3).
+const PUSHD = /^\s*pushd\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s*$/;
+// `popd`: volta ao cwd de antes do ultimo `pushd`. Aceita o `-n` ("nao
+// re-imprime a pilha"), que nao muda o alvo.
+const POPD = /^\s*popd(?:\s+-n)?\s*$/;
+// `env -C <dir> <cmd...>` / `env --chdir=<dir> <cmd...>` (GNU coreutils):
+// muda o cwd SO do comando que ele lanca — nunca do shell, entao nao
+// persiste para os segmentos seguintes. Pula `NOME=valor` antes do `-C`,
+// que e a forma comum (`env FOO=1 -C /dir cmd`).
+const ENV_C = /^\s*env\s+(?:[A-Za-z_][A-Za-z0-9_]*=(?:"[^"]*"|'[^']*'|\S*)\s+)*(?:-C\s+|--chdir=)(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))/;
 
 /**
  * Quebra a linha de comando em segmentos respeitando aspas.
@@ -121,27 +132,95 @@ function extrairUltimoDirGit(seg) {
 }
 
 /**
- * Resolve o diretório efetivo onde um comando roda, seguindo `cd` e `git -C`.
+ * Resolve o diretório efetivo onde CADA SEGMENTO do comando roda, seguindo
+ * `cd`, `pushd`/`popd`, `env -C` e `git -C`.
+ *
+ * Nasceu do H1 (rodada 5, lote 3, 2026-09-03): `resolverCwdEfetivo` só
+ * devolvia o cwd FINAL da linha inteira, e quem decidia por ele julgava a
+ * operação pelo cwd de onde a linha TERMINA, não de onde ela RODOU —
+ * `codex exec --yolo && cd <worktree>` rodado no repo principal tem o
+ * `codex` rodando no principal, mas o cwd final (depois do `cd`) é o
+ * worktree, e o gate liberava lendo o lugar errado. Mesmo defeito em
+ * `git add -A && cd <worktree>` no `gate-staging-total.cjs`.
+ *
+ * H2 (mesma rodada): `pushd <dir>` move como `cd <dir>` (e empilha o cwd de
+ * antes para o `popd` desfazer); `popd` sem `pushd` correspondente nesta
+ * mesma linha não dá pra resolver — INCERTO; `env -C <dir> <cmd>` muda o cwd
+ * só DAQUELE comando, sem persistir para os segmentos seguintes. Nenhum dos
+ * três era modelado: ficavam com `incerto=false` e o cwd inicial, liberando
+ * o comando de verdade.
  *
  * A traversia percorre o comando mantendo o diretório corrente, sem escolher
  * um único alvo: isso permitiria `cd /worktree && git -C /repo-principal commit`
  * passar batido. `cd` que não resolve (variável, subshell, `cd -`) marca a
  * decisão como INCERTA, e conservadorismo somaria o cwd inicial.
  *
+ * Aud3 (lacuna, baixa, rodada 5): flags de diretório da PRÓPRIA CLI alvo
+ * (`codex --cwd X`, `gemini -C X`, `algumacli --directory X`) não são
+ * modeladas — cada CLI tem sua própria sintaxe, e não há lista fechada de
+ * flags de diretório por CLI. Registrado aqui, não coberto.
+ *
  * @param {string} comando - Linha de comando shell, potencialmente com `;`, `&&`, etc.
  * @param {string} cwdInicial - Diretório inicial (antes do comando rodar).
- * @returns {{cwd: string, incerto: boolean}} O diretório efetivo e se há incerteza.
+ * @returns {Array<{seg: string, cwd: string, incerto: boolean}>} Um item por
+ *   segmento, na ordem em que aparecem no comando.
  */
-function resolverCwdEfetivo(comando, cwdInicial) {
+function cwdPorSegmento(comando, cwdInicial) {
   const segmentos = segmentosComAspas(comando);
   let atual = cwdInicial;
   let incerto = false;
+  const pilhaPushd = [];
+  const resultado = [];
 
   for (const seg of segmentos) {
     // Subshell/grupo: o `cd` de dentro dele nao persiste pra fora, mas vale
     // para os comandos dentro — a unica leitura segura e marcar INCERTO,
     // sem tentar decidir o resto deste segmento por ele.
     if (contemSubshellOuGrupo(seg)) incerto = true;
+
+    // `env -C <dir> <cmd>` — muda o cwd SO deste comando, nunca do shell:
+    // nao mexe em `atual`, que continua valendo para os segmentos seguintes.
+    const envC = seg.match(ENV_C);
+    if (envC) {
+      const destino = envC[1] || envC[2] || envC[3];
+      let cwdSeg = atual;
+      let incertoSeg = incerto;
+      if (/[$`]/.test(destino) || /^~/.test(destino) || destino === "-") {
+        incertoSeg = true;
+      } else {
+        cwdSeg = path.resolve(atual, destino);
+      }
+      resultado.push({ seg, cwd: cwdSeg, incerto: incertoSeg });
+      continue;
+    }
+
+    // `pushd X` — muda o cwd corrente igual `cd X`, guardando o de antes.
+    const pd = seg.match(PUSHD);
+    if (pd) {
+      const destino = pd[1] || pd[2] || pd[3];
+      pilhaPushd.push(atual);
+      if (/[$`]/.test(destino) || /^~/.test(destino) || destino === "-") {
+        incerto = true;
+      } else {
+        atual = path.resolve(atual, destino);
+      }
+      resultado.push({ seg, cwd: atual, incerto });
+      continue;
+    }
+
+    // `popd` — volta ao cwd de antes do ultimo `pushd`. Pilha vazia (nenhum
+    // `pushd` visto NESTA linha) significa que o destino de verdade depende
+    // de um estado de shell que este parser nao enxerga — INCERTO, nunca
+    // "supõe que nada mudou".
+    if (POPD.test(seg)) {
+      if (pilhaPushd.length) {
+        atual = pilhaPushd.pop();
+      } else {
+        incerto = true;
+      }
+      resultado.push({ seg, cwd: atual, incerto });
+      continue;
+    }
 
     // `cd` isolado num segmento
     const cd = seg.match(CD);
@@ -160,9 +239,11 @@ function resolverCwdEfetivo(comando, cwdInicial) {
       // são expansão mesmo.
       if (/[$`]/.test(destino) || /^~/.test(destino) || destino === "-") {
         incerto = true;
+        resultado.push({ seg, cwd: atual, incerto });
         continue;
       }
       atual = path.resolve(atual, destino);
+      resultado.push({ seg, cwd: atual, incerto });
       continue;
     }
 
@@ -174,16 +255,36 @@ function resolverCwdEfetivo(comando, cwdInicial) {
         // `-C` com variável: não dá para resolver — fica INCERTO.
         if (/[$`]/.test(p)) {
           incerto = true;
-          continue;
+        } else {
+          // O caminho de `-C` é o cwd efetivo deste segmento
+          atual = path.resolve(atual, p);
         }
-        // O caminho de `-C` é o cwd efetivo deste segmento
-        atual = path.resolve(atual, p);
+        resultado.push({ seg, cwd: atual, incerto });
         continue;
       }
     }
+
+    resultado.push({ seg, cwd: atual, incerto });
   }
 
-  return { cwd: atual, incerto };
+  return resultado;
+}
+
+/**
+ * Wrapper de compatibilidade com o formato anterior: só o cwd e a incerteza
+ * do ÚLTIMO segmento da linha. Consumidor que precisa do cwd de um segmento
+ * ESPECÍFICO (onde a operação de verdade aparece, não onde a linha termina)
+ * usa `cwdPorSegmento` direto — foi exatamente essa troca que resolveu o H1.
+ *
+ * @param {string} comando - Linha de comando shell, potencialmente com `;`, `&&`, etc.
+ * @param {string} cwdInicial - Diretório inicial (antes do comando rodar).
+ * @returns {{cwd: string, incerto: boolean}} O diretório efetivo e se há incerteza.
+ */
+function resolverCwdEfetivo(comando, cwdInicial) {
+  const porSegmento = cwdPorSegmento(comando, cwdInicial);
+  if (!porSegmento.length) return { cwd: cwdInicial, incerto: false };
+  const ultimo = porSegmento[porSegmento.length - 1];
+  return { cwd: ultimo.cwd, incerto: ultimo.incerto };
 }
 
 /**
@@ -225,11 +326,15 @@ function toplevelConfinado(dir) {
 // evitando duplicação de regex.
 module.exports = {
   resolverCwdEfetivo,
+  cwdPorSegmento,
   toplevelConfinado,
   segmentosComAspas,
   extrairUltimoDirGit,
   contemSubshellOuGrupo,
   CD,
+  PUSHD,
+  POPD,
+  ENV_C,
   GIT_DIR_EXPLICITO,
   SEPARADORES,
 };
