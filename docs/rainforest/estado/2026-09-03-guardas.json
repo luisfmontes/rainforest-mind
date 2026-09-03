@@ -35,7 +35,7 @@
     "em": "2026-09-03"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-03",
     "tarefas_ok": 14,
     "tarefas": 14,
@@ -139,30 +139,35 @@
         "F6 Truncar-LinhaDeErro"
       ],
       "nota": "F6: caminho ja era saneado por Get-MotivoSaneado (vigias/erros.ps1); entrega acrescentou teto de 200 chars"
+    },
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-03"
     }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "464d94add9ec32f55bbdb659ef21e64cb91a5c8f",
-      "caminhos_sujos": [
-        "docs/rainforest/estado/2026-09-03-guardas.json"
-      ]
+      "head": "6dc6f6a4fd86b609e932e9bc3946100997de9d9e",
+      "caminhos_sujos": []
     },
-    "achados": 7,
+    "achados": 6,
     "base": "408af94de7c22492b0815ebed19b4072426a7976",
-    "head": "8fc3f6630ffd4d24ef5e2dfdc1b83e0f0ac10193",
+    "head": "6dc6f6a4fd86b609e932e9bc3946100997de9d9e",
     "lista": [
-      "F1 cwd-efetivo: git -C repetido usa o primeiro, o git usa o ultimo",
-      "F2 cwd-efetivo: separador dentro de aspas corrompe o cd",
-      "F3 gate-fechar-issue: gh.exe/gh.cmd/\"gh\" escapam do regex",
-      "F4 gate-fechar-issue: --body com $( ) captura corpo truncado e libera",
-      "F5 testa-gate-fechar-issue: trava anti-gh-real em subshell nao aborta",
-      "F6 backup-estado.ps1: caminho com usuario vai para ERROS.md versionado",
-      "F7 fechar-issue: --saida-arquivo sem confinamento ao repositorio"
+      "A1 gate-worktree alvosBash: seg.match(GIT_DIR_EXPLICITO) pega o primeiro -C; git -C <wt> -C <principal> commit libera",
+      "A2/Rev1 gate-fechar-issue comandoComecaCom so olha tokens[0] da linha inteira: true && gh issue close 12 evade (BLOQUEIA)",
+      "A3 cwd-efetivo CD exige segmento comecando em cd: (cd X && codex) devolve incerto=false e libera",
+      "A4 procuraCLI: $'codex' exec escapa (ANSI-C quoting)",
+      "A5 limpar-worktrees compara raiz por string crua sem normalizar separador (baixa)",
+      "Rev2 procuraCLI usa split cru em vez de segmentosComAspas (falso positivo, nao bloqueia)",
+      "Rev3 T2 criterio (b) sem teste: grep -F do caminho no stderr do gate-staging-total"
     ],
     "em": "2026-09-03",
-    "tentativas": 1
+    "tentativas": 2,
+    "revisor": "reprovado (1 bloqueia, 2 nao bloqueiam)",
+    "auditor": "5 achados bloqueiam (4 alta, 1 baixa)",
+    "rodada_revisao": 2
   },
   "verificar": {
     "status": "pendente"
