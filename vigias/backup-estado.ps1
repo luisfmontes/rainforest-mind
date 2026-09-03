@@ -120,5 +120,19 @@ if ($codigo -ne 0) {
     exit 1
 }
 
+# Backup externo (scripts/backup.cjs gravar) - apos o backup local do FOCO.md
+$backup_externo = Join-Path $Plugin "scripts\backup.cjs"
+if (Test-Path $backup_externo) {
+    Push-Location $Plugin
+    $backup_log = & node scripts\backup.cjs gravar 2>&1
+    $codigo_externo = $LASTEXITCODE
+    Pop-Location
+
+    if ($codigo_externo -ne 0) {
+        $ultima_linha = if ($backup_log -is [array]) { $backup_log[-1] } else { $backup_log }
+        Registrar-Erro "backup externo falhou (exit $codigo_externo): $ultima_linha"
+    }
+}
+
 if ($Log) { [void](Write-LinhaEmLf -Caminho $Log -Linha "backup do estado: $($saida -join ' ')") }
 exit 0
