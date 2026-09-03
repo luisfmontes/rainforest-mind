@@ -54,3 +54,9 @@ ferramentas.jsonl
 # aplica, e a amostra e o payload real em que o parser se fixou. Ignorar
 # qualquer um dos dois quebraria a portaria no clone de outra pessoa.
 .rainforest/portaria/despachos.jsonl
+
+# Recibos colhidos: sha256 + bytes do momento da entrega. E' RASTRO DE EXECUCAO
+# desta maquina — um snapshot de hash de uma execucao num instante, nao veredito.
+# Outro dev em outro ambiente refaz a colheita e obtem hash diferente: normal e
+# esperado. Fica fora (D9).
+.rainforest/colheita/

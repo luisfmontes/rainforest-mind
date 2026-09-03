@@ -728,6 +728,7 @@ function portoesDe(slug) {
 }
 
 const PORTOES = path.join(__dirname, 'portoes.cjs');
+const RECIBO = path.join(__dirname, 'recibo.cjs');
 
 /**
  * Roda um dos checadores e devolve a recusa, ou null.
@@ -783,6 +784,14 @@ function conferirFechamento(estagio, slug, extra, estado) {
         if (r) recusas.push(r);
       }
     }
+  }
+
+  // O gate do recibo roda SEMPRE quando recibo.cjs existe, mesmo sem portoes.md.
+  // A decisão de opt-in (gravar apenas se há plano.entregaveis) mora dentro de
+  // recibo.cjs, e este branch se limita a invocar — ver Tarefa 5 do fluxo 7.
+  if (fs.existsSync(RECIBO) && estagio === 'fechar') {
+    const r = rodarChecador(RECIBO, ['gravar', '--slug', slug, '--nao-provado', JSON.stringify((extra && extra.nao_provado) || [])], estagio);
+    if (r) recusas.push(r);
   }
 
   let args = null;
