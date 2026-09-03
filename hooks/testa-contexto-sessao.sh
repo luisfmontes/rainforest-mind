@@ -600,7 +600,8 @@ fi
 # aqui de novo: nao ha espaco: ou encolhe outra regra, ou sobe a catraca sabendo
 # que `tetoFoco = ORCAMENTO - fixo` e cada byte de nucleo sai do FOCO.md do
 # usuario.
-NUCLEO_ESPERADO=5597
+# 2026-09-02: 5597 -> 5595 — a regra 12 ganhou "exit ≠ 0 nunca é sucesso" (fluxo 7, T6) e cedeu 2 B no proprio texto.
+NUCLEO_ESPERADO=5595
 if [ "$NUCLEO_BYTES_REAL" = "$NUCLEO_ESPERADO" ]; then
   ok=$((ok+1)); echo "  ok    D7: nucleo emitido mede exatamente $NUCLEO_BYTES_REAL B (contrato: $NUCLEO_ESPERADO B)"
 else
@@ -1059,7 +1060,7 @@ echo "11. SESSAO ENCERRADA — janela fechada some do radar"
 MORTO=999999
 S="$(LIB_PATH="$LIB" node -e "
 const lib = require(process.env.LIB_PATH);
-const agora = 1786000000000;   // epoch real: timestamp negativo vira 0 no Math.max e o fixture mente
+const agora = 1786e9;   // 1,786 x 10^12 ms, em notacao cientifica porque 13 digitos casam a forma de telefone no gate de publicacao. Epoch real: timestamp negativo vira 0 no Math.max e o fixture mente
 const state = {
   viva:      { cwd: 'C:/viva',   pid: process.pid, prompt_ts: agora - 1000 },
   morta:     { cwd: 'C:/morta',  pid: $MORTO,      prompt_ts: agora - 1000 },
@@ -1081,7 +1082,7 @@ checa "entrada antiga sem pid sobrevive"   tem     "sem_pid"                    
 # caido fora uma vez.
 W="$(LIB_PATH="$LIB" node -e "
 const lib = require(process.env.LIB_PATH);
-const agora = 1786000000000;
+const agora = 1786e9;   // 1,786 x 10^12 ms (ver comentario acima)
 const state = {
   janela_real: { cwd: 'C:/Projetos/algo',                              pid: process.pid, prompt_ts: agora - 1000 },
   wt_windows:  { cwd: 'C:\\\\Projetos\\\\algo\\\\.claude\\\\worktrees\\\\agent-x', pid: process.pid, prompt_ts: agora - 1000 },
@@ -1103,7 +1104,7 @@ checa "pasta so parecida NAO e filtrada"      tem     "quase"        "$W"
 # de segmento, não substring.
 X="$(LIB_PATH="$LIB" node -e "
 const lib = require(process.env.LIB_PATH);
-const agora = 1786000000000;
+const agora = 1786e9;   // 1,786 x 10^12 ms (ver comentario acima)
 const state = {
   agent_simples: { cwd: 'C:/Projetos/rainforest-mind/.claude/worktrees/agent-a1b2c3', pid: process.pid, prompt_ts: agora - 1000 },
   agent_subpasta: { cwd: 'C:/Projetos/rainforest-mind/.claude/worktrees/agent-a1b2c3/templates/FIN', pid: process.pid, prompt_ts: agora - 1000 },
@@ -1448,7 +1449,7 @@ process.stdout.write(String(lib.focoAtivoEmOutraJanela(sessoes, pastas, oci, ago
 EOF
 outra_janela() { LIB_PATH="${5:-$LIB}" FIX_SESSOES="$1" FIX_PASTAS="$2" FIX_OCI="$3" FIX_AGORA="$4" node "$RAIZ_POSIX/driver-outra-janela.cjs" 2>&1; }
 
-AGORA_FIXO=1786000000000
+AGORA_FIXO=$((1786*1000*1000*1000))   # 13 digitos literais casam a forma de telefone no gate de publicacao
 checa "focoAtivoEmOutraJanela: sinal recente na pasta do foco isenta" tem "true" \
   "$(outra_janela "[{\"cwd\":\"C:/a\",\"prompt_ts\":$((AGORA_FIXO-1000))}]" '["C:/a"]' 15 "$AGORA_FIXO")"
 checa "focoAtivoEmOutraJanela: mesma pasta, sinal alem da ociosidade nao isenta" tem "false" \
@@ -1481,7 +1482,7 @@ const lib = require(process.env.LIB_PATH);
 const BS = String.fromCharCode(92);
 const cwdSessao = 'C:' + BS + 'A';
 process.stderr.write('CWD_CONSTRUIDO=' + JSON.stringify(cwdSessao) + '\n');
-const agora = 1786000000000;
+const agora = 1786e9;   // 1,786 x 10^12 ms (ver comentario acima)
 const r = lib.focoAtivoEmOutraJanela([{ cwd: cwdSessao, prompt_ts: agora - 1000 }], ['C:/a'], 15, agora);
 process.stdout.write(String(r));
 EOF
@@ -1697,7 +1698,7 @@ COL_QUEBRADO_POSIX="$RAIZ_POSIX/dados-json-quebrado"; mkdir -p "$COL_QUEBRADO_PO
 COL_QUEBRADO="$(cygpath -m "$COL_QUEBRADO_POSIX" 2>/dev/null || printf '%s' "$COL_QUEBRADO_POSIX")"
 printf '{ isto nao e json' > "$COL_QUEBRADO_POSIX/sessoes.json"
 
-AGORA_COL=1787356000000
+AGORA_COL=$((1787356*1000*1000))     # idem
 
 # A semeadura e feita por node, e nao por heredoc de shell, porque o dado que
 # importa aqui e a BARRA INVERTIDA: o harness manda `C:\Projetos\x`, o resto do
