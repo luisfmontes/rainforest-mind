@@ -156,6 +156,98 @@ igual "exit code de --so-mostrar" "$exit_e" "0"
 # que o comando retorna 0
 verdade "exit 0 com --so-mostrar" "sim"
 
+# --- CASO (f): sucesso nao deixa *.parcial*/*.tmp* no destino (R4)
+
+teste "f" "sucesso: nenhum rastro de *.parcial*/*.tmp* no destino"
+
+origem_f="$SB/origem_f"
+destino_f="$SB/destino_f"
+criarOrigem "$origem_f"
+
+origem_f_win=$(cygpath -w "$origem_f")
+destino_f_win=$(cygpath -w "$destino_f")
+
+node "$SRC/scripts/backup.cjs" gravar --origem "$origem_f_win" --destino "$destino_f_win" >/dev/null 2>&1
+
+parcial_count=$(ls "$destino_f"/*.parcial* 2>/dev/null | wc -l)
+igual "arquivos *.parcial* no destino" "$parcial_count" "0"
+tmp_count_f=$(ls "$destino_f"/*.tmp* 2>/dev/null | wc -l)
+igual "arquivos *.tmp* no destino" "$tmp_count_f" "0"
+verdade "zip final presente" "$([ -f "$destino_f/rainforest-${hoje}.zip" ] && echo sim || echo nao)"
+
+# --- CASO (g): falha da compactacao (powershell stub que sai 1) nao cria zip
+#     final nem deixa temporario (R4)
+
+teste "g" "falha da compactacao: sem zip final e sem *.parcial*/*.tmp* (R4)"
+
+origem_g="$SB/origem_g"
+destino_g="$SB/destino_g"
+criarOrigem "$origem_g"
+mkdir -p "$SB/bin-stub-falha"
+cat > "$SB/bin-stub-falha/powershell.cmd" <<'STUB'
+@echo off
+echo STUB: compactacao falhou de proposito 1>&2
+exit /b 1
+STUB
+
+origem_g_win=$(cygpath -w "$origem_g")
+destino_g_win=$(cygpath -w "$destino_g")
+
+# Prepende o stub ao PATH para que resolver-executavel.cjs o encontre primeiro
+saida_g=$(PATH="$SB/bin-stub-falha:$PATH" node "$SRC/scripts/backup.cjs" gravar --origem "$origem_g_win" --destino "$destino_g_win" 2>&1)
+exit_g=$?
+
+igual "exit code (falha da compactacao)" "$exit_g" "2"
+verdade "zip final NAO foi criado" "$([ ! -f "$destino_g/rainforest-${hoje}.zip" ] && echo sim || echo nao)"
+parcial_count_g=$(ls "$destino_g"/*.parcial* 2>/dev/null | wc -l)
+igual "arquivos *.parcial* no destino apos falha" "$parcial_count_g" "0"
+tmp_count_g=$(ls "$destino_g"/*.tmp* 2>/dev/null | wc -l)
+igual "arquivos *.tmp* no destino apos falha" "$tmp_count_g" "0"
+
+# --- CASO (h): RFM_ROOT aponta para dir temporario -> resolverRaiz() devolve
+#     esse dir (prova basica de que resolverRaiz continua funcionando)
+
+teste "h" "RFM_ROOT em dir temporario: resolverRaiz() devolve esse dir"
+
+origem_h="$SB/origem_h_rfm_root"
+criarOrigem "$origem_h"
+origem_h_win=$(cygpath -w "$origem_h")
+
+saida_h=$(cd "$SRC" && RFM_ROOT="$origem_h_win" node -e "
+  const { resolverRaiz } = require('./scripts/backup.cjs');
+  console.log(resolverRaiz());
+" 2>&1)
+
+igual "resolverRaiz() com RFM_ROOT" "$saida_h" "$origem_h_win"
+
+# --- CASO (i): resolverRaiz() DELEGA de verdade para hooks/lib/raiz.cjs (prova R9)
+#
+# O caso (h) sozinho nao prova nada: o fallback embutido em backup.cjs replica a
+# MESMA logica de hooks/lib/raiz.cjs, entao com RFM_ROOT setado os dois caminhos
+# (delegar ou cair no fallback quebrado) devolvem a mesma string. A unica forma de
+# provar que o require aponta pro arquivo certo e interceptar hooks/lib/raiz.cjs
+# no cache de modulos do Node com uma resposta-sentinela: se resolverRaiz() de
+# backup.cjs devolver a sentinela, o require achou o arquivo real (pos-conserto);
+# se cair no fallback (require quebrado, relativo a scripts/), devolve o valor
+# calculado localmente, nunca a sentinela.
+
+teste "i" "resolverRaiz() delega para hooks/lib/raiz.cjs (nao cai no fallback) (R9)"
+
+saida_i=$(cd "$SRC" && RFM_ROOT="$(cygpath -w "$SB")" node -e "
+  const path = require('path');
+  const raizCjsPath = path.resolve(process.cwd(), 'hooks', 'lib', 'raiz.cjs');
+  require.cache[raizCjsPath] = {
+    id: raizCjsPath,
+    filename: raizCjsPath,
+    loaded: true,
+    exports: { resolverRaiz: () => ({ raiz: '__SENTINELA_R9__', nivel: 'teste', escopo: 'teste' }) },
+  };
+  const { resolverRaiz } = require('./scripts/backup.cjs');
+  console.log(resolverRaiz());
+" 2>&1)
+
+igual "resolverRaiz() reflete a sentinela do modulo real (delegacao de verdade)" "$saida_i" "__SENTINELA_R9__"
+
 # ==================== RESUMO ====================
 echo ""
 echo "== resultado: $ok ok, $falhou falha(s) =="
