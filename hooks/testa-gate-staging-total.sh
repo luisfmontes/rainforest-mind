@@ -137,6 +137,14 @@ else
 fi
 
 echo
+echo "== H1 (rodada 5): cwd do SEGMENTO onde o verbo aparece, nao o cwd final da linha =="
+# Ate aqui o cwd efetivo era o da linha INTEIRA: `git add -A && cd <worktree>`
+# fazia o `add` de verdade no principal, mas o cwd apos o `cd` caia no
+# worktree, e o gate liberava lendo o lugar errado.
+gate "git add -A && cd <worktree> no principal BARRA (H1)" 2 "$(b 'git add -A && cd '"$(esc "$WT")")"
+gate "cd <worktree> && git add -A no principal PASSA (regressao)" 0 "$(b 'cd '"$(esc "$WT")"' && git add -A')"
+
+echo
 echo "== saidas de emergencia =="
 saida=$(printf '%s' "$(b 'git add -A')" | RAINFOREST_GATE_OFF=1 node "$GATE" 2>&1); rc=$?
 if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   RAINFOREST_GATE_OFF=1 libera (exit 0)"

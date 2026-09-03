@@ -53,7 +53,7 @@
 const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
-const { resolverCwdEfetivo } = require("./lib/cwd-efetivo.cjs");
+const { cwdPorSegmento, segmentosComAspas } = require("./lib/cwd-efetivo.cjs");
 
 // Flags globais do git que consomem o token seguinte (`git -C <dir> add`).
 const FLAG_COM_VALOR = new Set([
@@ -83,9 +83,17 @@ function git(dir, args, { cru = false } = {}) {
   }
 }
 
-/** Segmenta a linha de comando em invocacoes independentes. */
+/**
+ * Segmenta a linha de comando em invocacoes independentes.
+ *
+ * Delega para `segmentosComAspas` (H1, rodada 5, lote 3): precisa ser a
+ * MESMA segmentacao que `cwdPorSegmento` usa, senao o indice do segmento
+ * onde `git add`/`commit` casou não bate com o indice do cwd resolvido —
+ * cada um cortaria a linha num lugar diferente perto de `;`/`&&` dentro de
+ * aspas. Antes era `cmd.split(/\|\||&&|[;|\n]/)`, sem respeitar aspas.
+ */
 function segmentos(cmd) {
-  return cmd.split(/\|\||&&|[;|\n]/);
+  return segmentosComAspas(cmd);
 }
 
 /**
@@ -231,20 +239,28 @@ function main() {
 
   let motivo = null;
   let dirC = null;
-  for (const seg of segmentos(cmd)) {
-    const g = analisaGit(tokens(seg));
+  let indiceSegmento = null;
+  const segs = segmentos(cmd);
+  for (let idx = 0; idx < segs.length; idx += 1) {
+    const g = analisaGit(tokens(segs[idx]));
     if (!g) continue;
     const m = motivoDe(g);
-    if (m) { motivo = m; dirC = g.dirC; break; }
+    if (m) { motivo = m; dirC = g.dirC; indiceSegmento = idx; break; }
   }
   if (!motivo) process.exit(0);
 
-  // D2: resolve o cwd efetivo, seguindo `cd` no comando. `dirC` (git -C)
-  // vence sempre — nao ha `cd` antes de `git -C`, e `-C` e explicito.
-  // `incerto` (cd variavel, subshell, `~` no comeco) = conservadorismo:
-  // usa o cwd inicial, evitando decidir por adivinhacao.
-  const { cwd: cwdEfetivo, incerto } = resolverCwdEfetivo(cmd, cwdDoEvento);
-  const dir = dirC || (incerto ? cwdDoEvento : cwdEfetivo);
+  // H1 (rodada 5, lote 3): resolve o cwd efetivo NO SEGMENTO onde o `git
+  // add`/`commit` apareceu, nao o cwd FINAL da linha inteira. Antes disto,
+  // `git add -A && cd <worktree>` no principal fazia o `add` de verdade no
+  // principal, mas o cwd FINAL (depois do `cd`) caia no worktree, e o gate
+  // liberava lendo o lugar errado — o mesmo defeito do H1 no ramo de CLI do
+  // `gate-worktree.cjs`. `dirC` (git -C) vence sempre — nao ha `cd` antes de
+  // `git -C`, e `-C` e explicito. `incerto` (cd variavel, subshell, `~` no
+  // comeco, `popd` sem `pushd`) = conservadorismo: usa o cwd inicial, evitando
+  // decidir por adivinhacao.
+  const porSegmento = cwdPorSegmento(cmd, cwdDoEvento);
+  const doSegmento = porSegmento[indiceSegmento] || { cwd: cwdDoEvento, incerto: true };
+  const dir = dirC || (doSegmento.incerto ? cwdDoEvento : doSegmento.cwd);
   const gitDir = git(dir, ["rev-parse", "--git-dir"]);
   if (gitDir === null) {
     // Fora de repo git o comando falha sozinho. Mas se o git nao respondeu por
