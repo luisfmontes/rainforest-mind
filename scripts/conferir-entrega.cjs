@@ -160,8 +160,38 @@ function norm(p) {
   return alvo.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
 }
 
+function ajuda() {
+  console.log(`Uso: node conferir-entrega.cjs [opcoes]
+
+Opcoes obrigatorias:
+  --worktree <dir>           diretorio do worktree do subagente
+
+Opcoes opcionais:
+  --base <hash>              hash base para comparacao (sem this = primeiro commit)
+  --commit <hash>            hash do commit a conferir (padrao: HEAD)
+  --repo-principal <dir>     diretorio do repo principal do usuario
+  --head-antes <hash>        HEAD do repo principal ANTES do despacho
+  --sujo-antes <arquivo>     arquivo de porcelain capturado ANTES do despacho
+  --permite-sujeira          dispensa checagem de sujeira nao commitada
+  --paralelo                 muda checagem 4 e 5 para modo paralelo
+  --espera <caminho>         arquivo que a tarefa prometeu criar (repetivel)
+  --escopo <glob>            glob para escopo de arquivos tocados (repetivel)
+
+Exemplos de globs:
+  *.txt                      qualquer arquivo .txt na raiz
+  **/*.js                    qualquer arquivo .js em qualquer profundidade
+  scripts/**                 qualquer arquivo dentro de scripts/
+
+Exit codes:
+  0 = conferencia passou
+  1 = conferencia falhou
+  2 = erro de uso ou arquivo inacessivel
+`);
+}
+
 function erroArgs(msg) {
   process.stderr.write(`conferir-entrega.cjs: erro: ${msg}\n`);
+  process.stderr.write(`Use --help para ver opcoes\n`);
   process.exit(2); // 2 = erro de uso, igual ao argparse do gemeo em Python
 }
 
@@ -204,6 +234,7 @@ function bateComEscopo(caminh, globs) {
 }
 
 const OPCOES = {
+  help: { dest: "help", flag: true },
   worktree: { dest: "worktree", exige: true },
   base: { dest: "base" },
   commit: { dest: "commit", padrao: "HEAD" },
@@ -217,8 +248,8 @@ const OPCOES = {
   escopo: { dest: "escopo", lista: true },
 };
 
-function parseArgs(argv) {
-  const a = { commit: "HEAD", permite_sujeira: false, paralelo: false, espera: [], escopo: [] };
+function parseArgs(argv, permitirSemObrigatorios = false) {
+  const a = { commit: "HEAD", permite_sujeira: false, paralelo: false, espera: [], escopo: [], help: false };
   let i = 0;
   while (i < argv.length) {
     const tok = argv[i];
@@ -236,8 +267,10 @@ function parseArgs(argv) {
     else a[o.dest] = val;
     i += 2;
   }
-  for (const [chave, o] of Object.entries(OPCOES)) {
-    if (o.exige && !a[o.dest]) erroArgs(`opcao obrigatoria faltando: --${chave}`);
+  if (!permitirSemObrigatorios) {
+    for (const [chave, o] of Object.entries(OPCOES)) {
+      if (o.exige && !a[o.dest]) erroArgs(`opcao obrigatoria faltando: --${chave}`);
+    }
   }
   return a;
 }
@@ -316,7 +349,18 @@ function caminhosSujoAntes(arquivo) {
 }
 
 function main() {
-  const a = parseArgs(process.argv.slice(2));
+  const a = parseArgs(process.argv.slice(2), true); // Permite sem obrigatorios para verificar --help
+
+  if (a.help) {
+    ajuda();
+    return 0;
+  }
+
+  // Agora verifica argumentos obrigatórios
+  for (const [chave, o] of Object.entries(OPCOES)) {
+    if (o.exige && !a[o.dest]) erroArgs(`opcao obrigatoria faltando: --${chave}`);
+  }
+
   const c = new Conferencia();
   const wt = a.worktree;
 
