@@ -53,11 +53,11 @@ const RAIZ = process.env.RFM_ESTADO_ROOT
 
 const DIR_COLHEITA = path.join(RAIZ, '.rainforest', 'colheita');
 
-/** Slug é chave de caminho. `/`, `\` e `..` viram travessia. */
+/** Slug é chave de caminho. `/`, `\`, `:` e `..` viram travessia ou streams alternativos. */
 function validarSlug(slug) {
-  if (!slug || /[\\/]/.test(slug) || slug.includes('..')) {
+  if (!slug || /[\\/:]/.test(slug) || slug.includes('..')) {
     console.error(`RECUSADO: slug invalido: ${slug}`);
-    console.error('  Slug e chave de caminho — nao aceita barra, contrabarra nem "..".');
+    console.error('  Slug e chave de caminho — nao aceita barra, contrabarra, dois-pontos nem "..".');
     process.exit(2);
   }
   return slug;
@@ -80,12 +80,19 @@ const caminhoDosPortoes = (slug) =>
  * @returns {{ok: true, real: string} | {ok: false, motivo: string}}
  */
 function resolverEntregavel(rel) {
+  // A1: UNC antes de qualquer fs. stat/realpath de UNC no Windows abre conexão SMB
+  // e tenta autenticação NTLM automática — plano.entregaveis vem de arquivo
+  // versionado e compartilhado, então uma UNC ali é acidente ou ataque.
+  if (rel.startsWith('\\\\') || rel.startsWith('//')) {
+    return { ok: false, motivo: 'caminho UNC nao e entregavel (resolver dispararia conexao de rede)' };
+  }
+
   const bruto = path.isAbsolute(rel) ? rel : path.join(RAIZ, rel);
   let real;
   let raizReal;
   try {
-    real = fs.realpathSync(bruto);
-    raizReal = fs.realpathSync(RAIZ);
+    real = fs.realpathSync.native(bruto);
+    raizReal = fs.realpathSync.native(RAIZ);
   } catch (_) {
     return { ok: false, motivo: 'nao existe em disco' };
   }
@@ -253,7 +260,25 @@ function cmdGravar(slug, naoProvadoBruto) {
     nao_provado: naoProvado,
   };
 
-  gravarAtomico(caminhoDoRecibo(slug), `${JSON.stringify(recibo, null, 2)}\n`);
+  const caminhoDestino = caminhoDoRecibo(slug);
+  const textoRecibo = `${JSON.stringify(recibo, null, 2)}\n`;
+
+  // A3: falha de escrita sai 2, não 1. Essa é dúvida sobre circunstância (máquina
+  // cheia, permissão, arquivo trancado), não veredito sobre o trabalho.
+  try {
+    gravarAtomico(caminhoDestino, textoRecibo);
+  } catch (err) {
+    // Limpa o arquivo temporário se existir (recalcular tmp como gravarAtomico faz)
+    const tmpEstimado = `${caminhoDestino}.tmp-${process.pid}`;
+    try {
+      require('fs').rmSync(tmpEstimado, { force: true });
+    } catch (_) {
+      // Ignora falha ao limpar temporário
+    }
+    console.error(`RECUSADO: nao consegui gravar o recibo em ${caminhoDestino}: ${err.code} ${err.message}`);
+    process.exit(2);
+  }
+
   console.log(`recibo gravado: ${entregaveis.length} entregavel(is), `
     + `${naoProvado.length} item(ns) em nao_provado.`);
   process.exit(0);

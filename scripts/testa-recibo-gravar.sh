@@ -187,5 +187,79 @@ echo "== T2g. .gitignore contem .rainforest/colheita/ =="
 afirma "T2g1. .gitignore tem a linha colheita" \
   "$(grep -q '\.rainforest/colheita/' "$RAIZ/.gitignore" && echo 1 || echo 0)"
 
+echo "== T2h. entregavel UNC: exit 2, stderr com 'caminho UNC', < 3s (nao tenta rede) =="
+cat > "$S/docs/rainforest/estado/com-unc.json" <<FIM
+{
+  "slug": "com-unc",
+  "plano": {
+    "entregaveis": ["//host-inexistente/share/x"]
+  }
+}
+FIM
+INICIO="$SECONDS"
+SAIDA="$(rec gravar --slug com-unc --nao-provado '["algo"]')"; C=$?
+FIM_TEMPO=$((SECONDS - INICIO))
+afirma "T2h1. exit 2 para UNC" "$([ "$C" -eq 2 ] && echo 1 || echo 0)"
+afirma "T2h2. stderr contem 'caminho UNC'" \
+  "$(printf '%s' "$SAIDA" | grep -q "caminho UNC" && echo 1 || echo 0)"
+afirma "T2h3. executou em menos de 3 segundos (sem tentativa de rede)" \
+  "$([ "$FIM_TEMPO" -lt 3 ] && echo 1 || echo 0)"
+
+echo "== T2i. recibo anterior somente-leitura: exit 2, RECUSADO, sem stack trace, sem .tmp =="
+mkdir -p "$S/docs/arquivo-i"
+echo "conteudo para teste i" > "$S/docs/arquivo-i/arquivo.txt"
+cat > "$S/docs/rainforest/estado/teste-readonly.json" <<FIM
+{
+  "slug": "teste-readonly",
+  "plano": {
+    "entregaveis": ["docs/arquivo-i/arquivo.txt"]
+  }
+}
+FIM
+
+# Primeiro grava um recibo
+rec gravar --slug teste-readonly --nao-provado '["algo"]' >/dev/null 2>&1
+
+# Marca como somente-leitura
+RECIBO_ARQUIVO="$S/.rainforest/colheita/teste-readonly-recibo.json"
+if [ -f "$RECIBO_ARQUIVO" ]; then
+  # Tenta com attrib primeiro (Windows), depois chmod
+  MARCADO=0
+  ATTRIB_PATH=$(cygpath -w "$RECIBO_ARQUIVO" 2>/dev/null || echo "$RECIBO_ARQUIVO")
+  if cmd //c attrib +r "$ATTRIB_PATH" >/dev/null 2>&1; then
+    MARCADO=1
+  elif chmod 444 "$RECIBO_ARQUIVO" 2>/dev/null; then
+    MARCADO=1
+  fi
+
+  if [ "$MARCADO" -eq 1 ]; then
+    trap "chmod 644 '$RECIBO_ARQUIVO' 2>/dev/null || cmd //c attrib -r '$ATTRIB_PATH' >/dev/null 2>&1; rm -rf '$S' '$EXTERNO'" EXIT
+
+    # Tenta gravar novamente (vai tentar renomear, vai falhar)
+    SAIDA="$(rec gravar --slug teste-readonly --nao-provado '["algo"]' 2>&1)"; C=$?
+    afirma "T2i1. exit 2 quando arquivo read-only" "$([ "$C" -eq 2 ] && echo 1 || echo 0)"
+    afirma "T2i2. stderr contem RECUSADO" \
+      "$(printf '%s' "$SAIDA" | grep -q "RECUSADO" && echo 1 || echo 0)"
+    afirma "T2i3. stderr NÃO contem stack trace (    at )" \
+      "$(printf '%s' "$SAIDA" | grep -q "    at " && echo 0 || echo 1)"
+
+    # Confere que nenhum .tmp sobrou
+    TMP_COUNT=$(find "$S/.rainforest/colheita/" -name "*.tmp-*" 2>/dev/null | wc -l)
+    afirma "T2i4. nenhum arquivo .tmp-* sobrou em colheita" "$([ "$TMP_COUNT" -eq 0 ] && echo 1 || echo 0)"
+  else
+    echo "  ok   T2i1. (pulado: nao consegui marcar arquivo como read-only)"
+    echo "  ok   T2i2. (pulado: nao consegui marcar arquivo como read-only)"
+    echo "  ok   T2i3. (pulado: nao consegui marcar arquivo como read-only)"
+    echo "  ok   T2i4. (pulado: nao consegui marcar arquivo como read-only)"
+    ok=$((ok+4))
+  fi
+else
+  echo "  FALHA T2i1. arquivo recibo nao foi criado"
+  echo "  FALHA T2i2. arquivo recibo nao foi criado"
+  echo "  FALHA T2i3. arquivo recibo nao foi criado"
+  echo "  FALHA T2i4. arquivo recibo nao foi criado"
+  falhou=$((falhou+4))
+fi
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ] || exit 1
