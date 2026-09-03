@@ -11,6 +11,9 @@ ok=0; falhou=0
 test_ok() { ok=$((ok+1)); echo "  ok   $1"; }
 test_fail() { falhou=$((falhou+1)); echo "  FALHA $1"; }
 
+# Criar repositório git na caixa de areia (para validação de caminho)
+(cd "$SBP" && git init . >/dev/null 2>&1 && git config user.email "test@test.com" && git config user.name "Test")
+
 # Criar stub em batch
 mkdir -p "$SBP/bin"
 cat > "$SBP/bin/gh.cmd" <<'STUB'
@@ -155,7 +158,7 @@ LOG_E="$(cat "$SBP/log-e" 2>/dev/null || echo '')"
   test_fail "issue comment"
 }
 
-# Caso (f): --saida-arquivo lê arquivo
+# Caso (f): --saida-arquivo lé arquivo
 echo
 echo "== (f) --saida-arquivo lê arquivo e coloca no comentário =="
 echo "resultado: sucesso" > "$SBP/arquivo.txt"
@@ -163,6 +166,7 @@ echo "resultado: sucesso" > "$SBP/arquivo.txt"
   export PATH="$SBP/bin:$PATH"
   export GH_LOG="$SBP/log-f"
   export GH_CORPO_COM_CRITERIO=1
+  cd "$SBP"  # Estar no repositório para que git rev-parse funcione
   node "$SRC/scripts/fechar-issue.cjs" 999905 --comando "bash teste.sh" --saida-arquivo "$SBP/arquivo.txt"
 ) >/dev/null 2>&1
 [ $? -eq 0 ] && test_ok "exit 0" || test_fail "exit code"
@@ -198,6 +202,49 @@ LOG_G="$(cat "$SBP/log-g" 2>/dev/null || echo '')"
   test_fail "log vazio"
   test_ok "arquivo NÃO lido"
   test_fail ".env literal"
+}
+
+# Caso (h): --saida-arquivo FORA do repositório (criando subrepo) → exit 2, SEM chamar gh
+echo
+echo "== (h) --saida-arquivo fora do repositório → exit 2, sem chamar gh =="
+mkdir -p "$SBP/subrepo"
+(cd "$SBP/subrepo" && git init . >/dev/null 2>&1 && git config user.email "test@test.com" && git config user.name "Test")
+FORA_DO_REPO="$SBP/fora-do-repo.txt"
+echo "dados secretos" > "$FORA_DO_REPO"
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_LOG="$SBP/log-h"
+  export GH_CORPO_COM_CRITERIO=1
+  cd "$SBP/subrepo"  # subrepo é git init'ado, mas $FORA_DO_REPO está fora
+  node "$SRC/scripts/fechar-issue.cjs" 999907 --comando "test" --saida-arquivo "$FORA_DO_REPO" 2>&1
+) >/dev/null
+[ $? -eq 2 ] && test_ok "exit 2" || test_fail "exit code"
+LOG_H="$(cat "$SBP/log-h" 2>/dev/null || echo '')"
+[ -n "$LOG_H" ] && {
+  echo "$LOG_H" | grep -q "issue view\|issue comment\|issue close" && test_fail "gh foi chamado!" || test_ok "gh não foi chamado"
+} || {
+  test_ok "gh não foi chamado (log vazio)"
+}
+
+# Caso (i): --saida-arquivo DENTRO do repositório → segue como hoje (exit 0)
+echo
+echo "== (i) --saida-arquivo dentro do repositório → exit 0 como antes =="
+DENTRO_DO_REPO="$SBP/resultado.txt"
+echo "resultado esperado" > "$DENTRO_DO_REPO"
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_LOG="$SBP/log-i"
+  export GH_CORPO_COM_CRITERIO=1
+  cd "$SBP"  # Já está no git repo que criamos no início
+  node "$SRC/scripts/fechar-issue.cjs" 999908 --comando "test" --saida-arquivo "$DENTRO_DO_REPO"
+) >/dev/null 2>&1
+[ $? -eq 0 ] && test_ok "exit 0" || test_fail "exit code"
+LOG_I="$(cat "$SBP/log-i" 2>/dev/null || echo '')"
+[ -n "$LOG_I" ] && {
+  echo "$LOG_I" | grep -q "resultado esperado" && test_ok "arquivo lido" || test_fail "arquivo não lido"
+  echo "$LOG_I" | grep -q "issue comment" && test_ok "issue comment chamado" || test_fail "issue comment não chamado"
+} || {
+  test_fail "log vazio"
 }
 
 echo

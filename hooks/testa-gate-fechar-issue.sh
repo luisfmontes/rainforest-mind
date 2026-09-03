@@ -62,7 +62,7 @@ chmod +x "$SBP/bin/gh"
 
 # TRAVA: verificar que gh é do sandbox usando resolverExecutavel
 echo "== TRAVA: verificar que gh é do sandbox =="
-(
+if ! (
   export PATH="$SBP/bin:$PATH"
   # Converter SRC para caminho absoluto real (remove /c/ etc)
   SRC_ABS="$(cd "$SRC" && pwd)"
@@ -71,10 +71,12 @@ echo "== TRAVA: verificar que gh é do sandbox =="
     echo "  ok   gh resolvido para sandbox"
   else
     echo "  FALHA gh não resolvido para sandbox (veio: $RESOLVED)"
-    echo "== resultado: 0 ok, 1 falha(s) =="
     exit 1
   fi
-)
+); then
+  echo "== resultado: 0 ok, 1 falha(s) =="
+  exit 1
+fi
 
 # Caso (a): `gh issue close 12` → exit 2, stderr aponta scripts/fechar-issue.cjs
 echo
@@ -164,6 +166,53 @@ SBP_WIN_REPO="$(cygpath -m "$SBP/repo")"
 ) 2>"$SBP/err-f"
 EXIT_F=$?
 [ $EXIT_F -eq 0 ] && test_ok "exit 0 (arquivo de emergência)" || test_fail "exit code (foi $EXIT_F)"
+
+# Caso (g): `gh.exe issue close 999921` → exit 2 (exe com extensão)
+echo
+echo "== (g) gh.exe issue close 999921 → exit 2 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh.exe issue close 999921"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-g"
+EXIT_G=$?
+[ $EXIT_G -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_G)"
+
+# Caso (h): `"gh" issue close 999921` → exit 2 (com aspas)
+echo
+echo "== (h) \"gh\" issue close 999921 → exit 2 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"\"gh\" issue close 999921"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-h"
+EXIT_H=$?
+[ $EXIT_H -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_H)"
+
+# Caso (i): `gh pr create --body "$(printf 'closes #999922')"` → exit 2 (corpo com $())
+echo
+echo "== (i) gh pr create --body \"\\$(printf ...)\" → exit 2 (corpo ilegível) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create --body \"\\$(printf '\''closes #999922'\'')\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-i"
+EXIT_I=$?
+[ $EXIT_I -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_I)"
+ERR_I="$(cat "$SBP/err-i")"
+echo "$ERR_I" | grep -q "substituição de comando" && test_ok "mensagem de corpo ilegível" || test_fail "mensagem incorreta"
+
+# Caso (j): `C:\qualquer\gh.exe pr merge --body "closes #999923"` SEM marcador → exit 2
+echo
+echo "== (j) C:\\qualquer\\gh.exe pr merge com closes (sem marcador) → exit 2 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"C:\\\\qualquer\\\\gh.exe pr merge --body \"closes #999923\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-j"
+EXIT_J=$?
+[ $EXIT_J -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_J)"
 
 # Resultado final
 echo
