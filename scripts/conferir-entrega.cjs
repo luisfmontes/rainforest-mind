@@ -160,12 +160,81 @@ function norm(p) {
   return alvo.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
 }
 
+function ajuda() {
+  console.log(`Uso: node conferir-entrega.cjs [opcoes]
+
+Opcoes obrigatorias:
+  --worktree <dir>           diretorio do worktree do subagente
+
+Opcoes opcionais:
+  --base <hash>              hash base para comparacao (sem this = primeiro commit)
+  --commit <hash>            hash do commit a conferir (padrao: HEAD)
+  --repo-principal <dir>     diretorio do repo principal do usuario
+  --head-antes <hash>        HEAD do repo principal ANTES do despacho
+  --sujo-antes <arquivo>     arquivo de porcelain capturado ANTES do despacho
+  --permite-sujeira          dispensa checagem de sujeira nao commitada
+  --paralelo                 muda checagem 4 e 5 para modo paralelo
+  --espera <caminho>         arquivo que a tarefa prometeu criar (repetivel)
+  --escopo <glob>            glob para escopo de arquivos tocados (repetivel)
+
+Exemplos de globs:
+  *.txt                      qualquer arquivo .txt na raiz
+  **/*.js                    qualquer arquivo .js em qualquer profundidade
+  scripts/**                 qualquer arquivo dentro de scripts/
+
+Exit codes:
+  0 = conferencia passou
+  1 = conferencia falhou
+  2 = erro de uso ou arquivo inacessivel
+`);
+}
+
 function erroArgs(msg) {
   process.stderr.write(`conferir-entrega.cjs: erro: ${msg}\n`);
+  process.stderr.write(`Use --help para ver opcoes\n`);
   process.exit(2); // 2 = erro de uso, igual ao argparse do gemeo em Python
 }
 
+/** Converte um glob simples em regex. Suporta *, **, e ?. */
+function globToRegex(glob) {
+  // Primeiro, marca ** com um placeholder temporário antes de escapar
+  let pattern = glob.replace(/\*\*/g, "\x00");
+
+  // Escapa caracteres especiais de regex, exceto *, ?, e /
+  pattern = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+
+  // Agora restaura ** e converte em regex
+  pattern = pattern.replace(/\x00/g, ".*");
+
+  // * (em qualquer posição) = qualquer coisa EXCETO /
+  pattern = pattern.replace(/\*/g, "[^/]*");
+
+  // ? = um caractere qualquer EXCETO /
+  pattern = pattern.replace(/\?/g, "[^/]");
+
+  return "^" + pattern + "$";
+}
+
+/** Verifica se um caminho bate com algum dos globs fornecidos.
+ * Retorna true se bate com algum, false caso contrário.
+ * Se nenhum glob foi fornecido, retorna true (sem filtro). */
+function bateComEscopo(caminh, globs) {
+  if (!globs || globs.length === 0) {
+    return true;
+  }
+  const cami = caminh.replace(/\\/g, "/").toLowerCase();
+  for (const glob of globs) {
+    const g = glob.replace(/\\/g, "/").toLowerCase();
+    const regex = new RegExp(globToRegex(g));
+    if (regex.test(cami)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 const OPCOES = {
+  help: { dest: "help", flag: true },
   worktree: { dest: "worktree", exige: true },
   base: { dest: "base" },
   commit: { dest: "commit", padrao: "HEAD" },
@@ -176,10 +245,11 @@ const OPCOES = {
   paralelo: { dest: "paralelo", flag: true },
   // Repetivel: o briefing costuma prometer mais de um arquivo por tarefa.
   espera: { dest: "espera", lista: true },
+  escopo: { dest: "escopo", lista: true },
 };
 
-function parseArgs(argv) {
-  const a = { commit: "HEAD", permite_sujeira: false, paralelo: false, espera: [] };
+function parseArgs(argv, permitirSemObrigatorios = false) {
+  const a = { commit: "HEAD", permite_sujeira: false, paralelo: false, espera: [], escopo: [], help: false };
   let i = 0;
   while (i < argv.length) {
     const tok = argv[i];
@@ -197,8 +267,10 @@ function parseArgs(argv) {
     else a[o.dest] = val;
     i += 2;
   }
-  for (const [chave, o] of Object.entries(OPCOES)) {
-    if (o.exige && !a[o.dest]) erroArgs(`opcao obrigatoria faltando: --${chave}`);
+  if (!permitirSemObrigatorios) {
+    for (const [chave, o] of Object.entries(OPCOES)) {
+      if (o.exige && !a[o.dest]) erroArgs(`opcao obrigatoria faltando: --${chave}`);
+    }
   }
   return a;
 }
@@ -222,6 +294,28 @@ function arquivosAgente(c, wt, base, commit) {
   if (rc !== 0) return new Set();
   const linhas = saida ? saida.split(/\r?\n/).filter((l) => l.length > 0) : [];
   return new Set(linhas.map((l) => l.replace(/\\/g, "/").toLowerCase()));
+}
+
+/** Extrai mapa de arquivos com status (A/M/D) que o agente tocou. */
+function arquivosAgentComStatus(c, wt, base, commit) {
+  let rc, saida;
+  if (base) {
+    [rc, saida] = c.mostra(wt, "diff", "--name-status", `${base}..${commit}`);
+  } else {
+    [rc, saida] = c.mostra(wt, "show", "--name-status", "--format=", commit);
+  }
+  if (rc !== 0) return new Map();
+  const linhas = saida ? saida.split(/\r?\n/).filter((l) => l.length > 0) : [];
+  const mapa = new Map();
+  for (const linha of linhas) {
+    const partes = linha.split(/\t/);
+    if (partes.length >= 2) {
+      const status = partes[0];
+      const caminho = partes.slice(1).join("\t").replace(/\\/g, "/").toLowerCase();
+      mapa.set(caminho, status);
+    }
+  }
+  return mapa;
 }
 
 /** Extrai conjunto de caminhos sujos ANTES do despacho (do arquivo porcelain). */
@@ -255,7 +349,18 @@ function caminhosSujoAntes(arquivo) {
 }
 
 function main() {
-  const a = parseArgs(process.argv.slice(2));
+  const a = parseArgs(process.argv.slice(2), true); // Permite sem obrigatorios para verificar --help
+
+  if (a.help) {
+    ajuda();
+    return 0;
+  }
+
+  // Agora verifica argumentos obrigatórios
+  for (const [chave, o] of Object.entries(OPCOES)) {
+    if (o.exige && !a[o.dest]) erroArgs(`opcao obrigatoria faltando: --${chave}`);
+  }
+
   const c = new Conferencia();
   const wt = a.worktree;
 
@@ -351,6 +456,26 @@ function main() {
     c.aviso(`${linhasSt.length} entrada(s) nao commitada(s), dispensado por --permite-sujeira`);
   } else {
     c.ok("worktree limpo, tudo o que ele fez esta no commit");
+  }
+
+  // ------------------------------------------------------------------
+  if (a.escopo && a.escopo.length > 0) {
+    c.abre("Os arquivos tocados estão dentro do(s) escopo(s)?");
+    const arquivos = arquivosAgentComStatus(c, wt, a.base, a.commit);
+    const fora = [];
+    for (const [caminho, status] of arquivos.entries()) {
+      if (!bateComEscopo(caminho, a.escopo)) {
+        fora.push({ caminho, status });
+      }
+    }
+    if (fora.length) {
+      c.falha(
+        `${fora.length} arquivo(s) fora do(s) escopo(s): ` +
+          fora.slice(0, 5).map((x) => `${x.caminho} (${x.status})`).join(", ")
+      );
+    } else {
+      c.ok(`todos os ${arquivos.size} arquivo(s) tocados estão dentro do(s) escopo(s)`);
+    }
   }
 
   // ------------------------------------------------------------------
