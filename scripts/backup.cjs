@@ -30,6 +30,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { spawnSync } = require('child_process');
 const os = require('os');
+const { executar } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
 // Lista fechada de entrada (D10)
 const ITENS_BACKUP = [
@@ -52,7 +53,7 @@ const ITENS_BACKUP = [
  */
 function resolverRaiz() {
   try {
-    const { resolverRaiz: r } = require('./hooks/lib/raiz.cjs');
+    const { resolverRaiz: r } = require(path.join(__dirname, '..', 'hooks', 'lib', 'raiz.cjs'));
     const resultado = r();
     return resultado.raiz;
   } catch {
@@ -115,34 +116,6 @@ function ehDiretorio(dir) {
 }
 
 /**
- * Grava o arquivo no destino, com escrita atômica (temp + rename).
- */
-function gravarAtomico(destino, conteudo) {
-  fs.mkdirSync(destino, { recursive: true });
-
-  const hoje = new Date().toISOString().split('T')[0]; // AAAA-MM-DD
-  const nomeZip = `rainforest-${hoje}.zip`;
-  const caminhoZip = path.join(destino, nomeZip);
-
-  // Se já existe, não sobrescreve
-  if (fs.existsSync(caminhoZip)) {
-    return { sucesso: true, nomeZip, caminhoZip, jaExistia: true };
-  }
-
-  const tmp = `${caminhoZip}.tmp`;
-
-  try {
-    fs.writeFileSync(tmp, conteudo);
-    fs.renameSync(tmp, caminhoZip);
-    return { sucesso: true, nomeZip, caminhoZip };
-  } catch (err) {
-    // Limpa temp se falhou
-    try { fs.unlinkSync(tmp); } catch { }
-    return { sucesso: false, erro: err.message };
-  }
-}
-
-/**
  * Remove os arquivos zip mais antigos, mantendo no máximo 30.
  * Nunca remove o arquivo que acabou de ser gravado.
  */
@@ -165,65 +138,6 @@ function rotacionarZips(destino, nomeDoNovoZip) {
   } catch {
     // Se falhar na rotação, não interrompe o fluxo
   }
-}
-
-/**
- * Executa Compress-Archive via PowerShell.
- * Retorna {sucesso, saida}
- */
-function compactarComPowerShell(origem, itens, zipPath) {
-  // Monta o comando PowerShell
-  // O caminho precisa estar em aspas dentro do PowerShell e escapado
-  const destWin = zipPath.replace(/\//g, '\\');
-  const origenWin = origem.replace(/\//g, '\\');
-
-  // Monta lista de itens como FilesToCompress
-  const itensExistentes = itens.filter((item) => {
-    const caminhoCompleto = path.join(origem, item);
-    try {
-      return fs.existsSync(caminhoCompleto);
-    } catch {
-      return false;
-    }
-  });
-
-  if (itensExistentes.length === 0) {
-    return { sucesso: false, saida: 'RECUSADO: nenhum item da lista D10 encontrado na origem' };
-  }
-
-  // Cria um objeto FilesToCompress
-  const filesToCompress = itensExistentes
-    .map((item) => `@{Path="${origenWin}\\${item}"; LiteralPath="${origenWin}\\${item}"}`)
-    .join(', ');
-
-  // Comando mais simples: usa Get-ChildItem + Compress-Archive
-  const comando = `
-    param([string]$Source, [string]$Destination, [string[]]$Items)
-    $exists = @()
-    foreach ($item in $Items) {
-      $fullPath = Join-Path $Source $item
-      if (Test-Path $fullPath) { $exists += $fullPath }
-    }
-    if ($exists.Count -eq 0) { Write-Error "Nenhum item encontrado"; exit 1 }
-    Compress-Archive -Path $exists -DestinationPath $Destination -Force
-  `;
-
-  const result = spawnSync('powershell', [
-    '-NoProfile',
-    '-NonInteractive',
-    '-Command',
-    comando,
-    '-',
-    '-Source', origenWin,
-    '-Destination', destWin,
-    '-Items', itensExistentes.join(','),
-  ], { encoding: 'utf8' });
-
-  if (result.status !== 0) {
-    return { sucesso: false, saida: `PowerShell failed: ${result.stderr || result.stdout}` };
-  }
-
-  return { sucesso: true, saida: '' };
 }
 
 /**
@@ -256,7 +170,7 @@ $items = @(${caminhos})
 $dest = '${zipPath.replace(/'/g, "''")}'
 Compress-Archive -Path $items -DestinationPath $dest -Force`;
 
-  const result = spawnSync('powershell', [
+  const result = executar('powershell', [
     '-NoProfile',
     '-NonInteractive',
     '-Command', script,
@@ -406,6 +320,34 @@ function cmdConferir(args) {
       }
     }
 
+    // Direcao inversa (origem -> zip): item da lista D10 presente na origem tem
+    // de estar no zip. Sem isso, um item ausente do zip passava como "intacto" —
+    // a comparacao anterior so anda sobre o que JA esta no zip.
+    if (!arquivoDivergente) {
+      for (const item of ITENS_BACKUP) {
+        const caminhoItemOrigem = path.join(origem, item);
+        let statItem;
+        try {
+          statItem = fs.statSync(caminhoItemOrigem);
+        } catch {
+          continue; // item nao existe na origem: nao e esperado no zip
+        }
+
+        const esperados = statItem.isDirectory()
+          ? listarArquivosRecursivamente(caminhoItemOrigem).map((a) => path.relative(origem, a))
+          : [item];
+
+        for (const relativo of esperados) {
+          if (!fs.existsSync(path.join(expandDir, relativo))) {
+            arquivoDivergente = relativo;
+            descricaoDivergencia = 'existe na origem e nao esta no zip';
+            break;
+          }
+        }
+        if (arquivoDivergente) break;
+      }
+    }
+
     if (arquivoDivergente) {
       console.error(`${arquivoDivergente}: ${descricaoDivergencia}`);
       console.error('sincronizacao e do OneDrive, nao conferida aqui');
@@ -490,21 +432,37 @@ function cmdGravar(args) {
     process.exit(0);
   }
 
-  // Escreve temp primeiro
-  const tmp = `${caminhoZip}.tmp`;
+  // Compacta num nome temporario no mesmo diretorio (escrita atomica: so vira o
+  // nome final com o renameSync abaixo, e so no sucesso). Termina em ".zip" de
+  // proposito: Compress-Archive acrescenta ".zip" quando a extensao nao e essa,
+  // e um nome que ja termina em ".zip" nao sofre esse acrescimo.
+  const nomeTmp = `rainforest-${hoje}.parcial.zip`;
+  const caminhoTmp = path.join(destino, nomeTmp);
+
+  // Limpa um parcial deixado por uma tentativa anterior que falhou no meio
+  try { fs.unlinkSync(caminhoTmp); } catch { }
 
   // Compacta via PowerShell
-  const resultadoCompact = compactarSimples(origem, ITENS_BACKUP, caminhoZip);
+  const resultadoCompact = compactarSimples(origem, ITENS_BACKUP, caminhoTmp);
   if (!resultadoCompact.sucesso) {
     console.error(`RECUSADO: ${resultadoCompact.saida}`);
-    try { fs.unlinkSync(tmp); } catch { }
+    try { fs.unlinkSync(caminhoTmp); } catch { }
     process.exit(2);
   }
 
   // Verifica se foi criado
-  if (!fs.existsSync(caminhoZip)) {
+  if (!fs.existsSync(caminhoTmp)) {
     console.error('RECUSADO: Compress-Archive nao criou o arquivo');
-    try { fs.unlinkSync(tmp); } catch { }
+    try { fs.unlinkSync(caminhoTmp); } catch { }
+    process.exit(2);
+  }
+
+  // So agora o zip passa a existir com o nome final — atomico via rename
+  try {
+    fs.renameSync(caminhoTmp, caminhoZip);
+  } catch (err) {
+    console.error(`RECUSADO: nao consegui renomear para o nome final: ${err.message}`);
+    try { fs.unlinkSync(caminhoTmp); } catch { }
     process.exit(2);
   }
 
