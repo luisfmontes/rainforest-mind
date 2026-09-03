@@ -185,5 +185,27 @@ cp "$SBP/original.cjs" "$SRC/scripts/conferir-publicacao.cjs"
 saiu "e restaurado, volta a recusar" "$(codigo "$SBP/jid.md")" "2"
 
 echo
+echo "== 8. dump hexadecimal nao e telefone (Issue #144) =="
+# Provar defeito de encoding exige colar bytes; ate 2026-09-02 o gate lia as
+# colunas de `xxd` como telefone e barrava a unica evidencia que o metodo aceita.
+# Os grupos abaixo sao so digitos de proposito (a forma que a regra de telefone
+# consegue casar): 5500 9000 0000 1000 tem forma de telefone e esta DENTRO do dump.
+printf '# prova\n\n```\n00000040: 5500 9000 0000 1000 7869 7420 3129 3a20  U.......xit 1): \n00000050: 6e61 6f20 6163 6865 6920 6f20 464f 434f  nao achei o FOCO\n```\n' > "$SBP/xxd.md"
+saiu "xxd com grupos de digitos passa (exit 0)"                 "$(codigo "$SBP/xxd.md")" "0"
+printf '# prova\n\n```\n00000040  55 00 90 00 00 00 10 00  78 69 74 20 31 29 3a 20  |U.......xit 1): |\n```\n' > "$SBP/hexdump.md"
+saiu "hexdump -C passa (exit 0)"                                "$(codigo "$SBP/hexdump.md")" "0"
+printf '# prova\n\n```\n 55 00 90 00 00 00 10 00 78 69 74 20 31 29 3a 20\n```\n' > "$SBP/od.md"
+saiu "od -An -tx1 passa (exit 0)"                               "$(codigo "$SBP/od.md")" "0"
+# A mesma linha com o telefone LEGIVEL na coluna ASCII continua recusada: a
+# isencao cobre os grupos hex, nunca o que vem depois deles.
+printf '# prova\n\n```\n00000040: 2830 3029 2039 3030 3030 2d30 3030 3120  (00) 90000-0001 \n```\n' > "$SBP/xxd-ascii.md"
+saiu "telefone legivel na coluna ASCII do dump ainda recusa (exit 2)" "$(codigo "$SBP/xxd-ascii.md")" "2"
+tem  "e aponta telefone"                                        "$(roda "$SBP/xxd-ascii.md")" "telefone"
+# E prosa com o mesmo numero, fora de dump, continua recusada — a isencao nao e
+# "parece hex", e forma de dump inteira.
+printf '# prova\n\ncontato 5500 9000 0000 depois\n' > "$SBP/prosa-num.md"
+saiu "mesmos digitos em prosa recusam (exit 2)"                  "$(codigo "$SBP/prosa-num.md")" "2"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]
