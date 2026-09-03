@@ -176,6 +176,86 @@ else
   echo "        Debug: $debug_status"
 fi
 
+# --- CASO (e): --raiz com barras invertidas não deixa a raiz principal escapar
+
+teste "e" "--raiz com barras invertidas não lista a raiz principal como candidata"
+
+repo_e="$SB/repo_e"
+work_e="$SB/trabalho_e"
+criarRepoComCommit "$repo_e" "$work_e"
+
+wt_e_real="$work_e/.git/worktrees/wt-e"
+git worktree add "$wt_e_real" HEAD
+
+# Converte a raiz para o formato Windows com barra invertida (C:\...)
+work_e_win=$(cygpath -w "$work_e" 2>/dev/null || echo "$work_e")
+
+saida_e=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_e_win" 2>&1)
+
+# A raiz principal não deve aparecer como linha da tabela. A saída sempre
+# imprime o caminho normalizado por `path.resolve` (backslash no Windows,
+# work_e_win), nunca a forma posix crua (work_e) — por isso o alvo do grep
+# tem de ser work_e_win, com duas espacos (padEnd da tabela) para não casar
+# como PREFIXO do caminho mais longo do próprio worktree linkado (wt-e).
+if echo "$saida_e" | grep -qF "$work_e_win  "; then
+  falhou=$((falhou+1))
+  echo "  FALHA raiz principal apareceu na listagem"
+  echo "        Saída: $saida_e"
+else
+  ok=$((ok+1))
+  echo "  ok    raiz principal não aparece na listagem"
+fi
+
+# E --remover não deve tentar remover a raiz principal
+saida_e_remover=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_e_win" --remover 2>&1)
+if echo "$saida_e_remover" | grep -qi "removendo $work_e_win"; then
+  falhou=$((falhou+1))
+  echo "  FALHA --remover tentou remover a raiz principal"
+  echo "        Saída: $saida_e_remover"
+else
+  ok=$((ok+1))
+  echo "  ok    --remover não tenta remover a raiz principal"
+fi
+
+# --- CASO (f): letra de drive em caixa diferente não deixa a raiz escapar
+
+teste "f" "--raiz com letra de drive em caixa diferente não lista a raiz principal"
+
+repo_f="$SB/repo_f"
+work_f="$SB/trabalho_f"
+criarRepoComCommit "$repo_f" "$work_f"
+
+wt_f_real="$work_f/.git/worktrees/wt-f"
+git worktree add "$wt_f_real" HEAD
+
+# Alterna a caixa da letra de drive (ex.: C:\... -> c:\...)
+work_f_win=$(cygpath -w "$work_f" 2>/dev/null || echo "$work_f")
+if [ "$work_f_win" != "$work_f" ]; then
+  drive_letra="${work_f_win:0:1}"
+  if [[ "$drive_letra" =~ [A-Z] ]]; then
+    drive_alt=$(echo "$drive_letra" | tr 'A-Z' 'a-z')
+  else
+    drive_alt=$(echo "$drive_letra" | tr 'a-z' 'A-Z')
+  fi
+  work_f_altcase="${drive_alt}${work_f_win:1}"
+
+  saida_f=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_f_altcase" 2>&1)
+
+  # Mesma ressalva do caso (e): a tabela imprime o caminho com a caixa
+  # ORIGINAL (a do disco, via `git worktree list`/path.resolve), não a
+  # caixa alternada passada em --raiz — por isso o alvo é work_f_win.
+  if echo "$saida_f" | grep -qF "$work_f_win  "; then
+    falhou=$((falhou+1))
+    echo "  FALHA raiz principal apareceu na listagem (caixa de drive alternada)"
+    echo "        Saída: $saida_f"
+  else
+    ok=$((ok+1))
+    echo "  ok    raiz principal não aparece com letra de drive em caixa alternada"
+  fi
+else
+  echo "  (pulado: cygpath não retornou caminho Windows nesta máquina)"
+fi
+
 # --- Relatório final
 
 echo ""
