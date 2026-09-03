@@ -309,8 +309,19 @@ function arquivosAgentComStatus(c, wt, base, commit) {
   const mapa = new Map();
   for (const linha of linhas) {
     const partes = linha.split(/\t/);
-    if (partes.length >= 2) {
-      const status = partes[0];
+    if (partes.length < 2) continue;
+    const status = partes[0];
+    const tipo = status[0];
+    if ((tipo === "R" || tipo === "C") && partes.length >= 3) {
+      // Rename/copia: git emite "R100\told\tnew" (ou "C100\told\tnew").
+      // slice(1).join("\t") juntaria os dois caminhos com uma tab no meio,
+      // que nunca bate glob nenhum (achado do revisor). Em vez disso, duas
+      // entradas — origem e destino — ambas conferidas contra o escopo.
+      const origem = partes[1].replace(/\\/g, "/").toLowerCase();
+      const destino = partes[2].replace(/\\/g, "/").toLowerCase();
+      mapa.set(origem, `${tipo} (origem)`);
+      mapa.set(destino, `${tipo} (destino)`);
+    } else {
       const caminho = partes.slice(1).join("\t").replace(/\\/g, "/").toLowerCase();
       mapa.set(caminho, status);
     }
