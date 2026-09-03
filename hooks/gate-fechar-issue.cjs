@@ -17,6 +17,7 @@ const path = require("node:path");
 
 const { MARCADOR } = require("./lib/marcador-evidencia.cjs");
 const { executar } = require("./lib/resolver-executavel.cjs");
+const { segmentosComAspas } = require("./lib/cwd-efetivo.cjs");
 
 /**
  * Normaliza o nome de um executável: remove caminho, extensão e aspas.
@@ -60,23 +61,6 @@ function tokenizar(comando) {
   }
   if (tok) tokens.push(tok);
   return tokens;
-}
-
-/**
- * Verifica se o comando começa com um executável de nome 'gh' (normalizado).
- */
-function comandoComecaCom(comando, exe_name) {
-  const tokens = tokenizar(comando);
-  if (tokens.length === 0) return false;
-  return normalizarExecutavel(tokens[0]) === exe_name;
-}
-
-/**
- * Extrai subcomandos do comando (tokens a partir do segundo).
- */
-function extrairSubcomandos(comando) {
-  const tokens = tokenizar(comando);
-  return tokens.slice(1);
 }
 
 /**
@@ -191,40 +175,76 @@ function bloqueia(motivo) {
   process.exit(2);
 }
 
-function main() {
-  let ev;
-  try {
-    ev = JSON.parse(fs.readFileSync(0, "utf8") || "{}");
-  } catch {
-    process.exit(0);
-  }
+// Executáveis que encapsulam uma string de comando, e a flag que a introduz.
+// Chave normalizada por `normalizarExecutavel` (sem caminho/extensão/aspas).
+const WRAPPERS_DE_COMANDO = {
+  bash: "-c",
+  sh: "-c",
+  zsh: "-c",
+  ksh: "-c",
+  dash: "-c",
+  pwsh: "-command",
+  powershell: "-command",
+  cmd: "/c",
+};
 
-  // Verificar saídas de emergência
-  if (process.env.RAINFOREST_GATE_OFF) process.exit(0);
+/**
+ * Extrai o primeiro token de `str` (aspas simples/duplas respeitadas) e o
+ * restante da string logo após esse token (sem consumir as aspas do restante).
+ * Retorna null se `str` não tem nenhum token.
+ */
+function extrairPrimeiroToken(str) {
+  const m = /^\s*(?:"([^"]*)"|'([^']*)'|(\S+))/.exec(str);
+  if (!m) return null;
+  const tok = m[1] !== undefined ? m[1] : m[2] !== undefined ? m[2] : m[3];
+  return { tok, resto: str.slice(m[0].length) };
+}
 
-  const cwdDoEvento = ev.cwd || process.cwd();
-  const gitTop = git(cwdDoEvento, ["rev-parse", "--show-toplevel"]);
-  if (gitTop && fs.existsSync(path.join(gitTop, ".rainforest-gate-off"))) {
-    process.exit(0);
-  }
+/**
+ * Se `segmento` é uma invocação de `bash -c`/`sh -c`/`pwsh -Command`/
+ * `powershell -Command`/`cmd /c` (executável reconhecido + flag certa),
+ * devolve a string de comando encapsulada (sem UM nível de aspas externas,
+ * se houver). Devolve null se `segmento` não é um desses wrappers.
+ */
+function desempacotarWrapper(segmento) {
+  const p1 = extrairPrimeiroToken(segmento);
+  if (!p1) return null;
+  const exe = normalizarExecutavel(p1.tok);
+  const flagEsperada = WRAPPERS_DE_COMANDO[exe];
+  if (!flagEsperada) return null;
 
-  // Toggle do setup
-  try {
-    if (!require("./lib/config.cjs").ligado("gate-fechar-issue", { projeto: cwdDoEvento })) {
-      process.exit(0);
-    }
-  } catch {}
+  const p2 = extrairPrimeiroToken(p1.resto);
+  if (!p2 || p2.tok.toLowerCase() !== flagEsperada) return null;
 
-  // Só age em Bash/PowerShell
-  const nome = ev.tool_name;
-  if (nome !== "Bash" && nome !== "PowerShell") process.exit(0);
+  let interno = p2.resto.trim();
+  const aspas = /^"([\s\S]*)"$/.exec(interno) || /^'([\s\S]*)'$/.exec(interno);
+  if (aspas) interno = aspas[1];
+  return interno;
+}
 
-  const comando = (ev.tool_input && ev.tool_input.command) || "";
-  if (!comando) process.exit(0);
+/**
+ * A string interna de um wrapper é ilegível quando contém substituição de
+ * comando (`$(...)`, crase) ou variável (`$X`, `${X}`) — não dá para saber
+ * com segurança o que vai rodar. Mesma postura conservadora do corpo de PR.
+ */
+function contemConstrucaoIlegivel(str) {
+  return /\$\(|`|\$[A-Za-z_{]/.test(str);
+}
 
-  // Caso (a): `gh issue close <n>` → exit 2
-  if (comandoComecaCom(comando, "gh")) {
-    const subcomandos = extrairSubcomandos(comando);
+/**
+ * Aplica as checagens D15/D16 a UM segmento do comando (já separado por
+ * `;`, `&&`, `||`, `|` via `segmentosComAspas`). Se o segmento não é `gh`
+ * diretamente, mas é um wrapper (`bash -c`, etc.), recursiona na string
+ * interna — que pode ela mesma ter vários segmentos encadeados.
+ */
+function processarSegmento(segmento) {
+  const tokens = tokenizar(segmento);
+  if (tokens.length === 0) return;
+
+  if (normalizarExecutavel(tokens[0]) === "gh") {
+    const subcomandos = tokens.slice(1);
+
+    // Caso (a): `gh issue close <n>` → exit 2
     if (temSubcomando(subcomandos, ["issue", "close"])) {
       bloqueia(
         `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
@@ -234,13 +254,10 @@ function main() {
         `O script registra o comentário com a evidência antes de fechar.\n`
       );
     }
-  }
 
-  // Caso (b) e (c): `gh pr create` ou `gh pr merge` → verificar corpo
-  if (comandoComecaCom(comando, "gh")) {
-    const subcomandos = extrairSubcomandos(comando);
+    // Caso (b) e (c): `gh pr create` ou `gh pr merge` → verificar corpo
     if (temSubcomando(subcomandos, ["pr", "create"]) || temSubcomando(subcomandos, ["pr", "merge"])) {
-      const corpoDoPR = extrairCorpoDoPR(comando);
+      const corpoDoPR = extrairCorpoDoPR(segmento);
 
       // Corpo ilegível (não consegue ler com segurança)
       if (!corpoDoPR.legivel) {
@@ -281,6 +298,59 @@ function main() {
         }
       }
     }
+    return;
+  }
+
+  const interno = desempacotarWrapper(segmento);
+  if (interno === null) return;
+
+  if (contemConstrucaoIlegivel(interno)) {
+    bloqueia(
+      `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
+      `Razão: comando encapsulado (bash -c/sh -c/pwsh -Command/cmd /c) contém variável ou ` +
+      `substituição de comando; não consigo ler o que roda dentro com segurança (ilegível).\n\n` +
+      `Rode o comando 'gh' diretamente, sem encapsular, ou expanda a variável antes de chamar.\n`
+    );
+  }
+
+  for (const sub of segmentosComAspas(interno)) {
+    processarSegmento(sub);
+  }
+}
+
+function main() {
+  let ev;
+  try {
+    ev = JSON.parse(fs.readFileSync(0, "utf8") || "{}");
+  } catch {
+    process.exit(0);
+  }
+
+  // Verificar saídas de emergência
+  if (process.env.RAINFOREST_GATE_OFF) process.exit(0);
+
+  const cwdDoEvento = ev.cwd || process.cwd();
+  const gitTop = git(cwdDoEvento, ["rev-parse", "--show-toplevel"]);
+  if (gitTop && fs.existsSync(path.join(gitTop, ".rainforest-gate-off"))) {
+    process.exit(0);
+  }
+
+  // Toggle do setup
+  try {
+    if (!require("./lib/config.cjs").ligado("gate-fechar-issue", { projeto: cwdDoEvento })) {
+      process.exit(0);
+    }
+  } catch {}
+
+  // Só age em Bash/PowerShell
+  const nome = ev.tool_name;
+  if (nome !== "Bash" && nome !== "PowerShell") process.exit(0);
+
+  const comando = (ev.tool_input && ev.tool_input.command) || "";
+  if (!comando) process.exit(0);
+
+  for (const segmento of segmentosComAspas(comando)) {
+    processarSegmento(segmento);
   }
 
   process.exit(0);
