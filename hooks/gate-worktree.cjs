@@ -60,6 +60,7 @@ const os = require("node:os");
 const fs = require("node:fs");
 const path = require("node:path");
 const { resolverCwdEfetivo, toplevelConfinado, CD, GIT_DIR_EXPLICITO, SEPARADORES } = require(path.join(__dirname, "lib", "cwd-efetivo.cjs"));
+const CLIS_QUE_ESCREVEM = require(path.join(__dirname, "lib", "clis-que-escrevem.cjs"));
 
 const FERRAMENTAS_DE_ESCRITA = new Set(["Write", "Edit", "MultiEdit", "NotebookEdit"]);
 // Subcomandos de git que mexem no estado do checkout. `git stash`/`pop` foi a falha N1.
@@ -415,6 +416,23 @@ function posicionaisApos(toks, i) {
 }
 
 /**
+ * Procura por CLI externa que escreve (codex, gemini, claude, aider, cursor, copilot).
+ * Retorna o nome da CLI encontrada, ou null.
+ */
+function procuraCLI(comando, clis) {
+  const toks = tokensComAspas(comando);
+  for (const tok of toks) {
+    if (tok.q) continue; // ignorar tokens citados
+    // Extrair nome do token, ignorando caminho e extensão .exe
+    const nome = tok.v.split(/[\\/]/).pop().replace(/\.exe$/, "");
+    if (clis.includes(nome)) {
+      return nome;
+    }
+  }
+  return null;
+}
+
+/**
  * Detecta escrita em Bash via redirecionamento ou ferramentas comuns.
  * Resolve alvos e retorna {dir, tipo} para cada um.
  *
@@ -644,6 +662,14 @@ function main() {
       if (alvosEscrita.length > 0) {
         alvos = alvosEscrita.map((a) => a.dir);
         motivo = `Escrita via Bash (redirecionamento ou ferramenta)`;
+      } else {
+        // Procurar por CLI externa que escreve
+        const cli = procuraCLI(entrada.command, CLIS_QUE_ESCREVEM);
+        if (cli) {
+          const cwdEfetivo = resolverCwdEfetivo(entrada.command, cwd);
+          alvos = [cwdEfetivo.cwd];
+          motivo = `CLI que escreve (${cli})`;
+        }
       }
     }
   }
