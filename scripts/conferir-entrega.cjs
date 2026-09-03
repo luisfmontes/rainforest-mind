@@ -133,7 +133,7 @@ class Conferencia {
 // `realpathSync.native` primeiro, e nao por gosto: no Windows o `realpathSync`
 // puro do Node NAO expande nome curto 8.3 — ele devolve `<home>/RUNNER~1/...` (forma 8.3)
 // como recebeu. O git, do outro lado, sempre responde na forma longa
-// (`C:/Users/runneradmin/...`). Comparar as duas por texto reprova uma entrega
+// (`<home>/runneradmin/...`). Comparar as duas por texto reprova uma entrega
 // correta, e esta funcao e exatamente quem decide se o worktree do briefing e o
 // worktree de verdade — ou seja, o falso "nao integre" da regra 12 nascia aqui.
 //
