@@ -420,6 +420,85 @@ else
 fi
 
 echo
+echo "== 16. (e) destino invalido nao expoe caminhos absolutos do usuario, mesmo com espaco e UNC =="
+montar
+SB_BACKUP="$(mktemp -d)"
+trap "rm -rf $SB_BACKUP" RETURN
+rm -f "$SB/plugin/vigias/log.txt"
+# Cria um backup.cjs que emite, na ultima linha, um caminho Windows COM ESPACO
+# no meio (pasta com espaco no nome) e um caminho UNC tambem com espaco — trava
+# de regressao para o Get-MotivoSaneado (vigias/erros.ps1), que e quem de fato
+# sanitiza aqui (chamado dentro de Write-ErroDeVigia, dentro de Registrar-Erro).
+cat > "$SB/plugin/scripts/backup.cjs" << 'EOF'
+#!/usr/bin/env node
+console.error('RECUSADO: destino primario \\\\servidor\\Compartilhamento Publico\\backup (indisponivel) e alternativo C:\\Users\\Nome Com Espaco\\pasta (permissao negada)');
+process.exit(2);
+EOF
+RFM_ROOT="$(win "$SB/dados")" RFM_BACKUP_DESTINO="$(win "$SB_BACKUP")" powershell -NoProfile -ExecutionPolicy Bypass \
+  -File "$(win "$SB/plugin/vigias/backup-estado.ps1")" \
+  -Vigia sentinela-foco -Plugin "$(win "$SB/plugin")" \
+  -Log "$(win "$SB/plugin/vigias/log.txt")" > /dev/null 2>&1
+codigo=$?
+# Script deve sair com 0 mesmo com falha (backup local ja foi feito)
+igual "script sai com 0 apesar da falha" "$codigo" "0"
+# O erro tem de estar registrado no ERROS.md
+conteudo=$(cat "$SB/plugin/vigias/ERROS.md" 2>/dev/null)
+if printf '%s' "$conteudo" | grep -q 'backup externo falhou'; then
+  ok=$((ok+1)); echo "  ok    erro do backup externo foi registrado"
+else
+  falhou=$((falhou+1)); echo "  FALHA erro nao foi registrado em ERROS.md"
+fi
+# Nao pode conter caminho absoluto Windows nem UNC cru
+if printf '%s' "$conteudo" | grep -qE '[A-Za-z]:\\|\\\\[A-Za-z]'; then
+  falhou=$((falhou+1)); echo "  FALHA ERROS.md contem caminho absoluto ou UNC"
+  printf '%s\n' "$conteudo" | sed 's/^/     /'
+else
+  ok=$((ok+1)); echo "  ok    ERROS.md nao contem caminho absoluto nem UNC"
+fi
+# Nao pode vazar o segmento com espaco no meio do caminho (nome de pasta)
+if printf '%s' "$conteudo" | grep -qE 'Nome Com Espaco|Compartilhamento Publico'; then
+  falhou=$((falhou+1)); echo "  FALHA ERROS.md vaza segmento de caminho com espaco"
+  printf '%s\n' "$conteudo" | sed 's/^/     /'
+else
+  ok=$((ok+1)); echo "  ok    ERROS.md nao vaza segmento de caminho com espaco"
+fi
+# O marcador <caminho> tem de aparecer no lugar dos caminhos originais
+if printf '%s' "$conteudo" | grep -q '<caminho>'; then
+  ok=$((ok+1)); echo "  ok    marcador <caminho> presente"
+else
+  falhou=$((falhou+1)); echo "  FALHA marcador <caminho> ausente"
+fi
+
+echo
+echo "== 17. (f) linha de erro gigante do backup externo e truncada em 200 chars =="
+montar
+SB_BACKUP="$(mktemp -d)"
+trap "rm -rf $SB_BACKUP" RETURN
+rm -f "$SB/plugin/vigias/log.txt"
+# Sem caminho nenhum aqui de proposito: isola o TRUNCAMENTO do saneamento de
+# caminho (que e responsabilidade do Get-MotivoSaneado, ja coberto no caso 16).
+# O marcador fica depois da posicao 200 - so aparece se ninguem cortar a linha.
+MARCADOR_LONGE="MARCADOR-DEPOIS-DE-200-NAO-PODE-APARECER"
+cat > "$SB/plugin/scripts/backup.cjs" << EOF
+#!/usr/bin/env node
+console.error('$(printf 'X%.0s' $(seq 1 250))${MARCADOR_LONGE}');
+process.exit(2);
+EOF
+RFM_ROOT="$(win "$SB/dados")" RFM_BACKUP_DESTINO="$(win "$SB_BACKUP")" powershell -NoProfile -ExecutionPolicy Bypass \
+  -File "$(win "$SB/plugin/vigias/backup-estado.ps1")" \
+  -Vigia sentinela-foco -Plugin "$(win "$SB/plugin")" \
+  -Log "$(win "$SB/plugin/vigias/log.txt")" > /dev/null 2>&1
+codigo=$?
+igual "script sai com 0 apesar da falha" "$codigo" "0"
+conteudo=$(cat "$SB/plugin/vigias/ERROS.md" 2>/dev/null)
+if printf '%s' "$conteudo" | grep -q "$MARCADOR_LONGE"; then
+  falhou=$((falhou+1)); echo "  FALHA linha gigante NAO foi truncada (marcador vazou)"
+  printf '%s\n' "$conteudo" | sed 's/^/     /'
+else
+  ok=$((ok+1)); echo "  ok    linha gigante foi truncada (marcador nao aparece)"
+fi
+
+echo
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]

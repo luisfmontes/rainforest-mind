@@ -148,8 +148,9 @@ try {
 }
 
 // Verificar se o corpo contém a seção obrigatória
-// Aceita tanto a versão com acentos quanto a versão ASCII
-const temCriterio = /##\s+Criter[íi]o de pronto [\(\^]*falsific[áa]vel[\)\^]*/.test(issueBody);
+// Aceita tanto a versão com acentos quanto a versão ASCII, mas exige os
+// parênteses literais do cabeçalho canônico (ver commands/issue.md).
+const temCriterio = /^##\s+Crit[eé]rio de pronto\s+\(falsific[áa]vel\)/m.test(issueBody);
 if (!temCriterio) {
   console.error(`RECUSADO: a Issue #${n} nao tem a secao "Critério de pronto (falsificável)"`);
   process.exit(2);
