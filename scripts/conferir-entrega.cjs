@@ -94,7 +94,7 @@ class Conferencia {
       return [127, "git nao encontrado no PATH"];
     }
     if (r.error) return [127, String(r.error.message || r.error)];
-    const saida = `${r.stdout || ""}${r.stderr || ""}`.trim();
+    const saida = `${r.stdout || ""}${r.stderr || ""}`.trimEnd();
     return [r.status === null ? 127 : r.status, saida];
   }
 
