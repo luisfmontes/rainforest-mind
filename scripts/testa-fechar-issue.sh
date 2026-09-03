@@ -14,36 +14,33 @@ test_fail() { falhou=$((falhou+1)); echo "  FALHA $1"; }
 # Criar stub em batch
 mkdir -p "$SBP/bin"
 cat > "$SBP/bin/gh.cmd" <<'STUB'
-@echo off
-setlocal enabledelayedexpansion
-if not "!GH_LOG!"=="" echo CHAMADA: gh %* >> "!GH_LOG!"
-if not "!GH_LOG!"=="" (
-  for %%A in (%*) do (
-    if "%%A"=="--body-file" (
-      set "next=1"
-    ) else if !next! equ 1 (
-      echo CORPO: >> "!GH_LOG!"
-      type "%%A" >> "!GH_LOG!"
-      echo --- >> "!GH_LOG!"
-      set "next=0"
-    )
-  )
-)
-if "%1"=="issue" if "%2"=="comment" if not "!GH_COMMENT_FAIL!"=="" exit /b 1
-
-REM Responder a 'gh issue view --json body'
-if "%1"=="issue" if "%2"=="view" if "%4"=="--json" if "%5"=="body" (
-  if "!GH_CORPO_COM_CRITERIO!"=="1" (
-    REM Com critério
-    echo {"body":"Como reproduzir: passo1 passo2 ## Criterio de pronto ^(falsificavel^) comando esperado"}
-  ) else (
-    REM Sem critério
-    echo {"body":"Como reproduzir: passo1 passo2"}
-  )
-  exit /b 0
-)
-
-exit /b 0
+@node "%~dp0gh-stub.js" %*
+STUB
+# Stub em Node, nao em batch: o batch com `enabledelayedexpansion` escrevia o log
+# num arquivo chamado literalmente `!GH_LOG!` quando rodava sob a suite inteira
+# (expansao atrasada nao valia), e a bateria ficava vermelha so em paralelo.
+cat > "$SBP/bin/gh-stub.js" <<'STUB'
+const fs = require("fs");
+const args = process.argv.slice(2);
+const log = process.env.GH_LOG;
+const EOL = require("os").EOL;
+if (log) {
+  fs.appendFileSync(log, "CHAMADA: gh " + args.join(" ") + EOL);
+  const i = args.indexOf("--body-file");
+  if (i >= 0 && args[i + 1]) {
+    fs.appendFileSync(log, "CORPO:" + EOL + fs.readFileSync(args[i + 1], "utf8") + EOL + "---" + EOL);
+  }
+}
+if (args[0] === "issue" && args[1] === "comment" && process.env.GH_COMMENT_FAIL) process.exit(1);
+if (args[0] === "issue" && args[1] === "view" && args[3] === "--json" && args[4] === "body") {
+  const com = process.env.GH_CORPO_COM_CRITERIO === "1";
+  const body = com
+    ? "Como reproduzir: passo1 passo2 ## Criterio de pronto (falsificavel) comando esperado"
+    : "Como reproduzir: passo1 passo2";
+  process.stdout.write(JSON.stringify({ body }) + EOL);
+  process.exit(0);
+}
+process.exit(0);
 STUB
 
 # TRAVA: verificar que gh resolvido é do sandbox, não do sistema
