@@ -13,9 +13,8 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { spawnSync } = require('child_process');
 const { MARCADOR } = require(path.join(__dirname, '..', 'hooks', 'lib', 'marcador-evidencia.cjs'));
-const { resolverExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
+const { resolverExecutavel, executar } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
 // Parse argumentos
 const args = process.argv.slice(2);
@@ -89,25 +88,16 @@ const tmpFile = path.join(os.tmpdir(), `fechar-issue-${Date.now()}-${Math.random
 fs.writeFileSync(tmpFile, corpo, 'utf-8');
 
 try {
-  // Resolver gh do PATH (honrando ordem)
-  const ghCmd = resolverExecutavel('gh');
-  if (!ghCmd) {
+  // Verificar que gh existe (o executar() faz isso também)
+  if (!resolverExecutavel('gh')) {
     console.error('RECUSADO: nao achei o gh no PATH');
     process.exit(2);
   }
 
   // Chamar: gh issue comment
-  let commentResult;
-  try {
-    commentResult = spawnSync(ghCmd, ['issue', 'comment', n, '--body-file', tmpFile], {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      shell: false,
-      encoding: 'utf-8'
-    });
-  } catch (err) {
-    console.error(err.message);
-    process.exit(1);
-  }
+  const commentResult = executar('gh', ['issue', 'comment', n, '--body-file', tmpFile], {
+    stdio: ['pipe', 'pipe', 'pipe']
+  });
 
   if (commentResult.status !== 0) {
     const saida = commentResult.stdout || commentResult.stderr || '';
@@ -116,17 +106,9 @@ try {
   }
 
   // Se comment foi 0, fechar a Issue
-  let closeResult;
-  try {
-    closeResult = spawnSync(ghCmd, ['issue', 'close', n], {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      shell: false,
-      encoding: 'utf-8'
-    });
-  } catch (err) {
-    console.error(err.message);
-    process.exit(1);
-  }
+  const closeResult = executar('gh', ['issue', 'close', n], {
+    stdio: ['pipe', 'pipe', 'pipe']
+  });
 
   if (closeResult.status !== 0) {
     const saida = closeResult.stdout || closeResult.stderr || '';
