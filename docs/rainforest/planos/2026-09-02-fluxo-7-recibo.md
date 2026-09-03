@@ -151,6 +151,22 @@ Conteúdo: a tabela de travas mecânicas do `README.md`, na vizinhança da linha
 
 pronto quando: o trecho novo responde por leitura semântica onde o recibo mora, quando grava, o que é opt-in e que fica fora do git — nomeando arquivo e comportamento, sem citar número de linha.
 
+### 8. Rastro do fluxo e contrato de bytes [tipo: docs]
+atende: D10
+arquivos: `docs/rainforest/design/fluxo-7-design-recibo.md`, `hooks/testa-contexto-sessao.sh`, `relatorios/2026-09-02-handover-fila-de-fluxos.md`
+depende de: 6
+paralela: nao
+mutacao: n/a
+  motivo: a bateria de contexto muda so a constante D7 (contrato de tamanho exato do nucleo, 5597 -> 5595, consequencia da Tarefa 6) e cinco epochs de fixture reescritos em notacao numerica para o gate de publicacao; os outros dois sao documento.
+
+Emenda de 2026-09-03, no `revisar` (creep medido contra o plano): a seção
+`# Design formal` do design (exigida pela checagem `cobertura` do fluxo 6), a
+constante `NUCLEO_ESPERADO` e os epochs da bateria de contexto, e o handover que
+abriu esta branch já estavam no diff e não cabiam em tarefa nenhuma. Ficam
+nomeados aqui para o rastro dizer por que cada um entrou.
+
+pronto quando: `node scripts/medir-skill.cjs` mostra `nucleo=5595` e `bash hooks/testa-contexto-sessao.sh` sai 0 (D7 bate com o núcleo real); `node scripts/conferir-publicacao.cjs hooks/testa-contexto-sessao.sh` sai 0.
+
 ## Divergências do design
 
 Nenhuma nova. As três resolvidas em 2026-09-02 (o `colher` inexistente, o caminho velho do `portoes.md`, o verbo `recibo` livre) estão fechadas na seção `# Design formal` e foram reconferidas no fonte antes deste plano.
