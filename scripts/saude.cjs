@@ -1387,19 +1387,19 @@ function checarPoda(o = {}) {
 // ---------------------------------------------------------------- 12. backup-externo
 /**
  * Alerta quando o backup fora da máquina está velho (Tarefa 10 do plano guardas).
- * Resolve o destino (RFM_BACKUP_DESTINO ou %OneDrive%\rainforest-backup),
- * lista rainforest-*.zip e verifica o mtime do mais recente.
+ * Resolve o destino chamando `resolverDestino` de scripts/backup.cjs (nao
+ * duplica a cadeia aqui), lista os zips do backup e verifica o mtime do mais
+ * recente.
  */
 function checarBackupExterno() {
-  const env = process.env;
-
-  // Resolve o destino — mesma cadeia de backup.cjs
-  let destino = env.RFM_BACKUP_DESTINO;
-  if (!destino) {
-    const oneDrive = env.OneDrive || env.ONEDRIVE;
-    if (oneDrive) {
-      destino = path.join(oneDrive, 'rainforest-backup');
-    }
+  // Resolve o destino importando de backup.cjs — a mesma cadeia, sem duplicar.
+  let destino;
+  try {
+    const { resolverDestino } = require(path.join(RAIZ_CODIGO, 'scripts', 'backup.cjs'));
+    destino = resolverDestino();
+  } catch {
+    return alerta('backup-externo', 'nao consegui carregar scripts/backup.cjs',
+      'o plugin esta incompleto — reinstale');
   }
 
   // Se destino não resolveu: aviso de que não está configurado

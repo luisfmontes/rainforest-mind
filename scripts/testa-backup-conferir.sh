@@ -116,6 +116,35 @@ igual "conferir exit code (sem zip)" "$exit_conferir_c" "2"
 
 contem "conferir diz nada para conferir" "$saida_conferir_c" "nada para conferir"
 
+# --- CASO (d): zip sem um item que existe na origem -> exit != 0 e nomeia o item (R5)
+
+teste "d" "zip sem item que existe na origem: exit != 0 e nomeia o item"
+
+origem_d="$SB/origem_d"
+destino_d="$SB/destino_d"
+criarOrigem "$origem_d"
+
+origem_d_win=$(cygpath -w "$origem_d")
+destino_d_win=$(cygpath -w "$destino_d")
+
+# Grava o backup SEM projetos.json na origem (removido antes de compactar)
+rm -f "$origem_d/projetos.json"
+node "$SRC/scripts/backup.cjs" gravar --origem "$origem_d_win" --destino "$destino_d_win" >/dev/null 2>&1
+
+# Agora projetos.json passa a existir na origem, mas o zip ja foi gravado sem ele
+echo '{"novo":true}' > "$origem_d/projetos.json"
+
+saida_conferir_d=$(node "$SRC/scripts/backup.cjs" conferir --origem "$origem_d_win" --destino "$destino_d_win" 2>&1)
+exit_conferir_d=$?
+
+if [ "$exit_conferir_d" != "0" ]; then
+  ok=$((ok+1)); echo "  ok    conferir exit code != 0 (item ausente do zip)"
+else
+  falhou=$((falhou+1)); echo "  FALHA conferir exit code deveria ser != 0, veio 0"
+fi
+
+contem "conferir nomeia o item ausente" "$saida_conferir_d" "projetos.json"
+
 # ==================== RESUMO ====================
 echo ""
 echo "== resultado: $ok ok, $falhou falha(s) =="
