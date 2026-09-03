@@ -35,17 +35,17 @@
     "em": "2026-09-03"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-03",
     "tarefas_ok": 14,
     "tarefas": 14,
-    "comando": "for f in hooks/testa-cwd-efetivo.sh hooks/testa-gate-staging-total.sh hooks/testa-portaria.sh scripts/testa-limpar-worktrees.sh scripts/testa-conferir-entrega.sh hooks/testa-gate-worktree.sh scripts/testa-backup-gravar.sh scripts/testa-backup-conferir.sh scripts/testa-backup-estado.sh scripts/testa-fechar-issue.sh hooks/testa-gate-fechar-issue.sh hooks/testa-config.sh; do bash $f >/dev/null 2>&1; echo \"$f exit=$?\"; done (+ scripts/testa-saude.sh na mutacao da T10: 59 ok)",
-    "saida": "hooks/testa-cwd-efetivo.sh exit=0\nhooks/testa-gate-staging-total.sh exit=0\nhooks/testa-portaria.sh exit=0\nscripts/testa-limpar-worktrees.sh exit=0\nscripts/testa-conferir-entrega.sh exit=0\nhooks/testa-gate-worktree.sh exit=0\nscripts/testa-backup-gravar.sh exit=0\nscripts/testa-backup-conferir.sh exit=0\nscripts/testa-backup-estado.sh exit=0\nscripts/testa-fechar-issue.sh exit=1\nhooks/testa-gate-fechar-issue.sh exit=0\nhooks/testa-config.sh exit=0",
+    "comando": "for f in hooks/testa-cwd-efetivo.sh hooks/testa-gate-staging-total.sh hooks/testa-portaria.sh scripts/testa-limpar-worktrees.sh scripts/testa-conferir-entrega.sh hooks/testa-gate-worktree.sh scripts/testa-backup-gravar.sh scripts/testa-backup-conferir.sh scripts/testa-backup-estado.sh scripts/testa-fechar-issue.sh hooks/testa-gate-fechar-issue.sh hooks/testa-config.sh scripts/testa-saude.sh; do bash $f >/dev/null 2>&1; echo \"$f exit=$?\"; done",
+    "saida": "13 baterias exit=0 apos 464d94a (cwd-efetivo 11, staging-total 39, portaria 7, limpar 5, conferir-entrega 55, gate-worktree 135, backup-gravar 21, backup-conferir 11, backup-estado 49, fechar-issue 33, gate-fechar-issue 13, config 38, saude 59)",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "til no meio do caminho 8.3 vira incerto e o commit legitimo no worktree e barrado"
+        "fixture": "rodada 2: git -C repetido volta ao primeiro; separador sem aspas — as duas vermelhas"
       },
       {
         "tarefa": 2,
@@ -105,7 +105,7 @@
       {
         "tarefa": 13,
         "resultado": "vermelho",
-        "fixture": "payload gh issue close direto; com o if do matchClose desligado o hook libera"
+        "fixture": "rodada 2: normalizacao do executavel desligada deixa gh.exe passar; recusa de $( ) desligada; cerca do --saida-arquivo desligada — as tres vermelhas"
       },
       {
         "tarefa": 14,
@@ -114,15 +114,37 @@
       }
     ],
     "em": "2026-09-03",
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-03"
+    "rodada": 3,
+    "rodada3": {
+      "achados": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R8",
+        "R9",
+        "R10",
+        "R12",
+        "F6"
+      ],
+      "mutacoes_reprovadas_na_integracao": [
+        "R1 if (cwdEfetivo.incerto)",
+        "R2 tok.q && i !== 0",
+        "R3 wt.estagio",
+        "R4 caminhoTmp",
+        "R5 !arquivoDivergente",
+        "R9 require raiz.cjs",
+        "R12 regex criterio",
+        "F6 Truncar-LinhaDeErro"
+      ],
+      "nota": "F6: caminho ja era saneado por Get-MotivoSaneado (vigias/erros.ps1); entrega acrescentou teto de 200 chars"
     }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "8fc3f6630ffd4d24ef5e2dfdc1b83e0f0ac10193",
+      "head": "464d94add9ec32f55bbdb659ef21e64cb91a5c8f",
       "caminhos_sujos": [
         "docs/rainforest/estado/2026-09-03-guardas.json"
       ]
