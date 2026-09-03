@@ -77,6 +77,16 @@ function obterBranch(raiz) {
   }
 }
 
+function primeiroEstagioAberto(estado) {
+  const ordem = ["design", "plano", "executar", "revisar", "verificar", "fechar"];
+  for (const est of ordem) {
+    if (estado[est] && estado[est].status && estado[est].status !== "ok" && estado[est].status !== "aprovado") {
+      return est;
+    }
+  }
+  return null;
+}
+
 function obterOutrosWorktreesComFluxoAberto(raiz) {
   try {
     const saida = execFileSync("git", ["-C", raiz, "worktree", "list", "--porcelain"], {
@@ -110,17 +120,12 @@ function obterOutrosWorktreesComFluxoAberto(raiz) {
               const conteudo = fs.readFileSync(path.join(dirEstado, arquivo), "utf8");
               const estado = JSON.parse(conteudo);
               if (estado && typeof estado === "object" && estado.slug) {
-                // Verifica se tem fluxo aberto (algum estágio não fechado)
-                const ordem = ["design", "plano", "executar", "revisar", "verificar", "fechar"];
-                let temAberto = false;
-                for (const est of ordem) {
-                  if (estado[est] && estado[est].status && estado[est].status !== "ok" && estado[est].status !== "aprovado") {
-                    temAberto = true;
-                    break;
-                  }
-                }
-                if (temAberto) {
-                  worktrees.push({ slug: estado.slug, arquivo });
+                // Verifica se tem fluxo aberto (algum estágio não fechado) —
+                // e já guarda qual, reaproveitando este parse (evita reabrir
+                // o JSON depois, no worktree errado ou no certo).
+                const estagioAberto = primeiroEstagioAberto(estado);
+                if (estagioAberto) {
+                  worktrees.push({ slug: estado.slug, arquivo, caminho: caminhoWorktree, estagio: estagioAberto });
                   break;
                 }
               }
@@ -140,26 +145,13 @@ function obterOutrosWorktreesComFluxoAberto(raiz) {
   }
 }
 
-function obterEstagioDesseLado(raiz, slug) {
-  try {
-    const dirEstado = path.join(raiz, "docs", "rainforest", "estado");
-    const arquivo = path.join(dirEstado, `${slug}.json`);
-    if (fs.existsSync(arquivo)) {
-      const conteudo = fs.readFileSync(arquivo, "utf8");
-      const estado = JSON.parse(conteudo);
-
-      // Encontra o primeiro estágio aberto (não fechado)
-      const ordem = ["design", "plano", "executar", "revisar", "verificar", "fechar"];
-      for (const est of ordem) {
-        if (estado[est] && estado[est].status && estado[est].status !== "ok" && estado[est].status !== "aprovado") {
-          return est;
-        }
-      }
-    }
-  } catch {
-    // Ignora erro
+function formatarOutrosWorktreesAbertos(outrosWorktrees) {
+  let trecho = `  outros worktrees em fluxo aberto (slug e estágio):\n`;
+  for (const wt of outrosWorktrees) {
+    const estagioStr = wt.estagio || "?";
+    trecho += `    - slug: ${wt.slug}, estágio: ${estagioStr}\n`;
   }
-  return null;
+  return trecho;
 }
 
 function negar(motivo) {
@@ -468,12 +460,7 @@ function main() {
     msg += `  estágio resolvido: ${estagioLog}\n`;
 
     if (outrosWorktrees.length > 0) {
-      msg += `  outros worktrees em fluxo aberto (slug e estágio):\n`;
-      for (const wt of outrosWorktrees) {
-        const estagio = obterEstagioDesseLado(raiz, wt.slug);
-        const estagioStr = estagio || "?";
-        msg += `    - slug: ${wt.slug}, estágio: ${estagioStr}\n`;
-      }
+      msg += formatarOutrosWorktreesAbertos(outrosWorktrees);
     }
 
     negar(msg.trim());
@@ -535,12 +522,7 @@ function main() {
     msg += `  estágio resolvido: ?\n`;
 
     if (outrosWorktrees.length > 0) {
-      msg += `  outros worktrees em fluxo aberto (slug e estágio):\n`;
-      for (const wt of outrosWorktrees) {
-        const estagio = obterEstagioDesseLado(raiz, wt.slug);
-        const estagioStr = estagio || "?";
-        msg += `    - slug: ${wt.slug}, estágio: ${estagioStr}\n`;
-      }
+      msg += formatarOutrosWorktreesAbertos(outrosWorktrees);
     }
 
     negar(msg.trim());
