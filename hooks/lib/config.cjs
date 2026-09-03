@@ -48,6 +48,10 @@ const CHAVES = {
     padrao: true,
     descricao: 'barra escrita cujo destino está dentro de outro repositório git',
   },
+  'gate-fechar-issue': {
+    padrao: true,
+    descricao: 'barra `gh issue close` direto e `gh pr create/merge` sem evidência de pronto',
+  },
   fluxo: {
     padrao: true,
     descricao: 'os sete estágios (brainstorm → plano → … → fechar)',
