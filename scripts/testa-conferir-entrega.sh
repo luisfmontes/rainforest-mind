@@ -370,5 +370,45 @@ esperado "escopo: SEM --escopo nenhum -> aprovado (retrocompativel)" 0 \
   "${CONF_CMD[@]}" --worktree "$WT" --base "$ESCOPO_C_BASE" --commit "$ESCOPO_C_COMMIT"
 
 echo
+echo "== BOM na primeira linha do arquivo --sujo-antes =="
+
+# Casos (a)–(c): agente modifica arquivo com BOM em --sujo-antes
+# (a) sem BOM: reconhece arquivo-nome inteiro
+git -C "$WT" reset --hard "$ESCOPO_C_BASE" >/dev/null 2>&1
+BOM_ARQUIVO_A="$RAIZ/porcelain-sem-bom-a.txt"
+printf ' M feito.txt\n' > "$BOM_ARQUIVO_A"
+echo "v2" > "$WT/feito.txt"
+git -C "$WT" add .; git -C "$WT" commit -qm "modificado feito.txt sem BOM"
+BOM_COMMIT_A=$(git -C "$WT" rev-parse HEAD)
+esperado "BOM (a) sem BOM: reconhece feito.txt, reprova" 1 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$ESCOPO_C_BASE" --head-antes "$ESCOPO_C_BASE" --commit "$BOM_COMMIT_A" \
+  --sujo-antes "$BOM_ARQUIVO_A"
+
+# (b) com BOM: também reconhece arquivo-nome inteiro (prova que BOM foi removido)
+git -C "$WT" reset --hard "$ESCOPO_C_BASE" >/dev/null 2>&1
+BOM_ARQUIVO_B="$RAIZ/porcelain-com-bom-b.txt"
+node -e "process.stdout.write('﻿ M feito.txt\n')" > "$BOM_ARQUIVO_B"
+echo "v2" > "$WT/feito.txt"
+git -C "$WT" add .; git -C "$WT" commit -qm "modificado feito.txt com BOM"
+BOM_COMMIT_B=$(git -C "$WT" rev-parse HEAD)
+esperado "BOM (b) com BOM: reconhece feito.txt, reprova" 1 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$ESCOPO_C_BASE" --head-antes "$ESCOPO_C_BASE" --commit "$BOM_COMMIT_B" \
+  --sujo-antes "$BOM_ARQUIVO_B"
+contem "  ... nomeando feito.txt corretamente" "feito.txt" \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$ESCOPO_C_BASE" --head-antes "$ESCOPO_C_BASE" --commit "$BOM_COMMIT_B" \
+  --sujo-antes "$BOM_ARQUIVO_B" 2>&1
+
+# (c) múltiplas linhas: BOM apenas na primeira, segunda linha também reconhecida
+git -C "$WT" reset --hard "$ESCOPO_C_BASE" >/dev/null 2>&1
+BOM_ARQUIVO_C="$RAIZ/porcelain-com-bom-c.txt"
+node -e "process.stdout.write('﻿ M feito.txt\n?? gerado/.gitignore\n')" > "$BOM_ARQUIVO_C"
+echo "v2" > "$WT/feito.txt"
+git -C "$WT" add .; git -C "$WT" commit -qm "modificado com BOM multiplas linhas"
+BOM_COMMIT_C=$(git -C "$WT" rev-parse HEAD)
+esperado "BOM (c) com múltiplas linhas: ambas reconhecidas, reprova" 1 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$ESCOPO_C_BASE" --head-antes "$ESCOPO_C_BASE" --commit "$BOM_COMMIT_C" \
+  --sujo-antes "$BOM_ARQUIVO_C"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
