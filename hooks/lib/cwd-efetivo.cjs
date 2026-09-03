@@ -69,6 +69,39 @@ function segmentosComAspas(cmd) {
 }
 
 /**
+ * O segmento tem subshell ou grupo `(...)`/`{...}`?
+ *
+ * `(cd /principal && codex exec --yolo)` de dentro do worktree: o split por
+ * `&&` quebra em `(cd /principal ` e ` codex exec --yolo)` — nenhum dos dois
+ * comeca com `cd` puro, entao o `CD` regex nunca casa e o `cd` do subshell
+ * passa batido, sem marcar incerto. O `cd` de dentro de `(...)` NAO PERSISTE
+ * para fora dele quando o shell roda de verdade — mas dentro do subshell ele
+ * vale para os comandos ali, que e exatamente o perigo. Sem tentar "resolver"
+ * o subshell (isso exigiria parsear a arvore inteira), a unica leitura segura
+ * e marcar o resultado INCERTO.
+ *
+ * Duas condicoes, cada uma suficiente:
+ *   - o segmento COMECA com `(` ou `{` (abre subshell ou grupo);
+ *   - o segmento contem `(` ou `)` fora de aspas que nao seja abertura `$(`
+ *     de substituicao de comando (essa ja cai no `/[$\`]/` de cima).
+ */
+function contemSubshellOuGrupo(seg) {
+  if (/^\s*[({]/.test(seg)) return true;
+  let aspa = null;
+  for (let i = 0; i < seg.length; i += 1) {
+    const c = seg[i];
+    if (aspa) {
+      if (c === aspa) aspa = null;
+      continue;
+    }
+    if (c === '"' || c === "'") { aspa = c; continue; }
+    if (c === "(" && seg[i - 1] !== "$") return true;
+    if (c === ")") return true;
+  }
+  return false;
+}
+
+/**
  * Extrai o ÚLTIMO diretório de `-C` num segmento de git.
  *
  * Se múltiplos `-C` aparecem, git usa o último. Exemplo:
@@ -105,6 +138,11 @@ function resolverCwdEfetivo(comando, cwdInicial) {
   let incerto = false;
 
   for (const seg of segmentos) {
+    // Subshell/grupo: o `cd` de dentro dele nao persiste pra fora, mas vale
+    // para os comandos dentro — a unica leitura segura e marcar INCERTO,
+    // sem tentar decidir o resto deste segmento por ele.
+    if (contemSubshellOuGrupo(seg)) incerto = true;
+
     // `cd` isolado num segmento
     const cd = seg.match(CD);
     if (cd) {
@@ -190,6 +228,7 @@ module.exports = {
   toplevelConfinado,
   segmentosComAspas,
   extrairUltimoDirGit,
+  contemSubshellOuGrupo,
   CD,
   GIT_DIR_EXPLICITO,
   SEPARADORES,
