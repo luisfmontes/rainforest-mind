@@ -24,6 +24,12 @@ RAIZ="$(cygpath -m "$RAIZ_POSIX" 2>/dev/null || printf '%s' "$RAIZ_POSIX")"
 trap 'rm -rf "$RAIZ_POSIX"' EXIT
 echo "(caixa de areia: $RAIZ)"
 
+# Issue #160: a bateria lia a config REAL de quem a roda — quem desligou um gate
+# no escopo usuario pelo `/setup` via a suite vermelha sem pista da causa. A raiz
+# de dados passa a ser uma pasta descartavel, como faz o `testa-orcamento.sh`
+# (Issue #81). Caso que precisa de outra raiz sobrescreve por chamada.
+export RFM_ROOT="$RAIZ/dados-neutros"; mkdir -p "$RFM_ROOT"
+
 ok=0; falhou=0
 gate() { # nome, exit esperado, json
   local nome="$1" esp="$2" json="$3"

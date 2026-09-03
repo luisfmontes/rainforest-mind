@@ -51,6 +51,11 @@ function git(dir, args) {
  * Verifica recursivamente para cima se o diretório está dentro de um repo git,
  * mesmo que o diretório não exista ainda (arquivo a ser criado em subdir novo).
  */
+/** realpathSync.native expande nome curto 8.3 e link; o puro do Node nao. */
+function formaLonga(p) {
+  try { return fs.realpathSync.native(p); } catch { return p; }
+}
+
 function estadoDoRepo(dir) {
   let tentativa = dir;
   let tentouRaiz = false;
@@ -60,9 +65,14 @@ function estadoDoRepo(dir) {
     if (gitDir !== null) {
       // Achou um repo git
       const commonDirRaw = git(tentativa, ["rev-parse", "--git-common-dir"]) || gitDir;
+      // Forma LONGA dos dois lados (Issue #153): o git responde o common-dir do
+      // worktree com o caminho longo gravado na criacao, e o payload pode chegar
+      // na forma curta 8.3 (`RUNNER~1` no lugar de `runneradmin`, no runner do Actions). Sem
+      // resolver, o MESMO repo comparava como dois e o gate barrava worktree
+      // linkado — so la, nunca na maquina do dono, cujo home nao encurta.
       return {
-        toplevel: git(tentativa, ["rev-parse", "--show-toplevel"]) || tentativa,
-        commonDir: path.resolve(tentativa, commonDirRaw),
+        toplevel: formaLonga(git(tentativa, ["rev-parse", "--show-toplevel"]) || tentativa),
+        commonDir: formaLonga(path.resolve(tentativa, commonDirRaw)),
       };
     }
 

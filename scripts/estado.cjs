@@ -111,6 +111,10 @@ const FECHA_TAMBEM = { arqueologia: ['ok', 'dispensada'] };
 const ESTAGIOS_EXIGEM_EVIDENCIA = ['executar', 'verificar'];
 function estaFechado(estagio, bloco) {
   if (!bloco || typeof bloco !== 'object') return false;
+  // Issue #148: estágio reaberto por reprovação não está fechado, seja qual for
+  // o status. Antes, só o `exigir` olhava `reaberto_por`; o `marcar` conferia
+  // apenas o status do upstream, e um bloco "ok + reaberto_por" passava por ele.
+  if (bloco.reaberto_por) return false;
   if (FECHA_TAMBEM[estagio]) return FECHA_TAMBEM[estagio].includes(bloco.status);
   return bloco.status === (FECHADO[estagio] || 'ok');
 }
@@ -1005,6 +1009,14 @@ function main() {
         console.error(`erro: --json nao e JSON valido: ${err.message}`);
         process.exit(1);
       }
+      // Issue #148: `reaberto_por` é escrito pelo próprio estado.cjs ao reprovar
+      // (objeto {estagio, data}). Vindo do --json chegava como texto livre, o
+      // `exigir` lia `.estagio` de uma string e imprimia 'undefined'. Campo da
+      // máquina não entra pela mão — e --json continua aceitando o resto.
+      if (Object.prototype.hasOwnProperty.call(extra, 'reaberto_por')) {
+        console.error("erro: 'reaberto_por' e preenchido pelo proprio estado.cjs ao reprovar — nao entra pelo --json (Issue #148)");
+        process.exit(1);
+      }
     }
     // Fechar um estágio com pré-requisito aberto é o furo que o arquivo existe para
     // impedir: sem isto, `marcar verificar ok` pularia a revisão inteira em silêncio.
@@ -1012,6 +1024,15 @@ function main() {
       const falta = faltando(estado, estagio);
       if (falta.length) {
         console.error(`RECUSADO: nao da para fechar '${estagio}' com ${falta.join(', ')} em aberto.`);
+        process.exit(2);
+      }
+      // Issue #148: estágio a montante reaberto por reprovação barra o fechamento
+      // deste — é a varredura que o `exigir` já fazia, e que só ele fazia. O
+      // próprio estágio reaberto pode fechar (é assim que a reabertura se resolve).
+      const reaberto = estagio_reprovado_pendente(estado);
+      if (reaberto && reaberto !== estagio && EXECUCAO.indexOf(reaberto) < EXECUCAO.indexOf(estagio)) {
+        const r = estado[reaberto].reaberto_por;
+        console.error(`RECUSADO: '${reaberto}' foi reaberto por reprovação em '${r.estagio}' (${r.data}). Rode '${reaberto}' antes.`);
         process.exit(2);
       }
     }

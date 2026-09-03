@@ -65,6 +65,16 @@ jobs:
   baterias:
     runs-on: windows-latest
     timeout-minutes: 20
+    # Node 22 E 24 (Issue #161): o testa-limpar-branches ficou verde no 22 e
+    # vermelho no 24 (DEP0190 no stderr contaminando um JSON.parse) — o CI
+    # pinado numa versao so era verde numa versao so. O repo e publico desde
+    # 2026-09-02 e o minuto de Actions deixou de contar na cota; o custo do
+    # segundo job e relogio.
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22', '24']
+    name: baterias (node ${{ matrix.node }})
 
     defaults:
       run:
@@ -80,7 +90,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: ${{ matrix.node }}
 
       - uses: actions/setup-python@v5
         with:
@@ -109,6 +119,10 @@ jobs:
           fi
           echo "  ok    arvore em LF"
 
+      # rainforest-gate: dados-de-exemplo — o endereco abaixo e sintetico (TLD
+      # .invalid, RFC 2606) e o numero citado no comentario e id de run do Actions.
+      # Sem o marcador, o gate de publicacao recusa qualquer edicao neste arquivo
+      # (Issue #165: ele confere o COMMIT inteiro, nao so as linhas novas).
       - name: Identidade git — o runner nao tem, a maquina do Luis tem
         run: |
           # Rede, nao conserto. Isto entrou apostando que era a causa das baterias
