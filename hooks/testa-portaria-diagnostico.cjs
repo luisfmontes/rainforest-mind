@@ -179,7 +179,12 @@ console.log("== (c) outro worktree em fluxo aberto é mencionado ==");
   caso("exit 2", r.status === 2, `exit=${r.status}`);
   caso("stderr menciona fluxo aberto", r.stderr.includes("fluxo aberto"), `stderr: ${r.stderr}`);
   caso("stderr cita 'slug'", r.stderr.includes("slug"), `stderr: ${r.stderr}`);
-  caso("stderr cita 'estágio'", r.stderr.includes("estágio"), `stderr: ${r.stderr}`);
+  // O outro worktree foi criado com estágio "plano" aberto — a mensagem tem
+  // de citar esse estágio real (lido do lado do outro worktree), nunca "?"
+  // (que seria o efeito do bug: ler o estado do worktree atual, onde o
+  // arquivo daquele slug não existe).
+  caso("stderr cita 'estágio: plano' (estágio real do outro worktree)", r.stderr.includes("estágio: plano"), `stderr: ${r.stderr}`);
+  caso("stderr não cita 'estágio: ?' (não devolve '?' para o outro worktree)", !r.stderr.includes("estágio: ?"), `stderr: ${r.stderr}`);
 
   // Limpeza
   try {
