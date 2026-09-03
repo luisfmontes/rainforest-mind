@@ -19,6 +19,83 @@ const { MARCADOR } = require("./lib/marcador-evidencia.cjs");
 const { executar } = require("./lib/resolver-executavel.cjs");
 
 /**
+ * Normaliza o nome de um executável: remove caminho, extensão e aspas.
+ * Exemplos: `gh`, `gh.exe`, `gh.cmd`, `"gh"`, `C:\x\gh.exe` → `gh`
+ */
+function normalizarExecutavel(nome) {
+  let sem_aspas = nome.replace(/^["']|["']$/g, "");
+  sem_aspas = path.basename(sem_aspas);
+  sem_aspas = sem_aspas.replace(/\.(exe|cmd|bat)$/i, "");
+  return sem_aspas.toLowerCase();
+}
+
+/**
+ * Tokeniza um comando bash, respeitando aspas simples e duplas.
+ * Retorna array de tokens (sem aspas).
+ */
+function tokenizar(comando) {
+  const tokens = [];
+  let token = "";
+  let emAspaDupla = false;
+  let emAspaSimples = false;
+
+  for (let i = 0; i < comando.length; i++) {
+    const char = comando[i];
+    if (char === '"' && !emAspaSimples) {
+      emAspaDupla = !emAspaDupla;
+      continue;
+    }
+    if (char === "'" && !emAspaDupla) {
+      emAspaSimples = !emAspaSimples;
+      continue;
+    }
+    if ((char === " " || char === "\t") && !emAspaDupla && !emAspaSimples) {
+      if (token) {
+        tokens.push(token);
+        token = "";
+      }
+      continue;
+    }
+    token += char;
+  }
+  if (token) tokens.push(token);
+  return tokens;
+}
+
+/**
+ * Verifica se o comando começa com um executável de nome 'gh' (normalizado).
+ */
+function comandoComecaCom(comando, exe_name) {
+  const tokens = tokenizar(comando);
+  if (tokens.length === 0) return false;
+  return normalizarExecutavel(tokens[0]) === exe_name;
+}
+
+/**
+ * Extrai subcomandos do comando (tokens a partir do segundo).
+ */
+function extrairSubcomandos(comando) {
+  const tokens = tokenizar(comando);
+  return tokens.slice(1);
+}
+
+/**
+ * Verifica se os subcomandos contêm uma sequência específica (case-insensitive).
+ */
+function temSubcomando(subcomandos, padrao) {
+  for (let i = 0; i <= subcomandos.length - padrao.length; i++) {
+    if (
+      subcomandos
+        .slice(i, i + padrao.length)
+        .every((s, idx) => s.toLowerCase() === padrao[idx].toLowerCase())
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Tenta rodar um comando git neste diretório. Retorna output ou null se falhar.
  */
 function git(dir, args) {
@@ -80,13 +157,18 @@ function temMarcadorEvidencia(issueNum) {
 /**
  * Extrai o corpo do comando `gh pr create` ou `gh pr merge`.
  * Procura por `--body "..."` ou `--body-file <arquivo>`.
- * Retorna { tipo: "direto"|"arquivo"|"nenhum", conteudo: string|null }
+ * Retorna { tipo: "direto"|"arquivo"|"nenhum", conteudo: string|null, legivel: bool }
  */
 function extrairCorpoDoPR(comando) {
   // Procurar por --body "..."
   const matchBodyDireto = /--body\s+["']([^"']+)["']/i.exec(comando);
   if (matchBodyDireto) {
-    return { tipo: "direto", conteudo: matchBodyDireto[1] };
+    const corpo = matchBodyDireto[1];
+    // Validar se o corpo é legível: não contém $(...), crases, ou aspas não fechadas
+    if (corpo.includes("$(") || corpo.includes("`")) {
+      return { tipo: "direto", conteudo: corpo, legivel: false };
+    }
+    return { tipo: "direto", conteudo: corpo, legivel: true };
   }
 
   // Procurar por --body-file <arquivo>
@@ -95,13 +177,13 @@ function extrairCorpoDoPR(comando) {
     const arquivo = matchBodyFile[1];
     try {
       const conteudo = fs.readFileSync(arquivo, "utf8");
-      return { tipo: "arquivo", conteudo };
+      return { tipo: "arquivo", conteudo, legivel: true };
     } catch {
-      return { tipo: "arquivo", conteudo: null };
+      return { tipo: "arquivo", conteudo: null, legivel: false };
     }
   }
 
-  return { tipo: "nenhum", conteudo: null };
+  return { tipo: "nenhum", conteudo: null, legivel: false };
 }
 
 function bloqueia(motivo) {
@@ -141,52 +223,62 @@ function main() {
   if (!comando) process.exit(0);
 
   // Caso (a): `gh issue close <n>` → exit 2
-  const matchClose = /\bgh\s+issue\s+close\s+(\d+)/i.exec(comando);
-  if (matchClose) {
-    bloqueia(
-      `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
-      `Razão: 'gh issue close' direto não registra a evidência de pronto.\n\n` +
-      `Use:\n` +
-      `  node scripts/fechar-issue.cjs <número> --comando "<seu-comando>" --saida "<saída-ou-arquivo>"\n\n` +
-      `O script registra o comentário com a evidência antes de fechar.\n`
-    );
+  if (comandoComecaCom(comando, "gh")) {
+    const subcomandos = extrairSubcomandos(comando);
+    if (temSubcomando(subcomandos, ["issue", "close"])) {
+      bloqueia(
+        `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
+        `Razão: 'gh issue close' direto não registra a evidência de pronto.\n\n` +
+        `Use:\n` +
+        `  node scripts/fechar-issue.cjs <número> --comando "<seu-comando>" --saida "<saída-ou-arquivo>"\n\n` +
+        `O script registra o comentário com a evidência antes de fechar.\n`
+      );
+    }
   }
 
   // Caso (b) e (c): `gh pr create` ou `gh pr merge` → verificar corpo
-  const matchPR = /\bgh\s+pr\s+(create|merge)/i.exec(comando);
-  if (matchPR) {
-    const corpoDoPR = extrairCorpoDoPR(comando);
+  if (comandoComecaCom(comando, "gh")) {
+    const subcomandos = extrairSubcomandos(comando);
+    if (temSubcomando(subcomandos, ["pr", "create"]) || temSubcomando(subcomandos, ["pr", "merge"])) {
+      const corpoDoPR = extrairCorpoDoPR(comando);
 
-    // Corpo ilegível (editor interativo)
-    if (corpoDoPR.tipo === "nenhum" || corpoDoPR.tipo === "arquivo" && corpoDoPR.conteudo === null) {
-      if (corpoDoPR.tipo === "arquivo") {
-        bloqueia(
-          `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
-          `Razão: não consegui ler o arquivo de corpo do PR.\n\n` +
-          `Use --body "texto" ou --body-file <arquivo-legível>.\n`
-        );
-      } else {
-        bloqueia(
-          `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
-          `Razão: o corpo do PR vem de editor interativo (sem --body ou --body-file).\n\n` +
-          `Se o corpo cita 'closes #N', a checagem não consegue ler.\n` +
-          `Use --body "texto" ou --body-file <arquivo> para incluir a informação de fechamento.\n`
-        );
+      // Corpo ilegível (não consegue ler com segurança)
+      if (!corpoDoPR.legivel) {
+        if (corpoDoPR.tipo === "arquivo") {
+          bloqueia(
+            `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
+            `Razão: não consegui ler o arquivo de corpo do PR.\n\n` +
+            `Use --body "texto" ou --body-file <arquivo-legível>.\n`
+          );
+        } else if (corpoDoPR.tipo === "direto" && (corpoDoPR.conteudo.includes("$(") || corpoDoPR.conteudo.includes("`"))) {
+          bloqueia(
+            `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
+            `Razão: o corpo do PR contém substituição de comando (\\$(...) ou backticks), não consegui ler com segurança.\n\n` +
+            `Use --body "texto-plano" ou --body-file <arquivo> com o corpo já expandido.\n`
+          );
+        } else {
+          bloqueia(
+            `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
+            `Razão: o corpo do PR vem de editor interativo (sem --body ou --body-file).\n\n` +
+            `Se o corpo cita 'closes #N', a checagem não consegue ler.\n` +
+            `Use --body "texto" ou --body-file <arquivo> para incluir a informação de fechamento.\n`
+          );
+        }
       }
-    }
 
-    // Corpo legível: verificar Issues citadas
-    const issues = extrairIssuesCitadas(corpoDoPR.conteudo || "");
-    for (const issue of issues) {
-      if (!temMarcadorEvidencia(issue)) {
-        bloqueia(
-          `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
-          `Razão: Issue #${issue} não tem comentário com a evidência de pronto.\n\n` +
-          `O critério de pronto deve ter sido rodado e colado em comentário.\n` +
-          `Use:\n` +
-          `  node scripts/fechar-issue.cjs ${issue} --comando "<seu-comando>" --saida "<saída-ou-arquivo>"\n\n` +
-          `Depois crie o PR com o corpo citando closes #${issue}.\n`
-        );
+      // Corpo legível: verificar Issues citadas
+      const issues = extrairIssuesCitadas(corpoDoPR.conteudo || "");
+      for (const issue of issues) {
+        if (!temMarcadorEvidencia(issue)) {
+          bloqueia(
+            `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
+            `Razão: Issue #${issue} não tem comentário com a evidência de pronto.\n\n` +
+            `O critério de pronto deve ter sido rodado e colado em comentário.\n` +
+            `Use:\n` +
+            `  node scripts/fechar-issue.cjs ${issue} --comando "<seu-comando>" --saida "<saída-ou-arquivo>"\n\n` +
+            `Depois crie o PR com o corpo citando closes #${issue}.\n`
+          );
+        }
       }
     }
   }
