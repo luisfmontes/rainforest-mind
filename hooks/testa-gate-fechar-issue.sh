@@ -14,18 +14,20 @@ test_fail() { falhou=$((falhou+1)); echo "  FALHA $1"; }
 # Criar stub compatível com Windows
 mkdir -p "$SBP/bin"
 
-# Criar versão .cmd para Windows
+# Criar versão .cmd para Windows — formato correto: {"comments":[...]}
+# Log cada invocação para debug
 cat > "$SBP/bin/gh.cmd" <<'STUB'
 @echo off
 setlocal enabledelayedexpansion
 if "%1"=="issue" if "%2"=="view" (
   if "!GH_COM_MARCADOR!"=="1" (
-    echo [{"body":"<!-- rainforest-evidencia --> Marcador presente"}]
+    echo {"comments":[{"body":"<!-- rainforest-evidencia --> Marcador presente"}]}
   ) else (
-    echo [{"body":"Sem marcador aqui"}]
+    echo {"comments":[{"body":"Sem marcador aqui"}]}
   )
   exit /b 0
 )
+REM Para outros comandos, retornar sucesso silenciosamente
 exit /b 0
 STUB
 
@@ -34,9 +36,9 @@ cat > "$SBP/bin/gh" <<'STUB'
 #!/bin/bash
 if [ "$1" = "issue" ] && [ "$2" = "view" ]; then
   if [ "$GH_COM_MARCADOR" = "1" ]; then
-    echo '[{"body":"<!-- rainforest-evidencia --> Marcador presente"}]'
+    echo '{"comments":[{"body":"<!-- rainforest-evidencia --> Marcador presente"}]}'
   else
-    echo '[{"body":"Sem marcador aqui"}]'
+    echo '{"comments":[{"body":"Sem marcador aqui"}]}'
   fi
   exit 0
 fi
@@ -44,15 +46,21 @@ exit 0
 STUB
 chmod +x "$SBP/bin/gh"
 
-# TRAVA: verificar que gh existe no sandbox (versão .cmd)
+# TRAVA: verificar que gh é do sandbox usando resolverExecutavel
 echo "== TRAVA: verificar que gh é do sandbox =="
-if [ -f "$SBP/bin/gh.cmd" ]; then
-  echo "  ok   gh.cmd está no sandbox"
-else
-  echo "  FALHA gh.cmd não criado"
-  echo "== resultado: 0 ok, 1 falha(s) =="
-  exit 1
-fi
+(
+  export PATH="$SBP/bin:$PATH"
+  # Converter SRC para caminho absoluto real (remove /c/ etc)
+  SRC_ABS="$(cd "$SRC" && pwd)"
+  RESOLVED="$(node -e "const { resolverExecutavel } = require('./hooks/lib/resolver-executavel.cjs'); const exe = resolverExecutavel('gh'); console.log(exe || 'NOT_FOUND');" 2>&1)"
+  if [[ "$RESOLVED" == *"bin"*"gh"* ]]; then
+    echo "  ok   gh resolvido para sandbox"
+  else
+    echo "  FALHA gh não resolvido para sandbox (veio: $RESOLVED)"
+    echo "== resultado: 0 ok, 1 falha(s) =="
+    exit 1
+  fi
+)
 
 # Caso (a): `gh issue close 12` → exit 2, stderr aponta scripts/fechar-issue.cjs
 echo
