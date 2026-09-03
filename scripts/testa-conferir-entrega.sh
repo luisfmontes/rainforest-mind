@@ -232,12 +232,12 @@ echo
 echo "== o mesmo worktree escrito nas duas grafias do Windows (8.3) =="
 # Achado pelo CI em 2026-08-17 (Issue #16). O TEMP do runner do GitHub e
 # `<home>/RUNNER~1/...` (forma 8.3); o git responde sempre na forma longa
-# (`C:/Users/runneradmin/...`). O `norm()` do .cjs usava `fs.realpathSync`, que
+# (`<home>/runneradmin/...`). O `norm()` do .cjs usava `fs.realpathSync`, que
 # no Windows NAO expande 8.3 — entao as duas grafias do MESMO diretorio nao
 # batiam, e a conferencia cuspia:
 #
 #   REPROVADO — 1 falha(s):
-#     - 1. o toplevel (C:/Users/runneradmin/.../wt-bom)
+#     - 1. o toplevel (<home>/runneradmin/.../wt-bom)
 #          nao e o worktree do briefing (<home>/RUNNER~1/.../wt-bom)
 #
 # Ou seja: a peca que decide se a entrega de um subagente pode ser integrada
