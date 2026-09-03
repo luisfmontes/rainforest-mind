@@ -145,6 +145,110 @@ function bloqueia(achados, arquivo) {
   process.exit(2);
 }
 
+/**
+ * O comando é um `git commit`?
+ *
+ * Casa `git commit`, `git -C <dir> commit`, `git commit -am "x"`. NÃO casa
+ * `git commit-tree` nem a palavra "commit" em prosa, porque o \b depois de
+ * `commit` exige fim de TOKEN e o `git` tem de vir antes.
+ * O `\b` que estava aqui casava DENTRO de `commit-tree`, porque `-` e fronteira
+ * de palavra — a bateria pegou, e por isso o lookahead e por espaco ou fim.
+ */
+const RE_GIT_COMMIT = /\bgit\s+(?:(?:-[A-Za-z]\s+\S+|--[a-z-]+(?:=\S+)?|-[A-Za-z]+)\s+)*commit(?=\s|$)/;
+
+/** `-a`, `-am`, `--all`: o commit leva o que está no WORKTREE, não no índice. */
+const RE_COMMIT_TUDO = /(?:^|\s)(?:--all\b|-[A-Za-z]*a[A-Za-z]*\b)/;
+
+/**
+ * O que ESTE commit levaria, e o conteúdo exato que iria para o objeto.
+ *
+ * A distinção índice-vs-worktree não é preciosismo: `git commit` leva o que
+ * está no ÍNDICE, e `git commit -a` leva o que está no worktree. Conferir o
+ * arquivo em disco num commit normal aprovaria (ou reprovaria) conteúdo que não
+ * é o que vai ser gravado — que é exatamente a classe de erro que este arquivo
+ * inteiro existe para não cometer.
+ */
+function arquivosQueVaoParaOCommit(dir, cmd) {
+  const levaWorktree = RE_COMMIT_TUDO.test(cmd);
+  const lista = git(dir, ["diff", "--cached", "--name-only", "--diff-filter=ACMR"]);
+  const nomes = new Set((lista || "").split("\n").map((s) => s.trim()).filter(Boolean));
+
+  if (levaWorktree) {
+    const modificados = git(dir, ["diff", "--name-only", "--diff-filter=ACMR"]);
+    for (const n of (modificados || "").split("\n").map((s) => s.trim()).filter(Boolean)) nomes.add(n);
+  }
+
+  const saida = [];
+  for (const nome of nomes) {
+    let conteudo = null;
+    if (levaWorktree) {
+      try { conteudo = fs.readFileSync(path.join(dir, nome), "utf8"); } catch { conteudo = null; }
+    } else {
+      // `git show :<caminho>` devolve o conteúdo do ÍNDICE, que é o que o commit
+      // vai gravar. Não é o mesmo que ler o arquivo do disco.
+      conteudo = git(dir, ["show", `:${nome}`]);
+    }
+    if (conteudo === null) continue;
+    // Binário não passa por regex de telefone sem gerar ruído; o \0 é o teste
+    // que o próprio git usa para decidir "Binary files differ".
+    if (conteudo.includes("\u0000")) continue;
+    saida.push({ nome, conteudo });
+  }
+  return saida;
+}
+
+/**
+ * A trava no COMMIT — Issue #165.
+ *
+ * O gate acima cobre `Write`, `Edit` e `MultiEdit`, e é o que dá o aviso cedo.
+ * Mas ele cobre a FERRAMENTA, não o EFEITO: em 2026-09-02 o mesmo conteúdo
+ * sensível entrou no repositório sem ele ver, escrito por um `fs.writeFileSync`
+ * dentro de um script node invocado pelo Bash. Nenhum evento de `Write` foi
+ * emitido, nenhum `PreToolUse` disparou. `sed -i`, heredoc e `python - <<PY`
+ * têm o mesmo caminho livre — e escrita por script é justamente a que se usa em
+ * mudança de lote, que é onde o volume passa sem ninguém ler linha a linha.
+ *
+ * Por que no commit e não numa checagem de `Bash`: ler a linha de comando não
+ * diz o que o script vai escrever. `node edita.mjs` é opaco. O commit é o único
+ * ponto por onde tudo passa, independentemente de como o arquivo foi escrito —
+ * e é o ponto em que o dado deixa de ser local e vira histórico.
+ *
+ * As três isenções são as mesmas do gate de escrita, de propósito: um arquivo
+ * que passa por `Write` e reprova no `commit` seria uma trava contradizendo a
+ * outra, e o usuário aprenderia a desligar as duas.
+ */
+function conferirCommit(ev, cwdDoEvento) {
+  const cmd = ev.tool_input && ev.tool_input.command;
+  if (typeof cmd !== "string" || !RE_GIT_COMMIT.test(cmd)) process.exit(0);
+
+  const gitTop = git(cwdDoEvento, ["rev-parse", "--show-toplevel"]);
+  if (!gitTop) process.exit(0);
+
+  try {
+    if (fs.existsSync(path.join(gitTop, ".rainforest-gate-off"))) process.exit(0);
+  } catch {}
+
+  for (const { nome, conteudo } of arquivosQueVaoParaOCommit(gitTop, cmd)) {
+    const absoluto = path.join(gitTop, nome);
+    if (estaGitignorado(gitTop, absoluto)) continue;
+    // O marcador é procurado no conteúdo QUE VAI SER COMMITADO, não no disco:
+    // arquivo que ganhou o marcador só no worktree não pode dispensar a
+    // conferência do que já está no índice.
+    if (/rainforest-gate:\s*dados-de-exemplo/i.test(conteudo)) continue;
+
+    const resultado = conferirConteudo(conteudo);
+    if (resultado && resultado.achados && resultado.achados.length) {
+      process.stderr.write(
+        `\nEste conteudo entraria no COMMIT, e o gate de escrita nao o viu —\n` +
+        `ele cobre Write/Edit, e este arquivo pode ter sido escrito por script\n` +
+        `(node, sed, heredoc). Issue #165.\n`
+      );
+      bloqueia(resultado.achados, absoluto);
+    }
+  }
+  process.exit(0);
+}
+
 function main() {
   let ev;
   try {
@@ -161,6 +265,11 @@ function main() {
   try { if (!require("./lib/config.cjs").ligado("gate-publicacao", { projeto: cwdDoEvento })) process.exit(0); } catch {}
 
   const nome = ev.tool_name;
+
+  // O commit é o ponto por onde tudo passa (Issue #165). Vem ANTES do filtro de
+  // ferramentas de escrita porque `Bash` nunca esteve nele.
+  if (nome === "Bash" || nome === "PowerShell") conferirCommit(ev, cwdDoEvento);
+
   if (!FERRAMENTAS_DE_ESCRITA.has(nome)) process.exit(0);
 
   const entrada = ev.tool_input || {};
