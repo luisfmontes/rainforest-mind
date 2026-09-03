@@ -321,9 +321,12 @@ function arquivosAgentComStatus(c, wt, base, commit) {
 /** Extrai conjunto de caminhos sujos ANTES do despacho (do arquivo porcelain). */
 function caminhosSujoAntes(arquivo) {
   try {
-    const conteudo = fs.readFileSync(arquivo, "utf8").trim();
-    if (!conteudo) return new Set();
-    const linhas = conteudo.split(/\r?\n/).filter((l) => l.length > 0);
+    let conteudo = fs.readFileSync(arquivo, "utf8");
+    // Remove BOM antes de qualquer trim
+    if (conteudo.charCodeAt(0) === 0xFEFF) {
+      conteudo = conteudo.slice(1);
+    }
+    const linhas = conteudo.split(/\r?\n/).map((l) => l.trimEnd()).filter((l) => l.length > 0);
     return new Set(linhas.map((l) => {
       // Descarta 3 primeiros caracteres do status, trata rename ("A -> B")
       let p = l.slice(3);
