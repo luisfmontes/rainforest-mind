@@ -35,12 +35,12 @@
     "em": "2026-09-03"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-03",
     "tarefas_ok": 14,
     "tarefas": 14,
     "comando": "for f in hooks/testa-cwd-efetivo.sh hooks/testa-gate-staging-total.sh hooks/testa-portaria.sh scripts/testa-limpar-worktrees.sh scripts/testa-conferir-entrega.sh hooks/testa-gate-worktree.sh scripts/testa-backup-gravar.sh scripts/testa-backup-conferir.sh scripts/testa-backup-estado.sh scripts/testa-fechar-issue.sh hooks/testa-gate-fechar-issue.sh hooks/testa-config.sh scripts/testa-saude.sh; do bash $f >/dev/null 2>&1; echo \"$f exit=$?\"; done",
-    "saida": "13 baterias exit=0 apos merge do lote F (cwd-efetivo 12, staging-total 42, portaria 7, limpar 8, conferir-entrega 55, gate-worktree 142, backup-gravar 21, backup-conferir 11, backup-estado 49, fechar-issue 33, gate-fechar-issue 24, config 38, saude 59)",
+    "saida": "13 baterias exit=0 apos merge dos lotes H/I/J (cwd-efetivo 18, staging-total 44, portaria 7, limpar 8, conferir-entrega 63, gate-worktree 160, backup-gravar 21, backup-conferir 11, backup-estado 49, fechar-issue 33, gate-fechar-issue 40, config 38, saude 59)",
     "mutacao": [
       {
         "tarefa": 1,
@@ -114,7 +114,7 @@
       }
     ],
     "em": "2026-09-03",
-    "rodada": 4,
+    "rodada": 5,
     "rodada3": {
       "achados": [
         "R1",
@@ -160,9 +160,24 @@
         "A4 $ antes da aspa"
       ]
     },
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-03"
+    "rodada5": {
+      "achados": [
+        "Rev1 procuraCLI posicao de comando",
+        "Rev2/Aud2 cwd por segmento + pushd/env -C",
+        "Rev3 staging-total cwd do segmento",
+        "Rev4 rename no --escopo",
+        "Rev5/Aud1 gate-fechar-issue subshell/grupo/$( )/prefixos",
+        "emenda: alvosBash/alvosBashEscrita mesmo movedor"
+      ],
+      "mutacoes_reprovadas_na_integracao": [
+        "J rename R/C",
+        "Ia segmentacao ( ) { }",
+        "Ib pularPrefixos",
+        "H1 cwd do segmento da CLI",
+        "H2 env -C",
+        "H3 wrapper env",
+        "H4 pushd"
+      ]
     }
   },
   "revisar": {
