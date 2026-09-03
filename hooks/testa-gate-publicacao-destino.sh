@@ -49,18 +49,20 @@ pay() { # tool, file_path, conteudo(content|new_string), [old_string]
 
 esc() { printf '%s' "$1" | sed 's|\\|/|g'; }
 
-# Helper para montar payload de Write
-write() {
+# Helpers de Write/Edit em cima do `pay` (node), nunca de `jq`. Issue #158:
+# ate 2026-09-02 estes dois montavam o JSON com `jq -Rs`, e numa maquina sem jq
+# o payload saia VAZIO — o gate recebia entrada vazia e saia 0 em todos os oito
+# casos. Os quatro que esperavam 0 ficavam "ok" sem ter exercido nada. A regra
+# do CONTRIBUTING (Node e a unica dependencia) vale para o caminho de teste.
+write() { # arquivo, conteudo, [cwd]
   local arquivo="$1" conteudo="$2" cwd="${3:-$(esc "$R")}"
-  printf '{"cwd":"%s","hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":"%s","content":%s}}' \
-    "$cwd" "$(esc "$arquivo")" "$(printf '%s' "$conteudo" | sed 's/\\/\\\\/g; s/"/\\"/g; s/$/\\n/' | jq -Rs .)"
+  PAY_CWD="$cwd" pay Write "$(esc "$arquivo")" "$conteudo"$'
+'
 }
-
-# Helper para montar payload de Edit
-edit() {
+edit() { # arquivo, novo, [cwd]
   local arquivo="$1" novo="$2" cwd="${3:-$(esc "$R")}"
-  printf '{"cwd":"%s","hook_event_name":"PreToolUse","tool_name":"Edit","tool_input":{"file_path":"%s","old_string":"old","new_string":%s}}' \
-    "$cwd" "$(esc "$arquivo")" "$(printf '%s' "$novo" | sed 's/\\/\\\\/g; s/"/\\"/g; s/$/\\n/' | jq -Rs .)"
+  PAY_CWD="$cwd" pay Edit "$(esc "$arquivo")" "$novo"$'
+' "old"
 }
 
 echo "== Preparação: dados sensíveis para testes =="

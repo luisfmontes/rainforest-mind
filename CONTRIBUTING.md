@@ -17,6 +17,16 @@ outra linguagem — nem para montar fixture, nem para conferir JSON. Isso vale p
 quem contribui, não só para quem instala; promessa de runtime que não alcança o
 caminho de teste deixa de fora quem quer validar a própria mudança.
 
+Isso é conferido por catraca, não por leitura: `scripts/testa-dependencias-de-bateria.sh`
+recusa bateria que chame `jq`, `rg` ou `python` pelo nome (Issues #157, #158 e
+#159 — o runner do Actions tem `jq` e `python3`, a máquina de quem instala não).
+Bateria cujo **alvo** é Python (`testa-medir-injecao.sh`, `testa-statusline.sh`)
+resolve o interpretador uma vez em `$PY`, testando que ele roda, e **pula com
+exit 3** quando não há Python 3 — "não rodou" nunca se confunde com "quebrou" nem
+com "verde". Também por catraca (Issue #160): bateria que lê configuração aponta
+`RFM_ROOT` para uma raiz descartável, para o veredito não depender do
+`config.json` de quem a roda.
+
 A última linha roda o **gêmeo** em Python de `conferir-entrega.cjs` (o de
 `ideias.cjs` foi aposentado em 2026-08-22, depois que a bateria gêmea parou de
 provar equivalência). Ela é a exceção que confirma a regra: ali o Python **é o

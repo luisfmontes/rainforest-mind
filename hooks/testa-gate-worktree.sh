@@ -21,6 +21,12 @@ RAIZ="$(cygpath -m "$RAIZ_POSIX" 2>/dev/null || printf '%s' "$RAIZ_POSIX")"
 trap 'rm -rf "$RAIZ_POSIX"' EXIT
 echo "(caixa de areia: $RAIZ)"
 
+# Issue #160: a bateria lia a config REAL de quem a roda — quem desligou um gate
+# no escopo usuario pelo `/setup` via a suite vermelha sem pista da causa. A raiz
+# de dados passa a ser uma pasta descartavel, como faz o `testa-orcamento.sh`
+# (Issue #81). Caso que precisa de outra raiz sobrescreve por chamada.
+export RFM_ROOT="$RAIZ/dados-neutros"; mkdir -p "$RFM_ROOT"
+
 ok=0; falhou=0
 # roda o hook com um payload e confere o exit: 0 = passou, 2 = barrou
 gate() { # nome, exit esperado, json
@@ -188,11 +194,11 @@ echo
 echo
 echo "== o til: expansao de home so no COMECO, e caminho 8.3 tem til no meio =="
 # Achado pelo CI em 2026-08-17 (Issue #16): o TEMP do runner do GitHub e
-# `C:/Users/RUNNER~1/...` na forma 8.3. O teste de `cd` nao-resolvivel era
+# `RUNNER~1` (forma 8.3 do home do runner). O teste de `cd` nao-resolvivel era
 # /[$`~]/, que casa com til em QUALQUER posicao — entao `cd <worktree>` num
 # caminho 8.3 virava INCERTO, o conservadorismo somava o cwd principal aos alvos,
 # e o gate BARRAVA um commit legitimo dentro do worktree. Vermelho la, verde aqui,
-# porque `C:/Users/Luis` nao tem alias 8.3.
+# porque o home desta maquina nao tem alias 8.3.
 #
 # Aqui a condicao se reproduz sem depender do 8.3 do SO: uma pasta chamada
 # literalmente `RUNNER~1`. Os dois lados sao testados de proposito — sem o par,

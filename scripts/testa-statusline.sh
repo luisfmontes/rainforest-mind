@@ -24,10 +24,21 @@
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-if ! command -v python &> /dev/null; then
-  echo "FALHA: python nao esta instalado ou nao esta no PATH" >&2
-  exit 1
+# Issue #159: o alvo desta bateria E Python (statusline.py), entao a dependencia
+# e real — o que nao decide o veredito e o NOME do binario. O instalador oficial
+# do Windows cria so `python.exe`; o runner do Actions cria `python3` tambem. Sem
+# Python 3 nenhum a bateria PULA com exit 3, distinto de verde e de vermelho.
+PY=""
+for cand in python3 python; do
+  if command -v "$cand" >/dev/null 2>&1 && "$cand" -c 'import sys; sys.exit(0 if sys.version_info[0] == 3 else 1)' >/dev/null 2>&1; then
+    PY="$cand"; break
+  fi
+done
+if [ -z "$PY" ]; then
+  echo "PULADA: esta bateria precisa de Python 3 (python3 ou python no PATH) — o alvo dela, statusline/statusline.py, e Python" >&2
+  exit 3
 fi
+echo "(interprete: $PY)"
 
 PISO=3
 BATERIAS=$(ls "$SRC"/statusline/testa-statusline-*.py 2>/dev/null)
@@ -45,7 +56,7 @@ for f in $BATERIAS; do
   nome=$(basename "$f" .py | sed 's/^testa-statusline-//')
   echo
   echo "== bateria de $nome =="
-  python "$f" "$SRC/statusline/statusline.py" || FALHAS=$((FALHAS + 1))
+  "$PY" "$f" "$SRC/statusline/statusline.py" || FALHAS=$((FALHAS + 1))
 done
 
 echo

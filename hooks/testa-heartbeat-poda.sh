@@ -44,7 +44,7 @@ cat > "$RAIZ_POSIX/sessoes.json" << EOF
 EOF
 
 echo "Entradas ANTES: 2 sessões recentes"
-cat "$RAIZ_POSIX/sessoes.json" | python3 -m json.tool 2>/dev/null | head -12
+cat "$RAIZ_POSIX/sessoes.json" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{console.log(JSON.stringify(JSON.parse(d),null,2))}catch{}})' | head -12
 
 # Rodar heartbeat de TERCEIRA sessão
 export RFM_ROOT="$RAIZ"
@@ -54,7 +54,7 @@ RESULTADO="$(cat "$RAIZ_POSIX/sessoes.json")"
 
 echo ""
 echo "Entradas DEPOIS: rodar heartbeat de sessao3"
-echo "$RESULTADO" | python3 -m json.tool 2>/dev/null | head -20
+echo "$RESULTADO" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{console.log(JSON.stringify(JSON.parse(d),null,2))}catch{}})' | head -20
 
 ENTRADA_COUNT=$(echo "$RESULTADO" | grep -oE '"sessao[123]"' | sort -u | wc -l)
 
