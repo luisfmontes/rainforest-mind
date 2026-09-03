@@ -53,6 +53,7 @@
 const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
+const { resolverCwdEfetivo } = require("./lib/cwd-efetivo.cjs");
 
 // Flags globais do git que consomem o token seguinte (`git -C <dir> add`).
 const FLAG_COM_VALOR = new Set([
@@ -238,7 +239,12 @@ function main() {
   }
   if (!motivo) process.exit(0);
 
-  const dir = dirC || ev.cwd || process.cwd();
+  // D2: resolve o cwd efetivo, seguindo `cd` no comando. `dirC` (git -C)
+  // vence sempre — nao ha `cd` antes de `git -C`, e `-C` e explicito.
+  // `incerto` (cd variavel, subshell, `~` no comeco) = conservadorismo:
+  // usa o cwd inicial, evitando decidir por adivinhacao.
+  const { cwd: cwdEfetivo, incerto } = resolverCwdEfetivo(cmd, cwdDoEvento);
+  const dir = dirC || (incerto ? cwdDoEvento : cwdEfetivo);
   const gitDir = git(dir, ["rev-parse", "--git-dir"]);
   if (gitDir === null) {
     // Fora de repo git o comando falha sozinho. Mas se o git nao respondeu por
