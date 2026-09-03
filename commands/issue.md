@@ -93,6 +93,10 @@ O título é o que decide se alguém abre a Issue.
 
 <saída de comando, log ou diff — colado, não descrito>
 
+## Critério de pronto (falsificável)
+
+Comando e saída esperada que **prova** que o defeito foi consertado — não adjetivo como "funciona" ou "sem erro".
+
 ## Correção sugerida
 
 (Opcional — marcada como sugestão, porque quem mantém o repo pode conhecer restrição que você não conhece.)
