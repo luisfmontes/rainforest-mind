@@ -132,8 +132,109 @@ function extrairUltimoDirGit(seg) {
 }
 
 /**
+ * Reconhece `cd`, `pushd`, `popd` e `env -C`/`--chdir=` num ÚNICO segmento, e
+ * aplica o efeito ao `estado` da travessia (mutado in-place).
+ *
+ * ÚNICO lugar que sabe reconhecer estes quatro movedores de diretório —
+ * nasceu da emenda do auditor à rodada 5 (lote 3, 2026-09-03): `alvosBash` e
+ * `alvosBashEscrita`, em `gate-worktree.cjs`, só reconheciam `cd` (via
+ * `seg.match(CD)` cru) e `git -C`, então `pushd <principal> && git commit`
+ * e `env -C <principal> git commit` — o A2 do auditor aplicado ao caminho
+ * mais crítico (commit/checkout/reset/merge no principal) — passavam com
+ * exit 0. `cwdPorSegmento` já reconhecia os quatro só para o ramo de CLI do
+ * `gate-worktree.cjs` e para `gate-staging-total.cjs`; agora os TRÊS
+ * consumidores chamam este helper, em vez de cada um ter sua própria lista
+ * (parcial) de movedores.
+ *
+ * `soMovedor: true` (cd/pushd/popd) — a regex é ANCORADA de ponta a ponta:
+ * o segmento INTEIRO é o comando de mudança de diretório, nunca há outro
+ * comando colado no mesmo segmento. Quem chama pode pular a checagem de
+ * comando/verbo neste segmento e ir para o próximo.
+ *
+ * `soMovedor: false` para `env -C` (e para um segmento comum): `env -C X` é
+ * um PREFIXO — o comando de verdade (git, CLI) vem depois, no MESMO
+ * segmento (`env -C /principal git commit -m x`), e o cwd devolvido aqui
+ * (o alvo do `-C`) é só para ESTE comando — não persiste em `estado.atual`
+ * para os segmentos seguintes.
+ *
+ * @param {string} seg
+ * @param {{atual: string, incerto: boolean, pilhaPushd: string[]}} estado
+ * @returns {{cwd: string, incerto: boolean, soMovedor: boolean}}
+ */
+function resolverMovedor(seg, estado) {
+  // Subshell/grupo: o `cd` de dentro dele nao persiste pra fora, mas vale
+  // para os comandos dentro — a unica leitura segura e marcar INCERTO,
+  // sem tentar decidir o resto deste segmento por ele.
+  if (contemSubshellOuGrupo(seg)) estado.incerto = true;
+
+  // `pushd X` — muda o cwd corrente igual `cd X`, guardando o de antes.
+  const pd = seg.match(PUSHD);
+  if (pd) {
+    const destino = pd[1] || pd[2] || pd[3];
+    estado.pilhaPushd.push(estado.atual);
+    if (/[$`]/.test(destino) || /^~/.test(destino) || destino === "-") {
+      estado.incerto = true;
+    } else {
+      estado.atual = path.resolve(estado.atual, destino);
+    }
+    return { cwd: estado.atual, incerto: estado.incerto, soMovedor: true };
+  }
+
+  // `popd` — volta ao cwd de antes do ultimo `pushd`. Pilha vazia (nenhum
+  // `pushd` visto NESTA linha) significa que o destino de verdade depende
+  // de um estado de shell que este parser nao enxerga — INCERTO, nunca
+  // "supõe que nada mudou".
+  if (POPD.test(seg)) {
+    if (estado.pilhaPushd.length) {
+      estado.atual = estado.pilhaPushd.pop();
+    } else {
+      estado.incerto = true;
+    }
+    return { cwd: estado.atual, incerto: estado.incerto, soMovedor: true };
+  }
+
+  // `cd` isolado num segmento
+  const cd = seg.match(CD);
+  if (cd) {
+    const destino = cd[1] || cd[2] || cd[3];
+    // `cd -`, `cd ~`, `$VAR`, `$(...)`: não dá para resolver aqui sem executar.
+    //
+    // O `~` só é expansão de home no COMEÇO (`~`, `~/x`, `~fulano/x`). Até
+    // 2026-08-17 este teste era /[$`~]/, que casava com o til em QUALQUER
+    // posição — caminho do Windows tem til no meio (formato 8.3). O efeito
+    // era o pior possível para um gate: `cd <worktree> && git commit` num
+    // caminho 8.3 virava INCERTO, o conservadorismo somava o cwd principal
+    // aos alvos, e o gate BARRAVA um commit perfeitamente legítimo dentro
+    // do worktree. Achado pelo CI (Issue #16): a bateria ficou vermelha lá
+    // e verde aqui. `$` e crase continuam valendo em qualquer posição —
+    // são expansão mesmo.
+    if (/[$`]/.test(destino) || /^~/.test(destino) || destino === "-") {
+      estado.incerto = true;
+      return { cwd: estado.atual, incerto: estado.incerto, soMovedor: true };
+    }
+    estado.atual = path.resolve(estado.atual, destino);
+    return { cwd: estado.atual, incerto: estado.incerto, soMovedor: true };
+  }
+
+  // `env -C <dir> <cmd>` — muda o cwd SO deste comando, nunca do shell:
+  // nao mexe em `estado.atual`, que continua valendo para os segmentos
+  // seguintes. NAO e `soMovedor`: o resto do segmento (o comando de
+  // verdade) ainda precisa ser avaliado por quem chamou.
+  const envC = seg.match(ENV_C);
+  if (envC) {
+    const destino = envC[1] || envC[2] || envC[3];
+    if (/[$`]/.test(destino) || /^~/.test(destino) || destino === "-") {
+      return { cwd: estado.atual, incerto: true, soMovedor: false };
+    }
+    return { cwd: path.resolve(estado.atual, destino), incerto: estado.incerto, soMovedor: false };
+  }
+
+  return { cwd: estado.atual, incerto: estado.incerto, soMovedor: false };
+}
+
+/**
  * Resolve o diretório efetivo onde CADA SEGMENTO do comando roda, seguindo
- * `cd`, `pushd`/`popd`, `env -C` e `git -C`.
+ * `cd`, `pushd`/`popd`, `env -C` (via `resolverMovedor`) e `git -C`.
  *
  * Nasceu do H1 (rodada 5, lote 3, 2026-09-03): `resolverCwdEfetivo` só
  * devolvia o cwd FINAL da linha inteira, e quem decidia por ele julgava a
@@ -167,104 +268,35 @@ function extrairUltimoDirGit(seg) {
  */
 function cwdPorSegmento(comando, cwdInicial) {
   const segmentos = segmentosComAspas(comando);
-  let atual = cwdInicial;
-  let incerto = false;
-  const pilhaPushd = [];
+  const estado = { atual: cwdInicial, incerto: false, pilhaPushd: [] };
   const resultado = [];
 
   for (const seg of segmentos) {
-    // Subshell/grupo: o `cd` de dentro dele nao persiste pra fora, mas vale
-    // para os comandos dentro — a unica leitura segura e marcar INCERTO,
-    // sem tentar decidir o resto deste segmento por ele.
-    if (contemSubshellOuGrupo(seg)) incerto = true;
-
-    // `env -C <dir> <cmd>` — muda o cwd SO deste comando, nunca do shell:
-    // nao mexe em `atual`, que continua valendo para os segmentos seguintes.
-    const envC = seg.match(ENV_C);
-    if (envC) {
-      const destino = envC[1] || envC[2] || envC[3];
-      let cwdSeg = atual;
-      let incertoSeg = incerto;
-      if (/[$`]/.test(destino) || /^~/.test(destino) || destino === "-") {
-        incertoSeg = true;
-      } else {
-        cwdSeg = path.resolve(atual, destino);
-      }
-      resultado.push({ seg, cwd: cwdSeg, incerto: incertoSeg });
+    const mov = resolverMovedor(seg, estado);
+    if (mov.soMovedor) {
+      resultado.push({ seg, cwd: mov.cwd, incerto: mov.incerto });
       continue;
     }
 
-    // `pushd X` — muda o cwd corrente igual `cd X`, guardando o de antes.
-    const pd = seg.match(PUSHD);
-    if (pd) {
-      const destino = pd[1] || pd[2] || pd[3];
-      pilhaPushd.push(atual);
-      if (/[$`]/.test(destino) || /^~/.test(destino) || destino === "-") {
-        incerto = true;
-      } else {
-        atual = path.resolve(atual, destino);
-      }
-      resultado.push({ seg, cwd: atual, incerto });
-      continue;
-    }
-
-    // `popd` — volta ao cwd de antes do ultimo `pushd`. Pilha vazia (nenhum
-    // `pushd` visto NESTA linha) significa que o destino de verdade depende
-    // de um estado de shell que este parser nao enxerga — INCERTO, nunca
-    // "supõe que nada mudou".
-    if (POPD.test(seg)) {
-      if (pilhaPushd.length) {
-        atual = pilhaPushd.pop();
-      } else {
-        incerto = true;
-      }
-      resultado.push({ seg, cwd: atual, incerto });
-      continue;
-    }
-
-    // `cd` isolado num segmento
-    const cd = seg.match(CD);
-    if (cd) {
-      const destino = cd[1] || cd[2] || cd[3];
-      // `cd -`, `cd ~`, `$VAR`, `$(...)`: não dá para resolver aqui sem executar.
-      //
-      // O `~` só é expansão de home no COMEÇO (`~`, `~/x`, `~fulano/x`). Até
-      // 2026-08-17 este teste era /[$`~]/, que casava com o til em QUALQUER
-      // posição — caminho do Windows tem til no meio (formato 8.3). O efeito
-      // era o pior possível para um gate: `cd <worktree> && git commit` num
-      // caminho 8.3 virava INCERTO, o conservadorismo somava o cwd principal
-      // aos alvos, e o gate BARRAVA um commit perfeitamente legítimo dentro
-      // do worktree. Achado pelo CI (Issue #16): a bateria ficou vermelha lá
-      // e verde aqui. `$` e crase continuam valendo em qualquer posição —
-      // são expansão mesmo.
-      if (/[$`]/.test(destino) || /^~/.test(destino) || destino === "-") {
-        incerto = true;
-        resultado.push({ seg, cwd: atual, incerto });
-        continue;
-      }
-      atual = path.resolve(atual, destino);
-      resultado.push({ seg, cwd: atual, incerto });
-      continue;
-    }
-
-    // `git -C <dir>` — o argumento de `-C` vence o cwd do shell
-    // Usa o ÚLTIMO se houver múltiplos
+    // `git -C <dir>` — o argumento de `-C` vence o cwd do shell (o de `env -C`
+    // incluso, se houver: `mov.cwd` já é o alvo do `env -C` deste segmento).
+    // Usa o ÚLTIMO se houver múltiplos.
     if (seg.includes("git")) {
       const p = extrairUltimoDirGit(seg);
       if (p) {
         // `-C` com variável: não dá para resolver — fica INCERTO.
         if (/[$`]/.test(p)) {
-          incerto = true;
+          estado.incerto = true;
         } else {
           // O caminho de `-C` é o cwd efetivo deste segmento
-          atual = path.resolve(atual, p);
+          estado.atual = path.resolve(mov.cwd, p);
         }
-        resultado.push({ seg, cwd: atual, incerto });
+        resultado.push({ seg, cwd: estado.atual, incerto: estado.incerto });
         continue;
       }
     }
 
-    resultado.push({ seg, cwd: atual, incerto });
+    resultado.push({ seg, cwd: mov.cwd, incerto: mov.incerto });
   }
 
   return resultado;
@@ -327,6 +359,7 @@ function toplevelConfinado(dir) {
 module.exports = {
   resolverCwdEfetivo,
   cwdPorSegmento,
+  resolverMovedor,
   toplevelConfinado,
   segmentosComAspas,
   extrairUltimoDirGit,

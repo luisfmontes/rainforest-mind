@@ -59,7 +59,7 @@ const { execFileSync } = require("node:child_process");
 const os = require("node:os");
 const fs = require("node:fs");
 const path = require("node:path");
-const { cwdPorSegmento, toplevelConfinado, CD, extrairUltimoDirGit, contemSubshellOuGrupo, segmentosComAspas, SEPARADORES } = require(path.join(__dirname, "lib", "cwd-efetivo.cjs"));
+const { cwdPorSegmento, resolverMovedor, toplevelConfinado, extrairUltimoDirGit, segmentosComAspas, SEPARADORES } = require(path.join(__dirname, "lib", "cwd-efetivo.cjs"));
 const CLIS_QUE_ESCREVEM = require(path.join(__dirname, "lib", "clis-que-escrevem.cjs"));
 
 const FERRAMENTAS_DE_ESCRITA = new Set(["Write", "Edit", "MultiEdit", "NotebookEdit"]);
@@ -319,54 +319,37 @@ function bloqueia(motivo, toplevel, agente) {
  * Devolve `{dir, verbo}` por alvo: quem bloqueia precisa nomear o verbo na mensagem,
  * e o verbo e do SEGMENTO que casou, nao da linha inteira.
  *
- * NAO trocada por `cwdPorSegmento` (rodada 5, lote 3): esta funcao ja acerta o cwd
- * POR SEGMENTO — e exatamente o H1 que motivou `cwdPorSegmento` nascer, so que aqui
- * ja existia desde a extracao original. O que falta (H2: `pushd`/`popd`/`env -C`)
- * nao tem caso na bateria para o ramo VERBOS_QUE_MEXEM (so para o ramo de CLI e
- * para `gate-staging-total.cjs`), e trocar esta travessia por `cwdPorSegmento`
- * quebraria o contrato de `{dir, verbo}` por alvo (que carrega MULTIPLOS alvos por
- * segmento quando incerto, e o `casa()` decide por cwd+disco) sem ganho medido —
- * duplicar a abstracao por simetria, sem um caso vermelho que peça a troca, e o
- * refactor escondido que a regra (d) proibe. Fica registrado para quando um H
- * futuro precisar de pushd/env -C tambem no ramo git-que-mexe.
+ * Movedores de diretorio (`cd`, `pushd`/`popd`, `env -C`) vem de
+ * `resolverMovedor` (lib/cwd-efetivo.cjs) — emenda do auditor a rodada 5
+ * (lote 3, 2026-09-03): ate aqui esta funcao so reconhecia `cd` (via
+ * `seg.match(CD)` cru), entao `pushd <principal> && git commit -m x` e
+ * `env -C <principal> git commit -m x` de dentro do worktree passavam com
+ * exit 0 — o A2 do auditor aplicado ao caminho mais critico (commit,
+ * checkout, reset, merge no principal). `cwdPorSegmento` ja reconhecia os
+ * quatro movedores para o ramo de CLI e para `gate-staging-total.cjs`; agora
+ * os tres consumidores chamam o MESMO `resolverMovedor`, em vez de cada um
+ * ter sua propria lista (parcial) de movedores.
+ *
+ * `resolverMovedor` devolve `soMovedor: true` para `cd`/`pushd`/`popd` — a
+ * regex e ANCORADA de ponta a ponta, o segmento INTEIRO e so o comando de
+ * mudanca de diretorio, e o `casa()` nunca precisa olhar esses segmentos.
+ * `env -C` NAO e `soMovedor`: e um PREFIXO (`env -C X git commit -m x`), o
+ * `casa()` ainda avalia o RESTO do segmento, so que com o cwd do `-C`
+ * (`mov.cwd`) no lugar do `atual` de antes.
  */
 function alvosBash(comando, cwdInicial, casa = (seg) => {
   const s = subcomandoGit(seg);
   return !!s && VERBOS_QUE_MEXEM.has(s.verbo);
 }) {
   const segmentos = comando.split(SEPARADORES);
-  let atual = cwdInicial;
-  let incerto = false;
+  const estado = { atual: cwdInicial, incerto: false, pilhaPushd: [] };
   const alvos = [];
 
   for (const seg of segmentos) {
-    // Subshell/grupo — `(cd /principal && git commit)` quebra em pedacos que
-    // nao comecam com `cd` puro (o `CD` regex nunca casa), entao sem esta
-    // checagem o `cd` de dentro do subshell passava batido. O `cd` dali nao
-    // persiste pra fora dele, mas vale para os comandos dentro: a leitura
-    // segura e marcar INCERTO, sem tentar decidir o resto do segmento por ele.
-    if (contemSubshellOuGrupo(seg)) incerto = true;
+    const mov = resolverMovedor(seg, estado);
+    if (mov.soMovedor) continue; // cd/pushd/popd: o segmento INTEIRO e o movedor
 
-    const cd = seg.match(CD);
-    if (cd) {
-      const destino = cd[1] || cd[2] || cd[3];
-      // `cd -`, `cd ~`, `$VAR`, `$(...)`: nao da para resolver aqui sem executar.
-      //
-      // O `~` so e expansao de home no COMECO (`~`, `~/x`, `~fulano/x`). Ate
-      // 2026-08-17 este teste era /[$`~]/, que casava com o til em QUALQUER
-      // posicao — e caminho do Windows tem til no meio o tempo todo, na forma
-      // 8.3: `C:/PROGRA~1/...`, `<home>/DOCUM~1/...`. O efeito era o
-      // pior possivel para um gate: `cd <worktree> && git commit` num caminho
-      // 8.3 virava INCERTO, o conservadorismo somava o cwd principal aos alvos,
-      // e o gate BARRAVA um commit perfeitamente legitimo dentro do worktree.
-      // Achado pelo CI (Issue #16): temp do runner pode ter formato 8.3,
-      // e a bateria hooks/testa-gate-worktree.sh ficou vermelha la e verde aqui.
-      // `$` e crase continuam valendo em qualquer posicao — sao expansao mesmo.
-      if (/[$`]/.test(destino) || /^~/.test(destino) || destino === "-") { incerto = true; continue; }
-      atual = path.resolve(atual, destino);
-      continue;
-    }
-    if (!casa(seg, atual)) continue;
+    if (!casa(seg, mov.cwd)) continue;
     const s = subcomandoGit(seg);
     const verbo = s ? s.verbo : "?";
 
@@ -378,12 +361,20 @@ function alvosBash(comando, cwdInicial, casa = (seg) => {
     const p = extrairUltimoDirGit(seg);
     if (p) {
       // `-C` com variavel: nao da para resolver — cai no conservador.
-      if (/[$`]/.test(p)) { alvos.push({ dir: cwdInicial, verbo }); continue; }
-      alvos.push({ dir: path.resolve(atual, p), verbo });
+      if (/[$`]/.test(p)) { alvos.push({ dir: cwdInicial, verbo, incerto: true }); continue; }
+      alvos.push({ dir: path.resolve(mov.cwd, p), verbo, incerto: mov.incerto });
       continue;
     }
-    alvos.push({ dir: atual, verbo });
-    if (incerto) alvos.push({ dir: cwdInicial, verbo });
+    // `incerto` vai junto do alvo (nao so como alvo extra em `cwdInicial`):
+    // um `popd` sem `pushd` correspondente pode deixar o shell em QUALQUER
+    // diretorio, inclusive um que hoje E um worktree legitimo mas nao e o
+    // de onde o comando rodou de verdade — cwdInicial e mov.cwd podem ser o
+    // MESMO worktree (o agente ja estava la), e nesse caso a adicao antiga
+    // (so `cwdInicial` como alvo extra) nao pegava nada. Quem consome (main)
+    // trata `incerto: true` bloqueando direto, sem confiar na classificacao
+    // de worktree — mesmo espirito do ramo de CLI (H2, rodada 5).
+    alvos.push({ dir: mov.cwd, verbo, incerto: mov.incerto });
+    if (mov.incerto) alvos.push({ dir: cwdInicial, verbo, incerto: true });
   }
   return alvos;
 }
@@ -551,40 +542,35 @@ function procuraCLI(comando, clis) {
  * Resolve alvos e retorna {dir, tipo} para cada um.
  *
  * Tipos: ">", ">>", "tee", "sed", "cp", "mv", e construcoes nao-resolvidas.
- * Mantem a mesma seguranca do `alvosBash`: `cd` que nao resolve vira INCERTO
- * e conservadorismo inclui cwdInicial nos alvos.
+ * Mantem a mesma seguranca do `alvosBash`: `cd`/`pushd`/`popd`/`env -C` que
+ * nao resolve vira INCERTO e conservadorismo inclui cwdInicial nos alvos.
+ * Movedores vem de `resolverMovedor` (lib/cwd-efetivo.cjs) — antes esta
+ * funcao so reconhecia `cd`, mesmo buraco do `alvosBash` (emenda do auditor,
+ * rodada 5, lote 3): `env -C <principal> echo x > f.txt` de dentro do
+ * worktree escrevia no principal e passava com exit 0.
  *
  * Tudo aqui decide por TOKEN, nunca por match no texto cru — ver o docblock de
  * `tokensComAspas`.
  */
 function alvosBashEscrita(comando, cwdInicial) {
   const segmentos = comando.split(SEPARADORES);
-  let atual = cwdInicial;
-  let incerto = false;
+  const estado = { atual: cwdInicial, incerto: false, pilhaPushd: [] };
   const alvos = [];
 
-  // Resolve o alvo contra o cwd corrente; construcao com $ ou ` fica INCERTA e
-  // aponta para o proprio diretorio, que e o lado seguro.
-  const empurra = (alvo, tipo) => {
+  // Resolve o alvo contra o cwd EFETIVO deste segmento (`base` — o de
+  // `env -C`, se houver, senao o `estado.atual` corrente); construcao com
+  // $ ou ` fica INCERTA e aponta para o proprio diretorio, que e o lado
+  // seguro.
+  const empurra = (base, alvo, tipo) => {
     if (!alvo) return;
-    if (/[$`]/.test(alvo)) alvos.push({ dir: atual, tipo });
-    else alvos.push({ dir: path.resolve(atual, alvo), tipo });
+    if (/[$`]/.test(alvo)) alvos.push({ dir: base, tipo });
+    else alvos.push({ dir: path.resolve(base, alvo), tipo });
   };
 
   for (const seg of segmentos) {
-    // Subshell/grupo — mesma leitura conservadora do `alvosBash`: o `cd` de
-    // dentro de `(...)`/`{...}` nao persiste pra fora, mas vale para os
-    // comandos dentro, e sem esta checagem ele passava batido pelo `CD` regex.
-    if (contemSubshellOuGrupo(seg)) incerto = true;
-
-    // `cd` precisa ser tratado igual ao `alvosBash`
-    const cd = seg.match(CD);
-    if (cd) {
-      const destino = cd[1] || cd[2] || cd[3];
-      if (/[$`]/.test(destino) || /^~/.test(destino) || destino === "-") { incerto = true; continue; }
-      atual = path.resolve(atual, destino);
-      continue;
-    }
+    const mov = resolverMovedor(seg, estado);
+    if (mov.soMovedor) continue; // cd/pushd/popd: o segmento INTEIRO e o movedor
+    const base = mov.cwd;
 
     const toks = tokensComAspas(seg);
 
@@ -603,14 +589,14 @@ function alvosBashEscrita(comando, cwdInicial) {
         alvo = prox.v;
         i += 1;
       }
-      empurra(alvo, tipo);
+      empurra(base, alvo, tipo);
     }
 
     for (let i = 0; i < toks.length; i += 1) {
       // `tee arquivo`, `tee -a arquivo`
       if (ehComando(toks[i], "tee")) {
         const pos = posicionaisApos(toks, i);
-        if (pos.length) empurra(pos[0].v, "tee");
+        if (pos.length) empurra(base, pos[0].v, "tee");
         break;
       }
       // `sed -i arquivo` — so com a flag de edicao no lugar. O alvo e o ULTIMO
@@ -619,7 +605,7 @@ function alvosBashEscrita(comando, cwdInicial) {
         const temInPlace = toks.slice(i + 1).some((t) => !t.q && /^-[a-z]*i/.test(t.v));
         if (!temInPlace) break;
         const pos = posicionaisApos(toks, i);
-        if (pos.length) empurra(pos[pos.length - 1].v, "sed");
+        if (pos.length) empurra(base, pos[pos.length - 1].v, "sed");
         break;
       }
       // `cp origem destino`, `mv origem destino` — o destino e o ultimo posicional,
@@ -627,14 +613,15 @@ function alvosBashEscrita(comando, cwdInicial) {
       if (ehComando(toks[i], "cp") || ehComando(toks[i], "mv")) {
         const tipo = ehComando(toks[i], "cp") ? "cp" : "mv";
         const pos = posicionaisApos(toks, i);
-        if (pos.length >= 2) empurra(pos[pos.length - 1].v, tipo);
+        if (pos.length >= 2) empurra(base, pos[pos.length - 1].v, tipo);
         break;
       }
     }
   }
 
-  // Conservadorismo: se houver `cd` nao-resolvivel, incluir cwdInicial tambem
-  if (incerto && alvos.length > 0) {
+  // Conservadorismo: se houver `cd`/`pushd`/`popd` nao-resolvivel, incluir
+  // cwdInicial tambem.
+  if (estado.incerto && alvos.length > 0) {
     alvos.push({ dir: cwdInicial, tipo: "?" });
   }
 
@@ -769,17 +756,19 @@ function main() {
 
   if (FERRAMENTAS_DE_ESCRITA.has(nome)) {
     const alvo = entrada.file_path || entrada.notebook_path || null;
-    if (alvo) { alvos = [alvo]; motivo = `Escrita (${nome}) em ${alvo}`; }
+    if (alvo) { alvos = [{ dir: alvo, incerto: false }]; motivo = `Escrita (${nome}) em ${alvo}`; }
   } else if (nome === "Bash" && typeof entrada.command === "string") {
     const verbo = verboNaLinha(entrada.command, VERBOS_QUE_MEXEM);
     if (verbo) {
-      alvos = alvosBash(entrada.command, cwd).map((a) => a.dir);
+      // `incerto` viaja junto (nao so como alvo extra em cwdInicial) — ver o
+      // comentario em `alvosBash`.
+      alvos = alvosBash(entrada.command, cwd).map((a) => ({ dir: a.dir, incerto: !!a.incerto }));
       motivo = `Comando que mexe no estado do repo: git ${verbo}`;
     } else {
       // Inspecionar redirecionamentos e ferramentas de escrita
       const alvosEscrita = alvosBashEscrita(entrada.command, cwd);
       if (alvosEscrita.length > 0) {
-        alvos = alvosEscrita.map((a) => a.dir);
+        alvos = alvosEscrita.map((a) => ({ dir: a.dir, incerto: false }));
         motivo = `Escrita via Bash (redirecionamento ou ferramenta)`;
       } else {
         // Procurar por CLI externa que escreve. H1 (rodada 5): cada CLI
@@ -833,11 +822,17 @@ function main() {
 
   if (!alvos.length) process.exit(0);
 
-  for (const alvo of alvos) {
-    if (ehScratchpad(alvo)) continue; // scratchpad da sessao: livre, ainda que seja repo git
-    const estado = estadoDoRepo(dirDe(alvo));
+  for (const { dir, incerto } of alvos) {
+    if (ehScratchpad(dir)) continue; // scratchpad da sessao: livre, ainda que seja repo git
+    const estado = estadoDoRepo(dirDe(dir));
     if (!estado) continue;           // fora de repo git: livre
-    if (estado.ehWorktree) continue; // worktree linkado: era pra ser isso mesmo
+    // `incerto` (emenda auditor, rodada 5): `popd` sem `pushd` correspondente,
+    // ou outro movedor que nao resolve, pode ter deixado o shell em QUALQUER
+    // diretorio — inclusive um que E um worktree legitimo, mas nao e
+    // necessariamente o de onde o comando de verdade rodou. Bloqueia direto,
+    // sem confiar na classificacao de worktree — mesmo espirito do ramo de
+    // CLI que ja faz isso para `cd`/subshell nao resolvidos.
+    if (!incerto && estado.ehWorktree) continue; // worktree linkado: era pra ser isso mesmo
     if (fs.existsSync(path.join(estado.toplevel, ".rainforest-gate-off"))) continue;
     bloqueia(motivo, estado.toplevel, `${ev.agent_type || "?"} (${ev.agent_id})`);
   }
