@@ -2,7 +2,7 @@
 /**
  * Fecha Issue com evidência: comenta com comando + saída, só então fecha.
  *
- * Uso: node scripts/fechar-issue.cjs <n> --comando <c> --saida <arquivo-ou-texto>
+ * Uso: node scripts/fechar-issue.cjs <n> --comando <c> (--saida <texto> | --saida-arquivo <caminho>)
  *
  * Exits:
  *   0 — comentário postado, Issue fechada
@@ -19,7 +19,7 @@ const { MARCADOR } = require(path.join(__dirname, '..', 'hooks', 'lib', 'marcado
 // Parse argumentos
 const args = process.argv.slice(2);
 if (args.length < 4) {
-  console.error('Uso: node scripts/fechar-issue.cjs <n> --comando <c> --saida <arquivo-ou-texto>');
+  console.error('Uso: node scripts/fechar-issue.cjs <n> --comando <c> (--saida <texto> | --saida-arquivo <caminho>)');
   process.exit(2);
 }
 
@@ -30,29 +30,27 @@ if (!/^\d+$/.test(n)) {
 }
 
 let comando = null;
-let saida = null;
+let saidaConteudo = null;
 
 for (let i = 1; i < args.length; i++) {
   if (args[i] === '--comando' && i + 1 < args.length) {
     comando = args[++i];
   } else if (args[i] === '--saida' && i + 1 < args.length) {
-    saida = args[++i];
+    saidaConteudo = args[++i];
+  } else if (args[i] === '--saida-arquivo' && i + 1 < args.length) {
+    const caminhoArquivo = args[++i];
+    try {
+      saidaConteudo = fs.readFileSync(caminhoArquivo, 'utf-8');
+    } catch (err) {
+      console.error(`Erro: não consegui ler arquivo ${caminhoArquivo}: ${err.message}`);
+      process.exit(2);
+    }
   }
 }
 
-if (!comando || saida === null) {
-  console.error('Erro: --comando e --saida são obrigatórios');
+if (!comando || saidaConteudo === null) {
+  console.error('Erro: --comando e (--saida ou --saida-arquivo) são obrigatórios');
   process.exit(2);
-}
-
-// Ler saída: se for caminho existente, lê o arquivo; senão, trata como texto
-let saidaConteudo = saida;
-try {
-  if (fs.existsSync(saida)) {
-    saidaConteudo = fs.readFileSync(saida, 'utf-8');
-  }
-} catch {
-  // Se der erro ao ler, trata como texto literal
 }
 
 // Montar corpo do comentário
@@ -73,14 +71,12 @@ fs.writeFileSync(tmpFile, corpo, 'utf-8');
 
 try {
   // Chamar: gh issue comment
-  const ghCmd = process.env.GH_CMD || 'gh';
   let commentResult;
   try {
-    commentResult = spawnSync(ghCmd, ['issue', 'comment', n, '--body-file', tmpFile], {
+    commentResult = spawnSync('gh', ['issue', 'comment', n, '--body-file', tmpFile], {
       stdio: ['pipe', 'pipe', 'pipe'],
       shell: false,
-      encoding: 'utf-8',
-      env: process.env
+      encoding: 'utf-8'
     });
   } catch (err) {
     console.error(err.message);
@@ -96,11 +92,10 @@ try {
   // Se comment foi 0, fechar a Issue
   let closeResult;
   try {
-    closeResult = spawnSync(ghCmd, ['issue', 'close', n], {
+    closeResult = spawnSync('gh', ['issue', 'close', n], {
       stdio: ['pipe', 'pipe', 'pipe'],
       shell: false,
-      encoding: 'utf-8',
-      env: process.env
+      encoding: 'utf-8'
     });
   } catch (err) {
     console.error(err.message);
