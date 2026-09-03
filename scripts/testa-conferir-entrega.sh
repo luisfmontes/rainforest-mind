@@ -372,42 +372,93 @@ esperado "escopo: SEM --escopo nenhum -> aprovado (retrocompativel)" 0 \
 echo
 echo "== BOM na primeira linha do arquivo --sujo-antes =="
 
-# Casos (a)–(c): agente modifica arquivo com BOM em --sujo-antes
-# (a) sem BOM: reconhece arquivo-nome inteiro
+# Cenário: arquivo existente (ex: a.txt) fica sujo ANTES do despacho (no repo principal),
+# e aparece na primeira linha do --sujo-antes COM BOM. O worktree NÃO toca a.txt
+# neste commit. A checagem 4 tem de reconhecer a.txt como sujeira pré-existente
+# e aprovar (exit 0). Com a mutação (bug), o BOM + trim comem o primeiro caractere,
+# o caminho vira '.txt' em vez de 'a.txt', não bate, e reprova (exit 1).
+
+# Reseta ambos os repos (principal e worktree) para uma base limpa
+git -C "$R" reset --hard "$ESCOPO_C_BASE" >/dev/null 2>&1
 git -C "$WT" reset --hard "$ESCOPO_C_BASE" >/dev/null 2>&1
-BOM_ARQUIVO_A="$RAIZ/porcelain-sem-bom-a.txt"
-printf ' M feito.txt\n' > "$BOM_ARQUIVO_A"
-echo "v2" > "$WT/feito.txt"
-git -C "$WT" add .; git -C "$WT" commit -qm "modificado feito.txt sem BOM"
+BOM_COMMIT_BASE=$(git -C "$WT" rev-parse HEAD)
+BOM_HEAD_ANTES=$(git -C "$R" rev-parse HEAD)
+
+# (a) sem BOM: arquivo-sujo-antes SEM BOM, ' M a.txt' na primeira linha
+# Worktree não toca a.txt, apenas outro arquivo
+echo "nova-versao-gerado" > "$WT/gerado/.gitignore"
+git -C "$WT" add .; git -C "$WT" commit -qm "atualiza gerado/.gitignore"
 BOM_COMMIT_A=$(git -C "$WT" rev-parse HEAD)
-esperado "BOM (a) sem BOM: reconhece feito.txt, reprova" 1 \
-  "${CONF_CMD[@]}" --worktree "$WT" --base "$ESCOPO_C_BASE" --head-antes "$ESCOPO_C_BASE" --commit "$BOM_COMMIT_A" \
+BOM_ARQUIVO_A="$RAIZ/porcelain-sem-bom-a.txt"
+# No repo principal, a.txt fica sujo ANTES (a.txt existe porque vem da base)
+echo "v2-sujo" > "$R/a.txt"
+git -C "$R" status --porcelain > "$BOM_ARQUIVO_A"
+# A primeira linha é ' M a.txt', sem BOM
+esperado "BOM (a) sem BOM na primeira linha: reconhece a.txt como pré-existente, aprova" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BOM_COMMIT_BASE" --head-antes "$BOM_HEAD_ANTES" --commit "$BOM_COMMIT_A" \
   --sujo-antes "$BOM_ARQUIVO_A"
+git -C "$R" checkout -- a.txt
 
-# (b) com BOM: também reconhece arquivo-nome inteiro (prova que BOM foi removido)
-git -C "$WT" reset --hard "$ESCOPO_C_BASE" >/dev/null 2>&1
+# (b) com BOM: arquivo-sujo-antes COM BOM seguido de ' M a.txt' na primeira linha
+# Mesmo worktree (worktree não toca a.txt), mesmo commit anterior
+echo "v3-sujo" > "$R/a.txt"
 BOM_ARQUIVO_B="$RAIZ/porcelain-com-bom-b.txt"
-node -e "process.stdout.write('﻿ M feito.txt\n')" > "$BOM_ARQUIVO_B"
-echo "v2" > "$WT/feito.txt"
-git -C "$WT" add .; git -C "$WT" commit -qm "modificado feito.txt com BOM"
-BOM_COMMIT_B=$(git -C "$WT" rev-parse HEAD)
-esperado "BOM (b) com BOM: reconhece feito.txt, reprova" 1 \
-  "${CONF_CMD[@]}" --worktree "$WT" --base "$ESCOPO_C_BASE" --head-antes "$ESCOPO_C_BASE" --commit "$BOM_COMMIT_B" \
+# Cria arquivo com BOM na primeira linha + conteúdo do porcelain
+git -C "$R" status --porcelain | node -e "process.stdout.write('﻿' + require('fs').readFileSync(0, 'utf8'))" > "$BOM_ARQUIVO_B"
+esperado "BOM (b) com BOM na primeira linha: reconhece a.txt corretamente, aprova" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BOM_COMMIT_BASE" --head-antes "$BOM_HEAD_ANTES" --commit "$BOM_COMMIT_A" \
   --sujo-antes "$BOM_ARQUIVO_B"
-contem "  ... nomeando feito.txt corretamente" "feito.txt" \
-  "${CONF_CMD[@]}" --worktree "$WT" --base "$ESCOPO_C_BASE" --head-antes "$ESCOPO_C_BASE" --commit "$BOM_COMMIT_B" \
+contem "  ... nomeando a.txt SEM perder o 'a' (prova que BOM foi removido)" "a.txt" \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BOM_COMMIT_BASE" --head-antes "$BOM_HEAD_ANTES" --commit "$BOM_COMMIT_A" \
   --sujo-antes "$BOM_ARQUIVO_B" 2>&1
+git -C "$R" checkout -- a.txt
 
-# (c) múltiplas linhas: BOM apenas na primeira, segunda linha também reconhecida
-git -C "$WT" reset --hard "$ESCOPO_C_BASE" >/dev/null 2>&1
+# (c) com BOM e múltiplas linhas: BOM apenas na primeira, segunda linha também reconhecida
+# Suja tanto a.txt quanto rastreado.txt (ambos da base)
+echo "v4-sujo" > "$R/a.txt"
+echo "v4-sujo" > "$R/rastreado.txt"
 BOM_ARQUIVO_C="$RAIZ/porcelain-com-bom-c.txt"
-node -e "process.stdout.write('﻿ M feito.txt\n?? gerado/.gitignore\n')" > "$BOM_ARQUIVO_C"
-echo "v2" > "$WT/feito.txt"
-git -C "$WT" add .; git -C "$WT" commit -qm "modificado com BOM multiplas linhas"
-BOM_COMMIT_C=$(git -C "$WT" rev-parse HEAD)
-esperado "BOM (c) com múltiplas linhas: ambas reconhecidas, reprova" 1 \
-  "${CONF_CMD[@]}" --worktree "$WT" --base "$ESCOPO_C_BASE" --head-antes "$ESCOPO_C_BASE" --commit "$BOM_COMMIT_C" \
+# Cria arquivo com BOM + múltiplas linhas do porcelain
+git -C "$R" status --porcelain | node -e "process.stdout.write('﻿' + require('fs').readFileSync(0, 'utf8'))" > "$BOM_ARQUIVO_C"
+esperado "BOM (c) com BOM e múltiplas linhas: ambas as linhas de sujeira reconhecidas, aprova" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BOM_COMMIT_BASE" --head-antes "$BOM_HEAD_ANTES" --commit "$BOM_COMMIT_A" \
   --sujo-antes "$BOM_ARQUIVO_C"
+git -C "$R" checkout -- a.txt; git -C "$R" checkout -- rastreado.txt
+
+# (d) trimEnd() vs trim(): o PRIMEIRO arquivo sujo é ' M a.txt'
+# Com a mutação de volta para trim(), o espaço inicial é comido, e slice(3) come o 'a'
+git -C "$WT" reset --hard "$BOM_COMMIT_BASE" >/dev/null 2>&1
+echo "v5-novo" > "$WT/novo-agente.txt"
+git -C "$WT" add .; git -C "$WT" commit -qm "novo arquivo agente"
+BOM_COMMIT_D=$(git -C "$WT" rev-parse HEAD)
+BOM_ARQUIVO_D="$RAIZ/porcelain-trim-test.txt"
+# a.txt é a PRIMEIRA sujeira no principal (a.txt existe na base)
+echo "v5-sujo-a" > "$R/a.txt"
+git -C "$R" status --porcelain > "$BOM_ARQUIVO_D"
+# Sem BOM neste caso, puro teste de trimEnd vs trim
+esperado "trimEnd (d): PRIMEIRO arquivo sujo é ' M a.txt', sem BOM, aprova" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BOM_COMMIT_BASE" --head-antes "$BOM_HEAD_ANTES" --commit "$BOM_COMMIT_D" \
+  --sujo-antes "$BOM_ARQUIVO_D"
+git -C "$R" checkout -- a.txt
+
+# (e) exclusao de docs/rainforest/estado/*.json: não deve ser contado como sujeira do agente
+# Cria um cenário onde docs/rainforest/estado/*.json é uma sujeira junto com outras
+git -C "$WT" reset --hard "$BOM_COMMIT_BASE" >/dev/null 2>&1
+echo "v7-novo" > "$WT/outro-novo.txt"
+git -C "$WT" add .; git -C "$WT" commit -qm "outro novo arquivo"
+BOM_COMMIT_E=$(git -C "$WT" rev-parse HEAD)
+# No principal, cria sujeira: a.txt (será reconhecida) + docs/rainforest/estado/*.json (será excluída)
+echo "v7-a" > "$R/a.txt"
+mkdir -p "$R/docs/rainforest/estado"
+echo "estado-test" > "$R/docs/rainforest/estado/2026-09-03-guardas.json"
+BOM_ARQUIVO_E="$RAIZ/porcelain-exclusao.txt"
+# Captura o porcelain - vai ter ambos os arquivos
+git -C "$R" status --porcelain > "$BOM_ARQUIVO_E"
+# Roda a checagem: docs/*.json é excluído (não conta como sujeira nova), a.txt é reconhecida
+esperado "exclusao (e): docs/rainforest/estado/*.json é excluído, não reprova" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BOM_COMMIT_BASE" --head-antes "$BOM_HEAD_ANTES" --commit "$BOM_COMMIT_E" \
+  --sujo-antes "$BOM_ARQUIVO_E"
+git -C "$R" checkout -- a.txt; rm -rf "$R/docs"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
