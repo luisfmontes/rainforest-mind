@@ -35,7 +35,7 @@ function normalizarExecutavel(nome) {
  */
 function tokenizar(comando) {
   const tokens = [];
-  let token = "";
+  let tok = "";
   let emAspaDupla = false;
   let emAspaSimples = false;
 
@@ -50,15 +50,15 @@ function tokenizar(comando) {
       continue;
     }
     if ((char === " " || char === "\t") && !emAspaDupla && !emAspaSimples) {
-      if (token) {
-        tokens.push(token);
-        token = "";
+      if (tok) {
+        tokens.push(tok);
+        tok = "";
       }
       continue;
     }
-    token += char;
+    tok += char;
   }
-  if (token) tokens.push(token);
+  if (tok) tokens.push(tok);
   return tokens;
 }
 

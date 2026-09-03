@@ -12,7 +12,7 @@ test_ok() { ok=$((ok+1)); echo "  ok   $1"; }
 test_fail() { falhou=$((falhou+1)); echo "  FALHA $1"; }
 
 # Criar repositório git na caixa de areia (para validação de caminho)
-(cd "$SBP" && git init . >/dev/null 2>&1 && git config user.email "test@test.com" && git config user.name "Test")
+(cd "$SBP" && git init . >/dev/null 2>&1 && git config user.email "t@t" && git config user.name "Test")
 
 # Criar stub em batch
 mkdir -p "$SBP/bin"
@@ -208,7 +208,7 @@ LOG_G="$(cat "$SBP/log-g" 2>/dev/null || echo '')"
 echo
 echo "== (h) --saida-arquivo fora do repositório → exit 2, sem chamar gh =="
 mkdir -p "$SBP/subrepo"
-(cd "$SBP/subrepo" && git init . >/dev/null 2>&1 && git config user.email "test@test.com" && git config user.name "Test")
+(cd "$SBP/subrepo" && git init . >/dev/null 2>&1 && git config user.email "t@t" && git config user.name "Test")
 FORA_DO_REPO="$SBP/fora-do-repo.txt"
 echo "dados secretos" > "$FORA_DO_REPO"
 (
