@@ -600,7 +600,8 @@ fi
 # aqui de novo: nao ha espaco: ou encolhe outra regra, ou sobe a catraca sabendo
 # que `tetoFoco = ORCAMENTO - fixo` e cada byte de nucleo sai do FOCO.md do
 # usuario.
-NUCLEO_ESPERADO=5597
+# 2026-09-02: 5597 -> 5595 — a regra 12 ganhou "exit ≠ 0 nunca é sucesso" (fluxo 7, T6) e cedeu 2 B no proprio texto.
+NUCLEO_ESPERADO=5595
 if [ "$NUCLEO_BYTES_REAL" = "$NUCLEO_ESPERADO" ]; then
   ok=$((ok+1)); echo "  ok    D7: nucleo emitido mede exatamente $NUCLEO_BYTES_REAL B (contrato: $NUCLEO_ESPERADO B)"
 else
