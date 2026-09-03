@@ -594,5 +594,21 @@ gate "\"codex\" exec BARRA (regressao R2, citado em posicao de comando)" 2 \
   "$(b '"codex" exec' "$R")"
 
 echo
+echo "== emenda do auditor (rodada 5): alvosBash/alvosBashEscrita usam o mesmo movedor =="
+# ate a emenda, alvosBash/alvosBashEscrita so reconheciam cd e git -C —
+# pushd/env -C de dentro do worktree passavam com exit 0 mesmo movendo um
+# git-que-mexe (commit) ou uma escrita por redirecionamento para o principal.
+gate "pushd principal && git commit, do worktree BARRA (emenda)" 2 \
+  "$(b "pushd $R && git commit -m x" "$WT")"
+gate "env -C principal git commit, do worktree BARRA (emenda)" 2 \
+  "$(b "env -C $R git commit -m x" "$WT")"
+gate "popd && git commit (sem pushd correspondente) BARRA por incerteza (emenda)" 2 \
+  "$(b "popd && git commit -m x" "$WT")"
+gate "pushd worktree && git commit, do principal PASSA (regressao)" 0 \
+  "$(b "pushd $WT && git commit -m x" "$R")"
+gate "env -C principal echo x > f.txt, do worktree BARRA (escrita, emenda)" 2 \
+  "$(b "env -C $R echo x > f.txt" "$WT")"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
