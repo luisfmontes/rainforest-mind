@@ -483,5 +483,20 @@ gate "repo em temp SEM segmento scratchpad segue barrado"  2 "$(b "echo x > novo
 gate "Write em repo em temp SEM scratchpad segue barrado"  2 "$(j Write file_path "$(esc "$R/outro.txt")")"
 
 echo
+echo "== CLI externa que escreve (Issue #127): codex, gemini, claude, aider, cursor, copilot =="
+# Estas CLIs rodam localmente e escrevem codigo. Fora de worktree linkado,
+# escreveriam no repo principal.
+gate "codex fora do worktree BARRA"                     2 "$(b "codex exec --yolo" "$R")"
+gate "codex dentro do worktree PASSA"                   0 "$(b "codex exec --yolo" "$WT")"
+gate "gemini fora do worktree BARRA"                    2 "$(b "gemini run" "$R")"
+gate "claude fora do worktree BARRA"                    2 "$(b "claude --help" "$R")"
+gate "aider dentro do worktree PASSA"                   0 "$(b "aider /chat" "$WT")"
+gate "cursor fora do worktree BARRA"                    2 "$(b "cursor open ." "$R")"
+gate "copilot dentro do worktree PASSA"                 0 "$(b "copilot activate" "$WT")"
+gate "CLI nao reconhecida PASSA (ls -la)"               0 "$(b "ls -la" "$R")"
+gate "codex da JANELA PRINCIPAL PASSA"                  0 "$(p "codex exec --yolo" "$R")"
+gatec "codex com caminho completo BARRA"                2 "$(printf '{\"agent_id\":\"ag-1\",\"tool_name\":\"Bash\",\"cwd\":\"%s\",\"tool_input\":{\"command\":\"/usr/bin/codex exec\"}}' "$(esc "$R")")"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
