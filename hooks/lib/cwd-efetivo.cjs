@@ -18,6 +18,76 @@ const GIT_DIR_EXPLICITO = /\bgit\b[^\n;&|]*?(?:-C|--work-tree(?:=|\s+))\s*(?:"([
 const SEPARADORES = /&&|\|\||;|\n|\|/;
 
 /**
+ * Quebra a linha de comando em segmentos respeitando aspas.
+ *
+ * Similares a `tokensComAspas`, mas opera sobre separadores de comando
+ * (`;`, `&&`, `||`, `|`) em vez de espaçamento de tokens.
+ * Aspas simples e duplas protegem separadores do inside.
+ */
+function segmentosComAspas(cmd) {
+  const segmentos = [];
+  let atual = "", aspa = null;
+
+  for (let i = 0; i < cmd.length; i += 1) {
+    const c = cmd[i];
+
+    if (aspa) {
+      // Dentro de aspas: só sair da aspa ou adicionar caractere
+      if (c === aspa) {
+        aspa = null;
+      }
+      atual += c;
+    } else if (c === '"' || c === "'") {
+      // Entrar em aspa
+      aspa = c;
+      atual += c;
+    } else if (i + 1 < cmd.length && (
+      (c === '&' && cmd[i + 1] === '&') ||
+      (c === '|' && cmd[i + 1] === '|') ||
+      c === ';' ||
+      c === '|' ||
+      c === '\n'
+    )) {
+      // Separador encontrado fora de aspas
+      if (atual.trim()) {
+        segmentos.push(atual);
+      }
+      // Pula o separador (um ou dois caracteres)
+      if (c === '&' && cmd[i + 1] === '&') i++;
+      else if (c === '|' && cmd[i + 1] === '|') i++;
+      atual = "";
+    } else {
+      atual += c;
+    }
+  }
+
+  if (atual.trim()) {
+    segmentos.push(atual);
+  }
+
+  return segmentos;
+}
+
+/**
+ * Extrai o ÚLTIMO diretório de `-C` num segmento de git.
+ *
+ * Se múltiplos `-C` aparecem, git usa o último. Exemplo:
+ * `git -C /a -C /b commit` → usa `/b`.
+ */
+function extrairUltimoDirGit(seg) {
+  // Encontra todas as ocorrências de -C ou --work-tree
+  const regex = /(?:-C|--work-tree(?:=|\s+))\s*(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))/g;
+  let ultima = null;
+  let match;
+
+  while ((match = regex.exec(seg)) !== null) {
+    ultima = match[1] || match[2] || match[3];
+  }
+
+  return ultima;
+}
+
+/**
  * Resolve o diretório efetivo onde um comando roda, seguindo `cd` e `git -C`.
  *
  * A traversia percorre o comando mantendo o diretório corrente, sem escolher
@@ -30,7 +100,7 @@ const SEPARADORES = /&&|\|\||;|\n|\|/;
  * @returns {{cwd: string, incerto: boolean}} O diretório efetivo e se há incerteza.
  */
 function resolverCwdEfetivo(comando, cwdInicial) {
-  const segmentos = comando.split(SEPARADORES);
+  const segmentos = segmentosComAspas(comando);
   let atual = cwdInicial;
   let incerto = false;
 
@@ -59,17 +129,19 @@ function resolverCwdEfetivo(comando, cwdInicial) {
     }
 
     // `git -C <dir>` — o argumento de `-C` vence o cwd do shell
-    const exp = seg.match(GIT_DIR_EXPLICITO);
-    if (exp) {
-      const p = exp[1] || exp[2] || exp[3];
-      // `-C` com variável: não dá para resolver — fica INCERTO.
-      if (/[$`]/.test(p)) {
-        incerto = true;
+    // Usa o ÚLTIMO se houver múltiplos
+    if (seg.includes("git")) {
+      const p = extrairUltimoDirGit(seg);
+      if (p) {
+        // `-C` com variável: não dá para resolver — fica INCERTO.
+        if (/[$`]/.test(p)) {
+          incerto = true;
+          continue;
+        }
+        // O caminho de `-C` é o cwd efetivo deste segmento
+        atual = path.resolve(atual, p);
         continue;
       }
-      // O caminho de `-C` é o cwd efetivo deste segmento
-      atual = path.resolve(atual, p);
-      continue;
     }
   }
 
@@ -116,6 +188,8 @@ function toplevelConfinado(dir) {
 module.exports = {
   resolverCwdEfetivo,
   toplevelConfinado,
+  segmentosComAspas,
+  extrairUltimoDirGit,
   CD,
   GIT_DIR_EXPLICITO,
   SEPARADORES,

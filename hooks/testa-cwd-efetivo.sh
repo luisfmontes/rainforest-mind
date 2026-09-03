@@ -123,6 +123,44 @@ test("(e2) repo principal com .git é confinado", () => {
 });
 
 console.log();
+console.log("== Caso (f): git -C <wt> -C <principal> resolve o ÚLTIMO ==");
+test("(f) múltiplos -C: o último vence", () => {
+  const cmd = `git -C '${testA}' -C '${testB}' commit`;
+  const result = resolverCwdEfetivo(cmd, testDir);
+  eq(result.cwd, testB, "cwd");
+  eq(result.incerto, false, "incerto");
+});
+
+console.log();
+console.log("== Caso (g): echo \"; cd <lixo>\" resolve o cwd INICIAL ==");
+test("(g) ; dentro de aspas duplas não é separador", () => {
+  const cmd = `echo "; cd '${testD}'" && git commit`;
+  const result = resolverCwdEfetivo(cmd, testDir);
+  eq(result.cwd, testDir, "cwd");
+  eq(result.incerto, false, "incerto");
+});
+
+console.log();
+console.log("== Caso (h): echo '; cd <lixo>' resolve o cwd INICIAL ==");
+test("(h) ; dentro de aspas simples não é separador", () => {
+  const cmd = `echo '; cd ${testD}' && git commit`;
+  const result = resolverCwdEfetivo(cmd, testDir);
+  eq(result.cwd, testDir, "cwd");
+  eq(result.incerto, false, "incerto");
+});
+
+console.log();
+console.log("== Caso (i): cd \"<dir com espaco>\" resolve o dir com espaco ==");
+test("(i) cd com aspas duplas e espaço resolve corretamente", () => {
+  const dirComEspaco = path.join(testDir, "dir com espaço");
+  fs.mkdirSync(dirComEspaco, { recursive: true });
+  const cmd = `cd "${dirComEspaco}" && git commit`;
+  const result = resolverCwdEfetivo(cmd, testDir);
+  eq(result.cwd, dirComEspaco, "cwd");
+  eq(result.incerto, false, "incerto");
+});
+
+console.log();
 console.log(`== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 process.exit(falhou);
 NODESCRIPT
