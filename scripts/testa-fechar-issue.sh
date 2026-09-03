@@ -37,9 +37,21 @@ if (log) {
 if (args[0] === "issue" && args[1] === "comment" && process.env.GH_COMMENT_FAIL) process.exit(1);
 if (args[0] === "issue" && args[1] === "view" && args[3] === "--json" && args[4] === "body") {
   const com = process.env.GH_CORPO_COM_CRITERIO === "1";
-  const body = com
-    ? "Como reproduzir: passo1 passo2 ## Criterio de pronto (falsificavel) comando esperado"
-    : "Como reproduzir: passo1 passo2";
+  const semParenteses = process.env.GH_CORPO_SEM_PARENTESES === "1";
+  const caret = process.env.GH_CORPO_CARET === "1";
+  const canonico = process.env.GH_CORPO_CANONICO === "1";
+  let body;
+  if (semParenteses) {
+    body = "Como reproduzir: passo1 passo2\n## Criterio de pronto falsificavel\ncomando esperado";
+  } else if (caret) {
+    body = "Como reproduzir: passo1 passo2\n## Critério de pronto ^falsificável^\ncomando esperado";
+  } else if (canonico) {
+    body = "Como reproduzir: passo1 passo2\n## Critério de pronto (falsificável)\ncomando esperado";
+  } else if (com) {
+    body = "Como reproduzir: passo1 passo2\n## Criterio de pronto (falsificavel)\ncomando esperado";
+  } else {
+    body = "Como reproduzir: passo1 passo2";
+  }
   process.stdout.write(JSON.stringify({ body }) + EOL);
   process.exit(0);
 }
@@ -246,6 +258,39 @@ LOG_I="$(cat "$SBP/log-i" 2>/dev/null || echo '')"
 } || {
   test_fail "log vazio"
 }
+
+# Caso (j): corpo com "## Criterio de pronto falsificavel" SEM parênteses → RECUSADO (regressão)
+echo
+echo "== (j) corpo com critério de pronto SEM parênteses → exit 2 (regressão) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_LOG="$SBP/log-j"
+  export GH_CORPO_SEM_PARENTESES=1
+  node "$SRC/scripts/fechar-issue.cjs" 999909 --comando "echo teste" --saida "ok" 2>&1
+) >/dev/null
+[ $? -eq 2 ] && test_ok "exit 2 (sem parênteses recusado)" || test_fail "exit code"
+
+# Caso (k): corpo com "## Critério de pronto ^falsificável^" (caret) → RECUSADO (regressão)
+echo
+echo "== (k) corpo com critério de pronto em formato caret → exit 2 (regressão) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_LOG="$SBP/log-k"
+  export GH_CORPO_CARET=1
+  node "$SRC/scripts/fechar-issue.cjs" 999910 --comando "echo teste" --saida "ok" 2>&1
+) >/dev/null
+[ $? -eq 2 ] && test_ok "exit 2 (caret recusado)" || test_fail "exit code"
+
+# Caso (l): corpo com "## Critério de pronto (falsificável)" canônico → ACEITO (regressão)
+echo
+echo "== (l) corpo com critério de pronto canônico (parênteses, acentuado) → exit 0 (regressão) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_LOG="$SBP/log-l"
+  export GH_CORPO_CANONICO=1
+  node "$SRC/scripts/fechar-issue.cjs" 999911 --comando "echo teste" --saida "ok" 2>&1
+) >/dev/null
+[ $? -eq 0 ] && test_ok "exit 0 (canônico aceito)" || test_fail "exit code"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
