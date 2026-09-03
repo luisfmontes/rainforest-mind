@@ -6,7 +6,10 @@
     "status": "pendente"
   },
   "design": {
-    "status": "pendente"
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-03-guardas.md",
+    "aprovado_por": "sessao (run autonomo autorizado em 2026-09-02; veto do Luis no PR)",
+    "em": "2026-09-03"
   },
   "plano": {
     "status": "pendente"
