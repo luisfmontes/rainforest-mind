@@ -556,5 +556,59 @@ gate "; de verdade (fora de aspas) continua separando (Rev2, regressao)" 2 \
   "$(b 'echo oi; codex exec --yolo' "$R")"
 
 echo
+echo "== H1 (rodada 5): cwd do SEGMENTO onde a CLI roda, nao o cwd final da linha =="
+# `codex exec --yolo && cd <worktree>` rodado no principal: o codex roda no
+# principal, mas o cwd FINAL (depois do cd) e o worktree — sem o conserto o
+# gate lia o cwd errado e liberava.
+gate "codex && cd worktree no PRINCIPAL BARRA (H1)" 2 \
+  "$(b "codex exec --yolo && cd $WT" "$R")"
+gate "cd principal && codex && cd worktree, de dentro do worktree BARRA (H1)" 2 \
+  "$(b "cd $R && codex exec --yolo && cd $WT" "$WT")"
+
+echo
+echo "== H2: pushd/popd e env -C nao modelados liberavam a CLI de verdade (rodada 5) =="
+gate "pushd principal && codex, do worktree BARRA (H2)" 2 \
+  "$(b "pushd $R && codex exec --yolo" "$WT")"
+gate "env -C principal codex, do worktree BARRA (H2)" 2 \
+  "$(b "env -C $R codex exec --yolo" "$WT")"
+gate "popd && codex (sem pushd correspondente) BARRA por incerteza (H2)" 2 \
+  "$(b "popd && codex exec --yolo" "$WT")"
+
+echo
+echo "== H3: procuraCLI so em posicao de COMANDO (rodada 5) =="
+gate "grep -rn claude . no principal PASSA (nome de CLI em argumento)" 0 \
+  "$(b 'grep -rn claude .' "$R")"
+gate "echo codex PASSA (codex em posicao de argumento)" 0 \
+  "$(b "echo codex" "$R")"
+gate "env FOO=1 codex exec fora de worktree BARRA (wrapper env)" 2 \
+  "$(b "env FOO=1 codex exec" "$R")"
+gate "timeout 5 codex exec BARRA (wrapper timeout, pula a duracao)" 2 \
+  "$(b "timeout 5 codex exec" "$R")"
+gate "nohup codex exec BARRA (wrapper nohup)" 2 \
+  "$(b "nohup codex exec" "$R")"
+gate "eval \"codex exec --yolo\" BARRA (comando dentro da string)" 2 \
+  "$(b 'eval "codex exec --yolo"' "$R")"
+gate "codex exec --yolo fora de worktree BARRA (regressao)" 2 \
+  "$(b "codex exec --yolo" "$R")"
+gate "\"codex\" exec BARRA (regressao R2, citado em posicao de comando)" 2 \
+  "$(b '"codex" exec' "$R")"
+
+echo
+echo "== emenda do auditor (rodada 5): alvosBash/alvosBashEscrita usam o mesmo movedor =="
+# ate a emenda, alvosBash/alvosBashEscrita so reconheciam cd e git -C —
+# pushd/env -C de dentro do worktree passavam com exit 0 mesmo movendo um
+# git-que-mexe (commit) ou uma escrita por redirecionamento para o principal.
+gate "pushd principal && git commit, do worktree BARRA (emenda)" 2 \
+  "$(b "pushd $R && git commit -m x" "$WT")"
+gate "env -C principal git commit, do worktree BARRA (emenda)" 2 \
+  "$(b "env -C $R git commit -m x" "$WT")"
+gate "popd && git commit (sem pushd correspondente) BARRA por incerteza (emenda)" 2 \
+  "$(b "popd && git commit -m x" "$WT")"
+gate "pushd worktree && git commit, do principal PASSA (regressao)" 0 \
+  "$(b "pushd $WT && git commit -m x" "$R")"
+gate "env -C principal echo x > f.txt, do worktree BARRA (escrita, emenda)" 2 \
+  "$(b "env -C $R echo x > f.txt" "$WT")"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

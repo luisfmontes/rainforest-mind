@@ -14,7 +14,7 @@ TESTE_JS="$RAIZ/teste.js"
 cat > "$TESTE_JS" << 'NODESCRIPT'
 const path = require("path");
 const fs = require("fs");
-const { resolverCwdEfetivo, toplevelConfinado } = require(process.argv[2]);
+const { resolverCwdEfetivo, cwdPorSegmento, toplevelConfinado } = require(process.argv[2]);
 const { execSync } = require("child_process");
 
 let ok = 0, falhou = 0;
@@ -166,6 +166,54 @@ test("(j) (cd X && y) marca incerto", () => {
   const cmd = `(cd '${testD}' && y)`;
   const result = resolverCwdEfetivo(cmd, testDir);
   eq(result.incerto, true, "incerto deve ser true");
+});
+
+console.log();
+console.log("== Caso (k): cwdPorSegmento devolve o cwd de CADA segmento (H1, rodada 5) ==");
+test("(k) cd A && x && cd B -> [A, A, B]", () => {
+  const cmd = `cd '${testA}' && x && cd '${testB}'`;
+  const r = cwdPorSegmento(cmd, testDir);
+  eq(r.length, 3, "numero de segmentos");
+  eq(r[0].cwd, testA, "cwd do segmento 0 (cd A)");
+  eq(r[1].cwd, testA, "cwd do segmento 1 (x, sem cd)");
+  eq(r[2].cwd, testB, "cwd do segmento 2 (cd B)");
+  eq(r[0].incerto, false, "incerto do segmento 0");
+  eq(r[2].incerto, false, "incerto do segmento 2");
+});
+
+console.log();
+console.log("== Caso (l): pushd move como cd, popd desfaz (H2, rodada 5) ==");
+test("(l) pushd A && x -> cwd A no segmento do x", () => {
+  const cmd = `pushd '${testA}' && x`;
+  const r = cwdPorSegmento(cmd, testDir);
+  eq(r[1].cwd, testA, "cwd apos pushd");
+  eq(r[1].incerto, false, "incerto apos pushd resolvivel");
+});
+test("(l2) pushd A && popd && x -> volta ao cwd inicial", () => {
+  const cmd = `pushd '${testA}' && popd && x`;
+  const r = cwdPorSegmento(cmd, testDir);
+  eq(r[2].cwd, testDir, "cwd apos popd desfazer o pushd");
+  eq(r[2].incerto, false, "incerto apos popd com pushd correspondente");
+});
+test("(l3) popd sem pushd correspondente vira INCERTO", () => {
+  const cmd = `popd && x`;
+  const r = cwdPorSegmento(cmd, testDir);
+  eq(r[0].incerto, true, "popd sem pushd marca incerto");
+  eq(r[1].incerto, true, "incerto propaga para o segmento seguinte");
+});
+
+console.log();
+console.log("== Caso (m): env -C muda o cwd SO daquele comando (H2, rodada 5) ==");
+test("(m) env -C A cmd -> cwd A so no proprio segmento", () => {
+  const cmd = `env -C '${testA}' x`;
+  const r = cwdPorSegmento(cmd, testDir);
+  eq(r[0].cwd, testA, "cwd do segmento do env -C");
+  eq(r[0].incerto, false, "incerto");
+});
+test("(m2) env -C A cmd && y -> NAO persiste para o segmento seguinte", () => {
+  const cmd = `env -C '${testA}' x && y`;
+  const r = cwdPorSegmento(cmd, testDir);
+  eq(r[1].cwd, testDir, "cwd do segmento seguinte volta ao inicial");
 });
 
 console.log();
