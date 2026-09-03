@@ -1060,7 +1060,7 @@ echo "11. SESSAO ENCERRADA — janela fechada some do radar"
 MORTO=999999
 S="$(LIB_PATH="$LIB" node -e "
 const lib = require(process.env.LIB_PATH);
-const agora = 1786e9;   // = 1786000000000, escrito assim porque 13 digitos casam a forma de telefone no gate de publicacao. Epoch real: timestamp negativo vira 0 no Math.max e o fixture mente
+const agora = 1786e9;   // 1,786 x 10^12 ms, em notacao cientifica porque 13 digitos casam a forma de telefone no gate de publicacao. Epoch real: timestamp negativo vira 0 no Math.max e o fixture mente
 const state = {
   viva:      { cwd: 'C:/viva',   pid: process.pid, prompt_ts: agora - 1000 },
   morta:     { cwd: 'C:/morta',  pid: $MORTO,      prompt_ts: agora - 1000 },
@@ -1082,7 +1082,7 @@ checa "entrada antiga sem pid sobrevive"   tem     "sem_pid"                    
 # caido fora uma vez.
 W="$(LIB_PATH="$LIB" node -e "
 const lib = require(process.env.LIB_PATH);
-const agora = 1786e9;   // = 1786000000000 (ver comentario acima)
+const agora = 1786e9;   // 1,786 x 10^12 ms (ver comentario acima)
 const state = {
   janela_real: { cwd: 'C:/Projetos/algo',                              pid: process.pid, prompt_ts: agora - 1000 },
   wt_windows:  { cwd: 'C:\\\\Projetos\\\\algo\\\\.claude\\\\worktrees\\\\agent-x', pid: process.pid, prompt_ts: agora - 1000 },
@@ -1104,7 +1104,7 @@ checa "pasta so parecida NAO e filtrada"      tem     "quase"        "$W"
 # de segmento, não substring.
 X="$(LIB_PATH="$LIB" node -e "
 const lib = require(process.env.LIB_PATH);
-const agora = 1786e9;   // = 1786000000000 (ver comentario acima)
+const agora = 1786e9;   // 1,786 x 10^12 ms (ver comentario acima)
 const state = {
   agent_simples: { cwd: 'C:/Projetos/rainforest-mind/.claude/worktrees/agent-a1b2c3', pid: process.pid, prompt_ts: agora - 1000 },
   agent_subpasta: { cwd: 'C:/Projetos/rainforest-mind/.claude/worktrees/agent-a1b2c3/templates/FIN', pid: process.pid, prompt_ts: agora - 1000 },
@@ -1482,7 +1482,7 @@ const lib = require(process.env.LIB_PATH);
 const BS = String.fromCharCode(92);
 const cwdSessao = 'C:' + BS + 'A';
 process.stderr.write('CWD_CONSTRUIDO=' + JSON.stringify(cwdSessao) + '\n');
-const agora = 1786e9;   // = 1786000000000 (ver comentario acima)
+const agora = 1786e9;   // 1,786 x 10^12 ms (ver comentario acima)
 const r = lib.focoAtivoEmOutraJanela([{ cwd: cwdSessao, prompt_ts: agora - 1000 }], ['C:/a'], 15, agora);
 process.stdout.write(String(r));
 EOF
