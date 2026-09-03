@@ -12,7 +12,27 @@
     "em": "2026-09-03"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-09-03-guardas.md",
+    "entregaveis": [
+      "hooks/lib/cwd-efetivo.cjs",
+      "hooks/gate-worktree.cjs",
+      "hooks/gate-staging-total.cjs",
+      "hooks/portaria.cjs",
+      "scripts/limpar-worktrees.cjs",
+      "skills/limpar/SKILL.md",
+      "scripts/conferir-entrega.cjs",
+      "hooks/lib/clis-que-escrevem.cjs",
+      "scripts/backup.cjs",
+      "scripts/saude.cjs",
+      "vigias/backup-estado.ps1",
+      "hooks/lib/marcador-evidencia.cjs",
+      "scripts/fechar-issue.cjs",
+      "hooks/gate-fechar-issue.cjs",
+      "hooks/hooks.json",
+      "commands/issue.md"
+    ],
+    "em": "2026-09-03"
   },
   "executar": {
     "status": "pendente"
