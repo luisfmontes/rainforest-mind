@@ -89,6 +89,22 @@ function Registrar-Erro([string]$Motivo) {
     Write-ErroDeVigia -Vigia $Vigia -Motivo $Motivo -Plugin $Plugin -Log $Log
 }
 
+# ERROS.md e versionado - a ultima linha de um log externo pode carregar caminho
+# absoluto com o nome de usuario real (ex.: um "C:\Users\<usuario>\..." qualquer)
+# ou crescer sem limite (stack trace, JSON de erro). O caminho absoluto/UNC ja
+# e coberto rio abaixo: Registrar-Erro -> Write-ErroDeVigia -> Get-MotivoSaneado
+# (vigias/erros.ps1), que substitui `C:\...`, `\\servidor\...` e `..\...\...`
+# por `<caminho>` (mantendo so a folha) - CONFERIDO por mutacao: apagar so o
+# trecho de troca de caminho aqui nao muda o resultado, porque o saneamento de
+# verdade ja acontece na porta unica de escrita. O que falta ali e um TETO de
+# tamanho: uma linha de log gigante nao pode inflar o ERROS.md sem limite.
+function Truncar-LinhaDeErro([string]$Linha) {
+    if ($Linha.Length -gt 200) {
+        $Linha = $Linha.Substring(0, 200)
+    }
+    return $Linha
+}
+
 # O -Teste bloqueava so o envio, e o backup rodava igual. Em 2026-08-10 um teste
 # manual levou o FOCO.md que o usuario tinha modificado e ainda nao commitado
 # para a main. Modo de teste que escreve no repositorio do usuario nao e teste.
@@ -130,6 +146,7 @@ if (Test-Path $backup_externo) {
 
     if ($codigo_externo -ne 0) {
         $ultima_linha = if ($backup_log -is [array]) { $backup_log[-1] } else { $backup_log }
+        $ultima_linha = Truncar-LinhaDeErro -Linha $ultima_linha
         Registrar-Erro "backup externo falhou (exit $codigo_externo): $ultima_linha"
     }
 }
