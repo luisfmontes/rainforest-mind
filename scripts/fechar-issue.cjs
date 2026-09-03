@@ -71,6 +71,41 @@ if (!comando || saidaConteudo === null) {
   process.exit(2);
 }
 
+// Verificar se gh existe (o executar() faz isso também)
+if (!resolverExecutavel('gh')) {
+  console.error('RECUSADO: nao achei o gh no PATH');
+  process.exit(2);
+}
+
+// Ler o corpo da Issue para verificar se tem a seção obrigatória
+const issueViewResult = executar('gh', ['issue', 'view', n, '--json', 'body'], {
+  stdio: ['pipe', 'pipe', 'pipe']
+});
+
+if (issueViewResult.status !== 0) {
+  const saida = issueViewResult.stdout || issueViewResult.stderr || '';
+  console.error(saida);
+  process.exit(1);
+}
+
+let issueBody = '';
+try {
+  const viewOutput = issueViewResult.stdout || '';
+  const parsed = JSON.parse(viewOutput);
+  issueBody = parsed.body || '';
+} catch (err) {
+  console.error(`Erro ao parsear resposta de 'gh issue view': ${err.message}`);
+  process.exit(1);
+}
+
+// Verificar se o corpo contém a seção obrigatória
+// Aceita tanto a versão com acentos quanto a versão ASCII
+const temCriterio = /##\s+Criter[íi]o de pronto [\(\^]*falsific[áa]vel[\)\^]*/.test(issueBody);
+if (!temCriterio) {
+  console.error(`RECUSADO: a Issue #${n} nao tem a secao "Critério de pronto (falsificável)"`);
+  process.exit(2);
+}
+
 // Montar corpo do comentário
 const corpo = `${MARCADOR}
 
@@ -88,12 +123,6 @@ const tmpFile = path.join(os.tmpdir(), `fechar-issue-${Date.now()}-${Math.random
 fs.writeFileSync(tmpFile, corpo, 'utf-8');
 
 try {
-  // Verificar que gh existe (o executar() faz isso também)
-  if (!resolverExecutavel('gh')) {
-    console.error('RECUSADO: nao achei o gh no PATH');
-    process.exit(2);
-  }
-
   // Chamar: gh issue comment
   const commentResult = executar('gh', ['issue', 'comment', n, '--body-file', tmpFile], {
     stdio: ['pipe', 'pipe', 'pipe']
