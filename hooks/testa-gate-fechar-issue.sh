@@ -5,6 +5,8 @@ set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SBP="$(mktemp -d)"
 trap 'rm -rf "$SBP"' EXIT
+# Converter para forma Windows para payloads (cwd em Windows)
+SBP_WIN="$(cygpath -m "$SBP")"
 echo "(caixa de areia: $SBP)"
 
 ok=0; falhou=0
@@ -14,20 +16,32 @@ test_fail() { falhou=$((falhou+1)); echo "  FALHA $1"; }
 # Criar stub compatível com Windows
 mkdir -p "$SBP/bin"
 
-# Criar versão .cmd para Windows — formato correto: {"comments":[...]}
-# Log cada invocação para debug
+# Criar versão em Node.js como executável (sem extensão, para bash)
+cat > "$SBP/bin/gh" <<'STUB'
+#!/usr/bin/env node
+if (process.argv[2] === 'issue' && process.argv[3] === 'view') {
+  if (process.env.GH_COM_MARCADOR === '1') {
+    console.log(JSON.stringify({comments:[{body:'<!-- rainforest-evidencia --> Marcador presente'}]}));
+  } else {
+    console.log(JSON.stringify({comments:[{body:'Sem marcador aqui'}]}));
+  }
+  process.exit(0);
+}
+process.exit(0);
+STUB
+chmod +x "$SBP/bin/gh"
+
+# Criar versão .cmd para Windows (fallback)
 cat > "$SBP/bin/gh.cmd" <<'STUB'
 @echo off
-setlocal enabledelayedexpansion
 if "%1"=="issue" if "%2"=="view" (
-  if "!GH_COM_MARCADOR!"=="1" (
+  if "%GH_COM_MARCADOR%"=="1" (
     echo {"comments":[{"body":"<!-- rainforest-evidencia --> Marcador presente"}]}
   ) else (
     echo {"comments":[{"body":"Sem marcador aqui"}]}
   )
   exit /b 0
 )
-REM Para outros comandos, retornar sucesso silenciosamente
 exit /b 0
 STUB
 
@@ -67,7 +81,7 @@ echo
 echo "== (a) gh issue close <n> direto → exit 2, stderr aponta script =="
 (
   export PATH="$SBP/bin:$PATH"
-  PAYLOAD='{"cwd":"'"$SBP"'","tool_name":"Bash","tool_input":{"command":"gh issue close 12"}}'
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh issue close 12"}}'
   echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
 ) 2>"$SBP/err-a"
 EXIT_A=$?
@@ -103,10 +117,11 @@ EXIT_C=$?
 echo
 echo "== (d) gh pr create --body-file com closes #12 → mesma checagem =="
 echo "closes #99" > "$SBP/corpo.txt"
+SBP_WIN_CORPO="$(cygpath -m "$SBP/corpo.txt")"
 (
   export PATH="$SBP/bin:$PATH"
   export GH_COM_MARCADOR=""
-  PAYLOAD='{"cwd":"'"$SBP"'","tool_name":"Bash","tool_input":{"command":"gh pr create --body-file '"$SBP"'/corpo.txt"}}'
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create --body-file '"$SBP_WIN_CORPO"'"}}'
   echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
 ) 2>"$SBP/err-d"
 EXIT_D=$?
@@ -116,7 +131,7 @@ EXIT_D=$?
 (
   export PATH="$SBP/bin:$PATH"
   export GH_COM_MARCADOR=1
-  PAYLOAD='{"cwd":"'"$SBP"'","tool_name":"Bash","tool_input":{"command":"gh pr create --body-file '"$SBP"'/corpo.txt"}}'
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create --body-file '"$SBP_WIN_CORPO"'"}}'
   echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
 ) 2>"$SBP/err-d2"
 EXIT_D2=$?
@@ -141,9 +156,10 @@ mkdir -p "$SBP/repo"
 cd "$SBP/repo"
 git init . >/dev/null 2>&1
 touch "$SBP/repo/.rainforest-gate-off"
+SBP_WIN_REPO="$(cygpath -m "$SBP/repo")"
 (
   export PATH="$SBP/bin:$PATH"
-  PAYLOAD='{"cwd":"'"$SBP/repo"'","tool_name":"Bash","tool_input":{"command":"gh pr merge --body \"closes #888\""}}'
+  PAYLOAD='{"cwd":"'"$SBP_WIN_REPO"'","tool_name":"Bash","tool_input":{"command":"gh pr merge --body \"closes #888\""}}'
   echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
 ) 2>"$SBP/err-f"
 EXIT_F=$?
