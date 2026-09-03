@@ -176,6 +176,11 @@ afirma "F5. fechar RECUSA quando portao CHECK falha (exit != 0)" \
   "$([ "$C" -ne 0 ] && echo 1 || echo 0)"
 afirma "F5b. nenhum recibo foi gravado quando portao reprova" \
   "$([ ! -f "$S/.rainforest/colheita/com-portao-falho-recibo.json" ] && echo 1 || echo 0)"
+# R1 do revisar (2026-09-03): antes, o oraculo nao era copiado para o sandbox e o
+# CHECK caia em MODULE_NOT_FOUND — exit 1 pelo motivo errado, e F5 passava sem
+# nunca ver um CHECK reprovar de verdade. A recusa tem de vir do oraculo.
+afirma "F5c. a recusa veio do CHECK, nao de MODULE_NOT_FOUND" \
+  "$(printf '%s' "$SAIDA" | grep -q 'MODULE_NOT_FOUND' && echo 0 || echo 1)"
 
 echo "== F6: CHECK com sempre-ok.cjs passa e grava recibo com portoes =="
 novo_fluxo com-portao-ok
