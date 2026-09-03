@@ -27,7 +27,9 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { spawnSync } = require('child_process');
+const os = require('os');
 
 // Lista fechada de entrada (D10)
 const ITENS_BACKUP = [
@@ -269,6 +271,164 @@ Compress-Archive -Path $items -DestinationPath $dest -Force`;
 }
 
 /**
+ * Calcula hash SHA256 de um arquivo.
+ */
+function calcularHashSha256(caminhoArquivo) {
+  try {
+    const conteudo = fs.readFileSync(caminhoArquivo);
+    return crypto.createHash('sha256').update(conteudo).digest('hex');
+  } catch (err) {
+    return null;
+  }
+}
+
+/**
+ * Lista arquivos recursivamente em um diretório.
+ */
+function listarArquivosRecursivamente(dir) {
+  const arquivos = [];
+
+  function lerDiretorio(currentDir) {
+    try {
+      const items = fs.readdirSync(currentDir);
+      for (const item of items) {
+        const fullPath = path.join(currentDir, item);
+        const stat = fs.statSync(fullPath);
+        if (stat.isDirectory()) {
+          lerDiretorio(fullPath);
+        } else if (stat.isFile()) {
+          arquivos.push(fullPath);
+        }
+      }
+    } catch {
+      // Ignora erros ao ler diretório
+    }
+  }
+
+  lerDiretorio(dir);
+  return arquivos.sort();
+}
+
+/**
+ * Subcomando: conferir [--destino <dir>] [--origem <dir>]
+ */
+function cmdConferir(args) {
+  let origem = null;
+  let destino = null;
+
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--origem' && i + 1 < args.length) {
+      origem = args[++i];
+    } else if (args[i] === '--destino' && i + 1 < args.length) {
+      destino = args[++i];
+    }
+  }
+
+  // Resolve origem
+  if (!origem) origem = resolverRaiz();
+  if (!origem || !ehDiretorio(origem)) {
+    console.error('RECUSADO: origem invalida ou inexistente');
+    process.exit(2);
+  }
+
+  // Resolve destino
+  if (!destino) destino = resolverDestino();
+  if (!destino || !ehDiretorio(destino)) {
+    console.error('RECUSADO: destino invalido ou inexistente');
+    process.exit(2);
+  }
+
+  // Procura o zip mais recente no destino
+  const zips = fs.readdirSync(destino)
+    .filter((f) => /^rainforest-\d{4}-\d{2}-\d{2}\.zip$/.test(f))
+    .sort()
+    .reverse(); // mais recentes primeiro
+
+  if (zips.length === 0) {
+    console.error('nada para conferir');
+    process.exit(2);
+  }
+
+  const nomeZipMaisRecente = zips[0];
+  const caminhoZip = path.join(destino, nomeZipMaisRecente);
+
+  // Extrai o zip para uma pasta temporária
+  const expandDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rainforest-conferir-'));
+  let expandDirWin;
+  try {
+    expandDirWin = expandDir.replace(/\//g, '\\');
+  } catch {
+    expandDirWin = expandDir;
+  }
+
+  const caminhoZipWin = caminhoZip.replace(/\//g, '\\');
+
+  const expandResult = spawnSync('powershell', [
+    '-NoProfile',
+    '-NonInteractive',
+    '-Command',
+    `Expand-Archive -Path '${caminhoZipWin}' -DestinationPath '${expandDirWin}' -Force 2>&1`,
+  ], { encoding: 'utf8' });
+
+  if (expandResult.status !== 0) {
+    console.error(`RECUSADO: nao consegui expandir o zip: ${expandResult.stderr || expandResult.stdout}`);
+    try { fs.rmSync(expandDir, { recursive: true, force: true }); } catch { }
+    process.exit(2);
+  }
+
+  // Compara arquivo por arquivo
+  let arquivoDivergente = null;
+  let descricaoDivergencia = null;
+
+  try {
+    const arquivosExpandidos = listarArquivosRecursivamente(expandDir);
+
+    for (const arquivoExpandido of arquivosExpandidos) {
+      // Calcula caminho relativo desde o expandDir
+      const caminhoRelativo = path.relative(expandDir, arquivoExpandido);
+      const caminhoOrigem = path.join(origem, caminhoRelativo);
+
+      // Verifica se existe na origem
+      if (!fs.existsSync(caminhoOrigem)) {
+        arquivoDivergente = caminhoRelativo;
+        descricaoDivergencia = 'arquivo nao existe na origem';
+        break;
+      }
+
+      // Compara hashes
+      const hashExpandido = calcularHashSha256(arquivoExpandido);
+      const hashOrigem = calcularHashSha256(caminhoOrigem);
+
+      if (hashExpandido !== hashOrigem) {
+        arquivoDivergente = caminhoRelativo;
+        descricaoDivergencia = `hash diverge (backup: ${hashExpandido}, origem: ${hashOrigem})`;
+        break;
+      }
+    }
+
+    if (arquivoDivergente) {
+      console.error(`${arquivoDivergente}: ${descricaoDivergencia}`);
+      console.error('sincronizacao e do OneDrive, nao conferida aqui');
+      try { fs.rmSync(expandDir, { recursive: true, force: true }); } catch { }
+      process.exit(1);
+    }
+
+    // Tudo bateu
+    const stat = fs.statSync(caminhoZip);
+    const dataMtime = new Date(stat.mtime).toISOString().split('T')[0];
+    console.log('intacto');
+    console.log(dataMtime);
+    console.log('sincronizacao e do OneDrive, nao conferida aqui');
+    try { fs.rmSync(expandDir, { recursive: true, force: true }); } catch { }
+    process.exit(0);
+  } catch (err) {
+    console.error(`RECUSADO: erro ao comparar arquivos: ${err.message}`);
+    try { fs.rmSync(expandDir, { recursive: true, force: true }); } catch { }
+    process.exit(2);
+  }
+}
+
+/**
  * Subcomando: gravar [--origem <dir>] [--destino <dir>] [--so-mostrar]
  */
 function cmdGravar(args) {
@@ -388,6 +548,8 @@ function main() {
 
   if (comando === 'gravar') {
     cmdGravar(resto);
+  } else if (comando === 'conferir') {
+    cmdConferir(resto);
   } else {
     console.error(`Comando desconhecido: ${comando}`);
     imprimirUso();
@@ -399,5 +561,12 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { ITENS_BACKUP, resolverRaiz, resolverDestino, compactarSimples };
+module.exports = {
+  ITENS_BACKUP,
+  resolverRaiz,
+  resolverDestino,
+  compactarSimples,
+  calcularHashSha256,
+  listarArquivosRecursivamente,
+};
 
