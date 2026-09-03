@@ -83,7 +83,10 @@ function resolverEntregavel(rel) {
   // A1: UNC antes de qualquer fs. stat/realpath de UNC no Windows abre conexão SMB
   // e tenta autenticação NTLM automática — plano.entregaveis vem de arquivo
   // versionado e compartilhado, então uma UNC ali é acidente ou ataque.
-  if (rel.startsWith('\\\\') || rel.startsWith('//')) {
+  // Qualquer par de separadores no inicio, em qualquer combinacao: o Windows
+  // normaliza `\/host` e `/\host` para `\\host` antes de resolver (achado da
+  // rodada 2 do revisar — a versao anterior so olhava `\\` e `//`).
+  if (/^[\\/]{2}/.test(rel)) {
     return { ok: false, motivo: 'caminho UNC nao e entregavel (resolver dispararia conexao de rede)' };
   }
 
