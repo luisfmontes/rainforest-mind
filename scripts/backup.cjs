@@ -151,7 +151,7 @@ function rotacionarZips(destino, nomeDoNovoZip) {
       .sort()
       .reverse(); // mais recentes primeiro
 
-    if (false) {
+    if (arquivos.length > 30) {
       // Remove os mais antigos, excetuando o novo
       const paraRemover = arquivos.slice(30).filter((f) => f !== nomeDoNovoZip);
       for (const arquivo of paraRemover) {
