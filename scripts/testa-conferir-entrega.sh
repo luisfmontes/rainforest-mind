@@ -370,6 +370,60 @@ esperado "escopo: SEM --escopo nenhum -> aprovado (retrocompativel)" 0 \
   "${CONF_CMD[@]}" --worktree "$WT" --base "$ESCOPO_C_BASE" --commit "$ESCOPO_C_COMMIT"
 
 echo
+echo "== --escopo: rename (git mv) nao pode virar falso positivo/negativo =="
+
+# git diff --name-status emite rename como "R100\told\tnew" (e copia como
+# "C100\told\tnew"). Confere que o git realmente detecta como rename antes de
+# testar o conferir-entrega — senão o caso vira um M+D disfarçado.
+
+# Caso rename-a: rename DENTRO do escopo -> aprova
+mkdir -p "$WT/scripts"
+printf 'linha1\nlinha2\nlinha3\nlinha4\nlinha5\n' > "$WT/scripts/velho.txt"
+git -C "$WT" add . >/dev/null 2>&1; git -C "$WT" commit -qm "adiciona scripts/velho.txt"
+RENAME_A_BASE=$(git -C "$WT" rev-parse HEAD)
+git -C "$WT" mv scripts/velho.txt scripts/novo.txt
+git -C "$WT" commit -qm "rename velho -> novo"
+RENAME_A_COMMIT=$(git -C "$WT" rev-parse HEAD)
+contem "rename dentro do escopo: git detecta como R" "^R" \
+  git -C "$WT" diff --name-status "$RENAME_A_BASE".."$RENAME_A_COMMIT"
+esperado "escopo: rename DENTRO (scripts/velho.txt -> scripts/novo.txt) -> aprova" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$RENAME_A_BASE" --commit "$RENAME_A_COMMIT" \
+  --escopo "scripts/**"
+
+# Caso rename-b: rename cujo DESTINO sai do escopo -> reprova citando o destino
+printf 'linha1\nlinha2\nlinha3\nlinha4\nlinha5\n' > "$WT/scripts/x.txt"
+git -C "$WT" add . >/dev/null 2>&1; git -C "$WT" commit -qm "adiciona scripts/x.txt"
+RENAME_B_BASE=$(git -C "$WT" rev-parse HEAD)
+mkdir -p "$WT/docs"
+git -C "$WT" mv scripts/x.txt docs/x.txt
+git -C "$WT" commit -qm "rename scripts/x.txt -> docs/x.txt"
+RENAME_B_COMMIT=$(git -C "$WT" rev-parse HEAD)
+contem "rename destino fora: git detecta como R" "^R" \
+  git -C "$WT" diff --name-status "$RENAME_B_BASE".."$RENAME_B_COMMIT"
+esperado "escopo: rename DESTINO fora (docs/x.txt) -> reprova" 1 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$RENAME_B_BASE" --commit "$RENAME_B_COMMIT" \
+  --escopo "scripts/**"
+contem "  ... e nomeia docs/x.txt" "docs/x.txt" \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$RENAME_B_BASE" --commit "$RENAME_B_COMMIT" \
+  --escopo "scripts/**"
+
+# Caso rename-c: rename cuja ORIGEM estava fora do escopo -> reprova citando a origem
+printf 'linha1\nlinha2\nlinha3\nlinha4\nlinha5\n' > "$WT/docs/y.txt"
+git -C "$WT" add . >/dev/null 2>&1; git -C "$WT" commit -qm "adiciona docs/y.txt"
+RENAME_C_BASE=$(git -C "$WT" rev-parse HEAD)
+git -C "$WT" mv docs/y.txt scripts/y.txt
+git -C "$WT" commit -qm "rename docs/y.txt -> scripts/y.txt"
+RENAME_C_COMMIT=$(git -C "$WT" rev-parse HEAD)
+contem "rename origem fora: git detecta como R" "^R" \
+  git -C "$WT" diff --name-status "$RENAME_C_BASE".."$RENAME_C_COMMIT"
+esperado "escopo: rename ORIGEM fora (docs/y.txt) -> reprova" 1 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$RENAME_C_BASE" --commit "$RENAME_C_COMMIT" \
+  --escopo "scripts/**"
+contem "  ... e nomeia docs/y.txt (delecao fora do escopo)" "docs/y.txt" \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$RENAME_C_BASE" --commit "$RENAME_C_COMMIT" \
+  --escopo "scripts/**"
+
+echo
 echo "== BOM na primeira linha do arquivo --sujo-antes =="
 
 # Cenário: arquivo existente (ex: a.txt) fica sujo ANTES do despacho (no repo principal),
