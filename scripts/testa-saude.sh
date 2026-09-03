@@ -1047,6 +1047,66 @@ fi
 rm -rf "$SBP/dados-integracao" "$SBP/fixtures-sabia"
 
 echo
+echo "== backup-externo (Tarefa 10) =="
+# (a) zip de hoje no destino → ok
+BACKUP_HOJE="$SBP/backup-hoje"
+mkdir -p "$BACKUP_HOJE"
+touch "$BACKUP_HOJE/rainforest-$(date +%Y-%m-%d).zip"
+R_BACKUP_A="$( RFM_BACKUP_DESTINO="$BACKUP_HOJE" \
+  node "$SRC/scripts/saude.cjs" --json 2>/dev/null | node -e '
+    let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
+      try {
+        const a=JSON.parse(d).find(x=>x.item==="backup-externo");
+        console.log(a ? a.nivel+"|"+a.detalhe : "ausente");
+      } catch { console.log("erro"); }
+    })' )"
+if echo "$R_BACKUP_A" | grep -q "^ok|"; then
+  ok=$((ok+1)); echo "  ok   (a) zip de hoje no destino → ok"
+else
+  falhou=$((falhou+1)); echo "  FALHA (a) esperava ok, veio: $R_BACKUP_A"
+fi
+
+# (b) zip com mais de 2 dias → alerta nomeando a idade
+BACKUP_VELHO="$SBP/backup-velho"
+mkdir -p "$BACKUP_VELHO"
+CINCO_DIAS_ATRAS="$(date -d '5 days ago' +%Y-%m-%d 2>/dev/null || date -v-5d +%Y-%m-%d 2>/dev/null)"
+NOME_ZIP_VELHO="rainforest-${CINCO_DIAS_ATRAS}.zip"
+touch "$BACKUP_VELHO/$NOME_ZIP_VELHO"
+touch -d "5 days ago" "$BACKUP_VELHO/$NOME_ZIP_VELHO" 2>/dev/null || true
+R_BACKUP_B="$( RFM_BACKUP_DESTINO="$BACKUP_VELHO" \
+  node "$SRC/scripts/saude.cjs" --json 2>/dev/null | node -e '
+    let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
+      try {
+        const a=JSON.parse(d).find(x=>x.item==="backup-externo");
+        console.log(a ? a.nivel+"|"+a.detalhe : "ausente");
+      } catch { console.log("erro"); }
+    })' )"
+if echo "$R_BACKUP_B" | grep -q "^alerta|.*[4-9] dia[s]*"; then
+  ok=$((ok+1)); echo "  ok   (b) zip com mais de 2 dias → alerta nomeando idade"
+else
+  falhou=$((falhou+1)); echo "  FALHA (b) esperava alerta com idade, veio: $R_BACKUP_B"
+fi
+
+# (c) destino inexistente → alerta
+BACKUP_INEXISTENTE="$SBP/backup-nao-existe-mesmo"
+R_BACKUP_C="$( RFM_BACKUP_DESTINO="$BACKUP_INEXISTENTE" \
+  node "$SRC/scripts/saude.cjs" --json 2>/dev/null | node -e '
+    let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
+      try {
+        const a=JSON.parse(d).find(x=>x.item==="backup-externo");
+        console.log(a ? a.nivel+"|"+a.detalhe : "ausente");
+      } catch { console.log("erro"); }
+    })' )"
+if echo "$R_BACKUP_C" | grep -q "^alerta|" && echo "$R_BACKUP_C" | grep -qF "não existe"; then
+  ok=$((ok+1)); echo "  ok   (c) destino inexistente → alerta"
+else
+  falhou=$((falhou+1)); echo "  FALHA (c) esperava alerta, veio: $R_BACKUP_C"
+fi
+
+# Cleanup
+rm -rf "$BACKUP_HOJE" "$BACKUP_VELHO"
+
+echo
 echo "== MUTACAO: trocar aviso por alerta em checarIntegracoes =="
 # Se as chamadas a aviso() forem trocadas por alerta(), os testes de integração
 # devem falhar (exit != 0). A mutação roda numa cópia.
