@@ -45,9 +45,29 @@ const fs = require('fs');
 const PADROES = [
   {
     id: 'jid-whatsapp',
-    re: /\b\d{10,15}@(s\.whatsapp\.net|g\.us)\b/g,
+    // A faixa foi `\d{10,15}` até 2026-09-02, e parava CURTA: cobria JID de
+    // conversa direta (o telefone, 12–13 dígitos) e deixava passar JID de
+    // GRUPO, que tem 18. Issue #149, e o custo foi medido — o `vigias/ERROS.md`
+    // da `main` carregou o JID real do grupo das rondas por dias.
+    //
+    // O modo de falha é o da regra 12, e é o pior tipo: o instrumento
+    // RESPONDEU. O JID de grupo acendia o padrão genérico `telefone`, marcado
+    // `(pode ser falso positivo)` — que é justamente a categoria que se aprende
+    // a ignorar —, em vez desta regra, que é a que traz a instrução certa. Saída
+    // plausível, medindo outra coisa.
+    re: /\b(\d{10,20})@(s\.whatsapp\.net|g\.us)\b/g,
     o_que: 'JID de WhatsApp — contém o telefone completo, com DDI e DDD',
     faca: 'troque por um marcador (`<jid-do-contato>`); o ID da mensagem sozinho já basta para investigar',
+    // Dígito repetido não é dado de ninguém: `000000000000000000@g.us` é o
+    // placeholder de `vigias/vigia.config.exemplo.json`, arquivo versionado que
+    // documenta o FORMATO. Sem esta isenção, alargar a faixa faria o gate
+    // recusar a própria documentação — certo na forma, errado no mérito, que é
+    // como uma trava vira `--forcar` no dedo de quem usa.
+    //
+    // A isenção é por dígito repetido, não por lista de placeholders conhecidos:
+    // um JID em que todos os dígitos são iguais não carrega telefone nenhum, e
+    // isso vale para o placeholder que ainda não foi escrito.
+    so_se: (m) => !/^(\d)\1*$/.test(m[1]),
   },
   {
     id: 'telefone',
@@ -57,6 +77,16 @@ const PADROES = [
     // Timestamp de 13 dígitos e hash numérico batem aqui. Falso positivo custa
     // uma olhada; falso negativo custa o telefone de alguém num Issue público.
     pode_ser_falso: true,
+    // Mesma isenção da regra de JID, e pelo mesmo motivo: sequência de dígito
+    // repetido não é telefone de ninguém. Sem ela, o placeholder de
+    // `vigias/vigia.config.exemplo.json` fazia o gate recusar um arquivo
+    // versionado do próprio repositório — em toda rodada, desde sempre. Falso
+    // positivo permanente em arquivo que nunca vai mudar é como se aprende a
+    // ignorar a saída inteira.
+    so_se: (m) => {
+      const digitos = m[0].replace(/\D/g, '');
+      return !/^(\d)\1*$/.test(digitos);
+    },
   },
   {
     id: 'email',
@@ -66,9 +96,31 @@ const PADROES = [
   },
   {
     id: 'caminho-de-home',
-    re: /[A-Za-z]:\\Users\\[^\\\s"'`]+|\/(?:home|Users)\/[^/\s"'`]+/g,
+    // O segmento do usuário sai em grupo de captura para o `so_se` poder olhá-lo.
+    re: /[A-Za-z]:\\Users\\([^\\\s"'`]+)|\/(?:home|Users)\/([^/\s"'`]+)/g,
     o_que: 'caminho de pasta pessoal — carrega o nome de usuário da máquina',
     faca: 'use `<home>` ou um caminho relativo; o caminho absoluto raramente é o que prova o defeito',
+    // PLACEHOLDER NÃO É NOME DE NINGUÉM — a terceira regra desta lista a ganhar
+    // esta isenção, e pelo mesmo motivo das duas primeiras (Issue #149): a regra
+    // recusava a própria documentação do formato que ela ensina. O `faca` acima
+    // manda "use `<home>`", e o texto que obedecia era recusado igual.
+    //
+    // Medido em 2026-09-02: a varredura da árvore antes de tornar o repositório
+    // público devolveu 32 arquivos recusados, e `caminho-de-home` respondia por
+    // 17 deles — a maioria placeholder ou código que MANIPULA caminho de home.
+    // Gate que grita em 17 arquivos que nunca vão mudar ensina a ignorar a saída
+    // inteira, e é assim que ele deixa de pegar o 18º, que é real.
+    //
+    // A isenção é por FORMA, não por lista: `<qualquer coisa>`, `%VAR%` e
+    // `$VAR` nunca são nome de usuário em disco. Nome novo de placeholder que
+    // alguém invente amanhã já entra isento.
+    so_se: (m) => {
+      const nome = m[1] || m[2] || '';
+      const ehPlaceholder = /^<.*>$/.test(nome)
+        || /^%.*%$/.test(nome)
+        || nome.startsWith('$');
+      return !ehPlaceholder;
+    },
   },
   {
     id: 'credencial',

@@ -4,9 +4,9 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-0.82.0-1e5c3f?style=flat-square" alt="versão 0.82.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.0.0-1e5c3f?style=flat-square" alt="versão 1.0.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
-  <img src="https://img.shields.io/badge/revis%C3%A3o-bimestral-9fd8ba?style=flat-square" alt="revisão bimestral">
+  <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
 
 > ### O problema não é falta de ideia. É o que recebe luz agora.
@@ -20,54 +20,27 @@ Quatro coisas, e nenhuma depende de você lembrar de ativar:
 - **não chama nada de pronto** sem colar a saída que prova.
 
 Duas dessas quatro têm trava que roda **fora do modelo** — comando com exit
-code, não instrução: o fluxo, pelo `estado.cjs exigir`, e a prova de entrega,
-pelo `conferir-entrega.cjs`. E há mais **quatro** travas em `PreToolUse`
-guardando o que o modelo faz no disco e no git. Não dá pra argumentar com elas.
+code, não instrução. Não dá pra argumentar com elas.
 
-## Por que floresta
+## Instalação
 
-Uma **mente-floresta** — o termo é de Paula Prober, em *Your Rainforest Mind* —
-não sofre de falta de ideia. Sofre do contrário: tudo cresce ao mesmo tempo,
-rápido, em direções diferentes, e o que cresce junto disputa a mesma luz.
+```
+claude plugin marketplace add luisfmontes/rainforest-mind
+claude plugin install rainforest-mind@rainforest-mind
+```
 
-É por isso que lista de tarefas não resolve. Lista pressupõe **escassez** de
-tarefa; aqui a tarefa sobra. O problema não é lembrar do que fazer — é decidir
-**o que recebe luz agora**, e proteger essa decisão do resto, que continua
-crescendo enquanto você trabalha.
+Ou aponte `--plugin-dir` para a pasta do repo em desenvolvimento.
 
-Daí o vocabulário das ideias. Ele não é enfeite, é o modelo:
+**Requisito único: Node no PATH.** Nada mais. Detalhe do runtime, dos gêmeos em
+Python e do orçamento de contexto em [`docs/runtime-e-orcamento.md`](docs/runtime-e-orcamento.md).
 
-| Palavra | O que é |
-|---|---|
-| **foco** | a clareira onde você está trabalhando hoje — é contra ele, e só contra ele, que o desvio é medido |
-| **plantar** | o que não pode crescer agora vai pro chão **com contexto**, vivo, em vez de morrer numa lista de "algum dia" |
-| **colher** | ele volta quando chega a hora, e vira trabalho de verdade |
-| **descartar** | o que decidiu não acontecer sai da lista **com motivo** — e a linha fica, porque ideia que sai sem rastro volta idêntica em três semanas |
-| **estação** | a admissão de que tempo certo é restrição real, não desculpa de quem procrastina |
+Não precisa configurar nada para começar. Quando quiser foco próprio num
+repositório, crie `.rainforest/FOCO.md` nele — é só isso.
 
-O resto do plugin não é botânico e não tenta ser: `/foco`, `depurar` e as travas
-se chamam pelo que fazem. A floresta explica **por que** as ideias têm ciclo de
-vida — onde ela não explica nada, ela não entra.
+## Como é na prática
 
-## Uma instalação, não uma pilha de skills
-
-O jeito comum de montar isso é catar dezenas de skills soltas em repositórios
-diferentes, copiar pasta por pasta e descobrir depois quais conflitam. Aqui é
-**um comando**, e o que entra já foi filtrado por uso: cada peça deste repo
-sobreviveu a pelo menos um incidente real, e o que não sobreviveu foi apagado.
-
-O repo cresce, mas cresce por subtração também: skill que não paga o próprio
-custo de contexto sai.
-
-## Planeja antes de implementar
-
-`/brainstorm` é uma entrevista adversarial e o primeiro estágio do fluxo. Ele mapeia o assunto como **árvore de
-decisão** e pergunta só o que dá pra perguntar agora — a *fronteira*, o
-conjunto de decisões cujos pré-requisitos já fecharam. Pergunta que depende de
-outra ainda aberta espera a rodada seguinte, em vez de te obrigar a chutar.
-
-A rodada inteira vem de uma vez, numerada, **cada pergunta já com a resposta
-recomendada**:
+Você pede uma feature. Em vez de sair codificando, vem uma rodada numerada,
+cada pergunta **já com a resposta recomendada**:
 
 > ❓ **Q1 — Onde o token vive**: sessão no servidor ou JWT no cliente?
 > ➡️ **Recomendo:** sessão no servidor — você já tem Redis, e revogar JWT exige lista negra que é o mesmo trabalho com mais peças.
@@ -75,18 +48,43 @@ recomendada**:
 > ❓ **Q2 — Expiração**: 15 min com refresh, ou 8h fixas?
 > ➡️ **Recomendo:** 8h fixas — refresh só se paga com múltiplos dispositivos, e não é o seu caso hoje.
 
-E então ele **para e espera**. Você responde `1 ok, 2 não, usa 15 min` — três
-palavras em vez de compor tudo do zero. Cada resposta remodela a árvore:
-decisão fechada empurra a fronteira e destrava o que dependia dela.
+E então **para e espera**. Você responde `1 ok, 2 não, usa 15 min` — três
+palavras em vez de compor tudo do zero.
 
 A regra que sustenta isso: **descobrir fato é trabalho do assistente, nunca
-seu.** Pergunta que o ambiente responde — o que tem no arquivo, qual versão
-está instalada, o que o log diz — vira busca dele, não pergunta pra você.
+seu.** O que está no arquivo, qual versão está instalada, o que o log diz — vira
+busca dele, não pergunta pra você.
+
+E a emenda no fim do pedido não vira escopo em silêncio:
+
+> **Você:** faz a opção 2. Ah, e a gente podia colocar um cache nisso.
+>
+> **Sem o plugin:** *"Ótima ideia! Vou implementar a opção 2 com cache…"*
+>
+> **Com o plugin:** *"Fechado: opção 2. Você adicionou o cache — entra no escopo agora ou planto?"*
+
+## Por que floresta
+
+Uma **mente-floresta** — o termo é de Paula Prober, em *Your Rainforest Mind* —
+não sofre de falta de ideia. Sofre do contrário: tudo cresce ao mesmo tempo, em
+direções diferentes, e o que cresce junto disputa a mesma luz.
+
+Por isso lista de tarefas não resolve: lista pressupõe **escassez** de tarefa, e
+aqui a tarefa sobra. O problema não é lembrar do que fazer — é decidir **o que
+recebe luz agora**, e proteger essa decisão do resto.
+
+| Palavra | O que é |
+|---|---|
+| **foco** | a clareira onde você trabalha hoje — é contra ele, e só contra ele, que o desvio é medido |
+| **plantar** | o que não pode crescer agora vai pro chão **com contexto**, vivo, em vez de morrer num "algum dia" |
+| **colher** | volta quando chega a hora, e vira trabalho de verdade |
+| **descartar** | sai da lista **com motivo** — a linha fica, porque ideia que sai sem rastro volta idêntica em três semanas |
+| **estação** | tempo certo é restrição real, não desculpa de quem procrastina |
+
+O resto do plugin não é botânico e não tenta ser: `/foco`, `depurar` e as travas
+se chamam pelo que fazem.
 
 ## O fluxo: sete estágios que não dá para pular
-
-`/brainstorm` é o primeiro de sete. Cada um é uma skill invocável sozinha — dá
-para entrar no meio, que é o caso normal de quem retoma trabalho.
 
 ```mermaid
 flowchart LR
@@ -98,155 +96,38 @@ flowchart LR
     V --> F["fechar<br/>commit + limpeza"]
     R -.->|"reprovado"| E
     V -.->|"reprovado"| E
-    L["limpar"] -.->|"manutenção,<br/>fora do fluxo"| F
 ```
+
+Cada estágio é uma skill invocável sozinha — dá para entrar no meio, que é o
+caso normal de quem retoma trabalho.
 
 **O que faz isso ser fluxo e não conselho:** cada estágio abre rodando
 `estado.cjs exigir`, e esse comando **sai com código 2** quando o anterior não
-fechou. Não é o modelo lendo uma instrução e decidindo obedecer — é comando
-externo, pelo mesmo motivo dos outros gates deste repo.
+fechou.
 
 ```
 $ node scripts/estado.cjs exigir --slug 2026-08-11-exemplo --estagio revisar
 RECUSADO: 'revisar' exige executar fechado(s).
   executar: status=parcial
-Rode o estagio 'executar' antes. Retomada: node scripts/estado.cjs proximo --slug 2026-08-11-exemplo
+Rode o estagio 'executar' antes.
 ```
 
 `parcial` e `reprovado` **não fecham**: "5 de 7 tarefas" para de virar "pronto"
-sem ninguém decidir isso, e revisão reprovada devolve o trabalho para
-`executar` em vez de seguir.
+sem ninguém decidir isso.
 
-**Retomada é comando, não memória.** Sessão nova — ou sessão que perdeu contexto
-na compactação — roda `estado.cjs proximo --slug <slug>` e sabe onde parou:
-
-| O quê | Onde | No git? |
-|---|---|---|
-| Design aprovado, com o porquê de cada decisão | `docs/rainforest/design/<slug>.md` | **sim** |
-| Plano, com dependência e critério falsificável por tarefa | `docs/rainforest/planos/<slug>.md` | **sim** |
-| Estado do fluxo, com o veredito de cada estágio | `docs/rainforest/estado/<slug>.json` | **sim** |
-
-Os três são versionados de propósito: é por eles que **outro dev pega a
-atividade no meio**. Fora do git fica só a tagarelice — worktrees, briefs de
-agente, diffs de review.
-
-**O paralelismo vive no `executar`**, e é o plano que diz o que pode ir junto:
-tarefa sem dependência é marcada `paralela: sim`, e várias chamadas de agente na
-mesma resposta rodam ao mesmo tempo. Isso só é seguro porque **todo agente que
-edita roda em worktree isolado**, obrigado pelo hook com exit 2 — a distro que
-mais influenciou este desenho precisou **proibir** implementadores em paralelo
-justamente por não ter essa trava.
-
-## Números em vez de parede de texto
-
-Mensagem com N perguntas recebe **N respostas numeradas**, na ordem em que
-você escreveu, e as respostas completas vão no **fim** do turno — depois das
-ferramentas, não antes delas.
-
-Você fecha item respondendo `1 ok`. O item some da lista e o resto **renumera
-a partir do 1**, então a lista aberta é sempre curta e sempre começa no mesmo
-lugar. Não existe "item 7 pendente desde ontem".
-
-Vale pro meio da tarefa também: em trabalho de 3+ etapas, o checkpoint é
-`fechamos 2/5` — não "estou progredindo bem".
-
-## Avisa em vez de derivar
-
-Existe um foco declarado, num arquivo que entra na sessão sozinho. Quando a
-conversa sai dele, o aviso é **uma frase, sem julgamento, com escolha**:
-
-> Estávamos em [foco], isso é [outro tema] — seguimos nele ou planto e voltamos?
-
-Sem sermão e sem repetir. Três coisas que o desvio *não* dispara: trabalhar em
-paralelo de propósito, tocar uma frente que já está listada como compromisso, e
-foco de trabalho fora do horário de trabalho.
-
-Para decidir se cala, o radar depende de três dados, todos opcionais:
-
-- **`Pastas:` no FOCO.md** — as pastas onde o foco está sendo trabalhado,
-  separadas por vírgula (`Pastas: C:/projeto-a, C:/projeto-a/src`) **ou** uma
-  por linha, indentadas abaixo do campo.
-  O radar usa isso para saber se a janela que está aberta é a do foco, mesmo
-  que não seja a janela da sessão atual. Sem este campo, o radar cobra desvio
-  mesmo que a mesma clareira esteja viva em outra janela.
-
-- **`Ociosidade máxima:` no FOCO.md** — quantos minutos sem sinal humano ainda
-  contam como janela viva. Exemplo: `Ociosidade máxima: 15 min.` Sem ele o
-  radar não consegue decidir se o foco está sendo tocado em outra janela, mesmo
-  com `Pastas:` declarado — e diz isso em vez de adivinhar.
-
-- **`expediente` no `config.json`** — dias da semana e horário de trabalho.
-  Forma de uma faixa só (continua valendo): `"expediente": {"dias": [1,2,3,4,5],
-  "de": "08:00", "ate": "18:00"}`. Forma de N faixas, para expediente com
-  intervalo (ex.: almoço): `"expediente": {"dias": [1,2,3,4,5], "faixas":
-  [{"de": "08:00", "ate": "12:00"}, {"de": "14:00", "ate": "18:00"}]}` — com
-  `faixas`, o horário entre 12:00 e 14:00 deixa de contar como expediente.
-  Dias usa a convenção de `Date.getDay()` — 0 = domingo, 1 = segunda, etc., e
-  vale para todas as faixas por igual (não há faixas diferentes por dia).
-  O radar usa isso para saber se é hora de trabalho ou tempo pessoal.
-  Sem este campo, o radar cobra desvio fora do horário, mesmo que o foco seja
-  marcado como `[trabalho]`.
-
-Faltando qualquer um dos dois, o radar **continua cobrando** e o hook anuncia o
-que falta, com o efeito prático junto — assim:
-
-```
-Pastas: ausente no FOCO.md — o radar vai cobrar desvio mesmo com o foco
-aberto em outra janela.
-```
-
-Isso é **falha fechada**, e é deliberado: um radar que emudece por falta de
-configuração é indetectável, e você nunca saberia que ele parou. Um radar que
-cobra demais você percebe e reclama — foi exatamente assim que este defeito
-apareceu. Anúncio e veredito são medidos **por isenção**, não por sessão: cada uma das
-duas é avaliada sozinha, então o veredito de uma ("não cobrar — tempo pessoal")
-sai no mesmo bloco que o anúncio da outra ("`Pastas:` ausente"). O que não
-existe é julgar sem dado — isenção indeterminada nunca vira veredito.
-
-**A isenção não silencia o prazo.** O aviso de desvio de escopo cala; o de
-prazo — vencido ou a ≤2 dias — continua saindo em qualquer caso. Quando a
-isenção é **foco ativo em outra janela**, ele sai explicitamente marcado como
-**nota** de que o foco está sendo tocado lá, nunca como cobrança dirigida a
-esta; em **tempo pessoal** ele sai sem essa marcação, porque a nota exigiria
-saber onde o foco está, e nesse caso o radar não sabe. São coisas diferentes:
-saber num sábado que algo vence na segunda é informação e não custa nada; ser
-cobrado no sábado por estar lendo outra coisa é o que incomoda. Uma isenção que silenciasse o radar inteiro
-trocaria um defeito por outro; uma que cobrasse igual não teria consertado nada.
-
-E prazo é aviso de **abertura**. No fecho de sessão não sai em hipótese nenhuma,
-nem como lembrete acrescentado por iniciativa própria: no fim do turno não há o
-que fazer com um prazo, só o que sentir.
-
-E quando o ambiente **impede** uma regra — permissão negada, hook fora do ar,
-ferramenta ausente —, ele diz numa linha em vez de falhar em silêncio. Regra
-que não rodou e não avisou é pior que regra inexistente: você conta com ela.
+**Retomada é comando, não memória.** Sessão nova roda `estado.cjs proximo --slug
+<slug>` e sabe onde parou. Design, plano e estado do fluxo são versionados de
+propósito — é por eles que outro dev pega a atividade no meio.
 
 ## Não chama de pronto sem a saída
 
-Esta é a que mais paga. Agente relata **intenção**, não resultado — e o relato
-é convincente exatamente quando está errado. Três cenas medidas, todas com
-suíte verde e relatório de sucesso completo:
+Esta é a que mais paga. Agente relata **intenção**, não resultado — e o relato é
+convincente exatamente quando está errado. Três cenas medidas, todas com suíte
+verde e relatório de sucesso completo:
 
-**O hash que não existia.** Um agente reportou o commit que tinha criado:
-`a009b5b`, "completo" `a009b5b4e8f0d83e3ef4e3d8e7f3e4d8e7f3e4d8`. Olhe o fim da
-string — `e7f3e4d8` aparece duas vezes seguidas. É um hash inventado, e dava pra
-ver sem consultar nada. Um `gh pr view --json headRefOid` devolveu o real. Na
-mesma sessão, a verificação pela janela principal pegou **3 de 3** falhas de
-relato — todas invisíveis no texto do agente.
-
-**O critério que foi afrouxado em vez de cumprido.** Outro agente recebeu os
-números absolutos no briefing e **cumpriu todos, honestamente**: `40 passed
-(40)`, `92 passed (92)`, `exit 0` no lint. Nenhum número inventado. E a entrega
-estava errada, porque ele **desligou as duas regras de lint que falhavam** em
-vez de tratá-las. O `exit 0` era verdadeiro. *Critério numérico não pega quem
-edita a régua.*
-
-**A proteção que nunca roda.** Cinco entregas, três recusadas pela mesma
-família de defeito: código que parece proteger e está atrás de uma condição
-que o chamador real nunca aciona. O teste chama a função direto, com os
-argumentos certos, e passa. Produção nunca entra ali. Nenhuma leitura de código
-pegou — só apareceu **rodando o artefato** num cenário que os testes da própria
-entrega não cobriam.
+- **O hash que não existia.** Um agente reportou o commit que tinha criado: `a009b5b4e8f0d83e3ef4e3d8e7f3e4d8e7f3e4d8`. Olhe o fim da string — `e7f3e4d8` aparece duas vezes seguidas. É um hash inventado, e dava pra ver sem consultar nada.
+- **O critério afrouxado em vez de cumprido.** Outro cumpriu todos os números do briefing, honestamente — `40 passed`, `exit 0` no lint — **desligando as duas regras de lint que falhavam**. O `exit 0` era verdadeiro. *Critério numérico não pega quem edita a régua.*
+- **A proteção que nunca roda.** Código que parece proteger, atrás de uma condição que o chamador real nunca aciona. O teste chama a função direto e passa; produção nunca entra ali. Nenhuma leitura de código pegou — só apareceu **rodando o artefato**.
 
 O que separou a entrega impecável da entrega com bug, medido em três sessões,
 não foi o modelo nem o isolamento:
@@ -254,517 +135,149 @@ não foi o modelo nem o isolamento:
 > Foi o briefing conter, ou não, **o teste que falsificaria a entrega** — com
 > comando exato e saída exata esperada.
 
-**A evidência real do objeto errado.** Uma tarefa criou um `.gitignore` com o
-conteúdo `*` — que, dentro do próprio diretório, ignora **a si mesmo**. O
-`git add -A` nunca o adicionou e ele nunca chegou ao commit. O agente colou
-evidência **real**: `ls -la` mostrando o arquivo, `cat` mostrando o conteúdo.
-Evidência do disco, quando a afirmação era sobre o commit. E `git status
---porcelain` não pega, porque por desenho não lista ignorado — a categoria
-exata do arquivo que faltava. *Comando e saída colados também não bastam se
-provarem outra coisa.* O conserto foi mecânico: `--espera <caminho>` pergunta à
-árvore do commit e nomeia a regra de ignore que comeu o arquivo.
-
-Daí a regra: o critério de sucesso vai pronto no briefing, e a validação é
-executar o artefato e olhar a saída. **Suíte verde não é evidência. ✅ sem
-comando e saída colados não é verificação — e a saída colada tem que ser do
-objeto sobre o qual se está afirmando.**
-
-## Disciplina de dev, embutida
-
-Se você está no Claude Code, você está construindo alguma coisa — então isso
-não é acessório.
-
-`modo-dev` traz escada YAGNI, causa raiz antes de remendo, rastreabilidade de
-cada linha do diff até o pedido, expandir–contrair, e evidência antes de
-"pronto". Ele existe por **economia de contexto**: absorve o que sobrevive à
-compressão de plugins pesados, sem carregar os plugins.
-
-`depurar` dispara sozinha em bug difícil, regressão de performance ou "funciona
-aqui e não lá". Ela constrói o **loop de feedback capaz de ficar vermelho antes
-de qualquer hipótese** — depois 3–5 hipóteses falseáveis, ranqueadas. Fica fora
-do `modo-dev` de propósito: depurar é um ramo do trabalho, não todo ele.
+**Suíte verde não é evidência. ✅ sem comando e saída colados não é verificação
+— e a saída colada tem que ser do objeto sobre o qual se está afirmando.**
 
 ## Travas mecânicas
 
 Regra escrita não alcança o modo de falha em que o agente **leu a regra e errou
-mesmo assim**. Um subagente rodou a verificação de isolamento, recebeu o
-diretório principal — que era a condição de parada —, transcreveu a condição
-corretamente e escreveu um OK do lado. No dia seguinte foi a vez da janela
-principal: `git add -A` varreu trabalho de outra sessão duas vezes na mesma
-noite, sabendo que não devia. O que sobrou das duas noites:
+mesmo assim**.
 
 > Enquanto o veredito de uma checagem for redigido pelo mesmo agente que ela
 > deveria travar, ela não trava nada. **Exit code não se argumenta.**
 
-| Hook (`PreToolUse`, exit 2) | Barra | Em quem |
-|---|---|---|
-| `gate-worktree.cjs` | escrita de subagente em repo git que não é worktree linkado; e `git checkout/switch/reset/…` neste checkout quando **outra** sessão do Claude Code está no MESMO diretório | subagente **e** a janela principal — esta no ramo de sessão co-locada (Issues #25 e #38) |
-| `gate-staging-total.cjs` | `git add` com caminho total (`-A`, `--all`, `-u`, `--update`, `.`, `./`, `:/`, `*`), inclusive em flag combinada, e `git commit -a/-am/--all` | **também a janela principal**, que foi onde os dois incidentes ocorreram |
-| `gate-publicacao-destino.cjs` | escrita de dados sensíveis (JID, telefone, email, credencial) em arquivo rastreado por git | **qualquer ferramenta que escreve** (`Write`, `Edit`, `MultiEdit`) — impede vazamento em repo público |
-| `gate-repo-alheio.cjs` | escrita cujo destino está dentro de **outro repositório git** que não o da sessão | **também a janela principal**, que foi onde o incidente ocorreu — caminho fora de git e worktree do mesmo repo passam |
-| `portaria.cjs` | despacho de subagente que não está declarado em `.rainforest/agentes.json`, ou cujo estágio ativo não consta na lista dele; agente com `escreve: true` despachado **sem `isolation: "worktree"`** ou **com `name`**; manifesto ausente ou inválido nega tudo (fail-closed) | **o despacho**, na janela que despacha — o humano não é perguntado em runtime, e exceção é diff no manifesto, que passa pelo `revisar`. Registrado só no `.claude/settings.json` **do projeto**, não na máquina |
+| Hook (`PreToolUse`, exit 2) | Barra |
+|---|---|
+| `gate-worktree.cjs` | escrita de subagente fora de worktree linkado; `git checkout/switch/reset` com outra sessão no mesmo diretório |
+| `gate-staging-total.cjs` | `git add` com caminho total (`-A`, `.`, `*`…) e `git commit -a` |
+| `gate-publicacao-destino.cjs` | escrita de dado sensível (JID, telefone, e-mail, credencial) em arquivo rastreado |
+| `gate-repo-alheio.cjs` | escrita cujo destino está dentro de **outro** repositório git |
+| `portaria.cjs` | despacho de subagente não declarado em `.rainforest/agentes.json`, ou sem `isolation: "worktree"` quando ele escreve |
 
 Valem em **qualquer** repo git da máquina, porque o hábito é que é o problema,
-não o repositório. A mensagem de bloqueio não só recusa: a de staging roda
-`git status --porcelain -uall` e devolve o `git add` por caminho já montado —
-trava que só diz "não" vira trava desligada. Saídas de emergência, nomeadas na
-mensagem que a **janela principal** recebe — a do subagente as omite de
-propósito, porque em 2026-08-11 uma delas foi usada para contornar a trava em
-vez de resolver o problema: `node scripts/setup.cjs --desligar <gate> --escopo
-projeto` (preferida), `RAINFOREST_GATE_OFF=1` no ambiente, ou um arquivo
-`.rainforest-gate-off` na raiz do repo.
+não o repositório. Cada uma tem bateria própria — **181 casos** rodando o hook
+de verdade contra repos git montados na hora.
 
-Cada uma tem bateria própria (`hooks/testa-gate-*.sh`, **181 casos**: 100 de
-worktree + 38 de staging + 27 de repo alheio + 16 de publicação) que roda o hook
-de verdade contra repos git montados na hora. A maioria dos casos testa o que
-deve **passar**: falso positivo aqui atrapalha todo repo — a trava de repo alheio
-é o exemplo, com 20 dos 27 casos provando que ela **não** barra.
+→ O incidente de origem de cada trava, as saídas de emergência e a tabela de
+scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 
-E a trava de repo alheio traz uma lição que custou uma rodada de conserto: a
-primeira versão dela copiou do `gate-worktree.cjs` a guarda `if (!ev.agent_id)
-process.exit(0)`, que lá vale para o ramo de isolamento — e aquele ramo é sobre
-isolamento de subagente, que é problema de subagente. (Lá a guarda hoje tem
-corpo: antes de sair, chama o gate de sessão co-locada, que barra a janela
-principal.) Aqui o incidente é de **janela
-principal**: uma sessão cujo `cwd` era outro repositório foi consertar este
-plugin dali mesmo, e deixou trabalho não commitado num worktree que se perdeu.
-Molde se copia; recorte, não.
+## Comandos, skills e agentes
 
-O mesmo princípio nos scripts, para o que hook nenhum alcança:
+**O fluxo**
 
-| Script / Lib | Para quê |
+| | |
 |---|---|
-| `hooks/lib/cli-externo.cjs` | transporte de CLI externo — `rodarCli({ cmd, entrada, timeoutMs, env })` com stdin, timeout obrigatório e `windowsVerbatimArguments` no Windows; `extrairJson(stdout)` extrai JSON de ````json ... ```` ou `{...}`. Consumido por `scripts/segunda-opiniao.cjs` e `scripts/conselho.cjs` |
-| `scripts/ideias.cjs` | única porta de escrita do `ideias.jsonl` — trava de arquivo, backup, escrita atômica, releitura do arquivo vivo e conferência byte a byte das linhas não-alvo; e o `projeto` é **slug de vocabulário fechado** (`projetos.json`), não texto livre |
-| `scripts/ferramentas.cjs` | única porta de leitura e escrita do ledger `ferramentas.jsonl` — catálogo de ferramentas descobertas em uso. Ledger cresce por descoberta sem varredura de setup; ausência de entrada lê-se como **desconhecido**, não confirmado ausente. Receita de invocação é opcional — entra depois pelo comando explícito (D5, D11). A sonda do hook de consulta em `PreToolUse` anuncia descoberta ou bloqueio, deixa a execução passar sempre (D10) |
-| `scripts/limpar-branches.cjs` | confere o local contra o remoto e classifica por dois eixos (upstream **e** merge); nunca remove branch viva, e exigir estar na base em dia é trava. A **remota** já sai sozinha no merge (`delete_branch_on_merge`, ligado em 2026-08-26); este script é para a **local** e para o resíduo de worktree de agente, que é o que sobrevive e ninguém vê |
-| `scripts/conferir-publicacao.cjs` | **sai com código 2** quando o rascunho tem telefone, JID, e-mail, caminho de home ou credencial — antes de virar Issue público |
-| `scripts/conferir-entrega.cjs` | roda na janela principal **depois** da entrega do agente: hash de base, isolamento e citação conferidos na fonte, não no relato. `--espera <caminho>` (repetível) confere o que a tarefa prometia **na árvore do commit** — `ls`/`cat` do agente provam o disco, e `git status` não lista ignorado |
-| `scripts/conferir-fluxo.cjs` | fecha as três costuras entre artefatos vizinhos do fluxo, **com exit 2**: `design` (as seções obrigatórias e as decisões `D1..Dn` sem buraco nem repetição), `cobertura` (toda decisão virou tarefa **e** toda tarefa atende decisão que existe) e `creep` (arquivo no diff que não casa com o `arquivos:` de tarefa nenhuma). Chamado pelo `estado.cjs marcar` no fechamento de estágio — só age onde o design/plano existe, e nunca torna o fluxo obrigatório |
-| `scripts/portoes.cjs` | troca **evidência colada por oráculo re-executável**: cada portão declara o `CHECK:` que o decide e o `ESPERA:` que a saída precisa conter, e cumprido é **exit 0 E match**, os dois, re-executáveis a qualquer momento. `status` e `lint` **nunca executam** `CHECK` nenhum — o `lint` audita a *autoria* do portão (`echo ok`/`ESPERA: ok` é erro), que é a única parte que nenhuma execução consegue conferir. `ABANDONA:` é terminal mas nunca é conclusão: força exit 1 com `DEVOLUCAO OBRIGATORIA` mesmo com o resto cumprido. A evidência gravada guarda **fingerprint**, nunca output bruto. Chamado pelo `estado.cjs` em dois pontos — `lint` no fechamento do `plano`, `rodar` no do `verificar` — e é **opt-in por fluxo**: só age quando existe `docs/rainforest/portoes/<slug>.md` |
-| `scripts/conferir-versao.cjs` | conta os commits desde o último bump de versão e **sai com 2** acima do teto (5 por padrão, `--teto N`) — porque o que EXECUTA não é o clone, é o cache `plugins/cache/<mkt>/<plugin>/<versão>/`, indexado pela versão: sem bump, o trabalho fica na `main` e não chega em máquina nenhuma. Chamado pelo `fechar` |
-| `scripts/setup.cjs` | monta a pasta de dados, liga/desliga o que é opcional **e configura o caminho de cada projeto** — e marca no estado o caminho que **não existe** nesta máquina, que era falha silenciosa |
-| `scripts/ponte.cjs` | **gera** o `CLAUDE.md` (Claude Code sem o plugin), o `AGENTS.md` (Codex) e o `GEMINI.md` (Gemini CLI) a partir do mesmo SKILL.md que o hook injeta — e recusa gerar se não achar as regras, em vez de escrever meia ponte |
-| `scripts/poda.cjs` | proxy **passthrough** local (`iniciar`/`parar`/`status`, só `127.0.0.1`) que mede o que passa — `metricas.jsonl` e `contexto.json` na raiz de dados, extraídos de uma CÓPIA do stream SSE, sem alterar nenhuma requisição nem resposta. A escrita respeita a chave `poda` do `config.json` (nasce ligada; desligar é o kill switch). **Não comprime nada** — compressão é fase 1, e só entra com o relatório da fase 0 em mãos |
-| `scripts/relatorio-poda.cjs` | o gate de saída da fase 0: **sai com exit ≠ 0** enquanto `metricas.jsonl` não cobrir 7 dias-calendário distintos; aberto, imprime tokens por estágio, cache hit agregado e a média de `duracao_ms` do proxy — e diz explicitamente que não compara com "sem proxy", porque isso não é mensurável retroativamente |
-| `scripts/segunda-opiniao.cjs` | segunda opinião de modelo de outra família sobre um diff: `node scripts/segunda-opiniao.cjs --base <sha> --head <sha> --criterio <arquivo>` monta prompt com `git diff <base>...<head>`, critério e commit-base, chama CLI externo por `rodarCli`, devolve veredito (1 linha) no stdout e parecer no stderr. Subcomando `registrar-divergencia` grava discordâncias ao log com motivo. D6: indisponibilidade reprova |
-| `scripts/orcamento.cjs` | mede em **byte** as quatro fontes que o plugin põe na abertura (saída do hook, descriptions de skills, de commands e de agentes), compara com dois tetos (o `ORCAMENTO_BYTES` do hook, lido de `hooks/lib/contexto-sessao.cjs`, e um agregado de 15.000 B, que subiu de 14.000 em 2026-08-25), e sai com exit 1 quando estoura — entra no laço do `CONTRIBUTING.md:11` como o gate que acusa quando o plugin engordar além do orçamento |
-| `scripts/medir-injecao.py` | custo real do prompt de abertura, lido do `usage` que a API devolve — token de verdade, sem estimativa. O modo `--repartir` reparte a abertura por fonte (skill_listing, deferred_tools_delta, agent_listing_delta, rainforest-mind) e marca o que é **medido** (total via API), o que é **estimado** (byte convertido por fator 3.11 do tokenizador OpenAI), e o que é **subconjunto** (rainforest-mind dentro das listagens) |
+| `divergir` | **Antes** do brainstorm: seis frames isolados em paralelo mais um crítico cego. Devolve material, não decide |
+| `arqueologia` | Estágio 0, opcional: mapeia a fatia de legado que a demanda toca |
+| `/brainstorm` | Estágio 1: entrevista adversarial em árvore de decisão, grava o design |
+| `plano` | Estágio 2: tarefas tipadas, dependência declarada, critério falsificável |
+| `executar` | Estágio 3: despacha agentes, cada um em worktree isolado |
+| `revisar` | Estágio 4: contexto zerado, escopo fixado pelo diff — o relato não é fonte |
+| `verificar` | Estágio 5: roda o artefato real e cola a saída |
+| `fechar` | Estágio 6: commit, limpeza, PR como destino da branch |
+| `limpar` | Manutenção fora do fluxo: worktree e branch órfãos |
 
-O que essas travas custaram e renderam fica em [`relatorios/`](relatorios/) —
-hoje o da trava de sessão co-locada
-(`2026-08-21-branch-nova-e-o-que-derruba-a-outra-sessao.md`), com método e
-números. Os incidentes de 2026-08-08 e 2026-08-11 estão citados no cabeçalho dos
-próprios hooks, não em relatório à parte.
+**Do dia a dia**
 
-## Codex e Gemini CLI: o que atravessa, e o que não
-
-O plugin é do Claude Code — os **10 hooks** (quatro deles as travas
-`PreToolUse`), os **11 slash commands**, as **16 skills** e os **9 subagentes**
-são API dele e não têm equivalente nos outros hosts. Mas o **método**
-não precisa ficar preso a um agente, e a pasta de dados não sabe quem a escreveu.
-
-Quais agentes você usa é **configuração**, e mora no `/setup` (`ponte-claude`,
-`ponte-codex`, `ponte-gemini`, desligadas por padrão). Qual repositório recebe o
-arquivo **não é**: é alvo explícito, com ensaio, porque o gerado vai ser commitado
-no repo de outra pessoa.
-
-```
-node scripts/setup.cjs --ligar ponte-codex             # declara o que esta máquina usa
-node scripts/ponte.cjs --alvo <dir-do-repo>            # ensaio: mostra e não grava
-node scripts/ponte.cjs --alvo <dir-do-repo> --aplicar  # só os alvos declarados
-```
-
-São **três** alvos: `CLAUDE.md` também é ponte — para quem usa Claude Code **sem o
-plugin**, que não tem regra nenhuma. É o caminho de quem recebe o convite antes de
-instalar. E o texto muda com o alvo: lá a falta das travas se explica pelo plugin
-ausente; nos outros dois, por o host não ter `PreToolUse`.
-
-O arquivo é **gerado**, nunca escrito à mão, e o comando que o gera está escrito
-dentro dele. O motivo é um incidente: nesta máquina existem duas `CLAUDE.md` de
-escopo usuário — uma por config dir — que eram sincronizadas à mão. Em 2026-08-10
-uma foi editada e a outra divergiu **em silêncio**; metade do setup passou a valer
-o contrário da outra metade. Regra duplicada não fica errada com aviso: fica
-errada calada.
-
-E a ponte diz o que ela **não** entrega, porque prometer trava que não existe é
-pior que não ter ponte:
-
-| No Claude Code | Na ponte |
+| | |
 |---|---|
-| gate de worktree e gate de `git add -A` (hook `PreToolUse`, exit 2) | **texto** — não existe `PreToolUse` nesses hosts, então é combinado, não trava |
-| injeção de SessionStart | o próprio arquivo gerado, que o host lê a cada sessão |
-| `estado.cjs exigir` (gate do fluxo, exit 2) | **igual** — é comando de shell |
-| `conferir-entrega.cjs` (regra 12, exit 1) | **igual** |
-| `conferir-publicacao.cjs` (anonimização, exit 2) | **igual** |
-| `/ideia`, `/foco`, `/semear` | os CLIs `ideias.cjs`, `foco.cjs`, `semear.cjs` |
+| `/foco` | Estado da conversa; `/foco <texto>` declara novo foco |
+| `/ideia <texto>` | Avalia contra o foco: dentro → entra; fora → planta com contexto |
+| `/issue` | Abre Issue no repo em que você está, com o corpo escrito e a evidência colada |
+| `/feedback` | Registra o que a sessão ensinou sobre o método |
+| `/saude` | Só o que os checadores oficiais não sabem |
+| `/setup` | Monta a pasta de dados, liga/desliga gates e fluxo |
+| `/semear` | Propõe o que criar **neste** repo a partir do que ele já tropeçou |
+| `/regua` | Régua externa nomeada, builder contra crítico cego — para o que não tem teste |
+| `/ponte` | Gera `CLAUDE.md`, `AGENTS.md` ou `GEMINI.md` ([detalhe](docs/pontes.md)) |
+| `modo-dev` | Escada YAGNI, causa raiz antes de remendo, rastreabilidade do diff |
+| `depurar` | Constrói o loop de feedback **antes** de qualquer hipótese |
+| `analisar` | Análise em notebook: uma pergunta por vez, revisão crítica do achado |
 
-O gerado **não chumba caminho de home** — ele ensina a descobrir a pasta de dados
-com `ideias.cjs conferir`, porque nasce para ser commitado no repo de outra
-pessoa. Se o arquivo já existir escrito à mão, o bloco entra delimitado e nada do
-que estava lá é apagado; regenerar substitui só o bloco.
+**Agentes por função** — a janela principal pensa; o agente executa.
 
-## Ideia solta não vira escopo, e não vira esquecimento
-
-O caso mais comum de escopo crescendo sozinho é a emenda no fim do pedido:
-
-> **Você:** faz a opção 2. Ah, e a gente podia colocar um cache nisso.
->
-> **Sem o plugin:** *"Ótima ideia! Vou implementar a opção 2 com cache…"* — a adição virou escopo sem ninguém decidir.
->
-> **Com o plugin:** *"Fechado: opção 2. Você adicionou o cache — entra no escopo agora ou planto?"*
-
-Plantar não é descartar. A ideia sai da cabeça pra um lugar confiável, com
-contexto e projeto, e fica lá até a estação certa.
-
-```mermaid
-flowchart LR
-    A["💭 ideia solta<br/>no meio da tarefa"] --> B{"radar<br/>de escopo"}
-    B -->|"está no foco"| C["entra na tarefa<br/>(confirmada)"]
-    B -->|"está fora"| D["🌱 plantada em<br/>ideias.jsonl"]
-    D --> E["revisão quando<br/>houver espaço"]
-    E -->|"chegou a estação"| F["🌳 colhida:<br/>vira trabalho"]
-    E -->|"ainda não"| D
-    G["FOCO.md<br/>(foco declarado)"] -.->|"injetado a<br/>cada sessão"| B
-```
-
-## Comandos e skills
-
-| O quê | Faz |
-|-------|-----|
-| `divergir [problema]` | **Antes** do `brainstorm`, quando o espaço é largo e a primeira ideia já está ancorando: **seis** frames isolados em paralelo, sem se verem, e um crítico que também nasce zerado. Devolve material para decidir; não decide e não codifica |
-| `/brainstorm [assunto]` | Estágio 1: entrevista adversarial em árvore de decisão, rodada numerada com resposta recomendada — para **antes** de executar, e grava o design |
-| `conselho` | Debate estruturado dentro do design (opt-in via `.rainforest/conselho/`): personas avaliam cada decisão, revisões anonimizadas, síntese com portões mecânicos. Membros Claude ligados; Codex/Gemini opcionais. Terceira reprovação consecutiva abandona |
-| `/foco` | Estado da conversa: foco ativo, loops abertos, decisões tomadas |
-| `/foco <texto>` | Declara novo foco — injetado em toda sessão nova |
-| `/ideia <texto>` | Avalia contra o foco: dentro → entra confirmada; fora → planta com contexto e projeto |
-| `/ideia` | Lista as ideias plantadas |
-| `/feedback` | Registra o que a sessão ensinou sobre o **método** — tria por de quem é o defeito: do plugin vira Issue, do seu trabalho vira markdown no seu repo |
-| `/issue` | Abre uma Issue no repositório em que você está, com o corpo já escrito e a evidência colada |
-| `arqueologia` | Estágio **zero, opcional**: mapeia a fatia de legado que a demanda toca, com escala de confiança — e fatia já mapeada vira **conferência**, não extração |
-| `plano` | Estágio 2: tarefas tipadas, dependência declarada e critério falsificável por tarefa — proíbe placeholder |
-| `executar` | Estágio 3: despacha os agentes, em paralelo o que o plano marcou independente, cada um em worktree |
-| `revisar` | Estágio 4: contexto zerado, escopo fixado pelo diff de três pontos, o relato de quem implementou não é fonte |
-| `verificar` | Estágio 5: roda o artefato real e cola a saída — o critério veio pronto do plano e não se afrouxa aqui |
-| `fechar` | Estágio 6: commit, limpeza do repo, remoção dos worktrees, **PR como destino da branch** — sem menu, e outro destino só se você pedir —, conferência de versão atrasada, e writeback no FOCO.md |
-| `limpar` | Manutenção fora do fluxo: worktree órfão da sessão que nunca chegou ao `fechar` — e a **branch**, que sobrevive ao worktree e ninguém vê |
-| `/regua` | Fixa uma **régua externa nomeada** e roda builder contra crítico cego — para a tarefa que não tem teste |
-| `/semear` | Propõe o que criar **neste** repositório a partir do que ele já tropeçou — cada proposta cita o registro que a origina |
-| `/setup` | Monta a pasta de dados e liga/desliga os gates e o fluxo, por projeto ou para tudo |
-| `/ponte` | Gera `CLAUDE.md`, `AGENTS.md` (Codex) ou `GEMINI.md` (Gemini CLI) num repo, do mesmo SKILL.md — alvos declarados no `/setup`, e cada um diz o que **não** atravessa |
-| `/saude` | Só o que os checadores oficiais não sabem: de quem é a raiz, margem da injeção, fluxo parado, worktree órfão |
-| `modo-dev` | Disciplina de dev sob demanda (acima) |
-| `depurar` | Loop de feedback antes de hipótese (acima) |
-| `analisar` | Análise de dados em notebook: uma pergunta por vez, célula curta, e **revisão crítica do achado** (`n` visível, share vs. risco, explicação alternativa) antes de virar conclusão |
-| `executor` | Implementação mecânica em haiku, com o método embutido no system prompt |
-| `revisor` | Review/QA em sonnet: evidência primária, achado só com cenário de falha, veredito integra/não-integra |
-| `tester` | Testes em sonnet: extrai o contrato, escreve o que falta, pelo menos um adversarial |
-| `planejador` | Plano em sonnet: separa fato de suposição, dependência explícita entre etapas, **para antes da primeira linha de código** |
-| `depurador` | Depuração em sonnet: executa a skill `depurar`; para se não conseguir um comando vermelho-capaz, em vez de chutar conserto |
-| `resolvedor-de-build` | Erro de build/tipo em haiku, diff mínimo: para se a correção introduzir erro novo, se o mesmo erro persistir após 3 tentativas, ou se você pedir pausa |
-| `documentador` | Doc em haiku a partir do diff real: comportamento que não confirmou em `arquivo:linha` não é escrito, vira pendência |
-| `arqueologo` | Mapa de **uma** fatia de legado em sonnet: executa a skill `arqueologia` e escreve só em `docs/rainforest/mapas/` |
-| `auditor-de-seguranca` | Varredura em sonnet contra duas réguas externas nomeadas (OWASP Top 10 2025, API Security Top 10 2023): **aponta e nunca conserta** |
+| | |
+|---|---|
+| `executor` · `resolvedor-de-build` · `documentador` | haiku, tarefa mecânica |
+| `planejador` · `revisor` · `tester` · `depurador` | sonnet, tarefa que exige julgamento |
+| `arqueologo` · `auditor-de-seguranca` | sonnet, executam skill própria |
 
 ## As 17 regras
 
-Resumo; o **núcleo** vive em
-[`skills/rainforest-mind/SKILL.md`](skills/rainforest-mind/SKILL.md),
-e a **elaboração** de cada regra em
-[`skills/rainforest-mind/references/regra-<n>.md`](skills/rainforest-mind/references).
-
-> Repare no nome: a pasta das regras é `references`, em inglês, três níveis
-> abaixo. A `referencias/` da **raiz** é outra coisa — notas externas, dois
-> arquivos — e é ela que aparece primeiro num `ls`. Quem procura "as
-> referências das regras" acha a de dois arquivos e conclui que não está no
-> repositório.
+O **núcleo** vive em [`skills/rainforest-mind/SKILL.md`](skills/rainforest-mind/SKILL.md)
+e é injetado em toda sessão; a **elaboração** de cada regra, com critério fino e
+incidente datado, em [`references/regra-<n>.md`](skills/rainforest-mind/references).
 
 | # | Regra | Em uma frase |
-|---|-------|--------------|
-| 1 | Responder tudo, na ordem | N perguntas recebem N respostas numeradas, na mensagem final; item resolvido sai e a lista renumera do 1. Níveis não compartilham glifo (`1.` → `a)` → `i.`), e **`Q` aberta se reescreve inteira todo turno** — no terminal, rolar a tela para trás não é caminho |
+|---|---|---|
+| 1 | Responder tudo, na ordem | N perguntas → N respostas numeradas, no fim do turno; resolvido sai e a lista renumera do 1 |
 | 2 | Escolha + adição | A emenda nunca vira escopo em silêncio: confirma ou planta |
-| 3 | Radar de escopo | Saiu do foco declarado → uma frase, sem julgamento, com escolha |
+| 3 | Radar de escopo | Saiu do foco → uma frase, sem julgamento, com escolha |
 | 4 | Checkpoint no meio | Tarefa 3+ etapas: "fechamos n/total" a cada etapa |
 | 5 | Decisão com o porquê | "Decidido: X, porque Y. Próximo passo: Z." |
-| 6 | Plantio de ideias | Ideia solta → "planto essa pra depois?"; abandono real → "já pegou o que veio buscar?" |
-| 7 | Tom sênior | Policia pontas soltas e escopo, nunca o mérito; aviso ancora na emoção do resultado, não na ameaça do prazo |
-| 8 | Guarda-corpo de jornada | Jornada real medida, não estimada: ~9h efetivas produzindo → um aviso, uma vez, com a hora, um ponto de parada e a checagem de corpo (água, comida, banheiro) de carona — nunca gatilho próprio. Perder a noção do tempo **dentro** da imersão é traço saudável; dificuldade de **começar ou trocar** é sinal diferente |
-| 9 | Freio de Pareto | Polimento do que já está pronto → "alguém que recebe isso fica prejudicado?"; se não, entrega ou planta |
-| 10 | Agentes baratos, e só os admitidos | Janela principal pensa; sete agentes por **função**, não por domínio (mais dois que executam skill, o `arqueologo` e o `auditor-de-seguranca`): `executor` e `resolvedor-de-build` (haiku), `documentador` (haiku), `planejador`, `revisor`, `tester` e `depurador` (sonnet). Agente que edita nunca é nomeado, e **nomeado só entrega por `SendMessage`** — termina e fica calado. Os sete carregam a **cláusula de premissa**: listam o que aceitaram do briefing sem conferir, e lugar vazio não vira "não existe". **Admissão por manifesto** (fluxo 9): rodar exige estar declarado em `.rainforest/agentes.json` com o **estágio ativo** na lista — a portaria decide por hook `PreToolUse`, sem perguntar ao humano em runtime; exceção é diff no manifesto, que passa pelo `revisar` |
-| 11 | Worktree de subagente | Isolamento sempre, hash de base conferido na primeira ação e reconferido antes de integrar; integração por partes, nunca cópia de arquivo inteiro |
-| 12 | Entrega se valida na saída real | Critério de sucesso vai pronto no briefing, incluindo o teste que falsificaria a entrega; validação é rodar o artefato e olhar a saída. Suíte verde não é evidência; exit code lido através de pipe não é exit code |
-| 13 | Correção vira observação | Você corrigir a saída já é o sinal: registra silenciosamente, e no máximo uma mudança de regra por semana |
-| 14 | Regra bloqueada se anuncia | Ambiente impediu uma regra → uma linha na primeira vez, nunca silêncio; caminho sai de variável, nunca escrito à mão |
-| 15 | Agente não altera o ambiente | Subagente não instala nada nem mexe em PATH, env ou config global: ferramenta ausente para e reporta |
-| 16 | Fato é meu, decisão é sua | Pergunta que o ambiente responde se resolve olhando, e fato não **sai** daqui sem ser olhado — briefing, recomendação e registro inclusos; decisões abertas vão em rodada única, marcadas **`Q1` `Q2`**, cada uma com a recomendada — e **o que não tem `Q` não pede nada de você** |
-| 17 | Multi-janela | Paralelo é escolha, não desvio; o alerta é a janela parada esperando você. Estado compartilhado nunca se escreve à mão. Janela fechada no X ou perdida em crash sai do radar por idade (24 h), não na hora — até lá ela pode aparecer como janela ociosa |
+| 6 | Plantio de ideias | Ideia solta → "planto essa pra depois?" — plantada ≠ descartada |
+| 7 | Tom sênior | Policia ponta solta e escopo, nunca o mérito |
+| 8 | Guarda-corpo de jornada | Jornada **medida**, não estimada; um aviso, uma vez |
+| 9 | Freio de Pareto | Polimento do que já está pronto → "alguém que recebe fica prejudicado?" |
+| 10 | Agentes baratos, e só os admitidos | Rodar exige estar declarado no manifesto, com o estágio ativo |
+| 11 | Worktree de subagente | Isolamento sempre, hash de base conferido na fonte |
+| 12 | Entrega se valida na saída real | Critério falsificável no briefing; suíte verde não é evidência |
+| 13 | Correção vira observação | Você corrigir a saída já é o sinal: registra silenciosamente |
+| 14 | Regra bloqueada se anuncia | Ambiente impediu → uma linha, nunca silêncio |
+| 15 | Agente não altera o ambiente | Não instala, não mexe em PATH nem config: para e reporta |
+| 16 | Fato é meu, decisão é sua | Fato se resolve olhando; decisão sobe marcada `Q1` `Q2`, com a recomendada |
+| 17 | Multi-janela | Paralelo é escolha; o alerta é a janela parada esperando você |
 
-## Vigias (automação fora da sessão)
+## Seus dados não moram aqui
 
-A pasta [`vigias/`](vigias/) tem prompts headless agendados no sistema
-operacional (`claude -p`, haiku — o **sentinela-foco** em sonnet desde
-2026-08-20, porque tool de MCP diferida não sai em haiku) que reportam por
-WhatsApp: **sentinela-foco** (briefing matinal de prazo/avanço + triagem de
-inbox em 3 baldes, somente leitura), **jardineiro-ideias** (semanal — ideias
-plantadas + revisão do vault), **batedor-repos** (semanal — repositório e skill
-de fora, com o veredito acumulado em `vigias/livro-de-repos.md`),
-**vigia-tickets** e **revisao-bimestral**. O guarda-corpo funcionando fora da
-sessão — onde o hiperfoco não deixa abrir uma.
+`FOCO.md`, `ideias.jsonl` e `projetos.json` ficam fora do repositório e fora do
+git: quem instala o plugin recebe as regras, **não** o foco nem as ideias de
+quem o publicou. Onde eles moram sai de uma cadeia de quatro níveis —
+`RFM_ROOT` → `<repo>/.rainforest/` → `~/.rainforest/` → o próprio plugin.
 
-**Quando um vigia falha, ele fala — e alguém tem de ouvir.** Todo erro de ronda
-passa por uma porta única, [`vigias/erros.ps1`](vigias/erros.ps1), que grava em
-`vigias/ERROS.md` sempre em LF, sem BOM, e **troca caminho de máquina por
-marcador antes de gravar** (o arquivo é versionado, e este repositório é
-público). E o `/saude` passou a subir duas linhas sobre eles:
+→ A cadeia inteira, o teto do FOCO.md e as variáveis de ambiente:
+[`docs/dados-e-foco.md`](docs/dados-e-foco.md)
 
-- **vigia agendado sem próxima execução.** Gatilho vencido deixa a tarefa com
-  `State: Ready`, `Enabled: True` e `LastTaskResult: 0` — os três campos que
-  uma pessoa checa — e só o `NextRunTime` **em branco** denuncia. Dois vigias
-  ficaram vinte dias mortos assim. Bateria própria em
-  `scripts/testa-vigias-agendados.sh`.
-- **erros recentes no `ERROS.md`.** O arquivo registrou a mesma falha em toda
-  ronda por cinco dias sem ninguém abrir. Instrumentação não faltou; leitura
-  faltou.
+## Mais fundo
 
-## Instalação
-
-```
-claude plugin marketplace add luisfmontes/rainforest-mind
-claude plugin install rainforest-mind@rainforest-mind
-```
-
-Ou aponte `--plugin-dir` para a pasta do repo em desenvolvimento.
-
-**Runtime: só Node no caminho de execução.** Os hooks, os gates, o `/ideia`, o
-`/saude`, o fluxo e a medição de jornada rodam em Node. O Claude Code não
-garante Node nem Python (a lista oficial de dependências adicionais tem
-`ripgrep` e mais nada), então a meta é **uma** dependência, não duas.
-
-Sobra Python em **ferramental seu**, fora de qualquer regra: `medir-injecao.py`
-(mede o custo real da abertura), `validar-colhidas.py` e a `statusline/` inteira
-(`statusline.py` mais três testes) — a barra é opcional, e ela mesma chama o
-`jornada.cjs` em vez de inferir jornada por conta própria. Nenhuma regra depende
-deles — se Python não existir na máquina, nada aqui degrada.
-
-**E as baterias também são Node.** Até 2026-08-12 elas usavam Python para montar
-fixture e conferir JSON: o runtime era único para quem *instala* e duplo para quem
-*contribui*, o que é a mesma promessa quebrada uma camada acima. Os 24 usos viraram
-`node -e`. Os gêmeos em Python continuam, porque ali o Python **é** o teste.
-
-Essa frase foi **falsa até 2026-08-12**, e vale dizer por quê: as regras 11 e 12
-exigiam `conferir-entrega.py` na integração de toda entrega de agente, e
-`skills/executar` e `agents/executor.md` o chamavam pelo nome. Um dev sem Python
-não tinha a trava da regra 12 — tinha o texto dela. Trava que não trava é o único
-defeito que este repo não aceita, então o script virou `conferir-entrega.cjs`.
-
-Dois scripts ficam como **gêmeos** dos ports, e não como legado morto:
-
-| Gêmeo | O que ele prova |
+| | |
 |---|---|
-| `conferir-entrega.py` | a mesma bateria roda contra os dois — `CONFERIR="python scripts/conferir-entrega.py" bash scripts/testa-conferir-entrega.sh` — **23 casos / 43 asserções** (o rodapé imprime `43 ok`), e as falhas encenadas (as seis dos relatórios mais o arquivo que some por `.gitignore`) reprovam nos dois |
-| `jornada.py` | os dois medem o mesmo dia e devolvem os mesmos números, lacuna por lacuna |
-
-Apagar o gêmeo seria apagar a única prova de que o port está certo. O
-terceiro gêmeo — o do `ideias.cjs` — foi aposentado em 2026-08-22: a bateria
-gêmea tinha parado de provar equivalência (saía 53 ok / 5 falhas, pulando 5
-seções inteiras como "recurso novo só do .cjs") e virou manutenção sem
-retorno.
-
-**Nenhuma regra depende de plugin de terceiro.** A regra 8 media a jornada com
-um plugin de cliente até 2026-08-11; hoje mede com `node scripts/jornada.cjs`,
-que lê o transcript da própria sessão. Quem tiver o plugin pode usá-lo como
-conferência — nunca como requisito.
-
-**E dependência opcional não se anuncia nem se sonda sem alguém pedir.** Duas
-consequências disso, as duas de 2026-08-12:
-
-- A abertura só reporta o que este install **declara**: a bridge do WhatsApp
-  aparece quando existe `WHATSAPP_API_BASE_URL` no ambiente, e o claude-mem
-  quando está instalado. Antes, toda sessão de toda máquina abria uma conexão TCP
-  para `localhost:3005` e imprimia "bridge WhatsApp FORA" para quem nunca ouviu
-  falar dela. Sem nada declarado o bloco inteiro sai da injeção (−169 B).
-- **Os vigias nascem desligados** (`vigias`, em `/setup`). As rondas exigem
-  PowerShell agendado, `claude.exe` no caminho e um destino de envio; com a chave
-  desligada o `run-vigia.ps1` **sai limpo (exit 0)** e não escreve em
-  `vigias/ERROS.md`, porque desligado não é erro. Ele pergunta o estado por
-  `node scripts/setup.cjs --ligado vigias` em vez de reimplementar a cadeia de
-  três níveis em PowerShell — segunda cópia da regra é cópia que diverge calada.
-
-## Ajuste fino
-
-- O **núcleo** das regras vive em [`skills/rainforest-mind/SKILL.md`](skills/rainforest-mind/SKILL.md) — edite e a mudança vale na próxima sessão. A **elaboração** de cada regra vive em [`skills/rainforest-mind/references/regra-<n>.md`](skills/rainforest-mind/references) — edite lá quando precisar de critério fino, comando exato ou incidente datado.
-- **Incidente datado vai em blockquote.** O hook remove as linhas que começam
-  com `>` antes de injetar: a narrativa continua no arquivo, ao lado da regra
-  que fundamenta, e sai do custo de toda sessão. Instrução nunca entra na
-  citação — se a frase diz o que fazer, fica fora. Rendeu **−11%** da injeção
-  quando entrou, sem perder uma linha de conteúdo; hoje o `SKILL.md` já não tem
-  nenhuma linha `>` (os incidentes nascem direto nos `references/`, que não são
-  injetados), então o filtro ficou como trava contra reincidência.
-- Antes de caçar token na skill, olhe onde ele está de verdade. Medido com
-  `/context all` em **2026-08-09**: as ferramentas de MCP somavam **40,2k
-  tokens** contra ~330 das skills deste plugin. Desligar MCP por projeto rendeu
-  **~120×** o que traduzir as regras inteiras renderia. (Hoje as `description`
-  das skills somam 3.601 B, ~1,2k tokens — a ordem de grandeza da conclusão não
-  mudou.)
-- O hook avisa quando a skill passa de **60 dias sem revisão**.
-
-## Orçamento de token
-
-O rainforest-mind é injetado em toda sessão, então o custo dele é real e precisa de medição contínua. O `scripts/orcamento.cjs` mede as fontes (hook, skills, commands, agentes) em byte e acusa quando passa do teto de **15.000 B** — subiu de 14.000 em 2026-08-25, com a conta escrita no cabeçalho do script. Ele entra no laço de testes do `CONTRIBUTING.md:11` pela convenção de nome, via `scripts/testa-orcamento.sh` — o workflow `.github/workflows/baterias.yml` roda todas as baterias (`scripts/testa-*.sh` e `hooks/testa-*.sh`) automaticamente **a cada PR**, e sob demanda por `workflow_dispatch`; o gatilho de push na `main` saiu em 2026-08-25, quando a conta de Actions bateu 90% da cota:
-
-```bash
-node scripts/orcamento.cjs          # sai 0 se dentro do teto, 1 se estourou
-node scripts/orcamento.cjs --teto 1000  # sobrescreve o teto para teste
-```
-
-O modo `--repartir` do `scripts/medir-injecao.py` lê o transcript e reparte a abertura por fonte, respondendo a pergunta "para onde foi cada token?" em vez de só "quanto custa?":
-
-```bash
-python scripts/medir-injecao.py --repartir
-```
-
-Medição da abertura de 2026-08-14T00:36 (transcript `570a6723`): das **67.914 tokens**, **18.980 (28%)** são atribuíveis pelo transcript — o resto é system prompt do Claude Code, schema das tools, CLAUDE.md e memórias, que o transcript não guarda.
-
-O rainforest-mind por si ocupa **13.205 B, uns 4.246 tokens estimados, ou ~6,3%** da abertura. Pelo outro caminho, o `orcamento.cjs` contando arquivos do repositório dá **~14,5 kB** (14.559 B medidos em 2026-08-26). Os dois **não medem a mesma coisa** e não deveriam bater exatamente: o lado do repositório conta `commands/` como parcela própria, e o lado do transcript já os traz dentro da listagem de skills; o lado do transcript mede a linha renderizada na listagem, com prefixo e formatação, e o do repositório mede só o texto da `description`. Ficarem a ~10% um do outro é consistência entre duas réguas parecidas — **não é validação cruzada**, e não deve ser lida como tal.
-
-**Três armadilhas que este número já pisou, todas deixadas escritas de propósito:**
-
-1. **Não some byte de uma medição com token da outra.** Uma versão deste parágrafo dizia "13.604 B ... 1.157 tokens ou 1,7%", casando o total do `orcamento.cjs` com o token de um recorte bem mais estreito do `--repartir` — errando o custo em quase 4× para menos. Cada linha da tabela traz byte e token da mesma medição; é assim que se lê.
-2. **Um transcript pode ter mais de uma abertura.** Todo `--resume` grava outro `SessionStart` no mesmo arquivo. O `--repartir` atribui pelo **primeiro**, que é o mesmo que fixou o total em token — antes de isso ser consertado, ele somava as fontes de um evento com o total de outro.
-3. **Nem tudo que diz "rainforest-mind" é do rainforest-mind.** O `hook_additional_context` da abertura chega como **lista** de itens de plugins diferentes, e o item do claude-mem começa com `# [rainforest-mind] recent context` — o nome do projeto no claude-mem, não o dono do texto. Ele foi contado como nosso por uma rodada inteira, inflando a fatia em 9.018 B. A separação hoje é por marcador do item, não pelo nome que aparece nele.
-
-O byte do hook **oscila entre execuções** — ele embute estado vivo da sessão (janelas ativas, horários), então medições feitas com minutos de diferença dão 7.7xx–7.8xx variando. As três outras fontes são estáveis. Por isso o teto é agregado e com folga, e por isso o `testa-orcamento.sh` afirma faixas e "não pode ser 0 B", nunca igualdade exata contra o repo real.
-
-**Ressalva sobre token estimado:** a coluna de token no `--repartir` é estimada dividindo byte por fator **3.11**, que foi medido com `tiktoken` no encoding `cl100k_base` — **que é da OpenAI (GPT-4)**, não do Claude. Não existe tokenizador do Claude disponível offline nesta máquina. O total da abertura é token **medido** (vem do `usage` da API), tudo mais é **indicativo**.
-
-## Um foco por projeto, sem configurar nada
-
-Onde moram `FOCO.md` e `ideias.jsonl` sai de uma **cadeia de quatro níveis**, do
-mais específico para o mais genérico — o projeto sobrescreve o global, e a
-detecção automática cobre quem não declarou nada:
-
-| # | Nível | Onde | Para quê |
-|---|---|---|---|
-| 1 | `RFM_ROOT` | onde a variável apontar | declaração explícita, vence tudo |
-| 2 | **projeto** | `<repo>/.rainforest/` | **foco e ideias daquele repo** |
-| 3 | global | `~/.rainforest/` | o seu estado, valendo em qualquer pasta |
-| 4 | plugin | a raiz do próprio plugin | instalação auto-hospedada (desenvolvimento) |
-
-O que faz uma pasta contar como raiz é ter `FOCO.md` **ou** `ideias.jsonl`
-dentro: um `.rainforest/` vazio criado por engano não sequestra o seu foco — e
-tem teste de mutação provando que é o marcador que decide.
-
-**O nível 3 é o seu `HOME`, e não a pasta de config do Claude Code.** A
-diferença parece detalhe e não é: dá para ter mais de uma config dir na mesma
-máquina — uma de trabalho e uma pessoal, por exemplo —, e ancorar o estado nela
-partiria o seu foco em dois sem avisar. O foco é da pessoa, não do perfil.
-
-Um terceiro arquivo da pasta de dados é o **`projetos.json`**, o vocabulário
-fechado de slugs de projeto (`slug → caminho + apelidos`). É ele que tira o
-caminho de disco de dentro do dado — o campo `projeto` das ideias era texto
-livre e guardava caminho do Windows dentro de string JSON, onde a barra
-invertida seguida de `r` é escape de *carriage return*: quatro registros
-tiveram o caminho comido, e 22 valores distintos para 7 projetos reais
-deixaram o campo inagrupável. Slug não tem barra para escape nenhum comer, e a
-pasta de cada projeto passa a ter um lugar só seu.
-
-**O repositório é só código.** `FOCO.md`, `ideias.jsonl` e `projetos.json` não
-moram aqui e não entram no git: quem instala o plugin recebe as regras, não o
-foco nem as ideias de quem o publicou. Antes disso ser assim, um projeto novo herdava o estado
-alheio pela cadeia — o nível 4 existe para desenvolvimento e é justamente onde
-esse defeito nascia.
-
-Criar `.rainforest/FOCO.md` num repositório é tudo o que é preciso para aquele
-repositório ter foco próprio. Sem variável de ambiente, sem editar config.
-
-### O FOCO.md tem teto, e quem o segura é um script
-
-A seção **Avanços** é append-only por natureza: cada sessão que anda escreve
-uma linha datada, e nenhuma sai. Em 2026-08-12 o arquivo estava com 15,4 KB, dos
-quais 11,8 KB só de Avanços — e ele é lido **inteiro** por toda sessão que
-precisa conferir prazo, marco ou avanço, porque é isso que a própria injeção
-manda fazer. Pior: as três entradas de um único dia produtivo custaram mais que
-os cinco dias anteriores somados, então teto em *contagem de entradas* não
-segura nada.
-
-```
-node scripts/foco.cjs caminho                 # onde mora o foco desta raiz
-node scripts/foco.cjs rotacionar              # ensaio: diz o que sairia
-node scripts/foco.cjs rotacionar --aplicar    # move de verdade
-```
-
-O que passa do teto (5.000 B por padrão, em **bytes**) vai para o `AVANCOS.md`
-ao lado, em ordem cronológica, e o FOCO.md ganha no topo do bloco uma linha
-`- (histórico: N avanços de … a … em AVANCOS.md.)` — que o hook trata como
-residente, para a injeção nunca dizer que as entradas antigas "continuam no
-FOCO.md" quando elas já não estão. Nada é apagado: a igualdade entre o que sai
-e o que entra é conferida **antes** de qualquer escrita, e sem `--aplicar` o
-script não toca em disco. O `fechar` e o `/foco` chamam a rotação logo depois de
-escrever o avanço.
-
-- Fork à vontade: troque os arquivos de dado pelos seus e as regras pelo seu
-  jeito de trabalhar. Nenhum caminho é cravado no código:
-
-  | Variável | Resolve |
-  |---|---|
-  | `RFM_ROOT` | raiz dos dados — nível 1 da cadeia acima |
-  | `CLAUDE_CONFIG_DIR` | pasta de config: a checagem de dependências e o nível 3 |
-  | `WHATSAPP_API_BASE_URL` | host e porta do bridge, para os vigias e o hook |
-  | `RFM_CLAUDE_EXE` | binário do Claude Code usado pelos vigias headless |
+| [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md) | O incidente por trás de cada trava, e os scripts com exit code |
+| [`docs/dados-e-foco.md`](docs/dados-e-foco.md) | Cadeia de quatro níveis, rotação do FOCO.md, variáveis |
+| [`docs/runtime-e-orcamento.md`](docs/runtime-e-orcamento.md) | Por que só Node, os gêmeos em Python, o custo de contexto medido |
+| [`docs/pontes.md`](docs/pontes.md) | Codex e Gemini CLI: o que atravessa e o que não |
+| [`docs/vigias.md`](docs/vigias.md) | Automação agendada fora da sessão |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Mexer no plugin: baterias, mutação, política de versão |
+| [`relatorios/`](relatorios/) | O que cada trava custou e rendeu, com método e números |
 
 ## De onde isso veio
 
-**O problema não é falta de ideia. É o que recebe luz agora.** Essa frase
-nasceu de um perfil específico — **2e**, altas habilidades com TDAH — e é ele
-que explica por que a ferramenta é assim: pensamento associativo rápido abre
-ideias como abas que competem com a tarefa aberta, e a resposta foi construir
-memória de trabalho externa e radar de escopo.
+**O problema não é falta de ideia. É o que recebe luz agora.** A frase nasceu de
+um perfil específico — **2e**, altas habilidades com TDAH — e é ele que explica
+por que a ferramenta é assim.
 
-O que a origem explica é o **rigor**, não o público. Um assistente que só
-funciona quando o usuário lembra de ativá-lo não serve pra quem esquece — então
-nada aqui depende de lembrar. Um aviso que dispara errado ensina a ignorar o
-aviso — então cada gatilho é medido antes de entrar. Uma checagem redigida por
-quem ela deveria travar não trava nada — então virou hook com exit code.
+O que a origem explica é o **rigor**, não o público:
 
-Essas três restrições nasceram de uma necessidade pessoal e valem pra qualquer
-um. É por isso que o repo é público.
+- um assistente que só funciona quando você lembra de ativá-lo não serve pra quem esquece — então nada aqui depende de lembrar;
+- um aviso que dispara errado ensina a ignorar o aviso — então cada gatilho é medido antes de entrar;
+- uma checagem redigida por quem ela deveria travar não trava nada — então virou hook com exit code.
 
-Desenho orientado por pesquisa sobre dupla excepcionalidade em adultos
-profissionais (Barkley, ADDitude, CHADD) e por análise de skills públicas de
-ADHD para assistentes de IA. Lacuna que nenhuma delas cobria: **aviso de desvio
-de escopo** e **fechamento de loops abertos**.
+As três restrições nasceram de uma necessidade pessoal e valem pra qualquer um.
 
 ## Créditos
 
 - *Your Rainforest Mind* — Paula Prober, a metáfora que dá nome ao plugin.
 - [i-have-adhd](https://github.com/ayghri/i-have-adhd) — inspiração de formato e prova de que skill de neurodivergência funciona.
-- Pesquisa 2e: suporte camuflado em conversa casual não funciona — por isso toda intervenção aqui é explícita e sinalizada.
-- [task-observer](https://github.com/rebelytics/one-skill-to-rule-them-all) — Eoghan Henn (rebelytics.com), CC BY 4.0: o gatilho "correção do usuário = observação" e o ciclo de revisão que viraram a regra 13. Adotado o mecanismo, não o log paralelo.
-- [mattpocock/skills](https://github.com/mattpocock/skills) — MIT: a árvore de decisão e a fronteira de `grilling` (regra 16 e `/brainstorm`), o loop vermelho-capaz de `diagnosing-bugs` (skill `depurar`), névoa e fora de escopo de `wayfinder`, expandir–contrair de `to-tickets`, ponto de variação e teste da deleção de `codebase-design`, e o portão triplo do registro de decisão de `domain-modeling`. Acoplado por compressão — nenhuma das 35 skills instalada.
-- [andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills) — a rastreabilidade de cada linha do diff até o pedido, e o tratamento de código morto alheio vs. órfão da própria mudança, no `modo-dev`.
-- [unlazy](https://github.com/Leonxlnx/unlazy) — Leonxlnx, MIT: o mecanismo do `scripts/portoes.cjs` — portão declara o comando que o decide e o marcador que a saída precisa conter, e cumprido é exit 0 **e** match, re-executável a qualquer momento. Adotado o mecanismo, não o modelo de aprovação de comandos herdados nem o dispatch paralelo (`OWNS:`, waves, `--jobs`), que servem a ledger de terceiro e não a um pipeline sequencial. O **lint de autoria** — que reprova `echo ok`, marcador trivial e título que nomeia atividade em vez de resultado — **não vem do original: é acréscimo deste repo**, e é a peça que fecha o furo que nenhuma re-execução fecha.
-- [UditAkhourii/adhd](https://github.com/UditAkhourii/adhd) — a tese que sustenta o `/divergir`: *tree-of-thought* alarga a busca mas caminha num contexto compartilhado, então a ancoragem persiste entre os ramos — **problema de arquitetura, não de prompt**. Contrato reimplementado a partir da descrição, sem copiar código, porque regra deste plugin não depende de plugin de terceiro. O frame `premissa`, o cenário concreto exigido na refutação e o teste que falsifica a própria skill **não vêm do original — são acréscimos deste repo**.
+- [task-observer](https://github.com/rebelytics/one-skill-to-rule-them-all) — Eoghan Henn (rebelytics.com), CC BY 4.0: o gatilho "correção do usuário = observação" e o ciclo de revisão que viraram a regra 13.
+- [mattpocock/skills](https://github.com/mattpocock/skills) — MIT: a árvore de decisão e a fronteira de `grilling` (regra 16 e `/brainstorm`), o loop vermelho-capaz de `diagnosing-bugs` (skill `depurar`), expandir–contrair de `to-tickets`, e o portão triplo do registro de decisão de `domain-modeling`. Acoplado por compressão — nenhuma das 35 skills instalada.
+- [andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills) — a rastreabilidade de cada linha do diff até o pedido, no `modo-dev`.
+- [unlazy](https://github.com/Leonxlnx/unlazy) — Leonxlnx, MIT: o mecanismo do `scripts/portoes.cjs` — portão declara o comando que o decide e o marcador que a saída precisa conter. O **lint de autoria** não vem do original: é acréscimo deste repo.
+- [UditAkhourii/adhd](https://github.com/UditAkhourii/adhd) — a tese que sustenta o `/divergir`: *tree-of-thought* alarga a busca mas caminha num contexto compartilhado, então a ancoragem persiste entre os ramos — problema de arquitetura, não de prompt. Contrato reimplementado a partir da descrição, sem copiar código.
 
-## Mexer no plugin
-
-Bateria verde nas **61 suítes** (mais o gêmeo em Python do `conferir-entrega.cjs`
-— o do `ideias.cjs` foi aposentado em 2026-08-22), mutação em bateria
-nova, e duas regras que este repo aprendeu do jeito caro:
-
-- **campo obrigatório novo vem com o passado resolvido no mesmo commit** — backfill,
-  anistia por data em constante declarada, ou opcional para quem nasceu antes;
-- **arquivo novo na pasta de dados nasce com três portas** — quem escreve, quem
-  **mostra** no `/setup` e quem checa no `/saude`. A porta do meio é mecânica: uma
-  lista só (`ARQUIVOS`, no `setup.cjs`) é lida por quem semeia e por quem mostra, e
-  a bateria compara o disco com a saída, com mutação.
-- **o release é entrega própria, e o PATCH existe** — bump em commit próprio,
-  `PATCH` quando o lote só conserta e `MINOR` quando entra coisa nova ou muda
-  contrato. Até 2026-08-26 todo release foi MINOR e o PATCH nunca foi usado; o
-  número é o único sinal que diz se quem instala precisa reler isto aqui. Quem
-  mede o atraso é o `conferir-versao.cjs`, chamado pelo `fechar`.
-
-Está tudo em [`CONTRIBUTING.md`](CONTRIBUTING.md), com o incidente que originou cada
-item.
+Desenho orientado por pesquisa sobre dupla excepcionalidade em adultos
+profissionais (Barkley, ADDitude, CHADD) e por análise de skills públicas de
+ADHD para assistentes de IA. Lacuna que nenhuma delas cobria: **aviso de desvio
+de escopo** e **fechamento de loops abertos**.
 
 ## Licença
 
@@ -778,5 +291,4 @@ possível não faria sentido.
 
 O que **não** está sob esta licença é a sua pasta de dados — `FOCO.md`,
 `ideias.jsonl`, `projetos.json`, `config.json` e `AVANCOS.md` moram na raiz que
-a cadeia de quatro níveis resolver (por padrão `~/.rainforest`), nunca no
-repositório, e são só seus.
+a cadeia de quatro níveis resolver, nunca no repositório, e são só seus.

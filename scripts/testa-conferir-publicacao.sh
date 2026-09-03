@@ -37,19 +37,70 @@ echo "== 1. cada forma de dado sensivel =="
 
 # O JID e o caso REAL: e assim que o telefone do terceiro entrou no relatorio de
 # 2026-08-10, colado de uma saida de ferramenta sem ninguem reparar.
-printf '# achado\n\nChat JID: <jid-do-contato-3>\n' > "$SBP/jid.md"
+printf '# achado\n\nChat JID: 5500900000002@s.whatsapp.net\n' > "$SBP/jid.md"
 S="$(roda "$SBP/jid.md")"
 tem   "pega JID de WhatsApp"        "$S" "jid-whatsapp"
 saiu  "e RECUSA (exit 2)"           "$(codigo "$SBP/jid.md")" "2"
 
-printf '# achado\n\nligar para (00) 90000-0001 depois\n' > "$SBP/tel.md"
+printf '# achado\n\nligar para (00) 90000-0002 depois\n' > "$SBP/tel.md"
 tem   "pega telefone formatado"     "$(roda "$SBP/tel.md")" "telefone"
+
+# JID de GRUPO tem 18 digitos, e a faixa da regra parava em 15 ate 2026-09-02
+# (Issue #149). O grupo passava por baixo da regra ESPECIFICA e acendia so o
+# padrao generico de telefone, marcado "pode ser falso positivo" — a categoria
+# que se aprende a ignorar. Foi assim que o JID real do grupo das rondas ficou
+# no vigias/ERROS.md da main por dias.
+printf '# achado\n\nGrupo: 120363123456789012@g.us\n' > "$SBP/jid-grupo.md"
+S="$(roda "$SBP/jid-grupo.md")"
+tem   "pega JID de GRUPO (18 digitos)"   "$S" "jid-whatsapp"
+saiu  "e RECUSA (exit 2)"                "$(codigo "$SBP/jid-grupo.md")" "2"
+
+# E o outro lado da mesma regra: alargar a faixa sem isentar o placeholder faria
+# o gate recusar a propria documentacao de formato do repositorio.
+printf '{\n  "destinoWhatsapp": "000000000000000000@g.us"\n}\n' > "$SBP/jid-zeros.md"
+S="$(roda "$SBP/jid-zeros.md")"
+nao_tem "placeholder de digito repetido NAO acende a regra de JID" "$S" "jid-whatsapp"
+nao_tem "nem o padrao generico de telefone"                        "$S" "telefone"
+saiu    "e passa limpo (exit 0)"  "$(codigo "$SBP/jid-zeros.md")" "0"
+
+# O arquivo de verdade, nao uma imitacao dele: se o exemplo versionado do repo
+# nao passa no proprio gate, o gate esta errado sobre o repo.
+saiu "o vigia.config.exemplo.json do repo passa no gate" "$(codigo "$SRC/vigias/vigia.config.exemplo.json")" "0"
 
 printf '# achado\n\nreportado por fulano@empresa.com.br\n' > "$SBP/mail.md"
 tem   "pega e-mail"                 "$(roda "$SBP/mail.md")" "email"
 
 printf '# achado\n\nabri C:\\Users\\Fulano\\Downloads\\print.jpeg\n' > "$SBP/home.md"
 tem   "pega caminho de home"        "$(roda "$SBP/home.md")" "caminho-de-home"
+
+# PLACEHOLDER de usuario nao e nome de ninguem. Terceira regra desta lista a
+# ganhar a isencao, e pelo mesmo motivo das duas primeiras (Issue #149): a regra
+# recusava a propria documentacao do formato que ela ensina — o `faca` dela diz
+# "use \`<home>\`", e o texto que obedecia era recusado igual.
+#
+# Os caminhos sao montados com printf a partir do segmento, e nao escritos
+# inteiros: este arquivo e versionado, e o gate barra (com razao) arquivo
+# versionado que contenha a forma completa. Foi o que aconteceu com a bateria
+# irma, scripts/testa-caminho-pessoal.sh, em 2026-09-02.
+SEG_U="Us""ers"
+printf '# achado\n\ncaminho: /c/%s/<nome>/.claude\n' "$SEG_U" > "$SBP/home-ph.md"
+S="$(roda "$SBP/home-ph.md")"
+nao_tem "placeholder <nome> NAO acende caminho-de-home"  "$S" "caminho-de-home"
+saiu    "e passa limpo (exit 0)"  "$(codigo "$SBP/home-ph.md")" "0"
+
+printf '# achado\n\ncaminho: C:\\%s\\%%USERNAME%%\\AppData\n' "$SEG_U" > "$SBP/home-var.md"
+nao_tem "variavel de ambiente (%%USERNAME%%) tambem nao acende" "$(roda "$SBP/home-var.md")" "caminho-de-home"
+
+printf '# achado\n\ncaminho: /c/%s/$USER/x\n' "$SEG_U" > "$SBP/home-shell.md"
+nao_tem "variavel de shell (\$USER) tambem nao acende" "$(roda "$SBP/home-shell.md")" "caminho-de-home"
+
+# E o lado que importa: nome de gente continua acendendo. Isencao que engole o
+# caso real troca um falso positivo por um falso negativo, que e o pior negocio
+# possivel numa trava de publicacao.
+printf '# achado\n\ncaminho: /c/%s/Fulaninho/.claude\n' "$SEG_U" > "$SBP/home-real.md"
+S="$(roda "$SBP/home-real.md")"
+tem  "nome de pessoa CONTINUA acendendo"  "$S" "caminho-de-home"
+saiu "e RECUSA (exit 2)"                  "$(codigo "$SBP/home-real.md")" "2"
 
 printf '# achado\n\nrodei com api_key=abc123def456\n' > "$SBP/cred.md"
 tem   "pega credencial"             "$(roda "$SBP/cred.md")" "credencial"

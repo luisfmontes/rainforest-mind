@@ -4,7 +4,20 @@
 # GitHub por dois dias sem ninguem notar.
 #
 # O QUE PRECISA PROVAR:
-#   1. o mojibake REAL do incidente (daee1d6:README.md, 387 linhas corrompidas)
+#   1. o mojibake REAL do incidente (7b5e93a:README.md, 387 linhas corrompidas)
+#
+# ANCORA EM HASH, E O QUE ISSO CUSTA. Esta bateria e a UNICA do repositorio que
+# executa contra um commit especifico do historico (`7b5e93a:README.md`). Em
+# 2026-09-02 a reescrita de historico que tirou o JID de grupo dos commits
+# antigos trocou TODOS os hashes, e esta assercao foi a unica coisa no repo
+# inteiro que quebrou por causa disso — reprovou com "nao consegui ler
+# <hash>:README.md do historico". O hash aqui era `daee1d6` antes daquele dia.
+#
+# A ancora e proposital: o valor da bateria e reprovar o mojibake REAL, e nao um
+# que alguem fabricou. O preco e que toda reescrita futura de historico exige
+# traduzir este hash pelo `filter-repo/commit-map`. A alternativa duravel seria
+# guardar o README corrompido como fixture versionado — mas ai a checagem 4
+# ("a arvore INTEIRA passa limpa") reprovaria a propria fixture.
 #      reprova, e o README de hoje (limpo, ja consertado em a1433d1) passa;
 #   2. BOM reprova, ausencia de BOM passa;
 #   3. CRLF reprova (fixture com git proprio), arvore em LF passa;
@@ -30,17 +43,17 @@ tem()  { if printf '%s' "$2" | grep -qF "$3"; then ok=$((ok+1)); echo "  ok   $1
 roda()   { node "$SCRIPT" "$@" 2>&1; }
 codigo() { node "$SCRIPT" "$@" >/dev/null 2>&1; echo $?; }
 
-echo "== 1. mojibake real do incidente (daee1d6) reprova, README de hoje passa =="
+echo "== 1. mojibake real do incidente (7b5e93a) reprova, README de hoje passa =="
 CORROMPIDO="$SB/readme-corrompido.md"
 LIMPO="$SB/readme-limpo.md"
-if git -C "$RAIZ" cat-file -e daee1d6:README.md 2>/dev/null; then
-  git -C "$RAIZ" show daee1d6:README.md > "$CORROMPIDO" 2>/dev/null
+if git -C "$RAIZ" cat-file -e 7b5e93a:README.md 2>/dev/null; then
+  git -C "$RAIZ" show 7b5e93a:README.md > "$CORROMPIDO" 2>/dev/null
   S="$(roda "$CORROMPIDO")"
-  saiu "README corrompido (daee1d6) reprova"    "$(codigo "$CORROMPIDO")" "2"
+  saiu "README corrompido (7b5e93a) reprova"    "$(codigo "$CORROMPIDO")" "2"
   tem  "e aponta mojibake"                      "$S" "mojibake"
   tem  "e aponta BOM"                           "$S" "bom"
 else
-  falhou=$((falhou+1)); echo "  FALHA nao consegui ler daee1d6:README.md do historico"
+  falhou=$((falhou+1)); echo "  FALHA nao consegui ler 7b5e93a:README.md do historico"
 fi
 git -C "$RAIZ" show HEAD:README.md > "$LIMPO" 2>/dev/null
 saiu "README de HEAD (ja consertado) passa (exit 0)" "$(codigo "$LIMPO")" "0"
