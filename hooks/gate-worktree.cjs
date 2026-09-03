@@ -59,7 +59,7 @@ const { execFileSync } = require("node:child_process");
 const os = require("node:os");
 const fs = require("node:fs");
 const path = require("node:path");
-const { resolverCwdEfetivo, toplevelConfinado, CD, GIT_DIR_EXPLICITO, SEPARADORES } = require(path.join(__dirname, "lib", "cwd-efetivo.cjs"));
+const { resolverCwdEfetivo, toplevelConfinado, CD, extrairUltimoDirGit, contemSubshellOuGrupo, segmentosComAspas, SEPARADORES } = require(path.join(__dirname, "lib", "cwd-efetivo.cjs"));
 const CLIS_QUE_ESCREVEM = require(path.join(__dirname, "lib", "clis-que-escrevem.cjs"));
 
 const FERRAMENTAS_DE_ESCRITA = new Set(["Write", "Edit", "MultiEdit", "NotebookEdit"]);
@@ -329,6 +329,13 @@ function alvosBash(comando, cwdInicial, casa = (seg) => {
   const alvos = [];
 
   for (const seg of segmentos) {
+    // Subshell/grupo — `(cd /principal && git commit)` quebra em pedacos que
+    // nao comecam com `cd` puro (o `CD` regex nunca casa), entao sem esta
+    // checagem o `cd` de dentro do subshell passava batido. O `cd` dali nao
+    // persiste pra fora dele, mas vale para os comandos dentro: a leitura
+    // segura e marcar INCERTO, sem tentar decidir o resto do segmento por ele.
+    if (contemSubshellOuGrupo(seg)) incerto = true;
+
     const cd = seg.match(CD);
     if (cd) {
       const destino = cd[1] || cd[2] || cd[3];
@@ -352,9 +359,13 @@ function alvosBash(comando, cwdInicial, casa = (seg) => {
     const s = subcomandoGit(seg);
     const verbo = s ? s.verbo : "?";
 
-    const exp = seg.match(GIT_DIR_EXPLICITO);
-    if (exp) {
-      const p = exp[1] || exp[2] || exp[3];
+    // O ÚLTIMO `-C`/`--work-tree` do segmento vence — o git usa o ultimo
+    // quando ha varios (`git -C /a -C /b commit` roda em `/b`). O regex
+    // antigo so achava a PRIMEIRA ocorrencia (`.match` unico e lazy), entao
+    // `git -C <worktree> -C <principal> commit` classificava o alvo como
+    // worktree e liberava, com o commit caindo no principal de verdade.
+    const p = extrairUltimoDirGit(seg);
+    if (p) {
       // `-C` com variavel: nao da para resolver — cai no conservador.
       if (/[$`]/.test(p)) { alvos.push({ dir: cwdInicial, verbo }); continue; }
       alvos.push({ dir: path.resolve(atual, p), verbo });
@@ -424,16 +435,30 @@ function posicionaisApos(toks, i) {
  * `;`, `&&`, `||`, `|` — um token citado (`"codex" exec --yolo`) e comando de
  * verdade disfarcado de string, e ate 2026-09-03 passava batido porque o
  * `if (tok.q) continue` pulava TODO token citado, sem olhar a posicao.
+ *
+ * Segmentacao usa `segmentosComAspas` (respeita aspas), nao `comando.split`
+ * cru: `echo "abc ; codex exec --yolo"` tem um `;` DENTRO da string, que o
+ * split ingenuo tratava como separador de verdade e criava um segmento
+ * `codex exec --yolo"` fantasma — falso positivo num `echo` de texto.
+ *
+ * `$'codex'`/`$"codex"` (ANSI-C / locale quoting): o bash expande para o
+ * literal `codex`, mas o `$` fica FORA da aspa em `tokensComAspas` e gruda no
+ * valor (`$codex`), escapando da lista. Em posicao de COMANDO, um token
+ * citado cujo valor comeca com `$` perde o `$` — só ali, nunca em posicao de
+ * argumento, e nunca quando o token INTEIRO nao veio de aspa nenhuma (um
+ * `$VAR` sem aspas continua incerto de proposito, nao vira nome de CLI).
  */
 function procuraCLI(comando, clis) {
-  const segmentos = comando.split(SEPARADORES);
+  const segmentos = segmentosComAspas(comando);
   for (const seg of segmentos) {
     const toks = tokensComAspas(seg);
     for (let i = 0; i < toks.length; i += 1) {
       const tok = toks[i];
       if (tok.q && i !== 0) continue; // citado em posicao de argumento: ignora
+      let v = tok.v;
+      if (i === 0 && tok.q && v.startsWith("$")) v = v.slice(1);
       // Extrair nome do token, ignorando caminho e extensão .exe
-      const nome = tok.v.split(/[\\/]/).pop().replace(/\.exe$/, "");
+      const nome = v.split(/[\\/]/).pop().replace(/\.exe$/, "");
       if (clis.includes(nome)) {
         return nome;
       }
@@ -468,6 +493,11 @@ function alvosBashEscrita(comando, cwdInicial) {
   };
 
   for (const seg of segmentos) {
+    // Subshell/grupo — mesma leitura conservadora do `alvosBash`: o `cd` de
+    // dentro de `(...)`/`{...}` nao persiste pra fora, mas vale para os
+    // comandos dentro, e sem esta checagem ele passava batido pelo `CD` regex.
+    if (contemSubshellOuGrupo(seg)) incerto = true;
+
     // `cd` precisa ser tratado igual ao `alvosBash`
     const cd = seg.match(CD);
     if (cd) {

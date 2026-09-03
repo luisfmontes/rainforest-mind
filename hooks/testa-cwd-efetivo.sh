@@ -161,6 +161,14 @@ test("(i) cd com aspas duplas e espaço resolve corretamente", () => {
 });
 
 console.log();
+console.log("== Caso (j): (cd X && y) e subshell/grupo — vira INCERTO (rodada 4, lote 3) ==");
+test("(j) (cd X && y) marca incerto", () => {
+  const cmd = `(cd '${testD}' && y)`;
+  const result = resolverCwdEfetivo(cmd, testDir);
+  eq(result.incerto, true, "incerto deve ser true");
+});
+
+console.log();
 console.log(`== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 process.exit(falhou);
 NODESCRIPT

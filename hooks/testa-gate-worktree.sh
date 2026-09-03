@@ -512,5 +512,49 @@ gate "codex citado em posicao de comando BARRA (aspas simples)" 2 "$(b "'codex' 
 gate "codex citado em posicao de argumento (echo) PASSA"        0 "$(b 'echo "codex"' "$R")"
 
 echo
+echo "== A1: alvosBash usa o ULTIMO -C, nao o primeiro (rodada 4, lote 3) =="
+# `git -C <a> -C <b> commit` roda em <b> de verdade — o git usa o ultimo. Um
+# match unico no regex pegava o PRIMEIRO, entao worktree-depois-principal
+# classificava o alvo como worktree e liberava, com o commit caindo no
+# principal.
+gate "git -C worktree -C principal commit: ULTIMO manda, BARRA" 2 \
+  "$(b "git -C $WT -C $R commit -m x" "$WT")"
+gate "git -C principal -C worktree commit: ULTIMO manda, PASSA" 0 \
+  "$(b "git -C $R -C $WT commit -m x" "$WT")"
+
+echo
+echo "== A3: subshell/grupo antes de CLI que escreve vira INCERTO (rodada 4, lote 3) =="
+# `(cd <principal> && codex exec --yolo)` splitado por `&&` nao comeca com
+# `cd` puro em nenhum pedaco (o primeiro comeca com `(cd`) — o `cd` do
+# subshell passava batido, incerto ficava false, e o cwd efetivo caia de
+# volta no worktree (legitimo). Sem tentar resolver o subshell, a leitura
+# segura e marcar INCERTO e bloquear.
+gate "(cd principal && codex exec --yolo) de dentro do worktree BARRA" 2 \
+  "$(b "(cd $R && codex exec --yolo)" "$WT")"
+
+echo
+echo "== A4: $'...' e \\comando escapam a lista de CLIs (rodada 4, lote 3) =="
+# `\$'codex'` (ANSI-C quoting): o bash expande para o literal codex, mas o
+# `$` fica FORA da aspa em tokensComAspas e gruda no valor (`\$codex`),
+# escapando da lista.
+gate "\$'codex' exec --yolo fora do worktree BARRA (ANSI-C quoting)" 2 \
+  "$(b "\$'codex' exec --yolo" "$R")"
+# `\codex` (barra invertida escapa alias/funcao, o bash roda o comando
+# `codex` de verdade) — ja resolvia certo por acaso, via o mesmo regex que
+# tira caminho (`[\\/]`); teste travando o comportamento.
+gate "barra invertida \\codex exec fora do worktree BARRA" 2 \
+  "$(b "\codex exec" "$R")"
+
+echo
+echo "== Rev2: procuraCLI respeita aspas na segmentacao (rodada 4, lote 3) =="
+# `comando.split(SEPARADORES)` cru nao sabe que o `;` esta DENTRO da string do
+# echo — virava um segmento fantasma `codex exec --yolo"` e um falso positivo
+# num echo de texto puro.
+gate "echo com ; dentro de aspas nao ativa CLI (Rev2)" 0 \
+  "$(b 'echo "abc ; codex exec --yolo"' "$R")"
+gate "; de verdade (fora de aspas) continua separando (Rev2, regressao)" 2 \
+  "$(b 'echo oi; codex exec --yolo' "$R")"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
