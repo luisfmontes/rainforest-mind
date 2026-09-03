@@ -19,6 +19,12 @@ SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC_WIN="$(cygpath -m "$SRC" 2>/dev/null || printf '%s' "$SRC")"
 SBP="$(mktemp -d)"
 SB="$(cygpath -m "$SBP" 2>/dev/null || printf '%s' "$SBP")"
+
+# Issue #160: a bateria lia a config REAL de quem a roda — quem desligou um gate
+# no escopo usuario pelo `/setup` via a suite vermelha sem pista da causa. A raiz
+# de dados passa a ser uma pasta descartavel, como faz o `testa-orcamento.sh`
+# (Issue #81). Caso que precisa de outra raiz sobrescreve por chamada.
+export RFM_ROOT="$SB/dados-neutros"; mkdir -p "$RFM_ROOT"
 trap 'rm -rf "$SBP"' EXIT
 echo "(caixa de areia: $SB)"
 

@@ -33,7 +33,7 @@ echo "(caixa de areia: $W)"
 REPO="$W/repo"
 mkdir -p "$REPO"
 git init -q "$REPO"
-git -C "$REPO" config user.email "teste@example.com"
+git -C "$REPO" config user.email "t@t"
 git -C "$REPO" config user.name "teste"
 git -C "$REPO" config commit.gpgsign false
 printf 'v1\n' > "$REPO/f.txt"
@@ -141,7 +141,12 @@ echo
 echo "== 2. CAMINHO FELIZ: dois worktrees de verdade, comandos que discriminam =="
 exige 0 "worktrees diferentes, comando falha no antigo e passa no novo" \
   CHK --antes "$WT_ANTIGO" --depois "$WT_NOVO" --comando "$COMANDO_DISCRIMINA"
-tem "evidencia do lado antes: toplevel" "toplevel : $(printf '%s' "$WT_ANTIGO" | sed 's/[\/&]/\\&/g')"
+# O git responde o toplevel na forma LONGA do caminho; o mktemp do runner do
+# Actions entrega a forma curta 8.3 (RUNNER~1 no lugar de runneradmin), e a comparacao
+# literal ficou vermelha so la (Issue #153). O esperado passa pela mesma
+# resolucao que o script usa (realpathSync.native), nunca pelo texto cru.
+WT_ANTIGO_REAL="$(node -e 'const fs=require("fs");let p=process.argv[1];try{p=fs.realpathSync.native(p)}catch{}console.log(p.replace(/\/g,"/"))' "$WT_ANTIGO")"
+tem "evidencia do lado antes: toplevel" "toplevel : $WT_ANTIGO_REAL"
 tem "evidencia do lado antes: HEAD" "HEAD     : $HASH_V1"
 tem "evidencia do lado depois: HEAD" "HEAD     : $HASH_V2"
 tem "evidencia do lado antes: exit 1 (v1 nao tem v2)" "exit     : 1"
