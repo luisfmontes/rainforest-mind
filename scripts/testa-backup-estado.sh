@@ -49,6 +49,7 @@ montar() {
   cp "$SRC/scripts/foco.cjs" "$SB/plugin/scripts/foco.cjs"
   cp "$SRC/scripts/backup.cjs" "$SB/plugin/scripts/backup.cjs"
   cp "$SRC/hooks/lib/raiz.cjs" "$SB/plugin/hooks/lib/raiz.cjs"
+  cp "$SRC/hooks/lib/resolver-executavel.cjs" "$SB/plugin/hooks/lib/resolver-executavel.cjs"
   cp "$SRC/hooks/lib/contexto-sessao.cjs" "$SB/plugin/hooks/lib/contexto-sessao.cjs"
   cp "$SRC/vigias/backup-estado.ps1" "$SB/plugin/vigias/backup-estado.ps1"
   # O erros.ps1 e dependencia de EXECUCAO, nao acessorio: o backup-estado.ps1
