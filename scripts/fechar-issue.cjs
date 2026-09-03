@@ -13,8 +13,52 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { execFileSync } = require('child_process');
 const { MARCADOR } = require(path.join(__dirname, '..', 'hooks', 'lib', 'marcador-evidencia.cjs'));
 const { resolverExecutavel, executar } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
+
+/**
+ * Tenta rodar git rev-parse --show-toplevel no cwd.
+ * Retorna o toplevel ou null se falhar.
+ */
+function getGitToplevel(cwd) {
+  try {
+    const resultado = execFileSync('git', ['-C', cwd, 'rev-parse', '--show-toplevel'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    return resultado.trim();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Valida se um caminho de arquivo está dentro do repositório.
+ * Retorna true se o arquivo está dentro, false caso contrário.
+ */
+function estaNoRepositorio(caminhoArquivo) {
+  try {
+    // Resolver o caminho do arquivo de forma absoluta e real
+    const caminhoReal = fs.realpathSync.native(caminhoArquivo);
+
+    // Obter o toplevel do repositório (do cwd atual)
+    const cwd = process.cwd();
+    const gitTop = getGitToplevel(cwd);
+    if (!gitTop) {
+      return false;
+    }
+
+    // Resolver o git toplevel também
+    const gitTopReal = fs.realpathSync.native(gitTop);
+
+    // Verificar se o arquivo está dentro do toplevel
+    const relative = path.relative(gitTopReal, caminhoReal);
+    return !relative.startsWith('..');
+  } catch {
+    return false;
+  }
+}
 
 // Parse argumentos
 const args = process.argv.slice(2);
@@ -57,6 +101,11 @@ for (let i = 1; i < args.length; i++) {
     saidaConteudo = args[++i];
   } else if (args[i] === '--saida-arquivo' && i + 1 < args.length) {
     const caminhoArquivo = args[++i];
+    // Validar se o arquivo está dentro do repositório
+    if (!estaNoRepositorio(caminhoArquivo)) {
+      console.error(`RECUSADO: --saida-arquivo fora do repositorio`);
+      process.exit(2);
+    }
     try {
       saidaConteudo = fs.readFileSync(caminhoArquivo, 'utf-8');
     } catch (err) {
