@@ -1,0 +1,108 @@
+{
+  "slug": "2026-09-02-fluxo-7-recibo",
+  "titulo": "Fluxo 7 — recibo de colheita: identidade verificavel do artefato entregue",
+  "criado_em": "2026-09-02",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/fluxo-7-design-recibo.md",
+    "em": "2026-09-02"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-09-02-fluxo-7-recibo.md",
+    "entregaveis": [
+      "scripts/recibo.cjs",
+      "scripts/testa-recibo-mostrar.sh",
+      "scripts/testa-recibo-gravar.sh",
+      "scripts/testa-recibo-portoes.sh",
+      "scripts/testa-recibo-conferir.sh",
+      "scripts/testa-recibo-fechar.sh"
+    ],
+    "em": "2026-09-02"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-03",
+    "tarefas_ok": 7,
+    "tarefas": 7,
+    "em": "2026-09-03",
+    "comando": "for f in scripts/testa-recibo-mostrar.sh scripts/testa-recibo-gravar.sh scripts/testa-recibo-portoes.sh scripts/testa-recibo-conferir.sh scripts/testa-recibo-fechar.sh; do bash $f >/dev/null 2>&1; echo \"$f exit=$?\"; done",
+    "saida": "scripts/testa-recibo-mostrar.sh exit=0\nscripts/testa-recibo-gravar.sh exit=0\nscripts/testa-recibo-portoes.sh exit=0\nscripts/testa-recibo-conferir.sh exit=0\nscripts/testa-recibo-fechar.sh exit=0",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "slug sem recibo em raiz sandbox; mostrar lanca em vez de avisar"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "rodada 2: UNC (if->false), : no slug (regex sem :), catch da escrita (throw) — as tres vermelhas, rodadas pela janela"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "medicao do SKILL.md real: sem o corte compensatorio o nucleo estoura 5600 B e o D7 acusa"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "entregavel editado com tamanho identico; conferir ignora o sha256"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "portoes.md com [x] cumprido, evidencia de sucesso e CHECK que hoje reprova; gravar sem --reverificar aceita a evidencia"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "plano com entregaveis citando arquivo inexistente; com o gancho desligado o fechar fecha"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "tarefa so escreve README — sem comportamento de codigo para mutar"
+      }
+    ],
+    "rodada": 3
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "21158c83b78b2a0f2ba2c4eb8c996a9261f46623",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-09-02-fluxo-7-recibo.json"
+      ]
+    },
+    "achados": 0,
+    "base": "6bc0dc0807b21113ec62758fd5d72b736660b8db",
+    "head": "21158c83b78b2a0f2ba2c4eb8c996a9261f46623",
+    "lista": [
+      "A1b recibo.cjs: cerca UNC nao cobria separador misto (/host)"
+    ],
+    "em": "2026-09-03",
+    "rodadas": 3,
+    "nota": "revisado em ff00475; o commit seguinte so emenda o plano (tarefa 8)"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash verificar-f7.sh <worktree>: T1..T5 = bash scripts/testa-recibo-{mostrar,gravar,portoes,conferir,fechar}.sh; T2g grep .gitignore; T6 = medir-skill.cjs + testa-contexto-sessao.sh + testa-orcamento.sh + grep da regra no hook injetado; T7 grep README",
+    "saida": "T1 | exit=0 | == resultado: 16 ok, 0 falha(s) ==\nT2 | exit=0 | == resultado: 27 ok, 0 falha(s) ==\nT2g | exit=0 | 62:.rainforest/colheita/\nT3 | exit=0 | == resultado: 12 ok, 0 falha(s) ==\nT4 | exit=0 | == resultado: 12 ok, 0 falha(s) ==\nT5 | exit=0 | == resultado: 12 ok, 0 falha(s) ==\nT6a | exit=0 | nucleo=5595 regras=17 references=19 setas-duplas=0 skill-bytes=10137 maior-reference=regra-12.md:10171\nT6b | exit=0 | ok: 277   falhou: 0\nT6c | exit=0 | ok: 29   falhou: 0\nT6d | exit=0 | 1\nT7 | exit=0 | 166:| `scripts/recibo.cjs` | Congela identidade do entregável com sha256 + bytes; chamado pelo `fechar` quando plano declara `entregaveis` (opt-in, sem manifesto sai exit 0). Obriga `nao_provado` listado — recibo que alega provar tudo é suspeito. Re-executa portões com `--reverificar` se `docs/rainforest/portoes/<slug>.md` existe. Grava atomicamente em `.rainforest/colheita/<slug>-recibo.json` (fora do git). `mostrar <slug>` imprime; `conferir <slug>` recalcula hash e compara. |\nFIM",
+    "em_head": "ff00475 (o commit seguinte, 21158c8, so emenda o plano)",
+    "em": "2026-09-03"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "pr",
+    "nao_provado": [
+      "comportamento do recibo em fluxo com portoes.md proprio (este fluxo nao tem)",
+      "uso por outro dev em outra maquina (hash de bytes e local)",
+      "variante UNC barra-contrabarra sem caso proprio na bateria"
+    ],
+    "em": "2026-09-03"
+  }
+}

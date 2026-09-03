@@ -72,6 +72,9 @@ antes de dar um registro por vivo, nomear qual campo prova a **próxima
 ocorrência** e conferir que ele está preenchido.
 (acervo: 2026-09-01)
 
+**Exit ≠ 0 nunca é descrito como sucesso** — nem "quase passou", nem "passou com aviso", nem "falhou só por X"; o número é a verdade e a prosa se ajusta a ele. Nasceu do fluxo 7 (recibo), que traduz o contrato validate→deliver do archify: entrega congela bytes só depois de exit 0, e recibo declara o que NÃO prova.
+(acervo: 2026-09-02)
+
 **Critério que nomeia um arquivo leva o caminho conferido.** Nome sem caminho,
 e cláusula "se existir", são licença para o agente concluir ausência onde só
 faltou olhar na convenção certa — "se existir" só entra quando a inexistência
