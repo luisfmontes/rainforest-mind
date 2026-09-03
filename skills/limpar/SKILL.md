@@ -22,8 +22,8 @@ node scripts/limpar-worktrees.cjs
 O script lista todos os worktrees registrados e do disco, classifica cada um
 como:
 
-- **limpo**: pode ser removido (sem `.git` próprio ou sem alterações)
-- **sujo**: tem alterações — nunca remover sozinho
+- **limpo**: worktree registrado, com `.git` próprio e sem alterações — pode ser removido
+- **sujo**: tem `.git` próprio, mas há alterações — nunca remover sozinho
 - **órfão**: diretório sem `.git` próprio (responde pelo pai)
 
 **Por que `git -C <dir> status --porcelain` não é suficiente:** quando `<dir>`

@@ -498,5 +498,19 @@ gate "codex da JANELA PRINCIPAL PASSA"                  0 "$(p "codex exec --yol
 gatec "codex com caminho completo BARRA"                2 "$(printf '{\"agent_id\":\"ag-1\",\"tool_name\":\"Bash\",\"cwd\":\"%s\",\"tool_input\":{\"command\":\"/usr/bin/codex exec\"}}' "$(esc "$R")")"
 
 echo
+echo "== R1: cd nao resolvido antes de CLI que escreve nao pode liberar (2026-09-03) =="
+# `cd $(pwd)/../principal` fica INCERTO (contem `$(`); o cwd efetivo cai de volta
+# no proprio worktree, que e legitimo — sem o conserto o gate liberava, porque o
+# destino de verdade podia ser QUALQUER lugar, inclusive o repo principal.
+gate "cd \$(pwd) incerto antes de codex BARRA"          2 "$(b 'cd $(pwd)/../principal && codex exec --yolo' "$WT")"
+gate "codex dentro do worktree sem cd continua PASSANDO (regressao)" 0 "$(b "codex exec --yolo" "$WT")"
+
+echo
+echo "== R2: CLI citada em posicao de comando conta como comando (2026-09-03) =="
+gate "codex citado em posicao de comando BARRA (aspas duplas)" 2 "$(b '"codex" exec --yolo' "$R")"
+gate "codex citado em posicao de comando BARRA (aspas simples)" 2 "$(b "'codex' exec" "$R")"
+gate "codex citado em posicao de argumento (echo) PASSA"        0 "$(b 'echo "codex"' "$R")"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

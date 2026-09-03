@@ -418,15 +418,25 @@ function posicionaisApos(toks, i) {
 /**
  * Procura por CLI externa que escreve (codex, gemini, claude, aider, cursor, copilot).
  * Retorna o nome da CLI encontrada, ou null.
+ *
+ * Token citado so e IGNORADO em posicao de ARGUMENTO (`echo "codex"`): ali e
+ * texto. Em posicao de COMANDO — primeiro token de cada segmento separado por
+ * `;`, `&&`, `||`, `|` — um token citado (`"codex" exec --yolo`) e comando de
+ * verdade disfarcado de string, e ate 2026-09-03 passava batido porque o
+ * `if (tok.q) continue` pulava TODO token citado, sem olhar a posicao.
  */
 function procuraCLI(comando, clis) {
-  const toks = tokensComAspas(comando);
-  for (const tok of toks) {
-    if (tok.q) continue; // ignorar tokens citados
-    // Extrair nome do token, ignorando caminho e extensão .exe
-    const nome = tok.v.split(/[\\/]/).pop().replace(/\.exe$/, "");
-    if (clis.includes(nome)) {
-      return nome;
+  const segmentos = comando.split(SEPARADORES);
+  for (const seg of segmentos) {
+    const toks = tokensComAspas(seg);
+    for (let i = 0; i < toks.length; i += 1) {
+      const tok = toks[i];
+      if (tok.q && i !== 0) continue; // citado em posicao de argumento: ignora
+      // Extrair nome do token, ignorando caminho e extensão .exe
+      const nome = tok.v.split(/[\\/]/).pop().replace(/\.exe$/, "");
+      if (clis.includes(nome)) {
+        return nome;
+      }
     }
   }
   return null;
@@ -667,8 +677,30 @@ function main() {
         const cli = procuraCLI(entrada.command, CLIS_QUE_ESCREVEM);
         if (cli) {
           const cwdEfetivo = resolverCwdEfetivo(entrada.command, cwd);
-          alvos = [cwdEfetivo.cwd];
-          motivo = `CLI que escreve (${cli})`;
+          if (cwdEfetivo.incerto) {
+            // `cd` que nao resolve (variavel, subshell, `cd -`) pode levar a
+            // QUALQUER diretorio, inclusive o principal: `cd $(pwd)/../principal
+            // && codex exec --yolo` de dentro do worktree fica incerto, o cwd
+            // efetivo cai de volta no proprio worktree (legitimo) e o gate
+            // liberava. Mesmo espirito conservador do `alvosBash` (que soma o
+            // cwdInicial aos alvos quando incerto), mas aqui somar nao basta:
+            // o destino em si e desconhecido, entao bloqueia direto, sem
+            // passar pela classificacao de worktree que depende do proprio
+            // cwd que nao da pra confiar.
+            if (!ehScratchpad(cwd)) {
+              const estadoAqui = estadoDoRepo(cwd);
+              if (estadoAqui && !fs.existsSync(path.join(estadoAqui.toplevel, ".rainforest-gate-off"))) {
+                bloqueia(
+                  `CLI que escreve (${cli}) com cd nao resolvido — destino desconhecido`,
+                  estadoAqui.toplevel,
+                  `${ev.agent_type || "?"} (${ev.agent_id})`
+                );
+              }
+            }
+          } else {
+            alvos = [cwdEfetivo.cwd];
+            motivo = `CLI que escreve (${cli})`;
+          }
         }
       }
     }
