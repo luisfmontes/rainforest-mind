@@ -131,7 +131,7 @@ class Conferencia {
 
 /** Compara caminho sem tropecar em barra invertida, maiuscula e link. */
 // `realpathSync.native` primeiro, e nao por gosto: no Windows o `realpathSync`
-// puro do Node NAO expande nome curto 8.3 — ele devolve `C:/Users/RUNNER~1/...`
+// puro do Node NAO expande nome curto 8.3 — ele devolve `<home>/RUNNER~1/...` (forma 8.3)
 // como recebeu. O git, do outro lado, sempre responde na forma longa
 // (`C:/Users/runneradmin/...`). Comparar as duas por texto reprova uma entrega
 // correta, e esta funcao e exatamente quem decide se o worktree do briefing e o
