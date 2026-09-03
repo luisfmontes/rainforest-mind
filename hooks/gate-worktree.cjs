@@ -59,6 +59,7 @@ const { execFileSync } = require("node:child_process");
 const os = require("node:os");
 const fs = require("node:fs");
 const path = require("node:path");
+const { resolverCwdEfetivo, toplevelConfinado, CD, GIT_DIR_EXPLICITO, SEPARADORES } = require(path.join(__dirname, "lib", "cwd-efetivo.cjs"));
 
 const FERRAMENTAS_DE_ESCRITA = new Set(["Write", "Edit", "MultiEdit", "NotebookEdit"]);
 // Subcomandos de git que mexem no estado do checkout. `git stash`/`pop` foi a falha N1.
@@ -66,9 +67,6 @@ const VERBOS_QUE_MEXEM = new Set([
   "stash", "checkout", "switch", "co", "reset", "merge", "rebase",
   "commit", "clean", "cherry-pick", "revert",
 ]);
-// Separadores de comando. Cada segmento tem o seu proprio subcomando e o seu proprio
-// cwd — e por isso a travessia do `alvosBash` e a mesma usada para achar o verbo.
-const SEPARADORES = /&&|\|\||;|\n|\|/;
 // Opcoes globais do git, as que vem ANTES do subcomando. As de valor separado
 // (`-C <dir>`, `-c <k=v>`) precisam comer o proprio argumento, senao o valor delas
 // e lido como se fosse o subcomando.
@@ -286,11 +284,6 @@ function bloqueia(motivo, toplevel, agente) {
   process.exit(2);
 }
 
-// `cd X` isolado num segmento do encadeamento.
-const CD = /^\s*cd\s+(?:--\s+)?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s*$/;
-// Diretorio que o proprio git recebe, e que vence o cwd do shell.
-const GIT_DIR_EXPLICITO = /\bgit\b[^\n;&|]*?(?:-C|--work-tree(?:=|\s+))\s*(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))/;
-
 /**
  * Diretorios onde os `git` que MEXEM no repo realmente vao rodar.
  *
@@ -343,11 +336,11 @@ function alvosBash(comando, cwdInicial, casa = (seg) => {
       // O `~` so e expansao de home no COMECO (`~`, `~/x`, `~fulano/x`). Ate
       // 2026-08-17 este teste era /[$`~]/, que casava com o til em QUALQUER
       // posicao — e caminho do Windows tem til no meio o tempo todo, na forma
-      // 8.3: `C:/Users/RUNNER~1/...`, `C:/Users/LUISFE~1/...`. O efeito era o
+      // 8.3: `C:/PROGRA~1/...`, `<home>/DOCUM~1/...`. O efeito era o
       // pior possivel para um gate: `cd <worktree> && git commit` num caminho
       // 8.3 virava INCERTO, o conservadorismo somava o cwd principal aos alvos,
       // e o gate BARRAVA um commit perfeitamente legitimo dentro do worktree.
-      // Achado pelo CI (Issue #16): o TEMP do runner e `C:/Users/RUNNER~1/...`,
+      // Achado pelo CI (Issue #16): temp do runner pode ter formato 8.3,
       // e a bateria hooks/testa-gate-worktree.sh ficou vermelha la e verde aqui.
       // `$` e crase continuam valendo em qualquer posicao — sao expansao mesmo.
       if (/[$`]/.test(destino) || /^~/.test(destino) || destino === "-") { incerto = true; continue; }
@@ -407,11 +400,11 @@ function tokensComAspas(cmd) {
   return out;
 }
 
-// Operador de redirecionamento ANCORADO no inicio do token: `>a`, `>>a`, `2>a`,
-// `&>a`. A ancora e o que salva `foo->bar` e `x=>y`, que nunca comecam com `>`.
+// Operador de redirecionamento: quando a linha de comando redireciona para arquivo.
+// Procura por padrao no inicio do token, diferente de operadores em nomes.
 const OPERADOR_REDIRECT = /^(?:[0-9]*|&)(>>?)(.*)$/;
 
-/** Nome de comando, ignorando caminho: `/usr/bin/tee` conta como `tee`. */
+/** Nome de comando, ignorando caminho: um binario com caminho resolve para seu nome. */
 function ehComando(tok, nome) {
   return !tok.q && new RegExp("(^|[\\\\/])" + nome + "(\\.exe)?$").test(tok.v);
 }
