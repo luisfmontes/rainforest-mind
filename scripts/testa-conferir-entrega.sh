@@ -312,5 +312,63 @@ contem "  ... mencionando arquivo inexistente" "inexistente" \
 rm "$R/intruso-pre.txt"
 
 echo
+echo "== --escopo: verifica se os arquivos tocados estao dentro do(s) escopo(s) =="
+
+# Recriar o repo para evitar estado contaminado
+R=$(novo_repo escopo-test)
+BASE=$(git -C "$R" rev-parse HEAD)
+WT="$RAIZ/wt-escopo"
+git -C "$R" worktree add -q -b escopo-branch "$WT" >/dev/null 2>&1
+echo novo > "$WT/feito.txt"; git -C "$WT" add .; git -C "$WT" commit -qm "entrega com feito.txt"
+ESCOPO_BASE=$(git -C "$WT" rev-parse HEAD)
+
+# Caso (a): todos os arquivos tocados dentro do escopo -> aprova
+# Adiciona gerado/.gitignore como no outro repo
+mkdir -p "$WT/gerado"
+printf '*\n!.gitignore\n' > "$WT/gerado/.gitignore"
+git -C "$WT" add . >/dev/null 2>&1; git -C "$WT" commit -qm "adiciona gerado"
+ESCOPO_A_BASE=$(git -C "$WT" rev-parse HEAD~1)
+ESCOPO_A_COMMIT=$(git -C "$WT" rev-parse HEAD)
+esperado "escopo: todos dentro (feito.txt + gerado/**) -> aprova" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$ESCOPO_A_BASE" --commit "$ESCOPO_A_COMMIT" \
+  --escopo "feito.txt" --escopo "gerado/**"
+
+# Caso (b): arquivo MODIFICADO fora do escopo -> reprova nomeando-o
+# Cria um novo arquivo fora do escopo
+echo "novo arquivo" > "$WT/fora-escopo.txt"
+git -C "$WT" add . >/dev/null 2>&1; git -C "$WT" commit -qm "adiciona fora-escopo.txt"
+ESCOPO_B_BASE=$(git -C "$WT" rev-parse HEAD~1)
+ESCOPO_B_COMMIT=$(git -C "$WT" rev-parse HEAD)
+esperado "escopo: arquivo MODIFICADO fora -> reprova" 1 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$ESCOPO_B_BASE" --commit "$ESCOPO_B_COMMIT" \
+  --escopo "feito.txt" --escopo "gerado/**"
+contem "  ... e nomeia fora-escopo.txt (A status)" "fora-escopo.txt" \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$ESCOPO_B_BASE" --commit "$ESCOPO_B_COMMIT" \
+  --escopo "feito.txt" --escopo "gerado/**"
+
+# Caso (c): arquivo DELETADO fora do escopo -> reprova nomeando-o (espelha #131)
+# Cria 25 arquivos fora do escopo
+mkdir -p "$WT/lixo"
+for i in {1..25}; do
+  echo "arquivo $i" > "$WT/lixo/arquivo-$i.txt"
+done
+git -C "$WT" add . >/dev/null 2>&1; git -C "$WT" commit -qm "adiciona 25 no lixo"
+ESCOPO_C_BASE=$(git -C "$WT" rev-parse HEAD)
+# Deleta todos
+rm -rf "$WT/lixo"
+git -C "$WT" add . >/dev/null 2>&1; git -C "$WT" commit -qm "deleta 25 do lixo"
+ESCOPO_C_COMMIT=$(git -C "$WT" rev-parse HEAD)
+esperado "escopo: 25 arquivos DELETADOS fora -> reprova (#131)" 1 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$ESCOPO_C_BASE" --commit "$ESCOPO_C_COMMIT" \
+  --escopo "feito.txt" --escopo "gerado/**"
+contem "  ... e menciona 25 arquivos fora" "25 arquivo" \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$ESCOPO_C_BASE" --commit "$ESCOPO_C_COMMIT" \
+  --escopo "feito.txt" --escopo "gerado/**"
+
+# Caso (d): sem --escopo nenhum -> comportamento idêntico ao de hoje (retrocompatível)
+esperado "escopo: SEM --escopo nenhum -> aprovado (retrocompativel)" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$ESCOPO_C_BASE" --commit "$ESCOPO_C_COMMIT"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
