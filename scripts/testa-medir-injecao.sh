@@ -52,6 +52,24 @@ echo "(raiz neutra: $RAIZ_NEUTRA)"
 
 ALVO="$SRC/scripts/medir-injecao.py"
 
+# Issue #159: o instalador oficial do Windows cria so `python.exe`; a imagem do
+# Actions cria `python3` tambem. O alvo desta bateria E um script Python, entao
+# a dependencia e real — o que nao pode e o NOME do binario decidir o veredito.
+# Sem Python 3 nenhum, a bateria PULA com exit 3 (nem verde, nem "quebrou").
+# Os candidatos sao testados executando: no Windows, `python3` pode ser o stub
+# da Store, que existe no PATH e nao roda nada.
+PY=""
+for cand in python3 python; do
+  if command -v "$cand" >/dev/null 2>&1 && "$cand" -c 'import sys; sys.exit(0 if sys.version_info[0] == 3 else 1)' >/dev/null 2>&1; then
+    PY="$cand"; break
+  fi
+done
+if [ -z "$PY" ]; then
+  echo "PULADA: esta bateria precisa de Python 3 (python3 ou python no PATH) — o alvo dela, scripts/medir-injecao.py, e Python"
+  exit 3
+fi
+echo "(interprete: $PY)"
+
 ok=0; falhou=0; pulou=0
 tem()     { if echo "$2" | grep -qF -- "$3"; then ok=$((ok+1)); echo "  ok   $1"; else falhou=$((falhou+1)); echo "  FALHA $1 (esperava achar '$3')"; fi; }
 nao_tem() { if echo "$2" | grep -qF -- "$3"; then falhou=$((falhou+1)); echo "  FALHA $1 (achou '$3')"; else ok=$((ok+1)); echo "  ok   $1"; fi; }
@@ -72,7 +90,7 @@ campo_atrib_tokens() { echo "$1" | grep -E '^atribuido[[:space:]]' | head -1 | a
 # arredondamento ",.0f" do print). É a asserção do defeito 4.
 bate_token() {
   local rotulo="$1" bytes="$2" tokens="$3" esperado diff
-  esperado="$(python -c "print(round($bytes/3.11))" 2>/dev/null)"
+  esperado="$("$PY" -c "print(round($bytes/3.11))" 2>/dev/null)"
   diff=$(( tokens - esperado )); diff=${diff#-}
   if [ "$diff" -le 1 ]; then
     ok=$((ok+1)); echo "  ok   $rotulo: ${bytes} B casa com ${tokens} tokens~ (esperado ~$esperado)"
@@ -103,7 +121,7 @@ mutante_detectado_se() {
 sabotar_linha() {
   local n="$1" achar="$2" trocar="$3" alvo="$4"
   if [ ! -f "$alvo" ]; then cp "$ALVO" "$alvo"; fi
-  N="$n" ACHAR="$achar" TROCAR="$trocar" ALVO_PY="$alvo" python3 <<'PY'
+  N="$n" ACHAR="$achar" TROCAR="$trocar" ALVO_PY="$alvo" "$PY" <<'PY'
 import os
 n = int(os.environ["N"]) - 1
 achar = os.environ["ACHAR"]
@@ -126,7 +144,7 @@ sabotar_bloco() {
   local ini="$1" fim="$2" ancora="$3" alvo="$4"
   local novo; novo="$(cat)"
   if [ ! -f "$alvo" ]; then cp "$ALVO" "$alvo"; fi
-  INI="$ini" FIM="$fim" ANCORA="$ancora" NOVO="$novo" ALVO_PY="$alvo" python3 <<'PY'
+  INI="$ini" FIM="$fim" ANCORA="$ancora" NOVO="$novo" ALVO_PY="$alvo" "$PY" <<'PY'
 import os
 ini = int(os.environ["INI"]) - 1
 fim = int(os.environ["FIM"])
@@ -145,15 +163,15 @@ print(f"  (sabotagem: linhas {ini+1}-{fim} -> {novo!r})")
 PY
 }
 
-rodar() { python "$ALVO" --repartir "$1" 2>&1; }
-rodar_mutante() { python "$1" --repartir "$2" 2>&1; }
+rodar() { "$PY" "$ALVO" --repartir "$1" 2>&1; }
+rodar_mutante() { "$PY" "$1" --repartir "$2" 2>&1; }
 
 # =========================================================================
 echo; echo "0. o marcador bate com o hook REAL (nao fixture)"
 # O RAINFOREST_MARKER que o repartir() usa para reconhecer "qual item da lista
 # é nosso" é lido do PRÓPRIO medir-injecao.py, não digitado aqui de novo — o
 # que se afirma é que ele ainda bate com o que o hook de verdade emite hoje.
-MARCADOR="$(ALVO_PY="$ALVO" python3 <<'PY'
+MARCADOR="$(ALVO_PY="$ALVO" "$PY" <<'PY'
 import os, re
 t = open(os.environ["ALVO_PY"], encoding="utf-8").read()
 m = re.search(r'RAINFOREST_MARKER = "(.*)"', t)
@@ -195,9 +213,9 @@ LINE3="- ${AG2_ID}: ${AG2_DESC}"
 RF_BYTES_1="$(printf '%s\n%s' "$LINE1" "$LINE3" | wc -c)"
 
 FX1="$SBP/1-agentes.jsonl"
-LINES_JSON="$(python3 -c "import json,sys; print(json.dumps(sys.argv[1:]))" "$LINE1" "$LINE2" "$LINE3")"
-TYPES_JSON="$(python3 -c "import json,sys; print(json.dumps(sys.argv[1:]))" "$AG1_ID" "$OUT_ID" "$AG2_ID")"
-FIX_PATH="$FX1" LINES_JSON="$LINES_JSON" TYPES_JSON="$TYPES_JSON" python3 <<'PY'
+LINES_JSON="$("$PY" -c "import json,sys; print(json.dumps(sys.argv[1:]))" "$LINE1" "$LINE2" "$LINE3")"
+TYPES_JSON="$("$PY" -c "import json,sys; print(json.dumps(sys.argv[1:]))" "$AG1_ID" "$OUT_ID" "$AG2_ID")"
+FIX_PATH="$FX1" LINES_JSON="$LINES_JSON" TYPES_JSON="$TYPES_JSON" "$PY" <<'PY'
 import json, os
 lines = json.loads(os.environ["LINES_JSON"])
 types = json.loads(os.environ["TYPES_JSON"])
@@ -229,7 +247,7 @@ mutante_detectado_num "fatia infla incluindo linha de outro plugin" "$RF_BYTES_1
 # =========================================================================
 echo; echo "2, 3 e 4. hook_additional_context lido, 'nao atribuido' marcada, byte casado com token da mesma linha"
 FX_GERAL="$SBP/geral.jsonl"
-FIX_PATH="$FX_GERAL" python3 <<'PY'
+FIX_PATH="$FX_GERAL" "$PY" <<'PY'
 import json, os
 skill = 'k' * 700
 deferred = 'l' * 250
@@ -291,13 +309,13 @@ SAIDA4M="$(rodar_mutante "$MUT4" "$FX_GERAL")"
 echo "  saida do mutante (linhas da tabela):"
 echo "$SAIDA4M" | grep -E 'skill_listing|deferred_tools_delta|agent_listing_delta|hook_additional_context' | sed 's/^/    /'
 T4="$(campo_tokens "$SAIDA4M" 'hook_additional_context')"
-ESPERADO4="$(python -c 'print(round(450/3.11))')"
+ESPERADO4="$("$PY" -c 'print(round(450/3.11))')"
 mutante_detectado_num "token de hook_additional_context casado com o byte de outra linha" "$ESPERADO4" "$T4"
 
 # =========================================================================
 echo; echo "5. total_tokens do PRIMEIRO SessionStart, fontes do MESMO primeiro (nao do ultimo)"
 FX5="$SBP/5-duplo.jsonl"
-FIX_PATH="$FX5" python3 <<'PY'
+FIX_PATH="$FX5" "$PY" <<'PY'
 import json, os
 skill1 = 'p' * 600
 hook1 = 'q' * 300
@@ -341,7 +359,7 @@ mutante_detectado_num "skill_listing passa a vir do ULTIMO bloco (2000), nao do 
 echo; echo "6. hook_additional_context.content e LISTA — conteudo de outro plugin nao pode contar como nosso"
 MARCADOR_6="${MARCADOR:-RAINFOREST MIND ATIVO}"
 FX6="$SBP/6-conteudo.jsonl"
-FIX_PATH="$FX6" MARCADOR_ENV="$MARCADOR_6" python3 <<'PY'
+FIX_PATH="$FX6" MARCADOR_ENV="$MARCADOR_6" "$PY" <<'PY'
 import json, os
 marcador = os.environ["MARCADOR_ENV"]
 item_a = marcador + 'a' * (500 - len(marcador.encode('utf-8')))
@@ -391,8 +409,8 @@ mutante_detectado_num "fatia passa a incluir o item do claude-mem" "500" "$FATIA
 #  15. (achado 10, rodada de revisao) campo_entrega() nao pode corromper
 #      numero grande so porque ele estoura a largura nominal da coluna.
 
-rodar_entrega() { python "$ALVO" --entrega "$1" 2>&1; }
-rodar_entrega_mutante() { python "$1" --entrega "$2" 2>&1; }
+rodar_entrega() { "$PY" "$ALVO" --entrega "$1" 2>&1; }
+rodar_entrega_mutante() { "$PY" "$1" --entrega "$2" 2>&1; }
 # extrai a linha da tabela de --entrega que contem o nome do hook.
 linha_entrega() { printf '%s\n' "$1" | grep -F -- "$2" | head -1; }
 # quando(20) e hook(28) sao SEMPRE largura fixa por construcao da propria
@@ -407,7 +425,7 @@ linha_entrega() { printf '%s\n' "$1" | grep -F -- "$2" | head -1; }
 # "estado" inteiro, que PODE ter espaco dentro ("sem corte") — por isso o
 # maxsplit para exatamente ai e nao mais.
 campo_entrega() {
-  LINHA="$1" CAMPO="$2" python3 <<'PY'
+  LINHA="$1" CAMPO="$2" "$PY" <<'PY'
 import os
 linha = os.environ["LINHA"]
 campo = os.environ["CAMPO"]
@@ -430,7 +448,7 @@ PY
 # =========================================================================
 echo; echo "7. emitido e chegou NAO PODEM INVERTER (a sabotagem que motivou este trabalho)"
 FX7="$SBP/7-inversao.jsonl"
-FIX_PATH="$FX7" python3 <<'PY'
+FIX_PATH="$FX7" "$PY" <<'PY'
 import json, os
 with open(os.environ["FIX_PATH"], "w", encoding="utf-8") as f:
     f.write(json.dumps({"timestamp": "2026-01-01T10:00:00Z", "toolUseResult": {"hooks": [{
@@ -459,7 +477,7 @@ mutante_detectado_num "emitido passa a valer o tamanho do content, nao do stdout
 # =========================================================================
 echo; echo "8. truncamento pelo MARCADOR <persisted-output>, mesmo com chegou > emitido"
 FX8="$SBP/8-marcador.jsonl"
-FIX_PATH="$FX8" python3 <<'PY'
+FIX_PATH="$FX8" "$PY" <<'PY'
 import json, os
 content = "<persisted-output>" + "D" * 60
 with open(os.environ["FIX_PATH"], "w", encoding="utf-8") as f:
@@ -484,7 +502,7 @@ mutante_detectado_num "marcador ignorado -> deixa de ser TRUNCADO" "TRUNCADO" "$
 # =========================================================================
 echo; echo "9. truncamento POR TAMANHO (0 < chegou < emitido), sem marcador"
 FX9="$SBP/9-tamanho.jsonl"
-FIX_PATH="$FX9" python3 <<'PY'
+FIX_PATH="$FX9" "$PY" <<'PY'
 import json, os
 with open(os.environ["FIX_PATH"], "w", encoding="utf-8") as f:
     f.write(json.dumps({"timestamp": "2026-01-01T10:00:02Z", "toolUseResult": {"hooks": [{
@@ -508,7 +526,7 @@ mutante_detectado_num "tamanho ignorado -> deixa de ser TRUNCADO" "TRUNCADO" "$E
 # =========================================================================
 echo; echo "10. NAO truncado quando chegou == emitido, sem marcador (pega inversao de sinal)"
 FX10="$SBP/10-igual.jsonl"
-FIX_PATH="$FX10" python3 <<'PY'
+FIX_PATH="$FX10" "$PY" <<'PY'
 import json, os
 with open(os.environ["FIX_PATH"], "w", encoding="utf-8") as f:
     f.write(json.dumps({"timestamp": "2026-01-01T10:00:03Z", "toolUseResult": {"hooks": [{
@@ -532,7 +550,7 @@ mutante_detectado_num "igualdade passa a contar como TRUNCADO" "sem corte" "$EST
 # =========================================================================
 echo; echo "11. hook que NAO E SessionStart fica de fora da tabela"
 FX11="$SBP/11-filtro.jsonl"
-FIX_PATH="$FX11" python3 <<'PY'
+FIX_PATH="$FX11" "$PY" <<'PY'
 import json, os
 with open(os.environ["FIX_PATH"], "w", encoding="utf-8") as f:
     f.write(json.dumps({"timestamp": "2026-01-01T10:00:04Z", "toolUseResult": {"hooks": [{
@@ -560,7 +578,7 @@ esac
 # =========================================================================
 echo; echo "12. DEDUPLICACAO por (command, emitido, chegou)"
 FX12="$SBP/12-dedup.jsonl"
-FIX_PATH="$FX12" python3 <<'PY'
+FIX_PATH="$FX12" "$PY" <<'PY'
 import json, os
 registro = {"hookEvent": "SessionStart", "hookName": "SessionStart:resume", "stdout": "K" * 10, "content": "K" * 2,
             "command": "node hooks/duplicado.cjs", "exitCode": 0}
@@ -585,7 +603,7 @@ mutante_detectado_num "dedup quebrada -> duas linhas em vez de uma" "1" "$CONT12
 # =========================================================================
 echo; echo "13. a varredura por forma (_varrer) desce em PROFUNDIDADE ARBITRARIA"
 FX13="$SBP/13-profundo.jsonl"
-FIX_PATH="$FX13" python3 <<'PY'
+FIX_PATH="$FX13" "$PY" <<'PY'
 import json, os
 # hook enterrado 4 niveis abaixo, dentro de dict->dict->list->dict — nenhum
 # caminho fixo, so a FORMA (hookEvent + stdout) identifica o registro.
@@ -624,7 +642,7 @@ echo; echo "14. ANCORAGEM contra transcript REAL (nao fixture): hookEvent nunca 
 # calada — conta em "pulou", visivel no relatorio final, nunca em ok/falhou
 # (o estado da maquina de quem roda o teste nao pode fazer o gate oscilar).
 RAIZ_TRANSCRIPTS="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects"
-RESULTADO14="$(RAIZ="$RAIZ_TRANSCRIPTS" python3 <<'PY'
+RESULTADO14="$(RAIZ="$RAIZ_TRANSCRIPTS" "$PY" <<'PY'
 import json, os
 from pathlib import Path
 
@@ -727,7 +745,7 @@ fi
 # =========================================================================
 echo; echo "15. campo_entrega() NAO CORROMPE numero grande que estoura a largura nominal (achado 10)"
 FX15="$SBP/15-numero-grande.jsonl"
-FIX_PATH="$FX15" python3 <<'PY'
+FIX_PATH="$FX15" "$PY" <<'PY'
 import json, os
 with open(os.environ["FIX_PATH"], "w", encoding="utf-8") as f:
     f.write(json.dumps({"timestamp": "2026-01-01T10:00:09Z", "toolUseResult": {"hooks": [{
@@ -745,7 +763,7 @@ igual "chegou de 500.000 (7 digitos com virgula) nao corrompe, extrai 500000 int
 
 echo "  -- mutacao 15: volta ao fatiamento por indice fixo (achado 10 original)"
 mutacao_campo_entrega_fixo() {
-  LINHA="$1" CAMPO="$2" python3 <<'PY'
+  LINHA="$1" CAMPO="$2" "$PY" <<'PY'
 import os
 linha = os.environ["LINHA"]
 campo = os.environ["CAMPO"]

@@ -24,7 +24,15 @@ set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ok=0; falhou=0
 
-SAIDA="$(node "$SRC/hooks/foco-session-start.cjs" 2>/dev/null)"
+# O bloco "Dependencias de ambiente (regra 14)" so e emitido quando ha algo
+# checado — e a checagem da bridge so roda com WHATSAPP_API_BASE_URL declarada.
+# Ate 2026-09-02 a bateria herdava o ambiente de quem a roda: verde na maquina
+# do dono (variavel no ambiente), vermelha no runner (Issues #153 e #163). A
+# bateria passa a DECLARAR a dependencia, apontando para uma porta que recusa na
+# hora: o que se afirma e que o bloco existe e vem do foco-session-start.cjs,
+# nao que a bridge esta de pe. A raiz de dados e descartavel (Issue #160).
+DADOS="$(mktemp -d)"; trap 'rm -rf "$DADOS"' EXIT
+SAIDA="$(RFM_ROOT="$DADOS" WHATSAPP_API_BASE_URL="http://127.0.0.1:1/api" node "$SRC/hooks/foco-session-start.cjs" 2>/dev/null)"
 
 echo "== D1: nada deste trabalho entrou na abertura =="
 

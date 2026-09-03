@@ -142,7 +142,7 @@ if git -C "$RAIZ" cat-file -e e1a6824^{commit} 2>/dev/null && git -C "$RAIZ" cat
   # `decisao-que-evapora-na-esteira` — o primeiro trabalho seguinte a entrar na
   # branch coloca no diff arquivos que o plano dele nao declara, e o creep passa
   # a acusar CORRETAMENTE, derrubando um teste que nao tem nada a ver.
-  # Aconteceu em 2026-08-14, ao integrar o fluxo do orcamento de token: 21 ok
+  # Aconteceu em 2026-08-14, ao integrar o fluxo do orcamento de tokens (21 ok
   # na main, 20 ok / 1 falha na branch seguinte. Mesma familia do fixture do
   # testa-saude.sh: teste que afirma sobre o estado corrente do repo envelhece
   # sozinho. `f9fe746` e o squash do PR #9, ou seja, exatamente a ponta daquele
@@ -497,6 +497,31 @@ fi
 # bateria deixa arquivo nao rastreado atras de si e o proximo git status mente.
 rm -f "$SENTINELA"
 rm -rf "$CAIXA_INJ"
+
+echo
+echo "== 9. reaberto_por e da maquina, e reaberto nao esta fechado (Issue #148) =="
+# No fechamento do fluxo 6 (PR #147) um `marcar` recebeu `"reaberto_por": "texto"`
+# pelo --json, gravou a string, e o `exigir` seguinte imprimiu 'undefined'. Pior:
+# no MESMO estado o `exigir` recusava e o `marcar` fechava, porque so o `exigir`
+# olhava o campo. Dois consertos, dois casos.
+E9(){ RFM_ESTADO_ROOT="$W" node "$ESTADO" "$@"; }
+rm -f "$S/docs/rainforest/estado/r148.json"; E9 iniciar --slug r148 >/dev/null 2>&1
+exige 1 "reaberto_por pelo --json e recusado" E9 marcar --slug r148 --estagio design --status aprovado --json '{"reaberto_por":"texto livre"}'
+exige_msg "Issue #148" "e a recusa diz de onde o campo vem" E9 marcar --slug r148 --estagio design --status aprovado --json '{"reaberto_por":"texto livre"}'
+# Estado escrito direto no disco: executar "ok" E reaberto por reprovacao — a forma
+# que a reabertura produz e que o `marcar` deixava passar como fechado.
+node -e '
+  const fs=require("fs"), p=process.argv[1];
+  const e=JSON.parse(fs.readFileSync(p,"utf8"));
+  e.design={status:"aprovado",em:"2026-09-02"}; e.plano={status:"ok",em:"2026-09-02"};
+  e.executar={status:"ok",em:"2026-09-02",reaberto_por:{estagio:"verificar",data:"2026-09-02"}};
+  e.revisar={status:"ok",em:"2026-09-02"};
+  fs.writeFileSync(p,JSON.stringify(e,null,2));
+' "$S/docs/rainforest/estado/r148.json"
+L9="$(E9 listar 2>&1 | grep 'r148')"
+if printf '%s' "$L9" | grep -q -- '-> executar'; then ok=$((ok+1)); echo "  ok    executar reaberto e o proximo, mesmo com status ok"; else falhou=$((falhou+1)); echo "  FALHA executar reaberto deveria ser o proximo; veio: $L9"; fi
+exige 2 "verificar nao fecha por cima de executar reaberto" E9 marcar --slug r148 --estagio verificar --status ok --json '{"comando":"x","saida":"y"}'
+exige 2 "e o exigir concorda com o marcar" E9 exigir --slug r148 --estagio verificar
 
 echo
 echo "-----------------------------------------"

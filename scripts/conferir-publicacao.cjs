@@ -83,7 +83,12 @@ const PADROES = [
     // versionado do próprio repositório — em toda rodada, desde sempre. Falso
     // positivo permanente em arquivo que nunca vai mudar é como se aprende a
     // ignorar a saída inteira.
-    so_se: (m) => {
+    so_se: (m, linha) => {
+      // Issue #144: saída de xxd / hexdump -C / od -tx1 tem forma mecânica, e o
+      // gate lia bytes como telefone — barrando a única evidência que prova um
+      // defeito de encoding. A isenção vale só para match DENTRO dos grupos hex;
+      // a coluna ASCII do dump, se mostrar um telefone legível, continua recusada.
+      if (dentroDeDumpHex(m, linha)) return false;
       const digitos = m[0].replace(/\D/g, '');
       return !/^(\d)\1*$/.test(digitos);
     },
@@ -127,7 +132,7 @@ const PADROES = [
     re: /\b(senha|password|api[_-]?key|apikey|secret|token|authorization)\s*[:=]\s*["']?(\S+)/gi,
     o_que: 'credencial atribuída a uma chave',
     faca: 'nunca cole credencial em relatório, nem revogada — troque por `<redigido>`',
-    // O `i` vale para a CHAVE, e não é negociável: `API_KEY:` e `SENHA:` são as
+    // O `i` vale para a CHAVE, e não é negociável: `API_KEY` e `SENHA` seguidas de dois-pontos são as
     // formas mais comuns em log e config, e padrão case-sensitive fica cego para
     // as duas. Quem separa prosa de segredo é o `so_se`, em código — a distinção
     // não cabe na mesma regex que ignora caixa.
@@ -159,6 +164,15 @@ const CEGO = [
   'nome de cliente, de sistema ou de projeto interno',
   'print, log ou stack trace colado com conteúdo de terceiro dentro',
 ];
+
+// Trecho hex de um dump: offset opcional (7–8 hex, dois-pontos opcional) seguido
+// de pelo menos quatro grupos de 2 ou 4 hex separados por espaço. É a forma de
+// `xxd`, `hexdump -C` e `od -An -tx1`; prosa com números não a produz.
+const RE_TRECHO_HEX = /^\s*(?:[0-9a-f]{7,8}:?\s+)?(?:[0-9a-f]{2}(?:[0-9a-f]{2})?\s+){3,}[0-9a-f]{2}(?:[0-9a-f]{2})?/i;
+function dentroDeDumpHex(m, linha) {
+  const t = RE_TRECHO_HEX.exec(linha);
+  return !!t && m.index + m[0].length <= t[0].length;
+}
 
 function conferir(texto) {
   const achados = [];

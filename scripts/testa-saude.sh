@@ -1111,8 +1111,10 @@ fi
 
 # R2: com poda ligada e sem pidfile, aparece aviso
 R2_TEST="$SBP/test-poda-on"
-mkdir -p "$R2_TEST"
-R2="$( ( cd "$R2_TEST" && node "$SRC/scripts/saude.cjs" --json 2>/dev/null ) | node -e "
+# Issue #160/#153: sem RFM_ROOT este caso lia a config de quem roda a bateria —
+# verde na maquina do dono (config com poda), "ausente" no runner (sem config).
+mkdir -p "$R2_TEST/.rainforest"
+R2="$( ( cd "$R2_TEST" && RFM_ROOT="$R2_TEST/.rainforest" node "$SRC/scripts/saude.cjs" --json 2>/dev/null ) | node -e "
   let d=''; process.stdin.on('data', c => d += c).on('end', () => {
     try {
       const a = JSON.parse(d).find(x => x.item === 'poda');
