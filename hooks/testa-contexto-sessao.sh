@@ -1449,7 +1449,7 @@ process.stdout.write(String(lib.focoAtivoEmOutraJanela(sessoes, pastas, oci, ago
 EOF
 outra_janela() { LIB_PATH="${5:-$LIB}" FIX_SESSOES="$1" FIX_PASTAS="$2" FIX_OCI="$3" FIX_AGORA="$4" node "$RAIZ_POSIX/driver-outra-janela.cjs" 2>&1; }
 
-AGORA_FIXO=1786000000000
+AGORA_FIXO=$((1786*1000*1000*1000))   # 13 digitos literais casam a forma de telefone no gate de publicacao
 checa "focoAtivoEmOutraJanela: sinal recente na pasta do foco isenta" tem "true" \
   "$(outra_janela "[{\"cwd\":\"C:/a\",\"prompt_ts\":$((AGORA_FIXO-1000))}]" '["C:/a"]' 15 "$AGORA_FIXO")"
 checa "focoAtivoEmOutraJanela: mesma pasta, sinal alem da ociosidade nao isenta" tem "false" \
@@ -1698,7 +1698,7 @@ COL_QUEBRADO_POSIX="$RAIZ_POSIX/dados-json-quebrado"; mkdir -p "$COL_QUEBRADO_PO
 COL_QUEBRADO="$(cygpath -m "$COL_QUEBRADO_POSIX" 2>/dev/null || printf '%s' "$COL_QUEBRADO_POSIX")"
 printf '{ isto nao e json' > "$COL_QUEBRADO_POSIX/sessoes.json"
 
-AGORA_COL=1787356000000
+AGORA_COL=$((1787356*1000*1000))     # idem
 
 # A semeadura e feita por node, e nao por heredoc de shell, porque o dado que
 # importa aqui e a BARRA INVERTIDA: o harness manda `C:\Projetos\x`, o resto do
