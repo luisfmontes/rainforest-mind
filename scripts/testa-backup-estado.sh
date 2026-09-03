@@ -47,6 +47,7 @@ montar() {
   # `Cannot find module`, e a bateria mede a caixa em vez do artefato.
   mkdir -p "$SB/plugin/scripts" "$SB/plugin/vigias" "$SB/plugin/hooks/lib"
   cp "$SRC/scripts/foco.cjs" "$SB/plugin/scripts/foco.cjs"
+  cp "$SRC/scripts/backup.cjs" "$SB/plugin/scripts/backup.cjs"
   cp "$SRC/hooks/lib/raiz.cjs" "$SB/plugin/hooks/lib/raiz.cjs"
   cp "$SRC/hooks/lib/contexto-sessao.cjs" "$SB/plugin/hooks/lib/contexto-sessao.cjs"
   cp "$SRC/vigias/backup-estado.ps1" "$SB/plugin/vigias/backup-estado.ps1"
@@ -322,6 +323,100 @@ if grep -E '^\s*#' "$SRC/vigias/run-vigia.ps1" | grep -q 'Write-LinhaEmLf'; then
   ok=$((ok+1)); echo "  ok    o comentario cita 'Write-LinhaEmLf' e a trava nao acende por isso"
 else
   falhou=$((falhou+1)); echo "  FALHA o comentario deveria citar 'Write-LinhaEmLf' — sem isso a trava nao esta provada nos dois sentidos"
+fi
+
+echo
+echo "== 12. (a) caminho feliz - o destino sandbox ganha o zip do dia =="
+montar
+SB_BACKUP="$(mktemp -d)"
+trap "rm -rf $SB_BACKUP" RETURN
+rm -f "$SB/plugin/vigias/log.txt"
+RFM_ROOT="$(win "$SB/dados")" RFM_BACKUP_DESTINO="$(win "$SB_BACKUP")" powershell -NoProfile -ExecutionPolicy Bypass \
+  -File "$(win "$SB/plugin/vigias/backup-estado.ps1")" \
+  -Vigia sentinela-foco -Plugin "$(win "$SB/plugin")" \
+  -Log "$(win "$SB/plugin/vigias/log.txt")" > /dev/null 2>&1
+n=$(ls "$SB_BACKUP"/rainforest-*.zip 2>/dev/null | wc -l)
+igual "o destino recebeu um rainforest-*.zip" "$n" "1"
+# Se falhou, imprime o log para debug
+if [ "$n" != "1" ] && [ -f "$SB/plugin/vigias/log.txt" ]; then
+  echo "  -- log.txt:"
+  sed 's/^/     /' "$SB/plugin/vigias/log.txt"
+fi
+if [ $n -gt 0 ]; then
+  ok=$((ok+1)); echo "  ok    o zip foi criado no destino sandbox"
+else
+  falhou=$((falhou+1)); echo "  FALHA nenhum zip no destino"
+fi
+
+echo
+echo "== 13. (b) backup local do FOCO.md continua igual, sem regressao =="
+montar
+SB_BACKUP="$(mktemp -d)"
+trap "rm -rf $SB_BACKUP" RETURN
+RFM_ROOT="$(win "$SB/dados")" RFM_BACKUP_DESTINO="$(win "$SB_BACKUP")" powershell -NoProfile -ExecutionPolicy Bypass \
+  -File "$(win "$SB/plugin/vigias/backup-estado.ps1")" \
+  -Vigia sentinela-foco -Plugin "$(win "$SB/plugin")" 2>&1 | grep -v 'warning:' || true
+n=$(ls "$SB/dados/.foco-backups" 2>/dev/null | wc -l)
+igual "criou exatamente uma copia local" "$n" "1"
+copia=$(ls "$SB/dados/.foco-backups"/*.md 2>/dev/null | head -1)
+if [ -n "$copia" ] && cmp -s "$SB/dados/FOCO.md" "$copia"; then
+  ok=$((ok+1)); echo "  ok    a copia local e byte a byte igual ao FOCO.md"
+else
+  falhou=$((falhou+1)); echo "  FALHA a copia local nao confere com o FOCO.md"
+fi
+
+echo
+echo "== 14. (c) -Teste nao grava nem backup local nem externo =="
+montar
+SB_BACKUP="$(mktemp -d)"
+trap "rm -rf $SB_BACKUP" RETURN
+RFM_ROOT="$(win "$SB/dados")" RFM_BACKUP_DESTINO="$(win "$SB_BACKUP")" powershell -NoProfile -ExecutionPolicy Bypass \
+  -File "$(win "$SB/plugin/vigias/backup-estado.ps1")" \
+  -Vigia sentinela-foco -Plugin "$(win "$SB/plugin")" \
+  -Teste 2>&1 | grep -v 'warning:' || true
+if [ ! -d "$SB/dados/.foco-backups" ]; then
+  ok=$((ok+1)); echo "  ok    -Teste nao criou backup local"
+else
+  falhou=$((falhou+1)); echo "  FALHA -Teste criou backup local"
+fi
+n=$(ls "$SB_BACKUP"/rainforest-*.zip 2>/dev/null | wc -l)
+if [ "$n" = "0" ]; then
+  ok=$((ok+1)); echo "  ok    -Teste nao criou backup externo"
+else
+  falhou=$((falhou+1)); echo "  FALHA -Teste criou backup externo ($n zip)"
+fi
+
+echo
+echo "== 15. (d) backup externo falhando registra erro e script continua =="
+montar
+SB_BACKUP="$(mktemp -d)"
+trap "rm -rf $SB_BACKUP" RETURN
+rm -f "$SB/plugin/vigias/log.txt"
+# Cria um backup.cjs quebrado que sai com erro
+cat > "$SB/plugin/scripts/backup.cjs" << 'EOF'
+#!/usr/bin/env node
+process.exit(2);
+EOF
+RFM_ROOT="$(win "$SB/dados")" RFM_BACKUP_DESTINO="$(win "$SB_BACKUP")" powershell -NoProfile -ExecutionPolicy Bypass \
+  -File "$(win "$SB/plugin/vigias/backup-estado.ps1")" \
+  -Vigia sentinela-foco -Plugin "$(win "$SB/plugin")" \
+  -Log "$(win "$SB/plugin/vigias/log.txt")" > /dev/null 2>&1
+codigo=$?
+# Script deve sair com 0 mesmo com falha do backup externo (backup local ja foi feito)
+igual "script sai com 0 apesar da falha do backup externo" "$codigo" "0"
+# O backup local tem de ter sido feito mesmo assim
+n=$(ls "$SB/dados/.foco-backups" 2>/dev/null | wc -l)
+igual "backup local aconteceu mesmo com falha do externo" "$n" "1"
+# O erro tem de estar registrado no ERROS.md
+conteudo=$(cat "$SB/plugin/vigias/ERROS.md" 2>/dev/null)
+if printf '%s' "$conteudo" | grep -q 'backup externo falhou'; then
+  ok=$((ok+1)); echo "  ok    erro do backup externo foi registrado em ERROS.md"
+else
+  falhou=$((falhou+1)); echo "  FALHA erro nao foi registrado em ERROS.md"
+  echo "  -- ERROS.md:"
+  printf '%s\n' "$conteudo" | sed 's/^/     /'
+  echo "  -- log.txt:"
+  cat "$SB/plugin/vigias/log.txt" 2>/dev/null | sed 's/^/     /'
 fi
 
 echo
