@@ -15,9 +15,28 @@ const path = require('path');
 const os = require('os');
 const { spawnSync } = require('child_process');
 const { MARCADOR } = require(path.join(__dirname, '..', 'hooks', 'lib', 'marcador-evidencia.cjs'));
+const { resolverExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
 // Parse argumentos
 const args = process.argv.slice(2);
+
+// Modo trava: verificar que gh é do sandbox (uso: node scripts/fechar-issue.cjs --verificar-gh <expected-dir>)
+if (args[0] === '--verificar-gh' && args[1]) {
+  const ghCmd = resolverExecutavel('gh');
+  if (!ghCmd) {
+    console.error('gh nao achado');
+    process.exit(2);
+  }
+  const expectedDir = path.resolve(args[1]);
+  const ghDir = path.dirname(path.resolve(ghCmd));
+  if (ghDir !== expectedDir) {
+    console.error(`gh nao eh do sandbox: ${ghCmd}`);
+    process.exit(1);
+  }
+  console.log(`OK: gh eh do sandbox: ${ghCmd}`);
+  process.exit(0);
+}
+
 if (args.length < 4) {
   console.error('Uso: node scripts/fechar-issue.cjs <n> --comando <c> (--saida <texto> | --saida-arquivo <caminho>)');
   process.exit(2);
@@ -70,10 +89,17 @@ const tmpFile = path.join(os.tmpdir(), `fechar-issue-${Date.now()}-${Math.random
 fs.writeFileSync(tmpFile, corpo, 'utf-8');
 
 try {
+  // Resolver gh do PATH (honrando ordem)
+  const ghCmd = resolverExecutavel('gh');
+  if (!ghCmd) {
+    console.error('RECUSADO: nao achei o gh no PATH');
+    process.exit(2);
+  }
+
   // Chamar: gh issue comment
   let commentResult;
   try {
-    commentResult = spawnSync('gh', ['issue', 'comment', n, '--body-file', tmpFile], {
+    commentResult = spawnSync(ghCmd, ['issue', 'comment', n, '--body-file', tmpFile], {
       stdio: ['pipe', 'pipe', 'pipe'],
       shell: false,
       encoding: 'utf-8'
@@ -92,7 +118,7 @@ try {
   // Se comment foi 0, fechar a Issue
   let closeResult;
   try {
-    closeResult = spawnSync('gh', ['issue', 'close', n], {
+    closeResult = spawnSync(ghCmd, ['issue', 'close', n], {
       stdio: ['pipe', 'pipe', 'pipe'],
       shell: false,
       encoding: 'utf-8'

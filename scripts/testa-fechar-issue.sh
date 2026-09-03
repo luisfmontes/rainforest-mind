@@ -1,6 +1,5 @@
 #!/bin/bash
-# Bateria para scripts/fechar-issue.cjs — testa fechamento com evidência
-# Stub de gh registra chamadas em log; bateria verifica comportamento
+# Bateria para scripts/fechar-issue.cjs com trava: verifica que gh é do sandbox
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -34,12 +33,27 @@ if "%1"=="issue" if "%2"=="comment" if not "!GH_COMMENT_FAIL!"=="" exit /b 1
 exit /b 0
 STUB
 
+# TRAVA: verificar que gh resolvido é do sandbox, não do sistema
+echo "== TRAVA: verificar que gh é do sandbox =="
+(
+  export PATH="$SBP/bin:$PATH"
+  node "$SRC/scripts/fechar-issue.cjs" --verificar-gh "$SBP/bin"
+) >/dev/null 2>&1
+if [ $? -eq 0 ]; then
+  echo "  ok   gh é do sandbox"
+else
+  echo "  FALHA gh NÃO é do sandbox ou não encontrado"
+  echo "== resultado: 0 ok, 1 falha(s) =="
+  exit 1
+fi
+
 # Caso (a): sucesso, exit 0
+echo
 echo "== (a) gh issue comment com sucesso → gh issue close é chamado =="
 (
   export PATH="$SBP/bin:$PATH"
   export GH_LOG="$SBP/log-a"
-  node "$SRC/scripts/fechar-issue.cjs" 123 --comando "git log -1" --saida "commit abc123"
+  node "$SRC/scripts/fechar-issue.cjs" 999901 --comando "git log -1" --saida "commit abc123"
 ) >/dev/null 2>&1
 [ $? -eq 0 ] && test_ok "exit 0" || test_fail "exit code"
 LOG_A="$(cat "$SBP/log-a" 2>/dev/null || echo '')"
@@ -65,7 +79,7 @@ echo "== (b) gh issue comment falha → gh issue close NUNCA é chamado =="
   export PATH="$SBP/bin:$PATH"
   export GH_LOG="$SBP/log-b"
   export GH_COMMENT_FAIL=1
-  node "$SRC/scripts/fechar-issue.cjs" 456 --comando "echo teste" --saida "ok"
+  node "$SRC/scripts/fechar-issue.cjs" 999902 --comando "echo teste" --saida "ok"
 ) >/dev/null 2>&1
 [ $? -ne 0 ] && test_ok "exit != 0" || test_fail "exit code"
 LOG_B="$(cat "$SBP/log-b" 2>/dev/null || echo '')"
@@ -84,7 +98,7 @@ echo "resultado: sucesso" > "$SBP/arquivo.txt"
 (
   export PATH="$SBP/bin:$PATH"
   export GH_LOG="$SBP/log-c"
-  node "$SRC/scripts/fechar-issue.cjs" 789 --comando "bash teste.sh" --saida-arquivo "$SBP/arquivo.txt"
+  node "$SRC/scripts/fechar-issue.cjs" 999903 --comando "bash teste.sh" --saida-arquivo "$SBP/arquivo.txt"
 ) >/dev/null 2>&1
 [ $? -eq 0 ] && test_ok "exit 0" || test_fail "exit code"
 LOG_C="$(cat "$SBP/log-c" 2>/dev/null || echo '')"
@@ -107,7 +121,7 @@ echo "SECRET_KEY=segredo" > "$SBP/.env"
   export PATH="$SBP/bin:$PATH"
   export GH_LOG="$SBP/log-d"
   cd "$SBP"
-  node "$SRC/scripts/fechar-issue.cjs" 999 --comando "test" --saida ".env"
+  node "$SRC/scripts/fechar-issue.cjs" 999904 --comando "test" --saida ".env"
 ) >/dev/null 2>&1
 [ $? -eq 0 ] && test_ok "exit 0" || test_fail "exit code"
 LOG_D="$(cat "$SBP/log-d" 2>/dev/null || echo '')"
