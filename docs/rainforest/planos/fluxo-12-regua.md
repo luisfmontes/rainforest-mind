@@ -54,6 +54,13 @@ mutacao:
   para: a mesma frase dizendo que o builder também recebe o `bar.md`
   bateria: `node scripts/segunda-opiniao.cjs --base origin/main --head HEAD --criterio docs/rainforest/criterios/fluxo-12-regua.md --modelo codex`
   fixture: o item do arquivo de critério que afirma "o builder NÃO vê o `bar.md`"
+  emenda 2026-09-04 (achado do `revisar`, rodada 2): a rodada 1 mutou esse item e
+  saiu `discordo` nomeando o critério 1. A rodada 2 mutou **outro** alvo — a
+  redação do preflight, critério 3 — porque foi essa a linha que o conserto
+  mexeu, e mutação vale sobre o texto que mudou, não sobre um texto intocado. O
+  `estado.json` guarda só o último bloco `executar`, então a prova da rodada 1
+  vive no histórico (`git show 30d3840 -- docs/rainforest/estado/fluxo-12-regua.json`)
+  e o campo `fixture` do estado passa a nomear as duas.
 pronto quando: com o diff real `origin/main...HEAD` e o arquivo de critério
 listando as seis decisões em forma falsificável, um modelo de outra família
 devolve `concordo` — provado por
