@@ -37,6 +37,18 @@ deixado de existir. E **antes de commitar, confira a base de novo**:
 commit-base acordado. A conferência da primeira ação não cobre o commit
 final — foi exatamente por aí que passou.
 
+**Nunca pule verificação de commit ou de push.** `git commit --no-verify`,
+`git commit -n`, `git commit --no-gpg-sign` e `git push --no-verify` são
+proibidos, no mesmo nível do git destrutivo. Hook de commit ou de push
+existe para pegar erro **antes** de ele entrar no histórico — pular a
+verificação na hora em que ela reprova é exatamente a hora em que ela
+importa. Neste worktree a proibição já é trava, não só palavra:
+`hooks/gate-git-verificacao.cjs` barra essas quatro formas (o `-n` do
+`push`, que ali é `--dry-run`, continua permitido). Na rodada de validação
+de 2026-09-04 (`relatorios/2026-09-04-handover-rodada-cega.md`, achado R8)
+um executor tentou `--no-verify` num repo sem essa trava e conseguiu; aqui
+não consegue.
+
 **Nunca altere o ambiente do usuário.** Instalar ou desinstalar software
 (`winget`, `npm -g`, `pip install`, `choco`), mexer em PATH, variável de
 ambiente, config global ou serviço — nada disso é seu. Ferramenta que
