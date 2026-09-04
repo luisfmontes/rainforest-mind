@@ -677,7 +677,11 @@ function tokens(seg) {
 
     // Fora de aspas
     if (c === "'" && anterior === "$") {
-      // Abertura de string ANSI-C: $' — não acumula a aspa
+      // Abertura de string ANSI-C: $' — não acumula a aspa, e remove o $ anterior
+      // Se cur termina em $, remove-o (foi acumulado antes de saber que seria ANSI-C)
+      if (cur.endsWith("$")) {
+        cur = cur.slice(0, -1);
+      }
       emAspaANSIC = true;
     } else if (c === "'") {
       // Abertura de aspas simples — não acumula a aspa
