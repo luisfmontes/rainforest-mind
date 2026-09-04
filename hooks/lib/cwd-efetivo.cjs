@@ -13,6 +13,14 @@ const { tokensComAspas, ehComando, posicaoDeComando } = require("./tokens-comand
 
 // `cd X` isolado num segmento do encadeamento.
 const CD = /^\s*cd\s+(?:--\s+)?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s*$/;
+// `command`/`builtin` na frente do nome (`command cd X`, `builtin cd X`) e
+// uma barra invertida colada no proprio nome (`\cd X`, escapa alias/funcao)
+// so mudam COMO o comando seguinte e resolvido — nao criam processo novo, o
+// `cd`/`pushd`/`popd` de verdade ainda roda no MESMO shell e MUDA o cwd
+// dele. `sudo cd X` fica de fora de proposito: sudo cria um processo NOVO,
+// entao um `cd` "dentro" dele nunca muda o cwd do shell que chamou.
+const PREFIXO_SINTATICO_DE_BUILTIN = /^\s*(?:command|builtin)\s+/;
+const BARRA_NO_NOME_DO_MOVEDOR = /^(\s*)\\(cd|pushd|popd)\b/;
 // Diretorio que o proprio git recebe, e que vence o cwd do shell.
 const GIT_DIR_EXPLICITO = /\bgit\b[^\n;&|]*?(?:-C|--work-tree(?:=|\s+))\s*(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))/;
 // Separadores de comando. `&` simples (job em background) tambem separa
@@ -173,6 +181,32 @@ function comandoEhGit(seg) {
 }
 
 /**
+ * Remove, do INÍCIO do segmento, prefixos que só mudam COMO o comando
+ * seguinte é resolvido sem criar processo novo (`command`/`builtin`,
+ * repetidos ou combinados) e uma barra invertida colada no NOME do comando
+ * (`\cd`, `\pushd`, `\popd`). Devolve o segmento "normalizado" para casar
+ * com `CD`/`PUSHD`/`POPD`.
+ *
+ * P5 (rodada 8, lote 3, 2026-09-04): `CD`/`PUSHD` só casavam no INÍCIO puro
+ * do segmento (`cd X`) — `\cd X`, `command cd X`, `builtin cd X` passavam
+ * batido, o cwd efetivo ficava desatualizado, e o gate liberava um
+ * commit/escrita que de verdade rodava no lugar errado.
+ *
+ * `sudo cd X` fica de fora DE PROPÓSITO: sudo cria um processo novo, um
+ * `cd` "dentro" dele nunca muda o cwd do shell que chamou — não entra nesta
+ * lista, e o efeito (não casar `CD`/`PUSHD`/`POPD`) é o correto.
+ */
+function semPrefixoSintaticoDeBuiltin(seg) {
+  let s = seg;
+  for (;;) {
+    const m = PREFIXO_SINTATICO_DE_BUILTIN.exec(s);
+    if (!m) break;
+    s = s.slice(m[0].length);
+  }
+  return s.replace(BARRA_NO_NOME_DO_MOVEDOR, "$1$2");
+}
+
+/**
  * Reconhece `cd`, `pushd`, `popd` e `env -C`/`--chdir=` num ÚNICO segmento, e
  * aplica o efeito ao `estado` da travessia (mutado in-place).
  *
@@ -208,8 +242,14 @@ function resolverMovedor(seg, estado) {
   // sem tentar decidir o resto deste segmento por ele.
   if (contemSubshellOuGrupo(seg)) estado.incerto = true;
 
+  // `command cd X`, `builtin cd X`, `\cd X` (P5): o comando de verdade que
+  // MUDA o cwd do shell continua sendo `cd`/`pushd`/`popd` — so casa contra
+  // o segmento NORMALIZADO (prefixo sintatico removido, barra do nome
+  // tirada). `sudo cd X` fica de fora (a normalizacao nao mexe nele).
+  const segMovedor = semPrefixoSintaticoDeBuiltin(seg);
+
   // `pushd X` — muda o cwd corrente igual `cd X`, guardando o de antes.
-  const pd = seg.match(PUSHD);
+  const pd = segMovedor.match(PUSHD);
   if (pd) {
     const destino = pd[1] || pd[2] || pd[3];
     estado.pilhaPushd.push(estado.atual);
@@ -225,7 +265,7 @@ function resolverMovedor(seg, estado) {
   // `pushd` visto NESTA linha) significa que o destino de verdade depende
   // de um estado de shell que este parser nao enxerga — INCERTO, nunca
   // "supõe que nada mudou".
-  if (POPD.test(seg)) {
+  if (POPD.test(segMovedor)) {
     if (estado.pilhaPushd.length) {
       estado.atual = estado.pilhaPushd.pop();
     } else {
@@ -235,7 +275,7 @@ function resolverMovedor(seg, estado) {
   }
 
   // `cd` isolado num segmento
-  const cd = seg.match(CD);
+  const cd = segMovedor.match(CD);
   if (cd) {
     const destino = cd[1] || cd[2] || cd[3];
     // `cd -`, `cd ~`, `$VAR`, `$(...)`: não dá para resolver aqui sem executar.

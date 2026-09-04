@@ -564,6 +564,94 @@ echo "== (am) gh pr create com URL da Issue 42 SEM palavra-chave de fechamento �
 EXIT_AM=$?
 [ $EXIT_AM -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_AM)"
 
+# P1 (rodada 8, lote 3, 2026-09-04): `env -u` parava a busca na PROPRIA
+# flag (so `-C`/`--chdir` eram conhecidas) — `gh issue close` direto atras
+# dela escapava. P2: este gate agora usa a MESMA tabela de tokens-comando.cjs
+# dos outros dois gates, entao o conserto vale aqui tambem.
+# Caso (an): `env -u FOO gh issue close 12` → exit 2
+echo
+echo "== (an) env -u FOO gh issue close 12 → exit 2 (P1/P2) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"env -u FOO gh issue close 12"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-an"
+EXIT_AN=$?
+[ $EXIT_AN -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_AN)"
+
+# P3 (rodada 8, lote 3, 2026-09-04): o regex antigo, `/--body\s+["']([^"']+)["']/i`,
+# parava no PRIMEIRO apostrofo — `--body "don't forget: closes #42"` capturava
+# so `don`, o `closes #42` sumia, e o gate liberava. Apostrofo em prosa e
+# rotina, nao ataque — o caso mais grave dos cinco achados.
+# Caso (ao): `gh pr create --body "don't forget: closes #42"` SEM marcador → exit 2 citando #42
+echo
+echo "== (ao) gh pr create --body com apostrofo (don't) e closes #42 SEM marcador → exit 2 citando #42 (P3) =="
+COMANDO_AO=$'gh pr create --body "don\'t forget: closes #42"'
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_AO")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ao"
+EXIT_AO=$?
+[ $EXIT_AO -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_AO)"
+ERR_AO="$(cat "$SBP/err-ao")"
+echo "$ERR_AO" | grep -q "#42" && test_ok "stderr cita #42" || test_fail "stderr não cita #42"
+
+# Caso (ap): `gh pr create --body "it's done, closes #7"` COM marcador (stub
+# devolvendo comentário marcado) → exit 0 — o mesmo apostrofo, caminho feliz.
+echo
+echo "== (ap) gh pr create --body com apostrofo (it's) e closes #7 COM marcador → exit 0 (P3) =="
+COMANDO_AP=$'gh pr create --body "it\'s done, closes #7"'
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=1
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_AP")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ap"
+EXIT_AP=$?
+[ $EXIT_AP -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_AP)"
+
+# Caso (aq): `gh pr create --body='closes #42'` (forma com `=`) SEM marcador → exit 2
+echo
+echo "== (aq) gh pr create --body='closes #42' SEM marcador → exit 2 (P3) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create --body='"'"'closes #42'"'"'"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-aq"
+EXIT_AQ=$?
+[ $EXIT_AQ -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_AQ)"
+
+# P4 (rodada 8, lote 3, 2026-09-04): `$(...)` DENTRO de aspas DUPLAS e
+# executado pelo bash mesmo citado — `segmentosParaGate` nao descia nele, e
+# `echo "$(gh issue close 42)"` escapava por inteiro. Aspas SIMPLES nao
+# expandem `$(...)`, entao o mesmo texto ali tem que PASSAR.
+# Caso (ar): `echo "$(gh issue close 42)"` → exit 2
+echo
+echo "== (ar) echo \"\$(gh issue close 42)\" → exit 2 (P4, aspas duplas executam) =="
+COMANDO_AR='echo "$(gh issue close 42)"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_AR")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ar"
+EXIT_AR=$?
+[ $EXIT_AR -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_AR)"
+
+# Caso (as): `echo '$(gh issue close 42)'` (aspas simples) → exit 0
+echo
+echo "== (as) echo '\$(gh issue close 42)' → exit 0 (P4, aspas simples NAO executam) =="
+COMANDO_AS=$'echo \'$(gh issue close 42)\''
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_AS")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-as"
+EXIT_AS=$?
+[ $EXIT_AS -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_AS)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
