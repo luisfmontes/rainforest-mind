@@ -1235,6 +1235,30 @@ case "$saida_bad_then" in
   *) falhou=$((falhou+1)); echo "  FALHA fluxo aberto DEPOIS nao foi listado" ;;
 esac
 
+# A mensagem tem de nomear o tipo que ESTA no arquivo. `typeof null` e 'object',
+# e a primeira versao chamava null de "array" por causa disso. Checar so o exit
+# code nao pega isso — e a licao do teste tautologico do EISDIR.
+rm -f "$SBP/robustez/docs/rainforest/estado"/*.json
+rm -rf "$SBP/robustez/docs/rainforest/estado"/*.json
+printf 'null' > "$SBP/robustez/docs/rainforest/estado/tipo-null.json"
+saida_tipo=$($E concluido 2>&1)
+case "$saida_tipo" in
+  *"nao e um objeto"*|*"deve ser um objeto, nao null"*|*"deve ser um objeto, não null"*)
+    ok=$((ok+1)); echo "  ok   null e reportado como null, nao como array" ;;
+  *array*)
+    falhou=$((falhou+1)); echo "  FALHA null foi reportado como 'array': $saida_tipo" ;;
+  *)
+    falhou=$((falhou+1)); echo "  FALHA mensagem de tipo inesperada: $saida_tipo" ;;
+esac
+
+rm -f "$SBP/robustez/docs/rainforest/estado"/*.json
+printf '[]' > "$SBP/robustez/docs/rainforest/estado/tipo-array.json"
+saida_tipo2=$($E concluido 2>&1)
+case "$saida_tipo2" in
+  *array*) ok=$((ok+1)); echo "  ok   array continua sendo reportado como array" ;;
+  *) falhou=$((falhou+1)); echo "  FALHA array nao foi reportado como array: $saida_tipo2" ;;
+esac
+
 unset RFM_ESTADO_ROOT
 
 echo "== resultado: $ok ok, $falhou falhas =="
