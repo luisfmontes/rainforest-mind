@@ -408,6 +408,36 @@ console.log("== T1 (rodada 11, lote 3, 2026-09-04): timeout -s/-k na tabela de f
 }
 
 console.log();
+console.log("== rodada 19 (lote 3): extrairPrimeiroToken trata {}/() como fronteira ==");
+{
+  // Teste DIRETO em `desempacotarWrapperDeString` — sem passar por nenhum
+  // segmentador (`segmentosComAspas`/`segmentosParaGate`) antes, que já
+  // separam '&' de '{' sozinhos. Isso prova o mecanismo de
+  // `extrairPrimeiroToken` por si só: os três gates (staging-total,
+  // worktree, fechar-issue) hoje blindam esse caso ANTES de chegar aqui
+  // (cada um separa '&{...}' em segmentos próprios antes de desempacotar),
+  // então uma bateria que só passasse pelo gate inteiro não provaria que
+  // ESTA função está corrigida — só que o resultado final está certo.
+  const { desempacotarWrapperDeString } = require(path.join(path.dirname(process.argv[2]), "tokens-comando.cjs"));
+  test("(w1) &{git checkout main} (colado, sem espaco) -> ilegivel (PowerShell)", () => {
+    const r = desempacotarWrapperDeString("&{git checkout main}", { ferramenta: "PowerShell" });
+    eq(r.ilegivel, true, "ilegivel deve ser true (call operator reconhecido apesar do '{' colado)");
+  });
+  test("(w2) &{ git checkout main } (espaco so por dentro) -> ilegivel (PowerShell)", () => {
+    const r = desempacotarWrapperDeString("&{ git checkout main }", { ferramenta: "PowerShell" });
+    eq(r.ilegivel, true, "ilegivel deve ser true");
+  });
+  test("(w3) & {git checkout main} (espaco antes do '{', regressao) -> ilegivel (PowerShell)", () => {
+    const r = desempacotarWrapperDeString("& {git checkout main}", { ferramenta: "PowerShell" });
+    eq(r.ilegivel, true, "ja funcionava antes do conserto — nao pode regredir");
+  });
+  test("(w4) contraprova: & sozinho em Bash NUNCA vira ilegivel por este motivo", () => {
+    const r = desempacotarWrapperDeString("&{git checkout main}", { ferramenta: "Bash" });
+    eq(r.ilegivel, false, "em Bash, '&' e separador de comando, nao call operator — super-bloquear aqui quebraria 'echo hi & git status'");
+  });
+}
+
+console.log();
 console.log(`== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 process.exit(falhou);
 NODESCRIPT

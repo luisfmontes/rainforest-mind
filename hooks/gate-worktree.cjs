@@ -82,6 +82,15 @@ const GLOBAIS_COM_VALOR = new Set([
  * Quebra a linha de comando em palavras respeitando aspas simples e duplas.
  * E o que impede `git commit -m "checkout later"` de virar um checkout: o texto
  * da mensagem sai como UMA palavra, e nao como candidato a subcomando.
+ *
+ * Rodada 19 (lote 3): `{`/`}`/`(`/`)` FORA de aspas tambem viram fronteira de
+ * palavra (tratados como espaco, nunca entram no resultado) — sem isto,
+ * `&{git checkout main}` (call operator do PowerShell colado ao scriptblock)
+ * virava as palavras `["&{git", "checkout", "main}"]`: nem `"&{git"` nem
+ * `"main}"` batem com `"git"`/`"main"` exatos, e a checagem de sessao
+ * co-locada (que busca a palavra `git` literal via `subcomandoGit`) nunca
+ * achava o comando. Dentro de aspas nada muda: `"fix {json} parse"` continua
+ * saindo como UMA palavra so.
  */
 function palavras(cmd) {
   const out = [];
@@ -97,7 +106,7 @@ function palavras(cmd) {
     } else if (c === '"' || c === "'") {
       aspa = c;
       temAlgo = true;
-    } else if (/\s/.test(c)) {
+    } else if (/\s/.test(c) || c === "{" || c === "}" || c === "(" || c === ")") {
       if (temAlgo) out.push(atual);
       atual = "";
       temAlgo = false;
