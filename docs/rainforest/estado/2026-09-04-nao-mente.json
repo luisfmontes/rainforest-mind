@@ -22,12 +22,12 @@
     "em": "2026-09-04"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-04",
     "tarefas_ok": 4,
     "tarefas": 4,
     "em": "2026-09-04",
-    "bateria": "bash scripts/testa-estado.sh (146 ok, 0 falhou) + bash hooks/testa-gate-git-verificacao.sh (63 ok, 0 falhou; era 52 antes do conserto dos achados)",
+    "bateria": "bash scripts/testa-estado.sh (146 ok, 0 falhou) + bash hooks/testa-gate-git-verificacao.sh (72 ok, 0 falhou; era 50 antes das duas rodadas de revisao)",
     "comando": "node scripts/conferir-mutacao.cjs, re-rodado pela integracao a cada rodada",
     "saida": "exit 0 em todas: bateria VERMELHA com o comportamento invertido, fonte restaurado",
     "mutacao": [
@@ -39,7 +39,7 @@
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "hooks/testa-gate-git-verificacao.sh l.139 (GIT commit --no-verify, executavel maiusculo) e l.188-190 (toggle de config desligando o gate)"
+        "fixture": "hooks/testa-gate-git-verificacao.sh: l.139 (GIT commit --no-verify, executavel maiusculo), l.188-190 (toggle de config desligando o gate) e o bloco do achado 3 (corpo de heredoc nao dispara o gate)"
       },
       {
         "tarefa": 3,
@@ -52,15 +52,12 @@
         "motivo": "skill e texto sem ramo de execucao; a falsificacao foi rodar cada exit code prometido pelo texto e conferir contra o observado"
       }
     ],
-    "rodadas_do_gate": 4,
+    "rodadas_do_gate": 5,
     "achados_do_revisar_consertados": [
       "caixa do nome do executavel (GIT/Bash)",
-      "toggle gate-git-verificacao ausente de CHAVES"
-    ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-04"
-    }
+      "toggle gate-git-verificacao ausente de CHAVES",
+      "falso positivo: corpo de heredoc julgado como comando"
+    ]
   },
   "revisar": {
     "status": "reprovado",
