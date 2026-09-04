@@ -54,6 +54,61 @@ E uma régua **boa demais** é o outro lado da mesma moeda: se o alvo é
 inalcançável com o esforço disponível, o loop nunca sai e queima orçamento
 parecendo progresso. O teto da fase 1 existe por causa disso.
 
+### Os mecanismos: destile a régua antes de olhar para o seu trabalho
+
+Régua nomeada ainda não é régua **útil**. "O README do Stripe" passa nos três
+testes acima e mesmo assim não diz nada ao crítico — ele vai olhar os dois lados
+e responder com o que sobra quando falta critério: "o B está mais polido".
+
+Antes da rodada 1, leia a régua de verdade e escreva **5 a 7 mecanismos** em
+`docs/rainforest/reguas/<slug>.md`. Mecanismo é o que alguém **confere
+olhando** — não adjetivo:
+
+| ❌ não é mecanismo | ✅ é mecanismo |
+|---|---|
+| "parece premium" | o título tem 5× o corpo, e existem três tamanhos de fonte no total |
+| "tem bom ritmo" | nada anima abaixo de 400 ms |
+| "usa bem o espaço" | acima da dobra, ao menos 40% do quadro é vazio |
+| "erro claro" | toda mensagem de erro nomeia o arquivo e a linha |
+
+O arquivo é **commitado na rodada 1** e não muda depois. Isso não é
+organização: o crítico é `Agent` novo a **toda** rodada, e o que não estiver em
+disco não chega nele. Régua reescrita no meio do loop é régua trocada no meio do
+loop — que é exatamente o que esta skill existe para impedir.
+
+**Não consegue escrever cinco?** A régua reprovou, e reprovou **de graça**. Essa
+é a rede barata: ela custa zero rodada, enquanto a calibragem da Fase 1 custa
+uma. As duas ficam, porque pegam coisas diferentes — aqui, régua da qual não se
+extrai critério nenhum; lá, régua da qual se extrai critério que não discrimina.
+
+### Preflight: quem consegue ver o quê
+
+Uma checagem, não uma pergunta. Roda antes da rodada 1 e reporta em um bloco:
+
+- **A régua abre?** Baixe a página, tire o print, leia o arquivo — agora. Se está
+  atrás de login ou sumiu, isso é o teste "Obtível" falhando tarde.
+- **O nosso lado renderiza?** Print para site, filmstrip para animação, PDF para
+  documento, saída do comando para CLI. Para texto — README, mensagem de erro,
+  nome — renderizar é abrir o arquivo, e isso sempre dá.
+- **As ferramentas que o trabalho exige respondem?** Geração de imagem, de voz,
+  navegador — o que a tarefa precisar.
+
+Então **diga o que falta e qual crítico vai cego por causa disso** — em uma
+linha, como manda a regra 14. Seguir calado com um crítico que não enxerga o
+artefato produz veredito com a mesma cara de um veredito bom, e ninguém volta a
+olhar.
+
+**O primeiro item não é aviso, é parada.** Régua que não abre é o teste
+"Obtível" reprovando — só que tarde, na hora de usar em vez da hora de escolher.
+Vale o que já valia lá: **não vira loop**, e a escolha da régua volta para o
+usuário. Nada do resto do preflight salva um lado que não existe.
+
+Os outros dois itens **anunciam, não barram**. O nosso lado renderizando pela
+metade, ou uma ferramenta faltando, segue o loop com o crítico prejudicado
+nomeado — barrar por isso mataria o uso mais comum da skill. A única parada que
+nasce aqui é o nosso lado não renderizar de jeito nenhum: aí não há o que pôr do
+outro lado da comparação, e insistir é queimar rodada.
+
 ## Fase 1 — os três freios, declarados antes de largar
 
 O padrão original não tem nenhum destes, e é por isso que ele só funciona com
@@ -82,15 +137,26 @@ Cada rodada tem duas metades, e elas **nunca** rodam no mesmo contexto.
 crítico apontou — uma, não uma lista. Lista faz o builder espalhar esforço e
 não fechar nenhuma. Ele não vê os vereditos anteriores.
 
+Ele também **não vê o arquivo de mecanismos** — vê a régua, o artefato inteiro.
+Builder com a lista na mão otimiza para a lista: entrega os sete itens, vence a
+comparação e não fica melhor. Aí o loop mede a si mesmo, que é a forma mais cara
+de não medir nada.
+
 **Crítico.** `Agent` novo **toda rodada**, nunca `fork`, nunca o mesmo da rodada
 anterior. Recebe os dois artefatos **sem rótulo** e sem saber qual é qual, sem
-saber que rodada é, e sem saber que um deles é "nosso". Devolve:
+saber que rodada é, e sem saber que um deles é "nosso" — mais o arquivo de
+mecanismos da Fase 0, que é o que ele tem para enxergar com. Devolve:
 
 1. **Qual venceu** — binário, A ou B. Nunca nota, nunca "empate", nunca "os dois
    têm méritos". Nota infla a cada rodada; binário não.
 2. **A lacuna única** — se o vencedor não foi o nosso, a **uma** coisa concreta
    que decidiu. Com localização, igual a achado de `revisar`: "a terceira linha
    força o leitor a contar colunas" é lacuna, "parece menos polido" não é.
+
+**Os mecanismos não são uma rubrica.** O crítico não pontua sete itens e soma:
+ele continua devolvendo A ou B, e **uma** lacuna. A lista existe para ele saber
+onde olhar, não para virar nota — nota infla a cada rodada, e é por isso que o
+veredito é binário desde a primeira linha desta seção.
 
 O crítico ser novo a cada rodada é o mecanismo, não zelo. Crítico que
 acompanhou o loop julga **progresso** ("muito melhor que a rodada 3") em vez de
@@ -135,7 +201,8 @@ demais ou o padrão não paga o custo nesta classe de trabalho, e ele sai daqui.
 Os dois testes são baratos e valem mais que qualquer argumento de desenho,
 inclusive os desta página.
 
-Padrão adaptado do `robonuggets/gauntlet-loop`, que enuncia bem a tese central —
+Duas fontes, e vale nomear as duas. Padrão adaptado do
+`robonuggets/gauntlet-loop`, que enuncia bem a tese central —
 trocar rubrica auto-avaliada por comparação cega contra uma referência externa
 nomeada — e cataloga com honestidade as formas de quebrá-la. Reimplementado a
 partir da descrição, sem copiar arquivo, porque regra deste plugin não depende
@@ -143,3 +210,11 @@ de plugin de terceiro. Os três freios da fase 1 (teto de rodadas como abort e
 não como saída, commit por rodada, calibragem na rodada 1), o crítico novo a
 cada rodada e o teste de falsificação acima são daqui: o original não tem
 nenhum, e é por isso que ele só funciona com alguém olhando.
+
+A Fase 0 deve o arquivo de mecanismos e o preflight à skill `design-loop`, que
+resolve a mesma classe de problema e acerta nesses dois pontos: destilar a régua
+em coisas conferíveis por olho antes de começar, e dizer em voz alta qual crítico
+vai cego quando falta o render. O resto dela ficou de fora por medição, não por
+gosto — três críticos por rodada, sem teto e sem commit intermediário, custa mais
+que este loop inteiro, e o custo era justamente a queixa que trouxe as duas
+skills para a mesma mesa (2026-09-04).
