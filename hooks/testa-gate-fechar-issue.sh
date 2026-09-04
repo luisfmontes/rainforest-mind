@@ -915,6 +915,74 @@ echo "== (bm) gh pr create --body-file corpo.txt (sem cd, cwd do evento) COM mar
 EXIT_BM=$?
 [ $EXIT_BM -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_BM)"
 
+# Rodada 16, lote 3, 2026-09-04: `cwdDoSegmento` casa a K-ÉSIMA ocorrência
+# de um texto de segmento repetido, não sempre a primeira (`.find`).
+mkdir -p "$SBP/dirA" "$SBP/dirB"
+echo "sem closes aqui tambem" > "$SBP/dirA/corpo.txt"
+echo "Closes #999" > "$SBP/dirB/corpo.txt"
+SBP_WIN_DIRA="$(cygpath -m "$SBP/dirA")"
+SBP_WIN_DIRB="$(cygpath -m "$SBP/dirB")"
+
+# Caso (bn): mesmo texto de segmento duas vezes, cwds diferentes (A sem
+# closes, B com "Closes #999") — a SEGUNDA ocorrência tem que ler B/corpo.txt,
+# não A/corpo.txt de novo.
+echo
+echo "== (bn) cd <A> && gh pr create --body-file corpo.txt ; cd <B> && gh pr create --body-file corpo.txt → exit 2 citando #999 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  PAYLOAD='{"cwd":"'"$SBP_WIN_DIRA"'","tool_name":"Bash","tool_input":{"command":"cd '"$SBP_WIN_DIRA"' && gh pr create --body-file corpo.txt ; cd '"$SBP_WIN_DIRB"' && gh pr create --body-file corpo.txt"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-bn"
+EXIT_BN=$?
+[ $EXIT_BN -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_BN)"
+ERR_BN="$(cat "$SBP/err-bn")"
+echo "$ERR_BN" | grep -q "#999" && test_ok "stderr cita #999 (leu a 2ª ocorrência, cwd B)" || test_fail "stderr não cita #999 ($ERR_BN)"
+
+# Caso (bo): ordem invertida — o primeiro segmento já é o de B (closes
+# #999), então já bloqueia ali (nem chega a processar o segundo).
+echo
+echo "== (bo) cd <B> && gh pr create --body-file corpo.txt ; cd <A> && gh pr create --body-file corpo.txt → exit 2 citando #999 (o primeiro já barra) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  PAYLOAD='{"cwd":"'"$SBP_WIN_DIRA"'","tool_name":"Bash","tool_input":{"command":"cd '"$SBP_WIN_DIRB"' && gh pr create --body-file corpo.txt ; cd '"$SBP_WIN_DIRA"' && gh pr create --body-file corpo.txt"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-bo"
+EXIT_BO=$?
+[ $EXIT_BO -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_BO)"
+ERR_BO="$(cat "$SBP/err-bo")"
+echo "$ERR_BO" | grep -q "#999" && test_ok "stderr cita #999 (bloqueou no primeiro)" || test_fail "stderr não cita #999 ($ERR_BO)"
+
+# Caso (bp): regressão — três ocorrências IDÊNTICAS do mesmo texto de
+# segmento, todas cwd=A, corpo sem closes: a K-ésima ocorrência tem que
+# resolver certo (cwd de A) e não virar `null` por engano.
+echo
+echo "== (bp) cd <A> && gh pr create --body-file corpo.txt (repetido 3x) → exit 0 (regressão k-ésima) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  CMD="cd $SBP_WIN_DIRA && gh pr create --body-file corpo.txt ; cd $SBP_WIN_DIRA && gh pr create --body-file corpo.txt ; cd $SBP_WIN_DIRA && gh pr create --body-file corpo.txt"
+  PAYLOAD='{"cwd":"'"$SBP_WIN_DIRA"'","tool_name":"Bash","tool_input":{"command":"'"$CMD"'"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-bp"
+EXIT_BP=$?
+[ $EXIT_BP -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_BP)"
+
+# Caso (bq): subshell no meio — `cwdDoSegmento` continua devolvendo `null`
+# (texto do sub-segmento não bate 1:1 com `mapaCwd`, que não desce em `(`/`)`)
+# → `--body-file` relativo vira ilegível/bloqueia (comportamento atual, mantido).
+echo
+echo "== (bq) (cd <A> && gh pr create --body-file corpo.txt) → exit 2 (cwd incerto, subshell) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  PAYLOAD='{"cwd":"'"$SBP_WIN_DIRA"'","tool_name":"Bash","tool_input":{"command":"(cd '"$SBP_WIN_DIRA"' && gh pr create --body-file corpo.txt)"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-bq"
+EXIT_BQ=$?
+[ $EXIT_BQ -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_BQ)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
