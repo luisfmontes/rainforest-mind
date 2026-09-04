@@ -665,16 +665,15 @@ function tokens(seg) {
       if (c === "\\") {
         if (proximo !== undefined) {
           const { decodificado, proximo: prox } = decodificaANSIC(i + 1, seg);
-          // NUL termina o argumento, como no execve (C-string termination)
-          if (decodificado.charCodeAt(0) === 0) {
-            // Finalizamos o token aqui, como faria o execve
-            if (tem) toks.push(cur);
-            cur = "";
-            tem = false;
-          } else {
+          // NUL trunca a string (C-string termination) mas o token continua sendo montado
+          // com segmentos subsequentes. Não acumula o NUL (fica descartado), apenas não
+          // termina o token. Exemplo: $'com\0'mit -> token segue sendo construído,
+          // depois incorpora "mit", resultando em um único token "commit".
+          if (decodificado.charCodeAt(0) !== 0) {
             cur += decodificado;
             tem = true;
           }
+          // Se é NUL (charCodeAt === 0), simplesmente não acumula e continua
           i = prox - 1; // Ajusta porque o loop vai incrementar i de novo
         }
       } else if (c !== "'") { // não acumula aspa de fechamento
@@ -766,20 +765,86 @@ function temCurta(args, letra) {
   return args.some((t) => /^-[A-Za-z]+$/.test(t) && t.slice(1).includes(letra));
 }
 
+/**
+ * Detecta se um token ESPECIFICO veio de escape ANSI-C (em $'...').
+ * Procura por formas codificadas/escapadas do token.
+ * Exemplos:
+ *   - "-n" em hex: $'\x2d\x6e'
+ *   - "-n" em octal: $'\055\156'
+ *   - "--no-verify" começando com hex: $'\x2d\x2d...'
+ */
+function tokenVemDeASAI(cmd, token) {
+  if (!cmd || !token) return false;
+
+  // Gera forma hexadecimal do token
+  // "-n" -> \x2d\x6e
+  const hexForm = Array.from(token)
+    .map(c => `\\x${c.charCodeAt(0).toString(16).padStart(2, '0')}`)
+    .join("");
+
+  // Gera forma octal do token (bash aceita \DDD onde D é 0-7)
+  // "-n" -> \055\156
+  const octalForm = Array.from(token)
+    .map(c => `\\${c.charCodeAt(0).toString(8).padStart(3, '0')}`)
+    .join("");
+
+  // Procura por $'...' que contenha o token em forma hex ou octal
+  // Também procura por formas parciais (primeiros caracteres em escape)
+  const patterns = [
+    `\\$'[^']*${escapeForRegex(hexForm)}[^']*'`, // Hex form
+    `\\$'[^']*${escapeForRegex(octalForm)}[^']*'`, // Octal form
+  ];
+
+  return patterns.some(p => {
+    try {
+      return new RegExp(p).test(cmd);
+    } catch {
+      return false;
+    }
+  });
+}
+
+function escapeForRegex(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /** Motivo do bloqueio, ou null se o segmento e inofensivo. */
 function motivoDe(g, cmdOriginal) {
-  let temANSIC = cmdOriginal && /\$'([^']*\\[abefnrtvE?\\c0-7xu"])/.test(cmdOriginal);
-  let sufixo = temANSIC ? ", vindo de escape ANSI-C" : "";
+  // Determina o sufixo testando CADA token que causou bloqueio
+  let sufixoCommit = "";
+  let sufixoPush = "";
 
   if (g.sub === "commit") {
-    if (g.args.some((t) => ehPrefixoDeFlag(t, "--no-verify"))) return "git commit --no-verify" + sufixo;
-    if (g.args.some((t) => ehPrefixoDeFlag(t, "--no-gpg-sign"))) return "git commit --no-gpg-sign" + sufixo;
-    if (temCurta(g.args, "n")) return "git commit -n (equivale a --no-verify)" + sufixo;
+    const tokenNoVerify = g.args.find((t) => ehPrefixoDeFlag(t, "--no-verify"));
+    if (tokenNoVerify && tokenVemDeASAI(cmdOriginal, tokenNoVerify)) {
+      sufixoCommit = ", vindo de escape ANSI-C";
+    }
+    if (g.args.some((t) => ehPrefixoDeFlag(t, "--no-verify"))) return "git commit --no-verify" + sufixoCommit;
+
+    const tokenNoGpg = g.args.find((t) => ehPrefixoDeFlag(t, "--no-gpg-sign"));
+    if (tokenNoGpg && tokenVemDeASAI(cmdOriginal, tokenNoGpg)) {
+      sufixoCommit = ", vindo de escape ANSI-C";
+    }
+    if (g.args.some((t) => ehPrefixoDeFlag(t, "--no-gpg-sign"))) return "git commit --no-gpg-sign" + sufixoCommit;
+
+    // Para -n: como e combinada (-nabc), precisamos procurar se o ARGUMENTO veio de escape
+    // Encontra o token que contem 'n'
+    const tokenComN = g.args.find((t) => /^-[A-Za-z]+$/.test(t) && t.slice(1).includes("n"));
+    if (temCurta(g.args, "n")) {
+      if (tokenComN && tokenVemDeASAI(cmdOriginal, tokenComN)) {
+        sufixoCommit = ", vindo de escape ANSI-C";
+      }
+      return "git commit -n (equivale a --no-verify)" + sufixoCommit;
+    }
     return null;
   }
   if (g.sub === "push") {
     // `-n` em push e --dry-run, nao --no-verify: nao entra aqui de proposito.
-    if (g.args.some((t) => ehPrefixoDeFlag(t, "--no-verify"))) return "git push --no-verify" + sufixo;
+    const tokenNoVerify = g.args.find((t) => ehPrefixoDeFlag(t, "--no-verify"));
+    if (tokenNoVerify && tokenVemDeASAI(cmdOriginal, tokenNoVerify)) {
+      sufixoPush = ", vindo de escape ANSI-C";
+    }
+    if (g.args.some((t) => ehPrefixoDeFlag(t, "--no-verify"))) return "git push --no-verify" + sufixoPush;
     return null;
   }
   return null;

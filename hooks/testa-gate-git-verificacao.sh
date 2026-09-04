@@ -571,10 +571,60 @@ saida=$(printf '%s' "$(b_ansi "git commit \$'\\cmn' -m x")" | node "$GATE" 2>&1)
 if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   git commit \$'\\cmn' -m x (exit 0, passa)"
 else falhou=$((falhou+1)); echo "  FALHA: \\cmn esperava 0, veio $rc"; fi
 
-# Teste 5: Verificar que a regex agora detecta escapes simples (já testado com hex acima)
-# A regex foi ampliada para cobrir \a, \b, \e, \f, \n, \r, \t, \v, além de \c e octal
-echo "  (sufixo de escape simples: testado via hex e octal acima; regex agora cobre todos)"
-ok=$((ok+1))
+# Teste 5: Verificar que a mensagem NÃO traz sufixo quando flag é nua (sem escape)
+# mas TRAZ sufixo quando a flag vem de escape ANSI-C
+echo "== Teste 5: Sufixo refletindo origem da flag (não do comando inteiro) =="
+
+# Teste 5a: Flag nua (-n) + escape na mensagem -> mensagem SEM sufixo
+saida=$(printf '%s' "$(b_ansi "git commit -n -m \$'linha1\nlinha2'")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then
+  msg=$(printf '%s' "$saida" | grep "Comando:" | head -1)
+  if echo "$msg" | grep -q "vindo de escape ANSI-C"; then
+    falhou=$((falhou+1)); echo "  FALHA Teste 5a: flag nua não deveria trazer sufixo"
+    echo "$msg" | sed 's/^/         /'
+  else
+    ok=$((ok+1)); echo "  ok   git commit -n -m \$'linha1\nlinha2' (exit 2, sem sufixo — correto)"
+  fi
+else falhou=$((falhou+1)); echo "  FALHA Teste 5a: esperava 2, veio $rc"; fi
+
+# Teste 5b: Flag com escape hex (\x2d\x6e = -n) -> mensagem COM sufixo
+saida=$(printf '%s' "$(b_ansi "git commit \$'\\x2d\\x6e' -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then
+  msg=$(printf '%s' "$saida" | grep "Comando:" | head -1)
+  if echo "$msg" | grep -q "vindo de escape ANSI-C"; then
+    ok=$((ok+1)); echo "  ok   git commit \$'\\x2d\\x6e' -m x (exit 2, com sufixo — correto)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA Teste 5b: flag com escape deveria trazer sufixo"
+    echo "$msg" | sed 's/^/         /'
+  fi
+else falhou=$((falhou+1)); echo "  FALHA Teste 5b: esperava 2, veio $rc"; fi
+
+echo
+echo "== Defeito A — NUL: antes era falso negativo (passava quando deveria bloquear) =="
+# Estas formas têm NUL no meio de um token ANSI-C. O bash concatena os segmentos
+# antes e depois, formando um comando bloqueável. O defeito A era que o gate
+# não reconhecia isso (criava tokens extras, perdendo a flag).
+
+# Após conserto: Defeito A forma 1: git $'com\0'mit -n -> comando "git commit -n" (BLOQUEIA)
+saida=$(printf '%s' "$(b_ansi "git \$'com\\0'mit -n -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git \$'com\\0'mit -n -m x (exit 2, bloqueado — conserto funcionou)"
+else falhou=$((falhou+1)); echo "  FALHA Defeito A 1: esperava 2, veio $rc"; fi
+
+# Defeito A forma 2: git $'pus\0'h --no-verify -> comando "git push --no-verify" (BLOQUEIA)
+saida=$(printf '%s' "$(b_ansi "git \$'pus\\0'h --no-verify")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git \$'pus\\0'h --no-verify (exit 2, bloqueado)"
+else falhou=$((falhou+1)); echo "  FALHA Defeito A 2: esperava 2, veio $rc"; fi
+
+# Defeito A forma 3: $'gi\0't commit -n -> comando "git commit -n" (BLOQUEIA)
+saida=$(printf '%s' "$(b_ansi "\$'gi\\0't commit -n -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   \$'gi\\0't commit -n -m x (exit 2, bloqueado)"
+else falhou=$((falhou+1)); echo "  FALHA Defeito A 3: esperava 2, veio $rc"; fi
+
+# Exceção: NUL descarta a flag: git commit $'lixo\0-n' -> comando "git commit lixo" (PASSA)
+# O '-n' está DEPOIS do NUL no mesmo segmento $'...', então é descartado
+saida=$(printf '%s' "$(b_ansi "git commit \$'lixo\\0-n' -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   git commit \$'lixo\\0-n' -m x (exit 0, passa — '-n' descartado)"
+else falhou=$((falhou+1)); echo "  FALHA Defeito A 4: esperava 0, veio $rc"; fi
 
 echo
 echo "== Contraprova: NUL na mensagem (não é um argumento de comando) =="
