@@ -18,7 +18,7 @@ const path = require("node:path");
 const { MARCADOR } = require("./lib/marcador-evidencia.cjs");
 const { executar } = require("./lib/resolver-executavel.cjs");
 const {
-  tokensComAspas, posicaoDeComando, WRAPPERS_QUE_REPASSAM,
+  tokensComAspas, posicaoDeComando, textoAPartir, WRAPPERS_QUE_REPASSAM,
   WRAPPERS_DE_COMANDO, desempacotarWrapperDeString,
 } = require("./lib/tokens-comando.cjs");
 
@@ -429,7 +429,17 @@ function processarSegmento(segmento) {
   // QUANTO `-EncodedCommand` (que nunca tem `interno` — so `ilegivel`
   // importa nesse caso), por isso a checagem de `ilegivel` vem ANTES da
   // checagem de `interno !== null`.
-  const { interno, ilegivel } = desempacotarWrapperDeString(segmento);
+  //
+  // P3 (auditor, 11a revisao, rodada 13, lote 3, 2026-09-04): desempacotava
+  // sobre `segmento` CRU (posicao 0), nunca a partir da POSICAO DE COMANDO
+  // ja calculada acima — `timeout 5 bash -c "gh issue close 12"` atravessava
+  // com exit 0 porque `timeout` (wrapper de PREFIXO) nao e reconhecido pelo
+  // desempacotador de STRING. Usa `textoAPartir(toksComAspas, pos)` quando
+  // `pos` existe (o texto dali pra frente, sem o prefixo ja consumido);
+  // sem posicao de comando (`pos === null`), nao ha o que desempacotar.
+  const { interno, ilegivel } = pos === null
+    ? { interno: null, ilegivel: false }
+    : desempacotarWrapperDeString(textoAPartir(toksComAspas, pos));
   if (ilegivel) {
     bloqueia(
       `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
