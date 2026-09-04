@@ -32,6 +32,13 @@
  *   node scripts/estado.cjs exigir   --slug <slug> --estagio <e>
  *   node scripts/estado.cjs liberar  --slug <slug> --estagio <e>
  *   node scripts/estado.cjs listar
+ *   node scripts/estado.cjs concluido [--slug <slug>]
+ *
+ * `concluido` reusa o predicado `proximo` (não escreve lógica de progresso nova):
+ * com `--slug`, sai 0 se `proximo(estado) === null` (fluxo fechado), 2 nomeando o
+ * estágio pendente se não, e 1 se o slug não existe. Sem `--slug`, varre todos os
+ * arquivos de `docs/rainforest/estado/`: sai 0 se todos concluídos (ou sem nenhum
+ * arquivo), 2 listando os fluxos abertos (slug e estágio) se algum não fechou.
  */
 
 const fs = require('fs');
@@ -863,6 +870,48 @@ function main() {
     return;
   }
 
+  if (cmd === 'concluido') {
+    const slugArg = arg('slug', false);
+
+    if (!slugArg) {
+      // Varredura sem slug: todos os arquivos de DIR_ESTADO. Sem diretório ou
+      // sem arquivo nenhum, não há fluxo aberto — sai 0 (mesmo fail-open do
+      // `listar`, que também não trata ausência de estado como erro).
+      if (!fs.existsSync(DIR_ESTADO)) return;
+      const arquivos = fs.readdirSync(DIR_ESTADO).filter((f) => f.endsWith('.json'));
+      if (!arquivos.length) return;
+
+      const abertos = [];
+      for (const f of arquivos) {
+        const e = JSON.parse(fs.readFileSync(path.join(DIR_ESTADO, f), 'utf8'));
+        const p = proximo(e);
+        if (p) abertos.push({ slug: e.slug, estagio: p });
+      }
+      if (!abertos.length) return;
+
+      for (const a of abertos) {
+        console.log(`${a.slug}  -> ${a.estagio}`);
+      }
+      process.exit(2);
+    }
+
+    try {
+      validarSlug(slugArg);
+    } catch (err) {
+      console.error(`erro: ${err.message}`);
+      process.exit(1);
+    }
+    const e = ler(slugArg);
+    if (!e) {
+      console.error(`erro: ${slugArg} nao existe — rode 'iniciar' primeiro`);
+      process.exit(1);
+    }
+    const p = proximo(e);
+    if (!p) return;
+    console.log(p);
+    process.exit(2);
+  }
+
   const slug = arg('slug');
   try {
     validarSlug(slug);
@@ -1135,7 +1184,7 @@ function main() {
     return;
   }
 
-  console.error('uso: iniciar | ler | marcar | proximo | exigir | liberar | listar');
+  console.error('uso: iniciar | ler | marcar | proximo | exigir | liberar | listar | concluido');
   process.exit(1);
 }
 
