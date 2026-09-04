@@ -35,7 +35,7 @@
     "em": "2026-09-03"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-03",
     "tarefas_ok": 14,
     "tarefas": 14,
@@ -292,25 +292,29 @@
       "mutacoes_reprovadas_na_integracao": [
         "X path.resolve(cwdSegmento, arquivo)"
       ]
+    },
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-04"
     }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "a16846fc74f51c9731d1f25692015af9c286eb97",
+      "head": "00b97ab6b6c533fff43e6d252d764793f1ad7404",
       "caminhos_sujos": []
     },
     "achados": 1,
     "base": "408af94de7c22492b0815ebed19b4072426a7976",
-    "head": "a16846fc74f51c9731d1f25692015af9c286eb97",
+    "head": "00b97ab6b6c533fff43e6d252d764793f1ad7404",
     "lista": [
-      "Aud1 gate-fechar-issue extrairCorpoDoPR --body-file: readFileSync relativo ao process.cwd() do hook, nao ao cwd efetivo do segmento; cd <wt> && gh pr create --body-file corpo.txt com corpo.txt homonimo no principal le o errado e libera"
+      "Aud1 gate-fechar-issue cwdDoSegmento casa segmento por texto (find por seg.trim()), nao por indice: dois segmentos identicos na mesma linha (cd A && gh pr create --body-file corpo.txt ; cd B && ...) pegam o cwd do primeiro — introduzido na rodada 15"
     ],
     "em": "2026-09-04",
-    "tentativas": 13,
+    "tentativas": 14,
     "revisor": "ok",
-    "auditor": "1 achado bloqueia (media, cooperativo)",
-    "rodada_revisao": 13,
+    "auditor": "1 achado bloqueia",
+    "rodada_revisao": 14,
     "emenda": "modelo de ameaca dos gates por texto registrado no plano"
   },
   "verificar": {
