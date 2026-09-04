@@ -232,6 +232,15 @@ gate "bash -o pipefail -c \"git status\" PASSA (W1, nao e staging total)"       
 gate "bash --norc -c \"git add -A\" BARRA (W1, flag sem valor)"                   2 "$(b 'bash --norc -c \"git add -A\"')"
 
 echo
+echo "== R18 (auditor, 16a revisao, lote 3, 2026-09-04): source/./& viram ilegivel (arquivo opaco) =="
+gate "via Bash, source x.sh BARRA (R18, arquivo opaco)"                    2 "$(b 'source x.sh')"
+gate "via Bash, . x.sh BARRA (R18, arquivo opaco)"                         2 "$(b '. x.sh')"
+gate "via PowerShell, & x.ps1 BARRA (R18, call operator)"                  2 "$(p '& x.ps1')"
+# contraprova: em Bash, '&' sozinho e SEPARADOR de comando (K1, rodada 6) —
+# nao pode super-bloquear so porque agora '&' vira ilegivel em PowerShell.
+gate "contraprova: via Bash, echo hi & git status PASSA (R18, & e separador)" 0 "$(b 'echo hi & git status')"
+
+echo
 echo "== saidas de emergencia =="
 saida=$(printf '%s' "$(b 'git add -A')" | RAINFOREST_GATE_OFF=1 node "$GATE" 2>&1); rc=$?
 if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   RAINFOREST_GATE_OFF=1 libera (exit 0)"

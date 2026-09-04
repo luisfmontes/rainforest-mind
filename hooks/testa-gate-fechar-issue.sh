@@ -1105,6 +1105,19 @@ echo "== (bx) gh pr merge 5 com pr view devolvendo body sem Issue citada → exi
 EXIT_BX=$?
 [ $EXIT_BX -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_BX)"
 
+# Caso (by): R18 (auditor, 16a revisao, lote 3, 2026-09-04) — `source fechar.sh`
+# executa um ARQUIVO opaco ao parser; mesma postura conservadora que
+# `bash x.sh` (sem `-c`) ja recebe do laco W1 — exit 2.
+echo
+echo "== (by) source fechar.sh → exit 2 (R18, arquivo opaco) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"source fechar.sh"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-by"
+EXIT_BY=$?
+[ $EXIT_BY -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_BY)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

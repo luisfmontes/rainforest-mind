@@ -155,17 +155,17 @@ function analisaGit(toksComAspas) {
  * reconstroi so o texto dali pra frente, sem o prefixo que ja foi
  * consumido — para o desempacotador enxergar `bash -c "..."` como tal.
  */
-function analisaSegmentoGit(segTexto) {
+function analisaSegmentoGit(segTexto, ferramenta) {
   const g = analisaGit(tokensComAspas(segTexto));
   if (g) return g;
   const toks = tokensComAspas(segTexto);
   const pos = posicaoDeComando(toks);
   if (pos === null) return null;
-  const { interno, ilegivel } = desempacotarWrapperDeString(textoAPartir(toks, pos));
+  const { interno, ilegivel } = desempacotarWrapperDeString(textoAPartir(toks, pos), { ferramenta });
   if (ilegivel) return { incerto: true };
   if (interno !== null) {
     for (const sub of segmentosComAspas(interno)) {
-      const r = analisaSegmentoGit(sub);
+      const r = analisaSegmentoGit(sub, ferramenta);
       if (r) return r;
     }
   }
@@ -295,7 +295,7 @@ function main() {
   let indiceSegmento = null;
   const segs = segmentos(cmd);
   for (let idx = 0; idx < segs.length; idx += 1) {
-    const g = analisaSegmentoGit(segs[idx]);
+    const g = analisaSegmentoGit(segs[idx], ev.tool_name);
     if (!g) continue;
     if (g.incerto) {
       motivo = "comando dinamico (eval/bash -c/Invoke-Expression/iex/pwsh -Command/cmd /c) com " +

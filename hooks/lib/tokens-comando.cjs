@@ -318,25 +318,48 @@ function contemConstrucaoIlegivel(str) {
  * `Invoke-Expression`/`iex` (PowerShell), `bash -c`/`sh -c`/`zsh -c`/
  * `ksh -c`/`dash -c`, `pwsh`/`powershell` com qualquer abreviacao de
  * `-Command` (`-c`, `-co`, `-com`, ...) ou `-EncodedCommand`, ou
- * `cmd /c`/`cmd /k` — devolve `{ interno, ilegivel }`:
+ * `cmd /c`/`cmd /k` — OU uma invocacao de wrapper de ARQUIVO opaco ao
+ * parser (`source x.sh`, `. x.sh`/`. x.ps1`, `& x.ps1` — R18, auditor,
+ * 16a revisao, lote 3, 2026-09-04) — devolve `{ interno, ilegivel }`:
  *
  *   - `interno`: a string de comando encapsulada (sem UM nivel de aspas
  *     externas, se houver), ou `null` se `segmento` nao e nenhum destes
- *     wrappers (nesse caso `ilegivel` e sempre `false`);
+ *     wrappers (nesse caso `ilegivel` e sempre `false`) OU se e um wrapper
+ *     de ARQUIVO (nunca temos o conteudo do arquivo, so `ilegivel` importa);
  *   - `ilegivel`: `true` quando o conteudo tem substituicao de comando ou
- *     variavel (`contemConstrucaoIlegivel`), OU quando o wrapper e
+ *     variavel (`contemConstrucaoIlegivel`), quando o wrapper e
  *     `-EncodedCommand` (base64, ilegivel por definicao — `interno` vem
- *     `null` nesse caso, so `ilegivel` importa).
+ *     `null` nesse caso, so `ilegivel` importa), OU quando `segmento` roda
+ *     um ARQUIVO externo ao parser: `source`/`.` (bash, qualquer ferramenta)
+ *     sempre, e `&` (call operator do PowerShell) SOMENTE quando `ferramenta`
+ *     e `"PowerShell"` — em Bash, `&` sozinho e SEPARADOR de comando (ja
+ *     tratado nos gates desde a rodada 6) e nao pode virar ilegivel aqui, ou
+ *     super-bloqueia algo como `echo hi & git status`. Mesma postura
+ *     conservadora que `bash x.sh` (sem `-c`) ja recebe do laco W1 mais
+ *     abaixo — antes deste conserto os tres saiam `{interno:null,
+ *     ilegivel:false}` (arquivo opaco lido como "nao e wrapper, siga em
+ *     frente") e os tres gates liberavam.
+ *
+ * `ferramenta` (opcional, ex.: `ev.tool_name` — `"Bash"`/`"PowerShell"`) so
+ * importa para o caso `&` acima; quem nao passa preserva o comportamento de
+ * antes (`&` nunca vira ilegivel por este motivo).
  *
  * Quem chama decide o que fazer com cada combinacao: `interno` legivel
  * (nao-null, `ilegivel: false`) e reprocessado como se fosse o proprio
  * comando; `ilegivel: true` (com ou sem `interno`) e tratado como INCERTO —
  * mesma postura conservadora que `$(`/crase solto ja recebe nos tres gates.
  */
-function desempacotarWrapperDeString(segmento) {
+function desempacotarWrapperDeString(segmento, { ferramenta } = {}) {
   const p1 = extrairPrimeiroToken(segmento);
   if (!p1) return { interno: null, ilegivel: false };
   const exe = normalizarNomeExecutavel(p1.tok);
+
+  if (exe === "source" || exe === ".") {
+    return { interno: null, ilegivel: true };
+  }
+  if (exe === "&" && ferramenta === "PowerShell") {
+    return { interno: null, ilegivel: true };
+  }
 
   if (exe === "eval" || exe === "invoke-expression" || exe === "iex") {
     const interno = desempacota(p1.resto);
