@@ -456,7 +456,19 @@ function processarSegmento(segmento) {
     return;
   }
 
-  const valores = toksComAspas.map((t) => t.v);
+  // W2 (rodada 14, lote 3, 2026-09-04): esta rede de seguranca (para
+  // wrapper DESCONHECIDO) procurava a sequencia `gh issue close`/`gh pr
+  // create|merge` em QUALQUER posicao do segmento — inclusive dentro de um
+  // COMENTARIO shell (token nao citado que comeca com "#": tudo dali ate o
+  // fim do segmento e texto morto, o shell nunca roda).
+  // `# gh issue close 12 is handled by fechar-issue.cjs now` virava
+  // super-bloqueio (exit 2) de um comando que nem chega a existir. Conserto:
+  // tokens a partir do primeiro "#" NAO CITADO saem da busca — `"closes #7"`
+  // citado (marcador de evidencia) continua intacto, porque o token inteiro
+  // tem `.q === true`.
+  const idxComentario = toksComAspas.findIndex((t) => !t.q && t.v.startsWith("#"));
+  const toksSemComentario = idxComentario === -1 ? toksComAspas : toksComAspas.slice(0, idxComentario);
+  const valores = toksSemComentario.map((t) => t.v);
   const primeiro = valores.length ? normalizarExecutavel(valores[0]) : null;
   if (primeiro !== null && !ehPrefixoOuWrapperConhecido(primeiro)) {
     for (const padrao of [["gh", "issue", "close"], ["gh", "pr", "create"], ["gh", "pr", "merge"]]) {
