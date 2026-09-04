@@ -33,6 +33,16 @@
 #      profundidade e fail-closed de verdade: quatro niveis de `bash -c`
 #      (alem do teto) barra mesmo com comando final inofensivo, e tres
 #      niveis (no teto) com comando final inofensivo passa.
+#  10. rodada 4 (revisor independente, achado 1 da revisao reprovada em
+#      2026-09-04): variacao de CAIXA no nome do EXECUTAVEL (`GIT`, `Git`,
+#      `gIt`, `BASH`, `/BIN/BASH`) tambem barra — mas `EVAL` (builtin do
+#      shell, case-sensitive de verdade) NAO e normalizado e continua
+#      passando, porque o shell de verdade nem reconheceria o comando; e
+#      flag/subcomando tambem nao sao normalizados (`--No-Verify`, `git
+#      COMMIT`), porque normalizar ali criaria falso positivo.
+#  11. achado 2 da revisao reprovada em 2026-09-04: o toggle de config
+#      `.rainforest/config.json` com a chave `gate-git-verificacao` agora
+#      registrada em `hooks/lib/config.cjs` desliga o gate de verdade.
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -125,6 +135,23 @@ gate 'profundidade 3 (no teto), comando final inofensivo: passa'  0 "$(b 'bash -
 gate 'eval "echo oi" (inofensivo): passa'  0 "$(b 'eval \"echo oi\"')"
 
 echo
+echo "== rodada 4: variacao de caixa no executavel (achado 1 da revisao): DEVE barrar =="
+gate "GIT commit --no-verify -m x (executavel maiusculo)"  2 "$(b 'GIT commit --no-verify -m x')"
+gate "Git commit --no-verify -m x (Capitalizado)"          2 "$(b 'Git commit --no-verify -m x')"
+gate "gIt commit -n -m x (caixa mista)"                    2 "$(b 'gIt commit -n -m x')"
+gate "GIT push --no-verify"                                2 "$(b 'GIT push --no-verify')"
+gate "GIT commit --no-gpg-sign -m x"                        2 "$(b 'GIT commit --no-gpg-sign -m x')"
+gate 'Bash -c "git commit --no-verify -m x" (shell Capitalizado)'  2 "$(b 'Bash -c \"git commit --no-verify -m x\"')"
+gate 'BASH -c "git commit --no-verify -m x" (shell maiusculo)'     2 "$(b 'BASH -c \"git commit --no-verify -m x\"')"
+gate '/BIN/BASH -c "git commit --no-verify -m x" (caminho e nome maiusculos)'  2 "$(b '/BIN/BASH -c \"git commit --no-verify -m x\"')"
+
+echo
+echo "== rodada 4: eval, flag e subcomando NAO sao normalizados por caixa: DEVE passar =="
+gate 'EVAL "git commit --no-verify -m x" (eval e builtin case-sensitive, shell de verdade nao reconhece)'  0 "$(b 'EVAL \"git commit --no-verify -m x\"')"
+gate "git commit --No-Verify -m x (flag com caixa diferente, git rejeitaria como opcao desconhecida)"  0 "$(b 'git commit --No-Verify -m x')"
+gate "git COMMIT --no-verify -m x (subcomando com caixa diferente, git nem reconhece)"  0 "$(b 'git COMMIT --no-verify -m x')"
+
+echo
 echo "== --no-edit nao e prefixo de nenhuma flag proibida: DEVE passar =="
 gate "git commit --no-edit --amend"              0 "$(b 'git commit --no-edit --amend')"
 
@@ -156,6 +183,14 @@ touch "$R/.rainforest-gate-off"
 gate ".rainforest-gate-off na raiz libera o repo"   0 "$(b 'git commit --no-verify -m x')"
 rm "$R/.rainforest-gate-off"
 gate "  ... e volta a barrar quando o arquivo sai"  2 "$(b 'git commit --no-verify -m x')"
+
+echo
+echo "== achado 2: toggle de config .rainforest/config.json (chave gate-git-verificacao) =="
+mkdir -p "$R/.rainforest"
+printf '%s' '{"gate-git-verificacao": false}' > "$R/.rainforest/config.json"
+gate "config do projeto com a chave em false libera o repo"  0 "$(b 'git commit --no-verify -m x')"
+rm -rf "$R/.rainforest"
+gate "  ... e volta a barrar sem esse arquivo (padrao ligado)"  2 "$(b 'git commit --no-verify -m x')"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
