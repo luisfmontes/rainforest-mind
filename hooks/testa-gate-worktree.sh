@@ -132,6 +132,7 @@ echo "== mutacao: prova que a inspeção funciona (Issue #88) =="
 # Aqui a mutacao troca o CORPO da funcao por `return []` — JS valido, funcao viva,
 # protecao neutralizada. E a assercao inverte: o mutante tem de sair com exit 0
 # (deixou passar). Exit != 0 agora e FALHA, porque so pode significar crash.
+cp -r "$SRC/hooks/lib" "$RAIZ/lib"
 GATE_MUTADO="$RAIZ/gate-sem-escrita.cjs"
 node -e '
 const fs = require("fs");
@@ -462,6 +463,20 @@ gate "sed -i continua sendo escrita"              2 "$(b "sed -i 's/a/b/' a.txt"
 gate "tee de verdade continua sendo escrita"      2 "$(b "echo x | tee saida.txt" "$R")"
 
 echo
+echo "== R20 (auditor, 18a revisao): nome de ferramenta de escrita CITADO na posicao de comando =="
+# `ehComando` excluia todo token citado, entao `"cp" a.txt b.txt` de subagente
+# fora de worktree escrevia no principal com exit 0 — o alvo nunca entrava na
+# lista. Na posicao de comando o nome citado passa a contar.
+gate 'R20: "cp" citado como comando continua sendo escrita'  2 "$(b '"cp" a.txt copia.txt' "$R")"
+gate 'R20: "mv" citado como comando continua sendo escrita'  2 "$(b '"mv" a.txt movido.txt' "$R")"
+gate 'R20: "tee" citado como comando continua sendo escrita' 2 "$(b 'echo x | "tee" saida.txt' "$R")"
+gate 'R20: "sed" -i citado como comando continua sendo escrita' 2 "$(b '"sed" -i s/a/b/ a.txt' "$R")"
+# Contraprova: o nome citado como ARGUMENTO (fora da posicao de comando) segue
+# sem virar comando — o caso real de 2026-09-01 que motivou o `!tok.q`.
+gate 'contraprova R20: grep -rn "cp origem destino" docs/ PASSA' 0 "$(b 'grep -rn "cp origem destino" docs/' "$R")"
+
+
+echo
 echo "== scratchpad da sessao: isento ainda que seja repo git (exit 0) =="
 SCRATCH="$RAIZ/claude/proj/sessao/scratchpad"
 mkdir -p "$SCRATCH"
@@ -480,6 +495,273 @@ echo "== a isencao e do scratchpad, NAO do temp inteiro (exit 2) =="
 # a caixa de areia desta bateria inteira esta isenta — 100 casos viram teatro.
 gate "repo em temp SEM segmento scratchpad segue barrado"  2 "$(b "echo x > novo.txt" "$R")"
 gate "Write em repo em temp SEM scratchpad segue barrado"  2 "$(j Write file_path "$(esc "$R/outro.txt")")"
+
+echo
+echo "== CLI externa que escreve (Issue #127): codex, gemini, claude, aider, cursor, copilot =="
+# Estas CLIs rodam localmente e escrevem codigo. Fora de worktree linkado,
+# escreveriam no repo principal.
+gate "codex fora do worktree BARRA"                     2 "$(b "codex exec --yolo" "$R")"
+gate "codex dentro do worktree PASSA"                   0 "$(b "codex exec --yolo" "$WT")"
+gate "gemini fora do worktree BARRA"                    2 "$(b "gemini run" "$R")"
+gate "claude fora do worktree BARRA"                    2 "$(b "claude --help" "$R")"
+gate "aider dentro do worktree PASSA"                   0 "$(b "aider /chat" "$WT")"
+gate "cursor fora do worktree BARRA"                    2 "$(b "cursor open ." "$R")"
+gate "copilot dentro do worktree PASSA"                 0 "$(b "copilot activate" "$WT")"
+gate "CLI nao reconhecida PASSA (ls -la)"               0 "$(b "ls -la" "$R")"
+gate "codex da JANELA PRINCIPAL PASSA"                  0 "$(p "codex exec --yolo" "$R")"
+gatec "codex com caminho completo BARRA"                2 "$(printf '{\"agent_id\":\"ag-1\",\"tool_name\":\"Bash\",\"cwd\":\"%s\",\"tool_input\":{\"command\":\"/usr/bin/codex exec\"}}' "$(esc "$R")")"
+
+echo
+echo "== R1: cd nao resolvido antes de CLI que escreve nao pode liberar (2026-09-03) =="
+# `cd $(pwd)/../principal` fica INCERTO (contem `$(`); o cwd efetivo cai de volta
+# no proprio worktree, que e legitimo — sem o conserto o gate liberava, porque o
+# destino de verdade podia ser QUALQUER lugar, inclusive o repo principal.
+gate "cd \$(pwd) incerto antes de codex BARRA"          2 "$(b 'cd $(pwd)/../principal && codex exec --yolo' "$WT")"
+gate "codex dentro do worktree sem cd continua PASSANDO (regressao)" 0 "$(b "codex exec --yolo" "$WT")"
+
+echo
+echo "== R2: CLI citada em posicao de comando conta como comando (2026-09-03) =="
+gate "codex citado em posicao de comando BARRA (aspas duplas)" 2 "$(b '"codex" exec --yolo' "$R")"
+gate "codex citado em posicao de comando BARRA (aspas simples)" 2 "$(b "'codex' exec" "$R")"
+gate "codex citado em posicao de argumento (echo) PASSA"        0 "$(b 'echo "codex"' "$R")"
+
+echo
+echo "== A1: alvosBash usa o ULTIMO -C, nao o primeiro (rodada 4, lote 3) =="
+# `git -C <a> -C <b> commit` roda em <b> de verdade — o git usa o ultimo. Um
+# match unico no regex pegava o PRIMEIRO, entao worktree-depois-principal
+# classificava o alvo como worktree e liberava, com o commit caindo no
+# principal.
+gate "git -C worktree -C principal commit: ULTIMO manda, BARRA" 2 \
+  "$(b "git -C $WT -C $R commit -m x" "$WT")"
+gate "git -C principal -C worktree commit: ULTIMO manda, PASSA" 0 \
+  "$(b "git -C $R -C $WT commit -m x" "$WT")"
+
+echo
+echo "== A3: subshell/grupo antes de CLI que escreve vira INCERTO (rodada 4, lote 3) =="
+# `(cd <principal> && codex exec --yolo)` splitado por `&&` nao comeca com
+# `cd` puro em nenhum pedaco (o primeiro comeca com `(cd`) — o `cd` do
+# subshell passava batido, incerto ficava false, e o cwd efetivo caia de
+# volta no worktree (legitimo). Sem tentar resolver o subshell, a leitura
+# segura e marcar INCERTO e bloquear.
+gate "(cd principal && codex exec --yolo) de dentro do worktree BARRA" 2 \
+  "$(b "(cd $R && codex exec --yolo)" "$WT")"
+
+echo
+echo "== A4: $'...' e \\comando escapam a lista de CLIs (rodada 4, lote 3) =="
+# `\$'codex'` (ANSI-C quoting): o bash expande para o literal codex, mas o
+# `$` fica FORA da aspa em tokensComAspas e gruda no valor (`\$codex`),
+# escapando da lista.
+gate "\$'codex' exec --yolo fora do worktree BARRA (ANSI-C quoting)" 2 \
+  "$(b "\$'codex' exec --yolo" "$R")"
+# `\codex` (barra invertida escapa alias/funcao, o bash roda o comando
+# `codex` de verdade) — ja resolvia certo por acaso, via o mesmo regex que
+# tira caminho (`[\\/]`); teste travando o comportamento.
+gate "barra invertida \\codex exec fora do worktree BARRA" 2 \
+  "$(b "\codex exec" "$R")"
+
+echo
+echo "== Rev2: procuraCLI respeita aspas na segmentacao (rodada 4, lote 3) =="
+# `comando.split(SEPARADORES)` cru nao sabe que o `;` esta DENTRO da string do
+# echo — virava um segmento fantasma `codex exec --yolo"` e um falso positivo
+# num echo de texto puro.
+gate "echo com ; dentro de aspas nao ativa CLI (Rev2)" 0 \
+  "$(b 'echo "abc ; codex exec --yolo"' "$R")"
+gate "; de verdade (fora de aspas) continua separando (Rev2, regressao)" 2 \
+  "$(b 'echo oi; codex exec --yolo' "$R")"
+
+echo
+echo "== H1 (rodada 5): cwd do SEGMENTO onde a CLI roda, nao o cwd final da linha =="
+# `codex exec --yolo && cd <worktree>` rodado no principal: o codex roda no
+# principal, mas o cwd FINAL (depois do cd) e o worktree — sem o conserto o
+# gate lia o cwd errado e liberava.
+gate "codex && cd worktree no PRINCIPAL BARRA (H1)" 2 \
+  "$(b "codex exec --yolo && cd $WT" "$R")"
+gate "cd principal && codex && cd worktree, de dentro do worktree BARRA (H1)" 2 \
+  "$(b "cd $R && codex exec --yolo && cd $WT" "$WT")"
+
+echo
+echo "== H2: pushd/popd e env -C nao modelados liberavam a CLI de verdade (rodada 5) =="
+gate "pushd principal && codex, do worktree BARRA (H2)" 2 \
+  "$(b "pushd $R && codex exec --yolo" "$WT")"
+gate "env -C principal codex, do worktree BARRA (H2)" 2 \
+  "$(b "env -C $R codex exec --yolo" "$WT")"
+gate "popd && codex (sem pushd correspondente) BARRA por incerteza (H2)" 2 \
+  "$(b "popd && codex exec --yolo" "$WT")"
+
+echo
+echo "== H3: procuraCLI so em posicao de COMANDO (rodada 5) =="
+gate "grep -rn claude . no principal PASSA (nome de CLI em argumento)" 0 \
+  "$(b 'grep -rn claude .' "$R")"
+gate "echo codex PASSA (codex em posicao de argumento)" 0 \
+  "$(b "echo codex" "$R")"
+gate "env FOO=1 codex exec fora de worktree BARRA (wrapper env)" 2 \
+  "$(b "env FOO=1 codex exec" "$R")"
+gate "timeout 5 codex exec BARRA (wrapper timeout, pula a duracao)" 2 \
+  "$(b "timeout 5 codex exec" "$R")"
+gate "nohup codex exec BARRA (wrapper nohup)" 2 \
+  "$(b "nohup codex exec" "$R")"
+gate "eval \"codex exec --yolo\" BARRA (comando dentro da string)" 2 \
+  "$(b 'eval "codex exec --yolo"' "$R")"
+gate "codex exec --yolo fora de worktree BARRA (regressao)" 2 \
+  "$(b "codex exec --yolo" "$R")"
+gate "\"codex\" exec BARRA (regressao R2, citado em posicao de comando)" 2 \
+  "$(b '"codex" exec' "$R")"
+
+echo
+echo "== emenda do auditor (rodada 5): alvosBash/alvosBashEscrita usam o mesmo movedor =="
+# ate a emenda, alvosBash/alvosBashEscrita so reconheciam cd e git -C —
+# pushd/env -C de dentro do worktree passavam com exit 0 mesmo movendo um
+# git-que-mexe (commit) ou uma escrita por redirecionamento para o principal.
+gate "pushd principal && git commit, do worktree BARRA (emenda)" 2 \
+  "$(b "pushd $R && git commit -m x" "$WT")"
+gate "env -C principal git commit, do worktree BARRA (emenda)" 2 \
+  "$(b "env -C $R git commit -m x" "$WT")"
+gate "popd && git commit (sem pushd correspondente) BARRA por incerteza (emenda)" 2 \
+  "$(b "popd && git commit -m x" "$WT")"
+gate "pushd worktree && git commit, do principal PASSA (regressao)" 0 \
+  "$(b "pushd $WT && git commit -m x" "$R")"
+gate "env -C principal echo x > f.txt, do worktree BARRA (escrita, emenda)" 2 \
+  "$(b "env -C $R echo x > f.txt" "$WT")"
+
+echo
+echo "== K1/K2 do auditor (rodada 6, lote 3, 2026-09-03): '&' simples e git por posicao =="
+# K1: ate o conserto, '&' simples nao separava segmento em lugar nenhum. O
+# 'cd principal' ficava escondido dentro do MESMO segmento de 'echo hi', o
+# parser nunca via o cd, e o comando de verdade (git commit / codex) parecia
+# rodar ainda no worktree.
+gate "echo hi & cd principal; git commit -am x, do worktree BARRA (K1)" 2 \
+  "$(b "echo hi & cd $R; git commit -am x" "$WT")"
+gate "echo hi & cd principal; codex exec --yolo, do worktree BARRA (K1)" 2 \
+  "$(b "echo hi & cd $R; codex exec --yolo" "$WT")"
+gate "git commit -m x 2>&1, do worktree PASSA (K1, 2>&1 nao e separador)" 0 \
+  "$(b "git commit -m x 2>&1" "$WT")"
+# K2: 'grep -C 3 x .' tem '-C' (contexto do grep, nada a ver com git) no MESMO
+# segmento do 'git commit' seguinte — regressao a evitar: o segmento do grep
+# nao pode virar incerto nem mudar o cwd so por ter '-C' no texto.
+gate "grep -C 3 x . && git commit -m y, do worktree PASSA (K2, sem incerto)" 0 \
+  "$(b "grep -C 3 x . && git commit -m y" "$WT")"
+
+echo
+echo "== P1/P5 (rodada 8, lote 3, 2026-09-04): mais flags de env/sudo, e cd via wrapper =="
+# P1: 'env -u'/'sudo -E' paravam a busca na PROPRIA flag (so -C/--chdir e
+# -u/-g/--user/--group de sudo eram conhecidas) — a CLI que escreve depois
+# escapava do gate-worktree tambem, nao so do gate-staging-total.
+gate "env -u FOO codex exec --yolo fora do worktree BARRA (P1)" 2 \
+  "$(b "env -u FOO codex exec --yolo" "$R")"
+gate "sudo -E codex exec fora do worktree BARRA (P1)" 2 \
+  "$(b "sudo -E codex exec" "$R")"
+# P5: '\cd'/'command cd' (escapam alias/funcao ou so mudam como o comando e
+# resolvido) nao casavam com o CD ancorado no inicio do segmento — o cwd
+# efetivo ficava preso no worktree, e a CLI que de verdade escrevia no
+# PRINCIPAL escapava. `MSYS_NO_PATHCONV=1` evita o Git Bash confundir o `\c`
+# de `\cd` com inicio de lista de PATH e reescrever o caminho absoluto.
+saidaP5a=$(MSYS_NO_PATHCONV=1 node -e 'const [c,d]=process.argv.slice(1);process.stdout.write(JSON.stringify({agent_id:"ag-1",agent_type:"executor",cwd:d,hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:c}}))' "\\cd $R && git commit -m x" "$WT" | node "$GATE" 2>&1); rcP5a=$?
+if [ "$rcP5a" = 2 ]; then ok=$((ok+1)); echo "  ok   \\cd principal && git commit -m x, do worktree BARRA (P5) (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA \\cd principal && git commit -m x: esperava 2, veio $rcP5a"; printf '%s' "$saidaP5a" | sed 's/^/         /' | head -6; fi
+gate "command cd principal && codex exec --yolo, do worktree BARRA (P5)" 2 \
+  "$(b "command cd $R && codex exec --yolo" "$WT")"
+
+echo
+echo "== R1/R3 (rodada 9, lote 3, 2026-09-04): env --chdir por tokens, e ferramenta PowerShell =="
+gate "env -u OneDrive --chdir=principal codex exec --yolo, do worktree BARRA (R1)" 2 \
+  "$(b "env -u OneDrive --chdir=$R codex exec --yolo" "$WT")"
+# `bp` monta o payload de SUBAGENTE via ferramenta PowerShell (R3) — mesma
+# forma do `b` acima (node -e, escapa aspas), so troca o tool_name.
+bp() { # comando, cwd  -> payload de SUBAGENTE via PowerShell
+  node -e 'const [c,d]=process.argv.slice(1);process.stdout.write(JSON.stringify({agent_id:"ag-1",agent_type:"executor",cwd:d,hook_event_name:"PreToolUse",tool_name:"PowerShell",tool_input:{command:c}}))' "$1" "$2"
+}
+gate "SUBAGENTE no principal via PowerShell: git commit -m x BARRA (R3)" 2 \
+  "$(bp "git commit -m x" "$R")"
+gate "via PowerShell do worktree: Set-Location principal; codex exec --yolo BARRA (R3)" 2 \
+  "$(bp "Set-Location $R; codex exec --yolo" "$WT")"
+gate "via PowerShell no worktree: git commit -m x PASSA (R3, regressao)" 0 \
+  "$(bp "git commit -m x" "$WT")"
+
+echo
+echo "== S1 (8a revisao, rodada 10, lote 3, 2026-09-03): sintaxe de dois-pontos e destino inexistente =="
+gate "via PowerShell do worktree: Set-Location -Path:principal; git commit -am x BARRA (S1)" 2 \
+  "$(bp "Set-Location -Path:$R; git commit -am x" "$WT")"
+gate "do worktree via Bash: mkdir novo && cd novo && git init PASSA (S1, regressao: incerto sem CLI nem cwd principal nao barra)" 0 \
+  "$(b "mkdir novo && cd novo && git init" "$WT")"
+# `cd` para caminho ABSOLUTO que nao existe em disco, seguido de CLI que
+# escreve: sem o fix, o cwd fabricado (inexistente) fazia `estadoDoRepo`
+# devolver null e o gate liberava sem checar nada — a CLI escapava pra
+# QUALQUER lugar. Com o fix, destino que nao existe vira incerto e bloqueia
+# pelo mesmo caminho de `cd $(pwd)/../principal` (variavel) alguns testes acima.
+gate "cd <caminho inexistente> && codex exec --yolo, do worktree BARRA (S1)" 2 \
+  "$(b "cd $WT/pasta-que-nao-existe && codex exec --yolo" "$WT")"
+
+echo
+echo "== T1/T2 (rodada 11, lote 3, 2026-09-04): timeout -s/-k, e wrapper de string (iex/Invoke-Expression) =="
+gate "timeout -s TERM 30 codex exec --yolo fora de worktree BARRA (T1)" 2 \
+  "$(b "timeout -s TERM 30 codex exec --yolo" "$R")"
+gate "via PowerShell no principal: iex \"git commit -m x\" BARRA (T2)" 2 \
+  "$(bp 'iex "git commit -m x"' "$R")"
+gate "via PowerShell no principal: Invoke-Expression \"codex exec --yolo\" BARRA (T2)" 2 \
+  "$(bp 'Invoke-Expression "codex exec --yolo"' "$R")"
+gate "via PowerShell no worktree: iex \"git commit -m x\" PASSA (T2, regressao)" 0 \
+  "$(bp 'iex "git commit -m x"' "$WT")"
+
+echo
+echo "== U1/U2 (rodada 12, lote 3, 2026-09-04): flags curtas coladas a -c (bash -xc, sh -ec) =="
+gate "bash -xc \"codex exec --yolo\" fora de worktree BARRA (U1)" 2 \
+  "$(b 'bash -xc "codex exec --yolo"' "$R")"
+gate "sh -ec \"codex exec --yolo\" fora de worktree BARRA (U1)" 2 \
+  "$(b 'sh -ec "codex exec --yolo"' "$R")"
+
+echo
+echo "== P3 (auditor, 11a revisao, rodada 13, lote 3, 2026-09-04): wrapper de PREFIXO + wrapper de STRING compostos =="
+gate "timeout 5 bash -c \"codex exec --yolo\" fora de worktree BARRA (P3)" 2 \
+  "$(b 'timeout 5 bash -c "codex exec --yolo"' "$R")"
+
+echo
+echo "== W1 (auditor, 12a revisao, rodada 14, lote 3, 2026-09-04): flag COM VALOR antes do -c (bash -o pipefail) =="
+gate "bash -o pipefail -c \"codex exec --yolo\" fora de worktree BARRA (W1)" 2 \
+  "$(b 'bash -o pipefail -c "codex exec --yolo"' "$R")"
+
+echo
+echo "== R18 (auditor, 16a revisao, lote 3, 2026-09-04): source/./& viram ilegivel (arquivo opaco) =="
+gate "via Bash, source rodar.sh fora de worktree BARRA (R18, arquivo opaco)" 2 \
+  "$(b "source rodar.sh" "$R")"
+
+echo
+echo "== rodada 19 (lote 3): &{...} colado ao scriptblock atravessa o gate =="
+# Mesma causa do conserto em gate-staging-total.cjs: 'extrairPrimeiroToken'
+# tokenizava por \S+ e nao tratava '{' como fronteira — o primeiro token de
+# '&{codex exec --yolo}' saia '&{codex' inteiro, nunca batia com
+# 'exe === "&"', e 'desempacotarWrapperDeString' nunca marcava o segmento
+# como ilegivel: nem o '&' virava call operator, nem 'codex' era reconhecido
+# como CLI ('&{codex' != 'codex').
+gate "&{codex exec --yolo} fora do worktree BARRA (rodada 19)" 2 \
+  "$(b "&{codex exec --yolo}" "$R")"
+# Dentro do worktree TAMBEM barra — nao e regressao: a chave '{' sozinha
+# como segmento faz 'contemSubshellOuGrupo' marcar a travessia INCERTA (o
+# mesmo tratamento conservador que "(cd principal && codex exec --yolo)" ja
+# recebe no caso A3 acima), e incerto bloqueia em QUALQUER lugar — o gate
+# nao sabe mais distinguir worktree de principal quando nao sabe resolver o
+# resto do comando.
+gate "&{codex exec --yolo} dentro do worktree TAMBEM barra (incerto, mesma familia do caso A3)" 2 \
+  "$(b "&{codex exec --yolo}" "$WT")"
+
+echo
+echo "== rodada 19 (lote 3): &{...} tambem some da checagem de sessao co-locada =="
+# Mesma causa em 'palavras' (gate-worktree.cjs): sem tratar '{'/'}' como
+# fronteira de palavra, '&{git checkout main}' virava as palavras
+# ["&{git", "checkout", "main}"] — nem "&{git" nem "main}" batem com "git"/
+# "main" exatos, e a busca por 'git' literal (subcomandoGit) nunca achava o
+# comando escondido no scriptblock colado ao call operator.
+monta_sessoes "$EU|$(esc "$R")|1|1" "$OUTRA|$(esc "$R")|15|2"
+gatec "&{git checkout main} bloqueado como o 'git checkout main' puro (rodada 19)" 2 \
+  "$(p "&{git checkout main}" "$R")"
+
+echo
+echo "== contraprovas de super-bloqueio (rodada 19, lote 3) =="
+# Chave/parenteses DENTRO de aspas continuam UMA palavra so — mesmo cenario
+# e payload de "commit com 'checkout' na mensagem PASSA" (acima, D2): so
+# muda o conteudo da mensagem, para provar que '{'/'(' citados nao viram
+# fronteira de palavra nem de segmento.
+gatec 'contraprova: git commit -m "fix {json} parse" PASSA'  0 "$(p 'git commit -m "fix {json} parse"' "$R")"
+gatec 'contraprova: git commit -m "a (b) c" PASSA'            0 "$(p 'git commit -m "a (b) c"' "$R")"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

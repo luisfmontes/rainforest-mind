@@ -53,13 +53,15 @@
 const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
+const { cwdPorSegmento, segmentosComAspas } = require("./lib/cwd-efetivo.cjs");
+const {
+  tokensComAspas, ehComando, posicaoDeComando, textoAPartir, desempacotarWrapperDeString,
+} = require("./lib/tokens-comando.cjs");
 
 // Flags globais do git que consomem o token seguinte (`git -C <dir> add`).
 const FLAG_COM_VALOR = new Set([
   "-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path", "--super-prefix",
 ]);
-// Prefixos que podem vir antes do `git` sem mudar o que ele faz.
-const PREFIXO_NEUTRO = new Set(["env", "sudo", "nohup", "command", "time"]);
 // Pathspecs que significam "o repo inteiro".
 const CAMINHO_TOTAL = new Set([".", "./", ":/", "*", "-A", "--all", "-u", "--update"]);
 
@@ -82,36 +84,94 @@ function git(dir, args, { cru = false } = {}) {
   }
 }
 
-/** Segmenta a linha de comando em invocacoes independentes. */
+/**
+ * Segmenta a linha de comando em invocacoes independentes.
+ *
+ * Delega para `segmentosComAspas` (H1, rodada 5, lote 3): precisa ser a
+ * MESMA segmentacao que `cwdPorSegmento` usa, senao o indice do segmento
+ * onde `git add`/`commit` casou não bate com o indice do cwd resolvido —
+ * cada um cortaria a linha num lugar diferente perto de `;`/`&&` dentro de
+ * aspas. Antes era `cmd.split(/\|\||&&|[;|\n]/)`, sem respeitar aspas.
+ */
 function segmentos(cmd) {
-  return cmd.split(/\|\||&&|[;|\n]/);
+  return segmentosComAspas(cmd);
 }
 
 /**
- * Tokeniza removendo trechos entre aspas. Um argumento citado nunca e o
- * subcomando nem uma flag, e removendo-o some o falso positivo de
- * `git commit -m "suporte a add -A"`.
+ * Acha a POSICAO DE COMANDO do segmento (pulando `env -C X`, `env NOME=v`,
+ * `sudo -u x`, `nice -n 5`, `timeout 5`, `nohup`, `command`, `exec`, `time`,
+ * `xargs`, ...) via `posicaoDeComando`/`tokensComAspas` de
+ * `hooks/lib/tokens-comando.cjs` — o mesmo modulo que `gate-worktree.cjs` e
+ * `cwd-efetivo.cjs` ja usam. `null` se o comando ali nao e `git`.
+ *
+ * M1 (auditor, 5a revisao, 2026-09-03): o tokenizador antigo desta funcao so
+ * pulava `PREFIXO_NEUTRO` como token UNICO, entao `env -C . git add -A` ou
+ * `sudo -u x git add -A` paravam na flag do wrapper (`toks[i] !== "git"`) e o
+ * `git add -A` passava sem checagem — o incidente de 2026-08-09 que este gate
+ * existe para impedir.
+ *
+ * A partir da posicao de comando, o restante do segmento e filtrado dos
+ * tokens citados (um argumento entre aspas nunca e subcomando nem flag —
+ * `git commit -m "suporte a add -A"` nao pode virar falso positivo) e
+ * analisado como antes.
  */
-function tokens(seg) {
-  return seg
-    .replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, " ")
-    .trim().split(/\s+/).filter(Boolean);
+function analisaGit(toksComAspas) {
+  const pos = posicaoDeComando(toksComAspas);
+  // `true`: `pos` VEM de `posicaoDeComando`, entao `"git" add -A` conta
+  // (rodada 20, lote 3, achado do auditor na 18a revisao).
+  if (pos === null || !ehComando(toksComAspas[pos], "git", true)) return null;
+  const resto = toksComAspas.slice(pos + 1).filter((t) => !t.q).map((t) => t.v);
+
+  let i = 0;
+  let dirC = null;
+  while (i < resto.length && resto[i].startsWith("-")) {
+    if (resto[i] === "-C" && resto[i + 1]) dirC = resto[i + 1];
+    i += FLAG_COM_VALOR.has(resto[i]) && !resto[i].includes("=") ? 2 : 1;
+  }
+  if (i >= resto.length) return null;
+  return { sub: resto[i], args: resto.slice(i + 1), dirC };
 }
 
-/** null se o segmento nao e uma chamada de git; senao {sub, args, dirC}. */
-function analisaGit(toks) {
-  let i = 0;
-  while (i < toks.length && (PREFIXO_NEUTRO.has(toks[i]) || /^\w+=/.test(toks[i]))) i += 1;
-  if (toks[i] !== "git") return null;
-  i += 1;
-
-  let dirC = null;
-  while (i < toks.length && toks[i].startsWith("-")) {
-    if (toks[i] === "-C" && toks[i + 1]) dirC = toks[i + 1];
-    i += FLAG_COM_VALOR.has(toks[i]) && !toks[i].includes("=") ? 2 : 1;
+/**
+ * `analisaGit` mais o desempacotamento de wrapper de STRING (T2, rodada 11,
+ * lote 3, 2026-09-04): `Invoke-Expression "git add -A"`/`iex "..."`,
+ * `eval "..."`, `bash -c "..."`/primos, `pwsh -Command "..."`, `cmd /c "..."`
+ * escondem o `git` de verdade DENTRO de uma string, que `analisaGit` sozinho
+ * nao ve (opera em TOKENS do segmento, e o comando de verdade e so um token
+ * citado). Reprocessa recursivamente (o conteudo desempacotado pode ele
+ * mesmo ter varios segmentos encadeados, e pode ele mesmo ser outro
+ * wrapper).
+ *
+ * Conteudo ILEGIVEL (`$(`, crase, variavel) devolve `{ incerto: true }` —
+ * nao da pra saber se esconde `git add -A`/`commit -a`; mesma postura
+ * conservadora que `cwdPorSegmento` ja usa para `cd` que nao resolve.
+ * `null` quando o segmento nao e git nem wrapper nenhum.
+ *
+ * P3 (auditor, 11a revisao, rodada 13, lote 3, 2026-09-04): o desempacotamento
+ * rodava sobre `segTexto` CRU (posicao 0), nunca a partir da POSICAO DE
+ * COMANDO — `timeout 5 bash -c "git add -A"`/`env -C . bash -c "git add -A"`
+ * atravessavam com exit 0, porque `desempacotarWrapperDeString("timeout 5
+ * bash -c ...")` nao reconhece `timeout` como wrapper de string (ele e
+ * wrapper de PREFIXO, tratado por `posicaoDeComando`). Agora calcula a
+ * posicao de comando primeiro e desempacota a partir dela — `textoAPartir`
+ * reconstroi so o texto dali pra frente, sem o prefixo que ja foi
+ * consumido — para o desempacotador enxergar `bash -c "..."` como tal.
+ */
+function analisaSegmentoGit(segTexto, ferramenta) {
+  const g = analisaGit(tokensComAspas(segTexto));
+  if (g) return g;
+  const toks = tokensComAspas(segTexto);
+  const pos = posicaoDeComando(toks);
+  if (pos === null) return null;
+  const { interno, ilegivel } = desempacotarWrapperDeString(textoAPartir(toks, pos), { ferramenta });
+  if (ilegivel) return { incerto: true };
+  if (interno !== null) {
+    for (const sub of segmentosComAspas(interno)) {
+      const r = analisaSegmentoGit(sub, ferramenta);
+      if (r) return r;
+    }
   }
-  if (i >= toks.length) return null;
-  return { sub: toks[i], args: toks.slice(i + 1), dirC };
+  return null;
 }
 
 /** `-am` contem a curta `a`; `--amend` nao e curta e nao conta. */
@@ -224,21 +284,45 @@ function main() {
   // mora em hooks/lib/config.cjs e falha para o lado de LIGAR - config ilegivel
   // nao pode virar trava desligada em silencio.
   try { if (!require("./lib/config.cjs").ligado("gate-staging", { projeto: cwdDoEvento })) process.exit(0); } catch {}
-  if (ev.tool_name !== "Bash") process.exit(0);
+  // R3 (rodada 9, lote 3, 2026-09-04): nesta maquina a ferramenta primaria e
+  // `PowerShell`, nao `Bash` — `Set-Location <principal>; git add -A` pela
+  // ferramenta `PowerShell` passava batido. O mesmo parser de segmentos/`git
+  // -C`/movedores (cwd-efetivo.cjs) ja sabe ler texto PowerShell (R3 la).
+  if (ev.tool_name !== "Bash" && ev.tool_name !== "PowerShell") process.exit(0);
   const cmd = (ev.tool_input || {}).command;
   if (typeof cmd !== "string") process.exit(0);
 
   let motivo = null;
   let dirC = null;
-  for (const seg of segmentos(cmd)) {
-    const g = analisaGit(tokens(seg));
+  let indiceSegmento = null;
+  const segs = segmentos(cmd);
+  for (let idx = 0; idx < segs.length; idx += 1) {
+    const g = analisaSegmentoGit(segs[idx], ev.tool_name);
     if (!g) continue;
+    if (g.incerto) {
+      motivo = "comando dinamico (eval/bash -c/Invoke-Expression/iex/pwsh -Command/cmd /c) com " +
+        "conteudo nao resolvivel — pode esconder git add -A/commit -a";
+      dirC = null;
+      indiceSegmento = idx;
+      break;
+    }
     const m = motivoDe(g);
-    if (m) { motivo = m; dirC = g.dirC; break; }
+    if (m) { motivo = m; dirC = g.dirC; indiceSegmento = idx; break; }
   }
   if (!motivo) process.exit(0);
 
-  const dir = dirC || ev.cwd || process.cwd();
+  // H1 (rodada 5, lote 3): resolve o cwd efetivo NO SEGMENTO onde o `git
+  // add`/`commit` apareceu, nao o cwd FINAL da linha inteira. Antes disto,
+  // `git add -A && cd <worktree>` no principal fazia o `add` de verdade no
+  // principal, mas o cwd FINAL (depois do `cd`) caia no worktree, e o gate
+  // liberava lendo o lugar errado — o mesmo defeito do H1 no ramo de CLI do
+  // `gate-worktree.cjs`. `dirC` (git -C) vence sempre — nao ha `cd` antes de
+  // `git -C`, e `-C` e explicito. `incerto` (cd variavel, subshell, `~` no
+  // comeco, `popd` sem `pushd`) = conservadorismo: usa o cwd inicial, evitando
+  // decidir por adivinhacao.
+  const porSegmento = cwdPorSegmento(cmd, cwdDoEvento);
+  const doSegmento = porSegmento[indiceSegmento] || { cwd: cwdDoEvento, incerto: true };
+  const dir = dirC || (doSegmento.incerto ? cwdDoEvento : doSegmento.cwd);
   const gitDir = git(dir, ["rev-parse", "--git-dir"]);
   if (gitDir === null) {
     // Fora de repo git o comando falha sozinho. Mas se o git nao respondeu por
