@@ -227,6 +227,96 @@ function git(dir, args) {
 }
 
 /**
+ * Máquina de estado unificada para percorrer aspas no shell bash.
+ * Usada por `segmentos()` e `tokens()` para garantir consistência na leitura
+ * de gramática de aspas, evitando replicação de código.
+ *
+ * Percorre `texto` e para cada posição marca se está fora de aspas ou dentro
+ * de qual tipo: `'...'`, `"..."`, ou `$'...'` (ANSI-C). Devolve array onde:
+ *   - 0 = fora de aspas
+ *   - 1 = dentro de aspas simples '...'
+ *   - 2 = dentro de aspas duplas "..."
+ *   - 3 = dentro de aspas ANSI-C $'...'
+ *
+ * NOTA: caracteres de fechamento de aspa (`'`, `"`) são marcados com estado 0
+ * (fora), representando a transição DEPOIS do fechamento.
+ */
+function analisaAspas(texto) {
+  const mapa = [];
+  let emAspaSimples = false;
+  let emAspaDupla = false;
+  let emAspaANSIC = false;
+
+  for (let i = 0; i < texto.length; i++) {
+    const char = texto[i];
+    const proximo = texto[i + 1];
+    const anterior = i > 0 ? texto[i - 1] : "";
+
+    // Dentro de aspas ANSI-C ($'...'): barra invertida escapa o próximo caractere
+    if (emAspaANSIC) {
+      if (char === "'") {
+        emAspaANSIC = false;
+        mapa.push(0); // Fechamento: marca como fora de aspas
+      } else {
+        mapa.push(3);
+        if (char === "\\") {
+          if (proximo !== undefined) {
+            i += 1;
+            mapa.push(3);
+          }
+        }
+      }
+      continue;
+    }
+
+    // Dentro de aspas simples: nada é especial, nem barra, nem aspas duplas
+    if (emAspaSimples) {
+      if (char === "'") {
+        emAspaSimples = false;
+        mapa.push(0); // Fechamento: marca como fora de aspas
+      } else {
+        mapa.push(1);
+      }
+      continue;
+    }
+
+    // Dentro de aspas duplas: barra invertida pode escapar alguns chars
+    if (emAspaDupla) {
+      if (char === '"') {
+        emAspaDupla = false;
+        mapa.push(0); // Fechamento: marca como fora de aspas
+      } else {
+        mapa.push(2);
+        if (char === "\\") {
+          if (proximo !== undefined) {
+            i += 1;
+            mapa.push(2);
+          }
+        }
+      }
+      continue;
+    }
+
+    // Fora de aspas
+    mapa.push(0);
+    if (char === "'" && anterior === "$") {
+      emAspaANSIC = true;
+    } else if (char === "'") {
+      emAspaSimples = true;
+    } else if (char === '"') {
+      emAspaDupla = true;
+    } else if (char === "\\") {
+      if (proximo !== undefined) {
+        i += 1;
+        mapa.push(0);
+      }
+    }
+  }
+
+  return mapa;
+}
+
+/**
  * Segmenta um trecho de comando em invocacoes independentes. `(` e `)`
  * entram como separador (subshell `(git commit --no-verify)`) — chamado
  * DEPOIS de extraiSubstituicoes(), que ja removeu `$(...)` e crase com
@@ -234,10 +324,7 @@ function git(dir, args) {
  * subshell "nu", nunca os de substituicao de comando.
  *
  * CIENTE DE ASPAS: separador (`;`, `|`, `&`, `(`, `)`, `\n`, `||`, `&&`)
- * dentro de `'...'` ou de `"..."` nao separa nada. Maquina de estado:
- *   - dentro de `'...'`, nada e especial, nem barra invertida, nem `"`;
- *   - dentro de `"..."`, barra invertida escapa o char seguinte, e `'` e literal;
- *   - fora de aspas, barra invertida escapa o char seguinte.
+ * dentro de `'...'`, `"..."` ou `$'...'` nao separa nada.
  * Se ao final da string ainda estiver dentro de uma aspa aberta (falha de
  * sintaxe no bash de verdade), VOLTA para o split ingenuo (fail-closed).
  * Se o comando contiver flags perigosas e tiver sintaxe invalida (aspa aberta),
@@ -246,74 +333,28 @@ function git(dir, args) {
 function segmentos(cmd) {
   const resultado = [];
   let segmento = "";
-  let emAspaSimples = false;
-  let emAspaDupla = false;
-  let emAspaANSIC = false;
+  const mapa = analisaAspas(cmd);
+  let dentroDeAspa = false; // rastreia se ainda está dentro de aspa no final
 
   for (let i = 0; i < cmd.length; i++) {
     const char = cmd[i];
     const proximo = cmd[i + 1];
-    const anterior = i > 0 ? cmd[i - 1] : "";
+    const estado = mapa[i]; // 0=fora, 1=simples, 2=dupla, 3=ANSI-C
 
-    // Dentro de aspas ANSI-C ($'...'): barra invertida escapa o próximo caractere
-    if (emAspaANSIC) {
-      segmento += char;
-      if (char === "\\") {
-        // Barra invertida escapa o próximo caractere — assim $\' não fecha a string
-        if (proximo !== undefined) {
-          segmento += proximo;
-          i += 1;
-        }
-      } else if (char === "'") {
-        emAspaANSIC = false;
-      }
-      continue;
-    }
+    dentroDeAspa = (estado !== 0);
 
-    // Dentro de aspas simples: nada é especial, nem barra, nem aspas duplas
-    if (emAspaSimples) {
-      segmento += char;
-      if (char === "'") {
-        emAspaSimples = false;
-      }
-      continue;
-    }
-
-    // Dentro de aspas duplas: barra invertida pode escapar alguns chars
-    if (emAspaDupla) {
-      segmento += char;
-      if (char === "\\") {
-        // Barra invertida escapa o próximo caractere
-        if (proximo !== undefined) {
-          segmento += proximo;
-          i += 1;
-        }
-      } else if (char === '"') {
-        emAspaDupla = false;
-      }
-      continue;
-    }
-
-    // Fora de aspas
-    if (char === "'" && anterior === "$") {
-      // Abertura de string ANSI-C: $'
-      emAspaANSIC = true;
-      segmento += char;
-    } else if (char === "'") {
-      emAspaSimples = true;
-      segmento += char;
-    } else if (char === '"') {
-      emAspaDupla = true;
-      segmento += char;
-    } else if (char === "\\") {
-      // Barra invertida escapa o próximo caractere
+    // Barra invertida fora de aspas escapa o próximo caractere
+    if (char === "\\" && estado === 0) {
       segmento += char;
       if (proximo !== undefined) {
         segmento += proximo;
         i += 1;
       }
-    } else if (/[\|\n&();]/.test(char) || (char === "|" && proximo === "|") || (char === "&" && proximo === "&")) {
-      // Separador encontrado
+      continue;
+    }
+
+    // Verificar separadores apenas fora de aspas
+    if (estado === 0) {
       if (char === "|" && proximo === "|") {
         if (segmento) resultado.push(segmento);
         segmento = "";
@@ -322,11 +363,14 @@ function segmentos(cmd) {
         if (segmento) resultado.push(segmento);
         segmento = "";
         i += 1;
-      } else {
+      } else if (/[;|\n&()]/.test(char)) {
         if (segmento) resultado.push(segmento);
         segmento = "";
+      } else {
+        segmento += char;
       }
     } else {
+      // Dentro de qualquer tipo de aspa, sempre acumula
       segmento += char;
     }
   }
@@ -336,7 +380,7 @@ function segmentos(cmd) {
   // flags perigosas, retorna um marcador especial de ambiguidade; senão, usa
   // split ingênuo. Comando com aspa não fechada é erro de sintaxe no bash
   // de qualquer forma, e o gate não deve premiá-lo com passagem livre.
-  if (emAspaSimples || emAspaDupla || emAspaANSIC) {
+  if (dentroDeAspa) {
     const temFlagPerigosa = /--no-verify|--no-gpg-sign|-n(\s|$)/.test(cmd);
     if (temFlagPerigosa) {
       // Marca como ambíguo em vez de fabricar um segmento falso
@@ -506,87 +550,6 @@ function segmentosDoComando(cmd) {
   return segs;
 }
 
-/**
- * Máquina de estado para percorrer aspas no shell bash, usada tanto por
- * `segmentos()` (para decidir separadores) quanto por `tokens()` (para
- * decidir limite de token). Garante que ambas funções leem a gramática de
- * aspas da mesma forma, evitando divergência.
- *
- * Percorre `texto` e para cada posição marca se está fora de aspas ou dentro
- * de qual tipo: `'...'`, `"..."`, ou `$'...'` (ANSI-C). Devolve array onde:
- *   - 0 = fora de aspas
- *   - 1 = dentro de aspas simples '...'
- *   - 2 = dentro de aspas duplas "..."
- *   - 3 = dentro de aspas ANSI-C $'...'
- *
- * Usado por `segmentos()` e `tokens()` para garantir consistência.
- */
-function analisaAspas(texto) {
-  const mapa = [];
-  let emAspaSimples = false;
-  let emAspaDupla = false;
-  let emAspaANSIC = false;
-
-  for (let i = 0; i < texto.length; i++) {
-    const char = texto[i];
-    const proximo = texto[i + 1];
-    const anterior = i > 0 ? texto[i - 1] : "";
-
-    // Dentro de aspas ANSI-C ($'...'): barra invertida escapa o próximo caractere
-    if (emAspaANSIC) {
-      mapa.push(3);
-      if (char === "\\") {
-        if (proximo !== undefined) {
-          i += 1;
-          mapa.push(3);
-        }
-      } else if (char === "'") {
-        emAspaANSIC = false;
-      }
-      continue;
-    }
-
-    // Dentro de aspas simples: nada é especial, nem barra, nem aspas duplas
-    if (emAspaSimples) {
-      mapa.push(1);
-      if (char === "'") {
-        emAspaSimples = false;
-      }
-      continue;
-    }
-
-    // Dentro de aspas duplas: barra invertida pode escapar alguns chars
-    if (emAspaDupla) {
-      mapa.push(2);
-      if (char === "\\") {
-        if (proximo !== undefined) {
-          i += 1;
-          mapa.push(2);
-        }
-      } else if (char === '"') {
-        emAspaDupla = false;
-      }
-      continue;
-    }
-
-    // Fora de aspas
-    mapa.push(0);
-    if (char === "'" && anterior === "$") {
-      emAspaANSIC = true;
-    } else if (char === "'") {
-      emAspaSimples = true;
-    } else if (char === '"') {
-      emAspaDupla = true;
-    } else if (char === "\\") {
-      if (proximo !== undefined) {
-        i += 1;
-        mapa.push(0);
-      }
-    }
-  }
-
-  return mapa;
-}
 
 /**
  * Tokeniza PRESERVANDO o conteudo citado como parte do token, em vez de
@@ -600,63 +563,53 @@ function analisaAspas(texto) {
  * aspas simples, `\` remove a si mesma e faz o char seguinte virar literal
  * — `--no\-verify` chega ao shell como `--no-verify`, e tem que comparar
  * como tal. Aspas simples preservam a barra invertida literal (shell de
- * verdade nao processa escape dentro delas, e por isso o ramo de `'` abaixo
- * nao trata `\` como especial). Dentro de aspas DUPLAS o fechamento tem que
- * ignorar `\"` escapada (senao um `bash -c "...\"..."` aninhado fecha a
- * aspa cedo demais e quebra a extracao do comando interno) — so `\"`, `\\`,
- * `\$` e `` \` `` sao especiais ali, mesma regra do shell.
+ * verdade nao processa escape dentro delas, e por isso nao trata `\` como
+ * especial). Dentro de aspas DUPLAS o fechamento tem que ignorar `\"` escapada
+ * (senao um `bash -c "...\"..."` aninhado fecha a aspa cedo demais e quebra
+ * a extracao do comando interno) — so `\"`, `\\`, `\$` e `` \` `` sao
+ * especiais ali, mesma regra do shell.
  *
  * ASPAS ANSI-C (rodada 7, 2026-09-04): em `$'...'`, a barra invertida
- * escapa o próximo caractere, então `\'` NÃO fecha a aspa. Antes,
- * `segmentos()` entendia escape em ANSI-C mas `tokens()` não, causando
- * divergência. Conserto: replicar a mesma máquina de estado de aspas que
- * `segmentos()` usa, DESCARTANDO as aspas do resultado final (não
- * acumular as aspas no token).
+ * escapa o próximo caractere, então `\'` NÃO fecha a aspa. Usa `analisaAspas()`
+ * para ter consistência com `segmentos()`, evitando divergência.
  */
 function tokens(seg) {
   const toks = [];
   let cur = "";
   let tem = false;
-  let emAspaSimples = false;
-  let emAspaDupla = false;
-  let emAspaANSIC = false;
+  const mapa = analisaAspas(seg);
 
   for (let i = 0; i < seg.length; i += 1) {
     const c = seg[i];
     const proximo = seg[i + 1];
-    const anterior = i > 0 ? seg[i - 1] : "";
+    const estado = mapa[i]; // 0=fora, 1=simples, 2=dupla, 3=ANSI-C
 
-    // Dentro de aspas ANSI-C ($'...'): barra invertida escapa o próximo caractere
-    if (emAspaANSIC) {
+    // Dentro de ANSI-C ($'...'): barra invertida escapa o próximo caractere
+    if (estado === 3) {
       if (c === "\\") {
-        // Barra invertida escapa o próximo caractere
         if (proximo !== undefined) {
           cur += proximo;
           i += 1;
           tem = true;
         }
-      } else if (c === "'") {
-        emAspaANSIC = false;
-      } else {
+      } else if (c !== "'") { // não acumula aspa de fechamento
         cur += c;
         tem = true;
       }
       continue;
     }
 
-    // Dentro de aspas simples: nada é especial, nem barra, nem aspas duplas
-    if (emAspaSimples) {
-      if (c === "'") {
-        emAspaSimples = false;
-      } else {
+    // Dentro de aspas simples: acumula tudo, não acumula aspas de abertura/fechamento
+    if (estado === 1) {
+      if (c !== "'") {
         cur += c;
         tem = true;
       }
       continue;
     }
 
-    // Dentro de aspas duplas: barra invertida pode escapar alguns chars
-    if (emAspaDupla) {
+    // Dentro de aspas duplas: barra invertida pode escapar certos chars
+    if (estado === 2) {
       if (c === "\\") {
         if (proximo !== undefined && '"\\$`'.includes(proximo)) {
           cur += proximo;
@@ -666,32 +619,24 @@ function tokens(seg) {
         }
         cur += c;
         tem = true;
-      } else if (c === '"') {
-        emAspaDupla = false;
-      } else {
+      } else if (c !== '"') { // não acumula aspa de fechamento
         cur += c;
         tem = true;
       }
       continue;
     }
 
-    // Fora de aspas
-    if (c === "'" && anterior === "$") {
-      // Abertura de string ANSI-C: $' — não acumula a aspa
-      emAspaANSIC = true;
-    } else if (c === "'") {
-      // Abertura de aspas simples — não acumula a aspa
-      emAspaSimples = true;
-    } else if (c === '"') {
-      // Abertura de aspas duplas — não acumula a aspa
-      emAspaDupla = true;
-    } else if (c === "\\" && proximo !== undefined) {
+    // Fora de aspas (estado === 0)
+    if (c === "\\" && proximo !== undefined) {
       // Barra invertida fora de aspas escapa o próximo caractere
       cur += proximo;
       i += 1;
       tem = true;
     } else if (/\s/.test(c)) {
       if (tem) { toks.push(cur); cur = ""; tem = false; }
+    } else if (c === "$" || c === "'" || c === '"') {
+      // Aspas de abertura fora de aspas — não acumula, apenas transição
+      // Não é preciso fazer nada aqui: o estado já marca a transição para aspas
     } else {
       cur += c;
       tem = true;

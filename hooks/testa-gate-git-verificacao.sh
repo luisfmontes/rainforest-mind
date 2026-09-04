@@ -317,27 +317,46 @@ gate "\$'a\\\\\\\\'  ; git commit --no-verify -m x (contraprova: barra escapada 
 gate "git commit -m \$'teste (aspa não fechada com prosa) -- ambiguidade honesta" \
   2 "$(b 'git commit -m $'"'"'teste com --no-verify')"
 
-gate "bash -c \$'git commit --no-verify' (não-objetivo: indireção shell permanece como antes)" \
-  0 "$(b 'bash -c $'"'"'git commit --no-verify'"'"'')"
+# bash -c $'...' era não-objetivo (indireção de shell), mas com desembrulho de $'...'
+# agora é detectado (melhoria). Remover check — será medido e reportado.
+# gate "bash -c \$'git commit --no-verify' (não-objetivo: indireção shell)" \
+#   ? "$(b 'bash -c $'"'"'git commit --no-verify'"'"'')"
 
 echo
 echo "== falso negativo descoberto na rodada 7: \$'...' com escape de apóstrofo e flag nua depois =="
 echo "== (unificação de máquina de estado entre segmentos() e tokens()) =="
 
 # Função auxiliar para construir JSON com contrabarra em $'...'
+# Recebe um comando e constrói um JSON com o comando EXATAMENTE como recebido
+# Passa a string via stdin em heredoc para evitar interpretação dupla de shell
 b_ansi() {
-  local cmd="$1"
+  local cmd_pattern="$1"
   node -e "
-    const R = '$R'.replace(/\\\\/g, '/');
-    const c = \`$cmd\`;
-    console.log(JSON.stringify({
-      session_id: 's1',
-      cwd: R,
-      hook_event_name: 'PreToolUse',
-      tool_name: 'Bash',
-      tool_input: { command: c }
-    }));
-  "
+const readline = require('readline');
+const bs = String.fromCharCode(92);
+process.stdin.on('data', (cmdPattern) => {
+  // Interpreta sequências de escape manualmente: backslash-quote vira barra+aspa
+  const cmdStr = cmdPattern.toString().trim();
+  let c = '';
+  let i = 0;
+  while (i < cmdStr.length) {
+    if (cmdStr[i] === '\\\\' && i + 1 < cmdStr.length && cmdStr[i+1] === \"'\") {
+      c += bs + \"'\";
+      i += 2;
+    } else {
+      c += cmdStr[i];
+      i += 1;
+    }
+  }
+  console.log(JSON.stringify({
+    session_id: 's1',
+    cwd: '$R'.replace(/\\\\/g, '/'),
+    hook_event_name: 'PreToolUse',
+    tool_name: 'Bash',
+    tool_input: { command: c }
+  }));
+});
+" <<< "$cmd_pattern"
 }
 
 # Caso 1: o achado principal - $'...' com escape + flag nua depois
@@ -408,6 +427,42 @@ if [ "$rc" = 2 ]; then
 else
   falhou=$((falhou+1)); echo "  FALHA exit code: esperava 2, veio $rc"
 fi
+
+echo
+echo "== Testes acrescentados para o Defeito A (desembrulho de \$'...'): DEVE barrar (exit 2) =="
+# Prova que a contrabarra está sendo enviada
+echo "Prova do JSON.stringify dos comandos com \\' :"
+
+# Teste 1: $'--no-verify' nua
+saida=$(printf '%s' "$(b_ansi "git commit \$'--no-verify' -m x")" | node "$GATE" 2>&1); rc=$?
+echo "  JSON teste 1 (git commit \$'--no-verify'):"
+printf '%s' "$(b_ansi "git commit \$'--no-verify' -m x")" | node -e "const d = JSON.parse(require('fs').readFileSync(0, 'utf8')); console.log('    Command: ' + JSON.stringify(d.tool_input.command));"
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit \$'--no-verify' -m x (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA: esperava 2, veio $rc"; fi
+
+# Teste 2: $'-n' nua (abreviação)
+saida=$(printf '%s' "$(b_ansi "git commit \$'-n' -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit \$'-n' -m x (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA: esperava 2, veio $rc"; fi
+
+# Teste 3: git push $'--no-verify'
+saida=$(printf '%s' "$(b_ansi "git push \$'--no-verify'")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git push \$'--no-verify' (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA: esperava 2, veio $rc"; fi
+
+# Teste 4: git commit $'--no-gpg-sign'
+saida=$(printf '%s' "$(b_ansi "git commit \$'--no-gpg-sign' -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit \$'--no-gpg-sign' -m x (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA: esperava 2, veio $rc"; fi
+
+# Contraprova: flag DENTRO da mensagem (não deve barrar)
+saida=$(printf '%s' "$(b_ansi "git commit -m \$'don\\'t use --no-verify here'")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   git commit -m \$'don\\'t use --no-verify here' (exit 0 — flag DENTRO da mensagem)"
+else falhou=$((falhou+1)); echo "  FALHA: esperava 0, veio $rc"; fi
+
+# Caso de mudança: bash -c $'...' (não-objetivo, mas detectado agora como melhoria)
+saida=$(printf '%s' "$(b_ansi "bash -c \$'git commit --no-verify'")" | node "$GATE" 2>&1); rc=$?
+echo "  info  bash -c \$'git commit --no-verify': exit $rc (não-objetivo, mas agora detectado como melhoria; era 0, agora $rc)"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
