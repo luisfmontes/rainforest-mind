@@ -35,7 +35,7 @@
     "em": "2026-09-03"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-03",
     "tarefas_ok": 14,
     "tarefas": 14,
@@ -113,7 +113,7 @@
         "fixture": "stub devolve corpo sem a secao de criterio; sem a checagem o script comenta e fecha"
       }
     ],
-    "em": "2026-09-03",
+    "em": "2026-09-04",
     "rodada": 5,
     "rodada3": {
       "achados": [
@@ -178,32 +178,31 @@
         "H3 wrapper env",
         "H4 pushd"
       ]
+    },
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-04"
     }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "fc1be8775ff6f30a80a699d1d229c1f32bf88492",
+      "head": "ca96973d45cdf3c555f00204d71ef4a30c7fd30b",
       "caminhos_sujos": []
     },
-    "achados": 8,
+    "achados": 3,
     "base": "408af94de7c22492b0815ebed19b4072426a7976",
-    "head": "fc1be8775ff6f30a80a699d1d229c1f32bf88492",
+    "head": "ca96973d45cdf3c555f00204d71ef4a30c7fd30b",
     "lista": [
-      "Rev1 procuraCLI casa token sem aspas em qualquer posicao: grep -rn claude . e bloqueado (falso positivo)",
-      "Rev2/Aud2 resolverCwdEfetivo devolve o cwd FINAL da linha: codex exec && cd <wt> no principal libera; pushd e env -C nao sao movedores",
-      "Rev3 gate-staging-total mesma causa: git add -A && cd <wt> no principal libera",
-      "Rev4 conferir-entrega: linha R100\told\tnew do name-status nao e dividida; rename dentro do --escopo reprova (falso positivo)",
-      "Rev5/Aud1 gate-fechar-issue: (gh issue close 12), x=$(gh issue close 12), env/command/eval/nohup/timeout/xargs gh, { gh ...; }, pwsh -c, powershell -EncodedCommand — todos exit 0",
-      "CREEP relatorios/2026-09-03-handover-lote-3-guardas.md sem tarefa no plano — emenda: rastro do fluxo",
-      "D14 flags --saida/--saida-arquivo separadas sem divergencia declarada (nao bloqueia) — emenda no plano",
-      "Aud3 baixa/lacuna: flag de diretorio da propria CLI (--cwd) nao modelada"
+      "Aud1/Aud2 & simples (background) nao separa segmento em cwd-efetivo (SEPARADORES, segmentosComAspas) nem em gate-fechar-issue (segmentosParaGate): echo hi & cd <principal>; git commit libera; sudo & gh issue close 42 libera",
+      "Rev1 cwd-efetivo:283 seg.includes(\"git\") e substring: grep -rn -C 3 \"gitignore\" . && git add -A faz o -C do grep virar cwd (<wt>/3, incerto=false) e o staging-total libera no principal",
+      "Rev2 backup.cjs:425,360 toISOString() (UTC) nomeia o zip: entre 21h e 0h local grava o zip do dia seguinte; bateria testa-backup-gravar flakey (14 ok, 7 falhas as 23:59)"
     ],
-    "em": "2026-09-03",
-    "tentativas": 3,
-    "revisor": "reprovado (5 bloqueiam + creep)",
-    "auditor": "2 achados bloqueiam (alta)",
-    "rodada_revisao": 3
+    "em": "2026-09-04",
+    "tentativas": 4,
+    "revisor": "reprovado (2 bloqueiam, todas as rodadas anteriores fechadas)",
+    "auditor": "2 achados bloqueiam (mesma raiz: & simples)",
+    "rodada_revisao": 4
   },
   "verificar": {
     "status": "pendente"
