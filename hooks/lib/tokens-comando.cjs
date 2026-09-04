@@ -318,9 +318,26 @@ function desempacotarWrapperDeString(segmento) {
 
   const flagEsperada = WRAPPERS_DE_COMANDO[exe];
   if (!flagEsperada) return { interno: null, ilegivel: false };
-  if (p2.tok.toLowerCase() !== flagEsperada) return { interno: null, ilegivel: false };
-  const interno = desempacota(p2.resto);
-  return { interno, ilegivel: contemConstrucaoIlegivel(interno) };
+
+  // Aceita -c isolado ou flags curtas coladas terminando em c: -xc, -ec, etc.
+  // Pula flags que começam com - e não são a flag esperada, até encontrá-la.
+  let current = p2;
+  while (current) {
+    const tokLower = current.tok.toLowerCase();
+    const ehFlagEsperada = tokLower === flagEsperada || /^-[a-z]*c$/i.test(current.tok);
+    if (ehFlagEsperada) {
+      const interno = desempacota(current.resto);
+      return { interno, ilegivel: contemConstrucaoIlegivel(interno) };
+    }
+    // Se começa com - mas não é a flag esperada, pula e tenta próximo token
+    if (current.tok.startsWith("-")) {
+      current = extrairPrimeiroToken(current.resto);
+    } else {
+      // Token que não começa com -, não é flag — para aqui
+      break;
+    }
+  }
+  return { interno: null, ilegivel: false };
 }
 
 module.exports = {

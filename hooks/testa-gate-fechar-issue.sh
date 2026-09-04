@@ -737,6 +737,31 @@ echo "== (az) timeout 30 gh issue view 12 → exit 0 (T1, regressao) =="
 EXIT_AZ=$?
 [ $EXIT_AZ -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_AZ)"
 
+# U1 (rodada 12, lote 3, 2026-09-04): flags curtas coladas a -c (bash -xc, sh -ec)
+# Casos (ba, bb): bash -xc e sh -ec com gh issue close → exit 2
+
+# Caso (ba): `bash -xc "gh issue close 12"` → exit 2
+echo
+echo "== (ba) bash -xc \"gh issue close 12\" → exit 2 (U1) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"bash -xc \"gh issue close 12\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ba"
+EXIT_BA=$?
+[ $EXIT_BA -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_BA)"
+
+# Caso (bb): `sh -ec "gh issue close 12"` → exit 2
+echo
+echo "== (bb) sh -ec \"gh issue close 12\" → exit 2 (U1) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"sh -ec \"gh issue close 12\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-bb"
+EXIT_BB=$?
+[ $EXIT_BB -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_BB)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
