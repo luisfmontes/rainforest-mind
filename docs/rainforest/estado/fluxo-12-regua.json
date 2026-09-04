@@ -19,7 +19,7 @@
     "tarefas": 3,
     "tarefas_ok": 3,
     "comando": "node scripts/segunda-opiniao.cjs --base origin/main --head HEAD --criterio docs/rainforest/criterios/fluxo-12-regua.md --modelo codex; node scripts/orcamento.cjs",
-    "saida": "concordo (ultima linha); orcamento 14485 B exit 0",
+    "saida": "concordo (ultima linha); orcamento 14451-14485 B exit 0",
     "mutacao": [
       {
         "tarefa": 1,
@@ -34,7 +34,7 @@
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "item 3 do docs/rainforest/criterios/fluxo-12-regua.md (parada por lado no preflight) — restaurar a redacao \"so um caso barra o loop\" saiu discordo nomeando o criterio 3 e dizendo que a emenda ficou so no design"
+        "fixture": "DUAS rodadas, as duas vermelhas. Rodada 1: item 1 do criterio (builder NAO ve o bar.md) — mutacao na frase do Builder saiu discordo nomeando o criterio 1; prova em git show 30d3840 -- docs/rainforest/estado/fluxo-12-regua.json. Rodada 2: item 3 do criterio (parada por lado no preflight) — restaurar a redacao \"so um caso barra o loop\" saiu discordo nomeando o criterio 3 e apontando que a emenda ficara so no design. Emenda do plano registra por que o alvo mudou."
       }
     ],
     "em": "2026-09-04"
