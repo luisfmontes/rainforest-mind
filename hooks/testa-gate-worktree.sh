@@ -689,5 +689,12 @@ gate "via PowerShell no worktree: iex \"git commit -m x\" PASSA (T2, regressao)"
   "$(bp 'iex "git commit -m x"' "$WT")"
 
 echo
+echo "== U1/U2 (rodada 12, lote 3, 2026-09-04): flags curtas coladas a -c (bash -xc, sh -ec) =="
+gate "bash -xc \"codex exec --yolo\" fora de worktree BARRA (U1)" 2 \
+  "$(b 'bash -xc "codex exec --yolo"' "$R")"
+gate "sh -ec \"codex exec --yolo\" fora de worktree BARRA (U1)" 2 \
+  "$(b 'sh -ec "codex exec --yolo"' "$R")"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
