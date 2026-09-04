@@ -278,11 +278,20 @@ function normalizarNomeExecutavel(nome) {
  * Extrai o primeiro token de `str` (aspas simples/duplas respeitadas) e o
  * restante da string logo apos esse token (sem consumir as aspas do
  * restante). Retorna null se `str` nao tem nenhum token.
+ *
+ * Rodada 19 (lote 3): `{`/`}`/`(`/`)` FORA de aspas viram fronteira de token,
+ * cada um capturado como token de UM caractere — antes disto a alternativa
+ * final era `\S+`, que engolia `{`/`(` colados a um token vizinho.
+ * `&{git add -A}` (call operator do PowerShell colado ao scriptblock, sem
+ * espaco) tinha o primeiro token lido como `&{git` inteiro, que nunca casava
+ * com `exe === "&"` — o `&` sozinho, tratado como fronteira logo antes do
+ * `{`, corrige isso. Dentro de aspas nada muda: `"fix {json} parse"` continua
+ * saindo como UM token so, via os ramos de aspas simples/duplas acima.
  */
 function extrairPrimeiroToken(str) {
-  const m = /^\s*(?:"([^"]*)"|'([^']*)'|(\S+))/.exec(str);
+  const m = /^\s*(?:"([^"]*)"|'([^']*)'|([{}()])|([^\s{}()]+))/.exec(str);
   if (!m) return null;
-  const tok = m[1] !== undefined ? m[1] : m[2] !== undefined ? m[2] : m[3];
+  const tok = m[1] !== undefined ? m[1] : m[2] !== undefined ? m[2] : m[3] !== undefined ? m[3] : m[4];
   return { tok, resto: str.slice(m[0].length) };
 }
 

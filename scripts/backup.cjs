@@ -292,11 +292,20 @@ function cmdConferir(args) {
 
   const caminhoZipWin = caminhoZip.replace(/\//g, '\\');
 
+  // Rodada 19 (lote 3): escapa apóstrofo duplicando, mesmo tratamento que
+  // `compactarSimples` já faz para os caminhos que ela interpola no script
+  // PowerShell (~linha 179/185) — sem isto, um destino com apóstrofo no nome
+  // fecha a aspa simples do `-Path`/`-DestinationPath` no meio do caminho, e
+  // `Expand-Archive` sai com "A cadeia de caracteres nao tem o terminador: '."
+  // — a prova por restauração de D13 nunca chega a rodar.
+  const caminhoZipWinEscapado = caminhoZipWin.replace(/'/g, "''");
+  const expandDirWinEscapado = expandDirWin.replace(/'/g, "''");
+
   const expandResult = spawnSync('powershell', [
     '-NoProfile',
     '-NonInteractive',
     '-Command',
-    `Expand-Archive -Path '${caminhoZipWin}' -DestinationPath '${expandDirWin}' -Force 2>&1`,
+    `Expand-Archive -Path '${caminhoZipWinEscapado}' -DestinationPath '${expandDirWinEscapado}' -Force 2>&1`,
   ], { encoding: 'utf8' });
 
   if (expandResult.status !== 0) {
