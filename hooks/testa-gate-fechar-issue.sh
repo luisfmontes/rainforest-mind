@@ -852,6 +852,69 @@ echo "== (bj) gh issue close 12 # comentario → exit 2 (W2) =="
 EXIT_BJ=$?
 [ $EXIT_BJ -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_BJ)"
 
+# Rodada 15, lote 3, 2026-09-04: `--body-file` resolvido contra o cwd
+# EFETIVO do segmento (cwdPorSegmento), não contra o cwd do processo do hook.
+mkdir -p "$SBP/principal" "$SBP/wt"
+echo "sem closes aqui" > "$SBP/principal/corpo.txt"
+echo "closes #12" > "$SBP/wt/corpo.txt"
+SBP_WIN_PRINCIPAL="$(cygpath -m "$SBP/principal")"
+SBP_WIN_WT="$(cygpath -m "$SBP/wt")"
+SBP_WIN_WT_CORPO="$(cygpath -m "$SBP/wt/corpo.txt")"
+
+# Caso (bk): cwd=principal, `cd <wt> && gh pr create --body-file corpo.txt`
+# (relativo) — tem que ler wt/corpo.txt (closes #12), não principal/corpo.txt.
+echo
+echo "== (bk) cd <wt> && gh pr create --body-file corpo.txt (relativo) → lê o do wt, exit 2 citando #12 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  PAYLOAD='{"cwd":"'"$SBP_WIN_PRINCIPAL"'","tool_name":"Bash","tool_input":{"command":"cd '"$SBP_WIN_WT"' && gh pr create --body-file corpo.txt"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-bk"
+EXIT_BK=$?
+[ $EXIT_BK -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_BK)"
+ERR_BK="$(cat "$SBP/err-bk")"
+echo "$ERR_BK" | grep -q "#12" && test_ok "stderr cita #12 (leu o corpo do wt)" || test_fail "stderr não cita #12 ($ERR_BK)"
+
+# Caso (bk2): mesmo cenário, `--body-file` com caminho ABSOLUTO do wt/corpo.txt
+echo
+echo "== (bk2) cd <wt> && gh pr create --body-file <absoluto do wt/corpo.txt> → exit 2 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  PAYLOAD='{"cwd":"'"$SBP_WIN_PRINCIPAL"'","tool_name":"Bash","tool_input":{"command":"cd '"$SBP_WIN_WT"' && gh pr create --body-file '"$SBP_WIN_WT_CORPO"'"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-bk2"
+EXIT_BK2=$?
+[ $EXIT_BK2 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_BK2)"
+
+# Caso (bl): `cd $(pwd)/x && gh pr create --body-file corpo.txt` — cd incerto
+# ($(...) no destino), --body-file relativo não pode ser lido com segurança.
+echo
+echo "== (bl) cd \$(pwd)/x && gh pr create --body-file corpo.txt (cd incerto) → exit 2 (ilegível) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  PAYLOAD='{"cwd":"'"$SBP_WIN_PRINCIPAL"'","tool_name":"Bash","tool_input":{"command":"cd $(pwd)/x && gh pr create --body-file corpo.txt"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-bl"
+EXIT_BL=$?
+[ $EXIT_BL -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_BL)"
+
+# Caso (bm): regressão — sem `cd`, `gh pr create --body-file corpo.txt` no
+# próprio cwd do evento continua lendo normalmente (exit 0 com marcador).
+echo "closes #7" > "$SBP/corpo-regressao.txt"
+echo
+echo "== (bm) gh pr create --body-file corpo.txt (sem cd, cwd do evento) COM marcador → exit 0 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=1
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create --body-file corpo-regressao.txt"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-bm"
+EXIT_BM=$?
+[ $EXIT_BM -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_BM)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
