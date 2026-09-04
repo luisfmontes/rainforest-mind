@@ -35,12 +35,12 @@
     "em": "2026-09-03"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-03",
     "tarefas_ok": 14,
     "tarefas": 14,
     "comando": "for f in hooks/testa-cwd-efetivo.sh hooks/testa-gate-staging-total.sh hooks/testa-portaria.sh scripts/testa-limpar-worktrees.sh scripts/testa-conferir-entrega.sh hooks/testa-gate-worktree.sh scripts/testa-backup-gravar.sh scripts/testa-backup-conferir.sh scripts/testa-backup-estado.sh scripts/testa-fechar-issue.sh hooks/testa-gate-fechar-issue.sh hooks/testa-config.sh scripts/testa-saude.sh; do bash $f >/dev/null 2>&1; echo \"$f exit=$?\"; done",
-    "saida": "13 baterias exit=0 apos merge do lote R (cwd-efetivo 34, staging-total 61, portaria 7, limpar 14, conferir-entrega 63, gate-worktree 172, backup-gravar 23, backup-conferir 11, backup-estado 55, fechar-issue 33, gate-fechar-issue 59, config 38, saude 59); OneDrive real sem rainforest-backup",
+    "saida": "13 baterias exit=0 apos merge do lote S (cwd-efetivo 38, staging-total 62, portaria 7, limpar 18, conferir-entrega 63, gate-worktree 175, backup-gravar 23, backup-conferir 11, backup-estado 55, fechar-issue 33, gate-fechar-issue 59, config 38, saude 59); OneDrive real sem rainforest-backup",
     "mutacao": [
       {
         "tarefa": 1,
@@ -114,7 +114,7 @@
       }
     ],
     "em": "2026-09-04",
-    "rodada": 9,
+    "rodada": 10,
     "rodada3": {
       "achados": [
         "R1",
@@ -236,9 +236,16 @@
         "Rc PowerShell no gate-worktree"
       ]
     },
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-04"
+    "rodada10": {
+      "achados": [
+        "Aud1 Set-Location -Path: / cwd inexistente",
+        "Rev1 lista de exclusao do limpar"
+      ],
+      "mutacoes_reprovadas_na_integracao": [
+        "Sa existsSync -> incerto",
+        "Sb -Path: no SET_LOCATION",
+        "Sc filtro do porcelain sem exclusao"
+      ]
     }
   },
   "revisar": {
