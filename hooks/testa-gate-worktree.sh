@@ -678,5 +678,16 @@ gate "cd <caminho inexistente> && codex exec --yolo, do worktree BARRA (S1)" 2 \
   "$(b "cd $WT/pasta-que-nao-existe && codex exec --yolo" "$WT")"
 
 echo
+echo "== T1/T2 (rodada 11, lote 3, 2026-09-04): timeout -s/-k, e wrapper de string (iex/Invoke-Expression) =="
+gate "timeout -s TERM 30 codex exec --yolo fora de worktree BARRA (T1)" 2 \
+  "$(b "timeout -s TERM 30 codex exec --yolo" "$R")"
+gate "via PowerShell no principal: iex \"git commit -m x\" BARRA (T2)" 2 \
+  "$(bp 'iex "git commit -m x"' "$R")"
+gate "via PowerShell no principal: Invoke-Expression \"codex exec --yolo\" BARRA (T2)" 2 \
+  "$(bp 'Invoke-Expression "codex exec --yolo"' "$R")"
+gate "via PowerShell no worktree: iex \"git commit -m x\" PASSA (T2, regressao)" 0 \
+  "$(bp 'iex "git commit -m x"' "$WT")"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

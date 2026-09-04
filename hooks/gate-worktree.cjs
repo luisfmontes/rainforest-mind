@@ -61,7 +61,9 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { cwdPorSegmento, resolverMovedor, toplevelConfinado, extrairUltimoDirGit, segmentosComAspas, SEPARADORES } = require(path.join(__dirname, "lib", "cwd-efetivo.cjs"));
 const CLIS_QUE_ESCREVEM = require(path.join(__dirname, "lib", "clis-que-escrevem.cjs"));
-const { tokensComAspas, ehComando, WRAPPERS_QUE_REPASSAM, posicaoDeComando } = require(path.join(__dirname, "lib", "tokens-comando.cjs"));
+const {
+  tokensComAspas, ehComando, WRAPPERS_QUE_REPASSAM, posicaoDeComando, desempacotarWrapperDeString,
+} = require(path.join(__dirname, "lib", "tokens-comando.cjs"));
 
 const FERRAMENTAS_DE_ESCRITA = new Set(["Write", "Edit", "MultiEdit", "NotebookEdit"]);
 // Subcomandos de git que mexem no estado do checkout. `git stash`/`pop` foi a falha N1.
@@ -110,6 +112,16 @@ function palavras(cmd) {
 
 /**
  * Acha o subcomando de `git` num segmento, com os argumentos dele.
+ *
+ * T2 (rodada 11, lote 3, 2026-09-04): nenhuma palavra bate com `git` — o
+ * segmento pode ser um wrapper de STRING escondendo o `git` de verdade
+ * (`Invoke-Expression "git commit -m x"`/`iex "..."`, `eval "..."`,
+ * `bash -c "..."`/primos, `pwsh -Command "..."`, `cmd /c "..."`). Conteudo
+ * LEGIVEL reprocessa recursivamente (pode ele mesmo ser outro wrapper).
+ * Conteudo ILEGIVEL (`$(`, crase, variavel) nao tem como saber — cai no
+ * `null` de "nao achei git aqui", sem falso positivo (o chamador que decide
+ * incerteza de `cd`/CLI ja cobre esse conservadorismo pelo lado do cwd).
+ *
  * @returns {{verbo: string, args: string[]}|null}
  */
 function subcomandoGit(cmd) {
@@ -123,6 +135,8 @@ function subcomandoGit(cmd) {
     }
     return j < w.length ? { verbo: w[j], args: w.slice(j + 1) } : null;
   }
+  const { interno, ilegivel } = desempacotarWrapperDeString(cmd);
+  if (interno !== null && !ilegivel) return subcomandoGit(interno);
   return null;
 }
 
@@ -400,6 +414,18 @@ function posicionaisApos(toks, i) {
 }
 
 /**
+ * Reconstroi, como texto, os tokens de `toks` a partir do indice `i` — usado
+ * para alimentar `desempacotarWrapperDeString` (que espera uma STRING crua,
+ * com o nome do wrapper como primeiro token dela) a partir de uma posicao de
+ * comando ja calculada por `posicaoDeComando` (que pode vir depois de um
+ * prefixo tipo `env`/`sudo`/`NOME=valor`). Token citado volta entre aspas
+ * duplas — nenhum destes tokens pode conter `"` de verdade (era o delimitador).
+ */
+function textoAPartir(toks, i) {
+  return toks.slice(i).map((t) => (t.q ? `"${t.v}"` : t.v)).join(" ");
+}
+
+/**
  * Acha CLI(s) numa string de comando ja isolada — reusado pela recursao de
  * `eval`/`bash -c` em `procuraCLI`. Conteudo com `$(`, crase ou `$VAR` nao da
  * pra resolver estaticamente (o script dentro do eval pode rodar QUALQUER
@@ -431,9 +457,16 @@ function achadasEmString(str, clis) {
  * valor (`$codex`), escapando da lista. Na posicao de comando, um token
  * citado cujo valor comeca com `$` perde o `$`.
  *
- * `eval "..."`/`bash -c "..."` (H3): o comando de verdade esta DENTRO da
- * string citada — recursiona `achadasEmString` sobre o conteudo, no MESMO
- * `indiceSegmento` (mesmo cwd do segmento que contem o `eval`/`bash -c`).
+ * Wrapper de STRING (`eval`, `bash -c`/`sh -c`/`zsh -c`/`ksh -c`/`dash -c`,
+ * `Invoke-Expression`/`iex`, `pwsh|powershell -Command`, `cmd /c`/`/k` — H3 +
+ * T2, rodada 11, lote 3, 2026-09-04): o comando de verdade esta DENTRO da
+ * string citada — `desempacotarWrapperDeString` (lib/tokens-comando.cjs,
+ * compartilhada com `gate-staging-total.cjs` e `gate-fechar-issue.cjs`)
+ * devolve o conteudo, e `achadasEmString` recursiona sobre ele, no MESMO
+ * `indiceSegmento` (mesmo cwd do segmento que contem o wrapper). Antes desta
+ * rodada so `eval`/`bash -c` eram reconhecidos aqui (ad hoc, cada um com seu
+ * proprio `if`) — `Invoke-Expression "codex exec --yolo"`/`iex "..."`
+ * atravessava com exit 0.
  */
 function procuraCLI(comando, clis) {
   const segmentos = segmentosComAspas(comando);
@@ -447,16 +480,14 @@ function procuraCLI(comando, clis) {
     if (tok.q && v.startsWith("$")) v = v.slice(1); // $'codex' (A4)
     const nome = v.split(/[\\/]/).pop().replace(/\.exe$/, "");
 
-    if (nome === "eval" && toks[i + 1]) {
-      for (const a of achadasEmString(toks[i + 1].v, clis)) achadas.push({ ...a, indiceSegmento });
+    const { interno, ilegivel } = desempacotarWrapperDeString(textoAPartir(toks, i));
+    if (ilegivel) {
+      achadas.push({ nome: "?", incerto: true, indiceSegmento });
       return;
     }
-    if (nome === "bash") {
-      const idxC = toks.findIndex((t, idx) => idx > i && !t.q && t.v === "-c");
-      if (idxC !== -1 && toks[idxC + 1]) {
-        for (const a of achadasEmString(toks[idxC + 1].v, clis)) achadas.push({ ...a, indiceSegmento });
-        return;
-      }
+    if (interno !== null) {
+      for (const a of achadasEmString(interno, clis)) achadas.push({ ...a, indiceSegmento });
+      return;
     }
 
     if (clis.includes(nome)) achadas.push({ nome, indiceSegmento });

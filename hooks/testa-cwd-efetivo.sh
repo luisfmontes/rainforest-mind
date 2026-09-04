@@ -387,6 +387,27 @@ test("(v4) mkdir novo && cd novo && y -> incerto (destino criado no mesmo comand
 });
 
 console.log();
+console.log("== T1 (rodada 11, lote 3, 2026-09-04): timeout -s/-k na tabela de flags ==");
+{
+  const { tokensComAspas, posicaoDeComando } = require(path.join(path.dirname(process.argv[2]), "tokens-comando.cjs"));
+  test("(t1) timeout -s TERM 30 git commit -m x -> posicao de comando e 'git'", () => {
+    const toks = tokensComAspas("timeout -s TERM 30 git commit -m x");
+    const i = posicaoDeComando(toks);
+    eq(toks[i].v, "git", "token na posicao de comando");
+  });
+  test("(t2) timeout --signal=TERM 30 git ... -> 'git' (forma colada com =)", () => {
+    const toks = tokensComAspas("timeout --signal=TERM 30 git status");
+    const i = posicaoDeComando(toks);
+    eq(toks[i].v, "git", "token na posicao de comando");
+  });
+  test("(t3) timeout -k 5 30 git ... -> 'git' (--kill-after curto)", () => {
+    const toks = tokensComAspas("timeout -k 5 30 git status");
+    const i = posicaoDeComando(toks);
+    eq(toks[i].v, "git", "token na posicao de comando");
+  });
+}
+
+console.log();
 console.log(`== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 process.exit(falhou);
 NODESCRIPT

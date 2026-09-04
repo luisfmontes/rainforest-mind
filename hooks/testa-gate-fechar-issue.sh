@@ -700,6 +700,43 @@ echo "== (aw) via PowerShell, Invoke-Expression \"gh issue view 42\" → exit 0 
 EXIT_AW=$?
 [ $EXIT_AW -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_AW)"
 
+# T1 (rodada 11, lote 3, 2026-09-04): `timeout -s`/`-k` (forma com espaco) na
+# tabela de flags com valor — antes, `-s TERM`/`-k 5` faziam a posicao de
+# comando cair na DURACAO (`30`), nao no comando de verdade.
+
+# Caso (ax): `timeout -s TERM 30 gh issue close 12` → exit 2
+echo
+echo "== (ax) timeout -s TERM 30 gh issue close 12 → exit 2 (T1) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"timeout -s TERM 30 gh issue close 12"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ax"
+EXIT_AX=$?
+[ $EXIT_AX -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_AX)"
+
+# Caso (ay): `timeout -k 5 30 gh issue close 12` → exit 2
+echo
+echo "== (ay) timeout -k 5 30 gh issue close 12 → exit 2 (T1) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"timeout -k 5 30 gh issue close 12"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ay"
+EXIT_AY=$?
+[ $EXIT_AY -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_AY)"
+
+# Caso (az): `timeout 30 gh issue view 12` → exit 0 (sem -s/-k, regressao)
+echo
+echo "== (az) timeout 30 gh issue view 12 → exit 0 (T1, regressao) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"timeout 30 gh issue view 12"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-az"
+EXIT_AZ=$?
+[ $EXIT_AZ -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_AZ)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
