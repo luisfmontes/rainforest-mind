@@ -610,5 +610,23 @@ gate "env -C principal echo x > f.txt, do worktree BARRA (escrita, emenda)" 2 \
   "$(b "env -C $R echo x > f.txt" "$WT")"
 
 echo
+echo "== K1/K2 do auditor (rodada 6, lote 3, 2026-09-03): '&' simples e git por posicao =="
+# K1: ate o conserto, '&' simples nao separava segmento em lugar nenhum. O
+# 'cd principal' ficava escondido dentro do MESMO segmento de 'echo hi', o
+# parser nunca via o cd, e o comando de verdade (git commit / codex) parecia
+# rodar ainda no worktree.
+gate "echo hi & cd principal; git commit -am x, do worktree BARRA (K1)" 2 \
+  "$(b "echo hi & cd $R; git commit -am x" "$WT")"
+gate "echo hi & cd principal; codex exec --yolo, do worktree BARRA (K1)" 2 \
+  "$(b "echo hi & cd $R; codex exec --yolo" "$WT")"
+gate "git commit -m x 2>&1, do worktree PASSA (K1, 2>&1 nao e separador)" 0 \
+  "$(b "git commit -m x 2>&1" "$WT")"
+# K2: 'grep -C 3 x .' tem '-C' (contexto do grep, nada a ver com git) no MESMO
+# segmento do 'git commit' seguinte — regressao a evitar: o segmento do grep
+# nao pode virar incerto nem mudar o cwd so por ter '-C' no texto.
+gate "grep -C 3 x . && git commit -m y, do worktree PASSA (K2, sem incerto)" 0 \
+  "$(b "grep -C 3 x . && git commit -m y" "$WT")"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
