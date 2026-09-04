@@ -84,10 +84,11 @@
  *     comando: o gate cobre o que esta ESCRITO nele, nada alem disso;
  *   - qualquer forma de ofuscacao que dependa do SHELL DE VERDADE interpretar
  *     o comando de um jeito que este parser escrito a mao (que nao e um
- *     shell) nao replica com exatidao — `$'...'` com escape ANSI-C, alias,
- *     funcao de shell, `IFS` alterado, encoding, e formas ainda nao medidas.
- *     Este gate cobre os padroes das tres rodadas acima, nao todo padrao
- *     hipotetico;
+ *     shell) nao replica com exatidao — alias, funcao de shell, `IFS` alterado,
+ *     encoding, e formas ainda nao medidas. Este gate cobre escape ANSI-C
+ *     (`$'...'` com \xHH, \nnn, \uHHHH, \UHHHHHHHH e os simples) a partir
+ *     da rodada 7; cobre os padroes das tres rodadas anteriores; nao cobre
+ *     todo padrao hipotetico;
  *   - deteccao de heredoc (`removeCorposDeHeredoc`) e feita por regex linha a
  *     linha, nao por um parser de shell de verdade: `<<` dentro de uma
  *     string entre aspas so por coincidencia (`echo "ele disse <<EOF>>"`)
@@ -552,6 +553,79 @@ function segmentosDoComando(cmd) {
 
 
 /**
+ * Decodifica sequências de escape ANSI-C dentro de $'...'.
+ * Suporta:
+ *   - \a \b \e \E \f \n \r \t \v \\ \' \" \?
+ *   - \nnn (até 3 dígitos octais)
+ *   - \xHH (até 2 dígitos hexadecimais)
+ *   - \uHHHH (até 4 dígitos hexadecimais)
+ *   - \UHHHHHHHH (até 8 dígitos hexadecimais)
+ *   - \cX (control char)
+ */
+function decodificaANSIC(inicio, texto) {
+  // Posição i já aponta para o caractere APÓS a barra invertida
+  let i = inicio;
+  const c = texto[i];
+
+  // Escapes simples
+  const simples = { a: "\x07", b: "\x08", e: "\x1b", E: "\x1b", f: "\x0c",
+                    n: "\n", r: "\r", t: "\t", v: "\x0b", "\\": "\\", "'": "'",
+                    '"': '"', "?": "?" };
+  if (c in simples) {
+    return { decodificado: simples[c], proximo: i + 1 };
+  }
+
+  // Control character \cX
+  if (c === "c" && texto[i + 1]) {
+    const x = texto[i + 1].charCodeAt(0);
+    return { decodificado: String.fromCharCode(x - 64), proximo: i + 2 };
+  }
+
+  // Hexadecimal \xHH (até 2 dígitos)
+  if (c === "x") {
+    const hex = texto.slice(i + 1, i + 3);
+    const match = hex.match(/^[0-9a-fA-F]{1,2}/);
+    if (match) {
+      const code = parseInt(match[0], 16);
+      return { decodificado: String.fromCharCode(code), proximo: i + 1 + match[0].length };
+    }
+  }
+
+  // Unicode \uHHHH (até 4 dígitos)
+  if (c === "u") {
+    const hex = texto.slice(i + 1, i + 5);
+    const match = hex.match(/^[0-9a-fA-F]{1,4}/);
+    if (match) {
+      const code = parseInt(match[0], 16);
+      return { decodificado: String.fromCharCode(code), proximo: i + 1 + match[0].length };
+    }
+  }
+
+  // Unicode \UHHHHHHHH (até 8 dígitos)
+  if (c === "U") {
+    const hex = texto.slice(i + 1, i + 9);
+    const match = hex.match(/^[0-9a-fA-F]{1,8}/);
+    if (match) {
+      const code = parseInt(match[0], 16);
+      return { decodificado: String.fromCharCode(code), proximo: i + 1 + match[0].length };
+    }
+  }
+
+  // Octal \nnn (até 3 dígitos)
+  const oct = texto.slice(i, i + 3);
+  const match = oct.match(/^[0-7]{1,3}/);
+  if (match) {
+    const code = parseInt(match[0], 8);
+    if (code <= 255) { // ANSI-C octal é limitado a 255
+      return { decodificado: String.fromCharCode(code), proximo: i + match[0].length };
+    }
+  }
+
+  // Nenhum escape reconhecido: retorna a barra invertida e o caractere literal
+  return { decodificado: "\\" + c, proximo: i + 1 };
+}
+
+/**
  * Tokeniza PRESERVANDO o conteudo citado como parte do token, em vez de
  * apagar (apagar e o que deixava a flag citada passar sem barrar). Aspas
  * adjacentes a texto sem aspas se fundem em UM token so, do jeito que o
@@ -570,8 +644,10 @@ function segmentosDoComando(cmd) {
  * especiais ali, mesma regra do shell.
  *
  * ASPAS ANSI-C (rodada 7, 2026-09-04): em `$'...'`, a barra invertida
- * escapa o próximo caractere, então `\'` NÃO fecha a aspa. Usa `analisaAspas()`
- * para ter consistência com `segmentos()`, evitando divergência.
+ * escapa o próximo caractere — sequências de escape ANSI-C como \xHH, \nnn,
+ * \uHHHH, \UHHHHHHHH são decodificadas pela função `decodificaANSIC()`, que
+ * interpreta o mesmo conjunto que o bash. Usa `analisaAspas()` para ter
+ * consistência com `segmentos()`, evitando divergência.
  */
 function tokens(seg) {
   const toks = [];
@@ -584,12 +660,13 @@ function tokens(seg) {
     const proximo = seg[i + 1];
     const estado = mapa[i]; // 0=fora, 1=simples, 2=dupla, 3=ANSI-C
 
-    // Dentro de ANSI-C ($'...'): barra invertida escapa o próximo caractere
+    // Dentro de ANSI-C ($'...'): barra invertida inicia sequência de escape ANSI-C
     if (estado === 3) {
       if (c === "\\") {
         if (proximo !== undefined) {
-          cur += proximo;
-          i += 1;
+          const { decodificado, proximo: prox } = decodificaANSIC(i + 1, seg);
+          cur += decodificado;
+          i = prox - 1; // Ajusta porque o loop vai incrementar i de novo
           tem = true;
         }
       } else if (c !== "'") { // não acumula aspa de fechamento
@@ -682,16 +759,19 @@ function temCurta(args, letra) {
 }
 
 /** Motivo do bloqueio, ou null se o segmento e inofensivo. */
-function motivoDe(g) {
+function motivoDe(g, cmdOriginal) {
+  let temANSIC = cmdOriginal && /\$'([^']*\\[xuU0-7])/.test(cmdOriginal);
+  let sufixo = temANSIC ? ", vindo de escape ANSI-C" : "";
+
   if (g.sub === "commit") {
-    if (g.args.some((t) => ehPrefixoDeFlag(t, "--no-verify"))) return "git commit --no-verify";
-    if (g.args.some((t) => ehPrefixoDeFlag(t, "--no-gpg-sign"))) return "git commit --no-gpg-sign";
-    if (temCurta(g.args, "n")) return "git commit -n (equivale a --no-verify)";
+    if (g.args.some((t) => ehPrefixoDeFlag(t, "--no-verify"))) return "git commit --no-verify" + sufixo;
+    if (g.args.some((t) => ehPrefixoDeFlag(t, "--no-gpg-sign"))) return "git commit --no-gpg-sign" + sufixo;
+    if (temCurta(g.args, "n")) return "git commit -n (equivale a --no-verify)" + sufixo;
     return null;
   }
   if (g.sub === "push") {
     // `-n` em push e --dry-run, nao --no-verify: nao entra aqui de proposito.
-    if (g.args.some((t) => ehPrefixoDeFlag(t, "--no-verify"))) return "git push --no-verify";
+    if (g.args.some((t) => ehPrefixoDeFlag(t, "--no-verify"))) return "git push --no-verify" + sufixo;
     return null;
   }
   return null;
@@ -826,7 +906,7 @@ function analisaComando(cmd, profundidade) {
 
     const g = analisaGit(toks);
     if (g) {
-      const m = motivoDe(g);
+      const m = motivoDe(g, cmd);
       if (m) return { motivo: m, dirC: g.dirC };
     }
 
