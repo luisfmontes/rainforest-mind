@@ -256,6 +256,92 @@ else
   echo "  (pulado: cygpath não retornou caminho Windows nesta máquina)"
 fi
 
+# --- CASO (g): --remover com limpo+sujo+orfao juntos: remove SO o limpo
+#
+# N2 (revisor, 2026-09-03): ate esta rodada nenhum caso desta bateria testava
+# --remover com um orfao PRESENTE ao lado do limpo/sujo. Mutacao descrita:
+# trocar `item.classificacao.status === "limpo"` (limpar-worktrees.cjs:338)
+# por `!== "sujo"` fazia --remover apagar tambem os orfaos (e qualquer "erro"),
+# e a bateria continuava verde porque nenhum caso tinha um orfao no MESMO lote
+# que um --remover de verdade. Este caso fecha essa lacuna.
+
+teste "g" "--remover com limpo+sujo+orfao juntos: remove so o limpo"
+
+repo_g="$SB/repo_g"
+work_g="$SB/trabalho_g"
+criarRepoComCommit "$repo_g" "$work_g"
+
+wt_g_limpo_real="$work_g/.git/worktrees/wt-g-limpo"
+wt_g_sujo_real="$work_g/.git/worktrees/wt-g-sujo"
+git worktree add "$wt_g_limpo_real" HEAD
+git worktree add "$wt_g_sujo_real" HEAD
+cd "$wt_g_sujo_real"
+echo "sujeira" > arquivo_g.txt
+cd "$work_g"
+
+# Orfao: subdiretorio comum dentro de .git/worktrees, sem .git proprio (mesmo
+# desenho do caso (c), mas agora convivendo com um limpo e um sujo no mesmo
+# --remover).
+orfao_g="$work_g/.git/worktrees/subdir-orfao-g"
+mkdir -p "$orfao_g"
+
+# Antes de remover: confirma que o orfao aparece listado
+saida_g_lista=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_g" 2>&1)
+if echo "$saida_g_lista" | grep -q "órfão"; then
+  ok=$((ok+1)); echo "  ok    orfao aparece listado antes de remover"
+else
+  falhou=$((falhou+1)); echo "  FALHA orfao nao aparece listado antes de remover"
+  echo "        Saída: $saida_g_lista"
+fi
+
+# Roda --remover com os tres presentes, CAPTURANDO a saida: o `git worktree
+# remove` de um diretorio que nao e worktree registrado ja falha sozinho, entao
+# "continua no disco" seria verdade nos dois lados (com ou sem a mutacao) e não
+# prova nada — o que a linha mutada de fato controla é se o codigo TENTA
+# remover o orfao (a mensagem "removendo <path>..." sai incondicionalmente
+# para cada item da lista de "limpos", antes do spawnSync que tenta apagar).
+saida_g_remover=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_g" --remover 2>&1)
+if echo "$saida_g_remover" | grep -qi "removendo.*subdir-orfao-g"; then
+  falhou=$((falhou+1)); echo "  FALHA tentou remover o órfão (nem deveria tentar)"
+  echo "        Saída: $saida_g_remover"
+else
+  ok=$((ok+1)); echo "  ok    não tentou remover o órfão"
+fi
+
+# O limpo sumiu do git worktree list
+lista_g_limpo=$(git worktree list --porcelain | grep -F "wt-g-limpo" || true)
+if [ -z "$lista_g_limpo" ]; then
+  ok=$((ok+1)); echo "  ok    worktree limpo foi removido (com orfao presente)"
+else
+  falhou=$((falhou+1)); echo "  FALHA worktree limpo não foi removido"
+  echo "        Lista: $lista_g_limpo"
+fi
+
+# O sujo continua registrado
+lista_g_sujo=$(git worktree list --porcelain | grep -F "wt-g-sujo" || true)
+if [ -n "$lista_g_sujo" ]; then
+  ok=$((ok+1)); echo "  ok    worktree sujo continua (não removido)"
+else
+  falhou=$((falhou+1)); echo "  FALHA worktree sujo foi removido (não deveria)"
+fi
+
+# O orfao continua NO DISCO
+if [ -d "$orfao_g" ]; then
+  ok=$((ok+1)); echo "  ok    diretório órfão continua no disco (não removido)"
+else
+  falhou=$((falhou+1)); echo "  FALHA diretório órfão foi removido do disco (não deveria)"
+fi
+
+# E continua LISTADO depois do --remover (nao some da tabela so por --remover
+# ter rodado)
+saida_g_depois=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_g" 2>&1)
+if echo "$saida_g_depois" | grep -q "órfão"; then
+  ok=$((ok+1)); echo "  ok    órfão continua listado depois do --remover"
+else
+  falhou=$((falhou+1)); echo "  FALHA órfão sumiu da listagem depois do --remover"
+  echo "        Saída: $saida_g_depois"
+fi
+
 # --- Relatório final
 
 echo ""
