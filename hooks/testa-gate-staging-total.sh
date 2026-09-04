@@ -196,6 +196,10 @@ gate "via PowerShell: Set-Location <worktree>; git add -A com cwd no principal P
 gate "via PowerShell: git status PASSA (R3)"                                            0 "$(p 'git status --porcelain')"
 
 echo
+echo "== S1 (8a revisao, rodada 10, lote 3, 2026-09-03): sintaxe de dois-pontos =="
+gate "via PowerShell, do worktree: Set-Location -Path:<principal>; git add -A BARRA (S1)" 2 "$(p 'Set-Location -Path:'"$(esc "$R")"'; git add -A' "$(esc "$WT")")"
+
+echo
 echo "== saidas de emergencia =="
 saida=$(printf '%s' "$(b 'git add -A')" | RAINFOREST_GATE_OFF=1 node "$GATE" 2>&1); rc=$?
 if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   RAINFOREST_GATE_OFF=1 libera (exit 0)"

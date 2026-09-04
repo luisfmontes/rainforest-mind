@@ -41,8 +41,14 @@ const POPD = /^\s*popd(?:\s+-n)?\s*$/;
 // `CD` acima, mesma sintaxe) aceita `-Path`/`-LiteralPath` explicito ou o
 // destino posicional; `Push-Location`/`Pop-Location` idem a `pushd`/`popd`.
 // Case-insensitive porque cmdlet do PowerShell nao diferencia caixa.
-const SET_LOCATION = /^\s*(?:Set-Location|sl|chdir)\s+(?:-(?:Path|LiteralPath)\s+)?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s*$/i;
-const PUSH_LOCATION = /^\s*Push-Location\s+(?:-(?:Path|LiteralPath)\s+)?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s*$/i;
+// S1 (8a revisao, rodada 10, lote 3, 2026-09-03): `-Path:X`/`-LiteralPath:X`
+// (sintaxe de dois-pontos, valida no PowerShell) tambem precisa casar, nao
+// so `-Path X` com espaco — sem isso, o grupo do flag falha, o valor
+// inteiro `-Path:X` cai na alternativa posicional e vira o "destino"
+// literal (comeca com `-`, nunca existe em disco), fabricando um cwd
+// inexistente com incerto:false.
+const SET_LOCATION = /^\s*(?:Set-Location|sl|chdir)\s+(?:-(?:Path|LiteralPath)(?:\s+|:))?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s*$/i;
+const PUSH_LOCATION = /^\s*Push-Location\s+(?:-(?:Path|LiteralPath)(?:\s+|:))?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s*$/i;
 const POP_LOCATION = /^\s*Pop-Location\s*$/i;
 
 /**
@@ -257,10 +263,18 @@ function resolverMovedor(seg, estado) {
   if (pd) {
     const destino = pd[1] || pd[2] || pd[3];
     estado.pilhaPushd.push(estado.atual);
-    if (/[$`]/.test(destino) || /^~/.test(destino) || destino === "-") {
+    // S1: qualquer valor capturado que comece com `-` e flag nao reconhecida
+    // (ou o proprio regex "escorregando" pra alternativa posicional) — nunca
+    // um destino de verdade. Incerto, nao cwd fabricado.
+    if (/[$`]/.test(destino) || /^~/.test(destino) || /^-/.test(destino)) {
       estado.incerto = true;
     } else {
-      estado.atual = path.resolve(estado.atual, destino);
+      const alvo = path.resolve(estado.atual, destino);
+      estado.atual = alvo;
+      // S1: destino que nao existe em disco no momento da analise nunca sai
+      // como certeza — pode ser criado no mesmo comando (`mkdir x && cd x`)
+      // ou ser lixo/erro de parsing; ambos os casos pedem conservadorismo.
+      if (!fs.existsSync(alvo)) estado.incerto = true;
     }
     return { cwd: estado.atual, incerto: estado.incerto, soMovedor: true };
   }
@@ -293,11 +307,17 @@ function resolverMovedor(seg, estado) {
     // do worktree. Achado pelo CI (Issue #16): a bateria ficou vermelha lá
     // e verde aqui. `$` e crase continuam valendo em qualquer posição —
     // são expansão mesmo.
-    if (/[$`]/.test(destino) || /^~/.test(destino) || destino === "-") {
+    // S1: `destino === "-"` fica coberto por `/^-/` — qualquer coisa que
+    // comece com `-` e flag nao reconhecida ou escorregao de parsing, nunca
+    // destino de verdade.
+    if (/[$`]/.test(destino) || /^~/.test(destino) || /^-/.test(destino)) {
       estado.incerto = true;
       return { cwd: estado.atual, incerto: estado.incerto, soMovedor: true };
     }
-    estado.atual = path.resolve(estado.atual, destino);
+    const alvo = path.resolve(estado.atual, destino);
+    estado.atual = alvo;
+    // S1: destino resolvido que nao existe em disco nunca sai como certeza.
+    if (!fs.existsSync(alvo)) estado.incerto = true;
     return { cwd: estado.atual, incerto: estado.incerto, soMovedor: true };
   }
 
