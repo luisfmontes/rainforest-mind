@@ -58,4 +58,7 @@ pronto quando: com o diff real `origin/main...HEAD` e o arquivo de critério
 listando as seis decisões em forma falsificável, um modelo de outra família
 devolve `concordo` — provado por
 `node scripts/segunda-opiniao.cjs --base origin/main --head HEAD --criterio docs/rainforest/criterios/fluxo-12-regua.md --modelo codex`
-devolvendo `concordo` na última linha e exit 0.
+devolvendo `concordo` na **última linha**. **O exit code não discrimina aqui**: o
+script sai 0 tanto em `concordo` quanto em `discordo` (só recusa por uso errado,
+diff vazio ou veredito fora do vocabulário) — medido em 2026-09-04, com a mutação
+aplicada saindo `discordo` **e exit 0**. Quem julga é a última linha.
