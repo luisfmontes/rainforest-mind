@@ -22,24 +22,24 @@
     "em": "2026-09-04"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-04",
     "tarefas_ok": 4,
     "tarefas": 4,
     "em": "2026-09-04",
-    "bateria": "bash scripts/testa-estado.sh (146 ok, 0 falhou) + bash hooks/testa-gate-git-verificacao.sh (50 ok, 0 falhou)",
-    "comando": "node scripts/conferir-mutacao.cjs, re-rodado pela integracao em cada tarefa com mutacao",
-    "saida": "exit 0 em todas: bateria VERMELHA com o comportamento invertido, e fonte restaurado",
+    "bateria": "bash scripts/testa-estado.sh (146 ok, 0 falhou) + bash hooks/testa-gate-git-verificacao.sh (63 ok, 0 falhou; era 52 antes do conserto dos achados)",
+    "comando": "node scripts/conferir-mutacao.cjs, re-rodado pela integracao a cada rodada",
+    "saida": "exit 0 em todas: bateria VERMELHA com o comportamento invertido, fonte restaurado",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "scripts/testa-estado.sh, blocos 20 e 21 (linhas 941-990): esperado \"concluido --slug com fluxo fechado sai 0\" (l.960), \"concluido --slug com fechar pendente sai 2\" (l.973) e a varredura sem --slug (l.983)"
+        "fixture": "scripts/testa-estado.sh blocos 20 e 21 (l.941-990): concluido com fluxo fechado sai 0 (l.960), com fechar pendente sai 2 (l.973), varredura sem --slug (l.983)"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "hooks/testa-gate-git-verificacao.sh, linha 71: gate \"git commit --no-verify -m x\" esperando exit 2"
+        "fixture": "hooks/testa-gate-git-verificacao.sh l.139 (GIT commit --no-verify, executavel maiusculo) e l.188-190 (toggle de config desligando o gate)"
       },
       {
         "tarefa": 3,
@@ -52,10 +52,11 @@
         "motivo": "skill e texto sem ramo de execucao; a falsificacao foi rodar cada exit code prometido pelo texto e conferir contra o observado"
       }
     ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-04"
-    }
+    "rodadas_do_gate": 4,
+    "achados_do_revisar_consertados": [
+      "caixa do nome do executavel (GIT/Bash)",
+      "toggle gate-git-verificacao ausente de CHAVES"
+    ]
   },
   "revisar": {
     "status": "reprovado",
