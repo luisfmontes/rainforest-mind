@@ -248,6 +248,23 @@ saida_i=$(cd "$SRC" && RFM_ROOT="$(cygpath -w "$SB")" node -e "
 
 igual "resolverRaiz() reflete a sentinela do modulo real (delegacao de verdade)" "$saida_i" "__SENTINELA_R9__"
 
+# --- CASO (j): dataLocal() usa o fuso LOCAL, nao UTC (nao depende da hora do
+#     relogio no momento em que a bateria roda)
+
+teste "j" "dataLocal() usa fuso local, nao UTC"
+
+saida_j1=$(cd "$SRC" && node -e "
+  const { dataLocal } = require('./scripts/backup.cjs');
+  console.log(dataLocal(new Date(2026, 8, 3, 23, 59)));
+" 2>&1)
+igual "dataLocal(2026-09-03 23:59 local) = 2026-09-03" "$saida_j1" "2026-09-03"
+
+saida_j2=$(cd "$SRC" && TZ=America/Sao_Paulo node -e "
+  const { dataLocal } = require('./scripts/backup.cjs');
+  console.log(dataLocal(new Date('2026-09-04T02:30:00Z')));
+" 2>&1)
+igual "TZ=America/Sao_Paulo, dataLocal(2026-09-04T02:30Z) = 2026-09-03" "$saida_j2" "2026-09-03"
+
 # ==================== RESUMO ====================
 echo ""
 echo "== resultado: $ok ok, $falhou falha(s) =="
