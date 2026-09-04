@@ -259,11 +259,21 @@ saida_j1=$(cd "$SRC" && node -e "
 " 2>&1)
 igual "dataLocal(2026-09-03 23:59 local) = 2026-09-03" "$saida_j1" "2026-09-03"
 
-saida_j2=$(cd "$SRC" && TZ=America/Sao_Paulo node -e "
-  const { dataLocal } = require('./scripts/backup.cjs');
-  console.log(dataLocal(new Date('2026-09-04T02:30:00Z')));
-" 2>&1)
-igual "TZ=America/Sao_Paulo, dataLocal(2026-09-04T02:30Z) = 2026-09-03" "$saida_j2" "2026-09-03"
+# O caso abaixo so mede alguma coisa se o processo HONRAR a variavel TZ. No
+# runner do CI (Windows) o node ignora TZ, e o teste passava aqui so porque a
+# maquina do dono JA esta em America/Sao_Paulo — a suite media a maquina, nao o
+# codigo (verde aqui, vermelha no CI, 2026-09-04). Agora ele se declara: mede
+# quando da para medir, e diz que pulou quando nao da.
+tz_efetivo=$(TZ=America/Sao_Paulo node -e "process.stdout.write(Intl.DateTimeFormat().resolvedOptions().timeZone)" 2>/dev/null)
+if [ "$tz_efetivo" = "America/Sao_Paulo" ]; then
+  saida_j2=$(cd "$SRC" && TZ=America/Sao_Paulo node -e "
+    const { dataLocal } = require('./scripts/backup.cjs');
+    console.log(dataLocal(new Date('2026-09-04T02:30:00Z')));
+  " 2>&1)
+  igual "TZ=America/Sao_Paulo, dataLocal(2026-09-04T02:30Z) = 2026-09-03" "$saida_j2" "2026-09-03"
+else
+  echo "  PULADO  TZ nao tem efeito neste processo (fuso efetivo: '$tz_efetivo') — o caso do fuso nao da para medir aqui; o caso acima (dataLocal de um Date local) continua provando que a data e LOCAL, nao UTC"
+fi
 
 # ==================== RESUMO ====================
 echo ""

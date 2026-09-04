@@ -39,8 +39,13 @@ function rodaHook(raiz, stdin) {
   });
 }
 
+// `realpathSync` de propósito: no runner do CI o `os.tmpdir()` do Windows vem
+// em forma curta 8.3 (o nome de usuário aparece truncado com `~1`), e a
+// portaria imprime o caminho que o Node RESOLVE, por extenso — sem normalizar
+// aqui, o `stderr.includes(raiz)` falhava só no CI (verde na máquina do dono,
+// vermelho lá, 2026-09-04). Normalizar na origem vale para todos os casos.
 function caixa() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), "portaria-diag-"));
+  return fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "portaria-diag-")));
 }
 
 function criarEstadoAtivo(raiz, branchBase, estagio) {
