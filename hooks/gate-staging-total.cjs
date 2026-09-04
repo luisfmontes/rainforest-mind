@@ -54,7 +54,9 @@ const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 const { cwdPorSegmento, segmentosComAspas } = require("./lib/cwd-efetivo.cjs");
-const { tokensComAspas, ehComando, posicaoDeComando } = require("./lib/tokens-comando.cjs");
+const {
+  tokensComAspas, ehComando, posicaoDeComando, desempacotarWrapperDeString,
+} = require("./lib/tokens-comando.cjs");
 
 // Flags globais do git que consomem o token seguinte (`git -C <dir> add`).
 const FLAG_COM_VALOR = new Set([
@@ -126,6 +128,35 @@ function analisaGit(toksComAspas) {
   }
   if (i >= resto.length) return null;
   return { sub: resto[i], args: resto.slice(i + 1), dirC };
+}
+
+/**
+ * `analisaGit` mais o desempacotamento de wrapper de STRING (T2, rodada 11,
+ * lote 3, 2026-09-04): `Invoke-Expression "git add -A"`/`iex "..."`,
+ * `eval "..."`, `bash -c "..."`/primos, `pwsh -Command "..."`, `cmd /c "..."`
+ * escondem o `git` de verdade DENTRO de uma string, que `analisaGit` sozinho
+ * nao ve (opera em TOKENS do segmento, e o comando de verdade e so um token
+ * citado). Reprocessa recursivamente (o conteudo desempacotado pode ele
+ * mesmo ter varios segmentos encadeados, e pode ele mesmo ser outro
+ * wrapper).
+ *
+ * Conteudo ILEGIVEL (`$(`, crase, variavel) devolve `{ incerto: true }` —
+ * nao da pra saber se esconde `git add -A`/`commit -a`; mesma postura
+ * conservadora que `cwdPorSegmento` ja usa para `cd` que nao resolve.
+ * `null` quando o segmento nao e git nem wrapper nenhum.
+ */
+function analisaSegmentoGit(segTexto) {
+  const g = analisaGit(tokensComAspas(segTexto));
+  if (g) return g;
+  const { interno, ilegivel } = desempacotarWrapperDeString(segTexto);
+  if (ilegivel) return { incerto: true };
+  if (interno !== null) {
+    for (const sub of segmentosComAspas(interno)) {
+      const r = analisaSegmentoGit(sub);
+      if (r) return r;
+    }
+  }
+  return null;
 }
 
 /** `-am` contem a curta `a`; `--amend` nao e curta e nao conta. */
@@ -251,8 +282,15 @@ function main() {
   let indiceSegmento = null;
   const segs = segmentos(cmd);
   for (let idx = 0; idx < segs.length; idx += 1) {
-    const g = analisaGit(tokensComAspas(segs[idx]));
+    const g = analisaSegmentoGit(segs[idx]);
     if (!g) continue;
+    if (g.incerto) {
+      motivo = "comando dinamico (eval/bash -c/Invoke-Expression/iex/pwsh -Command/cmd /c) com " +
+        "conteudo nao resolvivel — pode esconder git add -A/commit -a";
+      dirC = null;
+      indiceSegmento = idx;
+      break;
+    }
     const m = motivoDe(g);
     if (m) { motivo = m; dirC = g.dirC; indiceSegmento = idx; break; }
   }

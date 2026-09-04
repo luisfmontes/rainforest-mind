@@ -200,6 +200,16 @@ echo "== S1 (8a revisao, rodada 10, lote 3, 2026-09-03): sintaxe de dois-pontos 
 gate "via PowerShell, do worktree: Set-Location -Path:<principal>; git add -A BARRA (S1)" 2 "$(p 'Set-Location -Path:'"$(esc "$R")"'; git add -A' "$(esc "$WT")")"
 
 echo
+echo "== T1/T2 (rodada 11, lote 3, 2026-09-04): timeout -s/-k, e wrapper de string (eval/-c/iex) =="
+gate "JANELA PRINCIPAL: timeout -s TERM 30 git add -A BARRA (T1)"                 2 "$(b 'timeout -s TERM 30 git add -A')"
+gate "via PowerShell, Invoke-Expression \"git add -A\" BARRA (T2)"                2 "$(p 'Invoke-Expression \"git add -A\"')"
+gate "via PowerShell, iex \"git add -A\" BARRA (T2, alias curto)"                 2 "$(p 'iex \"git add -A\"')"
+gate "via PowerShell, iex com valor ilegivel (variavel) BARRA (T2, incerto)"      2 "$(p 'iex \"$cmd\"')"
+gate "via Bash, eval \"git add -A\" BARRA (T2)"                                   2 "$(b 'eval \"git add -A\"')"
+gate "via Bash, bash -c \"git add -A\" BARRA (T2)"                                2 "$(b 'bash -c \"git add -A\"')"
+gate "via PowerShell, Invoke-Expression \"git status\" PASSA (T2, nao e staging total)" 0 "$(p 'Invoke-Expression \"git status\"')"
+
+echo
 echo "== saidas de emergencia =="
 saida=$(printf '%s' "$(b 'git add -A')" | RAINFOREST_GATE_OFF=1 node "$GATE" 2>&1); rc=$?
 if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   RAINFOREST_GATE_OFF=1 libera (exit 0)"
