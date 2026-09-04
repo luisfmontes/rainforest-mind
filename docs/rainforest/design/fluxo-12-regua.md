@@ -46,6 +46,12 @@ aproveitável são as duas peças acima, e é só isso que este trabalho absorve
   quando NENHUM dos dois lados renderiza** — porquê: nomear o bloqueio é a regra
   14 aplicada ao loop. Barrar por render parcial mataria o uso mais comum da
   skill (README, mensagem de erro, nome), onde "renderizar" é ler o arquivo.
+  **Emenda de 2026-09-04, achado do `revisar`**: a redação original — "só barra
+  quando nenhum dos dois lados renderiza" — revogava na prática o gate duro do
+  teste "Obtível" da Fase 0, porque o nosso lado quase sempre renderiza e a
+  condição nunca disparava com a régua inacessível. Vale por lado: régua que não
+  abre para pelo "Obtível", nosso lado que não renderiza para pelo preflight,
+  render **parcial** de qualquer um dos dois não para.
 
 - **D4 — A calibragem ganha uma rede na Fase 0: régua da qual não se consegue
   extrair 5–7 mecanismos verificáveis reprova antes da rodada 1. A calibragem da
