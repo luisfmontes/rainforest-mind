@@ -1,0 +1,36 @@
+{
+  "slug": "2026-09-04-fluxo-nao-mente",
+  "titulo": "R1+R8: o fluxo nao mente sobre ter terminado, e o executor nao pula verificacao",
+  "criado_em": "2026-09-04",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-04-fluxo-nao-mente.md",
+    "decisoes": 12,
+    "em": "2026-09-04"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-09-04-fluxo-nao-mente.md",
+    "tarefas": 4,
+    "paralelas": [
+      1,
+      2
+    ],
+    "em": "2026-09-04"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
