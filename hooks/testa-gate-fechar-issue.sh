@@ -522,6 +522,48 @@ echo "== (aj) gh pr create com closes #7 COM marcador 2>&1 → exit 0 =="
 EXIT_AJ=$?
 [ $EXIT_AJ -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_AJ)"
 
+# M2 (auditor, 5a revisao, 2026-09-03): o GitHub tambem fecha Issue quando o
+# corpo cita a URL COMPLETA, nao so `#N` — `extrairIssuesCitadas` so casava
+# `#N` ate aqui.
+# Caso (ak): `gh pr create --body "Closes https://github.com/org/repo/issues/42"`
+# sem marcador → exit 2 citando #42
+echo
+echo "== (ak) gh pr create com Closes <URL completa da Issue 42> SEM marcador → exit 2 citando #42 (M2) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create --body \"Closes https://github.com/org/repo/issues/42\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ak"
+EXIT_AK=$?
+[ $EXIT_AK -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_AK)"
+ERR_AK="$(cat "$SBP/err-ak")"
+echo "$ERR_AK" | grep -q "#42" && test_ok "stderr cita #42" || test_fail "stderr não cita #42"
+
+# Caso (al): `gh pr create --body "Fixed <URL completa da Issue 42>"` COM marcador → exit 0
+echo
+echo "== (al) gh pr create com Fixed <URL completa da Issue 42> COM marcador → exit 0 (M2) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=1
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create --body \"Fixed https://github.com/org/repo/issues/42\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-al"
+EXIT_AL=$?
+[ $EXIT_AL -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_AL)"
+
+# Caso (am): `gh pr create --body "veja <URL da Issue 42>"` (sem palavra-chave) → exit 0
+echo
+echo "== (am) gh pr create com URL da Issue 42 SEM palavra-chave de fechamento → exit 0 (M2) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create --body \"veja https://github.com/org/repo/issues/42\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-am"
+EXIT_AM=$?
+[ $EXIT_AM -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_AM)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
