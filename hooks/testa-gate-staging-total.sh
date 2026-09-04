@@ -171,6 +171,22 @@ gate "env -C <worktree> git add -A com cwd no principal PASSA (M1, -C do env man
 gate "env -C . grep git . NAO e git (M1)"                          0 "$(b 'env -C . grep git .')"
 
 echo
+echo "== P1/P5 (rodada 8, lote 3, 2026-09-04): mais flags de env/sudo, e cd via wrapper =="
+# P1: 'env -u'/'sudo -E' ainda paravam a busca na PROPRIA flag (so -C/--chdir
+# e -u/-g/--user/--group de sudo eram conhecidas) — 'git add -A' escapava.
+gate "env -u OneDrive git add -A na JANELA PRINCIPAL BARRA (P1)" 2 "$(b 'env -u OneDrive git add -A')"
+gate "env -i git add -A na JANELA PRINCIPAL BARRA (P1)"          2 "$(b 'env -i git add -A')"
+gate "sudo -E git add -A na JANELA PRINCIPAL BARRA (P1)"         2 "$(b 'sudo -E git add -A')"
+# P5: '\cd' (escapa alias/funcao) nao casava com o CD ancorado no inicio do
+# segmento — o cwd efetivo ficava preso no worktree, e o 'git add -A' que de
+# verdade rodava no PRINCIPAL escapava do gate. `b`/`ba` rodam o comando por
+# `esc` (troca toda barra invertida por barra normal, pensado pra caminho
+# Windows) — usa `node -e` direto aqui para o `\cd` chegar intacto no JSON.
+saidaP5=$(MSYS_NO_PATHCONV=1 node -e 'const [c,d]=process.argv.slice(1);process.stdout.write(JSON.stringify({agent_id:"ag-1",agent_type:"executor",cwd:d,tool_name:"Bash",tool_input:{command:c}}))' "\\cd $R && git add -A" "$WT" | node "$GATE" 2>&1); rcP5=$?
+if [ "$rcP5" = 2 ]; then ok=$((ok+1)); echo "  ok   SUBAGENTE: \\cd <principal> && git add -A, do worktree BARRA (P5) (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA \\cd <principal> && git add -A do worktree: esperava 2, veio $rcP5"; printf '%s' "$saidaP5" | sed 's/^/         /' | head -8; fi
+
+echo
 echo "== saidas de emergencia =="
 saida=$(printf '%s' "$(b 'git add -A')" | RAINFOREST_GATE_OFF=1 node "$GATE" 2>&1); rc=$?
 if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   RAINFOREST_GATE_OFF=1 libera (exit 0)"

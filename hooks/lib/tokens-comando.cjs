@@ -65,46 +65,98 @@ const WRAPPERS_QUE_REPASSAM = new Set([
   "env", "command", "exec", "nohup", "nice", "timeout", "xargs", "sudo", "time",
 ]);
 
+// Flags que cada wrapper reconhece e que CONSOMEM VALOR: o proprio token
+// mais o seguinte — ou so o proprio, se o valor vier colado com `=`
+// (`--chdir=X`). Wrapper (ou flag) NAO listado aqui e tratado como SEM
+// valor: so o proprio token e pulado — a mesma regra vale para toda flag
+// DESCONHECIDA que comece com `-` (postura conservadora: e melhor pular de
+// menos um argumento estranho do que engolir o comando de verdade).
+//
+// P1 (rodada 8, lote 3, 2026-09-04): a versao anterior so sabia `env -C`/
+// `--chdir` e `sudo -u/-g/--user/--group` — qualquer outra flag destes
+// wrappers (`env -u FOO`, `sudo -E`, `sudo -i`, ...) parava a busca ALI,
+// tratando a propria flag como se fosse o comando efetivo (o proximo `while`
+// da tabela nunca era alcancado, e o `while` externo tambem parava, porque a
+// flag nao e nome de wrapper). `env -u OneDrive git add -A` e
+// `env -u FOO codex exec --yolo` atravessavam os gates assim.
+const FLAGS_COM_VALOR = {
+  env: new Set(["-u", "--unset", "-C", "--chdir"]),
+  sudo: new Set(["-u", "-g", "-p", "-C", "--user", "--group"]),
+  nice: new Set(["-n"]),
+  xargs: new Set(["-n", "-I", "-d", "-P"]),
+};
+
+/** `NOME=valor` isolado — atribuicao de variavel antes do comando de verdade. */
+function ehAtribuicao(tok) {
+  return /^[A-Za-z_][A-Za-z0-9_]*=/.test(tok);
+}
+
+/** Nome "base" de uma flag, sem o `=valor` colado (`--chdir=X` -> `--chdir`). */
+function baseDaFlag(tok) {
+  const eq = tok.indexOf("=");
+  return eq === -1 ? tok : tok.slice(0, eq);
+}
+
+/**
+ * Pula, a partir do indice `i`, toda flag reconhecida (e desconhecida —
+ * tratada como sem valor) de `wrapper`. Devolve o novo indice, na primeira
+ * posicao que ja nao e flag.
+ *
+ * `nice -n5` (colado, sem `=` nem espaco) e o unico caso de valor grudado
+ * sem separador — tratado a parte, antes de consultar a tabela.
+ */
+function pularFlagsDoWrapper(toks, i, wrapper) {
+  const comValor = FLAGS_COM_VALOR[wrapper];
+  while (i < toks.length && !toks[i].q && toks[i].v.startsWith("-")) {
+    const tok = toks[i].v;
+    if (wrapper === "nice" && /^-n\d+$/.test(tok)) {
+      i += 1;
+      continue;
+    }
+    const base = baseDaFlag(tok);
+    if (comValor && comValor.has(base)) {
+      i += tok.includes("=") ? 1 : 2;
+    } else {
+      i += 1; // sem valor (conhecida ou nao) — so o proprio token
+    }
+  }
+  return i;
+}
+
 /**
  * Acha o INDICE do token que e a posicao de comando de um segmento
- * tokenizado, pulando os wrappers conhecidos (e os argumentos deles que
- * consomem valor). `null` se o segmento acaba dentro dos proprios wrappers
- * (`env` sozinho, sem comando depois).
+ * tokenizado, pulando atribuicoes `NOME=valor` soltas e os wrappers
+ * conhecidos (e os argumentos deles que consomem valor, via
+ * `pularFlagsDoWrapper`/`FLAGS_COM_VALOR`). `null` se o segmento acaba
+ * dentro dos proprios prefixos (`env` sozinho, sem comando depois).
  *
- * `env`: pula `NOME=valor` (um ou mais) e `-C <dir>`/`--chdir=<dir>`.
- * `nice`: pula `-n <N>` (ou `-N` colado).
- * `timeout`: pula as flags (`-s`, `--signal=...`) e a duracao posicional.
- * `sudo`: pula `-u <usuario>`/`-g <grupo>` (e as formas longas
- * `--user`/`--group`, com `=` ou espaco) — sem isso, `sudo -u x git add -A`
- * parava na flag do wrapper (M1, auditor, 5a revisao, 2026-09-03).
- * Os demais (`command`, `exec`, `nohup`, `xargs`, `time`) so pulam o proprio
- * nome — o comando de verdade e o token seguinte.
+ * `timeout` continua a parte: qualquer flag (`-s`, `--signal=...`) e pulada
+ * de forma generica, e o primeiro token que sobra e sempre a duracao
+ * posicional (nunca a flag em si).
+ *
+ * `exec`, `nohup`, `command`, `time` nao tem flags proprias na tabela: caem
+ * no mesmo `pularFlagsDoWrapper`, que trata qualquer `-flag` deles como sem
+ * valor (cobre `time -p`, `command -p`).
  */
 function posicaoDeComando(toks) {
   let i = 0;
-  while (i < toks.length && !toks[i].q && WRAPPERS_QUE_REPASSAM.has(toks[i].v)) {
-    const wrapper = toks[i].v;
-    i += 1;
-    if (wrapper === "env") {
-      while (i < toks.length && !toks[i].q && /^[A-Za-z_][A-Za-z0-9_]*=/.test(toks[i].v)) i += 1;
-      while (i < toks.length && !toks[i].q && toks[i].v === "-C") i += 2;
-      while (i < toks.length && !toks[i].q && /^--chdir(=.*)?$/.test(toks[i].v)) {
-        i += toks[i].v.includes("=") ? 1 : 2;
-      }
-    } else if (wrapper === "nice") {
-      if (i < toks.length && !toks[i].q && toks[i].v === "-n") i += 2;
-      else if (i < toks.length && !toks[i].q && /^-n\d+$/.test(toks[i].v)) i += 1;
-    } else if (wrapper === "timeout") {
-      while (i < toks.length && !toks[i].q && toks[i].v.startsWith("-")) i += 1;
-      if (i < toks.length) i += 1; // a duracao
-    } else if (wrapper === "sudo") {
-      while (
-        i < toks.length && !toks[i].q &&
-        (/^(-u|-g|--user|--group)$/.test(toks[i].v) || /^--(user|group)=/.test(toks[i].v))
-      ) {
-        i += /=/.test(toks[i].v) ? 1 : 2;
-      }
+  for (;;) {
+    if (i < toks.length && !toks[i].q && ehAtribuicao(toks[i].v)) {
+      i += 1;
+      continue;
     }
+    if (i < toks.length && !toks[i].q && WRAPPERS_QUE_REPASSAM.has(toks[i].v)) {
+      const wrapper = toks[i].v;
+      i += 1;
+      if (wrapper === "timeout") {
+        while (i < toks.length && !toks[i].q && toks[i].v.startsWith("-")) i += 1;
+        if (i < toks.length) i += 1; // a duracao
+      } else {
+        i = pularFlagsDoWrapper(toks, i, wrapper);
+      }
+      continue;
+    }
+    break;
   }
   return i < toks.length ? i : null;
 }
