@@ -35,7 +35,7 @@
     "em": "2026-09-03"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-03",
     "tarefas_ok": 14,
     "tarefas": 14,
@@ -192,27 +192,33 @@
         "L dataLocal"
       ],
       "nota": "Ka (regex SEPARADORES) e Kc (comandoEhGit contra staging-total) sairam verdes na primeira: a primeira era mutacao neutra (regex sem consumidor), a segunda faltava caso isolando o segmento proprio — corrigido no lote K2"
+    },
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-04"
     }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "ca96973d45cdf3c555f00204d71ef4a30c7fd30b",
+      "head": "5074ee8610b3692e34296ddb5bf725590d0aec50",
       "caminhos_sujos": []
     },
     "achados": 3,
     "base": "408af94de7c22492b0815ebed19b4072426a7976",
-    "head": "ca96973d45cdf3c555f00204d71ef4a30c7fd30b",
+    "head": "5074ee8610b3692e34296ddb5bf725590d0aec50",
     "lista": [
-      "Aud1/Aud2 & simples (background) nao separa segmento em cwd-efetivo (SEPARADORES, segmentosComAspas) nem em gate-fechar-issue (segmentosParaGate): echo hi & cd <principal>; git commit libera; sudo & gh issue close 42 libera",
-      "Rev1 cwd-efetivo:283 seg.includes(\"git\") e substring: grep -rn -C 3 \"gitignore\" . && git add -A faz o -C do grep virar cwd (<wt>/3, incerto=false) e o staging-total libera no principal",
-      "Rev2 backup.cjs:425,360 toISOString() (UTC) nomeia o zip: entre 21h e 0h local grava o zip do dia seguinte; bateria testa-backup-gravar flakey (14 ok, 7 falhas as 23:59)"
+      "Aud1 gate-staging-total analisaGit: prefixo com flag propria (env -C . git add -A, sudo -u x git add -A) nao e reconhecido como git — usa tokenizador proprio em vez de tokens-comando.cjs",
+      "Aud2 gate-fechar-issue extrairIssuesCitadas so casa #N; Closes https://github.com/o/r/issues/42 passa sem checar evidencia",
+      "Aud3 testa-backup-estado.sh: rodar()/rodar_sem_rfm_root() nao isolam RFM_BACKUP_DESTINO/OneDrive — bateria gravou 2 zips reais em %OneDrive%/rainforest-backup (removidos pela janela: 14 bytes de FOCO.md de caixa cada)",
+      "Rev1 (nao bloqueia) limpar-worktrees: bateria nao testa --remover com orfao presente",
+      "Rev2 (nao bloqueia) gate-fechar-issue: echo gh issue close 12 sem aspas e barrado (falso positivo aceito pela filosofia do repo; sem caso na bateria)"
     ],
     "em": "2026-09-04",
-    "tentativas": 4,
-    "revisor": "reprovado (2 bloqueiam, todas as rodadas anteriores fechadas)",
-    "auditor": "2 achados bloqueiam (mesma raiz: & simples)",
-    "rodada_revisao": 4
+    "tentativas": 5,
+    "revisor": "ok (2 lacunas de cobertura, nao bloqueiam)",
+    "auditor": "3 achados bloqueiam (alta)",
+    "rodada_revisao": 5
   },
   "verificar": {
     "status": "pendente"
