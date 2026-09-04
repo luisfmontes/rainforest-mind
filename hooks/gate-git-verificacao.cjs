@@ -232,9 +232,100 @@ function git(dir, args) {
  * DEPOIS de extraiSubstituicoes(), que ja removeu `$(...)` e crase com
  * delimitador e tudo, entao esta chamada aqui so encontra parenteses de
  * subshell "nu", nunca os de substituicao de comando.
+ *
+ * CIENTE DE ASPAS: separador (`;`, `|`, `&`, `(`, `)`, `\n`, `||`, `&&`)
+ * dentro de `'...'` ou de `"..."` nao separa nada. Maquina de estado:
+ *   - dentro de `'...'`, nada e especial, nem barra invertida, nem `"`;
+ *   - dentro de `"..."`, barra invertida escapa o char seguinte, e `'` e literal;
+ *   - fora de aspas, barra invertida escapa o char seguinte.
+ * Se ao final da string ainda estiver dentro de uma aspa aberta (falha de
+ * sintaxe no bash de verdade), VOLTA para o split ingenuo (fail-closed).
+ * Se o comando contiver flags perigosas e tiver sintaxe invalida (aspa aberta),
+ * retorna um segmento que forcara bloqueio.
  */
 function segmentos(cmd) {
-  return cmd.split(/\|\||&&|[;|\n&()]/);
+  const resultado = [];
+  let segmento = "";
+  let emAspaSimples = false;
+  let emAspaDupla = false;
+
+  for (let i = 0; i < cmd.length; i++) {
+    const char = cmd[i];
+    const proximo = cmd[i + 1];
+
+    // Dentro de aspas simples: nada é especial, nem barra, nem aspas duplas
+    if (emAspaSimples) {
+      segmento += char;
+      if (char === "'") {
+        emAspaSimples = false;
+      }
+      continue;
+    }
+
+    // Dentro de aspas duplas: barra invertida pode escapar alguns chars
+    if (emAspaDupla) {
+      segmento += char;
+      if (char === "\\") {
+        // Barra invertida escapa o próximo caractere
+        if (proximo !== undefined) {
+          segmento += proximo;
+          i += 1;
+        }
+      } else if (char === '"') {
+        emAspaDupla = false;
+      }
+      continue;
+    }
+
+    // Fora de aspas
+    if (char === "'") {
+      emAspaSimples = true;
+      segmento += char;
+    } else if (char === '"') {
+      emAspaDupla = true;
+      segmento += char;
+    } else if (char === "\\") {
+      // Barra invertida escapa o próximo caractere
+      segmento += char;
+      if (proximo !== undefined) {
+        segmento += proximo;
+        i += 1;
+      }
+    } else if (/[\|\n&();]/.test(char) || (char === "|" && proximo === "|") || (char === "&" && proximo === "&")) {
+      // Separador encontrado
+      if (char === "|" && proximo === "|") {
+        if (segmento) resultado.push(segmento);
+        segmento = "";
+        i += 1;
+      } else if (char === "&" && proximo === "&") {
+        if (segmento) resultado.push(segmento);
+        segmento = "";
+        i += 1;
+      } else {
+        if (segmento) resultado.push(segmento);
+        segmento = "";
+      }
+    } else {
+      segmento += char;
+    }
+  }
+
+  // Se terminou dentro de uma aspa, a sintaxe é ambígua — falha para o lado
+  // fechado (fail-closed: bloqueia mais, não menos). Se o comando contém
+  // flags perigosas, retorna um segmento que força bloqueio; senão, usa
+  // split ingênuo. Comando com aspa não fechada é erro de sintaxe no bash
+  // de qualquer forma, e o gate não deve premiá-lo com passagem livre.
+  if (emAspaSimples || emAspaDupla) {
+    const temFlagPerigosa = /--no-verify|--no-gpg-sign|-n(\s|$)/.test(cmd);
+    if (temFlagPerigosa) {
+      // Força bloqueio: retorna um segmento com a flag bem visível
+      return ["git commit --no-verify"];
+    }
+    return cmd.split(/\|\||&&|[;|\n&()]/);
+  }
+
+  if (segmento) resultado.push(segmento);
+  return resultado;
 }
 
 /**
