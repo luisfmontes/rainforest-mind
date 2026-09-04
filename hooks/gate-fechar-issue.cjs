@@ -21,6 +21,7 @@ const {
   tokensComAspas, posicaoDeComando, textoAPartir, WRAPPERS_QUE_REPASSAM,
   WRAPPERS_DE_COMANDO, desempacotarWrapperDeString,
 } = require("./lib/tokens-comando.cjs");
+const { cwdPorSegmento } = require("./lib/cwd-efetivo.cjs");
 
 /**
  * Normaliza o nome de um executável: remove caminho, extensão e aspas.
@@ -244,8 +245,18 @@ function temMarcadorEvidencia(issueNum) {
  * prosa é rotina, não um ataque. Agora usa `tokensComAspas`: o token inteiro
  * (apostrofo incluso, se veio de dentro de aspas DUPLAS) sai intacto, sem
  * regex tentando adivinhar onde o valor termina.
+ *
+ * `cwdSegmento` (rodada 15, lote 3, 2026-09-04): o diretório onde ESTE
+ * segmento roda de verdade, já resolvido por `cwdPorSegmento` em `main()` —
+ * `null` quando não dá pra saber com segurança (segmento não achado no mapa,
+ * ou marcado `incerto` por um `cd`/`pushd` que não resolve). Um caminho de
+ * `--body-file` RELATIVO tem que ser lido contra ESTE cwd, não contra o do
+ * processo do hook: `cd <worktree> && gh pr create --body-file corpo.txt`
+ * roda o `gh` (e o shell real leria `corpo.txt`) de dentro do worktree,
+ * nunca de onde o hook foi disparado. Caminho absoluto ignora `cwdSegmento`
+ * por completo — não há ambiguidade a resolver.
  */
-function extrairCorpoDoPR(segmento) {
+function extrairCorpoDoPR(segmento, cwdSegmento) {
   const toks = tokensComAspas(segmento);
   for (let i = 0; i < toks.length; i += 1) {
     const tok = toks[i].v;
@@ -277,8 +288,19 @@ function extrairCorpoDoPR(segmento) {
       } else {
         continue;
       }
+      if (!path.isAbsolute(arquivo) && cwdSegmento == null) {
+        // Caminho relativo e não dá pra saber onde este segmento roda de
+        // verdade (não achado no mapa de `cwdPorSegmento`, ou `incerto`):
+        // ler contra o cwd do PROCESSO do hook seria adivinhar um lugar que
+        // pode não ser onde o `gh` roda — bloqueia por segurança, igual a
+        // um arquivo ilegível.
+        return { tipo: "arquivo", conteudo: null, legivel: false, cwdIncerto: true };
+      }
+      const caminhoResolvido = path.isAbsolute(arquivo)
+        ? arquivo
+        : path.resolve(cwdSegmento, arquivo);
       try {
-        const conteudo = fs.readFileSync(arquivo, "utf8");
+        const conteudo = fs.readFileSync(caminhoResolvido, "utf8");
         return { tipo: "arquivo", conteudo, legivel: true };
       } catch {
         return { tipo: "arquivo", conteudo: null, legivel: false };
@@ -307,10 +329,12 @@ function bloqueia(motivo) {
 
 /**
  * Aplica as checagens D15/D16 a uma invocação de `gh` já identificada:
- * `segmento` é o texto bruto (para extrair `--body`/`--body-file`) e
- * `subcomandos` são os tokens que vêm depois de `gh`.
+ * `segmento` é o texto bruto (para extrair `--body`/`--body-file`),
+ * `subcomandos` são os tokens que vêm depois de `gh`, e `cwdSegmento` é o
+ * diretório efetivo deste segmento (ou `null` se incerto) — ver o docblock
+ * de `extrairCorpoDoPR`.
  */
-function verificarComandoGh(segmento, subcomandos) {
+function verificarComandoGh(segmento, subcomandos, cwdSegmento) {
   // Caso (a): `gh issue close <n>` → exit 2
   if (temSubcomando(subcomandos, ["issue", "close"])) {
     bloqueia(
@@ -324,11 +348,19 @@ function verificarComandoGh(segmento, subcomandos) {
 
   // Caso (b) e (c): `gh pr create` ou `gh pr merge` → verificar corpo
   if (temSubcomando(subcomandos, ["pr", "create"]) || temSubcomando(subcomandos, ["pr", "merge"])) {
-    const corpoDoPR = extrairCorpoDoPR(segmento);
+    const corpoDoPR = extrairCorpoDoPR(segmento, cwdSegmento);
 
     // Corpo ilegível (não consegue ler com segurança)
     if (!corpoDoPR.legivel) {
-      if (corpoDoPR.tipo === "arquivo") {
+      if (corpoDoPR.tipo === "arquivo" && corpoDoPR.cwdIncerto) {
+        bloqueia(
+          `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
+          `Razão: --body-file usa caminho relativo, e o diretório efetivo deste ` +
+          `comando não pôde ser determinado com segurança (cd/pushd dinâmico ou ` +
+          `não resolvível antes do 'gh').\n\n` +
+          `Use um caminho absoluto em --body-file, ou remova o 'cd' dinâmico antes do 'gh'.\n`
+        );
+      } else if (corpoDoPR.tipo === "arquivo") {
         bloqueia(
           `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
           `Razão: não consegui ler o arquivo de corpo do PR.\n\n` +
@@ -398,8 +430,38 @@ function ehPrefixoOuWrapperConhecido(exe) {
 }
 
 /**
+ * Diretório efetivo de `segmento`, segundo `mapaCwd` (a saída de
+ * `cwdPorSegmento(comando, cwdDoEvento)` calculada uma vez em `main()` sobre
+ * a linha INTEIRA). `null` quando não dá pra saber com segurança: segmento
+ * não achado (por exemplo, um sub-segmento nascido de dentro de um
+ * `eval`/`bash -c`/subshell, que não tem correspondência 1:1 com a
+ * segmentação de `cwdPorSegmento` — ela NÃO desce em `(`/`{`, ao contrário
+ * de `segmentosParaGate`) ou marcado `incerto` (um `cd`/`pushd` com `$(...)`,
+ * variável, ou destino que não resolve).
+ *
+ * O casamento é por TEXTO (trim), não por índice: `segmentosParaGate` e a
+ * `segmentosComAspas` que `cwdPorSegmento` usa por baixo dividem `;`, `&&`,
+ * `||`, `|`, quebra de linha e `&` solto DA MESMA FORMA — só `segmentosParaGate`
+ * desce além disso em `(`/`)`/`{`/`}`. Quando não há subshell no meio, os
+ * segmentos batem exatamente; quando há, o texto não casa e o resultado é
+ * `null` (conservador), nunca um cwd errado por índice desalinhado.
+ */
+function cwdDoSegmento(segmento, mapaCwd) {
+  if (!mapaCwd) return null;
+  const alvo = segmento.trim();
+  const entrada = mapaCwd.find((e) => e.seg.trim() === alvo);
+  if (!entrada || entrada.incerto) return null;
+  return entrada.cwd;
+}
+
+/**
  * Aplica as checagens D15/D16 a UM segmento do comando (já separado por
  * `;`, `&&`, `||`, `|`, `(`, `)`, `{`, `}` via `segmentosParaGate`).
+ *
+ * `mapaCwd` é a saída de `cwdPorSegmento(comando, cwdDoEvento)` sobre a
+ * linha inteira (calculada uma vez em `main()`) — usada só para resolver
+ * `--body-file` com caminho relativo contra o cwd de ONDE O `gh` RODA de
+ * verdade, via `cwdDoSegmento`.
  *
  * Ordem:
  *   1. `gh` como comando efetivo — direto ou atrás de um prefixo que só
@@ -414,13 +476,17 @@ function ehPrefixoOuWrapperConhecido(exe) {
  *      `gh issue close`/`gh pr create`/`gh pr merge` aparece em qualquer
  *      posição do segmento, trata como comando mesmo assim.
  */
-function processarSegmento(segmento) {
+function processarSegmento(segmento, mapaCwd) {
   const toksComAspas = tokensComAspas(segmento);
   if (toksComAspas.length === 0) return;
 
   const pos = posicaoDeComando(toksComAspas);
   if (pos !== null && normalizarExecutavel(toksComAspas[pos].v) === "gh") {
-    verificarComandoGh(segmento, toksComAspas.slice(pos + 1).map((t) => t.v));
+    verificarComandoGh(
+      segmento,
+      toksComAspas.slice(pos + 1).map((t) => t.v),
+      cwdDoSegmento(segmento, mapaCwd)
+    );
     return;
   }
 
@@ -451,7 +517,7 @@ function processarSegmento(segmento) {
   }
   if (interno !== null) {
     for (const sub of segmentosParaGate(interno)) {
-      processarSegmento(sub);
+      processarSegmento(sub, mapaCwd);
     }
     return;
   }
@@ -474,7 +540,7 @@ function processarSegmento(segmento) {
     for (const padrao of [["gh", "issue", "close"], ["gh", "pr", "create"], ["gh", "pr", "merge"]]) {
       const idx = indiceSequencia(valores, padrao);
       if (idx !== -1) {
-        verificarComandoGh(segmento, valores.slice(idx + 1));
+        verificarComandoGh(segmento, valores.slice(idx + 1), cwdDoSegmento(segmento, mapaCwd));
         return;
       }
     }
@@ -512,8 +578,15 @@ function main() {
   const comando = (ev.tool_input && ev.tool_input.command) || "";
   if (!comando) process.exit(0);
 
+  // Rodada 15, lote 3, 2026-09-04: cwd de CADA segmento da linha, calculado
+  // uma vez sobre a linha inteira (mesma função que `gate-worktree.cjs` e
+  // `gate-staging-total.cjs` usam) — resolve `--body-file` relativo contra
+  // onde o `gh` roda de verdade, não contra o cwd do processo do hook. Ver
+  // docblock de `cwdDoSegmento`.
+  const mapaCwd = cwdPorSegmento(comando, cwdDoEvento);
+
   for (const segmento of segmentosParaGate(comando)) {
-    processarSegmento(segmento);
+    processarSegmento(segmento, mapaCwd);
   }
 
   process.exit(0);
