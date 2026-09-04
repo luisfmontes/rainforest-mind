@@ -271,5 +271,36 @@ rm -rf "$R/.rainforest"
 gate "  ... e volta a barrar sem esse arquivo (padrao ligado)"  2 "$(b 'git commit --no-verify -m x')"
 
 echo
+echo "== achado 4 (revisor, 4a rodada, 2026-09-04): falso positivo com quebras de linha em aspas =="
+echo "== linha dentro de aspas duplas nunca deve separar segmentos =="
+gate "git commit -m \"linha um / nunca rode git commit --no-verify / linha tres\" (aspas duplas)" \
+  0 "$(b 'git commit -m \"linha um\nnunca rode git commit --no-verify aqui\nlinha tres\"')"
+
+echo "== linha dentro de aspas simples nunca deve separar segmentos =="
+gate "git commit -m 'linha um / nunca rode git commit --no-verify / linha tres' (aspas simples)" \
+  0 "$(b 'git commit -m '"'"'linha um\nnunca rode git commit --no-verify aqui\nlinha tres'"'"'')"
+
+echo "== separador dentro de aspas nao separa =="
+gate "git commit -m \"a; git commit --no-verify\" (ponto-virgula dentro de aspas)" \
+  0 "$(b 'git commit -m \"a; git commit --no-verify\"')"
+
+echo "== contraprova: ponto-virgula FORA de aspas DEVE separar =="
+gate "git commit -m \"ok\" ; git commit --no-verify -m x (separador fora)" \
+  2 "$(b 'git commit -m \"ok\" ; git commit --no-verify -m x')"
+
+gate "git commit -m \"ok\" && git commit --no-verify -m x (separador && fora)" \
+  2 "$(b 'git commit -m \"ok\" && git commit --no-verify -m x')"
+
+gate "git commit -m \"ok\" | git commit --no-verify -m x (separador | fora)" \
+  2 "$(b 'git commit -m \"ok\" | git commit --no-verify -m x')"
+
+gate "git commit -m \"ok\" / git commit --no-verify -m x (quebra de linha fora de aspas)" \
+  2 "$(b 'git commit -m \"ok\"\ngit commit --no-verify -m x')"
+
+echo "== aspa nao fechada: fallback fail-closed =="
+gate "git commit -m \"texto com --no-verify (sem fechar) - fallback" \
+  2 "$(b 'git commit -m \"texto com --no-verify')"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
