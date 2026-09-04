@@ -54,13 +54,12 @@ const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 const { cwdPorSegmento, segmentosComAspas } = require("./lib/cwd-efetivo.cjs");
+const { tokensComAspas, ehComando, posicaoDeComando } = require("./lib/tokens-comando.cjs");
 
 // Flags globais do git que consomem o token seguinte (`git -C <dir> add`).
 const FLAG_COM_VALOR = new Set([
   "-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path", "--super-prefix",
 ]);
-// Prefixos que podem vir antes do `git` sem mudar o que ele faz.
-const PREFIXO_NEUTRO = new Set(["env", "sudo", "nohup", "command", "time"]);
 // Pathspecs que significam "o repo inteiro".
 const CAMINHO_TOTAL = new Set([".", "./", ":/", "*", "-A", "--all", "-u", "--update"]);
 
@@ -97,30 +96,36 @@ function segmentos(cmd) {
 }
 
 /**
- * Tokeniza removendo trechos entre aspas. Um argumento citado nunca e o
- * subcomando nem uma flag, e removendo-o some o falso positivo de
- * `git commit -m "suporte a add -A"`.
+ * Acha a POSICAO DE COMANDO do segmento (pulando `env -C X`, `env NOME=v`,
+ * `sudo -u x`, `nice -n 5`, `timeout 5`, `nohup`, `command`, `exec`, `time`,
+ * `xargs`, ...) via `posicaoDeComando`/`tokensComAspas` de
+ * `hooks/lib/tokens-comando.cjs` — o mesmo modulo que `gate-worktree.cjs` e
+ * `cwd-efetivo.cjs` ja usam. `null` se o comando ali nao e `git`.
+ *
+ * M1 (auditor, 5a revisao, 2026-09-03): o tokenizador antigo desta funcao so
+ * pulava `PREFIXO_NEUTRO` como token UNICO, entao `env -C . git add -A` ou
+ * `sudo -u x git add -A` paravam na flag do wrapper (`toks[i] !== "git"`) e o
+ * `git add -A` passava sem checagem — o incidente de 2026-08-09 que este gate
+ * existe para impedir.
+ *
+ * A partir da posicao de comando, o restante do segmento e filtrado dos
+ * tokens citados (um argumento entre aspas nunca e subcomando nem flag —
+ * `git commit -m "suporte a add -A"` nao pode virar falso positivo) e
+ * analisado como antes.
  */
-function tokens(seg) {
-  return seg
-    .replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, " ")
-    .trim().split(/\s+/).filter(Boolean);
-}
+function analisaGit(toksComAspas) {
+  const pos = posicaoDeComando(toksComAspas);
+  if (pos === null || !ehComando(toksComAspas[pos], "git")) return null;
+  const resto = toksComAspas.slice(pos + 1).filter((t) => !t.q).map((t) => t.v);
 
-/** null se o segmento nao e uma chamada de git; senao {sub, args, dirC}. */
-function analisaGit(toks) {
   let i = 0;
-  while (i < toks.length && (PREFIXO_NEUTRO.has(toks[i]) || /^\w+=/.test(toks[i]))) i += 1;
-  if (toks[i] !== "git") return null;
-  i += 1;
-
   let dirC = null;
-  while (i < toks.length && toks[i].startsWith("-")) {
-    if (toks[i] === "-C" && toks[i + 1]) dirC = toks[i + 1];
-    i += FLAG_COM_VALOR.has(toks[i]) && !toks[i].includes("=") ? 2 : 1;
+  while (i < resto.length && resto[i].startsWith("-")) {
+    if (resto[i] === "-C" && resto[i + 1]) dirC = resto[i + 1];
+    i += FLAG_COM_VALOR.has(resto[i]) && !resto[i].includes("=") ? 2 : 1;
   }
-  if (i >= toks.length) return null;
-  return { sub: toks[i], args: toks.slice(i + 1), dirC };
+  if (i >= resto.length) return null;
+  return { sub: resto[i], args: resto.slice(i + 1), dirC };
 }
 
 /** `-am` contem a curta `a`; `--amend` nao e curta e nao conta. */
@@ -242,7 +247,7 @@ function main() {
   let indiceSegmento = null;
   const segs = segmentos(cmd);
   for (let idx = 0; idx < segs.length; idx += 1) {
-    const g = analisaGit(tokens(segs[idx]));
+    const g = analisaGit(tokensComAspas(segs[idx]));
     if (!g) continue;
     const m = motivoDe(g);
     if (m) { motivo = m; dirC = g.dirC; indiceSegmento = idx; break; }
