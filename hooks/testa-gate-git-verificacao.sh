@@ -52,6 +52,16 @@
 #      a flag que ja passava) e uma que tem que CONTINUAR barrando: heredoc
 #      legitimo seguido, no MESMO comando bruto, de `git commit --no-verify`
 #      fora dele.
+#  13. achado (quarta condicao, revisor na 3a rodada de revisao, 2026-09-04
+#      — contrapartida exata do item 12): delimitador de heredoc SEM aspas
+#      sofre expansao de `$(...)`/crase ao ser montado, entao o corpo NAO e
+#      so dado — cinco formas que tem que BARRAR (`$(...)` dentro de
+#      `<<EOF`, dentro de `: <<EOF`, crase dentro de `<<EOF`, `$(...)`
+#      dentro de heredoc aninhado em `bash -c` e `$(...)` dentro de
+#      `<<-EOF` com fechamento por tab) e tres controles com delimitador
+#      CITADO (`<<'EOF'`, `<<"EOF"`, `<<\EOF`) que tem que continuar
+#      PASSANDO — o mesmo `$(...)` no corpo, so que o bash nao expande
+#      porque o delimitador esta citado.
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -167,6 +177,7 @@ gate "git commit --no-edit --amend"              0 "$(b 'git commit --no-edit --
 echo
 echo "== flag agrupada e git -c ... commit =="
 gate "git commit -an (agrupada com -n)"     2 "$(b 'git commit -an -m x')"
+gate "git commit -nm x (agrupada -n com -m)" 2 "$(b 'git commit -nm x')"
 gate "git commit -am (sem -n, so -a)"       0 "$(b 'git commit -am mensagem')"
 gate "git -c commit.gpgsign=false commit -m x (identifica o subcomando certo)" 0 "$(b 'git -c commit.gpgsign=false commit -m x')"
 gate "git -C <dir> commit --no-verify (cwd em outro lugar)" 2 "$(printf '{"cwd":"%s","hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"git -C %s commit --no-verify -m x"}}' "$(esc "$RAIZ")" "$(esc "$R")")"
@@ -210,6 +221,35 @@ gate "o caso que mais importa: heredoc legitimo + git commit --no-verify FORA de
 
 gate "herestring (<<<) nao e heredoc e nao e alvo deste conserto (git nao e invocado aqui de qualquer forma)" \
   0 "$(b "cat <<< 'algo com --no-verify dentro'")"
+
+echo
+echo "== achado (quarta condicao, revisor na 3a rodada de revisao, 2026-09-04): heredoc SEM aspas sofre expansao =="
+echo "== -- contrapartida exata da terceira condicao: DEVE barrar (o \$(...)/crase do corpo executa de verdade) =="
+gate "cat > out.txt <<EOF / \$(git commit --no-verify -m x) NO CORPO SEM ASPAS -- DEVE barrar" \
+  2 "$(b 'cat > out.txt <<EOF\n$(git commit --no-verify -m x)\nEOF')"
+
+gate ": <<EOF / \$(git commit --no-verify -m x) NO CORPO -- DEVE barrar" \
+  2 "$(b ': <<EOF\n$(git commit --no-verify -m x)\nEOF')"
+
+gate "cat > out.txt <<EOF / crase envolvendo git commit --no-verify NO CORPO -- DEVE barrar" \
+  2 "$(b 'cat > out.txt <<EOF\n`git commit --no-verify -m x`\nEOF')"
+
+gate 'bash -c "cat > /tmp/x <<EOF / $(git commit --no-verify -m x) / EOF" (heredoc aninhado em bash -c) -- DEVE barrar' \
+  2 "$(b 'bash -c \"cat > /tmp/x <<EOF\n$(git commit --no-verify -m x)\nEOF\"')"
+
+gate "cat > out.txt <<-EOF (com tab) / \$(git push --no-verify) NO CORPO -- DEVE barrar" \
+  2 "$(b 'cat > out.txt <<-EOF\n$(git push --no-verify)\n\tEOF')"
+
+echo
+echo "== controles: delimitador CITADO com substituicao no corpo continua passando (nao pode regredir) =="
+gate "cat > docs.md <<'EOF' (citado) / \$(git commit --no-verify -m x) NO CORPO -- DEVE continuar passando" \
+  0 "$(b 'cat > docs.md <<'"'"'EOF'"'"'\n$(git commit --no-verify -m x)\nEOF')"
+
+gate 'cat > docs.md <<"EOF" (citado) / $(git commit --no-verify -m x) NO CORPO -- DEVE continuar passando' \
+  0 "$(b 'cat > docs.md <<\"EOF\"\n$(git commit --no-verify -m x)\nEOF')"
+
+gate 'cat > docs.md <<\EOF (citado por barra invertida) / $(git commit --no-verify -m x) NO CORPO -- DEVE continuar passando' \
+  0 "$(b 'cat > docs.md <<\\EOF\n$(git commit --no-verify -m x)\nEOF')"
 
 echo
 echo "== saidas de emergencia =="
