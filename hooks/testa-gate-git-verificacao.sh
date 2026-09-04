@@ -465,5 +465,88 @@ saida=$(printf '%s' "$(b_ansi "bash -c \$'git commit --no-verify'")" | node "$GA
 echo "  info  bash -c \$'git commit --no-verify': exit $rc (não-objetivo, mas agora detectado como melhoria; era 0, agora $rc)"
 
 echo
+echo "== Testes para Defeito A (escape ANSI-C em \$'...'): DEVE barrar (exit 2) =="
+echo "Prova das contrabarras com String.fromCharCode(92):"
+
+# Testes que DEVEM barrar (exit 2) — oito formas
+# 1. Hex -n
+saida=$(printf '%s' "$(b_ansi "git commit \$'\\x2d\\x6e' -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit \$'\\x2d\\x6e' -m x (hex -n, exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA: hex -n esperava 2, veio $rc"; fi
+
+# 2. Hex --no-verify
+saida=$(printf '%s' "$(b_ansi "git commit \$'\\x2d\\x2d\\x6e\\x6f\\x2d\\x76\\x65\\x72\\x69\\x66\\x79' -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit \$'\\x2d\\x2d\\x6e\\x6f\\x2d\\x76\\x65\\x72\\x69\\x66\\x79' -m x (hex --no-verify, exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA: hex --no-verify esperava 2, veio $rc"; fi
+
+# 3. Hex em push
+saida=$(printf '%s' "$(b_ansi "git push \$'\\x2d\\x2d\\x6e\\x6f\\x2d\\x76\\x65\\x72\\x69\\x66\\x79'")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git push \$'\\x2d\\x2d\\x6e\\x6f\\x2d\\x76\\x65\\x72\\x69\\x66\\x79' (hex push, exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA: hex push esperava 2, veio $rc"; fi
+
+# 4. Hex parcial (--no-verif\x79)
+saida=$(printf '%s' "$(b_ansi "git commit \$'--no-verif\\x79' -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit \$'--no-verif\\x79' -m x (hex parcial, exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA: hex parcial esperava 2, veio $rc"; fi
+
+# 5. Octal -n (\055\156)
+saida=$(printf '%s' "$(b_ansi "git commit \$'\\055\\156' -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit \$'\\055\\156' -m x (octal -n, exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA: octal -n esperava 2, veio $rc"; fi
+
+# 6. Unicode4 -n (\u002d\u006e)
+saida=$(printf '%s' "$(b_ansi "git commit \$'\\u002d\\u006e' -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit \$'\\u002d\\u006e' -m x (unicode4 -n, exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA: unicode4 -n esperava 2, veio $rc"; fi
+
+# 7. Unicode8 -n (\U0000002d\U0000006e)
+saida=$(printf '%s' "$(b_ansi "git commit \$'\\U0000002d\\U0000006e' -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit \$'\\U0000002d\\U0000006e' -m x (unicode8 -n, exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA: unicode8 -n esperava 2, veio $rc"; fi
+
+# 8. Hex --no-gpg-sign
+saida=$(printf '%s' "$(b_ansi "git commit \$'\\x2d\\x2d\\x6e\\x6f\\x2d\\x67\\x70\\x67\\x2d\\x73\\x69\\x67\\x6e' -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit \$'\\x2d\\x2d\\x6e\\x6f\\x2d\\x67\\x70\\x67\\x2d\\x73\\x69\\x67\\x6e' -m x (hex --no-gpg-sign, exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA: hex --no-gpg-sign esperava 2, veio $rc"; fi
+
+echo
+echo "== Contraprovas de falso positivo (exit 0) =="
+
+# 1. Mensagem com \x dentro (não é flag)
+saida=$(printf '%s' "$(b_ansi "git commit -m \$'texto com \\x2d\\x6e no meio'")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   git commit -m \$'texto com \\x2d\\x6e no meio' (exit 0)"
+else falhou=$((falhou+1)); echo "  FALHA: mensagem com hex esperava 0, veio $rc"; fi
+
+# 2. Aspas duplas (bash não decodifica)
+saida=$(printf '%s' "$(b_ansi "git commit -m \"use \\x2d\\x6e para pular\"")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   git commit -m \"use \\x2d\\x6e para pular\" (exit 0)"
+else falhou=$((falhou+1)); echo "  FALHA: aspas duplas esperava 0, veio $rc"; fi
+
+# 3. Aspa simples (bash não decodifica)
+saida=$(printf '%s' "$(b_ansi "git commit -m 'use \\x2d\\x6e para pular'")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   git commit -m 'use \\x2d\\x6e para pular' (exit 0)"
+else falhou=$((falhou+1)); echo "  FALHA: aspa simples esperava 0, veio $rc"; fi
+
+# 4. Caminho Windows (barra dupla)
+saida=$(printf '%s' "$(b_ansi "git commit -m \$'C:\\\\Users\\\\Luis'")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   git commit -m \$'C:\\\\Users\\\\Luis' (exit 0)"
+else falhou=$((falhou+1)); echo "  FALHA: caminho Windows esperava 0, veio $rc"; fi
+
+# 5. Hex que vira texto comum
+saida=$(printf '%s' "$(b_ansi "git commit -m \$'\\x6f\\x6c\\x61 \\x6d\\x75\\x6e\\x64\\x6f'")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   git commit -m \$'\\x6f\\x6c\\x61 \\x6d\\x75\\x6e\\x64\\x6f' (exit 0)"
+else falhou=$((falhou+1)); echo "  FALHA: hex texto esperava 0, veio $rc"; fi
+
+echo
+echo "== Verificação da mensagem de bloqueio (inclui origem de escape) =="
+saida=$(printf '%s' "$(b_ansi "git commit \$'\\x2d\\x6e' -m x")" | node "$GATE" 2>&1); rc=$?
+if echo "$saida" | grep -q "escape ANSI-C\|vindo de escape"; then
+  ok=$((ok+1)); echo "  ok   mensagem menciona escape ANSI-C"
+else
+  falhou=$((falhou+1)); echo "  FALHA: mensagem não menciona escape ANSI-C"
+  echo "$saida" | sed 's/^/         /'
+fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
