@@ -98,9 +98,16 @@ linha, como manda a regra 14. Seguir calado com um crítico que não enxerga o
 artefato produz veredito com a mesma cara de um veredito bom, e ninguém volta a
 olhar.
 
-Só **um** caso barra o loop: nenhum dos dois lados renderiza. Aí não existe
-comparação a fazer, e insistir é queimar rodada. Render parcial **não** barra —
-barrar por isso mataria o uso mais comum da skill.
+**O primeiro item não é aviso, é parada.** Régua que não abre é o teste
+"Obtível" reprovando — só que tarde, na hora de usar em vez da hora de escolher.
+Vale o que já valia lá: **não vira loop**, e a escolha da régua volta para o
+usuário. Nada do resto do preflight salva um lado que não existe.
+
+Os outros dois itens **anunciam, não barram**. O nosso lado renderizando pela
+metade, ou uma ferramenta faltando, segue o loop com o crítico prejudicado
+nomeado — barrar por isso mataria o uso mais comum da skill. A única parada que
+nasce aqui é o nosso lado não renderizar de jeito nenhum: aí não há o que pôr do
+outro lado da comparação, e insistir é queimar rodada.
 
 ## Fase 1 — os três freios, declarados antes de largar
 

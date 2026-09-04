@@ -15,8 +15,12 @@ nada, a afirmação é falsa.
    O motivo dado é que o crítico é um agente novo a cada rodada e não herda
    contexto da conversa.
 
-3. **O preflight anuncia e nomeia qual crítico fica cego; só barra o loop quando
-   NENHUM dos dois lados renderiza.** Render parcial explicitamente não barra.
+3. **O preflight anuncia e nomeia qual crítico fica cego, e a parada é por
+   lado.** Régua que não abre para o loop pelo teste "Obtível" da Fase 0 — o
+   texto tem de dizer isso explicitamente, e não pode conter nenhuma frase que
+   permita seguir o loop com a régua inacessível. Nosso lado que não renderiza de
+   jeito nenhum também para. Render **parcial** de qualquer um dos dois não para,
+   e segue com o crítico prejudicado nomeado.
 
 4. **Existem DUAS redes de calibragem, não uma.** A nova, na Fase 0: não
    conseguir extrair 5 a 7 mecanismos reprova a régua antes da rodada 1, a custo

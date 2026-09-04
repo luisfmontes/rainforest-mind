@@ -14,7 +14,7 @@
     "em": "2026-09-04"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-04",
     "tarefas": 3,
     "tarefas_ok": 3,
@@ -37,10 +37,19 @@
         "fixture": "item 1 do docs/rainforest/criterios/fluxo-12-regua.md (o builder NAO ve o bar.md) — mutacao trocou a frase do Builder e o parecer saiu discordo nomeando o criterio 1"
       }
     ],
-    "em": "2026-09-04"
+    "em": "2026-09-04",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-04"
+    }
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "achados": 1,
+    "resumo": "Preflight revogava o gate duro do teste Obtivel da Fase 0: a frase \"so um caso barra o loop: nenhum dos dois lados renderiza\" nunca dispara quando a regua nao abre, porque o nosso lado quase sempre renderiza — e ai o loop segue com o critico sem ver a regua",
+    "arquivo": "skills/regua/SKILL.md:101-103 contra :46,:49",
+    "em": "2026-09-04",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
