@@ -1,0 +1,4 @@
+#!/bin/sh
+i=0
+for a in "$@"; do i=$((i+1)); printf "ARGV[%s]=[%s] len=%s
+" "$i" "$a" "${#a}"; done
