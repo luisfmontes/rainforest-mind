@@ -104,8 +104,16 @@ function baseDaFlag(tok) {
  *
  * `nice -n5` (colado, sem `=` nem espaco) e o unico caso de valor grudado
  * sem separador — tratado a parte, antes de consultar a tabela.
+ *
+ * `captura` (opcional, R1 rodada 9 lote 3 2026-09-04): quando fornecido e o
+ * wrapper e `env`, grava em `captura.chdir` o valor de `-C`/`--chdir`
+ * encontrado (o ULTIMO, se houver mais de um — mesma regra de "usa o
+ * ultimo" que `git -C`). Substitui o regex fixo que so reconhecia
+ * `-C`/`--chdir=` logo apos `env` (pulando so `NOME=valor`) — `env -u FOO
+ * --chdir=X cmd` nao casava porque `-u FOO` vinha antes. Chamadores que nao
+ * passam `captura` mantem o comportamento antigo (so pula, nao coleta).
  */
-function pularFlagsDoWrapper(toks, i, wrapper) {
+function pularFlagsDoWrapper(toks, i, wrapper, captura) {
   const comValor = FLAGS_COM_VALOR[wrapper];
   while (i < toks.length && !toks[i].q && toks[i].v.startsWith("-")) {
     const tok = toks[i].v;
@@ -115,6 +123,13 @@ function pularFlagsDoWrapper(toks, i, wrapper) {
     }
     const base = baseDaFlag(tok);
     if (comValor && comValor.has(base)) {
+      if (captura && wrapper === "env" && (base === "-C" || base === "--chdir")) {
+        if (tok.includes("=")) {
+          captura.chdir = tok.slice(tok.indexOf("=") + 1);
+        } else if (i + 1 < toks.length) {
+          captura.chdir = toks[i + 1].v;
+        }
+      }
       i += tok.includes("=") ? 1 : 2;
     } else {
       i += 1; // sem valor (conhecida ou nao) — so o proprio token
@@ -137,8 +152,12 @@ function pularFlagsDoWrapper(toks, i, wrapper) {
  * `exec`, `nohup`, `command`, `time` nao tem flags proprias na tabela: caem
  * no mesmo `pularFlagsDoWrapper`, que trata qualquer `-flag` deles como sem
  * valor (cobre `time -p`, `command -p`).
+ *
+ * `captura` (opcional): repassado para `pularFlagsDoWrapper` — veja o
+ * comentario la para o uso (extrair `-C`/`--chdir` de um `env` em qualquer
+ * ordem de flags).
  */
-function posicaoDeComando(toks) {
+function posicaoDeComando(toks, captura) {
   let i = 0;
   for (;;) {
     if (i < toks.length && !toks[i].q && ehAtribuicao(toks[i].v)) {
@@ -152,7 +171,7 @@ function posicaoDeComando(toks) {
         while (i < toks.length && !toks[i].q && toks[i].v.startsWith("-")) i += 1;
         if (i < toks.length) i += 1; // a duracao
       } else {
-        i = pularFlagsDoWrapper(toks, i, wrapper);
+        i = pularFlagsDoWrapper(toks, i, wrapper, captura);
       }
       continue;
     }

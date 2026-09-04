@@ -36,11 +36,14 @@ const PUSHD = /^\s*pushd\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s*$/;
 // `popd`: volta ao cwd de antes do ultimo `pushd`. Aceita o `-n` ("nao
 // re-imprime a pilha"), que nao muda o alvo.
 const POPD = /^\s*popd(?:\s+-n)?\s*$/;
-// `env -C <dir> <cmd...>` / `env --chdir=<dir> <cmd...>` (GNU coreutils):
-// muda o cwd SO do comando que ele lanca — nunca do shell, entao nao
-// persiste para os segmentos seguintes. Pula `NOME=valor` antes do `-C`,
-// que e a forma comum (`env FOO=1 -C /dir cmd`).
-const ENV_C = /^\s*env\s+(?:[A-Za-z_][A-Za-z0-9_]*=(?:"[^"]*"|'[^']*'|\S*)\s+)*(?:-C\s+|--chdir=)(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))/;
+// Equivalentes do PowerShell a `cd`/`pushd`/`popd` (R3, rodada 9, lote 3,
+// 2026-09-04): `Set-Location` (e os alias `sl`, `chdir` — `cd` ja casa no
+// `CD` acima, mesma sintaxe) aceita `-Path`/`-LiteralPath` explicito ou o
+// destino posicional; `Push-Location`/`Pop-Location` idem a `pushd`/`popd`.
+// Case-insensitive porque cmdlet do PowerShell nao diferencia caixa.
+const SET_LOCATION = /^\s*(?:Set-Location|sl|chdir)\s+(?:-(?:Path|LiteralPath)\s+)?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s*$/i;
+const PUSH_LOCATION = /^\s*Push-Location\s+(?:-(?:Path|LiteralPath)\s+)?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s*$/i;
+const POP_LOCATION = /^\s*Pop-Location\s*$/i;
 
 /**
  * Quebra a linha de comando em segmentos respeitando aspas.
@@ -248,8 +251,9 @@ function resolverMovedor(seg, estado) {
   // tirada). `sudo cd X` fica de fora (a normalizacao nao mexe nele).
   const segMovedor = semPrefixoSintaticoDeBuiltin(seg);
 
-  // `pushd X` — muda o cwd corrente igual `cd X`, guardando o de antes.
-  const pd = segMovedor.match(PUSHD);
+  // `pushd X` / `Push-Location X` (PowerShell, R3) — muda o cwd corrente
+  // igual `cd X`, guardando o de antes.
+  const pd = segMovedor.match(PUSHD) || segMovedor.match(PUSH_LOCATION);
   if (pd) {
     const destino = pd[1] || pd[2] || pd[3];
     estado.pilhaPushd.push(estado.atual);
@@ -261,11 +265,11 @@ function resolverMovedor(seg, estado) {
     return { cwd: estado.atual, incerto: estado.incerto, soMovedor: true };
   }
 
-  // `popd` — volta ao cwd de antes do ultimo `pushd`. Pilha vazia (nenhum
-  // `pushd` visto NESTA linha) significa que o destino de verdade depende
-  // de um estado de shell que este parser nao enxerga — INCERTO, nunca
-  // "supõe que nada mudou".
-  if (POPD.test(segMovedor)) {
+  // `popd` / `Pop-Location` (PowerShell, R3) — volta ao cwd de antes do
+  // ultimo `pushd`/`Push-Location`. Pilha vazia (nenhum visto NESTA linha)
+  // significa que o destino de verdade depende de um estado de shell que
+  // este parser nao enxerga — INCERTO, nunca "supõe que nada mudou".
+  if (POPD.test(segMovedor) || POP_LOCATION.test(segMovedor)) {
     if (estado.pilhaPushd.length) {
       estado.atual = estado.pilhaPushd.pop();
     } else {
@@ -274,8 +278,8 @@ function resolverMovedor(seg, estado) {
     return { cwd: estado.atual, incerto: estado.incerto, soMovedor: true };
   }
 
-  // `cd` isolado num segmento
-  const cd = segMovedor.match(CD);
+  // `cd` isolado num segmento, ou `Set-Location`/`sl`/`chdir` (PowerShell, R3)
+  const cd = segMovedor.match(CD) || segMovedor.match(SET_LOCATION);
   if (cd) {
     const destino = cd[1] || cd[2] || cd[3];
     // `cd -`, `cd ~`, `$VAR`, `$(...)`: não dá para resolver aqui sem executar.
@@ -297,17 +301,32 @@ function resolverMovedor(seg, estado) {
     return { cwd: estado.atual, incerto: estado.incerto, soMovedor: true };
   }
 
-  // `env -C <dir> <cmd>` — muda o cwd SO deste comando, nunca do shell:
-  // nao mexe em `estado.atual`, que continua valendo para os segmentos
-  // seguintes. NAO e `soMovedor`: o resto do segmento (o comando de
-  // verdade) ainda precisa ser avaliado por quem chamou.
-  const envC = seg.match(ENV_C);
-  if (envC) {
-    const destino = envC[1] || envC[2] || envC[3];
-    if (/[$`]/.test(destino) || /^~/.test(destino) || destino === "-") {
-      return { cwd: estado.atual, incerto: true, soMovedor: false };
+  // `env -C <dir> <cmd>` / `env --chdir=<dir> <cmd>` (GNU coreutils) — muda
+  // o cwd SO deste comando, nunca do shell: nao mexe em `estado.atual`, que
+  // continua valendo para os segmentos seguintes. NAO e `soMovedor`: o
+  // resto do segmento (o comando de verdade) ainda precisa ser avaliado por
+  // quem chamou.
+  //
+  // R1 (rodada 9, lote 3, 2026-09-04): antes disto a extracao era um regex
+  // fixo, que so casava `-C`/`--chdir=` na posicao logo apos `env`
+  // (pulando so `NOME=valor` antes) — `env -u OneDrive --chdir=X cmd` nao
+  // casava, porque `-u OneDrive` vinha na frente. Agora usa a MESMA tabela
+  // de flags de `posicaoDeComando` (`tokens-comando.cjs`), que ja sabe
+  // andar por qualquer ordem de `-u X`, `-i`, `NOME=v`, `-C dir`,
+  // `--chdir=dir`, `--chdir dir` para achar a posicao de comando de
+  // `procuraCLI` — em vez de reimplementar, so pede pra ela CAPTURAR o
+  // valor de `-C`/`--chdir` que encontrar no caminho.
+  const toksEnv = tokensComAspas(seg);
+  if (toksEnv.length && !toksEnv[0].q && toksEnv[0].v === "env") {
+    const captura = {};
+    posicaoDeComando(toksEnv, captura);
+    if (captura.chdir !== undefined) {
+      const destino = captura.chdir;
+      if (/[$`]/.test(destino) || /^~/.test(destino) || destino === "-") {
+        return { cwd: estado.atual, incerto: true, soMovedor: false };
+      }
+      return { cwd: path.resolve(estado.atual, destino), incerto: estado.incerto, soMovedor: false };
     }
-    return { cwd: path.resolve(estado.atual, destino), incerto: estado.incerto, soMovedor: false };
   }
 
   return { cwd: estado.atual, incerto: estado.incerto, soMovedor: false };
@@ -453,7 +472,9 @@ module.exports = {
   CD,
   PUSHD,
   POPD,
-  ENV_C,
+  SET_LOCATION,
+  PUSH_LOCATION,
+  POP_LOCATION,
   GIT_DIR_EXPLICITO,
   SEPARADORES,
 };
