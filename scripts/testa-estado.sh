@@ -1020,5 +1020,110 @@ esperado "varredura sem nenhum arquivo de estado (dir vazio) sai 0" 0 node scrip
 
 unset RFM_ESTADO_ROOT
 
+echo
+echo "== 17. robustez do concluido: arquivo malformado nao derruba o processo =="
+# Defeito: varredura sem slug fazia JSON.parse sem try/catch em cada arquivo.
+# Um arquivo malformado derrubava com SyntaxError e stack trace, exit 1 colidindo
+# com erro de uso documentado. A fix: catch o erro, reportar em stderr nomeando o
+# arquivo, e sair 1 — indicando "nao consegui responder porque um arquivo nao dava".
+
+# Setup: caixa com um arquivo malformado
+mkdir -p "$SBP/robustez/docs/rainforest/estado"
+export RFM_ESTADO_ROOT="$SBP/robustez"
+echo '{ not valid json' > "$SBP/robustez/docs/rainforest/estado/malformed.json"
+
+# Teste 1: arquivo malformado sozinho → exit 1, mensagem limpa em stderr
+saida_mal=$($E concluido 2>&1); saida_code=$?
+if [ "$saida_code" = "1" ]; then
+  ok=$((ok+1)); echo "  ok   arquivo malformado sai exit 1"
+else
+  falhou=$((falhou+1)); echo "  FALHA arquivo malformado saiu exit $saida_code, esperava 1"
+fi
+# Verificar que nao ha SyntaxError ou stack trace na saida
+case "$saida_mal" in
+  *SyntaxError*) falhou=$((falhou+1)); echo "  FALHA SyntaxError vazou na saida" ;;
+  *JSON.parse*) falhou=$((falhou+1)); echo "  FALHA stack trace vazou na saida" ;;
+  *) ok=$((ok+1)); echo "  ok   sem SyntaxError ou stack trace na saida" ;;
+esac
+# Verificar que a mensagem de erro nomeia o arquivo
+case "$saida_mal" in
+  *malformed.json*) ok=$((ok+1)); echo "  ok   mensagem de erro nomeia o arquivo" ;;
+  *) falhou=$((falhou+1)); echo "  FALHA mensagem nao nomeou o arquivo" ;;
+esac
+
+# Teste 2: arquivo .json que eh diretorio (EISDIR) → exit 1
+mkdir -p "$SBP/robustez/docs/rainforest/estado/directory.json"
+saida_dir=$($E concluido 2>&1); saida_dir_code=$?
+if [ "$saida_dir_code" = "1" ]; then
+  ok=$((ok+1)); echo "  ok   arquivo que eh diretorio sai exit 1"
+else
+  falhou=$((falhou+1)); echo "  FALHA arquivo-diretorio saiu exit $saida_dir_code, esperava 1"
+fi
+
+# Teste 3: malformado + fluxo aberto → exit 1 E fluxo listado
+# Cria um estado valido aberto
+cat > "$SBP/robustez/docs/rainforest/estado/open.json" <<'ESTEOF'
+{
+  "slug": "open",
+  "titulo": "Open flow",
+  "criado_em": "2026-09-04",
+  "arqueologia": { "status": "pendente" },
+  "design": { "status": "pendente" },
+  "plano": { "status": "pendente" },
+  "executar": { "status": "pendente" },
+  "revisar": { "status": "pendente" },
+  "verificar": { "status": "pendente" },
+  "fechar": { "status": "pendente" }
+}
+ESTEOF
+saida_aberto=$($E concluido 2>&1); saida_aberto_code=$?
+if [ "$saida_aberto_code" = "1" ]; then
+  ok=$((ok+1)); echo "  ok   malformado + aberto sai exit 1"
+else
+  falhou=$((falhou+1)); echo "  FALHA malformado + aberto saiu exit $saida_aberto_code, esperava 1"
+fi
+case "$saida_aberto" in
+  *open*) ok=$((ok+1)); echo "  ok   fluxo aberto ainda aparece na saida" ;;
+  *) falhou=$((falhou+1)); echo "  FALHA fluxo aberto nao foi listado" ;;
+esac
+
+# Teste 4a: so arquivos sanos, nenhum aberto → exit 0
+rm -f "$SBP/robustez/docs/rainforest/estado/malformed.json" "$SBP/robustez/docs/rainforest/estado/open.json"
+rm -rf "$SBP/robustez/docs/rainforest/estado/directory.json"
+cat > "$SBP/robustez/docs/rainforest/estado/completed.json" <<'ESTEOF'
+{
+  "slug": "completed",
+  "titulo": "Completed",
+  "criado_em": "2026-09-04",
+  "arqueologia": { "status": "pendente" },
+  "design": { "status": "aprovado" },
+  "plano": { "status": "ok" },
+  "executar": { "status": "ok" },
+  "revisar": { "status": "ok" },
+  "verificar": { "status": "ok" },
+  "fechar": { "status": "ok" }
+}
+ESTEOF
+esperado "so sanos sem aberto sai 0" 0 $E concluido
+
+# Teste 4b: so arquivos sanos, um aberto → exit 2
+cat > "$SBP/robustez/docs/rainforest/estado/open2.json" <<'ESTEOF'
+{
+  "slug": "open2",
+  "titulo": "Open flow 2",
+  "criado_em": "2026-09-04",
+  "arqueologia": { "status": "pendente" },
+  "design": { "status": "aprovado" },
+  "plano": { "status": "pendente" },
+  "executar": { "status": "pendente" },
+  "revisar": { "status": "pendente" },
+  "verificar": { "status": "pendente" },
+  "fechar": { "status": "pendente" }
+}
+ESTEOF
+esperado "so sanos com aberto sai 2" 2 $E concluido
+
+unset RFM_ESTADO_ROOT
+
 echo "== resultado: $ok ok, $falhou falhas =="
 [ "$falhou" = 0 ]
