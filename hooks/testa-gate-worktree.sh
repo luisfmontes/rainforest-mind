@@ -696,5 +696,10 @@ gate "sh -ec \"codex exec --yolo\" fora de worktree BARRA (U1)" 2 \
   "$(b 'sh -ec "codex exec --yolo"' "$R")"
 
 echo
+echo "== P3 (auditor, 11a revisao, rodada 13, lote 3, 2026-09-04): wrapper de PREFIXO + wrapper de STRING compostos =="
+gate "timeout 5 bash -c \"codex exec --yolo\" fora de worktree BARRA (P3)" 2 \
+  "$(b 'timeout 5 bash -c "codex exec --yolo"' "$R")"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

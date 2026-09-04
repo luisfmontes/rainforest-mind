@@ -217,6 +217,13 @@ gate "bash -x -c \"git add -A\" BARRA (U2, flags separadas)"                    
 gate "bash -xc \"git status\" PASSA (U1, nao e staging total)"                    0 "$(b 'bash -xc \"git status\"')"
 
 echo
+echo "== P3 (auditor, 11a revisao, rodada 13, lote 3, 2026-09-04): wrapper de PREFIXO + wrapper de STRING compostos =="
+gate "timeout 5 bash -c \"git add -A\" na JANELA PRINCIPAL BARRA (P3)"            2 "$(b 'timeout 5 bash -c \"git add -A\"')"
+gate "env -C . bash -c \"git add -A\" na JANELA PRINCIPAL BARRA (P3)"             2 "$(b 'env -C . bash -c \"git add -A\"')"
+gate "timeout 5 bash -c \"env FOO=1 git add -A\" na JANELA PRINCIPAL BARRA (P3, recursao)" 2 "$(b 'timeout 5 bash -c \"env FOO=1 git add -A\"')"
+gate "timeout 5 bash -c \"git status\" PASSA (P3, nao e staging total)"           0 "$(b 'timeout 5 bash -c \"git status\"')"
+
+echo
 echo "== saidas de emergencia =="
 saida=$(printf '%s' "$(b 'git add -A')" | RAINFOREST_GATE_OFF=1 node "$GATE" 2>&1); rc=$?
 if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   RAINFOREST_GATE_OFF=1 libera (exit 0)"
