@@ -48,6 +48,21 @@ const ITENS_BACKUP = [
 ];
 
 /**
+ * Data no fuso LOCAL, formato AAAA-MM-DD.
+ *
+ * `toISOString()` reporta em UTC — em UTC-3, das 21h às 24h locais o dia UTC
+ * já virou o seguinte, e um zip gravado às 23:59 do dia local nasce com o
+ * nome do dia de amanhã. Usa os getters locais (getFullYear/getMonth/getDate)
+ * para nomear o zip e comparar mtime pelo dia do calendário local.
+ */
+function dataLocal(d = new Date()) {
+  const ano = d.getFullYear();
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${ano}-${mes}-${dia}`;
+}
+
+/**
  * Resolve a raiz de dados pela cadeia canônica.
  * Mesma lógica de hooks/lib/raiz.cjs, embutida para evitar acoplamento.
  */
@@ -357,7 +372,7 @@ function cmdConferir(args) {
 
     // Tudo bateu
     const stat = fs.statSync(caminhoZip);
-    const dataMtime = new Date(stat.mtime).toISOString().split('T')[0];
+    const dataMtime = dataLocal(new Date(stat.mtime));
     console.log('intacto');
     console.log(dataMtime);
     console.log('sincronizacao e do OneDrive, nao conferida aqui');
@@ -422,7 +437,7 @@ function cmdGravar(args) {
   }
 
   // Monta path do zip
-  const hoje = new Date().toISOString().split('T')[0]; // AAAA-MM-DD
+  const hoje = dataLocal(); // AAAA-MM-DD, fuso local
   const nomeZip = `rainforest-${hoje}.zip`;
   const caminhoZip = path.join(destino, nomeZip);
 
@@ -521,6 +536,7 @@ if (require.main === module) {
 
 module.exports = {
   ITENS_BACKUP,
+  dataLocal,
   resolverRaiz,
   resolverDestino,
   compactarSimples,
