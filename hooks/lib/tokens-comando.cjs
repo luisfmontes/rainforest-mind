@@ -79,11 +79,24 @@ const WRAPPERS_QUE_REPASSAM = new Set([
 // da tabela nunca era alcancado, e o `while` externo tambem parava, porque a
 // flag nao e nome de wrapper). `env -u OneDrive git add -A` e
 // `env -u FOO codex exec --yolo` atravessavam os gates assim.
+// T1 (rodada 11, lote 3, 2026-09-04): `timeout` nao tinha entrada aqui — o
+// ramo `timeout` de `posicaoDeComando` tratava TODA flag como sem valor,
+// entao `-s SIG`/`--signal SIG` e `-k DUR`/`--kill-after DUR` (forma COM
+// ESPACO, valor separado) paravam de pular no proprio valor, e a duracao
+// posicional (sempre pulada logo depois) caia no valor da flag em vez da
+// duracao de verdade — o token de comando de verdade (`git`, `gh`, `codex`,
+// ...) ficava um passo alem do que devia. `timeout -s TERM 30 gh issue close
+// 12` classificava `30` como comando, escapando do `gate-fechar-issue`; o
+// mesmo padrao com `git add -A` e `codex exec --yolo` escapava dos outros
+// dois gates. `--signal=TERM`/`--kill-after=5` (forma colada com `=`)
+// ja funcionava, porque `pularFlagsDoWrapper` sempre pulou so 1 quando ha
+// `=`, independente de tabela.
 const FLAGS_COM_VALOR = {
   env: new Set(["-u", "--unset", "-C", "--chdir"]),
   sudo: new Set(["-u", "-g", "-p", "-C", "--user", "--group"]),
   nice: new Set(["-n"]),
   xargs: new Set(["-n", "-I", "-d", "-P"]),
+  timeout: new Set(["-s", "--signal", "-k", "--kill-after"]),
 };
 
 /** `NOME=valor` isolado — atribuicao de variavel antes do comando de verdade. */
@@ -145,9 +158,11 @@ function pularFlagsDoWrapper(toks, i, wrapper, captura) {
  * `pularFlagsDoWrapper`/`FLAGS_COM_VALOR`). `null` se o segmento acaba
  * dentro dos proprios prefixos (`env` sozinho, sem comando depois).
  *
- * `timeout` continua a parte: qualquer flag (`-s`, `--signal=...`) e pulada
- * de forma generica, e o primeiro token que sobra e sempre a duracao
- * posicional (nunca a flag em si).
+ * `timeout` usa a MESMA `pularFlagsDoWrapper`/`FLAGS_COM_VALOR` dos outros
+ * wrappers (T1, rodada 11) — `-s`/`--signal` e `-k`/`--kill-after` (forma com
+ * espaco) consomem o token seguinte, qualquer outra flag e pulada sozinha —
+ * e so DEPOIS disso pula mais um token, a duracao posicional (nunca a flag
+ * em si, nem o valor dela).
  *
  * `exec`, `nohup`, `command`, `time` nao tem flags proprias na tabela: caem
  * no mesmo `pularFlagsDoWrapper`, que trata qualquer `-flag` deles como sem
@@ -167,12 +182,8 @@ function posicaoDeComando(toks, captura) {
     if (i < toks.length && !toks[i].q && WRAPPERS_QUE_REPASSAM.has(toks[i].v)) {
       const wrapper = toks[i].v;
       i += 1;
-      if (wrapper === "timeout") {
-        while (i < toks.length && !toks[i].q && toks[i].v.startsWith("-")) i += 1;
-        if (i < toks.length) i += 1; // a duracao
-      } else {
-        i = pularFlagsDoWrapper(toks, i, wrapper, captura);
-      }
+      i = pularFlagsDoWrapper(toks, i, wrapper, captura);
+      if (wrapper === "timeout" && i < toks.length) i += 1; // a duracao
       continue;
     }
     break;
@@ -180,9 +191,144 @@ function posicaoDeComando(toks, captura) {
   return i < toks.length ? i : null;
 }
 
+// --- Wrapper de STRING (T2, rodada 11, lote 3, 2026-09-04) -----------------
+//
+// Diferente de `WRAPPERS_QUE_REPASSAM` (o comando de verdade aparece como
+// TOKEN, na mesma linha), estes wrappers encapsulam o comando de verdade
+// DENTRO de uma STRING — `eval "git add -A"`, `bash -c "git add -A"`,
+// `Invoke-Expression "git add -A"`/`iex "..."`, `pwsh -Command "..."`,
+// `cmd /c "..."`. Nasceu em `gate-fechar-issue.cjs` (R2, rodada 9) so para
+// `eval`/`Invoke-Expression`/`iex`/`bash -c`-e-primos/`pwsh|powershell
+// -Command`/`cmd /c` — e so ali: `gate-staging-total.cjs` e
+// `gate-worktree.cjs` nao desempacotavam NENHUM destes, entao
+// `Invoke-Expression "git add -A"` (staging-total) e
+// `iex "git commit -m x"`/`Invoke-Expression "codex exec --yolo"`
+// (gate-worktree) atravessavam os dois gates com exit 0. Movido para aqui
+// para os tres gates compartilharem a MESMA implementacao, em vez de cada
+// um aprender o mesmo wrapper em rodadas diferentes.
+
+// Executaveis que encapsulam uma string de comando, e a flag que a
+// introduz. Chave normalizada por `normalizarNomeExecutavel` (sem
+// caminho/extensao/aspas). `pwsh`/`powershell` e `cmd` sao tratados a parte
+// em `desempacotarWrapperDeString` porque aceitam abreviacao de flag
+// (`-c`, `-co`, `-com`, ... / `/c`, `/k`).
+const WRAPPERS_DE_COMANDO = {
+  bash: "-c",
+  sh: "-c",
+  zsh: "-c",
+  ksh: "-c",
+  dash: "-c",
+};
+
+/** Nome "limpo" de um executavel: sem aspas, sem caminho, sem extensao, minusculo. */
+function normalizarNomeExecutavel(nome) {
+  let s = String(nome == null ? "" : nome).replace(/^["']|["']$/g, "");
+  s = s.split(/[\\/]/).pop();
+  s = s.replace(/\.(exe|cmd|bat)$/i, "");
+  return s.toLowerCase();
+}
+
+/**
+ * Extrai o primeiro token de `str` (aspas simples/duplas respeitadas) e o
+ * restante da string logo apos esse token (sem consumir as aspas do
+ * restante). Retorna null se `str` nao tem nenhum token.
+ */
+function extrairPrimeiroToken(str) {
+  const m = /^\s*(?:"([^"]*)"|'([^']*)'|(\S+))/.exec(str);
+  if (!m) return null;
+  const tok = m[1] !== undefined ? m[1] : m[2] !== undefined ? m[2] : m[3];
+  return { tok, resto: str.slice(m[0].length) };
+}
+
+/**
+ * `tok` e uma abreviacao valida de `nomeCompleto` (ex.: "-c", "-co", "-com"
+ * para "-command")? O PowerShell aceita qualquer prefixo nao-ambiguo de uma
+ * flag; aqui a checagem e conservadora — basta ser prefixo de `nomeCompleto`
+ * com pelo menos 2 caracteres (o `-` e uma letra), case-insensitive.
+ */
+function casaPrefixoDeFlag(tok, nomeCompleto) {
+  const t = String(tok || "").toLowerCase();
+  return t.length >= 2 && t[0] === "-" && nomeCompleto.toLowerCase().startsWith(t);
+}
+
+/** Tira UM nivel de aspas externas de `interno`, se houver. */
+function desempacota(interno) {
+  interno = interno.trim();
+  const aspas = /^"([\s\S]*)"$/.exec(interno) || /^'([\s\S]*)'$/.exec(interno);
+  return aspas ? aspas[1] : interno;
+}
+
+/**
+ * A string interna de um wrapper e ilegivel quando contem substituicao de
+ * comando (`$(...)`, crase) ou variavel (`$X`, `${X}`) — nao da para saber
+ * com seguranca o que vai rodar dentro. Postura conservadora.
+ */
+function contemConstrucaoIlegivel(str) {
+  return /\$\(|`|\$[A-Za-z_{]/.test(str);
+}
+
+/**
+ * Se `segmento` e uma invocacao de wrapper de STRING — `eval`,
+ * `Invoke-Expression`/`iex` (PowerShell), `bash -c`/`sh -c`/`zsh -c`/
+ * `ksh -c`/`dash -c`, `pwsh`/`powershell` com qualquer abreviacao de
+ * `-Command` (`-c`, `-co`, `-com`, ...) ou `-EncodedCommand`, ou
+ * `cmd /c`/`cmd /k` — devolve `{ interno, ilegivel }`:
+ *
+ *   - `interno`: a string de comando encapsulada (sem UM nivel de aspas
+ *     externas, se houver), ou `null` se `segmento` nao e nenhum destes
+ *     wrappers (nesse caso `ilegivel` e sempre `false`);
+ *   - `ilegivel`: `true` quando o conteudo tem substituicao de comando ou
+ *     variavel (`contemConstrucaoIlegivel`), OU quando o wrapper e
+ *     `-EncodedCommand` (base64, ilegivel por definicao — `interno` vem
+ *     `null` nesse caso, so `ilegivel` importa).
+ *
+ * Quem chama decide o que fazer com cada combinacao: `interno` legivel
+ * (nao-null, `ilegivel: false`) e reprocessado como se fosse o proprio
+ * comando; `ilegivel: true` (com ou sem `interno`) e tratado como INCERTO —
+ * mesma postura conservadora que `$(`/crase solto ja recebe nos tres gates.
+ */
+function desempacotarWrapperDeString(segmento) {
+  const p1 = extrairPrimeiroToken(segmento);
+  if (!p1) return { interno: null, ilegivel: false };
+  const exe = normalizarNomeExecutavel(p1.tok);
+
+  if (exe === "eval" || exe === "invoke-expression" || exe === "iex") {
+    const interno = desempacota(p1.resto);
+    return { interno, ilegivel: contemConstrucaoIlegivel(interno) };
+  }
+
+  const p2 = extrairPrimeiroToken(p1.resto);
+  if (!p2) return { interno: null, ilegivel: false };
+
+  if (exe === "pwsh" || exe === "powershell") {
+    if (casaPrefixoDeFlag(p2.tok, "-encodedcommand")) {
+      return { interno: null, ilegivel: true };
+    }
+    if (!casaPrefixoDeFlag(p2.tok, "-command")) return { interno: null, ilegivel: false };
+    const interno = desempacota(p2.resto);
+    return { interno, ilegivel: contemConstrucaoIlegivel(interno) };
+  }
+
+  if (exe === "cmd") {
+    const flag = p2.tok.toLowerCase();
+    if (flag !== "/c" && flag !== "/k") return { interno: null, ilegivel: false };
+    const interno = desempacota(p2.resto);
+    return { interno, ilegivel: contemConstrucaoIlegivel(interno) };
+  }
+
+  const flagEsperada = WRAPPERS_DE_COMANDO[exe];
+  if (!flagEsperada) return { interno: null, ilegivel: false };
+  if (p2.tok.toLowerCase() !== flagEsperada) return { interno: null, ilegivel: false };
+  const interno = desempacota(p2.resto);
+  return { interno, ilegivel: contemConstrucaoIlegivel(interno) };
+}
+
 module.exports = {
   tokensComAspas,
   ehComando,
   WRAPPERS_QUE_REPASSAM,
   posicaoDeComando,
+  WRAPPERS_DE_COMANDO,
+  desempacotarWrapperDeString,
+  contemConstrucaoIlegivel,
 };

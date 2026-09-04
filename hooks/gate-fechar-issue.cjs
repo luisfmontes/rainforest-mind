@@ -17,7 +17,10 @@ const path = require("node:path");
 
 const { MARCADOR } = require("./lib/marcador-evidencia.cjs");
 const { executar } = require("./lib/resolver-executavel.cjs");
-const { tokensComAspas, posicaoDeComando, WRAPPERS_QUE_REPASSAM } = require("./lib/tokens-comando.cjs");
+const {
+  tokensComAspas, posicaoDeComando, WRAPPERS_QUE_REPASSAM,
+  WRAPPERS_DE_COMANDO, desempacotarWrapperDeString,
+} = require("./lib/tokens-comando.cjs");
 
 /**
  * Normaliza o nome de um executável: remove caminho, extensão e aspas.
@@ -291,110 +294,16 @@ function bloqueia(motivo) {
   process.exit(2);
 }
 
-// Executáveis que encapsulam uma string de comando, e a flag que a introduz.
-// Chave normalizada por `normalizarExecutavel` (sem caminho/extensão/aspas).
-// `pwsh`/`powershell` e `cmd` são tratados à parte em `desempacotarWrapper`
-// porque aceitam abreviação de flag (`-c`, `-co`, `-com`, ... / `/c`, `/k`).
-const WRAPPERS_DE_COMANDO = {
-  bash: "-c",
-  sh: "-c",
-  zsh: "-c",
-  ksh: "-c",
-  dash: "-c",
-};
-
-/**
- * Extrai o primeiro token de `str` (aspas simples/duplas respeitadas) e o
- * restante da string logo após esse token (sem consumir as aspas do restante).
- * Retorna null se `str` não tem nenhum token.
- */
-function extrairPrimeiroToken(str) {
-  const m = /^\s*(?:"([^"]*)"|'([^']*)'|(\S+))/.exec(str);
-  if (!m) return null;
-  const tok = m[1] !== undefined ? m[1] : m[2] !== undefined ? m[2] : m[3];
-  return { tok, resto: str.slice(m[0].length) };
-}
-
-/**
- * `tok` é uma abreviação válida de `nomeCompleto` (ex.: "-c", "-co", "-com"
- * para "-command")? O PowerShell aceita qualquer prefixo não-ambíguo de uma
- * flag; aqui a checagem é conservadora — basta ser prefixo de `nomeCompleto`
- * com pelo menos 2 caracteres (o `-` e uma letra), case-insensitive.
- */
-function casaPrefixoDeFlag(tok, nomeCompleto) {
-  const t = String(tok || "").toLowerCase();
-  return t.length >= 2 && t[0] === "-" && nomeCompleto.toLowerCase().startsWith(t);
-}
-
-function desempacota(interno) {
-  interno = interno.trim();
-  const aspas = /^"([\s\S]*)"$/.exec(interno) || /^'([\s\S]*)'$/.exec(interno);
-  return aspas ? aspas[1] : interno;
-}
-
-/**
- * Se `segmento` é uma invocação de `eval`, `Invoke-Expression`/`iex`
- * (PowerShell — R2, rodada 9, lote 3, 2026-09-04), `bash -c`/`sh -c`/
- * `zsh -c`/`ksh -c`/`dash -c`, `pwsh`/`powershell` com qualquer abreviação
- * de `-Command` (`-c`, `-co`, `-com`, ...), ou `cmd /c`/`cmd /k` (executável
- * reconhecido + flag certa), devolve a string de comando encapsulada (sem
- * UM nível de aspas externas, se houver). Devolve null se `segmento` não é
- * um desses wrappers.
- *
- * `Invoke-Expression`/`iex` são wrapper de STRING SEM FLAG — igual `eval`:
- * `Invoke-Expression "gh issue close 42"` não tinha o subcomando reconhecido
- * porque o conteúdo é um token citado só, e a busca por sequência não casa
- * dentro de um único token — exit 0 indevido.
- *
- * `pwsh`/`powershell -EncodedCommand` (ou qualquer abreviação dela — `-e`,
- * `-ec`, `-enc`, ...) chega em base64: ilegível por definição, bloqueia
- * direto aqui, sem tentar decodificar.
- */
-function desempacotarWrapper(segmento) {
-  const p1 = extrairPrimeiroToken(segmento);
-  if (!p1) return null;
-  const exe = normalizarExecutavel(p1.tok);
-
-  if (exe === "eval" || exe === "invoke-expression" || exe === "iex") {
-    return desempacota(p1.resto);
-  }
-
-  const p2 = extrairPrimeiroToken(p1.resto);
-  if (!p2) return null;
-
-  if (exe === "pwsh" || exe === "powershell") {
-    if (casaPrefixoDeFlag(p2.tok, "-encodedcommand")) {
-      bloqueia(
-        `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
-        `Razão: '-EncodedCommand' codifica o comando em base64; não consigo ler o que roda ` +
-        `dentro com segurança (ilegível).\n\n` +
-        `Rode o comando 'gh' diretamente, sem -EncodedCommand.\n`
-      );
-    }
-    if (!casaPrefixoDeFlag(p2.tok, "-command")) return null;
-    return desempacota(p2.resto);
-  }
-
-  if (exe === "cmd") {
-    const flag = p2.tok.toLowerCase();
-    if (flag !== "/c" && flag !== "/k") return null;
-    return desempacota(p2.resto);
-  }
-
-  const flagEsperada = WRAPPERS_DE_COMANDO[exe];
-  if (!flagEsperada) return null;
-  if (p2.tok.toLowerCase() !== flagEsperada) return null;
-  return desempacota(p2.resto);
-}
-
-/**
- * A string interna de um wrapper é ilegível quando contém substituição de
- * comando (`$(...)`, crase) ou variável (`$X`, `${X}`) — não dá para saber
- * com segurança o que vai rodar. Mesma postura conservadora do corpo de PR.
- */
-function contemConstrucaoIlegivel(str) {
-  return /\$\(|`|\$[A-Za-z_{]/.test(str);
-}
+// `WRAPPERS_DE_COMANDO`, `desempacotarWrapper` (agora
+// `desempacotarWrapperDeString`) e as funcoes auxiliares dele
+// (`extrairPrimeiroToken`, `casaPrefixoDeFlag`, `desempacota`,
+// `contemConstrucaoIlegivel`) moraram AQUI ate a rodada 11 (lote 3,
+// 2026-09-04) — moveram para `lib/tokens-comando.cjs` (importado no topo)
+// para `gate-staging-total.cjs` e `gate-worktree.cjs` compartilharem a MESMA
+// implementacao: nenhum dos dois desempacotava `eval`/`bash -c`/
+// `Invoke-Expression`/`iex`/`pwsh -Command`/`cmd /c`, so este gate tinha
+// aprendido (R2, rodada 9). Ver o docblock de `desempacotarWrapperDeString`
+// la para o comportamento completo (incluindo `-EncodedCommand`).
 
 /**
  * Aplica as checagens D15/D16 a uma invocação de `gh` já identificada:
@@ -515,16 +424,22 @@ function processarSegmento(segmento) {
     return;
   }
 
-  const interno = desempacotarWrapper(segmento);
+  // `desempacotarWrapperDeString` (lib/tokens-comando.cjs, movida aqui na
+  // rodada 11): `ilegivel` cobre TANTO o conteudo com `$(`/crase/variavel
+  // QUANTO `-EncodedCommand` (que nunca tem `interno` — so `ilegivel`
+  // importa nesse caso), por isso a checagem de `ilegivel` vem ANTES da
+  // checagem de `interno !== null`.
+  const { interno, ilegivel } = desempacotarWrapperDeString(segmento);
+  if (ilegivel) {
+    bloqueia(
+      `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
+      `Razão: comando encapsulado (eval/bash -c/sh -c/pwsh -Command/cmd /c/-EncodedCommand) contém ` +
+      `variável, substituição de comando, ou está em base64; não consigo ler o que roda dentro com ` +
+      `segurança (ilegível).\n\n` +
+      `Rode o comando 'gh' diretamente, sem encapsular, ou expanda a variável antes de chamar.\n`
+    );
+  }
   if (interno !== null) {
-    if (contemConstrucaoIlegivel(interno)) {
-      bloqueia(
-        `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
-        `Razão: comando encapsulado (eval/bash -c/sh -c/pwsh -Command/cmd /c) contém variável ou ` +
-        `substituição de comando; não consigo ler o que roda dentro com segurança (ilegível).\n\n` +
-        `Rode o comando 'gh' diretamente, sem encapsular, ou expanda a variável antes de chamar.\n`
-      );
-    }
     for (const sub of segmentosParaGate(interno)) {
       processarSegmento(sub);
     }
