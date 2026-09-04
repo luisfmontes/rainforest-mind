@@ -115,6 +115,30 @@ function segmentosComAspas(cmd) {
         segmentos.push(atual);
       }
       atual = "";
+    } else if (c === "(" || c === ")" || c === "{" || c === "}") {
+      // Rodada 19 (lote 3): `{`/`}`/`(`/`)` FORA de aspas viram fronteira de
+      // segmento — sem isto, `&{git checkout main}` (call operator do
+      // PowerShell colado ao scriptblock, sem espaco) ficava tudo num
+      // segmento so, "&{git checkout main}", com "&" grudado em "{" e em
+      // "git": nem o `&` batia como call operator nem "git" como comando.
+      //
+      // O caractere vira seu PROPRIO segmento de UM caractere — nao e
+      // DESCARTADO, ao contrario do que `segmentosParaGate` faz em
+      // `gate-fechar-issue.cjs` (que pode se dar ao luxo de descartar
+      // porque so quer achar um `gh` escondido). Aqui `contemSubshellOuGrupo`
+      // depende do caractere aparecer no TEXTO do segmento (`^\s*[({]` no
+      // comeco, ou `)` em qualquer posicao) para marcar a travessia INCERTA
+      // em `(cd <principal> && codex exec --yolo)` — descartar o caractere
+      // quebraria essa deteccao (caso (j) de testa-cwd-efetivo.sh, e o teste
+      // do subshell/CLI de testa-gate-worktree.sh). Como `estado.incerto`
+      // nunca volta a `false` depois de marcado (ver `resolverMovedor`), o
+      // segmento-de-um-caractere sozinho ja basta para contaminar o restante
+      // da travessia da mesma forma que contaminava antes, grudado.
+      if (atual.trim()) {
+        segmentos.push(atual);
+      }
+      segmentos.push(c);
+      atual = "";
     } else {
       atual += c;
     }

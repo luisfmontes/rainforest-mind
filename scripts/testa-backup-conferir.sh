@@ -145,6 +145,35 @@ fi
 
 contem "conferir nomeia o item ausente" "$saida_conferir_d" "projetos.json"
 
+# --- CASO (e): destino com apóstrofo no nome — conferir precisa escapar o
+# apóstrofo no -Command do Expand-Archive (rodada 19, lote 3), do mesmo jeito
+# que compactarSimples já escapa para o Compress-Archive. Sem o conserto,
+# `Expand-Archive -Path '...\dest_o'brien\...'` fecha a aspa simples no meio
+# do caminho e sai "A cadeia de caracteres nao tem o terminador: '." — a
+# prova por restauração de D13 nunca chega a rodar. Nunca toca %OneDrive%
+# real: origem e destino são caixas de areia dentro de $SB, passadas por
+# --origem/--destino explícitos (o mesmo padrão que os casos (a)-(d) acima
+# já usam) — resolverDestino() nunca é chamado sem --destino aqui.
+
+teste "e" "destino com apostrofo no nome: conferir sai 0 (hoje sai 2)"
+
+origem_e="$SB/origem_e"
+destino_e="$SB/dest_o'brien"
+criarOrigem "$origem_e"
+mkdir -p "$destino_e"
+
+origem_e_win=$(cygpath -w "$origem_e")
+destino_e_win=$(cygpath -w "$destino_e")
+
+node "$SRC/scripts/backup.cjs" gravar --origem "$origem_e_win" --destino "$destino_e_win" >/dev/null 2>&1
+exit_gravar_e=$?
+igual "gravar exit code (destino com apostrofo)" "$exit_gravar_e" "0"
+
+saida_conferir_e=$(node "$SRC/scripts/backup.cjs" conferir --origem "$origem_e_win" --destino "$destino_e_win" 2>&1)
+exit_conferir_e=$?
+igual "conferir exit code (destino com apostrofo)" "$exit_conferir_e" "0"
+contem "conferir diz intacto (destino com apostrofo)" "$saida_conferir_e" "intacto"
+
 # ==================== RESUMO ====================
 echo ""
 echo "== resultado: $ok ok, $falhou falha(s) =="
