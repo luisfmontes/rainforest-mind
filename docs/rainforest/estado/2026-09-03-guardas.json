@@ -35,12 +35,12 @@
     "em": "2026-09-03"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-03",
     "tarefas_ok": 14,
     "tarefas": 14,
     "comando": "for f in hooks/testa-cwd-efetivo.sh hooks/testa-gate-staging-total.sh hooks/testa-portaria.sh scripts/testa-limpar-worktrees.sh scripts/testa-conferir-entrega.sh hooks/testa-gate-worktree.sh scripts/testa-backup-gravar.sh scripts/testa-backup-conferir.sh scripts/testa-backup-estado.sh scripts/testa-fechar-issue.sh hooks/testa-gate-fechar-issue.sh hooks/testa-config.sh scripts/testa-saude.sh; do bash $f >/dev/null 2>&1; echo \"$f exit=$?\"; done",
-    "saida": "13 baterias exit=0 na rodada 19 (cwd-efetivo 45, staging-total 91, portaria 7, limpar 18, conferir-entrega 63, gate-worktree 189, backup-gravar 23, backup-conferir 14, backup-estado 55, fechar-issue 33, gate-fechar-issue 104, config 38, saude 59); OneDrive real sem rainforest-backup",
+    "saida": "16 baterias exit=0 na rodada 20 (cwd-efetivo 47, staging-total 96, portaria 7 + lint 0, limpar 18, conferir-entrega 63, gate-worktree 194, backup-gravar 23, backup-conferir 14, backup-estado 55, fechar-issue 33, gate-fechar-issue 104, config 38, repo-alheio 27, publicacao 16, commit 19, saude 59); encoding ok; OneDrive real sem rainforest-backup",
     "mutacao": [
       {
         "tarefa": 1,
@@ -114,7 +114,7 @@
       }
     ],
     "em": "2026-09-04",
-    "rodada": 19,
+    "rodada": 20,
     "rodada3": {
       "achados": [
         "R1",
@@ -334,15 +334,20 @@
       ],
       "base_nova": "1cea48a (origin/main apos PR #179) mesclada na branch"
     },
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-04"
+    "rodada20": {
+      "achados": [
+        "Aud1 ehComando excluia token citado tambem na posicao de comando"
+      ],
+      "mutacoes_reprovadas_na_integracao": [
+        "AC if (tok.q && !ehPosicaoDeComando) return false (vermelha em staging-total E em gate-worktree)"
+      ],
+      "nota": "feito na janela principal, sem subagente: criacao de worktree de agente quebrada por metadados corrompidos de outra sessao em .git/worktrees (12 diretorios com commondir vazio) — regra 14 anunciada ao usuario"
     }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "a405672c5475b53c2ab3a4c9f43bb78245d126be",
+      "head": "b1c2091c0cf4d771a9cb3c9a53e67c377c2dfc4c",
       "caminhos_sujos": [
         "docs/rainforest/estado/2026-09-03-guardas.json"
       ]
