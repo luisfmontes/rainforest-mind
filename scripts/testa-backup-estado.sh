@@ -27,7 +27,7 @@
 # nesta bateria agora passa RFM_BACKUP_DESTINO para uma pasta de mktemp -d e
 # roda com `env -u OneDrive -u ONEDRIVE`; uma trava (verificar_destino_seguro,
 # abaixo) aborta a bateria inteira se algum call site deixar de isolar; e o
-# caso 18 confere, ao final, que nada novo apareceu no OneDrive de verdade.
+# caso 19 confere, ao final, que nada novo apareceu no OneDrive de verdade.
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -73,7 +73,7 @@ verificar_destino_seguro() {  # verificar_destino_seguro <RFM_BACKUP_DESTINO-des
 }
 
 # --- checagem (c): snapshot do OneDrive real ANTES de qualquer caso rodar --
-# Compara com o snapshot de depois no caso 18. `$OneDrive` aqui e o ambiente
+# Compara com o snapshot de depois no caso 19. `$OneDrive` aqui e o ambiente
 # HERDADO pelo processo desta bateria - o real, a menos que o operador da
 # catraca de mutacao o tenha substituido de proposito (ver RFM_ONEDRIVE_FALSO
 # acima).
@@ -572,7 +572,74 @@ else
 fi
 
 echo
-echo "== 18. (c) checagem final: nada novo apareceu no OneDrive real =="
+echo "== 18. (g) truncar-antes-de-sanear cortaria caminho no meio do usuario — e nao pode =="
+montar
+SB_BACKUP="$(mktemp -d)"
+trap "rm -rf $SB_BACKUP" RETURN
+rm -f "$SB/plugin/vigias/log.txt"
+# Trava de regressao para a ORDEM sanear-depois-truncar (achado do auditor, 6a
+# revisao, 2026-09-03/04). O caso 17 ja cobre o truncamento isolado (sem
+# caminho) e o caso 16 ja cobre o saneamento isolado (caminho curto, sem
+# truncar). Este caso precisa dos DOIS ao mesmo tempo: um caminho absoluto
+# comprido o bastante para que o corte de 200 chars caia DENTRO do segmento de
+# usuario. Um preenchimento de letras (X) grudado direto no "C:" quebraria o
+# reconhecimento de letra de unidade do Get-MotivoSaneado (a mesma exclusao que
+# impede "file:" de casar como unidade) — por isso o preenchimento termina em
+# um espaco antes do caminho, como uma frase de verdade terminaria.
+# Testado a mutacao MANUALMENTE contra o Get-MotivoSaneado real antes deste
+# caso entrar na bateria: truncar-depois-sanear produz
+# "<caminho>\exemplo-longo-de-usuario-do-tes" (vaza o pedaco do usuario);
+# sanear-depois-truncar produz "<caminho>\erro.json (permissao negada)" (sem
+# vazamento, 198 chars).
+cat > "$SB/plugin/scripts/backup.cjs" << 'EOF'
+#!/usr/bin/env node
+console.error('X'.repeat(159) + ' C:\\Users\\exemplo-longo-de-usuario-do-teste\\dados\\erro.json (permissao negada)');
+process.exit(2);
+EOF
+RFM_ROOT="$(win "$SB/dados")" RFM_BACKUP_DESTINO="$(win "$SB_BACKUP")" env -u OneDrive -u ONEDRIVE powershell -NoProfile -ExecutionPolicy Bypass \
+  -File "$(win "$SB/plugin/vigias/backup-estado.ps1")" \
+  -Vigia sentinela-foco -Plugin "$(win "$SB/plugin")" \
+  -Log "$(win "$SB/plugin/vigias/log.txt")" > /dev/null 2>&1
+codigo=$?
+igual "script sai com 0 apesar da falha" "$codigo" "0"
+conteudo=$(cat "$SB/plugin/vigias/ERROS.md" 2>/dev/null)
+linha_erro=$(printf '%s\n' "$conteudo" | grep 'backup externo falhou')
+if printf '%s' "$linha_erro" | grep -q 'exemplo-longo'; then
+  falhou=$((falhou+1)); echo "  FALHA ERROS.md vaza 'exemplo-longo' — truncou antes de sanear"
+  printf '%s\n' "$conteudo" | sed 's/^/     /'
+else
+  ok=$((ok+1)); echo "  ok    ERROS.md nao contem 'exemplo-longo'"
+fi
+if printf '%s' "$linha_erro" | grep -q 'exemplo-lo'; then
+  falhou=$((falhou+1)); echo "  FALHA ERROS.md vaza fragmento 'exemplo-lo' do usuario"
+  printf '%s\n' "$conteudo" | sed 's/^/     /'
+else
+  ok=$((ok+1)); echo "  ok    ERROS.md nao contem o fragmento 'exemplo-lo'"
+fi
+if printf '%s' "$linha_erro" | grep -q '<caminho>'; then
+  ok=$((ok+1)); echo "  ok    marcador <caminho> presente"
+else
+  falhou=$((falhou+1)); echo "  FALHA marcador <caminho> ausente"
+  printf '%s\n' "$conteudo" | sed 's/^/     /'
+fi
+# O orcamento e do teto de Truncar-LinhaDeErro (200) mais o prefixo que o call
+# site acrescenta ANTES de truncar, "backup externo falhou (exit N): " (medido:
+# 32 chars) - ~235 cobre os dois com folga sem aceitar a linha voltar a crescer
+# sem limite. O prefixo de data/vigia que o Write-ErroDeVigia acrescenta DEPOIS
+# (["- yyyy-MM-dd HH:mm [sentinela-foco]: "]) e' encanamento da porta unica de
+# escrita, comum a toda linha do ERROS.md, e nao entra nesta conta - por isso a
+# medida abaixo corta esse prefixo antes de comparar.
+mensagem_sem_prefixo_de_data=$(printf '%s' "$linha_erro" | sed -E 's/^- [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2} \[sentinela-foco\]: //')
+comprimento=$(printf '%s' "$mensagem_sem_prefixo_de_data" | wc -c)
+if [ -n "$linha_erro" ] && [ "$comprimento" -le 235 ]; then
+  ok=$((ok+1)); echo "  ok    a mensagem tem no maximo ~235 chars, 200+prefixo ($comprimento)"
+else
+  falhou=$((falhou+1)); echo "  FALHA linha de erro ausente ou grande demais ($comprimento chars)"
+  printf '%s\n' "$conteudo" | sed 's/^/     /'
+fi
+
+echo
+echo "== 19. (c) checagem final: nada novo apareceu no OneDrive real =="
 # Compara com o snapshot ONEDRIVE_ANTES tirado antes do caso 0 rodar. Se a
 # pasta nao existia antes, ela nao pode existir agora; se existia, nenhum
 # arquivo NOVO pode ter surgido nela. E o mecanismo (c) do N1: mesmo que todo
