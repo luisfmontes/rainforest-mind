@@ -888,9 +888,17 @@ function main() {
         let e;
         try {
           e = JSON.parse(fs.readFileSync(arquivo_completo, 'utf8'));
-          // Conteúdo deve ser um objeto; valores primitivos são ilegíveis
+          // Conteúdo deve ser um objeto; valores primitivos são ilegíveis.
+          // O nome do tipo tem de ser o que ESTÁ no arquivo: `typeof null` é
+          // `'object'`, e a primeira versão desta mensagem chamava `null` de
+          // "array" por causa disso. Mensagem que erra sobre o que leu é a
+          // mesma família de defeito que este fluxo inteiro veio fechar.
           if (e === null || typeof e !== 'object' || Array.isArray(e)) {
-            throw new Error(`conteúdo deve ser um objeto, não ${typeof e === 'object' ? 'array' : typeof e}`);
+            const nome =
+              e === null ? 'null'
+              : Array.isArray(e) ? 'array'
+              : { number: 'número', string: 'texto', boolean: 'booleano' }[typeof e] || typeof e;
+            throw new Error(`conteúdo deve ser um objeto, não ${nome}`);
           }
           const p = proximo(e);
           if (p) abertos.push({ slug: e.slug, estagio: p });

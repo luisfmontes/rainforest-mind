@@ -29,17 +29,17 @@
     "em": "2026-09-04",
     "bateria": "bash scripts/testa-estado.sh (146 ok, 0 falhou) + bash hooks/testa-gate-git-verificacao.sh (72 ok, 0 falhou; era 50 antes das duas rodadas de revisao)",
     "comando": "bash hooks/testa-gate-git-verificacao.sh ; bash scripts/testa-estado.sh",
-    "saida": "== resultado: 89 ok, 0 falha(s) == (gate) e == resultado: 154 ok, 0 falhas == (estado), na branch integrada",
+    "saida": "== resultado: 97 ok, 0 falha(s) == (gate) e == resultado: 172 ok, 0 falhas == (estado), na branch integrada",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "scripts/testa-estado.sh, casos do verbo concluido com fechar pendente exigindo exit 2, mais os 8 casos novos de arquivo ilegivel"
+        "fixture": "scripts/testa-estado.sh, casos do verbo concluido com fechar pendente exigindo exit 2, mais os casos de arquivo ilegivel, de JSON de formato errado e os dois que checam o NOME do tipo na mensagem"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "hooks/testa-gate-git-verificacao.sh, caso do payload PreToolUse com tool_input.command igual a git commit --no-verify -m x exigindo exit 2, mais os 8 casos novos de aspas multi-linha"
+        "fixture": "hooks/testa-gate-git-verificacao.sh, caso do payload PreToolUse com tool_input.command igual a git commit --no-verify -m x exigindo exit 2, mais os casos de $ANSI-C e o que checa que a recusa ambigua nao fabrica comando"
       },
       {
         "tarefa": 3,
@@ -58,20 +58,20 @@
       "toggle gate-git-verificacao ausente de CHAVES",
       "falso positivo: corpo de heredoc julgado como comando"
     ],
-    "rodada": "segunda passada por executar, depois de revisar reprovado com 3 achados"
+    "rodada": "terceira passada por executar, depois de revisar reprovado com 3 achados na rodada 5"
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "5bb22bad23e02df9aab46f36ce5fdfd52ec691b0",
+      "head": "ec440ea4362e050c5b4f14d5522328490a784f82",
       "caminhos_sujos": []
     },
     "achados": 3,
-    "resumo": "1 falso positivo alto (mensagem multi-linha sem heredoc), 1 falso positivo baixo (delimitador numerico), 1 robustez (JSON malformado crasha a varredura)",
+    "resumo": "1 falso positivo NOVO introduzido pelo delta ($ANSI-C com apostrofo escapado cai no fail-closed e o diagnostico e fabricado), 1 crash com JSON de formato errado que descarta fluxos posteriores, 1 teste tautologico (EISDIR so checa exit 1, que coincide com o crash)",
     "em": "2026-09-04",
-    "tentativas": 4,
-    "base": "1cea48a2950c9a8cdfa32e29c8abbf6396bedd9f",
-    "head": "5bb22bad23e02df9aab46f36ce5fdfd52ec691b0"
+    "tentativas": 5,
+    "base": "5bb22bad23e02df9aab46f36ce5fdfd52ec691b0",
+    "head": "ec440ea4362e050c5b4f14d5522328490a784f82"
   },
   "verificar": {
     "status": "pendente"
