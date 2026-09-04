@@ -22,24 +22,24 @@
     "em": "2026-09-04"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-04",
     "tarefas_ok": 4,
     "tarefas": 4,
     "em": "2026-09-04",
     "bateria": "bash scripts/testa-estado.sh (146 ok, 0 falhou) + bash hooks/testa-gate-git-verificacao.sh (72 ok, 0 falhou; era 50 antes das duas rodadas de revisao)",
-    "comando": "bash hooks/testa-gate-git-verificacao.sh && bash scripts/testa-estado.sh",
-    "saida": "== resultado: 81 ok, 0 falha(s) == (gate) ; testa-estado.sh exit 0 (baseline verde na catraca, 61636 ms)",
+    "comando": "bash hooks/testa-gate-git-verificacao.sh ; bash scripts/testa-estado.sh",
+    "saida": "== resultado: 89 ok, 0 falha(s) == (gate) e == resultado: 154 ok, 0 falhas == (estado), na branch integrada",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "scripts/testa-estado.sh, casos do verbo concluido com fechar pendente exigindo exit 2"
+        "fixture": "scripts/testa-estado.sh, casos do verbo concluido com fechar pendente exigindo exit 2, mais os 8 casos novos de arquivo ilegivel"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "hooks/testa-gate-git-verificacao.sh, caso do payload PreToolUse com tool_input.command igual a git commit --no-verify -m x exigindo exit 2"
+        "fixture": "hooks/testa-gate-git-verificacao.sh, caso do payload PreToolUse com tool_input.command igual a git commit --no-verify -m x exigindo exit 2, mais os 8 casos novos de aspas multi-linha"
       },
       {
         "tarefa": 3,
@@ -58,10 +58,7 @@
       "toggle gate-git-verificacao ausente de CHAVES",
       "falso positivo: corpo de heredoc julgado como comando"
     ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-04"
-    }
+    "rodada": "segunda passada por executar, depois de revisar reprovado com 3 achados"
   },
   "revisar": {
     "status": "reprovado",
