@@ -34,14 +34,31 @@
  * se for prefixo unico) conta como a flag inteira — comparado por prefixo
  * contra `--no-verify` e `--no-gpg-sign`, nao por igualdade.
  *
- * Encadeamento (`;`, `|`, `||`, `&&`, `&`, quebra de linha) segmenta o
- * comando, e cada segmento e varrido procurando o token `git` em QUALQUER
+ * Encadeamento (`;`, `|`, `||`, `&&`, `&`, quebra de linha, `(`, `)`) segmenta
+ * o comando, e cada segmento e varrido procurando o token `git` em QUALQUER
  * posicao (nao so no inicio) — lista de prefixos aceitos antes do `git`
  * sempre esquece um caso (`then`, `do`, `else`, `{`...). Substituicao de
  * comando `$(...)` e crase tem o delimitador removido e o conteudo interno
  * vira mais um segmento. Linha continuada com `\` + quebra de linha e
  * costurada de volta antes de segmentar, senao a flag fica orfa de comando
- * no segmento seguinte.
+ * no segmento seguinte. Parenteses de subshell (`(git commit --no-verify)`)
+ * viram separador tambem — tratados DEPOIS da extracao de `$(...)`, entao
+ * essa substituicao (que ja funciona) continua intacta.
+ *
+ * SHELL AGRUPADO (`bash -c "<cmd>"`, `sh -c '<cmd>'`, com ou sem flags
+ * combinadas antes do -c: `bash -lc`, `sh -ec`, `bash -o pipefail -c`).
+ * Para `git commit -m`, o conteudo citado e TEXTO (mensagem) e nunca vira
+ * comando — e assim que a tarefa anterior fechou o falso positivo de
+ * `git commit -m "removi o --no-verify do script"`. Mas para `bash -c`/
+ * `sh -c`/`zsh -c`/`dash -c`/`ash -c` (e `busybox sh -c`), o argumento
+ * seguinte ao `-c` e uma LINHA DE COMANDO, nao mensagem — e e analisado
+ * RECURSIVAMENTE, como se fosse um segmento novo (segmentar, tokenizar,
+ * analisaGit, motivoDe de novo). A distincao entre os dois casos e o
+ * proprio token anterior: `-m`/`--message` de `git commit` nunca dispara
+ * recursao, so `-c` (ou flag combinada com `c`) precedido do NOME de um
+ * shell dispara. Profundidade tem teto (3): shell dentro de shell dentro de
+ * shell alem do teto BARRA em vez de liberar — este gate e fail-closed, e
+ * nao ha como provar ausencia de `--no-verify` num aninhamento arbitrario.
  *
  * NAO-OBJETIVO declarado (plano `2026-09-04-nao-mente.md`): indirecao por
  * variavel (`F=--no-verify; git commit $F`) fica FORA do alcance deste gate.
@@ -79,9 +96,15 @@ function git(dir, args) {
   }
 }
 
-/** Segmenta um trecho de comando em invocacoes independentes. */
+/**
+ * Segmenta um trecho de comando em invocacoes independentes. `(` e `)`
+ * entram como separador (subshell `(git commit --no-verify)`) — chamado
+ * DEPOIS de extraiSubstituicoes(), que ja removeu `$(...)` e crase com
+ * delimitador e tudo, entao esta chamada aqui so encontra parenteses de
+ * subshell "nu", nunca os de substituicao de comando.
+ */
 function segmentos(cmd) {
-  return cmd.split(/\|\||&&|[;|\n&]/);
+  return cmd.split(/\|\||&&|[;|\n&()]/);
 }
 
 /**
@@ -195,6 +218,80 @@ function motivoDe(g) {
   return null;
 }
 
+// Shells cujo `-c <cmd>` recebe uma LINHA DE COMANDO (nao mensagem) como
+// argumento seguinte — o argumento e analisado recursivamente.
+const NOMES_SHELL = new Set(["bash", "sh", "zsh", "dash", "ash"]);
+
+// Teto de profundidade da recursao em shell -c aninhado. "3 basta": nenhuma
+// forma legitima testada precisa de mais, e estourar o teto BARRA (fail
+// closed) em vez de liberar, porque nao ha como provar ausencia de
+// `--no-verify` num aninhamento arbitrariamente fundo.
+const PROFUNDIDADE_MAXIMA = 3;
+
+/**
+ * Acha o indice do token de flag `-c` (ou combinada: `-lc`, `-ec`, ...) a
+ * partir de `inicio`, pulando flags sem valor pelo caminho e o valor de
+ * `-o <opcao>` (forma `bash -o pipefail -c ...`). -1 se nao achar antes de
+ * esbarrar num token que nao e flag (o script a rodar, nao `-c`).
+ */
+function achaFlagC(toks, inicio) {
+  for (let j = inicio; j < toks.length; j += 1) {
+    const t = toks[j];
+    if (t === "-c" || /^-[A-Za-z]*c[A-Za-z]*$/.test(t)) return j;
+    if (t === "-o") { j += 1; continue; }
+    if (t.startsWith("-")) continue;
+    break;
+  }
+  return -1;
+}
+
+/**
+ * null se os tokens do segmento nao sao uma invocacao `<shell> -c <cmd>`;
+ * senao o texto do `<cmd>` (para ser analisado recursivamente). Aceita o
+ * nome do shell em qualquer posicao (mesmo motivo do `analisaGit` com
+ * `git`: lista de prefixos aceitos antes sempre esquece um caso) e o
+ * prefixo `busybox sh -c`.
+ */
+function achaInvocacaoShell(toks) {
+  for (let i = 0; i < toks.length; i += 1) {
+    let idx = i;
+    if (toks[idx] === "busybox" && NOMES_SHELL.has(toks[idx + 1])) idx += 1;
+    if (!NOMES_SHELL.has(toks[idx])) continue;
+    const j = achaFlagC(toks, idx + 1);
+    if (j === -1 || j + 1 >= toks.length) continue;
+    return toks[j + 1];
+  }
+  return null;
+}
+
+/**
+ * Analisa um comando bruto (o `tool_input.command` original, ou o texto de
+ * um `-c` de shell aninhado) e devolve {motivo, dirC} do primeiro segmento
+ * problematico, ou null se nao achou nada. Recursivo: cada `<shell> -c
+ * <cmd>` encontrado tem `<cmd>` analisado de novo, ate `PROFUNDIDADE_MAXIMA`.
+ */
+function analisaComando(cmd, profundidade) {
+  if (profundidade > PROFUNDIDADE_MAXIMA) {
+    return { motivo: "shell aninhado alem da profundidade maxima (fail-closed)", dirC: null };
+  }
+  for (const seg of segmentosDoComando(cmd)) {
+    const toks = tokens(seg);
+
+    const g = analisaGit(toks);
+    if (g) {
+      const m = motivoDe(g);
+      if (m) return { motivo: m, dirC: g.dirC };
+    }
+
+    const cmdAninhado = achaInvocacaoShell(toks);
+    if (cmdAninhado !== null) {
+      const r = analisaComando(cmdAninhado, profundidade + 1);
+      if (r) return r;
+    }
+  }
+  return null;
+}
+
 function bloqueia(motivo, dir) {
   process.stderr.write(
     `BLOQUEADO pelo gate de verificacao git do rainforest-mind.\n\n` +
@@ -233,15 +330,9 @@ function main() {
   const cmd = (ev.tool_input || {}).command;
   if (typeof cmd !== "string") process.exit(0);
 
-  let motivo = null;
-  let dirC = null;
-  for (const seg of segmentosDoComando(cmd)) {
-    const g = analisaGit(tokens(seg));
-    if (!g) continue;
-    const m = motivoDe(g);
-    if (m) { motivo = m; dirC = g.dirC; break; }
-  }
-  if (!motivo) process.exit(0);
+  const achado = analisaComando(cmd, 0);
+  if (!achado) process.exit(0);
+  const { motivo, dirC } = achado;
 
   const dir = dirC || cwdDoEvento;
   const toplevel = git(dir, ["rev-parse", "--show-toplevel"]) || dir;
