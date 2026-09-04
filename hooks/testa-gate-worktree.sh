@@ -706,5 +706,10 @@ gate "bash -o pipefail -c \"codex exec --yolo\" fora de worktree BARRA (W1)" 2 \
   "$(b 'bash -o pipefail -c "codex exec --yolo"' "$R")"
 
 echo
+echo "== R18 (auditor, 16a revisao, lote 3, 2026-09-04): source/./& viram ilegivel (arquivo opaco) =="
+gate "via Bash, source rodar.sh fora de worktree BARRA (R18, arquivo opaco)" 2 \
+  "$(b "source rodar.sh" "$R")"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

@@ -124,7 +124,7 @@ function palavras(cmd) {
  *
  * @returns {{verbo: string, args: string[]}|null}
  */
-function subcomandoGit(cmd) {
+function subcomandoGit(cmd, ferramenta) {
   const w = palavras(cmd);
   for (let i = 0; i < w.length; i += 1) {
     if (w[i] !== "git" && !/[\\/]git(\.exe)?$/.test(w[i])) continue;
@@ -135,15 +135,15 @@ function subcomandoGit(cmd) {
     }
     return j < w.length ? { verbo: w[j], args: w.slice(j + 1) } : null;
   }
-  const { interno, ilegivel } = desempacotarWrapperDeString(cmd);
-  if (interno !== null && !ilegivel) return subcomandoGit(interno);
+  const { interno, ilegivel } = desempacotarWrapperDeString(cmd, { ferramenta });
+  if (interno !== null && !ilegivel) return subcomandoGit(interno, ferramenta);
   return null;
 }
 
 /** Primeiro verbo de git da linha inteira que caia no conjunto dado, ou null. */
-function verboNaLinha(comando, conjunto) {
+function verboNaLinha(comando, conjunto, ferramenta) {
   for (const seg of comando.split(SEPARADORES)) {
-    const s = subcomandoGit(seg);
+    const s = subcomandoGit(seg, ferramenta);
     if (s && conjunto.has(s.verbo)) return s.verbo;
   }
   return null;
@@ -424,9 +424,9 @@ function posicionaisApos(toks, i) {
  * pra resolver estaticamente (o script dentro do eval pode rodar QUALQUER
  * coisa): marca INCERTO em vez de so olhar se um nome conhecido aparece.
  */
-function achadasEmString(str, clis) {
+function achadasEmString(str, clis, ferramenta) {
   if (/[$`]/.test(str)) return [{ nome: "?", incerto: true }];
-  return procuraCLI(str, clis);
+  return procuraCLI(str, clis, ferramenta);
 }
 
 /**
@@ -461,7 +461,7 @@ function achadasEmString(str, clis) {
  * proprio `if`) — `Invoke-Expression "codex exec --yolo"`/`iex "..."`
  * atravessava com exit 0.
  */
-function procuraCLI(comando, clis) {
+function procuraCLI(comando, clis, ferramenta) {
   const segmentos = segmentosComAspas(comando);
   const achadas = [];
   segmentos.forEach((seg, indiceSegmento) => {
@@ -473,13 +473,13 @@ function procuraCLI(comando, clis) {
     if (tok.q && v.startsWith("$")) v = v.slice(1); // $'codex' (A4)
     const nome = v.split(/[\\/]/).pop().replace(/\.exe$/, "");
 
-    const { interno, ilegivel } = desempacotarWrapperDeString(textoAPartir(toks, i));
+    const { interno, ilegivel } = desempacotarWrapperDeString(textoAPartir(toks, i), { ferramenta });
     if (ilegivel) {
       achadas.push({ nome: "?", incerto: true, indiceSegmento });
       return;
     }
     if (interno !== null) {
-      for (const a of achadasEmString(interno, clis)) achadas.push({ ...a, indiceSegmento });
+      for (const a of achadasEmString(interno, clis, ferramenta)) achadas.push({ ...a, indiceSegmento });
       return;
     }
 
@@ -645,7 +645,7 @@ function gateDeSessaoColocada(ev, cwd) {
   if (typeof comando !== "string") return;
   // Recusa barata antes de tocar em disco: a linha tem algum verbo que possa mover
   // o HEAD? Quem decide de verdade e o `moveOHead` la embaixo, com o cwd do segmento.
-  if (!verboNaLinha(comando, VERBOS_QUE_MOVEM)) return;
+  if (!verboNaLinha(comando, VERBOS_QUE_MOVEM, ev.tool_name)) return;
   if (!ev.session_id) return;
 
   const agora = Date.now();
@@ -716,7 +716,7 @@ function main() {
     const alvo = entrada.file_path || entrada.notebook_path || null;
     if (alvo) { alvos = [{ dir: alvo, incerto: false }]; motivo = `Escrita (${nome}) em ${alvo}`; }
   } else if ((nome === "Bash" || nome === "PowerShell") && typeof entrada.command === "string") {
-    const verbo = verboNaLinha(entrada.command, VERBOS_QUE_MEXEM);
+    const verbo = verboNaLinha(entrada.command, VERBOS_QUE_MEXEM, nome);
     if (verbo) {
       // `incerto` viaja junto (nao so como alvo extra em cwdInicial) — ver o
       // comentario em `alvosBash`.
@@ -737,7 +737,7 @@ function main() {
         // worktree, e o gate liberava lendo o lugar errado. Mais de uma CLI
         // na mesma linha, cada uma com o seu proprio cwd — bloqueia na
         // PRIMEIRA que estiver fora de worktree (bloqueia() sai o processo).
-        const achadas = procuraCLI(entrada.command, CLIS_QUE_ESCREVEM);
+        const achadas = procuraCLI(entrada.command, CLIS_QUE_ESCREVEM, nome);
         if (achadas.length) {
           const porSegmento = cwdPorSegmento(entrada.command, cwd);
           for (const achado of achadas) {

@@ -96,11 +96,21 @@ function segmentosComAspas(cmd) {
       cmd[i + 1] !== '>' &&
       cmd[i - 1] !== '>' &&
       cmd[i - 1] !== '<' &&
-      cmd[i - 1] !== '|'
+      cmd[i - 1] !== '|' &&
+      atual.trim() !== ''
     ) {
       // `&` simples (job em background) tambem separa (K1) — exceto colado
       // em `&&` (branco acima), `&>`, ou depois de `>`/`<`/`|` (`>&`, `<&`,
       // `|&`), que sao operador de redirecionamento/pipe, nao separador.
+      //
+      // R18 (auditor, 16a revisao, lote 3, 2026-09-04): so separa quando ha
+      // algo ANTES do `&` no segmento corrente (`atual.trim() !== ''`) — um
+      // job em background sempre tem um comando pra colocar em background.
+      // `&` SOZINHO no inicio do segmento (nada acumulado ainda, so
+      // whitespace) e o call operator do PowerShell (`& x.ps1`), nao
+      // separador: sem esta guarda, `desempacotarWrapperDeString` nunca via
+      // o `&` — ele ja tinha sido comido aqui, ANTES do desempacotador
+      // rodar, e o novo caso PowerShell do achado nunca disparava.
       if (atual.trim()) {
         segmentos.push(atual);
       }
