@@ -888,14 +888,18 @@ function main() {
         let e;
         try {
           e = JSON.parse(fs.readFileSync(arquivo_completo, 'utf8'));
+          // Conteúdo deve ser um objeto; valores primitivos são ilegíveis
+          if (e === null || typeof e !== 'object' || Array.isArray(e)) {
+            throw new Error(`conteúdo deve ser um objeto, não ${typeof e === 'object' ? 'array' : typeof e}`);
+          }
+          const p = proximo(e);
+          if (p) abertos.push({ slug: e.slug, estagio: p });
         } catch (err) {
-          // Arquivo não conseguiu ser lido ou parseado: reportar e marcar erro
+          // Arquivo não conseguiu ser lido, parseado, ou validado: reportar e marcar erro
           console.error(`erro: não consegui ler ${arquivo_completo}: ${err.message}`);
           houve_erro = true;
           continue;
         }
-        const p = proximo(e);
-        if (p) abertos.push({ slug: e.slug, estagio: p });
       }
 
       // Se houve erro ao ler qualquer arquivo, sair 1 (erro) mesmo que tenha abertos
