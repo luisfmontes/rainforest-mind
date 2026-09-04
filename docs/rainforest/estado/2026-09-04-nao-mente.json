@@ -24,11 +24,12 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-09-04",
-    "tarefas_ok": 0,
+    "tarefas_ok": 2,
     "tarefas": 4,
     "em": "2026-09-04",
     "pendentes": [
-      "tarefa-2: gate contornavel por 9 formas (flag citada, abreviacao de long option, separador &, prefixo nao-reconhecido, $(...) e indirecao por variavel) — criterio do plano era fraco demais e nao mediu isso"
+      "tarefa-2: conserto do gate contornavel em voo",
+      "tarefa-4: nao despachada ainda"
     ]
   },
   "revisar": {
