@@ -39,13 +39,24 @@ function rodaHook(raiz, stdin) {
   });
 }
 
-// `realpathSync` de propósito: no runner do CI o `os.tmpdir()` do Windows vem
-// em forma curta 8.3 (o nome de usuário aparece truncado com `~1`), e a
-// portaria imprime o caminho que o Node RESOLVE, por extenso — sem normalizar
-// aqui, o `stderr.includes(raiz)` falhava só no CI (verde na máquina do dono,
-// vermelho lá, 2026-09-04). Normalizar na origem vale para todos os casos.
+// `realpathSync.native` de propósito: no runner do CI o `os.tmpdir()` do
+// Windows vem em forma curta 8.3 (o nome de usuário aparece truncado com `~1`),
+// e a portaria imprime o caminho que o Node RESOLVE, por extenso — sem
+// normalizar aqui, o `stderr.includes(raiz)` falhava só no CI (verde na máquina
+// do dono, vermelho lá, 2026-09-04). Só o `.native` expande nome 8.3; o
+// `realpathSync` puro devolve `C:\PROGRA~1` intacto (medido em 2026-09-04).
 function caixa() {
-  return fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "portaria-diag-")));
+  return fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "portaria-diag-")));
+}
+
+// A portaria imprime o caminho com barra normal; o `caixa()` devolve com
+// contrabarra. Comparar as duas formas sem normalizar falhava no CI mesmo com
+// o caminho já expandido (segundo run vermelho de 2026-09-04). Caixa alta/baixa
+// também: NTFS não distingue, e o runner já devolveu as duas formas para a
+// mesma pasta.
+function mesmoCaminho(texto, caminho) {
+  const norm = (s) => s.replace(/\\/g, "/").toLowerCase();
+  return norm(texto).includes(norm(caminho));
 }
 
 function criarEstadoAtivo(raiz, branchBase, estagio) {
@@ -114,7 +125,7 @@ console.log("== (a) negação manifesto ausente cita raiz lida ==");
   const r = rodaHook(raiz, JSON.stringify(payload));
 
   caso("exit 2", r.status === 2, `exit=${r.status}`);
-  caso("stderr cita raiz lida", r.stderr.includes(raiz), `stderr: ${r.stderr}`);
+  caso("stderr cita raiz lida", mesmoCaminho(r.stderr, raiz), `stderr: ${r.stderr}`);
   caso("stderr inclui 'raiz lida:'", r.stderr.includes("raiz lida:"), `stderr: ${r.stderr}`);
 
   fs.rmSync(raiz, { recursive: true, force: true });
