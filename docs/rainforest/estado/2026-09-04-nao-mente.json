@@ -22,7 +22,7 @@
     "em": "2026-09-04"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-04",
     "tarefas_ok": 4,
     "tarefas": 4,
@@ -58,20 +58,24 @@
       "toggle gate-git-verificacao ausente de CHAVES",
       "falso positivo: corpo de heredoc julgado como comando"
     ],
-    "rodada": "terceira passada por executar, depois de revisar reprovado com 3 achados na rodada 5"
+    "rodada": "terceira passada por executar, depois de revisar reprovado com 3 achados na rodada 5",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-04"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "ec440ea4362e050c5b4f14d5522328490a784f82",
+      "head": "d030f3a381c0a441b6f3f773cd32354e1769d492",
       "caminhos_sujos": []
     },
-    "achados": 3,
-    "resumo": "1 falso positivo NOVO introduzido pelo delta ($ANSI-C com apostrofo escapado cai no fail-closed e o diagnostico e fabricado), 1 crash com JSON de formato errado que descarta fluxos posteriores, 1 teste tautologico (EISDIR so checa exit 1, que coincide com o crash)",
+    "achados": 1,
+    "resumo": "falso negativo: tokens() nao conhece $ANSI-C e discorda de segmentos(), que passou a conhecer. Flag nua depois de mensagem com apostrofo escapado e engolida e o commit passa em silencio. Reprova pelo criterio 1 da regra de parada.",
     "em": "2026-09-04",
-    "tentativas": 5,
-    "base": "5bb22bad23e02df9aab46f36ce5fdfd52ec691b0",
-    "head": "ec440ea4362e050c5b4f14d5522328490a784f82"
+    "tentativas": 6,
+    "base": "ec440ea4362e050c5b4f14d5522328490a784f82",
+    "head": "d030f3a381c0a441b6f3f773cd32354e1769d492"
   },
   "verificar": {
     "status": "pendente"
