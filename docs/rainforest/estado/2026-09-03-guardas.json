@@ -40,7 +40,7 @@
     "tarefas_ok": 14,
     "tarefas": 14,
     "comando": "for f in hooks/testa-cwd-efetivo.sh hooks/testa-gate-staging-total.sh hooks/testa-portaria.sh scripts/testa-limpar-worktrees.sh scripts/testa-conferir-entrega.sh hooks/testa-gate-worktree.sh scripts/testa-backup-gravar.sh scripts/testa-backup-conferir.sh scripts/testa-backup-estado.sh scripts/testa-fechar-issue.sh hooks/testa-gate-fechar-issue.sh hooks/testa-config.sh scripts/testa-saude.sh; do bash $f >/dev/null 2>&1; echo \"$f exit=$?\"; done",
-    "saida": "13 baterias exit=0 na rodada 18 (cwd-efetivo 41, staging-total 86, portaria 7, limpar 18, conferir-entrega 63, gate-worktree 184, backup-gravar 23, backup-conferir 11, backup-estado 55, fechar-issue 33, gate-fechar-issue 94, config 38, saude 59); OneDrive real sem rainforest-backup",
+    "saida": "13 baterias exit=0 na rodada 19 (cwd-efetivo 45, staging-total 91, portaria 7, limpar 18, conferir-entrega 63, gate-worktree 189, backup-gravar 23, backup-conferir 14, backup-estado 55, fechar-issue 33, gate-fechar-issue 104, config 38, saude 59); OneDrive real sem rainforest-backup",
     "mutacao": [
       {
         "tarefa": 1,
@@ -114,7 +114,7 @@
       }
     ],
     "em": "2026-09-04",
-    "rodada": 18,
+    "rodada": 19,
     "rodada3": {
       "achados": [
         "R1",
@@ -321,6 +321,19 @@
       ],
       "nota": "o executor achou, alem do pedido, que segmentosComAspas comia o & do call operator do PowerShell ANTES do desempacotador rodar — sem essa guarda o caso & x.ps1 era impossivel de fechar; mesma guarda aplicada na irma duplicada em gate-fechar-issue.cjs"
     },
+    "rodada19": {
+      "achados": [
+        "Rev1 injecao de comando no proprio gate (ref cru do gh pr merge + shell:true do .cmd)",
+        "Aud1 &{...} colado ao scriptblock atravessa gate-staging-total e gate-worktree",
+        "Rev2 apostrofo no destino quebra o conferir do backup (nao bloqueava)"
+      ],
+      "mutacoes_reprovadas_na_integracao": [
+        "ABa guarda METACARACTERES_CMD em resolver-executavel (vermelha em gate-fechar-issue)",
+        "ABb chaves como fronteira em palavras/gate-worktree (vermelha em gate-worktree)",
+        "ABc escape de apostrofo em backup.cjs conferir (vermelha em backup-conferir)"
+      ],
+      "base_nova": "1cea48a (origin/main apos PR #179) mesclada na branch"
+    },
     "reaberto_por": {
       "estagio": "revisar",
       "data": "2026-09-04"
@@ -329,26 +342,28 @@
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "abeb0416f81c718186e7636b57f2bdf513f1a994",
+      "head": "a405672c5475b53c2ab3a4c9f43bb78245d126be",
       "caminhos_sujos": [
         "docs/rainforest/estado/2026-09-03-guardas.json"
       ]
     },
-    "achados": 2,
-    "base": "53c2a42b6ba02c66778008755cb9c8212adc8dc6",
-    "head": "abeb0416f81c718186e7636b57f2bdf513f1a994",
+    "achados": 1,
+    "base": "1cea48a2950c9a8cdfa32e29c8abbf6396bedd9f",
+    "head": "a405672c5475b53c2ab3a4c9f43bb78245d126be",
     "lista": [
-      "Rev1 (BLOQUEIA) gate-fechar-issue.cjs: extrairRefDoPRMerge devolve o token cru do gh pr merge e executar() roda com shell:true quando o gh resolve para .cmd/.bat — injecao de comando confirmada por execucao real na janela (gh pr merge \"5 & echo INJETADO > pwned.txt\" --squash criou pwned.txt e o gate saiu 0). Categoria diferente de bypass: o proprio mecanismo de verificacao executa texto arbitrario",
-      "Aud1 (BLOQUEIA) &{...} colado ao scriptblock atravessa gate-staging-total e gate-worktree — extrairPrimeiroToken/palavras/segmentosComAspas nao tratam { como fronteira; confirmado na janela (&{git add -A} exit 0 contra & git add -A exit 2)",
-      "Rev2 (nao bloqueia) backup.cjs conferir monta -Command sem escapar apostrofo no destino (compactarSimples ja escapa); destino com apostrofo quebra a prova por restauracao de D13"
+      "Aud1 (BLOQUEIA) ehComando exclui todo token citado, inclusive na propria posicao de comando: \"git\" add -A passa no gate-staging-total (exit 0 contra exit 2 do git add -A puro, reproduzido na janela), e \"cp\"/\"tee\"/\"sed\"/\"mv\" citados escapam do alvosBashEscrita no gate-worktree. O !tok.q tem motivo (gitignore como argumento, > dentro de aspas) — errado e aplica-lo na posicao de comando, que procuraCLI ja trata certo"
     ],
     "em": "2026-09-04",
-    "tentativas": 18,
-    "revisor": "reprovado, 1 achado bloqueante + 1 divida",
+    "tentativas": 19,
+    "revisor": "ok — os tres achados da 17a fechados, confirmados por execucao real das 13 baterias, sem regressao",
     "auditor": "1 achado bloqueia",
-    "rodada_revisao": 17,
+    "rodada_revisao": 18,
     "emenda": "modelo de ameaca dos gates por texto registrado no plano",
-    "handover": "relatorios/2026-09-04-handover-lote-3-guardas-rodada-18.md"
+    "handover": "relatorios/2026-09-04-handover-lote-3-guardas-rodada-18.md",
+    "observacoes_nao_bloqueantes": [
+      "contemSubshellOuGrupo nunca detecta } (o segmentador isola cada } em segmento proprio); nenhuma entrada de shell valida encontrada que explore",
+      "git checkout src/{a,b}.js super-bloqueia por brace expansion — pre-existente, identico antes e depois da rodada 19"
+    ]
   },
   "verificar": {
     "status": "pendente"
