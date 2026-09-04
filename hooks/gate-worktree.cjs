@@ -611,7 +611,12 @@ function bloqueiaColocada(verbo, toplevel, outras, agora) {
  * `sessoes.json` com ele.
  */
 function gateDeSessaoColocada(ev, cwd) {
-  if (ev.tool_name !== "Bash") return;
+  // R3 (rodada 9, lote 3, 2026-09-04): nesta maquina a ferramenta primaria
+  // e `PowerShell`, nao `Bash` — um subagente no principal rodando
+  // `git commit -m x` pela ferramenta `PowerShell` passava batido aqui.
+  // `alvosBash`/`cwdPorSegmento` ja sabem ler `Set-Location`/`Push-Location`/
+  // `Pop-Location` (R3 em cwd-efetivo.cjs), entao o mesmo parser serve.
+  if (ev.tool_name !== "Bash" && ev.tool_name !== "PowerShell") return;
   const comando = (ev.tool_input || {}).command;
   if (typeof comando !== "string") return;
   // Recusa barata antes de tocar em disco: a linha tem algum verbo que possa mover
@@ -686,7 +691,7 @@ function main() {
   if (FERRAMENTAS_DE_ESCRITA.has(nome)) {
     const alvo = entrada.file_path || entrada.notebook_path || null;
     if (alvo) { alvos = [{ dir: alvo, incerto: false }]; motivo = `Escrita (${nome}) em ${alvo}`; }
-  } else if (nome === "Bash" && typeof entrada.command === "string") {
+  } else if ((nome === "Bash" || nome === "PowerShell") && typeof entrada.command === "string") {
     const verbo = verboNaLinha(entrada.command, VERBOS_QUE_MEXEM);
     if (verbo) {
       // `incerto` viaja junto (nao so como alvo extra em cwdInicial) — ver o

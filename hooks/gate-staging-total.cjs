@@ -238,7 +238,11 @@ function main() {
   // mora em hooks/lib/config.cjs e falha para o lado de LIGAR - config ilegivel
   // nao pode virar trava desligada em silencio.
   try { if (!require("./lib/config.cjs").ligado("gate-staging", { projeto: cwdDoEvento })) process.exit(0); } catch {}
-  if (ev.tool_name !== "Bash") process.exit(0);
+  // R3 (rodada 9, lote 3, 2026-09-04): nesta maquina a ferramenta primaria e
+  // `PowerShell`, nao `Bash` — `Set-Location <principal>; git add -A` pela
+  // ferramenta `PowerShell` passava batido. O mesmo parser de segmentos/`git
+  // -C`/movedores (cwd-efetivo.cjs) ja sabe ler texto PowerShell (R3 la).
+  if (ev.tool_name !== "Bash" && ev.tool_name !== "PowerShell") process.exit(0);
   const cmd = (ev.tool_input || {}).command;
   if (typeof cmd !== "string") process.exit(0);
 
