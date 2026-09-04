@@ -150,7 +150,8 @@ function segmentosParaGate(cmd) {
       cmd[i + 1] !== ">" &&
       cmd[i - 1] !== ">" &&
       cmd[i - 1] !== "<" &&
-      cmd[i - 1] !== "|"
+      cmd[i - 1] !== "|" &&
+      atual.trim() !== ""
     ) {
       // `&` simples (job em background) tambem separa (K1, rodada 6, lote
       // 3, 2026-09-03) — exceto colado em `&&` (braço acima), `&>`, ou
@@ -160,6 +161,14 @@ function segmentosParaGate(cmd) {
       // `tokens[0]` era prefixo conhecido a rede de seguranca de wrapper
       // desconhecido (`ehPrefixoOuWrapperConhecido`) tambem pulava o
       // segmento — o `gh issue close` direto passava sem checagem nenhuma.
+      //
+      // R18 (auditor, 16a revisao, lote 3, 2026-09-04): so separa quando ha
+      // algo ANTES do `&` no segmento corrente (`atual.trim() !== ""`) — um
+      // job em background sempre tem um comando pra colocar em background;
+      // `&` SOZINHO no inicio (nada acumulado, so whitespace) e o call
+      // operator do PowerShell (`& fechar.ps1`), nao separador — sem esta
+      // guarda o `&` era comido aqui antes de `desempacotarWrapperDeString`
+      // rodar, e o caso PowerShell do achado nunca disparava.
       if (atual.trim()) segmentos.push(atual);
       atual = "";
       continue;
@@ -608,7 +617,7 @@ function cwdDoSegmento(segmento, mapaCwd, ordem) {
  *      `gh issue close`/`gh pr create`/`gh pr edit`/`gh pr merge` aparece em qualquer
  *      posição do segmento, trata como comando mesmo assim.
  */
-function processarSegmento(segmento, mapaCwd, contadores) {
+function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
   // Ordem desta ocorrência do texto do segmento (0 = primeira vez que este
   // texto exato é processado, 1 = segunda, ...). Contada ANTES de qualquer
   // recursão/retorno abaixo — um único `processarSegmento(segmento, ...)`
@@ -646,7 +655,7 @@ function processarSegmento(segmento, mapaCwd, contadores) {
   // sem posicao de comando (`pos === null`), nao ha o que desempacotar.
   const { interno, ilegivel } = pos === null
     ? { interno: null, ilegivel: false }
-    : desempacotarWrapperDeString(textoAPartir(toksComAspas, pos));
+    : desempacotarWrapperDeString(textoAPartir(toksComAspas, pos), { ferramenta });
   if (ilegivel) {
     bloqueia(
       `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
@@ -658,7 +667,7 @@ function processarSegmento(segmento, mapaCwd, contadores) {
   }
   if (interno !== null) {
     for (const sub of segmentosParaGate(interno)) {
-      processarSegmento(sub, mapaCwd, contadores);
+      processarSegmento(sub, mapaCwd, contadores, ferramenta);
     }
     return;
   }
@@ -732,7 +741,7 @@ function main() {
   // docblock de `cwdDoSegmento`.
   const contadores = new Map();
   for (const segmento of segmentosParaGate(comando)) {
-    processarSegmento(segmento, mapaCwd, contadores);
+    processarSegmento(segmento, mapaCwd, contadores, nome);
   }
 
   process.exit(0);
