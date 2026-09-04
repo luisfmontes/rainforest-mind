@@ -25,6 +25,14 @@
 #      flag combinada (`bash -lc`) e aninhamento (`bash -c "bash -c '...'"`)
 #      como cobertura extra; e que `bash -c` com comando inofensivo continua
 #      passando.
+#   9. as quatro formas achadas atacando a rodada 2 (rodada 3 da tarefa 2,
+#      terceira e ultima): nome de shell com caminho na frente (`/bin/bash`,
+#      `/usr/bin/sh`, `/bin/bash.exe`), `eval "<comando>"`, escape por barra
+#      invertida numa flag (`--no\-verify`) e aninhamento de tres niveis de
+#      `bash -c` com aspa dupla escapada — mais confirmacao de que o teto de
+#      profundidade e fail-closed de verdade: quatro niveis de `bash -c`
+#      (alem do teto) barra mesmo com comando final inofensivo, e tres
+#      niveis (no teto) com comando final inofensivo passa.
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -99,6 +107,22 @@ echo
 echo "== rodada 2: bash -c com comando inofensivo: DEVE passar =="
 gate 'bash -c "echo oi"'                                0 "$(b 'bash -c \"echo oi\"')"
 gate 'bash -c "git status"'                             0 "$(b 'bash -c \"git status\"')"
+
+echo
+echo "== rodada 3: nome de shell com caminho, eval, escape por barra invertida e aninhamento (achados atacando a rodada 2): DEVE barrar =="
+gate 'shell com caminho: /bin/bash -c'  2 "$(b '/bin/bash -c \"git commit --no-verify -m x\"')"
+gate 'shell com caminho: /usr/bin/sh -c'  2 "$(b '/usr/bin/sh -c \"git commit --no-verify -m x\"')"
+gate 'shell com caminho e .exe: /bin/bash.exe -c'  2 "$(b '/bin/bash.exe -c \"git commit --no-verify -m x\"')"
+gate 'eval "git commit --no-verify -m x"'  2 "$(b 'eval \"git commit --no-verify -m x\"')"
+gate "eval 'git push --no-verify'"  2 "$(b "eval 'git push --no-verify'")"
+gate 'escape por barra invertida (--no\-verify)'  2 "$(b 'git commit --no\\-verify -m x')"
+gate 'bash -c aninhado 3x, git no ultimo nivel'  2 "$(b 'bash -c \"bash -c \\\"bash -c \\\\\\\"git commit --no-verify\\\\\\\"\\\"\"')"
+
+echo
+echo "== rodada 3: teto de profundidade e fail-closed de verdade =="
+gate 'profundidade 4 (alem do teto), comando final inofensivo: fail-closed barra mesmo assim'  2 "$(b 'bash -c \"bash -c \\\"bash -c \\\\\\\"bash -c \\\\\\\\\\\\\\\"echo hi\\\\\\\\\\\\\\\"\\\\\\\"\\\"\"')"
+gate 'profundidade 3 (no teto), comando final inofensivo: passa'  0 "$(b 'bash -c \"bash -c \\\"bash -c \\\\\\\"echo hi\\\\\\\"\\\"\"')"
+gate 'eval "echo oi" (inofensivo): passa'  0 "$(b 'eval \"echo oi\"')"
 
 echo
 echo "== --no-edit nao e prefixo de nenhuma flag proibida: DEVE passar =="
