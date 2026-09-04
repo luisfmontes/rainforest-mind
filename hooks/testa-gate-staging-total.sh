@@ -126,7 +126,13 @@ echo "== Tarefa 2 (Rev3): a mensagem de bloqueio cita o caminho EFETIVO lido, na
 msg2=$(printf '%s' "$(b 'cd '"$(esc "$WT2")"' && git add -A' "$(esc "$R")")" | node "$GATE" 2>&1); rc2=$?
 if [ "$rc2" = 2 ]; then ok=$((ok+1)); echo "  ok   cd <worktree-do-fluxo> && git add -A (cwd no principal) barra (exit 2)"
 else falhou=$((falhou+1)); echo "  FALHA esperava exit 2, veio $rc2"; printf '%s' "$msg2" | sed 's/^/         /' | head -8; fi
-if printf '%s' "$msg2" | grep -qF -- "$WT2"; then
+# O caminho que o gate imprime vem do Node, que RESOLVE o caminho real; no
+# runner do CI o TMP chega em forma curta 8.3 (`RUNNER~1`) e a comparacao
+# literal falhava so la (verde nesta maquina, vermelha no CI, 2026-09-04).
+# Comparar contra as DUAS formas mantem o rigor — o stderr tem de citar o
+# worktree efetivo — sem depender da forma do caminho do sistema de arquivos.
+WT2_REAL=$(node -e 'console.log(require("fs").realpathSync(process.argv[1]))' "$WT2" 2>/dev/null || printf '%s' "$WT2")
+if printf '%s' "$msg2" | grep -qF -- "$WT2" || printf '%s' "$msg2" | grep -qF -- "$WT2_REAL"; then
   ok=$((ok+1)); echo "  ok   stderr cita o caminho do worktree EFETIVO ($WT2)"
 else
   falhou=$((falhou+1)); echo "  FALHA stderr NAO cita o caminho efetivo"
