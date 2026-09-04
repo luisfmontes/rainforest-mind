@@ -246,11 +246,20 @@ function git(dir, args) {
 
 /**
  * Extrai a lista de Issues citadas num corpo de PR usando padrões de fechamento.
- * Padrão: close(s|d)|fix(es|ed)|resolve(s|d) #<n>
+ * Padrão: close(s|d)|fix(es|ed)|resolve(s|d) seguido de `#<n>` OU da URL
+ * completa da Issue (`https://github.com/org/repo/issues/<n>`).
  * Retorna array de números únicos encontrados.
+ *
+ * M2 (auditor, 5a revisao, 2026-09-03): o GitHub tambem fecha Issue quando o
+ * corpo cita a URL completa, nao so `#N` — `Closes
+ * https://github.com/org/repo/issues/42` fecha a Issue 42 do jeito que
+ * `Closes #42` fecha. A forma por URL e conhecimento do GitHub (as nove
+ * palavras-chave: close, closes, closed, fix, fixes, fixed, resolve,
+ * resolves, resolved), nao verificado por rede nesta rodada.
  */
 function extrairIssuesCitadas(corpo) {
-  const regex = /\b(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+#(\d+)/gi;
+  const regex =
+    /\b(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+(?:#|https?:\/\/\S*\/issues\/)(\d+)/gi;
   const issues = new Set();
   let match;
   while ((match = regex.exec(corpo)) !== null) {
