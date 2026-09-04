@@ -445,13 +445,33 @@ function ehPrefixoOuWrapperConhecido(exe) {
  * desce além disso em `(`/`)`/`{`/`}`. Quando não há subshell no meio, os
  * segmentos batem exatamente; quando há, o texto não casa e o resultado é
  * `null` (conservador), nunca um cwd errado por índice desalinhado.
+ *
+ * Texto repetido (o MESMO comando `gh ...` aparece mais de uma vez na linha,
+ * com `cwd`s diferentes por causa de `cd`s entre as ocorrências) quebrava
+ * isso: `.find` sempre devolvia a PRIMEIRA entrada de `mapaCwd` com aquele
+ * texto, não importa qual ocorrência estava sendo processada agora — a
+ * segunda (ou terceira) ocorrência lia o cwd da primeira (auditor, 14ª
+ * revisão). Conserto: `ordem` é a contagem de quantas vezes ESSE MESMO
+ * texto já apareceu antes na sequência de segmentos processados (mantida
+ * pelos chamadores — o laço de `main()` e a recursão de `processarSegmento`,
+ * via `contadores`) — devolve a `ordem`-ésima entrada de `mapaCwd` com esse
+ * texto. Sem essa ocorrência (índice não existe, ou `mapaCwd` tem menos
+ * ocorrências do que o esperado — por exemplo por causa de um subshell que
+ * dessincroniza a contagem), devolve `null` (conservador, mesma postura de
+ * antes).
  */
-function cwdDoSegmento(segmento, mapaCwd) {
+function cwdDoSegmento(segmento, mapaCwd, ordem) {
   if (!mapaCwd) return null;
   const alvo = segmento.trim();
-  const entrada = mapaCwd.find((e) => e.seg.trim() === alvo);
-  if (!entrada || entrada.incerto) return null;
-  return entrada.cwd;
+  let contagem = 0;
+  for (const entrada of mapaCwd) {
+    if (entrada.seg.trim() !== alvo) continue;
+    if (contagem === ordem) {
+      return entrada.incerto ? null : entrada.cwd;
+    }
+    contagem += 1;
+  }
+  return null;
 }
 
 /**
@@ -462,6 +482,11 @@ function cwdDoSegmento(segmento, mapaCwd) {
  * linha inteira (calculada uma vez em `main()`) — usada só para resolver
  * `--body-file` com caminho relativo contra o cwd de ONDE O `gh` RODA de
  * verdade, via `cwdDoSegmento`.
+ *
+ * `contadores` (Map texto → nº de vezes já visto) é compartilhado por toda
+ * a árvore de chamadas — o laço de `main()` e cada recursão aqui embaixo —
+ * para que `cwdDoSegmento` saiba qual OCORRÊNCIA deste texto está sendo
+ * processada agora (ver docblock de `cwdDoSegmento`).
  *
  * Ordem:
  *   1. `gh` como comando efetivo — direto ou atrás de um prefixo que só
@@ -476,7 +501,16 @@ function cwdDoSegmento(segmento, mapaCwd) {
  *      `gh issue close`/`gh pr create`/`gh pr merge` aparece em qualquer
  *      posição do segmento, trata como comando mesmo assim.
  */
-function processarSegmento(segmento, mapaCwd) {
+function processarSegmento(segmento, mapaCwd, contadores) {
+  // Ordem desta ocorrência do texto do segmento (0 = primeira vez que este
+  // texto exato é processado, 1 = segunda, ...). Contada ANTES de qualquer
+  // recursão/retorno abaixo — um único `processarSegmento(segmento, ...)`
+  // corresponde a uma única ocorrência na sequência, não importa qual dos
+  // dois pontos abaixo acaba chamando `cwdDoSegmento`.
+  const alvo = segmento.trim();
+  const ordem = contadores.get(alvo) || 0;
+  contadores.set(alvo, ordem + 1);
+
   const toksComAspas = tokensComAspas(segmento);
   if (toksComAspas.length === 0) return;
 
@@ -485,7 +519,7 @@ function processarSegmento(segmento, mapaCwd) {
     verificarComandoGh(
       segmento,
       toksComAspas.slice(pos + 1).map((t) => t.v),
-      cwdDoSegmento(segmento, mapaCwd)
+      cwdDoSegmento(segmento, mapaCwd, ordem)
     );
     return;
   }
@@ -517,7 +551,7 @@ function processarSegmento(segmento, mapaCwd) {
   }
   if (interno !== null) {
     for (const sub of segmentosParaGate(interno)) {
-      processarSegmento(sub, mapaCwd);
+      processarSegmento(sub, mapaCwd, contadores);
     }
     return;
   }
@@ -540,7 +574,7 @@ function processarSegmento(segmento, mapaCwd) {
     for (const padrao of [["gh", "issue", "close"], ["gh", "pr", "create"], ["gh", "pr", "merge"]]) {
       const idx = indiceSequencia(valores, padrao);
       if (idx !== -1) {
-        verificarComandoGh(segmento, valores.slice(idx + 1), cwdDoSegmento(segmento, mapaCwd));
+        verificarComandoGh(segmento, valores.slice(idx + 1), cwdDoSegmento(segmento, mapaCwd, ordem));
         return;
       }
     }
@@ -585,8 +619,13 @@ function main() {
   // docblock de `cwdDoSegmento`.
   const mapaCwd = cwdPorSegmento(comando, cwdDoEvento);
 
+  // Rodada 16, lote 3, 2026-09-04: contador por texto de segmento,
+  // compartilhado com toda a recursão de `processarSegmento` — resolve a
+  // K-ÉSIMA ocorrência de um texto repetido, não sempre a primeira. Ver
+  // docblock de `cwdDoSegmento`.
+  const contadores = new Map();
   for (const segmento of segmentosParaGate(comando)) {
-    processarSegmento(segmento, mapaCwd);
+    processarSegmento(segmento, mapaCwd, contadores);
   }
 
   process.exit(0);
