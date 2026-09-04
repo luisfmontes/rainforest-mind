@@ -345,33 +345,39 @@
     }
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "b1c2091c0cf4d771a9cb3c9a53e67c377c2dfc4c",
-      "caminhos_sujos": [
-        "docs/rainforest/estado/2026-09-03-guardas.json"
-      ]
+      "head": "aa70621120a900a852261ca06abefa0939832161",
+      "caminhos_sujos": []
     },
-    "achados": 1,
+    "achados": 0,
     "base": "1cea48a2950c9a8cdfa32e29c8abbf6396bedd9f",
-    "head": "a405672c5475b53c2ab3a4c9f43bb78245d126be",
+    "head": "aa70621120a900a852261ca06abefa0939832161",
     "lista": [
       "Aud1 (BLOQUEIA) ehComando exclui todo token citado, inclusive na propria posicao de comando: \"git\" add -A passa no gate-staging-total (exit 0 contra exit 2 do git add -A puro, reproduzido na janela), e \"cp\"/\"tee\"/\"sed\"/\"mv\" citados escapam do alvosBashEscrita no gate-worktree. O !tok.q tem motivo (gitignore como argumento, > dentro de aspas) — errado e aplica-lo na posicao de comando, que procuraCLI ja trata certo"
     ],
     "em": "2026-09-04",
-    "tentativas": 19,
-    "revisor": "ok — os tres achados da 17a fechados, confirmados por execucao real das 13 baterias, sem regressao",
-    "auditor": "1 achado bloqueia",
-    "rodada_revisao": 18,
+    "revisor": "ok — escopo estreito no commit b1c2091 (rodada 20): sem super-bloqueio (os tres casos motivadores do !tok.q rodados e verdes), ehCmd/posCmd corretos por segmento inclusive com pipe e prefixo de wrapper, desconto do $ do ANSI-C identico ao de procuraCLI, baterias novas nao tautologicas; placar de 8 baterias conferido por execucao real",
+    "auditor": "18a revisao (a405672): 1 achado, fechado na rodada 20 e provado por mutacao vermelha em staging-total e gate-worktree",
+    "rodada_revisao": 19,
     "emenda": "modelo de ameaca dos gates por texto registrado no plano",
     "handover": "relatorios/2026-09-04-handover-lote-3-guardas-rodada-18.md",
     "observacoes_nao_bloqueantes": [
       "contemSubshellOuGrupo nunca detecta } (o segmentador isola cada } em segmento proprio); nenhuma entrada de shell valida encontrada que explore",
       "git checkout src/{a,b}.js super-bloqueia por brace expansion — pre-existente, identico antes e depois da rodada 19"
-    ]
+    ],
+    "achado_para_issue": "Bypass composto: wrapper CITADO + comando citado escapa dos gates — \"env\" FOO=1 \"cp\" a.txt <principal>/b.txt e \"env\" FOO=1 \"git\" add -A saem exit 0 (confirmado por execucao real pelo revisor). Causa em posicaoDeComando (nao tocada pela rodada 20): WRAPPERS_QUE_REPASSAM.has() exige token nao-citado, entao \"env\" citado nao e reconhecido como wrapper e a posicao de comando para nele. Mesma familia do achado da 18a, um passo composto adiante",
+    "lacuna_declarada": "a mutacao da rodada 20 foi rodada pela janela (vermelha em duas baterias), nao pelo revisor — ele a inferiu por leitura e recomendou confirmacao por tester",
+    "nota_head": "A revisao rodou sobre b1c2091 (todo o codigo). O commit aa70621 e emenda do PLANO (Tarefa 15 de rastro e o campo arquivos: da Tarefa 1), sem uma linha de codigo — foi o que a propria checagem de CREEP mandou fazer para o revisar fechar."
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash verificar-g3.sh <worktree> — o pronto quando de cada tarefa do plano contra o artefato real",
+    "saida": "T1 | exit=0 | == resultado: 47 ok, 0 falha(s) ==\nT2 | exit=0 | == resultado: 96 ok, 0 falha(s) ==\nT3 | exit=0 | == resultado: 7 ok, 0 falha(s) ==\nT3b | exit=0 | aviso: agente 'tester' em C:\\Projetos\\rainforest-mind\\.claude\\worktrees\\fluxo-guardas\\agents mas não declarad\nT4 | exit=0 | == resultado: 18 ok, 0 falha(s) ==\nT5 | exit=0 | == resultado: 63 ok, 0 falha(s) ==\nT7 | exit=0 | == resultado: 194 ok, 0 falha(s) ==\nT8 | exit=0 | == resultado: 23 ok, 0 falha(s) ==\nT9 | exit=0 | == resultado: 14 ok, 0 falha(s) ==\nT11 | exit=0 | ok: 55   falhou: 0\nT12 | exit=0 | == resultado: 33 ok, 0 falha(s) ==\nT13 | exit=0 | == resultado: 104 ok, 0 falha(s) ==\nT13b | exit=0 | == resultado: 38 ok, 0 falha(s) ==\nT14 | exit=0 | 96:## Critério de pronto (falsificável)\nTdep | exit=0 | == resultado: 6 ok, 0 falha(s) ==\nTenc | exit=0 | CONFERIDO — nenhum mojibake, BOM ou CRLF nos arquivos varridos.\nT10 | exit=0 | == resultado: 59 ok, 0 falha(s) ==\nfim",
+    "tarefas": 14,
+    "tarefas_ok": 14,
+    "em": "2026-09-04",
+    "nota": "17 linhas, todas exit=0. T3b traz um aviso do --lint (agente tester nao declarado em agentes.json) que nao e erro e nao muda o exit. Uma rodada anterior deste mesmo script deu T10 exit=1: era interferencia da propria janela, que editou README/plugin.json enquanto a bateria de saude rodava; re-rodada com a arvore estavel, 59 ok / 0 falhas."
   },
   "fechar": {
     "status": "pendente"
