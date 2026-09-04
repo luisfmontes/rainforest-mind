@@ -507,6 +507,88 @@ function segmentosDoComando(cmd) {
 }
 
 /**
+ * Máquina de estado para percorrer aspas no shell bash, usada tanto por
+ * `segmentos()` (para decidir separadores) quanto por `tokens()` (para
+ * decidir limite de token). Garante que ambas funções leem a gramática de
+ * aspas da mesma forma, evitando divergência.
+ *
+ * Percorre `texto` e para cada posição marca se está fora de aspas ou dentro
+ * de qual tipo: `'...'`, `"..."`, ou `$'...'` (ANSI-C). Devolve array onde:
+ *   - 0 = fora de aspas
+ *   - 1 = dentro de aspas simples '...'
+ *   - 2 = dentro de aspas duplas "..."
+ *   - 3 = dentro de aspas ANSI-C $'...'
+ *
+ * Usado por `segmentos()` e `tokens()` para garantir consistência.
+ */
+function analisaAspas(texto) {
+  const mapa = [];
+  let emAspaSimples = false;
+  let emAspaDupla = false;
+  let emAspaANSIC = false;
+
+  for (let i = 0; i < texto.length; i++) {
+    const char = texto[i];
+    const proximo = texto[i + 1];
+    const anterior = i > 0 ? texto[i - 1] : "";
+
+    // Dentro de aspas ANSI-C ($'...'): barra invertida escapa o próximo caractere
+    if (emAspaANSIC) {
+      mapa.push(3);
+      if (char === "\\") {
+        if (proximo !== undefined) {
+          i += 1;
+          mapa.push(3);
+        }
+      } else if (char === "'") {
+        emAspaANSIC = false;
+      }
+      continue;
+    }
+
+    // Dentro de aspas simples: nada é especial, nem barra, nem aspas duplas
+    if (emAspaSimples) {
+      mapa.push(1);
+      if (char === "'") {
+        emAspaSimples = false;
+      }
+      continue;
+    }
+
+    // Dentro de aspas duplas: barra invertida pode escapar alguns chars
+    if (emAspaDupla) {
+      mapa.push(2);
+      if (char === "\\") {
+        if (proximo !== undefined) {
+          i += 1;
+          mapa.push(2);
+        }
+      } else if (char === '"') {
+        emAspaDupla = false;
+      }
+      continue;
+    }
+
+    // Fora de aspas
+    mapa.push(0);
+    if (char === "'" && anterior === "$") {
+      emAspaANSIC = true;
+    } else if (char === "'") {
+      emAspaSimples = true;
+    } else if (char === '"') {
+      emAspaDupla = true;
+    } else if (char === "\\") {
+      if (proximo !== undefined) {
+        i += 1;
+        mapa.push(0);
+      }
+    }
+  }
+
+  return mapa;
+}
+
+/**
  * Tokeniza PRESERVANDO o conteudo citado como parte do token, em vez de
  * apagar (apagar e o que deixava a flag citada passar sem barrar). Aspas
  * adjacentes a texto sem aspas se fundem em UM token so, do jeito que o
@@ -523,52 +605,99 @@ function segmentosDoComando(cmd) {
  * ignorar `\"` escapada (senao um `bash -c "...\"..."` aninhado fecha a
  * aspa cedo demais e quebra a extracao do comando interno) — so `\"`, `\\`,
  * `\$` e `` \` `` sao especiais ali, mesma regra do shell.
+ *
+ * ASPAS ANSI-C (rodada 7, 2026-09-04): em `$'...'`, a barra invertida
+ * escapa o próximo caractere, então `\'` NÃO fecha a aspa. Antes,
+ * `segmentos()` entendia escape em ANSI-C mas `tokens()` não, causando
+ * divergência. Conserto: replicar a mesma máquina de estado de aspas que
+ * `segmentos()` usa, DESCARTANDO as aspas do resultado final (não
+ * acumular as aspas no token).
  */
 function tokens(seg) {
   const toks = [];
   let cur = "";
   let tem = false;
+  let emAspaSimples = false;
+  let emAspaDupla = false;
+  let emAspaANSIC = false;
+
   for (let i = 0; i < seg.length; i += 1) {
     const c = seg[i];
-    if (c === "'") {
-      const fechar = seg.indexOf(c, i + 1);
-      const fim = fechar === -1 ? seg.length : fechar;
-      cur += seg.slice(i + 1, fim);
-      tem = true;
-      i = fim;
+    const proximo = seg[i + 1];
+    const anterior = i > 0 ? seg[i - 1] : "";
+
+    // Dentro de aspas ANSI-C ($'...'): barra invertida escapa o próximo caractere
+    if (emAspaANSIC) {
+      if (c === "\\") {
+        // Barra invertida escapa o próximo caractere
+        if (proximo !== undefined) {
+          cur += proximo;
+          i += 1;
+          tem = true;
+        }
+      } else if (c === "'") {
+        emAspaANSIC = false;
+      } else {
+        cur += c;
+        tem = true;
+      }
       continue;
     }
-    if (c === '"') {
-      let j = i + 1;
-      let fechou = false;
-      while (j < seg.length) {
-        const cc = seg[j];
-        if (cc === "\\" && j + 1 < seg.length && '"\\$`'.includes(seg[j + 1])) {
-          cur += seg[j + 1];
-          j += 2;
+
+    // Dentro de aspas simples: nada é especial, nem barra, nem aspas duplas
+    if (emAspaSimples) {
+      if (c === "'") {
+        emAspaSimples = false;
+      } else {
+        cur += c;
+        tem = true;
+      }
+      continue;
+    }
+
+    // Dentro de aspas duplas: barra invertida pode escapar alguns chars
+    if (emAspaDupla) {
+      if (c === "\\") {
+        if (proximo !== undefined && '"\\$`'.includes(proximo)) {
+          cur += proximo;
+          i += 1;
+          tem = true;
           continue;
         }
-        if (cc === '"') { fechou = true; j += 1; break; }
-        cur += cc;
-        j += 1;
+        cur += c;
+        tem = true;
+      } else if (c === '"') {
+        emAspaDupla = false;
+      } else {
+        cur += c;
+        tem = true;
       }
-      tem = true;
-      i = fechou ? j - 1 : seg.length;
       continue;
     }
-    if (c === "\\" && i + 1 < seg.length) {
-      cur += seg[i + 1];
-      tem = true;
+
+    // Fora de aspas
+    if (c === "'" && anterior === "$") {
+      // Abertura de string ANSI-C: $' — não acumula a aspa
+      emAspaANSIC = true;
+    } else if (c === "'") {
+      // Abertura de aspas simples — não acumula a aspa
+      emAspaSimples = true;
+    } else if (c === '"') {
+      // Abertura de aspas duplas — não acumula a aspa
+      emAspaDupla = true;
+    } else if (c === "\\" && proximo !== undefined) {
+      // Barra invertida fora de aspas escapa o próximo caractere
+      cur += proximo;
       i += 1;
-      continue;
-    }
-    if (/\s/.test(c)) {
+      tem = true;
+    } else if (/\s/.test(c)) {
       if (tem) { toks.push(cur); cur = ""; tem = false; }
-      continue;
+    } else {
+      cur += c;
+      tem = true;
     }
-    cur += c;
-    tem = true;
   }
+
   if (tem) toks.push(cur);
   return toks;
 }
