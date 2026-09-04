@@ -62,7 +62,7 @@ const path = require("node:path");
 const { cwdPorSegmento, resolverMovedor, toplevelConfinado, extrairUltimoDirGit, segmentosComAspas, SEPARADORES } = require(path.join(__dirname, "lib", "cwd-efetivo.cjs"));
 const CLIS_QUE_ESCREVEM = require(path.join(__dirname, "lib", "clis-que-escrevem.cjs"));
 const {
-  tokensComAspas, ehComando, WRAPPERS_QUE_REPASSAM, posicaoDeComando, desempacotarWrapperDeString,
+  tokensComAspas, ehComando, WRAPPERS_QUE_REPASSAM, posicaoDeComando, textoAPartir, desempacotarWrapperDeString,
 } = require(path.join(__dirname, "lib", "tokens-comando.cjs"));
 
 const FERRAMENTAS_DE_ESCRITA = new Set(["Write", "Edit", "MultiEdit", "NotebookEdit"]);
@@ -413,17 +413,10 @@ function posicionaisApos(toks, i) {
   return toks.slice(i + 1).filter((t) => !t.v.startsWith("-"));
 }
 
-/**
- * Reconstroi, como texto, os tokens de `toks` a partir do indice `i` — usado
- * para alimentar `desempacotarWrapperDeString` (que espera uma STRING crua,
- * com o nome do wrapper como primeiro token dela) a partir de uma posicao de
- * comando ja calculada por `posicaoDeComando` (que pode vir depois de um
- * prefixo tipo `env`/`sudo`/`NOME=valor`). Token citado volta entre aspas
- * duplas — nenhum destes tokens pode conter `"` de verdade (era o delimitador).
- */
-function textoAPartir(toks, i) {
-  return toks.slice(i).map((t) => (t.q ? `"${t.v}"` : t.v)).join(" ");
-}
+// `textoAPartir` agora mora em `lib/tokens-comando.cjs` (rodada 13, lote 3,
+// 2026-09-04) — `gate-staging-total.cjs` e `gate-fechar-issue.cjs` passaram
+// a precisar dela tambem para compor `posicaoDeComando` com
+// `desempacotarWrapperDeString` (P3 do auditor). Import no topo do arquivo.
 
 /**
  * Acha CLI(s) numa string de comando ja isolada — reusado pela recursao de

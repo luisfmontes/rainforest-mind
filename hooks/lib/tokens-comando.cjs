@@ -191,6 +191,30 @@ function posicaoDeComando(toks, captura) {
   return i < toks.length ? i : null;
 }
 
+/**
+ * Reconstroi, como texto, os tokens de `toks` a partir do indice `i` — usado
+ * para alimentar `desempacotarWrapperDeString` (que espera uma STRING crua,
+ * com o nome do wrapper como primeiro token dela) a partir de uma posicao de
+ * comando ja calculada por `posicaoDeComando` (que pode vir depois de um
+ * prefixo tipo `env`/`sudo`/`NOME=valor`). Token citado volta entre aspas
+ * duplas — nenhum destes tokens pode conter `"` de verdade (era o delimitador).
+ *
+ * Movida de `gate-worktree.cjs` (rodada 13, lote 3, 2026-09-04): P3, achado
+ * do auditor (11a revisao) — `posicaoDeComando` e `desempacotarWrapperDeString`
+ * so se compunham ali (`procuraCLI` ja chamava `desempacotarWrapperDeString(
+ * textoAPartir(toks, i))`); `gate-staging-total.cjs` e `gate-fechar-issue.cjs`
+ * chamavam `desempacotarWrapperDeString` sobre o segmento CRU (posicao 0),
+ * entao `timeout 5 bash -c "git add -A"`/`env -C . bash -c "git add -A"`
+ * (staging-total) e `timeout 5 bash -c "gh issue close 12"` (fechar-issue)
+ * atravessavam os dois gates com exit 0 — o wrapper de prefixo escondia o
+ * wrapper de string do desempacotador. Exportada aqui para os tres gates
+ * compartilharem a MESMA implementacao, em vez de `gate-worktree.cjs` manter
+ * a unica copia e os outros dois reimplementarem por conta propria.
+ */
+function textoAPartir(toks, i) {
+  return toks.slice(i).map((t) => (t.q ? `"${t.v}"` : t.v)).join(" ");
+}
+
 // --- Wrapper de STRING (T2, rodada 11, lote 3, 2026-09-04) -----------------
 //
 // Diferente de `WRAPPERS_QUE_REPASSAM` (o comando de verdade aparece como
@@ -345,6 +369,7 @@ module.exports = {
   ehComando,
   WRAPPERS_QUE_REPASSAM,
   posicaoDeComando,
+  textoAPartir,
   WRAPPERS_DE_COMANDO,
   desempacotarWrapperDeString,
   contemConstrucaoIlegivel,
