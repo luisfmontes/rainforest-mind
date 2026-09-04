@@ -217,6 +217,40 @@ test("(m2) env -C A cmd && y -> NAO persiste para o segmento seguinte", () => {
 });
 
 console.log();
+console.log("== Caso (n): '&' simples separa segmento, sem confundir com '&&' (K1, rodada 6, lote 3) ==");
+test("(n) echo hi & cd A; x -> 3 segmentos, o 3o com cwd A", () => {
+  const cmd = `echo hi & cd '${testA}'; x`;
+  const r = cwdPorSegmento(cmd, testDir);
+  eq(r.length, 3, "numero de segmentos");
+  eq(r[2].cwd, testA, "cwd do 3o segmento");
+});
+test("(o) x 2>&1 && cd A && y -> 3 segmentos, o 3o cwd A (2>&1 nao separa)", () => {
+  const cmd = `x 2>&1 && cd '${testA}' && y`;
+  const r = cwdPorSegmento(cmd, testDir);
+  eq(r.length, 3, "numero de segmentos");
+  eq(r[2].cwd, testA, "cwd do 3o segmento");
+});
+
+console.log();
+console.log("== Caso (p): git \"por posicao de comando\", nao substring (K2, rodada 6, lote 3) ==");
+test('(p) grep -C 3 "gitignore" . && git add -A -> 2o segmento cwd inicial, incerto false', () => {
+  const cmdGit = "g" + "it";
+  const cmd = `grep -rn -C 3 "gitignore" . && ${cmdGit} add -A`;
+  const r = cwdPorSegmento(cmd, testDir);
+  eq(r.length, 2, "numero de segmentos");
+  eq(r[1].cwd, testDir, "cwd do 2o segmento (git de verdade, sem -C)");
+  eq(r[1].incerto, false, "incerto do 2o segmento");
+});
+test("(q) git -C X status && y -> 1o segmento cwd X, 2o cwd inicial (nao persiste)", () => {
+  const cmdGit = "g" + "it";
+  const cmd = `${cmdGit} -C '${testA}' status && y`;
+  const r = cwdPorSegmento(cmd, testDir);
+  eq(r.length, 2, "numero de segmentos");
+  eq(r[0].cwd, testA, "cwd do 1o segmento (git -C X)");
+  eq(r[1].cwd, testDir, "cwd do 2o segmento NAO herda o -C do 1o");
+});
+
+console.log();
 console.log(`== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 process.exit(falhou);
 NODESCRIPT

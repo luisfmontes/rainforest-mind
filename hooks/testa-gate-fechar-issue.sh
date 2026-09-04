@@ -470,6 +470,58 @@ echo "== (af) git commit -m \"(gh issue close 12)\" → exit 0 (citado) =="
 EXIT_AF=$?
 [ $EXIT_AF -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_AF)"
 
+# K1 do auditor (rodada 6, lote 3, 2026-09-03): '&' simples nao separava
+# segmento em `segmentosParaGate`. `pularPrefixos` parava no `&` (nao e
+# atribuicao, nem exe conhecido), e como `tokens[0]` (`sudo`/`true`) ERA um
+# prefixo conhecido, a rede de seguranca de "wrapper desconhecido"
+# (`ehPrefixoOuWrapperConhecido`) tambem pulava o segmento inteiro — o
+# `gh issue close`/`gh pr merge` direto escapava sem checagem nenhuma.
+# Caso (ag): `sudo & gh issue close 42` → exit 2
+echo
+echo "== (ag) sudo & gh issue close 42 → exit 2 (K1) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"sudo & gh issue close 42"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ag"
+EXIT_AG=$?
+[ $EXIT_AG -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_AG)"
+
+# Caso (ah): `true & gh pr merge 7 --body "closes #7"` SEM marcador → exit 2
+echo
+echo "== (ah) true & gh pr merge 7 com closes #7 sem marcador → exit 2 (K1) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"true & gh pr merge 7 --body \"closes #7\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ah"
+EXIT_AH=$?
+[ $EXIT_AH -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_AH)"
+
+# Caso (ai): `gh issue view 12 2>&1` → exit 0 (leitura; 2>&1 nao e separador)
+echo
+echo "== (ai) gh issue view 12 2>&1 → exit 0 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh issue view 12 2>&1"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ai"
+EXIT_AI=$?
+[ $EXIT_AI -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_AI)"
+
+# Caso (aj): `gh pr create --body "...closes #7" 2>&1` COM marcador → exit 0
+echo
+echo "== (aj) gh pr create com closes #7 COM marcador 2>&1 → exit 0 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=1
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create --body \"resumo da entrega, closes #7\" 2>&1"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-aj"
+EXIT_AJ=$?
+[ $EXIT_AJ -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_AJ)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

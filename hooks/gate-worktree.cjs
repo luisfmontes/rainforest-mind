@@ -61,6 +61,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { cwdPorSegmento, resolverMovedor, toplevelConfinado, extrairUltimoDirGit, segmentosComAspas, SEPARADORES } = require(path.join(__dirname, "lib", "cwd-efetivo.cjs"));
 const CLIS_QUE_ESCREVEM = require(path.join(__dirname, "lib", "clis-que-escrevem.cjs"));
+const { tokensComAspas, ehComando, WRAPPERS_QUE_REPASSAM, posicaoDeComando } = require(path.join(__dirname, "lib", "tokens-comando.cjs"));
 
 const FERRAMENTAS_DE_ESCRITA = new Set(["Write", "Edit", "MultiEdit", "NotebookEdit"]);
 // Subcomandos de git que mexem no estado do checkout. `git stash`/`pop` foi a falha N1.
@@ -341,7 +342,11 @@ function alvosBash(comando, cwdInicial, casa = (seg) => {
   const s = subcomandoGit(seg);
   return !!s && VERBOS_QUE_MEXEM.has(s.verbo);
 }) {
-  const segmentos = comando.split(SEPARADORES);
+  // `segmentosComAspas`, nao `comando.split(SEPARADORES)` cru: o split cru
+  // nao respeita aspas (`git commit -m "a & b"` quebraria dentro da mensagem)
+  // e, ate a rodada 6, `SEPARADORES` nem reconhecia `&` simples como
+  // separador (K1 do auditor, lote 3, 2026-09-03).
+  const segmentos = segmentosComAspas(comando);
   const estado = { atual: cwdInicial, incerto: false, pilhaPushd: [] };
   const alvos = [];
 
@@ -379,97 +384,19 @@ function alvosBash(comando, cwdInicial, casa = (seg) => {
   return alvos;
 }
 
-/**
- * Quebra em tokens preservando se cada um veio de DENTRO de aspas.
- *
- * `q: true` significa "este texto estava entre aspas" — e um `>` ali e TEXTO,
- * nunca redirecionamento. E o conserto de 2026-09-01: um avaliador de repo de
- * terceiro foi barrado rodando
- *   grep -n "qualified_name\|<project>" README.md
- * — comando sem redirecionamento nenhum. O gate casava o `>` de `<project>` no
- * texto cru do comando. `->`, `=>`, generics e tag HTML sao rotina em busca de
- * codigo, entao o falso positivo era diario e empurrava o agente a reescrever
- * comando legitimo ate passar. `palavras()` ja sabia respeitar aspas para achar
- * subcomando de git; a deteccao de escrita e que tinha ficado no regex cru.
- */
-function tokensComAspas(cmd) {
-  const out = [];
-  let atual = "", aspa = null, temAlgo = false, citado = false;
-  for (let i = 0; i < cmd.length; i += 1) {
-    const c = cmd[i];
-    if (aspa) {
-      if (c === aspa) aspa = null;
-      else atual += c;
-      temAlgo = true;
-    } else if (c === '"' || c === "'") {
-      aspa = c; temAlgo = true; citado = true;
-    } else if (/\s/.test(c)) {
-      if (temAlgo) out.push({ v: atual, q: citado });
-      atual = ""; temAlgo = false; citado = false;
-    } else {
-      atual += c; temAlgo = true;
-    }
-  }
-  if (temAlgo) out.push({ v: atual, q: citado });
-  return out;
-}
+// `tokensComAspas`, `ehComando`, `WRAPPERS_QUE_REPASSAM` e `posicaoDeComando`
+// agora moram em `lib/tokens-comando.cjs` (rodada 6, lote 3, 2026-09-03) —
+// `cwd-efetivo.cjs` passou a precisar da mesma nocao de posicao de comando
+// (K2 do auditor) e duplicar a logica era exatamente o que a rodada 5 tinha
+// evitado ao consolidar `resolverMovedor`. Import no topo do arquivo.
 
 // Operador de redirecionamento: quando a linha de comando redireciona para arquivo.
 // Procura por padrao no inicio do token, diferente de operadores em nomes.
 const OPERADOR_REDIRECT = /^(?:[0-9]*|&)(>>?)(.*)$/;
 
-/** Nome de comando, ignorando caminho: um binario com caminho resolve para seu nome. */
-function ehComando(tok, nome) {
-  return !tok.q && new RegExp("(^|[\\\\/])" + nome + "(\\.exe)?$").test(tok.v);
-}
-
 /** Posicionais de um segmento a partir do indice do comando (pula flags). */
 function posicionaisApos(toks, i) {
   return toks.slice(i + 1).filter((t) => !t.v.startsWith("-"));
-}
-
-// Wrappers que REPASSAM o comando adiante, na MESMA posicao de comando — o
-// nome da CLI aparece DEPOIS deles. H3 (rodada 5, lote 3, 2026-09-03): antes
-// disto, `procuraCLI` casava o nome em QUALQUER posicao do segmento (so
-// pulando token citado em posicao de argumento), e `grep -rn claude .` virava
-// falso positivo — "claude" ali e um PADRAO DE BUSCA, argumento do grep,
-// nunca um comando.
-const WRAPPERS_QUE_REPASSAM = new Set([
-  "env", "command", "exec", "nohup", "nice", "timeout", "xargs", "sudo", "time",
-]);
-
-/**
- * Acha o INDICE do token que e a posicao de comando de um segmento
- * tokenizado, pulando os wrappers conhecidos (e os argumentos deles que
- * consomem valor). `null` se o segmento acaba dentro dos proprios wrappers
- * (`env` sozinho, sem comando depois).
- *
- * `env`: pula `NOME=valor` (um ou mais) e `-C <dir>`/`--chdir=<dir>`.
- * `nice`: pula `-n <N>` (ou `-N` colado).
- * `timeout`: pula as flags (`-s`, `--signal=...`) e a duracao posicional.
- * Os demais (`command`, `exec`, `nohup`, `xargs`, `sudo`, `time`) so pulam o
- * proprio nome — o comando de verdade e o token seguinte.
- */
-function posicaoDeComando(toks) {
-  let i = 0;
-  while (i < toks.length && !toks[i].q && WRAPPERS_QUE_REPASSAM.has(toks[i].v)) {
-    const wrapper = toks[i].v;
-    i += 1;
-    if (wrapper === "env") {
-      while (i < toks.length && !toks[i].q && /^[A-Za-z_][A-Za-z0-9_]*=/.test(toks[i].v)) i += 1;
-      while (i < toks.length && !toks[i].q && toks[i].v === "-C") i += 2;
-      while (i < toks.length && !toks[i].q && /^--chdir(=.*)?$/.test(toks[i].v)) {
-        i += toks[i].v.includes("=") ? 1 : 2;
-      }
-    } else if (wrapper === "nice") {
-      if (i < toks.length && !toks[i].q && toks[i].v === "-n") i += 2;
-      else if (i < toks.length && !toks[i].q && /^-n\d+$/.test(toks[i].v)) i += 1;
-    } else if (wrapper === "timeout") {
-      while (i < toks.length && !toks[i].q && toks[i].v.startsWith("-")) i += 1;
-      if (i < toks.length) i += 1; // a duracao
-    }
-  }
-  return i < toks.length ? i : null;
 }
 
 /**
@@ -553,7 +480,9 @@ function procuraCLI(comando, clis) {
  * `tokensComAspas`.
  */
 function alvosBashEscrita(comando, cwdInicial) {
-  const segmentos = comando.split(SEPARADORES);
+  // `segmentosComAspas` pelo mesmo motivo de `alvosBash`: respeita aspas e
+  // reconhece `&` simples como separador (K1, rodada 6, lote 3, 2026-09-03).
+  const segmentos = segmentosComAspas(comando);
   const estado = { atual: cwdInicial, incerto: false, pilhaPushd: [] };
   const alvos = [];
 

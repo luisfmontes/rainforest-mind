@@ -134,6 +134,26 @@ function segmentosParaGate(cmd) {
       atual = "";
       continue;
     }
+    if (
+      c === "&" &&
+      cmd[i + 1] !== "&" &&
+      cmd[i + 1] !== ">" &&
+      cmd[i - 1] !== ">" &&
+      cmd[i - 1] !== "<" &&
+      cmd[i - 1] !== "|"
+    ) {
+      // `&` simples (job em background) tambem separa (K1, rodada 6, lote
+      // 3, 2026-09-03) — exceto colado em `&&` (braço acima), `&>`, ou
+      // depois de `>`/`<`/`|` (`>&`, `<&`, `|&`): esses ficam no segmento.
+      // Sem isto, `sudo & gh issue close 42` era UM segmento so, o `sudo`
+      // (prefixo conhecido) fazia `pularPrefixos` parar em `&`, e como
+      // `tokens[0]` era prefixo conhecido a rede de seguranca de wrapper
+      // desconhecido (`ehPrefixoOuWrapperConhecido`) tambem pulava o
+      // segmento — o `gh issue close` direto passava sem checagem nenhuma.
+      if (atual.trim()) segmentos.push(atual);
+      atual = "";
+      continue;
+    }
     atual += c;
   }
 
