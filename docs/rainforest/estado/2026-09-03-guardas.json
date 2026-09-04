@@ -35,12 +35,12 @@
     "em": "2026-09-03"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-03",
     "tarefas_ok": 14,
     "tarefas": 14,
     "comando": "for f in hooks/testa-cwd-efetivo.sh hooks/testa-gate-staging-total.sh hooks/testa-portaria.sh scripts/testa-limpar-worktrees.sh scripts/testa-conferir-entrega.sh hooks/testa-gate-worktree.sh scripts/testa-backup-gravar.sh scripts/testa-backup-conferir.sh scripts/testa-backup-estado.sh scripts/testa-fechar-issue.sh hooks/testa-gate-fechar-issue.sh hooks/testa-config.sh scripts/testa-saude.sh; do bash $f >/dev/null 2>&1; echo \"$f exit=$?\"; done",
-    "saida": "13 baterias exit=0 apos merge dos lotes M/N (cwd-efetivo 24, staging-total 53, portaria 7, limpar 14, conferir-entrega 63, gate-worktree 164, backup-gravar 23, backup-conferir 11, backup-estado 50, fechar-issue 33, gate-fechar-issue 48, config 38, saude 59); OneDrive real sem rainforest-backup",
+    "saida": "13 baterias exit=0 apos merge dos lotes P/Q (cwd-efetivo 28, staging-total 57, portaria 7, limpar 14, conferir-entrega 63, gate-worktree 168, backup-gravar 23, backup-conferir 11, backup-estado 55, fechar-issue 33, gate-fechar-issue 55, config 38, saude 59); OneDrive real sem rainforest-backup",
     "mutacao": [
       {
         "tarefa": 1,
@@ -114,7 +114,7 @@
       }
     ],
     "em": "2026-09-04",
-    "rodada": 7,
+    "rodada": 8,
     "rodada3": {
       "achados": [
         "R1",
@@ -208,9 +208,21 @@
         "N2 status === limpo no --remover"
       ]
     },
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-04"
+    "rodada8": {
+      "achados": [
+        "Rev1-3 env -u/sudo -E em posicaoDeComando e parser proprio do gate-fechar-issue",
+        "Rev4 --body com apostrofo",
+        "Aud1 cd/command cd/builtin cd",
+        "Aud2 $( ) em aspas duplas",
+        "Aud3 sanear antes de truncar"
+      ],
+      "mutacoes_reprovadas_na_integracao": [
+        "Pa flags -u do env",
+        "Pb corpo por token",
+        "Pc $( em aspas duplas",
+        "Pd semPrefixoSintaticoDeBuiltin",
+        "Q Get-MotivoSaneado antes de truncar"
+      ]
     }
   },
   "revisar": {
