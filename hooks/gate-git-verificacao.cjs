@@ -9,6 +9,56 @@
  * modo de falha — exit code alcanca (mesmo raciocinio do `gate-staging-total`,
  * tarefa 2 do plano `docs/rainforest/planos/2026-09-04-nao-mente.md`, D8-D11).
  *
+ * O QUE ESTE GATE E, E O QUE NAO E — declarado aqui depois de tres rodadas de
+ * ataque, porque ficar implicito ja causou confianca em cobertura que o gate
+ * nao tem:
+ *
+ * Isto e um QUEBRA-MOLAS contra o atalho, nao uma FRONTEIRA contra evasao
+ * deliberada. Ele existe porque quem executa um fluxo chega em `--no-verify`
+ * por CONVENIENCIA no momento em que o hook de commit reprova — nao porque
+ * alguem vai ofuscar o comando de proposito para escapar de uma trava que
+ * nem sabe que existe. O gate reduz o atalho automatico; ele nao foi
+ * desenhado, e nao seria vencedor, contra quem monta o comando de proposito
+ * para passar por baixo dele.
+ *
+ * Prova disso: um PARSER DE SHELL ESCRITO A MAO NUNCA GANHA a corrida contra
+ * ofuscacao. Isto e fato medido neste arquivo, nao suposicao — tres rodadas
+ * de ataque, forma nova a cada uma:
+ *   - rodada 1, 2026-09-04 (security review de fundo, commit 7d0fb268): flag
+ *     citada de tres formas (aspas simples, duplas, coladas: `--no-"verify"`),
+ *     abreviacao de long option que o git aceita (`--no-veri`), separador `&`
+ *     solto, prefixo nao reconhecido antes do `git` (`then`), substituicao de
+ *     comando `$(...)`, linha continuada com `\` + quebra de linha;
+ *   - rodada 2, 2026-09-04 (commit fb713c3): `bash -c "..."`, `sh -c '...'`,
+ *     subshell `(...)`, flag combinada (`bash -lc`) e aninhamento simples;
+ *   - rodada 3, 2026-09-04 (esta rodada): nome de shell com caminho na frente
+ *     (`/bin/bash`, `/bin/bash.exe`), `eval`, escape por barra invertida
+ *     (`--no\-verify`) e aspa dupla escapada dentro de shell aninhado.
+ * Tres rodadas, tres formas novas cada vez. Nao ha razao para crer que uma
+ * quarta rodada nao acharia uma quinta forma — e e por isso que este bloco
+ * declara o limite em vez de prometer cobertura completa.
+ *
+ * O QUE SABIDAMENTE ESCAPA E NAO SERA PERSEGUIDO (a lista e o valor deste
+ * bloco — ser honesto sobre o buraco, nao ser curto):
+ *   - indirecao por variavel (`F=--no-verify; git commit $F`) — nao-objetivo
+ *     declarado no plano `2026-09-04-nao-mente.md`. O valor de `$F` so existe
+ *     depois da expansao do shell, que acontece DEPOIS deste gate ler
+ *     `tool_input.command`. Nao ha como cobrir isso lendo o texto do
+ *     comando: o gate cobre o que esta ESCRITO nele, nada alem disso;
+ *   - qualquer forma de ofuscacao que dependa do SHELL DE VERDADE interpretar
+ *     o comando de um jeito que este parser escrito a mao (que nao e um
+ *     shell) nao replica com exatidao — `$'...'` com escape ANSI-C, alias,
+ *     funcao de shell, `IFS` alterado, encoding, e formas ainda nao medidas.
+ *     Este gate cobre os padroes das tres rodadas acima, nao todo padrao
+ *     hipotetico.
+ *
+ * ONDE MORA O ENFORCEMENT DE VERDADE, para quem precisar de garantia e nao so
+ * de fricção: `pre-receive` no servidor git, ou uma checagem de CI que roda a
+ * mesma verificacao e reprova o PR. Nenhum dos dois e alcancado por
+ * `--no-verify` por construcao — a flag so desliga hook LOCAL. Este arquivo
+ * aqui e o quebra-molas na hora do commit; a garantia final mora nos dois
+ * acima, e dizer isso aqui evita que alguem confie demais neste gate.
+ *
  * REGRA, tres comandos:
  *   git commit --no-verify | -n | --no-gpg-sign   -> barrado
  *   git push   --no-verify                         -> barrado
@@ -25,7 +75,12 @@
  * flag citada passar sem barrar, ver historico da tarefa 2 do plano acima),
  * so que o token inteiro (`removi o --no-verify do script`) nunca e igual a
  * `--no-verify`. Aspas adjacentes a texto sem aspas viram UM token so, do
- * jeito que o shell faz (`--no-"verify"` -> `--no-verify`).
+ * jeito que o shell faz (`--no-"verify"` -> `--no-verify`). Fora de aspas
+ * simples, barra invertida de escape some e o char seguinte vira literal
+ * (`--no\-verify` -> `--no-verify`); dentro de aspas duplas so `\"`, `\\`,
+ * `\$` e `` \` `` sao escapes de verdade, e o fechamento da aspa ignora um
+ * `\"` escapado (senao um `bash -c "...\"..."` aninhado fecha a aspa cedo
+ * demais e quebra a extracao do comando interno).
  * `git -c commit.gpgsign=false commit -m x` tem que continuar identificando
  * `commit` como subcomando (nao a chave `commit.gpgsign=false`) — a mesma
  * varredura de flags-com-valor do `gate-staging-total` resolve isso.
@@ -50,21 +105,20 @@
  * Para `git commit -m`, o conteudo citado e TEXTO (mensagem) e nunca vira
  * comando — e assim que a tarefa anterior fechou o falso positivo de
  * `git commit -m "removi o --no-verify do script"`. Mas para `bash -c`/
- * `sh -c`/`zsh -c`/`dash -c`/`ash -c` (e `busybox sh -c`), o argumento
- * seguinte ao `-c` e uma LINHA DE COMANDO, nao mensagem — e e analisado
- * RECURSIVAMENTE, como se fosse um segmento novo (segmentar, tokenizar,
- * analisaGit, motivoDe de novo). A distincao entre os dois casos e o
- * proprio token anterior: `-m`/`--message` de `git commit` nunca dispara
- * recursao, so `-c` (ou flag combinada com `c`) precedido do NOME de um
- * shell dispara. Profundidade tem teto (3): shell dentro de shell dentro de
- * shell alem do teto BARRA em vez de liberar — este gate e fail-closed, e
- * nao ha como provar ausencia de `--no-verify` num aninhamento arbitrario.
- *
- * NAO-OBJETIVO declarado (plano `2026-09-04-nao-mente.md`): indirecao por
- * variavel (`F=--no-verify; git commit $F`) fica FORA do alcance deste gate.
- * O valor de `$F` so existe depois da expansao do shell, e o gate le o
- * tool_input.command ANTES dela — nao ha como cobrir isso lendo o texto do
- * comando. O gate cobre o que esta ESCRITO no comando, nada alem disso.
+ * `sh -c`/`zsh -c`/`dash -c`/`ash -c` (e `busybox sh -c`) — com ou sem
+ * caminho e `.exe` na frente do nome (`/bin/bash`, `bash.exe`, achado
+ * atacando a terceira rodada) —, o argumento seguinte ao `-c` e uma LINHA DE
+ * COMANDO, nao mensagem, e e analisado RECURSIVAMENTE, como se fosse um
+ * segmento novo (segmentar, tokenizar, analisaGit, motivoDe de novo). `eval
+ * "<comando>"` (achado atacando a terceira rodada tambem) entra na mesma
+ * recursao: o argumento de `eval` e uma linha de comando igual a de
+ * `bash -c`, so que sem exigir `-c` na frente. A distincao entre linha de
+ * comando e mensagem e o proprio token anterior: `-m`/`--message` de `git
+ * commit` nunca dispara recursao, so `-c` (ou flag combinada com `c`)
+ * precedido do NOME de um shell, ou o token `eval`, disparam. Profundidade
+ * tem teto (3): shell dentro de shell dentro de shell alem do teto BARRA em
+ * vez de liberar — este gate e fail-closed, e nao ha como provar ausencia de
+ * `--no-verify` num aninhamento arbitrario.
  *
  * ESCOPO: vale para todo ator, sem distincao de agente ou janela principal — a
  * trava e sobre o COMANDO, nao sobre quem digita.
@@ -142,6 +196,16 @@ function segmentosDoComando(cmd) {
  * shell faz: `--no-"verify"` vira o token `--no-verify`; `-m "removi o
  * --no-verify do script"` vira UM token so com a frase inteira (que nunca e
  * igual a `--no-verify`).
+ *
+ * ESCAPE POR BARRA INVERTIDA (achado atacando a terceira rodada): fora de
+ * aspas simples, `\` remove a si mesma e faz o char seguinte virar literal
+ * — `--no\-verify` chega ao shell como `--no-verify`, e tem que comparar
+ * como tal. Aspas simples preservam a barra invertida literal (shell de
+ * verdade nao processa escape dentro delas, e por isso o ramo de `'` abaixo
+ * nao trata `\` como especial). Dentro de aspas DUPLAS o fechamento tem que
+ * ignorar `\"` escapada (senao um `bash -c "...\"..."` aninhado fecha a
+ * aspa cedo demais e quebra a extracao do comando interno) — so `\"`, `\\`,
+ * `\$` e `` \` `` sao especiais ali, mesma regra do shell.
  */
 function tokens(seg) {
   const toks = [];
@@ -149,12 +213,36 @@ function tokens(seg) {
   let tem = false;
   for (let i = 0; i < seg.length; i += 1) {
     const c = seg[i];
-    if (c === '"' || c === "'") {
+    if (c === "'") {
       const fechar = seg.indexOf(c, i + 1);
       const fim = fechar === -1 ? seg.length : fechar;
       cur += seg.slice(i + 1, fim);
       tem = true;
       i = fim;
+      continue;
+    }
+    if (c === '"') {
+      let j = i + 1;
+      let fechou = false;
+      while (j < seg.length) {
+        const cc = seg[j];
+        if (cc === "\\" && j + 1 < seg.length && '"\\$`'.includes(seg[j + 1])) {
+          cur += seg[j + 1];
+          j += 2;
+          continue;
+        }
+        if (cc === '"') { fechou = true; j += 1; break; }
+        cur += cc;
+        j += 1;
+      }
+      tem = true;
+      i = fechou ? j - 1 : seg.length;
+      continue;
+    }
+    if (c === "\\" && i + 1 < seg.length) {
+      cur += seg[i + 1];
+      tem = true;
+      i += 1;
       continue;
     }
     if (/\s/.test(c)) {
@@ -246,22 +334,53 @@ function achaFlagC(toks, inicio) {
 }
 
 /**
+ * Nome "puro" de um token de shell: sem caminho (`/bin/bash` -> `bash`,
+ * tanto `/` quanto `\` contam, para cobrir caminho Windows) e sem `.exe`
+ * (achado atacando a terceira rodada — comparar o token inteiro contra
+ * `bash` deixava `/bin/bash -c ...` e `bash.exe -c ...` passarem sem serem
+ * reconhecidos como shell).
+ */
+function basenomeShell(tok) {
+  const semCaminho = tok.split(/[\\/]/).pop() || tok;
+  return semCaminho.replace(/\.exe$/i, "");
+}
+
+/**
  * null se os tokens do segmento nao sao uma invocacao `<shell> -c <cmd>`;
  * senao o texto do `<cmd>` (para ser analisado recursivamente). Aceita o
  * nome do shell em qualquer posicao (mesmo motivo do `analisaGit` com
- * `git`: lista de prefixos aceitos antes sempre esquece um caso) e o
- * prefixo `busybox sh -c`.
+ * `git`: lista de prefixos aceitos antes sempre esquece um caso), com ou
+ * sem caminho/`.exe` na frente, e o prefixo `busybox sh -c`.
  */
 function achaInvocacaoShell(toks) {
   for (let i = 0; i < toks.length; i += 1) {
     let idx = i;
-    if (toks[idx] === "busybox" && NOMES_SHELL.has(toks[idx + 1])) idx += 1;
-    if (!NOMES_SHELL.has(toks[idx])) continue;
+    if (basenomeShell(toks[idx]) === "busybox" && NOMES_SHELL.has(basenomeShell(toks[idx + 1] || ""))) idx += 1;
+    if (!NOMES_SHELL.has(basenomeShell(toks[idx]))) continue;
     const j = achaFlagC(toks, idx + 1);
     if (j === -1 || j + 1 >= toks.length) continue;
     return toks[j + 1];
   }
   return null;
+}
+
+/**
+ * null se os tokens do segmento nao contem `eval`; senao o texto do
+ * argumento (para ser analisado recursivamente, mesma recursao do `<shell>
+ * -c <cmd>`). `eval "<comando>"` executa o argumento como comando — igual a
+ * `bash -c` — e o bash de verdade junta TODOS os argumentos de `eval` com
+ * espaco antes de avaliar, entao aqui tambem: comeca no primeiro token que
+ * nao e flag (eval nao tem flag de verdade, mas um token comecando com `-`
+ * ali e argumento do proprio comando, nao opcao do eval) e junta ate o fim
+ * do segmento.
+ */
+function achaInvocacaoEval(toks) {
+  const idx = toks.indexOf("eval");
+  if (idx === -1) return null;
+  let j = idx + 1;
+  while (j < toks.length && toks[j].startsWith("-")) j += 1;
+  if (j >= toks.length) return null;
+  return toks.slice(j).join(" ");
 }
 
 /**
@@ -286,6 +405,12 @@ function analisaComando(cmd, profundidade) {
     const cmdAninhado = achaInvocacaoShell(toks);
     if (cmdAninhado !== null) {
       const r = analisaComando(cmdAninhado, profundidade + 1);
+      if (r) return r;
+    }
+
+    const cmdEval = achaInvocacaoEval(toks);
+    if (cmdEval !== null) {
+      const r = analisaComando(cmdEval, profundidade + 1);
       if (r) return r;
     }
   }
