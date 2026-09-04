@@ -35,7 +35,7 @@
     "em": "2026-09-03"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-03",
     "tarefas_ok": 14,
     "tarefas": 14,
@@ -284,26 +284,29 @@
         "Wa consomeValor",
         "Wb toksSemComentario"
       ]
+    },
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-04"
     }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "95b9717fa6cb7e89df9cecc65339151c12e238a6",
+      "head": "a16846fc74f51c9731d1f25692015af9c286eb97",
       "caminhos_sujos": []
     },
-    "achados": 2,
+    "achados": 1,
     "base": "408af94de7c22492b0815ebed19b4072426a7976",
-    "head": "95b9717fa6cb7e89df9cecc65339151c12e238a6",
+    "head": "a16846fc74f51c9731d1f25692015af9c286eb97",
     "lista": [
-      "Aud1 desempacotarWrapperDeString: flag com valor antes do -c (bash -o pipefail -c, --rcfile X) faz o laco parar no valor e devolver nao-wrapper com ilegivel=false — os tres gates liberam",
-      "Rev A1 (nao bloqueia) gate-fechar-issue rede de seguranca casa gh issue close em comentario shell (# gh issue close 12 ...) e em echo sem aspas — super-bloqueio"
+      "Aud1 gate-fechar-issue extrairCorpoDoPR --body-file: readFileSync relativo ao process.cwd() do hook, nao ao cwd efetivo do segmento; cd <wt> && gh pr create --body-file corpo.txt com corpo.txt homonimo no principal le o errado e libera"
     ],
     "em": "2026-09-04",
-    "tentativas": 12,
-    "revisor": "ok (1 nao bloqueia)",
-    "auditor": "1 achado bloqueia",
-    "rodada_revisao": 12,
+    "tentativas": 13,
+    "revisor": "ok",
+    "auditor": "1 achado bloqueia (media, cooperativo)",
+    "rodada_revisao": 13,
     "emenda": "modelo de ameaca dos gates por texto registrado no plano"
   },
   "verificar": {
