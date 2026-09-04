@@ -22,24 +22,24 @@
     "em": "2026-09-04"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-04",
     "tarefas_ok": 4,
     "tarefas": 4,
     "em": "2026-09-04",
     "bateria": "bash scripts/testa-estado.sh (146 ok, 0 falhou) + bash hooks/testa-gate-git-verificacao.sh (72 ok, 0 falhou; era 50 antes das duas rodadas de revisao)",
-    "comando": "bash hooks/testa-gate-git-verificacao.sh ; bash scripts/testa-estado.sh",
-    "saida": "== resultado: 97 ok, 0 falha(s) == (gate) e == resultado: 172 ok, 0 falhas == (estado), na branch integrada",
+    "comando": "bash hooks/testa-gate-git-verificacao.sh ; bash scripts/testa-estado.sh ; grep -c 'let emAspaANSIC' hooks/gate-git-verificacao.cjs",
+    "saida": "== resultado: 107 ok, 0 falha(s) == (gate), == resultado: 172 ok, 0 falhas == (estado), e 1 (uma unica maquina de aspas), na branch integrada",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "scripts/testa-estado.sh, casos do verbo concluido com fechar pendente exigindo exit 2, mais os casos de arquivo ilegivel, de JSON de formato errado e os dois que checam o NOME do tipo na mensagem"
+        "fixture": "scripts/testa-estado.sh, casos do verbo concluido com fechar pendente exigindo exit 2, mais os de arquivo ilegivel, JSON de formato errado e nome do tipo na mensagem"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "hooks/testa-gate-git-verificacao.sh, caso do payload PreToolUse com tool_input.command igual a git commit --no-verify -m x exigindo exit 2, mais os casos de $ANSI-C e o que checa que a recusa ambigua nao fabrica comando"
+        "fixture": "hooks/testa-gate-git-verificacao.sh, caso do payload PreToolUse com tool_input.command igual a git commit --no-verify -m x exigindo exit 2, mais os de $ANSI-C nu e citado e o que checa que a recusa ambigua nao fabrica comando"
       },
       {
         "tarefa": 3,
@@ -58,11 +58,7 @@
       "toggle gate-git-verificacao ausente de CHAVES",
       "falso positivo: corpo de heredoc julgado como comando"
     ],
-    "rodada": "terceira passada por executar, depois de revisar reprovado com 3 achados na rodada 5",
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-04"
-    }
+    "rodada": "quarta passada por executar, depois de revisar reprovado com 1 falso negativo na rodada 7"
   },
   "revisar": {
     "status": "reprovado",
