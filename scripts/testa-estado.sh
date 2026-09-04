@@ -1059,6 +1059,17 @@ if [ "$saida_dir_code" = "1" ]; then
 else
   falhou=$((falhou+1)); echo "  FALHA arquivo-diretorio saiu exit $saida_dir_code, esperava 1"
 fi
+# Verificar que nao ha stack trace bruto na saida (nao procura por "EISDIR" pois e parte da msg limpa)
+case "$saida_dir" in
+  *"at readFileSync"*) falhou=$((falhou+1)); echo "  FALHA stack trace vazou na saida" ;;
+  *"at "*.cjs:*) falhou=$((falhou+1)); echo "  FALHA stack trace vazou na saida" ;;
+  *) ok=$((ok+1)); echo "  ok   sem stack trace na saida" ;;
+esac
+# Verificar que a mensagem de erro nomeia o arquivo
+case "$saida_dir" in
+  *directory.json*) ok=$((ok+1)); echo "  ok   mensagem de erro nomeia o arquivo de diretorio" ;;
+  *) falhou=$((falhou+1)); echo "  FALHA mensagem nao nomeou o arquivo de diretorio" ;;
+esac
 
 # Teste 3: malformado + fluxo aberto → exit 1 E fluxo listado
 # Cria um estado valido aberto
@@ -1122,6 +1133,107 @@ cat > "$SBP/robustez/docs/rainforest/estado/open2.json" <<'ESTEOF'
 }
 ESTEOF
 esperado "so sanos com aberto sai 2" 2 $E concluido
+
+# Teste 5a: conteudo null → exit 1, sem stack trace
+rm -f "$SBP/robustez/docs/rainforest/estado/completed.json" "$SBP/robustez/docs/rainforest/estado/open2.json"
+printf 'null' > "$SBP/robustez/docs/rainforest/estado/null-content.json"
+saida_null=$($E concluido 2>&1); saida_null_code=$?
+if [ "$saida_null_code" = "1" ]; then
+  ok=$((ok+1)); echo "  ok   conteudo null sai exit 1"
+else
+  falhou=$((falhou+1)); echo "  FALHA conteudo null saiu exit $saida_null_code, esperava 1"
+fi
+case "$saida_null" in
+  *TypeError*) falhou=$((falhou+1)); echo "  FALHA TypeError vazou na saida" ;;
+  *reading*) falhou=$((falhou+1)); echo "  FALHA stack trace vazou na saida" ;;
+  *) ok=$((ok+1)); echo "  ok   sem TypeError ou stack trace para null" ;;
+esac
+case "$saida_null" in
+  *null-content.json*) ok=$((ok+1)); echo "  ok   mensagem de erro nomeia arquivo null" ;;
+  *) falhou=$((falhou+1)); echo "  FALHA mensagem nao nomeou arquivo null" ;;
+esac
+
+# Teste 5b: conteudo array → exit 1, sem stack trace
+printf '[]' > "$SBP/robustez/docs/rainforest/estado/array-content.json"
+saida_arr=$($E concluido 2>&1); saida_arr_code=$?
+if [ "$saida_arr_code" = "1" ]; then
+  ok=$((ok+1)); echo "  ok   conteudo array sai exit 1"
+else
+  falhou=$((falhou+1)); echo "  FALHA conteudo array saiu exit $saida_arr_code, esperava 1"
+fi
+case "$saida_arr" in
+  *TypeError*) falhou=$((falhou+1)); echo "  FALHA TypeError vazou na saida" ;;
+  *reading*) falhou=$((falhou+1)); echo "  FALHA stack trace vazou na saida" ;;
+  *) ok=$((ok+1)); echo "  ok   sem TypeError ou stack trace para array" ;;
+esac
+case "$saida_arr" in
+  *array-content.json*) ok=$((ok+1)); echo "  ok   mensagem de erro nomeia arquivo array" ;;
+  *) falhou=$((falhou+1)); echo "  FALHA mensagem nao nomeou arquivo array" ;;
+esac
+
+# Teste 5c: conteudo string → exit 1, sem stack trace
+printf '"texto"' > "$SBP/robustez/docs/rainforest/estado/string-content.json"
+saida_str=$($E concluido 2>&1); saida_str_code=$?
+if [ "$saida_str_code" = "1" ]; then
+  ok=$((ok+1)); echo "  ok   conteudo string sai exit 1"
+else
+  falhou=$((falhou+1)); echo "  FALHA conteudo string saiu exit $saida_str_code, esperava 1"
+fi
+case "$saida_str" in
+  *TypeError*) falhou=$((falhou+1)); echo "  FALHA TypeError vazou na saida" ;;
+  *reading*) falhou=$((falhou+1)); echo "  FALHA stack trace vazou na saida" ;;
+  *) ok=$((ok+1)); echo "  ok   sem TypeError ou stack trace para string" ;;
+esac
+case "$saida_str" in
+  *string-content.json*) ok=$((ok+1)); echo "  ok   mensagem de erro nomeia arquivo string" ;;
+  *) falhou=$((falhou+1)); echo "  FALHA mensagem nao nomeou arquivo string" ;;
+esac
+
+# Teste 5d: conteudo numero → exit 1, sem stack trace
+printf '42' > "$SBP/robustez/docs/rainforest/estado/number-content.json"
+saida_num=$($E concluido 2>&1); saida_num_code=$?
+if [ "$saida_num_code" = "1" ]; then
+  ok=$((ok+1)); echo "  ok   conteudo numero sai exit 1"
+else
+  falhou=$((falhou+1)); echo "  FALHA conteudo numero saiu exit $saida_num_code, esperava 1"
+fi
+case "$saida_num" in
+  *TypeError*) falhou=$((falhou+1)); echo "  FALHA TypeError vazou na saida" ;;
+  *reading*) falhou=$((falhou+1)); echo "  FALHA stack trace vazou na saida" ;;
+  *) ok=$((ok+1)); echo "  ok   sem TypeError ou stack trace para numero" ;;
+esac
+case "$saida_num" in
+  *number-content.json*) ok=$((ok+1)); echo "  ok   mensagem de erro nomeia arquivo numero" ;;
+  *) falhou=$((falhou+1)); echo "  FALHA mensagem nao nomeou arquivo numero" ;;
+esac
+
+# Teste 6: arquivo ruim ANTES (alfabeticamente) + fluxo aberto DEPOIS → exit 1 E fluxo listado
+rm -f "$SBP/robustez/docs/rainforest/estado/null-content.json" "$SBP/robustez/docs/rainforest/estado/array-content.json" "$SBP/robustez/docs/rainforest/estado/string-content.json" "$SBP/robustez/docs/rainforest/estado/number-content.json"
+printf 'null' > "$SBP/robustez/docs/rainforest/estado/2026-01-01-bad.json"
+cat > "$SBP/robustez/docs/rainforest/estado/2026-09-04-open-later.json" <<'ESTEOF'
+{
+  "slug": "open-later",
+  "titulo": "Open after bad",
+  "criado_em": "2026-09-04",
+  "arqueologia": { "status": "pendente" },
+  "design": { "status": "pendente" },
+  "plano": { "status": "pendente" },
+  "executar": { "status": "pendente" },
+  "revisar": { "status": "pendente" },
+  "verificar": { "status": "pendente" },
+  "fechar": { "status": "pendente" }
+}
+ESTEOF
+saida_bad_then=$($E concluido 2>&1); saida_bad_then_code=$?
+if [ "$saida_bad_then_code" = "1" ]; then
+  ok=$((ok+1)); echo "  ok   arquivo ruim + aberto depois sai exit 1"
+else
+  falhou=$((falhou+1)); echo "  FALHA arquivo ruim + aberto depois saiu exit $saida_bad_then_code, esperava 1"
+fi
+case "$saida_bad_then" in
+  *open-later*) ok=$((ok+1)); echo "  ok   fluxo aberto DEPOIS ainda aparece na saida" ;;
+  *) falhou=$((falhou+1)); echo "  FALHA fluxo aberto DEPOIS nao foi listado" ;;
+esac
 
 unset RFM_ESTADO_ROOT
 
