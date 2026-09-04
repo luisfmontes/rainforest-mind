@@ -22,14 +22,14 @@
     "em": "2026-09-04"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-04",
     "tarefas_ok": 4,
     "tarefas": 4,
     "em": "2026-09-04",
     "bateria": "bash scripts/testa-estado.sh (146 ok, 0 falhou) + bash hooks/testa-gate-git-verificacao.sh (72 ok, 0 falhou; era 50 antes das duas rodadas de revisao)",
     "comando": "bash hooks/testa-gate-git-verificacao.sh ; bash scripts/testa-estado.sh ; grep -c 'let emAspaANSIC' hooks/gate-git-verificacao.cjs",
-    "saida": "== resultado: 121 ok, 0 falha(s) == (gate), == resultado: 172 ok, 0 falhas == (estado), e 1 (uma unica maquina de aspas), na branch integrada",
+    "saida": "== resultado: 127 ok, 0 falha(s) == (gate), == resultado: 172 ok, 0 falhas == (estado), e 1 (uma unica maquina de aspas), na branch integrada",
     "mutacao": [
       {
         "tarefa": 1,
@@ -39,7 +39,7 @@
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "hooks/testa-gate-git-verificacao.sh, caso do payload PreToolUse com tool_input.command igual a git commit --no-verify -m x exigindo exit 2, mais os oito de escape ANSI-C numerico e o que checa que a recusa nomeia a origem do escape"
+        "fixture": "hooks/testa-gate-git-verificacao.sh, caso do payload PreToolUse com tool_input.command igual a git commit --no-verify -m x exigindo exit 2, mais os tres de NUL que trunca o argv e os de escape ANSI-C numerico"
       },
       {
         "tarefa": 3,
@@ -58,11 +58,7 @@
       "toggle gate-git-verificacao ausente de CHAVES",
       "falso positivo: corpo de heredoc julgado como comando"
     ],
-    "rodada": "quinta passada por executar, depois de revisar reprovado com o falso negativo de escape ANSI-C numerico",
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-04"
-    }
+    "rodada": "sexta passada por executar, depois de revisar reprovado com o NUL que trunca o argv"
   },
   "revisar": {
     "status": "reprovado",
