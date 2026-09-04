@@ -35,7 +35,7 @@
     "em": "2026-09-03"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-03",
     "tarefas_ok": 14,
     "tarefas": 14,
@@ -265,25 +265,30 @@
       "mutacoes_reprovadas_na_integracao": [
         "U flags coladas ao -c"
       ]
+    },
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-04"
     }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "f05b2d3ce8154e9a9fdf8d8ae21ba4b5fc832b41",
+      "head": "47aa9da10b28bd2e3e3e941cef0ebc0d0a26ebe5",
       "caminhos_sujos": []
     },
-    "achados": 1,
+    "achados": 2,
     "base": "408af94de7c22492b0815ebed19b4072426a7976",
-    "head": "f05b2d3ce8154e9a9fdf8d8ae21ba4b5fc832b41",
+    "head": "47aa9da10b28bd2e3e3e941cef0ebc0d0a26ebe5",
     "lista": [
-      "Aud1 tokens-comando desempacotarWrapperDeString so casa -c isolado: bash -xc \"git add -A\" / sh -ec / bash -ic passam nos tres gates (cooperativo: idioma de depuracao)"
+      "Aud1 staging-total analisaSegmentoGit: desempacotarWrapperDeString roda no segmento cru, nao a partir de posicaoDeComando — timeout 5 bash -c \"git add -A\" e env -C . bash -c \"git add -A\" passam",
+      "Aud2 gate-fechar-issue processarSegmento: mesma falta de composicao; timeout 5 bash -c \"gh issue close 12\" passa (rede de seguranca desarmada porque timeout e wrapper conhecido). gate-worktree ja compoe certo (textoAPartir(toks, pos))"
     ],
     "em": "2026-09-04",
-    "tentativas": 10,
-    "revisor": "ok",
-    "auditor": "1 achado bloqueia",
-    "rodada_revisao": 10,
+    "tentativas": 11,
+    "revisor": "ok (nota residual: subcomandoGit do gate-worktree casa git em qualquer posicao — super-bloqueio, nao bypass)",
+    "auditor": "2 achados bloqueiam (mesma raiz)",
+    "rodada_revisao": 11,
     "emenda": "modelo de ameaca dos gates por texto registrado no plano"
   },
   "verificar": {
