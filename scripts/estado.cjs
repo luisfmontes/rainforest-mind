@@ -882,11 +882,30 @@ function main() {
       if (!arquivos.length) return;
 
       const abertos = [];
+      let houve_erro = false;
       for (const f of arquivos) {
-        const e = JSON.parse(fs.readFileSync(path.join(DIR_ESTADO, f), 'utf8'));
+        const arquivo_completo = path.join(DIR_ESTADO, f);
+        let e;
+        try {
+          e = JSON.parse(fs.readFileSync(arquivo_completo, 'utf8'));
+        } catch (err) {
+          // Arquivo não conseguiu ser lido ou parseado: reportar e marcar erro
+          console.error(`erro: não consegui ler ${arquivo_completo}: ${err.message}`);
+          houve_erro = true;
+          continue;
+        }
         const p = proximo(e);
         if (p) abertos.push({ slug: e.slug, estagio: p });
       }
+
+      // Se houve erro ao ler qualquer arquivo, sair 1 (erro) mesmo que tenha abertos
+      if (houve_erro) {
+        for (const a of abertos) {
+          console.log(`${a.slug}  -> ${a.estagio}`);
+        }
+        process.exit(1);
+      }
+
       if (!abertos.length) return;
 
       for (const a of abertos) {
