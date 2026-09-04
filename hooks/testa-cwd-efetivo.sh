@@ -250,6 +250,27 @@ test("(q) git -C X status && y -> 1o segmento cwd X, 2o cwd inicial (nao persist
   eq(r[1].cwd, testDir, "cwd do 2o segmento NAO herda o -C do 1o");
 });
 
+// (p) e (q) so afirmavam o cwd do segmento SEGUINTE ao grep — a mutacao
+// `comandoEhGit` -> `seg.includes("git")` (K2) so muda o cwd do PROPRIO
+// segmento do grep (o -C do grep, ali, nao persiste para o segmento
+// seguinte de qualquer jeito), e nada acima cobria isso: a catraca
+// `conferir-mutacao` ficou verde (rodada 6, lote 3, 2026-09-03).
+test('(p2) grep -C 3 "gitignore" . sozinho -> 1 segmento, cwd inicial (isola comandoEhGit)', () => {
+  const cmd = `grep -rn -C 3 "gitignore" .`;
+  const r = cwdPorSegmento(cmd, testDir);
+  eq(r.length, 1, "numero de segmentos");
+  eq(r[0].cwd, testDir, "cwd do unico segmento (grep nao e git; com a mutacao viraria <cwd>/3)");
+  eq(r[0].incerto, false, "incerto do segmento");
+});
+test('(p3) grep -C 3 "gitignore" . && git add -A -> o 1o segmento (grep) TAMBEM cwd inicial', () => {
+  const cmdGit = "g" + "it";
+  const cmd = `grep -rn -C 3 "gitignore" . && ${cmdGit} add -A`;
+  const r = cwdPorSegmento(cmd, testDir);
+  eq(r.length, 2, "numero de segmentos");
+  eq(r[0].cwd, testDir, "cwd do 1o segmento (grep; com a mutacao viraria <cwd>/3)");
+  eq(r[0].incerto, false, "incerto do 1o segmento");
+});
+
 console.log();
 console.log(`== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 process.exit(falhou);
