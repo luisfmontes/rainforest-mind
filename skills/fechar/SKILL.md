@@ -140,6 +140,33 @@ O `marcar ... fechar ok` grava o estado no JSON, sujando o `git status`. Se
 houver pendência, o commit se repete: os passos 1 a 3 fizeram sua parte, e o
 estágio só termina com a árvore limpa.
 
+## Conferir de fora se o fluxo fechou: `concluido`
+
+```
+node scripts/estado.cjs concluido --slug <slug>
+```
+
+Sai `0` se o fluxo fechou até o `fechar`, `2` imprimindo o estágio pendente
+se não, `1` se o slug não existe. Sem `--slug`, varre todos os fluxos em
+`docs/rainforest/estado/`: `0` se todos concluídos (ou nenhum arquivo), `2`
+listando slug e estágio de cada um aberto.
+
+Para que serve, e para quem: quem dispara o fluxo por script — `claude -p`,
+CI, uma rodada de bench — não distingue, pelo exit code do **processo**, um
+fluxo que fechou de um que morreu no meio do `revisar`: os dois devolvem
+`0`. Este verbo responde essa pergunta, sob demanda.
+
+**Não está pendurado no `SessionEnd`.** Pendurar ali transforma um verbo que
+responde quando perguntado num vigia que fala sozinho toda sessão, inclusive
+nas que legitimamente não têm fluxo aberto. Se o aviso automático fizer
+falta depois do verbo em uso, vira fluxo próprio com o barulho medido em vez
+de chutado.
+
+**Fica de fora, Issue #180**: o estágio que despacha agente em background
+aposta que o turno dura mais que o agente — aposta perdida em toda sessão
+não interativa. O `concluido` diz que o fluxo ficou pela metade; ele **não**
+impede que fique.
+
 ## Condição de parada
 
 Árvore suja com algo alheio ao trabalho: pare e mostre, nunca commite por
