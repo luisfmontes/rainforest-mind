@@ -1,0 +1,68 @@
+{
+  "slug": "fluxo-12-regua",
+  "titulo": "Régua absorve bar.md de mecanismos e preflight de renderização",
+  "criado_em": "2026-09-04",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "em": "2026-09-04"
+  },
+  "plano": {
+    "status": "ok",
+    "em": "2026-09-04"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-04",
+    "tarefas": 3,
+    "tarefas_ok": 3,
+    "comando": "node scripts/segunda-opiniao.cjs --base origin/main --head HEAD --criterio docs/rainforest/criterios/fluxo-12-regua.md --modelo codex; node scripts/orcamento.cjs",
+    "saida": "concordo (ultima linha); orcamento 14451-14485 B exit 0",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "n/a",
+        "motivo": "prosa de skill — sem ramo de codigo a inverter; a falsificacao dela e a tarefa 3"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "doc de superficie do plugin — sem comportamento a inverter"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "DUAS rodadas, as duas vermelhas. Rodada 1: item 1 do criterio (builder NAO ve o bar.md) — mutacao na frase do Builder saiu discordo nomeando o criterio 1; prova em git show 30d3840 -- docs/rainforest/estado/fluxo-12-regua.json. Rodada 2: item 3 do criterio (parada por lado no preflight) — restaurar a redacao \"so um caso barra o loop\" saiu discordo nomeando o criterio 3 e apontando que a emenda ficara so no design. Emenda do plano registra por que o alvo mudou."
+      }
+    ],
+    "em": "2026-09-04"
+  },
+  "revisar": {
+    "status": "ok",
+    "achados": 1,
+    "resumo": "Rodada 2 APROVADA por revisor independente com escopo fixo no diff. Buraco da rodada 1 (preflight revogando o gate Obtivel) fechado sem contradicao nova; D1,D2,D4,D5,D6 integras; orcamento exit 0. Achado nao-bloqueante sobre rastreabilidade da fixture da tarefa 3 corrigido por emenda no plano e fixture do estado nomeando as duas rodadas.",
+    "arquivo": "skills/regua/SKILL.md:101-103 contra :46,:49",
+    "em": "2026-09-04",
+    "base": "408af94de7c22492b0815ebed19b4072426a7976",
+    "head": "a8eb14f831b40a7897987c9d889a748a0e2067ff"
+  },
+  "verificar": {
+    "status": "ok",
+    "tarefas": 3,
+    "tarefas_ok": 3,
+    "base": "408af94de7c22492b0815ebed19b4072426a7976",
+    "head": "a8eb14f831b40a7897987c9d889a748a0e2067ff",
+    "comando": "node scripts/orcamento.cjs; node -e <checagem do README>; node scripts/segunda-opiniao.cjs --base origin/main --head HEAD --criterio docs/rainforest/criterios/fluxo-12-regua.md --modelo codex",
+    "saida": "14501 B exit 0; ok exit 0; concordo na ultima linha (rodado em a8eb14f)",
+    "em": "2026-09-04"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "pr",
+    "pr": 177,
+    "url": "https://github.com/luisfmontes/rainforest-mind/pull/177",
+    "em": "2026-09-04"
+  }
+}
