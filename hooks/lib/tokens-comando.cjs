@@ -74,8 +74,11 @@ const WRAPPERS_QUE_REPASSAM = new Set([
  * `env`: pula `NOME=valor` (um ou mais) e `-C <dir>`/`--chdir=<dir>`.
  * `nice`: pula `-n <N>` (ou `-N` colado).
  * `timeout`: pula as flags (`-s`, `--signal=...`) e a duracao posicional.
- * Os demais (`command`, `exec`, `nohup`, `xargs`, `sudo`, `time`) so pulam o
- * proprio nome — o comando de verdade e o token seguinte.
+ * `sudo`: pula `-u <usuario>`/`-g <grupo>` (e as formas longas
+ * `--user`/`--group`, com `=` ou espaco) — sem isso, `sudo -u x git add -A`
+ * parava na flag do wrapper (M1, auditor, 5a revisao, 2026-09-03).
+ * Os demais (`command`, `exec`, `nohup`, `xargs`, `time`) so pulam o proprio
+ * nome — o comando de verdade e o token seguinte.
  */
 function posicaoDeComando(toks) {
   let i = 0;
@@ -94,6 +97,13 @@ function posicaoDeComando(toks) {
     } else if (wrapper === "timeout") {
       while (i < toks.length && !toks[i].q && toks[i].v.startsWith("-")) i += 1;
       if (i < toks.length) i += 1; // a duracao
+    } else if (wrapper === "sudo") {
+      while (
+        i < toks.length && !toks[i].q &&
+        (/^(-u|-g|--user|--group)$/.test(toks[i].v) || /^--(user|group)=/.test(toks[i].v))
+      ) {
+        i += /=/.test(toks[i].v) ? 1 : 2;
+      }
     }
   }
   return i < toks.length ? i : null;
