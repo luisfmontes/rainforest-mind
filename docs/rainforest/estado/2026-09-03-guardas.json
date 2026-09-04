@@ -35,7 +35,7 @@
     "em": "2026-09-03"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-03",
     "tarefas_ok": 14,
     "tarefas": 14,
@@ -310,26 +310,31 @@
         "Zb corpo = parsed.body"
       ],
       "base_nova": "53c2a42 (origin/main apos PR #177 regua e #178 versao 1.2.0) mesclada na branch"
+    },
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-04"
     }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "15c546319fb26cccfe0e91e9592ac3178fd27cb6",
+      "head": "4ebd8a484877eb0d8d386ef4b086fa2b46be540b",
       "caminhos_sujos": []
     },
     "achados": 1,
-    "base": "408af94de7c22492b0815ebed19b4072426a7976",
-    "head": "15c546319fb26cccfe0e91e9592ac3178fd27cb6",
+    "base": "53c2a42b6ba02c66778008755cb9c8212adc8dc6",
+    "head": "4ebd8a484877eb0d8d386ef4b086fa2b46be540b",
     "lista": [
-      "Aud1 gate-fechar-issue: gh pr edit --body \"Closes #12\" nao e gatilho; --body do gh pr merge e a mensagem do merge commit, nao a descricao do PR — a descricao real (que fecha a Issue no merge) nunca e lida"
+      "Aud1 tokens-comando desempacotarWrapperDeString: source x.sh, . x.sh (bash) e . x.ps1, & x.ps1 (PowerShell) executam arquivo opaco e saem como nao-wrapper com ilegivel=false — bash x.sh sem -c ja vira ilegivel; tratar igual (cooperativo: source script.sh e habito comum)"
     ],
     "em": "2026-09-04",
-    "tentativas": 15,
-    "revisor": "ok",
-    "auditor": "1 achado bloqueia (escopo D15)",
-    "rodada_revisao": 15,
-    "emenda": "modelo de ameaca dos gates por texto registrado no plano"
+    "tentativas": 16,
+    "revisor": "interrompido pelo handover (contexto da janela alto) — nao ha veredito do revisor nesta rodada",
+    "auditor": "1 achado bloqueia",
+    "rodada_revisao": 16,
+    "emenda": "modelo de ameaca dos gates por texto registrado no plano",
+    "handover": "relatorios/2026-09-04-handover-lote-3-guardas-rodada-18.md"
   },
   "verificar": {
     "status": "pendente"
