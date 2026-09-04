@@ -1,0 +1,28 @@
+{
+  "slug": "fluxo-12-regua",
+  "titulo": "Régua absorve bar.md de mecanismos e preflight de renderização",
+  "criado_em": "2026-09-04",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "em": "2026-09-04"
+  },
+  "plano": {
+    "status": "ok",
+    "em": "2026-09-04"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
