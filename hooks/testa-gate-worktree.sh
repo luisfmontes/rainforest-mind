@@ -463,6 +463,20 @@ gate "sed -i continua sendo escrita"              2 "$(b "sed -i 's/a/b/' a.txt"
 gate "tee de verdade continua sendo escrita"      2 "$(b "echo x | tee saida.txt" "$R")"
 
 echo
+echo "== R20 (auditor, 18a revisao): nome de ferramenta de escrita CITADO na posicao de comando =="
+# `ehComando` excluia todo token citado, entao `"cp" a.txt b.txt` de subagente
+# fora de worktree escrevia no principal com exit 0 — o alvo nunca entrava na
+# lista. Na posicao de comando o nome citado passa a contar.
+gate 'R20: "cp" citado como comando continua sendo escrita'  2 "$(b '"cp" a.txt copia.txt' "$R")"
+gate 'R20: "mv" citado como comando continua sendo escrita'  2 "$(b '"mv" a.txt movido.txt' "$R")"
+gate 'R20: "tee" citado como comando continua sendo escrita' 2 "$(b 'echo x | "tee" saida.txt' "$R")"
+gate 'R20: "sed" -i citado como comando continua sendo escrita' 2 "$(b '"sed" -i s/a/b/ a.txt' "$R")"
+# Contraprova: o nome citado como ARGUMENTO (fora da posicao de comando) segue
+# sem virar comando — o caso real de 2026-09-01 que motivou o `!tok.q`.
+gate 'contraprova R20: grep -rn "cp origem destino" docs/ PASSA' 0 "$(b 'grep -rn "cp origem destino" docs/' "$R")"
+
+
+echo
 echo "== scratchpad da sessao: isento ainda que seja repo git (exit 0) =="
 SCRATCH="$RAIZ/claude/proj/sessao/scratchpad"
 mkdir -p "$SCRATCH"
