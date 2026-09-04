@@ -31,11 +31,16 @@
  *     comando `$(...)`, linha continuada com `\` + quebra de linha;
  *   - rodada 2, 2026-09-04 (commit fb713c3): `bash -c "..."`, `sh -c '...'`,
  *     subshell `(...)`, flag combinada (`bash -lc`) e aninhamento simples;
- *   - rodada 3, 2026-09-04 (esta rodada): nome de shell com caminho na frente
- *     (`/bin/bash`, `/bin/bash.exe`), `eval`, escape por barra invertida
- *     (`--no\-verify`) e aspa dupla escapada dentro de shell aninhado.
- * Tres rodadas, tres formas novas cada vez. Nao ha razao para crer que uma
- * quarta rodada nao acharia uma quinta forma — e e por isso que este bloco
+ *   - rodada 3, 2026-09-04: nome de shell com caminho na frente (`/bin/bash`,
+ *     `/bin/bash.exe`), `eval`, escape por barra invertida (`--no\-verify`)
+ *     e aspa dupla escapada dentro de shell aninhado;
+ *   - rodada 4, 2026-09-04 (revisor independente, esta rodada): variacao de
+ *     CAIXA no nome do executavel (`GIT`, `Git`, `gIt`, `BASH`, `Bash`) —
+ *     em sistema de arquivos case-insensitive (NTFS/Windows, o padrao do
+ *     Git Bash) o SO resolve `GIT` para o mesmo binario de `git`, e so a
+ *     tecla Shift bastava para contornar o gate.
+ * Quatro rodadas, forma nova a cada uma. Nao ha razao para crer que uma
+ * quinta rodada nao acharia uma sexta forma — e e por isso que este bloco
  * declara o limite em vez de prometer cobertura completa.
  *
  * O QUE SABIDAMENTE ESCAPA E NAO SERA PERSEGUIDO (a lista e o valor deste
@@ -127,7 +132,8 @@
  *   - env RAINFOREST_GATE_OFF=1        -> desliga na sessao inteira;
  *   - arquivo .rainforest-gate-off na raiz do repo -> desliga naquele repo;
  *   - `.rainforest/config.json` do projeto, chave `gate-git-verificacao`
- *     (lida via hooks/lib/config.cjs, quando registrada em CHAVES).
+ *     (registrada em CHAVES de hooks/lib/config.cjs, lida por `ligado()`;
+ *     padrao LIGADO — quem quiser desligar declara `false` na chave).
  */
 
 const { execFileSync } = require("node:child_process");
@@ -263,7 +269,7 @@ function tokens(seg) {
  * sempre esquece um caso — `then`, `do`, `else`, `{` inclusive.
  */
 function analisaGit(toks) {
-  const inicio = toks.indexOf("git");
+  const inicio = toks.findIndex(ehTokenGit);
   if (inicio === -1) return null;
   let i = inicio + 1;
 
@@ -339,10 +345,40 @@ function achaFlagC(toks, inicio) {
  * (achado atacando a terceira rodada — comparar o token inteiro contra
  * `bash` deixava `/bin/bash -c ...` e `bash.exe -c ...` passarem sem serem
  * reconhecidos como shell).
+ *
+ * A caixa (maiuscula/minuscula) NAO e normalizada aqui de proposito — quem
+ * compara e que decide se normaliza, porque a resposta muda por chamador
+ * (ver ehTokenGit e o uso desta funcao em achaInvocacaoShell, achado da
+ * rodada 4, revisor independente).
  */
 function basenomeShell(tok) {
   const semCaminho = tok.split(/[\\/]/).pop() || tok;
   return semCaminho.replace(/\.exe$/i, "");
+}
+
+/**
+ * true se `tok` e o executavel `git`, em QUALQUER caixa (`GIT`, `Git`,
+ * `gIt`...). Achado da rodada 4 (revisor independente, 2026-09-04): em
+ * sistema de arquivos case-insensitive (NTFS no Windows, o padrao do
+ * `Git Bash`), o SO resolve `GIT` para o mesmo binario de `git` — a tecla
+ * Shift bastava para contornar o gate. Normalizar aqui NAO cria falso
+ * positivo: em sistema de arquivos case-SENSITIVE (Linux tipico) o comando
+ * `GIT` falharia de qualquer jeito ("command not found"), entao barrar por
+ * excesso de zelo nunca acontece de verdade — so em maquina onde `GIT`
+ * teria funcionado mesmo.
+ *
+ * O mesmo raciocinio vale para o nome do shell (`bash`, `BASH`, `/BIN/BASH`)
+ * em achaInvocacaoShell, que tambem compara em minusculas — mas NAO para
+ * `eval`, que e builtin do shell e e case-sensitive de verdade (`EVAL` da
+ * "command not found" no bash), nem para subcomando do git (`commit`,
+ * `push`), que o proprio git so reconhece em minusculas (`git COMMIT` ->
+ * "'COMMIT' is not a git command"), nem para flags (`--No-Verify` o git
+ * rejeita como opcao desconhecida). Normalizar esses tres criaria falso
+ * positivo — so o NOME DO EXECUTAVEL resolvido pelo PATH e case-insensitive
+ * na pratica.
+ */
+function ehTokenGit(tok) {
+  return tok.toLowerCase() === "git";
 }
 
 /**
@@ -355,8 +391,8 @@ function basenomeShell(tok) {
 function achaInvocacaoShell(toks) {
   for (let i = 0; i < toks.length; i += 1) {
     let idx = i;
-    if (basenomeShell(toks[idx]) === "busybox" && NOMES_SHELL.has(basenomeShell(toks[idx + 1] || ""))) idx += 1;
-    if (!NOMES_SHELL.has(basenomeShell(toks[idx]))) continue;
+    if (basenomeShell(toks[idx]).toLowerCase() === "busybox" && NOMES_SHELL.has(basenomeShell(toks[idx + 1] || "").toLowerCase())) idx += 1;
+    if (!NOMES_SHELL.has(basenomeShell(toks[idx]).toLowerCase())) continue;
     const j = achaFlagC(toks, idx + 1);
     if (j === -1 || j + 1 >= toks.length) continue;
     return toks[j + 1];
@@ -429,7 +465,9 @@ function bloqueia(motivo, dir) {
     `reprovando por motivo legitimo, conserte o motivo — nao pule a checagem.\n\n` +
     `Saidas de emergencia, para quem decide seguir mesmo assim:\n` +
     `  - RAINFOREST_GATE_OFF=1 no ambiente da sessao (desliga na sessao inteira);\n` +
-    `  - arquivo .rainforest-gate-off na raiz do repo (desliga so naquele repo).\n`
+    `  - arquivo .rainforest-gate-off na raiz do repo (desliga so naquele repo);\n` +
+    `  - chave "gate-git-verificacao": false em .rainforest/config.json do\n` +
+    `    projeto (desliga so naquele repo, sem precisar de arquivo marcador).\n`
   );
   process.exit(2);
 }
