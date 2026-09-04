@@ -48,6 +48,10 @@ const CHAVES = {
     padrao: true,
     descricao: 'barra escrita cujo destino está dentro de outro repositório git',
   },
+  'gate-git-verificacao': {
+    padrao: true,
+    descricao: 'barra pulo de verificação no git (--no-verify, -n em commit, --no-gpg-sign)',
+  },
   fluxo: {
     padrao: true,
     descricao: 'os sete estágios (brainstorm → plano → … → fechar)',
