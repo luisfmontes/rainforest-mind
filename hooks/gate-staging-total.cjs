@@ -55,7 +55,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { cwdPorSegmento, segmentosComAspas } = require("./lib/cwd-efetivo.cjs");
 const {
-  tokensComAspas, ehComando, posicaoDeComando, desempacotarWrapperDeString,
+  tokensComAspas, ehComando, posicaoDeComando, textoAPartir, desempacotarWrapperDeString,
 } = require("./lib/tokens-comando.cjs");
 
 // Flags globais do git que consomem o token seguinte (`git -C <dir> add`).
@@ -144,11 +144,24 @@ function analisaGit(toksComAspas) {
  * nao da pra saber se esconde `git add -A`/`commit -a`; mesma postura
  * conservadora que `cwdPorSegmento` ja usa para `cd` que nao resolve.
  * `null` quando o segmento nao e git nem wrapper nenhum.
+ *
+ * P3 (auditor, 11a revisao, rodada 13, lote 3, 2026-09-04): o desempacotamento
+ * rodava sobre `segTexto` CRU (posicao 0), nunca a partir da POSICAO DE
+ * COMANDO — `timeout 5 bash -c "git add -A"`/`env -C . bash -c "git add -A"`
+ * atravessavam com exit 0, porque `desempacotarWrapperDeString("timeout 5
+ * bash -c ...")` nao reconhece `timeout` como wrapper de string (ele e
+ * wrapper de PREFIXO, tratado por `posicaoDeComando`). Agora calcula a
+ * posicao de comando primeiro e desempacota a partir dela — `textoAPartir`
+ * reconstroi so o texto dali pra frente, sem o prefixo que ja foi
+ * consumido — para o desempacotador enxergar `bash -c "..."` como tal.
  */
 function analisaSegmentoGit(segTexto) {
   const g = analisaGit(tokensComAspas(segTexto));
   if (g) return g;
-  const { interno, ilegivel } = desempacotarWrapperDeString(segTexto);
+  const toks = tokensComAspas(segTexto);
+  const pos = posicaoDeComando(toks);
+  if (pos === null) return null;
+  const { interno, ilegivel } = desempacotarWrapperDeString(textoAPartir(toks, pos));
   if (ilegivel) return { incerto: true };
   if (interno !== null) {
     for (const sub of segmentosComAspas(interno)) {

@@ -762,6 +762,39 @@ echo "== (bb) sh -ec \"gh issue close 12\" → exit 2 (U1) =="
 EXIT_BB=$?
 [ $EXIT_BB -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_BB)"
 
+# Caso (bc): `timeout 5 bash -c "gh issue close 12"` → exit 2 (P3, prefixo + wrapper de string compostos)
+echo
+echo "== (bc) timeout 5 bash -c \"gh issue close 12\" → exit 2 (P3) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"timeout 5 bash -c \"gh issue close 12\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-bc"
+EXIT_BC=$?
+[ $EXIT_BC -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_BC)"
+
+# Caso (bd): `env FOO=1 eval "gh issue close 12"` → exit 2 (P3, prefixo env + wrapper eval)
+echo
+echo "== (bd) env FOO=1 eval \"gh issue close 12\" → exit 2 (P3) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"env FOO=1 eval \"gh issue close 12\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-bd"
+EXIT_BD=$?
+[ $EXIT_BD -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_BD)"
+
+# Caso (be): `nohup bash -c "gh issue view 12"` → exit 0 (P3, view nao e comando barrado)
+echo
+echo "== (be) nohup bash -c \"gh issue view 12\" → exit 0 (P3) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"nohup bash -c \"gh issue view 12\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-be"
+EXIT_BE=$?
+[ $EXIT_BE -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_BE)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
