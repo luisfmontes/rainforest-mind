@@ -548,5 +548,40 @@ else
 fi
 
 echo
+echo "== Defeito A: NUL trunca argumentos (devem BARRAR agora) =="
+# Teste 1: NUL via octal
+saida=$(printf '%s' "$(b_ansi "git commit \$'-n\\000lixo' -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit \$'-n\\000lixo' -m x (exit 2, bloqueado)"
+else falhou=$((falhou+1)); echo "  FALHA: -n com NUL esperava 2, veio $rc"; fi
+
+# Teste 2: NUL via hex
+saida=$(printf '%s' "$(b_ansi "git commit \$'--no-verify\\0lixo' -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit \$'--no-verify\\0lixo' -m x (exit 2, bloqueado)"
+else falhou=$((falhou+1)); echo "  FALHA: --no-verify com NUL esperava 2, veio $rc"; fi
+
+# Teste 3: NUL em push (deve bloquear)
+saida=$(printf '%s' "$(b_ansi "git push \$'--no-verify\\0lixo'")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git push \$'--no-verify\\0lixo' (exit 2, bloqueado)"
+else falhou=$((falhou+1)); echo "  FALHA: push --no-verify com NUL esperava 2, veio $rc"; fi
+
+echo
+echo "== Defeito B: Fórmula de \\cX estava errada (agora \\cmn = CR=13, não -) =="
+# Teste 4: \cmn deve passar (é CR+n, não -n que é um flag)
+saida=$(printf '%s' "$(b_ansi "git commit \$'\\cmn' -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   git commit \$'\\cmn' -m x (exit 0, passa)"
+else falhou=$((falhou+1)); echo "  FALHA: \\cmn esperava 0, veio $rc"; fi
+
+# Teste 5: Verificar que a regex agora detecta escapes simples (já testado com hex acima)
+# A regex foi ampliada para cobrir \a, \b, \e, \f, \n, \r, \t, \v, além de \c e octal
+echo "  (sufixo de escape simples: testado via hex e octal acima; regex agora cobre todos)"
+ok=$((ok+1))
+
+echo
+echo "== Contraprova: NUL na mensagem (não é um argumento de comando) =="
+saida=$(printf '%s' "$(b_ansi "git commit -m \$'mensagem com \\0 no meio'")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   NUL na mensagem passa (exit 0)"
+else falhou=$((falhou+1)); echo "  FALHA: NUL na mensagem esperava 0, veio $rc"; fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

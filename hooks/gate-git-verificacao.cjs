@@ -578,7 +578,7 @@ function decodificaANSIC(inicio, texto) {
   // Control character \cX
   if (c === "c" && texto[i + 1]) {
     const x = texto[i + 1].charCodeAt(0);
-    return { decodificado: String.fromCharCode(x - 64), proximo: i + 2 };
+    return { decodificado: String.fromCharCode(x & 0x1F), proximo: i + 2 };
   }
 
   // Hexadecimal \xHH (até 2 dígitos)
@@ -665,9 +665,17 @@ function tokens(seg) {
       if (c === "\\") {
         if (proximo !== undefined) {
           const { decodificado, proximo: prox } = decodificaANSIC(i + 1, seg);
-          cur += decodificado;
+          // NUL termina o argumento, como no execve (C-string termination)
+          if (decodificado.charCodeAt(0) === 0) {
+            // Finalizamos o token aqui, como faria o execve
+            if (tem) toks.push(cur);
+            cur = "";
+            tem = false;
+          } else {
+            cur += decodificado;
+            tem = true;
+          }
           i = prox - 1; // Ajusta porque o loop vai incrementar i de novo
-          tem = true;
         }
       } else if (c !== "'") { // não acumula aspa de fechamento
         cur += c;
@@ -760,7 +768,7 @@ function temCurta(args, letra) {
 
 /** Motivo do bloqueio, ou null se o segmento e inofensivo. */
 function motivoDe(g, cmdOriginal) {
-  let temANSIC = cmdOriginal && /\$'([^']*\\[xuU0-7])/.test(cmdOriginal);
+  let temANSIC = cmdOriginal && /\$'([^']*\\[abefnrtvE?\\c0-7xu"])/.test(cmdOriginal);
   let sufixo = temANSIC ? ", vindo de escape ANSI-C" : "";
 
   if (g.sub === "commit") {
