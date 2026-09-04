@@ -40,7 +40,7 @@
     "tarefas_ok": 14,
     "tarefas": 14,
     "comando": "for f in hooks/testa-cwd-efetivo.sh hooks/testa-gate-staging-total.sh hooks/testa-portaria.sh scripts/testa-limpar-worktrees.sh scripts/testa-conferir-entrega.sh hooks/testa-gate-worktree.sh scripts/testa-backup-gravar.sh scripts/testa-backup-conferir.sh scripts/testa-backup-estado.sh scripts/testa-fechar-issue.sh hooks/testa-gate-fechar-issue.sh hooks/testa-config.sh scripts/testa-saude.sh; do bash $f >/dev/null 2>&1; echo \"$f exit=$?\"; done",
-    "saida": "13 baterias exit=0 apos merge do lote Z e da origin/main (1.2.0) (cwd-efetivo 41, staging-total 82, portaria 7, limpar 18, conferir-entrega 63, gate-worktree 183, backup-gravar 23, backup-conferir 11, backup-estado 55, fechar-issue 33, gate-fechar-issue 93, config 38, saude 59); OneDrive real sem rainforest-backup",
+    "saida": "13 baterias exit=0 na rodada 18 (cwd-efetivo 41, staging-total 86, portaria 7, limpar 18, conferir-entrega 63, gate-worktree 184, backup-gravar 23, backup-conferir 11, backup-estado 55, fechar-issue 33, gate-fechar-issue 94, config 38, saude 59); OneDrive real sem rainforest-backup",
     "mutacao": [
       {
         "tarefa": 1,
@@ -114,7 +114,7 @@
       }
     ],
     "em": "2026-09-04",
-    "rodada": 17,
+    "rodada": 18,
     "rodada3": {
       "achados": [
         "R1",
@@ -311,6 +311,16 @@
       ],
       "base_nova": "53c2a42 (origin/main apos PR #177 regua e #178 versao 1.2.0) mesclada na branch"
     },
+    "rodada18": {
+      "achados": [
+        "Aud1 source/./& (arquivo opaco) saiam como nao-wrapper com ilegivel=false"
+      ],
+      "mutacoes_reprovadas_na_integracao": [
+        "AAa bloco source/. e & PowerShell em desempacotarWrapperDeString (vermelha nas tres baterias de gate)",
+        "AAb guarda atual.trim() !== '' no & solto de segmentosComAspas (vermelha em staging-total)"
+      ],
+      "nota": "o executor achou, alem do pedido, que segmentosComAspas comia o & do call operator do PowerShell ANTES do desempacotador rodar — sem essa guarda o caso & x.ps1 era impossivel de fechar; mesma guarda aplicada na irma duplicada em gate-fechar-issue.cjs"
+    },
     "reaberto_por": {
       "estagio": "revisar",
       "data": "2026-09-04"
@@ -319,20 +329,24 @@
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "4ebd8a484877eb0d8d386ef4b086fa2b46be540b",
-      "caminhos_sujos": []
+      "head": "abeb0416f81c718186e7636b57f2bdf513f1a994",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-09-03-guardas.json"
+      ]
     },
-    "achados": 1,
+    "achados": 2,
     "base": "53c2a42b6ba02c66778008755cb9c8212adc8dc6",
-    "head": "4ebd8a484877eb0d8d386ef4b086fa2b46be540b",
+    "head": "abeb0416f81c718186e7636b57f2bdf513f1a994",
     "lista": [
-      "Aud1 tokens-comando desempacotarWrapperDeString: source x.sh, . x.sh (bash) e . x.ps1, & x.ps1 (PowerShell) executam arquivo opaco e saem como nao-wrapper com ilegivel=false — bash x.sh sem -c ja vira ilegivel; tratar igual (cooperativo: source script.sh e habito comum)"
+      "Rev1 (BLOQUEIA) gate-fechar-issue.cjs: extrairRefDoPRMerge devolve o token cru do gh pr merge e executar() roda com shell:true quando o gh resolve para .cmd/.bat — injecao de comando confirmada por execucao real na janela (gh pr merge \"5 & echo INJETADO > pwned.txt\" --squash criou pwned.txt e o gate saiu 0). Categoria diferente de bypass: o proprio mecanismo de verificacao executa texto arbitrario",
+      "Aud1 (BLOQUEIA) &{...} colado ao scriptblock atravessa gate-staging-total e gate-worktree — extrairPrimeiroToken/palavras/segmentosComAspas nao tratam { como fronteira; confirmado na janela (&{git add -A} exit 0 contra & git add -A exit 2)",
+      "Rev2 (nao bloqueia) backup.cjs conferir monta -Command sem escapar apostrofo no destino (compactarSimples ja escapa); destino com apostrofo quebra a prova por restauracao de D13"
     ],
     "em": "2026-09-04",
-    "tentativas": 16,
-    "revisor": "interrompido pelo handover (contexto da janela alto) — nao ha veredito do revisor nesta rodada",
+    "tentativas": 18,
+    "revisor": "reprovado, 1 achado bloqueante + 1 divida",
     "auditor": "1 achado bloqueia",
-    "rodada_revisao": 16,
+    "rodada_revisao": 17,
     "emenda": "modelo de ameaca dos gates por texto registrado no plano",
     "handover": "relatorios/2026-09-04-handover-lote-3-guardas-rodada-18.md"
   },
