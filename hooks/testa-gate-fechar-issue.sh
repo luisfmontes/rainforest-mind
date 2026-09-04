@@ -652,6 +652,54 @@ COMANDO_AS=$'echo \'$(gh issue close 42)\''
 EXIT_AS=$?
 [ $EXIT_AS -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_AS)"
 
+# R2 (rodada 9, lote 3, 2026-09-04): `Invoke-Expression`/`iex` (PowerShell)
+# nao eram reconhecidos como wrapper de string sem flag (igual `eval`) — o
+# conteudo era um token citado so, a busca por sequencia nao casava dentro
+# dele, e `Invoke-Expression "gh issue close 42"` passava com exit 0.
+# Caso (at): via PowerShell, `Invoke-Expression "gh issue close 42"` → exit 2
+echo
+echo "== (at) via PowerShell, Invoke-Expression \"gh issue close 42\" → exit 2 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"PowerShell","tool_input":{"command":"Invoke-Expression \"gh issue close 42\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-at"
+EXIT_AT=$?
+[ $EXIT_AT -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_AT)"
+
+# Caso (au): via PowerShell, `iex "gh issue close 42"` → exit 2 (alias curto)
+echo
+echo "== (au) via PowerShell, iex \"gh issue close 42\" → exit 2 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"PowerShell","tool_input":{"command":"iex \"gh issue close 42\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-au"
+EXIT_AU=$?
+[ $EXIT_AU -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_AU)"
+
+# Caso (av): via PowerShell, `iex "$cmd"` → exit 2 (conteudo ilegivel, variavel)
+echo
+echo "== (av) via PowerShell, iex \"\$cmd\" → exit 2 (ilegivel) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"PowerShell","tool_input":{"command":"iex \"$cmd\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-av"
+EXIT_AV=$?
+[ $EXIT_AV -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_AV)"
+
+# Caso (aw): via PowerShell, `Invoke-Expression "gh issue view 42"` → exit 0 (nao e close/create/merge)
+echo
+echo "== (aw) via PowerShell, Invoke-Expression \"gh issue view 42\" → exit 0 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"PowerShell","tool_input":{"command":"Invoke-Expression \"gh issue view 42\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-aw"
+EXIT_AW=$?
+[ $EXIT_AW -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_AW)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

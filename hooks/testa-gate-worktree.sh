@@ -648,5 +648,21 @@ gate "command cd principal && codex exec --yolo, do worktree BARRA (P5)" 2 \
   "$(b "command cd $R && codex exec --yolo" "$WT")"
 
 echo
+echo "== R1/R3 (rodada 9, lote 3, 2026-09-04): env --chdir por tokens, e ferramenta PowerShell =="
+gate "env -u OneDrive --chdir=principal codex exec --yolo, do worktree BARRA (R1)" 2 \
+  "$(b "env -u OneDrive --chdir=$R codex exec --yolo" "$WT")"
+# `bp` monta o payload de SUBAGENTE via ferramenta PowerShell (R3) — mesma
+# forma do `b` acima (node -e, escapa aspas), so troca o tool_name.
+bp() { # comando, cwd  -> payload de SUBAGENTE via PowerShell
+  node -e 'const [c,d]=process.argv.slice(1);process.stdout.write(JSON.stringify({agent_id:"ag-1",agent_type:"executor",cwd:d,hook_event_name:"PreToolUse",tool_name:"PowerShell",tool_input:{command:c}}))' "$1" "$2"
+}
+gate "SUBAGENTE no principal via PowerShell: git commit -m x BARRA (R3)" 2 \
+  "$(bp "git commit -m x" "$R")"
+gate "via PowerShell do worktree: Set-Location principal; codex exec --yolo BARRA (R3)" 2 \
+  "$(bp "Set-Location $R; codex exec --yolo" "$WT")"
+gate "via PowerShell no worktree: git commit -m x PASSA (R3, regressao)" 0 \
+  "$(bp "git commit -m x" "$WT")"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

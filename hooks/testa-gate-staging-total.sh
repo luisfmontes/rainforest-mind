@@ -59,6 +59,8 @@ esc() { printf '%s' "$1" | sed 's|\\|/|g'; }
 b() { printf '{"cwd":"%s","hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"%s"}}' "${2:-$(esc "$R")}" "$1"; }
 # payload de SUBAGENTE
 ba() { printf '{"agent_id":"ag-1","agent_type":"executor","cwd":"%s","tool_name":"Bash","tool_input":{"command":"%s"}}' "${2:-$(esc "$R")}" "$1"; }
+# payload da JANELA PRINCIPAL via ferramenta PowerShell (R3, rodada 9, lote 3)
+p() { printf '{"cwd":"%s","hook_event_name":"PreToolUse","tool_name":"PowerShell","tool_input":{"command":"%s"}}' "${2:-$(esc "$R")}" "$1"; }
 
 echo "== deve BARRAR (exit 2) — inclusive na janela principal =="
 gate "JANELA PRINCIPAL: git add -A (incidente 1 e 2)" 2 "$(b 'git add -A')"
@@ -185,6 +187,13 @@ gate "sudo -E git add -A na JANELA PRINCIPAL BARRA (P1)"         2 "$(b 'sudo -E
 saidaP5=$(MSYS_NO_PATHCONV=1 node -e 'const [c,d]=process.argv.slice(1);process.stdout.write(JSON.stringify({agent_id:"ag-1",agent_type:"executor",cwd:d,tool_name:"Bash",tool_input:{command:c}}))' "\\cd $R && git add -A" "$WT" | node "$GATE" 2>&1); rcP5=$?
 if [ "$rcP5" = 2 ]; then ok=$((ok+1)); echo "  ok   SUBAGENTE: \\cd <principal> && git add -A, do worktree BARRA (P5) (exit 2)"
 else falhou=$((falhou+1)); echo "  FALHA \\cd <principal> && git add -A do worktree: esperava 2, veio $rcP5"; printf '%s' "$saidaP5" | sed 's/^/         /' | head -8; fi
+
+echo
+echo "== R1/R3 (rodada 9, lote 3, 2026-09-04): env --chdir por tokens, e ferramenta PowerShell =="
+gate "SUBAGENTE do worktree: env -u OneDrive --chdir=<principal> git add -A BARRA (R1)" 2 "$(ba 'env -u OneDrive --chdir='"$(esc "$R")"' git add -A' "$(esc "$WT")")"
+gate "via PowerShell no principal: git add -A BARRA (R3)"                               2 "$(p 'git add -A')"
+gate "via PowerShell: Set-Location <worktree>; git add -A com cwd no principal PASSA (R3)" 0 "$(p 'Set-Location '"$(esc "$WT")"'; git add -A')"
+gate "via PowerShell: git status PASSA (R3)"                                            0 "$(p 'git status --porcelain')"
 
 echo
 echo "== saidas de emergencia =="

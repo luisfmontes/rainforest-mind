@@ -333,12 +333,18 @@ function desempacota(interno) {
 }
 
 /**
- * Se `segmento` é uma invocação de `eval`, `bash -c`/`sh -c`/`zsh -c`/
- * `ksh -c`/`dash -c`, `pwsh`/`powershell` com qualquer abreviação de
- * `-Command` (`-c`, `-co`, `-com`, ...), ou `cmd /c`/`cmd /k` (executável
+ * Se `segmento` é uma invocação de `eval`, `Invoke-Expression`/`iex`
+ * (PowerShell — R2, rodada 9, lote 3, 2026-09-04), `bash -c`/`sh -c`/
+ * `zsh -c`/`ksh -c`/`dash -c`, `pwsh`/`powershell` com qualquer abreviação
+ * de `-Command` (`-c`, `-co`, `-com`, ...), ou `cmd /c`/`cmd /k` (executável
  * reconhecido + flag certa), devolve a string de comando encapsulada (sem
  * UM nível de aspas externas, se houver). Devolve null se `segmento` não é
  * um desses wrappers.
+ *
+ * `Invoke-Expression`/`iex` são wrapper de STRING SEM FLAG — igual `eval`:
+ * `Invoke-Expression "gh issue close 42"` não tinha o subcomando reconhecido
+ * porque o conteúdo é um token citado só, e a busca por sequência não casa
+ * dentro de um único token — exit 0 indevido.
  *
  * `pwsh`/`powershell -EncodedCommand` (ou qualquer abreviação dela — `-e`,
  * `-ec`, `-enc`, ...) chega em base64: ilegível por definição, bloqueia
@@ -349,7 +355,7 @@ function desempacotarWrapper(segmento) {
   if (!p1) return null;
   const exe = normalizarExecutavel(p1.tok);
 
-  if (exe === "eval") {
+  if (exe === "eval" || exe === "invoke-expression" || exe === "iex") {
     return desempacota(p1.resto);
   }
 
@@ -472,6 +478,8 @@ function ehPrefixoOuWrapperConhecido(exe) {
   return (
     exe === "gh" ||
     exe === "eval" ||
+    exe === "invoke-expression" ||
+    exe === "iex" ||
     exe === "pwsh" ||
     exe === "powershell" ||
     exe === "cmd" ||
