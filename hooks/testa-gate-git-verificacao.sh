@@ -43,6 +43,15 @@
 #  11. achado 2 da revisao reprovada em 2026-09-04: o toggle de config
 #      `.rainforest/config.json` com a chave `gate-git-verificacao` agora
 #      registrada em `hooks/lib/config.cjs` desliga o gate de verdade.
+#  12. achado 3 (terceira condicao, revisor na 2a rodada de revisao,
+#      2026-09-04): corpo de heredoc e DADO, nao comando — sete formas que
+#      tem que PASSAR (`<<EOF` simples com a flag citada no corpo, o proprio
+#      padrao de commit da sessao com heredoc dentro de `$(...)`, `-F -
+#      <<'MSGEOF'`, `<<-EOF` com fechamento indentado por tab, `<<"EOF"` com
+#      aspas duplas, dois heredocs no mesmo comando, e o controle sem mencao
+#      a flag que ja passava) e uma que tem que CONTINUAR barrando: heredoc
+#      legitimo seguido, no MESMO comando bruto, de `git commit --no-verify`
+#      fora dele.
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -172,6 +181,35 @@ gate "comando que nao e git"                0 "$(b 'ls -la')"
 gate "tool_name diferente de Bash"          0 "$(printf '{"cwd":"%s","hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":"x"}}' "$(esc "$R")")"
 gate "payload vazio nunca trava"            0 "{}"
 gate "payload ilegivel nunca trava"         0 "isto nao e json"
+
+echo
+echo "== achado 3 (terceira condicao, revisor na 2a rodada de revisao): corpo de heredoc e DADO, nao comando =="
+gate "cat > docs.md <<EOF / git commit --no-verify NO CORPO / EOF -- git nao e invocado, DEVE passar" \
+  0 "$(b 'cat > docs.md <<EOF\ngit commit --no-verify\nEOF')"
+
+gate "padrao de commit da sessao: git commit -m \"\$(cat <<'EOF' ... EOF )\" citando a flag em prosa -- DEVE passar" \
+  0 "$(b 'git commit -m \"$(cat <<'"'"'EOF'"'"'\nDocumenta a proibicao de git commit --no-verify no briefing.\nEOF\n)\"')"
+
+gate "git commit -q -F - <<'MSGEOF' ... MSGEOF citando a flag no corpo -- DEVE passar" \
+  0 "$(b 'git commit -q -F - <<'"'"'MSGEOF'"'"'\nProibe git commit --no-verify no executor\nMSGEOF')"
+
+gate "<<-EOF com linha de fechamento indentada por TAB -- DEVE passar" \
+  0 "$(b 'cat > docs.md <<-EOF\ngit commit --no-verify\n\tEOF')"
+
+gate 'heredoc com delimitador entre aspas duplas <<"EOF"' \
+  0 "$(b 'cat > docs.md <<\"EOF\"\ngit commit --no-verify\nEOF')"
+
+gate "dois heredocs no mesmo comando, os dois citando a flag em prosa -- DEVE passar" \
+  0 "$(b 'cat > a.md <<EOF1\ngit commit --no-verify primeira mencao\nEOF1\ncat > b.md <<EOF2\ngit commit --no-verify segunda mencao\nEOF2')"
+
+gate "controle: heredoc sem mencao a flag (ja passava antes do conserto)" \
+  0 "$(b 'cat > docs.md <<EOF\ntexto qualquer\nEOF')"
+
+gate "o caso que mais importa: heredoc legitimo + git commit --no-verify FORA dele no MESMO comando -- DEVE barrar" \
+  2 "$(b 'cat > docs.md <<EOF\ntexto qualquer\nEOF\ngit commit --no-verify -m x')"
+
+gate "herestring (<<<) nao e heredoc e nao e alvo deste conserto (git nao e invocado aqui de qualquer forma)" \
+  0 "$(b "cat <<< 'algo com --no-verify dentro'")"
 
 echo
 echo "== saidas de emergencia =="
