@@ -189,20 +189,17 @@ function classificar(dir) {
       stdio: ["ignore", "pipe", "ignore"],
     }).trim();
 
-    // Filtra arquivos especiais do git worktree que não contam como sujeira
-    const linhas = porcelain.split("\n").filter((linha) => {
-      if (!linha) return false;
-      // Arquivos especiais do worktree na raiz: HEAD, ORIG_HEAD, commondir, gitdir, index, logs/
-      const arquivo = linha.slice(3).trim();
-      return !(
-        arquivo === "HEAD" ||
-        arquivo === "ORIG_HEAD" ||
-        arquivo === "commondir" ||
-        arquivo === "gitdir" ||
-        arquivo === "index" ||
-        arquivo === "logs/"
-      );
-    });
+    // S2 (8a revisao, rodada 10, lote 3, 2026-09-03): a lista de exclusao que
+    // existia aqui ("arquivos especiais do worktree": HEAD, ORIG_HEAD,
+    // commondir, gitdir, index, logs/) partia de uma premissa falsa — esses
+    // nomes vivem em `.git/worktrees/<nome>/`, nunca na arvore de trabalho,
+    // entao o `git status --porcelain` NUNCA os lista por serem especiais.
+    // Reproduzido na caixa: worktree recem-criado tem porcelain vazio; um
+    // `logs/app.log` NAO RASTREADO real produz a linha `?? logs/` — que essa
+    // lista filtrava, classificando o worktree como "limpo" e deixando
+    // `--remover` apagar o log de verdade. Um arquivo `index` na raiz sofria
+    // o mesmo. Qualquer linha do porcelain e sujeira — sem excecao.
+    const linhas = porcelain.split("\n").filter((linha) => linha.length > 0);
 
     if (linhas.length === 0) {
       return {
@@ -274,8 +271,14 @@ function executarRemocao(raiz, dadosLimpos) {
 
   for (const item of dadosLimpos) {
     console.log(`removendo ${item.caminho}...`);
-    // Tenta remover com --force para eliminar os arquivos especiais do worktree
-    const result = spawnSync("git", ["worktree", "remove", "--force", item.caminhoOriginal], {
+    // S2 (8a revisao, rodada 10, lote 3, 2026-09-03): `--force` existia "para
+    // eliminar os arquivos especiais do worktree" — premissa que a lista de
+    // exclusao de `classificar()` carregava e que a caixa desmentiu (esses
+    // nomes nunca aparecem no porcelain da arvore de trabalho). Sem a lista,
+    // só chega aqui um worktree de verdade LIMPO (porcelain vazio); `git
+    // worktree remove` sem `--force` funciona nesse caso (confirmado na
+    // caixa) — e sem `--force` a remoção nunca apaga sujeira por engano.
+    const result = spawnSync("git", ["worktree", "remove", item.caminhoOriginal], {
       cwd: raiz,
       encoding: "utf8",
     });

@@ -664,5 +664,19 @@ gate "via PowerShell no worktree: git commit -m x PASSA (R3, regressao)" 0 \
   "$(bp "git commit -m x" "$WT")"
 
 echo
+echo "== S1 (8a revisao, rodada 10, lote 3, 2026-09-03): sintaxe de dois-pontos e destino inexistente =="
+gate "via PowerShell do worktree: Set-Location -Path:principal; git commit -am x BARRA (S1)" 2 \
+  "$(bp "Set-Location -Path:$R; git commit -am x" "$WT")"
+gate "do worktree via Bash: mkdir novo && cd novo && git init PASSA (S1, regressao: incerto sem CLI nem cwd principal nao barra)" 0 \
+  "$(b "mkdir novo && cd novo && git init" "$WT")"
+# `cd` para caminho ABSOLUTO que nao existe em disco, seguido de CLI que
+# escreve: sem o fix, o cwd fabricado (inexistente) fazia `estadoDoRepo`
+# devolver null e o gate liberava sem checar nada — a CLI escapava pra
+# QUALQUER lugar. Com o fix, destino que nao existe vira incerto e bloqueia
+# pelo mesmo caminho de `cd $(pwd)/../principal` (variavel) alguns testes acima.
+gate "cd <caminho inexistente> && codex exec --yolo, do worktree BARRA (S1)" 2 \
+  "$(b "cd $WT/pasta-que-nao-existe && codex exec --yolo" "$WT")"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
