@@ -35,12 +35,12 @@
     "em": "2026-09-03"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-03",
     "tarefas_ok": 14,
     "tarefas": 14,
     "comando": "for f in hooks/testa-cwd-efetivo.sh hooks/testa-gate-staging-total.sh hooks/testa-portaria.sh scripts/testa-limpar-worktrees.sh scripts/testa-conferir-entrega.sh hooks/testa-gate-worktree.sh scripts/testa-backup-gravar.sh scripts/testa-backup-conferir.sh scripts/testa-backup-estado.sh scripts/testa-fechar-issue.sh hooks/testa-gate-fechar-issue.sh hooks/testa-config.sh scripts/testa-saude.sh; do bash $f >/dev/null 2>&1; echo \"$f exit=$?\"; done",
-    "saida": "13 baterias exit=0 apos merge dos lotes K/K2/L (cwd-efetivo 24, staging-total 47, portaria 7, limpar 8, conferir-entrega 63, gate-worktree 164, backup-gravar 23, backup-conferir 11, backup-estado 49, fechar-issue 33, gate-fechar-issue 44, config 38, saude 59)",
+    "saida": "13 baterias exit=0 apos merge dos lotes M/N (cwd-efetivo 24, staging-total 53, portaria 7, limpar 14, conferir-entrega 63, gate-worktree 164, backup-gravar 23, backup-conferir 11, backup-estado 50, fechar-issue 33, gate-fechar-issue 48, config 38, saude 59); OneDrive real sem rainforest-backup",
     "mutacao": [
       {
         "tarefa": 1,
@@ -114,7 +114,7 @@
       }
     ],
     "em": "2026-09-04",
-    "rodada": 6,
+    "rodada": 7,
     "rodada3": {
       "achados": [
         "R1",
@@ -193,9 +193,20 @@
       ],
       "nota": "Ka (regex SEPARADORES) e Kc (comandoEhGit contra staging-total) sairam verdes na primeira: a primeira era mutacao neutra (regex sem consumidor), a segunda faltava caso isolando o segmento proprio — corrigido no lote K2"
     },
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-04"
+    "rodada7": {
+      "achados": [
+        "Aud1 env -C . git add -A no staging-total",
+        "Aud2 closes por URL",
+        "Aud3 bateria do vigia gravou no OneDrive real",
+        "Rev1 limpar --remover com orfao (cobertura)",
+        "Rev2 echo gh issue close sem aspas (aceito, falso positivo)"
+      ],
+      "mutacoes_reprovadas_na_integracao": [
+        "Ma posicaoDeComando no staging-total",
+        "Mb regex closes URL",
+        "N1 RFM_BACKUP_DESTINO em rodar()",
+        "N2 status === limpo no --remover"
+      ]
     }
   },
   "revisar": {
