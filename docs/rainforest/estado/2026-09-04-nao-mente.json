@@ -22,34 +22,34 @@
     "em": "2026-09-04"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-04",
     "tarefas_ok": 4,
     "tarefas": 4,
     "em": "2026-09-04",
     "bateria": "bash scripts/testa-estado.sh (146 ok, 0 falhou) + bash hooks/testa-gate-git-verificacao.sh (72 ok, 0 falhou; era 50 antes das duas rodadas de revisao)",
-    "comando": "node scripts/conferir-mutacao.cjs, re-rodado pela integracao a cada rodada",
-    "saida": "exit 0 em todas: bateria VERMELHA com o comportamento invertido, fonte restaurado",
+    "comando": "bash hooks/testa-gate-git-verificacao.sh && bash scripts/testa-estado.sh",
+    "saida": "== resultado: 81 ok, 0 falha(s) == (gate) ; testa-estado.sh exit 0 (baseline verde na catraca, 61636 ms)",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "scripts/testa-estado.sh blocos 20 e 21 (l.941-990): concluido com fluxo fechado sai 0 (l.960), com fechar pendente sai 2 (l.973), varredura sem --slug (l.983)"
+        "fixture": "scripts/testa-estado.sh, casos do verbo concluido com fechar pendente exigindo exit 2"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "hooks/testa-gate-git-verificacao.sh: l.139 (GIT commit --no-verify, executavel maiusculo), l.188-190 (toggle de config desligando o gate) e o bloco do achado 3 (corpo de heredoc nao dispara o gate)"
+        "fixture": "hooks/testa-gate-git-verificacao.sh, caso do payload PreToolUse com tool_input.command igual a git commit --no-verify -m x exigindo exit 2"
       },
       {
         "tarefa": 3,
         "resultado": "n/a",
-        "motivo": "prosa de briefing nao tem ramo de execucao a inverter; a falsificacao foi casar as flags citadas nos dois textos com as que o gate realmente nega"
+        "motivo": "texto de briefing nao tem ramo de execucao a inverter; a falsificacao e casar com o que o gate da tarefa 2 realmente nega"
       },
       {
         "tarefa": 4,
         "resultado": "n/a",
-        "motivo": "skill e texto sem ramo de execucao; a falsificacao foi rodar cada exit code prometido pelo texto e conferir contra o observado"
+        "motivo": "skill e texto lido por quem conduz o estagio, sem ramo de execucao; a falsificacao e o texto prometer exit codes que o verbo nao devolve"
       }
     ],
     "rodadas_do_gate": 5,
@@ -57,11 +57,7 @@
       "caixa do nome do executavel (GIT/Bash)",
       "toggle gate-git-verificacao ausente de CHAVES",
       "falso positivo: corpo de heredoc julgado como comando"
-    ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-04"
-    }
+    ]
   },
   "revisar": {
     "status": "reprovado",
