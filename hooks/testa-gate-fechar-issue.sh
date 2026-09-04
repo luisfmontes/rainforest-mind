@@ -31,7 +31,8 @@ process.exit(0);
 STUB
 chmod +x "$SBP/bin/gh"
 
-# Criar versão .cmd para Windows (fallback)
+# Criar versão .cmd para Windows (fallback) — é esta que o resolvedor
+# (ordem de extensões .cmd/.bat/.exe/'') de fato escolhe nesta caixa.
 cat > "$SBP/bin/gh.cmd" <<'STUB'
 @echo off
 if "%1"=="issue" if "%2"=="view" (
@@ -40,6 +41,13 @@ if "%1"=="issue" if "%2"=="view" (
   ) else (
     echo {"comments":[{"body":"Sem marcador aqui"}]}
   )
+  exit /b 0
+)
+if "%1"=="pr" if "%2"=="view" (
+  if "%GH_PR_VIEW_FAIL%"=="1" (
+    exit /b 1
+  )
+  node -e "console.log(JSON.stringify({body: process.env.GH_PR_VIEW_BODY || ''}))"
   exit /b 0
 )
 exit /b 0
@@ -54,6 +62,13 @@ if [ "$1" = "issue" ] && [ "$2" = "view" ]; then
   else
     echo '{"comments":[{"body":"Sem marcador aqui"}]}'
   fi
+  exit 0
+fi
+if [ "$1" = "pr" ] && [ "$2" = "view" ]; then
+  if [ "$GH_PR_VIEW_FAIL" = "1" ]; then
+    exit 1
+  fi
+  node -e "console.log(JSON.stringify({body: process.env.GH_PR_VIEW_BODY || ''}))"
   exit 0
 fi
 exit 0
@@ -203,11 +218,15 @@ ERR_I="$(cat "$SBP/err-i")"
 echo "$ERR_I" | grep -q "substituição de comando" && test_ok "mensagem de corpo ilegível" || test_fail "mensagem incorreta"
 
 # Caso (j): `C:\qualquer\gh.exe pr merge --body "closes #999923"` SEM marcador → exit 2
+# (D15, 15ª revisão: o `--body` do merge NÃO é mais a fonte — o gate lê a
+# descrição real via `gh pr view --json body`, aqui simulada por GH_PR_VIEW_BODY;
+# o `--body` deste comando vira só a mensagem do merge commit, e é ignorado.)
 echo
 echo "== (j) C:\\qualquer\\gh.exe pr merge com closes (sem marcador) → exit 2 =="
 (
   export PATH="$SBP/bin:$PATH"
   export GH_COM_MARCADOR=""
+  export GH_PR_VIEW_BODY="closes #999923"
   PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"C:\\\\qualquer\\\\gh.exe pr merge --body \"closes #999923\""}}'
   echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
 ) 2>"$SBP/err-j"
@@ -488,11 +507,13 @@ EXIT_AG=$?
 [ $EXIT_AG -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_AG)"
 
 # Caso (ah): `true & gh pr merge 7 --body "closes #7"` SEM marcador → exit 2
+# (D15, 15ª revisão: descrição real via GH_PR_VIEW_BODY, não o --body do merge.)
 echo
 echo "== (ah) true & gh pr merge 7 com closes #7 sem marcador → exit 2 (K1) =="
 (
   export PATH="$SBP/bin:$PATH"
   export GH_COM_MARCADOR=""
+  export GH_PR_VIEW_BODY="closes #7"
   PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"true & gh pr merge 7 --body \"closes #7\""}}'
   echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
 ) 2>"$SBP/err-ah"
@@ -982,6 +1003,107 @@ echo "== (bq) (cd <A> && gh pr create --body-file corpo.txt) → exit 2 (cwd inc
 ) 2>"$SBP/err-bq"
 EXIT_BQ=$?
 [ $EXIT_BQ -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_BQ)"
+
+# Caso (br): `gh pr edit 5 --body "Closes #12"` SEM marcador → exit 2 citando #12
+# (D15, 15ª revisão: `pr edit` vira gatilho igual `pr create` — é o segundo
+# passo do furo: `pr create --body "wip"` (0) → `pr edit --body "Closes #12"`
+# escapava sem checagem alguma antes deste conserto.)
+echo
+echo "== (br) gh pr edit 5 --body \"Closes #12\" SEM marcador → exit 2 citando #12 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr edit 5 --body \"Closes #12\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-br"
+EXIT_BR=$?
+[ $EXIT_BR -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_BR)"
+ERR_BR="$(cat "$SBP/err-br")"
+echo "$ERR_BR" | grep -q "#12" && test_ok "stderr cita #12" || test_fail "stderr não cita #12 ($ERR_BR)"
+
+# Caso (bs): `gh pr edit 5 --body "Closes #12"` COM marcador → exit 0
+echo
+echo "== (bs) gh pr edit 5 --body \"Closes #12\" COM marcador → exit 0 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=1
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr edit 5 --body \"Closes #12\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-bs"
+EXIT_BS=$?
+[ $EXIT_BS -eq 0 ] && test_ok "exit 0 com marcador" || test_fail "exit code com marcador (foi $EXIT_BS)"
+
+# Caso (bt): `gh pr edit 5 --title "x"` (sem corpo) → exit 0
+echo
+echo "== (bt) gh pr edit 5 --title \"x\" (sem corpo) → exit 0 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr edit 5 --title \"x\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-bt"
+EXIT_BT=$?
+[ $EXIT_BT -eq 0 ] && test_ok "exit 0 (sem --body/--body-file)" || test_fail "exit code (foi $EXIT_BT)"
+
+# Caso (bu): `gh pr merge 5 --squash --body "msg"` — o stub de `pr view`
+# devolve body `Closes #12` (a descrição REAL do PR, não o --body do merge
+# commit) e SEM marcador → exit 2 citando #12
+echo
+echo "== (bu) gh pr merge 5 --squash --body \"msg\" com pr view devolvendo Closes #12 SEM marcador → exit 2 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  export GH_PR_VIEW_BODY="Closes #12"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr merge 5 --squash --body \"msg\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-bu"
+EXIT_BU=$?
+[ $EXIT_BU -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_BU)"
+ERR_BU="$(cat "$SBP/err-bu")"
+echo "$ERR_BU" | grep -q "#12" && test_ok "stderr cita #12" || test_fail "stderr não cita #12 ($ERR_BU)"
+
+# Caso (bv): mesmo caso, mas COM marcador → exit 0
+echo
+echo "== (bv) gh pr merge 5 --squash --body \"msg\" com pr view devolvendo Closes #12 COM marcador → exit 0 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=1
+  export GH_PR_VIEW_BODY="Closes #12"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr merge 5 --squash --body \"msg\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-bv"
+EXIT_BV=$?
+[ $EXIT_BV -eq 0 ] && test_ok "exit 0 com marcador" || test_fail "exit code com marcador (foi $EXIT_BV)"
+
+# Caso (bw): stub de `pr view` falhando (exit 1) → exit 2 (não conseguiu ler
+# a descrição do PR — mesma postura de bloqueio conservador do --body-file
+# ilegível)
+echo
+echo "== (bw) gh pr merge 5 com pr view falhando (exit 1) → exit 2 (não conseguiu ler) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  export GH_PR_VIEW_FAIL=1
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr merge 5"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-bw"
+EXIT_BW=$?
+[ $EXIT_BW -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_BW)"
+ERR_BW="$(cat "$SBP/err-bw")"
+echo "$ERR_BW" | grep -q "não consegui ler" && test_ok "stderr diz que não conseguiu ler" || test_fail "stderr sem a mensagem esperada ($ERR_BW)"
+
+# Caso (bx): `gh pr merge 5` com body (via pr view) sem Issue citada → exit 0
+echo
+echo "== (bx) gh pr merge 5 com pr view devolvendo body sem Issue citada → exit 0 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  export GH_PR_VIEW_BODY="descrição qualquer, sem palavra-chave de fechamento"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr merge 5"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-bx"
+EXIT_BX=$?
+[ $EXIT_BX -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_BX)"
 
 # Resultado final
 echo

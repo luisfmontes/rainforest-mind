@@ -1,14 +1,23 @@
 #!/usr/bin/env node
 /**
- * PreToolUse — barra `gh issue close` direto e `gh pr create/merge` sem evidência.
+ * PreToolUse — barra `gh issue close` direto e `gh pr create/edit/merge` sem evidência.
  *
  * Decisões D15, D16: fechar Issue sem o marcador de evidência é bloqueado.
  * - `gh issue close <n>` direto → exit 2, stderr aponta para scripts/fechar-issue.cjs
- * - `gh pr create`/`gh pr merge` com corpo citando `closes #N` para Issue sem marcador → exit 2
+ * - `gh pr create`/`gh pr edit` com corpo citando `closes #N` para Issue sem marcador → exit 2
+ * - `gh pr merge`: NÃO usa o `--body` (é a mensagem do merge commit, não a descrição
+ *   do PR) — lê a descrição real via `gh pr view <ref> --json body` e verifica as
+ *   Issues citadas ali. Leitura falhou (exit ≠ 0, JSON inválido, sem rede) → bloqueia.
  * - Corpo ilegível (editor interativo) → exit 2 dizendo isso
  * - Saídas de emergência: `RAINFOREST_GATE_OFF=1`, `.rainforest-gate-off`
  *
- * O gate só LÊ comentários via `gh issue view --json comments`; nunca escreve.
+ * O gate só LÊ via `gh issue view --json comments` e `gh pr view --json body`; nunca escreve.
+ *
+ * D15 (15ª revisão, 2026-09-04): `gh pr create --body "wip"` (0) → `gh pr edit 5
+ * --body "Closes #12"` (0, `pr edit` não era gatilho) → `gh pr merge 5 --squash
+ * --body "msg"` (0, checava o `--body` do MERGE, não a descrição do PR) — a Issue
+ * #12 fechava no merge sem nunca passar pela checagem do marcador. `pr edit` virou
+ * gatilho como `pr create`; `pr merge` passou a ler a descrição real do PR.
  */
 
 const { execFileSync, spawnSync } = require("node:child_process");
@@ -231,7 +240,9 @@ function temMarcadorEvidencia(issueNum) {
 }
 
 /**
- * Extrai o corpo do comando `gh pr create` ou `gh pr merge`.
+ * Extrai o corpo do comando `gh pr create` ou `gh pr edit` (o `--body` de
+ * `gh pr merge` NÃO passa por aqui — é a mensagem do merge commit, lida à
+ * parte via `gh pr view` em `verificarComandoGh`).
  * Procura por `--body <valor>`/`--body=<valor>`/`-b <valor>` (o corpo direto)
  * ou `--body-file <arquivo>`/`--body-file=<arquivo>`.
  * Retorna { tipo: "direto"|"arquivo"|"nenhum", conteudo: string|null, legivel: bool }
@@ -328,6 +339,63 @@ function bloqueia(motivo) {
 // la para o comportamento completo (incluindo `-EncodedCommand`).
 
 /**
+ * Flags de `gh pr merge` que consomem o token seguinte como valor — usadas
+ * só para pular corretamente até achar o `<ref>` posicional (número, branch
+ * ou URL do PR). Booleanas (`--squash`, `--merge`, `--rebase`, `--admin`,
+ * `--auto`, `-d`/`--delete-branch`, ...) não entram aqui: não consomem o
+ * próximo token.
+ */
+const FLAGS_COM_VALOR_PR_MERGE = new Set([
+  "--body", "-b", "--body-file", "--subject", "-t", "--match-head-commit", "--author-email",
+]);
+
+/**
+ * Extrai o `<ref>` posicional de `gh pr merge [<ref>] [flags]` (número,
+ * branch ou URL do PR) — ou `null` se nenhum foi passado (o `merge` então
+ * age sobre o PR da branch atual, e é assim que `gh pr view` sem argumento
+ * também se comporta).
+ */
+function extrairRefDoPRMerge(subcomandos) {
+  const idx = indiceSequencia(subcomandos, ["pr", "merge"]);
+  if (idx === -1) return null;
+  for (let i = idx + 2; i < subcomandos.length; i += 1) {
+    const tok = subcomandos[i];
+    if (tok.startsWith("-")) {
+      const temIgual = tok.includes("=");
+      const chave = temIgual ? tok.slice(0, tok.indexOf("=")) : tok;
+      if (!temIgual && FLAGS_COM_VALOR_PR_MERGE.has(chave)) {
+        i += 1; // pula o valor da flag
+      }
+      continue;
+    }
+    return tok;
+  }
+  return null;
+}
+
+/**
+ * Verifica um corpo de PR (já extraído de `gh pr create`/`gh pr edit`, ou
+ * lido da descrição real via `gh pr view` para `gh pr merge`) contra as
+ * Issues citadas e o marcador de evidência. Compartilhado pelos dois
+ * caminhos abaixo.
+ */
+function verificarIssuesCitadas(corpo) {
+  const issues = extrairIssuesCitadas(corpo || "");
+  for (const issue of issues) {
+    if (!temMarcadorEvidencia(issue)) {
+      bloqueia(
+        `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
+        `Razão: Issue #${issue} não tem comentário com a evidência de pronto.\n\n` +
+        `O critério de pronto deve ter sido rodado e colado em comentário.\n` +
+        `Use:\n` +
+        `  node scripts/fechar-issue.cjs ${issue} --comando "<seu-comando>" --saida "<saída-ou-arquivo>"\n\n` +
+        `Depois crie o PR com o corpo citando closes #${issue}.\n`
+      );
+    }
+  }
+}
+
+/**
  * Aplica as checagens D15/D16 a uma invocação de `gh` já identificada:
  * `segmento` é o texto bruto (para extrair `--body`/`--body-file`),
  * `subcomandos` são os tokens que vêm depois de `gh`, e `cwdSegmento` é o
@@ -346,9 +414,21 @@ function verificarComandoGh(segmento, subcomandos, cwdSegmento) {
     );
   }
 
-  // Caso (b) e (c): `gh pr create` ou `gh pr merge` → verificar corpo
-  if (temSubcomando(subcomandos, ["pr", "create"]) || temSubcomando(subcomandos, ["pr", "merge"])) {
+  // Caso (b): `gh pr create` ou `gh pr edit` → verificar corpo do COMANDO
+  // (`pr edit` também grava a descrição do PR, exatamente como `pr create` —
+  // D15, 15ª revisão: era o furo que deixava `pr edit --body "Closes #12"`
+  // passar sem checagem antes do merge fechar a Issue).
+  if (temSubcomando(subcomandos, ["pr", "create"]) || temSubcomando(subcomandos, ["pr", "edit"])) {
+    const ehEdit = temSubcomando(subcomandos, ["pr", "edit"]);
     const corpoDoPR = extrairCorpoDoPR(segmento, cwdSegmento);
+
+    // `pr edit` sem `--body`/`--body-file` NÃO toca a descrição do PR — ao
+    // contrário de `pr create` sem `--body`, que abre editor interativo e
+    // PODE escrever uma descrição nova (com "closes #N" invisível ao gate,
+    // daí o bloqueio abaixo). Sem mudança de corpo, não há o que checar.
+    if (ehEdit && corpoDoPR.tipo === "nenhum") {
+      return;
+    }
 
     // Corpo ilegível (não consegue ler com segurança)
     if (!corpoDoPR.legivel) {
@@ -382,20 +462,47 @@ function verificarComandoGh(segmento, subcomandos, cwdSegmento) {
       }
     }
 
-    // Corpo legível: verificar Issues citadas
-    const issues = extrairIssuesCitadas(corpoDoPR.conteudo || "");
-    for (const issue of issues) {
-      if (!temMarcadorEvidencia(issue)) {
-        bloqueia(
-          `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
-          `Razão: Issue #${issue} não tem comentário com a evidência de pronto.\n\n` +
-          `O critério de pronto deve ter sido rodado e colado em comentário.\n` +
-          `Use:\n` +
-          `  node scripts/fechar-issue.cjs ${issue} --comando "<seu-comando>" --saida "<saída-ou-arquivo>"\n\n` +
-          `Depois crie o PR com o corpo citando closes #${issue}.\n`
-        );
-      }
+    verificarIssuesCitadas(corpoDoPR.conteudo);
+  }
+
+  // Caso (c): `gh pr merge` → NÃO ler o `--body` (é a mensagem do merge
+  // commit); ler a descrição REAL do PR via `gh pr view <ref> --json body`
+  // (leitura, mesma família de `gh issue view` usada em `temMarcadorEvidencia`).
+  if (temSubcomando(subcomandos, ["pr", "merge"])) {
+    const ref = extrairRefDoPRMerge(subcomandos);
+    const args = ["pr", "view"];
+    if (ref) args.push(ref);
+    args.push("--json", "body");
+
+    let resultado;
+    try {
+      resultado = executar("gh", args, cwdSegmento ? { cwd: cwdSegmento } : {});
+    } catch (e) {
+      resultado = null;
     }
+
+    if (!resultado || resultado.status === null || resultado.status === undefined || resultado.status !== 0) {
+      bloqueia(
+        `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
+        `Razão: não consegui ler a descrição real do PR ('gh pr view --json body' falhou).\n\n` +
+        `Sem a descrição não dá pra saber se o merge fecha alguma Issue sem evidência.\n` +
+        `Confira se o PR existe e se 'gh' tem acesso à rede/API.\n`
+      );
+    }
+
+    let corpo;
+    try {
+      const parsed = JSON.parse((resultado.stdout || "").trim());
+      corpo = parsed.body || "";
+    } catch (e) {
+      bloqueia(
+        `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
+        `Razão: 'gh pr view --json body' devolveu algo que não é JSON válido; não consegui ler a descrição do PR.\n`
+      );
+      return; // inalcançável (bloqueia sai do processo); documenta intenção
+    }
+
+    verificarIssuesCitadas(corpo);
   }
 }
 
@@ -498,7 +605,7 @@ function cwdDoSegmento(segmento, mapaCwd, ordem) {
  *      ele mesmo ter vários segmentos encadeados.
  *   3. Wrapper DESCONHECIDO (nem `gh`, nem prefixo, nem wrapper dos itens
  *      1/2): rede de segurança final — se a sequência não citada
- *      `gh issue close`/`gh pr create`/`gh pr merge` aparece em qualquer
+ *      `gh issue close`/`gh pr create`/`gh pr edit`/`gh pr merge` aparece em qualquer
  *      posição do segmento, trata como comando mesmo assim.
  */
 function processarSegmento(segmento, mapaCwd, contadores) {
@@ -571,7 +678,7 @@ function processarSegmento(segmento, mapaCwd, contadores) {
   const valores = toksSemComentario.map((t) => t.v);
   const primeiro = valores.length ? normalizarExecutavel(valores[0]) : null;
   if (primeiro !== null && !ehPrefixoOuWrapperConhecido(primeiro)) {
-    for (const padrao of [["gh", "issue", "close"], ["gh", "pr", "create"], ["gh", "pr", "merge"]]) {
+    for (const padrao of [["gh", "issue", "close"], ["gh", "pr", "create"], ["gh", "pr", "edit"], ["gh", "pr", "merge"]]) {
       const idx = indiceSequencia(valores, padrao);
       if (idx !== -1) {
         verificarComandoGh(segmento, valores.slice(idx + 1), cwdDoSegmento(segmento, mapaCwd, ordem));
