@@ -795,6 +795,63 @@ echo "== (be) nohup bash -c \"gh issue view 12\" → exit 0 (P3) =="
 EXIT_BE=$?
 [ $EXIT_BE -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_BE)"
 
+# W1/W2 (auditor, 12a revisao, rodada 14, lote 3, 2026-09-04): flags COM VALOR
+# antes do -c (bash -o pipefail), e comentario shell fora da rede de seguranca.
+# Caso (bf): `bash -o pipefail -c "gh issue close 12"` → exit 2 (W1)
+echo
+echo "== (bf) bash -o pipefail -c \"gh issue close 12\" → exit 2 (W1) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"bash -o pipefail -c \"gh issue close 12\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-bf"
+EXIT_BF=$?
+[ $EXIT_BF -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_BF)"
+
+# Caso (bg): `timeout 5 bash -o pipefail -c "gh issue close 12"` → exit 2 (W1, prefixo composto)
+echo
+echo "== (bg) timeout 5 bash -o pipefail -c \"gh issue close 12\" → exit 2 (W1) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"timeout 5 bash -o pipefail -c \"gh issue close 12\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-bg"
+EXIT_BG=$?
+[ $EXIT_BG -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_BG)"
+
+# Caso (bh): comentario shell com `gh issue close` seguido de `ls` em outra linha → exit 0 (W2)
+echo
+echo "== (bh) comentario shell com gh issue close + ls PASSA (W2) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"# gh issue close 12 e tratado pelo fechar-issue\nls"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-bh"
+EXIT_BH=$?
+[ $EXIT_BH -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_BH)"
+
+# Caso (bi): `ls # gh pr merge 7 --body "closes #7"` → exit 0 (W2, comentario na mesma linha)
+echo
+echo "== (bi) ls # gh pr merge 7 --body \"closes #7\" PASSA (W2) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"ls # gh pr merge 7 --body \"closes #7\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-bi"
+EXIT_BI=$?
+[ $EXIT_BI -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_BI)"
+
+# Caso (bj): `gh issue close 12 # comentario` → exit 2 (W2, comando antes do # continua valendo)
+echo
+echo "== (bj) gh issue close 12 # comentario → exit 2 (W2) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh issue close 12 # comentario"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-bj"
+EXIT_BJ=$?
+[ $EXIT_BJ -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_BJ)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

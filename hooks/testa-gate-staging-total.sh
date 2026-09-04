@@ -224,6 +224,14 @@ gate "timeout 5 bash -c \"env FOO=1 git add -A\" na JANELA PRINCIPAL BARRA (P3, 
 gate "timeout 5 bash -c \"git status\" PASSA (P3, nao e staging total)"           0 "$(b 'timeout 5 bash -c \"git status\"')"
 
 echo
+echo "== W1 (auditor, 12a revisao, rodada 14, lote 3, 2026-09-04): flags COM VALOR antes do -c (bash -o pipefail) =="
+gate "bash -o pipefail -c \"git add -A\" BARRA (W1)"                              2 "$(b 'bash -o pipefail -c \"git add -A\"')"
+gate "bash -eo pipefail -c \"git add -A\" BARRA (W1, bundle -e -o)"               2 "$(b 'bash -eo pipefail -c \"git add -A\"')"
+gate "sh -o errexit -c \"git add -A\" BARRA (W1)"                                 2 "$(b 'sh -o errexit -c \"git add -A\"')"
+gate "bash -o pipefail -c \"git status\" PASSA (W1, nao e staging total)"         0 "$(b 'bash -o pipefail -c \"git status\"')"
+gate "bash --norc -c \"git add -A\" BARRA (W1, flag sem valor)"                   2 "$(b 'bash --norc -c \"git add -A\"')"
+
+echo
 echo "== saidas de emergencia =="
 saida=$(printf '%s' "$(b 'git add -A')" | RAINFOREST_GATE_OFF=1 node "$GATE" 2>&1); rc=$?
 if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   RAINFOREST_GATE_OFF=1 libera (exit 0)"
