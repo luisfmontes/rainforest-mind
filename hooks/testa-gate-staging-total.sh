@@ -210,6 +210,13 @@ gate "via Bash, bash -c \"git add -A\" BARRA (T2)"                              
 gate "via PowerShell, Invoke-Expression \"git status\" PASSA (T2, nao e staging total)" 0 "$(p 'Invoke-Expression \"git status\"')"
 
 echo
+echo "== U1/U2 (rodada 12, lote 3, 2026-09-04): flags curtas coladas a -c (bash -xc, sh -ec) =="
+gate "bash -xc \"git add -A\" BARRA (U1)"                                         2 "$(b 'bash -xc \"git add -A\"')"
+gate "sh -ec \"git add -A\" BARRA (U1)"                                           2 "$(b 'sh -ec \"git add -A\"')"
+gate "bash -x -c \"git add -A\" BARRA (U2, flags separadas)"                      2 "$(b 'bash -x -c \"git add -A\"')"
+gate "bash -xc \"git status\" PASSA (U1, nao e staging total)"                    0 "$(b 'bash -xc \"git status\"')"
+
+echo
 echo "== saidas de emergencia =="
 saida=$(printf '%s' "$(b 'git add -A')" | RAINFOREST_GATE_OFF=1 node "$GATE" 2>&1); rc=$?
 if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   RAINFOREST_GATE_OFF=1 libera (exit 0)"
