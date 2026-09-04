@@ -35,12 +35,12 @@
     "em": "2026-09-03"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-03",
     "tarefas_ok": 14,
     "tarefas": 14,
     "comando": "for f in hooks/testa-cwd-efetivo.sh hooks/testa-gate-staging-total.sh hooks/testa-portaria.sh scripts/testa-limpar-worktrees.sh scripts/testa-conferir-entrega.sh hooks/testa-gate-worktree.sh scripts/testa-backup-gravar.sh scripts/testa-backup-conferir.sh scripts/testa-backup-estado.sh scripts/testa-fechar-issue.sh hooks/testa-gate-fechar-issue.sh hooks/testa-config.sh scripts/testa-saude.sh; do bash $f >/dev/null 2>&1; echo \"$f exit=$?\"; done",
-    "saida": "13 baterias exit=0 apos merge do lote U (cwd-efetivo 41, staging-total 73, portaria 7, limpar 18, conferir-entrega 63, gate-worktree 181, backup-gravar 23, backup-conferir 11, backup-estado 55, fechar-issue 33, gate-fechar-issue 64, config 38, saude 59); OneDrive real sem rainforest-backup",
+    "saida": "13 baterias exit=0 apos merge do lote V (cwd-efetivo 41, staging-total 77, portaria 7, limpar 18, conferir-entrega 63, gate-worktree 182, backup-gravar 23, backup-conferir 11, backup-estado 55, fechar-issue 33, gate-fechar-issue 67, config 38, saude 59); OneDrive real sem rainforest-backup",
     "mutacao": [
       {
         "tarefa": 1,
@@ -114,7 +114,7 @@
       }
     ],
     "em": "2026-09-04",
-    "rodada": 12,
+    "rodada": 13,
     "rodada3": {
       "achados": [
         "R1",
@@ -266,9 +266,14 @@
         "U flags coladas ao -c"
       ]
     },
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-04"
+    "rodada13": {
+      "achados": [
+        "Aud1/Aud2 composicao prefixo + wrapper de string"
+      ],
+      "mutacoes_reprovadas_na_integracao": [
+        "Va staging-total textoAPartir(toks,pos)",
+        "Vb gate-fechar-issue textoAPartir(toksComAspas,pos)"
+      ]
     }
   },
   "revisar": {
