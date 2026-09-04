@@ -29,7 +29,7 @@
     "em": "2026-09-04",
     "bateria": "bash scripts/testa-estado.sh (146 ok, 0 falhou) + bash hooks/testa-gate-git-verificacao.sh (72 ok, 0 falhou; era 50 antes das duas rodadas de revisao)",
     "comando": "bash hooks/testa-gate-git-verificacao.sh ; bash scripts/testa-estado.sh ; grep -c 'let emAspaANSIC' hooks/gate-git-verificacao.cjs",
-    "saida": "== resultado: 107 ok, 0 falha(s) == (gate), == resultado: 172 ok, 0 falhas == (estado), e 1 (uma unica maquina de aspas), na branch integrada",
+    "saida": "== resultado: 121 ok, 0 falha(s) == (gate), == resultado: 172 ok, 0 falhas == (estado), e 1 (uma unica maquina de aspas), na branch integrada",
     "mutacao": [
       {
         "tarefa": 1,
@@ -39,7 +39,7 @@
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "hooks/testa-gate-git-verificacao.sh, caso do payload PreToolUse com tool_input.command igual a git commit --no-verify -m x exigindo exit 2, mais os de $ANSI-C nu e citado e o que checa que a recusa ambigua nao fabrica comando"
+        "fixture": "hooks/testa-gate-git-verificacao.sh, caso do payload PreToolUse com tool_input.command igual a git commit --no-verify -m x exigindo exit 2, mais os oito de escape ANSI-C numerico e o que checa que a recusa nomeia a origem do escape"
       },
       {
         "tarefa": 3,
@@ -58,7 +58,7 @@
       "toggle gate-git-verificacao ausente de CHAVES",
       "falso positivo: corpo de heredoc julgado como comando"
     ],
-    "rodada": "quarta passada por executar, depois de revisar reprovado com 1 falso negativo na rodada 7"
+    "rodada": "quinta passada por executar, depois de revisar reprovado com o falso negativo de escape ANSI-C numerico"
   },
   "revisar": {
     "status": "reprovado",
@@ -67,11 +67,11 @@
       "caminhos_sujos": []
     },
     "achados": 1,
-    "resumo": "falso negativo: tokens() nao conhece $ANSI-C e discorda de segmentos(), que passou a conhecer. Flag nua depois de mensagem com apostrofo escapado e engolida e o commit passa em silencio. Reprova pelo criterio 1 da regra de parada.",
+    "resumo": "falso negativo: escape ANSI-C numerico nao e decodificado. Em bash, ANSI-C com hex 2d 6e vira -n de verdade e o gate libera; idem octal e unicode, e --no-verify inteiro em hex. Defeito anterior a rodada 8, mas foi a rodada 8 que declarou por escrito que essa classe e segura, e a declaracao e falsa.",
     "em": "2026-09-04",
-    "tentativas": 6,
-    "base": "ec440ea4362e050c5b4f14d5522328490a784f82",
-    "head": "d030f3a381c0a441b6f3f773cd32354e1769d492"
+    "tentativas": 7,
+    "base": "d030f3a381c0a441b6f3f773cd32354e1769d492",
+    "head": "ea07b7c09507535f82ba22754d23e1814fa56ced"
   },
   "verificar": {
     "status": "pendente"
