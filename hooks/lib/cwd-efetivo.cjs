@@ -9,13 +9,19 @@
 const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
+const { tokensComAspas, ehComando, posicaoDeComando } = require("./tokens-comando.cjs");
 
 // `cd X` isolado num segmento do encadeamento.
 const CD = /^\s*cd\s+(?:--\s+)?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s*$/;
 // Diretorio que o proprio git recebe, e que vence o cwd do shell.
 const GIT_DIR_EXPLICITO = /\bgit\b[^\n;&|]*?(?:-C|--work-tree(?:=|\s+))\s*(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))/;
-// Separadores de comando.
-const SEPARADORES = /&&|\|\||;|\n|\|/;
+// Separadores de comando. `&` simples (job em background) tambem separa
+// (K1 do auditor, rodada 6, lote 3, 2026-09-03) — mas NAO quando gruda em
+// `&&` (ja e alternativa propria acima), `&>` (redireciona stdout+stderr
+// para arquivo), ou vem colado DEPOIS de `>`, `<` ou `|` (`>&`, `<&`, `|&`):
+// esses casos sao operador de redirecionamento/pipe, nao separador de
+// comando. `(?<![><|])` e `(?!&|>)` fazem essa exclusao.
+const SEPARADORES = /&&|\|\||;|\n|\||(?<![><|])&(?!&|>)/;
 // `pushd X`: muda o cwd corrente igual `cd X`, mas empilha o cwd de antes
 // para o `popd` desfazer (H2, rodada 5 do lote 3).
 const PUSHD = /^\s*pushd\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s*$/;
@@ -66,6 +72,21 @@ function segmentosComAspas(cmd) {
       // Pula o separador (um ou dois caracteres)
       if (c === '&' && cmd[i + 1] === '&') i++;
       else if (c === '|' && cmd[i + 1] === '|') i++;
+      atual = "";
+    } else if (
+      c === '&' &&
+      cmd[i + 1] !== '&' &&
+      cmd[i + 1] !== '>' &&
+      cmd[i - 1] !== '>' &&
+      cmd[i - 1] !== '<' &&
+      cmd[i - 1] !== '|'
+    ) {
+      // `&` simples (job em background) tambem separa (K1) — exceto colado
+      // em `&&` (branco acima), `&>`, ou depois de `>`/`<`/`|` (`>&`, `<&`,
+      // `|&`), que sao operador de redirecionamento/pipe, nao separador.
+      if (atual.trim()) {
+        segmentos.push(atual);
+      }
       atual = "";
     } else {
       atual += c;
@@ -129,6 +150,26 @@ function extrairUltimoDirGit(seg) {
   }
 
   return ultima;
+}
+
+/**
+ * O COMANDO deste segmento (na posição de comando, pulando wrappers como
+ * `env`/`sudo`/`time`) é `git`?
+ *
+ * K2 do auditor (rodada 6, lote 3, 2026-09-03): a checagem antiga era
+ * `seg.includes("git")` — substring no texto cru do segmento. Isso casava
+ * "git" dentro de "gitignore" CITADO como argumento de outro comando
+ * (`grep -rn -C 3 "gitignore" .`), e o `-C 3` do grep (contexto de linhas,
+ * nada a ver com git) virava o cwd efetivo do segmento. Usa a MESMA noção
+ * de posição de comando que `procuraCLI` (gate-worktree.cjs) já usa para
+ * achar CLI que escreve, via `lib/tokens-comando.cjs` — em vez de
+ * reimplementar.
+ */
+function comandoEhGit(seg) {
+  const toks = tokensComAspas(seg);
+  const i = posicaoDeComando(toks);
+  if (i === null) return false;
+  return ehComando(toks[i], "git");
 }
 
 /**
@@ -280,18 +321,23 @@ function cwdPorSegmento(comando, cwdInicial) {
 
     // `git -C <dir>` — o argumento de `-C` vence o cwd do shell (o de `env -C`
     // incluso, se houver: `mov.cwd` já é o alvo do `env -C` deste segmento).
-    // Usa o ÚLTIMO se houver múltiplos.
-    if (seg.includes("git")) {
+    // Usa o ÚLTIMO se houver múltiplos. `comandoEhGit` (K2): só lê o `-C`
+    // quando o COMANDO do segmento é `git` de verdade, nunca por substring.
+    if (comandoEhGit(seg)) {
       const p = extrairUltimoDirGit(seg);
       if (p) {
         // `-C` com variável: não dá para resolver — fica INCERTO.
         if (/[$`]/.test(p)) {
           estado.incerto = true;
+          resultado.push({ seg, cwd: estado.atual, incerto: estado.incerto });
         } else {
-          // O caminho de `-C` é o cwd efetivo deste segmento
-          estado.atual = path.resolve(mov.cwd, p);
+          // O caminho de `-C` é o cwd efetivo DESTE segmento — NÃO persiste
+          // em `estado.atual` para os segmentos seguintes (K2, item b):
+          // `git -C X status && codex exec` roda o `codex` no cwd do shell,
+          // nunca em X.
+          const cwdSegmento = path.resolve(mov.cwd, p);
+          resultado.push({ seg, cwd: cwdSegmento, incerto: estado.incerto });
         }
-        resultado.push({ seg, cwd: estado.atual, incerto: estado.incerto });
         continue;
       }
     }

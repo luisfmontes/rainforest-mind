@@ -145,6 +145,17 @@ gate "git add -A && cd <worktree> no principal BARRA (H1)" 2 "$(b 'git add -A &&
 gate "cd <worktree> && git add -A no principal PASSA (regressao)" 0 "$(b 'cd '"$(esc "$WT")"' && git add -A')"
 
 echo
+echo "== K1/K2 do auditor (rodada 6, lote 3, 2026-09-03): '&' simples e git por posicao =="
+# K1: 'echo hi' rodava em background e o '&' nao separava segmento em lugar
+# nenhum — o 'git add -A' ficava escondido no MESMO segmento opaco.
+gate "echo hi & git add -A na JANELA PRINCIPAL BARRA (K1)" 2 "$(b 'echo hi & git add -A')"
+# K2: '-C 3' e o CONTEXTO do grep, nada a ver com git — regressao a evitar e
+# o segmento do grep virar 'incerto' ou mudar de cwd so por ter '-C' no texto,
+# o que faria o 'git add -A' seguinte escapar da deteccao.
+gate "grep -rn -C 3 \"gitignore\" . && git add -A na JANELA PRINCIPAL BARRA (K2)" 2 "$(b 'grep -rn -C 3 \"gitignore\" . && git add -A')"
+gate "git add -A 2>&1 DENTRO de worktree PASSA (K1, 2>&1 nao e separador)" 0 "$(ba 'git add -A 2>&1' "$(esc "$WT")")"
+
+echo
 echo "== saidas de emergencia =="
 saida=$(printf '%s' "$(b 'git add -A')" | RAINFOREST_GATE_OFF=1 node "$GATE" 2>&1); rc=$?
 if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   RAINFOREST_GATE_OFF=1 libera (exit 0)"
