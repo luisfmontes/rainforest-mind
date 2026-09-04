@@ -22,7 +22,7 @@
     "em": "2026-09-04"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-04",
     "tarefas_ok": 4,
     "tarefas": 4,
@@ -51,10 +51,22 @@
         "resultado": "n/a",
         "motivo": "skill e texto sem ramo de execucao; a falsificacao foi rodar cada exit code prometido pelo texto e conferir contra o observado"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-04"
+    }
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "51fbd17dcbc4cb67d062b016eead5df63d1f7541",
+      "caminhos_sujos": []
+    },
+    "achados": 2,
+    "resumo": "1) gate ignora caixa no nome do comando: GIT/Git/gIt commit --no-verify passam, e GIT resolve para o git de verdade no NTFS; Bash -c e BASH -c idem. 2) toggle .rainforest/config.json chave gate-git-verificacao prometido no cabecalho e em D11 nao existe: chave nunca registrada em hooks/lib/config.cjs CHAVES, ligado() devolve true para chave desconhecida",
+    "em": "2026-09-04",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
