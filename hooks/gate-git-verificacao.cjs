@@ -248,10 +248,27 @@ function segmentos(cmd) {
   let segmento = "";
   let emAspaSimples = false;
   let emAspaDupla = false;
+  let emAspaANSIC = false;
 
   for (let i = 0; i < cmd.length; i++) {
     const char = cmd[i];
     const proximo = cmd[i + 1];
+    const anterior = i > 0 ? cmd[i - 1] : "";
+
+    // Dentro de aspas ANSI-C ($'...'): barra invertida escapa o próximo caractere
+    if (emAspaANSIC) {
+      segmento += char;
+      if (char === "\\") {
+        // Barra invertida escapa o próximo caractere — assim $\' não fecha a string
+        if (proximo !== undefined) {
+          segmento += proximo;
+          i += 1;
+        }
+      } else if (char === "'") {
+        emAspaANSIC = false;
+      }
+      continue;
+    }
 
     // Dentro de aspas simples: nada é especial, nem barra, nem aspas duplas
     if (emAspaSimples) {
@@ -278,7 +295,11 @@ function segmentos(cmd) {
     }
 
     // Fora de aspas
-    if (char === "'") {
+    if (char === "'" && anterior === "$") {
+      // Abertura de string ANSI-C: $'
+      emAspaANSIC = true;
+      segmento += char;
+    } else if (char === "'") {
       emAspaSimples = true;
       segmento += char;
     } else if (char === '"') {
@@ -312,14 +333,14 @@ function segmentos(cmd) {
 
   // Se terminou dentro de uma aspa, a sintaxe é ambígua — falha para o lado
   // fechado (fail-closed: bloqueia mais, não menos). Se o comando contém
-  // flags perigosas, retorna um segmento que força bloqueio; senão, usa
+  // flags perigosas, retorna um marcador especial de ambiguidade; senão, usa
   // split ingênuo. Comando com aspa não fechada é erro de sintaxe no bash
   // de qualquer forma, e o gate não deve premiá-lo com passagem livre.
-  if (emAspaSimples || emAspaDupla) {
+  if (emAspaSimples || emAspaDupla || emAspaANSIC) {
     const temFlagPerigosa = /--no-verify|--no-gpg-sign|-n(\s|$)/.test(cmd);
     if (temFlagPerigosa) {
-      // Força bloqueio: retorna um segmento com a flag bem visível
-      return ["git commit --no-verify"];
+      // Marca como ambíguo em vez de fabricar um segmento falso
+      return [{ __ambigua: true }];
     }
     return cmd.split(/\|\||&&|[;|\n&()]/);
   }
@@ -451,12 +472,37 @@ function extraiSubstituicoes(cmd) {
  * rodada 6) e um comando por direito proprio, entao passa pelo mesmo
  * tratamento (heredoc -> continuacao -> substituicao -> segmentacao) de
  * novo, e nao so por um `flatMap(segmentos)` direto.
+ *
+ * Devolve um array de segmentos (strings). Se a leitura de qualquer parte
+ * ficou ambígua (aspas não fechadas), marca o array com propriedade
+ * `_ambigua: true` — a ambiguidade é sinalizada no array, não num
+ * segmento fabricado.
  */
 function segmentosDoComando(cmd) {
   const { cmd: semHeredoc, extras } = removeCorposDeHeredoc(cmd);
   const partes = extraiSubstituicoes(costuraContinuacao(semHeredoc));
-  const segs = partes.flatMap(segmentos);
-  for (const extra of extras) segs.push(...segmentosDoComando(extra));
+  const segs = [];
+  let ambigua = false;
+
+  for (const parte of partes) {
+    const resultSegmentos = segmentos(parte);
+    for (const seg of resultSegmentos) {
+      // Filtra segmentos marcadores de ambiguidade, marca o array em vez
+      if (typeof seg === "object" && seg !== null && seg.__ambigua) {
+        ambigua = true;
+      } else {
+        segs.push(seg);
+      }
+    }
+  }
+
+  for (const extra of extras) {
+    const extrasSegs = segmentosDoComando(extra);
+    segs.push(...extrasSegs);
+    if (extrasSegs._ambigua) ambigua = true;
+  }
+
+  if (ambigua) segs._ambigua = true;
   return segs;
 }
 
@@ -694,7 +740,14 @@ function analisaComando(cmd, profundidade) {
   if (profundidade > PROFUNDIDADE_MAXIMA) {
     return { motivo: "shell aninhado alem da profundidade maxima (fail-closed)", dirC: null };
   }
-  for (const seg of segmentosDoComando(cmd)) {
+  const segs = segmentosDoComando(cmd);
+
+  // Se a leitura ficou ambígua (aspas não fechadas), bloqueia com motivo honesto
+  if (segs._ambigua) {
+    return { motivo: `sintaxe ambígua (aspas não fechadas): ${cmd}`, dirC: null };
+  }
+
+  for (const seg of segs) {
     const toks = tokens(seg);
 
     const g = analisaGit(toks);

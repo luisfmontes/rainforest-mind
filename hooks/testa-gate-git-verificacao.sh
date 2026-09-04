@@ -297,9 +297,53 @@ gate "git commit -m \"ok\" | git commit --no-verify -m x (separador | fora)" \
 gate "git commit -m \"ok\" / git commit --no-verify -m x (quebra de linha fora de aspas)" \
   2 "$(b 'git commit -m \"ok\"\ngit commit --no-verify -m x')"
 
+echo
+echo "== rodada 7 (revisor, 5a rodada, 2026-09-04): ANSI-C quotes (\$'...') e ambiguidade honesta =="
+gate "git commit -m \$'Explain -n flag, it\\'s not dry-run here' (\$'...' com apóstrofo escapado)" \
+  0 "$(b 'git commit -m $'"'"'Explain -n flag, it'"'"'\'"'"'s not dry-run here'"'"'')"
+
+gate "git commit -m \$'It\\'s done' (controle: apóstrofo escapado, sem prosa perigosa)" \
+  0 "$(b 'git commit -m $'"'"'It'"'"'\'"'"'s done'"'"'')"
+
+gate "git commit -m \$'linha um\\nfala de --no-verify\\nlinha tres' (\$'...' multi-linha)" \
+  0 "$(b 'git commit -m $'"'"'linha um\nfala de --no-verify\nlinha tres'"'"'')"
+
+gate "git commit -m \$'ok' ; git commit --no-verify -m x (contraprova: ponto-virgula FORA de \$'...')" \
+  2 "$(b 'git commit -m $'"'"'ok'"'"' ; git commit --no-verify -m x')"
+
+gate "\$'a\\\\\\\\'  ; git commit --no-verify -m x (contraprova: barra escapada + separador)" \
+  2 "$(b 'echo $'"'"'a\\\\'"'"' ; git commit --no-verify -m x')"
+
+gate "git commit -m \$'teste (aspa não fechada com prosa) -- ambiguidade honesta" \
+  2 "$(b 'git commit -m $'"'"'teste com --no-verify')"
+
+gate "bash -c \$'git commit --no-verify' (não-objetivo: indireção shell permanece como antes)" \
+  0 "$(b 'bash -c $'"'"'git commit --no-verify'"'"'')"
+
 echo "== aspa nao fechada: fallback fail-closed =="
+# Teste comum
 gate "git commit -m \"texto com --no-verify (sem fechar) - fallback" \
   2 "$(b 'git commit -m \"texto com --no-verify')"
+
+# Teste especial: valida que a mensagem de bloqueio e honesta (nao fabrica segmento falso)
+# O Defeito B seria: mensagem contem "Comando: git commit --no-verify" (inventado)
+# O conserto: mensagem contem "Comando: sintaxe ambígua..." (honesto, com o comando real)
+saida=$(printf '%s' "$(b 'git commit -m \"texto com --no-verify')" | node "$GATE" 2>&1)
+rc=$?
+if [ "$rc" = 2 ]; then
+  # Verifica que "Comando:" na mensagem contem o comando recebido (nao fabricado)
+  if echo "$saida" | grep -q "Comando:.*git commit -m"; then
+    ok=$((ok+1)); echo "  ok   mensagem honesta: nao fabrica segmento falso (exit 2)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mensagem: nao contem o comando recebido"; echo "$saida" | sed 's/^/         /'
+  fi
+  # Valida que NAO contem reconstrucao inventada que nunca existiu
+  if echo "$saida" | grep -q "Comando:.*git commit --no-verify\"" && ! echo "$saida" | grep -q "git commit -m"; then
+    falhou=$((falhou+1)); echo "  FALHA mensagem fabrica o segmento (Defeito B nao foi consertado)"; echo "$saida" | sed 's/^/         /'
+  fi
+else
+  falhou=$((falhou+1)); echo "  FALHA exit code: esperava 2, veio $rc"
+fi
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
