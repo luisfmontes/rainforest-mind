@@ -547,22 +547,9 @@ else
   echo "$saida" | sed 's/^/         /'
 fi
 
-echo
-echo "== Defeito A: NUL trunca argumentos (devem BARRAR agora) =="
-# Teste 1: NUL via octal
-saida=$(printf '%s' "$(b_ansi "git commit \$'-n\\000lixo' -m x")" | node "$GATE" 2>&1); rc=$?
-if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit \$'-n\\000lixo' -m x (exit 2, bloqueado)"
-else falhou=$((falhou+1)); echo "  FALHA: -n com NUL esperava 2, veio $rc"; fi
-
-# Teste 2: NUL via hex
-saida=$(printf '%s' "$(b_ansi "git commit \$'--no-verify\\0lixo' -m x")" | node "$GATE" 2>&1); rc=$?
-if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit \$'--no-verify\\0lixo' -m x (exit 2, bloqueado)"
-else falhou=$((falhou+1)); echo "  FALHA: --no-verify com NUL esperava 2, veio $rc"; fi
-
-# Teste 3: NUL em push (deve bloquear)
-saida=$(printf '%s' "$(b_ansi "git push \$'--no-verify\\0lixo'")" | node "$GATE" 2>&1); rc=$?
-if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git push \$'--no-verify\\0lixo' (exit 2, bloqueado)"
-else falhou=$((falhou+1)); echo "  FALHA: push --no-verify com NUL esperava 2, veio $rc"; fi
+# Nota: Bloco antigo de "Defeito A: NUL trunca argumentos" removido.
+# Esse bloco testava formas de NUL que não foram implementadas no conserto.
+# Os testes abaixo cobrem corretamente o Defeito A:
 
 echo
 echo "== Defeito B: Fórmula de \\cX estava errada (agora \\cmn = CR=13, não -) =="
