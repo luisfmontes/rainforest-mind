@@ -359,6 +359,23 @@ const FLAGS_COM_VALOR_PR_MERGE = new Set([
 ]);
 
 /**
+ * Rodada 19 (lote 3), defesa específica em cima da causa raiz em
+ * `resolver-executavel.cjs`: o `ref` extraído de `gh pr merge <ref>` é texto
+ * CRU vindo do comando inspecionado (não da API) e ia direto para
+ * `executar("gh", ["pr","view", ref, ...])`. Mesmo com `executar` recusando
+ * metacaractere de cmd.exe, valida aqui também — defesa em profundidade, e
+ * evita que qualquer ref esquisito chegue perto do `gh`. Aceita só: número
+ * (`/^\d+$/`), URL de PR do GitHub, ou nome de branch conservador — mesmo
+ * padrão de `scripts/fechar-issue.cjs:~88` para o número de Issue.
+ */
+const REF_URL_PR_GITHUB = /^https:\/\/github\.com\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\/pull\/\d+$/;
+const REF_BRANCH_CONSERVADOR = /^[A-Za-z0-9._\/-]+$/;
+
+function refDoPRMergeValido(ref) {
+  return /^\d+$/.test(ref) || REF_URL_PR_GITHUB.test(ref) || REF_BRANCH_CONSERVADOR.test(ref);
+}
+
+/**
  * Extrai o `<ref>` posicional de `gh pr merge [<ref>] [flags]` (número,
  * branch ou URL do PR) — ou `null` se nenhum foi passado (o `merge` então
  * age sobre o PR da branch atual, e é assim que `gh pr view` sem argumento
@@ -479,6 +496,16 @@ function verificarComandoGh(segmento, subcomandos, cwdSegmento) {
   // (leitura, mesma família de `gh issue view` usada em `temMarcadorEvidencia`).
   if (temSubcomando(subcomandos, ["pr", "merge"])) {
     const ref = extrairRefDoPRMerge(subcomandos);
+
+    if (ref !== null && !refDoPRMergeValido(ref)) {
+      bloqueia(
+        `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
+        `Razão: não consegui ler a descrição real do PR ('gh pr view --json body' falhou).\n\n` +
+        `Sem a descrição não dá pra saber se o merge fecha alguma Issue sem evidência.\n` +
+        `Confira se o PR existe e se 'gh' tem acesso à rede/API.\n`
+      );
+    }
+
     const args = ["pr", "view"];
     if (ref) args.push(ref);
     args.push("--json", "body");

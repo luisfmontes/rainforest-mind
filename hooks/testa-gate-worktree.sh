@@ -711,5 +711,44 @@ gate "via Bash, source rodar.sh fora de worktree BARRA (R18, arquivo opaco)" 2 \
   "$(b "source rodar.sh" "$R")"
 
 echo
+echo "== rodada 19 (lote 3): &{...} colado ao scriptblock atravessa o gate =="
+# Mesma causa do conserto em gate-staging-total.cjs: 'extrairPrimeiroToken'
+# tokenizava por \S+ e nao tratava '{' como fronteira — o primeiro token de
+# '&{codex exec --yolo}' saia '&{codex' inteiro, nunca batia com
+# 'exe === "&"', e 'desempacotarWrapperDeString' nunca marcava o segmento
+# como ilegivel: nem o '&' virava call operator, nem 'codex' era reconhecido
+# como CLI ('&{codex' != 'codex').
+gate "&{codex exec --yolo} fora do worktree BARRA (rodada 19)" 2 \
+  "$(b "&{codex exec --yolo}" "$R")"
+# Dentro do worktree TAMBEM barra — nao e regressao: a chave '{' sozinha
+# como segmento faz 'contemSubshellOuGrupo' marcar a travessia INCERTA (o
+# mesmo tratamento conservador que "(cd principal && codex exec --yolo)" ja
+# recebe no caso A3 acima), e incerto bloqueia em QUALQUER lugar — o gate
+# nao sabe mais distinguir worktree de principal quando nao sabe resolver o
+# resto do comando.
+gate "&{codex exec --yolo} dentro do worktree TAMBEM barra (incerto, mesma familia do caso A3)" 2 \
+  "$(b "&{codex exec --yolo}" "$WT")"
+
+echo
+echo "== rodada 19 (lote 3): &{...} tambem some da checagem de sessao co-locada =="
+# Mesma causa em 'palavras' (gate-worktree.cjs): sem tratar '{'/'}' como
+# fronteira de palavra, '&{git checkout main}' virava as palavras
+# ["&{git", "checkout", "main}"] — nem "&{git" nem "main}" batem com "git"/
+# "main" exatos, e a busca por 'git' literal (subcomandoGit) nunca achava o
+# comando escondido no scriptblock colado ao call operator.
+monta_sessoes "$EU|$(esc "$R")|1|1" "$OUTRA|$(esc "$R")|15|2"
+gatec "&{git checkout main} bloqueado como o 'git checkout main' puro (rodada 19)" 2 \
+  "$(p "&{git checkout main}" "$R")"
+
+echo
+echo "== contraprovas de super-bloqueio (rodada 19, lote 3) =="
+# Chave/parenteses DENTRO de aspas continuam UMA palavra so — mesmo cenario
+# e payload de "commit com 'checkout' na mensagem PASSA" (acima, D2): so
+# muda o conteudo da mensagem, para provar que '{'/'(' citados nao viram
+# fronteira de palavra nem de segmento.
+gatec 'contraprova: git commit -m "fix {json} parse" PASSA'  0 "$(p 'git commit -m "fix {json} parse"' "$R")"
+gatec 'contraprova: git commit -m "a (b) c" PASSA'            0 "$(p 'git commit -m "a (b) c"' "$R")"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

@@ -3,6 +3,9 @@
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Forma Windows de $SRC, para `require()` do Node quando o cwd do processo
+# node não é $SRC (rodada 19, lote 3: casos (bz5)/(bz6) rodam com `cd "$SBP"`).
+SRC_WIN="$(cygpath -m "$SRC")"
 SBP="$(mktemp -d)"
 trap 'rm -rf "$SBP"' EXIT
 # Converter para forma Windows para payloads (cwd em Windows)
@@ -1117,6 +1120,129 @@ echo "== (by) source fechar.sh → exit 2 (R18, arquivo opaco) =="
 ) 2>"$SBP/err-by"
 EXIT_BY=$?
 [ $EXIT_BY -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_BY)"
+
+# Rodada 19 (lote 3): injeção de comando via `ref` cru de `gh pr merge` —
+# reproduzido pela janela principal em caixa de areia com `gh.cmd` de
+# mentira: `executar("gh", ["pr","view", ref, ...])` liga `shell:true`
+# porque o `gh` resolvido termina em `.cmd`, e `spawnSync(arquivo.cmd, args,
+# {shell:true})` NÃO escapa os elementos do array contra os metacaracteres
+# do `cmd.exe` no Windows — o hook que existe para só LER executava texto
+# arbitrário.
+
+# Caso (bz1): `gh pr merge "5 & echo INJETADO > pwned.txt" --squash` → exit 2
+# (D16 valida o `ref` antes de chamar `gh pr view`) E nenhum arquivo novo
+# aparece na caixa de areia — o caso só vale provando isso, não só o exit
+# code (uma trava que bloqueia por acidente, mas ainda deixa o `executar`
+# rodar o texto injetado depois, não provaria nada).
+echo
+echo "== (bz1) gh pr merge com ref carregando injeção de comando → exit 2, NADA criado no disco =="
+# Snapshot ANTES/DEPOIS do diretório da caixa de areia — a saída de erro
+# do próprio teste vai para uma variável (não para um arquivo DENTRO de
+# $SBP), para o snapshot não confundir artefato do teste com prova real.
+LISTA_ANTES_BZ1="$(ls -1 "$SBP" | sort)"
+ERR_BZ1="$(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr merge \"5 & echo INJETADO > pwned.txt\" --squash"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs" 2>&1 1>/dev/null
+)"
+EXIT_BZ1=$?
+[ $EXIT_BZ1 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_BZ1)"
+LISTA_DEPOIS_BZ1="$(ls -1 "$SBP" | sort)"
+if [ "$LISTA_ANTES_BZ1" = "$LISTA_DEPOIS_BZ1" ]; then
+  test_ok "nenhum arquivo novo na caixa de areia (diretório idêntico antes/depois)"
+else
+  test_fail "a caixa de areia mudou — diff:
+$(diff <(echo "$LISTA_ANTES_BZ1") <(echo "$LISTA_DEPOIS_BZ1"))"
+fi
+[ -f "$SBP/pwned.txt" ] && test_fail "pwned.txt foi criado (injeção funcionou!)" || test_ok "pwned.txt não existe"
+
+# Caso (bz2): mesmo ataque, mas colado ao ref numérico (sem espaço, sem
+# aspas na CLI de verdade — `gh pr merge 5&echo...`); confere que a defesa
+# não depende do atacante ter usado espaço/aspas de um jeito específico.
+echo
+echo "== (bz2) gh pr merge com ref '5' + metacaractere colado → exit 2, NADA criado no disco =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr merge \"5&echo INJETADO2>pwned2.txt\" --squash"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-bz2"
+EXIT_BZ2=$?
+[ $EXIT_BZ2 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_BZ2)"
+[ -f "$SBP/pwned2.txt" ] && test_fail "pwned2.txt foi criado (injeção funcionou!)" || test_ok "pwned2.txt não existe"
+
+# Caso (bz3, regressão): `gh pr merge 5 --squash` (ref numérico limpo, sem
+# marcador na descrição real do PR) continua funcionando como antes do
+# conserto — exit 0, ninguém fica bloqueado por engano.
+echo
+echo "== (bz3) gh pr merge 5 --squash com ref limpo → continua passando (regressão) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  export GH_PR_VIEW_BODY="sem palavra-chave de fechamento"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr merge 5 --squash"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-bz3"
+EXIT_BZ3=$?
+[ $EXIT_BZ3 -eq 0 ] && test_ok "exit 0 (não regrediu)" || test_fail "exit code (foi $EXIT_BZ3)"
+
+# Caso (bz4, regressão): branch conservador (letras/números/./-/_//) como ref
+# continua sendo aceito e verificado normalmente — a validação de D16 não
+# pode recusar um nome de branch legítimo.
+echo
+echo "== (bz4) gh pr merge com ref de branch conservador (fluxo/guardas) → segue verificando (regressão) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  export GH_PR_VIEW_BODY="Closes #321"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr merge fluxo/guardas --squash"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-bz4"
+EXIT_BZ4=$?
+[ $EXIT_BZ4 -eq 2 ] && test_ok "exit 2 (Issue #321 sem marcador — a checagem de verdade rodou)" || test_fail "exit code (foi $EXIT_BZ4)"
+
+# Caso (bz5): causa raiz — `executar()` de resolver-executavel.cjs recusa
+# QUALQUER argumento com metacaractere de cmd.exe quando o alvo é .cmd/.bat,
+# mesmo chamado diretamente (sem passar pela validação de `ref` do gate) —
+# é a defesa em profundidade que o briefing pede ("os dois lados, porque a
+# causa raiz é o executar"). Chamador real: `verificarComandoGh` (caso c),
+# `hooks/gate-fechar-issue.cjs:~488` —
+# `executar("gh", ["pr","view", ref, "--json","body"], ...)`.
+echo
+echo "== (bz5) causa raiz: executar() recusa argumento com metacaractere de cmd.exe =="
+(
+  export PATH="$SBP/bin:$PATH"
+  cd "$SBP"
+  node -e "
+    const { executar } = require('$SRC_WIN/hooks/lib/resolver-executavel.cjs');
+    const fs = require('fs');
+    const antes = fs.existsSync('pwned3.txt');
+    const r = executar('gh', ['pr','view','5 & echo INJETADO3 > pwned3.txt','--json','body']);
+    const depois = fs.existsSync('pwned3.txt');
+    console.log(JSON.stringify({ status: r.status, antes, depois }));
+  "
+) > "$SBP/out-bz5" 2>"$SBP/err-bz5"
+RESULT_BZ5="$(cat "$SBP/out-bz5")"
+echo "$RESULT_BZ5" | grep -q '"depois":false' && test_ok "pwned3.txt não foi criado (executar recusou antes do spawnSync)" || test_fail "pwned3.txt foi criado ou saída inesperada ($RESULT_BZ5)"
+echo "$RESULT_BZ5" | grep -q '"status":1' && test_ok "executar() devolveu status != 0 para o argumento malicioso" || test_fail "status inesperado ($RESULT_BZ5)"
+
+# Caso (bz6, contraprova de super-bloqueio): mesmo `executar()`, ref limpo
+# (sem metacaractere) continua indo até o `gh.cmd` de mentira e voltando
+# status 0 — a recusa é ESPECÍFICA do metacaractere, não de qualquer ref.
+echo
+echo "== (bz6) contraprova: executar() com ref limpo ('5') continua chamando gh normalmente =="
+(
+  export PATH="$SBP/bin:$PATH"
+  cd "$SBP"
+  node -e "
+    const { executar } = require('$SRC_WIN/hooks/lib/resolver-executavel.cjs');
+    const r = executar('gh', ['pr','view','5','--json','body']);
+    console.log(JSON.stringify({ status: r.status }));
+  "
+) > "$SBP/out-bz6" 2>"$SBP/err-bz6"
+RESULT_BZ6="$(cat "$SBP/out-bz6")"
+echo "$RESULT_BZ6" | grep -q '"status":0' && test_ok "ref limpo continua funcionando (status 0)" || test_fail "ref limpo quebrou ($RESULT_BZ6)"
 
 # Resultado final
 echo

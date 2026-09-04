@@ -241,6 +241,20 @@ gate "via PowerShell, & x.ps1 BARRA (R18, call operator)"                  2 "$(
 gate "contraprova: via Bash, echo hi & git status PASSA (R18, & e separador)" 0 "$(b 'echo hi & git status')"
 
 echo
+echo "== rodada 19 (lote 3): &{...} colado ao scriptblock atravessa o gate =="
+# `extrairPrimeiroToken` tokenizava por \S+ e nao tratava '{' como fronteira:
+# o primeiro token de '&{git add -A}' saia '&{git' inteiro, que nunca batia
+# com o 'exe === "&"' do R18 acima — o '&' colado ao '{' escapava da checagem
+# de call operator, e 'git add -A' escondido no scriptblock passava batido.
+gate "&{git add -A} BARRA (colado, sem espaco nenhum)"     2 "$(p '&{git add -A}')"
+gate "&{ git add -A } BARRA (espaco so por dentro)"        2 "$(p '&{ git add -A }')"
+gate "& {git add -A} BARRA (espaco so antes do '{', ja passava)" 2 "$(p '& {git add -A}')"
+# contraprovas de super-bloqueio: chave/parenteses DENTRO de aspas nao muda
+# nada — a mensagem/argumento continua UMA palavra so, igual antes.
+gate 'contraprova: git commit -m "fix {json} parse" PASSA' 0 "$(b 'git commit -m \"fix {json} parse\"')"
+gate 'contraprova: git commit -m "a (b) c" PASSA'           0 "$(b 'git commit -m \"a (b) c\"')"
+
+echo
 echo "== saidas de emergencia =="
 saida=$(printf '%s' "$(b 'git add -A')" | RAINFOREST_GATE_OFF=1 node "$GATE" 2>&1); rc=$?
 if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   RAINFOREST_GATE_OFF=1 libera (exit 0)"
