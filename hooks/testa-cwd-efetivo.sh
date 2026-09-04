@@ -43,11 +43,20 @@ const testB = path.join(testDir, "projeto");
 const testD = path.join(testDir, "test-d");
 const repoPai = path.join(testDir, "repo-pai");
 const subdir = path.join(repoPai, "subdir");
+// S1 (rodada 10, lote 3): dir REAL com til no meio (formato 8.3), para o
+// teste (b2) continuar existindo em disco depois do fix "destino que nao
+// existe vira incerto" — sem isso o fixture sintetico do Issue #16 (que
+// nunca existiu de verdade) passaria a marcar incerto por um motivo NOVO
+// (nao existe em disco), mascarando o que o teste queria provar (til no
+// meio nao e expansao de home).
+const dir8Dot3 = path.join(testDir, "PROGRA~1");
+const dir8Dot3Project = path.join(dir8Dot3, "project");
 
 fs.mkdirSync(testA, { recursive: true });
 fs.mkdirSync(testB, { recursive: true });
 fs.mkdirSync(testD, { recursive: true });
 fs.mkdirSync(repoPai, { recursive: true });
+fs.mkdirSync(dir8Dot3Project, { recursive: true });
 fs.mkdirSync(subdir, { recursive: true });
 
 // Setup repo para teste (e)
@@ -83,13 +92,11 @@ test("(b) cd resolve sem marcar incerto", () => {
 // Teste adicional (fixture Issue #16): caminho com til no meio (formato 8.3)
 // O til no meio NÃO é expansão de home — não marca incerto
 test("(b2) caminho 8.3 com til no meio NÃO marca incerto", () => {
-  const pathWith8Dot3 = "C:/PROGRA~1/project";
-  const cwdInicial = "C:/PROGRA~1";
-  const cmd = `cd '${pathWith8Dot3}' && git commit`;
-  const result = resolverCwdEfetivo(cmd, cwdInicial);
-  // Sem incerteza, resolve o caminho completo
-  const expectedCwd = path.resolve(cwdInicial, "project");
-  eq(result.cwd, expectedCwd, "cwd");
+  const cmd = `cd '${dir8Dot3Project}' && git commit`;
+  const result = resolverCwdEfetivo(cmd, dir8Dot3);
+  // Sem incerteza, resolve o caminho completo (dir existe de verdade —
+  // S1 exige isso pra nao confundir "til no meio" com "nao existe em disco")
+  eq(result.cwd, dir8Dot3Project, "cwd");
   eq(result.incerto, false, "incerto=false com til no meio");
 });
 
@@ -346,6 +353,37 @@ test("(u4) Pop-Location; x -> sem Push-Location correspondente nesta linha, ince
   eq(r.length, 2, "numero de segmentos");
   eq(r[0].incerto, true, "Pop-Location sem Push-Location marca incerto");
   eq(r[1].incerto, true, "incerto propaga para o segmento seguinte");
+});
+
+console.log();
+console.log("== Caso (v): S1 (8a revisao, rodada 10, lote 3) — sintaxe de dois-pontos e destino inexistente ==");
+test("(v1) Set-Location -Path:A; x -> 2o segmento com cwd A (A existente na caixa)", () => {
+  const cmd = `Set-Location -Path:${testA}; x`;
+  const r = cwdPorSegmento(cmd, testDir);
+  eq(r.length, 2, "numero de segmentos");
+  eq(r[1].cwd, testA, "cwd do 2o segmento (apos Set-Location -Path: com dois-pontos)");
+  eq(r[1].incerto, false, "incerto=false: A existe em disco");
+});
+test("(v2) Set-Location -Path:-x; y -> incerto (valor comeca com '-', nunca destino de verdade)", () => {
+  const cmd = `Set-Location -Path:-x; y`;
+  const r = cwdPorSegmento(cmd, testDir);
+  eq(r.length, 2, "numero de segmentos");
+  eq(r[0].incerto, true, "Set-Location -Path:-x marca incerto");
+  eq(r[1].incerto, true, "incerto propaga para o segmento seguinte");
+});
+test("(v3) cd /caminho/que/nao/existe && y -> incerto (destino nao existe em disco)", () => {
+  const alvo = path.join(testDir, "caminho-que-nao-existe");
+  const cmd = `cd '${alvo}' && y`;
+  const r = cwdPorSegmento(cmd, testDir);
+  eq(r[0].incerto, true, "cd para destino inexistente marca incerto");
+  eq(r[1].incerto, true, "incerto propaga para o segmento seguinte");
+});
+test("(v4) mkdir novo && cd novo && y -> incerto (destino criado no mesmo comando, nao existe AINDA)", () => {
+  const cmd = `mkdir novo && cd novo && y`;
+  const r = cwdPorSegmento(cmd, testDir);
+  eq(r.length, 3, "numero de segmentos");
+  eq(r[1].incerto, true, "cd novo marca incerto: 'novo' nao existe no momento da analise");
+  eq(r[2].incerto, true, "incerto propaga para o segmento seguinte (y)");
 });
 
 console.log();

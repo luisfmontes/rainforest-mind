@@ -44,8 +44,16 @@ repo_a="$SB/repo_a"
 work_a="$SB/trabalho_a"
 criarRepoComCommit "$repo_a" "$work_a"
 
-# Cria um worktree limpo
-wt_a_real="$work_a/.git/worktrees/wt-a"
+# Cria um worktree limpo. S2 (8a revisao, rodada 10, lote 3, 2026-09-03): o
+# checkout tem de ficar FORA de `.git/worktrees/<nome>` — colocar o checkout
+# ALI faz o checkout e a pasta administrativa do proprio git (HEAD,
+# ORIG_HEAD, commondir, gitdir, index, logs/) coincidirem no mesmo diretorio,
+# um layout que `git worktree add` nunca produz sozinho e que nenhum worktree
+# real deste projeto usa (os de verdade ficam em `.claude/worktrees/`,
+# irmaos do repo, nunca dentro de `.git`). Confirmado na caixa: um worktree
+# de verdade, com o checkout FORA de `.git/worktrees`, nunca lista nenhum
+# desses nomes no porcelain.
+wt_a_real="$work_a-worktrees/wt-a"
 git worktree add "$wt_a_real" HEAD
 
 # Lista com limpar-worktrees
@@ -69,8 +77,8 @@ repo_b="$SB/repo_b"
 work_b="$SB/trabalho_b"
 criarRepoComCommit "$repo_b" "$work_b"
 
-# Cria um worktree com sujeira
-wt_b_real="$work_b/.git/worktrees/wt-b"
+# Cria um worktree com sujeira (checkout fora de .git/worktrees, ver caso a)
+wt_b_real="$work_b-worktrees/wt-b"
 git worktree add "$wt_b_real" HEAD
 
 cd "$wt_b_real"
@@ -102,12 +110,13 @@ touch initial.txt
 git add initial.txt
 git commit -m "Initial commit"
 
-# Cria um worktree de verdade
-wt_c_real="$repo_c/.git/worktrees/wt-c"
+# Cria um worktree de verdade (checkout fora de .git/worktrees, ver caso a)
+wt_c_real="$repo_c-worktrees/wt-c"
 git worktree add "$wt_c_real" HEAD
 
-# Cria um subdiretório comum (sem .git próprio) ao lado do worktree, dentro de .git/worktrees/
-subdir_comum="$repo_c/.git/worktrees/subdir-comum"
+# Cria um subdiretório comum (sem .git próprio) ao lado do worktree, no MESMO
+# pai que `listarWorktreesDoDisco` infere do primeiro worktree registrado
+subdir_comum="$repo_c-worktrees/subdir-comum"
 mkdir -p "$subdir_comum"
 
 # Lista com limpar-worktrees
@@ -131,9 +140,9 @@ repo_d="$SB/repo_d"
 work_d="$SB/trabalho_d"
 criarRepoComCommit "$repo_d" "$work_d"
 
-# Cria dois worktrees: um limpo, um sujo
-wt_d_limpo_real="$work_d/.git/worktrees/wt-limpo"
-wt_d_sujo_real="$work_d/.git/worktrees/wt-sujo"
+# Cria dois worktrees: um limpo, um sujo (checkout fora de .git/worktrees, ver caso a)
+wt_d_limpo_real="$work_d-worktrees/wt-limpo"
+wt_d_sujo_real="$work_d-worktrees/wt-sujo"
 
 git worktree add "$wt_d_limpo_real" HEAD
 git worktree add "$wt_d_sujo_real" HEAD
@@ -184,7 +193,7 @@ repo_e="$SB/repo_e"
 work_e="$SB/trabalho_e"
 criarRepoComCommit "$repo_e" "$work_e"
 
-wt_e_real="$work_e/.git/worktrees/wt-e"
+wt_e_real="$work_e-worktrees/wt-e"
 git worktree add "$wt_e_real" HEAD
 
 # Converte a raiz para o formato Windows com barra invertida (C:\...)
@@ -225,7 +234,7 @@ repo_f="$SB/repo_f"
 work_f="$SB/trabalho_f"
 criarRepoComCommit "$repo_f" "$work_f"
 
-wt_f_real="$work_f/.git/worktrees/wt-f"
+wt_f_real="$work_f-worktrees/wt-f"
 git worktree add "$wt_f_real" HEAD
 
 # Alterna a caixa da letra de drive (ex.: C:\... -> c:\...)
@@ -271,18 +280,18 @@ repo_g="$SB/repo_g"
 work_g="$SB/trabalho_g"
 criarRepoComCommit "$repo_g" "$work_g"
 
-wt_g_limpo_real="$work_g/.git/worktrees/wt-g-limpo"
-wt_g_sujo_real="$work_g/.git/worktrees/wt-g-sujo"
+wt_g_limpo_real="$work_g-worktrees/wt-g-limpo"
+wt_g_sujo_real="$work_g-worktrees/wt-g-sujo"
 git worktree add "$wt_g_limpo_real" HEAD
 git worktree add "$wt_g_sujo_real" HEAD
 cd "$wt_g_sujo_real"
 echo "sujeira" > arquivo_g.txt
 cd "$work_g"
 
-# Orfao: subdiretorio comum dentro de .git/worktrees, sem .git proprio (mesmo
-# desenho do caso (c), mas agora convivendo com um limpo e um sujo no mesmo
-# --remover).
-orfao_g="$work_g/.git/worktrees/subdir-orfao-g"
+# Orfao: subdiretorio comum no MESMO pai dos worktrees de verdade (checkout
+# fora de .git/worktrees, ver caso a), sem .git proprio (mesmo desenho do
+# caso (c), mas agora convivendo com um limpo e um sujo no mesmo --remover).
+orfao_g="$work_g-worktrees/subdir-orfao-g"
 mkdir -p "$orfao_g"
 
 # Antes de remover: confirma que o orfao aparece listado
@@ -340,6 +349,92 @@ if echo "$saida_g_depois" | grep -q "órfão"; then
 else
   falhou=$((falhou+1)); echo "  FALHA órfão sumiu da listagem depois do --remover"
   echo "        Saída: $saida_g_depois"
+fi
+
+# --- CASO (h): worktree com logs/app.log NÃO RASTREADO é 'sujo', e --remover
+# NÃO o remove (arquivo continua no disco)
+#
+# S2 (8a revisao, rodada 10, lote 3, 2026-09-03): a lista de exclusao de
+# `classificar()` filtrava a linha `?? logs/` do porcelain (achava que era
+# arquivo especial do worktree) — um worktree com log de verdade, nao
+# rastreado, virava "limpo" e `--remover` apagava o diretorio (e o log
+# dentro dele) sem dar chance de conferir. Reproduzido na caixa antes do
+# conserto: `git status --porcelain` com `logs/app.log` nao rastreado
+# devolvia so `?? logs/`, que a lista excluia inteira.
+
+teste "h" "worktree com logs/app.log não rastreado é 'sujo' e --remover não o apaga"
+
+repo_h="$SB/repo_h"
+work_h="$SB/trabalho_h"
+criarRepoComCommit "$repo_h" "$work_h"
+
+wt_h_real="$work_h-worktrees/wt-h"
+git worktree add "$wt_h_real" HEAD
+mkdir -p "$wt_h_real/logs"
+echo "log de verdade, nao rastreado" > "$wt_h_real/logs/app.log"
+
+saida_h=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_h" 2>&1)
+if echo "$saida_h" | grep -q "sujo"; then
+  ok=$((ok+1)); echo "  ok    worktree com logs/app.log não rastreado é 'sujo'"
+else
+  falhou=$((falhou+1)); echo "  FALHA worktree com logs/app.log não rastreado não apareceu como 'sujo'"
+  echo "        Saída: $saida_h"
+fi
+
+node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_h" --remover >/dev/null 2>&1
+ls_h=$(ls "$wt_h_real/logs/app.log" 2>&1)
+if [ -f "$wt_h_real/logs/app.log" ]; then
+  ok=$((ok+1)); echo "  ok    logs/app.log continua no disco depois do --remover (ls: $ls_h)"
+else
+  falhou=$((falhou+1)); echo "  FALHA logs/app.log foi removido do disco (não deveria): $ls_h"
+fi
+
+# --- CASO (i): worktree com 'index' NÃO RASTREADO na raiz é 'sujo'
+#
+# Mesma causa do caso (h): a lista de exclusão também filtrava a linha
+# `?? index` — um arquivo de usuário chamado literalmente "index" na raiz
+# do worktree (nome comum, sem relação com o admin file do git) virava
+# invisível para a classificação.
+
+teste "i" "worktree com arquivo 'index' não rastreado na raiz é 'sujo'"
+
+repo_i="$SB/repo_i"
+work_i="$SB/trabalho_i"
+criarRepoComCommit "$repo_i" "$work_i"
+
+wt_i_real="$work_i-worktrees/wt-i"
+git worktree add "$wt_i_real" HEAD
+echo "arquivo de usuario, nao rastreado" > "$wt_i_real/index"
+
+saida_i=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_i" 2>&1)
+if echo "$saida_i" | grep -q "sujo"; then
+  ok=$((ok+1)); echo "  ok    worktree com 'index' não rastreado na raiz é 'sujo'"
+else
+  falhou=$((falhou+1)); echo "  FALHA worktree com 'index' não rastreado na raiz não apareceu como 'sujo'"
+  echo "        Saída: $saida_i"
+fi
+
+# --- CASO (j): worktree limpo DE VERDADE (sem sujeira nenhuma) é removido
+#
+# Fecha o contraste com (h)/(i): sem a lista de exclusão, um worktree que
+# não tem NADA no porcelain continua sendo removido normalmente.
+
+teste "j" "worktree limpo de verdade (porcelain vazio) é removido"
+
+repo_j="$SB/repo_j"
+work_j="$SB/trabalho_j"
+criarRepoComCommit "$repo_j" "$work_j"
+
+wt_j_real="$work_j-worktrees/wt-j"
+git worktree add "$wt_j_real" HEAD
+
+node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_j" --remover >/dev/null 2>&1
+lista_j=$(git -C "$work_j" worktree list --porcelain | grep -F "wt-j" || true)
+if [ -z "$lista_j" ]; then
+  ok=$((ok+1)); echo "  ok    worktree limpo de verdade foi removido"
+else
+  falhou=$((falhou+1)); echo "  FALHA worktree limpo de verdade não foi removido"
+  echo "        Lista: $lista_j"
 fi
 
 # --- Relatório final
