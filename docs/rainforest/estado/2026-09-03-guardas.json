@@ -380,6 +380,16 @@
     "nota": "17 linhas, todas exit=0. T3b traz um aviso do --lint (agente tester nao declarado em agentes.json) que nao e erro e nao muda o exit. Uma rodada anterior deste mesmo script deu T10 exit=1: era interferencia da propria janela, que editou README/plugin.json enquanto a bateria de saude rodava; re-rodada com a arvore estavel, 59 ok / 0 falhas."
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "acao": "pr",
+    "pr": 183,
+    "url": "https://github.com/luisfmontes/rainforest-mind/pull/183",
+    "nao_provado": [
+      "gates por texto de comando so medidos com Claude Code — Codex e Gemini CLI nao rodaram contra eles",
+      "backup fora da maquina: destino real nao exercitado, so caixa de areia local",
+      "vetores so-adversario da lista residual do modelo de ameaca (ex.: wrapper citado, Issue #184) ficam abertos por decisao",
+      "CI so em runner Windows — Linux e macOS nao medidos"
+    ],
+    "em": "2026-09-04"
   }
 }
