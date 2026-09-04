@@ -17,6 +17,7 @@ const path = require("node:path");
 
 const { MARCADOR } = require("./lib/marcador-evidencia.cjs");
 const { executar } = require("./lib/resolver-executavel.cjs");
+const { tokensComAspas, posicaoDeComando, WRAPPERS_QUE_REPASSAM } = require("./lib/tokens-comando.cjs");
 
 /**
  * Normaliza o nome de um executável: remove caminho, extensão e aspas.
@@ -27,39 +28,6 @@ function normalizarExecutavel(nome) {
   sem_aspas = path.basename(sem_aspas);
   sem_aspas = sem_aspas.replace(/\.(exe|cmd|bat)$/i, "");
   return sem_aspas.toLowerCase();
-}
-
-/**
- * Tokeniza um comando bash, respeitando aspas simples e duplas.
- * Retorna array de tokens (sem aspas).
- */
-function tokenizar(comando) {
-  const tokens = [];
-  let tok = "";
-  let emAspaDupla = false;
-  let emAspaSimples = false;
-
-  for (let i = 0; i < comando.length; i++) {
-    const char = comando[i];
-    if (char === '"' && !emAspaSimples) {
-      emAspaDupla = !emAspaDupla;
-      continue;
-    }
-    if (char === "'" && !emAspaDupla) {
-      emAspaSimples = !emAspaSimples;
-      continue;
-    }
-    if ((char === " " || char === "\t") && !emAspaDupla && !emAspaSimples) {
-      if (tok) {
-        tokens.push(tok);
-        tok = "";
-      }
-      continue;
-    }
-    tok += char;
-  }
-  if (tok) tokens.push(tok);
-  return tokens;
 }
 
 /**
@@ -108,6 +76,35 @@ function segmentosParaGate(cmd) {
     const c = cmd[i];
 
     if (aspa) {
+      // P4 (rodada 8, lote 3, 2026-09-04): `$(...)` DENTRO de aspas DUPLAS
+      // e executado pelo bash mesmo citado — `echo "$(gh issue close 42)"`
+      // fecha a Issue de verdade. Ate aqui `segmentosParaGate` so descia em
+      // `(`/`)` FORA de aspas; dentro de aspas simples/duplas eram so
+      // caracteres do texto, entao o `gh issue close` la dentro nunca virava
+      // segmento verificavel. Aspas SIMPLES ficam de fora de proposito — o
+      // bash NAO expande `$(...)` dentro delas.
+      //
+      // O extra aqui e um PUSH ADICIONAL, sem tocar em `atual`/`aspa`/`i`:
+      // o texto original continua intacto e vira o MESMO segmento de
+      // sempre (importa para `gh pr create --body "$(...)"`, que precisa
+      // continuar batendo no corpo INTEIRO para a checagem de legibilidade
+      // ver o `$(` e bloquear por ilegivel — cortar o texto ali quebraria
+      // essa checagem). O conteudo interno so GANHA verificacao a mais.
+      if (aspa === '"' && c === "$" && cmd[i + 1] === "(") {
+        let profundidade = 1;
+        let j = i + 2;
+        let interno = "";
+        while (j < cmd.length && profundidade > 0) {
+          if (cmd[j] === "(") profundidade += 1;
+          else if (cmd[j] === ")") {
+            profundidade -= 1;
+            if (profundidade === 0) break;
+          }
+          interno += cmd[j];
+          j += 1;
+        }
+        if (interno.trim()) segmentos.push(interno);
+      }
       if (c === aspa) aspa = null;
       atual += c;
       continue;
@@ -159,75 +156,6 @@ function segmentosParaGate(cmd) {
 
   if (atual.trim()) segmentos.push(atual);
   return segmentos;
-}
-
-// Prefixos que apenas repassam o comando adiante, sem executar nada por
-// conta própria. Chave normalizada por `normalizarExecutavel`.
-const PREFIXOS_QUE_PASSAM_ADIANTE = new Set([
-  "env", "command", "exec", "nohup", "nice", "timeout", "xargs", "sudo", "time",
-]);
-
-/**
- * `NOME=valor` no início do segmento — atribuição de variável antes do
- * comando de verdade (`X=1 gh pr create ...`).
- */
-function ehAtribuicao(tok) {
-  return /^[A-Za-z_][A-Za-z0-9_]*=/.test(tok);
-}
-
-/**
- * Avança por cima de prefixos que só repassam o comando adiante (item 2 do
- * conserto): atribuições `X=1`, `env` (com `NOME=valor` e `-C dir`),
- * `command`, `exec`, `nohup`, `nice [-n N]`, `timeout <dur>`, `xargs
- * [flags]`, `sudo`, `time` — em qualquer combinação encadeada. Devolve o
- * índice do primeiro token que já não é prefixo (o comando efetivo);
- * pode ser `tokens.length` se o segmento for só prefixos.
- */
-function pularPrefixos(tokens) {
-  let i = 0;
-  for (;;) {
-    if (i >= tokens.length) return i;
-    if (ehAtribuicao(tokens[i])) {
-      i += 1;
-      continue;
-    }
-
-    const exe = normalizarExecutavel(tokens[i]);
-
-    if (exe === "env") {
-      i += 1;
-      while (i < tokens.length && (ehAtribuicao(tokens[i]) || tokens[i].startsWith("-"))) {
-        if (tokens[i] === "-C" && i + 1 < tokens.length) {
-          i += 2;
-        } else {
-          i += 1;
-        }
-      }
-      continue;
-    }
-    if (exe === "nice") {
-      i += 1;
-      if (tokens[i] === "-n" && i + 1 < tokens.length) i += 2;
-      continue;
-    }
-    if (exe === "timeout") {
-      i += 1;
-      while (i < tokens.length && tokens[i].startsWith("-")) i += 1;
-      if (i < tokens.length) i += 1; // a duração
-      continue;
-    }
-    if (exe === "xargs") {
-      i += 1;
-      while (i < tokens.length && tokens[i].startsWith("-")) i += 1;
-      continue;
-    }
-    if (PREFIXOS_QUE_PASSAM_ADIANTE.has(exe)) {
-      i += 1;
-      continue;
-    }
-
-    return i;
-  }
 }
 
 /**
@@ -300,30 +228,58 @@ function temMarcadorEvidencia(issueNum) {
 
 /**
  * Extrai o corpo do comando `gh pr create` ou `gh pr merge`.
- * Procura por `--body "..."` ou `--body-file <arquivo>`.
+ * Procura por `--body <valor>`/`--body=<valor>`/`-b <valor>` (o corpo direto)
+ * ou `--body-file <arquivo>`/`--body-file=<arquivo>`.
  * Retorna { tipo: "direto"|"arquivo"|"nenhum", conteudo: string|null, legivel: bool }
+ *
+ * P3 (rodada 8, lote 3, 2026-09-04): a versao anterior usava o regex
+ * `/--body\s+["']([^"']+)["']/i` sobre o texto CRU do comando — ele para no
+ * PRIMEIRO apostrofo, porque `[^"']+` exclui aspas simples do meio do corpo.
+ * `gh pr create --body "don't forget: closes #42"` capturava só `don`,
+ * perdia o `closes #42` de vista, e o gate liberava um PR que de verdade
+ * fecha a Issue #42 sem evidência — o caso mais grave, porque apostrofo em
+ * prosa é rotina, não um ataque. Agora usa `tokensComAspas`: o token inteiro
+ * (apostrofo incluso, se veio de dentro de aspas DUPLAS) sai intacto, sem
+ * regex tentando adivinhar onde o valor termina.
  */
-function extrairCorpoDoPR(comando) {
-  // Procurar por --body "..."
-  const matchBodyDireto = /--body\s+["']([^"']+)["']/i.exec(comando);
-  if (matchBodyDireto) {
-    const corpo = matchBodyDireto[1];
-    // Validar se o corpo é legível: não contém $(...), crases, ou aspas não fechadas
-    if (corpo.includes("$(") || corpo.includes("`")) {
-      return { tipo: "direto", conteudo: corpo, legivel: false };
-    }
-    return { tipo: "direto", conteudo: corpo, legivel: true };
-  }
+function extrairCorpoDoPR(segmento) {
+  const toks = tokensComAspas(segmento);
+  for (let i = 0; i < toks.length; i += 1) {
+    const tok = toks[i].v;
+    const pontoIgual = tok.indexOf("=");
+    const chave = (pontoIgual === -1 ? tok : tok.slice(0, pontoIgual)).toLowerCase();
 
-  // Procurar por --body-file <arquivo>
-  const matchBodyFile = /--body-file\s+(\S+)/i.exec(comando);
-  if (matchBodyFile) {
-    const arquivo = matchBodyFile[1];
-    try {
-      const conteudo = fs.readFileSync(arquivo, "utf8");
-      return { tipo: "arquivo", conteudo, legivel: true };
-    } catch {
-      return { tipo: "arquivo", conteudo: null, legivel: false };
+    if (chave === "--body" || chave === "-b") {
+      let corpo;
+      if (pontoIgual !== -1) {
+        corpo = tok.slice(pontoIgual + 1);
+      } else if (i + 1 < toks.length) {
+        corpo = toks[i + 1].v;
+      } else {
+        continue;
+      }
+      // Validar se o corpo é legível: não contém $(...) nem crases.
+      if (corpo.includes("$(") || corpo.includes("`")) {
+        return { tipo: "direto", conteudo: corpo, legivel: false };
+      }
+      return { tipo: "direto", conteudo: corpo, legivel: true };
+    }
+
+    if (chave === "--body-file") {
+      let arquivo;
+      if (pontoIgual !== -1) {
+        arquivo = tok.slice(pontoIgual + 1);
+      } else if (i + 1 < toks.length) {
+        arquivo = toks[i + 1].v;
+      } else {
+        continue;
+      }
+      try {
+        const conteudo = fs.readFileSync(arquivo, "utf8");
+        return { tipo: "arquivo", conteudo, legivel: true };
+      } catch {
+        return { tipo: "arquivo", conteudo: null, legivel: false };
+      }
     }
   }
 
@@ -499,11 +455,18 @@ function verificarComandoGh(segmento, subcomandos) {
 /**
  * `exe` (já normalizado) é um prefixo que sabemos que só repassa o comando
  * adiante, ou um wrapper que sabemos desempacotar? Usado só pela checagem
- * de "wrapper desconhecido" (item 4) — o efeito de am prefixo/wrapper
- * RECONHECIDO já foi resolvido por `pularPrefixos`/`desempacotarWrapper`, e
- * não deve ganhar uma segunda chance aqui: se o mecanismo específico dele
+ * de "wrapper desconhecido" (item 4) — o efeito de um prefixo/wrapper
+ * RECONHECIDO já foi resolvido por `posicaoDeComando`/`desempacotarWrapper`,
+ * e não deve ganhar uma segunda chance aqui: se o mecanismo específico dele
  * falhar (ou for mutado), a bateria tem que sentir, não ser socorrida por
  * este retorno de segurança genérico.
+ *
+ * `WRAPPERS_QUE_REPASSAM` vem de `lib/tokens-comando.cjs` — P2 (rodada 8,
+ * lote 3, 2026-09-04): este gate tinha sua PRÓPRIA lista idêntica
+ * (`PREFIXOS_QUE_PASSAM_ADIANTE`) e seu próprio tokenizador/`pularPrefixos`,
+ * com o MESMO furo do P1 (`env -u FOO gh issue close 12` escapava). Em vez
+ * de consertar duas vezes, os três gates (`gate-worktree.cjs`,
+ * `gate-staging-total.cjs` e este) agora compartilham uma implementação só.
  */
 function ehPrefixoOuWrapperConhecido(exe) {
   return (
@@ -512,7 +475,7 @@ function ehPrefixoOuWrapperConhecido(exe) {
     exe === "pwsh" ||
     exe === "powershell" ||
     exe === "cmd" ||
-    PREFIXOS_QUE_PASSAM_ADIANTE.has(exe) ||
+    WRAPPERS_QUE_REPASSAM.has(exe) ||
     !!WRAPPERS_DE_COMANDO[exe]
   );
 }
@@ -523,7 +486,9 @@ function ehPrefixoOuWrapperConhecido(exe) {
  *
  * Ordem:
  *   1. `gh` como comando efetivo — direto ou atrás de um prefixo que só
- *      repassa (`env`, `nohup`, `timeout <dur>`, `xargs`, `X=1`, ...).
+ *      repassa (`env`, `nohup`, `timeout <dur>`, `xargs`, `X=1`, ...), via
+ *      `tokensComAspas`/`posicaoDeComando` (P2, compartilhado com os outros
+ *      dois gates).
  *   2. Wrapper que encapsula uma string (`eval`, `bash -c`, `pwsh -Command`
  *      abreviado, `cmd /c`/`/k`) — recursiona no conteúdo interno, que pode
  *      ele mesmo ter vários segmentos encadeados.
@@ -533,12 +498,12 @@ function ehPrefixoOuWrapperConhecido(exe) {
  *      posição do segmento, trata como comando mesmo assim.
  */
 function processarSegmento(segmento) {
-  const tokens = tokenizar(segmento);
-  if (tokens.length === 0) return;
+  const toksComAspas = tokensComAspas(segmento);
+  if (toksComAspas.length === 0) return;
 
-  const i = pularPrefixos(tokens);
-  if (i < tokens.length && normalizarExecutavel(tokens[i]) === "gh") {
-    verificarComandoGh(segmento, tokens.slice(i + 1));
+  const pos = posicaoDeComando(toksComAspas);
+  if (pos !== null && normalizarExecutavel(toksComAspas[pos].v) === "gh") {
+    verificarComandoGh(segmento, toksComAspas.slice(pos + 1).map((t) => t.v));
     return;
   }
 
@@ -558,12 +523,13 @@ function processarSegmento(segmento) {
     return;
   }
 
-  const primeiro = tokens.length ? normalizarExecutavel(tokens[0]) : null;
+  const valores = toksComAspas.map((t) => t.v);
+  const primeiro = valores.length ? normalizarExecutavel(valores[0]) : null;
   if (primeiro !== null && !ehPrefixoOuWrapperConhecido(primeiro)) {
     for (const padrao of [["gh", "issue", "close"], ["gh", "pr", "create"], ["gh", "pr", "merge"]]) {
-      const idx = indiceSequencia(tokens, padrao);
+      const idx = indiceSequencia(valores, padrao);
       if (idx !== -1) {
-        verificarComandoGh(segmento, tokens.slice(idx + 1));
+        verificarComandoGh(segmento, valores.slice(idx + 1));
         return;
       }
     }
