@@ -34,14 +34,30 @@
  *   - rodada 3, 2026-09-04: nome de shell com caminho na frente (`/bin/bash`,
  *     `/bin/bash.exe`), `eval`, escape por barra invertida (`--no\-verify`)
  *     e aspa dupla escapada dentro de shell aninhado;
- *   - rodada 4, 2026-09-04 (revisor independente, esta rodada): variacao de
- *     CAIXA no nome do executavel (`GIT`, `Git`, `gIt`, `BASH`, `Bash`) —
- *     em sistema de arquivos case-insensitive (NTFS/Windows, o padrao do
- *     Git Bash) o SO resolve `GIT` para o mesmo binario de `git`, e so a
- *     tecla Shift bastava para contornar o gate.
- * Quatro rodadas, forma nova a cada uma. Nao ha razao para crer que uma
- * quinta rodada nao acharia uma sexta forma — e e por isso que este bloco
- * declara o limite em vez de prometer cobertura completa.
+ *   - rodada 4, 2026-09-04 (revisor independente): variacao de CAIXA no nome
+ *     do executavel (`GIT`, `Git`, `gIt`, `BASH`, `Bash`) — em sistema de
+ *     arquivos case-insensitive (NTFS/Windows, o padrao do Git Bash) o SO
+ *     resolve `GIT` para o mesmo binario de `git`, e so a tecla Shift
+ *     bastava para contornar o gate.
+ * Quatro rodadas de EVASAO (deixar `--no-verify` passar sem ser pego), forma
+ * nova a cada uma. Nao ha razao para crer que uma quinta rodada de evasao
+ * nao acharia uma sexta forma — e e por isso que este bloco declara o limite
+ * em vez de prometer cobertura completa.
+ *
+ * RODADA 5, 2026-09-04 (revisor independente): FALSO POSITIVO, categoria
+ * oposta das quatro acima — em vez de deixar passar, o gate BARRAVA trabalho
+ * legitimo. `segmentos()` fatiava o comando bruto por quebra de linha antes
+ * de saber que uma faixa dele era CORPO DE HEREDOC (dado — mensagem de
+ * commit, conteudo de arquivo — nunca comando), e mandava cada linha do
+ * corpo para `analisaComando` como se fosse codigo. Um heredoc que so
+ * MENCIONA `--no-verify` em prosa (`cat > docs.md <<EOF` / texto citando a
+ * flag / `EOF`) barrava um comando que nao invoca `git` nenhuma vez —
+ * inclusive o proprio padrao de commit que a sessao usa (`git commit -m
+ * "$(cat <<'EOF' ... EOF )"`). Falso positivo e mais grave que buraco: ele
+ * trava trabalho legitimo, e a unica saida de quem esbarra nele e desligar o
+ * gate inteiro, o que anula a protecao real pelo resto da sessao. Conserto:
+ * `removeCorposDeHeredoc()`, chamada ANTES de segmentar — ver comentario da
+ * funcao para a forma exata do reconhecimento.
  *
  * O QUE SABIDAMENTE ESCAPA E NAO SERA PERSEGUIDO (a lista e o valor deste
  * bloco — ser honesto sobre o buraco, nao ser curto):
@@ -55,7 +71,16 @@
  *     shell) nao replica com exatidao — `$'...'` com escape ANSI-C, alias,
  *     funcao de shell, `IFS` alterado, encoding, e formas ainda nao medidas.
  *     Este gate cobre os padroes das tres rodadas acima, nao todo padrao
- *     hipotetico.
+ *     hipotetico;
+ *   - deteccao de heredoc (`removeCorposDeHeredoc`) e feita por regex linha a
+ *     linha, nao por um parser de shell de verdade: `<<` dentro de uma
+ *     string entre aspas so por coincidencia (`echo "ele disse <<EOF>>"`)
+ *     pode ser lido como inicio de heredoc por engano; e deslocamento
+ *     aritmetico por uma VARIAVEL de um caractere so cujo nome comeca com
+ *     letra (`$((v<<n))`) colide com a forma de um delimitador de heredoc —
+ *     deslocamento por numero (`$((1<<2))`) NAO colide, porque o delimitador
+ *     sem aspas so casa comecando com letra ou `_`. Nenhum dos dois casos
+ *     aparece nas formas medidas ate aqui.
  *
  * ONDE MORA O ENFORCEMENT DE VERDADE, para quem precisar de garantia e nao so
  * de fricção: `pre-receive` no servidor git, ou uma checagem de CI que roda a
@@ -104,6 +129,16 @@
  * no segmento seguinte. Parenteses de subshell (`(git commit --no-verify)`)
  * viram separador tambem — tratados DEPOIS da extracao de `$(...)`, entao
  * essa substituicao (que ja funciona) continua intacta.
+ *
+ * CORPO DE HEREDOC (`<<EOF` ... `EOF`, achado do revisor na rodada 5, ver
+ * bloco acima) e removido do comando bruto ANTES de qualquer coisa disto —
+ * `removeCorposDeHeredoc()`, chamada no inicio de `segmentosDoComando()`.
+ * Corpo de heredoc e DADO, nunca comando: sem a remocao, a quebra de linha
+ * dentro do corpo vira separador de segmento (mesmo mecanismo do paragrafo
+ * acima) e cada linha do corpo e julgada como se fosse codigo. A LINHA que
+ * contem o marcador `<<DELIM` continua no comando depois da limpeza (so o
+ * corpo some) — e assim que `git commit -m "$(cat <<'EOF'` continua sendo
+ * varrido por `git commit` nessa mesma linha.
  *
  * SHELL AGRUPADO (`bash -c "<cmd>"`, `sh -c '<cmd>'`, com ou sem flags
  * combinadas antes do -c: `bash -lc`, `sh -ec`, `bash -o pipefail -c`).
@@ -168,6 +203,69 @@ function segmentos(cmd) {
 }
 
 /**
+ * Casa o INICIO de um heredoc (`<<` ou `<<-`, seguido de espacos opcionais e
+ * do delimitador sem aspas, com aspas simples ou com aspas duplas). NUNCA
+ * casa dentro de `<<<` (herestring, ja e nao-objetivo declarado no plano —
+ * lookbehind/lookahead barram os dois lados) nem confunde com o operador de
+ * deslocamento aritmetico (`$((1<<2))`): o delimitador sem aspas so casa se
+ * comecar com letra ou `_`, entao `<<2` (deslocamento por numero) nunca vira
+ * heredoc. `<<x` onde `x` e um nome de variavel de um caractere so ainda
+ * poderia colidir (ex.: `$((v<<n))`) — caso raro, listado como o que
+ * sabidamente escapa no cabecalho do arquivo.
+ */
+const INICIO_HEREDOC = /(?<!<)<<(-?)(?!<)[ \t]*(?:'([^']*)'|"([^"]*)"|([A-Za-z_][A-Za-z0-9_]*))/g;
+
+/**
+ * Remove o CORPO de heredocs do comando bruto, ANTES de segmentar — o corpo
+ * de um heredoc e DADO (mensagem de commit, conteudo de arquivo escrito por
+ * `cat >`), nunca comando. Sem isto, `segmentos()` fatia o corpo por quebra
+ * de linha e manda cada linha para `analisaComando` como se fosse codigo —
+ * era assim que `cat > docs.md <<EOF` seguido de uma linha citando
+ * `--no-verify` em prosa barrava um comando que nao invoca `git` nenhuma vez
+ * (achado do revisor, rodada 5, 2026-09-04).
+ *
+ * A LINHA que contem `<<DELIM` continua no comando depois da limpeza — ela
+ * pode ter comando de verdade colado (`git commit -m "$(cat <<'EOF'`, onde
+ * `git commit` esta nessa mesma linha). So o CORPO (da linha seguinte ate a
+ * linha do delimitador, corpo e linha do delimitador ambos removidos) some.
+ *
+ * O corpo vai ate uma linha que contenha SO o delimitador — com `<<-`, tabs
+ * no comeco da linha de fechamento sao ignorados na comparacao, do jeito que
+ * o bash aceita. Um comando pode ter mais de um heredoc (em linhas
+ * diferentes, ou mais de um marcador na mesma linha, ex.: `cmd <<A <<B`) —
+ * os corpos sao consumidos na ordem em que os marcadores aparecem.
+ */
+function removeCorposDeHeredoc(cmd) {
+  const linhas = cmd.split("\n");
+  const saida = [];
+
+  let i = 0;
+  while (i < linhas.length) {
+    const linha = linhas[i];
+    saida.push(linha);
+    i += 1;
+
+    INICIO_HEREDOC.lastIndex = 0;
+    let m;
+    const marcadores = [];
+    while ((m = INICIO_HEREDOC.exec(linha)) !== null) {
+      const delim = m[2] !== undefined ? m[2] : m[3] !== undefined ? m[3] : m[4];
+      if (delim) marcadores.push({ delim, dash: m[1] === "-" });
+    }
+
+    for (const { delim, dash } of marcadores) {
+      while (i < linhas.length) {
+        const corpo = linhas[i];
+        i += 1;
+        const testado = dash ? corpo.replace(/^\t+/, "") : corpo;
+        if (testado === delim) break; // linha do delimitador tambem some
+      }
+    }
+  }
+  return saida.join("\n");
+}
+
+/**
  * Costura de volta linha continuada (`\` + quebra de linha): sem isso, a
  * quebra de linha vira separador de segmento e a flag fica orfa de comando
  * no segmento seguinte (`git commit \` + quebra + ` --no-verify -m x`).
@@ -191,7 +289,7 @@ function extraiSubstituicoes(cmd) {
 
 /** Todos os segmentos analisaveis de um comando bruto (ver comentario do topo). */
 function segmentosDoComando(cmd) {
-  const partes = extraiSubstituicoes(costuraContinuacao(cmd));
+  const partes = extraiSubstituicoes(costuraContinuacao(removeCorposDeHeredoc(cmd)));
   return partes.flatMap(segmentos);
 }
 
