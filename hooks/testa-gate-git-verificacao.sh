@@ -15,7 +15,11 @@
 #      subcomando certo;
 #   5. que qualquer comando que nao seja `git`, e qualquer `tool_name` que nao
 #      seja `Bash`, passa sempre;
-#   6. as saidas de emergencia (RAINFOREST_GATE_OFF, .rainforest-gate-off).
+#   6. as saidas de emergencia (RAINFOREST_GATE_OFF, .rainforest-gate-off);
+#   7. os nove contornos medidos pelo security review (criterio ampliado da
+#      tarefa 2, commit 7d0fb268): flag citada de tres formas, abreviacao de
+#      long option, separador `&`, prefixo nao-reconhecido (`then`),
+#      substituicao de comando `$(...)` e linha continuada com `\`.
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -65,6 +69,22 @@ echo
 echo "== a flag dentro da MENSAGEM nao conta =="
 gate 'git commit -m "removi o --no-verify do script"' 0 "$(b 'git commit -m \"removi o --no-verify do script\"')"
 gate "git commit -m 'tirei o -n do fluxo'"  0 "$(b "git commit -m 'tirei o -n do fluxo'")"
+
+echo
+echo "== os nove contornos do security review: DEVE barrar (exit 2) =="
+gate "flag citada com aspas simples"            2 "$(b "git commit '--no-verify' -m x")"
+gate 'flag citada com aspas duplas'              2 "$(b 'git commit \"--no-verify\" -m x')"
+gate 'flag com aspas coladas (--no-"verify")'    2 "$(b 'git commit --no-\"verify\" -m x')"
+gate "abreviacao --no-veri (git aceita)"         2 "$(b 'git commit --no-veri -m x')"
+gate "abreviacao --no-ver (git aceita)"          2 "$(b 'git commit --no-ver -m x')"
+gate "separador & solto"                         2 "$(b 'foo & git commit --no-verify -m x')"
+gate "prefixo nao-reconhecido (then)"            2 "$(b 'if true; then git commit --no-verify -m x; fi')"
+gate 'substituicao de comando $(...)'            2 "$(b 'echo $(git commit --no-verify -m x)')"
+gate "linha continuada com \\ + quebra"          2 "$(b 'git commit \\\n --no-verify -m x')"
+
+echo
+echo "== --no-edit nao e prefixo de nenhuma flag proibida: DEVE passar =="
+gate "git commit --no-edit --amend"              0 "$(b 'git commit --no-edit --amend')"
 
 echo
 echo "== flag agrupada e git -c ... commit =="

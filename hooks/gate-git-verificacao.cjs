@@ -20,11 +20,34 @@
  * nada a ver com pular verificacao. Isto e invariante do plano (D10).
  *
  * PARSING. `--no-verify` dentro de uma MENSAGEM de commit nao pode disparar o
- * gate (`git commit -m "removi o --no-verify do script"`): o texto entre aspas
- * e removido antes de procurar flag, entao a flag so conta fora de string.
+ * gate (`git commit -m "removi o --no-verify do script"`): o conteudo citado
+ * e PRESERVADO como parte do token (nao apagado — apagar e o que deixava a
+ * flag citada passar sem barrar, ver historico da tarefa 2 do plano acima),
+ * so que o token inteiro (`removi o --no-verify do script`) nunca e igual a
+ * `--no-verify`. Aspas adjacentes a texto sem aspas viram UM token so, do
+ * jeito que o shell faz (`--no-"verify"` -> `--no-verify`).
  * `git -c commit.gpgsign=false commit -m x` tem que continuar identificando
  * `commit` como subcomando (nao a chave `commit.gpgsign=false`) — a mesma
  * varredura de flags-com-valor do `gate-staging-total` resolve isso.
+ *
+ * Prefixo de opcao longa (o git aceita: `--no-veri` resolve para `--no-verify`
+ * se for prefixo unico) conta como a flag inteira — comparado por prefixo
+ * contra `--no-verify` e `--no-gpg-sign`, nao por igualdade.
+ *
+ * Encadeamento (`;`, `|`, `||`, `&&`, `&`, quebra de linha) segmenta o
+ * comando, e cada segmento e varrido procurando o token `git` em QUALQUER
+ * posicao (nao so no inicio) — lista de prefixos aceitos antes do `git`
+ * sempre esquece um caso (`then`, `do`, `else`, `{`...). Substituicao de
+ * comando `$(...)` e crase tem o delimitador removido e o conteudo interno
+ * vira mais um segmento. Linha continuada com `\` + quebra de linha e
+ * costurada de volta antes de segmentar, senao a flag fica orfa de comando
+ * no segmento seguinte.
+ *
+ * NAO-OBJETIVO declarado (plano `2026-09-04-nao-mente.md`): indirecao por
+ * variavel (`F=--no-verify; git commit $F`) fica FORA do alcance deste gate.
+ * O valor de `$F` so existe depois da expansao do shell, e o gate le o
+ * tool_input.command ANTES dela — nao ha como cobrir isso lendo o texto do
+ * comando. O gate cobre o que esta ESCRITO no comando, nada alem disso.
  *
  * ESCOPO: vale para todo ator, sem distincao de agente ou janela principal — a
  * trava e sobre o COMANDO, nao sobre quem digita.
@@ -44,8 +67,6 @@ const path = require("node:path");
 const FLAG_COM_VALOR = new Set([
   "-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path", "--super-prefix",
 ]);
-// Prefixos que podem vir antes do `git` sem mudar o que ele faz.
-const PREFIXO_NEUTRO = new Set(["env", "sudo", "nohup", "command", "time"]);
 
 function git(dir, args) {
   try {
@@ -58,28 +79,82 @@ function git(dir, args) {
   }
 }
 
-/** Segmenta a linha de comando em invocacoes independentes. */
+/** Segmenta um trecho de comando em invocacoes independentes. */
 function segmentos(cmd) {
-  return cmd.split(/\|\||&&|[;|\n]/);
+  return cmd.split(/\|\||&&|[;|\n&]/);
 }
 
 /**
- * Tokeniza removendo trechos entre aspas. Um argumento citado nunca e o
- * subcomando nem uma flag, e removendo-o some o falso positivo de
- * `git commit -m "removi o --no-verify do script"`.
+ * Costura de volta linha continuada (`\` + quebra de linha): sem isso, a
+ * quebra de linha vira separador de segmento e a flag fica orfa de comando
+ * no segmento seguinte (`git commit \` + quebra + ` --no-verify -m x`).
  */
-function tokens(seg) {
-  return seg
-    .replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, " ")
-    .trim().split(/\s+/).filter(Boolean);
+function costuraContinuacao(cmd) {
+  return cmd.replace(/\\\r?\n/g, " ");
 }
 
-/** null se o segmento nao e uma chamada de git; senao {sub, args, dirC}. */
+/**
+ * Extrai o conteudo de `$(...)` (nao aninhado, suficiente para o escopo
+ * deste gate) e de `` `...` ``, removendo o delimitador do texto original.
+ * Devolve [textoSemSubstituicao, ...conteudoDeCadaSubstituicao] — cada
+ * elemento e depois segmentado e analisado como os demais.
+ */
+function extraiSubstituicoes(cmd) {
+  const extras = [];
+  let semSub = cmd.replace(/\$\(([^()]*)\)/g, (_, dentro) => { extras.push(dentro); return " "; });
+  semSub = semSub.replace(/`([^`]*)`/g, (_, dentro) => { extras.push(dentro); return " "; });
+  return [semSub, ...extras];
+}
+
+/** Todos os segmentos analisaveis de um comando bruto (ver comentario do topo). */
+function segmentosDoComando(cmd) {
+  const partes = extraiSubstituicoes(costuraContinuacao(cmd));
+  return partes.flatMap(segmentos);
+}
+
+/**
+ * Tokeniza PRESERVANDO o conteudo citado como parte do token, em vez de
+ * apagar (apagar e o que deixava a flag citada passar sem barrar). Aspas
+ * adjacentes a texto sem aspas se fundem em UM token so, do jeito que o
+ * shell faz: `--no-"verify"` vira o token `--no-verify`; `-m "removi o
+ * --no-verify do script"` vira UM token so com a frase inteira (que nunca e
+ * igual a `--no-verify`).
+ */
+function tokens(seg) {
+  const toks = [];
+  let cur = "";
+  let tem = false;
+  for (let i = 0; i < seg.length; i += 1) {
+    const c = seg[i];
+    if (c === '"' || c === "'") {
+      const fechar = seg.indexOf(c, i + 1);
+      const fim = fechar === -1 ? seg.length : fechar;
+      cur += seg.slice(i + 1, fim);
+      tem = true;
+      i = fim;
+      continue;
+    }
+    if (/\s/.test(c)) {
+      if (tem) { toks.push(cur); cur = ""; tem = false; }
+      continue;
+    }
+    cur += c;
+    tem = true;
+  }
+  if (tem) toks.push(cur);
+  return toks;
+}
+
+/**
+ * null se o segmento nao contem uma chamada de git; senao {sub, args, dirC}.
+ * Varre o token `git` em QUALQUER posicao do segmento (nao so no inicio):
+ * lista de prefixos aceitos antes dele (`env`, `sudo`, `VAR=valor`...)
+ * sempre esquece um caso — `then`, `do`, `else`, `{` inclusive.
+ */
 function analisaGit(toks) {
-  let i = 0;
-  while (i < toks.length && (PREFIXO_NEUTRO.has(toks[i]) || /^\w+=/.test(toks[i]))) i += 1;
-  if (toks[i] !== "git") return null;
-  i += 1;
+  const inicio = toks.indexOf("git");
+  if (inicio === -1) return null;
+  let i = inicio + 1;
 
   let dirC = null;
   while (i < toks.length && toks[i].startsWith("-")) {
@@ -90,6 +165,15 @@ function analisaGit(toks) {
   return { sub: toks[i], args: toks.slice(i + 1), dirC };
 }
 
+/**
+ * true se `token` e uma opcao longa (comeca com `--`) que e PREFIXO de
+ * `alvo` — o git aceita prefixo unico de opcao longa (`--no-veri` resolve
+ * para `--no-verify`, e o proprio git aceita isso na pratica).
+ */
+function ehPrefixoDeFlag(token, alvo) {
+  return token.length > 2 && token.startsWith("--") && alvo.startsWith(token);
+}
+
 /** `-na` contem a curta `n`; `--no-verify` nao e curta e nao conta aqui. */
 function temCurta(args, letra) {
   return args.some((t) => /^-[A-Za-z]+$/.test(t) && t.slice(1).includes(letra));
@@ -98,14 +182,14 @@ function temCurta(args, letra) {
 /** Motivo do bloqueio, ou null se o segmento e inofensivo. */
 function motivoDe(g) {
   if (g.sub === "commit") {
-    if (g.args.includes("--no-verify")) return "git commit --no-verify";
-    if (g.args.includes("--no-gpg-sign")) return "git commit --no-gpg-sign";
+    if (g.args.some((t) => ehPrefixoDeFlag(t, "--no-verify"))) return "git commit --no-verify";
+    if (g.args.some((t) => ehPrefixoDeFlag(t, "--no-gpg-sign"))) return "git commit --no-gpg-sign";
     if (temCurta(g.args, "n")) return "git commit -n (equivale a --no-verify)";
     return null;
   }
   if (g.sub === "push") {
     // `-n` em push e --dry-run, nao --no-verify: nao entra aqui de proposito.
-    if (g.args.includes("--no-verify")) return "git push --no-verify";
+    if (g.args.some((t) => ehPrefixoDeFlag(t, "--no-verify"))) return "git push --no-verify";
     return null;
   }
   return null;
@@ -151,7 +235,7 @@ function main() {
 
   let motivo = null;
   let dirC = null;
-  for (const seg of segmentos(cmd)) {
+  for (const seg of segmentosDoComando(cmd)) {
     const g = analisaGit(tokens(seg));
     if (!g) continue;
     const m = motivoDe(g);
