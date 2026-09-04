@@ -254,6 +254,17 @@ gate "& {git add -A} BARRA (espaco so antes do '{', ja passava)" 2 "$(p '& {git 
 gate 'contraprova: git commit -m "fix {json} parse" PASSA' 0 "$(b 'git commit -m \"fix {json} parse\"')"
 gate 'contraprova: git commit -m "a (b) c" PASSA'           0 "$(b 'git commit -m \"a (b) c\"')"
 
+echo "== R20 (auditor, 18a revisao, lote 3, 2026-09-04): nome de comando CITADO na posicao de comando =="
+# O `!tok.q` de `ehComando` valia tambem na posicao de comando: `"git" add -A`
+# saia com exit 0 enquanto `git add -A` puro saia 2.
+gate 'JANELA PRINCIPAL: "git" add -A BARRA (R20)'         2 "$(b '\"git\" add -A')"
+gate 'JANELA PRINCIPAL: "git" commit -a -m x BARRA (R20)' 2 "$(b '\"git\" commit -a -m x')"
+gate 'via PowerShell: & "git" add -A BARRA (R20)'         2 "$(p '& \"git\" add -A')"
+# Contraprovas: o nome citado como ARGUMENTO (fora da posicao de comando)
+# continua NAO virando comando — e por isso que o `!tok.q` existe.
+gate 'contraprova R20: git commit -m "roda o git add depois" PASSA' 0 "$(b 'git commit -m \"roda o git add depois\"')"
+gate 'contraprova R20: echo "gitignore" PASSA'                      0 "$(b 'echo \"gitignore\"')"
+
 echo
 echo "== saidas de emergencia =="
 saida=$(printf '%s' "$(b 'git add -A')" | RAINFOREST_GATE_OFF=1 node "$GATE" 2>&1); rc=$?

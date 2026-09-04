@@ -117,7 +117,9 @@ function segmentos(cmd) {
  */
 function analisaGit(toksComAspas) {
   const pos = posicaoDeComando(toksComAspas);
-  if (pos === null || !ehComando(toksComAspas[pos], "git")) return null;
+  // `true`: `pos` VEM de `posicaoDeComando`, entao `"git" add -A` conta
+  // (rodada 20, lote 3, achado do auditor na 18a revisao).
+  if (pos === null || !ehComando(toksComAspas[pos], "git", true)) return null;
   const resto = toksComAspas.slice(pos + 1).filter((t) => !t.q).map((t) => t.v);
 
   let i = 0;

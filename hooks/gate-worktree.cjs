@@ -554,16 +554,22 @@ function alvosBashEscrita(comando, cwdInicial) {
       empurra(base, alvo, tipo);
     }
 
+    // Posicao de comando do segmento: so ali um nome CITADO conta como comando
+    // (rodada 20, lote 3 — `"cp" a.txt <principal>/b.txt` escapava daqui).
+    // Fora dela o token citado segue sendo argumento, nunca comando.
+    const posCmd = posicaoDeComando(toks);
+    const ehCmd = (i, nome) => ehComando(toks[i], nome, i === posCmd);
+
     for (let i = 0; i < toks.length; i += 1) {
       // `tee arquivo`, `tee -a arquivo`
-      if (ehComando(toks[i], "tee")) {
+      if (ehCmd(i, "tee")) {
         const pos = posicionaisApos(toks, i);
         if (pos.length) empurra(base, pos[0].v, "tee");
         break;
       }
       // `sed -i arquivo` — so com a flag de edicao no lugar. O alvo e o ULTIMO
       // posicional: antes dele vem a expressao, que pode ser varios argumentos.
-      if (ehComando(toks[i], "sed")) {
+      if (ehCmd(i, "sed")) {
         const temInPlace = toks.slice(i + 1).some((t) => !t.q && /^-[a-z]*i/.test(t.v));
         if (!temInPlace) break;
         const pos = posicionaisApos(toks, i);
@@ -572,8 +578,8 @@ function alvosBashEscrita(comando, cwdInicial) {
       }
       // `cp origem destino`, `mv origem destino` — o destino e o ultimo posicional,
       // que e o que vale tambem para `cp a b c pasta/`.
-      if (ehComando(toks[i], "cp") || ehComando(toks[i], "mv")) {
-        const tipo = ehComando(toks[i], "cp") ? "cp" : "mv";
+      if (ehCmd(i, "cp") || ehCmd(i, "mv")) {
+        const tipo = ehCmd(i, "cp") ? "cp" : "mv";
         const pos = posicionaisApos(toks, i);
         if (pos.length >= 2) empurra(base, pos[pos.length - 1].v, tipo);
         break;

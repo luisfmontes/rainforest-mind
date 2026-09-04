@@ -438,6 +438,21 @@ console.log("== rodada 19 (lote 3): extrairPrimeiroToken trata {}/() como fronte
 }
 
 console.log();
+console.log("== Caso (r): nome de comando CITADO na posicao de comando conta (R20, rodada 20, lote 3) ==");
+test('(r) "git" -C A add -A -> o -C do git citado move o cwd do segmento', () => {
+  const cmd = '"git" -C ' + JSON.stringify(testA) + ' add -A';
+  const r = cwdPorSegmento(cmd, testDir);
+  eq(r.length, 1, "numero de segmentos");
+  eq(r[0].cwd, testA, "cwd do segmento (git citado ainda e git)");
+});
+test('(r2) nome citado como ARGUMENTO nao move nada', () => {
+  const cmd = 'grep -rn "git -C ' + testA + '" docs/';
+  const r = cwdPorSegmento(cmd, testDir);
+  eq(r.length, 1, "numero de segmentos");
+  eq(r[0].cwd, testDir, "cwd do segmento (nada moveu)");
+});
+
+console.log();
 console.log(`== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 process.exit(falhou);
 NODESCRIPT

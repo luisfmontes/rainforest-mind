@@ -50,9 +50,27 @@ function tokensComAspas(cmd) {
   return out;
 }
 
-/** Nome de comando, ignorando caminho: um binario com caminho resolve para seu nome. */
-function ehComando(tok, nome) {
-  return !tok.q && new RegExp("(^|[\\\\/])" + nome + "(\\.exe)?$").test(tok.v);
+/**
+ * Nome de comando, ignorando caminho: um binario com caminho resolve para seu
+ * nome.
+ *
+ * `ehPosicaoDeComando` (rodada 20, lote 3, 2026-09-04 — achado do auditor na
+ * 18a revisao): o `!tok.q` existe para um nome CITADO como ARGUMENTO nao virar
+ * comando (`echo "gitignore"`, e o `>` dentro de aspas do conserto de
+ * 2026-09-01). Mas aplica-lo tambem na POSICAO DE COMANDO deixava passar
+ * `"git" add -A` (exit 0, contra exit 2 do `git add -A` puro) no
+ * `gate-staging-total`, e `"cp"`/`"tee"`/`"sed"`/`"mv"` citados escapavam do
+ * `alvosBashEscrita` do `gate-worktree`. Quem sabe que o token esta na posicao
+ * de comando passa `true`, e o token citado conta — mesmo tratamento que
+ * `procuraCLI` (gate-worktree.cjs) ja da ao nome de CLI citado, inclusive o
+ * desconto do `$` do ANSI-C (A4). Default `false`: quem nao passa preserva o
+ * comportamento de antes.
+ */
+function ehComando(tok, nome, ehPosicaoDeComando = false) {
+  if (tok.q && !ehPosicaoDeComando) return false;
+  let v = tok.v;
+  if (tok.q && v.startsWith("$")) v = v.slice(1); // ANSI-C (A4), como procuraCLI
+  return new RegExp("(^|[\\\\/])" + nome + "(\\.exe)?$").test(v);
 }
 
 // Wrappers que REPASSAM o comando adiante, na MESMA posicao de comando — o

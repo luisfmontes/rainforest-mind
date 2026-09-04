@@ -220,7 +220,9 @@ function comandoEhGit(seg) {
   const toks = tokensComAspas(seg);
   const i = posicaoDeComando(toks);
   if (i === null) return false;
-  return ehComando(toks[i], "git");
+  // `true`: `i` VEM de `posicaoDeComando`, entao `"git" -C x add -A` conta
+  // (rodada 20, lote 3) — fora da posicao de comando o token citado segue fora.
+  return ehComando(toks[i], "git", true);
 }
 
 /**
