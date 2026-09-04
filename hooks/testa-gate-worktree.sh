@@ -628,5 +628,25 @@ gate "grep -C 3 x . && git commit -m y, do worktree PASSA (K2, sem incerto)" 0 \
   "$(b "grep -C 3 x . && git commit -m y" "$WT")"
 
 echo
+echo "== P1/P5 (rodada 8, lote 3, 2026-09-04): mais flags de env/sudo, e cd via wrapper =="
+# P1: 'env -u'/'sudo -E' paravam a busca na PROPRIA flag (so -C/--chdir e
+# -u/-g/--user/--group de sudo eram conhecidas) — a CLI que escreve depois
+# escapava do gate-worktree tambem, nao so do gate-staging-total.
+gate "env -u FOO codex exec --yolo fora do worktree BARRA (P1)" 2 \
+  "$(b "env -u FOO codex exec --yolo" "$R")"
+gate "sudo -E codex exec fora do worktree BARRA (P1)" 2 \
+  "$(b "sudo -E codex exec" "$R")"
+# P5: '\cd'/'command cd' (escapam alias/funcao ou so mudam como o comando e
+# resolvido) nao casavam com o CD ancorado no inicio do segmento — o cwd
+# efetivo ficava preso no worktree, e a CLI que de verdade escrevia no
+# PRINCIPAL escapava. `MSYS_NO_PATHCONV=1` evita o Git Bash confundir o `\c`
+# de `\cd` com inicio de lista de PATH e reescrever o caminho absoluto.
+saidaP5a=$(MSYS_NO_PATHCONV=1 node -e 'const [c,d]=process.argv.slice(1);process.stdout.write(JSON.stringify({agent_id:"ag-1",agent_type:"executor",cwd:d,hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:c}}))' "\\cd $R && git commit -m x" "$WT" | node "$GATE" 2>&1); rcP5a=$?
+if [ "$rcP5a" = 2 ]; then ok=$((ok+1)); echo "  ok   \\cd principal && git commit -m x, do worktree BARRA (P5) (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA \\cd principal && git commit -m x: esperava 2, veio $rcP5a"; printf '%s' "$saidaP5a" | sed 's/^/         /' | head -6; fi
+gate "command cd principal && codex exec --yolo, do worktree BARRA (P5)" 2 \
+  "$(b "command cd $R && codex exec --yolo" "$WT")"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

@@ -272,6 +272,38 @@ test('(p3) grep -C 3 "gitignore" . && git add -A -> o 1o segmento (grep) TAMBEM 
 });
 
 console.log();
+console.log("== Caso (r): P5 (rodada 8, lote 3) — \\cd, command cd, builtin cd tambem movem o cwd ==");
+test("(r) \\cd A && x -> 2o segmento com cwd A (barra escapa alias/funcao)", () => {
+  const cmd = `\\cd '${testA}' && x`;
+  const r = cwdPorSegmento(cmd, testDir);
+  eq(r.length, 2, "numero de segmentos");
+  eq(r[1].cwd, testA, "cwd do 2o segmento (apos o \\cd)");
+});
+test("(r2) command cd A && x -> 2o segmento com cwd A", () => {
+  const cmd = `command cd '${testA}' && x`;
+  const r = cwdPorSegmento(cmd, testDir);
+  eq(r.length, 2, "numero de segmentos");
+  eq(r[1].cwd, testA, "cwd do 2o segmento (apos o command cd)");
+});
+test("(r3) builtin cd A && x -> 2o segmento com cwd A", () => {
+  const cmd = `builtin cd '${testA}' && x`;
+  const r = cwdPorSegmento(cmd, testDir);
+  eq(r.length, 2, "numero de segmentos");
+  eq(r[1].cwd, testA, "cwd do 2o segmento (apos o builtin cd)");
+});
+
+console.log();
+console.log("== Caso (s): P1 (rodada 8, lote 3) — env -u nao pode parar comandoEhGit na propria flag ==");
+test("(s) env -u FOO git -C A status && y -> 1o segmento cwd A, 2o cwd inicial (nao persiste)", () => {
+  const cmdGit = "g" + "it";
+  const cmd = `env -u FOO ${cmdGit} -C '${testA}' status && y`;
+  const r = cwdPorSegmento(cmd, testDir);
+  eq(r.length, 2, "numero de segmentos");
+  eq(r[0].cwd, testA, "cwd do 1o segmento (git de verdade, atras de env -u FOO)");
+  eq(r[1].cwd, testDir, "cwd do 2o segmento NAO herda o -C do 1o");
+});
+
+console.log();
 console.log(`== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 process.exit(falhou);
 NODESCRIPT
