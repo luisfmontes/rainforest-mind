@@ -1,0 +1,103 @@
+# R1+R8 — o fluxo não mente sobre ter terminado, e o executor não pula verificação
+
+## Objetivo
+
+Dar a quem chama o fluxo por script um jeito de saber que ele ficou pela metade,
+e impedir que o executor pule a verificação de commit. Vem dos achados R1 e R8 do
+relatório `relatorios/2026-09-04-handover-rodada-cega.md`: uma execução encerrou o
+turno com `revisar` em curso e um subagente morto pelo sistema, devolvendo o mesmo
+`exit 0` de um fluxo concluído.
+
+## Decisões fechadas
+
+- **D1 — O terminal mora em `scripts/estado.cjs`** — porquê: é ele que lê o
+  `estado.json` e já responde a pergunta certa em `proximo` e `listar`;
+  `conferir-fluxo.cjs` trata da costura entre design, plano e código, e progresso
+  de estágio seria assunto estranho lá dentro.
+
+- **D2 — Verbo novo `concluido`, sem mexer no exit de `proximo` nem de `listar`** —
+  porquê: mudar o exit de um verbo já em uso quebra em silêncio quem o chama hoje,
+  e um verbo que nasce novo herda limpa a convenção `exit 2 = recusa deliberada`
+  que o `conferir-fluxo.cjs` estabeleceu.
+
+- **D3 — O predicado é `proximo(estado) === null`** — porquê: `EXECUCAO` inclui
+  `fechar` (`scripts/estado.cjs:89`) e `proximo` varre `['design','plano',...EXECUCAO]`
+  (`:235-238`), então `null` já significa "fechou até o `fechar`". É o mesmo
+  predicado que o `listar` usa para imprimir `(completo)` (`:861`). Nada de lógica
+  nova: o estado já sabia a verdade, faltava o exit code.
+
+- **D4 — `concluido` aceita `--slug` e também roda sem slug, varrendo todos** —
+  porquê: o estado grava só o dia (`criado_em`, e `em` por estágio), então fluxos
+  do mesmo dia empatam e "o mais recente" não é derivável. Varrer é a única
+  leitura honesta quando o chamador não sabe o slug.
+
+- **D5 — A varredura acusa fluxo aberto antigo, e isso é o comportamento certo** —
+  porquê: `2026-08-24-camada-obsidian-para-o-harness` está em `-> plano` desde
+  agosto e vai aparecer. Ele *é* um fluxo pela metade; o conserto é fechá-lo ou
+  dispensá-lo, não calar o verbo.
+
+- **D6 — Exit: 0 concluído, 2 não concluído, 1 erro de uso** — porquê: é a
+  convenção já escrita no cabeçalho do `conferir-fluxo.cjs`, e `exit 2` como
+  recusa deliberada é o que distingue "respondi que não" de "quebrei".
+
+- **D7 — A frente 1 do R1 fica fora desta entrega** — porquê: fazer o `revisar`
+  esperar o agente em foreground quando a sessão não é interativa mexe em como
+  **todo** estágio despacha agente. É a aposta arquitetural que o próprio
+  relatório diz ser perdida em toda sessão não interativa, e merece fluxo próprio.
+  Junto com o terminal, o barato esperaria o caro.
+
+- **D8 — O R8 fecha por prosa e por trava, não por uma só** — porquê: este repo
+  trata "instrução que pede" como insuficiente por princípio (é a razão de ser dos
+  gates de worktree e de staging). A prosa diz o porquê a quem lê; a trava alcança
+  quem não leu.
+
+- **D9 — A trava nasce em `hooks/gate-git-verificacao.cjs`, arquivo novo** —
+  porquê: a outra janela (`fluxo/guardas`) está com +353 linhas em
+  `gate-worktree.cjs` e +123 em `portaria.cjs`. Arquivo novo evita a colisão; o
+  encosto em `hooks/hooks.json` (+4 linhas lá) é conflito pequeno e assumido.
+
+- **D10 — O gate morde `--no-verify` e `--no-gpg-sign` no `commit`, `--no-verify`
+  no `push`, e o atalho `-n` só no `commit`** — porquê: `-n` é `--no-verify` no
+  `commit` mas `--dry-run` no `push`, e barrar `push -n` seria barrar uma operação
+  legítima e inofensiva.
+
+- **D11 — O gate vale para todo ator, com os escapes padrão do repo** — porquê: o
+  `gate-staging-total` também não distingue agente de janela, e pelo mesmo motivo:
+  em 2026-08-09 quem errou foi a janela, não o agente. Os escapes são os já
+  existentes — `RAINFOREST_GATE_OFF`, `.rainforest-gate-off` e `config.cjs`.
+
+- **D12 — Sem aviso no `SessionEnd`** — porquê: pendurar ali transforma um verbo
+  que responde quando perguntado num vigia que fala sozinho toda sessão, inclusive
+  nas que legitimamente não têm fluxo aberto. Se o aviso fizer falta depois de o
+  verbo estar em uso, vira fluxo próprio com o barulho medido em vez de chutado.
+
+## Avaliado e descartado
+
+- **Fazer o `fechar` recusar**, que é o conserto proposto pelo relatório. O
+  `fechar` **já recusa**: `skills/fechar/SKILL.md:11-14` roda
+  `estado.cjs exigir --estagio fechar` e sai 2 se `verificar` não fechou ok. A
+  guarda não está faltando — um fluxo que morre no `revisar` nunca chega a
+  chamá-la. Consertar o `fechar` não mudaria nada no caso medido.
+- **Heurística de "o fluxo mais recente"** para o `concluido` sem slug. O estado
+  grava data sem hora, então fluxos do mesmo dia empatam; e mtime do arquivo não
+  serve porque `git checkout` reescreve.
+- **Mudar o exit code de `proximo` ou de `listar`** em vez de criar verbo. Quebra
+  em silêncio qualquer chamador que hoje só lê a saída.
+- **Pôr a trava do R8 dentro de `gate-worktree.cjs` ou de `portaria.cjs`.** São os
+  dois arquivos que a outra janela está reescrevendo.
+
+## Fora de escopo
+
+- **R6** — pede `scripts/conferir-entrega.cjs`, que `fluxo/guardas` está com +161
+  linhas. Bloqueado até aquela branch mergear.
+- **R3, R4, R5, R7** — o cluster do conselho (`scripts/conselho.cjs`,
+  `hooks/lib/cli-externo.cjs`, `skills/setup/`, `skills/brainstorm/`). Frente
+  própria, sem interseção de arquivo com esta.
+- **R2** — caiu; já corrigido em 1.2.0.
+- **R9** — os 93 turnos contra 20. Depende da medição por estágio, que é o R4.
+- **Fechar ou dispensar o fluxo `camada-obsidian`** que a varredura vai acusar.
+  É trabalho dele, não desta entrega.
+
+## Em aberto
+
+- Nenhum.
