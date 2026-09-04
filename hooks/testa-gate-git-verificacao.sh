@@ -320,6 +320,70 @@ gate "git commit -m \$'teste (aspa não fechada com prosa) -- ambiguidade honest
 gate "bash -c \$'git commit --no-verify' (não-objetivo: indireção shell permanece como antes)" \
   0 "$(b 'bash -c $'"'"'git commit --no-verify'"'"'')"
 
+echo
+echo "== falso negativo descoberto na rodada 7: \$'...' com escape de apóstrofo e flag nua depois =="
+echo "== (unificação de máquina de estado entre segmentos() e tokens()) =="
+
+# Função auxiliar para construir JSON com contrabarra em $'...'
+b_ansi() {
+  local cmd="$1"
+  node -e "
+    const R = '$R'.replace(/\\\\/g, '/');
+    const c = \`$cmd\`;
+    console.log(JSON.stringify({
+      session_id: 's1',
+      cwd: R,
+      hook_event_name: 'PreToolUse',
+      tool_name: 'Bash',
+      tool_input: { command: c }
+    }));
+  "
+}
+
+# Caso 1: o achado principal - $'...' com escape + flag nua depois
+saida=$(printf '%s' "$(b_ansi "git commit -m \$'Fix: don\\'t break tests' --no-verify")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit -m \$'Fix: don\\'t break tests' --no-verify (achado principal, exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA achado: esperava 2, veio $rc"; echo "$saida" | sed 's/^/         /' | head -3; fi
+
+# Caso 2: mesma coisa com -n em vez de --no-verify
+saida=$(printf '%s' "$(b_ansi "git commit -m \$'Fix: don\\'t break' -n")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit -m \$'Fix: don\\'t break' -n (variação, exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA variação -n: esperava 2, veio $rc"; fi
+
+# Caso 3: flag também em $'...'
+saida=$(printf '%s' "$(b_ansi "git commit -m \$'Fix\\'d bug' \$'--no-verify'")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit -m \$'Fix\\'d bug' \$'--no-verify' (flag em \$'...', exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA flag em \$'...': esperava 2, veio $rc"; fi
+
+# Caso 4: --no-gpg-sign
+saida=$(printf '%s' "$(b_ansi "git commit -m \$'teste' --no-gpg-sign")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit -m \$'teste' --no-gpg-sign (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA --no-gpg-sign: esperava 2, veio $rc"; fi
+
+# Caso 5: git push --no-verify (em vez de commit)
+saida=$(printf '%s' "$(b_ansi "git push --no-verify")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git push --no-verify (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA git push: esperava 2, veio $rc"; fi
+
+# Caso 6: dois $'...' com escape no mesmo comando, flag nua depois
+saida=$(printf '%s' "$(b_ansi "git commit -m \$'It\\'s done' --no-verify")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit -m \$'It\\'s done' --no-verify (controle com escape, exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA controle com escape: esperava 2, veio $rc"; fi
+
+# Caso 7: $'...' com escape dentro de "..." - medir primeiro
+echo "  (caso 7: medindo $'...' com escape dentro de \\\"...\\\") "
+saida=$(printf '%s' "$(b 'git commit -m \"blah '"'"'$test'"'"'\"')" | node "$GATE" 2>&1); rc=$?
+echo "  info  situação base (sem aspa ANSI-C): exit $rc"
+
+# Caso 8: contraprova de falso positivo - $'...' com \' e prosa dentro, sem flag nua
+# (requer investigação adicional: pode haver falso positivo)
+saida=$(printf '%s' "$(b_ansi "git commit -m \$'Explain it\\'s not --no-verify inside'")" | node "$GATE" 2>&1); rc=$?
+echo "  info  git commit -m \$'Explain it\\'s not --no-verify inside' (prosa dentro): exit $rc (requer investigação)"
+
+# Caso 9: bash -c $'...' com escape - fixar exit code atual para rodada futura notar mudança
+saida=$(printf '%s' "$(b_ansi "bash -c \$'git commit --no-verify'")" | node "$GATE" 2>&1); rc=$?
+echo "  info  bash -c \$'git commit --no-verify': exit $rc (fixado para detecção de mudança)"
+
 echo "== aspa nao fechada: fallback fail-closed =="
 # Teste comum
 gate "git commit -m \"texto com --no-verify (sem fechar) - fallback" \
