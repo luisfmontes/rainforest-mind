@@ -22,7 +22,7 @@
     "em": "2026-09-04"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-04",
     "tarefas_ok": 4,
     "tarefas": 4,
@@ -58,20 +58,24 @@
       "toggle gate-git-verificacao ausente de CHAVES",
       "falso positivo: corpo de heredoc julgado como comando"
     ],
-    "rodada": "sexta passada por executar, depois de revisar reprovado com o NUL que trunca o argv"
+    "rodada": "sexta passada por executar, depois de revisar reprovado com o NUL que trunca o argv",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-04"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "3626d60d63de500671f8b93db385ec9c24fa6269",
+      "head": "b079b79ebb6df6f832531cc12b429fc10ba055e5",
       "caminhos_sujos": []
     },
-    "achados": 2,
-    "resumo": "falso negativo introduzido pela decodificacao octal: escape que produz NUL faz o bash truncar o argumento no execve e entregar a flag sozinha, enquanto o gate monta um token com NUL no meio e nao casa. Mais um falso positivo exotico: a formula de controle usa charCode menos 64 em vez de AND 0x1F, e a mensagem nao marca essa origem como escape.",
+    "achados": 3,
+    "resumo": "falso negativo: o modelo do NUL esta errado. O bash trunca o SEGMENTO ANSI-C no NUL e segue montando a mesma palavra com o que vem depois, entao um NUL colado no meio do nome do subcomando reconstroi 'commit' no bash e vira dois tokens no gate, que nao casam. Mais: o sufixo de origem de escape e decidido pelo comando inteiro, entao flag digitada nua e rotulada como vinda de escape. Mais: um caso da bateria incrementa o placar sem chamar o gate.",
     "em": "2026-09-04",
-    "tentativas": 8,
-    "base": "ea07b7c09507535f82ba22754d23e1814fa56ced",
-    "head": "3626d60d63de500671f8b93db385ec9c24fa6269"
+    "tentativas": 9,
+    "base": "3626d60d63de500671f8b93db385ec9c24fa6269",
+    "head": "b079b79ebb6df6f832531cc12b429fc10ba055e5"
   },
   "verificar": {
     "status": "pendente"
