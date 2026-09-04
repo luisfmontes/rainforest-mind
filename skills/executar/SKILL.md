@@ -60,7 +60,17 @@ O briefing de cada agente leva, sempre:
 - **Os caminhos que a tarefa promete criar**, para o `--espera` da integração
   abaixo — sem eles, arquivo que o agente cria e nunca chega ao commit passa
   por todas as outras checagens.
-- **Git destrutivo proibido** e commit só na branch de trabalho, nunca `main`.
+- **Git destrutivo proibido**, commit só na branch de trabalho (nunca
+  `main`), e proibido pular verificação: `git commit --no-verify`,
+  `git commit -n`, `git commit --no-gpg-sign` e `git push --no-verify`. Hook
+  de commit ou de push existe para pegar erro **antes** de ele entrar no
+  histórico — pular a verificação na hora em que ela reprova é exatamente a
+  hora em que ela importa. Na rodada de validação de 2026-09-04
+  (`relatorios/2026-09-04-handover-rodada-cega.md`, achado R8) um executor
+  tentou `git commit --no-verify`; um hook do repositório barrou, e ele
+  commitou pelo caminho normal logo em seguida — num repo sem essa trava,
+  teria passado. `hooks/gate-git-verificacao.cjs` barra essas quatro formas;
+  o `-n` do `push`, que ali é `--dry-run`, continua permitido.
 - **O hash da base é executado `git rev-parse`, nunca digitado.** Briefing que
   monta do zero (despacho novo) calcula `--base` com `git rev-parse HEAD` na hora,
   não com hash lembrado ou copiado — identificador que vem de memória é o começo
