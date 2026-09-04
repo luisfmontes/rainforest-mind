@@ -304,6 +304,51 @@ test("(s) env -u FOO git -C A status && y -> 1o segmento cwd A, 2o cwd inicial (
 });
 
 console.log();
+console.log("== Caso (t): R1 (rodada 9, lote 3) — env -C/--chdir por tokens, qualquer ordem de flags ==");
+test("(t) env -u FOO --chdir=A git status && y -> 1o segmento cwd A, 2o cwd inicial", () => {
+  const cmdGit = "g" + "it";
+  const cmd = `env -u FOO --chdir=${testA} ${cmdGit} status && y`;
+  const r = cwdPorSegmento(cmd, testDir);
+  eq(r.length, 2, "numero de segmentos");
+  eq(r[0].cwd, testA, "cwd do 1o segmento (env --chdir apos -u FOO)");
+  eq(r[1].cwd, testDir, "cwd do 2o segmento nao herda o --chdir do 1o");
+});
+test("(t2) env -i -C A x -> cwd A so no proprio segmento", () => {
+  const cmd = `env -i -C '${testA}' x`;
+  const r = cwdPorSegmento(cmd, testDir);
+  eq(r[0].cwd, testA, "cwd do segmento do env -i -C (flag sem valor antes)");
+  eq(r[0].incerto, false, "incerto");
+});
+
+console.log();
+console.log("== Caso (u): R3 (rodada 9, lote 3) — movedores do PowerShell (Set-Location/sl/Push-Location/Pop-Location) ==");
+test("(u) Set-Location A; x -> 2o segmento com cwd A", () => {
+  const cmd = `Set-Location '${testA}'; x`;
+  const r = cwdPorSegmento(cmd, testDir);
+  eq(r.length, 2, "numero de segmentos");
+  eq(r[1].cwd, testA, "cwd do 2o segmento (apos Set-Location)");
+});
+test("(u2) sl -Path A; x -> 2o segmento com cwd A", () => {
+  const cmd = `sl -Path '${testA}'; x`;
+  const r = cwdPorSegmento(cmd, testDir);
+  eq(r.length, 2, "numero de segmentos");
+  eq(r[1].cwd, testA, "cwd do 2o segmento (apos sl -Path)");
+});
+test("(u3) Push-Location A; x -> 2o segmento com cwd A", () => {
+  const cmd = `Push-Location '${testA}'; x`;
+  const r = cwdPorSegmento(cmd, testDir);
+  eq(r.length, 2, "numero de segmentos");
+  eq(r[1].cwd, testA, "cwd do 2o segmento (apos Push-Location)");
+});
+test("(u4) Pop-Location; x -> sem Push-Location correspondente nesta linha, incerto", () => {
+  const cmd = `Pop-Location; x`;
+  const r = cwdPorSegmento(cmd, testDir);
+  eq(r.length, 2, "numero de segmentos");
+  eq(r[0].incerto, true, "Pop-Location sem Push-Location marca incerto");
+  eq(r[1].incerto, true, "incerto propaga para o segmento seguinte");
+});
+
+console.log();
 console.log(`== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 process.exit(falhou);
 NODESCRIPT
