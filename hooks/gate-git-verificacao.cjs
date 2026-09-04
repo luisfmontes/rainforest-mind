@@ -59,6 +59,22 @@
  * `removeCorposDeHeredoc()`, chamada ANTES de segmentar — ver comentario da
  * funcao para a forma exata do reconhecimento.
  *
+ * RODADA 6, 2026-09-04 (revisor, 3a rodada): FALSO NEGATIVO — o conserto da
+ * rodada 5 foi longe demais. `removeCorposDeHeredoc()` passou a descartar o
+ * corpo de TODO heredoc, citado ou nao, como se fosse sempre dado literal.
+ * Mas em bash so o delimitador CITADO (`<<'EOF'`, `<<"EOF"`, `<<\EOF`) torna
+ * o corpo literal de verdade; com delimitador SEM aspas (`<<EOF`) o shell
+ * EXPANDE `$(...)` e crase ao montar o heredoc, mesmo que ninguem leia o
+ * conteudo depois (`cat > out.txt <<EOF` / `$(git commit --no-verify -m x)`
+ * / `EOF` roda o commit de verdade antes mesmo do `cat` escrever nada).
+ * Conserto: `removeCorposDeHeredoc()` agora registra se o delimitador de
+ * cada marcador estava citado. Citado -> corpo inteiro descartado, como
+ * antes (isto e o conserto da rodada 5 e NAO pode regredir). Sem aspas ->
+ * o texto ao redor e descartado, mas o CONTEUDO de `$(...)` e de crases
+ * dentro do corpo e extraido e devolvido como comando adicional a analisar
+ * — mesmo mecanismo de `extraiSubstituicoes()`, so que aplicado ao corpo do
+ * heredoc em vez de ao comando bruto.
+ *
  * O QUE SABIDAMENTE ESCAPA E NAO SERA PERSEGUIDO (a lista e o valor deste
  * bloco — ser honesto sobre o buraco, nao ser curto):
  *   - indirecao por variavel (`F=--no-verify; git commit $F`) — nao-objetivo
@@ -80,7 +96,13 @@
  *     letra (`$((v<<n))`) colide com a forma de um delimitador de heredoc —
  *     deslocamento por numero (`$((1<<2))`) NAO colide, porque o delimitador
  *     sem aspas so casa comecando com letra ou `_`. Nenhum dos dois casos
- *     aparece nas formas medidas ate aqui.
+ *     aparece nas formas medidas ate aqui;
+ *   - delimitador com escape de barra invertida NO MEIO da palavra (`<<EO\F`)
+ *     e citado em bash de verdade (basta UM caractere escapado), mas so
+ *     `<<\DELIM` (barra invertida ANTES da palavra inteira) e reconhecido
+ *     aqui como citado — `<<EO\F` cai no ramo sem aspas e o casamento do
+ *     delimitador de fechamento fica capenga (a variavel `delim` guarda so
+ *     `EO`, sem o `F` apos a barra). Nao medido em ataque nenhum ate aqui.
  *
  * ONDE MORA O ENFORCEMENT DE VERDADE, para quem precisar de garantia e nao so
  * de fricção: `pre-receive` no servidor git, ou uma checagem de CI que roda a
@@ -133,12 +155,25 @@
  * CORPO DE HEREDOC (`<<EOF` ... `EOF`, achado do revisor na rodada 5, ver
  * bloco acima) e removido do comando bruto ANTES de qualquer coisa disto —
  * `removeCorposDeHeredoc()`, chamada no inicio de `segmentosDoComando()`.
- * Corpo de heredoc e DADO, nunca comando: sem a remocao, a quebra de linha
- * dentro do corpo vira separador de segmento (mesmo mecanismo do paragrafo
- * acima) e cada linha do corpo e julgada como se fosse codigo. A LINHA que
- * contem o marcador `<<DELIM` continua no comando depois da limpeza (so o
- * corpo some) — e assim que `git commit -m "$(cat <<'EOF'` continua sendo
- * varrido por `git commit` nessa mesma linha.
+ * A LINHA que contem o marcador `<<DELIM` continua no comando depois da
+ * limpeza (so o corpo some) — e assim que `git commit -m "$(cat <<'EOF'`
+ * continua sendo varrido por `git commit` nessa mesma linha.
+ *
+ * O tratamento do CORPO depende de o delimitador estar CITADO ou nao
+ * (achado do revisor na rodada 6, ver bloco acima — contrapartida exata da
+ * rodada 5): com delimitador citado (`<<'EOF'`, `<<"EOF"`, `<<\EOF`) o corpo
+ * e DADO de verdade — o bash nao expande nada ali —, e o corpo inteiro e
+ * descartado, exatamente como a rodada 5 deixou. Sem aspas (`<<EOF`) o bash
+ * EXPANDE `$(...)` e crase ao montar o heredoc antes de qualquer leitura do
+ * conteudo — entao o texto ao redor e descartado (continua sem virar
+ * separador de segmento, mesmo mecanismo do paragrafo acima), mas o
+ * CONTEUDO de cada `$(...)` e de cada crase dentro do corpo e extraido e
+ * devolvido por `removeCorposDeHeredoc()` como comando adicional a analisar
+ * (mesma extracao de `extraiSubstituicoes()`, aplicada ao corpo em vez de
+ * ao comando bruto) — e assim que `$(git commit --no-verify -m x)` dentro
+ * de um `<<EOF` sem aspas continua sendo achado, enquanto prosa solta no
+ * mesmo corpo (`git commit --no-verify` sem `$(...)` nem crase ao redor)
+ * continua sendo ignorada.
  *
  * SHELL AGRUPADO (`bash -c "<cmd>"`, `sh -c '<cmd>'`, com ou sem flags
  * combinadas antes do -c: `bash -lc`, `sh -ec`, `bash -o pipefail -c`).
@@ -204,40 +239,64 @@ function segmentos(cmd) {
 
 /**
  * Casa o INICIO de um heredoc (`<<` ou `<<-`, seguido de espacos opcionais e
- * do delimitador sem aspas, com aspas simples ou com aspas duplas). NUNCA
- * casa dentro de `<<<` (herestring, ja e nao-objetivo declarado no plano —
- * lookbehind/lookahead barram os dois lados) nem confunde com o operador de
+ * do delimitador em aspas simples, em aspas duplas, com barra invertida na
+ * frente da palavra inteira, ou sem aspas nenhuma). NUNCA casa dentro de
+ * `<<<` (herestring, ja e nao-objetivo declarado no plano — lookbehind/
+ * lookahead barram os dois lados) nem confunde com o operador de
  * deslocamento aritmetico (`$((1<<2))`): o delimitador sem aspas so casa se
  * comecar com letra ou `_`, entao `<<2` (deslocamento por numero) nunca vira
  * heredoc. `<<x` onde `x` e um nome de variavel de um caractere so ainda
  * poderia colidir (ex.: `$((v<<n))`) — caso raro, listado como o que
  * sabidamente escapa no cabecalho do arquivo.
+ *
+ * Grupos: 1=dash de `<<-`; 2=conteudo entre aspas simples (citado); 3=entre
+ * aspas duplas (citado); 4=apos barra invertida da palavra inteira, tipo
+ * `<<\EOF` (citado — bash trata delimitador com QUALQUER parte escapada como
+ * citado; aqui so a forma "barra antes da palavra inteira" e reconhecida,
+ * ver limitacao no cabecalho do arquivo); 5=sem aspas nenhuma (NAO citado —
+ * o corpo sofre expansao de `$(...)` e crase, ver `removeCorposDeHeredoc`).
  */
-const INICIO_HEREDOC = /(?<!<)<<(-?)(?!<)[ \t]*(?:'([^']*)'|"([^"]*)"|([A-Za-z_][A-Za-z0-9_]*))/g;
+const INICIO_HEREDOC = /(?<!<)<<(-?)(?!<)[ \t]*(?:'([^']*)'|"([^"]*)"|\\([A-Za-z_][A-Za-z0-9_]*)|([A-Za-z_][A-Za-z0-9_]*))/g;
 
 /**
- * Remove o CORPO de heredocs do comando bruto, ANTES de segmentar — o corpo
- * de um heredoc e DADO (mensagem de commit, conteudo de arquivo escrito por
- * `cat >`), nunca comando. Sem isto, `segmentos()` fatia o corpo por quebra
- * de linha e manda cada linha para `analisaComando` como se fosse codigo —
- * era assim que `cat > docs.md <<EOF` seguido de uma linha citando
- * `--no-verify` em prosa barrava um comando que nao invoca `git` nenhuma vez
- * (achado do revisor, rodada 5, 2026-09-04).
+ * Remove o CORPO de heredocs do comando bruto, ANTES de segmentar. Sem isto,
+ * `segmentos()` fatia o corpo por quebra de linha e manda cada linha para
+ * `analisaComando` como se fosse codigo — era assim que `cat > docs.md
+ * <<EOF` seguido de uma linha citando `--no-verify` em prosa barrava um
+ * comando que nao invoca `git` nenhuma vez (achado do revisor, rodada 5,
+ * 2026-09-04).
  *
  * A LINHA que contem `<<DELIM` continua no comando depois da limpeza — ela
  * pode ter comando de verdade colado (`git commit -m "$(cat <<'EOF'`, onde
  * `git commit` esta nessa mesma linha). So o CORPO (da linha seguinte ate a
- * linha do delimitador, corpo e linha do delimitador ambos removidos) some.
+ * linha do delimitador, corpo e linha do delimitador ambos removidos) some
+ * da saida principal.
+ *
+ * O que acontece com o CORPO depende de o delimitador estar CITADO
+ * (`'EOF'`, `"EOF"`, `\EOF`) ou nao (`EOF` puro) — achado do revisor,
+ * rodada 6, 2026-09-04, contrapartida exata da rodada 5: delimitador citado
+ * faz o bash tratar o corpo como literal de verdade (DADO, nunca comando) —
+ * o corpo e so descartado, como a rodada 5 deixou. Delimitador SEM aspas
+ * sofre expansao de `$(...)` e crase ao ser montado — entao o corpo NAO e
+ * so dado: o texto ao redor e descartado, mas o conteudo de cada `$(...)`
+ * e de cada crase dentro do corpo e extraido (mesma extracao de
+ * `extraiSubstituicoes()`) e devolvido em `extras`, para ser analisado como
+ * mais um comando.
  *
  * O corpo vai ate uma linha que contenha SO o delimitador — com `<<-`, tabs
  * no comeco da linha de fechamento sao ignorados na comparacao, do jeito que
  * o bash aceita. Um comando pode ter mais de um heredoc (em linhas
  * diferentes, ou mais de um marcador na mesma linha, ex.: `cmd <<A <<B`) —
  * os corpos sao consumidos na ordem em que os marcadores aparecem.
+ *
+ * Devolve `{ cmd, extras }`: `cmd` e o comando bruto com todo corpo de
+ * heredoc removido (igual ao retorno de antes da rodada 6); `extras` e a
+ * lista de comandos extraidos de `$(...)`/crase dentro de corpo NAO citado.
  */
 function removeCorposDeHeredoc(cmd) {
   const linhas = cmd.split("\n");
   const saida = [];
+  const extras = [];
 
   let i = 0;
   while (i < linhas.length) {
@@ -249,20 +308,27 @@ function removeCorposDeHeredoc(cmd) {
     let m;
     const marcadores = [];
     while ((m = INICIO_HEREDOC.exec(linha)) !== null) {
-      const delim = m[2] !== undefined ? m[2] : m[3] !== undefined ? m[3] : m[4];
-      if (delim) marcadores.push({ delim, dash: m[1] === "-" });
+      const delim = m[2] !== undefined ? m[2] : m[3] !== undefined ? m[3] : m[4] !== undefined ? m[4] : m[5];
+      const citado = m[2] !== undefined || m[3] !== undefined || m[4] !== undefined;
+      if (delim) marcadores.push({ delim, dash: m[1] === "-", citado });
     }
 
-    for (const { delim, dash } of marcadores) {
+    for (const { delim, dash, citado } of marcadores) {
+      const corpo = [];
       while (i < linhas.length) {
-        const corpo = linhas[i];
+        const linhaCorpo = linhas[i];
         i += 1;
-        const testado = dash ? corpo.replace(/^\t+/, "") : corpo;
+        const testado = dash ? linhaCorpo.replace(/^\t+/, "") : linhaCorpo;
         if (testado === delim) break; // linha do delimitador tambem some
+        corpo.push(linhaCorpo);
+      }
+      if (!citado && corpo.length) {
+        const [, ...subs] = extraiSubstituicoes(corpo.join("\n"));
+        extras.push(...subs);
       }
     }
   }
-  return saida.join("\n");
+  return { cmd: saida.join("\n"), extras };
 }
 
 /**
@@ -287,10 +353,20 @@ function extraiSubstituicoes(cmd) {
   return [semSub, ...extras];
 }
 
-/** Todos os segmentos analisaveis de um comando bruto (ver comentario do topo). */
+/**
+ * Todos os segmentos analisaveis de um comando bruto (ver comentario do
+ * topo). Recursiva: cada `extra` que `removeCorposDeHeredoc()` devolve (o
+ * conteudo de `$(...)`/crase de dentro de um corpo de heredoc SEM aspas,
+ * rodada 6) e um comando por direito proprio, entao passa pelo mesmo
+ * tratamento (heredoc -> continuacao -> substituicao -> segmentacao) de
+ * novo, e nao so por um `flatMap(segmentos)` direto.
+ */
 function segmentosDoComando(cmd) {
-  const partes = extraiSubstituicoes(costuraContinuacao(removeCorposDeHeredoc(cmd)));
-  return partes.flatMap(segmentos);
+  const { cmd: semHeredoc, extras } = removeCorposDeHeredoc(cmd);
+  const partes = extraiSubstituicoes(costuraContinuacao(semHeredoc));
+  const segs = partes.flatMap(segmentos);
+  for (const extra of extras) segs.push(...segmentosDoComando(extra));
+  return segs;
 }
 
 /**
