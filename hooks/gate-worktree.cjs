@@ -59,6 +59,11 @@ const { execFileSync } = require("node:child_process");
 const os = require("node:os");
 const fs = require("node:fs");
 const path = require("node:path");
+const { cwdPorSegmento, resolverMovedor, toplevelConfinado, extrairUltimoDirGit, segmentosComAspas, SEPARADORES } = require(path.join(__dirname, "lib", "cwd-efetivo.cjs"));
+const CLIS_QUE_ESCREVEM = require(path.join(__dirname, "lib", "clis-que-escrevem.cjs"));
+const {
+  tokensComAspas, ehComando, WRAPPERS_QUE_REPASSAM, posicaoDeComando, textoAPartir, desempacotarWrapperDeString,
+} = require(path.join(__dirname, "lib", "tokens-comando.cjs"));
 
 const FERRAMENTAS_DE_ESCRITA = new Set(["Write", "Edit", "MultiEdit", "NotebookEdit"]);
 // Subcomandos de git que mexem no estado do checkout. `git stash`/`pop` foi a falha N1.
@@ -66,9 +71,6 @@ const VERBOS_QUE_MEXEM = new Set([
   "stash", "checkout", "switch", "co", "reset", "merge", "rebase",
   "commit", "clean", "cherry-pick", "revert",
 ]);
-// Separadores de comando. Cada segmento tem o seu proprio subcomando e o seu proprio
-// cwd — e por isso a travessia do `alvosBash` e a mesma usada para achar o verbo.
-const SEPARADORES = /&&|\|\||;|\n|\|/;
 // Opcoes globais do git, as que vem ANTES do subcomando. As de valor separado
 // (`-C <dir>`, `-c <k=v>`) precisam comer o proprio argumento, senao o valor delas
 // e lido como se fosse o subcomando.
@@ -80,6 +82,15 @@ const GLOBAIS_COM_VALOR = new Set([
  * Quebra a linha de comando em palavras respeitando aspas simples e duplas.
  * E o que impede `git commit -m "checkout later"` de virar um checkout: o texto
  * da mensagem sai como UMA palavra, e nao como candidato a subcomando.
+ *
+ * Rodada 19 (lote 3): `{`/`}`/`(`/`)` FORA de aspas tambem viram fronteira de
+ * palavra (tratados como espaco, nunca entram no resultado) — sem isto,
+ * `&{git checkout main}` (call operator do PowerShell colado ao scriptblock)
+ * virava as palavras `["&{git", "checkout", "main}"]`: nem `"&{git"` nem
+ * `"main}"` batem com `"git"`/`"main"` exatos, e a checagem de sessao
+ * co-locada (que busca a palavra `git` literal via `subcomandoGit`) nunca
+ * achava o comando. Dentro de aspas nada muda: `"fix {json} parse"` continua
+ * saindo como UMA palavra so.
  */
 function palavras(cmd) {
   const out = [];
@@ -95,7 +106,7 @@ function palavras(cmd) {
     } else if (c === '"' || c === "'") {
       aspa = c;
       temAlgo = true;
-    } else if (/\s/.test(c)) {
+    } else if (/\s/.test(c) || c === "{" || c === "}" || c === "(" || c === ")") {
       if (temAlgo) out.push(atual);
       atual = "";
       temAlgo = false;
@@ -110,9 +121,19 @@ function palavras(cmd) {
 
 /**
  * Acha o subcomando de `git` num segmento, com os argumentos dele.
+ *
+ * T2 (rodada 11, lote 3, 2026-09-04): nenhuma palavra bate com `git` — o
+ * segmento pode ser um wrapper de STRING escondendo o `git` de verdade
+ * (`Invoke-Expression "git commit -m x"`/`iex "..."`, `eval "..."`,
+ * `bash -c "..."`/primos, `pwsh -Command "..."`, `cmd /c "..."`). Conteudo
+ * LEGIVEL reprocessa recursivamente (pode ele mesmo ser outro wrapper).
+ * Conteudo ILEGIVEL (`$(`, crase, variavel) nao tem como saber — cai no
+ * `null` de "nao achei git aqui", sem falso positivo (o chamador que decide
+ * incerteza de `cd`/CLI ja cobre esse conservadorismo pelo lado do cwd).
+ *
  * @returns {{verbo: string, args: string[]}|null}
  */
-function subcomandoGit(cmd) {
+function subcomandoGit(cmd, ferramenta) {
   const w = palavras(cmd);
   for (let i = 0; i < w.length; i += 1) {
     if (w[i] !== "git" && !/[\\/]git(\.exe)?$/.test(w[i])) continue;
@@ -123,13 +144,15 @@ function subcomandoGit(cmd) {
     }
     return j < w.length ? { verbo: w[j], args: w.slice(j + 1) } : null;
   }
+  const { interno, ilegivel } = desempacotarWrapperDeString(cmd, { ferramenta });
+  if (interno !== null && !ilegivel) return subcomandoGit(interno, ferramenta);
   return null;
 }
 
 /** Primeiro verbo de git da linha inteira que caia no conjunto dado, ou null. */
-function verboNaLinha(comando, conjunto) {
+function verboNaLinha(comando, conjunto, ferramenta) {
   for (const seg of comando.split(SEPARADORES)) {
-    const s = subcomandoGit(seg);
+    const s = subcomandoGit(seg, ferramenta);
     if (s && conjunto.has(s.verbo)) return s.verbo;
   }
   return null;
@@ -286,11 +309,6 @@ function bloqueia(motivo, toplevel, agente) {
   process.exit(2);
 }
 
-// `cd X` isolado num segmento do encadeamento.
-const CD = /^\s*cd\s+(?:--\s+)?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s*$/;
-// Diretorio que o proprio git recebe, e que vence o cwd do shell.
-const GIT_DIR_EXPLICITO = /\bgit\b[^\n;&|]*?(?:-C|--work-tree(?:=|\s+))\s*(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))/;
-
 /**
  * Diretorios onde os `git` que MEXEM no repo realmente vao rodar.
  *
@@ -324,101 +342,159 @@ const GIT_DIR_EXPLICITO = /\bgit\b[^\n;&|]*?(?:-C|--work-tree(?:=|\s+))\s*(?:"([
  *
  * Devolve `{dir, verbo}` por alvo: quem bloqueia precisa nomear o verbo na mensagem,
  * e o verbo e do SEGMENTO que casou, nao da linha inteira.
+ *
+ * Movedores de diretorio (`cd`, `pushd`/`popd`, `env -C`) vem de
+ * `resolverMovedor` (lib/cwd-efetivo.cjs) — emenda do auditor a rodada 5
+ * (lote 3, 2026-09-03): ate aqui esta funcao so reconhecia `cd` (via
+ * `seg.match(CD)` cru), entao `pushd <principal> && git commit -m x` e
+ * `env -C <principal> git commit -m x` de dentro do worktree passavam com
+ * exit 0 — o A2 do auditor aplicado ao caminho mais critico (commit,
+ * checkout, reset, merge no principal). `cwdPorSegmento` ja reconhecia os
+ * quatro movedores para o ramo de CLI e para `gate-staging-total.cjs`; agora
+ * os tres consumidores chamam o MESMO `resolverMovedor`, em vez de cada um
+ * ter sua propria lista (parcial) de movedores.
+ *
+ * `resolverMovedor` devolve `soMovedor: true` para `cd`/`pushd`/`popd` — a
+ * regex e ANCORADA de ponta a ponta, o segmento INTEIRO e so o comando de
+ * mudanca de diretorio, e o `casa()` nunca precisa olhar esses segmentos.
+ * `env -C` NAO e `soMovedor`: e um PREFIXO (`env -C X git commit -m x`), o
+ * `casa()` ainda avalia o RESTO do segmento, so que com o cwd do `-C`
+ * (`mov.cwd`) no lugar do `atual` de antes.
  */
 function alvosBash(comando, cwdInicial, casa = (seg) => {
   const s = subcomandoGit(seg);
   return !!s && VERBOS_QUE_MEXEM.has(s.verbo);
 }) {
-  const segmentos = comando.split(SEPARADORES);
-  let atual = cwdInicial;
-  let incerto = false;
+  // `segmentosComAspas`, nao `comando.split(SEPARADORES)` cru: o split cru
+  // nao respeita aspas (`git commit -m "a & b"` quebraria dentro da mensagem)
+  // e, ate a rodada 6, `SEPARADORES` nem reconhecia `&` simples como
+  // separador (K1 do auditor, lote 3, 2026-09-03).
+  const segmentos = segmentosComAspas(comando);
+  const estado = { atual: cwdInicial, incerto: false, pilhaPushd: [] };
   const alvos = [];
 
   for (const seg of segmentos) {
-    const cd = seg.match(CD);
-    if (cd) {
-      const destino = cd[1] || cd[2] || cd[3];
-      // `cd -`, `cd ~`, `$VAR`, `$(...)`: nao da para resolver aqui sem executar.
-      //
-      // O `~` so e expansao de home no COMECO (`~`, `~/x`, `~fulano/x`). Ate
-      // 2026-08-17 este teste era /[$`~]/, que casava com o til em QUALQUER
-      // posicao — e caminho do Windows tem til no meio o tempo todo, na forma
-      // 8.3: `C:/Users/RUNNER~1/...`, `C:/Users/LUISFE~1/...`. O efeito era o
-      // pior possivel para um gate: `cd <worktree> && git commit` num caminho
-      // 8.3 virava INCERTO, o conservadorismo somava o cwd principal aos alvos,
-      // e o gate BARRAVA um commit perfeitamente legitimo dentro do worktree.
-      // Achado pelo CI (Issue #16): o TEMP do runner e `C:/Users/RUNNER~1/...`,
-      // e a bateria hooks/testa-gate-worktree.sh ficou vermelha la e verde aqui.
-      // `$` e crase continuam valendo em qualquer posicao — sao expansao mesmo.
-      if (/[$`]/.test(destino) || /^~/.test(destino) || destino === "-") { incerto = true; continue; }
-      atual = path.resolve(atual, destino);
-      continue;
-    }
-    if (!casa(seg, atual)) continue;
+    const mov = resolverMovedor(seg, estado);
+    if (mov.soMovedor) continue; // cd/pushd/popd: o segmento INTEIRO e o movedor
+
+    if (!casa(seg, mov.cwd)) continue;
     const s = subcomandoGit(seg);
     const verbo = s ? s.verbo : "?";
 
-    const exp = seg.match(GIT_DIR_EXPLICITO);
-    if (exp) {
-      const p = exp[1] || exp[2] || exp[3];
+    // O ÚLTIMO `-C`/`--work-tree` do segmento vence — o git usa o ultimo
+    // quando ha varios (`git -C /a -C /b commit` roda em `/b`). O regex
+    // antigo so achava a PRIMEIRA ocorrencia (`.match` unico e lazy), entao
+    // `git -C <worktree> -C <principal> commit` classificava o alvo como
+    // worktree e liberava, com o commit caindo no principal de verdade.
+    const p = extrairUltimoDirGit(seg);
+    if (p) {
       // `-C` com variavel: nao da para resolver — cai no conservador.
-      if (/[$`]/.test(p)) { alvos.push({ dir: cwdInicial, verbo }); continue; }
-      alvos.push({ dir: path.resolve(atual, p), verbo });
+      if (/[$`]/.test(p)) { alvos.push({ dir: cwdInicial, verbo, incerto: true }); continue; }
+      alvos.push({ dir: path.resolve(mov.cwd, p), verbo, incerto: mov.incerto });
       continue;
     }
-    alvos.push({ dir: atual, verbo });
-    if (incerto) alvos.push({ dir: cwdInicial, verbo });
+    // `incerto` vai junto do alvo (nao so como alvo extra em `cwdInicial`):
+    // um `popd` sem `pushd` correspondente pode deixar o shell em QUALQUER
+    // diretorio, inclusive um que hoje E um worktree legitimo mas nao e o
+    // de onde o comando rodou de verdade — cwdInicial e mov.cwd podem ser o
+    // MESMO worktree (o agente ja estava la), e nesse caso a adicao antiga
+    // (so `cwdInicial` como alvo extra) nao pegava nada. Quem consome (main)
+    // trata `incerto: true` bloqueando direto, sem confiar na classificacao
+    // de worktree — mesmo espirito do ramo de CLI (H2, rodada 5).
+    alvos.push({ dir: mov.cwd, verbo, incerto: mov.incerto });
+    if (mov.incerto) alvos.push({ dir: cwdInicial, verbo, incerto: true });
   }
   return alvos;
 }
 
-/**
- * Quebra em tokens preservando se cada um veio de DENTRO de aspas.
- *
- * `q: true` significa "este texto estava entre aspas" — e um `>` ali e TEXTO,
- * nunca redirecionamento. E o conserto de 2026-09-01: um avaliador de repo de
- * terceiro foi barrado rodando
- *   grep -n "qualified_name\|<project>" README.md
- * — comando sem redirecionamento nenhum. O gate casava o `>` de `<project>` no
- * texto cru do comando. `->`, `=>`, generics e tag HTML sao rotina em busca de
- * codigo, entao o falso positivo era diario e empurrava o agente a reescrever
- * comando legitimo ate passar. `palavras()` ja sabia respeitar aspas para achar
- * subcomando de git; a deteccao de escrita e que tinha ficado no regex cru.
- */
-function tokensComAspas(cmd) {
-  const out = [];
-  let atual = "", aspa = null, temAlgo = false, citado = false;
-  for (let i = 0; i < cmd.length; i += 1) {
-    const c = cmd[i];
-    if (aspa) {
-      if (c === aspa) aspa = null;
-      else atual += c;
-      temAlgo = true;
-    } else if (c === '"' || c === "'") {
-      aspa = c; temAlgo = true; citado = true;
-    } else if (/\s/.test(c)) {
-      if (temAlgo) out.push({ v: atual, q: citado });
-      atual = ""; temAlgo = false; citado = false;
-    } else {
-      atual += c; temAlgo = true;
-    }
-  }
-  if (temAlgo) out.push({ v: atual, q: citado });
-  return out;
-}
+// `tokensComAspas`, `ehComando`, `WRAPPERS_QUE_REPASSAM` e `posicaoDeComando`
+// agora moram em `lib/tokens-comando.cjs` (rodada 6, lote 3, 2026-09-03) —
+// `cwd-efetivo.cjs` passou a precisar da mesma nocao de posicao de comando
+// (K2 do auditor) e duplicar a logica era exatamente o que a rodada 5 tinha
+// evitado ao consolidar `resolverMovedor`. Import no topo do arquivo.
 
-// Operador de redirecionamento ANCORADO no inicio do token: `>a`, `>>a`, `2>a`,
-// `&>a`. A ancora e o que salva `foo->bar` e `x=>y`, que nunca comecam com `>`.
+// Operador de redirecionamento: quando a linha de comando redireciona para arquivo.
+// Procura por padrao no inicio do token, diferente de operadores em nomes.
 const OPERADOR_REDIRECT = /^(?:[0-9]*|&)(>>?)(.*)$/;
-
-/** Nome de comando, ignorando caminho: `/usr/bin/tee` conta como `tee`. */
-function ehComando(tok, nome) {
-  return !tok.q && new RegExp("(^|[\\\\/])" + nome + "(\\.exe)?$").test(tok.v);
-}
 
 /** Posicionais de um segmento a partir do indice do comando (pula flags). */
 function posicionaisApos(toks, i) {
   return toks.slice(i + 1).filter((t) => !t.v.startsWith("-"));
+}
+
+// `textoAPartir` agora mora em `lib/tokens-comando.cjs` (rodada 13, lote 3,
+// 2026-09-04) — `gate-staging-total.cjs` e `gate-fechar-issue.cjs` passaram
+// a precisar dela tambem para compor `posicaoDeComando` com
+// `desempacotarWrapperDeString` (P3 do auditor). Import no topo do arquivo.
+
+/**
+ * Acha CLI(s) numa string de comando ja isolada — reusado pela recursao de
+ * `eval`/`bash -c` em `procuraCLI`. Conteudo com `$(`, crase ou `$VAR` nao da
+ * pra resolver estaticamente (o script dentro do eval pode rodar QUALQUER
+ * coisa): marca INCERTO em vez de so olhar se um nome conhecido aparece.
+ */
+function achadasEmString(str, clis, ferramenta) {
+  if (/[$`]/.test(str)) return [{ nome: "?", incerto: true }];
+  return procuraCLI(str, clis, ferramenta);
+}
+
+/**
+ * Procura por CLI externa que escreve (codex, gemini, claude, aider, cursor,
+ * copilot), em POSICAO DE COMANDO — primeiro token do segmento, ou o
+ * primeiro token depois de um wrapper conhecido que repassa o comando
+ * adiante (`env`, `command`, `exec`, `nohup`, `nice`, `timeout`, `xargs`,
+ * `sudo`, `time`). Retorna `[{nome, indiceSegmento, incerto?}]` — um item
+ * por achado, na ordem dos segmentos.
+ *
+ * Segmentacao usa `segmentosComAspas` (respeita aspas), nao `comando.split`
+ * cru: `echo "abc ; codex exec --yolo"` tem um `;` DENTRO da string, que o
+ * split ingenuo tratava como separador de verdade e criava um segmento
+ * `codex exec --yolo"` fantasma — falso positivo num `echo` de texto.
+ *
+ * Token citado em posicao de COMANDO continua contando (R2): `"codex" exec
+ * --yolo` e comando de verdade disfarcado de string.
+ *
+ * `$'codex'`/`$"codex"` (ANSI-C / locale quoting, A4): o bash expande para o
+ * literal `codex`, mas o `$` fica FORA da aspa em `tokensComAspas` e gruda no
+ * valor (`$codex`), escapando da lista. Na posicao de comando, um token
+ * citado cujo valor comeca com `$` perde o `$`.
+ *
+ * Wrapper de STRING (`eval`, `bash -c`/`sh -c`/`zsh -c`/`ksh -c`/`dash -c`,
+ * `Invoke-Expression`/`iex`, `pwsh|powershell -Command`, `cmd /c`/`/k` — H3 +
+ * T2, rodada 11, lote 3, 2026-09-04): o comando de verdade esta DENTRO da
+ * string citada — `desempacotarWrapperDeString` (lib/tokens-comando.cjs,
+ * compartilhada com `gate-staging-total.cjs` e `gate-fechar-issue.cjs`)
+ * devolve o conteudo, e `achadasEmString` recursiona sobre ele, no MESMO
+ * `indiceSegmento` (mesmo cwd do segmento que contem o wrapper). Antes desta
+ * rodada so `eval`/`bash -c` eram reconhecidos aqui (ad hoc, cada um com seu
+ * proprio `if`) — `Invoke-Expression "codex exec --yolo"`/`iex "..."`
+ * atravessava com exit 0.
+ */
+function procuraCLI(comando, clis, ferramenta) {
+  const segmentos = segmentosComAspas(comando);
+  const achadas = [];
+  segmentos.forEach((seg, indiceSegmento) => {
+    const toks = tokensComAspas(seg);
+    const i = posicaoDeComando(toks);
+    if (i === null) return;
+    const tok = toks[i];
+    let v = tok.v;
+    if (tok.q && v.startsWith("$")) v = v.slice(1); // $'codex' (A4)
+    const nome = v.split(/[\\/]/).pop().replace(/\.exe$/, "");
+
+    const { interno, ilegivel } = desempacotarWrapperDeString(textoAPartir(toks, i), { ferramenta });
+    if (ilegivel) {
+      achadas.push({ nome: "?", incerto: true, indiceSegmento });
+      return;
+    }
+    if (interno !== null) {
+      for (const a of achadasEmString(interno, clis, ferramenta)) achadas.push({ ...a, indiceSegmento });
+      return;
+    }
+
+    if (clis.includes(nome)) achadas.push({ nome, indiceSegmento });
+  });
+  return achadas;
 }
 
 /**
@@ -426,35 +502,37 @@ function posicionaisApos(toks, i) {
  * Resolve alvos e retorna {dir, tipo} para cada um.
  *
  * Tipos: ">", ">>", "tee", "sed", "cp", "mv", e construcoes nao-resolvidas.
- * Mantem a mesma seguranca do `alvosBash`: `cd` que nao resolve vira INCERTO
- * e conservadorismo inclui cwdInicial nos alvos.
+ * Mantem a mesma seguranca do `alvosBash`: `cd`/`pushd`/`popd`/`env -C` que
+ * nao resolve vira INCERTO e conservadorismo inclui cwdInicial nos alvos.
+ * Movedores vem de `resolverMovedor` (lib/cwd-efetivo.cjs) — antes esta
+ * funcao so reconhecia `cd`, mesmo buraco do `alvosBash` (emenda do auditor,
+ * rodada 5, lote 3): `env -C <principal> echo x > f.txt` de dentro do
+ * worktree escrevia no principal e passava com exit 0.
  *
  * Tudo aqui decide por TOKEN, nunca por match no texto cru — ver o docblock de
  * `tokensComAspas`.
  */
 function alvosBashEscrita(comando, cwdInicial) {
-  const segmentos = comando.split(SEPARADORES);
-  let atual = cwdInicial;
-  let incerto = false;
+  // `segmentosComAspas` pelo mesmo motivo de `alvosBash`: respeita aspas e
+  // reconhece `&` simples como separador (K1, rodada 6, lote 3, 2026-09-03).
+  const segmentos = segmentosComAspas(comando);
+  const estado = { atual: cwdInicial, incerto: false, pilhaPushd: [] };
   const alvos = [];
 
-  // Resolve o alvo contra o cwd corrente; construcao com $ ou ` fica INCERTA e
-  // aponta para o proprio diretorio, que e o lado seguro.
-  const empurra = (alvo, tipo) => {
+  // Resolve o alvo contra o cwd EFETIVO deste segmento (`base` — o de
+  // `env -C`, se houver, senao o `estado.atual` corrente); construcao com
+  // $ ou ` fica INCERTA e aponta para o proprio diretorio, que e o lado
+  // seguro.
+  const empurra = (base, alvo, tipo) => {
     if (!alvo) return;
-    if (/[$`]/.test(alvo)) alvos.push({ dir: atual, tipo });
-    else alvos.push({ dir: path.resolve(atual, alvo), tipo });
+    if (/[$`]/.test(alvo)) alvos.push({ dir: base, tipo });
+    else alvos.push({ dir: path.resolve(base, alvo), tipo });
   };
 
   for (const seg of segmentos) {
-    // `cd` precisa ser tratado igual ao `alvosBash`
-    const cd = seg.match(CD);
-    if (cd) {
-      const destino = cd[1] || cd[2] || cd[3];
-      if (/[$`]/.test(destino) || /^~/.test(destino) || destino === "-") { incerto = true; continue; }
-      atual = path.resolve(atual, destino);
-      continue;
-    }
+    const mov = resolverMovedor(seg, estado);
+    if (mov.soMovedor) continue; // cd/pushd/popd: o segmento INTEIRO e o movedor
+    const base = mov.cwd;
 
     const toks = tokensComAspas(seg);
 
@@ -473,38 +551,45 @@ function alvosBashEscrita(comando, cwdInicial) {
         alvo = prox.v;
         i += 1;
       }
-      empurra(alvo, tipo);
+      empurra(base, alvo, tipo);
     }
+
+    // Posicao de comando do segmento: so ali um nome CITADO conta como comando
+    // (rodada 20, lote 3 — `"cp" a.txt <principal>/b.txt` escapava daqui).
+    // Fora dela o token citado segue sendo argumento, nunca comando.
+    const posCmd = posicaoDeComando(toks);
+    const ehCmd = (i, nome) => ehComando(toks[i], nome, i === posCmd);
 
     for (let i = 0; i < toks.length; i += 1) {
       // `tee arquivo`, `tee -a arquivo`
-      if (ehComando(toks[i], "tee")) {
+      if (ehCmd(i, "tee")) {
         const pos = posicionaisApos(toks, i);
-        if (pos.length) empurra(pos[0].v, "tee");
+        if (pos.length) empurra(base, pos[0].v, "tee");
         break;
       }
       // `sed -i arquivo` — so com a flag de edicao no lugar. O alvo e o ULTIMO
       // posicional: antes dele vem a expressao, que pode ser varios argumentos.
-      if (ehComando(toks[i], "sed")) {
+      if (ehCmd(i, "sed")) {
         const temInPlace = toks.slice(i + 1).some((t) => !t.q && /^-[a-z]*i/.test(t.v));
         if (!temInPlace) break;
         const pos = posicionaisApos(toks, i);
-        if (pos.length) empurra(pos[pos.length - 1].v, "sed");
+        if (pos.length) empurra(base, pos[pos.length - 1].v, "sed");
         break;
       }
       // `cp origem destino`, `mv origem destino` — o destino e o ultimo posicional,
       // que e o que vale tambem para `cp a b c pasta/`.
-      if (ehComando(toks[i], "cp") || ehComando(toks[i], "mv")) {
-        const tipo = ehComando(toks[i], "cp") ? "cp" : "mv";
+      if (ehCmd(i, "cp") || ehCmd(i, "mv")) {
+        const tipo = ehCmd(i, "cp") ? "cp" : "mv";
         const pos = posicionaisApos(toks, i);
-        if (pos.length >= 2) empurra(pos[pos.length - 1].v, tipo);
+        if (pos.length >= 2) empurra(base, pos[pos.length - 1].v, tipo);
         break;
       }
     }
   }
 
-  // Conservadorismo: se houver `cd` nao-resolvivel, incluir cwdInicial tambem
-  if (incerto && alvos.length > 0) {
+  // Conservadorismo: se houver `cd`/`pushd`/`popd` nao-resolvivel, incluir
+  // cwdInicial tambem.
+  if (estado.incerto && alvos.length > 0) {
     alvos.push({ dir: cwdInicial, tipo: "?" });
   }
 
@@ -565,12 +650,17 @@ function bloqueiaColocada(verbo, toplevel, outras, agora) {
  * `sessoes.json` com ele.
  */
 function gateDeSessaoColocada(ev, cwd) {
-  if (ev.tool_name !== "Bash") return;
+  // R3 (rodada 9, lote 3, 2026-09-04): nesta maquina a ferramenta primaria
+  // e `PowerShell`, nao `Bash` — um subagente no principal rodando
+  // `git commit -m x` pela ferramenta `PowerShell` passava batido aqui.
+  // `alvosBash`/`cwdPorSegmento` ja sabem ler `Set-Location`/`Push-Location`/
+  // `Pop-Location` (R3 em cwd-efetivo.cjs), entao o mesmo parser serve.
+  if (ev.tool_name !== "Bash" && ev.tool_name !== "PowerShell") return;
   const comando = (ev.tool_input || {}).command;
   if (typeof comando !== "string") return;
   // Recusa barata antes de tocar em disco: a linha tem algum verbo que possa mover
   // o HEAD? Quem decide de verdade e o `moveOHead` la embaixo, com o cwd do segmento.
-  if (!verboNaLinha(comando, VERBOS_QUE_MOVEM)) return;
+  if (!verboNaLinha(comando, VERBOS_QUE_MOVEM, ev.tool_name)) return;
   if (!ev.session_id) return;
 
   const agora = Date.now();
@@ -639,29 +729,83 @@ function main() {
 
   if (FERRAMENTAS_DE_ESCRITA.has(nome)) {
     const alvo = entrada.file_path || entrada.notebook_path || null;
-    if (alvo) { alvos = [alvo]; motivo = `Escrita (${nome}) em ${alvo}`; }
-  } else if (nome === "Bash" && typeof entrada.command === "string") {
-    const verbo = verboNaLinha(entrada.command, VERBOS_QUE_MEXEM);
+    if (alvo) { alvos = [{ dir: alvo, incerto: false }]; motivo = `Escrita (${nome}) em ${alvo}`; }
+  } else if ((nome === "Bash" || nome === "PowerShell") && typeof entrada.command === "string") {
+    const verbo = verboNaLinha(entrada.command, VERBOS_QUE_MEXEM, nome);
     if (verbo) {
-      alvos = alvosBash(entrada.command, cwd).map((a) => a.dir);
+      // `incerto` viaja junto (nao so como alvo extra em cwdInicial) — ver o
+      // comentario em `alvosBash`.
+      alvos = alvosBash(entrada.command, cwd).map((a) => ({ dir: a.dir, incerto: !!a.incerto }));
       motivo = `Comando que mexe no estado do repo: git ${verbo}`;
     } else {
       // Inspecionar redirecionamentos e ferramentas de escrita
       const alvosEscrita = alvosBashEscrita(entrada.command, cwd);
       if (alvosEscrita.length > 0) {
-        alvos = alvosEscrita.map((a) => a.dir);
+        alvos = alvosEscrita.map((a) => ({ dir: a.dir, incerto: false }));
         motivo = `Escrita via Bash (redirecionamento ou ferramenta)`;
+      } else {
+        // Procurar por CLI externa que escreve. H1 (rodada 5): cada CLI
+        // achada tem o cwd do PROPRIO segmento (`cwdPorSegmento`), nao o cwd
+        // FINAL da linha inteira (`resolverCwdEfetivo` antigo) — e o que
+        // fecha `codex exec --yolo && cd <worktree>` rodado no principal: o
+        // `codex` roda no principal, mas o cwd final (depois do `cd`) e o
+        // worktree, e o gate liberava lendo o lugar errado. Mais de uma CLI
+        // na mesma linha, cada uma com o seu proprio cwd — bloqueia na
+        // PRIMEIRA que estiver fora de worktree (bloqueia() sai o processo).
+        const achadas = procuraCLI(entrada.command, CLIS_QUE_ESCREVEM, nome);
+        if (achadas.length) {
+          const porSegmento = cwdPorSegmento(entrada.command, cwd);
+          for (const achado of achadas) {
+            const doSegmento = porSegmento[achado.indiceSegmento] || { cwd, incerto: true };
+            const incerto = achado.incerto || doSegmento.incerto;
+            if (incerto) {
+              // `cd` que nao resolve (variavel, subshell, `cd -`), `popd`
+              // sem `pushd`, ou conteudo dinamico de `eval`/`bash -c` podem
+              // levar a QUALQUER diretorio ou rodar QUALQUER CLI, inclusive
+              // no principal: bloqueia direto, sem passar pela classificacao
+              // de worktree que dependeria do proprio cwd que nao da pra
+              // confiar.
+              if (!ehScratchpad(cwd)) {
+                const estadoAqui = estadoDoRepo(cwd);
+                if (estadoAqui && !fs.existsSync(path.join(estadoAqui.toplevel, ".rainforest-gate-off"))) {
+                  bloqueia(
+                    achado.incerto
+                      ? `Comando dinamico (eval/bash -c) com conteudo nao resolvivel — pode rodar CLI que escreve`
+                      : `CLI que escreve (${achado.nome}) com cd nao resolvido — destino desconhecido`,
+                    estadoAqui.toplevel,
+                    `${ev.agent_type || "?"} (${ev.agent_id})`
+                  );
+                }
+              }
+            } else if (!ehScratchpad(doSegmento.cwd)) {
+              const estado = estadoDoRepo(dirDe(doSegmento.cwd));
+              if (estado && !estado.ehWorktree && !fs.existsSync(path.join(estado.toplevel, ".rainforest-gate-off"))) {
+                bloqueia(
+                  `CLI que escreve (${achado.nome})`,
+                  estado.toplevel,
+                  `${ev.agent_type || "?"} (${ev.agent_id})`
+                );
+              }
+            }
+          }
+        }
       }
     }
   }
 
   if (!alvos.length) process.exit(0);
 
-  for (const alvo of alvos) {
-    if (ehScratchpad(alvo)) continue; // scratchpad da sessao: livre, ainda que seja repo git
-    const estado = estadoDoRepo(dirDe(alvo));
+  for (const { dir, incerto } of alvos) {
+    if (ehScratchpad(dir)) continue; // scratchpad da sessao: livre, ainda que seja repo git
+    const estado = estadoDoRepo(dirDe(dir));
     if (!estado) continue;           // fora de repo git: livre
-    if (estado.ehWorktree) continue; // worktree linkado: era pra ser isso mesmo
+    // `incerto` (emenda auditor, rodada 5): `popd` sem `pushd` correspondente,
+    // ou outro movedor que nao resolve, pode ter deixado o shell em QUALQUER
+    // diretorio — inclusive um que E um worktree legitimo, mas nao e
+    // necessariamente o de onde o comando de verdade rodou. Bloqueia direto,
+    // sem confiar na classificacao de worktree — mesmo espirito do ramo de
+    // CLI que ja faz isso para `cd`/subshell nao resolvidos.
+    if (!incerto && estado.ehWorktree) continue; // worktree linkado: era pra ser isso mesmo
     if (fs.existsSync(path.join(estado.toplevel, ".rainforest-gate-off"))) continue;
     bloqueia(motivo, estado.toplevel, `${ev.agent_type || "?"} (${ev.agent_id})`);
   }

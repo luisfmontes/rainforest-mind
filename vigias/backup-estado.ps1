@@ -89,6 +89,37 @@ function Registrar-Erro([string]$Motivo) {
     Write-ErroDeVigia -Vigia $Vigia -Motivo $Motivo -Plugin $Plugin -Log $Log
 }
 
+# ERROS.md e versionado - a ultima linha de um log externo pode carregar caminho
+# absoluto com o nome de usuario real (ex.: um "C:\Users\<usuario>\..." qualquer)
+# ou crescer sem limite (stack trace, JSON de erro). O caminho absoluto/UNC e
+# coberto rio abaixo: Registrar-Erro -> Write-ErroDeVigia -> Get-MotivoSaneado
+# (vigias/erros.ps1), que substitui `C:\...`, `\\servidor\...` e `..\...\...`
+# por `<caminho>` (mantendo so a folha).
+#
+# ESTA FUNCAO SO TRUNCA, NAO SANEIA - e a ORDEM em que o chamador combina as
+# duas nao e detalhe, e ja vazou (achado do auditor, 6a revisao, 2026-09-03/04,
+# reproduzido com PowerShell real). O corte fixo em 200 chars pode cair no meio
+# do segmento de usuario de um caminho absoluto: com um <usuario> comprido o
+# bastante, "C:\Users\<usuario>\..." truncado em 200 vira algo como
+# "C:\Users\<pedaco-do-usuario>", SEM barra final. O Get-MotivoSaneado trata um
+# fragmento sem barra final como se fosse a FOLHA do caminho (e assim que ele
+# reconhece "arquivo.txt" no fim de um caminho intacto) e devolve o fragmento
+# intacto: "<caminho>\<pedaco-do-usuario>" ia para o ERROS.md versionado, com
+# um pedaco do nome do usuario real dentro.
+#
+# A ORDEM CERTA, E A UNICA QUE O CHAMADOR PODE USAR: sanear (Get-MotivoSaneado)
+# ANTES de truncar (esta funcao). Saneado primeiro, o saneador sempre ve o
+# caminho INTEIRO e troca a folha certa; o truncamento que vem depois so pode
+# cortar o que ja esta seguro. Truncar primeiro inverte essa garantia: o
+# saneador passa a ver um fragmento, nao um caminho, e um fragmento sem barra
+# passa pela mesma regra que reconhece uma folha legitima.
+function Truncar-LinhaDeErro([string]$Linha) {
+    if ($Linha.Length -gt 200) {
+        $Linha = $Linha.Substring(0, 200)
+    }
+    return $Linha
+}
+
 # O -Teste bloqueava so o envio, e o backup rodava igual. Em 2026-08-10 um teste
 # manual levou o FOCO.md que o usuario tinha modificado e ainda nao commitado
 # para a main. Modo de teste que escreve no repositorio do usuario nao e teste.
@@ -118,6 +149,25 @@ $codigo = $LASTEXITCODE
 if ($codigo -ne 0) {
     Registrar-Erro "backup do FOCO.md falhou (exit $codigo): $($saida -join ' ')"
     exit 1
+}
+
+# Backup externo (scripts/backup.cjs gravar) - apos o backup local do FOCO.md
+$backup_externo = Join-Path $Plugin "scripts\backup.cjs"
+if (Test-Path $backup_externo) {
+    Push-Location $Plugin
+    $backup_log = & node scripts\backup.cjs gravar 2>&1
+    $codigo_externo = $LASTEXITCODE
+    Pop-Location
+
+    if ($codigo_externo -ne 0) {
+        $ultima_linha = if ($backup_log -is [array]) { $backup_log[-1] } else { $backup_log }
+        # ORDEM: sanear antes de truncar, sempre - ver o comentario do
+        # Truncar-LinhaDeErro acima. Truncar primeiro cortaria o caminho no meio
+        # do nome de usuario, e o saneador trataria o pedaco cortado como folha.
+        $ultima_linha = Get-MotivoSaneado $ultima_linha
+        $ultima_linha = Truncar-LinhaDeErro -Linha $ultima_linha
+        Registrar-Erro "backup externo falhou (exit $codigo_externo): $ultima_linha"
+    }
 }
 
 if ($Log) { [void](Write-LinhaEmLf -Caminho $Log -Linha "backup do estado: $($saida -join ' ')") }

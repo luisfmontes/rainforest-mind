@@ -1,0 +1,395 @@
+{
+  "slug": "2026-09-03-guardas",
+  "titulo": "Lote 3 — guardas medem o repositorio da operacao; backup fora da maquina; fechar Issue exige criterio rodado",
+  "criado_em": "2026-09-03",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-03-guardas.md",
+    "aprovado_por": "sessao (run autonomo autorizado em 2026-09-02; veto do Luis no PR)",
+    "em": "2026-09-03"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-09-03-guardas.md",
+    "entregaveis": [
+      "hooks/lib/cwd-efetivo.cjs",
+      "hooks/gate-worktree.cjs",
+      "hooks/gate-staging-total.cjs",
+      "hooks/portaria.cjs",
+      "scripts/limpar-worktrees.cjs",
+      "skills/limpar/SKILL.md",
+      "scripts/conferir-entrega.cjs",
+      "hooks/lib/clis-que-escrevem.cjs",
+      "scripts/backup.cjs",
+      "scripts/saude.cjs",
+      "vigias/backup-estado.ps1",
+      "hooks/lib/marcador-evidencia.cjs",
+      "scripts/fechar-issue.cjs",
+      "hooks/gate-fechar-issue.cjs",
+      "hooks/hooks.json",
+      "commands/issue.md"
+    ],
+    "em": "2026-09-03"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-03",
+    "tarefas_ok": 14,
+    "tarefas": 14,
+    "comando": "for f in hooks/testa-cwd-efetivo.sh hooks/testa-gate-staging-total.sh hooks/testa-portaria.sh scripts/testa-limpar-worktrees.sh scripts/testa-conferir-entrega.sh hooks/testa-gate-worktree.sh scripts/testa-backup-gravar.sh scripts/testa-backup-conferir.sh scripts/testa-backup-estado.sh scripts/testa-fechar-issue.sh hooks/testa-gate-fechar-issue.sh hooks/testa-config.sh scripts/testa-saude.sh; do bash $f >/dev/null 2>&1; echo \"$f exit=$?\"; done",
+    "saida": "16 baterias exit=0 na rodada 20 (cwd-efetivo 47, staging-total 96, portaria 7 + lint 0, limpar 18, conferir-entrega 63, gate-worktree 194, backup-gravar 23, backup-conferir 14, backup-estado 55, fechar-issue 33, gate-fechar-issue 104, config 38, repo-alheio 27, publicacao 16, commit 19, saude 59); encoding ok; OneDrive real sem rainforest-backup",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "rodada 2: git -C repetido volta ao primeiro; separador sem aspas — as duas vermelhas"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "cd <worktree> && git add -A com ev.cwd no principal; sem o cwd efetivo o gate decide pelo principal"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "dois worktrees do mesmo repo, um com fluxo aberto; a funcao que lista outros worktrees devolve [] e o caso (c) cai"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "subdiretorio sem .git ao lado de worktree real; com a classe orfao virando limpo o script o trataria como removivel"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "commit que apaga 25 arquivos fora do --escopo; com a comparacao desligada a entrega aprova"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "porcelain-antes com BOM e primeira linha ` M`: com o trim do conteudo inteiro (lado arquivo) ou do stdout do git (lado agora) o caminho perde a primeira letra e a checagem 4 reprova"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "codex exec --yolo de subagente fora de worktree; com a lista sem codex o gate libera"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "destino com 32 zips antigos; rotacao desligada deixa 33"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "entregavel editado com o mesmo tamanho; conferir sem comparar sha256 aprova"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "vermelho",
+        "fixture": "RFM_BACKUP_DESTINO sandbox com zip de 5 dias; com a checagem de idade desligada o /saude reporta ok"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "RFM_BACKUP_DESTINO sandbox; sem a chamada ao backup.cjs a pasta fica vazia"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "stub gh cujo issue comment falha; sem a ordem certa o script fecha a Issue mesmo assim"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "rodada 2: normalizacao do executavel desligada deixa gh.exe passar; recusa de $( ) desligada; cerca do --saida-arquivo desligada — as tres vermelhas"
+      },
+      {
+        "tarefa": 14,
+        "resultado": "vermelho",
+        "fixture": "stub devolve corpo sem a secao de criterio; sem a checagem o script comenta e fecha"
+      }
+    ],
+    "em": "2026-09-04",
+    "rodada": 20,
+    "rodada3": {
+      "achados": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R8",
+        "R9",
+        "R10",
+        "R12",
+        "F6"
+      ],
+      "mutacoes_reprovadas_na_integracao": [
+        "R1 if (cwdEfetivo.incerto)",
+        "R2 tok.q && i !== 0",
+        "R3 wt.estagio",
+        "R4 caminhoTmp",
+        "R5 !arquivoDivergente",
+        "R9 require raiz.cjs",
+        "R12 regex criterio",
+        "F6 Truncar-LinhaDeErro"
+      ],
+      "nota": "F6: caminho ja era saneado por Get-MotivoSaneado (vigias/erros.ps1); entrega acrescentou teto de 200 chars"
+    },
+    "rodada4": {
+      "achados": [
+        "A1",
+        "A2/Rev1",
+        "A3",
+        "A4",
+        "A5",
+        "Rev2",
+        "Rev3"
+      ],
+      "mutacoes_reprovadas_na_integracao": [
+        "E1 laco por segmento",
+        "E2 recursao bash -c",
+        "G1 normalizarCaminho",
+        "G2 Repo: ${dir}",
+        "A1 ultimo -C",
+        "A3 contemSubshellOuGrupo",
+        "A4 $ antes da aspa"
+      ]
+    },
+    "rodada5": {
+      "achados": [
+        "Rev1 procuraCLI posicao de comando",
+        "Rev2/Aud2 cwd por segmento + pushd/env -C",
+        "Rev3 staging-total cwd do segmento",
+        "Rev4 rename no --escopo",
+        "Rev5/Aud1 gate-fechar-issue subshell/grupo/$( )/prefixos",
+        "emenda: alvosBash/alvosBashEscrita mesmo movedor"
+      ],
+      "mutacoes_reprovadas_na_integracao": [
+        "J rename R/C",
+        "Ia segmentacao ( ) { }",
+        "Ib pularPrefixos",
+        "H1 cwd do segmento da CLI",
+        "H2 env -C",
+        "H3 wrapper env",
+        "H4 pushd"
+      ]
+    },
+    "rodada6": {
+      "achados": [
+        "Aud1/Aud2 & simples",
+        "Rev1 includes(git) + -C alheio",
+        "Rev2 data UTC no zip"
+      ],
+      "mutacoes_reprovadas_na_integracao": [
+        "Ka2 & em segmentosComAspas",
+        "Kb & em segmentosParaGate",
+        "Kc2 comandoEhGit (bateria cwd-efetivo, apos caso p2/p3)",
+        "L dataLocal"
+      ],
+      "nota": "Ka (regex SEPARADORES) e Kc (comandoEhGit contra staging-total) sairam verdes na primeira: a primeira era mutacao neutra (regex sem consumidor), a segunda faltava caso isolando o segmento proprio — corrigido no lote K2"
+    },
+    "rodada7": {
+      "achados": [
+        "Aud1 env -C . git add -A no staging-total",
+        "Aud2 closes por URL",
+        "Aud3 bateria do vigia gravou no OneDrive real",
+        "Rev1 limpar --remover com orfao (cobertura)",
+        "Rev2 echo gh issue close sem aspas (aceito, falso positivo)"
+      ],
+      "mutacoes_reprovadas_na_integracao": [
+        "Ma posicaoDeComando no staging-total",
+        "Mb regex closes URL",
+        "N1 RFM_BACKUP_DESTINO em rodar()",
+        "N2 status === limpo no --remover"
+      ]
+    },
+    "rodada8": {
+      "achados": [
+        "Rev1-3 env -u/sudo -E em posicaoDeComando e parser proprio do gate-fechar-issue",
+        "Rev4 --body com apostrofo",
+        "Aud1 cd/command cd/builtin cd",
+        "Aud2 $( ) em aspas duplas",
+        "Aud3 sanear antes de truncar"
+      ],
+      "mutacoes_reprovadas_na_integracao": [
+        "Pa flags -u do env",
+        "Pb corpo por token",
+        "Pc $( em aspas duplas",
+        "Pd semPrefixoSintaticoDeBuiltin",
+        "Q Get-MotivoSaneado antes de truncar"
+      ]
+    },
+    "rodada9": {
+      "achados": [
+        "Rev1 env -u + --chdir",
+        "Aud1 iex",
+        "Aud2/3 gates so em Bash"
+      ],
+      "mutacoes_reprovadas_na_integracao": [
+        "Ra env -C por tokens",
+        "Rb iex wrapper",
+        "Rc PowerShell no gate-worktree"
+      ]
+    },
+    "rodada10": {
+      "achados": [
+        "Aud1 Set-Location -Path: / cwd inexistente",
+        "Rev1 lista de exclusao do limpar"
+      ],
+      "mutacoes_reprovadas_na_integracao": [
+        "Sa existsSync -> incerto",
+        "Sb -Path: no SET_LOCATION",
+        "Sc filtro do porcelain sem exclusao"
+      ]
+    },
+    "rodada11": {
+      "achados": [
+        "Aud1 timeout -s/-k",
+        "Rev iex nos gates de git"
+      ],
+      "mutacoes_reprovadas_na_integracao": [
+        "Ta timeout em FLAGS_COM_VALOR",
+        "Tb desempacotarWrapperDeString no staging-total"
+      ],
+      "lacuna": "cwdPorSegmento nao desempacota wrapper de string (iex \"cd X && git add -A\")"
+    },
+    "rodada12": {
+      "achados": [
+        "Aud1 bash -xc"
+      ],
+      "mutacoes_reprovadas_na_integracao": [
+        "U flags coladas ao -c"
+      ]
+    },
+    "rodada13": {
+      "achados": [
+        "Aud1/Aud2 composicao prefixo + wrapper de string"
+      ],
+      "mutacoes_reprovadas_na_integracao": [
+        "Va staging-total textoAPartir(toks,pos)",
+        "Vb gate-fechar-issue textoAPartir(toksComAspas,pos)"
+      ]
+    },
+    "rodada14": {
+      "achados": [
+        "Aud1 bash -o pipefail -c",
+        "Rev A1 comentario shell na rede de seguranca"
+      ],
+      "mutacoes_reprovadas_na_integracao": [
+        "Wa consomeValor",
+        "Wb toksSemComentario"
+      ]
+    },
+    "rodada15": {
+      "achados": [
+        "Aud1 --body-file pelo cwd do segmento"
+      ],
+      "mutacoes_reprovadas_na_integracao": [
+        "X path.resolve(cwdSegmento, arquivo)"
+      ]
+    },
+    "rodada16": {
+      "achados": [
+        "Aud1 cwdDoSegmento por texto"
+      ],
+      "mutacoes_reprovadas_na_integracao": [
+        "Y contagem === ordem"
+      ]
+    },
+    "rodada17": {
+      "achados": [
+        "Aud1 gh pr edit; descricao real no merge"
+      ],
+      "mutacoes_reprovadas_na_integracao": [
+        "Za pr edit gatilho",
+        "Zb corpo = parsed.body"
+      ],
+      "base_nova": "53c2a42 (origin/main apos PR #177 regua e #178 versao 1.2.0) mesclada na branch"
+    },
+    "rodada18": {
+      "achados": [
+        "Aud1 source/./& (arquivo opaco) saiam como nao-wrapper com ilegivel=false"
+      ],
+      "mutacoes_reprovadas_na_integracao": [
+        "AAa bloco source/. e & PowerShell em desempacotarWrapperDeString (vermelha nas tres baterias de gate)",
+        "AAb guarda atual.trim() !== '' no & solto de segmentosComAspas (vermelha em staging-total)"
+      ],
+      "nota": "o executor achou, alem do pedido, que segmentosComAspas comia o & do call operator do PowerShell ANTES do desempacotador rodar — sem essa guarda o caso & x.ps1 era impossivel de fechar; mesma guarda aplicada na irma duplicada em gate-fechar-issue.cjs"
+    },
+    "rodada19": {
+      "achados": [
+        "Rev1 injecao de comando no proprio gate (ref cru do gh pr merge + shell:true do .cmd)",
+        "Aud1 &{...} colado ao scriptblock atravessa gate-staging-total e gate-worktree",
+        "Rev2 apostrofo no destino quebra o conferir do backup (nao bloqueava)"
+      ],
+      "mutacoes_reprovadas_na_integracao": [
+        "ABa guarda METACARACTERES_CMD em resolver-executavel (vermelha em gate-fechar-issue)",
+        "ABb chaves como fronteira em palavras/gate-worktree (vermelha em gate-worktree)",
+        "ABc escape de apostrofo em backup.cjs conferir (vermelha em backup-conferir)"
+      ],
+      "base_nova": "1cea48a (origin/main apos PR #179) mesclada na branch"
+    },
+    "rodada20": {
+      "achados": [
+        "Aud1 ehComando excluia token citado tambem na posicao de comando"
+      ],
+      "mutacoes_reprovadas_na_integracao": [
+        "AC if (tok.q && !ehPosicaoDeComando) return false (vermelha em staging-total E em gate-worktree)"
+      ],
+      "nota": "feito na janela principal, sem subagente: criacao de worktree de agente quebrada por metadados corrompidos de outra sessao em .git/worktrees (12 diretorios com commondir vazio) — regra 14 anunciada ao usuario"
+    }
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "aa70621120a900a852261ca06abefa0939832161",
+      "caminhos_sujos": []
+    },
+    "achados": 0,
+    "base": "1cea48a2950c9a8cdfa32e29c8abbf6396bedd9f",
+    "head": "aa70621120a900a852261ca06abefa0939832161",
+    "lista": [
+      "Aud1 (BLOQUEIA) ehComando exclui todo token citado, inclusive na propria posicao de comando: \"git\" add -A passa no gate-staging-total (exit 0 contra exit 2 do git add -A puro, reproduzido na janela), e \"cp\"/\"tee\"/\"sed\"/\"mv\" citados escapam do alvosBashEscrita no gate-worktree. O !tok.q tem motivo (gitignore como argumento, > dentro de aspas) — errado e aplica-lo na posicao de comando, que procuraCLI ja trata certo"
+    ],
+    "em": "2026-09-04",
+    "revisor": "ok — escopo estreito no commit b1c2091 (rodada 20): sem super-bloqueio (os tres casos motivadores do !tok.q rodados e verdes), ehCmd/posCmd corretos por segmento inclusive com pipe e prefixo de wrapper, desconto do $ do ANSI-C identico ao de procuraCLI, baterias novas nao tautologicas; placar de 8 baterias conferido por execucao real",
+    "auditor": "18a revisao (a405672): 1 achado, fechado na rodada 20 e provado por mutacao vermelha em staging-total e gate-worktree",
+    "rodada_revisao": 19,
+    "emenda": "modelo de ameaca dos gates por texto registrado no plano",
+    "handover": "relatorios/2026-09-04-handover-lote-3-guardas-rodada-18.md",
+    "observacoes_nao_bloqueantes": [
+      "contemSubshellOuGrupo nunca detecta } (o segmentador isola cada } em segmento proprio); nenhuma entrada de shell valida encontrada que explore",
+      "git checkout src/{a,b}.js super-bloqueia por brace expansion — pre-existente, identico antes e depois da rodada 19"
+    ],
+    "achado_para_issue": "Bypass composto: wrapper CITADO + comando citado escapa dos gates — \"env\" FOO=1 \"cp\" a.txt <principal>/b.txt e \"env\" FOO=1 \"git\" add -A saem exit 0 (confirmado por execucao real pelo revisor). Causa em posicaoDeComando (nao tocada pela rodada 20): WRAPPERS_QUE_REPASSAM.has() exige token nao-citado, entao \"env\" citado nao e reconhecido como wrapper e a posicao de comando para nele. Mesma familia do achado da 18a, um passo composto adiante",
+    "lacuna_declarada": "a mutacao da rodada 20 foi rodada pela janela (vermelha em duas baterias), nao pelo revisor — ele a inferiu por leitura e recomendou confirmacao por tester",
+    "nota_head": "A revisao rodou sobre b1c2091 (todo o codigo). O commit aa70621 e emenda do PLANO (Tarefa 15 de rastro e o campo arquivos: da Tarefa 1), sem uma linha de codigo — foi o que a propria checagem de CREEP mandou fazer para o revisar fechar."
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash verificar-g3.sh <worktree> — o pronto quando de cada tarefa do plano contra o artefato real",
+    "saida": "T1 | exit=0 | == resultado: 47 ok, 0 falha(s) ==\nT2 | exit=0 | == resultado: 96 ok, 0 falha(s) ==\nT3 | exit=0 | == resultado: 7 ok, 0 falha(s) ==\nT3b | exit=0 | aviso: agente 'tester' em C:\\Projetos\\rainforest-mind\\.claude\\worktrees\\fluxo-guardas\\agents mas não declarad\nT4 | exit=0 | == resultado: 18 ok, 0 falha(s) ==\nT5 | exit=0 | == resultado: 63 ok, 0 falha(s) ==\nT7 | exit=0 | == resultado: 194 ok, 0 falha(s) ==\nT8 | exit=0 | == resultado: 23 ok, 0 falha(s) ==\nT9 | exit=0 | == resultado: 14 ok, 0 falha(s) ==\nT11 | exit=0 | ok: 55   falhou: 0\nT12 | exit=0 | == resultado: 33 ok, 0 falha(s) ==\nT13 | exit=0 | == resultado: 104 ok, 0 falha(s) ==\nT13b | exit=0 | == resultado: 38 ok, 0 falha(s) ==\nT14 | exit=0 | 96:## Critério de pronto (falsificável)\nTdep | exit=0 | == resultado: 6 ok, 0 falha(s) ==\nTenc | exit=0 | CONFERIDO — nenhum mojibake, BOM ou CRLF nos arquivos varridos.\nT10 | exit=0 | == resultado: 59 ok, 0 falha(s) ==\nfim",
+    "tarefas": 14,
+    "tarefas_ok": 14,
+    "em": "2026-09-04",
+    "nota": "17 linhas, todas exit=0. T3b traz um aviso do --lint (agente tester nao declarado em agentes.json) que nao e erro e nao muda o exit. Uma rodada anterior deste mesmo script deu T10 exit=1: era interferencia da propria janela, que editou README/plugin.json enquanto a bateria de saude rodava; re-rodada com a arvore estavel, 59 ok / 0 falhas."
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "pr",
+    "pr": 183,
+    "url": "https://github.com/luisfmontes/rainforest-mind/pull/183",
+    "nao_provado": [
+      "gates por texto de comando so medidos com Claude Code — Codex e Gemini CLI nao rodaram contra eles",
+      "backup fora da maquina: destino real nao exercitado, so caixa de areia local",
+      "vetores so-adversario da lista residual do modelo de ameaca (ex.: wrapper citado, Issue #184) ficam abertos por decisao",
+      "CI so em runner Windows — Linux e macOS nao medidos"
+    ],
+    "em": "2026-09-04"
+  }
+}
