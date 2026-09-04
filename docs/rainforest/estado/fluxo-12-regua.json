@@ -14,12 +14,12 @@
     "em": "2026-09-04"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-04",
     "tarefas": 3,
     "tarefas_ok": 3,
     "comando": "node scripts/segunda-opiniao.cjs --base origin/main --head HEAD --criterio docs/rainforest/criterios/fluxo-12-regua.md --modelo codex; node scripts/orcamento.cjs",
-    "saida": "concordo (ultima linha); orcamento 14467 B exit 0",
+    "saida": "concordo (ultima linha); orcamento 14485 B exit 0",
     "mutacao": [
       {
         "tarefa": 1,
@@ -34,14 +34,10 @@
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "item 1 do docs/rainforest/criterios/fluxo-12-regua.md (o builder NAO ve o bar.md) — mutacao trocou a frase do Builder e o parecer saiu discordo nomeando o criterio 1"
+        "fixture": "item 3 do docs/rainforest/criterios/fluxo-12-regua.md (parada por lado no preflight) — restaurar a redacao \"so um caso barra o loop\" saiu discordo nomeando o criterio 3 e dizendo que a emenda ficou so no design"
       }
     ],
-    "em": "2026-09-04",
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-04"
-    }
+    "em": "2026-09-04"
   },
   "revisar": {
     "status": "reprovado",
