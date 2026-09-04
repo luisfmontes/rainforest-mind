@@ -19,7 +19,12 @@
 #   7. os nove contornos medidos pelo security review (criterio ampliado da
 #      tarefa 2, commit 7d0fb268): flag citada de tres formas, abreviacao de
 #      long option, separador `&`, prefixo nao-reconhecido (`then`),
-#      substituicao de comando `$(...)` e linha continuada com `\`.
+#      substituicao de comando `$(...)` e linha continuada com `\`;
+#   8. as tres formas achadas atacando o gate ja consertado (rodada 2 da
+#      tarefa 2): `bash -c "..."`, `sh -c '...'` e subshell `(...)` — mais
+#      flag combinada (`bash -lc`) e aninhamento (`bash -c "bash -c '...'"`)
+#      como cobertura extra; e que `bash -c` com comando inofensivo continua
+#      passando.
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -81,6 +86,19 @@ gate "separador & solto"                         2 "$(b 'foo & git commit --no-v
 gate "prefixo nao-reconhecido (then)"            2 "$(b 'if true; then git commit --no-verify -m x; fi')"
 gate 'substituicao de comando $(...)'            2 "$(b 'echo $(git commit --no-verify -m x)')"
 gate "linha continuada com \\ + quebra"          2 "$(b 'git commit \\\n --no-verify -m x')"
+
+echo
+echo "== rodada 2: bash -c / sh -c / subshell atacando o gate ja consertado: DEVE barrar =="
+gate 'bash -c "git commit --no-verify -m x"'          2 "$(b 'bash -c \"git commit --no-verify -m x\"')"
+gate "sh -c 'git commit --no-verify -m x'"             2 "$(b "sh -c 'git commit --no-verify -m x'")"
+gate "(git commit --no-verify -m x) subshell"          2 "$(b '(git commit --no-verify -m x)')"
+gate 'bash -lc "..." (flag combinada antes do -c)'     2 "$(b 'bash -lc \"git commit --no-verify -m x\"')"
+gate "bash -c aninhado (bash -c dentro de bash -c)"    2 "$(b "bash -c \\\"bash -c 'git commit --no-verify -m x'\\\"")"
+
+echo
+echo "== rodada 2: bash -c com comando inofensivo: DEVE passar =="
+gate 'bash -c "echo oi"'                                0 "$(b 'bash -c \"echo oi\"')"
+gate 'bash -c "git status"'                             0 "$(b 'bash -c \"git status\"')"
 
 echo
 echo "== --no-edit nao e prefixo de nenhuma flag proibida: DEVE passar =="
