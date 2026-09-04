@@ -759,16 +759,19 @@ function temCurta(args, letra) {
 }
 
 /** Motivo do bloqueio, ou null se o segmento e inofensivo. */
-function motivoDe(g) {
+function motivoDe(g, cmdOriginal) {
+  let temANSIC = cmdOriginal && /\$'([^']*\\[xuU0-7])/.test(cmdOriginal);
+  let sufixo = temANSIC ? ", vindo de escape ANSI-C" : "";
+
   if (g.sub === "commit") {
-    if (g.args.some((t) => ehPrefixoDeFlag(t, "--no-verify"))) return "git commit --no-verify";
-    if (g.args.some((t) => ehPrefixoDeFlag(t, "--no-gpg-sign"))) return "git commit --no-gpg-sign";
-    if (temCurta(g.args, "n")) return "git commit -n (equivale a --no-verify)";
+    if (g.args.some((t) => ehPrefixoDeFlag(t, "--no-verify"))) return "git commit --no-verify" + sufixo;
+    if (g.args.some((t) => ehPrefixoDeFlag(t, "--no-gpg-sign"))) return "git commit --no-gpg-sign" + sufixo;
+    if (temCurta(g.args, "n")) return "git commit -n (equivale a --no-verify)" + sufixo;
     return null;
   }
   if (g.sub === "push") {
     // `-n` em push e --dry-run, nao --no-verify: nao entra aqui de proposito.
-    if (g.args.some((t) => ehPrefixoDeFlag(t, "--no-verify"))) return "git push --no-verify";
+    if (g.args.some((t) => ehPrefixoDeFlag(t, "--no-verify"))) return "git push --no-verify" + sufixo;
     return null;
   }
   return null;
@@ -903,7 +906,7 @@ function analisaComando(cmd, profundidade) {
 
     const g = analisaGit(toks);
     if (g) {
-      const m = motivoDe(g);
+      const m = motivoDe(g, cmd);
       if (m) return { motivo: m, dirC: g.dirC };
     }
 
