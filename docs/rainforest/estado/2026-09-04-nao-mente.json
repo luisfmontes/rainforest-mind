@@ -1,5 +1,5 @@
 {
-  "slug": "2026-09-04-fluxo-nao-mente",
+  "slug": "2026-09-04-nao-mente",
   "titulo": "R1+R8: o fluxo nao mente sobre ter terminado, e o executor nao pula verificacao",
   "criado_em": "2026-09-04",
   "arqueologia": {
@@ -7,13 +7,13 @@
   },
   "design": {
     "status": "aprovado",
-    "doc": "docs/rainforest/design/2026-09-04-fluxo-nao-mente.md",
+    "doc": "docs/rainforest/design/2026-09-04-nao-mente.md",
     "decisoes": 12,
     "em": "2026-09-04"
   },
   "plano": {
     "status": "ok",
-    "arquivo": "docs/rainforest/planos/2026-09-04-fluxo-nao-mente.md",
+    "arquivo": "docs/rainforest/planos/2026-09-04-nao-mente.md",
     "tarefas": 4,
     "paralelas": [
       1,
@@ -22,7 +22,14 @@
     "em": "2026-09-04"
   },
   "executar": {
-    "status": "pendente"
+    "status": "parcial",
+    "catraca_mutacao": "2026-09-04",
+    "tarefas_ok": 0,
+    "tarefas": 4,
+    "em": "2026-09-04",
+    "pendentes": [
+      "tarefa-2: gate contornavel por 9 formas (flag citada, abreviacao de long option, separador &, prefixo nao-reconhecido, $(...) e indirecao por variavel) — criterio do plano era fraco demais e nao mediu isso"
+    ]
   },
   "revisar": {
     "status": "pendente"
