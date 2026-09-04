@@ -937,5 +937,88 @@ esac
 
 unset RFM_ESTADO_ROOT
 
+echo
+echo "== 20. verbo 'concluido' — reusa 'proximo', nao mente sobre ter terminado =="
+
+mkdir -p "$SBP/concluido1"
+(cd "$SBP/concluido1" && git init -q && git config user.email t@t && git config user.name T && echo x > a.txt && git add . && git commit -qm inicial)
+export RFM_ESTADO_ROOT="$SBP/concluido1"
+E_C="node scripts/estado.cjs"
+
+# fluxo A: fecha os sete estagios, completo
+$E_C iniciar --slug conc-a >/dev/null
+$E_C marcar --slug conc-a --estagio design --status aprovado >/dev/null
+$E_C marcar --slug conc-a --estagio plano  --status ok >/dev/null
+$E_C exigir --slug conc-a --estagio executar >/dev/null
+$E_C marcar --slug conc-a --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t"}]}' >/dev/null
+$E_C exigir --slug conc-a --estagio revisar >/dev/null
+$E_C marcar --slug conc-a --estagio revisar --status ok >/dev/null
+$E_C exigir --slug conc-a --estagio verificar >/dev/null
+$E_C marcar --slug conc-a --estagio verificar --status ok --json '{"comando":"x","saida":"y"}' >/dev/null
+$E_C marcar --slug conc-a --estagio fechar --status ok >/dev/null
+
+esperado "concluido --slug com fluxo fechado sai 0" 0 $E_C concluido --slug conc-a
+
+# fluxo B: fechado ate verificar, 'fechar' pendente
+$E_C iniciar --slug conc-b >/dev/null
+$E_C marcar --slug conc-b --estagio design --status aprovado >/dev/null
+$E_C marcar --slug conc-b --estagio plano  --status ok >/dev/null
+$E_C exigir --slug conc-b --estagio executar >/dev/null
+$E_C marcar --slug conc-b --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t"}]}' >/dev/null
+$E_C exigir --slug conc-b --estagio revisar >/dev/null
+$E_C marcar --slug conc-b --estagio revisar --status ok >/dev/null
+$E_C exigir --slug conc-b --estagio verificar >/dev/null
+$E_C marcar --slug conc-b --estagio verificar --status ok --json '{"comando":"x","saida":"y"}' >/dev/null
+
+esperado "concluido --slug com 'fechar' pendente sai 2" 2 $E_C concluido --slug conc-b
+saida_pendente=$($E_C concluido --slug conc-b 2>&1)
+case "$saida_pendente" in
+  *fechar*) ok=$((ok+1)); echo "  ok   concluido nomeia o estagio pendente (fechar)" ;;
+  *) falhou=$((falhou+1)); echo "  FALHA concluido nao nomeou 'fechar' na saida: $saida_pendente" ;;
+esac
+
+esperado "concluido --slug inexistente sai 1" 1 $E_C concluido --slug slug-fantasma
+
+echo
+echo "== 21. 'concluido' sem --slug varre docs/rainforest/estado/ inteiro =="
+
+# Diretorio com um unico fluxo aberto (design+plano fechados, executar pendente)
+mkdir -p "$SBP/concluido2"
+(cd "$SBP/concluido2" && git init -q && git config user.email t@t && git config user.name T && echo x > a.txt && git add . && git commit -qm inicial)
+export RFM_ESTADO_ROOT="$SBP/concluido2"
+E_C2="node scripts/estado.cjs"
+$E_C2 iniciar --slug conc-aberto >/dev/null
+$E_C2 marcar --slug conc-aberto --estagio design --status aprovado >/dev/null
+$E_C2 marcar --slug conc-aberto --estagio plano  --status ok >/dev/null
+
+esperado "varredura sem slug com um aberto sai 2" 2 $E_C2 concluido
+saida_varredura=$($E_C2 concluido 2>&1)
+case "$saida_varredura" in
+  *conc-aberto*) ok=$((ok+1)); echo "  ok   varredura lista o slug aberto" ;;
+  *) falhou=$((falhou+1)); echo "  FALHA varredura nao listou conc-aberto: $saida_varredura" ;;
+esac
+
+# Fecha o fluxo inteiro: a mesma varredura passa a sair 0
+$E_C2 exigir --slug conc-aberto --estagio executar >/dev/null
+$E_C2 marcar --slug conc-aberto --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t"}]}' >/dev/null
+$E_C2 exigir --slug conc-aberto --estagio revisar >/dev/null
+$E_C2 marcar --slug conc-aberto --estagio revisar --status ok >/dev/null
+$E_C2 exigir --slug conc-aberto --estagio verificar >/dev/null
+$E_C2 marcar --slug conc-aberto --estagio verificar --status ok --json '{"comando":"x","saida":"y"}' >/dev/null
+$E_C2 marcar --slug conc-aberto --estagio fechar --status ok >/dev/null
+
+esperado "varredura sem slug com todos concluidos sai 0" 0 $E_C2 concluido
+
+# Diretorio de estado inexistente (nunca rodou 'iniciar'): varredura sai 0
+mkdir -p "$SBP/concluido3"
+export RFM_ESTADO_ROOT="$SBP/concluido3"
+esperado "varredura sem nenhum arquivo de estado (dir ausente) sai 0" 0 node scripts/estado.cjs concluido
+
+# Diretorio de estado existe mas esta vazio: varredura tambem sai 0
+mkdir -p "$SBP/concluido3/docs/rainforest/estado"
+esperado "varredura sem nenhum arquivo de estado (dir vazio) sai 0" 0 node scripts/estado.cjs concluido
+
+unset RFM_ESTADO_ROOT
+
 echo "== resultado: $ok ok, $falhou falhas =="
 [ "$falhou" = 0 ]
