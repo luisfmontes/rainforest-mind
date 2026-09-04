@@ -701,5 +701,10 @@ gate "timeout 5 bash -c \"codex exec --yolo\" fora de worktree BARRA (P3)" 2 \
   "$(b 'timeout 5 bash -c "codex exec --yolo"' "$R")"
 
 echo
+echo "== W1 (auditor, 12a revisao, rodada 14, lote 3, 2026-09-04): flag COM VALOR antes do -c (bash -o pipefail) =="
+gate "bash -o pipefail -c \"codex exec --yolo\" fora de worktree BARRA (W1)" 2 \
+  "$(b 'bash -o pipefail -c "codex exec --yolo"' "$R")"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

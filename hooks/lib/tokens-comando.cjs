@@ -244,6 +244,28 @@ const WRAPPERS_DE_COMANDO = {
   dash: "-c",
 };
 
+// W1 (rodada 14, lote 3, 2026-09-04): o laco que procura o -c em
+// `desempacotarWrapperDeString` parava, em silencio, no primeiro token que
+// nao comeca com "-" — `bash -o pipefail -c "git add -A"` pulava "-o"
+// (comeca com "-") e parava em "pipefail" (nao comeca com "-"), devolvendo
+// {interno:null, ilegivel:false} como se o segmento nao fosse wrapper
+// nenhum; os tres gates liberavam o comando encapsulado. Mesmo padrao com
+// `-eo pipefail`, `--rcfile X`, `--init-file X`, `-O opt`, `+O opt`.
+// Conserto: tabela das flags QUE TEM VALOR de cada shell — o caractere
+// curto (bundle: so o ULTIMO caractere do bundle consome valor, como em
+// `tar -xvf arq` — `-eo` = `-e` + `-o`, entao "o" no fim consome o proximo
+// token) e a flag longa exata (`--rcfile`, `--init-file`, so em bash).
+const CURTAS_COM_VALOR = {
+  bash: new Set(["o", "O"]),
+  sh: new Set(["o"]),
+  zsh: new Set(["o"]),
+  ksh: new Set(["o"]),
+  dash: new Set(["o"]),
+};
+const LONGAS_COM_VALOR = {
+  bash: new Set(["--rcfile", "--init-file"]),
+};
+
 /** Nome "limpo" de um executavel: sem aspas, sem caminho, sem extensao, minusculo. */
 function normalizarNomeExecutavel(nome) {
   let s = String(nome == null ? "" : nome).replace(/^["']|["']$/g, "");
@@ -344,7 +366,11 @@ function desempacotarWrapperDeString(segmento) {
   if (!flagEsperada) return { interno: null, ilegivel: false };
 
   // Aceita -c isolado ou flags curtas coladas terminando em c: -xc, -ec, etc.
-  // Pula flags que começam com - e não são a flag esperada, até encontrá-la.
+  // Pula flags que começam com - ou + e não são a flag esperada, até
+  // encontrá-la — flag com valor conhecida (W1: -o/+o/-O/+O/--rcfile/
+  // --init-file) consome também o token seguinte, como o proprio valor.
+  const curtas = CURTAS_COM_VALOR[exe];
+  const longas = LONGAS_COM_VALOR[exe];
   let current = p2;
   while (current) {
     const tokLower = current.tok.toLowerCase();
@@ -353,13 +379,27 @@ function desempacotarWrapperDeString(segmento) {
       const interno = desempacota(current.resto);
       return { interno, ilegivel: contemConstrucaoIlegivel(interno) };
     }
-    // Se começa com - mas não é a flag esperada, pula e tenta próximo token
-    if (current.tok.startsWith("-")) {
-      current = extrairPrimeiroToken(current.resto);
-    } else {
-      // Token que não começa com -, não é flag — para aqui
-      break;
+    // Se começa com - ou + mas não é a flag esperada, pula (e o valor dela,
+    // se for flag reconhecida com valor) e tenta o próximo token.
+    if (current.tok.startsWith("-") || current.tok.startsWith("+")) {
+      const ehLonga = current.tok.startsWith("--");
+      const consomeValor = ehLonga
+        ? longas && longas.has(tokLower)
+        : curtas && curtas.has(current.tok[current.tok.length - 1]);
+      if (consomeValor) {
+        const valor = extrairPrimeiroToken(current.resto);
+        current = valor ? extrairPrimeiroToken(valor.resto) : null;
+      } else {
+        current = extrairPrimeiroToken(current.resto);
+      }
+      continue;
     }
+    // Token que não começa com - nem +, não é flag conhecida nem o -c —
+    // pode ser o VALOR de uma flag com valor que não conhecemos, ou uma
+    // reinvocação de wrapper (`bash -c "..." arg2`, já resolvido acima).
+    // Postura conservadora (W1): não sabemos o que é, ilegível — em vez de
+    // concluir silenciosamente "não é wrapper".
+    return { interno: null, ilegivel: true };
   }
   return { interno: null, ilegivel: false };
 }
