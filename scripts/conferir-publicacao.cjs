@@ -89,6 +89,20 @@ const PADROES = [
       // defeito de encoding. A isenção vale só para match DENTRO dos grupos hex;
       // a coluna ASCII do dump, se mostrar um telefone legível, continua recusada.
       if (dentroDeDumpHex(m, linha)) return false;
+
+      // SHA-1 e outras sequências de hex (7-40 caracteres) podem conter
+      // subsequências que parecem telefone. Isenta matches DENTRO de um token hex.
+      const inicio = Math.max(0, m.index - 5);
+      const fim = Math.min(linha.length, m.index + m[0].length + 5);
+      const contexto = linha.substring(inicio, fim);
+      const tokenHex = /[0-9a-fA-F]{7,40}/.exec(contexto);
+      if (tokenHex) {
+        const localNoContexto = m.index - inicio;
+        if (localNoContexto >= tokenHex.index && localNoContexto < tokenHex.index + tokenHex[0].length) {
+          return false; // dentro de token hex, isenta
+        }
+      }
+
       const digitos = m[0].replace(/\D/g, '');
       return !/^(\d)\1*$/.test(digitos);
     },
@@ -143,8 +157,19 @@ const PADROES = [
     // mostrar. A liberação é estreita de propósito: valor de palavra curta, toda
     // minúscula, E a linha seguindo com mais palavras. Dúvida captura — valor
     // sozinho na linha continua recusado, mesmo minúsculo.
+    //
+    // Referência de variável não é segredo — a senha está num lugar seguro,
+    // não no arquivo. Isenta interpolação de shell (${VAR}, $VAR), variáveis
+    // do Windows (%VAR%), e expressões do GitHub Actions (${{ secrets.X }}).
     so_se: (m, linha) => {
       const valor = m[2].replace(/^["']+/, '');
+
+      // Isenta referências de variável (não são segredos colados)
+      if (/^\$\{[^}]+\}$/.test(valor)) return false; // ${VAR}
+      if (/^\$[A-Za-z_]\w*$/.test(valor)) return false; // $VAR
+      if (/^%[^%]+%$/.test(valor)) return false; // %VAR%
+      if (/^\$\{\{\s*secrets\.\w+\s*\}\}$/.test(valor)) return false; // ${{ secrets.X }}
+
       const prosaCurta = /^[a-zà-ú]{1,12}$/.test(valor);
       const depois = linha.slice(m.index + m[0].length).trim().split(/\s+/).filter(Boolean);
       return !(prosaCurta && depois.length >= 2);
