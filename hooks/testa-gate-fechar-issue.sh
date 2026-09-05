@@ -1244,6 +1244,181 @@ echo "== (bz6) contraprova: executar() com ref limpo ('5') continua chamando gh 
 RESULT_BZ6="$(cat "$SBP/out-bz6")"
 echo "$RESULT_BZ6" | grep -q '"status":0' && test_ok "ref limpo continua funcionando (status 0)" || test_fail "ref limpo quebrou ($RESULT_BZ6)"
 
+# R21 (rodada 15, lote 4, 2026-09-04): `desempacotarWrapperDeString` tratava
+# QUALQUER token que nao comeca com `-`/`+` como ilegivel (W1 conservador). Mas
+# um arquivo de script (tipo `bash testa-config.sh`) NAO e ilegivel — e igual
+# a `node x.cjs`, `./script.sh`, que ninguem bloqueia. O token ali e um CAMINHO
+# de script, nao conteudo encapsulado, e deve sair como `{ interno: null, ilegivel: false }`.
+
+# Caso (ca): `bash hooks/testa-config.sh` → exit 0 (script nao e ilegivel)
+echo
+echo "== (ca) bash hooks/testa-config.sh → exit 0 (R21, script arquivo, nao string) =="
+mkdir -p "$SBP/hooks"
+cat > "$SBP/hooks/testa-config.sh" <<'SCRIPT'
+#!/bin/bash
+echo "config test"
+exit 0
+SCRIPT
+chmod +x "$SBP/hooks/testa-config.sh"
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"bash hooks/testa-config.sh"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ca"
+EXIT_CA=$?
+[ $EXIT_CA -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CA)"
+
+# Caso (cb): `bash -c "gh issue close 12"` → exit 2 (string COM comando barrado continua ilegivel)
+echo
+echo "== (cb) bash -c \"gh issue close 12\" → exit 2 (R21, contraprova: -c com gh issue close) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"bash -c \"gh issue close 12\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cb"
+EXIT_CB=$?
+[ $EXIT_CB -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CB)"
+
+# Caso (cc): `sh scripts/x.sh` → exit 0 (script arquivo via sh)
+echo
+echo "== (cc) sh scripts/x.sh → exit 0 (R21, sh + script) =="
+mkdir -p "$SBP/scripts"
+cat > "$SBP/scripts/x.sh" <<'SCRIPT'
+#!/bin/sh
+echo "test"
+exit 0
+SCRIPT
+chmod +x "$SBP/scripts/x.sh"
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"sh scripts/x.sh"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cc"
+EXIT_CC=$?
+[ $EXIT_CC -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CC)"
+
+	# D17 (2026-09-04): palavras-chave falsas em português
+	# Casos de teste para detectar quando a constante FALSA_CHAVE é desativada
+
+	# Caso (cd): `gh pr create --body "Fecha #73"` (falsa chave) → exit 2
+	echo
+	echo "== (cd) gh pr create --body \"Fecha #73\" → exit 2 (falsa chave português) =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create --body \"Fecha #73\""}}'
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cd"
+	EXIT_CD=$?
+	[ $EXIT_CD -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CD)"
+	ERR_CD="$(cat "$SBP/err-cd")"
+	echo "$ERR_CD" | grep -q "não é palavra-chave do GitHub" && test_ok "mensagem menciona que não é reconhecida" || test_fail "mensagem incorreta"
+
+	# Caso (ce): `gh issue create --body "Encerra #99"` (falsa chave) → exit 2
+	echo
+	echo "== (ce) gh issue create --body \"Encerra #99\" → exit 2 (falsa chave português) =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh issue create --title test --body \"Encerra #99\""}}'
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-ce"
+	EXIT_CE=$?
+	[ $EXIT_CE -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CE)"
+
+	# Caso (cf): `gh issue comment 73 --body "Conclui #73"` (falsa chave) → exit 2
+	echo
+	echo "== (cf) gh issue comment --body \"Conclui #73\" → exit 2 (falsa chave português) =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh issue comment 73 --body \"Conclui #73\""}}'
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cf"
+	EXIT_CF=$?
+	[ $EXIT_CF -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CF)"
+
+	# Caso (cg): `gh pr create --body "Segue #73"` (palavra neutra, sem falsa chave) → exit 0
+	echo
+	echo "== (cg) gh pr create --body \"Segue #73\" → exit 0 (referência neutra, sem falsa chave) =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create --body \"Segue #73\""}}'
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cg"
+	EXIT_CG=$?
+	[ $EXIT_CG -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CG)"
+
+	# Caso (ch): `gh pr create --body "Resolvida #88"` (falsa chave) → exit 2
+	echo
+	echo "== (ch) gh pr create --body \"Resolvida #88\" → exit 2 (falsa chave português) =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create --body \"Resolvida #88\""}}'
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-ch"
+	EXIT_CH=$?
+	[ $EXIT_CH -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CH)"
+
+
+	# Caso (ci): o artigo entre o verbo e o numero. "Fecha a #73" e portugues tao
+	# comum quanto "Fecha #73", o GitHub nao reconhece nenhum dos dois, e ate a
+	# revisao do lote 4 a regex exigia o `#` colado no verbo — a primeira forma
+	# passava calada e a Issue ficava aberta em silencio.
+	echo
+	echo "== (ci) gh pr create --body \"Fecha a #73\" -> exit 2 (falsa chave com artigo) =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create --body \"Fecha a #73\""}}'
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-ci"
+	EXIT_CI=$?
+	[ $EXIT_CI -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CI)"
+
+	# Caso (cj): wrapper conhecido com o comando numa VARIAVEL. D17 autorizou
+	# parar de chamar de ilegivel a execucao de um ARQUIVO (`bash roda.sh`), que e
+	# um caminho literal e legivel. Variavel nao resolvida nao e caminho: e
+	# justamente o que ninguem consegue ler, e para wrapper conhecido nao existe a
+	# rede de seguranca textual atras. Achado na revisao do lote 4: `bash -c` com
+	# aspas barrava e a mesma variavel sem `-c` passava.
+	echo
+	echo "== (cj) bash \$CMD -> exit 2 (variavel nao resolvida continua ilegivel) =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"bash $CMD"}}'
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cj"
+	EXIT_CJ=$?
+	[ $EXIT_CJ -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CJ)"
+
+	# Contraprova (ck): o caminho de arquivo literal, que e o que D17 liberou,
+	# continua passando. Sem ela o conserto acima viraria a volta do bloqueio
+	# inteiro, e o defeito que D17 fechou voltaria.
+	echo
+	echo "== (ck) bash roda.sh -> exit 0 (caminho de arquivo continua legivel) =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"bash roda.sh"}}'
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-ck"
+	EXIT_CK=$?
+	[ $EXIT_CK -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CK)"
+
+	# Caso (cl): parametro posicional dentro do wrapper. `$1` e tao ilegivel
+	# quanto `$VAR`, e a classe de caracteres da checagem nao tinha digito — a
+	# forma escapava. Lacuna apontada na revisao de 2026-09-05, na mesma linha que
+	# D22 tocou.
+	#
+	# O comando interno e inofensivo de proposito. Com `gh issue close $1` la
+	# dentro o caso saia exit 2 nos dois sentidos — barrado por ser `gh issue
+	# close` quando legivel, barrado por ser ilegivel quando nao. Verde sob
+	# mutacao, medindo nada: a catraca pegou isso na primeira rodada.
+	echo
+	echo "== (cl) bash -c com parametro posicional -> exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"bash -c \"echo $1\""}}'
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cl"
+	EXIT_CL=$?
+	[ $EXIT_CL -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CL)"
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

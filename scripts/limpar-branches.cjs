@@ -372,6 +372,9 @@ function coletar(baseOverride) {
 // novo entra antes dele, nao depois.
 const REMOVIVEIS = new Set(['resolvida-local', 'resolvida-remota', 'sumiu-mergeada', 'mergeada-por-squash', 'mergeada-por-conteudo', 'sumiu-divergente']);
 
+// Classes que tem remoto vivo e podem ser apagadas remotamente
+const COM_REMOTO_VIVO = new Set(['resolvida-remota', 'mergeada-por-squash']);
+
 const EXPLICA = {
   base: 'a base — nunca',
   atual: 'e onde voce esta agora',
@@ -527,15 +530,26 @@ function main() {
   // todo mundo. Por isso exige a flag, e por isso `sumiu-*` nem aparece aqui (o
   // remoto delas já não existe).
   if (tem('remoto')) {
-    const comRemoto = removidas.filter((b) => b.classe === 'resolvida-remota');
+    const comRemoto = removidas.filter((b) => COM_REMOTO_VIVO.has(b.classe));
     for (const b of comRemoto) {
       const r = git(['push', 'origin', '--delete', b.nome], { permitirErro: true });
       console.log(`  ${r.ok ? 'ok      origin/' : 'FALHOU  origin/'}${b.nome}`);
     }
-    if (!comRemoto.length) console.log('  (nenhuma tinha remoto vivo para apagar)');
-  } else if (removidas.some((b) => b.classe === 'resolvida-remota')) {
+    if (!comRemoto.length) console.log('  (nenhuma das removidas tinha remoto para apagar)');
+
+    // Confirma com ls-remote se alguma continuou de pé
+    if (comRemoto.length) {
+      const remotos = git(['ls-remote', '--heads', 'origin'], { permitirErro: true });
+      if (remotos.ok) {
+        for (const b of comRemoto) {
+          const existe = remotos.saida.includes(`refs/heads/${b.nome}`);
+          if (existe) console.log(`  AVISO: origin/${b.nome} continuou de pé`);
+        }
+      }
+    }
+  } else if (removidas.some((b) => COM_REMOTO_VIVO.has(b.classe))) {
     console.log('');
-    console.log('As `resolvida-remota` ainda existem no origin. Para apagar la tambem:');
+    console.log('Branches removidas localmente ainda existem no origin. Para apagar la tambem:');
     console.log('  node scripts/limpar-branches.cjs --remover --remoto');
   }
 
