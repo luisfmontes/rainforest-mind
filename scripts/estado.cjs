@@ -143,7 +143,7 @@ function estaFechado(estagio, bloco) {
 // "Condição de parada" — por isso entram nesta lista. Um campo novo com o mesmo
 // papel entra aqui quando nascer. O rastro histórico da reprovação (criterio,
 // comando, saida, faltou) fica no bloco do estágio que reprovou e não é efêmero.
-const CAMPOS_EFEMEROS = ['pendentes', 'reaberto_por'];
+const CAMPOS_EFEMEROS = ['pendentes', 'reaberto_por', 'em_voo'];
 
 // Teto de tentativas de reprovação consecutiva. Na terceira, `exigir` do upstream
 // reaberto recusa com exit 2 mandando subir a decisão ao usuário. Constante

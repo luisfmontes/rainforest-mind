@@ -437,6 +437,167 @@ else
   echo "        Lista: $lista_j"
 fi
 
+# --- CASO (k): registro travado com diretorio ausente é destravado, removido e podado
+#
+# Tarefa 7 (lote 4): fantasma-travado — registro que existe em `git worktree
+# list --porcelain` com `locked`, mas o diretório sumiu do disco. `git worktree
+# prune` não limpa porque está travado; `git worktree unlock + remove --force +
+# prune` limpa.
+
+teste "k" "registro travado com diretorio ausente é destravado, removido e podado"
+
+repo_k="$SB/repo_k"
+work_k="$SB/trabalho_k"
+criarRepoComCommit "$repo_k" "$work_k"
+
+# Cria um worktree
+wt_k_real="$work_k-worktrees/wt-k"
+git worktree add "$wt_k_real" HEAD
+
+# Trava o worktree
+git worktree lock "$wt_k_real"
+
+# Apaga o diretório do disco (deixando o registro travado)
+rm -rf "$wt_k_real"
+
+# Confirma que git worktree prune NÃO limpa enquanto estiver travado
+git worktree prune 2>/dev/null || true
+lista_k_prune=$(git worktree list --porcelain | grep -F "wt-k" || true)
+if [ -n "$lista_k_prune" ]; then
+  ok=$((ok+1)); echo "  ok    git worktree prune não limpa registro travado (com dir ausente)"
+else
+  falhou=$((falhou+1)); echo "  FALHA git worktree prune limpou registro travado"
+fi
+
+# Roda limpar-worktrees com --remover
+saida_k_remover=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_k" --remover 2>&1)
+exit_k=$?
+
+# Verifica que saiu com exit 0
+if [ $exit_k -eq 0 ]; then
+  ok=$((ok+1)); echo "  ok    limpar-worktrees sai com exit 0"
+else
+  falhou=$((falhou+1)); echo "  FALHA limpar-worktrees saiu com exit $exit_k"
+  echo "        Saída: $saida_k_remover"
+fi
+
+# Verifica que o registro foi removido (não aparece em git worktree list)
+lista_k_after=$(git worktree list --porcelain | grep -F "wt-k" || true)
+if [ -z "$lista_k_after" ]; then
+  ok=$((ok+1)); echo "  ok    fantasma-travado foi destravar, remover e podar"
+else
+  falhou=$((falhou+1)); echo "  FALHA fantasma-travado ainda aparece em git worktree list"
+  echo "        Lista: $lista_k_after"
+fi
+
+# --- CASO (l): worktree travado COM DIRETÓRIO PRESENTE continua listado após --remover
+#
+# Invariante crítica: --remover nunca toca em worktree vivo (com diretório
+# presente), mesmo que esteja travado. Só fantasma-travado é removível.
+
+teste "l" "worktree travado com diretorio presente continua listado após --remover"
+
+repo_l="$SB/repo_l"
+work_l="$SB/trabalho_l"
+criarRepoComCommit "$repo_l" "$work_l"
+
+# Cria um worktree
+wt_l_real="$work_l-worktrees/wt-l"
+git worktree add "$wt_l_real" HEAD
+
+# Trava o worktree (mas deixa o diretório intacto)
+git worktree lock "$wt_l_real"
+
+# Roda limpar-worktrees com --remover
+node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_l" --remover 2>&1 | grep -i "remov" || true
+
+# Verifica que o worktree CONTINUA no git worktree list
+lista_l=$(git worktree list --porcelain | grep -F "wt-l" || true)
+if [ -n "$lista_l" ]; then
+  ok=$((ok+1)); echo "  ok    worktree travado com diretório presente continua listado"
+else
+  falhou=$((falhou+1)); echo "  FALHA worktree travado com diretório presente foi removido"
+  echo "        Lista: $lista_l"
+fi
+
+# Verifica que o diretório CONTINUA no disco
+if [ -d "$wt_l_real" ]; then
+  ok=$((ok+1)); echo "  ok    diretório do worktree travado continua no disco"
+else
+  falhou=$((falhou+1)); echo "  FALHA diretório do worktree travado foi removido do disco"
+fi
+
+# --- CASO (m): worktree limpo COM agente em voo nao e removido
+
+# "Limpo" quer dizer "sem alteracao pendente", e agente que acabou de commitar
+# deixa o worktree dele exatamente assim — ainda trabalhando. Ate a auditoria do
+# lote 4, `--remover` apagava por baixo dele. O registro de `em_voo` (D16) e
+# quem responde "tem alguem ai dentro?" sem heuristica de mtime nem de processo.
+
+teste "m" "worktree limpo com agente em voo nao e removido"
+
+repo_m="$SB/repo_m"
+work_m="$SB/trabalho_m"
+criarRepoComCommit "$repo_m" "$work_m"
+
+# A resolucao de estagio casa o nome da branch com o slug sem o prefixo de data.
+wt_m_real="$work_m-worktrees/wt-m"
+git worktree add -b fluxo/lote-em-voo "$wt_m_real" HEAD
+
+SLUG_M="2026-09-05-lote-em-voo"
+mkdir -p "$wt_m_real/docs/rainforest/estado"
+node -e '
+const fs = require("fs"), [p, slug] = process.argv.slice(1);
+fs.writeFileSync(p, JSON.stringify({
+  slug, titulo: "Fixture do caso m", criado_em: "2026-09-05",
+  arqueologia: { status: "dispensada" },
+  design: { status: "aprovado", em: "2026-09-05", doc: "x" },
+  plano: { status: "ok", em: "2026-09-05" },
+  executar: { status: "parcial", em: "2026-09-05", em_voo: [{ agente: "rainforest-mind:executor", tarefa: 3 }] },
+  revisar: { status: "pendente" },
+  verificar: { status: "pendente" },
+  fechar: { status: "pendente" },
+}, null, 2) + "\n");
+' "$wt_m_real/docs/rainforest/estado/$SLUG_M.json" "$SLUG_M"
+
+# O estado precisa estar COMMITADO: worktree com arquivo novo nao rastreado nao
+# e "limpo", e o caso mediria a sujeira em vez da consulta ao em_voo.
+git -C "$wt_m_real" add docs
+git -C "$wt_m_real" commit -qm "estado com agente em voo"
+
+saida_m=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_m" --remover 2>&1)
+
+if git -C "$work_m" worktree list --porcelain | grep -qF "wt-m"; then
+  ok=$((ok+1)); echo "  ok    worktree com agente em voo continua listado"
+else
+  falhou=$((falhou+1)); echo "  FALHA worktree com agente em voo foi removido"
+fi
+
+if printf '%s' "$saida_m" | grep -qF "em voo"; then
+  ok=$((ok+1)); echo "  ok    e a saida diz por que pulou"
+else
+  falhou=$((falhou+1)); echo "  FALHA a saida nao explica o motivo"
+  printf '%s\n' "$saida_m" | sed 's/^/        /' | head -8
+fi
+
+# Contraprova: dando baixa no em_voo, o MESMO worktree volta a ser removivel.
+# Sem ela o caso acima passaria por qualquer motivo — inclusive por o script ter
+# parado de remover coisa nenhuma.
+node -e '
+const fs = require("fs"), [p] = process.argv.slice(1);
+const e = JSON.parse(fs.readFileSync(p, "utf8"));
+e.executar.em_voo = [];
+fs.writeFileSync(p, JSON.stringify(e, null, 2) + "\n");
+' "$wt_m_real/docs/rainforest/estado/$SLUG_M.json"
+git -C "$wt_m_real" add docs
+git -C "$wt_m_real" commit -qm "baixa do em_voo"
+
+node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_m" --remover > /dev/null 2>&1
+if git -C "$work_m" worktree list --porcelain | grep -qF "wt-m"; then
+  falhou=$((falhou+1)); echo "  FALHA sem em_voo o worktree limpo continuou registrado"
+else
+  ok=$((ok+1)); echo "  ok    dada a baixa no em_voo, o mesmo worktree e removido"
+fi
 # --- Relatório final
 
 echo ""

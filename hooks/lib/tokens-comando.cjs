@@ -73,6 +73,19 @@ function ehComando(tok, nome, ehPosicaoDeComando = false) {
   return new RegExp("(^|[\\\\/])" + nome + "(\\.exe)?$").test(v);
 }
 
+/**
+ * Nome de wrapper extraido de um token, removendo aspas e prefixo ANSI-C se
+ * necessario. Usado para reconhecer wrappers que foram citados na posicao de
+ * comando (R21, rodada 15, lote 4, 2026-09-04): `"env" FOO=1 git add -A`
+ * tinha o nome do wrapper entre aspas, entao `posicaoDeComando` nunca passava
+ * a checagem de `!tok.q` e `posicaoDeComando` retornava 0 (apontando para o
+ * "env" citado em vez de pulá-lo), deixando a posição de comando errada.
+ */
+function nomeDeWrapper(tok) {
+  if (tok.q && tok.v.startsWith("$")) return tok.v.slice(1);
+  return tok.v;
+}
+
 // Wrappers que REPASSAM o comando adiante, na MESMA posicao de comando — o
 // nome da CLI aparece DEPOIS deles. H3 (rodada 5, lote 3, 2026-09-03): antes
 // disto, `procuraCLI` casava o nome em QUALQUER posicao do segmento (so
@@ -197,8 +210,8 @@ function posicaoDeComando(toks, captura) {
       i += 1;
       continue;
     }
-    if (i < toks.length && !toks[i].q && WRAPPERS_QUE_REPASSAM.has(toks[i].v)) {
-      const wrapper = toks[i].v;
+    if (i < toks.length && WRAPPERS_QUE_REPASSAM.has(nomeDeWrapper(toks[i]))) {
+      const wrapper = nomeDeWrapper(toks[i]);
       i += 1;
       i = pularFlagsDoWrapper(toks, i, wrapper, captura);
       if (wrapper === "timeout" && i < toks.length) i += 1; // a duracao
@@ -337,7 +350,10 @@ function desempacota(interno) {
  * com seguranca o que vai rodar dentro. Postura conservadora.
  */
 function contemConstrucaoIlegivel(str) {
-  return /\$\(|`|\$[A-Za-z_{]/.test(str);
+  // O `0-9` cobre parametro posicional (`$1`, `$2`): `bash -c` com ele dentro e
+  // tao ilegivel quanto com `$VAR`, e a classe sem digito o deixava passar.
+  // Apontado como lacuna na revisao de 2026-09-05, na mesma linha que D22 tocou.
+  return /\$\(|`|\$[A-Za-z_{0-9]/.test(str);
 }
 
 /**
@@ -445,11 +461,29 @@ function desempacotarWrapperDeString(segmento, { ferramenta } = {}) {
       continue;
     }
     // Token que não começa com - nem +, não é flag conhecida nem o -c —
-    // pode ser o VALOR de uma flag com valor que não conhecemos, ou uma
-    // reinvocação de wrapper (`bash -c "..." arg2`, já resolvido acima).
-    // Postura conservadora (W1): não sabemos o que é, ilegível — em vez de
-    // concluir silenciosamente "não é wrapper".
-    return { interno: null, ilegivel: true };
+    // neste ponto é um CAMINHO DE SCRIPT (R21, rodada 15, lote 4, 2026-09-04).
+    // Igual a `node x.cjs` e `./script.sh`, que ninguém bloqueia. Continua
+    // ilegível: wrappers de ARQUIVO (source/./& PowerShell), flags -Command
+    // base64 (-EncodedCommand), e construções com variável/substituição — as
+    // três primeiras já saíram nos ramos acima; a última chega aqui, e é o que
+    // a linha abaixo separa.
+    //
+    // O que D17 autoriza é parar de chamar de ilegível a execução de um ARQUIVO
+    // — um caminho literal, que se pode ler. `bash $CMD` não é um caminho: é
+    // uma variável não resolvida, e o que ela contém é exatamente o que ninguém
+    // consegue ler aqui. Antes deste conserto ela caía junto com o caminho e os
+    // três gates de texto liberavam em silêncio — e para wrapper conhecido não
+    // existe a rede do W2 atrás, porque ela é pulada de propósito. Medido na
+    // revisão do lote 4: `bash -c com aspas` barrava e `bash $CMD` passava.
+    // O tokenizador separa chaves e parenteses em tokens proprios, entao
+    // `${SCRIPT}` e `$(gerar)` chegam aqui como o token `$` sozinho, que nao
+    // casa construcao nenhuma. O que se julga e a palavra INTEIRA: o token
+    // mais o que vem colado nele ate o proximo espaco.
+    const coladoNoToken = /^[^\s]*/.exec(current.resto)[0];
+    if (contemConstrucaoIlegivel(current.tok + coladoNoToken)) {
+      return { interno: null, ilegivel: true };
+    }
+    return { interno: null, ilegivel: false };
   }
   return { interno: null, ilegivel: false };
 }
@@ -457,6 +491,7 @@ function desempacotarWrapperDeString(segmento, { ferramenta } = {}) {
 module.exports = {
   tokensComAspas,
   ehComando,
+  nomeDeWrapper,
   WRAPPERS_QUE_REPASSAM,
   posicaoDeComando,
   textoAPartir,

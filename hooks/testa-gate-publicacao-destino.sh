@@ -177,6 +177,95 @@ jid="5500900000001@s.whatsapp.net"')"
 # ele fica travado por um caso proprio, e nao suposto.
 gate "payload invalido -> sai 0 sem derrubar" 0 '{"invalid": json}'
 
+echo
+echo "== CASO 9: o gate julga o que o commit INTRODUZ, nao o conteudo total (defect a) =="
+# Ate 2026-09-04 o gate lia `git show :<arquivo>` inteiro e barrava merge de
+# conteudo que ja estava publicado na main ha dias — Issue #173. Estes casos
+# rodam no caminho REAL: payload de `Bash` com `git commit`, que e o que o
+# harness manda. O caminho de `Write`/`Edit` NAO tem isencao nenhuma e continua
+# barrando conteudo sensivel escrito a mao (casos 1 a 8 acima) — a isencao vale
+# so para o que ja esta num pai do commit.
+payBash() { # comando, cwd
+  node -e 'const [c,d]=process.argv.slice(1);console.log(JSON.stringify({cwd:d,hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:c}}))' "$1" "$2"
+}
+
+M="$RAIZ/pai"
+git init -q -b main "$M"; git -C "$M" config user.email t@t; git -C "$M" config user.name t
+git -C "$M" config commit.gpgsign false
+printf 'contato: %s\nlinha comum\n' "$JID_REAL" > "$M/dados.txt"
+git -C "$M" add dados.txt; git -C "$M" commit -qm "commit que introduziu o JID"
+
+# 9a: o arquivo ja esta commitado e a alteracao nova NAO toca a linha do achado.
+printf 'linha inocente\n' >> "$M/dados.txt"
+git -C "$M" add dados.txt
+gate "9a: achado que ja esta no pai nao barra o commit seguinte" 0 \
+  "$(payBash 'git commit -m x' "$(esc "$M")")"
+
+# 9b: linha NOVA com achado novo continua barrando — a isencao nao afrouxa nada.
+printf 'outro: %s\n' "5500900000002@s.whatsapp.net" >> "$M/dados.txt"
+git -C "$M" add dados.txt
+gate "9b: linha nova com achado novo continua barrando" 2 \
+  "$(payBash 'git commit -m x' "$(esc "$M")")"
+
+# 9c: merge de verdade — o arquivo com o achado entra vindo do OUTRO pai, que e
+# exatamente o caso de campo da Issue #173 (`git merge origin/main`).
+#
+# A fixture PUBLICA a main num remoto de verdade, e nao so a chama de publicada:
+# a isencao do outro pai vale para commit que ja existe em ramo remoto, e nao
+# para qualquer branch local. Sem o remoto, este caso media a palavra do
+# comentario em vez do estado do repositorio.
+N="$RAIZ/merge"
+git init -q -b main "$N"; git -C "$N" config user.email t@t; git -C "$N" config user.name t
+git -C "$N" config commit.gpgsign false
+echo "base" > "$N/base.txt"; git -C "$N" add base.txt; git -C "$N" commit -qm base
+git -C "$N" checkout -q -b lateral
+echo "trabalho lateral" > "$N/lateral.txt"; git -C "$N" add lateral.txt
+git -C "$N" commit -qm lateral
+git -C "$N" checkout -q main
+printf 'contato: %s\n' "$JID_REAL" > "$N/publicado.txt"
+git -C "$N" add publicado.txt; git -C "$N" commit -qm "ja publicado na main"
+git init -q --bare "$RAIZ/remoto.git"
+git -C "$N" remote add origin "$RAIZ/remoto.git"
+git -C "$N" push -q origin main
+git -C "$N" checkout -q lateral
+git -C "$N" merge --no-commit --no-ff main > /dev/null 2>&1
+gate "9c: merge que traz arquivo ja publicado no outro pai -> passa" 0 \
+  "$(payBash 'git commit --no-edit' "$(esc "$N")")"
+git -C "$N" merge --abort > /dev/null 2>&1
+
+# 9d: a contraprova que o 9c sozinho nao da. O outro pai e uma branch LOCAL, que
+# nunca foi publicada e cujos commits nunca passaram por gate nenhum: o segredo
+# e novo para o destino, e merge nao pode virar a porta de entrada dele. Sem
+# esta distincao bastava commitar o segredo numa branch e mergear para publicar.
+git -C "$N" checkout -q main
+git -C "$N" checkout -q -b naopublicada
+printf 'contato: %s\n' "5500900000003@s.whatsapp.net" > "$N/de-fora.txt"
+git -C "$N" add de-fora.txt; git -C "$N" commit -qm "segredo em branch local"
+git -C "$N" checkout -q main
+git -C "$N" merge --no-commit --no-ff naopublicada > /dev/null 2>&1
+gate "9d: merge de branch NAO publicada com achado novo continua barrando" 2 \
+  "$(payBash 'git commit --no-edit' "$(esc "$N")")"
+git -C "$N" merge --abort > /dev/null 2>&1
+
+# 9e: "publicado" e no remoto de DESTINO, nao em qualquer remoto cadastrado.
+# Reproduzido na revisao de 2026-09-05: bastava `git remote add espelho <bare
+# descartavel>` e um push para la, e o merge seguinte tratava o segredo como ja
+# publicado — a mesma porta que o 9d fecha, reaberta por outro caminho. Nenhum
+# gate deste lote olha `remote add` nem `push`, entao a porta era de uma linha.
+git init -q --bare "$RAIZ/espelho.git"
+git -C "$N" remote add espelho "$RAIZ/espelho.git"
+git -C "$N" checkout -q main
+git -C "$N" checkout -q -b so-no-espelho
+printf 'contato: %s\n' "5500900000004@s.whatsapp.net" > "$N/de-espelho.txt"
+git -C "$N" add de-espelho.txt; git -C "$N" commit -qm "segredo empurrado so para o espelho"
+git -C "$N" push -q espelho so-no-espelho
+git -C "$N" fetch -q espelho
+git -C "$N" checkout -q main
+git -C "$N" merge --no-commit --no-ff so-no-espelho > /dev/null 2>&1
+gate "9e: publicado so num remoto que nao e o destino continua barrando" 2 \
+  "$(payBash 'git commit --no-edit' "$(esc "$N")")"
+git -C "$N" merge --abort > /dev/null 2>&1
+
 echo "== Verificação: gate-staging-total continua verde =="
 echo "Rodando: bash hooks/testa-gate-staging-total.sh"
 if bash "$SRC/hooks/testa-gate-staging-total.sh" > /tmp/test-staging.log 2>&1; then
