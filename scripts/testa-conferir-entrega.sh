@@ -231,14 +231,14 @@ rm "$R/feito.txt"
 echo
 echo "== o mesmo worktree escrito nas duas grafias do Windows (8.3) =="
 # Achado pelo CI em 2026-08-17 (Issue #16). O TEMP do runner do GitHub e
-# `C:/Users/RUNNER~1/...`; o git responde sempre na forma longa
-# (`C:/Users/runneradmin/...`). O `norm()` do .cjs usava `fs.realpathSync`, que
+# `<home>/RUNNER~1/...` (forma 8.3); o git responde sempre na forma longa
+# (`<home>/runneradmin/...`). O `norm()` do .cjs usava `fs.realpathSync`, que
 # no Windows NAO expande 8.3 — entao as duas grafias do MESMO diretorio nao
 # batiam, e a conferencia cuspia:
 #
 #   REPROVADO — 1 falha(s):
-#     - 1. o toplevel (C:/Users/runneradmin/.../wt-bom)
-#          nao e o worktree do briefing (C:/Users/RUNNER~1/.../wt-bom)
+#     - 1. o toplevel (<home>/runneradmin/.../wt-bom)
+#          nao e o worktree do briefing (<home>/RUNNER~1/.../wt-bom)
 #
 # Ou seja: a peca que decide se a entrega de um subagente pode ser integrada
 # mandava NAO INTEGRAR uma entrega correta. O gemeo em Python nunca teve o
@@ -310,6 +310,209 @@ contem "  ... mencionando arquivo inexistente" "inexistente" \
   --sujo-antes "$RAIZ/arquivo-que-nao-existe.txt"
 
 rm "$R/intruso-pre.txt"
+
+echo
+echo "== --escopo: verifica se os arquivos tocados estao dentro do(s) escopo(s) =="
+
+# Recriar o repo para evitar estado contaminado
+R=$(novo_repo escopo-test)
+BASE=$(git -C "$R" rev-parse HEAD)
+WT="$RAIZ/wt-escopo"
+git -C "$R" worktree add -q -b escopo-branch "$WT" >/dev/null 2>&1
+echo novo > "$WT/feito.txt"; git -C "$WT" add .; git -C "$WT" commit -qm "entrega com feito.txt"
+ESCOPO_BASE=$(git -C "$WT" rev-parse HEAD)
+
+# Caso (a): todos os arquivos tocados dentro do escopo -> aprova
+# Adiciona gerado/.gitignore como no outro repo
+mkdir -p "$WT/gerado"
+printf '*\n!.gitignore\n' > "$WT/gerado/.gitignore"
+git -C "$WT" add . >/dev/null 2>&1; git -C "$WT" commit -qm "adiciona gerado"
+ESCOPO_A_BASE=$(git -C "$WT" rev-parse HEAD~1)
+ESCOPO_A_COMMIT=$(git -C "$WT" rev-parse HEAD)
+esperado "escopo: todos dentro (feito.txt + gerado/**) -> aprova" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$ESCOPO_A_BASE" --commit "$ESCOPO_A_COMMIT" \
+  --escopo "feito.txt" --escopo "gerado/**"
+
+# Caso (b): arquivo MODIFICADO fora do escopo -> reprova nomeando-o
+# Cria um novo arquivo fora do escopo
+echo "novo arquivo" > "$WT/fora-escopo.txt"
+git -C "$WT" add . >/dev/null 2>&1; git -C "$WT" commit -qm "adiciona fora-escopo.txt"
+ESCOPO_B_BASE=$(git -C "$WT" rev-parse HEAD~1)
+ESCOPO_B_COMMIT=$(git -C "$WT" rev-parse HEAD)
+esperado "escopo: arquivo MODIFICADO fora -> reprova" 1 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$ESCOPO_B_BASE" --commit "$ESCOPO_B_COMMIT" \
+  --escopo "feito.txt" --escopo "gerado/**"
+contem "  ... e nomeia fora-escopo.txt (A status)" "fora-escopo.txt" \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$ESCOPO_B_BASE" --commit "$ESCOPO_B_COMMIT" \
+  --escopo "feito.txt" --escopo "gerado/**"
+
+# Caso (c): arquivo DELETADO fora do escopo -> reprova nomeando-o (espelha #131)
+# Cria 25 arquivos fora do escopo
+mkdir -p "$WT/lixo"
+for i in {1..25}; do
+  echo "arquivo $i" > "$WT/lixo/arquivo-$i.txt"
+done
+git -C "$WT" add . >/dev/null 2>&1; git -C "$WT" commit -qm "adiciona 25 no lixo"
+ESCOPO_C_BASE=$(git -C "$WT" rev-parse HEAD)
+# Deleta todos
+rm -rf "$WT/lixo"
+git -C "$WT" add . >/dev/null 2>&1; git -C "$WT" commit -qm "deleta 25 do lixo"
+ESCOPO_C_COMMIT=$(git -C "$WT" rev-parse HEAD)
+esperado "escopo: 25 arquivos DELETADOS fora -> reprova (#131)" 1 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$ESCOPO_C_BASE" --commit "$ESCOPO_C_COMMIT" \
+  --escopo "feito.txt" --escopo "gerado/**"
+contem "  ... e menciona 25 arquivos fora" "25 arquivo" \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$ESCOPO_C_BASE" --commit "$ESCOPO_C_COMMIT" \
+  --escopo "feito.txt" --escopo "gerado/**"
+
+# Caso (d): sem --escopo nenhum -> comportamento idêntico ao de hoje (retrocompatível)
+esperado "escopo: SEM --escopo nenhum -> aprovado (retrocompativel)" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$ESCOPO_C_BASE" --commit "$ESCOPO_C_COMMIT"
+
+echo
+echo "== --escopo: rename (git mv) nao pode virar falso positivo/negativo =="
+
+# git diff --name-status emite rename como "R100\told\tnew" (e copia como
+# "C100\told\tnew"). Confere que o git realmente detecta como rename antes de
+# testar o conferir-entrega — senão o caso vira um M+D disfarçado.
+
+# Caso rename-a: rename DENTRO do escopo -> aprova
+mkdir -p "$WT/scripts"
+printf 'linha1\nlinha2\nlinha3\nlinha4\nlinha5\n' > "$WT/scripts/velho.txt"
+git -C "$WT" add . >/dev/null 2>&1; git -C "$WT" commit -qm "adiciona scripts/velho.txt"
+RENAME_A_BASE=$(git -C "$WT" rev-parse HEAD)
+git -C "$WT" mv scripts/velho.txt scripts/novo.txt
+git -C "$WT" commit -qm "rename velho -> novo"
+RENAME_A_COMMIT=$(git -C "$WT" rev-parse HEAD)
+contem "rename dentro do escopo: git detecta como R" "^R" \
+  git -C "$WT" diff --name-status "$RENAME_A_BASE".."$RENAME_A_COMMIT"
+esperado "escopo: rename DENTRO (scripts/velho.txt -> scripts/novo.txt) -> aprova" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$RENAME_A_BASE" --commit "$RENAME_A_COMMIT" \
+  --escopo "scripts/**"
+
+# Caso rename-b: rename cujo DESTINO sai do escopo -> reprova citando o destino
+printf 'linha1\nlinha2\nlinha3\nlinha4\nlinha5\n' > "$WT/scripts/x.txt"
+git -C "$WT" add . >/dev/null 2>&1; git -C "$WT" commit -qm "adiciona scripts/x.txt"
+RENAME_B_BASE=$(git -C "$WT" rev-parse HEAD)
+mkdir -p "$WT/docs"
+git -C "$WT" mv scripts/x.txt docs/x.txt
+git -C "$WT" commit -qm "rename scripts/x.txt -> docs/x.txt"
+RENAME_B_COMMIT=$(git -C "$WT" rev-parse HEAD)
+contem "rename destino fora: git detecta como R" "^R" \
+  git -C "$WT" diff --name-status "$RENAME_B_BASE".."$RENAME_B_COMMIT"
+esperado "escopo: rename DESTINO fora (docs/x.txt) -> reprova" 1 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$RENAME_B_BASE" --commit "$RENAME_B_COMMIT" \
+  --escopo "scripts/**"
+contem "  ... e nomeia docs/x.txt" "docs/x.txt" \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$RENAME_B_BASE" --commit "$RENAME_B_COMMIT" \
+  --escopo "scripts/**"
+
+# Caso rename-c: rename cuja ORIGEM estava fora do escopo -> reprova citando a origem
+printf 'linha1\nlinha2\nlinha3\nlinha4\nlinha5\n' > "$WT/docs/y.txt"
+git -C "$WT" add . >/dev/null 2>&1; git -C "$WT" commit -qm "adiciona docs/y.txt"
+RENAME_C_BASE=$(git -C "$WT" rev-parse HEAD)
+git -C "$WT" mv docs/y.txt scripts/y.txt
+git -C "$WT" commit -qm "rename docs/y.txt -> scripts/y.txt"
+RENAME_C_COMMIT=$(git -C "$WT" rev-parse HEAD)
+contem "rename origem fora: git detecta como R" "^R" \
+  git -C "$WT" diff --name-status "$RENAME_C_BASE".."$RENAME_C_COMMIT"
+esperado "escopo: rename ORIGEM fora (docs/y.txt) -> reprova" 1 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$RENAME_C_BASE" --commit "$RENAME_C_COMMIT" \
+  --escopo "scripts/**"
+contem "  ... e nomeia docs/y.txt (delecao fora do escopo)" "docs/y.txt" \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$RENAME_C_BASE" --commit "$RENAME_C_COMMIT" \
+  --escopo "scripts/**"
+
+echo
+echo "== BOM na primeira linha do arquivo --sujo-antes =="
+
+# Cenário: arquivo existente (ex: a.txt) fica sujo ANTES do despacho (no repo principal),
+# e aparece na primeira linha do --sujo-antes COM BOM. O worktree NÃO toca a.txt
+# neste commit. A checagem 4 tem de reconhecer a.txt como sujeira pré-existente
+# e aprovar (exit 0). Com a mutação (bug), o BOM + trim comem o primeiro caractere,
+# o caminho vira '.txt' em vez de 'a.txt', não bate, e reprova (exit 1).
+
+# Reseta ambos os repos (principal e worktree) para uma base limpa
+git -C "$R" reset --hard "$ESCOPO_C_BASE" >/dev/null 2>&1
+git -C "$WT" reset --hard "$ESCOPO_C_BASE" >/dev/null 2>&1
+BOM_COMMIT_BASE=$(git -C "$WT" rev-parse HEAD)
+BOM_HEAD_ANTES=$(git -C "$R" rev-parse HEAD)
+
+# (a) sem BOM: arquivo-sujo-antes SEM BOM, ' M a.txt' na primeira linha
+# Worktree não toca a.txt, apenas outro arquivo
+echo "nova-versao-gerado" > "$WT/gerado/.gitignore"
+git -C "$WT" add .; git -C "$WT" commit -qm "atualiza gerado/.gitignore"
+BOM_COMMIT_A=$(git -C "$WT" rev-parse HEAD)
+BOM_ARQUIVO_A="$RAIZ/porcelain-sem-bom-a.txt"
+# No repo principal, a.txt fica sujo ANTES (a.txt existe porque vem da base)
+echo "v2-sujo" > "$R/a.txt"
+git -C "$R" status --porcelain > "$BOM_ARQUIVO_A"
+# A primeira linha é ' M a.txt', sem BOM
+esperado "BOM (a) sem BOM na primeira linha: reconhece a.txt como pré-existente, aprova" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BOM_COMMIT_BASE" --head-antes "$BOM_HEAD_ANTES" --commit "$BOM_COMMIT_A" \
+  --sujo-antes "$BOM_ARQUIVO_A"
+git -C "$R" checkout -- a.txt
+
+# (b) com BOM: arquivo-sujo-antes COM BOM seguido de ' M a.txt' na primeira linha
+# Mesmo worktree (worktree não toca a.txt), mesmo commit anterior
+echo "v3-sujo" > "$R/a.txt"
+BOM_ARQUIVO_B="$RAIZ/porcelain-com-bom-b.txt"
+# Cria arquivo com BOM na primeira linha + conteúdo do porcelain
+git -C "$R" status --porcelain | node -e "process.stdout.write('﻿' + require('fs').readFileSync(0, 'utf8'))" > "$BOM_ARQUIVO_B"
+esperado "BOM (b) com BOM na primeira linha: reconhece a.txt corretamente, aprova" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BOM_COMMIT_BASE" --head-antes "$BOM_HEAD_ANTES" --commit "$BOM_COMMIT_A" \
+  --sujo-antes "$BOM_ARQUIVO_B"
+contem "  ... nomeando a.txt SEM perder o 'a' (prova que BOM foi removido)" "a.txt" \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BOM_COMMIT_BASE" --head-antes "$BOM_HEAD_ANTES" --commit "$BOM_COMMIT_A" \
+  --sujo-antes "$BOM_ARQUIVO_B" 2>&1
+git -C "$R" checkout -- a.txt
+
+# (c) com BOM e múltiplas linhas: BOM apenas na primeira, segunda linha também reconhecida
+# Suja tanto a.txt quanto rastreado.txt (ambos da base)
+echo "v4-sujo" > "$R/a.txt"
+echo "v4-sujo" > "$R/rastreado.txt"
+BOM_ARQUIVO_C="$RAIZ/porcelain-com-bom-c.txt"
+# Cria arquivo com BOM + múltiplas linhas do porcelain
+git -C "$R" status --porcelain | node -e "process.stdout.write('﻿' + require('fs').readFileSync(0, 'utf8'))" > "$BOM_ARQUIVO_C"
+esperado "BOM (c) com BOM e múltiplas linhas: ambas as linhas de sujeira reconhecidas, aprova" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BOM_COMMIT_BASE" --head-antes "$BOM_HEAD_ANTES" --commit "$BOM_COMMIT_A" \
+  --sujo-antes "$BOM_ARQUIVO_C"
+git -C "$R" checkout -- a.txt; git -C "$R" checkout -- rastreado.txt
+
+# (d) trimEnd() vs trim(): o PRIMEIRO arquivo sujo é ' M a.txt'
+# Com a mutação de volta para trim(), o espaço inicial é comido, e slice(3) come o 'a'
+git -C "$WT" reset --hard "$BOM_COMMIT_BASE" >/dev/null 2>&1
+echo "v5-novo" > "$WT/novo-agente.txt"
+git -C "$WT" add .; git -C "$WT" commit -qm "novo arquivo agente"
+BOM_COMMIT_D=$(git -C "$WT" rev-parse HEAD)
+BOM_ARQUIVO_D="$RAIZ/porcelain-trim-test.txt"
+# a.txt é a PRIMEIRA sujeira no principal (a.txt existe na base)
+echo "v5-sujo-a" > "$R/a.txt"
+git -C "$R" status --porcelain > "$BOM_ARQUIVO_D"
+# Sem BOM neste caso, puro teste de trimEnd vs trim
+esperado "trimEnd (d): PRIMEIRO arquivo sujo é ' M a.txt', sem BOM, aprova" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BOM_COMMIT_BASE" --head-antes "$BOM_HEAD_ANTES" --commit "$BOM_COMMIT_D" \
+  --sujo-antes "$BOM_ARQUIVO_D"
+git -C "$R" checkout -- a.txt
+
+# (e) exclusao de docs/rainforest/estado/*.json: não deve ser contado como sujeira do agente
+# Cria um cenário onde docs/rainforest/estado/*.json é uma sujeira junto com outras
+git -C "$WT" reset --hard "$BOM_COMMIT_BASE" >/dev/null 2>&1
+echo "v7-novo" > "$WT/outro-novo.txt"
+git -C "$WT" add .; git -C "$WT" commit -qm "outro novo arquivo"
+BOM_COMMIT_E=$(git -C "$WT" rev-parse HEAD)
+# No principal, cria sujeira: a.txt (será reconhecida) + docs/rainforest/estado/*.json (será excluída)
+echo "v7-a" > "$R/a.txt"
+mkdir -p "$R/docs/rainforest/estado"
+echo "estado-test" > "$R/docs/rainforest/estado/2026-09-03-guardas.json"
+BOM_ARQUIVO_E="$RAIZ/porcelain-exclusao.txt"
+# Captura o porcelain - vai ter ambos os arquivos
+git -C "$R" status --porcelain > "$BOM_ARQUIVO_E"
+# Roda a checagem: docs/*.json é excluído (não conta como sujeira nova), a.txt é reconhecida
+esperado "exclusao (e): docs/rainforest/estado/*.json é excluído, não reprova" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BOM_COMMIT_BASE" --head-antes "$BOM_HEAD_ANTES" --commit "$BOM_COMMIT_E" \
+  --sujo-antes "$BOM_ARQUIVO_E"
+git -C "$R" checkout -- a.txt; rm -rf "$R/docs"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

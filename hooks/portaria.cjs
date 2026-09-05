@@ -65,6 +65,95 @@ function raizDoProjeto(payload) {
   }
 }
 
+function obterBranch(raiz) {
+  try {
+    const branch = execFileSync("git", ["-C", raiz, "rev-parse", "--abbrev-ref", "HEAD"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    return branch || null;
+  } catch {
+    return null;
+  }
+}
+
+function primeiroEstagioAberto(estado) {
+  const ordem = ["design", "plano", "executar", "revisar", "verificar", "fechar"];
+  for (const est of ordem) {
+    if (estado[est] && estado[est].status && estado[est].status !== "ok" && estado[est].status !== "aprovado") {
+      return est;
+    }
+  }
+  return null;
+}
+
+function obterOutrosWorktreesComFluxoAberto(raiz) {
+  try {
+    const saida = execFileSync("git", ["-C", raiz, "worktree", "list", "--porcelain"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    const linhas = saida.trim().split("\n").filter(Boolean);
+    const worktrees = [];
+
+    for (const linha of linhas) {
+      // Formato: "worktree /caminho"
+      const m = linha.match(/^worktree\s+(.+)$/);
+      if (!m) continue;
+
+      const caminhoWorktree = m[1].trim();
+
+      // Verifica se não é o mesmo diretório (normaliza para comparação)
+      const raizNorm = path.normalize(raiz);
+      const wtNorm = path.normalize(caminhoWorktree);
+      if (raizNorm === wtNorm) {
+        continue; // É o mesmo — pula
+      }
+
+      // Tenta ler o estado para este worktree
+      const dirEstado = path.join(caminhoWorktree, "docs", "rainforest", "estado");
+      if (fs.existsSync(dirEstado)) {
+        try {
+          const arquivos = fs.readdirSync(dirEstado).filter(f => f.endsWith(".json"));
+          for (const arquivo of arquivos) {
+            try {
+              const conteudo = fs.readFileSync(path.join(dirEstado, arquivo), "utf8");
+              const estado = JSON.parse(conteudo);
+              if (estado && typeof estado === "object" && estado.slug) {
+                // Verifica se tem fluxo aberto (algum estágio não fechado) —
+                // e já guarda qual, reaproveitando este parse (evita reabrir
+                // o JSON depois, no worktree errado ou no certo).
+                const estagioAberto = primeiroEstagioAberto(estado);
+                if (estagioAberto) {
+                  worktrees.push({ slug: estado.slug, arquivo, caminho: caminhoWorktree, estagio: estagioAberto });
+                  break;
+                }
+              }
+            } catch {
+              // Ignora arquivo inválido
+            }
+          }
+        } catch {
+          // Ignora erro ao ler diretório
+        }
+      }
+    }
+
+    return worktrees;
+  } catch {
+    return [];
+  }
+}
+
+function formatarOutrosWorktreesAbertos(outrosWorktrees) {
+  let trecho = `  outros worktrees em fluxo aberto (slug e estágio):\n`;
+  for (const wt of outrosWorktrees) {
+    const estagioStr = wt.estagio || "?";
+    trecho += `    - slug: ${wt.slug}, estágio: ${estagioStr}\n`;
+  }
+  return trecho;
+}
+
 function negar(motivo) {
   if (motivo) {
     process.stderr.write(motivo);
@@ -359,7 +448,22 @@ function main() {
 
   if (!fs.existsSync(manifestoPath)) {
     gravarDespacho(raiz, "deny", nomeAgente, estagioLog, sessao, "manifesto ausente");
-    negar(`Manifesto não encontrado em ${manifestoPath}`);
+
+    const branch = obterBranch(raiz);
+    const outrosWorktrees = obterOutrosWorktreesComFluxoAberto(raiz);
+
+    let msg = `Manifesto não encontrado em ${manifestoPath}\n`;
+    msg += `  raiz lida: ${raiz}\n`;
+    if (branch) {
+      msg += `  branch: ${branch}\n`;
+    }
+    msg += `  estágio resolvido: ${estagioLog}\n`;
+
+    if (outrosWorktrees.length > 0) {
+      msg += formatarOutrosWorktreesAbertos(outrosWorktrees);
+    }
+
+    negar(msg.trim());
   }
 
   try {
@@ -406,7 +510,22 @@ function main() {
   if (!estResult) {
     const motivo = "sem estágio ativo — abra um fluxo";
     gravarDespacho(raiz, "deny", nomeAgente, "?", sessao, motivo);
-    negar(motivo);
+
+    const branch = obterBranch(raiz);
+    const outrosWorktrees = obterOutrosWorktreesComFluxoAberto(raiz);
+
+    let msg = `${motivo}\n`;
+    msg += `  raiz lida: ${raiz}\n`;
+    if (branch) {
+      msg += `  branch: ${branch}\n`;
+    }
+    msg += `  estágio resolvido: ?\n`;
+
+    if (outrosWorktrees.length > 0) {
+      msg += formatarOutrosWorktreesAbertos(outrosWorktrees);
+    }
+
+    negar(msg.trim());
   }
 
   const { estagio: estagioAtivo } = estResult;

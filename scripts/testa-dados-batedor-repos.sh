@@ -47,16 +47,37 @@ echo "✓ TESTE 1 passou"
 echo
 
 # ==============================================================================
-# TESTE 2: sem RFM_ROOT, continua achando propostas de relatório do repo
+# TESTE 2: propostas de relatorio — so os 4 mais recentes, so `**Pn — titulo**`
 # ==============================================================================
-echo "=== TESTE 2: Propostas de relatorio do PLUGIN (guarda de regressao) ==="
+echo "=== TESTE 2: Propostas de relatorio (plugin FABRICADO, so os 4 mais recentes) ==="
 
-PROPOSTAS=$(echo "$SAIDA" | grep "^PROPOSTAS NOS 4 RELATORIOS" | grep -oE '\([0-9]+\)' | grep -oE '[0-9]+')
-echo "Propostas encontradas: $PROPOSTAS (esperado: nao-zero)"
+# Ate 2026-09-04 este teste lia os relatorios REAIS do repositorio e exigia
+# "nao-zero": media conteudo, nao codigo. Bastou o fluxo do lote 3 gravar dois
+# handovers sem proposta para os 4 relatorios mais recentes ficarem sem
+# `**Pn —**` e a bateria virar vermelha sem uma linha de codigo mudar. O script
+# ancora `relatorios/` na pasta acima dele (PLUGIN), entao o que ele precisa do
+# plugin (o proprio script + hooks/lib/raiz.cjs) vai para uma caixa com
+# relatorios fabricados: 5 arquivos, 3 propostas nos 4 mais recentes e 2 no
+# quinto, que NAO podem contar. A contagem esperada e exata, nao "nao-zero".
+PLUGIN_FAKE="$SANDBOX/plugin"
+mkdir -p "$PLUGIN_FAKE/vigias" "$PLUGIN_FAKE/hooks/lib" "$PLUGIN_FAKE/relatorios"
+cp "$REPO_ROOT/vigias/dados-batedor-repos.js" "$PLUGIN_FAKE/vigias/"
+cp "$REPO_ROOT/hooks/lib/raiz.cjs" "$PLUGIN_FAKE/hooks/lib/"
+printf '%s\n' '# Um' '' '**P1 — Abrir a Issue do vetor citado**' 'texto' '**P2 — Consertar a bateria**' > "$PLUGIN_FAKE/relatorios/2026-09-05-um.md"
+printf '%s\n' '# Dois' 'handover sem proposta' > "$PLUGIN_FAKE/relatorios/2026-09-04-dois.md"
+printf '%s\n' '# Tres' '**P1 - Com hifen simples tambem conta**' > "$PLUGIN_FAKE/relatorios/2026-09-03-tres.md"
+printf '%s\n' '# Quatro' 'P3 sem negrito nao conta' '  **P4 — indentado nao conta**' > "$PLUGIN_FAKE/relatorios/2026-09-02-quatro.md"
+printf '%s\n' '# Cinco (fora dos 4 mais recentes)' '**P1 — nao pode contar**' '**P2 — nem esta**' > "$PLUGIN_FAKE/relatorios/2026-09-01-cinco.md"
 
-# Verifica se encontrou algumas propostas (ha relatorios reais no repo)
-[ "$PROPOSTAS" -gt 0 ] || { echo "FALHA: esperava propostas, encontrou $PROPOSTAS"; exit 1; }
-echo "✓ TESTE 2 passou (encontrou $PROPOSTAS propostas)"
+SAIDA2=$(node "$PLUGIN_FAKE/vigias/dados-batedor-repos.js")
+PROPOSTAS=$(echo "$SAIDA2" | grep "^PROPOSTAS NOS 4 RELATORIOS" | grep -oE '\([0-9]+\)' | grep -oE '[0-9]+') || PROPOSTAS="(linha ausente)"
+echo "Propostas encontradas: $PROPOSTAS (esperado: 3)"
+
+[ "$PROPOSTAS" = "3" ] || { echo "FALHA: esperava 3 propostas, encontrou $PROPOSTAS"; echo "$SAIDA2"; exit 1; }
+if echo "$SAIDA2" | grep -q "2026-09-01-cinco"; then
+  echo "FALHA: o quinto relatorio (fora dos 4 mais recentes) entrou na contagem"; exit 1
+fi
+echo "✓ TESTE 2 passou (3 propostas exatas, quinto relatorio ignorado)"
 echo
 
 # ==============================================================================

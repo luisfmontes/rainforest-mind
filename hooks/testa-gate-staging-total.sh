@@ -44,12 +44,23 @@ git -C "$R" config commit.gpgsign false
 echo v1 > "$R/a.txt"; git -C "$R" add a.txt; git -C "$R" commit -qm base
 WT="$RAIZ/wt"; git -C "$R" worktree add -q -b trabalho "$WT" >/dev/null 2>&1
 FORA="$RAIZ/sem-git"; mkdir -p "$FORA"
+# Tarefa 2 (Rev3): um segundo repositorio de VERDADE (nao `git worktree add` —
+# esse tem gitDir com "/worktrees/" e o gate o ignora de proposito, linha
+# "so o dono escreve la"). Simula o worktree do fluxo: repo proprio, raiz
+# diferente da do evento, para provar que a mensagem cita o caminho EFETIVO.
+WT2="$RAIZ/wt-fluxo"; git init -q "$WT2"
+git -C "$WT2" config user.email t@t; git -C "$WT2" config user.name t
+git -C "$WT2" config commit.gpgsign false
+echo v1 > "$WT2/a.txt"; git -C "$WT2" add a.txt; git -C "$WT2" commit -qm base
+mkdir -p "$R/sub"  # Tarefa 2: criar subdir para teste de cd efetivo
 
 esc() { printf '%s' "$1" | sed 's|\\|/|g'; }
 # payload da JANELA PRINCIPAL (sem agent_id) — o caso dos dois incidentes
 b() { printf '{"cwd":"%s","hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"%s"}}' "${2:-$(esc "$R")}" "$1"; }
 # payload de SUBAGENTE
 ba() { printf '{"agent_id":"ag-1","agent_type":"executor","cwd":"%s","tool_name":"Bash","tool_input":{"command":"%s"}}' "${2:-$(esc "$R")}" "$1"; }
+# payload da JANELA PRINCIPAL via ferramenta PowerShell (R3, rodada 9, lote 3)
+p() { printf '{"cwd":"%s","hook_event_name":"PreToolUse","tool_name":"PowerShell","tool_input":{"command":"%s"}}' "${2:-$(esc "$R")}" "$1"; }
 
 echo "== deve BARRAR (exit 2) — inclusive na janela principal =="
 gate "JANELA PRINCIPAL: git add -A (incidente 1 e 2)" 2 "$(b 'git add -A')"
@@ -64,6 +75,7 @@ gate "git commit --all"                               2 "$(b 'git commit --all')
 gate "encadeado: cd x && git add -A"                  2 "$(b 'cd sub && git add -A')"
 gate "git -C <repo> add -A (cwd em outro lugar)"      2 "$(printf '{"cwd":"%s","tool_name":"Bash","tool_input":{"command":"git -C %s add -A"}}' "$(esc "$FORA")" "$(esc "$R")")"
 gate "SUBAGENTE: git add -A no principal"             2 "$(ba 'git add -A')"
+gate "D2: cd <worktree> && git add -A (cwd no principal, WT limpo)" 0 "$(b 'cd '"$(esc "$WT")"' && git add -A' "$(esc "$R")")"
 
 echo
 echo "== a ajuda faz parte do mecanismo: a mensagem MOSTRA o que varreria? =="
@@ -108,6 +120,161 @@ gate "git add -A fora de repo git"                0 "$(b 'git add -A' "$(esc "$F
 gate "ferramenta que nao e Bash (Write)"          0 "$(printf '{"cwd":"%s","tool_name":"Write","tool_input":{"file_path":"%s"}}' "$(esc "$R")" "$(esc "$R/x.txt")")"
 gate "payload vazio nunca trava"                  0 "{}"
 gate "payload ilegivel nunca trava"               0 "isto nao e json"
+
+echo
+echo "== Tarefa 2 (Rev3): a mensagem de bloqueio cita o caminho EFETIVO lido, nao o cwd do evento =="
+msg2=$(printf '%s' "$(b 'cd '"$(esc "$WT2")"' && git add -A' "$(esc "$R")")" | node "$GATE" 2>&1); rc2=$?
+if [ "$rc2" = 2 ]; then ok=$((ok+1)); echo "  ok   cd <worktree-do-fluxo> && git add -A (cwd no principal) barra (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA esperava exit 2, veio $rc2"; printf '%s' "$msg2" | sed 's/^/         /' | head -8; fi
+# O caminho que o gate imprime vem do Node, que RESOLVE o caminho real e o
+# imprime com barra normal; no runner do CI o TMP chega em forma curta 8.3
+# (`RUNNER~1`) e a comparacao literal falhava so la (verde nesta maquina,
+# vermelha no CI, 2026-09-04). Duas armadilhas, medidas no segundo run vermelho:
+# `fs.realpathSync` NAO expande nome 8.3 (so o `.native` expande), e o
+# resultado sai com contrabarra enquanto o gate imprime barra normal. Entao:
+# resolver pelo `.native` e comparar os dois lados com barra e caixa
+# normalizadas. O rigor fica — o stderr tem de citar o worktree efetivo —
+# sem depender da forma que o sistema de arquivos escolheu para o caminho.
+norm2() { printf '%s' "$1" | tr '\\' '/' | tr 'A-Z' 'a-z'; }
+WT2_REAL=$(node -e 'const fs=require("fs");let p=process.argv[1];try{p=fs.realpathSync.native(p)}catch{try{p=fs.realpathSync(p)}catch{}}console.log(p)' "$WT2" 2>/dev/null || printf '%s' "$WT2")
+if norm2 "$msg2" | grep -qF -- "$(norm2 "$WT2")" || norm2 "$msg2" | grep -qF -- "$(norm2 "$WT2_REAL")"; then
+  ok=$((ok+1)); echo "  ok   stderr cita o caminho do worktree EFETIVO ($WT2_REAL)"
+else
+  falhou=$((falhou+1)); echo "  FALHA stderr NAO cita o caminho efetivo"
+  printf '%s' "$msg2" | sed 's/^/         /' | head -8
+fi
+if printf '%s' "$msg2" | grep -qF -- "Repo: $R"; then
+  falhou=$((falhou+1)); echo "  FALHA stderr cita o cwd do EVENTO ($R) como Repo, em vez do efetivo"
+else
+  ok=$((ok+1)); echo "  ok   stderr NAO cita o cwd do evento como Repo"
+fi
+
+echo
+echo "== H1 (rodada 5): cwd do SEGMENTO onde o verbo aparece, nao o cwd final da linha =="
+# Ate aqui o cwd efetivo era o da linha INTEIRA: `git add -A && cd <worktree>`
+# fazia o `add` de verdade no principal, mas o cwd apos o `cd` caia no
+# worktree, e o gate liberava lendo o lugar errado.
+gate "git add -A && cd <worktree> no principal BARRA (H1)" 2 "$(b 'git add -A && cd '"$(esc "$WT")")"
+gate "cd <worktree> && git add -A no principal PASSA (regressao)" 0 "$(b 'cd '"$(esc "$WT")"' && git add -A')"
+
+echo
+echo "== K1/K2 do auditor (rodada 6, lote 3, 2026-09-03): '&' simples e git por posicao =="
+# K1: 'echo hi' rodava em background e o '&' nao separava segmento em lugar
+# nenhum — o 'git add -A' ficava escondido no MESMO segmento opaco.
+gate "echo hi & git add -A na JANELA PRINCIPAL BARRA (K1)" 2 "$(b 'echo hi & git add -A')"
+# K2: '-C 3' e o CONTEXTO do grep, nada a ver com git — regressao a evitar e
+# o segmento do grep virar 'incerto' ou mudar de cwd so por ter '-C' no texto,
+# o que faria o 'git add -A' seguinte escapar da deteccao.
+gate "grep -rn -C 3 \"gitignore\" . && git add -A na JANELA PRINCIPAL BARRA (K2)" 2 "$(b 'grep -rn -C 3 \"gitignore\" . && git add -A')"
+gate "git add -A 2>&1 DENTRO de worktree PASSA (K1, 2>&1 nao e separador)" 0 "$(ba 'git add -A 2>&1' "$(esc "$WT")")"
+
+echo
+echo "== M1 (auditor, 5a revisao, 2026-09-03): git por POSICAO DE COMANDO, nao so PREFIXO_NEUTRO de token unico =="
+# Antes disto o tokenizador so pulava o wrapper como token UNICO: parava na
+# flag dele (`-C`, `-u`, o valor de `env FOO=1`) e nunca via o 'git' depois —
+# o 'git add -A' passava sem checagem, o incidente de 2026-08-09 de novo.
+gate "env -C . git add -A na JANELA PRINCIPAL BARRA (M1)"          2 "$(b 'env -C . git add -A')"
+gate "sudo -u x git add -A na JANELA PRINCIPAL BARRA (M1)"         2 "$(b 'sudo -u x git add -A')"
+gate "env FOO=1 git add -A na JANELA PRINCIPAL BARRA (M1)"         2 "$(b 'env FOO=1 git add -A')"
+gate "nice -n 5 git add -A na JANELA PRINCIPAL BARRA (M1)"         2 "$(b 'nice -n 5 git add -A')"
+# regressao do cwd efetivo: o -C do proprio env manda, e aponta pro worktree
+# linkado (dono escreve la, gate libera) mesmo com cwd do evento no principal.
+gate "env -C <worktree> git add -A com cwd no principal PASSA (M1, -C do env manda)" 0 "$(b 'env -C '"$(esc "$WT")"' git add -A')"
+# 'git' ali e ARGUMENTO do grep (padrao de busca), nunca comando — nao e git.
+gate "env -C . grep git . NAO e git (M1)"                          0 "$(b 'env -C . grep git .')"
+
+echo
+echo "== P1/P5 (rodada 8, lote 3, 2026-09-04): mais flags de env/sudo, e cd via wrapper =="
+# P1: 'env -u'/'sudo -E' ainda paravam a busca na PROPRIA flag (so -C/--chdir
+# e -u/-g/--user/--group de sudo eram conhecidas) — 'git add -A' escapava.
+gate "env -u OneDrive git add -A na JANELA PRINCIPAL BARRA (P1)" 2 "$(b 'env -u OneDrive git add -A')"
+gate "env -i git add -A na JANELA PRINCIPAL BARRA (P1)"          2 "$(b 'env -i git add -A')"
+gate "sudo -E git add -A na JANELA PRINCIPAL BARRA (P1)"         2 "$(b 'sudo -E git add -A')"
+# P5: '\cd' (escapa alias/funcao) nao casava com o CD ancorado no inicio do
+# segmento — o cwd efetivo ficava preso no worktree, e o 'git add -A' que de
+# verdade rodava no PRINCIPAL escapava do gate. `b`/`ba` rodam o comando por
+# `esc` (troca toda barra invertida por barra normal, pensado pra caminho
+# Windows) — usa `node -e` direto aqui para o `\cd` chegar intacto no JSON.
+saidaP5=$(MSYS_NO_PATHCONV=1 node -e 'const [c,d]=process.argv.slice(1);process.stdout.write(JSON.stringify({agent_id:"ag-1",agent_type:"executor",cwd:d,tool_name:"Bash",tool_input:{command:c}}))' "\\cd $R && git add -A" "$WT" | node "$GATE" 2>&1); rcP5=$?
+if [ "$rcP5" = 2 ]; then ok=$((ok+1)); echo "  ok   SUBAGENTE: \\cd <principal> && git add -A, do worktree BARRA (P5) (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA \\cd <principal> && git add -A do worktree: esperava 2, veio $rcP5"; printf '%s' "$saidaP5" | sed 's/^/         /' | head -8; fi
+
+echo
+echo "== R1/R3 (rodada 9, lote 3, 2026-09-04): env --chdir por tokens, e ferramenta PowerShell =="
+gate "SUBAGENTE do worktree: env -u OneDrive --chdir=<principal> git add -A BARRA (R1)" 2 "$(ba 'env -u OneDrive --chdir='"$(esc "$R")"' git add -A' "$(esc "$WT")")"
+gate "via PowerShell no principal: git add -A BARRA (R3)"                               2 "$(p 'git add -A')"
+gate "via PowerShell: Set-Location <worktree>; git add -A com cwd no principal PASSA (R3)" 0 "$(p 'Set-Location '"$(esc "$WT")"'; git add -A')"
+gate "via PowerShell: git status PASSA (R3)"                                            0 "$(p 'git status --porcelain')"
+
+echo
+echo "== S1 (8a revisao, rodada 10, lote 3, 2026-09-03): sintaxe de dois-pontos =="
+gate "via PowerShell, do worktree: Set-Location -Path:<principal>; git add -A BARRA (S1)" 2 "$(p 'Set-Location -Path:'"$(esc "$R")"'; git add -A' "$(esc "$WT")")"
+
+echo
+echo "== T1/T2 (rodada 11, lote 3, 2026-09-04): timeout -s/-k, e wrapper de string (eval/-c/iex) =="
+gate "JANELA PRINCIPAL: timeout -s TERM 30 git add -A BARRA (T1)"                 2 "$(b 'timeout -s TERM 30 git add -A')"
+gate "via PowerShell, Invoke-Expression \"git add -A\" BARRA (T2)"                2 "$(p 'Invoke-Expression \"git add -A\"')"
+gate "via PowerShell, iex \"git add -A\" BARRA (T2, alias curto)"                 2 "$(p 'iex \"git add -A\"')"
+gate "via PowerShell, iex com valor ilegivel (variavel) BARRA (T2, incerto)"      2 "$(p 'iex \"$cmd\"')"
+gate "via Bash, eval \"git add -A\" BARRA (T2)"                                   2 "$(b 'eval \"git add -A\"')"
+gate "via Bash, bash -c \"git add -A\" BARRA (T2)"                                2 "$(b 'bash -c \"git add -A\"')"
+gate "via PowerShell, Invoke-Expression \"git status\" PASSA (T2, nao e staging total)" 0 "$(p 'Invoke-Expression \"git status\"')"
+
+echo
+echo "== U1/U2 (rodada 12, lote 3, 2026-09-04): flags curtas coladas a -c (bash -xc, sh -ec) =="
+gate "bash -xc \"git add -A\" BARRA (U1)"                                         2 "$(b 'bash -xc \"git add -A\"')"
+gate "sh -ec \"git add -A\" BARRA (U1)"                                           2 "$(b 'sh -ec \"git add -A\"')"
+gate "bash -x -c \"git add -A\" BARRA (U2, flags separadas)"                      2 "$(b 'bash -x -c \"git add -A\"')"
+gate "bash -xc \"git status\" PASSA (U1, nao e staging total)"                    0 "$(b 'bash -xc \"git status\"')"
+
+echo
+echo "== P3 (auditor, 11a revisao, rodada 13, lote 3, 2026-09-04): wrapper de PREFIXO + wrapper de STRING compostos =="
+gate "timeout 5 bash -c \"git add -A\" na JANELA PRINCIPAL BARRA (P3)"            2 "$(b 'timeout 5 bash -c \"git add -A\"')"
+gate "env -C . bash -c \"git add -A\" na JANELA PRINCIPAL BARRA (P3)"             2 "$(b 'env -C . bash -c \"git add -A\"')"
+gate "timeout 5 bash -c \"env FOO=1 git add -A\" na JANELA PRINCIPAL BARRA (P3, recursao)" 2 "$(b 'timeout 5 bash -c \"env FOO=1 git add -A\"')"
+gate "timeout 5 bash -c \"git status\" PASSA (P3, nao e staging total)"           0 "$(b 'timeout 5 bash -c \"git status\"')"
+
+echo
+echo "== W1 (auditor, 12a revisao, rodada 14, lote 3, 2026-09-04): flags COM VALOR antes do -c (bash -o pipefail) =="
+gate "bash -o pipefail -c \"git add -A\" BARRA (W1)"                              2 "$(b 'bash -o pipefail -c \"git add -A\"')"
+gate "bash -eo pipefail -c \"git add -A\" BARRA (W1, bundle -e -o)"               2 "$(b 'bash -eo pipefail -c \"git add -A\"')"
+gate "sh -o errexit -c \"git add -A\" BARRA (W1)"                                 2 "$(b 'sh -o errexit -c \"git add -A\"')"
+gate "bash -o pipefail -c \"git status\" PASSA (W1, nao e staging total)"         0 "$(b 'bash -o pipefail -c \"git status\"')"
+gate "bash --norc -c \"git add -A\" BARRA (W1, flag sem valor)"                   2 "$(b 'bash --norc -c \"git add -A\"')"
+
+echo
+echo "== R18 (auditor, 16a revisao, lote 3, 2026-09-04): source/./& viram ilegivel (arquivo opaco) =="
+gate "via Bash, source x.sh BARRA (R18, arquivo opaco)"                    2 "$(b 'source x.sh')"
+gate "via Bash, . x.sh BARRA (R18, arquivo opaco)"                         2 "$(b '. x.sh')"
+gate "via PowerShell, & x.ps1 BARRA (R18, call operator)"                  2 "$(p '& x.ps1')"
+# contraprova: em Bash, '&' sozinho e SEPARADOR de comando (K1, rodada 6) —
+# nao pode super-bloquear so porque agora '&' vira ilegivel em PowerShell.
+gate "contraprova: via Bash, echo hi & git status PASSA (R18, & e separador)" 0 "$(b 'echo hi & git status')"
+
+echo
+echo "== rodada 19 (lote 3): &{...} colado ao scriptblock atravessa o gate =="
+# `extrairPrimeiroToken` tokenizava por \S+ e nao tratava '{' como fronteira:
+# o primeiro token de '&{git add -A}' saia '&{git' inteiro, que nunca batia
+# com o 'exe === "&"' do R18 acima — o '&' colado ao '{' escapava da checagem
+# de call operator, e 'git add -A' escondido no scriptblock passava batido.
+gate "&{git add -A} BARRA (colado, sem espaco nenhum)"     2 "$(p '&{git add -A}')"
+gate "&{ git add -A } BARRA (espaco so por dentro)"        2 "$(p '&{ git add -A }')"
+gate "& {git add -A} BARRA (espaco so antes do '{', ja passava)" 2 "$(p '& {git add -A}')"
+# contraprovas de super-bloqueio: chave/parenteses DENTRO de aspas nao muda
+# nada — a mensagem/argumento continua UMA palavra so, igual antes.
+gate 'contraprova: git commit -m "fix {json} parse" PASSA' 0 "$(b 'git commit -m \"fix {json} parse\"')"
+gate 'contraprova: git commit -m "a (b) c" PASSA'           0 "$(b 'git commit -m \"a (b) c\"')"
+
+echo "== R20 (auditor, 18a revisao, lote 3, 2026-09-04): nome de comando CITADO na posicao de comando =="
+# O `!tok.q` de `ehComando` valia tambem na posicao de comando: `"git" add -A`
+# saia com exit 0 enquanto `git add -A` puro saia 2.
+gate 'JANELA PRINCIPAL: "git" add -A BARRA (R20)'         2 "$(b '\"git\" add -A')"
+gate 'JANELA PRINCIPAL: "git" commit -a -m x BARRA (R20)' 2 "$(b '\"git\" commit -a -m x')"
+gate 'via PowerShell: & "git" add -A BARRA (R20)'         2 "$(p '& \"git\" add -A')"
+# Contraprovas: o nome citado como ARGUMENTO (fora da posicao de comando)
+# continua NAO virando comando — e por isso que o `!tok.q` existe.
+gate 'contraprova R20: git commit -m "roda o git add depois" PASSA' 0 "$(b 'git commit -m \"roda o git add depois\"')"
+gate 'contraprova R20: echo "gitignore" PASSA'                      0 "$(b 'echo \"gitignore\"')"
 
 echo
 echo "== saidas de emergencia =="

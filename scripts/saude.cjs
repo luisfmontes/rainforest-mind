@@ -1384,6 +1384,85 @@ function checarPoda(o = {}) {
   ok('poda', `porta ${pidInfo.porta} responde, ${requisicoes} requisição(ões) registrada(s)`);
 }
 
+// ---------------------------------------------------------------- 12. backup-externo
+/**
+ * Alerta quando o backup fora da máquina está velho (Tarefa 10 do plano guardas).
+ * Resolve o destino chamando `resolverDestino` de scripts/backup.cjs (nao
+ * duplica a cadeia aqui), lista os zips do backup e verifica o mtime do mais
+ * recente.
+ */
+function checarBackupExterno() {
+  // Resolve o destino importando de backup.cjs — a mesma cadeia, sem duplicar.
+  let destino;
+  try {
+    const { resolverDestino } = require(path.join(RAIZ_CODIGO, 'scripts', 'backup.cjs'));
+    destino = resolverDestino();
+  } catch {
+    return alerta('backup-externo', 'nao consegui carregar scripts/backup.cjs',
+      'o plugin esta incompleto — reinstale');
+  }
+
+  // Se destino não resolveu: aviso de que não está configurado
+  if (!destino) {
+    return aviso('backup-externo', 'destino do backup não configurado',
+      'aponte RFM_BACKUP_DESTINO ou configure %OneDrive%');
+  }
+
+  // Se destino não existe: alerta
+  if (!fs.existsSync(destino)) {
+    return alerta('backup-externo', 'destino não existe',
+      `crie o diretório ${destino}`);
+  }
+
+  // Lista rainforest-*.zip no destino
+  let arquivos;
+  try {
+    arquivos = fs.readdirSync(destino)
+      .filter((f) => /^rainforest-\d{4}-\d{2}-\d{2}\.zip$/.test(f))
+      .sort();
+  } catch {
+    return alerta('backup-externo', 'não consegui ler o diretório de backup',
+      'verifique as permissões de leitura');
+  }
+
+  // Se nenhum zip encontrado: alerta
+  if (arquivos.length === 0) {
+    return alerta('backup-externo', 'nenhum backup encontrado',
+      'rode: node scripts/backup.cjs gravar');
+  }
+
+  // Pega o mais recente (último da lista, pois está sorted)
+  const maisRecente = arquivos[arquivos.length - 1];
+  const caminhoZip = path.join(destino, maisRecente);
+
+  let stats;
+  try {
+    stats = fs.statSync(caminhoZip);
+  } catch {
+    return alerta('backup-externo', 'não consegui acessar o backup mais recente',
+      `verifique: ${caminhoZip}`);
+  }
+
+  // Calcula idade em dias
+  const agora = Date.now();
+  const mtimeMilissegundos = stats.mtimeMs || stats.mtime.getTime();
+  const idadeMs = agora - mtimeMilissegundos;
+  const idadeDias = Math.floor(idadeMs / (24 * 60 * 60 * 1000));
+
+  // Extrai data do nome do arquivo para exibição
+  const match = maisRecente.match(/^rainforest-(\d{4}-\d{2}-\d{2})\.zip$/);
+  const data = match ? match[1] : 'desconhecida';
+
+  // Se mais de 2 dias: alerta nomeando a idade
+  if (idadeDias > 2) {
+    return alerta('backup-externo', `backup mais recente tem ${idadeDias} dias`,
+      `último backup: ${data}`);
+  }
+
+  // Senão: ok
+  ok('backup-externo', `backup de ${data} (${idadeDias} dia(s))`);
+}
+
 // ---------------------------------------------------------------- saida
 
 async function main() {
@@ -1401,6 +1480,7 @@ async function main() {
   checarEsquema();
   checarMemoria();
   checarVigias();
+  checarBackupExterno();
   await checarIntegracoes();
   checarPoda();
 
