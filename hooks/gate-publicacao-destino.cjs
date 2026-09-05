@@ -132,6 +132,16 @@ function mensagemBloqueio(achados, arquivo) {
   msg += `Filter-branch\nremove de uma branch, mas em rede de fork o objeto continua `;
   msg += `servido por SHA\ne só o Support do GitHub consegue remover do storage da rede.\n`;
   msg += `Corrija o conteúdo e rode de novo.\n\n` +
+    `ATENÇÃO — PreToolUse aborta a CHAMADA INTEIRA, não só a ferramenta:\n` +
+    `  Um 'git add X && git commit' bloqueado não rodou o 'git add'; o índice fica\n` +
+    `  com a versão velha e o gate repete o achado depois da correção, parecendo\n` +
+    `  que a edição não gravou. Separe: 'git add', verifique com 'git show :<arquivo>',\n` +
+    `  depois 'git commit'.\n\n` +
+    `As duas saídas de emergência NÃO valem no MESMO comando:\n` +
+    `  - RAINFOREST_GATE_OFF=1 no ambiente: precisa estar na sessão (export),\n` +
+    `    não funciona como prefixo inline ('RAINFOREST_GATE_OFF=1 git commit');\n` +
+    `  - arquivo .rainforest-gate-off: é conferido ANTES do hook rodar, então\n` +
+    `    'touch .rainforest-gate-off && git commit' é bloqueado (usa outro 'git add' depois).\n\n` +
     `Se isto é falso positivo legítimo (teste com dado fake, documentação de formato),\n` +
     `você tem duas saídas:\n` +
     `  - RAINFOREST_GATE_OFF=1 no ambiente da sessão (desliga na sessão inteira);\n` +
@@ -158,6 +168,106 @@ const RE_GIT_COMMIT = /\bgit\s+(?:(?:-[A-Za-z]\s+\S+|--[a-z-]+(?:=\S+)?|-[A-Za-z
 
 /** `-a`, `-am`, `--all`: o commit leva o que está no WORKTREE, não no índice. */
 const RE_COMMIT_TUDO = /(?:^|\s)(?:--all\b|-[A-Za-z]*a[A-Za-z]*\b)/;
+
+/**
+ * Um commit é publicado quando já existe em algum ramo remoto: o conteúdo dele
+ * não é novidade que este comando esteja introduzindo.
+ *
+ * É o que separa `git merge origin/main` (o caso de campo da Issue #173: o
+ * arquivo vem do outro pai, que é a própria `main` já publicada) de `git merge
+ * uma-branch-qualquer` cujos commits nunca passaram por gate nenhum. No
+ * segundo caso o segredo é novo para o destino, e a isenção do outro pai seria
+ * exatamente a porta que este arquivo existe para fechar.
+ */
+function remotoDeDestino(dir) {
+  // O remoto para onde ESTA branch publica, e não "qualquer um cadastrado". A
+  // pergunta é feita ao upstream da branch atual; sem upstream, `origin`, que é
+  // a convenção que o resto do plugin já assume.
+  const up = git(dir, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"]);
+  if (up && up.includes("/")) return up.split("/")[0];
+  return "origin";
+}
+
+function paiJaPublicado(dir, sha) {
+  // Só contam os ramos do remoto de destino. Aceitar qualquer remoto reabria a
+  // porta que D19 fecha por outro caminho, e foi reproduzido na revisão de
+  // 2026-09-05: `git remote add espelho <bare descartável>`, um push para lá, e
+  // o merge seguinte tratava o segredo como "já publicado". Nenhum gate deste
+  // lote olha `remote add` ou `push`, então essa era uma porta de uma linha.
+  const remoto = remotoDeDestino(dir);
+  const r = git(dir, ["branch", "-r", "--contains", sha, "--list", `${remoto}/*`]);
+  return !!(r && r.trim());
+}
+
+/**
+ * Confere se um achado já existe num arquivo de um dos pais deste commit.
+ *
+ * Pais são HEAD (se existir) e MERGE_HEAD já publicado (se um merge estiver em
+ * progresso). Se a linha do achado já estava lá, não é conteúdo novo — isenta.
+ *
+ * `conteudo` é o que VAI para o commit, e chega pronto de
+ * `arquivosQueVaoParaOCommit`, que é quem sabe se este commit leva o índice ou
+ * o worktree. Reler por conta própria aqui refazia essa decisão pela fonte
+ * errada: num `git commit -a` o achado era procurado no ÍNDICE, que ainda tem
+ * a versão velha, e uma linha nova inserida só no disco casava com a linha de
+ * mesma posição do pai — segredo novo isento. A bateria
+ * `testa-gate-commit.cjs` ficou vermelha nesse caso exato.
+ */
+function achadoJaEstaNoPai(dir, nome, a, conteudo) {
+  const linhaDoAchado = a.linha;
+  const pais = [];
+
+  // HEAD é o commit atual
+  try {
+    const head = git(dir, ["rev-parse", "HEAD"]);
+    if (head) pais.push(head);
+  } catch {}
+
+  // MERGE_HEAD é o commit sendo mergeado (pode haver mais de um em merge octopus)
+  // `--git-path` funciona em worktree linkado, onde `.git` é ARQUIVO e o
+  // `path.join(dir, ".git", "MERGE_HEAD")` nunca existe. Mas ele devolve
+  // caminho RELATIVO ao repositório (`.git/MERGE_HEAD`), e um `existsSync`
+  // sobre ele resolveria contra o cwd do processo do hook, que não é o
+  // repositório do commit — daí o `path.resolve(dir, ...)`. Sem essa segunda
+  // metade, o caso de campo da Issue #173 (`git merge origin/main`, arquivo
+  // vindo do outro pai) continuava barrado, com o mecanismo escrito e mudo.
+  try {
+    const gitPath = git(dir, ["rev-parse", "--git-path", "MERGE_HEAD"]);
+    const mergeHeadPath = gitPath ? path.resolve(dir, gitPath) : null;
+    if (mergeHeadPath && fs.existsSync(mergeHeadPath)) {
+      const mergeHeads = fs.readFileSync(mergeHeadPath, "utf8").trim().split("\n");
+      for (const h of mergeHeads) {
+        const sha = h.trim();
+        if (sha && paiJaPublicado(dir, sha)) pais.push(sha);
+      }
+    }
+  } catch {}
+
+  // Normaliza separadores para forward slash (git show espera isto)
+  const nomeNormalizado = nome.replace(/\\/g, "/");
+  if (typeof conteudo !== "string") return false;
+
+  const linhasAtual = conteudo.split("\n");
+  const linhaAtualContent = linhasAtual[linhaDoAchado - 1];
+  if (!linhaAtualContent) return false; // linha não existe
+
+  const linhaAtualTrimmed = linhaAtualContent.trim();
+
+  // Confere cada pai
+  for (const pai of pais) {
+    const conteudoPai = git(dir, ["show", `${pai}:${nomeNormalizado}`]);
+    if (conteudoPai === null) continue; // arquivo não existia neste pai
+
+    const linhasPai = conteudoPai.split("\n");
+
+    // Procura a mesma linha (trimmed) em qualquer posição do arquivo pai
+    if (linhasPai.some(l => l.trim() === linhaAtualTrimmed)) {
+      return true; // encontrou a mesma linha no pai
+    }
+  }
+
+  return false;
+}
 
 /**
  * O que ESTE commit levaria, e o conteúdo exato que iria para o objeto.
@@ -238,12 +348,21 @@ function conferirCommit(ev, cwdDoEvento) {
 
     const resultado = conferirConteudo(conteudo);
     if (resultado && resultado.achados && resultado.achados.length) {
-      process.stderr.write(
-        `\nEste conteudo entraria no COMMIT, e o gate de escrita nao o viu —\n` +
-        `ele cobre Write/Edit, e este arquivo pode ter sido escrito por script\n` +
-        `(node, sed, heredoc). Issue #165.\n`
-      );
-      bloqueia(resultado.achados, absoluto);
+      const achadosAbloquear = [];
+      const dir = gitTop; // para a mutação: a linha tem que ser exata
+      for (const a of resultado.achados) {
+        if (achadoJaEstaNoPai(dir, nome, a, conteudo)) continue;
+        achadosAbloquear.push(a);
+      }
+
+      if (achadosAbloquear.length > 0) {
+        process.stderr.write(
+          `\nEste conteudo entraria no COMMIT, e o gate de escrita nao o viu —\n` +
+          `ele cobre Write/Edit, e este arquivo pode ter sido escrito por script\n` +
+          `(node, sed, heredoc). Issue #165.\n`
+        );
+        bloqueia(achadosAbloquear, absoluto);
+      }
     }
   }
   process.exit(0);

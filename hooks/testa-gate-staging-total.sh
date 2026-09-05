@@ -277,6 +277,19 @@ gate 'contraprova R20: git commit -m "roda o git add depois" PASSA' 0 "$(b 'git 
 gate 'contraprova R20: echo "gitignore" PASSA'                      0 "$(b 'echo \"gitignore\"')"
 
 echo
+echo "== R21 (rodada 15, lote 4, 2026-09-04): wrapper CITADO na posicao de comando =="
+# `posicaoDeComando` usava `!tok.q` para pular wrappers, entao wrappers citados
+# (tipo `"env" FOO=1 git add -A`) nunca eram reconhecidos — a posicao de comando
+# ficava apontando para o "env" citado em vez de pulá-lo e continuar. Resultado:
+# o `git add -A` que vinha depois escapava da deteccao.
+gate 'JANELA PRINCIPAL: "env" FOO=1 git add -A BARRA (R21)'       2 "$(b '\"env\" FOO=1 git add -A')"
+gate 'JANELA PRINCIPAL: "sudo" -u x git add -A BARRA (R21)'       2 "$(b '\"sudo\" -u x git add -A')"
+# Contraprova: wrapper citado como ARGUMENTO (nao no inicio) continua saindo 0.
+# Exemplo: `grep -rn "env FOO=1 git add" docs/` — "env" ali e padrao de busca,
+# nunca comando de verdade.
+gate 'contraprova R21: grep -rn "env FOO=1 git add" docs/ PASSA'  0 "$(b 'grep -rn \"env FOO=1 git add\" docs/')"
+
+echo
 echo "== saidas de emergencia =="
 saida=$(printf '%s' "$(b 'git add -A')" | RAINFOREST_GATE_OFF=1 node "$GATE" 2>&1); rc=$?
 if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   RAINFOREST_GATE_OFF=1 libera (exit 0)"
