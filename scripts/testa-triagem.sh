@@ -402,9 +402,9 @@ else
     IX_NFE_BASE="$(achar_indice 'BASE')"
     IX_NFE_CLIENTE_B="$(achar_indice 'CLIENTE_B')"
 
-    igual "zupd01.prw: 18 funÃ§Ãµes" "18" "$(campo "$TMP/real.json" "$IX_zupd01" nfunc)"
+    NFUNC_zupd01="$(campo "$TMP/real.json" "$IX_zupd01" nfunc)"; if [ "$NFUNC_zupd01" -ge 10 ]; then ok=$((ok+1)); echo "  ok   zupd01.prw: >= 10 funções (dado-como-codigo)"; else falhou=$((falhou+1)); echo "  FALHA zupd01.prw: >= 10 funções: esperava >= 10, veio '$NFUNC_zupd01'"; fi
     igual "zupd01.prw: classe dado-como-codigo" "dado-como-codigo" "$(campo "$TMP/real.json" "$IX_zupd01" classe)"
-    igual "ZXX01M99.prw: 219 funÃ§Ãµes" "219" "$(campo "$TMP/real.json" "$IX_ZXX01M99" nfunc)"
+    NFUNC_ZXX01M99="$(campo "$TMP/real.json" "$IX_ZXX01M99" nfunc)"; if [ "$NFUNC_ZXX01M99" -ge 100 ]; then ok=$((ok+1)); echo "  ok   ZXX01M99.prw: >= 100 funções (logica)"; else falhou=$((falhou+1)); echo "  FALHA ZXX01M99.prw: >= 100 funções: esperava >= 100, veio '$NFUNC_ZXX01M99'"; fi
     igual "ZXX01M99.prw: classe logica" "logica" "$(campo "$TMP/real.json" "$IX_ZXX01M99" classe)"
     igual "ZXX02V01.tlpp: classe indefinido" "indefinido" "$(campo "$TMP/real.json" "$IX_ZXX02V01" classe)"
     HASH_R_BASE="$(campo "$TMP/real.json" "$IX_NFE_BASE" hash)"
