@@ -54,6 +54,38 @@ montar() {
   done
 }
 
+# Monta um par de repositorios para testar a comparacao com `origin/main`: um
+# "remoto" com o manifesto na versao $2, e um local com `origin` apontando pra
+# ele (fetch ja feito, entao `origin/main` resolve) e o manifesto na versao $3.
+# $1 = pasta base, $2 = versao do remoto (main), $3 = versao do local
+montar_com_origin() {
+  local BASE="$1" ver_remota="$2" ver_local="$3"
+  local REMOTO="$BASE-remoto" LOCAL="$BASE"
+
+  mkdir -p "$REMOTO/.claude-plugin"
+  git init -q "$REMOTO"
+  # symbolic-ref ANTES do primeiro commit: forca o nome "main" independente do
+  # `init.defaultBranch` desta maquina, sem o qual `origin/main` nao existiria.
+  git -C "$REMOTO" symbolic-ref HEAD refs/heads/main
+  git -C "$REMOTO" config user.email t@t; git -C "$REMOTO" config user.name t
+  git -C "$REMOTO" config commit.gpgsign false
+  printf '{\n  "name": "p",\n  "version": "%s"\n}\n' "$ver_remota" > "$REMOTO/.claude-plugin/plugin.json"
+  git -C "$REMOTO" add .claude-plugin; git -C "$REMOTO" commit -qm "Versao $ver_remota"
+
+  mkdir -p "$LOCAL/.claude-plugin" "$LOCAL/scripts"
+  git init -q "$LOCAL"
+  git -C "$LOCAL" config user.email t@t; git -C "$LOCAL" config user.name t
+  git -C "$LOCAL" config commit.gpgsign false
+  cp "$CHECADOR" "$LOCAL/scripts/conferir-versao.cjs"
+  git -C "$LOCAL" add scripts; git -C "$LOCAL" commit -qm "andaime"
+  printf '{\n  "name": "p",\n  "version": "%s"\n}\n' "$ver_local" > "$LOCAL/.claude-plugin/plugin.json"
+  git -C "$LOCAL" add .claude-plugin/plugin.json
+  git -C "$LOCAL" commit -qm "Versao $ver_local"
+
+  git -C "$LOCAL" remote add origin "$REMOTO"
+  git -C "$LOCAL" fetch -q origin
+}
+
 # $1 nome, $2 exit esperado, $3 contagem esperada (ou "-"), $4 script dir (se comecar com /), $5... args
 checa() {
   local nome="$1" esp_exit="$2" esp_n="$3"; shift 3
@@ -175,10 +207,10 @@ fi
 RM="$RAIZ/manifesto-ruim"; montar "$RM" 9
 printf 'isto nao e json\n' > "$RM/.claude-plugin/plugin.json"
 saida=$(cd "$RM" && node "scripts/conferir-versao.cjs" 2>&1); rc=$?
-if [ "$rc" = 0 ] && printf '%s' "$saida" | grep -qF "nao deu para medir"; then
-  ok=$((ok+1)); echo "  ok   manifesto ilegivel sai 0 e diz o motivo"
+if [ "$rc" = 4 ] && printf '%s' "$saida" | grep -qF "nao deu para medir"; then
+  ok=$((ok+1)); echo "  ok   manifesto ilegivel sai 4"
 else
-  falhou=$((falhou+1)); echo "  FALHA manifesto ilegivel: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
+  falhou=$((falhou+1)); echo "  FALHA manifesto ilegivel sai 4: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
 fi
 
 SB="$RAIZ/sem-bump"
@@ -205,6 +237,45 @@ for termo in "plugins/cache" "claude plugin marketplace update" "janela NOVA" "-
     falhou=$((falhou+1)); echo "  FALHA recusa nao cita '$termo'"
   fi
 done
+
+echo
+echo "== comparacao da versao declarada com a de origin/main =="
+# --teto 999 de proposito nos tres: prova que a recusa/aprovacao veio da
+# COMPARACAO DE NUMERO, nunca do teto de commits.
+
+V_IGUAL="$RAIZ/versao-igual";  montar_com_origin "$V_IGUAL" "1.3.0" "1.3.0"
+V_MENOR="$RAIZ/versao-menor";  montar_com_origin "$V_MENOR" "1.3.0" "0.9.0"
+V_MAIOR="$RAIZ/versao-maior";  montar_com_origin "$V_MAIOR" "1.3.0" "1.4.0"
+
+# Confere que a fixture TEM origin/main antes de asserir qualquer coisa — senao
+# o caso mediria o ramo "nao comparou" (D5) e passaria verde sem testar nada.
+for d in "$V_IGUAL" "$V_MENOR" "$V_MAIOR"; do
+  if ! (cd "$d" && git rev-parse origin/main >/dev/null 2>&1); then
+    falhou=$((falhou+1))
+    echo "  FALHA fixture $d: origin/main nao resolve — o caso nao testaria a comparacao"
+  fi
+done
+
+saida=$(cd "$V_IGUAL" && node "scripts/conferir-versao.cjs" --teto 999 2>&1); rc=$?
+if [ "$rc" = 2 ] && printf '%s' "$saida" | grep -qF "1.3.0"; then
+  ok=$((ok+1)); echo "  ok   versao igual a da main recusa (exit $rc)"
+else
+  falhou=$((falhou+1)); echo "  FALHA versao igual a da main recusa: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
+fi
+
+saida=$(cd "$V_MENOR" && node "scripts/conferir-versao.cjs" --teto 999 2>&1); rc=$?
+if [ "$rc" = 2 ] && printf '%s' "$saida" | grep -qF "0.9.0" && printf '%s' "$saida" | grep -qF "1.3.0"; then
+  ok=$((ok+1)); echo "  ok   versao menor que a da main recusa (exit $rc)"
+else
+  falhou=$((falhou+1)); echo "  FALHA versao menor que a da main recusa: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
+fi
+
+saida=$(cd "$V_MAIOR" && node "scripts/conferir-versao.cjs" --teto 999 2>&1); rc=$?
+if [ "$rc" = 0 ]; then
+  ok=$((ok+1)); echo "  ok   versao maior que a da main passa (exit $rc)"
+else
+  falhou=$((falhou+1)); echo "  FALHA versao maior que a da main passa: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
+fi
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
