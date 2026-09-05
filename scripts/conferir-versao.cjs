@@ -112,6 +112,14 @@ function medir(base, teto) {
     // Caso contrário, é um repo git sem .claude-plugin/plugin.json
     return { medivel: false, motivo: "este repositorio nao e um plugin — nada a conferir" };
   }
+
+  // Verifica se o arquivo de manifesto existe
+  const manifestoPath = path.join(RAIZ, MANIFESTO);
+  if (!fs.existsSync(manifestoPath)) {
+    // O repositório é um git mas não é um plugin
+    return { medivel: false, motivo: "este repositorio nao e um plugin — nada a conferir" };
+  }
+
   const versao = versaoDoManifesto();
   if (!versao) {
     return { medivel: false, motivo: `nao consegui ler a versao de ${MANIFESTO}` };

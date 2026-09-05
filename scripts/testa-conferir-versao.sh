@@ -54,11 +54,22 @@ montar() {
   done
 }
 
-# $1 nome, $2 exit esperado, $3 contagem esperada (ou "-"), $4... args
+# $1 nome, $2 exit esperado, $3 contagem esperada (ou "-"), $4 script dir (se comecar com /), $5... args
 checa() {
   local nome="$1" esp_exit="$2" esp_n="$3"; shift 3
+  local script_dir="" saida n rc
+
+  # Se o primeiro argumento é um caminho absoluto que não é um arquivo, é o diretório
+  if [ -d "$1" ]; then
+    script_dir="$1"; shift
+  fi
+
   local saida n rc
-  saida=$(node "$@" --json 2>&1); rc=$?
+  if [ -z "$script_dir" ]; then
+    saida=$(node "$@" --json 2>&1); rc=$?
+  else
+    saida=$(cd "$script_dir" && node "$@" --json 2>&1); rc=$?
+  fi
   n=$(printf '%s' "$saida" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const o=JSON.parse(s);console.log(o.medivel?o.commits:"-")}catch{console.log("?")}})')
   local bom=1
   [ "$rc" = "$esp_exit" ] || bom=0
@@ -80,9 +91,10 @@ echo
 echo "== a contagem tem que estar CERTA, nao so plausivel =="
 # O andaime deixa 3 bumps + 3 commits de trabalho entre eles. Contar do ULTIMO
 # bump da exatamente `depois`; contar de qualquer outro lugar da mais.
-checa "7 commits depois do ultimo bump conta 7"   2 7 "$R7/scripts/conferir-versao.cjs"
-checa "2 commits depois do ultimo bump conta 2"   0 2 "$R2/scripts/conferir-versao.cjs"
-checa "0 commits depois do ultimo bump conta 0"   0 0 "$R0/scripts/conferir-versao.cjs"
+# Passa o diretório como primeiro argumento para mudar o cwd antes de rodar
+checa "7 commits depois do ultimo bump conta 7"   2 7 "$R7" "scripts/conferir-versao.cjs"
+checa "2 commits depois do ultimo bump conta 2"   0 2 "$R2" "scripts/conferir-versao.cjs"
+checa "0 commits depois do ultimo bump conta 0"   0 0 "$R0" "scripts/conferir-versao.cjs"
 
 echo
 echo "== -S vs -G: o defeito da primeira versao =="
@@ -90,7 +102,7 @@ echo "== -S vs -G: o defeito da primeira versao =="
 # cai no commit do andaime, contando TODOS os 6 commits intermediarios + os 2.
 # Este caso e o que separa o mecanismo certo do numero plausivel.
 esperado=2
-real=$(node "$R2/scripts/conferir-versao.cjs" --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{console.log(JSON.parse(s).commits)})')
+real=$(cd "$R2" && node "scripts/conferir-versao.cjs" --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{console.log(JSON.parse(s).commits)})')
 if [ "$real" = "$esperado" ]; then
   ok=$((ok+1)); echo "  ok   conta do ULTIMO bump, nao do primeiro commit do manifesto ($real)"
 else
@@ -99,14 +111,14 @@ fi
 
 echo
 echo "== o teto decide, nas duas direcoes =="
-checa "teto 8 com 7 commits: passa"               0 7 "$R7/scripts/conferir-versao.cjs" --teto 8
-checa "teto 7 com 7 commits: recusa (>=)"         2 7 "$R7/scripts/conferir-versao.cjs" --teto 7
-checa "teto 1 com 2 commits: recusa"              2 2 "$R2/scripts/conferir-versao.cjs" --teto 1
-checa "teto 1 com 0 commits: passa"               0 0 "$R0/scripts/conferir-versao.cjs" --teto 1
+checa "teto 8 com 7 commits: passa"               0 7 "$R7" "scripts/conferir-versao.cjs" --teto 8
+checa "teto 7 com 7 commits: recusa (>=)"         2 7 "$R7" "scripts/conferir-versao.cjs" --teto 7
+checa "teto 1 com 2 commits: recusa"              2 2 "$R2" "scripts/conferir-versao.cjs" --teto 1
+checa "teto 1 com 0 commits: passa"               0 0 "$R0" "scripts/conferir-versao.cjs" --teto 1
 
 echo
 echo "== --base aponta para outro commit =="
-checa "--base no proprio bump conta 0"            0 0 "$R7/scripts/conferir-versao.cjs" --base HEAD~7
+checa "--base no proprio bump conta 0"            0 0 "$R7" "scripts/conferir-versao.cjs" --base HEAD~7
 
 echo
 echo "== script copiado para pasta sem git mede o repositorio do cwd =="
@@ -142,7 +154,7 @@ git init -q "$NPP"; git -C "$NPP" config user.email t@t; git -C "$NPP" config us
 git -C "$NPP" config commit.gpgsign false
 cp "$CHECADOR" "$NPP/scripts/conferir-versao.cjs"
 echo x > "$NPP/a.txt"; git -C "$NPP" add .; git -C "$NPP" commit -qm "repo sem plugin"
-saida=$(node "$NPP/scripts/conferir-versao.cjs" 2>&1); rc=$?
+saida=$(cd "$NPP" && node "scripts/conferir-versao.cjs" 2>&1); rc=$?
 if [ "$rc" = 0 ] && printf '%s' "$saida" | grep -qF "nao e um plugin"; then
   ok=$((ok+1)); echo "  ok   repositorio sem plugin sai 0 e diz que nao e plugin"
 else
@@ -153,7 +165,7 @@ echo
 echo "== pasta fora de qualquer repositorio git =="
 PURO="$RAIZ/puro"; mkdir -p "$PURO/scripts"
 cp "$CHECADOR" "$PURO/scripts/conferir-versao.cjs"
-saida=$(node "$PURO/scripts/conferir-versao.cjs" 2>&1); rc=$?
+saida=$(cd "$PURO" && node "scripts/conferir-versao.cjs" 2>&1); rc=$?
 if [ "$rc" = 0 ] && printf '%s' "$saida" | grep -qF "nao e repositorio git"; then
   ok=$((ok+1)); echo "  ok   pasta sem git sai 0 e diz que nao e repositorio"
 else
@@ -162,7 +174,7 @@ fi
 
 RM="$RAIZ/manifesto-ruim"; montar "$RM" 9
 printf 'isto nao e json\n' > "$RM/.claude-plugin/plugin.json"
-saida=$(node "$RM/scripts/conferir-versao.cjs" 2>&1); rc=$?
+saida=$(cd "$RM" && node "scripts/conferir-versao.cjs" 2>&1); rc=$?
 if [ "$rc" = 0 ] && printf '%s' "$saida" | grep -qF "nao deu para medir"; then
   ok=$((ok+1)); echo "  ok   manifesto ilegivel sai 0 e diz o motivo"
 else
@@ -176,7 +188,7 @@ git -C "$SB" config commit.gpgsign false
 cp "$CHECADOR" "$SB/scripts/conferir-versao.cjs"
 echo x > "$SB/a.txt"; git -C "$SB" add .; git -C "$SB" commit -qm "sem manifesto nenhum"
 printf '{"name":"p","version":"0.1.0"}\n' > "$SB/.claude-plugin/plugin.json"
-saida=$(node "$SB/scripts/conferir-versao.cjs" 2>&1); rc=$?
+saida=$(cd "$SB" && node "scripts/conferir-versao.cjs" 2>&1); rc=$?
 if [ "$rc" = 0 ]; then
   ok=$((ok+1)); echo "  ok   manifesto nao commitado sai 0 (exit $rc)"
 else
@@ -185,7 +197,7 @@ fi
 
 echo
 echo "== a mensagem de recusa ensina o conserto =="
-saida=$(node "$R7/scripts/conferir-versao.cjs" 2>&1)
+saida=$(cd "$R7" && node "scripts/conferir-versao.cjs" 2>&1)
 for termo in "plugins/cache" "claude plugin marketplace update" "janela NOVA" "--teto"; do
   if printf '%s' "$saida" | grep -qF -- "$termo"; then
     ok=$((ok+1)); echo "  ok   recusa cita '$termo'"
