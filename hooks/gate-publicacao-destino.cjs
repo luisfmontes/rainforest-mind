@@ -186,9 +186,16 @@ function achadoJaEstaNoPai(dir, nome, a) {
   } catch {}
 
   // MERGE_HEAD é o commit sendo mergeado (pode haver mais de um em merge octopus)
-  // Usa git rev-parse --git-path MERGE_HEAD para funcionar em worktree linkado
+  // `--git-path` funciona em worktree linkado, onde `.git` é ARQUIVO e o
+  // `path.join(dir, ".git", "MERGE_HEAD")` nunca existe. Mas ele devolve
+  // caminho RELATIVO ao repositório (`.git/MERGE_HEAD`), e um `existsSync`
+  // sobre ele resolveria contra o cwd do processo do hook, que não é o
+  // repositório do commit — daí o `path.resolve(dir, ...)`. Sem essa segunda
+  // metade, o caso de campo da Issue #173 (`git merge origin/main`, arquivo
+  // vindo do outro pai) continuava barrado, com o mecanismo escrito e mudo.
   try {
-    const mergeHeadPath = git(dir, ["rev-parse", "--git-path", "MERGE_HEAD"]);
+    const gitPath = git(dir, ["rev-parse", "--git-path", "MERGE_HEAD"]);
+    const mergeHeadPath = gitPath ? path.resolve(dir, gitPath) : null;
     if (mergeHeadPath && fs.existsSync(mergeHeadPath)) {
       const mergeHeads = fs.readFileSync(mergeHeadPath, "utf8").trim().split("\n");
       for (const h of mergeHeads) {

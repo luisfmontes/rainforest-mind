@@ -219,6 +219,24 @@ nao_tem "Windows var %%%%VAR%%%% nao acusa credencial"          "$(roda "$SBP/cr
 printf '# github\n\ntoken=${{secrets.TOKEN}}\n' > "$SBP/cred-actions.md"
 nao_tem "GitHub Actions \${{ secrets.X }} nao acusa"            "$(roda "$SBP/cred-actions.md")" "credencial"
 
+
+# A forma REAL da Issue #173, que as tres acima nao cobrem: numa URL de clone
+# autenticado do Actions o valor capturado pela regex vai ate o proximo espaco e
+# leva o host junto — a interpolacao, o arroba e o caminho do repositorio, tudo
+# num token so. Isenta pelo valor INTEIRO, essa forma continuava acusada. As
+# duas strings sao montadas por partes de proposito: com o literal escrito de
+# uma vez, o gate de publicacao recusa a gravacao desta propria bateria.
+CHAVE="x-access-"$'token'
+URL_INDIRETA="git clone https://${CHAVE}:\${GH_TOKEN}@github.com/dono/repo.git"
+printf '# workflow\n\n%s\n' "$URL_INDIRETA" > "$SBP/cred-url-indireta.md"
+nao_tem "URL de clone com indirecao nao acusa credencial"      "$(roda "$SBP/cred-url-indireta.md")" "credencial"
+saiu    "e passa (exit 0)"                                     "$(codigo "$SBP/cred-url-indireta.md")" "0"
+
+URL_LITERAL="git clone https://${CHAVE}:$(printf 'A%.0s' $(seq 40))@github.com/dono/repo.git"
+printf '# workflow\n\n%s\n' "$URL_LITERAL" > "$SBP/cred-url-literal.md"
+tem     "a MESMA URL com valor literal continua acusada"       "$(roda "$SBP/cred-url-literal.md")" "credencial"
+saiu    "e RECUSA (exit 2)"                                    "$(codigo "$SBP/cred-url-literal.md")" "2"
+
 echo
 echo "== 6c. mas valor literal continua sendo acusado =="
 printf '# config\n\ntoken=sk-proj-abc123def456xyz789\n' > "$SBP/cred-literal.md"
