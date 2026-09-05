@@ -1,0 +1,40 @@
+{
+  "slug": "2026-09-04-lote-4-guardas",
+  "titulo": "Lote 4 — guardas que afirmam o que nao mediram: dez Issues",
+  "criado_em": "2026-09-04",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-04-lote-4-guardas.md",
+    "em": "2026-09-04"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-09-04-lote-4-guardas.md",
+    "tarefas": 10,
+    "paralelas": [
+      1,
+      2,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "em": "2026-09-04"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
