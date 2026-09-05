@@ -186,9 +186,10 @@ function achadoJaEstaNoPai(dir, nome, a) {
   } catch {}
 
   // MERGE_HEAD é o commit sendo mergeado (pode haver mais de um em merge octopus)
+  // Usa git rev-parse --git-path MERGE_HEAD para funcionar em worktree linkado
   try {
-    const mergeHeadPath = path.join(dir, ".git", "MERGE_HEAD");
-    if (fs.existsSync(mergeHeadPath)) {
+    const mergeHeadPath = git(dir, ["rev-parse", "--git-path", "MERGE_HEAD"]);
+    if (mergeHeadPath && fs.existsSync(mergeHeadPath)) {
       const mergeHeads = fs.readFileSync(mergeHeadPath, "utf8").trim().split("\n");
       for (const h of mergeHeads) {
         if (h.trim()) pais.push(h.trim());
@@ -197,7 +198,9 @@ function achadoJaEstaNoPai(dir, nome, a) {
   } catch {}
 
   // Obtém conteúdo do índice (staged content)
-  let conteudoAtual = git(dir, ["show", `:${nome}`]);
+  // Normaliza separadores para forward slash (git show espera isto)
+  const nomeNormalizado = nome.replace(/\\/g, "/");
+  let conteudoAtual = git(dir, ["show", `:${nomeNormalizado}`]);
   if (conteudoAtual === null) {
     // Se não estiver no índice, tenta do disco
     try {
@@ -215,7 +218,7 @@ function achadoJaEstaNoPai(dir, nome, a) {
 
   // Confere cada pai
   for (const pai of pais) {
-    const conteudoPai = git(dir, ["show", `${pai}:${nome}`]);
+    const conteudoPai = git(dir, ["show", `${pai}:${nomeNormalizado}`]);
     if (conteudoPai === null) continue; // arquivo não existia neste pai
 
     const linhasPai = conteudoPai.split("\n");
