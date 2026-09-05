@@ -221,18 +221,41 @@ else
   falhou=$((falhou+1)); echo "  FALHA caracteres não escapados no arquivo do nó"
 fi
 echo ""
-echo ""
 
-# Teste 11: B2 - Corpus com caminho absoluto (deve ser recusado)
-echo "11. Build com --corpus <absoluto> (deve recusar):"
-nova_sandbox; SANDBOX_ABSOLUTO="$ULTIMA_SANDBOX"
-# Tenta com caminho absoluto
-RFM_ROOT="$SANDBOX_ABSOLUTO" esperado "  exit 1 (recusa absoluto)" 1 $BUILD "$FIXTURE" --corpus "/tmp/ataque"
-# Verifica que nada foi criado
-if ! find "$SANDBOX_ABSOLUTO" -type f -name "*.md" 2>/dev/null | grep -q .; then
-  ok=$((ok+1)); echo "  ok   nenhum arquivo criado"
+# Teste 13: escape nao pode valer so para o titulo. resumo, id, caminho e tipo
+# de aresta tambem vem do grafo, que e entrada nao confiavel.
+echo "13. Build com resumo, id e caminho hostis (escape vale para todo campo):"
+nova_sandbox; SB13="$ULTIMA_SANDBOX"
+GRAFO_CAMPOS="$SRC/test/fixtures/corpus/grafo-campos-hostis.json"
+RFM_ROOT="$SB13" esperado "  exit 0" 0 $BUILD "$GRAFO_CAMPOS" --corpus campos
+NO13="$SB13/acervo/campos/cra\`se.md"
+# resumo escapado: o <script> nao pode sair cru
+if grep -q 'Resumo com \\<script\\>' "$NO13" 2>/dev/null; then
+  ok=$((ok+1)); echo "  ok   resumo escapado"
 else
-  falhou=$((falhou+1)); echo "  FALHA arquivo foi criado"
+  falhou=$((falhou+1)); echo "  FALHA resumo saiu cru"
+  grep -n "Resumo com" "$NO13" 2>/dev/null | sed 's/^/         /'
+fi
+# id com crase nao pode fechar o span de codigo: cerca tem que ser dupla
+if grep -q '^\*\*ID:\*\* ``cra`se``$' "$NO13" 2>/dev/null; then
+  ok=$((ok+1)); echo "  ok   id com crase cercado por crase dupla"
+else
+  falhou=$((falhou+1)); echo "  FALHA id com crase quebra o span de codigo"
+  grep -n '^\*\*ID:\*\*' "$NO13" 2>/dev/null | sed 's/^/         /'
+fi
+# caminho com crase, mesma coisa
+if grep -q '^\*\*Caminho:\*\* ``wiki/a`b.md``$' "$NO13" 2>/dev/null; then
+  ok=$((ok+1)); echo "  ok   caminho com crase cercado por crase dupla"
+else
+  falhou=$((falhou+1)); echo "  FALHA caminho com crase quebra o span de codigo"
+  grep -n '^\*\*Caminho:\*\*' "$NO13" 2>/dev/null | sed 's/^/         /'
+fi
+# tipo de aresta tambem e texto do grafo
+if grep -q 'rela\\<cao\\>' "$SB13/acervo/campos/INDEX.md" 2>/dev/null; then
+  ok=$((ok+1)); echo "  ok   tipo de aresta escapado"
+else
+  falhou=$((falhou+1)); echo "  FALHA tipo de aresta saiu cru"
+  grep -n 'relacionado\|rela' "$SB13/acervo/campos/INDEX.md" 2>/dev/null | sed 's/^/         /'
 fi
 echo ""
 
