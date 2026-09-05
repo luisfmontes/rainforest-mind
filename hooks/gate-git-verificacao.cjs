@@ -665,16 +665,17 @@ function tokens(seg) {
       if (c === "\\") {
         if (proximo !== undefined) {
           const { decodificado, proximo: prox } = decodificaANSIC(i + 1, seg);
-          // NUL trunca a string (C-string termination) mas o token continua sendo montado
-          // com segmentos subsequentes. Não acumula o NUL (fica descartado), apenas não
-          // termina o token. Exemplo: $'com\0'mit -> token segue sendo construído,
-          // depois incorpora "mit", resultando em um único token "commit".
-          if (decodificado.charCodeAt(0) !== 0) {
+          // NUL trunca a string (C-string termination) mas a palavra continua
+          // sendo montada com segmentos seguintes. Pula tudo após NUL neste segmento ANSI-C.
+          if (decodificado.charCodeAt(0) === 0) {
+            // Pula até o fechamento da aspa ANSI-C, sem acumular nada
+            i = prox - 1;
+            while (i + 1 < seg.length && seg[i + 1] !== "'") i += 1;
+          } else {
             cur += decodificado;
             tem = true;
+            i = prox - 1; // Ajusta porque o loop vai incrementar i de novo
           }
-          // Se é NUL (charCodeAt === 0), simplesmente não acumula e continua
-          i = prox - 1; // Ajusta porque o loop vai incrementar i de novo
         }
       } else if (c !== "'") { // não acumula aspa de fechamento
         cur += c;
