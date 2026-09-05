@@ -161,3 +161,14 @@ sobreposição gerou confusão real durante este próprio brainstorm.
   agora. Só bloqueia a aplicação da D10 a essa ferramenta no dia em que ela for
   distribuída.
 - **O nome e a semântica do quarto degrau da escala de confiança** (D12).
+
+## Decisões que esta entrega deliberadamente não constrói
+
+Documentadas no relatório de fechamento `relatorios/2026-09-05-camada-obsidian-fechamento.md`, com os motivos e fechamento de cada uma:
+
+- **D1 — O Obsidian sai inteiro.** Decisão pura, sem artefato pendente. O aplicativo é externo, o formato é markdown, pronto.
+- **D2 — O acervo `segundo-cerebro` continua repositório separado.** Decisão pura, sem artefato pendente. Nenhum arquivo muda de lugar.
+- **D3 — O problema é roteamento.** Atendido pela tabela de rota que já existe na skill pessoal `segundo-cerebro`, fora deste repositório.
+- **D4 — A rota por regra, dentro de `references/regra-NN.md`.** Deliberadamente fora deste repositório, porque esses arquivos são distribuídos a terceiros. A rota inversa (skill pessoal → regra) já existe na skill pessoal e não é distribuída.
+- **D11 — A metade "padrão TOTVS".** Fora de escopo pelo design — o MCP da `tbc-servicos` a cobre, e o acoplamento não é este design.
+- **D12 — A arqueologia consome grafo.** Bloqueado até a frente 2 (grafo AdvPL) existir. O grafo de wiki não vale como entrada de confiança.
