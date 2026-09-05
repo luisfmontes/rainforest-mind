@@ -73,6 +73,19 @@ function ehComando(tok, nome, ehPosicaoDeComando = false) {
   return new RegExp("(^|[\\\\/])" + nome + "(\\.exe)?$").test(v);
 }
 
+/**
+ * Nome de wrapper extraido de um token, removendo aspas e prefixo ANSI-C se
+ * necessario. Usado para reconhecer wrappers que foram citados na posicao de
+ * comando (R21, rodada 15, lote 4, 2026-09-04): `"env" FOO=1 git add -A`
+ * tinha o nome do wrapper entre aspas, entao `posicaoDeComando` nunca passava
+ * a checagem de `!tok.q` e `posicaoDeComando` retornava 0 (apontando para o
+ * "env" citado em vez de pulá-lo), deixando a posição de comando errada.
+ */
+function nomeDeWrapper(tok) {
+  if (tok.q && tok.v.startsWith("$")) return tok.v.slice(1);
+  return tok.v;
+}
+
 // Wrappers que REPASSAM o comando adiante, na MESMA posicao de comando — o
 // nome da CLI aparece DEPOIS deles. H3 (rodada 5, lote 3, 2026-09-03): antes
 // disto, `procuraCLI` casava o nome em QUALQUER posicao do segmento (so
@@ -197,7 +210,7 @@ function posicaoDeComando(toks, captura) {
       i += 1;
       continue;
     }
-    if (i < toks.length && !toks[i].q && WRAPPERS_QUE_REPASSAM.has(toks[i].v)) {
+    if (i < toks.length && WRAPPERS_QUE_REPASSAM.has(nomeDeWrapper(toks[i]))) {
       const wrapper = toks[i].v;
       i += 1;
       i = pularFlagsDoWrapper(toks, i, wrapper, captura);
@@ -445,11 +458,12 @@ function desempacotarWrapperDeString(segmento, { ferramenta } = {}) {
       continue;
     }
     // Token que não começa com - nem +, não é flag conhecida nem o -c —
-    // pode ser o VALOR de uma flag com valor que não conhecemos, ou uma
-    // reinvocação de wrapper (`bash -c "..." arg2`, já resolvido acima).
-    // Postura conservadora (W1): não sabemos o que é, ilegível — em vez de
-    // concluir silenciosamente "não é wrapper".
-    return { interno: null, ilegivel: true };
+    // neste ponto é um CAMINHO DE SCRIPT (R21, rodada 15, lote 4, 2026-09-04).
+    // Igual a `node x.cjs` e `./script.sh`, que ninguém bloqueia. Continua
+    // ilegível: wrappers de ARQUIVO (source/./& PowerShell), flags -Command
+    // base64 (-EncodedCommand), e construções com variável/substituição — tudo
+    // isso já saiu nos ramos acima e aqui não chega mais.
+    return { interno: null, ilegivel: false };
   }
   return { interno: null, ilegivel: false };
 }
@@ -457,6 +471,7 @@ function desempacotarWrapperDeString(segmento, { ferramenta } = {}) {
 module.exports = {
   tokensComAspas,
   ehComando,
+  nomeDeWrapper,
   WRAPPERS_QUE_REPASSAM,
   posicaoDeComando,
   textoAPartir,
