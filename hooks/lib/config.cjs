@@ -52,6 +52,10 @@ const CHAVES = {
     padrao: true,
     descricao: 'barra `gh issue close` direto e `gh pr create/merge` sem evidência de pronto',
   },
+  'gate-agente-em-voo': {
+    padrao: true,
+    descricao: 'barra sessão quando há agente em voo que morreu',
+  },
   fluxo: {
     padrao: true,
     descricao: 'os sete estágios (brainstorm → plano → … → fechar)',
