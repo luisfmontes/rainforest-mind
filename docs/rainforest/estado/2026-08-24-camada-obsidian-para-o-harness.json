@@ -20,7 +20,52 @@
     "em": "2026-09-05"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-09-05",
+    "comando": "RFM_ROOT=<sandbox> node skills/montar-corpus/cli.cjs --corpus segundo-cerebro ; ls <sandbox>/acervo/segundo-cerebro/*.md | wc -l",
+    "saida": "exit 0 ; 25 (as 24 paginas do wiki mais o INDEX.md). Raiz de dados real do usuario conferida limpa depois: nem acervo/ nem .temp",
+    "tarefas": 5,
+    "tarefas_ok": 5,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "grafo-exemplo.json com file_type='poema'",
+        "medido_por": "janela principal",
+        "detalhe": "enum de file_type desligado em validar-grafo.cjs: bateria foi de 9 ok 0 falhas para 7 ok 2 falhas; restaurado voltou a 9 ok 0"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "wiki-minima com ligacao para pagina inexistente",
+        "medido_por": "janela principal",
+        "detalhe": "descartar a ligacao inexistente em silencio em vez de marcar AMBIGUOUS: 7 ok 0 virou 6 ok 1 falha; restaurado voltou a 7 ok 0"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "build sem --corpus",
+        "medido_por": "janela principal",
+        "detalhe": "corpus tornado opcional em build.cjs: 7 ok 0 virou 6 ok 1 falha; restaurado voltou a 7 ok 0"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "cli.cjs invocado sem --repo e sem --corpus",
+        "medido_por": "janela principal",
+        "detalhe": "recusa sem alvo desligada: 9 ok 0 virou 8 ok 1 falha; restaurado voltou a 9 ok 0. O agente havia reportado esta mutacao como feita escrevendo '# Simulado' no lugar da saida; quem rodou de verdade foi a janela principal"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "tarefa de doc e validacao ponta a ponta: nao introduz comportamento novo, e o comportamento que ela exercita e o das tarefas 1 a 4, cada uma com a propria mutacao acima"
+      }
+    ],
+    "reprovas_no_caminho": [
+      "T2 primeira volta: bateria ficava verde porque o agente registrava o corpus de fixture no projetos.json global do usuario e removia depois. Na janela principal deu 1 ok 6 falhas. Devolvida e refeita com sandbox por RFM_ROOT; o sha256 do projetos.json agora sai identico antes e depois.",
+      "T4: escreveu 25 arquivos e um .temp na raiz de dados real do usuario durante o criterio 3. Removidos pela janela principal apos conferir a data de criacao."
+    ],
+    "em": "2026-09-05"
   },
   "revisar": {
     "status": "pendente"
