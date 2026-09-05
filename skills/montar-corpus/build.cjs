@@ -73,7 +73,7 @@ function criarPasta(caminho) {
 }
 
 /**
- * Valida que o caminho final do arquivo não sai de pastaBase usando realpath
+ * Valida que o caminho final do arquivo não sai de pastaBase usando realpath e path.relative
  */
 function validarCaminhoNo(nomeArquivo, pastaBase) {
   const caminhoFinal = path.join(pastaBase, nomeArquivo);
@@ -82,21 +82,28 @@ function validarCaminhoNo(nomeArquivo, pastaBase) {
   let pastaBaseRealizada;
 
   try {
-    // Tenta resolver ambos os caminhos
+    // Resolve ambos os caminhos usando realpath
+    // Isso normaliza .., ., symlinks, etc.
     caminhoRealizado = fs.realpathSync(path.dirname(caminhoFinal));
     pastaBaseRealizada = fs.realpathSync(pastaBase);
   } catch (e) {
-    // Se houver erro ao resolver, usa path.dirname e valida com startsWith
-    caminhoRealizado = path.dirname(caminhoFinal);
-    pastaBaseRealizada = pastaBase;
-  }
-
-  // Valida que o arquivo fica dentro da pasta do corpus
-  if (!caminhoRealizado.startsWith(pastaBaseRealizada)) {
+    // Se realpath falhar, recusa (não conseguimos garantir confinamento)
     return false;
   }
 
-  return true;
+  // Usa path.relative para comparar caminhos corretamente
+  // Se o arquivo está dentro da pasta base, relative retorna um caminho relativo
+  // que não começa com '..' e não é absoluto
+  const relativo = path.relative(pastaBaseRealizada, caminhoRealizado);
+
+  // Dentro se: mesmo diretório (relativo === '')
+  // ou dentro (relativo não contém '..', não é absoluto, não é vazio com separador)
+  const dentro = relativo === '' ||
+                 (!relativo.startsWith('..' + path.sep) &&
+                  relativo !== '..' &&
+                  !path.isAbsolute(relativo));
+
+  return dentro;
 }
 
 /**

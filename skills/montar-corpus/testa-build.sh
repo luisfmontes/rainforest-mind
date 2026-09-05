@@ -101,7 +101,7 @@ RFM_ROOT="$SANDBOX_FAIL2" esperado "  exit 1" 1 $BUILD "/inexistente/grafo.json"
 echo ""
 
 # Teste 8: Grafo com id contendo path traversal (../../)
-echo "8. Build com id contendo path traversal:"
+echo "8. Build com id contendo path traversal (../../):"
 SANDBOX_TRAVERSAL="$(mktemp -d)"
 GRAFO_TRAVERSAL="$SRC/test/fixtures/corpus/grafo-travessia.json"
 RFM_ROOT="$SANDBOX_TRAVERSAL" esperado "  exit 1" 1 $BUILD "$GRAFO_TRAVERSAL" --corpus teste
@@ -111,6 +111,27 @@ if find "$SANDBOX_TRAVERSAL" -name "fora-do-acervo-poc.md" 2>/dev/null | grep -q
 else
   ok=$((ok+1)); echo "  ok   nenhum arquivo fora de acervo/teste/"
 fi
+echo ""
+
+# Teste 9: Grafo com id tentando sobrescrever corpus vizinho
+echo "9. Build com id tentando invadir corpus vizinho:"
+SANDBOX_VIZINHO="$(mktemp -d)"
+# Cria corpus vizinho com INDEX.md original
+mkdir -p "$SANDBOX_VIZINHO/acervo/teste-vizinho"
+CONTEUDO_ORIGINAL="# Corpus Vizinho Original - $(date +%s)"
+echo "$CONTEUDO_ORIGINAL" > "$SANDBOX_VIZINHO/acervo/teste-vizinho/INDEX.md"
+HASH_ANTES=$(md5sum "$SANDBOX_VIZINHO/acervo/teste-vizinho/INDEX.md" | cut -d' ' -f1)
+# Tenta atacar com grafo que escreve em ../teste-vizinho/INDEX
+GRAFO_VIZINHO="$SRC/test/fixtures/corpus/grafo-vizinho-attack.json"
+RFM_ROOT="$SANDBOX_VIZINHO" esperado "  exit 1 (não sobrescreve vizinho)" 1 $BUILD "$GRAFO_VIZINHO" --corpus teste
+# Verifica que arquivo do vizinho não foi alterado
+HASH_DEPOIS=$(md5sum "$SANDBOX_VIZINHO/acervo/teste-vizinho/INDEX.md" | cut -d' ' -f1)
+if [ "$HASH_ANTES" = "$HASH_DEPOIS" ]; then
+  ok=$((ok+1)); echo "  ok   arquivo vizinho intacto"
+else
+  falhou=$((falhou+1)); echo "  FALHA arquivo vizinho foi alterado"
+fi
+rm -rf "$SANDBOX_VIZINHO"
 echo ""
 
 # ---------------------------------------------------------------- placar
