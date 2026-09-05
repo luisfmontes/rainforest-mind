@@ -50,7 +50,7 @@ const CHAVES = {
   },
   'gate-fechar-issue': {
     padrao: true,
-    descricao: 'barra `gh issue close` direto e `gh pr create/merge` sem evidência de pronto',
+    descricao: 'barra `gh issue close` direto, palavras-chave falsas em português, e `gh pr create/edit/merge`, `gh issue create/comment` sem evidência/com falsa chave',
   },
   fluxo: {
     padrao: true,
