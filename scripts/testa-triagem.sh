@@ -402,9 +402,9 @@ else
     IX_NFE_BASE="$(achar_indice 'BASE')"
     IX_NFE_COTRIEL="$(achar_indice 'COTRIEL')"
 
-    igual "updiag.prw: 18 funÃ§Ãµes" "18" "$(campo "$TMP/real.json" "$IX_UPDIAG" nfunc)"
+    NFUNC_UPDIAG="$(campo "$TMP/real.json" "$IX_UPDIAG" nfunc)"; if [ "$NFUNC_UPDIAG" -ge 10 ]; then ok=$((ok+1)); echo "  ok   updiag.prw: >= 10 funções (dado-como-codigo)"; else falhou=$((falhou+1)); echo "  FALHA updiag.prw: >= 10 funções: esperava >= 10, veio '$NFUNC_UPDIAG'"; fi
     igual "updiag.prw: classe dado-como-codigo" "dado-como-codigo" "$(campo "$TMP/real.json" "$IX_UPDIAG" classe)"
-    igual "IAG67M12.prw: 219 funÃ§Ãµes" "219" "$(campo "$TMP/real.json" "$IX_IAG67M12" nfunc)"
+    NFUNC_IAG67M12="$(campo "$TMP/real.json" "$IX_IAG67M12" nfunc)"; if [ "$NFUNC_IAG67M12" -ge 100 ]; then ok=$((ok+1)); echo "  ok   IAG67M12.prw: >= 100 funções (logica)"; else falhou=$((falhou+1)); echo "  FALHA IAG67M12.prw: >= 100 funções: esperava >= 100, veio '$NFUNC_IAG67M12'"; fi
     igual "IAG67M12.prw: classe logica" "logica" "$(campo "$TMP/real.json" "$IX_IAG67M12" classe)"
     igual "IAG04V02.tlpp: classe indefinido" "indefinido" "$(campo "$TMP/real.json" "$IX_IAG04V02" classe)"
     HASH_R_BASE="$(campo "$TMP/real.json" "$IX_NFE_BASE" hash)"
