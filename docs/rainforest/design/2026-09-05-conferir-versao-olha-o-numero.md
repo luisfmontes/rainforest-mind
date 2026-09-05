@@ -47,12 +47,23 @@ falta e olhar o **numero**.
   mesma falha aberta de D2, pelo mesmo motivo, e e o que mantem os casos
   existentes da bateria verdes sem precisar mexer neles.
 
-- **D6 — Ler o manifesto de `origin/main` com `MSYS_NO_PATHCONV=1` no ambiente e
-  recusar-se a concluir com saida vazia** — porquê: no Git Bash o argumento
+- **D6 — Recusar-se a concluir com saida vazia ao ler o manifesto de
+  `origin/main`, e passar `MSYS_NO_PATHCONV=1` como cinto de seguranca** —
+  porquê: a metade que importa e a guarda de vazio. No Git Bash o argumento
   `origin/main:.claude-plugin/plugin.json` e convertido em caminho Windows e o
-  comando falha **em silencio**. Essa pegadinha derrubou a primeira contraprova
-  do autor da Issue e fez o teste medir o nada. Saida vazia cai no ramo de D5
-  (nao comparou), nunca em "as versoes sao iguais".
+  comando falha **em silencio** — pegadinha que derrubou a primeira contraprova
+  do autor da Issue e fez o teste medir o nada. Saida vazia tem de cair no ramo
+  de D5 (nao comparou), nunca em "as versoes sao iguais": vazio silencioso
+  virando igualdade seria o mesmo defeito da Issue, um andar acima.
+
+  **Correcao de 2026-09-05, medida na revisao:** a versao anterior deste
+  paragrafo dizia que o `MSYS_NO_PATHCONV=1` era o que evitava o problema. Nao
+  e. A conversao de caminho e feita pelo **shell** MSYS, e o script chama
+  `execFileSync`, que vai direto ao `CreateProcess` sem shell nenhum. Medido:
+  a mesma chamada, com e sem a variavel, leu os mesmos 372 bytes. A variavel
+  fica — e barata e protege quem um dia trocar por uma chamada com shell — mas
+  quem de fato fecha o buraco e a guarda de vazio, e escrever o contrario faria
+  o proximo leitor confiar na trava errada.
 
 - **D7 — A bateria ganha caso para cada um dos tres ramos novos: manifesto
   ilegivel dando `4`, versao igual a da `main` recusando, versao menor que a da

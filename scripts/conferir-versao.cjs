@@ -111,10 +111,17 @@ function versaoDoManifesto() {
  * (origin/main nao resolve, o arquivo nao existe la, saida vazia, ou o JSON e'
  * invalido/sem campo `version` string).
  *
- * `MSYS_NO_PATHCONV=1` no env: sem isso o Git Bash converte
- * `origin/main:.claude-plugin/plugin.json` num caminho Windows e o comando
- * falha EM SILENCIO, devolvendo vazio — e vazio vira "nao consegui ler", nunca
- * "as versoes sao iguais" (D6 do design).
+ * A trava que importa aqui e a guarda de saida VAZIA: vazio vira "nao consegui
+ * ler", nunca "as versoes sao iguais" (D6 do design). Vazio silencioso virando
+ * igualdade seria o mesmo defeito que este script existe para pegar, um andar
+ * acima.
+ *
+ * O `MSYS_NO_PATHCONV=1` e cinto de seguranca, nao a trava. Medido em
+ * 2026-09-05: a conversao de `origin/main:.claude-plugin/plugin.json` num
+ * caminho Windows e feita pelo SHELL do MSYS, e `execFileSync` vai direto ao
+ * CreateProcess sem shell — a mesma chamada, com e sem a variavel, leu os
+ * mesmos 372 bytes. Fica porque e barata e protege quem um dia trocar isto por
+ * uma chamada com shell; nao fica porque seja ela que resolve.
  */
 function versaoDeOrigemMain() {
   try {
