@@ -32,7 +32,7 @@ depende de: nenhuma
 paralela: sim
 mutacao:
   arquivo: `hooks/gate-publicacao-destino.cjs`
-  de: `if (achadoJaEstaNoPai(dir, nome, a)) continue;`
+  de: `if (achadoJaEstaNoPai(dir, nome, a, conteudo)) continue;`
   para: `if (false) continue;`
   bateria: `bash hooks/testa-gate-publicacao-destino.sh`
   fixture: `hooks/testa-gate-publicacao-destino.sh, caso novo "commit com achado que ja esta no pai PASSA"`

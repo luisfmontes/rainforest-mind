@@ -209,6 +209,11 @@ gate "9b: linha nova com achado novo continua barrando" 2 \
 
 # 9c: merge de verdade — o arquivo com o achado entra vindo do OUTRO pai, que e
 # exatamente o caso de campo da Issue #173 (`git merge origin/main`).
+#
+# A fixture PUBLICA a main num remoto de verdade, e nao so a chama de publicada:
+# a isencao do outro pai vale para commit que ja existe em ramo remoto, e nao
+# para qualquer branch local. Sem o remoto, este caso media a palavra do
+# comentario em vez do estado do repositorio.
 N="$RAIZ/merge"
 git init -q -b main "$N"; git -C "$N" config user.email t@t; git -C "$N" config user.name t
 git -C "$N" config commit.gpgsign false
@@ -219,10 +224,28 @@ git -C "$N" commit -qm lateral
 git -C "$N" checkout -q main
 printf 'contato: %s\n' "$JID_REAL" > "$N/publicado.txt"
 git -C "$N" add publicado.txt; git -C "$N" commit -qm "ja publicado na main"
+git init -q --bare "$RAIZ/remoto.git"
+git -C "$N" remote add origin "$RAIZ/remoto.git"
+git -C "$N" push -q origin main
 git -C "$N" checkout -q lateral
 git -C "$N" merge --no-commit --no-ff main > /dev/null 2>&1
 gate "9c: merge que traz arquivo ja publicado no outro pai -> passa" 0 \
   "$(payBash 'git commit --no-edit' "$(esc "$N")")"
+git -C "$N" merge --abort > /dev/null 2>&1
+
+# 9d: a contraprova que o 9c sozinho nao da. O outro pai e uma branch LOCAL, que
+# nunca foi publicada e cujos commits nunca passaram por gate nenhum: o segredo
+# e novo para o destino, e merge nao pode virar a porta de entrada dele. Sem
+# esta distincao bastava commitar o segredo numa branch e mergear para publicar.
+git -C "$N" checkout -q main
+git -C "$N" checkout -q -b naopublicada
+printf 'contato: %s\n' "5500900000003@s.whatsapp.net" > "$N/de-fora.txt"
+git -C "$N" add de-fora.txt; git -C "$N" commit -qm "segredo em branch local"
+git -C "$N" checkout -q main
+git -C "$N" merge --no-commit --no-ff naopublicada > /dev/null 2>&1
+gate "9d: merge de branch NAO publicada com achado novo continua barrando" 2 \
+  "$(payBash 'git commit --no-edit' "$(esc "$N")")"
+git -C "$N" merge --abort > /dev/null 2>&1
 
 echo "== Verificação: gate-staging-total continua verde =="
 echo "Rodando: bash hooks/testa-gate-staging-total.sh"

@@ -24,6 +24,22 @@ echo "(caixa de areia: $RAIZ)"
 
 ok=0; falhou=0
 
+# Registro se confere lendo o JSON, nao contando linhas: `grep -A N` media a
+# FORMA do arquivo, e um grupo novo em qualquer evento empurrava o hook
+# procurado para fora da janela — bateria vermelha sem nada ter saido do
+# lugar. Aconteceu em 2026-09-04, quando `gate-agente-em-voo.cjs` entrou em
+# Stop num grupo proprio.
+registrado_em() { # evento, nome do arquivo do hook
+  node -e '
+const fs = require("fs");
+const [caminho, evento, alvo] = process.argv.slice(1);
+const j = JSON.parse(fs.readFileSync(caminho, "utf8"));
+const grupos = (j.hooks && j.hooks[evento]) || [];
+const achou = grupos.some((g) => (g.hooks || []).some((h) => String(h.command || "").includes(alvo)));
+process.exit(achou ? 0 : 1);
+' "$HOOKS_JSON" "$1" "$2"
+}
+
 # Teste 1: Não existe spawn/exec no arquivo
 echo
 echo "1. Não existe spawn/exec no arquivo"
@@ -36,7 +52,7 @@ fi
 # Teste 2: PostToolUse NÃO existe para rainforest
 echo
 echo "2. PostToolUse não existe em hooks.json (proibido)"
-if grep -A 10 '"PostToolUse"' "$HOOKS_JSON" | grep -q 'memoria-marca'; then
+if registrado_em PostToolUse memoria-marca; then
   falhou=$((falhou+1)); echo "  FALHA PostToolUse tem memoria-marca (sobe 15k+ processos)"
 elif grep -q '"PostToolUse"' "$HOOKS_JSON"; then
   falhou=$((falhou+1)); echo "  FALHA PostToolUse existe com outro hook"
@@ -47,7 +63,7 @@ fi
 # Teste 3: Stop TEM memoria-marca.cjs
 echo
 echo "3. Stop tem memoria-marca.cjs (marca por turno)"
-if grep -A 15 '"Stop"' "$HOOKS_JSON" | grep -q 'memoria-marca.cjs'; then
+if registrado_em Stop memoria-marca.cjs; then
   ok=$((ok+1)); echo "  ok    memoria-marca.cjs registrado em Stop"
 else
   falhou=$((falhou+1)); echo "  FALHA memoria-marca.cjs não está em Stop"
@@ -56,7 +72,7 @@ fi
 # Teste 4: SessionEnd TEM memoria-marca.cjs
 echo
 echo "4. SessionEnd tem memoria-marca.cjs (marca no fechamento limpo)"
-if grep -A 15 '"SessionEnd"' "$HOOKS_JSON" | grep -q 'memoria-marca.cjs'; then
+if registrado_em SessionEnd memoria-marca.cjs; then
   ok=$((ok+1)); echo "  ok    memoria-marca.cjs registrado em SessionEnd"
 else
   falhou=$((falhou+1)); echo "  FALHA memoria-marca.cjs não está em SessionEnd"

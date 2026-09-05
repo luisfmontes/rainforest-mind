@@ -461,8 +461,25 @@ function desempacotarWrapperDeString(segmento, { ferramenta } = {}) {
     // neste ponto é um CAMINHO DE SCRIPT (R21, rodada 15, lote 4, 2026-09-04).
     // Igual a `node x.cjs` e `./script.sh`, que ninguém bloqueia. Continua
     // ilegível: wrappers de ARQUIVO (source/./& PowerShell), flags -Command
-    // base64 (-EncodedCommand), e construções com variável/substituição — tudo
-    // isso já saiu nos ramos acima e aqui não chega mais.
+    // base64 (-EncodedCommand), e construções com variável/substituição — as
+    // três primeiras já saíram nos ramos acima; a última chega aqui, e é o que
+    // a linha abaixo separa.
+    //
+    // O que D17 autoriza é parar de chamar de ilegível a execução de um ARQUIVO
+    // — um caminho literal, que se pode ler. `bash $CMD` não é um caminho: é
+    // uma variável não resolvida, e o que ela contém é exatamente o que ninguém
+    // consegue ler aqui. Antes deste conserto ela caía junto com o caminho e os
+    // três gates de texto liberavam em silêncio — e para wrapper conhecido não
+    // existe a rede do W2 atrás, porque ela é pulada de propósito. Medido na
+    // revisão do lote 4: `bash -c com aspas` barrava e `bash $CMD` passava.
+    // O tokenizador separa chaves e parenteses em tokens proprios, entao
+    // `${SCRIPT}` e `$(gerar)` chegam aqui como o token `$` sozinho, que nao
+    // casa construcao nenhuma. O que se julga e a palavra INTEIRA: o token
+    // mais o que vem colado nele ate o proximo espaco.
+    const coladoNoToken = /^[^\s]*/.exec(current.resto)[0];
+    if (contemConstrucaoIlegivel(current.tok + coladoNoToken)) {
+      return { interno: null, ilegivel: true };
+    }
     return { interno: null, ilegivel: false };
   }
   return { interno: null, ilegivel: false };

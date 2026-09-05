@@ -527,6 +527,77 @@ else
   falhou=$((falhou+1)); echo "  FALHA diretório do worktree travado foi removido do disco"
 fi
 
+# --- CASO (m): worktree limpo COM agente em voo nao e removido
+
+# "Limpo" quer dizer "sem alteracao pendente", e agente que acabou de commitar
+# deixa o worktree dele exatamente assim — ainda trabalhando. Ate a auditoria do
+# lote 4, `--remover` apagava por baixo dele. O registro de `em_voo` (D16) e
+# quem responde "tem alguem ai dentro?" sem heuristica de mtime nem de processo.
+
+teste "m" "worktree limpo com agente em voo nao e removido"
+
+repo_m="$SB/repo_m"
+work_m="$SB/trabalho_m"
+criarRepoComCommit "$repo_m" "$work_m"
+
+# A resolucao de estagio casa o nome da branch com o slug sem o prefixo de data.
+wt_m_real="$work_m-worktrees/wt-m"
+git worktree add -b fluxo/lote-em-voo "$wt_m_real" HEAD
+
+SLUG_M="2026-09-05-lote-em-voo"
+mkdir -p "$wt_m_real/docs/rainforest/estado"
+node -e '
+const fs = require("fs"), [p, slug] = process.argv.slice(1);
+fs.writeFileSync(p, JSON.stringify({
+  slug, titulo: "Fixture do caso m", criado_em: "2026-09-05",
+  arqueologia: { status: "dispensada" },
+  design: { status: "aprovado", em: "2026-09-05", doc: "x" },
+  plano: { status: "ok", em: "2026-09-05" },
+  executar: { status: "parcial", em: "2026-09-05", em_voo: [{ agente: "rainforest-mind:executor", tarefa: 3 }] },
+  revisar: { status: "pendente" },
+  verificar: { status: "pendente" },
+  fechar: { status: "pendente" },
+}, null, 2) + "\n");
+' "$wt_m_real/docs/rainforest/estado/$SLUG_M.json" "$SLUG_M"
+
+# O estado precisa estar COMMITADO: worktree com arquivo novo nao rastreado nao
+# e "limpo", e o caso mediria a sujeira em vez da consulta ao em_voo.
+git -C "$wt_m_real" add docs
+git -C "$wt_m_real" commit -qm "estado com agente em voo"
+
+saida_m=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_m" --remover 2>&1)
+
+if git -C "$work_m" worktree list --porcelain | grep -qF "wt-m"; then
+  ok=$((ok+1)); echo "  ok    worktree com agente em voo continua listado"
+else
+  falhou=$((falhou+1)); echo "  FALHA worktree com agente em voo foi removido"
+fi
+
+if printf '%s' "$saida_m" | grep -qF "em voo"; then
+  ok=$((ok+1)); echo "  ok    e a saida diz por que pulou"
+else
+  falhou=$((falhou+1)); echo "  FALHA a saida nao explica o motivo"
+  printf '%s\n' "$saida_m" | sed 's/^/        /' | head -8
+fi
+
+# Contraprova: dando baixa no em_voo, o MESMO worktree volta a ser removivel.
+# Sem ela o caso acima passaria por qualquer motivo — inclusive por o script ter
+# parado de remover coisa nenhuma.
+node -e '
+const fs = require("fs"), [p] = process.argv.slice(1);
+const e = JSON.parse(fs.readFileSync(p, "utf8"));
+e.executar.em_voo = [];
+fs.writeFileSync(p, JSON.stringify(e, null, 2) + "\n");
+' "$wt_m_real/docs/rainforest/estado/$SLUG_M.json"
+git -C "$wt_m_real" add docs
+git -C "$wt_m_real" commit -qm "baixa do em_voo"
+
+node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_m" --remover > /dev/null 2>&1
+if git -C "$work_m" worktree list --porcelain | grep -qF "wt-m"; then
+  falhou=$((falhou+1)); echo "  FALHA sem em_voo o worktree limpo continuou registrado"
+else
+  ok=$((ok+1)); echo "  ok    dada a baixa no em_voo, o mesmo worktree e removido"
+fi
 # --- Relatório final
 
 echo ""

@@ -267,5 +267,55 @@ printf '# prova\n\ncontato 5500 9000 0000 depois\n' > "$SBP/prosa-num.md"
 saiu "mesmos digitos em prosa recusam (exit 2)"                  "$(codigo "$SBP/prosa-num.md")" "2"
 
 echo
+echo "== 9. telefone de digitos corridos nao e hash (achado da revisao do lote 4) =="
+# A isencao de "dentro de token hex" usava a classe [0-9a-fA-F], e digito
+# decimal e subconjunto dela: um telefone sem nenhuma pontuacao satisfazia o
+# padrao de hash sozinho e saia isento — a forma mais comum de colar telefone,
+# que e copiar de export de WhatsApp ou de planilha. Medido em 2026-09-04: a
+# forma canonica com parenteses era acusada e a mesma pessoa em digitos
+# corridos passava limpa.
+DDD="11"
+CORRIDO="$DDD""987654321"
+printf '# nota\n\nligar para %s urgente\n' "$CORRIDO" > "$SBP/tel-corrido.md"
+S="$(roda "$SBP/tel-corrido.md")"
+tem     "telefone em digitos corridos e acusado"                "$S" "telefone"
+saiu    "e RECUSA (exit 2)"                                     "$(codigo "$SBP/tel-corrido.md")" "2"
+
+# Contraprova: o SHA-1 do caso 7b tem letra de hex, e continua isento. A
+# exigencia nova e "o token precisa ter a-f", nao "acabou a isencao".
+printf '# estado\n\nbase = "9fd0c3b45009000000012345e890abc123def456"\n' > "$SBP/sha1-letra.md"
+nao_tem "hash com letra de hex continua isento"                 "$(roda "$SBP/sha1-letra.md")" "telefone"
+saiu    "e passa (exit 0)"                                      "$(codigo "$SBP/sha1-letra.md")" "0"
+
+echo
+echo "== 10. referencia de variavel nao isenta o que vem grudado nela =="
+# A isencao de indirecao (Issue #173) era ancorada so no comeco do valor, e a
+# regex de credencial captura ate o proximo espaco. Bastava prefixar o segredo
+# de verdade com uma referencia, sem espaco, para o valor inteiro sair isento.
+# O que decide agora e o caractere seguinte ao fecha-chaves: delimitador de URL
+# ou de caminho e estrutura; caractere de palavra e literal concatenado.
+SEG="Sup3r""S3nhaReal123"
+printf '# config\n\npassword=${DB_PASS}%s\n' "$SEG" > "$SBP/cred-grudada.md"
+S="$(roda "$SBP/cred-grudada.md")"
+tem     "literal grudado na referencia e acusado"               "$S" "credencial"
+saiu    "e RECUSA (exit 2)"                                     "$(codigo "$SBP/cred-grudada.md")" "2"
+
+# E o valor escondido no padrao de `${VAR:-...}` tambem e literal: estar entre
+# chaves nao torna segredo em referencia.
+PRE="xoxb-"
+printf '# config\n\ntoken=${SLACK:-%s1234567890}\n' "$PRE" > "$SBP/cred-padrao.md"
+tem     "segredo no padrao de ${VAR:-...} e acusado"            "$(roda "$SBP/cred-padrao.md")" "credencial"
+
+# Contraprova dupla: a referencia pura e a URL da #173 continuam isentas. Sem
+# isto o conserto viraria "acabou a isencao", que e o defeito que a #173 abriu.
+printf '# config\n\npassword=${DB_PASS}\n' > "$SBP/cred-pura.md"
+nao_tem "referencia pura continua isenta"                       "$(roda "$SBP/cred-pura.md")" "credencial"
+CHAVE2="x-access-"$'token'
+URL2="git clone https://${CHAVE2}:\${GH_TOKEN}@github.com/dono/repo.git"
+printf '# workflow\n\n%s\n' "$URL2" > "$SBP/cred-url-2.md"
+nao_tem "URL de clone com indirecao continua isenta"            "$(roda "$SBP/cred-url-2.md")" "credencial"
+saiu    "e passa (exit 0)"                                      "$(codigo "$SBP/cred-url-2.md")" "0"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]

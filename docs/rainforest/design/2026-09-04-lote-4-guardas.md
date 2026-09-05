@@ -149,6 +149,59 @@ que descreve um mundo diferente do que o codigo olhou.
   "..."` com variavel continua ilegivel; `-EncodedCommand`, `eval` e `source`
   continuam ilegiveis.
 
+### Decisões da revisão (D18–D24)
+
+Estas seis nasceram da revisão independente e da auditoria de segurança do
+próprio lote, em 2026-09-05. Ficam aqui, e não numa Issue de acompanhamento,
+porque todas corrigem afrouxamento introduzido POR este lote: entregar o lote
+com elas abertas seria entregar um conserto que abre a porta que fecha.
+
+**D18. A isenção do pai julga o conteúdo que vai para o commit, não o índice.**
+`arquivosQueVaoParaOCommit` já decide se este commit leva o índice ou o
+worktree; `achadoJaEstaNoPai` refazia essa decisão pela fonte errada e, em
+`git commit -a`, procurava o achado no índice velho. Linha nova inserida só no
+disco casava com a linha de mesma posição do pai e saía isenta. O conteúdo
+passa como argumento, de quem já o calculou.
+
+**D19. O outro pai de um merge só isenta quando já está publicado.**
+`git merge origin/main` (o caso de campo da #173) traz conteúdo que já está em
+ramo remoto. `git merge uma-branch-local` traz commits que nunca passaram por
+gate nenhum, e aí o segredo é novo para o destino. A pergunta é
+`git branch -r --contains`, e não "existe MERGE_HEAD".
+
+**D20. Token hex precisa ter letra de hex.** Dígito decimal é subconjunto de
+`[0-9a-fA-F]`: a isenção de "telefone dentro de hash" aceitava uma corrida de
+dígitos puros, que é a forma mais comum de telefone colado. Hash sem nenhum
+`a-f` é possível na teoria e custa uma olhada; telefone que passa custa o
+telefone de alguém.
+
+**D21. Referência de variável isenta o que ela cobre, não o que vem grudado.**
+A isenção da #173 era ancorada no começo do valor, e a captura de credencial
+vai até o próximo espaço: bastava prefixar o segredo com uma referência para o
+valor inteiro sair limpo. Quem decide é o caractere seguinte ao fecha-chaves —
+delimitador de URL ou caminho é estrutura, caractere de palavra é literal
+concatenado. O valor escondido em `${VAR:-padrão}` também é literal.
+
+**D22. `bash $VAR` continua ilegível.** D17 autorizou parar de chamar de
+ilegível a execução de um ARQUIVO — caminho literal, que se pode ler. Variável
+não resolvida não é caminho: é justamente o que ninguém lê, e para wrapper
+conhecido não existe rede textual atrás.
+
+**D23. O artigo entre o verbo e o `#N` é opcional.** "Fecha a #73" é português
+tão comum quanto "Fecha #73", o GitHub não reconhece nenhum dos dois, e sem o
+artigo na regex a primeira passava calada — a Issue ficava aberta em silêncio.
+
+**D24. Worktree com agente em voo não é candidato a remoção.** "Limpo" quer
+dizer "sem alteração pendente", e agente que acabou de commitar deixa a árvore
+exatamente assim, ainda trabalhando. `em_voo` (D16) é quem responde "tem
+alguém aí dentro?" sem heurística de mtime nem de processo.
+
+**Registro medido de instrumento**: `hooks/testa-memoria-marca.sh` conferia
+registro de hook com `grep -A 15` sobre o `hooks.json`, o que media a FORMA do
+arquivo. Entrar um grupo novo em `Stop` empurrou o hook procurado para fora da
+janela e a bateria ficou vermelha sem nada ter saído do lugar. Passou a ler o
+JSON.
+
 ## Avaliado e descartado
 - **P2 da #173 (reconhecer `MERGE_HEAD` e limitar aos arquivos tocados)** — a
   propria Issue a chama de remendo de D3; com o delta implementado ela nao
