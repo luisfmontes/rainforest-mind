@@ -10,17 +10,20 @@ FIXTURE="$SRC/test/fixtures/corpus/grafo-exemplo.json"
 # Array para rastrear sandboxes
 SANDBOXES=()
 
-# Função para criar sandbox e garantir limpeza
+# Cria sandbox e registra no array. Devolve pela global ULTIMA_SANDBOX, nao
+# pelo stdout: `SB="$(nova_sandbox)"` rodaria a funcao numa SUBSHELL, o
+# SANDBOXES+= morreria com ela e o cleanup varreria um array vazio.
+ULTIMA_SANDBOX=""
 nova_sandbox() {
-  local sb="$(mktemp -d)"
-  SANDBOXES+=("$sb")
-  echo "$sb"
+  ULTIMA_SANDBOX="$(mktemp -d)"
+  SANDBOXES+=("$ULTIMA_SANDBOX")
 }
 
-SANDBOX="$(nova_sandbox)"
+nova_sandbox; SANDBOX="$ULTIMA_SANDBOX"
 
 cleanup() {
-  for sb in "${SANDBOXES[@]}"; do
+  # ${A[@]} com set -u estoura em bash < 4.4 quando o array esta vazio.
+  for sb in ${SANDBOXES[@]+"${SANDBOXES[@]}"}; do
     rm -rf "$sb"
   done
 }
@@ -100,19 +103,19 @@ echo ""
 
 # Teste 6: Falta de --corpus deve falhar
 echo "6. Build sem --corpus deve falhar:"
-SB6="$(nova_sandbox)"
+nova_sandbox; SB6="$ULTIMA_SANDBOX"
 RFM_ROOT="$SB6" esperado "  exit 1" 1 $BUILD "$FIXTURE"
 echo ""
 
 # Teste 7: Arquivo grafo inválido (não existe)
 echo "7. Build com arquivo grafo inexistente:"
-SB7="$(nova_sandbox)"
+nova_sandbox; SB7="$ULTIMA_SANDBOX"
 RFM_ROOT="$SB7" esperado "  exit 1" 1 $BUILD "/inexistente/grafo.json" --corpus teste
 echo ""
 
 # Teste 8: Grafo com id contendo path traversal (../../)
 echo "8. Build com id contendo path traversal (../../):"
-SB8="$(nova_sandbox)"
+nova_sandbox; SB8="$ULTIMA_SANDBOX"
 GRAFO_TRAVERSAL="$SRC/test/fixtures/corpus/grafo-travessia.json"
 RFM_ROOT="$SB8" esperado "  exit 1" 1 $BUILD "$GRAFO_TRAVERSAL" --corpus teste
 # Verifica que nenhum arquivo foi criado fora de acervo/teste/
@@ -125,7 +128,7 @@ echo ""
 
 # Teste 9: Grafo com id tentando sobrescrever corpus vizinho
 echo "9. Build com id tentando invadir corpus vizinho:"
-SB9="$(nova_sandbox)"
+nova_sandbox; SB9="$ULTIMA_SANDBOX"
 # Cria corpus vizinho com INDEX.md original
 mkdir -p "$SB9/acervo/teste-vizinho"
 CONTEUDO_ORIGINAL="# Corpus Vizinho Original - $(date +%s)"
@@ -145,7 +148,7 @@ echo ""
 
 # Teste 10: B2 - Corpus com path traversal relativo (../x) — vizinho FORA de acervo
 echo "10. Build com --corpus ../corpus-vizinho/x (fora de acervo):"
-SB10="$(nova_sandbox)"
+nova_sandbox; SB10="$ULTIMA_SANDBOX"
 # Cria corpus vizinho FORA de acervo (é onde o ataque resolverá)
 mkdir -p "$SB10/corpus-vizinho"
 echo "# Vizinho Original" > "$SB10/corpus-vizinho/INDEX.md"
@@ -176,7 +179,7 @@ echo ""
 
 # Teste 11: B2 - Corpus com caminho absoluto (deve ser recusado com mensagem)
 echo "11. Build com --corpus <absoluto> (deve recusar):"
-SB11="$(nova_sandbox)"
+nova_sandbox; SB11="$ULTIMA_SANDBOX"
 SAIDA11=$( { RFM_ROOT="$SB11" $BUILD "$FIXTURE" --corpus "/tmp/ataque" 2>&1; } )
 EXIT11=$?
 if [ "$EXIT11" -eq 1 ]; then
@@ -202,7 +205,7 @@ echo ""
 
 # Teste 12: C4 - Escape de caracteres especiais em título
 echo "12. Build com título contendo caracteres especiais (<, >, [, ], (, )):"
-SB12="$(nova_sandbox)"
+nova_sandbox; SB12="$ULTIMA_SANDBOX"
 GRAFO_ESPECIAL="$SRC/test/fixtures/corpus/grafo-escape.json"
 RFM_ROOT="$SB12" esperado "  exit 0" 0 $BUILD "$GRAFO_ESPECIAL" --corpus escape
 # Verifica que caracteres foram escapados no INDEX.md
@@ -222,7 +225,7 @@ echo ""
 
 # Teste 11: B2 - Corpus com caminho absoluto (deve ser recusado)
 echo "11. Build com --corpus <absoluto> (deve recusar):"
-SANDBOX_ABSOLUTO="$(mktemp -d)"
+nova_sandbox; SANDBOX_ABSOLUTO="$ULTIMA_SANDBOX"
 # Tenta com caminho absoluto
 RFM_ROOT="$SANDBOX_ABSOLUTO" esperado "  exit 1 (recusa absoluto)" 1 $BUILD "$FIXTURE" --corpus "/tmp/ataque"
 # Verifica que nada foi criado
