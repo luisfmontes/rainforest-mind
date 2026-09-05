@@ -691,5 +691,79 @@ if [ "$rc" = 2 ]; then
 else falhou=$((falhou+1)); echo "  FALHA Teste 6b: esperava 2, veio $rc"; fi
 
 echo
+echo "== Rodada 7: Conserto de procedência (não varredura) =="
+# Caso 1: flag nua + NUL na mensagem -> sem sufixo
+saida=$(printf '%s' "$(b_ansi "git commit --no-verify -m \$'removi o --no-verify do script\\0lixo'")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then
+  msg=$(printf '%s' "$saida" | grep "Comando:" | head -1)
+  if ! echo "$msg" | grep -q "isolado por NUL\|vindo de escape ANSI-C"; then
+    ok=$((ok+1)); echo "  ok   Caso 1: flag nua + NUL na mensagem, sem sufixo — correto"
+  else
+    falhou=$((falhou+1)); echo "  FALHA Caso 1: flag nua não deveria trazer sufixo"
+    echo "$msg" | sed 's/^/         /'
+  fi
+else falhou=$((falhou+1)); echo "  FALHA Caso 1: esperava 2, veio $rc"; fi
+
+# Caso 2: flag nua + escape ANSI-C na mensagem -> sem sufixo
+saida=$(printf '%s' "$(b_ansi "git commit --no-verify -m \$'documentando \\x2d\\x2d\\x6e\\x6f\\x2d\\x76\\x65\\x72\\x69\\x66\\x79 no relatorio'")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then
+  msg=$(printf '%s' "$saida" | grep "Comando:" | head -1)
+  if ! echo "$msg" | grep -q "isolado por NUL\|vindo de escape ANSI-C"; then
+    ok=$((ok+1)); echo "  ok   Caso 2: flag nua + escape ANSI-C na mensagem, sem sufixo — correto"
+  else
+    falhou=$((falhou+1)); echo "  FALHA Caso 2: flag nua não deveria trazer sufixo"
+    echo "$msg" | sed 's/^/         /'
+  fi
+else falhou=$((falhou+1)); echo "  FALHA Caso 2: esperava 2, veio $rc"; fi
+
+# Caso 3: flag -n nua + NUL na mensagem -> sem sufixo
+saida=$(printf '%s' "$(b_ansi "git commit -n -m \$'cita -n aqui\\0fim'")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then
+  msg=$(printf '%s' "$saida" | grep "Comando:" | head -1)
+  if ! echo "$msg" | grep -q "isolado por NUL\|vindo de escape ANSI-C"; then
+    ok=$((ok+1)); echo "  ok   Caso 3: flag -n nua + NUL na mensagem, sem sufixo — correto"
+  else
+    falhou=$((falhou+1)); echo "  FALHA Caso 3: flag -n nua não deveria trazer sufixo"
+    echo "$msg" | sed 's/^/         /'
+  fi
+else falhou=$((falhou+1)); echo "  FALHA Caso 3: esperava 2, veio $rc"; fi
+
+# Caso 4: flag isolada por NUL -> com sufixo NUL (contraponto)
+saida=$(printf '%s' "$(b_ansi "git commit \$'--no-verify\\0lixo' -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then
+  msg=$(printf '%s' "$saida" | grep "Comando:" | head -1)
+  if echo "$msg" | grep -q "isolado por NUL"; then
+    ok=$((ok+1)); echo "  ok   Caso 4: flag isolada por NUL, com sufixo — correto"
+  else
+    falhou=$((falhou+1)); echo "  FALHA Caso 4: flag isolada por NUL deveria trazer sufixo"
+    echo "$msg" | sed 's/^/         /'
+  fi
+else falhou=$((falhou+1)); echo "  FALHA Caso 4: esperava 2, veio $rc"; fi
+
+# Caso 5: flag com escape ANSI-C -> com sufixo escape (contraponto)
+saida=$(printf '%s' "$(b_ansi "git commit \$'\\x2d\\x2d\\x6e\\x6f\\x2d\\x76\\x65\\x72\\x69\\x66\\x79' -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then
+  msg=$(printf '%s' "$saida" | grep "Comando:" | head -1)
+  if echo "$msg" | grep -q "vindo de escape ANSI-C"; then
+    ok=$((ok+1)); echo "  ok   Caso 5: flag com escape ANSI-C, com sufixo — correto"
+  else
+    falhou=$((falhou+1)); echo "  FALHA Caso 5: flag com escape deveria trazer sufixo"
+    echo "$msg" | sed 's/^/         /'
+  fi
+else falhou=$((falhou+1)); echo "  FALHA Caso 5: esperava 2, veio $rc"; fi
+
+# Caso 6: flag nua pura -> sem sufixo nenhum
+saida=$(printf '%s' "$(b_ansi "git commit --no-verify -m ok")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then
+  msg=$(printf '%s' "$saida" | grep "Comando:" | head -1)
+  if [ "$msg" = "Comando: git commit --no-verify" ]; then
+    ok=$((ok+1)); echo "  ok   Caso 6: flag nua pura, exatamente sem sufixo — correto"
+  else
+    falhou=$((falhou+1)); echo "  FALHA Caso 6: mensagem exata esperada: 'Comando: git commit --no-verify'"
+    echo "$msg" | sed 's/^/         /'
+  fi
+else falhou=$((falhou+1)); echo "  FALHA Caso 6: esperava 2, veio $rc"; fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
