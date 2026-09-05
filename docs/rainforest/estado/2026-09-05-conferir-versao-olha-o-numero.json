@@ -72,6 +72,11 @@
     "em": "2026-09-05"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "acao": "PR aberto",
+    "pr": "https://github.com/luisfmontes/rainforest-mind/pull/205",
+    "comando": "gh pr create --base main --head fluxo/conferir-versao-olha-o-numero",
+    "saida": "https://github.com/luisfmontes/rainforest-mind/pull/205",
+    "em": "2026-09-05"
   }
 }
