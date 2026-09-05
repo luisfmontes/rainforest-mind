@@ -26,25 +26,9 @@
     "em": "2026-09-04"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-04",
-    "em_voo": [
-      {
-        "agente": "rainforest-mind:executor",
-        "tarefa": 2,
-        "rodada": 2
-      },
-      {
-        "agente": "rainforest-mind:executor",
-        "tarefa": 3,
-        "rodada": 1
-      },
-      {
-        "agente": "rainforest-mind:executor",
-        "tarefa": 9,
-        "rodada": 1
-      }
-    ],
+    "em_voo": [],
     "base_dos_worktrees": "27b2697ed5bfdb4b1f2952c7ad954f23d22d07b6",
     "em": "2026-09-04",
     "integradas": [
@@ -62,10 +46,85 @@
       5,
       6,
       7
+    ],
+    "comando": "node scripts/conferir-mutacao.cjs (uma vez por tarefa, re-rodado pela integracao)",
+    "saida": "exit 0 nas oito tarefas com mutacao declarada; as duas de doc sao n/a",
+    "tarefas_ok": 10,
+    "tarefas": 10,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-publicacao-destino.sh, casos 9a e 9c"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-staging-total.sh, bloco R21"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, casos cd a ch"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-versao.sh, caso do script copiado para pasta sem git"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-limpar-branches.sh, secao 8b (--remoto na mergeada-por-squash)"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-triagem.sh, secao 9 (piso de funcoes do IAG67M12.prw)"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-limpar-worktrees.sh, caso do registro travado com diretorio ausente"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "n/a",
+        "motivo": "texto de regra: nao ha ramo executavel a inverter"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-agente-em-voo.sh, casos com em_voo e stop_hook_active falso"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "n/a",
+        "motivo": "comentario em Issue do GitHub: nao ha ramo de codigo a inverter"
+      }
     ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "parcial",
+    "snapshot": {
+      "head": "a8a4c1bba65cf5acaa618f76a9226f55d8ec7630",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-09-04-lote-4-guardas.json"
+      ]
+    },
+    "em_voo": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "tarefa": "diff do lote",
+        "desde": "2026-09-04"
+      },
+      {
+        "agente": "rainforest-mind:auditor-de-seguranca",
+        "tarefa": "diff do lote",
+        "desde": "2026-09-04"
+      }
+    ],
+    "em": "2026-09-04"
   },
   "verificar": {
     "status": "pendente"
