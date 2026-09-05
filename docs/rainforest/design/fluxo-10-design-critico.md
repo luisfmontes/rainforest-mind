@@ -4,6 +4,14 @@
 > conversa de origem. Renumerado para **10** pelo `LEIA-PRIMEIRO-CONSOLIDADO-v2`
 > (o 8 pertence a handover+regente, o 9 à portaria). Conteúdo inalterado.
 
+> **Veredito de arqueologia (2026-09-05): SUPERADO — não avança.** Cada
+> promessa deste design é cumprida hoje por mecanismo que não existia em
+> 2026-08-30, e a aresta `reprovado → design`/`→ plano` que ele dava como
+> existente nunca existiu, por decisão deliberada do fluxo 1. O conteúdo abaixo
+> fica como registro do que foi avaliado. Veredito, tabela de substituição e o
+> que sobreviveu: `docs/rainforest/design/LEIA-PRIMEIRO-CONSOLIDADO-v2.md`,
+> seção "Fluxo 10 (crítico) — superado, não avança (2026-09-05)".
+
 **Status:** rascunho — Q1–Q4 abertas, recomendação marcada em cada uma
 **Depende de:** fluxo 1 fechado (aresta `reprovado → executar` por máquina, contador de tentativas); fica melhor com fluxo 6 ativo (lint como precedente e infraestrutura de veredito)
 **Origem/atribuição:** semente registrada no adendo do fluxo 5 — `rubric.py` do deepagents (langchain-ai, MIT): avaliar saída de agente contra rubrica declarada. Reescrita total, zero código copiado. Atribuir no cabeçalho de `critica.cjs` e aqui. Parente conceitual do `sabotador` do backlog (ideia 21), que continua separado: o `sabotador` ataca, o `critico` julga contra critério declarado.
