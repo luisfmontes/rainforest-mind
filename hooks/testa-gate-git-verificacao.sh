@@ -437,22 +437,50 @@ echo "Prova do JSON.stringify dos comandos com \\' :"
 saida=$(printf '%s' "$(b_ansi "git commit \$'--no-verify' -m x")" | node "$GATE" 2>&1); rc=$?
 echo "  JSON teste 1 (git commit \$'--no-verify'):"
 printf '%s' "$(b_ansi "git commit \$'--no-verify' -m x")" | node -e "const d = JSON.parse(require('fs').readFileSync(0, 'utf8')); console.log('    Command: ' + JSON.stringify(d.tool_input.command));"
-if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit \$'--no-verify' -m x (exit 2)"
+if [ "$rc" = 2 ]; then
+  msg=$(printf '%s' "$saida" | grep "Comando:" | head -1)
+  if ! echo "$msg" | grep -q "isolado por NUL\|vindo de escape ANSI-C"; then
+    ok=$((ok+1)); echo "  ok   git commit \$'--no-verify' -m x (exit 2, sem sufixo — correto)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA Teste 1: mensagem deveria não ter sufixo"
+    echo "$msg" | sed 's/^/         /'
+  fi
 else falhou=$((falhou+1)); echo "  FALHA: esperava 2, veio $rc"; fi
 
 # Teste 2: $'-n' nua (abreviação)
 saida=$(printf '%s' "$(b_ansi "git commit \$'-n' -m x")" | node "$GATE" 2>&1); rc=$?
-if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit \$'-n' -m x (exit 2)"
+if [ "$rc" = 2 ]; then
+  msg=$(printf '%s' "$saida" | grep "Comando:" | head -1)
+  if ! echo "$msg" | grep -q "isolado por NUL\|vindo de escape ANSI-C"; then
+    ok=$((ok+1)); echo "  ok   git commit \$'-n' -m x (exit 2, sem sufixo — correto)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA Teste 2: mensagem deveria não ter sufixo"
+    echo "$msg" | sed 's/^/         /'
+  fi
 else falhou=$((falhou+1)); echo "  FALHA: esperava 2, veio $rc"; fi
 
 # Teste 3: git push $'--no-verify'
 saida=$(printf '%s' "$(b_ansi "git push \$'--no-verify'")" | node "$GATE" 2>&1); rc=$?
-if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git push \$'--no-verify' (exit 2)"
+if [ "$rc" = 2 ]; then
+  msg=$(printf '%s' "$saida" | grep "Comando:" | head -1)
+  if ! echo "$msg" | grep -q "isolado por NUL\|vindo de escape ANSI-C"; then
+    ok=$((ok+1)); echo "  ok   git push \$'--no-verify' (exit 2, sem sufixo — correto)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA Teste 3: mensagem deveria não ter sufixo"
+    echo "$msg" | sed 's/^/         /'
+  fi
 else falhou=$((falhou+1)); echo "  FALHA: esperava 2, veio $rc"; fi
 
 # Teste 4: git commit $'--no-gpg-sign'
 saida=$(printf '%s' "$(b_ansi "git commit \$'--no-gpg-sign' -m x")" | node "$GATE" 2>&1); rc=$?
-if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit \$'--no-gpg-sign' -m x (exit 2)"
+if [ "$rc" = 2 ]; then
+  msg=$(printf '%s' "$saida" | grep "Comando:" | head -1)
+  if ! echo "$msg" | grep -q "isolado por NUL\|vindo de escape ANSI-C"; then
+    ok=$((ok+1)); echo "  ok   git commit \$'--no-gpg-sign' -m x (exit 2, sem sufixo — correto)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA Teste 4: mensagem deveria não ter sufixo"
+    echo "$msg" | sed 's/^/         /'
+  fi
 else falhou=$((falhou+1)); echo "  FALHA: esperava 2, veio $rc"; fi
 
 # Contraprova: flag DENTRO da mensagem (não deve barrar)
