@@ -53,7 +53,7 @@ mesma URL com valor literal de 40 caracteres continua produzindo.
 
 ### 2. Tokenizador: wrapper citado conta, e `bash <script>` deixa de ser ilegível [tipo: implementar]
 atende: D7, D17
-arquivos: `hooks/lib/tokens-comando.cjs`, `hooks/testa-gate-staging-total.sh`, `hooks/testa-gate-worktree.sh`, `hooks/testa-cwd-efetivo.sh`
+arquivos: `hooks/lib/tokens-comando.cjs`, `hooks/gate-worktree.cjs`, `hooks/testa-gate-staging-total.sh`, `hooks/testa-gate-worktree.sh`, `hooks/testa-gate-fechar-issue.sh`
 depende de: nenhuma
 paralela: sim
 mutacao:
