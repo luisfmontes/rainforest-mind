@@ -25,26 +25,38 @@ function validarCorpus(corpus, raiz) {
     process.exit(1);
   }
 
-  // Valida path traversal usando realpath
-  const pastaAcervo = path.join(raiz, 'acervo', corpus);
-  let pastaReal;
-  try {
-    pastaReal = fs.realpathSync(path.dirname(pastaAcervo));
-  } catch {
-    // Se não conseguir resolver, usa o join e valida depois
-    pastaReal = path.dirname(pastaAcervo);
-  }
-
+  // Cria a pasta acervo se não existir (necessário para realpath)
   const acervoReal = path.join(raiz, 'acervo');
-  let acervoRealResolved;
-  try {
-    acervoRealResolved = fs.realpathSync(acervoReal);
-  } catch {
-    acervoRealResolved = acervoReal;
+  if (!fs.existsSync(acervoReal)) {
+    fs.mkdirSync(acervoReal, { recursive: true });
   }
 
-  // Valida que pastaReal começa com acervoReal usando realpath
-  if (!pastaReal.startsWith(acervoRealResolved)) {
+  const pastaCorpus = path.join(raiz, 'acervo', corpus);
+  const pastaPai = path.dirname(pastaCorpus);
+
+  let acervoResolved;
+  let pastaCorpusResolved;
+
+  try {
+    // Resolve acervo (existe agora)
+    acervoResolved = fs.realpathSync(acervoReal);
+    // Resolve diretório pai do corpus (pode não existir ainda, então normaliza com resolve)
+    pastaCorpusResolved = fs.realpathSync(pastaPai);
+  } catch (e) {
+    // Se realpath falhar, recusa (não conseguimos garantir confinamento)
+    console.error('Erro: não é possível validar confinamento do corpus');
+    process.exit(1);
+  }
+
+  // Usa path.relative para comparar caminhos corretamente
+  const relativo = path.relative(acervoResolved, pastaCorpusResolved);
+
+  const dentro = relativo === '' ||
+                 (!relativo.startsWith('..' + path.sep) &&
+                  relativo !== '..' &&
+                  !path.isAbsolute(relativo));
+
+  if (!dentro) {
     console.error('Erro: corpus contém path traversal');
     process.exit(1);
   }
@@ -115,7 +127,9 @@ function escaparTitulo(titulo) {
     .replace(/\[/g, '\\[')
     .replace(/\]/g, '\\]')
     .replace(/\(/g, '\\(')
-    .replace(/\)/g, '\\)');
+    .replace(/\)/g, '\\)')
+    .replace(/</g, '\\<')
+    .replace(/>/g, '\\>');
 }
 
 /**
