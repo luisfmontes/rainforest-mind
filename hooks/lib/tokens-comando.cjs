@@ -211,7 +211,7 @@ function posicaoDeComando(toks, captura) {
       continue;
     }
     if (i < toks.length && WRAPPERS_QUE_REPASSAM.has(nomeDeWrapper(toks[i]))) {
-      const wrapper = toks[i].v;
+      const wrapper = nomeDeWrapper(toks[i]);
       i += 1;
       i = pularFlagsDoWrapper(toks, i, wrapper, captura);
       if (wrapper === "timeout" && i < toks.length) i += 1; // a duracao
