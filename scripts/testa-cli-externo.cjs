@@ -307,6 +307,59 @@ testa('timeout nao deixa descendente vivo', () => {
 
 console.log('');
 
+// ---- Teste 11: PID raiz reusado nao mata descendencia alheia ----
+//
+// O cenario que duas revisoes independentes acharam: quando matarDescendencia
+// roda, o cmd.exe ja morreu, e o PID dele e' candidato a reuso. Se o SO
+// reatribuir aquele numero a um processo alheio dentro da janela da consulta,
+// os filhos DESSE processo nascem depois do marco, passam pela guarda de data
+// e seriam mortos.
+//
+// Aqui o cenario e' encenado sem depender de corrida: passamos o PID deste
+// proprio processo node como "raiz". Ele nao e' cmd.exe/sh, entao representa
+// exatamente o PID reciclado por outro dono — e o filho legitimo dele, criado
+// depois do marco, TEM de sobreviver. Sem a guarda de raiz este teste mata o
+// proprio filho e falha.
+console.log('Teste 11: PID raiz reusado nao mata descendencia alheia');
+testa('raiz que nao e a minha aborta em vez de matar', () => {
+  const { matarDescendencia } = require('../hooks/lib/cli-externo.cjs');
+  const marco = Date.now();
+  const alheio = cp.spawn(
+    process.execPath,
+    ['-e', 'setTimeout(() => process.exit(0), 30000)'],
+    { stdio: 'ignore', detached: false }
+  );
+  try {
+    // nasce depois do marco e e' descendente do PID passado: sem a guarda de
+    // raiz, cai direto na lista de alvos
+    const esperaAte = Date.now() + 3000;
+    while (Date.now() < esperaAte && !listarDescendentesVivos(process.pid).includes(alheio.pid)) {
+      cp.spawnSync(process.execPath, ['-e', '0']);
+    }
+    if (!listarDescendentesVivos(process.pid).includes(alheio.pid)) {
+      throw new Error(`andaime falhou: o filho ${alheio.pid} nao apareceu como descendente`);
+    }
+
+    matarDescendencia(process.pid, marco);
+
+    cp.spawnSync(process.execPath, ['-e', 'setTimeout(()=>{},1200)']);
+    if (!listarDescendentesVivos(process.pid).includes(alheio.pid)) {
+      throw new Error(
+        `matou processo de outro dono: o filho ${alheio.pid} do PID ${process.pid} ` +
+          `(que nao e cmd.exe/sh) foi morto — a guarda de reuso do PID raiz nao pegou`
+      );
+    }
+  } finally {
+    try {
+      alheio.kill();
+    } catch (e) {
+      /* ja saiu */
+    }
+  }
+});
+
+console.log('');
+
 // ---- Cleanup ----
 fs.rmSync(TEMP_DIR, { recursive: true, force: true });
 
