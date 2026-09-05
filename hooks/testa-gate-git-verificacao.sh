@@ -631,5 +631,65 @@ if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   NUL na mensagem passa (exit 0)
 else falhou=$((falhou+1)); echo "  FALHA: NUL na mensagem esperava 0, veio $rc"; fi
 
 echo
+echo "== Defeito corrigido: NUL seguido de \\' (aspa escapada) =="
+# Caso 1: git commit $'--no-verify\0lixo\'ainda' -m x -> ARGV[2]=[--no-verify]
+saida=$(printf '%s' "$(b_ansi "git commit \$'--no-verify\\0lixo\\'ainda' -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit \$'--no-verify\\0lixo\\'ainda' -m x (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA: esperava 2, veio $rc"; fi
+
+# Caso 2: mesma forma com push
+saida=$(printf '%s' "$(b_ansi "git push \$'--no-verify\\0lixo\\'ainda'")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git push \$'--no-verify\\0lixo\\'ainda' (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA: esperava 2, veio $rc"; fi
+
+# Caso 3: mesma forma com --no-gpg-sign
+saida=$(printf '%s' "$(b_ansi "git commit \$'--no-gpg-sign\\0lixo\\'ainda' -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit \$'--no-gpg-sign\\0lixo\\'ainda' -m x (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA: esperava 2, veio $rc"; fi
+
+# Caso 4: duas \\' entre o NUL e o fechamento
+saida=$(printf '%s' "$(b_ansi "git commit \$'--no-verify\\0lixo\\'ainda\\'mais' -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit \$'--no-verify\\0lixo\\'ainda\\'mais' -m x (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA: esperava 2, veio $rc"; fi
+
+# Caso 5: \\' ANTES do NUL (dentro do mesmo segmento) — token corrompido, não barra
+# bash decodifica para: --no-verify'texto<NUL>lixo, que é um token único <NUL>-terminado
+# Como a aspa corrupta o token, não é igual a --no-verify, passa
+saida=$(printf '%s' "$(b_ansi "git commit \$'--no-verify\\'texto\\0lixo' -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   git commit \$'--no-verify\\'texto\\0lixo' -m x (exit 0 — token corrompido)"
+else falhou=$((falhou+1)); echo "  FALHA: esperava 0, veio $rc"; fi
+
+# Caso 6: contraprova - \\' depois do NUL numa mensagem (sem flag nenhuma)
+saida=$(printf '%s' "$(b_ansi "git commit -m \$'mensagem\\0com\\'aspa'")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   git commit -m \$'mensagem\\0com\\'aspa' (exit 0)"
+else falhou=$((falhou+1)); echo "  FALHA: esperava 0, veio $rc"; fi
+
+echo
+echo "== Sufixo: NUL no argumento vs flag nua =="
+# Teste 6a: Flag isolada por NUL -> mensagem COM sufixo
+saida=$(printf '%s' "$(b_ansi "git commit \$'--no-verify\\0lixo' -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then
+  msg=$(printf '%s' "$saida" | grep "Comando:" | head -1)
+  if echo "$msg" | grep -q "isolado por NUL"; then
+    ok=$((ok+1)); echo "  ok   git commit \$'--no-verify\\0lixo' -m x (exit 2, com sufixo NUL — correto)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA Teste 6a: flag isolada por NUL deveria trazer sufixo"
+    echo "$msg" | sed 's/^/         /'
+  fi
+else falhou=$((falhou+1)); echo "  FALHA Teste 6a: esperava 2, veio $rc"; fi
+
+# Teste 6b: Flag nua (-n) -> mensagem SEM sufixo
+saida=$(printf '%s' "$(b_ansi "git commit -n -m \$'linha1\nlinha2'")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then
+  msg=$(printf '%s' "$saida" | grep "Comando:" | head -1)
+  if ! echo "$msg" | grep -q "isolado por NUL\|vindo de escape ANSI-C"; then
+    ok=$((ok+1)); echo "  ok   git commit -n -m \$'linha1\nlinha2' (exit 2, sem sufixo — correto)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA Teste 6b: flag nua não deveria trazer sufixo"
+    echo "$msg" | sed 's/^/         /'
+  fi
+else falhou=$((falhou+1)); echo "  FALHA Teste 6b: esperava 2, veio $rc"; fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
