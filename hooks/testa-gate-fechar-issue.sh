@@ -1244,6 +1244,59 @@ echo "== (bz6) contraprova: executar() com ref limpo ('5') continua chamando gh 
 RESULT_BZ6="$(cat "$SBP/out-bz6")"
 echo "$RESULT_BZ6" | grep -q '"status":0' && test_ok "ref limpo continua funcionando (status 0)" || test_fail "ref limpo quebrou ($RESULT_BZ6)"
 
+# R21 (rodada 15, lote 4, 2026-09-04): `desempacotarWrapperDeString` tratava
+# QUALQUER token que nao comeca com `-`/`+` como ilegivel (W1 conservador). Mas
+# um arquivo de script (tipo `bash testa-config.sh`) NAO e ilegivel — e igual
+# a `node x.cjs`, `./script.sh`, que ninguem bloqueia. O token ali e um CAMINHO
+# de script, nao conteudo encapsulado, e deve sair como `{ interno: null, ilegivel: false }`.
+
+# Caso (ca): `bash hooks/testa-config.sh` → exit 0 (script nao e ilegivel)
+echo
+echo "== (ca) bash hooks/testa-config.sh → exit 0 (R21, script arquivo, nao string) =="
+mkdir -p "$SBP/hooks"
+cat > "$SBP/hooks/testa-config.sh" <<'SCRIPT'
+#!/bin/bash
+echo "config test"
+exit 0
+SCRIPT
+chmod +x "$SBP/hooks/testa-config.sh"
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"bash hooks/testa-config.sh"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ca"
+EXIT_CA=$?
+[ $EXIT_CA -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CA)"
+
+# Caso (cb): `bash -c "gh issue close 12"` → exit 2 (string COM comando barrado continua ilegivel)
+echo
+echo "== (cb) bash -c \"gh issue close 12\" → exit 2 (R21, contraprova: -c com gh issue close) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"bash -c \"gh issue close 12\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cb"
+EXIT_CB=$?
+[ $EXIT_CB -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CB)"
+
+# Caso (cc): `sh scripts/x.sh` → exit 0 (script arquivo via sh)
+echo
+echo "== (cc) sh scripts/x.sh → exit 0 (R21, sh + script) =="
+mkdir -p "$SBP/scripts"
+cat > "$SBP/scripts/x.sh" <<'SCRIPT'
+#!/bin/sh
+echo "test"
+exit 0
+SCRIPT
+chmod +x "$SBP/scripts/x.sh"
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"sh scripts/x.sh"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cc"
+EXIT_CC=$?
+[ $EXIT_CC -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CC)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

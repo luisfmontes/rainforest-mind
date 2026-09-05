@@ -93,6 +93,20 @@ gate "payload vazio nunca trava"                  0 "{}"
 gate "payload ilegivel nunca trava"               0 "isto nao e json"
 
 echo
+echo "== R21 (rodada 15, lote 4, 2026-09-04): wrapper CITADO na posicao de comando =="
+# `posicaoDeComando` usava `!tok.q` para pular wrappers, entao wrappers citados
+# (tipo `"env" FOO=1 cp a.txt b.txt`) nunca eram reconhecidos — a posicao de comando
+# ficava apontando para o "env" citado em vez de pulá-lo e continuar. Resultado: o
+# comando de escrita que vinha depois (`cp`, `sed -i`, etc.) escapava da deteccao.
+gate 'subagente: "env" FOO=1 cp arquivo FORA do worktree BARRA (R21)' 2 \
+  "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"\"env\" FOO=1 cp '"'"'%s/a.txt'"'"' '"'"'%s/copia.txt'"'"'"}}' "$(esc "$WT")" "$(esc "$R")" "$(esc "$R")")"
+gate 'subagente: "sudo" -u x sed -i arquivo FORA do worktree BARRA (R21)' 2 \
+  "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"\"sudo\" -u x sed -i '"'"'s/x/y/'"'"' '"'"'%s/a.txt'"'"'"}}' "$(esc "$WT")" "$(esc "$R")")"
+# Contraprova: wrapper citado como ARGUMENTO (nao no inicio) continua saindo 0.
+gate 'contraprova R21: grep -rn "env FOO=1 cp" docs/ PASSA' 0 \
+  "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"grep -rn \"env FOO=1 cp\" docs/"}}' "$(esc "$WT")")"
+
+echo
 echo
 echo "== o cd do encadeamento: o falso positivo e o falso negativo que ele abre =="
 # Ate 2026-08-09 o alvo era ev.cwd — o cwd REGISTRADO da sessao, que num subagente e
