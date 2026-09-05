@@ -9,6 +9,11 @@ branch" deixa a porta errada aberta). Desde 2026-08-09 o isolamento tem
 subagente em repo git que não seja worktree linkado. O resto da regra o gate
 não alcança, e por isso continua escrito.
 
+**Agente que edita não se retoma por `SendMessage`** — despacha-se de novo,
+com briefing corrigido. Retomada continua servindo para agente de leitura, que
+não tem worktree a perder. O worktree isolado pode não existir mais na
+retomada, e o agente passa a commitar na branch de quem despachou.
+
 **Commite antes de despachar, na branch de trabalho, nunca na `main`** —
 sessão na branch padrão cria a branch primeiro. Vale principalmente pro
 **design**: ele nasce na branch do trabalho que desenha, e a `main` só o vê
@@ -85,6 +90,19 @@ Por isso o primeiro comando é `git rev-parse --show-toplevel`, e ele tem que
 bater com o worktree do briefing **antes** de qualquer hash ser aceito. O
 `conferir-entrega.cjs` já checa nessa ordem; o briefing é que não checava.
 
+O agente confere que o toplevel não é nem a raiz do repositório principal nem
+o worktree de quem despachou — ambos sinais de isolamento perdido. Se o teste
+falhar, PARA e reporta (a conferência de base não passa num diretório errado).
+
+> 2026-09-04: agente despachado com `isolation: "worktree"` foi retomado por
+> `SendMessage` após uma parada. Na retomada o worktree isolado dele já não
+> existia — sumiu de `git worktree list` — e ele trabalhou e commitou no
+> worktree do coordenador, na branch do coordenador. Três garantias caíram:
+> conferência sem alvo, `--sujo-antes` e `--paralelo` perderam sentido, e
+> coordenador e agente escreveram na mesma árvore ao mesmo tempo. Causa: a
+> conferência de base olhava lista de hashes velhos conhecidos, que envelhecia
+> a cada merge. Daí a regra 11 não mais aceitar retomada de agente que edita.
+
 Essa mesma armadilha morde de novo em dois lugares que não são o despacho.
 Quando a **janela principal** audita um worktree depois de um abort: o diretório
 pode ter sido auto-removido e virado pasta fantasma sem `.git`, e `git -C` nela
@@ -115,16 +133,23 @@ resultado.
 > worktree, não estado estável. Daí o `--ff-only` abaixo ser preferível a
 > parar, quando o toplevel está certo e só o HEAD diverge.
 
-A única
-saída autorizada: o briefing lista também os **hashes velhos conhecidos**, e
-só para esses `git merge --ff-only <hash esperado>` é permitido e obrigatório
-antes de editar — fast-forward não descarta nada, qualquer outro hash
-continua sendo aborto. **(2) Na integração, a janela principal confere com
-evidência primária, nunca pelo relato** — `node scripts/conferir-entrega.cjs
---worktree <wt> --base <hash> --head-antes <hash>` faz as cinco checagens
-(toplevel é worktree mesmo, base do commit **entregue**, sujeira não
-commitada, diretório principal tocado, HEAD do usuário movido) e sai com
-exit ≠ 0. Base errada → rebasear ou aplicar por patch.
+**(2) A conferência de base não é lista de hashes**, mas regra que não envelhece.
+O agente roda:
+
+```
+git merge-base --is-ancestor HEAD <base do briefing>
+```
+
+Exit 0 → o HEAD do worktree é ancestral da base: `git merge --ff-only <base>`
+é permitido e obrigatório antes de editar. Exit ≠ 0 → divergência real: o agente
+PARA e reporta. Fast-forward não descarta nada, qualquer outro hash continua
+sendo aborto.
+
+**(3) Na integração, a janela principal confere com evidência primária, nunca
+pelo relato** — `node scripts/conferir-entrega.cjs --worktree <wt> --base <hash>
+--head-antes <hash>` faz as cinco checagens (toplevel é worktree mesmo, base do
+commit **entregue**, sujeira não commitada, diretório principal tocado, HEAD do
+usuário movido) e sai com exit ≠ 0. Base errada → rebasear ou aplicar por patch.
 
 Integrar **por partes, com âncora conferida** — nunca copiar arquivos
 inteiros de volta. Número que não fecha entre o relato e a base local (654
