@@ -1,0 +1,155 @@
+#!/usr/bin/env node
+
+const fs = require('fs');
+const path = require('path');
+const { resolverRaiz } = require('../../hooks/lib/raiz.cjs');
+
+/**
+ * Extrai --corpus <nome> dos argumentos
+ */
+function extrairCorpus(args) {
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--corpus' && i + 1 < args.length) {
+      return args[i + 1];
+    }
+  }
+  return null;
+}
+
+/**
+ * Valida se corpus foi fornecido
+ */
+function validarCorpus(corpus) {
+  if (!corpus) {
+    console.error('Erro: --corpus é obrigatório');
+    process.exit(1);
+  }
+}
+
+/**
+ * Lê e parseia o arquivo JSON do grafo
+ */
+function lerGrafo(caminhoGrafo) {
+  try {
+    const conteudo = fs.readFileSync(caminhoGrafo, 'utf8');
+    return JSON.parse(conteudo);
+  } catch (erro) {
+    console.error(`Erro ao ler grafo: ${erro.message}`);
+    process.exit(1);
+  }
+}
+
+/**
+ * Cria a pasta de destino se não existir
+ */
+function criarPasta(caminho) {
+  if (!fs.existsSync(caminho)) {
+    fs.mkdirSync(caminho, { recursive: true });
+  }
+}
+
+/**
+ * Cria um markdown por nó
+ */
+function criarMarkdownNo(no) {
+  let conteudo = `# ${no.titulo}\n\n`;
+  conteudo += `**ID:** \`${no.id}\`\n\n`;
+  conteudo += `**Tipo:** ${no.file_type}\n\n`;
+  conteudo += `**Confiança:** ${no.confidence}\n\n`;
+  conteudo += `**Caminho:** \`${no.caminho}\`\n\n`;
+  conteudo += `## Resumo\n\n${no.resumo}\n`;
+
+  return conteudo;
+}
+
+/**
+ * Cria o INDEX.md com rota de entrada
+ */
+function criarIndex(nos, arestas) {
+  let conteudo = '# Acervo\n\n';
+  conteudo += '## Nós\n\n';
+
+  // Lista todos os nós
+  for (const no of nos) {
+    conteudo += `- [${no.titulo}](./${no.id}.md) (${no.file_type})\n`;
+  }
+
+  conteudo += '\n## Arestas\n\n';
+
+  // Lista todas as arestas
+  if (arestas && arestas.length > 0) {
+    for (const aresta of arestas) {
+      const noDeId = nos.find(n => n.id === aresta.de);
+      const noParaId = nos.find(n => n.id === aresta.para);
+      const noDeTitle = noDeId ? noDeId.titulo : aresta.de;
+      const noParaTitle = noParaId ? noParaId.titulo : aresta.para;
+
+      conteudo += `- [${noDeTitle}](./${aresta.de}.md) --${aresta.tipo}--> [${noParaTitle}](./${aresta.para}.md)\n`;
+    }
+  }
+
+  return conteudo;
+}
+
+/**
+ * Main - orquestra o build
+ */
+function main() {
+  const args = process.argv.slice(2);
+
+  if (args.length === 0) {
+    console.error('Uso: build.cjs <grafo.json> --corpus <nome>');
+    process.exit(1);
+  }
+
+  const caminhoGrafo = args[0];
+  const corpus = extrairCorpus(args);
+
+  // Valida que corpus foi fornecido
+  validarCorpus(corpus);
+
+  // Verifica que o arquivo de grafo existe
+  if (!fs.existsSync(caminhoGrafo)) {
+    console.error(`Erro: arquivo de grafo não encontrado: ${caminhoGrafo}`);
+    process.exit(1);
+  }
+
+  // Lê o grafo
+  const grafo = lerGrafo(caminhoGrafo);
+
+  // Valida estrutura básica
+  if (!Array.isArray(grafo.nos)) {
+    console.error('Erro: grafo.nos não é um array');
+    process.exit(1);
+  }
+
+  // Resolve a raiz de dados
+  const resultado = resolverRaiz();
+  if (!resultado || !resultado.raiz) {
+    console.error('Erro: não foi possível resolver a raiz de dados');
+    process.exit(1);
+  }
+
+  const raiz = resultado.raiz;
+  const pastaAcervo = path.join(raiz, 'acervo', corpus);
+
+  // Cria a pasta de destino
+  criarPasta(pastaAcervo);
+
+  // Escreve um markdown por nó
+  for (const no of grafo.nos) {
+    const nomeArquivo = `${no.id}.md`;
+    const caminhoArquivo = path.join(pastaAcervo, nomeArquivo);
+    const conteudo = criarMarkdownNo(no);
+    fs.writeFileSync(caminhoArquivo, conteudo, 'utf8');
+  }
+
+  // Escreve o INDEX.md
+  const caminhoIndex = path.join(pastaAcervo, 'INDEX.md');
+  const conteudoIndex = criarIndex(grafo.nos, grafo.arestas || []);
+  fs.writeFileSync(caminhoIndex, conteudoIndex, 'utf8');
+
+  process.exit(0);
+}
+
+main();
