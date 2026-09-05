@@ -937,5 +937,329 @@ esac
 
 unset RFM_ESTADO_ROOT
 
+echo
+echo "== 20. verbo 'concluido' — reusa 'proximo', nao mente sobre ter terminado =="
+
+mkdir -p "$SBP/concluido1"
+(cd "$SBP/concluido1" && git init -q && git config user.email t@t && git config user.name T && echo x > a.txt && git add . && git commit -qm inicial)
+export RFM_ESTADO_ROOT="$SBP/concluido1"
+E_C="node scripts/estado.cjs"
+
+# fluxo A: fecha os sete estagios, completo
+$E_C iniciar --slug conc-a >/dev/null
+$E_C marcar --slug conc-a --estagio design --status aprovado >/dev/null
+$E_C marcar --slug conc-a --estagio plano  --status ok >/dev/null
+$E_C exigir --slug conc-a --estagio executar >/dev/null
+$E_C marcar --slug conc-a --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t"}]}' >/dev/null
+$E_C exigir --slug conc-a --estagio revisar >/dev/null
+$E_C marcar --slug conc-a --estagio revisar --status ok >/dev/null
+$E_C exigir --slug conc-a --estagio verificar >/dev/null
+$E_C marcar --slug conc-a --estagio verificar --status ok --json '{"comando":"x","saida":"y"}' >/dev/null
+$E_C marcar --slug conc-a --estagio fechar --status ok >/dev/null
+
+esperado "concluido --slug com fluxo fechado sai 0" 0 $E_C concluido --slug conc-a
+
+# fluxo B: fechado ate verificar, 'fechar' pendente
+$E_C iniciar --slug conc-b >/dev/null
+$E_C marcar --slug conc-b --estagio design --status aprovado >/dev/null
+$E_C marcar --slug conc-b --estagio plano  --status ok >/dev/null
+$E_C exigir --slug conc-b --estagio executar >/dev/null
+$E_C marcar --slug conc-b --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t"}]}' >/dev/null
+$E_C exigir --slug conc-b --estagio revisar >/dev/null
+$E_C marcar --slug conc-b --estagio revisar --status ok >/dev/null
+$E_C exigir --slug conc-b --estagio verificar >/dev/null
+$E_C marcar --slug conc-b --estagio verificar --status ok --json '{"comando":"x","saida":"y"}' >/dev/null
+
+esperado "concluido --slug com 'fechar' pendente sai 2" 2 $E_C concluido --slug conc-b
+saida_pendente=$($E_C concluido --slug conc-b 2>&1)
+case "$saida_pendente" in
+  *fechar*) ok=$((ok+1)); echo "  ok   concluido nomeia o estagio pendente (fechar)" ;;
+  *) falhou=$((falhou+1)); echo "  FALHA concluido nao nomeou 'fechar' na saida: $saida_pendente" ;;
+esac
+
+esperado "concluido --slug inexistente sai 1" 1 $E_C concluido --slug slug-fantasma
+
+echo
+echo "== 21. 'concluido' sem --slug varre docs/rainforest/estado/ inteiro =="
+
+# Diretorio com um unico fluxo aberto (design+plano fechados, executar pendente)
+mkdir -p "$SBP/concluido2"
+(cd "$SBP/concluido2" && git init -q && git config user.email t@t && git config user.name T && echo x > a.txt && git add . && git commit -qm inicial)
+export RFM_ESTADO_ROOT="$SBP/concluido2"
+E_C2="node scripts/estado.cjs"
+$E_C2 iniciar --slug conc-aberto >/dev/null
+$E_C2 marcar --slug conc-aberto --estagio design --status aprovado >/dev/null
+$E_C2 marcar --slug conc-aberto --estagio plano  --status ok >/dev/null
+
+esperado "varredura sem slug com um aberto sai 2" 2 $E_C2 concluido
+saida_varredura=$($E_C2 concluido 2>&1)
+case "$saida_varredura" in
+  *conc-aberto*) ok=$((ok+1)); echo "  ok   varredura lista o slug aberto" ;;
+  *) falhou=$((falhou+1)); echo "  FALHA varredura nao listou conc-aberto: $saida_varredura" ;;
+esac
+
+# Fecha o fluxo inteiro: a mesma varredura passa a sair 0
+$E_C2 exigir --slug conc-aberto --estagio executar >/dev/null
+$E_C2 marcar --slug conc-aberto --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t"}]}' >/dev/null
+$E_C2 exigir --slug conc-aberto --estagio revisar >/dev/null
+$E_C2 marcar --slug conc-aberto --estagio revisar --status ok >/dev/null
+$E_C2 exigir --slug conc-aberto --estagio verificar >/dev/null
+$E_C2 marcar --slug conc-aberto --estagio verificar --status ok --json '{"comando":"x","saida":"y"}' >/dev/null
+$E_C2 marcar --slug conc-aberto --estagio fechar --status ok >/dev/null
+
+esperado "varredura sem slug com todos concluidos sai 0" 0 $E_C2 concluido
+
+# Diretorio de estado inexistente (nunca rodou 'iniciar'): varredura sai 0
+mkdir -p "$SBP/concluido3"
+export RFM_ESTADO_ROOT="$SBP/concluido3"
+esperado "varredura sem nenhum arquivo de estado (dir ausente) sai 0" 0 node scripts/estado.cjs concluido
+
+# Diretorio de estado existe mas esta vazio: varredura tambem sai 0
+mkdir -p "$SBP/concluido3/docs/rainforest/estado"
+esperado "varredura sem nenhum arquivo de estado (dir vazio) sai 0" 0 node scripts/estado.cjs concluido
+
+unset RFM_ESTADO_ROOT
+
+echo
+echo "== 17. robustez do concluido: arquivo malformado nao derruba o processo =="
+# Defeito: varredura sem slug fazia JSON.parse sem try/catch em cada arquivo.
+# Um arquivo malformado derrubava com SyntaxError e stack trace, exit 1 colidindo
+# com erro de uso documentado. A fix: catch o erro, reportar em stderr nomeando o
+# arquivo, e sair 1 — indicando "nao consegui responder porque um arquivo nao dava".
+
+# Setup: caixa com um arquivo malformado
+mkdir -p "$SBP/robustez/docs/rainforest/estado"
+export RFM_ESTADO_ROOT="$SBP/robustez"
+echo '{ not valid json' > "$SBP/robustez/docs/rainforest/estado/malformed.json"
+
+# Teste 1: arquivo malformado sozinho → exit 1, mensagem limpa em stderr
+saida_mal=$($E concluido 2>&1); saida_code=$?
+if [ "$saida_code" = "1" ]; then
+  ok=$((ok+1)); echo "  ok   arquivo malformado sai exit 1"
+else
+  falhou=$((falhou+1)); echo "  FALHA arquivo malformado saiu exit $saida_code, esperava 1"
+fi
+# Verificar que nao ha SyntaxError ou stack trace na saida
+case "$saida_mal" in
+  *SyntaxError*) falhou=$((falhou+1)); echo "  FALHA SyntaxError vazou na saida" ;;
+  *JSON.parse*) falhou=$((falhou+1)); echo "  FALHA stack trace vazou na saida" ;;
+  *) ok=$((ok+1)); echo "  ok   sem SyntaxError ou stack trace na saida" ;;
+esac
+# Verificar que a mensagem de erro nomeia o arquivo
+case "$saida_mal" in
+  *malformed.json*) ok=$((ok+1)); echo "  ok   mensagem de erro nomeia o arquivo" ;;
+  *) falhou=$((falhou+1)); echo "  FALHA mensagem nao nomeou o arquivo" ;;
+esac
+
+# Teste 2: arquivo .json que eh diretorio (EISDIR) → exit 1
+mkdir -p "$SBP/robustez/docs/rainforest/estado/directory.json"
+saida_dir=$($E concluido 2>&1); saida_dir_code=$?
+if [ "$saida_dir_code" = "1" ]; then
+  ok=$((ok+1)); echo "  ok   arquivo que eh diretorio sai exit 1"
+else
+  falhou=$((falhou+1)); echo "  FALHA arquivo-diretorio saiu exit $saida_dir_code, esperava 1"
+fi
+# Verificar que nao ha stack trace bruto na saida (nao procura por "EISDIR" pois e parte da msg limpa)
+case "$saida_dir" in
+  *"at readFileSync"*) falhou=$((falhou+1)); echo "  FALHA stack trace vazou na saida" ;;
+  *"at "*.cjs:*) falhou=$((falhou+1)); echo "  FALHA stack trace vazou na saida" ;;
+  *) ok=$((ok+1)); echo "  ok   sem stack trace na saida" ;;
+esac
+# Verificar que a mensagem de erro nomeia o arquivo
+case "$saida_dir" in
+  *directory.json*) ok=$((ok+1)); echo "  ok   mensagem de erro nomeia o arquivo de diretorio" ;;
+  *) falhou=$((falhou+1)); echo "  FALHA mensagem nao nomeou o arquivo de diretorio" ;;
+esac
+
+# Teste 3: malformado + fluxo aberto → exit 1 E fluxo listado
+# Cria um estado valido aberto
+cat > "$SBP/robustez/docs/rainforest/estado/open.json" <<'ESTEOF'
+{
+  "slug": "open",
+  "titulo": "Open flow",
+  "criado_em": "2026-09-04",
+  "arqueologia": { "status": "pendente" },
+  "design": { "status": "pendente" },
+  "plano": { "status": "pendente" },
+  "executar": { "status": "pendente" },
+  "revisar": { "status": "pendente" },
+  "verificar": { "status": "pendente" },
+  "fechar": { "status": "pendente" }
+}
+ESTEOF
+saida_aberto=$($E concluido 2>&1); saida_aberto_code=$?
+if [ "$saida_aberto_code" = "1" ]; then
+  ok=$((ok+1)); echo "  ok   malformado + aberto sai exit 1"
+else
+  falhou=$((falhou+1)); echo "  FALHA malformado + aberto saiu exit $saida_aberto_code, esperava 1"
+fi
+case "$saida_aberto" in
+  *open*) ok=$((ok+1)); echo "  ok   fluxo aberto ainda aparece na saida" ;;
+  *) falhou=$((falhou+1)); echo "  FALHA fluxo aberto nao foi listado" ;;
+esac
+
+# Teste 4a: so arquivos sanos, nenhum aberto → exit 0
+rm -f "$SBP/robustez/docs/rainforest/estado/malformed.json" "$SBP/robustez/docs/rainforest/estado/open.json"
+rm -rf "$SBP/robustez/docs/rainforest/estado/directory.json"
+cat > "$SBP/robustez/docs/rainforest/estado/completed.json" <<'ESTEOF'
+{
+  "slug": "completed",
+  "titulo": "Completed",
+  "criado_em": "2026-09-04",
+  "arqueologia": { "status": "pendente" },
+  "design": { "status": "aprovado" },
+  "plano": { "status": "ok" },
+  "executar": { "status": "ok" },
+  "revisar": { "status": "ok" },
+  "verificar": { "status": "ok" },
+  "fechar": { "status": "ok" }
+}
+ESTEOF
+esperado "so sanos sem aberto sai 0" 0 $E concluido
+
+# Teste 4b: so arquivos sanos, um aberto → exit 2
+cat > "$SBP/robustez/docs/rainforest/estado/open2.json" <<'ESTEOF'
+{
+  "slug": "open2",
+  "titulo": "Open flow 2",
+  "criado_em": "2026-09-04",
+  "arqueologia": { "status": "pendente" },
+  "design": { "status": "aprovado" },
+  "plano": { "status": "pendente" },
+  "executar": { "status": "pendente" },
+  "revisar": { "status": "pendente" },
+  "verificar": { "status": "pendente" },
+  "fechar": { "status": "pendente" }
+}
+ESTEOF
+esperado "so sanos com aberto sai 2" 2 $E concluido
+
+# Teste 5a: conteudo null → exit 1, sem stack trace
+rm -f "$SBP/robustez/docs/rainforest/estado/completed.json" "$SBP/robustez/docs/rainforest/estado/open2.json"
+printf 'null' > "$SBP/robustez/docs/rainforest/estado/null-content.json"
+saida_null=$($E concluido 2>&1); saida_null_code=$?
+if [ "$saida_null_code" = "1" ]; then
+  ok=$((ok+1)); echo "  ok   conteudo null sai exit 1"
+else
+  falhou=$((falhou+1)); echo "  FALHA conteudo null saiu exit $saida_null_code, esperava 1"
+fi
+case "$saida_null" in
+  *TypeError*) falhou=$((falhou+1)); echo "  FALHA TypeError vazou na saida" ;;
+  *reading*) falhou=$((falhou+1)); echo "  FALHA stack trace vazou na saida" ;;
+  *) ok=$((ok+1)); echo "  ok   sem TypeError ou stack trace para null" ;;
+esac
+case "$saida_null" in
+  *null-content.json*) ok=$((ok+1)); echo "  ok   mensagem de erro nomeia arquivo null" ;;
+  *) falhou=$((falhou+1)); echo "  FALHA mensagem nao nomeou arquivo null" ;;
+esac
+
+# Teste 5b: conteudo array → exit 1, sem stack trace
+printf '[]' > "$SBP/robustez/docs/rainforest/estado/array-content.json"
+saida_arr=$($E concluido 2>&1); saida_arr_code=$?
+if [ "$saida_arr_code" = "1" ]; then
+  ok=$((ok+1)); echo "  ok   conteudo array sai exit 1"
+else
+  falhou=$((falhou+1)); echo "  FALHA conteudo array saiu exit $saida_arr_code, esperava 1"
+fi
+case "$saida_arr" in
+  *TypeError*) falhou=$((falhou+1)); echo "  FALHA TypeError vazou na saida" ;;
+  *reading*) falhou=$((falhou+1)); echo "  FALHA stack trace vazou na saida" ;;
+  *) ok=$((ok+1)); echo "  ok   sem TypeError ou stack trace para array" ;;
+esac
+case "$saida_arr" in
+  *array-content.json*) ok=$((ok+1)); echo "  ok   mensagem de erro nomeia arquivo array" ;;
+  *) falhou=$((falhou+1)); echo "  FALHA mensagem nao nomeou arquivo array" ;;
+esac
+
+# Teste 5c: conteudo string → exit 1, sem stack trace
+printf '"texto"' > "$SBP/robustez/docs/rainforest/estado/string-content.json"
+saida_str=$($E concluido 2>&1); saida_str_code=$?
+if [ "$saida_str_code" = "1" ]; then
+  ok=$((ok+1)); echo "  ok   conteudo string sai exit 1"
+else
+  falhou=$((falhou+1)); echo "  FALHA conteudo string saiu exit $saida_str_code, esperava 1"
+fi
+case "$saida_str" in
+  *TypeError*) falhou=$((falhou+1)); echo "  FALHA TypeError vazou na saida" ;;
+  *reading*) falhou=$((falhou+1)); echo "  FALHA stack trace vazou na saida" ;;
+  *) ok=$((ok+1)); echo "  ok   sem TypeError ou stack trace para string" ;;
+esac
+case "$saida_str" in
+  *string-content.json*) ok=$((ok+1)); echo "  ok   mensagem de erro nomeia arquivo string" ;;
+  *) falhou=$((falhou+1)); echo "  FALHA mensagem nao nomeou arquivo string" ;;
+esac
+
+# Teste 5d: conteudo numero → exit 1, sem stack trace
+printf '42' > "$SBP/robustez/docs/rainforest/estado/number-content.json"
+saida_num=$($E concluido 2>&1); saida_num_code=$?
+if [ "$saida_num_code" = "1" ]; then
+  ok=$((ok+1)); echo "  ok   conteudo numero sai exit 1"
+else
+  falhou=$((falhou+1)); echo "  FALHA conteudo numero saiu exit $saida_num_code, esperava 1"
+fi
+case "$saida_num" in
+  *TypeError*) falhou=$((falhou+1)); echo "  FALHA TypeError vazou na saida" ;;
+  *reading*) falhou=$((falhou+1)); echo "  FALHA stack trace vazou na saida" ;;
+  *) ok=$((ok+1)); echo "  ok   sem TypeError ou stack trace para numero" ;;
+esac
+case "$saida_num" in
+  *number-content.json*) ok=$((ok+1)); echo "  ok   mensagem de erro nomeia arquivo numero" ;;
+  *) falhou=$((falhou+1)); echo "  FALHA mensagem nao nomeou arquivo numero" ;;
+esac
+
+# Teste 6: arquivo ruim ANTES (alfabeticamente) + fluxo aberto DEPOIS → exit 1 E fluxo listado
+rm -f "$SBP/robustez/docs/rainforest/estado/null-content.json" "$SBP/robustez/docs/rainforest/estado/array-content.json" "$SBP/robustez/docs/rainforest/estado/string-content.json" "$SBP/robustez/docs/rainforest/estado/number-content.json"
+printf 'null' > "$SBP/robustez/docs/rainforest/estado/2026-01-01-bad.json"
+cat > "$SBP/robustez/docs/rainforest/estado/2026-09-04-open-later.json" <<'ESTEOF'
+{
+  "slug": "open-later",
+  "titulo": "Open after bad",
+  "criado_em": "2026-09-04",
+  "arqueologia": { "status": "pendente" },
+  "design": { "status": "pendente" },
+  "plano": { "status": "pendente" },
+  "executar": { "status": "pendente" },
+  "revisar": { "status": "pendente" },
+  "verificar": { "status": "pendente" },
+  "fechar": { "status": "pendente" }
+}
+ESTEOF
+saida_bad_then=$($E concluido 2>&1); saida_bad_then_code=$?
+if [ "$saida_bad_then_code" = "1" ]; then
+  ok=$((ok+1)); echo "  ok   arquivo ruim + aberto depois sai exit 1"
+else
+  falhou=$((falhou+1)); echo "  FALHA arquivo ruim + aberto depois saiu exit $saida_bad_then_code, esperava 1"
+fi
+case "$saida_bad_then" in
+  *open-later*) ok=$((ok+1)); echo "  ok   fluxo aberto DEPOIS ainda aparece na saida" ;;
+  *) falhou=$((falhou+1)); echo "  FALHA fluxo aberto DEPOIS nao foi listado" ;;
+esac
+
+# A mensagem tem de nomear o tipo que ESTA no arquivo. `typeof null` e 'object',
+# e a primeira versao chamava null de "array" por causa disso. Checar so o exit
+# code nao pega isso — e a licao do teste tautologico do EISDIR.
+rm -f "$SBP/robustez/docs/rainforest/estado"/*.json
+rm -rf "$SBP/robustez/docs/rainforest/estado"/*.json
+printf 'null' > "$SBP/robustez/docs/rainforest/estado/tipo-null.json"
+saida_tipo=$($E concluido 2>&1)
+case "$saida_tipo" in
+  *"nao e um objeto"*|*"deve ser um objeto, nao null"*|*"deve ser um objeto, não null"*)
+    ok=$((ok+1)); echo "  ok   null e reportado como null, nao como array" ;;
+  *array*)
+    falhou=$((falhou+1)); echo "  FALHA null foi reportado como 'array': $saida_tipo" ;;
+  *)
+    falhou=$((falhou+1)); echo "  FALHA mensagem de tipo inesperada: $saida_tipo" ;;
+esac
+
+rm -f "$SBP/robustez/docs/rainforest/estado"/*.json
+printf '[]' > "$SBP/robustez/docs/rainforest/estado/tipo-array.json"
+saida_tipo2=$($E concluido 2>&1)
+case "$saida_tipo2" in
+  *array*) ok=$((ok+1)); echo "  ok   array continua sendo reportado como array" ;;
+  *) falhou=$((falhou+1)); echo "  FALHA array nao foi reportado como array: $saida_tipo2" ;;
+esac
+
+unset RFM_ESTADO_ROOT
+
 echo "== resultado: $ok ok, $falhou falhas =="
 [ "$falhou" = 0 ]
