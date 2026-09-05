@@ -651,7 +651,9 @@ function decodificaANSIC(inicio, texto) {
  */
 function tokens(seg) {
   const toks = [];
+  const origins = []; // Rastreia a procedência de cada token
   let cur = "";
+  let temOrigem = null; // Rastreia a procedência do token sendo montado
   let tem = false;
   const mapa = analisaAspas(seg);
 
@@ -668,18 +670,27 @@ function tokens(seg) {
           // NUL trunca a string (C-string termination) mas a palavra continua
           // sendo montada com segmentos seguintes. Pula tudo após NUL neste segmento ANSI-C.
           if (decodificado.charCodeAt(0) === 0) {
+            // Token foi isolado por NUL dentro de $'...'
+            if (!temOrigem) temOrigem = {};
+            temOrigem.isoladoPorNul = true;
             // Pula até o fechamento da aspa ANSI-C, sem acumular nada.
             // O mapa marca o fechamento real da aspa (não escapada) como 0.
             // Procura a partir de prox em diante.
             i = prox - 1;
             while (i + 1 < seg.length && (mapa[i + 1] !== 0 || seg[i + 1] !== "'")) i += 1;
           } else {
+            // Caractere vem de escape ANSI-C
+            if (!temOrigem) temOrigem = {};
+            temOrigem.temEscapeANSIC = true;
             cur += decodificado;
             tem = true;
             i = prox - 1; // Ajusta porque o loop vai incrementar i de novo
           }
         }
       } else if (c !== "'") { // não acumula aspa de fechamento
+        // Caractere dentro de $'...' mas não é escape
+        if (!temOrigem) temOrigem = {};
+        temOrigem.temEscapeANSIC = true;
         cur += c;
         tem = true;
       }
@@ -689,6 +700,7 @@ function tokens(seg) {
     // Dentro de aspas simples: acumula tudo, não acumula aspas de abertura/fechamento
     if (estado === 1) {
       if (c !== "'") {
+        if (!temOrigem) temOrigem = { dentroAspasSimples: true };
         cur += c;
         tem = true;
       }
@@ -699,14 +711,17 @@ function tokens(seg) {
     if (estado === 2) {
       if (c === "\\") {
         if (proximo !== undefined && '"\\$`'.includes(proximo)) {
+          if (!temOrigem) temOrigem = { dentroAspasDuplas: true };
           cur += proximo;
           i += 1;
           tem = true;
           continue;
         }
+        if (!temOrigem) temOrigem = { dentroAspasDuplas: true };
         cur += c;
         tem = true;
       } else if (c !== '"') { // não acumula aspa de fechamento
+        if (!temOrigem) temOrigem = { dentroAspasDuplas: true };
         cur += c;
         tem = true;
       }
@@ -716,31 +731,43 @@ function tokens(seg) {
     // Fora de aspas (estado === 0)
     if (c === "\\" && proximo !== undefined) {
       // Barra invertida fora de aspas escapa o próximo caractere
+      if (!temOrigem) temOrigem = { nua: true };
       cur += proximo;
       i += 1;
       tem = true;
     } else if (/\s/.test(c)) {
-      if (tem) { toks.push(cur); cur = ""; tem = false; }
+      if (tem) {
+        toks.push(cur);
+        origins.push(temOrigem || { nua: true });
+        cur = "";
+        temOrigem = null;
+        tem = false;
+      }
     } else if (c === "$" || c === "'" || c === '"') {
       // Aspas de abertura fora de aspas — não acumula, apenas transição
       // Não é preciso fazer nada aqui: o estado já marca a transição para aspas
     } else {
+      if (!temOrigem) temOrigem = { nua: true };
       cur += c;
       tem = true;
     }
   }
 
-  if (tem) toks.push(cur);
-  return toks;
+  if (tem) {
+    toks.push(cur);
+    origins.push(temOrigem || { nua: true });
+  }
+
+  return { tokens: toks, origins };
 }
 
 /**
- * null se o segmento nao contem uma chamada de git; senao {sub, args, dirC}.
+ * null se o segmento nao contem uma chamada de git; senao {sub, args, dirC, argsOrigins}.
  * Varre o token `git` em QUALQUER posicao do segmento (nao so no inicio):
  * lista de prefixos aceitos antes dele (`env`, `sudo`, `VAR=valor`...)
  * sempre esquece um caso — `then`, `do`, `else`, `{` inclusive.
  */
-function analisaGit(toks) {
+function analisaGit(toks, origins) {
   const inicio = toks.findIndex(ehTokenGit);
   if (inicio === -1) return null;
   let i = inicio + 1;
@@ -751,7 +778,12 @@ function analisaGit(toks) {
     i += FLAG_COM_VALOR.has(toks[i]) && !toks[i].includes("=") ? 2 : 1;
   }
   if (i >= toks.length) return null;
-  return { sub: toks[i], args: toks.slice(i + 1), dirC };
+  return {
+    sub: toks[i],
+    args: toks.slice(i + 1),
+    argsOrigins: origins ? origins.slice(i + 1) : [],
+    dirC
+  };
 }
 
 /**
@@ -769,130 +801,62 @@ function temCurta(args, letra) {
 }
 
 /**
- * Detecta se um token ESPECIFICO veio de escape ANSI-C (em $'...').
- * Procura por formas codificadas/escapadas do token.
- * Exemplos:
- *   - "-n" em hex: $'\x2d\x6e'
- *   - "-n" em octal: $'\055\156'
- *   - "--no-verify" começando com hex: $'\x2d\x2d...'
+ * Extrai o sufixo de origem a partir de uma origem de token.
+ * Origem é um objeto como {nua: true} ou {temEscapeANSIC: true} ou {isoladoPorNul: true}.
+ * Retorna string vazia se token é nua, ou o sufixo apropriado.
  */
-function tokenVemDeASAI(cmd, token) {
-  if (!cmd || !token) return false;
-
-  // Gera forma hexadecimal do token
-  // "-n" -> \x2d\x6e
-  const hexForm = Array.from(token)
-    .map(c => `\\x${c.charCodeAt(0).toString(16).padStart(2, '0')}`)
-    .join("");
-
-  // Gera forma octal do token (bash aceita \DDD onde D é 0-7)
-  // "-n" -> \055\156
-  const octalForm = Array.from(token)
-    .map(c => `\\${c.charCodeAt(0).toString(8).padStart(3, '0')}`)
-    .join("");
-
-  // Procura por $'...' que contenha o token em forma hex ou octal
-  // Também procura por formas parciais (primeiros caracteres em escape)
-  const patterns = [
-    `\\$'[^']*${escapeForRegex(hexForm)}[^']*'`, // Hex form
-    `\\$'[^']*${escapeForRegex(octalForm)}[^']*'`, // Octal form
-  ];
-
-  return patterns.some(p => {
-    try {
-      return new RegExp(p).test(cmd);
-    } catch {
-      return false;
-    }
-  });
-}
-
-function escapeForRegex(s) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-/**
- * Detecta se um token foi isolado por um NUL dentro de $'...'
- * Procura por padrões como $'--no-verify\0...' ou $'...\0--no-verify'
- */
-function tokenIsoladoPorNul(cmd, token) {
-  if (!cmd || !token) return false;
-
-  // Procura por $'...' contendo NUL (em qualquer forma) e o token
-  // Formas de NUL: \0, \x00, \000
-  const patterns = [
-    `\\$'[^']*${escapeForRegex(token)}[^']*\\\\0`, // Token antes do NUL
-    `\\$'[^']*\\\\0[^']*${escapeForRegex(token)}`, // Token depois do NUL
-    `\\$'[^']*${escapeForRegex(token)}[^']*\\\\x00`, // Token antes de \x00
-    `\\$'[^']*\\\\x00[^']*${escapeForRegex(token)}`, // Token depois de \x00
-    `\\$'[^']*${escapeForRegex(token)}[^']*\\\\000`, // Token antes de \000
-    `\\$'[^']*\\\\000[^']*${escapeForRegex(token)}`, // Token depois de \000
-  ];
-
-  return patterns.some(p => {
-    try {
-      return new RegExp(p).test(cmd);
-    } catch {
-      return false;
-    }
-  });
+function sufixoDeOrigem(origem) {
+  if (!origem) return "";
+  // Se tem isoladoPorNul, prioriza esse sufixo
+  if (origem.isoladoPorNul) return ", isolado por NUL dentro de $'...'";
+  // Se tem escape ANSI-C, usa esse sufixo
+  if (origem.temEscapeANSIC) return ", vindo de escape ANSI-C";
+  // Senão (nua, simples, duplas, etc) sem sufixo
+  return "";
 }
 
 /** Motivo do bloqueio, ou null se o segmento e inofensivo. */
-function motivoDe(g, cmdOriginal) {
-  // Determina o sufixo testando CADA token que causou bloqueio
+function motivoDe(g, origins) {
+  // Determina o sufixo consultando DIRETAMENTE a procedência de cada token
   let sufixoCommit = "";
   let sufixoPush = "";
 
   if (g.sub === "commit") {
-    const tokenNoVerify = g.args.find((t) => ehPrefixoDeFlag(t, "--no-verify"));
-    if (tokenNoVerify) {
-      if (tokenVemDeASAI(cmdOriginal, tokenNoVerify)) {
-        sufixoCommit = ", vindo de escape ANSI-C";
-      } else if (tokenIsoladoPorNul(cmdOriginal, tokenNoVerify)) {
-        sufixoCommit = ", isolado por NUL dentro de $'...'";
-      }
+    // Procura --no-verify
+    const idxNoVerify = g.args.findIndex((t) => ehPrefixoDeFlag(t, "--no-verify"));
+    if (idxNoVerify !== -1) {
+      sufixoCommit = sufixoDeOrigem(g.argsOrigins[idxNoVerify]);
     }
     if (g.args.some((t) => ehPrefixoDeFlag(t, "--no-verify"))) return "git commit --no-verify" + sufixoCommit;
 
-    const tokenNoGpg = g.args.find((t) => ehPrefixoDeFlag(t, "--no-gpg-sign"));
-    if (tokenNoGpg) {
-      if (tokenVemDeASAI(cmdOriginal, tokenNoGpg)) {
-        sufixoCommit = ", vindo de escape ANSI-C";
-      } else if (tokenIsoladoPorNul(cmdOriginal, tokenNoGpg)) {
-        sufixoCommit = ", isolado por NUL dentro de $'...'";
-      }
+    // Procura --no-gpg-sign
+    const idxNoGpg = g.args.findIndex((t) => ehPrefixoDeFlag(t, "--no-gpg-sign"));
+    if (idxNoGpg !== -1) {
+      sufixoCommit = sufixoDeOrigem(g.argsOrigins[idxNoGpg]);
     }
     if (g.args.some((t) => ehPrefixoDeFlag(t, "--no-gpg-sign"))) return "git commit --no-gpg-sign" + sufixoCommit;
 
-    // Para -n: como e combinada (-nabc), precisamos procurar se o ARGUMENTO veio de escape
-    // Encontra o token que contem 'n'
-    const tokenComN = g.args.find((t) => /^-[A-Za-z]+$/.test(t) && t.slice(1).includes("n"));
+    // Para -n: como e combinada (-nabc), procura o token que contem 'n'
     if (temCurta(g.args, "n")) {
-      if (tokenComN) {
-        if (tokenVemDeASAI(cmdOriginal, tokenComN)) {
-          sufixoCommit = ", vindo de escape ANSI-C";
-        } else if (tokenIsoladoPorNul(cmdOriginal, tokenComN)) {
-          sufixoCommit = ", isolado por NUL dentro de $'...'";
-        }
+      const idxComN = g.args.findIndex((t) => /^-[A-Za-z]+$/.test(t) && t.slice(1).includes("n"));
+      if (idxComN !== -1) {
+        sufixoCommit = sufixoDeOrigem(g.argsOrigins[idxComN]);
       }
       return "git commit -n (equivale a --no-verify)" + sufixoCommit;
     }
     return null;
   }
+
   if (g.sub === "push") {
     // `-n` em push e --dry-run, nao --no-verify: nao entra aqui de proposito.
-    const tokenNoVerify = g.args.find((t) => ehPrefixoDeFlag(t, "--no-verify"));
-    if (tokenNoVerify) {
-      if (tokenVemDeASAI(cmdOriginal, tokenNoVerify)) {
-        sufixoPush = ", vindo de escape ANSI-C";
-      } else if (tokenIsoladoPorNul(cmdOriginal, tokenNoVerify)) {
-        sufixoPush = ", isolado por NUL dentro de $'...'";
-      }
+    const idxNoVerify = g.args.findIndex((t) => ehPrefixoDeFlag(t, "--no-verify"));
+    if (idxNoVerify !== -1) {
+      sufixoPush = sufixoDeOrigem(g.argsOrigins[idxNoVerify]);
     }
     if (g.args.some((t) => ehPrefixoDeFlag(t, "--no-verify"))) return "git push --no-verify" + sufixoPush;
     return null;
   }
+
   return null;
 }
 
@@ -1021,11 +985,11 @@ function analisaComando(cmd, profundidade) {
   }
 
   for (const seg of segs) {
-    const toks = tokens(seg);
+    const { tokens: toks, origins } = tokens(seg);
 
-    const g = analisaGit(toks);
+    const g = analisaGit(toks, origins);
     if (g) {
-      const m = motivoDe(g, cmd);
+      const m = motivoDe(g, origins);
       if (m) return { motivo: m, dirC: g.dirC };
     }
 
