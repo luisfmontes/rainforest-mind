@@ -547,9 +547,47 @@ else
   echo "$saida" | sed 's/^/         /'
 fi
 
-# Nota: Bloco antigo de "Defeito A: NUL trunca argumentos" removido.
-# Esse bloco testava formas de NUL que não foram implementadas no conserto.
-# Os testes abaixo cobrem corretamente o Defeito A:
+echo
+echo "== Defeito A: NUL trunca argumentos (8 casos da tabela) =="
+# 1. git $'com\0'mit -n -m x -> ARGV[1]=[commit], ARGV[2]=[-n]
+saida=$(printf '%s' "$(b_ansi "git \$'com\\0'mit -n -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git \$'com\\0'mit -n -m x (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA: esperava 2, veio $rc"; fi
+
+# 2. git $'pus\0'h --no-verify -> ARGV[1]=[push], ARGV[2]=[--no-verify]
+saida=$(printf '%s' "$(b_ansi "git \$'pus\\0'h --no-verify")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git \$'pus\\0'h --no-verify (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA: esperava 2, veio $rc"; fi
+
+# 3. $'gi\0't commit -n -m x -> ARGV[1]=[git], comando "git commit -n"
+saida=$(printf '%s' "$(b_ansi "\$'gi\\0't commit -n -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   \$'gi\\0't commit -n -m x (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA: esperava 2, veio $rc"; fi
+
+# 4. git commit $'-n\0lixo' -m x -> ARGV[2]=[-n]
+saida=$(printf '%s' "$(b_ansi "git commit \$'-n\\0lixo' -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit \$'-n\\0lixo' -m x (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA: esperava 2, veio $rc"; fi
+
+# 5. git commit $'--no-verify\0lixo' -m x -> ARGV[2]=[--no-verify]
+saida=$(printf '%s' "$(b_ansi "git commit \$'--no-verify\\0lixo' -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit \$'--no-verify\\0lixo' -m x (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA: esperava 2, veio $rc"; fi
+
+# 6. git push $'--no-verify\0lixo' -> ARGV[2]=[--no-verify]
+saida=$(printf '%s' "$(b_ansi "git push \$'--no-verify\\0lixo'")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git push \$'--no-verify\\0lixo' (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA: esperava 2, veio $rc"; fi
+
+# 7. git commit $'lixo\0-n' -m x -> ARGV[2]=[lixo] ("-n" descartado pelo NUL)
+saida=$(printf '%s' "$(b_ansi "git commit \$'lixo\\0-n' -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   git commit \$'lixo\\0-n' -m x (exit 0)"
+else falhou=$((falhou+1)); echo "  FALHA: esperava 0, veio $rc"; fi
+
+# 8. git commit -m $'mensagem com \0 no meio' -> mensagem truncada
+saida=$(printf '%s' "$(b_ansi "git commit -m \$'mensagem com \\0 no meio'")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   git commit -m \$'mensagem com \\0 no meio' (exit 0)"
+else falhou=$((falhou+1)); echo "  FALHA: esperava 0, veio $rc"; fi
 
 echo
 echo "== Defeito B: Fórmula de \\cX estava errada (agora \\cmn = CR=13, não -) =="
@@ -585,33 +623,6 @@ if [ "$rc" = 2 ]; then
     echo "$msg" | sed 's/^/         /'
   fi
 else falhou=$((falhou+1)); echo "  FALHA Teste 5b: esperava 2, veio $rc"; fi
-
-echo
-echo "== Defeito A — NUL: antes era falso negativo (passava quando deveria bloquear) =="
-# Estas formas têm NUL no meio de um token ANSI-C. O bash concatena os segmentos
-# antes e depois, formando um comando bloqueável. O defeito A era que o gate
-# não reconhecia isso (criava tokens extras, perdendo a flag).
-
-# Após conserto: Defeito A forma 1: git $'com\0'mit -n -> comando "git commit -n" (BLOQUEIA)
-saida=$(printf '%s' "$(b_ansi "git \$'com\\0'mit -n -m x")" | node "$GATE" 2>&1); rc=$?
-if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git \$'com\\0'mit -n -m x (exit 2, bloqueado — conserto funcionou)"
-else falhou=$((falhou+1)); echo "  FALHA Defeito A 1: esperava 2, veio $rc"; fi
-
-# Defeito A forma 2: git $'pus\0'h --no-verify -> comando "git push --no-verify" (BLOQUEIA)
-saida=$(printf '%s' "$(b_ansi "git \$'pus\\0'h --no-verify")" | node "$GATE" 2>&1); rc=$?
-if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git \$'pus\\0'h --no-verify (exit 2, bloqueado)"
-else falhou=$((falhou+1)); echo "  FALHA Defeito A 2: esperava 2, veio $rc"; fi
-
-# Defeito A forma 3: $'gi\0't commit -n -> comando "git commit -n" (BLOQUEIA)
-saida=$(printf '%s' "$(b_ansi "\$'gi\\0't commit -n -m x")" | node "$GATE" 2>&1); rc=$?
-if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   \$'gi\\0't commit -n -m x (exit 2, bloqueado)"
-else falhou=$((falhou+1)); echo "  FALHA Defeito A 3: esperava 2, veio $rc"; fi
-
-# Exceção: NUL descarta a flag: git commit $'lixo\0-n' -> comando "git commit lixo" (PASSA)
-# O '-n' está DEPOIS do NUL no mesmo segmento $'...', então é descartado
-saida=$(printf '%s' "$(b_ansi "git commit \$'lixo\\0-n' -m x")" | node "$GATE" 2>&1); rc=$?
-if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   git commit \$'lixo\\0-n' -m x (exit 0, passa — '-n' descartado)"
-else falhou=$((falhou+1)); echo "  FALHA Defeito A 4: esperava 0, veio $rc"; fi
 
 echo
 echo "== Contraprova: NUL na mensagem (não é um argumento de comando) =="
