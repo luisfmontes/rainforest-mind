@@ -119,10 +119,12 @@ function validarCaminhoNo(nomeArquivo, pastaBase) {
 }
 
 /**
- * Escapa caracteres especiais em títulos para markdown seguro
+ * Escapa caracteres especiais para markdown seguro. Vale para TODO campo de
+ * texto que sai no corpo — titulo, resumo, tipo de aresta. O grafo e entrada
+ * nao confiavel: o schema deixa esses campos como "qualquer string".
  */
-function escaparTitulo(titulo) {
-  return titulo
+function escaparTexto(texto) {
+  return String(texto)
     .replace(/\\/g, '\\\\')
     .replace(/\[/g, '\\[')
     .replace(/\]/g, '\\]')
@@ -132,17 +134,52 @@ function escaparTitulo(titulo) {
     .replace(/>/g, '\\>');
 }
 
+// Nome antigo, mantido porque o SKILL.md cita.
+const escaparTitulo = escaparTexto;
+
+/**
+ * Devolve o texto dentro de um span de codigo inline que ele nao consegue
+ * fechar. Cerca com uma crase a mais que a maior sequencia de crases do
+ * conteudo (CommonMark), e poe espaco de folga quando o conteudo comeca ou
+ * termina em crase. Sem isso, um `id` com crase fecha o span e o resto do
+ * documento sai deslocado.
+ */
+function codigoInline(texto) {
+  const s = String(texto);
+  let maior = 0;
+  for (const seq of s.match(/`+/g) || []) {
+    if (seq.length > maior) maior = seq.length;
+  }
+  const cerca = '`'.repeat(maior + 1);
+  const folga = (s.startsWith('`') || s.endsWith('`')) ? ' ' : '';
+  return `${cerca}${folga}${s}${folga}${cerca}`;
+}
+
+/**
+ * Escapa o ALVO de um link markdown. O `id` vira nome de arquivo e alvo de
+ * link, e o schema permite parenteses e espaco — os dois quebram a forma
+ * `[texto](alvo)`. Percent-encoding resolve sem mudar o arquivo apontado.
+ */
+function alvoLink(id) {
+  return String(id)
+    .replace(/%/g, '%25')
+    .replace(/ /g, '%20')
+    .replace(/\(/g, '%28')
+    .replace(/\)/g, '%29')
+    .replace(/</g, '%3C')
+    .replace(/>/g, '%3E');
+}
+
 /**
  * Cria um markdown por nó
  */
 function criarMarkdownNo(no) {
-  const tituloEscapado = escaparTitulo(no.titulo);
-  let conteudo = `# ${tituloEscapado}\n\n`;
-  conteudo += `**ID:** \`${no.id}\`\n\n`;
-  conteudo += `**Tipo:** ${no.file_type}\n\n`;
-  conteudo += `**Confiança:** ${no.confidence}\n\n`;
-  conteudo += `**Caminho:** \`${no.caminho}\`\n\n`;
-  conteudo += `## Resumo\n\n${no.resumo}\n`;
+  let conteudo = `# ${escaparTexto(no.titulo)}\n\n`;
+  conteudo += `**ID:** ${codigoInline(no.id)}\n\n`;
+  conteudo += `**Tipo:** ${escaparTexto(no.file_type)}\n\n`;
+  conteudo += `**Confiança:** ${escaparTexto(no.confidence)}\n\n`;
+  conteudo += `**Caminho:** ${codigoInline(no.caminho)}\n\n`;
+  conteudo += `## Resumo\n\n${escaparTexto(no.resumo)}\n`;
 
   return conteudo;
 }
@@ -156,8 +193,8 @@ function criarIndex(nos, arestas) {
 
   // Lista todos os nós
   for (const no of nos) {
-    const tituloEscapado = escaparTitulo(no.titulo);
-    conteudo += `- [${tituloEscapado}](./${no.id}.md) (${no.file_type})\n`;
+    const tituloEscapado = escaparTexto(no.titulo);
+    conteudo += `- [${tituloEscapado}](./${alvoLink(no.id)}.md) (${escaparTexto(no.file_type)})\n`;
   }
 
   conteudo += '\n## Arestas\n\n';
@@ -167,10 +204,11 @@ function criarIndex(nos, arestas) {
     for (const aresta of arestas) {
       const noDeId = nos.find(n => n.id === aresta.de);
       const noParaId = nos.find(n => n.id === aresta.para);
-      const noDeTitle = noDeId ? escaparTitulo(noDeId.titulo) : aresta.de;
-      const noParaTitle = noParaId ? escaparTitulo(noParaId.titulo) : aresta.para;
+      // O fallback tambem e texto do grafo: escapa nos dois ramos.
+      const noDeTitle = escaparTexto(noDeId ? noDeId.titulo : aresta.de);
+      const noParaTitle = escaparTexto(noParaId ? noParaId.titulo : aresta.para);
 
-      conteudo += `- [${noDeTitle}](./${aresta.de}.md) --${aresta.tipo}--> [${noParaTitle}](./${aresta.para}.md)\n`;
+      conteudo += `- [${noDeTitle}](./${alvoLink(aresta.de)}.md) --${escaparTexto(aresta.tipo)}--> [${noParaTitle}](./${alvoLink(aresta.para)}.md)\n`;
     }
   }
 

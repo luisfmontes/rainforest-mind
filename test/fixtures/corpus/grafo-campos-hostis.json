@@ -1,0 +1,23 @@
+{
+  "nos": [
+    {
+      "id": "cra`se",
+      "caminho": "wiki/a`b.md",
+      "titulo": "Titulo limpo",
+      "resumo": "Resumo com <script>alert(1)</script> e [link](http://x) e ]( quebrando",
+      "file_type": "concept",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "normal",
+      "caminho": "wiki/n.md",
+      "titulo": "Normal",
+      "resumo": "ok",
+      "file_type": "concept",
+      "confidence": "EXTRACTED"
+    }
+  ],
+  "arestas": [
+    { "de": "cra`se", "para": "normal", "tipo": "rela<cao>", "via": "markdown-link" }
+  ]
+}
