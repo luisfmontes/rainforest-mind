@@ -42,21 +42,18 @@ paralelismo desperdiçado, não cautela.
 conflitam entre si, e foi por isso que o superpowers proibiu paralelo de
 implementadores. Aqui não precisa proibir porque a trava existe.
 
+**Agente que edita nunca é retomado por `SendMessage`** — despacha-se de novo,
+com briefing corrigido. O worktree isolado pode não existir mais na retomada, e
+o agente passa a commitar na branch de quem despachou.
+
 **Antes de despachar:** a base do worktree nasce na ponta da `origin/main`, não no commit de trabalho. Confira com `git merge-base --is-ancestor origin/main HEAD`; não sendo ancestral, traga a `main` para a branch com `git merge --ff-only origin/main` antes de despachar — a branch de trabalho tem que estar adiantada (ou igualada) em relação ao `origin/main`.
 
 O briefing de cada agente leva, sempre:
 - **O hash da base** (regra 11) e a instrução de conferir na primeira ação:
-  `git rev-parse --show-toplevel` (PARE se for a raiz do repositório principal),
-  depois `git log -1`, abortando se divergir — só hash velho conhecido autoriza
-  `git merge --ff-only`.
-- **O hash velho conhecido, já nomeado, desde o primeiro despacho.** O HEAD
-  do `main` (ou o commit imediatamente anterior ao início do trabalho) é
-  candidato natural: é ali que o worktree nasce quando nasce errado. A Issue #4
-  mediu **2 de 8 despachos confirmados por abort explícito, possivelmente 5 de
-  8**, sempre no mesmo hash — a regra 11 chama isso de "intermitente" e a
-  medição diz que é frequente. Deixar a autorização para a segunda tentativa
-  custou 3 despachos completos numa única tarefa, mais um worktree órfão para
-  remover à mão.
+  `git rev-parse --show-toplevel` (PARE se for a raiz do repositório principal
+  ou o worktree de quem despachou — isolamento perdido nos dois casos), depois
+  conferir com `git merge-base --is-ancestor HEAD <base>` — exit 0 autoriza
+  `git merge --ff-only <base>`; exit ≠ 0 é aborto.
 - **Os caminhos que a tarefa promete criar**, para o `--espera` da integração
   abaixo — sem eles, arquivo que o agente cria e nunca chega ao commit passa
   por todas as outras checagens.
