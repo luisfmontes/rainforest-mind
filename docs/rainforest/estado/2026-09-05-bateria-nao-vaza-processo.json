@@ -1,0 +1,30 @@
+{
+  "slug": "2026-09-05-bateria-nao-vaza-processo",
+  "titulo": "Issue #187 — a bateria de segunda-opiniao nao vaza processo nem diretorio temporario",
+  "criado_em": "2026-09-05",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-05-bateria-nao-vaza-processo.md",
+    "em": "2026-09-05"
+  },
+  "plano": {
+    "status": "ok",
+    "doc": "docs/rainforest/planos/2026-09-05-bateria-nao-vaza-processo.md",
+    "em": "2026-09-05"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
