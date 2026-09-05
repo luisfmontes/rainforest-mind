@@ -215,9 +215,15 @@ function git(dir, args) {
  * - `resolvida`, `resolvido`: formas de "resolver" (GitHub tem `resolve/resolves/resolved`)
  *
  * Case-insensitive; acentos opcionais onde couberem (regex com `[eé]` etc).
+ *
+ * O artigo entre o verbo e o `#N` e opcional: "Fecha a #73" e portugues tao
+ * comum quanto "Fecha #73", o GitHub tambem nao reconhece nenhum dos dois, e
+ * sem o artigo na regex a primeira forma passava calada — a Issue ficava
+ * aberta em silencio, que e exatamente o que este gate existe para evitar.
+ * Achado na revisao do lote 4.
  */
 const FALSA_CHAVE =
-  /\b(?:fecha|fecham|fechada|fechado|encerra|encerrada|encerrado|conclui|conclu[íi]da|conclu[íi]do|corrige|corrigida|corrigido|resolvida|resolvido)\s+(?:#|https?:\/\/\S*\/issues\/)(\d+)/gi;
+  /\b(?:fecha|fecham|fechada|fechado|encerra|encerrada|encerrado|conclui|conclu[íi]da|conclu[íi]do|corrige|corrigida|corrigido|resolvida|resolvido)\s+(?:[oa]s?\s+)?(?:#|https?:\/\/\S*\/issues\/)(\d+)/gi;
 
 /**
  * Extrai a lista de Issues citadas num corpo de PR usando padrões de fechamento.

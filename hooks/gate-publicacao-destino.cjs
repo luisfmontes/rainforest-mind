@@ -170,12 +170,35 @@ const RE_GIT_COMMIT = /\bgit\s+(?:(?:-[A-Za-z]\s+\S+|--[a-z-]+(?:=\S+)?|-[A-Za-z
 const RE_COMMIT_TUDO = /(?:^|\s)(?:--all\b|-[A-Za-z]*a[A-Za-z]*\b)/;
 
 /**
+ * Um commit é publicado quando já existe em algum ramo remoto: o conteúdo dele
+ * não é novidade que este comando esteja introduzindo.
+ *
+ * É o que separa `git merge origin/main` (o caso de campo da Issue #173: o
+ * arquivo vem do outro pai, que é a própria `main` já publicada) de `git merge
+ * uma-branch-qualquer` cujos commits nunca passaram por gate nenhum. No
+ * segundo caso o segredo é novo para o destino, e a isenção do outro pai seria
+ * exatamente a porta que este arquivo existe para fechar.
+ */
+function paiJaPublicado(dir, sha) {
+  const r = git(dir, ["branch", "-r", "--contains", sha]);
+  return !!(r && r.trim());
+}
+
+/**
  * Confere se um achado já existe num arquivo de um dos pais deste commit.
  *
- * Pais são HEAD (se existir) e MERGE_HEAD (se um merge estiver em progresso).
- * Se a linha do achado já estava lá, não é conteúdo novo — isenta.
+ * Pais são HEAD (se existir) e MERGE_HEAD já publicado (se um merge estiver em
+ * progresso). Se a linha do achado já estava lá, não é conteúdo novo — isenta.
+ *
+ * `conteudo` é o que VAI para o commit, e chega pronto de
+ * `arquivosQueVaoParaOCommit`, que é quem sabe se este commit leva o índice ou
+ * o worktree. Reler por conta própria aqui refazia essa decisão pela fonte
+ * errada: num `git commit -a` o achado era procurado no ÍNDICE, que ainda tem
+ * a versão velha, e uma linha nova inserida só no disco casava com a linha de
+ * mesma posição do pai — segredo novo isento. A bateria
+ * `testa-gate-commit.cjs` ficou vermelha nesse caso exato.
  */
-function achadoJaEstaNoPai(dir, nome, a) {
+function achadoJaEstaNoPai(dir, nome, a, conteudo) {
   const linhaDoAchado = a.linha;
   const pais = [];
 
@@ -199,25 +222,17 @@ function achadoJaEstaNoPai(dir, nome, a) {
     if (mergeHeadPath && fs.existsSync(mergeHeadPath)) {
       const mergeHeads = fs.readFileSync(mergeHeadPath, "utf8").trim().split("\n");
       for (const h of mergeHeads) {
-        if (h.trim()) pais.push(h.trim());
+        const sha = h.trim();
+        if (sha && paiJaPublicado(dir, sha)) pais.push(sha);
       }
     }
   } catch {}
 
-  // Obtém conteúdo do índice (staged content)
   // Normaliza separadores para forward slash (git show espera isto)
   const nomeNormalizado = nome.replace(/\\/g, "/");
-  let conteudoAtual = git(dir, ["show", `:${nomeNormalizado}`]);
-  if (conteudoAtual === null) {
-    // Se não estiver no índice, tenta do disco
-    try {
-      conteudoAtual = fs.readFileSync(path.join(dir, nome), "utf8");
-    } catch {
-      return false;
-    }
-  }
+  if (typeof conteudo !== "string") return false;
 
-  const linhasAtual = conteudoAtual.split("\n");
+  const linhasAtual = conteudo.split("\n");
   const linhaAtualContent = linhasAtual[linhaDoAchado - 1];
   if (!linhaAtualContent) return false; // linha não existe
 
@@ -321,7 +336,7 @@ function conferirCommit(ev, cwdDoEvento) {
       const achadosAbloquear = [];
       const dir = gitTop; // para a mutação: a linha tem que ser exata
       for (const a of resultado.achados) {
-        if (achadoJaEstaNoPai(dir, nome, a)) continue;
+        if (achadoJaEstaNoPai(dir, nome, a, conteudo)) continue;
         achadosAbloquear.push(a);
       }
 

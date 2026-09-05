@@ -23,6 +23,35 @@ const path = require("node:path");
 
 // Importa o helper de confinamento da Tarefa 1
 const { toplevelConfinado } = require("../hooks/lib/cwd-efetivo.cjs");
+const { resolver } = require("../hooks/lib/estagio-ativo.cjs");
+
+/**
+ * O worktree tem agente registrado em voo?
+ *
+ * "Limpo" quer dizer "sem alteração pendente", e um agente que acabou de
+ * commitar deixa o worktree dele exatamente assim — ainda trabalhando. Sem
+ * esta consulta, `--remover` apagava por baixo de quem estava no meio da
+ * tarefa, e o registro de `em_voo` (D16) existe justamente para responder
+ * "tem alguém aí dentro?" sem depender de heurística de mtime ou de processo.
+ *
+ * Devolve `null` quando não há fluxo aberto, quando o estado é ilegível, ou
+ * quando `em_voo` está vazio — nenhum desses casos segura a remoção.
+ */
+function agentesEmVoo(dir) {
+  try {
+    const ativo = resolver({ cwd: dir });
+    if (!ativo || !ativo.slug) return null;
+    const caminho = path.join(dir, "docs", "rainforest", "estado", `${ativo.slug}.json`);
+    const estado = JSON.parse(fs.readFileSync(caminho, "utf8"));
+    const bloco = estado[ativo.estagio];
+    const voo = bloco && typeof bloco === "object" && Array.isArray(bloco.em_voo)
+      ? bloco.em_voo.filter((a) => a && typeof a === "object" && a.agente)
+      : [];
+    return voo.length ? { slug: ativo.slug, estagio: ativo.estagio, voo } : null;
+  } catch {
+    return null;
+  }
+}
 
 // Argumentos
 const tem = (nome) => process.argv.includes(`--${nome}`);
@@ -336,8 +365,32 @@ function executarRemocao(raiz, dadosLimpos) {
   for (const item of dadosLimpos) {
     const classe = item.classificacao.status;
 
+    // Worktree com agente em voo não é candidato a remoção, por mais limpo que
+    // esteja: agente que acabou de commitar deixa a árvore limpa e continua
+    // trabalhando. O aviso nomeia quem está lá dentro, para quem roda decidir.
+    const emVoo = agentesEmVoo(item.caminhoOriginal);
+    if (emVoo) {
+      const nomes = emVoo.voo.map((a) => a.agente).join(", ");
+      console.log(
+        `pulando ${item.caminho}: o estágio '${emVoo.estagio}' do fluxo ` +
+          `'${emVoo.slug}' tem ${emVoo.voo.length} agente(s) em voo (${nomes})`
+      );
+      continue;
+    }
+
     if (classe === "fantasma-travado" && remover) {
-      // Fantasma-travado: destrava, remove e poda
+      // Fantasma-travado: destrava, remove e poda.
+      //
+      // `git worktree lock` também é o mecanismo que o próprio git recomenda
+      // para worktree em mídia removível ou de rede, e mídia desmontada tem
+      // exatamente esta forma — travado, diretório ausente. O aviso abaixo
+      // nomeia essa possibilidade: o que se destrói aqui é o vínculo
+      // administrativo do git, não os arquivos, mas quem roda merece saber
+      // qual das duas coisas está vendo.
+      console.log(
+        `aviso: ${item.caminho} está travado com o diretório ausente. Se for ` +
+          `mídia removível ou de rede apenas desmontada, monte antes de seguir.`
+      );
       console.log(`destravando ${item.caminho}...`);
       const unlockResult = spawnSync("git", ["worktree", "unlock", item.caminhoOriginal], {
         cwd: raiz,

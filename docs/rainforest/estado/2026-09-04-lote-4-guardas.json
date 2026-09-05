@@ -112,19 +112,8 @@
         "docs/rainforest/estado/2026-09-04-lote-4-guardas.json"
       ]
     },
-    "em_voo": [
-      {
-        "agente": "rainforest-mind:revisor",
-        "tarefa": "diff do lote",
-        "desde": "2026-09-04"
-      },
-      {
-        "agente": "rainforest-mind:auditor-de-seguranca",
-        "tarefa": "diff do lote",
-        "desde": "2026-09-04"
-      }
-    ],
-    "em": "2026-09-04"
+    "em_voo": [],
+    "em": "2026-09-05"
   },
   "verificar": {
     "status": "pendente"

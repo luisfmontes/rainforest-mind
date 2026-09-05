@@ -82,6 +82,10 @@ function main() {
   const ativo = resolver({ cwd: gitTop });
   if (!ativo || !ativo.slug) process.exit(0);
 
+  // `ativo.slug` nao vem de payload: `resolver` o monta a partir de um nome de
+  // arquivo lido por `readdirSync` DESTE mesmo diretorio, entao ele e um
+  // segmento de caminho por construcao — nao ha travessia a sanear aqui.
+  // Levantado como lacuna na auditoria do lote 4 e conferido na origem.
   const caminhoEstado = path.join(gitTop, 'docs', 'rainforest', 'estado', `${ativo.slug}.json`);
   let estado;
   try {
