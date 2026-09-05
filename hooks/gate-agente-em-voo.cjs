@@ -1,23 +1,34 @@
 #!/usr/bin/env node
 /**
- * Stop — barra sessão quando há agente em voo (background) que morreu.
+ * Stop — barra o fim do turno quando o fluxo tem agente em voo.
  *
- * Decisão D16: fluxo com agente em voo bloqueado na volta (stop_hook_active
- * falso) até o agente ser aguardado e dado baixa, ou até que seja registrado
- * que ele morreu.
+ * Por que existe (Issue #180): o estágio que despacha agente aposta que o turno
+ * dura mais que o agente, e essa aposta é perdida em toda sessão não
+ * interativa. Medido em 2026-09-04, numa rodada `claude -p`: o turno acabou com
+ * o `revisar` em curso, o revisor morreu junto (`killed.system: 1`), e o texto
+ * final prometia "volto com o resultado assim que o revisor terminar" — em `-p`
+ * o turno é único, não há para onde voltar.
+ *
+ * Decisão D16 do lote 4: o paralelismo fica (não se espera agente em
+ * foreground, que serializaria o `executar`). O que entra é registro + trava:
+ * o estágio grava `em_voo` no estado antes de despachar, e este hook não deixa
+ * o turno acabar em silêncio com alguém em voo.
  *
  * - estágio aberto com `em_voo` não vazio e `stop_hook_active` falso → exit 2
- * - estágio aberto com `em_voo` não vazio e `stop_hook_active` verdadeiro → exit 0
- *   (barrado uma vez só; `stop_hook_active` verdadeiro = já disse uma vez)
- * - sem fluxo aberto, sem `em_voo`, payload vazio/ilegível, fora de git → exit 0
+ * - o MESMO payload com `stop_hook_active` verdadeiro → exit 0. Barrar duas
+ *   vezes vira laço, e laço é pior que o defeito: avisa uma vez.
+ * - sem fluxo aberto, sem `em_voo`, payload vazio ou ilegível, fora de git →
+ *   exit 0, em silêncio. Hook que derruba a sessão por defeito próprio não
+ *   entra.
  *
- * Saídas de emergência: `RAINFOREST_GATE_OFF=1`, `.rainforest-gate-off`,
- * toggle de `/setup` (chave `gate-agente-em-voo`, padrão true).
+ * Saídas de emergência, na ordem que os outros gates usam:
+ * `RAINFOREST_GATE_OFF` no ambiente, `.rainforest-gate-off` na raiz do repo, e
+ * o toggle do `/setup` (chave `gate-agente-em-voo`).
  */
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { execSync } = require('node:child_process');
+const { execFileSync } = require('node:child_process');
 
 const { resolver } = require('./lib/estagio-ativo.cjs');
 
@@ -26,20 +37,16 @@ function bloqueia(motivo) {
   process.exit(2);
 }
 
-function verificarGit() {
-  // Verifica se estamos em um repositório git procurando por .git
+/** Raiz do repositório do cwd do EVENTO — nunca a do processo do hook. */
+function toplevel(cwd) {
   try {
-    let atual = process.cwd();
-    for (let i = 0; i < 10; i++) {
-      if (fs.existsSync(path.join(atual, '.git'))) {
-        return atual;
-      }
-      const pai = path.dirname(atual);
-      if (pai === atual) break; // chegou na raiz
-      atual = pai;
-    }
-  } catch {}
-  return null;
+    return execFileSync('git', ['-C', cwd, 'rev-parse', '--show-toplevel'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim() || null;
+  } catch {
+    return null;
+  }
 }
 
 function main() {
@@ -47,44 +54,35 @@ function main() {
   try {
     ev = JSON.parse(fs.readFileSync(0, 'utf8') || '{}');
   } catch {
-    process.exit(0);
+    process.exit(0); // payload ilegível nunca derruba a sessão do usuário
   }
 
-  // Verificar saídas de emergência
   if (process.env.RAINFOREST_GATE_OFF) process.exit(0);
 
-  // Detectar se estamos em repositório git
-  const gitTop = verificarGit();
-  if (!gitTop) {
-    // Não está em repositório git
-    process.exit(0);
-  }
+  // O `cwd` do evento é a ÚNICA fonte, sem queda para o do processo. Duas
+  // razões, e as duas custaram medição: é o que permite a bateria montar um
+  // repositório de fixture e medir o hook contra ELE (queda para
+  // `process.cwd()` fazia a bateria medir o repositório de quem a roda), e é o
+  // que faz payload vazio sair 0 de verdade em vez de ir consultar o fluxo
+  // aberto do diretório em que o processo por acaso nasceu.
+  if (!ev.cwd) process.exit(0);
+  const gitTop = toplevel(ev.cwd);
+  if (!gitTop) process.exit(0);
 
-  if (fs.existsSync(path.join(gitTop, '.rainforest-gate-off'))) {
-    process.exit(0);
-  }
-
-  // Toggle do setup — usa process.cwd() que é sempre correto em worktree
   try {
-    if (!require('./lib/config.cjs').ligado('gate-agente-em-voo', { projeto: process.cwd() })) {
+    if (fs.existsSync(path.join(gitTop, '.rainforest-gate-off'))) process.exit(0);
+  } catch {}
+
+  try {
+    if (!require('./lib/config.cjs').ligado('gate-agente-em-voo', { projeto: gitTop })) {
       process.exit(0);
     }
   } catch {}
 
-  // Resolver estágio ativo — se não houver, não há fluxo aberto
-  // Usa process.cwd() que é sempre o worktree correto
-  const estagio = resolver({ cwd: process.cwd() });
-  if (!estagio || !estagio.slug) {
-    console.error('DEBUG: sem estagio aberto');
-    process.exit(0);
-  }
+  const ativo = resolver({ cwd: gitTop });
+  if (!ativo || !ativo.slug) process.exit(0);
 
-  // Ler estado do fluxo
-  const caminhoEstado = path.join(process.cwd(), 'docs', 'rainforest', 'estado', `${estagio.slug}.json`);
-  if (!fs.existsSync(caminhoEstado)) {
-    process.exit(0);
-  }
-
+  const caminhoEstado = path.join(gitTop, 'docs', 'rainforest', 'estado', `${ativo.slug}.json`);
   let estado;
   try {
     estado = JSON.parse(fs.readFileSync(caminhoEstado, 'utf8'));
@@ -92,40 +90,34 @@ function main() {
     process.exit(0);
   }
 
-  // Verificar se o estágio ativo tem `em_voo` não vazio
-  const estagioAtual = estagio.estagio;
-  const bloco = estado[estagioAtual];
-  if (!bloco || typeof bloco !== 'object' || !bloco.em_voo || !Array.isArray(bloco.em_voo)) {
-    // Nada em voo
-    process.exit(0);
-  }
+  const bloco = estado[ativo.estagio];
+  const emVoo = bloco && typeof bloco === 'object' && Array.isArray(bloco.em_voo)
+    ? bloco.em_voo.filter((a) => a && typeof a === 'object' && a.agente)
+    : [];
+  if (emVoo.length === 0) process.exit(0);
 
-  // Verificar se há agente em voo
-  const agentesEmVoo = bloco.em_voo.filter(a => a && typeof a === 'object' && a.agente);
-  if (agentesEmVoo.length === 0) {
-    process.exit(0);
-  }
+  // `stop_hook_active` verdadeiro quer dizer que este hook já barrou uma vez
+  // neste encerramento. A segunda vez não avisa: deixa o turno acabar.
+  if (ev.stop_hook_active === true) process.exit(0);
 
-  // Se `stop_hook_active` é verdadeiro, já foi avisado uma vez — deixar passar
-  if (ev.stop_hook_active === true) {
-    process.exit(0);
-  }
+  const lista = emVoo
+    .map((a) => `  - ${a.agente}${a.tarefa ? `, tarefa ${a.tarefa}` : ''}${a.desde ? ` (desde ${a.desde})` : ''}`)
+    .join('\n');
 
-  // Primeiro aviso: bloqueia
-  const primeiroAgente = agentesEmVoo[0];
-  const mensagem =
+  bloqueia(
     `BLOQUEADO pelo gate de agente em voo do rainforest-mind.\n\n` +
-    `Razão: estágio '${estagioAtual}' tem agente em voo que morreu junto com o turno.\n\n` +
-    `Agente: ${primeiroAgente.agente}\n` +
-    `Tarefa: ${primeiroAgente.tarefa || '(não registrada)'}\n` +
-    `Em voo desde: ${primeiroAgente.desde || '(não registrado)'}\n\n` +
+    `Razão: o estágio '${ativo.estagio}' do fluxo '${ativo.slug}' tem ${emVoo.length} agente(s)\n` +
+    `registrado(s) em voo, e o turno está acabando. Agente em background morre com o\n` +
+    `turno — em sessão não interativa, sempre.\n\n` +
+    `Em voo:\n${lista}\n\n` +
     `O que fazer:\n` +
-    `  1. Se o agente ainda está rodando, aguarde e rode:\n` +
-    `     node scripts/estado.cjs marcar --slug ${estagio.slug} --estagio ${estagioAtual} --status ok\n\n` +
-    `  2. Se o agente morreu, registre:\n` +
-    `     node scripts/estado.cjs marcar --slug ${estagio.slug} --estagio ${estagioAtual} --status ok --json '{"em_voo": []}'\n\n`;
-
-  bloqueia(mensagem);
+    `  1. Se o agente ainda está rodando, espere a volta dele e integre a entrega.\n` +
+    `  2. Se ele já voltou, dê a baixa antes de encerrar:\n` +
+    `     node scripts/estado.cjs marcar --slug ${ativo.slug} --estagio ${ativo.estagio} --status parcial --json '{"em_voo":[]}'\n` +
+    `  3. Se ele morreu, registre isso em vez de deixar o rastro mudo — o campo\n` +
+    `     'em_voo' é o que responde "ficou pela metade?" para a próxima sessão.\n\n` +
+    `Este aviso sai UMA vez: encerrando de novo, o turno acaba.\n`
+  );
 }
 
 if (require.main === module) main();
