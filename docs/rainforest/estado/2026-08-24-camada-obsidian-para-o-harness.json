@@ -11,7 +11,13 @@
     "em": "2026-08-24"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-08-24-camada-obsidian-para-o-harness.md",
+    "tarefas": 5,
+    "paralelas": [
+      1
+    ],
+    "em": "2026-09-05"
   },
   "executar": {
     "status": "pendente"
