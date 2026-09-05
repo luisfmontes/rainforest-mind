@@ -22,14 +22,14 @@
     "em": "2026-09-04"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-04",
     "tarefas_ok": 4,
     "tarefas": 4,
     "em": "2026-09-04",
     "bateria": "bash scripts/testa-estado.sh (146 ok, 0 falhou) + bash hooks/testa-gate-git-verificacao.sh (72 ok, 0 falhou; era 50 antes das duas rodadas de revisao)",
-    "comando": "bash hooks/testa-gate-git-verificacao.sh ; bash scripts/testa-estado.sh ; grep -c 'let emAspaANSIC' hooks/gate-git-verificacao.cjs",
-    "saida": "== resultado: 127 ok, 0 falha(s) == (gate), == resultado: 172 ok, 0 falhas == (estado), e 1 (uma unica maquina de aspas), na branch integrada",
+    "comando": "bash hooks/testa-gate-git-verificacao.sh ; bash scripts/testa-estado.sh ; bash hooks/testa-config.sh ; grep -c 'let emAspaANSIC' hooks/gate-git-verificacao.cjs",
+    "saida": "== resultado: 133 ok, 0 falha(s) == (gate), == resultado: 172 ok, 0 falhas == (estado), == resultado: 38 ok, 0 falha(s) == (config), e 1 (uma unica maquina de aspas), na branch com a main 1.3.0 integrada",
     "mutacao": [
       {
         "tarefa": 1,
@@ -39,7 +39,7 @@
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "hooks/testa-gate-git-verificacao.sh, caso do payload PreToolUse com tool_input.command igual a git commit --no-verify -m x exigindo exit 2, mais os tres de NUL que trunca o argv e os de escape ANSI-C numerico"
+        "fixture": "hooks/testa-gate-git-verificacao.sh, caso do payload PreToolUse com tool_input.command igual a git commit --no-verify -m x exigindo exit 2, mais os oito casos de NUL por segmento e os dois de sufixo por token"
       },
       {
         "tarefa": 3,
@@ -58,11 +58,7 @@
       "toggle gate-git-verificacao ausente de CHAVES",
       "falso positivo: corpo de heredoc julgado como comando"
     ],
-    "rodada": "sexta passada por executar, depois de revisar reprovado com o NUL que trunca o argv",
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-04"
-    }
+    "rodada": "setima passada por executar; inclui a integracao da main 1.3.0 (PR #183) que entrou durante o trabalho"
   },
   "revisar": {
     "status": "reprovado",
