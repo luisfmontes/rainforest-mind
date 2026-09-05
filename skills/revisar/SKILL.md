@@ -110,6 +110,25 @@ Encontrou creep? A única forma de destravá-lo é emendar o plano: a tarefa que
 
 A emenda deixa rastro conscientemente registrado de que o escopo cresceu — é isso que distingue creep legítimo (genuinamente necessário) de mudança de escopo silenciosa.
 
+## Registre agentes em voo
+
+Quando o revisor despacha agente em background, atualize o estado antes:
+
+```
+node scripts/estado.cjs marcar --slug <slug> --estagio revisar --status parcial \
+    --json '{"em_voo":[{"agente":"<nome>","tarefa":"<descricao>","desde":"<data-iso>"}]}'
+```
+
+Ao receber o resultado (ou registrar que o agente morreu), dê baixa:
+
+```
+node scripts/estado.cjs marcar --slug <slug> --estagio revisar --status <ok|reprovado> --json '{...}'
+```
+
+Sem `--json` com `em_voo`, o campo desaparece automaticamente no fechamento
+(é `CAMPOS_EFEMEROS`). Em sessão não interativa, o turno pode acabar com agente
+em voo — o gate `Stop` bloqueia até que você registre.
+
 ## Veredito binário
 
 ```
