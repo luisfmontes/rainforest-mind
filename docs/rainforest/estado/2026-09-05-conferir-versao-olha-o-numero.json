@@ -1,0 +1,30 @@
+{
+  "slug": "2026-09-05-conferir-versao-olha-o-numero",
+  "titulo": "Issue #189 — conferir-versao olha o numero declarado e nao sai 0 sem ter medido",
+  "criado_em": "2026-09-05",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-05-conferir-versao-olha-o-numero.md",
+    "em": "2026-09-05"
+  },
+  "plano": {
+    "status": "ok",
+    "doc": "docs/rainforest/planos/2026-09-05-conferir-versao-olha-o-numero.md",
+    "em": "2026-09-05"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
