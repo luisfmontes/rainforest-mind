@@ -93,18 +93,40 @@ gate "payload vazio nunca trava"                  0 "{}"
 gate "payload ilegivel nunca trava"               0 "isto nao e json"
 
 echo
-echo "== R21 (rodada 15, lote 4, 2026-09-04): wrapper CITADO na posicao de comando =="
-# `posicaoDeComando` usava `!tok.q` para pular wrappers, entao wrappers citados
-# (tipo `"env" FOO=1 cp a.txt b.txt`) nunca eram reconhecidos — a posicao de comando
-# ficava apontando para o "env" citado em vez de pulá-lo e continuar. Resultado: o
-# comando de escrita que vinha depois (`cp`, `sed -i`, etc.) escapava da deteccao.
+echo "== R21 (lote 4, 2026-09-04): wrapper CITADO na posicao de comando =="
+# `posicaoDeComando` exigia `!tok.q` para pular wrappers, entao wrapper citado
+# (`"env" FOO=1 cp a.txt b.txt`) nao era reconhecido e a posicao de comando ficava
+# no proprio `"env"`. No `gate-staging-total` isso ABRIA o gate, e a catraca de
+# mutacao daquela bateria prova o conserto.
+#
+# AQUI nao abria, e o registro importa: medido em 2026-09-04, invertendo o
+# conserto na lib, estes quatro casos continuam barrando — este gate decide pelo
+# ALVO da escrita (caminho fora do worktree), nao pela posicao de comando, e por
+# isso o wrapper citado nunca o driblou. Os casos ficam como regressao: eles
+# travam a promessa de que o gate continua barrando as duas formas, e nao devem
+# ser lidos como a medicao do conserto — essa mora na bateria do staging-total.
+# O payload destes casos leva ASPAS DENTRO do comando, e por isso ele nao pode
+# ser montado por `printf`: o `\"` do formato vira `"` cru no meio da string
+# JSON, o `JSON.parse` do hook cai no catch e o gate sai 0 — o exit esperado da
+# contraprova pelo motivo errado, e um falso VERDE nos dois casos que deviam
+# barrar. Foi o que aconteceu na primeira escrita deste bloco, em 2026-09-04, e
+# e a mesma armadilha ja registrada em testa-gate-publicacao-destino.sh e no
+# segundo `b()` deste arquivo. Valor que chega por `argv` nao tem nivel de
+# escape para errar.
+bn() { # comando, cwd -> payload Bash de SUBAGENTE
+  node -e 'const [c,d]=process.argv.slice(1);process.stdout.write(JSON.stringify({agent_id:"ag-1",agent_type:"executor",cwd:d,hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:c}}))' "$1" "$2"
+}
 gate 'subagente: "env" FOO=1 cp arquivo FORA do worktree BARRA (R21)' 2 \
-  "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"\"env\" FOO=1 cp '"'"'%s/a.txt'"'"' '"'"'%s/copia.txt'"'"'"}}' "$(esc "$WT")" "$(esc "$R")" "$(esc "$R")")"
+  "$(bn "\"env\" FOO=1 cp $(esc "$R")/a.txt $(esc "$R")/copia.txt" "$(esc "$WT")")"
 gate 'subagente: "sudo" -u x sed -i arquivo FORA do worktree BARRA (R21)' 2 \
-  "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"\"sudo\" -u x sed -i '"'"'s/x/y/'"'"' '"'"'%s/a.txt'"'"'"}}' "$(esc "$WT")" "$(esc "$R")")"
-# Contraprova: wrapper citado como ARGUMENTO (nao no inicio) continua saindo 0.
+  "$(bn "\"sudo\" -u x sed -i s/x/y/ $(esc "$R")/a.txt" "$(esc "$WT")")"
+# Contraprova 1: wrapper citado como ARGUMENTO (nao no inicio) continua saindo 0.
 gate 'contraprova R21: grep -rn "env FOO=1 cp" docs/ PASSA' 0 \
-  "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"grep -rn \"env FOO=1 cp\" docs/"}}' "$(esc "$WT")")"
+  "$(bn 'grep -rn "env FOO=1 cp" docs/' "$(esc "$WT")")"
+# Contraprova 2: sem as aspas o gate ja barrava — e o par que prova que o caso
+# acima mede o wrapper CITADO, e nao a escrita fora do worktree em geral.
+gate 'contraprova R21: env FOO=1 cp (sem aspas) BARRA como antes' 2 \
+  "$(bn "env FOO=1 cp $(esc "$R")/a.txt $(esc "$R")/copia.txt" "$(esc "$WT")")"
 
 echo
 echo
