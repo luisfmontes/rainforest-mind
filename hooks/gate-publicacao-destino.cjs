@@ -132,6 +132,16 @@ function mensagemBloqueio(achados, arquivo) {
   msg += `Filter-branch\nremove de uma branch, mas em rede de fork o objeto continua `;
   msg += `servido por SHA\ne só o Support do GitHub consegue remover do storage da rede.\n`;
   msg += `Corrija o conteúdo e rode de novo.\n\n` +
+    `ATENÇÃO — PreToolUse aborta a CHAMADA INTEIRA, não só a ferramenta:\n` +
+    `  Um 'git add X && git commit' bloqueado não rodou o 'git add'; o índice fica\n` +
+    `  com a versão velha e o gate repete o achado depois da correção, parecendo\n` +
+    `  que a edição não gravou. Separe: 'git add', verifique com 'git show :<arquivo>',\n` +
+    `  depois 'git commit'.\n\n` +
+    `As duas saídas de emergência NÃO valem no MESMO comando:\n` +
+    `  - RAINFOREST_GATE_OFF=1 no ambiente: precisa estar na sessão (export),\n` +
+    `    não funciona como prefixo inline ('RAINFOREST_GATE_OFF=1 git commit');\n` +
+    `  - arquivo .rainforest-gate-off: é conferido ANTES do hook rodar, então\n` +
+    `    'touch .rainforest-gate-off && git commit' é bloqueado (usa outro 'git add' depois).\n\n` +
     `Se isto é falso positivo legítimo (teste com dado fake, documentação de formato),\n` +
     `você tem duas saídas:\n` +
     `  - RAINFOREST_GATE_OFF=1 no ambiente da sessão (desliga na sessão inteira);\n` +
@@ -158,6 +168,69 @@ const RE_GIT_COMMIT = /\bgit\s+(?:(?:-[A-Za-z]\s+\S+|--[a-z-]+(?:=\S+)?|-[A-Za-z
 
 /** `-a`, `-am`, `--all`: o commit leva o que está no WORKTREE, não no índice. */
 const RE_COMMIT_TUDO = /(?:^|\s)(?:--all\b|-[A-Za-z]*a[A-Za-z]*\b)/;
+
+/**
+ * Confere se um achado já existe num arquivo de um dos pais deste commit.
+ *
+ * Pais são HEAD (se existir) e MERGE_HEAD (se um merge estiver em progresso).
+ * Se a linha do achado já estava lá, não é conteúdo novo — isenta.
+ */
+function achadoJaEstaNoPai(dir, nome, a) {
+  const linhaDoAchado = a.linha;
+  const pais = [];
+
+  // HEAD é o commit atual
+  try {
+    const head = git(dir, ["rev-parse", "HEAD"]);
+    if (head) pais.push(head);
+  } catch {}
+
+  // MERGE_HEAD é o commit sendo mergeado (pode haver mais de um em merge octopus)
+  // Usa git rev-parse --git-path MERGE_HEAD para funcionar em worktree linkado
+  try {
+    const mergeHeadPath = git(dir, ["rev-parse", "--git-path", "MERGE_HEAD"]);
+    if (mergeHeadPath && fs.existsSync(mergeHeadPath)) {
+      const mergeHeads = fs.readFileSync(mergeHeadPath, "utf8").trim().split("\n");
+      for (const h of mergeHeads) {
+        if (h.trim()) pais.push(h.trim());
+      }
+    }
+  } catch {}
+
+  // Obtém conteúdo do índice (staged content)
+  // Normaliza separadores para forward slash (git show espera isto)
+  const nomeNormalizado = nome.replace(/\\/g, "/");
+  let conteudoAtual = git(dir, ["show", `:${nomeNormalizado}`]);
+  if (conteudoAtual === null) {
+    // Se não estiver no índice, tenta do disco
+    try {
+      conteudoAtual = fs.readFileSync(path.join(dir, nome), "utf8");
+    } catch {
+      return false;
+    }
+  }
+
+  const linhasAtual = conteudoAtual.split("\n");
+  const linhaAtualContent = linhasAtual[linhaDoAchado - 1];
+  if (!linhaAtualContent) return false; // linha não existe
+
+  const linhaAtualTrimmed = linhaAtualContent.trim();
+
+  // Confere cada pai
+  for (const pai of pais) {
+    const conteudoPai = git(dir, ["show", `${pai}:${nomeNormalizado}`]);
+    if (conteudoPai === null) continue; // arquivo não existia neste pai
+
+    const linhasPai = conteudoPai.split("\n");
+
+    // Procura a mesma linha (trimmed) em qualquer posição do arquivo pai
+    if (linhasPai.some(l => l.trim() === linhaAtualTrimmed)) {
+      return true; // encontrou a mesma linha no pai
+    }
+  }
+
+  return false;
+}
 
 /**
  * O que ESTE commit levaria, e o conteúdo exato que iria para o objeto.
@@ -238,12 +311,21 @@ function conferirCommit(ev, cwdDoEvento) {
 
     const resultado = conferirConteudo(conteudo);
     if (resultado && resultado.achados && resultado.achados.length) {
-      process.stderr.write(
-        `\nEste conteudo entraria no COMMIT, e o gate de escrita nao o viu —\n` +
-        `ele cobre Write/Edit, e este arquivo pode ter sido escrito por script\n` +
-        `(node, sed, heredoc). Issue #165.\n`
-      );
-      bloqueia(resultado.achados, absoluto);
+      const achadosAbloquear = [];
+      const dir = gitTop; // para a mutação: a linha tem que ser exata
+      for (const a of resultado.achados) {
+        if (achadoJaEstaNoPai(dir, nome, a)) continue;
+        achadosAbloquear.push(a);
+      }
+
+      if (achadosAbloquear.length > 0) {
+        process.stderr.write(
+          `\nEste conteudo entraria no COMMIT, e o gate de escrita nao o viu —\n` +
+          `ele cobre Write/Edit, e este arquivo pode ter sido escrito por script\n` +
+          `(node, sed, heredoc). Issue #165.\n`
+        );
+        bloqueia(achadosAbloquear, absoluto);
+      }
     }
   }
   process.exit(0);

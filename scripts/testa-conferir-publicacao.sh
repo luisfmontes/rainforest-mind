@@ -185,6 +185,48 @@ cp "$SBP/original.cjs" "$SRC/scripts/conferir-publicacao.cjs"
 saiu "e restaurado, volta a recusar" "$(codigo "$SBP/jid.md")" "2"
 
 echo
+echo "== 7b. SHA-1 de 40 hex nao e telefone (defect c) =="
+# Arquivos de docs/rainforest/estado/ usam head/base com 40 hex (SHA-1).
+# Subsequencia 5500 9000 0000 tem forma de telefone mas esta DENTRO do hash.
+# Isenta se dentro de token hex de 7-40 caracteres.
+printf '# estado\n\nhead = "abc123def4567890123455009000000012345e890"\n' > "$SBP/sha1.md"
+S="$(roda "$SBP/sha1.md")"
+nao_tem "SHA-1 de 40 hex nao acusa telefone"                    "$S" "telefone"
+saiu    "e passa limpo (exit 0)"                                "$(codigo "$SBP/sha1.md")" "0"
+
+echo
+echo "== 7c. mas telefone FORA do SHA-1 continua sendo acusado =="
+printf '# estado\n\nsha1: abc123def4567890123455009000000012345e890\ntel: (00) 90000-0001\n' > "$SBP/sha1-com-tel.md"
+S="$(roda "$SBP/sha1-com-tel.md")"
+tem     "telefone fora do hash e acusado"                       "$S" "telefone"
+saiu    "e RECUSA (exit 2)"                                     "$(codigo "$SBP/sha1-com-tel.md")" "2"
+
+echo
+echo "== 6b. credencial com referencia de variavel (defect b) =="
+# Interpolacao de shell, Windows var, Actions var nao sao segredos colados.
+# O valor esta num lugar seguro, nao no arquivo.
+printf '# config\n\ntoken=$TOKEN_SECRET\n' > "$SBP/cred-shell.md"
+S="$(roda "$SBP/cred-shell.md")"
+nao_tem "shell var \$VAR nao acusa credencial"                  "$S" "credencial"
+saiu    "e passa (exit 0)"                                      "$(codigo "$SBP/cred-shell.md")" "0"
+
+printf '# config\n\ntoken=${TOKEN_SECRET}\n' > "$SBP/cred-shell-chaves.md"
+nao_tem "shell var \${VAR} nao acusa credencial"                "$(roda "$SBP/cred-shell-chaves.md")" "credencial"
+
+printf '# config\n\npassword=%%USERNAME%%\n' > "$SBP/cred-windows.md"
+nao_tem "Windows var %%%%VAR%%%% nao acusa credencial"          "$(roda "$SBP/cred-windows.md")" "credencial"
+
+printf '# github\n\ntoken=${{secrets.TOKEN}}\n' > "$SBP/cred-actions.md"
+nao_tem "GitHub Actions \${{ secrets.X }} nao acusa"            "$(roda "$SBP/cred-actions.md")" "credencial"
+
+echo
+echo "== 6c. mas valor literal continua sendo acusado =="
+printf '# config\n\ntoken=sk-proj-abc123def456xyz789\n' > "$SBP/cred-literal.md"
+S="$(roda "$SBP/cred-literal.md")"
+tem     "valor literal e acusado"                               "$S" "credencial"
+saiu    "e RECUSA (exit 2)"                                     "$(codigo "$SBP/cred-literal.md")" "2"
+
+echo
 echo "== 8. dump hexadecimal nao e telefone (Issue #144) =="
 # Provar defeito de encoding exige colar bytes; ate 2026-09-02 o gate lia as
 # colunas de `xxd` como telefone e barrava a unica evidencia que o metodo aceita.
