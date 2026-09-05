@@ -107,12 +107,16 @@
   "revisar": {
     "status": "parcial",
     "snapshot": {
-      "head": "a8a4c1bba65cf5acaa618f76a9226f55d8ec7630",
-      "caminhos_sujos": [
-        "docs/rainforest/estado/2026-09-04-lote-4-guardas.json"
-      ]
+      "head": "ca7ccf55139e9972eba4141491f8646c644c5bc8",
+      "caminhos_sujos": []
     },
-    "em_voo": [],
+    "em_voo": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "tarefa": "revisao do commit de consertos ca7ccf5",
+        "desde": "2026-09-05"
+      }
+    ],
     "em": "2026-09-05"
   },
   "verificar": {

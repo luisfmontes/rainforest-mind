@@ -58,26 +58,6 @@ const REFERENCIA_DE_VARIAVEL = new RegExp(
 );
 
 /**
- * `${VAR:-padrao}` esconde um valor DENTRO da referência, e esse valor é
- * literal como qualquer outro: uma chave de credencial com um segredo de
- * verdade no lugar do padrão não fica segura por estar entre chaves. Padrão que
- * é ele próprio outra referência, ou vazio, continua isento.
- */
-function padraoEmbutido(referencia) {
-  const dentro = /^\$\{([^}]*)\}$/.exec(referencia);
-  if (!dentro) return false;
-  const embutido = /:?[-=+?](.*)$/.exec(dentro[1]);
-  if (!embutido) return false;
-  const valor = embutido[1].trim();
-  if (valor === '') return false;
-  // Padrão que é ele próprio uma referência não colou segredo nenhum. O teste
-  // é pelo primeiro caractere, e não pela regex inteira, porque a captura de
-  // uma referência com chaves para no primeiro fecha-chaves, e uma referência
-  // aninhada chega aqui truncada.
-  return !/^[$%]/.test(valor);
-}
-
-/**
  * Cada padrão diz o que é e por que dói — mensagem de trava que só nomeia o
  * regex manda quem foi barrado adivinhar o conserto.
  *
@@ -234,7 +214,18 @@ const PADROES = [
       const ref = REFERENCIA_DE_VARIAVEL.exec(valor);
       if (ref) {
         const resto = valor.slice(ref[0].length);
-        if (!/^[A-Za-z0-9_]/.test(resto) && !padraoEmbutido(ref[0])) return false;
+        // O recuo de `${VAR:-padrao}` NAO e olhado, e essa decisao custou uma
+        // rodada de revisao. A versao anterior tratava todo padrao como
+        // literal colado, e o efeito medido em 2026-09-05 foi recusar as duas
+        // formas mais comuns de `docker-compose.yml` e `.env.example`, em que
+        // o padrao e justamente um placeholder ("changeme", "postgres").
+        // Trava que grita no arquivo mais comum do mundo e como se ensina
+        // alguem a rodar com a saida de emergencia ligada — e ai ela nao pega
+        // mais o caso real. O que segura segredo escondido num recuo e a
+        // regra `chave-conhecida`, que olha o texto inteiro e independe desta
+        // isencao; segredo SEM prefixo conhecido num recuo e a fresta que
+        // fica, registrada em "Em aberto" no design.
+        if (!/^[A-Za-z0-9_]/.test(resto)) return false;
       }
 
       const prosaCurta = /^[a-zà-ú]{1,12}$/.test(valor);

@@ -350,7 +350,10 @@ function desempacota(interno) {
  * com seguranca o que vai rodar dentro. Postura conservadora.
  */
 function contemConstrucaoIlegivel(str) {
-  return /\$\(|`|\$[A-Za-z_{]/.test(str);
+  // O `0-9` cobre parametro posicional (`$1`, `$2`): `bash -c` com ele dentro e
+  // tao ilegivel quanto com `$VAR`, e a classe sem digito o deixava passar.
+  // Apontado como lacuna na revisao de 2026-09-05, na mesma linha que D22 tocou.
+  return /\$\(|`|\$[A-Za-z_{0-9]/.test(str);
 }
 
 /**

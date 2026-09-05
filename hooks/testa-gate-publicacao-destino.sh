@@ -247,6 +247,25 @@ gate "9d: merge de branch NAO publicada com achado novo continua barrando" 2 \
   "$(payBash 'git commit --no-edit' "$(esc "$N")")"
 git -C "$N" merge --abort > /dev/null 2>&1
 
+# 9e: "publicado" e no remoto de DESTINO, nao em qualquer remoto cadastrado.
+# Reproduzido na revisao de 2026-09-05: bastava `git remote add espelho <bare
+# descartavel>` e um push para la, e o merge seguinte tratava o segredo como ja
+# publicado — a mesma porta que o 9d fecha, reaberta por outro caminho. Nenhum
+# gate deste lote olha `remote add` nem `push`, entao a porta era de uma linha.
+git init -q --bare "$RAIZ/espelho.git"
+git -C "$N" remote add espelho "$RAIZ/espelho.git"
+git -C "$N" checkout -q main
+git -C "$N" checkout -q -b so-no-espelho
+printf 'contato: %s\n' "5500900000004@s.whatsapp.net" > "$N/de-espelho.txt"
+git -C "$N" add de-espelho.txt; git -C "$N" commit -qm "segredo empurrado so para o espelho"
+git -C "$N" push -q espelho so-no-espelho
+git -C "$N" fetch -q espelho
+git -C "$N" checkout -q main
+git -C "$N" merge --no-commit --no-ff so-no-espelho > /dev/null 2>&1
+gate "9e: publicado so num remoto que nao e o destino continua barrando" 2 \
+  "$(payBash 'git commit --no-edit' "$(esc "$N")")"
+git -C "$N" merge --abort > /dev/null 2>&1
+
 echo "== Verificação: gate-staging-total continua verde =="
 echo "Rodando: bash hooks/testa-gate-staging-total.sh"
 if bash "$SRC/hooks/testa-gate-staging-total.sh" > /tmp/test-staging.log 2>&1; then

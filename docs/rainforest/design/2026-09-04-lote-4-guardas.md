@@ -163,11 +163,24 @@ worktree; `achadoJaEstaNoPai` refazia essa decisão pela fonte errada e, em
 disco casava com a linha de mesma posição do pai e saía isenta. O conteúdo
 passa como argumento, de quem já o calculou.
 
-**D19. O outro pai de um merge só isenta quando já está publicado.**
-`git merge origin/main` (o caso de campo da #173) traz conteúdo que já está em
-ramo remoto. `git merge uma-branch-local` traz commits que nunca passaram por
-gate nenhum, e aí o segredo é novo para o destino. A pergunta é
-`git branch -r --contains`, e não "existe MERGE_HEAD".
+**D19. O outro pai de um merge só isenta quando já está publicado, e publicado
+é no remoto de DESTINO.** `git merge origin/main` (o caso de campo da #173) traz
+conteúdo que já está em ramo remoto. `git merge uma-branch-local` traz commits
+que nunca passaram por gate nenhum, e aí o segredo é novo para o destino. A
+pergunta é `git branch -r --contains --list <remoto-de-destino>/*`, e não
+"existe MERGE_HEAD" — nem "aparece em qualquer remoto cadastrado", que era a
+primeira forma e reabria a porta com um `git remote add` (revisão de
+2026-09-05).
+
+**O alcance real desta decisão, medido:** o gate roda em `PreToolUse` de um
+comando `git commit`, e o `RE_GIT_COMMIT` exige a palavra `commit`. Um
+`git merge origin/main` **limpo** cria o commit sozinho, sem passar por um
+`git commit` separado — então D18 e D19 nunca chegam a rodar nele. Elas cobrem
+o merge que **conflita** ou que usa `--no-commit`, que é quando o `MERGE_HEAD`
+sobrevive até um commit de verdade. Isso não é conserto pendente: em
+`PreToolUse` o merge ainda não aconteceu, e não existe conteúdo a conferir. A
+frase "o caso de campo da #173" aparecia três vezes sem essa ressalva, e agora
+tem.
 
 **D20. Token hex precisa ter letra de hex.** Dígito decimal é subconjunto de
 `[0-9a-fA-F]`: a isenção de "telefone dentro de hash" aceitava uma corrida de
@@ -202,7 +215,28 @@ arquivo. Entrar um grupo novo em `Stop` empurrou o hook procurado para fora da
 janela e a bateria ficou vermelha sem nada ter saído do lugar. Passou a ler o
 JSON.
 
-## Avaliado e descartado
+### Decisões da segunda rodada de revisão (D25–D27)
+
+A revisão do próprio commit de consertos achou que dois deles tinham efeito
+colateral não descrito. Estas três fecham isso, em 2026-09-05.
+
+**D25. O recuo de `${VAR:-padrão}` não é olhado.** A primeira forma de D21
+tratava todo padrão não-referência como literal colado, e o efeito medido foi
+recusar `PASSWORD=${PASSWORD:-changeme}` e `password: ${DB_PASS:-postgres}` —
+o idioma canônico de `docker-compose.yml` e `.env.example`, em que o padrão é
+justamente um placeholder. Trava que grita no arquivo mais comum do mundo é
+como se ensina alguém a rodar com `RAINFOREST_GATE_OFF=1`, e aí ela não pega
+mais o caso real. Fica valendo só a parte que motivou D21: literal grudado no
+fecha-chaves.
+
+**D26. Parâmetro posicional é ilegível como qualquer variável.** A classe de
+caracteres de `contemConstrucaoIlegivel` não tinha dígito, então `$1` e `$2`
+escapavam da checagem que `$VAR` recebe.
+
+**D27. A mensagem de "pulei por agente em voo" nomeia o comando de baixa.** A
+mensagem irmã, no hook de `Stop`, já imprimia; esta não, e quem só via esta
+saída não sabia destravar.
+
 - **P2 da #173 (reconhecer `MERGE_HEAD` e limitar aos arquivos tocados)** — a
   propria Issue a chama de remendo de D3; com o delta implementado ela nao
   acrescenta garantia, so um segundo caminho de decisao no mesmo hook.
@@ -228,4 +262,12 @@ JSON.
   sem mecanismo que o valide; mexer nele aqui so o desatualiza noutro lugar.
 
 ## Em aberto
-- (vazio)
+- **Segredo sem prefixo conhecido escondido no recuo de `${VAR:-padrão}`.**
+  D25 aceita essa fresta de propósito, porque fechá-la custava falso positivo
+  no idioma mais comum de config. O que ainda a cobre é a regra
+  `chave-conhecida`, que olha o texto inteiro — conferido: `${SLACK:-xoxb-…}`
+  continua recusado por ela. Um segredo sem prefixo reconhecível, escrito
+  como padrão de shell, passa.
+- **Merge limpo não passa pelo gate de commit.** Ver a ressalva em D19: em
+  `PreToolUse` o merge ainda não aconteceu. Fechar isso exigiria um ponto de
+  checagem depois do merge, que este lote não desenha.

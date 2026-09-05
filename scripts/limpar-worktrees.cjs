@@ -371,9 +371,17 @@ function executarRemocao(raiz, dadosLimpos) {
     const emVoo = agentesEmVoo(item.caminhoOriginal);
     if (emVoo) {
       const nomes = emVoo.voo.map((a) => a.agente).join(", ");
+      // A mensagem irmã, em `hooks/gate-agente-em-voo.cjs`, imprime o comando de
+      // baixa; esta não imprimia, e quem só via esta saída não sabia destravar.
+      // Assimetria apontada na revisão de 2026-09-05.
       console.log(
         `pulando ${item.caminho}: o estágio '${emVoo.estagio}' do fluxo ` +
           `'${emVoo.slug}' tem ${emVoo.voo.length} agente(s) em voo (${nomes})`
+      );
+      console.log(
+        `  se o agente já voltou, dê a baixa antes de limpar:\n` +
+          `  node scripts/estado.cjs marcar --slug ${emVoo.slug} ` +
+          `--estagio ${emVoo.estagio} --status parcial --json '{"em_voo":[]}'`
       );
       continue;
     }
