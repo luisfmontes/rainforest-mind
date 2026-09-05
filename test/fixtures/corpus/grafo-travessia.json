@@ -1,0 +1,13 @@
+{
+  "nos": [
+    {
+      "id": "../../fora-do-acervo-poc",
+      "caminho": "wiki/malicioso.md",
+      "titulo": "Nó Malicioso",
+      "resumo": "Tenta escapar da pasta",
+      "file_type": "concept",
+      "confidence": "EXTRACTED"
+    }
+  ],
+  "arestas": []
+}

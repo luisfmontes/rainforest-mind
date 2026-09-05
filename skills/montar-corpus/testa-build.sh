@@ -9,9 +9,10 @@ FIXTURE="$SRC/test/fixtures/corpus/grafo-exemplo.json"
 SANDBOX="$(mktemp -d)"
 SANDBOX_FAIL=""
 SANDBOX_FAIL2=""
+SANDBOX_TRAVERSAL=""
 
 cleanup() {
-  rm -rf "$SANDBOX" "$SANDBOX_FAIL" "$SANDBOX_FAIL2"
+  rm -rf "$SANDBOX" "$SANDBOX_FAIL" "$SANDBOX_FAIL2" "$SANDBOX_TRAVERSAL"
 }
 trap 'cleanup' EXIT
 
@@ -97,6 +98,19 @@ echo ""
 echo "7. Build com arquivo grafo inexistente:"
 SANDBOX_FAIL2="$(mktemp -d)"
 RFM_ROOT="$SANDBOX_FAIL2" esperado "  exit 1" 1 $BUILD "/inexistente/grafo.json" --corpus teste
+echo ""
+
+# Teste 8: Grafo com id contendo path traversal (../../)
+echo "8. Build com id contendo path traversal:"
+SANDBOX_TRAVERSAL="$(mktemp -d)"
+GRAFO_TRAVERSAL="$SRC/test/fixtures/corpus/grafo-travessia.json"
+RFM_ROOT="$SANDBOX_TRAVERSAL" esperado "  exit 1" 1 $BUILD "$GRAFO_TRAVERSAL" --corpus teste
+# Verifica que nenhum arquivo foi criado fora de acervo/teste/
+if find "$SANDBOX_TRAVERSAL" -name "fora-do-acervo-poc.md" 2>/dev/null | grep -q .; then
+  falhou=$((falhou+1)); echo "  FALHA arquivo criado fora do confinamento"
+else
+  ok=$((ok+1)); echo "  ok   nenhum arquivo fora de acervo/teste/"
+fi
 echo ""
 
 # ---------------------------------------------------------------- placar
