@@ -36,6 +36,28 @@
 const fs = require('fs');
 
 /**
+ * Uma referência de variável no COMEÇO do valor, nas quatro formas que
+ * aparecem em config e workflow: interpolação de shell com e sem chaves,
+ * variável do Windows, e expressão do GitHub Actions — inclusive cortada no
+ * primeiro espaço, que é como a regex de credencial a captura.
+ *
+ * A ordem das alternativas importa: a expressão do Actions é reconhecida
+ * antes da interpolação simples, senão a chave dupla casaria como chave
+ * única e o resto entraria como literal grudado.
+ */
+const REFERENCIA_DE_VARIAVEL = new RegExp(
+  [
+    '^(?:',
+    '\\$\\{\\{[^}]*\\}\\}',   // ${{ secrets.X }}
+    '|\\$\\{\\{',              // "${{" — cortada no espaço (Issue #173)
+    '|\\$\\{[^}]*\\}',        // ${VAR} e ${VAR:-padrao}
+    '|\\$[A-Za-z_]\\w*',       // $VAR
+    '|%[^%\\s]+%',           // %VAR%
+    ')',
+  ].join('')
+);
+
+/**
  * Cada padrão diz o que é e por que dói — mensagem de trava que só nomeia o
  * regex manda quem foi barrado adivinhar o conserto.
  *
@@ -89,6 +111,27 @@ const PADROES = [
       // defeito de encoding. A isenção vale só para match DENTRO dos grupos hex;
       // a coluna ASCII do dump, se mostrar um telefone legível, continua recusada.
       if (dentroDeDumpHex(m, linha)) return false;
+
+      // SHA-1 e outras sequências de hex (7-40 caracteres) podem conter
+      // subsequências que parecem telefone. Isenta matches DENTRO de um token hex.
+      const inicio = Math.max(0, m.index - 5);
+      const fim = Math.min(linha.length, m.index + m[0].length + 5);
+      const contexto = linha.substring(inicio, fim);
+      // O token hex precisa ter LETRA de hex. Sem essa exigência a classe
+      // de caracteres casa uma corrida de dígitos puros, e todo telefone sem
+      // máscara com 7+ dígitos virava "hash" e saía isento — medido em
+      // 2026-09-04, uma linha com onze dígitos crus devolvia achado nenhum,
+      // que é exatamente o falso negativo que esta regra existe para não
+      // ter. Hash de 40 posições sem nenhum a-f é possível na teoria e custa
+      // uma olhada; telefone que passa custa o telefone de alguém.
+      const tokenHex = /[0-9a-fA-F]{7,40}/.exec(contexto);
+      if (tokenHex && /[a-fA-F]/.test(tokenHex[0])) {
+        const localNoContexto = m.index - inicio;
+        if (localNoContexto >= tokenHex.index && localNoContexto < tokenHex.index + tokenHex[0].length) {
+          return false; // dentro de token hex, isenta
+        }
+      }
+
       const digitos = m[0].replace(/\D/g, '');
       return !/^(\d)\1*$/.test(digitos);
     },
@@ -143,8 +186,48 @@ const PADROES = [
     // mostrar. A liberação é estreita de propósito: valor de palavra curta, toda
     // minúscula, E a linha seguindo com mais palavras. Dúvida captura — valor
     // sozinho na linha continua recusado, mesmo minúsculo.
+    //
+    // Referência de variável não é segredo — a senha está num lugar seguro,
+    // não no arquivo. Isenta interpolação de shell (${VAR}, $VAR), variáveis
+    // do Windows (%VAR%), e expressões do GitHub Actions (${{ secrets.X }}).
     so_se: (m, linha) => {
       const valor = m[2].replace(/^["']+/, '');
+
+      // Isenta referências de variável (não são segredos colados). A isenção é
+      // pelo COMEÇO do valor, não pelo valor inteiro — e essa diferença é o
+      // caso real da Issue #173. Numa URL de clone autenticado do Actions, o
+      // valor capturado vai até o próximo espaço e leva o host junto (a
+      // interpolação, o arroba e o repositório, tudo num token só); e na forma
+      // de expressão do Actions ele para nas duas chaves de abertura, porque a
+      // captura da regex é `\S+`. Ancorar no valor inteiro deixava as duas
+      // formas acusadas, que é o estado que a Issue reporta.
+      // ... mas a isenção cobre o que a REFERÊNCIA cobre, e nada além.
+      // Ancorada só no começo, ela isentava o valor inteiro por causa do
+      // prefixo: medido em 2026-09-04, uma chave de senha apontando para uma
+      // variável com um literal emendado logo depois do fecha-chaves saía
+      // limpa — indireção usada como disfarce. Quem decide é o que vem DEPOIS
+      // da referência. Delimitador de URL ou de caminho é estrutura, e é a
+      // forma real da Issue #173 (a variável, o arroba e o repositório num
+      // token só). Caractere de palavra grudado no fecha-chaves é literal
+      // concatenado, e literal concatenado numa chave de credencial é segredo
+      // colado.
+      const ref = REFERENCIA_DE_VARIAVEL.exec(valor);
+      if (ref) {
+        const resto = valor.slice(ref[0].length);
+        // O recuo de `${VAR:-padrao}` NAO e olhado, e essa decisao custou uma
+        // rodada de revisao. A versao anterior tratava todo padrao como
+        // literal colado, e o efeito medido em 2026-09-05 foi recusar as duas
+        // formas mais comuns de `docker-compose.yml` e `.env.example`, em que
+        // o padrao e justamente um placeholder ("changeme", "postgres").
+        // Trava que grita no arquivo mais comum do mundo e como se ensina
+        // alguem a rodar com a saida de emergencia ligada — e ai ela nao pega
+        // mais o caso real. O que segura segredo escondido num recuo e a
+        // regra `chave-conhecida`, que olha o texto inteiro e independe desta
+        // isencao; segredo SEM prefixo conhecido num recuo e a fresta que
+        // fica, registrada em "Em aberto" no design.
+        if (!/^[A-Za-z0-9_]/.test(resto)) return false;
+      }
+
       const prosaCurta = /^[a-zà-ú]{1,12}$/.test(valor);
       const depois = linha.slice(m.index + m[0].length).trim().split(/\s+/).filter(Boolean);
       return !(prosaCurta && depois.length >= 2);

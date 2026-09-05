@@ -14,6 +14,7 @@
  *   - "limpo": toplevel DE DENTRO confere com o próprio dir E status vazio
  *   - "sujo": toplevel confere com o dir, mas há alterações
  *   - "órfão": diretório sem .git próprio (toplevel do pai)
+ *   - "fantasma-travado": registro travado em git worktree list, mas diretório ausente
  */
 
 const { spawnSync, execFileSync } = require("node:child_process");
@@ -22,6 +23,35 @@ const path = require("node:path");
 
 // Importa o helper de confinamento da Tarefa 1
 const { toplevelConfinado } = require("../hooks/lib/cwd-efetivo.cjs");
+const { resolver } = require("../hooks/lib/estagio-ativo.cjs");
+
+/**
+ * O worktree tem agente registrado em voo?
+ *
+ * "Limpo" quer dizer "sem alteração pendente", e um agente que acabou de
+ * commitar deixa o worktree dele exatamente assim — ainda trabalhando. Sem
+ * esta consulta, `--remover` apagava por baixo de quem estava no meio da
+ * tarefa, e o registro de `em_voo` (D16) existe justamente para responder
+ * "tem alguém aí dentro?" sem depender de heurística de mtime ou de processo.
+ *
+ * Devolve `null` quando não há fluxo aberto, quando o estado é ilegível, ou
+ * quando `em_voo` está vazio — nenhum desses casos segura a remoção.
+ */
+function agentesEmVoo(dir) {
+  try {
+    const ativo = resolver({ cwd: dir });
+    if (!ativo || !ativo.slug) return null;
+    const caminho = path.join(dir, "docs", "rainforest", "estado", `${ativo.slug}.json`);
+    const estado = JSON.parse(fs.readFileSync(caminho, "utf8"));
+    const bloco = estado[ativo.estagio];
+    const voo = bloco && typeof bloco === "object" && Array.isArray(bloco.em_voo)
+      ? bloco.em_voo.filter((a) => a && typeof a === "object" && a.agente)
+      : [];
+    return voo.length ? { slug: ativo.slug, estagio: ativo.estagio, voo } : null;
+  } catch {
+    return null;
+  }
+}
 
 // Argumentos
 const tem = (nome) => process.argv.includes(`--${nome}`);
@@ -83,6 +113,60 @@ function normalizarCaminho(p) {
     const resolvido = path.resolve(p);
     return process.platform === "win32" ? resolvido.toLowerCase() : resolvido;
   }
+}
+
+/**
+ * Detecta worktrees travados cujo diretório sumiu do disco (fantasma-travado).
+ * Retorna um mapa de caminho normalizado → true se fantasma-travado.
+ */
+function detectarFantasmaTravado(raiz) {
+  const fantasmas = new Map();
+  try {
+    const output = execFileSync("git", ["worktree", "list", "--porcelain"], {
+      cwd: raiz,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+
+    const raizNormalizada = normalizarCaminho(raiz);
+    const linhas = output.split("\n");
+    let caminhoAtual = null;
+    let temLocked = false;
+
+    for (const linha of linhas) {
+      if (linha.startsWith("worktree ")) {
+        caminhoAtual = linha.slice("worktree ".length).trim();
+        temLocked = false;
+      } else if (linha.startsWith("locked")) {
+        temLocked = true;
+      } else if (caminhoAtual && linha === "") {
+        // Fim da entrada do worktree
+        if (
+          temLocked &&
+          normalizarCaminho(caminhoAtual) !== raizNormalizada &&
+          !fs.existsSync(caminhoAtual)
+        ) {
+          fantasmas.set(normalizarCaminho(caminhoAtual), true);
+        }
+        caminhoAtual = null;
+        temLocked = false;
+      }
+    }
+
+    // Última entrada (sem linha vazia de encerramento)
+    if (
+      caminhoAtual &&
+      temLocked &&
+      normalizarCaminho(caminhoAtual) !== raizNormalizada &&
+      !fs.existsSync(caminhoAtual)
+    ) {
+      fantasmas.set(normalizarCaminho(caminhoAtual), true);
+    }
+  } catch {
+    // Fallthrough
+  }
+
+  return fantasmas;
 }
 
 /**
@@ -165,19 +249,28 @@ function listarWorktreesDoDisco(raiz, registrados) {
 }
 
 /**
- * Classifica um diretório como "limpo", "sujo" ou "órfão".
+ * Classifica um diretório como "limpo", "sujo", "órfão" ou "fantasma-travado".
  *
  * - "limpo": toplevel DE DENTRO bate com o dir E status vazio
  * - "sujo": toplevel bate com o dir, mas há sujeira
- * - "órfão": toplevel não bata com o dir (sem .git próprio)
+ * - "órfão": toplevel não bate com o dir (sem .git próprio)
+ * - "fantasma-travado": registro travado com diretório ausente
  */
-function classificar(dir) {
+function classificar(dir, fantasmas) {
+  // Se é um fantasma-travado, retorna logo
+  if (fantasmas && fantasmas.has(normalizarCaminho(dir))) {
+    return {
+      status: "fantasma-travado",
+      detalhes: "registro travado, diretório ausente",
+    };
+  }
+
   const confinado = toplevelConfinado(dir);
 
   if (!confinado.ok) {
     return {
       status: "órfão",
-      detalhes: "toplevel não bata com o diretório",
+      detalhes: "toplevel não bate com o diretório",
     };
   }
 
@@ -261,7 +354,7 @@ function imprimirTabela(dados) {
 }
 
 /**
- * Executa remoção (somente para "limpo").
+ * Executa remoção (para "limpo" e "fantasma-travado").
  */
 function executarRemocao(raiz, dadosLimpos) {
   if (dadosLimpos.length === 0) {
@@ -270,23 +363,95 @@ function executarRemocao(raiz, dadosLimpos) {
   }
 
   for (const item of dadosLimpos) {
-    console.log(`removendo ${item.caminho}...`);
-    // S2 (8a revisao, rodada 10, lote 3, 2026-09-03): `--force` existia "para
-    // eliminar os arquivos especiais do worktree" — premissa que a lista de
-    // exclusao de `classificar()` carregava e que a caixa desmentiu (esses
-    // nomes nunca aparecem no porcelain da arvore de trabalho). Sem a lista,
-    // só chega aqui um worktree de verdade LIMPO (porcelain vazio); `git
-    // worktree remove` sem `--force` funciona nesse caso (confirmado na
-    // caixa) — e sem `--force` a remoção nunca apaga sujeira por engano.
-    const result = spawnSync("git", ["worktree", "remove", item.caminhoOriginal], {
-      cwd: raiz,
-      encoding: "utf8",
-    });
+    const classe = item.classificacao.status;
 
-    if (result.status !== 0) {
-      console.error(
-        `aviso: falha ao remover ${item.caminho}: ${result.stderr || ""}`
+    // Worktree com agente em voo não é candidato a remoção, por mais limpo que
+    // esteja: agente que acabou de commitar deixa a árvore limpa e continua
+    // trabalhando. O aviso nomeia quem está lá dentro, para quem roda decidir.
+    const emVoo = agentesEmVoo(item.caminhoOriginal);
+    if (emVoo) {
+      const nomes = emVoo.voo.map((a) => a.agente).join(", ");
+      // A mensagem irmã, em `hooks/gate-agente-em-voo.cjs`, imprime o comando de
+      // baixa; esta não imprimia, e quem só via esta saída não sabia destravar.
+      // Assimetria apontada na revisão de 2026-09-05.
+      console.log(
+        `pulando ${item.caminho}: o estágio '${emVoo.estagio}' do fluxo ` +
+          `'${emVoo.slug}' tem ${emVoo.voo.length} agente(s) em voo (${nomes})`
       );
+      console.log(
+        `  se o agente já voltou, dê a baixa antes de limpar:\n` +
+          `  node scripts/estado.cjs marcar --slug ${emVoo.slug} ` +
+          `--estagio ${emVoo.estagio} --status parcial --json '{"em_voo":[]}'`
+      );
+      continue;
+    }
+
+    if (classe === "fantasma-travado" && remover) {
+      // Fantasma-travado: destrava, remove e poda.
+      //
+      // `git worktree lock` também é o mecanismo que o próprio git recomenda
+      // para worktree em mídia removível ou de rede, e mídia desmontada tem
+      // exatamente esta forma — travado, diretório ausente. O aviso abaixo
+      // nomeia essa possibilidade: o que se destrói aqui é o vínculo
+      // administrativo do git, não os arquivos, mas quem roda merece saber
+      // qual das duas coisas está vendo.
+      console.log(
+        `aviso: ${item.caminho} está travado com o diretório ausente. Se for ` +
+          `mídia removível ou de rede apenas desmontada, monte antes de seguir.`
+      );
+      console.log(`destravando ${item.caminho}...`);
+      const unlockResult = spawnSync("git", ["worktree", "unlock", item.caminhoOriginal], {
+        cwd: raiz,
+        encoding: "utf8",
+      });
+      if (unlockResult.status !== 0) {
+        console.error(
+          `erro ao destravar ${item.caminho}: ${unlockResult.stderr || ""}`
+        );
+        continue;
+      }
+
+      console.log(`removendo ${item.caminho}...`);
+      const removeResult = spawnSync("git", ["worktree", "remove", "--force", item.caminhoOriginal], {
+        cwd: raiz,
+        encoding: "utf8",
+      });
+      if (removeResult.status !== 0) {
+        console.error(
+          `erro ao remover ${item.caminho}: ${removeResult.stderr || ""}`
+        );
+        continue;
+      }
+
+      console.log(`podando worktrees...`);
+      const pruneResult = spawnSync("git", ["worktree", "prune"], {
+        cwd: raiz,
+        encoding: "utf8",
+      });
+      if (pruneResult.status !== 0) {
+        console.error(
+          `aviso: falha ao podar ${item.caminho}: ${pruneResult.stderr || ""}`
+        );
+      }
+    } else {
+      console.log(`removendo ${item.caminho}...`);
+      // S2 (8a revisao, rodada 10, lote 3, 2026-09-03): `--force` existia "para
+      // eliminar os arquivos especiais do worktree" — premissa que a lista de
+      // exclusao de `classificar()` carregava e que a caixa desmentiu (esses
+      // nomes nunca aparecem no porcelain da arvore de trabalho). Sem a lista,
+      // só chega aqui um worktree de verdade LIMPO (porcelain vazio); `git
+      // worktree remove` sem `--force` funciona nesse caso (confirmado na
+      // caixa) — e sem `--force` a remoção nunca apaga sujeira por engano.
+      const result = spawnSync("git", ["worktree", "remove", item.caminhoOriginal], {
+        cwd: raiz,
+        encoding: "utf8",
+      });
+
+      if (result.status !== 0) {
+        console.error(
+          `aviso: falha ao remover ${item.caminho}: ${result.stderr || ""}`
+        );
+      }
     }
   }
 }
@@ -296,6 +461,9 @@ function executarRemocao(raiz, dadosLimpos) {
  */
 function main() {
   const raiz = resolverRaiz();
+
+  // Detecta fantasmas-travados antes de listar tudo
+  const fantasmas = detectarFantasmaTravado(raiz);
 
   // Lista worktrees (registrados + disco)
   let registrados = listarWorktreesRegistrados(raiz);
@@ -324,7 +492,7 @@ function main() {
   }
 
   for (const dir of todos) {
-    const classificacao = classificar(dir);
+    const classificacao = classificar(dir, fantasmas);
     const caminhoOriginal = mapNormalizado.get(dir) || dir;
     dados.push({
       caminho: dir,
@@ -336,12 +504,14 @@ function main() {
   // Imprime tabela
   imprimirTabela(dados);
 
-  // Se --remover, remove os limpos
+  // Se --remover, remove os limpos e fantasmas-travados
   if (remover) {
-    const limpos = dados.filter((item) => item.classificacao.status === "limpo");
-    if (limpos.length > 0) {
+    const removiveis = dados.filter((item) =>
+      item.classificacao.status === "limpo" || item.classificacao.status === "fantasma-travado"
+    );
+    if (removiveis.length > 0) {
       console.log("");
-      executarRemocao(raiz, limpos);
+      executarRemocao(raiz, removiveis);
     }
   }
 

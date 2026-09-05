@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 /**
- * PreToolUse — barra `gh issue close` direto e `gh pr create/edit/merge` sem evidência.
+ * PreToolUse — barra `gh issue close` direto, palavras-chave falsas (português), e `gh pr create/edit/merge` sem evidência.
  *
- * Decisões D15, D16: fechar Issue sem o marcador de evidência é bloqueado.
+ * Decisões D15, D16, D17 (2026-09-04): fechar Issue sem o marcador de evidência é bloqueado, e palavras-chave falsas em português são impedidas.
  * - `gh issue close <n>` direto → exit 2, stderr aponta para scripts/fechar-issue.cjs
- * - `gh pr create`/`gh pr edit` com corpo citando `closes #N` para Issue sem marcador → exit 2
+ * - `gh pr create`/`gh pr edit`/`gh issue create`/`gh issue comment` com corpo citando palavras-chave falsas (português): `fecha`, `encerra`, `conclui`, `corrige`, `resolvida`, etc. → exit 2 com instruções
+ * - `gh pr create`/`gh pr edit`/`gh pr merge` com corpo citando `closes #N` para Issue sem marcador → exit 2
  * - `gh pr merge`: NÃO usa o `--body` (é a mensagem do merge commit, não a descrição
  *   do PR) — lê a descrição real via `gh pr view <ref> --json body` e verifica as
  *   Issues citadas ali. Leitura falhou (exit ≠ 0, JSON inválido, sem rede) → bloqueia.
@@ -195,6 +196,36 @@ function git(dir, args) {
 }
 
 /**
+ * Palavras-chave FALSAS em português — verbos que a squad pode usar mas que o
+ * GitHub NÃO reconhece. Quando encontradas antes de `#N`, indicam que a Issue
+ * não vai fechar automaticamente no merge, e o gate bloqueia com instruções.
+ *
+ * Critério de inclusão (2026-09-04):
+ * - `fecha`, `fecham`, `fechada`, `fechado`: formas diretas de "fechar" (GitHub
+ *   reconhece só inglês: close/closes/closed)
+ * - `encerra`, `encerrada`, `encerrado`: sinônimos comuns em português
+ * - `conclui`, `concluída`, `concluído`: formas de "concluir" (frequente)
+ * - `corrige`, `corrigida`, `corrigido`: formas de "corrigir" — este verbo merece
+ *   atenção especial: o GitHub em inglês tem `fix/fixes/fixed`, MAS em português
+ *   "corrige" pode ser referência DELIBERADA sem intenção de fechar (ex.: "Segue
+ *   #73 e corrige a abordagem do #74" — referência deliberada, não fechamento).
+ *   Incluímos aqui porque é frequente na squad; o gate bloqueia com a mensagem
+ *   oferecendo a alternativa em inglês (`Fixes #N`) se a intenção for fechar, ou
+ *   "Ver #N" se for referência deliberada.
+ * - `resolvida`, `resolvido`: formas de "resolver" (GitHub tem `resolve/resolves/resolved`)
+ *
+ * Case-insensitive; acentos opcionais onde couberem (regex com `[eé]` etc).
+ *
+ * O artigo entre o verbo e o `#N` e opcional: "Fecha a #73" e portugues tao
+ * comum quanto "Fecha #73", o GitHub tambem nao reconhece nenhum dos dois, e
+ * sem o artigo na regex a primeira forma passava calada — a Issue ficava
+ * aberta em silencio, que e exatamente o que este gate existe para evitar.
+ * Achado na revisao do lote 4.
+ */
+const FALSA_CHAVE =
+  /\b(?:fecha|fecham|fechada|fechado|encerra|encerrada|encerrado|conclui|conclu[íi]da|conclu[íi]do|corrige|corrigida|corrigido|resolvida|resolvido)\s+(?:[oa]s?\s+)?(?:#|https?:\/\/\S*\/issues\/)(\d+)/gi;
+
+/**
  * Extrai a lista de Issues citadas num corpo de PR usando padrões de fechamento.
  * Padrão: close(s|d)|fix(es|ed)|resolve(s|d) seguido de `#<n>` OU da URL
  * completa da Issue (`https://github.com/org/repo/issues/<n>`).
@@ -216,6 +247,24 @@ function extrairIssuesCitadas(corpo) {
     issues.add(parseInt(match[1], 10));
   }
   return Array.from(issues);
+}
+
+/**
+ * Extrai Issues que foram citadas com PALAVRAS-CHAVE FALSAS (português não
+ * reconhecido pelo GitHub). Retorna array de números únicos encontrados com
+ * a palavra-chave falsa que os precedeu.
+ */
+function extrairIssuesComFalsaChave(corpo) {
+  const issues = [];
+  let match;
+  while ((match = FALSA_CHAVE.exec(corpo)) !== null) {
+    const numeroIssue = parseInt(match[1], 10);
+    // Extrair a palavra-chave falsa do match completo
+    const textoCompleto = match[0];
+    const palavraChave = textoCompleto.split(/\s+/)[0];
+    issues.push({ numero: numeroIssue, palavra: palavraChave.toLowerCase() });
+  }
+  return issues;
 }
 
 /**
@@ -422,6 +471,26 @@ function verificarIssuesCitadas(corpo) {
 }
 
 /**
+ * Verifica se um corpo contém palavras-chave FALSAS (português não reconhecido
+ * pelo GitHub) antes de números de Issue. Se encontrar, bloqueia com instruções
+ * sobre qual palavra usar em inglês ou se a referência é deliberada.
+ */
+function verificarFalsasChaves(corpo) {
+  const issues = extrairIssuesComFalsaChave(corpo || "");
+  if (issues.length === 0) return;
+
+  // Tomar o primeiro caso para a mensagem
+  const primeiro = issues[0];
+  bloqueia(
+    `BLOQUEADO: "${primeiro.palavra} #${primeiro.numero}" não é palavra-chave do GitHub — a issue fica aberta depois do merge.\n` +
+    `O GitHub reconhece, em inglês: close/closes/closed, fix/fixes/fixed, resolve/resolves/resolved.\n` +
+    `A palavra repete antes de cada número: "Closes #81, closes #79".\n` +
+    `Troque por:  Closes #${primeiro.numero}\n` +
+    `Se a referência é deliberada e NÃO deve fechar, use uma palavra neutra: "Segue #${primeiro.numero}", "Ver #${primeiro.numero}".\n`
+  );
+}
+
+/**
  * Aplica as checagens D15/D16 a uma invocação de `gh` já identificada:
  * `segmento` é o texto bruto (para extrair `--body`/`--body-file`),
  * `subcomandos` são os tokens que vêm depois de `gh`, e `cwdSegmento` é o
@@ -488,7 +557,30 @@ function verificarComandoGh(segmento, subcomandos, cwdSegmento) {
       }
     }
 
+    // Verificar palavras-chave falsas ANTES de verificar evidência
+    verificarFalsasChaves(corpoDoPR.conteudo);
     verificarIssuesCitadas(corpoDoPR.conteudo);
+  }
+
+  // Caso (d): `gh issue create` → verificar corpo para palavras-chave falsas
+  // (não exige evidência de pronto como PR)
+  if (temSubcomando(subcomandos, ["issue", "create"])) {
+    const corpoIssue = extrairCorpoDoPR(segmento, cwdSegmento);
+
+    // Só verifica palavras-chave falsas; não precisa de `--body` explícito
+    if (corpoIssue.legivel && corpoIssue.conteudo) {
+      verificarFalsasChaves(corpoIssue.conteudo);
+    }
+  }
+
+  // Caso (e): `gh issue comment` → verificar corpo para palavras-chave falsas
+  if (temSubcomando(subcomandos, ["issue", "comment"])) {
+    const corpoComentario = extrairCorpoDoPR(segmento, cwdSegmento);
+
+    // Só verifica palavras-chave falsas; não precisa de `--body` explícito
+    if (corpoComentario.legivel && corpoComentario.conteudo) {
+      verificarFalsasChaves(corpoComentario.conteudo);
+    }
   }
 
   // Caso (c): `gh pr merge` → NÃO ler o `--body` (é a mensagem do merge
@@ -641,7 +733,7 @@ function cwdDoSegmento(segmento, mapaCwd, ordem) {
  *      ele mesmo ter vários segmentos encadeados.
  *   3. Wrapper DESCONHECIDO (nem `gh`, nem prefixo, nem wrapper dos itens
  *      1/2): rede de segurança final — se a sequência não citada
- *      `gh issue close`/`gh pr create`/`gh pr edit`/`gh pr merge` aparece em qualquer
+ *      `gh issue close`/`gh issue create`/`gh issue comment`/`gh pr create`/`gh pr edit`/`gh pr merge` aparece em qualquer
  *      posição do segmento, trata como comando mesmo assim.
  */
 function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
@@ -714,7 +806,7 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
   const valores = toksSemComentario.map((t) => t.v);
   const primeiro = valores.length ? normalizarExecutavel(valores[0]) : null;
   if (primeiro !== null && !ehPrefixoOuWrapperConhecido(primeiro)) {
-    for (const padrao of [["gh", "issue", "close"], ["gh", "pr", "create"], ["gh", "pr", "edit"], ["gh", "pr", "merge"]]) {
+    for (const padrao of [["gh", "issue", "close"], ["gh", "issue", "create"], ["gh", "issue", "comment"], ["gh", "pr", "create"], ["gh", "pr", "edit"], ["gh", "pr", "merge"]]) {
       const idx = indiceSequencia(valores, padrao);
       if (idx !== -1) {
         verificarComandoGh(segmento, valores.slice(idx + 1), cwdDoSegmento(segmento, mapaCwd, ordem));
