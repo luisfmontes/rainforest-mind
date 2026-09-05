@@ -97,6 +97,14 @@
     "em": "2026-09-05"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "destino": "PR",
+    "pr": 186,
+    "url": "https://github.com/luisfmontes/rainforest-mind/pull/186",
+    "branch": "fluxo/nao-mente",
+    "head": "fce4f92",
+    "comando": "gh pr create --base main --head fluxo/nao-mente",
+    "saida": "https://github.com/luisfmontes/rainforest-mind/pull/186",
+    "em": "2026-09-05"
   }
 }
