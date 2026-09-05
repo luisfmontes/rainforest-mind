@@ -125,6 +125,13 @@ function validarCaminhoNo(nomeArquivo, pastaBase) {
  */
 function escaparTexto(texto) {
   return String(texto)
+    // Quebra de linha vem PRIMEIRO. Sem isso, um resumo com "\n# titulo"
+    // abre um bloco markdown novo: no CommonMark uma ATX heading interrompe
+    // paragrafo sem precisar de linha em branco. O acervo e lido por agente,
+    // entao bloco injetado vira texto que passa por conteudo legitimo.
+    .replace(/\r\n?|\n/g, ' ')
+    // Controle tambem some: alguns quebram o arquivo, outros escondem texto.
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
     .replace(/\\/g, '\\\\')
     .replace(/\[/g, '\\[')
     .replace(/\]/g, '\\]')
@@ -145,7 +152,11 @@ const escaparTitulo = escaparTexto;
  * documento sai deslocado.
  */
 function codigoInline(texto) {
-  const s = String(texto);
+  // Mesma razao do escaparTexto: span de codigo inline nao atravessa linha,
+  // entao um \n aqui tambem abre bloco novo no documento.
+  const s = String(texto)
+    .replace(/\r\n?|\n/g, ' ')
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
   let maior = 0;
   for (const seq of s.match(/`+/g) || []) {
     if (seq.length > maior) maior = seq.length;
@@ -162,12 +173,32 @@ function codigoInline(texto) {
  */
 function alvoLink(id) {
   return String(id)
+    // % primeiro, senao re-escapa o que os outros produziram.
     .replace(/%/g, '%25')
     .replace(/ /g, '%20')
     .replace(/\(/g, '%28')
     .replace(/\)/g, '%29')
     .replace(/</g, '%3C')
-    .replace(/>/g, '%3E');
+    .replace(/>/g, '%3E')
+    // '#' e '?' cortam o alvo: './nota#1.md' aponta para o arquivo 'nota'
+    // com fragmento '1.md', nao para o arquivo 'nota#1.md' que foi escrito.
+    .replace(/#/g, '%23')
+    .replace(/\?/g, '%3F');
+}
+
+// Caracteres que o Windows nao aceita em nome de arquivo. ':' e o pior deles:
+// nao da erro, grava num Alternate Data Stream do NTFS. Medido — um id
+// 'x:secret' criou um arquivo chamado 'x' e escondeu o conteudo no stream.
+const RE_NOME_INVALIDO = /[<>:"|?*\x00-\x1F]/;
+
+/**
+ * Nome que o sistema de arquivos REALMENTE vai usar. O Win32 apara ponto e
+ * espaco no fim em silencio, e o NTFS nao distingue caixa — dois ids que o
+ * schema aceita como diferentes viram o mesmo arquivo, e o segundo apaga o
+ * primeiro sem aviso.
+ */
+function nomeEfetivo(nomeArquivo) {
+  return nomeArquivo.replace(/[ .]+$/, '').toLowerCase();
 }
 
 /**
@@ -261,6 +292,7 @@ function main() {
   criarPasta(pastaAcervo);
 
   // Escreve um markdown por nó
+  const nomesVistos = new Map(); // nome efetivo -> id que o reivindicou
   for (const no of grafo.nos) {
     const nomeArquivo = `${no.id}.md`;
 
@@ -270,9 +302,35 @@ function main() {
       process.exit(1);
     }
 
+    // Caractere que o Windows nao aceita: recusa nomeada em vez de gravar num
+    // stream alternativo do NTFS, que some da listagem e leva o no junto.
+    if (RE_NOME_INVALIDO.test(no.id)) {
+      console.error(`Erro: id contém caractere inválido para nome de arquivo: ${JSON.stringify(no.id)}`);
+      process.exit(1);
+    }
+
+    // Colisao depois da normalizacao do sistema de arquivos: perda silenciosa
+    // de no. Recusa em vez de deixar o segundo sobrescrever o primeiro.
+    const efetivo = nomeEfetivo(nomeArquivo);
+    if (nomesVistos.has(efetivo)) {
+      console.error(
+        `Erro: dois nós disputam o mesmo arquivo '${efetivo}': ` +
+        `${JSON.stringify(nomesVistos.get(efetivo))} e ${JSON.stringify(no.id)}`
+      );
+      process.exit(1);
+    }
+    nomesVistos.set(efetivo, no.id);
+
     const caminhoArquivo = path.join(pastaAcervo, nomeArquivo);
     const conteudo = criarMarkdownNo(no);
-    fs.writeFileSync(caminhoArquivo, conteudo, 'utf8');
+    try {
+      fs.writeFileSync(caminhoArquivo, conteudo, 'utf8');
+    } catch (erro) {
+      // Sem isso, um id que o SO recusa sobe stack trace cru e deixa o acervo
+      // pela metade, sem INDEX.md e sem dizer que ficou parcial.
+      console.error(`Erro ao escrever o nó ${JSON.stringify(no.id)}: ${erro.message}`);
+      process.exit(1);
+    }
   }
 
   // Escreve o INDEX.md

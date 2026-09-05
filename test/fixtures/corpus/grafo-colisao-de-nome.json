@@ -1,0 +1,21 @@
+{
+  "nos": [
+    {
+      "id": "Foo",
+      "caminho": "wiki/f1.md",
+      "titulo": "PRIMEIRO",
+      "resumo": "seria apagado em silencio pelo segundo",
+      "file_type": "concept",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "foo",
+      "caminho": "wiki/f2.md",
+      "titulo": "SEGUNDO",
+      "resumo": "NTFS nao distingue caixa: mesmo arquivo",
+      "file_type": "concept",
+      "confidence": "EXTRACTED"
+    }
+  ],
+  "arestas": []
+}

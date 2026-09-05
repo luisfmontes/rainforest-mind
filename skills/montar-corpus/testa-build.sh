@@ -259,6 +259,84 @@ else
 fi
 echo ""
 
+# Teste 14: quebra de linha em campo de texto nao pode abrir bloco markdown.
+# O acervo e lido por agente: bloco injetado passa por conteudo legitimo.
+echo "14. Build com \\n em titulo e resumo (nao pode virar heading):"
+nova_sandbox; SB14="$ULTIMA_SANDBOX"
+GRAFO_NL="$SRC/test/fixtures/corpus/grafo-quebra-de-linha.json"
+RFM_ROOT="$SB14" esperado "  exit 0" 0 $BUILD "$GRAFO_NL" --corpus nl
+# O arquivo do no so pode ter DOIS headings: o titulo (#) e o Resumo (##).
+NHEAD=$(grep -c '^#' "$SB14/acervo/nl/vitima.md" 2>/dev/null || echo 99)
+if [ "$NHEAD" = "2" ]; then
+  ok=$((ok+1)); echo "  ok   nenhum heading injetado (2 headings, os legitimos)"
+else
+  falhou=$((falhou+1)); echo "  FALHA $NHEAD headings, esperava 2 — bloco injetado"
+  grep -n '^#' "$SB14/acervo/nl/vitima.md" 2>/dev/null | sed 's/^/         /'
+fi
+# O texto injetado tem que continuar visivel, so que na mesma linha.
+if grep -q 'texto normal  # INSTRUCAO INJETADA' "$SB14/acervo/nl/vitima.md" 2>/dev/null; then
+  ok=$((ok+1)); echo "  ok   texto preservado, achatado numa linha"
+else
+  falhou=$((falhou+1)); echo "  FALHA texto do resumo nao saiu achatado como esperado"
+fi
+# '#' no id tem que sair percent-encoded no alvo do link.
+if grep -q -- '](\./nota%231\.md)' "$SB14/acervo/nl/INDEX.md" 2>/dev/null; then
+  ok=$((ok+1)); echo "  ok   '#' do id sai como %23 no alvo do link"
+else
+  falhou=$((falhou+1)); echo "  FALHA '#' do id nao foi percent-encoded"
+  grep -n -- '](' "$SB14/acervo/nl/INDEX.md" 2>/dev/null | sed 's/^/         /'
+fi
+echo ""
+
+# Teste 15: ':' no id grava num Alternate Data Stream do NTFS — arquivo some
+# da listagem e o no vai junto, sem erro. Tem que recusar.
+echo "15. Build com id contendo ':' (Alternate Data Stream):"
+nova_sandbox; SB15="$ULTIMA_SANDBOX"
+GRAFO_INV="$SRC/test/fixtures/corpus/grafo-nome-invalido.json"
+SAIDA15=$( { RFM_ROOT="$SB15" $BUILD "$GRAFO_INV" --corpus inv 2>&1; } )
+EXIT15=$?
+if [ "$EXIT15" -eq 1 ]; then
+  ok=$((ok+1)); echo "  ok   exit 1 (exit $EXIT15)"
+else
+  falhou=$((falhou+1)); echo "  FALHA exit $EXIT15, esperava 1"
+  echo "$SAIDA15" | sed 's/^/         /' | tail -3
+fi
+if echo "$SAIDA15" | grep -q "caractere inválido"; then
+  ok=$((ok+1)); echo "  ok   recusa nomeada"
+else
+  falhou=$((falhou+1)); echo "  FALHA sem mensagem de recusa"
+  echo "$SAIDA15" | sed 's/^/         /' | head -3
+fi
+if [ -z "$(ls -A "$SB15/acervo/inv" 2>/dev/null)" ]; then
+  ok=$((ok+1)); echo "  ok   nada escrito"
+else
+  falhou=$((falhou+1)); echo "  FALHA escreveu mesmo recusando"
+  ls -1 "$SB15/acervo/inv" | sed 's/^/         /'
+fi
+echo ""
+
+# Teste 16: NTFS nao distingue caixa. Dois ids diferentes pelo schema viram o
+# mesmo arquivo e o segundo apaga o primeiro sem aviso.
+echo "16. Build com dois ids que colidem no sistema de arquivos:"
+nova_sandbox; SB16="$ULTIMA_SANDBOX"
+GRAFO_COL="$SRC/test/fixtures/corpus/grafo-colisao-de-nome.json"
+SAIDA16=$( { RFM_ROOT="$SB16" $BUILD "$GRAFO_COL" --corpus col 2>&1; } )
+EXIT16=$?
+if [ "$EXIT16" -eq 1 ]; then
+  ok=$((ok+1)); echo "  ok   exit 1 (exit $EXIT16)"
+else
+  falhou=$((falhou+1)); echo "  FALHA exit $EXIT16, esperava 1 — no perdido em silencio"
+  echo "$SAIDA16" | sed 's/^/         /' | tail -3
+fi
+# A recusa tem que nomear OS DOIS ids, senao nao da para achar o problema.
+if echo "$SAIDA16" | grep -q '"Foo"' && echo "$SAIDA16" | grep -q '"foo"'; then
+  ok=$((ok+1)); echo "  ok   recusa nomeia os dois ids"
+else
+  falhou=$((falhou+1)); echo "  FALHA recusa nao nomeia os dois ids"
+  echo "$SAIDA16" | sed 's/^/         /' | head -3
+fi
+echo ""
+
 # ---------------------------------------------------------------- placar
 echo "========================================"
 echo "$ok ok   $falhou falha(s)"
