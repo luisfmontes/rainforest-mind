@@ -7,7 +7,13 @@ SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 BUILD="node $SRC/skills/montar-corpus/build.cjs"
 FIXTURE="$SRC/test/fixtures/corpus/grafo-exemplo.json"
 SANDBOX="$(mktemp -d)"
-trap 'rm -rf "$SANDBOX"' EXIT
+SANDBOX_FAIL=""
+SANDBOX_FAIL2=""
+
+cleanup() {
+  rm -rf "$SANDBOX" "$SANDBOX_FAIL" "$SANDBOX_FAIL2"
+}
+trap 'cleanup' EXIT
 
 ok=0; falhou=0
 
@@ -84,14 +90,12 @@ echo ""
 # Teste 6: Falta de --corpus deve falhar
 echo "6. Build sem --corpus deve falhar:"
 SANDBOX_FAIL="$(mktemp -d)"
-trap "rm -rf '$SANDBOX_FAIL'" EXIT
 RFM_ROOT="$SANDBOX_FAIL" esperado "  exit 1" 1 $BUILD "$FIXTURE"
 echo ""
 
 # Teste 7: Arquivo grafo inválido (não existe)
 echo "7. Build com arquivo grafo inexistente:"
 SANDBOX_FAIL2="$(mktemp -d)"
-trap "rm -rf '$SANDBOX_FAIL2'" EXIT
 RFM_ROOT="$SANDBOX_FAIL2" esperado "  exit 1" 1 $BUILD "/inexistente/grafo.json" --corpus teste
 echo ""
 
