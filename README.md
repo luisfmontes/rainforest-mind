@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.2.0-1e5c3f?style=flat-square" alt="versão 1.2.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.3.0-1e5c3f?style=flat-square" alt="versão 1.3.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -152,10 +152,11 @@ mesmo assim**.
 | `gate-staging-total.cjs` | `git add` com caminho total (`-A`, `.`, `*`…) e `git commit -a` |
 | `gate-publicacao-destino.cjs` | escrita de dado sensível (JID, telefone, e-mail, credencial) em arquivo rastreado |
 | `gate-repo-alheio.cjs` | escrita cujo destino está dentro de **outro** repositório git |
+| `gate-fechar-issue.cjs` | `gh issue close` direto, e `closes #N` em PR sem comentário de evidência marcado |
 | `portaria.cjs` | despacho de subagente não declarado em `.rainforest/agentes.json`, ou sem `isolation: "worktree"` quando ele escreve |
 
 Valem em **qualquer** repo git da máquina, porque o hábito é que é o problema,
-não o repositório. Cada uma tem bateria própria — **181 casos** rodando o hook
+não o repositório. Cada uma tem bateria própria — **427 casos** rodando o hook
 de verdade contra repos git montados na hora.
 
 → O incidente de origem de cada trava, as saídas de emergência e a tabela de

@@ -16,6 +16,18 @@
 #   3. Falha de backup FALA: uma linha no ERROS.md, no formato do run-vigia.ps1.
 #   4. `-Teste` nao escreve backup nenhum.
 #   5. O caminho feliz cria a copia de verdade.
+#
+# INCIDENTE N1 (2026-09-03/04): esta bateria gravou rainforest-2026-09-03.zip e
+# rainforest-2026-09-04.zip no %OneDrive%\rainforest-backup REAL do usuario (14
+# bytes de FOCO.md de caixa cada, achados e removidos manualmente pela janela).
+# Causa: rodar()/rodar_sem_rfm_root()/rodar_capturando() isolavam RFM_ROOT,
+# USERPROFILE e HOME, mas nunca RFM_BACKUP_DESTINO nem OneDrive/ONEDRIVE - e o
+# resolverDestino de scripts/backup.cjs cai em env.OneDrive quando
+# RFM_BACKUP_DESTINO esta vazia. Conserto: toda chamada ao backup-estado.ps1
+# nesta bateria agora passa RFM_BACKUP_DESTINO para uma pasta de mktemp -d e
+# roda com `env -u OneDrive -u ONEDRIVE`; uma trava (verificar_destino_seguro,
+# abaixo) aborta a bateria inteira se algum call site deixar de isolar; e o
+# caso 19 confere, ao final, que nada novo apareceu no OneDrive de verdade.
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -30,6 +42,52 @@ command -v powershell >/dev/null 2>&1 || { echo "FALHA powershell nao esta no PA
 command -v node >/dev/null 2>&1 || { echo "FALHA node nao esta no PATH"; exit 1; }
 
 win() { cygpath -w "$1"; }
+
+# --- trava anti-OneDrive-real (N1, 2026-09-03/04) -------------------------
+# Toda invocacao do backup-estado.ps1 nesta bateria chama esta funcao logo
+# antes de montar o comando, com o RFM_BACKUP_DESTINO de caixa que vai usar (ou
+# vazio, se algum call site regredir e deixar de isolar). DECISAO: a trava
+# aborta a bateria INTEIRA (exit 1) sempre que o destino de caixa vier vazio -
+# INCONDICIONAL, sem checar se OneDrive/ONEDRIVE estao definidas no momento.
+# Uma versao condicionada a "OneDrive esta alcancavel" nao pega a mutacao que
+# so remove a linha do RFM_BACKUP_DESTINO em rodar(): o `env -u OneDrive
+# -u ONEDRIVE` que fica ao lado, na mesma chamada, continua de pe e blinda o
+# processo filho de qualquer jeito, entao um cheque condicional nunca via a
+# ausencia como perigo. Incondicional fecha essa lacuna e nao depende de o
+# OneDrive estar ou nao setado na maquina de quem roda a bateria.
+#
+# RFM_ONEDRIVE_FALSO e a valvula documentada para quem quer, deliberadamente,
+# ver a chamada mutada prosseguir ate o resolverDestino de verdade (que ainda
+# assim so alcancaria um OneDrive FALSO combinado por quem chama, nunca o
+# real, porque o `env -u OneDrive -u ONEDRIVE` da chamada continua ativo) -
+# usada so por quem esta deliberadamente testando o mecanismo por fora desta
+# trava. Sem a flag (o caso normal, inclusive da catraca de mutacao do N1),
+# a trava aborta assim que o primeiro call site regredir, sem escrever nada em
+# canto nenhum.
+verificar_destino_seguro() {  # verificar_destino_seguro <RFM_BACKUP_DESTINO-desta-chamada>
+  local destino="$1"
+  [ -n "$destino" ] && return 0
+  [ -n "${RFM_ONEDRIVE_FALSO:-}" ] && return 0
+  echo "FALHA trava anti-OneDrive-real: RFM_BACKUP_DESTINO nao foi passada de caixa nesta chamada - abortando ANTES de rodar caso nenhum a mais (N1, 2026-09-03/04)" >&2
+  exit 1
+}
+
+# --- checagem (c): snapshot do OneDrive real ANTES de qualquer caso rodar --
+# Compara com o snapshot de depois no caso 19. `$OneDrive` aqui e o ambiente
+# HERDADO pelo processo desta bateria - o real, a menos que o operador da
+# catraca de mutacao o tenha substituido de proposito (ver RFM_ONEDRIVE_FALSO
+# acima).
+_onedrive_pasta_backup() {
+  local base="${OneDrive:-${ONEDRIVE:-}}"
+  [ -z "$base" ] && return 1
+  local unix; unix="$(cygpath -u "$base" 2>/dev/null || printf '%s' "$base")"
+  printf '%s/rainforest-backup' "$unix"
+}
+ONEDRIVE_BACKUP_DIR="$(_onedrive_pasta_backup || true)"
+ONEDRIVE_ANTES=""
+if [ -n "$ONEDRIVE_BACKUP_DIR" ] && [ -d "$ONEDRIVE_BACKUP_DIR" ]; then
+  ONEDRIVE_ANTES="$(ls -1 "$ONEDRIVE_BACKUP_DIR" 2>/dev/null | sort)"
+fi
 
 # --- caixa: um "plugin" e uma "raiz de dados", cada um repo git COM commit,
 #     cada um com uma remota que e outra pasta local (nunca a internet).
@@ -47,7 +105,9 @@ montar() {
   # `Cannot find module`, e a bateria mede a caixa em vez do artefato.
   mkdir -p "$SB/plugin/scripts" "$SB/plugin/vigias" "$SB/plugin/hooks/lib"
   cp "$SRC/scripts/foco.cjs" "$SB/plugin/scripts/foco.cjs"
+  cp "$SRC/scripts/backup.cjs" "$SB/plugin/scripts/backup.cjs"
   cp "$SRC/hooks/lib/raiz.cjs" "$SB/plugin/hooks/lib/raiz.cjs"
+  cp "$SRC/hooks/lib/resolver-executavel.cjs" "$SB/plugin/hooks/lib/resolver-executavel.cjs"
   cp "$SRC/hooks/lib/contexto-sessao.cjs" "$SB/plugin/hooks/lib/contexto-sessao.cjs"
   cp "$SRC/vigias/backup-estado.ps1" "$SB/plugin/vigias/backup-estado.ps1"
   # O erros.ps1 e dependencia de EXECUCAO, nao acessorio: o backup-estado.ps1
@@ -79,11 +139,16 @@ contar() { ( cd "$1" && git log --oneline 2>/dev/null | wc -l ); }
 # exercitava a pergunta "de onde sai a raiz?". Na producao quem respondia era o
 # run-vigia.ps1, com a raiz do PLUGIN, e o backup nunca achou o FOCO.md.
 rodar() {  # rodar <raiz-de-dados> [-Teste]
-  RFM_ROOT="$(win "$1")" powershell -NoProfile -ExecutionPolicy Bypass \
+  local dst; dst="$(mktemp -d)"
+  local -x RFM_BACKUP_DESTINO="$(win "$dst")"
+  verificar_destino_seguro "${RFM_BACKUP_DESTINO:-}"
+  RFM_ROOT="$(win "$1")" env -u OneDrive -u ONEDRIVE powershell -NoProfile -ExecutionPolicy Bypass \
     -File "$(win "$SB/plugin/vigias/backup-estado.ps1")" \
     -Vigia sentinela-foco -Plugin "$(win "$SB/plugin")" \
     -Log "$(win "$SB/plugin/vigias/log.txt")" ${2:-} > /dev/null 2>&1
-  echo $?
+  local codigo=$?
+  rm -rf "$dst"
+  echo $codigo
 }
 
 # O caminho de PRODUCAO: sem RFM_ROOT nenhuma, que e como a tarefa agendada roda
@@ -93,7 +158,10 @@ rodar() {  # rodar <raiz-de-dados> [-Teste]
 # caixa: sem isso o nivel 3 poderia alcancar o ~/.rainforest REAL do usuario, e
 # bateria que escreve nos dados do usuario nao e bateria.
 rodar_sem_rfm_root() {  # rodar_sem_rfm_root <dir-de-projeto>
-  env -u RFM_ROOT \
+  local dst; dst="$(mktemp -d)"
+  local -x RFM_BACKUP_DESTINO="$(win "$dst")"
+  verificar_destino_seguro "${RFM_BACKUP_DESTINO:-}"
+  env -u RFM_ROOT -u OneDrive -u ONEDRIVE \
       CLAUDE_PROJECT_DIR="$(win "$1")" \
       USERPROFILE="$(win "$SB/home-falso")" \
       HOME="$SB/home-falso" \
@@ -101,7 +169,9 @@ rodar_sem_rfm_root() {  # rodar_sem_rfm_root <dir-de-projeto>
       -File "$(win "$SB/plugin/vigias/backup-estado.ps1")" \
       -Vigia sentinela-foco -Plugin "$(win "$SB/plugin")" \
       -Log "$(win "$SB/plugin/vigias/log.txt")" > /dev/null 2>&1
-  echo $?
+  local codigo=$?
+  rm -rf "$dst"
+  echo $codigo
 }
 
 echo "== 0. a caixa tem commit — senao a comparacao passa por vazio =="
@@ -291,7 +361,11 @@ echo "== 10. o stdout sai LIMPO — o retorno do Write-LinhaEmLf nao vaza =="
 # entao nada quebrava — e por isso nenhuma bateria pegava. Este caso executa e
 # olha o stdout de verdade, que e o unico lugar onde o defeito aparecia.
 rodar_capturando() {  # rodar_capturando <raiz-de-dados>
-  RFM_ROOT="$(win "$1")" powershell -NoProfile -ExecutionPolicy Bypass     -File "$(win "$SB/plugin/vigias/backup-estado.ps1")"     -Vigia sentinela-foco -Plugin "$(win "$SB/plugin")"     -Log "$(win "$SB/plugin/vigias/log.txt")" 2>/dev/null
+  local dst; dst="$(mktemp -d)"
+  local -x RFM_BACKUP_DESTINO="$(win "$dst")"
+  verificar_destino_seguro "${RFM_BACKUP_DESTINO:-}"
+  RFM_ROOT="$(win "$1")" env -u OneDrive -u ONEDRIVE powershell -NoProfile -ExecutionPolicy Bypass     -File "$(win "$SB/plugin/vigias/backup-estado.ps1")"     -Vigia sentinela-foco -Plugin "$(win "$SB/plugin")"     -Log "$(win "$SB/plugin/vigias/log.txt")" 2>/dev/null
+  rm -rf "$dst"
 }
 montar
 saida_stdout="$(rodar_capturando "$SB/dados")"
@@ -322,6 +396,274 @@ if grep -E '^\s*#' "$SRC/vigias/run-vigia.ps1" | grep -q 'Write-LinhaEmLf'; then
   ok=$((ok+1)); echo "  ok    o comentario cita 'Write-LinhaEmLf' e a trava nao acende por isso"
 else
   falhou=$((falhou+1)); echo "  FALHA o comentario deveria citar 'Write-LinhaEmLf' — sem isso a trava nao esta provada nos dois sentidos"
+fi
+
+echo
+echo "== 12. (a) caminho feliz - o destino sandbox ganha o zip do dia =="
+montar
+SB_BACKUP="$(mktemp -d)"
+trap "rm -rf $SB_BACKUP" RETURN
+rm -f "$SB/plugin/vigias/log.txt"
+RFM_ROOT="$(win "$SB/dados")" RFM_BACKUP_DESTINO="$(win "$SB_BACKUP")" env -u OneDrive -u ONEDRIVE powershell -NoProfile -ExecutionPolicy Bypass \
+  -File "$(win "$SB/plugin/vigias/backup-estado.ps1")" \
+  -Vigia sentinela-foco -Plugin "$(win "$SB/plugin")" \
+  -Log "$(win "$SB/plugin/vigias/log.txt")" > /dev/null 2>&1
+n=$(ls "$SB_BACKUP"/rainforest-*.zip 2>/dev/null | wc -l)
+igual "o destino recebeu um rainforest-*.zip" "$n" "1"
+# Se falhou, imprime o log para debug
+if [ "$n" != "1" ] && [ -f "$SB/plugin/vigias/log.txt" ]; then
+  echo "  -- log.txt:"
+  sed 's/^/     /' "$SB/plugin/vigias/log.txt"
+fi
+if [ $n -gt 0 ]; then
+  ok=$((ok+1)); echo "  ok    o zip foi criado no destino sandbox"
+else
+  falhou=$((falhou+1)); echo "  FALHA nenhum zip no destino"
+fi
+
+echo
+echo "== 13. (b) backup local do FOCO.md continua igual, sem regressao =="
+montar
+SB_BACKUP="$(mktemp -d)"
+trap "rm -rf $SB_BACKUP" RETURN
+RFM_ROOT="$(win "$SB/dados")" RFM_BACKUP_DESTINO="$(win "$SB_BACKUP")" env -u OneDrive -u ONEDRIVE powershell -NoProfile -ExecutionPolicy Bypass \
+  -File "$(win "$SB/plugin/vigias/backup-estado.ps1")" \
+  -Vigia sentinela-foco -Plugin "$(win "$SB/plugin")" 2>&1 | grep -v 'warning:' || true
+n=$(ls "$SB/dados/.foco-backups" 2>/dev/null | wc -l)
+igual "criou exatamente uma copia local" "$n" "1"
+copia=$(ls "$SB/dados/.foco-backups"/*.md 2>/dev/null | head -1)
+if [ -n "$copia" ] && cmp -s "$SB/dados/FOCO.md" "$copia"; then
+  ok=$((ok+1)); echo "  ok    a copia local e byte a byte igual ao FOCO.md"
+else
+  falhou=$((falhou+1)); echo "  FALHA a copia local nao confere com o FOCO.md"
+fi
+
+echo
+echo "== 14. (c) -Teste nao grava nem backup local nem externo =="
+montar
+SB_BACKUP="$(mktemp -d)"
+trap "rm -rf $SB_BACKUP" RETURN
+RFM_ROOT="$(win "$SB/dados")" RFM_BACKUP_DESTINO="$(win "$SB_BACKUP")" env -u OneDrive -u ONEDRIVE powershell -NoProfile -ExecutionPolicy Bypass \
+  -File "$(win "$SB/plugin/vigias/backup-estado.ps1")" \
+  -Vigia sentinela-foco -Plugin "$(win "$SB/plugin")" \
+  -Teste 2>&1 | grep -v 'warning:' || true
+if [ ! -d "$SB/dados/.foco-backups" ]; then
+  ok=$((ok+1)); echo "  ok    -Teste nao criou backup local"
+else
+  falhou=$((falhou+1)); echo "  FALHA -Teste criou backup local"
+fi
+n=$(ls "$SB_BACKUP"/rainforest-*.zip 2>/dev/null | wc -l)
+if [ "$n" = "0" ]; then
+  ok=$((ok+1)); echo "  ok    -Teste nao criou backup externo"
+else
+  falhou=$((falhou+1)); echo "  FALHA -Teste criou backup externo ($n zip)"
+fi
+
+echo
+echo "== 15. (d) backup externo falhando registra erro e script continua =="
+montar
+SB_BACKUP="$(mktemp -d)"
+trap "rm -rf $SB_BACKUP" RETURN
+rm -f "$SB/plugin/vigias/log.txt"
+# Cria um backup.cjs quebrado que sai com erro
+cat > "$SB/plugin/scripts/backup.cjs" << 'EOF'
+#!/usr/bin/env node
+process.exit(2);
+EOF
+RFM_ROOT="$(win "$SB/dados")" RFM_BACKUP_DESTINO="$(win "$SB_BACKUP")" env -u OneDrive -u ONEDRIVE powershell -NoProfile -ExecutionPolicy Bypass \
+  -File "$(win "$SB/plugin/vigias/backup-estado.ps1")" \
+  -Vigia sentinela-foco -Plugin "$(win "$SB/plugin")" \
+  -Log "$(win "$SB/plugin/vigias/log.txt")" > /dev/null 2>&1
+codigo=$?
+# Script deve sair com 0 mesmo com falha do backup externo (backup local ja foi feito)
+igual "script sai com 0 apesar da falha do backup externo" "$codigo" "0"
+# O backup local tem de ter sido feito mesmo assim
+n=$(ls "$SB/dados/.foco-backups" 2>/dev/null | wc -l)
+igual "backup local aconteceu mesmo com falha do externo" "$n" "1"
+# O erro tem de estar registrado no ERROS.md
+conteudo=$(cat "$SB/plugin/vigias/ERROS.md" 2>/dev/null)
+if printf '%s' "$conteudo" | grep -q 'backup externo falhou'; then
+  ok=$((ok+1)); echo "  ok    erro do backup externo foi registrado em ERROS.md"
+else
+  falhou=$((falhou+1)); echo "  FALHA erro nao foi registrado em ERROS.md"
+  echo "  -- ERROS.md:"
+  printf '%s\n' "$conteudo" | sed 's/^/     /'
+  echo "  -- log.txt:"
+  cat "$SB/plugin/vigias/log.txt" 2>/dev/null | sed 's/^/     /'
+fi
+
+echo
+echo "== 16. (e) destino invalido nao expoe caminhos absolutos do usuario, mesmo com espaco e UNC =="
+montar
+SB_BACKUP="$(mktemp -d)"
+trap "rm -rf $SB_BACKUP" RETURN
+rm -f "$SB/plugin/vigias/log.txt"
+# Cria um backup.cjs que emite, na ultima linha, um caminho Windows COM ESPACO
+# no meio (pasta com espaco no nome) e um caminho UNC tambem com espaco — trava
+# de regressao para o Get-MotivoSaneado (vigias/erros.ps1), que e quem de fato
+# sanitiza aqui (chamado dentro de Write-ErroDeVigia, dentro de Registrar-Erro).
+cat > "$SB/plugin/scripts/backup.cjs" << 'EOF'
+#!/usr/bin/env node
+console.error('RECUSADO: destino primario \\\\servidor\\Compartilhamento Publico\\backup (indisponivel) e alternativo C:\\Users\\Nome Com Espaco\\pasta (permissao negada)');
+process.exit(2);
+EOF
+RFM_ROOT="$(win "$SB/dados")" RFM_BACKUP_DESTINO="$(win "$SB_BACKUP")" env -u OneDrive -u ONEDRIVE powershell -NoProfile -ExecutionPolicy Bypass \
+  -File "$(win "$SB/plugin/vigias/backup-estado.ps1")" \
+  -Vigia sentinela-foco -Plugin "$(win "$SB/plugin")" \
+  -Log "$(win "$SB/plugin/vigias/log.txt")" > /dev/null 2>&1
+codigo=$?
+# Script deve sair com 0 mesmo com falha (backup local ja foi feito)
+igual "script sai com 0 apesar da falha" "$codigo" "0"
+# O erro tem de estar registrado no ERROS.md
+conteudo=$(cat "$SB/plugin/vigias/ERROS.md" 2>/dev/null)
+if printf '%s' "$conteudo" | grep -q 'backup externo falhou'; then
+  ok=$((ok+1)); echo "  ok    erro do backup externo foi registrado"
+else
+  falhou=$((falhou+1)); echo "  FALHA erro nao foi registrado em ERROS.md"
+fi
+# Nao pode conter caminho absoluto Windows nem UNC cru
+if printf '%s' "$conteudo" | grep -qE '[A-Za-z]:\\|\\\\[A-Za-z]'; then
+  falhou=$((falhou+1)); echo "  FALHA ERROS.md contem caminho absoluto ou UNC"
+  printf '%s\n' "$conteudo" | sed 's/^/     /'
+else
+  ok=$((ok+1)); echo "  ok    ERROS.md nao contem caminho absoluto nem UNC"
+fi
+# Nao pode vazar o segmento com espaco no meio do caminho (nome de pasta)
+if printf '%s' "$conteudo" | grep -qE 'Nome Com Espaco|Compartilhamento Publico'; then
+  falhou=$((falhou+1)); echo "  FALHA ERROS.md vaza segmento de caminho com espaco"
+  printf '%s\n' "$conteudo" | sed 's/^/     /'
+else
+  ok=$((ok+1)); echo "  ok    ERROS.md nao vaza segmento de caminho com espaco"
+fi
+# O marcador <caminho> tem de aparecer no lugar dos caminhos originais
+if printf '%s' "$conteudo" | grep -q '<caminho>'; then
+  ok=$((ok+1)); echo "  ok    marcador <caminho> presente"
+else
+  falhou=$((falhou+1)); echo "  FALHA marcador <caminho> ausente"
+fi
+
+echo
+echo "== 17. (f) linha de erro gigante do backup externo e truncada em 200 chars =="
+montar
+SB_BACKUP="$(mktemp -d)"
+trap "rm -rf $SB_BACKUP" RETURN
+rm -f "$SB/plugin/vigias/log.txt"
+# Sem caminho nenhum aqui de proposito: isola o TRUNCAMENTO do saneamento de
+# caminho (que e responsabilidade do Get-MotivoSaneado, ja coberto no caso 16).
+# O marcador fica depois da posicao 200 - so aparece se ninguem cortar a linha.
+MARCADOR_LONGE="MARCADOR-DEPOIS-DE-200-NAO-PODE-APARECER"
+cat > "$SB/plugin/scripts/backup.cjs" << EOF
+#!/usr/bin/env node
+console.error('$(printf 'X%.0s' $(seq 1 250))${MARCADOR_LONGE}');
+process.exit(2);
+EOF
+RFM_ROOT="$(win "$SB/dados")" RFM_BACKUP_DESTINO="$(win "$SB_BACKUP")" env -u OneDrive -u ONEDRIVE powershell -NoProfile -ExecutionPolicy Bypass \
+  -File "$(win "$SB/plugin/vigias/backup-estado.ps1")" \
+  -Vigia sentinela-foco -Plugin "$(win "$SB/plugin")" \
+  -Log "$(win "$SB/plugin/vigias/log.txt")" > /dev/null 2>&1
+codigo=$?
+igual "script sai com 0 apesar da falha" "$codigo" "0"
+conteudo=$(cat "$SB/plugin/vigias/ERROS.md" 2>/dev/null)
+if printf '%s' "$conteudo" | grep -q "$MARCADOR_LONGE"; then
+  falhou=$((falhou+1)); echo "  FALHA linha gigante NAO foi truncada (marcador vazou)"
+  printf '%s\n' "$conteudo" | sed 's/^/     /'
+else
+  ok=$((ok+1)); echo "  ok    linha gigante foi truncada (marcador nao aparece)"
+fi
+
+echo
+echo "== 18. (g) truncar-antes-de-sanear cortaria caminho no meio do usuario — e nao pode =="
+montar
+SB_BACKUP="$(mktemp -d)"
+trap "rm -rf $SB_BACKUP" RETURN
+rm -f "$SB/plugin/vigias/log.txt"
+# Trava de regressao para a ORDEM sanear-depois-truncar (achado do auditor, 6a
+# revisao, 2026-09-03/04). O caso 17 ja cobre o truncamento isolado (sem
+# caminho) e o caso 16 ja cobre o saneamento isolado (caminho curto, sem
+# truncar). Este caso precisa dos DOIS ao mesmo tempo: um caminho absoluto
+# comprido o bastante para que o corte de 200 chars caia DENTRO do segmento de
+# usuario. Um preenchimento de letras (X) grudado direto no "C:" quebraria o
+# reconhecimento de letra de unidade do Get-MotivoSaneado (a mesma exclusao que
+# impede "file:" de casar como unidade) — por isso o preenchimento termina em
+# um espaco antes do caminho, como uma frase de verdade terminaria.
+# Testado a mutacao MANUALMENTE contra o Get-MotivoSaneado real antes deste
+# caso entrar na bateria: truncar-depois-sanear produz
+# "<caminho>\exemplo-longo-de-usuario-do-tes" (vaza o pedaco do usuario);
+# sanear-depois-truncar produz "<caminho>\erro.json (permissao negada)" (sem
+# vazamento, 198 chars).
+cat > "$SB/plugin/scripts/backup.cjs" << 'EOF'
+#!/usr/bin/env node
+console.error('X'.repeat(159) + ' C:\\Users\\exemplo-longo-de-usuario-do-teste\\dados\\erro.json (permissao negada)');
+process.exit(2);
+EOF
+RFM_ROOT="$(win "$SB/dados")" RFM_BACKUP_DESTINO="$(win "$SB_BACKUP")" env -u OneDrive -u ONEDRIVE powershell -NoProfile -ExecutionPolicy Bypass \
+  -File "$(win "$SB/plugin/vigias/backup-estado.ps1")" \
+  -Vigia sentinela-foco -Plugin "$(win "$SB/plugin")" \
+  -Log "$(win "$SB/plugin/vigias/log.txt")" > /dev/null 2>&1
+codigo=$?
+igual "script sai com 0 apesar da falha" "$codigo" "0"
+conteudo=$(cat "$SB/plugin/vigias/ERROS.md" 2>/dev/null)
+linha_erro=$(printf '%s\n' "$conteudo" | grep 'backup externo falhou')
+if printf '%s' "$linha_erro" | grep -q 'exemplo-longo'; then
+  falhou=$((falhou+1)); echo "  FALHA ERROS.md vaza 'exemplo-longo' — truncou antes de sanear"
+  printf '%s\n' "$conteudo" | sed 's/^/     /'
+else
+  ok=$((ok+1)); echo "  ok    ERROS.md nao contem 'exemplo-longo'"
+fi
+if printf '%s' "$linha_erro" | grep -q 'exemplo-lo'; then
+  falhou=$((falhou+1)); echo "  FALHA ERROS.md vaza fragmento 'exemplo-lo' do usuario"
+  printf '%s\n' "$conteudo" | sed 's/^/     /'
+else
+  ok=$((ok+1)); echo "  ok    ERROS.md nao contem o fragmento 'exemplo-lo'"
+fi
+if printf '%s' "$linha_erro" | grep -q '<caminho>'; then
+  ok=$((ok+1)); echo "  ok    marcador <caminho> presente"
+else
+  falhou=$((falhou+1)); echo "  FALHA marcador <caminho> ausente"
+  printf '%s\n' "$conteudo" | sed 's/^/     /'
+fi
+# O orcamento e do teto de Truncar-LinhaDeErro (200) mais o prefixo que o call
+# site acrescenta ANTES de truncar, "backup externo falhou (exit N): " (medido:
+# 32 chars) - ~235 cobre os dois com folga sem aceitar a linha voltar a crescer
+# sem limite. O prefixo de data/vigia que o Write-ErroDeVigia acrescenta DEPOIS
+# (["- yyyy-MM-dd HH:mm [sentinela-foco]: "]) e' encanamento da porta unica de
+# escrita, comum a toda linha do ERROS.md, e nao entra nesta conta - por isso a
+# medida abaixo corta esse prefixo antes de comparar.
+mensagem_sem_prefixo_de_data=$(printf '%s' "$linha_erro" | sed -E 's/^- [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2} \[sentinela-foco\]: //')
+comprimento=$(printf '%s' "$mensagem_sem_prefixo_de_data" | wc -c)
+if [ -n "$linha_erro" ] && [ "$comprimento" -le 235 ]; then
+  ok=$((ok+1)); echo "  ok    a mensagem tem no maximo ~235 chars, 200+prefixo ($comprimento)"
+else
+  falhou=$((falhou+1)); echo "  FALHA linha de erro ausente ou grande demais ($comprimento chars)"
+  printf '%s\n' "$conteudo" | sed 's/^/     /'
+fi
+
+echo
+echo "== 19. (c) checagem final: nada novo apareceu no OneDrive real =="
+# Compara com o snapshot ONEDRIVE_ANTES tirado antes do caso 0 rodar. Se a
+# pasta nao existia antes, ela nao pode existir agora; se existia, nenhum
+# arquivo NOVO pode ter surgido nela. E o mecanismo (c) do N1: mesmo que todo
+# call site desta bateria isole corretamente, esta e a rede de seguranca que
+# prova o resultado observavel, nao so a intencao do codigo.
+ONEDRIVE_DEPOIS=""
+if [ -n "$ONEDRIVE_BACKUP_DIR" ] && [ -d "$ONEDRIVE_BACKUP_DIR" ]; then
+  ONEDRIVE_DEPOIS="$(ls -1 "$ONEDRIVE_BACKUP_DIR" 2>/dev/null | sort)"
+fi
+if [ -z "$ONEDRIVE_BACKUP_DIR" ]; then
+  ok=$((ok+1)); echo "  ok    nenhum OneDrive no ambiente desta bateria - nada a conferir"
+elif [ -z "$ONEDRIVE_ANTES" ] && [ -n "$ONEDRIVE_DEPOIS" ]; then
+  falhou=$((falhou+1)); echo "  FALHA a pasta $ONEDRIVE_BACKUP_DIR nao existia antes e existe agora - vazamento para o OneDrive real"
+  printf '%s\n' "$ONEDRIVE_DEPOIS" | sed 's/^/     /'
+elif [ "$ONEDRIVE_ANTES" != "$ONEDRIVE_DEPOIS" ]; then
+  novos="$(comm -13 <(printf '%s\n' "$ONEDRIVE_ANTES") <(printf '%s\n' "$ONEDRIVE_DEPOIS"))"
+  if [ -n "$novos" ]; then
+    falhou=$((falhou+1)); echo "  FALHA apareceu arquivo novo em $ONEDRIVE_BACKUP_DIR durante esta bateria"
+    printf '%s\n' "$novos" | sed 's/^/     /'
+  else
+    ok=$((ok+1)); echo "  ok    nenhum arquivo novo em $ONEDRIVE_BACKUP_DIR (so sumiram, o que nao e vazamento)"
+  fi
+else
+  ok=$((ok+1)); echo "  ok    $ONEDRIVE_BACKUP_DIR ficou identico do inicio ao fim desta bateria"
 fi
 
 echo

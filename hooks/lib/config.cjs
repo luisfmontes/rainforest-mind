@@ -52,6 +52,10 @@ const CHAVES = {
     padrao: true,
     descricao: 'barra pulo de verificação no git (--no-verify, -n em commit, --no-gpg-sign)',
   },
+  'gate-fechar-issue': {
+    padrao: true,
+    descricao: 'barra `gh issue close` direto e `gh pr create/merge` sem evidência de pronto',
+  },
   fluxo: {
     padrao: true,
     descricao: 'os sete estágios (brainstorm → plano → … → fechar)',

@@ -32,8 +32,9 @@ vez de resolver o problema: `node scripts/setup.cjs --desligar <gate> --escopo
 projeto` (preferida), `RAINFOREST_GATE_OFF=1` no ambiente, ou um arquivo
 `.rainforest-gate-off` na raiz do repo.
 
-Cada uma tem bateria própria (`hooks/testa-gate-*.sh`, **181 casos**: 100 de
-worktree + 38 de staging + 27 de repo alheio + 16 de publicação) que roda o hook
+Cada uma tem bateria própria (`hooks/testa-gate-*.sh`, **427 casos**: 194 de
+worktree + 104 de fechar Issue + 96 de staging + 27 de repo alheio + 16 de
+publicação) que roda o hook
 de verdade contra repos git montados na hora. A maioria dos casos testa o que
 deve **passar**: falso positivo aqui atrapalha todo repo — a trava de repo alheio
 é o exemplo, com 20 dos 27 casos provando que ela **não** barra.
