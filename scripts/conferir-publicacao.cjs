@@ -164,11 +164,17 @@ const PADROES = [
     so_se: (m, linha) => {
       const valor = m[2].replace(/^["']+/, '');
 
-      // Isenta referências de variável (não são segredos colados)
-      if (/^\$\{[^}]+\}$/.test(valor)) return false; // ${VAR}
-      if (/^\$[A-Za-z_]\w*$/.test(valor)) return false; // $VAR
-      if (/^%[^%]+%$/.test(valor)) return false; // %VAR%
-      if (/^\$\{\{\s*secrets\.\w+\s*\}\}$/.test(valor)) return false; // ${{ secrets.X }}
+      // Isenta referências de variável (não são segredos colados). A isenção é
+      // pelo COMEÇO do valor, não pelo valor inteiro — e essa diferença é o
+      // caso real da Issue #173. Numa URL de clone autenticado do Actions, o
+      // valor capturado vai até o próximo espaço e leva o host junto (a
+      // interpolação, o arroba e o repositório, tudo num token só); e na forma
+      // de expressão do Actions ele para nas duas chaves de abertura, porque a
+      // captura da regex é `\S+`. Ancorar no valor inteiro deixava as duas
+      // formas acusadas, que é o estado que a Issue reporta.
+      if (/^\$\{/.test(valor)) return false; // ${VAR} e expressão do Actions
+      if (/^\$[A-Za-z_]/.test(valor)) return false; // $VAR
+      if (/^%[^%\s]+%/.test(valor)) return false; // %VAR%
 
       const prosaCurta = /^[a-zà-ú]{1,12}$/.test(valor);
       const depois = linha.slice(m.index + m[0].length).trim().split(/\s+/).filter(Boolean);

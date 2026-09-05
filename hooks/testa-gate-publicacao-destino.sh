@@ -178,28 +178,51 @@ jid="5500900000001@s.whatsapp.net"')"
 gate "payload invalido -> sai 0 sem derrubar" 0 '{"invalid": json}'
 
 echo
-echo "== CASO 9: commit com achado que ja esta no pai PASSA (defect a) =="
-# O gate nao deve bloquear achados que ja existem no commit pai.
-# Cenario: conteudo sensivel ja foi commitado antes, agora esta em merge/rebase.
-git -C "$R" add -A; git -C "$R" commit -qm "prep merge" || true
-# Cria conteudo com JID e commita
-echo "contato: $JID_REAL" > "$R/dados.txt"
-git -C "$R" add dados.txt; git -C "$R" commit -qm "add dados"
-COMMIT_COM_JID=$(git -C "$R" rev-parse HEAD)
-# Agora simula um merge em que o dados.txt continua igual (JID igual continua)
-# Vai fazer um commit novo que "reintroduz" o JID mas ja estava la
-git -C "$R" checkout -q HEAD~1 2>/dev/null || git -C "$R" checkout -q main 2>/dev/null || true
-echo "outra coisa" > "$R/other.txt"
-git -C "$R" add other.txt; git -C "$R" commit -qm "outro branch" 2>/dev/null || true
-# Tenta fazer merge do commit que tem JID
-git -C "$R" merge --no-edit "$COMMIT_COM_JID" 2>/dev/null || true
-if [ -f "$R/dados.txt" ]; then
-  # Confere se o gate permite o merge commit (o JID ja estava la)
-  gate "merge commit onde JID ja estava no pai -> passa" 0 "$(pay Edit "$(esc "$R")/dados.txt" "contato: $JID_REAL" "$(esc "$R")")"
-else
-  ok=$((ok+1))
-  echo "  ok   merge setup complexo skipped (nao interferiu com outros testes)"
-fi
+echo "== CASO 9: o gate julga o que o commit INTRODUZ, nao o conteudo total (defect a) =="
+# Ate 2026-09-04 o gate lia `git show :<arquivo>` inteiro e barrava merge de
+# conteudo que ja estava publicado na main ha dias — Issue #173. Estes casos
+# rodam no caminho REAL: payload de `Bash` com `git commit`, que e o que o
+# harness manda. O caminho de `Write`/`Edit` NAO tem isencao nenhuma e continua
+# barrando conteudo sensivel escrito a mao (casos 1 a 8 acima) — a isencao vale
+# so para o que ja esta num pai do commit.
+payBash() { # comando, cwd
+  node -e 'const [c,d]=process.argv.slice(1);console.log(JSON.stringify({cwd:d,hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:c}}))' "$1" "$2"
+}
+
+M="$RAIZ/pai"
+git init -q -b main "$M"; git -C "$M" config user.email t@t; git -C "$M" config user.name t
+git -C "$M" config commit.gpgsign false
+printf 'contato: %s\nlinha comum\n' "$JID_REAL" > "$M/dados.txt"
+git -C "$M" add dados.txt; git -C "$M" commit -qm "commit que introduziu o JID"
+
+# 9a: o arquivo ja esta commitado e a alteracao nova NAO toca a linha do achado.
+printf 'linha inocente\n' >> "$M/dados.txt"
+git -C "$M" add dados.txt
+gate "9a: achado que ja esta no pai nao barra o commit seguinte" 0 \
+  "$(payBash 'git commit -m x' "$(esc "$M")")"
+
+# 9b: linha NOVA com achado novo continua barrando — a isencao nao afrouxa nada.
+printf 'outro: %s\n' "5500900000002@s.whatsapp.net" >> "$M/dados.txt"
+git -C "$M" add dados.txt
+gate "9b: linha nova com achado novo continua barrando" 2 \
+  "$(payBash 'git commit -m x' "$(esc "$M")")"
+
+# 9c: merge de verdade — o arquivo com o achado entra vindo do OUTRO pai, que e
+# exatamente o caso de campo da Issue #173 (`git merge origin/main`).
+N="$RAIZ/merge"
+git init -q -b main "$N"; git -C "$N" config user.email t@t; git -C "$N" config user.name t
+git -C "$N" config commit.gpgsign false
+echo "base" > "$N/base.txt"; git -C "$N" add base.txt; git -C "$N" commit -qm base
+git -C "$N" checkout -q -b lateral
+echo "trabalho lateral" > "$N/lateral.txt"; git -C "$N" add lateral.txt
+git -C "$N" commit -qm lateral
+git -C "$N" checkout -q main
+printf 'contato: %s\n' "$JID_REAL" > "$N/publicado.txt"
+git -C "$N" add publicado.txt; git -C "$N" commit -qm "ja publicado na main"
+git -C "$N" checkout -q lateral
+git -C "$N" merge --no-commit --no-ff main > /dev/null 2>&1
+gate "9c: merge que traz arquivo ja publicado no outro pai -> passa" 0 \
+  "$(payBash 'git commit --no-edit' "$(esc "$N")")"
 
 echo "== Verificação: gate-staging-total continua verde =="
 echo "Rodando: bash hooks/testa-gate-staging-total.sh"
