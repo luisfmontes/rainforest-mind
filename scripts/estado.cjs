@@ -32,6 +32,13 @@
  *   node scripts/estado.cjs exigir   --slug <slug> --estagio <e>
  *   node scripts/estado.cjs liberar  --slug <slug> --estagio <e>
  *   node scripts/estado.cjs listar
+ *   node scripts/estado.cjs concluido [--slug <slug>]
+ *
+ * `concluido` reusa o predicado `proximo` (não escreve lógica de progresso nova):
+ * com `--slug`, sai 0 se `proximo(estado) === null` (fluxo fechado), 2 nomeando o
+ * estágio pendente se não, e 1 se o slug não existe. Sem `--slug`, varre todos os
+ * arquivos de `docs/rainforest/estado/`: sai 0 se todos concluídos (ou sem nenhum
+ * arquivo), 2 listando os fluxos abertos (slug e estágio) se algum não fechou.
  */
 
 const fs = require('fs');
@@ -863,6 +870,79 @@ function main() {
     return;
   }
 
+  if (cmd === 'concluido') {
+    const slugArg = arg('slug', false);
+
+    if (!slugArg) {
+      // Varredura sem slug: todos os arquivos de DIR_ESTADO. Sem diretório ou
+      // sem arquivo nenhum, não há fluxo aberto — sai 0 (mesmo fail-open do
+      // `listar`, que também não trata ausência de estado como erro).
+      if (!fs.existsSync(DIR_ESTADO)) return;
+      const arquivos = fs.readdirSync(DIR_ESTADO).filter((f) => f.endsWith('.json'));
+      if (!arquivos.length) return;
+
+      const abertos = [];
+      let houve_erro = false;
+      for (const f of arquivos) {
+        const arquivo_completo = path.join(DIR_ESTADO, f);
+        let e;
+        try {
+          e = JSON.parse(fs.readFileSync(arquivo_completo, 'utf8'));
+          // Conteúdo deve ser um objeto; valores primitivos são ilegíveis.
+          // O nome do tipo tem de ser o que ESTÁ no arquivo: `typeof null` é
+          // `'object'`, e a primeira versão desta mensagem chamava `null` de
+          // "array" por causa disso. Mensagem que erra sobre o que leu é a
+          // mesma família de defeito que este fluxo inteiro veio fechar.
+          if (e === null || typeof e !== 'object' || Array.isArray(e)) {
+            const nome =
+              e === null ? 'null'
+              : Array.isArray(e) ? 'array'
+              : { number: 'número', string: 'texto', boolean: 'booleano' }[typeof e] || typeof e;
+            throw new Error(`conteúdo deve ser um objeto, não ${nome}`);
+          }
+          const p = proximo(e);
+          if (p) abertos.push({ slug: e.slug, estagio: p });
+        } catch (err) {
+          // Arquivo não conseguiu ser lido, parseado, ou validado: reportar e marcar erro
+          console.error(`erro: não consegui ler ${arquivo_completo}: ${err.message}`);
+          houve_erro = true;
+          continue;
+        }
+      }
+
+      // Se houve erro ao ler qualquer arquivo, sair 1 (erro) mesmo que tenha abertos
+      if (houve_erro) {
+        for (const a of abertos) {
+          console.log(`${a.slug}  -> ${a.estagio}`);
+        }
+        process.exit(1);
+      }
+
+      if (!abertos.length) return;
+
+      for (const a of abertos) {
+        console.log(`${a.slug}  -> ${a.estagio}`);
+      }
+      process.exit(2);
+    }
+
+    try {
+      validarSlug(slugArg);
+    } catch (err) {
+      console.error(`erro: ${err.message}`);
+      process.exit(1);
+    }
+    const e = ler(slugArg);
+    if (!e) {
+      console.error(`erro: ${slugArg} nao existe — rode 'iniciar' primeiro`);
+      process.exit(1);
+    }
+    const p = proximo(e);
+    if (!p) return;
+    console.log(p);
+    process.exit(2);
+  }
+
   const slug = arg('slug');
   try {
     validarSlug(slug);
@@ -1135,7 +1215,7 @@ function main() {
     return;
   }
 
-  console.error('uso: iniciar | ler | marcar | proximo | exigir | liberar | listar');
+  console.error('uso: iniciar | ler | marcar | proximo | exigir | liberar | listar | concluido');
   process.exit(1);
 }
 
