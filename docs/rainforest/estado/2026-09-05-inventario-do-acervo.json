@@ -1,0 +1,26 @@
+{
+  "slug": "2026-09-05-inventario-do-acervo",
+  "titulo": "Inventario do acervo parado: planos x codigo, ideias plantadas, worktrees e issues",
+  "criado_em": "2026-09-05",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "pendente"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}

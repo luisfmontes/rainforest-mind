@@ -13,7 +13,27 @@
       "estagios": ["design", "plano"],
       "escreve": false
     },
+    "arqueologo": {
+      "estagios": ["design"],
+      "escreve": true
+    },
     "executor": {
+      "estagios": ["executar"],
+      "escreve": true
+    },
+    "resolvedor-de-build": {
+      "estagios": ["executar", "verificar"],
+      "escreve": true
+    },
+    "depurador": {
+      "estagios": ["executar", "verificar"],
+      "escreve": true
+    },
+    "tester": {
+      "estagios": ["executar", "verificar"],
+      "escreve": true
+    },
+    "documentador": {
       "estagios": ["executar"],
       "escreve": true
     }
