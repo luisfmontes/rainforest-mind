@@ -179,8 +179,23 @@ const RE_COMMIT_TUDO = /(?:^|\s)(?:--all\b|-[A-Za-z]*a[A-Za-z]*\b)/;
  * segundo caso o segredo é novo para o destino, e a isenção do outro pai seria
  * exatamente a porta que este arquivo existe para fechar.
  */
+function remotoDeDestino(dir) {
+  // O remoto para onde ESTA branch publica, e não "qualquer um cadastrado". A
+  // pergunta é feita ao upstream da branch atual; sem upstream, `origin`, que é
+  // a convenção que o resto do plugin já assume.
+  const up = git(dir, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"]);
+  if (up && up.includes("/")) return up.split("/")[0];
+  return "origin";
+}
+
 function paiJaPublicado(dir, sha) {
-  const r = git(dir, ["branch", "-r", "--contains", sha]);
+  // Só contam os ramos do remoto de destino. Aceitar qualquer remoto reabria a
+  // porta que D19 fecha por outro caminho, e foi reproduzido na revisão de
+  // 2026-09-05: `git remote add espelho <bare descartável>`, um push para lá, e
+  // o merge seguinte tratava o segredo como "já publicado". Nenhum gate deste
+  // lote olha `remote add` ou `push`, então essa era uma porta de uma linha.
+  const remoto = remotoDeDestino(dir);
+  const r = git(dir, ["branch", "-r", "--contains", sha, "--list", `${remoto}/*`]);
   return !!(r && r.trim());
 }
 

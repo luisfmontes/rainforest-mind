@@ -1400,6 +1400,25 @@ EXIT_CC=$?
 	) 2>"$SBP/err-ck"
 	EXIT_CK=$?
 	[ $EXIT_CK -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CK)"
+
+	# Caso (cl): parametro posicional dentro do wrapper. `$1` e tao ilegivel
+	# quanto `$VAR`, e a classe de caracteres da checagem nao tinha digito — a
+	# forma escapava. Lacuna apontada na revisao de 2026-09-05, na mesma linha que
+	# D22 tocou.
+	#
+	# O comando interno e inofensivo de proposito. Com `gh issue close $1` la
+	# dentro o caso saia exit 2 nos dois sentidos — barrado por ser `gh issue
+	# close` quando legivel, barrado por ser ilegivel quando nao. Verde sob
+	# mutacao, medindo nada: a catraca pegou isso na primeira rodada.
+	echo
+	echo "== (cl) bash -c com parametro posicional -> exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"bash -c \"echo $1\""}}'
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cl"
+	EXIT_CL=$?
+	[ $EXIT_CL -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CL)"
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

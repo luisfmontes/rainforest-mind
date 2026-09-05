@@ -300,11 +300,21 @@ S="$(roda "$SBP/cred-grudada.md")"
 tem     "literal grudado na referencia e acusado"               "$S" "credencial"
 saiu    "e RECUSA (exit 2)"                                     "$(codigo "$SBP/cred-grudada.md")" "2"
 
-# E o valor escondido no padrao de `${VAR:-...}` tambem e literal: estar entre
-# chaves nao torna segredo em referencia.
+# O recuo de `${VAR:-padrao}` NAO e olhado pela regra de credencial, e a
+# contraprova disso e o idioma mais comum que existe: em docker-compose e
+# .env.example o padrao e justamente um placeholder. Recusar isso ensinaria a
+# rodar com a saida de emergencia ligada — medido na revisao de 2026-09-05.
+printf '# compose\n\nPASSWORD=${PASSWORD:-changeme}\n' > "$SBP/cred-compose.md"
+nao_tem "placeholder no recuo de ${VAR:-...} nao acusa"        "$(roda "$SBP/cred-compose.md")" "credencial"
+saiu    "e passa (exit 0)"                                      "$(codigo "$SBP/cred-compose.md")" "0"
+
+# O que segura segredo escondido num recuo e a regra de prefixo conhecido, que
+# olha o texto inteiro e independe da isencao acima. Sem este caso, a fresta que
+# a decisao aceita ficaria sem ninguem medindo o que ainda a cobre.
 PRE="xoxb-"
 printf '# config\n\ntoken=${SLACK:-%s1234567890}\n' "$PRE" > "$SBP/cred-padrao.md"
-tem     "segredo no padrao de ${VAR:-...} e acusado"            "$(roda "$SBP/cred-padrao.md")" "credencial"
+tem     "mas prefixo conhecido no recuo ainda e pego"           "$(roda "$SBP/cred-padrao.md")" "chave-conhecida"
+saiu    "e RECUSA (exit 2)"                                     "$(codigo "$SBP/cred-padrao.md")" "2"
 
 # Contraprova dupla: a referencia pura e a URL da #173 continuam isentas. Sem
 # isto o conserto viraria "acabou a isencao", que e o defeito que a #173 abriu.
