@@ -46,6 +46,26 @@ implementadores. Aqui não precisa proibir porque a trava existe.
 com briefing corrigido. O worktree isolado pode não existir mais na retomada, e
 o agente passa a commitar na branch de quem despachou.
 
+**Registre agentes em voo:** antes de despachar um agente em background, atualize
+o estado do fluxo:
+
+```
+node scripts/estado.cjs marcar --slug <slug> --estagio executar --status parcial \
+    --json '{"em_voo":[{"agente":"<nome>","tarefa":"<descricao>","desde":"<data-iso>"}]}'
+```
+
+O campo `em_voo` é lista de agentes em background no momento do despacho. Ao
+receber o resultado (ou registrar que o agente morreu), remova dando baixa:
+
+```
+node scripts/estado.cjs marcar --slug <slug> --estagio executar --status <ok|parcial|reprovado> --json '{...}'
+```
+
+Sem `--json` com `em_voo`, o campo desaparece automaticamente no fechamento
+terminal-positivo (é `CAMPOS_EFEMEROS`). Em sessão não interativa, o turno pode
+acabar com agente em voo — o gate `Stop` bloqueia a próxima volta até que você
+registre que viu.
+
 **Antes de despachar:** a base do worktree nasce na ponta da `origin/main`, não no commit de trabalho. Confira com `git merge-base --is-ancestor origin/main HEAD`; não sendo ancestral, traga a `main` para a branch com `git merge --ff-only origin/main` antes de despachar — a branch de trabalho tem que estar adiantada (ou igualada) em relação ao `origin/main`.
 
 O briefing de cada agente leva, sempre:
