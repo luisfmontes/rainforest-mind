@@ -10,9 +10,11 @@ SANDBOX="$(mktemp -d)"
 SANDBOX_FAIL=""
 SANDBOX_FAIL2=""
 SANDBOX_TRAVERSAL=""
+SANDBOX_VIZINHO=""
+SANDBOX_VIZINHO_B2=""
 
 cleanup() {
-  rm -rf "$SANDBOX" "$SANDBOX_FAIL" "$SANDBOX_FAIL2" "$SANDBOX_TRAVERSAL"
+  rm -rf "$SANDBOX" "$SANDBOX_FAIL" "$SANDBOX_FAIL2" "$SANDBOX_TRAVERSAL" "$SANDBOX_VIZINHO" "$SANDBOX_VIZINHO_B2"
 }
 trap 'cleanup' EXIT
 
@@ -132,6 +134,44 @@ else
   falhou=$((falhou+1)); echo "  FALHA arquivo vizinho foi alterado"
 fi
 rm -rf "$SANDBOX_VIZINHO"
+echo ""
+
+# Teste 10: B2 - Corpus com path traversal relativo (../vizinho/x)
+echo "10. Build com --corpus ../corpus-vizinho (invasão horizontal):"
+SANDBOX_VIZINHO_B2="$(mktemp -d)"
+# Cria corpus vizinho
+mkdir -p "$SANDBOX_VIZINHO_B2/acervo/corpus-vizinho"
+CONTEUDO_VIZINHO="# Conteúdo Original - $(date +%s)"
+echo "$CONTEUDO_VIZINHO" > "$SANDBOX_VIZINHO_B2/acervo/corpus-vizinho/INDEX.md"
+HASH_VIZINHO_ANTES=$(md5sum "$SANDBOX_VIZINHO_B2/acervo/corpus-vizinho/INDEX.md" | cut -d' ' -f1)
+# Tenta atacar com --corpus ../corpus-vizinho/x
+RFM_ROOT="$SANDBOX_VIZINHO_B2" esperado "  exit 1 (recusa ../corpus)" 1 $BUILD "$FIXTURE" --corpus "../corpus-vizinho/x"
+# Verifica que arquivo vizinho não foi alterado
+HASH_VIZINHO_DEPOIS=$(md5sum "$SANDBOX_VIZINHO_B2/acervo/corpus-vizinho/INDEX.md" | cut -d' ' -f1)
+if [ "$HASH_VIZINHO_ANTES" = "$HASH_VIZINHO_DEPOIS" ]; then
+  ok=$((ok+1)); echo "  ok   corpus vizinho intacto"
+else
+  falhou=$((falhou+1)); echo "  FALHA corpus vizinho foi alterado"
+fi
+# Verifica que nada foi criado fora de acervo
+if ! find "$SANDBOX_VIZINHO_B2" -type d -name "*vizinho*" 2>/dev/null | grep -v "corpus-vizinho" | grep -q .; then
+  ok=$((ok+1)); echo "  ok   nenhuma pasta criada fora de acervo"
+else
+  falhou=$((falhou+1)); echo "  FALHA pasta criada fora de acervo"
+fi
+echo ""
+
+# Teste 11: B2 - Corpus com caminho absoluto (deve ser recusado)
+echo "11. Build com --corpus <absoluto> (deve recusar):"
+SANDBOX_ABSOLUTO="$(mktemp -d)"
+# Tenta com caminho absoluto
+RFM_ROOT="$SANDBOX_ABSOLUTO" esperado "  exit 1 (recusa absoluto)" 1 $BUILD "$FIXTURE" --corpus "/tmp/ataque"
+# Verifica que nada foi criado
+if ! find "$SANDBOX_ABSOLUTO" -type f -name "*.md" 2>/dev/null | grep -q .; then
+  ok=$((ok+1)); echo "  ok   nenhum arquivo criado"
+else
+  falhou=$((falhou+1)); echo "  FALHA arquivo foi criado"
+fi
 echo ""
 
 # ---------------------------------------------------------------- placar

@@ -80,10 +80,11 @@ fi
 echo ""
 
 echo "4. Acervo foi criado com conteúdo:"
-if [ -s "$SB/acervo/wiki-minima/INDEX.md" ] && grep -q "conceito-a" "$SB/acervo/wiki-minima/INDEX.md"; then
-  ok=$((ok+1)); echo "  ok   acervo com conteúdo verificado"
+# Procura a forma exata do item de nó com tipo (concept) para não confundir com Arestas
+if [ -s "$SB/acervo/wiki-minima/INDEX.md" ] && grep -q -- "- \[.*\](.*\.md) (concept)" "$SB/acervo/wiki-minima/INDEX.md"; then
+  ok=$((ok+1)); echo "  ok   seção de Nós com conteúdo"
 else
-  falhou=$((falhou+1)); echo "  FALHA acervo ou INDEX.md sem conteúdo"
+  falhou=$((falhou+1)); echo "  FALHA INDEX.md sem seção de Nós ou vazia"
 fi
 echo ""
 
