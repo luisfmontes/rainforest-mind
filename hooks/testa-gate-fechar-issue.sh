@@ -1297,6 +1297,66 @@ chmod +x "$SBP/scripts/x.sh"
 EXIT_CC=$?
 [ $EXIT_CC -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CC)"
 
+	# D17 (2026-09-04): palavras-chave falsas em português
+	# Casos de teste para detectar quando a constante FALSA_CHAVE é desativada
+
+	# Caso (cd): `gh pr create --body "Fecha #73"` (falsa chave) → exit 2
+	echo
+	echo "== (cd) gh pr create --body \"Fecha #73\" → exit 2 (falsa chave português) =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create --body \"Fecha #73\""}}'
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cd"
+	EXIT_CD=$?
+	[ $EXIT_CD -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CD)"
+	ERR_CD="$(cat "$SBP/err-cd")"
+	echo "$ERR_CD" | grep -q "não é palavra-chave do GitHub" && test_ok "mensagem menciona que não é reconhecida" || test_fail "mensagem incorreta"
+
+	# Caso (ce): `gh issue create --body "Encerra #99"` (falsa chave) → exit 2
+	echo
+	echo "== (ce) gh issue create --body \"Encerra #99\" → exit 2 (falsa chave português) =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh issue create --title test --body \"Encerra #99\""}}'
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-ce"
+	EXIT_CE=$?
+	[ $EXIT_CE -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CE)"
+
+	# Caso (cf): `gh issue comment 73 --body "Conclui #73"` (falsa chave) → exit 2
+	echo
+	echo "== (cf) gh issue comment --body \"Conclui #73\" → exit 2 (falsa chave português) =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh issue comment 73 --body \"Conclui #73\""}}'
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cf"
+	EXIT_CF=$?
+	[ $EXIT_CF -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CF)"
+
+	# Caso (cg): `gh pr create --body "Segue #73"` (palavra neutra, sem falsa chave) → exit 0
+	echo
+	echo "== (cg) gh pr create --body \"Segue #73\" → exit 0 (referência neutra, sem falsa chave) =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create --body \"Segue #73\""}}'
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cg"
+	EXIT_CG=$?
+	[ $EXIT_CG -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CG)"
+
+	# Caso (ch): `gh pr create --body "Resolvida #88"` (falsa chave) → exit 2
+	echo
+	echo "== (ch) gh pr create --body \"Resolvida #88\" → exit 2 (falsa chave português) =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create --body \"Resolvida #88\""}}'
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-ch"
+	EXIT_CH=$?
+	[ $EXIT_CH -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CH)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
