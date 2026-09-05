@@ -242,6 +242,24 @@ tem     "com --forcar, squash-vivo sai e imprime o SHA"      "$S9" "ok      squa
 nao_tem "squash-vivo saiu do repo"                            "$(git -C "$SBP/local" branch)" "squash-vivo"
 
 echo
+echo "== 8b. --remoto apaga o remoto da mergeada-por-squash =="
+montar_squash_vivo
+ANTES_LS="$(git -C "$SBP/local" ls-remote --heads origin squash-vivo)"
+tem "antes: squash-vivo existe no remoto" "$ANTES_LS" "squash-vivo"
+S8b="$(roda_gh --sem-fetch --remover --forcar --remoto)"
+tem "apaga a branch remota de mergeada-por-squash"        "$S8b" "ok      origin/squash-vivo"
+tem "saida NAO contem a mensagem enganosa"                "$S8b" "nenhuma das removidas tinha remoto para apagar"
+DEPOIS_LS="$(git -C "$SBP/local" ls-remote --heads origin squash-vivo)"
+nao_tem "depois: squash-vivo foi apagado do remoto"       "$DEPOIS_LS" "squash-vivo"
+
+echo
+echo "== 8c. dica de --remoto aparece tambem para mergeada-por-squash =="
+montar_squash_vivo
+S8c="$(roda_gh --sem-fetch --remover --forcar)"
+tem "sem --remoto, lista a branch"                        "$S8c" "ok      squash-vivo"
+tem "a dica aparece tambem para mergeada-por-squash"      "$S8c" "Para apagar la tambem"
+
+echo
 echo "== 9. gh indisponivel: a candidata volta a ser viva, exit continua 0 =="
 # Simula gh ausente SO dentro deste bloco, com um PATH restrito montado nas proprias
 # funcoes roda_sem_gh/classe_sem_gh acima — nunca mexe no PATH da maquina.
