@@ -1,0 +1,13 @@
+{
+  "nos": [
+    {
+      "id": "teste-c4",
+      "caminho": "wiki/teste.md",
+      "titulo": "Titulo](http://x) <script>alert(1)</script>",
+      "resumo": "Teste de escape de caracteres especiais",
+      "file_type": "concept",
+      "confidence": "EXTRACTED"
+    }
+  ],
+  "arestas": []
+}
