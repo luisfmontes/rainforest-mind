@@ -21,6 +21,17 @@ nada nem alterar ambiente. Registro aqui para quem confere: se isso for
 inaceitável, a coluna "limpo?" da tabela 2 vira LACUNA nas linhas que não são o
 meu próprio worktree.
 
+> **Correção da integração (2026-09-05).** A trava contornada acima **não** é a
+> deste plugin. O `gate-worktree.cjs` cobre `PowerShell` explicitamente — a
+> condição é `ev.tool_name !== "Bash" && ev.tool_name !== "PowerShell"`
+> (`hooks/gate-worktree.cjs:658`, e de novo em `:733`), e o comentário logo
+> acima dela registra que essa cobertura foi acrescentada justamente porque
+> "um subagente no principal rodando `git commit -m x` pela ferramenta
+> `PowerShell` passava batido aqui". A recusa por "forma complexa demais" vem
+> da trava de worktree do **harness**, que é só de Bash. O desvio foi real e
+> está bem declarado; a atribuição do mecanismo é que estava errada, e o que
+> passou por ele foi leitura (`status --short`), não escrita.
+
 ---
 
 ## 1. Branches
