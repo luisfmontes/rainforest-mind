@@ -437,6 +437,96 @@ else
   echo "        Lista: $lista_j"
 fi
 
+# --- CASO (k): registro travado com diretorio ausente é destravado, removido e podado
+#
+# Tarefa 7 (lote 4): fantasma-travado — registro que existe em `git worktree
+# list --porcelain` com `locked`, mas o diretório sumiu do disco. `git worktree
+# prune` não limpa porque está travado; `git worktree unlock + remove --force +
+# prune` limpa.
+
+teste "k" "registro travado com diretorio ausente é destravado, removido e podado"
+
+repo_k="$SB/repo_k"
+work_k="$SB/trabalho_k"
+criarRepoComCommit "$repo_k" "$work_k"
+
+# Cria um worktree
+wt_k_real="$work_k-worktrees/wt-k"
+git worktree add "$wt_k_real" HEAD
+
+# Trava o worktree
+git worktree lock "$wt_k_real"
+
+# Apaga o diretório do disco (deixando o registro travado)
+rm -rf "$wt_k_real"
+
+# Confirma que git worktree prune NÃO limpa enquanto estiver travado
+git worktree prune 2>/dev/null || true
+lista_k_prune=$(git worktree list --porcelain | grep -F "wt-k" || true)
+if [ -n "$lista_k_prune" ]; then
+  ok=$((ok+1)); echo "  ok    git worktree prune não limpa registro travado (com dir ausente)"
+else
+  falhou=$((falhou+1)); echo "  FALHA git worktree prune limpou registro travado"
+fi
+
+# Roda limpar-worktrees com --remover
+saida_k_remover=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_k" --remover 2>&1)
+exit_k=$?
+
+# Verifica que saiu com exit 0
+if [ $exit_k -eq 0 ]; then
+  ok=$((ok+1)); echo "  ok    limpar-worktrees sai com exit 0"
+else
+  falhou=$((falhou+1)); echo "  FALHA limpar-worktrees saiu com exit $exit_k"
+  echo "        Saída: $saida_k_remover"
+fi
+
+# Verifica que o registro foi removido (não aparece em git worktree list)
+lista_k_after=$(git worktree list --porcelain | grep -F "wt-k" || true)
+if [ -z "$lista_k_after" ]; then
+  ok=$((ok+1)); echo "  ok    fantasma-travado foi destravar, remover e podar"
+else
+  falhou=$((falhou+1)); echo "  FALHA fantasma-travado ainda aparece em git worktree list"
+  echo "        Lista: $lista_k_after"
+fi
+
+# --- CASO (l): worktree travado COM DIRETÓRIO PRESENTE continua listado após --remover
+#
+# Invariante crítica: --remover nunca toca em worktree vivo (com diretório
+# presente), mesmo que esteja travado. Só fantasma-travado é removível.
+
+teste "l" "worktree travado com diretorio presente continua listado após --remover"
+
+repo_l="$SB/repo_l"
+work_l="$SB/trabalho_l"
+criarRepoComCommit "$repo_l" "$work_l"
+
+# Cria um worktree
+wt_l_real="$work_l-worktrees/wt-l"
+git worktree add "$wt_l_real" HEAD
+
+# Trava o worktree (mas deixa o diretório intacto)
+git worktree lock "$wt_l_real"
+
+# Roda limpar-worktrees com --remover
+node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_l" --remover 2>&1 | grep -i "remov" || true
+
+# Verifica que o worktree CONTINUA no git worktree list
+lista_l=$(git worktree list --porcelain | grep -F "wt-l" || true)
+if [ -n "$lista_l" ]; then
+  ok=$((ok+1)); echo "  ok    worktree travado com diretório presente continua listado"
+else
+  falhou=$((falhou+1)); echo "  FALHA worktree travado com diretório presente foi removido"
+  echo "        Lista: $lista_l"
+fi
+
+# Verifica que o diretório CONTINUA no disco
+if [ -d "$wt_l_real" ]; then
+  ok=$((ok+1)); echo "  ok    diretório do worktree travado continua no disco"
+else
+  falhou=$((falhou+1)); echo "  FALHA diretório do worktree travado foi removido do disco"
+fi
+
 # --- Relatório final
 
 echo ""
