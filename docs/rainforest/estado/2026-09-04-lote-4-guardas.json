@@ -105,24 +105,80 @@
     ]
   },
   "revisar": {
-    "status": "parcial",
+    "status": "ok",
     "snapshot": {
-      "head": "ca7ccf55139e9972eba4141491f8646c644c5bc8",
-      "caminhos_sujos": []
+      "head": "f8ecb5430c0e63715834b639bd8242be9f7ba19c",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-09-04-lote-4-guardas.json"
+      ]
     },
-    "em_voo": [
-      {
-        "agente": "rainforest-mind:revisor",
-        "tarefa": "revisao do commit de consertos ca7ccf5",
-        "desde": "2026-09-05"
-      }
+    "em_voo": [],
+    "em": "2026-09-05",
+    "revisores": [
+      "rainforest-mind:revisor (2 rodadas)",
+      "rainforest-mind:auditor-de-seguranca"
     ],
-    "em": "2026-09-05"
+    "diff": "git diff origin/main...HEAD",
+    "achados": 12,
+    "achados_bloqueantes_resolvidos": 11,
+    "veredito": "integra depois dos consertos",
+    "comando": "bash em cada bateria tocada + node scripts/conferir-mutacao.cjs por alvo",
+    "saida": "71/0, 21/0, 117/0, 19/0, 198/0, 99/0, 26/0, 12/0; catraca 19 alvos, 19 vermelhos",
+    "detalhe": [
+      "D18 achadoJaEstaNoPai lia o indice num commit -a (revisor 1, ja vermelho em testa-gate-commit.cjs)",
+      "D19 MERGE_HEAD isentava merge de branch nao publicada (auditor)",
+      "D20 corrida de digitos puros passava por token hex (auditor e revisor 3)",
+      "D21 referencia de variavel isentava literal grudado nela (auditor e revisor 2)",
+      "D22 bash $VAR deixou de ser ilegivel junto com bash <script> (revisor 4)",
+      "D23 FALSA_CHAVE nao aceitava artigo entre o verbo e o #N (revisor 5)",
+      "D24 limpar-worktrees --remover nao consultava em_voo (auditor)",
+      "instrumento: testa-memoria-marca.sh media a forma do hooks.json com grep -A 15",
+      "D25 recuo de ${VAR:-padrao} recusava o idioma de docker-compose (2a rodada)",
+      "D19 corrigido: publicado e no remoto de DESTINO, nao em qualquer remoto (2a rodada)",
+      "D26 parametro posicional $1 escapava de contemConstrucaoIlegivel (2a rodada)",
+      "D27 mensagem de agente em voo nao dizia como dar baixa (2a rodada)",
+      "narrativa: merge LIMPO nunca passa por D18/D19 — corrigido no design, nao no codigo"
+    ],
+    "nao_bloqueante": [
+      "revisor: fantasma-travado nao distingue midia removivel desmontada de worktree morto — lacuna do criterio da tarefa 7, nao desvio do codigo; entrou aviso nomeando a possibilidade",
+      "caso de bateria cl estava verde sob mutacao; a catraca pegou e o caso foi trocado"
+    ],
+    "base": "27b2697ed5bfdb4b1f2952c7ad954f23d22d07b6",
+    "head": "f8ecb5430c0e63715834b639bd8242be9f7ba19c"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scratchpad/verificar-lote4.sh (cada criterio de pronto quando, contra o artefato real, em fixture propria)",
+    "saida": "43 ok, 0 falha(s)",
+    "tarefas": 12,
+    "tarefas_verificadas": 12,
+    "criterios": 43,
+    "falhas": 0,
+    "ressalva": "tarefa 8: grep -rn \"hashes velhos conhecidos\" skills/ ainda traz UMA linha, dentro de citacao datada que descreve o mecanismo substituido, nao como prescricao. Nao foi reescrita para satisfazer o grep — seria o erro de medir a forma que este lote conserta.",
+    "em_voo": [],
+    "em": "2026-09-05"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "pr": "https://github.com/luisfmontes/rainforest-mind/pull/188",
+    "branch": "fluxo/lote-4-guardas",
+    "versao": "1.4.0",
+    "issues": [
+      170,
+      173,
+      174,
+      175,
+      176,
+      180,
+      181,
+      182,
+      184,
+      185
+    ],
+    "comando": "gh pr create --base main --head fluxo/lote-4-guardas --body-file <corpo>",
+    "saida": "https://github.com/luisfmontes/rainforest-mind/pull/188",
+    "evidencia": "node scripts/fechar-issue.cjs <n> --comando ... --saida-arquivo ... nas 10 Issues, exit 0 em todas",
+    "em_voo": [],
+    "em": "2026-09-05"
   }
 }
