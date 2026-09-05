@@ -1,0 +1,82 @@
+{
+  "slug": "2026-09-05-conferir-versao-olha-o-numero",
+  "titulo": "Issue #189 — conferir-versao olha o numero declarado e nao sai 0 sem ter medido",
+  "criado_em": "2026-09-05",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-05-conferir-versao-olha-o-numero.md",
+    "em": "2026-09-05"
+  },
+  "plano": {
+    "status": "ok",
+    "doc": "docs/rainforest/planos/2026-09-05-conferir-versao-olha-o-numero.md",
+    "em": "2026-09-05"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-05",
+    "em_voo": [],
+    "em": "2026-09-05",
+    "tarefas": 3,
+    "tarefas_ok": 3,
+    "comando": "bash scripts/testa-conferir-versao.sh",
+    "saida": "== resultado: 21 ok, 0 falha(s) == , exit 0 — inclui 'manifesto ilegivel sai 4', 'versao igual a da main recusa', 'versao menor que a da main recusa' e 'versao maior que a da main passa'. No repositorio real (local 1.5.0, origin/main 1.5.0) o script agora RECUSA com exit 2 nomeando os dois numeros.",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-versao.sh, caso 'manifesto ilegivel sai 4'"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-versao.sh, casos 'versao igual a da main recusa' e 'versao menor que a da main recusa'"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "a tarefa e o proprio instrumento de falsificacao das tarefas 1 e 2; nao ha comportamento de producao nela para inverter"
+      }
+    ]
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "9a3f55e21d243f6b2f1cfec31a308a3eb8f72f9a",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-09-05-conferir-versao-olha-o-numero.json"
+      ]
+    },
+    "base": "ff11a9f1cbe385de2e8bb0aba2a24f0b600f8910",
+    "head": "9a3f55e",
+    "achados": 2,
+    "comando": "bash scripts/testa-conferir-versao.sh",
+    "saida": "== resultado: 21 ok, 0 falha(s) ==, exit 0, inclusive os quatro casos novos.",
+    "veredito_do_revisor": "integra; nenhum defeito de comportamento nos seis pontos pedidos",
+    "delta_pos_revisao": "revisao feita contra 07013e8; a correcao do comentario e 9a3f55e. Re-rodei a bateria inteira contra a arvore nova: 21 ok, 0 falhas, exit 0.",
+    "achados_lista": [
+      "MSYS_NO_PATHCONV nao e a trava, a guarda de vazio e — medido por mim (mesma chamada, com e sem a variavel, leu os mesmos 372 bytes) e comentario corrigido",
+      "regex de semver sem ancora final: 1.5.0-rc1 parseia como 1.5.0 — teorico neste repo, anotado no PR"
+    ],
+    "em": "2026-09-05"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "node scripts/conferir-versao.cjs --teto 999 em fixture com origin/main em 1.3.0",
+    "saida": "local 1.3.0 -> exit 2 'RECUSADO: versao declarada 1.3.0 nao e maior que a de origin/main (1.3.0)'; local 0.9.0 -> exit 2 nomeando 0.9.0 e 1.3.0; local 1.4.0 -> exit 0. Plugin com manifesto ilegivel -> exit 4. Fora de repo git -> exit 0. Repo sem remoto -> exit 0 com 'nao comparei com origin/main'. bash scripts/testa-conferir-versao.sh: 21 ok, 0 falhas, exit 0.",
+    "tarefas_verificadas": 3,
+    "tarefas": 3,
+    "em": "2026-09-05"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "PR aberto",
+    "pr": "https://github.com/luisfmontes/rainforest-mind/pull/205",
+    "comando": "gh pr create --base main --head fluxo/conferir-versao-olha-o-numero",
+    "saida": "https://github.com/luisfmontes/rainforest-mind/pull/205",
+    "em": "2026-09-05"
+  }
+}
