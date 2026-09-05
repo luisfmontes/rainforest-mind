@@ -1,13 +1,37 @@
 #!/bin/bash
 # Bateria do extrator-wiki. Testa o extrator contra wiki-minima.
+# Usa sandbox com projetos.json temporário, sem alterar config do usuário.
 # Uso: bash skills/montar-corpus/testa-extrator-wiki.sh
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-EXTRATOR="node $SRC/skills/montar-corpus/extratores/wiki.cjs"
-VALIDAR="node $SRC/scripts/validar-grafo.cjs"
-TMPDIR="$(mktemp -d)"
-trap 'rm -rf "$TMPDIR"' EXIT
+SRC_WIN="$(cygpath -m "$SRC" 2>/dev/null || printf '%s' "$SRC")"
+
+# Cria sandbox para projetos.json temporário
+SBP="$(mktemp -d)"
+SB="$(cygpath -m "$SBP" 2>/dev/null || printf '%s' "$SBP")"
+export RFM_ROOT="$SB"
+trap 'rm -rf "$SBP"' EXIT
+
+# Cria projetos.json dentro da sandbox com wiki-minima
+mkdir -p "$RFM_ROOT"
+cat > "$RFM_ROOT/projetos.json" <<EOF
+{
+  "wiki-minima": {
+    "caminho": "$SB/wiki-minima",
+    "apelidos": []
+  }
+}
+EOF
+
+# Copia fixtures para dentro da sandbox
+mkdir -p "$SB/wiki-minima"
+cp -r "$SRC/test/fixtures/corpus/wiki-minima/wiki" "$SB/wiki-minima/"
+
+EXTRATOR="node $SRC_WIN/skills/montar-corpus/extratores/wiki.cjs"
+VALIDAR="node $SRC_WIN/scripts/validar-grafo.cjs"
+TMPDIR="$SBP/output"
+mkdir -p "$TMPDIR"
 
 ok=0; falhou=0
 
