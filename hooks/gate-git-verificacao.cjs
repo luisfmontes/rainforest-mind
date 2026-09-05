@@ -668,9 +668,11 @@ function tokens(seg) {
           // NUL trunca a string (C-string termination) mas a palavra continua
           // sendo montada com segmentos seguintes. Pula tudo após NUL neste segmento ANSI-C.
           if (decodificado.charCodeAt(0) === 0) {
-            // Pula até o fechamento da aspa ANSI-C, sem acumular nada
+            // Pula até o fechamento da aspa ANSI-C, sem acumular nada.
+            // O mapa marca o fechamento real da aspa (não escapada) como 0.
+            // Procura a partir de prox em diante.
             i = prox - 1;
-            while (i + 1 < seg.length && seg[i + 1] !== "'") i += 1;
+            while (i + 1 < seg.length && (mapa[i + 1] !== 0 || seg[i + 1] !== "'")) i += 1;
           } else {
             cur += decodificado;
             tem = true;
@@ -809,6 +811,33 @@ function escapeForRegex(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/**
+ * Detecta se um token foi isolado por um NUL dentro de $'...'
+ * Procura por padrões como $'--no-verify\0...' ou $'...\0--no-verify'
+ */
+function tokenIsoladoPorNul(cmd, token) {
+  if (!cmd || !token) return false;
+
+  // Procura por $'...' contendo NUL (em qualquer forma) e o token
+  // Formas de NUL: \0, \x00, \000
+  const patterns = [
+    `\\$'[^']*${escapeForRegex(token)}[^']*\\\\0`, // Token antes do NUL
+    `\\$'[^']*\\\\0[^']*${escapeForRegex(token)}`, // Token depois do NUL
+    `\\$'[^']*${escapeForRegex(token)}[^']*\\\\x00`, // Token antes de \x00
+    `\\$'[^']*\\\\x00[^']*${escapeForRegex(token)}`, // Token depois de \x00
+    `\\$'[^']*${escapeForRegex(token)}[^']*\\\\000`, // Token antes de \000
+    `\\$'[^']*\\\\000[^']*${escapeForRegex(token)}`, // Token depois de \000
+  ];
+
+  return patterns.some(p => {
+    try {
+      return new RegExp(p).test(cmd);
+    } catch {
+      return false;
+    }
+  });
+}
+
 /** Motivo do bloqueio, ou null se o segmento e inofensivo. */
 function motivoDe(g, cmdOriginal) {
   // Determina o sufixo testando CADA token que causou bloqueio
@@ -817,14 +846,22 @@ function motivoDe(g, cmdOriginal) {
 
   if (g.sub === "commit") {
     const tokenNoVerify = g.args.find((t) => ehPrefixoDeFlag(t, "--no-verify"));
-    if (tokenNoVerify && tokenVemDeASAI(cmdOriginal, tokenNoVerify)) {
-      sufixoCommit = ", vindo de escape ANSI-C";
+    if (tokenNoVerify) {
+      if (tokenVemDeASAI(cmdOriginal, tokenNoVerify)) {
+        sufixoCommit = ", vindo de escape ANSI-C";
+      } else if (tokenIsoladoPorNul(cmdOriginal, tokenNoVerify)) {
+        sufixoCommit = ", isolado por NUL dentro de $'...'";
+      }
     }
     if (g.args.some((t) => ehPrefixoDeFlag(t, "--no-verify"))) return "git commit --no-verify" + sufixoCommit;
 
     const tokenNoGpg = g.args.find((t) => ehPrefixoDeFlag(t, "--no-gpg-sign"));
-    if (tokenNoGpg && tokenVemDeASAI(cmdOriginal, tokenNoGpg)) {
-      sufixoCommit = ", vindo de escape ANSI-C";
+    if (tokenNoGpg) {
+      if (tokenVemDeASAI(cmdOriginal, tokenNoGpg)) {
+        sufixoCommit = ", vindo de escape ANSI-C";
+      } else if (tokenIsoladoPorNul(cmdOriginal, tokenNoGpg)) {
+        sufixoCommit = ", isolado por NUL dentro de $'...'";
+      }
     }
     if (g.args.some((t) => ehPrefixoDeFlag(t, "--no-gpg-sign"))) return "git commit --no-gpg-sign" + sufixoCommit;
 
@@ -832,8 +869,12 @@ function motivoDe(g, cmdOriginal) {
     // Encontra o token que contem 'n'
     const tokenComN = g.args.find((t) => /^-[A-Za-z]+$/.test(t) && t.slice(1).includes("n"));
     if (temCurta(g.args, "n")) {
-      if (tokenComN && tokenVemDeASAI(cmdOriginal, tokenComN)) {
-        sufixoCommit = ", vindo de escape ANSI-C";
+      if (tokenComN) {
+        if (tokenVemDeASAI(cmdOriginal, tokenComN)) {
+          sufixoCommit = ", vindo de escape ANSI-C";
+        } else if (tokenIsoladoPorNul(cmdOriginal, tokenComN)) {
+          sufixoCommit = ", isolado por NUL dentro de $'...'";
+        }
       }
       return "git commit -n (equivale a --no-verify)" + sufixoCommit;
     }
@@ -842,8 +883,12 @@ function motivoDe(g, cmdOriginal) {
   if (g.sub === "push") {
     // `-n` em push e --dry-run, nao --no-verify: nao entra aqui de proposito.
     const tokenNoVerify = g.args.find((t) => ehPrefixoDeFlag(t, "--no-verify"));
-    if (tokenNoVerify && tokenVemDeASAI(cmdOriginal, tokenNoVerify)) {
-      sufixoPush = ", vindo de escape ANSI-C";
+    if (tokenNoVerify) {
+      if (tokenVemDeASAI(cmdOriginal, tokenNoVerify)) {
+        sufixoPush = ", vindo de escape ANSI-C";
+      } else if (tokenIsoladoPorNul(cmdOriginal, tokenNoVerify)) {
+        sufixoPush = ", isolado por NUL dentro de $'...'";
+      }
     }
     if (g.args.some((t) => ehPrefixoDeFlag(t, "--no-verify"))) return "git push --no-verify" + sufixoPush;
     return null;
