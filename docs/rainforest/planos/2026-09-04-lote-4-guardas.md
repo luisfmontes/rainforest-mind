@@ -215,3 +215,36 @@ pronto quando: a Issue #182 tem comentário que (a) cola
 `grep -n worktree scripts/conferir-mutacao.cjs` sem saída e (b) nomeia
 `scripts/limpar-worktrees.cjs` como o destino real do conserto — provado por
 `gh issue view 182 --comments` mostrando o comentário com os dois itens.
+
+### 11. O instrumento confere registro de hook lendo o JSON, não contando linhas [tipo: teste]
+atende: nasceu na revisão (2026-09-05), não estava no design
+arquivos: `hooks/testa-memoria-marca.sh`
+depende de: 9
+paralela: não (a tarefa 9 é quem cria o sintoma)
+mutacao:
+  arquivo: `hooks/testa-memoria-marca.sh`
+  de: `process.exit(achou ? 0 : 1);`
+  para: `process.exit(0);`
+  bateria: `bash hooks/testa-memoria-marca.sh`
+  fixture: `hooks/testa-memoria-marca.sh, testes 2 a 4 (registro em PostToolUse, Stop e SessionEnd)`
+pronto quando: `bash hooks/testa-memoria-marca.sh` sai `0` com o `hooks.json`
+atual — hoje sai `1` com "memoria-marca.cjs não está em Stop", porque a tarefa
+9 acrescentou um grupo em `Stop` e empurrou o hook procurado para fora da
+janela de 15 linhas do `grep -A`; e `grep -A 15 '"Stop"' hooks/hooks.json |
+grep -c memoria-marca.cjs` devolve `0`, provando que a forma antiga já não
+enxerga o registro que existe.
+
+### 12. Versão sobe para 1.4.0 [tipo: release]
+atende: a regra do `conferir-versao.cjs`, que recusa acúmulo além do teto
+arquivos: `.claude-plugin/plugin.json`, `README.md`
+depende de: todas
+paralela: não
+mutacao: n/a
+  motivo: número de versão não tem ramo executável a inverter; a falsificação
+  é o próprio `conferir-versao.cjs`, que recusa antes e aceita depois.
+pronto quando: `node scripts/conferir-versao.cjs` sai `0` — antes do bump ele
+saía `2` com "38 commit(s) em 'HEAD' desde o ultimo bump de versao (5d1e81a),
+e o teto e 5" —, e o número aparece nos **dois** lugares que o `CONTRIBUTING.md`
+diz que andam juntos: `.claude-plugin/plugin.json` e o badge do `README.md`.
+MINOR e não PATCH porque entrou comportamento novo (campo `em_voo`) e um hook
+novo (`Stop`), sem quebrar interface.
