@@ -548,21 +548,46 @@ else
 fi
 
 echo
-echo "== Defeito A: NUL trunca argumentos (devem BARRAR agora) =="
-# Teste 1: NUL via octal
-saida=$(printf '%s' "$(b_ansi "git commit \$'-n\\000lixo' -m x")" | node "$GATE" 2>&1); rc=$?
-if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit \$'-n\\000lixo' -m x (exit 2, bloqueado)"
-else falhou=$((falhou+1)); echo "  FALHA: -n com NUL esperava 2, veio $rc"; fi
+echo "== Defeito A: NUL trunca argumentos (8 casos da tabela) =="
+# 1. git $'com\0'mit -n -m x -> ARGV[1]=[commit], ARGV[2]=[-n]
+saida=$(printf '%s' "$(b_ansi "git \$'com\\0'mit -n -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git \$'com\\0'mit -n -m x (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA: esperava 2, veio $rc"; fi
 
-# Teste 2: NUL via hex
+# 2. git $'pus\0'h --no-verify -> ARGV[1]=[push], ARGV[2]=[--no-verify]
+saida=$(printf '%s' "$(b_ansi "git \$'pus\\0'h --no-verify")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git \$'pus\\0'h --no-verify (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA: esperava 2, veio $rc"; fi
+
+# 3. $'gi\0't commit -n -m x -> ARGV[1]=[git], comando "git commit -n"
+saida=$(printf '%s' "$(b_ansi "\$'gi\\0't commit -n -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   \$'gi\\0't commit -n -m x (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA: esperava 2, veio $rc"; fi
+
+# 4. git commit $'-n\0lixo' -m x -> ARGV[2]=[-n]
+saida=$(printf '%s' "$(b_ansi "git commit \$'-n\\0lixo' -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit \$'-n\\0lixo' -m x (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA: esperava 2, veio $rc"; fi
+
+# 5. git commit $'--no-verify\0lixo' -m x -> ARGV[2]=[--no-verify]
 saida=$(printf '%s' "$(b_ansi "git commit \$'--no-verify\\0lixo' -m x")" | node "$GATE" 2>&1); rc=$?
-if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit \$'--no-verify\\0lixo' -m x (exit 2, bloqueado)"
-else falhou=$((falhou+1)); echo "  FALHA: --no-verify com NUL esperava 2, veio $rc"; fi
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git commit \$'--no-verify\\0lixo' -m x (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA: esperava 2, veio $rc"; fi
 
-# Teste 3: NUL em push (deve bloquear)
+# 6. git push $'--no-verify\0lixo' -> ARGV[2]=[--no-verify]
 saida=$(printf '%s' "$(b_ansi "git push \$'--no-verify\\0lixo'")" | node "$GATE" 2>&1); rc=$?
-if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git push \$'--no-verify\\0lixo' (exit 2, bloqueado)"
-else falhou=$((falhou+1)); echo "  FALHA: push --no-verify com NUL esperava 2, veio $rc"; fi
+if [ "$rc" = 2 ]; then ok=$((ok+1)); echo "  ok   git push \$'--no-verify\\0lixo' (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA: esperava 2, veio $rc"; fi
+
+# 7. git commit $'lixo\0-n' -m x -> ARGV[2]=[lixo] ("-n" descartado pelo NUL)
+saida=$(printf '%s' "$(b_ansi "git commit \$'lixo\\0-n' -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   git commit \$'lixo\\0-n' -m x (exit 0)"
+else falhou=$((falhou+1)); echo "  FALHA: esperava 0, veio $rc"; fi
+
+# 8. git commit -m $'mensagem com \0 no meio' -> mensagem truncada
+saida=$(printf '%s' "$(b_ansi "git commit -m \$'mensagem com \\0 no meio'")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   git commit -m \$'mensagem com \\0 no meio' (exit 0)"
+else falhou=$((falhou+1)); echo "  FALHA: esperava 0, veio $rc"; fi
 
 echo
 echo "== Defeito B: Fórmula de \\cX estava errada (agora \\cmn = CR=13, não -) =="
@@ -571,10 +596,33 @@ saida=$(printf '%s' "$(b_ansi "git commit \$'\\cmn' -m x")" | node "$GATE" 2>&1)
 if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   git commit \$'\\cmn' -m x (exit 0, passa)"
 else falhou=$((falhou+1)); echo "  FALHA: \\cmn esperava 0, veio $rc"; fi
 
-# Teste 5: Verificar que a regex agora detecta escapes simples (já testado com hex acima)
-# A regex foi ampliada para cobrir \a, \b, \e, \f, \n, \r, \t, \v, além de \c e octal
-echo "  (sufixo de escape simples: testado via hex e octal acima; regex agora cobre todos)"
-ok=$((ok+1))
+# Teste 5: Verificar que a mensagem NÃO traz sufixo quando flag é nua (sem escape)
+# mas TRAZ sufixo quando a flag vem de escape ANSI-C
+echo "== Teste 5: Sufixo refletindo origem da flag (não do comando inteiro) =="
+
+# Teste 5a: Flag nua (-n) + escape na mensagem -> mensagem SEM sufixo
+saida=$(printf '%s' "$(b_ansi "git commit -n -m \$'linha1\nlinha2'")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then
+  msg=$(printf '%s' "$saida" | grep "Comando:" | head -1)
+  if echo "$msg" | grep -q "vindo de escape ANSI-C"; then
+    falhou=$((falhou+1)); echo "  FALHA Teste 5a: flag nua não deveria trazer sufixo"
+    echo "$msg" | sed 's/^/         /'
+  else
+    ok=$((ok+1)); echo "  ok   git commit -n -m \$'linha1\nlinha2' (exit 2, sem sufixo — correto)"
+  fi
+else falhou=$((falhou+1)); echo "  FALHA Teste 5a: esperava 2, veio $rc"; fi
+
+# Teste 5b: Flag com escape hex (\x2d\x6e = -n) -> mensagem COM sufixo
+saida=$(printf '%s' "$(b_ansi "git commit \$'\\x2d\\x6e' -m x")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then
+  msg=$(printf '%s' "$saida" | grep "Comando:" | head -1)
+  if echo "$msg" | grep -q "vindo de escape ANSI-C"; then
+    ok=$((ok+1)); echo "  ok   git commit \$'\\x2d\\x6e' -m x (exit 2, com sufixo — correto)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA Teste 5b: flag com escape deveria trazer sufixo"
+    echo "$msg" | sed 's/^/         /'
+  fi
+else falhou=$((falhou+1)); echo "  FALHA Teste 5b: esperava 2, veio $rc"; fi
 
 echo
 echo "== Contraprova: NUL na mensagem (não é um argumento de comando) =="
