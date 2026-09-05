@@ -64,7 +64,11 @@ Comprime apenas `tool_result` **novos** (último turno), uma vez, e o resultado 
 | Prosa/código curto | não toca | — |
 
 - **CCR-lite:** antes de comprimir, original inteiro vai pra `.rainforest/poda/<sha1-8>.txt`. O stub termina com: `[saída completa: .rainforest/poda/ab12cd34.txt — use Read se precisar]`. Sem tool injection: o modelo já tem Read/Bash.
-- Limpeza: arquivos CCR do estágio são apagados no `colher` (ou por idade, config).
+- Limpeza: arquivos CCR do estágio são apagados no `fechar` (ou por idade, config).
+  Não existe estágio `colher` nesta máquina — mesma correção que
+  `docs/rainforest/design/fluxo-7-design-recibo.md:104-108` já fixou para o recibo:
+  "leia-se `fechar` onde o design escreveu `colher`". Corrigido em 2026-09-05, no
+  adendo deepagents (D4).
 
 ### Fase 2 — Poda em fronteira de estágio (estado-aware)
 
