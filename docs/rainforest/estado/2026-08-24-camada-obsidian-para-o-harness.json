@@ -75,12 +75,12 @@
     "nota": "Segunda passagem por executar, reaberta pela reprova do revisar. Os cinco bloqueantes e os quatro itens de corrigir_junto foram consertados em cinco voltas de agente; cada item foi re-rodado na janela principal contra o artefato real, nenhum aceito por relato. Quatro entregas com marca de ok foram devolvidas por medirem o portao errado."
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "parcial",
     "revisores": [
       "rainforest-mind:revisor",
       "rainforest-mind:auditor-de-seguranca"
     ],
-    "veredito": "reprovado",
+    "veredito": "um item aberto, e o item e decisao do dono",
     "bloqueantes": [
       "Travessia de caminho pelo campo id do no: validar-grafo.cjs aceita id com ../ e build.cjs:141-144 escreve fora de acervo/. Reproduzido na janela principal: fora-do-acervo-poc.md apareceu dois niveis acima de acervo/teste/. Este repo ja tem a regra escrita — confinamento de caminho sempre por realpath, nunca path.resolve + startsWith.",
       "Travessia de caminho pelo --corpus cru: build.cjs e executavel por si e nao repete a validacao que so existe no caminho cli.cjs -> resolverSlug. Reproduzido: --corpus '../corpus-vazado' criou a pasta fora de acervo/.",
@@ -95,19 +95,37 @@
       "titulo vai sem escape para o INDEX.md: titulo com ]( e <script> quebra o link e injeta markup, medido."
     ],
     "divida_nomeada_sem_bloquear": [
-      "normalizarLink apaga acento e maiuscula, mas o id vem cru do nome do arquivo — a assimetria nunca e exercitada porque o corpus real e 100% minusculo-com-hifen. O revisor argumenta que degrada para AMBIGUOUS, que e o fallback que o D6 ja preve como seguro. Falta teste.",
-      "parseYAML manual cobre a convencao real das 24 paginas; fragil contra lista YAML em bloco ou titulo com dois-pontos. O design rejeitou extrator maior explicitamente.",
-      "resumo igual ao titulo nos 24 nos — lacuna do plano, ja registrada no relatorio de fechamento."
+      "TOCTOU no confinamento: validarCaminhoNo resolve o dirname por realpath e a escrita usa o caminho nao resolvido. Padrao confirmado por leitura; exploracao exige escrita concorrente em <raiz>/acervo/ e nao foi demonstrada. Uma janela por no.",
+      "cli.cjs interpola o slug sem aspas em tres linhas que vao para execSync. Medido seguro hoje: hooks/lib/projetos.cjs:53 recusa chave fora de kebab-case e derruba o arquivo inteiro na primeira ruim; testei 'a&echo-ops', 'x$(echo ...)', crase e ponto-e-virgula, nenhum executou. A seguranca mora em outro modulo — se aquele afrouxar, isto vira injecao sem guarda local.",
+      "tempDir montado a mao com Date.now e Math.random em vez de fs.mkdtempSync, e sem mode explicito. Impacto baixo no Windows, onde o temp e por usuario; seria maior num runner Linux com /tmp compartilhado.",
+      "Limpeza do tempDir so por process.on('exit'): kill forcado deixa o grafo intermediario orfao.",
+      "parseYAML manual, ja registrado na primeira volta. O design rejeitou extrator maior explicitamente.",
+      "resumo igual ao titulo nos 24 nos do corpus real — lacuna do plano, ja registrada."
     ],
     "erro_da_janela_principal": "O criterio de pronto da T5 no plano manda 'grep -c \"](\" INDEX.md' bater com a contagem de arestas. Isso e aritmeticamente errado: criarIndex emite uma linha com '](' por NO tambem, entao o grep conta nos + arestas (medido no fixture: 3 nos e 3 arestas devolvem 6, nao 3). Pior que o criterio errado: a janela principal trocou os criterios da T5 no briefing, sem dizer que estava abandonando o do plano. Cobrar dos agentes relato sem prova e fazer o mesmo aqui e o defeito que esta rodada mais perseguiu.",
     "em": "2026-09-05",
     "tentativas": 1,
     "snapshot": {
-      "head": "ba99622c2286d99a56d41d81906651bc32fdb894",
-      "caminhos_sujos": [
-        "docs/rainforest/estado/2026-08-24-camada-obsidian-para-o-harness.json"
-      ]
-    }
+      "head": "84faab04ec41b8621da14d0f7fe78282b8a955d5",
+      "caminhos_sujos": []
+    },
+    "bloqueantes_consertados_nesta_volta": [
+      "Escape nao cobria quebra de linha. No CommonMark uma ATX heading interrompe paragrafo sem linha em branco, entao resumo ou titulo com \\n# abria bloco novo. Reproduzido na janela principal: um no com titulo 'Titulo\\n# HEADING FALSO' e resumo 'texto normal\\n\\n# INSTRUCAO INJETADA' gerou QUATRO headings, dois deles do atacante, indistinguiveis de conteudo legitimo para quem le o acervo. Destino declarado e Obsidian e leitura por agente. Consertado: escaparTexto e codigoInline achatam \\r e \\n e removem caracteres de controle antes de qualquer outro replace.",
+      "':' no id gravava num Alternate Data Stream do NTFS. Reproduzido: id 'x:secret' criou um arquivo chamado 'x', sem extensao e sem conteudo, e escondeu o no num stream, exit 0. O confinamento nao pega porque o caminho resolve dentro da pasta. Consertado: recusa nomeada por caractere invalido.",
+      "Colisao de nome apagava no em silencio. NTFS nao distingue caixa; ids 'Foo' e 'foo' viravam o mesmo arquivo e o segundo sobrescrevia o primeiro. Reproduzido: dois nos entraram, um arquivo saiu com o titulo do SEGUNDO, e o INDEX.md listava os dois. Consertado: recusa nomeando os dois ids, comparando pelo nome que o sistema de arquivos de fato usa."
+    ],
+    "corrigir_junto_consertados": [
+      "alvoLink nao escapava '#' nem '?': './nota#1.md' aponta para o arquivo 'nota' com fragmento '1.md'. Agora sai './nota%231.md'.",
+      "writeFileSync do loop de nos sem try/catch: id que o SO recusasse subia stack trace cru e deixava o acervo pela metade, sem INDEX.md e sem dizer que ficou parcial."
+    ],
+    "achado_do_auditor_refutado": "O auditor previu crash nao tratado para nome reservado do Windows ('con'), id terminando em ponto ('a.') e em espaco ('b '). Medi os tres na janela principal: nenhum quebra, os tres escrevem arquivo normal com exit 0. O caso real da familia e o ':' do Alternate Data Stream, que ele tambem nomeou e que se confirmou.",
+    "mutacoes_das_guardas_novas": [
+      "escaparTexto e codigoInline sem o achatamento de \\n: 34 ok 0 falhas para 32 ok 2 falhas (teste 14, contagem de headings e texto achatado)",
+      "guarda de caractere invalido desligada: 34 ok 0 para 31 ok 3 (teste 15 inteiro)",
+      "guarda de colisao desligada: 34 ok 0 para 32 ok 2 (teste 16, exit e a recusa que nomeia os dois ids)",
+      "alvoLink sem o '#': 34 ok 0 para 33 ok 1 (teste 14, percent-encoding do alvo)"
+    ],
+    "aberto_decisao_do_dono": "O '--repo' sozinho recusa com '--corpus e obrigatorio' (cli.cjs:71-75, medido). O revisor chama de bloqueante lendo o D9 como duas rotas alternativas, cada uma suficiente: 'o escopo da geracao e sempre explicito: --repo para o repositorio atual, OU --corpus <nome>'. Mas o SKILL.md:30-37 declara --corpus obrigatorio e --repo opcional, e o codigo bate com o SKILL.md. Design e doc discordam entre si; nao inventei qual vale. As duas saidas custam parecido e sao incompativeis: ou --repo sozinho passa a resolver o corpus pelo repositorio (muda o CLI e o SKILL.md), ou o D9 se corrige para dizer que --repo e escopo e nunca alvo (muda so o design). O auditor, olhando o mesmo codigo, disse que '--repo alimenta raiz de verdade, nao e mais codigo morto' — os dois revisores discordam entre si sobre este item."
   },
   "verificar": {
     "status": "pendente"
