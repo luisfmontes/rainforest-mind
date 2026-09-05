@@ -689,8 +689,6 @@ function tokens(seg) {
         }
       } else if (c !== "'") { // não acumula aspa de fechamento
         // Caractere dentro de $'...' mas não é escape
-        if (!temOrigem) temOrigem = {};
-        temOrigem.temEscapeANSIC = true;
         cur += c;
         tem = true;
       }
