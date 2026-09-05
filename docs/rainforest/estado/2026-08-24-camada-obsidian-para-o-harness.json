@@ -20,7 +20,7 @@
     "em": "2026-09-05"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-05",
     "comando": "RFM_ROOT=<sandbox> node skills/montar-corpus/cli.cjs --corpus segundo-cerebro ; ls <sandbox>/acervo/segundo-cerebro/*.md | wc -l",
     "saida": "exit 0 ; 25 (as 24 paginas do wiki mais o INDEX.md). Raiz de dados real do usuario conferida limpa depois: nem acervo/ nem .temp",
@@ -65,10 +65,40 @@
       "T2 primeira volta: bateria ficava verde porque o agente registrava o corpus de fixture no projetos.json global do usuario e removia depois. Na janela principal deu 1 ok 6 falhas. Devolvida e refeita com sandbox por RFM_ROOT; o sha256 do projetos.json agora sai identico antes e depois.",
       "T4: escreveu 25 arquivos e um .temp na raiz de dados real do usuario durante o criterio 3. Removidos pela janela principal apos conferir a data de criacao."
     ],
-    "em": "2026-09-05"
+    "em": "2026-09-05",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-05"
+    }
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "revisores": [
+      "rainforest-mind:revisor",
+      "rainforest-mind:auditor-de-seguranca"
+    ],
+    "veredito": "reprovado",
+    "bloqueantes": [
+      "Travessia de caminho pelo campo id do no: validar-grafo.cjs aceita id com ../ e build.cjs:141-144 escreve fora de acervo/. Reproduzido na janela principal: fora-do-acervo-poc.md apareceu dois niveis acima de acervo/teste/. Este repo ja tem a regra escrita — confinamento de caminho sempre por realpath, nunca path.resolve + startsWith.",
+      "Travessia de caminho pelo --corpus cru: build.cjs e executavel por si e nao repete a validacao que so existe no caminho cli.cjs -> resolverSlug. Reproduzido: --corpus '../corpus-vazado' criou a pasta fora de acervo/.",
+      "--repo e codigo morto: lido em cli.cjs:51, usado so na guarda de cli.cjs:55, nunca alimenta resolverRaiz. O D9 promete duas rotas independentes e so uma existe; a propria mensagem de erro do CLI anuncia a rota que nao funciona.",
+      "Assertiva decorativa em testa-cli.sh:83 — a linha soma 1 ao placar e nao confere nada, anunciando 'conferido pelo harness com sha256'. Mesma familia do defeito que reprovou a T2 na primeira volta.",
+      "Assertiva decorativa em testa-extrator-wiki.sh — a checagem de exit code testa o exit de 'true', nao o do extrator."
+    ],
+    "corrigir_junto": [
+      "testa-build.sh vaza dois de tres sandboxes: tres 'trap ... EXIT' se sobrescrevem, so o ultimo roda.",
+      "Os tres execSync de cli.cjs nao definem maxBuffer: vault de 6.000 paginas derruba o pipeline com ENOBUFS, medido.",
+      ".temp fica orfao em qualquer falha — o catch nao limpa. E a causa nomeada do lixo que apareceu na raiz de dados do usuario nesta rodada.",
+      "titulo vai sem escape para o INDEX.md: titulo com ]( e <script> quebra o link e injeta markup, medido."
+    ],
+    "divida_nomeada_sem_bloquear": [
+      "normalizarLink apaga acento e maiuscula, mas o id vem cru do nome do arquivo — a assimetria nunca e exercitada porque o corpus real e 100% minusculo-com-hifen. O revisor argumenta que degrada para AMBIGUOUS, que e o fallback que o D6 ja preve como seguro. Falta teste.",
+      "parseYAML manual cobre a convencao real das 24 paginas; fragil contra lista YAML em bloco ou titulo com dois-pontos. O design rejeitou extrator maior explicitamente.",
+      "resumo igual ao titulo nos 24 nos — lacuna do plano, ja registrada no relatorio de fechamento."
+    ],
+    "erro_da_janela_principal": "O criterio de pronto da T5 no plano manda 'grep -c \"](\" INDEX.md' bater com a contagem de arestas. Isso e aritmeticamente errado: criarIndex emite uma linha com '](' por NO tambem, entao o grep conta nos + arestas (medido no fixture: 3 nos e 3 arestas devolvem 6, nao 3). Pior que o criterio errado: a janela principal trocou os criterios da T5 no briefing, sem dizer que estava abandonando o do plano. Cobrar dos agentes relato sem prova e fazer o mesmo aqui e o defeito que esta rodada mais perseguiu.",
+    "em": "2026-09-05",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
