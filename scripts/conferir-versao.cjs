@@ -37,7 +37,24 @@ const { execFileSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 
-const RAIZ = path.resolve(__dirname, "..");
+/**
+ * Descobre a raiz do repositório git do cwd (diretório de execução),
+ * não da instalação do plugin. Se o cwd não estiver em um repositório git,
+ * devolve null.
+ */
+function raizDoCwd() {
+  try {
+    return execFileSync("git", ["rev-parse", "--show-toplevel"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+      cwd: process.cwd(),
+    }).trim();
+  } catch {
+    return null;
+  }
+}
+
+const RAIZ = raizDoCwd() || path.resolve(__dirname, "..");
 const MANIFESTO = path.join(".claude-plugin", "plugin.json");
 const TETO_PADRAO = 5;
 
@@ -86,9 +103,23 @@ function commitDoUltimoBump() {
 }
 
 function medir(base, teto) {
+  // Primeiro, verifica se o RAIZ é um repositório git
   if (!git(["rev-parse", "--git-dir"])) {
-    return { medivel: false, motivo: "esta pasta nao e repositorio git — nada a conferir" };
+    // Se raizDoCwd() devolveu null, o cwd está fora de um repo git
+    if (!raizDoCwd()) {
+      return { medivel: false, motivo: "esta pasta nao e repositorio git — nada a conferir" };
+    }
+    // Caso contrário, é um repo git sem .claude-plugin/plugin.json
+    return { medivel: false, motivo: "este repositorio nao e um plugin — nada a conferir" };
   }
+
+  // Verifica se o arquivo de manifesto existe
+  const manifestoPath = path.join(RAIZ, MANIFESTO);
+  if (!fs.existsSync(manifestoPath)) {
+    // O repositório é um git mas não é um plugin
+    return { medivel: false, motivo: "este repositorio nao e um plugin — nada a conferir" };
+  }
+
   const versao = versaoDoManifesto();
   if (!versao) {
     return { medivel: false, motivo: `nao consegui ler a versao de ${MANIFESTO}` };
