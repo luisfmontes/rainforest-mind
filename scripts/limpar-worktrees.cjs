@@ -14,6 +14,7 @@
  *   - "limpo": toplevel DE DENTRO confere com o próprio dir E status vazio
  *   - "sujo": toplevel confere com o dir, mas há alterações
  *   - "órfão": diretório sem .git próprio (toplevel do pai)
+ *   - "fantasma-travado": registro travado em git worktree list, mas diretório ausente
  */
 
 const { spawnSync, execFileSync } = require("node:child_process");
@@ -83,6 +84,60 @@ function normalizarCaminho(p) {
     const resolvido = path.resolve(p);
     return process.platform === "win32" ? resolvido.toLowerCase() : resolvido;
   }
+}
+
+/**
+ * Detecta worktrees travados cujo diretório sumiu do disco (fantasma-travado).
+ * Retorna um mapa de caminho normalizado → true se fantasma-travado.
+ */
+function detectarFantasmaTravado(raiz) {
+  const fantasmas = new Map();
+  try {
+    const output = execFileSync("git", ["worktree", "list", "--porcelain"], {
+      cwd: raiz,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+
+    const raizNormalizada = normalizarCaminho(raiz);
+    const linhas = output.split("\n");
+    let caminhoAtual = null;
+    let temLocked = false;
+
+    for (const linha of linhas) {
+      if (linha.startsWith("worktree ")) {
+        caminhoAtual = linha.slice("worktree ".length).trim();
+        temLocked = false;
+      } else if (linha.startsWith("locked")) {
+        temLocked = true;
+      } else if (caminhoAtual && linha === "") {
+        // Fim da entrada do worktree
+        if (
+          temLocked &&
+          normalizarCaminho(caminhoAtual) !== raizNormalizada &&
+          !fs.existsSync(caminhoAtual)
+        ) {
+          fantasmas.set(normalizarCaminho(caminhoAtual), true);
+        }
+        caminhoAtual = null;
+        temLocked = false;
+      }
+    }
+
+    // Última entrada (sem linha vazia de encerramento)
+    if (
+      caminhoAtual &&
+      temLocked &&
+      normalizarCaminho(caminhoAtual) !== raizNormalizada &&
+      !fs.existsSync(caminhoAtual)
+    ) {
+      fantasmas.set(normalizarCaminho(caminhoAtual), true);
+    }
+  } catch {
+    // Fallthrough
+  }
+
+  return fantasmas;
 }
 
 /**
@@ -165,19 +220,28 @@ function listarWorktreesDoDisco(raiz, registrados) {
 }
 
 /**
- * Classifica um diretório como "limpo", "sujo" ou "órfão".
+ * Classifica um diretório como "limpo", "sujo", "órfão" ou "fantasma-travado".
  *
  * - "limpo": toplevel DE DENTRO bate com o dir E status vazio
  * - "sujo": toplevel bate com o dir, mas há sujeira
- * - "órfão": toplevel não bata com o dir (sem .git próprio)
+ * - "órfão": toplevel não bate com o dir (sem .git próprio)
+ * - "fantasma-travado": registro travado com diretório ausente
  */
-function classificar(dir) {
+function classificar(dir, fantasmas) {
+  // Se é um fantasma-travado, retorna logo
+  if (fantasmas && fantasmas.has(normalizarCaminho(dir))) {
+    return {
+      status: "fantasma-travado",
+      detalhes: "registro travado, diretório ausente",
+    };
+  }
+
   const confinado = toplevelConfinado(dir);
 
   if (!confinado.ok) {
     return {
       status: "órfão",
-      detalhes: "toplevel não bata com o diretório",
+      detalhes: "toplevel não bate com o diretório",
     };
   }
 
@@ -261,7 +325,7 @@ function imprimirTabela(dados) {
 }
 
 /**
- * Executa remoção (somente para "limpo").
+ * Executa remoção (para "limpo" e "fantasma-travado").
  */
 function executarRemocao(raiz, dadosLimpos) {
   if (dadosLimpos.length === 0) {
@@ -270,23 +334,63 @@ function executarRemocao(raiz, dadosLimpos) {
   }
 
   for (const item of dadosLimpos) {
-    console.log(`removendo ${item.caminho}...`);
-    // S2 (8a revisao, rodada 10, lote 3, 2026-09-03): `--force` existia "para
-    // eliminar os arquivos especiais do worktree" — premissa que a lista de
-    // exclusao de `classificar()` carregava e que a caixa desmentiu (esses
-    // nomes nunca aparecem no porcelain da arvore de trabalho). Sem a lista,
-    // só chega aqui um worktree de verdade LIMPO (porcelain vazio); `git
-    // worktree remove` sem `--force` funciona nesse caso (confirmado na
-    // caixa) — e sem `--force` a remoção nunca apaga sujeira por engano.
-    const result = spawnSync("git", ["worktree", "remove", item.caminhoOriginal], {
-      cwd: raiz,
-      encoding: "utf8",
-    });
+    const classe = item.classificacao.status;
 
-    if (result.status !== 0) {
-      console.error(
-        `aviso: falha ao remover ${item.caminho}: ${result.stderr || ""}`
-      );
+    if (classe === "fantasma-travado" && remover) {
+      // Fantasma-travado: destrava, remove e poda
+      console.log(`destravando ${item.caminho}...`);
+      const unlockResult = spawnSync("git", ["worktree", "unlock", item.caminhoOriginal], {
+        cwd: raiz,
+        encoding: "utf8",
+      });
+      if (unlockResult.status !== 0) {
+        console.error(
+          `erro ao destravar ${item.caminho}: ${unlockResult.stderr || ""}`
+        );
+        continue;
+      }
+
+      console.log(`removendo ${item.caminho}...`);
+      const removeResult = spawnSync("git", ["worktree", "remove", "--force", item.caminhoOriginal], {
+        cwd: raiz,
+        encoding: "utf8",
+      });
+      if (removeResult.status !== 0) {
+        console.error(
+          `erro ao remover ${item.caminho}: ${removeResult.stderr || ""}`
+        );
+        continue;
+      }
+
+      console.log(`podando worktrees...`);
+      const pruneResult = spawnSync("git", ["worktree", "prune"], {
+        cwd: raiz,
+        encoding: "utf8",
+      });
+      if (pruneResult.status !== 0) {
+        console.error(
+          `aviso: falha ao podar ${item.caminho}: ${pruneResult.stderr || ""}`
+        );
+      }
+    } else {
+      console.log(`removendo ${item.caminho}...`);
+      // S2 (8a revisao, rodada 10, lote 3, 2026-09-03): `--force` existia "para
+      // eliminar os arquivos especiais do worktree" — premissa que a lista de
+      // exclusao de `classificar()` carregava e que a caixa desmentiu (esses
+      // nomes nunca aparecem no porcelain da arvore de trabalho). Sem a lista,
+      // só chega aqui um worktree de verdade LIMPO (porcelain vazio); `git
+      // worktree remove` sem `--force` funciona nesse caso (confirmado na
+      // caixa) — e sem `--force` a remoção nunca apaga sujeira por engano.
+      const result = spawnSync("git", ["worktree", "remove", item.caminhoOriginal], {
+        cwd: raiz,
+        encoding: "utf8",
+      });
+
+      if (result.status !== 0) {
+        console.error(
+          `aviso: falha ao remover ${item.caminho}: ${result.stderr || ""}`
+        );
+      }
     }
   }
 }
@@ -296,6 +400,9 @@ function executarRemocao(raiz, dadosLimpos) {
  */
 function main() {
   const raiz = resolverRaiz();
+
+  // Detecta fantasmas-travados antes de listar tudo
+  const fantasmas = detectarFantasmaTravado(raiz);
 
   // Lista worktrees (registrados + disco)
   let registrados = listarWorktreesRegistrados(raiz);
@@ -324,7 +431,7 @@ function main() {
   }
 
   for (const dir of todos) {
-    const classificacao = classificar(dir);
+    const classificacao = classificar(dir, fantasmas);
     const caminhoOriginal = mapNormalizado.get(dir) || dir;
     dados.push({
       caminho: dir,
@@ -336,12 +443,14 @@ function main() {
   // Imprime tabela
   imprimirTabela(dados);
 
-  // Se --remover, remove os limpos
+  // Se --remover, remove os limpos e fantasmas-travados
   if (remover) {
-    const limpos = dados.filter((item) => item.classificacao.status === "limpo");
-    if (limpos.length > 0) {
+    const removiveis = dados.filter((item) =>
+      item.classificacao.status === "limpo" || item.classificacao.status === "fantasma-travado"
+    );
+    if (removiveis.length > 0) {
       console.log("");
-      executarRemocao(raiz, limpos);
+      executarRemocao(raiz, removiveis);
     }
   }
 
