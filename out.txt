@@ -1,0 +1,4 @@
+ARGV[1]=commit
+ARGV[2]=--no-verify
+ARGV[3]=-m
+ARGV[4]=x
