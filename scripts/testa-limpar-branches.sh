@@ -257,7 +257,7 @@ echo "== 8c. dica de --remoto aparece tambem para mergeada-por-squash =="
 montar_squash_vivo
 S8c="$(roda_gh --sem-fetch --remover --forcar)"
 tem "sem --remoto, lista a branch"                        "$S8c" "ok      squash-vivo"
-tem "a dica aparece tambem para mergeada-por-squash"      "$S8c" "Para apagar la tambem"
+tem "a dica aparece tambem para mergeada-por-squash"      "$S8c" "ainda existem no origin"
 
 echo
 echo "== 9. gh indisponivel: a candidata volta a ser viva, exit continua 0 =="
