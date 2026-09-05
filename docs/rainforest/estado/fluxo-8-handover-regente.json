@@ -21,11 +21,11 @@
     "arquivo": "docs/rainforest/planos/fluxo-8-handover-regente.md",
     "tarefas": 6,
     "paralelas": [
-      1,
-      4
+      1
     ],
     "decisoes": {
-      "dependencias-externas": "poda-estagio.cjs (fluxo 5) e cli-externo.cjs/Issue 187 (outro dono) declaradas como externas; nenhuma tarefa as toca"
+      "dependencias-externas": "poda-estagio.cjs (fluxo 5) e cli-externo.cjs/Issue 187 (outro dono) declaradas como externas; nenhuma tarefa as toca",
+      "tarefa-4-nao-e-paralela": "corrigido em 2026-09-05: a T4 declarava depende de nenhuma mas o criterio dela mede o arquivo que a T1 produz"
     },
     "em": "2026-09-05"
   },

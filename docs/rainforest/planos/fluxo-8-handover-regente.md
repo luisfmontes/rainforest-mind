@@ -87,13 +87,13 @@ mutacao:
 
 pronto quando: com um fluxo fixture cujo `plano` acaba de ser marcado `ok`, o `atual.md` daquele slug passa a registrar o estágio seguinte sem nenhuma chamada adicional a `handover.cjs` — provado por rodar `node scripts/estado.cjs marcar --slug <slug-fixture> --estagio plano --status ok --json '{...}'` e, em seguida, `grep -q 'estagio: executar' .rainforest/handover/<slug-fixture>/atual.md` devolvendo exit 0.
 
-### 4. Fronteira com o git: `.gitignore` e a linha do README [tipo: docs]
+### 4. Fronteira com o git: `.gitignore` ganha `.rainforest/handover/`, e o README documenta o comando real [tipo: configurar]
 atende: D6
 arquivos: `.gitignore`, `README.md`, `scripts/testa-gitignore-handover.sh`
-depende de: nenhuma
-paralela: sim
+depende de: 1
+paralela: nao
 
-Escopo: acrescenta `.rainforest/handover/` ao `.gitignore`, na mesma seção comentada que já explica `.rainforest/portaria/despachos.jsonl` e `.rainforest/colheita/`, com o comentário dizendo por que é rastro de execução e não estado versionado. O `README.md` ganha a linha de `scripts/handover.cjs` na tabela de scripts, no formato das linhas de `recibo.cjs` e `portoes.cjs`.
+Escopo: acrescenta `.rainforest/handover/` ao `.gitignore`, na mesma seção comentada que já explica `.rainforest/portaria/despachos.jsonl` e `.rainforest/colheita/`, com o comentário dizendo por que é rastro de execução e não estado versionado. O `README.md` ganha a linha de `scripts/handover.cjs` na tabela de scripts, **com o comando de uso exato**, no formato das linhas de `recibo.cjs` e `portoes.cjs`.
 
 mutacao:
   arquivo: `.gitignore`
@@ -102,7 +102,7 @@ mutacao:
   bateria: `bash scripts/testa-gitignore-handover.sh`
   fixture: caso único — `git check-ignore -q .rainforest/handover/qualquer/atual.md` sai 0 com a linha e não-zero sem ela
 
-pronto quando: com um arquivo real criado em `.rainforest/handover/fluxo-8-handover-regente/atual.md` pela Tarefa 1, o git não o enxerga como novidade — provado por `git status --porcelain -- .rainforest/handover/` devolvendo saída vazia, e por `git check-ignore -q .rainforest/handover/fluxo-8-handover-regente/atual.md` devolvendo exit 0.
+pronto quando: com um arquivo real criado em `.rainforest/handover/fluxo-8-handover-regente/atual.md` pela Tarefa 1, o git não o enxerga como novidade — provado por `git status --porcelain -- .rainforest/handover/` devolvendo saída vazia e por `git check-ignore -q .rainforest/handover/fluxo-8-handover-regente/atual.md` devolvendo exit 0; **e** o comando de uso que a linha do `README.md` associa a `handover.cjs`, extraído da própria linha e executado literalmente como ela o escreve contra o slug `fluxo-8-handover-regente`, produz o arquivo que a linha promete — provado por rodar o comando copiado da tabela e conferir que `.rainforest/handover/fluxo-8-handover-regente/atual.md` passa a existir com `mtime` posterior à execução. Falha se o comando documentado, rodado como está escrito, não produzir esse efeito — o critério mede o que o README promete, não a presença do nome do script nele.
 
 ### 5. Hook de `SessionStart` interativo: lista handovers coerentes [tipo: implementar]
 atende: D7
@@ -136,7 +136,7 @@ pronto quando: cada razão que o documento dá para o corte continua verdadeira 
 
 ## Paralelismo
 
-As tarefas 1 e 4 abrem juntas — `depende de: nenhuma`, arquivos disjuntos. A 2 e a 3 dependem da 1 e ambas tocam `scripts/handover.cjs`, então rodam em sequência entre si, nunca em paralelo. A 5 depende de 1 e 2. A 6 fecha, depois de 1 e 5, com a peça entregue à vista.
+Só a tarefa 1 abre — é a única com `depende de: nenhuma`. A 2 e a 3 dependem dela e ambas tocam `scripts/handover.cjs`, então rodam em sequência entre si, nunca em paralelo. A 4 também depende da 1: o critério dela mede o `.gitignore` e o comando do README contra o arquivo que a 1 produz, e sem esse arquivo não há o que medir — foi o motivo de ela deixar de ser paralela. A 5 depende de 1 e 2. A 6 fecha, depois de 1 e 5, com a peça entregue à vista.
 
 ## O que este plano deliberadamente não faz
 
