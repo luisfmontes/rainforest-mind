@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const { execSync } = require('child_process');
 const { resolverRaiz } = require('../../hooks/lib/raiz.cjs');
 const { ler: lerProjetos, resolverSlug } = require('../../hooks/lib/projetos.cjs');
@@ -67,26 +68,36 @@ function main() {
     process.exit(1);
   }
 
-  // Resolve a raiz de dados
-  const resultado = resolverRaiz();
-  if (!resultado || !resultado.raiz) {
-    console.error('Erro: não foi possível resolver a raiz de dados');
-    console.error('Configure RFM_ROOT, <projeto>/.rainforest ou ~/.rainforest');
+  // Se --corpus não foi passado, é necessário ter corpus de alguma forma
+  if (!corpus) {
+    console.error('Erro: --corpus é obrigatório');
     process.exit(1);
   }
 
-  const raiz = resultado.raiz;
+  // Resolve a raiz de dados
+  let raiz;
+  if (repo) {
+    // Se --repo foi passado, valida que o diretório existe e usa como base para projetos.json
+    if (!fs.existsSync(repo)) {
+      console.error(`Erro: repositório não encontrado: ${repo}`);
+      process.exit(1);
+    }
+    raiz = repo;
+  } else {
+    // Caso contrário, usa o fluxo padrão
+    const resultado = resolverRaiz();
+    if (!resultado || !resultado.raiz) {
+      console.error('Erro: não foi possível resolver a raiz de dados');
+      console.error('Configure RFM_ROOT, <projeto>/.rainforest ou ~/.rainforest');
+      process.exit(1);
+    }
+    raiz = resultado.raiz;
+  }
 
   // Lê projetos.json
   const mapa = lerProjetos(raiz);
   if (!mapa) {
     console.error(`Erro: projetos.json não encontrado em ${raiz}`);
-    process.exit(1);
-  }
-
-  // Se corpus não foi passado, recusa
-  if (!corpus) {
-    console.error('Erro: --corpus é obrigatório');
     process.exit(1);
   }
 
@@ -106,11 +117,22 @@ function main() {
     process.exit(1);
   }
 
-  // Diretório temporário para o grafo intermediário
-  const tempDir = path.join(raiz, '.temp');
+  // Diretório temporário para o grafo intermediário (usa diretório temp do sistema)
+  const tempDir = path.join(os.tmpdir(), 'montar-corpus-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9));
   if (!fs.existsSync(tempDir)) {
     fs.mkdirSync(tempDir, { recursive: true });
   }
+
+  // Limpa o temporário ao sair (mesmo em caso de erro)
+  process.on('exit', () => {
+    try {
+      if (fs.existsSync(tempDir)) {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
+    } catch (e) {
+      // Ignora erros na limpeza
+    }
+  });
 
   const caminhoGrafoTemp = path.join(tempDir, `grafo-${slug}.json`);
   const SRC = path.resolve(__dirname, '..', '..');
@@ -129,7 +151,8 @@ function main() {
     const grafoJson = execSync(cmdExtrator, {
       cwd: raiz,
       env: { ...process.env, RFM_ROOT: raiz },
-      encoding: 'utf8'
+      encoding: 'utf8',
+      maxBuffer: 10 * 1024 * 1024  // 10 MiB
     });
 
     fs.writeFileSync(caminhoGrafoTemp, grafoJson, 'utf8');
@@ -140,7 +163,8 @@ function main() {
     const cmdValidador = `node "${validador}" "${caminhoGrafoTemp}"`;
     const validacao = execSync(cmdValidador, {
       cwd: raiz,
-      encoding: 'utf8'
+      encoding: 'utf8',
+      maxBuffer: 10 * 1024 * 1024  // 10 MiB
     });
 
     if (!validacao.includes('valido')) {
@@ -156,13 +180,9 @@ function main() {
     execSync(cmdBuild, {
       cwd: raiz,
       env: { ...process.env, RFM_ROOT: raiz },
-      encoding: 'utf8'
+      encoding: 'utf8',
+      maxBuffer: 10 * 1024 * 1024  // 10 MiB
     });
-
-    // Limpa temporário
-    if (fs.existsSync(caminhoGrafoTemp)) {
-      fs.unlinkSync(caminhoGrafoTemp);
-    }
 
     console.log(`Pronto: acervo de ${slug} em ${raiz}/acervo/${slug}/`);
     process.exit(0);

@@ -6,12 +6,17 @@ const path = require('path');
 const FILE_TYPE_ENUM = ['code', 'document', 'paper', 'image', 'rationale', 'concept'];
 const CONFIDENCE_ENUM = ['EXTRACTED', 'INFERRED', 'AMBIGUOUS'];
 
-function validarNo(no, index) {
+function validarNo(no, index, caminhoBase) {
   if (!no || typeof no !== 'object') {
     return { valido: false, campo: 'nos[' + index + ']' };
   }
 
   if (typeof no.id !== 'string' || no.id === '') {
+    return { valido: false, campo: 'id' };
+  }
+
+  // Valida que id não permite path traversal
+  if (no.id.includes('..') || no.id.includes('/') || no.id.includes('\\')) {
     return { valido: false, campo: 'id' };
   }
 
@@ -77,7 +82,7 @@ function validarGrafo(grafo) {
 
   // Validar cada nó
   for (let i = 0; i < grafo.nos.length; i++) {
-    const resultado = validarNo(grafo.nos[i], i);
+    const resultado = validarNo(grafo.nos[i], i, null);
     if (!resultado.valido) {
       return resultado;
     }

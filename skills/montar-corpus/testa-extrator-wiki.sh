@@ -58,8 +58,8 @@ echo ""
 
 # Teste 1: Extração básica
 echo "1. Extração de wiki-minima:"
+esperado "  exit 0" 0 $EXTRATOR --corpus wiki-minima
 $EXTRATOR --corpus wiki-minima > "$TMPDIR/grafo-minima.json" 2>&1
-esperado "  exit 0" 0 sh -c "true"
 contem "  tem 3 nos" "\"id\": \"conceito" cat "$TMPDIR/grafo-minima.json"
 contem "  tem arestas" "\"de\":" cat "$TMPDIR/grafo-minima.json"
 echo ""

@@ -17,11 +17,35 @@ function extrairCorpus(args) {
 }
 
 /**
- * Valida se corpus foi fornecido
+ * Valida se corpus foi fornecido e não contém path traversal
  */
-function validarCorpus(corpus) {
+function validarCorpus(corpus, raiz) {
   if (!corpus) {
     console.error('Erro: --corpus é obrigatório');
+    process.exit(1);
+  }
+
+  // Valida path traversal usando realpath
+  const pastaAcervo = path.join(raiz, 'acervo', corpus);
+  let pastaReal;
+  try {
+    pastaReal = fs.realpathSync(path.dirname(pastaAcervo));
+  } catch {
+    // Se não conseguir resolver, usa o join e valida depois
+    pastaReal = path.dirname(pastaAcervo);
+  }
+
+  const acervoReal = path.join(raiz, 'acervo');
+  let acervoRealResolved;
+  try {
+    acervoRealResolved = fs.realpathSync(acervoReal);
+  } catch {
+    acervoRealResolved = acervoReal;
+  }
+
+  // Valida que pastaReal começa com acervoReal usando realpath
+  if (!pastaReal.startsWith(acervoRealResolved)) {
+    console.error('Erro: corpus contém path traversal');
     process.exit(1);
   }
 }
@@ -49,10 +73,23 @@ function criarPasta(caminho) {
 }
 
 /**
+ * Escapa caracteres especiais em títulos para markdown seguro
+ */
+function escaparTitulo(titulo) {
+  return titulo
+    .replace(/\\/g, '\\\\')
+    .replace(/\[/g, '\\[')
+    .replace(/\]/g, '\\]')
+    .replace(/\(/g, '\\(')
+    .replace(/\)/g, '\\)');
+}
+
+/**
  * Cria um markdown por nó
  */
 function criarMarkdownNo(no) {
-  let conteudo = `# ${no.titulo}\n\n`;
+  const tituloEscapado = escaparTitulo(no.titulo);
+  let conteudo = `# ${tituloEscapado}\n\n`;
   conteudo += `**ID:** \`${no.id}\`\n\n`;
   conteudo += `**Tipo:** ${no.file_type}\n\n`;
   conteudo += `**Confiança:** ${no.confidence}\n\n`;
@@ -71,7 +108,8 @@ function criarIndex(nos, arestas) {
 
   // Lista todos os nós
   for (const no of nos) {
-    conteudo += `- [${no.titulo}](./${no.id}.md) (${no.file_type})\n`;
+    const tituloEscapado = escaparTitulo(no.titulo);
+    conteudo += `- [${tituloEscapado}](./${no.id}.md) (${no.file_type})\n`;
   }
 
   conteudo += '\n## Arestas\n\n';
@@ -81,8 +119,8 @@ function criarIndex(nos, arestas) {
     for (const aresta of arestas) {
       const noDeId = nos.find(n => n.id === aresta.de);
       const noParaId = nos.find(n => n.id === aresta.para);
-      const noDeTitle = noDeId ? noDeId.titulo : aresta.de;
-      const noParaTitle = noParaId ? noParaId.titulo : aresta.para;
+      const noDeTitle = noDeId ? escaparTitulo(noDeId.titulo) : aresta.de;
+      const noParaTitle = noParaId ? escaparTitulo(noParaId.titulo) : aresta.para;
 
       conteudo += `- [${noDeTitle}](./${aresta.de}.md) --${aresta.tipo}--> [${noParaTitle}](./${aresta.para}.md)\n`;
     }
@@ -105,8 +143,17 @@ function main() {
   const caminhoGrafo = args[0];
   const corpus = extrairCorpus(args);
 
+  // Resolve a raiz de dados primeiro
+  const resultado = resolverRaiz();
+  if (!resultado || !resultado.raiz) {
+    console.error('Erro: não foi possível resolver a raiz de dados');
+    process.exit(1);
+  }
+
+  const raiz = resultado.raiz;
+
   // Valida que corpus foi fornecido
-  validarCorpus(corpus);
+  validarCorpus(corpus, raiz);
 
   // Verifica que o arquivo de grafo existe
   if (!fs.existsSync(caminhoGrafo)) {
@@ -122,15 +169,6 @@ function main() {
     console.error('Erro: grafo.nos não é um array');
     process.exit(1);
   }
-
-  // Resolve a raiz de dados
-  const resultado = resolverRaiz();
-  if (!resultado || !resultado.raiz) {
-    console.error('Erro: não foi possível resolver a raiz de dados');
-    process.exit(1);
-  }
-
-  const raiz = resultado.raiz;
   const pastaAcervo = path.join(raiz, 'acervo', corpus);
 
   // Cria a pasta de destino

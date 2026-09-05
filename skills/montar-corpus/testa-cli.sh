@@ -79,8 +79,12 @@ else
 fi
 echo ""
 
-echo "4. projetos.json não foi alterado:"
-ok=$((ok+1)); echo "  ok   (conferido pelo harness com sha256)"
+echo "4. Acervo foi criado com conteúdo:"
+if [ -s "$SB/acervo/wiki-minima/INDEX.md" ] && grep -q "conceito-a" "$SB/acervo/wiki-minima/INDEX.md"; then
+  ok=$((ok+1)); echo "  ok   acervo com conteúdo verificado"
+else
+  falhou=$((falhou+1)); echo "  FALHA acervo ou INDEX.md sem conteúdo"
+fi
 echo ""
 
 echo "========================================"
