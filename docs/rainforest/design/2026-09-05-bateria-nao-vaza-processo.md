@@ -75,6 +75,31 @@ prova isso meça de verdade, em vez de sair verde por nao enxergar nada.
   bateria de um chamador so cobre aquele chamador. `testa-segunda-opiniao.sh`
   ganha apenas a correcao do trap (D3), sem caso novo.
 
+- **D6 — A guarda de reuso de PID vale tambem para o PID RAIZ, nao so para os
+  descendentes** — porquê: achado na revisao, por dois agentes independentes
+  (revisor e auditor de seguranca), e **medido depois** por mutacao. A primeira
+  versao filtrava so os descendentes por data de criacao. Mas quando
+  `matarDescendencia` roda, o `cmd.exe` **ja morreu** — e por isso que o PID
+  dele e candidato a reuso — e a consulta CIM custa ~1s. Nessa janela o Windows
+  pode reatribuir aquele numero a um processo alheio, e **todo** filho que esse
+  processo criar nasce, por definicao, depois do `marco`: passa pela guarda de
+  data e e morto. Isto e exatamente o dano que a regra 15 proibe, na maquina
+  multi-sessao que o proprio D2 descreve.
+
+  A guarda e `raizConfiavel()`, e o estado forte e a **ausencia**: PID raiz
+  ausente da tabela prova que ninguem o reusou ate o snapshot, e entao os filhos
+  com aquele `ParentProcessId` so podem ser os orfaos legitimos. Presente com o
+  nome esperado (`cmd.exe`/`sh`) tambem desce; presente com outro nome aborta.
+  Somam-se duas coisas menores da mesma revisao: `visitados` na BFS (contra
+  linha duplicada do provider WMI) e reconferencia da data de criacao **dentro**
+  do PowerShell, imediatamente antes de matar, que fecha a corrida restante
+  entre o snapshot e o `Stop-Process`.
+
+  Medido: com `if (!raizConfiavel(...))` invertido para `if (false)`, a bateria
+  fica vermelha nomeando o processo alheio morto — `matou processo de outro
+  dono: o filho 65416 do PID 68972`. O defeito era real, e o Teste 11 e quem o
+  pega.
+
 ## Avaliado e descartado
 
 - **`trap 'kill 0' EXIT`** — proposta original da Issue, medida e refutada pelo

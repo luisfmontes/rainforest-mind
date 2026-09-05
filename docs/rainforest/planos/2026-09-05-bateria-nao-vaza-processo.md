@@ -49,6 +49,29 @@ nomeando o PID sobrevivente — nunca filtra por nome de executavel nem por
 string do comando. Provado por `grep -c "ps -W" scripts/testa-cli-externo.cjs`
 devolvendo `0` e por `node scripts/testa-cli-externo.cjs` devolvendo exit `0`.
 
+### 4. Guarda de reuso do PID RAIZ, e o caso que a prova [tipo: implementar]
+atende: D6
+arquivos: `hooks/lib/cli-externo.cjs`, `scripts/testa-cli-externo.cjs`
+depende de: 1
+paralela: nao
+mutacao:
+  arquivo: `hooks/lib/cli-externo.cjs`
+  de: `if (!raizConfiavel(porPid.get(pidRaiz), 'cmd.exe')) {`
+  para: `if (false) {`
+  bateria: `node scripts/testa-cli-externo.cjs`
+  fixture: `testa-cli-externo.cjs, Teste 11 "PID raiz reusado nao mata descendencia alheia"`
+pronto quando: com o PID deste proprio processo `node` passado como raiz (que
+nao e `cmd.exe`, e portanto encena o PID reciclado por outro dono), um filho
+legitimo dele criado depois do marco **sobrevive** a chamada de
+`matarDescendencia` — provado por `node scripts/testa-cli-externo.cjs`
+devolvendo exit `0` com 11 casos e a linha `ok   raiz que nao e a minha aborta
+em vez de matar`. Com a guarda invertida, o mesmo comando devolve exit `1`
+nomeando o processo alheio morto.
+
+Esta tarefa nasceu do estagio `revisar`, nao do plano original: dois agentes
+independentes (revisor e auditor de seguranca) acharam a mesma lacuna, e a
+mutacao acima confirmou que era defeito, nao teoria.
+
 ### 3. Os dois `trap ... EXIT` de `testa-segunda-opiniao.sh` viram um so [tipo: implementar]
 atende: D3
 arquivos: `scripts/testa-segunda-opiniao.sh`

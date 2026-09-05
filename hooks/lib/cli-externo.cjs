@@ -51,6 +51,11 @@ function rodarCli(opts) {
     timeout: timeoutMs,
   });
 
+  // `status === null` é o timeout, mas não SÓ o timeout: qualquer término por
+  // sinal cai aqui (um cmd.exe abatido por outro motivo, por exemplo). É o
+  // gatilho certo mesmo assim — em todos esses casos o filho direto morreu sem
+  // levar a descendência junto, que é exatamente o que se quer limpar. O que
+  // não vale é chamar isto de "ramo de timeout" e alguém acreditar.
   if (resultado.status === null) {
     matarDescendencia(resultado.pid, nascidoDepoisDe);
   }
@@ -113,6 +118,20 @@ function parseDataCim(valor) {
  * Ramo Windows: consulta Win32_Process via CIM (PowerShell), desce a árvore
  * a partir de `pidRaiz` filtrando por data de criação (guarda de reuso de
  * PID), e mata os descendentes achados com Stop-Process -Force.
+ *
+ * DUAS guardas de reuso, não uma. A primeira versão só filtrava os
+ * DESCENDENTES por data de criação, e duas revisões independentes acharam o
+ * mesmo buraco: ninguém conferia o `pidRaiz`. Quando `matarDescendencia` roda,
+ * o `cmd.exe` já morreu — é por isso que o PID dele vira candidato a reuso — e
+ * a consulta CIM custa ~1s. Nessa janela o Windows pode reatribuir aquele PID a
+ * um processo alheio; qualquer filho que ESSE processo criar nasce, por
+ * definição, depois de `marco`, passa pela guarda de data e é morto. Máquina
+ * com várias sessões abertas é exatamente o cenário da regra 15.
+ *
+ * A guarda que fecha isso está em `raizConfiavel()`: o `pidRaiz` AUSENTE da
+ * tabela prova que ninguém o reusou até o instante do snapshot, e então os
+ * filhos com aquele `ParentProcessId` só podem ser os órfãos legítimos. Ver o
+ * comentário da função para os outros dois estados.
  */
 function matarDescendenciaWindows(pidRaiz, marco) {
   const consulta = spawnSync(
@@ -121,12 +140,15 @@ function matarDescendenciaWindows(pidRaiz, marco) {
       '-NoProfile',
       '-NonInteractive',
       '-Command',
-      'Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,CreationDate | ConvertTo-Json -Compress',
+      'Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,CreationDate,Name | ConvertTo-Json -Compress',
     ],
     { encoding: 'utf8', timeout: 5000 }
   );
 
   if (!consulta || consulta.status !== 0 || !consulta.stdout) {
+    // Falhar aqui não é inofensivo: o órfão que esta função existe para matar
+    // continua vivo, e sem esta linha ninguém saberia. Não lança — só avisa.
+    avisar(`nao consegui consultar a tabela de processos; pode ter sobrado orfao do PID ${pidRaiz}`);
     return;
   }
 
@@ -134,6 +156,7 @@ function matarDescendenciaWindows(pidRaiz, marco) {
   try {
     processos = JSON.parse(consulta.stdout);
   } catch (e) {
+    avisar(`saida da consulta de processos ilegivel; pode ter sobrado orfao do PID ${pidRaiz}`);
     return;
   }
   if (!Array.isArray(processos)) {
@@ -141,26 +164,45 @@ function matarDescendenciaWindows(pidRaiz, marco) {
   }
 
   const filhosPorPai = new Map();
+  const porPid = new Map();
   for (const p of processos) {
     if (!p || typeof p.ProcessId !== 'number' || typeof p.ParentProcessId !== 'number') {
       continue;
     }
+    const entrada = {
+      pid: p.ProcessId,
+      criadoEm: parseDataCim(p.CreationDate),
+      nome: typeof p.Name === 'string' ? p.Name.toLowerCase() : null,
+    };
+    porPid.set(p.ProcessId, entrada);
     const lista = filhosPorPai.get(p.ParentProcessId) || [];
-    lista.push({ pid: p.ProcessId, criadoEm: parseDataCim(p.CreationDate) });
+    lista.push(entrada);
     filhosPorPai.set(p.ParentProcessId, lista);
   }
 
+  if (!raizConfiavel(porPid.get(pidRaiz), 'cmd.exe')) {
+    avisar(
+      `PID ${pidRaiz} foi reusado por outro processo; nao vou matar descendencia que pode nao ser minha`
+    );
+    return;
+  }
+
   const alvos = [];
+  const visitados = new Set([pidRaiz]);
   const fila = [pidRaiz];
   while (fila.length > 0) {
     const atual = fila.shift();
     const filhos = filhosPorPai.get(atual) || [];
     for (const filho of filhos) {
       // guarda de reuso de PID: só desce/mata quem nasceu depois do início da chamada
-      if (filho.criadoEm !== null && filho.criadoEm > marco) {
-        alvos.push(filho.pid);
-        fila.push(filho.pid);
-      }
+      if (filho.criadoEm === null || filho.criadoEm <= marco) continue;
+      // `visitados` não é defesa contra ciclo (a tabela de processos não tem um
+      // num único snapshot) — é contra linha duplicada do provider WMI, que
+      // reprocessaria a mesma subárvore e repetiria PID na lista de alvos.
+      if (visitados.has(filho.pid)) continue;
+      visitados.add(filho.pid);
+      alvos.push(filho.pid);
+      fila.push(filho.pid);
     }
   }
 
@@ -168,24 +210,81 @@ function matarDescendenciaWindows(pidRaiz, marco) {
     return;
   }
 
+  // Reconfere a data de criação DENTRO do PowerShell, imediatamente antes de
+  // matar. Entre o snapshot acima e este comando passa mais um startup de
+  // powershell.exe, e nessa janela um dos PIDs-alvo também pode ter sido
+  // reciclado. Reconferir aqui fecha o resto da corrida: o alvo só morre se
+  // ainda for um processo nascido depois do início desta chamada.
+  const script =
+    `$marco=[datetime]::new(1970,1,1,0,0,0,'Utc').AddMilliseconds(${marco});` +
+    `foreach($id in @(${alvos.join(',')})){` +
+    `$p=Get-CimInstance Win32_Process -Filter "ProcessId=$id" -ErrorAction SilentlyContinue;` +
+    `if($p -and $p.CreationDate.ToUniversalTime() -gt $marco){` +
+    `Stop-Process -Id $id -Force -ErrorAction SilentlyContinue}}`;
+
   spawnSync(
     'powershell.exe',
-    [
-      '-NoProfile',
-      '-NonInteractive',
-      '-Command',
-      `Stop-Process -Id ${alvos.join(',')} -Force -ErrorAction SilentlyContinue`,
-    ],
+    ['-NoProfile', '-NonInteractive', '-Command', script],
     { encoding: 'utf8', timeout: 5000 }
   );
+}
+
+/**
+ * O `pidRaiz` ainda é o processo que esta chamada criou?
+ *
+ * Três estados, e só dois autorizam descer a árvore:
+ *
+ * - **ausente da tabela** (`undefined`): é o caso normal e o mais forte. O
+ *   `spawnSync` matou o `cmd.exe`/`sh` no timeout e ninguém ocupou o PID até o
+ *   snapshot. Se ninguém o ocupou, todo processo que carrega aquele
+ *   `ParentProcessId` só pode ser filho do processo original — órfão legítimo.
+ * - **presente com o nome esperado**: o filho direto não morreu (ou morreu e o
+ *   PID foi reusado por outro `cmd.exe`, que é o resíduo aceito aqui). Descer é
+ *   o comportamento certo nos dois casos.
+ * - **presente com outro nome**: o PID foi reciclado por um processo alheio.
+ *   Aborta — a descendência que se veria é dele, não nossa.
+ */
+function raizConfiavel(entradaRaiz, nomeEsperado) {
+  if (!entradaRaiz) return true;
+  if (entradaRaiz.nome === null) return false;
+  return entradaRaiz.nome === nomeEsperado;
+}
+
+/** Aviso de limpeza que não deu certo. Nunca lança, nunca vira exceção. */
+function avisar(mensagem) {
+  try {
+    process.stderr.write(`[cli-externo] ${mensagem}\n`);
+  } catch (e) {
+    // nem o aviso pode derrubar o rodarCli
+  }
 }
 
 /**
  * Ramo POSIX: descobre filhos diretos com `ps --ppid`, mata quem nasceu
  * depois de `marco` (guarda de reuso de PID via etimes) com process.kill, e
  * desce recursivamente só nos ramos validados.
+ *
+ * Mesma guarda de raiz do ramo Windows, e pelo mesmo motivo: o `sh` já morreu
+ * quando isto roda, então o PID dele é candidato a reuso. Aqui a janela é bem
+ * menor (um `ps` custa muito menos que subir um `powershell.exe`), mas a
+ * lacuna de desenho é idêntica, e fechá-la custa uma chamada.
+ *
+ * Só a raiz é conferida por nome — nos níveis abaixo, o ancestral vivo e
+ * verificado já garante a linhagem, e é a guarda de `etimes` que cobre o resto.
+ *
+ * Portabilidade: `--ppid` e `etimes` são sintaxe GNU/procps. Em BSD e macOS o
+ * `ps` recusa, `spawnSync` volta com status ≠ 0, e a função degrada para o lado
+ * seguro — não acha ninguém, não mata ninguém, não lança. Nenhum teste desta
+ * entrega exercita este ramo: a bateria roda no Windows, e só o ramo de
+ * `process.platform` da máquina dispara. Está anotado no PR como lacuna.
  */
-function matarDescendenciaPosix(pidRaiz, marco) {
+function matarDescendenciaPosix(pidRaiz, marco, ehRaiz = true) {
+  if (ehRaiz && !raizConfiavelPosix(pidRaiz)) {
+    avisar(
+      `PID ${pidRaiz} foi reusado por outro processo; nao vou matar descendencia que pode nao ser minha`
+    );
+    return;
+  }
   const filhos = obterFilhosPosix(pidRaiz);
   for (const filho of filhos) {
     if (filho.criadoEm === null || filho.criadoEm <= marco) {
@@ -196,8 +295,25 @@ function matarDescendenciaPosix(pidRaiz, marco) {
     } catch (e) {
       // processo já pode ter saído sozinho — segue
     }
-    matarDescendenciaPosix(filho.pid, marco);
+    matarDescendenciaPosix(filho.pid, marco, false);
   }
+}
+
+/**
+ * Espelho POSIX do `raizConfiavel`: o PID raiz sumiu (ninguém o reusou até
+ * aqui) ou ainda é o shell que este módulo criou? Qualquer outro comando
+ * naquele PID significa reuso, e aborta.
+ */
+function raizConfiavelPosix(pidRaiz) {
+  const r = spawnSync('ps', ['-o', 'comm=', '-p', String(pidRaiz)], {
+    encoding: 'utf8',
+    timeout: 5000,
+  });
+  // status ≠ 0 é o `ps` dizendo que o PID não existe: raiz morta, sem reuso.
+  if (!r || r.status !== 0) return true;
+  const comm = (r.stdout || '').trim();
+  if (!comm) return true;
+  return comm === 'sh' || comm.endsWith('/sh');
 }
 
 /**
