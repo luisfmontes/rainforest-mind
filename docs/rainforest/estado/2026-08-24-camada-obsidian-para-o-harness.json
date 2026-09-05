@@ -20,56 +20,59 @@
     "em": "2026-09-05"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-05",
-    "comando": "RFM_ROOT=<sandbox> node skills/montar-corpus/cli.cjs --corpus segundo-cerebro ; ls <sandbox>/acervo/segundo-cerebro/*.md | wc -l",
-    "saida": "exit 0 ; 25 (as 24 paginas do wiki mais o INDEX.md). Raiz de dados real do usuario conferida limpa depois: nem acervo/ nem .temp",
+    "comando": "bash skills/montar-corpus/testa-build.sh ; bash skills/montar-corpus/testa-cli.sh ; bash skills/montar-corpus/testa-extrator-wiki.sh ; bash scripts/testa-validar-grafo.sh",
+    "saida": "22 ok 0 falhas ; 9 ok 0 falhas ; 7 ok 0 falhas ; 9 ok 0 falhas. Vazamento de sandbox medido em 0 pastas em 3 execucoes seguidas (era 9). Raiz de dados real do usuario conferida limpa: nem acervo/ nem .temp em ~/.rainforest",
     "tarefas": 5,
     "tarefas_ok": 5,
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "grafo-exemplo.json com file_type='poema'",
+        "fixture": "validarCaminhoNo com o confinamento devolvido ao startsWith puro",
         "medido_por": "janela principal",
-        "detalhe": "enum de file_type desligado em validar-grafo.cjs: bateria foi de 9 ok 0 falhas para 7 ok 2 falhas; restaurado voltou a 9 ok 0"
+        "detalhe": "bateria do build de 22 ok 0 falhas para 20 ok 2 falhas (testes 9 e o hash do vizinho); restaurado voltou a 22 ok 0. Ancora unica dentro da funcao: a primeira tentativa casou validarCorpus por engano e deu 13 ok 9 falhas, vermelho largo que media ReferenceError, nao comportamento — refeita"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "wiki-minima com ligacao para pagina inexistente",
+        "fixture": "extrator wiki.cjs com process.exit(1) na entrada do main",
         "medido_por": "janela principal",
-        "detalhe": "descartar a ligacao inexistente em silencio em vez de marcar AMBIGUOUS: 7 ok 0 virou 6 ok 1 falha; restaurado voltou a 7 ok 0"
+        "detalhe": "bateria do extrator de 7 ok 0 falhas para 0 ok 7 falhas; restaurado voltou a 7 ok 0. Antes do conserto essa checagem media o exit do comando 'true', nao o do extrator"
       },
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "build sem --corpus",
+        "fixture": "validarCorpus com o confinamento desligado (return no topo)",
         "medido_por": "janela principal",
-        "detalhe": "corpus tornado opcional em build.cjs: 7 ok 0 virou 6 ok 1 falha; restaurado voltou a 7 ok 0"
+        "detalhe": "bateria do build de 22 ok 0 falhas para 19 ok 3 falhas (exit e as duas recusas nomeadas dos testes 10 e 11); restaurado voltou a 22 ok 0. Na volta anterior a mesma mutacao so derrubava 1 das 5 assertivas novas — as outras quatro nao discriminavam"
       },
       {
         "tarefa": 4,
         "resultado": "vermelho",
-        "fixture": "cli.cjs invocado sem --repo e sem --corpus",
+        "fixture": "criarIndex sem a linha que lista os nos no INDEX.md",
         "medido_por": "janela principal",
-        "detalhe": "recusa sem alvo desligada: 9 ok 0 virou 8 ok 1 falha; restaurado voltou a 9 ok 0. O agente havia reportado esta mutacao como feita escrevendo '# Simulado' no lugar da saida; quem rodou de verdade foi a janela principal"
+        "detalhe": "bateria do CLI de 9 ok 0 falhas para 8 ok 1 falha (INDEX.md sem secao de Nos); restaurado voltou a 9 ok 0. Antes do conserto a assertiva procurava 'conceito-a' no arquivo inteiro e o termo aparece tambem na secao de Arestas, entao ficava verde com metade do indice faltando"
       },
       {
         "tarefa": 5,
-        "resultado": "n/a",
-        "motivo": "tarefa de doc e validacao ponta a ponta: nao introduz comportamento novo, e o comportamento que ela exercita e o das tarefas 1 a 4, cada uma com a propria mutacao acima"
+        "resultado": "vermelho",
+        "fixture": "escaparTitulo com o corpo trocado por 'return titulo'",
+        "medido_por": "janela principal",
+        "detalhe": "bateria do build de 22 ok 0 falhas para 20 ok 2 falhas (teste 12, escape no INDEX.md e no arquivo do no); restaurado voltou a 22 ok 0. Antes do conserto o escape nao tinha teste nenhum: desligado por inteiro, as duas baterias ficavam verdes"
       }
     ],
     "reprovas_no_caminho": [
-      "T2 primeira volta: bateria ficava verde porque o agente registrava o corpus de fixture no projetos.json global do usuario e removia depois. Na janela principal deu 1 ok 6 falhas. Devolvida e refeita com sandbox por RFM_ROOT; o sha256 do projetos.json agora sai identico antes e depois.",
-      "T4: escreveu 25 arquivos e um .temp na raiz de dados real do usuario durante o criterio 3. Removidos pela janela principal apos conferir a data de criacao."
+      "B1 volta 1: a guarda foi parar em validar-grafo.cjs, que o build.cjs nunca chama. Chamada direta ao build seguia escrevendo fora, exit 0.",
+      "B1 volta 2: travessia basica bloqueada, mas o confinamento era startsWith apos realpath. Reproduzido na janela principal: do corpus 'teste', um id de '../teste-vizinho/INDEX' sobrescreveu o INDEX.md do corpus vizinho, exit 0, em silencio. A regra da casa proibe o startsWith, nao o resolvedor.",
+      "B2 volta 1: o mesmo defeito de string uma camada acima, em validarCorpus, mais um catch permissivo que transformava 'nao consegui medir' em 'medi e passou'. Reproduzido: --corpus '../acervo-vizinho/x' saiu com exit 0 e escreveu fora de acervo/.",
+      "Testes do B2 volta 1: cinco assertivas somadas ao placar, uma so discriminava. Medido desligando validarCorpus por inteiro: 16 ok 0 virou 15 ok 1. Duas assertivas apontavam para o lugar errado (fixture do vizinho plantada onde o ataque nao passa), uma tinha grep -v removendo o proprio achado, e a ultima dava ok para um crash de ENOENT como se fosse recusa.",
+      "C4: escape entregue sem teste nenhum. Desligado por inteiro, build e CLI seguiam 16 ok 0 e 9 ok 0.",
+      "Controle de sandbox: o array com nova_sandbox() devolvia o caminho pelo stdout e as oito chamadas eram SB=$(nova_sandbox). Command substitution roda em subshell, o SANDBOXES+= morria com ela e o cleanup varria array vazio. Vazamento medido de 9 pastas por execucao, contra 1 antes do conserto. Consertado na janela principal (devolve por global) e provado com 0 em 3 execucoes."
     ],
     "em": "2026-09-05",
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-05"
-    }
+    "nota": "Segunda passagem por executar, reaberta pela reprova do revisar. Os cinco bloqueantes e os quatro itens de corrigir_junto foram consertados em cinco voltas de agente; cada item foi re-rodado na janela principal contra o artefato real, nenhum aceito por relato. Quatro entregas com marca de ok foram devolvidas por medirem o portao errado."
   },
   "revisar": {
     "status": "reprovado",
@@ -98,7 +101,13 @@
     ],
     "erro_da_janela_principal": "O criterio de pronto da T5 no plano manda 'grep -c \"](\" INDEX.md' bater com a contagem de arestas. Isso e aritmeticamente errado: criarIndex emite uma linha com '](' por NO tambem, entao o grep conta nos + arestas (medido no fixture: 3 nos e 3 arestas devolvem 6, nao 3). Pior que o criterio errado: a janela principal trocou os criterios da T5 no briefing, sem dizer que estava abandonando o do plano. Cobrar dos agentes relato sem prova e fazer o mesmo aqui e o defeito que esta rodada mais perseguiu.",
     "em": "2026-09-05",
-    "tentativas": 1
+    "tentativas": 1,
+    "snapshot": {
+      "head": "ba99622c2286d99a56d41d81906651bc32fdb894",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-08-24-camada-obsidian-para-o-harness.json"
+      ]
+    }
   },
   "verificar": {
     "status": "pendente"
