@@ -248,7 +248,7 @@ ANTES_LS="$(git -C "$SBP/local" ls-remote --heads origin squash-vivo)"
 tem "antes: squash-vivo existe no remoto" "$ANTES_LS" "squash-vivo"
 S8b="$(roda_gh --sem-fetch --remover --forcar --remoto)"
 tem "apaga a branch remota de mergeada-por-squash"        "$S8b" "ok      origin/squash-vivo"
-tem "saida NAO contem a mensagem enganosa"                "$S8b" "nenhuma das removidas tinha remoto para apagar"
+nao_tem "saida NAO contem mensagem enganosa de antes"     "$S8b" "nenhuma tinha remoto vivo"
 DEPOIS_LS="$(git -C "$SBP/local" ls-remote --heads origin squash-vivo)"
 nao_tem "depois: squash-vivo foi apagado do remoto"       "$DEPOIS_LS" "squash-vivo"
 
