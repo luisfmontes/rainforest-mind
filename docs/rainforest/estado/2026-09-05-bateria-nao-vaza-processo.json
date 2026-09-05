@@ -1,0 +1,78 @@
+{
+  "slug": "2026-09-05-bateria-nao-vaza-processo",
+  "titulo": "Issue #187 — a bateria de segunda-opiniao nao vaza processo nem diretorio temporario",
+  "criado_em": "2026-09-05",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-05-bateria-nao-vaza-processo.md",
+    "em": "2026-09-05"
+  },
+  "plano": {
+    "status": "ok",
+    "doc": "docs/rainforest/planos/2026-09-05-bateria-nao-vaza-processo.md",
+    "em": "2026-09-05"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-05",
+    "em_voo": [],
+    "em": "2026-09-05",
+    "tarefas": 3,
+    "tarefas_ok": 3,
+    "comando": "node scripts/testa-cli-externo.cjs",
+    "saida": "ok: 10, falhou: 0, total: 10, exit 0 — inclui o Teste 10 'timeout nao deixa descendente vivo'. A bateria de segunda-opiniao saiu Ok 21 / Falhou 0 / exit 0, com a caixa de areia removida (test -d exit 1) e 0 processos de fixture sobreviventes.",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-cli-externo.cjs, Teste 10 'timeout nao deixa descendente vivo'"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "a tarefa e o proprio instrumento de falsificacao da tarefa 1; inverte-la so provaria que ela roda"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "defeito do proprio arquivo de teste, sem bateria-da-bateria para ficar vermelha; falsificada pelo criterio de pronto, que roda a bateria e confere o diretorio no disco"
+      }
+    ]
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "a1d0245f83be0174ebb1a08d5c21447c1694cb22",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-09-05-bateria-nao-vaza-processo.json"
+      ]
+    },
+    "base": "ff11a9f1cbe385de2e8bb0aba2a24f0b600f8910",
+    "head": "a1d0245",
+    "achados": 4,
+    "comando": "node scripts/conferir-mutacao.cjs --arquivo hooks/lib/cli-externo.cjs --de (a guarda de raiz) --para if (false) --bateria node scripts/testa-cli-externo.cjs",
+    "saida": "bateria VERMELHA com o comportamento invertido (exit 1); Teste 11 nomeou 'matou processo de outro dono: o filho 65416 do PID 68972'. Baseline 18639ms exit 0.",
+    "revisores": "revisor e auditor-de-seguranca em paralelo, sem se verem; convergiram no mesmo defeito (TOCTOU no PID raiz)",
+    "delta_pos_revisao": "revisao feita contra 83a03a4; conserto dos achados em 0ff8d8d, emenda do plano em a1d0245. Re-rodei contra a arvore nova: testa-cli-externo 11/11 exit 0, testa-segunda-opiniao 21/21 exit 0, caixa de areia removida, 0 processos de fixture sobreviventes, duas catracas de mutacao vermelhas.",
+    "em": "2026-09-05"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "node scripts/testa-cli-externo.cjs",
+    "saida": "ok: 11, falhou: 0, exit 0. As cinco tarefas tem criterio proprio rodado: T1 timeout nao deixa descendente vivo, T2 zero ocorrencias do medidor por nome, T3 caixa de areia removida com a bateria de segunda-opiniao em 21 ok e 0 falhas, T4 raiz que nao e a minha aborta em vez de matar, T5 cortado por timeout. Diretorios orfaos inalterados em 80 e nenhum processo de fixture sobreviveu.",
+    "tarefas_verificadas": 5,
+    "tarefas": 5,
+    "em": "2026-09-05"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "PR aberto",
+    "pr": "https://github.com/luisfmontes/rainforest-mind/pull/204",
+    "comando": "gh pr create --base main --head fluxo/bateria-nao-vaza-processo",
+    "saida": "https://github.com/luisfmontes/rainforest-mind/pull/204",
+    "em": "2026-09-05"
+  }
+}
