@@ -109,13 +109,53 @@ echo "== --base aponta para outro commit =="
 checa "--base no proprio bump conta 0"            0 0 "$R7/scripts/conferir-versao.cjs" --base HEAD~7
 
 echo
-echo "== o que nao da para medir NAO trava (falha aberta) =="
-FORA="$RAIZ/sem-git"; mkdir -p "$FORA/.claude-plugin" "$FORA/scripts"
+echo "== script copiado para pasta sem git mede o repositorio do cwd =="
+# Cria uma pasta temporária SEM .git, fora do repositório
+FORA="$RAIZ/script-fora"; mkdir -p "$FORA/scripts"
 cp "$CHECADOR" "$FORA/scripts/conferir-versao.cjs"
-printf '{"name":"p","version":"9.9.9"}\n' > "$FORA/.claude-plugin/plugin.json"
-saida=$(node "$FORA/scripts/conferir-versao.cjs" 2>&1); rc=$?
-if [ "$rc" = 0 ] && printf '%s' "$saida" | grep -qF "nao deu para medir"; then
-  ok=$((ok+1)); echo "  ok   pasta sem git sai 0 e diz o motivo"
+
+# Monta um repositório de plugin de fixture DENTRO de uma pasta fora do git
+FIXTURE="$RAIZ/fixture-plugin"; montar "$FIXTURE" 3
+
+# Roda o script COPIADO com o cwd no repositório de fixture
+saida_fora=$(cd "$FIXTURE" && node "$FORA/scripts/conferir-versao.cjs" --json 2>&1); rc_fora=$?
+n_fora=$(printf '%s' "$saida_fora" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const o=JSON.parse(s);console.log(o.medivel?o.commits:"-")}catch{console.log("?")}})')
+
+# Roda o script ORIGINAL de dentro do repositório de fixture
+saida_orig=$(cd "$FIXTURE" && node "$FIXTURE/scripts/conferir-versao.cjs" --json 2>&1); rc_orig=$?
+n_orig=$(printf '%s' "$saida_orig" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const o=JSON.parse(s);console.log(o.medivel?o.commits:"-")}catch{console.log("?")}})')
+
+# Afirma que exit e contagem são os mesmos
+if [ "$rc_fora" = "$rc_orig" ] && [ "$n_fora" = "$n_orig" ]; then
+  ok=$((ok+1)); echo "  ok   script copiado mede cwd ($n_fora commits), mesmo que rodado de dentro (exit $rc_orig)"
+else
+  falhou=$((falhou+1))
+  echo "  FALHA script copiado: exit=$rc_fora/commits=$n_fora, esperado exit=$rc_orig/commits=$n_orig"
+  printf '%s\n' "$saida_fora" | sed 's/^/         /' | head -3
+fi
+
+echo
+echo "== repositorio git SEM .claude-plugin/plugin.json NAO e plugin =="
+NPP="$RAIZ/nao-e-plugin"
+mkdir -p "$NPP/scripts"
+git init -q "$NPP"; git -C "$NPP" config user.email t@t; git -C "$NPP" config user.name t
+git -C "$NPP" config commit.gpgsign false
+cp "$CHECADOR" "$NPP/scripts/conferir-versao.cjs"
+echo x > "$NPP/a.txt"; git -C "$NPP" add .; git -C "$NPP" commit -qm "repo sem plugin"
+saida=$(node "$NPP/scripts/conferir-versao.cjs" 2>&1); rc=$?
+if [ "$rc" = 0 ] && printf '%s' "$saida" | grep -qF "nao e um plugin"; then
+  ok=$((ok+1)); echo "  ok   repositorio sem plugin sai 0 e diz que nao e plugin"
+else
+  falhou=$((falhou+1)); echo "  FALHA repositorio sem plugin: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
+fi
+
+echo
+echo "== pasta fora de qualquer repositorio git =="
+PURO="$RAIZ/puro"; mkdir -p "$PURO/scripts"
+cp "$CHECADOR" "$PURO/scripts/conferir-versao.cjs"
+saida=$(node "$PURO/scripts/conferir-versao.cjs" 2>&1); rc=$?
+if [ "$rc" = 0 ] && printf '%s' "$saida" | grep -qF "nao e repositorio git"; then
+  ok=$((ok+1)); echo "  ok   pasta sem git sai 0 e diz que nao e repositorio"
 else
   falhou=$((falhou+1)); echo "  FALHA pasta sem git: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
 fi
