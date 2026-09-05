@@ -91,7 +91,8 @@ testa('cortado por timeout', () => {
   // Teto folgado: rodarCli agora paga matarDescendencia no ramo de timeout,
   // que no Windows soma 1-2 chamadas a powershell.exe (~1-1.5s cada) para
   // consultar e matar a descendência. O teto de 8s ainda distingue "cortado"
-  // de "travou os 100s inteiros da fixture".
+  // de "dormiu a fixture inteira" — a fixture dorme 60s, não 10s: subiu junto
+  // com este teto, porque 8s contra 10s deixava só 2s de margem.
   if (duracao >= 8000) {
     throw new Error(`Não foi cortado: duração ${duracao}ms >= 8000ms`);
   }
