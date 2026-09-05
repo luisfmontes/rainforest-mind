@@ -37,13 +37,29 @@ prova isso meça de verdade, em vez de sair verde por nao enxergar nada.
   de spawn. Funcao exportada a outra frente herda pronta; ramo inline ela
   reescreve.
 
-- **D3 — Os dois `trap ... EXIT` de `testa-segunda-opiniao.sh` viram um so** —
-  porquê: `bash` substitui o handler, nao acumula. O trap da linha 607 apaga o
-  da linha 17, e o diretorio da caixa de areia nunca e removido. Medido: 80
-  diretorios `test-segunda-opiniao-*` orfaos no temporario desta maquina,
-  confirmados de forma independente por outra sessao. E o mesmo enunciado da
-  Issue — a ferramenta de teste nao desfaz o que montou — no mesmo arquivo,
-  achado ao medir o defeito que a Issue nomeia.
+- **D3 — Os dois `trap ... EXIT` de `testa-segunda-opiniao.sh` viram um so, com
+  a limpeza saindo de dentro do que vai apagar — e a sobra de diretorio so
+  desaparece de fato depois de D2** — porquê: sao **tres** causas empilhadas, e
+  as duas primeiras sozinhas nao resolvem. Medido nesta ordem, rodando a bateria
+  de verdade:
+
+  1. `bash` **substitui** o handler de `EXIT`, nao acumula. O trap da linha 607
+     apagava o da linha 17, e o `rm -rf` da caixa de areia nunca rodava. 80
+     diretorios `test-segunda-opiniao-*` orfaos no temporario desta maquina,
+     confirmados de forma independente por outra sessao.
+  2. Com o trap unificado, a bateria saiu `0`, o `FORA_REPO` foi removido — e a
+     caixa de areia **sobreviveu assim mesmo**: 81 diretorios em vez de 80. A
+     bateria faz `cd` para dentro de `$RAIZ` o tempo todo e termina la dentro, e
+     no Windows nao se remove diretorio que e cwd de processo vivo. Por isso a
+     funcao de limpeza faz `cd "$SRC"` antes de apagar.
+  3. Com o `cd` tambem no lugar, sobrou **um unico** subdiretorio:
+     `test-indisponivel-timeout-repo`, o do CASO 12 — exatamente onde o processo
+     orfao do `externo-indisponivel-timeout.cjs` tem o cwd. Confirmado por
+     `Get-CimInstance`: dois `node.exe` vivos, um por execucao da bateria.
+
+  Ou seja, a sobra de diretorio e em boa parte **sintoma** do vazamento de
+  processo: enquanto o orfao vive, o diretorio dele nao sai. D3 conserta o que e
+  do arquivo de teste; o resto so fecha com D2.
 
 - **D4 — O criterio de pronto mede pelo PID que o proprio teste criou, nunca
   por nome de processo** — porquê: duas razoes independentes. A primeira e que

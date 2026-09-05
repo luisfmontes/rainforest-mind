@@ -52,15 +52,23 @@ devolvendo `0` e por `node scripts/testa-cli-externo.cjs` devolvendo exit `0`.
 ### 3. Os dois `trap ... EXIT` de `testa-segunda-opiniao.sh` viram um so [tipo: implementar]
 atende: D3
 arquivos: `scripts/testa-segunda-opiniao.sh`
-depende de: nenhuma
-paralela: sim
+depende de: 1
+paralela: nao
 mutacao: n/a
   motivo: o defeito e do proprio arquivo de teste, e nao existe bateria-da-bateria
   para ficar vermelha quando ele for invertido. A inversao ja foi medida no
   estado anterior — 80 diretorios orfaos acumulados — e a falsificacao desta
   tarefa e o criterio de pronto abaixo, que roda a bateria de verdade e confere o
   diretorio no disco.
-pronto quando: rodando `bash scripts/testa-segunda-opiniao.sh` ate o fim, o
-diretorio de caixa de areia que ela imprime na primeira linha (`(caixa de areia:
-<caminho>)`) **nao existe mais** ao final — provado por `test -d <caminho>`
-devolvendo exit `1`, com a bateria ainda saindo `0`. Hoje o diretorio sobrevive.
+pronto quando: rodando `bash scripts/testa-segunda-opiniao.sh` ate o fim **com a
+tarefa 1 ja integrada**, o diretorio de caixa de areia que ela imprime na
+primeira linha (`(caixa de areia: <caminho>)`) **nao existe mais** ao final —
+provado por `test -d <caminho>` devolvendo exit `1`, com a bateria ainda saindo
+`0`. Hoje o diretorio sobrevive.
+
+**A dependencia da tarefa 1 foi medida, nao suposta.** Com o trap unificado e o
+`cd` de saida, mas sem o encerramento de descendencia, a bateria saiu `0` e
+sobrou exatamente um subdiretorio: `test-indisponivel-timeout-repo`, o do CASO
+12 — o cwd do processo orfao. Windows nao apaga diretorio que e cwd de processo
+vivo, entao esta tarefa nao pode ser validada antes da 1 estar no lugar. O plano
+saiu com `depende de: nenhuma` e foi corrigido aqui.

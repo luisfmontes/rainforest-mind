@@ -14,7 +14,31 @@ SRC_M="$(cygpath -m "$SRC" 2>/dev/null || printf '%s' "$SRC")"
 RAIZ_BASE="/tmp/test-segunda-opiniao-$$"
 mkdir -p "$RAIZ_BASE"
 RAIZ="$RAIZ_BASE"
-trap 'sleep 1; rm -rf "$RAIZ_BASE" 2>/dev/null' EXIT
+
+# UM trap de EXIT para a bateria inteira, e uma função que limpa tudo que ela
+# montou. O `trap` do bash SUBSTITUI o handler, não acumula: enquanto o CASO 16
+# registrava um segundo `trap ... EXIT` para o $FORA_REPO dele, esse segundo
+# registro apagava este, e o $RAIZ_BASE nunca era removido — 80 diretórios
+# `test-segunda-opiniao-*` órfãos medidos nesta máquina em 2026-09-05.
+# Diretório que nasce depois é acrescentado a $A_LIMPAR, nunca por um `trap` novo.
+A_LIMPAR="$RAIZ_BASE"
+limpa() {
+  # Sair de dentro do que vai ser apagado ANTES de apagar. A bateria faz `cd`
+  # para dentro de $RAIZ o tempo todo e termina lá dentro; no Windows não se
+  # remove um diretório que é o cwd de um processo vivo, e o `rm -rf` falha
+  # calado. Medido em 2026-09-05: com o trap unificado mas sem este `cd`, a
+  # bateria saiu 0, o $FORA_REPO foi removido (ninguém estava dentro dele) e o
+  # $RAIZ_BASE sobreviveu — 81 diretórios órfãos em vez de 80.
+  cd "$SRC" 2>/dev/null || cd /
+  # o `sleep` é o de sempre: no Windows o handle do arquivo ainda pode estar
+  # preso quando o último filho acabou de morrer, e o `rm -rf` falha calado.
+  sleep 1
+  local d
+  for d in $A_LIMPAR; do
+    rm -rf "$d" 2>/dev/null
+  done
+}
+trap limpa EXIT
 
 echo "(caixa de areia: $RAIZ)"
 echo ""
@@ -604,7 +628,8 @@ echo "== CASO 16: divergencia-log-em-raiz-isolada =="
 FORA_REPO="/tmp/segunda-opiniao-isolada-$$"
 rm -rf "$FORA_REPO"
 mkdir -p "$FORA_REPO"
-trap 'rm -rf "$FORA_REPO" 2>/dev/null' EXIT
+# entra na lista do trap único lá de cima; um `trap ... EXIT` aqui apagaria o dele
+A_LIMPAR="$A_LIMPAR $FORA_REPO"
 
 # Criar uma raiz de dados isolada e um repositório dentro do /tmp
 RAIZ_ISOLADA="$FORA_REPO/dados"
