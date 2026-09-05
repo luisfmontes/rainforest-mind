@@ -49,6 +49,26 @@ nomeando o PID sobrevivente — nunca filtra por nome de executavel nem por
 string do comando. Provado por `grep -c "ps -W" scripts/testa-cli-externo.cjs`
 devolvendo `0` e por `node scripts/testa-cli-externo.cjs` devolvendo exit `0`.
 
+### 5. Margem do teste que afirma "foi cortado" [tipo: teste]
+atende: D2
+arquivos: `scripts/fixtures/cli-externo/cli-que-trava-e-cortado.cjs`, `scripts/testa-cli-externo.cjs`
+depende de: 1
+paralela: nao
+mutacao: n/a
+  motivo: nao ha comportamento de producao aqui — a fixture so dorme, e o teto e
+  parametro de asserção. A falsificacao e o proprio criterio abaixo.
+pronto quando: a fixture dorme `60000` ms e o teto do caso `cli-que-trava-e-cortado`
+e `8000` ms, deixando margem de 52s entre "cortado" e "dormiu tudo" — provado por
+`node scripts/testa-cli-externo.cjs` devolvendo exit `0` com a linha `ok   cortado
+por timeout`.
+
+Tarefa nascida da integracao, nao do plano original. O ramo de timeout passou a
+pagar a consulta CIM (~1s de startup do `powershell.exe`), o teto teve de subir
+de 2s para 8s, e a fixture dormia 10s — sobravam 2s de margem numa maquina com
+quatro sessoes rodando. O comentario ainda dizia "os 100s inteiros da fixture",
+numero que nao existia em lugar nenhum e faria o proximo leitor achar a margem
+folgada.
+
 ### 4. Guarda de reuso do PID RAIZ, e o caso que a prova [tipo: implementar]
 atende: D6
 arquivos: `hooks/lib/cli-externo.cjs`, `scripts/testa-cli-externo.cjs`
