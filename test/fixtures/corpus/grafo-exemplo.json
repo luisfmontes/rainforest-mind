@@ -1,0 +1,78 @@
+{
+  "nos": [
+    {
+      "id": "conceito-1",
+      "caminho": "wiki/conceito-1.md",
+      "titulo": "Conceito Principal",
+      "resumo": "Este é um conceito importante no sistema.",
+      "file_type": "concept",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "codigo-2",
+      "caminho": "src/utils.js",
+      "titulo": "Utilitários de Sistema",
+      "resumo": "Funções auxiliares para o núcleo.",
+      "file_type": "code",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "artigo-3",
+      "caminho": "papers/estudo-2026.pdf",
+      "titulo": "Estudo de Fundações",
+      "resumo": "Análise de padrões arquiteturais.",
+      "file_type": "paper",
+      "confidence": "INFERRED"
+    },
+    {
+      "id": "documento-4",
+      "caminho": "docs/design.md",
+      "titulo": "Design do Sistema",
+      "resumo": "Documento de design arquitetural.",
+      "file_type": "document",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "imagem-5",
+      "caminho": "assets/diagrama.png",
+      "titulo": "Diagrama da Arquitetura",
+      "resumo": "Representação visual da arquitetura.",
+      "file_type": "image",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "rationale-6",
+      "caminho": "docs/decisoes/001-arquitetura.md",
+      "titulo": "Decisão Arquitetural 001",
+      "resumo": "Justificativa da arquitetura escolhida.",
+      "file_type": "rationale",
+      "confidence": "INFERRED"
+    }
+  ],
+  "arestas": [
+    {
+      "de": "conceito-1",
+      "para": "codigo-2",
+      "tipo": "implementa",
+      "via": "referenced-in-code"
+    },
+    {
+      "de": "conceito-1",
+      "para": "artigo-3",
+      "tipo": "fundamenta-se-em",
+      "via": "markdown-link"
+    },
+    {
+      "de": "documento-4",
+      "para": "imagem-5",
+      "tipo": "contém",
+      "via": "inline-reference"
+    },
+    {
+      "de": "rationale-6",
+      "para": "conceito-1",
+      "tipo": "justifica",
+      "via": "markdown-link"
+    }
+  ]
+}
