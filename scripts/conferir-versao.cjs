@@ -170,8 +170,34 @@ function compararSemver(a, b) {
  * Compara a versao local com a de `origin/main`. Sem `origin/main` resolvivel,
  * ou sem versao parseavel dos dois lados, a comparacao e' pulada — nunca vira
  * recusa nem falha de leitura (D5 do design).
+ *
+ * E pulada tambem quando NAO HA COMMIT A FRENTE de `origin/main`. Esse ramo
+ * nasceu de um falso positivo medido em 2026-09-05, minutos depois de a
+ * comparacao entrar na main: parado na `main`, recem-atualizada e em sincronia,
+ * o script acusava
+ *
+ *   RECUSADO: versao declarada 1.6.0 nao e' maior que a de origin/main (1.6.0)
+ *
+ * e mandava subir a versao. Mas ali nao havia nada para lancar — o 1.6.0 ACABARA
+ * de ser publicado, e empatar com a `origin/main` e' o estado correto de quem
+ * esta em dia. A pergunta que o script faz e' "o trabalho que esta aqui vai
+ * chegar na maquina de alguem?"; sem commit a frente, nao ha trabalho aqui, e a
+ * pergunta nao se aplica.
+ *
+ * A bateria nao pegou porque todos os repositorios de fixture nascem de
+ * `git init` sem remoto: eles caem no ramo "nao comparei" antes de chegar aqui.
+ * Quem pegou foi rodar o artefato real no repositorio real depois do merge.
  */
 function compararComOrigemMain(versaoLocal) {
+  const aFrente = git(["rev-list", "--count", "origin/main..HEAD"]);
+  if (aFrente !== null && Number(aFrente) === 0) {
+    return {
+      comparouVersao: false,
+      motivoNaoComparou: "nenhum commit a frente de origin/main — nada a lancar daqui",
+      versaoOrigemMain: versaoDeOrigemMain(),
+      versaoMaior: null,
+    };
+  }
   const versaoRemota = versaoDeOrigemMain();
   if (versaoRemota === null) {
     return {
