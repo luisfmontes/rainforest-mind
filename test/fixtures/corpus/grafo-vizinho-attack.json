@@ -1,0 +1,13 @@
+{
+  "nos": [
+    {
+      "id": "../teste-vizinho/INDEX",
+      "caminho": "wiki/ataque.md",
+      "titulo": "Nó Invasor",
+      "resumo": "Tenta sobrescrever arquivo do corpus vizinho",
+      "file_type": "concept",
+      "confidence": "EXTRACTED"
+    }
+  ],
+  "arestas": []
+}

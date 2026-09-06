@@ -25,7 +25,7 @@ Planejado em 2026-09-05, doze dias depois da aprovação, no inventário do acer
 ## O que não pode quebrar
 
 - **Nenhum conteúdo do `segundo-cerebro` entra neste repositório** (D2). A skill lê o corpus e escreve o acervo gerado na raiz de dados do rainforest, nunca dentro do `rainforest-mind`.
-- **Nenhum comando roda sem alvo explícito** (D9). Sem `--repo` nem `--corpus`, recusa. "Geral da máquina" não existe como modo.
+- **Nenhum comando roda sem alvo explícito** (D9). O alvo é sempre `--corpus`; sem ele, recusa. `--repo` é escopo, nunca alvo, e sozinho não gera nada. "Geral da máquina" não existe como modo.
 - **A skill nunca instala nada** (D10, regra 15). Dependência ausente para e reporta o comando que falta.
 - O validador da T1 é **Node puro**. Instalar `ajv` ou qualquer validador de JSON Schema violaria a regra 15 e não é necessário para a forma que D5 descreve.
 - `skills/arqueologia/SKILL.md` fica **intacto** nesta entrega — ver achado 3.
@@ -91,7 +91,7 @@ arquivos: `skills/montar-corpus/SKILL.md`, `skills/montar-corpus/cli.cjs`, `skil
 depende de: 2, 3
 paralela: nao
 
-Escopo: a entrega é uma skill que gera o acervo de **um corpus por vez** (D8). O CLI resolve o alvo: `--repo` usa `CLAUDE_PROJECT_DIR` ou o cwd, no mesmo default de `resolverRaiz`; `--corpus <slug>` resolve o caminho por `resolverSlug` de `hooks/lib/projetos.cjs`; sem nenhum dos dois, **recusa** (D9). A função de conferência de dependência externa nasce aqui, no molde do `doutor()` do `sabia`, e nomeia o comando que falta em vez de instalar (D10) — ver achado 7 sobre por que ela não tem o que conferir ainda.
+Escopo: a entrega é uma skill que gera o acervo de **um corpus por vez** (D8). O CLI resolve o alvo por `--corpus <slug>`, via `resolverSlug` de `hooks/lib/projetos.cjs`; sem `--corpus`, **recusa** (D9). `--repo` é **escopo, nunca alvo**: diz em que raiz procurar o `projetos.json`, e sozinho não gera nada; omitido, a raiz sai de `resolverRaiz`. (Este parágrafo dizia "sem nenhum dos dois, recusa", que vinha da redação antiga do D9 — corrigida em 2026-09-05 junto com o próprio design.) A função de conferência de dependência externa nasce aqui, no molde do `doutor()` do `sabia`, e nomeia o comando que falta em vez de instalar (D10) — ver achado 7 sobre por que ela não tem o que conferir ainda.
 
 mutacao:
   arquivo: `skills/montar-corpus/cli.cjs`
@@ -115,9 +115,28 @@ mutacao: n/a
 
 pronto quando: com as 24 páginas reais do `segundo-cerebro`, o acervo sai completo e sem ligação perdida — provado por `node skills/montar-corpus/cli.cjs --corpus segundo-cerebro` devolvendo exit 0, por `ls <raiz>/acervo/segundo-cerebro/*.md | wc -l` devolvendo `25` (as 24 páginas mais o `INDEX.md`), e por `grep -c "](" <raiz>/acervo/segundo-cerebro/INDEX.md` batendo com a contagem de arestas do grafo correspondente.
 
+### 6. Fechar o que a revisão achou: entrada não confiável não corrompe o acervo [tipo: implementar]
+atende: D5, D6
+arquivos: `skills/montar-corpus/build.cjs`, `skills/montar-corpus/testa-build.sh`, `test/fixtures/corpus/grafo-travessia.json`, `test/fixtures/corpus/grafo-vizinho-attack.json`, `test/fixtures/corpus/grafo-escape.json`, `test/fixtures/corpus/grafo-campos-hostis.json`, `test/fixtures/corpus/grafo-quebra-de-linha.json`, `test/fixtures/corpus/grafo-nome-invalido.json`, `test/fixtures/corpus/grafo-colisao-de-nome.json`, `test/fixtures/corpus/grafo-aresta-hostil.json`
+depende de: 5
+paralela: nao
+
+**Tarefa emendada em 2026-09-05, depois do plano original.** A revisão reprovou a entrega em três voltas, e o que ela achou não cabia em nenhuma das cinco tarefas: todas as cinco tratam o grafo como dado bem-comportado, e ele é **entrada não confiável** — vem de páginas de wiki que qualquer um edita, e o schema publica `id`, `titulo`, `resumo` e `caminho` como "qualquer string não-vazia". Os fixtures desta tarefa são o corpo do achado: cada um é um ataque que passou antes de existir a guarda correspondente.
+
+Escopo: nenhum campo do grafo pode escrever fora de `<raiz>/acervo/<corpus>/`, corromper a estrutura do markdown gerado, nem sumir com um nó em silêncio. Confinamento por `path.relative` sobre `realpath`, com falha de resolução virando recusa (D5 — o acervo é derivado e reconstruível, então recusar é sempre melhor que gravar torto). Escape de texto que cobre quebra de linha, não só metacaractere de markdown. Span de código com cerca dimensionada, alvo de link com percent-encoding. Recusa nomeada para o que corrompe em silêncio — `:` que vira Alternate Data Stream do NTFS, e colisão de nome por caixa. E toda recusa previsível **antes** da primeira escrita, com desfazimento do que a execução gravou quando só o `writeFileSync` descobre (D6 — a escala de confiança só vale se o acervo estiver inteiro; acervo pela metade sem índice não é grau de confiança menor, é dado quebrado).
+
+mutacao:
+  arquivo: `skills/montar-corpus/build.cjs`
+  de: campo do grafo confinado, escapado, e recusa antes de escrever
+  para: confinamento por `startsWith`, escape sem quebra de linha, e recusa no meio do laço de escrita
+  bateria: `bash skills/montar-corpus/testa-build.sh`
+  fixture: os oito grafos hostis listados em `arquivos:` — travessia, corpus vizinho, escape, campos hostis, quebra de linha, nome inválido, colisão de nome e aresta hostil
+
+pronto quando: cada guarda, desligada uma de cada vez no fonte de produção, deixa a bateria do build **vermelha em assertiva que nomeia aquela guarda** — e nenhuma outra. Provado rodando `bash skills/montar-corpus/testa-build.sh` antes e depois de cada mutação, com o placar de partida e o de chegada colados, e a reversão conferida pelo retorno ao placar de partida.
+
 ## Paralelismo
 
-A tarefa 1 abre. Depois dela, 2 e 3 podem correr juntas — a 3 usa o fixture que a 1 entrega, não a saída da 2. A 4 depende das duas. A 5 fecha.
+A tarefa 1 abre. Depois dela, 2 e 3 podem correr juntas — a 3 usa o fixture que a 1 entrega, não a saída da 2. A 4 depende das duas. A 5 fecha o plano original, e a 6 — emendada depois — depende dela, porque endurece o que as cinco entregaram.
 
 ## O que este plano deliberadamente não faz
 
