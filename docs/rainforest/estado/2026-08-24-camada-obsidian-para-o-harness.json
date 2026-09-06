@@ -20,15 +20,163 @@
     "em": "2026-09-05"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-09-05",
+    "comando": "bash skills/montar-corpus/testa-build.sh ; bash skills/montar-corpus/testa-cli.sh ; bash skills/montar-corpus/testa-extrator-wiki.sh ; bash scripts/testa-validar-grafo.sh",
+    "saida": "22 ok 0 falhas ; 9 ok 0 falhas ; 7 ok 0 falhas ; 9 ok 0 falhas. Vazamento de sandbox medido em 0 pastas em 3 execucoes seguidas (era 9). Raiz de dados real do usuario conferida limpa: nem acervo/ nem .temp em ~/.rainforest",
+    "tarefas": 5,
+    "tarefas_ok": 5,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "validarCaminhoNo com o confinamento devolvido ao startsWith puro",
+        "medido_por": "janela principal",
+        "detalhe": "bateria do build de 22 ok 0 falhas para 20 ok 2 falhas (testes 9 e o hash do vizinho); restaurado voltou a 22 ok 0. Ancora unica dentro da funcao: a primeira tentativa casou validarCorpus por engano e deu 13 ok 9 falhas, vermelho largo que media ReferenceError, nao comportamento — refeita"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "extrator wiki.cjs com process.exit(1) na entrada do main",
+        "medido_por": "janela principal",
+        "detalhe": "bateria do extrator de 7 ok 0 falhas para 0 ok 7 falhas; restaurado voltou a 7 ok 0. Antes do conserto essa checagem media o exit do comando 'true', nao o do extrator"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "validarCorpus com o confinamento desligado (return no topo)",
+        "medido_por": "janela principal",
+        "detalhe": "bateria do build de 22 ok 0 falhas para 19 ok 3 falhas (exit e as duas recusas nomeadas dos testes 10 e 11); restaurado voltou a 22 ok 0. Na volta anterior a mesma mutacao so derrubava 1 das 5 assertivas novas — as outras quatro nao discriminavam"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "criarIndex sem a linha que lista os nos no INDEX.md",
+        "medido_por": "janela principal",
+        "detalhe": "bateria do CLI de 9 ok 0 falhas para 8 ok 1 falha (INDEX.md sem secao de Nos); restaurado voltou a 9 ok 0. Antes do conserto a assertiva procurava 'conceito-a' no arquivo inteiro e o termo aparece tambem na secao de Arestas, entao ficava verde com metade do indice faltando"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "escaparTitulo com o corpo trocado por 'return titulo'",
+        "medido_por": "janela principal",
+        "detalhe": "bateria do build de 22 ok 0 falhas para 20 ok 2 falhas (teste 12, escape no INDEX.md e no arquivo do no); restaurado voltou a 22 ok 0. Antes do conserto o escape nao tinha teste nenhum: desligado por inteiro, as duas baterias ficavam verdes"
+      }
+    ],
+    "reprovas_no_caminho": [
+      "B1 volta 1: a guarda foi parar em validar-grafo.cjs, que o build.cjs nunca chama. Chamada direta ao build seguia escrevendo fora, exit 0.",
+      "B1 volta 2: travessia basica bloqueada, mas o confinamento era startsWith apos realpath. Reproduzido na janela principal: do corpus 'teste', um id de '../teste-vizinho/INDEX' sobrescreveu o INDEX.md do corpus vizinho, exit 0, em silencio. A regra da casa proibe o startsWith, nao o resolvedor.",
+      "B2 volta 1: o mesmo defeito de string uma camada acima, em validarCorpus, mais um catch permissivo que transformava 'nao consegui medir' em 'medi e passou'. Reproduzido: --corpus '../acervo-vizinho/x' saiu com exit 0 e escreveu fora de acervo/.",
+      "Testes do B2 volta 1: cinco assertivas somadas ao placar, uma so discriminava. Medido desligando validarCorpus por inteiro: 16 ok 0 virou 15 ok 1. Duas assertivas apontavam para o lugar errado (fixture do vizinho plantada onde o ataque nao passa), uma tinha grep -v removendo o proprio achado, e a ultima dava ok para um crash de ENOENT como se fosse recusa.",
+      "C4: escape entregue sem teste nenhum. Desligado por inteiro, build e CLI seguiam 16 ok 0 e 9 ok 0.",
+      "Controle de sandbox: o array com nova_sandbox() devolvia o caminho pelo stdout e as oito chamadas eram SB=$(nova_sandbox). Command substitution roda em subshell, o SANDBOXES+= morria com ela e o cleanup varria array vazio. Vazamento medido de 9 pastas por execucao, contra 1 antes do conserto. Consertado na janela principal (devolve por global) e provado com 0 em 3 execucoes."
+    ],
+    "em": "2026-09-05",
+    "nota": "Segunda passagem por executar, reaberta pela reprova do revisar. Os cinco bloqueantes e os quatro itens de corrigir_junto foram consertados em cinco voltas de agente; cada item foi re-rodado na janela principal contra o artefato real, nenhum aceito por relato. Quatro entregas com marca de ok foram devolvidas por medirem o portao errado."
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "revisores": [
+      "rainforest-mind:revisor",
+      "rainforest-mind:auditor-de-seguranca"
+    ],
+    "veredito": "aprovado na terceira volta, com a divida nomeada abaixo",
+    "bloqueantes": [
+      "Travessia de caminho pelo campo id do no: validar-grafo.cjs aceita id com ../ e build.cjs:141-144 escreve fora de acervo/. Reproduzido na janela principal: fora-do-acervo-poc.md apareceu dois niveis acima de acervo/teste/. Este repo ja tem a regra escrita — confinamento de caminho sempre por realpath, nunca path.resolve + startsWith.",
+      "Travessia de caminho pelo --corpus cru: build.cjs e executavel por si e nao repete a validacao que so existe no caminho cli.cjs -> resolverSlug. Reproduzido: --corpus '../corpus-vazado' criou a pasta fora de acervo/.",
+      "--repo e codigo morto: lido em cli.cjs:51, usado so na guarda de cli.cjs:55, nunca alimenta resolverRaiz. O D9 promete duas rotas independentes e so uma existe; a propria mensagem de erro do CLI anuncia a rota que nao funciona.",
+      "Assertiva decorativa em testa-cli.sh:83 — a linha soma 1 ao placar e nao confere nada, anunciando 'conferido pelo harness com sha256'. Mesma familia do defeito que reprovou a T2 na primeira volta.",
+      "Assertiva decorativa em testa-extrator-wiki.sh — a checagem de exit code testa o exit de 'true', nao o do extrator."
+    ],
+    "corrigir_junto": [
+      "testa-build.sh vaza dois de tres sandboxes: tres 'trap ... EXIT' se sobrescrevem, so o ultimo roda.",
+      "Os tres execSync de cli.cjs nao definem maxBuffer: vault de 6.000 paginas derruba o pipeline com ENOBUFS, medido.",
+      ".temp fica orfao em qualquer falha — o catch nao limpa. E a causa nomeada do lixo que apareceu na raiz de dados do usuario nesta rodada.",
+      "titulo vai sem escape para o INDEX.md: titulo com ]( e <script> quebra o link e injeta markup, medido."
+    ],
+    "divida_nomeada_sem_bloquear": [
+      "TOCTOU no confinamento: validarCaminhoNo resolve o dirname por realpath e a escrita usa o caminho nao resolvido. Padrao confirmado por leitura; exige escrita concorrente em <raiz>/acervo/ e nao foi demonstrado.",
+      "cli.cjs interpola o slug sem aspas em tres linhas que vao para execSync. Medido seguro hoje: projetos.cjs:53 recusa chave fora de kebab-case e derruba o arquivo inteiro na primeira ruim; testei '&', '$()', crase e ';', nenhum executou. A seguranca mora em outro modulo.",
+      "tempDir montado a mao com Date.now e Math.random em vez de fs.mkdtempSync, e sem mode explicito.",
+      "Limpeza do tempDir so por process.on('exit'): kill forcado deixa o intermediario orfao.",
+      "parseYAML manual; o design rejeitou extrator maior explicitamente.",
+      "resumo igual ao titulo nos 24 nos do corpus real — lacuna do plano."
+    ],
+    "erro_da_janela_principal": "Numa das mutacoes o perl casou a primeira ocorrencia do padrao, que estava em validarCorpus e nao em validarCaminhoNo: deu ReferenceError, 13 ok 9 falhas, vermelho largo medindo o catch e nao o comportamento. Refeita com ancora unica deu 20 ok 2 falhas, nos dois testes certos. Vermelho nao e prova; vermelho no lugar certo e. Em outra, um 'git checkout --' de reversao apagou um conserto ainda nao commitado — passei a commitar antes de mutar.",
+    "em": "2026-09-05",
+    "snapshot": {
+      "head": "3dc73348239a5caa24ec76ffdc79172f4c0beb7f",
+      "caminhos_sujos": []
+    },
+    "bloqueantes_consertados_nesta_volta": [
+      "Escape nao cobria quebra de linha. No CommonMark uma ATX heading interrompe paragrafo sem linha em branco, entao resumo ou titulo com \\n# abria bloco novo. Reproduzido na janela principal: um no com titulo 'Titulo\\n# HEADING FALSO' e resumo 'texto normal\\n\\n# INSTRUCAO INJETADA' gerou QUATRO headings, dois deles do atacante, indistinguiveis de conteudo legitimo para quem le o acervo. Destino declarado e Obsidian e leitura por agente. Consertado: escaparTexto e codigoInline achatam \\r e \\n e removem caracteres de controle antes de qualquer outro replace.",
+      "':' no id gravava num Alternate Data Stream do NTFS. Reproduzido: id 'x:secret' criou um arquivo chamado 'x', sem extensao e sem conteudo, e escondeu o no num stream, exit 0. O confinamento nao pega porque o caminho resolve dentro da pasta. Consertado: recusa nomeada por caractere invalido.",
+      "Colisao de nome apagava no em silencio. NTFS nao distingue caixa; ids 'Foo' e 'foo' viravam o mesmo arquivo e o segundo sobrescrevia o primeiro. Reproduzido: dois nos entraram, um arquivo saiu com o titulo do SEGUNDO, e o INDEX.md listava os dois. Consertado: recusa nomeando os dois ids, comparando pelo nome que o sistema de arquivos de fato usa."
+    ],
+    "corrigir_junto_consertados": [
+      "alvoLink nao escapava '#' nem '?': './nota#1.md' aponta para o arquivo 'nota' com fragmento '1.md'. Agora sai './nota%231.md'.",
+      "writeFileSync do loop de nos sem try/catch: id que o SO recusasse subia stack trace cru e deixava o acervo pela metade, sem INDEX.md e sem dizer que ficou parcial."
+    ],
+    "achado_do_auditor_refutado": "O auditor previu crash nao tratado para nome reservado do Windows ('con'), id terminando em ponto ('a.') e em espaco ('b '). Medi os tres na janela principal: nenhum quebra, os tres escrevem arquivo normal com exit 0. O caso real da familia e o ':' do Alternate Data Stream, que ele tambem nomeou e que se confirmou.",
+    "mutacoes_das_guardas_novas": [
+      "escaparTexto e codigoInline sem o achatamento de \\n: 34 ok 0 falhas para 32 ok 2 falhas (teste 14, contagem de headings e texto achatado)",
+      "guarda de caractere invalido desligada: 34 ok 0 para 31 ok 3 (teste 15 inteiro)",
+      "guarda de colisao desligada: 34 ok 0 para 32 ok 2 (teste 16, exit e a recusa que nomeia os dois ids)",
+      "alvoLink sem o '#': 34 ok 0 para 33 ok 1 (teste 14, percent-encoding do alvo)"
+    ],
+    "aberto_decisao_do_dono": "O '--repo' sozinho recusa com '--corpus e obrigatorio' (cli.cjs:71-75, medido). O revisor chama de bloqueante lendo o D9 como duas rotas alternativas, cada uma suficiente: 'o escopo da geracao e sempre explicito: --repo para o repositorio atual, OU --corpus <nome>'. Mas o SKILL.md:30-37 declara --corpus obrigatorio e --repo opcional, e o codigo bate com o SKILL.md. Design e doc discordam entre si; nao inventei qual vale. As duas saidas custam parecido e sao incompativeis: ou --repo sozinho passa a resolver o corpus pelo repositorio (muda o CLI e o SKILL.md), ou o D9 se corrige para dizer que --repo e escopo e nunca alvo (muda so o design). O auditor, olhando o mesmo codigo, disse que '--repo alimenta raiz de verdade, nao e mais codigo morto' — os dois revisores discordam entre si sobre este item.",
+    "voltas": 3,
+    "comando": "bash skills/montar-corpus/testa-build.sh ; bash skills/montar-corpus/testa-cli.sh ; bash skills/montar-corpus/testa-extrator-wiki.sh ; bash scripts/testa-validar-grafo.sh",
+    "saida": "40 ok 0 falhas ; 16 ok 0 falhas ; 7 ok 0 falhas ; 9 ok 0 falhas",
+    "bloqueantes_fechados": [
+      "Travessia pelo id do no: guarda estava em validar-grafo.cjs, que o build.cjs nunca chama; depois virou startsWith apos realpath, que deixa escapar para pasta irma com prefixo comum. Reproduzido: id '../teste-vizinho/INDEX' sobrescreveu o INDEX.md do corpus vizinho, exit 0. Fechado por path.relative, com realpath que falha virando recusa.",
+      "Travessia pelo --corpus cru: mesmo defeito de string em validarCorpus, mais catch permissivo. Reproduzido: --corpus '../acervo-vizinho/x' saiu exit 0 escrevendo fora de acervo/. Fechado do mesmo jeito.",
+      "--repo era rota morta. Fechado: alimenta a raiz de verdade, e o contrato foi decidido pelo dono (ver decisao_do_dono).",
+      "Duas assertivas decorativas: uma media o exit do comando 'true' em vez do extrator, outra procurava 'conceito-a' no INDEX.md inteiro sem notar que o termo aparece tambem na secao de Arestas. As duas fechadas e provadas por mutacao.",
+      "Escape valia so para o titulo. resumo saia inteiro e cru; id e caminho com crase fechavam o span de codigo. Fechado por escaparTexto, codigoInline com cerca dimensionada e alvoLink com percent-encoding.",
+      "Escape nao cobria quebra de linha. Reproduzido: titulo e resumo com \\n geraram QUATRO headings, dois deles do atacante, num arquivo cujo destino declarado e o Obsidian e a leitura por agente. Fechado achatando \\r e \\n e removendo controle antes de qualquer outro replace.",
+      "':' no id gravava num Alternate Data Stream do NTFS. Reproduzido: arquivo 'x' sem extensao e sem conteudo, no escondido no stream, exit 0. Fechado por recusa nomeada.",
+      "Colisao de nome apagava no em silencio: 'Foo' e 'foo' sao o mesmo arquivo no NTFS. Reproduzido: dois nos entraram, um saiu com o titulo do segundo, INDEX.md listando os dois. Fechado por recusa que nomeia os dois ids.",
+      "Alvo de aresta chegava cru: 'aresta.para' pode ser referencia externa pelo schema, entao nenhuma guarda de id o ve. \\n ali partia o link em tres linhas e corrompia o INDEX.md. Fechado no alvoLink.",
+      "Recusa no meio do laco deixava acervo pela metade, sem INDEX.md e sem sinalizar. Fechado: toda recusa previsivel acontece antes da primeira escrita, e o que so o writeFileSync descobre desfaz o que a execucao gravou."
+    ],
+    "corrigir_junto_fechados": [
+      "Bateria do build vazava sandbox. Eram 3 traps que se sobrescreviam; depois um array cujo nova_sandbox() devolvia por stdout, chamado como SB=$(nova_sandbox) — command substitution roda em subshell, o SANDBOXES+= morria com ela e o cleanup varria array vazio. Medido: 9 pastas por execucao, contra 1 antes desse 'conserto'. Fechado devolvendo por global; 0 em tres execucoes seguidas.",
+      "maxBuffer de 10 MiB nos tres execSync do cli.cjs.",
+      "Intermediario saiu da raiz de dados do usuario para o temp do sistema; 0 orfaos numa falha real, e ~/.rainforest sem .temp e sem acervo.",
+      "alvoLink nao escapava '#' nem '?'.",
+      "writeFileSync sem try/catch, inclusive o do INDEX.md, que nao tinha nenhum.",
+      "RE_NOME_INVALIDO era mais restritivo que o schema e cego a plataforma: recusava '? * \" < > |', validos em Linux, derrubando o build por id que o contrato aceita. Estreitado para o que corrompe em silencio.",
+      "nomeEfetivo tinha ramo morto: o replace de ponto e espaco no fim nunca dispara porque o nome termina em '.md'."
+    ],
+    "relatos_refutados_medindo": [
+      "O auditor previu crash nao tratado para nome reservado do Windows ('con'), id terminando em ponto ('a.') e em espaco ('b '). Rodei os tres: nenhum quebra, todos escrevem arquivo normal com exit 0. O caso real da familia era o ':' do Alternate Data Stream, que ele tambem nomeou.",
+      "O revisor previu injecao de heading pelo alvo da aresta. Rodei o grafo dele: 3 headings, nenhum injetado, porque o '#' ja saia como %23. O defeito era real mas menor — link partido em tres linhas, corrupcao de indice e nao injecao de instrucao. Ele aceitou a correcao.",
+      "O revisor levantou o 'İ' turco como possivel falso negativo da guarda de colisao. Medido: o NTFS guarda 'İ.md' e 'i.md' como arquivos distintos, e o toLowerCase do V8 devolve 'i̇' (i mais ponto combinante), que tambem nao colide com 'i'. As duas coisas concordam; nao ha falso negativo."
+    ],
+    "decisao_do_dono": "2026-09-05 — no montar-corpus, '--repo' e escopo, nunca alvo; o alvo e sempre '--corpus'. A redacao do D9 e que estava errada ('--repo para o repositorio atual, OU --corpus <nome>' le-se como duas rotas suficientes). Deixar --repo sozinho gerar acervo reintroduziria o alvo implicito que o proprio porque do D9 existe para impedir. Corrigidos o design, o SKILL.md, a mensagem do cli.cjs e as duas mencoes no plano.md.",
+    "achado_de_processo": "Os dois revisores leram o mesmo commit e chegaram a vereditos opostos sobre o '--repo' — nenhum errou sobre o codigo, liam documentos que se contradiziam. Registrado como Issue #206; a distincao em relacao a #192 e da sessao -46: as ocorrencias de la sao 'texto que nao vira execucao', esta e 'dois textos que se contradizem e nenhum dos dois executa'. Medido que o conferir-fluxo cobertura sai 'ok: 14 decisao(oes), 5 tarefa(s)' identico antes e depois da correcao do D9 — cobertura nao e coerencia.",
+    "base": "2ac28798f4fa539f12c3624272a6f7d55442dbc3",
+    "head": "3dc73348239a5caa24ec76ffdc79172f4c0beb7f",
+    "achados": 0
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "for b in $(ls scripts/testa-*.sh hooks/testa-*.sh) skills/montar-corpus/testa-build.sh skills/montar-corpus/testa-cli.sh skills/montar-corpus/testa-extrator-wiki.sh; do bash $b; done — mesmo criterio do CI, mais as tres da skill, que nao casam o glob de scripts/hooks",
+    "saida": "verdes=98, nenhuma vermelha, exit 0. Inclui as tres da skill: testa-build.sh 40 ok 0 falhas, testa-cli.sh 16 ok 0 falhas, testa-extrator-wiki.sh 7 ok 0 falhas; e o validador em scripts/testa-validar-grafo.sh com 9 ok 0 falhas.",
+    "guarda_de_contagem": "O laco recusa se achar menos de 15 baterias, para glob quebrado nao passar por suite verde. Achou muito mais.",
+    "head": "3dc73348239a5caa24ec76ffdc79172f4c0beb7f",
+    "base": "2ac28798f4fa539f12c3624272a6f7d55442dbc3",
+    "nota": "A branch traz a origin/main mergeada (20 commits, cinco PRs dos pares: #201, #203, #204, #205 e o #202 que fechou depois). A suite rodou com esse merge dentro, entao mede a arvore que vai para o PR, nao so o meu diff.",
+    "em": "2026-09-05"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "destino": "PR",
+    "pr": "https://github.com/luisfmontes/rainforest-mind/pull/213",
+    "comando": "gh pr create --base main --head fluxo/camada-obsidian-para-o-harness",
+    "saida": "https://github.com/luisfmontes/rainforest-mind/pull/213",
+    "head": "54ce2f5",
+    "em": "2026-09-05"
   }
 }

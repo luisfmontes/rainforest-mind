@@ -1,0 +1,13 @@
+{
+  "nos": [
+    {
+      "id": "x:secret",
+      "caminho": "wiki/x.md",
+      "titulo": "Stream escondido",
+      "resumo": "vai para um Alternate Data Stream do NTFS em vez de um arquivo",
+      "file_type": "concept",
+      "confidence": "EXTRACTED"
+    }
+  ],
+  "arestas": []
+}

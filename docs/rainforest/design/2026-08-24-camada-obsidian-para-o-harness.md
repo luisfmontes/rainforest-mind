@@ -66,11 +66,23 @@ sobreposição gerou confusão real durante este próprio brainstorm.
   plugin leve para quem não a tem e respeita a regra 15 (ferramenta ausente para e
   reporta, instalar pergunta).
 
-- **D9 — O escopo da geração é sempre explícito: `--repo` para o repositório atual, ou
-  `--corpus <nome>` para um conjunto declarado no `projetos.json`; sem alvo, recusa.** —
+- **D9 — O alvo da geração é sempre explícito e é sempre `--corpus <nome>`, um conjunto
+  declarado no `projetos.json`; `--repo <caminho>` é **escopo**, nunca alvo — diz onde
+  procurar o `projetos.json`, e sozinho não gera nada. Sem `--corpus`, recusa.** —
   porquê: "geral da máquina" como varredura implícita misturaria repositório de trabalho,
   código de cliente e acervo pessoal privado no mesmo grafo — exatamente o vazamento que a
   D2 evita. "Geral" existe como vários corpora nomeados, nunca como um "tudo".
+
+  **Correção de redação, 2026-09-05.** A primeira versão desta decisão dizia "`--repo`
+  para o repositório atual, **ou** `--corpus <nome>`", o que se lê como duas rotas
+  alternativas, cada uma suficiente sozinha. O código nunca implementou isso, e a
+  segunda revisão apontou a divergência como bloqueante — com os dois revisores
+  discordando entre si sobre ela. A redação é que estava errada: deixar `--repo` sozinho
+  gerar acervo reintroduziria por outra porta exatamente o alvo implícito que o "porquê"
+  acima existe para impedir, já que o repositório atual é um alvo que ninguém nomeou.
+  `skills/montar-corpus/SKILL.md` já descrevia o comportamento certo (`--corpus`
+  obrigatório, `--repo` opcional) e o código sempre bateu com ele; quem estava fora de
+  passo era este texto. Decidido pelo Luís em 2026-09-05.
 
 - **D10 — Padrão de distribuição de ferramenta própria: a ferramenta mora em repositório
   próprio, o `rainforest-mind` entrega uma skill fina, e a skill confere a dependência e
@@ -161,3 +173,14 @@ sobreposição gerou confusão real durante este próprio brainstorm.
   agora. Só bloqueia a aplicação da D10 a essa ferramenta no dia em que ela for
   distribuída.
 - **O nome e a semântica do quarto degrau da escala de confiança** (D12).
+
+## Decisões que esta entrega deliberadamente não constrói
+
+Documentadas no relatório de fechamento `relatorios/2026-09-05-camada-obsidian-fechamento.md`, com os motivos e fechamento de cada uma:
+
+- **D1 — O Obsidian sai inteiro.** Decisão pura, sem artefato pendente. O aplicativo é externo, o formato é markdown, pronto.
+- **D2 — O acervo `segundo-cerebro` continua repositório separado.** Decisão pura, sem artefato pendente. Nenhum arquivo muda de lugar.
+- **D3 — O problema é roteamento.** Atendido pela tabela de rota que já existe na skill pessoal `segundo-cerebro`, fora deste repositório.
+- **D4 — A rota por regra, dentro de `references/regra-NN.md`.** Deliberadamente fora deste repositório, porque esses arquivos são distribuídos a terceiros. A rota inversa (skill pessoal → regra) já existe na skill pessoal e não é distribuída.
+- **D11 — A metade "padrão TOTVS".** Fora de escopo pelo design — o MCP da `tbc-servicos` a cobre, e o acoplamento não é este design.
+- **D12 — A arqueologia consome grafo.** Bloqueado até a frente 2 (grafo AdvPL) existir. O grafo de wiki não vale como entrada de confiança.
