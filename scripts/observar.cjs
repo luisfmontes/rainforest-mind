@@ -467,20 +467,34 @@ async function processarMarca(conexao, marca) {
 
   // Processar cada fatia, dentro de um ORÇAMENTO DE TEMPO por execução.
   //
-  // Por que o orçamento existe: o hook que chama este script tem teto de 120 s.
-  // O teto interno de UMA chamada é 60 s (65 s de hard-kill do filho), então
-  // duas fatias no pior caso já somam 130 s e o harness mata o processo no meio.
-  // Elevar o teto do hook não resolve, porque N cresce com o tamanho do
-  // transcrito e não tem limite superior.
+  // Por que o orçamento existe: o hook que chama este script NÃO tem os 120 s
+  // que declara. O `timeout` do hook é um pedido, não o teto: no shutdown o CLI
+  // roda TODOS os hooks de `SessionEnd` em paralelo (`Promise.all`) compartilhando
+  // um único `AbortSignal.timeout(i)`, com
+  //
+  //     i = max(1500, min(maior timeout declarado, 60000))
+  //
+  // ou seja um teto DURO de 60 s para o evento inteiro, e um failsafe que mata o
+  // processo em i+5 s. Quem estoura o orçamento não derruba só a si: o sinal
+  // aborta e qualquer hook irmão em voo devolve `ABORT_ERR`, que o CLI imprime
+  // como "SessionEnd hook [...] failed: Hook cancelled". Medido no claude.exe
+  // 2.1.220 lendo as strings do binário (funções `iz`/`yvr`/`rco`, constantes
+  // `Ees=1500` e `f0E=60000`), não por hipótese — e o dano era real: 19 sessões
+  // vazadas no `state.json` do apontamento-horas entre 06/08 e 26/08, cada uma
+  // um `SessionEnd` que não terminou.
+  //
+  // Por isso o orçamento tem de caber DENTRO dos 60 s compartilhados, com folga
+  // para os hooks irmãos: 25 s aqui, e `timeout: 30` nas duas declarações do
+  // `hooks/hooks.json` (`SessionStart` e `SessionEnd` — as duas existem).
   //
   // Parar por orçamento não perde trabalho: a marca d'água avança POR FATIA
   // (logo abaixo), então a próxima sessão retoma exatamente de onde esta parou.
-  // Com a latência medida (~5 a 7 s por chamada), 90 s dão cerca de 12 fatias
-  // por execução — um transcrito muito grande leva algumas sessões para ser
-  // digerido, e isso é preferível a ser morto no meio a cada vez.
+  // Com a latência medida (~5 a 7 s por chamada), 25 s dão cerca de 3 a 4 fatias
+  // por execução — um transcrito muito grande leva mais algumas sessões para ser
+  // digerido, e isso é preferível a ser morto no meio e levar os irmãos junto.
   // `TESTADOR_ORCAMENTO_MS` existe para a bateria conseguir estourar o orçamento
-  // sem esperar 90 s de verdade — mesmo papel do `TESTADOR_CHAMAR_LLM`.
-  const ORCAMENTO_MS = Number(process.env.TESTADOR_ORCAMENTO_MS) || 90000;
+  // sem esperar 25 s de verdade — mesmo papel do `TESTADOR_CHAMAR_LLM`.
+  const ORCAMENTO_MS = Number(process.env.TESTADOR_ORCAMENTO_MS) || 25000;
   const inicioDaPassada = Date.now();
   let ultimoOffsetProcessado = marca.offset_processado;
 
