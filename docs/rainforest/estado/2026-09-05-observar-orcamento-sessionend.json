@@ -1,0 +1,62 @@
+{
+  "slug": "2026-09-05-observar-orcamento-sessionend",
+  "titulo": "2026-09-05-observar-orcamento-sessionend",
+  "criado_em": "2026-09-05",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "em": "2026-09-05"
+  },
+  "plano": {
+    "status": "ok",
+    "em": "2026-09-05"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-05",
+    "comando": "bash scripts/testa-observar.sh",
+    "saida": "== resultado: 41 ok, 0 falha(s) == (era 38 ok antes da tarefa 3)",
+    "tarefas_ok": 3,
+    "tarefas": 3,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "18. ORCAMENTO_MS padrao cabe dentro do teto compartilhado de 60 s — mutacao 25000->90000 deu 39 ok/2 falhas (caem a 18 e a 20, as duas que leem o orcamento; a 19 segue verde)"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "19. as duas declaracoes de observar.cjs no hooks.json cabem no teto — mutacao devolvendo SO o SessionEnd para 120 deu 40 ok/1 falha, e a falha nomeia SessionEnd:120 (e o caso do conserto pela metade)"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "18 e 20 — a prova da tarefa 3 e a propria mutacao da tarefa 1 mudar de invisivel para visivel: ANTES destes casos ela deixava a bateria 38 ok/0 falha (medido), DEPOIS deles da 39 ok/2 falhas. O que a tarefa 3 entrega e exatamente essa diferenca"
+      }
+    ],
+    "em": "2026-09-05"
+  },
+  "revisar": {
+    "status": "pendente",
+    "snapshot": {
+      "head": "2ac28798f4fa539f12c3624272a6f7d55442dbc3",
+      "caminhos_sujos": [
+        "docs/rainforest/design/2026-09-05-observar-orcamento-sessionend.md",
+        "docs/rainforest/estado/2026-09-05-observar-orcamento-sessionend.json",
+        "docs/rainforest/planos/2026-09-05-observar-orcamento-sessionend.md",
+        "hooks/hooks.json",
+        "scripts/observar.cjs",
+        "scripts/testa-observar.sh"
+      ]
+    }
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
