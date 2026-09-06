@@ -48,7 +48,49 @@ No deepagents, cada evento de compactação **anexa** uma seção ao arquivo de 
 
 O `rubric.py` deles avalia saída de agente contra rubrica declarada — parente do nosso `verificar` para critérios que nenhum comando decide. Com o fluxo 6 (portões), isso vira: portão manual pode ganhar uma rubrica estruturada em vez de prosa livre. **Não fazer agora** — registrar como semente de melhoria do portão manual, avaliar depois que fluxos 6 e 7 fecharem.
 
+> **Semente encerrada em 2026-09-05.** Ela foi avaliada e **rejeitada**, e não pelos
+> fluxos 6 ou 7: quem herdou esse território foi o fluxo 12 (régua), fechado em
+> 2026-09-04. `docs/rainforest/design/fluxo-12-regua.md`, D5 — "o `bar.md` não altera
+> o veredito binário nem a lacuna única... rubrica pontuada é o modo de falha que a
+> skill inteira evita". Não reabrir sem evidência nova contra essa decisão.
+
 ## O que explicitamente não copiar
 
 - Middleware de summarização com chamada de LLM pra resumir histórico antigo. Custo e não-determinismo; as heurísticas determinísticas do design original ficam. Se a fase 0 (medição) mostrar que heurística não basta, aí sim reabrir essa decisão — com evidência.
 - Qualquer dependência do ecossistema LangChain. Zero deps continua sendo regra.
+
+---
+
+## Status (2026-09-05): BLOQUEADO pelo gate de evidência da fase 0
+
+Este adendo é, do início ao fim, conteúdo de **fase 1** — números calibrados,
+formato do stub, histórico append-only. A própria equipe já tinha registrado isso na
+época: `docs/rainforest/estado/2026-08-31-fluxo-5-fase-0-poda.json` diz, em
+2026-08-31, *"fase 0 só passthrough+medição; adendo deepagents é todo fase 1"*.
+
+E o design original condiciona **abrir** a fase 1 — não só ativá-la — a evidência de
+uso real, duas vezes: `fluxo-5-design-poda.md:53` (*"Gate de saída da fase 0:
+relatório de uma semana de uso real. Sem ele, fase 1 não abre"*) e `:107-108`
+(*"fases 1 e 2 só com o relatório de evidência em mãos"*).
+
+Estado medido nesta máquina em 2026-09-05:
+
+```
+$ node scripts/relatorio-poda.cjs --json
+{"gate":"FECHADO","dias_distintos":0,"faltam":7}
+```
+
+(exit 1). Não existe `metricas.jsonl` real nem no repositório nem na raiz de dados —
+o proxy nunca rodou contra tráfego real, só contra fixtures de teste. Sem dado, não
+há como saber se o cache hit já resolve o custo sozinho (R3) nem se a heurística
+está calibrada (Risco 1) — que é exatamente o que a regra existe para impedir.
+
+**Gancho de retorno:** o mesmo comando, outra saída. `node scripts/relatorio-poda.cjs
+--json` devolvendo `"gate":"ABERTO"` (com `dias_distintos >= 7`) e exit 0. É a única
+condição. A partir daí, reabrir direto no `design` do fluxo 5 — a arqueologia já foi
+feita e está em `docs/rainforest/design/adendo-fluxo-5-deepagents-canonico.md`, junto
+com as decisões (D1–D9) e as sete perguntas que ficam para quando houver evidência.
+
+Até lá, nenhuma tarefa de código deste adendo entra em plano. As duas decisões que
+**não** dependem do gate já foram aplicadas: a correção `colher` → `fechar` em
+`fluxo-5-design-poda.md` (D4) e o encerramento da seção 4 acima (D7).
