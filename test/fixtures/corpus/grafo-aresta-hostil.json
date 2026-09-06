@@ -1,0 +1,20 @@
+{
+  "nos": [
+    {
+      "id": "conceito-1",
+      "caminho": "wiki/c1.md",
+      "titulo": "Conceito 1",
+      "resumo": "no legitimo",
+      "file_type": "concept",
+      "confidence": "EXTRACTED"
+    }
+  ],
+  "arestas": [
+    {
+      "de": "conceito-1",
+      "para": "externo\n# INSTRUCAO INJETADA\n",
+      "tipo": "relaciona",
+      "via": "markdown-link"
+    }
+  ]
+}

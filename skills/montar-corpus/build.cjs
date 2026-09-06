@@ -175,6 +175,13 @@ function alvoLink(id) {
   return String(id)
     // % primeiro, senao re-escapa o que os outros produziram.
     .replace(/%/g, '%25')
+    // Quebra de linha e controle. O alvo do link NAO passa pelo escaparTexto,
+    // e 'aresta.de'/'aresta.para' chegam crus: o schema permite 'para' ser
+    // referencia externa, entao nao ha nó correspondente e nada os valida.
+    // Sem isto, um \n parte o link no meio e corrompe o INDEX.md — medido.
+    .replace(/\r/g, '%0D')
+    .replace(/\n/g, '%0A')
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
     .replace(/ /g, '%20')
     .replace(/\(/g, '%28')
     .replace(/\)/g, '%29')
@@ -189,16 +196,32 @@ function alvoLink(id) {
 // Caracteres que o Windows nao aceita em nome de arquivo. ':' e o pior deles:
 // nao da erro, grava num Alternate Data Stream do NTFS. Medido — um id
 // 'x:secret' criou um arquivo chamado 'x' e escondeu o conteudo no stream.
-const RE_NOME_INVALIDO = /[<>:"|?*\x00-\x1F]/;
+// So o que corrompe em SILENCIO. ':' vira Alternate Data Stream no NTFS
+// (medido: id 'x:secret' criou um arquivo 'x' vazio e escondeu o no no
+// stream, exit 0); caractere de controle nao aparece na listagem. O resto do
+// conjunto proibido do Windows ('? * " < > |') o SO rejeita com erro, e erro
+// o catch do writeFileSync nomeia — e em Linux esses caracteres sao validos,
+// entao recusar aqui quebraria corpus que o schema aceita.
+const RE_NOME_INVALIDO = /[:\x00-\x1F]/;
 
 /**
- * Nome que o sistema de arquivos REALMENTE vai usar. O Win32 apara ponto e
- * espaco no fim em silencio, e o NTFS nao distingue caixa — dois ids que o
- * schema aceita como diferentes viram o mesmo arquivo, e o segundo apaga o
- * primeiro sem aviso.
+ * Nome que o sistema de arquivos REALMENTE vai usar, para achar colisao antes
+ * de ela apagar um no. O que colide de verdade aqui e a CAIXA: o NTFS nao
+ * distingue 'Foo.md' de 'foo.md', entao dois ids que o schema aceita como
+ * diferentes viram o mesmo arquivo e o segundo sobrescreve o primeiro sem
+ * aviso — medido.
+ *
+ * Nao apara ponto nem espaco no fim: o nome sempre termina em '.md', entao a
+ * poda do Win32 nunca chega a atuar. Uma versao anterior aparava, e era ramo
+ * morto que a revisao pegou.
+ *
+ * Nao pega o 'İ' turco, e nao precisa: medido no NTFS, 'İ.md' e 'i.md'
+ * coexistem como arquivos distintos, e o toLowerCase do V8 devolve 'i̇' (i
+ * mais ponto combinante), que tambem nao colide com 'i'. As duas coisas
+ * concordam, entao nao ha falso negativo.
  */
 function nomeEfetivo(nomeArquivo) {
-  return nomeArquivo.replace(/[ .]+$/, '').toLowerCase();
+  return nomeArquivo.toLowerCase();
 }
 
 /**
@@ -291,7 +314,10 @@ function main() {
   // Cria a pasta de destino
   criarPasta(pastaAcervo);
 
-  // Escreve um markdown por nó
+  // TODA recusa acontece ANTES da primeira escrita. Recusar no meio do laco
+  // deixa alguns .md gravados, o INDEX.md ausente, e nada dizendo que o
+  // acervo ficou pela metade — medido: um id ruim no segundo no deixava o
+  // primeiro em disco e abortava sem indice.
   const nomesVistos = new Map(); // nome efetivo -> id que o reivindicou
   for (const no of grafo.nos) {
     const nomeArquivo = `${no.id}.md`;
@@ -302,8 +328,12 @@ function main() {
       process.exit(1);
     }
 
-    // Caractere que o Windows nao aceita: recusa nomeada em vez de gravar num
-    // stream alternativo do NTFS, que some da listagem e leva o no junto.
+    // ':' nao da erro: grava num Alternate Data Stream do NTFS, que some da
+    // listagem e leva o no junto. E o unico caso de corrupcao SILENCIOSA, por
+    // isso e o unico que a guarda recusa. Caractere que o SO rejeita de fato
+    // ('?' e '*' no Windows, nenhum no Linux) cai no catch do writeFileSync,
+    // que nomeia o no — recusar aqui derrubaria em Linux um id perfeitamente
+    // valido, e o schema publica id como "qualquer string nao-vazia".
     if (RE_NOME_INVALIDO.test(no.id)) {
       console.error(`Erro: id contém caractere inválido para nome de arquivo: ${JSON.stringify(no.id)}`);
       process.exit(1);
@@ -320,15 +350,32 @@ function main() {
       process.exit(1);
     }
     nomesVistos.set(efetivo, no.id);
+  }
 
+  // Se a escrita falhar no meio, desfaz o que ESTA execucao gravou. Nem toda
+  // recusa da para prever antes: se o id e valido em Linux e o Windows
+  // rejeita, so o writeFileSync descobre. O que nao pode acontecer e sobrar
+  // um acervo pela metade, sem INDEX.md e sem dizer que ficou parcial.
+  const escritos = [];
+  function desfazer() {
+    for (const c of escritos) {
+      try { fs.rmSync(c, { force: true }); } catch (e) { /* nada a fazer */ }
+    }
+  }
+
+  // Escreve um markdown por nó
+  for (const no of grafo.nos) {
+    const nomeArquivo = `${no.id}.md`;
     const caminhoArquivo = path.join(pastaAcervo, nomeArquivo);
     const conteudo = criarMarkdownNo(no);
     try {
       fs.writeFileSync(caminhoArquivo, conteudo, 'utf8');
+      escritos.push(caminhoArquivo);
     } catch (erro) {
-      // Sem isso, um id que o SO recusa sobe stack trace cru e deixa o acervo
-      // pela metade, sem INDEX.md e sem dizer que ficou parcial.
+      // Sem isso, um id que o SO recusa sobe stack trace cru.
       console.error(`Erro ao escrever o nó ${JSON.stringify(no.id)}: ${erro.message}`);
+      desfazer();
+      console.error(`Nada gravado: desfeitos os ${escritos.length} arquivo(s) desta execução.`);
       process.exit(1);
     }
   }
@@ -336,7 +383,14 @@ function main() {
   // Escreve o INDEX.md
   const caminhoIndex = path.join(pastaAcervo, 'INDEX.md');
   const conteudoIndex = criarIndex(grafo.nos, grafo.arestas || []);
-  fs.writeFileSync(caminhoIndex, conteudoIndex, 'utf8');
+  try {
+    fs.writeFileSync(caminhoIndex, conteudoIndex, 'utf8');
+  } catch (erro) {
+    console.error(`Erro ao escrever o INDEX.md: ${erro.message}`);
+    desfazer();
+    console.error(`Nada gravado: desfeitos os ${escritos.length} arquivo(s) desta execução.`);
+    process.exit(1);
+  }
 
   process.exit(0);
 }

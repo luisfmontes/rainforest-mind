@@ -337,6 +337,67 @@ else
 fi
 echo ""
 
+# Teste 17: o ALVO da aresta nao passa por escaparTexto e chega cru — o schema
+# permite 'para' ser referencia externa, entao nao ha no correspondente e as
+# guardas de id nunca o veem. Um \n ali parte o link e corrompe o INDEX.md.
+echo "17. Build com \\n no alvo da aresta (de/para):"
+nova_sandbox; SB17="$ULTIMA_SANDBOX"
+GRAFO_AR="$SRC/test/fixtures/corpus/grafo-aresta-hostil.json"
+RFM_ROOT="$SB17" esperado "  exit 0" 0 $BUILD "$GRAFO_AR" --corpus ar
+IDX17="$SB17/acervo/ar/INDEX.md"
+# So os tres headings estruturais: # Acervo, ## Nos, ## Arestas.
+NH17=$(grep -c '^#' "$IDX17" 2>/dev/null || echo 99)
+if [ "$NH17" = "3" ]; then
+  ok=$((ok+1)); echo "  ok   3 headings, nenhum injetado"
+else
+  falhou=$((falhou+1)); echo "  FALHA $NH17 headings, esperava 3"
+  grep -n '^#' "$IDX17" 2>/dev/null | sed 's/^/         /'
+fi
+# O link tem que caber numa linha so: \n cru parte o alvo no meio.
+if grep -q -- '--relaciona--> \[.*\](\./externo%0A.*\.md)$' "$IDX17" 2>/dev/null; then
+  ok=$((ok+1)); echo "  ok   \\n do alvo saiu como %0A, link numa linha so"
+else
+  falhou=$((falhou+1)); echo "  FALHA alvo da aresta com \\n cru"
+  sed -n '/Arestas/,$p' "$IDX17" 2>/dev/null | sed 's/^/         /'
+fi
+echo ""
+
+# Teste 18: falha de escrita no meio nao pode deixar acervo pela metade. Usa
+# uma PASTA no lugar do arquivo do segundo no — writeFileSync falha com EISDIR
+# em qualquer sistema, sem depender de caractere proibido do Windows.
+echo "18. Falha de escrita no meio desfaz o que ja tinha gravado:"
+nova_sandbox; SB18="$ULTIMA_SANDBOX"
+mkdir -p "$SB18/acervo/parcial"
+# grafo-exemplo tem 6 nos; bloqueia o arquivo de um deles com uma pasta.
+BLOQUEIO=$(node -e '
+const g=require(process.argv[1]);
+process.stdout.write(g.nos[2].id + ".md");
+' "$FIXTURE")
+mkdir -p "$SB18/acervo/parcial/$BLOQUEIO"
+SAIDA18=$( { RFM_ROOT="$SB18" $BUILD "$FIXTURE" --corpus parcial 2>&1; } )
+EXIT18=$?
+if [ "$EXIT18" -eq 1 ]; then
+  ok=$((ok+1)); echo "  ok   exit 1 (exit $EXIT18)"
+else
+  falhou=$((falhou+1)); echo "  FALHA exit $EXIT18, esperava 1"
+  echo "$SAIDA18" | sed 's/^/         /' | tail -3
+fi
+if echo "$SAIDA18" | grep -q "Nada gravado"; then
+  ok=$((ok+1)); echo "  ok   diz que desfez"
+else
+  falhou=$((falhou+1)); echo "  FALHA nao anunciou o desfazimento"
+  echo "$SAIDA18" | sed 's/^/         /' | head -3
+fi
+# Nenhum .md pode ter sobrado, e o INDEX.md nao pode existir.
+SOBROU=$(find "$SB18/acervo/parcial" -maxdepth 1 -type f -name "*.md" 2>/dev/null | wc -l)
+if [ "$SOBROU" = "0" ]; then
+  ok=$((ok+1)); echo "  ok   nenhum .md orfao"
+else
+  falhou=$((falhou+1)); echo "  FALHA sobraram $SOBROU .md sem INDEX.md"
+  find "$SB18/acervo/parcial" -maxdepth 1 -type f -name "*.md" | sed 's/^/         /'
+fi
+echo ""
+
 # ---------------------------------------------------------------- placar
 echo "========================================"
 echo "$ok ok   $falhou falha(s)"
