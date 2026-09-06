@@ -965,6 +965,108 @@ fi
 unset TESTADOR_CHAMAR_LLM
 rm -rf "$GORDO_DIR"
 
+# ============ Testes 18-20: contrato de orcamento do SessionEnd ============
+#
+# Por que estes casos existem, e por que eles olham NUMERO e nao comportamento.
+#
+# O `timeout` declarado por um hook e um PEDIDO, nao o teto. No shutdown o CLI
+# roda TODOS os hooks de `SessionEnd` em paralelo compartilhando um unico
+# `AbortSignal.timeout(i)`, com i = max(1500, min(maior timeout declarado, 60000)):
+# teto DURO de 60 s para o evento inteiro. Quem estoura nao derruba so a si — o
+# sinal aborta e os hooks irmaos em voo devolvem ABORT_ERR ("Hook cancelled").
+# Custo medido do defeito: 19 sessoes vazadas no state.json do apontamento-horas
+# entre 06/08 e 26/08, cada uma um SessionEnd que nao terminou. Issue #198.
+#
+# Nenhuma bateria media isso. Conferido POR MUTACAO em 2026-09-05: trocar o
+# ORCAMENTO_MS de volta para 90000 deixava a bateria inteira VERDE (38 ok, 0
+# falha), porque todo caso injeta TESTADOR_ORCAMENTO_MS e o valor padrao nunca
+# e exercido. Numero que nenhum teste le e numero que qualquer edicao futura
+# desfaz em silencio — foi assim que ele chegou a 90000.
+#
+# Estes casos leem o valor declarado de proposito: o contrato aqui E o numero.
+
+TETO_COMPARTILHADO=60   # constante f0E do claude.exe 2.1.220
+
+echo
+echo "18. ORCAMENTO_MS padrao cabe dentro do teto compartilhado de 60 s"
+ORC_MS=$(cd "$SRC" && node -e "
+  const s = require('fs').readFileSync('scripts/observar.cjs', 'utf8');
+  const m = s.match(/ORCAMENTO_MS = Number\(process\.env\.TESTADOR_ORCAMENTO_MS\) \|\| (\d+)/);
+  process.stdout.write(m ? m[1] : 'NAO-ACHEI');
+")
+TETO_MS=$((TETO_COMPARTILHADO * 1000))
+if [ "$ORC_MS" = "NAO-ACHEI" ]; then
+  falhou=$((falhou+1)); echo "  FALHA nao achei a declaracao de ORCAMENTO_MS no observar.cjs"
+elif [ "$ORC_MS" -lt "$TETO_MS" ]; then
+  ok=$((ok+1)); echo "  ok    ORCAMENTO_MS=$ORC_MS ms < $TETO_MS ms (teto duro do evento)"
+else
+  falhou=$((falhou+1))
+  echo "  FALHA ORCAMENTO_MS=$ORC_MS ms >= $TETO_MS ms: o script sozinho consome o"
+  echo "        orcamento do evento inteiro e aborta os hooks irmaos com ABORT_ERR."
+fi
+
+echo
+echo "19. as duas declaracoes de observar.cjs no hooks.json cabem no teto"
+SAIDA_DECL=$(cd "$SRC" && node -e "
+  const d = JSON.parse(require('fs').readFileSync('hooks/hooks.json', 'utf8'));
+  const h = d.hooks || d;
+  const achados = [];
+  for (const [evento, blocos] of Object.entries(h))
+    for (const b of blocos || [])
+      for (const x of b.hooks || [])
+        if ((x.command || '').includes('observar.cjs')) achados.push(evento + ':' + x.timeout);
+  process.stdout.write(achados.join(' '));
+")
+DECL_RUINS=""
+DECL_N=0
+for decl in $SAIDA_DECL; do
+  DECL_N=$((DECL_N+1))
+  t="${decl##*:}"
+  if [ "$t" -gt "$TETO_COMPARTILHADO" ]; then DECL_RUINS="$DECL_RUINS $decl"; fi
+done
+if [ "$DECL_N" -eq 0 ]; then
+  falhou=$((falhou+1)); echo "  FALHA nenhuma declaracao de observar.cjs achada no hooks.json"
+elif [ -n "$DECL_RUINS" ]; then
+  falhou=$((falhou+1))
+  echo "  FALHA declaracao(oes) acima do teto de ${TETO_COMPARTILHADO}s:$DECL_RUINS"
+  echo "        consertar UMA so deixa a outra em pe — as duas contam."
+else
+  ok=$((ok+1)); echo "  ok    $DECL_N declaracao(oes) dentro do teto: $SAIDA_DECL"
+fi
+
+echo
+echo "20. o orcamento interno deixa folga para os hooks irmaos do evento"
+# O orcamento tem de ser MENOR que o timeout declarado: se for igual ou maior,
+# o script pretende usar tudo o que pediu e nao sobra nada para o heartbeat e
+# o memoria-marca, que dividem o mesmo AbortSignal.
+MENOR_DECL=$(cd "$SRC" && node -e "
+  const d = JSON.parse(require('fs').readFileSync('hooks/hooks.json', 'utf8'));
+  const h = d.hooks || d;
+  let menor = Infinity;
+  for (const blocos of Object.values(h))
+    for (const b of blocos || [])
+      for (const x of b.hooks || [])
+        if ((x.command || '').includes('observar.cjs') && typeof x.timeout === 'number')
+          menor = Math.min(menor, x.timeout);
+  process.stdout.write(String(menor === Infinity ? 0 : menor));
+")
+# `ORC_MS` vem do caso 18 e pode ser a string NAO-ACHEI quando o regex nao casa
+# (alguem move o valor para uma constante nomeada, por exemplo). Sem esta guarda,
+# o `-lt` recebe texto, o bash cospe "integer expression expected" e a mensagem
+# de falha sai como "orcamento NAO-ACHEIms" — o placar ate cai certo, mas o motivo
+# relatado nao ajuda ninguem. Achado do revisor independente em 2026-09-05:
+# veredito certo pelo motivo errado ainda e motivo errado.
+if [ "$ORC_MS" = "NAO-ACHEI" ]; then
+  falhou=$((falhou+1))
+  echo "  FALHA nao da para comparar: o caso 18 nao achou a declaracao de ORCAMENTO_MS."
+  echo "        Conserte o caso 18 primeiro — este aqui depende do numero que ele le."
+elif [ "$MENOR_DECL" -gt 0 ] && [ "$ORC_MS" -lt $((MENOR_DECL * 1000)) ]; then
+  ok=$((ok+1)); echo "  ok    orcamento ${ORC_MS}ms < timeout declarado ${MENOR_DECL}s (sobra folga)"
+else
+  falhou=$((falhou+1))
+  echo "  FALHA orcamento ${ORC_MS}ms nao cabe no menor timeout declarado (${MENOR_DECL}s)"
+fi
+
 # ============ Resultado final ============
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

@@ -1,0 +1,44 @@
+{
+  "slug": "fluxo-8-handover-regente",
+  "titulo": "Fluxo 8 - handover.cjs + regente.cjs: sessoes descartaveis e fluxo autonomo",
+  "criado_em": "2026-09-05",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/fluxo-8-handover-regente-canonico.md",
+    "aprovado_por": "Luis em 2026-09-05 (tres designs aprovados nunca viraram plano); a forma canonica e o CORTE do regente.cjs foram decididos pela arqueologia de 2026-09-05 e aguardam ratificacao do dono",
+    "decisoes": {
+      "corte-do-regente": "regente.cjs nao entra: worktree por tarefa virou convencao (regra 11) e agente em voo ja e detectado; o que sobrou depende da Q1, que e do dono, e herdaria o vazamento da Issue 187",
+      "formato-canonico": "design canonico fluxo-8-handover-regente-canonico.md criado para o checador; o consolidado fluxo-8-design-handover-regente.md segue sendo a narrativa",
+      "qs-abertas": "Q1, Q2, Q3 e Q5 continuam do dono e estao em Em aberto; Q4 (worktree por tarefa) virou fato e saiu"
+    },
+    "em": "2026-09-05"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/fluxo-8-handover-regente.md",
+    "tarefas": 6,
+    "paralelas": [
+      1
+    ],
+    "decisoes": {
+      "dependencias-externas": "poda-estagio.cjs (fluxo 5) e cli-externo.cjs/Issue 187 (outro dono) declaradas como externas; nenhuma tarefa as toca",
+      "tarefa-4-nao-e-paralela": "corrigido em 2026-09-05: a T4 declarava depende de nenhuma mas o criterio dela mede o arquivo que a T1 produz"
+    },
+    "em": "2026-09-05"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}

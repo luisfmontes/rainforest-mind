@@ -1,0 +1,66 @@
+{
+  "slug": "2026-09-05-observar-orcamento-sessionend",
+  "titulo": "2026-09-05-observar-orcamento-sessionend",
+  "criado_em": "2026-09-05",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "em": "2026-09-05"
+  },
+  "plano": {
+    "status": "ok",
+    "em": "2026-09-05"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-05",
+    "comando": "bash scripts/testa-observar.sh",
+    "saida": "== resultado: 41 ok, 0 falha(s) == (era 38 ok antes da tarefa 3)",
+    "tarefas_ok": 3,
+    "tarefas": 3,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "18. ORCAMENTO_MS padrao cabe dentro do teto compartilhado de 60 s — mutacao 25000->90000 deu 39 ok/2 falhas (caem a 18 e a 20, as duas que leem o orcamento; a 19 segue verde)"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "19. as duas declaracoes de observar.cjs no hooks.json cabem no teto — mutacao devolvendo SO o SessionEnd para 120 deu 40 ok/1 falha, e a falha nomeia SessionEnd:120 (e o caso do conserto pela metade)"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "18 e 20 — a prova da tarefa 3 e a propria mutacao da tarefa 1 mudar de invisivel para visivel: ANTES destes casos ela deixava a bateria 38 ok/0 falha (medido), DEPOIS deles da 39 ok/2 falhas. O que a tarefa 3 entrega e exatamente essa diferenca"
+      }
+    ],
+    "em": "2026-09-05"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "c002e737c4c86a52c3c2fa2732d9ba4bd086b1de",
+      "caminhos_sujos": []
+    },
+    "achados": 1,
+    "base": "2ac2879",
+    "head": "c002e73",
+    "em": "2026-09-05"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "grep -c '|| 25000;' scripts/observar.cjs (T1); node parser do hooks.json (T2); bash scripts/testa-observar.sh (T3)",
+    "saida": "T1: 1 ocorrencia de 25000 e 0 de 90000. T2: SessionStart timeout=30 | SessionEnd timeout=30 | JSON valido: sim. T3: exit 0, == resultado: 41 ok, 0 falha(s) ==. Revisor independente aprovou c002e73 apos reaplicar as duas mutacoes originais: ORCAMENTO_MS 25000->90000 da 39 ok/2 falhas (casos 18 e 20) e SessionEnd 30->120 da 40 ok/1 falha (caso 19, nomeando SessionEnd:120).",
+    "tarefas_ok": 3,
+    "tarefas": 3,
+    "em": "2026-09-05"
+  },
+  "fechar": {
+    "status": "ok",
+    "pr": 212,
+    "em": "2026-09-05"
+  }
+}
