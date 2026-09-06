@@ -25,7 +25,7 @@ Planejado em 2026-09-05, doze dias depois da aprovação, no inventário do acer
 ## O que não pode quebrar
 
 - **Nenhum conteúdo do `segundo-cerebro` entra neste repositório** (D2). A skill lê o corpus e escreve o acervo gerado na raiz de dados do rainforest, nunca dentro do `rainforest-mind`.
-- **Nenhum comando roda sem alvo explícito** (D9). Sem `--repo` nem `--corpus`, recusa. "Geral da máquina" não existe como modo.
+- **Nenhum comando roda sem alvo explícito** (D9). O alvo é sempre `--corpus`; sem ele, recusa. `--repo` é escopo, nunca alvo, e sozinho não gera nada. "Geral da máquina" não existe como modo.
 - **A skill nunca instala nada** (D10, regra 15). Dependência ausente para e reporta o comando que falta.
 - O validador da T1 é **Node puro**. Instalar `ajv` ou qualquer validador de JSON Schema violaria a regra 15 e não é necessário para a forma que D5 descreve.
 - `skills/arqueologia/SKILL.md` fica **intacto** nesta entrega — ver achado 3.
@@ -91,7 +91,7 @@ arquivos: `skills/montar-corpus/SKILL.md`, `skills/montar-corpus/cli.cjs`, `skil
 depende de: 2, 3
 paralela: nao
 
-Escopo: a entrega é uma skill que gera o acervo de **um corpus por vez** (D8). O CLI resolve o alvo: `--repo` usa `CLAUDE_PROJECT_DIR` ou o cwd, no mesmo default de `resolverRaiz`; `--corpus <slug>` resolve o caminho por `resolverSlug` de `hooks/lib/projetos.cjs`; sem nenhum dos dois, **recusa** (D9). A função de conferência de dependência externa nasce aqui, no molde do `doutor()` do `sabia`, e nomeia o comando que falta em vez de instalar (D10) — ver achado 7 sobre por que ela não tem o que conferir ainda.
+Escopo: a entrega é uma skill que gera o acervo de **um corpus por vez** (D8). O CLI resolve o alvo por `--corpus <slug>`, via `resolverSlug` de `hooks/lib/projetos.cjs`; sem `--corpus`, **recusa** (D9). `--repo` é **escopo, nunca alvo**: diz em que raiz procurar o `projetos.json`, e sozinho não gera nada; omitido, a raiz sai de `resolverRaiz`. (Este parágrafo dizia "sem nenhum dos dois, recusa", que vinha da redação antiga do D9 — corrigida em 2026-09-05 junto com o próprio design.) A função de conferência de dependência externa nasce aqui, no molde do `doutor()` do `sabia`, e nomeia o comando que falta em vez de instalar (D10) — ver achado 7 sobre por que ela não tem o que conferir ainda.
 
 mutacao:
   arquivo: `skills/montar-corpus/cli.cjs`
