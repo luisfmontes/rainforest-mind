@@ -52,11 +52,13 @@ function main() {
   const repo = extrairRepo(args);
   const corpus = extrairCorpus(args);
 
-  // Sem nenhum dos dois, recusa
-  if (!repo && !corpus) {
-    console.error('Erro: --repo e/ou --corpus são obrigatórios');
-    console.error('Uso: cli.cjs --repo <caminho> --corpus <slug>');
-    console.error('     cli.cjs --corpus <slug>  (usa CLAUDE_PROJECT_DIR ou cwd)');
+  // O alvo e sempre --corpus. --repo e escopo (onde procurar o projetos.json),
+  // nunca alvo: sozinho nao gera nada. Ver D9 no design.
+  if (!corpus) {
+    console.error('Erro: --corpus é obrigatório — é ele que nomeia o alvo');
+    console.error('Uso: cli.cjs --corpus <slug>');
+    console.error('     cli.cjs --corpus <slug> --repo <caminho>  (--repo diz onde está o projetos.json)');
+    console.error('--repo sozinho não gera nada: sem corpus nomeado, não há alvo.');
     process.exit(1);
   }
 
@@ -65,12 +67,6 @@ function main() {
     conferirDependencias();
   } catch (e) {
     console.error(`Erro ao conferir dependências: ${e.message}`);
-    process.exit(1);
-  }
-
-  // Se --corpus não foi passado, é necessário ter corpus de alguma forma
-  if (!corpus) {
-    console.error('Erro: --corpus é obrigatório');
     process.exit(1);
   }
 

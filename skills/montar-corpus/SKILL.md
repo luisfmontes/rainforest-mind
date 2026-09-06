@@ -34,7 +34,12 @@ Se o slug não existir em `projetos.json`, a skill recusa.
 
 ### `--repo <caminho>`
 
-Opcional. Caminho do repositório que contém o corpus. Se omitido, usa `CLAUDE_PROJECT_DIR` ou o cwd.
+Opcional, e é **escopo, nunca alvo**: diz em que raiz procurar o `projetos.json`, não qual
+corpus gerar. Sozinho não gera nada — sem `--corpus`, a skill recusa (D9).
+
+Se omitido, a raiz sai de `resolverRaiz`: `RFM_ROOT`, `<projeto>/.rainforest` ou
+`~/.rainforest`. Se passado, a raiz é o caminho dado, e é lá que o `projetos.json` precisa
+estar — não dentro do repositório do corpus.
 
 ## Resolução de caminhos
 
