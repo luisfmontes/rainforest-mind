@@ -277,6 +277,60 @@ else
   falhou=$((falhou+1)); echo "  FALHA versao maior que a da main passa: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
 fi
 
+# Parado NA main, em sincronia: empatar com origin/main e o estado CORRETO de
+# quem acabou de publicar, e o script nao pode acusar. Este caso existe porque o
+# falso positivo aconteceu de verdade: minutos depois de a comparacao entrar na
+# main, o script parado la acusou "RECUSADO: versao declarada 1.6.0 nao e' maior
+# que a de origin/main (1.6.0)" e mandou subir a versao que ACABARA de sair.
+# Nenhuma fixture pegava, porque todas as outras montam local e remoto como
+# repositorios separados — o local sempre tem commit a frente.
+EM_DIA="$RAIZ/em-dia"
+EM_DIA_REMOTO="$RAIZ/em-dia-remoto"
+mkdir -p "$EM_DIA_REMOTO/.claude-plugin" "$EM_DIA_REMOTO/scripts"
+git init -q "$EM_DIA_REMOTO"
+git -C "$EM_DIA_REMOTO" symbolic-ref HEAD refs/heads/main
+git -C "$EM_DIA_REMOTO" config user.email t@t; git -C "$EM_DIA_REMOTO" config user.name t
+git -C "$EM_DIA_REMOTO" config commit.gpgsign false
+cp "$CHECADOR" "$EM_DIA_REMOTO/scripts/conferir-versao.cjs"
+printf '{\n  "name": "p",\n  "version": "1.6.0"\n}\n' > "$EM_DIA_REMOTO/.claude-plugin/plugin.json"
+git -C "$EM_DIA_REMOTO" add scripts .claude-plugin
+git -C "$EM_DIA_REMOTO" commit -qm "Versao 1.6.0"
+git clone -q "$EM_DIA_REMOTO" "$EM_DIA"
+
+if ! (cd "$EM_DIA" && git rev-parse origin/main >/dev/null 2>&1); then
+  falhou=$((falhou+1)); echo "  FALHA fixture em-dia: origin/main nao resolve"
+elif [ "$(git -C "$EM_DIA" rev-list --count origin/main..HEAD)" != "0" ]; then
+  falhou=$((falhou+1)); echo "  FALHA fixture em-dia: HEAD tem commit a frente, nao mede o caso 'em sincronia'"
+else
+  saida=$(cd "$EM_DIA" && node "scripts/conferir-versao.cjs" --teto 999 2>&1); rc=$?
+  if [ "$rc" = 0 ] && printf '%s' "$saida" | grep -qF "nada a lancar daqui"; then
+    ok=$((ok+1)); echo "  ok   na main em sincronia nao acusa (exit $rc)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA na main em sincronia nao acusa: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
+  fi
+fi
+
+# E o contrario, que e' o que impede o conserto acima de virar buraco: COM
+# commit a frente e versao que nao subiu, a recusa tem de continuar.
+A_FRENTE="$RAIZ/a-frente"
+git clone -q "$EM_DIA_REMOTO" "$A_FRENTE"
+git -C "$A_FRENTE" config user.email t@t; git -C "$A_FRENTE" config user.name t
+git -C "$A_FRENTE" config commit.gpgsign false
+echo trabalho > "$A_FRENTE/novo.txt"
+git -C "$A_FRENTE" add novo.txt
+git -C "$A_FRENTE" commit -qm "trabalho sem bump"
+
+if [ "$(git -C "$A_FRENTE" rev-list --count origin/main..HEAD)" != "1" ]; then
+  falhou=$((falhou+1)); echo "  FALHA fixture a-frente: HEAD nao ficou 1 commit a frente"
+else
+  saida=$(cd "$A_FRENTE" && node "scripts/conferir-versao.cjs" --teto 999 2>&1); rc=$?
+  if [ "$rc" = 2 ] && printf '%s' "$saida" | grep -qF "1.6.0"; then
+    ok=$((ok+1)); echo "  ok   com commit a frente e versao parada, recusa continua (exit $rc)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA com commit a frente e versao parada: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
+  fi
+fi
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
