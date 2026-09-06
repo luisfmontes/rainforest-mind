@@ -2,6 +2,13 @@
 
 > Status: design · Depende de: fluxo 1 fechado (estado.cjs), fase 0 do fluxo 5 (medição de contexto); sinergia com fluxo 6 (portões — o regente lê os mesmos exit codes) · Alvo: rodar o pipeline sem interação humana, sem brainrot
 
+> **Leia antes: existe uma forma canônica, e ela corta escopo que este texto promete.**
+> `docs/rainforest/design/fluxo-8-handover-regente-canonico.md` é o design que vale
+> para o checador e para o plano, e nele o **`regente.cjs` não é construído** — decidido
+> em 2026-09-05, ratificado pelo dono no mesmo dia. Divergência entre os dois arquivos
+> se resolve a favor do canônico. Este texto fica como a narrativa completa (princípios,
+> riscos, ciclo de vida da tarefa), inclusive das partes que não foram adiante.
+
 ## Problema
 
 Sessão longa apodrece: o contexto incha, o modelo degrada, e o pior — quem escreveria o resumo de recuperação é justamente o modelo já degradado. Ao mesmo tempo, o objetivo do pipeline é rodar **sem interação**: pedir pro humano reiniciar sessão a cada estágio vai contra a autonomia. E com trabalho paralelo no mesmo repo, "o que entregar pra próxima sessão" e "o que a próxima sessão busca" não podem depender de julgamento.
