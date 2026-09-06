@@ -1050,7 +1050,17 @@ MENOR_DECL=$(cd "$SRC" && node -e "
           menor = Math.min(menor, x.timeout);
   process.stdout.write(String(menor === Infinity ? 0 : menor));
 ")
-if [ "$MENOR_DECL" -gt 0 ] && [ "$ORC_MS" -lt $((MENOR_DECL * 1000)) ]; then
+# `ORC_MS` vem do caso 18 e pode ser a string NAO-ACHEI quando o regex nao casa
+# (alguem move o valor para uma constante nomeada, por exemplo). Sem esta guarda,
+# o `-lt` recebe texto, o bash cospe "integer expression expected" e a mensagem
+# de falha sai como "orcamento NAO-ACHEIms" — o placar ate cai certo, mas o motivo
+# relatado nao ajuda ninguem. Achado do revisor independente em 2026-09-05:
+# veredito certo pelo motivo errado ainda e motivo errado.
+if [ "$ORC_MS" = "NAO-ACHEI" ]; then
+  falhou=$((falhou+1))
+  echo "  FALHA nao da para comparar: o caso 18 nao achou a declaracao de ORCAMENTO_MS."
+  echo "        Conserte o caso 18 primeiro — este aqui depende do numero que ele le."
+elif [ "$MENOR_DECL" -gt 0 ] && [ "$ORC_MS" -lt $((MENOR_DECL * 1000)) ]; then
   ok=$((ok+1)); echo "  ok    orcamento ${ORC_MS}ms < timeout declarado ${MENOR_DECL}s (sobra folga)"
 else
   falhou=$((falhou+1))
