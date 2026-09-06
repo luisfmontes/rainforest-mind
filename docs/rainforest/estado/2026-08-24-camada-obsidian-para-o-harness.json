@@ -171,6 +171,12 @@
     "em": "2026-09-05"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "destino": "PR",
+    "pr": "https://github.com/luisfmontes/rainforest-mind/pull/213",
+    "comando": "gh pr create --base main --head fluxo/camada-obsidian-para-o-harness",
+    "saida": "https://github.com/luisfmontes/rainforest-mind/pull/213",
+    "head": "54ce2f5",
+    "em": "2026-09-05"
   }
 }
