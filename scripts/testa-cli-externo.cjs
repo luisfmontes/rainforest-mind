@@ -6,10 +6,13 @@
 
 const fs = require('fs');
 const path = require('path');
+const cp = require('child_process');
 const { rodarCli, extrairJson } = require('../hooks/lib/cli-externo.cjs');
 
 const SRC = path.join(__dirname, '..');
 const FIXTURES = path.join(SRC, 'scripts', 'fixtures', 'cli-externo');
+const FIXTURES_SEGUNDA_OPINIAO = path.join(SRC, 'scripts', 'fixtures', 'segunda-opiniao');
+const CLI_EXTERNO_PATH = require.resolve('../hooks/lib/cli-externo.cjs');
 
 let ok = 0;
 let falhou = 0;
@@ -84,9 +87,14 @@ testa('cortado por timeout', () => {
   });
   const duracao = Date.now() - inicio;
 
-  // Deve ter sido cortado (status é null quando killed ou saída vazia)
-  if (duracao >= 2000) {
-    throw new Error(`Não foi cortado: duração ${duracao}ms >= 2000ms`);
+  // Deve ter sido cortado (status é null quando killed ou saída vazia).
+  // Teto folgado: rodarCli agora paga matarDescendencia no ramo de timeout,
+  // que no Windows soma 1-2 chamadas a powershell.exe (~1-1.5s cada) para
+  // consultar e matar a descendência. O teto de 8s ainda distingue "cortado"
+  // de "dormiu a fixture inteira" — a fixture dorme 60s, não 10s: subiu junto
+  // com este teto, porque 8s contra 10s deixava só 2s de margem.
+  if (duracao >= 8000) {
+    throw new Error(`Não foi cortado: duração ${duracao}ms >= 8000ms`);
   }
 });
 
@@ -181,6 +189,172 @@ testa('extrai array JSON válido (exercita fallback)', () => {
       `Array JSON não extraído via fallback: ${JSON.stringify(obj)}\n` +
       `  Esperava: [1, 2, 3, 4, 5]`
     );
+  }
+});
+
+console.log('');
+
+// ---- Teste 10: timeout nao deixa descendente vivo ----
+// O timeout do spawnSync mata só o filho direto (cmd.exe/sh) — nunca o neto
+// que executa de verdade. Prova que matarDescendencia (chamada dentro de
+// rodarCli, no ramo de timeout) limpa a árvore inteira.
+//
+// Descobre o PID do filho direto interceptando child_process.spawnSync (o
+// mesmo mecanismo interno de rodarCli) e recarregando o módulo com o cache
+// limpo, para capturar o .pid que o spawnSync devolveu — sem alterar a
+// assinatura pública de rodarCli. A consulta de descendência é por
+// ParentProcessId desse PID; nunca por nome de executável ou string de
+// comando (o utilitário ps do Git Bash com a flag de listagem estendida do
+// Windows não imprime a coluna de comando — filtrar por ali daria falso-negativo).
+console.log('Teste 10: timeout nao deixa descendente vivo');
+
+/**
+ * Lista, recursivamente, todo PID descendente vivo de `pidRaiz` — só por
+ * ParentProcessId, nunca por nome de executável ou linha de comando.
+ */
+function listarDescendentesVivos(pidRaiz) {
+  const filhosDiretos = (pid) => {
+    if (process.platform === 'win32') {
+      const r = cp.spawnSync(
+        'powershell.exe',
+        [
+          '-NoProfile',
+          '-NonInteractive',
+          '-Command',
+          `Get-CimInstance Win32_Process -Filter "ParentProcessId=${pid}" | Select-Object -ExpandProperty ProcessId`,
+        ],
+        { encoding: 'utf8' }
+      );
+      if (!r || r.status !== 0 || !r.stdout) return [];
+      return r.stdout
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .map(Number);
+    }
+    const r = cp.spawnSync('ps', ['-o', 'pid=', '--ppid', String(pid)], { encoding: 'utf8' });
+    if (!r || r.status !== 0 || !r.stdout) return [];
+    return r.stdout
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map(Number);
+  };
+
+  const vivos = [];
+  const fila = [pidRaiz];
+  while (fila.length > 0) {
+    const atual = fila.shift();
+    for (const filho of filhosDiretos(atual)) {
+      vivos.push(filho);
+      fila.push(filho);
+    }
+  }
+  return vivos;
+}
+
+/** Sono síncrono cross-platform — para dar tempo do SO atualizar a tabela de processos. */
+function dormirSincrono(ms) {
+  if (process.platform === 'win32') {
+    cp.spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `Start-Sleep -Milliseconds ${ms}`]);
+  } else {
+    cp.spawnSync('sleep', [String(ms / 1000)]);
+  }
+}
+
+testa('timeout nao deixa descendente vivo', () => {
+  // Intercepta child_process.spawnSync para capturar o PID do filho direto
+  // que rodarCli cria — sem mudar a assinatura/retorno público de rodarCli.
+  const spawnSyncOriginal = cp.spawnSync;
+  let pidCriado = null;
+  cp.spawnSync = function interceptado(...args) {
+    const r = spawnSyncOriginal.apply(this, args);
+    if (pidCriado === null && r && typeof r.pid === 'number') {
+      pidCriado = r.pid;
+    }
+    return r;
+  };
+
+  delete require.cache[CLI_EXTERNO_PATH];
+  const { rodarCli: rodarCliInterceptado } = require(CLI_EXTERNO_PATH);
+
+  let resultado;
+  try {
+    const cmd = `node "${path.join(FIXTURES_SEGUNDA_OPINIAO, 'externo-indisponivel-timeout.cjs')}"`;
+    resultado = rodarCliInterceptado({ cmd, entrada: '', timeoutMs: 800 });
+  } finally {
+    cp.spawnSync = spawnSyncOriginal;
+    delete require.cache[CLI_EXTERNO_PATH];
+  }
+
+  if (resultado.status !== null) {
+    throw new Error(`Esperava status null (timeout), recebeu: ${resultado.status}`);
+  }
+  if (pidCriado === null) {
+    throw new Error('Não foi possível capturar o PID do filho direto criado por rodarCli');
+  }
+
+  dormirSincrono(2000);
+
+  const sobreviventes = listarDescendentesVivos(pidCriado);
+  if (sobreviventes.length > 0) {
+    throw new Error(
+      `Descendente(s) sobreviveram ao timeout: PID(s) ${sobreviventes.join(', ')} ` +
+      `(raiz PID ${pidCriado})`
+    );
+  }
+});
+
+console.log('');
+
+// ---- Teste 11: PID raiz reusado nao mata descendencia alheia ----
+//
+// O cenario que duas revisoes independentes acharam: quando matarDescendencia
+// roda, o cmd.exe ja morreu, e o PID dele e' candidato a reuso. Se o SO
+// reatribuir aquele numero a um processo alheio dentro da janela da consulta,
+// os filhos DESSE processo nascem depois do marco, passam pela guarda de data
+// e seriam mortos.
+//
+// Aqui o cenario e' encenado sem depender de corrida: passamos o PID deste
+// proprio processo node como "raiz". Ele nao e' cmd.exe/sh, entao representa
+// exatamente o PID reciclado por outro dono — e o filho legitimo dele, criado
+// depois do marco, TEM de sobreviver. Sem a guarda de raiz este teste mata o
+// proprio filho e falha.
+console.log('Teste 11: PID raiz reusado nao mata descendencia alheia');
+testa('raiz que nao e a minha aborta em vez de matar', () => {
+  const { matarDescendencia } = require('../hooks/lib/cli-externo.cjs');
+  const marco = Date.now();
+  const alheio = cp.spawn(
+    process.execPath,
+    ['-e', 'setTimeout(() => process.exit(0), 30000)'],
+    { stdio: 'ignore', detached: false }
+  );
+  try {
+    // nasce depois do marco e e' descendente do PID passado: sem a guarda de
+    // raiz, cai direto na lista de alvos
+    const esperaAte = Date.now() + 3000;
+    while (Date.now() < esperaAte && !listarDescendentesVivos(process.pid).includes(alheio.pid)) {
+      cp.spawnSync(process.execPath, ['-e', '0']);
+    }
+    if (!listarDescendentesVivos(process.pid).includes(alheio.pid)) {
+      throw new Error(`andaime falhou: o filho ${alheio.pid} nao apareceu como descendente`);
+    }
+
+    matarDescendencia(process.pid, marco);
+
+    cp.spawnSync(process.execPath, ['-e', 'setTimeout(()=>{},1200)']);
+    if (!listarDescendentesVivos(process.pid).includes(alheio.pid)) {
+      throw new Error(
+        `matou processo de outro dono: o filho ${alheio.pid} do PID ${process.pid} ` +
+          `(que nao e cmd.exe/sh) foi morto — a guarda de reuso do PID raiz nao pegou`
+      );
+    }
+  } finally {
+    try {
+      alheio.kill();
+    } catch (e) {
+      /* ja saiu */
+    }
   }
 });
 
