@@ -40,21 +40,23 @@
     "em": "2026-09-05"
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "2ac28798f4fa539f12c3624272a6f7d55442dbc3",
-      "caminhos_sujos": [
-        "docs/rainforest/design/2026-09-05-observar-orcamento-sessionend.md",
-        "docs/rainforest/estado/2026-09-05-observar-orcamento-sessionend.json",
-        "docs/rainforest/planos/2026-09-05-observar-orcamento-sessionend.md",
-        "hooks/hooks.json",
-        "scripts/observar.cjs",
-        "scripts/testa-observar.sh"
-      ]
-    }
+      "head": "c002e737c4c86a52c3c2fa2732d9ba4bd086b1de",
+      "caminhos_sujos": []
+    },
+    "achados": 1,
+    "base": "2ac2879",
+    "head": "c002e73",
+    "em": "2026-09-05"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "grep -c '|| 25000;' scripts/observar.cjs (T1); node parser do hooks.json (T2); bash scripts/testa-observar.sh (T3)",
+    "saida": "T1: 1 ocorrencia de 25000 e 0 de 90000. T2: SessionStart timeout=30 | SessionEnd timeout=30 | JSON valido: sim. T3: exit 0, == resultado: 41 ok, 0 falha(s) ==. Revisor independente aprovou c002e73 apos reaplicar as duas mutacoes originais: ORCAMENTO_MS 25000->90000 da 39 ok/2 falhas (casos 18 e 20) e SessionEnd 30->120 da 40 ok/1 falha (caso 19, nomeando SessionEnd:120).",
+    "tarefas_ok": 3,
+    "tarefas": 3,
+    "em": "2026-09-05"
   },
   "fechar": {
     "status": "pendente"
