@@ -55,4 +55,33 @@ merge, com o principal na `main`.
 
 ### (b) parecer do `revisor` em Codex
 
-Colhido no estágio `revisar`, abaixo.
+Colhido no estágio `revisar`, em duas rodadas.
+
+**Rodada 1** — briefing com o diff inteiro da branch (36 arquivos) e cinco
+baterias para rodar: estourou o teto de 10 minutos (D6). Saída literal da
+ponte: stdout vazio, stderr `timeout apos 600000 ms`, exit 124. O processo
+`codex` foi morto (nenhum órfão em `tasklist`) e o `-o` temporário não ficou.
+Lição registrada na emenda do design: revisão em Codex se fatia por arquivo,
+e sem bateria, porque o sandbox `read-only` também nega escrita em temp.
+
+**Rodada 2** — fatia: `scripts/despachar-codex.cjs` e
+`hooks/gate-review-codex.cjs`, só leitura. Exit 0 em cerca de 4 minutos.
+Comando (caminhos abreviados): `codex exec -s read-only --skip-git-repo-check
+-C "<worktree>" -c approval_policy="never" -o "<home>\AppData\Local\Temp\despachar-codex-<pid>-<ts>.txt"`.
+Parecer literal, resumido linha a linha:
+
+```
+PARECER: REPROVADO
+1. CRÍTICO — transcript ausente ou ilegível libera o encerramento (gate-review-codex.cjs:139-148, process.exit(0)).
+2. AVISO — o briefing temporário do gate vaza: process.exit dentro do try pula o finally
+   (evidência: node -e "try { process.exit(0) } finally { console.log('x') }" não imprime).
+3. AVISO — --agente permite escapar de agents/ (`--agente ../segredo` → <repo>/segredo.md).
+4. AVISO — a limpeza do -o temporário não cobre falha de leitura/remoção nem exceção em main().
+CONFIRMADO — sem defeito nos caminhos com espaço (-C e -o entre aspas); exit ≠ 0 propagado;
+status null → 124; flag desconhecida → exit 1; JSON {"decision":"block","reason":...}.
+LACUNA — não observou ALLOW/BLOCK de ponta a ponta (sandbox read-only proíbe escrever temp).
+```
+
+Os quatro achados foram reproduzidos pelo revisor com comando e saída, dois
+deles coincidindo com o revisor em Claude (transcript ausente; `-o`
+temporário). Todos corrigidos nesta branch no próprio `revisar`.

@@ -9,7 +9,8 @@ model: sonnet
 ponte: NÃO execute a tarefa, não leia o repositório, não confira nada. Faça, na
 ordem: (1) grave o briefing inteiro que recebeu num arquivo temporário FORA do
 worktree (ex.: `$TEMP/briefing-planejador-<timestamp>.md`); (2) uma única chamada
-Bash: `node "<script>" --agente planejador
+Bash com `timeout: 600000` — o default de 2 min da ferramenta mata o Codex antes
+do teto do script (`--timeout-ms`, default 540000; não aumente): `node "<script>" --agente planejador
 --worktree "$(git rev-parse --show-toplevel)" --escreve false --briefing-file
 "<arquivo>"`, onde `<script>` é, nesta ordem: o caminho da linha `Despacho: <caminho>` do
 briefing, se houver; senão `$CLAUDE_PLUGIN_ROOT/scripts/despachar-codex.cjs`;

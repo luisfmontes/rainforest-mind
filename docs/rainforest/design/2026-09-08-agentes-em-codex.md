@@ -151,3 +151,20 @@ trabalha em paralelo neste repo.
   (`$CLAUDE_PROJECT_DIR`). A linha `"runtime"` no `despachos.jsonl` só aparece
   ao vivo depois do merge; a prova antes disso é rodar o hook da branch contra
   o payload real, que foi o que a T8 fez.
+- **D6 na prática: o teto de 10 minutos não cabe uma revisão de branch
+  inteira.** O `revisor` em Codex sobre o diff de 36 arquivos, com cinco
+  baterias para rodar, estourou os 600000 ms (exit 124, processo morto, `-o`
+  limpo). Fatia que cabe: dois arquivos, sem bateria (o sandbox `read-only`
+  também nega escrita em temp, e bateria escreve). Quem despacha revisão em
+  Codex fatia por arquivo; a revisão da branch inteira fica com o Claude.
+- **A ponte precisa estender o timeout da própria chamada Bash.** A ferramenta
+  Bash do subagente mata em 2 minutos por default, antes do teto do script;
+  o preâmbulo passou a mandar `timeout: 600000`. Sem isso, `codex` e filhos
+  ficariam órfãos, porque o `matarDescendencia` só roda quando é o script que
+  estoura.
+- **D3, custo da ponte:** "um haiku por despacho" vale para `executor`,
+  `documentador` e `resolvedor-de-build`; os outros seis agentes são `sonnet`,
+  e a ponte deles custa uma chamada sonnet.
+- **D8, opt-in:** o script `transferir-para-codex.cjs` nasceu sem conferir a
+  chave `transfer-codex` (só o hook de `SessionStart` conferia). Corrigido no
+  `revisar`: o script recusa com exit 3 quando a chave está desligada.

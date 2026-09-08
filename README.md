@@ -154,10 +154,16 @@ mesmo assim**.
 | `gate-repo-alheio.cjs` | escrita cujo destino está dentro de **outro** repositório git |
 | `gate-fechar-issue.cjs` | `gh issue close` direto, e `closes #N` em PR sem comentário de evidência marcado |
 | `portaria.cjs` | despacho de subagente não declarado em `.rainforest/agentes.json`, ou sem `isolation: "worktree"` quando ele escreve |
-| `gate-review-codex.cjs` (`Stop`, **opt-in**) | encerrar o turno sem o `revisor` em Codex dizer `ALLOW` sobre a última resposta; indisponibilidade bloqueia com motivo (falha fechada) |
+
+Fora da tabela porque o mecanismo é outro (`Stop`, exit 0 com
+`{"decision":"block"}`, e **opt-in** pela chave `gate-review-codex`):
+`gate-review-codex.cjs` barra encerrar o turno sem o `revisor` em Codex dizer
+`ALLOW` sobre a última resposta; Codex indisponível ou resposta irreconhecível
+bloqueia com motivo (falha fechada). Transcript que o hook não consegue ler
+libera com aviso, porque aí não há pergunta a fazer.
 
 Valem em **qualquer** repo git da máquina, porque o hábito é que é o problema,
-não o repositório. Cada uma tem bateria própria — **427 casos** rodando o hook
+não o repositório. Cada uma tem bateria própria — **440 casos** rodando o hook
 de verdade contra repos git montados na hora.
 
 → O incidente de origem de cada trava, as saídas de emergência e a tabela de
