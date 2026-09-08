@@ -3,7 +3,7 @@
  * Dublê Node para Codex — simula exec com stdin/stdout controlado.
  *
  * Variáveis de ambiente:
- * - DUBLE_MODO: "ok" (exit 0), "falha" (exit 1 + stderr), "dorme" (dorme 5s)
+ * - DUBLE_MODO: "ok" (exit 0), "falha" (exit 1 + stderr), "dorme" (dorme 5s), "transfer" (emite thread.started + agent_message)
  * - DUBLE_STDIN_OUT: arquivo onde escrever o stdin recebido
  * - DUBLE_CMD_OUT: arquivo onde escrever o comando (env.DESPACHAR_CODEX_CMD_REAL)
  * - DUBLE_SAIDA: arquivo onde escrever "RESPOSTA DO DUBLE"
@@ -49,6 +49,27 @@ async function main() {
   if (modo === 'dorme') {
     // Dorme 5 segundos antes de sair
     await new Promise(r => setTimeout(r, 5000));
+  }
+
+  // Modo transfer: emite eventos JSONL
+  if (modo === 'transfer') {
+    // Emite thread.started
+    console.log(JSON.stringify({
+      type: 'thread.started',
+      thread_id: 'abc-123',
+    }));
+    // Emite item.completed com agent_message
+    console.log(JSON.stringify({
+      type: 'item.completed',
+      item: {
+        type: 'agent_message',
+        text: 'ok, continuo daqui',
+      },
+    }));
+    // Emite turn.completed
+    console.log(JSON.stringify({
+      type: 'turn.completed',
+    }));
   }
 
   // Grava saída
