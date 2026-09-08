@@ -30,7 +30,9 @@ mutacao:
   para: formatar sempre como `<h>h<mm>` (apagar o ramo de dias)
   bateria: `bash scripts/testa-statusline.sh`
   fixture: caso "7d com 3 dias e 4 horas" da bateria `testa-statusline-limites.py`
-pronto quando: com o JSON do harness no stdin contendo `rate_limits.five_hour = {"used_percentage": 23.5, "resets_at": <agora + 7800 s>}` e `seven_day = {"used_percentage": 41.2, "resets_at": <agora + 3*86400 + 4*3600>}`, a barra imprime `5h 23% ↻2h10 7d 41% ↻3d4h` (sem ANSI) — provado por `python statusline/testa-statusline-limites.py statusline/statusline.py` devolvendo `OK` em todos os casos, inclusive `resets_at` ausente (sem `↻`), `resets_at` no passado (sem `↻`) e `resets_at` string (sem `↻`, sem exceção).
+pronto quando: com o JSON do harness no stdin contendo `rate_limits.five_hour = {"used_percentage": 23.4, "resets_at": <agora + 7800 s>}` e `seven_day = {"used_percentage": 41.2, "resets_at": <agora + 3*86400 + 4*3600>}`, a barra imprime `5h 23% ↻2h10 7d 41% ↻3d4h` (sem ANSI) — provado por `python statusline/testa-statusline-limites.py statusline/statusline.py` devolvendo `OK` em todos os casos, inclusive `resets_at` ausente (sem `↻`), `resets_at` no passado (sem `↻`) e `resets_at` string (sem `↻`, sem exceção).
+
+**Achado ao executar (2026-09-08), consertado aqui porque mora no mesmo arquivo e o caso ponta a ponta o pega:** o `main()` chamava `segmento_escada_intensidade()` e ela chamava `resolver_raiz_dados()` sem o `cwd` obrigatório — `TypeError`, barra inteira vazia, desde 27fcb1f (Tarefa 6 do dial de intensidade). Nenhuma das três baterias anteriores passava pelo `main()`, então nenhuma reprovou. A versão 1.8.1 instalada no cache tem o defeito: a barra do harness estava vazia em toda sessão. O caso "ponta a ponta pelo stdin" da bateria nova roda o `main()` de verdade e falha se qualquer segmento estourar.
 
 ### 2. `estado.cjs iniciar` recusa checkout principal fora da branch padrão [tipo: implementar]
 atende: D3

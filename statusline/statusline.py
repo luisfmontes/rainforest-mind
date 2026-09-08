@@ -546,13 +546,19 @@ def segmento_versao(transcript_path):
 
 
 
-def segmento_escada_intensidade():
+def segmento_escada_intensidade(cwd):
     """Mostra o nível ativo de intensidade da escada YAGNI.
 
     Le config.json da pasta de dados e mostra o nível configurado.
     Se nao estiver configurado, retorna string vazia (nao mostra nada).
+
+    Recebe o `cwd` porque `resolver_raiz_dados` precisa dele. Entre 27fcb1f e
+    2026-09-08 a chamada vinha sem argumento, e o TypeError derrubava `main()`
+    inteiro: a barra do harness ficou VAZIA em toda sessao, sem nenhuma bateria
+    reprovar — nenhuma delas passava pelo `main()`. O caso ponta a ponta de
+    `testa-statusline-limites.py` existe para isso.
     """
-    raiz_dados = resolver_raiz_dados()
+    raiz_dados = resolver_raiz_dados(cwd)
     if not raiz_dados:
         return ""
 
@@ -577,6 +583,45 @@ def segmento_escada_intensidade():
     return c(f"escada:{simbolo}", CIANO)
 
 
+# --------------------------------------------------------------- limites ---
+def tempo_ate(resets_at, agora):
+    """'2h10' abaixo de um dia, '3d4h' de um dia em diante; '' se ja passou ou
+    se `resets_at` nao e numero (o harness manda epoch em segundos, e a barra
+    nao pode estourar com o que quer que venha no lugar)."""
+    if isinstance(resets_at, bool) or not isinstance(resets_at, (int, float)):
+        return ""
+    restante = int(resets_at - agora)
+    if restante <= 0:
+        return ""
+    if restante >= 86400:
+        return "%dd%dh" % (restante // 86400, (restante % 86400) // 3600)
+    return "%dh%02d" % (restante // 3600, (restante % 3600) // 60)
+
+
+def segmento_limites(limites, agora=None):
+    """'5h 23% ↻2h10 7d 41% ↻3d4h' — percentual usado e quanto falta
+    para a janela reiniciar. Janela sem `used_percentage` nao aparece; janela
+    sem `resets_at` valido aparece so com o percentual."""
+    if not isinstance(limites, dict):
+        return ""
+    if agora is None:
+        agora = datetime.datetime.now().timestamp()
+    partes = []
+    for chave, rotulo in (("five_hour", "5h"), ("seven_day", "7d")):
+        janela = limites.get(chave)
+        if not isinstance(janela, dict):
+            continue
+        pct = janela.get("used_percentage")
+        if isinstance(pct, bool) or not isinstance(pct, (int, float)):
+            continue
+        texto = "%s %d%%" % (rotulo, round(pct))
+        falta = tempo_ate(janela.get("resets_at"), agora)
+        if falta:
+            texto += " ↻" + falta
+        partes.append(c(texto, por_faixa(pct, 60, 85)))
+    return " ".join(partes)
+
+
 # ------------------------------------------------------------------ main ---
 def main():
     try:
@@ -597,17 +642,10 @@ def main():
     if isinstance(ctx, (int, float)):
         segmentos.append(c("ctx %d%%" % round(ctx), por_faixa(ctx, 50, 75)))
 
-    limites = dados.get("rate_limits", {})
-    partes_limite = []
-    for chave, rotulo in (("five_hour", "5h"), ("seven_day", "7d")):
-        pct = limites.get(chave, {}).get("used_percentage")
-        if isinstance(pct, (int, float)):
-            partes_limite.append(c("%s %d%%" % (rotulo, round(pct)), por_faixa(pct, 60, 85)))
-    if partes_limite:
-        segmentos.append(" ".join(partes_limite))
+    segmentos.append(segmento_limites(dados.get("rate_limits")))
 
     segmentos.append(segmento_tempo())
-    segmentos.append(segmento_escada_intensidade())
+    segmentos.append(segmento_escada_intensidade(cwd))
     segmentos.append(segmento_co_locada(cwd))
     segmentos.append(segmento_versao(transcript_path))
     segmentos.append(segmento_prazo())
