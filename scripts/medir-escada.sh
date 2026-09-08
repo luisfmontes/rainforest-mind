@@ -54,21 +54,22 @@ echo
 # Função: rodar gate
 rodar_gate() {
   local tarefa="$1" codigo="$2"
-  local escaped_codigo
-  # Escapar aspas para passar para o node
-  escaped_codigo=$(printf '%s\n' "$codigo" | sed 's/\\/\\\\/g; s/`/\\`/g; s/"/\\"/g')
+  # Codificar o código em base64 para evitar injeção de template literal
+  local codigo_b64
+  codigo_b64=$(printf '%s' "$codigo" | base64 -w 0)
 
   node -e "
 const gates = require('./$GATES_FILE');
 const gate = gates['$tarefa'];
 if (!gate) { console.log(JSON.stringify({ok:false})); process.exit(0); }
 try {
-  const resultado = gate.assert(\`$escaped_codigo\`);
+  const codigo = Buffer.from('$codigo_b64', 'base64').toString('utf8');
+  const resultado = gate.assert(codigo);
   console.log(JSON.stringify(resultado));
 } catch(e) {
   console.log(JSON.stringify({ok:false,erro:e.message}));
 }
-" 2>/dev/null || echo '{"ok":false}'
+" || echo '{"ok":false}'
 }
 
 # Relatório
