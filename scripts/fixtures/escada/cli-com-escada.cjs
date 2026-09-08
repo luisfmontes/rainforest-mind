@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 /**
- * CLI fake para testes — retorna código curto que passa no gate
- * Uso: echo "prompt" | node cli-ok.cjs
+ * CLI fake para testes — retorna código diferente conforme tenha escada
+ * Código COM escada é mais curto (ganho > 0)
+ * Uso: echo "prompt" | node cli-com-escada.cjs
  */
-const dublador = require('../../dubliador-llm-codigo-ok.cjs');
+const dublador = require('./dublador-com-escada.cjs');
 
 let entrada = '';
 process.stdin.on('data', chunk => {

@@ -66,6 +66,23 @@ marca "exit 0 sem CLI" $((exit3 == 0 ? 0 : 1))
 marca "reporta 'PULO'" $( (echo "$saida" | grep -q "PULO" && echo 0) || echo 1)
 marca "NÃO tem números de medição" $( (! echo "$saida" | grep -qE "^\s+tarefa" && echo 0) || echo 1)
 
+unset RFM_MEDIR_CLI_CMD
+
+# TESTE 4: Com CLI com-escada — mede Ganho (Sem != Com)
+echo
+echo "Teste 4: CLI com-escada (mede ganho)"
+export RFM_MEDIR_CLI_CMD="node scripts/fixtures/escada/cli-com-escada.cjs"
+
+saida=$(bash scripts/medir-escada.sh 2>&1)
+exit4=$?
+
+marca "exit 0 com CLI com-escada" $((exit4 == 0 ? 0 : 1))
+marca "tem PASS em todas as tarefas" $( (echo "$saida" | grep "PASS" | wc -l | grep -qE "^[5-9]" && echo 0) || echo 1)
+marca "Ganho total > 0" $( (echo "$saida" | grep "Ganho:" | grep -qE "Ganho: [1-9]" && echo 0) || echo 1)
+marca "Todos valores Ganho > 0 em tarefas" $( (! echo "$saida" | grep "tarefa" | grep "| *0 *|" && echo 0) || echo 1)
+
+unset RFM_MEDIR_CLI_CMD
+
 echo
 echo "== Resultado =="
 echo "✓ Passou:  $ok"
