@@ -29,6 +29,20 @@ era a do checkout principal). Falta ver o caminho que o usuário vai usar.
   relatório registra. Sem Issue para erro deste trabalho; Issue só para
   defeito alheio à ponte (regra do usuário, 2026-09-08).
 
+- **D5 — Codex sem cota falha fechado e legível.** Pedido do usuário em
+  2026-09-08, com o limite de 5 h estourado naquele instante. Medido na hora:
+  `codex exec` sai **1**, não cria o `-o`, e escreve no stderr
+  `ERROR: You've hit your usage limit ... try again at 5:41 PM`;
+  `despachar-codex.cjs` propaga exit 1 com stdout vazio e o stderr do Codex
+  colado depois da linha `comando:`. Fechado já está (exit ≠ 0 é bloqueio
+  para a ponte e para o gate). Legível ainda não: a causa fica na 12ª linha
+  do stderr, atrás do banner do Codex, e o gate diria só "falha fechada —
+  exit 1". O script passa a reconhecer a mensagem de cota e sair com
+  **exit 75** (`EX_TEMPFAIL`: passageiro, tente depois) e uma primeira linha
+  de stderr `codex sem cota: <mensagem original>`; o gate repete essa linha
+  no `reason`. Bateria com dublê em modo `semcota`. O `--json` do Codex traz o
+  mesmo texto num evento `error`, e o `/transferir` ganha a mesma leitura.
+
 ## Fora de escopo
 
 - `/transferir` e `gate-review-codex` ao vivo.
