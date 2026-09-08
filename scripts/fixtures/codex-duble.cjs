@@ -6,7 +6,8 @@
  * - DUBLE_MODO: "ok" (exit 0), "falha" (exit 1 + stderr), "dorme" (dorme 5s), "transfer" (emite thread.started + agent_message),
  *   "parecer" (grava DUBLE_PARECER no arquivo -o do comando real — costura com o gate de Stop),
  *   "semcota" (stderr e exit 1 do codex exec real sem cota, medido em 2026-09-08),
- *   "semcota-json" (a mesma falha como eventos JSONL no stdout, para o --json do transferir)
+ *   "semcota-json" (a mesma falha como eventos JSONL no stdout, para o --json do transferir),
+ *   "semcota-json-exit0" (idem, mas exit 0 — a cota só no evento)
  * - DUBLE_PARECER: texto do parecer no modo "parecer" (default "ALLOW: ok")
  * - DUBLE_STDIN_OUT: arquivo onde escrever o stdin recebido
  * - DUBLE_CMD_OUT: arquivo onde escrever o comando (env.DESPACHAR_CODEX_CMD_REAL)
@@ -114,12 +115,14 @@ async function main() {
 
   // Modo semcota-json: a mesma falha vista pelo `codex exec --json` (o que o
   // transferir-para-codex.cjs usa) — eventos no stdout, mensagem no evento error.
-  if (modo === 'semcota-json') {
+  // Variante semcota-json-exit0: mesmos eventos, exit 0 — cobre o ramo em que a
+  // cota só aparece no evento (detectarSemCotaEmEventos), sem exit ≠ 0 para acusar.
+  if (modo === 'semcota-json' || modo === 'semcota-json-exit0') {
     console.log(JSON.stringify({ type: 'thread.started', thread_id: 'sem-cota-000' }));
     console.log(JSON.stringify({ type: 'turn.started' }));
     console.log(JSON.stringify({ type: 'error', message: MSG_COTA }));
     console.log(JSON.stringify({ type: 'turn.failed', error: { message: MSG_COTA } }));
-    process.exit(1);
+    process.exit(modo === 'semcota-json' ? 1 : 0);
   }
 
   // Sai com status apropriado

@@ -388,6 +388,21 @@ else
 fi
 
 echo ""
+echo "== CASO 10: exit 0 mas evento error/turn.failed com cota → exit 75 (ramo positivo do detector de eventos) ==="
+OUT_10="$RAIZ/out-10.txt"; ERR_10="$RAIZ/err-10.txt"
+DUBLE_MODO=semcota-json-exit0   RFM_TEST=1 RFM_HOME="$RFMHOME_M"   RFM_ROOT="$RFMHOME_M/.rainforest" CLAUDE_PROJECT_DIR="$RFMHOME_M"   CODEX_CMD="node $DUBLE_M"   node "$PLUGIN/scripts/transferir-para-codex.cjs"   --source "$TRANSCRIPT_M" --cwd "$CWD_M" > "$OUT_10" 2> "$ERR_10"
+exit_10=$?
+if [ "$exit_10" = "75" ] && grep -q "^codex sem cota: You've hit your usage limit" "$ERR_10" && ! grep -q "codex resume" "$OUT_10"; then
+  ok=$((ok + 1))
+  echo "  ok   caso 10: cota só no evento, exit 0 do Codex → exit 75, sem codex resume"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA caso 10: exit $exit_10; stdout: $(cat "$OUT_10" | tr '
+' ' '); stderr: $(head -2 "$ERR_10" | tr '
+' ' ')"
+fi
+
+echo ""
 echo "== RESULTADO =="
 echo "resultado: $ok ok, $falhou falha(s)"
 if [ "$falhou" -gt 0 ]; then
