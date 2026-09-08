@@ -16,6 +16,11 @@
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/memoria-marca.cjs\" --recover",
             "async": true,
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/codex-transfer-session-start.cjs\"",
+            "timeout": 5
           }
         ]
       },
@@ -87,6 +92,15 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/gate-agente-em-voo.cjs\""
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/gate-review-codex.cjs\"",
+            "timeout": 660
           }
         ]
       },

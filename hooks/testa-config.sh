@@ -116,9 +116,9 @@ node - "$SBP/config-mutante.cjs" <<'JS'
 const fs = require("fs");
 const alvo = process.argv[2];
 const antes = fs.readFileSync(alvo, "utf8");
-const de = "  'gate-staging': {\n    padrao: true,";
+const de = "  'gate-staging': {\n    tipo: 'boolean',\n    padrao: true,";
 if (!antes.includes(de)) throw new Error("ancora do padrao de gate-staging sumiu");
-fs.writeFileSync(alvo, antes.replace(de, "  'gate-staging': {\n    padrao: false,"), "utf8");
+fs.writeFileSync(alvo, antes.replace(de, "  'gate-staging': {\n    tipo: 'boolean',\n    padrao: false,"), "utf8");
 JS
 printf '{nao e json' > "$SBP/proj/.rainforest/config.json"
 MUT="$(node -e "
@@ -280,6 +280,75 @@ igual "sem config, poda e true (padrao)"              "true padrao"   "$(poda '{
 igual "projeto sobrescreve para false"                "false projeto" "$(poda '{"poda":false}' '{}')"
 igual "usuario vale sem projeto"                      "true usuario"  "$(poda '{}' '{"poda":true}')"
 igual "projeto vence usuario"                         "false projeto" "$(poda '{"poda":false}' '{"poda":true}')"
+rm -f "$SBP/proj/.rainforest/config.json" "$SBP/lar/.rainforest/config.json"
+
+echo
+echo "== 10. Chaves tipo 'modelo' — mapas de modelo para Codex =="
+# Caso (a): valor bem formado no projeto
+mkdir -p "$SBP/lar/.rainforest" "$SBP/proj/.rainforest"
+printf '{}' > "$SBP/proj/.rainforest/config.json"
+printf '{}' > "$SBP/lar/.rainforest/config.json"
+printf '{"codex-modelo-sonnet": {"modelo": "gpt-5.6-sol", "esforco": "high"}}' > "$SBP/proj/.rainforest/config.json"
+VAL_A="$(RFM_ROOT="$SB/lar/.rainforest" node -e "
+  const { resolverConfig } = require('$SRC_WIN/hooks/lib/config.cjs');
+  const r = resolverConfig({ projeto: '$PROJ' });
+  process.stdout.write(JSON.stringify(r.valores['codex-modelo-sonnet']) + ' ' + r.origem['codex-modelo-sonnet']);
+" 2>&1)"
+igual "(a) objeto bem formado resolve" '{"modelo":"gpt-5.6-sol","esforco":"high"} projeto' "$VAL_A"
+
+# Caso (b): valor mal formado (string solta) cai para o padrao
+printf '{"codex-modelo-sonnet": "so-uma-string"}' > "$SBP/proj/.rainforest/config.json"
+VAL_B="$(RFM_ROOT="$SB/lar/.rainforest" node -e "
+  const { resolverConfig } = require('$SRC_WIN/hooks/lib/config.cjs');
+  const r = resolverConfig({ projeto: '$PROJ' });
+  process.stdout.write(String(r.valores['codex-modelo-sonnet']) + ' ' + r.origem['codex-modelo-sonnet']);
+" 2>&1)"
+igual "(b) valor string malformado cai no padrao null" "null padrao" "$VAL_B"
+
+# Caso (b2): objeto SEM `modelo` cai para o padrao — e o caso que a mutacao fina
+# (trocar so `typeof valor.modelo === 'string'` por `true`) deixava passar em
+# 2026-09-08: a string solta do (b) morre no `typeof === 'object'` antes de
+# chegar na exigencia do campo, entao o (b) sozinho nao media essa linha.
+printf '{"codex-modelo-sonnet": {"esforco": "high"}}' > "$SBP/proj/.rainforest/config.json"
+VAL_B2="$(RFM_ROOT="$SB/lar/.rainforest" node -e "
+  const { resolverConfig } = require('$SRC_WIN/hooks/lib/config.cjs');
+  const r = resolverConfig({ projeto: '$PROJ' });
+  process.stdout.write(String(r.valores['codex-modelo-sonnet']) + ' ' + r.origem['codex-modelo-sonnet']);
+" 2>&1)"
+igual "(b2) objeto sem 'modelo' cai no padrao null" "null padrao" "$VAL_B2"
+
+# Caso (b3): `esforco` que nao e string tambem cai para o padrao
+printf '{"codex-modelo-sonnet": {"modelo": "gpt-5.6-sol", "esforco": 3}}' > "$SBP/proj/.rainforest/config.json"
+VAL_B3="$(RFM_ROOT="$SB/lar/.rainforest" node -e "
+  const { resolverConfig } = require('$SRC_WIN/hooks/lib/config.cjs');
+  const r = resolverConfig({ projeto: '$PROJ' });
+  process.stdout.write(String(r.valores['codex-modelo-sonnet']) + ' ' + r.origem['codex-modelo-sonnet']);
+" 2>&1)"
+igual "(b3) esforco nao-string cai no padrao null" "null padrao" "$VAL_B3"
+
+# Caso (c): sem a chave, resolve para null
+printf '{}' > "$SBP/proj/.rainforest/config.json"
+VAL_C="$(RFM_ROOT="$SB/lar/.rainforest" node -e "
+  const { resolverConfig } = require('$SRC_WIN/hooks/lib/config.cjs');
+  const r = resolverConfig({ projeto: '$PROJ' });
+  process.stdout.write(String(r.valores['codex-modelo-opus']) + ' ' + r.origem['codex-modelo-opus']);
+" 2>&1)"
+igual "(c) chave ausente resolve para null padrao" "null padrao" "$VAL_C"
+
+# Caso (d): booleanas transfer-codex e gate-review-codex
+transfer() { # config_projeto_json, config_usuario_json
+  mkdir -p "$SBP/lar/.rainforest" "$SBP/proj/.rainforest"
+  printf '%s' "$1" > "$SBP/proj/.rainforest/config.json"
+  printf '%s' "$2" > "$SBP/lar/.rainforest/config.json"
+  RFM_ROOT="$SB/lar/.rainforest" node -e "
+    const { resolverConfig } = require('$SRC_WIN/hooks/lib/config.cjs');
+    const r = resolverConfig({ projeto: '$PROJ' });
+    process.stdout.write(r.valores['transfer-codex'] + ' ' + r.origem['transfer-codex'] + ' + ' +
+                         r.valores['gate-review-codex'] + ' ' + r.origem['gate-review-codex']);
+  " 2>&1
+}
+igual "(d) transfer-codex padrao false, gate-review-codex padrao false" "false padrao + false padrao" "$(transfer '{}' '{}')"
+igual "(d) ambas ligadas no projeto" "true projeto + true projeto" "$(transfer '{"transfer-codex":true,"gate-review-codex":true}' '{}')"
 rm -f "$SBP/proj/.rainforest/config.json" "$SBP/lar/.rainforest/config.json"
 
 echo

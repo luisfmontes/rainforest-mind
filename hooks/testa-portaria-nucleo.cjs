@@ -830,6 +830,156 @@ console.log("== 18. deny por agente ausente registra o estagio ativo, nao '?' ==
   fs.rmSync(raiz2, { recursive: true, force: true });
 }
 
+/* == 19. override de runtime no bloco 1 do prompt vence o default do manifesto ==
+ *
+ * Precedência: linha isolada `Runtime: <valor>` no prompt > manifesto.runtime > "claude"
+ *
+ * O manifesto não declara `runtime`, então sem a linha no prompt seria "claude".
+ * Com a linha `Runtime: codex` no prompt, espera-se `"runtime":"codex"` na linha do jsonl.
+ */
+console.log("== 19. override de runtime no prompt vence o manifesto ==");
+{
+  const raiz = caixa();
+  iniciarGit(raiz, "fluxo/teste");
+  criarEstadoAtivo(raiz, "teste", "revisar");
+  criarManifesto(raiz, manifestoD2({
+    revisor: { estagios: ["revisar"], escreve: false },
+    // Sem campo `runtime` — default seria "claude"
+  }));
+
+  const payload = {
+    session_id: "teste-19",
+    tool_input: {
+      subagent_type: "revisor",
+      prompt: "Runtime: codex\n\n## 1. Contexto\nEste e um teste.",
+    },
+  };
+
+  const r = rodaHook(raiz, JSON.stringify(payload));
+  caso("exit 0", r.status === 0, `exit=${r.status}`);
+
+  const logPath = path.join(raiz, ".rainforest", "portaria", "despachos.jsonl");
+  if (fs.existsSync(logPath)) {
+    const linhas = fs
+      .readFileSync(logPath, "utf8")
+      .trim()
+      .split("\n");
+
+    const ultima = linhas[linhas.length - 1];
+    let entrada = null;
+    try {
+      entrada = JSON.parse(ultima);
+    } catch {}
+
+    caso("última linha é JSON válido", entrada !== null, ultima);
+    if (entrada) {
+      caso("decisao = 'allow'", entrada.decisao === "allow", entrada.decisao);
+      caso("runtime = 'codex' (override do prompt)", entrada.runtime === "codex", entrada.runtime);
+    }
+  } else {
+    caso("último linha é JSON válido", false, "log não criado");
+  }
+
+  fs.rmSync(raiz, { recursive: true, force: true });
+}
+
+/* == 20. runtime inválido no manifesto nega com motivo citando valores aceitos ==
+ *
+ * Campo `runtime` deve ser exatamente "claude" ou "codex".
+ * Qualquer outro valor (ex.: "gemini") nega com mensagem instrutiva.
+ */
+console.log("== 20. runtime invalido no manifesto nega ==");
+{
+  const raiz = caixa();
+  iniciarGit(raiz, "fluxo/teste");
+  criarEstadoAtivo(raiz, "teste", "revisar");
+  criarManifesto(raiz, manifestoD2({
+    revisor: {
+      estagios: ["revisar"],
+      escreve: false,
+      runtime: "gemini", // Inválido
+    },
+  }));
+
+  const payload = {
+    session_id: "teste-20",
+    tool_input: { subagent_type: "revisor" },
+  };
+
+  const r = rodaHook(raiz, JSON.stringify(payload));
+
+  caso("exit 2", r.status === 2, `exit=${r.status}`);
+  caso("stderr contém 'claude'", r.stderr.includes("claude"), `stderr: ${r.stderr}`);
+  caso("stderr contém 'codex'", r.stderr.includes("codex"), `stderr: ${r.stderr}`);
+
+  const logPath = path.join(raiz, ".rainforest", "portaria", "despachos.jsonl");
+  if (fs.existsSync(logPath)) {
+    const linhas = fs
+      .readFileSync(logPath, "utf8")
+      .trim()
+      .split("\n");
+
+    const ultima = linhas[linhas.length - 1];
+    let entrada = null;
+    try {
+      entrada = JSON.parse(ultima);
+    } catch {}
+
+    caso("última linha no jsonl é deny", entrada && entrada.decisao === "deny", JSON.stringify(entrada));
+  } else {
+    caso("log existe", false, "log não criado");
+  }
+
+  fs.rmSync(raiz, { recursive: true, force: true });
+}
+
+/* == 21. default: sem linha Runtime: e sem manifesto.runtime == */
+console.log("== 21. default: runtime resolve para 'claude' ==");
+{
+  const raiz = caixa();
+  iniciarGit(raiz, "fluxo/teste");
+  criarEstadoAtivo(raiz, "teste", "revisar");
+  criarManifesto(raiz, manifestoD2({
+    revisor: { estagios: ["revisar"], escreve: false },
+    // Sem `runtime` no manifesto
+  }));
+
+  const payload = {
+    session_id: "teste-21",
+    tool_input: {
+      subagent_type: "revisor",
+      prompt: "## 1. Contexto\nSem linha Runtime:",
+    },
+  };
+
+  const r = rodaHook(raiz, JSON.stringify(payload));
+
+  caso("exit 0", r.status === 0, `exit=${r.status}`);
+
+  const logPath = path.join(raiz, ".rainforest", "portaria", "despachos.jsonl");
+  if (fs.existsSync(logPath)) {
+    const linhas = fs
+      .readFileSync(logPath, "utf8")
+      .trim()
+      .split("\n");
+
+    const ultima = linhas[linhas.length - 1];
+    let entrada = null;
+    try {
+      entrada = JSON.parse(ultima);
+    } catch {}
+
+    caso("última linha é JSON válido", entrada !== null, ultima);
+    if (entrada) {
+      caso("runtime = 'claude' (default)", entrada.runtime === "claude", entrada.runtime);
+    }
+  } else {
+    caso("último linha é JSON válido", false, "log não criado");
+  }
+
+  fs.rmSync(raiz, { recursive: true, force: true });
+}
+
 console.log(`\n== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 
 if (falhou > 0) {

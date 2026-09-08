@@ -56,7 +56,18 @@ nesta ordem:
    base da regra 11). A conferência da base vai escrita como **`cd` no worktree
    e `git rev-parse --show-toplevel` antes do `rev-parse HEAD`**, nunca
    `git -C`: fora de um repositório, o `git -C` sobe para o pai em silêncio e
-   devolve o hash de lá: a conferência confirma a base errada.
+   devolve o hash de lá: a conferência confirma a base errada. A **primeira
+   linha** do briefing pode ser `Runtime: codex` ou `Runtime: claude` (default,
+   case-insensitive) para despachar o agente via Codex CLI em vez de Claude —
+   quando o usuário disser "faz no codex", "roda no codex" ou equivalente, o
+   despacho põe essa linha. Quem a lê é o preâmbulo `<!-- ponte-codex -->` do
+   próprio `agents/<nome>.md`, que então faz uma chamada só a
+   `scripts/despachar-codex.cjs`, commita o que o Codex deixou (o sandbox
+   dele não grava em `.git`) e devolve a saída literal; a portaria só
+   registra o valor no log. Uma linha opcional `Despacho: <caminho>` no
+   mesmo bloco aponta o script quando ele não está nem em
+   `$CLAUDE_PLUGIN_ROOT` nem na raiz do worktree (branch ainda não
+   integrada).
 2. **Objetivos** — numerados e concretos, um por linha.
 3. **Restrições** — o que olhar e, explicitamente, o que ignorar. E uma pergunta
    **obrigatória**, respondida antes de despachar: *este trabalho precisa tocar

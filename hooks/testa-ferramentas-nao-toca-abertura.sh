@@ -53,10 +53,15 @@ QTD="$(node -e '
   const h = require(process.argv[1]).hooks;
   process.stdout.write(String((h.SessionStart || []).reduce((n,b) => n + b.hooks.length, 0)));
 ' "$SRC/hooks/hooks.json" 2>&1)"
-if [ "$QTD" = "4" ]; then
-  ok=$((ok+1)); echo "  ok   SessionStart continua com 4 hooks"
+# 5 desde 2026-09-08: entrou codex-transfer-session-start.cjs (fluxo agentes-em-codex,
+# D8). Ele nao escreve no stdout — grava duas variaveis em CLAUDE_ENV_FILE, e so
+# com transfer-codex ligado —, entao nao mexe no tamanho da injecao que esta
+# bateria guarda. Subir este numero de novo exige a mesma prova: hook que nao
+# imprime nada na abertura.
+if [ "$QTD" = "5" ]; then
+  ok=$((ok+1)); echo "  ok   SessionStart continua com 5 hooks"
 else
-  falhou=$((falhou+1)); echo "  FALHA SessionStart tem $QTD hooks, esperava 4"
+  falhou=$((falhou+1)); echo "  FALHA SessionStart tem $QTD hooks, esperava 5"
 fi
 
 echo

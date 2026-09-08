@@ -1,0 +1,160 @@
+{
+  "slug": "2026-09-08-agentes-em-codex",
+  "titulo": "Agentes do rainforest em Codex ou Claude, por escolha do usuario",
+  "criado_em": "2026-09-08",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-08-agentes-em-codex.md",
+    "em": "2026-09-08"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-09-08-agentes-em-codex.md",
+    "tarefas": 9,
+    "paralelas": [
+      1,
+      2
+    ],
+    "em": "2026-09-08"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-08",
+    "tarefas_ok": 9,
+    "tarefas": 9,
+    "em_voo": [],
+    "em": "2026-09-08",
+    "mutacao_parcial": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-portaria-nucleo.cjs caso 19"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-config.sh caso (b2)"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-despachar-codex.sh caso 2"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-despachar-codex.sh casos 1-5"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "preambulo e instrucao de system prompt; prova real na T8"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-transferir-para-codex.sh caso 1 (fora de .claude/projects)"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-review-codex.sh casos 5 e 6 (falha fechada)"
+      }
+    ],
+    "pendentes": [],
+    "comando": "bash roda-suite.sh (scripts/testa-*.sh hooks/testa-*.sh)",
+    "saida": "total=98 ok=97 falhou=1 — unica falha: scripts/testa-saude.sh, defeito anterior a branch (Issue #221)",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-portaria-nucleo.cjs caso 19"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-config.sh casos (b2) e (b3)"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-despachar-codex.sh casos 2 e 9b"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-despachar-codex.sh casos 1-5"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "preambulo e instrucao de system prompt; prova real na T8 (segunda rodada, commit 188bba9)"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-transferir-para-codex.sh caso 1 (fora de .claude/projects)"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-review-codex.sh casos 5, 6 e 9 (falha fechada, costura real)"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "n/a",
+        "motivo": "validacao fim a fim com Codex real; evidencias em docs/rainforest/relatorios/2026-09-08-validacao-runtime-codex.md; derrubou a D5 (commit 4e8efa1)"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "n/a",
+        "motivo": "documentacao; coerencia conferida contra o codigo"
+      }
+    ]
+  },
+  "revisar": {
+    "status": "ok",
+    "base": "7913b7d",
+    "head": "8515739",
+    "rodadas": 3,
+    "revisores": [
+      "revisor em Claude (branch inteira)",
+      "revisor em Codex (fatia: despachar-codex.cjs e gate-review-codex.cjs; rodada inteira estourou o teto de 10 min)",
+      "revisor em Claude (rodada 2: confere as 8 correcoes)"
+    ],
+    "achados": 11,
+    "corrigidos": 11,
+    "commits": [
+      "0cad5bd",
+      "0101b4f",
+      "d04a96e"
+    ],
+    "comando": "bash scripts/testa-despachar-codex.sh; bash hooks/testa-gate-review-codex.sh; bash scripts/testa-transferir-para-codex.sh",
+    "saida": "14 ok / 15 ok / 9 ok, 0 falhas; rodada 2 do revisor: 6 de 8 fechados, os 2 restantes (frase do README, contagem, caso 10) fechados em d04a96e e conferidos por bateria",
+    "em": "2026-09-08"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash roda-suite.sh (98 baterias: scripts/testa-*.sh hooks/testa-*.sh) + criterio de cada tarefa rodado a mao",
+    "saida": "total=98 ok=97 falhou=1 (unica falha: scripts/testa-saude.sh, Issue #221, anterior a branch). T1 testa-portaria-nucleo 78 ok (casos 19-21); T2 testa-config 45 ok (b2, b3); T3/T4 testa-despachar-codex 14 ok (caso 1 read-only sem --add-dir, caso 2 workspace-write sem --add-dir, caso 3 sem bypass, 9/9b/9c flags, 10 -o temporario); T5 ponte-codex=2 nos 9 agents, flags citadas --agente --worktree --escreve --briefing-file --timeout-ms (o script aceita ainda --saida e --help, de operador), --escreve coerente com o manifesto; T6 testa-transferir 9 ok (caso 1 fora de .claude/projects exit 2, caso 7 chave desligada exit 3); T7 testa-gate-review-codex 15 ok (falha fechada em exit 1, saida invalida, transcript ausente); T8 relatorio com (a)(b)(c)(d); T9 conferir-versao exit 0 (0 commits desde o bump 8a38da9, origin/main 1.7.0), badge=version=1.8.0, exemplos Runtime: codex das skills casam a regex do hook; T10 testa-contexto-sessao catraca 10247<=10500 B, testa-ferramentas-nao-toca-abertura 4 ok",
+    "ressalvas": [
+      "T5: o grep literal do criterio pega flags de comentario e de git; a comparacao valida e FLAGS_ACEITAS vs bloco, feita por script",
+      "T9: conferir-versao so saiu 0 depois de mover o bump para o ultimo commit (09970dc desfaz, 8a38da9 refaz)"
+    ],
+    "em": "2026-09-08"
+  },
+  "fechar": {
+    "status": "ok",
+    "pr": "https://github.com/luisfmontes/rainforest-mind/pull/222",
+    "branch": "fluxo/agentes-em-codex",
+    "versao": "1.8.0",
+    "worktrees_removidos": 9,
+    "conferir_versao": "ok 0 commits desde o bump 8a38da9",
+    "comando": "gh pr create --base main --head fluxo/agentes-em-codex",
+    "saida": "https://github.com/luisfmontes/rainforest-mind/pull/222",
+    "em": "2026-09-08"
+  }
+}

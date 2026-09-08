@@ -102,3 +102,10 @@ qual o log é evidência.
 O relato do dia — a regressão que a antecipação quase introduziu, e a descoberta
 de que as seis baterias deste fluxo nunca haviam rodado — está em
 `relatorios/2026-09-02-baterias-que-o-glob-nunca-chamou.md`.
+
+## Emenda de 2026-09-08 — campo `runtime`
+
+O manifesto aceita `runtime: "claude" | "codex"` por agente, e a linha
+`Runtime: codex` no briefing vence o manifesto. Mora em `regra-10-runtime.md`,
+porque este arquivo já estava na catraca de bytes.
+
