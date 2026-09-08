@@ -31,7 +31,7 @@ const path = require('path');
 const { execSync, execFileSync } = require('child_process');
 
 const CODIGO_ROOT = path.resolve(__dirname, '..');
-const { resolverRaiz } = require('../hooks/lib/raiz.cjs');
+const { resolverRaiz, ehRaiz } = require('../hooks/lib/raiz.cjs');
 const { CHAVES, resolverConfig } = require('../hooks/lib/config.cjs');
 const P = require('../hooks/lib/projetos.cjs');
 
@@ -260,9 +260,16 @@ function estado() {
     let cfg_usuario = null;
     const doProjeto = path.join(PROJETO, '.rainforest', 'config.json');
     const doUsuario = arquivos.usuario;
-    try {
-      cfg_projeto = JSON.parse(fs.readFileSync(doProjeto, 'utf8'));
-    } catch { /* sem config do projeto */ }
+
+    // Só lê config do projeto se a pasta .rainforest for uma raiz válida (tem FOCO.md ou ideias.jsonl)
+    // Isso garante consistência com hooks/lib/raiz.cjs e com o comportamento do hook escada-subagente
+    const pastaProjetoRaiz = path.join(PROJETO, '.rainforest');
+    if (ehRaiz(pastaProjetoRaiz)) {
+      try {
+        cfg_projeto = JSON.parse(fs.readFileSync(doProjeto, 'utf8'));
+      } catch { /* sem config do projeto */ }
+    }
+
     try {
       if (doUsuario) cfg_usuario = JSON.parse(fs.readFileSync(doUsuario, 'utf8'));
     } catch { /* sem config do usuario */ }
@@ -278,12 +285,11 @@ function estado() {
 
   const descNivel = {
     'enxuto': 'só proteções (carve-outs), sem degraus',
-    'padrão': 'escada completa (7 degraus + proteções)',
-    'completo': 'escada completa com detalhes expandidos'
+    'padrão': 'escada completa (7 degraus + proteções)'
   };
   console.log(`  ${nivelIntensidade.padEnd(10)} ${descNivel[nivelIntensidade] || '(desconhecido)'}`);
   if (origem_nivel !== 'padrão') console.log(`            ^ definido em: ${origem_nivel}`);
-  console.log(`  trocar:   echo '{\"escada-intensidade\":\"enxuto\"}' >> ~/.rainforest/config.json`);
+  console.log(`  trocar:   node scripts/setup.cjs --ligar escada-intensidade enxuto [--escopo usuario|projeto]`);
 
   // PONTES: quais hosts de agente recebem as regras. E configuracao ("o que eu uso
   // nesta maquina"), por isso mora aqui; o repositorio de DESTINO nao e — ele e alvo

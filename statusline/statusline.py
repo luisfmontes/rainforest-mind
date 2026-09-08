@@ -313,18 +313,18 @@ def eh_worktree_de_agente(cwd):
 def resolver_raiz_dados(cwd):
     """Resolve a raiz de dados (FOCO.md, ideias.jsonl).
 
+    Segue a cadeia canônica de raiz.cjs:
     Ordem: RFM_ROOT > projeto/.rainforest > ~/.rainforest > plugin
-    Retorna None se nenhum for encontrado.
+
+    RFM_ROOT é declaração explícita e vence sem exigir marcadores.
+    Os demais níveis só são aceitos se tiverem FOCO.md ou ideias.jsonl.
     """
-    # 1. RFM_ROOT
+    # 1. RFM_ROOT - Declaração explícita, vence mesmo sem marcador
     rfm_root = os.environ.get("RFM_ROOT", "").strip()
     if rfm_root:
-        foco_path = os.path.join(rfm_root, "FOCO.md")
-        ideias_path = os.path.join(rfm_root, "ideias.jsonl")
-        if os.path.exists(foco_path) or os.path.exists(ideias_path):
-            return rfm_root
+        return rfm_root
 
-    # 2. Projeto: cwd/.rainforest
+    # 2. Projeto: cwd/.rainforest (com marcador)
     projeto_raiz = os.path.join(cwd, ".rainforest") if cwd else None
     if projeto_raiz:
         foco_path = os.path.join(projeto_raiz, "FOCO.md")
@@ -332,7 +332,7 @@ def resolver_raiz_dados(cwd):
         if os.path.exists(foco_path) or os.path.exists(ideias_path):
             return projeto_raiz
 
-    # 3. Global: ~/.rainforest
+    # 3. Global: ~/.rainforest (com marcador)
     home = os.path.expanduser("~")
     usuario_raiz = os.path.join(home, ".rainforest")
     foco_path = os.path.join(usuario_raiz, "FOCO.md")
@@ -340,7 +340,7 @@ def resolver_raiz_dados(cwd):
     if os.path.exists(foco_path) or os.path.exists(ideias_path):
         return usuario_raiz
 
-    # 4. Plugin (self/FOCO.md)
+    # 4. Plugin (self/FOCO.md) (com marcador)
     plugin_raiz = os.path.dirname(os.path.abspath(__file__))
     foco_path = os.path.join(plugin_raiz, "FOCO.md")
     ideias_path = os.path.join(plugin_raiz, "ideias.jsonl")
@@ -544,25 +544,6 @@ def segmento_versao(transcript_path):
     return ""
 
 
-def resolver_raiz_dados():
-    """Resolve a pasta de dados do rainforest, seguindo a mesma cadeia que hooks/lib/raiz.cjs.
-
-    Ordem: RFM_ROOT > RFM_ESTADO_ROOT > <cwd>/.rainforest > ~/.rainforest > plugin
-    """
-    # 1. RFM_ROOT (prioridade máxima)
-    if os.environ.get("RFM_ROOT"):
-        return os.environ.get("RFM_ROOT")
-
-    # 2. RFM_ESTADO_ROOT (segunda prioridade)
-    if os.environ.get("RFM_ESTADO_ROOT"):
-        return os.environ.get("RFM_ESTADO_ROOT")
-
-    # 3. ~/.rainforest (padrão)
-    home_rainforest = os.path.join(HOME, ".rainforest")
-    if os.path.isdir(home_rainforest):
-        return home_rainforest
-
-    return None
 
 
 def segmento_escada_intensidade():
@@ -587,7 +568,7 @@ def segmento_escada_intensidade():
         return ""
 
     # Valida o nível
-    niveis_validos = {"enxuto": "∑", "padrão": "7", "completo": "∞"}
+    niveis_validos = {"enxuto": "∑", "padrão": "7"}
     if nivel not in niveis_validos:
         return ""
 

@@ -47,10 +47,22 @@ def escreve_sessoes(dados, pasta_raiz=None):
 
 
 def segmento(cwd, pasta_raiz):
-    """Executa segmento_co_locada com ambiente fake."""
-    # Preenche resolver_raiz_dados para achar nossa pasta
-    ns["resolver_raiz_dados"] = lambda c: pasta_raiz
-    return ANSI.sub("", ns["segmento_co_locada"](cwd))
+    """Executa segmento_co_locada com ambiente fake.
+
+    Testa a FUNCAO REAL resolver_raiz_dados(cwd) do módulo, não um substituto.
+    Para isso, precisamos configurar o ambiente para que a função resolva
+    nossa pasta_raiz na cadeia canônica (RFM_ROOT tem prioridade máxima).
+    """
+    # Usa RFM_ROOT em vez de substituir a função: assim exercitamos a função real
+    original_rfm_root = os.environ.get("RFM_ROOT")
+    try:
+        os.environ["RFM_ROOT"] = pasta_raiz
+        return ANSI.sub("", ns["segmento_co_locada"](cwd))
+    finally:
+        if original_rfm_root:
+            os.environ["RFM_ROOT"] = original_rfm_root
+        else:
+            os.environ.pop("RFM_ROOT", None)
 
 
 agora_ms = int(datetime.datetime.now().timestamp() * 1000)
@@ -119,8 +131,8 @@ def caso_sessoes_json_ausente():
     with io.open(foco_path, "w", encoding="utf-8") as fh:
         fh.write("# Foco\n")
 
-    ns["resolver_raiz_dados"] = lambda c: pasta_raiz
-    obtido = ANSI.sub("", ns["segmento_co_locada"]("C:/Projetos/x"))
+    # Usa segmento() que configura RFM_ROOT em vez de substituir a função
+    obtido = segmento("C:/Projetos/x", pasta_raiz)
     return obtido, ""
 
 
@@ -139,8 +151,8 @@ def caso_sessoes_json_quebrado():
     with io.open(foco_path, "w", encoding="utf-8") as fh:
         fh.write("# Foco\n")
 
-    ns["resolver_raiz_dados"] = lambda c: pasta_raiz
-    obtido = ANSI.sub("", ns["segmento_co_locada"]("C:/Projetos/x"))
+    # Usa segmento() que configura RFM_ROOT em vez de substituir a função
+    obtido = segmento("C:/Projetos/x", pasta_raiz)
     return obtido, ""
 
 
@@ -188,6 +200,24 @@ def caso_tres_sessoes_vivas():
     return obtido, "⚠ 3 janelas aqui"
 
 
+def caso_resolver_raiz_recebe_argumento():
+    """Testa que resolver_raiz_dados(cwd) aceita argumento sem erro.
+
+    Esse caso falha se houver colisão de nome (segunda definição sem parâmetro).
+    A função real deve aceitar cwd como argumento. Este teste exercita a função
+    com um cwd específico, e a função deve conseguir resolver a raiz pela cadeia.
+    """
+    raiz = escreve_sessoes({
+        "sessao-1": entrada_viva("C:/Projetos/teste"),
+        "sessao-2": entrada_viva("C:/Projetos/teste")
+    })
+    # Chamar com o cwd das sessões: a função real deve aceitar o argumento
+    # e resolver a raiz pela cadeia (RFM_ROOT que segmento() configura)
+    obtido = segmento("C:/Projetos/teste", raiz)
+    # Deve encontrar as 2 sessões
+    return obtido, "⚠ 2 janelas aqui"
+
+
 CASOS = [
     ("uma sessão viva (só a própria) → sem segmento", caso_uma_sessao_viva),
     ("duas sessões vivas no cwd → segmento aparece", caso_duas_sessoes_vivas),
@@ -199,6 +229,7 @@ CASOS = [
     ("normalização: backslash vs forward", caso_normalizacao_cwd_backslash),
     ("normalização: maiuscula vs minuscula", caso_normalizacao_cwd_maiuscula),
     ("três sessões vivas → mostra '3 janelas aqui'", caso_tres_sessoes_vivas),
+    ("resolver_raiz_dados(cwd) aceita argumento", caso_resolver_raiz_recebe_argumento),
 ]
 
 falhas = 0
