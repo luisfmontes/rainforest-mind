@@ -5,9 +5,12 @@ model: sonnet
 ---
 
 <!-- ponte-codex -->
-**Runtime.** Se o briefing traz uma linha isolada `Runtime: codex`, você é só a
-ponte: NÃO execute a tarefa, não leia o repositório, não confira nada. Faça, na
-ordem: (1) grave o briefing inteiro que recebeu num arquivo temporário FORA do
+**PASSO ZERO, antes de qualquer outra ação deste arquivo (inclusive o `cd` e o
+`git rev-parse` do método abaixo): leia a PRIMEIRA linha do briefing.** Se ela
+for `Runtime: codex`, você é só a ponte: NÃO execute a tarefa, não leia o
+repositório, não crie nem edite arquivo nenhum — entrega feita por você neste
+modo é INVÁLIDA, mesmo que pareça certa (medido em 2026-09-08: um executor fez
+a tarefa em vez de despachar, e o relatório saiu falso). Faça, na ordem: (1) grave o briefing inteiro que recebeu num arquivo temporário FORA do
 worktree (ex.: `$TEMP/briefing-auditor-de-seguranca-<timestamp>.md`); (2) uma única chamada
 Bash com `timeout: 600000` — o default de 2 min da ferramenta mata o Codex antes
 do teto do script (`--timeout-ms`, default 540000; não aumente): `node "<script>" --agente auditor-de-seguranca

@@ -1,7 +1,9 @@
 # Plano — validar a ponte Codex ao vivo com o plugin 1.8.0 (e Codex sem cota)
 
 Design: `docs/rainforest/design/2026-09-08-validar-ponte-codex-ao-vivo.md`.
-Branch `fluxo/2026-09-08-validar-ponte-codex-ao-vivo`, base `origin/main` = `29b67d3`.
+Branch `fluxo/validar-ponte-codex-ao-vivo` (a portaria casa a branch com o slug
+sem a data; a primeira tentativa, com a data na branch, foi negada por "sem
+estágio ativo"), base `origin/main` = `29b67d3`.
 
 ## Invariantes
 
@@ -70,10 +72,19 @@ mutacao: n/a
   motivo: validação com binário externo e agente do cache instalado; não há linha de produção a inverter neste repositório.
 pronto quando: despacho pelo `Agent` do `rainforest-mind:executor` (cache 1.8.0), `isolation: "worktree"`, briefing cuja primeira linha é `Runtime: codex` e que NÃO traz `Despacho:` nem instrução de ponte, devolve saída literal de um `codex exec` real; colado no relatório: (a) a linha `comando: codex exec ...` do stderr do despacho; (b) a última linha de `.rainforest/portaria/despachos.jsonl` do worktree desta sessão, com `"runtime":"codex"`, gravada pela portaria viva (sem rodar o hook à mão); (c) `git log -1` do worktree do agente com o commit feito pela ponte; tudo re-derivado de `git` nesta sessão, nunca copiado do relato
 
+### 7. Emenda — o preâmbulo sozinho não segura: bloco de ponte no briefing [tipo: implementar]
+atende: D1, D4
+arquivos: `agents/arqueologo.md`, `agents/auditor-de-seguranca.md`, `agents/depurador.md`, `agents/documentador.md`, `agents/executor.md`, `agents/planejador.md`, `agents/resolvedor-de-build.md`, `agents/revisor.md`, `agents/tester.md`, `skills/rainforest-mind/references/regra-10-runtime.md`, `skills/modo-dev/SKILL.md`, `skills/executar/SKILL.md`
+depende de: 5
+paralela: nao
+mutacao: n/a
+  motivo: instrução de prompt (preâmbulo e bloco de briefing); a falsificação é comportamental, no despacho real.
+pronto quando: a T5 rodou duas vezes ao vivo com o plugin 1.8.0 — (i) só com `Runtime: codex`, como D2 mandava: o executor ignorou o preâmbulo, fez a tarefa em PowerShell/Write e não chamou `despachar-codex.cjs` (transcript do subagente: zero ocorrências de `despachar-codex`, nove chamadas de ferramenta, nenhuma delas o script); (ii) com o bloco de ponte de `regra-10-runtime.md` no briefing: saída literal de `codex exec` real, `comando:` no stderr e commit da ponte re-derivado de `git`. Os dois relatos colados no relatório. O preâmbulo endurecido (passo zero, entrega inválida) só se prova na próxima versão instalada — registrado como lacuna, não como cumprido.
+
 ### 6. Versão [tipo: docs]
 atende: D5
 arquivos: `.claude-plugin/plugin.json`, `README.md`
-depende de: 1, 2, 3, 4, 5
+depende de: 1, 2, 3, 4, 5, 7
 paralela: nao
 mutacao: n/a
   motivo: bump.
