@@ -116,10 +116,35 @@
     ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "base": "7913b7d",
+    "head": "8515739",
+    "rodadas": 3,
+    "revisores": [
+      "revisor em Claude (branch inteira)",
+      "revisor em Codex (fatia: despachar-codex.cjs e gate-review-codex.cjs; rodada inteira estourou o teto de 10 min)",
+      "revisor em Claude (rodada 2: confere as 8 correcoes)"
+    ],
+    "achados": 11,
+    "corrigidos": 11,
+    "commits": [
+      "0cad5bd",
+      "0101b4f",
+      "d04a96e"
+    ],
+    "comando": "bash scripts/testa-despachar-codex.sh; bash hooks/testa-gate-review-codex.sh; bash scripts/testa-transferir-para-codex.sh",
+    "saida": "14 ok / 15 ok / 9 ok, 0 falhas; rodada 2 do revisor: 6 de 8 fechados, os 2 restantes (frase do README, contagem, caso 10) fechados em d04a96e e conferidos por bateria",
+    "em": "2026-09-08"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash roda-suite.sh (98 baterias: scripts/testa-*.sh hooks/testa-*.sh) + criterio de cada tarefa rodado a mao",
+    "saida": "total=98 ok=97 falhou=1 (unica falha: scripts/testa-saude.sh, Issue #221, anterior a branch). T1 testa-portaria-nucleo 78 ok (casos 19-21); T2 testa-config 45 ok (b2, b3); T3/T4 testa-despachar-codex 14 ok (caso 1 read-only sem --add-dir, caso 2 workspace-write sem --add-dir, caso 3 sem bypass, 9/9b/9c flags, 10 -o temporario); T5 ponte-codex=2 nos 9 agents, flags citadas --agente --worktree --escreve --briefing-file --timeout-ms (o script aceita ainda --saida e --help, de operador), --escreve coerente com o manifesto; T6 testa-transferir 9 ok (caso 1 fora de .claude/projects exit 2, caso 7 chave desligada exit 3); T7 testa-gate-review-codex 15 ok (falha fechada em exit 1, saida invalida, transcript ausente); T8 relatorio com (a)(b)(c)(d); T9 conferir-versao exit 0 (0 commits desde o bump 8a38da9, origin/main 1.7.0), badge=version=1.8.0, exemplos Runtime: codex das skills casam a regex do hook; T10 testa-contexto-sessao catraca 10247<=10500 B, testa-ferramentas-nao-toca-abertura 4 ok",
+    "ressalvas": [
+      "T5: o grep literal do criterio pega flags de comentario e de git; a comparacao valida e FLAGS_ACEITAS vs bloco, feita por script",
+      "T9: conferir-versao so saiu 0 depois de mover o bump para o ultimo commit (09970dc desfaz, 8a38da9 refaz)"
+    ],
+    "em": "2026-09-08"
   },
   "fechar": {
     "status": "pendente"
