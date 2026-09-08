@@ -63,7 +63,47 @@ function extrairCarveOuts(skillText) {
   return extrairBloco(skillText, '<!-- carve-outs-inicio -->', '<!-- carve-outs-fim -->');
 }
 
+/**
+ * Filtra a escada por nível de intensidade.
+ *
+ * Níveis disponíveis:
+ *   - 'enxuto': apenas carve-outs (proteções), sem degraus
+ *   - 'padrão': escada completa (7 degraus + carve-outs)
+ *   - 'completo': escada completa com detalhes expandidos (igual a padrão nesta versão)
+ *
+ * @param {string} escada - Texto da escada extraída
+ * @param {string} carveOuts - Texto dos carve-outs extraído
+ * @param {string} nivel - Nível de intensidade ('enxuto', 'padrão', 'completo')
+ * @returns {string} A escada filtrada de acordo com o nível
+ */
+function filtrarEscadaPorNivel(escada, carveOuts, nivel) {
+  // Best-effort: nível inválido cai no padrão
+  const niveisValidos = ['enxuto', 'padrão', 'completo'];
+  const nivelEfetivo = niveisValidos.includes(nivel) ? nivel : 'padrão';
+
+  if (nivelEfetivo === 'enxuto') {
+    // Apenas carve-outs, sem degraus
+    return carveOuts || '';
+  }
+
+  // 'padrão' e 'completo' retornam a escada + carve-outs
+  // (Na versão atual, ambos são idênticos)
+  let resultado = '';
+  if (escada) {
+    resultado = escada;
+  }
+  if (carveOuts) {
+    if (resultado) {
+      resultado += '\n\n' + carveOuts;
+    } else {
+      resultado = carveOuts;
+    }
+  }
+  return resultado;
+}
+
 module.exports = {
   extrairEscada,
   extrairCarveOuts,
+  filtrarEscadaPorNivel,
 };

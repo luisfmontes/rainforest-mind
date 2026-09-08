@@ -15,13 +15,37 @@
 
 const fs = require('fs');
 const path = require('path');
-const { extrairEscada, extrairCarveOuts } = require('./lib/escada.cjs');
+const { extrairEscada, extrairCarveOuts, filtrarEscadaPorNivel } = require('./lib/escada.cjs');
 
 function readSafe(p) {
   try {
     return fs.readFileSync(p, 'utf8');
   } catch {
     return '';
+  }
+}
+
+/**
+ * Lê o nível de intensidade de config.json.
+ * Best-effort: arquivo ausente, inválido ou chave ausente → retorna 'padrão'.
+ */
+function lerNivelIntensidade() {
+  const raizDados = process.env.RFM_ESTADO_ROOT || process.env.RFM_ROOT;
+  if (!raizDados) {
+    return 'padrão'; // sem dados configurados, usa padrão
+  }
+
+  const configPath = path.join(raizDados, 'config.json');
+  try {
+    const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    const nivel = cfg['escada-intensidade'];
+    // Best-effort: valor inválido cai para padrão
+    if (typeof nivel === 'string' && ['enxuto', 'padrão', 'completo'].includes(nivel)) {
+      return nivel;
+    }
+    return 'padrão';
+  } catch {
+    return 'padrão'; // arquivo ausente ou inválido
   }
 }
 
@@ -32,19 +56,10 @@ const SKILL_PATH = path.join(PLUGIN_ROOT, 'skills', 'modo-dev', 'SKILL.md');
 const skillText = readSafe(SKILL_PATH);
 const escada = extrairEscada(skillText);
 const carveOuts = extrairCarveOuts(skillText);
+const nivel = lerNivelIntensidade();
 
-// Combinar escada e carve-outs, separando com quebra de linha se ambos existem
-let additionalContext = '';
-if (escada) {
-  additionalContext = escada;
-}
-if (carveOuts) {
-  if (additionalContext) {
-    additionalContext += '\n\n' + carveOuts;
-  } else {
-    additionalContext = carveOuts;
-  }
-}
+// Filtrar pela intensidade selecionada
+const additionalContext = filtrarEscadaPorNivel(escada, carveOuts, nivel);
 
 // Best-effort: se não conseguir extrair, emite JSON sem additionalContext
 // e o modelo prossegue sem injeção (degradação graciosa).

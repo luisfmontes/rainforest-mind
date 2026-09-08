@@ -544,6 +544,58 @@ def segmento_versao(transcript_path):
     return ""
 
 
+def resolver_raiz_dados():
+    """Resolve a pasta de dados do rainforest, seguindo a mesma cadeia que hooks/lib/raiz.cjs.
+
+    Ordem: RFM_ROOT > RFM_ESTADO_ROOT > <cwd>/.rainforest > ~/.rainforest > plugin
+    """
+    # 1. RFM_ROOT (prioridade máxima)
+    if os.environ.get("RFM_ROOT"):
+        return os.environ.get("RFM_ROOT")
+
+    # 2. RFM_ESTADO_ROOT (segunda prioridade)
+    if os.environ.get("RFM_ESTADO_ROOT"):
+        return os.environ.get("RFM_ESTADO_ROOT")
+
+    # 3. ~/.rainforest (padrão)
+    home_rainforest = os.path.join(HOME, ".rainforest")
+    if os.path.isdir(home_rainforest):
+        return home_rainforest
+
+    return None
+
+
+def segmento_escada_intensidade():
+    """Mostra o nível ativo de intensidade da escada YAGNI.
+
+    Le config.json da pasta de dados e mostra o nível configurado.
+    Se nao estiver configurado, retorna string vazia (nao mostra nada).
+    """
+    raiz_dados = resolver_raiz_dados()
+    if not raiz_dados:
+        return ""
+
+    config_path = os.path.join(raiz_dados, "config.json")
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+    except Exception:
+        return ""
+
+    nivel = config.get("escada-intensidade")
+    if not isinstance(nivel, str):
+        return ""
+
+    # Valida o nível
+    niveis_validos = {"enxuto": "∑", "padrão": "7", "completo": "∞"}
+    if nivel not in niveis_validos:
+        return ""
+
+    # Mostra o nível com um simbolo representativo
+    simbolo = niveis_validos[nivel]
+    return c(f"escada:{simbolo}", CIANO)
+
+
 # ------------------------------------------------------------------ main ---
 def main():
     try:
@@ -574,6 +626,7 @@ def main():
         segmentos.append(" ".join(partes_limite))
 
     segmentos.append(segmento_tempo())
+    segmentos.append(segmento_escada_intensidade())
     segmentos.append(segmento_co_locada(cwd))
     segmentos.append(segmento_versao(transcript_path))
     segmentos.append(segmento_prazo())

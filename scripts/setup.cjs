@@ -250,6 +250,41 @@ function estado() {
   console.log(`  projeto: ${arquivos.projeto || '(nenhum)'}`);
   console.log(`  usuario: ${arquivos.usuario || '(nenhum)'}`);
 
+  console.log('');
+  console.log('DIAL DE INTENSIDADE (escada YAGNI)');
+  // Lê a configuração de nível de intensidade
+  let nivelIntensidade = 'padrão'; // padrão fallback
+  let origem_nivel = 'padrão';
+  try {
+    let cfg_projeto = null;
+    let cfg_usuario = null;
+    const doProjeto = path.join(PROJETO, '.rainforest', 'config.json');
+    const doUsuario = arquivos.usuario;
+    try {
+      cfg_projeto = JSON.parse(fs.readFileSync(doProjeto, 'utf8'));
+    } catch { /* sem config do projeto */ }
+    try {
+      if (doUsuario) cfg_usuario = JSON.parse(fs.readFileSync(doUsuario, 'utf8'));
+    } catch { /* sem config do usuario */ }
+
+    if (cfg_projeto && typeof cfg_projeto['escada-intensidade'] === 'string') {
+      nivelIntensidade = cfg_projeto['escada-intensidade'];
+      origem_nivel = 'projeto';
+    } else if (cfg_usuario && typeof cfg_usuario['escada-intensidade'] === 'string') {
+      nivelIntensidade = cfg_usuario['escada-intensidade'];
+      origem_nivel = 'usuario';
+    }
+  } catch { /* sem arquivo, use padrão */ }
+
+  const descNivel = {
+    'enxuto': 'só proteções (carve-outs), sem degraus',
+    'padrão': 'escada completa (7 degraus + proteções)',
+    'completo': 'escada completa com detalhes expandidos'
+  };
+  console.log(`  ${nivelIntensidade.padEnd(10)} ${descNivel[nivelIntensidade] || '(desconhecido)'}`);
+  if (origem_nivel !== 'padrão') console.log(`            ^ definido em: ${origem_nivel}`);
+  console.log(`  trocar:   echo '{\"escada-intensidade\":\"enxuto\"}' >> ~/.rainforest/config.json`);
+
   // PONTES: quais hosts de agente recebem as regras. E configuracao ("o que eu uso
   // nesta maquina"), por isso mora aqui; o repositorio de DESTINO nao e — ele e alvo
   // explicito do comando, com ensaio, porque o arquivo gerado vai ser commitado no

@@ -215,6 +215,135 @@ fi
 checa "sem arquivo, tem additionalContext fallback" tem "additionalContext" "$SAIDA_VAZIO"
 
 echo
+echo "== 11. dial de intensidade: nível enxuto =="
+# Cria uma pasta de testes com config.json especificando nível enxuto
+mkdir -p "$RAIZ_TESTE_POSIX/estado-enxuto/skills/modo-dev"
+cp "$SKILL" "$RAIZ_TESTE_POSIX/estado-enxuto/skills/modo-dev/SKILL.md"
+cp "$HOOK" "$RAIZ_TESTE_POSIX/estado-enxuto/escada-hook.cjs"
+cp "$SRC/hooks/lib/escada.cjs" "$RAIZ_TESTE_POSIX/estado-enxuto/escada.cjs"
+sed -i "s|require('./lib/escada.cjs')|require('./escada.cjs')|" "$RAIZ_TESTE_POSIX/estado-enxuto/escada-hook.cjs"
+
+# Escreve config.json com nível enxuto
+echo '{"escada-intensidade":"enxuto"}' > "$RAIZ_TESTE_POSIX/estado-enxuto/config.json"
+
+SAIDA_ENXUTO=$(RFM_ESTADO_ROOT="$RAIZ_TESTE_POSIX/estado-enxuto" CLAUDE_PLUGIN_ROOT="$RAIZ_TESTE_POSIX/estado-enxuto" node "$RAIZ_TESTE_POSIX/estado-enxuto/escada-hook.cjs" 2>&1)
+CONTEXTO_ENXUTO=$(echo "$SAIDA_ENXUTO" | node -e "
+const data = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+process.stdout.write(data.hookSpecificOutput?.additionalContext || '');
+" 2>&1)
+
+# Nível enxuto deve ter carve-outs mas não degraus
+checa "nivel enxuto: tem 'Onde a escada nao desce'" tem "Onde a escada não desce" "$CONTEXTO_ENXUTO"
+checa "nivel enxuto: tem carve-out de segurança" tem "segurança" "$CONTEXTO_ENXUTO"
+checa "nivel enxuto: NÃO tem Degrau 1" nao_tem "Degrau 1\\." "$CONTEXTO_ENXUTO"
+checa "nivel enxuto: NÃO tem Degrau 7" nao_tem "Degrau 7\\." "$CONTEXTO_ENXUTO"
+
+# Medir tamanho do nível enxuto
+TAMANHO_ENXUTO=${#CONTEXTO_ENXUTO}
+
+echo
+echo "== 12. dial de intensidade: nível padrão =="
+mkdir -p "$RAIZ_TESTE_POSIX/estado-padrao/skills/modo-dev"
+cp "$SKILL" "$RAIZ_TESTE_POSIX/estado-padrao/skills/modo-dev/SKILL.md"
+cp "$HOOK" "$RAIZ_TESTE_POSIX/estado-padrao/escada-hook.cjs"
+cp "$SRC/hooks/lib/escada.cjs" "$RAIZ_TESTE_POSIX/estado-padrao/escada.cjs"
+sed -i "s|require('./lib/escada.cjs')|require('./escada.cjs')|" "$RAIZ_TESTE_POSIX/estado-padrao/escada-hook.cjs"
+
+echo '{"escada-intensidade":"padrão"}' > "$RAIZ_TESTE_POSIX/estado-padrao/config.json"
+
+SAIDA_PADRAO=$(RFM_ESTADO_ROOT="$RAIZ_TESTE_POSIX/estado-padrao" CLAUDE_PLUGIN_ROOT="$RAIZ_TESTE_POSIX/estado-padrao" node "$RAIZ_TESTE_POSIX/estado-padrao/escada-hook.cjs" 2>&1)
+CONTEXTO_PADRAO=$(echo "$SAIDA_PADRAO" | node -e "
+const data = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+process.stdout.write(data.hookSpecificOutput?.additionalContext || '');
+" 2>&1)
+
+checa "nivel padrao: tem todos os 7 degraus" tem "Degrau 7" "$CONTEXTO_PADRAO"
+checa "nivel padrao: tem carve-outs" tem "Onde a escada não desce" "$CONTEXTO_PADRAO"
+
+TAMANHO_PADRAO=${#CONTEXTO_PADRAO}
+
+echo
+echo "== 13. dial de intensidade: nível completo =="
+mkdir -p "$RAIZ_TESTE_POSIX/estado-completo/skills/modo-dev"
+cp "$SKILL" "$RAIZ_TESTE_POSIX/estado-completo/skills/modo-dev/SKILL.md"
+cp "$HOOK" "$RAIZ_TESTE_POSIX/estado-completo/escada-hook.cjs"
+cp "$SRC/hooks/lib/escada.cjs" "$RAIZ_TESTE_POSIX/estado-completo/escada.cjs"
+sed -i "s|require('./lib/escada.cjs')|require('./escada.cjs')|" "$RAIZ_TESTE_POSIX/estado-completo/escada-hook.cjs"
+
+echo '{"escada-intensidade":"completo"}' > "$RAIZ_TESTE_POSIX/estado-completo/config.json"
+
+SAIDA_COMPLETO=$(RFM_ESTADO_ROOT="$RAIZ_TESTE_POSIX/estado-completo" CLAUDE_PLUGIN_ROOT="$RAIZ_TESTE_POSIX/estado-completo" node "$RAIZ_TESTE_POSIX/estado-completo/escada-hook.cjs" 2>&1)
+CONTEXTO_COMPLETO=$(echo "$SAIDA_COMPLETO" | node -e "
+const data = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+process.stdout.write(data.hookSpecificOutput?.additionalContext || '');
+" 2>&1)
+
+checa "nivel completo: tem todos os 7 degraus" tem "Degrau 7" "$CONTEXTO_COMPLETO"
+checa "nivel completo: tem carve-outs" tem "Onde a escada não desce" "$CONTEXTO_COMPLETO"
+
+TAMANHO_COMPLETO=${#CONTEXTO_COMPLETO}
+
+echo
+echo "== 14. dial de intensidade: comparação de tamanhos =="
+if [ "$TAMANHO_ENXUTO" -lt "$TAMANHO_PADRAO" ]; then
+  ok=$((ok+1)); echo "  ok    enxuto ($TAMANHO_ENXUTO bytes) é menor que padrão ($TAMANHO_PADRAO bytes)"
+else
+  falhou=$((falhou+1)); echo "  FALHA enxuto não é menor que padrão (enxuto=$TAMANHO_ENXUTO, padrão=$TAMANHO_PADRAO)"
+fi
+
+if [ "$TAMANHO_PADRAO" -eq "$TAMANHO_COMPLETO" ]; then
+  ok=$((ok+1)); echo "  ok    padrão e completo têm o mesmo tamanho (versão atual: $TAMANHO_PADRAO bytes)"
+else
+  falhou=$((falhou+1)); echo "  FALHA padrão ($TAMANHO_PADRAO) diferente de completo ($TAMANHO_COMPLETO)"
+fi
+
+echo
+echo "== 15. dial de intensidade: nível inválido cai no padrão =="
+mkdir -p "$RAIZ_TESTE_POSIX/estado-invalido/skills/modo-dev"
+cp "$SKILL" "$RAIZ_TESTE_POSIX/estado-invalido/skills/modo-dev/SKILL.md"
+cp "$HOOK" "$RAIZ_TESTE_POSIX/estado-invalido/escada-hook.cjs"
+cp "$SRC/hooks/lib/escada.cjs" "$RAIZ_TESTE_POSIX/estado-invalido/escada.cjs"
+sed -i "s|require('./lib/escada.cjs')|require('./escada.cjs')|" "$RAIZ_TESTE_POSIX/estado-invalido/escada-hook.cjs"
+
+echo '{"escada-intensidade":"valor-invalido"}' > "$RAIZ_TESTE_POSIX/estado-invalido/config.json"
+
+SAIDA_INVALIDO=$(RFM_ESTADO_ROOT="$RAIZ_TESTE_POSIX/estado-invalido" CLAUDE_PLUGIN_ROOT="$RAIZ_TESTE_POSIX/estado-invalido" node "$RAIZ_TESTE_POSIX/estado-invalido/escada-hook.cjs" 2>&1)
+if echo "$SAIDA_INVALIDO" | node -e "JSON.parse(require('fs').readFileSync(0,'utf8'))" 2>/dev/null; then
+  ok=$((ok+1)); echo "  ok    nível inválido emite JSON válido (fallback para padrão)"
+else
+  falhou=$((falhou+1)); echo "  FALHA nível inválido resultou em JSON inválido"
+fi
+
+CONTEXTO_INVALIDO=$(echo "$SAIDA_INVALIDO" | node -e "
+const data = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+process.stdout.write(data.hookSpecificOutput?.additionalContext || '');
+" 2>&1)
+checa "nível inválido: tem Degrau 7 (padrão)" tem "Degrau 7" "$CONTEXTO_INVALIDO"
+
+echo
+echo "== 16. dial de intensidade: config.json ausente usa padrão =="
+mkdir -p "$RAIZ_TESTE_POSIX/estado-sem-config/skills/modo-dev"
+cp "$SKILL" "$RAIZ_TESTE_POSIX/estado-sem-config/skills/modo-dev/SKILL.md"
+cp "$HOOK" "$RAIZ_TESTE_POSIX/estado-sem-config/escada-hook.cjs"
+cp "$SRC/hooks/lib/escada.cjs" "$RAIZ_TESTE_POSIX/estado-sem-config/escada.cjs"
+sed -i "s|require('./lib/escada.cjs')|require('./escada.cjs')|" "$RAIZ_TESTE_POSIX/estado-sem-config/escada-hook.cjs"
+
+# Não cria config.json, testa degradação graciosa
+
+SAIDA_SEM_CONFIG=$(RFM_ESTADO_ROOT="$RAIZ_TESTE_POSIX/estado-sem-config" CLAUDE_PLUGIN_ROOT="$RAIZ_TESTE_POSIX/estado-sem-config" node "$RAIZ_TESTE_POSIX/estado-sem-config/escada-hook.cjs" 2>&1)
+if echo "$SAIDA_SEM_CONFIG" | node -e "JSON.parse(require('fs').readFileSync(0,'utf8'))" 2>/dev/null; then
+  ok=$((ok+1)); echo "  ok    sem config.json, emite JSON válido (fallback para padrão)"
+else
+  falhou=$((falhou+1)); echo "  FALHA sem config.json resultou em JSON inválido"
+fi
+
+CONTEXTO_SEM_CONFIG=$(echo "$SAIDA_SEM_CONFIG" | node -e "
+const data = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+process.stdout.write(data.hookSpecificOutput?.additionalContext || '');
+" 2>&1)
+checa "sem config: tem Degrau 7 (padrão)" tem "Degrau 7" "$CONTEXTO_SEM_CONFIG"
+
+echo
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" = "0" ] || exit 1
