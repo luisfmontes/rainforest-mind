@@ -83,6 +83,46 @@ marca "Todos valores Ganho > 0 em tarefas" $( (! echo "$saida" | grep "tarefa" |
 
 unset RFM_MEDIR_CLI_CMD
 
+# TESTE 5: Payload hostil — a fronteira de isolamento decide o veredito
+#
+# Estes três casos existem para que a catraca tenha o que medir. Trocar
+# `vm.runInNewContext` por `eval`, ou o base64 da passagem por interpolação
+# de template, faz cada um deles virar PASS (ou pendurar), e é só por isso
+# que a bateria fica vermelha quando a fronteira sai.
+#
+# Nenhum payload apaga, escreve ou chama rede — ver cli-hostil.cjs.
+echo
+echo "Teste 5: payload hostil (fronteira de isolamento)"
+export RFM_MEDIR_CLI_CMD="node scripts/fixtures/escada/cli-hostil.cjs"
+
+# 5a — injeção de template literal.
+# Só vira fatorial válido se a passagem interpolar. Com base64, chega inerte.
+export RFM_MEDIR_PAYLOAD=injecao
+saida5a=$(bash scripts/medir-escada.sh 2>&1)
+marca "injeção de template não vira código (tarefa-01 FAIL)" \
+  $( (echo "$saida5a" | grep -qE "^tarefa-01.*FAIL" && echo 0) || echo 1)
+
+# 5b — fuga do sandbox.
+# Fatorial correto *desde que* `require` exista. Dentro do vm, não existe.
+export RFM_MEDIR_PAYLOAD=escape
+saida5b=$(bash scripts/medir-escada.sh 2>&1)
+marca "código que depende de require não passa (tarefa-01 FAIL)" \
+  $( (echo "$saida5b" | grep -qE "^tarefa-01.*FAIL" && echo 0) || echo 1)
+
+# 5c — laço infinito.
+# O relógio do vm só vale para o que roda dentro da chamada: se as provas
+# chamarem a função do lado de fora, isto pendura a bateria para sempre.
+# O `timeout` aqui é a rede de segurança; o veredito é o FAIL por timeout.
+export RFM_MEDIR_PAYLOAD=laco
+saida5c=$(timeout 60 bash scripts/medir-escada.sh 2>&1)
+exit5c=$?
+marca "laço infinito não pendura a bateria (exit != 124)" $((exit5c != 124 ? 0 : 1))
+marca "laço infinito dá FAIL por timeout (tarefa-01 FAIL)" \
+  $( (echo "$saida5c" | grep -qE "^tarefa-01.*FAIL" && echo 0) || echo 1)
+
+unset RFM_MEDIR_PAYLOAD
+unset RFM_MEDIR_CLI_CMD
+
 echo
 echo "== Resultado =="
 echo "✓ Passou:  $ok"

@@ -3,90 +3,98 @@
  * Gates de correção para as tarefas da escada
  *
  * Exporta um objeto { tarefa_XX: { assert: function, descricao: string } }
+ *
+ * O código avaliado aqui vem de um modelo, e é código arbitrário. Duas
+ * fronteiras seguram isso, e as duas precisam existir:
+ *
+ *   1. Isolamento — `vm.runInNewContext` num contexto vazio. Sem `require`,
+ *      sem `process`, sem `fs`. O que o código pode tocar é o que está no
+ *      objeto de contexto, e ele começa vazio.
+ *
+ *   2. Relógio — `timeout`. E o relógio só vale para o que roda *dentro* da
+ *      chamada: uma função definida no vm e chamada depois, do lado de fora,
+ *      roda no host, sem relógio nenhum. Por isso as provas de cada tarefa
+ *      entram no mesmo script do código do modelo, e não em volta dele.
+ *      `function factorial(n){ while(true){} }` pendurava a bateria para
+ *      sempre quando as provas chamavam do host.
+ *
+ * A consequência de (2) é que as provas são *fonte*, não closure: elas são
+ * serializadas com `toString()` e não enxergam nada deste arquivo.
  */
 
 const vm = require('vm');
+
+const TIMEOUT_MS = 5000;
+
+/**
+ * Roda o código do modelo e as provas no MESMO contexto isolado, sob um
+ * único relógio.
+ *
+ * @param {string} codigo  código gerado pelo modelo
+ * @param {Function} provas  função sem closure que devolve { ok, erro? }
+ * @returns {{ok: boolean, erro?: string}}
+ */
+function avaliarIsolado(codigo, provas) {
+  const contexto = { __resultado: null };
+  const script =
+    'var global = globalThis;\n' +
+    codigo +
+    '\n;__resultado = (' + provas.toString() + ')();';
+
+  try {
+    vm.runInNewContext(script, contexto, { timeout: TIMEOUT_MS });
+  } catch (e) {
+    return { ok: false, erro: `Erro ao executar: ${e.message}` };
+  }
+
+  const resultado = contexto.__resultado;
+  if (!resultado || typeof resultado !== 'object') {
+    return { ok: false, erro: 'provas não devolveram veredito' };
+  }
+  return resultado;
+}
 
 const gates = {
   'tarefa-01': {
     descricao: 'Fatorial deve existir e calcular corretamente',
     assert(codigo) {
-      try {
-        // Executar o código em contexto isolado com timeout
-        const contexto = {};
-        const globalObj = new Proxy(contexto, {
-          set: (target, prop, value) => { target[prop] = value; return true; },
-          get: (target, prop) => target[prop]
-        });
-        contexto.global = globalObj;
-        vm.runInNewContext(codigo, contexto, { timeout: 5000 });
-
-        // Validar que factorial existe e é função
-        if (typeof contexto.factorial !== 'function') {
+      return avaliarIsolado(codigo, function () {
+        if (typeof factorial !== 'function') {
           return { ok: false, erro: 'factorial não é uma função' };
         }
-
-        // Testar alguns casos
-        if (contexto.factorial(0) !== 1) return { ok: false, erro: 'factorial(0) deveria ser 1' };
-        if (contexto.factorial(1) !== 1) return { ok: false, erro: 'factorial(1) deveria ser 1' };
-        if (contexto.factorial(5) !== 120) return { ok: false, erro: 'factorial(5) deveria ser 120' };
-        if (contexto.factorial(10) !== 3628800) return { ok: false, erro: 'factorial(10) deveria ser 3628800' };
-
+        if (factorial(0) !== 1) return { ok: false, erro: 'factorial(0) deveria ser 1' };
+        if (factorial(1) !== 1) return { ok: false, erro: 'factorial(1) deveria ser 1' };
+        if (factorial(5) !== 120) return { ok: false, erro: 'factorial(5) deveria ser 120' };
+        if (factorial(10) !== 3628800) return { ok: false, erro: 'factorial(10) deveria ser 3628800' };
         return { ok: true };
-      } catch (e) {
-        return { ok: false, erro: `Erro ao executar: ${e.message}` };
-      }
+      });
     }
   },
 
   'tarefa-02': {
     descricao: 'isPalindrome deve detectar palíndromos corretamente',
     assert(codigo) {
-      try {
-        const contexto = {};
-        const globalObj = new Proxy(contexto, {
-          set: (target, prop, value) => { target[prop] = value; return true; },
-          get: (target, prop) => target[prop]
-        });
-        contexto.global = globalObj;
-        vm.runInNewContext(codigo, contexto, { timeout: 5000 });
-
-        if (typeof contexto.isPalindrome !== 'function') {
+      return avaliarIsolado(codigo, function () {
+        if (typeof isPalindrome !== 'function') {
           return { ok: false, erro: 'isPalindrome não é uma função' };
         }
-
-        // Testes
-        if (contexto.isPalindrome('racecar') !== true) return { ok: false, erro: 'isPalindrome("racecar") deveria ser true' };
-        if (contexto.isPalindrome('hello') !== false) return { ok: false, erro: 'isPalindrome("hello") deveria ser false' };
-        if (contexto.isPalindrome('A man a plan a canal Panama') !== true) return { ok: false, erro: 'isPalindrome com espaços falhou' };
-        if (contexto.isPalindrome('madam') !== true) return { ok: false, erro: 'isPalindrome("madam") deveria ser true' };
-
+        if (isPalindrome('racecar') !== true) return { ok: false, erro: 'isPalindrome("racecar") deveria ser true' };
+        if (isPalindrome('hello') !== false) return { ok: false, erro: 'isPalindrome("hello") deveria ser false' };
+        if (isPalindrome('A man a plan a canal Panama') !== true) return { ok: false, erro: 'isPalindrome com espaços falhou' };
+        if (isPalindrome('madam') !== true) return { ok: false, erro: 'isPalindrome("madam") deveria ser true' };
         return { ok: true };
-      } catch (e) {
-        return { ok: false, erro: `Erro ao executar: ${e.message}` };
-      }
+      });
     }
   },
 
   'tarefa-03': {
     descricao: 'Stack deve implementar LIFO corretamente',
     assert(codigo) {
-      try {
-        const contexto = {};
-        const globalObj = new Proxy(contexto, {
-          set: (target, prop, value) => { target[prop] = value; return true; },
-          get: (target, prop) => target[prop]
-        });
-        contexto.global = globalObj;
-        vm.runInNewContext(codigo, contexto, { timeout: 5000 });
-
-        if (typeof contexto.Stack !== 'function') {
+      return avaliarIsolado(codigo, function () {
+        if (typeof Stack !== 'function') {
           return { ok: false, erro: 'Stack não é uma classe/função' };
         }
-
-        const stack = new contexto.Stack();
-
-        // Testes básicos
+        const stack = new Stack();
         if (!stack.isEmpty()) return { ok: false, erro: 'Stack nova deveria estar vazia' };
 
         stack.push(1);
@@ -101,68 +109,40 @@ const gates = {
         if (stack.size() !== 1) return { ok: false, erro: `Após 2 pops, size deveria ser 1, foi ${stack.size()}` };
 
         return { ok: true };
-      } catch (e) {
-        return { ok: false, erro: `Erro ao executar: ${e.message}` };
-      }
+      });
     }
   },
 
   'tarefa-04': {
     descricao: 'findMax deve retornar o maior número',
     assert(codigo) {
-      try {
-        const contexto = {};
-        const globalObj = new Proxy(contexto, {
-          set: (target, prop, value) => { target[prop] = value; return true; },
-          get: (target, prop) => target[prop]
-        });
-        contexto.global = globalObj;
-        vm.runInNewContext(codigo, contexto, { timeout: 5000 });
-
-        if (typeof contexto.findMax !== 'function') {
+      return avaliarIsolado(codigo, function () {
+        if (typeof findMax !== 'function') {
           return { ok: false, erro: 'findMax não é uma função' };
         }
-
-        // Testes
-        if (contexto.findMax([1, 2, 3, 4, 5]) !== 5) return { ok: false, erro: 'findMax([1,2,3,4,5]) deveria ser 5' };
-        if (contexto.findMax([5, 2, 8, 1]) !== 8) return { ok: false, erro: 'findMax([5,2,8,1]) deveria ser 8' };
-        if (contexto.findMax([-10, -5, -20]) !== -5) return { ok: false, erro: 'findMax com negativos falhou' };
-        if (contexto.findMax([]) !== null) return { ok: false, erro: 'findMax([]) deveria ser null' };
-
+        if (findMax([1, 2, 3, 4, 5]) !== 5) return { ok: false, erro: 'findMax([1,2,3,4,5]) deveria ser 5' };
+        if (findMax([5, 2, 8, 1]) !== 8) return { ok: false, erro: 'findMax([5,2,8,1]) deveria ser 8' };
+        if (findMax([-10, -5, -20]) !== -5) return { ok: false, erro: 'findMax com negativos falhou' };
+        if (findMax([]) !== null) return { ok: false, erro: 'findMax([]) deveria ser null' };
         return { ok: true };
-      } catch (e) {
-        return { ok: false, erro: `Erro ao executar: ${e.message}` };
-      }
+      });
     }
   },
 
   'tarefa-05': {
     descricao: 'decimalToBinary deve converter corretamente',
     assert(codigo) {
-      try {
-        const contexto = {};
-        const globalObj = new Proxy(contexto, {
-          set: (target, prop, value) => { target[prop] = value; return true; },
-          get: (target, prop) => target[prop]
-        });
-        contexto.global = globalObj;
-        vm.runInNewContext(codigo, contexto, { timeout: 5000 });
-
-        if (typeof contexto.decimalToBinary !== 'function') {
+      return avaliarIsolado(codigo, function () {
+        if (typeof decimalToBinary !== 'function') {
           return { ok: false, erro: 'decimalToBinary não é uma função' };
         }
-
-        // Testes
-        if (contexto.decimalToBinary(0) !== '0') return { ok: false, erro: 'decimalToBinary(0) deveria ser "0"' };
-        if (contexto.decimalToBinary(1) !== '1') return { ok: false, erro: 'decimalToBinary(1) deveria ser "1"' };
-        if (contexto.decimalToBinary(5) !== '101') return { ok: false, erro: 'decimalToBinary(5) deveria ser "101"' };
-        if (contexto.decimalToBinary(10) !== '1010') return { ok: false, erro: 'decimalToBinary(10) deveria ser "1010"' };
-        if (contexto.decimalToBinary(255) !== '11111111') return { ok: false, erro: 'decimalToBinary(255) deveria ser "11111111"' };
-
+        if (decimalToBinary(0) !== '0') return { ok: false, erro: 'decimalToBinary(0) deveria ser "0"' };
+        if (decimalToBinary(1) !== '1') return { ok: false, erro: 'decimalToBinary(1) deveria ser "1"' };
+        if (decimalToBinary(5) !== '101') return { ok: false, erro: 'decimalToBinary(5) deveria ser "101"' };
+        if (decimalToBinary(10) !== '1010') return { ok: false, erro: 'decimalToBinary(10) deveria ser "1010"' };
+        if (decimalToBinary(255) !== '11111111') return { ok: false, erro: 'decimalToBinary(255) deveria ser "11111111"' };
         return { ok: true };
-      } catch (e) {
-        return { ok: false, erro: `Erro ao executar: ${e.message}` };
-      }
+      });
     }
   }
 };
