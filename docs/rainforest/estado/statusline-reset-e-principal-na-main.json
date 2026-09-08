@@ -1,0 +1,30 @@
+{
+  "slug": "statusline-reset-e-principal-na-main",
+  "titulo": "Statusline mostra tempo até o reset; checkout principal fica na main",
+  "criado_em": "2026-09-08",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/statusline-reset-e-principal-na-main.md",
+    "em": "2026-09-08"
+  },
+  "plano": {
+    "status": "ok",
+    "doc": "docs/rainforest/planos/statusline-reset-e-principal-na-main.md",
+    "em": "2026-09-08"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
