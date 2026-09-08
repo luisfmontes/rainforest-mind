@@ -73,6 +73,11 @@ function resolverRaizPlugin() {
  * Processa argumentos CLI.
  * @returns {object|null}
  */
+// Lista fechada: flag fora dela e recusada ANTES de qualquer efeito. E o oposto
+// do `estado.cjs`, que le cada flag por `indexOf` e ignora o resto — foi assim
+// que um `--dry-run` inventado aprovou um design em 2026-09-08 (Issue #218).
+const FLAGS_ACEITAS = new Set(['agente', 'worktree', 'escreve', 'briefing-file', 'timeout-ms', 'saida']);
+
 function processarArgs() {
   const args = process.argv.slice(2);
   const opts = {};
@@ -84,9 +89,13 @@ function processarArgs() {
     }
     if (arg.startsWith('--')) {
       const key = arg.substring(2);
-      const valor = args[i + 1];
-      if (!valor || valor.startsWith('--')) {
+      if (!FLAGS_ACEITAS.has(key)) {
         console.error(`flag desconhecida: ${arg}`);
+        process.exit(1);
+      }
+      const valor = args[i + 1];
+      if (valor === undefined || valor.startsWith('--')) {
+        console.error(`erro: ${arg} exige um valor`);
         process.exit(1);
       }
       opts[key] = valor;
@@ -266,11 +275,23 @@ Opcionais:
   // Resolve sandbox
   const sandbox = escreve ? 'workspace-write' : 'read-only';
 
-  // Resolve arquivo de saída
+  // Resolve arquivo de saída. O temporario e nosso e some no fim; o que veio
+  // por --saida e do chamador e fica.
   let saidaArquivo = opts.saida;
-  if (!saidaArquivo) {
-    saidaArquivo = path.join(os.tmpdir(), `despachar-codex-${Date.now()}.txt`);
+  const saidaTemporaria = !saidaArquivo;
+  if (saidaTemporaria) {
+    saidaArquivo = path.join(os.tmpdir(), `despachar-codex-${process.pid}-${Date.now()}.txt`);
   }
+  const lerSaida = () => {
+    if (!fs.existsSync(saidaArquivo)) return null;
+    try {
+      const texto = fs.readFileSync(saidaArquivo, 'utf8');
+      if (saidaTemporaria) fs.unlinkSync(saidaArquivo);
+      return texto;
+    } catch {
+      return null;
+    }
+  };
 
   // Monta comando base
   let cmd = `codex exec -s ${sandbox} --skip-git-repo-check -C "${opts.worktree}" -c approval_policy="never" -o "${saidaArquivo}"`;
@@ -322,15 +343,9 @@ Opcionais:
   if (resultado.status === null) {
     // Timeout
     console.error(`timeout apos ${timeoutMs} ms`);
-    // Tenta imprimir conteúdo parcial de saida se existir
-    if (fs.existsSync(saidaArquivo)) {
-      try {
-        const parcial = fs.readFileSync(saidaArquivo, 'utf8');
-        console.log(parcial);
-      } catch {
-        // ignorado
-      }
-    }
+    // Conteúdo parcial de -o, se o Codex chegou a gravar algo
+    const parcial = lerSaida();
+    if (parcial) console.log(parcial);
     process.exit(124);
   }
 
@@ -339,23 +354,13 @@ Opcionais:
     if (resultado.stderr) {
       console.error(resultado.stderr);
     }
+    lerSaida();
     process.exit(resultado.status || 1);
   }
 
-  // Sucesso
-  // Imprime conteúdo de -o se existir, senão stdout do Codex
-  let saida = '';
-  if (fs.existsSync(saidaArquivo)) {
-    try {
-      saida = fs.readFileSync(saidaArquivo, 'utf8');
-    } catch {
-      saida = resultado.stdout;
-    }
-  } else {
-    saida = resultado.stdout;
-  }
-
-  console.log(saida);
+  // Sucesso: conteúdo de -o se existir e não estiver vazio, senão stdout do Codex
+  const saida = lerSaida();
+  console.log(saida ? saida : resultado.stdout);
   process.exit(0);
 }
 

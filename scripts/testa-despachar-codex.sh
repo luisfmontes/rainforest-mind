@@ -339,6 +339,31 @@ else
   echo "$saida_9" | head -3 | sed 's/^/    /'
 fi
 
+# Caso 9b: flag desconhecida COM valor tambem e recusada. Ate 2026-09-08 o
+# parser aceitava qualquer `--x y` e so tropecava em flag sem valor — o `--dry-run`
+# do caso 9 passava por acidente, nao por allowlist. Exit 1, e o duble NAO roda:
+# recusa vem antes de qualquer efeito.
+echo "== CASO 9b: --foo bar desconhecida → exit 1, sem chamar o dublê ==="
+CMD_OUT_9B="$RAIZ/cmd-9b.txt"
+CMD_OUT_9B_M="$(cygpath -m "$CMD_OUT_9B" 2>/dev/null || printf '%s' "$CMD_OUT_9B")"
+rm -f "$CMD_OUT_9B"
+saida_9b=$(DUBLE_MODO=ok DUBLE_CMD_OUT="$CMD_OUT_9B_M" RFM_TEST=1 CODEX_CMD="node $DUBLE_M" \
+  node "$PLUGIN/scripts/despachar-codex.cjs" \
+  --agente revisor \
+  --worktree "$WTE" \
+  --escreve false \
+  --briefing-file "$BRIEFING" \
+  --foo bar 2>&1)
+exit_9b=$?
+if [ "$exit_9b" = "1" ] && echo "$saida_9b" | grep -q "flag desconhecida: --foo" && [ ! -f "$CMD_OUT_9B" ]; then
+  ok=$((ok + 1))
+  echo "  ok   caso 9b: flag desconhecida com valor, exit 1, dublê não chamado"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA caso 9b: esperava exit 1 com 'flag desconhecida: --foo' e dublê ausente, veio exit $exit_9b"
+  echo "$saida_9b" | head -3 | sed 's/^/    /'
+fi
+
 echo ""
 echo "== RESULTADO =="
 echo "resultado: $ok ok, $falhou falha(s)"
