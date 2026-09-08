@@ -16,6 +16,27 @@ const CLI_EXTERNO_PATH = require.resolve('../hooks/lib/cli-externo.cjs');
 
 let ok = 0;
 let falhou = 0;
+let pulado = 0;
+
+/**
+ * Sinaliza "não deu para MEDIR", que é diferente de "o código errou".
+ *
+ * Nasceu em 2026-09-08, de um vermelho de CI que não era regressão: no runner
+ * Windows a consulta `Get-CimInstance Win32_Process` falhou, o
+ * `matarDescendencia` avisou que não conseguiu consultar a tabela de processos
+ * e voltou sem matar nada — e o teste 10, que afirma "timeout não deixa
+ * descendente vivo", viu o descendente vivo e gritou FALHA. O código estava
+ * certo: ele não matou porque não teve como enxergar.
+ *
+ * Chamar isso de falha é o defeito que este acervo persegue em todo lugar — o
+ * instrumento respondendo quando não mediu. A mesma bateria passava 11/11 na
+ * máquina do Luís no mesmo commit, e o custo do engano foi um rerun de 20
+ * minutos de CI e a suspeita sobre um diff que não tinha nada a ver.
+ *
+ * PULADO é ruidoso de propósito: sai na tela, entra no total e aparece no
+ * resumo. Silencioso, viraria a próxima forma de verde que não prova nada.
+ */
+class NaoDeuParaMedir extends Error {}
 
 function testa(nome, fn) {
   try {
@@ -23,6 +44,12 @@ function testa(nome, fn) {
     ok++;
     console.log(`  ok   ${nome}`);
   } catch (e) {
+    if (e instanceof NaoDeuParaMedir) {
+      pulado++;
+      console.log(`  PULADO ${nome}`);
+      console.log(`         ${e.message}`);
+      return;
+    }
     falhou++;
     console.log(`  FALHA ${nome}`);
     console.log(`         ${e.message}`);
@@ -278,13 +305,38 @@ testa('timeout nao deixa descendente vivo', () => {
   delete require.cache[CLI_EXTERNO_PATH];
   const { rodarCli: rodarCliInterceptado } = require(CLI_EXTERNO_PATH);
 
+  // O `matarDescendencia` avisa por stderr quando NAO consegue enxergar a
+  // tabela de processos. Esse aviso é a diferença entre "não matou porque
+  // errou" e "não matou porque não teve como olhar" — e sem capturá-lo aqui,
+  // os dois chegam ao assert idênticos. Ver `NaoDeuParaMedir`, no topo.
+  const stderrOriginal = process.stderr.write.bind(process.stderr);
+  let stderrCapturado = '';
+  process.stderr.write = (chunk, ...resto) => {
+    stderrCapturado += String(chunk);
+    return stderrOriginal(chunk, ...resto);
+  };
+
   let resultado;
   try {
     const cmd = `node "${path.join(FIXTURES_SEGUNDA_OPINIAO, 'externo-indisponivel-timeout.cjs')}"`;
     resultado = rodarCliInterceptado({ cmd, entrada: '', timeoutMs: 800 });
   } finally {
+    process.stderr.write = stderrOriginal;
     cp.spawnSync = spawnSyncOriginal;
     delete require.cache[CLI_EXTERNO_PATH];
+  }
+
+  const NAO_ENXERGOU = [
+    'nao consegui consultar a tabela de processos',
+    'saida da consulta de processos ilegivel',
+  ];
+  const cego = NAO_ENXERGOU.find((marca) => stderrCapturado.includes(marca));
+  if (cego) {
+    throw new NaoDeuParaMedir(
+      `matarDescendencia nao conseguiu enxergar a tabela de processos ("${cego}"), ` +
+      `entao a limpeza nunca teve chance de rodar. Descendente vivo aqui mede o ambiente, ` +
+      `nao o codigo. Sem processo para inspecionar, este teste nao conclui nada.`
+    );
   }
 
   if (resultado.status !== null) {
@@ -364,10 +416,15 @@ console.log('');
 fs.rmSync(TEMP_DIR, { recursive: true, force: true });
 
 // ---- Resumo ----
-const total = ok + falhou;
+const total = ok + falhou + pulado;
 console.log('==== Resultado ====');
 console.log(`ok: ${ok}`);
 console.log(`falhou: ${falhou}`);
+if (pulado > 0) {
+  // Sai SEMPRE que houver, e antes do total: pulado que se esconde no rodapé
+  // é a próxima forma de verde que não prova nada.
+  console.log(`PULADO: ${pulado} (nao deu para medir — leia o motivo acima)`);
+}
 console.log(`total: ${total}`);
 
 if (falhou > 0) {

@@ -327,5 +327,78 @@ nao_tem "URL de clone com indirecao continua isenta"            "$(roda "$SBP/cr
 saiu    "e passa (exit 0)"                                      "$(codigo "$SBP/cred-url-2.md")" "0"
 
 echo
+echo "== 9. termos privados — o que nao tem FORMA e so uma lista reconhece =="
+# Nome de empregador, de cliente e de projeto interno nao tem regex. A lista mora
+# FORA da arvore (~/.rainforest/termos-proibidos.txt) de proposito: escreve-la num
+# arquivo versionado deste repo seria o proprio vazamento que a trava impede.
+# Aqui o HOME e trocado por um sandbox, entao a bateria nunca le a lista real do
+# usuario nem depende de ela existir.
+LAR="$SBP/lar"
+mkdir -p "$LAR/.rainforest"
+# O comentario da lista e' uma frase que TAMBEM aparece como titulo markdown no
+# arquivo limpo do caso 9b. Nao e coincidencia: e o que torna a mutacao capaz de
+# falhar. Sem o filtro de `#`, a linha inteira `# titulo que tambem e comentario`
+# vira termo, e o titulo identico do arquivo limpo passa a ser recusado.
+printf '# titulo que tambem e comentario\n\nACME_INTERNO\nprojeto-secreto\n' > "$LAR/.rainforest/termos-proibidos.txt"
+
+roda_com_lar()   { HOME="$LAR" USERPROFILE="$LAR" node "$SRC/scripts/conferir-publicacao.cjs" "$1" 2>&1; }
+codigo_com_lar() { HOME="$LAR" USERPROFILE="$LAR" node "$SRC/scripts/conferir-publicacao.cjs" "$1" >/dev/null 2>&1; echo $?; }
+VAZIO="$SBP/lar-vazio"
+mkdir -p "$VAZIO"
+roda_sem_lista()   { HOME="$VAZIO" USERPROFILE="$VAZIO" node "$SRC/scripts/conferir-publicacao.cjs" "$1" 2>&1; }
+codigo_sem_lista() { HOME="$VAZIO" USERPROFILE="$VAZIO" node "$SRC/scripts/conferir-publicacao.cjs" "$1" >/dev/null 2>&1; echo $?; }
+
+printf '# relatorio\n\nrodei no repo do ACME_INTERNO e deu certo\n' > "$SBP/termo.md"
+tem  "termo da lista privada e pego"            "$(roda_com_lar "$SBP/termo.md")" "termo-privado"
+saiu "e RECUSA (exit 2)"                        "$(codigo_com_lar "$SBP/termo.md")" "2"
+
+# O termo NAO pode aparecer na saida: log de CI e publico, e imprimir o termo
+# para avisar que ele nao pode ser publicado seria o mesmo erro com outra roupa.
+nao_tem "a saida NAO ecoa o termo que bateu"    "$(roda_com_lar "$SBP/termo.md")" "ACME_INTERNO"
+
+# Composto com hifen precisa casar: e a forma da maioria dos nomes de repo, e
+# exigir fronteira de palavra nas pontas deixaria justamente eles passarem.
+printf '# relatorio\n\nclonei o projeto-secreto ontem\n' > "$SBP/termo-hifen.md"
+tem  "termo composto com hifen tambem e pego"   "$(roda_com_lar "$SBP/termo-hifen.md")" "termo-privado"
+
+# Sem a lista o script nao inventa: passa limpo. Mas passar CALADO seria a falha
+# de 2026-08-10 de novo — o instrumento dizendo "nao achei" sem ter procurado.
+# Por isso a ausencia sai no bloco do que ele NAO ve, junto com o verde.
+saiu "sem lista, o mesmo texto passa (exit 0)"  "$(codigo_sem_lista "$SBP/termo.md")" "0"
+tem  "e o verde AVISA que a lista nao carregou" "$(roda_sem_lista "$SBP/termo.md")" "lista privada NAO foi carregada"
+
+# Com a lista, o bloco do que ele nao ve muda de tom e diz quantos termos entraram.
+printf '# relatorio\n\nnada demais aqui\n' > "$SBP/limpo-lar.md"
+tem  "com lista, o verde diz quantos termos"    "$(roda_com_lar "$SBP/limpo-lar.md")" "2 termo(s) carregado(s)"
+
+# Comentario e linha vazia NAO viram termo. Sem o filtro, a linha de comentario
+# inteira entra na alternativa — e comentario de lista e prosa, entao ela colide
+# com titulo de markdown e a trava passa a recusar arquivo limpo, que e como uma
+# trava vira `--forcar` no dedo de quem usa.
+printf '# titulo que tambem e comentario\n\ntexto qualquer\n' > "$SBP/so-comentario.md"
+saiu "comentario da lista nao vira termo (exit 0)" "$(codigo_com_lar "$SBP/so-comentario.md")" "0"
+
+echo
+echo "== 9b. MUTACAO — sem o filtro de comentario, o caso acima para de pegar =="
+# A prova de que o filtro e load-bearing: tira-se ele da COPIA e o texto limpo,
+# que passava, passa a ser recusado por causa do `#` do cabecalho da lista.
+MUT="$SBP/conferir-mutado.cjs"
+# A aspa simples do fonte (`startsWith('#')`) e montada com fromCharCode(39):
+# escreve-la literal aqui fecharia a aspa do proprio `node -e` e o teste passaria
+# a medir outro comando. Mesma armadilha ja registrada neste acervo.
+node -e '
+  const fs = require("fs");
+  const src = process.argv[1], dst = process.argv[2];
+  const A = String.fromCharCode(39);
+  const t = fs.readFileSync(src, "utf8");
+  const de = ".filter((l) => l && !l.startsWith(" + A + "#" + A + "))";
+  const para = ".filter((l) => l)";
+  if (!t.includes(de)) { console.error("MUTACAO: ancora do filtro nao encontrada"); process.exit(1); }
+  fs.writeFileSync(dst, t.split(de).join(para));
+' "$SRC/scripts/conferir-publicacao.cjs" "$MUT"
+COD_MUT="$(HOME="$LAR" USERPROFILE="$LAR" node "$MUT" "$SBP/so-comentario.md" >/dev/null 2>&1; echo $?)"
+saiu "sem o filtro, texto limpo passa a ser RECUSADO (o filtro e load-bearing)" "$COD_MUT" "2"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]

@@ -6,21 +6,20 @@ método que a skill `arqueologia` descreve.
 
 | Fatia | Arquivo | Blocos | Profundidade | Data | Nota |
 |---|---|---|---|---|---|
-| `ZXX01M99` | `ZXX01M99.prw` | 1 de ~14 | superfície + mecanismo + regra | 2026-08-22 | classe `logica` (repetição 32,3%); bloco 1 = linhas 1–569, âncora `ZXX01M99`; hash do fonte `e34c3e2b8ab02d9779465f19a3638e88609282ff` |
+| — | — | — | — | — | nenhuma fatia mapeada neste repositório |
 
-## Blocos por fatia
+## Por que o índice está vazio
 
-### `ZXX01M99` — Painel de Fechamento Financeiro (Inovação / unidade Agro)
+Havia aqui um mapa real, de 2026-08-22, produzido durante a validação do agente
+`arqueologo`. Ele foi **removido em 2026-09-08**: era arqueologia de um fonte de
+um repositório de trabalho — nomes de função, portão de licenciamento, nome de
+include interno —, e este repositório é público.
 
-Fonte de 13.692 linhas e 219 funções. Triagem: densidade 62,52 lin/func,
-repetição 32,3%, classe `logica`. Ao teto de 40.000 caracteres por bloco, o
-arquivo rende ~14 blocos.
+A remoção não é perda de método: o que o mapa provava (que o agente produz mapa
+dentro do teto de bloco, com citação `arquivo:linha` reabrível) está provado por
+`scripts/testa-arqueologo-ponta-a-ponta.sh`, que roda sobre fixture sintética e
+não depende de fonte nenhum de cliente.
 
-| Bloco | Âncora | Faixa (em 2026-08-22) | Bytes do fonte | Estado |
-|---|---|---|---|---|
-| `ZXX01M99.prw#ZXX01M99` | `ZXX01M99` | 1–569 | 27.712 | mapeado |
-| — | `ZNC01M99` | 570–1067 | 26.326 | pendente |
-| — | `fCalTot` em diante | 1068–13.692 | ~485.000 | pendente |
-
-O bloco 1 fecha antes de `ZNC01M99` porque essa função sozinha tem ~26 KB:
-juntá-la levaria o bloco a 54.038 bytes e estouraria o teto.
+**Regra que fica**, e vale para quem for mapear daqui em diante: mapa de fonte
+de trabalho mora no repositório daquele trabalho, nunca aqui. Este `COBERTURA.md`
+indexa o que for mapeado **deste** repositório, ou fatia de código público.

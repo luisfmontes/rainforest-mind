@@ -353,65 +353,91 @@ DENS_BIN_RAND="$(campo "$TMP/binario-rand.json" 0 densidade)"
 igual "densidade = null (nfunc === 0)" "null" "$DENS_BIN_RAND"
 
 echo
-echo "== 9. PROVA CONTRA O FONTE REAL (pulada se o inovacao não existir aqui) =="
+echo "== 9. PROVA CONTRA O FONTE REAL (pulada sem ~/.rainforest/fontes-reais.json) =="
 # Só roda se a pasta existir de verdade nesta máquina — a bateria não pode
 # depender disso (o worktree que revisa/verifica pode não ter o inovacao ao
 # lado). Quando existe, confere contra os valores medidos no design
 # (docs/rainforest/design/2026-08-22-agente-arqueologo.md), NUNCA escrevendo
 # nele — só leitura, via `find`, porque os caminhos exatos do plano são
 # abreviados com '...' e uma vez já divergiram do real (ZXX02V01.tlpp mora em
-# templates/EST/..., não templates/OG/... como o texto do plano sugere).
-INOVACAO=""
-for cand in "/c/Microsiga/erp-trabalho/inovacao" "C:/Microsiga/erp-trabalho/inovacao"; do
-  if [ -d "$cand" ]; then INOVACAO="$cand"; break; fi
+# templates/EST/..., não templates/MOD/... como o texto do plano sugere).
+# Os fontes reais NAO moram neste repositorio, e o caminho deles tambem nao:
+# sao codigo de trabalho, e este repo e publico. A bateria le a lista de um
+# arquivo PRIVADO, fora da arvore -- ~/.rainforest/fontes-reais.json, com
+# cinco chaves apontando para caminho absoluto:
+#
+#   repetitivo   -> espera classe `dado-como-codigo`
+#   logica       -> espera classe `logica` e >= 100 funcoes
+#   indefinido   -> espera classe `indefinido`
+#   duplicata_a  -> espera mesmo hash de duplicata_b
+#   duplicata_b  -> espera `duplicataDe` apontando para duplicata_a
+#
+# Sem o arquivo, a prova contra fonte real e PULADA e dita em voz alta --
+# nunca silenciosamente verde. Foi assim que os caminhos de trabalho sairam
+# do repositorio em 2026-09-08 sem a bateria perder a cobertura na maquina de
+# quem tem os fontes.
+FONTES_JSON=""
+for cand in "$HOME/.rainforest/fontes-reais.json" "$USERPROFILE/.rainforest/fontes-reais.json"; do
+  if [ -f "$cand" ]; then FONTES_JSON="$cand"; break; fi
 done
 
-if [ -z "$INOVACAO" ]; then
-  echo "  (pulado: C:\\Microsiga\\erp-trabalho\\inovacao não existe nesta máquina)"
+if [ -z "$FONTES_JSON" ]; then
+  echo "  (pulado: ~/.rainforest/fontes-reais.json nao existe nesta maquina)"
 else
-  zupd01="$(find "$INOVACAO/templates/AreaA" -iname 'zupd01.prw' 2>/dev/null | head -1)"
-  ZXX01M99="$(find "$INOVACAO/templates/OG" -iname 'ZXX01M99.prw' 2>/dev/null | head -1)"
-  ZXX02V01="$(find "$INOVACAO" -iname 'ZXX02V01.tlpp' -not -path '*/.claude/worktrees/*' 2>/dev/null | head -1)"
-  NFE_BASE="$(find "$INOVACAO/templates/receituario/BASE" -iname 'zfiscal01.prw' -not -path '*/.claude/worktrees/*' 2>/dev/null | head -1)"
-  NFE_CLIENTE_B="$(find "$INOVACAO/templates/receituario/CLIENTE_B" -iname 'zfiscal01.prw' -not -path '*/.claude/worktrees/*' 2>/dev/null | head -1)"
+  campo_json() { # chave -> caminho, vazio se a chave falta ou o arquivo nao existe
+    node -e '
+      const fs=require("fs");
+      const o=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));
+      const v=o[process.argv[2]];
+      process.stdout.write(v && fs.existsSync(v) ? String(v) : "");
+    ' "$FONTES_JSON" "$1"
+  }
+  F_REPET="$(campo_json repetitivo)"
+  F_LOGICA="$(campo_json logica)"
+  F_INDEF="$(campo_json indefinido)"
+  F_DUP_A="$(campo_json duplicata_a)"
+  F_DUP_B="$(campo_json duplicata_b)"
 
-  if [ -z "$zupd01" ] || [ -z "$ZXX01M99" ] || [ -z "$ZXX02V01" ] || [ -z "$NFE_BASE" ] || [ -z "$NFE_CLIENTE_B" ]; then
-    echo "  (pulado: inovacao existe, mas algum dos fontes de referência não foi encontrado por busca)"
-    echo "    zupd01=$zupd01"
-    echo "    ZXX01M99=$ZXX01M99"
-    echo "    ZXX02V01=$ZXX02V01"
-    echo "    nfe(BASE)=$NFE_BASE"
-    echo "    nfe(CLIENTE_B)=$NFE_CLIENTE_B"
+  if [ -z "$F_REPET" ] || [ -z "$F_LOGICA" ] || [ -z "$F_INDEF" ] || [ -z "$F_DUP_A" ] || [ -z "$F_DUP_B" ]; then
+    echo "  (pulado: fontes-reais.json existe, mas alguma das cinco chaves falta ou aponta para arquivo inexistente)"
+    echo "    repetitivo=$F_REPET"
+    echo "    logica=$F_LOGICA"
+    echo "    indefinido=$F_INDEF"
+    echo "    duplicata_a=$F_DUP_A"
+    echo "    duplicata_b=$F_DUP_B"
   else
     esperado "triagem roda sem erro nos fontes reais" 0 \
-      triar "$TMP/real.json" "$zupd01" "$ZXX01M99" "$ZXX02V01" "$NFE_BASE" "$NFE_CLIENTE_B"
-    # --json ordena por caminho (results.sort por 'arquivo'); em vez de supor a
-    # ordem alfabética entre 5 caminhos de pastas distintas, localiza cada
-    # linha pelo próprio conteúdo do JSON.
-    achar_indice() { # substring_do_caminho
+      triar "$TMP/real.json" "$F_REPET" "$F_LOGICA" "$F_INDEF" "$F_DUP_A" "$F_DUP_B"
+    # --json ordena por caminho. A busca e por CAMINHO EXATO, nao por
+    # substring do nome: duplicata_a e duplicata_b sao o mesmo nome de arquivo
+    # em pastas diferentes, e substring nao distingue os dois.
+    achar_indice() { # caminho_exato
       node -e '
         const fs=require("fs");
         const arr=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));
-        const i=arr.findIndex(x=>x.arquivo.includes(process.argv[2]));
-        console.log(i);
+        const norm=(s)=>String(s).split("\\").join("/");
+        const alvo=norm(process.argv[2]);
+        console.log(arr.findIndex(x=>norm(x.arquivo)===alvo));
       ' "$TMP/real.json" "$1"
     }
-    IX_zupd01="$(achar_indice 'zupd01.prw')"
-    IX_ZXX01M99="$(achar_indice 'ZXX01M99.prw')"
-    IX_ZXX02V01="$(achar_indice 'ZXX02V01.tlpp')"
-    IX_NFE_BASE="$(achar_indice 'BASE')"
-    IX_NFE_CLIENTE_B="$(achar_indice 'CLIENTE_B')"
+    IX_REPET="$(achar_indice "$F_REPET")"
+    IX_LOGICA="$(achar_indice "$F_LOGICA")"
+    IX_INDEF="$(achar_indice "$F_INDEF")"
+    IX_DUP_A="$(achar_indice "$F_DUP_A")"
+    IX_DUP_B="$(achar_indice "$F_DUP_B")"
 
-    NFUNC_zupd01="$(campo "$TMP/real.json" "$IX_zupd01" nfunc)"; if [ "$NFUNC_zupd01" -ge 10 ]; then ok=$((ok+1)); echo "  ok   zupd01.prw: >= 10 fun��es (dado-como-codigo)"; else falhou=$((falhou+1)); echo "  FALHA zupd01.prw: >= 10 fun��es: esperava >= 10, veio '$NFUNC_zupd01'"; fi
-    igual "zupd01.prw: classe dado-como-codigo" "dado-como-codigo" "$(campo "$TMP/real.json" "$IX_zupd01" classe)"
-    NFUNC_ZXX01M99="$(campo "$TMP/real.json" "$IX_ZXX01M99" nfunc)"; if [ "$NFUNC_ZXX01M99" -ge 100 ]; then ok=$((ok+1)); echo "  ok   ZXX01M99.prw: >= 100 fun��es (logica)"; else falhou=$((falhou+1)); echo "  FALHA ZXX01M99.prw: >= 100 fun��es: esperava >= 100, veio '$NFUNC_ZXX01M99'"; fi
-    igual "ZXX01M99.prw: classe logica" "logica" "$(campo "$TMP/real.json" "$IX_ZXX01M99" classe)"
-    igual "ZXX02V01.tlpp: classe indefinido" "indefinido" "$(campo "$TMP/real.json" "$IX_ZXX02V01" classe)"
-    HASH_R_BASE="$(campo "$TMP/real.json" "$IX_NFE_BASE" hash)"
-    HASH_R_CLIENTE_B="$(campo "$TMP/real.json" "$IX_NFE_CLIENTE_B" hash)"
-    igual "zfiscal01.prw BASE e CLIENTE_B: mesmo hash" "$HASH_R_BASE" "$HASH_R_CLIENTE_B"
-    igual "CLIENTE_B marcado como duplicataDe" "$(campo "$TMP/real.json" "$IX_NFE_BASE" arquivo)" \
-      "$(campo "$TMP/real.json" "$IX_NFE_CLIENTE_B" duplicataDe)"
+    NFUNC_REPET="$(campo "$TMP/real.json" "$IX_REPET" nfunc)"
+    if [ "$NFUNC_REPET" -ge 10 ]; then ok=$((ok+1)); echo "  ok   repetitivo: >= 10 funcoes (dado-como-codigo)"; else falhou=$((falhou+1)); echo "  FALHA repetitivo: >= 10 funcoes: esperava >= 10, veio '$NFUNC_REPET'"; fi
+    igual "repetitivo: classe dado-como-codigo" "dado-como-codigo" "$(campo "$TMP/real.json" "$IX_REPET" classe)"
+    NFUNC_LOGICA="$(campo "$TMP/real.json" "$IX_LOGICA" nfunc)"
+    if [ "$NFUNC_LOGICA" -ge 100 ]; then ok=$((ok+1)); echo "  ok   logica: >= 100 funcoes"; else falhou=$((falhou+1)); echo "  FALHA logica: >= 100 funcoes: esperava >= 100, veio '$NFUNC_LOGICA'"; fi
+    igual "logica: classe logica" "logica" "$(campo "$TMP/real.json" "$IX_LOGICA" classe)"
+    igual "indefinido: classe indefinido" "indefinido" "$(campo "$TMP/real.json" "$IX_INDEF" classe)"
+    HASH_DUP_A="$(campo "$TMP/real.json" "$IX_DUP_A" hash)"
+    HASH_DUP_B="$(campo "$TMP/real.json" "$IX_DUP_B" hash)"
+    igual "duplicata_a e duplicata_b: mesmo hash" "$HASH_DUP_A" "$HASH_DUP_B"
+    igual "duplicata_b marcado como duplicataDe" "$(campo "$TMP/real.json" "$IX_DUP_A" arquivo)" \
+      "$(campo "$TMP/real.json" "$IX_DUP_B" duplicataDe)"
   fi
 fi
 

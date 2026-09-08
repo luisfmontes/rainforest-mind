@@ -14,7 +14,7 @@ Inspiração de formato: repo `safishamsi/graphify` (skill `/graphify` — graph
 
 ## 2. Estado atual — o que já foi validado
 
-Dois protótipos Python funcionais, testados em fontes reais do módulo Fechamento Financeiro (projeto Inovação):
+Dois protótipos Python funcionais, testados em fontes reais do módulo Submodulo (projeto Inovação):
 
 - **`advpl_graph.py` (v0.1, fonte único)** — testado em `ZXX01M99.prw` (13.691 linhas, 219 funções). Extraiu 490 arestas, 45 tabelas, 11 MVs, 2 ExecAutos. INDEX.md de 20KB vs fonte de 525KB (~26x menos tokens).
 - **`advpl_graph2.py` (v0.2, multi-fonte)** — testado em ZXX01M99.prw + 4 `.tlpp`. Resolveu 7 chamadas cross-source, 7 tabelas-ponte, e sinalizou 6 externos não resolvidos (fontes fora do conjunto — comportamento correto, viram ponteiros).
@@ -52,7 +52,7 @@ Dois protótipos Python funcionais, testados em fontes reais do módulo Fechamen
 
 - `advpl_graph.py` — extrator v0.1 (fonte único, gera god nodes + tabela de funções com line/end)
 - `advpl_graph2.py` — extrator v0.2 (multi-fonte, resolve namespaces/U_/tabelas-ponte)
-- `INDEX-multi.md` + `graph-multi.json` — saída real do módulo Fechamento Financeiro (5 fontes), útil como fixture de teste
+- `INDEX-multi.md` + `graph-multi.json` — saída real do módulo Submodulo (5 fontes), útil como fixture de teste
 - Fontes de teste usados: `ZXX01M99.prw` + `acme_modulo_submodulo_{ordem_mvc,pe,liquidacao_pagar,liquidacao_receber}.tlpp`
 
 ## 6. Decisões já tomadas (não reabrir sem motivo)

@@ -109,7 +109,7 @@ graph = {"sources": {k: {"namespace": v["ns"], "lines": v["lines"], "functions":
 json.dump(graph, open(f"{OUT}/graph.json","w",encoding="utf-8"), ensure_ascii=False, indent=1)
 
 with open(f"{OUT}/INDEX.md","w",encoding="utf-8") as w:
-    w.write("# Módulo Fechamento Financeiro — grafo multi-fonte\n\n## Fontes\n")
+    w.write("# Módulo Submodulo — grafo multi-fonte\n\n## Fontes\n")
     for k,v in sources.items():
         w.write(f"- **{k}** — {v['lines']} linhas, {len(v['funcs'])} funções" + (f", namespace `{v['ns']}`" if v['ns'] else "") + "\n")
     w.write("\n## Vínculos entre fontes (EXTRACTED)\n")
