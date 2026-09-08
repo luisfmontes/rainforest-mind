@@ -841,14 +841,25 @@ if [ -z "${RFM_TESTA_SAUDE_ANINHADA:-}" ]; then
   git init -q "$COPIA"
   git -C "$COPIA" -c user.email=t@t -c user.name=t add -A >/dev/null 2>&1
   git -C "$COPIA" -c user.email=t@t -c user.name=t commit -qm "copia para a bateria aninhada" >/dev/null 2>&1
-  K="$( cd "$COPIA" && RFM_TESTA_SAUDE_ANINHADA=1 bash "$COPIA/scripts/testa-saude.sh" 2>&1 | tail -1 )"
+  # A saida inteira vai para arquivo, nao para `tail -1`. Guardar so a ultima
+  # linha diz QUE a copia reprovou e esconde O QUE reprovou: em 2026-09-08 o CI
+  # acusou "57 ok, 1 falha(s)" e nao havia como saber qual assercao era — a
+  # execucao aninhada nao reproduzia fora do runner. Instrumento que mede e nao
+  # mostra obriga a proxima pessoa a adivinhar.
+  SAIDA_K="$SBP/saida-aninhada.txt"
+  ( cd "$COPIA" && RFM_TESTA_SAUDE_ANINHADA=1 bash "$COPIA/scripts/testa-saude.sh" ) > "$SAIDA_K" 2>&1
+  K="$(tail -1 "$SAIDA_K")"
   case "$K" in
     *"0 falha(s)"*)
       ok=$((ok+1)); echo "  ok   K. de pasta com outro nome a bateria da o mesmo veredito" ;;
     *)
       falhou=$((falhou+1))
       echo "  FALHA K. de pasta com outro nome a bateria muda de veredito"
-      echo "        veio: $K" ;;
+      echo "        veio: $K"
+      echo "        o que a execucao aninhada reprovou:"
+      grep -n "FALHA" "$SAIDA_K" | head -20 | sed 's/^/          /'
+      echo "        (secao mais proxima de cada falha, para localizar:)"
+      grep -n -B1 "FALHA" "$SAIDA_K" | grep "^[0-9]*-== " | head -20 | sed 's/^/          /' ;;
   esac
   rm -rf "$COPIA"
 else
