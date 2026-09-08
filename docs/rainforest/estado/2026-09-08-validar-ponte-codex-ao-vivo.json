@@ -91,11 +91,18 @@
     ]
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "e9fbbe9505f34199c801d589902a78ccf3f83a68",
+      "head": "e2b317eec4690311dc3004dce5fd51266920c1f2",
       "caminhos_sujos": []
-    }
+    },
+    "base": "29b67d3",
+    "head": "e2b317e",
+    "rodadas": 2,
+    "rodada1": "REPROVADO — CRÍTICO 1: detectarSemCota rodava com exit 0 (falso positivo em parecer que cite 'usage limit'); AVISO 1: nota de 3266 B/≤3300 B desatualizada",
+    "rodada2": "APROVADO — cota só com exit ≠ 0 ou evento --json error/turn.failed; casos 12 (despachar), 9 e 10 (transferir); critério T4 e nota do estado corrigidos",
+    "baterias": "testa-despachar-codex 16 ok; testa-transferir-para-codex 12 ok; testa-gate-review-codex 16 ok",
+    "em": "2026-09-08"
   },
   "verificar": {
     "status": "pendente"
