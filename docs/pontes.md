@@ -50,5 +50,13 @@ que estava lá é apagado; regenerar substitui só o bloco.
 
 O Codex chega em duas formas: como **runtime de subagente dentro do Claude** — quando você despacha agentes do rainforest para rodarem em Codex via `scripts/despachar-codex.cjs` (ativado pela primeira linha `Runtime: codex` no briefing, mapeado por `codex-modelo-*` do `/setup`, sandbox `read-only`/`workspace-write` conforme `escreve`, retornando stdout para o Claude) — e como **agente paralelo com rainforest instalado como host dentro do Codex**, usando branches `codex/*` do mesmo repositório de trabalho.
 
-A primeira é ponte assimétrica: Claude é a janela principal, Codex é executor. A segunda é mirror — metade de um workflow que mantém pará de desenvolvimento em ambos os hosts. Um projeto pode usar as duas: "faz isso em Codex" (primeira), ou "continuo em Codex" (segunda via `/transferir`). **Isso não é espelho de git:** branches `codex/*` são branches de trabalho do Codex, passam por `revisar` e `fechar` dentro dele, e a ponte é o diff que sai para o Claude via `codex resume <thread-id>`.
+A primeira é assimétrica: Claude é a janela principal, Codex executa o agente
+e devolve a saída literal; `/transferir` e `gate-review-codex` pertencem a
+ela. A segunda é o trabalho do agente Codex paralelo neste repositório
+(design `docs/rainforest/design/2026-09-08-adaptacao-multihost.md` na branch
+dele): manifesto `.codex-plugin/`, hooks no host Codex. As duas frentes não se
+misturam em código, e os scripts da primeira nascem neutros de host para a
+segunda reaproveitar. Este arquivo continua descrevendo a ponte clássica
+(`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`), que é uma terceira coisa: regras em
+texto para quem usa outro agente sem o plugin.
 

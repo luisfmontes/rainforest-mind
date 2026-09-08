@@ -118,7 +118,14 @@ O manifesto agora aceita `runtime: "claude" | "codex"` por agente, ausente signi
 }
 ```
 
-Toda linha `allow` de `despachos.jsonl` traz agora o campo `runtime` com o valor efetivo usado (ou omitido se default). Linha `deny` ainda não traz o campo — a decisão de negar é anterior, não há runtime para registrar.
+Toda linha `allow` de `despachos.jsonl` traz o campo `runtime`, inclusive no
+default (`"runtime":"claude"`, caso 21 de `hooks/testa-portaria-nucleo.cjs`).
+Linha `deny` ainda **não** traz o campo: folga conhecida desde 2026-09-08, não
+decisão.
 
-A ponte para Codex (`scripts/despachar-codex.cjs`) é ativada quando `runtimeEfetivo()` retorna "codex" — função que implementa a precedência acima lendo prompt case-insensitively e manifesto para resolver o runtime e despachar via `codex exec` com sandbox `--escreve`.
+A portaria só **registra** o runtime; ela não despacha nada. Quem age é o
+próprio agente: o bloco `<!-- ponte-codex -->` no topo de cada `agents/*.md`
+manda, diante da linha `Runtime: codex`, gravar o briefing num arquivo e fazer
+uma única chamada a `scripts/despachar-codex.cjs`, que roda `codex exec` com
+sandbox `read-only` ou `workspace-write` conforme `--escreve`.
 

@@ -154,10 +154,7 @@ mesmo assim**.
 | `gate-repo-alheio.cjs` | escrita cujo destino está dentro de **outro** repositório git |
 | `gate-fechar-issue.cjs` | `gh issue close` direto, e `closes #N` em PR sem comentário de evidência marcado |
 | `portaria.cjs` | despacho de subagente não declarado em `.rainforest/agentes.json`, ou sem `isolation: "worktree"` quando ele escreve |
-
-| Hook (`Stop`, opt-in) | Efeito |
-|---|---|
-| `gate-review-codex.cjs` | revisor em Codex revisa a última resposta; falha fechada |
+| `gate-review-codex.cjs` (`Stop`, **opt-in**) | encerrar o turno sem o `revisor` em Codex dizer `ALLOW` sobre a última resposta; indisponibilidade bloqueia com motivo (falha fechada) |
 
 Valem em **qualquer** repo git da máquina, porque o hábito é que é o problema,
 não o repositório. Cada uma tem bateria própria — **427 casos** rodando o hook

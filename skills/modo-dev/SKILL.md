@@ -60,8 +60,10 @@ nesta ordem:
    linha** do briefing pode ser `Runtime: codex` ou `Runtime: claude` (default,
    case-insensitive) para despachar o agente via Codex CLI em vez de Claude —
    quando o usuário disser "faz no codex", "roda no codex" ou equivalente, o
-   despacho põe essa linha. É a ponte `scripts/despachar-codex.cjs` que
-   intercepta esse valor.
+   despacho põe essa linha. Quem a lê é o preâmbulo `<!-- ponte-codex -->` do
+   próprio `agents/<nome>.md`, que então faz uma chamada só a
+   `scripts/despachar-codex.cjs` e devolve a saída literal; a portaria só
+   registra o valor no log.
 2. **Objetivos** — numerados e concretos, um por linha.
 3. **Restrições** — o que olhar e, explicitamente, o que ignorar. E uma pergunta
    **obrigatória**, respondida antes de despachar: *este trabalho precisa tocar
