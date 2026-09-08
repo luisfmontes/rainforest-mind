@@ -105,7 +105,19 @@
     "em": "2026-09-08"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash roda-suite.sh (todas scripts/testa-*.sh hooks/testa-*.sh) em HEAD e2b317e; bash scripts/testa-despachar-codex.sh; bash scripts/testa-transferir-para-codex.sh; bash hooks/testa-gate-review-codex.sh; bash hooks/testa-contexto-sessao.sh; node -e detectarSemCota(<mensagem literal de 2026-09-08>); wc -c regra-10-runtime.md; node scripts/conferir-versao.cjs",
+    "saida": "suite: total=98 ok=97 falhou=1 (testa-saude.sh — Issue #221 pré-existente, 'veio: erro' em todos os casos, vermelha também em suite-t8/suite-rev1/suite-vivo antes desta mudança); despachar 16 ok; transferir 12 ok; gate-review-codex 16 ok (caso 6b: reason com 'codex sem cota' e a hora); contexto-sessao ok 277 falhou 0 (catraca 7.5, teto 10500 B; regra-10-runtime.md 4657 B); detectarSemCota devolve \"You've hit your usage limit. ... try again at 5:41 PM.\"; conferir-versao: ok versao 1.8.1: 0 commit(s) desde o bump c40427e",
+    "tarefas": {
+      "T1": "ok",
+      "T2": "ok",
+      "T3": "ok",
+      "T4": "ok (regra cita exit 75 e 'codex sem cota:' linhas 84-88; relatório tem seção 'Codex sem cota' linha 136)",
+      "T5": "ok (relatório: (a) comando: codex exec; (b) despachos.jsonl runtime codex às 20:43:38Z e 20:48:36Z; (c) commit b80da41 da ponte)",
+      "T7": "ok (rodadas (i) e (ii) no relatório; preâmbulo endurecido registrado como lacuna até a próxima instalação)",
+      "T6": "ok (1.8.1, commit c40427e)"
+    },
+    "em": "2026-09-08"
   },
   "fechar": {
     "status": "pendente"
