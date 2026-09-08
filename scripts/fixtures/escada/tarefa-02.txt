@@ -1,0 +1,4 @@
+Escreva uma função JavaScript que verifica se uma string é um palíndromo.
+Retorna true se é, false se não.
+A função deve ignorar espaços e considerar maiúsculas/minúsculas iguais.
+Nomeie a função isPalindrome.

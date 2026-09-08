@@ -1,0 +1,4 @@
+Escreva uma função JavaScript que converte um número decimal para binário.
+Retorne uma string com a representação binária.
+Nomeie a função decimalToBinary.
+Não use o método toString(2) — implemente a conversão.
