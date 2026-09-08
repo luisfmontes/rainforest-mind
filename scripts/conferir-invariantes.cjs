@@ -7,7 +7,8 @@
  *
  * Para cada invariante:
  *   1. A frase existe no SKILL.md (núcleo antes do corte)? → emSkill
- *   2. A frase existe no núcleo extraído (o que será injetado)? → emNucleo
+ *   2. A frase existe na references/regra-<n>.md? → emReferencia
+ *   3. A frase existe no núcleo extraído (o que será injetado)? → emNucleo
  *
  * Se a frase estiver em SKILL.md mas não no núcleo extraído, foi perdida.
  */
@@ -17,6 +18,7 @@ const path = require('path');
 
 const INVARIANTES_PATH = path.join(__dirname, '../skills/rainforest-mind/invariantes.json');
 const SKILL_PATH = path.join(__dirname, '../skills/rainforest-mind/SKILL.md');
+const REFERENCES_DIR = path.join(__dirname, '../skills/rainforest-mind/references');
 const CONTEXTO_LIB = path.join(__dirname, '../hooks/lib/contexto-sessao.cjs');
 
 // Importar as funções do motor real
@@ -56,6 +58,27 @@ const nucleoContent = extrairNucleo(regrasTexto);
 let totalInvariantes = 0;
 let falhas = 0;
 
+// Cache de referencias lidas
+const referenciaCache = {};
+
+function lerReferencia(regra) {
+  if (referenciaCache[regra] !== undefined) {
+    return referenciaCache[regra];
+  }
+
+  const caminhoReferencia = path.join(REFERENCES_DIR, `regra-${regra}.md`);
+  try {
+    if (fs.existsSync(caminhoReferencia)) {
+      referenciaCache[regra] = fs.readFileSync(caminhoReferencia, 'utf-8');
+      return referenciaCache[regra];
+    }
+  } catch (e) {
+    // arquivo não existe ou não conseguiu ler
+  }
+  referenciaCache[regra] = null;
+  return null;
+}
+
 // Checar cada invariante
 for (const inv of invariantes) {
   const { regra, frase, onde, descricao } = inv;
@@ -64,7 +87,14 @@ for (const inv of invariantes) {
   // Checagem 1: a frase está no núcleo do SKILL.md (antes do corte)?
   const emSkill = regrasTexto.includes(frase);
 
-  // Checagem 2: a frase está no núcleo extraído (o que será injetado)?
+  // Checagem 2: a frase está na referência (references/regra-<n>.md)?
+  let emReferencia = false;
+  if (onde.includes('referencia')) {
+    const conteudoReferencia = lerReferencia(regra);
+    emReferencia = conteudoReferencia !== null && conteudoReferencia.includes(frase);
+  }
+
+  // Checagem 3: a frase está no núcleo extraído (o que será injetado)?
   const emNucleo = nucleoContent.includes(frase);
 
   // Validar congruência baseada em 'onde'
@@ -72,6 +102,14 @@ for (const inv of invariantes) {
   // Se deve estar em skill, checar se está
   if (onde.includes('skill') && !emSkill) {
     console.error(`FALHA invariante regra-${regra}: frase não encontrada no SKILL.md`);
+    console.error(`  frase: "${frase}"`);
+    console.error(`  descricao: ${descricao}`);
+    falhas++;
+  }
+
+  // Se deve estar em referencia, checar se está
+  if (onde.includes('referencia') && !emReferencia) {
+    console.error(`FALHA invariante regra-${regra}: frase não encontrada na references/regra-${regra}.md`);
     console.error(`  frase: "${frase}"`);
     console.error(`  descricao: ${descricao}`);
     falhas++;

@@ -11,7 +11,7 @@ são do usuário.
 
 ## Escopo
 
-Escopo fechado por **cinco tags**, cada uma marcando um tipo diferente de
+Escopo fechado por **seis tags**, cada uma marcando um tipo diferente de
 candidato à remoção. Fora de escopo:
 
 - **Correção, segurança e performance** — essas vão para `revisar` e
@@ -21,7 +21,7 @@ candidato à remoção. Fora de escopo:
 - **O mínimo de um check executável** — regra do próprio `modo-dev`. Uma suíte
   com um caso, uma lint com uma regra: nunca marcado para deleção.
 
-## Os cinco tipos
+## Os seis tipos
 
 ### `apagar:` — Código morto, nunca chamado
 
@@ -91,6 +91,46 @@ Se não vai, empoeira.
 
 **Substituto:** colapse para a forma concreta usada.
 
+### `duplicar:` — Reimplementação de módulo do próprio repositório
+
+Código que reimplementa ou duplica funcionalidade que:
+
+- Já existe em outro módulo do repositório (e está correto).
+- Não é wrapper — a reimplementação é completa, não uma chamada ao módulo original.
+- Deveria chamar o módulo original em vez de duplicar a lógica.
+
+Esta tag é a ponte entre `stdlib:` e `yagni:` — diferente de `stdlib:` porque a duplicação
+é interna ao repo, não da linguagem ou plataforma; diferente de `yagni:` porque não é
+sobre abstração excessiva, mas sobre **replicação literal de lógica existente e correta**.
+
+#### Trava contra falsos positivos: cópia vs. wrapper vs. refactor necessário
+
+- **Cópia byte-idêntica:** se o trecho copiado é idêntico, é `duplicar:` — marque para unificar.
+- **Cópia com ajustes:** se reimplementa a mesma lógica com mudanças menores (variáveis renomeadas,
+  estrutura refatorada), ainda é `duplicar:` — o comportamento não mudou, só a forma.
+- **Wrapper que chama o original:** não é `duplicar:`, é utilidade. Se tem linhas a cortar além da
+  chamada, marque como `encolher:`.
+- **Cascata de fallback:** se o código faz `require` + fallback que reimplementa tudo, corte o
+  fallback (o `require` no topo está certo). Marca como `duplicar:` se é replicação palavra-chave por
+  palavra-chave do que o módulo oferece.
+
+**Exemplos:**
+
+- ❌ **Falso positivo:** `tools/index.js:L30-35: duplicar mergeConfig(). ` — O código é
+  `function mergeConfig(a, b) { return Object.assign(a, b); }`. Ele **chama** `Object.assign()`.
+  Não é duplicação interna — é wrapper da stdlib. Marque como `stdlib: Object.assign()` ou
+  `encolher:` se há linhas a cortar.
+
+- ✅ **Correto:** `scripts/setup.cjs:L253-277: duplicar resolverConfig(). ` — O código reimplementa
+  linha por linha o que `hooks/lib/config.cjs::resolverConfig()` faz, e a função já foi chamada
+  na linha 251. Corte a cópia, use a chamada anterior.
+
+- ✅ **Correto:** `scripts/backup.cjs:L69-100: duplicar fallback — usar apenas require. ` — O topo
+  tem `require('cascade')`, mas 28 linhas de fallback reimplementam toda a cadeia. Mantém o
+  `require`, remove o fallback.
+
+**Substituto:** remova a duplicação, chame o módulo original. Ex: `"duplicar: remover fallback, usar require()"`
+
 ### `encolher:` — Mesma lógica, menos linhas
 
 Refactoring óbvio que reduz linhas sem mudança de comportamento:
@@ -143,7 +183,7 @@ Onde:
 
 - `<arquivo>` — caminho relativo ao root do repo.
 - `L<n>` — linha onde começa. Se bloco, L<início>-<fim>.
-- `<tag>` — uma das cinco: `apagar`, `stdlib`, `nativo`, `yagni`, `encolher`.
+- `<tag>` — uma das seis: `apagar`, `stdlib`, `nativo`, `yagni`, `duplicar`, `encolher`.
 - `<o que cortar>` — o texto/conceito que sai (nomeie, não descreva).
 - `<o que entra>` — o substituto, se houver. Nada = zero caracteres.
 

@@ -28,8 +28,8 @@ if head -10 "$SKILL_FILE" | grep -q '^description:'; then
 fi
 ((CASOS++))
 
-# 4-8. As cinco tags aparecem no documento
-for tag in "apagar:" "stdlib:" "nativo:" "yagni:" "encolher:"; do
+# 4-9. As seis tags aparecem no documento
+for tag in "apagar:" "stdlib:" "nativo:" "yagni:" "duplicar:" "encolher:"; do
   if grep -q "^### \`$tag\`" "$SKILL_FILE"; then
     echo "✓ Tag \`$tag\` presente"
     ((PASSOU++))
@@ -88,6 +88,34 @@ fi
 # 16. Trava contra falsos positivos: wrapper vs. reimplementação
 if grep -q 'o trecho chama a função da biblioteca' "$SKILL_FILE"; then
   echo "✓ Trava contra falsos positivos (wrapper vs. reimplementação)"
+  ((PASSOU++))
+fi
+((CASOS++))
+
+# 17. Seção "Os seis tipos"
+if grep -q '^## Os seis tipos' "$SKILL_FILE"; then
+  echo "✓ Seção 'Os seis tipos' presente"
+  ((PASSOU++))
+fi
+((CASOS++))
+
+# 18. Cada tag tem seção Trava contra falsos positivos ou exemplo
+if grep -q 'Trava contra falsos positivos:' "$SKILL_FILE"; then
+  echo "✓ Existe seção 'Trava contra falsos positivos'"
+  ((PASSOU++))
+fi
+((CASOS++))
+
+# 19. Duplicar tag tem definição
+if grep -q 'Reimplementação de módulo do próprio repositório' "$SKILL_FILE"; then
+  echo "✓ Tag duplicar: tem definição clara"
+  ((PASSOU++))
+fi
+((CASOS++))
+
+# 20. Duplicar tag menciona exemplo de cópia vs wrapper
+if grep -q 'Cópia byte-idêntica' "$SKILL_FILE"; then
+  echo "✓ Tag duplicar: diferencia cópia de wrapper"
   ((PASSOU++))
 fi
 ((CASOS++))

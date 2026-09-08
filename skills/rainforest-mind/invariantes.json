@@ -26,7 +26,7 @@
   {
     "regra": 15,
     "frase": "printenv NOME",
-    "onde": ["skill", "nucleo"],
+    "onde": ["skill", "referencia", "nucleo"],
     "descricao": "Forma correta de ler variável de ambiente"
   }
 ]
