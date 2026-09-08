@@ -10,5 +10,5 @@ frases críticas no núcleo injetado.
 
 - [x] P1: bateria de testes passa
   CHECK: bash scripts/testa-conferir-invariantes.sh
-  ESPERA: ok: 3   falhou: 0
-  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"1c3a457690c4"}
+  ESPERA: ok: 7   falhou: 0
+  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"8a75e5d36582"}

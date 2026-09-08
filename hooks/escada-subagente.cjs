@@ -28,7 +28,11 @@ function readSafe(p) {
 /**
  * Lê o nível de intensidade de config.json.
  * Best-effort: arquivo ausente, inválido ou chave ausente → retorna 'padrão'.
- * Resolve a raiz de dados pela cadeia canônica em raiz.cjs, com suporte para RFM_ESTADO_ROOT.
+ *
+ * A raiz de dados sai da cadeia canônica de raiz.cjs — MENOS quando
+ * RFM_ESTADO_ROOT está posta, que passa na frente da cadeia inteira. Ela
+ * existe para a bateria poder apontar para uma raiz de mentira sem tocar em
+ * nada do usuário; em produção não está posta, e a cadeia decide.
  */
 function lerNivelIntensidade() {
   // RFM_ESTADO_ROOT tem prioridade máxima (compatibilidade com testes)

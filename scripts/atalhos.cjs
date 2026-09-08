@@ -14,8 +14,6 @@ function* findFiles(dir) {
 
     const fullPath = path.join(dir, entry.name);
     if (entry.isDirectory()) {
-      // Pula .claude/worktrees mesmo se não estiver no root
-      if (entry.name === 'worktrees' && path.dirname(fullPath).endsWith('.claude')) continue;
       yield* findFiles(fullPath);
     } else {
       yield fullPath;

@@ -3,9 +3,12 @@
 # medir-escada.sh — bateria de medição do efeito da escada
 #
 # Roda um conjunto fixo de tarefas COM E SEM o additionalContext da escada,
-# e mede linhas de código + gate de correção.
+# e mede TAMANHO EM CARACTERES do código gerado + gate de correção.
+# Caractere, não linha: a contagem é `${#var}`, e formatação de linha não
+# deve mexer no número.
 #
-# Ambiente: RFM_MEDIR_CLI_CMD (para teste com dublé)
+# Ambiente: RFM_MEDIR_CLI_CMD — comando do CLI a medir.
+# atalho: comando do CLI vem de env var, não do config.json. volta quando: um segundo consumidor precisar do mesmo comando, ou o /setup passar a perguntá-lo
 # Saída: relatório tabulado, ou "PULO: nenhum CLI declarado"
 # Exit: 0 em sucesso (mesmo que tarefas falhem)
 
@@ -73,7 +76,7 @@ try {
 }
 
 # Relatório
-printf "%-12s | %8s | %8s | %8s | %s\n" "Tarefa" "Sem" "Com" "Ganho" "Status"
+printf "%-12s | %8s | %8s | %8s | %s\n" "Tarefa" "Sem(ch)" "Com(ch)" "Ganho" "Status"
 printf "%s\n" "-------------------------------------------"
 
 total_ganho=0 pass=0 fail=0
