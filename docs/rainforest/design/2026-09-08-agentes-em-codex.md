@@ -132,3 +132,22 @@ trabalha em paralelo neste repo.
 ## Em aberto
 
 - (vazio)
+
+## Emenda de 2026-09-08 — o que a T8 com Codex real derrubou
+
+- **D5, parte do commit, estava errada.** O sandbox `workspace-write` do Codex
+  marca `.git` como somente-leitura, e `--add-dir` não reabre: reproduzido com
+  `--add-dir <repo>/.git` e com `--add-dir <repo>/.git/worktrees/<nome>` (o
+  gitdir exato), os dois com `fatal: Unable to create '.../index.lock':
+  Permission denied`; a ACL do gitdir mostra `DENY (W,D,Rc,DC)` para os SIDs
+  do sandbox. O Codex escreve os arquivos; **o commit é da ponte** (passo 3 do
+  preâmbulo nos agentes com `escreve: true`). O script deixou de passar
+  `--add-dir`. D10 lê-se com esta emenda: "commit via `--add-dir`" virou
+  "commit pela ponte".
+- **Shell do Codex no Windows é PowerShell 5.1** (`powershell.exe -Command`):
+  `&&` é erro de parser. Briefing que vai para o Codex separa comandos com `;`
+  ou uma chamada por linha.
+- **A portaria viva de uma sessão em worktree é a do checkout principal**
+  (`$CLAUDE_PROJECT_DIR`). A linha `"runtime"` no `despachos.jsonl` só aparece
+  ao vivo depois do merge; a prova antes disso é rodar o hook da branch contra
+  o payload real, que foi o que a T8 fez.

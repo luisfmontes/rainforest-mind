@@ -161,7 +161,11 @@ else
 fi
 
 echo ""
-echo "== CASO 2: --escreve true com gitdir → --add-dir ==="
+# Ate 2026-09-08 este caso exigia `--add-dir <repo>/.git` no comando. A T8 com
+# Codex real derrubou a premissa: o sandbox workspace-write nega escrita em
+# `.git` mesmo com --add-dir (index.lock: Permission denied), entao a flag saiu
+# e o commit passou para a ponte. O caso agora garante que ela NAO volte.
+echo "== CASO 2: --escreve true com gitdir → workspace-write, sem --add-dir ==="
 STDIN_OUT_2="$RAIZ/stdin-2.txt"
 CMD_OUT_2="$RAIZ/cmd-2.txt"
 SAIDA_2="$RAIZ/saida-2.txt"
@@ -175,7 +179,7 @@ DUBLE_CMD_OUT="$CMD_OUT_2_M" \
 DUBLE_SAIDA="$SAIDA_2_M" \
 RFM_TEST=1 \
 CODEX_CMD="node $DUBLE_M" \
-testa "caso 2: --escreve true com --add-dir" 0 \
+testa "caso 2: --escreve true sem --add-dir" 0 \
   node "$PLUGIN/scripts/despachar-codex.cjs" \
     --agente revisor \
     --worktree "$WTE" \
@@ -185,11 +189,11 @@ testa "caso 2: --escreve true com --add-dir" 0 \
 
 # Valida caso 2: com --escreve true, DEVE ter -s workspace-write (não read-only)
 if grep -q -- '-s workspace-write' "$CMD_OUT_2" && \
-   grep -q -- "--add-dir.*\.git" "$CMD_OUT_2" && \
+   ! grep -q -- '--add-dir' "$CMD_OUT_2" && \
    ! grep -q -- '-s read-only' "$CMD_OUT_2" && \
    ! grep -q -- '--dangerously-bypass-approvals-and-sandbox' "$CMD_OUT_2"; then
   ok=$((ok + 1))
-  echo "    ✓ cmd contém -s workspace-write (não read-only) e --add-dir"
+  echo "    ✓ cmd contém -s workspace-write (não read-only) e nenhum --add-dir"
 else
   falhou=$((falhou + 1))
   echo "    ✗ validação falhou"

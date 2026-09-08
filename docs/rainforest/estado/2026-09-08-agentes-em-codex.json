@@ -25,7 +25,9 @@
     "catraca_mutacao": "2026-09-08",
     "tarefas_ok": 8,
     "tarefas": 9,
-    "em_voo": [],
+    "em_voo": [
+      "tarefa-8"
+    ],
     "em": "2026-09-08",
     "mutacao_parcial": [
       {
@@ -64,9 +66,7 @@
         "fixture": "testa-gate-review-codex.sh casos 5 e 6 (falha fechada)"
       }
     ],
-    "pendentes": [
-      "tarefa-8: validacao real com Codex aguarda a conta sair do limite de uso (reset 12:38 de 2026-09-08)"
-    ]
+    "pendentes": []
   },
   "revisar": {
     "status": "pendente"

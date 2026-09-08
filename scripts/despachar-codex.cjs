@@ -6,9 +6,12 @@
  * monta comando Codex, executa com sandbox por `--escreve`, e devolve a saída
  * literal. Sandbox: `--escreve false` → `-s read-only`; true → `-s workspace-write`.
  *
- * Worktree com gitdir fora (`.git` arquivo) ganha `--add-dir <repo>/.git`
- * para commit ser possível. Timeout default 540000ms. Modelo mapeado por tabela
- * em hooks/lib/config.cjs (codex-modelo-<model>).
+ * O Codex NÃO grava em `.git` sob `workspace-write`, nem com `--add-dir` no
+ * `.git` do repo ou no gitdir exato do worktree (medido em 2026-09-08: ACL DENY
+ * nos SIDs do sandbox, `index.lock: Permission denied`). Por isso este script
+ * não passa `--add-dir`, e o commit do que o Codex deixou é da ponte (agente
+ * Claude), conforme o preâmbulo `<!-- ponte-codex -->`. Timeout default
+ * 540000ms. Modelo mapeado por tabela em hooks/lib/config.cjs (codex-modelo-<model>).
  *
  * Suporta RFM_TEST=1 + CODEX_CMD para dublê de teste (não roda codex real).
  * Saída: stdout = última mensagem de Codex (arquivo -o) ou stdout dele se vazio;
@@ -151,46 +154,6 @@ function parseEscreve(valor) {
 }
 
 /**
- * Busca --add-dir para gitdir em worktree.
- * Worktree isolado tem .git como arquivo: gitdir: <repo>/.git/worktrees/<nome>
- * Retorna o diretório .git do repo pai ou null se .git for diretório.
- * @param {string} worktree
- * @returns {string|null}
- */
-function resolverAddDirGitdir(worktree) {
-  const gitPath = path.join(worktree, '.git');
-  if (!fs.existsSync(gitPath)) {
-    return null;
-  }
-
-  // Verifica se é arquivo (gitdir) ou diretório
-  const stat = fs.statSync(gitPath);
-  if (stat.isDirectory()) {
-    return null; // .git é diretório, sem --add-dir
-  }
-
-  // .git é arquivo, lê "gitdir: <path>"
-  try {
-    const conteudo = fs.readFileSync(gitPath, 'utf8');
-    const match = conteudo.match(/^gitdir:\s*(.+)$/m);
-    if (!match) return null;
-
-    let gitdirPath = match[1].trim();
-    // Se for caminho relativo, resolve a partir de worktree
-    if (!path.isAbsolute(gitdirPath)) {
-      gitdirPath = path.resolve(worktree, gitdirPath);
-    }
-
-    // gitdirPath é algo como <repo>/.git/worktrees/<nome>
-    // Queremos <repo>/.git, que fica 3 níveis acima
-    const repoDotGit = path.resolve(gitdirPath, '..', '..');
-    return repoDotGit;
-  } catch {
-    return null;
-  }
-}
-
-/**
  * Main.
  */
 async function main() {
@@ -296,13 +259,8 @@ Opcionais:
   // Monta comando base
   let cmd = `codex exec -s ${sandbox} --skip-git-repo-check -C "${opts.worktree}" -c approval_policy="never" -o "${saidaArquivo}"`;
 
-  // Se escreve e .git é gitdir, acrescenta --add-dir
-  if (escreve) {
-    const repoDotGit = resolverAddDirGitdir(opts.worktree);
-    if (repoDotGit) {
-      cmd += ` --add-dir "${repoDotGit}"`;
-    }
-  }
+  // Sem `--add-dir` de propósito: o sandbox do Codex nega escrita em `.git`
+  // mesmo com o diretório declarado (ver cabeçalho). Quem commita é a ponte.
 
   // Resolve modelo
   if (model) {

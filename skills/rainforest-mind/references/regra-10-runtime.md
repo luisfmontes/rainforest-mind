@@ -49,3 +49,11 @@ manda, diante da linha `Runtime: codex`, gravar o briefing num arquivo e fazer
 uma única chamada a `scripts/despachar-codex.cjs`, que roda `codex exec` com
 sandbox `read-only` ou `workspace-write` conforme `--escreve`, e devolver a
 saída literal. Sem a linha, o bloco é ignorado e o agente segue o método dele.
+
+## O commit é da ponte, não do Codex
+
+O sandbox `workspace-write` do Codex nega escrita em `.git`, e `--add-dir` não
+reabre (medido em 2026-09-08 com o gitdir exato do worktree: `index.lock:
+Permission denied`). O Codex edita; o agente Claude, de volta ao worktree,
+faz `git add -A && git commit` se `git status --short` não estiver vazio. No
+Windows o Codex roda comandos em PowerShell 5.1: briefing para ele não usa `&&`.
