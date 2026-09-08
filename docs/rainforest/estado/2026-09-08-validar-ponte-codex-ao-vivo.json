@@ -19,14 +19,12 @@
     "em": "2026-09-08"
   },
   "executar": {
-    "status": "parcial",
-    "tarefas_ok": 4,
-    "tarefas": 6,
-    "em_voo": [
-      "tarefa-5"
-    ],
+    "status": "ok",
+    "tarefas_ok": 7,
+    "tarefas": 7,
+    "em_voo": [],
     "pendentes": [
-      "tarefa-6: bump 1.8.1 e o ultimo commit"
+      "tarefa-6: bump 1.8.1 e feito no fechar como ultimo commit antes do PR (convencao do conferir-versao)"
     ],
     "mutacao_parcial": [
       {
@@ -50,7 +48,47 @@
         "motivo": "docs; catraca 7.5 verde, regra-10-runtime.md 3266 B"
       }
     ],
-    "em": "2026-09-08"
+    "em": "2026-09-08",
+    "catraca_mutacao": "2026-09-08",
+    "comando": "bash scripts/testa-despachar-codex.sh; bash scripts/testa-transferir-para-codex.sh; bash hooks/testa-gate-review-codex.sh; node hooks/testa-portaria-nucleo.cjs; despacho real do executor (cache 1.8.0) em duas rodadas",
+    "saida": "15 ok / 10 ok / 16 ok / 78 ok; rodada (i) so Runtime: codex: portaria viva runtime=codex, agente ignorou o preambulo (0 despachar-codex no transcript) — reprovada e virou T7; rodada (ii) com bloco de ponte: codex exec real, commit b80da41 pela ponte",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-despachar-codex.sh caso 11"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-review-codex.sh caso 6b"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-transferir-para-codex.sh caso 8"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "docs; catraca 7.5 verde"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "validacao com binario externo e agente do cache; relatorio com as duas rodadas"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "bump; commit no fechar"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "instrucao de prompt; prova comportamental na rodada (ii) da T5, preambulo endurecido so na proxima versao"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente"
