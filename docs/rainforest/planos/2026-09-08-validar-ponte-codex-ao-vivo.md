@@ -61,7 +61,7 @@ depende de: 1, 2, 3
 paralela: nao
 mutacao: n/a
   motivo: documentação; a falsificação é coerência com o exit 75 do código.
-pronto quando: `regra-10-runtime.md` cita exit 75 e a linha `codex sem cota:` (≤ 3300 B, catraca em `bash hooks/testa-contexto-sessao.sh` seção 7.5); o relatório ganha a seção "Codex sem cota" com a medição de 2026-09-08 colada
+pronto quando: `regra-10-runtime.md` cita exit 75 e a linha `codex sem cota:` e cabe na catraca real de `bash hooks/testa-contexto-sessao.sh` seção 7.5 (≤ 10500 B; o "≤ 3300 B" da primeira redação valia antes da T7 acrescentar o bloco de ponte — hoje são 4657 B, aviso 1 do revisar); o relatório ganha a seção "Codex sem cota" com a medição de 2026-09-08 colada
 
 ### 5. Validação ao vivo com o plugin 1.8.0 [tipo: teste]
 atende: D1, D2, D3, D4

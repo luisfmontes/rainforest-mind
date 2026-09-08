@@ -33,4 +33,27 @@ function detectarSemCota(texto) {
   return bruto.replace(/^\s*ERROR:\s*/i, '').trim();
 }
 
-module.exports = { detectarSemCota, EXIT_SEM_COTA, PADRAO };
+/**
+ * Só para saída `--json` com exit 0: procura a mensagem de cota DENTRO de um
+ * evento `error` ou `turn.failed`, nunca em texto de agente. Sem isso, um
+ * revisor que comentasse "hit your usage limit" num parecer legítimo viraria
+ * falso "sem cota" (CRÍTICO 1 do revisar de 2026-09-08).
+ * @param {string} stdout JSONL do Codex
+ * @returns {string|null}
+ */
+function detectarSemCotaEmEventos(stdout) {
+  if (!stdout) return null;
+  for (const linha of stdout.split(/\r?\n/)) {
+    if (!linha.trim().startsWith('{')) continue;
+    let ev;
+    try { ev = JSON.parse(linha); } catch { continue; }
+    if (!ev || typeof ev !== 'object') continue;
+    const msg = ev.type === 'error' ? ev.message
+      : ev.type === 'turn.failed' ? (ev.error && ev.error.message)
+        : null;
+    if (typeof msg === 'string' && PADRAO.test(msg)) return msg.trim();
+  }
+  return null;
+}
+
+module.exports = { detectarSemCota, detectarSemCotaEmEventos, EXIT_SEM_COTA, PADRAO };

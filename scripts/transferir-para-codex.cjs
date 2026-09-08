@@ -17,7 +17,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { rodarCli } = require('../hooks/lib/cli-externo.cjs');
-const { detectarSemCota, EXIT_SEM_COTA } = require('../hooks/lib/codex-cota.cjs');
+const { detectarSemCota, detectarSemCotaEmEventos, EXIT_SEM_COTA } = require('../hooks/lib/codex-cota.cjs');
 
 /**
  * Processa argumentos CLI.
@@ -316,7 +316,11 @@ Opcionais:
   // Sem cota (D5 de 2026-09-08-validar-ponte-codex-ao-vivo): no --json o erro
   // vem como evento no stdout, com thread.started antes dele — sem esta
   // checagem o script devolveria `codex resume <id>` de uma thread que falhou.
-  const semCota = detectarSemCota(`${resultado.stderr || ''}\n${resultado.stdout || ''}`);
+  // Com exit ≠ 0 vale o texto cru; com exit 0, só um evento `error` ou
+  // `turn.failed` conta — texto de agente que cite "usage limit" não é cota.
+  const semCota = resultado.status !== 0
+    ? detectarSemCota(`${resultado.stderr || ''}\n${resultado.stdout || ''}`)
+    : detectarSemCotaEmEventos(resultado.stdout);
   if (semCota) {
     console.error(`codex sem cota: ${semCota}`);
     process.exit(EXIT_SEM_COTA);

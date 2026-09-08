@@ -327,9 +327,13 @@ Opcionais:
   }
 
   // Sem cota (D5): passageiro, legível, exit 75. A linha própria vem antes do
-  // stderr bruto do Codex, que enterra a causa atrás do banner. Vale mesmo com
-  // exit 0, porque no `--json` o erro vem como evento no stdout.
-  const semCota = detectarSemCota(`${resultado.stderr || ''}\n${resultado.stdout || ''}`);
+  // stderr bruto do Codex, que enterra a causa atrás do banner. SÓ com exit ≠ 0:
+  // com exit 0 o texto é resposta do agente, e um revisor que cite "usage
+  // limit" num parecer legítimo não pode virar falso "sem cota" (revisar de
+  // 2026-09-08). Este script não usa `--json`; o caso do evento fica no transferir.
+  const semCota = resultado.status !== 0
+    ? detectarSemCota(`${resultado.stderr || ''}\n${resultado.stdout || ''}`)
+    : null;
   if (semCota) {
     console.error(`codex sem cota: ${semCota}`);
     if (resultado.stderr) console.error(resultado.stderr);

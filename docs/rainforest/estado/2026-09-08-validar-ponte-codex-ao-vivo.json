@@ -45,7 +45,7 @@
       {
         "tarefa": 4,
         "resultado": "n/a",
-        "motivo": "docs; catraca 7.5 verde, regra-10-runtime.md 3266 B"
+        "motivo": "docs; catraca 7.5 verde (teto 10500 B), regra-10-runtime.md 4657 B após o bloco de ponte da T7"
       }
     ],
     "em": "2026-09-08",
@@ -91,7 +91,11 @@
     ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "pendente",
+    "snapshot": {
+      "head": "e9fbbe9505f34199c801d589902a78ccf3f83a68",
+      "caminhos_sujos": []
+    }
   },
   "verificar": {
     "status": "pendente"

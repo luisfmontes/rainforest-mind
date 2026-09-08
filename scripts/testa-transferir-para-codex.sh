@@ -368,6 +368,26 @@ else
 fi
 
 echo ""
+# CRITICO 1 do revisar de 2026-09-08: texto de agente que cite "usage limit"
+# com exit 0 nao e cota — so evento error/turn.failed conta.
+echo "== CASO 9: exit 0 com agent_message citando 'usage limit' → exit 0 e 'codex resume abc-123' ==="
+OUT_9="$RAIZ/out-9.txt"; ERR_9="$RAIZ/err-9.txt"
+DUBLE_MODO=transfer DUBLE_TRANSFER_MSG="sobre o D5: o Codex diz hit your usage limit quando estoura; sigo daqui" \
+  RFM_TEST=1 RFM_HOME="$RFMHOME_M" \
+  RFM_ROOT="$RFMHOME_M/.rainforest" CLAUDE_PROJECT_DIR="$RFMHOME_M" \
+  CODEX_CMD="node $DUBLE_M" \
+  node "$PLUGIN/scripts/transferir-para-codex.cjs" \
+  --source "$TRANSCRIPT_M" --cwd "$CWD_M" > "$OUT_9" 2> "$ERR_9"
+exit_9=$?
+if [ "$exit_9" = "0" ] && [ "$(tail -1 "$OUT_9")" = "codex resume abc-123" ] && ! grep -q "codex sem cota" "$ERR_9"; then
+  ok=$((ok + 1))
+  echo "  ok   caso 9: texto de agente com 'usage limit' não é cota; exit 0 e codex resume"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA caso 9: exit $exit_9; stdout: $(cat "$OUT_9" | tr '\n' ' '); stderr: $(head -2 "$ERR_9" | tr '\n' ' ')"
+fi
+
+echo ""
 echo "== RESULTADO =="
 echo "resultado: $ok ok, $falhou falha(s)"
 if [ "$falhou" -gt 0 ]; then

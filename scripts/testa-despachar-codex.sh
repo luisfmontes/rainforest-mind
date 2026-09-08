@@ -450,6 +450,27 @@ else
 fi
 
 echo ""
+# CRITICO 1 do revisar de 2026-09-08: a checagem de cota rodava com exit 0 e um
+# parecer legitimo que citasse "usage limit" virava falso "sem cota" (exit 75,
+# parecer descartado). Com exit 0 o texto e resposta do agente, ponto.
+echo "== CASO 12: exit 0 com 'usage limit' no parecer → exit 0 e stdout intacto (não é cota) ==="
+PARECER_12="PARECER: APROVADO — o design D5 assume que o Codex sempre hit your usage limit de forma clara"
+saida_12=$(DUBLE_MODO=parecer DUBLE_PARECER="$PARECER_12" RFM_TEST=1 CODEX_CMD="node $DUBLE_M" \
+  node "$PLUGIN/scripts/despachar-codex.cjs" \
+  --agente revisor \
+  --worktree "$WTE" \
+  --escreve false \
+  --briefing-file "$BRIEFING" 2>/dev/null)
+exit_12=$?
+if [ "$exit_12" = "0" ] && [ "$saida_12" = "$PARECER_12" ]; then
+  ok=$((ok + 1))
+  echo "  ok   caso 12: parecer que cita 'usage limit' com exit 0 passa intacto, exit 0"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA caso 12: exit $exit_12, stdout '$saida_12'"
+fi
+
+echo ""
 echo "== RESULTADO =="
 echo "resultado: $ok ok, $falhou falha(s)"
 if [ "$falhou" -gt 0 ]; then

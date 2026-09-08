@@ -67,7 +67,9 @@ async function main() {
       type: 'item.completed',
       item: {
         type: 'agent_message',
-        text: 'ok, continuo daqui',
+        // DUBLE_TRANSFER_MSG permite texto de agente que cite "usage limit" sem
+        // ser erro — o falso positivo do revisar de 2026-09-08.
+        text: process.env.DUBLE_TRANSFER_MSG || 'ok, continuo daqui',
       },
     }));
     // Emite turn.completed
