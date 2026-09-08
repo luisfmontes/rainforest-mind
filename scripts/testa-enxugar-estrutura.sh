@@ -85,6 +85,13 @@ if grep -q "^## Ranking" "$SKILL_FILE" && grep -q 'maior corte primeiro' "$SKILL
 fi
 ((CASOS++))
 
+# 16. Trava contra falsos positivos: wrapper vs. reimplementação
+if grep -q 'o trecho chama a função da biblioteca' "$SKILL_FILE"; then
+  echo "✓ Trava contra falsos positivos (wrapper vs. reimplementação)"
+  ((PASSOU++))
+fi
+((CASOS++))
+
 echo ""
 echo "Casos: $PASSOU/$CASOS passaram"
 

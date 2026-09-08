@@ -48,6 +48,22 @@ Código que reimplementa funcionalidade que:
 
 **Substituto:** chame a função padrão por nome. Ex: `"stdlib: String.padStart()"`
 
+#### Trava contra falsos positivos: wrapper vs. reimplementação
+
+O teste que separa **reimplementação** de **wrapper** é mecânico: **o trecho chama a função da biblioteca?**
+
+- **Se chama**, é wrapper — não é `stdlib:`. Um wrapper que dá nome ou default a um uso da stdlib é **útil**, não desnecessário. Se houver linhas a cortar além da chamada, marque como `encolher:`, não `stdlib:`.
+- **Se reimplementa**, é `stdlib:`. O código executa o comportamento sem chamar a stdlib — aqui sim você marca para corte.
+- **Se há `require` + fallback que reimplementa**, corte o fallback (o `require` no topo está certo). Marca também como `stdlib:`.
+
+**Exemplos:**
+
+- ❌ **Falso positivo:** `scripts/divergencias.cjs:118: stdlib pad(). ` — O código é `function pad(n) { return String(n).padStart(2, "0"); }`. Ele **chama** `padStart()`. É wrapper, não reimplementação.
+
+- ✅ **Correto:** `scripts/divergencias.cjs:118: encolher: 1 linha — função wrapper sem valor; chama stdlib direto. ` (se decidir cortar) ou **nenhum achado** (se preferir manter o wrapper por clareza).
+
+- ✅ **Correto:** `scripts/backup.cjs:69-100: stdlib — remover fallback, manter require. ` — O topo tem `require()` da função, mas 28 linhas de fallback reimplementam tudo. Corta-se o fallback.
+
 ### `nativo:` — A plataforma já faz isso
 
 Código que duplica um recurso nativo do SO ou plataforma:
