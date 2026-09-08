@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.7.0-1e5c3f?style=flat-square" alt="versão 1.7.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.8.0-1e5c3f?style=flat-square" alt="versão 1.8.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -155,6 +155,10 @@ mesmo assim**.
 | `gate-fechar-issue.cjs` | `gh issue close` direto, e `closes #N` em PR sem comentário de evidência marcado |
 | `portaria.cjs` | despacho de subagente não declarado em `.rainforest/agentes.json`, ou sem `isolation: "worktree"` quando ele escreve |
 
+| Hook (`Stop`, opt-in) | Efeito |
+|---|---|
+| `gate-review-codex.cjs` | revisor em Codex revisa a última resposta; falha fechada |
+
 Valem em **qualquer** repo git da máquina, porque o hábito é que é o problema,
 não o repositório. Cada uma tem bateria própria — **427 casos** rodando o hook
 de verdade contra repos git montados na hora.
@@ -194,6 +198,7 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 | `/setup` | Monta a pasta de dados, liga/desliga gates e fluxo |
 | `/semear` | Propõe o que criar **neste** repo a partir do que ele já tropeçou |
 | `/regua` | Régua externa nomeada, builder contra crítico cego — para o que não tem teste. A Fase 0 destila a régua em 5-7 mecanismos conferíveis por olho em `docs/rainforest/reguas/<slug>.md` (o builder não os vê; o crítico sim) e faz o preflight de renderização, nomeando qual crítico ficaria cego |
+| `/transferir` | Leva a sessão atual para uma thread Codex retomável por `codex resume <id>`; exige `transfer-codex` ligado no `/setup` |
 | `/ponte` | Gera `CLAUDE.md`, `AGENTS.md` ou `GEMINI.md` ([detalhe](docs/pontes.md)) |
 | `modo-dev` | Escada YAGNI, causa raiz antes de remendo, rastreabilidade do diff |
 | `depurar` | Constrói o loop de feedback **antes** de qualquer hipótese |
@@ -206,6 +211,8 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 | `executor` · `resolvedor-de-build` · `documentador` | haiku, tarefa mecânica |
 | `planejador` · `revisor` · `tester` · `depurador` | sonnet, tarefa que exige julgamento |
 | `arqueologo` · `auditor-de-seguranca` | sonnet, executam skill própria |
+
+**Agentes em Claude ou Codex** — cada agente tem um `runtime:` no manifesto (ausente = `claude`); a primeira linha do briefing pode ser `Runtime: codex` ou `Runtime: claude` para override (case-insensitive). Quando o usuário diz "faz no codex", "roda no codex" ou equivalente, o despacho põe `Runtime: codex` na primeira linha. Transporte via `codex exec` usa sandbox `read-only` ou `workspace-write` conforme `escreve`, modelo por `codex-modelo-<haiku|sonnet|opus>` no `/setup` (padrão do `~/.codex/config.toml`). As skills `review`, `adversarial-review` e `rescue` do `openai/codex-plugin-cc` não ganharam comando aqui porque já existem como função neste plugin: `revisor`, segunda opinião cross-model, `depurador`.
 
 ## As 17 regras
 

@@ -56,7 +56,12 @@ nesta ordem:
    base da regra 11). A conferência da base vai escrita como **`cd` no worktree
    e `git rev-parse --show-toplevel` antes do `rev-parse HEAD`**, nunca
    `git -C`: fora de um repositório, o `git -C` sobe para o pai em silêncio e
-   devolve o hash de lá: a conferência confirma a base errada.
+   devolve o hash de lá: a conferência confirma a base errada. A **primeira
+   linha** do briefing pode ser `Runtime: codex` ou `Runtime: claude` (default,
+   case-insensitive) para despachar o agente via Codex CLI em vez de Claude —
+   quando o usuário disser "faz no codex", "roda no codex" ou equivalente, o
+   despacho põe essa linha. É a ponte `scripts/despachar-codex.cjs` que
+   intercepta esse valor.
 2. **Objetivos** — numerados e concretos, um por linha.
 3. **Restrições** — o que olhar e, explicitamente, o que ignorar. E uma pergunta
    **obrigatória**, respondida antes de despachar: *este trabalho precisa tocar

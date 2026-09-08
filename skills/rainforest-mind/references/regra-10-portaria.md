@@ -102,3 +102,23 @@ qual o log é evidência.
 O relato do dia — a regressão que a antecipação quase introduziu, e a descoberta
 de que as seis baterias deste fluxo nunca haviam rodado — está em
 `relatorios/2026-09-02-baterias-que-o-glob-nunca-chamou.md`.
+
+## Emenda de 2026-09-08 — campo `runtime`
+
+O manifesto agora aceita `runtime: "claude" | "codex"` por agente, ausente significa `claude` (padrão), outro valor nega com motivo. Precedência: (1) linha isolada no briefing do agente — `Runtime: codex` ou `Runtime: claude` (case-insensitive, validada pela regex `/^\s*runtime:\s*codex\s*$/im` para Codex) vence o manifesto; (2) senão, `agentConfig.runtime` do manifesto; (3) senão, "claude" default.
+
+**Exemplo de manifesto com o campo:**
+```json
+{
+  "versao": 1,
+  "agentes": {
+    "revisor":    { "estagios": ["revisar"], "escreve": false, "runtime": "claude" },
+    "executor":   { "estagios": ["executar"], "escreve": true, "runtime": "codex" }
+  }
+}
+```
+
+Toda linha `allow` de `despachos.jsonl` traz agora o campo `runtime` com o valor efetivo usado (ou omitido se default). Linha `deny` ainda não traz o campo — a decisão de negar é anterior, não há runtime para registrar.
+
+A ponte para Codex (`scripts/despachar-codex.cjs`) é ativada quando `runtimeEfetivo()` retorna "codex" — função que implementa a precedência acima lendo prompt case-insensitively e manifesto para resolver o runtime e despachar via `codex exec` com sandbox `--escreve`.
+
