@@ -3,7 +3,9 @@
  * Dublê Node para Codex — simula exec com stdin/stdout controlado.
  *
  * Variáveis de ambiente:
- * - DUBLE_MODO: "ok" (exit 0), "falha" (exit 1 + stderr), "dorme" (dorme 5s), "transfer" (emite thread.started + agent_message)
+ * - DUBLE_MODO: "ok" (exit 0), "falha" (exit 1 + stderr), "dorme" (dorme 5s), "transfer" (emite thread.started + agent_message),
+ *   "parecer" (grava DUBLE_PARECER no arquivo -o do comando real — costura com o gate de Stop)
+ * - DUBLE_PARECER: texto do parecer no modo "parecer" (default "ALLOW: ok")
  * - DUBLE_STDIN_OUT: arquivo onde escrever o stdin recebido
  * - DUBLE_CMD_OUT: arquivo onde escrever o comando (env.DESPACHAR_CODEX_CMD_REAL)
  * - DUBLE_SAIDA: arquivo onde escrever "RESPOSTA DO DUBLE"
@@ -70,6 +72,20 @@ async function main() {
     console.log(JSON.stringify({
       type: 'turn.completed',
     }));
+  }
+
+  // Modo parecer: escreve DUBLE_PARECER (default "ALLOW: ok") no arquivo -o que o
+  // despachar-codex.cjs montou — o caminho vem de DESPACHAR_CODEX_CMD_REAL, porque
+  // quem chamou o despacho (o gate de Stop, por exemplo) nao conhece esse arquivo.
+  // E o que permite testar a costura hook -> despachar-codex -> codex sem codex.
+  if (modo === 'parecer') {
+    const parecer = process.env.DUBLE_PARECER || 'ALLOW: ok';
+    const cmdReal = process.env.DESPACHAR_CODEX_CMD_REAL || '';
+    const m = cmdReal.match(/ -o "([^"]+)"/);
+    if (m) {
+      try { fs.writeFileSync(m[1], parecer + '\n', 'utf8'); } catch (e) { console.error(`erro ao gravar parecer: ${e.message}`); }
+    }
+    console.log(parecer);
   }
 
   // Grava saída
