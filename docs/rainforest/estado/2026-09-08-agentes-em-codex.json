@@ -23,21 +23,23 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-09-08",
-    "tarefas_ok": 0,
+    "tarefas_ok": 1,
     "tarefas": 9,
     "em_voo": [
       {
         "agente": "executor",
-        "tarefa": "T1 portaria runtime",
-        "desde": "2026-09-08"
-      },
-      {
-        "agente": "executor",
-        "tarefa": "T2 config nao-booleana",
+        "tarefa": "T2 config nao-booleana (redespacho, base a6a4da1)",
         "desde": "2026-09-08"
       }
     ],
-    "em": "2026-09-08"
+    "em": "2026-09-08",
+    "mutacao_parcial": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-portaria-nucleo.cjs caso 19: override de runtime no prompt vence o manifesto"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente"
