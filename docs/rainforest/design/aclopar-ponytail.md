@@ -133,13 +133,27 @@ efeito. O rainforest copiou dele o único pedaço que depende do modelo lembrar.
 
   *(a) A medição.* `scripts/medir-escada.sh` roda um conjunto fixo de tarefas
   pequenas contra o mesmo agente **com e sem** a injeção de D1, e mede duas
-  coisas: linhas de código produzidas, e um **gate de correção** — um `assert`
-  por tarefa que falha se o código estiver errado. Sem o gate, "menos linhas"
+  coisas: tamanho do código produzido, e um **gate de correção** — um `assert`
+  por tarefa que falha se o código estiver errado. Sem o gate, "menos código"
   não significa nada; é o ponto do `benchmarks/correctness.js` do ponytail
   (*"proves 'less code' is not 'broken code'"*). Usa
   `hooks/lib/cli-externo.cjs` (`rodarCli`), que já chama Codex/Gemini para o
   `conselho` e a `segunda-opiniao` — sem infra nova, sem promptfoo, sem chave
   nova.
+
+  *Tamanho é em caractere, não em linha* — este parágrafo dizia "linhas" e o
+  script sempre contou caractere. Fica caractere: as respostas curtas das
+  tarefas cabem em uma linha, e uma régua em linhas devolveria ganho zero para
+  uma redução real. Caractere é o mesmo eixo, mais fino.
+
+  *O gate roda código de modelo, que é código arbitrário.* Ele entra em
+  `vm.runInNewContext` num contexto vazio (sem `require`, sem `process`) e com
+  relógio — e as **provas de cada tarefa entram no mesmo script**, não em volta
+  dele: o relógio do `vm` só vale para o que roda dentro da chamada, e uma
+  função que nunca retorna, chamada do host, pendura a bateria para sempre. A
+  bateria carrega três payloads hostis (`cli-hostil.cjs`) só para que remover
+  essa fronteira deixe a medição vermelha; sem eles a catraca de mutação
+  devolvia `RECUSADO: bateria VERDE`.
 
   *(b) A fronteira de honestidade,* que este repo precisa e não tem: nunca
   imprimir número de economia estimado sobre um repo vivo — a versão não
