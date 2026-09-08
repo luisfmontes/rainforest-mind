@@ -219,14 +219,19 @@ function main() {
       bloqueia(`revisor em Codex: ${motivo}`, briefingFile);
     }
 
-    // Qualquer outra coisa = falha fechada
-    const motivo = resultado.status !== 0
-      ? `exit ${resultado.status}`
-      : resultado.error
-        ? resultado.error.message
-        : parecer
-          ? `saída não reconhecida: "${parecer}"`
-          : 'sem saída do revisor';
+    // Qualquer outra coisa = falha fechada. Sem cota (exit 75 do despacho) é
+    // a falha mais provável no dia a dia: o motivo repete a linha legível que
+    // o despachar-codex.cjs pôs no stderr, com a hora de retorno.
+    const linhaCota = ((resultado.stderr || '').match(/^codex sem cota:.*$/m) || [null])[0];
+    const motivo = linhaCota
+      ? linhaCota
+      : resultado.status !== 0
+        ? `exit ${resultado.status}`
+        : resultado.error
+          ? resultado.error.message
+          : parecer
+            ? `saída não reconhecida: "${parecer}"`
+            : 'sem saída do revisor';
 
     bloqueia(`gate-review-codex: falha fechada — ${motivo}; desligue com node scripts/setup.cjs --desligar gate-review-codex`, briefingFile);
   } finally {

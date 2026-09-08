@@ -26,6 +26,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { rodarCli } = require('../hooks/lib/cli-externo.cjs');
+const { detectarSemCota, EXIT_SEM_COTA } = require('../hooks/lib/codex-cota.cjs');
 const { resolverConfig } = require('../hooks/lib/config.cjs');
 
 /**
@@ -323,6 +324,17 @@ Opcionais:
     const parcial = lerSaida();
     if (parcial) console.log(parcial);
     process.exit(124);
+  }
+
+  // Sem cota (D5): passageiro, legível, exit 75. A linha própria vem antes do
+  // stderr bruto do Codex, que enterra a causa atrás do banner. Vale mesmo com
+  // exit 0, porque no `--json` o erro vem como evento no stdout.
+  const semCota = detectarSemCota(`${resultado.stderr || ''}\n${resultado.stdout || ''}`);
+  if (semCota) {
+    console.error(`codex sem cota: ${semCota}`);
+    if (resultado.stderr) console.error(resultado.stderr);
+    lerSaida();
+    process.exit(EXIT_SEM_COTA);
   }
 
   if (resultado.status !== 0) {

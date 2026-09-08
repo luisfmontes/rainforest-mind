@@ -15,12 +15,12 @@ Branch `fluxo/2026-09-08-validar-ponte-codex-ao-vivo`, base `origin/main` = `29b
 
 ### 1. `despachar-codex.cjs` reconhece "sem cota" → exit 75 e linha legível [tipo: implementar]
 atende: D5
-arquivos: `scripts/despachar-codex.cjs`, `scripts/fixtures/codex-duble.cjs`, `scripts/testa-despachar-codex.sh`
+arquivos: `scripts/despachar-codex.cjs`, `hooks/lib/codex-cota.cjs`, `scripts/fixtures/codex-duble.cjs`, `scripts/testa-despachar-codex.sh`
 depende de: nenhuma
 paralela: nao
 mutacao:
   arquivo: `scripts/despachar-codex.cjs`
-  de: quando o stderr do Codex casa `/hit your usage limit/i` (ou o stdout, no `--json`), o script escreve `codex sem cota: <linha original>` como PRIMEIRA linha do stderr e sai 75
+  de: quando o stderr do Codex casa `/hit your usage limit/i` (ou o stdout, no `--json`), o script escreve `codex sem cota: <linha original>` numa linha própria do stderr, logo depois de `comando:`, e sai 75 (detector compartilhado em `hooks/lib/codex-cota.cjs`)
   para: ignora o padrão e propaga o exit do Codex (1) sem a linha
   bateria: `bash scripts/testa-despachar-codex.sh`
   fixture: dublê em modo `semcota` (stderr com a mensagem real medida em 2026-09-08, exit 1); caso "sem cota → exit 75, primeira linha do stderr começa com `codex sem cota:`, dublê chamado, -o não fica"

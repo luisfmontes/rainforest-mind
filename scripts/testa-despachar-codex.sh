@@ -75,6 +75,7 @@ AGENTEOF
 # Copia hooks/lib/
 mkdir -p "$PLUGIN/hooks/lib"
 cp "$SRC/hooks/lib/cli-externo.cjs" "$PLUGIN/hooks/lib/cli-externo.cjs"
+cp "$SRC/hooks/lib/codex-cota.cjs" "$PLUGIN/hooks/lib/codex-cota.cjs"
 cp "$SRC/hooks/lib/config.cjs" "$PLUGIN/hooks/lib/config.cjs"
 cp "$SRC/hooks/lib/raiz.cjs" "$PLUGIN/hooks/lib/raiz.cjs" 2>/dev/null || true
 
@@ -418,6 +419,34 @@ if [ "$exit_10" = "0" ] && [ "$saida_10" = "TEXTO DO -O TEMPORARIO" ] && [ -n "$
 else
   falhou=$((falhou + 1))
   echo "  FALHA caso 10: exit $exit_10, stdout '$saida_10', -o '$O_TMP' existe: $([ -e "$O_TMP_U" ] && echo sim || echo nao)"
+fi
+
+echo ""
+# D5 de 2026-09-08-validar-ponte-codex-ao-vivo: o codex exec real sem cota sai 1
+# com a causa enterrada atras do banner. O script passa a sair 75 (passageiro)
+# com uma linha propria `codex sem cota: ...` logo depois de `comando:`.
+echo "== CASO 11: dublê sem cota → exit 75, linha 'codex sem cota:' no stderr, -o não fica ==="
+CMD_OUT_11="$RAIZ/cmd-11.txt"
+CMD_OUT_11_M="$(cygpath -m "$CMD_OUT_11" 2>/dev/null || printf '%s' "$CMD_OUT_11")"
+ERR_11="$RAIZ/err-11.txt"
+rm -f "$CMD_OUT_11"
+DUBLE_MODO=semcota DUBLE_CMD_OUT="$CMD_OUT_11_M" RFM_TEST=1 CODEX_CMD="node $DUBLE_M" \
+  node "$PLUGIN/scripts/despachar-codex.cjs" \
+  --agente revisor \
+  --worktree "$WTE" \
+  --escreve false \
+  --briefing-file "$BRIEFING" > /dev/null 2> "$ERR_11"
+exit_11=$?
+O_TMP_11="$(sed -n 's/.* -o "\([^"]*\)".*/\1/p' "$CMD_OUT_11" 2>/dev/null | head -1)"
+O_TMP_11_U="$(cygpath -u "$O_TMP_11" 2>/dev/null || printf '%s' "$O_TMP_11")"
+LINHA_11="$(sed -n '2p' "$ERR_11")"
+if [ "$exit_11" = "75" ] && printf '%s' "$LINHA_11" | grep -q "^codex sem cota: You've hit your usage limit" && printf '%s' "$LINHA_11" | grep -q "5:41 PM" && [ -f "$CMD_OUT_11" ] && [ ! -e "$O_TMP_11_U" ]; then
+  ok=$((ok + 1))
+  echo "  ok   caso 11: exit 75, 2ª linha do stderr é 'codex sem cota: ...' com a hora, dublê chamado, -o ausente"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA caso 11: exit $exit_11; 2ª linha do stderr: '$LINHA_11'; dublê chamado: $([ -f "$CMD_OUT_11" ] && echo sim || echo nao)"
+  head -4 "$ERR_11" | sed 's/^/    /'
 fi
 
 echo ""

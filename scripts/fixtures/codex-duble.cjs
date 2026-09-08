@@ -4,7 +4,9 @@
  *
  * Variáveis de ambiente:
  * - DUBLE_MODO: "ok" (exit 0), "falha" (exit 1 + stderr), "dorme" (dorme 5s), "transfer" (emite thread.started + agent_message),
- *   "parecer" (grava DUBLE_PARECER no arquivo -o do comando real — costura com o gate de Stop)
+ *   "parecer" (grava DUBLE_PARECER no arquivo -o do comando real — costura com o gate de Stop),
+ *   "semcota" (stderr e exit 1 do codex exec real sem cota, medido em 2026-09-08),
+ *   "semcota-json" (a mesma falha como eventos JSONL no stdout, para o --json do transferir)
  * - DUBLE_PARECER: texto do parecer no modo "parecer" (default "ALLOW: ok")
  * - DUBLE_STDIN_OUT: arquivo onde escrever o stdin recebido
  * - DUBLE_CMD_OUT: arquivo onde escrever o comando (env.DESPACHAR_CODEX_CMD_REAL)
@@ -95,6 +97,27 @@ async function main() {
     } catch (e) {
       console.error(`erro ao gravar saida: ${e.message}`);
     }
+  }
+
+  // Modo semcota: o que o codex exec REAL fez em 2026-09-08 com o limite de
+  // 5 h estourado — banner no stderr, a mensagem de cota duas vezes, exit 1,
+  // nenhum arquivo -o. Texto literal da medição.
+  const MSG_COTA = "You've hit your usage limit. Upgrade to Pro (https://chatgpt.com/explore/pro), visit https://chatgpt.com/codex/settings/usage to purchase more credits or try again at 5:41 PM.";
+  if (modo === 'semcota') {
+    console.error('OpenAI Codex v0.151.0\n--------\nworkdir: (duble)\nmodel: gpt-5.6-sol\nprovider: openai\napproval: never\nsandbox: read-only\n--------\nuser\n(briefing)\n');
+    console.error(`ERROR: ${MSG_COTA}`);
+    console.error(`ERROR: ${MSG_COTA}`);
+    process.exit(1);
+  }
+
+  // Modo semcota-json: a mesma falha vista pelo `codex exec --json` (o que o
+  // transferir-para-codex.cjs usa) — eventos no stdout, mensagem no evento error.
+  if (modo === 'semcota-json') {
+    console.log(JSON.stringify({ type: 'thread.started', thread_id: 'sem-cota-000' }));
+    console.log(JSON.stringify({ type: 'turn.started' }));
+    console.log(JSON.stringify({ type: 'error', message: MSG_COTA }));
+    console.log(JSON.stringify({ type: 'turn.failed', error: { message: MSG_COTA } }));
+    process.exit(1);
   }
 
   // Sai com status apropriado
