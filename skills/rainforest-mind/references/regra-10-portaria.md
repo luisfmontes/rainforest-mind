@@ -105,27 +105,7 @@ de que as seis baterias deste fluxo nunca haviam rodado — está em
 
 ## Emenda de 2026-09-08 — campo `runtime`
 
-O manifesto agora aceita `runtime: "claude" | "codex"` por agente, ausente significa `claude` (padrão), outro valor nega com motivo. Precedência: (1) linha isolada no briefing do agente — `Runtime: codex` ou `Runtime: claude` (case-insensitive, validada pela regex `/^\s*runtime:\s*codex\s*$/im` para Codex) vence o manifesto; (2) senão, `agentConfig.runtime` do manifesto; (3) senão, "claude" default.
-
-**Exemplo de manifesto com o campo:**
-```json
-{
-  "versao": 1,
-  "agentes": {
-    "revisor":    { "estagios": ["revisar"], "escreve": false, "runtime": "claude" },
-    "executor":   { "estagios": ["executar"], "escreve": true, "runtime": "codex" }
-  }
-}
-```
-
-Toda linha `allow` de `despachos.jsonl` traz o campo `runtime`, inclusive no
-default (`"runtime":"claude"`, caso 21 de `hooks/testa-portaria-nucleo.cjs`).
-Linha `deny` ainda **não** traz o campo: folga conhecida desde 2026-09-08, não
-decisão.
-
-A portaria só **registra** o runtime; ela não despacha nada. Quem age é o
-próprio agente: o bloco `<!-- ponte-codex -->` no topo de cada `agents/*.md`
-manda, diante da linha `Runtime: codex`, gravar o briefing num arquivo e fazer
-uma única chamada a `scripts/despachar-codex.cjs`, que roda `codex exec` com
-sandbox `read-only` ou `workspace-write` conforme `--escreve`.
+O manifesto aceita `runtime: "claude" | "codex"` por agente, e a linha
+`Runtime: codex` no briefing vence o manifesto. Mora em `regra-10-runtime.md`,
+porque este arquivo já estava na catraca de bytes.
 
