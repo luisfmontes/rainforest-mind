@@ -4,21 +4,27 @@
 # GitHub por dois dias sem ninguem notar.
 #
 # O QUE PRECISA PROVAR:
-#   1. o mojibake REAL do incidente (7b5e93a:README.md, 387 linhas corrompidas)
+#   1. o mojibake REAL do incidente (387 linhas corrompidas) reprova, e o README
+#      de hoje (limpo, ja consertado em a1433d1) passa;
 #
-# ANCORA EM HASH, E O QUE ISSO CUSTA. Esta bateria e a UNICA do repositorio que
-# executa contra um commit especifico do historico (`7b5e93a:README.md`). Em
-# 2026-09-02 a reescrita de historico que tirou o JID de grupo dos commits
-# antigos trocou TODOS os hashes, e esta assercao foi a unica coisa no repo
-# inteiro que quebrou por causa disso — reprovou com "nao consegui ler
-# <hash>:README.md do historico". O hash aqui era `daee1d6` antes daquele dia.
+# A ANCORA EM HASH SAIU, E POR QUE. Esta bateria era a UNICA do repositorio que
+# executava contra um commit especifico do historico (`7b5e93a:README.md`, e
+# `daee1d6` antes disso). Toda reescrita de historico trocava o hash e derrubava
+# a assercao — aconteceu em 2026-09-02 e de novo em 2026-09-08, na reescrita que
+# tirou os identificadores de trabalho. Na segunda vez o commit ficou orfao: nao
+# da' mais para traduzir por `filter-repo/commit-map`, e a bateria so passava na
+# maquina onde o objeto solto ainda existia. Verde local, vermelho no CI.
 #
-# A ancora e proposital: o valor da bateria e reprovar o mojibake REAL, e nao um
-# que alguem fabricou. O preco e que toda reescrita futura de historico exige
-# traduzir este hash pelo `filter-repo/commit-map`. A alternativa duravel seria
-# guardar o README corrompido como fixture versionado — mas ai a checagem 4
-# ("a arvore INTEIRA passa limpa") reprovaria a propria fixture.
-#      reprova, e o README de hoje (limpo, ja consertado em a1433d1) passa;
+# Os bytes continuam sendo os do incidente. Eles agora moram em
+# `scripts/fixtures/readme-mojibake-7b5e93a.md.gz.b64` — o blob `ee4fdae`
+# inteiro, gzip + base64. O nome guarda o commit de origem so como procedencia.
+#
+# O gzip+base64 nao e' enfeite: e o que responde a objecao que segurava a
+# fixture aqui fora. Guardado cru, o README corrompido seria reprovado pela
+# propria checagem 4 ("a arvore INTEIRA passa limpa"). Em base64 o arquivo
+# versionado e ASCII puro, a arvore segue limpa, e o teste descomprime em tmp.
+# O sha256 do conteudo descomprimido e conferido antes de qualquer assercao:
+# fixture que muda deixa de ser o incidente, e a bateria diz isso.
 #   2. BOM reprova, ausencia de BOM passa;
 #   3. CRLF reprova (fixture com git proprio), arvore em LF passa;
 #   4. a arvore INTEIRA do repositorio, na base, passa limpa — e o falso positivo
@@ -43,17 +49,36 @@ tem()  { if printf '%s' "$2" | grep -qF "$3"; then ok=$((ok+1)); echo "  ok   $1
 roda()   { node "$SCRIPT" "$@" 2>&1; }
 codigo() { node "$SCRIPT" "$@" >/dev/null 2>&1; echo $?; }
 
-echo "== 1. mojibake real do incidente (7b5e93a) reprova, README de hoje passa =="
+echo "== 1. mojibake real do incidente reprova, README de hoje passa =="
 CORROMPIDO="$SB/readme-corrompido.md"
 LIMPO="$SB/readme-limpo.md"
-if git -C "$RAIZ" cat-file -e 7b5e93a:README.md 2>/dev/null; then
-  git -C "$RAIZ" show 7b5e93a:README.md > "$CORROMPIDO" 2>/dev/null
+FIXTURE="$RAIZ/scripts/fixtures/readme-mojibake-7b5e93a.md.gz.b64"
+# Os bytes sao os do incidente, byte a byte — mas vem de uma fixture, nao de um
+# commit. Ver o cabecalho: a ancora em hash quebrou de novo na reescrita de
+# 2026-09-08 e agora saiu.
+if [ -f "$FIXTURE" ]; then
+  node -e '
+    const fs = require("fs"), zlib = require("zlib");
+    const [ent, sai] = process.argv.slice(1);
+    fs.writeFileSync(sai, zlib.gunzipSync(Buffer.from(fs.readFileSync(ent, "utf8"), "base64")));
+  ' "$FIXTURE" "$CORROMPIDO"
+  # A fixture so vale se for MESMO o blob do incidente: sha256 do conteudo
+  # descomprimido, o mesmo que `git cat-file -p ee4fdae` dava.
+  SHA_ESPERADO="1d929c00f7d8cb9b77e227ff26499446bfce9baea667124b5684fc5cf1a0daf3"
+  SHA_VEIO="$(sha256sum < "$CORROMPIDO" | cut -d' ' -f1)"
+  if [ "$SHA_VEIO" = "$SHA_ESPERADO" ]; then
+    ok=$((ok+1)); echo "  ok   a fixture e o blob do incidente (sha256 confere)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA a fixture nao e mais o blob do incidente"
+    echo "        veio:     $SHA_VEIO"
+    echo "        esperava: $SHA_ESPERADO"
+  fi
   S="$(roda "$CORROMPIDO")"
-  saiu "README corrompido (7b5e93a) reprova"    "$(codigo "$CORROMPIDO")" "2"
-  tem  "e aponta mojibake"                      "$S" "mojibake"
-  tem  "e aponta BOM"                           "$S" "bom"
+  saiu "README corrompido do incidente reprova"  "$(codigo "$CORROMPIDO")" "2"
+  tem  "e aponta mojibake"                       "$S" "mojibake"
+  tem  "e aponta BOM"                            "$S" "bom"
 else
-  falhou=$((falhou+1)); echo "  FALHA nao consegui ler 7b5e93a:README.md do historico"
+  falhou=$((falhou+1)); echo "  FALHA nao achei a fixture $FIXTURE"
 fi
 git -C "$RAIZ" show HEAD:README.md > "$LIMPO" 2>/dev/null
 saiu "README de HEAD (ja consertado) passa (exit 0)" "$(codigo "$LIMPO")" "0"

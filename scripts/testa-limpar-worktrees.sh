@@ -598,6 +598,65 @@ if git -C "$work_m" worktree list --porcelain | grep -qF "wt-m"; then
 else
   ok=$((ok+1)); echo "  ok    dada a baixa no em_voo, o mesmo worktree e removido"
 fi
+# --- CASO (n): rodando de DENTRO de um worktree, projeto irmao NAO e' candidato
+#
+# Regressao medida em 2026-09-08 na maquina do Luis: com a cwd dentro de um
+# worktree, `raiz` vira o worktree, o checkout principal entra em `registrados`,
+# e `path.dirname` dele e' a pasta que guarda TODOS os projetos. O `--remover`
+# disparou `git worktree remove` contra cinco repositorios alheios; so nao
+# apagou porque o git recusou. Este caso prende as duas pontas: o irmao nao
+# aparece na listagem, e o principal tambem nao.
+
+teste "n" "de dentro de um worktree, projeto irmao nao entra na listagem"
+
+# `casa_n` faz o papel de C:\Projetos: o repo e o irmao sao vizinhos.
+casa_n="$SB/casa_n"
+mkdir -p "$casa_n"
+repo_n="$casa_n/repo_n"
+git init -q "$repo_n"
+cd "$repo_n"
+git config user.name "Test User"
+git config user.email "<email>"
+touch initial.txt
+git add initial.txt
+git commit -qm "Initial commit"
+
+# O irmao: outro projeto do usuario, no mesmo pai. Nao tem nada com este repo.
+irmao_n="$casa_n/projeto-irmao"
+git init -q "$irmao_n"
+
+wt_n="$repo_n/.claude/worktrees/wt-n"
+git worktree add -q "$wt_n" HEAD 2>/dev/null
+
+# A raiz e' o WORKTREE, nao o repo — e' isso que dispara o defeito.
+saida_n=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$wt_n" 2>&1)
+
+if echo "$saida_n" | grep -q "projeto-irmao"; then
+  falhou=$((falhou+1))
+  echo "  FALHA projeto irmao apareceu como candidato"
+  echo "        Saida: $saida_n"
+else
+  ok=$((ok+1)); echo "  ok    projeto irmao nao aparece"
+fi
+
+if echo "$saida_n" | awk '{print $1}' | grep -qE "repo_n$"; then
+  falhou=$((falhou+1))
+  echo "  FALHA o checkout principal apareceu como candidato"
+  echo "        Saida: $saida_n"
+else
+  ok=$((ok+1)); echo "  ok    o checkout principal nao aparece"
+fi
+
+if echo "$saida_n" | grep -q "wt-n"; then
+  ok=$((ok+1)); echo "  ok    o worktree de verdade continua listado"
+else
+  falhou=$((falhou+1))
+  echo "  FALHA o worktree de verdade sumiu da listagem"
+  echo "        Saida: $saida_n"
+fi
+
+cd "$SB"
+
 # --- Relatório final
 
 echo ""
