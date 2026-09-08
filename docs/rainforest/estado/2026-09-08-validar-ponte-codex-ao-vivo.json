@@ -1,0 +1,133 @@
+{
+  "slug": "2026-09-08-validar-ponte-codex-ao-vivo",
+  "titulo": "Validar a ponte Codex ao vivo com o plugin 1.8.0 instalado",
+  "criado_em": "2026-09-08",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-08-validar-ponte-codex-ao-vivo.md",
+    "aprovado_por": "Luis, 2026-09-08 (sim ao Q1 com D5)",
+    "em": "2026-09-08"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-09-08-validar-ponte-codex-ao-vivo.md",
+    "tarefas": 6,
+    "paralelas": [],
+    "em": "2026-09-08"
+  },
+  "executar": {
+    "status": "ok",
+    "tarefas_ok": 7,
+    "tarefas": 7,
+    "em_voo": [],
+    "pendentes": [
+      "tarefa-6: bump 1.8.1 e feito no fechar como ultimo commit antes do PR (convencao do conferir-versao)"
+    ],
+    "mutacao_parcial": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-despachar-codex.sh caso 11 (exit 75 + linha codex sem cota)"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-review-codex.sh caso 6b (reason cita codex sem cota e a hora)"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-transferir-para-codex.sh caso 8 (exit 75, sem codex resume)"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "docs; catraca 7.5 verde (teto 10500 B), regra-10-runtime.md 4657 B após o bloco de ponte da T7"
+      }
+    ],
+    "em": "2026-09-08",
+    "catraca_mutacao": "2026-09-08",
+    "comando": "bash scripts/testa-despachar-codex.sh; bash scripts/testa-transferir-para-codex.sh; bash hooks/testa-gate-review-codex.sh; node hooks/testa-portaria-nucleo.cjs; despacho real do executor (cache 1.8.0) em duas rodadas",
+    "saida": "15 ok / 10 ok / 16 ok / 78 ok; rodada (i) so Runtime: codex: portaria viva runtime=codex, agente ignorou o preambulo (0 despachar-codex no transcript) — reprovada e virou T7; rodada (ii) com bloco de ponte: codex exec real, commit b80da41 pela ponte",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-despachar-codex.sh caso 11"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-review-codex.sh caso 6b"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-transferir-para-codex.sh caso 8"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "docs; catraca 7.5 verde"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "validacao com binario externo e agente do cache; relatorio com as duas rodadas"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "bump; commit no fechar"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "instrucao de prompt; prova comportamental na rodada (ii) da T5, preambulo endurecido so na proxima versao"
+      }
+    ]
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "e2b317eec4690311dc3004dce5fd51266920c1f2",
+      "caminhos_sujos": []
+    },
+    "base": "29b67d3",
+    "head": "e2b317e",
+    "rodadas": 2,
+    "rodada1": "REPROVADO — CRÍTICO 1: detectarSemCota rodava com exit 0 (falso positivo em parecer que cite 'usage limit'); AVISO 1: nota de 3266 B/≤3300 B desatualizada",
+    "rodada2": "APROVADO — cota só com exit ≠ 0 ou evento --json error/turn.failed; casos 12 (despachar), 9 e 10 (transferir); critério T4 e nota do estado corrigidos",
+    "baterias": "testa-despachar-codex 16 ok; testa-transferir-para-codex 12 ok; testa-gate-review-codex 16 ok",
+    "em": "2026-09-08"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash roda-suite.sh (todas scripts/testa-*.sh hooks/testa-*.sh) em HEAD e2b317e; bash scripts/testa-despachar-codex.sh; bash scripts/testa-transferir-para-codex.sh; bash hooks/testa-gate-review-codex.sh; bash hooks/testa-contexto-sessao.sh; node -e detectarSemCota(<mensagem literal de 2026-09-08>); wc -c regra-10-runtime.md; node scripts/conferir-versao.cjs",
+    "saida": "suite: total=98 ok=97 falhou=1 (testa-saude.sh — Issue #221 pré-existente, 'veio: erro' em todos os casos, vermelha também em suite-t8/suite-rev1/suite-vivo antes desta mudança); despachar 16 ok; transferir 12 ok; gate-review-codex 16 ok (caso 6b: reason com 'codex sem cota' e a hora); contexto-sessao ok 277 falhou 0 (catraca 7.5, teto 10500 B; regra-10-runtime.md 4657 B); detectarSemCota devolve \"You've hit your usage limit. ... try again at 5:41 PM.\"; conferir-versao: ok versao 1.8.1: 0 commit(s) desde o bump c40427e",
+    "tarefas": {
+      "T1": "ok",
+      "T2": "ok",
+      "T3": "ok",
+      "T4": "ok (regra cita exit 75 e 'codex sem cota:' linhas 84-88; relatório tem seção 'Codex sem cota' linha 136)",
+      "T5": "ok (relatório: (a) comando: codex exec; (b) despachos.jsonl runtime codex às 20:43:38Z e 20:48:36Z; (c) commit b80da41 da ponte)",
+      "T7": "ok (rodadas (i) e (ii) no relatório; preâmbulo endurecido registrado como lacuna até a próxima instalação)",
+      "T6": "ok (1.8.1, commit c40427e)"
+    },
+    "em": "2026-09-08"
+  },
+  "fechar": {
+    "status": "ok",
+    "pr": 227,
+    "destino": "PR",
+    "ci": "run 34283378345: baterias node 22 e node 24 success",
+    "worktrees_removidos": [
+      "agent-aafaa63e76fc22bf0",
+      "agent-add63783023861074"
+    ],
+    "em": "2026-09-08"
+  }
+}

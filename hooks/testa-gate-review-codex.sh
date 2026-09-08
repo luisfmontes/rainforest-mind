@@ -53,6 +53,11 @@ if (process.env.RFM_DUBLE_SENTINEL) {
 // Imprime resposta
 console.log(modo);
 
+// Stderr se pedido (ex.: a linha `codex sem cota: ...` que o despacho real emite)
+if (process.env.RFM_DUBLE_STDERR) {
+  console.error(process.env.RFM_DUBLE_STDERR);
+}
+
 // Exit com código se pedido
 if (process.env.RFM_DUBLE_EXIT) {
   process.exit(parseInt(process.env.RFM_DUBLE_EXIT));
@@ -143,6 +148,15 @@ if printf '%s' "$saida" | grep -qF '"decision":"block"' && printf '%s' "$saida" 
   ok=$((ok+1)); echo "  ok   resposta inválida bloqueia com falha fechada"
 else
   falhou=$((falhou+1)); echo "  FALHA resposta inválida: $saida"
+fi
+
+echo
+echo "== Caso 6b: despacho sem cota (exit 75) => bloqueia citando a causa e a hora =>"
+saida=$(printf '%s' "$(pay "$R" "$TRANSCRIPT" "false")" | RFM_DUBLE_SCRIPT="$DUBLE" RFM_DUBLE_MODO="" RFM_DUBLE_EXIT="75" RFM_DUBLE_STDERR="codex sem cota: You've hit your usage limit. Try again at 5:41 PM." node "$HOOK" 2>&1)
+if printf '%s' "$saida" | grep -qF '"decision":"block"' && printf '%s' "$saida" | grep -qF "codex sem cota" && printf '%s' "$saida" | grep -qF "5:41 PM"; then
+  ok=$((ok+1)); echo "  ok   sem cota bloqueia com 'codex sem cota' e a hora de retorno no reason"
+else
+  falhou=$((falhou+1)); echo "  FALHA sem cota deveria citar a causa: $saida"
 fi
 
 echo

@@ -68,7 +68,7 @@ registre que viu.
 
 **Antes de despachar:** a base do worktree nasce na ponta da `origin/main`, não no commit de trabalho. Confira com `git merge-base --is-ancestor origin/main HEAD`; não sendo ancestral, traga a `main` para a branch com `git merge --ff-only origin/main` antes de despachar — a branch de trabalho tem que estar adiantada (ou igualada) em relação ao `origin/main`.
 
-**Runtime do agente:** a primeira linha do briefing pode ser `Runtime: codex` para despachar via Codex CLI, ou `Runtime: claude` (default). O `conferir-entrega.cjs` não muda com o runtime — ele confere o worktree real independentemente de qual host correu o agente.
+**Runtime do agente:** a primeira linha do briefing pode ser `Runtime: codex` para despachar via Codex CLI, ou `Runtime: claude` (default). Com `Runtime: codex`, o briefing leva também o bloco de ponte de `rainforest-mind/references/regra-10-runtime.md` — o preâmbulo do agente sozinho não segurou um haiku (2026-09-08). O `conferir-entrega.cjs` não muda com o runtime — ele confere o worktree real independentemente de qual host correu o agente.
 
 O briefing de cada agente leva, sempre:
 - **O hash da base** (regra 11) e a instrução de conferir na primeira ação:

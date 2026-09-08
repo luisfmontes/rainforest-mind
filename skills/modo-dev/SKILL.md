@@ -64,7 +64,9 @@ nesta ordem:
    próprio `agents/<nome>.md`, que então faz uma chamada só a
    `scripts/despachar-codex.cjs`, commita o que o Codex deixou (o sandbox
    dele não grava em `.git`) e devolve a saída literal; a portaria só
-   registra o valor no log. Uma linha opcional `Despacho: <caminho>` no
+   registra o valor no log. **O preâmbulo sozinho não segura um haiku**
+   (medido em 2026-09-08): com `Runtime: codex`, o briefing leva também o
+   bloco de ponte de `references/regra-10-runtime.md`, logo abaixo da linha. Uma linha opcional `Despacho: <caminho>` no
    mesmo bloco aponta o script quando ele não está nem em
    `$CLAUDE_PLUGIN_ROOT` nem na raiz do worktree (branch ainda não
    integrada).

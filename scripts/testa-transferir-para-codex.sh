@@ -64,6 +64,7 @@ PLUGIN="$RAIZ/plugin"
 # Copia hooks/lib/ e hooks
 mkdir -p "$PLUGIN/hooks/lib"
 cp "$SRC/hooks/lib/cli-externo.cjs" "$PLUGIN/hooks/lib/cli-externo.cjs"
+cp "$SRC/hooks/lib/codex-cota.cjs" "$PLUGIN/hooks/lib/codex-cota.cjs"
 cp "$SRC/hooks/lib/config.cjs" "$PLUGIN/hooks/lib/config.cjs"
 cp "$SRC/hooks/lib/raiz.cjs" "$PLUGIN/hooks/lib/raiz.cjs" 2>/dev/null || true
 cp "$SRC/hooks/codex-transfer-session-start.cjs" "$PLUGIN/hooks/codex-transfer-session-start.cjs"
@@ -342,6 +343,63 @@ else
   falhou=$((falhou + 1))
   echo "  FALHA caso 7: esperava exit 3 e 'transfer-codex' sem dublê, veio exit $exit_7 (dublê chamado: $([ -f "$STDIN_OUT_7" ] && echo sim || echo nao))"
   echo "$saida_7" | sed 's/^/    /'
+fi
+
+echo ""
+# D5 de 2026-09-08-validar-ponte-codex-ao-vivo: com --json o erro de cota vem
+# como evento no stdout DEPOIS de thread.started — sem a checagem o script
+# devolveria `codex resume <id>` de uma thread que falhou.
+echo "== CASO 8: dublê sem cota (eventos --json) → exit 75, stderr cita 'codex sem cota', sem 'codex resume' ==="
+echo '{"transfer-codex": true}' > "$RFMHOME/.rainforest/config.json"
+OUT_8="$RAIZ/out-8.txt"; ERR_8="$RAIZ/err-8.txt"
+DUBLE_MODO=semcota-json \
+  RFM_TEST=1 RFM_HOME="$RFMHOME_M" \
+  RFM_ROOT="$RFMHOME_M/.rainforest" CLAUDE_PROJECT_DIR="$RFMHOME_M" \
+  CODEX_CMD="node $DUBLE_M" \
+  node "$PLUGIN/scripts/transferir-para-codex.cjs" \
+  --source "$TRANSCRIPT_M" --cwd "$CWD_M" > "$OUT_8" 2> "$ERR_8"
+exit_8=$?
+if [ "$exit_8" = "75" ] && grep -q "^codex sem cota: You've hit your usage limit" "$ERR_8" && ! grep -q "codex resume" "$OUT_8"; then
+  ok=$((ok + 1))
+  echo "  ok   caso 8: exit 75, 'codex sem cota' no stderr, nenhum 'codex resume' no stdout"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA caso 8: exit $exit_8; stderr: $(head -2 "$ERR_8" | tr '\n' ' '); stdout: $(cat "$OUT_8" | tr '\n' ' ')"
+fi
+
+echo ""
+# CRITICO 1 do revisar de 2026-09-08: texto de agente que cite "usage limit"
+# com exit 0 nao e cota — so evento error/turn.failed conta.
+echo "== CASO 9: exit 0 com agent_message citando 'usage limit' → exit 0 e 'codex resume abc-123' ==="
+OUT_9="$RAIZ/out-9.txt"; ERR_9="$RAIZ/err-9.txt"
+DUBLE_MODO=transfer DUBLE_TRANSFER_MSG="sobre o D5: o Codex diz hit your usage limit quando estoura; sigo daqui" \
+  RFM_TEST=1 RFM_HOME="$RFMHOME_M" \
+  RFM_ROOT="$RFMHOME_M/.rainforest" CLAUDE_PROJECT_DIR="$RFMHOME_M" \
+  CODEX_CMD="node $DUBLE_M" \
+  node "$PLUGIN/scripts/transferir-para-codex.cjs" \
+  --source "$TRANSCRIPT_M" --cwd "$CWD_M" > "$OUT_9" 2> "$ERR_9"
+exit_9=$?
+if [ "$exit_9" = "0" ] && [ "$(tail -1 "$OUT_9")" = "codex resume abc-123" ] && ! grep -q "codex sem cota" "$ERR_9"; then
+  ok=$((ok + 1))
+  echo "  ok   caso 9: texto de agente com 'usage limit' não é cota; exit 0 e codex resume"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA caso 9: exit $exit_9; stdout: $(cat "$OUT_9" | tr '\n' ' '); stderr: $(head -2 "$ERR_9" | tr '\n' ' ')"
+fi
+
+echo ""
+echo "== CASO 10: exit 0 mas evento error/turn.failed com cota → exit 75 (ramo positivo do detector de eventos) ==="
+OUT_10="$RAIZ/out-10.txt"; ERR_10="$RAIZ/err-10.txt"
+DUBLE_MODO=semcota-json-exit0   RFM_TEST=1 RFM_HOME="$RFMHOME_M"   RFM_ROOT="$RFMHOME_M/.rainforest" CLAUDE_PROJECT_DIR="$RFMHOME_M"   CODEX_CMD="node $DUBLE_M"   node "$PLUGIN/scripts/transferir-para-codex.cjs"   --source "$TRANSCRIPT_M" --cwd "$CWD_M" > "$OUT_10" 2> "$ERR_10"
+exit_10=$?
+if [ "$exit_10" = "75" ] && grep -q "^codex sem cota: You've hit your usage limit" "$ERR_10" && ! grep -q "codex resume" "$OUT_10"; then
+  ok=$((ok + 1))
+  echo "  ok   caso 10: cota só no evento, exit 0 do Codex → exit 75, sem codex resume"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA caso 10: exit $exit_10; stdout: $(cat "$OUT_10" | tr '
+' ' '); stderr: $(head -2 "$ERR_10" | tr '
+' ' ')"
 fi
 
 echo ""

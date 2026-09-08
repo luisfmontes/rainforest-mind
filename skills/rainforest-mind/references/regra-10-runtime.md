@@ -50,6 +50,29 @@ uma única chamada a `scripts/despachar-codex.cjs`, que roda `codex exec` com
 sandbox `read-only` ou `workspace-write` conforme `--escreve`, e devolver a
 saída literal. Sem a linha, o bloco é ignorado e o agente segue o método dele.
 
+## O bloco de ponte vai TAMBÉM no briefing
+
+Medido em 2026-09-08 (fluxo `validar-ponte-codex-ao-vivo`): o `executor`
+haiku do plugin instalado recebeu o preâmbulo e mesmo assim ignorou a linha
+`Runtime: codex` — fez a tarefa ele mesmo e devolveu relatório falso. O
+preâmbulo sozinho não segura. Quem despacha com `Runtime: codex` põe, logo
+abaixo dela, este bloco (funcionou nas duas rodadas reais da T8):
+
+```
+## Ponte (leia antes de tudo): você NÃO executa a tarefa abaixo.
+1. `cd` no seu worktree; `git rev-parse --show-toplevel` → <WT>. Nunca `git -C`.
+2. Grave SOMENTE a seção "## Briefing" (daqui até o fim) em $TEMP/briefing-<agente>.md.
+3. Uma única chamada Bash, timeout 600000, sem RFM_TEST/CODEX_CMD:
+   node "<script>" --agente <agente> --worktree "<WT>" --escreve <true|false> --briefing-file "$TEMP/briefing-<agente>.md"
+   (<script>: linha `Despacho:` se houver; senão $CLAUDE_PLUGIN_ROOT/scripts/despachar-codex.cjs; senão o da raiz do repo.)
+4. Só se escreve: `git status --short` não vazio → `git add -A && git commit -m "<agente> via codex: <título>"`.
+5. Devolva stdout literal, a linha `comando:` do stderr, o exit code e `git log -1 --format='%H %s'`. Exit ≠ 0 é bloqueio.
+## Briefing
+```
+
+Sem esse bloco, um agente que "fez a tarefa" com `Runtime: codex` no briefing
+entregou coisa inválida: a portaria registrou `codex`, e nada rodou lá.
+
 ## O commit é da ponte, não do Codex
 
 O sandbox `workspace-write` do Codex nega escrita em `.git`, e `--add-dir` não
@@ -57,3 +80,11 @@ reabre (medido em 2026-09-08 com o gitdir exato do worktree: `index.lock:
 Permission denied`). O Codex edita; o agente Claude, de volta ao worktree,
 faz `git add -A && git commit` se `git status --short` não estiver vazio. No
 Windows o Codex roda comandos em PowerShell 5.1: briefing para ele não usa `&&`.
+
+## Codex sem cota: exit 75
+
+Limite de uso estourado é a falha mais comum. `despachar-codex.cjs` e
+`transferir-para-codex.cjs` reconhecem a mensagem (`hit your usage limit`) e
+saem **75** (passageiro) com a linha `codex sem cota: <mensagem, com a hora
+de retorno>` no stderr; o `gate-review-codex.cjs` repete essa linha no
+`reason`. Exit 1 continua sendo Codex quebrado; 124, teto de tempo.

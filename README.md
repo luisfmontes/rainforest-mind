@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.8.0-1e5c3f?style=flat-square" alt="versão 1.8.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.8.1-1e5c3f?style=flat-square" alt="versão 1.8.1">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -161,7 +161,8 @@ Fora da tabela porque o mecanismo é outro (`Stop`, exit 0 com
 `ALLOW` sobre a última resposta; Codex indisponível, resposta irreconhecível
 ou transcript que o hook não consegue ler bloqueiam com motivo (falha
 fechada). Só a chave desligada e o `stop_hook_active` do turno seguinte
-liberam sem perguntar.
+liberam sem perguntar. Codex sem cota bloqueia dizendo isso, com a hora de
+retorno (o despacho sai 75 e escreve `codex sem cota: ...`).
 
 Valem em **qualquer** repo git da máquina, porque o hábito é que é o problema,
 não o repositório. Cada uma tem bateria própria — **540 casos** rodando o hook
