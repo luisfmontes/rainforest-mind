@@ -6,10 +6,17 @@
     "status": "pendente"
   },
   "design": {
-    "status": "pendente"
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-08-validar-ponte-codex-ao-vivo.md",
+    "aprovado_por": "Luis, 2026-09-08 (sim ao Q1 com D5)",
+    "em": "2026-09-08"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-09-08-validar-ponte-codex-ao-vivo.md",
+    "tarefas": 6,
+    "paralelas": [],
+    "em": "2026-09-08"
   },
   "executar": {
     "status": "pendente"
