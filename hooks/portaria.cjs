@@ -213,6 +213,40 @@ function normalizarNomeAgente(nome) {
  */
 const RE_CHAVE_DE_TOPO = /^([A-Za-z0-9_-]+)[ \t]*:[ \t]*(.*)$/;
 
+/**
+ * Resolve o runtime efetivo baseado em precedência:
+ * 1. Linha isolada `Runtime: codex` ou `Runtime: claude` no prompt → retorna esse valor
+ * 2. Senão, `agentConfig.runtime` → retorna esse valor se for válido
+ * 3. Senão → retorna "claude" (default)
+ *
+ * O prompt é buscado por linha isolada case-insensitive:
+ * `/^\s*runtime:\s*codex\s*$/im` → "codex"
+ * `/^\s*runtime:\s*claude\s*$/im` → "claude"
+ *
+ * Retorna sempre "claude" ou "codex".
+ */
+function runtimeEfetivo(agentConfig, prompt) {
+  // Procura linha isolada no prompt (case-insensitive)
+  if (prompt && typeof prompt === "string") {
+    // Linha isolada: `Runtime: codex`
+    if (/^\s*runtime:\s*codex\s*$/im.test(prompt)) {
+      return "codex";
+    }
+    // Linha isolada: `Runtime: claude` ou sem linha
+    if (/^\s*runtime:\s*claude\s*$/im.test(prompt)) {
+      return "claude";
+    }
+  }
+
+  // Se não há linha no prompt, usa o manifesto
+  if (agentConfig && agentConfig.runtime) {
+    return agentConfig.runtime;
+  }
+
+  // Default
+  return "claude";
+}
+
 function parseToolsDoFrontmatter(frontmatter) {
   // `\r` some para que arquivo em CRLF nao mude o resultado.
   const linhas = String(frontmatter).split("\n").map((l) => l.replace(/\r$/, ""));
@@ -581,6 +615,19 @@ function main() {
     negar(motivo);
   }
 
+  // D3 passo 6b: validar forma do campo `runtime` (se presente)
+  // Deve ser exatamente "claude" ou "codex", nunca outro valor
+  if (agentConfig.runtime !== undefined && agentConfig.runtime !== null) {
+    if (agentConfig.runtime !== "claude" && agentConfig.runtime !== "codex") {
+      const valor = JSON.stringify(agentConfig.runtime);
+      const motivo =
+        `agente '${nomeAgente}' tem 'runtime' com valor invalido no manifesto (veio ${valor})` +
+        ` — use exatamente "claude" ou "codex"`;
+      gravarDespacho(raiz, "deny", nomeAgente, estagioAtivo, sessao, motivo);
+      negar(motivo);
+    }
+  }
+
   // `escreve: true` — o agente PODE escrever, e por isso a portaria exige aqui
   // a trava que torna isso aceitavel, em vez de negar de saida.
   //
@@ -637,8 +684,12 @@ function main() {
     // Allow conferido, e a linha diz SOB QUE isolamento — sem isso o log
     // registraria "agente que escreve rodou" sem registrar a unica coisa que
     // tornou aquilo admissivel.
+    const prompt_escreve = payload.tool_input && payload.tool_input.prompt;
+    const runtime_escreve = runtimeEfetivo(agentConfig, prompt_escreve);
+
     gravarDespacho(raiz, "allow", nomeAgente, estagioAtivo, sessao, null, undefined, {
       isolation: isolamento,
+      runtime: runtime_escreve,
     });
     process.exit(0);
   }
@@ -685,7 +736,14 @@ function main() {
   // log quando a checagem de escrita não pôde ser feita — o log é evidência de
   // primeira classe (D4), e evidência que não distingue "conferi" de "não deu
   // para conferir" afirma mais do que sabe.
-  gravarDespacho(raiz, "allow", nomeAgente, estagioAtivo, sessao, null, escreveConferido);
+  //
+  // Resolve o runtime efetivo: linha no prompt > manifesto > default "claude"
+  const prompt = payload.tool_input && payload.tool_input.prompt;
+  const runtime = runtimeEfetivo(agentConfig, prompt);
+
+  gravarDespacho(raiz, "allow", nomeAgente, estagioAtivo, sessao, null, escreveConferido, {
+    runtime,
+  });
   process.exit(0);
 }
 

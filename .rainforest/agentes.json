@@ -3,7 +3,8 @@
   "agentes": {
     "revisor": {
       "estagios": ["revisar"],
-      "escreve": false
+      "escreve": false,
+      "runtime": "claude"
     },
     "auditor-de-seguranca": {
       "estagios": ["revisar"],
@@ -19,7 +20,8 @@
     },
     "executor": {
       "estagios": ["executar"],
-      "escreve": true
+      "escreve": true,
+      "runtime": "claude"
     },
     "resolvedor-de-build": {
       "estagios": ["executar", "verificar"],
