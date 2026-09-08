@@ -6,6 +6,7 @@
  * monta um prompt para `codex exec --json`, extrai thread_id do primeiro evento
  * `thread.started`, e devolve a saída + instrução de retomada `codex resume <thread_id>`.
  *
+ * Recusa com exit 3 se a chave `transfer-codex` não está ligada (opt-in, D8).
  * Recusa com exit 2 se o caminho não está dentro de ~/.claude/projects (salvo com RFM_HOME).
  * Timeout default 540000ms. Suporta RFM_TEST=1 + CODEX_CMD para dublê de teste.
  *
@@ -262,6 +263,22 @@ Opcionais:
   if (!fs.existsSync(cwd)) {
     console.error(`erro: diretório não existe: ${cwd}`);
     process.exit(1);
+  }
+
+  // Opt-in (D8): a chave `transfer-codex` é o portão do recurso, e o portão
+  // mora AQUI, no script que manda texto de sessão para fora — não só no hook
+  // de abertura, que apenas grava o caminho do transcript. Config ilegível
+  // conta como desligada: sair dado da máquina por engano é o erro caro.
+  let transferLigado = false;
+  try {
+    const { resolverConfig } = require('../hooks/lib/config.cjs');
+    transferLigado = resolverConfig({ projeto: cwd }).valores['transfer-codex'] === true;
+  } catch {
+    transferLigado = false;
+  }
+  if (!transferLigado) {
+    console.error('recusado: a chave transfer-codex está desligada (opt-in). Ligue com: node scripts/setup.cjs --ligar transfer-codex');
+    process.exit(3);
   }
 
   const timeoutMs = opts['timeout-ms'] ? parseInt(opts['timeout-ms'], 10) : 540000;

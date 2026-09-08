@@ -146,15 +146,40 @@ else
 fi
 
 echo
-echo "== Caso 7: transcript sem assistant => libera =>"
+# Ate o revisar de 2026-09-08 este caso esperava LIBERAR. Os dois revisores
+# (Claude e Codex) apontaram a contradicao com o cabecalho "falha fechada": um
+# transcript_path que o harness nao entregou, ou que rotacionou entre o Stop e
+# o hook, fazia o gate inteiro sumir em silencio. Agora bloqueia com motivo; o
+# stop_hook_active do turno seguinte garante que custa um turno, nao um laco.
+echo "== Caso 7: transcript sem assistant => bloqueia (falha fechada) =>"
 VAZIO="$RAIZ/transcript-vazio.jsonl"
 echo '{"type":"user","message":{"role":"user","content":[{"type":"text","text":"só user"}]}}' > "$VAZIO"
 saida=$(printf '%s' "$(pay "$R" "$VAZIO" "false")" | node "$HOOK" 2>&1)
-got=$?
-if [ $got -eq 0 ] && [ -z "$(printf '%s' "$saida" | grep decision || true)" ]; then
-  ok=$((ok+1)); echo "  ok   sem assistant libera silenciosamente"
+if printf '%s' "$saida" | grep -qF '"decision":"block"' && printf '%s' "$saida" | grep -qF "última resposta"; then
+  ok=$((ok+1)); echo "  ok   sem assistant bloqueia com motivo"
 else
-  falhou=$((falhou+1)); echo "  FALHA sem assistant: exit=$got"
+  falhou=$((falhou+1)); echo "  FALHA sem assistant deveria bloquear: $saida"
+fi
+
+echo
+echo "== Caso 7b: transcript_path ausente no evento => bloqueia (falha fechada) =>"
+saida=$(printf '%s' '{"session_id":"s","cwd":"'"$(cygpath -m "$R" 2>/dev/null || printf '%s' "$R")"'","stop_hook_active":false}' | node "$HOOK" 2>&1)
+if printf '%s' "$saida" | grep -qF '"decision":"block"' && printf '%s' "$saida" | grep -qF "transcript_path ausente"; then
+  ok=$((ok+1)); echo "  ok   transcript_path ausente bloqueia com motivo"
+else
+  falhou=$((falhou+1)); echo "  FALHA transcript_path ausente deveria bloquear: $saida"
+fi
+
+echo
+echo "== Caso 7c: nenhum briefing temporário fica para trás (ALLOW e BLOCK) =>"
+ANTES=$(ls "${TMPDIR:-${TEMP:-/tmp}}" 2>/dev/null | grep -c '^rfm-review-' || true)
+printf '%s' "$(pay "$R" "$TRANSCRIPT" "false")" | RFM_DUBLE_SCRIPT="$DUBLE" RFM_DUBLE_MODO="ALLOW: ok" node "$HOOK" >/dev/null 2>&1
+printf '%s' "$(pay "$R" "$TRANSCRIPT" "false")" | RFM_DUBLE_SCRIPT="$DUBLE" RFM_DUBLE_MODO="BLOCK: teste" node "$HOOK" >/dev/null 2>&1
+DEPOIS=$(ls "${TMPDIR:-${TEMP:-/tmp}}" 2>/dev/null | grep -c '^rfm-review-' || true)
+if [ "$ANTES" = "$DEPOIS" ]; then
+  ok=$((ok+1)); echo "  ok   ALLOW e BLOCK apagam o briefing temporário ($ANTES antes, $DEPOIS depois)"
+else
+  falhou=$((falhou+1)); echo "  FALHA sobrou briefing temporário: $ANTES antes, $DEPOIS depois"
 fi
 
 echo

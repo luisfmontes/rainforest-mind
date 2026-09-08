@@ -369,6 +369,29 @@ else
 fi
 
 echo ""
+# Achado 3 do revisor em Codex (2026-09-08): `--agente ../x` saia de agents/ e
+# injetava qualquer arquivo no prompt. O nome tem de ser simples.
+echo "== CASO 9c: --agente ../fora → exit 1, sem chamar o dublê ==="
+CMD_OUT_9C="$RAIZ/cmd-9c.txt"
+CMD_OUT_9C_M="$(cygpath -m "$CMD_OUT_9C" 2>/dev/null || printf '%s' "$CMD_OUT_9C")"
+rm -f "$CMD_OUT_9C"
+saida_9c=$(DUBLE_MODO=ok DUBLE_CMD_OUT="$CMD_OUT_9C_M" RFM_TEST=1 CODEX_CMD="node $DUBLE_M" \
+  node "$PLUGIN/scripts/despachar-codex.cjs" \
+  --agente ../fora \
+  --worktree "$WTE" \
+  --escreve false \
+  --briefing-file "$BRIEFING" 2>&1)
+exit_9c=$?
+if [ "$exit_9c" = "1" ] && echo "$saida_9c" | grep -q "nome simples" && [ ! -f "$CMD_OUT_9C" ]; then
+  ok=$((ok + 1))
+  echo "  ok   caso 9c: agente com '..' recusado, exit 1, dublê não chamado"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA caso 9c: esperava exit 1 com 'nome simples' e dublê ausente, veio exit $exit_9c"
+  echo "$saida_9c" | head -3 | sed 's/^/    /'
+fi
+
+echo ""
 echo "== RESULTADO =="
 echo "resultado: $ok ok, $falhou falha(s)"
 if [ "$falhou" -gt 0 ]; then

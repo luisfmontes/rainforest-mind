@@ -153,6 +153,10 @@ function parseEscreve(valor) {
   return null;
 }
 
+// Caminho do `-o` temporário ainda não apagado, para o catch de main() limpar
+// quando uma exceção escapa depois de ele ter sido criado.
+let temporarioPendente = null;
+
 /**
  * Main.
  */
@@ -188,6 +192,13 @@ Opcionais:
   }
 
   if (!validarArgs(opts)) {
+    process.exit(1);
+  }
+
+  // Nome simples: `--agente ../x` ou `sub/x` sairia de agents/ e injetaria
+  // qualquer arquivo no prompt (achado do revisor em Codex, 2026-09-08).
+  if (!/^[a-z0-9][a-z0-9-]*$/i.test(opts.agente)) {
+    console.error(`erro: --agente deve ser um nome simples (letras, dígitos, hífen): ${opts.agente}`);
     process.exit(1);
   }
 
@@ -244,16 +255,23 @@ Opcionais:
   const saidaTemporaria = !saidaArquivo;
   if (saidaTemporaria) {
     saidaArquivo = path.join(os.tmpdir(), `despachar-codex-${process.pid}-${Date.now()}.txt`);
+    temporarioPendente = saidaArquivo;
   }
+  // Ler e apagar são falhas independentes: um `unlink` que falha (arquivo
+  // preso por antivírus/indexador) não pode jogar fora o texto já lido — foi o
+  // aviso 4 do revisar de 2026-09-08.
   const lerSaida = () => {
     if (!fs.existsSync(saidaArquivo)) return null;
+    let texto = null;
     try {
-      const texto = fs.readFileSync(saidaArquivo, 'utf8');
-      if (saidaTemporaria) fs.unlinkSync(saidaArquivo);
-      return texto;
+      texto = fs.readFileSync(saidaArquivo, 'utf8');
     } catch {
-      return null;
+      texto = null;
     }
+    if (saidaTemporaria) {
+      try { fs.unlinkSync(saidaArquivo); temporarioPendente = null; } catch { /* fica para o catch de main */ }
+    }
+    return texto;
   };
 
   // Monta comando base
@@ -324,5 +342,8 @@ Opcionais:
 
 main().catch(e => {
   console.error(`erro: ${e.message}`);
+  if (temporarioPendente) {
+    try { fs.unlinkSync(temporarioPendente); } catch { /* já sumiu ou está preso */ }
+  }
   process.exit(1);
 });

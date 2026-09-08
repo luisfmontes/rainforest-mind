@@ -101,6 +101,14 @@ CWD_M="$(cygpath -m "$CWD" 2>/dev/null || printf '%s' "$CWD")"
 
 # ===== CASOS =====
 
+# O script recusa com exit 3 sem transfer-codex ligado (opt-in, D8; achado
+# critico 1 do revisar de 2026-09-08). Os casos 1-5 exercitam o resto do script,
+# entao a caixa de areia LIGA a chave aqui; o caso 7, no fim, prova a recusa.
+# RFM_ROOT/CLAUDE_PROJECT_DIR apontam para a caixa de areia para nao ler a
+# config real de quem roda a bateria (Issue #160).
+mkdir -p "$RFMHOME/.rainforest"
+echo '{"transfer-codex": true}' > "$RFMHOME/.rainforest/config.json"
+
 echo "== CASO 1: transcript fora de ~/.claude/projects → exit 2 ==="
 BAD_TRANSCRIPT="$RAIZ/bad.jsonl"
 cat > "$BAD_TRANSCRIPT" << 'JSONEOF'
@@ -109,6 +117,7 @@ JSONEOF
 BAD_TRANSCRIPT_M="$(cygpath -m "$BAD_TRANSCRIPT" 2>/dev/null || printf '%s' "$BAD_TRANSCRIPT")"
 
 saida_1=$(RFM_TEST=1 RFM_HOME="$RFMHOME_M" \
+RFM_ROOT="$RFMHOME_M/.rainforest" CLAUDE_PROJECT_DIR="$RFMHOME_M" \
   node "$PLUGIN/scripts/transferir-para-codex.cjs" \
   --source "$BAD_TRANSCRIPT_M" 2>&1)
 exit_1=$?
@@ -130,6 +139,7 @@ STDIN_OUT_2_M="$(cygpath -m "$STDIN_OUT_2" 2>/dev/null || printf '%s' "$STDIN_OU
 saida_2=$(DUBLE_MODO=transfer \
 DUBLE_STDIN_OUT="$STDIN_OUT_2_M" \
 RFM_TEST=1 RFM_HOME="$RFMHOME_M" \
+RFM_ROOT="$RFMHOME_M/.rainforest" CLAUDE_PROJECT_DIR="$RFMHOME_M" \
 CODEX_CMD="node $DUBLE_M" \
 node "$PLUGIN/scripts/transferir-para-codex.cjs" \
   --source "$TRANSCRIPT_M" \
@@ -168,6 +178,7 @@ STDIN_OUT_3_M="$(cygpath -m "$STDIN_OUT_3" 2>/dev/null || printf '%s' "$STDIN_OU
 DUBLE_MODO=transfer \
 DUBLE_STDIN_OUT="$STDIN_OUT_3_M" \
 RFM_TEST=1 RFM_HOME="$RFMHOME_M" \
+RFM_ROOT="$RFMHOME_M/.rainforest" CLAUDE_PROJECT_DIR="$RFMHOME_M" \
 CODEX_CMD="node $DUBLE_M" \
 node "$PLUGIN/scripts/transferir-para-codex.cjs" \
   --source "$TRANSCRIPT_M" \
@@ -195,6 +206,7 @@ echo ""
 echo "== CASO 4: dublê sem thread.started (modo ok) → exit 1 com 'thread.started' ==="
 saida_4=$(DUBLE_MODO=ok \
 RFM_TEST=1 RFM_HOME="$RFMHOME_M" \
+RFM_ROOT="$RFMHOME_M/.rainforest" CLAUDE_PROJECT_DIR="$RFMHOME_M" \
 CODEX_CMD="node $DUBLE_M" \
 node "$PLUGIN/scripts/transferir-para-codex.cjs" \
   --source "$TRANSCRIPT_M" \
@@ -219,6 +231,7 @@ rm -f "$CMD_OUT_5"
 saida_5=$(DUBLE_MODO=ok \
 DUBLE_CMD_OUT="$CMD_OUT_5_M" \
 RFM_TEST=1 RFM_HOME="$RFMHOME_M" \
+RFM_ROOT="$RFMHOME_M/.rainforest" CLAUDE_PROJECT_DIR="$RFMHOME_M" \
 CODEX_CMD="node $DUBLE_M" \
 node "$PLUGIN/scripts/transferir-para-codex.cjs" \
   --source "$TRANSCRIPT_M" \
@@ -307,6 +320,28 @@ else
   falhou=$((falhou + 1))
   echo "  FALHA caso 6b: hook escreveu quando deveria ter ficado calado"
   cat "$ENV_FILE_OFF" | sed 's/^/    /'
+fi
+
+echo ""
+echo "== CASO 7: transfer-codex desligado → exit 3 citando a chave, dublê não chamado ==="
+STDIN_OUT_7="$RAIZ/stdin-7.txt"
+STDIN_OUT_7_M="$(cygpath -m "$STDIN_OUT_7" 2>/dev/null || printf '%s' "$STDIN_OUT_7")"
+rm -f "$STDIN_OUT_7"
+# Depois do caso 6b a config da caixa de areia esta com transfer-codex: false.
+saida_7=$(DUBLE_MODO=transfer DUBLE_STDIN_OUT="$STDIN_OUT_7_M" \
+  RFM_TEST=1 RFM_HOME="$RFMHOME_M" \
+  RFM_ROOT="$RFMHOME_M/.rainforest" CLAUDE_PROJECT_DIR="$RFMHOME_M" \
+  CODEX_CMD="node $DUBLE_M" \
+  node "$PLUGIN/scripts/transferir-para-codex.cjs" \
+  --source "$TRANSCRIPT_M" --cwd "$CWD_M" 2>&1)
+exit_7=$?
+if [ "$exit_7" = "3" ] && echo "$saida_7" | grep -q "transfer-codex" && [ ! -f "$STDIN_OUT_7" ]; then
+  ok=$((ok + 1))
+  echo "  ok   caso 7: exit 3 citando transfer-codex, sem chamar o dublê"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA caso 7: esperava exit 3 e 'transfer-codex' sem dublê, veio exit $exit_7 (dublê chamado: $([ -f "$STDIN_OUT_7" ] && echo sim || echo nao))"
+  echo "$saida_7" | sed 's/^/    /'
 fi
 
 echo ""

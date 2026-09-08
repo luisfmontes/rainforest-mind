@@ -21,9 +21,14 @@
  *    - Qualquer outra coisa → falha fechada (bloqueia com motivo genérico)
  * 9. Apaga arquivo temporário
  *
- * Falha fechada (D9): erros no despacho, timeout, ou saída irreconhecível
- * resultam em bloqueio, não em liberação. A premissa é que o revisão é mais
- * segura que a ausência dela.
+ * Falha fechada (D9): erros no despacho, timeout, saída irreconhecível, e
+ * também transcript ausente ou sem resposta legível resultam em bloqueio, não
+ * em liberação. A premissa é que a revisão é mais segura que a ausência dela,
+ * e o `stop_hook_active` garante que o bloqueio custa um turno, nunca um laço.
+ * Só duas coisas liberam sem perguntar: chave desligada e `stop_hook_active`.
+ *
+ * O arquivo temporário do briefing é apagado ANTES de cada `process.exit`:
+ * `process.exit` não roda `finally` (medido no `revisar` de 2026-09-08).
  */
 
 const fs = require('node:fs');
@@ -109,8 +114,15 @@ Sem certeza, responda \`ALLOW\`.
   return tmp;
 }
 
-/** Bloqueia o turno com motivo JSON. */
-function bloqueia(motivo) {
+/** Apaga o briefing temporário; ausência ou erro não importam. */
+function limpar(arquivo) {
+  if (!arquivo) return;
+  try { fs.unlinkSync(arquivo); } catch { /* já não existe ou está preso */ }
+}
+
+/** Bloqueia o turno com motivo JSON, apagando o temporário antes de sair. */
+function bloqueia(motivo, briefingFile) {
+  limpar(briefingFile);
   const decision = { decision: 'block', reason: motivo };
   process.stdout.write(JSON.stringify(decision) + '\n');
   process.exit(0);
@@ -138,14 +150,12 @@ function main() {
   // Lê o transcript e extrai o texto
   const caminhoTranscrito = ev.transcript_path;
   if (!caminhoTranscrito) {
-    process.stderr.write(`[gate-review-codex] AVISO: transcript_path ausente, liberando\n`);
-    process.exit(0);
+    bloqueia('gate-review-codex: falha fechada — transcript_path ausente no evento, sem resposta para revisar; desligue com node scripts/setup.cjs --desligar gate-review-codex');
   }
 
   const textoResposta = lerUltimaResposta(caminhoTranscrito);
   if (!textoResposta) {
-    process.stderr.write(`[gate-review-codex] AVISO: não conseguiu ler a última resposta do transcript, liberando\n`);
-    process.exit(0);
+    bloqueia('gate-review-codex: falha fechada — não conseguiu ler a última resposta do transcript; desligue com node scripts/setup.cjs --desligar gate-review-codex');
   }
 
   // Monta briefing temporário
@@ -199,13 +209,14 @@ function main() {
     // Checa se é ALLOW
     if (/^ALLOW\b/i.test(parecer)) {
       // Libera silenciosamente
+      limpar(briefingFile);
       process.exit(0);
     }
 
     // Checa se é BLOCK
     if (/^BLOCK\b/i.test(parecer)) {
       const motivo = parecer.replace(/^BLOCK:\s*/i, '').trim() || 'bloqueado pelo revisor';
-      bloqueia(`revisor em Codex: ${motivo}`);
+      bloqueia(`revisor em Codex: ${motivo}`, briefingFile);
     }
 
     // Qualquer outra coisa = falha fechada
@@ -217,7 +228,7 @@ function main() {
           ? `saída não reconhecida: "${parecer}"`
           : 'sem saída do revisor';
 
-    bloqueia(`gate-review-codex: falha fechada — ${motivo}; desligue com node scripts/setup.cjs --desligar gate-review-codex`);
+    bloqueia(`gate-review-codex: falha fechada — ${motivo}; desligue com node scripts/setup.cjs --desligar gate-review-codex`, briefingFile);
   } finally {
     // Apaga o arquivo temporário
     try {
