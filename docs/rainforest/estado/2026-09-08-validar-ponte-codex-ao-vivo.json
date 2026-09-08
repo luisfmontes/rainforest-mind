@@ -120,6 +120,14 @@
     "em": "2026-09-08"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "pr": 227,
+    "destino": "PR",
+    "ci": "run 34283378345: baterias node 22 e node 24 success",
+    "worktrees_removidos": [
+      "agent-aafaa63e76fc22bf0",
+      "agent-add63783023861074"
+    ],
+    "em": "2026-09-08"
   }
 }
