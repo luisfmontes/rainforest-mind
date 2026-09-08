@@ -147,6 +147,14 @@
     "em": "2026-09-08"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "pr": "https://github.com/luisfmontes/rainforest-mind/pull/222",
+    "branch": "fluxo/agentes-em-codex",
+    "versao": "1.8.0",
+    "worktrees_removidos": 9,
+    "conferir_versao": "ok 0 commits desde o bump 8a38da9",
+    "comando": "gh pr create --base main --head fluxo/agentes-em-codex",
+    "saida": "https://github.com/luisfmontes/rainforest-mind/pull/222",
+    "em": "2026-09-08"
   }
 }
