@@ -19,7 +19,37 @@
     "em": "2026-09-08"
   },
   "executar": {
-    "status": "pendente"
+    "status": "parcial",
+    "tarefas_ok": 4,
+    "tarefas": 6,
+    "em_voo": [],
+    "pendentes": [
+      "tarefa-5: validacao ao vivo aguarda a cota do Codex (reset 17:41 de 2026-09-08)",
+      "tarefa-6: bump 1.8.1 e o ultimo commit"
+    ],
+    "mutacao_parcial": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-despachar-codex.sh caso 11 (exit 75 + linha codex sem cota)"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-review-codex.sh caso 6b (reason cita codex sem cota e a hora)"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-transferir-para-codex.sh caso 8 (exit 75, sem codex resume)"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "docs; catraca 7.5 verde, regra-10-runtime.md 3266 B"
+      }
+    ],
+    "em": "2026-09-08"
   },
   "revisar": {
     "status": "pendente"
