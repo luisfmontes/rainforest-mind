@@ -6,7 +6,9 @@
     "status": "pendente"
   },
   "design": {
-    "status": "pendente"
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-08-agentes-em-codex.md",
+    "em": "2026-09-08"
   },
   "plano": {
     "status": "pendente"
