@@ -4,7 +4,7 @@
 
 Dar à skill `arqueologia` um agente que execute a extração, e os dois mecanismos
 que faltam para ela servir a fonte legado grande de verdade — triagem antes de
-ler, e fatia dentro de um arquivo só. Caso motivador: `templates/OG/.../ZXX01M99.prw`
+ler, e fatia dentro de um arquivo só. Caso motivador: `templates/MOD/.../ZXX01M99.prw`
 no `inovacao`, 13.691 linhas e 219 funções, e `templates/AreaA/zupd01.prw`,
 27.991 linhas e 481 campos declarados.
 

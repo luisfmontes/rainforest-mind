@@ -23,7 +23,7 @@ mutacao:
   de: o corte de repetição `0.6` acima do qual a classe é dado-como-codigo
   para: `0.99`
   bateria: `bash scripts/testa-triagem.sh`
-pronto quando: com cópias de `templates/AreaA/zupd01.prw` (27.992 linhas, 18 funções, 96,7% de repetição) e `templates/OG/Submodulo/M - Miscelanea/ZXX01M99.prw` (13.692 linhas, 219 funções, 32,3%) num diretório temporário, o script classifica o primeiro como `dado-como-codigo` e o segundo como `logica`, e devolve a contagem de funções por regex ancorada de declaração (não por ocorrência da palavra `function`) — provado por `node scripts/triagem.cjs <copia> --json` devolvendo `"classe":"dado-como-codigo","nfunc":18` e `"classe":"logica","nfunc":219`. O script **não** emite estratégia de leitura (D4): a chave `estrategia` não existe na saída.
+pronto quando: com cópias de `templates/AreaA/zupd01.prw` (27.992 linhas, 18 funções, 96,7% de repetição) e `templates/MOD/Submodulo/M - Miscelanea/ZXX01M99.prw` (13.692 linhas, 219 funções, 32,3%) num diretório temporário, o script classifica o primeiro como `dado-como-codigo` e o segundo como `logica`, e devolve a contagem de funções por regex ancorada de declaração (não por ocorrência da palavra `function`) — provado por `node scripts/triagem.cjs <copia> --json` devolvendo `"classe":"dado-como-codigo","nfunc":18` e `"classe":"logica","nfunc":219`. O script **não** emite estratégia de leitura (D4): a chave `estrategia` não existe na saída.
 
 ### 2. Bateria da triagem [tipo: teste]
 atende: D3, D9, D11
@@ -86,7 +86,7 @@ depende de: 1, 3, 4, 5
 paralela: nao
 mutacao: n/a
   motivo: é execução de prova, não código com ramo a inverter — o instrumento que a julga é o validador da tarefa 5, cuja mutação já está declarada lá.
-pronto quando: com cópia de `templates/OG/Submodulo/M - Miscelanea/ZXX01M99.prw` num diretório temporário, um despacho real do agente `arqueologo` sobre **um** bloco produz `docs/rainforest/mapas/<fatia>/<bloco>.md`, e `scripts/testa-arqueologo-ponta-a-ponta.sh` rodado **sobre esse mapa real** (não sobre fixture) sai 0 — provado colando o caminho do mapa, o `wc -c` do bloco abaixo de 40.000, e ao menos um `CONFIRMADO` cuja linha citada, relida na cópia, não está vazia.
+pronto quando: com cópia de `templates/MOD/Submodulo/M - Miscelanea/ZXX01M99.prw` num diretório temporário, um despacho real do agente `arqueologo` sobre **um** bloco produz `docs/rainforest/mapas/<fatia>/<bloco>.md`, e `scripts/testa-arqueologo-ponta-a-ponta.sh` rodado **sobre esse mapa real** (não sobre fixture) sai 0 — provado colando o caminho do mapa, o `wc -c` do bloco abaixo de 40.000, e ao menos um `CONFIRMADO` cuja linha citada, relida na cópia, não está vazia.
 
 ### 7. Gate que reprova agente duplicando a skill [tipo: teste]
 atende: D1, D2
