@@ -86,6 +86,53 @@ Os quatro achados foram reproduzidos pelo revisor com comando e saída, dois
 deles coincidindo com o revisor em Claude (transcript ausente; `-o`
 temporário). Todos corrigidos nesta branch no próprio `revisar`.
 
+## Ao vivo com o plugin 1.8.0 instalado (fluxo `validar-ponte-codex-ao-vivo`, 2026-09-08)
+
+Sem atalho: `executor` do cache `~/.claude/plugins/cache/.../1.8.0`, portaria
+viva do checkout principal na `main`, sessão em worktree.
+
+**Tentativa 0** — branch `fluxo/2026-09-08-validar-...` foi negada pela portaria
+("sem estágio ativo — estágio resolvido: ?"): a portaria casa a branch com o
+slug **sem a data**. Renomeada para `fluxo/validar-ponte-codex-ao-vivo`.
+
+**Rodada (i), como o D2 mandava: briefing só com `Runtime: codex`.**
+Portaria viva: `{"ts":"2026-09-08T20:43:38.899Z","agente":"executor","estagio":"executar","decisao":"allow",...,"isolation":"worktree","runtime":"codex"}` — (b) provado.
+Mas o agente **ignorou o preâmbulo** que estava no próprio system prompt dele
+(55 ocorrências de `ponte-codex` no transcript do subagente) e fez a tarefa
+ele mesmo: 9 chamadas de ferramenta (`PowerShell`, `Write`, `Bash cat`),
+**zero** ocorrências de `despachar-codex`, arquivo criado sem commit, e um
+relatório que dizia "criado pelo Codex". (a) e (c) **reprovados**. O
+preâmbulo sozinho não segura um haiku.
+
+**Rodada (ii), com o bloco de ponte no briefing** (o mesmo que funcionou na
+T8; agora fixado em `regra-10-runtime.md` e exigido por `modo-dev` e
+`executar`). Portaria viva: mesma linha, `"runtime":"codex"` às 20:48:36Z.
+Transcript do subagente: 6 ocorrências de `despachar-codex`, a chamada
+`node .../scripts/despachar-codex.cjs --agente executor ...` entre as 9
+ferramentas. Saída literal do despacho, colada pela ponte:
+
+```
+comando: codex exec -s workspace-write --skip-git-repo-check -C "<repo>/.claude/worktrees/agent-add63783023861074" -c approval_policy="never" -o "<home>\AppData\Local\Temp\despachar-codex-<pid>-<ts>.txt"
+git rev-parse --show-toplevel → C:/Projetos/rainforest-mind/.claude/worktrees/agent-add63783023861074
+git log -1 --format=%h → 29b67d3
+git status --short → ?? docs/rainforest/relatorios/2026-09-08-ponte-codex-ao-vivo.md
+exit 0
+```
+
+Re-derivado de `git` na sessão despachante, não copiado do relato:
+
+```
+$ git log -1 --format='%H %an %s' worktree-agent-add63783023861074
+b80da415d57cdb4616f9a2c7a08b4946c7e8b847 Luís Fernando Montes executor via codex: ponte ao vivo 1.8.0
+ docs/rainforest/relatorios/2026-09-08-ponte-codex-ao-vivo.md | 5 +++++
+```
+
+(a), (b) e (c) provados na rodada (ii). Desvio anotado: o Codex gravou
+"agente executor" sem as crases que o objetivo pedia — normalizou o markdown.
+O preâmbulo endurecido (passo zero, "entrega inválida") entrou nesta branch e
+só se prova na próxima versão instalada; até lá, quem garante é o bloco no
+briefing.
+
 ## Codex sem cota (fluxo `validar-ponte-codex-ao-vivo`, 2026-09-08)
 
 Medido com o limite de 5 h estourado, a pedido do usuário. Antes da correção:
