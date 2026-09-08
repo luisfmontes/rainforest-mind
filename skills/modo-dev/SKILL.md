@@ -161,6 +161,24 @@ independentes e sem ordem entre si vão juntas, numa mensagem só.
 A complexidade some junto? era passa-culpa. Reaparece espalhada em N
 chamadores? estava fazendo trabalho de verdade.
 
+## Marcador de atalho
+
+Quando a escada diz **não agora**, marque com `atalho:` (ou `ponytail:`, para
+compatibilidade) seguido de:
+
+1. **Teto:** o limite que a simplificação aceita (quanto cresce antes de pesar).
+2. **Gatilho de volta:** qual circunstância obriga a revisitar e implementar de verdade.
+
+Formato: `atalho: <teto>, <gatilho de volta>`
+
+Exemplo: `atalho: duas linhas, se chamar múltiplas vezes`
+
+**A tag `sem-gatilho`** marca marcadores que não nomeiam condição de retorno — é
+isso que separa adiamento de descarte. O coletor `scripts/atalhos.cjs` varre o
+repo e lista todos os atalhos com essa tag destacada para auditoria. Adiamento
+sem volta é débito que apodrece em silêncio; registre a volta ou desista do
+atalho.
+
 ## Refactor de raio grande (expandir–contrair)
 
 Mudança mecânica cujo raio de explosão atinge o codebase inteiro — renomear
