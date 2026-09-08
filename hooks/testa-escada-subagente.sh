@@ -352,6 +352,45 @@ process.stdout.write(data.hookSpecificOutput?.additionalContext || '');
 checa "sem config: tem Degrau 7 (padrão)" tem "Degrau 7" "$CONTEXTO_SEM_CONFIG"
 
 echo
+echo "== 17. dial de intensidade: resolução de raiz via raiz.cjs (sem RFM_ESTADO_ROOT) =="
+# Este é o caso crítico: valida que raiz.cjs é chamado e funciona quando
+# RFM_ESTADO_ROOT não está definido. Verifica o caminho de resolução que ef8af15 fixou.
+mkdir -p "$RAIZ_TESTE_POSIX/projeto-com-foco/.rainforest"
+mkdir -p "$RAIZ_TESTE_POSIX/projeto-com-foco/skills/modo-dev"
+cp "$SKILL" "$RAIZ_TESTE_POSIX/projeto-com-foco/skills/modo-dev/SKILL.md"
+cp "$HOOK" "$RAIZ_TESTE_POSIX/projeto-com-foco/escada-hook.cjs"
+cp "$SRC/hooks/lib/escada.cjs" "$RAIZ_TESTE_POSIX/projeto-com-foco/escada.cjs"
+cp "$SRC/hooks/lib/raiz.cjs" "$RAIZ_TESTE_POSIX/projeto-com-foco/raiz.cjs"
+sed -i "s|require('./lib/escada.cjs')|require('./escada.cjs')|g; s|require('./lib/raiz.cjs')|require('./raiz.cjs')|g" "$RAIZ_TESTE_POSIX/projeto-com-foco/escada-hook.cjs"
+
+# Escreve config.json em nível 2 (projeto/.rainforest)
+echo '{"escada-intensidade":"enxuto"}' > "$RAIZ_TESTE_POSIX/projeto-com-foco/.rainforest/config.json"
+# Marca como raiz válida (marcador de nível 2 em raiz.cjs)
+touch "$RAIZ_TESTE_POSIX/projeto-com-foco/.rainforest/FOCO.md"
+
+# Executa sem RFM_ESTADO_ROOT nem RFM_ROOT
+# env -u remove as variáveis; CLAUDE_PROJECT_DIR aponta para o projeto
+SAIDA_RAIZ=$(env -u RFM_ESTADO_ROOT -u RFM_ROOT CLAUDE_PROJECT_DIR="$RAIZ_TESTE_POSIX/projeto-com-foco" CLAUDE_PLUGIN_ROOT="$RAIZ_TESTE_POSIX/projeto-com-foco" node "$RAIZ_TESTE_POSIX/projeto-com-foco/escada-hook.cjs" 2>&1)
+CONTEXTO_RAIZ=$(echo "$SAIDA_RAIZ" | node -e "
+const data = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+process.stdout.write(data.hookSpecificOutput?.additionalContext || '');
+" 2>&1)
+
+# Verifica que a resolução funcionou (tem os degraus comprimidos)
+checa "via raiz.cjs: tem Degrau 1" tem "Degrau 1" "$CONTEXTO_RAIZ"
+checa "via raiz.cjs: tem Degrau 7" tem "Degrau 7" "$CONTEXTO_RAIZ"
+checa "via raiz.cjs: tem carve-outs" tem "Onde a escada não desce" "$CONTEXTO_RAIZ"
+
+TAMANHO_RAIZ=${#CONTEXTO_RAIZ}
+
+# Compara com padrão: enxuto resolvido via raiz.cjs deve ser menor que padrão
+if [ "$TAMANHO_RAIZ" -lt "$TAMANHO_PADRAO" ]; then
+  ok=$((ok+1)); echo "  ok    enxuto via raiz.cjs ($TAMANHO_RAIZ bytes) é menor que padrão ($TAMANHO_PADRAO bytes)"
+else
+  falhou=$((falhou+1)); echo "  FALHA enxuto via raiz.cjs não é menor que padrão (via raiz=$TAMANHO_RAIZ, padrão=$TAMANHO_PADRAO)"
+fi
+
+echo
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" = "0" ] || exit 1
