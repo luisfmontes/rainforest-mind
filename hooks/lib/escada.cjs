@@ -64,34 +64,90 @@ function extrairCarveOuts(skillText) {
 }
 
 /**
+ * Comprime a escada para o nível 'enxuto'.
+ * Mantém a estrutura de 7 degraus mas com texto mínimo.
+ *
+ * @param {string} escada - Texto da escada completa
+ * @returns {string} Escada comprimida, ou string vazia se falhar
+ */
+function comprimirEscada(escada) {
+  if (!escada) {
+    return '';
+  }
+
+  // Dividir em linhas de degraus: cada degrau começa com "**Degrau N.**"
+  const degraus = [];
+  const linhas = escada.split('\n');
+  let degrauAtual = [];
+
+  for (const linha of linhas) {
+    if (linha.match(/^\*\*Degrau \d+\.\*\*/)) {
+      if (degrauAtual.length > 0) {
+        degraus.push(degrauAtual.join('\n'));
+      }
+      degrauAtual = [linha];
+    } else {
+      degrauAtual.push(linha);
+    }
+  }
+  if (degrauAtual.length > 0) {
+    degraus.push(degrauAtual.join('\n'));
+  }
+
+  // Comprimir: extrair primeira sentença de cada degrau
+  const comprimidos = degraus.map((d) => {
+    // Extrair a linha do degrau (começa com **Degrau N.**)
+    const match = d.match(/^\*\*Degrau (\d+)\.\*\* (.+)/);
+    if (!match) {
+      return '';
+    }
+
+    const numero = match[1];
+    const resto = match[2];
+
+    // Primeira sentença é até o primeiro ponto (.) seguido de espaço ou fim
+    const sentencaMatch = resto.match(/^([^.]+\.)/);
+    const primeira = sentencaMatch ? sentencaMatch[1] : resto;
+
+    return `**Degrau ${numero}.** ${primeira}`;
+  });
+
+  return comprimidos.filter((d) => d.length > 0).join('\n');
+}
+
+/**
  * Filtra a escada por nível de intensidade.
  *
  * Níveis disponíveis:
- *   - 'enxuto': apenas carve-outs (proteções), sem degraus
+ *   - 'enxuto': escada comprimida (7 degraus resumidos) + carve-outs
  *   - 'padrão': escada completa (7 degraus + carve-outs)
- *   - 'completo': escada completa com detalhes expandidos (igual a padrão nesta versão)
  *
  * @param {string} escada - Texto da escada extraída
  * @param {string} carveOuts - Texto dos carve-outs extraído
- * @param {string} nivel - Nível de intensidade ('enxuto', 'padrão', 'completo')
+ * @param {string} nivel - Nível de intensidade ('enxuto', 'padrão')
  * @returns {string} A escada filtrada de acordo com o nível
  */
 function filtrarEscadaPorNivel(escada, carveOuts, nivel) {
   // Best-effort: nível inválido cai no padrão
-  const niveisValidos = ['enxuto', 'padrão', 'completo'];
+  const niveisValidos = ['enxuto', 'padrão'];
   const nivelEfetivo = niveisValidos.includes(nivel) ? nivel : 'padrão';
 
+  let resultado = '';
+
   if (nivelEfetivo === 'enxuto') {
-    // Apenas carve-outs, sem degraus
-    return carveOuts || '';
+    // Escada comprimida + carve-outs
+    const escadaComprimida = comprimirEscada(escada);
+    if (escadaComprimida) {
+      resultado = escadaComprimida;
+    }
+  } else {
+    // 'padrão': escada completa
+    if (escada) {
+      resultado = escada;
+    }
   }
 
-  // 'padrão' e 'completo' retornam a escada + carve-outs
-  // (Na versão atual, ambos são idênticos)
-  let resultado = '';
-  if (escada) {
-    resultado = escada;
-  }
+  // Adicionar carve-outs em todos os níveis
   if (carveOuts) {
     if (resultado) {
       resultado += '\n\n' + carveOuts;
@@ -99,6 +155,7 @@ function filtrarEscadaPorNivel(escada, carveOuts, nivel) {
       resultado = carveOuts;
     }
   }
+
   return resultado;
 }
 
@@ -106,4 +163,5 @@ module.exports = {
   extrairEscada,
   extrairCarveOuts,
   filtrarEscadaPorNivel,
+  comprimirEscada,
 };

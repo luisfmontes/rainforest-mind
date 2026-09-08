@@ -28,11 +28,26 @@ function readSafe(p) {
 /**
  * Lê o nível de intensidade de config.json.
  * Best-effort: arquivo ausente, inválido ou chave ausente → retorna 'padrão'.
+ * Resolve a raiz de dados pela cadeia canônica em raiz.cjs, com suporte para RFM_ESTADO_ROOT.
  */
 function lerNivelIntensidade() {
-  const raizDados = process.env.RFM_ESTADO_ROOT || process.env.RFM_ROOT;
+  // RFM_ESTADO_ROOT tem prioridade máxima (compatibilidade com testes)
+  let raizDados = process.env.RFM_ESTADO_ROOT;
+
+  // Se não houver RFM_ESTADO_ROOT, tentar resolver via raiz.cjs
   if (!raizDados) {
-    return 'padrão'; // sem dados configurados, usa padrão
+    try {
+      const { resolverRaiz } = require('./lib/raiz.cjs');
+      const resultado = resolverRaiz();
+      raizDados = resultado.raiz;
+    } catch {
+      // raiz.cjs não carregou ou deu erro: cair no padrão (best-effort)
+      return 'padrão';
+    }
+  }
+
+  if (!raizDados) {
+    return 'padrão'; // nenhum nível da cadeia resolveu
   }
 
   const configPath = path.join(raizDados, 'config.json');
@@ -40,7 +55,7 @@ function lerNivelIntensidade() {
     const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
     const nivel = cfg['escada-intensidade'];
     // Best-effort: valor inválido cai para padrão
-    if (typeof nivel === 'string' && ['enxuto', 'padrão', 'completo'].includes(nivel)) {
+    if (typeof nivel === 'string' && ['enxuto', 'padrão'].includes(nivel)) {
       return nivel;
     }
     return 'padrão';

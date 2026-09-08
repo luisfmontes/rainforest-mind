@@ -221,10 +221,13 @@ mkdir -p "$RAIZ_TESTE_POSIX/estado-enxuto/skills/modo-dev"
 cp "$SKILL" "$RAIZ_TESTE_POSIX/estado-enxuto/skills/modo-dev/SKILL.md"
 cp "$HOOK" "$RAIZ_TESTE_POSIX/estado-enxuto/escada-hook.cjs"
 cp "$SRC/hooks/lib/escada.cjs" "$RAIZ_TESTE_POSIX/estado-enxuto/escada.cjs"
-sed -i "s|require('./lib/escada.cjs')|require('./escada.cjs')|" "$RAIZ_TESTE_POSIX/estado-enxuto/escada-hook.cjs"
+cp "$SRC/hooks/lib/raiz.cjs" "$RAIZ_TESTE_POSIX/estado-enxuto/raiz.cjs"
+sed -i "s|require('./lib/escada.cjs')|require('./escada.cjs')|g; s|require('./lib/raiz.cjs')|require('./raiz.cjs')|g" "$RAIZ_TESTE_POSIX/estado-enxuto/escada-hook.cjs"
 
 # Escreve config.json com nível enxuto
 echo '{"escada-intensidade":"enxuto"}' > "$RAIZ_TESTE_POSIX/estado-enxuto/config.json"
+# Cria FOCO.md para que raiz.cjs reconheça como raiz válida
+touch "$RAIZ_TESTE_POSIX/estado-enxuto/FOCO.md"
 
 SAIDA_ENXUTO=$(RFM_ESTADO_ROOT="$RAIZ_TESTE_POSIX/estado-enxuto" CLAUDE_PLUGIN_ROOT="$RAIZ_TESTE_POSIX/estado-enxuto" node "$RAIZ_TESTE_POSIX/estado-enxuto/escada-hook.cjs" 2>&1)
 CONTEXTO_ENXUTO=$(echo "$SAIDA_ENXUTO" | node -e "
@@ -232,11 +235,11 @@ const data = JSON.parse(require('fs').readFileSync(0, 'utf8'));
 process.stdout.write(data.hookSpecificOutput?.additionalContext || '');
 " 2>&1)
 
-# Nível enxuto deve ter carve-outs mas não degraus
+# Nível enxuto deve ter degraus comprimidos + carve-outs
 checa "nivel enxuto: tem 'Onde a escada nao desce'" tem "Onde a escada não desce" "$CONTEXTO_ENXUTO"
 checa "nivel enxuto: tem carve-out de segurança" tem "segurança" "$CONTEXTO_ENXUTO"
-checa "nivel enxuto: NÃO tem Degrau 1" nao_tem "Degrau 1\\." "$CONTEXTO_ENXUTO"
-checa "nivel enxuto: NÃO tem Degrau 7" nao_tem "Degrau 7\\." "$CONTEXTO_ENXUTO"
+checa "nivel enxuto: tem Degrau 1 (comprimido)" tem "Degrau 1" "$CONTEXTO_ENXUTO"
+checa "nivel enxuto: tem Degrau 7 (comprimido)" tem "Degrau 7" "$CONTEXTO_ENXUTO"
 
 # Medir tamanho do nível enxuto
 TAMANHO_ENXUTO=${#CONTEXTO_ENXUTO}
@@ -247,9 +250,11 @@ mkdir -p "$RAIZ_TESTE_POSIX/estado-padrao/skills/modo-dev"
 cp "$SKILL" "$RAIZ_TESTE_POSIX/estado-padrao/skills/modo-dev/SKILL.md"
 cp "$HOOK" "$RAIZ_TESTE_POSIX/estado-padrao/escada-hook.cjs"
 cp "$SRC/hooks/lib/escada.cjs" "$RAIZ_TESTE_POSIX/estado-padrao/escada.cjs"
-sed -i "s|require('./lib/escada.cjs')|require('./escada.cjs')|" "$RAIZ_TESTE_POSIX/estado-padrao/escada-hook.cjs"
+cp "$SRC/hooks/lib/raiz.cjs" "$RAIZ_TESTE_POSIX/estado-padrao/raiz.cjs"
+sed -i "s|require('./lib/escada.cjs')|require('./escada.cjs')|g; s|require('./lib/raiz.cjs')|require('./raiz.cjs')|g" "$RAIZ_TESTE_POSIX/estado-padrao/escada-hook.cjs"
 
 echo '{"escada-intensidade":"padrão"}' > "$RAIZ_TESTE_POSIX/estado-padrao/config.json"
+touch "$RAIZ_TESTE_POSIX/estado-padrao/FOCO.md"
 
 SAIDA_PADRAO=$(RFM_ESTADO_ROOT="$RAIZ_TESTE_POSIX/estado-padrao" CLAUDE_PLUGIN_ROOT="$RAIZ_TESTE_POSIX/estado-padrao" node "$RAIZ_TESTE_POSIX/estado-padrao/escada-hook.cjs" 2>&1)
 CONTEXTO_PADRAO=$(echo "$SAIDA_PADRAO" | node -e "
@@ -263,14 +268,16 @@ checa "nivel padrao: tem carve-outs" tem "Onde a escada não desce" "$CONTEXTO_P
 TAMANHO_PADRAO=${#CONTEXTO_PADRAO}
 
 echo
-echo "== 13. dial de intensidade: nível completo =="
+echo "== 13. dial de intensidade: nível completo (deve retornar padrão) =="
 mkdir -p "$RAIZ_TESTE_POSIX/estado-completo/skills/modo-dev"
 cp "$SKILL" "$RAIZ_TESTE_POSIX/estado-completo/skills/modo-dev/SKILL.md"
 cp "$HOOK" "$RAIZ_TESTE_POSIX/estado-completo/escada-hook.cjs"
 cp "$SRC/hooks/lib/escada.cjs" "$RAIZ_TESTE_POSIX/estado-completo/escada.cjs"
-sed -i "s|require('./lib/escada.cjs')|require('./escada.cjs')|" "$RAIZ_TESTE_POSIX/estado-completo/escada-hook.cjs"
+cp "$SRC/hooks/lib/raiz.cjs" "$RAIZ_TESTE_POSIX/estado-completo/raiz.cjs"
+sed -i "s|require('./lib/escada.cjs')|require('./escada.cjs')|g; s|require('./lib/raiz.cjs')|require('./raiz.cjs')|g" "$RAIZ_TESTE_POSIX/estado-completo/escada-hook.cjs"
 
 echo '{"escada-intensidade":"completo"}' > "$RAIZ_TESTE_POSIX/estado-completo/config.json"
+touch "$RAIZ_TESTE_POSIX/estado-completo/FOCO.md"
 
 SAIDA_COMPLETO=$(RFM_ESTADO_ROOT="$RAIZ_TESTE_POSIX/estado-completo" CLAUDE_PLUGIN_ROOT="$RAIZ_TESTE_POSIX/estado-completo" node "$RAIZ_TESTE_POSIX/estado-completo/escada-hook.cjs" 2>&1)
 CONTEXTO_COMPLETO=$(echo "$SAIDA_COMPLETO" | node -e "
@@ -278,8 +285,9 @@ const data = JSON.parse(require('fs').readFileSync(0, 'utf8'));
 process.stdout.write(data.hookSpecificOutput?.additionalContext || '');
 " 2>&1)
 
-checa "nivel completo: tem todos os 7 degraus" tem "Degrau 7" "$CONTEXTO_COMPLETO"
-checa "nivel completo: tem carve-outs" tem "Onde a escada não desce" "$CONTEXTO_COMPLETO"
+# 'completo' não é suportado; deve cair para padrão (fallback)
+checa "nivel completo: não suportado, usa padrão (tem todos 7 degraus)" tem "Degrau 7" "$CONTEXTO_COMPLETO"
+checa "nivel completo: não suportado, usa padrão (tem carve-outs)" tem "Onde a escada não desce" "$CONTEXTO_COMPLETO"
 
 TAMANHO_COMPLETO=${#CONTEXTO_COMPLETO}
 
