@@ -135,13 +135,13 @@ independentes e sem ordem entre si vão juntas, numa mensagem só.
 
 **Degrau 1.** Precisa existir? Necessidade especulativa = pular, dizer em 1 linha (YAGNI).
 
-**Degrau 2.** Cabe em uma linha? Se couber, não é material de arquivo — inline, documentado como `[código] → pulei: [quando], entra quando [Y]`.
+**Degrau 2.** Já existe neste codebase? Reusar helper/padrão existente.
 
-**Degrau 3.** Já existe neste codebase? Reusar helper/padrão existente.
+**Degrau 3.** Stdlib resolve? Usar. Plataforma nativa resolve? Usar.
 
-**Degrau 4.** Stdlib resolve? Usar. Plataforma nativa resolve? Usar.
+**Degrau 4.** Dependência já instalada resolve? Usar. Nunca adicionar nova pro que cabe em poucas linhas.
 
-**Degrau 5.** Dependência já instalada resolve? Usar. Nunca adicionar nova pro que cabe em poucas linhas.
+**Degrau 5.** Cabe em uma linha? Se couber, não é material de arquivo — `[código] → pulei: [X], entra quando [Y]`.
 
 **Degrau 6.** Só então: o mínimo que funciona. Menor diff, sem abstração não pedida, sem scaffolding "pra depois".
 
@@ -149,19 +149,17 @@ independentes e sem ordem entre si vão juntas, numa mensagem só.
 
 <!-- escada-fim -->
 
+<!-- carve-outs-inicio -->
+
+**Onde a escada não desce.** Quatro coisas ficam inteiras enquanto todo o resto encolhe: validação de entrada em fronteira de confiança, tratamento de erro que evita perda de dados, segurança, e o que o usuário pediu explicitamente.
+
+**Bug = causa raiz, não sintoma.** Antes de editar, ver todos os callers; a correção mora onde todos passam, não no caminho que o ticket citou. Bug difícil (intermitente, sem repro óbvio, regressão de performance) tem protocolo próprio — ver a skill `depurar`.
+
+<!-- carve-outs-fim -->
+
 **Teste da deleção.** Na dúvida se uma camada paga aluguel: imagine apagá-la.
 A complexidade some junto? era passa-culpa. Reaparece espalhada em N
 chamadores? estava fazendo trabalho de verdade.
-
-**Onde a escada não desce.** Quatro coisas ficam inteiras enquanto todo o
-resto encolhe: validação de entrada em fronteira de confiança, tratamento de
-erro que evita perda de dados, segurança, e o que o usuário pediu
-explicitamente.
-
-**Bug = causa raiz, não sintoma.** Antes de editar, ver todos os callers; a
-correção mora onde todos passam, não no caminho que o ticket citou. Bug
-difícil (intermitente, sem repro óbvio, regressão de performance) tem
-protocolo próprio — ver a skill `depurar`.
 
 ## Refactor de raio grande (expandir–contrair)
 

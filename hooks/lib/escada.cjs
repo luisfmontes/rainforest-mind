@@ -11,33 +11,32 @@
  */
 
 /**
- * Extrai a escada de degraus YAGNI do texto da skill.
- * @param {string} skillText - Conteúdo de skills/modo-dev/SKILL.md
- * @returns {string} A escada em prosa, ou string vazia se não encontrada
+ * Extrai um bloco delimitado por marcadores HTML.
+ * @param {string} text - Texto de entrada
+ * @param {string} inicioMarker - Marcador de início
+ * @param {string} fimMarker - Marcador de fim
+ * @returns {string} O bloco extraído, ou string vazia se não encontrado
  */
-function extrairEscada(skillText) {
-  if (!skillText || typeof skillText !== 'string') {
+function extrairBloco(text, inicioMarker, fimMarker) {
+  if (!text || typeof text !== 'string') {
     return '';
   }
 
-  const inicioMarker = '<!-- escada-inicio -->';
-  const fimMarker = '<!-- escada-fim -->';
-
-  const inicioIdx = skillText.indexOf(inicioMarker);
+  const inicioIdx = text.indexOf(inicioMarker);
   if (inicioIdx === -1) {
     return '';
   }
 
-  const fimIdx = skillText.indexOf(fimMarker, inicioIdx);
+  const fimIdx = text.indexOf(fimMarker, inicioIdx);
   if (fimIdx === -1) {
     return '';
   }
 
   const inicio = inicioIdx + inicioMarker.length;
-  const escadaRaw = skillText.substring(inicio, fimIdx).trim();
+  const blocoRaw = text.substring(inicio, fimIdx).trim();
 
   // Normalizar: remover linhas vazias excessivas, preservar o conteúdo
-  const linhas = escadaRaw
+  const linhas = blocoRaw
     .split('\n')
     .map(l => l.trim())
     .filter(l => l.length > 0)
@@ -46,6 +45,25 @@ function extrairEscada(skillText) {
   return linhas;
 }
 
+/**
+ * Extrai a escada de degraus YAGNI do texto da skill.
+ * @param {string} skillText - Conteúdo de skills/modo-dev/SKILL.md
+ * @returns {string} A escada em prosa, ou string vazia se não encontrada
+ */
+function extrairEscada(skillText) {
+  return extrairBloco(skillText, '<!-- escada-inicio -->', '<!-- escada-fim -->');
+}
+
+/**
+ * Extrai as proteções (carve-outs) e a regra de causa raiz do texto da skill.
+ * @param {string} skillText - Conteúdo de skills/modo-dev/SKILL.md
+ * @returns {string} Os carve-outs em prosa, ou string vazia se não encontrados
+ */
+function extrairCarveOuts(skillText) {
+  return extrairBloco(skillText, '<!-- carve-outs-inicio -->', '<!-- carve-outs-fim -->');
+}
+
 module.exports = {
   extrairEscada,
+  extrairCarveOuts,
 };

@@ -15,7 +15,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { extrairEscada } = require('./lib/escada.cjs');
+const { extrairEscada, extrairCarveOuts } = require('./lib/escada.cjs');
 
 function readSafe(p) {
   try {
@@ -31,13 +31,27 @@ const SKILL_PATH = path.join(PLUGIN_ROOT, 'skills', 'modo-dev', 'SKILL.md');
 
 const skillText = readSafe(SKILL_PATH);
 const escada = extrairEscada(skillText);
+const carveOuts = extrairCarveOuts(skillText);
+
+// Combinar escada e carve-outs, separando com quebra de linha se ambos existem
+let additionalContext = '';
+if (escada) {
+  additionalContext = escada;
+}
+if (carveOuts) {
+  if (additionalContext) {
+    additionalContext += '\n\n' + carveOuts;
+  } else {
+    additionalContext = carveOuts;
+  }
+}
 
 // Best-effort: se não conseguir extrair, emite JSON sem additionalContext
 // e o modelo prossegue sem injeção (degradação graciosa).
 const saida = {
   hookSpecificOutput: {
     hookEventName: 'SubagentStart',
-    additionalContext: escada || '(escada YAGNI não foi carregada)',
+    additionalContext: additionalContext || '(escada YAGNI não foi carregada)',
   },
 };
 

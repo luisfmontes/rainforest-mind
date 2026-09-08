@@ -147,7 +147,58 @@ else
 fi
 
 echo
-echo "== 7. degradação graciosa: arquivo SKILL.md ausente =="
+echo "== 7. carve-outs e proteções estão injetadas =="
+checa "tem 'Onde a escada não desce'" tem "Onde a escada não desce" "$CONTEXTO"
+checa "tem 'fronteira de confiança'" tem "fronteira de confiança" "$CONTEXTO"
+checa "tem 'perda de dados'" tem "perda de dados" "$CONTEXTO"
+checa "tem 'segurança'" tem "segurança" "$CONTEXTO"
+checa "tem 'o que o usuário pediu explicitamente'" tem "o que o usuário pediu explicitamente" "$CONTEXTO"
+checa "tem 'Bug = causa raiz, não sintoma'" tem "Bug = causa raiz, não sintoma" "$CONTEXTO"
+
+echo
+echo "== 8. degraus estão na ordem correta =="
+# Degrau 2 deve aparecer antes de Degrau 3
+idx_d2=$(echo "$CONTEXTO" | grep -o -b "Degrau 2\\." | head -1 | cut -d: -f1)
+idx_d3=$(echo "$CONTEXTO" | grep -o -b "Degrau 3\\." | head -1 | cut -d: -f1)
+if [ -n "$idx_d2" ] && [ -n "$idx_d3" ] && [ "$idx_d2" -lt "$idx_d3" ]; then
+  ok=$((ok+1)); echo "  ok    Degrau 2 vem antes de Degrau 3"
+else
+  falhou=$((falhou+1)); echo "  FALHA Degrau 2 não vem antes de Degrau 3"
+fi
+
+# Degrau 2 (já existe neste codebase) deve vir antes de Degrau 5 (cabe em uma linha)
+idx_d2_atual=$(echo "$CONTEXTO" | grep -o -b "Já existe neste codebase" | head -1 | cut -d: -f1)
+idx_d5_atual=$(echo "$CONTEXTO" | grep -o -b "Cabe em uma linha" | head -1 | cut -d: -f1)
+if [ -n "$idx_d2_atual" ] && [ -n "$idx_d5_atual" ] && [ "$idx_d2_atual" -lt "$idx_d5_atual" ]; then
+  ok=$((ok+1)); echo "  ok    'Já existe neste codebase' vem antes de 'Cabe em uma linha'"
+else
+  falhou=$((falhou+1)); echo "  FALHA 'Já existe neste codebase' não vem antes de 'Cabe em uma linha'"
+fi
+
+# Degrau 3 (stdlib) deve vir antes de Degrau 4 (dependência)
+idx_stdlib=$(echo "$CONTEXTO" | grep -o -b "Stdlib resolve" | head -1 | cut -d: -f1)
+idx_dep=$(echo "$CONTEXTO" | grep -o -b "Dependência já instalada" | head -1 | cut -d: -f1)
+if [ -n "$idx_stdlib" ] && [ -n "$idx_dep" ] && [ "$idx_stdlib" -lt "$idx_dep" ]; then
+  ok=$((ok+1)); echo "  ok    'Stdlib resolve' vem antes de 'Dependência já instalada'"
+else
+  falhou=$((falhou+1)); echo "  FALHA 'Stdlib resolve' não vem antes de 'Dependência já instalada'"
+fi
+
+# Degrau 4 (dependência) deve vir antes de Degrau 5 (cabe em uma linha)
+idx_dep_d4=$(echo "$CONTEXTO" | grep -o -b "Dependência já instalada" | head -1 | cut -d: -f1)
+idx_cabe=$(echo "$CONTEXTO" | grep -o -b "Cabe em uma linha" | head -1 | cut -d: -f1)
+if [ -n "$idx_dep_d4" ] && [ -n "$idx_cabe" ] && [ "$idx_dep_d4" -lt "$idx_cabe" ]; then
+  ok=$((ok+1)); echo "  ok    'Dependência já instalada' vem antes de 'Cabe em uma linha'"
+else
+  falhou=$((falhou+1)); echo "  FALHA 'Dependência já instalada' não vem antes de 'Cabe em uma linha'"
+fi
+
+echo
+echo "== 9. formatação do degrau 5 (cabe em uma linha) está correta =="
+checa "tem formato correto 'pulei: [X], entra quando [Y]'" tem "pulei: [X], entra quando [Y]" "$CONTEXTO"
+
+echo
+echo "== 10. degradação graciosa: arquivo SKILL.md ausente =="
 # Cria hook que aponta para raiz sem SKILL.md
 mkdir -p "$RAIZ_TESTE_POSIX/skills-vazia"
 cp "$HOOK" "$RAIZ_TESTE_POSIX/escada-gracioso.cjs"
