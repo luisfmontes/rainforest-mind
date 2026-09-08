@@ -57,3 +57,11 @@ reabre (medido em 2026-09-08 com o gitdir exato do worktree: `index.lock:
 Permission denied`). O Codex edita; o agente Claude, de volta ao worktree,
 faz `git add -A && git commit` se `git status --short` não estiver vazio. No
 Windows o Codex roda comandos em PowerShell 5.1: briefing para ele não usa `&&`.
+
+## Codex sem cota: exit 75
+
+Limite de uso estourado é a falha mais comum. `despachar-codex.cjs` e
+`transferir-para-codex.cjs` reconhecem a mensagem (`hit your usage limit`) e
+saem **75** (passageiro) com a linha `codex sem cota: <mensagem, com a hora
+de retorno>` no stderr; o `gate-review-codex.cjs` repete essa linha no
+`reason`. Exit 1 continua sendo Codex quebrado; 124, teto de tempo.

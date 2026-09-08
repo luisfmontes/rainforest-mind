@@ -85,3 +85,30 @@ LACUNA — não observou ALLOW/BLOCK de ponta a ponta (sandbox read-only proíbe
 Os quatro achados foram reproduzidos pelo revisor com comando e saída, dois
 deles coincidindo com o revisor em Claude (transcript ausente; `-o`
 temporário). Todos corrigidos nesta branch no próprio `revisar`.
+
+## Codex sem cota (fluxo `validar-ponte-codex-ao-vivo`, 2026-09-08)
+
+Medido com o limite de 5 h estourado, a pedido do usuário. Antes da correção:
+
+```
+$ echo "Responda apenas: OK" | codex exec -s read-only --skip-git-repo-check -C . -c approval_policy="never" -o semcota-o.txt
+exit=1   (sem arquivo -o)
+stderr: ... ERROR: You've hit your usage limit. Upgrade to Pro (https://chatgpt.com/explore/pro), visit https://chatgpt.com/codex/settings/usage to purchase more credits or try again at 5:41 PM.
+
+$ node scripts/despachar-codex.cjs --agente revisor --worktree <wt> --escreve false --briefing-file <briefing>
+exit=1, stdout vazio, stderr: comando: codex exec ... + banner do Codex + as duas linhas ERROR
+```
+
+Fechado, mas a causa ficava na 12ª linha do stderr. Depois da correção
+(`hooks/lib/codex-cota.cjs`, exit 75), o mesmo despacho real:
+
+```
+comando: codex exec -s read-only --skip-git-repo-check -C "<wt>" -c approval_policy="never" -o "<home>\AppData\Local\Temp\despachar-codex-<pid>-<ts>.txt"
+codex sem cota: You've hit your usage limit. Upgrade to Pro (https://chatgpt.com/explore/pro), visit https://chatgpt.com/codex/settings/usage to purchase more credits or try again at 5:41 PM.
+exit=75
+```
+
+Baterias: `testa-despachar-codex.sh` caso 11 (15 ok), `testa-transferir-para-codex.sh`
+caso 8 (10 ok; com `--json` o erro vem depois de `thread.started`, e sem a
+checagem o script devolvia `codex resume` de thread morta),
+`testa-gate-review-codex.sh` caso 6b (16 ok; o `reason` cita a causa e a hora).
