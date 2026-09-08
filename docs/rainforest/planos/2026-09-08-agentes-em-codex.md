@@ -87,7 +87,7 @@ Contrato: lê `agents/<agente>.md`, separa frontmatter do corpo com a regex já 
 
 ### 4. `scripts/testa-despachar-codex.sh` — bateria com dublê [tipo: teste]
 atende: D11
-arquivos: `scripts/testa-despachar-codex.sh`, `scripts/fixtures/codex-dublê.cjs`
+arquivos: `scripts/testa-despachar-codex.sh`, `scripts/fixtures/codex-duble.cjs`
 depende de: 3
 paralela: nao
 mutacao:
