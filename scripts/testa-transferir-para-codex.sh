@@ -257,21 +257,26 @@ CONFIGEOF
 # Payload do hook
 PAYLOAD='{"session_id":"s1","transcript_path":"'"$TRANSCRIPT"'"}'
 
+# O hook resolve config por CLAUDE_PROJECT_DIR (projeto) e RFM_ROOT (dados), nao
+# por RFM_HOME. Sem os dois apontando para a caixa de areia, ele le a config REAL
+# de quem roda a bateria (Issue #160) — foi assim que, em 2026-09-08, este caso
+# rodou com a chave desligada, nao gravou nada, e o `if [ -f ]` abaixo engoliu o
+# resultado sem `ok` nem `FALHA`. Arquivo ausente agora e FALHA.
+rm -f "$ENV_FILE"
 echo "$PAYLOAD" | \
   RFM_TEST=1 RFM_HOME="$RFMHOME_M" \
+  RFM_ROOT="$RFMHOME_M/.rainforest" CLAUDE_PROJECT_DIR="$RFMHOME_M" \
   CLAUDE_ENV_FILE="$ENV_FILE_M" \
   node "$HOOK"
 
-if [ -f "$ENV_FILE" ]; then
-  if grep -q "RAINFOREST_TRANSCRIPT_PATH=" "$ENV_FILE" && \
-     grep -q "RAINFOREST_SESSION_ID=s1" "$ENV_FILE"; then
-    ok=$((ok + 1))
-    echo "  ok   caso 6a: hook grava variáveis com transfer-codex ligado"
-  else
-    falhou=$((falhou + 1))
-    echo "  FALHA caso 6a: hook não gravou as variáveis"
-    cat "$ENV_FILE" | sed 's/^/    /'
-  fi
+if [ -f "$ENV_FILE" ] && grep -q "RAINFOREST_TRANSCRIPT_PATH=" "$ENV_FILE" && \
+   grep -q "RAINFOREST_SESSION_ID=s1" "$ENV_FILE"; then
+  ok=$((ok + 1))
+  echo "  ok   caso 6a: hook grava variáveis com transfer-codex ligado"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA caso 6a: hook não gravou as variáveis (arquivo ausente ou incompleto)"
+  [ -f "$ENV_FILE" ] && cat "$ENV_FILE" | sed 's/^/    /'
 fi
 
 # Caso 6b: com transfer-codex desligado
@@ -291,6 +296,7 @@ CONFIGEOF
 
 echo "$PAYLOAD" | \
   RFM_TEST=1 RFM_HOME="$RFMHOME_M" \
+  RFM_ROOT="$RFMHOME_M/.rainforest" CLAUDE_PROJECT_DIR="$RFMHOME_M" \
   CLAUDE_ENV_FILE="$ENV_FILE_OFF_M" \
   node "$HOOK"
 
