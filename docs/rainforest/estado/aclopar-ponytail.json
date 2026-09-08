@@ -14,10 +14,63 @@
     "em": "2026-09-08"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-09-08",
+    "comando": "bash scripts/testa-medir-escada.sh; node scripts/conferir-mutacao.cjs --arquivo scripts/fixtures/escada/gates.cjs --de \"vm.runInNewContext(script, contexto, { timeout: TIMEOUT_MS });\" --para \"eval(script);\" --bateria \"bash scripts/testa-medir-escada.sh\"",
+    "saida": "bateria integra 19/19 (ok:19 falhou:0). Catraca vm->eval: 14/19, exit 0 (bateria VERMELHA, fonte restaurado). Catraca relogio removido: 17/19, exit 0. Catraca base64->interpolacao de template: 16/19, exit 0. Suite completa do repo: as 100 baterias passaram.",
+    "tarefas_ok": 7,
+    "tarefas": 7,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "carve-outs fora do texto injetado, e degrau 2 movido para depois de cabe-em-uma-linha"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "emNucleo cravado em true desliga a checagem de sobrevivencia ao extrairNucleo"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "captura do volta-quando desligada, todo marcador vira sem-gatilho"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "linha do criterio da trava wrapper-vs-reimplementacao apagada do SKILL.md"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "tres inversoes na fronteira de isolamento do gate: runInNewContext->eval (14/19), relogio do vm removido (17/19), passagem base64->interpolacao de template (16/19)"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "require do raiz.cjs trocado por return padrao, e comprimirEscada desligado"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "tarefa de atribuicao em documento; criterio e por grep, sem comportamento executavel a inverter"
+      }
+    ],
+    "em": "2026-09-08"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "comando": "bash prova-injecao.sh (reproduz o escaping de medir-escada.sh:59)",
+    "saida": "entrada ${1+1} -> node ve 2; ${process.pid} -> 55536; ${String(typeof require)} -> function. O sed escapa barra, crase e aspas, nunca $; o resultado entra em template literal, entao ${} avalia ANTES do eval do gate, com require acessivel.",
+    "em": "2026-09-08",
+    "tentativas": 1,
+    "snapshot": {
+      "head": "e4ea923adb4975472068157d961e8a06627264fd",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/aclopar-ponytail.json"
+      ]
+    }
   },
   "verificar": {
     "status": "pendente"

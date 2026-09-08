@@ -181,6 +181,28 @@ efeito. O rainforest copiou dele o único pedaço que depende do modelo lembrar.
   superpowers. A escada é compressão quase direta de um projeto MIT, e o repo é
   público: ponta solta de atribuição, não arrumação.
 
+- **D8 — O checador de creep enxerga pasta e portão datado.** Achado ao fechar
+  este próprio fluxo, e não é ponytail: é o `revisar` recusando por creep os
+  dez arquivos que o plano declarava.
+
+  *Dois defeitos, mesma família.* (a) `globMatches` compara literalmente
+  qualquer padrão sem `*`, então `arquivos: scripts/fixtures/escada/` no plano
+  lê como cobertura da pasta e não cobre arquivo nenhum — caminho de pasta
+  nunca é igual a caminho de arquivo. (b) A isenção do portão é
+  `docs/rainforest/portoes/<slug>.md`, mas portão nasce datado
+  (`2026-09-08-aclopar-ponytail.md`); os dois que existem no repo são. O
+  arquivo que **registra a verificação do fluxo** era acusado de creep desse
+  mesmo fluxo.
+
+  *Por que aqui e não plantado.* Os dois apareceram na frente, bloqueando o
+  `marcar revisar`, e o custo de contorná-los (listar dez arquivos à mão no
+  plano) é maior que o de consertá-los — e o contorno deixa a armadilha
+  armada para o próximo plano que escrever `pasta/`.
+
+  *(b) é a irmã exata do defeito já documentado* no comentário de
+  `globs_isentos` para o design (`fluxo-9-design-portaria.md` não se chama
+  `<slug>.md`). O conserto de lá não olhou a linha de baixo.
+
 ## Avaliado e descartado
 
 - **Trava de deriva para a `ponte` e para as duas CLAUDE.md.** Foi a primeira

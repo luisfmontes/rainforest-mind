@@ -202,7 +202,7 @@ mutacao:
 
 ### 5. Régua medida da escada, com fronteira de honestidade [tipo: implementar]
 atende: D5
-arquivos: `scripts/medir-escada.sh`, `scripts/fixtures/escada/`, `scripts/testa-medir-escada.sh`, `skills/regua/SKILL.md`
+arquivos: `scripts/medir-escada.sh`, `scripts/fixtures/escada/`, `scripts/testa-medir-escada.sh`, `skills/regua/SKILL.md`, `scripts/dubliador-llm-codigo-ok.cjs`
 depende de: 1
 paralelizavel: nao
 
@@ -302,6 +302,40 @@ mutacao: n/a
   motivo: tarefa de atribuição em documento; não há comportamento executável a
   inverter. O critério é verificável por `grep` e está escrito acima, e o gate
   de cobertura do próprio fluxo confere que a tarefa existe para D7.
+
+---
+
+### 8. Checador de creep enxerga pasta e portão datado [tipo: implementar]
+atende: D8
+arquivos: `scripts/conferir-fluxo.cjs`, `scripts/testa-conferir-fluxo.sh`
+depende de: 5
+paralelizavel: nao
+
+Serial: o defeito só apareceu ao tentar fechar o `revisar` deste fluxo, com os
+arquivos de T5 e T6 no diff.
+
+Dois consertos em `conferir-fluxo.cjs`:
+
+1. **Barra no fim é pasta.** `globMatches` ganha um caso antes da comparação
+   literal: padrão terminado em `/` casa por prefixo. `scripts/fixtures/escada/`
+   passa a cobrir os dez arquivos abaixo dela, que é o que o plano sempre quis
+   dizer.
+2. **Portão datado é isento.** A isenção vira
+   `docs/rainforest/portoes/*<slug>.md`. O `*` de `globMatches` não cruza `/`,
+   então continua preso à pasta de portões e casa só o prefixo de data.
+
+**Critério de pronto:**
+- `bash scripts/testa-conferir-fluxo.sh` verde, com dois casos novos: um que
+  prova que `pasta/` cobre arquivo abaixo dela, outro que prova que o portão
+  datado do slug não conta como creep.
+- `node scripts/estado.cjs marcar --slug aclopar-ponytail --estagio revisar
+  --status ok` deixa de recusar por creep (cole a saída).
+
+mutacao:
+  arquivo: `scripts/conferir-fluxo.cjs`
+  de: return arquivo.startsWith(glob);
+  para: return false;
+  bateria: `bash scripts/testa-conferir-fluxo.sh`
 
 ---
 

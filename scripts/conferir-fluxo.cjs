@@ -510,7 +510,12 @@ function cmdCreep() {
     rel(arg('design', false), `docs/rainforest/design/${slug}.md`),
     rel(arg('plano', false), `docs/rainforest/planos/${slug}.md`),
     `docs/rainforest/estado/${slug}.json`,
-    `docs/rainforest/portoes/${slug}.md`,
+    // Portão é datado no nome (`2026-09-08-aclopar-ponytail.md`) — os dois que
+    // existem neste repo são, e o `recibo`/`portoes` cria assim. `${slug}.md`
+    // seco não casava com nenhum, então o arquivo que REGISTRA a verificação do
+    // fluxo era acusado de creep desse mesmo fluxo. É a irmã exata do defeito
+    // que o comentário acima descreve para o design, e sobreviveu a ele.
+    `docs/rainforest/portoes/*${slug}.md`,
   ];
 
   // Pega diff.
@@ -625,6 +630,16 @@ function extrairArquivos(conteudo_plano, numero_tarefa) {
  * ? é qualquer caractere (não /)
  */
 function globMatches(arquivo, glob) {
+  // Barra no fim é PASTA: cobre tudo abaixo dela. Sem isto, `arquivos:
+  // scripts/fixtures/escada/` no plano lia como cobertura da pasta e não
+  // cobria arquivo nenhum — comparação literal contra um caminho de pasta
+  // nunca casa com um caminho de arquivo. O `revisar` recusava por creep os
+  // dez arquivos que o plano declarava, sem dizer por quê. Achado em
+  // 2026-09-08, fechando o fluxo aclopar-ponytail.
+  if (glob.endsWith('/')) {
+    return arquivo.startsWith(glob);
+  }
+
   // Simples: se não tem *, **, ou ?, é match literal
   if (!glob.includes('*') && !glob.includes('?')) {
     return arquivo === glob;

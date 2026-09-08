@@ -524,6 +524,57 @@ exige 2 "verificar nao fecha por cima de executar reaberto" E9 marcar --slug r14
 exige 2 "e o exigir concorda com o marcar" E9 exigir --slug r148 --estagio verificar
 
 echo
+echo "== 10. cobertura enxerga PASTA e portao DATADO (D8) =="
+# Dois defeitos achados ao fechar o fluxo aclopar-ponytail, com o `marcar revisar`
+# recusando por creep os dez arquivos que o plano declarava.
+#
+#   (a) `globMatches` comparava literalmente qualquer padrao sem `*`. Um plano com
+#       `arquivos: scripts/fixtures/escada/` cobria ZERO arquivos — caminho de
+#       pasta nunca e igual a caminho de arquivo.
+#   (b) A isencao do portao era `docs/rainforest/portoes/<slug>.md`, mas portao
+#       nasce datado. O arquivo que REGISTRA a verificacao do fluxo era acusado de
+#       creep desse mesmo fluxo.
+#
+# Mesma forma da secao 6: repositorio git de verdade, senao nao ha diff e o
+# `creep` recusa antes de chegar no codigo alvo.
+D="$(mktemp -d)"; DW="$(cygpath -m "$D" 2>/dev/null || printf '%s' "$D")"
+mkdir -p "$D/docs/rainforest/design" "$D/docs/rainforest/planos" "$D/docs/rainforest/portoes"
+cp "$REAL_D" "$D/docs/rainforest/design/t.md"
+# A tarefa 1 do plano passa a declarar uma PASTA em vez de um arquivo.
+sed 's|^arquivos: `scripts/conferir-esteira.cjs`$|arquivos: `src/pedacos/`|' \
+  "$REAL_P" > "$D/docs/rainforest/planos/t.md"
+git -C "$D" init -q . >/dev/null 2>&1
+git -C "$D" config user.email t@t; git -C "$D" config user.name t
+git -C "$D" add docs >/dev/null 2>&1; git -C "$D" commit -qm base >/dev/null 2>&1
+BASE_D="$(git -C "$D" rev-parse HEAD 2>/dev/null)"
+# commit A: um arquivo DENTRO da pasta declarada
+mkdir -p "$D/src/pedacos"
+echo "conteudo" > "$D/src/pedacos/um.cjs"
+git -C "$D" add src >/dev/null 2>&1; git -C "$D" commit -qm dentro-da-pasta >/dev/null 2>&1
+DENTRO="$(git -C "$D" rev-parse HEAD 2>/dev/null)"
+# commit B: o portao DATADO deste slug
+echo "# portao" > "$D/docs/rainforest/portoes/2026-09-08-t.md"
+git -C "$D" add docs >/dev/null 2>&1; git -C "$D" commit -qm portao-datado >/dev/null 2>&1
+PORTAO="$(git -C "$D" rev-parse HEAD 2>/dev/null)"
+# commit C: arquivo FORA de qualquer declaracao — o contraste que prova que a
+# cobertura por pasta nao virou "aceita tudo".
+echo "conteudo" > "$D/src/outra-pasta.cjs"
+git -C "$D" add src >/dev/null 2>&1; git -C "$D" commit -qm fora >/dev/null 2>&1
+FORA="$(git -C "$D" rev-parse HEAD 2>/dev/null)"
+
+if [ -n "$BASE_D" ] && [ -n "$FORA" ] && [ "$BASE_D" != "$FORA" ]; then
+  exige 0 "pasta declarada no plano cobre arquivo abaixo dela" \
+    env RFM_ESTADO_ROOT="$DW" node "$CHECADOR" creep --slug t --base "$BASE_D" --head "$DENTRO"
+  exige 0 "portao DATADO do proprio slug e isento" \
+    env RFM_ESTADO_ROOT="$DW" node "$CHECADOR" creep --slug t --base "$DENTRO" --head "$PORTAO"
+  exige 2 "arquivo fora de toda declaracao continua sendo creep" \
+    env RFM_ESTADO_ROOT="$DW" node "$CHECADOR" creep --slug t --base "$PORTAO" --head "$FORA"
+else
+  echo "  FALHA nao consegui montar o repositorio de fixture"; falhou=$((falhou+1))
+fi
+rm -rf "$D"
+
+echo
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]
