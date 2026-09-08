@@ -22,9 +22,10 @@
     "status": "parcial",
     "tarefas_ok": 4,
     "tarefas": 6,
-    "em_voo": [],
+    "em_voo": [
+      "tarefa-5"
+    ],
     "pendentes": [
-      "tarefa-5: validacao ao vivo aguarda a cota do Codex (reset 17:41 de 2026-09-08)",
       "tarefa-6: bump 1.8.1 e o ultimo commit"
     ],
     "mutacao_parcial": [
