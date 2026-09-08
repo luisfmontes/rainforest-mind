@@ -1,11 +1,20 @@
 # Plano — acoplar o ponytail de verdade
 
 **Slug:** `aclopar-ponytail` · **Design:** `docs/rainforest/design/aclopar-ponytail.md`
-**Base:** `origin/main` @ `39b012c` · **Branch:** `fluxo/aclopar-ponytail`
+**Base:** `origin/main` @ `ec3d615` · **Branch:** `fluxo/aclopar-ponytail`
 
-Sete tarefas, sete decisões. **Fan-out em duas ondas:** T1, T2, T4 e T7 são
+Nove tarefas, nove decisões. **Fan-out em duas ondas:** T1, T2, T4 e T7 são
 independentes e vão juntas; T3, T5 e T6 dependem de T1 (as três tocam o texto
 injetado ou o hook que o injeta) e vão na segunda onda.
+
+T8 e T9 não estavam aqui: nasceram ao **fechar** o fluxo, das travas do próprio
+repo recusando trabalho que estava correto — o checador de creep não enxergava
+pasta declarada nem portão datado (T8), e o teto de tempo do CI matava a suíte
+verde no último segundo (T9).
+
+A base mudou no meio: `39b012c` deixou de ser ancestral de `origin/main` quando
+o histórico remoto foi reescrito (expurgo de identificador de repo público), e
+os commits foram transplantados com `rebase --onto origin/main 39b012c`.
 
 ## Levantamentos que mudaram o plano
 
@@ -278,7 +287,7 @@ mutacao:
 
 ### 7. Crédito do ponytail no README [tipo: doc]
 atende: D7
-arquivos: `README.md`
+arquivos: `README.md`, `vigias/livro-de-repos.md`
 depende de: nenhuma
 paralelizavel: sim
 
