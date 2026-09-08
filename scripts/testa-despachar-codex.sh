@@ -1,0 +1,349 @@
+#!/bin/bash
+# Bateria para despachar-codex.cjs — transporte do agente para Codex CLI
+# Uso: bash scripts/testa-despachar-codex.sh
+#
+# Testa despachar-codex contra dublê (nunca contra Codex real — D11).
+
+set -u
+
+SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SRC_M="$(cygpath -m "$SRC" 2>/dev/null || printf '%s' "$SRC")"
+
+# Usar diretório temporário (fora do worktree para limpeza correta)
+RAIZ_BASE="/tmp/test-despachar-codex-$$"
+mkdir -p "$RAIZ_BASE"
+RAIZ="$RAIZ_BASE"
+
+# UM trap de EXIT para a bateria inteira
+A_LIMPAR="$RAIZ_BASE"
+limpa() {
+  cd "$SRC" 2>/dev/null || cd /
+  sleep 1
+  local d
+  for d in $A_LIMPAR; do
+    rm -rf "$d" 2>/dev/null
+  done
+}
+trap limpa EXIT
+
+echo "(caixa de areia: $RAIZ)"
+echo ""
+
+ok=0
+falhou=0
+
+testa() {
+  local nome="$1"
+  local exit_esperado="$2"
+  shift 2
+
+  local saida
+  saida=$("$@" 2>&1); local exit_obtido=$?
+
+  if [ "$exit_obtido" = "$exit_esperado" ]; then
+    ok=$((ok + 1))
+    echo "  ok   $nome (exit $exit_obtido)"
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA $nome: esperava exit $exit_esperado, veio $exit_obtido"
+    echo "$saida" | sed 's/^/         /' | head -10
+  fi
+}
+
+# ===== SETUP =====
+# Cria plugin mínimo na caixa de areia com agents/, hooks/lib/, scripts/
+
+mkdir -p "$RAIZ/plugin"
+PLUGIN="$RAIZ/plugin"
+
+# Copia agente de teste
+mkdir -p "$PLUGIN/agents"
+cat > "$PLUGIN/agents/revisor.md" << 'AGENTEOF'
+---
+name: revisor
+model: sonnet
+---
+Você é o revisor.
+
+<!-- ponte-codex -->
+Instrução de ponte: chamar /despachar-codex com flags
+<!-- /ponte-codex -->
+
+Seu trabalho é revisar.
+AGENTEOF
+
+# Copia hooks/lib/
+mkdir -p "$PLUGIN/hooks/lib"
+cp "$SRC/hooks/lib/cli-externo.cjs" "$PLUGIN/hooks/lib/cli-externo.cjs"
+cp "$SRC/hooks/lib/config.cjs" "$PLUGIN/hooks/lib/config.cjs"
+cp "$SRC/hooks/lib/raiz.cjs" "$PLUGIN/hooks/lib/raiz.cjs" 2>/dev/null || true
+
+# Copia scripts/despachar-codex.cjs
+mkdir -p "$PLUGIN/scripts/fixtures"
+cp "$SRC/scripts/despachar-codex.cjs" "$PLUGIN/scripts/despachar-codex.cjs"
+cp "$SRC/scripts/fixtures/codex-duble.cjs" "$PLUGIN/scripts/fixtures/codex-duble.cjs"
+
+# Cria worktree de teste com .git isolado (gitdir)
+mkdir -p "$RAIZ/wt-test/.git/worktrees/wt-isolado"
+WTS="$RAIZ/wt-test"
+WTE="$WTS/.claude/worktrees/agent-xyz"
+mkdir -p "$WTE"
+echo "gitdir: $WTS/.git/worktrees/wt-isolado" > "$WTE/.git"
+cd "$WTE"
+git init --quiet "$WTS"
+git -C "$WTS" config user.email "test@test"
+git -C "$WTS" config user.name "Test"
+git -C "$WTS" checkout --quiet -b main
+
+# Cria briefing de teste
+BRIEFING="$RAIZ/briefing.md"
+cat > "$BRIEFING" << 'BRIEFEOF'
+## Contexto
+Tarefa de teste.
+
+## Entrega esperada
+Análise completa.
+BRIEFEOF
+
+# Cria config do worktree com modelo
+mkdir -p "$WTE/.rainforest"
+cat > "$WTE/.rainforest/config.json" << 'CONFIGEOF'
+{
+  "codex-modelo-sonnet": {
+    "modelo": "m-teste",
+    "esforco": "low"
+  }
+}
+CONFIGEOF
+
+# Cria arquivo de teste de comando
+DUBLE="$PLUGIN/scripts/fixtures/codex-duble.cjs"
+DUBLE_M="$(cygpath -m "$DUBLE" 2>/dev/null || printf '%s' "$DUBLE")"
+
+# ===== CASOS =====
+
+echo "== CASO 1: --escreve false no worktree ==="
+STDIN_OUT_1="$RAIZ/stdin-1.txt"
+CMD_OUT_1="$RAIZ/cmd-1.txt"
+SAIDA_1="$RAIZ/saida-1.txt"
+STDIN_OUT_1_M="$(cygpath -m "$STDIN_OUT_1" 2>/dev/null || printf '%s' "$STDIN_OUT_1")"
+CMD_OUT_1_M="$(cygpath -m "$CMD_OUT_1" 2>/dev/null || printf '%s' "$CMD_OUT_1")"
+SAIDA_1_M="$(cygpath -m "$SAIDA_1" 2>/dev/null || printf '%s' "$SAIDA_1")"
+
+DUBLE_MODO=ok \
+DUBLE_STDIN_OUT="$STDIN_OUT_1_M" \
+DUBLE_CMD_OUT="$CMD_OUT_1_M" \
+DUBLE_SAIDA="$SAIDA_1_M" \
+RFM_TEST=1 \
+CODEX_CMD="node $DUBLE_M" \
+testa "caso 1: --escreve false sem --add-dir" 0 \
+  node "$PLUGIN/scripts/despachar-codex.cjs" \
+    --agente revisor \
+    --worktree "$WTE" \
+    --escreve false \
+    --briefing-file "$BRIEFING" \
+    --saida "$SAIDA_1_M"
+
+# Valida caso 1
+if grep -q -- '-s read-only' "$CMD_OUT_1" && \
+   grep -q -- '--skip-git-repo-check' "$CMD_OUT_1" && \
+   grep -q -- '-c approval_policy="never"' "$CMD_OUT_1" && \
+   ! grep -q -- '--add-dir' "$CMD_OUT_1" && \
+   ! grep -q -- '--dangerously-bypass-approvals-and-sandbox' "$CMD_OUT_1" && \
+   [ "$(cat $SAIDA_1)" = "RESPOSTA DO DUBLE" ]; then
+  ok=$((ok + 1))
+  echo "    ✓ cmd contém -s read-only, --skip-git-repo-check, approval_policy; sem --add-dir"
+else
+  falhou=$((falhou + 1))
+  echo "    ✗ validação falhou"
+  [ -f "$CMD_OUT_1" ] && echo "      cmd: $(cat $CMD_OUT_1)"
+  [ -f "$SAIDA_1" ] && echo "      saida: $(cat $SAIDA_1)"
+fi
+
+echo ""
+echo "== CASO 2: --escreve true com gitdir → --add-dir ==="
+STDIN_OUT_2="$RAIZ/stdin-2.txt"
+CMD_OUT_2="$RAIZ/cmd-2.txt"
+SAIDA_2="$RAIZ/saida-2.txt"
+STDIN_OUT_2_M="$(cygpath -m "$STDIN_OUT_2" 2>/dev/null || printf '%s' "$STDIN_OUT_2")"
+CMD_OUT_2_M="$(cygpath -m "$CMD_OUT_2" 2>/dev/null || printf '%s' "$CMD_OUT_2")"
+SAIDA_2_M="$(cygpath -m "$SAIDA_2" 2>/dev/null || printf '%s' "$SAIDA_2")"
+
+DUBLE_MODO=ok \
+DUBLE_STDIN_OUT="$STDIN_OUT_2_M" \
+DUBLE_CMD_OUT="$CMD_OUT_2_M" \
+DUBLE_SAIDA="$SAIDA_2_M" \
+RFM_TEST=1 \
+CODEX_CMD="node $DUBLE_M" \
+testa "caso 2: --escreve true com --add-dir" 0 \
+  node "$PLUGIN/scripts/despachar-codex.cjs" \
+    --agente revisor \
+    --worktree "$WTE" \
+    --escreve true \
+    --briefing-file "$BRIEFING" \
+    --saida "$SAIDA_2_M"
+
+# Valida caso 2: com --escreve true, DEVE ter -s workspace-write (não read-only)
+if grep -q -- '-s workspace-write' "$CMD_OUT_2" && \
+   grep -q -- "--add-dir.*\.git" "$CMD_OUT_2" && \
+   ! grep -q -- '-s read-only' "$CMD_OUT_2" && \
+   ! grep -q -- '--dangerously-bypass-approvals-and-sandbox' "$CMD_OUT_2"; then
+  ok=$((ok + 1))
+  echo "    ✓ cmd contém -s workspace-write (não read-only) e --add-dir"
+else
+  falhou=$((falhou + 1))
+  echo "    ✗ validação falhou"
+  [ -f "$CMD_OUT_2" ] && echo "      cmd: $(cat $CMD_OUT_2)"
+  [ -f "$CMD_OUT_2" ] && grep -q -- '-s read-only' "$CMD_OUT_2" && echo "      ERRO: contém -s read-only quando deveria ter -s workspace-write"
+fi
+
+echo ""
+echo "== CASO 3: nunca contém --dangerously-bypass-approvals-and-sandbox ==="
+if ! grep -q -- '--dangerously-bypass-approvals-and-sandbox' "$CMD_OUT_1" && \
+   ! grep -q -- '--dangerously-bypass-approvals-and-sandbox' "$CMD_OUT_2"; then
+  ok=$((ok + 1))
+  echo "  ok   caso 3: --dangerously-bypass-approvals-and-sandbox ausente"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA caso 3: flag perigosa presente"
+fi
+
+echo ""
+echo "== CASO 4: stdin contém corpo sem frontmatter e sem ponte, + briefing ==="
+if [ -f "$STDIN_OUT_1" ]; then
+  stdin=$(cat "$STDIN_OUT_1")
+  if echo "$stdin" | grep -q "Você é o revisor" && \
+     ! echo "$stdin" | grep -q "model: sonnet" && \
+     ! echo "$stdin" | grep -q "ponte-codex" && \
+     echo "$stdin" | grep -q "Tarefa de teste"; then
+    ok=$((ok + 1))
+    echo "  ok   caso 4: stdin correto (corpo sem FM/ponte + briefing)"
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA caso 4: stdin incorreto"
+    echo "$stdin" | head -20 | sed 's/^/      /'
+  fi
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA caso 4: stdin não gravado"
+fi
+
+echo ""
+echo "== CASO 5: modelo mapeado por config ==="
+if grep -q -- '-m "m-teste"' "$CMD_OUT_2" && \
+   grep -q -- 'model_reasoning_effort="low"' "$CMD_OUT_2"; then
+  ok=$((ok + 1))
+  echo "  ok   caso 5: -m e model_reasoning_effort presentes"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA caso 5: modelo não mapeado"
+  [ -f "$CMD_OUT_2" ] && cat "$CMD_OUT_2" | sed 's/^/    /'
+fi
+
+echo ""
+echo "== CASO 6: DUBLE_MODO=falha → exit ≠ 0 ==="
+SAIDA_6="$RAIZ/saida-6.txt"
+SAIDA_6_M="$(cygpath -m "$SAIDA_6" 2>/dev/null || printf '%s' "$SAIDA_6")"
+saida_6=$(DUBLE_MODO=falha \
+DUBLE_SAIDA="$SAIDA_6_M" \
+RFM_TEST=1 \
+CODEX_CMD="node $DUBLE_M" \
+node "$PLUGIN/scripts/despachar-codex.cjs" \
+  --agente revisor \
+  --worktree "$WTE" \
+  --escreve false \
+  --briefing-file "$BRIEFING" \
+  --saida "$SAIDA_6_M" 2>&1)
+exit_6=$?
+if [ "$exit_6" = "1" ] && echo "$saida_6" | grep -q "erro simulado"; then
+  ok=$((ok + 1))
+  echo "  ok   caso 6: dublê falha, exit 1 com 'erro simulado'"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA caso 6: esperava exit 1 com 'erro simulado', veio exit $exit_6"
+  echo "$saida_6" | head -5 | sed 's/^/    /'
+fi
+
+echo ""
+echo "== CASO 7: DUBLE_MODO=dorme com timeout ==="
+SAIDA_7="$RAIZ/saida-7.txt"
+SAIDA_7_M="$(cygpath -m "$SAIDA_7" 2>/dev/null || printf '%s' "$SAIDA_7")"
+saida_7=$(DUBLE_MODO=dorme \
+DUBLE_SAIDA="$SAIDA_7_M" \
+RFM_TEST=1 \
+CODEX_CMD="node $DUBLE_M" \
+node "$PLUGIN/scripts/despachar-codex.cjs" \
+  --agente revisor \
+  --worktree "$WTE" \
+  --escreve false \
+  --briefing-file "$BRIEFING" \
+  --timeout-ms 1000 \
+  --saida "$SAIDA_7_M" 2>&1)
+exit_7=$?
+if [ "$exit_7" = "124" ] && echo "$saida_7" | grep -q "timeout"; then
+  ok=$((ok + 1))
+  echo "  ok   caso 7: timeout, exit 124 com 'timeout'"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA caso 7: esperava exit 124 com 'timeout', veio exit $exit_7"
+  echo "$saida_7" | head -5 | sed 's/^/    /'
+fi
+
+echo ""
+echo "== CASO 8: sem RFM_TEST o dublê não é chamado ==="
+# Prova que sem RFM_TEST o script NOT tenta chamar "codex" (falharia)
+# Usamos PATH fake e checamos se "codex" foi procurado
+FAKE_PATH="$RAIZ/fake-bin"
+mkdir -p "$FAKE_PATH"
+FAKE_CODEX="$FAKE_PATH/codex"
+cat > "$FAKE_CODEX" << 'EOF'
+#!/bin/bash
+echo "CODEX_FALSO_CHAMADO=1" >> /tmp/codex-fake-chamado-$$
+exit 0
+EOF
+chmod +x "$FAKE_CODEX"
+
+# Desativa RFM_TEST e CODEX_CMD, tenta rodar (vai tentar chamar codex real e falhar)
+# Checa que a falha vem de "codex" real ausente, não do dublê
+saida=$(PATH="$FAKE_PATH:$PATH" node "$PLUGIN/scripts/despachar-codex.cjs" \
+  --agente revisor \
+  --worktree "$WTE" \
+  --escreve false \
+  --briefing-file "$BRIEFING" \
+  2>&1 || true)
+# Se o comando no stderr começa com "codex exec" é a tentativa real
+if echo "$saida" | grep -q "^comando: codex exec"; then
+  ok=$((ok + 1))
+  echo "  ok   caso 8: comando real tentado (sem RFM_TEST)"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA caso 8: não tentou codex real"
+  echo "$saida" | head -5 | sed 's/^/    /'
+fi
+
+echo ""
+echo "== CASO 9: --dry-run desconhecida → exit 1 ==="
+saida_9=$(node "$PLUGIN/scripts/despachar-codex.cjs" \
+  --agente revisor \
+  --worktree "$WTE" \
+  --escreve false \
+  --briefing-file "$BRIEFING" \
+  --dry-run 2>&1)
+exit_9=$?
+if [ "$exit_9" = "1" ] && echo "$saida_9" | grep -q "flag desconhecida"; then
+  ok=$((ok + 1))
+  echo "  ok   caso 9: flag desconhecida, exit 1"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA caso 9: esperava exit 1 com 'flag desconhecida', veio exit $exit_9"
+  echo "$saida_9" | head -3 | sed 's/^/    /'
+fi
+
+echo ""
+echo "== RESULTADO =="
+echo "resultado: $ok ok, $falhou falha(s)"
+if [ "$falhou" -gt 0 ]; then
+  exit 1
+else
+  exit 0
+fi
