@@ -182,6 +182,11 @@ function listarWorktreesRegistrados(raiz) {
     });
 
     const raizNormalizada = normalizarCaminho(raiz);
+    // Rodando de DENTRO de um worktree, a raiz é o worktree e o checkout
+    // principal vira "mais um da lista". Ele nunca é candidato: o git recusa
+    // remover o principal, e listar dá a impressão de que ele é removível.
+    const principal = checkoutPrincipal(raiz);
+    const principalNormalizado = principal ? normalizarCaminho(principal) : null;
     const caminhos = [];
     const linhas = output.split("\n");
     for (const linha of linhas) {
@@ -189,7 +194,11 @@ function listarWorktreesRegistrados(raiz) {
         const caminho = linha.slice("worktree ".length).trim();
         // Nunca inclui a raiz principal (compara normalizado, não string crua:
         // git porcelain sempre usa "/", --raiz pode chegar com "\")
-        if (normalizarCaminho(caminho) !== raizNormalizada) {
+        const normalizado = normalizarCaminho(caminho);
+        if (
+          normalizado !== raizNormalizada &&
+          normalizado !== principalNormalizado
+        ) {
           caminhos.push(caminho);
         }
       }
@@ -201,51 +210,100 @@ function listarWorktreesRegistrados(raiz) {
 }
 
 /**
- * Lista os diretórios do disco, inferindo a pasta padrão de worktrees
- * a partir do primeiro worktree registrado.
+ * Descobre as pastas que de fato guardam worktree deste repositório.
+ *
+ * A pasta de um worktree registrado continua valendo — worktree não é obrigado
+ * a morar em `.claude/worktrees`, e a bateria cobre o layout `<repo>-worktrees`.
+ * O que NÃO pode entrar é a pasta que guarda o checkout principal.
+ *
+ * Rodado de DENTRO de um worktree, `raiz` é o worktree e o checkout principal
+ * aparece como "mais um registrado"; o dirname dele é a pasta que guarda TODOS
+ * os projetos do usuário. Medido em 2026-09-08 nesta máquina: o `--remover`
+ * chegou a disparar `git worktree remove` contra cinco repositórios alheios
+ * (`segundo-cerebro`, `whatsapp-mcp`, três `tech-challenge-*`). Só não apagou
+ * nada porque o git recusa ("is not a working tree") — sorte, não desenho:
+ * bastava um deles ser worktree deste repo para sumir.
+ *
+ * Duas travas, então: o principal sai de `registrados`
+ * (`listarWorktreesRegistrados`), e a pasta dele é recusada aqui mesmo se
+ * chegar por outro caminho.
+ */
+function pastasDeWorktree(raiz, registrados) {
+  const pastas = new Set();
+  const principal = checkoutPrincipal(raiz);
+  const pastaDoPrincipal = principal
+    ? normalizarCaminho(path.dirname(principal))
+    : null;
+
+  const aceitar = (dir) => {
+    if (!dir) return;
+    const normalizado = normalizarCaminho(dir);
+    // A pasta que guarda o checkout principal guarda os outros projetos junto.
+    if (normalizado === pastaDoPrincipal) return;
+    // `.git/worktrees` NÃO é pasta de worktree: é o diretório administrativo do
+    // git, um subdiretório por worktree registrado, sem checkout nenhum dentro.
+    // Varrê-lo faz cada worktree VIVO aparecer duas vezes na tabela, a segunda
+    // como "órfão".
+    if (normalizado.split("/").includes(".git")) return;
+    if (!fs.existsSync(dir)) return;
+    pastas.add(normalizado);
+  };
+
+  // A pasta padrão da raiz de onde o script está rodando.
+  aceitar(path.join(raiz, ".claude", "worktrees"));
+
+  // E a do checkout PRINCIPAL, que pode não ser a raiz: rodando de dentro de
+  // um worktree, é lá que moram os irmãos.
+  if (principal) {
+    aceitar(path.join(principal, ".claude", "worktrees"));
+  }
+
+  // Worktree registrado fora do padrão ainda conta — a pasta dele entra.
+  for (const wt of registrados) {
+    aceitar(path.dirname(wt));
+  }
+
+  return [...pastas];
+}
+
+/**
+ * O caminho do checkout principal, deduzido do git-common-dir (que aponta para
+ * o `.git` dele mesmo quando estamos dentro de um worktree). Devolve null se
+ * não der para medir — e quem chama trata isso como "não sei", nunca como
+ * "não tem".
+ */
+function checkoutPrincipal(raiz) {
+  try {
+    const saida = execFileSync(
+      "git",
+      ["rev-parse", "--path-format=absolute", "--git-common-dir"],
+      { cwd: raiz, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+    ).trim();
+    if (!saida) return null;
+    // <principal>/.git  ->  <principal>
+    if (path.basename(saida) === ".git") return path.dirname(saida);
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Lista os diretórios que estão dentro das pastas de worktree do repositório.
  */
 function listarWorktreesDoDisco(raiz, registrados) {
-  // Se não há worktrees registrados, tenta as pastas padrão
-  if (registrados.length === 0) {
-    const padroes = [
-      path.join(raiz, ".claude", "worktrees"),
-      path.join(raiz, ".git", "worktrees"),
-    ];
-
-    for (const padrao of padroes) {
-      try {
-        if (fs.existsSync(padrao)) {
-          const itens = fs.readdirSync(padrao, { withFileTypes: true });
-          const dirs = itens
-            .filter((item) => item.isDirectory())
-            .map((item) => path.join(padrao, item.name));
-          return dirs;
-        }
-      } catch {
-        // Continua
+  const achados = [];
+  for (const pasta of pastasDeWorktree(raiz, registrados)) {
+    try {
+      const itens = fs.readdirSync(pasta, { withFileTypes: true });
+      for (const item of itens) {
+        if (item.isDirectory()) achados.push(path.join(pasta, item.name));
       }
+    } catch {
+      // Pasta que sumiu entre o existsSync e o readdir: segue.
     }
-    return [];
   }
-
-  // Extrai o pai do primeiro worktree registrado
-  const primeiroWorktree = registrados[0];
-  const paiDoWorktree = path.dirname(primeiroWorktree);
-
-  // Lista todos os diretórios nesse pai
-  try {
-    if (fs.existsSync(paiDoWorktree)) {
-      const itens = fs.readdirSync(paiDoWorktree, { withFileTypes: true });
-      const dirs = itens
-        .filter((item) => item.isDirectory())
-        .map((item) => path.join(paiDoWorktree, item.name));
-      return dirs;
-    }
-  } catch {
-    // Fallthrough
-  }
-
-  return [];
+  return achados;
 }
 
 /**
