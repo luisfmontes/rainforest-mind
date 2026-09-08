@@ -203,6 +203,33 @@ efeito. O rainforest copiou dele o único pedaço que depende do modelo lembrar.
   `globs_isentos` para o design (`fluxo-9-design-portaria.md` não se chama
   `<slug>.md`). O conserto de lá não olhou a linha de baixo.
 
+- **D9 — O teto de tempo do CI para de ser cara ou coroa.** `timeout-minutes:
+  20` contra uma suíte que leva 18-21 min. Medido em 2026-09-08 nos doze runs
+  anteriores a este fluxo: os que passam chegam em 18-19 min, e **cinco
+  morreram em 20-21 min com o placar `as N baterias passaram` já impresso** —
+  verde, cancelado no último segundo. Três branches diferentes, mais este.
+
+  *Não é o meu fluxo que estourou o orçamento.* As 3 baterias que entram aqui
+  põem o run em 19m08s no node 24 (verde) e 20m13s no node 22 (cancelado); o
+  `fluxo/agentes-em-codex` bateu 20 min sem nada meu dentro. O teto está
+  mal-posto para a suíte que existe.
+
+  *Vai para 35, e o teto continua servindo.* O modo de falha que ele deve pegar
+  é bateria **pendurada** — stdin aberto, espera de rede —, e para isso 35 pega
+  igual. O que 20 pegava era o tempo normal, e um alarme que dispara no normal
+  ensina a reapertar botão até dar sorte: o dia em que a suíte quebrar de
+  verdade, ninguém acredita no vermelho.
+
+  *E a metade que é minha eu corto.* O caso do laço infinito da bateria da
+  escada é 5 s de espera parada por run. `TIMEOUT_MS` passa a ler
+  `RFM_GATE_TIMEOUT_MS`, e só esse caso baixa para 500 ms — prova a mesma
+  coisa, que existe relógio. O default de 5 s continua valendo para código de
+  modelo de verdade, e a catraca `{ timeout: TIMEOUT_MS }` → `{}` continua
+  vermelha.
+
+  *Se o tempo real encostar em 30,* o conserto é a suíte ficar mais barata, não
+  este número subir de novo. Está escrito no arquivo.
+
 ## Avaliado e descartado
 
 - **Trava de deriva para a `ponte` e para as duas CLAUDE.md.** Foi a primeira

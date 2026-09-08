@@ -114,8 +114,13 @@ marca "código que depende de require não passa (tarefa-01 FAIL)" \
 # chamarem a função do lado de fora, isto pendura a bateria para sempre.
 # O `timeout` aqui é a rede de segurança; o veredito é o FAIL por timeout.
 export RFM_MEDIR_PAYLOAD=laco
+# O relógio curto é só aqui: 5 s de espera parada por run é tempo que o CI não
+# tem (ver o comentário de timeout-minutes em .github/workflows/baterias.yml).
+# 500 ms provam a mesma coisa — que existe relógio.
+export RFM_GATE_TIMEOUT_MS=500
 saida5c=$(timeout 60 bash scripts/medir-escada.sh 2>&1)
 exit5c=$?
+unset RFM_GATE_TIMEOUT_MS
 marca "laço infinito não pendura a bateria (exit != 124)" $((exit5c != 124 ? 0 : 1))
 marca "laço infinito dá FAIL por timeout (tarefa-01 FAIL)" \
   $( (echo "$saida5c" | grep -qE "^tarefa-01.*FAIL" && echo 0) || echo 1)

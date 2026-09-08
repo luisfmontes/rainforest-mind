@@ -339,6 +339,38 @@ mutacao:
 
 ---
 
+### 9. Teto de tempo do CI, e o tempo morto que é meu [tipo: implementar]
+atende: D9
+arquivos: `.github/workflows/baterias.yml`, `scripts/fixtures/escada/gates.cjs`, `scripts/testa-medir-escada.sh`
+depende de: 8
+paralelizavel: nao
+
+Serial: só apareceu quando o PR deste fluxo rodou no CI e o node 22 foi
+cancelado em 20m13s com as 103 baterias verdes.
+
+Duas metades:
+
+1. `timeout-minutes` vai de 20 para 35, com a medição escrita no arquivo e o
+   critério de quando ele **não** deve subir de novo.
+2. `TIMEOUT_MS` de `gates.cjs` passa a ler `RFM_GATE_TIMEOUT_MS`, default 5000.
+   Só o caso do laço infinito da bateria baixa para 500 ms — é espera parada, e
+   500 ms provam o mesmo que 5000.
+
+**Critério de pronto:**
+- `bash scripts/testa-medir-escada.sh` verde (19/19), e o caso do laço continua
+  provando o timeout — não pode virar "passou porque ninguém esperou".
+- A catraca `{ timeout: TIMEOUT_MS }` → `{}` continua **vermelha** com o relógio
+  configurável (cole a saída).
+- O run do CI deste PR fecha nos dois nodes.
+
+mutacao:
+  arquivo: `scripts/fixtures/escada/gates.cjs`
+  de: { timeout: TIMEOUT_MS }
+  para: {}
+  bateria: `bash scripts/testa-medir-escada.sh`
+
+---
+
 ## Ordem de execução
 
 **Onda 1 (paralela):** T1, T2, T4, T7.

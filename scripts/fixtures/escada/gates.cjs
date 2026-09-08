@@ -24,7 +24,10 @@
 
 const vm = require('vm');
 
-const TIMEOUT_MS = 5000;
+// 5 s é o teto para código de modelo de verdade. A bateria baixa isso por
+// RFM_GATE_TIMEOUT_MS no caso do laço infinito, que é 100% espera parada: o
+// que ele prova é que EXISTE relógio, e 500 ms provam o mesmo que 5000.
+const TIMEOUT_MS = Number(process.env.RFM_GATE_TIMEOUT_MS) || 5000;
 
 /**
  * Roda o código do modelo e as provas no MESMO contexto isolado, sob um
