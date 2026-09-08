@@ -23,22 +23,12 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-09-08",
-    "tarefas_ok": 4,
+    "tarefas_ok": 7,
     "tarefas": 9,
     "em_voo": [
       {
-        "agente": "executor",
-        "tarefa": "T5 preambulo nos 9 agentes",
-        "desde": "2026-09-08"
-      },
-      {
-        "agente": "executor",
-        "tarefa": "T6 transferir-para-codex",
-        "desde": "2026-09-08"
-      },
-      {
-        "agente": "executor",
-        "tarefa": "T7 gate-review-codex",
+        "agente": "documentador",
+        "tarefa": "T9 docs e versao",
         "desde": "2026-09-08"
       }
     ],
@@ -57,12 +47,27 @@
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "testa-despachar-codex.sh caso 2 (workspace-write)"
+        "fixture": "testa-despachar-codex.sh caso 2"
       },
       {
         "tarefa": 4,
         "resultado": "vermelho",
-        "fixture": "testa-despachar-codex.sh casos 1-5 (duble desligado)"
+        "fixture": "testa-despachar-codex.sh casos 1-5"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "preambulo e instrucao de system prompt; prova real na T8"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-transferir-para-codex.sh caso 1 (fora de .claude/projects)"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-review-codex.sh casos 5 e 6 (falha fechada)"
       }
     ]
   },
