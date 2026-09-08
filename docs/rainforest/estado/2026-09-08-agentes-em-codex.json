@@ -21,13 +21,11 @@
     "em": "2026-09-08"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-08",
-    "tarefas_ok": 8,
+    "tarefas_ok": 9,
     "tarefas": 9,
-    "em_voo": [
-      "tarefa-8"
-    ],
+    "em_voo": [],
     "em": "2026-09-08",
     "mutacao_parcial": [
       {
@@ -66,7 +64,56 @@
         "fixture": "testa-gate-review-codex.sh casos 5 e 6 (falha fechada)"
       }
     ],
-    "pendentes": []
+    "pendentes": [],
+    "comando": "bash roda-suite.sh (scripts/testa-*.sh hooks/testa-*.sh)",
+    "saida": "total=98 ok=97 falhou=1 — unica falha: scripts/testa-saude.sh, defeito anterior a branch (Issue #221)",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-portaria-nucleo.cjs caso 19"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-config.sh casos (b2) e (b3)"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-despachar-codex.sh casos 2 e 9b"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-despachar-codex.sh casos 1-5"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "preambulo e instrucao de system prompt; prova real na T8 (segunda rodada, commit 188bba9)"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-transferir-para-codex.sh caso 1 (fora de .claude/projects)"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-review-codex.sh casos 5, 6 e 9 (falha fechada, costura real)"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "n/a",
+        "motivo": "validacao fim a fim com Codex real; evidencias em docs/rainforest/relatorios/2026-09-08-validacao-runtime-codex.md; derrubou a D5 (commit 4e8efa1)"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "n/a",
+        "motivo": "documentacao; coerencia conferida contra o codigo"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente"
