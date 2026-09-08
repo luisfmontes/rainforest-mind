@@ -572,5 +572,55 @@ git -C "$SBP/remoto" update-ref refs/heads/falso-gone-restaurado "$(git -C "$SBP
 nao_tem "e o script foi restaurado (falso-gone volta a ser viva)" "$(classe_remota falso-gone-restaurado)" "sumiu-divergente"
 
 echo
+echo "== varredura de worktree temporario vazado =="
+# Em 2026-09-08 havia 169 worktrees registrados em C:/tmp/worktree-*, 157 com o
+# nome deste script, ~60 MB. A remocao no fim do laco existia e funcionava; o que
+# faltava era ela rodar quando o processo morre no MEIO — e aí nenhum `finally`
+# salva, porque o processo nao desempilha. So a rodada seguinte pode limpar.
+#
+# Tres casos, e o terceiro e o que impede a varredura de virar "apaga tudo".
+SBV="$(mktemp -d)"
+git init -q "$SBV/repo"
+(
+  cd "$SBV/repo"
+  git config user.email t@t; git config user.name t
+  echo a > a.txt; git add .; git commit -qm base
+)
+
+# (1) um temporario com o nome DESTE script, fora do repo
+VAZADO="$SBV/worktree-alguma-branch-1788888888888"
+git -C "$SBV/repo" worktree add -q --detach "$VAZADO" HEAD 2>/dev/null
+# (2) um worktree de trabalho, fora do repo, SEM timestamp no nome
+LEGITIMO="$SBV/agent-abc123"
+git -C "$SBV/repo" worktree add -q --detach "$LEGITIMO" HEAD 2>/dev/null
+# (3) um temporario de OUTRO dono (a ponte-codex), que nao casa o padrao
+ALHEIO="$SBV/piloto-validacao-final-1788888888888"
+git -C "$SBV/repo" worktree add -q --detach "$ALHEIO" HEAD 2>/dev/null
+
+antes=$(git -C "$SBV/repo" worktree list | wc -l)
+
+# `require` do node nao entende caminho MSYS (/c/...). cygpath -m devolve C:/...
+SRCW="$(cygpath -m "$SRC" 2>/dev/null || printf '%s' "$SRC")"
+SBVW="$(cygpath -m "$SBV" 2>/dev/null || printf '%s' "$SBV")"
+CLAUDE_PROJECT_DIR="$SBVW/repo" node -e "
+const { varrerTemporariosVazados } = require('$SRCW/scripts/limpar-branches.cjs');
+const r = varrerTemporariosVazados();
+console.log(JSON.stringify({ removidos: r.removidos.length, falharam: r.falharam.length }));
+" > "$SBV/saida.json" 2>"$SBV/erro.txt"
+
+depois=$(git -C "$SBV/repo" worktree list | wc -l)
+removidos=$(node -e "try{console.log(JSON.parse(require('fs').readFileSync('$SBVW/saida.json','utf8')).removidos)}catch(e){console.log('erro')}")
+
+if [ "$removidos" = "1" ]; then ok=$((ok+1)); echo "  ok   varre exatamente 1 (o do padrao deste script)"; else falhou=$((falhou+1)); echo "  FALHA varreu '$removidos', esperava 1 -- $(cat "$SBV/erro.txt" | head -3)"; fi
+if [ "$antes" = "4" ] && [ "$depois" = "3" ]; then ok=$((ok+1)); echo "  ok   o registro sai da lista (4 -> 3)"; else falhou=$((falhou+1)); echo "  FALHA lista foi $antes -> $depois, esperava 4 -> 3"; fi
+if [ -d "$LEGITIMO" ]; then ok=$((ok+1)); echo "  ok    worktree de trabalho sem timestamp NAO e tocado"; else falhou=$((falhou+1)); echo "  FALHA varredura comeu o worktree de trabalho"; fi
+if [ -d "$ALHEIO" ]; then ok=$((ok+1)); echo "  ok    temporario de OUTRO dono NAO e tocado"; else falhou=$((falhou+1)); echo "  FALHA varredura comeu temporario alheio"; fi
+if [ ! -d "$VAZADO" ]; then ok=$((ok+1)); echo "  ok    o vazado sumiu do disco"; else falhou=$((falhou+1)); echo "  FALHA o vazado continua no disco"; fi
+
+git -C "$SBV/repo" worktree remove --force "$LEGITIMO" >/dev/null 2>&1
+git -C "$SBV/repo" worktree remove --force "$ALHEIO" >/dev/null 2>&1
+rm -rf "$SBV"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]

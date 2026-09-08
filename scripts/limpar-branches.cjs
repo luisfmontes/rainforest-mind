@@ -138,6 +138,75 @@ function confirmarRemotaSumiu(refs) {
 }
 
 /**
+ * O nome que este script dá aos worktrees temporários que cria: o prefixo
+ * `worktree-`, o nome da branch, e o `Date.now()` de treze dígitos no fim.
+ *
+ * Existe como constante, e não como template solto, porque a varredura abaixo
+ * precisa reconhecer o que ESTE script deixou para trás e não tocar no que é de
+ * outro dono — a ponte-codex também cria temporários, com outro nome.
+ */
+const RE_TEMP_DESTE_SCRIPT = /^worktree-.+-\d{13}$/;
+
+function caminhoTemp(nomeBranch) {
+  return `/tmp/worktree-${nomeBranch}-${Date.now()}`;
+}
+
+/**
+ * Remove os temporários que ficaram de rodadas anteriores.
+ *
+ * Por que existe, com número: em 2026-09-08 havia **169** worktrees registrados
+ * em `C:/tmp/worktree-*` nesta máquina — 157 com o nome deste script —, ~60 MB,
+ * o mais antigo do mesmo dia. O `git worktree remove` do fim do laço estava lá e
+ * funcionava; o que faltava era ele rodar quando o processo **morre no meio**
+ * (morto por teto de tempo, exceção, terminal fechado). Nesse caso nenhum
+ * `finally` salva, porque o processo não chega a desempilhar: só a rodada
+ * seguinte pode limpar.
+ *
+ * O `docs/travas-mecanicas.md` descreve este script como o que existe "para o
+ * resíduo de worktree de agente, que é o que sobrevive e ninguém vê". Ele era o
+ * maior produtor desse resíduo.
+ *
+ * Só varre o que casa com `RE_TEMP_DESTE_SCRIPT` **e** está fora do repositório.
+ * Worktree de trabalho vive em `.claude/worktrees/` e não tem timestamp no nome.
+ *
+ * @returns {{removidos: string[], falharam: string[]}}
+ */
+function varrerTemporariosVazados() {
+  const removidos = [];
+  const falharam = [];
+
+  const lista = spawnSync('git', ['worktree', 'list', '--porcelain'],
+    { cwd: REPO, encoding: 'utf8' });
+  if (lista.status !== 0 || !lista.stdout) return { removidos, falharam };
+
+  const repoNorm = path.resolve(REPO).replace(/\\/g, '/').toLowerCase();
+
+  for (const linha of lista.stdout.split('\n')) {
+    if (!linha.startsWith('worktree ')) continue;
+    const caminho = linha.slice('worktree '.length).trim();
+    if (!caminho) continue;
+
+    const norm = path.resolve(caminho).replace(/\\/g, '/').toLowerCase();
+    if (norm === repoNorm || norm.startsWith(repoNorm + '/')) continue;
+    if (!RE_TEMP_DESTE_SCRIPT.test(path.basename(caminho))) continue;
+
+    // `unlock` antes: o registro pode ter ficado travado pelo processo morto, e
+    // `remove` recusa worktree travado mesmo com `--force`.
+    spawnSync('git', ['worktree', 'unlock', caminho], { cwd: REPO, encoding: 'utf8' });
+    const r = spawnSync('git', ['worktree', 'remove', '--force', caminho],
+      { cwd: REPO, encoding: 'utf8' });
+    if (r.status === 0) removidos.push(caminho);
+    else falharam.push(caminho);
+  }
+
+  // O `prune` fecha o caso do diretório que sumiu do disco antes do registro
+  // sair: aí `remove` falha e só o `prune` desregistra.
+  if (falharam.length) spawnSync('git', ['worktree', 'prune'], { cwd: REPO, encoding: 'utf8' });
+
+  return { removidos, falharam };
+}
+
+/**
  * Squash sem upstream — a mesma situação do mergeada-por-squash, só que a branch
  * nunca teve upstream (típico de worktree-agent-* que foi apagado, deixando a
  * branch local órfã). Não há PR pra checkar, então testamos o conteúdo direto:
@@ -155,18 +224,20 @@ function mergeadosPorConteudo(refs, base) {
   if (!candidatas.length) return resultado;
 
   for (const b of candidatas) {
-    // Cria worktree isolado em temp — será removido no final, mesmo com erro
-    const tempWT = `/tmp/worktree-${b.nome}-${Date.now()}`;
+    // Cria worktree isolado em temp — removido no `finally`, mesmo com exceção.
+    // O `finally` cobre a exceção; a varredura do começo da rodada cobre o
+    // processo morto, que é o caso que produziu os 169.
+    const tempWT = caminhoTemp(b.nome);
 
-    // Tenta criar o worktree
-    let wtOk = true;
     const addWT = spawnSync('git', ['worktree', 'add', '--detach', tempWT, 'HEAD'],
       { cwd: REPO, encoding: 'utf8' });
 
     if (addWT.status !== 0) {
-      wtOk = false;
-      resultado[b.nome] = null; // Não conseguiu verificar
-    } else {
+      resultado[b.nome] = null; // Não conseguiu verificar — não há o que remover
+      continue;
+    }
+
+    try {
       // cherry-pick sem commit dos commits da branch que não estão na base
       const mergeBase = spawnSync('git', ['merge-base', base, b.nome],
         { cwd: REPO, encoding: 'utf8' });
@@ -193,11 +264,15 @@ function mergeadosPorConteudo(refs, base) {
       } else {
         resultado[b.nome] = null; // merge-base falhou
       }
+    } finally {
+      // Remoção com veredito lido: engolir o exit code em silêncio foi o que
+      // deixou 169 worktrees crescerem sem uma linha de aviso.
+      const rm = spawnSync('git', ['worktree', 'remove', '--force', tempWT],
+        { cwd: REPO, encoding: 'utf8' });
+      if (rm.status !== 0) {
+        console.log(`aviso: nao removi o worktree temporario ${tempWT} — ${(rm.stderr || '').trim()}`);
+      }
     }
-
-    // Remove o worktree em qualquer caso
-    spawnSync('git', ['worktree', 'remove', '--force', tempWT],
-      { cwd: REPO, encoding: 'utf8' });
   }
 
   return resultado;
@@ -349,6 +424,15 @@ function coletar(baseOverride) {
   // Terceira passada, so em cima de quem ainda e 'viva' e NAO tem upstream:
   // mesma interseccao "squash", so que sem PR pra achar. Testa por conteudo
   // em worktree isolado: cherry-pick + diff.
+  // Varre ANTES de criar os desta rodada: o que sobrou de uma rodada morta no
+  // meio so pode ser limpo aqui, e cada rodada que nao varre e mais lixo.
+  const varridos = varrerTemporariosVazados();
+  if (varridos.removidos.length || varridos.falharam.length) {
+    console.log(`varri ${varridos.removidos.length} worktree(s) temporario(s) de rodada anterior`
+      + (varridos.falharam.length ? `, ${varridos.falharam.length} sem sair` : ''));
+    console.log('');
+  }
+
   const mergeadosConteudo = mergeadosPorConteudo(refs, base);
   for (const b of refs) {
     if (b.classe === 'viva' && !b.upstream && mergeadosConteudo[b.nome] === true) {
@@ -563,4 +647,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { descobrirBase, forcarConfigurado, REMOVIVEIS };
+module.exports = { descobrirBase, forcarConfigurado, REMOVIVEIS, varrerTemporariosVazados, RE_TEMP_DESTE_SCRIPT };
