@@ -33,34 +33,42 @@ const path = require('path');
  */
 const CHAVES = {
   'gate-worktree': {
+    tipo: 'boolean',
     padrao: true,
     descricao: 'barra escrita de subagente fora de worktree isolado',
   },
   'gate-staging': {
+    tipo: 'boolean',
     padrao: true,
     descricao: 'barra `git add -A` e `git commit -a`',
   },
   'gate-publicacao': {
+    tipo: 'boolean',
     padrao: true,
     descricao: 'barra escrita de dados sensíveis em arquivo rastreado',
   },
   'gate-repo-alheio': {
+    tipo: 'boolean',
     padrao: true,
     descricao: 'barra escrita cujo destino está dentro de outro repositório git',
   },
   'gate-git-verificacao': {
+    tipo: 'boolean',
     padrao: true,
     descricao: 'barra pulo de verificação no git (--no-verify, -n em commit, --no-gpg-sign)',
   },
   'gate-fechar-issue': {
+    tipo: 'boolean',
     padrao: true,
     descricao: 'barra `gh issue close` direto, palavras-chave falsas em português, e `gh pr create/edit/merge`, `gh issue create/comment` sem evidência/com falsa chave',
   },
   'gate-agente-em-voo': {
+    tipo: 'boolean',
     padrao: true,
     descricao: 'barra sessão quando há agente em voo que morreu',
   },
   fluxo: {
+    tipo: 'boolean',
     padrao: true,
     descricao: 'os sete estágios (brainstorm → plano → … → fechar)',
   },
@@ -79,6 +87,7 @@ const CHAVES = {
   // reimplementar a cadeia de 3 níveis em PowerShell seria a segunda cópia que
   // diverge calada.
   vigias: {
+    tipo: 'boolean',
     padrao: false,
     descricao: 'as rondas headless agendadas (exigem PowerShell, claude.exe e destino de envio)',
   },
@@ -93,14 +102,17 @@ const CHAVES = {
   // instalado**, que é o caminho de quem vai receber o convite antes de instalar
   // qualquer coisa.
   'ponte-claude': {
+    tipo: 'boolean',
     padrao: false,
     descricao: 'gera CLAUDE.md para Claude Code SEM o plugin (regras sem as travas)',
   },
   'ponte-codex': {
+    tipo: 'boolean',
     padrao: false,
     descricao: 'gera AGENTS.md para o Codex',
   },
   'ponte-gemini': {
+    tipo: 'boolean',
     padrao: false,
     descricao: 'gera GEMINI.md para o Gemini CLI',
   },
@@ -114,18 +126,22 @@ const CHAVES = {
   // desconhecida; tem de ler `resolverConfig().valores` e tratar qualquer falha
   // como `false`. O `limpar-branches.cjs` faz assim, e diz por quê no lugar.
   'branch-forcar': {
+    tipo: 'boolean',
     padrao: false,
     descricao: 'usa `git branch -D` (apaga sem conferir merge) em vez de `-d`',
   },
   'conselho-codex': {
+    tipo: 'boolean',
     padrao: false,
     descricao: 'Codex participa do conselho como membro externo (exige `codex` CLI)',
   },
   'conselho-gemini': {
+    tipo: 'boolean',
     padrao: false,
     descricao: 'Gemini participa do conselho como membro externo (exige `GEMINI_API_KEY` no ambiente)',
   },
   poda: {
+    tipo: 'boolean',
     padrao: true,
     descricao: 'passthrough de proxy medido: escreve metricas.jsonl e contexto.json',
   },
@@ -133,12 +149,40 @@ const CHAVES = {
   // Cada uma tem stub `checar()` que devolve status — as checagens reais vêm depois.
   // Declaráveis via `--ligar integracao-<nome>`, desligadas por padrão.
   'integracao-whatsapp-mcp': {
+    tipo: 'boolean',
     padrao: false,
     descricao: 'MCP para bridge WhatsApp local (127.0.0.1:3005)',
   },
   'integracao-sabia': {
+    tipo: 'boolean',
     padrao: false,
     descricao: 'Sabiá: transcrição local de reunião com diarização (quem falou), CLI Python',
+  },
+  // CODEX COMO RUNTIME — chaves de modelo que mapeiam model: do agente para -m do Codex
+  'codex-modelo-haiku': {
+    tipo: 'modelo',
+    padrao: null,
+    descricao: 'mapeia model: haiku do agente para -m e model_reasoning_effort do Codex (null = usar ~/.codex/config.toml)',
+  },
+  'codex-modelo-sonnet': {
+    tipo: 'modelo',
+    padrao: null,
+    descricao: 'mapeia model: sonnet do agente para -m e model_reasoning_effort do Codex (null = usar ~/.codex/config.toml)',
+  },
+  'codex-modelo-opus': {
+    tipo: 'modelo',
+    padrao: null,
+    descricao: 'mapeia model: opus do agente para -m e model_reasoning_effort do Codex (null = usar ~/.codex/config.toml)',
+  },
+  'transfer-codex': {
+    tipo: 'boolean',
+    padrao: false,
+    descricao: 'transfere a sessão Claude Code para uma thread Codex, sob demanda',
+  },
+  'gate-review-codex': {
+    tipo: 'boolean',
+    padrao: false,
+    descricao: 'o revisor em Codex revisa a última resposta no Stop; falha fechada',
   },
 };
 
@@ -201,13 +245,27 @@ function resolverConfig(o = {}) {
   const cfgProjeto = lerJson(doProjeto);
   const cfgUsuario = doUsuario ? lerJson(doUsuario) : null;
 
+  // Valida se um valor combina com o tipo esperado.
+  const validarTipo = (valor, tipo) => {
+    if (tipo === 'boolean') {
+      return typeof valor === 'boolean';
+    } else if (tipo === 'modelo') {
+      // Tipo 'modelo': aceita objeto {modelo: string, esforco?: string} ou null
+      if (valor === null) return true;
+      return typeof valor === 'object' && valor !== null &&
+             typeof valor.modelo === 'string' &&
+             (valor.esforco === undefined || typeof valor.esforco === 'string');
+    }
+    return false;
+  };
+
   // Nome novo primeiro, aliases depois: dentro do MESMO arquivo, quem já migrou
-  // manda. Devolve `undefined` quando nenhum dos nomes traz booleano, para o
+  // manda. Devolve `undefined` quando nenhum dos nomes traz valor válido, para o
   // arquivo seguinte da cadeia ser consultado.
-  const buscar = (cfg, chave) => {
+  const buscar = (cfg, chave, tipo) => {
     if (!cfg) return undefined;
     for (const nome of [chave, ...(ALIASES[chave] || [])]) {
-      if (typeof cfg[nome] === 'boolean') return { valor: cfg[nome], nome };
+      if (validarTipo(cfg[nome], tipo)) return { valor: cfg[nome], nome };
     }
     return undefined;
   };
@@ -215,8 +273,9 @@ function resolverConfig(o = {}) {
   const valores = {};
   const origem = {};
   for (const [chave, def] of Object.entries(CHAVES)) {
-    const noProjeto = buscar(cfgProjeto, chave);
-    const noUsuario = buscar(cfgUsuario, chave);
+    const tipo = def.tipo || 'boolean';
+    const noProjeto = buscar(cfgProjeto, chave, tipo);
+    const noUsuario = buscar(cfgUsuario, chave, tipo);
     if (env.RAINFOREST_GATE_OFF && chave.startsWith('gate-')) {
       // A saída de emergência continua sendo a mais forte, e continua valendo para
       // os dois gates de uma vez. Ela existe para o incidente — quem a usa quer
