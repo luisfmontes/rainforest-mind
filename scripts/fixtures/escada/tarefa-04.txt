@@ -1,0 +1,3 @@
+Escreva uma função JavaScript que encontra o maior número em um array.
+Se o array estiver vazio, retorne null.
+Nomeie a função findMax.

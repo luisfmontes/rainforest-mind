@@ -131,30 +131,53 @@ independentes e sem ordem entre si vão juntas, numa mensagem só.
 
 ## A escada (parar no primeiro degrau que segura)
 
-1. Precisa existir? Necessidade especulativa = pular, dizer em 1 linha (YAGNI).
-2. Já existe neste codebase? Reusar helper/padrão existente.
-3. Stdlib resolve? Usar. Plataforma nativa resolve? Usar.
-4. Dependência já instalada resolve? Usar. Nunca adicionar nova pro que cabe em poucas linhas.
-5. Só então: o mínimo que funciona. Menor diff, sem abstração não pedida,
-   sem scaffolding "pra depois".
+<!-- escada-inicio -->
 
-**Ponto de variação só com dois casos reais.** Uma implementação é costura
-hipotética; duas é costura real. Não crie o ponto onde o comportamento
-"poderia" variar antes do segundo caso existir de fato.
+**Degrau 1.** Precisa existir? Necessidade especulativa = pular, dizer em 1 linha (YAGNI).
+
+**Degrau 2.** Já existe neste codebase? Reusar helper/padrão existente.
+
+**Degrau 3.** Stdlib resolve? Usar. Plataforma nativa resolve? Usar.
+
+**Degrau 4.** Dependência já instalada resolve? Usar. Nunca adicionar nova pro que cabe em poucas linhas.
+
+**Degrau 5.** Cabe em uma linha? Se couber, não é material de arquivo — `[código] → pulei: [X], entra quando [Y]`.
+
+**Degrau 6.** Só então: o mínimo que funciona. Menor diff, sem abstração não pedida, sem scaffolding "pra depois".
+
+**Degrau 7.** Ponto de variação só com dois casos reais. Uma implementação é costura hipotética; duas é costura real. Não crie o ponto onde o comportamento "poderia" variar antes do segundo caso existir de fato.
+
+<!-- escada-fim -->
+
+<!-- carve-outs-inicio -->
+
+**Onde a escada não desce.** Quatro coisas ficam inteiras enquanto todo o resto encolhe: validação de entrada em fronteira de confiança, tratamento de erro que evita perda de dados, segurança, e o que o usuário pediu explicitamente.
+
+**Bug = causa raiz, não sintoma.** Antes de editar, ver todos os callers; a correção mora onde todos passam, não no caminho que o ticket citou. Bug difícil (intermitente, sem repro óbvio, regressão de performance) tem protocolo próprio — ver a skill `depurar`.
+
+<!-- carve-outs-fim -->
 
 **Teste da deleção.** Na dúvida se uma camada paga aluguel: imagine apagá-la.
 A complexidade some junto? era passa-culpa. Reaparece espalhada em N
 chamadores? estava fazendo trabalho de verdade.
 
-**Onde a escada não desce.** Quatro coisas ficam inteiras enquanto todo o
-resto encolhe: validação de entrada em fronteira de confiança, tratamento de
-erro que evita perda de dados, segurança, e o que o usuário pediu
-explicitamente.
+## Marcador de atalho
 
-**Bug = causa raiz, não sintoma.** Antes de editar, ver todos os callers; a
-correção mora onde todos passam, não no caminho que o ticket citou. Bug
-difícil (intermitente, sem repro óbvio, regressão de performance) tem
-protocolo próprio — ver a skill `depurar`.
+Quando a escada diz **não agora**, marque com `atalho:` (ou `ponytail:`, para
+compatibilidade) seguido de:
+
+1. **Teto:** o limite que a simplificação aceita (quanto cresce antes de pesar).
+2. **Gatilho de volta:** qual circunstância obriga a revisitar e implementar de verdade.
+
+Formato: `atalho: <teto>, <gatilho de volta>`
+
+Exemplo: `atalho: duas linhas, se chamar múltiplas vezes`
+
+**A tag `sem-gatilho`** marca marcadores que não nomeiam condição de retorno — é
+isso que separa adiamento de descarte. O coletor `scripts/atalhos.cjs` varre o
+repo e lista todos os atalhos com essa tag destacada para auditoria. Adiamento
+sem volta é débito que apodrece em silêncio; registre a volta ou desista do
+atalho.
 
 ## Refactor de raio grande (expandir–contrair)
 

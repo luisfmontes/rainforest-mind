@@ -1,0 +1,98 @@
+{
+  "slug": "aclopar-ponytail",
+  "titulo": "aclopar-ponytail",
+  "criado_em": "2026-09-08",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "em": "2026-09-08"
+  },
+  "plano": {
+    "status": "ok",
+    "em": "2026-09-08"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-08",
+    "comando": "bash scripts/testa-medir-escada.sh; node scripts/conferir-mutacao.cjs --arquivo scripts/fixtures/escada/gates.cjs --de \"vm.runInNewContext(script, contexto, { timeout: TIMEOUT_MS });\" --para \"eval(script);\" --bateria \"bash scripts/testa-medir-escada.sh\"",
+    "saida": "bateria da escada 19/19 com o relogio configuravel. Catraca vm->eval: 14/19. Catraca relogio removido: 17/19. Catraca base64->interpolacao: 16/19. Catraca startsWith(glob)->false: 48/49. Catraca isencao do portao sem data: 48/49. Todas exit 0 (bateria VERMELHA, fonte restaurado). Suite completa: as 103 baterias passaram.",
+    "tarefas_ok": 9,
+    "tarefas": 9,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "carve-outs fora do texto injetado, e degrau 2 movido para depois de cabe-em-uma-linha"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "emNucleo cravado em true desliga a checagem de sobrevivencia ao extrairNucleo"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "captura do volta-quando desligada, todo marcador vira sem-gatilho"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "linha do criterio da trava wrapper-vs-reimplementacao apagada do SKILL.md"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "tres inversoes na fronteira de isolamento do gate: runInNewContext->eval (14/19), relogio do vm removido (17/19), passagem base64->interpolacao de template (16/19)"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "require do raiz.cjs trocado por return padrao, e comprimirEscada desligado"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "tarefa de atribuicao em documento; criterio e por grep, sem comportamento executavel a inverter"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "duas inversoes no checador de creep: startsWith(glob) -> false, e a isencao do portao perde o prefixo de data (48/49 nas duas)"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "relogio do vm removido com o timeout ja configuravel: 17/19, o laco volta a pendurar"
+      }
+    ],
+    "em": "2026-09-08"
+  },
+  "revisar": {
+    "status": "ok",
+    "comando": "bash prova-conserto.sh (replica o caminho de rodar_gate com os tres payloads) ; bash scripts/testa-medir-escada.sh",
+    "saida": "A) ${process.pid} chega LITERAL ao gate (gate recebeu a string crua, nao o pid). B) laco infinito morre por timeout em 5014 ms. C) require nao existe no contexto (require is not defined). Antes o mesmo probe devolvia pid 55536 e typeof require = function. Bateria 19/19. Os quatro achados nao-bloqueantes fechados: ramo morto de atalhos.cjs removido, medida documentada como caractere, comentario de RFM_ESTADO_ROOT corrigido, RFM_MEDIR_CLI_CMD virou marcador atalho: e aparece no ledger (2 marcadores, 0 sem gatilho).",
+    "em": "2026-09-08",
+    "snapshot": {
+      "head": "936b7091d4fcc49ecb25d84739f649e23b6388a3",
+      "caminhos_sujos": []
+    },
+    "achados": 0,
+    "base": "39b012c",
+    "head": "936b709"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "gh pr checks 224",
+    "saida": "baterias (node 22) pass 19m0s ; baterias (node 24) pass 18m21s — run 34265094983, os dois nodes verdes com o teto de 35 min. Antes, no mesmo PR: node 22 CANCELADO em 20m13s com as 103 baterias ja passadas. Localmente: as 103 baterias passaram sobre ec3d615, dois portoes CUMPRIDOS, 5 invariantes conferidas, 2 marcadores no ledger e 0 sem gatilho, trava de publicacao da main com 0 acusados em 39 arquivos.",
+    "em": "2026-09-08"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "pr",
+    "pr": 224,
+    "url": "https://github.com/luisfmontes/rainforest-mind/pull/224",
+    "em": "2026-09-08"
+  }
+}

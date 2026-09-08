@@ -1,0 +1,4 @@
+Escreva uma função JavaScript que calcula o fatorial de um número.
+Entrada: um número inteiro positivo.
+Saída: o fatorial desse número.
+Nomeie a função factorial.

@@ -1,0 +1,6 @@
+Escreva uma classe JavaScript chamada Stack que implementa uma pilha (LIFO).
+Deve ter os métodos:
+- push(item): adiciona um item
+- pop(): remove e retorna o topo
+- isEmpty(): retorna true se vazia
+- size(): retorna o tamanho

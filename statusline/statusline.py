@@ -313,18 +313,18 @@ def eh_worktree_de_agente(cwd):
 def resolver_raiz_dados(cwd):
     """Resolve a raiz de dados (FOCO.md, ideias.jsonl).
 
+    Segue a cadeia canônica de raiz.cjs:
     Ordem: RFM_ROOT > projeto/.rainforest > ~/.rainforest > plugin
-    Retorna None se nenhum for encontrado.
+
+    RFM_ROOT é declaração explícita e vence sem exigir marcadores.
+    Os demais níveis só são aceitos se tiverem FOCO.md ou ideias.jsonl.
     """
-    # 1. RFM_ROOT
+    # 1. RFM_ROOT - Declaração explícita, vence mesmo sem marcador
     rfm_root = os.environ.get("RFM_ROOT", "").strip()
     if rfm_root:
-        foco_path = os.path.join(rfm_root, "FOCO.md")
-        ideias_path = os.path.join(rfm_root, "ideias.jsonl")
-        if os.path.exists(foco_path) or os.path.exists(ideias_path):
-            return rfm_root
+        return rfm_root
 
-    # 2. Projeto: cwd/.rainforest
+    # 2. Projeto: cwd/.rainforest (com marcador)
     projeto_raiz = os.path.join(cwd, ".rainforest") if cwd else None
     if projeto_raiz:
         foco_path = os.path.join(projeto_raiz, "FOCO.md")
@@ -332,7 +332,7 @@ def resolver_raiz_dados(cwd):
         if os.path.exists(foco_path) or os.path.exists(ideias_path):
             return projeto_raiz
 
-    # 3. Global: ~/.rainforest
+    # 3. Global: ~/.rainforest (com marcador)
     home = os.path.expanduser("~")
     usuario_raiz = os.path.join(home, ".rainforest")
     foco_path = os.path.join(usuario_raiz, "FOCO.md")
@@ -340,7 +340,7 @@ def resolver_raiz_dados(cwd):
     if os.path.exists(foco_path) or os.path.exists(ideias_path):
         return usuario_raiz
 
-    # 4. Plugin (self/FOCO.md)
+    # 4. Plugin (self/FOCO.md) (com marcador)
     plugin_raiz = os.path.dirname(os.path.abspath(__file__))
     foco_path = os.path.join(plugin_raiz, "FOCO.md")
     ideias_path = os.path.join(plugin_raiz, "ideias.jsonl")
@@ -544,6 +544,39 @@ def segmento_versao(transcript_path):
     return ""
 
 
+
+
+def segmento_escada_intensidade():
+    """Mostra o nível ativo de intensidade da escada YAGNI.
+
+    Le config.json da pasta de dados e mostra o nível configurado.
+    Se nao estiver configurado, retorna string vazia (nao mostra nada).
+    """
+    raiz_dados = resolver_raiz_dados()
+    if not raiz_dados:
+        return ""
+
+    config_path = os.path.join(raiz_dados, "config.json")
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+    except Exception:
+        return ""
+
+    nivel = config.get("escada-intensidade")
+    if not isinstance(nivel, str):
+        return ""
+
+    # Valida o nível
+    niveis_validos = {"enxuto": "∑", "padrão": "7"}
+    if nivel not in niveis_validos:
+        return ""
+
+    # Mostra o nível com um simbolo representativo
+    simbolo = niveis_validos[nivel]
+    return c(f"escada:{simbolo}", CIANO)
+
+
 # ------------------------------------------------------------------ main ---
 def main():
     try:
@@ -574,6 +607,7 @@ def main():
         segmentos.append(" ".join(partes_limite))
 
     segmentos.append(segmento_tempo())
+    segmentos.append(segmento_escada_intensidade())
     segmentos.append(segmento_co_locada(cwd))
     segmentos.append(segmento_versao(transcript_path))
     segmentos.append(segmento_prazo())

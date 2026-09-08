@@ -1,0 +1,32 @@
+[
+  {
+    "regra": 10,
+    "frase": "3.000+ tokens",
+    "onde": ["skill", "nucleo"],
+    "descricao": "Definição numérica do limiar de despacho de agente"
+  },
+  {
+    "regra": 11,
+    "frase": "nunca a `main`",
+    "onde": ["skill", "nucleo"],
+    "descricao": "Restrição de branch de trabalho de subagente"
+  },
+  {
+    "regra": 12,
+    "frase": "exit ≠ 0 nunca é sucesso",
+    "onde": ["skill", "nucleo"],
+    "descricao": "Critério de aceitação de entrega (exit code)"
+  },
+  {
+    "regra": 13,
+    "frase": "pelo `ideias.cjs plantar`",
+    "onde": ["skill", "nucleo"],
+    "descricao": "Método de registro de observação de correção"
+  },
+  {
+    "regra": 15,
+    "frase": "printenv NOME",
+    "onde": ["skill", "referencia", "nucleo"],
+    "descricao": "Forma correta de ler variável de ambiente"
+  }
+]

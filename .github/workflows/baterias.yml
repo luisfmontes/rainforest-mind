@@ -64,7 +64,20 @@ permissions:
 jobs:
   baterias:
     runs-on: windows-latest
-    timeout-minutes: 20
+    # 35, e nao 20, porque 20 virou cara ou coroa. Medido em 2026-09-08 nos doze
+    # runs anteriores: os que passam chegam em 18-19 min, e CINCO morreram em
+    # 20-21 min com o placar "as N baterias passaram" JA IMPRESSO — verde, e
+    # cancelado no ultimo segundo (`fluxo/limpar-nao-sai-do-repo`,
+    # `fluxo/contrato-de-territorio-advpl`, `fluxo/agentes-em-codex`, e este). Um
+    # teto a 1 minuto do tempo real nao e guarda-corpo: e ruido que ensina a
+    # reapertar botao ate dar sorte, e o dia em que a bateria quebrar de verdade
+    # ninguem vai acreditar no vermelho.
+    #
+    # O teto continua existindo para pegar bateria PENDURADA (stdin aberto,
+    # espera de rede), que e o modo de falha que ele deve pegar — e para isso 35
+    # serve igual. Se o tempo real encostar em 30, o conserto e a suite ficar mais
+    # barata, nao este numero subir de novo.
+    timeout-minutes: 35
     # Node 22 E 24 (Issue #161): o testa-limpar-branches ficou verde no 22 e
     # vermelho no 24 (DEP0190 no stderr contaminando um JSON.parse) — o CI
     # pinado numa versao so era verde numa versao so. O repo e publico desde

@@ -72,6 +72,5 @@ for (const [id, x] of Object.entries(state)) {
   if (ult < corte) delete state[id];
 }
 
-// ponytail: escrita direta sem lock — última escrita vence, dano máximo é
-// perder um heartbeat, que o evento seguinte repõe.
+// atalho: escrita sem lock. volta quando: race causar inconsistência de estado.
 try { fs.writeFileSync(STATE, JSON.stringify(state)); } catch {}
