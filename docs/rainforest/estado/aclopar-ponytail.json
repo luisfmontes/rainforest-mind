@@ -73,7 +73,10 @@
     "head": "936b709"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash rodar-baterias.sh (espelha o loop do .github/workflows/baterias.yml) ; node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-08-aclopar-ponytail.md --reverificar ; node scripts/conferir-invariantes.cjs ; node scripts/atalhos.cjs",
+    "saida": "as 103 baterias passaram (exit 0), medido sobre a base final ec3d615. TODOS OS PORTOES CUMPRIDOS - 2 portoes (P0 4f12038f503b, P1 8a75e5d36582). ok: conferidas 5 invariantes. 2 marcadores, 0 sem gatilho. Trava de publicacao da main: 39 arquivos conferidos, 0 acusados.",
+    "em": "2026-09-08"
   },
   "fechar": {
     "status": "pendente"
