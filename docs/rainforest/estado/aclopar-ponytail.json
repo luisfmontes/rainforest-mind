@@ -17,9 +17,9 @@
     "status": "ok",
     "catraca_mutacao": "2026-09-08",
     "comando": "bash scripts/testa-medir-escada.sh; node scripts/conferir-mutacao.cjs --arquivo scripts/fixtures/escada/gates.cjs --de \"vm.runInNewContext(script, contexto, { timeout: TIMEOUT_MS });\" --para \"eval(script);\" --bateria \"bash scripts/testa-medir-escada.sh\"",
-    "saida": "bateria integra 19/19 (ok:19 falhou:0). Catraca vm->eval: 14/19, exit 0 (bateria VERMELHA, fonte restaurado). Catraca relogio removido: 17/19, exit 0. Catraca base64->interpolacao de template: 16/19, exit 0. Suite completa do repo: as 100 baterias passaram.",
-    "tarefas_ok": 7,
-    "tarefas": 7,
+    "saida": "bateria da escada 19/19 com o relogio configuravel. Catraca vm->eval: 14/19. Catraca relogio removido: 17/19. Catraca base64->interpolacao: 16/19. Catraca startsWith(glob)->false: 48/49. Catraca isencao do portao sem data: 48/49. Todas exit 0 (bateria VERMELHA, fonte restaurado). Suite completa: as 103 baterias passaram.",
+    "tarefas_ok": 9,
+    "tarefas": 9,
     "mutacao": [
       {
         "tarefa": 1,
@@ -55,6 +55,16 @@
         "tarefa": 7,
         "resultado": "n/a",
         "motivo": "tarefa de atribuicao em documento; criterio e por grep, sem comportamento executavel a inverter"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "duas inversoes no checador de creep: startsWith(glob) -> false, e a isencao do portao perde o prefixo de data (48/49 nas duas)"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "relogio do vm removido com o timeout ja configuravel: 17/19, o laco volta a pendurar"
       }
     ],
     "em": "2026-09-08"
