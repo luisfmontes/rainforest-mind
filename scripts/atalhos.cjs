@@ -74,7 +74,9 @@ for (const a of atalhos) {
   const voltaQuando = a.volta ? a.volta : 'sem-gatilho';
   if (!a.volta) semGatilho++;
 
-  console.log(`${a.file}:${a.line}, ${a.teto}. teto: ${a.teto}. volta quando: ${voltaQuando}.`);
+  // Remove ponto duplicado se voltaQuando já termina com ponto
+  const voltaComPonto = voltaQuando.endsWith('.') ? voltaQuando : `${voltaQuando}.`;
+  console.log(`${a.file}:${a.line}, ${a.teto}. volta quando: ${voltaComPonto}`);
 }
 
 // Fecha com contagem

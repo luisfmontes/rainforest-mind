@@ -13,44 +13,53 @@ mkdir -p "$TEST_ROOT/.git"
 mkdir -p "$TEST_ROOT/node_modules"
 mkdir -p "$TEST_ROOT/.claude/worktrees"
 
+# Variáveis para construir comentários dinamicamente (evita serem detectados no arquivo versionado)
+COMMENT_MARKER="atalho"
+
 # Caso 1: Marcador com teto e volta quando (deve contar normalmente)
 cat > "$TEST_ROOT/src/file1.js" << 'EOF'
 // Aqui vem algum código
-// atalho: até 10 linhas. volta quando: precisar de performance.
+// COMMENT_PLACEHOLDER: até 10 linhas. volta quando: precisar de performance.
 console.log('test');
 EOF
+sed -i "s|// COMMENT_PLACEHOLDER:|// $COMMENT_MARKER:|" "$TEST_ROOT/src/file1.js"
 
 # Caso 2: Marcador sem volta quando (deve marcar sem-gatilho)
 cat > "$TEST_ROOT/src/file2.js" << 'EOF'
 // Outro arquivo
-// atalho: simplificação temporária
+// COMMENT_PLACEHOLDER: simplificação temporária
 let x = 1;
 EOF
+sed -i "s|// COMMENT_PLACEHOLDER:|// $COMMENT_MARKER:|" "$TEST_ROOT/src/file2.js"
 
 # Caso 3: Múltiplos marcadores no mesmo arquivo
 cat > "$TEST_ROOT/src/file3.sh" << 'EOF'
 #!/bin/bash
-# atalho: sem logging. volta quando: precisar debug.
+# COMMENT_PLACEHOLDER: sem logging. volta quando: precisar debug.
 echo "test"
-# atalho: sem validação entrada
+# COMMENT_PLACEHOLDER: sem validação entrada
 var="value"
 EOF
+sed -i "s|# COMMENT_PLACEHOLDER:|# $COMMENT_MARKER:|g" "$TEST_ROOT/src/file3.sh"
 
 # Caso 4: Arquivo em .git deve ser ignorado
 cat > "$TEST_ROOT/.git/ignored.js" << 'EOF'
-// atalho: isto não deve aparecer
+// COMMENT_PLACEHOLDER: isto não deve aparecer
 EOF
+sed -i "s|// COMMENT_PLACEHOLDER:|// $COMMENT_MARKER:|" "$TEST_ROOT/.git/ignored.js"
 
 # Caso 5: Arquivo em node_modules deve ser ignorado
 mkdir -p "$TEST_ROOT/node_modules/pkg"
 cat > "$TEST_ROOT/node_modules/pkg/index.js" << 'EOF'
-// atalho: também ignorado
+// COMMENT_PLACEHOLDER: também ignorado
 EOF
+sed -i "s|// COMMENT_PLACEHOLDER:|// $COMMENT_MARKER:|" "$TEST_ROOT/node_modules/pkg/index.js"
 
 # Caso 6: Arquivo em .claude/worktrees deve ser ignorado
 cat > "$TEST_ROOT/.claude/worktrees/ignored.js" << 'EOF'
-// atalho: também ignorado
+// COMMENT_PLACEHOLDER: também ignorado
 EOF
+sed -i "s|// COMMENT_PLACEHOLDER:|// $COMMENT_MARKER:|" "$TEST_ROOT/.claude/worktrees/ignored.js"
 
 # Roda o coletor com override de ROOT
 export RFM_ROOT="$TEST_ROOT"
