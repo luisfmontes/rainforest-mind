@@ -140,6 +140,11 @@ const CHAVES = {
     padrao: false,
     descricao: 'Gemini participa do conselho como membro externo (exige `GEMINI_API_KEY` no ambiente)',
   },
+  'principal-livre': {
+    tipo: 'boolean',
+    padrao: false,
+    descricao: 'libera estado.cjs iniciar no checkout principal fora da branch padrão (clone dedicado a uma frente)',
+  },
   poda: {
     tipo: 'boolean',
     padrao: true,

@@ -841,6 +841,103 @@ function conferirFechamento(estagio, slug, extra, estado) {
   return recusas.length > 0 ? recusas.join('\n') : null;
 }
 
+// ------------------------------------------------- trava checkout principal
+//
+// Antes de gravar o estado pela primeira vez, verifique se está em um
+// repositório git no checkout principal (não é worktree linkado) fora da
+// branch padrão. Se sim e principal-livre não está ligado, recuse.
+//
+// Fora de repositório git ou em worktree linkado, nunca recusa.
+// A chave `principal-livre` desliga a recusa para clones dedicados a uma frente.
+
+/**
+ * Detecta checkout principal fora da branch padrão.
+ * @param {string} raiz - diretório do projeto
+ * @returns {object|null} {branch, padrao} se deve recusar, ou null se passou
+ */
+function checkoutPrincipalForaDaPadrao(raiz) {
+  // Toda exceção vira null (nunca derrubar estado.cjs por erro próprio)
+  try {
+    // Verificar se é repositório git
+    const gitDir = spawnSync('git', ['rev-parse', '--git-dir'], {
+      cwd: raiz,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+    if (gitDir.status !== 0) return null; // não é repositório git
+
+    // Detectar worktree linkado: comparar git-dir com git-common-dir (absoluto)
+    const gitCommonDir = spawnSync('git', ['rev-parse', '--git-common-dir'], {
+      cwd: raiz,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+    if (gitCommonDir.status !== 0) return null; // erro
+
+    let realGitDir, realCommonDir;
+    try {
+      realGitDir = fs.realpathSync(path.resolve(raiz, gitDir.stdout.trim()));
+      realCommonDir = fs.realpathSync(path.resolve(raiz, gitCommonDir.stdout.trim()));
+    } catch (_) {
+      return null; // erro ao resolver caminhos
+    }
+
+    // Se são diferentes, é worktree linkado
+    if (realGitDir !== realCommonDir) return null;
+
+    // Detectar branch padrão: symbolic-ref, ou main/master
+    let padrao = 'main';
+    const symRef = spawnSync('git', ['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'], {
+      cwd: raiz,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+    if (symRef.status === 0) {
+      // Remover prefixo origin/
+      padrao = symRef.stdout.trim().replace(/^origin\//, '');
+    } else {
+      // Fallback: main se existir, senão master
+      const mainTest = spawnSync('git', ['show-ref', '--verify', 'refs/heads/main'], {
+        cwd: raiz,
+        stdio: 'pipe',
+      });
+      if (mainTest.status !== 0) {
+        padrao = 'master';
+      }
+    }
+
+    // Obter branch atual
+    const branch = spawnSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
+      cwd: raiz,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+    if (branch.status !== 0) return null; // erro
+
+    const branchAtual = branch.stdout.trim();
+
+    // Se branch atual === padrão, não precisa recusar
+    if (branchAtual === padrao) return null;
+
+    // Verificar chave principal-livre: se ligado, permite
+    try {
+      const config = require(path.join(__dirname, '..', 'hooks', 'lib', 'config.cjs'));
+      const principal_livre = config.ligado('principal-livre', { projeto: raiz });
+      if (principal_livre) {
+        return null; // principal-livre ligado, permite
+      }
+    } catch (_) {
+      // Erro ao ler config — não bloqueia, mas a trava fica ativa por padrão
+      // (principal-livre padrão é false)
+    }
+
+    // Deve recusar: branch está diferente da padrão e principal-livre não está ligado
+    return { branch: branchAtual, padrao };
+  } catch (_) {
+    return null;
+  }
+}
+
 // ---------------------------------------------------------------- CLI
 
 function arg(nome, obrigatorio = true) {
@@ -956,6 +1053,16 @@ function main() {
       console.error(`erro: ${slug} ja existe — use 'ler' ou 'marcar'`);
       process.exit(1);
     }
+    // Verificar se checkout principal está fora da branch padrão
+    const checkout_problema = checkoutPrincipalForaDaPadrao(RAIZ);
+    if (checkout_problema) {
+      const { branch, padrao } = checkout_problema;
+      console.error(`RECUSADO: o checkout principal está em '${branch}', não em '${padrao}'.`);
+      console.error(`git worktree add .claude/worktrees/<slug> ${branch}`);
+      console.error(`git checkout ${padrao}`);
+      console.error(`Ou desligues a trava em .rainforest/config.json: "principal-livre": true`);
+      process.exit(2);
+    }
     const e = novo(slug, arg('titulo', false));
     gravar(slug, e);
     console.log(`iniciado: ${caminho(slug)}`);
@@ -986,6 +1093,13 @@ function main() {
   }
 
   if (cmd === 'exigir') {
+    // Avisar se checkout principal está fora da branch padrão (não recusa, só avisa)
+    const checkout_problema = checkoutPrincipalForaDaPadrao(RAIZ);
+    if (checkout_problema) {
+      const { branch, padrao } = checkout_problema;
+      console.error(`aviso: checkout principal em '${branch}', não em '${padrao}'.`);
+    }
+
     const estagio = arg('estagio');
     if (!(estagio in PRE_REQUISITOS)) {
       console.error(`erro: estagio desconhecido '${estagio}'`);
