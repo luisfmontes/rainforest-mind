@@ -241,10 +241,76 @@ const PADROES = [
   },
 ];
 
+/**
+ * Termos que não têm FORMA — nome de empregador, de cliente, de projeto interno,
+ * de fonte de trabalho. Nenhum regex os descobre; só uma lista os reconhece.
+ *
+ * POR QUE A LISTA NÃO MORA AQUI, e é a decisão inteira deste bloco: escrever os
+ * termos num arquivo versionado deste repositório **é** o vazamento que a trava
+ * existe para impedir. A lista mora em `~/.rainforest/termos-proibidos.txt`,
+ * fora da árvore, um termo por linha, `#` comenta. O repositório público carrega
+ * o MECANISMO; a máquina de quem tem os termos carrega os termos.
+ *
+ * Custo disso, dito de frente: em máquina sem o arquivo a trava não sabe nada
+ * sobre termo nenhum — e é por isso que a ausência sai na tela junto com o
+ * verde, no `CEGO`, em vez de passar calada. Verde silencioso sem a lista seria
+ * a mesma falha do relatório de 2026-08-10: o instrumento respondendo "não achei"
+ * quando na verdade não procurou.
+ *
+ * Nasceu em 2026-09-08, depois de uma varredura achar 30 arquivos rastreados
+ * carregando nome de empregador, de cliente e de projeto interno num repositório
+ * público desde 02/09.
+ */
+function carregarTermosPrivados() {
+  const base = process.env.HOME || process.env.USERPROFILE || '';
+  if (!base) return { caminho: null, termos: [] };
+  const caminho = `${base}/.rainforest/termos-proibidos.txt`;
+  let bruto;
+  try {
+    bruto = fs.readFileSync(caminho, 'utf8');
+  } catch {
+    return { caminho: null, termos: [] };
+  }
+  const termos = bruto
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l && !l.startsWith('#'));
+  return { caminho: termos.length ? caminho : null, termos };
+}
+
+const TERMOS_PRIVADOS = carregarTermosPrivados();
+
+if (TERMOS_PRIVADOS.termos.length) {
+  // Sem `\b`: termo com hífen, barra ou ponto (`acme-servicos`, `squad/plugins`)
+  // não tem fronteira de palavra nas pontas, e exigir uma deixaria passar
+  // justamente os compostos. Substring casa demais de vez em quando — falso
+  // positivo custa uma olhada, falso negativo custa o termo publicado.
+  //
+  // Os exemplos deste comentário são SINTÉTICOS de propósito, e a primeira
+  // versão não era: ela citava dois termos reais da lista, e a própria trava os
+  // pegou na varredura de estreia. Exemplo em comentário é texto publicado como
+  // qualquer outro — quem documenta a trava é a primeira pessoa a tropeçar nela.
+  const alternativa = TERMOS_PRIVADOS.termos
+    .map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .sort((a, b) => b.length - a.length) // o mais longo primeiro: `acme-servicos` antes de `acme`
+    .join('|');
+  PADROES.push({
+    id: 'termo-privado',
+    re: new RegExp(`(?:${alternativa})`, 'gi'),
+    // A mensagem NUNCA nomeia o termo que bateu — o achado sai por linha e por
+    // id, e o script inteiro já é assim (nenhum padrão ecoa o trecho casado).
+    // Nomear o termo aqui o imprimiria em log de CI, que é público.
+    o_que: 'termo da sua lista privada — nome de empregador, cliente, projeto ou fonte de trabalho',
+    faca: 'troque por um equivalente sintético e consistente; a lista está em ~/.rainforest/termos-proibidos.txt',
+  });
+}
+
 /** O que o script sabe que NÃO sabe. Sai junto com o verde, de propósito. */
 const CEGO = [
   'nome de pessoa — não há padrão para isso, e foi exatamente o que passou em 2026-08-10',
-  'nome de cliente, de sistema ou de projeto interno',
+  ...(TERMOS_PRIVADOS.termos.length
+    ? [`nome de cliente/projeto FORA da sua lista privada (${TERMOS_PRIVADOS.termos.length} termo(s) carregado(s))`]
+    : ['nome de cliente, de sistema ou de projeto interno — e a lista privada NAO foi carregada: crie ~/.rainforest/termos-proibidos.txt, um termo por linha']),
   'print, log ou stack trace colado com conteúdo de terceiro dentro',
 ];
 
@@ -331,4 +397,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { conferir, PADROES, CEGO };
+module.exports = { conferir, PADROES, CEGO, TERMOS_PRIVADOS, carregarTermosPrivados };
