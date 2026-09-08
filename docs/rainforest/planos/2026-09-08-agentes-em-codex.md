@@ -153,3 +153,14 @@ paralela: nao
 mutacao: n/a
   motivo: documentação; a falsificação é coerência textual com o código e com o design, não presença de string.
 pronto quando: `.claude-plugin/plugin.json` sobe MINOR (`1.7.0` → `1.8.0`) e o badge do `README.md` mostra o mesmo número — provado por `node scripts/conferir-versao.cjs` saindo 0 e `grep -o "vers%C3%A3o-[0-9.]*" README.md` batendo com `"version"`; a sintaxe `Runtime: <claude|codex>` descrita em `skills/modo-dev/SKILL.md` (bloco 1 do briefing) e em `skills/executar/SKILL.md` é a mesma que a regex de `hooks/portaria.cjs` reconhece — provado por extrair a regex do hook e casá-la contra o exemplo literal da skill; `regra-10-portaria.md` documenta o campo `runtime` e o override com os mesmos valores aceitos pelo código (`claude`, `codex`); `docs/pontes.md` distingue esta frente (Codex como runtime de subagente dentro do Claude) da frente do agente paralelo (Codex como host, D13) sem corrigir contagens pré-existentes (D12); `README.md` lista `/transferir` em "Do dia a dia" e registra que `review`, `adversarial-review` e `rescue` não ganharam comando porque já existem como função (D7)
+
+### 10. Emenda — arquivos que a execução e a revisão tocaram fora do plano original [tipo: docs]
+atende: D9 (Issue #73, catraca de bytes), D10, D11
+arquivos: `skills/rainforest-mind/references/regra-10-runtime.md`, `hooks/testa-ferramentas-nao-toca-abertura.sh`, `docs/rainforest/relatorios/2026-09-08-validacao-runtime-codex.md`
+depende de: 8, 9
+paralela: nao
+mutacao: n/a
+  motivo: reference novo, ajuste de contagem numa bateria existente e relatório de evidência; a falsificação é a catraca de bytes e a bateria de abertura rodando.
+pronto quando: `regra-10-portaria.md` (10247 B) fica sob a catraca de 10500 B com a emenda do `runtime` movida para `regra-10-runtime.md` (≤ 3000 B) — provado por `bash hooks/testa-contexto-sessao.sh` (seção 7.5); `hooks/testa-ferramentas-nao-toca-abertura.sh` espera 5 hooks no `SessionStart` (o `codex-transfer-session-start.cjs` da T6 não escreve no stdout) e passa; o relatório da T8 traz as quatro evidências (a)–(d) coladas, com caminhos pessoais abreviados (gate de publicação)
+
+Emenda registrada no `revisar` de 2026-09-08: os três arquivos nasceram da T6 (contagem de hooks), da T9 (catraca de bytes estourada pela emenda em `regra-10-portaria.md`) e da T8 (relatório), sem tarefa própria — a checagem de cobertura do `estado.cjs` os apontou ao fechar o estágio.
