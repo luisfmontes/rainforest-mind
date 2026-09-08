@@ -60,17 +60,17 @@
     "em": "2026-09-08"
   },
   "revisar": {
-    "status": "reprovado",
-    "comando": "bash prova-injecao.sh (reproduz o escaping de medir-escada.sh:59)",
-    "saida": "entrada ${1+1} -> node ve 2; ${process.pid} -> 55536; ${String(typeof require)} -> function. O sed escapa barra, crase e aspas, nunca $; o resultado entra em template literal, entao ${} avalia ANTES do eval do gate, com require acessivel.",
+    "status": "ok",
+    "comando": "bash prova-conserto.sh (replica o caminho de rodar_gate com os tres payloads) ; bash scripts/testa-medir-escada.sh",
+    "saida": "A) ${process.pid} chega LITERAL ao gate (gate recebeu a string crua, nao o pid). B) laco infinito morre por timeout em 5014 ms. C) require nao existe no contexto (require is not defined). Antes o mesmo probe devolvia pid 55536 e typeof require = function. Bateria 19/19. Os quatro achados nao-bloqueantes fechados: ramo morto de atalhos.cjs removido, medida documentada como caractere, comentario de RFM_ESTADO_ROOT corrigido, RFM_MEDIR_CLI_CMD virou marcador atalho: e aparece no ledger (2 marcadores, 0 sem gatilho).",
     "em": "2026-09-08",
-    "tentativas": 1,
     "snapshot": {
-      "head": "e4ea923adb4975472068157d961e8a06627264fd",
-      "caminhos_sujos": [
-        "docs/rainforest/estado/aclopar-ponytail.json"
-      ]
-    }
+      "head": "936b7091d4fcc49ecb25d84739f649e23b6388a3",
+      "caminhos_sujos": []
+    },
+    "achados": 0,
+    "base": "39b012c",
+    "head": "936b709"
   },
   "verificar": {
     "status": "pendente"
