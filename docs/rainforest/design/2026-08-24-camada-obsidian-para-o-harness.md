@@ -92,7 +92,7 @@ sobreposição gerou confusão real durante este próprio brainstorm.
   Nomear evita reinventá-lo a cada ferramenta.
 
 - **D11 — A metade "fonte e documentação padrão TOTVS" não se constrói: consome-se o MCP
-  hospedado da `tbc-servicos`.** — porquê: a fronteira entre os dois é limpa por origem do
+  hospedado da `fornecedor-de-mcp`.** — porquê: a fronteira entre os dois é limpa por origem do
   dado — o MCP deles indexa produto padrão, documentação e material anonimizado, e nunca
   toca fonte de cliente; o extrator próprio cobre o customizado. Além disso não há acesso
   de escrita naquela organização e a squad já consome aquilo. Risco aceito e nomeado: é
@@ -129,7 +129,7 @@ sobreposição gerou confusão real durante este próprio brainstorm.
 
 ## Avaliado e descartado
 
-- **Adotar o kit da `tbc-servicos` como referência de método.** Medição do dono: em sessões
+- **Adotar o kit da `fornecedor-de-mcp` como referência de método.** Medição do dono: em sessões
   reais no repositório `inovacao`, o trabalho rendeu melhor com o `rainforest-mind` do que
   com o plugin deles. O kit continua sendo o incumbente que a squad usa — conviver com ele
   é restrição, copiá-lo não é caminho.
@@ -158,7 +158,7 @@ sobreposição gerou confusão real durante este próprio brainstorm.
   o dono o construiu para a sessão de IA, não para humano. O entregável do plano de 09/08
   era "vault Obsidian que qualquer dev lê sem instalar nada", e esse leitor não existe.
   O formato de saída daquela frente precisa ser reescolhido a partir de quem de fato lê. Tem plano próprio de 298 linhas, medido, em
-  `tbcagro/claude-plugins`, e parou no passo 4 (workflow de CI) porque o repositório não
+  `squad/claude-plugins`, e parou no passo 4 (workflow de CI) porque o repositório não
   tem `.github/workflows/`. Não se reescreve aqui.
 - **Construir a metade padrão TOTVS.** Ver D11.
 - **Migrar conteúdo do acervo.** Ver D2 — nenhum arquivo muda de lugar.
@@ -182,5 +182,5 @@ Documentadas no relatório de fechamento `relatorios/2026-09-05-camada-obsidian-
 - **D2 — O acervo `segundo-cerebro` continua repositório separado.** Decisão pura, sem artefato pendente. Nenhum arquivo muda de lugar.
 - **D3 — O problema é roteamento.** Atendido pela tabela de rota que já existe na skill pessoal `segundo-cerebro`, fora deste repositório.
 - **D4 — A rota por regra, dentro de `references/regra-NN.md`.** Deliberadamente fora deste repositório, porque esses arquivos são distribuídos a terceiros. A rota inversa (skill pessoal → regra) já existe na skill pessoal e não é distribuída.
-- **D11 — A metade "padrão TOTVS".** Fora de escopo pelo design — o MCP da `tbc-servicos` a cobre, e o acoplamento não é este design.
+- **D11 — A metade "padrão TOTVS".** Fora de escopo pelo design — o MCP da `fornecedor-de-mcp` a cobre, e o acoplamento não é este design.
 - **D12 — A arqueologia consome grafo.** Bloqueado até a frente 2 (grafo AdvPL) existir. O grafo de wiki não vale como entrada de confiança.

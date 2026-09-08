@@ -289,7 +289,7 @@ mesmo repositório que o fluxo tinha na mão:
 ```
 A tese central — "o valor financeiro do contrato é a soma das NFs vinculadas por
 D1_CTROG" — não tem nenhum respaldo no repositório. Varri as ocorrências
-(IAG67M12:2625, :6483; IAG67R12:677, :801) e nenhuma delas soma SD1 por contrato
+(ZXX01M99:2625, :6483; ZXX01R99:677, :801) e nenhuma delas soma SD1 por contrato
 para compor posição de contrato: todas filtram também por D1_DOC/D1_SERIE.
 A sustentação é só a aritmética do chamado, que fecha igualmente bem nas duas
 leituras e portanto não discrimina nada.

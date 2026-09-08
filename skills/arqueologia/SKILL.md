@@ -109,8 +109,8 @@ As três classes, com o corte exato:
 Os cortes não são arbitrados. Medidos sobre os 628 fontes de um repositório
 Protheus real em 2026-08-22: a repetição tem mediana de 9%, p90 de 36% e p99 de
 82%, e as duas famílias se separam sozinhas — os `UPD*` ficam acima de 92%
-(`updiag.prw`: 27.992 linhas, 18 funções, 96,7%) e a lógica fica perto de 32%
-(`IAG67M12.prw`: 13.692 linhas, 219 funções, 32,3%). Sobram 14 arquivos entre
+(`zupd01.prw`: 27.992 linhas, 18 funções, 96,7%) e a lógica fica perto de 32%
+(`ZXX01M99.prw`: 13.692 linhas, 219 funções, 32,3%). Sobram 14 arquivos entre
 40% e 60% que não caem limpo em nenhum lado — e é por eles que `indefinido`
 existe. Forçar um deles para `dado-como-codigo` faria alguém ler por amostragem
 um arquivo que é lógica, e o erro só apareceria no fim do mapa.
@@ -124,13 +124,13 @@ vezes ou mais no arquivo.
 Arquivo grande se corta por **função ancora**. A âncora escreve-se `.prw#<funcao>` — ou `.tlpp#<funcao>` conforme a extensão:
 
 ```
-IAG67M12.prw#A67ValidSaldo
+ZXX01M99.prw#Z99ValidSaldo
 ```
 
 A faixa de linhas pode ser anotada como referência conferível (ex.: "linhas 1021-1089
 na versão de 2026-08-22"), mas **nunca como identidade da fatia**. Razão: a faixa
 apodrece no primeiro `#include` que entra no topo. Nome de função sobrevive, e está
-sujeito ao mecanismo de conferência: se a função foi renomeada (antiga `A67ValidSaldo`,
+sujeito ao mecanismo de conferência: se a função foi renomeada (antiga `Z99ValidSaldo`,
 nova `ValidarSaldoAgricola`), a segunda passagem da tabela de conferência marca
 "a referência mudou, o comportamento não" — nenhum achado, apenas nota.
 
@@ -139,8 +139,8 @@ nova `ValidarSaldoAgricola`), a segunda passagem da tabela de conferência marca
 Um **bloco** (unidade de gravação) não passa de **40.000 caracteres**. A função
 ancora só define onde cortar; o tamanho real vai variar por arquivo.
 
-Medido em verdade: `IAG67M12.prw` com 219 funções rende **14 blocos** de
-~40KB cada. No mesmo teto, `danfeii.prw` com 321 funções rende **4 blocos**
+Medido em verdade: `ZXX01M99.prw` com 219 funções rende **14 blocos** de
+~40KB cada. No mesmo teto, `zdanfe01.prw` com 321 funções rende **4 blocos**
 — a função varia 4x de tamanho entre arquivos, então contar função não funciona.
 Em bytes, os dois ficam despacháveis e comparáveis.
 
@@ -155,8 +155,8 @@ A pasta é permanente. O `COBERTURA.md` passa a indexar pasta além de arquivo:
 
 | Fatia | Arquivo | Blocos | Profundidade | Data | Nota |
 |---|---|---|---|---|---|
-| `iadm-2505-nfe` | `nfesefaz.prw` | 14 | mecanismo + regra | 2026-08-22 | 36 duplicatas marcadas por hash |
-| `iadm-2505-nfe` | `danfeii.prw` | 4 | mecanismo | 2026-08-22 | irmaos de `nfesefaz` (hash idêntico) |
+| `fatia-fiscal-01` | `zfiscal01.prw` | 14 | mecanismo + regra | 2026-08-22 | 36 duplicatas marcadas por hash |
+| `fatia-fiscal-01` | `zdanfe01.prw` | 4 | mecanismo | 2026-08-22 | irmaos de `zfiscal01` (hash idêntico) |
 
 Fragmento sem pasta volta ao documento único. Fragmento em pasta, no consolidado
 ou na reconferência, se refere por pasta — não por arquivo individual.
@@ -177,7 +177,7 @@ Exemplo de entrada:
 
 **Período fiscal fechado barra operação** — lê `GetSX8Recesso()` no topo, confere
 se a data está na faixa bloqueada. `INFERIDO`, porque a regra vem do padrão de
-entrada da função, não de comentário no código (CONFIRMADO: `nfesefaz.prw#MontaNFe`,
+entrada da função, não de comentário no código (CONFIRMADO: `zfiscal01.prw#MontaNFe`,
 linhas 156-159).
 ```
 

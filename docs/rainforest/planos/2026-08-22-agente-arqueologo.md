@@ -6,7 +6,7 @@ Design: docs/rainforest/design/2026-08-22-agente-arqueologo.md
 
 - A skill `arqueologia` continua **não gerando código e não modificando fonte nenhum**: escreve em `docs/rainforest/mapas/` e mais nada (`SKILL.md:26-27`).
 - `arqueologia` continua **fora do gate**: `estado.cjs` nunca a barra e ela nunca barra ninguém (`scripts/estado.cjs:93`), e ela segue fora da lista de "proximo estagio".
-- Nenhum arquivo de `C:\Microsiga\protheus-totvs-agro\inovacao` é lido com escrita, copiado para dentro do repo, ou alterado. A prova roda sobre cópia em diretório temporário.
+- Nenhum arquivo de `C:\Microsiga\erp-trabalho\inovacao` é lido com escrita, copiado para dentro do repo, ou alterado. A prova roda sobre cópia em diretório temporário.
 - O bloco entre `<!-- perfil-de-trabalho:inicio -->` e `:fim` continua **gerado por `scripts/perfil.cjs`**, nunca escrito à mão, e aparece exatamente uma vez por agente.
 - Frontmatter de agente continua com exatamente três chaves: `name`, `description`, `model`.
 - As baterias que já existem continuam verdes — em especial `scripts/testa-perfil.sh` e `scripts/testa-conferir-fluxo.sh`.
@@ -23,7 +23,7 @@ mutacao:
   de: o corte de repetição `0.6` acima do qual a classe é dado-como-codigo
   para: `0.99`
   bateria: `bash scripts/testa-triagem.sh`
-pronto quando: com cópias de `templates/Expordics/updiag.prw` (27.992 linhas, 18 funções, 96,7% de repetição) e `templates/OG/Fechamento_Financeiro/M - Miscelanea/IAG67M12.prw` (13.692 linhas, 219 funções, 32,3%) num diretório temporário, o script classifica o primeiro como `dado-como-codigo` e o segundo como `logica`, e devolve a contagem de funções por regex ancorada de declaração (não por ocorrência da palavra `function`) — provado por `node scripts/triagem.cjs <copia> --json` devolvendo `"classe":"dado-como-codigo","nfunc":18` e `"classe":"logica","nfunc":219`. O script **não** emite estratégia de leitura (D4): a chave `estrategia` não existe na saída.
+pronto quando: com cópias de `templates/AreaA/zupd01.prw` (27.992 linhas, 18 funções, 96,7% de repetição) e `templates/MOD/Submodulo/M - Miscelanea/ZXX01M99.prw` (13.692 linhas, 219 funções, 32,3%) num diretório temporário, o script classifica o primeiro como `dado-como-codigo` e o segundo como `logica`, e devolve a contagem de funções por regex ancorada de declaração (não por ocorrência da palavra `function`) — provado por `node scripts/triagem.cjs <copia> --json` devolvendo `"classe":"dado-como-codigo","nfunc":18` e `"classe":"logica","nfunc":219`. O script **não** emite estratégia de leitura (D4): a chave `estrategia` não existe na saída.
 
 ### 2. Bateria da triagem [tipo: teste]
 atende: D3, D9, D11
@@ -35,7 +35,7 @@ mutacao:
   de: a faixa cinzenta `>= 0.4 && < 0.6` que devolve `indefinido`
   para: faixa vazia (`>= 0.4 && < 0.4`)
   bateria: `bash scripts/testa-triagem.sh`
-pronto quando: com um fonte na faixa cinzenta (`templates/EST/Laudos de Lotes/V - Validacao/IAG04V02.tlpp`, 52,5% de repetição, 30 linhas/função) o script devolve `"classe":"indefinido"`, e com dois caminhos distintos de conteúdo idêntico (`receituario/BASE/.../nfesefaz.prw` e `receituario/COTRIEL/.../nfesefaz.prw`, 13.650 linhas cada) devolve o mesmo `hash` e marca o segundo como duplicata — provado por validação por mutação: trocando o corte de repetição de `0.6` para `0.99` em `triagem.cjs`, `bash scripts/testa-triagem.sh` sai diferente de 0; restaurado, sai 0.
+pronto quando: com um fonte na faixa cinzenta (`templates/EST/Laudos de Lotes/V - Validacao/ZXX02V01.tlpp`, 52,5% de repetição, 30 linhas/função) o script devolve `"classe":"indefinido"`, e com dois caminhos distintos de conteúdo idêntico (`receituario/BASE/.../zfiscal01.prw` e `receituario/CLIENTE_B/.../zfiscal01.prw`, 13.650 linhas cada) devolve o mesmo `hash` e marca o segundo como duplicata — provado por validação por mutação: trocando o corte de repetição de `0.6` para `0.99` em `triagem.cjs`, `bash scripts/testa-triagem.sh` sai diferente de 0; restaurado, sai 0.
 
 ### 3. Método na skill: passadas, triagem, fatia intra-arquivo e fragmento [tipo: docs]
 atende: D2, D5, D6, D7, D8, D10
@@ -68,7 +68,7 @@ mutacao:
   de: a conferência de que o `arquivo:linha` citado existe e não está vazio
   para: conferência trocada por `true`
   bateria: `bash scripts/testa-arqueologo-ponta-a-ponta.sh` com um mapa de fixture que cita uma linha inexistente
-pronto quando: com cópia de `IAG67M12.prw` num diretório temporário e a fatia de um bloco, a rodada produz `docs/rainforest/mapas/<fatia>/<bloco>.md` contendo ao menos uma afirmação `CONFIRMADO` cujo `arquivo:linha` **existe no fonte** — provado por script que relê a linha citada na cópia e confirma que ela não está vazia; e o bloco produzido não passa de 40.000 caracteres, medido por `wc -c`. Nenhum arquivo fora do diretório temporário e de `docs/rainforest/mapas/` é criado ou alterado, verificado por `git status --short` limpo fora desses caminhos.
+pronto quando: com cópia de `ZXX01M99.prw` num diretório temporário e a fatia de um bloco, a rodada produz `docs/rainforest/mapas/<fatia>/<bloco>.md` contendo ao menos uma afirmação `CONFIRMADO` cujo `arquivo:linha` **existe no fonte** — provado por script que relê a linha citada na cópia e confirma que ela não está vazia; e o bloco produzido não passa de 40.000 caracteres, medido por `wc -c`. Nenhum arquivo fora do diretório temporário e de `docs/rainforest/mapas/` é criado ou alterado, verificado por `git status --short` limpo fora desses caminhos.
 
 ## Emenda de 2026-08-23 — achados da revisão
 
@@ -81,12 +81,12 @@ do agente. A bateria daquela mutação passa a ser a da tarefa 7. Emendar é o
 
 ### 6. Rodada real do arqueologo contra fonte legado [tipo: teste]
 atende: D5, D7, D10
-arquivos: `docs/rainforest/mapas/COBERTURA.md`, `docs/rainforest/mapas/IAG67M12/*.md`
+arquivos: `docs/rainforest/mapas/COBERTURA.md`, `docs/rainforest/mapas/ZXX01M99/*.md`
 depende de: 1, 3, 4, 5
 paralela: nao
 mutacao: n/a
   motivo: é execução de prova, não código com ramo a inverter — o instrumento que a julga é o validador da tarefa 5, cuja mutação já está declarada lá.
-pronto quando: com cópia de `templates/OG/Fechamento_Financeiro/M - Miscelanea/IAG67M12.prw` num diretório temporário, um despacho real do agente `arqueologo` sobre **um** bloco produz `docs/rainforest/mapas/<fatia>/<bloco>.md`, e `scripts/testa-arqueologo-ponta-a-ponta.sh` rodado **sobre esse mapa real** (não sobre fixture) sai 0 — provado colando o caminho do mapa, o `wc -c` do bloco abaixo de 40.000, e ao menos um `CONFIRMADO` cuja linha citada, relida na cópia, não está vazia.
+pronto quando: com cópia de `templates/MOD/Submodulo/M - Miscelanea/ZXX01M99.prw` num diretório temporário, um despacho real do agente `arqueologo` sobre **um** bloco produz `docs/rainforest/mapas/<fatia>/<bloco>.md`, e `scripts/testa-arqueologo-ponta-a-ponta.sh` rodado **sobre esse mapa real** (não sobre fixture) sai 0 — provado colando o caminho do mapa, o `wc -c` do bloco abaixo de 40.000, e ao menos um `CONFIRMADO` cuja linha citada, relida na cópia, não está vazia.
 
 ### 7. Gate que reprova agente duplicando a skill [tipo: teste]
 atende: D1, D2

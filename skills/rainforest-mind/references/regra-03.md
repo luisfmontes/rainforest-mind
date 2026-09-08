@@ -51,7 +51,7 @@ na mesma diretiva — não é julgamento seu. Leia a lista de sessões inteira (
 abertura): um resumo como "+N janela(s) em outra(s) pasta(s)" não é prova de
 que não há sessão do foco entre elas, é convite para abrir a lista antes de
 cobrar. O casamento é por raiz de pasta/worktree, não por igualdade de string
-— o foco é nome ("Template ABAPA"), a sessão é caminho
+— o foco é nome ("Template ALFA"), a sessão é caminho
 (`...\worktrees\gestao-projetos-template`). "Ativa" inclui a janela
 **esperando o usuário** dentro da ociosidade máxima do foco, não só a que está
 processando neste instante. Havendo sessão assim, a frase de desvio não sai.

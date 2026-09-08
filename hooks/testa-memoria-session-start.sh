@@ -529,10 +529,10 @@ fi
 # 11.b — caminho Windows com : e / misto
 TESTE_CHAVE_B="$(SCRIPT_PATH="$SCRIPT_MEMORIA" node -e "
 const m = require(process.env.SCRIPT_PATH);
-process.stdout.write(m.chaveHarness('C:/Microsiga/protheus-totvs-agro/inovacao'));
+process.stdout.write(m.chaveHarness('C:/Microsiga/erp-trabalho/inovacao'));
 ")"
-if [ "$TESTE_CHAVE_B" = "C--Microsiga-protheus-totvs-agro-inovacao" ]; then
-  ok=$((ok+1)); echo "  ok    chaveHarness transforma C:/Microsiga/protheus-totvs-agro/inovacao"
+if [ "$TESTE_CHAVE_B" = "C--Microsiga-erp-trabalho-inovacao" ]; then
+  ok=$((ok+1)); echo "  ok    chaveHarness transforma C:/Microsiga/erp-trabalho/inovacao"
 else
   falhou=$((falhou+1)); echo "  FALHA chaveHarness deu '$TESTE_CHAVE_B'"
 fi

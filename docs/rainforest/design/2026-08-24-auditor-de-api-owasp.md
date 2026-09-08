@@ -89,9 +89,9 @@ A tese central do vídeo é o requisito de projeto mais importante daqui:
   `revisor`, `tester` e `depurador`. Achado de segurança falso-positivo custa
   mais caro que o token economizado com `haiku`.
 
-- **D10 — O alvo de validação é o `tbc-licensing`, em leitura** — porquê: é API,
+- **D10 — O alvo de validação é o `licenciamento`, em leitura** — porquê: é API,
   é do usuário, e a regra 12 exige validar na saída real. "O agente ficou
-  pronto" não é entrega; "o agente rodou no `tbc-licensing` e devolveu achados
+  pronto" não é entrega; "o agente rodou no `licenciamento` e devolveu achados
   com `arquivo:linha` conferíveis" é.
 
 - **D11 — O `strix` fica fora desta entrega, registrado como fase 2** — porquê:

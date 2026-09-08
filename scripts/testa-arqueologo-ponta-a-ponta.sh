@@ -27,7 +27,7 @@ cd "$(dirname "$0")/.." || exit 1
 # ---------------------------------------------------------------------------
 
 # escapar_regex NOME — escapa o ponto (unico metacaractere que aparece em
-# nomes de fonte reais tipo "IAG67M12.prw" ou "nfesefaz.prw") para uso dentro
+# nomes de fonte reais tipo "ZXX01M99.prw" ou "zfiscal01.prw") para uso dentro
 # de um -E do grep. Nao cobre todo metacaractere possivel — documentado como
 # limite conhecido, nao lacuna escondida.
 escapar_regex() {

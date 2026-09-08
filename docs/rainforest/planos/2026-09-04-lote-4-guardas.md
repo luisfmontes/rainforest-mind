@@ -137,7 +137,7 @@ mutacao:
   de: `-ge 100`
   para: `-ge 100000`
   bateria: `bash scripts/testa-triagem.sh`
-  fixture: `scripts/testa-triagem.sh, secao 9 (assercao de fonte grande do IAG67M12.prw)`
+  fixture: `scripts/testa-triagem.sh, secao 9 (assercao de fonte grande do ZXX01M99.prw)`
 pronto quando: nesta máquina, onde a pasta `inovacao` existe e o fonte de
 referência mudou de 219 para 223 funções, `bash scripts/testa-triagem.sh` sai
 `0` — hoje sai `1` com "esperava '219', veio '223'" — e a seção continua

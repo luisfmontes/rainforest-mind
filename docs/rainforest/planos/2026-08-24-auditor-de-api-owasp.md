@@ -7,7 +7,7 @@ Design: docs/rainforest/design/2026-08-24-auditor-de-api-owasp.md
 - O orçamento agregado continua **abaixo de 14000 B** (`node scripts/orcamento.cjs` com exit 0). A folga medida antes deste trabalho era 579 B.
 - Os 8 agentes existentes continuam com o bloco `perfil-de-trabalho` em sincronia com `referencias/perfil-de-trabalho.md` (`node scripts/perfil.cjs --conferir` com exit 0).
 - O estágio `fechar` continua fechando: `scripts/estado.cjs marcar --estagio fechar` continua aceitando os mesmos valores de `acao` que a skill nomeia.
-- Nenhum arquivo do `tbc-licensing` é escrito. A validação daquele repositório é **leitura**.
+- Nenhum arquivo do `licenciamento` é escrito. A validação daquele repositório é **leitura**.
 - Nenhuma requisição de rede sai contra endpoint de terceiro.
 
 ## Tarefas
@@ -23,7 +23,7 @@ mutacao:
   para: o mesmo cabeçalho renomeado para `### API7 — (removida)`, mantendo o corpo
   bateria: `bash scripts/testa-auditor-de-api.sh`
   fixture: `testa-auditor-de-api.sh, o caso "as dez categorias estao presentes e numeradas de API1 a API10"`
-pronto quando: com um repositório real que exponha rota por identificador (o `tbc-licensing`), um despacho do agente devolve relatório contendo **uma seção por categoria de API1 a API10**, cada achado com `arquivo:linha` que abre no editor e rótulo `CONFIRMADO`/`INFERIDO`/`LACUNA` — provado pelo despacho da tarefa 5, cujo relatório é anexado ao PR
+pronto quando: com um repositório real que exponha rota por identificador (o `licenciamento`), um despacho do agente devolve relatório contendo **uma seção por categoria de API1 a API10**, cada achado com `arquivo:linha` que abre no editor e rótulo `CONFIRMADO`/`INFERIDO`/`LACUNA` — provado pelo despacho da tarefa 5, cujo relatório é anexado ao PR
 
 ### 2. Escrever a bateria do agente [tipo: teste]
 atende: D2, D4, D6, D9
@@ -60,14 +60,14 @@ mutacao:
   fixture: `orcamento.cjs, a assercao de teto agregado de 14000 B (a que decide o exit 1)`
 pronto quando: com a sessão real abrindo e o hook injetando o contexto, o total agregado permanece abaixo de 14000 B e o novo agente carrega o bloco `perfil-de-trabalho` idêntico ao de `referencias/perfil-de-trabalho.md` — provado por `node scripts/orcamento.cjs` devolvendo exit 0 com a folga impressa, e por `node scripts/perfil.cjs --conferir` devolvendo exit 0
 
-### 5. Rodar o agente no tbc-licensing e anexar o relatório [tipo: teste]
+### 5. Rodar o agente no licenciamento e anexar o relatório [tipo: teste]
 atende: D10
 arquivos: `docs/rainforest/estado/2026-08-24-auditor-de-api-owasp.json`
 depende de: 1, 2
 paralela: nao
 mutacao: n/a
-  motivo: é despacho de validação contra repositório de trabalho de terceiro, em leitura; não há linha deste repositório a inverter, e inverter linha do `tbc-licensing` é proibido pelo invariante de leitura
-pronto quando: com o `tbc-licensing` no estado em que está hoje, o agente devolve relatório com as dez seções e **pelo menos um achado de API1 (BOLA) ou a declaração explícita de que toda rota por identificador cruza o dono com a identidade do token, citando o `arquivo:linha` da conferência** — e cada `arquivo:linha` citado é reaberto e confere com o que o relatório afirma
+  motivo: é despacho de validação contra repositório de trabalho de terceiro, em leitura; não há linha deste repositório a inverter, e inverter linha do `licenciamento` é proibido pelo invariante de leitura
+pronto quando: com o `licenciamento` no estado em que está hoje, o agente devolve relatório com as dez seções e **pelo menos um achado de API1 (BOLA) ou a declaração explícita de que toda rota por identificador cruza o dono com a identidade do token, citando o `arquivo:linha` da conferência** — e cada `arquivo:linha` citado é reaberto e confere com o que o relatório afirma
 
 ### 6. Plantar o que ficou fora do escopo [tipo: docs]
 atende: D11

@@ -172,7 +172,7 @@ function notaDeProjeto(prosa, slug, mapa) {
 /**
  * Registra ou atualiza um slug. Devolve o que foi gravado e os AVISOS — hoje um
  * so, e ele nasceu de um erro meu: em 2026-08-12 registrei `protheus-aiba` com
- * caminho `...\protheus-totvs-agro\AIBA` deduzido do NOME que aparecia na prosa,
+ * caminho `...\erp-trabalho\AIBA` deduzido do NOME que aparecia na prosa,
  * e a pasta nao existia. Caminho que nao existe nunca casa com a pasta de uma
  * sessao, entao o `semear` simplesmente nao traria nada — falha silenciosa. Aviso e
  * nao recusa: registrar projeto de outra maquina e caso legitimo.

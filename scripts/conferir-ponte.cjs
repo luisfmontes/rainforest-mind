@@ -7,7 +7,7 @@
  * POR QUE EXISTE, com data. `scripts/ponte.cjs` gera `CLAUDE.md`, `AGENTS.md` ou
  * `GEMINI.md` a partir de `skills/rainforest-mind/SKILL.md` como fonte única. O
  * desenho está certo — mas arquivo derivado sem catraca não permanece derivado. Em
- * 2026-08-23, em `C:\Microsiga\protheus-totvs-agro`, a mesma classe de falha já
+ * 2026-08-23, em `C:\Microsiga\erp-trabalho`, a mesma classe de falha já
  * aconteceu: `CLAUDE.md`, `AGENTS.md` e `GEMINI.md` coexistiam, com 9 linhas
  * divergentes. O que existia só em `CLAUDE.md` era a regra de encoding CP-1252 —
  * que acento em comentário morre irrecuperável num round-trip para UTF-8, e que

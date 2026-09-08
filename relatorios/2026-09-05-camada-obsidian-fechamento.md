@@ -90,7 +90,7 @@ A entrega deliberadamente **não constrói** as seguintes decisões do design e 
 
 ---
 
-### D11 — A metade "fonte e documentação padrão TOTVS" não se constrói: consome-se o MCP hospedado da `tbc-servicos`
+### D11 — A metade "fonte e documentação padrão TOTVS" não se constrói: consome-se o MCP hospedado da `fornecedor-de-mcp`
 
 **Tipo:** Fora de escopo pelo design.
 

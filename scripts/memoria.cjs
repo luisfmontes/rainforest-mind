@@ -66,7 +66,7 @@ function encontrarGit(inicio = process.cwd()) {
 // Deriva a chave de projeto que o harness do Claude Code usa para armazenar projetos.
 // Formato harness: paths com \ / e : são trocados por -.
 // Ex: C:\Projetos\rainforest-mind → C--Projetos-rainforest-mind
-//     C:\Microsiga\protheus-totvs-agro\inovacao → C--Microsiga-protheus-totvs-agro-inovacao
+//     C:\Microsiga\erp-trabalho\inovacao → C--Microsiga-erp-trabalho-inovacao
 // Função pura, sem I/O.
 function chaveHarness(diretorio) {
   if (!diretorio) return '';

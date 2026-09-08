@@ -103,7 +103,7 @@ O que ela impede, na prática:
 
 1. **Não é OSI.** *"Any noncommercial purpose is a permitted purpose"*, e *Your company*
    abrange "any legal entity … that you work for" — instalar na máquina de trabalho
-   Protheus/TBC Agro **não é propósito permitido**.
+   Protheus/ERP de trabalho **não é propósito permitido**.
 2. *"These terms do not allow you to sublicense or transfer any of your licenses"* —
    nenhuma linha entra neste repo, que é MIT. Peça se **reimplementa a partir da ideia**,
    como se decidiu para o AGPL do OpenViking em 24/08.

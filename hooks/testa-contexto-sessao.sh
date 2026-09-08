@@ -1108,8 +1108,8 @@ const agora = 1786e9;   // 1,786 x 10^12 ms (ver comentario acima)
 const state = {
   agent_simples: { cwd: 'C:/Projetos/rainforest-mind/.claude/worktrees/agent-a1b2c3', pid: process.pid, prompt_ts: agora - 1000 },
   agent_subpasta: { cwd: 'C:/Projetos/rainforest-mind/.claude/worktrees/agent-a1b2c3/templates/FIN', pid: process.pid, prompt_ts: agora - 1000 },
-  usuario_simples: { cwd: 'C:/Microsiga/protheus-totvs-agro/inovacao/.claude/worktrees/gestao-projetos-template', pid: process.pid, prompt_ts: agora - 1000 },
-  usuario_subpasta: { cwd: 'C:/Microsiga/protheus-totvs-agro/inovacao/.claude/worktrees/gestao-projetos-template/templates/FIN/Gestao_Projetos', pid: process.pid, prompt_ts: agora - 1000 },
+  usuario_simples: { cwd: 'C:/Microsiga/erp-trabalho/inovacao/.claude/worktrees/gestao-projetos-template', pid: process.pid, prompt_ts: agora - 1000 },
+  usuario_subpasta: { cwd: 'C:/Microsiga/erp-trabalho/inovacao/.claude/worktrees/gestao-projetos-template/templates/FIN/Gestao_Projetos', pid: process.pid, prompt_ts: agora - 1000 },
   parecido: { cwd: 'C:/Projetos/rainforest-mind/.claude/worktrees/agente-do-cliente', pid: process.pid, prompt_ts: agora - 1000 },
 };
 const vivas = lib.sessoesVivas(state, agora, 6 * 3600 * 1000).map(([id]) => id);
@@ -1366,12 +1366,12 @@ checa "pastasDoFoco: campo so com espacos devolve []" tem "[]" \
 # CONTINUACAO indentada, e o regex antigo (`^Pastas:[ \t]*(.*)$` numa unica
 # linha) devolvia 1 de 2 em silencio — a isencao 1 nunca disparava para quem
 # trabalhava o foco na segunda pasta. Forma exata da issue:
-#   Pastas: C:/Microsiga/protheus-totvs-agro/inovacao/.claude/worktrees/gestao-projetos-template
-#           C:/Microsiga/protheus-totvs-agro/tbc-licensing
+#   Pastas: C:/Microsiga/erp-trabalho/inovacao/.claude/worktrees/gestao-projetos-template
+#           C:/Microsiga/erp-trabalho/licenciamento
 checa "pastasDoFoco: continuacao indentada devolve as DUAS pastas" tem \
-  '["C:/Microsiga/protheus-totvs-agro/inovacao/.claude/worktrees/gestao-projetos-template","C:/Microsiga/protheus-totvs-agro/tbc-licensing"]' \
-  "$(pastas 'Pastas: C:/Microsiga/protheus-totvs-agro/inovacao/.claude/worktrees/gestao-projetos-template
-        C:/Microsiga/protheus-totvs-agro/tbc-licensing
+  '["C:/Microsiga/erp-trabalho/inovacao/.claude/worktrees/gestao-projetos-template","C:/Microsiga/erp-trabalho/licenciamento"]' \
+  "$(pastas 'Pastas: C:/Microsiga/erp-trabalho/inovacao/.claude/worktrees/gestao-projetos-template
+        C:/Microsiga/erp-trabalho/licenciamento
 
 ## Ativo
 ')"
@@ -1396,12 +1396,12 @@ checa "pastasDoFoco: guarda de linha em branco nao atravessa (forma do comentari
 echo "17.2 MUTACAO — desligar a leitura de continuacao tem que voltar a perder a 2a pasta"
 cp "$LIB" "$RAIZ_POSIX/lib-mut-pastas.cjs"
 sed -i 's#if (/\^\[ \\t\]+\\S/.test(linhas\[i\])) partes.push(linhas\[i\]);#if (/^NUNCA-CASA-Issue63$/.test(linhas[i])) partes.push(linhas[i]);#' "$RAIZ_POSIX/lib-mut-pastas.cjs"
-S_MUT_PASTAS="$(pastas 'Pastas: C:/Microsiga/protheus-totvs-agro/inovacao/.claude/worktrees/gestao-projetos-template
-        C:/Microsiga/protheus-totvs-agro/tbc-licensing
+S_MUT_PASTAS="$(pastas 'Pastas: C:/Microsiga/erp-trabalho/inovacao/.claude/worktrees/gestao-projetos-template
+        C:/Microsiga/erp-trabalho/licenciamento
 
 ## Ativo
 ' "$RAIZ_POSIX/lib-mut-pastas.cjs")"
-if echo "$S_MUT_PASTAS" | grep -qF "tbc-licensing"; then
+if echo "$S_MUT_PASTAS" | grep -qF "licenciamento"; then
   falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — a leitura de continuacao nao e o que traz a 2a pasta (saida: $S_MUT_PASTAS)"
 else
   ok=$((ok+1)); echo "  ok    mutacao expos a leitura de continuacao (sem ela a 2a pasta some em silencio, saida: $S_MUT_PASTAS)"
@@ -1818,7 +1818,7 @@ echo "19. IDENTIDADE DO FOCO NAO E DESCARTADA INTEIRA (Issue #63)"
 # era exatamente ele que caia fora, e os ponteiros de rank 4 (bem mais
 # baratos) entravam no lugar. NAO e estouro de orcamento: e composicao.
 #
-# ARMADILHA DA ISSUE: "Template ABAPA" ja aparece HOJE dentro do ponteiro
+# ARMADILHA DA ISSUE: "Template ALFA" ja aparece HOJE dentro do ponteiro
 # "(Fora desta injeção por espaço: ...)" — um grep pela string do bloco que
 # saiu passa com o defeito intacto. A prova certa e uma string que so existe
 # DENTRO do bloco de identidade (aqui, a data do prazo) aparecendo como
@@ -2332,9 +2332,9 @@ FOCO_COM_PASTAS='# Foco
 
 ## Ativo
 
-**Template ABAPA — V1 funcionando** `[trabalho]` — declarado 2026-08-06.
-Pastas: C:/Microsiga/protheus-totvs-agro/inovacao
-        C:/Microsiga/protheus-totvs-agro/tbc-licensing
+**Template ALFA — V1 funcionando** `[trabalho]` — declarado 2026-08-06.
+Pastas: C:/Microsiga/erp-trabalho/inovacao
+        C:/Microsiga/erp-trabalho/licenciamento
 Ociosidade máxima: 15 min.
 '
 
@@ -2346,12 +2346,12 @@ FOCO_SEM_PASTAS='# Foco
 '
 
 S="$(legenda "$FOCO_COM_PASTAS" '[]' 'C:\Projetos\rainforest-mind')"
-checa "legenda nomeia o foco ativo"          tem     "Template ABAPA"            "$S"
+checa "legenda nomeia o foco ativo"          tem     "Template ALFA"            "$S"
 checa "legenda traz a natureza do foco"      tem     "[trabalho]"                "$S"
 checa "janela fora das pastas se declara"    tem     "esta janela está fora dele" "$S"
 checa "legenda NAO repete as regras"         nao_tem "Responder tudo, na ordem"  "$S"
 
-S="$(legenda "$FOCO_COM_PASTAS" '[]' 'C:\Microsiga\protheus-totvs-agro\inovacao\worktrees\x')"
+S="$(legenda "$FOCO_COM_PASTAS" '[]' 'C:\Microsiga\erp-trabalho\inovacao\worktrees\x')"
 checa "subpasta do foco conta como dentro"   tem     "esta janela está NO foco"  "$S"
 
 S="$(legenda "$FOCO_SEM_PASTAS" '[]' 'C:\Projetos\rainforest-mind')"

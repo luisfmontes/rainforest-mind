@@ -50,7 +50,7 @@
       {
         "tarefa": 5,
         "resultado": "n/a",
-        "motivo": "despacho de validacao contra repo de terceiro em leitura; nao ha linha deste repo a inverter, e inverter linha do tbc-licensing e proibido pelo invariante"
+        "motivo": "despacho de validacao contra repo de terceiro em leitura; nao ha linha deste repo a inverter, e inverter linha do licenciamento e proibido pelo invariante"
       },
       {
         "tarefa": 6,
@@ -78,8 +78,8 @@
   },
   "verificar": {
     "status": "ok",
-    "comando": "bash scripts/testa-auditor-de-api.sh; bash scripts/testa-fechar-destino.sh; node scripts/orcamento.cjs; node scripts/perfil.cjs --conferir; despacho real do agente contra C:/Microsiga/protheus-totvs-agro/tbc-licensing",
-    "saida": "27 ok/0 falhou exit 0; 34 ok/0 falhou exit 0; Total 13627 de 14000 exit 0; ok os 9 agentes carregam o bloco; relatorio com as 10 secoes API1-API10 e 6 achados com arquivo:linha. Criterio da tarefa 5 exigia reabrir cada citacao: 5 das 6 conferem exatas (actionResult.ts:3-10 devolve e.message cru; withAdmin.ts loga e devolve generico; blockEstablishmentAction recebe clientId e so revalidateClient o usa; AdminUser sem clientId no schema; next.config.js sem CSP). A 6a divergiu no NUMERO: relatorio disse ci.yml:26, o npm audit --omit=dev --audit-level=high esta na linha 38 -- conteudo identico, linha errada. Registrado como imprecisao do relatorio, nao do achado. Arvore do tbc-licensing intocada (git status vazio).",
+    "comando": "bash scripts/testa-auditor-de-api.sh; bash scripts/testa-fechar-destino.sh; node scripts/orcamento.cjs; node scripts/perfil.cjs --conferir; despacho real do agente contra C:/Microsiga/erp-trabalho/licenciamento",
+    "saida": "27 ok/0 falhou exit 0; 34 ok/0 falhou exit 0; Total 13627 de 14000 exit 0; ok os 9 agentes carregam o bloco; relatorio com as 10 secoes API1-API10 e 6 achados com arquivo:linha. Criterio da tarefa 5 exigia reabrir cada citacao: 5 das 6 conferem exatas (actionResult.ts:3-10 devolve e.message cru; withAdmin.ts loga e devolve generico; blockEstablishmentAction recebe clientId e so revalidateClient o usa; AdminUser sem clientId no schema; next.config.js sem CSP). A 6a divergiu no NUMERO: relatorio disse ci.yml:26, o npm audit --omit=dev --audit-level=high esta na linha 38 -- conteudo identico, linha errada. Registrado como imprecisao do relatorio, nao do achado. Arvore do licenciamento intocada (git status vazio).",
     "em": "2026-08-24"
   },
   "fechar": {

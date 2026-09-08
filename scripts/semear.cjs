@@ -86,7 +86,7 @@ function raizDados() {
  * livre, guardava caminho do Windows dentro de string JSON e a barra + `r` comeu
  * o caminho de 4 registros). O vocabulário mora no `projetos.json` da pasta de
  * dados, e é ele que traduz PASTA em slug: um projeto cujo diretório não se chama
- * como o slug (`...\protheus-totvs-agro\inovacao` → `protheus-inovacao`) só se
+ * como o slug (`...\erp-trabalho\inovacao` → `protheus-inovacao`) só se
  * resolve por esse mapa.
  *
  * A comparação difusa continua existindo, e só como REDE: registro que ainda não

@@ -27,7 +27,7 @@ Três defeitos independentes, e qualquer um sozinho impede memória por projeto:
   importadas. A coluna `project` **existe na origem** e o `SELECT` da linha 53
   nem a lê. São **10.071 observações em 26 projetos distintos** (3.120
   `rainforest-mind`, 2.033 `claude-plugins`, 1.434 `inovacao`, 815
-  `repositorio`, 749 `tbc-licensing`, 742
+  `repositorio`, 749 `licenciamento`, 742
   `inovacao/gestao-projetos-template`).
 - `hooks/memoria-session-start.cjs:30` injeta as 5 mais recentes **de todos os
   projetos**, sem `WHERE projeto`.

@@ -10,7 +10,7 @@ sai da cabeça dele para um lugar confiável, criando raiz até a estação
 certa — e precisa carregar contexto suficiente pra ser entendida meses
 depois, em outra sessão, sem esta conversa. **Toda ideia plantada leva um
 gancho de retorno concreto** — que evento, data ou condição a traz de volta
-("quando o Template ABAPA fechar", "na próxima vez que mexer no vault").
+("quando o Template ALFA fechar", "na próxima vez que mexer no vault").
 Sem gancho, "depois" é futuro distante e futuro distante não regula
 comportamento presente (Barkley, cegueira do tempo): a ideia vira sedimento
 em vez de semente. Gancho não óbvio → perguntar em uma linha, junto do

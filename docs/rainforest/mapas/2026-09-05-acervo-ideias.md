@@ -33,7 +33,7 @@ medida agora:
 | protheus-clientes | 2 |
 | whatsapp-message-standards | 2 |
 | segundo-cerebro | 1 |
-| tbc-licensing | 1 |
+| licenciamento | 1 |
 
 Total 224, bate com o total de abertas. O panorama do briefing estava **defasado
 ou incompleto** nessa quebra específica (a soma nem fechava 224) — sinalizo
@@ -190,7 +190,7 @@ antigas", sem recorte de projeto. Ordenadas por `plantada_em`. Cada sugestão
 | `revisao-dos-nomes-de-comando-antes-da-traducao` | rainforest-mind | 2026-08-09 | (Parte já resolvida — ver tabela 1.) Para o resto: quando a tradução para inglês começar, fechar os nomes de comando ainda em aberto antes de traduzir os que já têm nome fechado. |
 | `recomendei-plantar-o-que-ele-queria-consertado` | rainforest-mind | 2026-08-10 | Próxima vez que eu oferecer "planto ou ataco agora" para uma dependência quebrada — o próprio menu se repetindo é o gatilho de checar se a lição pegou. |
 | `design-so-no-chat-antes-do-worktree` | rainforest-mind | 2026-08-10 | Na próxima revisão da regra 12 ou da skill `modo-dev`, decidir a regra explícita sobre gravar design/plano em arquivo antes de criar worktree. |
-| `orcamento-de-fontes-no-plano` | rainforest-mind | 2026-08-10 | Na próxima revisão da skill `plano`, ler a seção "Fechar a lista de fontes" do plugin `protheus` da TBC e decidir onde o teto mora. |
+| `orcamento-de-fontes-no-plano` | rainforest-mind | 2026-08-10 | Na próxima revisão da skill `plano`, ler a seção "Fechar a lista de fontes" do plugin de dominio do outro time e decidir onde o teto mora. |
 | `arquivo-de-regressao-por-fatia` | rainforest-mind | 2026-08-10 | Na próxima revisão da skill `arqueologia` (que já existe aqui — o texto original da ideia presumia que não existia), decidir se a medição de alcance entra como passo do `modo-dev`. |
 | `publico-recomendado-como-privado` | rainforest-mind | 2026-08-11 | Próxima vez que eu for recomendar escopo de audiência (público/privado) para qualquer ferramenta — perguntar o fato antes de recomendar é o próprio teste. |
 | `pedido-de-fluxo-lido-como-pedido-de-dominio` | rainforest-mind | 2026-08-11 | Próxima vez que o Luís pedir análise de plugin/repo de terceiro sem dizer DOMÍNIO ou FORMA — essa é a ocorrência que testa se a lição pegou. |
