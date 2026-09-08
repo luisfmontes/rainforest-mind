@@ -63,7 +63,10 @@ nesta ordem:
    despacho põe essa linha. Quem a lê é o preâmbulo `<!-- ponte-codex -->` do
    próprio `agents/<nome>.md`, que então faz uma chamada só a
    `scripts/despachar-codex.cjs` e devolve a saída literal; a portaria só
-   registra o valor no log.
+   registra o valor no log. Uma linha opcional `Despacho: <caminho>` no
+   mesmo bloco aponta o script quando ele não está nem em
+   `$CLAUDE_PLUGIN_ROOT` nem na raiz do worktree (branch ainda não
+   integrada).
 2. **Objetivos** — numerados e concretos, um por linha.
 3. **Restrições** — o que olhar e, explicitamente, o que ignorar. E uma pergunta
    **obrigatória**, respondida antes de despachar: *este trabalho precisa tocar

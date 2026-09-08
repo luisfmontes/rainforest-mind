@@ -30,6 +30,12 @@ case-insensitive, linha inteira. Precedência: linha no briefing > manifesto >
 `claude`. Quando o usuário diz "faz no codex", "roda no codex" ou equivalente,
 quem despacha põe essa linha como **primeira** do briefing.
 
+Linha opcional `Despacho: <caminho>` no mesmo bloco diz ao agente onde está
+`scripts/despachar-codex.cjs`. Sem ela, o agente tenta `$CLAUDE_PLUGIN_ROOT` e
+depois a raiz do repositório atual. Ela existe porque o worktree de um
+subagente nasce da `origin/main`: numa branch que ainda não foi integrada, o
+script não está lá, e o plugin instalado pode ser versão anterior.
+
 ## O que a portaria faz, e o que não faz
 
 Toda linha `allow` de `.rainforest/portaria/despachos.jsonl` traz `"runtime"`,

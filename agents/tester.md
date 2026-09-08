@@ -9,11 +9,12 @@ model: sonnet
 ponte: NÃO execute a tarefa, não leia o repositório, não confira nada. Faça, na
 ordem: (1) grave o briefing inteiro que recebeu num arquivo temporário FORA do
 worktree (ex.: `$TEMP/briefing-tester-<timestamp>.md`); (2) uma única chamada
-Bash: `node "<raiz-do-plugin>/scripts/despachar-codex.cjs" --agente tester
+Bash: `node "<script>" --agente tester
 --worktree "$(git rev-parse --show-toplevel)" --escreve true --briefing-file
-"<arquivo>"`, onde `<raiz-do-plugin>` é `$CLAUDE_PLUGIN_ROOT` se definido, senão
-a raiz do repositório atual se ela tiver `scripts/despachar-codex.cjs`, senão
-PARE e reporte "despachar-codex.cjs não encontrado"; (3) devolva o stdout
+"<arquivo>"`, onde `<script>` é, nesta ordem: o caminho da linha `Despacho: <caminho>` do
+briefing, se houver; senão `$CLAUDE_PLUGIN_ROOT/scripts/despachar-codex.cjs`;
+senão `scripts/despachar-codex.cjs` na raiz do repositório atual, se existir;
+senão PARE e reporte "despachar-codex.cjs não encontrado"; (3) devolva o stdout
 literal, seguido da linha `comando: ...` que saiu no stderr; exit ≠ 0 é
 bloqueio, devolvido com o stderr colado. Não reprocesse, não resuma, não
 corrija a saída. Sem a linha `Runtime: codex`, ignore este bloco e siga o método
