@@ -601,7 +601,8 @@ fi
 # que `tetoFoco = ORCAMENTO - fixo` e cada byte de nucleo sai do FOCO.md do
 # usuario.
 # 2026-09-02: 5597 -> 5595 — a regra 12 ganhou "exit ≠ 0 nunca é sucesso" (fluxo 7, T6) e cedeu 2 B no proprio texto.
-NUCLEO_ESPERADO=5595
+# 2026-09-08: 5595 -> 5593 — a regra 11 ganhou "checkout principal fica na branch padrão; todo trabalho nasce em worktree" (Issue #195) e pagou por subtracao no proprio texto: 388 -> 386 B.
+NUCLEO_ESPERADO=5593
 if [ "$NUCLEO_BYTES_REAL" = "$NUCLEO_ESPERADO" ]; then
   ok=$((ok+1)); echo "  ok    D7: nucleo emitido mede exatamente $NUCLEO_BYTES_REAL B (contrato: $NUCLEO_ESPERADO B)"
 else
