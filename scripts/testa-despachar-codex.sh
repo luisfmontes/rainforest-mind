@@ -392,6 +392,35 @@ else
 fi
 
 echo ""
+# Ate a rodada 2 do revisar (2026-09-08) nenhum caso rodava SEM --saida: o
+# caminho do -o temporario (criar em tmpdir, ler, apagar) nunca disparava em
+# teste. O dublê em modo parecer grava no -o real que o script montou; o caso
+# confere que o stdout e o conteudo do -o e que o arquivo nao fica em tmpdir.
+# O ramo "unlink falha mas o texto lido sobrevive" continua coberto so por
+# leitura: nao ha jeito portavel de prender um arquivo em bash.
+echo "== CASO 10: sem --saida → -o temporário lido, devolvido e apagado ==="
+CMD_OUT_10="$RAIZ/cmd-10.txt"
+CMD_OUT_10_M="$(cygpath -m "$CMD_OUT_10" 2>/dev/null || printf '%s' "$CMD_OUT_10")"
+rm -f "$CMD_OUT_10"
+saida_10=$(DUBLE_MODO=parecer DUBLE_PARECER="TEXTO DO -O TEMPORARIO" DUBLE_CMD_OUT="$CMD_OUT_10_M" \
+  RFM_TEST=1 CODEX_CMD="node $DUBLE_M" \
+  node "$PLUGIN/scripts/despachar-codex.cjs" \
+  --agente revisor \
+  --worktree "$WTE" \
+  --escreve false \
+  --briefing-file "$BRIEFING" 2>/dev/null)
+exit_10=$?
+O_TMP="$(sed -n 's/.* -o "\([^"]*\)".*/\1/p' "$CMD_OUT_10" 2>/dev/null | head -1)"
+O_TMP_U="$(cygpath -u "$O_TMP" 2>/dev/null || printf '%s' "$O_TMP")"
+if [ "$exit_10" = "0" ] && [ "$saida_10" = "TEXTO DO -O TEMPORARIO" ] && [ -n "$O_TMP" ] && [ ! -e "$O_TMP_U" ]; then
+  ok=$((ok + 1))
+  echo "  ok   caso 10: stdout veio do -o temporário e o arquivo foi apagado"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA caso 10: exit $exit_10, stdout '$saida_10', -o '$O_TMP' existe: $([ -e "$O_TMP_U" ] && echo sim || echo nao)"
+fi
+
+echo ""
 echo "== RESULTADO =="
 echo "resultado: $ok ok, $falhou falha(s)"
 if [ "$falhou" -gt 0 ]; then

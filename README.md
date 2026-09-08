@@ -158,13 +158,15 @@ mesmo assim**.
 Fora da tabela porque o mecanismo é outro (`Stop`, exit 0 com
 `{"decision":"block"}`, e **opt-in** pela chave `gate-review-codex`):
 `gate-review-codex.cjs` barra encerrar o turno sem o `revisor` em Codex dizer
-`ALLOW` sobre a última resposta; Codex indisponível ou resposta irreconhecível
-bloqueia com motivo (falha fechada). Transcript que o hook não consegue ler
-libera com aviso, porque aí não há pergunta a fazer.
+`ALLOW` sobre a última resposta; Codex indisponível, resposta irreconhecível
+ou transcript que o hook não consegue ler bloqueiam com motivo (falha
+fechada). Só a chave desligada e o `stop_hook_active` do turno seguinte
+liberam sem perguntar.
 
 Valem em **qualquer** repo git da máquina, porque o hábito é que é o problema,
-não o repositório. Cada uma tem bateria própria — **440 casos** rodando o hook
-de verdade contra repos git montados na hora.
+não o repositório. Cada uma tem bateria própria — **540 casos** rodando o hook
+de verdade contra repos git montados na hora (soma medida em 2026-09-08:
+198 + 99 + 21 + 27 + 117 + 78).
 
 → O incidente de origem de cada trava, as saídas de emergência e a tabela de
 scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
