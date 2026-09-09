@@ -20,8 +20,8 @@
     "catraca_mutacao": "2026-09-08",
     "tarefas_ok": 4,
     "tarefas": 4,
-    "comando": "bash scripts/testa-statusline.sh; bash scripts/testa-estado-principal.sh; bash scripts/testa-estado.sh; bash hooks/testa-contexto-sessao.sh; node scripts/conferir-invariantes.cjs",
-    "saida": "as 4 baterias da statusline passaram (19 casos de limites) | 23 ok, 0 falhou | 172 ok, 0 falhas | ok: 277 falhou: 0 (nucleo 5598 B) | ok: conferidas 5 invariantes",
+    "comando": "bash scripts/testa-statusline.sh; bash scripts/testa-estado-principal.sh; bash scripts/testa-estado.sh; bash hooks/testa-config.sh",
+    "saida": "as 4 baterias da statusline passaram (38 casos de limites, 19 adversos) | 23 ok, 0 falhou | 172 ok, 0 falhas | 45 ok, 0 falha(s)",
     "mutacao": [
       {
         "tarefa": 1,
@@ -46,30 +46,37 @@
     ],
     "integracao": "T2 via executor em worktree isolado (d3bf7f3, conferir-entrega APROVADO), cherry-pick 43e40b7 + correcao 09f9a6a",
     "em": "2026-09-08",
-    "rodada": 2,
+    "rodada": 3,
     "correcoes_da_revisao": [
       "isfinite em resets_at e used_percentage",
       "trava avalia process.cwd()",
       "nucleo cita principal-livre"
+    ],
+    "correcoes_da_revisao_2": [
+      "main() blindado por segmento",
+      "principal-livre lida sem ligado()"
     ]
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "dfba916c29b1795551bcd1833d4d7958b6686666",
+      "head": "f935d10a7b36503981a4a64b1c2ac08cd1a35da7",
       "caminhos_sujos": []
     },
-    "achados": 3,
-    "rodada": 1,
+    "achados": 2,
+    "rodada": 2,
     "bloqueantes": [
-      "statusline.py tempo_ate: resets_at NaN/Infinity passa o isinstance e int() estoura, barra vazia",
-      "estado.cjs: checkoutPrincipalForaDaPadrao(RAIZ) avalia CLAUDE_PROJECT_DIR (principal) e nao o cwd real da sessao em worktree — falso positivo reproduzido"
+      "statusline.py main(): model/context_window/workspace null ou nao-dict, JSON de topo nao-dict e cwd nao-string derrubam a barra (exit 1, stdout vazio) — D1 promete que a barra nunca trava"
     ],
     "importantes": [
       "SKILL.md (nucleo) nao cita a chave principal-livre; criterio T3 pedia os tres arquivos"
     ],
     "em": "2026-09-08",
-    "tentativas": 1
+    "tentativas": 2,
+    "em_voo": [],
+    "menores": [
+      "config.cjs: comentario de branch-forcar diz ser a UNICA chave invertida; principal-livre tem a mesma semantica"
+    ]
   },
   "verificar": {
     "status": "pendente"
