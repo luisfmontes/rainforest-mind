@@ -1058,9 +1058,9 @@ function main() {
     if (checkout_problema) {
       const { branch, padrao } = checkout_problema;
       console.error(`RECUSADO: o checkout principal está em '${branch}', não em '${padrao}'.`);
-      console.error(`git worktree add .claude/worktrees/<slug> ${branch}`);
+      console.error(`git worktree add .claude/worktrees/${slug} ${branch}`);
       console.error(`git checkout ${padrao}`);
-      console.error(`Ou desligues a trava em .rainforest/config.json: "principal-livre": true`);
+      console.error(`Clone dedicado a uma frente? Desligue a trava em .rainforest/config.json: "principal-livre": true`);
       process.exit(2);
     }
     const e = novo(slug, arg('titulo', false));
