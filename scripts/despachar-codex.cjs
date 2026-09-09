@@ -34,6 +34,20 @@ const { resolverConfig } = require('../hooks/lib/config.cjs');
  * @param {string} conteudo
  * @returns {{frontmatter: string|null, corpo: string}}
  */
+// Porta ÚNICA para os valores interpolados no comando de shell (D2, Issue
+// #223): --worktree, --saida, modelo e esforço de config passam todos por aqui.
+// A negação da chamada abaixo é o trecho que o plano inverte na catraca de
+// mutação, e ele existe uma vez só — cinco `if` copiados fariam o `--de` casar
+// cinco vezes e a catraca recusar por ambiguidade (exit 4), e uma mutação num
+// deles deixaria os outros quatro de pé, verde por motivo errado.
+function recusaValorInseguro(nome, valor) {
+  if (!valorSeguroParaShell(valor)) {
+    console.error(`valor invalido: ${nome}`);
+    return true;
+  }
+  return false;
+}
+
 function extrairFrontmatter(conteudo) {
   const match = conteudo.match(/^---\n([\s\S]*?)\n---/);
   if (!match) {
@@ -136,14 +150,8 @@ function validarArgs(opts) {
   }
 
   // Valida segurança dos valores interpolados ANTES de qualquer outro teste
-  if (!valorSeguroParaShell(opts.worktree)) {
-    console.error('valor invalido: --worktree');
-    return false;
-  }
-  if (opts.saida && !valorSeguroParaShell(opts.saida)) {
-    console.error('valor invalido: --saida');
-    return false;
-  }
+  if (recusaValorInseguro('--worktree', opts.worktree)) return false;
+  if (opts.saida && recusaValorInseguro('--saida', opts.saida)) return false;
 
   if (!fs.existsSync(opts.worktree)) {
     console.error(`erro: worktree não existe: ${opts.worktree}`);
@@ -270,10 +278,7 @@ Opcionais:
     temporarioPendente = saidaArquivo;
 
     // Valida o arquivo temporário gerado
-    if (!valorSeguroParaShell(saidaArquivo)) {
-      console.error('valor invalido: --saida');
-      process.exit(1);
-    }
+    if (recusaValorInseguro('--saida', saidaArquivo)) process.exit(1);
   }
   // Ler e apagar são falhas independentes: um `unlink` que falha (arquivo
   // preso por antivírus/indexador) não pode jogar fora o texto já lido — foi o
@@ -305,14 +310,8 @@ Opcionais:
       esforcoResolvido = modeloConfig.esforco || null;
 
       // Valida modelo e esforço da config
-      if (!valorSeguroParaShell(modeloResolvido)) {
-        console.error('valor invalido: modelo de config');
-        process.exit(1);
-      }
-      if (esforcoResolvido && !valorSeguroParaShell(esforcoResolvido)) {
-        console.error('valor invalido: esforço de config');
-        process.exit(1);
-      }
+      if (recusaValorInseguro('modelo de config', modeloResolvido)) process.exit(1);
+      if (esforcoResolvido && recusaValorInseguro('esforço de config', esforcoResolvido)) process.exit(1);
     }
   }
 
