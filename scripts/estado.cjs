@@ -1054,7 +1054,11 @@ function main() {
       process.exit(1);
     }
     // Verificar se checkout principal está fora da branch padrão
-    const checkout_problema = checkoutPrincipalForaDaPadrao(RAIZ);
+    // Avalia o cwd REAL, nunca RAIZ: com CLAUDE_PROJECT_DIR setado, RAIZ e o
+    // checkout principal mesmo quando a sessao esta num worktree linkado, e a
+    // trava recusaria a sessao certa por estado de branch que ela nem enxerga
+    // (revisao de 2026-09-08 reproduziu o falso positivo).
+    const checkout_problema = checkoutPrincipalForaDaPadrao(process.cwd());
     if (checkout_problema) {
       const { branch, padrao } = checkout_problema;
       console.error(`RECUSADO: o checkout principal está em '${branch}', não em '${padrao}'.`);
@@ -1094,7 +1098,11 @@ function main() {
 
   if (cmd === 'exigir') {
     // Avisar se checkout principal está fora da branch padrão (não recusa, só avisa)
-    const checkout_problema = checkoutPrincipalForaDaPadrao(RAIZ);
+    // Avalia o cwd REAL, nunca RAIZ: com CLAUDE_PROJECT_DIR setado, RAIZ e o
+    // checkout principal mesmo quando a sessao esta num worktree linkado, e a
+    // trava recusaria a sessao certa por estado de branch que ela nem enxerga
+    // (revisao de 2026-09-08 reproduziu o falso positivo).
+    const checkout_problema = checkoutPrincipalForaDaPadrao(process.cwd());
     if (checkout_problema) {
       const { branch, padrao } = checkout_problema;
       console.error(`aviso: checkout principal em '${branch}', não em '${padrao}'.`);

@@ -120,10 +120,10 @@ código, sem perguntar em runtime — exceção é diff no manifesto.
 Elaboração: references/regra-10.md
 
 **11. Worktree: isolado E com base conferida.** O checkout principal fica na
-branch padrão; todo trabalho nasce em worktree. Subagente que edita roda
-**sempre** com `isolation: "worktree"`, git destrutivo proibido, e commita na
-branch **sua** — nunca a `main`, nunca a alheia. Base = ponta da `origin/main`:
-o briefing informa o hash, `conferir-entrega.cjs` confere na integração.
+branch padrão; trabalho nasce em worktree (`iniciar` recusa; `principal-livre`
+desliga). Subagente que edita usa `isolation: "worktree"`, git destrutivo
+proibido, e commita na branch **sua** — nunca a `main`, nunca a alheia. Base =
+ponta da `origin/main`; o briefing dá o hash, `conferir-entrega.cjs` confere.
 <!-- detalhe -->
 Elaboração: references/regra-11.md
 

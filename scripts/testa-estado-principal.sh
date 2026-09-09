@@ -142,6 +142,24 @@ esperado "iniciar --slug u sai 2" 2 $E iniciar --slug u
 git checkout -q main
 
 echo
+echo "== i. sessao em worktree linkado com CLAUDE_PROJECT_DIR no principal (que esta fora da main): passa =="
+# E o que o harness faz: CLAUDE_PROJECT_DIR aponta para o checkout principal
+# mesmo com a sessao num worktree. A trava tem de olhar o cwd, nao RAIZ.
+git checkout -q fluxo/x
+git worktree add -q "$CAIXA/wt2" -b fluxo/y2 main
+(
+  cd "$CAIXA/wt2" || exit 9
+  unset RFM_ESTADO_ROOT
+  export CLAUDE_PROJECT_DIR="$REPO"
+  node "$REPO/scripts/estado.cjs" iniciar --slug s-wt2 >/dev/null 2>&1
+)
+got=$?
+esperado "iniciar no worktree com CLAUDE_PROJECT_DIR=principal sai 0" 0 bash -c "exit $got"
+git worktree remove --force "$CAIXA/wt2"
+git branch -q -D fluxo/y2
+git checkout -q main
+
+echo
 echo "== h. MUTACAO: sem a comparacao de branch, o caso a deixa de recusar =="
 cp scripts/estado.cjs scripts/estado-mutante.cjs
 sed -i 's/if (branchAtual === padrao) return null;/if (true) return null; \/\/ MUTADO/' scripts/estado-mutante.cjs

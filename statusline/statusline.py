@@ -14,6 +14,7 @@ Regras de projeto que este arquivo respeita:
 
 import datetime
 import json
+import math
 import os
 import re
 import subprocess
@@ -590,6 +591,11 @@ def tempo_ate(resets_at, agora):
     nao pode estourar com o que quer que venha no lugar)."""
     if isinstance(resets_at, bool) or not isinstance(resets_at, (int, float)):
         return ""
+    # `json` do Python aceita NaN e Infinity, e os dois SAO float: passam o
+    # isinstance e estouram no int(). Revisao de 2026-09-08 reproduziu a barra
+    # vazia com resets_at = NaN.
+    if not math.isfinite(resets_at) or not math.isfinite(agora):
+        return ""
     restante = int(resets_at - agora)
     if restante <= 0:
         return ""
@@ -612,7 +618,7 @@ def segmento_limites(limites, agora=None):
         if not isinstance(janela, dict):
             continue
         pct = janela.get("used_percentage")
-        if isinstance(pct, bool) or not isinstance(pct, (int, float)):
+        if isinstance(pct, bool) or not isinstance(pct, (int, float)) or not math.isfinite(pct):
             continue
         texto = "%s %d%%" % (rotulo, round(pct))
         falta = tempo_ate(janela.get("resets_at"), agora)
