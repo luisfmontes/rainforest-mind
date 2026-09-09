@@ -75,7 +75,8 @@ const USO = `uso: node scripts/conferir-mutacao.cjs --arquivo <caminho> --de <tr
 
 exit: 0 mutação casou e bateria VERMELHA | 2 bateria VERDE | 3 MUTACAO NAO APLICADA |
      4 não dá para medir (baseline não-verde, ou --de ambíguo) | 5 corte de shell
-     (pós-mutação < 10% do baseline ou < 1 s) | 1 erro de uso
+     (pós-mutação < 10% do baseline ou < 1 s) | 6 queda desproporcional de asserções
+     (ok drop > 20% de base.ok) | 1 erro de uso
 
 Git Bash (MSYS) come uma barra de argumento que COMEÇA com \`//\`: \`// coment\`
 chega aqui como \`/ coment\` e não casa. Medido em 2026-08-21 ao mutar um
@@ -194,6 +195,43 @@ const RAZAO_DE_CORTE = 0.1;
  */
 function suspeitaDeCorte(baselineDuracao, posDuracao) {
   return baselineDuracao >= PISO_ABSOLUTO_MS && posDuracao < baselineDuracao * RAZAO_DE_CORTE;
+}
+
+/**
+ * Extrai o placar (ok e falhou) da saída da bateria.
+ * Aceita dois formatos:
+ *   - "ok: 34   falhou: 0" (espaços variáveis)
+ *   - "34 ok, 0 falhou"
+ *
+ * Retorna { ok: número, falhou: número } ou null se não encontrar placar reconhecível.
+ */
+function extrairPlacar(saida) {
+  if (!saida) return null;
+
+  // Tenta o formato "ok: N   falhou: M"
+  const match1 = saida.match(/ok:\s*(\d+)\s+falhou:\s*(\d+)/);
+  if (match1) {
+    return { ok: parseInt(match1[1], 10), falhou: parseInt(match1[2], 10) };
+  }
+
+  // Tenta o formato "N ok, M falhou"
+  const match2 = saida.match(/(\d+)\s+ok,\s*(\d+)\s+falhou/);
+  if (match2) {
+    return { ok: parseInt(match2[1], 10), falhou: parseInt(match2[2], 10) };
+  }
+
+  return null;
+}
+
+/**
+ * Verifica se a queda de asserções aprovadas é desproporcional.
+ * Retorna true quando a queda de `ok` (base.ok - pos.ok) passa de 20% de `base.ok`.
+ */
+function quedaDesproporcional(placarBase, placarPos) {
+  if (!placarBase || !placarPos) return false;
+  const quedaAbsoluta = placarBase.ok - placarPos.ok;
+  const percentualQueda = (quedaAbsoluta / placarBase.ok) * 100;
+  return percentualQueda > 20;
 }
 
 function main() {
@@ -366,6 +404,23 @@ function main() {
     process.exit(2);
   }
 
+  // Verificação de queda desproporcional de asserções: quando a mutação derruba
+  // a bateria inteira (exit !== 0, 0 asserções aprovadas) sem dar chance de medir
+  // o comportamento. Se base tem 34 aprovadas e mutante sai com 0, a queda é 100%
+  // — passa de 20% e indica que a mutação quebrou o mecanismo de teste antes de
+  // exercitar o comportamento.
+  const placarBase = extrairPlacar(`${baselineRes.r.stdout || ''}${baselineRes.r.stderr || ''}`);
+  const placarPos = extrairPlacar(`${posRes.r.stdout || ''}${posRes.r.stderr || ''}`);
+  if (quedaDesproporcional(placarBase, placarPos)) {
+    console.error('RECUSADO: queda desproporcional de asserções.');
+    console.error(`  Baseline: ok=${placarBase.ok} falhou=${placarBase.falhou}`);
+    console.error(`  Pós-mutação: ok=${placarPos.ok} falhou=${placarPos.falhou}`);
+    console.error('  A mutação derrubou a bateria inteira — a queda passou 20% de base.ok.');
+    console.error('  Isto indica que a mutação quebrou o mecanismo de teste antes de');
+    console.error('  exercitar o comportamento. Refine a mutação ou a bateria.');
+    process.exit(6);
+  }
+
   // Verificação de corte de shell: suspeita quando pós-mutação é desproporcionalmente
   // curta (< 10% do baseline), sugerindo que a bateria morreu antes de medir.
   // Só aplica quando o baseline é tempo suficiente (>= 1 s) para distinguir de ruído.
@@ -396,4 +451,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { suspeitaDeCorte, PISO_ABSOLUTO_MS, RAZAO_DE_CORTE };
+module.exports = { suspeitaDeCorte, PISO_ABSOLUTO_MS, RAZAO_DE_CORTE, extrairPlacar, quedaDesproporcional };

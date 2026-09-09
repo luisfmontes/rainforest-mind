@@ -547,6 +547,109 @@ else
 ' "$pulados_e2e"
 fi
 
+echo
+echo "== 14. queda desproporcional de asserções: baseline 34 ok, mutada 0 ok =="
+# Bateria que imprime placar e falha quando o comportamento inverte.
+# Baseline: ok=34 falhou=0 (exit=0)
+# Mutacao: ok=0 falhou=0 (exit=1) — queda de 34/34 = 100%, passa de 20%
+cat > "$CAIXA/bateria-com-placar.sh" <<'BAT'
+#!/bin/bash
+# Simula uma bateria que conta asserções e imprime o placar
+if grep -q 'COMPORTAMENTO-MUTADO' fonte-com-placar.cjs; then
+  # Mutacao fez a bateria quebrar: zero asserções aprovadas
+  echo "ok: 0   falhou: 0"
+  exit 1
+fi
+# Baseline: bateria rodou normalmente
+echo "ok: 34   falhou: 0"
+exit 0
+BAT
+
+cat > "$CAIXA/fonte-com-placar.cjs" <<'FONTE'
+#!/usr/bin/env node
+const comportamento = true;
+FONTE
+cp "$CAIXA/fonte-com-placar.cjs" "$S/fonte-com-placar.pristino"
+
+exige 6 "queda desproporcional derruba a bateria toda" \
+  CHK --arquivo fonte-com-placar.cjs --de "const comportamento = true;" \
+      --para "const comportamento = true; // COMPORTAMENTO-MUTADO" \
+      --bateria 'bash bateria-com-placar.sh'
+tem "informa a queda desproporcional" "queda desproporcional de asserções"
+tem "mostra placar do baseline" "ok=34"
+tem "mostra placar da pos-mutacao" "ok=0"
+
+if ! cmp -s "$CAIXA/fonte-com-placar.cjs" "$S/fonte-com-placar.pristino"; then
+  falhou=$((falhou+1)); printf '  FALHA: fonte-com-placar.cjs nao foi restaurado\n'
+  cp "$S/fonte-com-placar.pristino" "$CAIXA/fonte-com-placar.cjs"
+else
+  ok=$((ok+1)); printf '  ok    fonte-com-placar.cjs restaurado\n'
+fi
+
+echo
+echo "== 15. queda pequena de asserções (1 de 34): aprova como VERMELHA =="
+# Mesma bateria, mas mutacao que derruba 1 asserção de 34 (2.9%, abaixo de 20%)
+cat > "$CAIXA/bateria-queda-pequena.sh" <<'BAT'
+#!/bin/bash
+if grep -q 'PEQUENA-MUTACAO' fonte-pequena.cjs; then
+  # Mutacao derrubou 1 de 34 asserções (queda pequena: 2.9%)
+  echo "ok: 33   falhou: 1"
+  exit 1
+fi
+echo "ok: 34   falhou: 0"
+exit 0
+BAT
+
+cat > "$CAIXA/fonte-pequena.cjs" <<'FONTE'
+#!/usr/bin/env node
+const x = 1;
+FONTE
+cp "$CAIXA/fonte-pequena.cjs" "$S/fonte-pequena.pristino"
+
+exige 0 "queda pequena aprova normalmente (VERMELHA)" \
+  CHK --arquivo fonte-pequena.cjs --de "const x = 1;" --para "const x = 1; // PEQUENA-MUTACAO" \
+      --bateria 'bash bateria-queda-pequena.sh'
+tem "diz VERMELHA" "VERMELHA"
+nao_tem "nao reclama de queda desproporcional" "queda desproporcional"
+
+if ! cmp -s "$CAIXA/fonte-pequena.cjs" "$S/fonte-pequena.pristino"; then
+  falhou=$((falhou+1)); printf '  FALHA: fonte-pequena.cjs nao foi restaurado\n'
+  cp "$S/fonte-pequena.pristino" "$CAIXA/fonte-pequena.cjs"
+else
+  ok=$((ok+1)); printf '  ok    fonte-pequena.cjs restaurado\n'
+fi
+
+echo
+echo "== 16. bateria sem placar reconhecivel: comportamento de hoje =="
+# Bateria que nao imprime placar. Deve manter o comportamento atual.
+cat > "$CAIXA/bateria-sem-placar.sh" <<'BAT'
+#!/bin/bash
+# Nao imprime placar nenhum
+if grep -q 'SEM-PLACAR-MARCA' fonte-sem-placar.cjs; then
+  exit 1
+fi
+exit 0
+BAT
+
+cat > "$CAIXA/fonte-sem-placar.cjs" <<'FONTE'
+#!/usr/bin/env node
+const y = 2;
+FONTE
+cp "$CAIXA/fonte-sem-placar.cjs" "$S/fonte-sem-placar.pristino"
+
+exige 0 "sem placar reconhecivel aprova normalmente" \
+  CHK --arquivo fonte-sem-placar.cjs --de "const y = 2;" --para "const y = 2; // SEM-PLACAR-MARCA" \
+      --bateria 'bash bateria-sem-placar.sh'
+tem "diz VERMELHA" "VERMELHA"
+nao_tem "nao reclama de queda (sem placar para medir)" "queda desproporcional"
+
+if ! cmp -s "$CAIXA/fonte-sem-placar.cjs" "$S/fonte-sem-placar.pristino"; then
+  falhou=$((falhou+1)); printf '  FALHA: fonte-sem-placar.cjs nao foi restaurado\n'
+  cp "$S/fonte-sem-placar.pristino" "$CAIXA/fonte-sem-placar.cjs"
+else
+  ok=$((ok+1)); printf '  ok    fonte-sem-placar.cjs restaurado\n'
+fi
+
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]
