@@ -174,7 +174,8 @@ pronto quando: com fixture cuja bateria imprime `ok: 34   falhou: 0` íntegra e,
 
 ### 12. Abertura avisa principal atrasado e worktrees já integrados [tipo: implementar]
 atende: D12
-arquivos: `hooks/foco-session-start.cjs`, `hooks/lib/principal-atrasado.cjs`, `hooks/testa-principal-atrasado.sh`
+arquivos: `hooks/foco-session-start.cjs`, `hooks/lib/contexto-sessao.cjs`, `hooks/lib/principal-atrasado.cjs`, `hooks/testa-principal-atrasado.sh`
+(emenda 2026-09-09: `contexto-sessao.cjs` entrou porque é ele quem monta o rodapé que o hook de abertura imprime — a seção nova não tem outro lugar por onde sair)
 depende de: nenhuma
 paralela: sim
 mutacao:

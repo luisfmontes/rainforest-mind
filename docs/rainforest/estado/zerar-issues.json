@@ -61,7 +61,45 @@
     "em": "2026-09-08"
   },
   "executar": {
-    "status": "pendente"
+    "status": "parcial",
+    "catraca_mutacao": "2026-09-08",
+    "tarefas_ok": 10,
+    "tarefas": 19,
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "T3 #221 saude dir",
+        "desde": "2026-09-09T00:00:00-03:00"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "T6 #210 commit vazio (2o despacho: 1o nao commitou)",
+        "desde": "2026-09-09T01:00:00-03:00"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "T12 #214 principal-atrasado (2o despacho: metade desligada, creep)",
+        "desde": "2026-09-09T01:00:00-03:00"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "T15 #199 backup-rotativo (2o despacho: bateria vermelha)",
+        "desde": "2026-09-09T01:00:00-03:00"
+      }
+    ],
+    "em": "2026-09-09",
+    "integradas": [
+      1,
+      2,
+      4,
+      7,
+      11,
+      13,
+      14,
+      16,
+      17,
+      18
+    ]
   },
   "revisar": {
     "status": "pendente"
