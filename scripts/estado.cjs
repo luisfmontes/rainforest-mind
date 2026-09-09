@@ -919,16 +919,19 @@ function checkoutPrincipalForaDaPadrao(raiz) {
     // Se branch atual === padrão, não precisa recusar
     if (branchAtual === padrao) return null;
 
-    // Verificar chave principal-livre: se ligado, permite
+    // Chave `principal-livre`: ligada, DESLIGA a trava — sentido invertido, como
+    // `branch-forcar`. Por isso NÃO usa `ligado()`: ele devolve `true` em erro e
+    // em chave desconhecida (config.cjs de outra versão, por exemplo), e aqui
+    // `true` é a trava caindo em silêncio. Lê o valor resolvido e trata qualquer
+    // falha como `false` — mesmo desenho que `limpar-branches.cjs`.
     try {
       const config = require(path.join(__dirname, '..', 'hooks', 'lib', 'config.cjs'));
-      const principal_livre = config.ligado('principal-livre', { projeto: raiz });
-      if (principal_livre) {
-        return null; // principal-livre ligado, permite
+      const valores = config.resolverConfig({ projeto: raiz }).valores || {};
+      if (valores['principal-livre'] === true) {
+        return null;
       }
     } catch (_) {
-      // Erro ao ler config — não bloqueia, mas a trava fica ativa por padrão
-      // (principal-livre padrão é false)
+      // config ilegível: a trava fica ativa
     }
 
     // Deve recusar: branch está diferente da padrão e principal-livre não está ligado

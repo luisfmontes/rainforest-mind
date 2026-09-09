@@ -629,34 +629,81 @@ def segmento_limites(limites, agora=None):
 
 
 # ------------------------------------------------------------------ main ---
+def dicionario(dados, chave):
+    """`dados[chave]` se for dict, senao {} — `dados.get(chave, {})` so protege
+    contra chave AUSENTE; chave presente com null, lista ou string passava e
+    estourava no `.get` seguinte (revisao de 2026-09-08, 10 payloads distintos
+    derrubando a barra inteira)."""
+    valor = dados.get(chave) if isinstance(dados, dict) else None
+    return valor if isinstance(valor, dict) else {}
+
+
+def texto_ou(valor, padrao):
+    return valor if isinstance(valor, str) and valor else padrao
+
+
+def numero_finito(valor):
+    return (
+        not isinstance(valor, bool)
+        and isinstance(valor, (int, float))
+        and math.isfinite(valor)
+    )
+
+
+def montar_segmentos(dados):
+    """Cada segmento nasce dentro do proprio try: um que estoura simplesmente
+    nao aparece, e os outros continuam — e o contrato da barra (docstring do
+    modulo), e ate aqui ele valia so para os segmentos que tinham try dentro."""
+    if not isinstance(dados, dict):
+        dados = {}
+
+    cwd = texto_ou(dados.get("cwd"), "") or texto_ou(dicionario(dados, "workspace").get("current_dir"), ".")
+    transcript_path = texto_ou(dados.get("transcript_path"), None)
+
+    def modelo():
+        m = dicionario(dados, "model")
+        nome = texto_ou(m.get("display_name"), "") or texto_ou(m.get("id"), "")
+        return c(nome, CINZA) if nome else ""
+
+    def contexto():
+        ctx = dicionario(dados, "context_window").get("used_percentage")
+        if not numero_finito(ctx):
+            return ""
+        return c("ctx %d%%" % round(ctx), por_faixa(ctx, 50, 75))
+
+    fabricas = (
+        lambda: segmento_local(cwd),
+        lambda: segmento_perfil(dados),
+        modelo,
+        contexto,
+        lambda: segmento_limites(dados.get("rate_limits")),
+        segmento_tempo,
+        lambda: segmento_escada_intensidade(cwd),
+        lambda: segmento_co_locada(cwd),
+        lambda: segmento_versao(transcript_path),
+        segmento_prazo,
+    )
+    segmentos = []
+    for fabrica in fabricas:
+        try:
+            s = fabrica()
+        except Exception:
+            s = ""
+        if s:
+            segmentos.append(s)
+    return segmentos
+
+
 def main():
     try:
         dados = json.load(sys.stdin)
     except Exception:
         dados = {}
-
-    cwd = dados.get("cwd") or dados.get("workspace", {}).get("current_dir") or "."
-    transcript_path = dados.get("transcript_path")
-
-    segmentos = [segmento_local(cwd), segmento_perfil(dados)]
-
-    modelo = dados.get("model", {}).get("display_name") or dados.get("model", {}).get("id")
-    if modelo:
-        segmentos.append(c(modelo, CINZA))
-
-    ctx = dados.get("context_window", {}).get("used_percentage")
-    if isinstance(ctx, (int, float)):
-        segmentos.append(c("ctx %d%%" % round(ctx), por_faixa(ctx, 50, 75)))
-
-    segmentos.append(segmento_limites(dados.get("rate_limits")))
-
-    segmentos.append(segmento_tempo())
-    segmentos.append(segmento_escada_intensidade(cwd))
-    segmentos.append(segmento_co_locada(cwd))
-    segmentos.append(segmento_versao(transcript_path))
-    segmentos.append(segmento_prazo())
-
-    print(SEP.join([s for s in segmentos if s]))
+    try:
+        segmentos = montar_segmentos(dados)
+    except Exception:
+        segmentos = []
+    print(SEP.join(segmentos))
 
 
 if __name__ == "__main__":

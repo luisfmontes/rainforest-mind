@@ -125,7 +125,54 @@ else:
     falhas += 1
     print("  FALHA ponta a ponta pelo stdin: barra foi %r" % limpa.strip())
 
+# Ponta a ponta adverso: o contrato da barra e "nunca trava". Cada payload
+# abaixo derrubou o main() inteiro em 2026-09-08 (revisao, rodada 2) — exit 1 e
+# stdout vazio. Aqui o criterio e: exit 0 e alguma coisa impressa (o relogio, no
+# minimo, sempre existe), com o segmento de limites ainda presente quando o
+# payload o traz valido.
+ADVERSOS = [
+    ("topo null", "null"),
+    ("topo lista", "[1,2,3]"),
+    ("topo string", '"string"'),
+    ("topo numero", "42"),
+    ("model null", '{"model": null}'),
+    ("model string", '{"model": "nao e dict"}'),
+    ("context_window null", '{"context_window": null}'),
+    ("context_window lista", '{"context_window": [1,2]}'),
+    ("context_window com NaN", '{"context_window": {"used_percentage": NaN}}'),
+    ("workspace null", '{"workspace": null}'),
+    ("workspace lista", '{"workspace": [1,2]}'),
+    ("cwd numero", '{"cwd": 123}'),
+    ("cwd lista", '{"cwd": ["a","b"]}'),
+    ("rate_limits null", '{"rate_limits": null}'),
+    ("rate_limits lista", '{"rate_limits": [1]}'),
+    ("transcript_path numero", '{"transcript_path": 7}'),
+    ("JSON invalido", "{isso nao e json"),
+    ("stdin vazio", ""),
+    ("limites validos junto de lixo",
+     '{"model": null, "cwd": 5, "rate_limits": {"five_hour": {"used_percentage": 23.4, "resets_at": %d}}}'
+     % (int(__import__("time").time()) + 2 * H + 30 * 60)),
+]
+for nome, payload in ADVERSOS:
+    proc = subprocess.run(
+        [sys.executable, FONTE], input=payload.encode("utf-8"), stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE, env=env, timeout=30,
+    )
+    saida = ANSI.sub("", proc.stdout.decode("utf-8", "replace")).strip()
+    problema = None
+    if proc.returncode != 0:
+        problema = "exit %d: %s" % (proc.returncode, proc.stderr.decode("utf-8", "replace").strip().splitlines()[-1:] or "")
+    elif not saida:
+        problema = "stdout vazio"
+    elif nome.startswith("limites validos") and not re.search(r"5h 23% ↻2h(29|30)", saida):
+        problema = "segmento de limites sumiu: %r" % saida
+    if problema:
+        falhas += 1
+        print("  FALHA adverso %s: %s" % (nome, problema))
+    else:
+        print("  ok    adverso %s" % nome)
+
 if falhas:
     print("FALHA: %d caso(s) do segmento de limites" % falhas)
     sys.exit(1)
-print("OK: %d casos do segmento de limites" % (len(CASOS) + 1))
+print("OK: %d casos do segmento de limites" % (len(CASOS) + 1 + len(ADVERSOS)))

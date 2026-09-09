@@ -116,8 +116,9 @@ const CHAVES = {
     padrao: false,
     descricao: 'gera GEMINI.md para o Gemini CLI',
   },
-  // ATENÇÃO: esta chave é a ÚNICA que inverte o sentido das outras, e por isso
-  // inverte também o lado seguro da falha.
+  // ATENÇÃO: esta chave inverte o sentido das outras (`principal-livre`, abaixo,
+  // é a segunda com o mesmo sentido), e por isso inverte também o lado seguro da
+  // falha.
   //
   // Nas de cima, ligado = trava de pé, e config ilegível cai para LIGADO (ver
   // `ligado()` lá embaixo): na dúvida, protege. Aqui ligado = `git branch -D`, que
@@ -140,6 +141,10 @@ const CHAVES = {
     padrao: false,
     descricao: 'Gemini participa do conselho como membro externo (exige `GEMINI_API_KEY` no ambiente)',
   },
+  // Sentido invertido como `branch-forcar`: ligada, DESLIGA uma trava. Quem lê
+  // (`scripts/estado.cjs`) não usa `ligado()` — que devolve `true` em erro e em
+  // chave desconhecida —, lê `resolverConfig().valores` e trata falha como
+  // `false`, igual ao `limpar-branches.cjs`.
   'principal-livre': {
     tipo: 'boolean',
     padrao: false,
