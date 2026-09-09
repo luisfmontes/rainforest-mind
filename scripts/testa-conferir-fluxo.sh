@@ -575,6 +575,41 @@ fi
 rm -rf "$D"
 
 echo
+echo "== 11. isencao de relatorios/ (Issue #196) =="
+# A pasta `relatorios/` contem registros do fluxo, nao entrega do plano. Por construcao
+# nao pode ter tarefa que a cubra: o relatorio se escreve DEPOIS que o fluxo fecha,
+# e o plano ja foi validado e entrou no repositorio.
+#
+# Arquivo solto na raiz (`relatorio-solto.md`) continua creep — a isenção é
+# específica à pasta `relatorios/`, e arquivo fora dela não é "registro do fluxo".
+R="$(mktemp -d)"; RW="$(cygpath -m "$R" 2>/dev/null || printf '%s' "$R")"
+mkdir -p "$R/docs/rainforest/design" "$R/docs/rainforest/planos" "$R/relatorios"
+cp "$REAL_D" "$R/docs/rainforest/design/t.md"
+cp "$REAL_P" "$R/docs/rainforest/planos/t.md"
+git -C "$R" init -q . >/dev/null 2>&1
+git -C "$R" config user.email t@t; git -C "$R" config user.name t
+git -C "$R" add docs >/dev/null 2>&1; git -C "$R" commit -qm base >/dev/null 2>&1
+BASE_R="$(git -C "$R" rev-parse HEAD 2>/dev/null)"
+# commit A: arquivo de relatorio dentro de relatorios/ (isento)
+echo "# relatorio" > "$R/relatorios/2026-09-08-zerar-issues.md"
+git -C "$R" add relatorios >/dev/null 2>&1; git -C "$R" commit -qm relatorio-em-pasta >/dev/null 2>&1
+REL_PASTA="$(git -C "$R" rev-parse HEAD 2>/dev/null)"
+# commit B: arquivo de relatorio na raiz (nao isento)
+echo "# relatorio solto" > "$R/relatorio-solto.md"
+git -C "$R" add relatorio-solto.md >/dev/null 2>&1; git -C "$R" commit -qm relatorio-solto >/dev/null 2>&1
+REL_SOLTO="$(git -C "$R" rev-parse HEAD 2>/dev/null)"
+
+if [ -n "$BASE_R" ] && [ -n "$REL_SOLTO" ] && [ "$BASE_R" != "$REL_SOLTO" ]; then
+  exige 0 "relatorios/2026-09-08-x.md e isento do creep" \
+    env RFM_ESTADO_ROOT="$RW" node "$CHECADOR" creep --slug t --base "$BASE_R" --head "$REL_PASTA"
+  exige 2 "relatorio-solto.md na raiz continua creep" \
+    env RFM_ESTADO_ROOT="$RW" node "$CHECADOR" creep --slug t --base "$REL_PASTA" --head "$REL_SOLTO"
+else
+  echo "  FALHA nao consegui montar o repositorio de fixture"; falhou=$((falhou+1))
+fi
+rm -rf "$R"
+
+echo
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]

@@ -516,6 +516,7 @@ function cmdCreep() {
     // fluxo era acusado de creep desse mesmo fluxo. É a irmã exata do defeito
     // que o comentário acima descreve para o design, e sobreviveu a ele.
     `docs/rainforest/portoes/*${slug}.md`,
+    'relatorios/',
   ];
 
   // Pega diff.
