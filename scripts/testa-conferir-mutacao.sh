@@ -650,6 +650,43 @@ else
   ok=$((ok+1)); printf '  ok    fonte-sem-placar.cjs restaurado\n'
 fi
 
+echo
+echo "== 17. placar aninhado: vale a ULTIMA linha de placar, nao a primeira =="
+# Bateria que ecoa a saida de uma sub-bateria (placar da fixture no meio do
+# stdout) antes do placar proprio, na ultima linha. Lendo a primeira
+# ocorrencia, baseline=100 e mutacao=0 dariam exit 6 por engano; lendo a
+# ultima, 34 -> 33 e queda pequena, aprovada como VERMELHA.
+cat > "$CAIXA/bateria-aninhada.sh" <<'BAT'
+#!/bin/bash
+if grep -q 'ANINHADA-MUTACAO' fonte-aninhada.cjs; then
+  echo "  (sub-bateria) ok: 0   falhou: 0"
+  echo "ok: 33   falhou: 1"
+  exit 1
+fi
+echo "  (sub-bateria) ok: 100   falhou: 0"
+echo "ok: 34   falhou: 0"
+exit 0
+BAT
+
+cat > "$CAIXA/fonte-aninhada.cjs" <<'FONTE'
+#!/usr/bin/env node
+const z = 3;
+FONTE
+cp "$CAIXA/fonte-aninhada.cjs" "$S/fonte-aninhada.pristino"
+
+exige 0 "placar aninhado nao dispara queda desproporcional" \
+  CHK --arquivo fonte-aninhada.cjs --de "const z = 3;" --para "const z = 3; // ANINHADA-MUTACAO" \
+      --bateria 'bash bateria-aninhada.sh'
+tem "diz VERMELHA" "VERMELHA"
+nao_tem "nao reclama de queda (leu a ultima linha)" "queda desproporcional"
+
+if ! cmp -s "$CAIXA/fonte-aninhada.cjs" "$S/fonte-aninhada.pristino"; then
+  falhou=$((falhou+1)); printf '  FALHA: fonte-aninhada.cjs nao foi restaurado\n'
+  cp "$S/fonte-aninhada.pristino" "$CAIXA/fonte-aninhada.cjs"
+else
+  ok=$((ok+1)); printf '  ok    fonte-aninhada.cjs restaurado\n'
+fi
+
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]

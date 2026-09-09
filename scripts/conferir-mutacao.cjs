@@ -208,14 +208,25 @@ function suspeitaDeCorte(baselineDuracao, posDuracao) {
 function extrairPlacar(saida) {
   if (!saida) return null;
 
+  // O placar de uma bateria e a ULTIMA ocorrencia, nao a primeira: bateria que
+  // ecoa a saida de uma sub-bateria (fixture, caso e2e) carrega placares
+  // aninhados no meio do stdout, e o primeiro deles e o da fixture. Medido em
+  // 2026-09-09 na propria testa-conferir-mutacao.sh: primeira ocorrencia deu
+  // ok=100 no baseline e ok=0 na mutacao, com a linha final dizendo 96/4.
+  const ultimo = (re) => {
+    let m = null;
+    for (const cand of saida.matchAll(re)) m = cand;
+    return m;
+  };
+
   // Tenta o formato "ok: N   falhou: M"
-  const match1 = saida.match(/ok:\s*(\d+)\s+falhou:\s*(\d+)/);
+  const match1 = ultimo(/ok:\s*(\d+)\s+falhou:\s*(\d+)/g);
   if (match1) {
     return { ok: parseInt(match1[1], 10), falhou: parseInt(match1[2], 10) };
   }
 
   // Tenta o formato "N ok, M falhou"
-  const match2 = saida.match(/(\d+)\s+ok,\s*(\d+)\s+falhou/);
+  const match2 = ultimo(/(\d+)\s+ok,\s*(\d+)\s+falhou/g);
   if (match2) {
     return { ok: parseInt(match2[1], 10), falhou: parseInt(match2[2], 10) };
   }
