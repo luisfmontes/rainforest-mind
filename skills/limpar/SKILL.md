@@ -25,6 +25,7 @@ como:
 - **limpo**: worktree registrado, com `.git` próprio e sem alterações — pode ser removido
 - **sujo**: tem `.git` próprio, mas há alterações — nunca remover sozinho
 - **órfão**: diretório sem `.git` próprio (responde pelo pai)
+- **de-outra-sessao**: worktree limpo, mas outra janela ou sessão o está usando. Leitura de `sessoes.json` identifica sessão viva (timestamp mais recente que 5 horas) — nunca remover enquanto sessão viva o ocupar
 
 **Por que `git -C <dir> status --porcelain` não é suficiente:** quando `<dir>`
 não tem `.git` próprio, o git responde pelo repositório pai, mascarando que o

@@ -657,6 +657,128 @@ fi
 
 cd "$SB"
 
+# --- CASO (o): worktree limpo com sessao viva do cwd nao e removido
+#
+# Tarefa 14 (D14): limpar-worktrees distingue "limpo porque acabou" de "limpo
+# porque outra sessao continua nele". Uma sessao e' viva se o timestamp (prompt_ts
+# ou stop_ts) for mais recente que 5 horas atras. O worktree nao e' candidato a
+# remocao enquanto sessao viva o usar.
+
+teste "o" "worktree limpo com sessao viva nao e removido"
+
+repo_o="$SB/repo_o"
+work_o="$SB/trabalho_o"
+criarRepoComCommit "$repo_o" "$work_o"
+
+# Cria um worktree limpo
+wt_o_real="$work_o-worktrees/wt-o"
+git worktree add "$wt_o_real" HEAD
+
+# Cria raiz de dados temporaria com sessoes.json
+rfm_root_o="$SB/rfm-o"
+mkdir -p "$rfm_root_o"
+FOCO_o="$rfm_root_o/FOCO.md"
+echo "# foco" > "$FOCO_o"
+
+# Cria sessoes.json com uma sessao viva (timestamp recente) cujo cwd e' o worktree
+agora=$(node -e 'console.log(Date.now())')
+node -e '
+const fs = require("fs");
+const [sessoes, timestamp, cwd] = process.argv.slice(1);
+const state = {
+  "outra-sessao-viva": {
+    prompt_ts: parseInt(timestamp),
+    cwd: cwd
+  }
+};
+fs.writeFileSync(sessoes, JSON.stringify(state));
+' "$rfm_root_o/sessoes.json" "$agora" "$wt_o_real"
+
+# Lista com limpar-worktrees apontando para RFM_ROOT
+RFM_ROOT="$rfm_root_o" node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_o" > /dev/null 2>&1
+
+# Verifica que aparece como 'de-outra-sessao'
+saida_o=$(RFM_ROOT="$rfm_root_o" node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_o" 2>&1)
+if echo "$saida_o" | grep -q "de-outra-sessao"; then
+  ok=$((ok+1)); echo "  ok    worktree aparece como 'de-outra-sessao' na listagem"
+else
+  falhou=$((falhou+1)); echo "  FALHA worktree nao aparece como 'de-outra-sessao'"
+  echo "        Saida: $saida_o"
+fi
+
+# Roda --remover: o worktree NAO deve ser removido
+RFM_ROOT="$rfm_root_o" node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_o" --remover >/dev/null 2>&1
+lista_o=$(git -C "$work_o" worktree list --porcelain | grep -F "wt-o" || true)
+if [ -n "$lista_o" ]; then
+  ok=$((ok+1)); echo "  ok    worktree com sessao viva continua registrado apos --remover"
+else
+  falhou=$((falhou+1)); echo "  FALHA worktree com sessao viva foi removido (nao deveria)"
+  echo "        Lista: $lista_o"
+fi
+
+# --- CASO (p): worktree limpo com sessao ANTIGA (5h+) voltA a ser removivel
+#
+# Contraprova do caso (o): sem sessao viva, mesmo worktree volta a ser candidato
+# a remocao. O limiar e' 5 horas.
+
+teste "p" "worktree limpo com sessao antiga (5h+) volta a ser removivel"
+
+repo_p="$SB/repo_p"
+work_p="$SB/trabalho_p"
+criarRepoComCommit "$repo_p" "$work_p"
+
+# Cria um worktree limpo
+wt_p_real="$work_p-worktrees/wt-p"
+git worktree add "$wt_p_real" HEAD
+
+# Cria raiz de dados temporaria com sessoes.json
+rfm_root_p="$SB/rfm-p"
+mkdir -p "$rfm_root_p"
+FOCO_p="$rfm_root_p/FOCO.md"
+echo "# foco" > "$FOCO_p"
+
+# Cria sessoes.json com uma sessao ANTIGA (mais de 5 horas atras) cujo cwd e' o worktree
+agora_p=$(node -e 'console.log(Date.now())')
+seis_horas_ms=$((6 * 3600 * 1000))
+timestamp_antigo=$((agora_p - seis_horas_ms))
+node -e '
+const fs = require("fs");
+const [sessoes, timestamp, cwd] = process.argv.slice(1);
+const state = {
+  "sessao-antiga": {
+    prompt_ts: parseInt(timestamp),
+    cwd: cwd
+  }
+};
+fs.writeFileSync(sessoes, JSON.stringify(state));
+' "$rfm_root_p/sessoes.json" "$timestamp_antigo" "$wt_p_real"
+
+# Lista: deve aparecer como "limpo" (nao "de-outra-sessao")
+saida_p=$(RFM_ROOT="$rfm_root_p" node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_p" 2>&1)
+if echo "$saida_p" | grep -q "limpo"; then
+  ok=$((ok+1)); echo "  ok    worktree com sessao antiga aparece como 'limpo'"
+else
+  falhou=$((falhou+1)); echo "  FALHA worktree nao aparece como 'limpo'"
+  echo "        Saida: $saida_p"
+fi
+
+if echo "$saida_p" | grep -q "de-outra-sessao"; then
+  falhou=$((falhou+1)); echo "  FALHA worktree ainda aparece como 'de-outra-sessao' (sessao e' antiga)"
+  echo "        Saida: $saida_p"
+else
+  ok=$((ok+1)); echo "  ok    worktree nao aparece como 'de-outra-sessao' (sessao e' antiga)"
+fi
+
+# Roda --remover: o worktree DEVE ser removido
+RFM_ROOT="$rfm_root_p" node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_p" --remover >/dev/null 2>&1
+lista_p=$(git -C "$work_p" worktree list --porcelain | grep -F "wt-p" || true)
+if [ -z "$lista_p" ]; then
+  ok=$((ok+1)); echo "  ok    worktree com sessao antiga foi removido"
+else
+  falhou=$((falhou+1)); echo "  FALHA worktree com sessao antiga nao foi removido"
+  echo "        Lista: $lista_p"
+fi
+
 # --- Relatório final
 
 echo ""
