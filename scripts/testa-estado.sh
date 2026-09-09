@@ -1261,5 +1261,68 @@ esac
 
 unset RFM_ESTADO_ROOT
 
+echo
+echo "== 22. recusa flag desconhecida ANTES de gravar (Issue #218) =="
+# Ponto critico: flag desconhecida deve sair 1 e nao gravar nada. O perigo e a
+# flag ser ignorada silenciosamente — em 2026-09-05, marcar --dry-run gravou
+# design aprovado sendo que a tarefa era so simular. ANTES de gravar e o unico
+# jeito de impedir que a operacao ocorra sem deixar rastro.
+
+# Preparacao: estado em design pendente
+$E iniciar --slug t-flag-1 >/dev/null
+$E marcar --slug t-flag-1 --estagio design --status pendente >/dev/null
+
+# Caso (a): --dry-run em marcar recusa exit 1 e NAO grava nada
+estado_antes=$(cat docs/rainforest/estado/t-flag-1.json)
+esperado "--dry-run em marcar recusa exit 1" 1 $E marcar --slug t-flag-1 --estagio design --status aprovado --dry-run --json '{"doc":"x"}'
+msg_dry_run=$($E marcar --slug t-flag-1 --estagio design --status aprovado --dry-run --json '{"doc":"x"}' 2>&1)
+igual "mensagem nomeia a flag desconhecida" "sim" "$(case "$msg_dry_run" in *"flag desconhecida"*"--dry-run"*) echo sim;; *) echo nao;; esac)"
+estado_depois=$(cat docs/rainforest/estado/t-flag-1.json)
+igual "arquivo nao foi alterado" "sim" "$([ "$estado_antes" = "$estado_depois" ] && echo sim || echo nao)"
+
+# Caso (b): --json-output em exigir recusa exit 1
+esperado "--json-output em exigir recusa exit 1" 1 $E exigir --slug t-flag-1 --estagio design --json-output
+msg_json_out=$($E exigir --slug t-flag-1 --estagio design --json-output 2>&1)
+igual "mensagem nomeia --json-output" "sim" "$(case "$msg_json_out" in *"--json-output"*) echo sim;; *) echo nao;; esac)"
+
+# Caso (c): --force em liberar recusa exit 1
+esperado "--force em liberar recusa exit 1" 1 $E liberar --slug t-flag-1 --estagio design --force
+msg_force=$($E liberar --slug t-flag-1 --estagio design --force 2>&1)
+igual "mensagem nomeia --force" "sim" "$(case "$msg_force" in *"--force"*) echo sim;; *) echo nao;; esac)"
+
+# Caso (d): --verbose em proximo recusa exit 1
+esperado "--verbose em proximo recusa exit 1" 1 $E proximo --slug t-flag-1 --verbose
+msg_verbose=$($E proximo --slug t-flag-1 --verbose 2>&1)
+igual "mensagem nomeia --verbose" "sim" "$(case "$msg_verbose" in *"--verbose"*) echo sim;; *) echo nao;; esac)"
+
+# Caso (e): --quiet em ler recusa exit 1
+esperado "--quiet em ler recusa exit 1" 1 $E ler --slug t-flag-1 --quiet
+msg_quiet=$($E ler --slug t-flag-1 --quiet 2>&1)
+igual "mensagem nomeia --quiet" "sim" "$(case "$msg_quiet" in *"--quiet"*) echo sim;; *) echo nao;; esac)"
+
+# Caso (f): --format em listar recusa exit 1
+esperado "--format em listar recusa exit 1" 1 $E listar --format json
+msg_format=$($E listar --format json 2>&1)
+igual "mensagem nomeia --format" "sim" "$(case "$msg_format" in *"--format"*) echo sim;; *) echo nao;; esac)"
+
+# Caso (g): flags aceitas PASSAM — marcar design aprovado SEM --dry-run passa
+esperado "marcar design aprovado sem flags estranhas passa" 0 $E marcar --slug t-flag-1 --estagio design --status aprovado
+igual "design agora esta aprovado" "aprovado" "$(node -e "console.log(JSON.parse(require('fs').readFileSync('docs/rainforest/estado/t-flag-1.json', 'utf8')).design.status)")"
+
+# Caso (h): multiplas flags desconhecidas — so relata a primeira
+$E iniciar --slug t-flag-2 >/dev/null
+msg_multiplas=$($E marcar --slug t-flag-2 --estagio design --status pendente --dry-run --force --verbose 2>&1)
+igual "mensagem nomeia so a primeira flag desconhecida" "sim" "$(case "$msg_multiplas" in *"flag desconhecida: --"*) echo sim;; *) echo nao;; esac)"
+
+# Caso (i): iniciar com flag desconhecida
+esperado "iniciar --foo recusa exit 1" 1 $E iniciar --slug t-flag-3 --foo bar
+msg_init=$($E iniciar --slug t-flag-3 --foo bar 2>&1)
+igual "iniciar nomeia a flag desconhecida" "sim" "$(case "$msg_init" in *"--foo"*) echo sim;; *) echo nao;; esac)"
+
+# Caso (j): concluido com flag desconhecida
+esperado "concluido --output recusa exit 1" 1 $E concluido --output json
+msg_conc=$($E concluido --output json 2>&1)
+igual "concluido nomeia --output" "sim" "$(case "$msg_conc" in *"--output"*) echo sim;; *) echo nao;; esac)"
+
 echo "== resultado: $ok ok, $falhou falhas =="
 [ "$falhou" = 0 ]

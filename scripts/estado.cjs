@@ -843,6 +843,20 @@ function conferirFechamento(estagio, slug, extra, estado) {
 
 // ---------------------------------------------------------------- CLI
 
+// Flags aceitas por subcomando. Qualquer flag fora desta lista e recusada ANTES
+// de qualquer gravacao. Flags globais (que se aplicam a multiplos subcomandos)
+// nao sao repetidas — estao listadas uma vez como aceitas universalmente.
+const FLAGS_POR_SUBCOMANDO = {
+  iniciar: ['slug', 'titulo'],
+  ler: ['slug'],
+  marcar: ['slug', 'estagio', 'status', 'json'],
+  proximo: ['slug'],
+  exigir: ['slug', 'estagio'],
+  liberar: ['slug', 'estagio'],
+  listar: [],
+  concluido: ['slug'],
+};
+
 function arg(nome, obrigatorio = true) {
   const i = process.argv.indexOf(`--${nome}`);
   if (i === -1 || i + 1 >= process.argv.length) {
@@ -855,8 +869,39 @@ function arg(nome, obrigatorio = true) {
   return process.argv[i + 1];
 }
 
+/**
+ * Valida que todas as flags passadas estao na lista de aceitas para o subcomando.
+ * Recusa com exit 1 e mensagem clara se achar flag desconhecida ANTES de gravar nada.
+ */
+function validarFlagsDesconhecidas(cmd) {
+  const flagsAceitas = FLAGS_POR_SUBCOMANDO[cmd];
+  if (!flagsAceitas) return; // comando inexistente: sera reportado em outro lugar
+
+  const todasAsFlags = new Set();
+  for (let i = 2; i < process.argv.length; i++) {
+    const arg_str = process.argv[i];
+    if (arg_str.startsWith('--')) {
+      const nomeDaFlag = arg_str.substring(2);
+      // As flags sao nome/valor em pares: --flag valor, ou --flag valor --proxima valor
+      // Precisamos extrair SO o nome da flag (antes do espaco/proximo--)
+      todasAsFlags.add(nomeDaFlag);
+    }
+  }
+
+  const desconhecidas = Array.from(todasAsFlags).filter((f) => !flagsAceitas.includes(f));
+
+  // Ponto unico de mutacao: a linha abaixo e o alvo da mutacao de teste
+  if (desconhecidas.length > 0) {
+    console.error(`flag desconhecida: --${desconhecidas[0]}`);
+    process.exit(1);
+  }
+}
+
 function main() {
   const cmd = process.argv[2];
+
+  // Validar flags desconhecidas ANTES de qualquer acao
+  validarFlagsDesconhecidas(cmd);
 
   if (cmd === 'listar') {
     if (!fs.existsSync(DIR_ESTADO)) return console.log('(nenhum trabalho em andamento)');
