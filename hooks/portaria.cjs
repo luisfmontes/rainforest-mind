@@ -95,6 +95,7 @@ function obterOutrosWorktreesComFluxoAberto(raiz) {
     });
     const linhas = saida.trim().split("\n").filter(Boolean);
     const worktrees = [];
+    const vistos = new Set();
 
     for (const linha of linhas) {
       // Formato: "worktree /caminho"
@@ -125,6 +126,9 @@ function obterOutrosWorktreesComFluxoAberto(raiz) {
                 // o JSON depois, no worktree errado ou no certo).
                 const estagioAberto = primeiroEstagioAberto(estado);
                 if (estagioAberto) {
+                  const chave = `${estado.slug}/${estagioAberto}`;
+                  if (vistos.has(chave)) continue;
+                  vistos.add(chave);
                   worktrees.push({ slug: estado.slug, arquivo, caminho: caminhoWorktree, estagio: estagioAberto });
                   break;
                 }
