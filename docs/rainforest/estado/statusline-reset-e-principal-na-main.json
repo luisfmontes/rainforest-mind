@@ -16,7 +16,36 @@
     "em": "2026-09-08"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-09-08",
+    "tarefas_ok": 4,
+    "tarefas": 4,
+    "comando": "bash scripts/testa-statusline.sh; bash scripts/testa-estado-principal.sh; bash scripts/testa-estado.sh; bash hooks/testa-config.sh; bash hooks/testa-contexto-sessao.sh",
+    "saida": "as 4 baterias da statusline passaram | 22 ok, 0 falhou | 172 ok, 0 falhas | 45 ok, 0 falha(s) | ok: 277 falhou: 0",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "7d com 3 dias e 4 horas"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "h. MUTACAO: sem a comparacao de branch, o caso a deixa de recusar"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "texto de regra; coerencia conferida por conferir-invariantes e testa-contexto-sessao"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "numero de versao; divergencia pega por testa-versao.sh"
+      }
+    ],
+    "integracao": "T2 via executor em worktree isolado (d3bf7f3, conferir-entrega APROVADO), cherry-pick 43e40b7 + correcao 09f9a6a",
+    "em": "2026-09-08"
   },
   "revisar": {
     "status": "pendente"
