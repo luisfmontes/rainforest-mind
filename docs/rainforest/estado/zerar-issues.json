@@ -1,0 +1,75 @@
+{
+  "slug": "zerar-issues",
+  "titulo": "Zerar as 20 Issues abertas",
+  "criado_em": "2026-09-08",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/zerar-issues.md",
+    "aprovacao": "Luis, 2026-09-08: \"recomendado\" para Q1-Q5",
+    "em": "2026-09-08"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/zerar-issues.md",
+    "tarefas": 19,
+    "paralelas": [
+      1,
+      2,
+      3,
+      4,
+      6,
+      7,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18
+    ],
+    "ondas": {
+      "1": [
+        1,
+        2,
+        3,
+        4,
+        6,
+        7,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18
+      ],
+      "2": [
+        5,
+        8,
+        9
+      ],
+      "3": [
+        10,
+        19
+      ]
+    },
+    "em": "2026-09-08"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
