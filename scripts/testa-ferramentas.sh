@@ -9,14 +9,18 @@ CAIXA=$(mktemp -d)
 export RFM_ROOT="$CAIXA"
 trap "rm -rf '$CAIXA'" EXIT
 
-mkdir -p "$CAIXA"
+mkdir -p "$CAIXA/scripts/lib" "$CAIXA/hooks/lib"
+SRC="$(cd "$(dirname "$0")/.." && pwd)"
+cp "$SRC/scripts/ferramentas.cjs" "$CAIXA/scripts/"
+cp "$SRC/hooks/lib/trava-jsonl.cjs" "$CAIXA/hooks/lib/" 2>/dev/null || true
+cp "$SRC/scripts/lib/backup-rotativo.cjs" "$CAIXA/scripts/lib/"
 
 # Contadores
 OK=0
 FALHA=0
 
-# Atalhos para o script
-NODE_SCRIPT="$(cd "$(dirname "$0")/.." && pwd)/scripts/ferramentas.cjs"
+# Atalhos para o script — usa a cópia da caixa de areia
+NODE_SCRIPT="$CAIXA/scripts/ferramentas.cjs"
 
 # ==== CRITÉRIO 1 ====
 echo "=== CRITÉRIO 1: Consultar ferramenta existente ==="
