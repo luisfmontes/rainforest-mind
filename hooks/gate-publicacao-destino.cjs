@@ -116,7 +116,7 @@ function conferirConteudo(conteudo) {
 /**
  * Formata a mensagem de bloqueio com os achados.
  */
-function mensagemBloqueio(achados, arquivo) {
+function mensagemBloqueio(achados, arquivo, ehSubagente) {
   let msg = `BLOQUEADO pelo gate de publicação do rainforest-mind.\n\n` +
     `Arquivo: ${arquivo}\n` +
     `Razão: este arquivo é versionado (rastreado por git) e contém dados sensíveis.\n\n` +
@@ -136,22 +136,29 @@ function mensagemBloqueio(achados, arquivo) {
     `  Um 'git add X && git commit' bloqueado não rodou o 'git add'; o índice fica\n` +
     `  com a versão velha e o gate repete o achado depois da correção, parecendo\n` +
     `  que a edição não gravou. Separe: 'git add', verifique com 'git show :<arquivo>',\n` +
-    `  depois 'git commit'.\n\n` +
-    `As duas saídas de emergência NÃO valem no MESMO comando:\n` +
-    `  - RAINFOREST_GATE_OFF=1 no ambiente: precisa estar na sessão (export),\n` +
-    `    não funciona como prefixo inline ('RAINFOREST_GATE_OFF=1 git commit');\n` +
-    `  - arquivo .rainforest-gate-off: é conferido ANTES do hook rodar, então\n` +
-    `    'touch .rainforest-gate-off && git commit' é bloqueado (usa outro 'git add' depois).\n\n` +
-    `Se isto é falso positivo legítimo (teste com dado fake, documentação de formato),\n` +
-    `você tem duas saídas:\n` +
-    `  - RAINFOREST_GATE_OFF=1 no ambiente da sessão (desliga na sessão inteira);\n` +
-    `  - arquivo .rainforest-gate-off na raiz do repo (desliga naquele repo).\n`;
+    `  depois 'git commit'.\n\n`;
 
+  const saidas = ehSubagente
+    ? `PARE e reporte isto para a janela principal — ela decide como seguir.\n` +
+      `NÃO crie arquivo nem variável para desativar esta trava: a decisão não é sua,\n` +
+      `e desativá-la para si mesmo é o contorno que esta trava existe para impedir.\n`
+    : `As duas saídas de emergência NÃO valem no MESMO comando:\n` +
+      `  - RAINFOREST_GATE_OFF=1 no ambiente: precisa estar na sessão (export),\n` +
+      `    não funciona como prefixo inline ('RAINFOREST_GATE_OFF=1 git commit');\n` +
+      `  - arquivo .rainforest-gate-off: é conferido ANTES do hook rodar, então\n` +
+      `    'touch .rainforest-gate-off && git commit' é bloqueado (usa outro 'git add' depois).\n\n` +
+      `Se isto é falso positivo legítimo (teste com dado fake, documentação de formato),\n` +
+      `você tem duas saídas:\n` +
+      `  - RAINFOREST_GATE_OFF=1 no ambiente da sessão (desliga na sessão inteira);\n` +
+      `  - arquivo .rainforest-gate-off na raiz do repo (desliga naquele repo).\n`;
+
+  msg += saidas;
   return msg;
 }
 
-function bloqueia(achados, arquivo) {
-  process.stderr.write(mensagemBloqueio(achados, arquivo));
+function bloqueia(achados, arquivo, agente) {
+  const ehSubagente = Boolean(agente);
+  process.stderr.write(mensagemBloqueio(achados, arquivo, ehSubagente));
   process.exit(2);
 }
 
@@ -327,7 +334,7 @@ function arquivosQueVaoParaOCommit(dir, cmd) {
  * que passa por `Write` e reprova no `commit` seria uma trava contradizendo a
  * outra, e o usuário aprenderia a desligar as duas.
  */
-function conferirCommit(ev, cwdDoEvento) {
+function conferirCommit(ev, cwdDoEvento, agente) {
   const cmd = ev.tool_input && ev.tool_input.command;
   if (typeof cmd !== "string" || !RE_GIT_COMMIT.test(cmd)) process.exit(0);
 
@@ -361,7 +368,7 @@ function conferirCommit(ev, cwdDoEvento) {
           `ele cobre Write/Edit, e este arquivo pode ter sido escrito por script\n` +
           `(node, sed, heredoc). Issue #165.\n`
         );
-        bloqueia(achadosAbloquear, absoluto);
+        bloqueia(achadosAbloquear, absoluto, agente);
       }
     }
   }
@@ -383,11 +390,12 @@ function main() {
   // `.rainforest/config.json` do projeto.
   try { if (!require("./lib/config.cjs").ligado("gate-publicacao", { projeto: cwdDoEvento })) process.exit(0); } catch {}
 
+  const agente = ev.agent_id;
   const nome = ev.tool_name;
 
   // O commit é o ponto por onde tudo passa (Issue #165). Vem ANTES do filtro de
   // ferramentas de escrita porque `Bash` nunca esteve nele.
-  if (nome === "Bash" || nome === "PowerShell") conferirCommit(ev, cwdDoEvento);
+  if (nome === "Bash" || nome === "PowerShell") conferirCommit(ev, cwdDoEvento, agente);
 
   if (!FERRAMENTAS_DE_ESCRITA.has(nome)) process.exit(0);
 
@@ -419,7 +427,7 @@ function main() {
 
         const resultado = conferirConteudo(c);
         if (resultado && resultado.achados && resultado.achados.length) {
-          bloqueia(resultado.achados, a);
+          bloqueia(resultado.achados, a, agente);
         }
       }
     }
@@ -451,7 +459,7 @@ function main() {
   // Roda a conferência de publicação
   const resultado = conferirConteudo(conteudo);
   if (resultado && resultado.achados && resultado.achados.length) {
-    bloqueia(resultado.achados, arquivo);
+    bloqueia(resultado.achados, arquivo, agente);
   }
 
   process.exit(0);

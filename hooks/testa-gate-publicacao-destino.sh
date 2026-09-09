@@ -178,6 +178,40 @@ jid="5500900000001@s.whatsapp.net"')"
 gate "payload invalido -> sai 0 sem derrubar" 0 '{"invalid": json}'
 
 echo
+echo "== CASO 10: conteúdo sensível com agent_id (subagente) — barrado, sem nomear saídas =="
+# Subagente que tenta escrever dados sensíveis: barrado com exit 2, mas a mensagem
+# não nomeia as saídas de emergência (.rainforest-gate-off e RAINFOREST_GATE_OFF).
+payWithAgent() { # tool, file_path, conteudo, agent_id
+  node -e 'const [t,fp,c,a]=process.argv.slice(1);const ti=t==="Write"?{file_path:fp,content:c}:{file_path:fp,old_string:"x",new_string:c};console.log(JSON.stringify({cwd:process.env.PAY_CWD||"",hook_event_name:"PreToolUse",tool_name:t,tool_input:ti,agent_id:a,agent_type:"executor"}))' "$1" "$2" "$3" "$4"
+}
+msg=$(printf '%s' "$(PAY_CWD="$(esc "$R")" payWithAgent Write "$(esc "$R")/test-agent.txt" "contato: $JID_REAL" "agent-xyz")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then
+  ok=$((ok+1))
+  echo "  ok   subagente com dados sensíveis foi BARRADO (exit 2)"
+  # Verifica que a mensagem não contém as saídas de emergência nomeadas
+  if ! printf '%s' "$msg" | grep -q "\.rainforest-gate-off\|RAINFOREST_GATE_OFF"; then
+    ok=$((ok+1))
+    echo "  ok   mensagem não nomeia saídas de emergência"
+  else
+    falhou=$((falhou+1))
+    echo "  FALHA mensagem nomeia saídas (que não deveria)"
+    printf '%s' "$msg" | sed 's/^/    /'
+  fi
+  # Verifica que a mensagem contém "PARE e reporte"
+  if printf '%s' "$msg" | grep -q "PARE e reporte"; then
+    ok=$((ok+1))
+    echo "  ok   mensagem contém 'PARE e reporte'"
+  else
+    falhou=$((falhou+1))
+    echo "  FALHA mensagem não contém 'PARE e reporte'"
+  fi
+else
+  falhou=$((falhou+1))
+  echo "  FALHA esperava exit 2 para subagente, veio $rc"
+  echo "$msg" | sed 's/^/    /'
+fi
+
+echo
 echo "== CASO 9: o gate julga o que o commit INTRODUZ, nao o conteudo total (defect a) =="
 # Ate 2026-09-04 o gate lia `git show :<arquivo>` inteiro e barrava merge de
 # conteudo que ja estava publicado na main ha dias — Issue #173. Estes casos
