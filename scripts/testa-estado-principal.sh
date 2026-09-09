@@ -21,6 +21,11 @@ trap 'rm -rf "$CAIXA"' EXIT
 # estado.cjs gravaria no repositório de verdade em vez da caixa.
 unset CLAUDE_PROJECT_DIR
 unset GIT_DIR
+# Em CI a trava não vale (o runner é um clone dedicado, com HEAD solto); esta
+# bateria prova a trava, então roda como se não fosse CI — e o caso j prova a
+# exceção de propósito.
+unset CI
+unset GITHUB_ACTIONS
 
 REPO="$CAIXA/repo"
 mkdir -p "$REPO/scripts" "$REPO/hooks/lib"
@@ -157,6 +162,16 @@ got=$?
 esperado "iniciar no worktree com CLAUDE_PROJECT_DIR=principal sai 0" 0 bash -c "exit $got"
 git worktree remove --force "$CAIXA/wt2"
 git branch -q -D fluxo/y2
+git checkout -q main
+
+echo
+echo "== j. em CI (CI=true) a trava nao vale: principal em fluxo/x passa =="
+git checkout -q fluxo/x
+saida=$(CI=true $E iniciar --slug s-ci 2>&1); got=$?
+esperado "iniciar com CI=true sai 0" 0 bash -c "exit $got"
+existe "s-ci.json gravado" "$REPO/docs/rainforest/estado/s-ci.json"
+saida=$(GITHUB_ACTIONS=true $E iniciar --slug s-gha 2>&1); got=$?
+esperado "iniciar com GITHUB_ACTIONS=true sai 0" 0 bash -c "exit $got"
 git checkout -q main
 
 echo

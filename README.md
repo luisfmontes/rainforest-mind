@@ -174,7 +174,7 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 
 | Script | Validação |
 |---|---|
-| `scripts/estado.cjs iniciar` | Recusa (exit 2) abrir fluxo no **checkout principal fora da branch padrão** — a pasta do repositório fica na `main`, trabalho nasce em worktree (regra 11, Issue #195). A mensagem traz a receita (`git worktree add …`, `git checkout main`); `exigir` no mesmo estado só avisa. Clone dedicado a uma frente declara `"principal-livre": true` em `.rainforest/config.json` |
+| `scripts/estado.cjs iniciar` | Recusa (exit 2) abrir fluxo no **checkout principal fora da branch padrão** — a pasta do repositório fica na `main`, trabalho nasce em worktree (regra 11, Issue #195). A mensagem traz a receita (`git worktree add …`, `git checkout main`); `exigir` no mesmo estado só avisa. Clone dedicado a uma frente declara `"principal-livre": true` em `.rainforest/config.json`; em CI (`CI`/`GITHUB_ACTIONS`) não vale |
 | `scripts/recibo.cjs` | Congela identidade do entregável com sha256 + bytes; chamado pelo `fechar` quando plano declara `entregaveis` (opt-in, sem manifesto sai exit 0). Obriga `nao_provado` listado — recibo que alega provar tudo é suspeito. Re-executa portões com `--reverificar` se `docs/rainforest/portoes/<slug>.md` existe. Grava atomicamente em `.rainforest/colheita/<slug>-recibo.json` (fora do git). `mostrar <slug>` imprime; `conferir <slug>` recalcula hash e compara. |
 
 ## Comandos, skills e agentes

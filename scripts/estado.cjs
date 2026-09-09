@@ -856,6 +856,14 @@ function conferirFechamento(estagio, slug, extra, estado) {
  * @returns {object|null} {branch, padrao} se deve recusar, ou null se passou
  */
 function checkoutPrincipalForaDaPadrao(raiz) {
+  // CI é o "clone dedicado a uma frente" por definição: o actions/checkout
+  // deixa o repositório num checkout principal com HEAD solto no merge-ref do
+  // PR, e toda bateria que roda `iniciar` ali seria recusada. Medido em
+  // 2026-09-08 (PR #228): três baterias vermelhas só no runner, verdes na
+  // máquina, porque lá o cwd era um worktree linkado. A exceção é por
+  // variável de ambiente padrão dos runners, não por config no repo — config
+  // no repo desligaria a trava para quem trabalha nele.
+  if (process.env.CI || process.env.GITHUB_ACTIONS) return null;
   // Toda exceção vira null (nunca derrubar estado.cjs por erro próprio)
   try {
     // Verificar se é repositório git

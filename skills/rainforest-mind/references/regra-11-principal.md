@@ -53,7 +53,11 @@ RECUSADO: o checkout principal está em 'fluxo/x', não em 'main'.
 `exigir` no mesmo estado **só avisa**, em uma linha no stderr — trabalho em voo
 não é derrubado por erro do estágio zero; `iniciar` é onde corrigir custa zero
 linha. Fora de repositório git, nada muda: a caixa de areia de
-`scripts/testa-estado.sh` não é repositório e continua verde sem edição.
+`scripts/testa-estado.sh` não é repositório e continua verde sem edição. **Em
+CI a trava não vale** (`CI` ou `GITHUB_ACTIONS` no ambiente): o runner é o
+clone dedicado por definição — `actions/checkout` deixa um checkout principal
+com HEAD solto no merge-ref do PR, e o primeiro run do PR #228 ficou vermelho
+em três baterias por isso, verdes na máquina onde o cwd era worktree.
 
 O caso legítimo existe — clone dedicado a uma frente só — e se **declara**, em
 vez de virar exceção de runtime: a chave `principal-livre: true` em
