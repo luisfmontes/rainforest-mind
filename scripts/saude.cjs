@@ -409,7 +409,7 @@ function avaliarConfigDir(configDir, nome, versaoRepo) {
 
   const doInstall = avaliarInstalacoes(instalacoes, versaoRepo, nome);
   if (!fs.existsSync(instalado)) {
-    return doInstall || { dir: configDir, nivel: 'ok', detalhe: 'instalacao em dia com o repo' };
+    return doInstall ? { ...doInstall, dir: configDir } : { dir: configDir, nivel: 'ok', detalhe: 'instalacao em dia com o repo' };
   }
   const doClone = avaliarClone(instalado, nome, instalacoes);
   // Aviso do install vem junto do clone: sao artefatos diferentes, e o clone em

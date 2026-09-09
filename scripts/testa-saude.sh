@@ -258,6 +258,40 @@ else
 fi
 
 echo
+echo "== duas config dirs: primeira com clone em dia, segunda com installed_plugins.json diferente (Issue #221) =="
+# avaliarConfigDir devolvia doInstall sem `dir` quando nao havia clone,
+# causando TypeError em rotular quando ha duas config dirs. Quando ha
+# installed_plugins.json com versao diferente mas sem clone, o resultado
+# deve ter `dir` incluido e rotular nao deve quebrar.
+HOMEFALSA2="$SBP/home2"
+mkdir -p "$HOMEFALSA2/.claude/plugins/marketplaces" "$HOMEFALSA2/.claude-teste/plugins/marketplaces"
+criar_fonte_sintetica
+# Primeira config dir: clone em dia
+rm -rf "$HOMEFALSA2/.claude/plugins/marketplaces/fonte-sintetica"
+git clone -q "$FONTE" "$HOMEFALSA2/.claude/plugins/marketplaces/fonte-sintetica" 2>/dev/null
+# Segunda config dir: sem clone, mas com installed_plugins.json com versao diferente
+SHA_ATUAL="$(git -C "$FONTE" rev-parse HEAD)"
+mkdir -p "$HOMEFALSA2/.claude-teste/plugins"
+cat > "$HOMEFALSA2/.claude-teste/plugins/installed_plugins.json" <<JSON
+{"version":2,"plugins":{"fonte-sintetica@teste":[{"scope":"user",
+ "installPath":"$HOMEFALSA2/.claude-teste/plugins/cache/teste/fonte-sintetica/0.5.0",
+ "version":"0.5.0","gitCommitSha":"$SHA_ATUAL"}]}}
+JSON
+CASE_NEW="$( ( cd "$FONTE" && CLAUDE_CONFIG_DIR= USERPROFILE="$HOMEFALSA2" HOME="$HOMEFALSA2" RFM_ROOT="$SBP/dados" \
+  node "$FONTE/scripts/saude.cjs" --json 2>/dev/null ) | node -e "
+    let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{
+      const a=JSON.parse(d).find(x=>x.item==='plugin instalado');
+      console.log(a ? a.nivel+' '+a.detalhe : 'ausente');
+    })")"
+checa "NEW. acha segunda config dir sem clone"      "aviso" "[.claude-teste]"     "$CASE_NEW"
+checa "NEW. nomeia a versao diferente"              "aviso" "0.5.0 instalada contra 1.0.0" "$CASE_NEW"
+if echo "$CASE_NEW" | grep -qF "[.claude]"; then
+  falhou=$((falhou+1)); echo "  FALHA config dir em dia entrou no aviso"
+else
+  ok=$((ok+1)); echo "  ok   config dir em dia nao vira achado"
+fi
+
+echo
 echo "== o nome do plugin sai do manifesto, nao da pasta =="
 # `basename(RAIZ_CODIGO)` so acerta enquanto a pasta se chama como o plugin. Ela nao
 # se chama: no cache versionado o basename e a VERSAO, e num worktree deste proprio
