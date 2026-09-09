@@ -49,8 +49,14 @@ pronto quando: com um repositório git montado em pasta temporária (commit inic
 
 ### 3. Regra 11 e README: principal na main, trabalho em worktree [tipo: docs]
 atende: D2, D3
-arquivos: `skills/rainforest-mind/SKILL.md`, `skills/rainforest-mind/references/regra-11.md`, `README.md`
+arquivos: `skills/rainforest-mind/SKILL.md`, `skills/rainforest-mind/references/regra-11.md`, `skills/rainforest-mind/references/regra-11-principal.md`, `README.md`, `hooks/testa-contexto-sessao.sh`
 depende de: 2
+
+**Emenda ao executar:** `regra-11.md` estava a 658 B do teto de 10.500 B de um
+reference, e o texto novo tinha 1.400 B — a elaboração nova foi para um arquivo
+irmão, `regra-11-principal.md`, no mesmo padrão de `regra-10-portaria.md` e
+`regra-12-acervo.md`. E o núcleo mudou de tamanho (388 → 386 B), então o contrato
+`NUCLEO_ESPERADO` de `hooks/testa-contexto-sessao.sh` acompanha (5595 → 5593).
 paralela: nao
 mutacao: n/a
   motivo: texto de regra; não há comportamento a inverter, a coerência é conferida contra o código de T2
