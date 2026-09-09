@@ -58,13 +58,13 @@
     ]
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "f935d10a7b36503981a4a64b1c2ac08cd1a35da7",
+      "head": "f96c766c6eb7aa7614bc536949437691524b828a",
       "caminhos_sujos": []
     },
-    "achados": 2,
-    "rodada": 2,
+    "achados": 0,
+    "rodada": 3,
     "bloqueantes": [
       "statusline.py main(): model/context_window/workspace null ou nao-dict, JSON de topo nao-dict e cwd nao-string derrubam a barra (exit 1, stdout vazio) — D1 promete que a barra nunca trava"
     ],
@@ -72,10 +72,32 @@
       "SKILL.md (nucleo) nao cita a chave principal-livre; criterio T3 pedia os tres arquivos"
     ],
     "em": "2026-09-08",
-    "tentativas": 2,
     "em_voo": [],
     "menores": [
       "config.cjs: comentario de branch-forcar diz ser a UNICA chave invertida; principal-livre tem a mesma semantica"
+    ],
+    "base": "58e8c37",
+    "head": "f96c766",
+    "importantes_nao_bloqueantes": [
+      "regra-11-principal.md:61 cita ligado(); o codigo le resolverConfig().valores — corrigir antes do verificar",
+      "conferir-versao: 6 commits desde o bump 0b53ce1 (teto 5) — tratar no fechar"
+    ],
+    "rodadas": [
+      {
+        "n": 1,
+        "achados": 3,
+        "veredito": "reprovado"
+      },
+      {
+        "n": 2,
+        "achados": 2,
+        "veredito": "reprovado"
+      },
+      {
+        "n": 3,
+        "achados": 0,
+        "veredito": "ok"
+      }
     ]
   },
   "verificar": {

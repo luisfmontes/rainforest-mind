@@ -58,7 +58,10 @@ linha. Fora de repositório git, nada muda: a caixa de areia de
 O caso legítimo existe — clone dedicado a uma frente só — e se **declara**, em
 vez de virar exceção de runtime: a chave `principal-livre: true` em
 `.rainforest/config.json` do projeto desliga a recusa, pela mesma cadeia de
-`hooks/lib/config.cjs` que os gates usam (`ligado('principal-livre')`). Sem
+`hooks/lib/config.cjs` que os gates usam — lida por `resolverConfig().valores`,
+**nunca** por `ligado()`: a chave tem sentido invertido (ligada, desliga a trava)
+e `ligado()` devolve `true` em erro e em chave desconhecida, o que derrubaria a
+trava em silêncio num descompasso de versão (mesmo cuidado de `branch-forcar`). Sem
 config, a trava está ativa. Bateria: `scripts/testa-estado-principal.sh`.
 
 ## Avaliado e descartado
