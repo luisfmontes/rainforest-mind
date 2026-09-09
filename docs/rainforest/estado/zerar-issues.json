@@ -63,7 +63,7 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-09-08",
-    "tarefas_ok": 13,
+    "tarefas_ok": 14,
     "tarefas": 19,
     "em_voo": [
       {
@@ -75,11 +75,6 @@
         "agente": "executor",
         "tarefa": "T12 #214 principal-atrasado (2o despacho)",
         "desde": "2026-09-09T01:00:00-03:00"
-      },
-      {
-        "agente": "executor",
-        "tarefa": "T15 #199 backup-rotativo (3o despacho: 2o nao commitou, bateria tautologica)",
-        "desde": "2026-09-09T01:30:00-03:00"
       },
       {
         "agente": "executor",
@@ -99,6 +94,7 @@
       11,
       13,
       14,
+      15,
       16,
       17,
       18
