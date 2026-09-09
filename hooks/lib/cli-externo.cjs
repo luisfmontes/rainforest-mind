@@ -375,4 +375,34 @@ function extrairJson(stdout) {
   }
 }
 
-module.exports = { rodarCli, extrairJson, matarDescendencia };
+/**
+ * Valida se um valor é seguro para interpolar em string de comando de shell.
+ *
+ * Devolve `true` só para string cujo conteúdo seja inteiramente letras,
+ * dígitos, espaço e `: \ / . - _ ~ ,` (permite caminho Windows com espaço).
+ *
+ * Devolve `false` para: valor não-string, vazio, ou que contenha qualquer um
+ * de `" ' ` $ & | ; < > ^ % ! ( )` ou quebra de linha.
+ *
+ * @param {any} valor - Valor a validar
+ * @returns {boolean}
+ */
+function valorSeguroParaShell(valor) {
+  // Não-string é inseguro
+  if (typeof valor !== 'string') {
+    return false;
+  }
+
+  // String vazia é insegura
+  if (valor.length === 0) {
+    return false;
+  }
+
+  // Padrão: apenas letras, dígitos, espaço, e caracteres seguros: : \ / . - _ ~ ,
+  // Recusa: " ' ` $ & | ; < > ^ % ! ( ) e quebra de linha
+  const padraoSeguro = /^[a-zA-Z0-9 :\\\/.\-_~,]+$/;
+
+  return padraoSeguro.test(valor);
+}
+
+module.exports = { rodarCli, extrairJson, matarDescendencia, valorSeguroParaShell };

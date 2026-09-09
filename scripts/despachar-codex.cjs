@@ -25,7 +25,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { rodarCli } = require('../hooks/lib/cli-externo.cjs');
+const { rodarCli, valorSeguroParaShell } = require('../hooks/lib/cli-externo.cjs');
 const { detectarSemCota, EXIT_SEM_COTA } = require('../hooks/lib/codex-cota.cjs');
 const { resolverConfig } = require('../hooks/lib/config.cjs');
 
@@ -134,6 +134,17 @@ function validarArgs(opts) {
     console.error('erro: --briefing-file obrigatória');
     return false;
   }
+
+  // Valida segurança dos valores interpolados ANTES de qualquer outro teste
+  if (!valorSeguroParaShell(opts.worktree)) {
+    console.error('valor invalido: --worktree');
+    return false;
+  }
+  if (opts.saida && !valorSeguroParaShell(opts.saida)) {
+    console.error('valor invalido: --saida');
+    return false;
+  }
+
   if (!fs.existsSync(opts.worktree)) {
     console.error(`erro: worktree não existe: ${opts.worktree}`);
     return false;
@@ -257,6 +268,12 @@ Opcionais:
   if (saidaTemporaria) {
     saidaArquivo = path.join(os.tmpdir(), `despachar-codex-${process.pid}-${Date.now()}.txt`);
     temporarioPendente = saidaArquivo;
+
+    // Valida o arquivo temporário gerado
+    if (!valorSeguroParaShell(saidaArquivo)) {
+      console.error('valor invalido: --saida');
+      process.exit(1);
+    }
   }
   // Ler e apagar são falhas independentes: um `unlink` que falha (arquivo
   // preso por antivírus/indexador) não pode jogar fora o texto já lido — foi o
@@ -275,23 +292,41 @@ Opcionais:
     return texto;
   };
 
-  // Monta comando base
-  let cmd = `codex exec -s ${sandbox} --skip-git-repo-check -C "${opts.worktree}" -c approval_policy="never" -o "${saidaArquivo}"`;
-
-  // Sem `--add-dir` de propósito: o sandbox do Codex nega escrita em `.git`
-  // mesmo com o diretório declarado (ver cabeçalho). Quem commita é a ponte.
-
-  // Resolve modelo
+  // Resolve modelo e valida valores
+  let modeloResolvido = null;
+  let esforcoResolvido = null;
   if (model) {
     const config = resolverConfig({ projeto: opts.worktree });
     const chaveModelo = `codex-modelo-${model}`;
     const modeloConfig = config.valores[chaveModelo];
 
     if (modeloConfig && typeof modeloConfig === 'object' && modeloConfig.modelo) {
-      cmd += ` -m "${modeloConfig.modelo}"`;
-      if (modeloConfig.esforco) {
-        cmd += ` -c model_reasoning_effort="${modeloConfig.esforco}"`;
+      modeloResolvido = modeloConfig.modelo;
+      esforcoResolvido = modeloConfig.esforco || null;
+
+      // Valida modelo e esforço da config
+      if (!valorSeguroParaShell(modeloResolvido)) {
+        console.error('valor invalido: modelo de config');
+        process.exit(1);
       }
+      if (esforcoResolvido && !valorSeguroParaShell(esforcoResolvido)) {
+        console.error('valor invalido: esforço de config');
+        process.exit(1);
+      }
+    }
+  }
+
+  // Monta comando base
+  let cmd = `codex exec -s ${sandbox} --skip-git-repo-check -C "${opts.worktree}" -c approval_policy="never" -o "${saidaArquivo}"`;
+
+  // Sem `--add-dir` de propósito: o sandbox do Codex nega escrita em `.git`
+  // mesmo com o diretório declarado (ver cabeçalho). Quem commita é a ponte.
+
+  // Adiciona modelo se resolvido
+  if (modeloResolvido) {
+    cmd += ` -m "${modeloResolvido}"`;
+    if (esforcoResolvido) {
+      cmd += ` -c model_reasoning_effort="${esforcoResolvido}"`;
     }
   }
 
