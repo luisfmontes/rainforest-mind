@@ -101,7 +101,11 @@
     ]
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "python statusline/testa-statusline-limites.py statusline/statusline.py; bash scripts/testa-estado-principal.sh; node -e CHAVES + grep -c principal-livre (3 arquivos) + conferir-invariantes + medir-skill + hooks/testa-contexto-sessao.sh; bash scripts/testa-versao.sh; node scripts/conferir-versao.cjs",
+    "saida": "T1: OK: 38 casos do segmento de limites (exit 0) | T2: 23 ok, 0 falhou (casos a-i + mutacao h) | T3: [principal-livre]; 1/1/1; ok: conferidas 5 invariantes; nucleo=5598 regras=17; ok: 277 falhou: 0 | T4: ok: 4 falhou: 0; ok versao 1.9.0: 0 commit(s) desde o bump 569a288 (teto 5) (origin/main: 1.8.1) | creep: ok sem creep 14 arquivos",
+    "nota": "T4 exigiu reordenar a branch (rebase --onto + cherry-pick) para o commit de versao ficar no topo: conferir-versao conta commits desde o bump, e as duas rodadas de correcao tinham deixado 7 acima dele",
+    "em": "2026-09-08"
   },
   "fechar": {
     "status": "pendente"
