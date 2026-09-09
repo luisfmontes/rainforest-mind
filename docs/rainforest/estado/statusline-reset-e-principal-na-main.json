@@ -20,8 +20,8 @@
     "catraca_mutacao": "2026-09-08",
     "tarefas_ok": 4,
     "tarefas": 4,
-    "comando": "bash scripts/testa-statusline.sh; bash scripts/testa-estado-principal.sh; bash scripts/testa-estado.sh; bash hooks/testa-config.sh; bash hooks/testa-contexto-sessao.sh",
-    "saida": "as 4 baterias da statusline passaram | 22 ok, 0 falhou | 172 ok, 0 falhas | 45 ok, 0 falha(s) | ok: 277 falhou: 0",
+    "comando": "bash scripts/testa-statusline.sh; bash scripts/testa-estado-principal.sh; bash scripts/testa-estado.sh; bash hooks/testa-contexto-sessao.sh; node scripts/conferir-invariantes.cjs",
+    "saida": "as 4 baterias da statusline passaram (19 casos de limites) | 23 ok, 0 falhou | 172 ok, 0 falhas | ok: 277 falhou: 0 (nucleo 5598 B) | ok: conferidas 5 invariantes",
     "mutacao": [
       {
         "tarefa": 1,
@@ -45,10 +45,31 @@
       }
     ],
     "integracao": "T2 via executor em worktree isolado (d3bf7f3, conferir-entrega APROVADO), cherry-pick 43e40b7 + correcao 09f9a6a",
-    "em": "2026-09-08"
+    "em": "2026-09-08",
+    "rodada": 2,
+    "correcoes_da_revisao": [
+      "isfinite em resets_at e used_percentage",
+      "trava avalia process.cwd()",
+      "nucleo cita principal-livre"
+    ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "dfba916c29b1795551bcd1833d4d7958b6686666",
+      "caminhos_sujos": []
+    },
+    "achados": 3,
+    "rodada": 1,
+    "bloqueantes": [
+      "statusline.py tempo_ate: resets_at NaN/Infinity passa o isinstance e int() estoura, barra vazia",
+      "estado.cjs: checkoutPrincipalForaDaPadrao(RAIZ) avalia CLAUDE_PROJECT_DIR (principal) e nao o cwd real da sessao em worktree — falso positivo reproduzido"
+    ],
+    "importantes": [
+      "SKILL.md (nucleo) nao cita a chave principal-livre; criterio T3 pedia os tres arquivos"
+    ],
+    "em": "2026-09-08",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
