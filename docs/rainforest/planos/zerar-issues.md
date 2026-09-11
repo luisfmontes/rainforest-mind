@@ -263,8 +263,19 @@ pronto quando: com dois clones de um remoto bare — o segundo bumpa `plugin.jso
 ### 19. Versão 1.10.0 [tipo: configurar]
 atende: D19
 arquivos: `.claude-plugin/plugin.json`, `README.md`
-depende de: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18
+depende de: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 20
 paralela: nao
 mutacao: n/a
   motivo: número de versão; a divergência entre os dois lugares é o que `testa-versao.sh` já pega
 pronto quando: com `plugin.json` e o badge do README em `1.10.0`, `bash scripts/testa-versao.sh` sai 0 e `node scripts/conferir-versao.cjs` sai 0 comparando com `origin/main`.
+
+### 20. Caixa de areia das baterias copia `scripts/lib/` [tipo: teste]
+atende: D15
+arquivos: `scripts/testa-backup-estado.sh`, `scripts/testa-registrar-erro.sh`
+depende de: 15
+paralela: sim
+mutacao: n/a
+  motivo: a tarefa não muda comportamento de produção — `foco.cjs` e `backup-rotativo.cjs` ficam intactos. O que muda é o `montar()` das duas caixas de areia, que deixou de refletir a dependência real criada por D15. A prova não é mutante: é a bateria sair de 19 e 2 falhas para 0 com o fonte de produção sem uma linha alterada, e a mesma bateria continuar vermelha se a cópia for retirada.
+pronto quando: `bash scripts/testa-backup-estado.sh` e `bash scripts/testa-registrar-erro.sh` saem 0 (hoje saem 1, com 36 ok/19 falhas e 70 ok/2 falhas, idênticos em `9700092` e na branch — não é regressão de tarefa nenhuma), sem que `git diff` toque `scripts/foco.cjs`, `scripts/backup.cjs` ou `scripts/lib/backup-rotativo.cjs`; e retirar a cópia de `scripts/lib/` do `montar()` de qualquer uma das duas devolve a bateria ao vermelho.
+
+Nota de origem (2026-09-11): D15 extraiu o rodízio para `scripts/lib/backup-rotativo.cjs` e pôs `require('./lib/backup-rotativo.cjs')` no topo de `foco.cjs`. As duas baterias montam a caixa de areia listando arquivo por arquivo, e a lista não conhecia a pasta nova — todo teste que executa o fonte real morre com `MODULE_NOT_FOUND` antes de exercitar o que ele mede. O conserto copia o **diretório** `scripts/lib/`, não o arquivo: lista de dependências mantida à mão é o defeito, e nomear só `backup-rotativo.cjs` o repete na próxima lib.

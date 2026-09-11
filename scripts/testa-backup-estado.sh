@@ -113,6 +113,12 @@ montar() {
   # solto foi o defeito que a #110 ja tinha ensinado: o modulo some, o erro vira
   # `Cannot find module`, e a bateria mede a caixa em vez do artefato.
   mkdir -p "$SB/plugin/scripts" "$SB/plugin/vigias" "$SB/plugin/hooks/lib"
+  # `foco.cjs` faz require("./lib/backup-rotativo.cjs") desde D15. Copia-se o
+  # DIRETORIO, nao o arquivo: lista de dependencia mantida a mao foi o que
+  # deixou estas duas baterias vermelhas, e nomear so o arquivo de hoje
+  # repete o defeito na proxima lib.
+  mkdir -p "$SB/plugin/scripts/lib"
+  cp -r "$SRC/scripts/lib/." "$SB/plugin/scripts/lib/"
   cp "$SRC/scripts/foco.cjs" "$SB/plugin/scripts/foco.cjs"
   cp "$SRC/scripts/backup.cjs" "$SB/plugin/scripts/backup.cjs"
   cp "$SRC/hooks/lib/raiz.cjs" "$SB/plugin/hooks/lib/raiz.cjs"

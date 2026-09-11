@@ -77,6 +77,12 @@ USUARIO_FALSO="Usuario Falso Que Nao Deve Vazar"
 montar() {
   rm -rf "$SB/plugin" "$SB/home" "$SB/$USUARIO_FALSO"
   mkdir -p "$SB/plugin/scripts" "$SB/plugin/vigias" "$SB/plugin/hooks/lib" "$SB/home"
+  # `foco.cjs` faz require("./lib/backup-rotativo.cjs") desde D15. Copia-se o
+  # DIRETORIO, nao o arquivo: lista de dependencia mantida a mao foi o que
+  # deixou estas duas baterias vermelhas, e nomear so o arquivo de hoje
+  # repete o defeito na proxima lib.
+  mkdir -p "$SB/plugin/scripts/lib"
+  cp -r "$SRC/scripts/lib/." "$SB/plugin/scripts/lib/"
   cp "$SRC/scripts/foco.cjs"                 "$SB/plugin/scripts/foco.cjs"
   cp "$SRC/hooks/lib/raiz.cjs"               "$SB/plugin/hooks/lib/raiz.cjs"
   cp "$SRC/hooks/lib/contexto-sessao.cjs"    "$SB/plugin/hooks/lib/contexto-sessao.cjs"
