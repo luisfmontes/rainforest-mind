@@ -45,8 +45,14 @@
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SB="$(mktemp -d)"
-trap 'rm -rf "$SB"' EXIT
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
+# criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
+cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done; }
+trap cleanup EXIT
+
+SB="$(novo_sandbox)"
 
 ok=0; falhou=0
 igual()   { if [ "$2" = "$3" ]; then ok=$((ok+1)); echo "  ok    $1"; else falhou=$((falhou+1)); echo "  FALHA $1: '$2' != '$3'"; fi; }
@@ -537,7 +543,7 @@ fi
 # O outro sentido, para a trava nao ser decorativa: uma prosa PLANTADA numa caixa
 # tem de acender. Sem isto, a checagem acima passaria igual se o grep estivesse
 # quebrado — que e o defeito que este repositorio ja catalogou quatro vezes.
-CAIXA_MD="$(mktemp -d)"
+CAIXA_MD="$(novo_sandbox)"
 mkdir -p "$CAIXA_MD/vigias"
 printf 'Se falhar, acrescente uma linha em\n`vigias/ERROS.md` no formato padrao.\n' > "$CAIXA_MD/vigias/falso.md"
 bloco_teste=$(grep -niE "($VERBOS)" "$CAIXA_MD/vigias/falso.md" -A2 2>/dev/null || true)
@@ -564,7 +570,7 @@ rm -rf "$CAIXA_MD"
 echo
 echo "== o registrar-erro.ps1 executado de verdade, numa caixa =="
 
-CAIXA_RE="$(mktemp -d)"
+CAIXA_RE="$(novo_sandbox)"
 mkdir -p "$CAIXA_RE/vigias"
 cp "$SRC/vigias/erros.ps1" "$SRC/vigias/registrar-erro.ps1" "$CAIXA_RE/vigias/"
 

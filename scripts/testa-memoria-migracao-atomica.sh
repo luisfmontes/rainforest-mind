@@ -14,8 +14,15 @@ set -e
 RAIZ=$(pwd)
 TEMP_DIR="${RFM_ROOT:-.rainforest-teste-migracao}"
 
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): MUT_DIR e
+# DADOS_CRASH (mais abaixo) nascem de `mktemp -d` e, com `set -e` ligado
+# nesta bateria, qualquer falha inesperada pula os `rm -rf` manuais antes de
+# cada `exit 1` — SANDBOXES garante a limpeza no EXIT de qualquer jeito.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
 cleanup() {
   rm -rf "$TEMP_DIR" 2>/dev/null || true
+  for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done
 }
 trap cleanup EXIT
 
@@ -319,8 +326,8 @@ echo "[LADO D: crash de verdade no meio da transação (Tarefa 23 - item 4a)]"
 # não a atomicidade explícita. Quem quiser proteger o BEGIN/COMMIT de uma
 # remoção acidental precisa de outro teste, e ele ainda não existe.
 
-MUT_DIR="$(mktemp -d)"
-DADOS_CRASH="$(mktemp -d)"
+MUT_DIR="$(novo_sandbox)"
+DADOS_CRASH="$(novo_sandbox)"
 # A cópia leva `hooks/` junto: `memoria.cjs` faz require de `../hooks/lib/raiz.cjs`,
 # e sem isso o processo mutado morre no carregamento do módulo, ANTES da migração
 # — o banco fica intacto por não ter sido tocado, e o teste passa medindo nada.

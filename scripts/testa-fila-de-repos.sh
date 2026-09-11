@@ -21,9 +21,15 @@ ALVO_REL="vigias/dados-batedor-repos.js"
 [ -f "$RAIZ/$ALVO_REL" ] || { echo "FALHA: nao achei $RAIZ/$ALVO_REL"; exit 1; }
 
 ok=0; falhou=0
-S="$(mktemp -d)"
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
+# criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
+cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done; }
+trap cleanup EXIT
+
+S="$(novo_sandbox)"
 W="$(cygpath -m "$S" 2>/dev/null || printf '%s' "$S")"
-trap 'rm -rf "$S"' EXIT
 
 # O alvo faz `require('../hooks/lib/raiz.cjs')` desde a #110 — a caixa precisa
 # da dependencia junto, senao o node morre em "Cannot find module" e as
@@ -182,7 +188,7 @@ echo "== 6. a fila e CONTEUDO DO REPO: acha-se mesmo com RFM_ROOT em outro lugar
 # Este bloco e o unico que separa as duas: a fila fica ao lado do script, e o
 # RFM_ROOT aponta para uma pasta VAZIA. Quem le por ROOT acha zero; quem le pelo
 # PLUGIN acha a entrada.
-OUTRA="$(mktemp -d)"
+OUTRA="$(novo_sandbox)"
 OUTRA_W="$(cygpath -m "$OUTRA" 2>/dev/null || printf '%s' "$OUTRA")"
 fila <<'JSONL'
 {"candidato": "repo-ao-lado-do-script", "ancora": "prova que a fila e conteudo do repo", "trilha": "enxertar", "plantada_em": "2026-08-25"}

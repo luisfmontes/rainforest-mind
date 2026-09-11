@@ -8,11 +8,16 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 
 # Cria caixa de areia
-SANDBOX=$(mktemp -d)
-cleanup() {
-  rm -rf "$SANDBOX"
-}
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
+# criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas —
+# TEMPWORK (mais abaixo) usava `trap ... RETURN` no nivel do script, que NUNCA
+# dispara fora de funcao ou `source`, e vazava em toda corrida.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
+cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done; }
 trap cleanup EXIT
+
+SANDBOX="$(novo_sandbox)"
 
 export USERPROFILE="$SANDBOX"
 export HOME="$SANDBOX"
@@ -86,11 +91,7 @@ echo
 echo "=== TESTE 3: RFM_ROOT explícito vence a cadeia ==="
 
 # Cria outra raiz de dados em pasta alternativa
-ALT_ROOT=$(mktemp -d)
-cleanup_alt() {
-  rm -rf "$ALT_ROOT"
-}
-trap "cleanup; cleanup_alt" EXIT
+ALT_ROOT="$(novo_sandbox)"
 
 mkdir -p "$ALT_ROOT"
 cat > "$ALT_ROOT/ideias.jsonl" << 'EOF'
@@ -122,8 +123,7 @@ unset RFM_ROOT
 unset CLAUDE_PROJECT_DIR
 
 # Testa num diretorio vazio (sem .rainforest de projeto)
-TEMPWORK=$(mktemp -d)
-trap "rm -rf $TEMPWORK" RETURN
+TEMPWORK="$(novo_sandbox)"
 cd "$TEMPWORK"
 
 SAIDA_AUSENTE=$(node "$REPO_ROOT/vigias/dados-batedor-repos.js" 2>&1)

@@ -31,8 +31,17 @@
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SB="$(mktemp -d)"
-trap 'rm -rf "$SB"' EXIT
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
+# criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas —
+# achado no caminho: os 7 `SB_BACKUP` (mais abaixo) usavam `trap ... RETURN`
+# no nivel do script, que NUNCA dispara fora de funcao ou `source`. As 7
+# caixas vazavam em TODA corrida desta bateria, passando ou nao.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
+cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done; }
+trap cleanup EXIT
+
+SB="$(novo_sandbox)"
 
 ok=0; falhou=0
 igual() { if [ "$2" = "$3" ]; then ok=$((ok+1)); echo "  ok    $1"; else falhou=$((falhou+1)); echo "  FALHA $1: '$2' != '$3'"; fi; }
@@ -139,7 +148,7 @@ contar() { ( cd "$1" && git log --oneline 2>/dev/null | wc -l ); }
 # exercitava a pergunta "de onde sai a raiz?". Na producao quem respondia era o
 # run-vigia.ps1, com a raiz do PLUGIN, e o backup nunca achou o FOCO.md.
 rodar() {  # rodar <raiz-de-dados> [-Teste]
-  local dst; dst="$(mktemp -d)"
+  local dst; dst="$(novo_sandbox)"
   local -x RFM_BACKUP_DESTINO="$(win "$dst")"
   verificar_destino_seguro "${RFM_BACKUP_DESTINO:-}"
   RFM_ROOT="$(win "$1")" env -u OneDrive -u ONEDRIVE powershell -NoProfile -ExecutionPolicy Bypass \
@@ -158,7 +167,7 @@ rodar() {  # rodar <raiz-de-dados> [-Teste]
 # caixa: sem isso o nivel 3 poderia alcancar o ~/.rainforest REAL do usuario, e
 # bateria que escreve nos dados do usuario nao e bateria.
 rodar_sem_rfm_root() {  # rodar_sem_rfm_root <dir-de-projeto>
-  local dst; dst="$(mktemp -d)"
+  local dst; dst="$(novo_sandbox)"
   local -x RFM_BACKUP_DESTINO="$(win "$dst")"
   verificar_destino_seguro "${RFM_BACKUP_DESTINO:-}"
   env -u RFM_ROOT -u OneDrive -u ONEDRIVE \
@@ -361,7 +370,7 @@ echo "== 10. o stdout sai LIMPO — o retorno do Write-LinhaEmLf nao vaza =="
 # entao nada quebrava — e por isso nenhuma bateria pegava. Este caso executa e
 # olha o stdout de verdade, que e o unico lugar onde o defeito aparecia.
 rodar_capturando() {  # rodar_capturando <raiz-de-dados>
-  local dst; dst="$(mktemp -d)"
+  local dst; dst="$(novo_sandbox)"
   local -x RFM_BACKUP_DESTINO="$(win "$dst")"
   verificar_destino_seguro "${RFM_BACKUP_DESTINO:-}"
   RFM_ROOT="$(win "$1")" env -u OneDrive -u ONEDRIVE powershell -NoProfile -ExecutionPolicy Bypass     -File "$(win "$SB/plugin/vigias/backup-estado.ps1")"     -Vigia sentinela-foco -Plugin "$(win "$SB/plugin")"     -Log "$(win "$SB/plugin/vigias/log.txt")" 2>/dev/null
@@ -401,8 +410,7 @@ fi
 echo
 echo "== 12. (a) caminho feliz - o destino sandbox ganha o zip do dia =="
 montar
-SB_BACKUP="$(mktemp -d)"
-trap "rm -rf $SB_BACKUP" RETURN
+SB_BACKUP="$(novo_sandbox)"
 rm -f "$SB/plugin/vigias/log.txt"
 RFM_ROOT="$(win "$SB/dados")" RFM_BACKUP_DESTINO="$(win "$SB_BACKUP")" env -u OneDrive -u ONEDRIVE powershell -NoProfile -ExecutionPolicy Bypass \
   -File "$(win "$SB/plugin/vigias/backup-estado.ps1")" \
@@ -424,8 +432,7 @@ fi
 echo
 echo "== 13. (b) backup local do FOCO.md continua igual, sem regressao =="
 montar
-SB_BACKUP="$(mktemp -d)"
-trap "rm -rf $SB_BACKUP" RETURN
+SB_BACKUP="$(novo_sandbox)"
 RFM_ROOT="$(win "$SB/dados")" RFM_BACKUP_DESTINO="$(win "$SB_BACKUP")" env -u OneDrive -u ONEDRIVE powershell -NoProfile -ExecutionPolicy Bypass \
   -File "$(win "$SB/plugin/vigias/backup-estado.ps1")" \
   -Vigia sentinela-foco -Plugin "$(win "$SB/plugin")" 2>&1 | grep -v 'warning:' || true
@@ -441,8 +448,7 @@ fi
 echo
 echo "== 14. (c) -Teste nao grava nem backup local nem externo =="
 montar
-SB_BACKUP="$(mktemp -d)"
-trap "rm -rf $SB_BACKUP" RETURN
+SB_BACKUP="$(novo_sandbox)"
 RFM_ROOT="$(win "$SB/dados")" RFM_BACKUP_DESTINO="$(win "$SB_BACKUP")" env -u OneDrive -u ONEDRIVE powershell -NoProfile -ExecutionPolicy Bypass \
   -File "$(win "$SB/plugin/vigias/backup-estado.ps1")" \
   -Vigia sentinela-foco -Plugin "$(win "$SB/plugin")" \
@@ -462,8 +468,7 @@ fi
 echo
 echo "== 15. (d) backup externo falhando registra erro e script continua =="
 montar
-SB_BACKUP="$(mktemp -d)"
-trap "rm -rf $SB_BACKUP" RETURN
+SB_BACKUP="$(novo_sandbox)"
 rm -f "$SB/plugin/vigias/log.txt"
 # Cria um backup.cjs quebrado que sai com erro
 cat > "$SB/plugin/scripts/backup.cjs" << 'EOF'
@@ -495,8 +500,7 @@ fi
 echo
 echo "== 16. (e) destino invalido nao expoe caminhos absolutos do usuario, mesmo com espaco e UNC =="
 montar
-SB_BACKUP="$(mktemp -d)"
-trap "rm -rf $SB_BACKUP" RETURN
+SB_BACKUP="$(novo_sandbox)"
 rm -f "$SB/plugin/vigias/log.txt"
 # Cria um backup.cjs que emite, na ultima linha, um caminho Windows COM ESPACO
 # no meio (pasta com espaco no nome) e um caminho UNC tambem com espaco — trava
@@ -545,8 +549,7 @@ fi
 echo
 echo "== 17. (f) linha de erro gigante do backup externo e truncada em 200 chars =="
 montar
-SB_BACKUP="$(mktemp -d)"
-trap "rm -rf $SB_BACKUP" RETURN
+SB_BACKUP="$(novo_sandbox)"
 rm -f "$SB/plugin/vigias/log.txt"
 # Sem caminho nenhum aqui de proposito: isola o TRUNCAMENTO do saneamento de
 # caminho (que e responsabilidade do Get-MotivoSaneado, ja coberto no caso 16).
@@ -574,8 +577,7 @@ fi
 echo
 echo "== 18. (g) truncar-antes-de-sanear cortaria caminho no meio do usuario — e nao pode =="
 montar
-SB_BACKUP="$(mktemp -d)"
-trap "rm -rf $SB_BACKUP" RETURN
+SB_BACKUP="$(novo_sandbox)"
 rm -f "$SB/plugin/vigias/log.txt"
 # Trava de regressao para a ORDEM sanear-depois-truncar (achado do auditor, 6a
 # revisao, 2026-09-03/04). O caso 17 ja cobre o truncamento isolado (sem

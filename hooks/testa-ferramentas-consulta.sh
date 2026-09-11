@@ -21,9 +21,15 @@
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HOOK="$SRC/hooks/ferramentas-consulta.cjs"
-RAIZ="$(mktemp -d)"
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
+# criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
+cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done; }
+trap cleanup EXIT
+
+RAIZ="$(novo_sandbox)"
 export RFM_ROOT="$RAIZ"
-trap "rm -rf '$RAIZ'" EXIT
 
 echo "(caixa de areia: $RAIZ)"
 
@@ -331,7 +337,7 @@ echo "== MUTACAO embutida: o exit final e quem garante o exit 0 =="
 # O plano DECLARA esta mutacao, mas declaracao nao e regressao: sem o caso
 # abaixo, quem inverter a linha no futuro roda a bateria verde. Achado da
 # revisao independente de 2026-08-25.
-MUT="$(mktemp -d)"
+MUT="$(novo_sandbox)"
 cp "$HOOK" "$MUT/mutado.cjs"
 node -e '
   const fs = require("fs"), p = process.argv[1], NL = String.fromCharCode(10);

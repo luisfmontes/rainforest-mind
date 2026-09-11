@@ -37,13 +37,16 @@ SRC_WIN="$(cygpath -m "$SRC" 2>/dev/null || printf '%s' "$SRC")"
 
 ok=0; falhou=0
 
-limpar() {
-  rm -rf "${DADOS_POSIX:-}" "${MUT_CODIGO_POSIX:-}" "${MUT_DADOS_POSIX:-}"
-}
-trap limpar EXIT
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
+# criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas —
+# registrado ANTES da primeira sandbox, para nao deixar janela de risco.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
+cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done; }
+trap cleanup EXIT
 
 # --- sandbox de dados desta bateria ---
-DADOS_POSIX="$(mktemp -d)"
+DADOS_POSIX="$(novo_sandbox)"
 DADOS="$(cygpath -m "$DADOS_POSIX" 2>/dev/null || printf '%s' "$DADOS_POSIX")"
 echo "(caixa de areia: $DADOS)"
 
@@ -228,7 +231,7 @@ echo "4. MUTACAO — prova que as secoes 1 e 3 pegam de verdade"
 # Esta secao copia o hook, remove so essa guarda, e prova que desta vez o
 # banco E criado — provando que a secao 1 (e a 3) tinham algo real para
 # pegar, e nao estavam so lendo um "true" que nunca falharia.
-MUT_CODIGO_POSIX="$(mktemp -d)"
+MUT_CODIGO_POSIX="$(novo_sandbox)"
 cp -r "$SRC/hooks" "$MUT_CODIGO_POSIX/hooks"
 cp -r "$SRC/scripts" "$MUT_CODIGO_POSIX/scripts"
 MUT_CODIGO="$(cygpath -m "$MUT_CODIGO_POSIX" 2>/dev/null || printf '%s' "$MUT_CODIGO_POSIX")"
@@ -260,7 +263,7 @@ else
   cat "$MUT_CODIGO_POSIX/.muta-out" | sed 's/^/         /'
 fi
 
-MUT_DADOS_POSIX="$(mktemp -d)"
+MUT_DADOS_POSIX="$(novo_sandbox)"
 MUT_DADOS="$(cygpath -m "$MUT_DADOS_POSIX" 2>/dev/null || printf '%s' "$MUT_DADOS_POSIX")"
 MUT_DB="$MUT_DADOS_POSIX/rainforest.db"
 
