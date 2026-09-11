@@ -14,7 +14,7 @@
   "plano": {
     "status": "ok",
     "arquivo": "docs/rainforest/planos/zerar-issues.md",
-    "tarefas": 19,
+    "tarefas": 20,
     "paralelas": [
       1,
       2,
@@ -58,13 +58,14 @@
         19
       ]
     },
-    "em": "2026-09-08"
+    "em": "2026-09-11",
+    "emenda": "tarefa 20 (D15) acrescentada em 2026-09-11"
   },
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-09-08",
-    "tarefas_ok": 18,
-    "tarefas": 19,
+    "tarefas_ok": 19,
+    "tarefas": 20,
     "em_voo": [],
     "em": "2026-09-11",
     "integradas": [
@@ -85,9 +86,10 @@
       15,
       16,
       17,
-      18
+      18,
+      20
     ],
-    "nota": "T10 e T12 integradas e validadas na branch. Falta T19 (versao 1.10.0). Dois bloqueios achados na validacao, ver docs: (a) testa-backup-estado.sh 19 falhas e testa-registrar-erro.sh 2 falhas, pre-existentes em 9700092, backup-rotativo.cjs nao copiado para a caixa de areia; (b) conferir-mutacao.cjs sai 6 na mutacao da T12 por queda de 3 de 13 assercoes passar o teto de 20%"
+    "nota": "T20 acrescentada ao plano e integrada (duas baterias vermelhas herdadas de D15 voltaram ao verde). Falta so a T19 (versao 1.10.0), que agora depende de 20. Teto de 20% do conferir-mutacao ficou plantado como ideia, nao consertado."
   },
   "revisar": {
     "status": "pendente"
