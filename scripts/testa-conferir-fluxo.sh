@@ -610,6 +610,143 @@ fi
 rm -rf "$R"
 
 echo
+echo "== 12. mutacoes: validacao de mutacoes do plano (D9) =="
+# Fonte com mutacao que MORRE: inverte a logica, bateria fica vermelha
+mkdir -p "$S/src" "$S/docs/rainforest/planos" "$S/docs/rainforest/design"
+cat > "$S/src/teste-mutacao-morre.js" << 'EOF'
+function ok(x) {
+  if (x === 1) return true;
+  return false;
+}
+module.exports = { ok };
+EOF
+
+# Fonte com mutacao que SOBREVIVE: comentario que nao afeta logica
+cat > "$S/src/teste-mutacao-sobrevive.js" << 'EOF'
+function check() {
+  // comentario importante
+  return true;
+}
+module.exports = { check };
+EOF
+
+# Bateria para fonte que MORRE
+cat > "$S/bateria-morre.sh" << 'EOF'
+#!/bin/bash
+node -e "const { ok } = require('./src/teste-mutacao-morre.js'); process.exit(ok(1) ? 0 : 1)"
+EOF
+chmod +x "$S/bateria-morre.sh"
+
+# Bateria para fonte que SOBREVIVE (sempre passa)
+cat > "$S/bateria-sobrevive.sh" << 'EOF'
+#!/bin/bash
+node -e "const { check } = require('./src/teste-mutacao-sobrevive.js'); process.exit(check() ? 0 : 1)"
+EOF
+chmod +x "$S/bateria-sobrevive.sh"
+
+# Design
+cat > "$S/docs/rainforest/design/t-mutacao-morre.md" << 'EOF'
+# Design Morre
+
+## Objetivo
+Teste
+
+## Decisões fechadas
+- **D1 — teste**
+
+## Avaliado e descartado
+teste
+
+## Fora de escopo
+teste
+
+## Em aberto
+teste
+EOF
+
+cat > "$S/docs/rainforest/design/t-mutacao-sobrevive.md" << 'EOF'
+# Design Sobrevive
+
+## Objetivo
+Teste
+
+## Decisões fechadas
+- **D1 — teste**
+
+## Avaliado e descartado
+teste
+
+## Fora de escopo
+teste
+
+## Em aberto
+teste
+EOF
+
+# Plano: mutacao que MORRE (bateria vermelha com mutacao)
+cat > "$S/docs/rainforest/planos/t-mutacao-morre.md" << 'EOF'
+# Plano Morre
+
+### 1. Tarefa com mutacao que morre
+
+atende: D1
+
+mutacao:
+  arquivo: `src/teste-mutacao-morre.js`
+  de: `if (x === 1) return true;`
+  para: `if (x === 1) return false;`
+  bateria: `bash bateria-morre.sh`
+EOF
+
+# Plano: mutacao que SOBREVIVE (bateria fica verde)
+cat > "$S/docs/rainforest/planos/t-mutacao-sobrevive.md" << 'EOF'
+# Plano Sobrevive
+
+### 1. Tarefa com mutacao que sobrevive
+
+atende: D1
+
+mutacao:
+  arquivo: `src/teste-mutacao-sobrevive.js`
+  de: `// comentario importante`
+  para: `// comentario mutado`
+  bateria: `bash bateria-sobrevive.sh`
+EOF
+
+# Plano com `mutacao: n/a`
+cat > "$S/docs/rainforest/planos/t-mutacao-na.md" << 'EOF'
+# Plano N/A
+
+### 1. Tarefa com mutacao n/a
+
+atende: D1
+
+mutacao: n/a
+motivo: Nao ha como inverter o comportamento
+EOF
+
+exige 1 "mutacao sobrevive sai exit != 0" \
+  env RFM_ESTADO_ROOT="$S" node "$CHECADOR" mutacoes --slug t-mutacao-sobrevive
+
+exige 0 "mutacao que morre sai exit 0" \
+  env RFM_ESTADO_ROOT="$S" node "$CHECADOR" mutacoes --slug t-mutacao-morre
+
+exige 0 "mutacao n/a sai exit 0" \
+  env RFM_ESTADO_ROOT="$S" node "$CHECADOR" mutacoes --slug t-mutacao-na
+
+# Verifica saida com `mutante sobreviveu`
+exige_msg "mutante sobreviveu" "saida menciona mutante sobreviveu" \
+  env RFM_ESTADO_ROOT="$S" node "$CHECADOR" mutacoes --slug t-mutacao-sobrevive
+
+# Verifica saida com `vermelho`
+exige_msg "vermelho" "saida menciona vermelho" \
+  env RFM_ESTADO_ROOT="$S" node "$CHECADOR" mutacoes --slug t-mutacao-morre
+
+# Verifica saida com `pulada`
+exige_msg "pulada" "saida menciona pulada" \
+  env RFM_ESTADO_ROOT="$S" node "$CHECADOR" mutacoes --slug t-mutacao-na
+
+echo
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]

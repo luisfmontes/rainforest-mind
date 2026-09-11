@@ -1259,6 +1259,102 @@ case "$saida_tipo2" in
   *) falhou=$((falhou+1)); echo "  FALHA array nao foi reportado como array: $saida_tipo2" ;;
 esac
 
+echo
+echo "== 6. marcar verificar ok com mutacoes (D9) =="
+# Fixture para mutacao: fonte que sera' mutada
+MUTACAO_SRC="$SBP/src/teste-mut.js"
+mkdir -p "$(dirname "$MUTACAO_SRC")"
+cat > "$MUTACAO_SRC" << 'EOF'
+function ok() { return true; }
+module.exports = { ok };
+EOF
+
+# Bateria que passa se a funcao retorna true
+MUTACAO_BAT="$SBP/test-mut.sh"
+cat > "$MUTACAO_BAT" << 'EOF'
+#!/bin/bash
+node -e "const { ok } = require('$MUTACAO_SRC'); process.exit(ok() ? 0 : 1)"
+EOF
+chmod +x "$MUTACAO_BAT"
+
+# Plano com mutacao
+MUTACAO_PLAN="$SBP/docs/rainforest/planos/t6-mut.md"
+mkdir -p "$(dirname "$MUTACAO_PLAN")"
+cat > "$MUTACAO_PLAN" << 'EOF'
+# Plano com mutacao
+
+### 1. Tarefa com mutacao
+
+atende: D1
+
+mutacao:
+  arquivo: `src/teste-mut.js`
+  de: `return true;`
+  para: `return false;`
+  bateria: `bash test-mut.sh`
+EOF
+
+# Design para cobertura
+MUTACAO_DESIGN="$SBP/docs/rainforest/design/t6-mut.md"
+mkdir -p "$(dirname "$MUTACAO_DESIGN")"
+cat > "$MUTACAO_DESIGN" << 'EOF'
+# Design
+
+## Objetivo
+Teste
+
+## Decisões fechadas
+- **D1 — teste**
+
+## Avaliado e descartado
+n/a
+
+## Fora de escopo
+n/a
+
+## Em aberto
+n/a
+EOF
+
+# Teste 6a: sem plano, verificar fecha mesmo sem mutacoes (fail-open, compatibilidade)
+$E iniciar --slug t6a >/dev/null
+$E marcar --slug t6a --estagio design --status aprovado >/dev/null
+$E marcar --slug t6a --estagio plano --status ok >/dev/null
+$E exigir --slug t6a --estagio executar >/dev/null
+$E marcar --slug t6a --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[]}' >/dev/null
+$E marcar --slug t6a --estagio revisar --status ok >/dev/null
+$E exigir --slug t6a --estagio verificar >/dev/null
+esperado "marcar verificar ok sem plano passa (fail-open)" 0 $E marcar --slug t6a --estagio verificar --status ok --json '{"comando":"bash","saida":"done"}'
+
+# Teste 6b: com plano com mutacao que sobrevive, verificar recusa
+cd "$SBP" || exit 1
+$E iniciar --slug t6b >/dev/null
+# Lê arquivo de estado para preencher o plano
+node -e "
+  const fs = require('fs');
+  const p = '$SBP/docs/rainforest/estado/t6b.json';
+  const e = JSON.parse(fs.readFileSync(p, 'utf8'));
+  e.design = { status: 'aprovado', em: '2026-09-01', arquivo: 'docs/rainforest/design/t6-mut.md' };
+  e.plano = { status: 'ok', em: '2026-09-01', arquivo: 'docs/rainforest/planos/t6-mut.md' };
+  fs.writeFileSync(p, JSON.stringify(e, null, 2));
+" 2>/dev/null
+$E exigir --slug t6b --estagio executar >/dev/null
+$E marcar --slug t6b --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"verde","motivo":"bateria nao mede"}]}' >/dev/null
+$E marcar --slug t6b --estagio revisar --status ok >/dev/null
+$E exigir --slug t6b --estagio verificar >/dev/null
+esperado "marcar verificar ok com mutacao que sobrevive recusa" 2 $E marcar --slug t6b --estagio verificar --status ok --json '{"comando":"bash","saida":"done"}'
+
+# Verifica que SHA256 nao mudou (estado nao foi gravado)
+SHA_ANTES_RECUSA=$(sha256sum "$SBP/docs/rainforest/estado/t6b.json" 2>/dev/null | awk '{print $1}')
+sleep 0.1  # garantir que timestamp seria diferente
+$E marcar --slug t6b --estagio verificar --status ok --json '{"comando":"bash","saida":"done"}' >/dev/null 2>&1
+SHA_DEPOIS_RECUSA=$(sha256sum "$SBP/docs/rainforest/estado/t6b.json" 2>/dev/null | awk '{print $1}')
+if [ "$SHA_ANTES_RECUSA" = "$SHA_DEPOIS_RECUSA" ]; then
+  ok=$((ok+1)); echo "  ok   estado nao foi gravado apos recusa de mutacao"
+else
+  falhou=$((falhou+1)); echo "  FALHA estado foi modificado apos recusa (ou erro de leitura)"
+fi
+
 unset RFM_ESTADO_ROOT
 
 echo

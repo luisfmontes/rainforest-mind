@@ -174,6 +174,7 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 
 | Script | Validação |
 |---|---|
+| `scripts/conferir-fluxo.cjs` | Trava de fechamento dos estágios `design`, `plano` e `revisar`. Subcomandos: `design --slug <slug>` valida forma do documento; `cobertura --slug <slug>` prova que toda decisão D<n> do design tem tarefa e toda tarefa cita decisão real, e que toda tarefa declara `mutacao:` (arquivo, de, para, bateria ou n/a com motivo); `creep --slug <slug> --base <ref> --head <ref>` deteta arquivos no diff sem tarefa correspondente; `mutacoes --slug <slug>` roda `conferir-mutacao.cjs` para cada tarefa com mutação e valida que a bateria sabe falhar quando a mutação é invertida (exit 0 se nenhum mutante sobreviveu, ≠ 0 se algum ficou verde). |
 | `scripts/recibo.cjs` | Congela identidade do entregável com sha256 + bytes; chamado pelo `fechar` quando plano declara `entregaveis` (opt-in, sem manifesto sai exit 0). Obriga `nao_provado` listado — recibo que alega provar tudo é suspeito. Re-executa portões com `--reverificar` se `docs/rainforest/portoes/<slug>.md` existe. Grava atomicamente em `.rainforest/colheita/<slug>-recibo.json` (fora do git). `mostrar <slug>` imprime; `conferir <slug>` recalcula hash e compara. |
 
 ## Comandos, skills e agentes

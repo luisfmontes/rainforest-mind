@@ -508,20 +508,41 @@ function verificarCatracaMutacao(slug, bloco, estado, extra) {
 
   const exigeFixture = String(bloco.catraca_mutacao || "") >= FIXTURE_EXIGIDA_DESDE;
   const lista = extra && extra.mutacao;
-  if (!Array.isArray(lista) || lista.length === 0) {
+
+  // Campo `mutacao` nao foi enviado: SEMPRE recusa (obrigatorio no --json)
+  if (lista === undefined || lista === null) {
     return "RECUSADO: fechar 'executar' exige 'mutacao' no --json: uma lista, um item por tarefa do plano.\n"
       + 'Sem ela, "a bateria passou" nao distingue bateria que testa de bateria que nao\n'
       + 'sabe falhar, e foi assim que uma entrega quebrada saiu daqui 49/49 verde.\n'
       + COMO_DECLARAR;
   }
 
-  // Extrair numeros de tarefas do plano
+  // Extrair numeros de tarefas do plano ANTES de verificar lista
   const nums_plano = extrairNumerosTarefa(slug);
 
-  // Se nao ha plano em disco, avisa e passa
+  // Sem plano em disco nao ha o que cruzar, qualquer que seja a lista. O aviso
+  // sai aqui, e nao so no ramo da lista vazia: a caixa de teste que fecha
+  // `executar` sem plano manda lista CHEIA, e ela tambem precisa saber que o
+  // cruzamento nao aconteceu. Trava que nao consegue medir avisa e libera —
+  // reprovar por nao conseguir medir e o que cria o habito do `--forcar`.
   if (nums_plano === null) {
     console.warn(`aviso: plano nao encontrado para ${slug} — nao ha como validar lista de mutacao contra plano. Prosseguindo sem validacao.`);
-  } else if (nums_plano.size > 0) {
+  }
+
+  // Lista foi enviada mas vazia: recusa se ha plano, libera se nao ha
+  if (!Array.isArray(lista) || lista.length === 0) {
+    if (nums_plano === null) {
+      return null;
+    }
+    // Se ha plano, lista nao pode estar vazia
+    return "RECUSADO: fechar 'executar' exige 'mutacao' no --json: uma lista, um item por tarefa do plano.\n"
+      + 'Sem ela, "a bateria passou" nao distingue bateria que testa de bateria que nao\n'
+      + 'sabe falhar, e foi assim que uma entrega quebrada saiu daqui 49/49 verde.\n'
+      + COMO_DECLARAR;
+  }
+
+  // Validar lista contra plano
+  if (nums_plano !== null && nums_plano.size > 0) {
     // Validar lista contra plano
     const nums_lista = new Set();
     const tarefas_vistas = new Set();
@@ -1196,6 +1217,19 @@ function main() {
       if (recusa_evidencia) {
         console.error(recusa_evidencia);
         process.exit(2);
+      }
+      // Validar mutações ao fechar verificar: roda `conferir-fluxo.cjs mutacoes`
+      if (estagio === 'verificar') {
+        const arquivo_plano = path.join(RAIZ, 'docs', 'rainforest', 'planos', `${slug}.md`);
+        if (fs.existsSync(arquivo_plano)) {
+          const mutacoes = spawnSync(process.execPath, [path.join(__dirname, 'conferir-fluxo.cjs'), 'mutacoes', '--slug', slug], {
+            stdio: 'inherit',
+          });
+          if (mutacoes.status !== 0) {
+            console.error('RECUSADO: catraca de mutações não passou. Revise as tarefas com mutante sobrevivente acima.');
+            process.exit(2);
+          }
+        }
       }
       // O gate tem de enxergar o `--json` DESTA chamada, não só o que já estava
       // gravado. Sem esta fusão, declarar `arquivo` no mesmo `marcar` que fecha

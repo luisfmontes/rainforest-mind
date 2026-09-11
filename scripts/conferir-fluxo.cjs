@@ -673,6 +673,113 @@ function globMatches(arquivo, glob) {
   return regex.test(arquivo);
 }
 
+// ================================================================ mutacoes
+
+/**
+ * Valida mutações: para cada tarefa do plano que declare `mutacao:`, executa
+ * o script `conferir-mutacao.cjs` com os campos do bloco.
+ *
+ * Saída: uma linha por tarefa — `tarefa N: vermelho` (exit 0), `tarefa N: mutante sobreviveu`
+ * (exit 2), `tarefa N: pulada (<motivo>)` para n/a, exit 3/4/5, etc.
+ *
+ * Exit: 0 se nenhum mutante sobreviveu (ou tudo foi pulado); ≠ 0 se algum sobreviveu.
+ */
+function cmdMutacoes() {
+  const slug = arg('slug');
+
+  // Lê plano
+  const arquivo_plano = arg('plano', false) || path.join(RAIZ, 'docs', 'rainforest', 'planos', `${slug}.md`);
+  const conteudo_plano = lerMarkdown(arquivo_plano);
+  if (!conteudo_plano) {
+    console.error(`RECUSADO: plano não existe: ${arquivo_plano}`);
+    process.exit(2);
+  }
+
+  // Extrai tarefas
+  const tarefas = extrairTarefas(conteudo_plano);
+
+  // Processa cada tarefa
+  let algumSobreviveu = false;
+  const CONFERIR_MUTACAO = path.join(__dirname, 'conferir-mutacao.cjs');
+
+  for (const tarefa of tarefas) {
+    const { numero, nome, mutacao } = tarefa;
+
+    // Tarefa sem `mutacao:` é erro estrutural já capturado por `cobertura`
+    if (!mutacao) {
+      console.log(`tarefa ${numero}: pulada (sem bloco mutacao)`);
+      continue;
+    }
+
+    const campos = mutacao.campos;
+    const vazio = v => v === undefined || v.trim() === '';
+    const na = v => v !== undefined && v.trim().toLowerCase() === 'n/a';
+
+    // `n/a` nas duas formas
+    if (na(mutacao.inline) || (na(campos.de) && na(campos.para))) {
+      const motivo = campos.motivo || mutacao.campos.motivo || 'sem motivo declarado';
+      console.log(`tarefa ${numero}: pulada (n/a — ${motivo})`);
+      continue;
+    }
+
+    // Checar se campos obrigatórios estão presentes
+    const campos_obrigatorios = ['arquivo', 'de', 'para', 'bateria'];
+    const ausentes = campos_obrigatorios.filter(c => vazio(campos[c]));
+    if (ausentes.length > 0) {
+      console.log(`tarefa ${numero}: pulada (falta ${ausentes.join(', ')})`);
+      continue;
+    }
+
+    // Remover crases se houver (formato do plano)
+    const arquivo = campos.arquivo.replace(/^`|`$/g, '');
+    const de = campos.de.replace(/^`|`$/g, '');
+    const para = campos.para.replace(/^`|`$/g, '');
+    const bateria = campos.bateria.replace(/^`|`$/g, '');
+
+    // Executar conferir-mutacao.cjs via spawnSync (array de argumentos, nunca string)
+    const { spawnSync } = require('child_process');
+    const resultado = spawnSync(process.execPath, [
+      CONFERIR_MUTACAO,
+      '--arquivo', arquivo,
+      '--de', de,
+      '--para', para,
+      '--bateria', bateria,
+      '--raiz', RAIZ,
+    ], {
+      stdio: 'pipe',
+      encoding: 'utf8',
+    });
+
+    // Interpretar exit code
+    const exit = resultado.status;
+    if (exit === 0) {
+      // Mutação casou e bateria VERMELHA
+      console.log(`tarefa ${numero}: vermelho`);
+    } else if (exit === 2) {
+      // Bateria VERDE com mutação — mutante sobreviveu
+      console.log(`tarefa ${numero}: mutante sobreviveu`);
+      algumSobreviveu = true;
+    } else if (exit === 3) {
+      // MUTACAO NAO APLICADA — trecho não existe
+      console.log(`tarefa ${numero}: pulada (de não encontrado)`);
+    } else if (exit === 4) {
+      // Não dá para medir — baseline já falha ou --de ambíguo
+      console.log(`tarefa ${numero}: pulada (não mensurável)`);
+    } else if (exit === 5) {
+      // Suspeita de corte de shell
+      console.log(`tarefa ${numero}: pulada (suspeita de corte de shell)`);
+    } else if (exit === 1) {
+      // Erro de uso ou bateria sem veredito
+      console.log(`tarefa ${numero}: pulada (erro de execução)`);
+    } else {
+      console.log(`tarefa ${numero}: pulada (exit ${exit})`);
+    }
+  }
+
+  // Exit code do subcomando
+  process.exit(algumSobreviveu ? 1 : 0);
+}
+
 // ================================================================ main
 
 function main() {
@@ -690,7 +797,11 @@ function main() {
     return cmdCreep();
   }
 
-  console.error('uso: design | cobertura | creep');
+  if (cmd === 'mutacoes') {
+    return cmdMutacoes();
+  }
+
+  console.error('uso: design | cobertura | creep | mutacoes');
   process.exit(1);
 }
 
