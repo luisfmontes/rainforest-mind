@@ -12,8 +12,14 @@
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CAIXA="$(mktemp -d)"
-trap 'rm -rf "$CAIXA"' EXIT
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
+# criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
+cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done; }
+trap cleanup EXIT
+
+CAIXA="$(novo_sandbox)"
 
 export RFM_ROOT="$CAIXA"
 MEMORIA="node $SRC/scripts/memoria.cjs"
@@ -156,8 +162,7 @@ $MEMORIA iniciar > /dev/null 2>&1
 echo
 echo "== 6. banco ausente devolve erro =="
 # Criar um RFM_ROOT novo sem banco
-CAIXA_VAZIA="$(mktemp -d)"
-trap 'rm -rf "$CAIXA" "$CAIXA_VAZIA"' EXIT
+CAIXA_VAZIA="$(novo_sandbox)"
 
 resultado=$(RFM_ROOT="$CAIXA_VAZIA" $MEMORIA backup 2>&1)
 exit_code=$?

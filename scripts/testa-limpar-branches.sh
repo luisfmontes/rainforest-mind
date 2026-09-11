@@ -25,15 +25,24 @@
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SBP="$(mktemp -d)"
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
+# criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
 # A secao 16 SABOTA `scripts/limpar-branches.cjs` no lugar e restaura no fim. Se a
 # bateria for interrompida no meio (Ctrl-C, crash, timeout), o script fica MUTADO no
 # repositorio — e um `limpar-branches` sabotado responde `false` para toda deteccao
-# de conteudo, o que e silencioso e nao aparece em nenhum status. O trap restaura a
-# copia intacta em qualquer saida, e o `rm` do sandbox vem depois.
+# de conteudo, o que e silencioso e nao aparece em nenhum status. O cleanup restaura
+# a copia intacta em qualquer saida, ANTES de varrer as sandboxes.
+cleanup() {
+  [ -f "${ORIGINAL_LIMPAR:-}" ] && cp "$ORIGINAL_LIMPAR" "$SRC/scripts/limpar-branches.cjs"
+  for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done
+}
+trap cleanup EXIT
+
+SBP="$(novo_sandbox)"
 ORIGINAL_LIMPAR="$SBP/limpar-branches.original.cjs"
 cp "$SRC/scripts/limpar-branches.cjs" "$ORIGINAL_LIMPAR"
-trap '[ -f "$ORIGINAL_LIMPAR" ] && cp "$ORIGINAL_LIMPAR" "$SRC/scripts/limpar-branches.cjs"; rm -rf "$SBP"' EXIT
 echo "(caixa de areia: $SBP)"
 
 ok=0; falhou=0
@@ -579,7 +588,7 @@ echo "== varredura de worktree temporario vazado =="
 # salva, porque o processo nao desempilha. So a rodada seguinte pode limpar.
 #
 # Tres casos, e o terceiro e o que impede a varredura de virar "apaga tudo".
-SBV="$(mktemp -d)"
+SBV="$(novo_sandbox)"
 git init -q "$SBV/repo"
 (
   cd "$SBV/repo"

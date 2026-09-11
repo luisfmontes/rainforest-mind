@@ -29,8 +29,15 @@ for f in "$CHECADOR" "$ESTADO" "$REAL_D" "$REAL_P" "$NOVO_D" "$NOVO_P"; do
 done
 
 ok=0; falhou=0
-S="$(mktemp -d)"; W="$(cygpath -m "$S" 2>/dev/null || printf '%s' "$S")"
-trap 'rm -rf "$S"' EXIT
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
+# criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas —
+# bateria que morre no meio (assercao que estoura, Ctrl+C) nao deixa orfao.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
+cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done; }
+trap cleanup EXIT
+
+S="$(novo_sandbox)"; W="$(cygpath -m "$S" 2>/dev/null || printf '%s' "$S")"
 mkdir -p "$S/docs/rainforest/design" "$S/docs/rainforest/planos"
 D="$S/docs/rainforest/design/t.md"
 P="$S/docs/rainforest/planos/t.md"
@@ -206,7 +213,7 @@ echo "== 5. a trava nao pode capturar quem nao usa o fluxo =="
 # Invariante do plano: projeto sem design/plano continua fechando estagio como
 # antes. Sem isto, a trava deixaria de apertar quem esta no fluxo e passaria a
 # tornar o fluxo obrigatorio — que e' outra coisa, e ninguem decidiu isso.
-V="$(mktemp -d)"; VW="$(cygpath -m "$V" 2>/dev/null || printf '%s' "$V")"
+V="$(novo_sandbox)"; VW="$(cygpath -m "$V" 2>/dev/null || printf '%s' "$V")"
 VE(){ RFM_ESTADO_ROOT="$VW" node "$ESTADO" "$@"; }
 VE iniciar --slug vazio >/dev/null 2>&1
 exige 0 "sem design no disco, 'design aprovado' fecha" VE marcar --slug vazio --estagio design --status aprovado
@@ -219,7 +226,7 @@ rm -rf "$V"
 # existe", sem saída. Achado 1 da revisão de 2026-08-13. A regra que este caso
 # guarda: a trava só age quando TUDO que a checagem lê existe, não só o arquivo
 # do estágio que está fechando.
-M="$(mktemp -d)"; MW="$(cygpath -m "$M" 2>/dev/null || printf '%s' "$M")"
+M="$(novo_sandbox)"; MW="$(cygpath -m "$M" 2>/dev/null || printf '%s' "$M")"
 mkdir -p "$M/docs/rainforest/planos"; cp "$REAL_P" "$M/docs/rainforest/planos/misto.md"
 ME(){ RFM_ESTADO_ROOT="$MW" node "$ESTADO" "$@"; }
 ME iniciar --slug misto >/dev/null 2>&1
@@ -244,7 +251,7 @@ echo "== 6. isencao do creep e escopada por slug =="
 # Três commits, e DOIS intervalos sobre o mesmo repositório — nada é desfeito. O
 # contraste entre os dois é o que prova que a recusa vem do outro slug, e não de
 # o `creep` recusar tudo que aparece.
-G="$(mktemp -d)"; GW="$(cygpath -m "$G" 2>/dev/null || printf '%s' "$G")"
+G="$(novo_sandbox)"; GW="$(cygpath -m "$G" 2>/dev/null || printf '%s' "$G")"
 mkdir -p "$G/docs/rainforest/design" "$G/docs/rainforest/planos"
 cp "$REAL_D" "$G/docs/rainforest/design/t.md"
 cp "$REAL_P" "$G/docs/rainforest/planos/t.md"
@@ -281,7 +288,7 @@ echo "== 7. catraca de mutacao: toda tarefa declara o alvo (D7, D9) =="
 # trava recusando o caminho feliz sempre. A bateria nao sabia falhar, e o plano
 # nao dizia o que ela deveria ter falhado. Sem alvo declarado, a integracao nao
 # tem o que re-rodar e o veredito volta a ser o relato de quem implementou.
-N="$(mktemp -d)"; NW="$(cygpath -m "$N" 2>/dev/null || printf '%s' "$N")"
+N="$(novo_sandbox)"; NW="$(cygpath -m "$N" 2>/dev/null || printf '%s' "$N")"
 mkdir -p "$N/docs/rainforest/design" "$N/docs/rainforest/planos"
 ND="$N/docs/rainforest/design/t.md"; NP="$N/docs/rainforest/planos/t.md"
 NCHK(){ RFM_ESTADO_ROOT="$NW" node "$CHECADOR" "$@"; }
@@ -318,7 +325,7 @@ rm -rf "$N"
 echo
 echo "== 8. normalizacao de CRLF e ignorar cerca de codigo =="
 # Fixture proprio para testar CRLF e cercas
-O="$(mktemp -d)"; OW="$(cygpath -m "$O" 2>/dev/null || printf '%s' "$O")"
+O="$(novo_sandbox)"; OW="$(cygpath -m "$O" 2>/dev/null || printf '%s' "$O")"
 mkdir -p "$O/docs/rainforest/design" "$O/docs/rainforest/planos"
 OD="$O/docs/rainforest/design/t.md"; OP="$O/docs/rainforest/planos/t.md"
 OCHK(){ RFM_ESTADO_ROOT="$OW" node "$CHECADOR" "$@"; }
@@ -433,7 +440,7 @@ echo "== 7. creep nao invoca shell: --base/--head nao executam comando (Issue #8
 # e invalido. E sobre o EFEITO COLATERAL: se um shell rodou, o sentinela existe.
 # Testar por exit code aqui daria verde com o defeito de pe.
 
-CAIXA_INJ="$(mktemp -d)"
+CAIXA_INJ="$(novo_sandbox)"
 # O sentinela nasce no CWD do comando (que e a RAIZ), com nome relativo, e nao num
 # mktemp. Motivo medido: o `execSync` do Node no Windows chama o ComSpec (cmd.exe),
 # e o caminho POSIX que o `mktemp -d` devolve (/tmp/tmp.XXXX) vira C:	mp... para o
@@ -537,7 +544,7 @@ echo "== 10. cobertura enxerga PASTA e portao DATADO (D8) =="
 #
 # Mesma forma da secao 6: repositorio git de verdade, senao nao ha diff e o
 # `creep` recusa antes de chegar no codigo alvo.
-D="$(mktemp -d)"; DW="$(cygpath -m "$D" 2>/dev/null || printf '%s' "$D")"
+D="$(novo_sandbox)"; DW="$(cygpath -m "$D" 2>/dev/null || printf '%s' "$D")"
 mkdir -p "$D/docs/rainforest/design" "$D/docs/rainforest/planos" "$D/docs/rainforest/portoes"
 cp "$REAL_D" "$D/docs/rainforest/design/t.md"
 # A tarefa 1 do plano passa a declarar uma PASTA em vez de um arquivo.
@@ -582,7 +589,7 @@ echo "== 11. isencao de relatorios/ (Issue #196) =="
 #
 # Arquivo solto na raiz (`relatorio-solto.md`) continua creep — a isenção é
 # específica à pasta `relatorios/`, e arquivo fora dela não é "registro do fluxo".
-R="$(mktemp -d)"; RW="$(cygpath -m "$R" 2>/dev/null || printf '%s' "$R")"
+R="$(novo_sandbox)"; RW="$(cygpath -m "$R" 2>/dev/null || printf '%s' "$R")"
 mkdir -p "$R/docs/rainforest/design" "$R/docs/rainforest/planos" "$R/relatorios"
 cp "$REAL_D" "$R/docs/rainforest/design/t.md"
 cp "$REAL_P" "$R/docs/rainforest/planos/t.md"
