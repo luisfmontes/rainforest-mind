@@ -63,24 +63,9 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-09-08",
-    "tarefas_ok": 16,
+    "tarefas_ok": 18,
     "tarefas": 19,
-    "em_voo": [
-      {
-        "agente": "tester",
-        "tarefa": "T12 #214 principal-atrasado (3o despacho, bateria refeita)",
-        "branch": "t12-principal-atrasado",
-        "base": "9700092",
-        "desde": "2026-09-11"
-      },
-      {
-        "agente": "tester",
-        "tarefa": "T10 sandbox no trap + guarda estatica",
-        "branch": "t10-sandbox-no-trap",
-        "base": "9700092",
-        "desde": "2026-09-11"
-      }
-    ],
+    "em_voo": [],
     "em": "2026-09-11",
     "integradas": [
       1,
@@ -92,7 +77,9 @@
       7,
       8,
       9,
+      10,
       11,
+      12,
       13,
       14,
       15,
@@ -100,7 +87,7 @@
       17,
       18
     ],
-    "nota": "T3 e T9 recuperadas de worktree de agente que morreu em 09/09; T12 volta para despacho (bateria falsa)"
+    "nota": "T10 e T12 integradas e validadas na branch. Falta T19 (versao 1.10.0). Dois bloqueios achados na validacao, ver docs: (a) testa-backup-estado.sh 19 falhas e testa-registrar-erro.sh 2 falhas, pre-existentes em 9700092, backup-rotativo.cjs nao copiado para a caixa de areia; (b) conferir-mutacao.cjs sai 6 na mutacao da T12 por queda de 3 de 13 assercoes passar o teto de 20%"
   },
   "revisar": {
     "status": "pendente"
