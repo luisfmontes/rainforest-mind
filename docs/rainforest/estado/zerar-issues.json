@@ -65,7 +65,22 @@
     "catraca_mutacao": "2026-09-08",
     "tarefas_ok": 16,
     "tarefas": 19,
-    "em_voo": [],
+    "em_voo": [
+      {
+        "agente": "tester",
+        "tarefa": "T12 #214 principal-atrasado (3o despacho, bateria refeita)",
+        "branch": "t12-principal-atrasado",
+        "base": "9700092",
+        "desde": "2026-09-11"
+      },
+      {
+        "agente": "tester",
+        "tarefa": "T10 sandbox no trap + guarda estatica",
+        "branch": "t10-sandbox-no-trap",
+        "base": "9700092",
+        "desde": "2026-09-11"
+      }
+    ],
     "em": "2026-09-11",
     "integradas": [
       1,
