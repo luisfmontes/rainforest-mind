@@ -546,13 +546,13 @@ def segmento_versao(transcript_path):
 
 
 
-def segmento_escada_intensidade():
+def segmento_escada_intensidade(cwd):
     """Mostra o nível ativo de intensidade da escada YAGNI.
 
     Le config.json da pasta de dados e mostra o nível configurado.
     Se nao estiver configurado, retorna string vazia (nao mostra nada).
     """
-    raiz_dados = resolver_raiz_dados()
+    raiz_dados = resolver_raiz_dados(cwd)
     if not raiz_dados:
         return ""
 
@@ -607,7 +607,7 @@ def main():
         segmentos.append(" ".join(partes_limite))
 
     segmentos.append(segmento_tempo())
-    segmentos.append(segmento_escada_intensidade())
+    segmentos.append(segmento_escada_intensidade(cwd))
     segmentos.append(segmento_co_locada(cwd))
     segmentos.append(segmento_versao(transcript_path))
     segmentos.append(segmento_prazo())
