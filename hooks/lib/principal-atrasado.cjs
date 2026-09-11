@@ -106,7 +106,10 @@ function linhas({ cwd }) {
       // sem origin/main ou erro, continua
     }
 
-    // Crítico: exatamente este if (atras > 0), sem variações
+    // O bloco de `mutacao:` do plano aponta para a comparação abaixo. NAO repita
+    // o literal dela em comentário nenhum deste arquivo: conferir-mutacao.cjs
+    // recusa `--de` que case mais de uma vez (exit 4), e a catraca passaria a
+    // reprovar a tarefa por ambiguidade, sem nunca rodar a bateria.
     if (atras > 0) {
       resultado.push(`${atras} commit(s) atrás de origin/main`);
       resultado.push(`git -C ${principal} pull --ff-only`);
