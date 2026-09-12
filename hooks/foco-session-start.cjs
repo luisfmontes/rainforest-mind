@@ -9,6 +9,7 @@ const path = require('path');
 const net = require('net');
 const { montarContexto, montarLegenda, resumirSessoes, sessoesVivas, computarVeredito, pastasDoFoco } = require('./lib/contexto-sessao.cjs');
 const { resolverRaiz } = require('./lib/raiz.cjs');
+const { linhas: linhasPrincipalAtrasado } = require('./lib/principal-atrasado.cjs');
 
 // Dados (FOCO/IDEIAS) vivem no repo de trabalho, não na cópia em cache do plugin.
 // A cadeia de 4 níveis (RFM_ROOT > projeto > global > plugin) está em
@@ -265,6 +266,14 @@ function doConsoleLog(pluginsStatus, whatsappStatus) {
     ? `## Dependências de ambiente (regra 14)\nChecado pelo hook: ${checados.join('; ')}.`
     : '';
 
+  // Detectar se principal está atrasado e worktrees já integradas
+  let principalAtrasado = [];
+  try {
+    principalAtrasado = linhasPrincipalAtrasado({ cwd: process.env.CLAUDE_PROJECT_DIR || process.cwd() });
+  } catch {
+    // silencioso em erro
+  }
+
   const contexto = montarContexto({
     skillText: skill,
     focoText: foco,
@@ -274,6 +283,7 @@ function doConsoleLog(pluginsStatus, whatsappStatus) {
     sessoes,
     revisao,
     dependencias,
+    principalAtrasado,
     temEstrategia,
     estrategiaPath: temEstrategia ? CAMINHO_ESTRATEGIA : null,
   });

@@ -31,6 +31,7 @@ const path = require("node:path");
 // Importa o helper de confinamento da Tarefa 1
 const { toplevelConfinado } = require("../hooks/lib/cwd-efetivo.cjs");
 const { resolver } = require("../hooks/lib/estagio-ativo.cjs");
+const { resolverRaiz: resolverRaizDados } = require("../hooks/lib/raiz.cjs");
 
 /**
  * O worktree tem agente registrado em voo?
@@ -57,6 +58,60 @@ function agentesEmVoo(dir) {
     return voo.length ? { slug: ativo.slug, estagio: ativo.estagio, voo } : null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Detecta se um worktree está sendo usado por uma sessão viva (outra que não esta).
+ * Lê sessoes.json da raiz de dados (RFM_ROOT ou ~/.rainforest etc).
+ * Uma sessão é viva se seu timestamp (prompt_ts ou stop_ts, o maior) for mais recente
+ * que 5 horas atrás.
+ *
+ * @param {string} dir - Diretório do worktree
+ * @param {string} [raizDados] - Raiz de dados (default: resolve automaticamente)
+ * @returns {boolean} - true se há sessão viva com cwd normalizado igual ao do worktree
+ */
+function temSessaoViva(dir, raizDados) {
+  try {
+    // Resolve a raiz de dados se não foi passada
+    const raiz = raizDados || resolverRaizDados().raiz;
+    if (!raiz) return false;
+
+    const caminhoSessoes = path.join(raiz, 'sessoes.json');
+    if (!fs.existsSync(caminhoSessoes)) return false;
+
+    const sessoes = JSON.parse(fs.readFileSync(caminhoSessoes, 'utf8'));
+    if (!sessoes || typeof sessoes !== 'object') return false;
+
+    const agora = Date.now();
+    const limiarIdade = 5 * 3600 * 1000; // 5 horas em ms
+    const dirNormalizado = normalizarCaminho(dir);
+
+    for (const [sessionId, sessao] of Object.entries(sessoes)) {
+      if (!sessao || typeof sessao !== 'object') continue;
+
+      // Determina o timestamp mais recente (prompt ou stop)
+      const ultimaAtividade = Math.max(
+        sessao.prompt_ts || 0,
+        sessao.stop_ts || 0
+      );
+
+      // Sessão é viva se mais recente que 5 horas atrás
+      if (agora - ultimaAtividade < limiarIdade) {
+        // Normaliza o cwd da sessão
+        const cwdSessao = sessao.cwd;
+        if (cwdSessao) {
+          const cwdNormalizado = normalizarCaminho(cwdSessao);
+          if (cwdNormalizado === dirNormalizado) {
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
+  } catch {
+    return false;
   }
 }
 
@@ -358,6 +413,10 @@ function classificar(dir, fantasmas) {
     };
   }
 
+  // Verifica se é um worktree de uma sessão viva (outra janela)
+  const sessaoViva = temSessaoViva(dir);
+  if (sessaoViva) return 'de-outra-sessao';
+
   const confinado = toplevelConfinado(dir);
 
   if (!confinado.ok) {
@@ -585,7 +644,14 @@ function main() {
   }
 
   for (const dir of todos) {
-    const classificacao = classificar(dir, fantasmas);
+    let classificacao = classificar(dir, fantasmas);
+    // Converte string em objeto se necessário
+    if (typeof classificacao === 'string') {
+      classificacao = {
+        status: classificacao,
+        detalhes: "sessão viva está usando este worktree",
+      };
+    }
     const caminhoOriginal = mapNormalizado.get(dir) || dir;
     dados.push({
       caminho: dir,

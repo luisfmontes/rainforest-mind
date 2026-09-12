@@ -23,6 +23,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const { gravarBackup } = require("./lib/backup-rotativo.cjs");
 
 // Raiz segue a mesma cadeia do ideias.cjs
 const RAIZ = (() => {
@@ -183,16 +184,15 @@ function serializar(obj) {
 
 // --------- Gravação verificada ---------
 function gravar(linhasAntes, linhasDepois, rotulo) {
-  fs.mkdirSync(DIR_BACKUP, { recursive: true });
-  const carimbo = carimboAgora();
-  const backup = path.join(DIR_BACKUP, `ferramentas-${carimbo}.jsonl`);
-
-  if (fs.existsSync(backup)) {
-    throw new Erro(`backup ${path.basename(backup)} ja existe`);
-  }
-
+  let backup, totalBackups;
   if (fs.existsSync(ALVO)) {
-    fs.copyFileSync(ALVO, backup);
+    ({ backup, totalBackups } = gravarBackup(ALVO, DIR_BACKUP, { teto: 10, prefixo: 'ferramentas' }));
+  } else {
+    // Primeira escrita: nao ha arquivo para copiar. Cria arquivo vazio, faz backup, deleta temp.
+    const arqTempVazio = ALVO.replace(/\.jsonl$/, ".jsonl.empty");
+    fs.writeFileSync(arqTempVazio, "", "utf8");
+    ({ backup, totalBackups } = gravarBackup(arqTempVazio, DIR_BACKUP, { teto: 10, prefixo: 'ferramentas' }));
+    fs.unlinkSync(arqTempVazio);
   }
 
   const tmp = ALVO.replace(/\.jsonl$/, ".jsonl.tmp");
@@ -222,6 +222,7 @@ function gravar(linhasAntes, linhasDepois, rotulo) {
     }`
   );
   console.log(`  backup: ${path.relative(RAIZ, backup)}`);
+  console.log(`  cópias guardadas: ${totalBackups}/10`);
 
   if (problemas.length) {
     if (fs.existsSync(ALVO) && fs.existsSync(backup)) {

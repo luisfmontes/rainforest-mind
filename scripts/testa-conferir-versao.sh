@@ -332,5 +332,96 @@ else
 fi
 
 echo
+echo "== buscarOrigem: fetch origin/main antes de comparar =="
+# Monta remoto bare, dois clones, e faz um clone ficar a versao local mais recente
+REMOTO_BARE="$RAIZ/remoto.bare"
+git init --bare -q "$REMOTO_BARE"
+git -C "$REMOTO_BARE" symbolic-ref HEAD refs/heads/main
+
+# Clone 1 inicial
+CLONE1="$RAIZ/clone1"
+mkdir -p "$CLONE1/.claude-plugin"
+git init -q "$CLONE1"
+git -C "$CLONE1" symbolic-ref HEAD refs/heads/main
+git -C "$CLONE1" config user.email t@t; git -C "$CLONE1" config user.name t
+git -C "$CLONE1" config commit.gpgsign false
+printf '{\n  "name": "p",\n  "version": "1.2.0"\n}\n' > "$CLONE1/.claude-plugin/plugin.json"
+git -C "$CLONE1" add .claude-plugin; git -C "$CLONE1" commit -qm "Versao 1.2.0"
+git -C "$CLONE1" remote add origin "$REMOTO_BARE"
+git -C "$CLONE1" push -q -u origin main
+
+# Clone 2
+CLONE2="$RAIZ/clone2"
+git clone -q "$REMOTO_BARE" "$CLONE2"
+git -C "$CLONE2" config user.email t@t; git -C "$CLONE2" config user.name t
+git -C "$CLONE2" config commit.gpgsign false
+
+# Clone 2 sobe versao para 1.3.0 e faz push
+printf '{\n  "name": "p",\n  "version": "1.3.0"\n}\n' > "$CLONE2/.claude-plugin/plugin.json"
+git -C "$CLONE2" add .claude-plugin; git -C "$CLONE2" commit -qm "Versao 1.3.0"
+git -C "$CLONE2" push -q origin main
+
+# Clone 1a (para caso a): clone fresh, depois reseta ref local para simular atraso
+CLONE1A="$RAIZ/clone1a"
+git clone -q "$REMOTO_BARE" "$CLONE1A"
+git -C "$CLONE1A" config user.email t@t; git -C "$CLONE1A" config user.name t
+git -C "$CLONE1A" config commit.gpgsign false
+COMMIT_120=$(git -C "$CLONE1A" log --oneline | grep "Versao 1.2.0" | head -1 | cut -d' ' -f1)
+git -C "$CLONE1A" update-ref refs/remotes/origin/main "$COMMIT_120"
+mkdir -p "$CLONE1A/scripts"
+cp "$CHECADOR" "$CLONE1A/scripts/conferir-versao.cjs"
+printf '{\n  "name": "p",\n  "version": "1.3.0"\n}\n' > "$CLONE1A/.claude-plugin/plugin.json"
+git -C "$CLONE1A" add .claude-plugin .claude-plugin/plugin.json scripts; git -C "$CLONE1A" commit -qm "Versao 1.3.0"
+
+# Clone 1b (para caso b): mesmo setup
+CLONE1B="$RAIZ/clone1b"
+git clone -q "$REMOTO_BARE" "$CLONE1B"
+git -C "$CLONE1B" config user.email t@t; git -C "$CLONE1B" config user.name t
+git -C "$CLONE1B" config commit.gpgsign false
+COMMIT_120=$(git -C "$CLONE1B" log --oneline | grep "Versao 1.2.0" | head -1 | cut -d' ' -f1)
+git -C "$CLONE1B" update-ref refs/remotes/origin/main "$COMMIT_120"
+mkdir -p "$CLONE1B/scripts"
+cp "$CHECADOR" "$CLONE1B/scripts/conferir-versao.cjs"
+printf '{\n  "name": "p",\n  "version": "1.3.0"\n}\n' > "$CLONE1B/.claude-plugin/plugin.json"
+git -C "$CLONE1B" add .claude-plugin .claude-plugin/plugin.json scripts; git -C "$CLONE1B" commit -qm "Versao 1.3.0"
+
+# Clone 1c (para caso c): mesmo setup
+CLONE1C="$RAIZ/clone1c"
+git clone -q "$REMOTO_BARE" "$CLONE1C"
+git -C "$CLONE1C" config user.email t@t; git -C "$CLONE1C" config user.name t
+git -C "$CLONE1C" config commit.gpgsign false
+COMMIT_120=$(git -C "$CLONE1C" log --oneline | grep "Versao 1.2.0" | head -1 | cut -d' ' -f1)
+git -C "$CLONE1C" update-ref refs/remotes/origin/main "$COMMIT_120"
+mkdir -p "$CLONE1C/scripts"
+cp "$CHECADOR" "$CLONE1C/scripts/conferir-versao.cjs"
+printf '{\n  "name": "p",\n  "version": "1.3.0"\n}\n' > "$CLONE1C/.claude-plugin/plugin.json"
+git -C "$CLONE1C" add .claude-plugin .claude-plugin/plugin.json scripts; git -C "$CLONE1C" commit -qm "Versao 1.3.0"
+
+# Caso (a): fetch automatico detecta que a main remota tambem e 1.3.0, recusa
+saida=$(cd "$CLONE1A" && node "scripts/conferir-versao.cjs" 2>&1); rc=$?
+if [ "$rc" = 2 ] && printf '%s' "$saida" | grep -qF "nao e' maior que a de origin/main"; then
+  ok=$((ok+1)); echo "  ok   (a) fetch busca 1.3.0 do remoto, compara com local 1.3.0, recusa (exit $rc)"
+else
+  falhou=$((falhou+1)); echo "  FALHA (a) fetch com versao igual no remoto: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
+fi
+
+# Caso (b): --sem-fetch faz a comparacao com a ref local velha (1.2.0), passa
+saida=$(cd "$CLONE1B" && node "scripts/conferir-versao.cjs" --sem-fetch 2>&1); rc=$?
+if [ "$rc" = 0 ]; then
+  ok=$((ok+1)); echo "  ok   (b) --sem-fetch compara com ref local velha, passa (exit $rc)"
+else
+  falhou=$((falhou+1)); echo "  FALHA (b) --sem-fetch: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
+fi
+
+# Caso (c): remoto inacessivel faz fetch falhar, imprime aviso, segue com ref local
+git -C "$CLONE1C" remote set-url origin "/caminho/inexistente"
+saida=$(cd "$CLONE1C" && node "scripts/conferir-versao.cjs" 2>&1); rc=$?
+if printf '%s' "$saida" | grep -qF "aviso: fetch falhou"; then
+  ok=$((ok+1)); echo "  ok   (c) remoto inacessivel imprime aviso (exit $rc)"
+else
+  falhou=$((falhou+1)); echo "  FALHA (c) remoto inacessivel: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
+fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

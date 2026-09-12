@@ -53,6 +53,10 @@ caso_fim() {
   else
     echo "  -> caso FALHOU"
   fi
+  # Limpar lock residual para nao interferir com proximo caso
+  LOCK_PATH="${TEMP:-$HOME/AppData/Local/Temp}/claude-atualizar-cli.txt.lock"
+  LOCK_PATH="${LOCK_PATH//\\//}"
+  rmdir "$LOCK_PATH" 2>/dev/null || true
 }
 
 tem() {
@@ -458,6 +462,178 @@ rodar ATUALIZAR_CLI_PACOTE="$PACOTE" ATUALIZAR_CLI_WINGET="$INSTALADOR_FALSO"
 tem "diz que nao encontrou o executavel" "$SAIDA" "executavel nao encontrado"
 nao_tem "nao alega ter auto-curado" "$SAIDA" "Auto-cura"
 caso_fim
+
+# -------------------------------------------------------- casos novos para LOCK
+
+# Criar um mock de rede que dorme 2s e escreve marcador de execucao. As linhas
+# abaixo serao reutilizadas pelos casos de lock (o, p, q, r).
+MARCADOR_LOCK_DIR="$SBP/lock-marcadores"
+mkdir -p "$MARCADOR_LOCK_DIR"
+
+MOCK_REDE_LOCK="$SBP/mock-rede-lock"
+cat > "$MOCK_REDE_LOCK" <<'EOF'
+#!/bin/bash
+# Simula latencia de rede e marca execucao. Se MOCK_REDE_LOCK_FALHA=1, falha sem gravar.
+if [ "${MOCK_REDE_LOCK_FALHA:-0}" = "1" ]; then
+  exit 1
+fi
+sleep 2
+touch "$MARCADOR_LOCK_DIR/executou-$RANDOM"
+# Simula gravar uma versao nova
+printf '#!/bin/bash\necho "9.9.9 (Claude Code)"\n' > "$ATUALIZAR_CLI_PACOTE/claude.exe"
+chmod +x "$ATUALIZAR_CLI_PACOTE/claude.exe"
+exit 0
+EOF
+chmod +x "$MOCK_REDE_LOCK"
+
+# (o) Simultaneo: dois processos em paralelo. O primeiro adquire o lock,
+# roda o trabalho (escreve marcador). O segundo falha ao adquirir lock,
+# sai 0 sem tocar. Resultado: 1 marcador so.
+caso_inicio "lock simultáneo — um adquire, outro sai 0 sem tocar"
+
+# Limpar lock residual antes de começar
+LOCK_PATH="${TEMP:-$HOME/AppData/Local/Temp}/claude-atualizar-cli.txt.lock"
+LOCK_PATH="${LOCK_PATH//\\//}"
+rmdir "$LOCK_PATH" 2>/dev/null || true
+
+PACOTE="$SBP/caso-o/pacote"
+novo_pacote "$PACOTE" "2.1.231"
+rm -f "$MARCADOR_LOCK_DIR"/*
+mkdir -p "$MARCADOR_LOCK_DIR"
+
+(
+  env MARCADOR_LOCK_DIR="$MARCADOR_LOCK_DIR" ATUALIZAR_CLI_PACOTE="$PACOTE" ATUALIZAR_CLI_WINGET="$MOCK_REDE_LOCK" bash "$ALVO" >/dev/null 2>&1
+) &
+PID1=$!
+
+sleep 0.05
+(
+  env MARCADOR_LOCK_DIR="$MARCADOR_LOCK_DIR" ATUALIZAR_CLI_PACOTE="$PACOTE" ATUALIZAR_CLI_WINGET="$MOCK_REDE_LOCK" bash "$ALVO" >/dev/null 2>&1
+) &
+PID2=$!
+
+wait $PID1 2>/dev/null || true
+E1=$?
+wait $PID2 2>/dev/null || true
+E2=$?
+
+[ "$E1" -eq 0 ] && echo "  ok    primeiro sai 0" || { echo "  FALHA primeiro saiu $E1"; CASO_FALHOU=1; }
+[ "$E2" -eq 0 ] && echo "  ok    segundo sai 0" || { echo "  FALHA segundo saiu $E2"; CASO_FALHOU=1; }
+
+MARCADOR_COUNT=$(ls -1 "$MARCADOR_LOCK_DIR" 2>/dev/null | wc -l)
+igual "exatamente um marcador (um process rodou o trabalho)" "$MARCADOR_COUNT" "1"
+
+caso_fim
+
+# (p) Orfao: lock com mtime > 5 min e removido, trabalho roda normalmente.
+# Usar `touch -t` para ficar compativel com Windows (onde -d nao existe).
+caso_inicio "lock órfão — mtime > 5min removido, trabalho roda"
+
+# Limpar lock residual antes de começar
+LOCK_PATH="${TEMP:-$HOME/AppData/Local/Temp}/claude-atualizar-cli.txt.lock"
+LOCK_PATH="${LOCK_PATH//\\//}"
+rmdir "$LOCK_PATH" 2>/dev/null || true
+
+PACOTE="$SBP/caso-p/pacote"
+novo_pacote "$PACOTE" "2.1.231"
+rm -f "$MARCADOR_LOCK_DIR"/*
+mkdir -p "$MARCADOR_LOCK_DIR"
+
+# Criar lock artificial com mtime 10 minutos atrás (use TZ=UTC para portabilidade)
+LOCK_PATH="${TEMP:-$HOME/AppData/Local/Temp}/claude-atualizar-cli.txt.lock"
+LOCK_PATH="${LOCK_PATH//\\//}"
+mkdir -p "$LOCK_PATH"
+# Tentar touch com -d primeiro (Linux), se falhar usar -t (BSD/macOS/Windows)
+touch -d "10 minutes ago" "$LOCK_PATH" 2>/dev/null || touch -t "$(date -d '10 minutes ago' +%Y%m%d%H%M.%S 2>/dev/null || date -v -10m +%Y%m%d%H%M.%S 2>/dev/null || echo '196012311359.00')" "$LOCK_PATH" 2>/dev/null || true
+
+rodar MARCADOR_LOCK_DIR="$MARCADOR_LOCK_DIR" ATUALIZAR_CLI_PACOTE="$PACOTE" ATUALIZAR_CLI_WINGET="$MOCK_REDE_LOCK"
+igual "sai 0" "$EXIT" "0"
+
+MARCADOR_COUNT=$(ls -1 "$MARCADOR_LOCK_DIR" 2>/dev/null | wc -l)
+[ "$MARCADOR_COUNT" -eq 1 ] && echo "  ok    trabalho rodou (marcador escrito)" || { echo "  FALHA marcador count $MARCADOR_COUNT"; CASO_FALHOU=1; }
+
+nao_tem "lock orfao removido silenciosamente" "$SAIDA" "Erro"
+
+caso_fim
+
+# (q) Recente: lock existe com mtime recente (<5 min), sai 0 sem tocar.
+# Marcador nao pode ser escrito.
+caso_inicio "lock recente — sai 0 sem tocar nada"
+
+# Nao limpar lock aqui — queremos testar lock recente!
+# Apenas garantir que o marcador e a pasta existem
+PACOTE="$SBP/caso-q/pacote"
+novo_pacote "$PACOTE" "2.1.231"
+rm -f "$MARCADOR_LOCK_DIR"/*
+mkdir -p "$MARCADOR_LOCK_DIR"
+
+# Criar lock artificial AGORA (mtime recente)
+LOCK_PATH="${TEMP:-$HOME/AppData/Local/Temp}/claude-atualizar-cli.txt.lock"
+LOCK_PATH="${LOCK_PATH//\\//}"
+mkdir -p "$LOCK_PATH" 2>/dev/null || true
+
+rodar MARCADOR_LOCK_DIR="$MARCADOR_LOCK_DIR" ATUALIZAR_CLI_PACOTE="$PACOTE" ATUALIZAR_CLI_WINGET="$MOCK_REDE_LOCK"
+igual "sai 0 (lock recente)" "$EXIT" "0"
+
+MARCADOR_COUNT=$(ls -1 "$MARCADOR_LOCK_DIR" 2>/dev/null | wc -l)
+igual "nenhum marcador (nao rodou trabalho)" "$MARCADOR_COUNT" "0"
+
+if [ -f "$PACOTE/claude.exe" ]; then
+  VERSAO_ATUAL="$("$PACOTE/claude.exe" --version 2>&1)"
+  nao_tem "exe nao foi alterado (versao ainda e 2.1.231)" "$VERSAO_ATUAL" "9.9.9"
+else
+  echo "  FALHA exe desapareceu"
+  CASO_FALHOU=1
+fi
+
+caso_fim
+
+# (r) ADVERSARIAL: rede falhando. Cache e backup intactos (sha256 antes = depois).
+# Mock falha sem gravar exe novo. Deve fazer rollback.
+caso_inicio "ADVERSARIAL — rede falha, cache/backup intactos"
+
+# Limpar lock residual antes de começar
+LOCK_PATH="${TEMP:-$HOME/AppData/Local/Temp}/claude-atualizar-cli.txt.lock"
+LOCK_PATH="${LOCK_PATH//\\//}"
+rmdir "$LOCK_PATH" 2>/dev/null || true
+
+PACOTE="$SBP/caso-r/pacote"
+novo_pacote "$PACOTE" "2.1.231"
+rm -f "$MARCADOR_LOCK_DIR"/*
+mkdir -p "$MARCADOR_LOCK_DIR"
+
+# Limpar lock recente se existir
+LOCK_PATH="${TEMP:-$HOME/AppData/Local/Temp}/claude-atualizar-cli.txt.lock"
+LOCK_PATH="${LOCK_PATH//\\//}"
+rmdir "$LOCK_PATH" 2>/dev/null || true
+
+# Hash do exe original
+HASH_ORIG=$(sha256sum "$PACOTE/claude.exe" 2>/dev/null | cut -d' ' -f1)
+
+rodar MARCADOR_LOCK_DIR="$MARCADOR_LOCK_DIR" ATUALIZAR_CLI_PACOTE="$PACOTE" ATUALIZAR_CLI_WINGET="$MOCK_REDE_LOCK" \
+      MOCK_REDE_LOCK_FALHA=1
+[ "$EXIT" -ne 0 ] && echo "  ok    sai diferente de 0 (rede falhou)" || { echo "  FALHA sai 0 (esperava erro)"; CASO_FALHOU=1; }
+
+MARCADOR_COUNT=$(ls -1 "$MARCADOR_LOCK_DIR" 2>/dev/null | wc -l)
+igual "nenhum marcador (rede falhou antes)" "$MARCADOR_COUNT" "0"
+
+# Hash do exe apos falha
+HASH_APOS=$(sha256sum "$PACOTE/claude.exe" 2>/dev/null | cut -d' ' -f1)
+igual "exe intacto (hash igual)" "$HASH_APOS" "$HASH_ORIG"
+
+if [ -f "$PACOTE/claude-2.1.231.exe.bak" ]; then
+  echo "  FALHA backup foi criado (nao deveria)"
+  CASO_FALHOU=1
+else
+  echo "  ok    backup nao existe (rollback foi limpo)"
+fi
+
+caso_fim
+
+# Limpar lock se ainda estiver la
+LOCK_PATH="${TEMP:-$HOME/AppData/Local/Temp}/claude-atualizar-cli.txt.lock"
+LOCK_PATH="${LOCK_PATH//\\//}"
+rmdir "$LOCK_PATH" 2>/dev/null || true
 
 # ------------------------------------------------------------------ resultado
 echo

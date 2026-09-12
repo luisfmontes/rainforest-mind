@@ -26,6 +26,7 @@
  *   node scripts/conferir-versao.cjs --teto 10
  *   node scripts/conferir-versao.cjs --json
  *   node scripts/conferir-versao.cjs --base origin/main
+ *   node scripts/conferir-versao.cjs --sem-fetch     # nao busca origin/main
  *
  * Alem do teto de commits, o script compara a versao declarada no manifesto
  * local com a de `origin/main`: se a local nao for MAIOR (empatou ou ficou
@@ -94,6 +95,29 @@ function git(args) {
 function valorDe(flag) {
   const i = process.argv.indexOf(`--${flag}`);
   return i !== -1 && process.argv[i + 1] ? process.argv[i + 1] : null;
+}
+
+/**
+ * Busca a branch `main` do remoto `origin` com timeout de 15s.
+ * Se falhar (rede, timeout), imprime aviso e continua.
+ * Se nao houver remoto, nao imprime nada (ausencia de remoto nao e falha).
+ * A comparacao com origin/main prossegue usando a ref local, que pode estar velha.
+ */
+function buscarOrigem(raiz) {
+  // Verifica se ha remoto origin antes de tentar fetch
+  const temRemoto = git(["remote", "get-url", "origin"]) !== null;
+  if (!temRemoto) {
+    return; // Sem remoto, nao tem o que fazer
+  }
+  try {
+    execFileSync("git", ["-C", raiz, "fetch", "origin", "main"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      timeout: 15000,
+    });
+  } catch {
+    console.log("aviso: fetch falhou");
+  }
 }
 
 /** Versao declarada no manifesto, ou null se ilegivel. */
@@ -312,6 +336,10 @@ function main() {
   const teto = Number(valorDe("teto") || TETO_PADRAO);
   const base = valorDe("base") || "HEAD";
   const comoJson = process.argv.includes("--json");
+  const opts = {
+    semFetch: process.argv.includes("--sem-fetch"),
+  };
+  if (!opts.semFetch) buscarOrigem(RAIZ);
   const r = medir(base, teto);
 
   if (comoJson) {

@@ -10,13 +10,16 @@ export RFM_ROOT="$CAIXA"
 trap "rm -rf '$CAIXA'" EXIT
 
 mkdir -p "$CAIXA"
+SRC="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Contadores
 OK=0
 FALHA=0
 
-# Atalhos para o script
-NODE_SCRIPT="$(cd "$(dirname "$0")/.." && pwd)/scripts/ferramentas.cjs"
+# Atalhos para o script. Roda o fonte no lugar: RFM_ROOT ja redireciona os
+# dados para a caixa, e o require relativo de scripts/lib/ so resolve ao lado
+# do fonte.
+NODE_SCRIPT="$SRC/scripts/ferramentas.cjs"
 
 # ==== CRITÉRIO 1 ====
 echo "=== CRITÉRIO 1: Consultar ferramenta existente ==="
@@ -121,6 +124,12 @@ fi
 echo ""
 echo "=== MUTACAO: a recusa por campo de negativa e load-bearing ==="
 MUT="$(mktemp -d)"
+# O mutante mora em outra pasta, e o fonte faz require('./lib/backup-rotativo.cjs')
+# (Issue #199): sem a lib ao lado, o mutante morre por MODULE_NOT_FOUND (exit 1)
+# e o caso reprova pelo motivo errado — foi o que aconteceu na integracao de
+# 2026-09-09.
+mkdir -p "$MUT/lib"
+cp "$SRC/scripts/lib/backup-rotativo.cjs" "$MUT/lib/"
 cp "$NODE_SCRIPT" "$MUT/mutado.cjs"
 node -e '
   const fs = require("fs"), p = process.argv[1], NL = String.fromCharCode(10);

@@ -22,12 +22,14 @@ export DIV="${DIV:-node scripts/divergencias.cjs}"
 # ja e provada pela bateria irma; aqui o que importa e a escrita verificada.
 export RFM_ROOT="$SB"
 
-mkdir -p "$SB/scripts" "$SB/hooks/lib"
+mkdir -p "$SB/scripts" "$SB/scripts/lib" "$SB/hooks/lib"
 cp "$SRC/scripts/divergencias.cjs" "$SB/scripts/"
 # Trava e leitura viraram lib comum com o ideias.cjs em 2026-08-23 — o
 # require dela e DURO (sem try/catch, ao contrario do raiz.cjs acima), entao
 # falta aqui derruba a bateria inteira, nao so o teste que dependeria dela.
 cp "$SRC/hooks/lib/trava-jsonl.cjs" "$SB/hooks/lib/"
+# Backup rotativo e usada por divergencias (e por ideias e ferramentas)
+cp "$SRC/scripts/lib/backup-rotativo.cjs" "$SB/scripts/lib/"
 cd "$SB" || exit 1
 
 # O jsonl da caixa e FIXTURE GERADA, nunca copia do arquivo do usuario (regra

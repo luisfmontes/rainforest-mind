@@ -491,6 +491,15 @@ function main() {
   }
 
   // ------------------------------------------------------------------
+  c.abre("O commit entregue alterou algum arquivo?");
+  const arquivos = arquivosAgente(c, wt, a.base, a.commit);
+  if (arquivos.size === 0) {
+    c.falha("commit do agente vazio — entrega inexistente");
+  } else {
+    c.ok(`commit tocou ${arquivos.size} arquivo(s)`);
+  }
+
+  // ------------------------------------------------------------------
   if (a.escopo && a.escopo.length > 0) {
     c.abre("Os arquivos tocados estão dentro do(s) escopo(s)?");
     const arquivos = arquivosAgentComStatus(c, wt, a.base, a.commit);

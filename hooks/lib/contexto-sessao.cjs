@@ -1095,6 +1095,13 @@ ${regras}
   const blocoRodape = [o.veredito, o.sessoes, o.revisao, o.dependencias]
     .filter(Boolean)
     .map((bloco) => String(bloco).replace(/^\n+/, '').trimEnd());
+
+  // Injetar aviso de principal e worktrees quando houver
+  if (Array.isArray(o.principalAtrasado) && o.principalAtrasado.length > 0) {
+    const linhasPrincipal = o.principalAtrasado.map(l => `- ${l}`).join('\n');
+    blocoRodape.push(linhasPrincipal);
+  }
+
   blocoRodape.push(`Arquivos de apoio: ${o.root || ''}\\FOCO.md e ${o.root || ''}\\ideias.jsonl (uma ideia por linha)`);
   const rodape = '\n\n' + blocoRodape.join('\n\n');
 
