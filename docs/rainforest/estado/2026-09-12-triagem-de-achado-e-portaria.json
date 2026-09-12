@@ -16,7 +16,74 @@
     "em": "2026-09-12"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-09-12",
+    "tarefas": 10,
+    "tarefas_ok": 10,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "D7 do testa-contexto-sessao.sh (contrato NUCLEO_ESPERADO)",
+        "detalhe": "NUCLEOS_MAX_BYTES: 6000 -> 5600 em hooks/lib/contexto-sessao.cjs. Baseline 100.640 ms exit 0 -> mutacao exit 1, fonte restaurado."
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "D7 do testa-contexto-sessao.sh (contrato NUCLEO_ESPERADO)",
+        "detalhe": "'**conserta na hora**' -> '**conserta depois**' no nucleo da regra 6 em skills/rainforest-mind/SKILL.md. Baseline 75.558 ms exit 0 -> mutacao exit 1, fonte restaurado."
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "caso do ponteiro de elaboracao no testa-contexto-sessao.sh",
+        "detalhe": "'e o numero com dois digitos' -> 'e o numero da regra' em hooks/lib/contexto-sessao.cjs. Baseline 73.930 ms exit 0 -> mutacao exit 1, fonte restaurado."
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "tarefa so reescreve references/regra-06.md, que e texto lido por humano e por sessao que decidiu abrir o arquivo; nao ha comportamento a inverter. O teto de bytes do arquivo e conferido pela tarefa 1."
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "relato de subagente citando a frase nao abre o portao",
+        "detalhe": "'if (vozDoUsuario(obj) === null)' -> 'if (false)' em hooks/lib/autorizacao-usuario.cjs, desligando a porta que so aceita a voz do usuario. testa-portaria-autorizacao.cjs foi de 46 ok/0 falha para 45 ok/1 falha, exit 1. Fonte restaurado e verde de novo."
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "escreve-true-sem-worktree-continua-negado (caso 15)",
+        "detalhe": "'isolamento !== \"worktree\"' -> false em hooks/portaria.cjs: o caso 15 passou a sair exit 0 e a bateria caiu para 44 ok/2 falha. Aplicada e revertida pelo tester, com git status limpo depois."
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "caso 11 (a assercao do campo via no log de allow)",
+        "detalhe": "'if (autorizacaoValida) { extra.via = ... }' -> 'if (false)' em hooks/portaria.cjs derrubou a assercao do via. Mais a mutacao da checagem de 'name', que derrubou o caso 16. Aplicadas e revertidas pelo tester."
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "Checagem 1 do --lint (agente declarado sem arquivo, fora dos NATIVOS_DO_HARNESS)",
+        "detalhe": "'\"Explore\": {' -> '\"Explore-mutado\": {' em .rainforest/agentes.json. Baseline 224 ms exit 0 -> mutacao 279 ms exit 1. ACHADO: a bateria que o PLANO nomeou para esta tarefa (node hooks/testa-portaria-lint.cjs) ficou VERDE sob a mesma mutacao — ela nao exercita o manifesto real. A prova valida usou 'node hooks/portaria.cjs --lint'. Erro na escrita do plano, pego pela catraca."
+      },
+      {
+        "tarefa": 9,
+        "resultado": "n/a",
+        "motivo": "a entrega e a Issue #241, um registro externo pedindo decisao do usuario; nao ha codigo com comportamento a inverter."
+      },
+      {
+        "tarefa": 10,
+        "resultado": "n/a",
+        "motivo": "a escrita e do scripts/ideias.cjs, que ja tem provas proprias (backup, gravacao atomica, conferencia byte a byte das 392 linhas nao-alvo) e reverte com exit != 0 se qualquer uma falhar."
+      }
+    ],
+    "nota": "As 10 tarefas do plano fecharam, todas conferidas rodando o artefato real, nunca pelo relato do agente. Seis defeitos apareceram so na conferencia, nenhum no relato: negacao sem acento lida como autorizacao; a cauda de 1 MB apagando a concessao (transcript de 2.070.974 B, concessao no byte 470.903, janela comecando no 1.022.398); texto de maquina (tool_result, task-notification) contando como voz do usuario, que na direcao inversa seria escalada de privilegio por conteudo; tres stubs em agents/ que teriam virado agentes publicados do plugin; bateria verde com o contrato NUCLEO_ESPERADO alterado e nao commitado; e um 'git commit --amend -F' sem 'git add', que deixou no commit a versao do regra-06.md com historia inventada sobre o incidente. A D7 foi corrigida dentro do proprio design durante o estagio plano, quando a medicao mostrou que nao existe manifesto padrao e que a portaria roda so neste repositorio; a decisao maior virou D10 e a Issue #241, fora deste fluxo.",
+    "issues": "#239, #240, #241",
+    "comando": "node hooks/testa-portaria-autorizacao.cjs && bash hooks/testa-contexto-sessao.sh && node scripts/orcamento.cjs",
+    "saida": "== resultado: 46 ok, 0 falha(s) == / todos os casos: OK  |  ok: 277   falhou: 0  |  Total: 14378 B, exit 0 sem aviso de folga",
+    "em": "2026-09-12"
   },
   "revisar": {
     "status": "pendente"
