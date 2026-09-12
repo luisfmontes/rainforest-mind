@@ -286,7 +286,42 @@ function temAutorizacaoPrincipal(obj) {
   // autoriza, nada acontece, e a negação ainda fala de estágio — ele não tem
   // como descobrir que a palavra dele foi lida e descartada. Agora cada frase é
   // julgada sozinha e basta UMA conceder de verdade.
-  const frases = normalizado.split(/(?<=[.!?])\s+|\n+/);
+  // URL sai antes de qualquer análise de pontuação. O `?` de query string não é
+  // pergunta, e com a regra "`?` em qualquer lugar da frase" ele passou a negar
+  // a frase inteira — medido na 4ª rodada de revisão de 2026-09-12:
+  //
+  //   "autorizo subagentes para investigar esse link
+  //    https://example.com/page?ref=x"   -> recusava
+  //
+  // Trocar por espaço (e não apagar) preserva as fronteiras de palavra.
+  const semUrl = normalizado.replace(/\bhttps?:\/\/\S+|\bwww\.\S+/g, ' ');
+
+  // Mensagem que ACABA pendurada numa condição não é concessão fechada:
+  // "autorizo subagentes, mas so quando" é o usuário interrompido no meio da
+  // restrição. Medido na 4ª rodada: tirar `caso`/`quando` dos subordinadores
+  // por oração (regressão certa — ali eram substantivo) fez estas passarem.
+  //
+  // A trava é só no FIM DO TEXTO INTEIRO, e só quando a palavra está nua. Com
+  // determinante ou preposição antes ela é substantivo, não conjunção pendente:
+  // "so nesse caso" e "dependendo do caso" continuam concedendo, porque ali o
+  // usuário terminou a frase.
+  if (/(?<!\b(?:o|a|os|as|um|uma|esse|essa|nesse|nessa|desse|dessa|este|esta|neste|nesta|deste|desta|aquele|aquela|do|da|no|na|cada|algum|alguma|qualquer|outro|outra|meu|minha|seu|sua)\s)\b(se|que|caso|quando)\s*$/.test(semUrl.trim())) {
+    return false;
+  }
+
+  // O separador de frases corta em `.!?` seguido de espaço, mais um caso: `?`
+  // colado na palavra seguinte, sem espaço nenhum — digitação com pressa
+  // ("autorizo subagentes?ou nao"). Sem esse corte a frase não termina em `?` e
+  // a pergunta passaria por concessão.
+  //
+  // Uma versão deste separador também cortava em aspas/parênteses de fechamento
+  // e na vírgula depois deles, para separar pergunta CITADA da concessão que
+  // vem em seguida. Saiu: a catraca de mutação mostrou que apagá-lo não muda
+  // nenhum caso. Quem já resolve a citação é a regra de pergunta ser da CAUDA —
+  // em 'ele perguntou "isso vai dar certo?" mas eu autorizo subagentes' a cauda
+  // é "…mesmo assim", sem `?`. Regra sem efeito observável é comentário que
+  // apodrece, não defesa.
+  const frases = semUrl.split(/(?<=[.!?])\s+|(?<=\?)(?=\p{L})|\n+/u);
 
   // Marcador que subordina a concessão. Só vale dentro da MESMA frase e ANTES da
   // palavra: "vou pensar no design" numa frase anterior não subordina nada.
@@ -359,18 +394,21 @@ function temAutorizacaoPrincipal(obj) {
     //   "autorizo subagentes?😅"                -> autorizava
     //   'ele perguntou "autorizo subagentes?"'  -> autorizava
     //
-    // A correção seguinte — olhar a cauda de caracteres que não são letra nem
-    // dígito — ainda era estreita, e a revisão seguinte mostrou por quê:
+    // A regra vale sobre a CAUDA: a frase termina como pergunta. Passou por
+    // `endsWith('?')` (estreito: `?!` e `?😅` escapavam) e por `?` em qualquer
+    // lugar (largo: URL, regex `\d+?` e citação alheia negavam concessão firme —
+    // quatro regressões medidas na 4ª rodada). O que resolve o `?` colado na
+    // palavra seguinte não é alargar esta regra, é o separador de frases cortar
+    // ali — feito acima, junto com a URL que sai antes.
     //
-    //   "autorizo subagentes?ou nao"  -> autorizava
-    //
-    // `?` colado na próxima palavra, sem espaço, não está na cauda. Agora a
-    // regra é a mais simples que existe: `?` EM QUALQUER LUGAR da frase. O
-    // separador de frases só corta em `.!?` seguido de espaço, então um `?` que
-    // sobrou aqui dentro é fronteira de pergunta que ninguém cortou. Concessão
-    // seguida de pergunta sobre outra coisa continua passando, porque ali o
-    // espaço existe e as duas viram frases separadas.
-    if (texto.includes('?')) continue;
+    // Fica um caso conhecido de fora: "autorizo subagentes para responder a
+    // pergunta do cliente: 'funciona offline?'" é recusado. Ele é
+    // indistinguível, letra a letra, de 'ele perguntou "autorizo subagentes?"',
+    // que PRECISA ser recusado — a diferença é quem fala, e isso não está no
+    // texto. Entre os dois erros, esta trava fica com o que pede uma frase a
+    // mais em vez do que abre o portão.
+    const cauda = texto.match(/[^\p{L}\p{N}]*$/u);
+    if (cauda && cauda[0].includes('?')) continue;
 
     // O marcador subordina por ORAÇÃO, não pela frase inteira. Vírgula separa
     // oração, e sem isso "talvez seja arriscado, autorizo subagentes mesmo

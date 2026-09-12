@@ -210,6 +210,34 @@ console.log("== 3e. rabicho ambiguo, '?' colado e palavra comum (achados da 3a r
   caso("'vai depender do caso, autorizo subagentes' AUTORIZA", rCaso === true, rCaso);
 }
 
+console.log("== 3f. '?' que nao e pergunta, e condicao pendurada no fim (achados da 4a rodada) ==");
+{
+  // A regra "'?' em qualquer lugar da frase" era larga demais: o sinal aparece
+  // em texto tecnico sem ser pergunta, e negava concessao firme. Quatro
+  // regressoes medidas; a correcao e o separador de frases, nao a regra.
+  const rUrl = autorizado(fx("concessao-com-url.jsonl"));
+  caso("concessao com URL de query string ('?ref=x') AUTORIZA", rUrl === true, rUrl);
+
+  const rRegex = autorizado(fx("concessao-com-regex.jsonl"));
+  caso("concessao citando regex nao-guloso ('/d+?/') AUTORIZA", rRegex === true, rRegex);
+
+  // Pergunta CITADA fecha em aspas e a frase seguinte e do usuario. Sem cortar
+  // no fechamento, o '?' de terceiro negava a concessao dele.
+  const rCitada = autorizado(fx("concessao-apos-pergunta-citada.jsonl"));
+  caso("concessao depois de pergunta citada entre aspas AUTORIZA", rCitada === true, rCitada);
+
+  const rCitadaVirgula = autorizado(fx("concessao-apos-citacao-com-virgula.jsonl"));
+  caso("concessao depois de citacao seguida de virgula AUTORIZA", rCitadaVirgula === true, rCitadaVirgula);
+
+  // Mensagem interrompida no meio da restricao nao e concessao fechada.
+  const rPenduradoFim = autorizado(fx("escopo-pendurado-no-fim.jsonl"));
+  caso("'autorizo subagentes, mas so quando' NAO autoriza", rPenduradoFim === false, rPenduradoFim);
+
+  // ...e a mesma palavra com determinante antes e substantivo: frase terminada.
+  const rCasoSubst = autorizado(fx("concessao-com-caso-substantivo.jsonl"));
+  caso("'autorizo subagentes, so nesse caso' AUTORIZA", rCasoSubst === true, rCasoSubst);
+}
+
 console.log("== 4. negacao sem acento ('nao autorizo subagentes') NAO autoriza ==");
 {
   const r = autorizado(fx("negado-sem-acento.jsonl"));
