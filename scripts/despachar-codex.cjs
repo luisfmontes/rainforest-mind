@@ -149,6 +149,9 @@ function validarArgs(opts) {
     return false;
   }
 
+  // Normaliza --worktree com path.resolve antes de validar (remove separador final)
+  opts.worktree = path.resolve(opts.worktree);
+
   // Valida segurança dos valores interpolados ANTES de qualquer outro teste
   if (recusaValorInseguro('--worktree', opts.worktree)) return false;
   if (opts.saida && recusaValorInseguro('--saida', opts.saida)) return false;

@@ -398,6 +398,11 @@ function valorSeguroParaShell(valor) {
     return false;
   }
 
+  // No Windows, contrabarra final escapa a aspa de fechamento envolvida pelo chamador
+  if (valor.endsWith('\\')) {
+    return false;
+  }
+
   // Padrão: apenas letras, dígitos, espaço, e caracteres seguros: : \ / . - _ ~ ,
   // Recusa: " ' ` $ & | ; < > ^ % ! ( ) e quebra de linha
   const padraoSeguro = /^[a-zA-Z0-9 :\\\/.\-_~,]+$/;
