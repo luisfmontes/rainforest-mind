@@ -86,3 +86,11 @@ Subagente só roda se estiver declarado em `.rainforest/agentes.json` com o est�
 O mecanismo inteiro — schema do manifesto, as sete decisões do fail-closed, o log de despacho, o modo `--lint`, o aceite do bloqueio e as duas portas da dívida do `escreve: false` — mora em `references/regra-10-portaria.md`.
 
 Os vigias headless carregam a versão resumida no `vigias/_comum.md`.
+
+## Racionalizações
+
+| Pensamento | Realidade |
+|---|---|
+| "despachar custa mais que fazer" para task grande | 2026-08-12: o método não foi injetado, sessão pisou no defeito sem carregar a skill |
+| "nome só pra conversa, sem isolamento" | 2026-08-08: agente nomeado rodou no checkout principal do usuário |
+| "re-despachar custa menos" | 2026-08-12: núcleo rescrito para caber no context e chegou mudo |

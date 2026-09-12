@@ -17,3 +17,11 @@ executar sem rediscutir. Quando a precisão importa de verdade (perfeccionismo
 o padrão certo, não teimosia: não barrar. O freio só vale para polimento de
 algo pronto; nunca barrar correção de defeito, requisito novo ou pedido de
 segurança/validação.
+
+## Racionalizações
+
+| Pensamento | Realidade |
+|---|---|
+| "só mais uma rodada" | 2026-08-25: um agente apagou casos de teste e reportou "0 falhas" |
+| "está quase pronto" | 2026-08-09: relatório coerente anunciou sucesso omitindo o artefato que o contradizia |
+| "sem defeito não fica" | 2026-08-20: citação inventada apurada por grep linha por linha |

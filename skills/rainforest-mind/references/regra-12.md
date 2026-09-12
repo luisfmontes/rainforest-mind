@@ -73,7 +73,6 @@ ocorrência** e conferir que ele está preenchido.
 (acervo: 2026-09-01)
 
 **Exit ≠ 0 nunca é descrito como sucesso** — nem "quase passou", nem "passou com aviso", nem "falhou só por X"; o número é a verdade e a prosa se ajusta a ele. Nasceu do fluxo 7 (recibo), que traduz o contrato validate→deliver do archify: entrega congela bytes só depois de exit 0, e recibo declara o que NÃO prova.
-(acervo: 2026-09-02)
 
 **Critério que nomeia um arquivo leva o caminho conferido.** Nome sem caminho,
 e cláusula "se existir", são licença para o agente concluir ausência onde só
@@ -165,6 +164,14 @@ que conclui "apague X", "reinstale Y", "limpe a pasta Z" entregou
 leva ao usuário, nunca roda direto. O alarme: **a ação apaga dado e a evidência
 é "o arquivo contém a string que eu procurei"**.
 (acervo: 2026-08-08)
+
+## Racionalizações
+
+| Pensamento | Realidade |
+|---|---|
+| "a suíte passou" | 2026-08-25: testes passaram com defeito; omissão mascarou resultado |
+| "relatório coerente = verdade" | 2026-08-09: hash inventado marcado ✓ |
+| "conferir não descreve o caminho" | 2026-08-08: citações alheias coladas como nossas |
 
 ---
 
