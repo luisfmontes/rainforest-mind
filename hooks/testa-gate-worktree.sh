@@ -800,5 +800,31 @@ gatec 'contraprova: git commit -m "fix {json} parse" PASSA'  0 "$(p 'git commit 
 gatec 'contraprova: git commit -m "a (b) c" PASSA'            0 "$(p 'git commit -m "a (b) c"' "$R")"
 
 echo
+echo "== D29 (2026-09-12): subagente que tenta restaurar arquivo no repo principal BARRA com aviso =="
+# Issue #231: revisor mutou fonte no checkout principal por engano, gate bloqueou certo,
+# mas a mensagem ficava silenciosa sobre a restauracao — quem lia so o veredito rodaria
+# bateria em fonte mutado. A mensagem agora nao silencia; bloqueio nao muda (exit 2).
+saida=$(printf '%s' "$(b "git checkout -- x.txt" "$R")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ] && printf '%s' "$saida" | grep -q "a restauracao e da janela principal" && printf '%s' "$saida" | grep -q "checkout -- x.txt" && printf '%s' "$saida" | grep -q "$(esc "$R")"; then
+  ok=$((ok+1)); echo "  ok   subagente git checkout -- BARRA + avisa restauracao (exit 2)"
+else
+  falhou=$((falhou+1)); echo "  FALHA subagente git checkout -- (exit $rc; esperava 2 com msg): $(printf '%s' "$saida" | grep 'a restauracao' | head -1)"
+fi
+
+saida=$(printf '%s' "$(b "git restore x.txt" "$R")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ] && printf '%s' "$saida" | grep -q "a restauracao e da janela principal" && printf '%s' "$saida" | grep -q "restore x.txt" && printf '%s' "$saida" | grep -q "$(esc "$R")"; then
+  ok=$((ok+1)); echo "  ok   subagente git restore BARRA + avisa restauracao (exit 2)"
+else
+  falhou=$((falhou+1)); echo "  FALHA subagente git restore (exit $rc; esperava 2 com msg): $(printf '%s' "$saida" | grep 'a restauracao' | head -1)"
+fi
+
+saida=$(printf '%s' "$(b "git status" "$R")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 0 ]; then
+  ok=$((ok+1)); echo "  ok   subagente git status PASSA sem aviso de restauracao (exit 0)"
+else
+  falhou=$((falhou+1)); echo "  FALHA subagente git status bloqueou por engano (exit $rc; esperava 0)"
+fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
