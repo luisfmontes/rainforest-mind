@@ -4,12 +4,15 @@ const fs = require('fs');
  * Lê a autorização de subagentes do usuário no transcript.
  *
  * Estratégia:
- * - Lê apenas a cauda do arquivo (últimos ~50 KB) para não estourar orçamento de tempo
+ * - Lê a cauda do arquivo para não estourar orçamento de tempo.
+ *   Se arquivo < 2 MB: lê arquivo inteiro (caso comum).
+ *   Se arquivo >= 2 MB: lê apenas últimos 1 MB.
  * - Procura por linhas com type:"user", "queue-operation" ou "attachment"
+ * - NORMALIZA acentos antes de todo casamento (NFD + remoção de diacríticos)
  * - Reconhece "autorizo" perto de "subagente(s)" por frase livre (não comando)
  * - Nega se marcador subordinado ("falo que", "disse que", etc.) envolver "autorizo"
- * - Nega se houver "não autorizo" explícito
- * - Retorna true se houver autorização válida na cauda, false caso contrário
+ * - Nega se houver negação explícita ("não autorizo", "nunca autorizo", "não vou autorizar")
+ * - Retorna true se houver autorização válida, false caso contrário
  *
  * @param {string} transcriptPath - Caminho do arquivo JSONL
  * @returns {boolean} true se usuário autorizou subagentes, false caso contrário
@@ -23,13 +26,11 @@ function autorizado(transcriptPath) {
     const stats = fs.statSync(transcriptPath);
     const fileSize = stats.size;
 
-    // Lê apenas a cauda: até 1 MB (se arquivo > 2 MB) ou arquivo inteiro (se < 2 MB)
-    // Justificativa: sessão típica tem 2400-3400 bytes/linha (444 linhas em 1,05 MB).
-    // 1 MB captura ~295-415 linhas desde o final. Medido no transcript real:
-    // autorização em linha 88-113 está em byte ~512 KB, então 1 MB garante cobertura.
-    // Se arquivo < 2 MB, lê arquivo inteiro (rápido, < 50 ms para 1,5 MB).
-    // Trade-off: autorização dada MUITO cedo (primeiras 1% em arquivo > 2 MB) pode
-    // não ser capturada. Aceitável: leitor é rápido ~20ms, nunca bloqueia.
+    // Lê a cauda para performance (nunca lê arquivo inteiro > 2 MB)
+    // Limite 2 MB escolhido pq a maioria das sessões cabe: transcript real é 1,5 MB.
+    // Se arquivo >= 2 MB, lê últimos 1 MB (capture ~300-400 linhas desde o fim).
+    // Trade-off: autorização dada muito cedo (primeiras 1%) em arquivo gigante não é
+    // capturada. Aceitável: lê 1 MB em ~30ms, nunca bloqueia o hook.
     const cauda_bytes = fileSize < 2 * 1024 * 1024 ? fileSize : 1024 * 1024;
     const startPos = Math.max(0, fileSize - cauda_bytes);
 
@@ -85,7 +86,20 @@ function autorizado(transcriptPath) {
 }
 
 /**
- * Verifica se objeto contém negação explícita ("não autorizo")
+ * Normaliza texto: remove acentos e baixa caixa
+ * Permite casar "não" com "nao", "Não", "NÃO", etc.
+ */
+function normalizar(texto) {
+  if (!texto || typeof texto !== 'string') {
+    return '';
+  }
+  // NFD decomposição + remove combining diacritics (U+0300 a U+036F)
+  return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+/**
+ * Verifica se objeto contém negação explícita
+ * Formas cobertas: "não autorizo", "não autorizar", "nunca autorizo", "não vou autorizar"
  */
 function temNegacaoExplicita(obj) {
   let conteudo = null;
@@ -102,7 +116,23 @@ function temNegacaoExplicita(obj) {
     return false;
   }
 
-  return /\bnão\s+autorizo|não\s+autorizar/i.test(conteudo);
+  const normalizado = normalizar(conteudo);
+
+  // Procura por negações explícitas (todas em forma normalizada)
+  const negacoes = [
+    /\bnao\s+autorizo\b/,
+    /\bnao\s+autorizar\b/,
+    /\bnunca\s+autorizo\b/,
+    /\bnao\s+vou\s+autorizar\b/,
+  ];
+
+  for (const negacao of negacoes) {
+    if (negacao.test(normalizado)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /**
@@ -123,37 +153,37 @@ function temAutorizacaoPrincipal(obj) {
     return false;
   }
 
-  const conteudoLower = conteudo.toLowerCase();
+  const normalizado = normalizar(conteudo);
 
   // Procura por "autorizo" ou "autorizar" perto de "subagente(s)"
-  const temAutoriz = /\bautorizo|autorizando|autorizar|autorização/i.test(conteudoLower);
-  const temSubagente = /\bsubagente|subagentes|sub-agente|sub-agentes/i.test(conteudoLower);
+  const temAutoriz = /\bautorizo\b|\bautorizando\b|\bautorizar\b|\bautorizacao\b/.test(normalizado);
+  const temSubagente = /\bsubagente\b|\bsubagentes\b|\bsub-agente\b|\bsub-agentes\b/.test(normalizado);
 
   if (!temAutoriz || !temSubagente) {
     return false;
   }
 
   // Verifica se a autorização está em cláusula PRINCIPAL
-  // Sinais de cláusula SUBORDINADA: "falo que", "disse que", "digo que", "quando eu autorizo", "se eu autorizo", "que autorizo"
+  // Sinais de cláusula SUBORDINADA (também normalizados): "falo que", "disse que", "digo que", "quando eu autorizo", "se eu autorizo", "que autorizo"
   const sinaisSubordinados = [
-    /\bfalo\s+que\b/i,
-    /\bdisse\s+que\b/i,
-    /\bdigo\s+que\b/i,
-    /\bquando\s+eu\s+autorizo/i,
-    /\bse\s+eu\s+autorizo/i,
-    /\bque\s+autorizo/i,
+    /\bfalo\s+que\b/,
+    /\bdisse\s+que\b/,
+    /\bdigo\s+que\b/,
+    /\bquando\s+eu\s+autorizo\b/,
+    /\bse\s+eu\s+autorizo\b/,
+    /\bque\s+autorizo\b/,
   ];
 
   // Se a palavra "autorizo" estiver após um dos sinais subordinados, NÃO é autorização principal
   for (const sinal of sinaisSubordinados) {
     // Encontra posição do sinal
-    const matchSinal = conteudoLower.match(sinal);
+    const matchSinal = normalizado.match(sinal);
     if (matchSinal) {
       // Encontra posição de "autorizo" após o sinal
-      const posicaoSinal = conteudoLower.indexOf(matchSinal[0]);
-      const trechoApos = conteudoLower.substring(posicaoSinal);
+      const posicaoSinal = normalizado.indexOf(matchSinal[0]);
+      const trechoApos = normalizado.substring(posicaoSinal);
 
-      if (/\bautorizo|autorizando|autorizar/i.test(trechoApos)) {
+      if (/\bautorizo\b|\bautorizando\b|\bautorizar\b/.test(trechoApos)) {
         // Autorização está dentro de cláusula subordinada
         return false;
       }
