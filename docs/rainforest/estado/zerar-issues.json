@@ -65,8 +65,23 @@
     "status": "parcial",
     "catraca_mutacao": "2026-09-08",
     "tarefas_ok": 20,
-    "tarefas": 20,
-    "em_voo": [],
+    "tarefas": 22,
+    "em_voo": [
+      {
+        "agente": "tester",
+        "tarefa": "T21 catraca de verificar le o plano declarado",
+        "branch": "t21-catraca-verificar",
+        "base": "9bd0ec7",
+        "desde": "2026-09-11"
+      },
+      {
+        "agente": "tester",
+        "tarefa": "T22 teto de queda do conferir-mutacao",
+        "branch": "t22-teto-de-queda",
+        "base": "9bd0ec7",
+        "desde": "2026-09-11"
+      }
+    ],
     "em": "2026-09-12",
     "integradas": [
       1,
