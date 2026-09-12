@@ -66,6 +66,11 @@
  *       --head-antes $(git -C C:/repo rev-parse HEAD)
  *
  * Exit 0 so quando tudo passa.
+ *
+ * D5 (2026-09-12): worktree que sumiu ou diretorio que nao e/deixou de ser
+ * repositorio git nao e reprovacao, e' ambiente — sai 69 (EX_UNAVAILABLE),
+ * primeira linha do stderr "nao-verificavel: <motivo>". Ver tabela de exits
+ * em ajuda().
  */
 
 const fs = require("fs");
@@ -186,6 +191,9 @@ Exit codes:
   0 = conferencia passou
   1 = conferencia falhou
   2 = erro de uso ou arquivo inacessivel
+  69 = nao-verificavel — falta AMBIENTE (worktree sumiu, git ausente ou o
+       diretorio nao e repositorio git). Nem aprovacao nem reprovacao: a
+       primeira linha do stderr comeca com "nao-verificavel: <motivo>".
 `);
 }
 
@@ -379,8 +387,10 @@ function main() {
   const wt = a.worktree;
 
   if (!ehDir(wt)) {
-    process.stderr.write(`erro: worktree '${wt}' nao existe\n`);
-    return 2;
+    // Ambiente, nao conteudo: sem o diretorio nao ha o que conferir, e um
+    // worktree que sumiu nao e uma entrega reprovada (D5, 2026-09-12).
+    process.stderr.write(`nao-verificavel: worktree '${wt}' nao existe\n`);
+    return 69;
   }
 
   // Valida --sujo-antes antes de tudo
@@ -397,8 +407,16 @@ function main() {
   c.abre("Onde ele mexeu — o worktree e mesmo um worktree?");
   let [rc, top] = c.mostra(wt, "rev-parse", "--show-toplevel");
   if (rc !== 0) {
-    c.falha("nao e repositorio git");
-    top = "";
+    // Ambiente, nao conteudo (D5, 2026-09-12): sem git funcionando aqui, TODA
+    // checagem seguinte tambem falharia por tabela — nao ha commit, base ou
+    // sujeira que se confira sem `git rev-parse` respondendo. Isto NAO e mais
+    // uma falha na lista; e' motivo para parar aqui e dizer que nao deu para
+    // medir, em vez de acumular reprovacoes que nao apontam defeito nenhum.
+    const motivo = rc === 127 && /git nao encontrado/.test(top)
+      ? "git nao encontrado no PATH"
+      : `'${wt}' nao e repositorio git`;
+    process.stderr.write(`nao-verificavel: ${motivo}\n`);
+    return 69;
   }
   const [, gitdir] = c.mostra(wt, "rev-parse", "--git-dir");
   const [, common] = c.git(wt, "rev-parse", "--git-common-dir");
