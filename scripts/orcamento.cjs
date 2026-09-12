@@ -11,7 +11,7 @@
  *
  * Tetos:
  * - Hook sozinho: ORCAMENTO_BYTES de hooks/lib/contexto-sessao.cjs
- * - Agregado (todas as fontes somadas): 15000 B
+ * - Agregado (todas as fontes somadas): 15600 B
  * - --teto <n> sobrescreve o teto agregado
  *
  * Saída: uma linha por fonte medida, uma linha de total, e — quando estoura —
@@ -234,8 +234,8 @@ function main() {
   }
 
   // Avaliar agregado
-  // Banda explicita, e nao os 5% do padrao. Com teto de 15.000 os 5% dariam 750 B
-  // de limiar, contra um piso ESTRUTURAL de ~14.750 — ou seja, o aviso dispararia
+  // Banda explicita, e nao os 5% do padrao. Com teto de 15.600 os 5% dariam 780 B
+  // de limiar, contra um piso ESTRUTURAL de ~14.950 (2026-09-12) — ou seja, o aviso dispararia
   // em toda sessao, pelo mesmo motivo que o do hook acabou de ser aposentado logo
   // acima: aviso que nunca cala e aviso que ninguem le, e ele gasta a atencao que
   // o estouro de verdade vai precisar.
