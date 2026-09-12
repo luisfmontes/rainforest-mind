@@ -22,8 +22,14 @@
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SBP="$(mktemp -d)"
-trap 'rm -rf "$SBP"' EXIT
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
+# criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
+cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done; }
+trap cleanup EXIT
+
+SBP="$(novo_sandbox)"
 
 ok=0; falhou=0
 tem()     { if echo "$2" | grep -qF "$3"; then ok=$((ok+1)); echo "  ok   $1"; else falhou=$((falhou+1)); echo "  FALHA $1 (esperava '$3')"; fi; }
@@ -451,7 +457,7 @@ echo "== 11. --commit le o COMMIT, nao o disco (D10, tarefa 13) =="
 # Repo de caixa de areia de VERDADE, caminho NATIVO (cygpath -m): o mesmo cuidado
 # do hooks/testa-gate-staging-total.sh — Node no Windows nao resolve caminho MSYS
 # e o git falharia em silencio, passando a bateria sem medir nada.
-CPUB_POSIX="$(mktemp -d)"
+CPUB_POSIX="$(novo_sandbox)"
 CPUB="$(cygpath -m "$CPUB_POSIX" 2>/dev/null || printf '%s' "$CPUB_POSIX")"
 git init -q "$CPUB"
 git -C "$CPUB" config user.email t@t
@@ -495,7 +501,7 @@ saiu "e RECUSA (exit 2), nao CONFERIDO com zero arquivos"                  "$(co
 
 echo
 echo "== 12. --commit num RANGE de dois commits =="
-RANGE_POSIX="$(mktemp -d)"
+RANGE_POSIX="$(novo_sandbox)"
 RANGE="$(cygpath -m "$RANGE_POSIX" 2>/dev/null || printf '%s' "$RANGE_POSIX")"
 git init -q "$RANGE"
 git -C "$RANGE" config user.email t@t
@@ -532,7 +538,7 @@ saiu    "e RECUSA (exit 2, por causa so de x.md)"                     "$(codigo_
 
 echo
 echo "== 13. duplicata via --commit (D10) =="
-DUPC_POSIX="$(mktemp -d)"
+DUPC_POSIX="$(novo_sandbox)"
 DUPC="$(cygpath -m "$DUPC_POSIX" 2>/dev/null || printf '%s' "$DUPC_POSIX")"
 git init -q "$DUPC"
 git -C "$DUPC" config user.email t@t
@@ -548,7 +554,7 @@ tem  "duplicata: acha o grupo"            "$S" "duplicata"
 tem  "duplicata: nomeia os dois arquivos" "$S" "dois.md == um.md"
 saiu "duplicata: RECUSA (exit 2)"         "$(codigo_commit "$DUPC" HEAD)" "2"
 
-NAODUP_POSIX="$(mktemp -d)"
+NAODUP_POSIX="$(novo_sandbox)"
 NAODUP="$(cygpath -m "$NAODUP_POSIX" 2>/dev/null || printf '%s' "$NAODUP_POSIX")"
 git init -q "$NAODUP"
 git -C "$NAODUP" config user.email t@t

@@ -342,7 +342,8 @@ Nota de origem (2026-09-12): a tarefa 3 aparece como `pulada (não mensurável)`
 
 ### 24. `valorSeguroParaShell` recusa contrabarra final; `despachar-codex` normaliza o worktree [tipo: implementar]
 atende: D20
-arquivos: `hooks/lib/cli-externo.cjs`, `scripts/despachar-codex.cjs`, `hooks/testa-cli-externo.sh`, `scripts/testa-despachar-codex.sh`
+arquivos: `hooks/lib/cli-externo.cjs`, `scripts/despachar-codex.cjs`, `hooks/testa-cli-externo.sh`, `scripts/testa-cli-externo.cjs`, `scripts/testa-cli-externo.sh`, `scripts/testa-despachar-codex.sh`
+(emenda 2026-09-12: os casos de `valorSeguroParaShell` moram em `scripts/testa-cli-externo.cjs`, que `scripts/testa-cli-externo.sh` executa — a T2 os havia declarado em `hooks/testa-cli-externo.sh`)
 depende de: 2
 paralela: sim
 mutacao:
@@ -368,7 +369,8 @@ pronto quando: o `spawnSync` do `conferir-fluxo.cjs mutacoes` em `estado.cjs` re
 
 ### 26. Guarda `testa-sandbox-com-trap.sh` fecha os três buracos [tipo: teste]
 atende: D22
-arquivos: `scripts/testa-sandbox-com-trap.sh`, `scripts/testa-ferramentas.sh`, `scripts/testa-limpar-worktrees.sh`, `hooks/testa-principal-atrasado.sh`
+arquivos: `scripts/testa-sandbox-com-trap.sh`, `scripts/testa-ferramentas.sh`, `scripts/testa-limpar-worktrees.sh`, `hooks/testa-principal-atrasado.sh`, `scripts/testa-conferir-ponte.sh`, `scripts/testa-conferir-publicacao.sh`
+(emenda 2026-09-12: os dois últimos chegaram pela main depois do plano, com 2 e 5 `mktemp -d` sem o idioma — a guarda os reprovou na integração e a conversão entra aqui)
 depende de: 10
 paralela: sim
 mutacao:
@@ -451,7 +453,7 @@ depende de: nenhuma
 paralela: sim
 mutacao:
   arquivo: `hooks/gate-worktree.cjs`
-  de: `const restauro = linhaDeRestauro(cmd, estado.toplevel);`
+  de: `const restauro = linhaDeRestauro(entrada.command || '', estado.toplevel);`
   para: `const restauro = '';`
   bateria: `bash hooks/testa-gate-worktree.sh`
   fixture: subagente rodando git checkout -- x.txt no checkout principal e barrado e o stderr traz o comando de restauro para a janela

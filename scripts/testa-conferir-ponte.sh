@@ -7,8 +7,14 @@
 # Saída: 0 se todas as baterias passarem, 1 se falhar
 
 PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-REPO_TESTE=$(mktemp -d)
-trap "rm -rf '$REPO_TESTE'; rm -f '$PLUGIN_DIR/scripts/conferir-ponte-sabotado.cjs'" EXIT
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
+# criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
+cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done; rm -f "$PLUGIN_DIR/scripts/conferir-ponte-sabotado.cjs"; }
+trap cleanup EXIT
+
+REPO_TESTE=$(novo_sandbox)
 
 # Inicializa repo em subshell para não sair do diretório
 bash -c "
@@ -144,7 +150,7 @@ echo ""
 # topo do arquivo) mas SEM `hooks/lib/contexto-sessao.cjs` (exigido dentro de
 # nucleoDasRegras, em tempo de execução).
 echo "6. Dependência interna do plugin ausente → esperado 69 (ambiente)"
-PLUGIN_SEM_LIB="$(mktemp -d)"
+PLUGIN_SEM_LIB="$(novo_sandbox)"
 mkdir -p "$PLUGIN_SEM_LIB/hooks/lib" "$PLUGIN_SEM_LIB/scripts" "$PLUGIN_SEM_LIB/skills/rainforest-mind"
 cp "$PLUGIN_DIR/hooks/lib/ponte-corpo.cjs" "$PLUGIN_SEM_LIB/hooks/lib/ponte-corpo.cjs"
 cp "$PLUGIN_DIR/scripts/conferir-ponte.cjs" "$PLUGIN_SEM_LIB/scripts/conferir-ponte.cjs"
