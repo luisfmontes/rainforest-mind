@@ -166,11 +166,14 @@ depende de: nenhuma
 paralela: sim
 mutacao:
   arquivo: `scripts/conferir-mutacao.cjs`
-  de: `if (quedaDesproporcional(placarBase, placarPos)) {`
+  de: `if (bateriaColapsou(placarBase, placarPos)) {`
   para: `if (false) {`
   bateria: `bash scripts/testa-conferir-mutacao.sh`
   fixture: mutacao que derruba 9 de 34 assercoes sai 6
 pronto quando: com fixture cuja bateria imprime `ok: 34   falhou: 0` íntegra e, mutada, quebra a bateria inteira (`ok: 0   falhou: 0` + exit ≠ 0 por `ReferenceError`), `node scripts/conferir-mutacao.cjs --arquivo <f> --de <x> --para <y> --bateria <b>` sai 6 imprimindo `queda desproporcional de asserções`; com mutante que derruba 1 de 34 (`ok: 33   falhou: 1`) sai 0 (`vermelho`); com bateria sem placar reconhecível mantém o exit de hoje — provado por `bash scripts/testa-conferir-mutacao.sh` devolvendo os três casos novos `ok` e exit 0.
+
+Nota (2026-09-11): a tarefa 22 substituiu o critério de exit 6 — a proporção de 20% saiu, e o que reprova agora é a bateria ter colapsado (sem placar, ou `ok=0` e `falhou=0`). O `pronto quando` acima fica como registro do que esta tarefa entregou na época; o caso dos "9 de 34" hoje sai `vermelho`, não 6, e é a bateria da 22 que guarda a fronteira nova. O bloco `mutacao:` foi reapontado para o nome atual da função.
+
 
 ### 12. Abertura avisa principal atrasado e worktrees já integrados [tipo: implementar]
 atende: D12
@@ -300,8 +303,8 @@ depende de: nenhuma
 paralela: sim
 mutacao:
   arquivo: `scripts/conferir-mutacao.cjs`
-  de: `function quedaDesproporcional(`
-  para: `function quedaDesproporcional_desligada(`
+  de: `function bateriaColapsou(`
+  para: `function bateriaColapsou_desligada(`
   bateria: `bash scripts/testa-conferir-mutacao.sh`
   fixture: mutacao que quebra o mecanismo (bateria toda vermelha) continua recusada com exit 6
 pronto quando: uma mutação que derruba a bateria INTEIRA (todas as asserções, o caso que D11 existe para pegar) continua saindo 6; e uma mutação eficaz numa bateria pequena — 13 asserções, 10 sobrevivem, 3 caem, que é a T12 deste plano — passa a sair 0 com `vermelho`, porque as 10 verdes são a prova de que o mecanismo de teste não quebrou; provado por `bash scripts/testa-conferir-mutacao.sh` exit 0 com os dois casos novos, e por `node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues` deixar de listar a tarefa 12 como `pulada (exit 6)`.
