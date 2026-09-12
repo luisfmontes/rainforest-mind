@@ -155,6 +155,7 @@ As baterias dos gates rodam em Windows + Git Bash (ambiente do CI: `runs-on: win
 | `gate-publicacao-destino.cjs` | escrita de dado sensível (JID, telefone, e-mail, credencial) em arquivo rastreado |
 | `gate-repo-alheio.cjs` | escrita cujo destino está dentro de **outro** repositório git |
 | `gate-fechar-issue.cjs` | `gh issue close` direto, e `closes #N` em PR sem comentário de evidência marcado |
+| `gate-mensagem-commit.cjs` | `git commit` com assunto acima de 72 colunas ou terminando em ponto; sem corpo quando o stage passa de 3 arquivos ou 150 linhas; e mensagem que o hook não consegue ler (`-F -`, heredoc, `git commit` pelado — fechando merge, `-F .git/MERGE_MSG`) |
 | `portaria.cjs` | despacho de subagente não declarado em `.rainforest/agentes.json`, ou sem `isolation: "worktree"` quando ele escreve |
 
 Fora da tabela porque o mecanismo é outro (`Stop`, exit 0 com
@@ -167,9 +168,9 @@ liberam sem perguntar. Codex sem cota bloqueia dizendo isso, com a hora de
 retorno (o despacho sai 75 e escreve `codex sem cota: ...`).
 
 Valem em **qualquer** repo git da máquina, porque o hábito é que é o problema,
-não o repositório. Cada uma tem bateria própria — **540 casos** rodando o hook
-de verdade contra repos git montados na hora (soma medida em 2026-09-08:
-198 + 99 + 21 + 27 + 117 + 78).
+não o repositório. Cada uma tem bateria própria — **565 casos** rodando o hook
+de verdade contra repos git montados na hora (soma medida em 2026-09-12:
+198 + 99 + 21 + 27 + 117 + 78 + 25 — re-verificar: a última linha da bateria `hooks/testa-<hook>.sh` de cada linha da tabela).
 
 → O incidente de origem de cada trava, as saídas de emergência e a tabela de
 scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
@@ -177,6 +178,13 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 | Script | Validação |
 |---|---|
 | `scripts/recibo.cjs` | Congela identidade do entregável com sha256 + bytes; chamado pelo `fechar` quando plano declara `entregaveis` (opt-in, sem manifesto sai exit 0). Obriga `nao_provado` listado — recibo que alega provar tudo é suspeito. Re-executa portões com `--reverificar` se `docs/rainforest/portoes/<slug>.md` existe. Grava atomicamente em `.rainforest/colheita/<slug>-recibo.json` (fora do git). `mostrar <slug>` imprime; `conferir <slug>` recalcula hash e compara. |
+| `scripts/conferir-duplicacao.cjs` | Dois arquivos byte a byte iguais fora de `fixtures/` → **exit 2** com os dois caminhos na mesma linha; `--funcoes` inventaria nomes repetidos entre `scripts/*.cjs` (exit 0, é inventário). Chamado pelo `conferir-publicacao.cjs --commit` e pelo `/saude` |
+| `scripts/conferir-publicacao.cjs --commit <rev>` ou `a..b` | Varre o conteúdo **commitado**, não o disco: dado sensível que já saiu do arquivo mas ficou no histórico é achado; disco ≠ commit vira `diverge-do-commit`. Exit 2 achado, **69** quando o ambiente impede |
+| `scripts/estado.cjs marcar --json {"carimbos":…}` | Grava por tarefa o hash de base em que ela foi aceita (`iteracao` cresce, nada se apaga); `proximo` e `ler` avisam quando esse hash não é ancestral do HEAD |
+| `scripts/testa-teto-skills.sh` | Nenhum `SKILL.md` acima de 500 linhas ou 16.384 B — a falha diz o que mover para `references/` |
+| `scripts/testa-mapa-regras.sh` | Cada uma das 17 regras tem linha em `## Regra → trava` de `docs/travas-mecanicas.md` (hook/script existente **ou** `disciplina`), e todo arquivo citado existe |
+| `--confirmo` em `limpar-branches.cjs`, `limpar-worktrees.cjs --remover-sujo` e `fechar-issue.cjs` | Apagar branch, remover worktree sujo e fechar Issue exigem a frase literal que o próprio script imprime (`CONFIRMO apagar branches a,b`), digitada por você e repassada verbatim — frase de outro alvo sai 2 e nada acontece |
+| exit **69** `nao-verificavel:` em `conferir-entrega`, `conferir-mutacao`, `conferir-fluxo`, `conferir-ponte` | Ambiente impediu a checagem (worktree sumiu, `git` fora do PATH, bateria que não executa): nem aprovação, nem reprovação, nem `flaky` — anuncia em uma linha e não redespacha (regra 14) |
 
 ## Comandos, skills e agentes
 
