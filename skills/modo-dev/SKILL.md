@@ -111,6 +111,15 @@ O bloco 5 não é enfeite: é o que transforma "terminei" em evidência (regra 1
 e sai pronto do passo 4 da cadeia acima. Briefing vago produz trabalho vago, e
 o custo de descobrir isso é uma rodada inteira.
 
+**Porte** — quando a tarefa é portar uma implementação entre linguagens
+(bash→cjs, py→cjs ou qualquer outro par), o critério de sucesso é **saída byte a byte
+igual à do original** sobre os fixtures do original (mesmos argumentos, mesma entrada,
+`diff` vazio entre as duas saídas). Testes verdes não é o critério; é o artefato real,
+medido na saída dele. Helper de paridade (ordenação, serialização, quebra de linha) é
+custo esperado dessa classe de tarefa, não gambiarra — exemplar é o par `conferir-entrega.cjs`
+e `conferir-entrega.py` deste repo, que já vivem sob essa regra. Origem: porte Python→Node
+em plugin de dados de terceiro (2026-09-12) revelou que verde tautológico mascara reescrita.
+
 **Na volta, antes de aceitar:** `node scripts/conferir-entrega.cjs --worktree
 <wt> --base <hash> --head-antes <hash>` é obrigatório, e **`entrada(s) nao
 commitada(s)` é reprovação, não aviso**. Relatório internamente coerente é
