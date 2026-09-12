@@ -4,9 +4,8 @@ const fs = require('fs');
  * Lê a autorização de subagentes do usuário no transcript.
  *
  * Estratégia:
- * - Lê a cauda do arquivo para não estourar orçamento de tempo.
- *   Se arquivo < 2 MB: lê arquivo inteiro (caso comum).
- *   Se arquivo >= 2 MB: lê apenas últimos 1 MB.
+ * - Lê o arquivo INTEIRO. A cauda foi tentada e removida — ver o comentário do
+ *   `TETO_GUARDA` abaixo, que traz a medição que a matou.
  * - Procura por linhas com type:"user", "queue-operation" ou "attachment"
  * - NORMALIZA acentos antes de todo casamento (NFD + remoção de diacríticos)
  * - Reconhece "autorizo" perto de "subagente(s)" por frase livre (não comando)
@@ -26,13 +25,31 @@ function autorizado(transcriptPath) {
     const stats = fs.statSync(transcriptPath);
     const fileSize = stats.size;
 
-    // Lê a cauda para performance (nunca lê arquivo inteiro > 2 MB)
-    // Limite 2 MB escolhido pq a maioria das sessões cabe: transcript real é 1,5 MB.
-    // Se arquivo >= 2 MB, lê últimos 1 MB (capture ~300-400 linhas desde o fim).
-    // Trade-off: autorização dada muito cedo (primeiras 1%) em arquivo gigante não é
-    // capturada. Aceitável: lê 1 MB em ~30ms, nunca bloqueia o hook.
-    const cauda_bytes = fileSize < 2 * 1024 * 1024 ? fileSize : 1024 * 1024;
-    const startPos = Math.max(0, fileSize - cauda_bytes);
+    // NÃO ler cauda. A primeira versão lia só o último 1 MB quando o arquivo
+    // passava de 2 MB, e isso reintroduziu o defeito que este leitor existe para
+    // consertar. Medido em 2026-09-12, na própria sessão que desenhou o
+    // mecanismo:
+    //
+    //   tamanho total do transcript ............. 2.070.974 B
+    //   "autorizo subagentes" no byte ............... 470.903
+    //   cauda de 1 MB comecava no byte ............ 1.022.398
+    //   => a concessao ficava FORA da janela, e o leitor devolvia `false`
+    //      numa sessao em que o usuario tinha autorizado explicitamente.
+    //
+    // A cauda é incompatível com o desenho por duas razões que se somam: a
+    // autorização vale pela SESSÃO INTEIRA (uma concessão do minuto 5 continua
+    // valendo no minuto 300), e a precedência entre concessão e negação depende
+    // de ter visto as DUAS. Ler só o fim é ler metade da evidência, e apaga
+    // justamente as concessões das sessões longas — que são as que mais
+    // despacham agente.
+    //
+    // O argumento de custo que justificava a cauda não se sustentou na medição:
+    // os 2 MB inteiros levam 15 ms. O teto abaixo é guarda contra arquivo fora
+    // do normal, não corte no caso comum: a 15 ms / 2 MB, 64 MB dariam ~0,5 s,
+    // ainda muito abaixo do orçamento de tempo de um hook.
+    const TETO_GUARDA = 64 * 1024 * 1024;
+    const startPos = Math.max(0, fileSize - TETO_GUARDA);
+    const cauda_bytes = fileSize - startPos;
 
     const buffer = Buffer.alloc(Math.min(cauda_bytes + 100, fileSize)); // +100 pra margem
     const fd = fs.openSync(transcriptPath, 'r');
@@ -62,6 +79,11 @@ function autorizado(transcriptPath) {
       try {
         const obj = JSON.parse(line);
 
+        // PORTA DE ENTRADA: só a voz do usuário conta. Ver `vozDoUsuario`.
+        if (vozDoUsuario(obj) === null) {
+          continue;
+        }
+
         // Verifica negação explícita primeiro (a mais forte)
         if (temNegacaoExplicita(obj)) {
           return false;
@@ -83,6 +105,70 @@ function autorizado(transcriptPath) {
   } catch (e) {
     return false;
   }
+}
+
+/**
+ * Envelopes que o harness entrega DENTRO de uma linha que, de fora, parece do
+ * usuário. Nenhum deles foi digitado por ele.
+ */
+const ENVELOPE_DE_SISTEMA = /<task-notification>|<system-reminder>|<cross-session-message|<command-name>/;
+
+/**
+ * A única porta de entrada: devolve o texto quando a linha é a VOZ DO USUÁRIO,
+ * e `null` para todo o resto. Fora daqui, o leitor não olha nada.
+ *
+ * Isto não é zelo — é a diferença entre uma trava e um buraco. Na primeira
+ * versão o leitor aceitava qualquer linha de `type` "user", "queue-operation" ou
+ * "attachment", e o efeito foi medido em 2026-09-12 na própria sessão que
+ * desenhou o mecanismo:
+ *
+ *   L91   queue-operation  "autorizo subagentes"          <- o usuario, de verdade
+ *   L997  queue-operation  "<task-notification>…"          <- relato de agente
+ *   L1070 user             origin.kind=task-notification   <- notificacao
+ *   L1117 user             tool_result com o fonte deste modulo dentro
+ *
+ * As três últimas eram máquina, e entravam no veredito. O leitor devolvia
+ * `false` numa sessão em que o usuário tinha autorizado, porque o relato de um
+ * subagente citando a string "nao autorizo subagentes" pesava mais que a
+ * palavra dele.
+ *
+ * A direção perigosa é a outra: um `tool_result` com um arquivo, uma fixture ou
+ * um design doc contendo "autorizo subagentes" ABRIRIA o portão. Qualquer coisa
+ * que a sessão lesse viraria concessão — escalada de privilégio por conteúdo,
+ * que é o oposto exato do que esta trava existe para fazer.
+ *
+ * Os discriminadores abaixo foram medidos no transcript real, não inferidos:
+ * turno digitado traz `origin.kind === "human"`; notificação traz
+ * `origin.kind === "task-notification"` com `promptSource: "system"`;
+ * `tool_result` chega com `message.content` em ARRAY (nunca string) e carrega
+ * `toolUseResult`.
+ */
+function vozDoUsuario(obj) {
+  if (!obj || typeof obj !== 'object') return null;
+
+  if (obj.type === 'user') {
+    const conteudo = obj.message && obj.message.content;
+    // tool_result vem em ARRAY; a fala do usuário vem em string.
+    if (typeof conteudo !== 'string') return null;
+    // Injeção do harness se identifica, e nunca conta.
+    if (obj.promptSource === 'system') return null;
+    if (obj.origin && obj.origin.kind !== 'human') return null;
+    // Dois sinais afirmativos, qualquer um serve: `origin.kind` é o que o
+    // transcript traz hoje, `promptSource` é o que sobra se a forma mudar.
+    // Exigir os dois quebraria em transcript antigo; aceitar sem nenhum
+    // aceitaria linha que não se identifica, que é o caso a barrar.
+    if (obj.origin && obj.origin.kind === 'human') return conteudo;
+    if (obj.promptSource === 'typed') return conteudo;
+    return null;
+  }
+
+  if (obj.type === 'queue-operation') {
+    if (typeof obj.content !== 'string') return null;
+    if (ENVELOPE_DE_SISTEMA.test(obj.content)) return null;
+    return obj.content;
+  }
+
+  return null;
 }
 
 /**
