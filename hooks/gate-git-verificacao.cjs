@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /**
  * PreToolUse — barra pulo de verificacao no git.
+ * Protege contra: --no-verify / -n / --no-gpg-sign em git commit/push
+ * Não protege contra: git commit/push normal (com verificação)
  *
  * O executor de um fluxo do rainforest-mind e quem mais tem motivo para pular
  * hook de commit quando ele reprova: e o proprio executor que escreveu o codigo

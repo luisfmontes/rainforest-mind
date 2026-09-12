@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /**
  * Stop — barra o fim do turno quando o fluxo tem agente em voo.
+ * Protege contra: turno terminando com agente em execução (em_voo não vazio)
+ * Não protege contra: gate desligado ou stop_hook_active ativo (anti-loop)
  *
  * Por que existe (Issue #180): o estágio que despacha agente aposta que o turno
  * dura mais que o agente, e essa aposta é perdida em toda sessão não

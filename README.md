@@ -146,6 +146,8 @@ mesmo assim**.
 > Enquanto o veredito de uma checagem for redigido pelo mesmo agente que ela
 > deveria travar, ela não trava nada. **Exit code não se argumenta.**
 
+As baterias dos gates rodam em Windows + Git Bash (ambiente do CI: `runs-on: windows-latest`); Linux e macOS não são medidos. Cada gate declara seu modelo de ameaça nos docblocks.
+
 | Hook (`PreToolUse`, exit 2) | Barra |
 |---|---|
 | `gate-worktree.cjs` | escrita de subagente fora de worktree linkado; `git checkout/switch/reset` com outra sessão no mesmo diretório |

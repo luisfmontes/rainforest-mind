@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /**
  * PreToolUse — barra `gh issue close` direto, palavras-chave falsas (português), e `gh pr create/edit/merge` sem evidência.
+ * Protege contra: gh issue close direto / gh pr merge/create sem marcador de evidência
+ * Não protege contra: gh commands de leitura (issue view, pr view)
  *
  * Decisões D15, D16, D17 (2026-09-04): fechar Issue sem o marcador de evidência é bloqueado, e palavras-chave falsas em português são impedidas.
  * - `gh issue close <n>` direto → exit 2, stderr aponta para scripts/fechar-issue.cjs
