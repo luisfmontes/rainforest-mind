@@ -33,16 +33,26 @@ saiu()    { if [ "$2" = "$3" ]; then ok=$((ok+1)); echo "  ok   $1"; else falhou
 roda() { node "$SRC/scripts/conferir-publicacao.cjs" "$1" 2>&1; }
 codigo() { node "$SRC/scripts/conferir-publicacao.cjs" "$1" >/dev/null 2>&1; echo $?; }
 
+# modo --commit (D10): roda dentro de um repo de caixa de areia (cwd = $1), com o
+# resto dos argumentos repassado apos "--commit". Mesma separacao roda/codigo do
+# modo de arquivo acima, so que precisando do cwd certo para o git achar o repo.
+roda_commit()   { local dir="$1"; shift; (cd "$dir" && node "$SRC/scripts/conferir-publicacao.cjs" --commit "$@") 2>&1; }
+codigo_commit() { local dir="$1"; shift; (cd "$dir" && node "$SRC/scripts/conferir-publicacao.cjs" --commit "$@") >/dev/null 2>&1; echo $?; }
+
 echo "== 1. cada forma de dado sensivel =="
 
 # O JID e o caso REAL: e assim que o telefone do terceiro entrou no relatorio de
 # 2026-08-10, colado de uma saida de ferramenta sem ninguem reparar.
-printf '# achado\n\nChat JID: 5500900000002@s.whatsapp.net\n' > "$SBP/jid.md"
+# O literal completo do JID nunca aparece inteiro nesta fonte: pedacos de 2
+# caracteres unidos por aspas adjacentes (mesma tecnica de CHAVE/URL_INDIRETA
+# abaixo), senao este PROPRIO arquivo, lido pelo modo --commit (D10, tarefa 13),
+# acenderia a regra que ele existe para provar.
+printf '# ''ac''ha''do''\n''\n''Ch''at'' J''ID'': ''55''00''90''00''00''00''2@''s.''wh''at''sa''pp''.n''et''\n' > "$SBP/jid.md"
 S="$(roda "$SBP/jid.md")"
 tem   "pega JID de WhatsApp"        "$S" "jid-whatsapp"
 saiu  "e RECUSA (exit 2)"           "$(codigo "$SBP/jid.md")" "2"
 
-printf '# achado\n\nligar para (00) 90000-0002 depois\n' > "$SBP/tel.md"
+printf '# ''ac''ha''do''\n''\n''li''ga''r ''pa''ra'' (''00'') ''90''00''0-''00''02'' d''ep''oi''s\''n' > "$SBP/tel.md"
 tem   "pega telefone formatado"     "$(roda "$SBP/tel.md")" "telefone"
 
 # JID de GRUPO tem 18 digitos, e a faixa da regra parava em 15 ate 2026-09-02
@@ -50,7 +60,7 @@ tem   "pega telefone formatado"     "$(roda "$SBP/tel.md")" "telefone"
 # padrao generico de telefone, marcado "pode ser falso positivo" — a categoria
 # que se aprende a ignorar. Foi assim que o JID real do grupo das rondas ficou
 # no vigias/ERROS.md da main por dias.
-printf '# achado\n\nGrupo: 120363123456789012@g.us\n' > "$SBP/jid-grupo.md"
+printf '# ''ac''ha''do''\n''\n''Gr''up''o:'' 1''20''36''31''23''45''67''89''01''2@''g.''us''\n' > "$SBP/jid-grupo.md"
 S="$(roda "$SBP/jid-grupo.md")"
 tem   "pega JID de GRUPO (18 digitos)"   "$S" "jid-whatsapp"
 saiu  "e RECUSA (exit 2)"                "$(codigo "$SBP/jid-grupo.md")" "2"
@@ -67,7 +77,7 @@ saiu    "e passa limpo (exit 0)"  "$(codigo "$SBP/jid-zeros.md")" "0"
 # nao passa no proprio gate, o gate esta errado sobre o repo.
 saiu "o vigia.config.exemplo.json do repo passa no gate" "$(codigo "$SRC/vigias/vigia.config.exemplo.json")" "0"
 
-printf '# achado\n\nreportado por fulano@empresa.com.br\n' > "$SBP/mail.md"
+printf '# ''ac''ha''do''\n''\n''re''po''rt''ad''o ''po''r ''fu''la''no''@e''mp''re''sa''.c''om''.b''r\''n' > "$SBP/mail.md"
 tem   "pega e-mail"                 "$(roda "$SBP/mail.md")" "email"
 
 printf '# achado\n\nabri C:\\Users\\Fulano\\Downloads\\print.jpeg\n' > "$SBP/home.md"
@@ -102,10 +112,10 @@ S="$(roda "$SBP/home-real.md")"
 tem  "nome de pessoa CONTINUA acendendo"  "$S" "caminho-de-home"
 saiu "e RECUSA (exit 2)"                  "$(codigo "$SBP/home-real.md")" "2"
 
-printf '# achado\n\nrodei com api_key=abc123def456\n' > "$SBP/cred.md"
+printf '# ''ac''ha''do''\n''\n''ro''de''i ''co''m ''ap''i_''ke''y=''ab''c1''23''de''f4''56''\n' > "$SBP/cred.md"
 tem   "pega credencial"             "$(roda "$SBP/cred.md")" "credencial"
 
-printf '# achado\n\ntoken ghp_abcdefghij0123456789klmnop\n' > "$SBP/chave.md"
+printf '# ''ac''ha''do''\n''\n''to''ke''n ''gh''p_''ab''cd''ef''gh''ij''01''23''45''67''89''kl''mn''op''\n' > "$SBP/chave.md"
 S="$(roda "$SBP/chave.md")"
 tem   "pega chave com prefixo conhecido" "$S" "chave-conhecida"
 tem   "e manda REVOGAR antes de editar"  "$S" "REVOGUE"
@@ -113,9 +123,10 @@ tem   "e manda REVOGAR antes de editar"  "$S" "REVOGUE"
 # A CHAVE em caixa alta e a forma mais comum em log e config, e um padrao
 # case-sensitive fica cego justamente para ela. Estes tres casos existem porque uma
 # tentativa de calar o falso positivo da prosa (abaixo) tirou o `i` da regex em
-# 2026-08-17: `senha:` minusculo continuava pego, e `SENHA:`, `Token:` e `API_KEY:`
-# passavam limpos. O detector fica cego para a forma mais comum e a bateria nao
-# acusava, porque nenhum caso usava caixa alta.
+# 2026-08-17: a chave `senha` minuscula seguida de dois-pontos continuava pega,
+# e as chaves `SENHA`, `Token` e `API_KEY` (maiusculas ou mistas) seguidas do
+# mesmo delimitador passavam limpas. O detector ficava cego para a forma mais
+# comum e a bateria nao acusava, porque nenhum caso usava caixa alta.
 printf '# achado\n\nSENHA: aBcD1234XyZw5678\n' > "$SBP/cred-alta.md"
 tem   "pega credencial com a chave em caixa alta"  "$(roda "$SBP/cred-alta.md")" "credencial"
 printf '# achado\n\nToken: aBcD1234XyZw5678\n' > "$SBP/cred-mista.md"
@@ -136,12 +147,12 @@ echo "== 1b. e a PROSA com a palavra-chave nao e credencial =="
 # liberacao e estreita: palavra curta, minuscula, e a linha SEGUE com mais palavras.
 printf '# achado\n\n41d73b7 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)\n' > "$SBP/prosa.md"
 S="$(roda "$SBP/prosa.md")"
-saiu    "prosa com 'token:' passa (exit 0)"        "$(codigo "$SBP/prosa.md")" "0"
+saiu    "prosa com a palavra token seguida de dois-pontos passa (exit 0)" "$(codigo "$SBP/prosa.md")" "0"
 nao_tem "e nao inventa achado de credencial"       "$S" "credencial"
 
 # O contrapeso, na MESMA forma de prosa: basta o valor ter digito para voltar a ser
 # segredo. Sem este par, a liberacao acima seria indistinguivel de desligar o teste.
-printf '# achado\n\nRegua de orcamento de token: aBcD1234XyZw5678 e o que usei\n' > "$SBP/prosa-cred.md"
+printf '# ''ac''ha''do''\n''\n''Re''gu''a ''de'' o''rc''am''en''to'' d''e ''to''ke''n:'' a''Bc''D1''23''4X''yZ''w5''67''8 ''e ''o ''qu''e ''us''ei''\n' > "$SBP/prosa-cred.md"
 tem   "mas com valor em forma de segredo recusa"   "$(roda "$SBP/prosa-cred.md")" "credencial"
 saiu  "e o exit volta a 2"                         "$(codigo "$SBP/prosa-cred.md")" "2"
 
@@ -187,7 +198,9 @@ saiu "e restaurado, volta a recusar" "$(codigo "$SBP/jid.md")" "2"
 echo
 echo "== 7b. SHA-1 de 40 hex nao e telefone (defect c) =="
 # Arquivos de docs/rainforest/estado/ usam head/base com 40 hex (SHA-1).
-# Subsequencia 5500 9000 0000 tem forma de telefone mas esta DENTRO do hash.
+# A sequencia numerica do fixture abaixo tem forma de telefone mas esta DENTRO
+# do hash — nao repetimos os digitos aqui no comentario de proposito (a prosa
+# tambem e texto deste arquivo, e o modo --commit, D10, le o arquivo inteiro).
 # Isenta se dentro de token hex de 7-40 caracteres.
 printf '# estado\n\nhead = "abc123def4567890123455009000000012345e890"\n' > "$SBP/sha1.md"
 S="$(roda "$SBP/sha1.md")"
@@ -196,7 +209,7 @@ saiu    "e passa limpo (exit 0)"                                "$(codigo "$SBP/
 
 echo
 echo "== 7c. mas telefone FORA do SHA-1 continua sendo acusado =="
-printf '# estado\n\nsha1: abc123def4567890123455009000000012345e890\ntel: (00) 90000-0001\n' > "$SBP/sha1-com-tel.md"
+printf '# estado\n\n''sh''a1'': ''ab''c1''23''de''f4''56''78''90''12''34''55''00''90''00''00''00''12''34''5e''89''0\''nt''el'': ''(0''0)'' 9''00''00''-0''00''1\''n' > "$SBP/sha1-com-tel.md"
 S="$(roda "$SBP/sha1-com-tel.md")"
 tem     "telefone fora do hash e acusado"                       "$S" "telefone"
 saiu    "e RECUSA (exit 2)"                                     "$(codigo "$SBP/sha1-com-tel.md")" "2"
@@ -249,8 +262,12 @@ echo "== 8. dump hexadecimal nao e telefone (Issue #144) =="
 # Provar defeito de encoding exige colar bytes; ate 2026-09-02 o gate lia as
 # colunas de `xxd` como telefone e barrava a unica evidencia que o metodo aceita.
 # Os grupos abaixo sao so digitos de proposito (a forma que a regra de telefone
-# consegue casar): 5500 9000 0000 1000 tem forma de telefone e esta DENTRO do dump.
-printf '# prova\n\n```\n00000040: 5500 9000 0000 1000 7869 7420 3129 3a20  U.......xit 1): \n00000050: 6e61 6f20 6163 6865 6920 6f20 464f 434f  nao achei o FOCO\n```\n' > "$SBP/xxd.md"
+# consegue casar): os grupos de digitos do dump abaixo tem forma de telefone e
+# estao DENTRO do bloco de hex — a isencao cobre exatamente esse caso.
+# O dump inteiro tambem vai em pedacos de 2 caracteres (mesma tecnica do JID
+# acima): sem isso, os grupos de 4 hex que sao so digitos (ex.: "5500", "9000")
+# acendem a regra de telefone quando o modo --commit le este PROPRIO arquivo.
+printf '# ''pr''ov''a\''n\''n`''``''\n''00''00''00''40'': ''55''00'' 9''00''0 ''00''00'' 1''00''0 ''78''69'' 7''42''0 ''31''29'' 3''a2''0 '' U''..''..''..''.x''it'' 1''):'' \''n0''00''00''05''0:'' 6''e6''1 ''6f''20'' 6''16''3 ''68''65'' 6''92''0 ''6f''20'' 4''64''f ''43''4f''  ''na''o ''ac''he''i ''o ''FO''CO''\n''``''`\''n' > "$SBP/xxd.md"
 saiu "xxd com grupos de digitos passa (exit 0)"                 "$(codigo "$SBP/xxd.md")" "0"
 printf '# prova\n\n```\n00000040  55 00 90 00 00 00 10 00  78 69 74 20 31 29 3a 20  |U.......xit 1): |\n```\n' > "$SBP/hexdump.md"
 saiu "hexdump -C passa (exit 0)"                                "$(codigo "$SBP/hexdump.md")" "0"
@@ -258,12 +275,12 @@ printf '# prova\n\n```\n 55 00 90 00 00 00 10 00 78 69 74 20 31 29 3a 20\n```\n'
 saiu "od -An -tx1 passa (exit 0)"                               "$(codigo "$SBP/od.md")" "0"
 # A mesma linha com o telefone LEGIVEL na coluna ASCII continua recusada: a
 # isencao cobre os grupos hex, nunca o que vem depois deles.
-printf '# prova\n\n```\n00000040: 2830 3029 2039 3030 3030 2d30 3030 3120  (00) 90000-0001 \n```\n' > "$SBP/xxd-ascii.md"
+printf '# ''pr''ov''a\''n\''n`''``''\n''00''00''00''40'': ''28''30'' 3''02''9 ''20''39'' 3''03''0 ''30''30'' 2''d3''0 ''30''30'' 3''12''0 '' (''00'') ''90''00''0-''00''01'' \''n`''``''\n' > "$SBP/xxd-ascii.md"
 saiu "telefone legivel na coluna ASCII do dump ainda recusa (exit 2)" "$(codigo "$SBP/xxd-ascii.md")" "2"
 tem  "e aponta telefone"                                        "$(roda "$SBP/xxd-ascii.md")" "telefone"
 # E prosa com o mesmo numero, fora de dump, continua recusada — a isencao nao e
 # "parece hex", e forma de dump inteira.
-printf '# prova\n\ncontato 5500 9000 0000 depois\n' > "$SBP/prosa-num.md"
+printf '# ''pr''ov''a\''n\''nc''on''ta''to'' 5''50''0 ''90''00'' 0''00''0 ''de''po''is''\n' > "$SBP/prosa-num.md"
 saiu "mesmos digitos em prosa recusam (exit 2)"                  "$(codigo "$SBP/prosa-num.md")" "2"
 
 echo
@@ -304,7 +321,7 @@ saiu    "e RECUSA (exit 2)"                                     "$(codigo "$SBP/
 # contraprova disso e o idioma mais comum que existe: em docker-compose e
 # .env.example o padrao e justamente um placeholder. Recusar isso ensinaria a
 # rodar com a saida de emergencia ligada — medido na revisao de 2026-09-05.
-printf '# compose\n\nPASSWORD=${PASSWORD:-changeme}\n' > "$SBP/cred-compose.md"
+printf '# ''co''mp''os''e\''n\''nP''AS''SW''OR''D=''${''PA''SS''WO''RD'':-''ch''an''ge''me''}\''n' > "$SBP/cred-compose.md"
 nao_tem "placeholder no recuo de ${VAR:-...} nao acusa"        "$(roda "$SBP/cred-compose.md")" "credencial"
 saiu    "e passa (exit 0)"                                      "$(codigo "$SBP/cred-compose.md")" "0"
 
@@ -312,7 +329,7 @@ saiu    "e passa (exit 0)"                                      "$(codigo "$SBP/
 # olha o texto inteiro e independe da isencao acima. Sem este caso, a fresta que
 # a decisao aceita ficaria sem ninguem medindo o que ainda a cobre.
 PRE="xoxb-"
-printf '# config\n\ntoken=${SLACK:-%s1234567890}\n' "$PRE" > "$SBP/cred-padrao.md"
+printf '# config\n\n''to''ke''n=''${''SL''AC''K:''-%s''12''34''56''78''90''}\''n' "$PRE" > "$SBP/cred-padrao.md"
 tem     "mas prefixo conhecido no recuo ainda e pego"           "$(roda "$SBP/cred-padrao.md")" "chave-conhecida"
 saiu    "e RECUSA (exit 2)"                                     "$(codigo "$SBP/cred-padrao.md")" "2"
 
@@ -398,6 +415,128 @@ node -e '
 ' "$SRC/scripts/conferir-publicacao.cjs" "$MUT"
 COD_MUT="$(HOME="$LAR" USERPROFILE="$LAR" node "$MUT" "$SBP/so-comentario.md" >/dev/null 2>&1; echo $?)"
 saiu "sem o filtro, texto limpo passa a ser RECUSADO (o filtro e load-bearing)" "$COD_MUT" "2"
+
+echo
+echo "== 11. --commit le o COMMIT, nao o disco (D10, tarefa 13) =="
+# Repo de caixa de areia de VERDADE, caminho NATIVO (cygpath -m): o mesmo cuidado
+# do hooks/testa-gate-staging-total.sh — Node no Windows nao resolve caminho MSYS
+# e o git falharia em silencio, passando a bateria sem medir nada.
+CPUB_POSIX="$(mktemp -d)"
+CPUB="$(cygpath -m "$CPUB_POSIX" 2>/dev/null || printf '%s' "$CPUB_POSIX")"
+git init -q "$CPUB"
+git -C "$CPUB" config user.email t@t
+git -C "$CPUB" config user.name t
+git -C "$CPUB" config commit.gpgsign false
+
+printf 'co''nt''at''o:'' f''ul''an''o@''em''pr''es''a.''co''m.''br''\n' > "$CPUB/relatorio.md"
+git -C "$CPUB" add relatorio.md >/dev/null
+git -C "$CPUB" commit -qm "relatorio com email" >/dev/null
+# O segredo FICOU no commit. No disco, foi limpo SEM commitar — e' exatamente o
+# defeito que D10 existe para pegar: disco limpo nao quer dizer commit limpo.
+printf 'contato: <email>\n' > "$CPUB/relatorio.md"
+
+S="$(roda_commit "$CPUB" HEAD)"
+tem  "segredo so no commit, disco limpo -> --commit acha"  "$S" "email"
+tem  "e aponta o ARQUIVO do commit"                         "$S" "relatorio.md"
+saiu "e RECUSA (exit 2)"                                    "$(codigo_commit "$CPUB" HEAD)" "2"
+tem  "e tambem acusa a divergencia disco/commit"             "$S" "diverge-do-commit"
+
+# O modo ANTIGO (disco) nao muda: o arquivo, ja limpo em disco, passa liso. Os
+# dois modos coexistem e um nao herda o resultado do outro.
+saiu "modo disco (arquivo ja limpo) sai 0 -- os dois modos coexistem" \
+     "$(codigo "$CPUB/relatorio.md")" "0"
+
+echo
+echo "== 11b. --commit <rev> quando <rev> e' um MERGE (achado da revisao, 2026-09-12) =="
+# `git show --name-only` sem -m lista ZERO arquivos num merge commit: o modo
+# avulso saia "CONFERIDO" sem ler nada. O merge abaixo traz um arquivo com
+# e-mail pela branch lateral; o segredo esta so no que o merge trouxe.
+git -C "$CPUB" add relatorio.md >/dev/null
+git -C "$CPUB" commit -qm "limpa o relatorio" >/dev/null
+git -C "$CPUB" checkout -qb lateral
+printf 'au''to''r:'' b''el''tr''an''o@''em''pr''es''a.''co''m.''br''\n' > "$CPUB/lateral.md"
+git -C "$CPUB" add lateral.md >/dev/null
+git -C "$CPUB" commit -qm "lateral com email" >/dev/null
+git -C "$CPUB" checkout -q - >/dev/null
+git -C "$CPUB" merge -q --no-ff -m "merge da lateral" lateral >/dev/null
+S="$(roda_commit "$CPUB" HEAD)"
+tem  "merge commit avulso: --commit HEAD acha o e-mail que o merge trouxe" "$S" "lateral.md"
+saiu "e RECUSA (exit 2), nao CONFERIDO com zero arquivos"                  "$(codigo_commit "$CPUB" HEAD)" "2"
+
+echo
+echo "== 12. --commit num RANGE de dois commits =="
+RANGE_POSIX="$(mktemp -d)"
+RANGE="$(cygpath -m "$RANGE_POSIX" 2>/dev/null || printf '%s' "$RANGE_POSIX")"
+git init -q "$RANGE"
+git -C "$RANGE" config user.email t@t
+git -C "$RANGE" config user.name t
+git -C "$RANGE" config commit.gpgsign false
+
+printf 'base\n' > "$RANGE/x.md"
+printf 'base\n' > "$RANGE/y.md"
+git -C "$RANGE" add x.md y.md >/dev/null
+git -C "$RANGE" commit -qm base >/dev/null
+BASE_RANGE="$(git -C "$RANGE" rev-parse HEAD)"
+
+# x.md: o segredo entra logo no comeco do range e continua ate o HEAD.
+printf 'ba''se''\n''co''nt''at''o:'' f''ul''an''o@''em''pr''es''a.''co''m.''br''\n' > "$RANGE/x.md"
+git -C "$RANGE" add x.md >/dev/null
+git -C "$RANGE" commit -qm "x com email" >/dev/null
+
+# y.md: o segredo entra e e' removido AINDA dentro do range — o conteudo final
+# continua diferente do da base (para nao sair da lista de arquivos tocados),
+# mas o HEAD:y.md esta limpo.
+printf 'co''nt''at''o:'' f''ul''an''o@''em''pr''es''a.''co''m.''br''\n' > "$RANGE/y.md"
+git -C "$RANGE" add y.md >/dev/null
+git -C "$RANGE" commit -qm "y com email" >/dev/null
+printf 'sem segredo agora\n' > "$RANGE/y.md"
+git -C "$RANGE" add y.md >/dev/null
+git -C "$RANGE" commit -qm "y limpo de novo" >/dev/null
+HEAD_RANGE="$(git -C "$RANGE" rev-parse HEAD)"
+
+S="$(roda_commit "$RANGE" "$BASE_RANGE..$HEAD_RANGE")"
+tem     "range: segredo que fica ate o HEAD e' achado (x.md)"        "$S" "x.md"
+tem     "                e' achado de email"                          "$S" "email"
+nao_tem "range: segredo removido antes do HEAD nao aparece (y.md)"    "$S" "y.md"
+saiu    "e RECUSA (exit 2, por causa so de x.md)"                     "$(codigo_commit "$RANGE" "$BASE_RANGE..$HEAD_RANGE")" "2"
+
+echo
+echo "== 13. duplicata via --commit (D10) =="
+DUPC_POSIX="$(mktemp -d)"
+DUPC="$(cygpath -m "$DUPC_POSIX" 2>/dev/null || printf '%s' "$DUPC_POSIX")"
+git init -q "$DUPC"
+git -C "$DUPC" config user.email t@t
+git -C "$DUPC" config user.name t
+git -C "$DUPC" config commit.gpgsign false
+printf 'conteudo repetido sem segredo\n' > "$DUPC/um.md"
+printf 'conteudo repetido sem segredo\n' > "$DUPC/dois.md"
+git -C "$DUPC" add um.md dois.md >/dev/null
+git -C "$DUPC" commit -qm "dois arquivos identicos" >/dev/null
+
+S="$(roda_commit "$DUPC" HEAD)"
+tem  "duplicata: acha o grupo"            "$S" "duplicata"
+tem  "duplicata: nomeia os dois arquivos" "$S" "dois.md == um.md"
+saiu "duplicata: RECUSA (exit 2)"         "$(codigo_commit "$DUPC" HEAD)" "2"
+
+NAODUP_POSIX="$(mktemp -d)"
+NAODUP="$(cygpath -m "$NAODUP_POSIX" 2>/dev/null || printf '%s' "$NAODUP_POSIX")"
+git init -q "$NAODUP"
+git -C "$NAODUP" config user.email t@t
+git -C "$NAODUP" config user.name t
+git -C "$NAODUP" config commit.gpgsign false
+printf 'conteudo A sem segredo\n' > "$NAODUP/um.md"
+printf 'conteudo B sem segredo\n' > "$NAODUP/dois.md"
+git -C "$NAODUP" add um.md dois.md >/dev/null
+git -C "$NAODUP" commit -qm "dois arquivos diferentes" >/dev/null
+nao_tem "sem duplicata, nenhum achado desse tipo" "$(roda_commit "$NAODUP" HEAD)" "duplicata"
+saiu    "e passa limpo (exit 0)"                  "$(codigo_commit "$NAODUP" HEAD)" "0"
+
+echo
+echo "== 14. ambiente: rev inexistente -> exit 69 (D5) =="
+saiu "rev inexistente sai 69 (EX_UNAVAILABLE)" "$(codigo_commit "$CPUB" deadbeef)" "69"
+tem  "stderr comeca com 'nao-verificavel:'"    "$(roda_commit "$CPUB" deadbeef)" "nao-verificavel:"
+
+rm -rf "$CPUB_POSIX" "$RANGE_POSIX" "$DUPC_POSIX" "$NAODUP_POSIX"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

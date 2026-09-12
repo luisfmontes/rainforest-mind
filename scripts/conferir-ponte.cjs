@@ -45,6 +45,13 @@
  *   0  bloco está em sincronia com o SKILL.md atual
  *   1  erro de uso ou arquivo não encontrado
  *   2  RECUSADO — bloco editado à mão ou ficou para trás
+ *   69 nao-verificavel — AMBIENTE, nao conteudo (D5, 2026-09-12): a instalacao
+ *      do plugin esta incompleta e falta a dependencia interna
+ *      `hooks/lib/contexto-sessao.cjs` de onde o nucleo das regras vem — sem
+ *      ela nao ha o que comparar, e o bloco nao esta nem CONFERIDO nem
+ *      RECUSADO. Primeira linha do stderr: "nao-verificavel: <motivo>".
+ *      (Este script nao chama CLI externa nenhuma hoje — o unico jeito de
+ *      "faltar dependencia" e' esta biblioteca do proprio plugin.)
  */
 
 'use strict';
@@ -164,7 +171,13 @@ function nucleoDasRegras(caminhoSkill) {
     const pluginRoot = path.resolve(__dirname, '..');
     lib = require(path.join(pluginRoot, 'hooks', 'lib', 'contexto-sessao.cjs'));
   } catch (e) {
-    throw new Error(`não consegui carregar hooks/lib/contexto-sessao.cjs: ${e.message}`);
+    // Ambiente, nao conteudo (D5, 2026-09-12): a peca que falta e' do proprio
+    // plugin (instalacao incompleta), nao algo que o SKILL.md ou o arquivo
+    // conferido tenham feito de errado. Marca `.ambiente` para o chamador
+    // distinguir de "nao consegui ler o SKILL.md" (erro de uso do --skill).
+    const erro = new Error(`não consegui carregar hooks/lib/contexto-sessao.cjs: ${e.message}`);
+    erro.ambiente = true;
+    throw erro;
   }
   let skill;
   try {
@@ -337,6 +350,10 @@ function main() {
   try {
     nucleoEsperado = nucleoDasRegras(caminhoSkill);
   } catch (e) {
+    if (e.ambiente) {
+      process.stderr.write(`nao-verificavel: ${e.message}\n`);
+      process.exit(69);
+    }
     const resultado = { arquivo: alvo, situacao: 'erro-skill', msg: e.message };
     if (json) {
       console.log(JSON.stringify(resultado, null, 2));

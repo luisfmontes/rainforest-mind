@@ -157,6 +157,11 @@ caminho, número — re-derive de `git` antes de usar. Passou a checagem
 mecânica, rode o critério de sucesso do briefing e olhe a saída real; suíte
 verde relatada não é evidência.
 
+**Exit 69 é bloqueio de ambiente, não veredito** (regra 14, D5):
+`conferir-entrega.cjs` sai 69 quando falta ambiente (worktree sumiu, git
+ausente) — stderr abre com `nao-verificavel: <motivo>`. Anuncie em uma linha
+e não redespache à toa; não é reprovação, nem aprovação, nem `flaky`.
+
 **Critério que roda bateria carrega o placar.** Quando o critério de
 sucesso do briefing é um laço sobre baterias, o retorno entra com a linha
 `total=N vermelhas:[...]` colada — sem ela a entrega não é conferível e
@@ -186,6 +191,10 @@ Isto é o P1 do relatório de método de 2026-08-08, já colado no cabeçalho de
 
 > "Enquanto o veredito de uma checagem for redigido pelo mesmo agente que ela
 > deveria travar, ela não trava nada."
+
+A ordem é fixa e sequencial — gate mecânico (`conferir-mutacao` vermelho) →
+tester → revisor — porque o avaliador caro só compensa depois que o gate
+barato passou (pipeline de um plugin de dados de terceiro, 2026-09-12).
 
 Em **2026-08-21** isso se repetiu, e é por causa desse dia que esta seção
 existe: o agente rodou mutação, relatou mutação, colou saída de mutação, e
@@ -217,6 +226,7 @@ pesa mais: o relato é justamente a peça que a catraca desconfia.
 | `4` | não dá para MEDIR — a bateria já falha no fonte íntegro, ou o `--de` casa mais de uma vez | conserte o baseline (ou desambigue o `--de`) e rode de novo; nada foi mutado |
 | `5` | suspeita de CORTE DE SHELL — pós-mutação < 10% baseline (ou < 1 s) | confirme rodando a bateria pós-mutação à mão; se sair 0, ignorar; se durar >= 1 s, aumentar piso |
 | `1` | erro de uso, ou bateria sem veredito (estouro de tempo / sinal) | não é aprovação nem reprovação |
+| `69` | bateria não **EXECUTA** — ambiente (D5) | bloqueio de ambiente (regra 14): anuncie e não redespache |
 
 O `4` recusa **antes** de tocar no fonte, e cobre os dois jeitos de a medição
 não existir: bateria vermelha no íntegro (o vermelho depois da mutação não
@@ -242,6 +252,17 @@ Enquanto faltar tarefa:
 ```
 node scripts/estado.cjs marcar --slug <slug> --estagio executar --status parcial --json '{"tarefas_ok":N,"tarefas":M}'
 ```
+
+**Carimbo de base por tarefa** (D8) entra no mesmo `--json`, na forma exata
+que `estado.cjs` aceita:
+
+```
+--json '{"carimbos":[{"tarefa":1,"hash_base":"1dd8f3d"}]}'
+```
+
+`hash_base` sai de `git rev-parse` no briefing do agente, nunca digitado; na
+retomada, `proximo`/`ler` avisam em stderr (sem mudar o exit) quando essa
+base não é mais ancestral do HEAD.
 
 Todas fechadas, e só então:
 

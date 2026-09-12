@@ -150,7 +150,9 @@ node -e "
   fs.writeFileSync(p, s.replace(a, \"'sumiu-divergente','viva']\"));
 " "$SRC/scripts/limpar-branches.cjs"
 if [ $? -ne 0 ]; then falhou=$((falhou+1)); echo "  FALHA nao consegui aplicar a mutacao"; else
-  S="$(roda --sem-fetch --forcar --remover)"
+  # 'viva' entra em REMOVIVEIS pela mutacao, mas nao muda de classe — o
+  # --confirmo continua exigido so por 'squashed' (sumiu-divergente).
+  S="$(roda --sem-fetch --forcar --remover --confirmo "CONFIRMO apagar branches squashed")"
   tem "com a trava sabotada, viva MORRE (prova que era a trava)" "$S" "ok      viva"
 fi
 cp "$SBP/original.cjs" "$SRC/scripts/limpar-branches.cjs"
@@ -237,7 +239,7 @@ nao_tem "sem --forcar, squash-vivo fica de fora dos alvos" "$(alvos_gh)" "squash
 tem     "a mensagem diz que so o -D alcanca"                "$S7" "o -d as recusa"
 roda_gh --sem-fetch --remover > /dev/null
 tem     "squash-vivo sobrevive sem --forcar"                 "$(git -C "$SBP/local" branch --list squash-vivo)" "squash-vivo"
-S9="$(roda_gh --sem-fetch --remover --forcar)"
+S9="$(roda_gh --sem-fetch --remover --forcar --confirmo "CONFIRMO apagar branches squash-vivo,squashed")"
 tem     "com --forcar, squash-vivo sai e imprime o SHA"      "$S9" "ok      squash-vivo"
 nao_tem "squash-vivo saiu do repo"                            "$(git -C "$SBP/local" branch)" "squash-vivo"
 
@@ -246,7 +248,7 @@ echo "== 8b. --remoto apaga o remoto da mergeada-por-squash =="
 montar_squash_vivo
 ANTES_LS="$(git -C "$SBP/local" ls-remote --heads origin squash-vivo)"
 tem "antes: squash-vivo existe no remoto" "$ANTES_LS" "squash-vivo"
-S8b="$(roda_gh --sem-fetch --remover --forcar --remoto)"
+S8b="$(roda_gh --sem-fetch --remover --forcar --remoto --confirmo "CONFIRMO apagar branches squash-vivo,squashed")"
 tem "apaga a branch remota de mergeada-por-squash"        "$S8b" "ok      origin/squash-vivo"
 nao_tem "saida NAO contem mensagem enganosa de antes"     "$S8b" "nenhuma tinha remoto vivo"
 DEPOIS_LS="$(git -C "$SBP/local" ls-remote --heads origin squash-vivo)"
@@ -255,7 +257,7 @@ nao_tem "depois: squash-vivo foi apagado do remoto"       "$DEPOIS_LS" "squash-v
 echo
 echo "== 8c. dica de --remoto aparece tambem para mergeada-por-squash =="
 montar_squash_vivo
-S8c="$(roda_gh --sem-fetch --remover --forcar)"
+S8c="$(roda_gh --sem-fetch --remover --forcar --confirmo "CONFIRMO apagar branches squash-vivo,squashed")"
 tem "sem --remoto, lista a branch"                        "$S8c" "ok      squash-vivo"
 tem "a dica aparece tambem para mergeada-por-squash"      "$S8c" "ainda existem no origin"
 
@@ -378,7 +380,7 @@ nao_tem "nem com --forcar a main entra"                          "$(roda --sem-f
 # E a remocao de verdade, que e o que doeu. A remocao precisa ter ACONTECIDO: se ela
 # fosse cancelada, a main sobreviveria por motivo nenhum e este bloco ficaria verde
 # sem provar nada — foi essa a forma do falso verde de 2026-08-19.
-S13="$(roda --sem-fetch --remover --forcar --base outra-base)"
+S13="$(roda --sem-fetch --remover --forcar --base outra-base --confirmo "CONFIRMO apagar branches squashed")"
 tem     "a remocao de verdade rodou (nao foi cancelada)"         "$S13" "REMOVENDO"
 nao_tem "e a main nao aparece entre as removidas"                "$S13" "ok      main"
 tem     "depois de remover de verdade, a main continua no repo"  "$(git -C "$SBP/local" branch --list main)" "main"
@@ -570,6 +572,59 @@ git -C "$SBP/remoto" update-ref -d refs/heads/falso-gone-restaurado
 git -C "$SBP/local" fetch -q --prune
 git -C "$SBP/remoto" update-ref refs/heads/falso-gone-restaurado "$(git -C "$SBP/local" rev-parse falso-gone-restaurado)"
 nao_tem "e o script foi restaurado (falso-gone volta a ser viva)" "$(classe_remota falso-gone-restaurado)" "sumiu-divergente"
+
+echo
+echo "== 20a. --confirmo: --remover --forcar exige a frase derivada dos alvos =="
+# T2 do design D3: --forcar so atropela (-D) com a frase EXATA, derivada dos
+# alvos que precisam de forca (precisamForca), nomes em ordem alfabetica,
+# separados por virgula sem espaco.
+montar
+igual20() { if [ "$1" = "$2" ]; then ok=$((ok+1)); echo "  ok   $3"; else falhou=$((falhou+1)); echo "  FALHA $3 ($1 != $2)"; fi; }
+
+S20a_sem="$(roda --sem-fetch --remover --forcar)"
+tem     "sem --confirmo, sai com a frase esperada"        "$S20a_sem" "CONFIRMO apagar branches squashed"
+nao_tem "e nao remove nada"                                "$S20a_sem" "ok      squashed"
+tem     "squashed sobrevive sem a confirmacao"             "$(git -C "$SBP/local" branch --list squashed)" "squashed"
+roda --sem-fetch --remover --forcar > /dev/null
+igual20 "$?" "2" "exit 2 sem --confirmo"
+
+S20a_outro="$(roda --sem-fetch --remover --forcar --confirmo "CONFIRMO apagar branches outro-nome")"
+tem     "com frase citando outro nome, sai com a frase esperada de novo" "$S20a_outro" "CONFIRMO apagar branches squashed"
+nao_tem "e continua sem remover"                                         "$S20a_outro" "ok      squashed"
+roda --sem-fetch --remover --forcar --confirmo "CONFIRMO apagar branches outro-nome" > /dev/null
+igual20 "$?" "2" "exit 2 com frase de outro nome"
+
+S20a_certo="$(roda --sem-fetch --remover --forcar --confirmo "CONFIRMO apagar branches squashed")"
+tem     "com a frase exata, remove de verdade"            "$S20a_certo" "ok      squashed"
+nao_tem "squashed saiu do repo"                            "$(git -C "$SBP/local" branch)" "squashed"
+
+echo
+echo "== 20b. --confirmo nao e exigido sem --forcar, nem com --forcar sem alvo que precise dele =="
+montar
+S20b="$(roda --sem-fetch --remover)"
+tem     "--remover sem --forcar continua igual (resolvida-local sai sem --confirmo)" "$S20b" "ok      resolvida"
+
+echo
+echo "== 20c. MUTACAO (T2): sabotar a comparacao da frase de --confirmo =="
+# Se `frase !== esperada` virar `false`, o -D atropela SEM confirmacao — o caso
+# 20a ("sem --confirmo, sai com a frase esperada" / nao remove) tem que FALHAR.
+montar
+cp "$SRC/scripts/limpar-branches.cjs" "$SBP/original6.cjs"
+node -e "
+  const fs=require('fs'), p=process.argv[1];
+  const s=fs.readFileSync(p,'utf8');
+  const alvo = 'if (frase !== esperada) {';
+  if(!s.includes(alvo)) { console.error('MUTACAO NAO APLICADA: alvo ausente'); process.exit(1); }
+  fs.writeFileSync(p, s.replace(alvo, 'if (false) {'));
+" "$SRC/scripts/limpar-branches.cjs"
+if [ $? -ne 0 ]; then falhou=$((falhou+1)); echo "  FALHA nao consegui aplicar a mutacao"; else
+  S20c="$(roda --sem-fetch --remover --forcar)"
+  tem "com a comparacao sabotada, squashed morre sem --confirmo (prova que a comparacao era a trava)" "$S20c" "ok      squashed"
+fi
+cp "$SBP/original6.cjs" "$SRC/scripts/limpar-branches.cjs"
+montar
+S20c_restaurado="$(roda --sem-fetch --remover --forcar)"
+tem "e o script foi restaurado (exige --confirmo de novo)" "$S20c_restaurado" "CONFIRMO apagar branches squashed"
 
 echo
 echo "== varredura de worktree temporario vazado =="

@@ -40,6 +40,14 @@
  *
  * Remover exige estar NA BASE e com ela em dia — a listagem, não. O porquê está
  * junto da checagem, lá embaixo; `--aqui-mesmo` desiste da exigência.
+ *
+ * `--remover --forcar` (o `-D`, que apaga commit que só existe naquela branch)
+ * exige também `--confirmo "<frase>"`. A frase é DERIVADA por este script dos
+ * alvos que precisam de força (`CONFIRMO apagar branches <nome1>,<nome2>`,
+ * ordem alfabética, vírgula sem espaço) — nunca inventada por quem chama. Sem
+ * `--confirmo`, ou com frase que não bate byte a byte, a rodada sai com exit 2
+ * e nada é apagado; a frase esperada sai impressa para ser lida, digitada pelo
+ * usuário e repassada verbatim.
  */
 
 const { spawnSync } = require('child_process');
@@ -596,6 +604,25 @@ function main() {
     console.log('');
     console.log('Remover: node scripts/limpar-branches.cjs --remover');
     return;
+  }
+
+  // Frase de confirmação: só entra quando o -D vai de fato atropelar alguma
+  // coisa nesta rodada (precisamForca não vazio). Sem isso, --forcar não muda
+  // nada e não há alvo para nomear na frase.
+  if (forcar && precisamForca.length) {
+    const nomes = precisamForca.map((b) => b.nome).sort();
+    const esperada = `CONFIRMO apagar branches ${nomes.join(',')}`;
+    const frase = argValor('confirmo');
+    if (frase !== esperada) {
+      console.log('CONFIRMACAO NECESSARIA');
+      console.log('');
+      console.log(esperada);
+      console.log('');
+      console.log('Essa frase precisa ser digitada pelo usuario e repassada verbatim para');
+      console.log('--confirmo. O script nao a inventa — ela nomeia exatamente o que o -D');
+      console.log('vai apagar nesta rodada.');
+      process.exit(2);
+    }
   }
 
   console.log('REMOVENDO');

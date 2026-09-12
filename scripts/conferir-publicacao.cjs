@@ -31,9 +31,37 @@
  *   node scripts/conferir-publicacao.cjs <arquivo>     # exit 2 se achar algo
  *   cat rascunho.md | node scripts/conferir-publicacao.cjs -
  *   node scripts/conferir-publicacao.cjs <arquivo> --json
+ *
+ * MODO --commit (D10, 2026-09-12): o que se publica é o COMMIT, não o disco.
+ * Edição não commitada anuncia release que não existe, e segredo limpo no
+ * disco mas presente no commit vai para o público do mesmo jeito — o passo de
+ * release do plugin de terceiro que inspirou isto lê `git show <sha>:<path>`, nunca
+ * o worktree, por este motivo.
+ *
+ *   node scripts/conferir-publicacao.cjs --commit             # HEAD
+ *   node scripts/conferir-publicacao.cjs --commit <rev>
+ *   node scripts/conferir-publicacao.cjs --commit <a>..<b>     # range de dois commits
+ *   node scripts/conferir-publicacao.cjs --commit HEAD --json
+ *
+ * Varre os arquivos rastreados tocados (um commit: `git show --name-only
+ * --format= <rev>`; range: `git diff --name-only <a> <b>`), lê cada um do
+ * COMMIT (`git show <rev-ou-b>:<path>`, nunca do disco) e roda `conferir()`
+ * igual ao modo de arquivo. Além disso: (1) compara o conteúdo do commit com o
+ * do disco — se divergirem, achado `diverge-do-commit`, porque edição não
+ * commitada não vai para o público mas o relatório mentiria se dissesse que o
+ * commit está limpo por causa dela; (2) chama
+ * `scripts/conferir-duplicacao.cjs --raiz <toplevel> --json` e propaga achado
+ * `duplicata` por grupo. Exit 2 se algum achado, 0 se nenhum. O modo antigo
+ * (`<arquivo>` ou `-`) não muda em nada — os dois modos coexistem.
+ *
+ * Ambiente (git ausente, rev/range inexistente): exit 69 (EX_UNAVAILABLE,
+ * convenção D5 — ver `scripts/conferir-entrega.cjs`), stderr começando com
+ * `nao-verificavel: <motivo>`. Não é reprovação, é falta de condição para medir.
  */
 
 const fs = require('fs');
+const path = require('path');
+const { spawnSync } = require('child_process');
 
 /**
  * Uma referência de variável no COMEÇO do valor, nas quatro formas que
@@ -351,12 +379,166 @@ function conferir(texto) {
   return achados;
 }
 
+/**
+ * Roda `git` sem depender de `-C`: o cwd do processo já É o repositório que
+ * se quer conferir, e `git -C <dir>` fora de um repositório sobe para o pai
+ * em SILÊNCIO (a mesma armadilha documentada em `conferir-entrega.cjs`) — com
+ * `cwd:` no spawn, "não é repositório git" falha alto, nunca finge sucesso
+ * no lugar errado.
+ */
+function runGit(args) {
+  let r;
+  try {
+    r = spawnSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  } catch (e) {
+    return { status: 127, stdout: '', stderr: 'git nao encontrado no PATH' };
+  }
+  if (!r || (r.error && r.error.code === 'ENOENT')) {
+    return { status: 127, stdout: '', stderr: 'git nao encontrado no PATH' };
+  }
+  if (r.error) {
+    return { status: 127, stdout: '', stderr: String(r.error.message || r.error) };
+  }
+  return { status: r.status === null ? 127 : r.status, stdout: r.stdout || '', stderr: r.stderr || '' };
+}
+
+function primeiraLinha(s) {
+  return String(s || '').trim().split(/\r?\n/)[0] || '';
+}
+
+/** Modo `--commit`: confere o que o COMMIT carrega, não o disco (D10). */
+function modoCommit(spec, json) {
+  const top = runGit(['rev-parse', '--show-toplevel']);
+  if (top.status !== 0) {
+    const motivo = top.status === 127
+      ? 'git nao encontrado no PATH'
+      : 'diretorio atual nao e repositorio git';
+    process.stderr.write(`nao-verificavel: ${motivo}\n`);
+    return 69;
+  }
+  const toplevel = top.stdout.trim();
+
+  const ehRange = spec.includes('..');
+  let arquivos;
+  let revLeitura;
+  if (ehRange) {
+    const idx = spec.indexOf('..');
+    const a = spec.slice(0, idx);
+    const b = spec.slice(idx + 2) || 'HEAD';
+    const diff = runGit(['diff', '--name-only', a, b]);
+    if (diff.status !== 0) {
+      process.stderr.write(`nao-verificavel: range invalido '${spec}': ${primeiraLinha(diff.stderr)}\n`);
+      return 69;
+    }
+    arquivos = diff.stdout.split('\n').map((s) => s.trim()).filter(Boolean);
+    revLeitura = b;
+  } else {
+    // diff-tree, nao `git show --name-only`: para um MERGE commit o `show` sem
+    // -m lista ZERO arquivos e o modo saia "CONFERIDO" sem ler nada (achado da
+    // revisao de 2026-09-12). `-m --first-parent` compara com o primeiro pai
+    // (o que o merge trouxe para a branch); `--root` cobre o commit inicial.
+    const show = runGit(['diff-tree', '--root', '-r', '-m', '--first-parent', '--no-commit-id', '--name-only', spec]);
+    if (show.status !== 0) {
+      process.stderr.write(`nao-verificavel: rev invalida '${spec}': ${primeiraLinha(show.stderr)}\n`);
+      return 69;
+    }
+    arquivos = show.stdout.split('\n').map((s) => s.trim()).filter(Boolean);
+    revLeitura = spec;
+  }
+
+  const achados = [];
+  for (const relPath of arquivos) {
+    const cat = runGit(['show', `${revLeitura}:${relPath}`]);
+    if (cat.status !== 0) continue; // arquivo removido/ilegivel naquela rev: fora do escopo
+    const conteudoCommit = cat.stdout;
+
+    for (const a of conferir(conteudoCommit)) achados.push({ ...a, arquivo: relPath });
+
+    let conteudoDisco = null;
+    try {
+      conteudoDisco = fs.readFileSync(path.join(toplevel, relPath), 'utf8');
+    } catch {
+      // sem arquivo no disco tambem e divergencia: o commit anuncia algo que
+      // nao existe mais para ser conferido de novo antes de publicar.
+    }
+    if (conteudoDisco !== conteudoCommit) {
+      achados.push({
+        id: 'diverge-do-commit',
+        arquivo: relPath,
+        linha: null,
+        o_que: 'arquivo em disco difere do commit que vai ser publicado',
+        faca: 'commite ou descarte antes de publicar',
+        pode_ser_falso: false,
+      });
+    }
+  }
+
+  const dup = spawnSync(
+    process.execPath,
+    [path.join(__dirname, 'conferir-duplicacao.cjs'), '--raiz', toplevel, '--json'],
+    { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }
+  );
+  if (dup.status === 2) {
+    try {
+      const dados = JSON.parse(dup.stdout);
+      for (const grupo of dados.duplicados || []) {
+        achados.push({
+          id: 'duplicata',
+          arquivo: grupo.join(' == '),
+          linha: null,
+          o_que: `arquivos identicos byte a byte: ${grupo.join(', ')}`,
+          faca: 'reconcilie os arquivos ou remova a copia antes de publicar',
+          pode_ser_falso: false,
+        });
+      }
+    } catch {
+      // saida do conferir-duplicacao nao veio em JSON valido: nao inventa achado.
+    }
+  }
+
+  if (json) {
+    console.log(JSON.stringify({ modo: 'commit', spec, achados, cego: CEGO }, null, 2));
+    return achados.length ? 2 : 0;
+  }
+
+  if (!achados.length) {
+    console.log('CONFERIDO — nao achei nada com forma de dado sensivel no commit.');
+    console.log('');
+    console.log('Isto NAO quer dizer "esta seguro". Quer dizer "nao achei o que sei');
+    console.log('procurar". Continua com voce:');
+    for (const c of CEGO) console.log(`  - ${c}`);
+    return 0;
+  }
+
+  console.log(`RECUSADO — ${achados.length} achado(s) no commit.\n`);
+  for (const a of achados) {
+    const onde = a.linha != null ? `${a.arquivo}:${a.linha}` : a.arquivo;
+    console.log(`  ${onde}  [${a.id}]${a.pode_ser_falso ? '  (pode ser falso positivo)' : ''}`);
+    console.log(`    ${a.o_que}`);
+    console.log(`    -> ${a.faca}`);
+  }
+  console.log('');
+  console.log('Corrija e rode de novo. E lembre do que este script NAO ve:');
+  for (const c of CEGO) console.log(`  - ${c}`);
+  return 2;
+}
+
 function main() {
   const args = process.argv.slice(2);
   const json = args.includes('--json');
+
+  const idxCommit = args.indexOf('--commit');
+  if (idxCommit !== -1) {
+    let valor = args[idxCommit + 1];
+    if (!valor || valor.startsWith('--')) valor = 'HEAD';
+    process.exit(modoCommit(valor, json));
+    return;
+  }
+
   const alvo = args.find((a) => !a.startsWith('--'));
   if (!alvo) {
     console.error('uso: node scripts/conferir-publicacao.cjs <arquivo>|- [--json]');
+    console.error('     node scripts/conferir-publicacao.cjs --commit [<rev>|<a>..<b>] [--json]');
     process.exit(1);
   }
 

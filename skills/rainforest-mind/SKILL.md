@@ -47,6 +47,10 @@ linha `(acervo: <datas>)` apontando de volta. Vale **sob demanda**: cada regra
 parte quando encostar, nunca em mutirão — subir a catraca seria revogar o
 critério que ela existe para defender.
 
+**Bloco `>` de medição leva data e comando de re-verificação:** todo `>` que documenta
+um incidente ou dado medido inclui `re-verificar: <comando>` — ver `docs/rainforest/README.md`
+seção "Afirmação medida" para forma completa e porquê.
+
 ## As regras
 
 **1. Responder tudo, na ordem — e no FIM do turno.** N pedidos → N respostas

@@ -22,7 +22,11 @@
  *   node scripts/conferir-fluxo.cjs cobertura --slug <s>
  *   node scripts/conferir-fluxo.cjs creep --slug <s> --base <ref> --head <ref>
  *
- * Exit: 0 passou, 2 recusa deliberada, 1 erro de uso.
+ * Exit: 0 passou, 2 recusa deliberada, 1 erro de uso, 69 nao-verificavel —
+ * AMBIENTE, nao conteudo (D5, 2026-09-12): `creep` chama `git diff` e, se o
+ * `git` nao estiver no PATH (`spawnSync`/`execFileSync` devolve ENOENT), a
+ * ausencia de diff nao e' "sem creep" nem "creep encontrado" — e' "nao dei
+ * para conferir". Primeira linha do stderr: "nao-verificavel: <motivo>".
  */
 
 const fs = require('fs');
@@ -537,6 +541,12 @@ function cmdCreep() {
     const output = execFileSync('git', ['diff', '--name-only', `${base}...${head}`], { cwd: RAIZ, encoding: 'utf8' });
     diff_arquivos = output.trim().split('\n').filter(f => f.length > 0);
   } catch (err) {
+    if (err.code === 'ENOENT') {
+      // Ambiente, nao conteudo (D5, 2026-09-12): sem `git` no PATH nao ha diff
+      // nenhum para ler — nao e' "sem creep" (aprovacao por falta de dado).
+      process.stderr.write('nao-verificavel: git nao encontrado no PATH\n');
+      process.exit(69);
+    }
     console.error(`erro ao rodar git diff: ${err.message}`);
     process.exit(1);
   }
