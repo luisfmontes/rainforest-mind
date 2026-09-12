@@ -575,6 +575,23 @@ fi
 rm -rf "$D"
 
 echo
+echo "== 11. ambiente: git fora do PATH (D5, 2026-09-12) =="
+# `creep` chama `git diff` via execFileSync. Sem `git` no PATH do processo
+# filho, o `spawnSync` interno devolve ENOENT — isso e' ambiente, nao "sem
+# creep" (que seria uma aprovacao por falta de dado) nem "creep encontrado"
+# (nao ha diff nenhum para ler). `env PATH=<so o dir do node>` restringe o
+# PATH so' para este comando; a bateria continua com o PATH original.
+NODE_DIR="$(dirname "$(command -v node)")"
+if git -C "$RAIZ" cat-file -e e1a6824^{commit} 2>/dev/null && git -C "$RAIZ" cat-file -e ff1fd3c^{commit} 2>/dev/null; then
+  exige 69 "git fora do PATH -> creep sai 69, nao 0/1/2" \
+    env PATH="$NODE_DIR" node "$CHECADOR" creep --slug decisao-que-evapora-na-esteira --base e1a6824 --head ff1fd3c
+  exige_msg '^nao-verificavel: git nao encontrado' "a PRIMEIRA linha do stderr e' nao-verificavel" \
+    env PATH="$NODE_DIR" node "$CHECADOR" creep --slug decisao-que-evapora-na-esteira --base e1a6824 --head ff1fd3c
+else
+  echo "  (pulado: commits de referencia ausentes neste clone)"
+fi
+
+echo
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]

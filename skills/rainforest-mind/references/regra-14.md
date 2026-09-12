@@ -81,6 +81,14 @@ quando o `download_media` falha — perguntar o caminho ao usuário vem antes de
 insistir no bridge. Em 2026-08-10 o bridge devolvia 403 para **toda** mídia,
 inclusive uma de 14 minutos atrás, então não é expiração.
 
+**Exit 69 dos `conferir-*` é bloqueio de ambiente — nem aprovação, nem
+reprovação, nem `flaky`.** `conferir-entrega`, `conferir-mutacao`,
+`conferir-fluxo` e `conferir-ponte` saem 69 quando falta ambiente (git
+ausente, worktree sumiu, dependência interna do plugin ausente), primeira
+linha do stderr `nao-verificavel: <motivo>`. O gesto é o desta regra:
+anunciar em uma linha e **não redespachar** até o ambiente voltar — rodar de
+novo esperando sorte é o mesmo erro que "seguir em silêncio" (D5, 2026-09-12).
+
 ## Catálogo de ferramentas — mudança na prática da regra 14
 
 **A checagem da bridge do WhatsApp segue separada deste mecanismo.** O catálogo
