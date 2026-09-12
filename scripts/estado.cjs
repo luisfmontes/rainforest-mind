@@ -1219,8 +1219,15 @@ function main() {
         process.exit(2);
       }
       // Validar mutações ao fechar verificar: roda `conferir-fluxo.cjs mutacoes`
+      // Caminho pelo mesmo `docDoEstagio` que resolve `design`/`plano` em todo
+      // o resto do arquivo: lê `plano.arquivo` do estado (fluxo cujo plano não
+      // se chama `<slug>.md`, o caso normal por aqui) e só cai no nome fixo
+      // como último recurso. Antes, este trecho tinha o único `path.join`
+      // hard-coded do arquivo que ignorava esse campo — um fluxo com plano
+      // fora do padrão pulava a catraca inteira em silêncio, exit 0 sem rodar
+      // `conferir-fluxo.cjs mutacoes` nenhuma vez.
       if (estagio === 'verificar') {
-        const arquivo_plano = path.join(RAIZ, 'docs', 'rainforest', 'planos', `${slug}.md`);
+        const arquivo_plano = docDoEstagio('planos', slug, estado);
         if (fs.existsSync(arquivo_plano)) {
           const mutacoes = spawnSync(process.execPath, [path.join(__dirname, 'conferir-fluxo.cjs'), 'mutacoes', '--slug', slug], {
             stdio: 'inherit',
