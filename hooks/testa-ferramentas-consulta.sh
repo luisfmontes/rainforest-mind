@@ -269,12 +269,10 @@ LEDGER_ANTES=$(wc -l < "$RAIZ/ferramentas.jsonl" 2>/dev/null || echo "0")
 echo "  Linhas no ledger antes: $LEDGER_ANTES"
 
 # Rodar com timeout muito curto (1ms é impossível de responder)
-SAIDA=$(RFM_FERRAMENTAS_TIMEOUT_MS=1 bash -c 'node "'"'"'$HOOK"'"'"' --help 2>&1' 2>&1)
 export RFM_FERRAMENTAS_TIMEOUT_MS=1
 SAIDA=$(printf '%s' "$(payload_bash 'node --version')" | node "$HOOK" 2>&1)
-UNSET_TIMEOUT=$(unset RFM_FERRAMENTAS_TIMEOUT_MS)
-
 EXIT=$?
+unset RFM_FERRAMENTAS_TIMEOUT_MS
 
 # Verificar exit 0
 if [ "$EXIT" = 0 ]; then
@@ -310,9 +308,8 @@ echo "== TIMEOUT 2: RFM_FERRAMENTAS_TIMEOUT_MS=abc (inválido) → default 2000 
 
 export RFM_FERRAMENTAS_TIMEOUT_MS=abc
 SAIDA=$(printf '%s' "$(payload_bash 'node --version')" | node "$HOOK" 2>&1)
-unset RFM_FERRAMENTAS_TIMEOUT_MS
-
 EXIT=$?
+unset RFM_FERRAMENTAS_TIMEOUT_MS
 
 # Verificar exit 0
 if [ "$EXIT" = 0 ]; then
