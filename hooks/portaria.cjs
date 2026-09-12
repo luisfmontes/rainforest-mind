@@ -567,16 +567,10 @@ function main() {
   if (!estResult) {
     // Consultar autorização do usuário antes de negar por falta de estágio (D4, D6, D8)
     const transcriptPath = payload.transcript_path;
-    const temAutorizacao = transcriptPath && typeof transcriptPath === "string" && transcriptPath.trim() !== "" && autorizado(transcriptPath);
+    const temTranscriptPathDefined = payload.hasOwnProperty("transcript_path");
 
-    if (temAutorizacao) {
-      // Autorização válida: simula um estResult para passar nos passos 5+
-      // As travas de escreve: true continuam valendo (D6)
-      autorizacaoValida = true;
-      estagioPorAutorizacao = "?";
-      estResult = { estagio: "?" }; // Simula estágio, mas marca que veio por autorização
-    } else {
-      // Sem autorização ou transcript_path ausente/inválido: nega normalmente
+    // Se transcript_path não foi definido no payload, nega normalmente
+    if (!temTranscriptPathDefined) {
       const motivo = "sem estágio ativo — abra um fluxo";
       gravarDespacho(raiz, "deny", nomeAgente, "?", sessao, motivo);
 
@@ -595,6 +589,123 @@ function main() {
       }
 
       negar(msg.trim());
+    }
+
+    // transcript_path foi definido — tenta conferir autorização
+    // Verifica se é válido
+    const caminhoVazio = !transcriptPath || typeof transcriptPath !== "string" || transcriptPath.trim() === "";
+    const caminhoExiste = !caminhoVazio && fs.existsSync(transcriptPath);
+
+    if (caminhoVazio) {
+      // transcript_path vazio ou inválido
+      const motivo = "autorização não pôde ser conferida — transcript_path não foi fornecido no payload";
+      gravarDespacho(raiz, "deny", nomeAgente, "?", sessao, motivo);
+
+      const branch = obterBranch(raiz);
+      const outrosWorktrees = obterOutrosWorktreesComFluxoAberto(raiz);
+
+      let msg = `${motivo}\n`;
+      msg += `  raiz lida: ${raiz}\n`;
+      if (branch) {
+        msg += `  branch: ${branch}\n`;
+      }
+      msg += `  estágio resolvido: ?\n`;
+      msg += `  alternativas: abra um fluxo com seu agente, ou envie o transcript_path no payload\n`;
+
+      if (outrosWorktrees.length > 0) {
+        msg += formatarOutrosWorktreesAbertos(outrosWorktrees);
+      }
+
+      negar(msg.trim());
+    } else if (!caminhoExiste) {
+      // transcript_path apontando para arquivo inexistente
+      const motivo = `autorização não pôde ser conferida — arquivo ${transcriptPath} não existe`;
+      gravarDespacho(raiz, "deny", nomeAgente, "?", sessao, motivo);
+
+      const branch = obterBranch(raiz);
+      const outrosWorktrees = obterOutrosWorktreesComFluxoAberto(raiz);
+
+      let msg = `${motivo}\n`;
+      msg += `  raiz lida: ${raiz}\n`;
+      if (branch) {
+        msg += `  branch: ${branch}\n`;
+      }
+      msg += `  estágio resolvido: ?\n`;
+      msg += `  alternativas: abra um fluxo com seu agente, ou corrija o caminho do transcript\n`;
+
+      if (outrosWorktrees.length > 0) {
+        msg += formatarOutrosWorktreesAbertos(outrosWorktrees);
+      }
+
+      negar(msg.trim());
+    } else {
+      // Transcript existe e é legível — confere autorização
+      const temAutorizacao = autorizado(transcriptPath);
+      const { temNegacaoExplicita } = require("./lib/autorizacao-usuario.cjs");
+
+      // Para detectar negação, precisa ler e parsear o transcript
+      let temNegacao = false;
+      try {
+        const conteudo = fs.readFileSync(transcriptPath, "utf8");
+        const linhas = conteudo.trim().split("\n").filter(Boolean);
+        if (linhas.length > 0) {
+          const ultimaLinha = JSON.parse(linhas[linhas.length - 1]);
+          temNegacao = temNegacaoExplicita(ultimaLinha);
+        }
+      } catch {
+        // Se não conseguir parsear, assume que não há negação explícita
+        temNegacao = false;
+      }
+
+      if (temAutorizacao) {
+        // Autorização válida: simula um estResult para passar nos passos 5+
+        // As travas de escreve: true continuam valendo (D6)
+        autorizacaoValida = true;
+        estagioPorAutorizacao = "fora-de-fluxo";
+        estResult = { estagio: "fora-de-fluxo" }; // Marca que não há fluxo, mas há autorização
+      } else if (temNegacao) {
+        // Negação explícita do usuário
+        const motivo = "autorização foi revogada — usuário disse explicitamente que não autoriza subagentes nesta sessão";
+        gravarDespacho(raiz, "deny", nomeAgente, "?", sessao, motivo);
+
+        const branch = obterBranch(raiz);
+        const outrosWorktrees = obterOutrosWorktreesComFluxoAberto(raiz);
+
+        let msg = `${motivo}\n`;
+        msg += `  raiz lida: ${raiz}\n`;
+        if (branch) {
+          msg += `  branch: ${branch}\n`;
+        }
+        msg += `  estágio resolvido: ?\n`;
+        msg += `  alternativas: abra um fluxo com seu agente, ou autorize novamente em uma nova mensagem\n`;
+
+        if (outrosWorktrees.length > 0) {
+          msg += formatarOutrosWorktreesAbertos(outrosWorktrees);
+        }
+
+        negar(msg.trim());
+      } else {
+        // Transcript legível, sem autorização
+        const motivo = "sem estágio ativo — abra um fluxo";
+        gravarDespacho(raiz, "deny", nomeAgente, "?", sessao, motivo);
+
+        const branch = obterBranch(raiz);
+        const outrosWorktrees = obterOutrosWorktreesComFluxoAberto(raiz);
+
+        let msg = `${motivo}\n`;
+        msg += `  raiz lida: ${raiz}\n`;
+        if (branch) {
+          msg += `  branch: ${branch}\n`;
+        }
+        msg += `  estágio resolvido: ?\n`;
+        msg += `  alternativas: abra um fluxo com seu agente, ou responda "autorizo subagentes" nesta sessão\n`;
+
+        if (outrosWorktrees.length > 0) {
+          msg += formatarOutrosWorktreesAbertos(outrosWorktrees);
+        }
+
+        negar(msg.trim());
+      }
     }
   }
 

@@ -288,4 +288,5 @@ function temAutorizacaoPrincipal(obj) {
 
 module.exports = {
   autorizado,
+  temNegacaoExplicita,
 };
