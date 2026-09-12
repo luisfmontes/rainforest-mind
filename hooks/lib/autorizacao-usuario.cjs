@@ -13,11 +13,13 @@ const fs = require('fs');
  *   no meio do turno chega pelo `queue-operation`, medido no transcript real.
  * - NORMALIZA acentos antes de todo casamento (NFD + remoção de diacríticos)
  * - Reconhece "autorizo" perto de "subagente(s)" por frase livre (não comando)
- * - Nega se marcador subordinado ("falo que", "disse que", "se autorizo",
- *   "ainda não decidi", "vou pensar") envolver "autorizo" — considerar autorizar
- *   não é autorizar
- * - Nega quando toda frase que carrega a palavra é PERGUNTA: "posso autorizar
- *   subagentes ou fica arriscado?" é pedido de opinião, não consentimento
+ * - Julga FRASE A FRASE, e basta uma conceder. Marcador subordinado ("falo que",
+ *   "disse que", "se autorizo", "ainda não decidi", "vou pensar", "talvez") só
+ *   desqualifica a concessão quando está na MESMA frase e antes da palavra —
+ *   considerar autorizar não é autorizar, mas duvidar de outra coisa também não
+ *   é recusar
+ * - Nega a frase que é PERGUNTA: "posso autorizar subagentes ou fica
+ *   arriscado?" é pedido de opinião, não consentimento — com ou sem o "?"
  * - Nega se houver negação explícita ("não autorizo", "nunca autorizo", "não vou autorizar")
  * - Retorna true se houver autorização válida, false caso contrário
  *
@@ -259,31 +261,35 @@ function temAutorizacaoPrincipal(obj) {
     return false;
   }
 
-  // PERGUNTA NÃO É CONSENTIMENTO. "posso autorizar subagentes nesse projeto ou
-  // fica arriscado?" é o usuário pedindo opinião, e abria o portão. A marca é o
-  // ponto de interrogação na frase que carrega a palavra — não no turno inteiro,
-  // senão "autorizo subagentes. e o build, passou?" seria recusado.
-  const frases = normalizado.split(/(?<=[.!?])\s+|\n+/);
-  const frasesComAutorizacao = frases.filter((f) => /\bautorizo\b|\bautorizando\b|\bautorizar\b/.test(f));
-  const todasPerguntam = frasesComAutorizacao.length > 0 && frasesComAutorizacao.every((f) => f.trim().endsWith('?'));
-  if (todasPerguntam) {
-    return false;
-  }
-
-  // Verifica se a autorização está em cláusula PRINCIPAL.
+  // O VEREDITO É POR FRASE, não pelo turno inteiro.
   //
-  // Além da fala relatada ("falo que autorizo"), entram aqui os HEDGES: o
-  // usuário considerando autorizar não autorizou. "ainda nao decidi se autorizo
-  // subagentes, preciso pensar melhor" e "vou pensar se autorizo subagentes
-  // amanha" abriam o portão — as duas frases dizem o contrário do que a trava
-  // entendia. O padrão é `se autoriz*` sem o "eu" no meio, que a lista original
-  // não cobria por exigir "se eu autorizo".
+  // A primeira versão desta checagem varria do marcador subordinado até o FIM do
+  // texto e perguntava se "autorizo" aparecia em algum lugar depois. Com isso um
+  // hedge numa frase matava uma concessão em OUTRA. Medido em 2026-09-12, com a
+  // correção dos hedges ainda fresca:
+  //
+  //   "talvez a gente mude o plano depois. autorizo subagentes"  -> recusava
+  //   "sera que o CI aguenta? autorizo subagentes agora"         -> recusava
+  //   "vou pensar no design amanha. autorizo subagentes ja"      -> recusava
+  //
+  // Falso negativo aqui é PIOR que o defeito que a correção fechou: o usuário
+  // autoriza, nada acontece, e a negação ainda fala de estágio — ele não tem
+  // como descobrir que a palavra dele foi lida e descartada. Agora cada frase é
+  // julgada sozinha e basta UMA conceder de verdade.
+  const frases = normalizado.split(/(?<=[.!?])\s+|\n+/);
+
+  // Marcador que subordina a concessão. Só vale dentro da MESMA frase e ANTES da
+  // palavra: "vou pensar no design" numa frase anterior não subordina nada.
+  //
+  // `posso autoriz` e `poderia autoriz` estão aqui, e não só na regra do `?`,
+  // porque pergunta sem ponto de interrogação é como se digita com pressa —
+  // "posso autorizar subagentes" continua sendo pedido de opinião.
   const sinaisSubordinados = [
     /\bfalo\s+que\b/,
     /\bdisse\s+que\b/,
     /\bdigo\s+que\b/,
-    /\bquando\s+eu\s+autorizo\b/,
-    /\bse\s+eu\s+autorizo\b/,
+    /\bquando\s+eu\s+autoriz\w*/,
+    /\bse\s+eu\s+autoriz\w*/,
     /\bque\s+autorizo\b/,
     /\bse\s+autoriz\w*/,
     /\bnao\s+decidi\b/,
@@ -292,26 +298,41 @@ function temAutorizacaoPrincipal(obj) {
     /\bpensar\s+se\b/,
     /\btalvez\b/,
     /\bsera\s+que\b/,
+    /\bposso\s+autoriz\w*/,
+    /\bposso\s+te\s+autoriz\w*/,
+    /\bpoderia\s+autoriz\w*/,
+    /\bdevo\s+autoriz\w*/,
   ];
 
-  // Se a palavra "autorizo" estiver após um dos sinais subordinados, NÃO é autorização principal
-  for (const sinal of sinaisSubordinados) {
-    // Encontra posição do sinal
-    const matchSinal = normalizado.match(sinal);
-    if (matchSinal) {
-      // Encontra posição de "autorizo" após o sinal
-      const posicaoSinal = normalizado.indexOf(matchSinal[0]);
-      const trechoApos = normalizado.substring(posicaoSinal);
+  for (const frase of frases) {
+    const texto = frase.trim();
+    if (!texto) continue;
 
-      if (/\bautorizo\b|\bautorizando\b|\bautorizar\b/.test(trechoApos)) {
-        // Autorização está dentro de cláusula subordinada
-        return false;
+    const posAutoriz = texto.search(/\bautorizo\b|\bautorizando\b|\bautorizar\b/);
+    if (posAutoriz === -1) continue;
+    if (!/\bsubagente\b|\bsubagentes\b|\bsub-agente\b|\bsub-agentes\b/.test(texto)) continue;
+
+    // PERGUNTA NÃO É CONSENTIMENTO. "posso autorizar subagentes nesse projeto ou
+    // fica arriscado?" é o usuário pedindo opinião, e abria o portão. A marca é
+    // o ponto de interrogação nesta frase — não no turno inteiro, senão
+    // "autorizo subagentes. e o build, passou?" seria recusado.
+    if (texto.endsWith('?')) continue;
+
+    let subordinada = false;
+    for (const sinal of sinaisSubordinados) {
+      const achado = texto.match(sinal);
+      if (achado && texto.indexOf(achado[0]) < posAutoriz) {
+        subordinada = true;
+        break;
       }
     }
+    if (subordinada) continue;
+
+    // Concessão em cláusula principal, nesta frase.
+    return true;
   }
 
-  // Se chegou aqui, é autorização em cláusula principal
-  return true;
+  return false;
 }
 
 module.exports = {

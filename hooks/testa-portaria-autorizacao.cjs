@@ -109,6 +109,32 @@ console.log("== 3b. considerar autorizar NAO e autorizar (achados da revisao de 
   caso("envelope <Task-Notification> com caixa trocada NAO autoriza", rEnvelope === false, rEnvelope);
 }
 
+console.log("== 3c. hedge numa frase NAO mata concessao em outra (falso negativo de 2026-09-12) ==");
+{
+  // O conserto dos hedges acima varria do marcador ate o FIM do texto. Com isso
+  // as tres frases abaixo — concessoes firmes, precedidas de duvida sobre OUTRA
+  // coisa — passaram a ser RECUSADAS. Falso negativo e pior que o defeito
+  // original: o usuario autoriza, nada acontece, e a negacao fala de estagio.
+  const rTalvez = autorizado(fx("concessao-apos-talvez.jsonl"));
+  caso("'talvez a gente mude o plano depois. autorizo subagentes' AUTORIZA", rTalvez === true, rTalvez);
+
+  const rPergAntes = autorizado(fx("concessao-apos-pergunta.jsonl"));
+  caso("'sera que o CI aguenta? autorizo subagentes agora' AUTORIZA", rPergAntes === true, rPergAntes);
+
+  const rPensar = autorizado(fx("concessao-apos-vou-pensar.jsonl"));
+  caso("'vou pensar no design amanha. autorizo subagentes ja' AUTORIZA", rPensar === true, rPensar);
+
+  // E a ponta que sobrou do lado contrario: pergunta digitada com pressa, sem o
+  // ponto de interrogacao, continua sendo pedido de opiniao.
+  const rSemInterrog = autorizado(fx("pergunta-sem-interrogacao.jsonl"));
+  caso("'posso autorizar subagentes' (sem '?') NAO autoriza", rSemInterrog === false, rSemInterrog);
+
+  // Pergunta que NENHUM marcador pega: quem segura esta e so o '?'. Sem este
+  // caso, apagar a regra da pergunta deixava a bateria verde — medido.
+  const rPergSemMarcador = autorizado(fx("pergunta-sem-marcador.jsonl"));
+  caso("'te autorizar subagentes ajuda em alguma coisa?' NAO autoriza", rPergSemMarcador === false, rPergSemMarcador);
+}
+
 console.log("== 4. negacao sem acento ('nao autorizo subagentes') NAO autoriza ==");
 {
   const r = autorizado(fx("negado-sem-acento.jsonl"));
