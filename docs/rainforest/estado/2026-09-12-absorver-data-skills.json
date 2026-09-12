@@ -30,22 +30,11 @@
     "em": "2026-09-12"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-12",
-    "tarefas_ok": 12,
+    "tarefas_ok": 15,
     "tarefas": 15,
-    "em_voo": [
-      {
-        "agente": "executor",
-        "tarefa": "T12",
-        "desde": "2026-09-12T06:40:00Z"
-      },
-      {
-        "agente": "executor",
-        "tarefa": "T13",
-        "desde": "2026-09-12T06:40:00Z"
-      }
-    ],
+    "em_voo": [],
     "em": "2026-09-12",
     "carimbos": [
       {
@@ -131,8 +120,108 @@
         "iteracao": 1,
         "sessao": "desconhecida",
         "ts": "2026-09-12T06:11:22.237Z"
+      },
+      {
+        "tarefa": 12,
+        "hash_base": "e9b94ad54fa7ab2fb5080f78e4c9847ddb74673d",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T07:17:12.281Z"
+      },
+      {
+        "tarefa": 13,
+        "hash_base": "e9b94ad54fa7ab2fb5080f78e4c9847ddb74673d",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T07:17:12.281Z"
+      },
+      {
+        "tarefa": 15,
+        "hash_base": "55e1ca4f",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T07:17:12.281Z"
       }
-    ]
+    ],
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-mensagem-commit.sh caso (a) 4 arquivos so assunto -> exit 2"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-limpar-branches.sh secao 20a sem --confirmo nao apaga"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-fechar-issue.sh casos (m)/(o) sem --confirmo e numero errado"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "tabelas de racionalizacao sao texto; falsificacao foi coerencia de datas com o acervo e catraca de bytes"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-entrega.sh caso worktree inexistente -> exit 69"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-teto-skills.sh laco sobre skills/*/SKILL.md (analisar 306L reprova com teto 100)"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-estado.sh caso carimbo com hash_base fora do HEAD -> proximo avisa"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-duplicacao.sh caso 1 dois .cjs identicos -> exit 2"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "n/a",
+        "motivo": "docblocks e README; falsificacao foi diff so em linhas ' * ' e termo<->bateria"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "n/a",
+        "motivo": "convencao de texto; falsificacao foi catraca de bytes e forma identica nos dois arquivos"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "n/a",
+        "motivo": "paragrafo em skill; falsificacao foi teto de D7 e citacao do par conferir-entrega.cjs/.py"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "testa-mapa-regras.sh checagem (a) uma linha por regra (regra 17 renumerada para 71)"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-publicacao.sh secao 11 caso 1 segredo so no commit, disco limpo"
+      },
+      {
+        "tarefa": 14,
+        "resultado": "n/a",
+        "motivo": "texto de executar/revisar/fechar; falsificacao foi o --json de carimbos executar contra o estado.cjs real"
+      },
+      {
+        "tarefa": 15,
+        "resultado": "n/a",
+        "motivo": "tarefa de verificacao do conjunto: todas as baterias, cobertura, creep e publicacao --commit"
+      }
+    ],
+    "comando": "bash <scratchpad>/todas-baterias.sh; node scripts/conferir-fluxo.cjs cobertura|creep; node scripts/conferir-publicacao.cjs --commit origin/main..HEAD",
+    "saida": "total=107 vermelhas:[testa-dependencias-de-bateria.sh testa-config.sh] -> as duas causadas pelo lote e corrigidas em 8ac43b00 (re-rodadas: 6 ok / 45 ok); cobertura ok 14 decisoes 15 tarefas; sem creep 53 arquivos cobertos; publicacao --commit origin/main..HEAD CONFERIDO exit 0; 22 commits em origin/main..HEAD"
   },
   "revisar": {
     "status": "pendente"

@@ -207,9 +207,10 @@ pronto quando: `skills/executar/SKILL.md`, seção "Integração confere na font
 
 ### 15. Fechar o lote: tudo verde num PR só [tipo: teste]
 atende: D1
-arquivos: `docs/rainforest/estado/2026-09-12-absorver-data-skills.json`
+arquivos: `docs/rainforest/estado/2026-09-12-absorver-data-skills.json`, `hooks/testa-config.sh`
 depende de: 12, 13, 14
 paralela: nao
 mutacao: n/a
   motivo: tarefa de verificação do conjunto; não introduz comportamento a inverter
+emenda (2026-09-12, na integração): a rodada completa deixou `hooks/testa-config.sh` vermelha porque ela conta os gates sem matcher do `hooks.json` e T1 acrescentou o sétimo; a asserção passa a esperar 7, com o motivo escrito. Entra em `arquivos:` desta tarefa porque é o ajuste que o próprio lote exige para fechar verde, não uma tarefa nova.
 pronto quando: com a branch `fluxo/absorver-data-skills` contendo as 14 tarefas, `for f in scripts/testa-*.sh hooks/testa-*.sh; do bash "$f" >/dev/null 2>&1 || echo "VERMELHA $f"; done` não imprime nenhuma linha; `node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-absorver-data-skills` e `node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-absorver-data-skills` saem 0; `node scripts/conferir-publicacao.cjs --commit origin/main..HEAD` (T13) sai 0; e `git log --oneline origin/main..HEAD | wc -l` ≥ 15 (um commit por tarefa no mínimo, que é o "por partes" de D2 aplicado a este próprio lote) — tudo colado no `--json` de fechamento do `executar`.
