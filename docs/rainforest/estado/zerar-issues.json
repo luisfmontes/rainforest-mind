@@ -62,7 +62,7 @@
     "emenda": "tarefa 20 (D15) acrescentada em 2026-09-11"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-08",
     "tarefas_ok": 23,
     "tarefas": 23,
@@ -211,10 +211,31 @@
         "resultado": "vermelho",
         "fixture": "timeout declarado no bloco chega ao conferir-mutacao"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-12"
+    }
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "a28d58db6898b7d45db2e30049205692d16e96d5",
+      "caminhos_sujos": []
+    },
+    "em_voo": [],
+    "base": "10251507cb03a26adc1bd5b65a84d3d4fc7fabce",
+    "head": "a28d58db6898b7d45db2e30049205692d16e96d5",
+    "em": "2026-09-12",
+    "achados": 5,
+    "lista": [
+      "CRITICO T9/T21 estado.cjs:1237 chama conferir-fluxo mutacoes sem --plano; o subprocesso resolve <slug>.md fixo e ignora plano.arquivo. O comentario acima diz que o defeito foi corrigido, mas a correcao so alcancou o existsSync. Fluxo com plano de outro nome nunca fecha verificar; com colisao de nome, valida o plano errado em silencio. O caso t6b de testa-estado.sh passa pelo motivo errado",
+      "ALTO creep: 18 arquivos testa-*.sh no diff sem tarefa no plano — conferir-fluxo creep sai 2. Sao as conversoes de idioma que a T10 fez alem dos 11 que ela declara, mais a copia de scripts/lib que vazou da T20 para testa-divergencias e testa-ideias",
+      "ALTO T2 valorSeguroParaShell aceita valor terminado em numero impar de contrabarra; o chamador envolve em aspas duplas e no Windows a contrabarra escapa a aspa de fechamento — argumentos seguintes sao engolidos. Reproduzido com echo de argv: -C, -c approval_policy e -o viraram um argumento so",
+      "ALTO T10 a guarda testa-sandbox-com-trap tem tres buracos demonstrados por execucao: trap com corpo que nao remove nada passa; SANDBOXES em comentario passa; mktemp -d dentro de funcao chamada duas vezes conta como uma ocorrencia estatica",
+      "MODERADO T13 testa-ferramentas-consulta linhas 274-286 e 312-324: EXIT=$? captura o exit do unset, nao o do node do hook. unset sempre sai 0, entao a assercao exit 0 (D10) nunca pode falhar"
+    ],
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
