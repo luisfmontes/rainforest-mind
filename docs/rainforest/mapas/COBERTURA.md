@@ -6,9 +6,9 @@ método que a skill `arqueologia` descreve.
 
 | Fatia | Arquivo | Blocos | Profundidade | Data | Nota |
 |---|---|---|---|---|---|
-| — | — | — | — | — | nenhuma fatia mapeada neste repositório |
+| multihost sobre 1.11 | 14 caminhos finais de `codex/piloto-rainforest` + `hooks/gate-staging-total.cjs` | 1 | superfície + mecanismo + regra implícita | 2026-09-12 | reconciliação contra `a338dd02`; core e contratos colidem semanticamente |
 
-## Por que o índice está vazio
+## Histórico do índice
 
 Havia aqui um mapa real, de 2026-08-22, produzido durante a validação do agente
 `arqueologo`. Ele foi **removido em 2026-09-08**: era arqueologia de um fonte de
