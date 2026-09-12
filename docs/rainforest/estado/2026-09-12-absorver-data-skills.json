@@ -30,7 +30,7 @@
     "em": "2026-09-12"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-12",
     "tarefas_ok": 15,
     "tarefas": 15,
@@ -141,13 +141,41 @@
         "iteracao": 1,
         "sessao": "desconhecida",
         "ts": "2026-09-12T07:17:12.281Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "ff239855",
+        "iteracao": 2,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T07:44:20.866Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "ff239855",
+        "iteracao": 2,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T07:44:20.866Z"
+      },
+      {
+        "tarefa": 13,
+        "hash_base": "ff239855",
+        "iteracao": 2,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T07:44:20.866Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "ff239855",
+        "iteracao": 2,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T07:44:20.866Z"
       }
     ],
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-gate-mensagem-commit.sh caso (a) 4 arquivos so assunto -> exit 2"
+        "fixture": "testa-gate-mensagem-commit.sh caso (a) 4 arquivos so assunto -> exit 2; (i2) git commit pelado -> exit 2"
       },
       {
         "tarefa": 2,
@@ -207,7 +235,7 @@
       {
         "tarefa": 13,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-publicacao.sh secao 11 caso 1 segredo so no commit, disco limpo"
+        "fixture": "testa-conferir-publicacao.sh secao 11 caso 1 segredo so no commit, disco limpo; 11b merge avulso (show --name-only listava 0 arquivos)"
       },
       {
         "tarefa": 14,
@@ -220,12 +248,8 @@
         "motivo": "tarefa de verificacao do conjunto: todas as baterias, cobertura, creep e publicacao --commit"
       }
     ],
-    "comando": "bash <scratchpad>/todas-baterias.sh; node scripts/conferir-fluxo.cjs cobertura|creep; node scripts/conferir-publicacao.cjs --commit origin/main..HEAD",
-    "saida": "total=107 vermelhas:[testa-dependencias-de-bateria.sh testa-config.sh] -> as duas causadas pelo lote e corrigidas em 8ac43b00 (re-rodadas: 6 ok / 45 ok); cobertura ok 14 decisoes 15 tarefas; sem creep 53 arquivos cobertos; publicacao --commit origin/main..HEAD CONFERIDO exit 0; 22 commits em origin/main..HEAD",
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-12"
-    }
+    "comando": "bash scripts/testa-conferir-publicacao.sh; bash hooks/testa-gate-mensagem-commit.sh; grep -c \"^> 2026-08-25\" skills/rainforest-mind/references/regra-09.md; bash scripts/testa-mapa-regras.sh; bash hooks/testa-contexto-sessao.sh",
+    "saida": "rodada 2 (avisos da revisao): publicacao 98 ok 0 falha (caso 11b merge novo); gate-mensagem-commit 25 ok 0 falha (caso i2 commit pelado); regra-09 grep = 1 para as tres datas; mapa-regras 6 ok; contexto-sessao exit 0 (regra-12 10472 B folga 28 B); README + travas-mecanicas emendados em commit proprio. Rodada 1: total=107 vermelhas:[testa-dependencias-de-bateria.sh testa-config.sh] -> as duas causadas pelo lote e corrigidas em 8ac43b00 (re-rodadas: 6 ok / 45 ok); cobertura ok 14 decisoes 15 tarefas; sem creep 53 arquivos cobertos; publicacao --commit origin/main..HEAD CONFERIDO exit 0; 22 commits em origin/main..HEAD"
   },
   "revisar": {
     "status": "reprovado",
