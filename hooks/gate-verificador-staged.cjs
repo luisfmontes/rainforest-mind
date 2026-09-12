@@ -265,10 +265,12 @@ function main() {
     const { pasta, arquivos } = materializaStaged(gitTop);
     pastaTemp = pasta;
 
-    if (arquivos.length === 0) process.exit(0);
-
-    // Chama verificador
-    if (verificador.tipo === "conferir") {
+    // Sem blob staged nao ha o que verificar. Nao e process.exit aqui: ele nao
+    // roda o finally e a pasta rfm-staged-* ficaria orfa (achado do revisar,
+    // 2026-09-12).
+    if (arquivos.length === 0) {
+      resultado = { status: 0, stdout: "", stderr: "" };
+    } else if (verificador.tipo === "conferir") {
       resultado = chamaConferirPublicacao(verificador, gitTop, arquivos);
     } else {
       resultado = chamaVerificadorComArgumentos(verificador, pastaTemp, arquivos, gitTop);

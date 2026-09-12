@@ -862,6 +862,51 @@ else
   printf '  (pulado: sem python)\n'
 fi
 
+echo
+echo "== 21. D24: a bateria roda em bash no Windows, nao no cmd.exe =="
+# Caso (a) — so onde ha' MSYS (Git Bash): a bateria 'touch marca-a; touch marca-b'
+# entregue ao cmd.exe criaria um arquivo chamado 'touch' e outro 'marca-a;'
+# (cmd nao separa comandos por ';'). Em bash, deixa marca-a e marca-b. A
+# bateria sai 0 nas duas rodadas, entao a catraca diz "sobreviveu" (exit 2) —
+# o que se mede aqui e' o SHELL, nao o veredito.
+if uname -o 2>/dev/null | grep -q Msys; then
+  rm -f "$CAIXA/marca-a" "$CAIXA/marca-b" "$CAIXA/touch" "$CAIXA/marca-a;"
+  exige 2 "D24 (a): bateria com ';' roda em bash (sobrevive, mas separa os comandos)" \
+    CHK --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' \
+        --bateria 'touch marca-a; touch marca-b'
+  if [ -f "$CAIXA/marca-a" ] && [ -f "$CAIXA/marca-b" ]; then
+    ok=$((ok+1)); printf '  ok    marca-a e marca-b existem (bash separou os dois comandos)\n'
+  else
+    falhou=$((falhou+1)); printf '  FALHA marca-a/marca-b nao existem: a bateria nao rodou em bash\n'
+  fi
+  if [ ! -e "$CAIXA/touch" ] && [ ! -e "$CAIXA/marca-a;" ]; then
+    ok=$((ok+1)); printf '  ok    nao existe arquivo "touch" nem "marca-a;" (nao foi o cmd.exe)\n'
+  else
+    falhou=$((falhou+1)); printf '  FALHA arquivo "touch" ou "marca-a;" existe: a bateria foi ao cmd.exe\n'
+  fi
+  rm -f "$CAIXA/marca-a" "$CAIXA/marca-b" "$CAIXA/touch" "$CAIXA/marca-a;"
+else
+  printf '  (pulado: nao e MSYS)\n'
+fi
+
+# Caso (b) — PYTHONDONTWRITEBYTECODE chega como '1' na bateria, no baseline E na
+# pos-mutacao (a bateria anexa o valor a env.txt e roda a bateria honesta).
+rm -f "$CAIXA/env.txt"
+cat > "$CAIXA/bateria-env.sh" <<'BAT'
+#!/bin/bash
+printf '%s\n' "${PYTHONDONTWRITEBYTECODE-vazio}" >> env.txt
+bash bateria.sh
+BAT
+exige 0 "D24/D25 (b): bateria honesta com PYTHONDONTWRITEBYTECODE gravado" \
+  CHK --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' \
+      --bateria 'bash bateria-env.sh'
+if [ "$(tr -d '\r' < "$CAIXA/env.txt" | grep -c '^1$')" -eq 2 ] && [ "$(tr -d '\r' < "$CAIXA/env.txt" | wc -l)" -eq 2 ]; then
+  ok=$((ok+1)); printf '  ok    env.txt tem exatamente "1" nas duas rodadas (baseline e mutacao)\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA env.txt nao tem "1" nas duas rodadas:\n'; sed 's/^/        | /' "$CAIXA/env.txt"
+fi
+rm -f "$CAIXA/env.txt" "$CAIXA/bateria-env.sh"
+
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]
