@@ -263,7 +263,7 @@ pronto quando: com dois clones de um remoto bare — o segundo bumpa `plugin.jso
 ### 19. Versão 1.10.0 [tipo: configurar]
 atende: D19
 arquivos: `.claude-plugin/plugin.json`, `README.md`
-depende de: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 20
+depende de: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 20, 21, 22
 paralela: nao
 mutacao: n/a
   motivo: número de versão; a divergência entre os dois lugares é o que `testa-versao.sh` já pega
@@ -279,3 +279,31 @@ mutacao: n/a
 pronto quando: `bash scripts/testa-backup-estado.sh` e `bash scripts/testa-registrar-erro.sh` saem 0 (hoje saem 1, com 36 ok/19 falhas e 70 ok/2 falhas, idênticos em `9700092` e na branch — não é regressão de tarefa nenhuma), sem que `git diff` toque `scripts/foco.cjs`, `scripts/backup.cjs` ou `scripts/lib/backup-rotativo.cjs`; e retirar a cópia de `scripts/lib/` do `montar()` de qualquer uma das duas devolve a bateria ao vermelho.
 
 Nota de origem (2026-09-11): D15 extraiu o rodízio para `scripts/lib/backup-rotativo.cjs` e pôs `require('./lib/backup-rotativo.cjs')` no topo de `foco.cjs`. As duas baterias montam a caixa de areia listando arquivo por arquivo, e a lista não conhecia a pasta nova — todo teste que executa o fonte real morre com `MODULE_NOT_FOUND` antes de exercitar o que ele mede. O conserto copia o **diretório** `scripts/lib/`, não o arquivo: lista de dependências mantida à mão é o defeito, e nomear só `backup-rotativo.cjs` o repete na próxima lib.
+
+### 21. `marcar verificar ok` lê o plano declarado, e a fixture prova a recusa [tipo: implementar]
+atende: D9
+arquivos: `scripts/estado.cjs`, `scripts/testa-estado.sh`
+depende de: 9
+paralela: sim
+mutacao:
+  arquivo: `scripts/estado.cjs`
+  de: `if (mutacoes.status !== 0) {`
+  para: `if (false) {`
+  bateria: `bash scripts/testa-estado.sh`
+  fixture: t6b com plano em disco e mutante sobrevivente; verificar recusa com a mensagem da catraca
+pronto quando: `node scripts/conferir-mutacao.cjs --arquivo scripts/estado.cjs --de 'if (mutacoes.status !== 0) {' --para 'if (false) {' --bateria 'bash scripts/testa-estado.sh'` sai 0 com `vermelho` (hoje sai com `bateria VERDE com o comportamento invertido`); a fixture `t6b` monta o cenário até `verificar` exigível **sem nenhum `marcar` intermediário falhando** (cada um conferido por exit), tem plano de verdade em disco com bloco `mutacao:` cujo mutante sobrevive, e o `marcar verificar ok` recusa com exit 2 **citando `catraca de mutações não passou`** — a asserção passa a exigir a mensagem, não só o código; e `node scripts/estado.cjs marcar --slug <s> --estagio verificar --status ok` num fluxo cujo `plano.arquivo` aponta para nome diferente de `<slug>.md` roda a catraca em vez de pulá-la.
+
+### 22. Teto de queda do `conferir-mutacao` para de reprovar bateria pequena [tipo: implementar]
+atende: D11
+arquivos: `scripts/conferir-mutacao.cjs`, `scripts/testa-conferir-mutacao.sh`
+depende de: nenhuma
+paralela: sim
+mutacao:
+  arquivo: `scripts/conferir-mutacao.cjs`
+  de: `function quedaDesproporcional(`
+  para: `function quedaDesproporcional_desligada(`
+  bateria: `bash scripts/testa-conferir-mutacao.sh`
+  fixture: mutacao que quebra o mecanismo (bateria toda vermelha) continua recusada com exit 6
+pronto quando: uma mutação que derruba a bateria INTEIRA (todas as asserções, o caso que D11 existe para pegar) continua saindo 6; e uma mutação eficaz numa bateria pequena — 13 asserções, 10 sobrevivem, 3 caem, que é a T12 deste plano — passa a sair 0 com `vermelho`, porque as 10 verdes são a prova de que o mecanismo de teste não quebrou; provado por `bash scripts/testa-conferir-mutacao.sh` exit 0 com os dois casos novos, e por `node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues` deixar de listar a tarefa 12 como `pulada (exit 6)`.
+
+Nota de origem (2026-09-11): a 21 nasceu da própria catraca da 9 reprovando a 9 — `conferir-fluxo mutacoes` sobre este plano devolveu `tarefa 9: mutante sobreviveu`. O `if` da catraca de `verificar` nunca era alcançado porque `estado.cjs` procurava o plano por nome fixo `<slug>.md`, ignorando `plano.arquivo` do estado: fluxo com plano de outro nome pula a validação inteira em silêncio. A 22 nasceu da 12 sair `pulada (exit 6)`: o teto por proporção fixa pune bateria pequena e focada, e o caminho mais curto para o exit 0 passaria a ser inflar a bateria com asserções irrelevantes.
