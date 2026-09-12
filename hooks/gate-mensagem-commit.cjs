@@ -44,7 +44,10 @@
  * (bash -c, eval, Invoke-Expression/iex, pwsh -Command, cmd /c) com assunto
  * vazio, longo demais, terminando em ponto, ou sem corpo num diff grande;
  * e mensagem que este gate nao consegue ler (`-F -`, heredoc, nem `-m` nem
- * `-F`).
+ * `-F`). Isso inclui `git commit` PELADO, que abriria o editor — o harness
+ * nao tem editor, e o commit que fecha um merge com conflito resolvido cai
+ * aqui: o gesto e `git commit -F .git/MERGE_MSG` (achado da revisao,
+ * 2026-09-12).
  * Não protege contra: indirecao por variavel (`M="$msg"; git commit -m
  * "$M"` — o valor so existe apos expansao do shell, que roda depois deste
  * gate ler `tool_input.command`); ofuscacao desenhada de proposito para
@@ -268,7 +271,7 @@ function main() {
   }
 
   if (partes.length === 0) {
-    bloqueia("nenhuma mensagem resolvivel (sem -m, sem -F, sem flag de reuso) — use -F <arquivo>");
+    bloqueia("nenhuma mensagem resolvivel (sem -m, sem -F, sem flag de reuso) — use -F <arquivo>; fechando merge, -F .git/MERGE_MSG");
   }
 
   const linhas = partes.join("\n\n").split(/\r?\n/);
