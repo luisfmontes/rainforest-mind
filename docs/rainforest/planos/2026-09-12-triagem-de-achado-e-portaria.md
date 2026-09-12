@@ -107,7 +107,16 @@ mutacao:
   para: `true`
   bateria: `node hooks/testa-portaria-autorizacao.cjs`
   fixture: `turno-reclamacao` — o turno real desta sessão que menciona a autorização dentro de "…falo que autorizo subagentes…"
-pronto quando: com a fixture derivada do transcript real, `node -e "const a=require('./hooks/lib/autorizacao-usuario.cjs');console.log(a.autorizado('test/fixtures/transcript-autorizacao.jsonl'))"` devolve `true` (a mensagem de meio de turno, em linha `queue-operation`/`attachment`, é reconhecida) e o mesmo leitor com a fixture reduzida só ao turno-reclamação devolve `false`
+pronto quando: com a fixture derivada do transcript real, `node -e "const a=require('./hooks/lib/autorizacao-usuario.cjs');console.log(a.autorizado('test/fixtures/transcript-autorizacao.jsonl'))"` devolve `true` (a mensagem de meio de turno, em linha `queue-operation`, é reconhecida) e o mesmo leitor com a fixture reduzida só ao turno-reclamação devolve `false`
+
+> **Correção de 2026-09-12, no `revisar` (2ª rodada):** os dois critérios acima
+> pediam cobertura de `attachment`, e o código não tem mais esse ramo — foi
+> removido de propósito na 1ª rodada, não por esquecimento. `attachment` é canal
+> de **conteúdo** (arquivo colado, imagem), que é exatamente o vetor que esta
+> trava fecha: uma fixture ou um design doc com "autorizo subagentes" dentro
+> abriria o portão. A concessão mandada no meio do turno chega por
+> `queue-operation`, medido no transcript real. Critério de aceite que pede o
+> que o desenho recusa não fecha nunca; os dois passaram a pedir só o que existe.
 
 ### 6. Portaria consulta a autorização antes de negar por estágio [tipo: implementar]
 atende: D4, D6, D8
@@ -133,7 +142,7 @@ mutacao:
   para: asserção invertida (esperar exit 0)
   bateria: `node hooks/testa-portaria-autorizacao.cjs`
   fixture: `escreve-true-sem-worktree-continua-negado`
-pronto quando: `node hooks/testa-portaria-autorizacao.cjs` sai com exit 0 cobrindo, no mínimo, os casos: autorização em turno digitado (`promptSource: "typed"`), autorização em linha `queue-operation`/`attachment`, turno-reclamação (nega), negação explícita "não autorizo" (nega), manifesto ausente com autorização (**continua negando**), `escreve: true` com autorização mas sem `isolation: "worktree"` (**continua negando**), e `escreve: true` com autorização e `name` preenchido (**continua negando**)
+pronto quando: `node hooks/testa-portaria-autorizacao.cjs` sai com exit 0 cobrindo, no mínimo, os casos: autorização em turno digitado (`promptSource: "typed"`), autorização em linha `queue-operation`, turno-reclamação (nega), negação explícita "não autorizo" (nega), manifesto ausente com autorização (**continua negando**), `escreve: true` com autorização mas sem `isolation: "worktree"` (**continua negando**), e `escreve: true` com autorização e `name` preenchido (**continua negando**)
 
 ### 8. Declarar os agentes nativos no manifesto deste repositório [tipo: configurar]
 atende: D7

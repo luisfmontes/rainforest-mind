@@ -135,6 +135,47 @@ console.log("== 3c. hedge numa frase NAO mata concessao em outra (falso negativo
   caso("'te autorizar subagentes ajuda em alguma coisa?' NAO autoriza", rPergSemMarcador === false, rPergSemMarcador);
 }
 
+console.log("== 3d. pontuacao grudada e oracao por virgula (achados da 2a rodada de revisao) ==");
+{
+  // A regra da pergunta era `endsWith('?')`, estreita demais: qualquer coisa
+  // colada depois do sinal escapava — e escapava para o lado PERIGOSO, abrindo
+  // o portao numa pergunta de verdade.
+  const rInterrogColada = autorizado(fx("pergunta-interrogacao-colada.jsonl"));
+  caso("'autorizo subagentes?!' NAO autoriza", rInterrogColada === false, rInterrogColada);
+
+  const rInterrogAspas = autorizado(fx("pergunta-interrogacao-com-aspas.jsonl"));
+  caso("pergunta entre aspas ('...subagentes?\"') NAO autoriza", rInterrogAspas === false, rInterrogAspas);
+
+  // O outro lado do mesmo sinal: confirmacao casual no fim nao transforma
+  // concessao em pergunta.
+  const rRabicho = autorizado(fx("concessao-com-rabicho.jsonl"));
+  caso("'autorizo subagentes, beleza?' AUTORIZA", rRabicho === true, rRabicho);
+
+  // O marcador subordina por ORACAO, nao pela frase inteira: virgula separa.
+  const rVirgula = autorizado(fx("concessao-apos-hedge-virgula.jsonl"));
+  caso("'talvez seja arriscado, autorizo subagentes mesmo assim' AUTORIZA", rVirgula === true, rVirgula);
+
+  // ...e o contrario tem de continuar valendo: marcador COLADO no verbo, na
+  // mesma oracao, subordina mesmo com adversativa depois.
+  const rColado = autorizado(fx("hedge-colado-no-verbo-virgula.jsonl"));
+  caso("'nao sei se autorizo subagentes, mas talvez amanha' NAO autoriza", rColado === false, rColado);
+
+  // Virgula de aposto nao e fronteira de oracao: o subordinador pendurado
+  // carrega a duvida para a frente.
+  const rPendurado = autorizado(fx("subordinador-pendurado.jsonl"));
+  caso("'nao sei se, no fim, autorizo subagentes' NAO autoriza", rPendurado === false, rPendurado);
+
+  // A checagem de pergunta e da FRASE, feita antes de quebrar em oracoes —
+  // senao a condicional viraria concessao ao perder o '?' na quebra.
+  const rCondicional = autorizado(fx("condicional-com-pergunta.jsonl"));
+  caso("'se autorizo subagentes, voce faz?' NAO autoriza", rCondicional === false, rCondicional);
+
+  // O rabicho sai ANTES do julgamento, e o que sobra e julgado normalmente:
+  // pergunta com rabicho continua sendo pergunta.
+  const rPergRabicho = autorizado(fx("pergunta-com-rabicho.jsonl"));
+  caso("'posso autorizar subagentes, ta?' NAO autoriza", rPergRabicho === false, rPergRabicho);
+}
+
 console.log("== 4. negacao sem acento ('nao autorizo subagentes') NAO autoriza ==");
 {
   const r = autorizado(fx("negado-sem-acento.jsonl"));

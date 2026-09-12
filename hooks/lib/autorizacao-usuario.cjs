@@ -94,7 +94,17 @@ function autorizado(transcriptPath) {
           continue;
         }
 
-        // Verifica negação explícita primeiro (a mais forte)
+        // Verifica negação explícita primeiro (a mais forte).
+        //
+        // Ela vale pela LINHA inteira, sem noção de ordem de frase, enquanto a
+        // concessão é julgada frase a frase. A assimetria é de propósito e foi
+        // levantada como lacuna na revisão de 2026-09-12: numa mesma mensagem,
+        // "nao autorizo subagentes. autorizo subagentes" nega nas duas ordens.
+        // Turno que se contradiz dentro de si não é consentimento claro, e a
+        // saída barata é o usuário mandar a concessão sozinha na linha
+        // seguinte. Entre abrir o portão com dúvida e pedir uma frase a mais,
+        // esta trava escolhe pedir a frase. A ordem ENTRE linhas continua
+        // valendo normalmente — negar antes e conceder depois autoriza.
         if (temNegacaoExplicita(obj)) {
           return false;
         }
@@ -284,6 +294,11 @@ function temAutorizacaoPrincipal(obj) {
   // `posso autoriz` e `poderia autoriz` estão aqui, e não só na regra do `?`,
   // porque pergunta sem ponto de interrogação é como se digita com pressa —
   // "posso autorizar subagentes" continua sendo pedido de opinião.
+  // Rabicho de confirmação: "…, beleza?", "…, ta?", "…, pode ser?". Em fala
+  // corrida isso fecha uma concessão, não abre uma pergunta.
+  const RABICHO_DE_CONFIRMACAO =
+    /,\s*(beleza|blz|ta|ok|okay|certo|combinado|fechado|tranquilo|tudo\s+bem|pode\s+ser|sim|ne|hein)\s*[?!.…]*$/;
+
   const sinaisSubordinados = [
     /\bfalo\s+que\b/,
     /\bdisse\s+que\b/,
@@ -305,31 +320,76 @@ function temAutorizacaoPrincipal(obj) {
   ];
 
   for (const frase of frases) {
-    const texto = frase.trim();
+    let texto = frase.trim();
     if (!texto) continue;
 
-    const posAutoriz = texto.search(/\bautorizo\b|\bautorizando\b|\bautorizar\b/);
-    if (posAutoriz === -1) continue;
+    if (!/\bautorizo\b|\bautorizando\b|\bautorizar\b/.test(texto)) continue;
     if (!/\bsubagente\b|\bsubagentes\b|\bsub-agente\b|\bsub-agentes\b/.test(texto)) continue;
+
+    // Confirmação casual no fim não transforma concessão em pergunta.
+    // "autorizo subagentes, beleza?" é o usuário autorizando e checando, não
+    // pedindo opinião — e era recusado, que é o lado ruim do erro. O rabicho sai
+    // antes da checagem de pergunta; o que sobra ("autorizo subagentes") é
+    // julgado normalmente, então "posso autorizar subagentes, ta?" continua
+    // caindo no marcador `posso autoriz` e sendo recusado.
+    texto = texto.replace(RABICHO_DE_CONFIRMACAO, '').trim();
+    if (!texto) continue;
 
     // PERGUNTA NÃO É CONSENTIMENTO. "posso autorizar subagentes nesse projeto ou
     // fica arriscado?" é o usuário pedindo opinião, e abria o portão. A marca é
     // o ponto de interrogação nesta frase — não no turno inteiro, senão
     // "autorizo subagentes. e o build, passou?" seria recusado.
-    if (texto.endsWith('?')) continue;
+    //
+    // `endsWith('?')` era estreito demais: qualquer coisa colada depois do sinal
+    // escapava, e escapava para o lado PERIGOSO. Medido em 2026-09-12, na
+    // segunda rodada de revisão:
+    //
+    //   "autorizo subagentes?!"                 -> autorizava
+    //   "autorizo subagentes?😅"                -> autorizava
+    //   'ele perguntou "autorizo subagentes?"'  -> autorizava
+    //
+    // Agora olha a cauda inteira de caracteres que não são letra nem dígito:
+    // se o `?` estiver nela, é pergunta, com emoji, aspas ou ênfase junto.
+    const cauda = texto.match(/[^\p{L}\p{N}]*$/u);
+    if (cauda && cauda[0].includes('?')) continue;
 
-    let subordinada = false;
-    for (const sinal of sinaisSubordinados) {
-      const achado = texto.match(sinal);
-      if (achado && texto.indexOf(achado[0]) < posAutoriz) {
-        subordinada = true;
-        break;
+    // O marcador subordina por ORAÇÃO, não pela frase inteira. Vírgula separa
+    // oração, e sem isso "talvez seja arriscado, autorizo subagentes mesmo
+    // assim" era recusado — o `talvez` governa "seja arriscado", não a
+    // concessão. O que NÃO pode acontecer é o contrário: em "nao sei se
+    // autorizo subagentes, mas talvez amanha" o marcador está colado no verbo,
+    // na mesma oração, e continua valendo.
+    const oracoes = texto.split(/[,;:]+/);
+
+    // Oração que termina em subordinador pendurado ("nao sei se, no fim,
+    // autorizo subagentes") joga a subordinação para a frente: a vírgula ali é
+    // aposto, não fronteira de oração. Frase inteira fica hedgeada.
+    if (oracoes.some((o) => /\b(se|que|caso|quando)\s*$/.test(o.trim()))) continue;
+
+    let concedeu = false;
+    for (const oracao of oracoes) {
+      const o = oracao.trim();
+      if (!o) continue;
+
+      const posAutoriz = o.search(/\bautorizo\b|\bautorizando\b|\bautorizar\b/);
+      if (posAutoriz === -1) continue;
+
+      let subordinada = false;
+      for (const sinal of sinaisSubordinados) {
+        const achado = o.match(sinal);
+        if (achado && o.indexOf(achado[0]) < posAutoriz) {
+          subordinada = true;
+          break;
+        }
       }
+      if (subordinada) continue;
+
+      concedeu = true;
+      break;
     }
-    if (subordinada) continue;
 
     // Concessão em cláusula principal, nesta frase.
-    return true;
+    if (concedeu) return true;
   }
 
   return false;
