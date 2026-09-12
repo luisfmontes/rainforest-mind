@@ -1,0 +1,28 @@
+{
+  "slug": "2026-09-12-absorver-data-skills",
+  "titulo": "Absorver do data-skills (Rootz): 16 ideias e commit por partes",
+  "criado_em": "2026-09-12",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-12-absorver-data-skills.md",
+    "em": "2026-09-12"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
