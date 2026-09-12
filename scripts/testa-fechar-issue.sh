@@ -79,7 +79,7 @@ echo "== (a) corpo COM critério de pronto → comenta e fecha =="
   export PATH="$SBP/bin:$PATH"
   export GH_LOG="$SBP/log-a"
   export GH_CORPO_COM_CRITERIO=1
-  node "$SRC/scripts/fechar-issue.cjs" 999901 --comando "git log -1" --saida "commit abc123"
+  node "$SRC/scripts/fechar-issue.cjs" 999901 --comando "git log -1" --saida "commit abc123" --confirmo "CONFIRMO fechar issue #999901"
 ) >/dev/null 2>&1
 [ $? -eq 0 ] && test_ok "exit 0" || test_fail "exit code"
 LOG_A="$(cat "$SBP/log-a" 2>/dev/null || echo '')"
@@ -107,7 +107,7 @@ echo "== (b) corpo SEM critério de pronto → exit 2, sem comentar nem fechar =
   export PATH="$SBP/bin:$PATH"
   export GH_LOG="$SBP/log-b"
   unset GH_CORPO_COM_CRITERIO
-  node "$SRC/scripts/fechar-issue.cjs" 999902 --comando "echo teste" --saida "ok" 2>&1
+  node "$SRC/scripts/fechar-issue.cjs" 999902 --comando "echo teste" --saida "ok" --confirmo "CONFIRMO fechar issue #999902" 2>&1
 ) >/dev/null
 [ $? -eq 2 ] && test_ok "exit 2" || test_fail "exit code"
 LOG_B="$(cat "$SBP/log-b" 2>/dev/null || echo '')"
@@ -132,7 +132,7 @@ echo "== (d) gh issue comment com sucesso → gh issue close é chamado (ORDEM v
   export PATH="$SBP/bin:$PATH"
   export GH_LOG="$SBP/log-d"
   export GH_CORPO_COM_CRITERIO=1
-  node "$SRC/scripts/fechar-issue.cjs" 999903 --comando "git log -1" --saida "commit abc123"
+  node "$SRC/scripts/fechar-issue.cjs" 999903 --comando "git log -1" --saida "commit abc123" --confirmo "CONFIRMO fechar issue #999903"
 ) >/dev/null 2>&1
 [ $? -eq 0 ] && test_ok "exit 0" || test_fail "exit code"
 LOG_D="$(cat "$SBP/log-d" 2>/dev/null || echo '')"
@@ -158,7 +158,7 @@ echo "== (e) gh issue comment falha → gh issue close NUNCA é chamado =="
   export GH_LOG="$SBP/log-e"
   export GH_COMMENT_FAIL=1
   export GH_CORPO_COM_CRITERIO=1
-  node "$SRC/scripts/fechar-issue.cjs" 999904 --comando "echo teste" --saida "ok"
+  node "$SRC/scripts/fechar-issue.cjs" 999904 --comando "echo teste" --saida "ok" --confirmo "CONFIRMO fechar issue #999904"
 ) >/dev/null 2>&1
 [ $? -ne 0 ] && test_ok "exit != 0" || test_fail "exit code"
 LOG_E="$(cat "$SBP/log-e" 2>/dev/null || echo '')"
@@ -179,7 +179,7 @@ echo "resultado: sucesso" > "$SBP/arquivo.txt"
   export GH_LOG="$SBP/log-f"
   export GH_CORPO_COM_CRITERIO=1
   cd "$SBP"  # Estar no repositório para que git rev-parse funcione
-  node "$SRC/scripts/fechar-issue.cjs" 999905 --comando "bash teste.sh" --saida-arquivo "$SBP/arquivo.txt"
+  node "$SRC/scripts/fechar-issue.cjs" 999905 --comando "bash teste.sh" --saida-arquivo "$SBP/arquivo.txt" --confirmo "CONFIRMO fechar issue #999905"
 ) >/dev/null 2>&1
 [ $? -eq 0 ] && test_ok "exit 0" || test_fail "exit code"
 LOG_F="$(cat "$SBP/log-f" 2>/dev/null || echo '')"
@@ -203,7 +203,7 @@ echo "SECRET_KEY=segredo" > "$SBP/.env"
   export GH_LOG="$SBP/log-g"
   export GH_CORPO_COM_CRITERIO=1
   cd "$SBP"
-  node "$SRC/scripts/fechar-issue.cjs" 999906 --comando "test" --saida ".env"
+  node "$SRC/scripts/fechar-issue.cjs" 999906 --comando "test" --saida ".env" --confirmo "CONFIRMO fechar issue #999906"
 ) >/dev/null 2>&1
 [ $? -eq 0 ] && test_ok "exit 0" || test_fail "exit code"
 LOG_G="$(cat "$SBP/log-g" 2>/dev/null || echo '')"
@@ -248,7 +248,7 @@ echo "resultado esperado" > "$DENTRO_DO_REPO"
   export GH_LOG="$SBP/log-i"
   export GH_CORPO_COM_CRITERIO=1
   cd "$SBP"  # Já está no git repo que criamos no início
-  node "$SRC/scripts/fechar-issue.cjs" 999908 --comando "test" --saida-arquivo "$DENTRO_DO_REPO"
+  node "$SRC/scripts/fechar-issue.cjs" 999908 --comando "test" --saida-arquivo "$DENTRO_DO_REPO" --confirmo "CONFIRMO fechar issue #999908"
 ) >/dev/null 2>&1
 [ $? -eq 0 ] && test_ok "exit 0" || test_fail "exit code"
 LOG_I="$(cat "$SBP/log-i" 2>/dev/null || echo '')"
@@ -266,7 +266,7 @@ echo "== (j) corpo com critério de pronto SEM parênteses → exit 2 (regressã
   export PATH="$SBP/bin:$PATH"
   export GH_LOG="$SBP/log-j"
   export GH_CORPO_SEM_PARENTESES=1
-  node "$SRC/scripts/fechar-issue.cjs" 999909 --comando "echo teste" --saida "ok" 2>&1
+  node "$SRC/scripts/fechar-issue.cjs" 999909 --comando "echo teste" --saida "ok" --confirmo "CONFIRMO fechar issue #999909" 2>&1
 ) >/dev/null
 [ $? -eq 2 ] && test_ok "exit 2 (sem parênteses recusado)" || test_fail "exit code"
 
@@ -277,7 +277,7 @@ echo "== (k) corpo com critério de pronto em formato caret → exit 2 (regress�
   export PATH="$SBP/bin:$PATH"
   export GH_LOG="$SBP/log-k"
   export GH_CORPO_CARET=1
-  node "$SRC/scripts/fechar-issue.cjs" 999910 --comando "echo teste" --saida "ok" 2>&1
+  node "$SRC/scripts/fechar-issue.cjs" 999910 --comando "echo teste" --saida "ok" --confirmo "CONFIRMO fechar issue #999910" 2>&1
 ) >/dev/null
 [ $? -eq 2 ] && test_ok "exit 2 (caret recusado)" || test_fail "exit code"
 
@@ -288,9 +288,66 @@ echo "== (l) corpo com critério de pronto canônico (parênteses, acentuado) �
   export PATH="$SBP/bin:$PATH"
   export GH_LOG="$SBP/log-l"
   export GH_CORPO_CANONICO=1
-  node "$SRC/scripts/fechar-issue.cjs" 999911 --comando "echo teste" --saida "ok" 2>&1
+  node "$SRC/scripts/fechar-issue.cjs" 999911 --comando "echo teste" --saida "ok" --confirmo "CONFIRMO fechar issue #999911" 2>&1
 ) >/dev/null
 [ $? -eq 0 ] && test_ok "exit 0 (canônico aceito)" || test_fail "exit code"
+
+# Caso (m): sem --confirmo → exit 2, stdout tem a frase esperada, gh NUNCA chamado
+echo
+echo "== (m) sem --confirmo → exit 2, stdout tem a frase esperada, sem issue close =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_LOG="$SBP/log-m"
+  node "$SRC/scripts/fechar-issue.cjs" 12 --comando "x" --saida "y" > "$SBP/stdout-m" 2>/dev/null
+)
+[ $? -eq 2 ] && test_ok "exit 2" || test_fail "exit code"
+grep -q "CONFIRMO fechar issue #12" "$SBP/stdout-m" 2>/dev/null && test_ok "stdout tem a frase esperada" || test_fail "stdout sem a frase esperada"
+LOG_M="$(cat "$SBP/log-m" 2>/dev/null || echo '')"
+if [ -n "$LOG_M" ]; then
+  echo "$LOG_M" | grep -q "issue close" && test_fail "issue close foi chamado!" || test_ok "issue close ausente"
+else
+  test_ok "issue close ausente (gh nunca chamado)"
+fi
+
+# Caso (n): --confirmo com a frase exata → comment e depois close
+echo
+echo "== (n) --confirmo exato → gh registra issue comment e, depois, issue close 12 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_LOG="$SBP/log-n"
+  export GH_CORPO_COM_CRITERIO=1
+  node "$SRC/scripts/fechar-issue.cjs" 12 --comando "x" --saida "y" --confirmo "CONFIRMO fechar issue #12"
+) >/dev/null 2>&1
+[ $? -eq 0 ] && test_ok "exit 0" || test_fail "exit code"
+LOG_N="$(cat "$SBP/log-n" 2>/dev/null || echo '')"
+[ -n "$LOG_N" ] && {
+  COMMENT_LINE=$(echo "$LOG_N" | grep -n "issue comment" | cut -d: -f1 | head -1)
+  CLOSE_LINE=$(echo "$LOG_N" | grep -n "issue close 12" | cut -d: -f1 | head -1)
+  if [ -n "$COMMENT_LINE" ] && [ -n "$CLOSE_LINE" ] && [ "$COMMENT_LINE" -lt "$CLOSE_LINE" ]; then
+    test_ok "issue comment antes de issue close 12"
+  else
+    test_fail "issue comment antes de issue close 12"
+  fi
+} || {
+  test_fail "log vazio"
+}
+
+# Caso (o): --confirmo com o número errado → exit 2, sem close
+echo
+echo "== (o) --confirmo com numero errado (#13 numa Issue #12) → exit 2, sem close =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_LOG="$SBP/log-o"
+  export GH_CORPO_COM_CRITERIO=1
+  node "$SRC/scripts/fechar-issue.cjs" 12 --comando "x" --saida "y" --confirmo "CONFIRMO fechar issue #13" 2>&1
+) >/dev/null
+[ $? -eq 2 ] && test_ok "exit 2" || test_fail "exit code"
+LOG_O="$(cat "$SBP/log-o" 2>/dev/null || echo '')"
+if [ -n "$LOG_O" ]; then
+  echo "$LOG_O" | grep -q "issue close" && test_fail "issue close foi chamado!" || test_ok "issue close ausente"
+else
+  test_ok "issue close ausente (gh nunca chamado)"
+fi
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
