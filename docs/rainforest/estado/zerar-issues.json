@@ -64,10 +64,10 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-09-08",
-    "tarefas_ok": 19,
+    "tarefas_ok": 20,
     "tarefas": 20,
     "em_voo": [],
-    "em": "2026-09-11",
+    "em": "2026-09-12",
     "integradas": [
       1,
       2,
@@ -87,9 +87,10 @@
       16,
       17,
       18,
+      19,
       20
     ],
-    "nota": "T20 acrescentada ao plano e integrada (duas baterias vermelhas herdadas de D15 voltaram ao verde). Falta so a T19 (versao 1.10.0), que agora depende de 20. Teto de 20% do conferir-mutacao ficou plantado como ideia, nao consertado."
+    "nota": "20 de 20 integradas. origin/main (1.8.2, PR #229) mergeada na branch. O fechamento de executar depende da catraca de mutacao, que hoje reprova a T12 por exit 6 do teto de 20% — decisao pendente com o usuario."
   },
   "revisar": {
     "status": "pendente"
