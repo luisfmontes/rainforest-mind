@@ -134,5 +134,39 @@ fi
 rm -f "$CONFERIR_SABOTADO"
 echo ""
 
-echo "=== Todas as 5 baterias passaram ==="
+# CENÁRIO 6: ambiente ausente (D5, 2026-09-12) — a dependência interna do
+# plugin (hooks/lib/contexto-sessao.cjs) falta, e o bloco não pode ser nem
+# CONFERIDO nem RECUSADO. conferir-ponte.cjs não chama nenhuma CLI externa
+# hoje (medido: grep de spawnSync/execFileSync/execSync em scripts/conferir-
+# ponte.cjs e em toda a cadeia que ele importa não acha nada) — o único jeito
+# real de faltar uma dependência é esta. Por isso o fixture copia o script
+# para uma raiz de plugin isolada, com `hooks/lib/ponte-corpo.cjs` (exigido no
+# topo do arquivo) mas SEM `hooks/lib/contexto-sessao.cjs` (exigido dentro de
+# nucleoDasRegras, em tempo de execução).
+echo "6. Dependência interna do plugin ausente → esperado 69 (ambiente)"
+PLUGIN_SEM_LIB="$(mktemp -d)"
+mkdir -p "$PLUGIN_SEM_LIB/hooks/lib" "$PLUGIN_SEM_LIB/scripts" "$PLUGIN_SEM_LIB/skills/rainforest-mind"
+cp "$PLUGIN_DIR/hooks/lib/ponte-corpo.cjs" "$PLUGIN_SEM_LIB/hooks/lib/ponte-corpo.cjs"
+cp "$PLUGIN_DIR/scripts/conferir-ponte.cjs" "$PLUGIN_SEM_LIB/scripts/conferir-ponte.cjs"
+# hooks/lib/contexto-sessao.cjs de proposito NAO copiado.
+cat > "$PLUGIN_SEM_LIB/CLAUDE.md" <<'EOF'
+<!-- rainforest-mind:inicio -->
+qualquer coisa, o conteudo nao importa para este caso
+<!-- rainforest-mind:fim -->
+EOF
+resultado=$(node "$PLUGIN_SEM_LIB/scripts/conferir-ponte.cjs" "$PLUGIN_SEM_LIB/CLAUDE.md" 2>&1)
+exit_got=$?
+primeira=$(node "$PLUGIN_SEM_LIB/scripts/conferir-ponte.cjs" "$PLUGIN_SEM_LIB/CLAUDE.md" 2>&1 1>/dev/null | head -1)
+if [ "$exit_got" = "69" ] && echo "$primeira" | grep -q "^nao-verificavel: não consegui carregar hooks/lib/contexto-sessao.cjs"; then
+  echo "   ✓ 69 conforme esperado, e a primeira linha do stderr e' nao-verificavel"
+else
+  echo "   ✗ FALHOU: esperava exit=69 e stderr 'nao-verificavel: ...'; veio exit=$exit_got"
+  echo "$resultado"
+  rm -rf "$PLUGIN_SEM_LIB"
+  exit 1
+fi
+rm -rf "$PLUGIN_SEM_LIB"
+echo ""
+
+echo "=== Todas as 6 baterias passaram ==="
 exit 0

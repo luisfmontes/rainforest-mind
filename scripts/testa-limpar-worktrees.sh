@@ -657,76 +657,102 @@ fi
 
 cd "$SB"
 
-# --- CASO (o): worktree limpo com sessao viva do cwd nao e removido
+# --- CASO (o): --remover-sujo exige --confirmo com a frase derivada, e
+# --remover (sem -sujo) continua nunca removendo sujo (T2 do design D3)
+
+teste "o" "--remover-sujo so remove com a frase --confirmo exata"
+
+repo_o="$SB/repo_o"
+work_o="$SB/trabalho_o"
+criarRepoComCommit "$repo_o" "$work_o"
+
+wt_o_real="$work_o-worktrees/wt-o"
+git worktree add "$wt_o_real" HEAD
+cd "$wt_o_real"
+echo "sujeira" > arquivo_o.txt
+cd "$work_o"
+
+# (o1) --remover (sem -sujo) continua NUNCA removendo sujo — comportamento de hoje
+node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_o" --remover >/dev/null 2>&1
+lista_o1=$(git worktree list --porcelain | grep -F "wt-o" || true)
+if [ -n "$lista_o1" ]; then
+  ok=$((ok+1)); echo "  ok    --remover (sem -sujo) nao remove worktree sujo"
+else
+  falhou=$((falhou+1)); echo "  FALHA --remover (sem -sujo) removeu worktree sujo"
+fi
+
+# (o2) --remover-sujo sem --confirmo: exit 2, imprime a frase esperada, e o
+# worktree continua em `git worktree list`
+saida_o2=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_o" --remover-sujo "$wt_o_real" 2>&1)
+exit_o2=$?
+if [ $exit_o2 -eq 2 ]; then
+  ok=$((ok+1)); echo "  ok    --remover-sujo sem --confirmo sai com exit 2"
+else
+  falhou=$((falhou+1)); echo "  FALHA --remover-sujo sem --confirmo saiu com exit $exit_o2"
+fi
+if echo "$saida_o2" | grep -q "^CONFIRMO apagar worktree sujo "; then
+  ok=$((ok+1)); echo "  ok    imprime a frase esperada em linha propria"
+else
+  falhou=$((falhou+1)); echo "  FALHA nao imprimiu a frase esperada"
+  echo "        Saida: $saida_o2"
+fi
+lista_o2=$(git worktree list --porcelain | grep -F "wt-o" || true)
+if [ -n "$lista_o2" ]; then
+  ok=$((ok+1)); echo "  ok    worktree sujo continua em git worktree list (nada foi removido)"
+else
+  falhou=$((falhou+1)); echo "  FALHA worktree sujo sumiu de git worktree list"
+fi
+
+# A frase esperada e' derivada pelo script — captura para reusar verbatim,
+# como o usuario faria ao copiar e colar.
+FRASE_O="$(echo "$saida_o2" | grep -o '^CONFIRMO apagar worktree sujo .*$')"
+
+# (o3) com a frase citando OUTRO caminho: exit 2, nada removido
+saida_o3=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_o" --remover-sujo "$wt_o_real" --confirmo "CONFIRMO apagar worktree sujo /caminho/errado" 2>&1)
+exit_o3=$?
+if [ $exit_o3 -eq 2 ]; then
+  ok=$((ok+1)); echo "  ok    frase de outro caminho sai com exit 2"
+else
+  falhou=$((falhou+1)); echo "  FALHA frase de outro caminho saiu com exit $exit_o3"
+fi
+lista_o3=$(git worktree list --porcelain | grep -F "wt-o" || true)
+if [ -n "$lista_o3" ]; then
+  ok=$((ok+1)); echo "  ok    frase de outro caminho nao remove o worktree"
+else
+  falhou=$((falhou+1)); echo "  FALHA frase de outro caminho removeu o worktree"
+fi
+
+# (o4) com a frase exata (capturada em o2): remove de verdade
+saida_o4=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_o" --remover-sujo "$wt_o_real" --confirmo "$FRASE_O" 2>&1)
+exit_o4=$?
+if [ $exit_o4 -eq 0 ]; then
+  ok=$((ok+1)); echo "  ok    com a frase exata, sai com exit 0"
+else
+  falhou=$((falhou+1)); echo "  FALHA com a frase exata, saiu com exit $exit_o4"
+  echo "        Saida: $saida_o4"
+fi
+lista_o4=$(git worktree list --porcelain | grep -F "wt-o" || true)
+if [ -z "$lista_o4" ]; then
+  ok=$((ok+1)); echo "  ok    worktree sujo foi removido com a frase exata"
+else
+  falhou=$((falhou+1)); echo "  FALHA worktree sujo continua apos a frase exata"
+fi
+
+cd "$SB"
+
+
+# --- CASO (p): worktree limpo com sessao viva do cwd nao e removido
 #
 # Tarefa 14 (D14): limpar-worktrees distingue "limpo porque acabou" de "limpo
 # porque outra sessao continua nele". Uma sessao e' viva se o timestamp (prompt_ts
 # ou stop_ts) for mais recente que 5 horas atras. O worktree nao e' candidato a
 # remocao enquanto sessao viva o usar.
 
-teste "o" "worktree limpo com sessao viva nao e removido"
-
-repo_o="$SB/repo_o"
-work_o="$SB/trabalho_o"
-criarRepoComCommit "$repo_o" "$work_o"
-
-# Cria um worktree limpo
-wt_o_real="$work_o-worktrees/wt-o"
-git worktree add "$wt_o_real" HEAD
-
-# Cria raiz de dados temporaria com sessoes.json
-rfm_root_o="$SB/rfm-o"
-mkdir -p "$rfm_root_o"
-FOCO_o="$rfm_root_o/FOCO.md"
-echo "# foco" > "$FOCO_o"
-
-# Cria sessoes.json com uma sessao viva (timestamp recente) cujo cwd e' o worktree
-agora=$(node -e 'console.log(Date.now())')
-node -e '
-const fs = require("fs");
-const [sessoes, timestamp, cwd] = process.argv.slice(1);
-const state = {
-  "outra-sessao-viva": {
-    prompt_ts: parseInt(timestamp),
-    cwd: cwd
-  }
-};
-fs.writeFileSync(sessoes, JSON.stringify(state));
-' "$rfm_root_o/sessoes.json" "$agora" "$wt_o_real"
-
-# Lista com limpar-worktrees apontando para RFM_ROOT
-RFM_ROOT="$rfm_root_o" node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_o" > /dev/null 2>&1
-
-# Verifica que aparece como 'de-outra-sessao'
-saida_o=$(RFM_ROOT="$rfm_root_o" node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_o" 2>&1)
-if echo "$saida_o" | grep -q "de-outra-sessao"; then
-  ok=$((ok+1)); echo "  ok    worktree aparece como 'de-outra-sessao' na listagem"
-else
-  falhou=$((falhou+1)); echo "  FALHA worktree nao aparece como 'de-outra-sessao'"
-  echo "        Saida: $saida_o"
-fi
-
-# Roda --remover: o worktree NAO deve ser removido
-RFM_ROOT="$rfm_root_o" node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_o" --remover >/dev/null 2>&1
-lista_o=$(git -C "$work_o" worktree list --porcelain | grep -F "wt-o" || true)
-if [ -n "$lista_o" ]; then
-  ok=$((ok+1)); echo "  ok    worktree com sessao viva continua registrado apos --remover"
-else
-  falhou=$((falhou+1)); echo "  FALHA worktree com sessao viva foi removido (nao deveria)"
-  echo "        Lista: $lista_o"
-fi
-
-# --- CASO (p): worktree limpo com sessao ANTIGA (5h+) voltA a ser removivel
-#
-# Contraprova do caso (o): sem sessao viva, mesmo worktree volta a ser candidato
-# a remocao. O limiar e' 5 horas.
-
-teste "p" "worktree limpo com sessao antiga (5h+) volta a ser removivel"
+teste "p" "worktree limpo com sessao viva nao e removido"
 
 repo_p="$SB/repo_p"
 work_p="$SB/trabalho_p"
 criarRepoComCommit "$repo_p" "$work_p"
-
 # Cria um worktree limpo
 wt_p_real="$work_p-worktrees/wt-p"
 git worktree add "$wt_p_real" HEAD
@@ -737,10 +763,67 @@ mkdir -p "$rfm_root_p"
 FOCO_p="$rfm_root_p/FOCO.md"
 echo "# foco" > "$FOCO_p"
 
-# Cria sessoes.json com uma sessao ANTIGA (mais de 5 horas atras) cujo cwd e' o worktree
+# Cria sessoes.json com uma sessao viva (timestamp recente) cujo cwd e' o worktree
 agora_p=$(node -e 'console.log(Date.now())')
+node -e '
+const fs = require("fs");
+const [sessoes, timestamp, cwd] = process.argv.slice(1);
+const state = {
+  "outra-sessao-viva": {
+    prompt_ts: parseInt(timestamp),
+    cwd: cwd
+  }
+};
+fs.writeFileSync(sessoes, JSON.stringify(state));
+' "$rfm_root_p/sessoes.json" "$agora_p" "$wt_p_real"
+
+# Lista com limpar-worktrees apontando para RFM_ROOT
+RFM_ROOT="$rfm_root_p" node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_p" > /dev/null 2>&1
+
+# Verifica que aparece como 'de-outra-sessao'
+saida_p=$(RFM_ROOT="$rfm_root_p" node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_p" 2>&1)
+if echo "$saida_p" | grep -q "de-outra-sessao"; then
+  ok=$((ok+1)); echo "  ok    worktree aparece como 'de-outra-sessao' na listagem"
+else
+  falhou=$((falhou+1)); echo "  FALHA worktree nao aparece como 'de-outra-sessao'"
+  echo "        Saida: $saida_p"
+fi
+
+# Roda --remover: o worktree NAO deve ser removido
+RFM_ROOT="$rfm_root_p" node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_p" --remover >/dev/null 2>&1
+lista_p=$(git -C "$work_p" worktree list --porcelain | grep -F "wt-p" || true)
+if [ -n "$lista_p" ]; then
+  ok=$((ok+1)); echo "  ok    worktree com sessao viva continua registrado apos --remover"
+else
+  falhou=$((falhou+1)); echo "  FALHA worktree com sessao viva foi removido (nao deveria)"
+  echo "        Lista: $lista_p"
+fi
+
+# --- CASO (q): worktree limpo com sessao ANTIGA (5h+) voltA a ser removivel
+#
+# Contraprova do caso (p): sem sessao viva, mesmo worktree volta a ser candidato
+# a remocao. O limiar e' 5 horas.
+
+teste "q" "worktree limpo com sessao antiga (5h+) volta a ser removivel"
+
+repo_q="$SB/repo_q"
+work_q="$SB/trabalho_q"
+criarRepoComCommit "$repo_q" "$work_q"
+
+# Cria um worktree limpo
+wt_q_real="$work_q-worktrees/wt-q"
+git worktree add "$wt_q_real" HEAD
+
+# Cria raiz de dados temporaria com sessoes.json
+rfm_root_q="$SB/rfm-q"
+mkdir -p "$rfm_root_q"
+FOCO_q="$rfm_root_q/FOCO.md"
+echo "# foco" > "$FOCO_q"
+
+# Cria sessoes.json com uma sessao ANTIGA (mais de 5 horas atras) cujo cwd e' o worktree
+agora_q=$(node -e 'console.log(Date.now())')
 seis_horas_ms=$((6 * 3600 * 1000))
-timestamp_antigo=$((agora_p - seis_horas_ms))
+timestamp_antigo=$((agora_q - seis_horas_ms))
 node -e '
 const fs = require("fs");
 const [sessoes, timestamp, cwd] = process.argv.slice(1);
@@ -751,32 +834,32 @@ const state = {
   }
 };
 fs.writeFileSync(sessoes, JSON.stringify(state));
-' "$rfm_root_p/sessoes.json" "$timestamp_antigo" "$wt_p_real"
+' "$rfm_root_q/sessoes.json" "$timestamp_antigo" "$wt_q_real"
 
 # Lista: deve aparecer como "limpo" (nao "de-outra-sessao")
-saida_p=$(RFM_ROOT="$rfm_root_p" node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_p" 2>&1)
-if echo "$saida_p" | grep -q "limpo"; then
+saida_q=$(RFM_ROOT="$rfm_root_q" node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_q" 2>&1)
+if echo "$saida_q" | grep -q "limpo"; then
   ok=$((ok+1)); echo "  ok    worktree com sessao antiga aparece como 'limpo'"
 else
   falhou=$((falhou+1)); echo "  FALHA worktree nao aparece como 'limpo'"
-  echo "        Saida: $saida_p"
+  echo "        Saida: $saida_q"
 fi
 
-if echo "$saida_p" | grep -q "de-outra-sessao"; then
+if echo "$saida_q" | grep -q "de-outra-sessao"; then
   falhou=$((falhou+1)); echo "  FALHA worktree ainda aparece como 'de-outra-sessao' (sessao e' antiga)"
-  echo "        Saida: $saida_p"
+  echo "        Saida: $saida_q"
 else
   ok=$((ok+1)); echo "  ok    worktree nao aparece como 'de-outra-sessao' (sessao e' antiga)"
 fi
 
 # Roda --remover: o worktree DEVE ser removido
-RFM_ROOT="$rfm_root_p" node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_p" --remover >/dev/null 2>&1
-lista_p=$(git -C "$work_p" worktree list --porcelain | grep -F "wt-p" || true)
-if [ -z "$lista_p" ]; then
+RFM_ROOT="$rfm_root_q" node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_q" --remover >/dev/null 2>&1
+lista_q=$(git -C "$work_q" worktree list --porcelain | grep -F "wt-q" || true)
+if [ -z "$lista_q" ]; then
   ok=$((ok+1)); echo "  ok    worktree com sessao antiga foi removido"
 else
   falhou=$((falhou+1)); echo "  FALHA worktree com sessao antiga nao foi removido"
-  echo "        Lista: $lista_p"
+  echo "        Lista: $lista_q"
 fi
 
 # --- Relatório final

@@ -9,6 +9,7 @@
 
 const { execFileSync } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 
 // `git worktree list --porcelain` sempre imprime `/` nos caminhos, mesmo no
 // Windows; `path.dirname`/`path.resolve` do módulo `path` (win32) devolvem `\`.
@@ -16,8 +17,20 @@ const path = require('path');
 // checkout principal (sem worktree nenhum linkado) aparece na própria lista
 // como "já em origin/main" apontando pra si mesmo — bug real, achado pela
 // bateria (caso "principal em dia" devolvia uma linha em vez de []).
+// A grafia tambem diverge: no runner da CI (Windows) o `--git-common-dir` veio
+// em 8.3 curto (`RUNNER~1`) e o `worktree list` em longo (`runneradmin`), entao
+// o principal nao casou consigo mesmo e apareceu na propria lista. Compara-se o
+// caminho REAL, e so se cai na comparacao textual quando o disco nao responde.
 function normalizarCaminho(p) {
-  return p.replace(/\\/g, '/').replace(/\/+$/, '');
+  let alvo = p;
+  try {
+    alvo = fs.realpathSync.native(p);
+  } catch {
+    // caminho inexistente (ou sem permissao): segue com o texto recebido
+  }
+  const barras = alvo.replace(/\\/g, '/').replace(/\/+$/, '');
+  // Caixa da letra de drive: `C:/x` e `c:/x` sao o mesmo diretorio no Windows.
+  return barras.replace(/^([A-Za-z]):/, (_, letra) => letra.toUpperCase() + ':');
 }
 
 /**

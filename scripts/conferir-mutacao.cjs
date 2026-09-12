@@ -43,8 +43,10 @@
  *   2  mutação casou e bateria VERDE     — recusa: a bateria não mede o conserto
  *   3  MUTACAO NAO APLICADA              — o trecho `--de` não existe no fonte
  *   4  não dá para MEDIR                  — recusa antes de mutar: a bateria já falha
- *                                          no fonte íntegro, ou `--de` casa mais de
- *                                          uma vez e a inversão fica ambígua
+ *                                          no fonte íntegro (baseline não-verde,
+ *                                          morta por sinal, ou estourou o teto), ou
+ *                                          `--de` casa mais de uma vez e a inversão
+ *                                          fica ambígua
  *   5  suspeita de corte de shell         — pós-mutação desproporcionalmente curta
  *                                          (< 10% do baseline ou < 1 s), sugerindo
  *                                          que a bateria morreu antes de medir.
@@ -54,12 +56,20 @@
  *                                          ela parou de imprimir o próprio placar):
  *                                          o mecanismo de teste morreu antes de
  *                                          exercitar qualquer comportamento
- *   1  erro de uso, ou bateria sem veredito (estouro de tempo / sinal)
+ *   1  erro de uso, ou bateria sem veredito (estouro de tempo / sinal) pós-mutação
+ *   69 nao-verificavel — AMBIENTE, nao conteudo (D5, 2026-09-12): o comando da
+ *                                          bateria nao pode nem SER EXECUTADO no
+ *                                          baseline (`spawnSync` devolve `.error`,
+ *                                          tipicamente ENOENT do shell) — diferente
+ *                                          do 4, que e' "rodou e nao mediu nada".
+ *                                          Primeira linha do stderr:
+ *                                          "nao-verificavel: <motivo>".
  *
- * O 2, 3, 4 e 5 são códigos DIFERENTES de propósito: quem chama este script de
+ * O 2, 3, 4, 5 e 69 são códigos DIFERENTES de propósito: quem chama este script de
  * dentro de outra checagem precisa poder distinguir "a bateria é fraca" (2) de
  * "a declaração de mutação está errada" (3) de "a bateria já está quebrada" (4)
- * de "suspeita de falha de shell" (5) sem depender de ler a mensagem.
+ * de "suspeita de falha de shell" (5) de "nao consegui nem rodar" (69) sem
+ * depender de ler a mensagem.
  */
 
 const fs = require('fs');
@@ -80,7 +90,9 @@ const USO = `uso: node scripts/conferir-mutacao.cjs --arquivo <caminho> --de <tr
 exit: 0 mutação casou e bateria VERMELHA | 2 bateria VERDE | 3 MUTACAO NAO APLICADA |
      4 não dá para medir (baseline não-verde, ou --de ambíguo) | 5 corte de shell
      (pós-mutação < 10% do baseline ou < 1 s) | 6 bateria colapsou (zero asserção
-     sobreviveu à mutação, ou ela parou de imprimir o próprio placar) | 1 erro de uso
+     sobreviveu à mutação, ou ela parou de imprimir o próprio placar) | 1 erro de
+     uso | 69 nao-verificavel (o comando da bateria nao executa — ambiente, nao
+     conteudo)
 
 Git Bash (MSYS) come uma barra de argumento que COMEÇA com \`//\`: \`// coment\`
 chega aqui como \`/ coment\` e não casa. Medido em 2026-08-21 ao mutar um
@@ -355,8 +367,14 @@ function main() {
     process.exit(4);
   }
   if (baselineRes.r.error) {
+    // Ambiente, nao conteudo (D5, 2026-09-12): `spawnSync` nao conseguiu nem
+    // ISSO — nao e' a bateria que falhou, e' o proprio shell/comando que nao
+    // pode ser lancado (tipicamente ENOENT). Diferente do 4 (baseline rodou e
+    // nao ficou verde): aqui nada rodou, entao "bateria fraca" seria veredito
+    // sobre o que nunca aconteceu.
+    process.stderr.write(`nao-verificavel: bateria nao executa — ${baselineRes.r.error.message}\n`);
     console.error(`RECUSADO: baseline não consegui executar — ${baselineRes.r.error.message}`);
-    process.exit(4);
+    process.exit(69);
   }
   if (baselineRes.r.status === null) {
     console.error(`RECUSADO: baseline morta pelo sinal ${baselineRes.r.signal}, sem exit code.`);

@@ -1,0 +1,116 @@
+{
+  "slug": "statusline-reset-e-principal-na-main",
+  "titulo": "Statusline mostra tempo até o reset; checkout principal fica na main",
+  "criado_em": "2026-09-08",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/statusline-reset-e-principal-na-main.md",
+    "em": "2026-09-08"
+  },
+  "plano": {
+    "status": "ok",
+    "doc": "docs/rainforest/planos/statusline-reset-e-principal-na-main.md",
+    "em": "2026-09-08"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-08",
+    "tarefas_ok": 4,
+    "tarefas": 4,
+    "comando": "bash scripts/testa-statusline.sh; bash scripts/testa-estado-principal.sh; bash scripts/testa-estado.sh; bash hooks/testa-config.sh",
+    "saida": "as 4 baterias da statusline passaram (38 casos de limites, 19 adversos) | 23 ok, 0 falhou | 172 ok, 0 falhas | 45 ok, 0 falha(s)",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "7d com 3 dias e 4 horas"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "h. MUTACAO: sem a comparacao de branch, o caso a deixa de recusar"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "texto de regra; coerencia conferida por conferir-invariantes e testa-contexto-sessao"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "numero de versao; divergencia pega por testa-versao.sh"
+      }
+    ],
+    "integracao": "T2 via executor em worktree isolado (d3bf7f3, conferir-entrega APROVADO), cherry-pick 43e40b7 + correcao 09f9a6a",
+    "em": "2026-09-08",
+    "rodada": 3,
+    "correcoes_da_revisao": [
+      "isfinite em resets_at e used_percentage",
+      "trava avalia process.cwd()",
+      "nucleo cita principal-livre"
+    ],
+    "correcoes_da_revisao_2": [
+      "main() blindado por segmento",
+      "principal-livre lida sem ligado()"
+    ]
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "f96c766c6eb7aa7614bc536949437691524b828a",
+      "caminhos_sujos": []
+    },
+    "achados": 0,
+    "rodada": 3,
+    "bloqueantes": [
+      "statusline.py main(): model/context_window/workspace null ou nao-dict, JSON de topo nao-dict e cwd nao-string derrubam a barra (exit 1, stdout vazio) — D1 promete que a barra nunca trava"
+    ],
+    "importantes": [
+      "SKILL.md (nucleo) nao cita a chave principal-livre; criterio T3 pedia os tres arquivos"
+    ],
+    "em": "2026-09-08",
+    "em_voo": [],
+    "menores": [
+      "config.cjs: comentario de branch-forcar diz ser a UNICA chave invertida; principal-livre tem a mesma semantica"
+    ],
+    "base": "58e8c37",
+    "head": "f96c766",
+    "importantes_nao_bloqueantes": [
+      "regra-11-principal.md:61 cita ligado(); o codigo le resolverConfig().valores — corrigir antes do verificar",
+      "conferir-versao: 6 commits desde o bump 0b53ce1 (teto 5) — tratar no fechar"
+    ],
+    "rodadas": [
+      {
+        "n": 1,
+        "achados": 3,
+        "veredito": "reprovado"
+      },
+      {
+        "n": 2,
+        "achados": 2,
+        "veredito": "reprovado"
+      },
+      {
+        "n": 3,
+        "achados": 0,
+        "veredito": "ok"
+      }
+    ]
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "python statusline/testa-statusline-limites.py statusline/statusline.py; bash scripts/testa-estado-principal.sh; node -e CHAVES + grep -c principal-livre (3 arquivos) + conferir-invariantes + medir-skill + hooks/testa-contexto-sessao.sh; bash scripts/testa-versao.sh; node scripts/conferir-versao.cjs",
+    "saida": "T1: OK: 38 casos do segmento de limites (exit 0) | T2: 23 ok, 0 falhou (casos a-i + mutacao h) | T3: [principal-livre]; 1/1/1; ok: conferidas 5 invariantes; nucleo=5598 regras=17; ok: 277 falhou: 0 | T4: ok: 4 falhou: 0; ok versao 1.9.0: 0 commit(s) desde o bump 569a288 (teto 5) (origin/main: 1.8.1) | creep: ok sem creep 14 arquivos",
+    "nota": "T4 exigiu reordenar a branch (rebase --onto + cherry-pick) para o commit de versao ficar no topo: conferir-versao conta commits desde o bump, e as duas rodadas de correcao tinham deixado 7 acima dele",
+    "em": "2026-09-08"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "pr",
+    "pr": 228,
+    "em": "2026-09-08"
+  }
+}

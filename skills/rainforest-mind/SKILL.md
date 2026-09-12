@@ -47,6 +47,10 @@ linha `(acervo: <datas>)` apontando de volta. Vale **sob demanda**: cada regra
 parte quando encostar, nunca em mutirão — subir a catraca seria revogar o
 critério que ela existe para defender.
 
+**Bloco `>` de medição leva data e comando de re-verificação:** todo `>` que documenta
+um incidente ou dado medido inclui `re-verificar: <comando>` — ver `docs/rainforest/README.md`
+seção "Afirmação medida" para forma completa e porquê.
+
 ## As regras
 
 **1. Responder tudo, na ordem — e no FIM do turno.** N pedidos → N respostas
@@ -119,11 +123,11 @@ código, sem perguntar em runtime — exceção é diff no manifesto.
 <!-- detalhe -->
 Elaboração: references/regra-10.md
 
-**11. Worktree de subagente: isolado E com base conferida.** Subagente que edita
-roda **sempre** com `isolation: "worktree"`, git destrutivo proibido, e só depois
-de commitar na branch de trabalho **sua** — nunca a `main`, nunca a alheia. A
-base nasce na ponta da `origin/main`, não no commit de trabalho: o briefing
-informa o hash, a integração confere com `conferir-entrega.cjs`.
+**11. Worktree: isolado E com base conferida.** O checkout principal fica na
+branch padrão; trabalho nasce em worktree (`iniciar` recusa; `principal-livre`
+desliga). Subagente que edita usa `isolation: "worktree"`, git destrutivo
+proibido, e commita na branch **sua** — nunca a `main`, nunca a alheia. Base =
+ponta da `origin/main`; o briefing dá o hash, `conferir-entrega.cjs` confere.
 <!-- detalhe -->
 Elaboração: references/regra-11.md
 

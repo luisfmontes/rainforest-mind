@@ -190,8 +190,36 @@ esperado "  MUTACAO: corrigido o idioma, a mesma checagem aprova" 0 \
 
 echo
 echo "== bordas =="
-esperado "worktree inexistente -> exit 2, nao 0" 2 \
+esperado "worktree inexistente -> exit 69, nao 0/2 (ambiente, D5)" 69 \
   "${CONF_CMD[@]}" --worktree "$RAIZ/nao-existe" --base "$BASE"
+contem "  ... e o stderr abre com nao-verificavel:" "nao-verificavel: worktree" \
+  "${CONF_CMD[@]}" --worktree "$RAIZ/nao-existe" --base "$BASE"
+
+echo
+echo "== D5 (2026-09-12): exit 69 = nao-verificavel, ambiente e nao conteudo =="
+# Compara so' o INICIO da linha, nao o caminho inteiro: o MSYS traduz o
+# argumento de POSIX para a forma Windows ao chamar um .exe nativo (node), e
+# o caminho que o script ECOA de volta ja vem traduzido — comparar contra o
+# `$RAIZ` bash (que fica na forma POSIX) reprovaria por grafia, nao por
+# comportamento.
+PRIMEIRA_LINHA_STDERR=$("${CONF_CMD[@]}" --worktree "$RAIZ/nao-existe" --base "$BASE" 2>&1 1>/dev/null | head -1)
+case "$PRIMEIRA_LINHA_STDERR" in
+  "nao-verificavel: worktree "*"nao-existe' nao existe")
+    ok=$((ok+1)); echo "  ok    a PRIMEIRA linha do stderr e' a esperada ($PRIMEIRA_LINHA_STDERR)";;
+  *)
+    falhou=$((falhou+1)); echo "  FALHA primeira linha do stderr veio '$PRIMEIRA_LINHA_STDERR'";;
+esac
+
+# git indisponivel dentro de um worktree que EXISTE: monta um PATH de caixa de
+# areia so com o diretorio do proprio node (o comando FILHO herda esse PATH
+# raso; a linha de comando desta bateria continua com o PATH original). Sem
+# isto o `node` do comando nem seria encontrado pelo shell.
+NODE_DIR="$(dirname "$(command -v node)")"
+esperado "git fora do PATH -> exit 69 (ambiente, nao 'nao e repositorio git')" 69 \
+  env PATH="$NODE_DIR" "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE"
+contem "  ... e o stderr nomeia git ausente" "nao-verificavel: git nao encontrado" \
+  env PATH="$NODE_DIR" "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE"
+
 esperado "sem --base ainda roda, com aviso" 0 \
   "${CONF_CMD[@]}" --worktree "$WT" --head-antes "$HEAD_ANTES"
 contem "  ... e o aviso diz que o briefing devia ter fixado a base" "briefing devia ter fixado" \

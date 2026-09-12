@@ -2,6 +2,8 @@
 /**
  * PreToolUse — barra staging em massa (`git add -A`, `git commit -am`) em
  * working tree compartilhado por varias sessoes.
+ * Protege contra: git add -A / git add . / git commit -a (staging em massa)
+ * Não protege contra: git add por caminho específico
  *
  * Por que existe, com data: em 2026-08-09, numa unica sessao, `git add -A`
  * levou junto trabalho de outra janela DUAS vezes.

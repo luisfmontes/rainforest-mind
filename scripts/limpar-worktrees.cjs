@@ -5,10 +5,17 @@
  *
  * Uso:
  *   node scripts/limpar-worktrees.cjs [--raiz <repo>] [--remover]
+ *   node scripts/limpar-worktrees.cjs --remover-sujo <dir> --confirmo "<frase>"
  *
  * Comportamento:
  *   - Sem flags: lista o status de cada worktree (limpo, sujo, órfão), exit 0
  *   - Com --remover: remove os classificados como "limpo" via git worktree remove
+ *     — "sujo" NUNCA entra aqui, com ou sem --confirmo
+ *   - Com --remover-sujo <dir>: remove UM worktree classificado "sujo", e só
+ *     com --confirmo "CONFIRMO apagar worktree sujo <caminho>", onde <caminho>
+ *     é o mesmo que `git worktree list` imprime para aquele worktree. A frase
+ *     é digitada pelo usuário e repassada verbatim — o script não a inventa.
+ *     Sem a frase, ou com frase de outro caminho: exit 2, nada é removido.
  *
  * Classificação:
  *   - "limpo": toplevel DE DENTRO confere com o próprio dir E status vazio
@@ -117,6 +124,7 @@ const argValor = (nome) => {
 
 const raizArgumento = argValor("raiz");
 const remover = tem("remover");
+const removerSujoArg = argValor("remover-sujo");
 
 /**
  * Resolve a raiz do repositório.
@@ -222,6 +230,33 @@ function detectarFantasmaTravado(raiz) {
   }
 
   return fantasmas;
+}
+
+/**
+ * O caminho de um worktree exatamente como `git worktree list` (e o
+ * `--porcelain`, que usa o mesmo texto de caminho) o imprime — absoluto, com
+ * `/` mesmo no Windows. É esse texto, não o `path.resolve` do resto do
+ * script (que troca para `\` no Windows), que entra na frase de confirmação:
+ * quem digita `--confirmo` está lendo a saída do git, não a da tabela.
+ * Devolve `null` se não achar um worktree cujo caminho normalizado bata com
+ * `alvoNormalizado`.
+ */
+function caminhoConformeGitWorktreeList(raiz, alvoNormalizado) {
+  try {
+    const saida = execFileSync("git", ["worktree", "list", "--porcelain"], {
+      cwd: raiz,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    for (const linha of saida.split("\n")) {
+      if (!linha.startsWith("worktree ")) continue;
+      const caminho = linha.slice("worktree ".length).trim();
+      if (caminho && normalizarCaminho(caminho) === alvoNormalizado) return caminho;
+    }
+  } catch {
+    // Fallthrough — devolve null
+  }
+  return null;
 }
 
 /**
@@ -628,7 +663,8 @@ function main() {
   // Imprime tabela
   imprimirTabela(dados);
 
-  // Se --remover, remove os limpos e fantasmas-travados
+  // Se --remover, remove os limpos e fantasmas-travados — "sujo" NUNCA entra
+  // aqui, com ou sem --confirmo. Só --remover-sujo alcança "sujo".
   if (remover) {
     const removiveis = dados.filter((item) =>
       item.classificacao.status === "limpo" || item.classificacao.status === "fantasma-travado"
@@ -637,6 +673,69 @@ function main() {
       console.log("");
       executarRemocao(raiz, removiveis);
     }
+  }
+
+  // --remover-sujo <dir>: remove UM worktree "sujo", só com a frase exata.
+  if (removerSujoArg) {
+    const alvoNormalizado = normalizarCaminho(removerSujoArg);
+    const item = dados.find(
+      (d) =>
+        normalizarCaminho(d.caminhoOriginal) === alvoNormalizado ||
+        normalizarCaminho(d.caminho) === alvoNormalizado
+    );
+
+    if (!item) {
+      console.error(`erro: nao achei worktree '${removerSujoArg}' na listagem`);
+      process.exit(1);
+    }
+
+    if (item.classificacao.status !== "sujo") {
+      console.error(
+        `erro: worktree '${removerSujoArg}' nao esta classificado como sujo ` +
+          `(esta '${item.classificacao.status}')`
+      );
+      process.exit(1);
+    }
+
+    const caminhoGit =
+      caminhoConformeGitWorktreeList(raiz, alvoNormalizado) || item.caminhoOriginal;
+    const esperada = `CONFIRMO apagar worktree sujo ${caminhoGit}`;
+    const frase = argValor("confirmo");
+
+    if (frase !== esperada) {
+      console.log("CONFIRMACAO NECESSARIA");
+      console.log("");
+      console.log(esperada);
+      console.log("");
+      console.log(
+        "Essa frase precisa ser digitada pelo usuario e repassada verbatim para " +
+          "--confirmo. O script nao a inventa."
+      );
+      process.exit(2);
+    }
+
+    // Mesma trava do --remover normal: agente em voo segura a remoção, por
+    // mais que o alvo já esteja confirmado.
+    const emVoo = agentesEmVoo(item.caminhoOriginal);
+    if (emVoo) {
+      const nomes = emVoo.voo.map((a) => a.agente).join(", ");
+      console.log(
+        `pulando ${item.caminho}: o estágio '${emVoo.estagio}' do fluxo ` +
+          `'${emVoo.slug}' tem ${emVoo.voo.length} agente(s) em voo (${nomes})`
+      );
+      process.exit(1);
+    }
+
+    console.log(`removendo ${item.caminho} (sujo, confirmado)...`);
+    const result = spawnSync("git", ["worktree", "remove", "--force", item.caminhoOriginal], {
+      cwd: raiz,
+      encoding: "utf8",
+    });
+    if (result.status !== 0) {
+      console.error(`erro ao remover ${item.caminho}: ${result.stderr || ""}`);
+      process.exit(1);
+    }
+    console.log(`ok removido: ${item.caminho}`);
   }
 
   process.exit(0);

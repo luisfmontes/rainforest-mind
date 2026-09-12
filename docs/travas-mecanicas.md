@@ -20,6 +20,7 @@ noite, sabendo que não devia. O que sobrou das duas noites:
 | `gate-staging-total.cjs` | `git add` com caminho total (`-A`, `--all`, `-u`, `--update`, `.`, `./`, `:/`, `*`), inclusive em flag combinada, e `git commit -a/-am/--all` | **também a janela principal**, que foi onde os dois incidentes ocorreram |
 | `gate-publicacao-destino.cjs` | escrita de dados sensíveis (JID, telefone, email, credencial) em arquivo rastreado por git | **qualquer ferramenta que escreve** (`Write`, `Edit`, `MultiEdit`) — impede vazamento em repo público |
 | `gate-repo-alheio.cjs` | escrita cujo destino está dentro de **outro repositório git** que não o da sessão | **também a janela principal**, que foi onde o incidente ocorreu — caminho fora de git e worktree do mesmo repo passam |
+| `gate-mensagem-commit.cjs` | `git commit` com assunto acima de 72 colunas ou terminando em ponto; sem corpo (trailer não conta) quando o stage passa de 3 arquivos ou de 150 linhas; `-F -`, heredoc e `git commit` pelado, que o hook não lê. `--amend --no-edit`, `-C` e `-c` passam | **também a janela principal** — origem: análise de um plugin de terceiro em 2026-09-12, em que o formato era regex e a granularidade era hábito (285 de 441 commits tocam até 3 arquivos, 310 têm corpo — números do design deste lote); aqui os dois viram trava porque o "por partes" é o que deixa o `revisar` ler o diff |
 | `portaria.cjs` | despacho de subagente que não está declarado em `.rainforest/agentes.json`, ou cujo estágio ativo não consta na lista dele; agente com `escreve: true` despachado **sem `isolation: "worktree"`** ou **com `name`**; manifesto ausente ou inválido nega tudo (fail-closed) | **o despacho**, na janela que despacha — o humano não é perguntado em runtime, e exceção é diff no manifesto, que passa pelo `revisar`. Registrado só no `.claude/settings.json` **do projeto**, não na máquina |
 
 Valem em **qualquer** repo git da máquina, porque o hábito é que é o problema,
@@ -57,7 +58,9 @@ O mesmo princípio nos scripts, para o que hook nenhum alcança:
 | `scripts/ideias.cjs` | única porta de escrita do `ideias.jsonl` — trava de arquivo, backup, escrita atômica, releitura do arquivo vivo e conferência byte a byte das linhas não-alvo; e o `projeto` é **slug de vocabulário fechado** (`projetos.json`), não texto livre |
 | `scripts/ferramentas.cjs` | única porta de leitura e escrita do ledger `ferramentas.jsonl` — catálogo de ferramentas descobertas em uso. Ledger cresce por descoberta sem varredura de setup; ausência de entrada lê-se como **desconhecido**, não confirmado ausente. Receita de invocação é opcional — entra depois pelo comando explícito (D5, D11). A sonda do hook de consulta em `PreToolUse` anuncia descoberta ou bloqueio, deixa a execução passar sempre (D10) |
 | `scripts/limpar-branches.cjs` | confere o local contra o remoto e classifica por dois eixos (upstream **e** merge); nunca remove branch viva, e exigir estar na base em dia é trava. A **remota** já sai sozinha no merge (`delete_branch_on_merge`, ligado em 2026-08-26); este script é para a **local** e para o resíduo de worktree de agente, que é o que sobrevive e ninguém vê |
-| `scripts/conferir-publicacao.cjs` | **sai com código 2** quando o rascunho tem telefone, JID, e-mail, caminho de home ou credencial — antes de virar Issue público |
+| `scripts/conferir-publicacao.cjs` | **sai com código 2** quando o rascunho tem telefone, JID, e-mail, caminho de home ou credencial — antes de virar Issue público. `--commit <rev>` ou `a..b` lê o conteúdo **commitado** (não o disco, que pode já estar limpo), acusa `diverge-do-commit` e chama `conferir-duplicacao.cjs`; **69** quando a rev não resolve |
+| `scripts/conferir-duplicacao.cjs` | dois arquivos byte a byte iguais fora de `fixtures/`, `node_modules/`, `.git/` e `.claude/worktrees/` → **exit 2**, os dois caminhos na mesma linha; `--funcoes` só inventaria nomes repetidos entre `scripts/*.cjs`. Origem: o plugin de terceiro analisado em 2026-09-12 tinha `git-workflow.sh` idêntico em dois plugins e ninguém via |
+| exit **69** (`nao-verificavel:`) | em `conferir-entrega`, `conferir-mutacao`, `conferir-fluxo` e `conferir-ponte`: o ambiente impediu a checagem (worktree sumiu, `git` fora do PATH, bateria que não executa). Não é aprovação, não é reprovação, não é `flaky` — é a regra 14 em código: anuncia em uma linha e não redespacha |
 | `scripts/conferir-entrega.cjs` | roda na janela principal **depois** da entrega do agente: hash de base, isolamento e citação conferidos na fonte, não no relato. `--espera <caminho>` (repetível) confere o que a tarefa prometia **na árvore do commit** — `ls`/`cat` do agente provam o disco, e `git status` não lista ignorado |
 | `scripts/conferir-fluxo.cjs` | fecha as três costuras entre artefatos vizinhos do fluxo, **com exit 2**: `design` (as seções obrigatórias e as decisões `D1..Dn` sem buraco nem repetição), `cobertura` (toda decisão virou tarefa **e** toda tarefa atende decisão que existe) e `creep` (arquivo no diff que não casa com o `arquivos:` de tarefa nenhuma). Chamado pelo `estado.cjs marcar` no fechamento de estágio — só age onde o design/plano existe, e nunca torna o fluxo obrigatório |
 | `scripts/portoes.cjs` | troca **evidência colada por oráculo re-executável**: cada portão declara o `CHECK:` que o decide e o `ESPERA:` que a saída precisa conter, e cumprido é **exit 0 E match**, os dois, re-executáveis a qualquer momento. `status` e `lint` **nunca executam** `CHECK` nenhum — o `lint` audita a *autoria* do portão (`echo ok`/`ESPERA: ok` é erro), que é a única parte que nenhuma execução consegue conferir. `ABANDONA:` é terminal mas nunca é conclusão: força exit 1 com `DEVOLUCAO OBRIGATORIA` mesmo com o resto cumprido. A evidência gravada guarda **fingerprint**, nunca output bruto. Chamado pelo `estado.cjs` em dois pontos — `lint` no fechamento do `plano`, `rodar` no do `verificar` — e é **opt-in por fluxo**: só age quando existe `docs/rainforest/portoes/<slug>.md` |
@@ -69,6 +72,38 @@ O mesmo princípio nos scripts, para o que hook nenhum alcança:
 | `scripts/segunda-opiniao.cjs` | segunda opinião de modelo de outra família sobre um diff: `node scripts/segunda-opiniao.cjs --base <sha> --head <sha> --criterio <arquivo>` monta prompt com `git diff <base>...<head>`, critério e commit-base, chama CLI externo por `rodarCli`, devolve veredito (1 linha) no stdout e parecer no stderr. Subcomando `registrar-divergencia` grava discordâncias ao log com motivo. D6: indisponibilidade reprova |
 | `scripts/orcamento.cjs` | mede em **byte** as quatro fontes que o plugin põe na abertura (saída do hook, descriptions de skills, de commands e de agentes), compara com dois tetos (o `ORCAMENTO_BYTES` do hook, lido de `hooks/lib/contexto-sessao.cjs`, e um agregado de 15.000 B, que subiu de 14.000 em 2026-08-25), e sai com exit 1 quando estoura — entra no laço do `CONTRIBUTING.md:11` como o gate que acusa quando o plugin engordar além do orçamento |
 | `scripts/medir-injecao.py` | custo real do prompt de abertura, lido do `usage` que a API devolve — token de verdade, sem estimativa. O modo `--repartir` reparte a abertura por fonte (skill_listing, deferred_tools_delta, agent_listing_delta, rainforest-mind) e marca o que é **medido** (total via API), o que é **estimado** (byte convertido por fator 3.11 do tokenizador OpenAI), e o que é **subconjunto** (rainforest-mind dentro das listagens) |
+
+## Regra → trava
+
+As 17 regras de `skills/rainforest-mind/SKILL.md`, uma linha por regra, com o
+hook/script/subcomando que a torna mecânica quando existe um — e a marca
+`disciplina` quando não existe nenhum, para que ninguém leia a ausência como
+proteção. A bateria `scripts/testa-mapa-regras.sh` mantém esta tabela honesta:
+falha se sobrar regra sem linha, linha com as duas colunas vazias, ou arquivo
+citado que não existe em disco.
+
+| Regra | Trava | Vale por disciplina |
+|---|---|---|
+| 1 | | disciplina |
+| 2 | | disciplina |
+| 3 | `hooks/foco-session-start.cjs`, `hooks/heartbeat.cjs` | |
+| 4 | | disciplina |
+| 5 | | disciplina |
+| 6 | `scripts/ideias.cjs` | |
+| 7 | | disciplina |
+| 8 | `scripts/jornada.cjs` | |
+| 9 | | disciplina |
+| 10 | `hooks/portaria.cjs`, `hooks/gate-agente-em-voo.cjs`, `scripts/testa-teto-skills.sh` | |
+| 11 | `hooks/gate-worktree.cjs`, `--confirmo` em `scripts/limpar-branches.cjs`, `scripts/limpar-worktrees.cjs` e `scripts/fechar-issue.cjs` | |
+| 12 | `hooks/gate-mensagem-commit.cjs`, `scripts/conferir-entrega.cjs`, `scripts/conferir-mutacao.cjs`, `scripts/conferir-duplicacao.cjs`, `carimbos` no `scripts/estado.cjs`, `hooks/gate-agente-em-voo.cjs` | |
+| 13 | `scripts/ideias.cjs` | |
+| 14 | exit 69 em `scripts/conferir-entrega.cjs`, `scripts/conferir-mutacao.cjs`, `scripts/conferir-fluxo.cjs`, `scripts/conferir-ponte.cjs`, `hooks/ferramentas-consulta.cjs` | |
+| 15 | `hooks/ferramentas-consulta.cjs`, `checarAllowlist` em `scripts/saude.cjs` | |
+| 16 | | disciplina |
+| 17 | `hooks/heartbeat.cjs` | |
+
+Regras 1, 2, 4, 5, 7, 9 e 16 valem só por disciplina — nenhum hook nem script
+as trava; se o modelo não aplicar, nada mecânico acusa.
 
 O que essas travas custaram e renderam fica em [`relatorios/`](../relatorios/) —
 hoje o da trava de sessão co-locada

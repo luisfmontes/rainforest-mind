@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.10.0-1e5c3f?style=flat-square" alt="versão 1.10.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.11.0-1e5c3f?style=flat-square" alt="versão 1.11.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -146,6 +146,8 @@ mesmo assim**.
 > Enquanto o veredito de uma checagem for redigido pelo mesmo agente que ela
 > deveria travar, ela não trava nada. **Exit code não se argumenta.**
 
+As baterias dos gates rodam em Windows + Git Bash (ambiente do CI: `runs-on: windows-latest`); Linux e macOS não são medidos. Cada gate declara seu modelo de ameaça nos docblocks.
+
 | Hook (`PreToolUse`, exit 2) | Barra |
 |---|---|
 | `gate-worktree.cjs` | escrita de subagente fora de worktree linkado; `git checkout/switch/reset` com outra sessão no mesmo diretório |
@@ -153,6 +155,7 @@ mesmo assim**.
 | `gate-publicacao-destino.cjs` | escrita de dado sensível (JID, telefone, e-mail, credencial) em arquivo rastreado |
 | `gate-repo-alheio.cjs` | escrita cujo destino está dentro de **outro** repositório git |
 | `gate-fechar-issue.cjs` | `gh issue close` direto, e `closes #N` em PR sem comentário de evidência marcado |
+| `gate-mensagem-commit.cjs` | `git commit` com assunto acima de 72 colunas ou terminando em ponto; sem corpo quando o stage passa de 3 arquivos ou 150 linhas; e mensagem que o hook não consegue ler (`-F -`, heredoc, `git commit` pelado — fechando merge, `-F .git/MERGE_MSG`) |
 | `portaria.cjs` | despacho de subagente não declarado em `.rainforest/agentes.json`, ou sem `isolation: "worktree"` quando ele escreve |
 
 Fora da tabela porque o mecanismo é outro (`Stop`, exit 0 com
@@ -165,18 +168,24 @@ liberam sem perguntar. Codex sem cota bloqueia dizendo isso, com a hora de
 retorno (o despacho sai 75 e escreve `codex sem cota: ...`).
 
 Valem em **qualquer** repo git da máquina, porque o hábito é que é o problema,
-não o repositório. Cada uma tem bateria própria — **540 casos** rodando o hook
-de verdade contra repos git montados na hora (soma medida em 2026-09-08:
-198 + 99 + 21 + 27 + 117 + 78).
+não o repositório. Cada uma tem bateria própria — **565 casos** rodando o hook
+de verdade contra repos git montados na hora (soma medida em 2026-09-12:
+198 + 99 + 21 + 27 + 117 + 78 + 25 — re-verificar: a última linha da bateria `hooks/testa-<hook>.sh` de cada linha da tabela).
 
 → O incidente de origem de cada trava, as saídas de emergência e a tabela de
 scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 
 | Script | Validação |
 |---|---|
-| `scripts/conferir-fluxo.cjs` | Trava de fechamento dos estágios `design`, `plano` e `revisar`. Subcomandos: `design --slug <slug>` valida forma do documento; `cobertura --slug <slug>` prova que toda decisão D<n> do design tem tarefa e toda tarefa cita decisão real, e que toda tarefa declara `mutacao:` (arquivo, de, para, bateria ou n/a com motivo); `creep --slug <slug> --base <ref> --head <ref>` deteta arquivos no diff sem tarefa correspondente; `mutacoes --slug <slug>` roda `conferir-mutacao.cjs` para cada tarefa com mutação e valida que a bateria sabe falhar quando a mutação é invertida (exit 0 se nenhum mutante sobreviveu, ≠ 0 se algum ficou verde). |
+| `scripts/estado.cjs iniciar` | Recusa (exit 2) abrir fluxo no **checkout principal fora da branch padrão** — a pasta do repositório fica na `main`, trabalho nasce em worktree (regra 11, Issue #195). A mensagem traz a receita (`git worktree add …`, `git checkout main`); `exigir` no mesmo estado só avisa. Clone dedicado a uma frente declara `"principal-livre": true` em `.rainforest/config.json`; em CI (`CI`/`GITHUB_ACTIONS`) não vale |
 | `scripts/recibo.cjs` | Congela identidade do entregável com sha256 + bytes; chamado pelo `fechar` quando plano declara `entregaveis` (opt-in, sem manifesto sai exit 0). Obriga `nao_provado` listado — recibo que alega provar tudo é suspeito. Re-executa portões com `--reverificar` se `docs/rainforest/portoes/<slug>.md` existe. Grava atomicamente em `.rainforest/colheita/<slug>-recibo.json` (fora do git). `mostrar <slug>` imprime; `conferir <slug>` recalcula hash e compara. |
-| `scripts/testa-sandbox-com-trap.sh` | Guarda estática: reprova `testa-*.sh` que cria sandbox com `mktemp -d` sem rede de segurança no `EXIT` — mais de um `mktemp -d` exige o idioma `SANDBOXES`/`novo_sandbox`/`cleanup`, um único exige ao menos um `trap ... EXIT`. Existe porque bateria que morre no meio (assert que estoura, Ctrl+C) sem essa rede deixa a caixa órfã em `C:\tmp` — 40 diretórios órfãos varridos numa limpeza só. Roda sem argumento sobre o repositório de verdade; `--autoteste` prova a própria guarda contra fixtures sintéticos. |
+| `scripts/conferir-duplicacao.cjs` | Dois arquivos byte a byte iguais fora de `fixtures/`, `node_modules/`, `.git/` e `.claude/worktrees/` → **exit 2** com os dois caminhos na mesma linha; `--funcoes` inventaria nomes repetidos entre `scripts/*.cjs` (exit 0, é inventário). Chamado pelo `conferir-publicacao.cjs --commit` e pelo `/saude` |
+| `scripts/conferir-publicacao.cjs --commit <rev>` ou `a..b` | Varre o conteúdo **commitado**, não o disco: dado sensível que já saiu do arquivo mas ficou no histórico é achado; disco ≠ commit vira `diverge-do-commit`. Exit 2 achado, **69** quando o ambiente impede |
+| `scripts/estado.cjs marcar --json {"carimbos":…}` | Grava por tarefa o hash de base em que ela foi aceita (`iteracao` cresce, nada se apaga); `proximo` e `ler` avisam quando esse hash não é ancestral do HEAD |
+| `scripts/testa-teto-skills.sh` | Nenhum `SKILL.md` acima de 500 linhas ou 16.384 B — a falha diz o que mover para `references/` |
+| `scripts/testa-mapa-regras.sh` | Cada uma das 17 regras tem linha em `## Regra → trava` de `docs/travas-mecanicas.md` (hook/script existente **ou** `disciplina`), e todo arquivo citado existe |
+| `--confirmo` em `limpar-branches.cjs`, `limpar-worktrees.cjs --remover-sujo` e `fechar-issue.cjs` | Apagar branch, remover worktree sujo e fechar Issue exigem a frase literal que o próprio script imprime (`CONFIRMO apagar branches a,b`), digitada por você e repassada verbatim — frase de outro alvo sai 2 e nada acontece |
+| exit **69** `nao-verificavel:` em `conferir-entrega`, `conferir-mutacao`, `conferir-fluxo`, `conferir-ponte` | Ambiente impediu a checagem (worktree sumiu, `git` fora do PATH, bateria que não executa): nem aprovação, nem reprovação, nem `flaky` — anuncia em uma linha e não redespacha (regra 14) |
 
 ## Comandos, skills e agentes
 
@@ -240,7 +249,7 @@ incidente datado, em [`references/regra-<n>.md`](skills/rainforest-mind/referenc
 | 8 | Guarda-corpo de jornada | Jornada **medida**, não estimada; um aviso, uma vez |
 | 9 | Freio de Pareto | Polimento do que já está pronto → "alguém que recebe fica prejudicado?" |
 | 10 | Agentes baratos, e só os admitidos | Rodar exige estar declarado no manifesto, com o estágio ativo |
-| 11 | Worktree de subagente | Isolamento sempre, hash de base conferido na fonte |
+| 11 | Worktree: principal na `main` | Checkout principal fica na branch padrão, todo trabalho nasce em worktree; hash de base conferido na fonte |
 | 12 | Entrega se valida na saída real | Critério falsificável no briefing; suíte verde não é evidência |
 | 13 | Correção vira observação | Você corrigir a saída já é o sinal: registra silenciosamente |
 | 14 | Regra bloqueada se anuncia | Ambiente impediu → uma linha, nunca silêncio |

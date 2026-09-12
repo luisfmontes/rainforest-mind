@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /**
  * PreToolUse — barra escrita cujo destino está dentro de OUTRO repositório git.
+ * Protege contra: escrita em repositório git diferente do cwd da sessão
+ * Não protege contra: escrita no mesmo repositório
  *
  * Incidente de 2026-08-23: uma sessão cujo cwd era `C:/Projetos/whatsapp-mcp`
  * achou dois defeitos do plugin `rainforest-mind` e foi consertá-los ali mesmo,

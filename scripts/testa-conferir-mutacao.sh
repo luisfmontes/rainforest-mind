@@ -321,6 +321,7 @@ exige 4 "padrão que casa 2 vezes recusa com exit=4" \
 tem "diz que casa multiplas vezes" "casa 2"
 tem "recusa" "RECUSADO"
 nao_tem "nao diz VERMELHA" "VERMELHA"
+nao_tem "padrao ambiguo nao vira nao-verificavel (D5: e' conteudo, nao ambiente)" "nao-verificavel"
 
 if ! cmp -s "$CAIXA/multi.cjs" "$S/multi.pristino"; then
   falhou=$((falhou+1)); printf '  FALHA: multi.cjs nao foi restaurado apos recusa\n'
@@ -328,6 +329,30 @@ if ! cmp -s "$CAIXA/multi.cjs" "$S/multi.pristino"; then
 else
   ok=$((ok+1)); printf '  ok    multi.cjs restaurado apos recusa\n'
 fi
+
+echo
+echo "== 8b. D5 (2026-09-12): ambiente, nao conteudo =="
+# Caso 14 — a bateria nao pode nem SER EXECUTADA. Uma string de comando que so
+# nao existe (ex.: "xyz-nao-existe") sai por STATUS (127 ou 1, conforme o
+# shell), nunca por `spawnSync(...).error` — quem roda o comando errado e' o
+# shell, e o shell sobe normalmente. O UNICO jeito real de forcar `.error` e'
+# quebrar o proprio shell que o spawnSync tenta lancar (aqui, ComSpec no
+# Windows) — medido com `node -e` antes de escrever este caso: uma string
+# inexistente vira "baseline NAO-VERDE" (4, conteudo), nao 69.
+CHK_SEM_SHELL() { COMSPEC="$S/cmd-falso-que-nao-existe.exe" CHK "$@"; }
+exige 69 "ComSpec quebrado -> spawnSync nem lanca o shell (ambiente, nao 4)" \
+  CHK_SEM_SHELL --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' \
+    --bateria 'echo hi'
+tem "a PRIMEIRA linha do stderr e' nao-verificavel" "nao-verificavel: bateria nao executa"
+
+# Caso 15 — o contraste: a bateria RODA (o shell foi lancado) e so nao termina
+# a tempo. Isto continua 4, nao 69 — "rodou e nao mediu" e' diferente de "nao
+# rodou". Usa o fixture `bateria-lenta.sh` (sleep 20), com teto baixo.
+exige 4 "baseline pendura (estoura o teto) -> continua exit=4, nao 69" \
+  CHK --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' \
+      --bateria 'bash bateria-lenta.sh' --timeout 300
+tem "diz que o baseline estourou o teto" "estourou o teto"
+nao_tem "e nao fala em nao-verificavel" "nao-verificavel"
 
 echo
 echo "== 9. erro de uso: nunca silencioso, nunca 0 =="

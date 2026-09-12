@@ -867,6 +867,238 @@ function conferirFechamento(estagio, slug, extra, estado) {
   return recusas.length > 0 ? recusas.join('\n') : null;
 }
 
+// ------------------------------------------------- trava checkout principal
+//
+// Antes de gravar o estado pela primeira vez, verifique se está em um
+// repositório git no checkout principal (não é worktree linkado) fora da
+// branch padrão. Se sim e principal-livre não está ligado, recuse.
+//
+// Fora de repositório git ou em worktree linkado, nunca recusa.
+// A chave `principal-livre` desliga a recusa para clones dedicados a uma frente.
+
+/**
+ * Detecta checkout principal fora da branch padrão.
+ * @param {string} raiz - diretório do projeto
+ * @returns {object|null} {branch, padrao} se deve recusar, ou null se passou
+ */
+function checkoutPrincipalForaDaPadrao(raiz) {
+  // CI é o "clone dedicado a uma frente" por definição: o actions/checkout
+  // deixa o repositório num checkout principal com HEAD solto no merge-ref do
+  // PR, e toda bateria que roda `iniciar` ali seria recusada. Medido em
+  // 2026-09-08 (PR #228): três baterias vermelhas só no runner, verdes na
+  // máquina, porque lá o cwd era um worktree linkado. A exceção é por
+  // variável de ambiente padrão dos runners, não por config no repo — config
+  // no repo desligaria a trava para quem trabalha nele.
+  if (process.env.CI || process.env.GITHUB_ACTIONS) return null;
+  // Toda exceção vira null (nunca derrubar estado.cjs por erro próprio)
+  try {
+    // Verificar se é repositório git
+    const gitDir = spawnSync('git', ['rev-parse', '--git-dir'], {
+      cwd: raiz,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+    if (gitDir.status !== 0) return null; // não é repositório git
+
+    // Detectar worktree linkado: comparar git-dir com git-common-dir (absoluto)
+    const gitCommonDir = spawnSync('git', ['rev-parse', '--git-common-dir'], {
+      cwd: raiz,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+    if (gitCommonDir.status !== 0) return null; // erro
+
+    let realGitDir, realCommonDir;
+    try {
+      realGitDir = fs.realpathSync(path.resolve(raiz, gitDir.stdout.trim()));
+      realCommonDir = fs.realpathSync(path.resolve(raiz, gitCommonDir.stdout.trim()));
+    } catch (_) {
+      return null; // erro ao resolver caminhos
+    }
+
+    // Se são diferentes, é worktree linkado
+    if (realGitDir !== realCommonDir) return null;
+
+    // Detectar branch padrão: symbolic-ref, ou main/master
+    let padrao = 'main';
+    const symRef = spawnSync('git', ['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'], {
+      cwd: raiz,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+    if (symRef.status === 0) {
+      // Remover prefixo origin/
+      padrao = symRef.stdout.trim().replace(/^origin\//, '');
+    } else {
+      // Fallback: main se existir, senão master
+      const mainTest = spawnSync('git', ['show-ref', '--verify', 'refs/heads/main'], {
+        cwd: raiz,
+        stdio: 'pipe',
+      });
+      if (mainTest.status !== 0) {
+        padrao = 'master';
+      }
+    }
+
+    // Obter branch atual
+    const branch = spawnSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
+      cwd: raiz,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+    if (branch.status !== 0) return null; // erro
+
+    const branchAtual = branch.stdout.trim();
+
+    // Se branch atual === padrão, não precisa recusar
+    if (branchAtual === padrao) return null;
+
+    // Chave `principal-livre`: ligada, DESLIGA a trava — sentido invertido, como
+    // `branch-forcar`. Por isso NÃO usa `ligado()`: ele devolve `true` em erro e
+    // em chave desconhecida (config.cjs de outra versão, por exemplo), e aqui
+    // `true` é a trava caindo em silêncio. Lê o valor resolvido e trata qualquer
+    // falha como `false` — mesmo desenho que `limpar-branches.cjs`.
+    try {
+      const config = require(path.join(__dirname, '..', 'hooks', 'lib', 'config.cjs'));
+      const valores = config.resolverConfig({ projeto: raiz }).valores || {};
+      if (valores['principal-livre'] === true) {
+        return null;
+      }
+    } catch (_) {
+      // config ilegível: a trava fica ativa
+    }
+
+    // Deve recusar: branch está diferente da padrão e principal-livre não está ligado
+    return { branch: branchAtual, padrao };
+  } catch (_) {
+    return null;
+  }
+}
+
+// -------------------------------------------- carimbo de veredito por tarefa (D8)
+//
+// O `plan_state.mjs` de um plugin de terceiro carimba cada veredito por
+// sessão/tarefa/iteração, e o `resume` dele re-marca o que não bate mais. O
+// nosso `revisar` já trava HEAD/snapshot contra mutação (ver acima), mas uma
+// TAREFA aceita dentro de `executar` não sabia em que base foi aceita — se o
+// HEAD do worktree seguir andando (rebase, merge, outro commit), a retomada
+// não tinha como saber que aquele veredito foi dado contra árvore que já não
+// existe mais. `D9 (descartada)`: nunca vimos essa retomada quebrar de fato,
+// então isto AVISA, não trava — trava sem incidente é trava que se contorna.
+//
+// `carimbos` é PERSISTENTE, não `CAMPO_EFEMERO`: cada `marcar --estagio
+// executar` que traz `carimbos` no `--json` ANEXA ao histórico, nunca
+// substitui — por isso o merge genérico mais abaixo (`{...baseAnterior,
+// ...extra}`) não pode receber o array cru do usuário: `processarCarimbos`
+// reescreve `extra.carimbos` como "o que já existia + o que chegou agora",
+// para que aquele merge grave a lista completa.
+
+const SESSAO_DESCONHECIDA = 'desconhecida';
+
+/** ISO UTC — ao contrário de `hoje()` (local, para leitura humana), o carimbo
+ *  é para comparação de máquina entre sessões e fusos. */
+function agoraIso() {
+  return new Date().toISOString();
+}
+
+/**
+ * Valida e funde `extra.carimbos` (se vier no `--json`) com os carimbos já
+ * gravados no bloco anterior do estágio. Efeito colateral: quando passa e há
+ * `extra.carimbos`, SUBSTITUI `extra.carimbos` pela lista completa (antiga +
+ * nova), já com `iteracao`, `sessao` e `ts` calculados.
+ *
+ * @returns {string|null} mensagem de recusa, ou null se passou/não se aplica
+ */
+function processarCarimbos(estagio, blocoAnterior, extra) {
+  if (estagio !== 'executar') return null;
+  if (!Object.prototype.hasOwnProperty.call(extra, 'carimbos')) return null;
+
+  const forma = 'Ex.: --json \'{"carimbos":[{"tarefa":1,"hash_base":"<sha>"}]}\'';
+  const entrada = extra.carimbos;
+  if (!Array.isArray(entrada)) {
+    return `RECUSADO: 'carimbos' precisa ser uma lista.\n${forma}`;
+  }
+
+  const existentes = Array.isArray(blocoAnterior && blocoAnterior.carimbos)
+    ? blocoAnterior.carimbos
+    : [];
+  const acumulado = existentes.slice();
+  const sessao = process.env.CLAUDE_SESSION_ID || SESSAO_DESCONHECIDA;
+  const ts = agoraIso();
+
+  for (let i = 0; i < entrada.length; i += 1) {
+    const item = entrada[i];
+    const onde = `carimbos[${i}]`;
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      return `RECUSADO: ${onde} nao e um objeto.\n${forma}`;
+    }
+    const tarefa = item.tarefa;
+    if (typeof tarefa !== 'number' || !Number.isFinite(tarefa)) {
+      return `RECUSADO: ${onde} nao tem 'tarefa' numerica.\n${forma}`;
+    }
+    const hash = item.hash_base;
+    if (typeof hash !== 'string' || !/^[0-9a-f]{7,}$/i.test(hash)) {
+      return `RECUSADO: ${onde} (tarefa ${tarefa}) precisa de 'hash_base' com 7 ou mais caracteres hexadecimais.\n${forma}`;
+    }
+    const iteracao = 1 + acumulado.filter((c) => c && c.tarefa === tarefa).length;
+    acumulado.push({ tarefa, hash_base: hash, iteracao, sessao, ts });
+  }
+
+  extra.carimbos = acumulado;
+  return null;
+}
+
+/** Dos carimbos de `executar`, o mais recente (maior `iteracao`) de cada tarefa —
+ *  "não repetir iterações velhas" do critério 2 do plano. */
+function carimbosMaisRecentes(carimbos) {
+  const porTarefa = new Map();
+  for (const c of carimbos) {
+    if (!c || typeof c !== 'object') continue;
+    const atual = porTarefa.get(c.tarefa);
+    if (!atual || (c.iteracao || 0) >= (atual.iteracao || 0)) {
+      porTarefa.set(c.tarefa, c);
+    }
+  }
+  return Array.from(porTarefa.values());
+}
+
+/** `true`/`false` quando `git merge-base --is-ancestor` responde 0 ou 1; `null`
+ *  quando o git falhou, o hash é inválido, ou o cwd não é um repositório —
+ *  nesses casos não há como avisar, e o design é explícito: não avisar. */
+function ehAncestralDoHead(hash) {
+  let r;
+  try {
+    r = spawnSync('git', ['merge-base', '--is-ancestor', hash, 'HEAD'], {
+      cwd: process.cwd(),
+      stdio: 'ignore',
+    });
+  } catch (_) {
+    return null;
+  }
+  if (!r || r.error) return null;
+  if (r.status === 0) return true;
+  if (r.status === 1) return false;
+  return null; // fatal (nao e repo, hash desconhecido, etc.) — nao avisar
+}
+
+/** Roda no `proximo` e no `ler`: um aviso em stderr por tarefa cujo carimbo
+ *  mais recente não é ancestral do HEAD do cwd. NUNCA muda o exit code. */
+function avisarCarimbosDivergentes(estado) {
+  const carimbos = estado && estado.executar && estado.executar.carimbos;
+  if (!Array.isArray(carimbos) || carimbos.length === 0) return;
+
+  const recentes = carimbosMaisRecentes(carimbos)
+    .slice()
+    .sort((a, b) => (a.tarefa || 0) - (b.tarefa || 0));
+  for (const c of recentes) {
+    if (!c.hash_base) continue;
+    if (ehAncestralDoHead(c.hash_base) === false) {
+      const sha7 = String(c.hash_base).substring(0, 7);
+      console.error(`aviso: tarefa ${c.tarefa} aceita na base ${sha7}, que nao esta neste HEAD — re-conferir antes de retomar`);
+    }
+  }
+}
+
 // ---------------------------------------------------------------- CLI
 
 // Flags aceitas por subcomando. Qualquer flag fora desta lista e recusada ANTES
@@ -1027,6 +1259,20 @@ function main() {
       console.error(`erro: ${slug} ja existe — use 'ler' ou 'marcar'`);
       process.exit(1);
     }
+    // Verificar se checkout principal está fora da branch padrão
+    // Avalia o cwd REAL, nunca RAIZ: com CLAUDE_PROJECT_DIR setado, RAIZ e o
+    // checkout principal mesmo quando a sessao esta num worktree linkado, e a
+    // trava recusaria a sessao certa por estado de branch que ela nem enxerga
+    // (revisao de 2026-09-08 reproduziu o falso positivo).
+    const checkout_problema = checkoutPrincipalForaDaPadrao(process.cwd());
+    if (checkout_problema) {
+      const { branch, padrao } = checkout_problema;
+      console.error(`RECUSADO: o checkout principal está em '${branch}', não em '${padrao}'.`);
+      console.error(`git worktree add .claude/worktrees/${slug} ${branch}`);
+      console.error(`git checkout ${padrao}`);
+      console.error(`Clone dedicado a uma frente? Desligue a trava em .rainforest/config.json: "principal-livre": true`);
+      process.exit(2);
+    }
     const e = novo(slug, arg('titulo', false));
     gravar(slug, e);
     console.log(`iniciado: ${caminho(slug)}`);
@@ -1042,9 +1288,13 @@ function main() {
     process.exit(1);
   }
 
-  if (cmd === 'ler') return console.log(JSON.stringify(estado, null, 2));
+  if (cmd === 'ler') {
+    avisarCarimbosDivergentes(estado);
+    return console.log(JSON.stringify(estado, null, 2));
+  }
 
   if (cmd === 'proximo') {
+    avisarCarimbosDivergentes(estado);
     const p = proximo(estado);
     if (!p) return console.log('completo');
     // Imprimir o bloco do reprovado pendente, se houver
@@ -1057,6 +1307,17 @@ function main() {
   }
 
   if (cmd === 'exigir') {
+    // Avisar se checkout principal está fora da branch padrão (não recusa, só avisa)
+    // Avalia o cwd REAL, nunca RAIZ: com CLAUDE_PROJECT_DIR setado, RAIZ e o
+    // checkout principal mesmo quando a sessao esta num worktree linkado, e a
+    // trava recusaria a sessao certa por estado de branch que ela nem enxerga
+    // (revisao de 2026-09-08 reproduziu o falso positivo).
+    const checkout_problema = checkoutPrincipalForaDaPadrao(process.cwd());
+    if (checkout_problema) {
+      const { branch, padrao } = checkout_problema;
+      console.error(`aviso: checkout principal em '${branch}', não em '${padrao}'.`);
+    }
+
     const estagio = arg('estagio');
     if (!(estagio in PRE_REQUISITOS)) {
       console.error(`erro: estagio desconhecido '${estagio}'`);
@@ -1176,6 +1437,15 @@ function main() {
       if (Object.prototype.hasOwnProperty.call(extra, 'reaberto_por')) {
         console.error("erro: 'reaberto_por' e preenchido pelo proprio estado.cjs ao reprovar — nao entra pelo --json (Issue #148)");
         process.exit(1);
+      }
+    }
+    // Carimbos (D8): valida e funde ANTES de qualquer outra checagem, porque
+    // funciona nos tres status (parcial, ok, reprovado) — nao so no fechamento.
+    {
+      const recusa_carimbos = processarCarimbos(estagio, estado[estagio], extra);
+      if (recusa_carimbos) {
+        console.error(recusa_carimbos);
+        process.exit(2);
       }
     }
     // Fechar um estágio com pré-requisito aberto é o furo que o arquivo existe para
