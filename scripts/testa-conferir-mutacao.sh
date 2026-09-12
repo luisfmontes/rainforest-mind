@@ -548,15 +548,17 @@ else
 fi
 
 echo
-echo "== 14. queda desproporcional de asserções: baseline 34 ok, mutada 0 ok =="
+echo "== 14. bateria colapsou: baseline 34 ok, mutada 0 ok E 0 falhou (nada tentado) =="
 # Bateria que imprime placar e falha quando o comportamento inverte.
 # Baseline: ok=34 falhou=0 (exit=0)
-# Mutacao: ok=0 falhou=0 (exit=1) — queda de 34/34 = 100%, passa de 20%
+# Mutacao: ok=0 falhou=0 (exit=1) — nenhuma asserção foi sequer TENTADA, e e'
+# isso (nao a proporcao) que a guarda nova mede: ok=0 E falhou=0 e' a marca de
+# "o mecanismo morreu", diferente de ok=0 falhou=N (rodou tudo e falhou tudo).
 cat > "$CAIXA/bateria-com-placar.sh" <<'BAT'
 #!/bin/bash
 # Simula uma bateria que conta asserções e imprime o placar
 if grep -q 'COMPORTAMENTO-MUTADO' fonte-com-placar.cjs; then
-  # Mutacao fez a bateria quebrar: zero asserções aprovadas
+  # Mutacao fez a bateria quebrar: nenhuma asserção sequer rodou
   echo "ok: 0   falhou: 0"
   exit 1
 fi
@@ -571,11 +573,11 @@ const comportamento = true;
 FONTE
 cp "$CAIXA/fonte-com-placar.cjs" "$S/fonte-com-placar.pristino"
 
-exige 6 "queda desproporcional derruba a bateria toda" \
+exige 6 "colapso (ok=0 e falhou=0) derruba a bateria toda" \
   CHK --arquivo fonte-com-placar.cjs --de "const comportamento = true;" \
       --para "const comportamento = true; // COMPORTAMENTO-MUTADO" \
       --bateria 'bash bateria-com-placar.sh'
-tem "informa a queda desproporcional" "queda desproporcional de asserções"
+tem "informa o colapso" "a bateria colapsou"
 tem "mostra placar do baseline" "ok=34"
 tem "mostra placar da pos-mutacao" "ok=0"
 
@@ -584,6 +586,79 @@ if ! cmp -s "$CAIXA/fonte-com-placar.cjs" "$S/fonte-com-placar.pristino"; then
   cp "$S/fonte-com-placar.pristino" "$CAIXA/fonte-com-placar.cjs"
 else
   ok=$((ok+1)); printf '  ok    fonte-com-placar.cjs restaurado\n'
+fi
+
+echo
+echo "== 14b. T12 (2026-09-11): bateria pequena e focada aprova, nao colapsa =="
+# O caso que motivou a reescrita: 13 assercoes (fiel a
+# hooks/testa-principal-atrasado.sh), a mutacao derruba EXATAMENTE as 3 que
+# medem o comportamento mutado, e as outras 10 sobrevivem verdes. 3/13 = 23%,
+# a proporcao fixa (>20%) recusava isto com exit 6; a guarda nova aprova,
+# porque sobrou asserção viva (falhou=3, nao ok=0-e-falhou=0).
+cat > "$CAIXA/bateria-t12.sh" <<'BAT'
+#!/bin/bash
+if grep -q 'MUTACAO-T12' fonte-t12.cjs; then
+  # 3 das 13 assercoes mediam o comportamento mutado e falham; 10 sobrevivem.
+  echo "ok: 10   falhou: 3"
+  exit 1
+fi
+echo "ok: 13   falhou: 0"
+exit 0
+BAT
+
+cat > "$CAIXA/fonte-t12.cjs" <<'FONTE'
+#!/usr/bin/env node
+const atras = 1;
+FONTE
+cp "$CAIXA/fonte-t12.cjs" "$S/fonte-t12.pristino"
+
+exige 0 "3 de 13 derrubadas (23%) aprova como VERMELHA, nao colapsa" \
+  CHK --arquivo fonte-t12.cjs --de "const atras = 1;" --para "const atras = 1; // MUTACAO-T12" \
+      --bateria 'bash bateria-t12.sh'
+tem "diz VERMELHA" "VERMELHA"
+nao_tem "nao acusa colapso" "a bateria colapsou"
+
+if ! cmp -s "$CAIXA/fonte-t12.cjs" "$S/fonte-t12.pristino"; then
+  falhou=$((falhou+1)); printf '  FALHA: fonte-t12.cjs nao foi restaurado\n'
+  cp "$S/fonte-t12.pristino" "$CAIXA/fonte-t12.cjs"
+else
+  ok=$((ok+1)); printf '  ok    fonte-t12.cjs restaurado\n'
+fi
+
+echo
+echo "== 14c. colapso via placar AUSENTE: a bateria para de se reportar =="
+# A outra forma do mesmo colapso: a bateria sabe imprimir placar (imprimiu no
+# baseline) e para de imprimir na pos-mutacao — sinal de ReferenceError /
+# excecao nao tratada no MEIO da bateria, antes da linha final de placar.
+# extrairPlacar devolve null para o lado pos, e isso tem que valer como
+# colapso tanto quanto ok=0-e-falhou=0.
+cat > "$CAIXA/bateria-crash-sem-placar.sh" <<'BAT'
+#!/bin/bash
+if grep -q 'CRASH-SEM-PLACAR' fonte-crash.cjs; then
+  echo "node:internal/modules/cjs/loader: ReferenceError: x is not defined"
+  exit 1
+fi
+echo "ok: 5   falhou: 0"
+exit 0
+BAT
+
+cat > "$CAIXA/fonte-crash.cjs" <<'FONTE'
+#!/usr/bin/env node
+const w = 4;
+FONTE
+cp "$CAIXA/fonte-crash.cjs" "$S/fonte-crash.pristino"
+
+exige 6 "crash sem placar nenhum tambem e colapso" \
+  CHK --arquivo fonte-crash.cjs --de "const w = 4;" --para "const w = 4; // CRASH-SEM-PLACAR" \
+      --bateria 'bash bateria-crash-sem-placar.sh'
+tem "informa o colapso" "a bateria colapsou"
+tem "diz que o placar sumiu" "placar ausente"
+
+if ! cmp -s "$CAIXA/fonte-crash.cjs" "$S/fonte-crash.pristino"; then
+  falhou=$((falhou+1)); printf '  FALHA: fonte-crash.cjs nao foi restaurado\n'
+  cp "$S/fonte-crash.pristino" "$CAIXA/fonte-crash.cjs"
+else
+  ok=$((ok+1)); printf '  ok    fonte-crash.cjs restaurado\n'
 fi
 
 echo
@@ -610,7 +685,7 @@ exige 0 "queda pequena aprova normalmente (VERMELHA)" \
   CHK --arquivo fonte-pequena.cjs --de "const x = 1;" --para "const x = 1; // PEQUENA-MUTACAO" \
       --bateria 'bash bateria-queda-pequena.sh'
 tem "diz VERMELHA" "VERMELHA"
-nao_tem "nao reclama de queda desproporcional" "queda desproporcional"
+nao_tem "nao acusa colapso" "a bateria colapsou"
 
 if ! cmp -s "$CAIXA/fonte-pequena.cjs" "$S/fonte-pequena.pristino"; then
   falhou=$((falhou+1)); printf '  FALHA: fonte-pequena.cjs nao foi restaurado\n'
@@ -641,7 +716,7 @@ exige 0 "sem placar reconhecivel aprova normalmente" \
   CHK --arquivo fonte-sem-placar.cjs --de "const y = 2;" --para "const y = 2; // SEM-PLACAR-MARCA" \
       --bateria 'bash bateria-sem-placar.sh'
 tem "diz VERMELHA" "VERMELHA"
-nao_tem "nao reclama de queda (sem placar para medir)" "queda desproporcional"
+nao_tem "nao acusa colapso (sem placar para medir)" "a bateria colapsou"
 
 if ! cmp -s "$CAIXA/fonte-sem-placar.cjs" "$S/fonte-sem-placar.pristino"; then
   falhou=$((falhou+1)); printf '  FALHA: fonte-sem-placar.cjs nao foi restaurado\n'
@@ -674,11 +749,11 @@ const z = 3;
 FONTE
 cp "$CAIXA/fonte-aninhada.cjs" "$S/fonte-aninhada.pristino"
 
-exige 0 "placar aninhado nao dispara queda desproporcional" \
+exige 0 "placar aninhado nao dispara colapso" \
   CHK --arquivo fonte-aninhada.cjs --de "const z = 3;" --para "const z = 3; // ANINHADA-MUTACAO" \
       --bateria 'bash bateria-aninhada.sh'
 tem "diz VERMELHA" "VERMELHA"
-nao_tem "nao reclama de queda (leu a ultima linha)" "queda desproporcional"
+nao_tem "nao acusa colapso (leu a ultima linha)" "a bateria colapsou"
 
 if ! cmp -s "$CAIXA/fonte-aninhada.cjs" "$S/fonte-aninhada.pristino"; then
   falhou=$((falhou+1)); printf '  FALHA: fonte-aninhada.cjs nao foi restaurado\n'

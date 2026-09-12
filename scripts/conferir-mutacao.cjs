@@ -50,6 +50,10 @@
  *                                          que a bateria morreu antes de medir.
  *                                          Confirme rodando-a à mão: se sair 0,
  *                                          ignorar; se >= 1 s, aumentar piso absoluto
+ *   6  bateria colapsou                  — zero asserção sobreviveu à mutação (ou
+ *                                          ela parou de imprimir o próprio placar):
+ *                                          o mecanismo de teste morreu antes de
+ *                                          exercitar qualquer comportamento
  *   1  erro de uso, ou bateria sem veredito (estouro de tempo / sinal)
  *
  * O 2, 3, 4 e 5 são códigos DIFERENTES de propósito: quem chama este script de
@@ -75,8 +79,8 @@ const USO = `uso: node scripts/conferir-mutacao.cjs --arquivo <caminho> --de <tr
 
 exit: 0 mutação casou e bateria VERMELHA | 2 bateria VERDE | 3 MUTACAO NAO APLICADA |
      4 não dá para medir (baseline não-verde, ou --de ambíguo) | 5 corte de shell
-     (pós-mutação < 10% do baseline ou < 1 s) | 6 queda desproporcional de asserções
-     (ok drop > 20% de base.ok) | 1 erro de uso
+     (pós-mutação < 10% do baseline ou < 1 s) | 6 bateria colapsou (zero asserção
+     sobreviveu à mutação, ou ela parou de imprimir o próprio placar) | 1 erro de uso
 
 Git Bash (MSYS) come uma barra de argumento que COMEÇA com \`//\`: \`// coment\`
 chega aqui como \`/ coment\` e não casa. Medido em 2026-08-21 ao mutar um
@@ -234,15 +238,54 @@ function extrairPlacar(saida) {
   return null;
 }
 
+// A GUARDA DO COLAPSO mede algo diferente de "a bateria caiu X%": ela mede se a
+// mutação IMPEDIU a bateria de medir qualquer coisa, em vez de medir e
+// discordar. As duas caras se PARECEM (posExit != 0, placar caiu) mas só uma
+// delas prova que o teste pegou o defeito — a outra prova que o MECANISMO
+// quebrou antes de chegar perto do comportamento.
+//
+// ATÉ 2026-09-11 a medida era proporção fixa: recusar quando `base.ok -
+// pos.ok` passasse de 20% de `base.ok`. Isso pega bem o incidente que fundou a
+// guarda (bateria inteira derrubada por ReferenceError, ver o topo do
+// arquivo), mas pune bateria PEQUENA e FOCADA. Medido na tarefa 12 do plano
+// `zerar-issues`, 2026-09-11: `hooks/testa-principal-atrasado.sh` tem 13
+// asserções; a mutação declarada (`if (atras > 0)` → `if (atras > 999999)` em
+// `hooks/lib/principal-atrasado.cjs`) derruba exatamente as 3 que medem o
+// comportamento mutado, e as outras 10 continuam VERDES — a prova de que o
+// mecanismo de teste NÃO quebrou. 3/13 = 23%, e a proporção fixa recusava
+// (exit 6) o caso que devia aprovar. Numa bateria de 13 asserções qualquer
+// mutação eficaz derruba mais de 20% do total: o caminho mais curto para o
+// exit 0 vira inflar a bateria com asserções irrelevantes até a proporção
+// caber — uma trava que premia teste inflado trabalha contra o que ela existe
+// para defender.
+//
+// O critério novo mede o nome da guarda ao pé da letra: a bateria virou TODA
+// vermelha (nada sobrou), ou ela só ficou parcialmente vermelha (o normal)?
+//
+//   - placarPos com ok=0 E falhou=0: nenhuma asserção foi sequer TENTADA — é
+//     o que o fixture do caso 14 simula (`echo "ok: 0   falhou: 0"`). Isso é
+//     diferente de ok=0 falhou=N (N asserções rodaram e TODAS legitimamente
+//     falharam): uma bateria de UMA asserção só, cuja única asserção mede
+//     exatamente o comportamento mutado, tem essa cara — e precisa APROVAR,
+//     não colapsar.
+//   - placarPos ausente (a bateria parou de imprimir o próprio placar) com
+//     placarBase presente: mesmo sinal por outra via. A bateria sabe
+//     reportar (imprimiu no baseline) e parou de reportar — só acontece
+//     quando ela morre no meio (ReferenceError, exceção não tratada) antes do
+//     fim. É o "ReferenceError que impede a bateria de subir" que a guarda
+//     original também precisa continuar pegando.
+//   - Sem placar dos DOIS lados, ou baseline sem nenhuma asserção: a bateria
+//     não reporta nesse formato, ou não havia nada para perder — devolve
+//     false, como sempre devolveu.
 /**
- * Verifica se a queda de asserções aprovadas é desproporcional.
- * Retorna true quando a queda de `ok` (base.ok - pos.ok) passa de 20% de `base.ok`.
+ * A bateria pós-mutação COLAPSOU — parou de medir, em vez de medir e discordar?
  */
-function quedaDesproporcional(placarBase, placarPos) {
-  if (!placarBase || !placarPos) return false;
-  const quedaAbsoluta = placarBase.ok - placarPos.ok;
-  const percentualQueda = (quedaAbsoluta / placarBase.ok) * 100;
-  return percentualQueda > 20;
+function bateriaColapsou(placarBase, placarPos) {
+  if (!placarBase) return false;
+  const baseTotal = placarBase.ok + placarBase.falhou;
+  if (baseTotal === 0) return false; // nao havia asserção nenhuma para perder
+  if (!placarPos) return true; // parou de imprimir o próprio placar: sinal de crash
+  return placarPos.ok === 0 && placarPos.falhou === 0;
 }
 
 function main() {
@@ -415,20 +458,22 @@ function main() {
     process.exit(2);
   }
 
-  // Verificação de queda desproporcional de asserções: quando a mutação derruba
-  // a bateria inteira (exit !== 0, 0 asserções aprovadas) sem dar chance de medir
-  // o comportamento. Se base tem 34 aprovadas e mutante sai com 0, a queda é 100%
-  // — passa de 20% e indica que a mutação quebrou o mecanismo de teste antes de
-  // exercitar o comportamento.
+  // Verificação de colapso: a mutação pode ter impedido a bateria de medir
+  // qualquer coisa, em vez de medir e discordar (ver o comentário acima de
+  // `bateriaColapsou` — o critério NÃO é proporção, é "sobrou alguma asserção
+  // viva?").
   const placarBase = extrairPlacar(`${baselineRes.r.stdout || ''}${baselineRes.r.stderr || ''}`);
   const placarPos = extrairPlacar(`${posRes.r.stdout || ''}${posRes.r.stderr || ''}`);
-  if (quedaDesproporcional(placarBase, placarPos)) {
-    console.error('RECUSADO: queda desproporcional de asserções.');
+  if (bateriaColapsou(placarBase, placarPos)) {
+    console.error('RECUSADO: a bateria colapsou — não mediu nada.');
     console.error(`  Baseline: ok=${placarBase.ok} falhou=${placarBase.falhou}`);
-    console.error(`  Pós-mutação: ok=${placarPos.ok} falhou=${placarPos.falhou}`);
-    console.error('  A mutação derrubou a bateria inteira — a queda passou 20% de base.ok.');
-    console.error('  Isto indica que a mutação quebrou o mecanismo de teste antes de');
-    console.error('  exercitar o comportamento. Refine a mutação ou a bateria.');
+    console.error(placarPos
+      ? `  Pós-mutação: ok=${placarPos.ok} falhou=${placarPos.falhou}`
+      : '  Pós-mutação: placar ausente — a bateria parou de se reportar.');
+    console.error('  Isto não é "a bateria discordou" (isso seria vermelha normal, exit 0)');
+    console.error('  — é o mecanismo de teste morrendo antes de exercitar qualquer');
+    console.error('  comportamento (ReferenceError, exceção não tratada). Refine a mutação');
+    console.error('  ou a bateria.');
     process.exit(6);
   }
 
@@ -462,4 +507,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { suspeitaDeCorte, PISO_ABSOLUTO_MS, RAZAO_DE_CORTE, extrairPlacar, quedaDesproporcional };
+module.exports = { suspeitaDeCorte, PISO_ABSOLUTO_MS, RAZAO_DE_CORTE, extrairPlacar, bateriaColapsou };
