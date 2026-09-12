@@ -26,31 +26,82 @@
 set -u
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# sem_comentario <arquivo> — imprime as linhas do arquivo sem comentários
+# (linhas que começam com espaço/tab/nada seguido de #)
+sem_comentario() {
+  grep -v '^[[:space:]]*#' "$1"
+}
+
 # checar_arquivo <arquivo> — imprime o motivo e devolve 1 se o arquivo
 # reprova; nao imprime nada e devolve 0 se esta ok (inclusive quando nao usa
 # `mktemp -d` nenhum).
 checar_arquivo() {
   local f="$1"
   local n_mktemp
+  local n_mktemp_em_funcoes
+
   # Linha de comentario pura (so espaco + #) nao conta: este proprio
   # repositorio documenta o idioma citando "mktemp -d" no comentario de
   # varias baterias, e contar o texto inflaria o numero real de chamadas.
-  n_mktemp=$(grep -v '^[[:space:]]*#' "$f" | grep -c 'mktemp -d')
+  n_mktemp=$(sem_comentario "$f" | grep -c 'mktemp -d')
   if [ "$n_mktemp" -eq 0 ]; then
     return 0
   fi
-  if [ "$n_mktemp" -gt 1 ] && ! grep -q 'SANDBOXES' "$f"; then
+
+  # Verificar mktemp -d dentro de funcoes: exige SANDBOXES+=
+  n_mktemp_em_funcoes=$(sem_comentario "$f" | awk '
+    /^[a-zA-Z_][a-zA-Z0-9_]*\s*\(\)/ { in_func=1; next }
+    in_func && /^}/ { in_func=0; next }
+    in_func && /mktemp -d/ { print "1"; exit }
+  ')
+
+  if [ "$n_mktemp" -gt 1 ] && ! sem_comentario "$f" | grep -q 'SANDBOXES'; then
     echo "  FALHA $f: $n_mktemp \`mktemp -d\` sem o idioma SANDBOXES"
     return 1
   fi
-  if [ "$n_mktemp" -eq 1 ] && ! grep -q 'trap .*EXIT' "$f"; then
-    echo "  FALHA $f: 1 \`mktemp -d\` sem \`trap ... EXIT\`"
+
+  if [ "$n_mktemp" -eq 1 ]; then
+    # Regra: 1 mktemp -d exige trap com rm -rf, ou trap funcao() onde funcao tem rm -rf
+    local trap_decl
+    trap_decl=$(sem_comentario "$f" | grep 'trap.*EXIT' | head -1)
+
+    if [ -z "$trap_decl" ]; then
+      echo "  FALHA $f: 1 \`mktemp -d\` sem \`trap ... EXIT\`"
+      return 1
+    fi
+
+    # Verificar se trap contém rm -rf direto
+    if printf '%s' "$trap_decl" | grep -q 'rm -rf'; then
+      return 0
+    fi
+
+    # Senão, procurar nome da função no trap e se usa SANDBOXES + cleanup
+    local cleanup_func
+    cleanup_func=$(printf '%s' "$trap_decl" | sed "s/.*trap[[:space:]]*'\?\([a-zA-Z_][a-zA-Z0-9_]*\).*/\1/")
+    if [ -n "$cleanup_func" ] && [ "$cleanup_func" != "EXIT" ]; then
+      # Procurar definição da função e se há rm -rf em algum lugar no arquivo
+      if sem_comentario "$f" | grep -q "$cleanup_func\s*()"; then
+        # Função existe, verificar se arquivo tem rm -rf
+        if sem_comentario "$f" | grep -q 'rm -rf'; then
+          return 0
+        fi
+      fi
+    fi
+
+    echo "  FALHA $f: 1 \`mktemp -d\` com \`trap ... EXIT\` mas sem \`rm -rf\`"
     return 1
   fi
+
+  # Regra: mktemp -d dentro de funcao exige SANDBOXES+= (verificado diferentemente)
+  if [ -n "$n_mktemp_em_funcoes" ] && ! grep -q 'SANDBOXES+=' "$f"; then
+    echo "  FALHA $f: \`mktemp -d\` dentro de funcao sem \`SANDBOXES+=\`"
+    return 1
+  fi
+
   return 0
 }
 
-# --autoteste: prova a propria guarda contra 3 fixtures sinteticos, numa
+# --autoteste: prova a propria guarda contra 7 fixtures sinteticos, numa
 # sandbox propria — que por sua vez segue a regra que ela mesma cobra (1
 # mktemp -d aqui, com trap EXIT logo abaixo).
 autoteste() {
@@ -82,6 +133,51 @@ A="$(mktemp -d)"
 trap 'rm -rf "$A"' EXIT
 EOF
 
+  # (d) dois `mktemp -d` e `SANDBOXES` só em comentário -> reprova
+  cat > "$sb/testa-fixture-dois-comentario.sh" <<'EOF'
+#!/bin/bash
+# SANDBOXES array - nao vai funcionar aqui
+A="$(mktemp -d)"
+B="$(mktemp -d)"
+rm -rf "$A" "$B"
+EOF
+
+  # (e) um `mktemp -d` com `trap 'echo tchau' EXIT` -> reprova (sem rm -rf)
+  cat > "$sb/testa-fixture-trap-sem-rm.sh" <<'EOF'
+#!/bin/bash
+A="$(mktemp -d)"
+trap 'echo tchau' EXIT
+rm -rf "$A"
+EOF
+
+  # (f) `mktemp -d` dentro de função sem `SANDBOXES+=` -> reprova
+  cat > "$sb/testa-fixture-funcao-sem-sandboxes.sh" <<'EOF'
+#!/bin/bash
+helper() {
+  local sb="$(mktemp -d)"
+  rm -rf "$sb"
+}
+helper
+EOF
+
+  # (g) `mktemp -d` dentro de função com `SANDBOXES+=` no corpo, `trap cleanup EXIT` e `cleanup()` com `rm -rf` -> passa
+  cat > "$sb/testa-fixture-funcao-com-sandboxes.sh" <<'EOF'
+#!/bin/bash
+SANDBOXES=()
+nova_sandbox() {
+  local sandbox="$(mktemp -d)"
+  SANDBOXES+=("$sandbox")
+  echo "$sandbox"
+}
+cleanup() {
+  for s in "${SANDBOXES[@]}"; do
+    rm -rf "$s"
+  done
+}
+trap cleanup EXIT
+sb=$(nova_sandbox)
+EOF
+
   local ok=0 falhou=0 saida
 
   echo "== 1. dois mktemp -d sem SANDBOXES: reprova nomeando o arquivo =="
@@ -110,6 +206,38 @@ EOF
     ok=$((ok+1)); echo "  ok   passou"
   else
     falhou=$((falhou+1)); echo "  FALHA deveria ter passado a fixture 'um com trap'"
+  fi
+
+  echo
+  echo "== 4. dois mktemp -d e SANDBOXES só em comentário: reprova =="
+  if checar_arquivo "$sb/testa-fixture-dois-comentario.sh" >/dev/null; then
+    falhou=$((falhou+1)); echo "  FALHA deveria ter reprovado a fixture 'dois em comentário'"
+  else
+    ok=$((ok+1)); echo "  ok   reprovada"
+  fi
+
+  echo
+  echo "== 5. um mktemp -d com trap 'echo tchau' EXIT: reprova =="
+  if checar_arquivo "$sb/testa-fixture-trap-sem-rm.sh" >/dev/null; then
+    falhou=$((falhou+1)); echo "  FALHA deveria ter reprovado a fixture 'trap sem rm'"
+  else
+    ok=$((ok+1)); echo "  ok   reprovada"
+  fi
+
+  echo
+  echo "== 6. mktemp -d dentro de função sem SANDBOXES+=: reprova =="
+  if checar_arquivo "$sb/testa-fixture-funcao-sem-sandboxes.sh" >/dev/null; then
+    falhou=$((falhou+1)); echo "  FALHA deveria ter reprovado a fixture 'função sem SANDBOXES'"
+  else
+    ok=$((ok+1)); echo "  ok   reprovada"
+  fi
+
+  echo
+  echo "== 7. mktemp -d em função com SANDBOXES+=, cleanup, rm -rf: passa =="
+  if checar_arquivo "$sb/testa-fixture-funcao-com-sandboxes.sh" >/dev/null; then
+    ok=$((ok+1)); echo "  ok   passou"
+  else
+    falhou=$((falhou+1)); echo "  FALHA deveria ter passado a fixture 'função com SANDBOXES'"
   fi
 
   echo
