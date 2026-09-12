@@ -296,8 +296,19 @@ function temAutorizacaoPrincipal(obj) {
   // "posso autorizar subagentes" continua sendo pedido de opinião.
   // Rabicho de confirmação: "…, beleza?", "…, ta?", "…, pode ser?". Em fala
   // corrida isso fecha uma concessão, não abre uma pergunta.
+  //
+  // `sim` e `ne` estavam aqui e saíram na revisão de 2026-09-12: ao contrário
+  // de "beleza" e "ta", que só aparecem fechando, essas duas fecham QUALQUER
+  // oração anterior — inclusive uma hesitante. Medido:
+  //
+  //   "nao tenho certeza, autorizo subagentes, sim?"  -> autorizava
+  //   "fico em duvida, autorizo subagentes, ne?"      -> autorizava
+  //
+  // Com elas fora, o `?` final volta a valer e as duas são recusadas. O custo é
+  // recusar "autorizo subagentes, sim?" — uma frase a mais para o usuário, do
+  // lado seguro da troca.
   const RABICHO_DE_CONFIRMACAO =
-    /,\s*(beleza|blz|ta|ok|okay|certo|combinado|fechado|tranquilo|tudo\s+bem|pode\s+ser|sim|ne|hein)\s*[?!.…]*$/;
+    /,\s*(beleza|blz|ta|ok|okay|certo|combinado|fechado|tranquilo|tudo\s+bem|pode\s+ser|hein)\s*[?!.…]*$/;
 
   const sinaisSubordinados = [
     /\bfalo\s+que\b/,
@@ -348,10 +359,18 @@ function temAutorizacaoPrincipal(obj) {
     //   "autorizo subagentes?😅"                -> autorizava
     //   'ele perguntou "autorizo subagentes?"'  -> autorizava
     //
-    // Agora olha a cauda inteira de caracteres que não são letra nem dígito:
-    // se o `?` estiver nela, é pergunta, com emoji, aspas ou ênfase junto.
-    const cauda = texto.match(/[^\p{L}\p{N}]*$/u);
-    if (cauda && cauda[0].includes('?')) continue;
+    // A correção seguinte — olhar a cauda de caracteres que não são letra nem
+    // dígito — ainda era estreita, e a revisão seguinte mostrou por quê:
+    //
+    //   "autorizo subagentes?ou nao"  -> autorizava
+    //
+    // `?` colado na próxima palavra, sem espaço, não está na cauda. Agora a
+    // regra é a mais simples que existe: `?` EM QUALQUER LUGAR da frase. O
+    // separador de frases só corta em `.!?` seguido de espaço, então um `?` que
+    // sobrou aqui dentro é fronteira de pergunta que ninguém cortou. Concessão
+    // seguida de pergunta sobre outra coisa continua passando, porque ali o
+    // espaço existe e as duas viram frases separadas.
+    if (texto.includes('?')) continue;
 
     // O marcador subordina por ORAÇÃO, não pela frase inteira. Vírgula separa
     // oração, e sem isso "talvez seja arriscado, autorizo subagentes mesmo
@@ -364,7 +383,18 @@ function temAutorizacaoPrincipal(obj) {
     // Oração que termina em subordinador pendurado ("nao sei se, no fim,
     // autorizo subagentes") joga a subordinação para a frente: a vírgula ali é
     // aposto, não fronteira de oração. Frase inteira fica hedgeada.
-    if (oracoes.some((o) => /\b(se|que|caso|quando)\s*$/.test(o.trim()))) continue;
+    //
+    // A lista tinha `caso` e `quando`, e saíram na revisão de 2026-09-12: as
+    // duas são palavra comum fora do papel de conjunção, e a heurística lexical
+    // não distingue papel gramatical. Medido:
+    //
+    //   "nao sei quando, autorizo subagentes agora mesmo"  -> recusava
+    //   "vai depender do caso, autorizo subagentes"        -> recusava
+    //
+    // Ali "quando" é tempo e "caso" é substantivo — nenhum dos dois subordina a
+    // concessão, e recusar é o lado ruim do erro. `se` e `que` ficaram: pendurar
+    // uma delas no fim de oração é sempre subordinação.
+    if (oracoes.some((o) => /\b(se|que)\s*$/.test(o.trim()))) continue;
 
     let concedeu = false;
     for (const oracao of oracoes) {

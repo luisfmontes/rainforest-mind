@@ -156,7 +156,9 @@ console.log("== 3d. pontuacao grudada e oracao por virgula (achados da 2a rodada
   caso("'talvez seja arriscado, autorizo subagentes mesmo assim' AUTORIZA", rVirgula === true, rVirgula);
 
   // ...e o contrario tem de continuar valendo: marcador COLADO no verbo, na
-  // mesma oracao, subordina mesmo com adversativa depois.
+  // mesma oracao, subordina mesmo com adversativa depois. Guarda de regressao —
+  // ja passava antes da quebra por oracao, e o valor dela e nao deixar de
+  // passar depois.
   const rColado = autorizado(fx("hedge-colado-no-verbo-virgula.jsonl"));
   caso("'nao sei se autorizo subagentes, mas talvez amanha' NAO autoriza", rColado === false, rColado);
 
@@ -165,15 +167,47 @@ console.log("== 3d. pontuacao grudada e oracao por virgula (achados da 2a rodada
   const rPendurado = autorizado(fx("subordinador-pendurado.jsonl"));
   caso("'nao sei se, no fim, autorizo subagentes' NAO autoriza", rPendurado === false, rPendurado);
 
-  // A checagem de pergunta e da FRASE, feita antes de quebrar em oracoes —
-  // senao a condicional viraria concessao ao perder o '?' na quebra.
+  // Guarda de regressao, nao teste de mecanismo: quem barra esta e o marcador
+  // `se autoriz`, que ja subordinava antes da quebra por oracao existir.
+  // Registrado assim porque a revisao de 2026-09-12 mostrou que o comentario
+  // anterior afirmava testar a ordem "pergunta antes da quebra", e nao testava.
   const rCondicional = autorizado(fx("condicional-com-pergunta.jsonl"));
   caso("'se autorizo subagentes, voce faz?' NAO autoriza", rCondicional === false, rCondicional);
 
-  // O rabicho sai ANTES do julgamento, e o que sobra e julgado normalmente:
-  // pergunta com rabicho continua sendo pergunta.
+  // Esta sim exercita a ordem: nenhum marcador pega a frase, entao so a regra
+  // da pergunta — aplicada na FRASE, antes de quebrar em oracoes — a segura.
+  // Com a quebra vindo primeiro, "vale a pena te autorizar subagentes" viraria
+  // oracao sem '?' e concederia.
+  const rMultiOracao = autorizado(fx("pergunta-multioracao.jsonl"));
+  caso("'vale a pena te autorizar subagentes, ou faco eu mesmo?' NAO autoriza", rMultiOracao === false, rMultiOracao);
+
+  // Guarda de regressao: quem barra e o marcador `posso autoriz`, nao o rabicho.
   const rPergRabicho = autorizado(fx("pergunta-com-rabicho.jsonl"));
   caso("'posso autorizar subagentes, ta?' NAO autoriza", rPergRabicho === false, rPergRabicho);
+}
+
+console.log("== 3e. rabicho ambiguo, '?' colado e palavra comum (achados da 3a rodada) ==");
+{
+  // `sim` e `ne` estavam na lista de rabichos e fechavam QUALQUER oracao
+  // anterior, inclusive hesitante — o portao abria numa duvida declarada.
+  const rSim = autorizado(fx("pergunta-hesitante-com-sim.jsonl"));
+  caso("'nao tenho certeza, autorizo subagentes, sim?' NAO autoriza", rSim === false, rSim);
+
+  const rNe = autorizado(fx("pergunta-hesitante-com-ne.jsonl"));
+  caso("'fico em duvida, autorizo subagentes, ne?' NAO autoriza", rNe === false, rNe);
+
+  // '?' colado na proxima palavra nao esta na cauda de pontuacao; a regra passou
+  // a ser '?' em qualquer lugar da frase.
+  const rColadoPalavra = autorizado(fx("pergunta-interrogacao-colada-em-palavra.jsonl"));
+  caso("'autorizo subagentes?ou nao' NAO autoriza", rColadoPalavra === false, rColadoPalavra);
+
+  // `quando` e `caso` saíram dos subordinadores pendurados: fora do papel de
+  // conjuncao sao palavra comum, e recusar concessao e o lado ruim do erro.
+  const rQuando = autorizado(fx("concessao-apos-quando.jsonl"));
+  caso("'nao sei quando, autorizo subagentes agora mesmo' AUTORIZA", rQuando === true, rQuando);
+
+  const rCaso = autorizado(fx("concessao-apos-caso.jsonl"));
+  caso("'vai depender do caso, autorizo subagentes' AUTORIZA", rCaso === true, rCaso);
 }
 
 console.log("== 4. negacao sem acento ('nao autorizo subagentes') NAO autoriza ==");
