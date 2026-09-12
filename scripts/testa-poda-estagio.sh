@@ -32,8 +32,8 @@ cat > "$SBP/proj/docs/rainforest/estado/2026-08-17-memory-e-dados-do-rainforest.
   "titulo": "Test work",
   "criado_em": "2026-08-17",
   "arqueologia": {"status": "dispensada"},
-  "design": {"status": "ok"},
-  "plano": {"status": "pendente"},
+  "design": {"status": "aprovado"},
+  "plano": {"status": "ok"},
   "executar": {"status": "pendente"},
   "revisar": {"status": "pendente"},
   "verificar": {"status": "pendente"},
@@ -46,7 +46,7 @@ RESULT="$(cd "$SBP/proj" && node -e "
   const r = estagioAtivo({cwd: process.cwd()});
   process.stdout.write(r ? JSON.stringify(r) : 'null');
 ")"
-ESPERADO='{"slug":"2026-08-17-memory-e-dados-do-rainforest","estagio":"plano"}'
+ESPERADO='{"slug":"2026-08-17-memory-e-dados-do-rainforest","estagio":"executar"}'
 igual "retorna {slug, estagio} do trabalho certo" "$ESPERADO" "$RESULT"
 
 # --- Fixture 2: dois trabalhos, um batendo e outro não ---
@@ -93,7 +93,8 @@ cat > "$SBP/proj/docs/rainforest/estado/2026-08-17-memory-e-dados-do-rainforest.
   "slug": "2026-08-17-memory-e-dados-do-rainforest",
   "titulo": "Completed work",
   "criado_em": "2026-08-17",
-  "design": {"status": "ok"},
+  "arqueologia": {"status": "dispensada"},
+  "design": {"status": "aprovado"},
   "plano": {"status": "ok"},
   "executar": {"status": "ok"},
   "revisar": {"status": "ok"},
@@ -119,8 +120,8 @@ cat > "$SBP/proj/docs/rainforest/estado/2026-08-17-memory-e-dados-do-rainforest.
   "titulo": "Test work",
   "criado_em": "2026-08-17",
   "arqueologia": {"status": "dispensada"},
-  "design": {"status": "ok"},
-  "plano": {"status": "pendente"},
+  "design": {"status": "aprovado"},
+  "plano": {"status": "ok"},
   "executar": {"status": "pendente"},
   "revisar": {"status": "pendente"},
   "verificar": {"status": "pendente"},
@@ -171,8 +172,8 @@ cat > "$SBP/proj/docs/rainforest/estado/2026-08-17-memory-e-dados-do-rainforest.
   "titulo": "Test work",
   "criado_em": "2026-08-17",
   "arqueologia": {"status": "dispensada"},
-  "design": {"status": "ok"},
-  "plano": {"status": "pendente"},
+  "design": {"status": "aprovado"},
+  "plano": {"status": "ok"},
   "executar": {"status": "pendente"},
   "revisar": {"status": "pendente"},
   "verificar": {"status": "pendente"},
@@ -192,15 +193,16 @@ mkdir -p "$SBP/mut/docs/rainforest/estado"
 # Coloca em branch que nao bate nenhum trabalho
 ( cd "$SBP/mut" && git checkout -q -b "branch-sem-match" 2>/dev/null || true )
 
-# Cria dois trabalhos:  aquele que NÃO bate ANTES do que bate (nomes alfabéticos garantem ordem)
-cat > "$SBP/mut/docs/rainforest/estado/0001-nao-bate.json" <<'EOF'
+# Cria dois trabalhos:  aquele que NÃO bate ANTES do que bate
+# IMPORTANTE: o resolver() lê o slug do NOME do arquivo, não do JSON!
+cat > "$SBP/mut/docs/rainforest/estado/2026-08-10-nao-bate.json" <<'EOF'
 {
   "slug": "2026-08-10-nao-bate",
   "titulo": "This one does NOT match branch",
   "criado_em": "2026-08-10",
   "arqueologia": {"status": "dispensada"},
-  "design": {"status": "ok"},
-  "plano": {"status": "pendente"},
+  "design": {"status": "aprovado"},
+  "plano": {"status": "ok"},
   "executar": {"status": "pendente"},
   "revisar": {"status": "pendente"},
   "verificar": {"status": "pendente"},
@@ -208,14 +210,14 @@ cat > "$SBP/mut/docs/rainforest/estado/0001-nao-bate.json" <<'EOF'
 }
 EOF
 
-cat > "$SBP/mut/docs/rainforest/estado/0002-sim-bate.json" <<'EOF'
+cat > "$SBP/mut/docs/rainforest/estado/2026-08-17-branch-sem-match.json" <<'EOF'
 {
   "slug": "2026-08-17-branch-sem-match",
   "titulo": "This one DOES match branch",
   "criado_em": "2026-08-17",
   "arqueologia": {"status": "dispensada"},
-  "design": {"status": "ok"},
-  "plano": {"status": "pendente"},
+  "design": {"status": "aprovado"},
+  "plano": {"status": "ok"},
   "executar": {"status": "pendente"},
   "revisar": {"status": "pendente"},
   "verificar": {"status": "pendente"},
@@ -230,16 +232,16 @@ NORMAL_RESULT="$(cd "$SBP/mut" && node -e "
   process.stdout.write(r ? JSON.stringify(r) : 'null');
 ")"
 
-# Copia e muta o arquivo
+# Copia e muta o arquivo (substitui a chamada a resolver)
 cp "$SRC/hooks/lib/poda-estagio.cjs" "$SBP/poda-estagio-mutante.cjs"
 node - "$SBP/poda-estagio-mutante.cjs" <<'JS'
 const fs = require("fs");
 const alvo = process.argv[2];
 const antes = fs.readFileSync(alvo, "utf8");
-// Muta: retorna sempre o primeiro trabalho, ignorando branch
-const de = "  // Exatamente um match → retorna o estágio ativo\n  if (matches.length === 1) {\n    const estagio = proximoEstagio(matches[0].estado);\n    return estagio\n      ? {\n          slug: matches[0].slug,\n          estagio,\n        }\n      : null;\n  }\n\n  // Zero ou ambíguo → não adivinha\n  return null;";
-if (!antes.includes(de)) throw new Error("ancora nao encontrada");
-const depois = antes.replace(de, "  // MUTACAO: sempre pega o primeiro, sem checar branch\n  if (abertos.length >= 1) {\n    const estagio = proximoEstagio(abertos[0].estado);\n    return estagio\n      ? {\n          slug: abertos[0].slug,\n          estagio,\n        }\n      : null;\n  }\n  return null;");
+// Muta: faz resolver sempre retornar null
+const de = "  // Delega a estagio-ativo.resolver()\n  const resultado = require('./estagio-ativo.cjs').resolver({ cwd });\n  return resultado;";
+if (!antes.includes(de)) throw new Error("ancora nao encontrada para mutar resolver");
+const depois = antes.replace(de, "  // MUTACAO: sempre retorna null, sem chamar resolver\n  return null;");
 if (depois === antes) throw new Error("mutacao nao foi aplicada");
 fs.writeFileSync(alvo, depois, "utf8");
 JS
@@ -250,15 +252,46 @@ MUT_RESULT="$(cd "$SBP/mut" && node -e "
   process.stdout.write(r ? JSON.stringify(r) : 'null');
 ")"
 
-# Com a mutação, deve pegar o PRIMEIRO (0001-nao-bate), não o segundo que realmente bate
-MUT_ESPERADO='{"slug":"2026-08-10-nao-bate","estagio":"plano"}'
-NORMAL_ESPERADO='{"slug":"2026-08-17-branch-sem-match","estagio":"plano"}'
+# Com a mutação (sem chamar resolver), deve retornar null
+MUT_ESPERADO='null'
+NORMAL_ESPERADO='{"slug":"2026-08-17-branch-sem-match","estagio":"executar"}'
 
 if [ "$NORMAL_RESULT" = "$NORMAL_ESPERADO" ] && [ "$MUT_RESULT" = "$MUT_ESPERADO" ]; then
-  ok=$((ok+1)); echo "  ok   mutacao prova a checagem de branch (sem ela pega o primeiro)"
+  ok=$((ok+1)); echo "  ok   mutacao prova que resolver é chamado (mutado retorna null)"
 else
   falhou=$((falhou+1)); echo "  FALHA normal foi '$NORMAL_RESULT' (esperava '$NORMAL_ESPERADO'), mutante foi '$MUT_RESULT' (esperava '$MUT_ESPERADO')"
 fi
+
+# --- Fixture 9: branch com prefixo fluxo/ ---
+echo
+echo "== 9. branch com prefixo fluxo/ =="
+mkdir -p "$SBP/fluxo/docs/rainforest/estado"
+( cd "$SBP/fluxo" && git init -q && touch .gitkeep && git add .gitkeep && git commit -q -m init )
+( cd "$SBP/fluxo" && git checkout -q -b "fluxo/design-no-rainforest" 2>/dev/null || true )
+
+# Cria um arquivo de estado que bate com o slug da branch (sem o prefixo fluxo/)
+cat > "$SBP/fluxo/docs/rainforest/estado/2026-08-20-design-no-rainforest.json" <<'EOF'
+{
+  "slug": "2026-08-20-design-no-rainforest",
+  "titulo": "Design no rainforest",
+  "criado_em": "2026-08-20",
+  "arqueologia": {"status": "dispensada"},
+  "design": {"status": "pendente"},
+  "plano": {"status": "pendente"},
+  "executar": {"status": "pendente"},
+  "revisar": {"status": "pendente"},
+  "verificar": {"status": "pendente"},
+  "fechar": {"status": "pendente"}
+}
+EOF
+
+RESULT9="$(cd "$SBP/fluxo" && node -e "
+  const {estagioAtivo} = require('$SRC_WIN/hooks/lib/poda-estagio.cjs');
+  const r = estagioAtivo({cwd: process.cwd()});
+  process.stdout.write(r ? JSON.stringify(r) : 'null');
+")"
+ESPERADO9='{"slug":"2026-08-20-design-no-rainforest","estagio":"design"}'
+igual "branch fluxo/ bate com slug sem prefixo" "$ESPERADO9" "$RESULT9"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

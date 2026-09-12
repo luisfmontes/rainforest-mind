@@ -31,6 +31,8 @@ carrega, para não gastar bytes no system prompt.
 | Mutação é editar o código de produção | Issue #21, P4 — o briefing exigiu prova por mutação e o agente entregou dois casos (`T-A`/`T-B`) que aplicavam a mutação numa cópia dentro do próprio teste e marcavam `ok`: `0 falha(s)` e "saída vermelha CONSEGUIDA" na mesma tela |
 | Branch alheia não recebe trabalho novo | `commitar-em-branch-alheia-atrapalha-outra-sessao` |
 | `git -C` mente sobre onde você está | `worktree-removido-vira-diretorio-fantasma` e Issue #21, seção 3 — a conferência de base da regra 11 devolveu o hash esperado, e era o do repo principal: o worktree tinha sido auto-removido e o `git -C` respondeu pelo pai |
+| Asserção de contagem em troca por script | Issue #197, design D16 — script trocou texto sem asserção de contagem, e bateria passou verde |
+| Peça nova é chamada, não só existe | Issue #197, design D16 — função nova existia mas ninguém a chamava, e bateria passou verde |
 
 ## O que deliberadamente NÃO está no bloco
 
@@ -84,4 +86,9 @@ valem para a janela principal.
   repositório, ele sobe para o pai **em silêncio** e responde por lá. Confira
   onde está com `cd` + `git rev-parse --show-toplevel` **antes** de aceitar
   qualquer hash — senão a conferência confirma o hash certo do repo errado.
+- **Toda troca de texto por script leva asserção de contagem.** Antes e depois:
+  quantas ocorrências devia trocar, quantas trocou; divergência é falha, não
+  aviso.
+- **Confira que a peça nova é chamada, não só que existe.** Função, módulo ou
+  arquivo novo: `grep` por quem o chama, e rodar o chamador.
 <!-- perfil-de-trabalho:fim -->

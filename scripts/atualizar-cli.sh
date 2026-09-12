@@ -25,6 +25,25 @@ WINGET_CMD="${ATUALIZAR_CLI_WINGET:-winget}"
 # Modo conferir: so imprime o que faria, nao muda nada.
 CONFERIR=0
 
+# Cache e lock para evitar dois refreshers simultâneos. Uma execução por vez:
+# mkdir é atômico. Lock com mais de 5 min é órfão e será removido.
+CACHE="${TEMP:-$HOME/AppData/Local/Temp}/claude-atualizar-cli.txt"
+CACHE="${CACHE//\\//}"
+LOCK="$CACHE.lock"
+
+# Registrar trap ANTES de fazer qualquer check de lock, pois pode sair 0 antes de
+# registrar o trap. Se sair sem registrar trap, o lock fica órfão para a próxima execução.
+trap 'rmdir "$LOCK" 2>/dev/null' EXIT
+
+# Uma execucao por vez: mkdir e atomico. Lock com mais de 5 min e orfao.
+if [ -d "$LOCK" ]; then
+  if [ -z "$(find "$LOCK" -maxdepth 0 -mmin +5 2>/dev/null)" ]; then
+    exit 0
+  fi
+  rmdir "$LOCK" 2>/dev/null
+fi
+mkdir "$LOCK" 2>/dev/null || exit 0
+
 # Parse de argumentos.
 while [ $# -gt 0 ]; do
   case "$1" in

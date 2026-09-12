@@ -20,6 +20,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const { gravarBackup } = require("./lib/backup-rotativo.cjs");
 
 // Mesma cadeia de resolucao de raiz que o ideias.cjs usa (hooks/lib/raiz.cjs):
 // RFM_ROOT > <projeto>/.rainforest > ~/.rainforest > raiz do plugin. O arquivo
@@ -182,20 +183,19 @@ function gravar(linhasAntes, linhasDepois, alvos, rotulo) {
   // conferido byte a byte: contagem igual convive com a linha errada
   // sobrescrita, entao contagem sozinha nao prova nada.
   fs.mkdirSync(RAIZ, { recursive: true });
-  fs.mkdirSync(DIR_BACKUP, { recursive: true });
   const existiaAntes = fs.existsSync(ALVO);
-  const carimbo = carimboAgora();
-  const backup = path.join(DIR_BACKUP, `divergencias-${carimbo}.jsonl`);
-  if (fs.existsSync(backup)) {
-    throw new Erro(`backup ${path.basename(backup)} ja existe — abortando antes de escrever`);
-  }
+  let backup, totalBackups;
   if (existiaAntes) {
-    fs.copyFileSync(ALVO, backup);
+    ({ backup, totalBackups } = gravarBackup(ALVO, DIR_BACKUP, { teto: 10, prefixo: 'divergencias' }));
   } else {
     // Primeira escrita: nao ha arquivo para copiar. O backup vazio e so o
     // registro de que a linha de base era "nao existe" — se a gravacao for
     // revertida, o arquivo tem que voltar a nao existir, nao a ficar vazio.
-    fs.writeFileSync(backup, "", "utf8");
+    // Cria arquivo temporário vazio para fazer backup dele, depois deleta o temp
+    const arqTempVazio = ALVO.replace(/\.jsonl$/, ".jsonl.empty");
+    fs.writeFileSync(arqTempVazio, "", "utf8");
+    ({ backup, totalBackups } = gravarBackup(arqTempVazio, DIR_BACKUP, { teto: 10, prefixo: 'divergencias' }));
+    fs.unlinkSync(arqTempVazio);
   }
 
   const tmp = ALVO.replace(/\.jsonl$/, ".jsonl.tmp");
@@ -233,6 +233,7 @@ function gravar(linhasAntes, linhasDepois, alvos, rotulo) {
   console.log(`  todas as ${relidas.length} linhas sao JSON valido: ${problemas.length === 0 ? "sim" : "NAO"}`);
   console.log(`  linhas nao-alvo identicas byte a byte: ${intocadas}/${naoAlvo}`);
   console.log(`  backup: ${path.relative(RAIZ, backup)}`);
+  console.log(`  cópias guardadas: ${totalBackups}/10`);
 
   if (problemas.length) {
     if (existiaAntes) {

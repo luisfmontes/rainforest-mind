@@ -20,7 +20,7 @@ export IDEIAS="${IDEIAS:-node scripts/ideias.cjs}"
 # verdade. Isolamento que depende de coincidencia nao e isolamento.
 export RFM_ROOT="$SB"
 
-mkdir -p "$SB/scripts" "$SB/hooks/lib"
+mkdir -p "$SB/scripts" "$SB/scripts/lib" "$SB/hooks/lib"
 cp "$SRC/scripts/ideias.cjs" "$SB/scripts/"
 # O vocabulario de projeto virou lib em 2026-08-12 (o setup.cjs tambem mexe no
 # projetos.json, e duas implementacoes divergem em silencio). O require dela e DURO
@@ -32,6 +32,8 @@ cp "$SRC/hooks/lib/projetos.cjs" "$SB/hooks/lib/"
 # require dela tambem e DURO (sem try/catch), entao falta aqui derruba a
 # bateria inteira, nao so o teste que dependeria dela.
 cp "$SRC/hooks/lib/trava-jsonl.cjs" "$SB/hooks/lib/"
+# Backup rotativo e usada por ideias, divergencias e ferramentas
+cp "$SRC/scripts/lib/backup-rotativo.cjs" "$SB/scripts/lib/"
 SRC_WIN="$(cygpath -m "$SRC" 2>/dev/null || printf '%s' "$SRC")"
 # O jsonl da caixa e FIXTURE GERADA, e nao copia do arquivo do usuario.
 #

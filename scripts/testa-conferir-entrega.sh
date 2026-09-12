@@ -257,6 +257,39 @@ esperado "paralelo: sujeira no principal em arquivo tocado pelo agente -> reprov
 rm "$R/feito.txt"
 
 echo
+echo "== commit vazio: checagem de entrega inexistente (Issue #210) =="
+
+# (a) commit vazio com --paralelo e sujeira no principal -> reprova
+# Criar novo worktree para este teste
+WT_VAZIO="$RAIZ/wt-vazio"
+git -C "$R" worktree add -q -b vazio-branch "$WT_VAZIO" >/dev/null 2>&1
+BASE_VAZIO=$(git -C "$WT_VAZIO" rev-parse HEAD)
+git -C "$WT_VAZIO" commit -q --allow-empty -m "commit vazio"
+COMMIT_VAZIO=$(git -C "$WT_VAZIO" rev-parse HEAD)
+HEAD_VAZIO_ANTES=$(git -C "$R" rev-parse HEAD)
+echo "sujeira" > "$R/sujeira-vazio-a.txt"
+esperado "commit vazio com --paralelo e sujeira no principal -> reprova" 1 \
+  "${CONF_CMD[@]}" --worktree "$WT_VAZIO" --base "$BASE_VAZIO" --head-antes "$HEAD_VAZIO_ANTES" --paralelo --commit "$COMMIT_VAZIO"
+contem "  ... e menciona 'commit do agente vazio'" "commit do agente vazio" \
+  "${CONF_CMD[@]}" --worktree "$WT_VAZIO" --base "$BASE_VAZIO" --paralelo --commit "$COMMIT_VAZIO"
+rm "$R/sujeira-vazio-a.txt"
+
+# (b) commit vazio sem sujeira -> reprova igualmente
+esperado "commit vazio sem sujeira -> reprova igualmente" 1 \
+  "${CONF_CMD[@]}" --worktree "$WT_VAZIO" --base "$BASE_VAZIO" --commit "$COMMIT_VAZIO"
+contem "  ... com a mesma mensagem de commit vazio" "commit do agente vazio" \
+  "${CONF_CMD[@]}" --worktree "$WT_VAZIO" --base "$BASE_VAZIO" --commit "$COMMIT_VAZIO"
+
+# (c) commit com mudança real e sujeira em arquivo alheio, com --paralelo -> aprova com aviso
+# Reusar o WT original (que tem commit "entrega" que toca feito.txt)
+echo "sujeira-alheio" > "$R/arquivo-alheio.txt"
+esperado "commit real com sujeira em arquivo alheio + --paralelo -> aprova com aviso" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_VAZIO_ANTES" --paralelo
+contem "  ... com aviso de sujeira alheio" "nenhuma nos arquivos do agente" \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_VAZIO_ANTES" --paralelo
+rm "$R/arquivo-alheio.txt"
+
+echo
 echo "== o mesmo worktree escrito nas duas grafias do Windows (8.3) =="
 # Achado pelo CI em 2026-08-17 (Issue #16). O TEMP do runner do GitHub e
 # `<home>/RUNNER~1/...` (forma 8.3); o git responde sempre na forma longa

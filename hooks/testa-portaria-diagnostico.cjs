@@ -236,6 +236,58 @@ console.log("== (d) sem fluxo aberto, nao menciona slug ==");
   fs.rmSync(raiz, { recursive: true, force: true });
 }
 
+// == (e) Dois worktrees com mesmo estado aberto — deduplica ==
+console.log("== (e) dois worktrees com mesmo estado aberto — deduplica ==");
+{
+  const raizPrincipal = caixa();
+  const raizWorktree1 = caixa();
+  const raizWorktree2 = caixa();
+
+  // Cria um repo principal
+  iniciarGit(raizPrincipal, "main");
+
+  // Cria dois worktrees reais com a mesma branch (simulando fluxo aberto)
+  spawnSync("git", ["worktree", "add", raizWorktree1, "-b", "fluxo/deduplica"], { cwd: raizPrincipal });
+  spawnSync("git", ["worktree", "add", raizWorktree2, "-b", "fluxo/deduplica-2"], { cwd: raizPrincipal });
+
+  // Cria o MESMO estado aberto em ambos os worktrees
+  criarEstadoAtivo(raizWorktree1, "mesmo-slug", "executar");
+  criarEstadoAtivo(raizWorktree2, "mesmo-slug", "executar");
+
+  // Cria estado no principal (fechado)
+  criarEstadoAtivo(raizPrincipal, "principal", "fechar");
+
+  // Não cria manifesto no principal (isso vai causar negação)
+
+  const payload = {
+    session_id: "diag-e",
+    cwd: raizPrincipal,
+    tool_input: { subagent_type: "revisor" },
+  };
+
+  const r = rodaHook(raizPrincipal, JSON.stringify(payload));
+
+  caso("exit 2", r.status === 2, `exit=${r.status}`);
+
+  // Conta quantas vezes "2026-09-01-mesmo-slug" com "estágio: executar" aparece
+  // dentro do bloco "outros worktrees em fluxo aberto"
+  const match = r.stderr.match(/slug: 2026-09-01-mesmo-slug, estágio: executar/g);
+  const ocorrencias = match ? match.length : 0;
+  caso("ocorrência de (slug, estágio) é exatamente 1", ocorrencias === 1, `encontradas ${ocorrencias} ocorrências: ${r.stderr}`);
+
+  // Limpeza
+  try {
+    spawnSync("git", ["worktree", "remove", raizWorktree1], { cwd: raizPrincipal });
+    spawnSync("git", ["worktree", "remove", raizWorktree2], { cwd: raizPrincipal });
+  } catch {}
+  fs.rmSync(raizPrincipal, { recursive: true, force: true });
+  [raizWorktree1, raizWorktree2].forEach(p => {
+    if (fs.existsSync(p)) {
+      fs.rmSync(p, { recursive: true, force: true });
+    }
+  });
+}
+
 console.log(`\n== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 
 if (falhou > 0) {

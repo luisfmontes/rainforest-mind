@@ -710,4 +710,9 @@ valem para a janela principal.
   repositório, ele sobe para o pai **em silêncio** e responde por lá. Confira
   onde está com `cd` + `git rev-parse --show-toplevel` **antes** de aceitar
   qualquer hash — senão a conferência confirma o hash certo do repo errado.
+- **Toda troca de texto por script leva asserção de contagem.** Antes e depois:
+  quantas ocorrências devia trocar, quantas trocou; divergência é falha, não
+  aviso.
+- **Confira que a peça nova é chamada, não só que existe.** Função, módulo ou
+  arquivo novo: `grep` por quem o chama, e rodar o chamador.
 <!-- perfil-de-trabalho:fim -->

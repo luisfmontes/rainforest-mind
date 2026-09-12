@@ -20,6 +20,7 @@
 const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
+const { gravarBackup } = require("./lib/backup-rotativo.cjs");
 
 // A raiz sai da mesma cadeia de 5 niveis que o hook usa (hooks/lib/raiz.cjs):
 // RFM_ROOT > <projeto>/.rainforest > <config>/rainforest > plugin > legado. E o que
@@ -251,13 +252,7 @@ function gravar(linhasAntes, linhasDepois, alvos, rotulo) {
   // `alvos` (Set<number>) sao os indices que PODEM ter mudado. Todo o resto e
   // conferido byte a byte: contagem igual convive com a linha errada
   // sobrescrita, entao contagem sozinha nao prova nada.
-  fs.mkdirSync(DIR_BACKUP, { recursive: true });
-  const carimbo = carimboAgora();
-  const backup = path.join(DIR_BACKUP, `ideias-${carimbo}.jsonl`);
-  if (fs.existsSync(backup)) {
-    throw new Erro(`backup ${path.basename(backup)} ja existe — abortando antes de escrever`);
-  }
-  fs.copyFileSync(ALVO, backup);
+  const { backup, totalBackups } = gravarBackup(ALVO, DIR_BACKUP, { teto: 10, prefixo: 'ideias' });
 
   const tmp = ALVO.replace(/\.jsonl$/, ".jsonl.tmp");
   fs.writeFileSync(tmp, linhasDepois.join("\n") + "\n", "utf8"); // newline final garantido, LF puro
@@ -294,6 +289,7 @@ function gravar(linhasAntes, linhasDepois, alvos, rotulo) {
   console.log(`  todas as ${relidas.length} linhas sao JSON valido: ${problemas.length === 0 ? "sim" : "NAO"}`);
   console.log(`  linhas nao-alvo identicas byte a byte: ${intocadas}/${naoAlvo}`);
   console.log(`  backup: ${path.relative(RAIZ, backup)}`);
+  console.log(`  cópias guardadas: ${totalBackups}/10`);
 
   if (problemas.length) {
     fs.copyFileSync(backup, ALVO);
