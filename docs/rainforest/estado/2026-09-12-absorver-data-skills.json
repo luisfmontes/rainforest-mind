@@ -307,6 +307,10 @@
     "em": "2026-09-12"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "pr": "https://github.com/luisfmontes/rainforest-mind/pull/233",
+    "comando": "gh pr create --base main --head fluxo/absorver-data-skills; node scripts/conferir-versao.cjs; git worktree remove <14 agent-*>",
+    "saida": "PR #233 aberto; conferir-versao exit 2 (1.8.2 == origin/main, 32 commits) -> bump MINOR recomendado, decisao do usuario; 14 worktrees de agente removidos (2 precisaram de unlock), branches worktree-agent-* ficam para limpar-branches --confirmo",
+    "em": "2026-09-12"
   }
 }
