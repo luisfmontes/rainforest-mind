@@ -30,7 +30,7 @@
     "em": "2026-09-12"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-12",
     "tarefas_ok": 15,
     "tarefas": 15,
@@ -221,10 +221,25 @@
       }
     ],
     "comando": "bash <scratchpad>/todas-baterias.sh; node scripts/conferir-fluxo.cjs cobertura|creep; node scripts/conferir-publicacao.cjs --commit origin/main..HEAD",
-    "saida": "total=107 vermelhas:[testa-dependencias-de-bateria.sh testa-config.sh] -> as duas causadas pelo lote e corrigidas em 8ac43b00 (re-rodadas: 6 ok / 45 ok); cobertura ok 14 decisoes 15 tarefas; sem creep 53 arquivos cobertos; publicacao --commit origin/main..HEAD CONFERIDO exit 0; 22 commits em origin/main..HEAD"
+    "saida": "total=107 vermelhas:[testa-dependencias-de-bateria.sh testa-config.sh] -> as duas causadas pelo lote e corrigidas em 8ac43b00 (re-rodadas: 6 ok / 45 ok); cobertura ok 14 decisoes 15 tarefas; sem creep 53 arquivos cobertos; publicacao --commit origin/main..HEAD CONFERIDO exit 0; 22 commits em origin/main..HEAD",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-12"
+    }
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "achados": 3,
+    "base": "10251507",
+    "head": "ff239855",
+    "em_voo": [],
+    "lista": [
+      "regra-09 Racionalizacoes cita datas sem bloco > na regra nem acervo (criterio T4)",
+      "gate-mensagem-commit bloqueia git commit sem flag (merge) sem docblock nem caso na bateria",
+      "conferir-publicacao --commit <rev> avulso em merge commit lista 0 arquivos e sai 0"
+    ],
+    "em": "2026-09-12",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
