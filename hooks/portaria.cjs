@@ -20,6 +20,13 @@ const path = require("path");
 const { execFileSync } = require("child_process");
 
 /**
+ * Agentes que pertencem ao Claude Code, não a este repositório. Podem ser
+ * declarados no manifesto (e precisam ser, senão a portaria os nega), mas nunca
+ * terão `agents/<nome>.md` aqui — e não devem ter. Ver a Checagem 1 do `--lint`.
+ */
+const NATIVOS_DO_HARNESS = new Set(["Explore", "general-purpose", "claude-code-guide"]);
+
+/**
  * Resolve a raiz do projeto seguindo precedência rigorosa:
  * 1. payload.cwd (cwd da sessão que despachou — fonte da verdade)
  * 2. process.env.CLAUDE_PROJECT_DIR
@@ -829,8 +836,25 @@ function executarLint(manifestoPath, agentesDir) {
 
   const agentesEmDiscoSet = new Set(agentesEmDisco);
 
-  // Checagem 1: agente no manifesto sem arquivo correspondente
+  // Checagem 1: agente no manifesto sem arquivo correspondente.
+  //
+  // Agente NATIVO do Claude Code é a exceção, e ela é nomeada em vez de
+  // adivinhada: `Explore`, `general-purpose` e `claude-code-guide` são do
+  // harness, não deste repositório, e nunca vão ter `agents/<nome>.md` aqui.
+  //
+  // Em 2026-09-12 a primeira tentativa de declará-los criou os três arquivos
+  // para calar este erro. O remédio era pior: `agents/` é o diretório que o
+  // plugin PUBLICA, então cada stub viraria um agente do rainforest-mind
+  // instalado em todo repo de quem usa o plugin — três agentes de mentira, sem
+  // `name` nem `description`, ao lado dos de verdade. E não comprava nada: a
+  // portaria aprova `Explore` com ou sem o arquivo (medido: exit 0 nos dois
+  // casos), porque a decisão 6 já trata arquivo ausente como allow com
+  // `escreve_conferido: false` — comportamento QUERIDO, para a portaria não
+  // quebrar fora deste repo, onde nenhum `agents/*.md` existe localmente.
   for (const nome of nomesDeclArados) {
+    if (NATIVOS_DO_HARNESS.has(nome)) {
+      continue;
+    }
     if (!agentesEmDiscoSet.has(nome)) {
       console.error(`erro: agente '${nome}' declarado no manifesto mas sem arquivo em ${agentesDir}/${nome}.md`);
       erros++;
