@@ -238,6 +238,39 @@ console.log("== 3f. '?' que nao e pergunta, e condicao pendurada no fim (achados
   caso("'autorizo subagentes, so nesse caso' AUTORIZA", rCasoSubst === true, rCasoSubst);
 }
 
+console.log("== 3g. condicao pendurada e por FRASE, e URL nao engole a palavra (achados da 5a rodada) ==");
+{
+  // A trava de condicao pendurada nasceu FORA do laco, testando o texto
+  // inteiro, com um `return false` que matava a concessao de uma frase por
+  // causa de outra — o mesmo defeito que o veredito por frase existe para
+  // evitar, reintroduzido pela correcao anterior.
+  const rOutraFrase = autorizado(fx("concessao-e-pendurado-em-outra-frase.jsonl"));
+  caso("'autorizo subagentes agora mesmo. ainda tenho duvida se' AUTORIZA", rOutraFrase === true, rOutraFrase);
+
+  const rQuandoOutra = autorizado(fx("concessao-e-quando-em-outra-frase.jsonl"));
+  caso("'autorizo subagentes ja. vamos ver quando' AUTORIZA", rQuandoOutra === true, rQuandoOutra);
+
+  // Guarda de regressao do escopo: aqui a concessao esta na 1a frase e concede
+  // sozinha, entao nenhum mutante de LINHA vira o veredito dela — o defeito que
+  // ela guarda era estrutural (bloco fora do laco), nao uma linha errada.
+  const rPossessivo = autorizado(fx("concessao-e-caso-possessivo.jsonl"));
+  caso("'...depois converso melhor sobre nosso caso' AUTORIZA", rPossessivo === true, rPossessivo);
+
+  // Esta sim faz o possessivo DECIDIR: uma frase so, terminada em 'caso', que
+  // e substantivo por causa do 'nosso'. Tirar os possessivos da lista de
+  // determinantes recusa esta concessao — e a bateria fica vermelha.
+  const rPossessivoNaFrase = autorizado(fx("concessao-com-possessivo-na-frase.jsonl"));
+  caso("'autorizo subagentes so no nosso caso' AUTORIZA", rPossessivoNaFrase === true, rPossessivoNaFrase);
+
+  // A remocao de URL usava `\S+` guloso: colada na pontuacao seguinte, comia a
+  // palavra que decide tudo antes de qualquer analise.
+  const rUrlVirgula = autorizado(fx("concessao-com-url-colada-em-virgula.jsonl"));
+  caso("URL colada em virgula nao engole 'autorizo'", rUrlVirgula === true, rUrlVirgula);
+
+  const rUrlParen = autorizado(fx("concessao-com-url-em-parenteses.jsonl"));
+  caso("URL entre parenteses nao engole 'autorizo'", rUrlParen === true, rUrlParen);
+}
+
 console.log("== 4. negacao sem acento ('nao autorizo subagentes') NAO autoriza ==");
 {
   const r = autorizado(fx("negado-sem-acento.jsonl"));

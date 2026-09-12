@@ -294,20 +294,17 @@ function temAutorizacaoPrincipal(obj) {
   //    https://example.com/page?ref=x"   -> recusava
   //
   // Trocar por espaço (e não apagar) preserva as fronteiras de palavra.
-  const semUrl = normalizado.replace(/\bhttps?:\/\/\S+|\bwww\.\S+/g, ' ');
-
-  // Mensagem que ACABA pendurada numa condição não é concessão fechada:
-  // "autorizo subagentes, mas so quando" é o usuário interrompido no meio da
-  // restrição. Medido na 4ª rodada: tirar `caso`/`quando` dos subordinadores
-  // por oração (regressão certa — ali eram substantivo) fez estas passarem.
   //
-  // A trava é só no FIM DO TEXTO INTEIRO, e só quando a palavra está nua. Com
-  // determinante ou preposição antes ela é substantivo, não conjunção pendente:
-  // "so nesse caso" e "dependendo do caso" continuam concedendo, porque ali o
-  // usuário terminou a frase.
-  if (/(?<!\b(?:o|a|os|as|um|uma|esse|essa|nesse|nessa|desse|dessa|este|esta|neste|nesta|deste|desta|aquele|aquela|do|da|no|na|cada|algum|alguma|qualquer|outro|outra|meu|minha|seu|sua)\s)\b(se|que|caso|quando)\s*$/.test(semUrl.trim())) {
-    return false;
-  }
+  // O casamento PARA na pontuação que fecha link em prosa. Com `\S+` guloso, a
+  // URL colada na pontuação seguinte engolia a palavra depois dela — inclusive
+  // a que decide tudo:
+  //
+  //   "aqui esta o link:https://…/123?tab=comments,autorizo subagentes"
+  //     -> "autorizo" sumia do texto antes de qualquer análise, e recusava
+  //
+  // Uma URL pode legitimamente conter `,` ou `)`, e aí o pedaço final vira
+  // texto. É o lado barato do erro: sobra ruído, não some concessão.
+  const semUrl = normalizado.replace(/\bhttps?:\/\/[^\s,)\]}"'<>]+|\bwww\.[^\s,)\]}"'<>]+/g, ' ');
 
   // O separador de frases corta em `.!?` seguido de espaço, mais um caso: `?`
   // colado na palavra seguinte, sem espaço nenhum — digitação com pressa
@@ -417,6 +414,25 @@ function temAutorizacaoPrincipal(obj) {
     // autorizo subagentes, mas talvez amanha" o marcador está colado no verbo,
     // na mesma oração, e continua valendo.
     const oracoes = texto.split(/[,;:]+/);
+
+    // Frase que ACABA pendurada numa condição não é concessão fechada:
+    // "autorizo subagentes, mas so quando" é o usuário interrompido no meio da
+    // restrição.
+    //
+    // Isto já morou FORA do laço, testando o texto inteiro, e a revisão de
+    // 2026-09-12 mostrou que ali era o mesmo defeito que o veredito por frase
+    // existe para evitar — um `return false` que matava a concessão de uma
+    // frase por causa de outra:
+    //
+    //   "autorizo subagentes agora mesmo. ainda tenho duvida se"  -> recusava
+    //   "autorizo subagentes ja. vamos ver quando"                -> recusava
+    //
+    // Dentro do laço, cada frase responde por si. A palavra só conta nua: com
+    // determinante ou preposição antes ela é substantivo, não conjunção
+    // pendente, e "so nesse caso" continua concedendo.
+    if (/(?<!\b(?:o|a|os|as|um|uma|esse|essa|nesse|nessa|desse|dessa|este|esta|neste|nesta|deste|desta|aquele|aquela|do|da|no|na|cada|algum|alguma|qualquer|outro|outra|meu|minha|seu|sua|nosso|nossa|teu|tua|dele|dela)\s)\b(se|que|caso|quando)\s*$/.test(texto)) {
+      continue;
+    }
 
     // Oração que termina em subordinador pendurado ("nao sei se, no fim,
     // autorizo subagentes") joga a subordinação para a frente: a vírgula ali é
