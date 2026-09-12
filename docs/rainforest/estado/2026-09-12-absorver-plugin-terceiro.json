@@ -39,147 +39,147 @@
     "carimbos": [
       {
         "tarefa": 1,
-        "hash_base": "eff55e833de2238a793c97f6f106b624e4a19dd4",
+        "hash_base": "ed3d171291c81a6866e3d52403c56e383191e341",
         "iteracao": 1,
         "sessao": "desconhecida",
         "ts": "2026-09-12T05:41:54.658Z"
       },
       {
         "tarefa": 3,
-        "hash_base": "eff55e833de2238a793c97f6f106b624e4a19dd4",
+        "hash_base": "ed3d171291c81a6866e3d52403c56e383191e341",
         "iteracao": 1,
         "sessao": "desconhecida",
         "ts": "2026-09-12T05:41:54.658Z"
       },
       {
         "tarefa": 4,
-        "hash_base": "eff55e833de2238a793c97f6f106b624e4a19dd4",
+        "hash_base": "ed3d171291c81a6866e3d52403c56e383191e341",
         "iteracao": 1,
         "sessao": "desconhecida",
         "ts": "2026-09-12T05:41:54.658Z"
       },
       {
         "tarefa": 5,
-        "hash_base": "eff55e833de2238a793c97f6f106b624e4a19dd4",
+        "hash_base": "ed3d171291c81a6866e3d52403c56e383191e341",
         "iteracao": 1,
         "sessao": "desconhecida",
         "ts": "2026-09-12T05:41:54.658Z"
       },
       {
         "tarefa": 6,
-        "hash_base": "eff55e833de2238a793c97f6f106b624e4a19dd4",
+        "hash_base": "ed3d171291c81a6866e3d52403c56e383191e341",
         "iteracao": 1,
         "sessao": "desconhecida",
         "ts": "2026-09-12T05:41:54.658Z"
       },
       {
         "tarefa": 7,
-        "hash_base": "eff55e833de2238a793c97f6f106b624e4a19dd4",
+        "hash_base": "ed3d171291c81a6866e3d52403c56e383191e341",
         "iteracao": 1,
         "sessao": "desconhecida",
         "ts": "2026-09-12T05:41:54.658Z"
       },
       {
         "tarefa": 9,
-        "hash_base": "eff55e833de2238a793c97f6f106b624e4a19dd4",
+        "hash_base": "ed3d171291c81a6866e3d52403c56e383191e341",
         "iteracao": 1,
         "sessao": "desconhecida",
         "ts": "2026-09-12T05:41:54.658Z"
       },
       {
         "tarefa": 10,
-        "hash_base": "eff55e833de2238a793c97f6f106b624e4a19dd4",
+        "hash_base": "ed3d171291c81a6866e3d52403c56e383191e341",
         "iteracao": 1,
         "sessao": "desconhecida",
         "ts": "2026-09-12T05:41:54.658Z"
       },
       {
         "tarefa": 11,
-        "hash_base": "eff55e833de2238a793c97f6f106b624e4a19dd4",
+        "hash_base": "ed3d171291c81a6866e3d52403c56e383191e341",
         "iteracao": 1,
         "sessao": "desconhecida",
         "ts": "2026-09-12T05:41:54.658Z"
       },
       {
         "tarefa": 2,
-        "hash_base": "eff55e833de2238a793c97f6f106b624e4a19dd4",
+        "hash_base": "ed3d171291c81a6866e3d52403c56e383191e341",
         "iteracao": 1,
         "sessao": "desconhecida",
         "ts": "2026-09-12T06:11:22.237Z"
       },
       {
         "tarefa": 8,
-        "hash_base": "eff55e833de2238a793c97f6f106b624e4a19dd4",
+        "hash_base": "ed3d171291c81a6866e3d52403c56e383191e341",
         "iteracao": 1,
         "sessao": "desconhecida",
         "ts": "2026-09-12T06:11:22.237Z"
       },
       {
         "tarefa": 14,
-        "hash_base": "1dd8f3de90edf6eb968ecf28e1063af0096fcedc",
+        "hash_base": "224f7cc1f90b9b8a5e94212f70f55ababddcc238",
         "iteracao": 1,
         "sessao": "desconhecida",
         "ts": "2026-09-12T06:11:22.237Z"
       },
       {
         "tarefa": 12,
-        "hash_base": "e9b94ad54fa7ab2fb5080f78e4c9847ddb74673d",
+        "hash_base": "e3a701c1c723731174b130e727667d096e3afc33",
         "iteracao": 1,
         "sessao": "desconhecida",
         "ts": "2026-09-12T07:17:12.281Z"
       },
       {
         "tarefa": 13,
-        "hash_base": "e9b94ad54fa7ab2fb5080f78e4c9847ddb74673d",
+        "hash_base": "e3a701c1c723731174b130e727667d096e3afc33",
         "iteracao": 1,
         "sessao": "desconhecida",
         "ts": "2026-09-12T07:17:12.281Z"
       },
       {
         "tarefa": 15,
-        "hash_base": "55e1ca4f",
+        "hash_base": "aefbd541",
         "iteracao": 1,
         "sessao": "desconhecida",
         "ts": "2026-09-12T07:17:12.281Z"
       },
       {
         "tarefa": 4,
-        "hash_base": "ff239855",
+        "hash_base": "cbdcc670",
         "iteracao": 2,
         "sessao": "desconhecida",
         "ts": "2026-09-12T07:44:20.866Z"
       },
       {
         "tarefa": 1,
-        "hash_base": "ff239855",
+        "hash_base": "cbdcc670",
         "iteracao": 2,
         "sessao": "desconhecida",
         "ts": "2026-09-12T07:44:20.866Z"
       },
       {
         "tarefa": 13,
-        "hash_base": "ff239855",
+        "hash_base": "cbdcc670",
         "iteracao": 2,
         "sessao": "desconhecida",
         "ts": "2026-09-12T07:44:20.866Z"
       },
       {
         "tarefa": 9,
-        "hash_base": "ff239855",
+        "hash_base": "cbdcc670",
         "iteracao": 2,
         "sessao": "desconhecida",
         "ts": "2026-09-12T07:44:20.866Z"
       },
       {
         "tarefa": 12,
-        "hash_base": "e221b98",
+        "hash_base": "f263df0",
         "iteracao": 2,
         "sessao": "desconhecida",
         "ts": "2026-09-12T07:57:12.305Z"
       },
       {
         "tarefa": 9,
-        "hash_base": "e221b98",
+        "hash_base": "f263df0",
         "iteracao": 3,
         "sessao": "desconhecida",
         "ts": "2026-09-12T07:57:12.305Z"
@@ -263,38 +263,38 @@
       }
     ],
     "comando": "grep -rn \"144 de 441\" --include=*.md .; grep -c \"285 de 441\" docs/rainforest/design/2026-09-12-absorver-plugin-terceiro.md docs/travas-mecanicas.md; bash scripts/testa-mapa-regras.sh",
-    "saida": "rodada 3 (aviso da rodada 2): 0 ocorrencias de 144 de 441; 285 de 441 presente no design (1) e no travas-mecanicas (1); mapa-regras 6 ok. rodada 2 (avisos da revisao): publicacao 98 ok 0 falha (caso 11b merge novo); gate-mensagem-commit 25 ok 0 falha (caso i2 commit pelado); regra-09 grep = 1 para as tres datas; mapa-regras 6 ok; contexto-sessao exit 0 (regra-12 10472 B folga 28 B); README + travas-mecanicas emendados em commit proprio. Rodada 1: total=107 vermelhas:[testa-dependencias-de-bateria.sh testa-config.sh] -> as duas causadas pelo lote e corrigidas em 8ac43b00 (re-rodadas: 6 ok / 45 ok); cobertura ok 14 decisoes 15 tarefas; sem creep 53 arquivos cobertos; publicacao --commit origin/main..HEAD CONFERIDO exit 0; 22 commits em origin/main..HEAD"
+    "saida": "rodada 3 (aviso da rodada 2): 0 ocorrencias de 144 de 441; 285 de 441 presente no design (1) e no travas-mecanicas (1); mapa-regras 6 ok. rodada 2 (avisos da revisao): publicacao 98 ok 0 falha (caso 11b merge novo); gate-mensagem-commit 25 ok 0 falha (caso i2 commit pelado); regra-09 grep = 1 para as tres datas; mapa-regras 6 ok; contexto-sessao exit 0 (regra-12 10472 B folga 28 B); README + travas-mecanicas emendados em commit proprio. Rodada 1: total=107 vermelhas:[testa-dependencias-de-bateria.sh testa-config.sh] -> as duas causadas pelo lote e corrigidas em 72fe131e (re-rodadas: 6 ok / 45 ok); cobertura ok 14 decisoes 15 tarefas; sem creep 53 arquivos cobertos; publicacao --commit origin/main..HEAD CONFERIDO exit 0; 22 commits em origin/main..HEAD"
   },
   "revisar": {
     "status": "ok",
     "achados": 0,
     "base": "10251507",
-    "head": "f365bdb",
+    "head": "38a36c4",
     "em_voo": [],
     "lista": [
       "travas-mecanicas.md linha do gate-mensagem-commit cita 144 de 441 commits sem lastro no repo; design registra 285/441 ate 3 arquivos e 310 com corpo"
     ],
     "em": "2026-09-12",
     "snapshot": {
-      "head": "f365bdb6cc5d8df0e56e33feabc01ab5aa3f7d9b",
+      "head": "38a36c47730d57a14b1bb475b968f833c3657890",
       "caminhos_sujos": []
     },
     "rodadas": [
       {
         "n": 1,
-        "head": "ff239855",
+        "head": "cbdcc670",
         "veredicto": "APROVADO",
         "achados": 3
       },
       {
         "n": 2,
-        "head": "e221b98",
+        "head": "f263df0",
         "veredicto": "REPROVADO",
         "achados": 1
       },
       {
         "n": 3,
-        "head": "f365bdb",
+        "head": "38a36c4",
         "veredicto": "APROVADO",
         "achados": 0
       }
