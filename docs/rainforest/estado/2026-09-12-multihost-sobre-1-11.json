@@ -21,7 +21,7 @@
     "status": "parcial",
     "catraca_mutacao": "2026-09-12",
     "em_voo": [],
-    "tarefas_ok": 1,
+    "tarefas_ok": 2,
     "tarefas": 9,
     "em": "2026-09-12",
     "carimbos": [
@@ -31,6 +31,13 @@
         "iteracao": 1,
         "sessao": "desconhecida",
         "ts": "2026-09-12T20:17:50.631Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "4028a28513d6ecc7247fe3d76c673a0928a0dd09",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T20:31:43.880Z"
       }
     ]
   },
