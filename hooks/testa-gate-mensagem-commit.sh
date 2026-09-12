@@ -6,7 +6,7 @@
 # O que esta bateria precisa provar, nesta ordem:
 #   1. que BARRA (exit 2) diff grande sem corpo, assunto invalido (vazio,
 #      longo demais, com ponto final) e mensagem nao resolvivel (-F -,
-#      heredoc, nem -m nem -F);
+#      heredoc, nem -m nem -F — inclusive `git commit` pelado);
 #   2. que PASSA (exit 0) commit pequeno so com assunto, diff grande COM
 #      corpo de verdade, `-F <arquivo>` com corpo, flag de reuso
 #      (--amend --no-edit, -C, -c), comando sem `git commit`, e fora de
@@ -135,6 +135,10 @@ echo
 echo "== (i) 4 arquivos, -m assunto -m trailer: BARRA (trailer nao e corpo) =="
 gate "4 arquivos, segundo -m e so trailer -> exit 2" 2 \
   "$(payload "$R4" Bash 'git commit -m "Assunto valido" -m "Co-Authored-By: X <x@t>"')"
+
+echo
+echo "== (i2) git commit PELADO (abriria editor; e' o commit que fecha merge): BARRA e aponta MERGE_MSG =="
+gate_contendo "git commit sem -m/-F/reuso -> exit 2" 2 "MERGE_MSG" "$(payload "$R1" Bash 'git commit')"
 
 echo
 echo "== (j) comando sem 'git commit': PASSA =="

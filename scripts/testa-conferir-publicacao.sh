@@ -447,6 +447,23 @@ saiu "modo disco (arquivo ja limpo) sai 0 -- os dois modos coexistem" \
      "$(codigo "$CPUB/relatorio.md")" "0"
 
 echo
+echo "== 11b. --commit <rev> quando <rev> e' um MERGE (achado da revisao, 2026-09-12) =="
+# `git show --name-only` sem -m lista ZERO arquivos num merge commit: o modo
+# avulso saia "CONFERIDO" sem ler nada. O merge abaixo traz um arquivo com
+# e-mail pela branch lateral; o segredo esta so no que o merge trouxe.
+git -C "$CPUB" add relatorio.md >/dev/null
+git -C "$CPUB" commit -qm "limpa o relatorio" >/dev/null
+git -C "$CPUB" checkout -qb lateral
+printf 'au''to''r:'' b''el''tr''an''o@''em''pr''es''a.''co''m.''br''\n' > "$CPUB/lateral.md"
+git -C "$CPUB" add lateral.md >/dev/null
+git -C "$CPUB" commit -qm "lateral com email" >/dev/null
+git -C "$CPUB" checkout -q - >/dev/null
+git -C "$CPUB" merge -q --no-ff -m "merge da lateral" lateral >/dev/null
+S="$(roda_commit "$CPUB" HEAD)"
+tem  "merge commit avulso: --commit HEAD acha o e-mail que o merge trouxe" "$S" "lateral.md"
+saiu "e RECUSA (exit 2), nao CONFERIDO com zero arquivos"                  "$(codigo_commit "$CPUB" HEAD)" "2"
+
+echo
 echo "== 12. --commit num RANGE de dois commits =="
 RANGE_POSIX="$(mktemp -d)"
 RANGE="$(cygpath -m "$RANGE_POSIX" 2>/dev/null || printf '%s' "$RANGE_POSIX")"

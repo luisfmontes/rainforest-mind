@@ -433,7 +433,11 @@ function modoCommit(spec, json) {
     arquivos = diff.stdout.split('\n').map((s) => s.trim()).filter(Boolean);
     revLeitura = b;
   } else {
-    const show = runGit(['show', '--name-only', '--format=', spec]);
+    // diff-tree, nao `git show --name-only`: para um MERGE commit o `show` sem
+    // -m lista ZERO arquivos e o modo saia "CONFERIDO" sem ler nada (achado da
+    // revisao de 2026-09-12). `-m --first-parent` compara com o primeiro pai
+    // (o que o merge trouxe para a branch); `--root` cobre o commit inicial.
+    const show = runGit(['diff-tree', '--root', '-r', '-m', '--first-parent', '--no-commit-id', '--name-only', spec]);
     if (show.status !== 0) {
       process.stderr.write(`nao-verificavel: rev invalida '${spec}': ${primeiraLinha(show.stderr)}\n`);
       return 69;
