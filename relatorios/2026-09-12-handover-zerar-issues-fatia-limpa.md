@@ -111,6 +111,30 @@ Pre-existente.
   no meio desta montagem. Monte fatia com `git apply --3way`, nunca com
   `git checkout <sha> -- <arquivos>`, que sobrescreve o trabalho alheio.
 
+## O que a CI pegou que a maquina local nao pegava
+
+A primeira rodada do PR #236 saiu vermelha em tres baterias que estavam verdes
+aqui. Nenhuma era intermitente:
+
+- **Fatia por arquivo pode ficar internamente inconsistente.** A fatia trouxe o
+  `foco.cjs` que passou a fazer `require("./lib/backup-rotativo.cjs")` (D15) e
+  deixou de fora `testa-backup-estado.sh` e `testa-registrar-erro.sh`, que
+  montam a caixa de areia copiando arquivo por arquivo. Elas ficaram sem a pasta
+  nova e morriam em MODULE_NOT_FOUND. Ficaram de fora porque a T10 (com achado)
+  as tocou — mas quem conserta isso e' a T20, que veio DEPOIS da T10 e esta
+  limpa. Licao: quando duas tarefas tocam o mesmo arquivo e a limpa vem DEPOIS
+  da suja, nenhuma versao inteira serve; aplique so o diff da tarefa limpa.
+  Antes de fechar uma fatia, pergunte quem mais depende do que ela move.
+- **Grafia de caminho difere entre `git` e o cwd do chamador.**
+  `git rev-parse --git-common-dir` responde `.git` RELATIVO, entao o caminho do
+  principal nasce do cwd recebido, enquanto `git worktree list` imprime a grafia
+  canonica. No runner uma vinha em 8.3 curto (`RUNNER~1`) e a outra longa
+  (`runneradmin`): o principal nao casou consigo mesmo e se listou como worktree
+  ja integrada. Comparacao de caminho em codigo novo: `fs.realpathSync.native`
+  dos dois lados, caixa da letra de drive normalizada, texto cru so como
+  fallback. O caso (f) da `testa-principal-atrasado.sh` usa junction como
+  segunda grafia e reproduz isso sem depender do runner.
+
 ---
 🤖 Gerado com [Claude Code](https://claude.com/claude-code)
 
