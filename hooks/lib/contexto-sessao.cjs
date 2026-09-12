@@ -78,8 +78,12 @@ const TETOS = {
    * Quem quiser passar daqui paga por **subtração** — é a mesma regra que vale
    * para skill neste repo. Subir o número é decisão consciente e vem com a conta
    * escrita: cada byte a mais aqui é um byte a menos de FOCO.md em toda sessão.
+   *
+   * Subiu de 5600 para 6000 em 2026-09-12 porque a triagem de achado entrou no
+   * núcleo da regra 6 (+306 B), reduzindo a folga de 2 B para zero. Teto revisado
+   * para 6000 B deixando 96 B de folga (1,6% acima do novo piso estrutural).
    */
-  NUCLEOS_MAX_BYTES: 5600,
+  NUCLEOS_MAX_BYTES: 6000,
   /**
    * Teto e piso do bloco de foco, em BYTES — a mesma unidade do orçamento.
    * Misturar as duas unidades é erro silencioso aqui: em português acentuado

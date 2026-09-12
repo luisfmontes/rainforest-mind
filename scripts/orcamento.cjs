@@ -185,8 +185,13 @@ function main() {
    * 15.000 da ~250 B de folga sobre o piso estrutural de ~14.750. Apertado de
    * proposito: continua doendo escrever descricao gorda, que e o trabalho que
    * este teto existe para fazer. Quem quiser passar daqui paga por SUBTRACAO.
+   *
+   * Subiu de 15.000 para 15.600 em 2026-09-12 porque a triagem de achado entrou
+   * no núcleo da regra 6 (+306 B), reduzindo a folga de 73 B para zero. Teto
+   * revisado para 15.600 B deixando 367 B de folga, acima do limiar de aviso
+   * de 300 B.
    */
-  const tetoAgregado = Number(valorDe('teto') || 15000);
+  const tetoAgregado = Number(valorDe('teto') || 15600);
 
   const bytesHook = medirHook();
   const bytesSkills = medirSkills();
