@@ -1500,11 +1500,13 @@ function main() {
       // como último recurso. Antes, este trecho tinha o único `path.join`
       // hard-coded do arquivo que ignorava esse campo — um fluxo com plano
       // fora do padrão pulava a catraca inteira em silêncio, exit 0 sem rodar
-      // `conferir-fluxo.cjs mutacoes` nenhuma vez.
+      // `conferir-fluxo.cjs mutacoes` nenhuma vez. O caminho resolvido chega ao
+      // subprocesso via `--plano`: sem ele, `conferir-fluxo mutacoes` resolve
+      // `<slug>.md` fixo e ignora `plano.arquivo`.
       if (estagio === 'verificar') {
         const arquivo_plano = docDoEstagio('planos', slug, estado);
         if (fs.existsSync(arquivo_plano)) {
-          const mutacoes = spawnSync(process.execPath, [path.join(__dirname, 'conferir-fluxo.cjs'), 'mutacoes', '--slug', slug], {
+          const mutacoes = spawnSync(process.execPath, [path.join(__dirname, 'conferir-fluxo.cjs'), 'mutacoes', '--slug', slug, '--plano', arquivo_plano], {
             stdio: 'inherit',
           });
           if (mutacoes.status !== 0) {

@@ -22,7 +22,9 @@ trap 'rm -rf "$(dirname "$SBP")"' EXIT
 
 mkdir -p "$SBP/scripts" "$SBP/hooks/lib"
 cp "$SRC/scripts/estado.cjs" "$SBP/scripts/"
+cp "$SRC/scripts/conferir-fluxo.cjs" "$SBP/scripts/"
 cp "$SRC/hooks/lib/raiz.cjs" "$SBP/hooks/lib/"
+cp "$SRC/hooks/lib/config.cjs" "$SBP/hooks/lib/"
 # A caixa vira raiz de dados: sem marcador, resolverRaiz cairia no repo de verdade
 # e a bateria escreveria estado no .rainforest do usuario.
 touch "$SBP/FOCO.md"
@@ -1267,6 +1269,14 @@ esac
 # montar esta fixture honesta, ela nunca tinha rodado no caminho certo.
 unset RFM_ESTADO_ROOT
 
+# Inicializar sandbox como repositorio git para que creep possa rodar git diff
+cd "$SBP" || exit 1
+git init -q && git config user.email "test@<email>" && git config user.name "Test"
+git commit -q --allow-empty -m "inicial"
+BASE_COMMIT=$(git rev-parse HEAD)
+git commit -q --allow-empty -m "head"
+HEAD_COMMIT=$(git rev-parse HEAD)
+
 echo
 echo "== 6. marcar verificar ok com mutacoes (D9) =="
 # Fixture para mutacao: fonte que sera' mutada
@@ -1372,19 +1382,21 @@ esperado "t6b exigir executar" 0 $E exigir --slug t6b --estagio executar
 # vermelho, mas a bateria SINTETICA (acima) nao mede nada, e a re-verificacao
 # independente em 'verificar' e' quem descobre isso.
 esperado "t6b executar fecha" 0 $E marcar --slug t6b --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t6-mut"}]}'
-esperado "t6b revisar fecha" 0 $E marcar --slug t6b --estagio revisar --status ok
+esperado "t6b revisar fecha" 0 $E marcar --slug t6b --estagio revisar --status ok --json "{\"achados\":0,\"base\":\"$BASE_COMMIT\",\"head\":\"$HEAD_COMMIT\"}"
 esperado "t6b exigir verificar" 0 $E exigir --slug t6b --estagio verificar
 
-# A asserção final exige a MENSAGEM, não só o exit 2 — é a mensagem que
-# distingue esta recusa (catraca de mutação) de qualquer outra recusa possível
-# no mesmo exit code (pré-requisito em aberto, evidência ausente, etc.).
+# A asserção final exige as DUAS MENSAGENS, não só o exit 2 — é a mensagem
+# do mutante que distingue esta recusa (catraca de mutação com --plano correto)
+# de qualquer outra recusa possível no mesmo exit code (pré-requisito em aberto,
+# evidência ausente, etc.). Sem --plano, a mesma chamada sai 2 com a mensagem
+# da catraca MAS SEM 'mutante sobreviveu', que é o motivo errado (plano não encontrado).
 SAIDA_T6B=$($E marcar --slug t6b --estagio verificar --status ok --json '{"comando":"bash","saida":"done"}' 2>&1)
 GOT_T6B=$?
-if [ "$GOT_T6B" = 2 ] && printf '%s' "$SAIDA_T6B" | grep -q "catraca de mutações não passou"; then
-  ok=$((ok+1)); echo "  ok   marcar verificar ok com mutacao que sobrevive recusa (mensagem da catraca)"
+if [ "$GOT_T6B" = 2 ] && printf '%s' "$SAIDA_T6B" | grep -q "mutante sobreviveu" && printf '%s' "$SAIDA_T6B" | grep -q "catraca de mutações não passou"; then
+  ok=$((ok+1)); echo "  ok   marcar verificar ok com mutacao que sobrevive recusa (mensagem do mutante e da catraca)"
 else
   falhou=$((falhou+1))
-  echo "  FALHA marcar verificar deveria recusar com 'catraca de mutações não passou' (exit 2); veio exit $GOT_T6B"
+  echo "  FALHA marcar verificar deveria recusar com AMBAS 'mutante sobreviveu' E 'catraca de mutações não passou' (exit 2); veio exit $GOT_T6B"
   echo "$SAIDA_T6B" | sed 's/^/         /'
 fi
 
