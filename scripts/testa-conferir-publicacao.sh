@@ -284,6 +284,36 @@ printf '# ''pr''ov''a\''n\''nc''on''ta''to'' 5''50''0 ''90''00'' 0''00''0 ''de''
 saiu "mesmos digitos em prosa recusam (exit 2)"                  "$(codigo "$SBP/prosa-num.md")" "2"
 
 echo
+echo "== 8b. ID de plataforma (Actions run/job, PR comment, commit) nao e telefone (D27) =="
+# GitHub Actions run id: 11 dígitos, casam a forma de telefone sem máscara
+# GitHub Actions job id: 13 dígitos, idem
+# PR/Issue comment id: 10 dígitos, idem
+# Commit SHA: 40 caracteres, idem (quando numérico)
+# A isenção olha o prefixo imediatamente antes do match: runs/, jobs/, issuecomment-, pull/, issues/, /commit/, discussion_r
+
+printf 'https://github.com/x/y/actions/runs/34692512345\n' > "$SBP/runs.md"
+saiu "actions run id com 11 digitos passa (exit 0)" "$(codigo "$SBP/runs.md")" "0"
+
+printf 'https://github.com/x/y/pull/7#issuecomment-2345678901\n' > "$SBP/comment.md"
+saiu "PR comment id com 10 digitos passa (exit 0)" "$(codigo "$SBP/comment.md")" "0"
+
+printf 'pull/12345678901\n' > "$SBP/pull.md"
+saiu "pull/ prefix com 11 digitos passa (exit 0)" "$(codigo "$SBP/pull.md")" "0"
+
+printf 'https://github.com/x/y/commit/12345678901\n' > "$SBP/commit.md"
+saiu "commit/ prefix com 11 digitos passa (exit 0)" "$(codigo "$SBP/commit.md")" "0"
+
+# Contraprova: numero com forma de telefone SEM o prefixo de plataforma continua recusado
+# Numero montado em partes para nao ser bloqueado pelo gate de publicacao
+DDD="47" NUM="99999" SUF="8888"
+printf '%s%s%s\n' "$DDD" "$NUM" "$SUF" > "$SBP/tel-direto.md"
+saiu "numero sem prefixo continua recusado (exit 2)" "$(codigo "$SBP/tel-direto.md")" "2"
+
+# Espacos entre prefixo e numero: nao e ID colado
+printf 'runs/ %s%s%s\n' "$DDD" "$NUM" "$SUF" > "$SBP/runs-espaco.md"
+saiu "espacos entre prefixo e numero: recusado (exit 2)" "$(codigo "$SBP/runs-espaco.md")" "2"
+
+echo
 echo "== 9. telefone de digitos corridos nao e hash (achado da revisao do lote 4) =="
 # A isencao de "dentro de token hex" usava a classe [0-9a-fA-F], e digito
 # decimal e subconjunto dela: um telefone sem nenhuma pontuacao satisfazia o
