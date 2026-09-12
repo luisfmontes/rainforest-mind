@@ -2228,7 +2228,7 @@ let texto = fs.readFileSync(alvo, 'utf8');
 // APARECEM DENTRO dele vem escapados com backslash no arquivo -- \` literal, nao
 // backtick nu. A ancora e a troca tem de casar com os bytes reais do arquivo,
 // nao com o que o template produziria depois de avaliado.
-const achar = '\\`${pastaReferences}/regra-<n>.md\\` (onde \\`<n>\\` é o número da regra).';
+const achar = '\\`${pastaReferences}/regra-<n>.md\\` (onde \\`<n>\\` é o número com dois dígitos — \\`06\\`, \\`13\\`, \\`17\\`).';
 const trocar = 'carregue \\`Skill(rainforest-mind)\\` antes de aplicar a regra marcada.';
 if (!texto.includes(achar)) { console.error('ANCORA NAO BATE em ' + alvo); process.exit(1); }
 texto = texto.split(achar).join(trocar);

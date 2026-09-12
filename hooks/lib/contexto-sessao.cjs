@@ -1084,7 +1084,7 @@ function montarContexto(o) {
 **Isto é o NÚCLEO das regras, não o texto completo.** Regra marcada com ↳ tem
 elaboração que não está aqui — critérios finos, comandos exatos, incidentes.
 **Antes de aplicar uma regra marcada, leia a elaboração:**
-\`${pastaReferences}/regra-<n>.md\` (onde \`<n>\` é o número da regra).
+\`${pastaReferences}/regra-<n>.md\` (onde \`<n>\` é o número com dois dígitos — \`06\`, \`13\`, \`17\`).
 
 ## Regras (aplicar em toda resposta)
 ${regras}
