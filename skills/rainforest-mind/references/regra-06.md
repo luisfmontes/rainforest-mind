@@ -2,7 +2,7 @@
 
 ## Triagem: o teste de uma linha
 
-Achado que não é a tarefa atual (bug, ideia, observação sobre método) precisa ser **triad antes de subir**: é o **código** que faz errado, uma **melhoria** que seria bacana, ou **eu** que cometi um erro de método?
+Achado que não é a tarefa atual (bug, ideia, observação sobre método) precisa ser **triado antes de subir**: é o **código** que faz errado, uma **melhoria** que seria bacana, ou **eu** que cometi um erro de método?
 
 A triagem usa a tabela de `commands/issue.md` seção 2 e `commands/feedback.md` seção 1: procure ali a classificação exata. Na dúvida, pergunte em uma linha. **Achados que caem em mais de uma categoria são DUAS coisas — nunca uma escolha:** um defeito descoberto por engano meu é Issue (código errado é código errado) mais `/feedback` (engano meu é observação de método); não existem "meio-termos" que compõem escolha.
 
@@ -16,11 +16,11 @@ Razão: plantio resgata tópicos depois; semente plantada é prioridade baixa. D
 
 A tentação ao achar defeito é perguntar: "quer que eu registre?" — essa pergunta transfere a decisão de registrar um erro da ferramenta para quem a usa, e a resposta óbvia é sim. A pergunta só adia. Issue tem uma **confirmação depois de escrito** (é irreversível e indexada), mas o rascunho já vai completo no fluxo do comando — nunca como pergunta pendente.
 
-Se achar que pode não ser Issue (dúvida sobre o que é), escreva-a mesmo assim na injeção; quem despachou aprova antes de publicar em `commands/issue.md` passo 7.
+Se achar que pode não ser Issue (dúvida sobre o que é), escreva-a mesmo assim; a dúvida sobe junto com o rascunho em uma linha, e quem despachou aprova antes de publicar em `commands/issue.md` passo 7.
 
 ### O incidente que fundamenta
 
-> **2026-08-24:** Uma observação privada (`obs-2026-08-24-defeito-do-plugin-oferecido-como-ideia`) ficou plantada 19 dias com a triagem dependendo de resposta do usuário. Ao menos 6 defeitos do plugin entraram no acervo como "ideia de melhoria" nesse período, porque a pergunta "quer que eu registre?" foi respondida com "depois", e "depois" virou nunca. Regra 3 diz que futuro distante não regula comportamento presente — a mesma dinâmica travou a triagem inteira: sem rascunho escrito, sem confirmação depois, apenas pergunta aguardando.
+> **2026-08-24:** Uma observação privada (`obs-2026-08-24-defeito-do-plugin-oferecido-como-ideia`) foi plantada com gancho de retorno, mas ficou 19 dias sem ser colhida. Nesse período, ao menos 6 defeitos do plugin entraram no acervo como "ideia de melhoria". O motivo: observação de método só é colhida por **plantio**, e o próprio mecanismo que a triagem descrevia (plantio de achado) é o que mantinha essa observação invisível — o defeito preservava a si mesmo.
 > re-verificar: `git log -S 'obs-2026-08-24' --oneline`
 
 ## Plantio de ideias
@@ -48,4 +48,4 @@ abandonado consciente, nunca como pendência solta.
 
 ## Nota: "nunca barrar defeito"
 
-Esta regra (regra 6, triagem obrigatória) e a regra 9 (freio de Pareto) trabalham juntas: regra 9 barra **polimento de coisa pronta**, mas nunca defeito. Se encostou aqui lendo sobre triagem, o ponto é que defeito não sobe como ideia (regra 6) e não fica plantado (nunca, em nenhuma circunstância — ele bloqueia). Veja `references/regra-09.md` para onde o freio é real (melhoria em coisa pronta) e onde é proibido (correção de defeito).
+Esta regra (regra 6, triagem obrigatória) e a regra 9 (freio de Pareto) trabalham juntas: regra 9 barra **polimento de coisa pronta**, mas nunca defeito. Se encostou aqui lendo sobre triagem, o ponto é que defeito não sobe como ideia (regra 6), e só é consertado na hora se bloqueia o trabalho em curso — o que não bloqueia vira Issue e entra na fila normal. Veja `references/regra-09.md` para onde o freio é real (melhoria em coisa pronta) e onde é proibido (correção de defeito).
