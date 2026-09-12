@@ -215,6 +215,28 @@
     "reaberto_por": {
       "estagio": "revisar",
       "data": "2026-09-12"
+    },
+    "fatia_limpa": {
+      "pr": 236,
+      "branch": "fluxo/zerar-issues-limpo",
+      "base": "c5f30402",
+      "em": "2026-09-12",
+      "issues_fechadas": [
+        225,
+        221,
+        220,
+        215,
+        214,
+        210,
+        207,
+        200,
+        199,
+        197,
+        194,
+        193
+      ],
+      "criterio": "arquivo tocado SO por tarefa sem achado; 24 convertidos pela T10 entram na versao pre-T10 (dbe58cf2); 16 de tarefa com achado ficam de fora",
+      "nota": "A branch fluxo/zerar-issues NAO foi mergeada: carrega os 5 achados. Handover em relatorios/2026-09-12-handover-zerar-issues-fatia-limpa.md"
     }
   },
   "revisar": {
