@@ -262,7 +262,8 @@ que `estado.cjs` aceita:
 
 `hash_base` sai de `git rev-parse` no briefing do agente, nunca digitado; na
 retomada, `proximo`/`ler` avisam em stderr (sem mudar o exit) quando essa
-base não é mais ancestral do HEAD.
+base não é mais ancestral do HEAD. **Prova o exemplo em sandbox**
+(`iniciar --slug caixa`), **não em produção**.
 
 Todas fechadas, e só então:
 

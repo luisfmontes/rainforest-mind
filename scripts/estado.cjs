@@ -1009,7 +1009,7 @@ function agoraIso() {
  *
  * @returns {string|null} mensagem de recusa, ou null se passou/não se aplica
  */
-function processarCarimbos(estagio, blocoAnterior, extra) {
+function processarCarimbos(estagio, blocoAnterior, extra, estado) {
   if (estagio !== 'executar') return null;
   if (!Object.prototype.hasOwnProperty.call(extra, 'carimbos')) return null;
 
@@ -1026,6 +1026,10 @@ function processarCarimbos(estagio, blocoAnterior, extra) {
   const sessao = process.env.CLAUDE_SESSION_ID || SESSAO_DESCONHECIDA;
   const ts = agoraIso();
 
+  // Validar se plano.tarefas está gravado e tarefa está dentro do intervalo
+  const blocoPlano = estado && estado.plano;
+  const limiteMaxTarefa = blocoPlano && typeof blocoPlano.tarefas === 'number' ? blocoPlano.tarefas : null;
+
   for (let i = 0; i < entrada.length; i += 1) {
     const item = entrada[i];
     const onde = `carimbos[${i}]`;
@@ -1035,6 +1039,10 @@ function processarCarimbos(estagio, blocoAnterior, extra) {
     const tarefa = item.tarefa;
     if (typeof tarefa !== 'number' || !Number.isFinite(tarefa)) {
       return `RECUSADO: ${onde} nao tem 'tarefa' numerica.\n${forma}`;
+    }
+    // Se plano.tarefas foi gravado, validar se tarefa está em 1..tarefas
+    if (limiteMaxTarefa !== null && (tarefa < 1 || tarefa > limiteMaxTarefa)) {
+      return `RECUSADO: carimbo da tarefa ${tarefa} fora do plano (1..${limiteMaxTarefa}).`;
     }
     const hash = item.hash_base;
     if (typeof hash !== 'string' || !/^[0-9a-f]{7,}$/i.test(hash)) {
@@ -1408,6 +1416,31 @@ function main() {
     return;
   }
 
+  /**
+   * Devolve o primeiro estágio POSTERIOR a `estagio` (ordem de PRE_REQUISITOS)
+   * cujo status é `ok`, `aprovado` ou `parcial`, e **só quando `status === 'parcial'`**.
+   * Devolve `null` caso contrário. Estágio posterior que foi reaberto (tem `reaberto_por`)
+   * não conta — é a reabertura sancionada.
+   */
+  function estagioPosteriorAberto(estado, estagio, status) {
+    if (status !== 'parcial') return null;
+
+    const ordem = ['arqueologia', 'design', 'plano', 'executar', 'revisar', 'verificar', 'fechar'];
+    const indice = ordem.indexOf(estagio);
+    if (indice === -1 || indice === ordem.length - 1) return null; // não encontrado ou é o último
+
+    for (let i = indice + 1; i < ordem.length; i += 1) {
+      const estag = ordem[i];
+      const bloco = estado[estag];
+      // Estágio foi reaberto (tem reaberto_por) não conta — reabertura sancionada
+      if (bloco && bloco.reaberto_por) continue;
+      if (bloco && bloco.status && ['ok', 'aprovado', 'parcial'].includes(bloco.status)) {
+        return estag;
+      }
+    }
+    return null;
+  }
+
   if (cmd === 'marcar') {
     const estagio = arg('estagio');
     const status = arg('status');
@@ -1442,12 +1475,34 @@ function main() {
     // Carimbos (D8): valida e funde ANTES de qualquer outra checagem, porque
     // funciona nos tres status (parcial, ok, reprovado) — nao so no fechamento.
     {
-      const recusa_carimbos = processarCarimbos(estagio, estado[estagio], extra);
+      const recusa_carimbos = processarCarimbos(estagio, estado[estagio], extra, estado);
       if (recusa_carimbos) {
         console.error(recusa_carimbos);
         process.exit(2);
       }
     }
+
+    // D28: voltando a parcial, recusa se há estágio posterior aberto (status ok/aprovado/parcial)
+    const posterior_aberto = estagioPosteriorAberto(estado, estagio, status);
+    if (posterior_aberto) {
+      const status_posterior = estado[posterior_aberto].status;
+      console.error(`RECUSADO: ${estagio} nao pode voltar a parcial com ${posterior_aberto} em ${status_posterior}.`);
+      process.exit(2);
+    }
+
+    // D28: marcar num estágio cujo pré-requisito está em pendente é recusado
+    {
+      const prereqs = PRE_REQUISITOS[estagio] || [];
+      for (const prereq of prereqs) {
+        const blocoPrereq = estado[prereq];
+        const statusPrereq = blocoPrereq ? blocoPrereq.status : 'pendente';
+        if (statusPrereq === 'pendente') {
+          console.error(`RECUSADO: ${estagio} exige ${prereq} fechado.`);
+          process.exit(2);
+        }
+      }
+    }
+
     // Fechar um estágio com pré-requisito aberto é o furo que o arquivo existe para
     // impedir: sem isto, `marcar verificar ok` pularia a revisão inteira em silêncio.
     if (status === (FECHADO[estagio] || 'ok')) {

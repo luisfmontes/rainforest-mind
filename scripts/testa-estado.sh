@@ -1615,5 +1615,95 @@ else
 fi
 unset RFM_ESTADO_ROOT
 
+echo
+echo "== 26. D28: marcar respeita ordem e valida carimbo =="
+export RFM_ESTADO_ROOT="$SBP"
+
+# Caso (a): marcar executar parcial com revisar parcial + em_voo não vazio -> exit 2
+$E iniciar --slug d28a >/dev/null
+$E marcar --slug d28a --estagio design --status aprovado >/dev/null
+$E marcar --slug d28a --estagio plano --status ok >/dev/null
+$E exigir --slug d28a --estagio executar >/dev/null
+$E marcar --slug d28a --estagio executar --status ok --json '{"comando":"cmd","saida":"out","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"f"}]}' >/dev/null
+$E marcar --slug d28a --estagio revisar --status parcial --json '{"em_voo":"alguma_coisa"}' >/dev/null
+ARQ_D28A="$SBP/docs/rainforest/estado/d28a.json"
+ANTES_D28A=$(cat "$ARQ_D28A")
+esperado "marcar executar parcial com revisar parcial e em_voo: exit 2" 2 \
+  $E marcar --slug d28a --estagio executar --status parcial --json '{}' 2>/dev/null
+DEPOIS_D28A=$(cat "$ARQ_D28A")
+if [ "$ANTES_D28A" = "$DEPOIS_D28A" ]; then
+  ok=$((ok+1)); echo "  ok   arquivo intacto apos recusa"
+else
+  falhou=$((falhou+1)); echo "  FALHA arquivo foi modificado"
+fi
+
+# Caso (a2): marcar executar parcial com revisar ok -> exit 2
+$E iniciar --slug d28a2 >/dev/null
+$E marcar --slug d28a2 --estagio design --status aprovado >/dev/null
+$E marcar --slug d28a2 --estagio plano --status ok >/dev/null
+$E exigir --slug d28a2 --estagio executar >/dev/null
+$E marcar --slug d28a2 --estagio executar --status ok --json '{"comando":"cmd","saida":"out","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"f"}]}' >/dev/null
+$E marcar --slug d28a2 --estagio revisar --status ok >/dev/null
+esperado "marcar executar parcial com revisar ok: exit 2" 2 \
+  $E marcar --slug d28a2 --estagio executar --status parcial --json '{}' 2>/dev/null
+
+# Caso (a3): marcar executar parcial com revisar reprovado -> exit 0 (reabertura sancionada)
+$E iniciar --slug d28a3 >/dev/null
+$E marcar --slug d28a3 --estagio design --status aprovado >/dev/null
+$E marcar --slug d28a3 --estagio plano --status ok >/dev/null
+$E exigir --slug d28a3 --estagio executar >/dev/null
+$E marcar --slug d28a3 --estagio executar --status ok --json '{"comando":"cmd","saida":"out","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"f"}]}' >/dev/null
+$E marcar --slug d28a3 --estagio revisar --status reprovado >/dev/null
+esperado "marcar executar parcial com revisar reprovado: exit 0" 0 \
+  $E marcar --slug d28a3 --estagio executar --status parcial --json '{}' 2>/dev/null
+
+# Caso (b): carimbo tarefa 99 com tarefas: 1 -> exit 2, stderr contém 99
+$E iniciar --slug d28b >/dev/null
+$E marcar --slug d28b --estagio design --status aprovado >/dev/null
+$E marcar --slug d28b --estagio plano --status ok --json '{"tarefas":1}' >/dev/null
+$E exigir --slug d28b --estagio executar >/dev/null
+ARQ_D28B="$SBP/docs/rainforest/estado/d28b.json"
+ANTES_D28B=$(cat "$ARQ_D28B")
+msg_carim_99=$($E marcar --slug d28b --estagio executar --status parcial --json '{"carimbos":[{"tarefa":99,"hash_base":"abc1234567890"}]}' 2>&1)
+COD_D28B=$?
+if [ "$COD_D28B" = "2" ] && echo "$msg_carim_99" | grep -q "99"; then
+  ok=$((ok+1)); echo "  ok   carimbo tarefa 99 com tarefas:1 recusa exit 2"
+else
+  falhou=$((falhou+1)); echo "  FALHA carimbo 99: exit=$COD_D28B, msg='$msg_carim_99'"
+fi
+DEPOIS_D28B=$(cat "$ARQ_D28B")
+if [ "$ANTES_D28B" = "$DEPOIS_D28B" ]; then
+  ok=$((ok+1)); echo "  ok   arquivo intacto apos carimbo fora do plano"
+else
+  falhou=$((falhou+1)); echo "  FALHA arquivo foi modificado por carimbo fora do plano"
+fi
+
+# Caso (b2): carimbo sem tarefas gravado -> continua aceitando
+$E iniciar --slug d28b2 >/dev/null
+$E marcar --slug d28b2 --estagio design --status aprovado >/dev/null
+$E marcar --slug d28b2 --estagio plano --status ok >/dev/null
+$E exigir --slug d28b2 --estagio executar >/dev/null
+esperado "carimbo tarefa 99 sem tarefas gravado: exit 0" 0 \
+  $E marcar --slug d28b2 --estagio executar --status parcial --json '{"carimbos":[{"tarefa":99,"hash_base":"abc1234567890"}]}' 2>/dev/null
+
+# Caso (c): marcar revisar parcial com executar pendente -> exit 2
+$E iniciar --slug d28c >/dev/null
+$E marcar --slug d28c --estagio design --status aprovado >/dev/null
+$E marcar --slug d28c --estagio plano --status ok >/dev/null
+msg_prereq=$($E marcar --slug d28c --estagio revisar --status parcial 2>&1)
+COD_D28C=$?
+if [ "$COD_D28C" = "2" ] && echo "$msg_prereq" | grep -q "executar"; then
+  ok=$((ok+1)); echo "  ok   marcar revisar parcial com executar pendente recusa"
+else
+  falhou=$((falhou+1)); echo "  FALHA marcar revisar: exit=$COD_D28C, msg='$msg_prereq'"
+fi
+
+# Caso (c2): marcar design aprovado em fluxo recém-iniciado -> exit 0
+$E iniciar --slug d28c2 >/dev/null
+esperado "marcar design aprovado em fluxo recém-iniciado: exit 0" 0 \
+  $E marcar --slug d28c2 --estagio design --status aprovado >/dev/null
+
+unset RFM_ESTADO_ROOT
+
 echo "== resultado: $ok ok, $falhou falhas =="
 [ "$falhou" = 0 ]
