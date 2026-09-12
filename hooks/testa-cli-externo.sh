@@ -23,6 +23,7 @@ const testes_aceitos = [
   { desc: 'vírgula', val: 'abc,def' },
   { desc: 'barra', val: 'abc/def' },
   { desc: 'barra invertida', val: 'abc\\def' },
+  { desc: 'caminho Windows com contrabarra no meio (D20)', val: 'C:\\tmp\\x' },
 ];
 
 const testes_recusados = [
@@ -40,6 +41,9 @@ const testes_recusados = [
   { desc: 'exclamação', val: 'x!y' },
   { desc: 'parêntese esquerdo', val: 'x(y' },
   { desc: 'parêntese direito', val: 'x)y' },
+  // D20 (Issue #223): contrabarra final escapa a aspa que o chamador fecha no Windows
+  { desc: 'contrabarra final (D20)', val: 'C:\\tmp\\x\\' },
+  { desc: 'duas contrabarras finais (D20)', val: 'C:\\tmp\\x\\\\' },
   { desc: 'vazio', val: '' },
   { desc: 'quebra de linha', val: 'x\ny' },
   { desc: 'null', val: null },

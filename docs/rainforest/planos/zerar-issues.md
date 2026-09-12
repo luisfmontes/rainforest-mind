@@ -167,7 +167,7 @@ depende de: 3, 8, 9
 paralela: nao
 mutacao:
   arquivo: `scripts/testa-sandbox-com-trap.sh`
-  de: `if [ "$n_mktemp" -gt 1 ] && ! grep -q 'SANDBOXES' "$f"; then`
+  de: `if [ "$n_mktemp" -gt 1 ] && ! sem_comentario "$f" | grep -q 'SANDBOXES'; then`
   para: `if false; then`
   bateria: `bash scripts/testa-sandbox-com-trap.sh --autoteste`
   fixture: fixture com dois mktemp e sem SANDBOXES e reprovada
