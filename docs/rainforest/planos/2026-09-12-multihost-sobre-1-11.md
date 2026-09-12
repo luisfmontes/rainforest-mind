@@ -1,0 +1,209 @@
+# Plano: adaptação multihost sobre o Rainforest Mind 1.11
+
+Design: `docs/rainforest/design/2026-09-12-multihost-sobre-1-11.md`
+
+Base confirmada: `a338dd02ad495f87a66d84af2ab24eab3d2660b8`.
+Referência histórica confirmada: `codex/piloto-rainforest` em
+`c71ecd01a73ab9208c981ff2d1eea5f6378434d7`.
+
+## Fatos, inferências e lacunas
+
+- **CONFIRMADO:** `.claude-plugin/plugin.json` declara `1.11.0`; a base não
+  contém `.codex-plugin/plugin.json` nem `.agents/plugins/marketplace.json`.
+- **CONFIRMADO:** há 19 `skills/*/SKILL.md`; `fechar`, `modo-dev`,
+  `montar-corpus` e `regua` não satisfazem hoje o frontmatter aceito pelo Codex.
+- **CONFIRMADO:** o núcleo 1.11 permite `git add "-A"` e
+  `bash -c "git status; git add -A"`; `git add -- "-A"` permanece um pathspec
+  explícito e deve continuar permitido.
+- **CONFIRMADO:** a piloto 1.7 tem os arquivos novos que servem de referência,
+  mas o contrato congela 18 skills e âncoras de corpos antigos.
+- **INFERIDO:** os campos adicionais de `interface` do manifesto Codex podem
+  conservar os valores comprovados na piloto; os quatro metadados canônicos
+  continuam vindo do manifesto Claude conforme D3.
+- **LACUNA:** a forma exata do cache criado pelo instalador atual só será fato
+  depois da tarefa 6; nenhuma prova da instalação 1.7 fecha essa lacuna.
+
+## O que não pode quebrar
+
+- Claude continua lendo `.claude-plugin/plugin.json` e `hooks/hooks.json` sem
+  carregar o adaptador Codex.
+- O corpo byte a byte das quatro skills normalizadas permanece igual ao da
+  base 1.11; só o frontmatter pode mudar.
+- `git add -- "-A"` continua permitido, enquanto opções reais de staging total
+  continuam recusadas mesmo citadas ou dentro de wrappers.
+- O inventário do contrato vem do disco e valida todas as skills presentes;
+  nenhuma constante fixa 19.
+- O cachebuster nunca entra no commit final, cuja versão é exatamente `1.11.0`.
+- Nenhum manifesto, hook ou payload Gemini é criado nesta entrega.
+- Nenhum push, merge, PR, release ou alteração na `main` ocorre sem aval
+  explícito do usuário.
+- Baterias que mutam fonte de produção rodam sequencialmente e restauram os
+  bytes originais, mesmo quando falham.
+
+## Tarefas
+
+### 1. Corrigir no núcleo a semântica de staging total [tipo: implementar]
+atende: D1, D6, D10
+arquivos: `hooks/gate-staging-total.cjs`, `hooks/testa-gate-staging-total.sh`
+depende de: nenhuma
+paralela: nao
+mutacao:
+  arquivo: `hooks/gate-staging-total.cjs`
+  de: `const resto = toksComAspas.slice(pos + 1).map((t) => t.v);`
+  para: `const resto = toksComAspas.slice(pos + 1).filter((t) => !t.q).map((t) => t.v);`
+  bateria: `bash hooks/testa-gate-staging-total.sh`
+  fixture: `testa-gate-staging-total.sh`, casos `git add "-A"`, `git "add" -A` e `bash -c "git status; git add -A"`
+pronto quando: com payload real `PreToolUse` cujo `tool_input.command` é
+`git add "-A"`, `git "add" -A` ou
+`bash -c "git status; git add -A"`, o núcleo sai 2 e explica a opção real;
+com `git add -- "-A"`, `git add -- "-u"` e mensagens de commit contendo
+`-a`/`--all`, sai 0 — provado por `bash hooks/testa-gate-staging-total.sh`
+nomeando cada entrada e terminando em zero falhas.
+
+### 2. Criar o contrato estrutural Codex sobre o inventário 1.11 [tipo: implementar]
+atende: D2, D3, D10
+arquivos: `.codex-plugin/plugin.json`, `scripts/testa-plugin-codex.cjs`, `scripts/testa-plugin-codex.sh`, `skills/fechar/SKILL.md`, `skills/modo-dev/SKILL.md`, `skills/montar-corpus/SKILL.md`, `skills/regua/SKILL.md`
+depende de: 1
+paralela: nao
+mutacao:
+  arquivo: `skills/montar-corpus/SKILL.md`
+  de: `description: "Constrói acervo em markdown a partir de um corpus de wiki em versão de controle."`
+  para: `description:`
+  bateria: `node scripts/testa-plugin-codex.cjs --contrato-skills`
+  fixture: modo `--contrato-skills`, caso que diagnostica `montar-corpus (description ausente)`
+pronto quando: com a lista real de diretórios que contêm
+`skills/*/SKILL.md`, o contrato descobre e valida todos os 19 nomes sem comparar
+contra número fixo; o manifesto Codex resolve `./skills/` e iguala ao manifesto
+Claude `name`, `version`, `description` e `author`; e o SHA-256 do corpo das
+quatro skills antes/depois da normalização é idêntico ao da base 1.11 — provado
+por `node scripts/testa-plugin-codex.cjs --contrato-manifesto` imprimindo a
+quantidade descoberta e as quatro âncoras de corpo, sem falhas.
+
+### 3. Adaptar o protocolo do hook sem duplicar a política [tipo: implementar]
+atende: D1, D6, D10
+arquivos: `hooks/codex-gate-staging-total.cjs`, `hooks/codex-gate-staging-total.json`, `scripts/testa-plugin-codex.cjs`, `scripts/testa-plugin-codex.sh`, `.codex-plugin/plugin.json`
+depende de: 2
+paralela: nao
+mutacao:
+  arquivo: `hooks/codex-gate-staging-total.json`
+  de: `node "${PLUGIN_ROOT}/hooks/codex-gate-staging-total.cjs"`
+  para: `node "${PLUGIN_ROOT}/hooks/gate-staging-total.cjs"`
+  bateria: `node scripts/testa-plugin-codex.cjs --contrato-adaptador-hook`
+  fixture: modo `--contrato-adaptador-hook`, caso `handler Codex -> core direto`
+pronto quando: com payload Codex real de `PreToolUse/Bash`, o registro seletivo
+chama exatamente um adaptador fino; uma recusa do núcleo vira JSON oficial com
+`permissionDecision: "deny"` e o mesmo motivo, uma permissão não imprime decisão,
+e JSON malformado ou falha inesperada vira deny seguro sem ecoar o payload —
+provado por `bash scripts/testa-plugin-codex.sh`, incluindo os marcadores de
+allow, deny, falha interna e entrada malformada.
+
+### 4. Fazer o portão global comparar os dois manifestos [tipo: teste]
+atende: D3, D7
+arquivos: `scripts/testa-versao.sh`
+depende de: 2
+paralela: nao
+mutacao:
+  arquivo: `.codex-plugin/plugin.json`
+  de: `"version": "1.11.0"`
+  para: `"version": "1.11.1"`
+  bateria: `bash scripts/testa-versao.sh`
+  fixture: seção `manifesto Codex na mesma versao da fonte Claude`, esperando divergência `1.11.1` versus `1.11.0`
+pronto quando: com Claude e Codex em `1.11.0`, o portão informa igualdade;
+mudando somente o manifesto Codex para `1.11.1`, ele sai não zero e mostra os
+dois valores — provado por `bash scripts/testa-versao.sh` no original e por
+`node scripts/conferir-mutacao.cjs --arquivo .codex-plugin/plugin.json --de '"version": "1.11.0"' --para '"version": "1.11.1"' --bateria 'bash scripts/testa-versao.sh'`.
+
+### 5. Distribuir a raiz única e manter Gemini como escopo negativo [tipo: configurar]
+atende: D4, D8, D10
+arquivos: `.agents/plugins/marketplace.json`, `scripts/testa-plugin-codex.cjs`, `scripts/testa-plugin-codex.sh`
+depende de: 3
+paralela: nao
+mutacao:
+  arquivo: `.agents/plugins/marketplace.json`
+  de: `"path": "./"`
+  para: `"path": "./codex"`
+  bateria: `node scripts/testa-plugin-codex.cjs --contrato-marketplace`
+  fixture: modo `--contrato-marketplace`, caso `source.path nao resolve o manifesto deste repo`
+pronto quando: com a entrada `rainforest-mind` do marketplace local, resolver
+`source.path` chega à mesma raiz que contém os manifestos Claude e Codex; e a
+lista rastreada pelo Git não contém manifesto, hook, adaptador ou fixture de
+payload Gemini fora dos documentos deste fluxo — provado por
+`node scripts/testa-plugin-codex.cjs --contrato-marketplace` e
+`node scripts/testa-plugin-codex.cjs --contrato-gemini`, ambos nomeando o efeito
+verificado.
+
+### 6. Provar uma iteração local com cachebuster [tipo: configurar]
+atende: D5, D9
+arquivos: `docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md`
+depende de: 4, 5
+paralela: nao
+mutacao: n/a
+  motivo: tarefa operacional sobre o instalador e seu cache externo; a falsificação é comparar a versão/bytes realmente instalados, não inverter fonte persistente.
+pronto quando: com os manifestos temporariamente em
+`1.11.0+codex.<token>` e o marketplace apontando para este worktree, reinstalar
+o plugin cria uma entrada de cache nessa versão, uma sessão nova enumera as
+skills descobertas e o hook recusa `git add "-A"`; em seguida os dois manifestos
+voltam byte a byte a `1.11.0` — provado no portão por comandos, saídas, caminho
+do cache e hashes antes/depois, sem registrar o cachebuster no diff final.
+
+### 7. Reinstalar exatamente 1.11.0 e executar o contrato ponta a ponta [tipo: teste]
+atende: D1, D2, D3, D6, D8, D9
+arquivos: `docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md`
+depende de: 6
+paralela: nao
+mutacao: n/a
+  motivo: validação do artefato instalado fora do repositório; as mutações dos comportamentos persistentes já pertencem às tarefas 1 a 5.
+pronto quando: com o marketplace local apontando para esta raiz e ambos os
+manifestos exatamente em `1.11.0`, uma reinstalação limpa produz cache
+`1.11.0` cujo conjunto de arquivos e SHA-256 é byte a byte igual ao commit da
+branch, inclusive `.codex-plugin/plugin.json`; numa sessão Codex nova, uma skill
+é invocável, `git status` e `git add -- "-A"` são permitidos, `git add "-A"` e
+`bash -c "git status; git add -A"` são negados, e JSON malformado falha fechado
+sem vazamento — evidências completas coladas no portão com zero caso pulado.
+
+### 8. Atualizar o rastro 1.11 e o handover sem promover a piloto [tipo: docs]
+atende: D4, D5, D9, D10
+arquivos: `docs/HANDOVER-CODEX.md`, `docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md`
+depende de: 7
+paralela: nao
+mutacao: n/a
+  motivo: documentação de continuidade; a falsificação é a coerência dos hashes, versão, escopo e comandos com os artefatos medidos nas tarefas anteriores.
+pronto quando: uma pessoa retomando apenas por `docs/HANDOVER-CODEX.md` vê a
+branch/worktree/HEAD rederivável, sabe que `c71ecd01...` é referência histórica
+1.7, encontra design/plano/portão próprios da 1.11, enxerga Gemini como adiado e
+a proibição explícita de publicar/mesclar na main sem aval; cada hash e caminho
+do texto é resolvido por `git rev-parse`, `git cat-file -e` ou `Test-Path`, e os
+números do portão coincidem com as saídas registradas.
+
+### 9. Fechar a execução local com todas as travas, sem publicar [tipo: teste]
+atende: D1, D2, D3, D4, D5, D6, D7, D8, D9, D10
+arquivos: `docs/rainforest/estado/2026-09-12-multihost-sobre-1-11.json`, `docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md`
+depende de: 8
+paralela: nao
+mutacao: n/a
+  motivo: tarefa de integração e registro; não introduz comportamento novo, apenas reexecuta os contratos e registra seus resultados.
+pronto quando: com o commit candidato local, `bash hooks/testa-gate-staging-total.sh`,
+`bash scripts/testa-plugin-codex.sh`, `bash scripts/testa-versao.sh`,
+`node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-multihost-sobre-1-11`
+e `node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11`
+terminam verdes; `git diff --name-only a338dd02...HEAD` contém somente os
+caminhos autorizados pelo plano; o estado registra a evidência por tarefa; e
+`git branch --show-current`, `git status --short` e a ausência de comandos de
+push/merge/release no portão demonstram que a entrega permanece somente na
+branch `codex/multihost-1.11`, aguardando aval do usuário para qualquer
+publicação na main.
+
+## Ordem de execução
+
+As nove tarefas são deliberadamente seriais. T1–T5 compartilham baterias e
+fontes mutados; T6–T7 alteram a instalação local; T8 só pode registrar hashes e
+saídas reais depois da instalação final; T9 integra o conjunto. Não há grupo
+`paralela: sim` seguro nesta fatia.
+
+## Premissas aceitas sem conferir
+
+- Nenhuma decisão de produto ficou aberta: D1–D10 estão formalmente aprovadas
+  no estado do fluxo.
+- A instalação local do Codex continuará oferecendo o mesmo comando de
+  reinstalação usado na piloto; a tarefa 6 deve parar e registrar a divergência
+  se a interface instalada tiver mudado.
