@@ -1259,6 +1259,14 @@ case "$saida_tipo2" in
   *) falhou=$((falhou+1)); echo "  FALHA array nao foi reportado como array: $saida_tipo2" ;;
 esac
 
+# A secao 17 exportou RFM_ESTADO_ROOT="$SBP/robustez" e, ao contrario de toda
+# secao anterior que usa a variavel, nunca desarmava — vazava para a secao 6 e
+# fazia `iniciar`/`marcar` escreverem em "$SBP/robustez/docs/..." enquanto o
+# `node -e` abaixo (antes desta correcao) lia e gravava em "$SBP/docs/...". Os
+# dois lados do patch do t6b apontavam para arquivos DIFERENTES — achado ao
+# montar esta fixture honesta, ela nunca tinha rodado no caminho certo.
+unset RFM_ESTADO_ROOT
+
 echo
 echo "== 6. marcar verificar ok com mutacoes (D9) =="
 # Fixture para mutacao: fonte que sera' mutada
@@ -1269,15 +1277,22 @@ function ok() { return true; }
 module.exports = { ok };
 EOF
 
-# Bateria que passa se a funcao retorna true
+# Bateria que NAO mede — verde com ou sem a mutacao, de proposito: e o cenario
+# real de "mutante sobrevive" que a catraca tem de pegar, nao um exit-1
+# fabricado. Uma bateria que lesse ok() e distinguisse true/false pegaria a
+# mutacao (`return true;` -> `return false;`) e o mutante MORRERIA — o oposto
+# do que este teste precisa provar.
 MUTACAO_BAT="$SBP/test-mut.sh"
 cat > "$MUTACAO_BAT" << 'EOF'
 #!/bin/bash
-node -e "const { ok } = require('$MUTACAO_SRC'); process.exit(ok() ? 0 : 1)"
+exit 0
 EOF
 chmod +x "$MUTACAO_BAT"
 
-# Plano com mutacao
+# Plano com mutacao — arquivo com nome DIFERENTE do slug (t6-mut.md, o slug e
+# t6b): e exatamente o caso que a catraca de 'verificar' pulava em silencio
+# antes desta tarefa, porque montava o caminho fixo `<slug>.md` em vez de ler
+# `plano.arquivo` do estado.
 MUTACAO_PLAN="$SBP/docs/rainforest/planos/t6-mut.md"
 mkdir -p "$(dirname "$MUTACAO_PLAN")"
 cat > "$MUTACAO_PLAN" << 'EOF'
@@ -1329,20 +1344,49 @@ esperado "marcar verificar ok sem plano passa (fail-open)" 0 $E marcar --slug t6
 # Teste 6b: com plano com mutacao que sobrevive, verificar recusa
 cd "$SBP" || exit 1
 $E iniciar --slug t6b >/dev/null
-# Lê arquivo de estado para preencher o plano
+# Lê arquivo de estado para preencher o plano. Caminho por `process.cwd()`
+# DENTRO do node, nunca pelo `$SBP` do bash interpolado como string literal: um
+# node nativo do Windows não entende caminho estilo MSYS (`/tmp/...`) — lê como
+# raiz da unidade atual (`C:\tmp\...`) e o patch falhava com ENOENT, silencioso
+# atrás do `2>/dev/null`. design/plano ficavam em 'pendente' e cada `marcar`
+# seguinte recusava por um motivo que não tinha nada a ver com mutação — achado
+# ao montar esta fixture honesta (junto do vazamento de RFM_ESTADO_ROOT acima).
 node -e "
   const fs = require('fs');
-  const p = '$SBP/docs/rainforest/estado/t6b.json';
+  const path = require('path');
+  const p = path.join(process.cwd(), 'docs', 'rainforest', 'estado', 't6b.json');
   const e = JSON.parse(fs.readFileSync(p, 'utf8'));
   e.design = { status: 'aprovado', em: '2026-09-01', arquivo: 'docs/rainforest/design/t6-mut.md' };
   e.plano = { status: 'ok', em: '2026-09-01', arquivo: 'docs/rainforest/planos/t6-mut.md' };
   fs.writeFileSync(p, JSON.stringify(e, null, 2));
-" 2>/dev/null
-$E exigir --slug t6b --estagio executar >/dev/null
-$E marcar --slug t6b --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"verde","motivo":"bateria nao mede"}]}' >/dev/null
-$E marcar --slug t6b --estagio revisar --status ok >/dev/null
-$E exigir --slug t6b --estagio verificar >/dev/null
-esperado "marcar verificar ok com mutacao que sobrevive recusa" 2 $E marcar --slug t6b --estagio verificar --status ok --json '{"comando":"bash","saida":"done"}'
+"
+# Cada marcar intermediario conferido por EXIT, nunca silenciado: a versao
+# anterior desta fixture escondia em `>/dev/null` (so' o stdout — o stderr com
+# o RECUSADO ainda vazava) uma cadeia inteira de recusas, e o `esperado 2` do
+# final passava pelo motivo errado ('verificar' exige revisar fechado(s)),
+# nunca pela catraca de mutacao.
+esperado "t6b exigir executar" 0 $E exigir --slug t6b --estagio executar
+# O auto-relato do 'executar' diz 'vermelho' (a catraca daquele estagio recusa
+# 'verde' de cara — nao aceita "sei que nao mede" como resposta). E exatamente
+# o caso que a catraca do 'verificar' existe para pegar: quem executou declarou
+# vermelho, mas a bateria SINTETICA (acima) nao mede nada, e a re-verificacao
+# independente em 'verificar' e' quem descobre isso.
+esperado "t6b executar fecha" 0 $E marcar --slug t6b --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t6-mut"}]}'
+esperado "t6b revisar fecha" 0 $E marcar --slug t6b --estagio revisar --status ok
+esperado "t6b exigir verificar" 0 $E exigir --slug t6b --estagio verificar
+
+# A asserção final exige a MENSAGEM, não só o exit 2 — é a mensagem que
+# distingue esta recusa (catraca de mutação) de qualquer outra recusa possível
+# no mesmo exit code (pré-requisito em aberto, evidência ausente, etc.).
+SAIDA_T6B=$($E marcar --slug t6b --estagio verificar --status ok --json '{"comando":"bash","saida":"done"}' 2>&1)
+GOT_T6B=$?
+if [ "$GOT_T6B" = 2 ] && printf '%s' "$SAIDA_T6B" | grep -q "catraca de mutações não passou"; then
+  ok=$((ok+1)); echo "  ok   marcar verificar ok com mutacao que sobrevive recusa (mensagem da catraca)"
+else
+  falhou=$((falhou+1))
+  echo "  FALHA marcar verificar deveria recusar com 'catraca de mutações não passou' (exit 2); veio exit $GOT_T6B"
+  echo "$SAIDA_T6B" | sed 's/^/         /'
+fi
 
 # Verifica que SHA256 nao mudou (estado nao foi gravado)
 SHA_ANTES_RECUSA=$(sha256sum "$SBP/docs/rainforest/estado/t6b.json" 2>/dev/null | awk '{print $1}')
