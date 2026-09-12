@@ -416,6 +416,9 @@ function gravarDespacho(raiz, decisao, agente, estagio, sessao, motivo, escreveC
 }
 
 function main() {
+  // Import do módulo de autorização — precisa estar aqui para a rede de exceção
+  const { autorizado } = require("./lib/autorizacao-usuario.cjs");
+
   // Ler payload do stdin
   let bruto = "";
   try {
@@ -546,45 +549,66 @@ function main() {
 
   const agentConfig = manifesto.agentes[nomeAgente];
 
-  // D3 passo 4: sem estágio ativo → nega. `estResult` já foi resolvido acima,
-  // para o log das negações anteriores; a decisão é a mesma de sempre.
+  // D3 passo 4: sem estágio ativo → nega, OU consulta autorização (D4, D6, D8).
+  // `estResult` já foi resolvido acima, para o log das negações anteriores; a
+  // decisão é a mesma de sempre.
   //
   // Resolver que estourou não é "sem estágio ativo". O erro foi só adiado até
   // aqui: sobe, e a rede de `main` o converte em exit 2 com "falha interna" —
   // fail-closed com o motivo certo.
   if (estErro) throw estErro;
 
+  // Quando há autorização válida, simula `estResult` para que a lógica
+  // continue nos passos 5+ com as travas de escreve: true.
+  // A autorização dispensa APENAS o portão de estágio (D6).
+  let autorizacaoValida = false;
+  let estagioPorAutorizacao = null;
+
   if (!estResult) {
-    const motivo = "sem estágio ativo — abra um fluxo";
-    gravarDespacho(raiz, "deny", nomeAgente, "?", sessao, motivo);
+    // Consultar autorização do usuário antes de negar por falta de estágio (D4, D6, D8)
+    const transcriptPath = payload.transcript_path;
+    const temAutorizacao = transcriptPath && typeof transcriptPath === "string" && transcriptPath.trim() !== "" && autorizado(transcriptPath);
 
-    const branch = obterBranch(raiz);
-    const outrosWorktrees = obterOutrosWorktreesComFluxoAberto(raiz);
+    if (temAutorizacao) {
+      // Autorização válida: simula um estResult para passar nos passos 5+
+      // As travas de escreve: true continuam valendo (D6)
+      autorizacaoValida = true;
+      estagioPorAutorizacao = "?";
+      estResult = { estagio: "?" }; // Simula estágio, mas marca que veio por autorização
+    } else {
+      // Sem autorização ou transcript_path ausente/inválido: nega normalmente
+      const motivo = "sem estágio ativo — abra um fluxo";
+      gravarDespacho(raiz, "deny", nomeAgente, "?", sessao, motivo);
 
-    let msg = `${motivo}\n`;
-    msg += `  raiz lida: ${raiz}\n`;
-    if (branch) {
-      msg += `  branch: ${branch}\n`;
+      const branch = obterBranch(raiz);
+      const outrosWorktrees = obterOutrosWorktreesComFluxoAberto(raiz);
+
+      let msg = `${motivo}\n`;
+      msg += `  raiz lida: ${raiz}\n`;
+      if (branch) {
+        msg += `  branch: ${branch}\n`;
+      }
+      msg += `  estágio resolvido: ?\n`;
+
+      if (outrosWorktrees.length > 0) {
+        msg += formatarOutrosWorktreesAbertos(outrosWorktrees);
+      }
+
+      negar(msg.trim());
     }
-    msg += `  estágio resolvido: ?\n`;
-
-    if (outrosWorktrees.length > 0) {
-      msg += formatarOutrosWorktreesAbertos(outrosWorktrees);
-    }
-
-    negar(msg.trim());
   }
 
   const { estagio: estagioAtivo } = estResult;
 
-  // D3 passo 5: estágio fora da lista permitida → nega
+  // D3 passo 5: estágio fora da lista permitida → nega, EXCETO se há autorização (D6)
   if (!agentConfig.estagios || !Array.isArray(agentConfig.estagios)) {
     const motivo = `Configuração inválida do agente '${nomeAgente}' no manifesto`;
     gravarDespacho(raiz, "deny", nomeAgente, estagioAtivo, sessao, motivo);
     negar(motivo);
   }
 
-  if (!agentConfig.estagios.includes(estagioAtivo)) {
+  // Autorização dispensa a checagem de estágio (D6): qualquer estágio é permitido
+  if (!autorizacaoValida && !agentConfig.estagios.includes(estagioAtivo)) {
     const permitidos = agentConfig.estagios.join(", ");
     const motivo = `estágio '${estagioAtivo}' não permitido para '${nomeAgente}' (permitidos: ${permitidos})`;
     gravarDespacho(raiz, "deny", nomeAgente, estagioAtivo, sessao, motivo);
@@ -700,10 +724,16 @@ function main() {
     const prompt_escreve = payload.tool_input && payload.tool_input.prompt;
     const runtime_escreve = runtimeEfetivo(agentConfig, prompt_escreve);
 
-    gravarDespacho(raiz, "allow", nomeAgente, estagioAtivo, sessao, null, undefined, {
+    const extraEscreve = {
       isolation: isolamento,
       runtime: runtime_escreve,
-    });
+    };
+    // Adiciona `via: autorizacao-do-usuario` quando a autorização foi usada (D8)
+    if (autorizacaoValida) {
+      extraEscreve.via = "autorizacao-do-usuario";
+    }
+
+    gravarDespacho(raiz, "allow", nomeAgente, estagioAtivo, sessao, null, undefined, extraEscreve);
     process.exit(0);
   }
 
@@ -754,9 +784,13 @@ function main() {
   const prompt = payload.tool_input && payload.tool_input.prompt;
   const runtime = runtimeEfetivo(agentConfig, prompt);
 
-  gravarDespacho(raiz, "allow", nomeAgente, estagioAtivo, sessao, null, escreveConferido, {
-    runtime,
-  });
+  // Adiciona `via: autorizacao-do-usuario` quando a autorização foi usada (D8)
+  const extra = { runtime };
+  if (autorizacaoValida) {
+    extra.via = "autorizacao-do-usuario";
+  }
+
+  gravarDespacho(raiz, "allow", nomeAgente, estagioAtivo, sessao, null, escreveConferido, extra);
   process.exit(0);
 }
 
