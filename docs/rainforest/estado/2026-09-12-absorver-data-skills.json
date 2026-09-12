@@ -266,20 +266,39 @@
     "saida": "rodada 3 (aviso da rodada 2): 0 ocorrencias de 144 de 441; 285 de 441 presente no design (1) e no travas-mecanicas (1); mapa-regras 6 ok. rodada 2 (avisos da revisao): publicacao 98 ok 0 falha (caso 11b merge novo); gate-mensagem-commit 25 ok 0 falha (caso i2 commit pelado); regra-09 grep = 1 para as tres datas; mapa-regras 6 ok; contexto-sessao exit 0 (regra-12 10472 B folga 28 B); README + travas-mecanicas emendados em commit proprio. Rodada 1: total=107 vermelhas:[testa-dependencias-de-bateria.sh testa-config.sh] -> as duas causadas pelo lote e corrigidas em 8ac43b00 (re-rodadas: 6 ok / 45 ok); cobertura ok 14 decisoes 15 tarefas; sem creep 53 arquivos cobertos; publicacao --commit origin/main..HEAD CONFERIDO exit 0; 22 commits em origin/main..HEAD"
   },
   "revisar": {
-    "status": "reprovado",
-    "achados": 1,
+    "status": "ok",
+    "achados": 0,
     "base": "10251507",
-    "head": "e221b98",
+    "head": "f365bdb",
     "em_voo": [],
     "lista": [
       "travas-mecanicas.md linha do gate-mensagem-commit cita 144 de 441 commits sem lastro no repo; design registra 285/441 ate 3 arquivos e 310 com corpo"
     ],
     "em": "2026-09-12",
-    "tentativas": 2,
     "snapshot": {
-      "head": "e221b98cc9b96c0564e843fdef6c22b1fda62553",
+      "head": "f365bdb6cc5d8df0e56e33feabc01ab5aa3f7d9b",
       "caminhos_sujos": []
-    }
+    },
+    "rodadas": [
+      {
+        "n": 1,
+        "head": "ff239855",
+        "veredicto": "APROVADO",
+        "achados": 3
+      },
+      {
+        "n": 2,
+        "head": "e221b98",
+        "veredicto": "REPROVADO",
+        "achados": 1
+      },
+      {
+        "n": 3,
+        "head": "f365bdb",
+        "veredicto": "APROVADO",
+        "achados": 0
+      }
+    ]
   },
   "verificar": {
     "status": "pendente"
