@@ -88,6 +88,12 @@ se o lote só consertou, MINOR se entrou coisa nova ou mudou contrato (a tabela
 está no `CONTRIBUTING.md`). Não suba a versão por
 conta própria — release é decisão dele, e o commit de bump é entrega própria.
 
+**Antes de recomendar o bump, pergunte: outra pessoa faz o release lendo só o README?**
+Se o README não descreve o que mudou de um jeito que alguém que não viu o
+trabalho consiga instalar e usar, a doc entra antes do bump — porquê: no
+plugin de dados analisado em 2026-09-12, 89% dos commits eram de uma pessoa
+só, e o release inteiro morava em 187 KB de prosa que só ela sabia navegar.
+
 O motivo é que o plugin que **executa** não é o clone: é o cache
 `~/.claude/plugins/cache/<marketplace>/<plugin>/<versão>/`, indexado pela
 versão. Sem bump não existe versão nova para o `claude plugin update` buscar, e

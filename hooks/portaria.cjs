@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 "use strict";
 /* Portaria — NÚCLEO DE DECISÃO (Tarefas 2 e 3 do fluxo 9, D1–D7).
+ * Protege contra: despacho de subagente fora do manifesto .rainforest/agentes.json
+ * Não protege contra: subagente declarado no manifesto com tools validadas
  *
  * Registrado como PreToolUse em `.claude/settings.json` com matcher de
  * despacho de subagente. Aqui é implementada a decisão fail-closed sobre

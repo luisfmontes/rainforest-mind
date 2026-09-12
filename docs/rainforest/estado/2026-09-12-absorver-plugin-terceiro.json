@@ -1,0 +1,316 @@
+{
+  "slug": "2026-09-12-absorver-plugin-terceiro",
+  "titulo": "Absorver de um plugin de terceiro: 16 ideias e commit por partes",
+  "criado_em": "2026-09-12",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-12-absorver-plugin-terceiro.md",
+    "em": "2026-09-12"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-09-12-absorver-plugin-terceiro.md",
+    "tarefas": 15,
+    "paralelas": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "em": "2026-09-12"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-12",
+    "tarefas_ok": 15,
+    "tarefas": 15,
+    "em_voo": [],
+    "em": "2026-09-12",
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "ed3d171291c81a6866e3d52403c56e383191e341",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T05:41:54.658Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "ed3d171291c81a6866e3d52403c56e383191e341",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T05:41:54.658Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "ed3d171291c81a6866e3d52403c56e383191e341",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T05:41:54.658Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "ed3d171291c81a6866e3d52403c56e383191e341",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T05:41:54.658Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "ed3d171291c81a6866e3d52403c56e383191e341",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T05:41:54.658Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "ed3d171291c81a6866e3d52403c56e383191e341",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T05:41:54.658Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "ed3d171291c81a6866e3d52403c56e383191e341",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T05:41:54.658Z"
+      },
+      {
+        "tarefa": 10,
+        "hash_base": "ed3d171291c81a6866e3d52403c56e383191e341",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T05:41:54.658Z"
+      },
+      {
+        "tarefa": 11,
+        "hash_base": "ed3d171291c81a6866e3d52403c56e383191e341",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T05:41:54.658Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "ed3d171291c81a6866e3d52403c56e383191e341",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T06:11:22.237Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "ed3d171291c81a6866e3d52403c56e383191e341",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T06:11:22.237Z"
+      },
+      {
+        "tarefa": 14,
+        "hash_base": "224f7cc1f90b9b8a5e94212f70f55ababddcc238",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T06:11:22.237Z"
+      },
+      {
+        "tarefa": 12,
+        "hash_base": "e3a701c1c723731174b130e727667d096e3afc33",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T07:17:12.281Z"
+      },
+      {
+        "tarefa": 13,
+        "hash_base": "e3a701c1c723731174b130e727667d096e3afc33",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T07:17:12.281Z"
+      },
+      {
+        "tarefa": 15,
+        "hash_base": "aefbd541",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T07:17:12.281Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "cbdcc670",
+        "iteracao": 2,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T07:44:20.866Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "cbdcc670",
+        "iteracao": 2,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T07:44:20.866Z"
+      },
+      {
+        "tarefa": 13,
+        "hash_base": "cbdcc670",
+        "iteracao": 2,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T07:44:20.866Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "cbdcc670",
+        "iteracao": 2,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T07:44:20.866Z"
+      },
+      {
+        "tarefa": 12,
+        "hash_base": "f263df0",
+        "iteracao": 2,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T07:57:12.305Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "f263df0",
+        "iteracao": 3,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T07:57:12.305Z"
+      }
+    ],
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-mensagem-commit.sh caso (a) 4 arquivos so assunto -> exit 2; (i2) git commit pelado -> exit 2"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-limpar-branches.sh secao 20a sem --confirmo nao apaga"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-fechar-issue.sh casos (m)/(o) sem --confirmo e numero errado"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "tabelas de racionalizacao sao texto; falsificacao foi coerencia de datas com o acervo e catraca de bytes"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-entrega.sh caso worktree inexistente -> exit 69"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-teto-skills.sh laco sobre skills/*/SKILL.md (analisar 306L reprova com teto 100)"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-estado.sh caso carimbo com hash_base fora do HEAD -> proximo avisa"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-duplicacao.sh caso 1 dois .cjs identicos -> exit 2"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "n/a",
+        "motivo": "docblocks e README; falsificacao foi diff so em linhas ' * ' e termo<->bateria"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "n/a",
+        "motivo": "convencao de texto; falsificacao foi catraca de bytes e forma identica nos dois arquivos"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "n/a",
+        "motivo": "paragrafo em skill; falsificacao foi teto de D7 e citacao do par conferir-entrega.cjs/.py"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "testa-mapa-regras.sh checagem (a) uma linha por regra (regra 17 renumerada para 71)"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-publicacao.sh secao 11 caso 1 segredo so no commit, disco limpo; 11b merge avulso (show --name-only listava 0 arquivos)"
+      },
+      {
+        "tarefa": 14,
+        "resultado": "n/a",
+        "motivo": "texto de executar/revisar/fechar; falsificacao foi o --json de carimbos executar contra o estado.cjs real"
+      },
+      {
+        "tarefa": 15,
+        "resultado": "n/a",
+        "motivo": "tarefa de verificacao do conjunto: todas as baterias, cobertura, creep e publicacao --commit"
+      }
+    ],
+    "comando": "grep -rn \"144 de 441\" --include=*.md .; grep -c \"285 de 441\" docs/rainforest/design/2026-09-12-absorver-plugin-terceiro.md docs/travas-mecanicas.md; bash scripts/testa-mapa-regras.sh",
+    "saida": "rodada 3 (aviso da rodada 2): 0 ocorrencias de 144 de 441; 285 de 441 presente no design (1) e no travas-mecanicas (1); mapa-regras 6 ok. rodada 2 (avisos da revisao): publicacao 98 ok 0 falha (caso 11b merge novo); gate-mensagem-commit 25 ok 0 falha (caso i2 commit pelado); regra-09 grep = 1 para as tres datas; mapa-regras 6 ok; contexto-sessao exit 0 (regra-12 10472 B folga 28 B); README + travas-mecanicas emendados em commit proprio. Rodada 1: total=107 vermelhas:[testa-dependencias-de-bateria.sh testa-config.sh] -> as duas causadas pelo lote e corrigidas em 72fe131e (re-rodadas: 6 ok / 45 ok); cobertura ok 14 decisoes 15 tarefas; sem creep 53 arquivos cobertos; publicacao --commit origin/main..HEAD CONFERIDO exit 0; 22 commits em origin/main..HEAD"
+  },
+  "revisar": {
+    "status": "ok",
+    "achados": 0,
+    "base": "10251507",
+    "head": "38a36c4",
+    "em_voo": [],
+    "lista": [
+      "travas-mecanicas.md linha do gate-mensagem-commit cita 144 de 441 commits sem lastro no repo; design registra 285/441 ate 3 arquivos e 310 com corpo"
+    ],
+    "em": "2026-09-12",
+    "snapshot": {
+      "head": "38a36c47730d57a14b1bb475b968f833c3657890",
+      "caminhos_sujos": []
+    },
+    "rodadas": [
+      {
+        "n": 1,
+        "head": "cbdcc670",
+        "veredicto": "APROVADO",
+        "achados": 3
+      },
+      {
+        "n": 2,
+        "head": "f263df0",
+        "veredicto": "REPROVADO",
+        "achados": 1
+      },
+      {
+        "n": 3,
+        "head": "38a36c4",
+        "veredicto": "APROVADO",
+        "achados": 0
+      }
+    ]
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash <scratchpad>/verificar.sh (um comando de pronto-quando por tarefa, T1..T15; baterias reais + greps literais)",
+    "saida": "T1   exit=0 | == resultado: 25 ok, 0 falha(s) == || T1   hooks.json gate-mensagem-commit=1 || T2a  exit=0 | == resultado: 89 ok, 0 falha(s) == || T2b  exit=0 | == resultado: 37 ok, 0 falha(s) == || T2   grep --confirmo skills/limpar/SKILL.md=6 || T3a  exit=0 | == resultado: 40 ok, 0 falha(s) == || T3b  exit=0 | == resultado: 117 ok, 0 falha(s) == || T4   regra-09 datas=3 sem-bloco=[] || T4   regra-10 datas=2 sem-bloco=[] || T4   regra-12 datas=3 sem-bloco=[] || T4   exit=0 | ok: 277   falhou: 0 || T5a  exit=0 | == resultado: 67 ok, 0 falha(s) == || T5b  exit=0 | ok: 92   falhou: 0 || T5c  exit=0 | ok: 51   falhou: 0 || T5d  exit=0 |  || T5   grep nao-verificavel regra-14=1 || T6   exit=0 | Resultado: 19 OK, 0 FALHA || T7   exit=0 | == resultado: 190 ok, 0 falhas == || T8a  exit=0 | == resultado: 9 ok, 0 falha(s) == || T8b  exit=0 |  || T9   hooks/gate-agente-em-voo.cjs protege=1 nao-protege=1 || T9   hooks/gate-fechar-issue.cjs protege=1 nao-protege=1 || T9   hooks/gate-git-verificacao.cjs protege=1 nao-protege=1 || T9   hooks/gate-mensagem-commit.cjs protege=1 nao-protege=1 || T9   hooks/gate-publicacao-destino.cjs protege=1 nao-protege=1 || T9   hooks/gate-repo-alheio.cjs protege=1 nao-protege=1 || T9   hooks/gate-review-codex.cjs protege=1 nao-protege=1 || T9   hooks/gate-staging-total.cjs protege=1 nao-protege=1 || T9   hooks/gate-worktree.cjs protege=1 nao-protege=1 || T9   hooks/portaria.cjs protege=1 nao-protege=1 || T9   windows-latest ci=0 | git bash README=1 || T10  re-verificar docs/README=7 SKILL=1 || T11  byte a byte modo-dev=1 linhas=233 bytes=13624 || T12  exit=0 | Resultado final: 6 ok, 0 falha(s) || T12  linhas tabela regra->trava=17 || T13  exit=0 | == resultado: 98 ok, 0 falha(s) == || T14  69 executar=3 revisar=1 | lendo so o README fechar=1 || T15a exit=0 | ok: cobertura válida — 14 decisão(ões), 15 tarefa(s) || T15b exit=0 | ok: sem creep — 53 arquivo(s) coberto(s) || T15c exit=0 |  || T15  commits origin/main..HEAD=30",
+    "em": "2026-09-12"
+  },
+  "fechar": {
+    "status": "ok",
+    "pr": "https://github.com/luisfmontes/rainforest-mind/pull/234",
+    "comando": "gh pr create --base main --head fluxo/absorver-plugin-terceiro; node scripts/conferir-versao.cjs; git worktree remove <14 agent-*>",
+    "saida": "PR #234 aberto (o #233 fechou na renomeacao da branch); conferir-versao exit 2 (1.8.2 == origin/main, 32 commits) -> bump MINOR recomendado, decisao do usuario; 14 worktrees de agente removidos (2 precisaram de unlock), branches worktree-agent-* ficam para limpar-branches --confirmo",
+    "em": "2026-09-12"
+  }
+}

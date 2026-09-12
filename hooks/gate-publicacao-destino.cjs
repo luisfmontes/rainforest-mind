@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /**
  * PreToolUse — barra escrita de dados sensíveis em arquivo rastreado.
+ * Protege contra: dados sensíveis (telefone/JID/CPF) em arquivo versionado
+ * Não protege contra: dados sensíveis em arquivo gitignorado
  *
  * Incidente da Issue #83 (2026-08-08): um `progress.jsonl` versionado em repo
  * público recebeu um JID de WhatsApp colado como evidência de smoke. Ficou
