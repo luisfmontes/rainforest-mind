@@ -315,6 +315,16 @@ console.log("== 3h. subordinacao vai para FRENTE, e 'sub agentes' com espaco (6a
   // artigo antes, `sub` nao e prefixo — a forma com espaco so conta nua.
   const rSubAbreviacao = autorizado(fx("sub-como-abreviacao.jsonl"));
   caso("'autorizo o sub agentes de suporte...' NAO autoriza", rSubAbreviacao === false, rSubAbreviacao);
+
+  // A primeira correcao disso listava o que DESQUALIFICA o 'sub', e so tinha o
+  // lado masculino: a MESMA frase com 'a' no lugar de 'o' voltava a abrir o
+  // portao. Enumerar o portugues e perder; a regra passou a listar o que
+  // QUALIFICA (comeco do texto ou logo depois do verbo), que e finito.
+  const rSubFeminino = autorizado(fx("sub-como-abreviacao-feminino.jsonl"));
+  caso("'autorizo a sub agentes de suporte...' NAO autoriza", rSubFeminino === false, rSubFeminino);
+
+  const rSubPossessivo = autorizado(fx("sub-como-abreviacao-possessivo.jsonl"));
+  caso("'autorizo nossa sub agentes...' NAO autoriza", rSubPossessivo === false, rSubPossessivo);
 }
 
 console.log("== 4. negacao sem acento ('nao autorizo subagentes') NAO autoriza ==");

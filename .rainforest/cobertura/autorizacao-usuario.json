@@ -69,7 +69,7 @@
     {
       "nome": "M16 sub agentes com espaco nao conta",
       "alvo": "const FORMAS_DE_SUBAGENTE =",
-      "de": "|(?<!\\b(?:o|os|um|uns|ao|aos|do|dos|no|nos|meu|seu)\\s)\\bsub\\s+agentes?\\b",
+      "de": "|(?:^|(?<=\\bautorizo\\s)|(?<=\\bautorizar\\s)|(?<=\\bautorizando\\s))sub\\s+agentes?\\b",
       "para": ""
     },
     {
@@ -146,10 +146,10 @@
       "linha": "        if (false) {"
     },
     {
-      "nome": "M31 forma com espaco conta mesmo com artigo antes",
+      "nome": "M31 forma com espaco conta em qualquer posicao",
       "alvo": "const FORMAS_DE_SUBAGENTE =",
-      "de": "(?<!\\b(?:o|os|um|uns|ao|aos|do|dos|no|nos|meu|seu)\\s)\\bsub\\s+",
-      "para": "\\bsub\\s+"
+      "de": "(?:^|(?<=\\bautorizo\\s)|(?<=\\bautorizar\\s)|(?<=\\bautorizando\\s))sub",
+      "para": "\\bsub"
     }
   ],
   "mudas_esperadas": [

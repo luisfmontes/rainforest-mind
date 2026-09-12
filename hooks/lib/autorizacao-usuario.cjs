@@ -141,16 +141,25 @@ const ENVELOPE_DE_SISTEMA = /<task-notification>|<system-reminder>|<cross-sessio
  * continuavam barrando. Regra defendida em triplicata e regra que nao se
  * consegue medir.
  *
- * A forma com ESPACO ('sub agentes') so conta NUA: com artigo ou preposicao
- * antes, 'sub' e abreviacao de outra coisa ('o sub', de substituto) e
- * 'agentes' passa a ser sobre gente. Medido na 7a rodada de revisao de
- * 2026-09-12: 'autorizo o sub agentes de suporte vao revisar depois' abria o
- * portao.
+ * A forma com ESPACO ('sub agentes') existe so para o hifen esquecido, e por
+ * isso e a mais estreita: vale no COMECO do texto ou logo depois do verbo de
+ * autorizacao, e em mais lugar nenhum.
+ *
+ * A primeira tentativa foi uma lista do que DESQUALIFICA o 'sub' (artigo,
+ * preposicao, possessivo), e ela durou uma revisao:
+ *
+ *   'autorizo o sub agentes de suporte vao revisar depois'  -> fechado
+ *   'autorizo a sub agentes de suporte vao revisar depois'  -> ABRIA
+ *   'autorizo essa sub agentes de RH vao decidir depois'    -> ABRIA
+ *
+ * A lista so tinha o lado masculino. Enumerar o portugues e perder: a proxima
+ * grafia que faltar abre o portao de novo, e aqui o erro caro e abrir. Listar
+ * o que QUALIFICA e finito; listar o que desqualifica, nao.
  */
-const FORMAS_DE_SUBAGENTE = /\bsubagente\b|\bsubagentes\b|\bsub-agente\b|\bsub-agentes\b|(?<!\b(?:o|os|um|uns|ao|aos|do|dos|no|nos|meu|seu)\s)\bsub\s+agentes?\b/;
+const FORMAS_DE_SUBAGENTE = /\bsubagente\b|\bsubagentes\b|\bsub-agente\b|\bsub-agentes\b|(?:^|(?<=\bautorizo\s)|(?<=\bautorizar\s)|(?<=\bautorizando\s))sub\s+agentes?\b/;
 
 /** A negacao aceita tambem 'agente(s)' solto: negar de menos e o erro caro. */
-const FORMAS_DE_AGENTE = /\bsubagente\b|\bsubagentes\b|\bsub-agente\b|\bsub-agentes\b|(?<!\b(?:o|os|um|uns|ao|aos|do|dos|no|nos|meu|seu)\s)\bsub\s+agentes?\b|\bagente\b|\bagentes\b/;
+const FORMAS_DE_AGENTE = /\bsubagente\b|\bsubagentes\b|\bsub-agente\b|\bsub-agentes\b|(?:^|(?<=\bautorizo\s)|(?<=\bautorizar\s)|(?<=\bautorizando\s))sub\s+agentes?\b|\bagente\b|\bagentes\b/;
 
 /**
  * A única porta de entrada: devolve o texto quando a linha é a VOZ DO USUÁRIO,
