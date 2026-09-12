@@ -947,6 +947,8 @@ function checkoutPrincipalForaDaPadrao(raiz) {
   } catch (_) {
     return null;
   }
+}
+
 // -------------------------------------------- carimbo de veredito por tarefa (D8)
 //
 // O `plan_state.mjs` de um plugin de terceiro carimba cada veredito por
