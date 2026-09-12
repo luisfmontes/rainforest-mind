@@ -657,6 +657,89 @@ fi
 
 cd "$SB"
 
+# --- CASO (o): --remover-sujo exige --confirmo com a frase derivada, e
+# --remover (sem -sujo) continua nunca removendo sujo (T2 do design D3)
+
+teste "o" "--remover-sujo so remove com a frase --confirmo exata"
+
+repo_o="$SB/repo_o"
+work_o="$SB/trabalho_o"
+criarRepoComCommit "$repo_o" "$work_o"
+
+wt_o_real="$work_o-worktrees/wt-o"
+git worktree add "$wt_o_real" HEAD
+cd "$wt_o_real"
+echo "sujeira" > arquivo_o.txt
+cd "$work_o"
+
+# (o1) --remover (sem -sujo) continua NUNCA removendo sujo — comportamento de hoje
+node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_o" --remover >/dev/null 2>&1
+lista_o1=$(git worktree list --porcelain | grep -F "wt-o" || true)
+if [ -n "$lista_o1" ]; then
+  ok=$((ok+1)); echo "  ok    --remover (sem -sujo) nao remove worktree sujo"
+else
+  falhou=$((falhou+1)); echo "  FALHA --remover (sem -sujo) removeu worktree sujo"
+fi
+
+# (o2) --remover-sujo sem --confirmo: exit 2, imprime a frase esperada, e o
+# worktree continua em `git worktree list`
+saida_o2=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_o" --remover-sujo "$wt_o_real" 2>&1)
+exit_o2=$?
+if [ $exit_o2 -eq 2 ]; then
+  ok=$((ok+1)); echo "  ok    --remover-sujo sem --confirmo sai com exit 2"
+else
+  falhou=$((falhou+1)); echo "  FALHA --remover-sujo sem --confirmo saiu com exit $exit_o2"
+fi
+if echo "$saida_o2" | grep -q "^CONFIRMO apagar worktree sujo "; then
+  ok=$((ok+1)); echo "  ok    imprime a frase esperada em linha propria"
+else
+  falhou=$((falhou+1)); echo "  FALHA nao imprimiu a frase esperada"
+  echo "        Saida: $saida_o2"
+fi
+lista_o2=$(git worktree list --porcelain | grep -F "wt-o" || true)
+if [ -n "$lista_o2" ]; then
+  ok=$((ok+1)); echo "  ok    worktree sujo continua em git worktree list (nada foi removido)"
+else
+  falhou=$((falhou+1)); echo "  FALHA worktree sujo sumiu de git worktree list"
+fi
+
+# A frase esperada e' derivada pelo script — captura para reusar verbatim,
+# como o usuario faria ao copiar e colar.
+FRASE_O="$(echo "$saida_o2" | grep -o '^CONFIRMO apagar worktree sujo .*$')"
+
+# (o3) com a frase citando OUTRO caminho: exit 2, nada removido
+saida_o3=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_o" --remover-sujo "$wt_o_real" --confirmo "CONFIRMO apagar worktree sujo /caminho/errado" 2>&1)
+exit_o3=$?
+if [ $exit_o3 -eq 2 ]; then
+  ok=$((ok+1)); echo "  ok    frase de outro caminho sai com exit 2"
+else
+  falhou=$((falhou+1)); echo "  FALHA frase de outro caminho saiu com exit $exit_o3"
+fi
+lista_o3=$(git worktree list --porcelain | grep -F "wt-o" || true)
+if [ -n "$lista_o3" ]; then
+  ok=$((ok+1)); echo "  ok    frase de outro caminho nao remove o worktree"
+else
+  falhou=$((falhou+1)); echo "  FALHA frase de outro caminho removeu o worktree"
+fi
+
+# (o4) com a frase exata (capturada em o2): remove de verdade
+saida_o4=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_o" --remover-sujo "$wt_o_real" --confirmo "$FRASE_O" 2>&1)
+exit_o4=$?
+if [ $exit_o4 -eq 0 ]; then
+  ok=$((ok+1)); echo "  ok    com a frase exata, sai com exit 0"
+else
+  falhou=$((falhou+1)); echo "  FALHA com a frase exata, saiu com exit $exit_o4"
+  echo "        Saida: $saida_o4"
+fi
+lista_o4=$(git worktree list --porcelain | grep -F "wt-o" || true)
+if [ -z "$lista_o4" ]; then
+  ok=$((ok+1)); echo "  ok    worktree sujo foi removido com a frase exata"
+else
+  falhou=$((falhou+1)); echo "  FALHA worktree sujo continua apos a frase exata"
+fi
+
+cd "$SB"
+
 # --- Relatório final
 
 echo ""

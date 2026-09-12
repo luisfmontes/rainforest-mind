@@ -42,7 +42,19 @@ node scripts/limpar-worktrees.cjs --remover
 Worktree **sujo** ou **órfão** nunca é removido — o script não toca neles.
 
 **Worktree com alteração pendente (sujo)**: mostre ao usuário o que há
-dentro e deixe a decisão — recuperar, descartar, ou deixar por enquanto.
+dentro e deixe a decisão — recuperar, descartar, ou deixar por enquanto. Se
+a decisão for descartar, `--remover-sujo <dir>` remove UM worktree sujo, e
+só com `--confirmo`:
+
+```
+node scripts/limpar-worktrees.cjs --remover-sujo <dir> \
+  --confirmo "CONFIRMO apagar worktree sujo <caminho>"
+```
+
+`<caminho>` é o **script quem deriva**, no mesmo formato de
+`git worktree list`. Sem `--confirmo`, ou com a frase de outro caminho, a
+saída imprime a frase esperada e sai 2, sem remover nada — essa frase é
+digitada pelo usuário e repassada verbatim; o script não a inventa.
 
 ## 3. A branch, que sobrevive ao worktree
 
@@ -94,6 +106,19 @@ O modo de remoção é configurável, e o padrão é o conservador:
 node scripts/limpar-branches.cjs --remover              # -d
 node scripts/limpar-branches.cjs --remover --forcar     # -D só nesta rodada
 node scripts/setup.cjs --ligar branch-forcar            # -D como padrão
+```
+
+`--remover --forcar` também exige `--confirmo "<frase>"` quando há alvo que
+só sai com `-D` (`sumiu-divergente`, `mergeada-por-squash`,
+`mergeada-por-conteudo`). A frase é **derivada pelo script**, nunca por
+quem chama: `CONFIRMO apagar branches <nome1>,<nome2>` (nomes em ordem
+alfabética, vírgula sem espaço). Sem `--confirmo`, ou com frase que não
+bate byte a byte, sai 2 e nada é apagado — a saída imprime a frase
+esperada, para o usuário digitar e repassar verbatim:
+
+```
+node scripts/limpar-branches.cjs --remover --forcar \
+  --confirmo "CONFIRMO apagar branches <nome1>,<nome2>"
 ```
 
 **Remover exige estar na base e com ela em dia** — o script recusa e explica.
