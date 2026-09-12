@@ -18,8 +18,21 @@
     "em": "2026-09-12"
   },
   "executar": {
-    "status": "pendente",
-    "catraca_mutacao": "2026-09-12"
+    "status": "parcial",
+    "catraca_mutacao": "2026-09-12",
+    "em_voo": [],
+    "tarefas_ok": 1,
+    "tarefas": 9,
+    "em": "2026-09-12",
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "5bde1d66ff7a6db668e5d889fc9bdd34f66d82be",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T20:17:50.631Z"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente"
