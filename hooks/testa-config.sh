@@ -250,11 +250,12 @@ OUTROS="$(hjson '
   process.stdout.write(String(semMatcher.reduce((n,b) => n + b.hooks.length, 0)));
 ')"
 # Sete desde 2026-09-12: o gate-mensagem-commit.cjs (D2 do absorver-plugin-terceiro)
-# entrou no mesmo bloco sem matcher, atras do gate-git-verificacao.cjs.
-if [ "$OUTROS" = "7" ]; then
-  ok=$((ok+1)); echo "  ok   os sete gates sem matcher estão presentes"
+# entrou no mesmo bloco sem matcher, atras do gate-git-verificacao.cjs. Oito no
+# mesmo dia: o gate-verificador-staged.cjs (D26 do zerar-issues, Issue #235).
+if [ "$OUTROS" = "8" ]; then
+  ok=$((ok+1)); echo "  ok   os oito gates sem matcher estão presentes"
 else
-  falhou=$((falhou+1)); echo "  FALHA gates sem matcher: $OUTROS, esperava 7"
+  falhou=$((falhou+1)); echo "  FALHA gates sem matcher: $OUTROS, esperava 8"
 fi
 
 # `PostToolUse` e PROIBIDO neste repo: 15.331 eventos em oito dias, um processo

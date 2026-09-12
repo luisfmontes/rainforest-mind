@@ -409,7 +409,7 @@ pronto quando: `rodaBateria` monta o comando por uma função `comandoDaBateria(
 
 ### 29. Gate `gate-verificador-staged`: o verificador do repo barra o commit [tipo: implementar]
 atende: D26
-arquivos: `hooks/gate-verificador-staged.cjs`, `hooks/testa-gate-verificador-staged.sh`, `hooks/hooks.json`, `hooks/testa-fuga-de-escotilha.sh`
+arquivos: `hooks/gate-verificador-staged.cjs`, `hooks/testa-gate-verificador-staged.sh`, `hooks/hooks.json`, `hooks/testa-fuga-de-escotilha.sh`, `hooks/testa-config.sh`
 depende de: 4
 paralela: sim
 mutacao:
