@@ -1,4 +1,11 @@
-# Regra 11 — Worktree de subagente: isolado E com base conferida
+# Regra 11 — Worktree: isolado E com base conferida
+
+**O checkout principal fica na branch padrão; todo trabalho nasce em worktree**
+— vale para a sessão do usuário, não só para subagente (`git worktree add
+.claude/worktrees/<slug> -b fluxo/<slug> origin/main`, ou `EnterWorktree`).
+Desde 2026-09-08 tem trava: `estado.cjs iniciar` recusa o principal fora da
+padrão, e a chave `principal-livre` desliga. O porquê (vigias e co-locação,
+Issue #195), a receita e a chave moram em `references/regra-11-principal.md`.
 
 Subagente que
 edita arquivos roda **sempre** com `isolation: "worktree"` — nunca direto na

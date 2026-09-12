@@ -14,6 +14,7 @@ Regras de projeto que este arquivo respeita:
 
 import datetime
 import json
+import math
 import os
 import re
 import subprocess
@@ -551,6 +552,12 @@ def segmento_escada_intensidade(cwd):
 
     Le config.json da pasta de dados e mostra o nível configurado.
     Se nao estiver configurado, retorna string vazia (nao mostra nada).
+
+    Recebe o `cwd` porque `resolver_raiz_dados` precisa dele. Entre 27fcb1f e
+    2026-09-08 a chamada vinha sem argumento, e o TypeError derrubava `main()`
+    inteiro: a barra do harness ficou VAZIA em toda sessao, sem nenhuma bateria
+    reprovar — nenhuma delas passava pelo `main()`. O caso ponta a ponta de
+    `testa-statusline-limites.py` existe para isso.
     """
     raiz_dados = resolver_raiz_dados(cwd)
     if not raiz_dados:
@@ -577,42 +584,126 @@ def segmento_escada_intensidade(cwd):
     return c(f"escada:{simbolo}", CIANO)
 
 
+# --------------------------------------------------------------- limites ---
+def tempo_ate(resets_at, agora):
+    """'2h10' abaixo de um dia, '3d4h' de um dia em diante; '' se ja passou ou
+    se `resets_at` nao e numero (o harness manda epoch em segundos, e a barra
+    nao pode estourar com o que quer que venha no lugar)."""
+    if isinstance(resets_at, bool) or not isinstance(resets_at, (int, float)):
+        return ""
+    # `json` do Python aceita NaN e Infinity, e os dois SAO float: passam o
+    # isinstance e estouram no int(). Revisao de 2026-09-08 reproduziu a barra
+    # vazia com resets_at = NaN.
+    if not math.isfinite(resets_at) or not math.isfinite(agora):
+        return ""
+    restante = int(resets_at - agora)
+    if restante <= 0:
+        return ""
+    if restante >= 86400:
+        return "%dd%dh" % (restante // 86400, (restante % 86400) // 3600)
+    return "%dh%02d" % (restante // 3600, (restante % 3600) // 60)
+
+
+def segmento_limites(limites, agora=None):
+    """'5h 23% ↻2h10 7d 41% ↻3d4h' — percentual usado e quanto falta
+    para a janela reiniciar. Janela sem `used_percentage` nao aparece; janela
+    sem `resets_at` valido aparece so com o percentual."""
+    if not isinstance(limites, dict):
+        return ""
+    if agora is None:
+        agora = datetime.datetime.now().timestamp()
+    partes = []
+    for chave, rotulo in (("five_hour", "5h"), ("seven_day", "7d")):
+        janela = limites.get(chave)
+        if not isinstance(janela, dict):
+            continue
+        pct = janela.get("used_percentage")
+        if isinstance(pct, bool) or not isinstance(pct, (int, float)) or not math.isfinite(pct):
+            continue
+        texto = "%s %d%%" % (rotulo, round(pct))
+        falta = tempo_ate(janela.get("resets_at"), agora)
+        if falta:
+            texto += " ↻" + falta
+        partes.append(c(texto, por_faixa(pct, 60, 85)))
+    return " ".join(partes)
+
+
 # ------------------------------------------------------------------ main ---
+def dicionario(dados, chave):
+    """`dados[chave]` se for dict, senao {} — `dados.get(chave, {})` so protege
+    contra chave AUSENTE; chave presente com null, lista ou string passava e
+    estourava no `.get` seguinte (revisao de 2026-09-08, 10 payloads distintos
+    derrubando a barra inteira)."""
+    valor = dados.get(chave) if isinstance(dados, dict) else None
+    return valor if isinstance(valor, dict) else {}
+
+
+def texto_ou(valor, padrao):
+    return valor if isinstance(valor, str) and valor else padrao
+
+
+def numero_finito(valor):
+    return (
+        not isinstance(valor, bool)
+        and isinstance(valor, (int, float))
+        and math.isfinite(valor)
+    )
+
+
+def montar_segmentos(dados):
+    """Cada segmento nasce dentro do proprio try: um que estoura simplesmente
+    nao aparece, e os outros continuam — e o contrato da barra (docstring do
+    modulo), e ate aqui ele valia so para os segmentos que tinham try dentro."""
+    if not isinstance(dados, dict):
+        dados = {}
+
+    cwd = texto_ou(dados.get("cwd"), "") or texto_ou(dicionario(dados, "workspace").get("current_dir"), ".")
+    transcript_path = texto_ou(dados.get("transcript_path"), None)
+
+    def modelo():
+        m = dicionario(dados, "model")
+        nome = texto_ou(m.get("display_name"), "") or texto_ou(m.get("id"), "")
+        return c(nome, CINZA) if nome else ""
+
+    def contexto():
+        ctx = dicionario(dados, "context_window").get("used_percentage")
+        if not numero_finito(ctx):
+            return ""
+        return c("ctx %d%%" % round(ctx), por_faixa(ctx, 50, 75))
+
+    fabricas = (
+        lambda: segmento_local(cwd),
+        lambda: segmento_perfil(dados),
+        modelo,
+        contexto,
+        lambda: segmento_limites(dados.get("rate_limits")),
+        segmento_tempo,
+        lambda: segmento_escada_intensidade(cwd),
+        lambda: segmento_co_locada(cwd),
+        lambda: segmento_versao(transcript_path),
+        segmento_prazo,
+    )
+    segmentos = []
+    for fabrica in fabricas:
+        try:
+            s = fabrica()
+        except Exception:
+            s = ""
+        if s:
+            segmentos.append(s)
+    return segmentos
+
+
 def main():
     try:
         dados = json.load(sys.stdin)
     except Exception:
         dados = {}
-
-    cwd = dados.get("cwd") or dados.get("workspace", {}).get("current_dir") or "."
-    transcript_path = dados.get("transcript_path")
-
-    segmentos = [segmento_local(cwd), segmento_perfil(dados)]
-
-    modelo = dados.get("model", {}).get("display_name") or dados.get("model", {}).get("id")
-    if modelo:
-        segmentos.append(c(modelo, CINZA))
-
-    ctx = dados.get("context_window", {}).get("used_percentage")
-    if isinstance(ctx, (int, float)):
-        segmentos.append(c("ctx %d%%" % round(ctx), por_faixa(ctx, 50, 75)))
-
-    limites = dados.get("rate_limits", {})
-    partes_limite = []
-    for chave, rotulo in (("five_hour", "5h"), ("seven_day", "7d")):
-        pct = limites.get(chave, {}).get("used_percentage")
-        if isinstance(pct, (int, float)):
-            partes_limite.append(c("%s %d%%" % (rotulo, round(pct)), por_faixa(pct, 60, 85)))
-    if partes_limite:
-        segmentos.append(" ".join(partes_limite))
-
-    segmentos.append(segmento_tempo())
-    segmentos.append(segmento_escada_intensidade(cwd))
-    segmentos.append(segmento_co_locada(cwd))
-    segmentos.append(segmento_versao(transcript_path))
-    segmentos.append(segmento_prazo())
-
-    print(SEP.join([s for s in segmentos if s]))
+    try:
+        segmentos = montar_segmentos(dados)
+    except Exception:
+        segmentos = []
+    print(SEP.join(segmentos))
 
 
 if __name__ == "__main__":
