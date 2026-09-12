@@ -88,6 +88,27 @@ console.log("== 3. mencao sob marcador subordinado NAO autoriza ==");
   caso("com a concessao anterior no mesmo transcript, autorizado() = true", rCompleto === true, rCompleto);
 }
 
+console.log("== 3b. considerar autorizar NAO e autorizar (achados da revisao de 2026-09-12) ==");
+{
+  // Tres frases de um humano de verdade (`origin.kind: human`, sem injecao
+  // nenhuma) que abriam o portao. Nenhuma delas e consentimento: duas sao hedge
+  // e uma e pergunta. A trava so cobria fala relatada ("falo que autorizo"), e
+  // a lista exigia "se EU autorizo" — "decidi se autorizo" passava batido.
+  const rHedge1 = autorizado(fx("hedge-nao-decidi.jsonl"));
+  caso("'ainda nao decidi se autorizo subagentes' NAO autoriza", rHedge1 === false, rHedge1);
+
+  const rHedge2 = autorizado(fx("hedge-vou-pensar.jsonl"));
+  caso("'vou pensar se autorizo subagentes amanha' NAO autoriza", rHedge2 === false, rHedge2);
+
+  const rPergunta = autorizado(fx("pergunta-posso-autorizar.jsonl"));
+  caso("'posso autorizar subagentes ou fica arriscado?' NAO autoriza", rPergunta === false, rPergunta);
+
+  // O envelope de sistema era casado com regex sem a flag `i`: bastava a tag vir
+  // com outra caixa para um relato de agente voltar a contar como voz do usuario.
+  const rEnvelope = autorizado(fx("envelope-caixa-trocada.jsonl"));
+  caso("envelope <Task-Notification> com caixa trocada NAO autoriza", rEnvelope === false, rEnvelope);
+}
+
 console.log("== 4. negacao sem acento ('nao autorizo subagentes') NAO autoriza ==");
 {
   const r = autorizado(fx("negado-sem-acento.jsonl"));
@@ -429,13 +450,17 @@ console.log("== 17. as mensagens de negacao sao distintas, cada uma com o seu te
 
   // As quatro mensagens sao, de fato, DIFERENTES entre si — nao a mesma
   // string reaproveitada para os quatro casos.
-  const textos = new Set([
-    "sem estágio ativo — abra um fluxo",
-    "autorização não pôde ser conferida — transcript_path não foi fornecido no payload",
-    `autorização não pôde ser conferida — arquivo ${caminhoFalso} não existe`,
-    "autorização foi revogada — usuário disse explicitamente que não autoriza subagentes nesta sessão",
-  ]);
-  caso("as quatro mensagens sao textualmente distintas entre si", textos.size === 4, [...textos]);
+  //
+  // Esta assercao ja foi decorativa: ela montava um Set com as quatro strings
+  // ESPERADAS, digitadas aqui, e conferia `size === 4`. Passava sem consultar o
+  // hook uma vez sequer — mutar a portaria para emitir a mesma mensagem generica
+  // nos quatro ramos deixava esta linha verde. Achado da revisao de 2026-09-12.
+  // Agora ela le o stderr REAL dos quatro processos que ja rodaram acima.
+  const primeiraLinha = (r) => String((r && r.stderr) || "").trim().split("\n")[0].trim();
+  const reais = [rAusente, rVazio, rInexistente, rNegacao].map(primeiraLinha);
+  const textos = new Set(reais);
+  caso("as quatro mensagens REAIS do hook sao distintas entre si", textos.size === 4, reais);
+  caso("nenhuma das quatro mensagens reais e vazia", reais.every((t) => t.length > 0), reais);
 }
 
 console.log(`\n== resultado: ${ok} ok, ${falhou} falha(s) ==`);

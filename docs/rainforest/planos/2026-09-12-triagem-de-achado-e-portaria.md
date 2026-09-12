@@ -50,7 +50,16 @@ mutacao:
   para: `NUCLEOS_MAX_BYTES: 5600`
   bateria: `bash hooks/testa-contexto-sessao.sh`
   fixture: caso do teto de núcleos com o SKILL.md já emendado (tarefa 2)
-pronto quando: com o `SKILL.md` desta branch, `node scripts/orcamento.cjs` sai com exit 0 e imprime `Total: 15233 B` sem a linha `Aviso de folga em agregado`; e `node -e "const m=require('./hooks/lib/contexto-sessao.cjs'); console.log(m.TETOS.NUCLEOS_MAX_BYTES)"` devolve `6000`
+pronto quando: com o `SKILL.md` desta branch, `node scripts/orcamento.cjs` sai com exit 0 **sem** a linha `Aviso de folga em agregado`; e `node -e "const m=require('./hooks/lib/contexto-sessao.cjs'); console.log(m.TETOS.NUCLEOS_MAX_BYTES)"` devolve `6000`
+
+> **Correção de 2026-09-12, no `revisar`:** este critério exigia o literal
+> `Total: 15233 B`, que era a projeção da D2 (14927 medido + 306 da emenda).
+> O número real varia entre medições — 14378 e 14441 em execuções desta mesma
+> branch — porque o bloco do hook inclui FOCO e sessões vivas, que mudam entre
+> rodadas. Número literal em critério de aceite apodrece: o comportamento que
+> importa é exit 0 sem aviso de folga, e é isso que o critério cobra agora. O
+> contrato de bytes que PRECISA ser exato é o do núcleo (`NUCLEO_ESPERADO`), e
+> esse mora na bateria, com changelog datado.
 
 ### 2. Emendar o núcleo da regra 6 com a triagem de achado [tipo: implementar]
 atende: D1

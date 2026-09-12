@@ -6,10 +6,18 @@ const fs = require('fs');
  * Estratégia:
  * - Lê o arquivo INTEIRO. A cauda foi tentada e removida — ver o comentário do
  *   `TETO_GUARDA` abaixo, que traz a medição que a matou.
- * - Procura por linhas com type:"user", "queue-operation" ou "attachment"
+ * - Só olha linhas que `vozDoUsuario` aceita: type "user" identificado como
+ *   humano, e "queue-operation" que não seja envelope de sistema. `attachment`
+ *   ficou de FORA de propósito: é canal de conteúdo (arquivo colado, imagem),
+ *   e conteúdo é exatamente o vetor que esta trava fecha. A concessão mandada
+ *   no meio do turno chega pelo `queue-operation`, medido no transcript real.
  * - NORMALIZA acentos antes de todo casamento (NFD + remoção de diacríticos)
  * - Reconhece "autorizo" perto de "subagente(s)" por frase livre (não comando)
- * - Nega se marcador subordinado ("falo que", "disse que", etc.) envolver "autorizo"
+ * - Nega se marcador subordinado ("falo que", "disse que", "se autorizo",
+ *   "ainda não decidi", "vou pensar") envolver "autorizo" — considerar autorizar
+ *   não é autorizar
+ * - Nega quando toda frase que carrega a palavra é PERGUNTA: "posso autorizar
+ *   subagentes ou fica arriscado?" é pedido de opinião, não consentimento
  * - Nega se houver negação explícita ("não autorizo", "nunca autorizo", "não vou autorizar")
  * - Retorna true se houver autorização válida, false caso contrário
  *
@@ -111,7 +119,7 @@ function autorizado(transcriptPath) {
  * Envelopes que o harness entrega DENTRO de uma linha que, de fora, parece do
  * usuário. Nenhum deles foi digitado por ele.
  */
-const ENVELOPE_DE_SISTEMA = /<task-notification>|<system-reminder>|<cross-session-message|<command-name>/;
+const ENVELOPE_DE_SISTEMA = /<task-notification>|<system-reminder>|<cross-session-message|<command-name>/i;
 
 /**
  * A única porta de entrada: devolve o texto quando a linha é a VOZ DO USUÁRIO,
@@ -193,8 +201,6 @@ function temNegacaoExplicita(obj) {
 
   if (obj.type === 'queue-operation') {
     conteudo = obj.content;
-  } else if (obj.type === 'attachment' && obj.attachment) {
-    conteudo = obj.attachment.prompt;
   } else if (obj.type === 'user' && obj.message) {
     conteudo = obj.message.content;
   }
@@ -235,8 +241,6 @@ function temAutorizacaoPrincipal(obj) {
 
   if (obj.type === 'queue-operation') {
     conteudo = obj.content;
-  } else if (obj.type === 'attachment' && obj.attachment) {
-    conteudo = obj.attachment.prompt;
   } else if (obj.type === 'user' && obj.message) {
     conteudo = obj.message.content;
   }
@@ -255,8 +259,25 @@ function temAutorizacaoPrincipal(obj) {
     return false;
   }
 
-  // Verifica se a autorização está em cláusula PRINCIPAL
-  // Sinais de cláusula SUBORDINADA (também normalizados): "falo que", "disse que", "digo que", "quando eu autorizo", "se eu autorizo", "que autorizo"
+  // PERGUNTA NÃO É CONSENTIMENTO. "posso autorizar subagentes nesse projeto ou
+  // fica arriscado?" é o usuário pedindo opinião, e abria o portão. A marca é o
+  // ponto de interrogação na frase que carrega a palavra — não no turno inteiro,
+  // senão "autorizo subagentes. e o build, passou?" seria recusado.
+  const frases = normalizado.split(/(?<=[.!?])\s+|\n+/);
+  const frasesComAutorizacao = frases.filter((f) => /\bautorizo\b|\bautorizando\b|\bautorizar\b/.test(f));
+  const todasPerguntam = frasesComAutorizacao.length > 0 && frasesComAutorizacao.every((f) => f.trim().endsWith('?'));
+  if (todasPerguntam) {
+    return false;
+  }
+
+  // Verifica se a autorização está em cláusula PRINCIPAL.
+  //
+  // Além da fala relatada ("falo que autorizo"), entram aqui os HEDGES: o
+  // usuário considerando autorizar não autorizou. "ainda nao decidi se autorizo
+  // subagentes, preciso pensar melhor" e "vou pensar se autorizo subagentes
+  // amanha" abriam o portão — as duas frases dizem o contrário do que a trava
+  // entendia. O padrão é `se autoriz*` sem o "eu" no meio, que a lista original
+  // não cobria por exigir "se eu autorizo".
   const sinaisSubordinados = [
     /\bfalo\s+que\b/,
     /\bdisse\s+que\b/,
@@ -264,6 +285,13 @@ function temAutorizacaoPrincipal(obj) {
     /\bquando\s+eu\s+autorizo\b/,
     /\bse\s+eu\s+autorizo\b/,
     /\bque\s+autorizo\b/,
+    /\bse\s+autoriz\w*/,
+    /\bnao\s+decidi\b/,
+    /\bnao\s+sei\s+se\b/,
+    /\bvou\s+pensar\b/,
+    /\bpensar\s+se\b/,
+    /\btalvez\b/,
+    /\bsera\s+que\b/,
   ];
 
   // Se a palavra "autorizo" estiver após um dos sinais subordinados, NÃO é autorização principal
