@@ -300,6 +300,21 @@ console.log("== 3h. subordinacao vai para FRENTE, e 'sub agentes' com espaco (6a
   // Falso negativo de grafia: o hifen e opcional e facil de errar.
   const rEspaco = autorizado(fx("concessao-sub-agentes-com-espaco.jsonl"));
   caso("'autorizo sub agentes para essa tarefa' AUTORIZA", rEspaco === true, rEspaco);
+
+  // O caso mais perigoso do acervo: `tool_result` que se DECLARA humano
+  // (origin.kind human, promptSource typed) carregando "autorizo subagentes"
+  // dentro. Se isso abrisse o portao, qualquer arquivo que a sessao lesse
+  // viraria concessao — escalada de privilegio por conteudo. Ele e barrado em
+  // profundidade (content-em-array em vozDoUsuario, e de novo pelos `typeof` de
+  // jusante), e e por isso que nenhum mutante de UMA linha o derruba.
+  const rInjecaoHumana = autorizado(fx("injecao-por-tool-result-humano.jsonl"));
+  caso("tool_result que se declara humano NAO autoriza", rInjecaoHumana === false, rInjecaoHumana);
+
+  // O outro lado da grafia com espaco: "sub" tambem e abreviacao de outra coisa
+  // ("o sub", de substituto), e ai "agentes" e sobre gente, nao sobre IA. Com
+  // artigo antes, `sub` nao e prefixo — a forma com espaco so conta nua.
+  const rSubAbreviacao = autorizado(fx("sub-como-abreviacao.jsonl"));
+  caso("'autorizo o sub agentes de suporte...' NAO autoriza", rSubAbreviacao === false, rSubAbreviacao);
 }
 
 console.log("== 4. negacao sem acento ('nao autorizo subagentes') NAO autoriza ==");

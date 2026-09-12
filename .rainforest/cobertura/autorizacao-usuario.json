@@ -1,0 +1,209 @@
+{
+  "arquivo": "hooks/lib/autorizacao-usuario.cjs",
+  "fixtures": "test/fixtures/autorizacao",
+  "avaliar": "hooks/lib/autorizacao-usuario.cjs#autorizado",
+  "mutacoes": [
+    {
+      "nome": "M1  desligar a regra da pergunta",
+      "alvo": "cauda[0].includes(",
+      "linha": "    if (false) continue;"
+    },
+    {
+      "nome": "M2  nao tirar o rabicho",
+      "alvo": "texto.replace(RABICHO_DE_CONFIRMACAO",
+      "linha": "    texto = texto.trim();"
+    },
+    {
+      "nome": "M3  nao quebrar por virgula",
+      "alvo": "const oracoes = texto.split(",
+      "linha": "    const oracoes = [texto];"
+    },
+    {
+      "nome": "M4  subordinador pendurado nao existe",
+      "alvo": "const PENDURADO =",
+      "linha": "    const PENDURADO = /nunca-casa-xyz/;"
+    },
+    {
+      "nome": "M5  desligar marcador subordinado",
+      "alvo": "if (subordinada) continue;",
+      "linha": "      if (false) continue;"
+    },
+    {
+      "nome": "M6  voltar ao escopo de turno inteiro",
+      "alvo": "const frases = semUrl.split(",
+      "linha": "  const frases = [semUrl];"
+    },
+    {
+      "nome": "M7  rabicho volta a aceitar sim|ne",
+      "alvo": "|pode",
+      "de": "|hein)",
+      "para": "|hein|sim|ne)"
+    },
+    {
+      "nome": "M8  pendurado vale para tras tambem",
+      "alvo": "if (herdouPendurado) break;",
+      "linha": "      if (false) break;"
+    },
+    {
+      "nome": "M9  nao tirar URL antes de analisar",
+      "alvo": "const semUrl = normalizado.replace(",
+      "linha": "  const semUrl = normalizado;"
+    },
+    {
+      "nome": "M11 separador nao corta '?' colado",
+      "alvo": "const frases = semUrl.split(",
+      "de": "|(?<=\\?)(?=\\p{L})",
+      "para": ""
+    },
+    {
+      "nome": "M13 cauda volta a ser '?' em qualquer lugar",
+      "alvo": "cauda[0].includes(",
+      "linha": "    if (texto.includes('?')) continue;"
+    },
+    {
+      "nome": "M14 URL volta a ser gulosa",
+      "alvo": "const semUrl = normalizado.replace(",
+      "de": "[^\\s,)\\]}\"'<>]+",
+      "para": "\\S+"
+    },
+    {
+      "nome": "M16 sub agentes com espaco nao conta",
+      "alvo": "const FORMAS_DE_SUBAGENTE =",
+      "de": "|(?<!\\b(?:o|os|um|uns|ao|aos|do|dos|no|nos|meu|seu)\\s)\\bsub\\s+agentes?\\b",
+      "para": ""
+    },
+    {
+      "nome": "M17 negacao explicita nao nega",
+      "alvo": "if (temNegacaoExplicita(obj)) {",
+      "linha": "        if (false) {"
+    },
+    {
+      "nome": "M18 negacao sem 'nunca autorizo'",
+      "alvo": "\\bnunca\\s+autorizo",
+      "linha": "    /nunca-casa-xyz/,"
+    },
+    {
+      "nome": "M19 negacao sem 'nao vou autorizar'",
+      "alvo": "\\bnao\\s+vou\\s+autorizar",
+      "linha": "    /nunca-casa-xyz/,"
+    },
+    {
+      "nome": "M20 envelope de sistema sem a flag i",
+      "alvo": "const ENVELOPE_DE_SISTEMA =",
+      "de": "/i;",
+      "para": "/;"
+    },
+    {
+      "nome": "M21 envelope de sistema nao filtra",
+      "alvo": "if (ENVELOPE_DE_SISTEMA.test(obj.content)) return null;",
+      "linha": "    if (false) return null;"
+    },
+    {
+      "nome": "M22 tool_result (content em array) conta",
+      "alvo": "if (typeof conteudo !== 'string') return null;",
+      "linha": "    if (false) return null;"
+    },
+    {
+      "nome": "M23 promptSource system conta",
+      "alvo": "obj.promptSource === 'system'",
+      "linha": "    if (false) return null;"
+    },
+    {
+      "nome": "M24 origin.kind nao-humano conta",
+      "alvo": "obj.origin.kind !== 'human'",
+      "linha": "    if (false) return null;"
+    },
+    {
+      "nome": "M25 queue-operation nao conta",
+      "alvo": "if (obj.type === 'queue-operation') {",
+      "linha": "  if (false) {"
+    },
+    {
+      "nome": "M26 sem normalizacao de acento",
+      "alvo": "return texto.normalize('NFD')",
+      "de": "normalize('NFD')",
+      "para": "normalize('NFC')"
+    },
+    {
+      "nome": "M27 sem baixar caixa",
+      "alvo": "return texto.normalize('NFD')",
+      "de": ".toLowerCase()",
+      "para": ""
+    },
+    {
+      "nome": "M28 linha JSON invalida derruba o laco",
+      "alvo": "// Ignora linhas que não são JSON válido",
+      "linha": "        throw e;"
+    },
+    {
+      "nome": "M29 turno digitado (type user) nao conta",
+      "alvo": "if (obj.type === 'user') {",
+      "linha": "  if (false) {"
+    },
+    {
+      "nome": "M30 porta de entrada aberta (vozDoUsuario ignorada)",
+      "alvo": "if (vozDoUsuario(obj) === null) {",
+      "linha": "        if (false) {"
+    },
+    {
+      "nome": "M31 forma com espaco conta mesmo com artigo antes",
+      "alvo": "const FORMAS_DE_SUBAGENTE =",
+      "de": "(?<!\\b(?:o|os|um|uns|ao|aos|do|dos|no|nos|meu|seu)\\s)\\bsub\\s+",
+      "para": "\\bsub\\s+"
+    }
+  ],
+  "mudas_esperadas": [
+    {
+      "fixture": "concessao-apos-caso.jsonl",
+      "motivo": "guarda de regressao da regra de condicao pendurada, REMOVIDA na 6a rodada de 2026-09-12 (o motivo esta escrito no lugar dela). Nenhum mutante de linha a derruba porque a regra nao existe; o que ela guarda e a regra nao voltar."
+    },
+    {
+      "fixture": "concessao-apos-quando.jsonl",
+      "motivo": "guarda de regressao da regra de condicao pendurada, REMOVIDA na 6a rodada de 2026-09-12 (o motivo esta escrito no lugar dela). Nenhum mutante de linha a derruba porque a regra nao existe; o que ela guarda e a regra nao voltar."
+    },
+    {
+      "fixture": "concessao-com-caso-substantivo.jsonl",
+      "motivo": "guarda de regressao da regra de condicao pendurada, REMOVIDA na 6a rodada de 2026-09-12 (o motivo esta escrito no lugar dela). Nenhum mutante de linha a derruba porque a regra nao existe; o que ela guarda e a regra nao voltar."
+    },
+    {
+      "fixture": "concessao-com-possessivo-na-frase.jsonl",
+      "motivo": "guarda de regressao da regra de condicao pendurada, REMOVIDA na 6a rodada de 2026-09-12 (o motivo esta escrito no lugar dela). Nenhum mutante de linha a derruba porque a regra nao existe; o que ela guarda e a regra nao voltar."
+    },
+    {
+      "fixture": "concessao-e-caso-possessivo.jsonl",
+      "motivo": "guarda de regressao da regra de condicao pendurada, REMOVIDA na 6a rodada de 2026-09-12 (o motivo esta escrito no lugar dela). Nenhum mutante de linha a derruba porque a regra nao existe; o que ela guarda e a regra nao voltar. Alem disso, a concessao esta na 1a frase e concede sozinha."
+    },
+    {
+      "fixture": "concessao-e-quando-em-outra-frase.jsonl",
+      "motivo": "guarda de regressao da regra de condicao pendurada, REMOVIDA na 6a rodada de 2026-09-12 (o motivo esta escrito no lugar dela). Nenhum mutante de linha a derruba porque a regra nao existe; o que ela guarda e a regra nao voltar."
+    },
+    {
+      "fixture": "escopo-pendurado-no-fim.jsonl",
+      "motivo": "guarda de regressao da regra de condicao pendurada, REMOVIDA na 6a rodada de 2026-09-12 (o motivo esta escrito no lugar dela). Nenhum mutante de linha a derruba porque a regra nao existe; o que ela guarda e a regra nao voltar. Esta trocou de veredito quando a regra saiu: hoje AUTORIZA."
+    },
+    {
+      "fixture": "condicional-com-pergunta.jsonl",
+      "motivo": "quem a barra e o marcador `se autoriz`, que ja subordinava antes da regra da pergunta existir. Guarda de regressao, nao teste de mecanismo — medido na 3a rodada."
+    },
+    {
+      "fixture": "pergunta-posso-autorizar.jsonl",
+      "motivo": "quem a barra e o marcador `posso autoriz`, nao a regra da pergunta. Quem isola a regra da pergunta e `pergunta-sem-marcador.jsonl`."
+    },
+    {
+      "fixture": "injecao-por-tool-result.jsonl",
+      "motivo": "defendida em profundidade: `vozDoUsuario` a barra por `type`/`origin`, e mesmo passando ali os `typeof conteudo` de temNegacaoExplicita e temAutorizacaoPrincipal a barram de novo. Nenhum mutante de UMA linha a derruba — e isso e a redundancia funcionando, nao lacuna."
+    },
+    {
+      "fixture": "injecao-por-tool-result-humano.jsonl",
+      "motivo": "o caso mais perigoso do acervo (tool_result que se declara humano) e o mais defendido: a checagem de content-em-array de `vozDoUsuario` e redundante com os `typeof` de jusante, entao desligar qualquer uma sozinha nao abre o portao. Escrita de proposito para provar isso."
+    },
+    {
+      "fixture": "autorizado-digitado.jsonl",
+      "motivo": "concessao digitada limpa; so um mutante GROSSO (desligar o ramo `type === user` inteiro) vira o veredito dela, e mutante grosso nao conta para cobertura especifica."
+    },
+    {
+      "fixture": "vazio.jsonl",
+      "motivo": "arquivo vazio: `false` por ausencia de dado, nao por regra. Nao ha comportamento a inverter."
+    }
+  ]
+}

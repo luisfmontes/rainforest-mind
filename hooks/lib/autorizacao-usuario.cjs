@@ -134,6 +134,25 @@ function autorizado(transcriptPath) {
 const ENVELOPE_DE_SISTEMA = /<task-notification>|<system-reminder>|<cross-session-message|<command-name>/i;
 
 /**
+ * As formas de 'subagente' que contam, num lugar so.
+ *
+ * Estavam repetidas em TRES pontos, e a catraca de cobertura mostrou o preco:
+ * mutar uma ocorrencia nao virava fixture nenhuma, porque as outras duas
+ * continuavam barrando. Regra defendida em triplicata e regra que nao se
+ * consegue medir.
+ *
+ * A forma com ESPACO ('sub agentes') so conta NUA: com artigo ou preposicao
+ * antes, 'sub' e abreviacao de outra coisa ('o sub', de substituto) e
+ * 'agentes' passa a ser sobre gente. Medido na 7a rodada de revisao de
+ * 2026-09-12: 'autorizo o sub agentes de suporte vao revisar depois' abria o
+ * portao.
+ */
+const FORMAS_DE_SUBAGENTE = /\bsubagente\b|\bsubagentes\b|\bsub-agente\b|\bsub-agentes\b|(?<!\b(?:o|os|um|uns|ao|aos|do|dos|no|nos|meu|seu)\s)\bsub\s+agentes?\b/;
+
+/** A negacao aceita tambem 'agente(s)' solto: negar de menos e o erro caro. */
+const FORMAS_DE_AGENTE = /\bsubagente\b|\bsubagentes\b|\bsub-agente\b|\bsub-agentes\b|(?<!\b(?:o|os|um|uns|ao|aos|do|dos|no|nos|meu|seu)\s)\bsub\s+agentes?\b|\bagente\b|\bagentes\b/;
+
+/**
  * A única porta de entrada: devolve o texto quando a linha é a VOZ DO USUÁRIO,
  * e `null` para todo o resto. Fora daqui, o leitor não olha nada.
  *
@@ -235,7 +254,7 @@ function temNegacaoExplicita(obj) {
   for (const negacao of negacoes) {
     if (negacao.test(normalizado)) {
       // Encontra a negação e procura por "subagente" ou "agente" próximo
-      const temSubagente = /\bsubagente\b|\bsubagentes\b|\bsub-agente\b|\bsub-agentes\b|\bsub\s+agentes?\b|\bagente\b|\bagentes\b/.test(normalizado);
+      const temSubagente = FORMAS_DE_AGENTE.test(normalizado);
       if (temSubagente) {
         return true;
       }
@@ -265,7 +284,7 @@ function temAutorizacaoPrincipal(obj) {
 
   // Procura por "autorizo" ou "autorizar" perto de "subagente(s)"
   const temAutoriz = /\bautorizo\b|\bautorizando\b|\bautorizar\b|\bautorizacao\b/.test(normalizado);
-  const temSubagente = /\bsubagente\b|\bsubagentes\b|\bsub-agente\b|\bsub-agentes\b|\bsub\s+agentes?\b/.test(normalizado);
+  const temSubagente = FORMAS_DE_SUBAGENTE.test(normalizado);
 
   if (!temAutoriz || !temSubagente) {
     return false;
@@ -367,7 +386,7 @@ function temAutorizacaoPrincipal(obj) {
     if (!texto) continue;
 
     if (!/\bautorizo\b|\bautorizando\b|\bautorizar\b/.test(texto)) continue;
-    if (!/\bsubagente\b|\bsubagentes\b|\bsub-agente\b|\bsub-agentes\b|\bsub\s+agentes?\b/.test(texto)) continue;
+    if (!FORMAS_DE_SUBAGENTE.test(texto)) continue;
 
     // Confirmação casual no fim não transforma concessão em pergunta.
     // "autorizo subagentes, beleza?" é o usuário autorizando e checando, não
