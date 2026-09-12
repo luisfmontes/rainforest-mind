@@ -257,6 +257,43 @@ checa_contem "(e) o texto injetado avisa dos commits atrasados" "3 commit(s) atr
 checa_contem "(e) o texto injetado nomeia o worktree integrado" "já em origin/main"                "$TEXTO_HOOK"
 
 echo
+echo "(f) principal em dia alcancado por OUTRA GRAFIA do mesmo diretorio"
+# Achado na CI, nao aqui: o caso (d) passou nesta maquina e reprovou no runner
+# com `["<...>/caso-d/principal ja em origin/main"]` — o principal se listando a
+# si mesmo. Mecanismo: `git rev-parse --git-common-dir` devolve `.git` RELATIVO,
+# entao o caminho do principal nasce do cwd que o chamador passou, enquanto o
+# `git worktree list` imprime a grafia canonica do git. Grafias diferentes do
+# mesmo diretorio (8.3 curto x longo no runner; junction aqui) nao casam como
+# string, e a comparacao textual deixava o principal entrar na propria lista.
+# A junction reproduz o defeito de forma deterministica: sem o conserto, esta
+# chamada devolve uma linha; com ele, devolve [].
+SANDBOX_F="$RAIZ_POSIX/caso-f"; mkdir -p "$SANDBOX_F"
+BARE_F="$SANDBOX_F/repo.git"; PRINCIPAL_F="$SANDBOX_F/principal"
+git init -q -b main --bare "$BARE_F"
+git clone -q "$BARE_F" "$PRINCIPAL_F"
+git -C "$PRINCIPAL_F" config user.email "t@t"; git -C "$PRINCIPAL_F" config user.name "t"
+git -C "$PRINCIPAL_F" config commit.gpgsign false
+echo x > "$PRINCIPAL_F/f.txt"; git -C "$PRINCIPAL_F" add .; git -C "$PRINCIPAL_F" commit -qm base
+git -C "$PRINCIPAL_F" push -q -u origin main
+
+ATALHO_F="$SANDBOX_F/atalho"
+CRIOU_ATALHO=0
+if command -v cmd >/dev/null 2>&1; then
+  ( cd "$SANDBOX_F" && cmd //c mklink //J atalho principal ) >/dev/null 2>&1 && CRIOU_ATALHO=1
+elif ln -s "$PRINCIPAL_F" "$ATALHO_F" 2>/dev/null; then
+  CRIOU_ATALHO=1
+fi
+
+if [ "$CRIOU_ATALHO" = "1" ]; then
+  ERRO_F="$RAIZ_POSIX/erro-f.log"
+  SAIDA_F="$(rodar_linhas "$ATALHO_F" "$ERRO_F")"; EXIT_F=$?
+  checa_exit0 "(f) roda sem estourar pela outra grafia" "$EXIT_F" "$ERRO_F"
+  checa_vazio "(f) o principal nao se lista por grafia diferente" "$SAIDA_F"
+else
+  echo "  PULADO (f): nao consegui criar junction nem symlink nesta maquina"
+fi
+
+echo
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" = "0" ] || exit 1
