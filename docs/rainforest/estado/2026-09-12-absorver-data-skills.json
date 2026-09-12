@@ -169,6 +169,20 @@
         "iteracao": 2,
         "sessao": "desconhecida",
         "ts": "2026-09-12T07:44:20.866Z"
+      },
+      {
+        "tarefa": 12,
+        "hash_base": "e221b98",
+        "iteracao": 2,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T07:57:12.305Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "e221b98",
+        "iteracao": 3,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T07:57:12.305Z"
       }
     ],
     "mutacao": [
@@ -248,22 +262,24 @@
         "motivo": "tarefa de verificacao do conjunto: todas as baterias, cobertura, creep e publicacao --commit"
       }
     ],
-    "comando": "bash scripts/testa-conferir-publicacao.sh; bash hooks/testa-gate-mensagem-commit.sh; grep -c \"^> 2026-08-25\" skills/rainforest-mind/references/regra-09.md; bash scripts/testa-mapa-regras.sh; bash hooks/testa-contexto-sessao.sh",
-    "saida": "rodada 2 (avisos da revisao): publicacao 98 ok 0 falha (caso 11b merge novo); gate-mensagem-commit 25 ok 0 falha (caso i2 commit pelado); regra-09 grep = 1 para as tres datas; mapa-regras 6 ok; contexto-sessao exit 0 (regra-12 10472 B folga 28 B); README + travas-mecanicas emendados em commit proprio. Rodada 1: total=107 vermelhas:[testa-dependencias-de-bateria.sh testa-config.sh] -> as duas causadas pelo lote e corrigidas em 8ac43b00 (re-rodadas: 6 ok / 45 ok); cobertura ok 14 decisoes 15 tarefas; sem creep 53 arquivos cobertos; publicacao --commit origin/main..HEAD CONFERIDO exit 0; 22 commits em origin/main..HEAD"
+    "comando": "grep -rn \"144 de 441\" --include=*.md .; grep -c \"285 de 441\" docs/rainforest/design/2026-09-12-absorver-data-skills.md docs/travas-mecanicas.md; bash scripts/testa-mapa-regras.sh",
+    "saida": "rodada 3 (aviso da rodada 2): 0 ocorrencias de 144 de 441; 285 de 441 presente no design (1) e no travas-mecanicas (1); mapa-regras 6 ok. rodada 2 (avisos da revisao): publicacao 98 ok 0 falha (caso 11b merge novo); gate-mensagem-commit 25 ok 0 falha (caso i2 commit pelado); regra-09 grep = 1 para as tres datas; mapa-regras 6 ok; contexto-sessao exit 0 (regra-12 10472 B folga 28 B); README + travas-mecanicas emendados em commit proprio. Rodada 1: total=107 vermelhas:[testa-dependencias-de-bateria.sh testa-config.sh] -> as duas causadas pelo lote e corrigidas em 8ac43b00 (re-rodadas: 6 ok / 45 ok); cobertura ok 14 decisoes 15 tarefas; sem creep 53 arquivos cobertos; publicacao --commit origin/main..HEAD CONFERIDO exit 0; 22 commits em origin/main..HEAD"
   },
   "revisar": {
     "status": "reprovado",
-    "achados": 3,
+    "achados": 1,
     "base": "10251507",
-    "head": "ff239855",
+    "head": "e221b98",
     "em_voo": [],
     "lista": [
-      "regra-09 Racionalizacoes cita datas sem bloco > na regra nem acervo (criterio T4)",
-      "gate-mensagem-commit bloqueia git commit sem flag (merge) sem docblock nem caso na bateria",
-      "conferir-publicacao --commit <rev> avulso em merge commit lista 0 arquivos e sai 0"
+      "travas-mecanicas.md linha do gate-mensagem-commit cita 144 de 441 commits sem lastro no repo; design registra 285/441 ate 3 arquivos e 310 com corpo"
     ],
     "em": "2026-09-12",
-    "tentativas": 1
+    "tentativas": 2,
+    "snapshot": {
+      "head": "e221b98cc9b96c0564e843fdef6c22b1fda62553",
+      "caminhos_sujos": []
+    }
   },
   "verificar": {
     "status": "pendente"
