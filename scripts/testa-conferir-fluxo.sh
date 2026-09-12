@@ -753,6 +753,88 @@ exige_msg "vermelho" "saida menciona vermelho" \
 exige_msg "pulada" "saida menciona pulada" \
   env RFM_ESTADO_ROOT="$S" node "$CHECADOR" mutacoes --slug t-mutacao-na
 
+
+echo
+echo "== 13. mutacoes: timeout declarado e razao da pulada (D9) =="
+# Bateria legitimamente LENTA. Sem `timeout:` no bloco, o conferir-mutacao mata o
+# baseline no teto e a tarefa vira `pulada (nao mensuravel)` — a mesma palavra que
+# ele usa para baseline vermelho e para `--de` ambiguo. Foi assim que a cobertura
+# da tarefa 3 do plano zerar-issues sumiu em silencio por tres rodadas.
+cat > "$S/src/teste-lento.js" <<'EOF'
+function ok(x) {
+  if (x === 1) return true;
+  return false;
+}
+module.exports = { ok };
+EOF
+
+cat > "$S/bateria-lenta.sh" <<'EOF'
+#!/bin/bash
+sleep 2
+node -e "process.exit(require(String.fromCharCode(46,47)+'src/teste-lento.js').ok(1) ? 0 : 1)"
+EOF
+
+cat > "$S/docs/rainforest/planos/t-lenta-com-timeout.md" <<'EOF'
+# Plano Lenta Com Timeout
+
+### 1. Tarefa cuja bateria e lenta, mas declara timeout
+
+atende: D1
+
+mutacao:
+  arquivo: `src/teste-lento.js`
+  de: `if (x === 1) return true;`
+  para: `if (x === 1) return false;`
+  bateria: `bash bateria-lenta.sh`
+  timeout: 60000
+EOF
+
+# Com `timeout:` declarado, o valor chega ao conferir-mutacao e a bateria cabe.
+exige 0 "bloco com timeout: deixa a bateria lenta rodar" \
+  env RFM_ESTADO_ROOT="$S" node "$CHECADOR" mutacoes --slug t-lenta-com-timeout
+
+exige_msg "vermelho" "bateria lenta com timeout sai vermelho" \
+  env RFM_ESTADO_ROOT="$S" node "$CHECADOR" mutacoes --slug t-lenta-com-timeout
+
+# Teto de 1 ms no bloco: o timeout declarado tem de CHEGAR la, e a prova de que
+# chega e ele estourar. Sem repasse, esta tarefa sairia vermelha como a de cima.
+cat > "$S/docs/rainforest/planos/t-timeout-curto.md" <<'EOF'
+# Plano Timeout Curto
+
+### 1. Tarefa com teto pequeno demais
+
+atende: D1
+
+mutacao:
+  arquivo: `src/teste-lento.js`
+  de: `if (x === 1) return true;`
+  para: `if (x === 1) return false;`
+  bateria: `bash bateria-lenta.sh`
+  timeout: 1
+EOF
+
+exige_msg "estourou o teto de 1 ms" "timeout do bloco chega ao conferir-mutacao" \
+  env RFM_ESTADO_ROOT="$S" node "$CHECADOR" mutacoes --slug t-timeout-curto
+
+# A razao do conferir-mutacao passa a sair NA LINHA da pulada, em vez de ficar
+# engolida pelo `stdio: pipe`.
+cat > "$S/docs/rainforest/planos/t-de-nao-casa.md" <<'EOF'
+# Plano De Nao Casa
+
+### 1. Tarefa cujo `de:` nao existe no fonte
+
+atende: D1
+
+mutacao:
+  arquivo: `src/teste-lento.js`
+  de: `linha que nao existe em lugar nenhum`
+  para: `outra linha`
+  bateria: `bash bateria-lenta.sh`
+EOF
+
+exige_msg "o trecho --de não existe no fonte" "a pulada carrega a razao do conferir-mutacao" \
+  env RFM_ESTADO_ROOT="$S" node "$CHECADOR" mutacoes --slug t-de-nao-casa
+
 echo
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"

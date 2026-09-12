@@ -735,20 +735,68 @@ function cmdMutacoes() {
     const de = campos.de.replace(/^`|`$/g, '');
     const para = campos.para.replace(/^`|`$/g, '');
     const bateria = campos.bateria.replace(/^`|`$/g, '');
+    // `timeout:` e opcional. Sem ele o conferir-mutacao usa o proprio padrao.
+    // Existe porque bateria legitimamente lenta (testa-saude.sh passa dos 300 s,
+    // e a catraca a roda DUAS vezes) virava `pulada (nao mensuravel)` — cobertura
+    // perdida em silencio, que e o modo de falha que D9 veio fechar.
+    const timeout = campos.timeout ? campos.timeout.replace(/^`|`$/g, '').trim() : '';
 
     // Executar conferir-mutacao.cjs via spawnSync (array de argumentos, nunca string)
     const { spawnSync } = require('child_process');
-    const resultado = spawnSync(process.execPath, [
+    const argumentos = [
       CONFERIR_MUTACAO,
       '--arquivo', arquivo,
       '--de', de,
       '--para', para,
       '--bateria', bateria,
       '--raiz', RAIZ,
-    ], {
+    ];
+    if (timeout) argumentos.push('--timeout', timeout);
+    const resultado = spawnSync(process.execPath, argumentos, {
       stdio: 'pipe',
       encoding: 'utf8',
     });
+
+    // A razao do conferir-mutacao vem no stderr, e `stdio: pipe` a engolia: tres
+    // causas diferentes (baseline nao-verde, `--de` ambiguo, baseline estourou o
+    // teto) viravam a mesma palavra `nao mensuravel`. Trava que nao diz por que
+    // desistiu obriga quem le a reproduzir a mao para descobrir.
+    const razao = () => {
+      const LF = String.fromCharCode(10);
+      const CR = String.fromCharCode(13);
+      const linhas = String(resultado.stderr || '')
+        .split(LF)
+        .map(linha => linha.split(CR).join('').trimEnd());
+      const ehRotulo = linha => {
+        const t = linha.trim();
+        return t.startsWith('RECUSADO') || t.startsWith('MUTACAO NAO APLICADA')
+          || t.startsWith('BATERIA SEM VEREDITO');
+      };
+      let i = -1;
+      for (let n = 0; n < linhas.length; n++) if (ehRotulo(linhas[n])) i = n;
+      if (i < 0) return '';
+      const rotulo = linhas[i].trim();
+      // `RECUSADO:` já traz o motivo na mesma linha. `MUTACAO NAO APLICADA` e
+      // `BATERIA SEM VEREDITO` são só o título — o que interessa está na linha
+      // indentada logo abaixo, e sem ela a razão volta a não dizer nada.
+      let detalhe = '';
+      if (!rotulo.startsWith('RECUSADO:')) {
+        for (let n = i + 1; n < linhas.length; n++) {
+          const t = linhas[n].trim();
+          if (!t) continue;
+          if (ehRotulo(linhas[n])) break;
+          // `arquivo:` repete o que o bloco `mutacao:` do plano ja diz — nao e a
+          // razao de ter pulado, e ocupava a linha inteira do motivo.
+          if (t.startsWith('arquivo:')) continue;
+          detalhe = t;
+          break;
+        }
+      }
+      const texto = rotulo.startsWith('RECUSADO:')
+        ? rotulo.slice('RECUSADO:'.length).trim()
+        : (detalhe ? rotulo + ': ' + detalhe : rotulo);
+      return ' — ' + texto;
+    };
 
     // Interpretar exit code
     const exit = resultado.status;
@@ -761,18 +809,18 @@ function cmdMutacoes() {
       algumSobreviveu = true;
     } else if (exit === 3) {
       // MUTACAO NAO APLICADA — trecho não existe
-      console.log(`tarefa ${numero}: pulada (de não encontrado)`);
+      console.log(`tarefa ${numero}: pulada (de não encontrado)${razao()}`);
     } else if (exit === 4) {
       // Não dá para medir — baseline já falha ou --de ambíguo
-      console.log(`tarefa ${numero}: pulada (não mensurável)`);
+      console.log(`tarefa ${numero}: pulada (não mensurável)${razao()}`);
     } else if (exit === 5) {
       // Suspeita de corte de shell
-      console.log(`tarefa ${numero}: pulada (suspeita de corte de shell)`);
+      console.log(`tarefa ${numero}: pulada (suspeita de corte de shell)${razao()}`);
     } else if (exit === 1) {
       // Erro de uso ou bateria sem veredito
-      console.log(`tarefa ${numero}: pulada (erro de execução)`);
+      console.log(`tarefa ${numero}: pulada (erro de execução)${razao()}`);
     } else {
-      console.log(`tarefa ${numero}: pulada (exit ${exit})`);
+      console.log(`tarefa ${numero}: pulada (exit ${exit})${razao()}`);
     }
   }
 

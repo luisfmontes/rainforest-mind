@@ -65,6 +65,7 @@ mutacao:
   de: `return doInstall ? { ...doInstall, dir: configDir }`
   para: `return doInstall ? { ...doInstall }`
   bateria: `bash scripts/testa-saude.sh`
+  timeout: 1200000
   fixture: duas config dirs, uma sem clone do marketplace e com instalacao em versao diferente
 pronto quando: com duas config dirs sintéticas — a primeira com clone de `plugins/marketplaces/<nome>` em dia, a segunda sem esse clone mas com `installed_plugins.json` registrando versão diferente da do repo — `node scripts/saude.cjs --json` sai 0 e o item do plugin instalado sai com `nivel: "aviso"` e detalhe prefixado por `[<dir>]`, nunca `Erro fatal`/`path argument` — provado por `bash scripts/testa-saude.sh` devolvendo o caso novo `ok` e exit 0.
 
@@ -310,3 +311,18 @@ mutacao:
 pronto quando: uma mutação que derruba a bateria INTEIRA (todas as asserções, o caso que D11 existe para pegar) continua saindo 6; e uma mutação eficaz numa bateria pequena — 13 asserções, 10 sobrevivem, 3 caem, que é a T12 deste plano — passa a sair 0 com `vermelho`, porque as 10 verdes são a prova de que o mecanismo de teste não quebrou; provado por `bash scripts/testa-conferir-mutacao.sh` exit 0 com os dois casos novos, e por `node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues` deixar de listar a tarefa 12 como `pulada (exit 6)`.
 
 Nota de origem (2026-09-11): a 21 nasceu da própria catraca da 9 reprovando a 9 — `conferir-fluxo mutacoes` sobre este plano devolveu `tarefa 9: mutante sobreviveu`. O `if` da catraca de `verificar` nunca era alcançado porque `estado.cjs` procurava o plano por nome fixo `<slug>.md`, ignorando `plano.arquivo` do estado: fluxo com plano de outro nome pula a validação inteira em silêncio. A 22 nasceu da 12 sair `pulada (exit 6)`: o teto por proporção fixa pune bateria pequena e focada, e o caminho mais curto para o exit 0 passaria a ser inflar a bateria com asserções irrelevantes.
+
+### 23. Bloco `mutacao:` aceita `timeout:`, e a pulada diz por quê [tipo: implementar]
+atende: D9
+arquivos: `scripts/conferir-fluxo.cjs`, `scripts/testa-conferir-fluxo.sh`
+depende de: 9
+paralela: sim
+mutacao:
+  arquivo: `scripts/conferir-fluxo.cjs`
+  de: `'--raiz', RAIZ,`
+  para: `'--raiz', RAIZ, '--timeout', '1',`
+  bateria: `bash scripts/testa-conferir-fluxo.sh`
+  fixture: timeout declarado no bloco chega ao conferir-mutacao
+pronto quando: um bloco `mutacao:` com `timeout: <ms>` faz `conferir-fluxo.cjs mutacoes` passar `--timeout <ms>` ao `conferir-mutacao.cjs` (provado por fixture cuja bateria dorme mais que o padrão e passa com o timeout declarado, e reprova sem ele); bloco sem `timeout:` continua usando o padrão do `conferir-mutacao`; e cada linha `pulada` passa a carregar a razão que o `conferir-mutacao` imprimiu — hoje `stdio: 'pipe'` engole o stderr e `exit 4` vira `não mensurável` para três causas diferentes (baseline não-verde, `--de` ambíguo, baseline estourou o teto), que é informação demais perdida numa palavra só — provado por `bash scripts/testa-conferir-fluxo.sh` exit 0 com os casos novos.
+
+Nota de origem (2026-09-12): a tarefa 3 aparece como `pulada (não mensurável)` nas três rodadas da catraca, e a razão só apareceu quando rodei o `conferir-mutacao` à mão: `RECUSADO: baseline estourou o teto de 300000 ms` — `scripts/testa-saude.sh` leva mais que o teto padrão, e a catraca precisa rodá-la duas vezes. A bateria não está errada, o teto é que não é declarável por tarefa. Enquanto isso, a cobertura da tarefa 3 está perdida em silêncio, e `pulada` não reprova.
