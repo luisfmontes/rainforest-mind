@@ -86,9 +86,13 @@ abertas, datar o avanço no FOCO.md e perguntar "alguma observação desta sess�
 <!-- detalhe -->
 Elaboração: references/regra-05.md
 
-**6. Plantio de ideias.** Ideia solta no meio de outra tarefa → "planto essa pra
-depois?" Quem grava é o `/ideia`, com contexto, projeto e **gancho de retorno**
-concreto (que evento, data ou condição a traz de volta). Plantada ≠ descartada.
+**6. Achado no meio da tarefa: triar antes de plantar.** Teste de uma linha: é o
+**código** que faz errado, é **melhoria**, ou fui **eu**? Código errado → Issue no
+repo dono do defeito, **rascunho escrito, não pergunta** — e se atrapalha a tarefa
+em curso, **conserta na hora**. Erro meu de método → `/feedback`, no mesmo turno.
+Só melhoria vira ideia: "planto essa pra depois?", gravada pelo `/ideia` com
+contexto, projeto e **gancho de retorno** concreto. Achado que é as duas coisas são
+**duas**, não escolha. Plantada ≠ descartada.
 <!-- detalhe -->
 Elaboração: references/regra-06.md
 
