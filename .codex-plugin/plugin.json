@@ -1,0 +1,24 @@
+{
+  "name": "rainforest-mind",
+  "version": "1.11.0",
+  "description": "O problema não é falta de ideia, é o que recebe luz agora — planeja antes de implementar, responde em número, avisa no desvio e não chama de pronto sem a saída que prova",
+  "author": {
+    "name": "Luís Montes"
+  },
+  "skills": "./skills/",
+  "hooks": "./hooks/codex-gate-staging-total.json",
+  "interface": {
+    "displayName": "Rainforest Mind",
+    "shortDescription": "Planejamento e verificação disciplinados para trabalho assistido por IA.",
+    "longDescription": "Mantém foco, decisões, execução e evidências conectados em um fluxo verificável, sem duplicar o núcleo entre hosts.",
+    "developerName": "Luís Montes",
+    "category": "Productivity",
+    "capabilities": [
+      "Planning",
+      "Verification"
+    ],
+    "defaultPrompt": [
+      "$rainforest-mind Ajude-me a planejar e verificar esta tarefa."
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 ---
 name: regua
-description: Use quando a tarefa não tem teste e o critério de aceite viraria "está bom" — visual, texto, ergonomia, nome, documentação. Fixa uma régua externa nomeada e roda builder contra crítico cego até vencer a comparação. Não use quando já existe teste: aí o teste é a régua.
+description: "Use quando a tarefa não tem teste e o critério de aceite viraria \"está bom\" — visual, texto, ergonomia, nome, documentação. Fixa uma régua externa nomeada e roda builder contra crítico cego até vencer a comparação. Não use quando já existe teste: aí o teste é a régua."
 ---
 
 # Régua
