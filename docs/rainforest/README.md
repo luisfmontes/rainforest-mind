@@ -72,6 +72,28 @@ O design registra **o porquê de cada decisão**, não só o resultado. O plano
 registra **o critério de pronto de cada tarefa, falsificável** — comando e saída
 esperada, nunca "funcionar bem".
 
+## Afirmação medida
+
+Uma medição que não diz **como se re-mede** vira lenda quando o ambiente muda. Por isso, todo bloco `>` de incidente ou dado medido traz a data **e** a linha `re-verificar: <comando>` — o comando exato que prova, ou reprova, a afirmação.
+
+**Forma:**
+```
+> AAAA-MM-DD: <o que foi medido, com número> — re-verificar: <comando exato>
+```
+
+**Exemplo (origem: `references/regra-11.md`):**
+```
+> 2026-08-23: dois worktrees de `isolation:worktree` nasceram na ponta da main (`7e77e21`), não da branch de trabalho do briefing (`1033218`) — re-verificar: `git log -1 <worktree> --format=%H` e comparar com o hash informado no briefing
+```
+
+**Porquê:** medição enviada na conversa envelhecendo em arquivo, ou armazenada em cache de memória que não checa a realidade, é indistinguível de alucinação quando o ambiente muda. O comando gravado permite que alguém sete meses depois, ou noutra máquina, rode a prova de novo em vez de decidir se acredita — a máquina responde.
+
+**Onde se aplica:**
+- Bloco `>` novo em `skills/rainforest-mind/references/regra-*.md`: incluir data e `re-verificar:`
+- Bloco `>` novo em `docs/*.md`: incluir data e `re-verificar:`
+- Relatório de entrega em `docs/rainforest/relatorios/`: incluir data e `re-verificar:` quando houver medição
+- Bloco antigo: ganhar `re-verificar:` quando for tocado (não se reescreve em mutirão)
+
 ## Retomar um trabalho
 
 ```
