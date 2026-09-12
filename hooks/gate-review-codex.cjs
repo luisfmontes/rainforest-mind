@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /**
  * Stop — review gate opt-in via Codex na resposta do Claude.
+ * Protege contra: turno terminando sem aprovação explícita do revisor via Codex
+ * Não protege contra: gate desligado ou stop_hook_active ativo (anti-loop)
  *
  * Tarefa 7 do plano 2026-09-08-agentes-em-codex (D9): quando o `Stop` é
  * acionado (encerramento manual ou timeout), este hook lê a última mensagem

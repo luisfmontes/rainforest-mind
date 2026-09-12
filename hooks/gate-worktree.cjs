@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /**
  * PreToolUse — barra subagente que escreve fora de worktree isolado.
+ * Protege contra: escrita de subagente fora de worktree isolado via Write/Edit/Bash
+ * Não protege contra: edição da janela principal fora de worktree (sem agent_id)
  *
  * O P2 do relatorio de 2026-08-08
  * (relatorios/2026-08-08-executor-reincidencia-isolamento.md):
