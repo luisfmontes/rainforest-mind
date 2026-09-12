@@ -1261,5 +1261,144 @@ esac
 
 unset RFM_ESTADO_ROOT
 
+echo
+echo "== 22. carimbo de veredito por tarefa (D8) =="
+# O plan_state.mjs do plugin data-skills (Rootz) carimba veredito por
+# sessao/tarefa/iteracao, e o resume dele re-marca o que nao bate mais. Aqui:
+# cada marcar --estagio executar que traz 'carimbos' no --json ANEXA ao
+# historico (nunca apaga o anterior), com iteracao/sessao/ts calculados por
+# este script — nao aceitos crus do --json.
+ESTADO_ABS="$SBP/scripts/estado.cjs"
+mkdir -p "$SBP/carimbo"
+(cd "$SBP/carimbo" && git init -q && git config user.email test@test && git config user.name Test \
+  && echo base > base.txt && git add . && git commit -qm base)
+RAMO_PRINCIPAL=$(cd "$SBP/carimbo" && git branch --show-current)
+# Duas branches divergentes: a de "outra" nunca chega ao HEAD do ramo principal,
+# que segue por conta propria com um commit que "outra" nao tem.
+(cd "$SBP/carimbo" && git checkout -qb outra && echo divergente > divergente.txt && git add . && git commit -qm divergente)
+HASH_DIVERGENTE=$(cd "$SBP/carimbo" && git rev-parse HEAD)
+(cd "$SBP/carimbo" && git checkout -q "$RAMO_PRINCIPAL")
+(cd "$SBP/carimbo" && echo seguiu > seguiu.txt && git add . && git commit -qm "principal seguiu")
+HEAD_ATUAL=$(cd "$SBP/carimbo" && git rev-parse HEAD)
+
+export RFM_ESTADO_ROOT="$SBP/carimbo"
+E_CAR="node scripts/estado.cjs"
+# RELATIVO de proposito (mesma licao da secao 13): um caminho absoluto vindo
+# de mktemp -d (estilo MSYS) embutido num argumento de `node -e` atravessa a
+# fronteira para o binario nativo do Windows e pode nao ser traduzido de volta.
+# O bash e o `node -e` que le de volta compartilham o mesmo cwd ($SBP).
+ARQ_CARIM="carimbo/docs/rainforest/estado/carim.json"
+
+$E_CAR iniciar --slug carim >/dev/null
+$E_CAR marcar --slug carim --estagio design --status aprovado >/dev/null
+$E_CAR marcar --slug carim --estagio plano  --status ok >/dev/null
+
+esperado "1o carimbo: marcar parcial com carimbos sai 0" 0 \
+  $E_CAR marcar --slug carim --estagio executar --status parcial --json "{\"carimbos\":[{\"tarefa\":1,\"hash_base\":\"$HEAD_ATUAL\"}]}"
+echo "  executar.carimbos apos o 1o marcar: $(node -e "console.log(JSON.stringify(JSON.parse(require('fs').readFileSync('$ARQ_CARIM','utf8')).executar.carimbos))")"
+igual "carimbos[0].tarefa" "1" \
+  "$(node -e "console.log(JSON.parse(require('fs').readFileSync('$ARQ_CARIM','utf8')).executar.carimbos[0].tarefa)")"
+igual "carimbos[0].hash_base" "$HEAD_ATUAL" \
+  "$(node -e "console.log(JSON.parse(require('fs').readFileSync('$ARQ_CARIM','utf8')).executar.carimbos[0].hash_base)")"
+igual "carimbos[0].iteracao" "1" \
+  "$(node -e "console.log(JSON.parse(require('fs').readFileSync('$ARQ_CARIM','utf8')).executar.carimbos[0].iteracao)")"
+igual "carimbos[0].sessao presente" "sim" \
+  "$(node -e "const c=JSON.parse(require('fs').readFileSync('$ARQ_CARIM','utf8')).executar.carimbos[0]; console.log(typeof c.sessao === 'string' && c.sessao.length>0 ? 'sim' : 'nao')")"
+igual "carimbos[0].ts e ISO UTC" "sim" \
+  "$(node -e "const c=JSON.parse(require('fs').readFileSync('$ARQ_CARIM','utf8')).executar.carimbos[0]; console.log(/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z$/.test(c.ts) ? 'sim' : 'nao')")"
+
+esperado "2o carimbo mesma tarefa: sai 0" 0 \
+  $E_CAR marcar --slug carim --estagio executar --status parcial --json "{\"carimbos\":[{\"tarefa\":1,\"hash_base\":\"$HEAD_ATUAL\"}]}"
+echo "  executar.carimbos apos o 2o marcar: $(node -e "console.log(JSON.stringify(JSON.parse(require('fs').readFileSync('$ARQ_CARIM','utf8')).executar.carimbos))")"
+igual "apos 2o carimbo, lista tem 2 itens" "2" \
+  "$(node -e "console.log(JSON.parse(require('fs').readFileSync('$ARQ_CARIM','utf8')).executar.carimbos.length)")"
+igual "o novo carimbo tem iteracao 2" "2" \
+  "$(node -e "const l=JSON.parse(require('fs').readFileSync('$ARQ_CARIM','utf8')).executar.carimbos; console.log(l[1].iteracao)")"
+
+esperado "marcar sem 'carimbos' nao toca o campo" 0 \
+  $E_CAR marcar --slug carim --estagio executar --status parcial --json '{"tarefas_ok":1,"tarefas":15}'
+echo "  executar.carimbos apos marcar sem carimbos: $(node -e "console.log(JSON.stringify(JSON.parse(require('fs').readFileSync('$ARQ_CARIM','utf8')).executar.carimbos))")"
+igual "carimbos continua com 2 itens" "2" \
+  "$(node -e "console.log(JSON.parse(require('fs').readFileSync('$ARQ_CARIM','utf8')).executar.carimbos.length)")"
+
+esperado "carimbo sem 'tarefa' numerica/'hash_base' recusa" 2 \
+  $E_CAR marcar --slug carim --estagio executar --status parcial --json '{"carimbos":[{"tarefa":"x"}]}'
+msg_carim=$($E_CAR marcar --slug carim --estagio executar --status parcial --json '{"carimbos":[{"tarefa":"x"}]}' 2>&1)
+echo "  stderr da recusa: $msg_carim"
+igual "a recusa mostra a forma esperada" "sim" \
+  "$(case "$msg_carim" in *'"carimbos":[{"tarefa":1,"hash_base"'*) echo sim;; *) echo nao;; esac)"
+
+echo
+echo "== 23. proximo/ler avisam quando o carimbo nao esta ancestral do HEAD =="
+$E_CAR iniciar --slug carim2 >/dev/null
+$E_CAR marcar --slug carim2 --estagio design --status aprovado >/dev/null
+$E_CAR marcar --slug carim2 --estagio plano  --status ok >/dev/null
+$E_CAR marcar --slug carim2 --estagio executar --status parcial \
+  --json "{\"carimbos\":[{\"tarefa\":1,\"hash_base\":\"$HASH_DIVERGENTE\"}]}" >/dev/null
+
+# git merge-base --is-ancestor roda no CWD do PROCESSO, nao em RFM_ESTADO_ROOT —
+# por isso o node roda de dentro do repo de teste (D8).
+saida_div=$(cd "$SBP/carimbo" && RFM_ESTADO_ROOT="$SBP/carimbo" node "$ESTADO_ABS" proximo --slug carim2 2>&1 1>/dev/null)
+cod_div=$?
+sha7_div="$(echo "$HASH_DIVERGENTE" | cut -c1-7)"
+esperado_msg="aviso: tarefa 1 aceita na base $sha7_div, que nao esta neste HEAD — re-conferir antes de retomar"
+echo "  stderr (nao-ancestral): $saida_div"
+echo "  exit code: $cod_div"
+if [ "$cod_div" = "0" ]; then ok=$((ok+1)); echo "  ok   proximo com hash nao-ancestral mantem exit 0"
+else falhou=$((falhou+1)); echo "  FALHA proximo saiu $cod_div, esperava 0"; fi
+if [ "$saida_div" = "$esperado_msg" ]; then
+  ok=$((ok+1)); echo "  ok   proximo avisa com o texto exato"
+else
+  falhou=$((falhou+1)); echo "  FALHA aviso divergente: '$saida_div' (esperava '$esperado_msg')"
+fi
+
+# Um segundo carimbo da MESMA tarefa, agora ancestral: e o mais recente, entao
+# o aviso do carimbo velho nao repete ("nao repetir iteracoes velhas").
+$E_CAR marcar --slug carim2 --estagio executar --status parcial \
+  --json "{\"carimbos\":[{\"tarefa\":1,\"hash_base\":\"$HEAD_ATUAL\"}]}" >/dev/null
+saida_anc=$(cd "$SBP/carimbo" && RFM_ESTADO_ROOT="$SBP/carimbo" node "$ESTADO_ABS" proximo --slug carim2 2>&1 1>/dev/null)
+cod_anc=$?
+echo "  stderr (ancestral, mais recente): '$saida_anc'"
+echo "  exit code: $cod_anc"
+if [ "$cod_anc" = "0" ] && [ -z "$saida_anc" ]; then
+  ok=$((ok+1)); echo "  ok   proximo com carimbo mais recente ancestral: stderr vazio, exit 0"
+else
+  falhou=$((falhou+1)); echo "  FALHA esperava stderr vazio e exit 0 (exit=$cod_anc, stderr='$saida_anc')"
+fi
+
+# 'ler' faz o mesmo aviso, num slug proprio so com o carimbo divergente.
+$E_CAR iniciar --slug carim3 >/dev/null
+$E_CAR marcar --slug carim3 --estagio design --status aprovado >/dev/null
+$E_CAR marcar --slug carim3 --estagio plano  --status ok >/dev/null
+$E_CAR marcar --slug carim3 --estagio executar --status parcial \
+  --json "{\"carimbos\":[{\"tarefa\":2,\"hash_base\":\"$HASH_DIVERGENTE\"}]}" >/dev/null
+saida_ler3=$(cd "$SBP/carimbo" && RFM_ESTADO_ROOT="$SBP/carimbo" node "$ESTADO_ABS" ler --slug carim3 2>&1 1>/dev/null)
+esperado_ler3="aviso: tarefa 2 aceita na base $sha7_div, que nao esta neste HEAD — re-conferir antes de retomar"
+echo "  stderr do ler: $saida_ler3"
+if [ "$saida_ler3" = "$esperado_ler3" ]; then
+  ok=$((ok+1)); echo "  ok   ler avisa com o texto exato"
+else
+  falhou=$((falhou+1)); echo "  FALHA ler nao avisou como esperado: '$saida_ler3'"
+fi
+
+# Fora de um repo git (ou hash que o git nao resolve): nao ha como provar
+# ancestralidade, entao fica em silencio — nunca vira aviso.
+mkdir -p "$SBP/carimbo-sem-git"
+export RFM_ESTADO_ROOT="$SBP/carimbo-sem-git"
+$E_CAR iniciar --slug carim-sem-git >/dev/null
+$E_CAR marcar --slug carim-sem-git --estagio design --status aprovado >/dev/null
+$E_CAR marcar --slug carim-sem-git --estagio plano  --status ok >/dev/null
+$E_CAR marcar --slug carim-sem-git --estagio executar --status parcial \
+  --json '{"carimbos":[{"tarefa":1,"hash_base":"abc1234"}]}' >/dev/null
+saida_sem_git=$(cd "$SBP/carimbo-sem-git" && RFM_ESTADO_ROOT="$SBP/carimbo-sem-git" node "$ESTADO_ABS" proximo --slug carim-sem-git 2>&1 1>/dev/null)
+cod_sem_git=$?
+echo "  stderr fora de repo git: '$saida_sem_git'"
+if [ "$cod_sem_git" = "0" ] && [ -z "$saida_sem_git" ]; then
+  ok=$((ok+1)); echo "  ok   fora de um repo git (ou hash que o git nao resolve), fica em silencio"
+else
+  falhou=$((falhou+1)); echo "  FALHA esperava silencio fora de repo git (exit=$cod_sem_git, stderr='$saida_sem_git')"
+fi
+unset RFM_ESTADO_ROOT
+
 echo "== resultado: $ok ok, $falhou falhas =="
 [ "$falhou" = 0 ]
