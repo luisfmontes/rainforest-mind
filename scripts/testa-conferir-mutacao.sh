@@ -32,6 +32,7 @@ trap 'rm -rf "$S"' EXIT
 CAIXA="$S/caixa"; WCAIXA="$W/caixa"
 mkdir -p "$CAIXA"
 SAIDA="$S/saida.txt"
+NODE_DIR="$(dirname "$(command -v node)")"
 
 # ------------------------------------------------------------------ o fixture
 # Um fonte com UM comportamento observavel (recusar quando falta o campo) e um
@@ -339,8 +340,12 @@ echo "== 8b. D5 (2026-09-12): ambiente, nao conteudo =="
 # quebrar o proprio shell que o spawnSync tenta lancar (aqui, ComSpec no
 # Windows) — medido com `node -e` antes de escrever este caso: uma string
 # inexistente vira "baseline NAO-VERDE" (4, conteudo), nao 69.
-CHK_SEM_SHELL() { COMSPEC="$S/cmd-falso-que-nao-existe.exe" CHK "$@"; }
-exige 69 "ComSpec quebrado -> spawnSync nem lanca o shell (ambiente, nao 4)" \
+#
+# D24: Com a deteccao de bash no PATH, quebrar ComSpec nao e' suficiente —
+# comandoDaBateria encontra bash e usa bash -c. Restrinja o PATH ao dir do
+# node (so o executavel, sem bash) para forcar spawnSync a falhar.
+CHK_SEM_SHELL() { env PATH="$NODE_DIR" COMSPEC="$S/cmd-falso-que-nao-existe.exe" node "$SCRIPT" --raiz "$WCAIXA" "$@"; }
+exige 69 "ComSpec quebrado + sem bash no PATH -> spawnSync nem lanca shell (ambiente, nao 4)" \
   CHK_SEM_SHELL --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' \
     --bateria 'echo hi'
 tem "a PRIMEIRA linha do stderr e' nao-verificavel" "nao-verificavel: bateria nao executa"
@@ -785,6 +790,76 @@ if ! cmp -s "$CAIXA/fonte-aninhada.cjs" "$S/fonte-aninhada.pristino"; then
   cp "$S/fonte-aninhada.pristino" "$CAIXA/fonte-aninhada.cjs"
 else
   ok=$((ok+1)); printf '  ok    fonte-aninhada.cjs restaurado\n'
+fi
+
+echo
+echo "== 20. D25: Python .pyc nao fica mutado com PYTHONDONTWRITEBYTECODE=1 =="
+# Caso (c) — se Python existir, testa que .pyc nao fica mutado quando valor muda
+if command -v python >/dev/null 2>&1 || command -v python3 >/dev/null 2>&1; then
+  # Criar modulo Python com valor inicial
+  cat > "$CAIXA/mod.py" <<'PY'
+VALOR = 1.5e9
+PY
+
+  # Criar bateria que importa o modulo e verifica seu valor
+  cat > "$CAIXA/bateria-pyc.sh" <<'BAT'
+#!/bin/bash
+# A bateria importa mod.py e testa seu valor
+# Baseline: VALOR deve ser 1.5e9
+# Pos-mutacao (com mutacao em mod.py): VALOR sera 0.5e9 — bateria falha
+python3 -c "import mod; exit(0 if mod.VALOR == 1.5e9 else 1)" 2>/dev/null || \
+  python -c "import mod; exit(0 if mod.VALOR == 1.5e9 else 1)" 2>/dev/null || exit 1
+BAT
+
+  # Fixture: arquivo que sera' mutado no modulo
+  cat > "$CAIXA/fonte-pyc.cjs" <<'FONTE'
+#!/usr/bin/env node
+// Dummy file para raiz da catraca
+const x = 1;
+FONTE
+  cp "$CAIXA/fonte-pyc.cjs" "$S/fonte-pyc.pristino"
+  cp "$CAIXA/mod.py" "$S/mod.py.pristino"
+
+  # Mutacao: mudar o valor do modulo Python de 1.5e9 para 0.5e9 (mesmo tamanho)
+  # Isso força Python a reimportar mod.py durante a pos-mutacao, que detectara' o valor diferente
+  exige 0 "Python bytecode nao fica mutado: mod.py 1.5e9->0.5e9, depois sem __pycache__ (D25)" \
+    CHK --arquivo mod.py --de "VALOR = 1.5e9" --para "VALOR = 0.5e9" \
+        --bateria 'bash bateria-pyc.sh'
+  tem "bateria VERMELHA (mutacao detectada)" "VERMELHA"
+  nao_tem "sem aviso de colapso" "a bateria colapsou"
+
+  # Verificar restauracao
+  if ! cmp -s "$CAIXA/mod.py" "$S/mod.py.pristino"; then
+    falhou=$((falhou+1)); printf '  FALHA: mod.py nao foi restaurado\n'
+    cp "$S/mod.py.pristino" "$CAIXA/mod.py"
+  else
+    ok=$((ok+1)); printf '  ok    mod.py restaurado ao valor original\n'
+  fi
+
+  if ! cmp -s "$CAIXA/fonte-pyc.cjs" "$S/fonte-pyc.pristino"; then
+    falhou=$((falhou+1)); printf '  FALHA: fonte-pyc.cjs nao foi restaurado\n'
+    cp "$S/fonte-pyc.pristino" "$CAIXA/fonte-pyc.cjs"
+  else
+    ok=$((ok+1)); printf '  ok    fonte-pyc.cjs restaurado\n'
+  fi
+
+  # Verificar que nao ha' __pycache__
+  if [ -d "$CAIXA/__pycache__" ]; then
+    falhou=$((falhou+1)); printf '  FALHA: __pycache__ nao foi limpo (PYTHONDONTWRITEBYTECODE nao funcionou)\n'
+    rm -rf "$CAIXA/__pycache__"
+  else
+    ok=$((ok+1)); printf '  ok    nao ha __pycache__ (PYTHONDONTWRITEBYTECODE bloqueou .pyc)\n'
+  fi
+
+  # Re-rodar bateria sobre fonte restaurado para confirmar que funciona
+  (cd "$CAIXA" && bash bateria-pyc.sh >/dev/null 2>&1)
+  if [ $? -eq 0 ]; then
+    ok=$((ok+1)); printf '  ok    bateria re-rodada sobre fonte restaurado sai 0\n'
+  else
+    falhou=$((falhou+1)); printf '  FALHA: bateria nao aprova fonte restaurado\n'
+  fi
+else
+  printf '  (pulado: sem python)\n'
 fi
 
 echo "-----------------------------------------"

@@ -98,8 +98,9 @@ Git Bash (MSYS) come uma barra de argumento que COMEÇA com \`//\`: \`// coment\
 chega aqui como \`/ coment\` e não casa. Medido em 2026-08-21 ao mutar um
 comentário. Inclua um caractere antes das barras, ou exporte MSYS_NO_PATHCONV=1.
 
-Bateria: esperado rodar via shell. No Unix é /bin/sh; no Windows (cmd.exe) use
-bash explicitamente (ex.: \`bash scripts/testa.sh\`), ou exporte SHELL=/bin/bash.`;
+Bateria: esperado rodar via shell. No Unix é /bin/sh; no Windows, roda via bash -c quando
+Git Bash está no PATH (sem bash: recusa bateria com ;, &&, ||). Python: a bateria
+roda com PYTHONDONTWRITEBYTECODE=1 para evitar bytecode mutado.`;
 
 function erroUso(msg) {
   console.error(`erro: ${msg}`);
@@ -163,12 +164,53 @@ function armarRestauracao(caminho, original) {
   }
 }
 
+// ============================== Comando da bateria (D24, D25)
+
+/**
+ * Monta o comando e argumentos para rodar a bateria, considerando a plataforma.
+ *
+ * D24: No Windows, roda via bash -c quando Git Bash está no PATH; sem Git Bash,
+ * recusa bateria que contenha ;, && ou ||, porque cmd.exe não separa comandos.
+ *
+ * D25: A bateria roda com PYTHONDONTWRITEBYTECODE=1 no ambiente para evitar
+ * que Python deixe bytecode mutado na árvore (que a catraca restaura tarde).
+ *
+ * @param {string} bateria - comando da bateria
+ * @returns {{cmd: string, args: string[], shell: boolean}} comando, argumentos e modo de shell
+ */
+function comandoDaBateria(bateria) {
+  if (process.platform === 'win32') {
+    // Tenta executar 'bash' de forma não-interativa para testar se existe
+    try {
+      const r = spawnSync('bash', ['-c', 'exit 0'], { shell: false });
+      // Se funcionou (exit 0 ou qualquer outro exit, não error), bash existe
+      if (!r.error) {
+        return { cmd: 'bash', args: ['-c', bateria], shell: false };
+      }
+    } catch { /* bash não existe */ }
+
+    // Windows, sem bash: rejeita bateria com encadeamento de shell
+    if (/[;&|]/.test(bateria)) {
+      console.error('erro: bateria com encadeamento de shell e cmd.exe não separa comandos — instale o Git Bash ou remova o encadeamento');
+      process.exit(1);
+    }
+  }
+
+  // Unix ou Windows com bash não disponível: shell padrão
+  return { cmd: bateria, args: [], shell: true };
+}
+
 // ================================ Execução, com baseline verde
 
 function rodaBateria(bateria, raiz, timeout, qual) {
   const inicio = Date.now();
-  const r = spawnSync(bateria, {
-    shell: true,
+  const { cmd, args, shell } = comandoDaBateria(bateria);
+  // D25: Remove PYTHONDONTWRITEBYTECODE do process.env antes de fazer spread,
+  // para que a mutação que remove a atribuição no code deixe o env limpo.
+  const novaEnv = Object.assign({}, process.env);
+  delete novaEnv.PYTHONDONTWRITEBYTECODE;
+  const r = spawnSync(cmd, args, {
+    shell,
     cwd: raiz,
     encoding: 'utf8',
     // stdin fechado: bateria que lê payload do stdin recebe EOF em vez de
@@ -176,6 +218,7 @@ function rodaBateria(bateria, raiz, timeout, qual) {
     stdio: ['ignore', 'pipe', 'pipe'],
     timeout,
     maxBuffer: 32 * 1024 * 1024,
+    env: { ...novaEnv, PYTHONDONTWRITEBYTECODE: '1', },
   });
   const duracao = Date.now() - inicio;
   return { r, duracao, qual };
