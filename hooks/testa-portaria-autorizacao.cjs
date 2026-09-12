@@ -201,6 +201,13 @@ console.log("== 3e. rabicho ambiguo, '?' colado e palavra comum (achados da 3a r
   const rColadoPalavra = autorizado(fx("pergunta-interrogacao-colada-em-palavra.jsonl"));
   caso("'autorizo subagentes?ou nao' NAO autoriza", rColadoPalavra === false, rColadoPalavra);
 
+  // GUARDA DE REGRESSAO, nao teste de mecanismo — vale para este caso e para os
+  // outros seis marcados abaixo. A regra de condicao pendurada que eles
+  // exercitavam foi REMOVIDA na 6a rodada (o motivo esta escrito no lugar dela,
+  // em autorizacao-usuario.cjs), entao hoje nenhum mutante vira o veredito
+  // deles: `cobertura-fixtures.js` os lista como mudos, e isso esta certo. O
+  // que eles guardam e a regra NAO VOLTAR.
+  //
   // `quando` e `caso` saíram dos subordinadores pendurados: fora do papel de
   // conjuncao sao palavra comum, e recusar concessao e o lado ruim do erro.
   const rQuando = autorizado(fx("concessao-apos-quando.jsonl"));
@@ -229,9 +236,16 @@ console.log("== 3f. '?' que nao e pergunta, e condicao pendurada no fim (achados
   const rCitadaVirgula = autorizado(fx("concessao-apos-citacao-com-virgula.jsonl"));
   caso("concessao depois de citacao seguida de virgula AUTORIZA", rCitadaVirgula === true, rCitadaVirgula);
 
-  // Mensagem interrompida no meio da restricao nao e concessao fechada.
+  // ESTE CASO MUDOU DE VEREDITO em 2026-09-12, na 6a rodada, e o motivo esta
+  // escrito no lugar da regra removida em `autorizacao-usuario.cjs`: a regra
+  // que negava mensagem interrompida no meio da restricao era indistinguivel,
+  // letra a letra, da que nega concessao firme seguida de duvida sobre outra
+  // coisa. Duas revisoes seguidas a marcaram BLOQUEANTE, sempre errando para o
+  // falso negativo. Sem ela, o usuario que escreveu "autorizo subagentes"
+  // autoriza — o limite que ele ia digitar nao e representavel, porque a
+  // concessao vale pela sessao, e os outros portoes nao afrouxam com ela.
   const rPenduradoFim = autorizado(fx("escopo-pendurado-no-fim.jsonl"));
-  caso("'autorizo subagentes, mas so quando' NAO autoriza", rPenduradoFim === false, rPenduradoFim);
+  caso("'autorizo subagentes, mas so quando' AUTORIZA (regra removida)", rPenduradoFim === true, rPenduradoFim);
 
   // ...e a mesma palavra com determinante antes e substantivo: frase terminada.
   const rCasoSubst = autorizado(fx("concessao-com-caso-substantivo.jsonl"));
@@ -269,6 +283,23 @@ console.log("== 3g. condicao pendurada e por FRASE, e URL nao engole a palavra (
 
   const rUrlParen = autorizado(fx("concessao-com-url-em-parenteses.jsonl"));
   caso("URL entre parenteses nao engole 'autorizo'", rUrlParen === true, rUrlParen);
+}
+
+console.log("== 3h. subordinacao vai para FRENTE, e 'sub agentes' com espaco (6a rodada) ==");
+{
+  // O subordinador pendurado era testado com `oracoes.some(...)` sobre a frase
+  // inteira, entao pegava tambem o pendurado que vinha DEPOIS da concessao.
+  // Agora so conta oracao ANTERIOR a que concede: subordinacao vai para frente.
+  const rDuvidaDepois = autorizado(fx("concessao-e-duvida-em-outra-oracao.jsonl"));
+  caso("'autorizo subagentes agora, mas ainda fico pensando se' AUTORIZA", rDuvidaDepois === true, rDuvidaDepois);
+
+  // ...e o pendurado ANTES continua subordinando (guarda do lado oposto).
+  const rPenduradoAntes = autorizado(fx("subordinador-pendurado.jsonl"));
+  caso("'nao sei se, no fim, autorizo subagentes' continua NEGANDO", rPenduradoAntes === false, rPenduradoAntes);
+
+  // Falso negativo de grafia: o hifen e opcional e facil de errar.
+  const rEspaco = autorizado(fx("concessao-sub-agentes-com-espaco.jsonl"));
+  caso("'autorizo sub agentes para essa tarefa' AUTORIZA", rEspaco === true, rEspaco);
 }
 
 console.log("== 4. negacao sem acento ('nao autorizo subagentes') NAO autoriza ==");

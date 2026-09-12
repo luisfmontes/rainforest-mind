@@ -235,7 +235,7 @@ function temNegacaoExplicita(obj) {
   for (const negacao of negacoes) {
     if (negacao.test(normalizado)) {
       // Encontra a negação e procura por "subagente" ou "agente" próximo
-      const temSubagente = /\bsubagente\b|\bsubagentes\b|\bsub-agente\b|\bsub-agentes\b|\bagente\b|\bagentes\b/.test(normalizado);
+      const temSubagente = /\bsubagente\b|\bsubagentes\b|\bsub-agente\b|\bsub-agentes\b|\bsub\s+agentes?\b|\bagente\b|\bagentes\b/.test(normalizado);
       if (temSubagente) {
         return true;
       }
@@ -265,7 +265,7 @@ function temAutorizacaoPrincipal(obj) {
 
   // Procura por "autorizo" ou "autorizar" perto de "subagente(s)"
   const temAutoriz = /\bautorizo\b|\bautorizando\b|\bautorizar\b|\bautorizacao\b/.test(normalizado);
-  const temSubagente = /\bsubagente\b|\bsubagentes\b|\bsub-agente\b|\bsub-agentes\b/.test(normalizado);
+  const temSubagente = /\bsubagente\b|\bsubagentes\b|\bsub-agente\b|\bsub-agentes\b|\bsub\s+agentes?\b/.test(normalizado);
 
   if (!temAutoriz || !temSubagente) {
     return false;
@@ -367,7 +367,7 @@ function temAutorizacaoPrincipal(obj) {
     if (!texto) continue;
 
     if (!/\bautorizo\b|\bautorizando\b|\bautorizar\b/.test(texto)) continue;
-    if (!/\bsubagente\b|\bsubagentes\b|\bsub-agente\b|\bsub-agentes\b/.test(texto)) continue;
+    if (!/\bsubagente\b|\bsubagentes\b|\bsub-agente\b|\bsub-agentes\b|\bsub\s+agentes?\b/.test(texto)) continue;
 
     // Confirmação casual no fim não transforma concessão em pergunta.
     // "autorizo subagentes, beleza?" é o usuário autorizando e checando, não
@@ -415,24 +415,34 @@ function temAutorizacaoPrincipal(obj) {
     // na mesma oração, e continua valendo.
     const oracoes = texto.split(/[,;:]+/);
 
-    // Frase que ACABA pendurada numa condição não é concessão fechada:
-    // "autorizo subagentes, mas so quando" é o usuário interrompido no meio da
-    // restrição.
+    // AQUI MOROU uma regra que foi REMOVIDA, e o motivo fica escrito porque ele
+    // é o limite do que este mecanismo consegue decidir.
     //
-    // Isto já morou FORA do laço, testando o texto inteiro, e a revisão de
-    // 2026-09-12 mostrou que ali era o mesmo defeito que o veredito por frase
-    // existe para evitar — um `return false` que matava a concessão de uma
-    // frase por causa de outra:
+    // A regra dizia: mensagem que ACABA pendurada numa condição
+    // ("autorizo subagentes, mas so quando") é usuário interrompido no meio da
+    // restrição, logo não é concessão fechada. Ela nasceu no texto inteiro
+    // (revisão 5: matava concessão de uma frase por hedge de outra), foi para a
+    // frase (revisão 6: matava concessão de uma oração por hedge da oração
+    // seguinte), e a revisão 6 pediu que descesse para a oração. Descer não
+    // resolve, e é aí que a regra morreu:
     //
-    //   "autorizo subagentes agora mesmo. ainda tenho duvida se"  -> recusava
-    //   "autorizo subagentes ja. vamos ver quando"                -> recusava
+    //   "autorizo subagentes, mas so quando"             <- devia NEGAR
+    //   "autorizo subagentes agora, mas fico pensando se" <- devia CONCEDER
     //
-    // Dentro do laço, cada frase responde por si. A palavra só conta nua: com
-    // determinante ou preposição antes ela é substantivo, não conjunção
-    // pendente, e "so nesse caso" continua concedendo.
-    if (/(?<!\b(?:o|a|os|as|um|uma|esse|essa|nesse|nessa|desse|dessa|este|esta|neste|nesta|deste|desta|aquele|aquela|do|da|no|na|cada|algum|alguma|qualquer|outro|outra|meu|minha|seu|sua|nosso|nossa|teu|tua|dele|dela)\s)\b(se|que|caso|quando)\s*$/.test(texto)) {
-      continue;
-    }
+    // As duas têm a mesma forma: oração que concede, depois oração terminada em
+    // subordinador nu. O que as separa é sobre O QUE a dúvida fala, e isso não
+    // está na letra. Duas revisões seguidas classificaram esta regra como
+    // BLOQUEANTE, sempre errando para o lado do falso negativo — a reclamação
+    // que abriu este fluxo.
+    //
+    // Sem ela, "autorizo subagentes, mas so quando" concede. O usuário escreveu
+    // "autorizo subagentes"; o limite que ele ia digitar não é representável de
+    // todo jeito, porque a autorização vale pela SESSÃO, e os outros portões da
+    // portaria (manifesto, worktree, `escreve`) não afrouxam com ela.
+    //
+    // O que continua segurando dúvida de verdade é o subordinador pendurado por
+    // ORAÇÃO, logo abaixo: ali a palavra vem ANTES da concessão, e aí a frase
+    // realmente subordina o que vem depois.
 
     // Oração que termina em subordinador pendurado ("nao sei se, no fim,
     // autorizo subagentes") joga a subordinação para a frente: a vírgula ali é
@@ -448,12 +458,28 @@ function temAutorizacaoPrincipal(obj) {
     // Ali "quando" é tempo e "caso" é substantivo — nenhum dos dois subordina a
     // concessão, e recusar é o lado ruim do erro. `se` e `que` ficaram: pendurar
     // uma delas no fim de oração é sempre subordinação.
-    if (oracoes.some((o) => /\b(se|que)\s*$/.test(o.trim()))) continue;
+    //
+    // E a subordinação vai para FRENTE, só para frente. Esta checagem já foi um
+    // `oracoes.some(...)` sobre a frase inteira, e assim ela também pegava o
+    // pendurado que vinha DEPOIS da concessão — a mesma troca de escopo que
+    // matou a regra acima, um nível abaixo:
+    //
+    //   "autorizo subagentes agora, mas ainda fico pensando se"  -> recusava
+    //
+    // Ali o `se` pendurado abre uma dúvida sobre outra coisa, depois de uma
+    // concessão já fechada. Agora só conta oração ANTERIOR à que concede.
+    const PENDURADO = /\b(se|que)\s*$/;
 
     let concedeu = false;
+    let herdouPendurado = false;
     for (const oracao of oracoes) {
       const o = oracao.trim();
       if (!o) continue;
+      if (herdouPendurado) break;
+      if (PENDURADO.test(o)) {
+        herdouPendurado = true;
+        continue;
+      }
 
       const posAutoriz = o.search(/\bautorizo\b|\bautorizando\b|\bautorizar\b/);
       if (posAutoriz === -1) continue;
