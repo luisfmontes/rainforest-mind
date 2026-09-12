@@ -15,8 +15,8 @@
 # Não protege contra: trava citada que existe em disco mas nao faz o que a
 #   linha descreve — esta bateria confere presenca do arquivo, nao comportamento
 #
-# Por que existe (D6, docs/rainforest/design/2026-09-12-absorver-data-skills.md):
-# o CLAUDE.md do plugin de dados analisado (`wildz-data`, Rootz) bania trailer
+# Por que existe (D6, docs/rainforest/design/2026-09-12-absorver-plugin-terceiro.md):
+# o CLAUDE.md do plugin de dados analisado (de terceiro) bania trailer
 # `Co-Authored-By` e heredoc em commit, e o historico tinha 25 trailers e 2
 # heredocs — regra escrita e sem trava e' regra que se viola. A lista EXPLICITA
 # das regras que valem so' por disciplina impede acreditar que estao protegidas.

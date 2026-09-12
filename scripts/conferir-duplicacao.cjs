@@ -2,7 +2,7 @@
 /**
  * Confere duplicação byte a byte e homônimos de função dentro do plugin.
  *
- * POR QUE EXISTE (2026-09-12, análise do marketplace `wildz-data` da Rootz,
+ * POR QUE EXISTE (2026-09-12, análise do marketplace de plugins de um terceiro,
  * autor autorizou a leitura): `ch_mcp.py` era byte a byte idêntico entre duas
  * skills — cópia de quem tinha uma funcionando, nunca reconciliada — e 20
  * funções homônimas se repetiam entre os helpers do mesmo plugin. Nenhum dos

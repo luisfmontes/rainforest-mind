@@ -782,7 +782,7 @@ function checarAutocompact() {
 /**
  * Padrão largo em `permissions.allow` anula os gates de Bash em silêncio.
  *
- * Achado da análise do data-skills (2026-09-12): o autor tinha `Bash(bash -c
+ * Achado da análise de um plugin de terceiro (2026-09-12): o autor tinha `Bash(bash -c
  * *)` na própria allowlist. O hook destrutivo dele existe e roda — mas
  * qualquer comando que passe por `bash -c "..."` já está pré-aprovado antes
  * de o hook decidir, e a permissão vence a trava sem avisar ninguém. A nossa

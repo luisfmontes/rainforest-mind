@@ -35,7 +35,7 @@
  * MODO --commit (D10, 2026-09-12): o que se publica é o COMMIT, não o disco.
  * Edição não commitada anuncia release que não existe, e segredo limpo no
  * disco mas presente no commit vai para o público do mesmo jeito — o passo de
- * release do data-skills que inspirou isto lê `git show <sha>:<path>`, nunca
+ * release do plugin de terceiro que inspirou isto lê `git show <sha>:<path>`, nunca
  * o worktree, por este motivo.
  *
  *   node scripts/conferir-publicacao.cjs --commit             # HEAD

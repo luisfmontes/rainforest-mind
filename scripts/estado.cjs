@@ -843,7 +843,7 @@ function conferirFechamento(estagio, slug, extra, estado) {
 
 // -------------------------------------------- carimbo de veredito por tarefa (D8)
 //
-// O `plan_state.mjs` do plugin `data-skills` (Rootz) carimba cada veredito por
+// O `plan_state.mjs` de um plugin de terceiro carimba cada veredito por
 // sessão/tarefa/iteração, e o `resume` dele re-marca o que não bate mais. O
 // nosso `revisar` já trava HEAD/snapshot contra mutação (ver acima), mas uma
 // TAREFA aceita dentro de `executar` não sabia em que base foi aceita — se o

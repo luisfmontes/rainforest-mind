@@ -1263,7 +1263,7 @@ unset RFM_ESTADO_ROOT
 
 echo
 echo "== 22. carimbo de veredito por tarefa (D8) =="
-# O plan_state.mjs do plugin data-skills (Rootz) carimba veredito por
+# O plan_state.mjs de um plugin de terceiro carimba veredito por
 # sessao/tarefa/iteracao, e o resume dele re-marca o que nao bate mais. Aqui:
 # cada marcar --estagio executar que traz 'carimbos' no --json ANEXA ao
 # historico (nunca apaga o anterior), com iteracao/sessao/ts calculados por

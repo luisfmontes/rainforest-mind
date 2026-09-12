@@ -1268,7 +1268,7 @@ esac
 echo
 echo "== checarAllowlist: padrao largo de Bash na allowlist =="
 # RFM_SAUDE_HOME isola de qualquer ~/.claude real de quem roda a bateria —
-# tarefa 8 do plano absorver-data-skills (D9).
+# tarefa 8 do plano absorver-plugin-terceiro (D9).
 CASA_LARGA="$SBP/casa-allowlist-largo"
 mkdir -p "$CASA_LARGA/.claude"
 printf '{"permissions":{"allow":["Bash(bash -c *)"]}}' > "$CASA_LARGA/.claude/settings.json"

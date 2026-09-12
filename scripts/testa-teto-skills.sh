@@ -4,7 +4,7 @@
 # areia para provar que a bateria funciona.
 # Uso: bash scripts/testa-teto-skills.sh
 #
-# Protege contra: skills crescendo sem limite (815, 665, 548, 504 linhas no data-skills)
+# Protege contra: skills crescendo sem limite (815, 665, 548, 504 linhas num plugin de terceiro)
 # Não protege contra: skill que cabe no teto mas tem conteúdo ruim
 
 set -u

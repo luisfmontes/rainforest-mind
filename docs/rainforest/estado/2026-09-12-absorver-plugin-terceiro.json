@@ -1,18 +1,18 @@
 {
-  "slug": "2026-09-12-absorver-data-skills",
-  "titulo": "Absorver do data-skills (Rootz): 16 ideias e commit por partes",
+  "slug": "2026-09-12-absorver-plugin-terceiro",
+  "titulo": "Absorver de um plugin de terceiro: 16 ideias e commit por partes",
   "criado_em": "2026-09-12",
   "arqueologia": {
     "status": "pendente"
   },
   "design": {
     "status": "aprovado",
-    "doc": "docs/rainforest/design/2026-09-12-absorver-data-skills.md",
+    "doc": "docs/rainforest/design/2026-09-12-absorver-plugin-terceiro.md",
     "em": "2026-09-12"
   },
   "plano": {
     "status": "ok",
-    "arquivo": "docs/rainforest/planos/2026-09-12-absorver-data-skills.md",
+    "arquivo": "docs/rainforest/planos/2026-09-12-absorver-plugin-terceiro.md",
     "tarefas": 15,
     "paralelas": [
       1,
@@ -262,7 +262,7 @@
         "motivo": "tarefa de verificacao do conjunto: todas as baterias, cobertura, creep e publicacao --commit"
       }
     ],
-    "comando": "grep -rn \"144 de 441\" --include=*.md .; grep -c \"285 de 441\" docs/rainforest/design/2026-09-12-absorver-data-skills.md docs/travas-mecanicas.md; bash scripts/testa-mapa-regras.sh",
+    "comando": "grep -rn \"144 de 441\" --include=*.md .; grep -c \"285 de 441\" docs/rainforest/design/2026-09-12-absorver-plugin-terceiro.md docs/travas-mecanicas.md; bash scripts/testa-mapa-regras.sh",
     "saida": "rodada 3 (aviso da rodada 2): 0 ocorrencias de 144 de 441; 285 de 441 presente no design (1) e no travas-mecanicas (1); mapa-regras 6 ok. rodada 2 (avisos da revisao): publicacao 98 ok 0 falha (caso 11b merge novo); gate-mensagem-commit 25 ok 0 falha (caso i2 commit pelado); regra-09 grep = 1 para as tres datas; mapa-regras 6 ok; contexto-sessao exit 0 (regra-12 10472 B folga 28 B); README + travas-mecanicas emendados em commit proprio. Rodada 1: total=107 vermelhas:[testa-dependencias-de-bateria.sh testa-config.sh] -> as duas causadas pelo lote e corrigidas em 8ac43b00 (re-rodadas: 6 ok / 45 ok); cobertura ok 14 decisoes 15 tarefas; sem creep 53 arquivos cobertos; publicacao --commit origin/main..HEAD CONFERIDO exit 0; 22 commits em origin/main..HEAD"
   },
   "revisar": {
@@ -309,7 +309,7 @@
   "fechar": {
     "status": "ok",
     "pr": "https://github.com/luisfmontes/rainforest-mind/pull/233",
-    "comando": "gh pr create --base main --head fluxo/absorver-data-skills; node scripts/conferir-versao.cjs; git worktree remove <14 agent-*>",
+    "comando": "gh pr create --base main --head fluxo/absorver-plugin-terceiro; node scripts/conferir-versao.cjs; git worktree remove <14 agent-*>",
     "saida": "PR #233 aberto; conferir-versao exit 2 (1.8.2 == origin/main, 32 commits) -> bump MINOR recomendado, decisao do usuario; 14 worktrees de agente removidos (2 precisaram de unlock), branches worktree-agent-* ficam para limpar-branches --confirmo",
     "em": "2026-09-12"
   }

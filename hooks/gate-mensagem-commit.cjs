@@ -3,9 +3,9 @@
  * PreToolUse — exige forma minima na mensagem de `git commit` (Bash e
  * PowerShell, janela principal e subagente).
  *
- * Origem: analise do plugin de dados `wildz-data` (Rootz) — 25 trailers
+ * Origem: analise de um plugin de dados de terceiro — 25 trailers
  * `Co-Authored-By` e commits sem corpo num repo que bania os dois por
- * CLAUDE.md (docs/rainforest/design/2026-09-12-absorver-data-skills.md, D2).
+ * CLAUDE.md (docs/rainforest/design/2026-09-12-absorver-plugin-terceiro.md, D2).
  * Regra que so vive em texto se viola; a metade que faltava neste plugin era
  * a MENSAGEM — `gate-staging-total.cjs` ja obriga `git add` por caminho, e
  * "por partes" ja e um commit por tarefa do plano.

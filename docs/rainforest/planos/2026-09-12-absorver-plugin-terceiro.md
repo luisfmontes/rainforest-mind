@@ -1,7 +1,7 @@
-# Plano: absorver do data-skills (Rootz) as 14 decisões
+# Plano: absorver de um plugin de terceiro as 14 decisões
 
-Design: docs/rainforest/design/2026-09-12-absorver-data-skills.md
-**Base:** `origin/main` @ `10251507` · **Branch:** `fluxo/absorver-data-skills`
+Design: docs/rainforest/design/2026-09-12-absorver-plugin-terceiro.md
+**Base:** `origin/main` @ `10251507` · **Branch:** `fluxo/absorver-plugin-terceiro`
 
 Quinze tarefas, quatorze decisões. **Fan-out em três ondas**, separadas por
 arquivo compartilhado, não por tema:
@@ -115,7 +115,7 @@ mutacao:
   para: `TETO_LINHAS=100`
   bateria: `bash scripts/testa-teto-skills.sh`
   fixture: `testa-teto-skills.sh`, o laço sobre `skills/*/SKILL.md` (com 100, `analisar` com 306 linhas reprova)
-pronto quando: com o repositório como está, `bash scripts/testa-teto-skills.sh` imprime uma linha `ok <skill> <linhas>L <bytes>B` por SKILL.md em `skills/*/` e sai **0**; com uma skill de caixa de areia de 501 linhas (ou 16.385 B) apontada por `SKILLS_DIR`, imprime `FALHA <skill>: 501 linhas > 500` (ou `... B > 16384`) e sai **1**; a mensagem de falha diz **o que fazer** (mover referência para `references/` ou arquivo irmão, como o `skill-author` do data-skills manda) — provado pela própria bateria nas duas configurações, e `grep -c 'testa-teto-skills' .github/workflows/*.yml` não precisa mudar porque o CI já roda `scripts/testa-*.sh` por glob.
+pronto quando: com o repositório como está, `bash scripts/testa-teto-skills.sh` imprime uma linha `ok <skill> <linhas>L <bytes>B` por SKILL.md em `skills/*/` e sai **0**; com uma skill de caixa de areia de 501 linhas (ou 16.385 B) apontada por `SKILLS_DIR`, imprime `FALHA <skill>: 501 linhas > 500` (ou `... B > 16384`) e sai **1**; a mensagem de falha diz **o que fazer** (mover referência para `references/` ou arquivo irmão, como o `skill-author` do plugin de terceiro manda) — provado pela própria bateria nas duas configurações, e `grep -c 'testa-teto-skills' .github/workflows/*.yml` não precisa mudar porque o CI já roda `scripts/testa-*.sh` por glob.
 
 ### 7. Veredito por tarefa carimbado [tipo: implementar]
 atende: D8
@@ -128,7 +128,7 @@ mutacao:
   para: `true` (aviso nunca dispara)
   bateria: `bash scripts/testa-estado.sh`
   fixture: `testa-estado.sh`, caso "carimbo com hash_base fora do HEAD -> proximo avisa"
-pronto quando: `node scripts/estado.cjs marcar --slug <s> --estagio executar --status parcial --json '{"carimbos":[{"tarefa":1,"hash_base":"<sha>"}]}'` grava em `docs/rainforest/estado/<s>.json`, dentro de `executar.carimbos`, um objeto `{tarefa:1, hash_base:"<sha>", iteracao:1, sessao:"<CLAUDE_SESSION_ID ou 'desconhecida'>", ts:"<ISO>"}`; um segundo `marcar` com a mesma tarefa grava `iteracao:2` **sem apagar** a 1; `--json` sem `carimbos` continua aceito e não toca o campo; `node scripts/estado.cjs proximo --slug <s>` num repo em que `hash_base` **não** é ancestral do HEAD imprime no stderr `aviso: tarefa 1 aceita na base <sha7>, que nao esta neste HEAD — re-conferir antes de retomar` e **mantém exit 0**; com `hash_base` ancestral, não imprime aviso — provado por `bash scripts/testa-estado.sh` terminando em `falhou=0`, e `node scripts/estado.cjs ler --slug 2026-09-12-absorver-data-skills` continuando a ler este fluxo sem erro.
+pronto quando: `node scripts/estado.cjs marcar --slug <s> --estagio executar --status parcial --json '{"carimbos":[{"tarefa":1,"hash_base":"<sha>"}]}'` grava em `docs/rainforest/estado/<s>.json`, dentro de `executar.carimbos`, um objeto `{tarefa:1, hash_base:"<sha>", iteracao:1, sessao:"<CLAUDE_SESSION_ID ou 'desconhecida'>", ts:"<ISO>"}`; um segundo `marcar` com a mesma tarefa grava `iteracao:2` **sem apagar** a 1; `--json` sem `carimbos` continua aceito e não toca o campo; `node scripts/estado.cjs proximo --slug <s>` num repo em que `hash_base` **não** é ancestral do HEAD imprime no stderr `aviso: tarefa 1 aceita na base <sha7>, que nao esta neste HEAD — re-conferir antes de retomar` e **mantém exit 0**; com `hash_base` ancestral, não imprime aviso — provado por `bash scripts/testa-estado.sh` terminando em `falhou=0`, e `node scripts/estado.cjs ler --slug 2026-09-12-absorver-plugin-terceiro` continuando a ler este fluxo sem erro.
 
 ### 8. `conferir-duplicacao` e avisos no `/saude` [tipo: implementar]
 atende: D9
@@ -207,10 +207,10 @@ pronto quando: `skills/executar/SKILL.md`, seção "Integração confere na font
 
 ### 15. Fechar o lote: tudo verde num PR só [tipo: teste]
 atende: D1
-arquivos: `docs/rainforest/estado/2026-09-12-absorver-data-skills.json`, `hooks/testa-config.sh`
+arquivos: `docs/rainforest/estado/2026-09-12-absorver-plugin-terceiro.json`, `hooks/testa-config.sh`
 depende de: 12, 13, 14
 paralela: nao
 mutacao: n/a
   motivo: tarefa de verificação do conjunto; não introduz comportamento a inverter
 emenda (2026-09-12, na integração): a rodada completa deixou `hooks/testa-config.sh` vermelha porque ela conta os gates sem matcher do `hooks.json` e T1 acrescentou o sétimo; a asserção passa a esperar 7, com o motivo escrito. Entra em `arquivos:` desta tarefa porque é o ajuste que o próprio lote exige para fechar verde, não uma tarefa nova.
-pronto quando: com a branch `fluxo/absorver-data-skills` contendo as 14 tarefas, `for f in scripts/testa-*.sh hooks/testa-*.sh; do bash "$f" >/dev/null 2>&1 || echo "VERMELHA $f"; done` não imprime nenhuma linha; `node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-absorver-data-skills` e `node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-absorver-data-skills` saem 0; `node scripts/conferir-publicacao.cjs --commit origin/main..HEAD` (T13) sai 0; e `git log --oneline origin/main..HEAD | wc -l` ≥ 15 (um commit por tarefa no mínimo, que é o "por partes" de D2 aplicado a este próprio lote) — tudo colado no `--json` de fechamento do `executar`.
+pronto quando: com a branch `fluxo/absorver-plugin-terceiro` contendo as 14 tarefas, `for f in scripts/testa-*.sh hooks/testa-*.sh; do bash "$f" >/dev/null 2>&1 || echo "VERMELHA $f"; done` não imprime nenhuma linha; `node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-absorver-plugin-terceiro` e `node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-absorver-plugin-terceiro` saem 0; `node scripts/conferir-publicacao.cjs --commit origin/main..HEAD` (T13) sai 0; e `git log --oneline origin/main..HEAD | wc -l` ≥ 15 (um commit por tarefa no mínimo, que é o "por partes" de D2 aplicado a este próprio lote) — tudo colado no `--json` de fechamento do `executar`.

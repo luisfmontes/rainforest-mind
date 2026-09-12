@@ -249,7 +249,7 @@ OUTROS="$(hjson '
   const semMatcher = (h.PreToolUse || []).filter(b => b.matcher === undefined);
   process.stdout.write(String(semMatcher.reduce((n,b) => n + b.hooks.length, 0)));
 ')"
-# Sete desde 2026-09-12: o gate-mensagem-commit.cjs (D2 do absorver-data-skills)
+# Sete desde 2026-09-12: o gate-mensagem-commit.cjs (D2 do absorver-plugin-terceiro)
 # entrou no mesmo bloco sem matcher, atras do gate-git-verificacao.cjs.
 if [ "$OUTROS" = "7" ]; then
   ok=$((ok+1)); echo "  ok   os sete gates sem matcher estão presentes"
