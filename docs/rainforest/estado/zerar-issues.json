@@ -14,7 +14,7 @@
   "plano": {
     "status": "ok",
     "arquivo": "docs/rainforest/planos/zerar-issues.md",
-    "tarefas": 20,
+    "tarefas": 33,
     "paralelas": [
       1,
       2,
@@ -29,7 +29,15 @@
       15,
       16,
       17,
-      18
+      18,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      32
     ],
     "ondas": {
       "1": [
@@ -56,10 +64,25 @@
       "3": [
         10,
         19
+      ],
+      "4": [
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        32
+      ],
+      "5": [
+        31,
+        33,
+        19
       ]
     },
-    "em": "2026-09-11",
-    "emenda": "tarefa 20 (D15) acrescentada em 2026-09-11"
+    "em": "2026-09-12",
+    "emenda": "rodada 2 em 2026-09-12: T24-T33 (achados do revisar e Issues 230/231/232/235/237/238); T10 arquivos emendado; T19 -> 1.12.0"
   },
   "executar": {
     "status": "parcial",
