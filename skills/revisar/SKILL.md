@@ -60,7 +60,10 @@ diretório principal do usuário.
 
 Quando o achado só fecha com mutação, ele sai como achado **com a mutação
 descrita** (que linha inverter, que teste deveria quebrar) e quem despacha
-manda um `tester` isolado executá-la. Não é burocracia: em 2026-08-13 um
+manda um `tester` isolado executá-la. **Exit 69 do `conferir-mutacao.cjs`
+que o tester roda é bloqueio de ambiente, não veredito** (regra 14): nem
+aprova, nem reprova, nem vira achado — anuncie em uma linha e não
+redespache. Não é burocracia: em 2026-08-13 um
 revisor mutou `gerar_updater_projeto.py` direto no diretório principal, o
 `gate-worktree.cjs` bloqueou o `git checkout --` do próprio revert — corretamente,
 pela letra da trava — e ele desfez reescrevendo o arquivo por fora do git,
