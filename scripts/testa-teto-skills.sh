@@ -70,11 +70,10 @@ mkdir -p "$RAIZ/skill-grande"
 mkdir -p "$RAIZ/skill-pesada"
 {
   echo "# Skill Pesada"
-  # Gera suficiente conteúdo para passar de 16.384 bytes
-  python3 -c "import sys; sys.stdout.buffer.write(b'x' * 16385)" 2>/dev/null || \
-  perl -e 'print "x" x 16385' 2>/dev/null || \
-  node -e "console.log('x'.repeat(16385))" 2>/dev/null || \
-  printf 'x%.0s' $(seq 1 16385)
+  # Gera suficiente conteúdo para passar de 16.384 bytes. Só Node: a catraca
+  # testa-dependencias-de-bateria.sh recusa python/jq/rg pelo nome (Issues
+  # #157-#159), e Node e a unica dependencia que o CONTRIBUTING promete.
+  node -e "process.stdout.write('x'.repeat(16385))"
 } > "$RAIZ/skill-pesada/SKILL.md"
 
 # Roda a bateria na caixa de areia com contadores separados
