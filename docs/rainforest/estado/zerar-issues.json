@@ -123,8 +123,8 @@
       32
     ],
     "nota": "faltam T29 (em voo), T31 (depende de T25, ja integrada), T33 docs e T19 versao 1.12.0",
-    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues (arvore 5e6bb410); depois conferir-mutacao da T10 (literal emendado) e da T24 (bateria com os casos de contrabarra) sobre a arvore corrigida",
-    "saida": "33 tarefas: 29 vermelho, 4 pulada (n/a: 16, 19, 20, 33). Na rodada completa T10 saiu \"de nao encontrado\" e T24 \"mutante sobreviveu\"; corrigidos e re-rodados isolados: T10 baseline exit 0 -> mutacao exit 1; T24 baseline 32 ok exit 0 -> mutacao exit 1, fonte restaurado nos dois",
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues (arvore 5e6bb410); depois conferir-mutacao isolado da T10, T24, T28 e T29 sobre a arvore 4830663a (reabertura pelos 3 achados do revisar)",
+    "saida": "33 tarefas: 29 vermelho, 4 pulada (n/a: 16, 19, 20, 33). Na rodada completa T10 saiu \"de nao encontrado\" e T24 \"mutante sobreviveu\"; corrigidos e re-rodados: T10 exit 0 -> 1; T24 32 ok -> exit 1. Apos os achados do revisar: T28 (138 ok -> exit 1) e T29 (8 ok -> exit 1) vermelhas, fonte restaurado em todas",
     "mutacao": [
       {
         "tarefa": 1,
@@ -318,14 +318,14 @@
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "a28d58db6898b7d45db2e30049205692d16e96d5",
+      "head": "91db707155d6cfe3aa5dbf8b93d2330b587ea2db",
       "caminhos_sujos": []
     },
     "em_voo": [],
     "base": "10251507cb03a26adc1bd5b65a84d3d4fc7fabce",
     "head": "a28d58db6898b7d45db2e30049205692d16e96d5",
     "em": "2026-09-12",
-    "achados": 5,
+    "achados": 3,
     "lista": [
       "CRITICO T9/T21 estado.cjs:1237 chama conferir-fluxo mutacoes sem --plano; o subprocesso resolve <slug>.md fixo e ignora plano.arquivo. O comentario acima diz que o defeito foi corrigido, mas a correcao so alcancou o existsSync. Fluxo com plano de outro nome nunca fecha verificar; com colisao de nome, valida o plano errado em silencio. O caso t6b de testa-estado.sh passa pelo motivo errado",
       "ALTO creep: 18 arquivos testa-*.sh no diff sem tarefa no plano — conferir-fluxo creep sai 2. Sao as conversoes de idioma que a T10 fez alem dos 11 que ela declara, mais a copia de scripts/lib que vazou da T20 para testa-divergencias e testa-ideias",
@@ -333,7 +333,13 @@
       "ALTO T10 a guarda testa-sandbox-com-trap tem tres buracos demonstrados por execucao: trap com corpo que nao remove nada passa; SANDBOXES em comentario passa; mktemp -d dentro de funcao chamada duas vezes conta como uma ocorrencia estatica",
       "MODERADO T13 testa-ferramentas-consulta linhas 274-286 e 312-324: EXIT=$? captura o exit do unset, nao o do node do hook. unset sempre sai 0, entao a assercao exit 0 (D10) nunca pode falhar"
     ],
-    "tentativas": 1
+    "tentativas": 2,
+    "criterio": "revisor independente (sonnet) sobre a338dd02...91db7071: APROVADO com 3 achados nao bloqueantes que a janela decide fechar antes do PR",
+    "faltou": [
+      "T28/D24: casos (a) e (b) do pronto quando ausentes em scripts/testa-conferir-mutacao.sh",
+      "gate-verificador-staged.cjs: process.exit(0) dentro do try nao roda o finally e vaza a pasta rfm-staged-* quando arquivos.length === 0",
+      "README: soma 609 conta a portaria por 78+23+7, que mistura placar de dois arquivos com contagem de arquivos do wrapper; sete testa-portaria-*.cjs somam outro numero"
+    ]
   },
   "verificar": {
     "status": "pendente"
