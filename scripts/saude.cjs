@@ -26,6 +26,7 @@
  */
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
@@ -777,6 +778,73 @@ function checarAutocompact() {
   ok('autocompact', `compacta aos ${valor}% da janela util${onde}`);
 }
 
+// ---------------------------------------------------------------- allowlist
+/**
+ * Padrão largo em `permissions.allow` anula os gates de Bash em silêncio.
+ *
+ * Achado da análise do data-skills (2026-09-12): o autor tinha `Bash(bash -c
+ * *)` na própria allowlist. O hook destrutivo dele existe e roda — mas
+ * qualquer comando que passe por `bash -c "..."` já está pré-aprovado antes
+ * de o hook decidir, e a permissão vence a trava sem avisar ninguém. A nossa
+ * allowlist está limpa hoje; isto é prevenção, não conserto de incidente.
+ *
+ * Lê as duas config dirs do usuário (`~/.claude`, `~/.claude-personal`, via
+ * `os.homedir()` — `RFM_SAUDE_HOME` sobrescreve para teste) e as do projeto
+ * (`.claude/settings.json`, `.claude/settings.local.json` do cwd). Arquivo
+ * ausente ou JSON ilegível não é achado — é a allowlist de outra máquina, ou
+ * simplesmente nenhuma allowlist ainda.
+ */
+function checarAllowlist() {
+  const RE_ALLOWLIST_LARGA = /^Bash\((\*|bash[ :]-c[ :]\*|sh[ :]-c[ :]\*|eval[ :]\*|bash[ :]\*|sh[ :]\*)\)$/;
+  const homeBase = process.env.RFM_SAUDE_HOME || os.homedir() || '';
+  const candidatos = [
+    homeBase && path.join(homeBase, '.claude', 'settings.json'),
+    homeBase && path.join(homeBase, '.claude-personal', 'settings.json'),
+    path.join(process.cwd(), '.claude', 'settings.json'),
+    path.join(process.cwd(), '.claude', 'settings.local.json'),
+  ].filter(Boolean);
+
+  const largos = new Set();
+  for (const arquivo of candidatos) {
+    let cfg;
+    try {
+      cfg = JSON.parse(fs.readFileSync(arquivo, 'utf8'));
+    } catch {
+      continue; // ausente ou JSON invalido: nao e achado
+    }
+    const allow = cfg && cfg.permissions && Array.isArray(cfg.permissions.allow) ? cfg.permissions.allow : [];
+    for (const entrada of allow) {
+      if (typeof entrada === 'string' && RE_ALLOWLIST_LARGA.test(entrada)) largos.add(entrada);
+    }
+  }
+
+  if (!largos.size) return ok('allowlist', 'nenhum padrao largo de Bash na allowlist');
+  for (const entrada of largos) {
+    aviso('allowlist', `padrao largo '${entrada}' anula os gates de Bash — remova ou estreite`);
+  }
+}
+
+// ---------------------------------------------------------------- duplicacao
+/**
+ * Arquivo byte a byte idêntico a outro dentro do plugin.
+ *
+ * Delega para `conferir-duplicacao.cjs` (a mesma checagem que o
+ * `conferir-publicacao` usa para FALHAR uma publicação) — aqui o achado é
+ * `aviso`, porque `/saude` não bloqueia nada, só aponta o que rodar.
+ */
+function checarDuplicacao() {
+  const script = path.join(RAIZ_CODIGO, 'scripts', 'conferir-duplicacao.cjs');
+  if (!fs.existsSync(script)) return;
+  const { status, out } = rodar(process.execPath, [script, '--raiz', RAIZ_CODIGO, '--json']);
+  if (status === 0) return ok('duplicacao', 'nenhuma duplicata byte a byte no plugin');
+  if (status !== 2) return; // nao rodou (git ausente, etc.): nada a dizer aqui
+  let dados;
+  try { dados = JSON.parse(out); } catch { dados = null; }
+  const n = dados && Array.isArray(dados.duplicados) ? dados.duplicados.length : '?';
+  aviso('duplicacao', `${n} grupo(s) de arquivo byte a byte identicos no plugin`,
+    'rode: node scripts/conferir-duplicacao.cjs --raiz . — decida se e fixture legitima ou copia a unificar');
+}
+
 // ---------------------------------------------------------------- 9. branches
 // Irmã da checagem de worktree, e o buraco que ela deixava: remover o worktree não
 // remove a branch. Medido em 2026-08-11 — zero worktree órfão, sete branches
@@ -1475,7 +1543,9 @@ async function main() {
   checarConfigDirsDivergentes();
   checarClaudeMem();
   checarAutocompact();
+  checarAllowlist();
   checarBranches();
+  checarDuplicacao();
   checarConselho();
   checarEsquema();
   checarMemoria();

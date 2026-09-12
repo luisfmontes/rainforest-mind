@@ -339,7 +339,7 @@ checa "controle: fonte intacta (nunca mutada) continua acusando B" "alerta" "sem
 echo
 echo "== esquema de banco: detecta falta de UNIQUE (Tarefa 23 - item 6) =="
 # Teste I: banco com esquema legado (sem UNIQUE constraint em observacoes)
-DADOS_LEGADO=".rainforest-saude-legado"
+DADOS_LEGADO="$SBP/.rainforest-saude-legado"
 rm -rf "$DADOS_LEGADO" && mkdir -p "$DADOS_LEGADO"
 printf '{"poda": false}' > "$DADOS_LEGADO/config.json"
 ( cd "$DADOS_LEGADO" && node << 'MKLEGACY'
@@ -421,7 +421,7 @@ rm -rf "$DADOS_LEGADO"
 echo
 echo "== banco de memoria: observacoes, indice vivo e pipeline (Tarefa 5) =="
 # Teste Q: banco ok com observacoes e fts sincronizados
-DADOS_OK=".rainforest-saude-ok"
+DADOS_OK="$SBP/.rainforest-saude-ok"
 rm -rf "$DADOS_OK" && mkdir -p "$DADOS_OK"
 printf '{"poda": false}' > "$DADOS_OK/config.json"
 ( cd "$DADOS_OK" && node << 'MKBANCO_OK'
@@ -479,7 +479,7 @@ checa "Q2. banco ausente vira ok"                         "ok" "ausente" "$Q2"
 
 # Teste Q3: counts divergentes fabricados
 # Usar FTS sem content= para ter controle total sobre sincronizacao
-DADOS_DIVERGE=".rainforest-saude-diverge"
+DADOS_DIVERGE="$SBP/.rainforest-saude-diverge"
 rm -rf "$DADOS_DIVERGE" && mkdir -p "$DADOS_DIVERGE"
 printf '{"poda": false}' > "$DADOS_DIVERGE/config.json"
 ( cd "$DADOS_DIVERGE" && node << 'MKBANCO_DIVERGE'
@@ -533,7 +533,7 @@ checa "Q3. counts divergentes viram aviso"               "aviso" "indice vivo" "
 checa "Q3. e sugerem reindexar"                          "aviso" "reindexar" "$Q3"
 
 # Teste Q4: pendencia de 72h (mais que 48h)
-DADOS_PENDENTE_72H=".rainforest-saude-pendente-72h"
+DADOS_PENDENTE_72H="$SBP/.rainforest-saude-pendente-72h"
 rm -rf "$DADOS_PENDENTE_72H" && mkdir -p "$DADOS_PENDENTE_72H"
 printf '{"poda": false}' > "$DADOS_PENDENTE_72H/config.json"
 ( cd "$DADOS_PENDENTE_72H" && node << 'MKBANCO_PENDENTE_72H'
@@ -586,7 +586,7 @@ checa "Q4. pendencia de 72h vira aviso"                  "aviso" "pipeline parad
 checa "Q4. e sugere observar"                            "aviso" "observar" "$Q4"
 
 # Teste Q5: pendencia de 1h (menos que 48h) - NAO acusa
-DADOS_PENDENTE_1H=".rainforest-saude-pendente-1h"
+DADOS_PENDENTE_1H="$SBP/.rainforest-saude-pendente-1h"
 rm -rf "$DADOS_PENDENTE_1H" && mkdir -p "$DADOS_PENDENTE_1H"
 printf '{"poda": false}' > "$DADOS_PENDENTE_1H/config.json"
 ( cd "$DADOS_PENDENTE_1H" && node << 'MKBANCO_PENDENTE_1H'
@@ -645,7 +645,7 @@ fi
 # Banco com marca_dagua SEM offset_processado (schema pre-migracao): a checagem 3
 # lanca "no such column", o erro nao casa com nenhuma substring conhecida, e a
 # versao anterior caia no ok final — o alarme mentia exatamente no caso imprevisto.
-DADOS_IMPREVISTO=".rainforest-saude-imprevisto"
+DADOS_IMPREVISTO="$SBP/.rainforest-saude-imprevisto"
 rm -rf "$DADOS_IMPREVISTO" && mkdir -p "$DADOS_IMPREVISTO"
 printf '{"poda": false}' > "$DADOS_IMPREVISTO/config.json"
 ( cd "$DADOS_IMPREVISTO" && node << 'MKBANCO_IMPREVISTO'
@@ -1264,6 +1264,67 @@ case "$R5" in
   *)
     falhou=$((falhou+1)); echo "  FALHA R5. esperava ok com 7 requisicoes, veio: $R5" ;;
 esac
+
+echo
+echo "== checarAllowlist: padrao largo de Bash na allowlist =="
+# RFM_SAUDE_HOME isola de qualquer ~/.claude real de quem roda a bateria —
+# tarefa 8 do plano absorver-data-skills (D9).
+CASA_LARGA="$SBP/casa-allowlist-largo"
+mkdir -p "$CASA_LARGA/.claude"
+printf '{"permissions":{"allow":["Bash(bash -c *)"]}}' > "$CASA_LARGA/.claude/settings.json"
+AL1="$( RFM_SAUDE_HOME="$CASA_LARGA" RFM_ROOT="$SBP/dados" \
+  node "$SRC/scripts/saude.cjs" 2>/dev/null | grep -i allowlist )"
+checa "AL1. allowlist larga -> aviso citando a entrada" "  aviso" \
+  "allowlist: padrao largo 'Bash(bash -c *)' anula os gates de Bash — remova ou estreite" "$AL1"
+
+CASA_LIMPA="$SBP/casa-allowlist-limpo"
+mkdir -p "$CASA_LIMPA/.claude"
+printf '{"permissions":{"allow":["Bash(git status)"]}}' > "$CASA_LIMPA/.claude/settings.json"
+AL2="$( RFM_SAUDE_HOME="$CASA_LIMPA" RFM_ROOT="$SBP/dados" \
+  node "$SRC/scripts/saude.cjs" 2>/dev/null | grep -i allowlist )"
+checa "AL2. allowlist limpa -> ok" "  ok" "allowlist" "$AL2"
+
+# Config dir ausente ou JSON invalido nao e achado: sem settings.json nenhum,
+# continua ok (nao trava, nao inventa alerta).
+CASA_VAZIA="$SBP/casa-allowlist-vazia"
+mkdir -p "$CASA_VAZIA"
+AL3="$( RFM_SAUDE_HOME="$CASA_VAZIA" RFM_ROOT="$SBP/dados" \
+  node "$SRC/scripts/saude.cjs" 2>/dev/null | grep -i allowlist )"
+checa "AL3. sem settings.json nenhum -> ok (arquivo ausente nao e achado)" "  ok" "allowlist" "$AL3"
+rm -rf "$CASA_LARGA" "$CASA_LIMPA" "$CASA_VAZIA"
+
+echo
+echo "== checarDuplicacao: delega para conferir-duplicacao.cjs =="
+DUP_RAIZ="$SBP/dup-raiz"
+mkdir -p "$DUP_RAIZ/scripts" "$DUP_RAIZ/dup"
+printf 'conteudo identico\n' > "$DUP_RAIZ/scripts/a.cjs"
+printf 'conteudo identico\n' > "$DUP_RAIZ/dup/b.cjs"
+# checarDuplicacao aponta sempre para a RAIZ_CODIGO real do saude.cjs (o
+# proprio plugin) — nao ha como apontar para $DUP_RAIZ por env var, e nao
+# deveria haver: /saude fala do plugin em que ele mora, nunca de outra arvore.
+# Este bloco prova o inventario direto pelo conferir-duplicacao.cjs, e o
+# `saude.cjs` real (sem duplicata hoje) fica coberto pelo smoke geral abaixo.
+DUP_OUT="$(node "$SRC/scripts/conferir-duplicacao.cjs" --raiz "$(cygpath -m "$DUP_RAIZ" 2>/dev/null || printf '%s' "$DUP_RAIZ")" --json 2>/dev/null)"
+DUP_EXIT=$?
+if [ "$DUP_EXIT" = "2" ] && echo "$DUP_OUT" | grep -q '"duplicados"'; then
+  ok=$((ok+1)); echo "  ok   DUP1. conferir-duplicacao.cjs --json acha o grupo (exit 2)"
+else
+  falhou=$((falhou+1)); echo "  FALHA DUP1: esperava exit 2 com duplicados[], veio exit=$DUP_EXIT"; echo "$DUP_OUT" | sed 's/^/         /'
+fi
+DUP_SAUDE="$( RFM_ROOT="$SBP/dados" node "$SRC/scripts/saude.cjs" --json 2>/dev/null | node -e '
+  let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
+    try {
+      const a = JSON.parse(d).find(x => x.item === "duplicacao");
+      console.log(a ? a.nivel + " " + a.detalhe : "ausente");
+    } catch { console.log("erro"); }
+  })' )"
+case "$DUP_SAUDE" in
+  "ok "*)
+    ok=$((ok+1)); echo "  ok   DUP2. saude.cjs real (sem duplicata hoje) reporta 'duplicacao' ok" ;;
+  *)
+    falhou=$((falhou+1)); echo "  FALHA DUP2: esperava 'ok ...', veio: $DUP_SAUDE" ;;
+esac
+rm -rf "$DUP_RAIZ"
 
 # MUTAÇÃO: mudar aviso→alerta faz exit ir para 1
 MUTCOPIA="$(mktemp -d)"
