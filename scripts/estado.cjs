@@ -458,8 +458,13 @@ const COMO_DECLARAR = "Ex.: --json '{\"tarefas_ok\":2,\"tarefas\":2,\"mutacao\":
  * não normalizava CRLF. O efeito era o pior possível para uma trava — recusar
  * entrega correta, com uma mensagem apontando uma tarefa que não existe.
  */
-function extrairNumerosTarefa(slug) {
-  const arquivo_plano = path.join(RAIZ, 'docs', 'rainforest', 'planos', `${slug}.md`);
+function extrairNumerosTarefa(slug, estado) {
+  // Mesmo resolvedor que a catraca de `verificar` usa (D9/T21): o caminho vem de
+  // `plano.arquivo` do estado, nao de `<slug>.md` montado na mao. Aqui o efeito do
+  // nome fixo era mais silencioso ainda — `null` faz esta trava avisar e liberar,
+  // entao um plano com outro nome desligava o cruzamento lista x plano sem que
+  // nada no placar mudasse.
+  const arquivo_plano = docDoEstagio('planos', slug, estado);
   if (!fs.existsSync(arquivo_plano)) {
     return null; // plano nao existe
   }
@@ -518,7 +523,7 @@ function verificarCatracaMutacao(slug, bloco, estado, extra) {
   }
 
   // Extrair numeros de tarefas do plano ANTES de verificar lista
-  const nums_plano = extrairNumerosTarefa(slug);
+  const nums_plano = extrairNumerosTarefa(slug, estado);
 
   // Sem plano em disco nao ha o que cruzar, qualquer que seja a lista. O aviso
   // sai aqui, e nao so no ramo da lista vazia: a caixa de teste que fecha
