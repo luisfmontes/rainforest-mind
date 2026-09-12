@@ -70,6 +70,38 @@ O mesmo princípio nos scripts, para o que hook nenhum alcança:
 | `scripts/orcamento.cjs` | mede em **byte** as quatro fontes que o plugin põe na abertura (saída do hook, descriptions de skills, de commands e de agentes), compara com dois tetos (o `ORCAMENTO_BYTES` do hook, lido de `hooks/lib/contexto-sessao.cjs`, e um agregado de 15.000 B, que subiu de 14.000 em 2026-08-25), e sai com exit 1 quando estoura — entra no laço do `CONTRIBUTING.md:11` como o gate que acusa quando o plugin engordar além do orçamento |
 | `scripts/medir-injecao.py` | custo real do prompt de abertura, lido do `usage` que a API devolve — token de verdade, sem estimativa. O modo `--repartir` reparte a abertura por fonte (skill_listing, deferred_tools_delta, agent_listing_delta, rainforest-mind) e marca o que é **medido** (total via API), o que é **estimado** (byte convertido por fator 3.11 do tokenizador OpenAI), e o que é **subconjunto** (rainforest-mind dentro das listagens) |
 
+## Regra → trava
+
+As 17 regras de `skills/rainforest-mind/SKILL.md`, uma linha por regra, com o
+hook/script/subcomando que a torna mecânica quando existe um — e a marca
+`disciplina` quando não existe nenhum, para que ninguém leia a ausência como
+proteção. A bateria `scripts/testa-mapa-regras.sh` mantém esta tabela honesta:
+falha se sobrar regra sem linha, linha com as duas colunas vazias, ou arquivo
+citado que não existe em disco.
+
+| Regra | Trava | Vale por disciplina |
+|---|---|---|
+| 1 | | disciplina |
+| 2 | | disciplina |
+| 3 | `hooks/foco-session-start.cjs`, `hooks/heartbeat.cjs` | |
+| 4 | | disciplina |
+| 5 | | disciplina |
+| 6 | `scripts/ideias.cjs` | |
+| 7 | | disciplina |
+| 8 | `scripts/jornada.cjs` | |
+| 9 | | disciplina |
+| 10 | `hooks/portaria.cjs`, `hooks/gate-agente-em-voo.cjs`, `scripts/testa-teto-skills.sh` | |
+| 11 | `hooks/gate-worktree.cjs`, `--confirmo` em `scripts/limpar-branches.cjs`, `scripts/limpar-worktrees.cjs` e `scripts/fechar-issue.cjs` | |
+| 12 | `hooks/gate-mensagem-commit.cjs`, `scripts/conferir-entrega.cjs`, `scripts/conferir-mutacao.cjs`, `scripts/conferir-duplicacao.cjs`, `carimbos` no `scripts/estado.cjs`, `hooks/gate-agente-em-voo.cjs` | |
+| 13 | `scripts/ideias.cjs` | |
+| 14 | exit 69 em `scripts/conferir-entrega.cjs`, `scripts/conferir-mutacao.cjs`, `scripts/conferir-fluxo.cjs`, `scripts/conferir-ponte.cjs`, `hooks/ferramentas-consulta.cjs` | |
+| 15 | `hooks/ferramentas-consulta.cjs`, `checarAllowlist` em `scripts/saude.cjs` | |
+| 16 | | disciplina |
+| 17 | `hooks/heartbeat.cjs` | |
+
+Regras 1, 2, 4, 5, 7, 9 e 16 valem só por disciplina — nenhum hook nem script
+as trava; se o modelo não aplicar, nada mecânico acusa.
+
 O que essas travas custaram e renderam fica em [`relatorios/`](../relatorios/) —
 hoje o da trava de sessão co-locada
 (`2026-08-21-branch-nova-e-o-que-derruba-a-outra-sessao.md`), com método e
