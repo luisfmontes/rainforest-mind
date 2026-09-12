@@ -62,26 +62,10 @@
     "emenda": "tarefa 20 (D15) acrescentada em 2026-09-11"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-08",
-    "tarefas_ok": 20,
-    "tarefas": 22,
-    "em_voo": [
-      {
-        "agente": "tester",
-        "tarefa": "T21 catraca de verificar le o plano declarado",
-        "branch": "t21-catraca-verificar",
-        "base": "9bd0ec7",
-        "desde": "2026-09-11"
-      },
-      {
-        "agente": "tester",
-        "tarefa": "T22 teto de queda do conferir-mutacao",
-        "branch": "t22-teto-de-queda",
-        "base": "9bd0ec7",
-        "desde": "2026-09-11"
-      }
-    ],
+    "tarefas_ok": 23,
+    "tarefas": 23,
     "em": "2026-09-12",
     "integradas": [
       1,
@@ -103,9 +87,131 @@
       17,
       18,
       19,
-      20
+      20,
+      21,
+      22,
+      23
     ],
-    "nota": "20 de 20 integradas. origin/main (1.8.2, PR #229) mergeada na branch. O fechamento de executar depende da catraca de mutacao, que hoje reprova a T12 por exit 6 do teto de 20% — decisao pendente com o usuario."
+    "nota": "23 de 23. T23 tornou o timeout declaravel por tarefa e fez a linha pulada carregar a razao — a T3 saia pulada por teto, nao por defeito. Catraca completa re-rodando com o timeout da T3 em vigor.",
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues",
+    "saida": "exit 0 — 20 tarefas vermelho, 3 pulada (n/a com motivo: 16, 19, 20). Nenhuma pulada nao-declarada, nenhum mutante sobrevivente.",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "dois worktrees com o mesmo estado aberto listam o slug uma vez"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "--saida com metacaractere e recusado antes de montar o comando"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "duas config dirs, uma sem clone do marketplace e com instalacao em versao diferente"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "gate-publicacao-destino com agent_id nao menciona .rainforest-gate-off"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "marcar com --dry-run sai 1 e nao grava"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "commit vazio com --paralelo e sujeira no principal reprova"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "branch fluxo/<slug> com estado aberto devolve {slug, estagio}"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "relatorios/x.md no diff sem tarefa nao e creep"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "marcar verificar ok com mutante sobrevivente e recusado"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "vermelho",
+        "fixture": "fixture com dois mktemp e sem SANDBOXES e reprovada"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "mutacao que derruba 9 de 34 assercoes sai 6"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "principal 3 commits atras de origin/main imprime a linha"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "RFM_FERRAMENTAS_TIMEOUT_MS=1 anuncia prossigo sem garantia"
+      },
+      {
+        "tarefa": 14,
+        "resultado": "vermelho",
+        "fixture": "worktree limpo com sessao viva de outro id nao e removido"
+      },
+      {
+        "tarefa": 15,
+        "resultado": "vermelho",
+        "fixture": "11 gravacoes com teto 10 deixam 10 backups"
+      },
+      {
+        "tarefa": 16,
+        "resultado": "n/a",
+        "motivo": "texto de método; a sincronia fonte → nove agentes é o que `testa-perfil.sh` confere"
+      },
+      {
+        "tarefa": 17,
+        "resultado": "vermelho",
+        "fixture": "duas execucoes simultaneas nao se atropelam"
+      },
+      {
+        "tarefa": 18,
+        "resultado": "vermelho",
+        "fixture": "origin/main local velho e remoto com versao igual recusa apos fetch"
+      },
+      {
+        "tarefa": 19,
+        "resultado": "n/a",
+        "motivo": "número de versão; a divergência entre os dois lugares é o que `testa-versao.sh` já pega"
+      },
+      {
+        "tarefa": 20,
+        "resultado": "n/a",
+        "motivo": "a tarefa não muda comportamento de produção — `foco.cjs` e `backup-rotativo.cjs` ficam intactos. O que muda é o `montar()` das duas caixas de areia, que deixou de refletir a dependência real criada por D15. A prova não é mutante: é a bateria sair de 19 e 2 falhas para 0 com o fonte de produção sem u"
+      },
+      {
+        "tarefa": 21,
+        "resultado": "vermelho",
+        "fixture": "t6b com plano em disco e mutante sobrevivente; verificar recusa com a mensagem da catraca"
+      },
+      {
+        "tarefa": 22,
+        "resultado": "vermelho",
+        "fixture": "mutacao que quebra o mecanismo (bateria toda vermelha) continua recusada com exit 6"
+      },
+      {
+        "tarefa": 23,
+        "resultado": "vermelho",
+        "fixture": "timeout declarado no bloco chega ao conferir-mutacao"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente"
