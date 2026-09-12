@@ -38,6 +38,18 @@
     "documentador": {
       "estagios": ["executar"],
       "escreve": true
+    },
+    "Explore": {
+      "estagios": ["design", "plano", "executar", "revisar", "verificar"],
+      "escreve": false
+    },
+    "general-purpose": {
+      "estagios": ["design", "plano", "executar", "revisar", "verificar"],
+      "escreve": false
+    },
+    "claude-code-guide": {
+      "estagios": ["design", "plano", "executar", "revisar", "verificar"],
+      "escreve": false
     }
   }
 }
