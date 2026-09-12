@@ -32,23 +32,18 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-09-12",
-    "tarefas_ok": 9,
+    "tarefas_ok": 12,
     "tarefas": 15,
     "em_voo": [
       {
         "agente": "executor",
-        "tarefa": "T2",
-        "desde": "2026-09-12T05:50:00Z"
+        "tarefa": "T12",
+        "desde": "2026-09-12T06:40:00Z"
       },
       {
         "agente": "executor",
-        "tarefa": "T8",
-        "desde": "2026-09-12T05:50:00Z"
-      },
-      {
-        "agente": "executor",
-        "tarefa": "T14",
-        "desde": "2026-09-12T05:50:00Z"
+        "tarefa": "T13",
+        "desde": "2026-09-12T06:40:00Z"
       }
     ],
     "em": "2026-09-12",
@@ -115,6 +110,27 @@
         "iteracao": 1,
         "sessao": "desconhecida",
         "ts": "2026-09-12T05:41:54.658Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "eff55e833de2238a793c97f6f106b624e4a19dd4",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T06:11:22.237Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "eff55e833de2238a793c97f6f106b624e4a19dd4",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T06:11:22.237Z"
+      },
+      {
+        "tarefa": 14,
+        "hash_base": "1dd8f3de90edf6eb968ecf28e1063af0096fcedc",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T06:11:22.237Z"
       }
     ]
   },
