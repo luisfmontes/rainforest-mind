@@ -794,8 +794,18 @@ fi
 
 echo
 echo "== 20. D25: Python .pyc nao fica mutado com PYTHONDONTWRITEBYTECODE=1 =="
-# Caso (c) — se Python existir, testa que .pyc nao fica mutado quando valor muda
-if command -v python >/dev/null 2>&1 || command -v python3 >/dev/null 2>&1; then
+# Caso (c) — se Python 3 existir, testa que .pyc nao fica mutado quando valor muda.
+# O interprete e resolvido UMA vez em $PY, executando o candidato (no Windows,
+# python3 pode ser o stub da Store): e a forma que testa-dependencias-de-bateria.sh
+# admite, e o fixture abaixo recebe o mesmo $PY exportado pelo ambiente.
+PY=""
+for cand in python3 python; do
+  if command -v "$cand" >/dev/null 2>&1 && "$cand" -c 'import sys; sys.exit(0 if sys.version_info[0] == 3 else 1)' >/dev/null 2>&1; then
+    PY="$cand"; break
+  fi
+done
+if [ -n "$PY" ]; then
+  export PY
   # Criar modulo Python com valor inicial
   cat > "$CAIXA/mod.py" <<'PY'
 VALOR = 1.5e9
@@ -806,9 +816,9 @@ PY
 #!/bin/bash
 # A bateria importa mod.py e testa seu valor
 # Baseline: VALOR deve ser 1.5e9
-# Pos-mutacao (com mutacao em mod.py): VALOR sera 0.5e9 — bateria falha
-python3 -c "import mod; exit(0 if mod.VALOR == 1.5e9 else 1)" 2>/dev/null || \
-  python -c "import mod; exit(0 if mod.VALOR == 1.5e9 else 1)" 2>/dev/null || exit 1
+# Pos-mutacao (com mutacao em mod.py): VALOR sera 0.5e9 — bateria falha.
+# $PY vem exportado pela bateria de fora (resolvedor unico de interprete).
+"$PY" -c "import mod; exit(0 if mod.VALOR == 1.5e9 else 1)" 2>/dev/null || exit 1
 BAT
 
   # Fixture: arquivo que sera' mutado no modulo
@@ -859,7 +869,7 @@ FONTE
     falhou=$((falhou+1)); printf '  FALHA: bateria nao aprova fonte restaurado\n'
   fi
 else
-  printf '  (pulado: sem python)\n'
+  printf '  (pulado: sem Python 3)\n'
 fi
 
 echo
