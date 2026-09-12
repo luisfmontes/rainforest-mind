@@ -33,6 +33,12 @@ saiu()    { if [ "$2" = "$3" ]; then ok=$((ok+1)); echo "  ok   $1"; else falhou
 roda() { node "$SRC/scripts/conferir-publicacao.cjs" "$1" 2>&1; }
 codigo() { node "$SRC/scripts/conferir-publicacao.cjs" "$1" >/dev/null 2>&1; echo $?; }
 
+# modo --commit (D10): roda dentro de um repo de caixa de areia (cwd = $1), com o
+# resto dos argumentos repassado apos "--commit". Mesma separacao roda/codigo do
+# modo de arquivo acima, so que precisando do cwd certo para o git achar o repo.
+roda_commit()   { local dir="$1"; shift; (cd "$dir" && node "$SRC/scripts/conferir-publicacao.cjs" --commit "$@") 2>&1; }
+codigo_commit() { local dir="$1"; shift; (cd "$dir" && node "$SRC/scripts/conferir-publicacao.cjs" --commit "$@") >/dev/null 2>&1; echo $?; }
+
 echo "== 1. cada forma de dado sensivel =="
 
 # O JID e o caso REAL: e assim que o telefone do terceiro entrou no relatorio de
@@ -398,6 +404,111 @@ node -e '
 ' "$SRC/scripts/conferir-publicacao.cjs" "$MUT"
 COD_MUT="$(HOME="$LAR" USERPROFILE="$LAR" node "$MUT" "$SBP/so-comentario.md" >/dev/null 2>&1; echo $?)"
 saiu "sem o filtro, texto limpo passa a ser RECUSADO (o filtro e load-bearing)" "$COD_MUT" "2"
+
+echo
+echo "== 11. --commit le o COMMIT, nao o disco (D10, tarefa 13) =="
+# Repo de caixa de areia de VERDADE, caminho NATIVO (cygpath -m): o mesmo cuidado
+# do hooks/testa-gate-staging-total.sh — Node no Windows nao resolve caminho MSYS
+# e o git falharia em silencio, passando a bateria sem medir nada.
+CPUB_POSIX="$(mktemp -d)"
+CPUB="$(cygpath -m "$CPUB_POSIX" 2>/dev/null || printf '%s' "$CPUB_POSIX")"
+git init -q "$CPUB"
+git -C "$CPUB" config user.email t@t
+git -C "$CPUB" config user.name t
+git -C "$CPUB" config commit.gpgsign false
+
+printf 'contato: fulano@empresa.com.br\n' > "$CPUB/relatorio.md"
+git -C "$CPUB" add relatorio.md >/dev/null
+git -C "$CPUB" commit -qm "relatorio com email" >/dev/null
+# O segredo FICOU no commit. No disco, foi limpo SEM commitar — e' exatamente o
+# defeito que D10 existe para pegar: disco limpo nao quer dizer commit limpo.
+printf 'contato: <email>\n' > "$CPUB/relatorio.md"
+
+S="$(roda_commit "$CPUB" HEAD)"
+tem  "segredo so no commit, disco limpo -> --commit acha"  "$S" "email"
+tem  "e aponta o ARQUIVO do commit"                         "$S" "relatorio.md"
+saiu "e RECUSA (exit 2)"                                    "$(codigo_commit "$CPUB" HEAD)" "2"
+tem  "e tambem acusa a divergencia disco/commit"             "$S" "diverge-do-commit"
+
+# O modo ANTIGO (disco) nao muda: o arquivo, ja limpo em disco, passa liso. Os
+# dois modos coexistem e um nao herda o resultado do outro.
+saiu "modo disco (arquivo ja limpo) sai 0 -- os dois modos coexistem" \
+     "$(codigo "$CPUB/relatorio.md")" "0"
+
+echo
+echo "== 12. --commit num RANGE de dois commits =="
+RANGE_POSIX="$(mktemp -d)"
+RANGE="$(cygpath -m "$RANGE_POSIX" 2>/dev/null || printf '%s' "$RANGE_POSIX")"
+git init -q "$RANGE"
+git -C "$RANGE" config user.email t@t
+git -C "$RANGE" config user.name t
+git -C "$RANGE" config commit.gpgsign false
+
+printf 'base\n' > "$RANGE/x.md"
+printf 'base\n' > "$RANGE/y.md"
+git -C "$RANGE" add x.md y.md >/dev/null
+git -C "$RANGE" commit -qm base >/dev/null
+BASE_RANGE="$(git -C "$RANGE" rev-parse HEAD)"
+
+# x.md: o segredo entra logo no comeco do range e continua ate o HEAD.
+printf 'base\ncontato: fulano@empresa.com.br\n' > "$RANGE/x.md"
+git -C "$RANGE" add x.md >/dev/null
+git -C "$RANGE" commit -qm "x com email" >/dev/null
+
+# y.md: o segredo entra e e' removido AINDA dentro do range — o conteudo final
+# continua diferente do da base (para nao sair da lista de arquivos tocados),
+# mas o HEAD:y.md esta limpo.
+printf 'contato: fulano@empresa.com.br\n' > "$RANGE/y.md"
+git -C "$RANGE" add y.md >/dev/null
+git -C "$RANGE" commit -qm "y com email" >/dev/null
+printf 'sem segredo agora\n' > "$RANGE/y.md"
+git -C "$RANGE" add y.md >/dev/null
+git -C "$RANGE" commit -qm "y limpo de novo" >/dev/null
+HEAD_RANGE="$(git -C "$RANGE" rev-parse HEAD)"
+
+S="$(roda_commit "$RANGE" "$BASE_RANGE..$HEAD_RANGE")"
+tem     "range: segredo que fica ate o HEAD e' achado (x.md)"        "$S" "x.md"
+tem     "                e' achado de email"                          "$S" "email"
+nao_tem "range: segredo removido antes do HEAD nao aparece (y.md)"    "$S" "y.md"
+saiu    "e RECUSA (exit 2, por causa so de x.md)"                     "$(codigo_commit "$RANGE" "$BASE_RANGE..$HEAD_RANGE")" "2"
+
+echo
+echo "== 13. duplicata via --commit (D10) =="
+DUPC_POSIX="$(mktemp -d)"
+DUPC="$(cygpath -m "$DUPC_POSIX" 2>/dev/null || printf '%s' "$DUPC_POSIX")"
+git init -q "$DUPC"
+git -C "$DUPC" config user.email t@t
+git -C "$DUPC" config user.name t
+git -C "$DUPC" config commit.gpgsign false
+printf 'conteudo repetido sem segredo\n' > "$DUPC/um.md"
+printf 'conteudo repetido sem segredo\n' > "$DUPC/dois.md"
+git -C "$DUPC" add um.md dois.md >/dev/null
+git -C "$DUPC" commit -qm "dois arquivos identicos" >/dev/null
+
+S="$(roda_commit "$DUPC" HEAD)"
+tem  "duplicata: acha o grupo"            "$S" "duplicata"
+tem  "duplicata: nomeia os dois arquivos" "$S" "dois.md == um.md"
+saiu "duplicata: RECUSA (exit 2)"         "$(codigo_commit "$DUPC" HEAD)" "2"
+
+NAODUP_POSIX="$(mktemp -d)"
+NAODUP="$(cygpath -m "$NAODUP_POSIX" 2>/dev/null || printf '%s' "$NAODUP_POSIX")"
+git init -q "$NAODUP"
+git -C "$NAODUP" config user.email t@t
+git -C "$NAODUP" config user.name t
+git -C "$NAODUP" config commit.gpgsign false
+printf 'conteudo A sem segredo\n' > "$NAODUP/um.md"
+printf 'conteudo B sem segredo\n' > "$NAODUP/dois.md"
+git -C "$NAODUP" add um.md dois.md >/dev/null
+git -C "$NAODUP" commit -qm "dois arquivos diferentes" >/dev/null
+nao_tem "sem duplicata, nenhum achado desse tipo" "$(roda_commit "$NAODUP" HEAD)" "duplicata"
+saiu    "e passa limpo (exit 0)"                  "$(codigo_commit "$NAODUP" HEAD)" "0"
+
+echo
+echo "== 14. ambiente: rev inexistente -> exit 69 (D5) =="
+saiu "rev inexistente sai 69 (EX_UNAVAILABLE)" "$(codigo_commit "$CPUB" deadbeef)" "69"
+tem  "stderr comeca com 'nao-verificavel:'"    "$(roda_commit "$CPUB" deadbeef)" "nao-verificavel:"
+
+rm -rf "$CPUB_POSIX" "$RANGE_POSIX" "$DUPC_POSIX" "$NAODUP_POSIX"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
