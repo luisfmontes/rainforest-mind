@@ -1,5 +1,5 @@
 #!/bin/bash
-# Bateria de fuga de escotilha — verifica que os quatro gates nomeiam
+# Bateria de fuga de escotilha — verifica que os cinco gates nomeiam
 # saídas de emergência APENAS para a janela principal, nunca para subagente.
 # rainforest-gate: dados-de-exemplo
 #
@@ -7,7 +7,7 @@
 # e afirma que o stderr não contém .rainforest-gate-off nem RAINFOREST_GATE_OFF.
 #
 # Uso: bash hooks/testa-fuga-de-escotilha.sh
-# Saída: exit 0 se todos os 4 gates passaram; exit 1 se algum falhou.
+# Saída: exit 0 se todos os 5 gates passaram; exit 1 se algum falhou.
 # Imprime placar: ok: N   falhou: M
 
 set -u
@@ -80,7 +80,7 @@ git -C "$ALHEIO" commit -qm "base"
 
 echo
 
-echo "== Testando os 4 gates com agent_id =="
+echo "== Testando os 5 gates com agent_id =="
 
 # Helper: escape caminho para Windows/POSIX
 esc() { printf '%s' "$1" | sed 's|\\|/|g'; }
@@ -116,6 +116,39 @@ JID="5500"
 JID="${JID}900000001@s.whatsapp.net"
 PAYLOAD=$(node -e 'const fp="'"$(esc "$PRINCIPAL")"'/test.txt";const jid=process.argv[1];console.log(JSON.stringify({cwd:"'"$(esc "$PRINCIPAL")"'",hook_event_name:"PreToolUse",tool_name:"Write",tool_input:{file_path:fp,content:"contato: "+jid},agent_id:"agent-4",agent_type:"executor"}))' "$JID" )
 testa_gate "gate-publicacao-destino" "$PAYLOAD"
+
+# GATE 5: gate-verificador-staged
+# Subagente tenta git commit com SEGREDO staged → recusado
+echo "5. gate-verificador-staged:"
+STAGED_REPO="$RAIZ/staged-test"
+mkdir -p "$STAGED_REPO"
+mkdir -p "$STAGED_REPO/.rainforest"
+mkdir -p "$STAGED_REPO/scripts"
+git init -q "$STAGED_REPO"
+git -C "$STAGED_REPO" config user.email test@test
+git -C "$STAGED_REPO" config user.name test
+git -C "$STAGED_REPO" config core.autocrlf false
+echo "base" > "$STAGED_REPO/arquivo.txt"
+git -C "$STAGED_REPO" add arquivo.txt
+git -C "$STAGED_REPO" commit -qm "base"
+cat > "$STAGED_REPO/.rainforest/config.json" <<'EOFCFG'
+{"verificador-staged": "bash scripts/verifica.sh"}
+EOFCFG
+cat > "$STAGED_REPO/scripts/verifica.sh" << 'EOFSCRIPT'
+#!/bin/bash
+for arquivo in "$@"; do
+  if grep -q "SEGREDO" "$arquivo" 2>/dev/null; then
+    exit 1
+  fi
+done
+exit 0
+EOFSCRIPT
+chmod +x "$STAGED_REPO/scripts/verifica.sh"
+# Stage arquivo com SEGREDO
+echo "contato: SEGREDO" > "$STAGED_REPO/arquivo.txt"
+git -C "$STAGED_REPO" add arquivo.txt
+PAYLOAD=$(node -e 'console.log(JSON.stringify({cwd:"'"$(esc "$STAGED_REPO")"'",hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:"git commit -m test"},agent_id:"agent-5",agent_type:"executor"}))' )
+testa_gate "gate-verificador-staged" "$PAYLOAD"
 
 echo
 echo "== Resultado: $ok ok   $falhou falha(s) =="
