@@ -399,9 +399,7 @@ function valorSeguroParaShell(valor) {
   }
 
   // No Windows, contrabarra final escapa a aspa de fechamento envolvida pelo chamador
-  if (valor.endsWith('\\')) {
-    return false;
-  }
+  if (valor.endsWith('\\')) return false;
 
   // Padrão: apenas letras, dígitos, espaço, e caracteres seguros: : \ / . - _ ~ ,
   // Recusa: " ' ` $ & | ; < > ^ % ! ( ) e quebra de linha

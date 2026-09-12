@@ -23,6 +23,7 @@ trap 'rm -rf "$(dirname "$SBP")"' EXIT
 mkdir -p "$SBP/scripts" "$SBP/hooks/lib"
 cp "$SRC/scripts/estado.cjs" "$SBP/scripts/"
 cp "$SRC/scripts/conferir-fluxo.cjs" "$SBP/scripts/"
+cp "$SRC/scripts/conferir-mutacao.cjs" "$SBP/scripts/"
 cp "$SRC/hooks/lib/raiz.cjs" "$SBP/hooks/lib/"
 cp "$SRC/hooks/lib/config.cjs" "$SBP/hooks/lib/"
 # A caixa vira raiz de dados: sem marcador, resolverRaiz cairia no repo de verdade
