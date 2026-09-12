@@ -100,6 +100,7 @@ function normalizar(texto) {
 /**
  * Verifica se objeto contém negação explícita
  * Formas cobertas: "não autorizo", "não autorizar", "nunca autorizo", "não vou autorizar"
+ * EXIGE proximidade com "subagente(s)" ou "agente" (não qualquer "não autorizo")
  */
 function temNegacaoExplicita(obj) {
   let conteudo = null;
@@ -126,9 +127,14 @@ function temNegacaoExplicita(obj) {
     /\bnao\s+vou\s+autorizar\b/,
   ];
 
+  // Só é negação se contém AMBAS: forma de negação + menção a subagente/agente
   for (const negacao of negacoes) {
     if (negacao.test(normalizado)) {
-      return true;
+      // Encontra a negação e procura por "subagente" ou "agente" próximo
+      const temSubagente = /\bsubagente\b|\bsubagentes\b|\bsub-agente\b|\bsub-agentes\b|\bagente\b|\bagentes\b/.test(normalizado);
+      if (temSubagente) {
+        return true;
+      }
     }
   }
 
