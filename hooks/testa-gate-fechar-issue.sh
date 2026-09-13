@@ -1702,6 +1702,42 @@ EXIT_CC=$?
 	EXIT_DJ=$?
 	[ $EXIT_DJ -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_DJ)"
 
+	# Sexta revisão do zerar-issues-3 (2026-09-13): o corpo é script se a
+	# LINHA do heredoc tem interpretador em qualquer posição — agrupamento e
+	# pipe para interpretador nu não têm `bash` como dono do `<<`.
+	# Caso (dk): (bash) <<'EOF' com gh no corpo → exit 2
+	echo
+	echo "== (dk) (bash) <<'EOF' com gh issue close no corpo → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"(bash) <<'EOF'\\ngh issue close 12\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-dk"
+	EXIT_DK=$?
+	[ $EXIT_DK -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DK)"
+
+	# Caso (dl): cat <<'EOF' | bash com gh no corpo → exit 2
+	echo
+	echo "== (dl) cat <<'EOF' | bash com gh issue close no corpo → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat <<'EOF' | bash\\ngh issue close 12\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-dl"
+	EXIT_DL=$?
+	[ $EXIT_DL -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DL)"
+
+	# Caso (dm): cat <<'EOF' > d.md com prosa continua dado → exit 0
+	echo
+	echo "== (dm) cat <<'EOF' > d.md com prosa (x). → exit 0 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat <<'EOF' > d.md\\n(x). Ele sobe.\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-dm"
+	EXIT_DM=$?
+	[ $EXIT_DM -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_DM)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
