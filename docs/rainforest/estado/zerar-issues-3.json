@@ -19,8 +19,40 @@
     "em": "2026-09-12"
   },
   "executar": {
-    "status": "pendente",
-    "catraca_mutacao": "2026-09-12"
+    "status": "ok",
+    "catraca_mutacao": "2026-09-12",
+    "tarefas_ok": 5,
+    "tarefas": 5,
+    "em": "2026-09-13",
+    "comando": "node scripts/conferir-mutacao.cjs --arquivo <arquivo> --de <de> --para <para> --bateria <bateria> para T1, T2 e T3 com os blocos literais do plano, sobre a arvore 364925de (entregas dos executores cherry-pickadas: 33ef3880, c556b627, 4b8d89cf); T2 veio com pai cf1ad768 (main) em vez de ef92114a — dispensado por escrito na integracao porque ef92114a so adiciona docs/rainforest/*, e o cherry-pick entrou limpo; baterias re-rodadas pela integracao: testa-gate-fechar-issue, testa-principal-atrasado, testa-exporta-hooks-sessao-start, testa-memoria-somente-leitura, testa-fuga-de-escotilha, testa-dependencias-de-bateria, testa-sandbox-com-trap, testa-memoria-session-start, testa-mapa-regras, testa-versao, conferir-versao; hook medido com preload sobre child_process",
+    "saida": "T1: baseline 129 ok exit 0 -> mutacao exit 1 (vermelho); T2: 19 ok -> exit 1 (vermelho); T3: 7 ok -> exit 1 (vermelho); fonte restaurado nas tres. Baterias: 129 ok, 19 ok, 7 ok, 29 ok (memoria-somente-leitura, antes vermelha nesta maquina), 5 ok, 6 ok, 114 ok, 64 ok, 6 ok, 4 ok, conferir-versao ok 1.12.1. foco-session-start.cjs: 4 chamadas externas em 499 ms (antes 324 em 7,8 s)",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "heredoc com \"(folga de 2 B). Ele sobe.\" passa a ser bloqueado de novo (exit 2 em vez de 0)"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "caso (a) — worktree cuja branch aponta para origin/main deixa de ser listada como \"já em origin/main\""
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "hooks.json sintetico com hook que dorme 3 s e timeout 1 -> EXIT_1 deixa de ser 124"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "texto; a coerência com o código é o critério abaixo, e testa-mapa-regras.sh confere que todo arquivo citado existe"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "número de versão; a divergência entre os dois lugares é o que testa-versao.sh já pega"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente"
