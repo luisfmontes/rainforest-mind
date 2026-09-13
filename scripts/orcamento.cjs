@@ -11,7 +11,7 @@
  *
  * Tetos:
  * - Hook sozinho: ORCAMENTO_BYTES de hooks/lib/contexto-sessao.cjs
- * - Agregado (todas as fontes somadas): 15000 B
+ * - Agregado (todas as fontes somadas): 15600 B
  * - --teto <n> sobrescreve o teto agregado
  *
  * Saída: uma linha por fonte medida, uma linha de total, e — quando estoura —
@@ -185,8 +185,13 @@ function main() {
    * 15.000 da ~250 B de folga sobre o piso estrutural de ~14.750. Apertado de
    * proposito: continua doendo escrever descricao gorda, que e o trabalho que
    * este teto existe para fazer. Quem quiser passar daqui paga por SUBTRACAO.
+   *
+   * Subiu de 15.000 para 15.600 em 2026-09-12 porque a triagem de achado entrou
+   * no núcleo da regra 6 (+306 B), reduzindo a folga de 73 B para zero. Teto
+   * revisado para 15.600 B deixando 367 B de folga, acima do limiar de aviso
+   * de 300 B.
    */
-  const tetoAgregado = Number(valorDe('teto') || 15000);
+  const tetoAgregado = Number(valorDe('teto') || 15600);
 
   const bytesHook = medirHook();
   const bytesSkills = medirSkills();
@@ -229,8 +234,8 @@ function main() {
   }
 
   // Avaliar agregado
-  // Banda explicita, e nao os 5% do padrao. Com teto de 15.000 os 5% dariam 750 B
-  // de limiar, contra um piso ESTRUTURAL de ~14.750 — ou seja, o aviso dispararia
+  // Banda explicita, e nao os 5% do padrao. Com teto de 15.600 os 5% dariam 780 B
+  // de limiar, contra um piso ESTRUTURAL de ~14.950 (2026-09-12) — ou seja, o aviso dispararia
   // em toda sessao, pelo mesmo motivo que o do hook acabou de ser aposentado logo
   // acima: aviso que nunca cala e aviso que ninguem le, e ele gasta a atencao que
   // o estouro de verdade vai precisar.

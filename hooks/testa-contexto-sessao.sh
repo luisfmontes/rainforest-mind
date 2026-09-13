@@ -608,7 +608,8 @@ fi
 # usuario.
 # 2026-09-02: 5597 -> 5595 — a regra 12 ganhou "exit ≠ 0 nunca é sucesso" (fluxo 7, T6) e cedeu 2 B no proprio texto.
 # 2026-09-08: 5595 -> 5598 — a regra 11 ganhou "checkout principal fica na branch padrão; trabalho nasce em worktree" mais a trava e a chave que a desliga (Issue #195), pagando por subtracao no proprio texto: 388 -> 391 B. Folga: 2 B.
-NUCLEO_ESPERADO=5598
+# 2026-09-12: 5598 -> 5904 — a regra 6 ganhou a triagem de achado (defeito ≠ ideia) (+306 B), zerando a folga de 2 B; NUCLEOS_MAX_BYTES subiu de 5600 para 6000, deixando 96 B.
+NUCLEO_ESPERADO=5904
 if [ "$NUCLEO_BYTES_REAL" = "$NUCLEO_ESPERADO" ]; then
   ok=$((ok+1)); echo "  ok    D7: nucleo emitido mede exatamente $NUCLEO_BYTES_REAL B (contrato: $NUCLEO_ESPERADO B)"
 else
@@ -2233,7 +2234,7 @@ let texto = fs.readFileSync(alvo, 'utf8');
 // APARECEM DENTRO dele vem escapados com backslash no arquivo -- \` literal, nao
 // backtick nu. A ancora e a troca tem de casar com os bytes reais do arquivo,
 // nao com o que o template produziria depois de avaliado.
-const achar = '\\`${pastaReferences}/regra-<n>.md\\` (onde \\`<n>\\` é o número da regra).';
+const achar = '\\`${pastaReferences}/regra-<n>.md\\` (onde \\`<n>\\` é o número com dois dígitos — \\`06\\`, \\`13\\`, \\`17\\`).';
 const trocar = 'carregue \\`Skill(rainforest-mind)\\` antes de aplicar a regra marcada.';
 if (!texto.includes(achar)) { console.error('ANCORA NAO BATE em ' + alvo); process.exit(1); }
 texto = texto.split(achar).join(trocar);
