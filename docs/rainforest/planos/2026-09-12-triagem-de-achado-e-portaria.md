@@ -41,7 +41,7 @@ agregado 15000 → **15600** (folga 367 B, acima do limiar de aviso de 300 B).
 
 ### 1. Subir os dois tetos de orçamento, com o motivo escrito ao lado do número [tipo: configurar]
 atende: D2
-arquivos: `hooks/lib/contexto-sessao.cjs`, `scripts/orcamento.cjs`
+arquivos: `hooks/lib/contexto-sessao.cjs`, `scripts/orcamento.cjs`, `hooks/testa-contexto-sessao.sh`
 depende de: nenhuma
 paralela: sim
 mutacao:
@@ -63,7 +63,7 @@ pronto quando: com o `SKILL.md` desta branch, `node scripts/orcamento.cjs` sai c
 
 ### 2. Emendar o núcleo da regra 6 com a triagem de achado [tipo: implementar]
 atende: D1
-arquivos: `skills/rainforest-mind/SKILL.md`
+arquivos: `skills/rainforest-mind/SKILL.md`, `hooks/testa-contexto-sessao.sh`
 depende de: 1
 paralela: nao
 mutacao:
@@ -76,7 +76,7 @@ pronto quando: `node -e "const fs=require('fs'),m=require('./hooks/lib/contexto-
 
 ### 3. Corrigir o ponteiro de elaboração para o nome real do arquivo [tipo: implementar]
 atende: D3
-arquivos: `hooks/lib/contexto-sessao.cjs`
+arquivos: `hooks/lib/contexto-sessao.cjs`, `hooks/testa-contexto-sessao.sh`
 depende de: 1
 paralela: nao
 mutacao:
@@ -98,7 +98,7 @@ pronto quando: `node -e "const fs=require('fs');const t=fs.readFileSync('skills/
 
 ### 5. Leitor de autorização do usuário no transcript [tipo: implementar]
 atende: D4, D5
-arquivos: `hooks/lib/autorizacao-usuario.cjs`, `test/fixtures/transcript-autorizacao.jsonl`
+arquivos: `hooks/lib/autorizacao-usuario.cjs`, `test/fixtures/autorizacao/`
 depende de: nenhuma
 paralela: sim
 mutacao:
@@ -117,6 +117,15 @@ pronto quando: com a fixture derivada do transcript real, `node -e "const a=requ
 > abriria o portão. A concessão mandada no meio do turno chega por
 > `queue-operation`, medido no transcript real. Critério de aceite que pede o
 > que o desenho recusa não fecha nunca; os dois passaram a pedir só o que existe.
+
+> **Correção de 2026-09-13, no `revisar`:** esta tarefa declarava UMA fixture,
+> `test/fixtures/transcript-autorizacao.jsonl`, e o trabalho real produziu uma
+> **pasta** com 59 — cada rodada de revisão fechou o achado dela com a fixture
+> que o prova. O arquivo único nunca existiu. As tarefas 1, 2 e 3 também tocam
+> `hooks/testa-contexto-sessao.sh`, que guarda o contrato de bytes do núcleo
+> (`NUCLEO_ESPERADO`) e não estava declarado em nenhuma delas. Quem pegou as
+> duas omissões foi o portão do `marcar --estagio revisar`, que recusa fechar
+> com arquivo no diff sem tarefa correspondente.
 
 ### 6. Portaria consulta a autorização antes de negar por estágio [tipo: implementar]
 atende: D4, D6, D8
@@ -174,6 +183,26 @@ paralela: nao
 mutacao: n/a
   motivo: a escrita é do `scripts/ideias.cjs`, que já tem suas próprias provas (backup, gravação atômica, conferência byte a byte das linhas não-alvo).
 pronto quando: `node scripts/ideias.cjs conferir` sai com exit 0 e `obs-2026-08-24-defeito-do-plugin-oferecido-como-ideia` aparece com `status: "colhida"`, `colhida_em: "2026-09-12"` e `resultado` citando este fluxo e as Issues #239/#240
+
+### 11. Catraca de cobertura por fixture [tipo: teste]
+atende: pedido do usuário no meio do fluxo (2026-09-12), fora do design original
+arquivos: `scripts/conferir-cobertura-fixtures.cjs`, `scripts/testa-conferir-cobertura-fixtures.cjs`, `.rainforest/cobertura/autorizacao-usuario.json`
+depende de: 7
+paralela: nao
+mutacao:
+  arquivo: `scripts/conferir-cobertura-fixtures.cjs`
+  de: `problemas += mudasNaoDeclaradas.length;`
+  para: `problemas += 0;`
+  bateria: `node scripts/testa-conferir-cobertura-fixtures.cjs`
+  fixture: caso 2 da bateria (fixture muda NÃO declarada reprova)
+pronto quando: `node scripts/testa-conferir-cobertura-fixtures.cjs` sai com exit 0 cobrindo, no mínimo, restauração do fonte no caminho feliz e no de erro, mutação que não casa o alvo, mutação que não muda a linha, lista de mudas que apodreceu e mutante grosso; e `node scripts/conferir-cobertura-fixtures.cjs --mutacoes .rainforest/cobertura/autorizacao-usuario.json` sai com exit 0
+
+> **Por que entrou fora do design:** o `conferir-mutacao.cjs` pergunta se a
+> bateria fica vermelha, e o exit code dela é **agregado** — uma fixture pode
+> nunca mudar de veredito sob mutante nenhum e ainda parecer coberta. Medido na
+> 5ª rodada: 3 das 6 fixtures novas de um commit passavam verdes contra os 11
+> mutantes, isoladas, enquanto a catraca agregada dizia 11/11 vermelhas. O Luís
+> aprovou levar a ferramenta para o repo em vez de deixá-la no scratchpad.
 
 ## Em aberto
 
