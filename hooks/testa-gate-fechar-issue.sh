@@ -1649,16 +1649,18 @@ EXIT_CC=$?
 	EXIT_DE=$?
 	[ $EXIT_DE -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DE)"
 
-	# Caso (df): cat <<<'gh issue close 12' continua dado → exit 0
+	# Caso (df): cat <<<'gh issue close 12' → exit 2 (oitava revisão: o texto do
+	# here-string para sumidouro entra na varredura direta, como o corpo de
+	# heredoc — `> s.sh` + `bash s.sh` executa; antes o caso esperava 0)
 	echo
-	echo "== (df) cat <<<'gh issue close 12' (sumidouro de dado) → exit 0 =="
+	echo "== (df) cat <<<'gh issue close 12' (texto com padrao direto) → exit 2 =="
 	(
 	  export PATH="$SBP/bin:$PATH"
 	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat <<<'gh issue close 12'\"}}))")
 	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
 	) 2>"$SBP/err-df"
 	EXIT_DF=$?
-	[ $EXIT_DF -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_DF)"
+	[ $EXIT_DF -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DF)"
 
 	# Quinta revisão do zerar-issues-3 (2026-09-13): o interpretador pode vir
 	# atrás de um wrapper que repassa stdin; o primeiro token era `env`, não
@@ -1799,6 +1801,31 @@ EXIT_CC=$?
 	) 2>"$SBP/err-dr"
 	EXIT_DR=$?
 	[ $EXIT_DR -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_DR)"
+
+	# Oitava revisão do zerar-issues-3 (2026-09-13): here-string gravado em
+	# arquivo e executado na linha seguinte — o texto do here-string entra na
+	# varredura direta, como o corpo de heredoc.
+	# Caso (ds): cat <<<'gh issue close 12' > s.sh + bash s.sh → exit 2
+	echo
+	echo "== (ds) cat <<<'gh issue close 12' > s.sh + bash s.sh → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat <<<'gh issue close 12' > s.sh\\nbash s.sh\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-ds"
+	EXIT_DS=$?
+	[ $EXIT_DS -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DS)"
+
+	# Caso (dt): here-string de prosa para arquivo → exit 0
+	echo
+	echo "== (dt) cat <<<'Medido (x). Ele sobe.' > d.md → exit 0 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat <<<'Medido (x). Ele sobe.' > d.md\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-dt"
+	EXIT_DT=$?
+	[ $EXIT_DT -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_DT)"
 
 # Resultado final
 echo

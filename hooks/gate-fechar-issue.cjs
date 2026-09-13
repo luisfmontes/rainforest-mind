@@ -420,6 +420,11 @@ function segmentosParaGate(cmd) {
         for (const sub of segmentosParaGate(conteudo)) {
           if (sub.trim()) segmentos.push(sub);
         }
+      } else {
+        // Oitava revisão (2026-09-13): o here-string para sumidouro é dado,
+        // mas o texto entra na varredura direta como o corpo de heredoc —
+        // `cat <<<'gh issue close 12' > s.sh` + `bash s.sh` executa.
+        TEXTOS_DE_HEREDOC.push(conteudo);
       }
       atual += cmd.slice(i, k);
       i = k - 1;
