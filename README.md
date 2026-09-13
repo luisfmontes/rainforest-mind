@@ -232,6 +232,8 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 | `planejador` · `revisor` · `tester` · `depurador` | sonnet, tarefa que exige julgamento |
 | `arqueologo` · `auditor-de-seguranca` | sonnet, executam skill própria |
 
+O `auditor-de-seguranca` roda duas réguas OWASP (Top 10 2025 + API Security 2023) e uma **Régua 3 de técnicas** — [`referencias/reguas-tecnicas-ofensivas.md`](referencias/reguas-tecnicas-ofensivas.md), 30 lentes de detecção defensiva derivadas do repositório `SnailSploit/claude-red` (MIT) e reescritas report-only — que afia as duas no nível de técnica de ataque.
+
 **Agentes em Claude ou Codex** — cada agente tem um `runtime:` no manifesto (ausente = `claude`); a primeira linha do briefing pode ser `Runtime: codex` ou `Runtime: claude` para override (case-insensitive). Quando o usuário diz "faz no codex", "roda no codex" ou equivalente, o despacho põe `Runtime: codex` na primeira linha. Transporte via `codex exec` usa sandbox `read-only` ou `workspace-write` conforme `escreve`, modelo por `codex-modelo-<haiku|sonnet|opus>` no `/setup` (padrão do `~/.codex/config.toml`). As skills `review`, `adversarial-review` e `rescue` do `openai/codex-plugin-cc` não ganharam comando aqui porque já existem como função neste plugin: `revisor`, segunda opinião cross-model, `depurador`.
 
 ## As 17 regras

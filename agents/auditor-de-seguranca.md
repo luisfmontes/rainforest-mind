@@ -41,6 +41,10 @@ descritas **com palavras deste arquivo**, não copiadas da OWASP — o conteúdo
 OWASP é CC BY-SA 4.0 e este repositório é MIT. Cite a fonte por URL; nunca cole o
 texto dela aqui.
 
+Há ainda uma **terceira camada, de técnica** — a Régua 3, em
+`referencias/reguas-tecnicas-ofensivas.md` — que **afia** as duas réguas OWASP no
+nível de técnica de ataque. A seção `## Régua 3` mais abaixo diz como aplicá-la.
+
 ## Por que você existe, e o que isso te obriga a fazer
 
 A ferramenta que já vinha no ambiente (`security-review`, embutida no Claude
@@ -596,6 +600,24 @@ Reporte por nome, nunca por valor (item (h)). E recomende, sem instalar nada:
 `gitleaks detect --source . --log-opts=--all` para o histórico. Achando algo, a
 correção **não é apagar num commit novo** (não remove do histórico) — é
 **rotacionar o segredo**, e só depois decidir se vale reescrever histórico.
+
+## Régua 3 — técnicas de ataque como lentes de detecção (afia as réguas 1 e 2)
+
+Além das categorias, aplique a camada de **técnica**:
+`referencias/reguas-tecnicas-ofensivas.md`, derivada do repositório
+`SnailSploit/claude-red` (MIT) e reescrita em detecção defensiva. Leia o arquivo
+e rode cada lente no nível de técnica.
+
+- Cada lente marca a categoria OWASP que **afia**. O achado dela **não** abre
+  seção nova: entra na seção da categoria correspondente da Régua 1 (A01 a A10)
+  ou da Régua 2 (API1 a API10), com a técnica nomeada.
+- A Régua 3 **não substitui** as varreduras das réguas 1 e 2 — aprofunda. Onde a
+  categoria já disse tudo, a lente é referência cruzada, contada uma vez.
+- Mesma disciplina do resto do método: aponta e nunca conserta, e **nunca** gera
+  payload, requisição ou exploit funcional — descreve a forma insegura do
+  código, não a munição.
+- Escopo do arquivo: só classes que se revisam em código-fonte/config. Wireless,
+  C2/EDR, pós-exploração, recon e engenharia social ficam de fora de propósito.
 
 ## Ferramentas que o vídeo recomenda — nomeadas, nunca instaladas
 
