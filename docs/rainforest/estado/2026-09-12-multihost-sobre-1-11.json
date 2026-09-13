@@ -20,7 +20,13 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-09-12",
-    "em_voo": [],
+    "em_voo": [
+      {
+        "agente": "depurar_hook_real_112",
+        "tarefa": "Reabrir T3/T6: capturar payload real e corrigir decisao do hook Codex",
+        "desde": "2026-09-13T00:21:00-03:00"
+      }
+    ],
     "tarefas_ok": 5,
     "tarefas": 9,
     "em": "2026-09-13",
@@ -69,7 +75,7 @@
       }
     ],
     "pendentes": [
-      "tarefa-6: sessao nova executou git add -A; hook nao emitiu deny"
+      "tarefa-6: depurando payload/decisao real do hook Codex"
     ]
   },
   "revisar": {
