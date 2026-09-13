@@ -64,11 +64,11 @@ mutacao: n/a
   motivo: texto; a coerência com o código é o critério abaixo, e `testa-mapa-regras.sh` confere que todo arquivo citado existe
 pronto quando: a linha de `gate-fechar-issue.cjs` na tabela de gates do README diz que corpo de heredoc é dado e só conta quando alimenta um interpretador (`bash <<EOF`); `docs/travas-mecanicas.md` diz o mesmo na linha do gate e, na linha de `hooks/lib/principal-atrasado.cjs` (ou onde o radar de principal atrasado é descrito), que o custo é fixo em até quatro chamadas a `git` por abertura, medido em 2026-09-13 contra 324; a soma de casos das baterias dos gates é re-medida se `hooks/testa-gate-fechar-issue.sh` mudou de placar; `bash scripts/testa-mapa-regras.sh` sai 0 — provado por esses comandos e por `grep -c heredoc README.md docs/travas-mecanicas.md` devolvendo ≥ 1 em cada.
 
-### 5. Versão 1.12.2 (era 1.12.1 — a `main` tomou o número pelo PR #245; emenda do `fechar`, 2026-09-13) [tipo: docs]
+### 5. Versão 1.13.2 (era 1.12.1 — a `main` tomou a 1.12.1 pelo PR #245 e a 1.13.1 pelo PR #246; emendas do `fechar`, 2026-09-13) [tipo: docs]
 atende: D5
 arquivos: `.claude-plugin/plugin.json`, `README.md`
 depende de: 1, 2, 3, 4
 paralela: nao
 mutacao: n/a
   motivo: número de versão; a divergência entre os dois lugares é o que `testa-versao.sh` já pega
-pronto quando: `.claude-plugin/plugin.json` declara `1.12.2` e o badge do README repete o número, num commit próprio — provado por `bash scripts/testa-versao.sh` exit 0 e `node scripts/conferir-versao.cjs` exit 0.
+pronto quando: `.claude-plugin/plugin.json` declara `1.13.2` e o badge do README repete o número, num commit próprio — provado por `bash scripts/testa-versao.sh` exit 0 e `node scripts/conferir-versao.cjs` exit 0.
