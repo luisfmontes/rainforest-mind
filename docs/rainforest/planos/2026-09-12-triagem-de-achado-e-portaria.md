@@ -98,7 +98,7 @@ pronto quando: `node -e "const fs=require('fs');const t=fs.readFileSync('skills/
 
 ### 5. Leitor de autorização do usuário no transcript [tipo: implementar]
 atende: D4, D5
-arquivos: `hooks/lib/autorizacao-usuario.cjs`, `test/fixtures/autorizacao/`
+arquivos: `hooks/lib/autorizacao-usuario.cjs`, `test/fixtures/transcript-autorizacao.jsonl`, `test/fixtures/autorizacao/`
 depende de: nenhuma
 paralela: sim
 mutacao:
@@ -119,9 +119,11 @@ pronto quando: com a fixture derivada do transcript real, `node -e "const a=requ
 > que o desenho recusa não fecha nunca; os dois passaram a pedir só o que existe.
 
 > **Correção de 2026-09-13, no `revisar`:** esta tarefa declarava UMA fixture,
-> `test/fixtures/transcript-autorizacao.jsonl`, e o trabalho real produziu uma
-> **pasta** com 59 — cada rodada de revisão fechou o achado dela com a fixture
-> que o prova. O arquivo único nunca existiu. As tarefas 1, 2 e 3 também tocam
+> `test/fixtures/transcript-autorizacao.jsonl`. Ela existe e continua em uso —
+> é o transcript inteiro, o `TRANSCRIPT_COMPLETO` da bateria —, mas as sete
+> rodadas de revisão produziram além dela uma **pasta** com 59, cada uma
+> fechando o achado que a prova. A tarefa passou a declarar as duas coisas.
+> As tarefas 1, 2 e 3 também tocam
 > `hooks/testa-contexto-sessao.sh`, que guarda o contrato de bytes do núcleo
 > (`NUCLEO_ESPERADO`) e não estava declarado em nenhuma delas. Quem pegou as
 > duas omissões foi o portão do `marcar --estagio revisar`, que recusa fechar
