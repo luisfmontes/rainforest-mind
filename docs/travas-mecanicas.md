@@ -19,6 +19,7 @@ noite, sabendo que não devia. O que sobrou das duas noites:
 | `gate-worktree.cjs` | escrita de subagente em repo git que não é worktree linkado; e `git checkout/switch/reset/…` neste checkout quando **outra** sessão do Claude Code está no MESMO diretório | subagente **e** a janela principal — esta no ramo de sessão co-locada (Issues #25 e #38) |
 | `gate-staging-total.cjs` | `git add` com caminho total (`-A`, `--all`, `-u`, `--update`, `.`, `./`, `:/`, `*`), inclusive em flag combinada, e `git commit -a/-am/--all` | **também a janela principal**, que foi onde os dois incidentes ocorreram |
 | `gate-publicacao-destino.cjs` | escrita de dados sensíveis (JID, telefone, email, credencial) em arquivo rastreado por git | **qualquer ferramenta que escreve** (`Write`, `Edit`, `MultiEdit`) — impede vazamento em repo público |
+| `gate-fechar-issue.cjs` | `gh issue close` direto e `closes #N` em PR sem comentário de evidência marcado; comando encapsulado (`bash -c`, `eval`) que o hook não lê. Corpo de heredoc é **dado**: `cat > x.md <<'EOF'` com prosa passa, e o corpo só conta quando alimenta um interpretador (`bash <<EOF`, `sh`, `eval`, `source`, `pwsh`…) | **também a janela principal** — origem: Issue #239, em que `(folga de 2 B). Ele sobe.` dentro de um heredoc virava subshell + `source` e bloqueava o comentário de evidência |
 | `gate-repo-alheio.cjs` | escrita cujo destino está dentro de **outro repositório git** que não o da sessão | **também a janela principal**, que foi onde o incidente ocorreu — caminho fora de git e worktree do mesmo repo passam |
 | `gate-mensagem-commit.cjs` | `git commit` com assunto acima de 72 colunas ou terminando em ponto; sem corpo (trailer não conta) quando o stage passa de 3 arquivos ou de 150 linhas; `-F -`, heredoc e `git commit` pelado, que o hook não lê. `--amend --no-edit`, `-C` e `-c` passam | **também a janela principal** — origem: análise de um plugin de terceiro em 2026-09-12, em que o formato era regex e a granularidade era hábito (285 de 441 commits tocam até 3 arquivos, 310 têm corpo — números do design deste lote); aqui os dois viram trava porque o "por partes" é o que deixa o `revisar` ler o diff |
 | `gate-verificador-staged.cjs` | `git commit` cujo conteúdo **staged** o verificador do repositório reprova (exit ≠ 0): descobre o verificador na ordem chave `"verificador-staged"` em `.rainforest/config.json` → `scripts/check-personal-data.py|.cjs|.sh|.js` → `scripts/conferir-publicacao.cjs`, materializa os blobs staged (`git show :<caminho>`) numa pasta temporária e chama o verificador com esses caminhos; a saída dele vai no stderr. É o blob staged que vira histórico, por isso o working tree não é olhado | **também a janela principal** — origem: Issue #235, valor sensível gravado por script (`python patch.py`) passou pelo `gate-publicacao-destino` (que só vê `Write`/`Edit`) e só a CI pegou, do lado irreversível. Descartado gravar `.git/hooks/pre-commit`: altera o ambiente do usuário e morre em clone novo |
@@ -34,9 +35,10 @@ vez de resolver o problema: `node scripts/setup.cjs --desligar <gate> --escopo
 projeto` (preferida), `RAINFOREST_GATE_OFF=1` no ambiente, ou um arquivo
 `.rainforest-gate-off` na raiz do repo.
 
-Cada uma tem bateria própria (`hooks/testa-gate-*.sh`, **427 casos**: 194 de
-worktree + 104 de fechar Issue + 96 de staging + 27 de repo alheio + 16 de
-publicação) que roda o hook
+Cada uma tem bateria própria (`hooks/testa-gate-*.sh`, **480 casos** nas cinco
+primeiras, medidos em 2026-09-13: 201 de worktree + 129 de fechar Issue + 99 de
+staging + 27 de repo alheio + 24 de publicação; a soma de todos os gates está no
+README) que roda o hook
 de verdade contra repos git montados na hora. A maioria dos casos testa o que
 deve **passar**: falso positivo aqui atrapalha todo repo — a trava de repo alheio
 é o exemplo, com 20 dos 27 casos provando que ela **não** barra.
@@ -87,7 +89,7 @@ citado que não existe em disco.
 |---|---|---|
 | 1 | | disciplina |
 | 2 | | disciplina |
-| 3 | `hooks/foco-session-start.cjs`, `hooks/heartbeat.cjs` | |
+| 3 | `hooks/foco-session-start.cjs`, `hooks/heartbeat.cjs` — o radar de principal atrasado (`hooks/lib/principal-atrasado.cjs`) custa no máximo **quatro** chamadas a `git` por abertura, seja qual for o número de worktrees (medido em 2026-09-13: 4 chamadas em 0,5 s, contra 324 em 7,8 s antes, que estouravam os 5 s do `hooks.json` — Issue #243) | |
 | 4 | | disciplina |
 | 5 | | disciplina |
 | 6 | `scripts/ideias.cjs` | |
