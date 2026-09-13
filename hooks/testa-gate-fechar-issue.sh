@@ -1556,6 +1556,41 @@ EXIT_CC=$?
 	EXIT_CX=$?
 	[ $EXIT_CX -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CX)"
 
+	# Revisão do zerar-issues-3 (2026-09-13): o resto da LINHA do heredoc é
+	# comando, roda antes do corpo, e a primeira versão da D1 o engolia.
+	# Caso (cy): cat <<EOF; gh issue close 12 na mesma linha → exit 2
+	echo
+	echo "== (cy) gh na mesma linha do heredoc, apos ';' → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat <<EOF; gh issue close 12\\n(x). corpo\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cy"
+	EXIT_CY=$?
+	[ $EXIT_CY -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CY)"
+
+	# Caso (cz): cat <<EOF && gh issue close 12 → exit 2
+	echo
+	echo "== (cz) gh na mesma linha do heredoc, apos '&&' → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat <<EOF && gh issue close 12\\n(x). corpo\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cz"
+	EXIT_CZ=$?
+	[ $EXIT_CZ -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CZ)"
+
+	# Caso (da): cat <<'EOF' | gh pr create --body "closes #999" (sem evidência) → exit 2
+	echo
+	echo "== (da) heredoc entubado em gh pr create com closes sem evidencia → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat <<'EOF' | gh pr create --body \\\"closes #999\\\"\\n(x). corpo\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-da"
+	EXIT_DA=$?
+	[ $EXIT_DA -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DA)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

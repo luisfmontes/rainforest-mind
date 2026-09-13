@@ -342,11 +342,24 @@ function segmentosParaGate(cmd) {
         }
         // Caso contrário, o corpo é dados e não gera segmento
 
-        // Avançar `i` para permitir que o \n após EOF seja processado normalmente
-        // heredoc.fim aponta para a posição após o \n final do delimitador.
-        // Seto i = heredoc.fim - 2 para que após o i++ do for,
-        // i = heredoc.fim - 1, e na próxima iteração o \n seja processado.
-        i = heredoc.fim - 2;
+        // Revisão do fluxo zerar-issues-3 (2026-09-13): só o CORPO é dado. O
+        // resto da linha do heredoc (`cat <<EOF; gh issue close 12`, `&& gh`,
+        // `| gh pr create`) é comando de verdade e roda ANTES do corpo — a
+        // primeira versão pulava de `<<EOF` direto para depois do delimitador
+        // de fechamento e engolia esse trecho sem checar. Recorta-se o corpo
+        // (da quebra de linha que o abre até o delimitador de fechamento,
+        // inclusive) do texto, e a varredura segue do fim do token `<<EOF`;
+        // `;`, `&&`, `|` e a quebra de linha seguinte são tratados como em
+        // qualquer outra linha.
+        const inicioCorpo = cmd.indexOf('\n', i);
+        if (inicioCorpo !== -1 && inicioCorpo < heredoc.fim) {
+          // Fechado quando o corpo NAO chega ate `fim` (a linha do delimitador
+          // ficou de fora dele); sem fechamento, o corpo é tudo até o fim.
+          const fechado = inicioCorpo + 1 + heredoc.corpo.length < heredoc.fim;
+          const depois = fechado ? cmd.slice(heredoc.fim - 1) : '';
+          cmd = cmd.slice(0, inicioCorpo) + depois;
+        }
+        i = j - 1;
         continue;
       }
     }
