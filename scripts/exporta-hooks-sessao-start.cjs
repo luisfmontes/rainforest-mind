@@ -63,7 +63,17 @@ function main() {
 
           hookIndex++;
           const cmd = expandirComando(hook.command);
-          const timeout = (hook.timeout || 5) * 1000;
+          // 60 s e o default do harness de verdade. O 5 s que estava aqui era
+          // invencao do teste: doze vezes mais apertado que producao, e como o
+          // kill por tempo devolve `status === null`, a bateria lia o estouro
+          // como "o hook saiu 1" -- com stderr VAZIO, que e o pior jeito de
+          // falhar. Em 13/09/2026 isso deixou `testa-memoria-somente-leitura.sh`
+          // vermelha em tres asserçoes nesta maquina (foco-session-start.cjs
+          // leva ~8,6 s aqui: bridge do WhatsApp, varredura de sessoes e corpus
+          // de memoria de verdade) enquanto a CI, sem nada disso, ficava verde.
+          // Teste que so falha na maquina do dono, e pelo motivo errado, gasta
+          // a confianca de todos os outros.
+          const timeout = (hook.timeout || 60) * 1000;
 
           let stdout = '';
           let stderr = '';
@@ -79,7 +89,23 @@ function main() {
 
             stdout = proc.stdout || '';
             stderr = proc.stderr || '';
-            exitCode = proc.status !== null ? proc.status : 1;
+
+            // `status === null` significa morto por sinal, nao "saiu 1". Se foi
+            // o nosso proprio timeout, dizer isso no stderr: sem essa linha o
+            // sintoma e uma falha silenciosa, indistinguivel de um hook que
+            // decidiu sair 1 de proposito.
+            if (proc.status === null) {
+              const porTempo = (proc.error && proc.error.code === 'ETIMEDOUT')
+                || proc.signal === 'SIGTERM';
+              if (porTempo) {
+                stderr += `[exportador] o hook excedeu ${timeout} ms e foi morto`;
+              } else if (proc.signal) {
+                stderr += `[exportador] o hook morreu com o sinal ${proc.signal}`;
+              }
+              exitCode = 1;
+            } else {
+              exitCode = proc.status;
+            }
           } catch (e) {
             stderr = e.message;
             exitCode = 1;
