@@ -1,13 +1,21 @@
 #!/usr/bin/env node
 
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
-const { createHash } = require('node:crypto');
+const { createHash, randomBytes } = require('node:crypto');
+const { spawnSync } = require('node:child_process');
 
 const RAIZ = path.resolve(__dirname, '..');
 const MANIFESTO_CODEX = path.join(RAIZ, '.codex-plugin', 'plugin.json');
 const MANIFESTO_CLAUDE = path.join(RAIZ, '.claude-plugin', 'plugin.json');
 const CAMINHO_HOOK_CODEX = './hooks/codex-gate-staging-total.json';
+const HOOK_COMPARTILHADO = path.join(RAIZ, 'hooks', 'gate-staging-total.cjs');
+const HOOK_ADAPTADOR_CODEX = path.join(RAIZ, 'hooks', 'codex-gate-staging-total.cjs');
+const COMANDO_HOOK_CODEX = 'node "${PLUGIN_ROOT}/hooks/codex-gate-staging-total.cjs"';
+const COMANDO_CORE_DIRETO = 'node "${PLUGIN_ROOT}/hooks/gate-staging-total.cjs"';
+const MOTIVO_FALHA_SEGURA =
+  'Falha interna do gate de staging; comando recusado por seguranca.';
 
 // Corpos na base 4028a28513d6ecc7247fe3d76c673a0928a0dd09,
 // medidos antes da normalizacao exclusiva do frontmatter.
@@ -179,7 +187,7 @@ function validarInterface(manifesto) {
   'interface.defaultPrompt invalido');
 }
 
-function validarManifesto() {
+function validarManifesto({ silencioso = false } = {}) {
   const codex = lerJson(MANIFESTO_CODEX, 'manifesto Codex');
   const claude = lerJson(MANIFESTO_CLAUDE, 'manifesto Claude');
   exige(codex && typeof codex === 'object' && !Array.isArray(codex), 'manifesto Codex deve ser objeto');
@@ -198,11 +206,196 @@ function validarManifesto() {
   validarInterface(codex);
 
   const skillsDir = caminhoInterno(codex.skills, 'skills');
-  caminhoInterno(codex.hooks, 'hooks');
+  const hooksPath = caminhoInterno(codex.hooks, 'hooks');
   exige(fs.existsSync(skillsDir) && fs.statSync(skillsDir).isDirectory(), 'diretorio de skills ausente');
-  const skills = validarSkillsCodex(skillsDir);
-  console.log('ok manifesto Codex: metadados name/version/description/author iguais ao manifesto Claude');
-  console.log(`ok skills compartilhadas descobertas: ${skills.length}`);
+  exige(fs.existsSync(hooksPath) && fs.statSync(hooksPath).isFile(), 'arquivo de hooks Codex ausente');
+  const skills = validarSkillsCodex(skillsDir, { silencioso });
+  if (!silencioso) {
+    console.log('ok manifesto Codex: metadados name/version/description/author iguais ao manifesto Claude');
+    console.log(`ok skills compartilhadas descobertas: ${skills.length}`);
+  }
+  return hooksPath;
+}
+
+function validarHookSeletivo(hooksPath, { silencioso = false } = {}) {
+  const config = lerJson(hooksPath, 'hook seletivo Codex');
+  exige(config && typeof config === 'object' && !Array.isArray(config)
+    && Object.keys(config).join(',') === 'hooks', 'arquivo Codex deve conter apenas hooks');
+  const eventos = config.hooks && typeof config.hooks === 'object' && !Array.isArray(config.hooks)
+    ? Object.keys(config.hooks) : [];
+  exige(eventos.length === 1 && eventos[0] === 'PreToolUse',
+    `eventos Codex devem conter somente PreToolUse: ${eventos.join(', ') || 'nenhum'}`);
+  const grupos = config.hooks.PreToolUse;
+  exige(Array.isArray(grupos) && grupos.length === 1, 'PreToolUse Codex deve conter um grupo');
+  exige(grupos[0].matcher === '^Bash$', 'matcher Codex deve ser ^Bash$');
+  const handlers = Array.isArray(grupos[0].hooks) ? grupos[0].hooks : [];
+  exige(handlers.length === 1, `hook seletivo: ${handlers.length}`);
+  exige(handlers[0] && handlers[0].type === 'command', 'handler Codex deve ter type command');
+  exige(handlers[0].command !== COMANDO_CORE_DIRETO, 'handler Codex chama core direto');
+  exige(handlers[0].command === COMANDO_HOOK_CODEX, 'handler Codex nao chama o adaptador fino');
+  exige(fs.existsSync(HOOK_ADAPTADOR_CODEX), 'adaptador Codex ausente');
+  exige(fs.existsSync(HOOK_COMPARTILHADO), 'gate compartilhado ausente');
+  if (!silencioso) console.log('ok hook seletivo Codex: PreToolUse/Bash, 1 adaptador');
+}
+
+function validarAdaptadorFino({ silencioso = false } = {}) {
+  const fonte = fs.readFileSync(HOOK_ADAPTADOR_CODEX, 'utf8');
+  exige(fonte.split("path.join(__dirname, 'gate-staging-total.cjs')").length - 1 === 1,
+    'adaptador Codex deve chamar o core compartilhado uma vez');
+  exige(fonte.includes('input: payload'), 'adaptador Codex nao encaminha o stdin original ao core');
+  for (const politica of ['git add', 'commit -a', '--all']) {
+    exige(!fonte.includes(politica), `adaptador Codex duplicou politica: ${politica}`);
+  }
+  if (!silencioso) console.log('ok adaptador fino: stdin encaminhado ao core sem politica duplicada');
+}
+
+function rodar(arquivo, args, opcoes = {}) {
+  return spawnSync(arquivo, args, { encoding: 'utf8', ...opcoes });
+}
+
+function git(cwd, args) {
+  const resultado = rodar('git', args, { cwd });
+  exige(!resultado.error && resultado.status === 0,
+    `git ${args.join(' ')} falhou: ${resultado.error ? resultado.error.message : (resultado.stderr || '').trim()}`);
+  return (resultado.stdout || '').trim();
+}
+
+function payloadCodex(cwd, command) {
+  return {
+    session_id: 'sessao-codex-contrato',
+    transcript_path: path.join(cwd, 'transcript.jsonl'),
+    cwd,
+    hook_event_name: 'PreToolUse',
+    model: 'gpt-5.6-sol',
+    turn_id: 'turno-codex-contrato',
+    tool_name: 'Bash',
+    tool_use_id: 'tool-codex-contrato',
+    tool_input: { command },
+  };
+}
+
+function executarAdaptador(cwd, input, dados, arquivo = HOOK_ADAPTADOR_CODEX) {
+  const env = { ...process.env, RFM_ROOT: dados, CLAUDE_PROJECT_DIR: cwd };
+  delete env.RAINFOREST_GATE_OFF;
+  return rodar(process.execPath, [arquivo], { cwd, input, env });
+}
+
+function validarDenyOficial(resultado, motivoEsperado = null) {
+  exige(!resultado.error, `adaptador Codex nao iniciou: ${resultado.error && resultado.error.message}`);
+  exige(resultado.status === 0, `adaptador Codex deny deve sair 0: ${resultado.status}`);
+  exige((resultado.stderr || '') === '', 'adaptador Codex deny escreveu stderr');
+  let saida;
+  try { saida = JSON.parse((resultado.stdout || '').trim()); } catch { falha('adaptador Codex deny nao devolveu JSON valido'); }
+  const especifica = saida && saida.hookSpecificOutput;
+  exige(especifica && especifica.hookEventName === 'PreToolUse',
+    'adaptador Codex deny sem hookEventName PreToolUse');
+  exige(especifica.permissionDecision === 'deny', 'adaptador Codex deny sem permissionDecision deny');
+  exige(typeof especifica.permissionDecisionReason === 'string'
+    && especifica.permissionDecisionReason.trim() !== '',
+  'adaptador Codex deny sem permissionDecisionReason');
+  if (motivoEsperado !== null) exige(especifica.permissionDecisionReason === motivoEsperado,
+    'adaptador Codex alterou motivo do core');
+  return especifica.permissionDecisionReason;
+}
+
+function validarAllow(resultado) {
+  exige(!resultado.error, `adaptador Codex nao iniciou: ${resultado.error && resultado.error.message}`);
+  exige(resultado.status === 0, `adaptador Codex allow deve sair 0: ${resultado.status}`);
+  exige((resultado.stderr || '') === '', 'adaptador Codex allow escreveu stderr');
+  exige((resultado.stdout || '') === '', 'adaptador Codex allow devolveu decisao');
+}
+
+function comRepositorioTemporario(fn) {
+  const caixa = fs.mkdtempSync(path.join(os.tmpdir(), 'rainforest-codex-adapter-'));
+  const token = randomBytes(24).toString('hex');
+  const marcador = path.join(caixa, '.rainforest-codex-owner');
+  fs.writeFileSync(marcador, token, { encoding: 'utf8', flag: 'wx' });
+  try {
+    const repo = path.join(caixa, 'repo');
+    const dados = path.join(caixa, 'dados');
+    fs.mkdirSync(repo);
+    fs.mkdirSync(dados);
+    git(repo, ['init', '--quiet']);
+    fs.writeFileSync(path.join(repo, 'a.txt'), 'inicial\n', 'utf8');
+    git(repo, ['add', '--', 'a.txt']);
+    fs.writeFileSync(path.join(repo, 'a.txt'), 'modificado\n', 'utf8');
+    return fn({ caixa, repo, dados });
+  } finally {
+    exige(fs.readFileSync(marcador, 'utf8') === token, 'marcador temporario divergiu');
+    fs.rmSync(caixa, { recursive: true, force: true });
+  }
+}
+
+function testarMutacaoHandler(hooksPath) {
+  const original = fs.readFileSync(hooksPath);
+  let filho;
+  try {
+    const config = JSON.parse(original.toString('utf8'));
+    config.hooks.PreToolUse[0].hooks[0].command = COMANDO_CORE_DIRETO;
+    fs.writeFileSync(hooksPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
+    filho = rodar(process.execPath, [__filename, '--interno-adaptador-hook'], { cwd: RAIZ });
+  } finally {
+    fs.writeFileSync(hooksPath, original);
+  }
+  exige(fs.readFileSync(hooksPath).equals(original), 'mutacao nao restaurou hooks Codex');
+  exige(!filho.error && filho.status === 1, `mutacao handler deveria sair 1: ${filho.status}`);
+  exige((filho.stdout || '').replace(/\r\n/g, '\n') === 'FALHA handler Codex chama core direto\n',
+    `mutacao handler falhou pelo motivo errado: ${(filho.stdout || '').trim()}`);
+  console.log('ok mutacao handler Codex -> core direto: vermelho e bytes restaurados');
+}
+
+function validarComportamentoAdaptador() {
+  comRepositorioTemporario(({ caixa, repo, dados }) => {
+    const allowPayload = JSON.stringify(payloadCodex(repo, 'git status --short'));
+    validarAllow(executarAdaptador(repo, allowPayload, dados));
+    console.log('ok adaptador Codex: allow exit 0 e stdout vazio');
+
+    const denyPayload = JSON.stringify(payloadCodex(repo, 'git add -A'));
+    const core = rodar(process.execPath, [HOOK_COMPARTILHADO], {
+      cwd: repo, input: denyPayload, env: { ...process.env, RFM_ROOT: dados, CLAUDE_PROJECT_DIR: repo },
+    });
+    exige(core.status === 2 && (core.stderr || '').trim() !== '', 'core nao produziu recusa exit 2 com motivo');
+    validarDenyOficial(executarAdaptador(repo, denyPayload, dados), (core.stderr || '').trim());
+    console.log('ok adaptador Codex: deny oficial preserva motivo do core');
+
+    const fixtureDir = path.join(caixa, 'fixture-adaptador');
+    fs.mkdirSync(fixtureDir);
+    const adaptadorFixture = path.join(fixtureDir, 'codex-gate-staging-total.cjs');
+    fs.copyFileSync(HOOK_ADAPTADOR_CODEX, adaptadorFixture);
+    fs.writeFileSync(path.join(fixtureDir, 'gate-staging-total.cjs'),
+      "process.stderr.write('falha fixture inesperada\\n'); process.exit(7);\n", 'utf8');
+    validarDenyOficial(executarAdaptador(repo, allowPayload, dados, adaptadorFixture), MOTIVO_FALHA_SEGURA);
+    console.log('ok adaptador Codex: falha inesperada vira deny seguro');
+
+    const spawnDir = path.join(caixa, 'fixture-spawn');
+    fs.mkdirSync(spawnDir);
+    const adaptadorSpawn = path.join(spawnDir, 'codex-gate-staging-total.cjs');
+    const fonteAdaptador = fs.readFileSync(HOOK_ADAPTADOR_CODEX, 'utf8');
+    const chamadaSpawn = 'spawnSync(process.execPath,';
+    exige(fonteAdaptador.split(chamadaSpawn).length - 1 === 1,
+      'fixture de spawn nao encontrou chamada unica do core');
+    fs.writeFileSync(adaptadorSpawn, fonteAdaptador.replace(
+      chamadaSpawn,
+      "spawnSync(path.join(__dirname, 'node-inexistente'),",
+    ), 'utf8');
+    validarDenyOficial(executarAdaptador(repo, allowPayload, dados, adaptadorSpawn), MOTIVO_FALHA_SEGURA);
+    console.log('ok adaptador Codex: falha de spawn vira deny seguro');
+
+    const segredo = 'segredo-sentinela-nao-vazar';
+    const malformado = executarAdaptador(repo, `{"secret":"${segredo}"`, dados);
+    validarDenyOficial(malformado, MOTIVO_FALHA_SEGURA);
+    exige(!`${malformado.stdout || ''}${malformado.stderr || ''}`.includes(segredo),
+      'JSON malformado vazou payload sensivel');
+    console.log('ok adaptador Codex: JSON malformado vira deny seguro sem ecoar payload');
+  });
+}
+
+function contratoAdaptadorHook({ mutacao = true } = {}) {
+  const hooksPath = validarManifesto({ silencioso: true });
+  validarHookSeletivo(hooksPath);
+  validarAdaptadorFino();
+  validarComportamentoAdaptador();
+  if (mutacao) testarMutacaoHandler(hooksPath);
 }
 
 function executarModo() {
@@ -213,6 +406,14 @@ function executarModo() {
   }
   if (modo === '--contrato-skills') {
     validarSkillsCodex(path.join(RAIZ, 'skills'));
+    return;
+  }
+  if (modo === '--contrato-adaptador-hook') {
+    contratoAdaptadorHook();
+    return;
+  }
+  if (modo === '--interno-adaptador-hook') {
+    contratoAdaptadorHook({ mutacao: false });
     return;
   }
   exige(modo === undefined, `modo desconhecido: ${modo}`);

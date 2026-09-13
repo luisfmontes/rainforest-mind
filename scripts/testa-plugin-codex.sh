@@ -5,9 +5,29 @@
 set -u
 
 SRC="$(cd "${BASH_SOURCE[0]%/*}/.." && pwd)"
+SCRIPT="$SRC/scripts/testa-plugin-codex.cjs"
+NODE_BIN="node"
+if ! command -v "$NODE_BIN" >/dev/null 2>&1; then
+  WINDOWS_NODE='/mnt/c/Program Files/nodejs/node.exe'
+  if [ ! -x "$WINDOWS_NODE" ] || ! command -v wslpath >/dev/null 2>&1; then
+    printf 'FALHA node nao encontrado para a bateria Codex\n'
+    exit 1
+  fi
+  NODE_BIN="$WINDOWS_NODE"
+  SCRIPT="$(wslpath -w "$SCRIPT")"
+fi
 
-OUTPUT="$(node "$SRC/scripts/testa-plugin-codex.cjs" --contrato-manifesto)"
+OUTPUT_MANIFESTO="$("$NODE_BIN" "$SCRIPT" --contrato-manifesto)"
 STATUS=$?
+if [ "$STATUS" -ne 0 ]; then
+  printf '%s\n' "$OUTPUT_MANIFESTO"
+  exit "$STATUS"
+fi
+
+OUTPUT_ADAPTADOR="$("$NODE_BIN" "$SCRIPT" --contrato-adaptador-hook)"
+STATUS=$?
+OUTPUT="${OUTPUT_MANIFESTO}
+${OUTPUT_ADAPTADOR}"
 printf '%s\n' "$OUTPUT"
 
 if [ "$STATUS" -ne 0 ]; then
@@ -20,7 +40,15 @@ for MARKER in \
   'ok ancora corpo fechar:' \
   'ok ancora corpo modo-dev:' \
   'ok ancora corpo montar-corpus:' \
-  'ok ancora corpo regua:'
+  'ok ancora corpo regua:' \
+  'ok hook seletivo Codex: PreToolUse/Bash, 1 adaptador' \
+  'ok adaptador fino: stdin encaminhado ao core sem politica duplicada' \
+  'ok adaptador Codex: allow exit 0 e stdout vazio' \
+  'ok adaptador Codex: deny oficial preserva motivo do core' \
+  'ok adaptador Codex: falha inesperada vira deny seguro' \
+  'ok adaptador Codex: falha de spawn vira deny seguro' \
+  'ok adaptador Codex: JSON malformado vira deny seguro sem ecoar payload' \
+  'ok mutacao handler Codex -> core direto: vermelho e bytes restaurados'
 do
   case "$OUTPUT" in
     *"$MARKER"*) ;;
