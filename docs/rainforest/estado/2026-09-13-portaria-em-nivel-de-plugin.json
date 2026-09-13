@@ -6,10 +6,20 @@
     "status": "pendente"
   },
   "design": {
-    "status": "pendente"
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/2026-09-13-portaria-em-nivel-de-plugin.md",
+    "decisoes": 8,
+    "base": "fdc0a28f",
+    "head": "fd6da94d",
+    "em": "2026-09-13"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-09-13-portaria-em-nivel-de-plugin.md",
+    "tarefas": 9,
+    "base": "fdc0a28f",
+    "head": "fd6da94d",
+    "em": "2026-09-13"
   },
   "executar": {
     "status": "pendente"
