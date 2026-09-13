@@ -2,9 +2,9 @@
 
 **Data:** 2026-09-12
 **Fluxo:** `zerar-issues` (`docs/rainforest/estado/zerar-issues.json`)
-**Estagio:** `executar` REABERTO (o `revisar` reprovou com 5 achados)
+**Estagio:** `fechar` — a rodada 2 (mesma data, a noite) fechou o resto: 33 tarefas, catraca 29 vermelho / 4 n/a, duas passadas de revisor, PR da branch aberto. Ver a secao "Rodada 2" no fim.
 **Worktree do fluxo:** `C:\Projetos\rainforest-mind\.claude\worktrees\fluxo-zerar-issues`
-(branch `fluxo/zerar-issues`, ponta `a28d58db` + o commit de estado `c90a0c30`)
+(branch `fluxo/zerar-issues`; a ponta da rodada 1 era `a28d58db` + `c90a0c30`, a da rodada 2 e' o ultimo commit do PR)
 
 ## O que ja esta na main
 

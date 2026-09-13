@@ -316,16 +316,15 @@
     }
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "91db707155d6cfe3aa5dbf8b93d2330b587ea2db",
+      "head": "f1225a97a1360276d598669c2322abb97d0a92d2",
       "caminhos_sujos": []
     },
-    "em_voo": [],
-    "base": "10251507cb03a26adc1bd5b65a84d3d4fc7fabce",
-    "head": "a28d58db6898b7d45db2e30049205692d16e96d5",
+    "base": "a338dd02ad495f87a66d84af2ab24eab3d2660b8",
+    "head": "f1225a97a1360276d598669c2322abb97d0a92d2",
     "em": "2026-09-12",
-    "achados": 3,
+    "achados": 1,
     "lista": [
       "CRITICO T9/T21 estado.cjs:1237 chama conferir-fluxo mutacoes sem --plano; o subprocesso resolve <slug>.md fixo e ignora plano.arquivo. O comentario acima diz que o defeito foi corrigido, mas a correcao so alcancou o existsSync. Fluxo com plano de outro nome nunca fecha verificar; com colisao de nome, valida o plano errado em silencio. O caso t6b de testa-estado.sh passa pelo motivo errado",
       "ALTO creep: 18 arquivos testa-*.sh no diff sem tarefa no plano — conferir-fluxo creep sai 2. Sao as conversoes de idioma que a T10 fez alem dos 11 que ela declara, mais a copia de scripts/lib que vazou da T20 para testa-divergencias e testa-ideias",
@@ -333,8 +332,7 @@
       "ALTO T10 a guarda testa-sandbox-com-trap tem tres buracos demonstrados por execucao: trap com corpo que nao remove nada passa; SANDBOXES em comentario passa; mktemp -d dentro de funcao chamada duas vezes conta como uma ocorrencia estatica",
       "MODERADO T13 testa-ferramentas-consulta linhas 274-286 e 312-324: EXIT=$? captura o exit do unset, nao o do node do hook. unset sempre sai 0, entao a assercao exit 0 (D10) nunca pode falhar"
     ],
-    "tentativas": 2,
-    "criterio": "revisor independente (sonnet) sobre a338dd02...91db7071: APROVADO com 3 achados nao bloqueantes que a janela decide fechar antes do PR",
+    "criterio": "duas passadas de revisor independente (sonnet): a338dd02...91db7071 APROVADO com 3 achados nao bloqueantes, fechados em executar; delta 91db7071...f1225a97 APROVADO com 1 observacao (sem caso automatizado para o ramo arquivos.length === 0 do gate-verificador-staged), aceita como divida registrada",
     "faltou": [
       "T28/D24: casos (a) e (b) do pronto quando ausentes em scripts/testa-conferir-mutacao.sh",
       "gate-verificador-staged.cjs: process.exit(0) dentro do try nao roda o finally e vaza a pasta rfm-staged-* quando arquivos.length === 0",
@@ -342,7 +340,10 @@
     ]
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "for t in scripts/testa-*.sh hooks/testa-*.sh; do bash \"$t\"; done (laco do CONTRIBUTING, arvore f1225a97, 114 baterias); depois testa-dependencias-de-bateria, testa-config e testa-memoria-somente-leitura isoladas na arvore d0a3af00; node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues (rodado pelo proprio marcar)",
+    "saida": "TOTAL 114 baterias, 3 vermelha(s) no laco: testa-dependencias-de-bateria (python pelo nome no caso 20) e testa-config (7 -> 8 gates) consertadas e re-rodadas verdes (6 ok; 45 ok); testa-memoria-somente-leitura 26 ok / 3 falhas IGUAL na main a338dd02 — foco-session-start.cjs leva 6-8 s nesta maquina contra timeout 5 do hooks.json, pre-existente e fora desta mudanca",
+    "em": "2026-09-12"
   },
   "fechar": {
     "status": "pendente"
