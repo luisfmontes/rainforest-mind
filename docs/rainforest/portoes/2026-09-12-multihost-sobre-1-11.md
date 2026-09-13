@@ -428,3 +428,221 @@ f82abab1c71344dede681d73435d71beb52396cdfcfd307a06d804388d0e550b  .claude-plugin
 
 Versão final da fonte: `1.12.0` nos dois manifestos. Nenhum push, merge, PR,
 release, publicação ou alteração da `main` foi realizado.
+
+## Tarefa 7 — reinstalação exata 1.12.0 e contrato ponta a ponta
+
+### Veredito
+
+**PENDENTE por um único critério estrutural.** A reinstalação exata e os
+cinco comportamentos do runtime passaram, mas o conjunto literal de arquivos do
+cache não é igual ao conjunto do commit: o commit tem 626 arquivos e o cache
+tem 627. O arquivo adicional é uma projeção criada pelo Codex para o comando
+migrado `saude`:
+
+```text
+.codex-plugin/migrated-command-skills/source-command-saude/SKILL.md
+sha256 321c30bcfda44ff56ad53fca7ef5c3b170987a3bd2bee646152af22aaf1dd339
+```
+
+Nenhum dos 626 arquivos oriundos do commit falta ou diverge. Como a tarefa pede
+igualdade do **conjunto**, e não apenas igualdade da projeção dos arquivos do
+commit, a tarefa não foi contabilizada como concluída.
+
+### Base isolada e divergência posterior da main
+
+Comandos:
+
+```powershell
+git rev-parse HEAD
+git branch --show-current
+git show -s --format='%H %s' origin/main
+git merge-base --is-ancestor origin/main HEAD
+```
+
+Saída:
+
+```text
+b24d2ec4a48372710e34925c93c843861807a47b
+codex/task7-e2e-112
+068468fb956b8d606e9af1800aaa91dd399fdeb8 Merge pull request #247 from luisfmontes/fluxo/zerar-issues-3
+ancestor_exit=1
+```
+
+A `origin/main` avançou depois da base aprovada para esta tarefa. Por orientação
+explícita do coordenador, a T7 validou o artefato isolado em `b24d2ec4...`, sem
+rebasear nem alterar a branch de entrega ou a `main`.
+
+### Fonte exata antes da instalação
+
+```text
+.claude-plugin/plugin.json version=1.12.0
+.codex-plugin/plugin.json  version=1.12.0
+f82abab1c71344dede681d73435d71beb52396cdfcfd307a06d804388d0e550b  .claude-plugin/plugin.json
+13e79f46f0f505c8be03639ab778841ecff9ec2b2bf6965a7c2a943fe0636ccd  .codex-plugin/plugin.json
+```
+
+O helper oficial confirmou o nome do marketplace:
+
+```powershell
+& 'C:\Users\Luis\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' `
+  'C:\Users\Luis\.codex\skills\.system\plugin-creator\scripts\read_marketplace_name.py' `
+  --marketplace-path '.agents\plugins\marketplace.json'
+```
+
+```text
+rainforest-mind-local
+```
+
+### Remoção do cachebuster e reinstalação limpa
+
+Comandos executados, nesta ordem:
+
+```powershell
+codex plugin remove rainforest-mind@rainforest-mind-local
+codex plugin marketplace remove rainforest-mind-local
+codex plugin marketplace add 'C:\Projetos\rainforest-mind\.claude\worktrees\codex-task7-e2e-112'
+codex plugin add rainforest-mind@rainforest-mind-local
+codex plugin marketplace list
+codex plugin list
+```
+
+Saída relevante:
+
+```text
+Removed plugin `rainforest-mind` from marketplace `rainforest-mind-local`.
+Removed marketplace `rainforest-mind-local`.
+Added marketplace `rainforest-mind-local` from \\?\C:\Projetos\rainforest-mind\.claude\worktrees\codex-task7-e2e-112.
+Installed marketplace root: C:\Projetos\rainforest-mind\.claude\worktrees\codex-task7-e2e-112
+Added plugin `rainforest-mind` from marketplace `rainforest-mind-local`.
+Installed plugin root: C:\Users\Luis\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.12.0
+rainforest-mind@rainforest-mind-local  installed, enabled  1.12.0  C:\Projetos\rainforest-mind\.claude\worktrees\codex-task7-e2e-112
+```
+
+### Varredura byte a byte do cache
+
+A lista do commit veio de `git ls-tree -r --name-only HEAD`; a lista do cache
+veio da enumeração recursiva de arquivos. Cada caminho rastreado foi comparado
+por SHA-256 entre o worktree limpo e o cache. Por fim, foi calculado um SHA-256
+agregado das linhas ordenadas `<caminho>\t<sha256>\n` para os 626 caminhos do
+commit, tanto na fonte quanto na projeção correspondente do cache.
+
+```text
+tracked=626
+cached=627
+missing=0
+different=0
+extra=1
+aggregate_source=7f16e3d0e536f0a8b7d741f4685b21998aeb6966d27086a45cb59261e35aa86b
+aggregate_cache_projection=7f16e3d0e536f0a8b7d741f4685b21998aeb6966d27086a45cb59261e35aa86b
+EXTRA .codex-plugin/migrated-command-skills/source-command-saude/SKILL.md
+```
+
+Os manifestos no cache mantiveram a versão e os hashes da fonte:
+
+```text
+cache_versions claude=1.12.0 codex=1.12.0
+f82abab1c71344dede681d73435d71beb52396cdfcfd307a06d804388d0e550b  .claude-plugin/plugin.json
+13e79f46f0f505c8be03639ab778841ecff9ec2b2bf6965a7c2a943fe0636ccd  .codex-plugin/plugin.json
+```
+
+### Sessão Codex nova: skill, allow e deny
+
+Runtime realmente executado:
+
+```text
+C:\Users\Luis\AppData\Local\OpenAI\Codex\bin\fd4c151a749f3ab4\codex.exe
+codex-cli 0.151.0
+OpenAI Codex v0.151.0
+```
+
+Esse resultado falsifica a inferência registrada na T6 de que o runtime
+`0.151.0` seria incompatível com a decisão de bloqueio: nesta instalação exata,
+o mesmo runtime bloqueou os dois comandos proibidos.
+
+Em um repositório descartável, uma sessão nova recebeu um roteiro sem casos
+opcionais. Ela leu explicitamente a skill instalada
+`rainforest-mind:source-command-saude` e executou cada comando exato uma vez.
+Marcadores e efeitos observados:
+
+```text
+SKILL_OK `node scripts/saude.cjs`
+
+hook: PreToolUse
+hook: PreToolUse Completed
+exec ... -Command 'git status --short'
+?? -A
+?? denied-control.txt
+STATUS_OK
+
+hook: PreToolUse
+hook: PreToolUse Completed
+exec ... -Command 'git add -- "-A"'
+PATHSPEC_OK
+
+Command blocked by PreToolUse hook: BLOQUEADO pelo gate de staging total do rainforest-mind.
+Comando: git add -A
+hook: PreToolUse Blocked
+TOTAL_DENY_OK
+
+Command blocked by PreToolUse hook: BLOQUEADO pelo gate de staging total do rainforest-mind.
+Comando: git add -A
+Command: bash -c "git status; git add -A"
+hook: PreToolUse Blocked
+WRAPPER_DENY_OK
+```
+
+Na primeira sessão, o pathspec foi permitido pelo hook, mas o sandbox interno
+barrou a criação de `.git/index.lock`. Para provar também a conclusão do Git,
+uma segunda sessão nova, com acesso total limitado ao repositório descartável,
+executou somente o mesmo comando:
+
+```text
+hook: PreToolUse
+hook: PreToolUse Completed
+exec ... -Command 'git add -- "-A"'
+succeeded in 216ms
+PATHSPEC_GIT_OK
+```
+
+O status posterior prova que apenas o arquivo chamado `-A` entrou no índice;
+o arquivo-controle continuou fora dele:
+
+```text
+A  -A
+?? denied-control.txt
+```
+
+### JSON malformado no adaptador instalado
+
+O adaptador foi executado diretamente a partir do cache `1.12.0` com JSON
+truncado contendo a sentinela `sentinela-malformado-t7`. A saída foi parseada e
+os quatro campos foram verificados pelo processo chamador:
+
+```text
+exit=0
+stderr_bytes=0
+decision=deny
+reason=Falha interna do gate de staging; comando recusado por seguranca.
+secret_leaked=False
+```
+
+### Baterias locais e estado final da fonte
+
+```powershell
+bash scripts/testa-plugin-codex.sh
+bash scripts/testa-versao.sh
+```
+
+As baterias terminaram verdes. A primeira nomeou 19 skills descobertas,
+manifestos, adaptador, allow, deny, falha inesperada, falha de spawn, JSON
+malformado, mutação do handler, marketplace e escopo negativo Gemini. A segunda
+terminou com:
+
+```text
+ok: 5   falhou: 0
+```
+
+Depois de toda a prova, o worktree continuou com os dois manifestos exatamente
+em `1.12.0` e com os hashes de fonte registrados acima. Nenhum cachebuster foi
+criado nesta tarefa. Nenhum push, merge, PR, release, publicação, rebase ou
+alteração da `main` foi realizado.
