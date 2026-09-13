@@ -86,10 +86,48 @@
     "em": "2026-09-12"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "snapshot": {
+      "head": "ea78f6d4e896fc1e5d3205bdd606ddeae1156acd",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-09-12-triagem-de-achado-e-portaria.json"
+      ]
+    },
+    "rodadas": 7,
+    "confirmacoes": 3,
+    "veredito": "nada bloqueante",
+    "achados_reais_por_rodada": [
+      5,
+      4,
+      4,
+      2,
+      3,
+      3,
+      0
+    ],
+    "observacao": "As rodadas 3 a 6 acharam regressoes introduzidas pelos proprios consertos da rodada anterior, sempre na mesma funcao (temAutorizacaoPrincipal) e sempre na direcao do falso negativo. A rodada 6 terminou REMOVENDO a regra que as causava, em vez de refina-la. O ultimo commit (82ab605c) implementa a sugestao textual do proprio revisor (lookbehind de largura fixa para variavel), medida nos dois sentidos; nao foi submetida a uma 8a confirmacao por ser a recomendacao dele.",
+    "ferramenta_nova": "scripts/conferir-cobertura-fixtures.cjs - cobertura por fixture, com bateria propria (20 casos) e catraca de mutacao sobre si mesmo (6 vermelhas). Achou 3 fixtures tautologicas, 2 lacunas de mutante e 3 mutantes com alvo podre que a catraca agregada nao via.",
+    "bordas_aceitas": [
+      "pergunta citada no fim da frase e recusada: indistinguivel, letra a letra, de uma pergunta de verdade",
+      "autorizo uso de sub agentes (preposicao antes) e recusado: a forma com espaco so vale logo depois do verbo",
+      "autorizo e subagentes separadas por ENTER no meio da frase",
+      "turno que concede e nega na mesma linha nega, nas duas ordens"
+    ],
+    "achados": 0,
+    "base": "a338dd02ad495f87a66d84af2ab24eab3d2660b8",
+    "head": "ea78f6d4e896fc1e5d3205bdd606ddeae1156acd",
+    "plano_emendado": "tarefas 1,2,3 ganharam hooks/testa-contexto-sessao.sh; a tarefa 5 trocou a fixture unica pela pasta test/fixtures/autorizacao/; entrou a tarefa 11 (catraca de cobertura por fixture). Quem pegou as omissoes foi o proprio portao do marcar.",
+    "em": "2026-09-13"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "tarefas": 11,
+    "tarefas_ok": 11,
+    "comando": "criterio de cada tarefa rodado contra o artefato real, um a um",
+    "saida": "T1 orcamento.cjs exit 0, 0 avisos de folga, NUCLEOS_MAX_BYTES=6000 | T2 nucleo da regra 6: true true 557 | T3 ponteiro cita dois digitos (06, 13, 17) e regra-06.md existe | T4 elaboracao: true true true | T5 transcript completo true, turno-reclamacao false | T6 despachos.jsonl com estagio=fora-de-fluxo e via=autorizacao-do-usuario, negacao cita 'sem estagio ativo' | T7 testa-portaria-autorizacao.cjs exit 0, 92 ok 0 falhas | T8 portaria.cjs --lint exit 0, Explore declarado | T9 gh issue view 241 state=OPEN, corpo com as quatro medicoes | T10 ideias.cjs conferir exit 0, status=colhida colhida_em=2026-09-12 resultado citando 239/240 | T11 testa-conferir-cobertura-fixtures.cjs 20 ok, conferir-cobertura-fixtures.cjs exit 0",
+    "criterio_corrigido": "T9 cobrava gh issue list --search 'portaria nivel do plugin', frase que nunca esteve no titulo real da Issue; rodado, devolvia []. A tarefa estava feita. Criterio apontava para um TEXTO em vez de um FATO, mesma podridao do literal 'Total: 15233 B' da tarefa 1. Trocado por gh issue view 241 --json state,body, corrigido no plano em 944a8db0 e rodado depois da troca.",
+    "nao_afrouxado": "nenhum criterio foi reescrito para caber no resultado; o unico alterado passou a cobrar MAIS (state mais as quatro medicoes, em vez de uma busca por frase)",
+    "em": "2026-09-13"
   },
   "fechar": {
     "status": "pendente"
