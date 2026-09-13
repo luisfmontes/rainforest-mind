@@ -68,7 +68,10 @@
     "em": "2026-09-13"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "for t in scripts/testa-*.sh hooks/testa-*.sh; do bash \"$t\"; done (laco do CONTRIBUTING, desanexado por Start-Process, sobre a arvore 301053d0); node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues-3 --plano (rodado pelo proprio marcar)",
+    "saida": "TOTAL 115 baterias, 1 vermelha(s) — vermelhas: 1    803s scripts/testa-saude.sh | == resultado: 66 ok, 1 falha(s) ==. testa-saude.sh re-rodada isolada em seguida: 67 ok, 0 falha(s) (exit 0) — a falha do laco nao reproduz e a bateria nao toca arquivo desta rodada; laco anterior desta branch (arvore 3a9f18ef+) deu 115 baterias, 0 vermelha. Placares das baterias tocadas: testa-gate-fechar-issue 151 ok, testa-principal-atrasado 24 ok, testa-exporta-hooks-sessao-start 7 ok, testa-memoria-somente-leitura 29 ok (era 26 ok / 3 falhas nesta maquina na main). foco-session-start.cjs com preload: 4 chamadas externas em ~0,4 s (antes 324 em 7,8 s)",
+    "em": "2026-09-13"
   },
   "fechar": {
     "status": "pendente"
