@@ -1,6 +1,6 @@
 {
   "slug": "2026-09-12-multihost-sobre-1-11",
-  "titulo": "Reaplicar a adaptação multihost sobre o Rainforest Mind 1.11",
+  "titulo": "Reaplicar a adaptação multihost sobre o Rainforest Mind 1.12 (slug iniciado em 1.11)",
   "criado_em": "2026-09-12",
   "arqueologia": {
     "status": "pendente"
@@ -27,21 +27,21 @@
     "carimbos": [
       {
         "tarefa": 1,
-        "hash_base": "5bde1d66ff7a6db668e5d889fc9bdd34f66d82be",
+        "hash_base": "4d4c0cbddd4b66045a1cd7def1e12b9f4d24b4d0",
         "iteracao": 1,
         "sessao": "desconhecida",
         "ts": "2026-09-12T20:17:50.631Z"
       },
       {
         "tarefa": 2,
-        "hash_base": "4028a28513d6ecc7247fe3d76c673a0928a0dd09",
+        "hash_base": "771a0ee1047dea93099ea099772185ec0ead9d7c",
         "iteracao": 1,
         "sessao": "desconhecida",
         "ts": "2026-09-12T20:31:43.880Z"
       },
       {
         "tarefa": 3,
-        "hash_base": "d3416e50f73c7124675dd6ae341b9eb65248a4d6",
+        "hash_base": "9f3abc1656af827decb39771e97d562185438dcb",
         "iteracao": 1,
         "sessao": "desconhecida",
         "ts": "2026-09-13T02:39:16.131Z"
