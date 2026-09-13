@@ -55,20 +55,17 @@
     ]
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "8166c2a8d250f77a98b90b7c0e4bc062d2b227b5",
-      "caminhos_sujos": [
-        "docs/rainforest/estado/zerar-issues-3.json"
-      ]
+      "head": "c3a278117d8dc309713c748460b3cc008a749a55",
+      "caminhos_sujos": []
     },
     "base": "cf1ad768",
-    "head": "8166c2a8",
+    "head": "c3a27811",
     "achados": [
-      "Oitava passada: APROVADO pela regua (nenhuma regressao contra cf1ad768; os 5 da setima CONSERTADOS). Aviso pre-existente grave que a integracao decidiu consertar antes do PR: o ramo <<< nao empurrava o texto para TEXTOS_DE_HEREDOC — `cat <<<'gh issue close 12' > s.sh` + `bash s.sh` executa e saia 0 (na main tambem). Incidente do revisor registrado: um `export PATH` quebrado deixou o gh real rodar `gh issue close 12` contra o repo; #12 ja estava fechado desde 2026-08-17, sem efeito."
+      "Nove passadas do revisor independente (sonnet). Reprovacoes 1-7 e o aviso da 8a consertados na branch, cada um com caso de bateria e re-verificacao pela integracao: escape na linha do heredoc; SANDBOX_E colidido e sem contagem (bateria do radar); caso (f) apagado; <<- fecha sem TABs; <<< nao e heredoc; here-string para interpretador; interpretador atras de wrapper; escapes no here-string nu; agrupamento/pipe para interpretador; continuacao de linha; corpo executado por caminho indireto (texto varrido); here-string para sumidouro. 8a e 9a: APROVADO — nenhuma regressao contra cf1ad768, prosa de heredoc passa. Pre-existentes registrados, fora desta rodada: python/node/perl - <<EOF com chamada entre aspas; gh issue edit --state closed; gh api PATCH. Incidente da 8a: gh real rodou `gh issue close 12` por PATH quebrado do revisor; #12 ja fechado desde 2026-08-17, sem efeito."
     ],
-    "em": "2026-09-13",
-    "tentativas": 8
+    "em": "2026-09-13"
   },
   "verificar": {
     "status": "pendente"
