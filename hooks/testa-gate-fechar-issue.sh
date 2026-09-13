@@ -1655,6 +1655,53 @@ EXIT_CC=$?
 	EXIT_DF=$?
 	[ $EXIT_DF -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_DF)"
 
+	# Quinta revisão do zerar-issues-3 (2026-09-13): o interpretador pode vir
+	# atrás de um wrapper que repassa stdin; o primeiro token era `env`, não
+	# batia na lista, e o corpo virava dado (na main esses casos saíam 2).
+	# Caso (dg): env bash <<'EOF' com gh no corpo → exit 2
+	echo
+	echo "== (dg) env bash <<'EOF' com gh issue close no corpo → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"env bash <<'EOF'\\ngh issue close 12\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-dg"
+	EXIT_DG=$?
+	[ $EXIT_DG -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DG)"
+
+	# Caso (dh): timeout 5 bash <<<'gh issue close 12' → exit 2
+	echo
+	echo "== (dh) timeout 5 bash <<<'gh issue close 12' → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"timeout 5 bash <<<'gh issue close 12'\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-dh"
+	EXIT_DH=$?
+	[ $EXIT_DH -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DH)"
+
+	# Caso (di): bash <<<gh\ issue\ close\ 12 (palavra nua com escapes) → exit 2
+	echo
+	echo "== (di) here-string nu com espacos escapados para bash → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"bash <<<gh\\\\ issue\\\\ close\\\\ 12\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-di"
+	EXIT_DI=$?
+	[ $EXIT_DI -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DI)"
+
+	# Caso (dj): env cat <<'EOF' com gh no corpo continua dado → exit 0
+	echo
+	echo "== (dj) env cat <<'EOF' com gh no corpo (sumidouro atras de wrapper) → exit 0 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"env cat <<'EOF'\\ngh issue close 12\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-dj"
+	EXIT_DJ=$?
+	[ $EXIT_DJ -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_DJ)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

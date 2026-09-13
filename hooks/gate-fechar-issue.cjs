@@ -212,7 +212,21 @@ function extrairComandoDoHeredoc(cmd, i) {
     inicioComando++;
   }
 
-  // Extrair o comando até espaço, tab ou fim
+  // Quinta revisão do zerar-issues-3 (2026-09-13): o comando que recebe o
+  // heredoc pode vir atrás de um wrapper que repassa stdin (`env bash`,
+  // `command bash`, `nohup bash`, `timeout 5 bash`, `sudo bash`) — o primeiro
+  // token literal era `env`, nunca batia na lista de interpretadores, e o
+  // corpo virava dado. Mesma resolução de wrapper que o resto do gate usa
+  // (`posicaoDeComando`, de lib/tokens-comando.cjs).
+  const trecho = textoAteHeredoc.slice(inicioComando);
+  let toks = null;
+  try { toks = tokensComAspas(trecho); } catch { toks = null; }
+  if (toks && toks.length) {
+    const pos = posicaoDeComando(toks);
+    if (pos !== null) return normalizarExecutavel(toks[pos].v);
+  }
+
+  // Sem tokens legíveis: o primeiro token literal, como antes
   let comando = '';
   for (let k = inicioComando; k < textoAteHeredoc.length && textoAteHeredoc[k] !== ' ' && textoAteHeredoc[k] !== '\t' && textoAteHeredoc[k] !== '\n'; k++) {
     comando += textoAteHeredoc[k];
@@ -344,7 +358,12 @@ function segmentosParaGate(cmd) {
         while (k < cmd.length && cmd[k] !== aspa) { conteudo += cmd[k]; k++; }
         if (k < cmd.length) k++; // fecha a aspa
       } else {
-        while (k < cmd.length && !/[\s;&|]/.test(cmd[k])) { conteudo += cmd[k]; k++; }
+        // Palavra nua: `\` escapa o caractere seguinte (`gh\ issue\ close`
+        // é UMA palavra com espaços para o bash — quinta revisão).
+        while (k < cmd.length && !/[\s;&|]/.test(cmd[k])) {
+          if (cmd[k] === '\\' && k + 1 < cmd.length) { conteudo += cmd[k + 1]; k += 2; continue; }
+          conteudo += cmd[k]; k++;
+        }
       }
       if (INTERPRETADORES_DE_HEREDOC.includes(extrairComandoDoHeredoc(cmd, i))) {
         for (const sub of segmentosParaGate(conteudo)) {
