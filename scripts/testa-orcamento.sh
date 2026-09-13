@@ -100,16 +100,27 @@ igual "total neutro nao muda (neutralizacao provada, independente de raiz altern
 
 # ------------------------------------------------- 1c. valores congelados (D6)
 echo; echo "1c. valores congelados (D6) — constantes no teto nao mudam"
-NUCLEOS_CHECK="$(grep -c 'NUCLEOS_MAX_BYTES: 5600' "$SRC/hooks/lib/contexto-sessao.cjs" 2>/dev/null || echo 0)"
-ORCAMENTO_CHECK="$(grep -c 'ORCAMENTO_BYTES: 8000' "$SRC/hooks/lib/contexto-sessao.cjs" 2>/dev/null || echo 0)"
-FOCO_MAX_CHECK="$(grep -c 'FOCO_MAX_BYTES: 2600' "$SRC/hooks/lib/contexto-sessao.cjs" 2>/dev/null || echo 0)"
-FOCO_MIN_CHECK="$(grep -c 'FOCO_MIN_BYTES: 700' "$SRC/hooks/lib/contexto-sessao.cjs" 2>/dev/null || echo 0)"
-TETO_AGREGADO_CHECK="$(grep -c '|| 15000' "$SRC/scripts/orcamento.cjs" 2>/dev/null || echo 0)"
+# `grep -c` ja imprime 0 quando nao casa, e sai 1 -- entao o `|| echo 0` que
+# estava aqui somava um SEGUNDO zero, e a variavel virava duas linhas de "0",
+# que o `-ge` abaixo recusa com "integer expression expected". A constante
+# sumida falhava por erro de sintaxe, nao por assercao. Arquivo ausente e o
+# unico caso de saida vazia, e o `:-0` cobre ele.
+congelado() {
+  local n
+  n="$(grep -c "$1" "$2" 2>/dev/null | head -1)"
+  printf '%s' "${n:-0}"
+}
+
+NUCLEOS_CHECK="$(congelado 'NUCLEOS_MAX_BYTES: 6000' "$SRC/hooks/lib/contexto-sessao.cjs")"
+ORCAMENTO_CHECK="$(congelado 'ORCAMENTO_BYTES: 8000' "$SRC/hooks/lib/contexto-sessao.cjs")"
+FOCO_MAX_CHECK="$(congelado 'FOCO_MAX_BYTES: 2600' "$SRC/hooks/lib/contexto-sessao.cjs")"
+FOCO_MIN_CHECK="$(congelado 'FOCO_MIN_BYTES: 700' "$SRC/hooks/lib/contexto-sessao.cjs")"
+TETO_AGREGADO_CHECK="$(congelado '|| 15600' "$SRC/scripts/orcamento.cjs")"
 
 if [ "$NUCLEOS_CHECK" -ge 1 ] && [ "$ORCAMENTO_CHECK" -ge 1 ] && [ "$FOCO_MAX_CHECK" -ge 1 ] && [ "$FOCO_MIN_CHECK" -ge 1 ] && [ "$TETO_AGREGADO_CHECK" -ge 1 ]; then
-  ok=$((ok+1)); echo "  ok   D6: constantes congeladas (agregado revisado em 2026-08-25, Issue #74)"
+  ok=$((ok+1)); echo "  ok   D6: constantes congeladas (nucleos 6000 e agregado 15600 desde 2026-09-12, commit 2f385e00)"
 else
-  falhou=$((falhou+1)); echo "  FALHA D6: constantes mudaram. tetoFoco real e 1.841 B contra 2.600 nominais (nucleos comeram); NUCLEOS=$NUCLEOS_CHECK, ORCAMENTO=$ORCAMENTO_CHECK, FOCO_MAX=$FOCO_MAX_CHECK, FOCO_MIN=$FOCO_MIN_CHECK, TETO_AGR=$TETO_AGREGADO_CHECK"
+  falhou=$((falhou+1)); echo "  FALHA D6: constantes mudaram. Subir teto e decisao, nao efeito colateral -- se foi de proposito, atualize os literais AQUI com a medicao no corpo do commit; NUCLEOS=$NUCLEOS_CHECK, ORCAMENTO=$ORCAMENTO_CHECK, FOCO_MAX=$FOCO_MAX_CHECK, FOCO_MIN=$FOCO_MIN_CHECK, TETO_AGR=$TETO_AGREGADO_CHECK"
 fi
 
 # ------------------------------------------------- 1d. banda de aviso — avisos nao disparam exit 1
