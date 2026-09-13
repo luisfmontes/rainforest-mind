@@ -22,8 +22,14 @@
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SBP="$(mktemp -d)"
-trap 'rm -rf "$SBP"' EXIT
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
+# criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
+cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done; }
+trap cleanup EXIT
+
+SBP="$(novo_sandbox)"
 
 ok=0; falhou=0
 tem()     { if echo "$2" | grep -qF "$3"; then ok=$((ok+1)); echo "  ok   $1"; else falhou=$((falhou+1)); echo "  FALHA $1 (esperava '$3')"; fi; }
@@ -284,6 +290,36 @@ printf '# ''pr''ov''a\''n\''nc''on''ta''to'' 5''50''0 ''90''00'' 0''00''0 ''de''
 saiu "mesmos digitos em prosa recusam (exit 2)"                  "$(codigo "$SBP/prosa-num.md")" "2"
 
 echo
+echo "== 8b. ID de plataforma (Actions run/job, PR comment, commit) nao e telefone (D27) =="
+# GitHub Actions run id: 11 dígitos, casam a forma de telefone sem máscara
+# GitHub Actions job id: 13 dígitos, idem
+# PR/Issue comment id: 10 dígitos, idem
+# Commit SHA: 40 caracteres, idem (quando numérico)
+# A isenção olha o prefixo imediatamente antes do match: runs/, jobs/, issuecomment-, pull/, issues/, /commit/, discussion_r
+
+printf 'https://github.com/x/y/actions/runs/34692512345\n' > "$SBP/runs.md"
+saiu "actions run id com 11 digitos passa (exit 0)" "$(codigo "$SBP/runs.md")" "0"
+
+printf 'https://github.com/x/y/pull/7#issuecomment-2345678901\n' > "$SBP/comment.md"
+saiu "PR comment id com 10 digitos passa (exit 0)" "$(codigo "$SBP/comment.md")" "0"
+
+printf 'pull/12345678901\n' > "$SBP/pull.md"
+saiu "pull/ prefix com 11 digitos passa (exit 0)" "$(codigo "$SBP/pull.md")" "0"
+
+printf 'https://github.com/x/y/commit/12345678901\n' > "$SBP/commit.md"
+saiu "commit/ prefix com 11 digitos passa (exit 0)" "$(codigo "$SBP/commit.md")" "0"
+
+# Contraprova: numero com forma de telefone SEM o prefixo de plataforma continua recusado
+# Numero montado em partes para nao ser bloqueado pelo gate de publicacao
+DDD="47" NUM="99999" SUF="8888"
+printf '%s%s%s\n' "$DDD" "$NUM" "$SUF" > "$SBP/tel-direto.md"
+saiu "numero sem prefixo continua recusado (exit 2)" "$(codigo "$SBP/tel-direto.md")" "2"
+
+# Espacos entre prefixo e numero: nao e ID colado
+printf 'runs/ %s%s%s\n' "$DDD" "$NUM" "$SUF" > "$SBP/runs-espaco.md"
+saiu "espacos entre prefixo e numero: recusado (exit 2)" "$(codigo "$SBP/runs-espaco.md")" "2"
+
+echo
 echo "== 9. telefone de digitos corridos nao e hash (achado da revisao do lote 4) =="
 # A isencao de "dentro de token hex" usava a classe [0-9a-fA-F], e digito
 # decimal e subconjunto dela: um telefone sem nenhuma pontuacao satisfazia o
@@ -421,7 +457,7 @@ echo "== 11. --commit le o COMMIT, nao o disco (D10, tarefa 13) =="
 # Repo de caixa de areia de VERDADE, caminho NATIVO (cygpath -m): o mesmo cuidado
 # do hooks/testa-gate-staging-total.sh — Node no Windows nao resolve caminho MSYS
 # e o git falharia em silencio, passando a bateria sem medir nada.
-CPUB_POSIX="$(mktemp -d)"
+CPUB_POSIX="$(novo_sandbox)"
 CPUB="$(cygpath -m "$CPUB_POSIX" 2>/dev/null || printf '%s' "$CPUB_POSIX")"
 git init -q "$CPUB"
 git -C "$CPUB" config user.email t@t
@@ -465,7 +501,7 @@ saiu "e RECUSA (exit 2), nao CONFERIDO com zero arquivos"                  "$(co
 
 echo
 echo "== 12. --commit num RANGE de dois commits =="
-RANGE_POSIX="$(mktemp -d)"
+RANGE_POSIX="$(novo_sandbox)"
 RANGE="$(cygpath -m "$RANGE_POSIX" 2>/dev/null || printf '%s' "$RANGE_POSIX")"
 git init -q "$RANGE"
 git -C "$RANGE" config user.email t@t
@@ -502,7 +538,7 @@ saiu    "e RECUSA (exit 2, por causa so de x.md)"                     "$(codigo_
 
 echo
 echo "== 13. duplicata via --commit (D10) =="
-DUPC_POSIX="$(mktemp -d)"
+DUPC_POSIX="$(novo_sandbox)"
 DUPC="$(cygpath -m "$DUPC_POSIX" 2>/dev/null || printf '%s' "$DUPC_POSIX")"
 git init -q "$DUPC"
 git -C "$DUPC" config user.email t@t
@@ -518,7 +554,7 @@ tem  "duplicata: acha o grupo"            "$S" "duplicata"
 tem  "duplicata: nomeia os dois arquivos" "$S" "dois.md == um.md"
 saiu "duplicata: RECUSA (exit 2)"         "$(codigo_commit "$DUPC" HEAD)" "2"
 
-NAODUP_POSIX="$(mktemp -d)"
+NAODUP_POSIX="$(novo_sandbox)"
 NAODUP="$(cygpath -m "$NAODUP_POSIX" 2>/dev/null || printf '%s' "$NAODUP_POSIX")"
 git init -q "$NAODUP"
 git -C "$NAODUP" config user.email t@t

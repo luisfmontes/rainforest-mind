@@ -71,7 +71,7 @@ const FERRAMENTAS_DE_ESCRITA = new Set(["Write", "Edit", "MultiEdit", "NotebookE
 // Subcomandos de git que mexem no estado do checkout. `git stash`/`pop` foi a falha N1.
 const VERBOS_QUE_MEXEM = new Set([
   "stash", "checkout", "switch", "co", "reset", "merge", "rebase",
-  "commit", "clean", "cherry-pick", "revert",
+  "commit", "clean", "cherry-pick", "revert", "restore",
 ]);
 // Opcoes globais do git, as que vem ANTES do subcomando. As de valor separado
 // (`-C <dir>`, `-c <k=v>`) precisam comer o proprio argumento, senao o valor delas
@@ -176,6 +176,45 @@ const FLAGS_DE_RESTAURO = new Set(["-p", "--patch", "--", "--ours", "--theirs", 
 const FLAGS_QUE_MOVEM = new Set(["-b", "-B", "-c", "-C", "--orphan", "--detach", "-d", "--track", "-t", "--guess"]);
 
 /**
+ * Detecta se o comando e um restauro de arquivo (nao move HEAD).
+ * Devolve uma linha descritiva se for `git checkout -- <caminhos>` ou
+ * `git restore <caminhos>`, caso contrario devolve ''.
+ *
+ * Usado para avisar num subagente bloqueado que tentou restaurar: a trava
+ * de worktree barra certo (subagente nao pode escrever no principal), mas
+ * o ato de restauro merecia comunicacao, porque a arvore pode ter ficado
+ * suja. Restora nao muda (exit 2 mantido), so a mensagem que ganha contexto.
+ */
+function linhaDeRestauro(cmd, toplevel) {
+  const s = subcomandoGit(cmd);
+  if (!s) return '';
+
+  // `git restore` e restauro puro — nao tem variante que move HEAD
+  if (s.verbo === 'restore') {
+    const args = s.args;
+    const caminhos = args.filter((a) => !a.startsWith("-")).join(", ");
+    if (caminhos) {
+      return `a restauracao e da janela principal: git -C ${toplevel} restore ${caminhos} — a arvore pode ter ficado suja por este agente; avise no relato.`;
+    }
+  }
+
+  // `git checkout` pode ser restauro (`-- <paths>`) ou movimento de HEAD
+  if (s.verbo === 'checkout' || s.verbo === 'co') {
+    const args = s.args;
+    // Se tem `--`, e restauro (arquivo, nao branch)
+    if (args.includes("--")) {
+      const i = args.indexOf("--");
+      const caminhos = args.slice(i + 1).join(", ");
+      if (caminhos) {
+        return `a restauracao e da janela principal: git -C ${toplevel} checkout -- ${caminhos} — a arvore pode ter ficado suja por este agente; avise no relato.`;
+      }
+    }
+  }
+
+  return '';
+}
+
+/**
  * Este comando move o HEAD do checkout em `cwd`?
  *
  * A licao das duas tentativas anteriores: decidir isto pela FORMA lexica do
@@ -269,7 +308,7 @@ function dirDe(alvo) {
   }
 }
 
-function bloqueia(motivo, toplevel, agente) {
+function bloqueia(motivo, toplevel, agente, apenasRestauracao = null) {
   // P1 do relatorio 2026-08-11-escotilha-do-gate-usada-para-contornar: a saida
   // de emergencia era NOMEADA na mensagem que o SUBAGENTE le. Um implementador
   // bloqueado leu o nome do arquivo de escape na propria mensagem de bloqueio,
@@ -297,17 +336,22 @@ function bloqueia(motivo, toplevel, agente) {
       `  - RAINFOREST_GATE_OFF=1 no ambiente da sessao (desliga na sessao inteira);\n` +
       `  - arquivo .rainforest-gate-off na raiz do repo (desliga so naquele repo).\n`;
 
-  process.stderr.write(
-    `BLOQUEADO pelo gate de worktree do rainforest-mind.\n\n` +
+  let msg = `BLOQUEADO pelo gate de worktree do rainforest-mind.\n\n` +
     `${motivo}\n` +
     `Repo: ${toplevel}\n` +
-    `Agente: ${agente}\n\n` +
-    `Este e o diretorio de trabalho principal, nao um worktree isolado. A regra 11 manda\n` +
+    `Agente: ${agente}\n\n`;
+
+  if (apenasRestauracao) {
+    msg += `${apenasRestauracao}\n\n`;
+  }
+
+  msg += `Este e o diretorio de trabalho principal, nao um worktree isolado. A regra 11 manda\n` +
     `subagente que edita arquivos trabalhar em worktree proprio, para o trabalho poder ser\n` +
     `descartado sem tocar no estado dele. Em 2026-08-08 um agente escreveu aqui duas vezes,\n` +
     `trocou a branch e moveu o HEAD com stash/pop.\n\n` +
-    saidas
-  );
+    saidas;
+
+  process.stderr.write(msg);
   process.exit(2);
 }
 
@@ -809,7 +853,8 @@ function main() {
     // CLI que ja faz isso para `cd`/subshell nao resolvidos.
     if (!incerto && estado.ehWorktree) continue; // worktree linkado: era pra ser isso mesmo
     if (fs.existsSync(path.join(estado.toplevel, ".rainforest-gate-off"))) continue;
-    bloqueia(motivo, estado.toplevel, `${ev.agent_type || "?"} (${ev.agent_id})`);
+    const restauro = linhaDeRestauro(entrada.command || '', estado.toplevel);
+    bloqueia(motivo, estado.toplevel, `${ev.agent_type || "?"} (${ev.agent_id})`, restauro);
   }
   process.exit(0);
 }

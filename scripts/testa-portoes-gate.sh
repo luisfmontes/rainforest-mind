@@ -35,8 +35,14 @@ for f in "$E" "$PORT" "$FIX/portoes-echo.md" "$FIX/portoes-falha.md"; do
 done
 
 ok=0; falhou=0
-S="$(mktemp -d)"
-trap 'rm -rf "$S"' EXIT
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
+# criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
+cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done; }
+trap cleanup EXIT
+
+S="$(novo_sandbox)"
 mkdir -p "$S/docs/rainforest/design" "$S/docs/rainforest/planos" \
          "$S/docs/rainforest/portoes" "$S/docs/rainforest/estado"
 
@@ -271,8 +277,7 @@ echo "== A3: o arquivo declarado tem de viver na arvore do projeto =="
 # projeto nesta bateria (`RFM_ESTADO_ROOT`), entao um arquivo em `$S/fora.md`
 # esta DENTRO da arvore. A primeira versao deste caso errou exatamente isso e
 # reprovava por medir o cenario errado.
-EXTERNO="$(mktemp -d)"
-trap 'rm -rf "$S" "$EXTERNO"' EXIT
+EXTERNO="$(novo_sandbox)"
 FORA="$(cygpath -m "$EXTERNO" 2>/dev/null || printf '%s' "$EXTERNO")/fora-da-arvore.md"
 cp "$S/docs/rainforest/design/com-orfa.md" "$FORA"
 cp "$S/docs/rainforest/planos/com-orfa.md" "$S/docs/rainforest/planos/a3-fora.md"

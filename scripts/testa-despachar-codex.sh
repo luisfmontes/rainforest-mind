@@ -471,6 +471,128 @@ else
 fi
 
 echo ""
+echo "== CASO 13: --saida com metacaractere de injeção (aspas) → recusado, exit 1 ==="
+CMD_OUT_13="$RAIZ/cmd-13.txt"
+CMD_OUT_13_M="$(cygpath -m "$CMD_OUT_13" 2>/dev/null || printf '%s' "$CMD_OUT_13")"
+rm -f "$CMD_OUT_13"
+saida_13=$(DUBLE_MODO=ok DUBLE_CMD_OUT="$CMD_OUT_13_M" RFM_TEST=1 CODEX_CMD="node $DUBLE_M" \
+  node "$PLUGIN/scripts/despachar-codex.cjs" \
+  --agente revisor \
+  --worktree "$WTE" \
+  --escreve false \
+  --briefing-file "$BRIEFING" \
+  --saida 'x"; echo pwned; "' 2>&1)
+exit_13=$?
+if [ "$exit_13" = "1" ] && echo "$saida_13" | grep -q "valor invalido: --saida" && [ ! -f "$CMD_OUT_13" ]; then
+  ok=$((ok + 1))
+  echo "  ok   caso 13: --saida com aspas recusado, exit 1, dublê não chamado"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA caso 13: esperava exit 1 com 'valor invalido: --saida' e dublê ausente, veio exit $exit_13"
+  echo "$saida_13" | head -3 | sed 's/^/    /'
+fi
+
+echo ""
+echo "== CASO 14: --worktree com & → recusado, exit 1 ==="
+CMD_OUT_14="$RAIZ/cmd-14.txt"
+CMD_OUT_14_M="$(cygpath -m "$CMD_OUT_14" 2>/dev/null || printf '%s' "$CMD_OUT_14")"
+rm -f "$CMD_OUT_14"
+saida_14=$(DUBLE_MODO=ok DUBLE_CMD_OUT="$CMD_OUT_14_M" RFM_TEST=1 CODEX_CMD="node $DUBLE_M" \
+  node "$PLUGIN/scripts/despachar-codex.cjs" \
+  --agente revisor \
+  --worktree "$(pwd)&echo" \
+  --escreve false \
+  --briefing-file "$BRIEFING" 2>&1)
+exit_14=$?
+if [ "$exit_14" = "1" ] && echo "$saida_14" | grep -q "valor invalido: --worktree" && [ ! -f "$CMD_OUT_14" ]; then
+  ok=$((ok + 1))
+  echo "  ok   caso 14: --worktree com & recusado, exit 1, dublê não chamado"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA caso 14: esperava exit 1 com 'valor invalido: --worktree' e dublê ausente, veio exit $exit_14"
+fi
+
+echo ""
+echo "== CASO 15: --saida com espaço (caminho legal) → aceito ==="
+SAIDA_15="$RAIZ/dir com espaco/x.md"
+mkdir -p "$(dirname "$SAIDA_15")"
+SAIDA_15_M="$(cygpath -m "$SAIDA_15" 2>/dev/null || printf '%s' "$SAIDA_15")"
+CMD_OUT_15="$RAIZ/cmd-15.txt"
+CMD_OUT_15_M="$(cygpath -m "$CMD_OUT_15" 2>/dev/null || printf '%s' "$CMD_OUT_15")"
+rm -f "$CMD_OUT_15"
+saida_15=$(DUBLE_MODO=ok DUBLE_CMD_OUT="$CMD_OUT_15_M" DUBLE_SAIDA="$SAIDA_15_M" RFM_TEST=1 CODEX_CMD="node $DUBLE_M" \
+  node "$PLUGIN/scripts/despachar-codex.cjs" \
+  --agente revisor \
+  --worktree "$WTE" \
+  --escreve false \
+  --briefing-file "$BRIEFING" \
+  --saida "$SAIDA_15_M" 2>&1)
+exit_15=$?
+if [ "$exit_15" = "0" ] && [ -f "$CMD_OUT_15" ]; then
+  ok=$((ok + 1))
+  echo "  ok   caso 15: --saida com espaço aceito, exit 0, dublê chamado"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA caso 15: esperava exit 0 e dublê chamado, veio exit $exit_15"
+fi
+
+echo ""
+echo "== CASO 16: --worktree com contrabarra final → normalizado, exit 0, dublê chamado ==="
+CMD_OUT_16="$RAIZ/cmd-16.txt"
+CMD_OUT_16_M="$(cygpath -m "$CMD_OUT_16" 2>/dev/null || printf '%s' "$CMD_OUT_16")"
+rm -f "$CMD_OUT_16"
+# Adiciona contrabarra final ao worktree
+WTE_COM_BARRA="${WTE}\\"
+saida_16=$(DUBLE_MODO=ok DUBLE_CMD_OUT="$CMD_OUT_16_M" RFM_TEST=1 CODEX_CMD="node $DUBLE_M" \
+  node "$PLUGIN/scripts/despachar-codex.cjs" \
+  --agente revisor \
+  --worktree "$WTE_COM_BARRA" \
+  --escreve false \
+  --briefing-file "$BRIEFING" 2>&1)
+exit_16=$?
+if [ "$exit_16" = "0" ] && [ -f "$CMD_OUT_16" ]; then
+  # Verifica que o comando gravado tem argumentos separados
+  CMD_GRAVADO_16=$(cat "$CMD_OUT_16")
+  if echo "$CMD_GRAVADO_16" | grep -q -- "-C" && echo "$CMD_GRAVADO_16" | grep -q -- "-c" && echo "$CMD_GRAVADO_16" | grep -q -- "-o"; then
+    ok=$((ok + 1))
+    echo "  ok   caso 16: --worktree com \\ normalizado, exit 0, dublê chamado com args separados"
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA caso 16: dublê chamado mas args não separados corretamente"
+    echo "  Comando gravado: $CMD_GRAVADO_16" | sed 's/^/    /'
+  fi
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA caso 16: esperava exit 0 e dublê chamado, veio exit $exit_16"
+fi
+
+echo ""
+echo "== CASO 17: --saida com contrabarra final → recusado, exit 1 ==="
+CMD_OUT_17="$RAIZ/cmd-17.txt"
+CMD_OUT_17_M="$(cygpath -m "$CMD_OUT_17" 2>/dev/null || printf '%s' "$CMD_OUT_17")"
+rm -f "$CMD_OUT_17"
+# Cria um caminho com contrabarra final (em Windows) usando printf com \\ literal
+SAIDA_17_BASE="$(cygpath -m "$RAIZ/teste" 2>/dev/null || printf '%s' "$RAIZ/teste")"
+SAIDA_17_COM_BARRA="${SAIDA_17_BASE}\\"
+saida_17=$(DUBLE_MODO=ok DUBLE_CMD_OUT="$CMD_OUT_17_M" RFM_TEST=1 CODEX_CMD="node $DUBLE_M" \
+  node "$PLUGIN/scripts/despachar-codex.cjs" \
+  --agente revisor \
+  --worktree "$WTE" \
+  --escreve false \
+  --briefing-file "$BRIEFING" \
+  --saida "$SAIDA_17_COM_BARRA" 2>&1)
+exit_17=$?
+if [ "$exit_17" = "1" ] && echo "$saida_17" | grep -q "valor invalido: --saida" && [ ! -f "$CMD_OUT_17" ]; then
+  ok=$((ok + 1))
+  echo "  ok   caso 17: --saida com \\ recusado, exit 1, dublê não chamado"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA caso 17: esperava exit 1 com 'valor invalido: --saida' e dublê ausente, veio exit $exit_17"
+  echo "  Saida_17_com_barra enviado: [$SAIDA_17_COM_BARRA]"
+  echo "$saida_17" | head -3 | sed 's/^/    /'
+fi
+
+echo ""
 echo "== RESULTADO =="
 echo "resultado: $ok ok, $falhou falha(s)"
 if [ "$falhou" -gt 0 ]; then

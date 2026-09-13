@@ -15,20 +15,30 @@ HOOK="$SRC/hooks/memoria-session-start.cjs"
 SCRIPT_MEMORIA="$SRC/scripts/memoria.cjs"
 
 # Sandbox hermética.
-RAIZ_POSIX="$(mktemp -d)"
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
+# criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas —
+# substitui a cadeia de `trap ... EXIT` que este arquivo reatribuia a cada
+# caixa nova (repetindo TODAS as anteriores com `${VAR:-}`), idioma fragil que
+# ja deixou COPIA_MUT, CAIXA_LEGENDA, CAIXA_RESUMO e CAIXA_SEMRES (mais
+# abaixo) de fora de qualquer trap, so com `rm -rf` manual no fim da secao.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
+cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done; }
+trap cleanup EXIT
+
+RAIZ_POSIX="$(novo_sandbox)"
 RAIZ="$(cygpath -m "$RAIZ_POSIX" 2>/dev/null || printf '%s' "$RAIZ_POSIX")"
 
 # Raiz gorda com FOCO.md de ~2500 B para teste de mutação (deve vir antes de RAIZ_NEUTRA)
-RAIZ_GORDA="$(mktemp -d)"
+RAIZ_GORDA="$(novo_sandbox)"
 {
   printf '# Foco\n\n'
   printf 'x%.0s' {1..2500}
 } > "$RAIZ_GORDA/FOCO.md"
 
 # Raiz neutra para medir sem dados do usuário
-RAIZ_NEUTRA="$(mktemp -d)"
+RAIZ_NEUTRA="$(novo_sandbox)"
 
-trap 'rm -rf "$RAIZ_POSIX" "$RAIZ_NEUTRA" "$RAIZ_GORDA"' EXIT
 echo "(caixa de areia: $RAIZ)"
 echo "(raiz neutra: $RAIZ_NEUTRA)"
 echo "(raiz gorda: $RAIZ_GORDA)"
@@ -323,12 +333,8 @@ echo
 echo "10. Tarefa 3 — filtro por projeto no hook de verdade (D3)"
 
 # Criar caixa de areia para os testes do hook
-CAIXA_HOOK="$(mktemp -d)"
+CAIXA_HOOK="$(novo_sandbox)"
 mkdir -p "$CAIXA_HOOK"
-# `set -u` derruba o trap inteiro se uma das variáveis não existir — e aí a
-# limpeza não roda e cada execução deixa pasta temporária para trás. Os `:-`
-# são o que faz o trap sobreviver a variável que a seção anterior não criou.
-trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${RAIZ_POSIX:-}" "${CAIXA_HOOK:-}" "${CAIXA_PROJETO:-}"' EXIT
 
 # Inicializar banco em RFM_ROOT
 export RFM_ROOT="$CAIXA_HOOK"
@@ -482,7 +488,7 @@ echo
 echo "  10.c — FALSIFICAÇÃO: o filtro invertido tem que derrubar 10.a"
 # A mutação roda numa CÓPIA, nunca no arquivo versionado: bateria que edita o
 # próprio fonte deixa o repositório mutado se morrer no meio, e esta roda no CI.
-COPIA_MUT="$(mktemp -d)"
+COPIA_MUT="$(novo_sandbox)"
 cp -r "$(dirname "$HOOK")" "$COPIA_MUT/hooks"
 cp -r "$(dirname "$HOOK")/../scripts" "$COPIA_MUT/scripts"
 
@@ -552,9 +558,8 @@ echo
 echo "12. Leitura com chave harness (D13b) — observações gravadas em chave harness são encontradas"
 
 # Setup: criar banco, inserir observações em DUAS chaves diferentes
-CAIXA_HARNESS="$(mktemp -d)"
+CAIXA_HARNESS="$(novo_sandbox)"
 mkdir -p "$CAIXA_HARNESS"
-trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${RAIZ_POSIX:-}" "${CAIXA_HOOK:-}" "${CAIXA_PROJETO:-}" "${CAIXA_HARNESS:-}"' EXIT
 
 export RFM_ROOT="$CAIXA_HARNESS"
 node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
@@ -638,8 +643,7 @@ fi
 echo
 echo "14. Banco inexistente → array vazio, sem exceção"
 
-CAIXA_VAZIO="$(mktemp -d)"
-trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${RAIZ_POSIX:-}" "${CAIXA_HOOK:-}" "${CAIXA_PROJETO:-}" "${CAIXA_HARNESS:-}" "${CAIXA_VAZIO:-}"' EXIT
+CAIXA_VAZIO="$(novo_sandbox)"
 
 export RFM_ROOT="$CAIXA_VAZIO"
 # NÃO rodamos memoria.cjs iniciar, então banco não existe
@@ -658,8 +662,7 @@ fi
 echo
 echo "15. Rótulo usa o apelido curto, não a chave de pasta do harness"
 
-CAIXA_APELIDO="$(mktemp -d)"
-trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${RAIZ_POSIX:-}" "${CAIXA_HOOK:-}" "${CAIXA_PROJETO:-}" "${CAIXA_HARNESS:-}" "${CAIXA_VAZIO:-}" "${CAIXA_APELIDO:-}"' EXIT
+CAIXA_APELIDO="$(novo_sandbox)"
 
 export RFM_ROOT="$CAIXA_APELIDO"
 node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
@@ -777,7 +780,7 @@ else
 fi
 
 # O hook de verdade: os DOIS canais no mesmo JSON, e o injetado intocado.
-CAIXA_LEGENDA="$(mktemp -d)"
+CAIXA_LEGENDA="$(novo_sandbox)"
 PASTA_LEGENDA="$CAIXA_LEGENDA/projeto-legenda"
 mkdir -p "$PASTA_LEGENDA"
 git init -q "$PASTA_LEGENDA"
@@ -857,10 +860,9 @@ fi
 echo
 echo "17. Tarefa 3 — a abertura injeta 9 recentes + até 5 casadas pelo foco (D2)"
 
-CAIXA_FOCO="$(mktemp -d)"
+CAIXA_FOCO="$(novo_sandbox)"
 mkdir -p "$CAIXA_FOCO"
 git init -q "$CAIXA_FOCO"  # Initialize git here
-trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${RAIZ_POSIX:-}" "${CAIXA_HOOK:-}" "${CAIXA_PROJETO:-}" "${CAIXA_HARNESS:-}" "${CAIXA_VAZIO:-}" "${CAIXA_APELIDO:-}" "${CAIXA_FOCO:-}"' EXIT
 
 export RFM_ROOT="$CAIXA_FOCO"
 node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
@@ -1065,7 +1067,7 @@ fi
 echo
 echo "18. C3 da revisao — a injecao prefere resumo a observacao consolidada"
 
-CAIXA_RESUMO="$(mktemp -d)"
+CAIXA_RESUMO="$(novo_sandbox)"
 git init -q "$CAIXA_RESUMO"
 export RFM_ROOT="$CAIXA_RESUMO"
 node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
@@ -1111,7 +1113,7 @@ fi
 
 echo
 echo "  18.d — sem resumo e sem consolidada, o bloco nao traz [resumo"
-CAIXA_SEMRES="$(mktemp -d)"
+CAIXA_SEMRES="$(novo_sandbox)"
 git init -q "$CAIXA_SEMRES"
 export RFM_ROOT="$CAIXA_SEMRES"
 node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1

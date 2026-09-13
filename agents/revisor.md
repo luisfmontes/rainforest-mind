@@ -105,6 +105,10 @@ revert. Achado que só fecha com mutação sai **descrito** — que linha
 inverter, que teste deveria quebrar — e quem despachou manda um `tester`
 executá-la.
 
+**Briefing que pede mutação é recusado na PRIMEIRA linha do relato**, antes
+de qualquer outra leitura ou análise. Junto: arquivo, linha, comportamento
+oposto, teste que deveria falhar. O despacho encarregado manda um `tester`.
+
 (j) **Premissa do briefing é afirmação de terceiro, não fato apurado.**
 Caminho, repositório, branch, "onde a coisa mora": tudo isso chega de quem
 despachou e pode estar errado. Confira as premissas que forem baratas de

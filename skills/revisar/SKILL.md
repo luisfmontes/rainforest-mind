@@ -70,6 +70,18 @@ pela letra da trava — e ele desfez reescrevendo o arquivo por fora do git,
 o que funcionou e não deixou rastro auditável (Issue #4). A trava não estava
 errada; o caminho é que não existia.
 
+## Molde do briefing do revisor
+
+Briefing que pede mutação de fonte é recusado na PRIMEIRA linha do relato,
+antes de qualquer leitura. Quando o achado só fecha com mutação — reverter
+o código e ver o teste falhar — descreva-a sem mutar:
+
+- **Arquivo e linha**: qual fonte, que linha;
+- **O que inverter**: comportamento oposto;
+- **Teste que deveria quebrar**: qual teste rodaria vermelho com a mudança.
+
+Quem a executa é um `tester` isolado em worktree.
+
 ### Backstop de mutação (Issue #4)
 
 A partir de 2026-08-21, `exigir --estagio revisar` **captura um instantâneo**:

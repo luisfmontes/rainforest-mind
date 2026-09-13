@@ -1,0 +1,354 @@
+{
+  "slug": "zerar-issues",
+  "titulo": "Zerar as 20 Issues abertas",
+  "criado_em": "2026-09-08",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/zerar-issues.md",
+    "aprovacao": "Luis, 2026-09-08: \"recomendado\" para Q1-Q5",
+    "em": "2026-09-08"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/zerar-issues.md",
+    "tarefas": 33,
+    "paralelas": [
+      1,
+      2,
+      3,
+      4,
+      6,
+      7,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      32
+    ],
+    "ondas": {
+      "1": [
+        1,
+        2,
+        3,
+        4,
+        6,
+        7,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18
+      ],
+      "2": [
+        5,
+        8,
+        9
+      ],
+      "3": [
+        10,
+        19
+      ],
+      "4": [
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        32
+      ],
+      "5": [
+        31,
+        33,
+        19
+      ]
+    },
+    "em": "2026-09-12",
+    "emenda": "rodada 2 em 2026-09-12: T24-T33 (achados do revisar e Issues 230/231/232/235/237/238); T10 arquivos emendado; T19 -> 1.12.0"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-08",
+    "tarefas_ok": 33,
+    "tarefas": 33,
+    "em": "2026-09-12",
+    "integradas": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      30,
+      32
+    ],
+    "nota": "faltam T29 (em voo), T31 (depende de T25, ja integrada), T33 docs e T19 versao 1.12.0",
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues (arvore 5e6bb410); depois conferir-mutacao isolado da T10, T24, T28 e T29 sobre a arvore 4830663a (reabertura pelos 3 achados do revisar)",
+    "saida": "33 tarefas: 29 vermelho, 4 pulada (n/a: 16, 19, 20, 33). Na rodada completa T10 saiu \"de nao encontrado\" e T24 \"mutante sobreviveu\"; corrigidos e re-rodados: T10 exit 0 -> 1; T24 32 ok -> exit 1. Apos os achados do revisar: T28 (138 ok -> exit 1) e T29 (8 ok -> exit 1) vermelhas, fonte restaurado em todas",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "dois worktrees com o mesmo estado aberto listam o slug uma vez"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "--saida com metacaractere e recusado antes de montar o comando"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "duas config dirs, uma sem clone do marketplace e com instalacao em versao diferente"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "gate-publicacao-destino com agent_id nao menciona .rainforest-gate-off"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "marcar com --dry-run sai 1 e nao grava"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "commit vazio com --paralelo e sujeira no principal reprova"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "branch fluxo/<slug> com estado aberto devolve {slug, estagio}"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "relatorios/x.md no diff sem tarefa nao e creep"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "marcar verificar ok com mutante sobrevivente e recusado"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "vermelho",
+        "fixture": "fixture com dois mktemp e sem SANDBOXES e reprovada"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "mutacao que derruba 9 de 34 assercoes sai 6"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "principal 3 commits atras de origin/main imprime a linha"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "RFM_FERRAMENTAS_TIMEOUT_MS=1 anuncia prossigo sem garantia"
+      },
+      {
+        "tarefa": 14,
+        "resultado": "vermelho",
+        "fixture": "worktree limpo com sessao viva de outro id nao e removido"
+      },
+      {
+        "tarefa": 15,
+        "resultado": "vermelho",
+        "fixture": "11 gravacoes com teto 10 deixam 10 backups"
+      },
+      {
+        "tarefa": 16,
+        "resultado": "n/a",
+        "motivo": "texto de método; a sincronia fonte → nove agentes é o que testa-perfil.sh confere"
+      },
+      {
+        "tarefa": 17,
+        "resultado": "vermelho",
+        "fixture": "duas execucoes simultaneas nao se atropelam"
+      },
+      {
+        "tarefa": 18,
+        "resultado": "vermelho",
+        "fixture": "origin/main local velho e remoto com versao igual recusa apos fetch"
+      },
+      {
+        "tarefa": 19,
+        "resultado": "n/a",
+        "motivo": "número de versão; a divergência entre os dois lugares é o que testa-versao.sh já pega"
+      },
+      {
+        "tarefa": 20,
+        "resultado": "n/a",
+        "motivo": "a tarefa não muda comportamento de produção — foco.cjs e backup-rotativo.cjs ficam intactos. O que muda é o montar() das duas caixas de areia, que deixou de refletir a dependência real criada por D15. A prova não é mutante: é a bateria sair de 19 e 2 falhas para 0 com o fonte de produção sem uma linha alterada, e a mesma bateria continuar vermelha se a cópia for retirada."
+      },
+      {
+        "tarefa": 21,
+        "resultado": "vermelho",
+        "fixture": "t6b com plano em disco e mutante sobrevivente; verificar recusa com a mensagem da catraca"
+      },
+      {
+        "tarefa": 22,
+        "resultado": "vermelho",
+        "fixture": "mutacao que quebra o mecanismo (bateria toda vermelha) continua recusada com exit 6"
+      },
+      {
+        "tarefa": 23,
+        "resultado": "vermelho",
+        "fixture": "timeout declarado no bloco chega ao conferir-mutacao"
+      },
+      {
+        "tarefa": 24,
+        "resultado": "vermelho",
+        "fixture": "valor terminado em contrabarra e recusado"
+      },
+      {
+        "tarefa": 25,
+        "resultado": "vermelho",
+        "fixture": "t6b — a saida do marcar verificar ok contem 'mutante sobreviveu' vindo do plano t6-mut.md"
+      },
+      {
+        "tarefa": 26,
+        "resultado": "vermelho",
+        "fixture": "autoteste (d) — dois mktemp -d com SANDBOXES so em comentario e reprovada"
+      },
+      {
+        "tarefa": 27,
+        "resultado": "vermelho",
+        "fixture": "TIMEOUT 1 — 'ok exit 0 (D10)' passa a falhar quando o hook sai 1 no ramo incerto"
+      },
+      {
+        "tarefa": 28,
+        "resultado": "vermelho",
+        "fixture": "bateria que grava $PYTHONDONTWRITEBYTECODE num arquivo e afirma '1'"
+      },
+      {
+        "tarefa": 29,
+        "resultado": "vermelho",
+        "fixture": "repo sintetico com verificador que reprova SEGREDO e arquivo staged contendo SEGREDO -> exit 2"
+      },
+      {
+        "tarefa": 30,
+        "resultado": "vermelho",
+        "fixture": "linha com actions/runs/34692512345 passa sem achado"
+      },
+      {
+        "tarefa": 31,
+        "resultado": "vermelho",
+        "fixture": "marcar executar parcial com revisar parcial e em_voo nao vazio -> exit 2, arquivo intacto"
+      },
+      {
+        "tarefa": 32,
+        "resultado": "vermelho",
+        "fixture": "subagente rodando git checkout -- x.txt no checkout principal e barrado e o stderr traz o comando de restauro para a janela"
+      },
+      {
+        "tarefa": 33,
+        "resultado": "n/a",
+        "motivo": "texto; a coerência com o código é o critério abaixo, e testa-mapa-regras.sh confere que todo arquivo citado existe"
+      }
+    ],
+    "fatia_limpa": {
+      "pr": 236,
+      "branch": "fluxo/zerar-issues-limpo",
+      "base": "c5f30402",
+      "em": "2026-09-12",
+      "issues_fechadas": [
+        225,
+        221,
+        220,
+        215,
+        214,
+        210,
+        207,
+        200,
+        199,
+        197,
+        194,
+        193
+      ],
+      "criterio": "arquivo tocado SO por tarefa sem achado; 24 convertidos pela T10 entram na versao pre-T10 (dbe58cf2); 16 de tarefa com achado ficam de fora",
+      "nota": "A branch fluxo/zerar-issues NAO foi mergeada: carrega os 5 achados. Handover em relatorios/2026-09-12-handover-zerar-issues-fatia-limpa.md"
+    }
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "f1225a97a1360276d598669c2322abb97d0a92d2",
+      "caminhos_sujos": []
+    },
+    "base": "a338dd02ad495f87a66d84af2ab24eab3d2660b8",
+    "head": "f1225a97a1360276d598669c2322abb97d0a92d2",
+    "em": "2026-09-12",
+    "achados": 1,
+    "lista": [
+      "CRITICO T9/T21 estado.cjs:1237 chama conferir-fluxo mutacoes sem --plano; o subprocesso resolve <slug>.md fixo e ignora plano.arquivo. O comentario acima diz que o defeito foi corrigido, mas a correcao so alcancou o existsSync. Fluxo com plano de outro nome nunca fecha verificar; com colisao de nome, valida o plano errado em silencio. O caso t6b de testa-estado.sh passa pelo motivo errado",
+      "ALTO creep: 18 arquivos testa-*.sh no diff sem tarefa no plano — conferir-fluxo creep sai 2. Sao as conversoes de idioma que a T10 fez alem dos 11 que ela declara, mais a copia de scripts/lib que vazou da T20 para testa-divergencias e testa-ideias",
+      "ALTO T2 valorSeguroParaShell aceita valor terminado em numero impar de contrabarra; o chamador envolve em aspas duplas e no Windows a contrabarra escapa a aspa de fechamento — argumentos seguintes sao engolidos. Reproduzido com echo de argv: -C, -c approval_policy e -o viraram um argumento so",
+      "ALTO T10 a guarda testa-sandbox-com-trap tem tres buracos demonstrados por execucao: trap com corpo que nao remove nada passa; SANDBOXES em comentario passa; mktemp -d dentro de funcao chamada duas vezes conta como uma ocorrencia estatica",
+      "MODERADO T13 testa-ferramentas-consulta linhas 274-286 e 312-324: EXIT=$? captura o exit do unset, nao o do node do hook. unset sempre sai 0, entao a assercao exit 0 (D10) nunca pode falhar"
+    ],
+    "criterio": "duas passadas de revisor independente (sonnet): a338dd02...91db7071 APROVADO com 3 achados nao bloqueantes, fechados em executar; delta 91db7071...f1225a97 APROVADO com 1 observacao (sem caso automatizado para o ramo arquivos.length === 0 do gate-verificador-staged), aceita como divida registrada",
+    "faltou": [
+      "T28/D24: casos (a) e (b) do pronto quando ausentes em scripts/testa-conferir-mutacao.sh",
+      "gate-verificador-staged.cjs: process.exit(0) dentro do try nao roda o finally e vaza a pasta rfm-staged-* quando arquivos.length === 0",
+      "README: soma 609 conta a portaria por 78+23+7, que mistura placar de dois arquivos com contagem de arquivos do wrapper; sete testa-portaria-*.cjs somam outro numero"
+    ]
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "for t in scripts/testa-*.sh hooks/testa-*.sh; do bash \"$t\"; done (laco do CONTRIBUTING, arvore f1225a97, 114 baterias); depois testa-dependencias-de-bateria, testa-config e testa-memoria-somente-leitura isoladas na arvore d0a3af00; node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues (rodado pelo proprio marcar)",
+    "saida": "TOTAL 114 baterias, 3 vermelha(s) no laco: testa-dependencias-de-bateria (python pelo nome no caso 20) e testa-config (7 -> 8 gates) consertadas e re-rodadas verdes (6 ok; 45 ok); testa-memoria-somente-leitura 26 ok / 3 falhas IGUAL na main a338dd02 — foco-session-start.cjs leva 6-8 s nesta maquina contra timeout 5 do hooks.json, pre-existente e fora desta mudanca",
+    "em": "2026-09-12"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "PR #242 aberto (fluxo/zerar-issues -> main), 13 Issues com comentario de evidencia (#206 descartada), Issue #243 aberta para o defeito pre-existente do foco-session-start; worktrees de agente desta rodada removidos; versao 1.12.0",
+    "pr": 242,
+    "em": "2026-09-12"
+  }
+}

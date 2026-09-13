@@ -21,20 +21,26 @@ SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LIB="$SRC/hooks/lib/contexto-sessao.cjs"
 LIB_FOLGA="$SRC/hooks/lib/folga.cjs"
 
-RAIZ_POSIX="$(mktemp -d)"
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
+# criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas —
+# registrado ANTES da primeira sandbox, para nao deixar janela de risco.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
+cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done; }
+trap cleanup EXIT
+
+RAIZ_POSIX="$(novo_sandbox)"
 RAIZ="$(cygpath -m "$RAIZ_POSIX" 2>/dev/null || printf '%s' "$RAIZ_POSIX")"
 echo "(caixa de areia: $RAIZ)"
 
 # Raiz gorda: sandbox com um FOCO.md de ~2.500 B para testes de mutacao
 # (RAIZ_NEUTRA -> RAIZ_GORDA revela defeitos por conteudo, nao por medida de tamanho).
-RAIZ_GORDA_POSIX="$(mktemp -d)"
+RAIZ_GORDA_POSIX="$(novo_sandbox)"
 node -e "const fs = require('fs'); fs.writeFileSync(process.argv[1]+'/FOCO.md','# Foco\n## Ativo\n\nConteudo para distinguir raiz com FOCO.md de raiz vazia.\n'.repeat(100))" "$RAIZ_GORDA_POSIX"
 RAIZ_GORDA="$(cygpath -m "$RAIZ_GORDA_POSIX" 2>/dev/null || printf '%s' "$RAIZ_GORDA_POSIX")"
 
 # Raiz neutra: sandbox vazia para testes que nao devem variar entre maquinas.
-RAIZ_NEUTRA="$(mktemp -d)"
-
-trap 'rm -rf "$RAIZ_POSIX" "$RAIZ_GORDA_POSIX" "$RAIZ_NEUTRA"' EXIT
+RAIZ_NEUTRA="$(novo_sandbox)"
 
 # O IRMAO VAI JUNTO. Toda sabotagem deste arquivo faz `cp "$LIB" "$RAIZ_POSIX/..."`
 # e roda a COPIA — e desde 2026-08-21 a lib faz `require('./raiz.cjs')`, que resolve

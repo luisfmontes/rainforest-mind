@@ -17,9 +17,15 @@ SCRIPT_MEMORIA="$SRC/scripts/memoria.cjs"
 HOOKS_JSON="$SRC/hooks/hooks.json"
 
 # Sandbox hermética
-RAIZ_POSIX="$(mktemp -d)"
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
+# criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
+cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done; }
+trap cleanup EXIT
+
+RAIZ_POSIX="$(novo_sandbox)"
 RAIZ=$(cygpath -m "$RAIZ_POSIX" 2>/dev/null || printf '%s' "$RAIZ_POSIX")
-trap 'rm -rf "$RAIZ_POSIX"' EXIT
 echo "(caixa de areia: $RAIZ)"
 
 ok=0; falhou=0
@@ -243,8 +249,7 @@ fi
 echo
 echo "9. Degradação graciosa: banco ausente"
 
-RAIZ_VAZIO="$(mktemp -d)"
-trap "rm -rf $RAIZ_POSIX $RAIZ_VAZIO" EXIT
+RAIZ_VAZIO="$(novo_sandbox)"
 
 echo "$EVENTO" | \
   CLAUDE_CONFIG_DIR="$RAIZ_VAZIO" \

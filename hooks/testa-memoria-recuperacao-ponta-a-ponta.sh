@@ -16,9 +16,15 @@ SCRIPT_OBSERVAR="$SRC/scripts/observar.cjs"
 SCRIPT_MEMORIA="$SRC/scripts/memoria.cjs"
 
 # Sandbox hermética
-RAIZ_POSIX="$(mktemp -d)"
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
+# criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
+cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done; }
+trap cleanup EXIT
+
+RAIZ_POSIX="$(novo_sandbox)"
 RAIZ=$(cygpath -m "$RAIZ_POSIX" 2>/dev/null || printf '%s' "$RAIZ_POSIX")
-trap 'rm -rf "$RAIZ_POSIX"' EXIT
 echo "(caixa de areia: $RAIZ)"
 
 ok=0; falhou=0
@@ -107,7 +113,7 @@ echo "Fase 2: Com mutação (deve falhar)"
 # ramo primário — `if (evento.transcript_path)` —, que é o que o payload
 # desta bateria de fato exercita, com comentário de bloco pra não quebrar a
 # chave.
-MUT1_POSIX="$(mktemp -d)"
+MUT1_POSIX="$(novo_sandbox)"
 cp -r "$SRC/hooks" "$MUT1_POSIX/hooks"
 cp -r "$SRC/scripts" "$MUT1_POSIX/scripts"
 MUT1_HOOK="$MUT1_POSIX/hooks/memoria-marca.cjs"
@@ -500,7 +506,7 @@ fi
 echo
 echo "== MUTAÇÃO: reintroduzir INSERT OR REPLACE zera offset_processado (numa cópia) =="
 
-MUT_CODIGO_POSIX="$(mktemp -d)"
+MUT_CODIGO_POSIX="$(novo_sandbox)"
 cp -r "$SRC/hooks" "$MUT_CODIGO_POSIX/hooks"
 cp -r "$SRC/scripts" "$MUT_CODIGO_POSIX/scripts"
 MUT_CODIGO="$(cygpath -m "$MUT_CODIGO_POSIX" 2>/dev/null || printf '%s' "$MUT_CODIGO_POSIX")"
@@ -542,7 +548,7 @@ else
   echo "$MUTA_OUT" | sed 's/^/       /'
 fi
 
-MUT_RAIZ_POSIX="$(mktemp -d)"
+MUT_RAIZ_POSIX="$(novo_sandbox)"
 MUT_RAIZ=$(cygpath -m "$MUT_RAIZ_POSIX" 2>/dev/null || printf '%s' "$MUT_RAIZ_POSIX")
 RFM_ROOT="$MUT_RAIZ" node "$MUT_CODIGO/scripts/memoria.cjs" iniciar > /dev/null 2>&1
 

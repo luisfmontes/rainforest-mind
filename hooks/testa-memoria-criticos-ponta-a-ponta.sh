@@ -13,9 +13,17 @@ SCRIPT_OBSERVAR="$SRC/scripts/observar.cjs"
 SCRIPT_MEMORIA="$SRC/scripts/memoria.cjs"
 
 # Sandbox
-RAIZ_POSIX="$(mktemp -d)"
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
+# criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas —
+# MUT1_POSIX/MUT2_POSIX/MUT3_POSIX (mais abaixo) so tinham `rm -rf` manual no
+# fim de cada secao; Ctrl-C ou assercao que morre no meio deixava orfao.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
+cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done; }
+trap cleanup EXIT
+
+RAIZ_POSIX="$(novo_sandbox)"
 RAIZ=$(cygpath -m "$RAIZ_POSIX" 2>/dev/null || printf '%s' "$RAIZ_POSIX")
-trap 'rm -rf "$RAIZ_POSIX"' EXIT
 
 ok=0; falhou=0
 
@@ -83,7 +91,7 @@ echo "Crítico 1 — PROVA COM MUTAÇÃO (deve falhar)"
 # porque a lógica de resolução do transcrito estivesse sendo exercitada.
 # Comentário de bloco (`/* ... */`) não engole a chave, e a mutação passa a
 # testar de verdade o que o nome promete.
-MUT1_POSIX="$(mktemp -d)"
+MUT1_POSIX="$(novo_sandbox)"
 cp -r "$SRC/hooks" "$MUT1_POSIX/hooks"
 cp -r "$SRC/scripts" "$MUT1_POSIX/scripts"
 MUT1="$(cygpath -m "$MUT1_POSIX" 2>/dev/null || printf '%s' "$MUT1_POSIX")"
@@ -244,7 +252,7 @@ echo "Críticos 2+3 — PROVA COM MUTAÇÃO (deve falhar)"
 # Achado 2 da tarefa 22: mutar $SCRIPT_OBSERVAR (arquivo RASTREADO) com sed -i
 # corria o mesmo risco do Crítico 1 — Ctrl-C entre o sed e o cp de volta deixa
 # produção mutada. A mutação agora roda numa CÓPIA.
-MUT2_POSIX="$(mktemp -d)"
+MUT2_POSIX="$(novo_sandbox)"
 cp -r "$SRC/hooks" "$MUT2_POSIX/hooks"
 cp -r "$SRC/scripts" "$MUT2_POSIX/scripts"
 MUT2="$(cygpath -m "$MUT2_POSIX" 2>/dev/null || printf '%s' "$MUT2_POSIX")"
@@ -301,7 +309,7 @@ echo
 echo "Crítico 3 ISOLADO — PROVA COM MUTAÇÃO (deve falhar)"
 
 # Achado 2 da tarefa 22: mesma conversão para cópia.
-MUT3_POSIX="$(mktemp -d)"
+MUT3_POSIX="$(novo_sandbox)"
 cp -r "$SRC/hooks" "$MUT3_POSIX/hooks"
 cp -r "$SRC/scripts" "$MUT3_POSIX/scripts"
 MUT3="$(cygpath -m "$MUT3_POSIX" 2>/dev/null || printf '%s' "$MUT3_POSIX")"
