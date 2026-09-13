@@ -25,7 +25,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { rodarCli } = require('../hooks/lib/cli-externo.cjs');
+const { rodarCli, valorSeguroParaShell } = require('../hooks/lib/cli-externo.cjs');
 const { detectarSemCota, EXIT_SEM_COTA } = require('../hooks/lib/codex-cota.cjs');
 const { resolverConfig } = require('../hooks/lib/config.cjs');
 
@@ -34,6 +34,20 @@ const { resolverConfig } = require('../hooks/lib/config.cjs');
  * @param {string} conteudo
  * @returns {{frontmatter: string|null, corpo: string}}
  */
+// Porta ÚNICA para os valores interpolados no comando de shell (D2, Issue
+// #223): --worktree, --saida, modelo e esforço de config passam todos por aqui.
+// A negação da chamada abaixo é o trecho que o plano inverte na catraca de
+// mutação, e ele existe uma vez só — cinco `if` copiados fariam o `--de` casar
+// cinco vezes e a catraca recusar por ambiguidade (exit 4), e uma mutação num
+// deles deixaria os outros quatro de pé, verde por motivo errado.
+function recusaValorInseguro(nome, valor) {
+  if (!valorSeguroParaShell(valor)) {
+    console.error(`valor invalido: ${nome}`);
+    return true;
+  }
+  return false;
+}
+
 function extrairFrontmatter(conteudo) {
   const match = conteudo.match(/^---\n([\s\S]*?)\n---/);
   if (!match) {
@@ -134,6 +148,14 @@ function validarArgs(opts) {
     console.error('erro: --briefing-file obrigatória');
     return false;
   }
+
+  // Normaliza --worktree com path.resolve antes de validar (remove separador final)
+  opts.worktree = path.resolve(opts.worktree);
+
+  // Valida segurança dos valores interpolados ANTES de qualquer outro teste
+  if (recusaValorInseguro('--worktree', opts.worktree)) return false;
+  if (opts.saida && recusaValorInseguro('--saida', opts.saida)) return false;
+
   if (!fs.existsSync(opts.worktree)) {
     console.error(`erro: worktree não existe: ${opts.worktree}`);
     return false;
@@ -257,6 +279,9 @@ Opcionais:
   if (saidaTemporaria) {
     saidaArquivo = path.join(os.tmpdir(), `despachar-codex-${process.pid}-${Date.now()}.txt`);
     temporarioPendente = saidaArquivo;
+
+    // Valida o arquivo temporário gerado
+    if (recusaValorInseguro('--saida', saidaArquivo)) process.exit(1);
   }
   // Ler e apagar são falhas independentes: um `unlink` que falha (arquivo
   // preso por antivírus/indexador) não pode jogar fora o texto já lido — foi o
@@ -275,23 +300,35 @@ Opcionais:
     return texto;
   };
 
-  // Monta comando base
-  let cmd = `codex exec -s ${sandbox} --skip-git-repo-check -C "${opts.worktree}" -c approval_policy="never" -o "${saidaArquivo}"`;
-
-  // Sem `--add-dir` de propósito: o sandbox do Codex nega escrita em `.git`
-  // mesmo com o diretório declarado (ver cabeçalho). Quem commita é a ponte.
-
-  // Resolve modelo
+  // Resolve modelo e valida valores
+  let modeloResolvido = null;
+  let esforcoResolvido = null;
   if (model) {
     const config = resolverConfig({ projeto: opts.worktree });
     const chaveModelo = `codex-modelo-${model}`;
     const modeloConfig = config.valores[chaveModelo];
 
     if (modeloConfig && typeof modeloConfig === 'object' && modeloConfig.modelo) {
-      cmd += ` -m "${modeloConfig.modelo}"`;
-      if (modeloConfig.esforco) {
-        cmd += ` -c model_reasoning_effort="${modeloConfig.esforco}"`;
-      }
+      modeloResolvido = modeloConfig.modelo;
+      esforcoResolvido = modeloConfig.esforco || null;
+
+      // Valida modelo e esforço da config
+      if (recusaValorInseguro('modelo de config', modeloResolvido)) process.exit(1);
+      if (esforcoResolvido && recusaValorInseguro('esforço de config', esforcoResolvido)) process.exit(1);
+    }
+  }
+
+  // Monta comando base
+  let cmd = `codex exec -s ${sandbox} --skip-git-repo-check -C "${opts.worktree}" -c approval_policy="never" -o "${saidaArquivo}"`;
+
+  // Sem `--add-dir` de propósito: o sandbox do Codex nega escrita em `.git`
+  // mesmo com o diretório declarado (ver cabeçalho). Quem commita é a ponte.
+
+  // Adiciona modelo se resolvido
+  if (modeloResolvido) {
+    cmd += ` -m "${modeloResolvido}"`;
+    if (esforcoResolvido) {
+      cmd += ` -c model_reasoning_effort="${esforcoResolvido}"`;
     }
   }
 

@@ -33,8 +33,16 @@ falhou=0
 soma_ok() { ok=$((ok+1)); echo "  ok   $1"; }
 soma_falha() { falhou=$((falhou+1)); echo "  FALHA $1"; }
 
-TMP="$(mktemp -d)"
-trap 'rm -rf "$TMP"' EXIT
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
+# criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas —
+# as CAIXA de cada iteracao do while (mais abaixo) so tinham `rm -rf` manual
+# no fim do corpo do loop; morrer no meio de uma iteracao deixava orfao.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
+cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done; }
+trap cleanup EXIT
+
+TMP="$(novo_sandbox)"
 echo "(fixtures em: $TMP)"
 
 # --- os scripts node (helpers) -------------------------------------------
@@ -242,7 +250,7 @@ if [ "$NCAND" -eq 0 ]; then
 else
   while IFS=$'\t' read -r arq skillNome; do
     [ -z "$arq" ] && continue
-    CAIXA="$(mktemp -d)"
+    CAIXA="$(novo_sandbox)"
     cp -r "$SRC/agents" "$CAIXA/agents"
     node "$TMP/remove-linha.cjs" "$CAIXA/agents/$arq" "$skillNome" > "$CAIXA/remove.log" 2>&1
     APLICOU=$?
@@ -271,7 +279,7 @@ if [ "$NCAND" -eq 0 ]; then
 else
   while IFS=$'\t' read -r arq skillNome; do
     [ -z "$arq" ] && continue
-    CAIXA="$(mktemp -d)"
+    CAIXA="$(novo_sandbox)"
     cp -r "$SRC/agents" "$CAIXA/agents"
     node "$TMP/cola-trecho.cjs" "$CAIXA/agents/$arq" "$SRC/skills/$skillNome/SKILL.md" > "$CAIXA/cola.log" 2>&1
     APLICOU=$?

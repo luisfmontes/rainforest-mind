@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.11.0-1e5c3f?style=flat-square" alt="versão 1.11.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.12.0-1e5c3f?style=flat-square" alt="versão 1.12.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -156,6 +156,7 @@ As baterias dos gates rodam em Windows + Git Bash (ambiente do CI: `runs-on: win
 | `gate-repo-alheio.cjs` | escrita cujo destino está dentro de **outro** repositório git |
 | `gate-fechar-issue.cjs` | `gh issue close` direto, e `closes #N` em PR sem comentário de evidência marcado |
 | `gate-mensagem-commit.cjs` | `git commit` com assunto acima de 72 colunas ou terminando em ponto; sem corpo quando o stage passa de 3 arquivos ou 150 linhas; e mensagem que o hook não consegue ler (`-F -`, heredoc, `git commit` pelado — fechando merge, `-F .git/MERGE_MSG`) |
+| `gate-verificador-staged.cjs` | `git commit` cujo conteúdo **staged** o verificador do repositório reprova — descoberta nesta ordem: chave `"verificador-staged"` em `.rainforest/config.json`; senão `scripts/check-personal-data.py|.cjs|.sh|.js`; senão `scripts/conferir-publicacao.cjs`. Materializa os blobs (`git show :<caminho>`) numa pasta temporária e chama o verificador com esses caminhos; a saída dele vai no stderr. Repo sem verificador passa |
 | `portaria.cjs` | despacho de subagente não declarado em `.rainforest/agentes.json`, ou sem `isolation: "worktree"` quando ele escreve |
 
 Fora da tabela porque o mecanismo é outro (`Stop`, exit 0 com
@@ -168,9 +169,9 @@ liberam sem perguntar. Codex sem cota bloqueia dizendo isso, com a hora de
 retorno (o despacho sai 75 e escreve `codex sem cota: ...`).
 
 Valem em **qualquer** repo git da máquina, porque o hábito é que é o problema,
-não o repositório. Cada uma tem bateria própria — **565 casos** rodando o hook
-de verdade contra repos git montados na hora (soma medida em 2026-09-12:
-198 + 99 + 21 + 27 + 117 + 78 + 25 — re-verificar: a última linha da bateria `hooks/testa-<hook>.sh` de cada linha da tabela).
+não o repositório. Cada uma tem bateria própria — **671 casos** rodando o hook
+de verdade contra repos git montados na hora (soma medida em 2026-09-12, com o gate novo:
+201 + 99 + 24 + 27 + 117 + 25 + 170 + 8 — a portaria soma os sete `testa-portaria-*.cjs` que o `testa-portaria.sh` encadeia, 12 + 15 + 9 + 28 + 78 + 5 + 23, e a última linha do wrapper (7) conta arquivos, não casos; re-verificar: a última linha da bateria `hooks/testa-<hook>.sh` de cada linha da tabela).
 
 → O incidente de origem de cada trava, as saídas de emergência e a tabela de
 scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
@@ -184,6 +185,8 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 | `scripts/estado.cjs marcar --json {"carimbos":…}` | Grava por tarefa o hash de base em que ela foi aceita (`iteracao` cresce, nada se apaga); `proximo` e `ler` avisam quando esse hash não é ancestral do HEAD |
 | `scripts/testa-teto-skills.sh` | Nenhum `SKILL.md` acima de 500 linhas ou 16.384 B — a falha diz o que mover para `references/` |
 | `scripts/testa-mapa-regras.sh` | Cada uma das 17 regras tem linha em `## Regra → trava` de `docs/travas-mecanicas.md` (hook/script existente **ou** `disciplina`), e todo arquivo citado existe |
+| `scripts/conferir-fluxo.cjs mutacoes --slug <slug> [--plano <arquivo>]` | Roda a catraca de cada tarefa do plano que declara `mutacao:` (`conferir-mutacao.cjs` com os campos literais do bloco) e imprime uma linha por tarefa: `vermelho`, `mutante sobreviveu` ou `pulada (<motivo>)`. **Exit 1** se algum mutante sobreviveu, 0 se nenhum (ou tudo pulado), 2 se o plano não existe; `--plano` aponta o arquivo quando ele não está em `docs/rainforest/planos/<slug>.md` — é o que `marcar verificar ok` passa (Issue #192) |
+| `scripts/testa-sandbox-com-trap.sh` | Guarda estática das baterias `testa-*.sh` que criam sandbox: **mais de um** `mktemp -d` no arquivo exige o idioma `SANDBOXES=()` + função que registra cada caixa + um único `trap … EXIT` que varre o array; **um só** `mktemp -d` basta com `trap … EXIT` simples; sandbox sem trap nenhum reprova. A própria guarda e `testa-dependencias-de-bateria.sh` ficam fora da varredura real (seus fixtures citam `mktemp -d` como texto); `--autoteste` prova a guarda com fixtures sintéticos (Issue #216) |
 | `--confirmo` em `limpar-branches.cjs`, `limpar-worktrees.cjs --remover-sujo` e `fechar-issue.cjs` | Apagar branch, remover worktree sujo e fechar Issue exigem a frase literal que o próprio script imprime (`CONFIRMO apagar branches a,b`), digitada por você e repassada verbatim — frase de outro alvo sai 2 e nada acontece |
 | exit **69** `nao-verificavel:` em `conferir-entrega`, `conferir-mutacao`, `conferir-fluxo`, `conferir-ponte` | Ambiente impediu a checagem (worktree sumiu, `git` fora do PATH, bateria que não executa): nem aprovação, nem reprovação, nem `flaky` — anuncia em uma linha e não redespacha (regra 14) |
 

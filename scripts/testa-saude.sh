@@ -43,8 +43,8 @@
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SBP="$(mktemp -d)"
-TEMPS=("$SBP")
-trap 'rm -rf "${TEMPS[@]}"' EXIT
+SANDBOXES=("$SBP")
+trap 'rm -rf "${SANDBOXES[@]}"' EXIT
 
 ok=0; falhou=0
 checa() { # nome, esperado(nivel), esperado(trecho), obtido
@@ -345,7 +345,7 @@ echo "== MUTACAO: cegar o discriminador de raiz =="
 # $M (o clone sem parentesco montado la em cima, linhas 236-237), que e
 # exatamente o que a situacao B precisa para ser detectada.
 MUTR="$(mktemp -d)"
-TEMPS+=("$MUTR")
+SANDBOXES+=("$MUTR")
 cp -r "$SRC/scripts" "$MUTR/scripts"
 cp -r "$SRC/skills" "$MUTR/skills"
 mkdir -p "$MUTR/.claude-plugin"
@@ -429,7 +429,7 @@ checa "I. banco legado acusa falta de UNIQUE"     "alerta" "UNIQUE" "$I"
 echo
 echo "== MUTACAO: desabilitar a checagem de UNIQUE numa copia =="
 MUT="$(mktemp -d)"
-TEMPS+=("$MUT")
+SANDBOXES+=("$MUT")
 cp -r "$SRC/scripts" "$MUT/scripts"
 sed -i 's/if (!verificarConstraintUniqueProjetoOrigem(db)) {/if (false) { \/* MUTACAO *\//' "$MUT/scripts/saude.cjs"
 
@@ -784,7 +784,7 @@ rm -rf "$HOMEDIVERGE"
 monta_conta ".claude"       "0.70.0" "df1b135aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 monta_conta ".claude-outra" "0.71.0" "1369ca5bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 MUTCD="$(mktemp -d)"
-TEMPS+=("$MUTCD")
+SANDBOXES+=("$MUTCD")
 cp -r "$SRC/scripts" "$MUTCD/scripts"
 node -e "
   const fs=require('fs'), p=process.argv[1];
@@ -984,7 +984,11 @@ rm -f "$SBP/cfg/plugins/installed_plugins.json"
 echo ""
 echo "== conselho: rodada-concluida-sem-aviso =="
 SB_CONS_COMPLETA="$(mktemp -d)"
-trap "rm -rf '$SB_CONS_COMPLETA'" RETURN
+# `trap ... RETURN` aqui nunca disparava: este trecho roda no nivel do
+# script, fora de funcao, e RETURN so dispara ao SAIR de uma funcao ou de um
+# `source`. As tres caixas desta secao vazavam em toda corrida (achado da
+# Tarefa 10) — agora entram no SANDBOXES do topo do arquivo.
+SANDBOXES+=("$SB_CONS_COMPLETA")
 mkdir -p "$SB_CONS_COMPLETA/.rainforest/conselho/20260831-completa"
 cat > "$SB_CONS_COMPLETA/.rainforest/conselho/20260831-completa/estado.json" <<'EOF'
 {"id": "20260831-completa", "fases": {"pareceres": {"status": "ok"}, "revisao": {"status": "ok"}, "sintese": {"status": "ok"}}}
@@ -999,7 +1003,7 @@ fi
 echo ""
 echo "== conselho: seção ausente sem rodadas =="
 SB_CONS1="$(mktemp -d)"
-trap "rm -rf '$SB_CONS1'" RETURN
+SANDBOXES+=("$SB_CONS1")
 # Rodar /saude em diretório vazio - não deve ter seção conselho
 SAUDE_OUT1="$(cd "$SB_CONS1" && node "$SRC/scripts/saude.cjs" 2>&1 || true)"
 if ! echo "$SAUDE_OUT1" | grep -q "conselho"; then
@@ -1011,7 +1015,7 @@ fi
 echo ""
 echo "== conselho: aviso com rodada ABANDONA =="
 SB_CONS2="$(mktemp -d)"
-trap "rm -rf '$SB_CONS2'" RETURN
+SANDBOXES+=("$SB_CONS2")
 mkdir -p "$SB_CONS2/.rainforest/conselho/20260831-teste"
 cat > "$SB_CONS2/.rainforest/conselho/20260831-teste/estado.json" <<'EOF'
 {"id": "20260831-teste", "resultado": "ABANDONA", "fases": {"pareceres": {"status": "reprovada"}}}
@@ -1156,7 +1160,7 @@ echo "== MUTACAO: trocar aviso por alerta em checarIntegracoes =="
 # Se as chamadas a aviso() forem trocadas por alerta(), os testes de integração
 # devem falhar (exit != 0). A mutação roda numa cópia.
 MUTINT="$(mktemp -d)"
-TEMPS+=("$MUTINT")
+SANDBOXES+=("$MUTINT")
 cp -r "$SRC/scripts" "$MUTINT/scripts"
 node -e "
   const fs=require('fs'), p=process.argv[1];
@@ -1362,7 +1366,7 @@ rm -rf "$DUP_RAIZ"
 
 # MUTAÇÃO: mudar aviso→alerta faz exit ir para 1
 MUTCOPIA="$(mktemp -d)"
-TEMPS+=("$MUTCOPIA")
+SANDBOXES+=("$MUTCOPIA")
 cp -r "$SRC/scripts" "$MUTCOPIA/scripts"
 node -e "
   const fs=require('fs'), p=process.argv[1];

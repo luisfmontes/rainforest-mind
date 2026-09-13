@@ -52,6 +52,10 @@
           },
           {
             "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/gate-verificador-staged.cjs\""
+          },
+          {
+            "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/gate-mensagem-commit.cjs\""
           },
           {

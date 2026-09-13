@@ -412,6 +412,37 @@ testa('raiz que nao e a minha aborta em vez de matar', () => {
 
 console.log('');
 
+// ---- Teste 12: valorSeguroParaShell com contrabarra final ----
+console.log('Teste 12: valorSeguroParaShell com contrabarra final');
+const { valorSeguroParaShell } = require('../hooks/lib/cli-externo.cjs');
+
+testa('caminho com contrabarra final → false', () => {
+  if (valorSeguroParaShell('tmp\\x\\') !== false) {
+    throw new Error('Deveria retornar false para caminho com contrabarra final');
+  }
+});
+
+testa('caminho com contrabarras duplas no final → false', () => {
+  if (valorSeguroParaShell('tmp\\x\\\\') !== false) {
+    throw new Error('Deveria retornar false para caminho com contrabarras no final');
+  }
+});
+
+testa('caminho sem contrabarra final → true', () => {
+  if (valorSeguroParaShell('tmp\\x') !== true) {
+    throw new Error('Deveria retornar true para caminho sem contrabarra final');
+  }
+});
+
+testa('caminho relativo com espaço → true', () => {
+  // Caminho relativo com espaço para evitar hardcoding de <home>
+  if (valorSeguroParaShell('subdir/Alguem Com Espaco/x.md') !== true) {
+    throw new Error('Deveria retornar true para caminho com espaço');
+  }
+});
+
+console.log('');
+
 // ---- Cleanup ----
 fs.rmSync(TEMP_DIR, { recursive: true, force: true });
 

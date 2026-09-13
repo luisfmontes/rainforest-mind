@@ -46,6 +46,19 @@ function resolverRaiz(cwd) {
   }
 }
 
+/**
+ * Obtém timeout de sonda em milissegundos a partir de RFM_FERRAMENTAS_TIMEOUT_MS.
+ * - Lê variável de ambiente
+ * - Valida como inteiro > 0
+ * - Retorna default 2000 se inválido ou ausente
+ */
+function obterTimeoutMs() {
+  const env = process.env.RFM_FERRAMENTAS_TIMEOUT_MS;
+  if (!env) return 2000;
+  const valor = parseInt(env, 10);
+  return (Number.isInteger(valor) && valor > 0) ? valor : 2000;
+}
+
 // Builtins e navegacao: nao sao ferramentas a conferir, e o argumento deles nao
 // e executavel nenhum. Lista FECHADA de proposito — o que nao esta aqui e
 // tratado como comando de verdade, que e o default seguro (no maximo se gasta
@@ -171,9 +184,10 @@ function sondarExecutavel(executavel) {
     //
     // `command -v` e builtin, entao no Unix precisa de shell: o valor vai como
     // ARGUMENTO POSICIONAL (`"$1"`), nunca dentro do script.
+    const timeoutMs = obterTimeoutMs();
     const saida = process.platform === "win32"
-      ? execFileSync("where", [executavel], { encoding: "utf8", timeout: 2000, stdio: ["ignore", "pipe", "ignore"] })
-      : execFileSync("sh", ["-c", 'command -v -- "$1"', "sh", executavel], { encoding: "utf8", timeout: 2000, stdio: ["ignore", "pipe", "ignore"] });
+      ? execFileSync("where", [executavel], { encoding: "utf8", timeout: timeoutMs, stdio: ["ignore", "pipe", "ignore"] })
+      : execFileSync("sh", ["-c", 'command -v -- "$1"', "sh", executavel], { encoding: "utf8", timeout: timeoutMs, stdio: ["ignore", "pipe", "ignore"] });
 
     // O `where` devolve UMA LINHA POR OCORRENCIA. Isso e resultado de busca, nao
     // receita — e nao vai para o ledger (D11). Fica so como sinal de que achou.

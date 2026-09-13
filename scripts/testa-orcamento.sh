@@ -30,13 +30,20 @@
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SBP="$(mktemp -d)"
-SBP2="$(mktemp -d)"
-RAIZ_GORDA="$(mktemp -d)"
-node -e "require('fs').writeFileSync(process.argv[1]+'/FOCO.md','# Foco\n\n'+'x'.repeat(2500))" "$RAIZ_GORDA"
-RAIZ_VAZIA="$(mktemp -d)"
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
+# criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas —
+# registrado ANTES da primeira sandbox, para nao deixar janela de risco.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
 MUT="$SRC/scripts/.orcamento-mutante-teste.cjs"
-trap 'rm -rf "$SBP" "$SBP2" "$RAIZ_VAZIA" "$RAIZ_GORDA" "$MUT"' EXIT
+cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done; rm -f "$MUT"; }
+trap cleanup EXIT
+
+SBP="$(novo_sandbox)"
+SBP2="$(novo_sandbox)"
+RAIZ_GORDA="$(novo_sandbox)"
+node -e "require('fs').writeFileSync(process.argv[1]+'/FOCO.md','# Foco\n\n'+'x'.repeat(2500))" "$RAIZ_GORDA"
+RAIZ_VAZIA="$(novo_sandbox)"
 echo "(caixa de areia: $SBP)"
 
 ok=0; falhou=0

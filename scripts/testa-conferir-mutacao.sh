@@ -32,6 +32,7 @@ trap 'rm -rf "$S"' EXIT
 CAIXA="$S/caixa"; WCAIXA="$W/caixa"
 mkdir -p "$CAIXA"
 SAIDA="$S/saida.txt"
+NODE_DIR="$(dirname "$(command -v node)")"
 
 # ------------------------------------------------------------------ o fixture
 # Um fonte com UM comportamento observavel (recusar quando falta o campo) e um
@@ -339,8 +340,12 @@ echo "== 8b. D5 (2026-09-12): ambiente, nao conteudo =="
 # quebrar o proprio shell que o spawnSync tenta lancar (aqui, ComSpec no
 # Windows) — medido com `node -e` antes de escrever este caso: uma string
 # inexistente vira "baseline NAO-VERDE" (4, conteudo), nao 69.
-CHK_SEM_SHELL() { COMSPEC="$S/cmd-falso-que-nao-existe.exe" CHK "$@"; }
-exige 69 "ComSpec quebrado -> spawnSync nem lanca o shell (ambiente, nao 4)" \
+#
+# D24: Com a deteccao de bash no PATH, quebrar ComSpec nao e' suficiente —
+# comandoDaBateria encontra bash e usa bash -c. Restrinja o PATH ao dir do
+# node (so o executavel, sem bash) para forcar spawnSync a falhar.
+CHK_SEM_SHELL() { env PATH="$NODE_DIR" COMSPEC="$S/cmd-falso-que-nao-existe.exe" node "$SCRIPT" --raiz "$WCAIXA" "$@"; }
+exige 69 "ComSpec quebrado + sem bash no PATH -> spawnSync nem lanca shell (ambiente, nao 4)" \
   CHK_SEM_SHELL --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' \
     --bateria 'echo hi'
 tem "a PRIMEIRA linha do stderr e' nao-verificavel" "nao-verificavel: bateria nao executa"
@@ -786,6 +791,131 @@ if ! cmp -s "$CAIXA/fonte-aninhada.cjs" "$S/fonte-aninhada.pristino"; then
 else
   ok=$((ok+1)); printf '  ok    fonte-aninhada.cjs restaurado\n'
 fi
+
+echo
+echo "== 20. D25: Python .pyc nao fica mutado com PYTHONDONTWRITEBYTECODE=1 =="
+# Caso (c) — se Python 3 existir, testa que .pyc nao fica mutado quando valor muda.
+# O interprete e resolvido UMA vez em $PY, executando o candidato (no Windows,
+# python3 pode ser o stub da Store): e a forma que testa-dependencias-de-bateria.sh
+# admite, e o fixture abaixo recebe o mesmo $PY exportado pelo ambiente.
+PY=""
+for cand in python3 python; do
+  if command -v "$cand" >/dev/null 2>&1 && "$cand" -c 'import sys; sys.exit(0 if sys.version_info[0] == 3 else 1)' >/dev/null 2>&1; then
+    PY="$cand"; break
+  fi
+done
+if [ -n "$PY" ]; then
+  export PY
+  # Criar modulo Python com valor inicial
+  cat > "$CAIXA/mod.py" <<'PY'
+VALOR = 1.5e9
+PY
+
+  # Criar bateria que importa o modulo e verifica seu valor
+  cat > "$CAIXA/bateria-pyc.sh" <<'BAT'
+#!/bin/bash
+# A bateria importa mod.py e testa seu valor
+# Baseline: VALOR deve ser 1.5e9
+# Pos-mutacao (com mutacao em mod.py): VALOR sera 0.5e9 — bateria falha.
+# $PY vem exportado pela bateria de fora (resolvedor unico de interprete).
+"$PY" -c "import mod; exit(0 if mod.VALOR == 1.5e9 else 1)" 2>/dev/null || exit 1
+BAT
+
+  # Fixture: arquivo que sera' mutado no modulo
+  cat > "$CAIXA/fonte-pyc.cjs" <<'FONTE'
+#!/usr/bin/env node
+// Dummy file para raiz da catraca
+const x = 1;
+FONTE
+  cp "$CAIXA/fonte-pyc.cjs" "$S/fonte-pyc.pristino"
+  cp "$CAIXA/mod.py" "$S/mod.py.pristino"
+
+  # Mutacao: mudar o valor do modulo Python de 1.5e9 para 0.5e9 (mesmo tamanho)
+  # Isso força Python a reimportar mod.py durante a pos-mutacao, que detectara' o valor diferente
+  exige 0 "Python bytecode nao fica mutado: mod.py 1.5e9->0.5e9, depois sem __pycache__ (D25)" \
+    CHK --arquivo mod.py --de "VALOR = 1.5e9" --para "VALOR = 0.5e9" \
+        --bateria 'bash bateria-pyc.sh'
+  tem "bateria VERMELHA (mutacao detectada)" "VERMELHA"
+  nao_tem "sem aviso de colapso" "a bateria colapsou"
+
+  # Verificar restauracao
+  if ! cmp -s "$CAIXA/mod.py" "$S/mod.py.pristino"; then
+    falhou=$((falhou+1)); printf '  FALHA: mod.py nao foi restaurado\n'
+    cp "$S/mod.py.pristino" "$CAIXA/mod.py"
+  else
+    ok=$((ok+1)); printf '  ok    mod.py restaurado ao valor original\n'
+  fi
+
+  if ! cmp -s "$CAIXA/fonte-pyc.cjs" "$S/fonte-pyc.pristino"; then
+    falhou=$((falhou+1)); printf '  FALHA: fonte-pyc.cjs nao foi restaurado\n'
+    cp "$S/fonte-pyc.pristino" "$CAIXA/fonte-pyc.cjs"
+  else
+    ok=$((ok+1)); printf '  ok    fonte-pyc.cjs restaurado\n'
+  fi
+
+  # Verificar que nao ha' __pycache__
+  if [ -d "$CAIXA/__pycache__" ]; then
+    falhou=$((falhou+1)); printf '  FALHA: __pycache__ nao foi limpo (PYTHONDONTWRITEBYTECODE nao funcionou)\n'
+    rm -rf "$CAIXA/__pycache__"
+  else
+    ok=$((ok+1)); printf '  ok    nao ha __pycache__ (PYTHONDONTWRITEBYTECODE bloqueou .pyc)\n'
+  fi
+
+  # Re-rodar bateria sobre fonte restaurado para confirmar que funciona
+  (cd "$CAIXA" && bash bateria-pyc.sh >/dev/null 2>&1)
+  if [ $? -eq 0 ]; then
+    ok=$((ok+1)); printf '  ok    bateria re-rodada sobre fonte restaurado sai 0\n'
+  else
+    falhou=$((falhou+1)); printf '  FALHA: bateria nao aprova fonte restaurado\n'
+  fi
+else
+  printf '  (pulado: sem Python 3)\n'
+fi
+
+echo
+echo "== 21. D24: a bateria roda em bash no Windows, nao no cmd.exe =="
+# Caso (a) — so onde ha' MSYS (Git Bash): a bateria 'touch marca-a; touch marca-b'
+# entregue ao cmd.exe criaria um arquivo chamado 'touch' e outro 'marca-a;'
+# (cmd nao separa comandos por ';'). Em bash, deixa marca-a e marca-b. A
+# bateria sai 0 nas duas rodadas, entao a catraca diz "sobreviveu" (exit 2) —
+# o que se mede aqui e' o SHELL, nao o veredito.
+if uname -o 2>/dev/null | grep -q Msys; then
+  rm -f "$CAIXA/marca-a" "$CAIXA/marca-b" "$CAIXA/touch" "$CAIXA/marca-a;"
+  exige 2 "D24 (a): bateria com ';' roda em bash (sobrevive, mas separa os comandos)" \
+    CHK --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' \
+        --bateria 'touch marca-a; touch marca-b'
+  if [ -f "$CAIXA/marca-a" ] && [ -f "$CAIXA/marca-b" ]; then
+    ok=$((ok+1)); printf '  ok    marca-a e marca-b existem (bash separou os dois comandos)\n'
+  else
+    falhou=$((falhou+1)); printf '  FALHA marca-a/marca-b nao existem: a bateria nao rodou em bash\n'
+  fi
+  if [ ! -e "$CAIXA/touch" ] && [ ! -e "$CAIXA/marca-a;" ]; then
+    ok=$((ok+1)); printf '  ok    nao existe arquivo "touch" nem "marca-a;" (nao foi o cmd.exe)\n'
+  else
+    falhou=$((falhou+1)); printf '  FALHA arquivo "touch" ou "marca-a;" existe: a bateria foi ao cmd.exe\n'
+  fi
+  rm -f "$CAIXA/marca-a" "$CAIXA/marca-b" "$CAIXA/touch" "$CAIXA/marca-a;"
+else
+  printf '  (pulado: nao e MSYS)\n'
+fi
+
+# Caso (b) — PYTHONDONTWRITEBYTECODE chega como '1' na bateria, no baseline E na
+# pos-mutacao (a bateria anexa o valor a env.txt e roda a bateria honesta).
+rm -f "$CAIXA/env.txt"
+cat > "$CAIXA/bateria-env.sh" <<'BAT'
+#!/bin/bash
+printf '%s\n' "${PYTHONDONTWRITEBYTECODE-vazio}" >> env.txt
+bash bateria.sh
+BAT
+exige 0 "D24/D25 (b): bateria honesta com PYTHONDONTWRITEBYTECODE gravado" \
+  CHK --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' \
+      --bateria 'bash bateria-env.sh'
+if [ "$(tr -d '\r' < "$CAIXA/env.txt" | grep -c '^1$')" -eq 2 ] && [ "$(tr -d '\r' < "$CAIXA/env.txt" | wc -l)" -eq 2 ]; then
+  ok=$((ok+1)); printf '  ok    env.txt tem exatamente "1" nas duas rodadas (baseline e mutacao)\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA env.txt nao tem "1" nas duas rodadas:\n'; sed 's/^/        | /' "$CAIXA/env.txt"
+fi
+rm -f "$CAIXA/env.txt" "$CAIXA/bateria-env.sh"
 
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"

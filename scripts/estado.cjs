@@ -458,8 +458,13 @@ const COMO_DECLARAR = "Ex.: --json '{\"tarefas_ok\":2,\"tarefas\":2,\"mutacao\":
  * não normalizava CRLF. O efeito era o pior possível para uma trava — recusar
  * entrega correta, com uma mensagem apontando uma tarefa que não existe.
  */
-function extrairNumerosTarefa(slug) {
-  const arquivo_plano = path.join(RAIZ, 'docs', 'rainforest', 'planos', `${slug}.md`);
+function extrairNumerosTarefa(slug, estado) {
+  // Mesmo resolvedor que a catraca de `verificar` usa (D9/T21): o caminho vem de
+  // `plano.arquivo` do estado, nao de `<slug>.md` montado na mao. Aqui o efeito do
+  // nome fixo era mais silencioso ainda — `null` faz esta trava avisar e liberar,
+  // entao um plano com outro nome desligava o cruzamento lista x plano sem que
+  // nada no placar mudasse.
+  const arquivo_plano = docDoEstagio('planos', slug, estado);
   if (!fs.existsSync(arquivo_plano)) {
     return null; // plano nao existe
   }
@@ -508,20 +513,41 @@ function verificarCatracaMutacao(slug, bloco, estado, extra) {
 
   const exigeFixture = String(bloco.catraca_mutacao || "") >= FIXTURE_EXIGIDA_DESDE;
   const lista = extra && extra.mutacao;
-  if (!Array.isArray(lista) || lista.length === 0) {
+
+  // Campo `mutacao` nao foi enviado: SEMPRE recusa (obrigatorio no --json)
+  if (lista === undefined || lista === null) {
     return "RECUSADO: fechar 'executar' exige 'mutacao' no --json: uma lista, um item por tarefa do plano.\n"
       + 'Sem ela, "a bateria passou" nao distingue bateria que testa de bateria que nao\n'
       + 'sabe falhar, e foi assim que uma entrega quebrada saiu daqui 49/49 verde.\n'
       + COMO_DECLARAR;
   }
 
-  // Extrair numeros de tarefas do plano
-  const nums_plano = extrairNumerosTarefa(slug);
+  // Extrair numeros de tarefas do plano ANTES de verificar lista
+  const nums_plano = extrairNumerosTarefa(slug, estado);
 
-  // Se nao ha plano em disco, avisa e passa
+  // Sem plano em disco nao ha o que cruzar, qualquer que seja a lista. O aviso
+  // sai aqui, e nao so no ramo da lista vazia: a caixa de teste que fecha
+  // `executar` sem plano manda lista CHEIA, e ela tambem precisa saber que o
+  // cruzamento nao aconteceu. Trava que nao consegue medir avisa e libera —
+  // reprovar por nao conseguir medir e o que cria o habito do `--forcar`.
   if (nums_plano === null) {
     console.warn(`aviso: plano nao encontrado para ${slug} — nao ha como validar lista de mutacao contra plano. Prosseguindo sem validacao.`);
-  } else if (nums_plano.size > 0) {
+  }
+
+  // Lista foi enviada mas vazia: recusa se ha plano, libera se nao ha
+  if (!Array.isArray(lista) || lista.length === 0) {
+    if (nums_plano === null) {
+      return null;
+    }
+    // Se ha plano, lista nao pode estar vazia
+    return "RECUSADO: fechar 'executar' exige 'mutacao' no --json: uma lista, um item por tarefa do plano.\n"
+      + 'Sem ela, "a bateria passou" nao distingue bateria que testa de bateria que nao\n'
+      + 'sabe falhar, e foi assim que uma entrega quebrada saiu daqui 49/49 verde.\n'
+      + COMO_DECLARAR;
+  }
+
+  // Validar lista contra plano
+  if (nums_plano !== null && nums_plano.size > 0) {
     // Validar lista contra plano
     const nums_lista = new Set();
     const tarefas_vistas = new Set();
@@ -983,7 +1009,7 @@ function agoraIso() {
  *
  * @returns {string|null} mensagem de recusa, ou null se passou/não se aplica
  */
-function processarCarimbos(estagio, blocoAnterior, extra) {
+function processarCarimbos(estagio, blocoAnterior, extra, estado) {
   if (estagio !== 'executar') return null;
   if (!Object.prototype.hasOwnProperty.call(extra, 'carimbos')) return null;
 
@@ -1000,6 +1026,10 @@ function processarCarimbos(estagio, blocoAnterior, extra) {
   const sessao = process.env.CLAUDE_SESSION_ID || SESSAO_DESCONHECIDA;
   const ts = agoraIso();
 
+  // Validar se plano.tarefas está gravado e tarefa está dentro do intervalo
+  const blocoPlano = estado && estado.plano;
+  const limiteMaxTarefa = blocoPlano && typeof blocoPlano.tarefas === 'number' ? blocoPlano.tarefas : null;
+
   for (let i = 0; i < entrada.length; i += 1) {
     const item = entrada[i];
     const onde = `carimbos[${i}]`;
@@ -1009,6 +1039,10 @@ function processarCarimbos(estagio, blocoAnterior, extra) {
     const tarefa = item.tarefa;
     if (typeof tarefa !== 'number' || !Number.isFinite(tarefa)) {
       return `RECUSADO: ${onde} nao tem 'tarefa' numerica.\n${forma}`;
+    }
+    // Se plano.tarefas foi gravado, validar se tarefa está em 1..tarefas
+    if (limiteMaxTarefa !== null && (tarefa < 1 || tarefa > limiteMaxTarefa)) {
+      return `RECUSADO: carimbo da tarefa ${tarefa} fora do plano (1..${limiteMaxTarefa}).`;
     }
     const hash = item.hash_base;
     if (typeof hash !== 'string' || !/^[0-9a-f]{7,}$/i.test(hash)) {
@@ -1075,6 +1109,20 @@ function avisarCarimbosDivergentes(estado) {
 
 // ---------------------------------------------------------------- CLI
 
+// Flags aceitas por subcomando. Qualquer flag fora desta lista e recusada ANTES
+// de qualquer gravacao. Flags globais (que se aplicam a multiplos subcomandos)
+// nao sao repetidas — estao listadas uma vez como aceitas universalmente.
+const FLAGS_POR_SUBCOMANDO = {
+  iniciar: ['slug', 'titulo'],
+  ler: ['slug'],
+  marcar: ['slug', 'estagio', 'status', 'json'],
+  proximo: ['slug'],
+  exigir: ['slug', 'estagio'],
+  liberar: ['slug', 'estagio'],
+  listar: [],
+  concluido: ['slug'],
+};
+
 function arg(nome, obrigatorio = true) {
   const i = process.argv.indexOf(`--${nome}`);
   if (i === -1 || i + 1 >= process.argv.length) {
@@ -1087,8 +1135,39 @@ function arg(nome, obrigatorio = true) {
   return process.argv[i + 1];
 }
 
+/**
+ * Valida que todas as flags passadas estao na lista de aceitas para o subcomando.
+ * Recusa com exit 1 e mensagem clara se achar flag desconhecida ANTES de gravar nada.
+ */
+function validarFlagsDesconhecidas(cmd) {
+  const flagsAceitas = FLAGS_POR_SUBCOMANDO[cmd];
+  if (!flagsAceitas) return; // comando inexistente: sera reportado em outro lugar
+
+  const todasAsFlags = new Set();
+  for (let i = 2; i < process.argv.length; i++) {
+    const arg_str = process.argv[i];
+    if (arg_str.startsWith('--')) {
+      const nomeDaFlag = arg_str.substring(2);
+      // As flags sao nome/valor em pares: --flag valor, ou --flag valor --proxima valor
+      // Precisamos extrair SO o nome da flag (antes do espaco/proximo--)
+      todasAsFlags.add(nomeDaFlag);
+    }
+  }
+
+  const desconhecidas = Array.from(todasAsFlags).filter((f) => !flagsAceitas.includes(f));
+
+  // Ponto unico de mutacao: a linha abaixo e o alvo da mutacao de teste
+  if (desconhecidas.length > 0) {
+    console.error(`flag desconhecida: --${desconhecidas[0]}`);
+    process.exit(1);
+  }
+}
+
 function main() {
   const cmd = process.argv[2];
+
+  // Validar flags desconhecidas ANTES de qualquer acao
+  validarFlagsDesconhecidas(cmd);
 
   if (cmd === 'listar') {
     if (!fs.existsSync(DIR_ESTADO)) return console.log('(nenhum trabalho em andamento)');
@@ -1337,6 +1416,31 @@ function main() {
     return;
   }
 
+  /**
+   * Devolve o primeiro estágio POSTERIOR a `estagio` (ordem de PRE_REQUISITOS)
+   * cujo status é `ok`, `aprovado` ou `parcial`, e **só quando `status === 'parcial'`**.
+   * Devolve `null` caso contrário. Estágio posterior que foi reaberto (tem `reaberto_por`)
+   * não conta — é a reabertura sancionada.
+   */
+  function estagioPosteriorAberto(estado, estagio, status) {
+    if (status !== 'parcial') return null;
+
+    const ordem = ['arqueologia', 'design', 'plano', 'executar', 'revisar', 'verificar', 'fechar'];
+    const indice = ordem.indexOf(estagio);
+    if (indice === -1 || indice === ordem.length - 1) return null; // não encontrado ou é o último
+
+    for (let i = indice + 1; i < ordem.length; i += 1) {
+      const estag = ordem[i];
+      const bloco = estado[estag];
+      // Estágio foi reaberto (tem reaberto_por) não conta — reabertura sancionada
+      if (bloco && bloco.reaberto_por) continue;
+      if (bloco && bloco.status && ['ok', 'aprovado', 'parcial'].includes(bloco.status)) {
+        return estag;
+      }
+    }
+    return null;
+  }
+
   if (cmd === 'marcar') {
     const estagio = arg('estagio');
     const status = arg('status');
@@ -1371,12 +1475,34 @@ function main() {
     // Carimbos (D8): valida e funde ANTES de qualquer outra checagem, porque
     // funciona nos tres status (parcial, ok, reprovado) — nao so no fechamento.
     {
-      const recusa_carimbos = processarCarimbos(estagio, estado[estagio], extra);
+      const recusa_carimbos = processarCarimbos(estagio, estado[estagio], extra, estado);
       if (recusa_carimbos) {
         console.error(recusa_carimbos);
         process.exit(2);
       }
     }
+
+    // D28: voltando a parcial, recusa se há estágio posterior aberto (status ok/aprovado/parcial)
+    const posterior_aberto = estagioPosteriorAberto(estado, estagio, status);
+    if (posterior_aberto) {
+      const status_posterior = estado[posterior_aberto].status;
+      console.error(`RECUSADO: ${estagio} nao pode voltar a parcial com ${posterior_aberto} em ${status_posterior}.`);
+      process.exit(2);
+    }
+
+    // D28: marcar num estágio cujo pré-requisito está em pendente é recusado
+    {
+      const prereqs = PRE_REQUISITOS[estagio] || [];
+      for (const prereq of prereqs) {
+        const blocoPrereq = estado[prereq];
+        const statusPrereq = blocoPrereq ? blocoPrereq.status : 'pendente';
+        if (statusPrereq === 'pendente') {
+          console.error(`RECUSADO: ${estagio} exige ${prereq} fechado.`);
+          process.exit(2);
+        }
+      }
+    }
+
     // Fechar um estágio com pré-requisito aberto é o furo que o arquivo existe para
     // impedir: sem isto, `marcar verificar ok` pularia a revisão inteira em silêncio.
     if (status === (FECHADO[estagio] || 'ok')) {
@@ -1421,6 +1547,28 @@ function main() {
       if (recusa_evidencia) {
         console.error(recusa_evidencia);
         process.exit(2);
+      }
+      // Validar mutações ao fechar verificar: roda `conferir-fluxo.cjs mutacoes`
+      // Caminho pelo mesmo `docDoEstagio` que resolve `design`/`plano` em todo
+      // o resto do arquivo: lê `plano.arquivo` do estado (fluxo cujo plano não
+      // se chama `<slug>.md`, o caso normal por aqui) e só cai no nome fixo
+      // como último recurso. Antes, este trecho tinha o único `path.join`
+      // hard-coded do arquivo que ignorava esse campo — um fluxo com plano
+      // fora do padrão pulava a catraca inteira em silêncio, exit 0 sem rodar
+      // `conferir-fluxo.cjs mutacoes` nenhuma vez. O caminho resolvido chega ao
+      // subprocesso via `--plano`: sem ele, `conferir-fluxo mutacoes` resolve
+      // `<slug>.md` fixo e ignora `plano.arquivo`.
+      if (estagio === 'verificar') {
+        const arquivo_plano = docDoEstagio('planos', slug, estado);
+        if (fs.existsSync(arquivo_plano)) {
+          const mutacoes = spawnSync(process.execPath, [path.join(__dirname, 'conferir-fluxo.cjs'), 'mutacoes', '--slug', slug, '--plano', arquivo_plano], {
+            stdio: 'inherit',
+          });
+          if (mutacoes.status !== 0) {
+            console.error('RECUSADO: catraca de mutações não passou. Revise as tarefas com mutante sobrevivente acima.');
+            process.exit(2);
+          }
+        }
       }
       // O gate tem de enxergar o `--json` DESTA chamada, não só o que já estava
       // gravado. Sem esta fusão, declarar `arquivo` no mesmo `marcar` que fecha

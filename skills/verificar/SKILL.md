@@ -54,6 +54,16 @@ pipe**, não do comando que importa. `docker build ... | tail -5` pode sair
 o próprio sinal do critério, não canalize — capture com
 `${PIPESTATUS[0]}` (bash) ou rode sem pipe e leia a saída à parte.
 
+## Validação de mutações (catraca D9)
+
+Antes de `marcar verificar ok` gravar o estado, roda `node scripts/conferir-fluxo.cjs mutacoes --slug <slug>` para validar que cada tarefa do plano com `mutacao:` declarada tem uma bateria que sabe falhar. Saída esperada de cada tarefa: `tarefa N: vermelho` (mutação casou e bateria saiu com exit ≠ 0) ou `tarefa N: pulada (...)` para tarefas com `mutacao: n/a` ou erros de aplicação.
+
+Exit code do subcomando:
+- 0: nenhum mutante sobreviveu (todas vermelhas ou puladas)
+- ≠ 0: algum mutante sobreviveu (bateria verde com mutação)
+
+Quando um mutante sobrevive, `marcar verificar ok` recusa com exit 2, imprime a saída acima e não grava o estado — é a mesma forma do `executar` quando a catraca de mutação falha.
+
 ## Fechamento
 
 Todo critério passou:

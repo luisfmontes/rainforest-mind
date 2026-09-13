@@ -13,8 +13,15 @@
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CAIXA="$(mktemp -d)"
-trap 'rm -rf "$CAIXA"' EXIT
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
+# criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas —
+# ORIGEM_FIEL e CAIXA_FIEL (mais abaixo) nao tinham NENHUM cleanup.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
+cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done; }
+trap cleanup EXIT
+
+CAIXA="$(novo_sandbox)"
 
 # Caminhos dentro da caixa — totalmente isolados
 ORIGEM="$CAIXA/origem-sintética.db"
@@ -335,7 +342,7 @@ echo "== 7. origem FIEL: text vazio, conteudo em title/subtitle =="
 # preenchidos) e `subtitle` (9.848). Com a fixture infiel, o importador que lia
 # só `text` passava em tudo e importava 10.092 linhas em branco. Fixture que não
 # reproduz o preenchimento da origem não testa importação, testa a si mesma.
-ORIGEM_FIEL="$(mktemp -d)/fiel.db"
+ORIGEM_FIEL="$(novo_sandbox)/fiel.db"
 ORIGEM="$ORIGEM_FIEL" node --no-warnings <<'FIXTURE_FIEL'
 const { DatabaseSync } = require('node:sqlite');
 const db = new DatabaseSync(process.env.ORIGEM);
@@ -351,7 +358,7 @@ db.prepare(`INSERT INTO observations (text, title, subtitle, project, created_at
 db.close();
 FIXTURE_FIEL
 
-CAIXA_FIEL="$(mktemp -d)"
+CAIXA_FIEL="$(novo_sandbox)"
 TESTADOR_ORIGEM_CLAUDE_MEM="$ORIGEM_FIEL" RFM_ROOT="$CAIXA_FIEL" node "$SRC/scripts/importar-claude-mem.cjs" > /dev/null 2>&1
 # O `cd` é necessário: caminho POSIX embutido em `node -e` NÃO passa pela
 # conversão do MSYS (ela só vale para argumento e variável de ambiente), e o

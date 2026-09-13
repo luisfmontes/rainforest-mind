@@ -13,6 +13,18 @@ arquivo compartilhado, não por tema:
 - **Onda 3**: T10 (#216) mexe em baterias que T3, T8 e T9 acabaram de editar
   (`testa-saude.sh`, `testa-conferir-fluxo.sh`), e T19 fecha a versão.
 
+**Rodada 2 (emenda de 2026-09-12).** O `revisar` reprovou com 5 achados e a
+fatia sem achado já está na main (PR #236, 12 Issues). A branch trouxe a main
+por merge (`97363814`); o que resta no diff é só o das tarefas com achado. As
+tarefas 24 a 32 fecham os achados (D20–D23) e as seis Issues novas (D24–D29):
+
+- **Onda 4** (arquivos disjuntos entre si): T24, T25, T26, T27, T28, T29, T30, T32.
+- **Onda 5**: T31 (toca `estado.cjs` e `testa-estado.sh` depois da T25), T33
+  (README e travas, depois de tudo que muda comportamento), e por fim T19 (versão).
+
+A T10 teve o `arquivos:` emendado com as conversões que ela fez além das 11
+declaradas (é a única saída do creep, e a conversão fica).
+
 **Restrição que vale para todas:** o repo é público — nenhum caminho desta
 máquina em código, teste ou fixture; e-mail em `git config` de bateria é
 `test@<email>`. Toda asserção de bateria tem os dois ramos (`if/else`): a forma
@@ -149,12 +161,13 @@ pronto quando: (a) com um plano cujo bloco `mutacao:` de uma tarefa aponta para 
 
 ### 10. Sandbox de bateria sempre no trap; guarda estática [tipo: teste]
 atende: D10
-arquivos: `scripts/testa-conferir-fluxo.sh`, `scripts/testa-observar.sh`, `scripts/testa-saude.sh`, `hooks/testa-memoria-recuperacao.sh`, `scripts/testa-memoria-somente-leitura.sh`, `hooks/testa-contexto-sessao.sh`, `scripts/testa-orcamento.sh`, `hooks/testa-memoria-criticos-ponta-a-ponta.sh`, `hooks/testa-ferramentas-nao-toca-abertura.sh`, `scripts/testa-caminho-pessoal.sh`, `scripts/testa-dependencias-de-bateria.sh`, `scripts/testa-sandbox-com-trap.sh`, `README.md`
+arquivos: `scripts/testa-conferir-fluxo.sh`, `scripts/testa-observar.sh`, `scripts/testa-saude.sh`, `hooks/testa-memoria-recuperacao.sh`, `scripts/testa-memoria-somente-leitura.sh`, `hooks/testa-contexto-sessao.sh`, `scripts/testa-orcamento.sh`, `hooks/testa-memoria-criticos-ponta-a-ponta.sh`, `hooks/testa-ferramentas-nao-toca-abertura.sh`, `scripts/testa-caminho-pessoal.sh`, `scripts/testa-dependencias-de-bateria.sh`, `scripts/testa-sandbox-com-trap.sh`, `README.md`, `hooks/testa-memoria-marca.sh`, `hooks/testa-memoria-recuperacao-ponta-a-ponta.sh`, `hooks/testa-memoria-session-start.sh`, `scripts/testa-dados-batedor-repos.sh`, `scripts/testa-fila-de-repos.sh`, `scripts/testa-gate-do-agente.sh`, `scripts/testa-importar-claude-mem.sh`, `scripts/testa-limpar-branches.sh`, `scripts/testa-medir-injecao.sh`, `scripts/testa-memoria-backup.sh`, `scripts/testa-memoria-migracao-atomica.sh`, `scripts/testa-memoria.sh`, `scripts/testa-portoes-gate.sh`, `scripts/testa-recibo-gravar.sh`, `scripts/testa-verifica-fidelidade.sh`, `scripts/testa-backup-estado.sh`, `scripts/testa-registrar-erro.sh`
+(emenda 2026-09-12: os 17 arquivos a partir de `testa-memoria-marca.sh` são as conversões para o idioma `SANDBOXES` que a T10 fez além das 11 declaradas — o `revisar` as apontou como creep, e a emenda é a única saída; a conversão fica, porque é o que a guarda estática cobra)
 depende de: 3, 8, 9
 paralela: nao
 mutacao:
   arquivo: `scripts/testa-sandbox-com-trap.sh`
-  de: `if [ "$n_mktemp" -gt 1 ] && ! grep -q 'SANDBOXES' "$f"; then`
+  de: `if [ "$n_mktemp" -gt 1 ] && ! sem_comentario "$f" | grep -q 'SANDBOXES'; then`
   para: `if false; then`
   bateria: `bash scripts/testa-sandbox-com-trap.sh --autoteste`
   fixture: fixture com dois mktemp e sem SANDBOXES e reprovada
@@ -264,14 +277,14 @@ mutacao:
   fixture: origin/main local velho e remoto com versao igual recusa apos fetch
 pronto quando: com dois clones de um remoto bare — o segundo bumpa `plugin.json` para `1.3.0` e faz push, o primeiro tem `origin/main` local ainda em `1.2.0` e declara `1.3.0` — `node scripts/conferir-versao.cjs` no primeiro sai 2 dizendo `nao e maior que a de origin/main (1.3.0)`, e com `--sem-fetch` sai 0 (comportamento antigo); com remoto inacessível imprime `aviso: fetch falhou` e segue com a ref local — provado por `bash scripts/testa-conferir-versao.sh` devolvendo os três casos novos `ok` e exit 0.
 
-### 19. Versão 1.10.0 [tipo: configurar]
+### 19. Versão 1.12.0 [tipo: configurar]
 atende: D19
 arquivos: `.claude-plugin/plugin.json`, `README.md`
-depende de: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 20, 21, 22
+depende de: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33
 paralela: nao
 mutacao: n/a
   motivo: número de versão; a divergência entre os dois lugares é o que `testa-versao.sh` já pega
-pronto quando: com `plugin.json` e o badge do README em `1.10.0`, `bash scripts/testa-versao.sh` sai 0 e `node scripts/conferir-versao.cjs` sai 0 comparando com `origin/main`.
+pronto quando: com `plugin.json` e o badge do README em `1.12.0` (emenda 2026-09-12: a main já está em 1.11.0; era 1.10.0 quando a tarefa foi escrita), `bash scripts/testa-versao.sh` sai 0 e `node scripts/conferir-versao.cjs` sai 0 comparando com `origin/main`.
 
 ### 20. Caixa de areia das baterias copia `scripts/lib/` [tipo: teste]
 atende: D15
@@ -326,3 +339,131 @@ mutacao:
 pronto quando: um bloco `mutacao:` com `timeout: <ms>` faz `conferir-fluxo.cjs mutacoes` passar `--timeout <ms>` ao `conferir-mutacao.cjs` (provado por fixture cuja bateria dorme mais que o padrão e passa com o timeout declarado, e reprova sem ele); bloco sem `timeout:` continua usando o padrão do `conferir-mutacao`; e cada linha `pulada` passa a carregar a razão que o `conferir-mutacao` imprimiu — hoje `stdio: 'pipe'` engole o stderr e `exit 4` vira `não mensurável` para três causas diferentes (baseline não-verde, `--de` ambíguo, baseline estourou o teto), que é informação demais perdida numa palavra só — provado por `bash scripts/testa-conferir-fluxo.sh` exit 0 com os casos novos.
 
 Nota de origem (2026-09-12): a tarefa 3 aparece como `pulada (não mensurável)` nas três rodadas da catraca, e a razão só apareceu quando rodei o `conferir-mutacao` à mão: `RECUSADO: baseline estourou o teto de 300000 ms` — `scripts/testa-saude.sh` leva mais que o teto padrão, e a catraca precisa rodá-la duas vezes. A bateria não está errada, o teto é que não é declarável por tarefa. Enquanto isso, a cobertura da tarefa 3 está perdida em silêncio, e `pulada` não reprova.
+
+### 24. `valorSeguroParaShell` recusa contrabarra final; `despachar-codex` normaliza o worktree [tipo: implementar]
+atende: D20
+arquivos: `hooks/lib/cli-externo.cjs`, `scripts/despachar-codex.cjs`, `hooks/testa-cli-externo.sh`, `scripts/testa-cli-externo.cjs`, `scripts/testa-cli-externo.sh`, `scripts/testa-despachar-codex.sh`
+(emenda 2026-09-12: os casos de `valorSeguroParaShell` moram em `scripts/testa-cli-externo.cjs`, que `scripts/testa-cli-externo.sh` executa — a T2 os havia declarado em `hooks/testa-cli-externo.sh`)
+depende de: 2
+paralela: sim
+mutacao:
+  arquivo: `hooks/lib/cli-externo.cjs`
+  de: `if (valor.endsWith('\\')) return false;`
+  para: `if (false) return false;`
+  bateria: `bash hooks/testa-cli-externo.sh`
+  fixture: valor terminado em contrabarra e recusado
+pronto quando: `valorSeguroParaShell` contém, antes do teste de regex, a linha literal `if (valor.endsWith('\\')) return false;` (uma única ocorrência no arquivo); com `C:\tmp\x\` e `C:\tmp\x\\` devolve `false`, com `C:\tmp\x` e `C:/Users/Alguem Com Espaco/x.md` devolve `true`; `scripts/despachar-codex.cjs` passa `--worktree` por `path.resolve` antes de validar, então `--worktree 'C:\tmp\x\'` (com o diretório existindo) é aceito e o dublê do Codex (`RFM_TEST=1`), ecoando o argv que recebeu, mostra `-C`, `-c` e `-o` como argumentos SEPARADOS — nunca um só; `--saida 'C:\tmp\x\'` continua recusado com `valor invalido: --saida` — provado por `bash hooks/testa-cli-externo.sh` e `bash scripts/testa-despachar-codex.sh` devolvendo os casos novos `ok` e exit 0.
+
+### 25. `marcar verificar ok` passa `--plano` à catraca, e o `t6b` afirma o mutante [tipo: implementar]
+atende: D21
+arquivos: `scripts/estado.cjs`, `scripts/testa-estado.sh`
+depende de: 21
+paralela: sim
+mutacao:
+  arquivo: `scripts/estado.cjs`
+  de: `'--slug', slug, '--plano', arquivo_plano]`
+  para: `'--slug', slug]`
+  bateria: `bash scripts/testa-estado.sh`
+  fixture: t6b — a saida do marcar verificar ok contem 'mutante sobreviveu' vindo do plano t6-mut.md
+pronto quando: o `spawnSync` do `conferir-fluxo.cjs mutacoes` em `estado.cjs` recebe o array literal `['mutacoes', '--slug', slug, '--plano', arquivo_plano]` (é o mesmo `arquivo_plano` que o `existsSync` da linha acima já resolve por `docDoEstagio`); no `t6b` (plano `t6-mut.md`, slug `t6b`) a saída combinada do `marcar --estagio verificar --status ok` sai 2 e contém **as duas** strings `mutante sobreviveu` e `catraca de mutações não passou` (a asserção exige as duas; hoje só a segunda) — e com o `--plano` retirado a mesma chamada continua saindo 2 mas SEM `mutante sobreviveu`, que é o motivo errado que a fixture antiga aceitava; o comentário acima do bloco deixa de afirmar que o campo `plano.arquivo` é lido "pelo mesmo `docDoEstagio`" sem dizer que ele chega ao subprocesso — provado por `bash scripts/testa-estado.sh` exit 0 com `falhou=0`.
+
+### 26. Guarda `testa-sandbox-com-trap.sh` fecha os três buracos [tipo: teste]
+atende: D22
+arquivos: `scripts/testa-sandbox-com-trap.sh`, `scripts/testa-ferramentas.sh`, `scripts/testa-limpar-worktrees.sh`, `hooks/testa-principal-atrasado.sh`, `scripts/testa-conferir-ponte.sh`, `scripts/testa-conferir-publicacao.sh`
+(emenda 2026-09-12: os dois últimos chegaram pela main depois do plano, com 2 e 5 `mktemp -d` sem o idioma — a guarda os reprovou na integração e a conversão entra aqui)
+depende de: 10
+paralela: sim
+mutacao:
+  arquivo: `scripts/testa-sandbox-com-trap.sh`
+  de: `sem_comentario "$f" | grep -q 'SANDBOXES'`
+  para: `grep -q 'SANDBOXES' "$f"`
+  bateria: `bash scripts/testa-sandbox-com-trap.sh --autoteste`
+  fixture: autoteste (d) — dois mktemp -d com SANDBOXES so em comentario e reprovada
+pronto quando: `checar_arquivo` usa uma função `sem_comentario()` (`grep -v '^[[:space:]]*#' "$1"`) para TODAS as buscas (`mktemp -d`, `SANDBOXES`, `trap`), com a string `sem_comentario "$f" | grep -q 'SANDBOXES'` ocorrendo exatamente uma vez no arquivo; e reprova, nomeando o arquivo e o motivo, cada um destes fixtures novos do `--autoteste`: (d) dois `mktemp -d` e `SANDBOXES` só dentro de comentário; (e) um `mktemp -d` com `trap 'echo tchau' EXIT` (a linha do trap, ou a função que ela nomeia, tem de conter `rm -rf`); (f) `mktemp -d` dentro de uma função sem `SANDBOXES+=` no corpo (conta como múltiplo e exige o idioma), enquanto (g) `mktemp -d` dentro de função cujo corpo tem `SANDBOXES+=` e um `trap cleanup EXIT` com `cleanup()` contendo `rm -rf` passa — os três casos antigos continuam; e `bash scripts/testa-sandbox-com-trap.sh` sem argumento sai 0 sobre o repositório, convertendo para o idioma os `testa-*.sh` que a guarda endurecida reprovar (os três listados em `arquivos:` perderam a conversão no merge da main; qualquer outro que reprove entra por emenda deste `arquivos:`, nunca por afrouxar a regra) — provado por `bash scripts/testa-sandbox-com-trap.sh --autoteste; bash scripts/testa-sandbox-com-trap.sh` ambos exit 0 e cada bateria convertida continuando exit 0.
+
+### 27. `testa-ferramentas-consulta.sh` captura o exit do hook, não do `unset` [tipo: teste]
+atende: D23
+arquivos: `hooks/testa-ferramentas-consulta.sh`
+depende de: 13
+paralela: sim
+mutacao:
+  arquivo: `hooks/ferramentas-consulta.cjs`
+  de: `anunciar(sonda.incerto ? "incerto" : "bloqueio", executavel);`
+  para: `anunciar(sonda.incerto ? "incerto" : "bloqueio", executavel); if (sonda.incerto) process.exit(1);`
+  bateria: `bash hooks/testa-ferramentas-consulta.sh`
+  fixture: TIMEOUT 1 — 'ok exit 0 (D10)' passa a falhar quando o hook sai 1 no ramo incerto
+pronto quando: nos dois casos de timeout (`RFM_FERRAMENTAS_TIMEOUT_MS=1` e `=abc`) a linha `EXIT=$?` vem IMEDIATAMENTE após a linha `SAIDA=$(printf ... | node "$HOOK" 2>&1)` — nenhum comando entre as duas, `unset` só depois — e a linha morta `SAIDA=$(RFM_FERRAMENTAS_TIMEOUT_MS=1 bash -c ...)` e a `UNSET_TIMEOUT=$(unset ...)` saem; com o hook íntegro a bateria sai 0, e com o hook saindo 1 no ramo incerto (a mutação acima) a asserção `ok exit 0 (D10)` do caso TIMEOUT 1 vira FALHA e a bateria sai ≠ 0 — provado por `bash hooks/testa-ferramentas-consulta.sh` exit 0 e por `node scripts/conferir-mutacao.cjs` com o bloco acima saindo 0 (`vermelho`).
+
+### 28. `conferir-mutacao` roda a bateria em bash no Windows e sem bytecode Python [tipo: implementar]
+atende: D24, D25
+arquivos: `scripts/conferir-mutacao.cjs`, `scripts/testa-conferir-mutacao.sh`
+depende de: 22
+paralela: sim
+mutacao:
+  arquivo: `scripts/conferir-mutacao.cjs`
+  de: `PYTHONDONTWRITEBYTECODE: '1',`
+  para: `PYTHONDONTWRITEBYTECODE_desligado: '1',`
+  bateria: `bash scripts/testa-conferir-mutacao.sh`
+  fixture: bateria que grava $PYTHONDONTWRITEBYTECODE num arquivo e afirma '1'
+pronto quando: `rodaBateria` monta o comando por uma função `comandoDaBateria(bateria)` que devolve `{ cmd, args, shell }`: em `process.platform === 'win32'` com `bash` resolvível no PATH devolve `{ cmd: 'bash', args: ['-c', bateria], shell: false }`; em win32 sem `bash` e com `;`, `&&` ou `||` na bateria, `main()` sai 1 imprimindo `bateria com encadeamento de shell e cmd.exe nao separa comandos — instale o Git Bash ou remova o encadeamento`; fora do Windows continua `shell: true`; o `env` do `spawnSync` é `{ ...process.env, PYTHONDONTWRITEBYTECODE: '1' }` (a chave literal `PYTHONDONTWRITEBYTECODE: '1',` ocorre uma vez no arquivo) no baseline e na pós-mutação; a ajuda deixa de dizer que `SHELL=/bin/bash` tem efeito no Windows. Casos novos em `scripts/testa-conferir-mutacao.sh`: (a) só quando `uname -o` contém `Msys`: `--bateria 'touch marca-a; touch marca-b'` com `--raiz` numa sandbox deixa `marca-a` e `marca-b` e NÃO deixa arquivo chamado `touch` nem `marca-a;` (cmd.exe teria criado os dois errados); (b) fixture cuja bateria roda `printf '%s' "$PYTHONDONTWRITEBYTECODE" > env.txt` e o teste afirma que `env.txt` contém exatamente `1` nas duas rodadas; (c) se `python`/`python3` existir no PATH: módulo com `VALOR = 1.5e9`, mutação para `0.5e9` (mesmo tamanho), bateria em Python que importa o módulo — depois da catraca, não existe `__pycache__/*.pyc` do módulo e uma segunda execução da bateria sobre o fonte restaurado sai verde; sem Python, o caso imprime `(pulado: sem python)` e não conta — provado por `bash scripts/testa-conferir-mutacao.sh` exit 0 com os casos novos `ok`.
+
+### 29. Gate `gate-verificador-staged`: o verificador do repo barra o commit [tipo: implementar]
+atende: D26
+arquivos: `hooks/gate-verificador-staged.cjs`, `hooks/testa-gate-verificador-staged.sh`, `hooks/hooks.json`, `hooks/testa-fuga-de-escotilha.sh`, `hooks/testa-config.sh`
+depende de: 4
+paralela: sim
+mutacao:
+  arquivo: `hooks/gate-verificador-staged.cjs`
+  de: `if (resultado.status !== 0) {`
+  para: `if (false) {`
+  bateria: `bash hooks/testa-gate-verificador-staged.sh`
+  fixture: repo sintetico com verificador que reprova SEGREDO e arquivo staged contendo SEGREDO -> exit 2
+pronto quando: com payload `PreToolUse` de `Bash` cujo `command` é `git commit -m x` num repo git sintético que tem `.rainforest/config.json` com `"verificador-staged": "bash scripts/verifica.sh"` (o script sai 1 se algum argumento contém `SEGREDO`) e um arquivo staged contendo `SEGREDO`, o gate sai 2 e o stderr contém a saída do verificador e `BLOQUEADO`; com o mesmo arquivo SUJO no working tree mas o conteúdo STAGED limpo, sai 0 (é o blob staged que se olha — `git show :<caminho>`); sem verificador declarado e com `scripts/check-personal-data.py` presente, ele é chamado com os caminhos materializados; sem nenhum verificador, sai 0; comando que não é `git commit` sai 0 sem rodar nada; com `agent_id` no payload o stderr não contém `.rainforest-gate-off` nem `RAINFOREST_GATE_OFF`, e sem `agent_id` nomeia as saídas como os irmãos; `hooks/hooks.json` registra o gate ao lado de `gate-git-verificacao.cjs`; `hooks/testa-fuga-de-escotilha.sh` passa a rodar cinco gates — provado por `bash hooks/testa-gate-verificador-staged.sh` e `bash hooks/testa-fuga-de-escotilha.sh` exit 0.
+
+### 30. Regra `telefone` isenta id de plataforma por prefixo [tipo: implementar]
+atende: D27
+arquivos: `scripts/conferir-publicacao.cjs`, `scripts/testa-conferir-publicacao.sh`
+depende de: nenhuma
+paralela: sim
+mutacao:
+  arquivo: `scripts/conferir-publicacao.cjs`
+  de: `if (PREFIXO_DE_ID_DE_PLATAFORMA.test(antes)) return false;`
+  para: `if (false) return false;`
+  bateria: `bash scripts/testa-conferir-publicacao.sh`
+  fixture: linha com actions/runs/34692512345 passa sem achado
+pronto quando: existe a constante `PREFIXO_DE_ID_DE_PLATAFORMA` (regex ancorada no FIM do trecho anterior ao match: `runs/`, `jobs/`, `issuecomment-`, `pull/`, `issues/`, `/commit/`, `discussion_r`) e, no `so_se` da regra `telefone`, `antes` é `linha.substring(0, m.index)` e a linha literal `if (PREFIXO_DE_ID_DE_PLATAFORMA.test(antes)) return false;` ocorre uma vez; `node scripts/conferir-publicacao.cjs -` com stdin `https://github.com/x/y/actions/runs/34692512345` sai 0, com `#issuecomment-2345678901` sai 0, com `pull/12345678901` sai 0; com `5547999998888` continua saindo 2 (`telefone`), e com `contato: 47 99999-8888` idem; `runs/` sem dígito colado (`runs/ 5547999998888`) continua 2 — provado por `bash scripts/testa-conferir-publicacao.sh` exit 0 com os casos novos.
+
+### 31. `marcar` respeita a ordem dos estágios e valida o carimbo [tipo: implementar]
+atende: D28
+arquivos: `scripts/estado.cjs`, `scripts/testa-estado.sh`, `skills/executar/SKILL.md`
+depende de: 25
+paralela: nao
+mutacao:
+  arquivo: `scripts/estado.cjs`
+  de: `const posterior_aberto = estagioPosteriorAberto(estado, estagio, status);`
+  para: `const posterior_aberto = null;`
+  bateria: `bash scripts/testa-estado.sh`
+  fixture: marcar executar parcial com revisar parcial e em_voo nao vazio -> exit 2, arquivo intacto
+pronto quando: com `revisar` em `parcial` (com `em_voo` não vazio) ou em `ok`, `node scripts/estado.cjs marcar --slug <s> --estagio executar --status parcial --json '{...}'` sai 2, o stderr contém `revisar` e o JSON de estado fica byte a byte igual (`cmp` sem saída); com `revisar` em `reprovado` a mesma chamada continua saindo 0 (é a reabertura sancionada — e é o estado real do fluxo `zerar-issues` hoje); `marcar --estagio executar --status parcial --json '{"carimbos":[{"tarefa":99,"hash_base":"<sha>"}]}'` com `tarefas: 1` gravado sai 2 nomeando `99`, e sem `tarefas` gravado continua aceitando; `marcar --estagio revisar --status parcial` com `executar` em `pendente` sai 2 nomeando `executar` (a ordem de `PRE_REQUISITOS`), enquanto `marcar --estagio design --status aprovado` num fluxo recém-iniciado continua saindo 0; a função chama-se `estagioPosteriorAberto` e a linha `const posterior_aberto = estagioPosteriorAberto(estado, estagio, status);` ocorre uma vez; e `skills/executar/SKILL.md` diz, no parágrafo do carimbo, que o exemplo se prova num slug de caixa de areia (`iniciar --slug caixa`), nunca no slug em curso — provado por `bash scripts/testa-estado.sh` exit 0 com os casos novos e os 217 existentes `ok`.
+
+### 32. Revisor não muta: molde do briefing, recusa na primeira linha e mensagem do gate [tipo: implementar]
+atende: D29
+arquivos: `skills/revisar/SKILL.md`, `agents/revisor.md`, `hooks/gate-worktree.cjs`, `hooks/testa-gate-worktree.sh`
+depende de: nenhuma
+paralela: sim
+mutacao:
+  arquivo: `hooks/gate-worktree.cjs`
+  de: `const restauro = linhaDeRestauro(entrada.command || '', estado.toplevel);`
+  para: `const restauro = '';`
+  bateria: `bash hooks/testa-gate-worktree.sh`
+  fixture: subagente rodando git checkout -- x.txt no checkout principal e barrado e o stderr traz o comando de restauro para a janela
+pronto quando: com payload de subagente (`agent_id` presente) cujo `command` é `git checkout -- x.txt` (e, em caso separado, `git restore x.txt`) num repo git sintético que é checkout principal, o gate sai 2 e o stderr contém `a restauracao e da janela principal` e `git -C <toplevel> checkout -- x.txt` (toplevel real do fixture), além do `PARE e reporte` de hoje; o mesmo payload com `git status` não ganha a linha; a função chama-se `linhaDeRestauro(cmd, toplevel)` e devolve `''` quando o comando não é restauro; `skills/revisar/SKILL.md` ganha a seção `## Molde do briefing do revisor` com a cláusula literal "não mute fonte nenhum; quando o achado só fecha com mutação, descreva-a (arquivo, linha a inverter, teste que deveria quebrar) — quem a executa é um `tester` isolado", e `agents/revisor.md` acrescenta ao item (i) que briefing que peça mutação é recusado na PRIMEIRA linha do relato, antes de qualquer leitura; `bash scripts/testa-teto-skills.sh` e `bash scripts/testa-perfil.sh` continuam exit 0 — provado por `bash hooks/testa-gate-worktree.sh` exit 0 com os casos novos.
+
+### 33. README e travas: `mutacoes --plano`, guarda de sandbox e gate novo [tipo: docs]
+atende: D21, D22, D26
+arquivos: `README.md`, `docs/travas-mecanicas.md`
+depende de: 25, 26, 29
+paralela: nao
+mutacao: n/a
+  motivo: texto; a coerência com o código é o critério abaixo, e `testa-mapa-regras.sh` confere que todo arquivo citado existe
+pronto quando: a linha de `scripts/conferir-fluxo.cjs` na tabela do README nomeia o subcomando `mutacoes --slug <slug> [--plano <arquivo>]` com os mesmos exits que `node scripts/conferir-fluxo.cjs mutacoes` sem args imprime; existe linha para `scripts/testa-sandbox-com-trap.sh` descrevendo as três regras da D22 (as mesmas do cabeçalho do script); a tabela de gates tem a linha de `gate-verificador-staged.cjs` com a ordem de descoberta da D26, e a soma de casos das baterias dos gates é re-medida (a última linha de cada `hooks/testa-gate-*.sh`, incluindo o novo) e a data atualizada; `docs/travas-mecanicas.md` cita o gate novo; `bash scripts/testa-mapa-regras.sh` sai 0 — provado por esses comandos e por `grep -c 'gate-verificador-staged' README.md docs/travas-mecanicas.md` devolvendo ≥ 1 em cada.

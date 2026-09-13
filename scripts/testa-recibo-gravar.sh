@@ -30,8 +30,21 @@ FIX="$RAIZ/test/fixtures/recibo"
 [ -f "$RECIBO" ] || { echo "FALHA: nao achei $RECIBO"; exit 1; }
 
 ok=0; falhou=0
-S="$(mktemp -d)"
-trap 'rm -rf "$S"' EXIT
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
+# criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas. O
+# restauro de permissao read-only (T2i, mais abaixo) fica dentro do MESMO
+# cleanup, em vez de reatribuir `trap` no meio do arquivo.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
+cleanup() {
+  if [ -n "${RECIBO_ARQUIVO:-}" ]; then
+    chmod 644 "$RECIBO_ARQUIVO" 2>/dev/null || { [ -n "${ATTRIB_PATH:-}" ] && cmd //c attrib -r "$ATTRIB_PATH" >/dev/null 2>&1; }
+  fi
+  for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done
+}
+trap cleanup EXIT
+
+S="$(novo_sandbox)"
 mkdir -p "$S/docs/rainforest/estado" "$S/docs/rainforest/portoes"
 
 afirma() {
@@ -75,8 +88,7 @@ afirma "T2b2. stderr menciona o arquivo" \
   "$(printf '%s' "$SAIDA" | grep -q "docs/nao-existe.md" && echo 1 || echo 0)"
 
 echo "== T2c. entregavel via junction/link para fora: sai 2 =="
-EXTERNO="$(mktemp -d)"
-trap "rm -rf '$S' '$EXTERNO'" EXIT
+EXTERNO="$(novo_sandbox)"
 LINK="$S/docs/dentro-com-link"
 mkdir -p "$LINK"
 CRIOU=0
@@ -249,7 +261,8 @@ if [ -f "$RECIBO_ARQUIVO" ]; then
   fi
 
   if [ "$MARCADO" -eq 1 ]; then
-    trap "chmod 644 '$RECIBO_ARQUIVO' 2>/dev/null || cmd //c attrib -r '$ATTRIB_PATH' >/dev/null 2>&1; rm -rf '$S' '$EXTERNO'" EXIT
+    # O cleanup() do topo do arquivo ja restaura RECIBO_ARQUIVO/ATTRIB_PATH
+    # (guardado por -n) e varre SANDBOXES — nao precisa reatribuir o trap aqui.
 
     # Tenta gravar novamente (vai tentar renomear, vai falhar)
     SAIDA="$(rec gravar --slug teste-readonly --nao-provado '["algo"]' 2>&1)"; C=$?

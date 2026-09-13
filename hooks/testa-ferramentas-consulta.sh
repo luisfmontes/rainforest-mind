@@ -21,9 +21,15 @@
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HOOK="$SRC/hooks/ferramentas-consulta.cjs"
-RAIZ="$(mktemp -d)"
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
+# criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
+cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done; }
+trap cleanup EXIT
+
+RAIZ="$(novo_sandbox)"
 export RFM_ROOT="$RAIZ"
-trap "rm -rf '$RAIZ'" EXIT
 
 echo "(caixa de areia: $RAIZ)"
 
@@ -252,11 +258,83 @@ caso "caminho entre aspas com espaco fica inteiro" '"C:\Program Files\ferramenta
 caso "cd com aspas nao engole o comando seguinte" 'cd "/c/Program Files" && nao-existe-abc' "nao-existe-abc"
 
 echo ""
+echo "== TIMEOUT: RFM_FERRAMENTAS_TIMEOUT_MS controla a sonda =="
+
+# ========== CASO: Timeout muitíssimo curto (1ms) — não consegue conferir =========
+echo ""
+echo "== TIMEOUT 1: RFM_FERRAMENTAS_TIMEOUT_MS=1 (1ms) → incerto → 'prossigo sem garantia' =="
+
+# Contar linhas do ledger antes
+LEDGER_ANTES=$(wc -l < "$RAIZ/ferramentas.jsonl" 2>/dev/null || echo "0")
+echo "  Linhas no ledger antes: $LEDGER_ANTES"
+
+# Rodar com timeout muito curto (1ms é impossível de responder)
+export RFM_FERRAMENTAS_TIMEOUT_MS=1
+SAIDA=$(printf '%s' "$(payload_bash 'node --version')" | node "$HOOK" 2>&1)
+EXIT=$?
+unset RFM_FERRAMENTAS_TIMEOUT_MS
+
+# Verificar exit 0
+if [ "$EXIT" = 0 ]; then
+  ok=$((ok + 1))
+  echo "  ok   exit 0 (D10)"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA exit deveria ser 0, veio $EXIT"
+fi
+
+# Verificar que CONTÉM "prossigo sem garantia"
+if echo "$SAIDA" | grep -q "prossigo sem garantia"; then
+  ok=$((ok + 1))
+  echo "  ok   stdout anuncia 'prossigo sem garantia' (ramo incerto)"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA não anunciou incerteza: $SAIDA"
+fi
+
+# Verificar que ledger NÃO cresceu (timeout = não conseguiu saber, então não grava)
+LEDGER_DEPOIS=$(wc -l < "$RAIZ/ferramentas.jsonl" 2>/dev/null || echo "0")
+if [ "$LEDGER_DEPOIS" = "$LEDGER_ANTES" ]; then
+  ok=$((ok + 1))
+  echo "  ok   ledger não gravou (incerto não escreve)"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA ledger cresceu (antes=$LEDGER_ANTES, depois=$LEDGER_DEPOIS)"
+fi
+
+# ========== CASO: Timeout inválido (abc) → default 2000 → sonda responde normalmente =========
+echo ""
+echo "== TIMEOUT 2: RFM_FERRAMENTAS_TIMEOUT_MS=abc (inválido) → default 2000 → sem 'prossigo' =="
+
+export RFM_FERRAMENTAS_TIMEOUT_MS=abc
+SAIDA=$(printf '%s' "$(payload_bash 'node --version')" | node "$HOOK" 2>&1)
+EXIT=$?
+unset RFM_FERRAMENTAS_TIMEOUT_MS
+
+# Verificar exit 0
+if [ "$EXIT" = 0 ]; then
+  ok=$((ok + 1))
+  echo "  ok   exit 0 (D10)"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA exit deveria ser 0, veio $EXIT"
+fi
+
+# Verificar que NÃO contém "prossigo sem garantia" (sonda respondeu com timeout default)
+if ! echo "$SAIDA" | grep -q "prossigo sem garantia"; then
+  ok=$((ok + 1))
+  echo "  ok   sem 'prossigo sem garantia' (timeout default respondeu)"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA inesperadamente anunciou incerteza: $SAIDA"
+fi
+
+echo ""
 echo "== MUTACAO embutida: o exit final e quem garante o exit 0 =="
 # O plano DECLARA esta mutacao, mas declaracao nao e regressao: sem o caso
 # abaixo, quem inverter a linha no futuro roda a bateria verde. Achado da
 # revisao independente de 2026-08-25.
-MUT="$(mktemp -d)"
+MUT="$(novo_sandbox)"
 cp "$HOOK" "$MUT/mutado.cjs"
 node -e '
   const fs = require("fs"), p = process.argv[1], NL = String.fromCharCode(10);

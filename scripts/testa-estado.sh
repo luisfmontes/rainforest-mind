@@ -22,7 +22,10 @@ trap 'rm -rf "$(dirname "$SBP")"' EXIT
 
 mkdir -p "$SBP/scripts" "$SBP/hooks/lib"
 cp "$SRC/scripts/estado.cjs" "$SBP/scripts/"
+cp "$SRC/scripts/conferir-fluxo.cjs" "$SBP/scripts/"
+cp "$SRC/scripts/conferir-mutacao.cjs" "$SBP/scripts/"
 cp "$SRC/hooks/lib/raiz.cjs" "$SBP/hooks/lib/"
+cp "$SRC/hooks/lib/config.cjs" "$SBP/hooks/lib/"
 # A caixa vira raiz de dados: sem marcador, resolverRaiz cairia no repo de verdade
 # e a bateria escreveria estado no .rainforest do usuario.
 touch "$SBP/FOCO.md"
@@ -1259,10 +1262,222 @@ case "$saida_tipo2" in
   *) falhou=$((falhou+1)); echo "  FALHA array nao foi reportado como array: $saida_tipo2" ;;
 esac
 
+# A secao 17 exportou RFM_ESTADO_ROOT="$SBP/robustez" e, ao contrario de toda
+# secao anterior que usa a variavel, nunca desarmava — vazava para a secao 6 e
+# fazia `iniciar`/`marcar` escreverem em "$SBP/robustez/docs/..." enquanto o
+# `node -e` abaixo (antes desta correcao) lia e gravava em "$SBP/docs/...". Os
+# dois lados do patch do t6b apontavam para arquivos DIFERENTES — achado ao
+# montar esta fixture honesta, ela nunca tinha rodado no caminho certo.
+unset RFM_ESTADO_ROOT
+
+# Inicializar sandbox como repositorio git para que creep possa rodar git diff
+cd "$SBP" || exit 1
+git init -q && git config user.email "test@<email>" && git config user.name "Test"
+git commit -q --allow-empty -m "inicial"
+BASE_COMMIT=$(git rev-parse HEAD)
+git commit -q --allow-empty -m "head"
+HEAD_COMMIT=$(git rev-parse HEAD)
+
+echo
+echo "== 6. marcar verificar ok com mutacoes (D9) =="
+# Fixture para mutacao: fonte que sera' mutada
+MUTACAO_SRC="$SBP/src/teste-mut.js"
+mkdir -p "$(dirname "$MUTACAO_SRC")"
+cat > "$MUTACAO_SRC" << 'EOF'
+function ok() { return true; }
+module.exports = { ok };
+EOF
+
+# Bateria que NAO mede — verde com ou sem a mutacao, de proposito: e o cenario
+# real de "mutante sobrevive" que a catraca tem de pegar, nao um exit-1
+# fabricado. Uma bateria que lesse ok() e distinguisse true/false pegaria a
+# mutacao (`return true;` -> `return false;`) e o mutante MORRERIA — o oposto
+# do que este teste precisa provar.
+MUTACAO_BAT="$SBP/test-mut.sh"
+cat > "$MUTACAO_BAT" << 'EOF'
+#!/bin/bash
+exit 0
+EOF
+chmod +x "$MUTACAO_BAT"
+
+# Plano com mutacao — arquivo com nome DIFERENTE do slug (t6-mut.md, o slug e
+# t6b): e exatamente o caso que a catraca de 'verificar' pulava em silencio
+# antes desta tarefa, porque montava o caminho fixo `<slug>.md` em vez de ler
+# `plano.arquivo` do estado.
+MUTACAO_PLAN="$SBP/docs/rainforest/planos/t6-mut.md"
+mkdir -p "$(dirname "$MUTACAO_PLAN")"
+cat > "$MUTACAO_PLAN" << 'EOF'
+# Plano com mutacao
+
+### 1. Tarefa com mutacao
+
+atende: D1
+
+mutacao:
+  arquivo: `src/teste-mut.js`
+  de: `return true;`
+  para: `return false;`
+  bateria: `bash test-mut.sh`
+EOF
+
+# Design para cobertura
+MUTACAO_DESIGN="$SBP/docs/rainforest/design/t6-mut.md"
+mkdir -p "$(dirname "$MUTACAO_DESIGN")"
+cat > "$MUTACAO_DESIGN" << 'EOF'
+# Design
+
+## Objetivo
+Teste
+
+## Decisões fechadas
+- **D1 — teste**
+
+## Avaliado e descartado
+n/a
+
+## Fora de escopo
+n/a
+
+## Em aberto
+n/a
+EOF
+
+# Teste 6a: sem plano, verificar fecha mesmo sem mutacoes (fail-open, compatibilidade)
+$E iniciar --slug t6a >/dev/null
+$E marcar --slug t6a --estagio design --status aprovado >/dev/null
+$E marcar --slug t6a --estagio plano --status ok >/dev/null
+$E exigir --slug t6a --estagio executar >/dev/null
+$E marcar --slug t6a --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[]}' >/dev/null
+$E marcar --slug t6a --estagio revisar --status ok >/dev/null
+$E exigir --slug t6a --estagio verificar >/dev/null
+esperado "marcar verificar ok sem plano passa (fail-open)" 0 $E marcar --slug t6a --estagio verificar --status ok --json '{"comando":"bash","saida":"done"}'
+
+# Teste 6b: com plano com mutacao que sobrevive, verificar recusa
+cd "$SBP" || exit 1
+$E iniciar --slug t6b >/dev/null
+# Lê arquivo de estado para preencher o plano. Caminho por `process.cwd()`
+# DENTRO do node, nunca pelo `$SBP` do bash interpolado como string literal: um
+# node nativo do Windows não entende caminho estilo MSYS (`/tmp/...`) — lê como
+# raiz da unidade atual (`C:\tmp\...`) e o patch falhava com ENOENT, silencioso
+# atrás do `2>/dev/null`. design/plano ficavam em 'pendente' e cada `marcar`
+# seguinte recusava por um motivo que não tinha nada a ver com mutação — achado
+# ao montar esta fixture honesta (junto do vazamento de RFM_ESTADO_ROOT acima).
+node -e "
+  const fs = require('fs');
+  const path = require('path');
+  const p = path.join(process.cwd(), 'docs', 'rainforest', 'estado', 't6b.json');
+  const e = JSON.parse(fs.readFileSync(p, 'utf8'));
+  e.design = { status: 'aprovado', em: '2026-09-01', arquivo: 'docs/rainforest/design/t6-mut.md' };
+  e.plano = { status: 'ok', em: '2026-09-01', arquivo: 'docs/rainforest/planos/t6-mut.md' };
+  fs.writeFileSync(p, JSON.stringify(e, null, 2));
+"
+# Cada marcar intermediario conferido por EXIT, nunca silenciado: a versao
+# anterior desta fixture escondia em `>/dev/null` (so' o stdout — o stderr com
+# o RECUSADO ainda vazava) uma cadeia inteira de recusas, e o `esperado 2` do
+# final passava pelo motivo errado ('verificar' exige revisar fechado(s)),
+# nunca pela catraca de mutacao.
+esperado "t6b exigir executar" 0 $E exigir --slug t6b --estagio executar
+# O auto-relato do 'executar' diz 'vermelho' (a catraca daquele estagio recusa
+# 'verde' de cara — nao aceita "sei que nao mede" como resposta). E exatamente
+# o caso que a catraca do 'verificar' existe para pegar: quem executou declarou
+# vermelho, mas a bateria SINTETICA (acima) nao mede nada, e a re-verificacao
+# independente em 'verificar' e' quem descobre isso.
+esperado "t6b executar fecha" 0 $E marcar --slug t6b --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t6-mut"}]}'
+esperado "t6b revisar fecha" 0 $E marcar --slug t6b --estagio revisar --status ok --json "{\"achados\":0,\"base\":\"$BASE_COMMIT\",\"head\":\"$HEAD_COMMIT\"}"
+esperado "t6b exigir verificar" 0 $E exigir --slug t6b --estagio verificar
+
+# A asserção final exige as DUAS MENSAGENS, não só o exit 2 — é a mensagem
+# do mutante que distingue esta recusa (catraca de mutação com --plano correto)
+# de qualquer outra recusa possível no mesmo exit code (pré-requisito em aberto,
+# evidência ausente, etc.). Sem --plano, a mesma chamada sai 2 com a mensagem
+# da catraca MAS SEM 'mutante sobreviveu', que é o motivo errado (plano não encontrado).
+SAIDA_T6B=$($E marcar --slug t6b --estagio verificar --status ok --json '{"comando":"bash","saida":"done"}' 2>&1)
+GOT_T6B=$?
+if [ "$GOT_T6B" = 2 ] && printf '%s' "$SAIDA_T6B" | grep -q "mutante sobreviveu" && printf '%s' "$SAIDA_T6B" | grep -q "catraca de mutações não passou"; then
+  ok=$((ok+1)); echo "  ok   marcar verificar ok com mutacao que sobrevive recusa (mensagem do mutante e da catraca)"
+else
+  falhou=$((falhou+1))
+  echo "  FALHA marcar verificar deveria recusar com AMBAS 'mutante sobreviveu' E 'catraca de mutações não passou' (exit 2); veio exit $GOT_T6B"
+  echo "$SAIDA_T6B" | sed 's/^/         /'
+fi
+
+# Verifica que SHA256 nao mudou (estado nao foi gravado)
+SHA_ANTES_RECUSA=$(sha256sum "$SBP/docs/rainforest/estado/t6b.json" 2>/dev/null | awk '{print $1}')
+sleep 0.1  # garantir que timestamp seria diferente
+$E marcar --slug t6b --estagio verificar --status ok --json '{"comando":"bash","saida":"done"}' >/dev/null 2>&1
+SHA_DEPOIS_RECUSA=$(sha256sum "$SBP/docs/rainforest/estado/t6b.json" 2>/dev/null | awk '{print $1}')
+if [ "$SHA_ANTES_RECUSA" = "$SHA_DEPOIS_RECUSA" ]; then
+  ok=$((ok+1)); echo "  ok   estado nao foi gravado apos recusa de mutacao"
+else
+  falhou=$((falhou+1)); echo "  FALHA estado foi modificado apos recusa (ou erro de leitura)"
+fi
+
 unset RFM_ESTADO_ROOT
 
 echo
-echo "== 22. carimbo de veredito por tarefa (D8) =="
+echo "== 22. recusa flag desconhecida ANTES de gravar (Issue #218) =="
+# Ponto critico: flag desconhecida deve sair 1 e nao gravar nada. O perigo e a
+# flag ser ignorada silenciosamente — em 2026-09-05, marcar --dry-run gravou
+# design aprovado sendo que a tarefa era so simular. ANTES de gravar e o unico
+# jeito de impedir que a operacao ocorra sem deixar rastro.
+
+# Preparacao: estado em design pendente
+$E iniciar --slug t-flag-1 >/dev/null
+$E marcar --slug t-flag-1 --estagio design --status pendente >/dev/null
+
+# Caso (a): --dry-run em marcar recusa exit 1 e NAO grava nada
+estado_antes=$(cat docs/rainforest/estado/t-flag-1.json)
+esperado "--dry-run em marcar recusa exit 1" 1 $E marcar --slug t-flag-1 --estagio design --status aprovado --dry-run --json '{"doc":"x"}'
+msg_dry_run=$($E marcar --slug t-flag-1 --estagio design --status aprovado --dry-run --json '{"doc":"x"}' 2>&1)
+igual "mensagem nomeia a flag desconhecida" "sim" "$(case "$msg_dry_run" in *"flag desconhecida"*"--dry-run"*) echo sim;; *) echo nao;; esac)"
+estado_depois=$(cat docs/rainforest/estado/t-flag-1.json)
+igual "arquivo nao foi alterado" "sim" "$([ "$estado_antes" = "$estado_depois" ] && echo sim || echo nao)"
+
+# Caso (b): --json-output em exigir recusa exit 1
+esperado "--json-output em exigir recusa exit 1" 1 $E exigir --slug t-flag-1 --estagio design --json-output
+msg_json_out=$($E exigir --slug t-flag-1 --estagio design --json-output 2>&1)
+igual "mensagem nomeia --json-output" "sim" "$(case "$msg_json_out" in *"--json-output"*) echo sim;; *) echo nao;; esac)"
+
+# Caso (c): --force em liberar recusa exit 1
+esperado "--force em liberar recusa exit 1" 1 $E liberar --slug t-flag-1 --estagio design --force
+msg_force=$($E liberar --slug t-flag-1 --estagio design --force 2>&1)
+igual "mensagem nomeia --force" "sim" "$(case "$msg_force" in *"--force"*) echo sim;; *) echo nao;; esac)"
+
+# Caso (d): --verbose em proximo recusa exit 1
+esperado "--verbose em proximo recusa exit 1" 1 $E proximo --slug t-flag-1 --verbose
+msg_verbose=$($E proximo --slug t-flag-1 --verbose 2>&1)
+igual "mensagem nomeia --verbose" "sim" "$(case "$msg_verbose" in *"--verbose"*) echo sim;; *) echo nao;; esac)"
+
+# Caso (e): --quiet em ler recusa exit 1
+esperado "--quiet em ler recusa exit 1" 1 $E ler --slug t-flag-1 --quiet
+msg_quiet=$($E ler --slug t-flag-1 --quiet 2>&1)
+igual "mensagem nomeia --quiet" "sim" "$(case "$msg_quiet" in *"--quiet"*) echo sim;; *) echo nao;; esac)"
+
+# Caso (f): --format em listar recusa exit 1
+esperado "--format em listar recusa exit 1" 1 $E listar --format json
+msg_format=$($E listar --format json 2>&1)
+igual "mensagem nomeia --format" "sim" "$(case "$msg_format" in *"--format"*) echo sim;; *) echo nao;; esac)"
+
+# Caso (g): flags aceitas PASSAM — marcar design aprovado SEM --dry-run passa
+esperado "marcar design aprovado sem flags estranhas passa" 0 $E marcar --slug t-flag-1 --estagio design --status aprovado
+igual "design agora esta aprovado" "aprovado" "$(node -e "console.log(JSON.parse(require('fs').readFileSync('docs/rainforest/estado/t-flag-1.json', 'utf8')).design.status)")"
+
+# Caso (h): multiplas flags desconhecidas — so relata a primeira
+$E iniciar --slug t-flag-2 >/dev/null
+msg_multiplas=$($E marcar --slug t-flag-2 --estagio design --status pendente --dry-run --force --verbose 2>&1)
+igual "mensagem nomeia so a primeira flag desconhecida" "sim" "$(case "$msg_multiplas" in *"flag desconhecida: --"*) echo sim;; *) echo nao;; esac)"
+
+# Caso (i): iniciar com flag desconhecida
+esperado "iniciar --foo recusa exit 1" 1 $E iniciar --slug t-flag-3 --foo bar
+msg_init=$($E iniciar --slug t-flag-3 --foo bar 2>&1)
+igual "iniciar nomeia a flag desconhecida" "sim" "$(case "$msg_init" in *"--foo"*) echo sim;; *) echo nao;; esac)"
+
+# Caso (j): concluido com flag desconhecida
+esperado "concluido --output recusa exit 1" 1 $E concluido --output json
+msg_conc=$($E concluido --output json 2>&1)
+igual "concluido nomeia --output" "sim" "$(case "$msg_conc" in *"--output"*) echo sim;; *) echo nao;; esac)"
+
+echo "== 24. carimbo de veredito por tarefa (D8) =="
 # O plan_state.mjs de um plugin de terceiro carimba veredito por
 # sessao/tarefa/iteracao, e o resume dele re-marca o que nao bate mais. Aqui:
 # cada marcar --estagio executar que traz 'carimbos' no --json ANEXA ao
@@ -1329,7 +1544,7 @@ igual "a recusa mostra a forma esperada" "sim" \
   "$(case "$msg_carim" in *'"carimbos":[{"tarefa":1,"hash_base"'*) echo sim;; *) echo nao;; esac)"
 
 echo
-echo "== 23. proximo/ler avisam quando o carimbo nao esta ancestral do HEAD =="
+echo "== 25. proximo/ler avisam quando o carimbo nao esta ancestral do HEAD =="
 $E_CAR iniciar --slug carim2 >/dev/null
 $E_CAR marcar --slug carim2 --estagio design --status aprovado >/dev/null
 $E_CAR marcar --slug carim2 --estagio plano  --status ok >/dev/null
@@ -1398,6 +1613,96 @@ if [ "$cod_sem_git" = "0" ] && [ -z "$saida_sem_git" ]; then
 else
   falhou=$((falhou+1)); echo "  FALHA esperava silencio fora de repo git (exit=$cod_sem_git, stderr='$saida_sem_git')"
 fi
+unset RFM_ESTADO_ROOT
+
+echo
+echo "== 26. D28: marcar respeita ordem e valida carimbo =="
+export RFM_ESTADO_ROOT="$SBP"
+
+# Caso (a): marcar executar parcial com revisar parcial + em_voo não vazio -> exit 2
+$E iniciar --slug d28a >/dev/null
+$E marcar --slug d28a --estagio design --status aprovado >/dev/null
+$E marcar --slug d28a --estagio plano --status ok >/dev/null
+$E exigir --slug d28a --estagio executar >/dev/null
+$E marcar --slug d28a --estagio executar --status ok --json '{"comando":"cmd","saida":"out","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"f"}]}' >/dev/null
+$E marcar --slug d28a --estagio revisar --status parcial --json '{"em_voo":"alguma_coisa"}' >/dev/null
+ARQ_D28A="$SBP/docs/rainforest/estado/d28a.json"
+ANTES_D28A=$(cat "$ARQ_D28A")
+esperado "marcar executar parcial com revisar parcial e em_voo: exit 2" 2 \
+  $E marcar --slug d28a --estagio executar --status parcial --json '{}' 2>/dev/null
+DEPOIS_D28A=$(cat "$ARQ_D28A")
+if [ "$ANTES_D28A" = "$DEPOIS_D28A" ]; then
+  ok=$((ok+1)); echo "  ok   arquivo intacto apos recusa"
+else
+  falhou=$((falhou+1)); echo "  FALHA arquivo foi modificado"
+fi
+
+# Caso (a2): marcar executar parcial com revisar ok -> exit 2
+$E iniciar --slug d28a2 >/dev/null
+$E marcar --slug d28a2 --estagio design --status aprovado >/dev/null
+$E marcar --slug d28a2 --estagio plano --status ok >/dev/null
+$E exigir --slug d28a2 --estagio executar >/dev/null
+$E marcar --slug d28a2 --estagio executar --status ok --json '{"comando":"cmd","saida":"out","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"f"}]}' >/dev/null
+$E marcar --slug d28a2 --estagio revisar --status ok >/dev/null
+esperado "marcar executar parcial com revisar ok: exit 2" 2 \
+  $E marcar --slug d28a2 --estagio executar --status parcial --json '{}' 2>/dev/null
+
+# Caso (a3): marcar executar parcial com revisar reprovado -> exit 0 (reabertura sancionada)
+$E iniciar --slug d28a3 >/dev/null
+$E marcar --slug d28a3 --estagio design --status aprovado >/dev/null
+$E marcar --slug d28a3 --estagio plano --status ok >/dev/null
+$E exigir --slug d28a3 --estagio executar >/dev/null
+$E marcar --slug d28a3 --estagio executar --status ok --json '{"comando":"cmd","saida":"out","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"f"}]}' >/dev/null
+$E marcar --slug d28a3 --estagio revisar --status reprovado >/dev/null
+esperado "marcar executar parcial com revisar reprovado: exit 0" 0 \
+  $E marcar --slug d28a3 --estagio executar --status parcial --json '{}' 2>/dev/null
+
+# Caso (b): carimbo tarefa 99 com tarefas: 1 -> exit 2, stderr contém 99
+$E iniciar --slug d28b >/dev/null
+$E marcar --slug d28b --estagio design --status aprovado >/dev/null
+$E marcar --slug d28b --estagio plano --status ok --json '{"tarefas":1}' >/dev/null
+$E exigir --slug d28b --estagio executar >/dev/null
+ARQ_D28B="$SBP/docs/rainforest/estado/d28b.json"
+ANTES_D28B=$(cat "$ARQ_D28B")
+msg_carim_99=$($E marcar --slug d28b --estagio executar --status parcial --json '{"carimbos":[{"tarefa":99,"hash_base":"abc1234567890"}]}' 2>&1)
+COD_D28B=$?
+if [ "$COD_D28B" = "2" ] && echo "$msg_carim_99" | grep -q "99"; then
+  ok=$((ok+1)); echo "  ok   carimbo tarefa 99 com tarefas:1 recusa exit 2"
+else
+  falhou=$((falhou+1)); echo "  FALHA carimbo 99: exit=$COD_D28B, msg='$msg_carim_99'"
+fi
+DEPOIS_D28B=$(cat "$ARQ_D28B")
+if [ "$ANTES_D28B" = "$DEPOIS_D28B" ]; then
+  ok=$((ok+1)); echo "  ok   arquivo intacto apos carimbo fora do plano"
+else
+  falhou=$((falhou+1)); echo "  FALHA arquivo foi modificado por carimbo fora do plano"
+fi
+
+# Caso (b2): carimbo sem tarefas gravado -> continua aceitando
+$E iniciar --slug d28b2 >/dev/null
+$E marcar --slug d28b2 --estagio design --status aprovado >/dev/null
+$E marcar --slug d28b2 --estagio plano --status ok >/dev/null
+$E exigir --slug d28b2 --estagio executar >/dev/null
+esperado "carimbo tarefa 99 sem tarefas gravado: exit 0" 0 \
+  $E marcar --slug d28b2 --estagio executar --status parcial --json '{"carimbos":[{"tarefa":99,"hash_base":"abc1234567890"}]}' 2>/dev/null
+
+# Caso (c): marcar revisar parcial com executar pendente -> exit 2
+$E iniciar --slug d28c >/dev/null
+$E marcar --slug d28c --estagio design --status aprovado >/dev/null
+$E marcar --slug d28c --estagio plano --status ok >/dev/null
+msg_prereq=$($E marcar --slug d28c --estagio revisar --status parcial 2>&1)
+COD_D28C=$?
+if [ "$COD_D28C" = "2" ] && echo "$msg_prereq" | grep -q "executar"; then
+  ok=$((ok+1)); echo "  ok   marcar revisar parcial com executar pendente recusa"
+else
+  falhou=$((falhou+1)); echo "  FALHA marcar revisar: exit=$COD_D28C, msg='$msg_prereq'"
+fi
+
+# Caso (c2): marcar design aprovado em fluxo recém-iniciado -> exit 0
+$E iniciar --slug d28c2 >/dev/null
+esperado "marcar design aprovado em fluxo recém-iniciado: exit 0" 0 \
+  $E marcar --slug d28c2 --estagio design --status aprovado >/dev/null
+
 unset RFM_ESTADO_ROOT
 
 echo "== resultado: $ok ok, $falhou falhas =="

@@ -15,9 +15,17 @@ SCRIPT_MEMORIA="$SRC/scripts/memoria.cjs"
 HOOKS_JSON="$SRC/hooks/hooks.json"
 
 # Sandbox hermética
-RAIZ_POSIX="$(mktemp -d)"
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
+# criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas —
+# achado no caminho: RAIZ_TB_POSIX (T-B, mais abaixo) nao tinha NENHUM
+# cleanup e vazava em toda corrida desta bateria.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
+cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done; }
+trap cleanup EXIT
+
+RAIZ_POSIX="$(novo_sandbox)"
 RAIZ=$(cygpath -m "$RAIZ_POSIX" 2>/dev/null || printf '%s' "$RAIZ_POSIX")
-trap 'rm -rf "$RAIZ_POSIX"' EXIT
 echo "(caixa de areia: $RAIZ)"
 
 ok=0; falhou=0
@@ -240,8 +248,7 @@ fi
 echo
 echo "7. Degradação graciosa: banco ausente na recuperação"
 
-RAIZ_VAZIO="$(mktemp -d)"
-trap "rm -rf $RAIZ_POSIX $RAIZ_VAZIO" EXIT
+RAIZ_VAZIO="$(novo_sandbox)"
 
 echo "$EVENTO" | \
   CLAUDE_CONFIG_DIR="$RAIZ_VAZIO" \
@@ -348,7 +355,7 @@ echo "  Mutação: fazer gravarMarca escrever offset atual em offset_processado.
 # então a marca simplesmente não era gravada. O "ERRO mutação não funcionou"
 # saía impresso mas NUNCA incrementava $falhou — passava por verde do
 # mesmo jeito. A mutação abaixo mira o SQL ATUAL e cobre INSERT e UPDATE.
-MUT_TA_POSIX="$(mktemp -d)"
+MUT_TA_POSIX="$(novo_sandbox)"
 cp -r "$SRC/hooks" "$MUT_TA_POSIX/hooks"
 cp -r "$SRC/scripts" "$MUT_TA_POSIX/scripts"
 MUT_TA_HOOK="$MUT_TA_POSIX/hooks/memoria-marca.cjs"
@@ -434,7 +441,7 @@ rm -rf "$MUT_TA_POSIX"
 echo
 echo "T-B. Prova por mutação: recuperarSessoes() sinaliza pendência"
 
-RAIZ_TB_POSIX="$(mktemp -d)"
+RAIZ_TB_POSIX="$(novo_sandbox)"
 RAIZ_TB=$(cygpath -m "$RAIZ_TB_POSIX" 2>/dev/null || printf '%s' "$RAIZ_TB_POSIX")
 
 # Inicializar banco
@@ -481,7 +488,7 @@ echo "  Mutação: alterar condição para nunca detectar pendência..."
 # Achado 2 da tarefa 22: mutar $HOOK (rastreado) com sed -i e um trap que só
 # limpa a raiz de dados — Ctrl-C entre o sed e o cp de volta deixa produção
 # mutada. A mutação roda numa CÓPIA.
-MUT_TB_POSIX="$(mktemp -d)"
+MUT_TB_POSIX="$(novo_sandbox)"
 cp -r "$SRC/hooks" "$MUT_TB_POSIX/hooks"
 cp -r "$SRC/scripts" "$MUT_TB_POSIX/scripts"
 MUT_TB_HOOK="$MUT_TB_POSIX/hooks/memoria-marca.cjs"
@@ -498,7 +505,7 @@ else
 fi
 
 # Usar nova sandbox para teste com mutação
-RAIZ_TB_MUT_POSIX="$(mktemp -d)"
+RAIZ_TB_MUT_POSIX="$(novo_sandbox)"
 RAIZ_TB_MUT=$(cygpath -m "$RAIZ_TB_MUT_POSIX" 2>/dev/null || printf '%s' "$RAIZ_TB_MUT_POSIX")
 
 # Inicializar banco para teste com mutação

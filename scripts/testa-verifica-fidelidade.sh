@@ -4,8 +4,14 @@
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CAIXA="$(mktemp -d)"
-trap 'rm -rf "$CAIXA"' EXIT
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
+# criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
+cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done; }
+trap cleanup EXIT
+
+CAIXA="$(novo_sandbox)"
 
 VERIFICADOR="node $SRC/scripts/verifica-fidelidade-fixture.cjs"
 
@@ -96,7 +102,7 @@ echo "== 5. Mutacao: prova que o Teste D pega regressao (numa COPIA, nunca no ra
 # Se alguem silenciar esse ramo (trocar o process.exit(1) por process.exit(0)
 # quando nao ha transcrito real), o Teste D acima tem que virar vermelho. A
 # mutacao roda numa copia em /tmp — o arquivo rastreado nunca e tocado.
-MUT_DIR="$(mktemp -d)"
+MUT_DIR="$(novo_sandbox)"
 cp "$SRC/scripts/verifica-fidelidade-fixture.cjs" "$MUT_DIR/mutado.cjs"
 
 cat > "$MUT_DIR/muta-sem-transcrito.cjs" <<'MUTEOF'
