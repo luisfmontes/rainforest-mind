@@ -184,6 +184,18 @@ variantes:
   letra) quando a mensagem sai de arquivo gravado pelo agente. Confira com
   `git log --format=%s | od -c` e reescreva (reset --soft + commit) antes do
   PR.
+- **A CI pegou de novo a grafia de caminho** (run 34727874026 do PR #242):
+  a bateria do `gate-worktree` comparava a linha de restauro com o caminho
+  do `mktemp` (8.3 no runner, `RUNNER~1`) e o gate imprime o que
+  `git rev-parse --show-toplevel` responde (`runneradmin`). Asserção que cita
+  caminho compara com a MESMA fonte que o codigo usa, nunca com o caminho
+  que o fixture montou. Aqui passava porque o `%TEMP%` local nao tem 8.3.
+- **O laco completo do CONTRIBUTING (114 baterias) pegou duas que nenhuma
+  catraca ve**: a guarda de dependencias (python pelo nome no caso 20) e o
+  `testa-config` (conta gates do hooks.json). Rode o laco inteiro ANTES do
+  `verificar`, desanexado (leva ~40 min), nao so as baterias das tarefas.
+  A terceira vermelha (`testa-memoria-somente-leitura`) falha igual na main
+  nesta maquina — Issue #243.
 - **604 diretorios `/tmp/tmp.*` orfaos** observados na maquina no meio da
   rodada — a guarda `testa-sandbox-com-trap.sh` (T10/T26) e' a resposta;
   limpeza do acumulado e' manual.
