@@ -346,6 +346,9 @@
     "em": "2026-09-12"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "acao": "PR #242 aberto (fluxo/zerar-issues -> main), 13 Issues com comentario de evidencia (#206 descartada), Issue #243 aberta para o defeito pre-existente do foco-session-start; worktrees de agente desta rodada removidos; versao 1.12.0",
+    "pr": 242,
+    "em": "2026-09-12"
   }
 }
