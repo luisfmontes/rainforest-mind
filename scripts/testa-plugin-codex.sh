@@ -26,8 +26,24 @@ fi
 
 OUTPUT_ADAPTADOR="$("$NODE_BIN" "$SCRIPT" --contrato-adaptador-hook)"
 STATUS=$?
+if [ "$STATUS" -ne 0 ]; then
+  printf '%s\n' "$OUTPUT_ADAPTADOR"
+  exit "$STATUS"
+fi
+
+OUTPUT_MARKETPLACE="$("$NODE_BIN" "$SCRIPT" --contrato-marketplace)"
+STATUS=$?
+if [ "$STATUS" -ne 0 ]; then
+  printf '%s\n' "$OUTPUT_MARKETPLACE"
+  exit "$STATUS"
+fi
+
+OUTPUT_GEMINI="$("$NODE_BIN" "$SCRIPT" --contrato-gemini)"
+STATUS=$?
 OUTPUT="${OUTPUT_MANIFESTO}
-${OUTPUT_ADAPTADOR}"
+${OUTPUT_ADAPTADOR}
+${OUTPUT_MARKETPLACE}
+${OUTPUT_GEMINI}"
 printf '%s\n' "$OUTPUT"
 
 if [ "$STATUS" -ne 0 ]; then
@@ -48,7 +64,9 @@ for MARKER in \
   'ok adaptador Codex: falha inesperada vira deny seguro' \
   'ok adaptador Codex: falha de spawn vira deny seguro' \
   'ok adaptador Codex: JSON malformado vira deny seguro sem ecoar payload' \
-  'ok mutacao handler Codex -> core direto: vermelho e bytes restaurados'
+  'ok mutacao handler Codex -> core direto: vermelho e bytes restaurados' \
+  'ok marketplace rainforest-mind: source.path ./ resolve a raiz com manifestos Claude e Codex' \
+  'ok Gemini adiado: caminhos rastreados nao contem manifesto, hook, adaptador ou fixture de payload Gemini fora dos documentos do fluxo'
 do
   case "$OUTPUT" in
     *"$MARKER"*) ;;

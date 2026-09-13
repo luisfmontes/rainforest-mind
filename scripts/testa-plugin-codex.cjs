@@ -9,6 +9,7 @@ const { spawnSync } = require('node:child_process');
 const RAIZ = path.resolve(__dirname, '..');
 const MANIFESTO_CODEX = path.join(RAIZ, '.codex-plugin', 'plugin.json');
 const MANIFESTO_CLAUDE = path.join(RAIZ, '.claude-plugin', 'plugin.json');
+const MARKETPLACE = path.join(RAIZ, '.agents', 'plugins', 'marketplace.json');
 const CAMINHO_HOOK_CODEX = './hooks/codex-gate-staging-total.json';
 const HOOK_COMPARTILHADO = path.join(RAIZ, 'hooks', 'gate-staging-total.cjs');
 const HOOK_ADAPTADOR_CODEX = path.join(RAIZ, 'hooks', 'codex-gate-staging-total.cjs');
@@ -16,6 +17,12 @@ const COMANDO_HOOK_CODEX = 'node "${PLUGIN_ROOT}/hooks/codex-gate-staging-total.
 const COMANDO_CORE_DIRETO = 'node "${PLUGIN_ROOT}/hooks/gate-staging-total.cjs"';
 const MOTIVO_FALHA_SEGURA =
   'Falha interna do gate de staging; comando recusado por seguranca.';
+const DOCUMENTOS_DO_FLUXO = new Set([
+  'docs/rainforest/design/2026-09-12-multihost-sobre-1-11.md',
+  'docs/rainforest/planos/2026-09-12-multihost-sobre-1-11.md',
+  'docs/rainforest/estado/2026-09-12-multihost-sobre-1-11.json',
+  'docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md',
+]);
 
 // Corpos na base 4028a28513d6ecc7247fe3d76c673a0928a0dd09,
 // medidos antes da normalizacao exclusiva do frontmatter.
@@ -398,6 +405,90 @@ function contratoAdaptadorHook({ mutacao = true } = {}) {
   if (mutacao) testarMutacaoHandler(hooksPath);
 }
 
+function validarMarketplace() {
+  exige(fs.existsSync(MARKETPLACE), 'marketplace local ausente');
+  const marketplace = lerJson(MARKETPLACE, 'marketplace local');
+  exige(marketplace && typeof marketplace === 'object' && !Array.isArray(marketplace),
+    'marketplace local deve ser objeto');
+  exige(marketplace.name === 'rainforest-mind-local',
+    'marketplace deve se chamar rainforest-mind-local');
+  exige(Array.isArray(marketplace.plugins) && marketplace.plugins.length === 1,
+    'marketplace deve conter uma unica entrada');
+  const entrada = marketplace.plugins[0];
+  exige(entrada && entrada.name === 'rainforest-mind',
+    'entrada marketplace deve ser rainforest-mind');
+  exige(entrada.source && entrada.source.source === 'local',
+    'marketplace source deve ser local');
+  exige(entrada.policy && entrada.policy.installation === 'AVAILABLE',
+    'marketplace policy.installation deve ser AVAILABLE');
+  exige(entrada.policy.authentication === 'ON_INSTALL',
+    'marketplace policy.authentication deve ser ON_INSTALL');
+  exige(typeof entrada.category === 'string' && entrada.category.trim() !== '',
+    'marketplace category ausente');
+
+  const raizDistribuida = caminhoInterno(entrada.source.path, 'source.path');
+  const contemClaude = fs.existsSync(path.join(raizDistribuida, '.claude-plugin', 'plugin.json'));
+  const contemCodex = fs.existsSync(path.join(raizDistribuida, '.codex-plugin', 'plugin.json'));
+  if (raizDistribuida !== RAIZ || !contemClaude || !contemCodex) {
+    falha('source.path nao resolve o manifesto deste repo');
+  }
+  console.log('ok marketplace rainforest-mind: source.path ./ resolve a raiz com manifestos Claude e Codex');
+}
+
+function ehArtefatoGemini(arquivo) {
+  const minusculo = arquivo.replace(/\\/g, '/').toLowerCase();
+  const segmentos = minusculo.split('/').filter(Boolean);
+  const temGemini = segmentos.some((segmento) =>
+    /(^|[._-])gemini([._-]|$)/.test(segmento));
+  const temTermoDeHost = segmentos.some((segmento) =>
+    /(^|[._-])(adapter|adapters|adaptador|adaptadores|hook|hooks|manifest|manifesto|plugin|payload)([._-]|$)/.test(segmento));
+  return temGemini && temTermoDeHost;
+}
+
+function validarDetectorGemini() {
+  const proibidos = [
+    'gemini/plugin.json',
+    'adapters/gemini/manifest.json',
+    'hooks/gemini/pre-tool-use.json',
+    'test/fixtures/gemini/payload.json',
+    '.gemini-plugin/plugin.json',
+  ];
+  const permitidos = [
+    'scripts/fixtures/conselho/membro-gemini-fake.cjs',
+    'referencias/notas-gemini.md',
+  ];
+  for (const documento of DOCUMENTOS_DO_FLUXO) {
+    exige(!ehArtefatoGemini(documento), `detector Gemini confundiu documento do fluxo: ${documento}`);
+  }
+  for (const arquivo of proibidos) {
+    exige(ehArtefatoGemini(arquivo), `detector Gemini deixou passar ${arquivo}`);
+  }
+  for (const arquivo of permitidos) {
+    exige(!ehArtefatoGemini(arquivo), `detector Gemini recusou ${arquivo}`);
+  }
+}
+
+function validarGeminiAdiado() {
+  const listagem = rodar('git', ['ls-files', '-z'], { cwd: RAIZ });
+  exige(!listagem.error, `git ls-files nao iniciou: ${listagem.error && listagem.error.message}`);
+  exige(listagem.status === 0, `git ls-files saiu ${listagem.status}`);
+  const arquivos = (listagem.stdout || '').split('\0').filter(Boolean)
+    .map((arquivo) => arquivo.replace(/\\/g, '/'));
+  const artefatos = arquivos.filter((arquivo) =>
+    !DOCUMENTOS_DO_FLUXO.has(arquivo) && ehArtefatoGemini(arquivo));
+  exige(artefatos.length === 0, `Gemini recebeu artefato de host: ${artefatos.join(', ')}`);
+  console.log('ok Gemini adiado: caminhos rastreados nao contem manifesto, hook, adaptador ou fixture de payload Gemini fora dos documentos do fluxo');
+}
+
+function contratoMarketplace() {
+  validarMarketplace();
+}
+
+function contratoGemini() {
+  validarDetectorGemini();
+  validarGeminiAdiado();
+}
+
 function executarModo() {
   const [modo] = process.argv.slice(2);
   if (modo === '--contrato-manifesto') {
@@ -412,12 +503,22 @@ function executarModo() {
     contratoAdaptadorHook();
     return;
   }
+  if (modo === '--contrato-marketplace') {
+    contratoMarketplace();
+    return;
+  }
+  if (modo === '--contrato-gemini') {
+    contratoGemini();
+    return;
+  }
   if (modo === '--interno-adaptador-hook') {
     contratoAdaptadorHook({ mutacao: false });
     return;
   }
   exige(modo === undefined, `modo desconhecido: ${modo}`);
   validarManifesto();
+  validarMarketplace();
+  contratoGemini();
 }
 
 try {
