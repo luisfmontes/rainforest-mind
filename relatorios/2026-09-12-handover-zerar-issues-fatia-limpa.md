@@ -184,7 +184,7 @@ variantes:
   letra) quando a mensagem sai de arquivo gravado pelo agente. Confira com
   `git log --format=%s | od -c` e reescreva (reset --soft + commit) antes do
   PR.
-- **A CI pegou de novo a grafia de caminho** (run 34727874026 do PR #242):
+- **A CI pegou de novo a grafia de caminho** (PR #242, `actions/runs/34727874026`):
   a bateria do `gate-worktree` comparava a linha de restauro com o caminho
   do `mktemp` (8.3 no runner, `RUNNER~1`) e o gate imprime o que
   `git rev-parse --show-toplevel` responde (`runneradmin`). Asserção que cita
