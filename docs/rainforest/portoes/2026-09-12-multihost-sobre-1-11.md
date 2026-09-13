@@ -1,4 +1,4 @@
-# Portão: adaptação multihost sobre o Rainforest Mind 1.12
+# Portão: adaptação multihost sobre o Rainforest Mind 1.13.2
 
 ## Tarefa 6 — iteração local com cachebuster
 
@@ -341,13 +341,12 @@ original usado nesta repetição têm o mesmo SHA-256:
 b831643f5d36d5ced5ea94f39a2d237f1520463486065bb5157e8d8a169908fe  hooks/codex-gate-staging-total.cjs
 ```
 
-A diferença observável relevante foi o runtime. A sessão vermelha registrou
-`OpenAI Codex v0.151.0`; a sessão final registrou `OpenAI Codex v0.153.4` e a
-CLI usada respondeu `codex-cli 0.153.4`. Não houve correção de código: o
-protocolo emitido pelo plugin é válido para o runtime atual. A explicação mais
-forte para o vermelho anterior é incompatibilidade do protocolo de bloqueio no
-runtime `0.151.0`; ela permanece marcada como inferência porque esse executável
-antigo já não está disponível na instalação local para uma contraprova.
+A sessão vermelha registrou `OpenAI Codex v0.151.0`; a repetição seguinte
+registrou `OpenAI Codex v0.153.4`. Isso sugeriu provisoriamente uma diferença de
+runtime, mas a reinstalação limpa da T7 voltou a executar `0.151.0` e bloqueou
+corretamente os dois comandos proibidos com o mesmo adaptador. A contraprova
+falsifica a hipótese de incompatibilidade: a causa ficou restrita ao estado da
+primeira instalação/cache, que foi substituído pela reinstalação limpa.
 
 ### Payload real capturado
 
