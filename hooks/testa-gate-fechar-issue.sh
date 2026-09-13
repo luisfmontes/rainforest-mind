@@ -1631,6 +1631,30 @@ EXIT_CC=$?
 	EXIT_DD=$?
 	[ $EXIT_DD -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DD)"
 
+	# Quarta revisão do zerar-issues-3 (2026-09-13): here-string dirigido a um
+	# interpretador é script, como o heredoc de `bash <<EOF`.
+	# Caso (de): bash <<<'gh issue close 12' → exit 2
+	echo
+	echo "== (de) bash <<<'gh issue close 12' → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"bash <<<'gh issue close 12'\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-de"
+	EXIT_DE=$?
+	[ $EXIT_DE -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DE)"
+
+	# Caso (df): cat <<<'gh issue close 12' continua dado → exit 0
+	echo
+	echo "== (df) cat <<<'gh issue close 12' (sumidouro de dado) → exit 0 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat <<<'gh issue close 12'\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-df"
+	EXIT_DF=$?
+	[ $EXIT_DF -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_DF)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

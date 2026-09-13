@@ -82,6 +82,10 @@ function indiceSequencia(tokens, padrao) {
  *
  * Se o delimitador nunca aparece, trata todo o resto como corpo.
  */
+// Comandos para os quais o corpo de um heredoc (ou a string de um here-string)
+// e' script, nao dado (D1 do zerar-issues-3).
+const INTERPRETADORES_DE_HEREDOC = ["bash", "sh", "zsh", "ksh", "dash", "pwsh", "powershell", "cmd", "eval", "source", "."];
+
 function corpoDeHeredoc(cmd, i) {
   if (cmd[i] !== '<' || cmd[i + 1] !== '<') return null;
   // `<<<` é here-string: a string vem na mesma linha, não há corpo nem linha de
@@ -327,8 +331,28 @@ function segmentosParaGate(cmd) {
       // `<<<` é here-string: consome os três de uma vez, senão o segundo e o
       // terceiro `<` seriam lidos como um `<<` de heredoc (terceira revisão
       // do zerar-issues-3, 2026-09-13). O texto segue como qualquer palavra.
-      atual += "<<<";
-      i += 2;
+      // Quarta revisão (2026-09-13): here-string dirigido a um interpretador
+      // (`bash <<<'gh issue close 12'`) É script, como o heredoc de `bash
+      // <<EOF` — a string entra em `segmentosParaGate` recursivamente. Para
+      // `cat` e afins continua dado.
+      let k = i + 3;
+      while (k < cmd.length && (cmd[k] === ' ' || cmd[k] === '\t')) k++;
+      let conteudo = '';
+      if (cmd[k] === "'" || cmd[k] === '"') {
+        const aspa = cmd[k];
+        k++;
+        while (k < cmd.length && cmd[k] !== aspa) { conteudo += cmd[k]; k++; }
+        if (k < cmd.length) k++; // fecha a aspa
+      } else {
+        while (k < cmd.length && !/[\s;&|]/.test(cmd[k])) { conteudo += cmd[k]; k++; }
+      }
+      if (INTERPRETADORES_DE_HEREDOC.includes(extrairComandoDoHeredoc(cmd, i))) {
+        for (const sub of segmentosParaGate(conteudo)) {
+          if (sub.trim()) segmentos.push(sub);
+        }
+      }
+      atual += cmd.slice(i, k);
+      i = k - 1;
       continue;
     }
     if (c === "<" && cmd[i + 1] === "<") {
@@ -355,7 +379,7 @@ function segmentosParaGate(cmd) {
         atual += cmd.slice(i + 2, j);
 
         // Se o comando é um interpretador, processar o corpo recursivamente
-        if (["bash", "sh", "zsh", "ksh", "dash", "pwsh", "powershell", "cmd", "eval", "source", "."].includes(heredoc.comando)) {
+        if (INTERPRETADORES_DE_HEREDOC.includes(heredoc.comando)) {
           for (const sub of segmentosParaGate(heredoc.corpo)) {
             if (sub.trim()) segmentos.push(sub);
           }

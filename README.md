@@ -169,9 +169,9 @@ liberam sem perguntar. Codex sem cota bloqueia dizendo isso, com a hora de
 retorno (o despacho sai 75 e escreve `codex sem cota: ...`).
 
 Valem em **qualquer** repo git da máquina, porque o hábito é que é o problema,
-não o repositório. Cada uma tem bateria própria — **689 casos** rodando o hook
+não o repositório. Cada uma tem bateria própria — **691 casos** rodando o hook
 de verdade contra repos git montados na hora (soma medida em 2026-09-13, com os casos de heredoc:
-201 + 99 + 24 + 27 + 135 + 25 + 170 + 8 — a portaria soma os sete `testa-portaria-*.cjs` que o `testa-portaria.sh` encadeia, 12 + 15 + 9 + 28 + 78 + 5 + 23, e a última linha do wrapper (7) conta arquivos, não casos; re-verificar: a última linha da bateria `hooks/testa-<hook>.sh` de cada linha da tabela).
+201 + 99 + 24 + 27 + 137 + 25 + 170 + 8 — a portaria soma os sete `testa-portaria-*.cjs` que o `testa-portaria.sh` encadeia, 12 + 15 + 9 + 28 + 78 + 5 + 23, e a última linha do wrapper (7) conta arquivos, não casos; re-verificar: a última linha da bateria `hooks/testa-<hook>.sh` de cada linha da tabela).
 
 → O incidente de origem de cada trava, as saídas de emergência e a tabela de
 scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
