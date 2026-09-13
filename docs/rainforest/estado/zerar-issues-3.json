@@ -24,7 +24,7 @@
     "tarefas_ok": 5,
     "tarefas": 5,
     "em": "2026-09-13",
-    "comando": "node scripts/conferir-mutacao.cjs --arquivo <arquivo> --de <de> --para <para> --bateria <bateria> para T1, T2 e T3 com os blocos literais do plano, sobre a arvore 364925de e, apos os 3 achados do revisar (escape na linha do heredoc; SANDBOX_E colidido e sem contagem; caso (f) apagado), de novo sobre c1d68f1f e, apos o achado da 2a revisao (<<- fecha sem TABs), sobre d0ade68b, e apos o da 3a (<<< e here-string) sobre f5751d1a (entregas dos executores cherry-pickadas: 33ef3880, c556b627, 4b8d89cf); T2 veio com pai cf1ad768 (main) em vez de ef92114a — dispensado por escrito na integracao porque ef92114a so adiciona docs/rainforest/*, e o cherry-pick entrou limpo; baterias re-rodadas pela integracao: testa-gate-fechar-issue, testa-principal-atrasado, testa-exporta-hooks-sessao-start, testa-memoria-somente-leitura, testa-fuga-de-escotilha, testa-dependencias-de-bateria, testa-sandbox-com-trap, testa-memoria-session-start, testa-mapa-regras, testa-versao, conferir-versao; hook medido com preload sobre child_process",
+    "comando": "node scripts/conferir-mutacao.cjs --arquivo <arquivo> --de <de> --para <para> --bateria <bateria> para T1, T2 e T3 com os blocos literais do plano, sobre a arvore 364925de e, apos os 3 achados do revisar (escape na linha do heredoc; SANDBOX_E colidido e sem contagem; caso (f) apagado), de novo sobre c1d68f1f e, apos o achado da 2a revisao (<<- fecha sem TABs), sobre d0ade68b, e apos o da 3a (<<< e here-string) sobre f5751d1a+78411f93 (entregas dos executores cherry-pickadas: 33ef3880, c556b627, 4b8d89cf); T2 veio com pai cf1ad768 (main) em vez de ef92114a — dispensado por escrito na integracao porque ef92114a so adiciona docs/rainforest/*, e o cherry-pick entrou limpo; baterias re-rodadas pela integracao: testa-gate-fechar-issue, testa-principal-atrasado, testa-exporta-hooks-sessao-start, testa-memoria-somente-leitura, testa-fuga-de-escotilha, testa-dependencias-de-bateria, testa-sandbox-com-trap, testa-memoria-session-start, testa-mapa-regras, testa-versao, conferir-versao; hook medido com preload sobre child_process",
     "saida": "Apos a 3a revisao: T1 135 ok -> exit 1 (caso dd). Apos a 2a: T1 134 ok -> exit 1 (casos db/dc). Apos a 1a: T1 132 ok -> exit 1, T2 24 ok -> exit 1, bateria nova sobre a lib de cf1ad768 reprova em (g) com 66 chamadas. Antes: T1: baseline 129 ok exit 0 -> mutacao exit 1 (vermelho); T2: 19 ok -> exit 1 (vermelho); T3: 7 ok -> exit 1 (vermelho); fonte restaurado nas tres. Baterias: 129 ok, 19 ok, 7 ok, 29 ok (memoria-somente-leitura, antes vermelha nesta maquina), 5 ok, 6 ok, 114 ok, 64 ok, 6 ok, 4 ok, conferir-versao ok 1.12.1. foco-session-start.cjs: 4 chamadas externas em 499 ms (antes 324 em 7,8 s)",
     "mutacao": [
       {
@@ -57,7 +57,7 @@
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "28c82725f7929d3877322830c14f5001d5ad0f23",
+      "head": "25cfde33ac7803e57d66010edc3503922b412d27",
       "caminhos_sujos": []
     },
     "base": "cf1ad768",
