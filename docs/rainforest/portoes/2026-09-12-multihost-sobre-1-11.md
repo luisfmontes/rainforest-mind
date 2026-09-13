@@ -645,3 +645,214 @@ Depois de toda a prova, o worktree continuou com os dois manifestos exatamente
 em `1.12.0` e com os hashes de fonte registrados acima. Nenhum cachebuster foi
 criado nesta tarefa. Nenhum push, merge, PR, release, publicação, rebase ou
 alteração da `main` foi realizado.
+
+## Tarefa 6 reaberta — cachebuster sobre 1.13.2
+
+Esta seção preserva integralmente as evidências históricas de 1.12 acima e
+registra a repetição da T6 depois da reancoragem da entrega em 1.13.2.
+
+### Base e isolamento
+
+```powershell
+git rev-parse HEAD
+git branch --show-current
+git merge-base --is-ancestor 068468fb956b8d606e9af1800aaa91dd399fdeb8 HEAD
+```
+
+```text
+c614ae2d3d7ca8dee3f474cbe8701183b9a260b2
+codex/task6-cachebuster-113
+base_ancestor_exit=0
+```
+
+Worktree usado:
+
+```text
+C:\Projetos\rainforest-mind\.claude\worktrees\codex-task6-cachebuster-113
+```
+
+Nenhum rebase ou alteração foi feito na branch de entrega
+`codex/multihost-1.13` ou na `main`.
+
+### Âncoras binárias antes da mutação temporária
+
+```text
+claude_version=1.13.2
+codex_version=1.13.2
+76d1a40cdf0c228e921d5ddbc591d20391bc05f7eca291fcc33e04fd419f611f  .claude-plugin/plugin.json
+91125f387b1b740c2948951dabe3014cbd34d21bf5dbc8da5068227d2a07b8cf  .codex-plugin/plugin.json
+```
+
+Antes de qualquer edição, os dois arquivos foram copiados em modo binário para
+um diretório temporário único. Os hashes das cópias foram idênticos aos da
+fonte acima.
+
+O helper oficial validou o marketplace:
+
+```powershell
+& 'C:\Users\Luis\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' `
+  'C:\Users\Luis\.codex\skills\.system\plugin-creator\scripts\read_marketplace_name.py' `
+  --marketplace-path '.agents\plugins\marketplace.json'
+```
+
+```text
+rainforest-mind-local
+```
+
+### Marketplace apontado ao worktree desta iteração
+
+```powershell
+codex plugin remove rainforest-mind@rainforest-mind-local
+codex plugin marketplace remove rainforest-mind-local
+codex plugin marketplace add 'C:\Projetos\rainforest-mind\.claude\worktrees\codex-task6-cachebuster-113'
+codex plugin marketplace list
+```
+
+```text
+Removed plugin `rainforest-mind` from marketplace `rainforest-mind-local`.
+Removed marketplace `rainforest-mind-local`.
+Added marketplace `rainforest-mind-local` from \\?\C:\Projetos\rainforest-mind\.claude\worktrees\codex-task6-cachebuster-113.
+Installed marketplace root: C:\Projetos\rainforest-mind\.claude\worktrees\codex-task6-cachebuster-113
+rainforest-mind-local   C:\Projetos\rainforest-mind\.claude\worktrees\codex-task6-cachebuster-113
+```
+
+### Cachebuster oficial e cache criado
+
+Comando:
+
+```powershell
+& 'C:\Users\Luis\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' `
+  'C:\Users\Luis\.codex\skills\.system\plugin-creator\scripts\update_plugin_cachebuster.py' `
+  'C:\Projetos\rainforest-mind\.claude\worktrees\codex-task6-cachebuster-113'
+```
+
+```text
+Updated plugin version: 1.13.2 -> 1.13.2+codex.20260913114653
+```
+
+O manifesto Claude foi temporariamente sincronizado para a mesma versão. Antes
+da instalação, os dois manifestos informavam:
+
+```text
+claude_version=1.13.2+codex.20260913114653
+codex_version=1.13.2+codex.20260913114653
+86ae110feac7eabca7bea061049dd6fae8969c60449a5f19badc3c71480206e5  .claude-plugin/plugin.json
+2fa142e81d537e8319e4df45f17df362d393832910c6de82ab6f868160b86c14  .codex-plugin/plugin.json
+```
+
+Instalação:
+
+```powershell
+codex plugin add rainforest-mind@rainforest-mind-local
+codex plugin list
+```
+
+```text
+Added plugin `rainforest-mind` from marketplace `rainforest-mind-local`.
+Installed plugin root: C:\Users\Luis\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.13.2+codex.20260913114653
+rainforest-mind@rainforest-mind-local  installed, enabled  1.13.2+codex.20260913114653  C:\Projetos\rainforest-mind\.claude\worktrees\codex-task6-cachebuster-113
+```
+
+Versões e hashes medidos diretamente nessa entrada de cache:
+
+```text
+cache_claude_version=1.13.2+codex.20260913114653
+cache_codex_version=1.13.2+codex.20260913114653
+86ae110feac7eabca7bea061049dd6fae8969c60449a5f19badc3c71480206e5  .claude-plugin/plugin.json
+2fa142e81d537e8319e4df45f17df362d393832910c6de82ab6f868160b86c14  .codex-plugin/plugin.json
+b831643f5d36d5ced5ea94f39a2d237f1520463486065bb5157e8d8a169908fe  hooks/codex-gate-staging-total.cjs
+5288704159ef9d02556cc133467c2eaf2868cfb788f54e71d93d4c6cf5246277  hooks/codex-gate-staging-total.json
+```
+
+O cache continha 19 skills físicas em `skills/*/SKILL.md` e uma projeção
+migrada:
+
+```text
+physical_skills=19
+migrated_skills=1
+source-command-saude
+```
+
+### Sessão Codex nova
+
+Uma sessão efêmera `OpenAI Codex v0.151.0` foi aberta em um repositório
+descartável com acesso total somente para eliminar falso vermelho do sandbox.
+O repositório continha `deny-control.txt` não rastreado. O roteiro exigiu a
+enumeração das skills realmente carregadas e uma única tentativa literal de
+`git add "-A"`.
+
+Enumeração devolvida pela sessão:
+
+```text
+rainforest-mind:analisar
+rainforest-mind:arqueologia
+rainforest-mind:brainstorm
+rainforest-mind:depurar
+rainforest-mind:divergir
+rainforest-mind:enxugar
+rainforest-mind:executar
+rainforest-mind:fechar
+rainforest-mind:limpar
+rainforest-mind:modo-dev
+rainforest-mind:montar-corpus
+rainforest-mind:plano
+rainforest-mind:ponte
+rainforest-mind:rainforest-mind
+rainforest-mind:regua
+rainforest-mind:revisar
+rainforest-mind:semear
+rainforest-mind:setup
+rainforest-mind:source-command-saude
+rainforest-mind:verificar
+TOTAL_RFM=20
+```
+
+Recusa real:
+
+```text
+Command blocked by PreToolUse hook: BLOQUEADO pelo gate de staging total do rainforest-mind.
+Comando: git add -A
+Command: git add "-A"
+hook: PreToolUse Blocked
+DENY_REAL_OK
+```
+
+Depois da sessão, `git status --short` ainda mostrou somente:
+
+```text
+?? deny-control.txt
+```
+
+Logo o comando não chegou ao Git e nenhum arquivo foi stageado.
+
+### Restauração byte a byte e baterias
+
+Os manifestos foram restaurados pelas cópias binárias capturadas antes do
+cachebuster. A versão, os hashes e o diff específico depois da restauração foram:
+
+```text
+claude_version=1.13.2
+codex_version=1.13.2
+76d1a40cdf0c228e921d5ddbc591d20391bc05f7eca291fcc33e04fd419f611f  .claude-plugin/plugin.json
+91125f387b1b740c2948951dabe3014cbd34d21bf5dbc8da5068227d2a07b8cf  .codex-plugin/plugin.json
+MANIFEST_DIFF=<vazio>
+```
+
+Comandos de verificação posteriores:
+
+```powershell
+bash scripts/testa-plugin-codex.sh
+bash scripts/testa-versao.sh
+```
+
+A primeira bateria terminou verde depois de validar as 19 skills físicas,
+manifestos, adaptador, allow, deny, falhas seguras, mutação, marketplace e
+escopo negativo Gemini. A segunda terminou:
+
+```text
+ok: 5   falhou: 0
+```
+
+Resultado da T6 reaberta: **verde**. O cachebuster existe somente no cache local;
+nenhum byte dele permaneceu no diff da fonte. Nenhum push, merge, PR, release,
+publicação, rebase ou alteração da `main` foi realizado.

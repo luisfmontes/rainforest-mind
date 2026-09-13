@@ -21,7 +21,7 @@
     "status": "parcial",
     "catraca_mutacao": "2026-09-13",
     "em_voo": [],
-    "tarefas_ok": 5,
+    "tarefas_ok": 6,
     "tarefas": 9,
     "em": "2026-09-13",
     "carimbos": [
@@ -80,10 +80,16 @@
         "iteracao": 1,
         "sessao": "desconhecida",
         "ts": "2026-09-13T11:37:40.611Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "c614ae2d3d7ca8dee3f474cbe8701183b9a260b2",
+        "iteracao": 3,
+        "sessao": "desconhecida",
+        "ts": "2026-09-13T11:51:02.171Z"
       }
     ],
     "pendentes": [
-      "tarefa-6: repetir cachebuster sobre a base 1.13.2",
       "tarefa-7: reinstalar 1.13.2 e validar projecao rastreada mais o unico derivado Codex permitido"
     ]
   },
