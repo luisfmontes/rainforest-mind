@@ -256,6 +256,7 @@ TEXTO_HOOK="$(printf '%s' "$SAIDA_HOOK" | node "$RAIZ_POSIX/extrai-contexto.cjs"
 checa_contem "(e) o texto injetado avisa dos commits atrasados" "3 commit(s) atrás de origin/main" "$TEXTO_HOOK"
 checa_contem "(e) o texto injetado nomeia o worktree integrado" "já em origin/main"                "$TEXTO_HOOK"
 
+
 echo
 echo "(f) principal em dia alcancado por OUTRA GRAFIA do mesmo diretorio"
 # Achado na CI, nao aqui: o caso (d) passou nesta maquina e reprovou no runner
@@ -292,6 +293,148 @@ if [ "$CRIOU_ATALHO" = "1" ]; then
 else
   echo "  PULADO (f): nao consegui criar junction nem symlink nesta maquina"
 fi
+
+echo
+echo "(g) 33 worktrees linkados (15 mergeados + 15 nao + 3 detached): no maximo 4 chamadas a git"
+# Issue #243 (D2 e D4 do zerar-issues-3): a versao anterior da lib fazia um
+# `git symbolic-ref` por worktree e um `merge-base` por branch — 324 processos
+# em 7,8 s numa maquina com 308 worktrees, acima dos 5 s que o hooks.json da ao
+# hook de abertura. O que se afirma aqui e o NUMERO de chamadas externas, nunca
+# tempo de relogio (tempo sob carga oscila; contagem nao). O contador e um
+# preload que embrulha child_process ANTES de a lib fazer o `require`, e grava
+# o total num arquivo — zero chamadas significaria que o embrulho nao pegou, e
+# tambem reprova.
+#
+# Fixture: cada branch nasce ja no `worktree add -b <x> origin/main` (nunca
+# checkout no principal, ver o cabecalho); as "nao mergeadas" ganham um commit
+# proprio dentro do proprio worktree. A contagem de worktrees registrados e
+# afirmada antes das asserções de conteudo: fixture que nao montou (clone em
+# diretorio ocupado, `aux` reservado no Windows) nao pode passar por "as 15 nao
+# aparecem" — foi exatamente o que a revisao pegou na primeira versao deste caso.
+SANDBOX_G="$RAIZ_POSIX/caso-g"; mkdir -p "$SANDBOX_G"
+BARE_G="$SANDBOX_G/repo.git"; PRINCIPAL_G="$SANDBOX_G/principal"
+git init -q -b main --bare "$BARE_G"
+git clone -q "$BARE_G" "$PRINCIPAL_G"
+git -C "$PRINCIPAL_G" config user.email "t@t"; git -C "$PRINCIPAL_G" config user.name "t"
+git -C "$PRINCIPAL_G" config commit.gpgsign false
+echo base > "$PRINCIPAL_G/arquivo.txt"; git -C "$PRINCIPAL_G" add arquivo.txt; git -C "$PRINCIPAL_G" commit -qm base
+git -C "$PRINCIPAL_G" push -q -u origin main
+
+for i in $(seq 1 15); do
+  git -C "$PRINCIPAL_G" worktree add -q "$SANDBOX_G/wt-mergeada-$i" -b "mergeada-$i" origin/main
+done
+for i in $(seq 1 15); do
+  WT_NAO="$SANDBOX_G/wt-nao-mergeada-$i"
+  git -C "$PRINCIPAL_G" worktree add -q "$WT_NAO" -b "nao-mergeada-$i" origin/main
+  git -C "$WT_NAO" config user.email "t@t"; git -C "$WT_NAO" config user.name "t"
+  git -C "$WT_NAO" config commit.gpgsign false
+  echo "commit $i" > "$WT_NAO/g-$i.txt"; git -C "$WT_NAO" add "g-$i.txt"; git -C "$WT_NAO" commit -qm "commit $i"
+done
+for i in 1 2 3; do
+  git -C "$PRINCIPAL_G" worktree add -q --detach "$SANDBOX_G/wt-detached-$i" HEAD
+done
+
+REGISTRADOS_G="$(git -C "$PRINCIPAL_G" worktree list --porcelain | grep -c '^worktree ')"
+if [ "$REGISTRADOS_G" = "34" ]; then
+  ok=$((ok+1)); echo "  ok    (g) fixture montou: 34 worktrees registrados (principal + 33)"
+else
+  falhou=$((falhou+1)); echo "  FALHA (g) fixture nao montou: $REGISTRADOS_G worktrees registrados (esperava 34)"
+fi
+
+# Driver C: preload que conta toda chamada sincrona a processo externo. Roda
+# por `node -r` ANTES do driver A, entao a lib ja encontra child_process
+# embrulhado quando faz o `require`. O total sai por arquivo (FIX_CONTAGEM),
+# nao pelo stdout, que e do JSON do driver.
+cat > "$RAIZ_POSIX/preload-conta.cjs" <<'EOF'
+const cp = require('child_process');
+let n = 0;
+for (const nome of ['execFileSync', 'spawnSync', 'execSync']) {
+  const orig = cp[nome];
+  cp[nome] = function (...args) { n++; return orig.apply(this, args); };
+}
+process.on('exit', () => { require('fs').writeFileSync(process.env.FIX_CONTAGEM, String(n)); });
+EOF
+
+rodar_linhas_contando() { # cwd_posix, arquivo_erro, arquivo_contagem -> stdout=JSON array; $? = exit do node
+  local cwd_win; cwd_win="$(cygpath -m "$1" 2>/dev/null || printf '%s' "$1")"
+  local preload_win; preload_win="$(cygpath -m "$RAIZ_POSIX/preload-conta.cjs" 2>/dev/null || printf '%s' "$RAIZ_POSIX/preload-conta.cjs")"
+  local contagem_win; contagem_win="$(cygpath -m "$3" 2>/dev/null || printf '%s' "$3")"
+  LIB_PATH="$LIB_WIN" FIX_CWD="$cwd_win" FIX_CONTAGEM="$contagem_win" node -r "$preload_win" "$RAIZ_POSIX/driver-linhas.cjs" 2>"$2"
+}
+
+ERRO_G="$SANDBOX_G/erro-g.log"; CONTAGEM_G="$SANDBOX_G/contagem-g.txt"
+SAIDA_G="$(rodar_linhas_contando "$PRINCIPAL_G" "$ERRO_G" "$CONTAGEM_G")"; EXIT_G=$?
+checa_exit0 "(g) driver roda sem estourar com 33 worktrees" "$EXIT_G" "$ERRO_G"
+
+CHAMADAS_G="$(cat "$CONTAGEM_G" 2>/dev/null || printf 'sem-arquivo')"
+case "$CHAMADAS_G" in
+  1|2|3|4) ok=$((ok+1)); echo "  ok    (g) $CHAMADAS_G chamada(s) externa(s) com 33 worktrees (teto 4)" ;;
+  0)       falhou=$((falhou+1)); echo "  FALHA (g) contador registrou 0 chamadas: o preload nao embrulhou child_process" ;;
+  *)       falhou=$((falhou+1)); echo "  FALHA (g) $CHAMADAS_G chamadas externas com 33 worktrees (teto 4) — voltou a pagar por worktree" ;;
+esac
+
+MERGEADAS_LISTADAS=0
+for i in $(seq 1 15); do
+  if printf '%s' "$SAIDA_G" | grep -qF "wt-mergeada-$i "; then
+    MERGEADAS_LISTADAS=$((MERGEADAS_LISTADAS + 1))
+  fi
+done
+if [ "$MERGEADAS_LISTADAS" = "15" ]; then
+  ok=$((ok+1)); echo "  ok    (g) os 15 worktrees mergeados aparecem como 'ja em origin/main'"
+else
+  falhou=$((falhou+1)); echo "  FALHA (g) $MERGEADAS_LISTADAS de 15 worktrees mergeados listados: $SAIDA_G"
+fi
+
+NAO_LISTADAS=0
+for i in $(seq 1 15); do
+  if printf '%s' "$SAIDA_G" | grep -qF "wt-nao-mergeada-$i "; then
+    NAO_LISTADAS=$((NAO_LISTADAS + 1))
+  fi
+done
+if [ "$NAO_LISTADAS" = "0" ]; then
+  ok=$((ok+1)); echo "  ok    (g) nenhum dos 15 worktrees com commit proprio aparece"
+else
+  falhou=$((falhou+1)); echo "  FALHA (g) $NAO_LISTADAS worktree(s) com commit proprio listados como mergeados: $SAIDA_G"
+fi
+
+DETACHED_LISTADAS=0
+for i in 1 2 3; do
+  if printf '%s' "$SAIDA_G" | grep -qF "wt-detached-$i "; then
+    DETACHED_LISTADAS=$((DETACHED_LISTADAS + 1))
+  fi
+done
+if [ "$DETACHED_LISTADAS" = "0" ]; then
+  ok=$((ok+1)); echo "  ok    (g) nenhum dos 3 worktrees detached aparece"
+else
+  falhou=$((falhou+1)); echo "  FALHA (g) $DETACHED_LISTADAS worktree(s) detached listados: $SAIDA_G"
+fi
+
+echo
+echo "(h) worktree registrado cujo diretorio foi apagado (prunable) nao aparece nem derruba"
+SANDBOX_H="$RAIZ_POSIX/caso-h"; mkdir -p "$SANDBOX_H"
+BARE_H="$SANDBOX_H/repo.git"; PRINCIPAL_H="$SANDBOX_H/principal"
+git init -q -b main --bare "$BARE_H"
+git clone -q "$BARE_H" "$PRINCIPAL_H"
+git -C "$PRINCIPAL_H" config user.email "t@t"; git -C "$PRINCIPAL_H" config user.name "t"
+git -C "$PRINCIPAL_H" config commit.gpgsign false
+echo x > "$PRINCIPAL_H/h.txt"; git -C "$PRINCIPAL_H" add h.txt; git -C "$PRINCIPAL_H" commit -qm base
+git -C "$PRINCIPAL_H" push -q -u origin main
+
+# Branch em origin/main (seria listada como "ja em origin/main" se o diretorio
+# existisse) — e o diretorio somem por fora do git, sem `worktree remove`.
+WT_PRUNABLE="$SANDBOX_H/wt-prunable"
+git -C "$PRINCIPAL_H" worktree add -q "$WT_PRUNABLE" -b sumida origin/main
+rm -rf "$WT_PRUNABLE"
+if git -C "$PRINCIPAL_H" worktree list --porcelain | grep -q '^prunable'; then
+  ok=$((ok+1)); echo "  ok    (h) o git marca o worktree como prunable"
+else
+  falhou=$((falhou+1)); echo "  FALHA (h) o git nao marcou o worktree como prunable; o caso nao testa nada"
+fi
+
+ERRO_H="$SANDBOX_H/erro-h.log"
+SAIDA_H="$(rodar_linhas "$PRINCIPAL_H" "$ERRO_H")"; EXIT_H=$?
+checa_exit0 "(h) worktree prunable nao derruba a funcao" "$EXIT_H" "$ERRO_H"
+checa_vazio "(h) worktree prunable nao e listado" "$SAIDA_H"
 
 echo
 echo "-----------------------------------------"

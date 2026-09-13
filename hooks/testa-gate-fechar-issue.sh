@@ -1419,6 +1419,414 @@ EXIT_CC=$?
 	) 2>"$SBP/err-cl"
 	EXIT_CL=$?
 	[ $EXIT_CL -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CL)"
+
+	# D1 (zerar-issues-3): casos novos de heredoc
+	echo
+	echo "== NOVOS CASOS DE HEREDOC (D1) =="
+
+	# Caso (cm): cat > d.md <<'EOF' com (x). → exit 0
+	echo
+	echo "== (cm) cat <<'EOF' com (x). → exit 0 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat > d.md <<'EOF'\\n(x).\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cm"
+	EXIT_CM=$?
+	[ $EXIT_CM -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CM)"
+
+	# Caso (cn): cat <<'EOF' com (x). O que → exit 0
+	echo
+	echo "== (cn) cat <<'EOF' com (x). O que → exit 0 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat > d.md <<'EOF'\\n(x). O que\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cn"
+	EXIT_CN=$?
+	[ $EXIT_CN -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CN)"
+
+	# Caso (co): cat <<'EOF' com (x). o que (minuscula) → exit 0
+	echo
+	echo "== (co) cat <<'EOF' com (x). o que → exit 0 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat > d.md <<'EOF'\\n(x). o que\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-co"
+	EXIT_CO=$?
+	[ $EXIT_CO -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CO)"
+
+	# Caso (cp): cat <<'EOF' com (x) ; . O que → exit 0
+	echo
+	echo "== (cp) cat <<'EOF' com (x) ; . O que → exit 0 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat > d.md <<'EOF'\\n(x) ; . O que\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cp"
+	EXIT_CP=$?
+	[ $EXIT_CP -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CP)"
+
+	# Caso (cq): Medido em 2026-09-12 (folga de 2 B). Ele sobe. → exit 0
+	echo
+	echo "== (cq) cat <<'EOF' com folga de 2 B → exit 0 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat > d.md <<'EOF'\\nMedido em 2026-09-12 (folga de 2 B). Ele sobe.\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cq"
+	EXIT_CQ=$?
+	[ $EXIT_CQ -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CQ)"
+
+	# Caso (cr): delimitador com aspas duplas → exit 0
+	echo
+	echo "== (cr) delimitador com aspas duplas → exit 0 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:'cat > d.md <<\"EOF\"\\nMedido em 2026-09-12 (folga de 2 B). Ele sobe.\\nEOF'}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cr"
+	EXIT_CR=$?
+	[ $EXIT_CR -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CR)"
+
+	# Caso (cs): heredoc nu (sem aspas) → exit 0
+	echo
+	echo "== (cs) heredoc nu (sem aspas) → exit 0 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat > d.md <<EOF\\nMedido em 2026-09-12 (folga de 2 B). Ele sobe.\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cs"
+	EXIT_CS=$?
+	[ $EXIT_CS -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CS)"
+
+	# Caso (ct): cat <<'EOF' com corpo contendo gh issue close 12 → exit 2.
+	# Sétima revisão (2026-09-13): o corpo é dado para a ESTRUTURA (não vira
+	# segmento, `).` não é subshell), mas o texto ainda é varrido pelos
+	# padrões diretos do gate — o corpo pode ser executado por caminhos que
+	# o gate não rastreia (arquivo rodado depois, while read, mapfile), e a
+	# main barrava este caso. Antes desta revisão o caso esperava 0.
+	echo
+	echo "== (ct) cat <<'EOF' com gh issue close literal no corpo → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat <<'EOF'\\ngh issue close 12\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-ct"
+	EXIT_CT=$?
+	[ $EXIT_CT -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CT)"
+
+	# Caso (cu): bash <<'EOF' com corpo contendo gh issue close 12 → exit 2 (bash executa)
+	echo
+	echo "== (cu) bash <<'EOF' com gh inside → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"bash <<'EOF'\\ngh issue close 12\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cu"
+	EXIT_CU=$?
+	[ $EXIT_CU -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CU)"
+
+	# Caso (cv): bash -c com gh issue close continua bloqueado → exit 2
+	echo
+	echo "== (cv) bash -c com gh issue close → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"bash -c \"gh issue close 12\""}}'
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cv"
+	EXIT_CV=$?
+	[ $EXIT_CV -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CV)"
+
+	# Caso (cw): heredoc sem linha de fechamento (EOF nunca aparece) → exit 0
+	echo
+	echo "== (cw) heredoc sem fechamento → exit 0 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat <<'EOF'\\n(x). texto sem fechamento\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cw"
+	EXIT_CW=$?
+	[ $EXIT_CW -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CW)"
+
+	# Caso (cx): gh FORA do heredoc após o EOF deve bloquear → exit 2
+	echo
+	echo "== (cx) gh depois do heredoc → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat <<'EOF'\\n(x). texto\\nEOF\\ngh issue close 12\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cx"
+	EXIT_CX=$?
+	[ $EXIT_CX -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CX)"
+
+	# Revisão do zerar-issues-3 (2026-09-13): o resto da LINHA do heredoc é
+	# comando, roda antes do corpo, e a primeira versão da D1 o engolia.
+	# Caso (cy): cat <<EOF; gh issue close 12 na mesma linha → exit 2
+	echo
+	echo "== (cy) gh na mesma linha do heredoc, apos ';' → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat <<EOF; gh issue close 12\\n(x). corpo\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cy"
+	EXIT_CY=$?
+	[ $EXIT_CY -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CY)"
+
+	# Caso (cz): cat <<EOF && gh issue close 12 → exit 2
+	echo
+	echo "== (cz) gh na mesma linha do heredoc, apos '&&' → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat <<EOF && gh issue close 12\\n(x). corpo\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cz"
+	EXIT_CZ=$?
+	[ $EXIT_CZ -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CZ)"
+
+	# Caso (da): cat <<'EOF' | gh pr create --body "closes #999" (sem evidência) → exit 2
+	echo
+	echo "== (da) heredoc entubado em gh pr create com closes sem evidencia → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat <<'EOF' | gh pr create --body \\\"closes #999\\\"\\n(x). corpo\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-da"
+	EXIT_DA=$?
+	[ $EXIT_DA -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DA)"
+
+	# Segunda revisão do zerar-issues-3 (2026-09-13): com `<<-` o bash tira as
+	# TABs da linha de fechamento — `\tEOF` fecha o heredoc de verdade, e o
+	# `gh` da linha seguinte roda. A comparação exata lia tudo como corpo.
+	# Caso (db): cat <<-EOF, fechamento com TAB, gh depois → exit 2
+	echo
+	echo "== (db) <<-EOF fechado por linha com TAB, gh depois → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat <<-EOF\\n\\tcorpo\\n\\tEOF\\ngh issue close 12\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-db"
+	EXIT_DB=$?
+	[ $EXIT_DB -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DB)"
+
+	# Caso (dc): cat <<-'EOF' com prosa indentada por TAB e fechamento com TAB → exit 0
+	echo
+	echo "== (dc) <<-'EOF' com prosa (x). indentada e fechamento com TAB → exit 0 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat > d.md <<-'EOF'\\n\\t\\t(x). Ele sobe.\\n\\t\\tEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-dc"
+	EXIT_DC=$?
+	[ $EXIT_DC -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_DC)"
+
+	# Terceira revisão do zerar-issues-3 (2026-09-13): `<<<` é here-string, não
+	# heredoc — a string vem na mesma linha, não há fechamento, e a linha
+	# seguinte é comando novo. O gate lia `<bar` como delimitador que nunca
+	# fecha e engolia o `gh`.
+	# Caso (dd): cat <<<bar, gh na linha seguinte → exit 2
+	echo
+	echo "== (dd) here-string <<< seguido de gh na linha seguinte → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat <<<bar\\ngh issue close 12\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-dd"
+	EXIT_DD=$?
+	[ $EXIT_DD -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DD)"
+
+	# Quarta revisão do zerar-issues-3 (2026-09-13): here-string dirigido a um
+	# interpretador é script, como o heredoc de `bash <<EOF`.
+	# Caso (de): bash <<<'gh issue close 12' → exit 2
+	echo
+	echo "== (de) bash <<<'gh issue close 12' → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"bash <<<'gh issue close 12'\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-de"
+	EXIT_DE=$?
+	[ $EXIT_DE -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DE)"
+
+	# Caso (df): cat <<<'gh issue close 12' → exit 2 (oitava revisão: o texto do
+	# here-string para sumidouro entra na varredura direta, como o corpo de
+	# heredoc — `> s.sh` + `bash s.sh` executa; antes o caso esperava 0)
+	echo
+	echo "== (df) cat <<<'gh issue close 12' (texto com padrao direto) → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat <<<'gh issue close 12'\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-df"
+	EXIT_DF=$?
+	[ $EXIT_DF -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DF)"
+
+	# Quinta revisão do zerar-issues-3 (2026-09-13): o interpretador pode vir
+	# atrás de um wrapper que repassa stdin; o primeiro token era `env`, não
+	# batia na lista, e o corpo virava dado (na main esses casos saíam 2).
+	# Caso (dg): env bash <<'EOF' com gh no corpo → exit 2
+	echo
+	echo "== (dg) env bash <<'EOF' com gh issue close no corpo → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"env bash <<'EOF'\\ngh issue close 12\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-dg"
+	EXIT_DG=$?
+	[ $EXIT_DG -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DG)"
+
+	# Caso (dh): timeout 5 bash <<<'gh issue close 12' → exit 2
+	echo
+	echo "== (dh) timeout 5 bash <<<'gh issue close 12' → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"timeout 5 bash <<<'gh issue close 12'\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-dh"
+	EXIT_DH=$?
+	[ $EXIT_DH -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DH)"
+
+	# Caso (di): bash <<<gh\ issue\ close\ 12 (palavra nua com escapes) → exit 2
+	echo
+	echo "== (di) here-string nu com espacos escapados para bash → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"bash <<<gh\\\\ issue\\\\ close\\\\ 12\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-di"
+	EXIT_DI=$?
+	[ $EXIT_DI -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DI)"
+
+	# Caso (dj): env cat <<'EOF' com gh literal no corpo → exit 2 (texto varrido; sétima revisão — antes esperava 0)
+	echo
+	echo "== (dj) env cat <<'EOF' com gh issue close literal no corpo → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"env cat <<'EOF'\\ngh issue close 12\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-dj"
+	EXIT_DJ=$?
+	[ $EXIT_DJ -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DJ)"
+
+	# Sexta revisão do zerar-issues-3 (2026-09-13): o corpo é script se a
+	# LINHA do heredoc tem interpretador em qualquer posição — agrupamento e
+	# pipe para interpretador nu não têm `bash` como dono do `<<`.
+	# Caso (dk): (bash) <<'EOF' com gh no corpo → exit 2
+	echo
+	echo "== (dk) (bash) <<'EOF' com gh issue close no corpo → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"(bash) <<'EOF'\\ngh issue close 12\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-dk"
+	EXIT_DK=$?
+	[ $EXIT_DK -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DK)"
+
+	# Caso (dl): cat <<'EOF' | bash com gh no corpo → exit 2
+	echo
+	echo "== (dl) cat <<'EOF' | bash com gh issue close no corpo → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat <<'EOF' | bash\\ngh issue close 12\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-dl"
+	EXIT_DL=$?
+	[ $EXIT_DL -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DL)"
+
+	# Caso (dm): cat <<'EOF' > d.md com prosa continua dado → exit 0
+	echo
+	echo "== (dm) cat <<'EOF' > d.md com prosa (x). → exit 0 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat <<'EOF' > d.md\\n(x). Ele sobe.\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-dm"
+	EXIT_DM=$?
+	[ $EXIT_DM -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_DM)"
+
+	# Sétima revisão do zerar-issues-3 (2026-09-13): continuação de linha e
+	# corpos executados por caminhos que o gate não rastreia.
+	# Caso (dn): cat <<'EOF' \ + | bash na linha seguinte (linha lógica) → exit 2
+	echo
+	echo "== (dn) cat <<'EOF' com continuacao \\ e | bash na linha de baixo → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat <<'EOF' \\\\\\\\\\n| bash\\ngh issue close 12\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-dn"
+	EXIT_DN=$?
+	[ $EXIT_DN -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DN)"
+
+	# Caso (do): corpo gravado em arquivo e executado na linha seguinte → exit 2 (texto varrido)
+	echo
+	echo "== (do) cat <<'EOF' > s.sh + bash s.sh na linha seguinte → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat <<'EOF' > s.sh\\ngh issue close 12\\nEOF\\nbash s.sh\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-do"
+	EXIT_DO=$?
+	[ $EXIT_DO -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DO)"
+
+	# Caso (dp): while read executando cada linha do corpo → exit 2 (texto varrido)
+	echo
+	echo "== (dp) while read -r l; do \$l; done <<'EOF' com gh no corpo → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"while read -r l; do \$l; done <<'EOF'\\ngh issue close 12\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-dp"
+	EXIT_DP=$?
+	[ $EXIT_DP -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DP)"
+
+	# Caso (dq): prosa que MENCIONA o gate sem a sequência completa → exit 0
+	echo
+	echo "== (dq) prosa 'a sequencia gh issue e barrada' + \$(ls) + crase → exit 0 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat > x.md <<'EOF'\\nO gate le a sequencia gh issue e barra; saida de \$(ls) e \\\`pwd\\\` (x). fim\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-dq"
+	EXIT_DQ=$?
+	[ $EXIT_DQ -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_DQ)"
+
+	# Caso (dr): comentário shell no corpo com a sequência → exit 0 (mesma regra da W2)
+	echo
+	echo "== (dr) '# gh issue close 12' comentado no corpo → exit 0 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat > x.md <<'EOF'\\n# gh issue close 12 comentado\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-dr"
+	EXIT_DR=$?
+	[ $EXIT_DR -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_DR)"
+
+	# Oitava revisão do zerar-issues-3 (2026-09-13): here-string gravado em
+	# arquivo e executado na linha seguinte — o texto do here-string entra na
+	# varredura direta, como o corpo de heredoc.
+	# Caso (ds): cat <<<'gh issue close 12' > s.sh + bash s.sh → exit 2
+	echo
+	echo "== (ds) cat <<<'gh issue close 12' > s.sh + bash s.sh → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat <<<'gh issue close 12' > s.sh\\nbash s.sh\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-ds"
+	EXIT_DS=$?
+	[ $EXIT_DS -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DS)"
+
+	# Caso (dt): here-string de prosa para arquivo → exit 0
+	echo
+	echo "== (dt) cat <<<'Medido (x). Ele sobe.' > d.md → exit 0 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat <<<'Medido (x). Ele sobe.' > d.md\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-dt"
+	EXIT_DT=$?
+	[ $EXIT_DT -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_DT)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
