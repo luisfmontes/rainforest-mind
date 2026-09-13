@@ -291,11 +291,21 @@ function temAutorizacaoPrincipal(obj) {
 
   const normalizado = normalizar(conteudo);
 
-  // Procura por "autorizo" ou "autorizar" perto de "subagente(s)"
+  // Saída rápida: sem a palavra, não há o que julgar.
+  //
+  // Ela só olha o VERBO, e isso é deliberado. Antes olhava também as formas de
+  // subagente, contra a LINHA INTEIRA, e aí o atalho ficava mais ESTRITO que a
+  // decisão de verdade, que é por frase — o atalho recusava o que o laço teria
+  // aceitado. Medido em 2026-09-12, depois que a forma com espaço passou a
+  // exigir começo de texto ou verbo antes:
+  //
+  //   "o build passou. sub agentes autorizo agora"  -> recusava
+  //
+  // Na 2ª frase "sub agentes" ESTÁ no começo, mas na linha inteira não está, e
+  // o atalho matava antes. Atalho que decide é atalho errado: quem responde por
+  // "tem subagente aqui?" é o laço, uma frase de cada vez.
   const temAutoriz = /\bautorizo\b|\bautorizando\b|\bautorizar\b|\bautorizacao\b/.test(normalizado);
-  const temSubagente = FORMAS_DE_SUBAGENTE.test(normalizado);
-
-  if (!temAutoriz || !temSubagente) {
+  if (!temAutoriz) {
     return false;
   }
 

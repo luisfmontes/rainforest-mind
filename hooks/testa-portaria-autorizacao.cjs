@@ -325,6 +325,14 @@ console.log("== 3h. subordinacao vai para FRENTE, e 'sub agentes' com espaco (6a
 
   const rSubPossessivo = autorizado(fx("sub-como-abreviacao-possessivo.jsonl"));
   caso("'autorizo nossa sub agentes...' NAO autoriza", rSubPossessivo === false, rSubPossessivo);
+
+  // ATALHO QUE DECIDE E ATALHO ERRADO. A saida rapida olhava as formas de
+  // subagente contra a LINHA INTEIRA, e depois que a forma com espaco passou a
+  // exigir comeco de texto, o atalho ficou mais estrito que a decisao por
+  // frase: na 2a frase 'sub agentes' esta no comeco, mas na linha nao, e o
+  // atalho matava antes do laco julgar.
+  const rComecoDa2aFrase = autorizado(fx("sub-agentes-no-comeco-da-2a-frase.jsonl"));
+  caso("'o build passou. sub agentes autorizo agora' AUTORIZA", rComecoDa2aFrase === true, rComecoDa2aFrase);
 }
 
 console.log("== 4. negacao sem acento ('nao autorizo subagentes') NAO autoriza ==");

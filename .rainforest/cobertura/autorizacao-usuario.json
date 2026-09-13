@@ -150,6 +150,11 @@
       "alvo": "const FORMAS_DE_SUBAGENTE =",
       "de": "(?:^|(?<=\\bautorizo\\s)|(?<=\\bautorizar\\s)|(?<=\\bautorizando\\s))sub",
       "para": "\\bsub"
+    },
+    {
+      "nome": "M32 atalho volta a decidir por subagente na linha inteira",
+      "alvo": "if (!temAutoriz) {",
+      "linha": "  if (!temAutoriz || !FORMAS_DE_SUBAGENTE.test(normalizado)) {"
     }
   ],
   "mudas_esperadas": [
