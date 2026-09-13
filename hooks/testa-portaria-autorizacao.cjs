@@ -331,8 +331,19 @@ console.log("== 3h. subordinacao vai para FRENTE, e 'sub agentes' com espaco (6a
   // exigir comeco de texto, o atalho ficou mais estrito que a decisao por
   // frase: na 2a frase 'sub agentes' esta no comeco, mas na linha nao, e o
   // atalho matava antes do laco julgar.
+  // ESTA TROCOU DE VEREDITO na revisao final: o ramo de COMECO DE TEXTO da forma
+  // com espaco foi usado para abrir o portao sem consentimento (ver a fixture
+  // abaixo), e saiu. A forma com espaco vale SO logo depois do verbo. O custo e
+  // esta frase, de ordem invertida, que eu mesmo tinha inventado sem caso real —
+  // e a saida barata segue sendo escrever 'subagentes'.
   const rComecoDa2aFrase = autorizado(fx("sub-agentes-no-comeco-da-2a-frase.jsonl"));
-  caso("'o build passou. sub agentes autorizo agora' AUTORIZA", rComecoDa2aFrase === true, rComecoDa2aFrase);
+  caso("'o build passou. sub agentes autorizo agora' NAO autoriza (ancora de comeco removida)", rComecoDa2aFrase === false, rComecoDa2aFrase);
+
+  // O motivo de ela ter saido: texto COLADO, 'sub agentes' no comeco de uma
+  // linha qualquer e um 'autorizando' que fala de outra coisa. Concedia.
+  // Depois do verbo a adjacencia faz o trabalho que a ancora de comeco nao faz.
+  const rLogColado = autorizado(fx("log-colado-com-sub-agentes.jsonl"));
+  caso("log colado com 'sub agentes' no comeco de linha NAO autoriza", rLogColado === false, rLogColado);
 }
 
 console.log("== 4. negacao sem acento ('nao autorizo subagentes') NAO autoriza ==");

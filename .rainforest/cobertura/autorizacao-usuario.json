@@ -69,7 +69,7 @@
     {
       "nome": "M16 sub agentes com espaco nao conta",
       "alvo": "const FORMAS_DE_SUBAGENTE =",
-      "de": "|(?:^|(?<=\\bautorizo\\s)|(?<=\\bautorizar\\s)|(?<=\\bautorizando\\s))sub\\s+agentes?\\b",
+      "de": "|(?:(?<=\\bautorizo\\s)|(?<=\\bautorizar\\s)|(?<=\\bautorizando\\s))sub\\s+agentes?\\b",
       "para": ""
     },
     {
@@ -146,15 +146,10 @@
       "linha": "        if (false) {"
     },
     {
-      "nome": "M31 forma com espaco conta em qualquer posicao",
+      "nome": "M31 forma com espaco volta a valer no comeco do texto",
       "alvo": "const FORMAS_DE_SUBAGENTE =",
-      "de": "(?:^|(?<=\\bautorizo\\s)|(?<=\\bautorizar\\s)|(?<=\\bautorizando\\s))sub",
-      "para": "\\bsub"
-    },
-    {
-      "nome": "M32 atalho volta a decidir por subagente na linha inteira",
-      "alvo": "if (!temAutoriz) {",
-      "linha": "  if (!temAutoriz || !FORMAS_DE_SUBAGENTE.test(normalizado)) {"
+      "de": "(?:(?<=\\bautorizo\\s)",
+      "para": "(?:^|(?<=\\bautorizo\\s)"
     }
   ],
   "mudas_esperadas": [
@@ -209,6 +204,18 @@
     {
       "fixture": "vazio.jsonl",
       "motivo": "arquivo vazio: `false` por ausencia de dado, nao por regra. Nao ha comportamento a inverter."
+    },
+    {
+      "fixture": "sub-como-abreviacao.jsonl",
+      "motivo": "guarda de regressao do 'sub' como abreviacao. Depois que a forma com espaco passou a exigir o verbo IMEDIATAMENTE antes, nenhuma mutacao de UMA linha reabre estes casos: com artigo ou possessivo no meio, o lookbehind nao casa em nenhuma das variantes mutadas. O que elas guardam e a regra nao voltar a ser uma lista de exclusao."
+    },
+    {
+      "fixture": "sub-como-abreviacao-feminino.jsonl",
+      "motivo": "guarda de regressao do 'sub' como abreviacao. Depois que a forma com espaco passou a exigir o verbo IMEDIATAMENTE antes, nenhuma mutacao de UMA linha reabre estes casos: com artigo ou possessivo no meio, o lookbehind nao casa em nenhuma das variantes mutadas. O que elas guardam e a regra nao voltar a ser uma lista de exclusao."
+    },
+    {
+      "fixture": "sub-como-abreviacao-possessivo.jsonl",
+      "motivo": "guarda de regressao do 'sub' como abreviacao. Depois que a forma com espaco passou a exigir o verbo IMEDIATAMENTE antes, nenhuma mutacao de UMA linha reabre estes casos: com artigo ou possessivo no meio, o lookbehind nao casa em nenhuma das variantes mutadas. O que elas guardam e a regra nao voltar a ser uma lista de exclusao."
     }
   ]
 }

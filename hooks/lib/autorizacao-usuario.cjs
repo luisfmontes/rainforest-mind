@@ -142,8 +142,18 @@ const ENVELOPE_DE_SISTEMA = /<task-notification>|<system-reminder>|<cross-sessio
  * consegue medir.
  *
  * A forma com ESPACO ('sub agentes') existe so para o hifen esquecido, e por
- * isso e a mais estreita: vale no COMECO do texto ou logo depois do verbo de
- * autorizacao, e em mais lugar nenhum.
+ * isso e a mais estreita que da: vale SO logo depois do verbo de autorizacao.
+ *
+ * O ramo de COMECO DE TEXTO existiu por um dia e saiu na revisao final de
+ * 2026-09-12, que o usou para abrir o portao sem consentimento nenhum:
+ *
+ *   "aqui esta o log:
+sub agentes rodando em background, autorizando pipeline."
+ *
+ * Texto colado, comeco de linha, e um 'autorizando' que fala de outra coisa --
+ * e concedia. Depois do verbo a adjacencia faz o trabalho que a ancora de
+ * comeco nao faz: 'autorizo' e 'sub agentes' GRUDADOS sao uma concessao;
+ * 'sub agentes' solto no comeco de uma linha qualquer nao e nada.
  *
  * A primeira tentativa foi uma lista do que DESQUALIFICA o 'sub' (artigo,
  * preposicao, possessivo), e ela durou uma revisao:
@@ -156,10 +166,10 @@ const ENVELOPE_DE_SISTEMA = /<task-notification>|<system-reminder>|<cross-sessio
  * grafia que faltar abre o portao de novo, e aqui o erro caro e abrir. Listar
  * o que QUALIFICA e finito; listar o que desqualifica, nao.
  */
-const FORMAS_DE_SUBAGENTE = /\bsubagente\b|\bsubagentes\b|\bsub-agente\b|\bsub-agentes\b|(?:^|(?<=\bautorizo\s)|(?<=\bautorizar\s)|(?<=\bautorizando\s))sub\s+agentes?\b/;
+const FORMAS_DE_SUBAGENTE = /\bsubagente\b|\bsubagentes\b|\bsub-agente\b|\bsub-agentes\b|(?:(?<=\bautorizo\s)|(?<=\bautorizar\s)|(?<=\bautorizando\s))sub\s+agentes?\b/;
 
 /** A negacao aceita tambem 'agente(s)' solto: negar de menos e o erro caro. */
-const FORMAS_DE_AGENTE = /\bsubagente\b|\bsubagentes\b|\bsub-agente\b|\bsub-agentes\b|(?:^|(?<=\bautorizo\s)|(?<=\bautorizar\s)|(?<=\bautorizando\s))sub\s+agentes?\b|\bagente\b|\bagentes\b/;
+const FORMAS_DE_AGENTE = /\bsubagente\b|\bsubagentes\b|\bsub-agente\b|\bsub-agentes\b|(?:(?<=\bautorizo\s)|(?<=\bautorizar\s)|(?<=\bautorizando\s))sub\s+agentes?\b|\bagente\b|\bagentes\b/;
 
 /**
  * A única porta de entrada: devolve o texto quando a linha é a VOZ DO USUÁRIO,
