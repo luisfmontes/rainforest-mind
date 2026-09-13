@@ -290,6 +290,16 @@ gate 'JANELA PRINCIPAL: "sudo" -u x git add -A BARRA (R21)'       2 "$(b '\"sudo
 gate 'contraprova R21: grep -rn "env FOO=1 git add" docs/ PASSA'  0 "$(b 'grep -rn \"env FOO=1 git add\" docs/')"
 
 echo
+echo "== 1.11 multihost: citacao preserva semantica de argumento e -- encerra opcoes =="
+gate 'git add "-A" BARRA (opcao real citada)'                   2 "$(b 'git add \"-A\"')"
+gate 'git "add" -A BARRA (subcomando real citado)'              2 "$(b 'git \"add\" -A')"
+gate 'bash -c "git status; git add -A" BARRA (segundo comando)' 2 "$(b 'bash -c \"git status; git add -A\"')"
+gate 'git add -- "-A" PASSA (pathspec depois de --)'           0 "$(b 'git add -- \"-A\"')"
+gate 'git add -- "-u" PASSA (pathspec depois de --)'           0 "$(b 'git add -- \"-u\"')"
+gate 'git commit -m "-a" PASSA (valor de -m)'                  0 "$(b 'git commit -m \"-a\"')"
+gate 'git commit -m "--all" PASSA (valor de -m)'               0 "$(b 'git commit -m \"--all\"')"
+
+echo
 echo "== saidas de emergencia =="
 saida=$(printf '%s' "$(b 'git add -A')" | RAINFOREST_GATE_OFF=1 node "$GATE" 2>&1); rc=$?
 if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   RAINFOREST_GATE_OFF=1 libera (exit 0)"
