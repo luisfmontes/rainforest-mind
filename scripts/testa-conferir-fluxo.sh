@@ -29,8 +29,15 @@ for f in "$CHECADOR" "$ESTADO" "$REAL_D" "$REAL_P" "$NOVO_D" "$NOVO_P"; do
 done
 
 ok=0; falhou=0
-S="$(mktemp -d)"; W="$(cygpath -m "$S" 2>/dev/null || printf '%s' "$S")"
-trap 'rm -rf "$S"' EXIT
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
+# criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas —
+# bateria que morre no meio (assercao que estoura, Ctrl+C) nao deixa orfao.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
+cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done; }
+trap cleanup EXIT
+
+S="$(novo_sandbox)"; W="$(cygpath -m "$S" 2>/dev/null || printf '%s' "$S")"
 mkdir -p "$S/docs/rainforest/design" "$S/docs/rainforest/planos"
 D="$S/docs/rainforest/design/t.md"
 P="$S/docs/rainforest/planos/t.md"
@@ -206,7 +213,7 @@ echo "== 5. a trava nao pode capturar quem nao usa o fluxo =="
 # Invariante do plano: projeto sem design/plano continua fechando estagio como
 # antes. Sem isto, a trava deixaria de apertar quem esta no fluxo e passaria a
 # tornar o fluxo obrigatorio — que e' outra coisa, e ninguem decidiu isso.
-V="$(mktemp -d)"; VW="$(cygpath -m "$V" 2>/dev/null || printf '%s' "$V")"
+V="$(novo_sandbox)"; VW="$(cygpath -m "$V" 2>/dev/null || printf '%s' "$V")"
 VE(){ RFM_ESTADO_ROOT="$VW" node "$ESTADO" "$@"; }
 VE iniciar --slug vazio >/dev/null 2>&1
 exige 0 "sem design no disco, 'design aprovado' fecha" VE marcar --slug vazio --estagio design --status aprovado
@@ -219,7 +226,7 @@ rm -rf "$V"
 # existe", sem saída. Achado 1 da revisão de 2026-08-13. A regra que este caso
 # guarda: a trava só age quando TUDO que a checagem lê existe, não só o arquivo
 # do estágio que está fechando.
-M="$(mktemp -d)"; MW="$(cygpath -m "$M" 2>/dev/null || printf '%s' "$M")"
+M="$(novo_sandbox)"; MW="$(cygpath -m "$M" 2>/dev/null || printf '%s' "$M")"
 mkdir -p "$M/docs/rainforest/planos"; cp "$REAL_P" "$M/docs/rainforest/planos/misto.md"
 ME(){ RFM_ESTADO_ROOT="$MW" node "$ESTADO" "$@"; }
 ME iniciar --slug misto >/dev/null 2>&1
@@ -244,7 +251,7 @@ echo "== 6. isencao do creep e escopada por slug =="
 # Três commits, e DOIS intervalos sobre o mesmo repositório — nada é desfeito. O
 # contraste entre os dois é o que prova que a recusa vem do outro slug, e não de
 # o `creep` recusar tudo que aparece.
-G="$(mktemp -d)"; GW="$(cygpath -m "$G" 2>/dev/null || printf '%s' "$G")"
+G="$(novo_sandbox)"; GW="$(cygpath -m "$G" 2>/dev/null || printf '%s' "$G")"
 mkdir -p "$G/docs/rainforest/design" "$G/docs/rainforest/planos"
 cp "$REAL_D" "$G/docs/rainforest/design/t.md"
 cp "$REAL_P" "$G/docs/rainforest/planos/t.md"
@@ -281,7 +288,7 @@ echo "== 7. catraca de mutacao: toda tarefa declara o alvo (D7, D9) =="
 # trava recusando o caminho feliz sempre. A bateria nao sabia falhar, e o plano
 # nao dizia o que ela deveria ter falhado. Sem alvo declarado, a integracao nao
 # tem o que re-rodar e o veredito volta a ser o relato de quem implementou.
-N="$(mktemp -d)"; NW="$(cygpath -m "$N" 2>/dev/null || printf '%s' "$N")"
+N="$(novo_sandbox)"; NW="$(cygpath -m "$N" 2>/dev/null || printf '%s' "$N")"
 mkdir -p "$N/docs/rainforest/design" "$N/docs/rainforest/planos"
 ND="$N/docs/rainforest/design/t.md"; NP="$N/docs/rainforest/planos/t.md"
 NCHK(){ RFM_ESTADO_ROOT="$NW" node "$CHECADOR" "$@"; }
@@ -318,7 +325,7 @@ rm -rf "$N"
 echo
 echo "== 8. normalizacao de CRLF e ignorar cerca de codigo =="
 # Fixture proprio para testar CRLF e cercas
-O="$(mktemp -d)"; OW="$(cygpath -m "$O" 2>/dev/null || printf '%s' "$O")"
+O="$(novo_sandbox)"; OW="$(cygpath -m "$O" 2>/dev/null || printf '%s' "$O")"
 mkdir -p "$O/docs/rainforest/design" "$O/docs/rainforest/planos"
 OD="$O/docs/rainforest/design/t.md"; OP="$O/docs/rainforest/planos/t.md"
 OCHK(){ RFM_ESTADO_ROOT="$OW" node "$CHECADOR" "$@"; }
@@ -433,7 +440,7 @@ echo "== 7. creep nao invoca shell: --base/--head nao executam comando (Issue #8
 # e invalido. E sobre o EFEITO COLATERAL: se um shell rodou, o sentinela existe.
 # Testar por exit code aqui daria verde com o defeito de pe.
 
-CAIXA_INJ="$(mktemp -d)"
+CAIXA_INJ="$(novo_sandbox)"
 # O sentinela nasce no CWD do comando (que e a RAIZ), com nome relativo, e nao num
 # mktemp. Motivo medido: o `execSync` do Node no Windows chama o ComSpec (cmd.exe),
 # e o caminho POSIX que o `mktemp -d` devolve (/tmp/tmp.XXXX) vira C:	mp... para o
@@ -537,7 +544,7 @@ echo "== 10. cobertura enxerga PASTA e portao DATADO (D8) =="
 #
 # Mesma forma da secao 6: repositorio git de verdade, senao nao ha diff e o
 # `creep` recusa antes de chegar no codigo alvo.
-D="$(mktemp -d)"; DW="$(cygpath -m "$D" 2>/dev/null || printf '%s' "$D")"
+D="$(novo_sandbox)"; DW="$(cygpath -m "$D" 2>/dev/null || printf '%s' "$D")"
 mkdir -p "$D/docs/rainforest/design" "$D/docs/rainforest/planos" "$D/docs/rainforest/portoes"
 cp "$REAL_D" "$D/docs/rainforest/design/t.md"
 # A tarefa 1 do plano passa a declarar uma PASTA em vez de um arquivo.
@@ -575,7 +582,259 @@ fi
 rm -rf "$D"
 
 echo
-echo "== 11. ambiente: git fora do PATH (D5, 2026-09-12) =="
+echo "== 11. isencao de relatorios/ (Issue #196) =="
+# A pasta `relatorios/` contem registros do fluxo, nao entrega do plano. Por construcao
+# nao pode ter tarefa que a cubra: o relatorio se escreve DEPOIS que o fluxo fecha,
+# e o plano ja foi validado e entrou no repositorio.
+#
+# Arquivo solto na raiz (`relatorio-solto.md`) continua creep — a isenção é
+# específica à pasta `relatorios/`, e arquivo fora dela não é "registro do fluxo".
+R="$(novo_sandbox)"; RW="$(cygpath -m "$R" 2>/dev/null || printf '%s' "$R")"
+mkdir -p "$R/docs/rainforest/design" "$R/docs/rainforest/planos" "$R/relatorios"
+cp "$REAL_D" "$R/docs/rainforest/design/t.md"
+cp "$REAL_P" "$R/docs/rainforest/planos/t.md"
+git -C "$R" init -q . >/dev/null 2>&1
+git -C "$R" config user.email t@t; git -C "$R" config user.name t
+git -C "$R" add docs >/dev/null 2>&1; git -C "$R" commit -qm base >/dev/null 2>&1
+BASE_R="$(git -C "$R" rev-parse HEAD 2>/dev/null)"
+# commit A: arquivo de relatorio dentro de relatorios/ (isento)
+echo "# relatorio" > "$R/relatorios/2026-09-08-zerar-issues.md"
+git -C "$R" add relatorios >/dev/null 2>&1; git -C "$R" commit -qm relatorio-em-pasta >/dev/null 2>&1
+REL_PASTA="$(git -C "$R" rev-parse HEAD 2>/dev/null)"
+# commit B: arquivo de relatorio na raiz (nao isento)
+echo "# relatorio solto" > "$R/relatorio-solto.md"
+git -C "$R" add relatorio-solto.md >/dev/null 2>&1; git -C "$R" commit -qm relatorio-solto >/dev/null 2>&1
+REL_SOLTO="$(git -C "$R" rev-parse HEAD 2>/dev/null)"
+
+if [ -n "$BASE_R" ] && [ -n "$REL_SOLTO" ] && [ "$BASE_R" != "$REL_SOLTO" ]; then
+  exige 0 "relatorios/2026-09-08-x.md e isento do creep" \
+    env RFM_ESTADO_ROOT="$RW" node "$CHECADOR" creep --slug t --base "$BASE_R" --head "$REL_PASTA"
+  exige 2 "relatorio-solto.md na raiz continua creep" \
+    env RFM_ESTADO_ROOT="$RW" node "$CHECADOR" creep --slug t --base "$REL_PASTA" --head "$REL_SOLTO"
+else
+  echo "  FALHA nao consegui montar o repositorio de fixture"; falhou=$((falhou+1))
+fi
+rm -rf "$R"
+
+echo
+echo "== 12. mutacoes: validacao de mutacoes do plano (D9) =="
+# Fonte com mutacao que MORRE: inverte a logica, bateria fica vermelha
+mkdir -p "$S/src" "$S/docs/rainforest/planos" "$S/docs/rainforest/design"
+cat > "$S/src/teste-mutacao-morre.js" << 'EOF'
+function ok(x) {
+  if (x === 1) return true;
+  return false;
+}
+module.exports = { ok };
+EOF
+
+# Fonte com mutacao que SOBREVIVE: comentario que nao afeta logica
+cat > "$S/src/teste-mutacao-sobrevive.js" << 'EOF'
+function check() {
+  // comentario importante
+  return true;
+}
+module.exports = { check };
+EOF
+
+# Bateria para fonte que MORRE
+cat > "$S/bateria-morre.sh" << 'EOF'
+#!/bin/bash
+node -e "const { ok } = require('./src/teste-mutacao-morre.js'); process.exit(ok(1) ? 0 : 1)"
+EOF
+chmod +x "$S/bateria-morre.sh"
+
+# Bateria para fonte que SOBREVIVE (sempre passa)
+cat > "$S/bateria-sobrevive.sh" << 'EOF'
+#!/bin/bash
+node -e "const { check } = require('./src/teste-mutacao-sobrevive.js'); process.exit(check() ? 0 : 1)"
+EOF
+chmod +x "$S/bateria-sobrevive.sh"
+
+# Design
+cat > "$S/docs/rainforest/design/t-mutacao-morre.md" << 'EOF'
+# Design Morre
+
+## Objetivo
+Teste
+
+## Decisões fechadas
+- **D1 — teste**
+
+## Avaliado e descartado
+teste
+
+## Fora de escopo
+teste
+
+## Em aberto
+teste
+EOF
+
+cat > "$S/docs/rainforest/design/t-mutacao-sobrevive.md" << 'EOF'
+# Design Sobrevive
+
+## Objetivo
+Teste
+
+## Decisões fechadas
+- **D1 — teste**
+
+## Avaliado e descartado
+teste
+
+## Fora de escopo
+teste
+
+## Em aberto
+teste
+EOF
+
+# Plano: mutacao que MORRE (bateria vermelha com mutacao)
+cat > "$S/docs/rainforest/planos/t-mutacao-morre.md" << 'EOF'
+# Plano Morre
+
+### 1. Tarefa com mutacao que morre
+
+atende: D1
+
+mutacao:
+  arquivo: `src/teste-mutacao-morre.js`
+  de: `if (x === 1) return true;`
+  para: `if (x === 1) return false;`
+  bateria: `bash bateria-morre.sh`
+EOF
+
+# Plano: mutacao que SOBREVIVE (bateria fica verde)
+cat > "$S/docs/rainforest/planos/t-mutacao-sobrevive.md" << 'EOF'
+# Plano Sobrevive
+
+### 1. Tarefa com mutacao que sobrevive
+
+atende: D1
+
+mutacao:
+  arquivo: `src/teste-mutacao-sobrevive.js`
+  de: `// comentario importante`
+  para: `// comentario mutado`
+  bateria: `bash bateria-sobrevive.sh`
+EOF
+
+# Plano com `mutacao: n/a`
+cat > "$S/docs/rainforest/planos/t-mutacao-na.md" << 'EOF'
+# Plano N/A
+
+### 1. Tarefa com mutacao n/a
+
+atende: D1
+
+mutacao: n/a
+motivo: Nao ha como inverter o comportamento
+EOF
+
+exige 1 "mutacao sobrevive sai exit != 0" \
+  env RFM_ESTADO_ROOT="$S" node "$CHECADOR" mutacoes --slug t-mutacao-sobrevive
+
+exige 0 "mutacao que morre sai exit 0" \
+  env RFM_ESTADO_ROOT="$S" node "$CHECADOR" mutacoes --slug t-mutacao-morre
+
+exige 0 "mutacao n/a sai exit 0" \
+  env RFM_ESTADO_ROOT="$S" node "$CHECADOR" mutacoes --slug t-mutacao-na
+
+# Verifica saida com `mutante sobreviveu`
+exige_msg "mutante sobreviveu" "saida menciona mutante sobreviveu" \
+  env RFM_ESTADO_ROOT="$S" node "$CHECADOR" mutacoes --slug t-mutacao-sobrevive
+
+# Verifica saida com `vermelho`
+exige_msg "vermelho" "saida menciona vermelho" \
+  env RFM_ESTADO_ROOT="$S" node "$CHECADOR" mutacoes --slug t-mutacao-morre
+
+# Verifica saida com `pulada`
+exige_msg "pulada" "saida menciona pulada" \
+  env RFM_ESTADO_ROOT="$S" node "$CHECADOR" mutacoes --slug t-mutacao-na
+
+
+echo
+echo "== 13. mutacoes: timeout declarado e razao da pulada (D9) =="
+# Bateria legitimamente LENTA. Sem `timeout:` no bloco, o conferir-mutacao mata o
+# baseline no teto e a tarefa vira `pulada (nao mensuravel)` — a mesma palavra que
+# ele usa para baseline vermelho e para `--de` ambiguo. Foi assim que a cobertura
+# da tarefa 3 do plano zerar-issues sumiu em silencio por tres rodadas.
+cat > "$S/src/teste-lento.js" <<'EOF'
+function ok(x) {
+  if (x === 1) return true;
+  return false;
+}
+module.exports = { ok };
+EOF
+
+cat > "$S/bateria-lenta.sh" <<'EOF'
+#!/bin/bash
+sleep 2
+node -e "process.exit(require(String.fromCharCode(46,47)+'src/teste-lento.js').ok(1) ? 0 : 1)"
+EOF
+
+cat > "$S/docs/rainforest/planos/t-lenta-com-timeout.md" <<'EOF'
+# Plano Lenta Com Timeout
+
+### 1. Tarefa cuja bateria e lenta, mas declara timeout
+
+atende: D1
+
+mutacao:
+  arquivo: `src/teste-lento.js`
+  de: `if (x === 1) return true;`
+  para: `if (x === 1) return false;`
+  bateria: `bash bateria-lenta.sh`
+  timeout: 60000
+EOF
+
+# Com `timeout:` declarado, o valor chega ao conferir-mutacao e a bateria cabe.
+exige 0 "bloco com timeout: deixa a bateria lenta rodar" \
+  env RFM_ESTADO_ROOT="$S" node "$CHECADOR" mutacoes --slug t-lenta-com-timeout
+
+exige_msg "vermelho" "bateria lenta com timeout sai vermelho" \
+  env RFM_ESTADO_ROOT="$S" node "$CHECADOR" mutacoes --slug t-lenta-com-timeout
+
+# Teto de 1 ms no bloco: o timeout declarado tem de CHEGAR la, e a prova de que
+# chega e ele estourar. Sem repasse, esta tarefa sairia vermelha como a de cima.
+cat > "$S/docs/rainforest/planos/t-timeout-curto.md" <<'EOF'
+# Plano Timeout Curto
+
+### 1. Tarefa com teto pequeno demais
+
+atende: D1
+
+mutacao:
+  arquivo: `src/teste-lento.js`
+  de: `if (x === 1) return true;`
+  para: `if (x === 1) return false;`
+  bateria: `bash bateria-lenta.sh`
+  timeout: 1
+EOF
+
+exige_msg "estourou o teto de 1 ms" "timeout do bloco chega ao conferir-mutacao" \
+  env RFM_ESTADO_ROOT="$S" node "$CHECADOR" mutacoes --slug t-timeout-curto
+
+# A razao do conferir-mutacao passa a sair NA LINHA da pulada, em vez de ficar
+# engolida pelo `stdio: pipe`.
+cat > "$S/docs/rainforest/planos/t-de-nao-casa.md" <<'EOF'
+# Plano De Nao Casa
+
+### 1. Tarefa cujo `de:` nao existe no fonte
+
+atende: D1
+
+mutacao:
+  arquivo: `src/teste-lento.js`
+  de: `linha que nao existe em lugar nenhum`
+  para: `outra linha`
+  bateria: `bash bateria-lenta.sh`
+EOF
+
+exige_msg "o trecho --de não existe no fonte" "a pulada carrega a razao do conferir-mutacao" \
+  env RFM_ESTADO_ROOT="$S" node "$CHECADOR" mutacoes --slug t-de-nao-casa
+echo "== 14. ambiente: git fora do PATH (D5, 2026-09-12) =="
 # `creep` chama `git diff` via execFileSync. Sem `git` no PATH do processo
 # filho, o `spawnSync` interno devolve ENOENT — isso e' ambiente, nao "sem
 # creep" (que seria uma aprovacao por falta de dado) nem "creep encontrado"

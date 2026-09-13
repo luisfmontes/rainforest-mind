@@ -41,12 +41,18 @@
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SBP="$(mktemp -d)"
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
+# criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
+cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done; }
+trap cleanup EXIT
+
+SBP="$(novo_sandbox)"
 
 # Raiz neutra para medir sem dados do usuário
-RAIZ_NEUTRA="$(mktemp -d)"
+RAIZ_NEUTRA="$(novo_sandbox)"
 
-trap 'rm -rf "$SBP" "$RAIZ_NEUTRA"' EXIT
 echo "(caixa de areia: $SBP)"
 echo "(raiz neutra: $RAIZ_NEUTRA)"
 

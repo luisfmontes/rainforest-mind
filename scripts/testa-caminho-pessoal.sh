@@ -86,6 +86,7 @@ fi
 # acender. Sem isto a checagem acima passaria igual com o grep quebrado — que e
 # o defeito que este repositorio ja catalogou cinco vezes em 2026-09-02.
 CAIXA="$(mktemp -d)"
+trap 'rm -rf "$CAIXA"' EXIT
 printf 'CACHE="/c/%s/Fulaninho/.claude/plugins"\n' "$SEG" > "$CAIXA/plantado.sh"
 plantado=$(grep -nE "$PADRAO" "$CAIXA/plantado.sh" | grep -vE "$ISENTO" || true)
 if [ -n "$plantado" ]; then

@@ -86,6 +86,26 @@ const REFERENCIA_DE_VARIAVEL = new RegExp(
 );
 
 /**
+ * Prefixo de identificador de plataforma (GitHub Actions run, job, comment, PR, commit, discussion).
+ * Ancorada no FIM do trecho anterior ao match, casando exatamente um destes:
+ * - runs/ (Actions run id, 11 dígitos)
+ * - jobs/ (Actions job id, 13 dígitos)
+ * - issuecomment- (PR/Issue comment id, 10 dígitos)
+ * - pull/ (PR id, qualquer tamanho)
+ * - issues/ (Issue id, qualquer tamanho)
+ * - commit/ (commit sha, 40 hex)
+ * - discussion_r (discussion reply id, qualquer tamanho)
+ *
+ * D27: id de run do Actions (11 dígitos) e de comentário de PR (10 dígitos)
+ * casam a forma de telefone e nenhuma das três isenções (dígito repetido, hex,
+ * dump hexadecimal) os alcança; a mensagem manda "confirmar que é ID" e não
+ * existe como confirmar sem desligar o gate inteiro. A isenção por contexto
+ * tem a mesma forma da isenção de hex (que já olha ±5 caracteres), não cria
+ * ritual e não mexe na faixa de dígitos.
+ */
+const PREFIXO_DE_ID_DE_PLATAFORMA = /(?:runs\/|jobs\/|issuecomment-|pull\/|issues\/|commit\/|discussion_r)$/;
+
+/**
  * Cada padrão diz o que é e por que dói — mensagem de trava que só nomeia o
  * regex manda quem foi barrado adivinhar o conserto.
  *
@@ -139,6 +159,20 @@ const PADROES = [
       // defeito de encoding. A isenção vale só para match DENTRO dos grupos hex;
       // a coluna ASCII do dump, se mostrar um telefone legível, continua recusada.
       if (dentroDeDumpHex(m, linha)) return false;
+
+      // D27: GitHub Actions run, job, PR, Issue, commit, discussion — IDs de
+      // plataforma que casam forma de telefone mas não são telefone de ninguém.
+      // A isenção olha o prefixo imediatamente antes do match: se termina com
+      // `runs/`, `jobs/`, `issuecomment-`, `pull/`, `issues/`, `commit/`,
+      // ou `discussion_r`, é ID de plataforma, não telefone.
+      // O match de telefone pode começar no meio de sequência numérica contínua.
+      // Procura para trás até o primeiro dígito da sequência.
+      let primeiroDigito = m.index;
+      while (primeiroDigito > 0 && /\d/.test(linha[primeiroDigito - 1])) {
+        primeiroDigito--;
+      }
+      const antes = linha.substring(0, primeiroDigito);
+      if (PREFIXO_DE_ID_DE_PLATAFORMA.test(antes)) return false;
 
       // SHA-1 e outras sequências de hex (7-40 caracteres) podem conter
       // subsequências que parecem telefone. Isenta matches DENTRO de um token hex.

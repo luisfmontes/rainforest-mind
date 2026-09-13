@@ -15,8 +15,16 @@
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CAIXA="$(mktemp -d)"
-trap 'rm -rf "$CAIXA"' EXIT
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
+# criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas —
+# substitui a cadeia de 15 `trap ... EXIT` que este arquivo reatribuia a cada
+# CAIXAn nova, sempre listando de novo TODAS as anteriores com `${VAR:-}`.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
+cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done; }
+trap cleanup EXIT
+
+CAIXA="$(novo_sandbox)"
 
 export RFM_ROOT="$CAIXA"
 MEMORIA="node $SRC/scripts/memoria.cjs"
@@ -104,8 +112,7 @@ echo "== 5. hermeticidade — segunda execucao em RFM_ROOT diferente nao toca o 
 # banco novo aparece em CAIXA2, e (2) o banco em CAIXA (criado na secao 1)
 # continua BYTE A BYTE igual — nao foi tocado pela segunda chamada.
 cp "$CAIXA/rainforest.db" "$CAIXA/.snapshot-antes-caixa2"
-CAIXA2="$(mktemp -d)"
-trap 'rm -rf "$CAIXA" "$CAIXA2"' EXIT
+CAIXA2="$(novo_sandbox)"
 
 RFM_ROOT="$CAIXA2" $MEMORIA iniciar >/dev/null 2>&1
 if [ -f "$CAIXA2/rainforest.db" ] && cmp -s "$CAIXA/rainforest.db" "$CAIXA/.snapshot-antes-caixa2"; then
@@ -128,8 +135,7 @@ fi
 
 echo
 echo "== 7. buscar num banco que não existe devolve array vazio =="
-CAIXA3="$(mktemp -d)"
-trap 'rm -rf "$CAIXA" "$CAIXA2" "$CAIXA3"' EXIT
+CAIXA3="$(novo_sandbox)"
 resultado=$(RFM_ROOT="$CAIXA3" $MEMORIA buscar --texto "test" --json 2>&1)
 if [ "$?" = "0" ] && echo "$resultado" | grep -q '^\[\]$'; then
   ok=$((ok+1)); echo "  ok   buscar em banco inexistente retorna exit 0 e array vazio"
@@ -148,8 +154,7 @@ echo "== 9. a migração de marca_dagua roda UMA vez, não a cada abertura =="
 # A primeira versão da migração da tarefa 4 apagava a tabela toda vez, então a
 # marca recém-escrita sumia e o `offset_processado` nunca saía de 0: a captura
 # reprocessaria o mesmo transcrito para sempre, sem erro nenhum na tela.
-CAIXA4="$(mktemp -d)"
-trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${CAIXA4:-}"' EXIT
+CAIXA4="$(novo_sandbox)"
 RFM_ROOT="$CAIXA4" $MEMORIA iniciar > /dev/null 2>&1
 SOBREVIVEU=$(RFM_ROOT="$CAIXA4" node --no-warnings -e "
 const { abrirBanco, criarSchema } = require('./scripts/memoria.cjs');
@@ -174,8 +179,7 @@ echo "== 10. observacao gravada aparece no buscar SEM reindexar =="
 # Tarefa 1 (D24): Com conteúdo externo sincronizado por triggers, a observação
 # deve aparecer em buscar() sem precisar chamar reindexar() separadamente.
 # Criar banco limpo, inserir observação diretamente, buscar.
-CAIXA5="$(mktemp -d)"
-trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${CAIXA4:-}" "${CAIXA5:-}"' EXIT
+CAIXA5="$(novo_sandbox)"
 RFM_ROOT="$CAIXA5" $MEMORIA iniciar > /dev/null 2>&1
 # Inserir observação diretamente via SQL (simula caminho do observar.cjs)
 RFM_ROOT="$CAIXA5" node -e "
@@ -204,8 +208,7 @@ echo "== 11. banco legacy (FTS sem content=) migra de verdade: termo NUNCA index
 # entra SÓ em observacoes, nunca na FTS: sem a migração real (DROP + recriação
 # com content='observacoes' + rebuild), o buscar não tem como achá-la.
 # Duas asserções: (i) o DDL novo tem content='observacoes'; (ii) buscar acha o termo.
-CAIXA6="$(mktemp -d)"
-trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${CAIXA4:-}" "${CAIXA5:-}" "${CAIXA6:-}"' EXIT
+CAIXA6="$(novo_sandbox)"
 # Criar banco legacy manualmente (FTS sem content=, e a observação FORA dela)
 RFM_ROOT="$CAIXA6" node -e "
   const DatabaseSync = require('node:sqlite').DatabaseSync;
@@ -255,8 +258,7 @@ echo
 echo "== 12. UPDATE e DELETE mantêm count(observacoes) == count(observacoes_fts) =="
 # Tarefa 1 (D24): Triggers de UPDATE/DELETE mantêm sincronização.
 # Inserir, atualizar, deletar, verificar contagem em ambas tabelas.
-CAIXA7="$(mktemp -d)"
-trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${CAIXA4:-}" "${CAIXA5:-}" "${CAIXA6:-}" "${CAIXA7:-}"' EXIT
+CAIXA7="$(novo_sandbox)"
 RFM_ROOT="$CAIXA7" $MEMORIA iniciar > /dev/null 2>&1
 resultado=$(RFM_ROOT="$CAIXA7" node -e "
   const { abrirBanco } = require('./scripts/memoria.cjs');
@@ -295,8 +297,7 @@ fi
 echo
 echo "== 13. criarSchema idempotente — segunda execução não erra =="
 # Tarefa 1 (D24): criarSchema deve ser seguro rodar duas vezes no mesmo banco.
-CAIXA8="$(mktemp -d)"
-trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${CAIXA4:-}" "${CAIXA5:-}" "${CAIXA6:-}" "${CAIXA7:-}" "${CAIXA8:-}"' EXIT
+CAIXA8="$(novo_sandbox)"
 RFM_ROOT="$CAIXA8" $MEMORIA iniciar > /dev/null 2>&1
 # Inserir observação
 RFM_ROOT="$CAIXA8" node -e "
@@ -326,8 +327,7 @@ echo "== 14. consolidar com 50+ observacoes de 60+ dias grava resumos e marca ==
 # - resumos foram gravados (lotes 10→1: 55/10 = 5 lotes)
 # - observações foram marcadas com consolidada_em
 # - count(observacoes) antes == count depois (NUNCA apaga linha)
-CAIXA9="$(mktemp -d)"
-trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${CAIXA4:-}" "${CAIXA5:-}" "${CAIXA6:-}" "${CAIXA7:-}" "${CAIXA8:-}" "${CAIXA9:-}"' EXIT
+CAIXA9="$(novo_sandbox)"
 
 # Criar dublê de LLM que retorna um resumo fixo (ou null se TESTADOR_LLM_FALHAR=1)
 cat > "$CAIXA9/dubleLLM.cjs" <<'EOF'
@@ -415,8 +415,7 @@ fi
 echo
 echo "== 16. consolidar com <50 observacoes nao faz nada =="
 # Tarefa 4 (D4): abaixo do gatilho de 50, sai sem gravar resumo nenhum
-CAIXA10="$(mktemp -d)"
-trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${CAIXA4:-}" "${CAIXA5:-}" "${CAIXA6:-}" "${CAIXA7:-}" "${CAIXA8:-}" "${CAIXA9:-}" "${CAIXA10:-}"' EXIT
+CAIXA10="$(novo_sandbox)"
 
 RFM_ROOT="$CAIXA10" $MEMORIA iniciar > /dev/null 2>&1
 # Inserir apenas 30 observações de 60+ dias
@@ -453,8 +452,7 @@ fi
 echo
 echo "== 17. criarSchema com coluna nova nao erra =="
 # Tarefa 4 (D4): migração idempotente — rodar criarSchema duas vezes não causa erro
-CAIXA11="$(mktemp -d)"
-trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${CAIXA4:-}" "${CAIXA5:-}" "${CAIXA6:-}" "${CAIXA7:-}" "${CAIXA8:-}" "${CAIXA9:-}" "${CAIXA10:-}" "${CAIXA11:-}"' EXIT
+CAIXA11="$(novo_sandbox)"
 
 RFM_ROOT="$CAIXA11" $MEMORIA iniciar > /dev/null 2>&1
 RFM_ROOT="$CAIXA11" $MEMORIA iniciar > /dev/null 2>&1
@@ -470,8 +468,7 @@ echo
 echo "== 18. dublê simulando falha de LLM deixa lote intacto para próxima rodada =="
 # Tarefa 4 (D4): caso (d) — quando LLM falha, lote não é marcado, não são gravados resumos,
 # tudo fica disponível para reconsolidação. Rodada seguinte com LLM saudável consolida normalmente.
-CAIXA12="$(mktemp -d)"
-trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${CAIXA4:-}" "${CAIXA5:-}" "${CAIXA6:-}" "${CAIXA7:-}" "${CAIXA8:-}" "${CAIXA9:-}" "${CAIXA10:-}" "${CAIXA11:-}" "${CAIXA12:-}"' EXIT
+CAIXA12="$(novo_sandbox)"
 
 # Usar dublê de CAIXA9 que suporta falha via TESTADOR_LLM_FALHAR=1
 RFM_ROOT="$CAIXA12" $MEMORIA iniciar > /dev/null 2>&1
@@ -547,8 +544,7 @@ echo "== 19. C5: exatamente 50 observacoes NAO consolida (o gatilho e PASSAR de 
 # O dublê de LLM AQUI é essencial: se o limiar regredir para >= 50, o consolidar
 # chama o LLM e grava resumo — sem o dublê, a chamada real falharia e deixaria
 # resumos=0, escondendo a regressão atrás de um verde falso.
-CAIXA13="$(mktemp -d)"
-trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${CAIXA4:-}" "${CAIXA5:-}" "${CAIXA6:-}" "${CAIXA7:-}" "${CAIXA8:-}" "${CAIXA9:-}" "${CAIXA10:-}" "${CAIXA11:-}" "${CAIXA12:-}" "${CAIXA13:-}"' EXIT
+CAIXA13="$(novo_sandbox)"
 
 cat > "$CAIXA13/dubleLLM.cjs" <<'EOF'
 async function chamarLLM(texto) {
@@ -590,8 +586,7 @@ fi
 
 echo
 echo "== 20. C5: 51 observacoes consolida (primeiro valor acima da fronteira) =="
-CAIXA14="$(mktemp -d)"
-trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${CAIXA4:-}" "${CAIXA5:-}" "${CAIXA6:-}" "${CAIXA7:-}" "${CAIXA8:-}" "${CAIXA9:-}" "${CAIXA10:-}" "${CAIXA11:-}" "${CAIXA12:-}" "${CAIXA13:-}" "${CAIXA14:-}"' EXIT
+CAIXA14="$(novo_sandbox)"
 
 RFM_ROOT="$CAIXA14" $MEMORIA iniciar > /dev/null 2>&1
 RFM_ROOT="$CAIXA14" node --no-warnings -e "
@@ -632,8 +627,7 @@ echo "== 21. C4: falha na marcacao desfaz o resumo junto (transacao atomica) =="
 # ser consolidadas na rodada seguinte (resumo duplicado). A injeção aqui é um
 # gatilho BEFORE UPDATE OF consolidada_em que aborta a marcação: com a
 # transação atômica, nem o resumo nem a marca podem sobreviver à falha.
-CAIXA15="$(mktemp -d)"
-trap 'rm -rf "${CAIXA:-}" "${CAIXA2:-}" "${CAIXA3:-}" "${CAIXA4:-}" "${CAIXA5:-}" "${CAIXA6:-}" "${CAIXA7:-}" "${CAIXA8:-}" "${CAIXA9:-}" "${CAIXA10:-}" "${CAIXA11:-}" "${CAIXA12:-}" "${CAIXA13:-}" "${CAIXA14:-}" "${CAIXA15:-}"' EXIT
+CAIXA15="$(novo_sandbox)"
 
 RFM_ROOT="$CAIXA15" $MEMORIA iniciar > /dev/null 2>&1
 RFM_ROOT="$CAIXA15" node --no-warnings -e "

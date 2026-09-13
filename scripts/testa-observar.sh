@@ -36,8 +36,15 @@ else
 fi
 
 # ============ Sandbox hermética ============
-CAIXA="$(mktemp -d)"
-trap 'rm -rf "$CAIXA"' EXIT
+# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
+# criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas —
+# bateria que morre no meio nao deixa orfao em C:\tmp.
+SANDBOXES=()
+novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
+cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done; }
+trap cleanup EXIT
+
+CAIXA="$(novo_sandbox)"
 echo
 echo "(caixa de areia: $CAIXA)"
 
@@ -422,7 +429,7 @@ fi
 # esta bateria tinha zero chance de perceber antes do achado 6. A mutacao
 # desliga o modo 2 numa copia de observar.cjs — nunca no arquivo rastreado —
 # e confirma que o Teste 14 vira vermelho.
-MUT14_DIR="$(mktemp -d)"
+MUT14_DIR="$(novo_sandbox)"
 cp -r "$SRC/hooks" "$MUT14_DIR/hooks"
 cp -r "$SRC/scripts" "$MUT14_DIR/scripts"
 MUT14_OBSERVAR="$MUT14_DIR/scripts/observar.cjs"
@@ -509,7 +516,7 @@ rm -rf "$MUT14_DIR"
 echo
 echo "== 8. trecho maior que o teto vira N chamadas, e a marca avanca por fatia =="
 
-FATIA_DIR="$(mktemp -d)"
+FATIA_DIR="$(novo_sandbox)"
 CONTA_LOG="$FATIA_DIR/chamadas.log"
 : > "$CONTA_LOG"
 
@@ -589,7 +596,7 @@ echo "  8.b — FALSIFICACAO: sem fatiamento, a chamada unica estoura o teto"
 # corte. Se a chamada única NÃO passar do teto real medido, o fixture não é
 # grande o bastante e a prova acima não vale nada.
 : > "$CONTA_LOG"
-CAIXA_MUT="$(mktemp -d)"; mkdir -p "$CAIXA_MUT/projects/proj-fatia"
+CAIXA_MUT="$(novo_sandbox)"; mkdir -p "$CAIXA_MUT/projects/proj-fatia"
 cp "$TRANSCRITO_GRANDE" "$CAIXA_MUT/projects/proj-fatia/sgrande.jsonl"
 RFM_ROOT="$CAIXA_MUT" node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
 (cd "$SRC" && RFM_ROOT="$CAIXA_MUT" TAM_GRANDE="$TAM_GRANDE" node --no-warnings -e "
@@ -624,7 +631,7 @@ echo "  8.c — orcamento de tempo: para no meio e deixa a marca no que ja proce
 # fatias sequenciais, o harness mataria o processo no meio. O orçamento faz a
 # passada parar sozinha e devolver o resto para a próxima sessão — o que só é
 # seguro porque a marca avança POR fatia.
-ORC_DIR="$(mktemp -d)"; mkdir -p "$ORC_DIR/projects/proj-fatia"
+ORC_DIR="$(novo_sandbox)"; mkdir -p "$ORC_DIR/projects/proj-fatia"
 cp "$FATIA_DIR/projects/proj-fatia/sgrande.jsonl" "$ORC_DIR/projects/proj-fatia/sgrande.jsonl" 2>/dev/null
 cat > "$ORC_DIR/duble-lento.cjs" <<'DUBLE_LENTO'
 module.exports.chamarLLM = async (texto) => {
@@ -744,7 +751,7 @@ db.close();
 CRIA_MARCA_SECO
 
 # Criar dublê que registra se foi chamado
-DUBLE_SECO_DIR="$(mktemp -d)"
+DUBLE_SECO_DIR="$(novo_sandbox)"
 # O sentinela do duble NAO pode ser um caminho `/tmp/...`: para o Node no Windows
 # `/tmp` e `C:\tmp\`, e para o bash e outra pasta. Medido em 2026-08-25, na
 # integracao da #86 — o arquivo era escrito em C:\tmp e o `[ ! -f /tmp/llm-foi-chamado ]`
@@ -837,8 +844,8 @@ echo "  16.b — MUTACAO: fazer --seco cair no caminho que PROCESSA, e exigir qu
 # mutacao "nao teve efeito" por falta de fixture, nao por falta de defeito -- que e
 # o mesmo modo de falha que esta secao existe para pegar, um nivel acima.
 
-MUT_CAIXA="$(mktemp -d)"
-MUT_DIR="$(mktemp -d)"
+MUT_CAIXA="$(novo_sandbox)"
+MUT_DIR="$(novo_sandbox)"
 MUT_DIR_WIN="$(cygpath -m "$MUT_DIR" 2>/dev/null || printf '%s' "$MUT_DIR")"
 mkdir -p "$MUT_CAIXA/rainforest/projects/proj-mut"
 cp -r "$SRC/scripts" "$MUT_DIR/scripts"
@@ -915,7 +922,7 @@ rm -rf "$MUT_DIR" "$MUT_CAIXA"
 echo
 echo "17. evento unico acima do teto e truncado, observacao gravada e marca avanca"
 
-GORDO_DIR=$(mktemp -d)
+GORDO_DIR=$(novo_sandbox)
 export RFM_ROOT="$GORDO_DIR"
 node "$MEMORIA" iniciar >/dev/null 2>&1
 mkdir -p "$GORDO_DIR/projects/proj-gordo"

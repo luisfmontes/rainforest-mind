@@ -5,9 +5,13 @@
 
 # Setup
 TMPDIR="${TMPDIR:-.}"
-CAIXA=$(mktemp -d)
+SANDBOXES=()
+cleanup() { for s in "${SANDBOXES[@]}"; do rm -rf "$s" 2>/dev/null || true; done; }
+trap cleanup EXIT
+
+CAIXA="$(mktemp -d)"
+SANDBOXES+=("$CAIXA")
 export RFM_ROOT="$CAIXA"
-trap "rm -rf '$CAIXA'" EXIT
 
 mkdir -p "$CAIXA"
 SRC="$(cd "$(dirname "$0")/.." && pwd)"
@@ -124,6 +128,7 @@ fi
 echo ""
 echo "=== MUTACAO: a recusa por campo de negativa e load-bearing ==="
 MUT="$(mktemp -d)"
+SANDBOXES+=("$MUT")
 # O mutante mora em outra pasta, e o fonte faz require('./lib/backup-rotativo.cjs')
 # (Issue #199): sem a lib ao lado, o mutante morre por MODULE_NOT_FOUND (exit 1)
 # e o caso reprova pelo motivo errado — foi o que aconteceu na integracao de
@@ -145,7 +150,6 @@ if [ "$MUT_RC" = "0" ]; then
 else
   FALHA=$((FALHA + 1)); echo "✗ FALHA mutacao sem efeito: a recusa veio de outro lugar (exit $MUT_RC)"
 fi
-rm -rf "$MUT"
 
 # ==== CRITÉRIO 5 ====
 echo ""
