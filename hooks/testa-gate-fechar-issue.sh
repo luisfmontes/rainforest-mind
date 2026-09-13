@@ -1419,6 +1419,143 @@ EXIT_CC=$?
 	) 2>"$SBP/err-cl"
 	EXIT_CL=$?
 	[ $EXIT_CL -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CL)"
+
+	# D1 (zerar-issues-3): casos novos de heredoc
+	echo
+	echo "== NOVOS CASOS DE HEREDOC (D1) =="
+
+	# Caso (cm): cat > d.md <<'EOF' com (x). → exit 0
+	echo
+	echo "== (cm) cat <<'EOF' com (x). → exit 0 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat > d.md <<'EOF'\\n(x).\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cm"
+	EXIT_CM=$?
+	[ $EXIT_CM -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CM)"
+
+	# Caso (cn): cat <<'EOF' com (x). O que → exit 0
+	echo
+	echo "== (cn) cat <<'EOF' com (x). O que → exit 0 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat > d.md <<'EOF'\\n(x). O que\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cn"
+	EXIT_CN=$?
+	[ $EXIT_CN -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CN)"
+
+	# Caso (co): cat <<'EOF' com (x). o que (minuscula) → exit 0
+	echo
+	echo "== (co) cat <<'EOF' com (x). o que → exit 0 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat > d.md <<'EOF'\\n(x). o que\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-co"
+	EXIT_CO=$?
+	[ $EXIT_CO -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CO)"
+
+	# Caso (cp): cat <<'EOF' com (x) ; . O que → exit 0
+	echo
+	echo "== (cp) cat <<'EOF' com (x) ; . O que → exit 0 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat > d.md <<'EOF'\\n(x) ; . O que\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cp"
+	EXIT_CP=$?
+	[ $EXIT_CP -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CP)"
+
+	# Caso (cq): Medido em 2026-09-12 (folga de 2 B). Ele sobe. → exit 0
+	echo
+	echo "== (cq) cat <<'EOF' com folga de 2 B → exit 0 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat > d.md <<'EOF'\\nMedido em 2026-09-12 (folga de 2 B). Ele sobe.\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cq"
+	EXIT_CQ=$?
+	[ $EXIT_CQ -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CQ)"
+
+	# Caso (cr): delimitador com aspas duplas → exit 0
+	echo
+	echo "== (cr) delimitador com aspas duplas → exit 0 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:'cat > d.md <<\"EOF\"\\nMedido em 2026-09-12 (folga de 2 B). Ele sobe.\\nEOF'}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cr"
+	EXIT_CR=$?
+	[ $EXIT_CR -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CR)"
+
+	# Caso (cs): heredoc nu (sem aspas) → exit 0
+	echo
+	echo "== (cs) heredoc nu (sem aspas) → exit 0 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat > d.md <<EOF\\nMedido em 2026-09-12 (folga de 2 B). Ele sobe.\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cs"
+	EXIT_CS=$?
+	[ $EXIT_CS -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CS)"
+
+	# Caso (ct): cat <<'EOF' com corpo contendo gh issue close 12 → exit 0 (cat não executa)
+	echo
+	echo "== (ct) cat <<'EOF' com gh inside → exit 0 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat <<'EOF'\\ngh issue close 12\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-ct"
+	EXIT_CT=$?
+	[ $EXIT_CT -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CT)"
+
+	# Caso (cu): bash <<'EOF' com corpo contendo gh issue close 12 → exit 2 (bash executa)
+	echo
+	echo "== (cu) bash <<'EOF' com gh inside → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"bash <<'EOF'\\ngh issue close 12\\nEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cu"
+	EXIT_CU=$?
+	[ $EXIT_CU -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CU)"
+
+	# Caso (cv): bash -c com gh issue close continua bloqueado → exit 2
+	echo
+	echo "== (cv) bash -c com gh issue close → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"bash -c \"gh issue close 12\""}}'
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cv"
+	EXIT_CV=$?
+	[ $EXIT_CV -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CV)"
+
+	# Caso (cw): heredoc sem linha de fechamento (EOF nunca aparece) → exit 0
+	echo
+	echo "== (cw) heredoc sem fechamento → exit 0 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat <<'EOF'\\n(x). texto sem fechamento\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cw"
+	EXIT_CW=$?
+	[ $EXIT_CW -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CW)"
+
+	# Caso (cx): gh FORA do heredoc após o EOF deve bloquear → exit 2
+	echo
+	echo "== (cx) gh depois do heredoc → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat <<'EOF'\\n(x). texto\\nEOF\\ngh issue close 12\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-cx"
+	EXIT_CX=$?
+	[ $EXIT_CX -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CX)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

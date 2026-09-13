@@ -71,6 +71,141 @@ function indiceSequencia(tokens, padrao) {
 }
 
 /**
+ * Extrai o corpo de um heredoc a partir da posição `i`.
+ * Recebe `cmd[i..]` começando por `<<` ou `<<-` seguido de delimitador
+ * (nu, entre aspas simples ou duplas).
+ * Retorna `{ fim, corpo, comando }` ou `null` se não há heredoc.
+ *
+ * `fim` = índice logo após a linha do delimitador de fechamento
+ * `corpo` = texto entre a linha do `<<` e a linha de fechamento
+ * `comando` = primeiro token (nome executável normalizado, minúsculo) do comando
+ *
+ * Se o delimitador nunca aparece, trata todo o resto como corpo.
+ */
+function corpoDeHeredoc(cmd, i) {
+  if (cmd[i] !== '<' || cmd[i + 1] !== '<') return null;
+
+  let j = i + 2;
+  if (cmd[j] === '-') j++;
+
+  // Pular espaços antes do delimitador
+  while (j < cmd.length && (cmd[j] === ' ' || cmd[j] === '\t')) j++;
+
+  // Extrair delimitador (nu, simples ou duplas)
+  let delimitador = '';
+  let tipoAspa = null;
+  if (cmd[j] === "'" || cmd[j] === '"') {
+    tipoAspa = cmd[j];
+    j++;
+    while (j < cmd.length && cmd[j] !== tipoAspa) {
+      delimitador += cmd[j];
+      j++;
+    }
+    if (j < cmd.length && cmd[j] === tipoAspa) j++;
+  } else {
+    // Delimitador nu — até espaço, quebra de linha ou fim
+    while (j < cmd.length && cmd[j] !== ' ' && cmd[j] !== '\t' && cmd[j] !== '\n' && cmd[j] !== ';' && cmd[j] !== '&' && cmd[j] !== '|' && cmd[j] !== ')') {
+      delimitador += cmd[j];
+      j++;
+    }
+  }
+
+  if (!delimitador) return null;
+
+  // Encontrar o início do corpo (próxima quebra de linha)
+  const inicioCorpo = cmd.indexOf('\n', i);
+  if (inicioCorpo === -1) {
+    // Sem quebra de linha após `<<`, todo resto é "corpo" vazio
+    return {
+      fim: cmd.length,
+      corpo: '',
+      comando: extrairComandoDoHeredoc(cmd, i)
+    };
+  }
+
+  // Procurar a linha de fechamento
+  let corpo = '';
+  let linhaAtual = '';
+  let fim = cmd.length;
+  let k = inicioCorpo + 1;
+
+  while (k < cmd.length) {
+    const char = cmd[k];
+    if (char === '\n') {
+      // Verificar se a linha atual é o delimitador (exatamente, sem espaços)
+      if (linhaAtual === delimitador) {
+        fim = k + 1;
+        break;
+      }
+      corpo += linhaAtual + '\n';
+      linhaAtual = '';
+      k++;
+    } else {
+      linhaAtual += char;
+      k++;
+    }
+  }
+
+  // Se saiu do loop sem encontrar o delimitador, adiciona a última linha ao corpo
+  if (fim === cmd.length && linhaAtual) {
+    corpo += linhaAtual;
+  }
+
+  return {
+    fim: fim,
+    corpo: corpo,
+    comando: extrairComandoDoHeredoc(cmd, i)
+  };
+}
+
+/**
+ * Extrai o comando (primeiro token) da linha que contém o `<<` da posição `i`.
+ * Procura para trás até encontrar um separador (`;`, `&&`, `||`, `|`, `(`) ou início.
+ * Normaliza o comando (remove caminho, extensão, minúsculo).
+ */
+function extrairComandoDoHeredoc(cmd, i) {
+  // Encontrar o início da linha
+  let inicioLinha = i;
+  while (inicioLinha > 0 && cmd[inicioLinha - 1] !== '\n') {
+    inicioLinha--;
+  }
+
+  const textoAteHeredoc = cmd.slice(inicioLinha, i);
+  let inicioComando = 0;
+
+  // Procurar para trás pelos separadores
+  for (let k = textoAteHeredoc.length - 1; k >= 0; k--) {
+    const c = textoAteHeredoc[k];
+    if (c === ';' || c === '|' || c === '(') {
+      inicioComando = k + 1;
+      break;
+    }
+    // Detectar `&&` e `||`
+    if (c === '&' && k > 0 && textoAteHeredoc[k - 1] === '&') {
+      inicioComando = k + 1;
+      break;
+    }
+    if (c === '|' && k > 0 && textoAteHeredoc[k - 1] === '|') {
+      inicioComando = k + 1;
+      break;
+    }
+  }
+
+  // Pular espaços
+  while (inicioComando < textoAteHeredoc.length && (textoAteHeredoc[inicioComando] === ' ' || textoAteHeredoc[inicioComando] === '\t')) {
+    inicioComando++;
+  }
+
+  // Extrair o comando até espaço, tab ou fim
+  let comando = '';
+  for (let k = inicioComando; k < textoAteHeredoc.length && textoAteHeredoc[k] !== ' ' && textoAteHeredoc[k] !== '\t' && textoAteHeredoc[k] !== '\n'; k++) {
+    comando += textoAteHeredoc[k];
+  }
+
+  return normalizarExecutavel(comando);
+}
+
+/**
  * Separa um comando em segmentos, respeitando aspas simples/duplas.
  * Delimitadores fora de aspas: `;`, `&&`, `||`, `|`, quebra de linha — e
  * também `(`, `)`, `{`, `}` (subshell, grupo, ou o `(` de uma substituição
@@ -175,6 +310,45 @@ function segmentosParaGate(cmd) {
       if (atual.trim()) segmentos.push(atual);
       atual = "";
       continue;
+    }
+    if (c === "<" && cmd[i + 1] === "<") {
+      // D1 (zerar-issues-3): Detectar heredoc — o corpo é dado, não comando.
+      // Chamar exatamente com esta linha literal (catraca de mutação do plano):
+      const heredoc = corpoDeHeredoc(cmd, i);
+      if (heredoc !== null) {
+        // Manter o texto até o `<<` no segmento atual (sem o corpo nem o delimitador)
+        atual += cmd.slice(i, i + 2); // Adiciona o `<<`
+        // Encontrar o final do delimitador (incluindo aspas, se houver)
+        let j = i + 2;
+        if (cmd[j] === '-') j++;
+        while (j < cmd.length && (cmd[j] === ' ' || cmd[j] === '\t')) j++;
+        if (cmd[j] === '"' || cmd[j] === "'") {
+          const tipoAspa = cmd[j];
+          j++;
+          while (j < cmd.length && cmd[j] !== tipoAspa) j++;
+          if (j < cmd.length && cmd[j] === tipoAspa) j++;
+        } else {
+          while (j < cmd.length && cmd[j] !== ' ' && cmd[j] !== '\t' && cmd[j] !== '\n' && cmd[j] !== ';' && cmd[j] !== '&' && cmd[j] !== '|' && cmd[j] !== ')') {
+            j++;
+          }
+        }
+        atual += cmd.slice(i + 2, j);
+
+        // Se o comando é um interpretador, processar o corpo recursivamente
+        if (["bash", "sh", "zsh", "ksh", "dash", "pwsh", "powershell", "cmd", "eval", "source", "."].includes(heredoc.comando)) {
+          for (const sub of segmentosParaGate(heredoc.corpo)) {
+            if (sub.trim()) segmentos.push(sub);
+          }
+        }
+        // Caso contrário, o corpo é dados e não gera segmento
+
+        // Avançar `i` para permitir que o \n após EOF seja processado normalmente
+        // heredoc.fim aponta para a posição após o \n final do delimitador.
+        // Seto i = heredoc.fim - 2 para que após o i++ do for,
+        // i = heredoc.fim - 1, e na próxima iteração o \n seja processado.
+        i = heredoc.fim - 2;
+        continue;
+      }
     }
     atual += c;
   }
