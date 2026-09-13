@@ -30,6 +30,11 @@ trap cleanup EXIT
 
 RAIZ="$(novo_sandbox)"
 export RFM_ROOT="$RAIZ"
+# Os casos abaixo medem o CONTRATO do hook (anuncia, grava o ledger), nao a
+# velocidade da maquina: no runner do Actions a sonda de git passou de 2 s e o
+# hook tomou o ramo "prossigo sem garantia" (CI do PR #242 — o sintoma da #208).
+# So as duas secoes de TIMEOUT fixam o proprio valor.
+export RFM_FERRAMENTAS_TIMEOUT_MS=15000
 
 echo "(caixa de areia: $RAIZ)"
 
@@ -273,6 +278,7 @@ export RFM_FERRAMENTAS_TIMEOUT_MS=1
 SAIDA=$(printf '%s' "$(payload_bash 'node --version')" | node "$HOOK" 2>&1)
 EXIT=$?
 unset RFM_FERRAMENTAS_TIMEOUT_MS
+export RFM_FERRAMENTAS_TIMEOUT_MS=15000
 
 # Verificar exit 0
 if [ "$EXIT" = 0 ]; then
@@ -310,6 +316,7 @@ export RFM_FERRAMENTAS_TIMEOUT_MS=abc
 SAIDA=$(printf '%s' "$(payload_bash 'node --version')" | node "$HOOK" 2>&1)
 EXIT=$?
 unset RFM_FERRAMENTAS_TIMEOUT_MS
+export RFM_FERRAMENTAS_TIMEOUT_MS=15000
 
 # Verificar exit 0
 if [ "$EXIT" = 0 ]; then
