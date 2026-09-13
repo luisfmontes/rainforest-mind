@@ -20,14 +20,8 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-09-12",
-    "em_voo": [
-      {
-        "agente": "depurar_hook_real_112",
-        "tarefa": "Reabrir T3/T6: capturar payload real e corrigir decisao do hook Codex",
-        "desde": "2026-09-13T00:21:00-03:00"
-      }
-    ],
-    "tarefas_ok": 5,
+    "em_voo": [],
+    "tarefas_ok": 6,
     "tarefas": 9,
     "em": "2026-09-13",
     "carimbos": [
@@ -72,10 +66,17 @@
         "iteracao": 1,
         "sessao": "desconhecida",
         "ts": "2026-09-13T03:16:36.094Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "3c7e7ab42c6a9c3d95639aa3f00b833fd75c2ef5",
+        "iteracao": 2,
+        "sessao": "desconhecida",
+        "ts": "2026-09-13T11:26:00.000Z"
       }
     ],
     "pendentes": [
-      "tarefa-6: depurando payload/decisao real do hook Codex"
+      "tarefa-7: reinstalar exatamente 1.12.0 e executar contrato ponta a ponta"
     ]
   },
   "revisar": {

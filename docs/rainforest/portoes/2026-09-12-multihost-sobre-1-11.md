@@ -2,11 +2,11 @@
 
 ## Tarefa 6 — iteração local com cachebuster
 
-**Resultado: BLOQUEADA.** A instalação local e a enumeração de skills aconteceram,
-mas uma sessão Codex nova não recebeu a decisão `deny` do hook para
-`git add "-A"`. O processo `git` chegou a executar e só foi impedido pela
-proteção do sandbox sobre `.git/index.lock`. Conforme o plano, isso não conta
-como recusa do hook e a tarefa 7 não está liberada por esta evidência.
+**Resultado final: OK na iteração 2.** A primeira sessão, no Codex `0.151.0`,
+não recebeu a decisão `deny`; essa evidência vermelha foi preservada abaixo. A
+repetição no Codex CLI `0.153.4`, primeiro com captura temporária e depois com o
+adaptador original byte a byte, recusou `git add "-A"` no `PreToolUse` antes de
+qualquer processo `git`. A tarefa 7 está liberada pela segunda evidência.
 
 Nenhum push, merge, PR, release ou publicação foi executado. A branch `main`
 não foi tocada.
@@ -330,11 +330,101 @@ Observação operacional: o helper reserializou o manifesto Codex e escapou
 caracteres Unicode durante a alteração temporária; a restauração final foi
 validada pelos hashes originais, não apenas pelo campo `version`.
 
-### Pendências objetivas antes da Tarefa 7
+## Iteração 2 — prova no runtime Codex atual
 
-- Identificar o payload real recebido pelo adaptador na sessão `codex exec` e
-  por que ele permitiu `git add "-A"`.
-- Corrigir o contrato/adaptador em uma tarefa autorizada e repetir a prova em
-  sessão nova até o hook emitir `permissionDecision: "deny"` antes da execução.
-- Explicar por conjunto por que o cache físico contém 19 skills e a sessão
-  expõe 20 entradas `rainforest-mind:*`.
+### Diagnóstico da divergência anterior
+
+O adaptador da iteração 1, o adaptador da branch de entrega e o adaptador
+original usado nesta repetição têm o mesmo SHA-256:
+
+```text
+b831643f5d36d5ced5ea94f39a2d237f1520463486065bb5157e8d8a169908fe  hooks/codex-gate-staging-total.cjs
+```
+
+A diferença observável relevante foi o runtime. A sessão vermelha registrou
+`OpenAI Codex v0.151.0`; a sessão final registrou `OpenAI Codex v0.153.4` e a
+CLI usada respondeu `codex-cli 0.153.4`. Não houve correção de código: o
+protocolo emitido pelo plugin é válido para o runtime atual. A explicação mais
+forte para o vermelho anterior é incompatibilidade do protocolo de bloqueio no
+runtime `0.151.0`; ela permanece marcada como inferência porque esse executável
+antigo já não está disponível na instalação local para uma contraprova.
+
+### Payload real capturado
+
+Uma instalação intermediária instrumentada, descartada depois do diagnóstico,
+capturou o envelope real abaixo. Identificadores de sessão foram omitidos; os
+campos que governam a decisão estão preservados:
+
+```json
+{
+  "cwd": "C:\\...\\hook112-real-probe",
+  "hook_event_name": "PreToolUse",
+  "permission_mode": "default",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "git add \"-A\""
+  }
+}
+```
+
+O adaptador respondeu com `hookSpecificOutput.hookEventName = "PreToolUse"`,
+`permissionDecision = "deny"` e a razão produzida pelo núcleo compartilhado.
+A sessão registrou `hook: PreToolUse Blocked`. Isso elimina as hipóteses de
+matcher, caminho do comando, formato do payload e schema de decisão incorretos.
+A instrumentação temporária foi removida integralmente e não entrou em commit.
+
+### Reinstalação sem instrumentação
+
+Para provar que a captura não alterava o resultado, o adaptador original foi
+reinstalado com outro cachebuster:
+
+```text
+1.12.0+codex.20260913112347
+C:\Users\Luis\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.12.0+codex.20260913112347
+```
+
+Hashes relevantes dessa entrada de cache:
+
+```text
+b8442f616badb52de9e0d8f28a7c2e5feff8860e47748dcf499b517402054cf0  .claude-plugin/plugin.json
+e1d594f34b166760ae2bb2f0d02a9127ff54d930703c46aa8a7b372219f23be1  .codex-plugin/plugin.json
+5288704159ef9d02556cc133467c2eaf2868cfb788f54e71d93d4c6cf5246277  hooks/codex-gate-staging-total.json
+b831643f5d36d5ced5ea94f39a2d237f1520463486065bb5157e8d8a169908fe  hooks/codex-gate-staging-total.cjs
+```
+
+Em um repositório descartável novo, a sessão `0.153.4` executou a chamada exata
+uma única vez e produziu:
+
+```text
+hook: PreToolUse
+Command blocked by PreToolUse hook: BLOQUEADO pelo gate de staging total do rainforest-mind.
+Comando: git add -A
+hook: PreToolUse Blocked
+Resultado: o comando `git add "-A"` foi invocado uma única vez, mas bloqueado pelo gate de staging total do rainforest-mind antes da execução.
+```
+
+Não houve linha `exec` nem tentativa de criar `.git/index.lock`: a recusa veio
+do hook, que é exatamente o efeito exigido pela tarefa 6.
+
+### Contagem de skills
+
+O cache físico final contém 19 diretórios `skills/*/SKILL.md`. A vigésima entrada
+da enumeração, `rainforest-mind:source-command-saude`, deriva da migração de
+compatibilidade que o Codex faz para `commands/saude.md`; ela não é uma vigésima
+skill física nem uma cópia divergente do núcleo. Essa conclusão é uma inferência
+apoiada pelo nome `source-command-saude`, pelo arquivo-fonte único
+`commands/saude.md` e pela proveniência `migrated-command-skills` exposta pelo
+próprio runtime.
+
+### Restauração final da fonte
+
+Os dois manifestos foram novamente restaurados pelas cópias binárias anteriores
+ao cachebuster. Os hashes finais são idênticos aos da iteração 1:
+
+```text
+f82abab1c71344dede681d73435d71beb52396cdfcfd307a06d804388d0e550b  .claude-plugin/plugin.json
+13e79f46f0f505c8be03639ab778841ecff9ec2b2bf6965a7c2a943fe0636ccd  .codex-plugin/plugin.json
+```
+
+Versão final da fonte: `1.12.0` nos dois manifestos. Nenhum push, merge, PR,
+release, publicação ou alteração da `main` foi realizado.
