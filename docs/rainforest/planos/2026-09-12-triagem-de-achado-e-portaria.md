@@ -175,7 +175,15 @@ depende de: nenhuma
 paralela: sim
 mutacao: n/a
   motivo: a entrega é um registro externo pedindo decisão do usuário, não código com comportamento a inverter.
-pronto quando: `gh issue list --repo luisfmontes/rainforest-mind --state open --search "portaria nivel do plugin"` devolve exatamente uma Issue, cujo corpo contém as quatro medições da correção da D7 (`skills/setup/SKILL.md`, `scripts/*.cjs`, `hooks/hooks.json`, `.claude/settings.json`)
+pronto quando: `gh issue view 241 --repo luisfmontes/rainforest-mind --json state,body` devolve `state: OPEN` e um corpo que contém as quatro medições da correção da D7 (`skills/setup/SKILL.md`, `scripts/`, `hooks/hooks.json`, `.claude/settings.json`)
+
+> **Correção de 2026-09-13, no `verificar`:** o critério cobrava
+> `--search "portaria nivel do plugin"`, uma frase que nunca esteve no título
+> da Issue — rodado no `verificar`, devolvia `[]`, e a tarefa estava feita. É a
+> mesma podridão do literal `Total: 15233 B` da tarefa 1: critério que aponta
+> para um texto em vez de um fato. O número da Issue é conhecido desde que ela
+> foi aberta (#241), e conferir `state` e as quatro medições no corpo é mais
+> falsificável que qualquer busca por frase.
 
 ### 10. Colher a observação de 2026-08-24 [tipo: docs]
 atende: D9
