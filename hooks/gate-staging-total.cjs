@@ -66,6 +66,7 @@ const FLAG_COM_VALOR = new Set([
 ]);
 // Pathspecs que significam "o repo inteiro".
 const CAMINHO_TOTAL = new Set([".", "./", ":/", "*", "-A", "--all", "-u", "--update"]);
+const PATHSPEC_TOTAL = new Set([".", "./", ":/", "*"]);
 
 /**
  * `cru` preserva o espaco a esquerda. Nao e preciosismo: o porcelain usa duas
@@ -112,17 +113,16 @@ function segmentos(cmd) {
  * `git add -A` passava sem checagem — o incidente de 2026-08-09 que este gate
  * existe para impedir.
  *
- * A partir da posicao de comando, o restante do segmento e filtrado dos
- * tokens citados (um argumento entre aspas nunca e subcomando nem flag —
- * `git commit -m "suporte a add -A"` nao pode virar falso positivo) e
- * analisado como antes.
+ * A partir da posicao de comando, o restante do segmento preserva todos os
+ * tokens: aspas mudam agrupamento, nao a semantica de `git add "-A"`. Valores
+ * de opcoes que nao podem virar flags sao tratados em `motivoDe`.
  */
 function analisaGit(toksComAspas) {
   const pos = posicaoDeComando(toksComAspas);
   // `true`: `pos` VEM de `posicaoDeComando`, entao `"git" add -A` conta
   // (rodada 20, lote 3, achado do auditor na 18a revisao).
   if (pos === null || !ehComando(toksComAspas[pos], "git", true)) return null;
-  const resto = toksComAspas.slice(pos + 1).filter((t) => !t.q).map((t) => t.v);
+  const resto = toksComAspas.slice(pos + 1).map((t) => t.v);
 
   let i = 0;
   let dirC = null;
@@ -170,7 +170,7 @@ function analisaSegmentoGit(segTexto, ferramenta) {
   if (interno !== null) {
     for (const sub of segmentosComAspas(interno)) {
       const r = analisaSegmentoGit(sub, ferramenta);
-      if (r) return r;
+      if (r && (r.incerto || motivoDe(r))) return r;
     }
   }
   return null;
@@ -181,18 +181,39 @@ function temCurta(args, letra) {
   return args.some((t) => /^-[A-Za-z]+$/.test(t) && t.slice(1).includes(letra));
 }
 
+/** Valores de -m/--message não são opções de staging, mesmo quando começam com `-`. */
+function opcoesSemValoresDeMensagem(args) {
+  const opcoes = [];
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (arg === "--") break;
+    if (arg === "-m" || arg === "--message") {
+      if (i + 1 < args.length) i += 1;
+      continue;
+    }
+    if (/^-m(?:.|$)/.test(arg) || arg.startsWith("--message=")) continue;
+    opcoes.push(arg);
+  }
+  return opcoes;
+}
+
 /** Motivo do bloqueio, ou null se o segmento e inofensivo. */
 function motivoDe(g) {
   if (g.sub === "add") {
-    const total = g.args.find((a) => CAMINHO_TOTAL.has(a));
+    const delimitador = g.args.indexOf("--");
+    const opcoes = delimitador === -1 ? g.args : g.args.slice(0, delimitador);
+    const pathspecs = delimitador === -1 ? [] : g.args.slice(delimitador + 1);
+    const total = opcoes.find((a) => CAMINHO_TOTAL.has(a)) ||
+      pathspecs.find((a) => PATHSPEC_TOTAL.has(a));
     if (total) return `git add ${total}`;
-    if (temCurta(g.args, "A")) return "git add -A (em flag combinada)";
-    if (temCurta(g.args, "u")) return "git add -u (em flag combinada)";
+    if (temCurta(opcoes, "A")) return "git add -A (em flag combinada)";
+    if (temCurta(opcoes, "u")) return "git add -u (em flag combinada)";
     return null;
   }
   if (g.sub === "commit") {
-    if (g.args.includes("--all")) return "git commit --all";
-    if (temCurta(g.args, "a")) return "git commit -a";
+    const opcoes = opcoesSemValoresDeMensagem(g.args);
+    if (opcoes.includes("--all")) return "git commit --all";
+    if (temCurta(opcoes, "a")) return "git commit -a";
     return null;
   }
   return null;
