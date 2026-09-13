@@ -856,3 +856,192 @@ ok: 5   falhou: 0
 Resultado da T6 reaberta: **verde**. O cachebuster existe somente no cache local;
 nenhum byte dele permaneceu no diff da fonte. Nenhum push, merge, PR, release,
 publicação, rebase ou alteração da `main` foi realizado.
+
+## Tarefa 7 revisada — reinstalação exata 1.13.2
+
+### Veredito
+
+**VERDE, zero caso pulado.** Todos os 702 arquivos rastreados existem no cache
+com SHA-256 idêntico. O cache contém 703 arquivos: o único extra é exatamente a
+projeção Codex permitida em D11. A sessão nova provou skill invocável, os dois
+allows, os dois denies e a falha fechada para JSON malformado.
+
+### Base e fonte exata
+
+```powershell
+git rev-parse HEAD
+git branch --show-current
+git merge-base --is-ancestor 068468fb956b8d606e9af1800aaa91dd399fdeb8 HEAD
+```
+
+```text
+9c1ee894c3302d78fcbf568ea267b4ef7780ad76
+codex/task7-e2e-113
+base_ancestor_exit=0
+```
+
+Worktree:
+
+```text
+C:\Projetos\rainforest-mind\.claude\worktrees\codex-task7-e2e-113
+```
+
+Antes da reinstalação, os manifestos já estavam na versão final exata e o
+cache exato ainda não existia:
+
+```text
+claude_version=1.13.2
+codex_version=1.13.2
+exact_cache_before=False
+76d1a40cdf0c228e921d5ddbc591d20391bc05f7eca291fcc33e04fd419f611f  .claude-plugin/plugin.json
+91125f387b1b740c2948951dabe3014cbd34d21bf5dbc8da5068227d2a07b8cf  .codex-plugin/plugin.json
+f044c166ccbfaca6470e4090229011354b82d4007adc80a278581a6565f6a6f6  commands/saude.md
+```
+
+O helper oficial validou `rainforest-mind-local` como nome do marketplace.
+
+### Reinstalação limpa
+
+Comandos executados em ordem:
+
+```powershell
+codex plugin remove rainforest-mind@rainforest-mind-local
+codex plugin marketplace remove rainforest-mind-local
+codex plugin marketplace add 'C:\Projetos\rainforest-mind\.claude\worktrees\codex-task7-e2e-113'
+codex plugin add rainforest-mind@rainforest-mind-local
+codex plugin marketplace list
+codex plugin list
+```
+
+```text
+Removed plugin `rainforest-mind` from marketplace `rainforest-mind-local`.
+Removed marketplace `rainforest-mind-local`.
+Added marketplace `rainforest-mind-local` from \\?\C:\Projetos\rainforest-mind\.claude\worktrees\codex-task7-e2e-113.
+Installed marketplace root: C:\Projetos\rainforest-mind\.claude\worktrees\codex-task7-e2e-113
+Added plugin `rainforest-mind` from marketplace `rainforest-mind-local`.
+Installed plugin root: C:\Users\Luis\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.13.2
+rainforest-mind@rainforest-mind-local  installed, enabled  1.13.2  C:\Projetos\rainforest-mind\.claude\worktrees\codex-task7-e2e-113
+```
+
+### Todos os arquivos rastreados e whitelist de extras
+
+A fonte veio de `git ls-tree -r --name-only HEAD`; o cache foi enumerado
+recursivamente. Para cada caminho rastreado, os dois arquivos foram medidos por
+SHA-256. O hash agregado usa linhas ordenadas
+`<caminho>\t<sha256>\n` para os 702 caminhos da fonte e para a mesma projeção
+no cache.
+
+```text
+tracked=702
+cached=703
+missing=0
+different=0
+extra=1
+unexpected_extra=0
+aggregate_source=5fd4319558ce9c5134a8f554d6f985dd1fae855977f645058dc41494d2733e6d
+aggregate_cache_projection=5fd4319558ce9c5134a8f554d6f985dd1fae855977f645058dc41494d2733e6d
+EXTRA .codex-plugin/migrated-command-skills/source-command-saude/SKILL.md
+WHITELIST_EXACT_OK
+```
+
+Proveniência e hashes do derivado:
+
+```text
+321c30bcfda44ff56ad53fca7ef5c3b170987a3bd2bee646152af22aaf1dd339  .codex-plugin/migrated-command-skills/source-command-saude/SKILL.md
+f044c166ccbfaca6470e4090229011354b82d4007adc80a278581a6565f6a6f6  cache/commands/saude.md
+f044c166ccbfaca6470e4090229011354b82d4007adc80a278581a6565f6a6f6  fonte/commands/saude.md
+91125f387b1b740c2948951dabe3014cbd34d21bf5dbc8da5068227d2a07b8cf  cache/.codex-plugin/plugin.json
+```
+
+O derivado declara `name: "source-command-saude"`, informa que migra o source
+command `saude` e preserva o template `Rode node scripts/saude.cjs e apresente o
+resultado.`. O arquivo-fonte `commands/saude.md` também está no cache com o mesmo
+hash da branch. Não existe nenhum segundo extra.
+
+### Sessão Codex nova: cinco casos comportamentais
+
+Uma sessão efêmera `OpenAI Codex v0.151.0` foi aberta com acesso total limitado
+a um repositório descartável. O acesso total elimina a possibilidade de confundir
+negação do sandbox com decisão do hook. O repositório começou com dois arquivos
+não rastreados: `-A` e `denied-control.txt`.
+
+O roteiro exigiu cada comando literal uma única vez, continuidade após as
+recusas e um marcador por caso. Saída relevante:
+
+```text
+SKILL_OK `node scripts/saude.cjs`
+
+hook: PreToolUse
+hook: PreToolUse Completed
+exec ... -Command 'git status --short'
+?? -A
+?? denied-control.txt
+STATUS_OK
+
+hook: PreToolUse
+hook: PreToolUse Completed
+exec ... -Command 'git add -- "-A"'
+succeeded in 182ms
+PATHSPEC_OK
+
+Command blocked by PreToolUse hook: BLOQUEADO pelo gate de staging total do rainforest-mind.
+Comando: git add -A
+Command: git add "-A"
+hook: PreToolUse Blocked
+TOTAL_DENY_OK
+
+Command blocked by PreToolUse hook: BLOQUEADO pelo gate de staging total do rainforest-mind.
+Comando: git add -A
+Command: bash -c "git status; git add -A"
+hook: PreToolUse Blocked
+WRAPPER_DENY_OK
+
+Nenhum caso foi pulado ou repetido.
+```
+
+Depois dos dois denies, o índice continha apenas o pathspec explicitamente
+permitido; o controle permaneceu não rastreado:
+
+```text
+A  -A
+?? denied-control.txt
+```
+
+Isso prova que nenhum dos dois comandos recusados chegou ao Git.
+
+### JSON malformado no adaptador instalado
+
+O adaptador do cache exato foi executado diretamente com JSON truncado contendo
+a sentinela `sentinela-malformado-t7-113`. O processo chamador parseou a resposta
+e conferiu decisão, canais e vazamento:
+
+```text
+exit=0
+stderr_bytes=0
+decision=deny
+reason=Falha interna do gate de staging; comando recusado por seguranca.
+secret_leaked=False
+```
+
+### Baterias e fonte final
+
+```powershell
+bash scripts/testa-plugin-codex.sh
+bash scripts/testa-versao.sh
+```
+
+A primeira bateria terminou verde cobrindo 19 skills físicas, manifestos,
+adaptador, allow, deny, falhas seguras, mutação, marketplace e Gemini adiado. A
+segunda terminou:
+
+```text
+ok: 5   falhou: 0
+```
+
+Os manifestos nunca foram mutados nesta tarefa e continuam exatamente em
+`1.13.2`, com os hashes registrados no início desta seção. O marketplace final
+permanece apontado para o worktree isolado da T7 e o plugin instalado permanece
+no cache exato `1.13.2`, aguardando integração.
+
+Resultado da T7 revisada: **verde, 7/9**. Nenhum push, merge, PR, release,
+publicação, rebase ou alteração da `main` ou da branch de entrega foi realizado.

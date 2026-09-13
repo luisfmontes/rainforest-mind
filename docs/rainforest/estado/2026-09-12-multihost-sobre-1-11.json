@@ -21,7 +21,7 @@
     "status": "parcial",
     "catraca_mutacao": "2026-09-13",
     "em_voo": [],
-    "tarefas_ok": 6,
+    "tarefas_ok": 7,
     "tarefas": 9,
     "em": "2026-09-13",
     "carimbos": [
@@ -87,10 +87,17 @@
         "iteracao": 3,
         "sessao": "desconhecida",
         "ts": "2026-09-13T11:51:02.171Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "9c1ee894c3302d78fcbf568ea267b4ef7780ad76",
+        "iteracao": 2,
+        "sessao": "desconhecida",
+        "ts": "2026-09-13T11:57:28.783Z"
       }
     ],
     "pendentes": [
-      "tarefa-7: reinstalar 1.13.2 e validar projecao rastreada mais o unico derivado Codex permitido"
+      "tarefa-8: atualizar rastro corrente e handover sem promover a piloto"
     ]
   },
   "revisar": {
