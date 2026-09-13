@@ -155,6 +155,10 @@ sub agentes rodando em background, autorizando pipeline."
  * comeco nao faz: 'autorizo' e 'sub agentes' GRUDADOS sao uma concessao;
  * 'sub agentes' solto no comeco de uma linha qualquer nao e nada.
  *
+ * O lookbehind e de largura VARIAVEL (`\s+`, nao `\s`) porque a versao de
+ * largura fixa exigia exatamente UM espaco: 'autorizo  sub agentes', com dois,
+ * era recusado. Espaco a mais e erro de digitacao, nao mudanca de sentido.
+ *
  * A primeira tentativa foi uma lista do que DESQUALIFICA o 'sub' (artigo,
  * preposicao, possessivo), e ela durou uma revisao:
  *
@@ -166,10 +170,10 @@ sub agentes rodando em background, autorizando pipeline."
  * grafia que faltar abre o portao de novo, e aqui o erro caro e abrir. Listar
  * o que QUALIFICA e finito; listar o que desqualifica, nao.
  */
-const FORMAS_DE_SUBAGENTE = /\bsubagente\b|\bsubagentes\b|\bsub-agente\b|\bsub-agentes\b|(?:(?<=\bautorizo\s)|(?<=\bautorizar\s)|(?<=\bautorizando\s))sub\s+agentes?\b/;
+const FORMAS_DE_SUBAGENTE = /\bsubagente\b|\bsubagentes\b|\bsub-agente\b|\bsub-agentes\b|(?:(?<=\bautorizo\s+)|(?<=\bautorizar\s+)|(?<=\bautorizando\s+))sub\s+agentes?\b/;
 
 /** A negacao aceita tambem 'agente(s)' solto: negar de menos e o erro caro. */
-const FORMAS_DE_AGENTE = /\bsubagente\b|\bsubagentes\b|\bsub-agente\b|\bsub-agentes\b|(?:(?<=\bautorizo\s)|(?<=\bautorizar\s)|(?<=\bautorizando\s))sub\s+agentes?\b|\bagente\b|\bagentes\b/;
+const FORMAS_DE_AGENTE = /\bsubagente\b|\bsubagentes\b|\bsub-agente\b|\bsub-agentes\b|(?:(?<=\bautorizo\s+)|(?<=\bautorizar\s+)|(?<=\bautorizando\s+))sub\s+agentes?\b|\bagente\b|\bagentes\b/;
 
 /**
  * A única porta de entrada: devolve o texto quando a linha é a VOZ DO USUÁRIO,

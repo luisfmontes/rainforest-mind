@@ -344,6 +344,11 @@ console.log("== 3h. subordinacao vai para FRENTE, e 'sub agentes' com espaco (6a
   // Depois do verbo a adjacencia faz o trabalho que a ancora de comeco nao faz.
   const rLogColado = autorizado(fx("log-colado-com-sub-agentes.jsonl"));
   caso("log colado com 'sub agentes' no comeco de linha NAO autoriza", rLogColado === false, rLogColado);
+
+  // O lookbehind nasceu de largura FIXA e exigia exatamente um espaco entre o
+  // verbo e o 'sub'. Dois espacos e erro de digitacao, nao mudanca de sentido.
+  const rEspacoDuplo = autorizado(fx("sub-agentes-com-espaco-duplo.jsonl"));
+  caso("'autorizo  sub agentes' (dois espacos) AUTORIZA", rEspacoDuplo === true, rEspacoDuplo);
 }
 
 console.log("== 4. negacao sem acento ('nao autorizo subagentes') NAO autoriza ==");

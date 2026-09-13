@@ -69,7 +69,7 @@
     {
       "nome": "M16 sub agentes com espaco nao conta",
       "alvo": "const FORMAS_DE_SUBAGENTE =",
-      "de": "|(?:(?<=\\bautorizo\\s)|(?<=\\bautorizar\\s)|(?<=\\bautorizando\\s))sub\\s+agentes?\\b",
+      "de": "|(?:(?<=\\bautorizo\\s+)|(?<=\\bautorizar\\s+)|(?<=\\bautorizando\\s+))sub\\s+agentes?\\b",
       "para": ""
     },
     {
@@ -148,8 +148,14 @@
     {
       "nome": "M31 forma com espaco volta a valer no comeco do texto",
       "alvo": "const FORMAS_DE_SUBAGENTE =",
-      "de": "(?:(?<=\\bautorizo\\s)",
-      "para": "(?:^|(?<=\\bautorizo\\s)"
+      "de": "(?:(?<=\\bautorizo\\s+)",
+      "para": "(?:^|(?<=\\bautorizo\\s+)"
+    },
+    {
+      "nome": "M33 lookbehind volta a largura fixa (um espaco so)",
+      "alvo": "const FORMAS_DE_SUBAGENTE =",
+      "de": "\\s+)",
+      "para": "\\s)"
     }
   ],
   "mudas_esperadas": [
