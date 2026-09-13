@@ -84,6 +84,11 @@ function indiceSequencia(tokens, padrao) {
  */
 function corpoDeHeredoc(cmd, i) {
   if (cmd[i] !== '<' || cmd[i + 1] !== '<') return null;
+  // `<<<` é here-string: a string vem na mesma linha, não há corpo nem linha de
+  // fechamento, e a linha seguinte é comando novo (terceira revisão do
+  // zerar-issues-3, 2026-09-13: `cat <<<bar\ngh issue close 12` era lido como
+  // heredoc de delimitador `<bar`, que nunca fecha, e o `gh` virava corpo).
+  if (cmd[i + 2] === '<') return null;
 
   let j = i + 2;
   const tiraTabs = cmd[j] === '-';
@@ -105,7 +110,7 @@ function corpoDeHeredoc(cmd, i) {
     if (j < cmd.length && cmd[j] === tipoAspa) j++;
   } else {
     // Delimitador nu — até espaço, quebra de linha ou fim
-    while (j < cmd.length && cmd[j] !== ' ' && cmd[j] !== '\t' && cmd[j] !== '\n' && cmd[j] !== ';' && cmd[j] !== '&' && cmd[j] !== '|' && cmd[j] !== ')') {
+    while (j < cmd.length && cmd[j] !== ' ' && cmd[j] !== '\t' && cmd[j] !== '\n' && cmd[j] !== ';' && cmd[j] !== '&' && cmd[j] !== '|' && cmd[j] !== ')' && cmd[j] !== '<' && cmd[j] !== '>') {
       delimitador += cmd[j];
       j++;
     }
@@ -335,7 +340,7 @@ function segmentosParaGate(cmd) {
           while (j < cmd.length && cmd[j] !== tipoAspa) j++;
           if (j < cmd.length && cmd[j] === tipoAspa) j++;
         } else {
-          while (j < cmd.length && cmd[j] !== ' ' && cmd[j] !== '\t' && cmd[j] !== '\n' && cmd[j] !== ';' && cmd[j] !== '&' && cmd[j] !== '|' && cmd[j] !== ')') {
+          while (j < cmd.length && cmd[j] !== ' ' && cmd[j] !== '\t' && cmd[j] !== '\n' && cmd[j] !== ';' && cmd[j] !== '&' && cmd[j] !== '|' && cmd[j] !== ')' && cmd[j] !== '<' && cmd[j] !== '>') {
             j++;
           }
         }

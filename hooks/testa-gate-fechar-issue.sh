@@ -1616,6 +1616,21 @@ EXIT_CC=$?
 	EXIT_DC=$?
 	[ $EXIT_DC -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_DC)"
 
+	# Terceira revisão do zerar-issues-3 (2026-09-13): `<<<` é here-string, não
+	# heredoc — a string vem na mesma linha, não há fechamento, e a linha
+	# seguinte é comando novo. O gate lia `<bar` como delimitador que nunca
+	# fecha e engolia o `gh`.
+	# Caso (dd): cat <<<bar, gh na linha seguinte → exit 2
+	echo
+	echo "== (dd) here-string <<< seguido de gh na linha seguinte → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat <<<bar\\ngh issue close 12\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-dd"
+	EXIT_DD=$?
+	[ $EXIT_DD -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DD)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
