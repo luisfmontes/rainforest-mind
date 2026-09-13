@@ -86,7 +86,8 @@ function corpoDeHeredoc(cmd, i) {
   if (cmd[i] !== '<' || cmd[i + 1] !== '<') return null;
 
   let j = i + 2;
-  if (cmd[j] === '-') j++;
+  const tiraTabs = cmd[j] === '-';
+  if (tiraTabs) j++;
 
   // Pular espaços antes do delimitador
   while (j < cmd.length && (cmd[j] === ' ' || cmd[j] === '\t')) j++;
@@ -132,8 +133,14 @@ function corpoDeHeredoc(cmd, i) {
   while (k < cmd.length) {
     const char = cmd[k];
     if (char === '\n') {
-      // Verificar se a linha atual é o delimitador (exatamente, sem espaços)
-      if (linhaAtual === delimitador) {
+      // Verificar se a linha atual é o delimitador (exatamente, sem espaços).
+      // Com `<<-` o bash tira as TABULAÇÕES à esquerda da linha de fechamento
+      // antes de comparar (segunda revisão do zerar-issues-3, 2026-09-13:
+      // `cat <<-EOF\n\tcorpo\n\tEOF\ngh issue close 12` fechava no `\tEOF` de
+      // verdade e o gate, comparando exato, lia o `gh` como corpo e liberava).
+      // Espaços não contam — nem para o bash.
+      const linhaComparada = tiraTabs ? linhaAtual.replace(/^\t+/, '') : linhaAtual;
+      if (linhaComparada === delimitador) {
         fim = k + 1;
         break;
       }

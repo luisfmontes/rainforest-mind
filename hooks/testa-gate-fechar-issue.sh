@@ -1591,6 +1591,31 @@ EXIT_CC=$?
 	EXIT_DA=$?
 	[ $EXIT_DA -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DA)"
 
+	# Segunda revisão do zerar-issues-3 (2026-09-13): com `<<-` o bash tira as
+	# TABs da linha de fechamento — `\tEOF` fecha o heredoc de verdade, e o
+	# `gh` da linha seguinte roda. A comparação exata lia tudo como corpo.
+	# Caso (db): cat <<-EOF, fechamento com TAB, gh depois → exit 2
+	echo
+	echo "== (db) <<-EOF fechado por linha com TAB, gh depois → exit 2 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat <<-EOF\\n\\tcorpo\\n\\tEOF\\ngh issue close 12\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-db"
+	EXIT_DB=$?
+	[ $EXIT_DB -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DB)"
+
+	# Caso (dc): cat <<-'EOF' com prosa indentada por TAB e fechamento com TAB → exit 0
+	echo
+	echo "== (dc) <<-'EOF' com prosa (x). indentada e fechamento com TAB → exit 0 =="
+	(
+	  export PATH="$SBP/bin:$PATH"
+	  PAYLOAD=$(node -e "console.log(JSON.stringify({cwd:'$SBP_WIN',tool_name:'Bash',tool_input:{command:\"cat > d.md <<-'EOF'\\n\\t\\t(x). Ele sobe.\\n\\t\\tEOF\"}}))")
+	  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+	) 2>"$SBP/err-dc"
+	EXIT_DC=$?
+	[ $EXIT_DC -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_DC)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
