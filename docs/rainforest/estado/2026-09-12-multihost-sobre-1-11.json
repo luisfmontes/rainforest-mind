@@ -20,7 +20,13 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-09-12",
-    "em_voo": [],
+    "em_voo": [
+      {
+        "agente": "executar_t6_cachebuster_112",
+        "tarefa": "T6: provar reinstalacao local com cachebuster e restaurar 1.12.0",
+        "desde": "2026-09-13T00:06:00-03:00"
+      }
+    ],
     "tarefas_ok": 5,
     "tarefas": 9,
     "em": "2026-09-13",
