@@ -1,0 +1,34 @@
+{
+  "slug": "zerar-issues-3",
+  "titulo": "zerar-issues-3",
+  "criado_em": "2026-09-12",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "decisoes": 5,
+    "criterio": "conferir-fluxo design ok; #240/#241 ficam no fluxo triagem-de-achado-e-portaria; aprovacao deriva de faz o recomendado do Luis em 2026-09-13",
+    "em": "2026-09-12"
+  },
+  "plano": {
+    "status": "ok",
+    "tarefas": 5,
+    "ondas": 2,
+    "arquivo": "docs/rainforest/planos/zerar-issues-3.md",
+    "em": "2026-09-12"
+  },
+  "executar": {
+    "status": "pendente",
+    "catraca_mutacao": "2026-09-12"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
