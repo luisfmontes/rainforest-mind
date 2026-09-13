@@ -107,6 +107,10 @@ checa() { # nome, condicao(0=ok)
     ok=$((ok+1)); echo "  ok    $nome"
   else
     falhou=$((falhou+1)); echo "  FALHA $nome"
+    # Se é uma falha do foco-session-start, imprimir EXIT_FOCO e ERR_FOCO para debug
+    if [[ "$nome" == *"foco-session-start"* ]]; then
+      echo "         EXIT_FOCO=$EXIT_FOCO ERR_FOCO=$ERR_FOCO"
+    fi
   fi
 }
 

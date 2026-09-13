@@ -9,6 +9,10 @@
  *   OUT_1, EXIT_1, ERR_1 para o primeiro hook
  *   OUT_2, EXIT_2, ERR_2 para o segundo, etc.
  *   HOOKS_COUNT com o total de hooks rodados
+ *
+ * Variável de ambiente RFM_HOOKS_JSON:
+ *   Se definida, especifica o caminho do arquivo hooks.json a usar.
+ *   Se não definida, usa o caminho relativo padrão: ../hooks/hooks.json
  */
 
 const fs = require('fs');
@@ -16,7 +20,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 function lerHooksJson() {
-  const hooksJsonPath = path.join(__dirname, '..', 'hooks', 'hooks.json');
+  const hooksJsonPath = process.env.RFM_HOOKS_JSON || path.join(__dirname, '..', 'hooks', 'hooks.json');
   if (!fs.existsSync(hooksJsonPath)) {
     console.error(`hooks.json não encontrado: ${hooksJsonPath}`);
     process.exit(1);
@@ -79,7 +83,14 @@ function main() {
 
             stdout = proc.stdout || '';
             stderr = proc.stderr || '';
-            exitCode = proc.status !== null ? proc.status : 1;
+
+            if (proc.status === null) {
+              // Processo foi morto pelo timeout do spawnSync
+              exitCode = 124;
+              stderr = `timeout: hook nao respondeu em ${timeout} ms` + (stderr ? '\n' + stderr : '');
+            } else {
+              exitCode = proc.status;
+            }
           } catch (e) {
             stderr = e.message;
             exitCode = 1;
