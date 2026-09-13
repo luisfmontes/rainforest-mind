@@ -98,10 +98,33 @@ const INTERPRETADORES_DE_HEREDOC = ["bash", "sh", "zsh", "ksh", "dash", "pwsh", 
  * são tirados dos tokens antes de comparar; wrappers e caminhos
  * (`/bin/bash`, `bash.exe`) passam por `normalizarExecutavel`.
  */
+// Fim da linha LÓGICA a partir de `i`: a primeira quebra de linha que não
+// vem precedida de `\` (continuação). Sétima revisão (2026-09-13):
+// `cat <<'EOF' \` + `| bash` na linha de baixo é UMA linha para o bash, e o
+// corpo começa depois da segunda quebra — a versão anterior parava na
+// primeira e o `| bash` virava corpo, invisível.
+function fimDaLinhaLogica(cmd, i) {
+  let idx = cmd.indexOf('\n', i);
+  while (idx > 0 && cmd[idx - 1] === '\\') idx = cmd.indexOf('\n', idx + 1);
+  return idx;
+}
+
+// Corpos de heredoc tratados como DADO nesta invocação. A estrutura deles
+// não é comando (é isso que a D1 conserta — `).` em prosa não é subshell
+// mais `source`), mas o TEXTO ainda é varrido pelos padrões diretos do gate
+// (`gh issue close`, `gh pr merge`…) em `verificarTextosDeHeredoc`: sétima
+// revisão do zerar-issues-3 (2026-09-13) mostrou que o corpo pode acabar
+// executado por caminhos que nenhuma leitura lexical rastreia — gravado em
+// arquivo e rodado na linha seguinte, `while read -r l; do $l; done <<EOF`,
+// `mapfile` + `${a[0]}`, interpretador em variável (`$I <<EOF`). A cf1ad768
+// barrava todos esses por ver a linha `gh issue close 12` do corpo; este
+// gate não pode ser pior que ela.
+const TEXTOS_DE_HEREDOC = [];
+
 function linhaDoHeredocTemInterpretador(cmd, i) {
   let ini = i;
   while (ini > 0 && cmd[ini - 1] !== '\n') ini--;
-  let fim = cmd.indexOf('\n', i);
+  let fim = fimDaLinhaLogica(cmd, i);
   if (fim === -1) fim = cmd.length;
   const linha = cmd.slice(ini, fim);
   let toks;
@@ -150,8 +173,8 @@ function corpoDeHeredoc(cmd, i) {
 
   if (!delimitador) return null;
 
-  // Encontrar o início do corpo (próxima quebra de linha)
-  const inicioCorpo = cmd.indexOf('\n', i);
+  // Encontrar o início do corpo (fim da linha lógica — `\`+quebra continua)
+  const inicioCorpo = fimDaLinhaLogica(cmd, i);
   if (inicioCorpo === -1) {
     // Sem quebra de linha após `<<`, todo resto é "corpo" vazio
     return {
@@ -432,8 +455,11 @@ function segmentosParaGate(cmd) {
           for (const sub of segmentosParaGate(heredoc.corpo)) {
             if (sub.trim()) segmentos.push(sub);
           }
+        } else {
+          // Corpo é dado: não gera segmento, mas o texto fica para a
+          // varredura de padrões diretos (ver TEXTOS_DE_HEREDOC).
+          TEXTOS_DE_HEREDOC.push(heredoc.corpo);
         }
-        // Caso contrário, o corpo é dados e não gera segmento
 
         // Revisão do fluxo zerar-issues-3 (2026-09-13): só o CORPO é dado. O
         // resto da linha do heredoc (`cat <<EOF; gh issue close 12`, `&& gh`,
@@ -444,7 +470,7 @@ function segmentosParaGate(cmd) {
         // inclusive) do texto, e a varredura segue do fim do token `<<EOF`;
         // `;`, `&&`, `|` e a quebra de linha seguinte são tratados como em
         // qualquer outra linha.
-        const inicioCorpo = cmd.indexOf('\n', i);
+        const inicioCorpo = fimDaLinhaLogica(cmd, i);
         if (inicioCorpo !== -1 && inicioCorpo < heredoc.fim) {
           // Fechado quando o corpo NAO chega ate `fim` (a linha do delimitador
           // ficou de fora dele); sem fechamento, o corpo é tudo até o fim.
@@ -1098,6 +1124,36 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
   }
 }
 
+/**
+ * Varre o TEXTO dos corpos de heredoc tratados como dado pelos padrões
+ * diretos do gate — a mesma busca de sequência da rede W2, linha a linha,
+ * sem desempacotar wrapper e sem o veredito `ilegível` (é prosa: `).`,
+ * `$(`, crase e variável são texto). Só `gh issue close`, `gh issue
+ * create|comment`, `gh pr create|edit|merge` literais no corpo disparam
+ * `verificarComandoGh` — que é o que a cf1ad768 fazia, por acidente, ao
+ * quebrar o corpo em linhas. Comentário shell (`#` não citado) sai da
+ * busca, como na W2.
+ */
+function verificarTextosDeHeredoc(mapaCwd, contadores, ferramenta) {
+  const PADROES = [["gh", "issue", "close"], ["gh", "issue", "create"], ["gh", "issue", "comment"], ["gh", "pr", "create"], ["gh", "pr", "edit"], ["gh", "pr", "merge"]];
+  for (const corpo of TEXTOS_DE_HEREDOC) {
+    for (const linha of corpo.split('\n')) {
+      if (!linha.trim()) continue;
+      let toks;
+      try { toks = tokensComAspas(linha); } catch { toks = linha.split(/\s+/).filter(Boolean).map((v) => ({ v, q: false })); }
+      const idxComentario = toks.findIndex((t) => !t.q && t.v.startsWith("#"));
+      const valores = (idxComentario === -1 ? toks : toks.slice(0, idxComentario)).map((t) => t.v);
+      for (const padrao of PADROES) {
+        const idx = indiceSequencia(valores, padrao);
+        if (idx !== -1) {
+          verificarComandoGh(linha, valores.slice(idx + 1), cwdDoSegmento(linha, mapaCwd, contadores.get(linha.trim()) || 0));
+          break;
+        }
+      }
+    }
+  }
+}
+
 function main() {
   let ev;
   try {
@@ -1144,6 +1200,7 @@ function main() {
   for (const segmento of segmentosParaGate(comando)) {
     processarSegmento(segmento, mapaCwd, contadores, nome);
   }
+  verificarTextosDeHeredoc(mapaCwd, contadores, nome);
 
   process.exit(0);
 }
