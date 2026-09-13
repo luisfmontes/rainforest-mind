@@ -20,16 +20,10 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-09-12",
-    "em_voo": [
-      {
-        "agente": "executar_t5_marketplace_112",
-        "tarefa": "T5: distribuir a raiz unica e provar escopo negativo Gemini",
-        "desde": "2026-09-12T23:58:00-03:00"
-      }
-    ],
-    "tarefas_ok": 4,
+    "em_voo": [],
+    "tarefas_ok": 5,
     "tarefas": 9,
-    "em": "2026-09-12",
+    "em": "2026-09-13",
     "carimbos": [
       {
         "tarefa": 1,
@@ -58,6 +52,13 @@
         "iteracao": 1,
         "sessao": "desconhecida",
         "ts": "2026-09-13T02:53:16.093Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "4103a382ecb782155f25030529357e1fac7fcdbb",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-13T03:03:20.733Z"
       }
     ],
     "pendentes": []
