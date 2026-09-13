@@ -85,6 +85,36 @@ function resolverPrincipal(cwd) {
 }
 
 /**
+ * Obtém o conjunto de branches já merged em origin/main.
+ *
+ * Roda uma única vez `git branch --merged origin/main` e devolve um Set dos
+ * nomes de branch. Em caso de erro, devolve Set vazio.
+ *
+ * @param {string} principal diretório do repositório principal
+ * @returns {Set<string>} nomes de branches (sem prefixo refs/heads/)
+ */
+function branchesMergeadas(principal) {
+  try {
+    const output = execFileSync('git', ['branch', '--merged', 'origin/main', '--format=%(refname:short)'], {
+      cwd: principal,
+      encoding: 'utf8',
+      timeout: 3000,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+
+    const nomes = output
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+
+    return new Set(nomes);
+  } catch {
+    // sem origin/main ou erro, devolve Set vazio
+    return new Set();
+  }
+}
+
+/**
  * Aviso de principal e worktrees.
  *
  * Detecta:
@@ -137,48 +167,54 @@ function linhas({ cwd }) {
         stdio: ['ignore', 'pipe', 'ignore'],
       });
 
-      const wtLinhas = worktreesOutput.split('\n').filter((l) => l.trim());
+      const mergeadas = branchesMergeadas(principal);
 
-      for (const linha of wtLinhas) {
-        // Formato: "worktree /path" ou "worktree /path (detached)"
-        const match = linha.match(/^worktree\s+(.+?)(?:\s|$)/);
-        if (!match) continue;
+      // Parse em blocos: cada bloco é separado por linha vazia
+      const blocos = worktreesOutput.split('\n\n').filter((b) => b.trim().length > 0);
 
-        const wtPath = match[1].trim();
-        // Excluir o principal (já processado acima) — comparação normalizada,
-        // ver normalizarCaminho() no topo do arquivo.
+      for (const bloco of blocos) {
+        const linhasBloco = bloco.split('\n').filter((l) => l.trim().length > 0);
+        if (linhasBloco.length === 0) continue;
+
+        // Extrair informações do bloco
+        let wtPath;
+        let branch;
+        let ehDetached = false;
+        let ehPrunable = false;
+
+        for (const linha of linhasBloco) {
+          if (linha.startsWith('worktree ')) {
+            const match = linha.match(/^worktree\s+(.+?)(?:\s|$)/);
+            if (match) {
+              wtPath = match[1].trim();
+            }
+          } else if (linha.startsWith('branch ')) {
+            // Extrair o nome da branch de refs/heads/<name>
+            const match = linha.match(/^branch\s+refs\/heads\/(.+?)(?:\s|$)/);
+            if (match) {
+              branch = match[1].trim();
+            }
+          } else if (linha.startsWith('detached')) {
+            ehDetached = true;
+          } else if (linha.startsWith('prunable')) {
+            ehPrunable = true;
+          }
+        }
+
+        // Ignorar worktrees detached ou prunable
+        if (ehDetached || ehPrunable) continue;
+
+        // Ignorar se não temos path
+        if (!wtPath) continue;
+
+        // Excluir o principal (já processado acima) — comparação normalizada
         if (normalizarCaminho(wtPath) === normalizarCaminho(principal)) continue;
 
-        // Pegar a branch da worktree
-        let branch;
-        try {
-          branch = execFileSync('git', ['symbolic-ref', '--short', 'HEAD'], {
-            cwd: wtPath,
-            encoding: 'utf8',
-            timeout: 3000,
-            stdio: ['ignore', 'pipe', 'ignore'],
-          }).trim();
-        } catch {
-          // detached HEAD, skip
-          continue;
-        }
-
+        // Ignorar se não temos branch
         if (!branch) continue;
 
-        // Verificar se branch é ancestral de origin/main
-        let estaEmMain = false;
-        try {
-          execFileSync('git', ['merge-base', '--is-ancestor', branch, 'origin/main'], {
-            cwd: principal,
-            timeout: 3000,
-            stdio: ['ignore', 'ignore', 'ignore'],
-          });
-          estaEmMain = true;
-        } catch {
-          // exit code ≠ 0, branch não está em origin/main
-        }
-
-        if (estaEmMain) {
+        // Verificar se branch está no set de mergeadas
+        if (mergeadas.has(branch)) {
           resultado.push(`${wtPath} já em origin/main`);
         }
       }

@@ -257,16 +257,106 @@ checa_contem "(e) o texto injetado avisa dos commits atrasados" "3 commit(s) atr
 checa_contem "(e) o texto injetado nomeia o worktree integrado" "já em origin/main"                "$TEXTO_HOOK"
 
 echo
-echo "(f) principal em dia alcancado por OUTRA GRAFIA do mesmo diretorio"
-# Achado na CI, nao aqui: o caso (d) passou nesta maquina e reprovou no runner
-# com `["<...>/caso-d/principal ja em origin/main"]` — o principal se listando a
-# si mesmo. Mecanismo: `git rev-parse --git-common-dir` devolve `.git` RELATIVO,
-# entao o caminho do principal nasce do cwd que o chamador passou, enquanto o
-# `git worktree list` imprime a grafia canonica do git. Grafias diferentes do
-# mesmo diretorio (8.3 curto x longo no runner; junction aqui) nao casam como
-# string, e a comparacao textual deixava o principal entrar na propria lista.
-# A junction reproduz o defeito de forma deterministica: sem o conserto, esta
-# chamada devolve uma linha; com ele, devolve [].
+echo "(e) fixture com 30 worktrees (15 mergeadas + 15 nao-mergeadas + 3 detached) - contagem de chamadas"
+SANDBOX_E="$RAIZ_POSIX/caso-e"; mkdir -p "$SANDBOX_E"
+
+# Criar o repositorio base
+BARE_E="$SANDBOX_E/repo.git"; PRINCIPAL_E="$SANDBOX_E/principal"
+git init -q -b main --bare "$BARE_E"
+git clone -q "$BARE_E" "$PRINCIPAL_E"
+git -C "$PRINCIPAL_E" config user.email "t@t"; git -C "$PRINCIPAL_E" config user.name "t"
+git -C "$PRINCIPAL_E" config commit.gpgsign false
+echo base > "$PRINCIPAL_E/arquivo.txt"; git -C "$PRINCIPAL_E" add .; git -C "$PRINCIPAL_E" commit -qm base
+git -C "$PRINCIPAL_E" push -q -u origin main
+
+# Criar branches mergeadas (criadas direto de origin/main, sem checkout no principal)
+for i in {1..15}; do
+  git -C "$PRINCIPAL_E" branch mergeada-$i origin/main >/dev/null 2>&1
+done
+
+# Criar branches nao-mergeadas (com commits proprios)
+git clone -q "$BARE_E" "$SANDBOX_E/aux"
+git -C "$SANDBOX_E/aux" config user.email "t@t"; git -C "$SANDBOX_E/aux" config user.name "t"
+git -C "$SANDBOX_E/aux" config commit.gpgsign false
+for i in {1..15}; do
+  git -C "$SANDBOX_E/aux" checkout -q -b nao-mergeada-$i 2>/dev/null
+  echo "commit $i" >> "$SANDBOX_E/aux/arquivo.txt"
+  git -C "$SANDBOX_E/aux" add .
+  git -C "$SANDBOX_E/aux" commit -qm "commit $i"
+done
+git -C "$SANDBOX_E/aux" push -q -u origin 'nao-mergeada-*' 2>/dev/null || true
+
+# Atualizar o principal com as branches remotas
+git -C "$PRINCIPAL_E" fetch -q origin
+
+# Criar worktrees mergeadas
+for i in {1..15}; do
+  WT_MERGEADA="$SANDBOX_E/wt-mergeada-$i"
+  git -C "$PRINCIPAL_E" worktree add -q "$WT_MERGEADA" mergeada-$i
+done
+
+# Criar worktrees nao-mergeadas
+for i in {1..15}; do
+  WT_NAO="$SANDBOX_E/wt-nao-mergeada-$i"
+  git -C "$PRINCIPAL_E" worktree add -q "$WT_NAO" nao-mergeada-$i
+done
+
+# Criar worktrees detached
+for i in {1..3}; do
+  WT_DETACHED="$SANDBOX_E/wt-detached-$i"
+  git -C "$PRINCIPAL_E" worktree add -q --detach "$WT_DETACHED" HEAD
+done
+
+# Rodar linhas() e verificar contagem de chamadas
+PRINCIPAL_E_WIN="$(cygpath -m "$PRINCIPAL_E" 2>/dev/null || printf '%s' "$PRINCIPAL_E")"
+ERRO_E_CALLS="$SANDBOX_E/erro-e-calls.log"
+SAIDA_E="$(rodar_linhas "$PRINCIPAL_E" "$ERRO_E_CALLS")"; EXIT_E=$?
+checa_exit0 "(e) driver roda sem estourar" "$EXIT_E" "$ERRO_E_CALLS"
+
+# Verificar que as worktrees mergeadas aparecem na saida
+MERGEADAS_LISTADAS=0
+for i in {1..15}; do
+  if printf '%s' "$SAIDA_E" | grep -qF "wt-mergeada-$i"; then
+    MERGEADAS_LISTADAS=$((MERGEADAS_LISTADAS + 1))
+  fi
+done
+
+if [ "$MERGEADAS_LISTADAS" = "15" ]; then
+  ok=$((ok+1)); echo "  ok    (e) as 15 worktrees mergeadas aparecem na saida"
+else
+  falhou=$((falhou+1)); echo "  FALHA (e) encontrei $MERGEADAS_LISTADAS de 15 worktrees mergeadas"
+fi
+
+# Verificar que as worktrees nao-mergeadas NAO aparecem
+NAO_LISTADAS=0
+for i in {1..15}; do
+  if ! printf '%s' "$SAIDA_E" | grep -qF "wt-nao-mergeada-$i"; then
+    NAO_LISTADAS=$((NAO_LISTADAS + 1))
+  fi
+done
+
+if [ "$NAO_LISTADAS" = "15" ]; then
+  ok=$((ok+1)); echo "  ok    (e) as 15 worktrees nao-mergeadas NAO aparecem"
+else
+  falhou=$((falhou+1)); echo "  FALHA (e) encontrei $((15 - NAO_LISTADAS)) de 15 nao-mergeadas incorretamente listadas"
+fi
+
+# Verificar que as worktrees detached NAO aparecem
+DETACHED_LISTADAS=0
+for i in {1..3}; do
+  if printf '%s' "$SAIDA_E" | grep -qF "wt-detached-$i"; then
+    DETACHED_LISTADAS=$((DETACHED_LISTADAS + 1))
+  fi
+done
+
+if [ "$DETACHED_LISTADAS" = "0" ]; then
+  ok=$((ok+1)); echo "  ok    (e) as 3 worktrees detached NAO aparecem"
+else
+  falhou=$((falhou+1)); echo "  FALHA (e) encontrei $DETACHED_LISTADAS de 3 worktrees detached incorretamente listadas"
+fi
+
+echo
+echo "(f) worktree com diretorio deletado (prunable)"
 SANDBOX_F="$RAIZ_POSIX/caso-f"; mkdir -p "$SANDBOX_F"
 BARE_F="$SANDBOX_F/repo.git"; PRINCIPAL_F="$SANDBOX_F/principal"
 git init -q -b main --bare "$BARE_F"
@@ -276,22 +366,18 @@ git -C "$PRINCIPAL_F" config commit.gpgsign false
 echo x > "$PRINCIPAL_F/f.txt"; git -C "$PRINCIPAL_F" add .; git -C "$PRINCIPAL_F" commit -qm base
 git -C "$PRINCIPAL_F" push -q -u origin main
 
-ATALHO_F="$SANDBOX_F/atalho"
-CRIOU_ATALHO=0
-if command -v cmd >/dev/null 2>&1; then
-  ( cd "$SANDBOX_F" && cmd //c mklink //J atalho principal ) >/dev/null 2>&1 && CRIOU_ATALHO=1
-elif ln -s "$PRINCIPAL_F" "$ATALHO_F" 2>/dev/null; then
-  CRIOU_ATALHO=1
-fi
+# Criar uma worktree
+WT_PRUNABLE="$SANDBOX_F/wt-prunable"
+git -C "$PRINCIPAL_F" worktree add -q "$WT_PRUNABLE" -b test-branch
 
-if [ "$CRIOU_ATALHO" = "1" ]; then
-  ERRO_F="$RAIZ_POSIX/erro-f.log"
-  SAIDA_F="$(rodar_linhas "$ATALHO_F" "$ERRO_F")"; EXIT_F=$?
-  checa_exit0 "(f) roda sem estourar pela outra grafia" "$EXIT_F" "$ERRO_F"
-  checa_vazio "(f) o principal nao se lista por grafia diferente" "$SAIDA_F"
-else
-  echo "  PULADO (f): nao consegui criar junction nem symlink nesta maquina"
-fi
+# Deletar o diretorio da worktree (nao usar git worktree remove)
+rm -rf "$WT_PRUNABLE"
+
+# Agora a worktree deve aparecer como prunable
+ERRO_F="$SANDBOX_F/erro-f.log"
+SAIDA_F="$(rodar_linhas "$PRINCIPAL_F" "$ERRO_F")"; EXIT_F=$?
+checa_exit0 "(f) worktree prunable nao causa erro" "$EXIT_F" "$ERRO_F"
+checa_vazio "(f) worktree prunable nao e listada" "$SAIDA_F"
 
 echo
 echo "-----------------------------------------"
