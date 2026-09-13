@@ -38,8 +38,11 @@ echo
 
 FONTE=".claude-plugin/plugin.json"
 VERSAO="$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' "$FONTE" | head -1 | sed 's/.*"\([^"]*\)"$/\1/')"
+MANIFESTO_CODEX=".codex-plugin/plugin.json"
+VERSAO_CODEX="$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' "$MANIFESTO_CODEX" | head -1 | sed 's/.*"\([^"]*\)"$/\1/')"
 
 echo "  fonte: $FONTE -> $VERSAO"
+echo "  manifesto Codex: $MANIFESTO_CODEX -> $VERSAO_CODEX"
 echo
 
 # 1. A fonte tem que ser um semver de verdade. Sem isso as comparacoes abaixo
@@ -50,7 +53,12 @@ else
   falhou=$((falhou+1)); echo "  FALHA a versao da fonte nao e um semver (veio '$VERSAO')"
 fi
 
-# 2. TODO semver que aparece no README tem que ser a versao corrente.
+# 2. O manifesto Codex compartilha a identidade e a versao da fonte Claude.
+#    Ele nao e uma segunda fonte: qualquer divergencia entre os hosts precisa
+#    barrar a entrega antes que um deles seja instalado com bytes diferentes.
+igual "manifesto Codex na mesma versao da fonte Claude" "$VERSAO_CODEX" "$VERSAO"
+
+# 3. TODO semver que aparece no README tem que ser a versao corrente.
 #    A varredura e cega de proposito: ela nao sabe quantas vezes a versao
 #    aparece nem onde, entao um badge novo, ou um trecho de texto que cite a
 #    versao, entra na checagem sozinho. Foi a ausencia disso que deixou o badge
@@ -81,13 +89,13 @@ else
   echo "$DIVERGENTES" | sed 's/^/         linha /'
 fi
 
-# 3. O badge tem que existir. Sem esta assercao, apagar o badge faria a checagem
-#    2 passar por vacuidade — zero divergencia porque zero ocorrencia. Gate que
+# 4. O badge tem que existir. Sem esta assercao, apagar o badge faria a checagem
+#    3 passar por vacuidade — zero divergencia porque zero ocorrencia. Gate que
 #    passa por ausencia de dado e a armadilha que ja mordeu este repo antes.
 BADGE="$(grep -c "badge/vers%C3%A3o-${VERSAO}-" README.md | tr -d ' \r\n' || echo 0)"
 igual "o badge de versao existe no README e aponta para $VERSAO" "$BADGE" "1"
 
-# 4. Se o marketplace.json declarar versao um dia, ela entra na conta sozinha.
+# 5. Se o marketplace.json declarar versao um dia, ela entra na conta sozinha.
 if [ -f .claude-plugin/marketplace.json ]; then
   MKT="$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' .claude-plugin/marketplace.json | head -1 | sed 's/.*"\([^"]*\)"$/\1/')"
   if [ -n "$MKT" ]; then
