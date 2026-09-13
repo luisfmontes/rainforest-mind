@@ -20,14 +20,8 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-09-12",
-    "em_voo": [
-      {
-        "agente": "executar_t4_version_112",
-        "tarefa": "T4: comparar manifestos Claude e Codex no portao global de versao",
-        "desde": "2026-09-12T23:55:00-03:00"
-      }
-    ],
-    "tarefas_ok": 3,
+    "em_voo": [],
+    "tarefas_ok": 4,
     "tarefas": 9,
     "em": "2026-09-12",
     "carimbos": [
@@ -51,6 +45,13 @@
         "iteracao": 1,
         "sessao": "desconhecida",
         "ts": "2026-09-13T02:39:16.131Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "52aed192fa8714b53a768c817d64407bc0c6788e",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-13T02:53:16.093Z"
       }
     ],
     "pendentes": []
