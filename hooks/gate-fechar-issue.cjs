@@ -88,7 +88,7 @@ function corpoDeHeredoc(cmd, i) {
   // fechamento, e a linha seguinte é comando novo (terceira revisão do
   // zerar-issues-3, 2026-09-13: `cat <<<bar\ngh issue close 12` era lido como
   // heredoc de delimitador `<bar`, que nunca fecha, e o `gh` virava corpo).
-  if (cmd[i + 2] === '<') return null;
+  if (cmd[i + 2] === '<' || (i > 0 && cmd[i - 1] === '<')) return null;
 
   let j = i + 2;
   const tiraTabs = cmd[j] === '-';
@@ -321,6 +321,14 @@ function segmentosParaGate(cmd) {
       // rodar, e o caso PowerShell do achado nunca disparava.
       if (atual.trim()) segmentos.push(atual);
       atual = "";
+      continue;
+    }
+    if (c === "<" && cmd[i + 1] === "<" && cmd[i + 2] === "<") {
+      // `<<<` é here-string: consome os três de uma vez, senão o segundo e o
+      // terceiro `<` seriam lidos como um `<<` de heredoc (terceira revisão
+      // do zerar-issues-3, 2026-09-13). O texto segue como qualquer palavra.
+      atual += "<<<";
+      i += 2;
       continue;
     }
     if (c === "<" && cmd[i + 1] === "<") {
