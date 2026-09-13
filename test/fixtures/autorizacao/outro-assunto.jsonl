@@ -1,0 +1,2 @@
+{"type":"queue-operation","operation":"enqueue","timestamp":"2026-09-12T13:00:00.000Z","sessionId":"<session-id>","content":"autorizo subagentes"}
+{"type":"user","message":{"role":"user","content":"nao autorizo mexer no meu ambiente"},"uuid":"<uuid>","timestamp":"2026-09-12T14:00:00.000Z","origin":{"kind":"human"},"sessionId":"<session-id>","version":"2.1.269"}

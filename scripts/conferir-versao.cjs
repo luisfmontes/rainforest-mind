@@ -306,7 +306,15 @@ function medir(base, teto) {
   if (!cabeca) {
     return { medivel: false, motivo: `'${base}' nao resolve para um commit` };
   }
-  const bruto = git(["rev-list", "--count", `${bump}..${cabeca}`]);
+  // `--first-parent`: o acumulo que interessa e o desta branch, nao o da main.
+  // Sem isso, mesclar `origin/main` numa branch aberta joga para dentro da
+  // contagem commits que ja SAIRAM sob a versao deles. Em 13/09/2026 esta
+  // medicao recusou um `fechar` com "6 commits desde o bump, o teto e 5" tendo
+  // a branch so 4 seus: os outros dois vieram no merge, e um deles era o
+  // proprio commit "Versao 1.12.1" -- o bump de outra release contado como
+  // acumulo desde o meu. Quem mescla a main para ficar em dia era punido por
+  // isso, que e o contrario do que o teto quer ensinar.
+  const bruto = git(["rev-list", "--count", "--first-parent", `${bump}..${cabeca}`]);
   if (bruto === null) {
     return { medivel: false, motivo: `nao consegui contar ${bump.slice(0, 7)}..${base}` };
   }

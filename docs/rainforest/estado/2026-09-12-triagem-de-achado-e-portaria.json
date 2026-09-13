@@ -1,0 +1,141 @@
+{
+  "slug": "2026-09-12-triagem-de-achado-e-portaria",
+  "titulo": "Triagem de achado (defeito != ideia) e portaria fora do fluxo",
+  "criado_em": "2026-09-12",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-12-triagem-de-achado-e-portaria.md",
+    "em": "2026-09-12"
+  },
+  "plano": {
+    "status": "ok",
+    "doc": "docs/rainforest/planos/2026-09-12-triagem-de-achado-e-portaria.md",
+    "em": "2026-09-12"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-12",
+    "tarefas": 10,
+    "tarefas_ok": 10,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "D7 do testa-contexto-sessao.sh (contrato NUCLEO_ESPERADO)",
+        "detalhe": "NUCLEOS_MAX_BYTES: 6000 -> 5600 em hooks/lib/contexto-sessao.cjs. Baseline 100.640 ms exit 0 -> mutacao exit 1, fonte restaurado."
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "D7 do testa-contexto-sessao.sh (contrato NUCLEO_ESPERADO)",
+        "detalhe": "'**conserta na hora**' -> '**conserta depois**' no nucleo da regra 6 em skills/rainforest-mind/SKILL.md. Baseline 75.558 ms exit 0 -> mutacao exit 1, fonte restaurado."
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "caso do ponteiro de elaboracao no testa-contexto-sessao.sh",
+        "detalhe": "'e o numero com dois digitos' -> 'e o numero da regra' em hooks/lib/contexto-sessao.cjs. Baseline 73.930 ms exit 0 -> mutacao exit 1, fonte restaurado."
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "tarefa so reescreve references/regra-06.md, que e texto lido por humano e por sessao que decidiu abrir o arquivo; nao ha comportamento a inverter. O teto de bytes do arquivo e conferido pela tarefa 1."
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "relato de subagente citando a frase nao abre o portao",
+        "detalhe": "'if (vozDoUsuario(obj) === null)' -> 'if (false)' em hooks/lib/autorizacao-usuario.cjs, desligando a porta que so aceita a voz do usuario. testa-portaria-autorizacao.cjs foi de 46 ok/0 falha para 45 ok/1 falha, exit 1. Fonte restaurado e verde de novo."
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "escreve-true-sem-worktree-continua-negado (caso 15)",
+        "detalhe": "'isolamento !== \"worktree\"' -> false em hooks/portaria.cjs: o caso 15 passou a sair exit 0 e a bateria caiu para 44 ok/2 falha. Aplicada e revertida pelo tester, com git status limpo depois."
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "caso 11 (a assercao do campo via no log de allow)",
+        "detalhe": "'if (autorizacaoValida) { extra.via = ... }' -> 'if (false)' em hooks/portaria.cjs derrubou a assercao do via. Mais a mutacao da checagem de 'name', que derrubou o caso 16. Aplicadas e revertidas pelo tester."
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "Checagem 1 do --lint (agente declarado sem arquivo, fora dos NATIVOS_DO_HARNESS)",
+        "detalhe": "'\"Explore\": {' -> '\"Explore-mutado\": {' em .rainforest/agentes.json. Baseline 224 ms exit 0 -> mutacao 279 ms exit 1. ACHADO: a bateria que o PLANO nomeou para esta tarefa (node hooks/testa-portaria-lint.cjs) ficou VERDE sob a mesma mutacao — ela nao exercita o manifesto real. A prova valida usou 'node hooks/portaria.cjs --lint'. Erro na escrita do plano, pego pela catraca."
+      },
+      {
+        "tarefa": 9,
+        "resultado": "n/a",
+        "motivo": "a entrega e a Issue #241, um registro externo pedindo decisao do usuario; nao ha codigo com comportamento a inverter."
+      },
+      {
+        "tarefa": 10,
+        "resultado": "n/a",
+        "motivo": "a escrita e do scripts/ideias.cjs, que ja tem provas proprias (backup, gravacao atomica, conferencia byte a byte das 392 linhas nao-alvo) e reverte com exit != 0 se qualquer uma falhar."
+      }
+    ],
+    "nota": "As 10 tarefas do plano fecharam, todas conferidas rodando o artefato real, nunca pelo relato do agente. Seis defeitos apareceram so na conferencia, nenhum no relato: negacao sem acento lida como autorizacao; a cauda de 1 MB apagando a concessao (transcript de 2.070.974 B, concessao no byte 470.903, janela comecando no 1.022.398); texto de maquina (tool_result, task-notification) contando como voz do usuario, que na direcao inversa seria escalada de privilegio por conteudo; tres stubs em agents/ que teriam virado agentes publicados do plugin; bateria verde com o contrato NUCLEO_ESPERADO alterado e nao commitado; e um 'git commit --amend -F' sem 'git add', que deixou no commit a versao do regra-06.md com historia inventada sobre o incidente. A D7 foi corrigida dentro do proprio design durante o estagio plano, quando a medicao mostrou que nao existe manifesto padrao e que a portaria roda so neste repositorio; a decisao maior virou D10 e a Issue #241, fora deste fluxo.",
+    "issues": "#239, #240, #241",
+    "comando": "node hooks/testa-portaria-autorizacao.cjs && bash hooks/testa-contexto-sessao.sh && node scripts/orcamento.cjs",
+    "saida": "== resultado: 46 ok, 0 falha(s) == / todos os casos: OK  |  ok: 277   falhou: 0  |  Total: 14378 B, exit 0 sem aviso de folga",
+    "em": "2026-09-12"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "ea78f6d4e896fc1e5d3205bdd606ddeae1156acd",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-09-12-triagem-de-achado-e-portaria.json"
+      ]
+    },
+    "rodadas": 7,
+    "confirmacoes": 3,
+    "veredito": "nada bloqueante",
+    "achados_reais_por_rodada": [
+      5,
+      4,
+      4,
+      2,
+      3,
+      3,
+      0
+    ],
+    "observacao": "As rodadas 3 a 6 acharam regressoes introduzidas pelos proprios consertos da rodada anterior, sempre na mesma funcao (temAutorizacaoPrincipal) e sempre na direcao do falso negativo. A rodada 6 terminou REMOVENDO a regra que as causava, em vez de refina-la. O ultimo commit (82ab605c) implementa a sugestao textual do proprio revisor (lookbehind de largura fixa para variavel), medida nos dois sentidos; nao foi submetida a uma 8a confirmacao por ser a recomendacao dele.",
+    "ferramenta_nova": "scripts/conferir-cobertura-fixtures.cjs - cobertura por fixture, com bateria propria (20 casos) e catraca de mutacao sobre si mesmo (6 vermelhas). Achou 3 fixtures tautologicas, 2 lacunas de mutante e 3 mutantes com alvo podre que a catraca agregada nao via.",
+    "bordas_aceitas": [
+      "pergunta citada no fim da frase e recusada: indistinguivel, letra a letra, de uma pergunta de verdade",
+      "autorizo uso de sub agentes (preposicao antes) e recusado: a forma com espaco so vale logo depois do verbo",
+      "autorizo e subagentes separadas por ENTER no meio da frase",
+      "turno que concede e nega na mesma linha nega, nas duas ordens"
+    ],
+    "achados": 0,
+    "base": "a338dd02ad495f87a66d84af2ab24eab3d2660b8",
+    "head": "ea78f6d4e896fc1e5d3205bdd606ddeae1156acd",
+    "plano_emendado": "tarefas 1,2,3 ganharam hooks/testa-contexto-sessao.sh; a tarefa 5 trocou a fixture unica pela pasta test/fixtures/autorizacao/; entrou a tarefa 11 (catraca de cobertura por fixture). Quem pegou as omissoes foi o proprio portao do marcar.",
+    "em": "2026-09-13"
+  },
+  "verificar": {
+    "status": "ok",
+    "tarefas": 11,
+    "tarefas_ok": 11,
+    "comando": "criterio de cada tarefa rodado contra o artefato real, um a um",
+    "saida": "T1 orcamento.cjs exit 0, 0 avisos de folga, NUCLEOS_MAX_BYTES=6000 | T2 nucleo da regra 6: true true 557 | T3 ponteiro cita dois digitos (06, 13, 17) e regra-06.md existe | T4 elaboracao: true true true | T5 transcript completo true, turno-reclamacao false | T6 despachos.jsonl com estagio=fora-de-fluxo e via=autorizacao-do-usuario, negacao cita 'sem estagio ativo' | T7 testa-portaria-autorizacao.cjs exit 0, 92 ok 0 falhas | T8 portaria.cjs --lint exit 0, Explore declarado | T9 gh issue view 241 state=OPEN, corpo com as quatro medicoes | T10 ideias.cjs conferir exit 0, status=colhida colhida_em=2026-09-12 resultado citando 239/240 | T11 testa-conferir-cobertura-fixtures.cjs 20 ok, conferir-cobertura-fixtures.cjs exit 0",
+    "criterio_corrigido": "T9 cobrava gh issue list --search 'portaria nivel do plugin', frase que nunca esteve no titulo real da Issue; rodado, devolvia []. A tarefa estava feita. Criterio apontava para um TEXTO em vez de um FATO, mesma podridao do literal 'Total: 15233 B' da tarefa 1. Trocado por gh issue view 241 --json state,body, corrigido no plano em 944a8db0 e rodado depois da troca.",
+    "nao_afrouxado": "nenhum criterio foi reescrito para caber no resultado; o unico alterado passou a cobrar MAIS (state mais as quatro medicoes, em vez de uma busca por frase)",
+    "em": "2026-09-13"
+  },
+  "fechar": {
+    "status": "ok",
+    "destino": "PR #246",
+    "url": "https://github.com/luisfmontes/rainforest-mind/pull/246",
+    "versao": "1.13.0",
+    "base": "a14ddb78",
+    "head": "a14ddb78",
+    "em": "2026-09-13"
+  }
+}
