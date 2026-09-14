@@ -36,8 +36,9 @@ Referência histórica confirmada: `codex/piloto-rainforest` em
 - O inventário do contrato vem do disco e valida todas as skills presentes;
   nenhuma constante fixa 19.
 - O cachebuster nunca entra no commit final, cuja versão é exatamente `1.13.2`.
-- Todo arquivo rastreado aparece byte a byte no cache; extras são recusados,
-  exceto a projeção Codex fechada de `commands/saude.md` definida em D11.
+- Todo arquivo rastreado fora da lista fechada de sete documentos de governança
+  da D9 aparece byte a byte no cache; extras são recusados, exceto a projeção
+  Codex fechada de `commands/saude.md` definida em D11.
 - Nenhum manifesto, hook ou payload Gemini é criado nesta entrega.
 - Nenhum push, merge, PR, release ou alteração na `main` ocorre sem aval
   explícito do usuário.
@@ -159,8 +160,9 @@ mutacao: n/a
   motivo: validação do artefato instalado fora do repositório; as mutações dos comportamentos persistentes já pertencem às tarefas 1 a 5.
 pronto quando: com o marketplace local apontando para esta raiz e ambos os
 manifestos exatamente em `1.13.2`, uma reinstalação limpa produz cache
-`1.13.2` em que todos os arquivos rastreados, inclusive
-`.codex-plugin/plugin.json`, existem com SHA-256 idêntico; nenhum extra é aceito
+`1.13.2` em que todos os arquivos rastreados fora da lista fechada de
+governança da D9, inclusive `.codex-plugin/plugin.json`, existem com SHA-256
+idêntico; nenhum extra é aceito
 fora de `.codex-plugin/migrated-command-skills/source-command-saude/SKILL.md`,
 projeção de `commands/saude.md` gerada pelo host e registrada com hash; numa sessão Codex nova, uma skill
 é invocável, `git status` e `git add -- "-A"` são permitidos, `git add "-A"` e
@@ -183,7 +185,7 @@ números do portão coincidem com as saídas registradas.
 
 ### 9. Fechar a execução local com todas as travas, sem publicar [tipo: teste]
 atende: D1, D2, D3, D4, D5, D6, D7, D8, D9, D10, D11
-arquivos: `docs/rainforest/estado/2026-09-12-multihost-sobre-1-11.json`, `docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md`
+arquivos: `docs/HANDOVER-CODEX.md`, `docs/rainforest/estado/2026-09-12-multihost-sobre-1-11.json`, `docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md`
 depende de: 8
 paralela: nao
 mutacao: n/a
@@ -192,7 +194,11 @@ pronto quando: com o commit candidato local, `bash hooks/testa-gate-staging-tota
 `bash scripts/testa-plugin-codex.sh`, `bash scripts/testa-versao.sh`,
 `node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-multihost-sobre-1-11`
 e `node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 068468fb956b8d606e9af1800aaa91dd399fdeb8 --head HEAD`
-terminam verdes; `git diff --name-only 068468fb...HEAD` contém somente os
+terminam verdes; a projeção do cache `1.13.2` contra o HEAD, excluindo somente
+os sete documentos de governança da D9, tem zero caminho ausente e zero SHA-256
+divergente, e o único extra continua sendo o derivado autorizado pela D11; o
+handover registra execução `9/9` e aponta `revisar` como próximo estágio;
+`git diff --name-only 068468fb...HEAD` contém somente os
 caminhos autorizados pelo plano; o estado registra a evidência por tarefa; e
 `git branch --show-current`, `git status --short` e a ausência de comandos de
 push/merge/release no portão demonstram que a entrega permanece somente na
