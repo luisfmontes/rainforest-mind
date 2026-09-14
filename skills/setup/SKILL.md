@@ -64,7 +64,42 @@ alguém. Diga isso antes de gravar, e deixe a decisão de versionar com ele.
 O padrão é `usuario` quando ele não disser. Não adivinhe `projeto` só porque a
 conversa começou dentro de um repositório.
 
+## A portaria de subagente não se liga — ela já está ligada
+
+Não há chave para ela na tabela acima, e isso é de propósito. Desde 2026-09-13 a
+portaria está registrada no `hooks/hooks.json` do **plugin**, com matcher
+`Task|Agent`: ela decide em toda sessão em que o plugin está habilitado, em
+qualquer repositório, que é o que a regra 10 sempre prometeu. Antes disso ela
+valia só no repositório do próprio plugin, e a regra 10 descrevia um portão que
+quase nunca existia.
+
+**Não há nada a instalar, e é isso que o usuário precisa ouvir.** O manifesto que
+ela lê vem embarcado no plugin, em `.rainforest/agentes.padrao.json`: repo sem
+manifesto próprio é o caso **normal**, não o caso negado.
+
+Um repositório que queira outra lista cria o próprio `.rainforest/agentes.json`,
+e ele **substitui o padrão por inteiro** — não soma. Diga "substitui", não
+"sobrescreve as chaves": o que está escrito no arquivo é o que vale, e um agente
+que ele não declarar não volta pelo padrão. É assim que um repo consegue
+*barrar* um agente; com soma, não conseguiria.
+
+O que o portão exige para admitir um despacho continua sendo manifesto **e**
+estágio ativo. Num repositório sem fluxo aberto não há estágio, e o caminho de lá
+é a autorização explícita do usuário na própria sessão — que dispensa o portão de
+estágio e **só** ele.
+
+Quando um despacho for negado, o stderr diz qual dos dois manifestos foi lido e
+de qual nível ele veio. Leia essa linha antes de propor mudança: metade das
+negações é o padrão embarcado decidindo num repo que ninguém configurou.
+
 ## O que este setup NÃO faz
+
+**Ele não instala manifesto de agentes.** O padrão vem embarcado no plugin (ver a
+seção acima). Se a portaria acusar `instalacao incompleta do rainforest-mind`,
+isso **não** é configuração faltando neste repositório: é o
+`.rainforest/agentes.padrao.json` ausente da instalação do plugin, e o conserto é
+atualizar ou reinstalar o plugin — nunca criar arquivo no repo do usuário para
+calar a mensagem.
 
 Ele não recomenda o que criar de automação no projeto — hooks, MCP, subagentes,
 skills novas. Isso tem dono oficial e é bom: a skill `claude-automation-recommender`,
