@@ -100,6 +100,11 @@
     "em": "2026-09-14"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "destino": "PR #255",
+    "url": "https://github.com/luisfmontes/rainforest-mind/pull/255",
+    "comando": "gh pr create --title ... --body-file pr.md",
+    "saida": "https://github.com/luisfmontes/rainforest-mind/pull/255",
+    "em": "2026-09-14"
   }
 }
