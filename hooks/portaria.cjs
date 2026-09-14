@@ -1231,8 +1231,17 @@ if (require.main === module) {
   if (process.argv[2] === "--lint") {
     // O default do lint acompanha o do runtime: o padrão embarcado. Um repo que
     // tenha o seu passa `--manifesto .rainforest/agentes.json` e linta o dele.
+    //
+    // `agentesDir` acompanha o manifesto, e os DOIS são absolutos do plugin.
+    // Achado no `revisar` de 2026-09-14: mover só o manifesto deixou o par
+    // incoerente — caminho relativo resolve contra `raizDoProjeto()` (abaixo),
+    // então `--lint` sem argumentos rodado de qualquer outro repositório leria o
+    // manifesto do PLUGIN e procuraria os `.md` no `agents/` do repo alheio,
+    // acusando os 12 agentes como "declarado no manifesto mas sem arquivo".
+    // Antes da mudança os dois eram relativos, e por isso coerentes; o defeito
+    // nasceu de mover um par pela metade.
     let manifestoPath = path.resolve(__dirname, "..", ".rainforest", "agentes.padrao.json");
-    let agentesDir = "agents";
+    let agentesDir = path.resolve(__dirname, "..", "agents");
 
     for (let i = 3; i < process.argv.length; i++) {
       if (process.argv[i] === "--manifesto" && i + 1 < process.argv.length) {

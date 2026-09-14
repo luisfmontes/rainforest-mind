@@ -81,9 +81,11 @@ decide. A forma do briefing e o encadeamento de vários despachos moram na skill
 
 ## A portaria — admissão por manifesto (fluxo 9)
 
-Subagente só roda se estiver declarado em `.rainforest/agentes.json` com o estágio ativo na sua lista. A decisão é tomada por código — hook `PreToolUse` (`hooks/portaria.cjs`) —, nunca por pergunta ao humano em runtime; exceção é editar o manifesto, e isso passa pelo `revisar`.
+Subagente só roda se estiver declarado no manifesto com o estágio ativo na sua lista. A decisão é tomada por código — hook `PreToolUse` (`hooks/portaria.cjs`) —, nunca por pergunta ao humano em runtime; exceção é editar o manifesto, e isso passa pelo `revisar`.
 
-O mecanismo inteiro — schema do manifesto, as sete decisões do fail-closed, o log de despacho, o modo `--lint`, o aceite do bloqueio e as duas portas da dívida do `escreve: false` — mora em `references/regra-10-portaria.md`.
+**Isto vale em toda sessão** com o plugin habilitado, não só no repositório dele (mudou em 2026-09-13). O manifesto é o `.rainforest/agentes.padrao.json` embarcado no plugin, ou o `.rainforest/agentes.json` do repo, que o **substitui por inteiro** quando existe.
+
+O mecanismo inteiro — schema do manifesto, as sete decisões do fail-closed, o log de despacho, o modo `--lint`, o aceite do bloqueio e as duas portas da dívida do `escreve: false` — mora em `references/regra-10-portaria.md`; o escopo, a precedência entre os dois manifestos e o destino do log, em `references/regra-10-portaria-escopo.md`.
 
 Os vigias headless carregam a versão resumida no `vigias/_comum.md`.
 

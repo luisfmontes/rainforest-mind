@@ -148,11 +148,40 @@ pronto quando: as duas saem exit 0 e cada uma cobre, com caso próprio: repo sem
 
 ### 7. Registro do escopo no `/setup` e na regra 10 [tipo: documentar]
 atende: D7
-arquivos: `skills/setup/SKILL.md`, `skills/rainforest-mind/references/regra-10-portaria.md`
+arquivos: `skills/setup/SKILL.md`, `skills/rainforest-mind/references/regra-10-portaria.md`, `skills/rainforest-mind/references/regra-10-portaria-escopo.md`, `skills/rainforest-mind/references/regra-10.md`
 depende de: 3
 paralela: não
 mutacao: n/a
   motivo: a entrega é texto de skill e de referência; inverter uma linha de prosa não muda veredito de bateria nenhuma. Quem falsifica este par é a tarefa 8, que mede o comportamento que o texto descreve.
+> **Correção de 2026-09-14, no `revisar`:** as adições ao
+> `regra-10-portaria.md` estouraram a catraca de `reference` — 10247 B viraram
+> 13342, contra teto de 10500. A catraca não é de estilo: ela existe para que
+> consultar uma regra custe menos de 3k tokens (D9/issue #73), e foi a varredura
+> das 115 baterias que a pegou, não o critério desta tarefa, que só cobrava
+> `grep`. A resposta é a da própria casa, registrada no cabeçalho do arquivo:
+> **partir**, como o `regra-10-portaria.md` nasceu do `regra-10.md`. O escopo, a
+> precedência entre os dois manifestos e o destino do log saem para
+> `regra-10-portaria-escopo.md`; o que fica é a regra operativa com ponteiro.
+> `regra-10.md` entra junto porque a frase dele — "declarado em
+> `.rainforest/agentes.json`" — apodreceu pela mesma mudança.
+>
+> **Folga de 19 B.** O `regra-10-portaria.md` fica a 10481 B de um teto de
+> 10500: a próxima linha que alguém acrescentar ali estoura de novo. É o preço
+> de não reescrever conteúdo histórico que este fluxo não veio mexer — e o
+> sibling existe agora justamente para receber o que crescer.
+
+> **Segundo achado do `revisar`:** o default do `--lint` ficou incoerente
+> consigo mesmo. A tarefa 2 mudou o manifesto default para o caminho absoluto do
+> padrão embarcado e deixou `agentesDir` como `"agents"`, relativo — e relativo
+> resolve contra `raizDoProjeto()`. Rodado de qualquer outro repositório,
+> `--lint` sem argumentos lia o manifesto do plugin e procurava os `.md` no
+> `agents/` alheio: medidos **9 erros** de "declarado no manifesto mas sem
+> arquivo" e **exit 1**, num manifesto correto. Antes da mudança os dois eram
+> relativos, e por isso coerentes; o defeito nasceu de mover um par pela metade.
+> Três casos novos em `hooks/testa-portaria-lint.cjs` (28 → 31), incluindo o
+> controle de que o veredito de fora é o mesmo de dentro; a mutação de volta
+> para `"agents"` mata os três.
+
 pronto quando: `grep -c 'agentes.padrao.json' skills/setup/SKILL.md` devolve ≥1; a seção "O que este setup NÃO faz" diz que ele **não instala** manifesto porque o padrão vem embarcado; e `regra-10-portaria.md` deixa de dizer que a portaria depende de registro no `settings.json` do projeto
 
 ### 8. Fechar o critério da #241 com o fato, não com a frase [tipo: verificar]

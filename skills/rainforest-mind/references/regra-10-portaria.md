@@ -10,40 +10,7 @@ Subagente só roda se estiver declarado no manifesto com o estágio ativo na sua
 
 > **Regra 10 (reescrita):** Subagente só roda se estiver declarado no manifesto e o estágio ativo constar na sua lista. A portaria decide por código; o humano nunca é perguntado em sessão. Exceção não existe em runtime — exceção é editar o manifesto, e edição de manifesto é mudança versionada que passa pelo `revisar`.
 
-## Onde a portaria vale, e qual manifesto ela lê (2026-09-13)
-
-**A portaria vale em toda sessão em que o plugin está habilitado.** Ela é
-registrada no `hooks/hooks.json` do **plugin**, com matcher `Task|Agent`.
-
-Até 2026-09-13 este arquivo dizia que ela dependia de registro no
-`.claude/settings.json` do projeto — e dizia certo sobre a implementação e errado
-sobre a regra. Registrada assim, ela valia **só no repositório do próprio
-plugin**, enquanto o núcleo da regra 10, injetado em toda sessão, prometia um
-portão em todo lugar. Era a opção (2) na prática e a (1) no texto. A decisão do
-usuário na Issue #241 foi subir a realidade até o texto, não encolher o texto até
-a realidade.
-
-**Dois níveis de manifesto, e o do repo substitui o padrão por inteiro:**
-
-1. `<repo>/.rainforest/agentes.json` — se existir, é **o** manifesto. Sozinho.
-2. `<plugin>/.rainforest/agentes.padrao.json` — o padrão embarcado, que responde
-   quando o repo não tem o próprio.
-
-**Substitui, não soma.** Merge apagaria a diferença entre *não declarei* e
-*declarei e tirei*, que é justamente a diferença que este portão decide: um repo
-que precise barrar um agente tem de conseguir barrá-lo, e com soma ele voltaria
-pelo padrão. Substituição também deixa o arquivo legível sozinho — o que está
-escrito nele é o que vale, sem simular a fusão de cabeça.
-
-**Repo sem manifesto próprio é o caso normal, não o caso negado.** A ausência que
-ainda nega é a do **padrão embarcado**, e ela não é decisão sobre agente nenhum:
-é instalação quebrada. Sai com exit 2 (o único código que barra), mensagem
-apontando para o plugin, e **nenhuma linha no log** — uma linha de `deny` afirmaria
-que houve decisão sobre aquele agente, e não houve.
-
-Toda negação por agente não declarado diz **qual** dos dois manifestos foi lido e
-de qual nível veio. Com dois níveis possíveis, "não consta no manifesto" sozinho
-manda conferir o arquivo errado.
+**Vale em toda sessão** com o plugin habilitado, e o manifesto do repo **substitui por inteiro** o padrão embarcado (2026-09-13): `regra-10-portaria-escopo.md`.
 
 **O manifesto** declara por agente:
 - `estagios`: em quais estágios do grafo (ex.: `["revisar"]`, `["design", "plano"]`) pode ser despachado.
@@ -62,23 +29,19 @@ Exemplo:
 
 **A FORMA do manifesto é conferida antes do conteúdo.** `escreve` tem de ser o booleano `false` — string `"false"`, ausente, ou qualquer outra coisa **nega**, com motivo instrutivo, no runtime e no `--lint`. `escreve: true` era negado até 2026-09-02, quando o mecanismo que faltava foi implementado — ver a emenda no fim deste arquivo. `estagios` ausente, não-lista ou vazio é **erro** no lint; lista que só contém estágio que nunca fica ativo (`arqueologia`) é **aviso**, porque o manifesto não está malformado, está inútil — o runtime negaria todo despacho daquele agente. Isto nasceu do crítico da rodada 5 da revisão: `escreve === false` é igualdade estrita, e qualquer outro valor desligava a checagem de escrita inteira, liberando em silêncio um agente que declarava `tools: Write, Edit, Bash` — com a linha de log idêntica à de um allow conferido.
 
-**Fail-closed, sempre com motivo.** A portaria nega quando: manifesto do repo inválido (JSON malformado, `versao` desconhecida ou `agentes` que não é objeto) — inválido **nega**, não cai no padrão, senão o repo ganharia mais agentes do que declarou; padrão embarcado ausente (instalação quebrada, sem linha no log); agente não declarado, sem estágio ativo (nenhum fluxo aberto que case com a branch), estágio ativo fora da lista `estagios` do agente, ou `escreve: false` mas o arquivo `agents/<nome>.md` declara tools fora da allowlist read-only (`Read`, `Grep`, `Glob`). Toda negação sai com motivo não vazio — negação muda é bug.
+**Fail-closed, sempre com motivo.** A portaria nega quando: manifesto do repo inválido — **nega, não cai no padrão**, senão o repo ganharia agentes que não declarou; agente não declarado, sem estágio ativo (nenhum fluxo aberto que case com a branch), estágio ativo fora da lista `estagios` do agente, ou `escreve: false` mas o arquivo `agents/<nome>.md` declara tools fora da allowlist read-only (`Read`, `Grep`, `Glob`). Toda negação sai com motivo não vazio — negação muda é bug.
 
-**Log de despacho** — `<raiz de dados>/portaria/despachos.jsonl`, **fora do repositório**: append-only, uma linha JSON por decisão, aprovada ou negada. Cada linha é autocontida — legível isolada, sem precisar do resto do log para fazer sentido:
+**Log de despacho** — `<raiz de dados>/portaria/despachos.jsonl`, **fora do repositório** desde 2026-09-13 (raiz por `hooks/lib/raiz.cjs`; ver `-escopo.md`): append-only, uma linha JSON por decisão, aprovada ou negada. Cada linha é autocontida — legível isolada, sem precisar do resto do log para fazer sentido:
 ```json
 {"ts":"2026-08-31T14:02:11Z","repo":"<caminho>","agente":"revisor","estagio":"revisar","decisao":"allow","sessao":"<id>"}
 {"ts":"2026-08-31T14:05:47Z","repo":"<caminho>","agente":"executor","estagio":"revisar","decisao":"deny","motivo":"agente 'executor' não consta no manifesto","sessao":"<id>"}
 ```
 
-A raiz de dados é a que `hooks/lib/raiz.cjs` resolve — tipicamente `<home>/.rainforest`. **Saiu do repositório em 2026-09-13**, junto com a D1: com a portaria valendo em toda sessão, escrever no projeto criaria pasta não rastreada no `git status` de repositório alheio, e a regra 15 diz que ninguém altera o ambiente do usuário. O campo `repo` entrou no mesmo movimento — trilha que atravessa repositórios precisa dizer de qual ela fala.
+O log é evidência de primeira classe: responde "quem rodou, quando, onde, em qual estágio" com `cat`, e o recibo do fluxo 7 pode referenciá-lo. Falha ao gravar vai para o **stderr** sem mudar a decisão: não-fatal, mas não calada.
 
-**A divergência declarada:** repositório que tenha o próprio `.rainforest/` com marcador (`FOCO.md` ou `ideias.jsonl`) mantém o log lá. Não é escape: é um repo que **optou** por ter dados próprios do rainforest, e o log acompanha a raiz que governa.
+**Exceção é editar o manifesto.** Quem quer disparar agente não declarado edita o manifesto que vale ali (o do repo, ou o padrão do plugin se a mudança vale em todo lugar), passando a mudança pelo `revisar` — é o único jeito de aprovar novas declarações. Em runtime, sem edição no manifesto, não há pergunta ao humano.
 
-O log é evidência de primeira classe: responde "quem rodou, quando, em qual repositório, em qual estágio" com `cat`, e o recibo do fluxo 7 pode referenciá-lo. Falha ao gravar vai para o **stderr** e não muda a decisão — a escrita é não-fatal, mas não é calada: depois que o log virou a única trilha que atravessa repositórios, perder linha em silêncio é pior que não ter trilha, porque parece ter.
-
-**Exceção é editar o manifesto.** Quem quer disparar agente não declarado edita o `.rainforest/agentes.json` do repo (ou o `agentes.padrao.json` do plugin, se a mudança vale para todo lugar), passando a mudança pelo `revisar` — é o único jeito de aprovar novas declarações. Em runtime, sem edição no manifesto, não há pergunta ao humano.
-
-**Estado atual (Opção A: 2026-08-31).** Enquanto `escreve: false` for a única opção no schema e agentes escritores (`executor`, `documentador`, `resolvedor-de-build`, `tester`) não tiverem worktree próprio (extensão futura não implementada), esses quatro agentes não cabem no manifesto real — ficar de fora do manifesto significa serem bloqueados assim que o hook for registrado (então, no `.claude/settings.json` deste repo; desde 2026-09-13, no `hooks/hooks.json` do plugin). A Tarefa 9 do plano (fluxo 9) registra bloqueio explícito — o hook entra em produção (`main`) apenas com aceite por escrito do usuário de que sabe e aceitou que `executor`/`documentador`/`resolvedor-de-build`/`tester` param de rodar nesse instante, até a reavaliação futura de `escreve: true` com isolamento de worktree.
+**Estado atual (Opção A: 2026-08-31).** Enquanto `escreve: false` for a única opção no schema e agentes escritores (`executor`, `documentador`, `resolvedor-de-build`, `tester`) não tiverem worktree próprio (extensão futura não implementada), esses quatro agentes não cabem no manifesto real — ficar de fora do manifesto significa serem bloqueados assim que o hook for registrado (no `hooks/hooks.json` do plugin desde 2026-09-13). A Tarefa 9 do plano (fluxo 9) registra bloqueio explícito — o hook entra em produção (`main`) apenas com aceite por escrito do usuário de que sabe e aceitou que `executor`/`documentador`/`resolvedor-de-build`/`tester` param de rodar nesse instante, até a reavaliação futura de `escreve: true` com isolamento de worktree.
 
 **Aceite registrado (Luís, 2026-09-01).** A Opção A foi aceita: `executor`, `documentador`, `resolvedor-de-build` e `tester` param de rodar quando o hook entrar na `main`, até a reavaliação de `escreve: true` com worktree por filho. O manifesto real admite três — `revisor` e `auditor-de-seguranca` em `["revisar"]`, `planejador` em `["design", "plano"]`. `arqueologo` fica de fora porque escreve em `docs/rainforest/mapas/`; `depurador`, por não ter sido avaliado.
 
