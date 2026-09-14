@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: sensor
 /**
  * Confere duplicação byte a byte e homônimos de função dentro do plugin.
  *

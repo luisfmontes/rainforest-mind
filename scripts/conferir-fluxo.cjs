@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: sensor
 /**
  * Conferir fluxo — validação de fechamento entre design, plano e código.
  *

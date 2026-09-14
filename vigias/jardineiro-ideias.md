@@ -1,3 +1,5 @@
+<!-- @categoria: sensor -->
+
 Leia C:\Projetos\rainforest-mind\vigias\_comum.md e siga as instruções de lá —
 inclusive a regra de que **todo passo numerado aparece na mensagem**, nem que
 seja em meia linha.

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: sensor
 /**
  * Passada de LLM: transforma trecho de transcrito em observação gravada.
  *

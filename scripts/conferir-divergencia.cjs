@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: sensor
 /**
  * Confere, contra o RASTRO REAL de uma execução, que o `divergir-frames.js`
  * respeitou o isolamento que é o motivo dele existir.

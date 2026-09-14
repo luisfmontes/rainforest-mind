@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: sensor
 "use strict";
 /* Port de scripts/conferir-entrega.py — confere a entrega de um subagente, sem
  * dependencia externa (so biblioteca padrao do Node). Mesma interface de linha de

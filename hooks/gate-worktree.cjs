@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: guia
 /**
  * PreToolUse — barra subagente que escreve fora de worktree isolado.
  * Protege contra: escrita de subagente fora de worktree isolado via Write/Edit/Bash

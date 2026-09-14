@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: sensor
 /**
  * Catraca de cobertura por FIXTURE: para cada fixture, existe ao menos um
  * mutante que vira o veredito DELA?

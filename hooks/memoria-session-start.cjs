@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: guia
 // SessionStart hook: injeta as observações residentes da memória do rainforest.
 //
 // Este arquivo é o ADAPTADOR: só faz I/O (ler banco, imprimir).

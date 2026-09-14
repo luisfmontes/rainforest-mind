@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: guia
 // SessionStart hook: injeta as regras rainforest-mind + foco declarado em toda sessão.
 //
 // Este arquivo é o ADAPTADOR: só faz I/O (ler arquivo, sondar porta, imprimir).
