@@ -91,7 +91,13 @@
     "em": "2026-09-14"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash varrer.sh (glob da CI: scripts/testa-*.sh hooks/testa-*.sh) + node medir-241.cjs contra repo de teste recem-criado + node scripts/conferir-versao.cjs + bash scripts/testa-versao.sh",
+    "saida": "== 115 baterias ==\ntodas verdes.  #241 medido de novo contra a arvore final: despacho admitido (exit 0) em repo recem-criado sem manifesto e sem .rainforest; log SO na raiz resolvida, com repo == caminho do repo de teste; o repo de teste nao ganhou .rainforest e o git status --porcelain dele nao tem nada do rainforest (so o docs/ que a propria medicao criou para haver estagio ativo).  conferir-versao: ok versao 1.14.0, 6 commits desde o bump, teto nao se aplica (1.14.0 > origin/main 1.13.2); testa-versao.sh 4 ok/0.  Pasta de dados real do usuario conferida por inspecao ao fim: <home>/.rainforest/portaria nao existe.",
+    "catracas": "115/115 verdes; 7 mutacoes do plano exercitadas e todas matam a bateria correspondente",
+    "criterios": 9,
+    "criterios_ok": 9,
+    "em": "2026-09-14"
   },
   "fechar": {
     "status": "pendente"

@@ -39,8 +39,8 @@ depende de: nenhuma
 paralela: sim
 mutacao:
   arquivo: `.rainforest/agentes.padrao.json`
-  de: `"estagios": ["revisar"]` (do `revisor`)
-  para: `"estagios": []`
+  de: `"revisor": {`
+  para: `"revisor-que-nao-existe": {`
   bateria: `node hooks/testa-portaria-nucleo.cjs`
   fixture: caso do `revisor` admitido no estágio `revisar`
 pronto quando: `.rainforest/agentes.json` não existe mais e `git ls-files .rainforest/agentes.padrao.json` devolve o caminho; `node -e "const m=require('./.rainforest/agentes.padrao.json'); console.log(m.versao, Object.keys(m.agentes).length)"` devolve `1 12`; e `git check-ignore .rainforest/agentes.padrao.json` sai **1** (não ignorado)
@@ -52,9 +52,9 @@ depende de: 1
 paralela: não
 mutacao:
   arquivo: `hooks/portaria.cjs`
-  de: `path.resolve(__dirname, "..", ".rainforest", "agentes.padrao.json")`
-  para: `path.resolve(__dirname, "..", ".rainforest", "agentes.json")`
-  bateria: `node hooks/testa-portaria-manifesto.cjs` (tarefa 6)
+  de: `  const manifestoPadrao = path.resolve(__dirname, "..", ".rainforest", "agentes.padrao.json");`
+  para: `  const manifestoPadrao = path.resolve(__dirname, "..", ".rainforest", "agentes.json");`
+  bateria: `node hooks/testa-portaria-manifesto.cjs`
   fixture: caso "repo sem manifesto próprio usa o padrão embarcado"
 pronto quando: num diretório temporário **sem** `.rainforest/`, um despacho do `revisor` com estágio `revisar` ativo é **admitido** citando o padrão; no mesmo diretório com um `.rainforest/agentes.json` que declara só o `executor`, o mesmo despacho do `revisor` é **negado** com `não consta no manifesto` — provando substituição, não soma; e `node hooks/testa-portaria-lint.cjs` fecha, incluindo o caso de `--lint` sem argumentos rodado **de fora** do plugin
 
@@ -74,8 +74,8 @@ mutacao:
   arquivo: `hooks/hooks.json`
   de: `"matcher": "Task|Agent"`
   para: `"matcher": "Bash"`
-  bateria: `bash hooks/testa-portaria.sh`
-  fixture: caso do despacho de `Task` passando pela portaria
+  bateria: `node hooks/testa-portaria-portoes.cjs`
+  fixture: portão P6 (`registro:alcance`)
 pronto quando: `node hooks/testa-portaria-portoes.cjs` fecha o portão **P6** (`registro:alcance`); e `grep -c portaria .claude/settings.json` devolve **0**
 
 > **Correção de 2026-09-14, ao exercitar esta mutação:** ela **não matava nada**.
@@ -103,9 +103,9 @@ depende de: 2
 paralela: não
 mutacao:
   arquivo: `hooks/portaria.cjs`
-  de: a resolução por `resolverRaiz`
-  para: `const base = raiz;` (volta a gravar no projeto)
-  bateria: `node hooks/testa-portaria-log-fora-do-repo.cjs` (tarefa 6)
+  de: `    const r = resolverRaiz({ cwd: raiz });`
+  para: `    const r = { raiz: path.join(raiz, ".rainforest") };`
+  bateria: `node hooks/testa-portaria-log-fora-do-repo.cjs`
   fixture: caso "log de um repo sem `.rainforest` não cria pasta no repo"
 pronto quando: com `RFM_ROOT` apontando para caixa de areia, um despacho num repo temporário grava em `<RFM_ROOT>/portaria/despachos.jsonl` e **não** cria `<repo>/.rainforest/`; a linha gravada tem o campo `repo` com o caminho do repo temporário; e forçar erro de escrita (raiz apontando para caminho não-gravável) imprime a falha no **stderr** sem mudar o exit code da decisão
 
@@ -116,8 +116,8 @@ depende de: 2, 4
 paralela: não
 mutacao:
   arquivo: `hooks/portaria.cjs`
-  de: o `throw` de padrão embarcado ausente
-  para: `gravarDespacho(raiz, "deny", ...)` seguido de `negar(...)`
+  de: `    throw new Error(`
+  para: `    gravarDespacho(raiz, "deny", nomeAgente, estagioLog, sessao, "manifesto ausente"); negar(`
   bateria: `node hooks/testa-portaria-nucleo.cjs`
   fixture: caso "padrão embarcado ausente não grava linha no log"
 pronto quando: as quatro saem exit 0; `node hooks/testa-portaria-nucleo.cjs` tem um caso que apaga o padrão embarcado numa cópia e exige **exit 2 com stderr citando o padrão do plugin e NENHUMA linha nova no log** — não o exit code, que é 2 nos dois casos; e `testa-portaria-gitignore.cjs` passa a afirmar que o log **não aparece** em `git status --porcelain` do repo porque não é escrito lá, não porque está ignorado
@@ -165,8 +165,8 @@ depende de: 2, 4
 paralela: não
 mutacao:
   arquivo: `hooks/portaria.cjs`
-  de: o `negar` de manifesto de repo inválido
-  para: cair no padrão embarcado em vez de negar
+  de: `    negar("Manifesto JSON inválido");`
+  para: `    manifesto = JSON.parse(fs.readFileSync(manifestoPadrao, "utf8"));`
   bateria: `node hooks/testa-portaria-manifesto.cjs`
   fixture: caso "manifesto de repo inválido nega, não cai no padrão"
 pronto quando: as duas saem exit 0 e cada uma cobre, com caso próprio: repo sem manifesto usa o padrão; repo com manifesto substitui; manifesto de repo inválido nega (não cai no padrão); log vai para a raiz resolvida; repo com `.rainforest/FOCO.md` mantém o log local (a divergência declarada na D6)
