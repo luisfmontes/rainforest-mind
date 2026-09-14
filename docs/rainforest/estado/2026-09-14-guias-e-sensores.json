@@ -1,0 +1,28 @@
+{
+  "slug": "2026-09-14-guias-e-sensores",
+  "titulo": "Guias e sensores: cinco enxertos do Harness Engineering",
+  "criado_em": "2026-09-14",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-14-guias-e-sensores.md",
+    "em": "2026-09-14"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
