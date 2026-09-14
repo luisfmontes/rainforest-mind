@@ -1370,3 +1370,108 @@ nem alterou configuração externa ou o plugin instalado.
 Resultado: a execução não pode ser marcada `ok` nem 9/9 até o plano declarar a
 interface correta do `creep` e cobrir os dois mapas. A proibição de publicar ou
 mesclar na `main` sem aval explícito do usuário permanece integralmente ativa.
+
+## Tarefa 9 — iteração 2 após correção do critério
+
+### Veredito
+
+**OK, 9/9.** A iteração 1 acima permanece como evidência histórica do contrato
+vermelho. Nesta segunda iteração, o plano já traz a interface completa do
+`creep` e inclui os dois mapas nos caminhos da tarefa 8. Os cinco comandos
+literais terminaram com exit 0 e o checker confirmou os 18 caminhos cobertos.
+
+### Base e isolamento
+
+```text
+base/HEAD=1340850bdf2b81afac13c1759b59f3cad724a17a
+branch=codex/task9-final-113-i2
+worktree=C:\Projetos\rainforest-mind\.claude\worktrees\codex-task9-final-113-i2
+origin/main=068468fb956b8d606e9af1800aaa91dd399fdeb8
+origin_main_ancestor_exit=0
+git status --short=<vazio antes do registro do portão/estado>
+```
+
+No Windows, `C:\Program Files\Git\bin\bash.exe` foi executado como shell de
+login para disponibilizar os utilitários do Git for Windows. O preflight
+confirmou `/usr/bin/dirname`, `/usr/bin/mktemp`, `/usr/bin/grep`,
+`/mingw64/bin/git` e o Node instalado. Duas tentativas anteriores à bateria
+válida foram descartadas como falha de bootstrap: a primeira não tinha
+`/usr/bin` no PATH; a segunda já tinha os utilitários, mas o sandbox recusou a
+caixa efêmera em `%TEMP%`. A execução válida abaixo recebeu acesso somente para
+o teste criar e remover essa caixa temporária; nenhuma configuração persistente
+foi alterada.
+
+### Cinco comandos literais — execução válida
+
+```powershell
+bash hooks/testa-gate-staging-total.sh
+bash scripts/testa-plugin-codex.sh
+bash scripts/testa-versao.sh
+node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-multihost-sobre-1-11
+node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 068468fb956b8d606e9af1800aaa91dd399fdeb8 --head HEAD
+```
+
+```text
+CMD1: == resultado: 106 ok, 0 falha(s) ==
+cmd1_exit=0
+
+CMD2: manifesto, 19 skills, adaptador, allow/deny, falhas seguras, mutacao,
+      marketplace e Gemini adiado verdes
+cmd2_exit=0
+
+CMD3: ok: 5   falhou: 0
+cmd3_exit=0
+
+CMD4: ok: cobertura válida — 11 decisão(ões), 9 tarefa(s)
+cmd4_exit=0
+
+CMD5: ok: sem creep — 18 arquivo(s) coberto(s)
+cmd5_exit=0
+
+total=5 vermelhas=0
+```
+
+### Escopo do diff
+
+`git diff --name-only 068468fb956b8d606e9af1800aaa91dd399fdeb8...HEAD`
+retornou estes 18 caminhos:
+
+```text
+.agents/plugins/marketplace.json
+.codex-plugin/plugin.json
+docs/HANDOVER-CODEX.md
+docs/rainforest/design/2026-09-12-multihost-sobre-1-11.md
+docs/rainforest/estado/2026-09-12-multihost-sobre-1-11.json
+docs/rainforest/mapas/2026-09-12-multihost-sobre-1-11.md
+docs/rainforest/mapas/COBERTURA.md
+docs/rainforest/planos/2026-09-12-multihost-sobre-1-11.md
+docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md
+hooks/codex-gate-staging-total.cjs
+hooks/codex-gate-staging-total.json
+scripts/testa-plugin-codex.cjs
+scripts/testa-plugin-codex.sh
+scripts/testa-versao.sh
+skills/fechar/SKILL.md
+skills/modo-dev/SKILL.md
+skills/montar-corpus/SKILL.md
+skills/regua/SKILL.md
+```
+
+O resultado literal `ok: sem creep — 18 arquivo(s) coberto(s)` valida esse
+conjunto contra as nove tarefas do plano corrigido, incluindo os dois mapas na
+tarefa 8 e o design/plano como rastro intrínseco do fluxo.
+
+### Estado e ausência operacional de publicação
+
+O estado foi fechado por `scripts/estado.cjs` com `executar.status = ok`,
+`tarefas_ok = 9`, `tarefas = 9`, carimbo da tarefa 9 na base desta iteração,
+comando/saída da bateria e a matriz de mutação das nove tarefas. O próximo
+estágio informado foi `revisar`.
+
+A branch de entrega permaneceu em `codex/multihost-1.13` no commit
+`1340850bdf2b81afac13c1759b59f3cad724a17a`; a `main` permaneceu em
+`068468fb956b8d606e9af1800aaa91dd399fdeb8`. Nesta iteração não houve push,
+merge, PR, release, publicação, rebase, alteração de configuração externa ou
+mudança no plugin instalado. Ocorrências desses termos nos documentos são
+regras e exemplos, não comandos executados. A entrega continua aguardando aval
+explícito do usuário antes de qualquer publicação ou mesclagem na `main`.
