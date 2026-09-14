@@ -128,10 +128,17 @@
         "iteracao": 4,
         "sessao": "desconhecida",
         "ts": "2026-09-14T18:08:43.140Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "44ac4c2a02fe7aaf66518c6934afc618ba2a39e1",
+        "iteracao": 5,
+        "sessao": "desconhecida",
+        "ts": "2026-09-14T18:22:29.659Z"
       }
     ],
     "comando": "bash hooks/testa-gate-staging-total.sh; bash scripts/testa-plugin-codex.sh; bash scripts/testa-versao.sh; node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-multihost-sobre-1-11; node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 068468fb956b8d606e9af1800aaa91dd399fdeb8 --head HEAD",
-    "saida": "106 ok, 0 falhas; contrato Codex verde; versao 5/0; cobertura valida 11 decisoes/9 tarefas; sem creep 18 arquivos; projecao D9 696 arquivos, zero ausentes, zero SHA divergentes, um extra D11; handover aponta diretamente para revisar",
+    "saida": "106 ok, 0 falhas; contrato Codex verde; versao 5/0; cobertura valida 11 decisoes/9 tarefas; sem creep 18 arquivos; projecao D9 696 arquivos, zero ausentes, zero SHA divergentes, um extra D11; handover distingue revisoes a4ff25e e 4b153ced e aponta para revisar",
     "mutacao": [
       {
         "tarefa": 1,
@@ -183,17 +190,19 @@
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "4b153ced395d96d3dbd885ea5b77f75ffacb323a",
+      "head": "44ac4c2a02fe7aaf66518c6934afc618ba2a39e1",
       "caminhos_sujos": []
     },
     "achados": 1,
     "base": "068468fb956b8d606e9af1800aaa91dd399fdeb8",
-    "head": "4b153ced395d96d3dbd885ea5b77f75ffacb323a",
+    "head": "44ac4c2a02fe7aaf66518c6934afc618ba2a39e1",
     "pendentes": [
       "P2: remover do HANDOVER a instrucao de integrar T9 i3 ja ancestral do HEAD; seguir direto para revisar"
     ],
     "em": "2026-09-14",
-    "tentativas": 2
+    "tentativas": 3,
+    "achado": "P2: HANDOVER chama a primeira revisão a4ff25e de anterior, mas o estado registra uma segunda tentativa mais recente em 4b153ced com um único achado residual",
+    "liberado_em": "2026-09-14"
   },
   "verificar": {
     "status": "pendente"

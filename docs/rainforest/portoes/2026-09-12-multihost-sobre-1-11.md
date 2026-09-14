@@ -1679,3 +1679,84 @@ retomada diretamente para `revisar`. O estado registra a T9 iteração 4,
 Nenhum push, merge, PR, release, publicação, rebase, reinstalação, mudança no
 plugin instalado ou alteração de configuração externa foi executado. A `main`
 não foi tocada e continua protegida pela exigência de aval explícito do usuário.
+
+## Tarefa 9 — iteração 5, histórico das revisões
+
+### Veredito
+
+**OK, executar permanece 9/9.** O handover agora distingue as duas tentativas
+anteriores: a primeira, sobre `a4ff25e212905d9422bbe873ff380f71a34e2fca`,
+levantou dois achados tratados na T9 i3; a seguinte, sobre
+`4b153ced395d96d3dbd885ea5b77f75ffacb323a`, deixou um único achado residual,
+tratado na T9 i4. O próximo passo continua sendo uma nova revisão independente,
+e `revisar` permanece `reprovado` até ela acontecer.
+
+### Base e estado reaberto
+
+```text
+worktree=C:/Projetos/rainforest-mind/.claude/worktrees/codex-multihost-1.11
+branch=codex/multihost-1.13
+base/HEAD=44ac4c2a02fe7aaf66518c6934afc618ba2a39e1
+origin/main=068468fb956b8d606e9af1800aaa91dd399fdeb8
+revisar.status=reprovado
+revisar.tentativas=3
+```
+
+A terceira revisão reabriu `executar` exclusivamente porque o resumo inicial
+do handover chamava a revisão de `a4ff25e...` de “anterior” e omitia a tentativa
+posterior em `4b153ced...` com seu achado residual.
+
+### Projeção D9/D11 do cache instalado 1.13.2
+
+```text
+tracked_total=703
+governance_excluded=7
+projection_expected=696
+cache_total=703
+missing_count=0
+sha_divergent_count=0
+extra_count=1
+.codex-plugin/migrated-command-skills/source-command-saude/SKILL.md
+derived_sha256=321c30bcfda44ff56ad53fca7ef5c3b170987a3bd2bee646152af22aaf1dd339
+origin_sha256=f044c166ccbfaca6470e4090229011354b82d4007adc80a278581a6565f6a6f6
+```
+
+O único extra continua sendo a projeção D11 autorizada, derivada de
+`commands/saude.md`.
+
+### Cinco comandos literais
+
+Executados uma única vez, em sequência, com Git Bash como alias local ao
+processo:
+
+```powershell
+bash hooks/testa-gate-staging-total.sh
+bash scripts/testa-plugin-codex.sh
+bash scripts/testa-versao.sh
+node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-multihost-sobre-1-11
+node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 068468fb956b8d606e9af1800aaa91dd399fdeb8 --head HEAD
+```
+
+```text
+CMD1: == resultado: 106 ok, 0 falha(s) ==
+cmd1_exit=0
+CMD2: contrato Codex completo verde
+cmd2_exit=0
+CMD3: ok: 5   falhou: 0
+cmd3_exit=0
+CMD4: ok: cobertura válida — 11 decisão(ões), 9 tarefa(s)
+cmd4_exit=0
+CMD5: ok: sem creep — 18 arquivo(s) coberto(s)
+cmd5_exit=0
+total=5 vermelhas=0
+```
+
+### Estado e ausência de publicação
+
+O estado recebeu o quinto carimbo da T9, mantém `executar.status = ok` e
+`tarefas_ok = 9` de `9`, e preserva `revisar.status = reprovado` até nova
+revisão. O handover aponta diretamente para esse próximo estágio.
+
+Nenhum push, merge, PR, release, publicação, rebase, reinstalação, mudança no
+plugin instalado ou alteração de configuração externa foi executado. A `main`
+não foi tocada e continua protegida pela exigência de aval explícito do usuário.

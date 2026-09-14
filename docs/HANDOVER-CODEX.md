@@ -12,12 +12,15 @@ entrega, Claude e Codex estão comprovados. Gemini permanece explicitamente adia
 nenhum manifesto, hook ou payload Gemini foi criado.
 
 A versão entregue e instalada localmente é `1.13.2`. A execução das nove
-tarefas está verde (`9/9`). A revisão anterior, feita sobre
+tarefas está verde (`9/9`). A primeira revisão, feita sobre
 `a4ff25e212905d9422bbe873ff380f71a34e2fca`, foi reprovada por dois achados:
 o handover ainda descrevia a T9 como pendente e a igualdade do cache ainda não
-estava delimitada pela projeção D9. Ambos foram tratados na T9, iteração 3. O
-próximo estágio é **revisar novamente**; até essa nova revisão, o estado de
-`revisar` permanece `reprovado`.
+estava delimitada pela projeção D9. Ambos foram tratados na T9, iteração 3. A
+tentativa seguinte, sobre `4b153ced395d96d3dbd885ea5b77f75ffacb323a`,
+encontrou um único achado residual: o handover ainda instruía integrar a T9 i3,
+embora `f51168147d15f1bafff538c4f4e9595fb977cd2f` já fosse ancestral. Esse
+achado foi tratado na T9, iteração 4. O próximo estágio é **revisar novamente**;
+até essa nova revisão, o estado de `revisar` permanece `reprovado`.
 
 ## Retomada segura
 
