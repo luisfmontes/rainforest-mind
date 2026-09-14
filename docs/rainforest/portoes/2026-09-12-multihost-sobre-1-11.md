@@ -1200,3 +1200,173 @@ marketplace, cache ou outra configuração externa. Nenhum push, merge, PR,
 release, publicação, rebase ou alteração da `main` ou da branch de entrega foi
 realizado. A `main` só pode receber esta entrega depois de aval explícito do
 usuário.
+
+## Tarefa 9 — tentativa de fechamento local
+
+### Veredito
+
+**PENDENTE, permanece 8/9.** Quatro dos cinco comandos literais terminaram
+verdes. O quinto saiu 1 porque a invocação declarada no plano não fornece
+`--base`. A execução diagnóstica com `--base` e `--head` revelou ainda dois
+mapas no diff sem tarefa correspondente. Nenhuma dessas divergências foi
+reinterpretada ou corrigida durante a T9.
+
+### Base, isolamento e Git Bash
+
+```text
+base/HEAD=f3a38ba9d862ec787b4637cc31341b27ab83136a
+branch=codex/task9-final-113
+worktree=C:\Projetos\rainforest-mind\.claude\worktrees\codex-task9-final-113
+origin/main=068468fb956b8d606e9af1800aaa91dd399fdeb8
+origin_main_ancestor_exit=0
+```
+
+O `bash.exe` descoberto primeiro no PATH era
+`C:\Windows\System32\bash.exe`, launcher do WSL. Para evitar o falso vermelho
+de ambiente já observado em Windows, esta bateria fixou explicitamente:
+
+```powershell
+Set-Alias -Name bash -Value 'C:\Program Files\Git\bin\bash.exe' -Scope Local
+bash --version
+```
+
+```text
+GNU bash, version 5.2.37(1)-release (x86_64-pc-msys)
+```
+
+### Cinco comandos literais
+
+Todos os comandos declarados pelo plano foram executados, sem pular o quinto
+depois dos quatro verdes:
+
+```powershell
+bash hooks/testa-gate-staging-total.sh
+bash scripts/testa-plugin-codex.sh
+bash scripts/testa-versao.sh
+node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-multihost-sobre-1-11
+node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11
+```
+
+Resultados:
+
+```text
+CMD1: == resultado: 106 ok, 0 falha(s) ==
+cmd1_exit=0
+
+CMD2: manifesto, 19 skills, adaptador, allow/deny, falhas seguras, mutacao,
+      marketplace e Gemini adiado verdes
+cmd2_exit=0
+
+CMD3: ok: 5   falhou: 0
+cmd3_exit=0
+
+CMD4: ok: cobertura válida — 11 decisão(ões), 9 tarefa(s)
+cmd4_exit=0
+
+CMD5: erro: falta --base
+cmd5_exit=1
+
+total=5 vermelhas=1
+```
+
+O quinto comando foi mantido literalmente como exigido; adicionar argumentos e
+apresentar o resultado como se fosse essa mesma invocação apagaria o vermelho
+do contrato.
+
+### Diagnóstico suplementar do creep
+
+Apenas para determinar se o problema era exclusivamente a interface do comando,
+foram acrescentados os dois argumentos que o checker atual exige:
+
+```powershell
+node scripts/conferir-fluxo.cjs creep `
+  --slug 2026-09-12-multihost-sobre-1-11 `
+  --base 068468fb956b8d606e9af1800aaa91dd399fdeb8 `
+  --head f3a38ba9d862ec787b4637cc31341b27ab83136a
+```
+
+```text
+RECUSADO: arquivo(s) no diff sem tarefa correspondente:
+  docs/rainforest/mapas/2026-09-12-multihost-sobre-1-11.md
+  docs/rainforest/mapas/COBERTURA.md
+Emendar o plano: adicione uma tarefa com campos arquivos: que cubra este(s) arquivo(s)
+diagnostic_exit=2
+```
+
+Portanto, corrigir apenas os argumentos ainda não deixaria a T9 verde.
+
+### Diff contra os caminhos autorizados
+
+Comando:
+
+```powershell
+git diff --name-only 068468fb956b8d606e9af1800aaa91dd399fdeb8...HEAD
+```
+
+O diff contém 18 caminhos:
+
+```text
+.agents/plugins/marketplace.json
+.codex-plugin/plugin.json
+docs/HANDOVER-CODEX.md
+docs/rainforest/design/2026-09-12-multihost-sobre-1-11.md
+docs/rainforest/estado/2026-09-12-multihost-sobre-1-11.json
+docs/rainforest/mapas/2026-09-12-multihost-sobre-1-11.md
+docs/rainforest/mapas/COBERTURA.md
+docs/rainforest/planos/2026-09-12-multihost-sobre-1-11.md
+docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md
+hooks/codex-gate-staging-total.cjs
+hooks/codex-gate-staging-total.json
+scripts/testa-plugin-codex.cjs
+scripts/testa-plugin-codex.sh
+scripts/testa-versao.sh
+skills/fechar/SKILL.md
+skills/modo-dev/SKILL.md
+skills/montar-corpus/SKILL.md
+skills/regua/SKILL.md
+```
+
+As linhas `arquivos:` das nove tarefas enumeram 16 caminhos. Uma comparação
+direta acrescenta design, plano e os dois mapas como não listados. O checker
+oficial reconhece design e plano como rastro intrínseco, mas confirma como
+creep os dois mapas mostrados no diagnóstico acima. Assim, a trava de escopo
+também está vermelha.
+
+### Branch, status e ausência operacional de publicação
+
+Antes de registrar este portão, o worktree isolado estava limpo:
+
+```text
+codex/task9-final-113
+f3a38ba9d862ec787b4637cc31341b27ab83136a
+git status --short=<vazio>
+```
+
+A branch de entrega permaneceu no mesmo commit, com a modificação de estado
+que já existia antes do despacho preservada:
+
+```text
+codex/multihost-1.13
+f3a38ba9d862ec787b4637cc31341b27ab83136a
+ M docs/rainforest/estado/2026-09-12-multihost-sobre-1-11.json
+```
+
+A `main` também permaneceu no mesmo commit e com sua sujeira anterior:
+
+```text
+main
+068468fb956b8d606e9af1800aaa91dd399fdeb8
+ M vigias/ERROS.md
+?? cross-cutting-principles.md
+?? skill-observations/
+```
+
+A evidência operacional desta T9 é o ledger de comandos executados acima e os
+ponteiros Git inalterados; ocorrências textuais de `push`, `merge`, `PR` ou
+`release` nos documentos são regras e comandos de exemplo, não execuções. Esta
+tarefa não executou operação de push, merge, PR, release, publicação, rebase,
+nem alterou configuração externa ou o plugin instalado.
+
+Resultado: a execução não pode ser marcada `ok` nem 9/9 até o plano declarar a
+interface correta do `creep` e cobrir os dois mapas. A proibição de publicar ou
+mesclar na `main` sem aval explícito do usuário permanece integralmente ativa.

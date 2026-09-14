@@ -23,7 +23,7 @@
     "em_voo": [],
     "tarefas_ok": 8,
     "tarefas": 9,
-    "em": "2026-09-13",
+    "em": "2026-09-14",
     "carimbos": [
       {
         "tarefa": 1,
@@ -101,10 +101,18 @@
         "iteracao": 1,
         "sessao": "desconhecida",
         "ts": "2026-09-13T12:03:32.401Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "f3a38ba9d862ec787b4637cc31341b27ab83136a",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-14T13:04:56.319Z"
       }
     ],
     "pendentes": [
-      "tarefa-9: fechar execucao local com todas as travas, sem publicar"
+      "tarefa-9: comando literal creep exige --base e --head ausentes no plano",
+      "tarefa-9: creep com base/head recusa docs/rainforest/mapas/2026-09-12-multihost-sobre-1-11.md e docs/rainforest/mapas/COBERTURA.md sem tarefa correspondente"
     ]
   },
   "revisar": {
