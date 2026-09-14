@@ -19,8 +19,8 @@
  *      que por acaso produza o mesmo número de linhas.
  * P5 — fail-closed em TEMPO DE EXECUÇÃO: o MESMO sandbox que aprovou o
  *      despacho (P4) passa a negá-lo depois que .rainforest/agentes.json é
- *      removido. Sandbox que nunca aprovou nada não prova fail-closed —
- *      prova só que sandbox vazio nega.
+ *      reescrito sem o agente. Sandbox que nunca aprovou nada não prova
+ *      fail-closed — prova só que sandbox vazio nega.
  *
  * Cada portão imprime seu rótulo ESPERA quando fecha (`P1 lint:ok`, ...).
  * Exit 0 só se os cinco fecharem; exit ≠ 0 na primeira falha, com o que
@@ -46,10 +46,20 @@ function fechar(portao, rotulo) {
   console.log(`${portao} ${rotulo}`);
 }
 
+// `RFM_ROOT` desde 2026-09-14 (D6): o log resolve pela raiz de DADOS, e sem
+// isolamento a raiz de dados é a pasta pessoal do usuário. Apontar para
+// `<raiz>/.rainforest` deixa cada caso na sua própria caixa (todo `caixa()` é um
+// mkdtemp novo) e mantém o P4 lendo o mesmo caminho de sempre — o portão P4 é
+// sobre o CONTEÚDO da linha e o append-only, não sobre onde o arquivo mora.
+// Quem prova o destino do log é `testa-portaria-log-fora-do-repo.cjs`.
 function rodaHook(raiz, stdin) {
   return spawnSync(process.execPath, [HOOK], {
     input: stdin,
-    env: { ...process.env, CLAUDE_PROJECT_DIR: raiz },
+    env: {
+      ...process.env,
+      CLAUDE_PROJECT_DIR: raiz,
+      RFM_ROOT: path.join(raiz, ".rainforest"),
+    },
     encoding: "utf8",
   });
 }
@@ -299,19 +309,38 @@ function logPath(raiz) {
     falhar("P5", "exit 0 (allow) ANTES de remover o manifesto — pré-condição do fail-closed", `exit=${r1.status} stderr=${JSON.stringify(r1.stderr)}`);
   }
 
-  // --- remove o manifesto em tempo de execução, mesmo sandbox, mesmo payload ---
-  fs.rmSync(manifestoPath, { force: true });
-  if (fs.existsSync(manifestoPath)) {
-    falhar("P5", "manifesto removido do disco", "arquivo ainda existe após rmSync");
-  }
+  // --- muda o manifesto em tempo de execução, mesmo sandbox, mesmo payload ---
+  //
+  // Até 2026-09-13 o gatilho aqui era APAGAR o manifesto. Com o padrão embarcado
+  // (D2) apagar deixou de negar: cai no padrão, onde o `revisor` consta, e o
+  // caso passaria a provar o contrário do que o nome diz. O gatilho passa a ser
+  // reescrever o manifesto do repo SEM o agente — que é a mudança em tempo de
+  // execução que tem de negar, e que de quebra prova a D3: o padrão é
+  // SUBSTITUÍDO pelo do repo, não somado a ele; se somasse, o `revisor` voltaria
+  // pelo padrão e este portão ficaria verde com o bug dentro.
+  criarManifesto(raiz, {
+    versao: 1,
+    agentes: { executor: { estagios: ["executar"], escreve: true } },
+  });
 
   const r2 = rodaHook(raiz, JSON.stringify(payload));
   if (r2.status !== 2) {
-    falhar("P5", "exit 2 (deny) DEPOIS de remover o manifesto", `exit=${r2.status} stderr=${JSON.stringify(r2.stderr)}`);
+    falhar("P5", "exit 2 (deny) DEPOIS de tirar o agente do manifesto do repo", `exit=${r2.status} stderr=${JSON.stringify(r2.stderr)}`);
   }
   const motivo = (r2.stderr || "").trim();
   if (!motivo) {
-    falhar("P5", "motivo não vazio no stderr da negação pós-remoção", "stderr veio vazio");
+    falhar("P5", "motivo não vazio no stderr da negação pós-mudança", "stderr veio vazio");
+  }
+  if (!motivo.includes("não consta no manifesto")) {
+    falhar("P5", "motivo é 'não consta no manifesto'", motivo);
+  }
+  // O stderr tem de apontar o manifesto DO REPO — se apontasse o padrão, a
+  // negação teria vindo do arquivo errado.
+  if (!motivo.includes(manifestoPath) && !motivo.replace(/\//g, "\\").includes(manifestoPath)) {
+    falhar("P5", `stderr cita o manifesto do repo (${manifestoPath})`, motivo);
+  }
+  if (motivo.includes("agentes.padrao.json")) {
+    falhar("P5", "stderr NÃO cita o padrão embarcado (quem decidiu foi o do repo)", motivo);
   }
 
   fs.rmSync(raiz, { recursive: true, force: true });

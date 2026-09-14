@@ -49,10 +49,22 @@ ferramentas.jsonl
 # despacho, nao descreve o plugin e nao serve para outro dev. Fica fora.
 #
 # O que NAO entra aqui, de proposito, e o teste da tarefa 4 cobra: o manifesto
-# `.rainforest/agentes.json` e as amostras `.rainforest/portaria/amostra*.json`
+# `.rainforest/agentes.padrao.json` e as amostras `.rainforest/portaria/amostra*.json`
 # sao DOCUMENTACAO versionada (D2 e D7) — o manifesto e a regra que a portaria
 # aplica, e a amostra e o payload real em que o parser se fixou. Ignorar
 # qualquer um dos dois quebraria a portaria no clone de outra pessoa.
+#
+# Desde 2026-09-13 o manifesto se chama `agentes.padrao.json` e e o PADRAO
+# EMBARCADO que vale em todo repositorio, nao mais um arquivo deste aqui. O
+# nome mudou junto com o alcance: `agentes.json` continua sendo o nome que um
+# repositorio usa para SUBSTITUIR o padrao, e por isso os dois nao podiam
+# continuar sendo a mesma palavra.
+#
+# A linha abaixo fica por HISTORICO: desde a mesma data o log nao e mais
+# escrito dentro do repositorio (resolve pela raiz de dados, via
+# `hooks/lib/raiz.cjs`). Sujar repo de cliente com pasta nao rastreada era a
+# versao pequena de alterar o ambiente do usuario. Manter a regra custa uma
+# linha e cobre quem clonar esta arvore com log antigo ja no disco.
 .rainforest/portaria/despachos.jsonl
 
 # Recibos colhidos: sha256 + bytes do momento da entrega. E' RASTRO DE EXECUCAO

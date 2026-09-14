@@ -52,13 +52,36 @@ O texto não encolhe para caber na realidade. A realidade sobe para caber no tex
 
 - **D5 — "manifesto ausente" muda de significado, e o código tem de mudar junto**
   — porquê: com um padrão embarcado, ausência em produção não é "o repo não foi
-  configurado", é **o plugin está quebrado**. Isso não é negação com motivo: é
-  falha interna, exit 2, pela mesma rede que já converte erro de resolvedor. Repo
-  sem manifesto próprio passa a ser o caso **normal**, não o caso negado.
+  configurado", é **o plugin está quebrado**. Repo sem manifesto próprio passa a
+  ser o caso **normal**, não o caso negado.
 
   Quatro baterias hoje afirmam o contrário e precisam ser reescritas junto, não
   depois: `testa-portaria-nucleo.cjs:217`, `testa-portaria-autorizacao.cjs:547`,
   `testa-portaria-diagnostico.cjs:111` e `testa-portaria-gitignore.cjs:12`.
+
+  > **Correção de 2026-09-14, durante o `executar`.** A redação original desta
+  > decisão dizia: *"Isso não é negação com motivo: é falha interna, exit 2,
+  > pela mesma rede que já converte erro de resolvedor"* — como se negação e
+  > exit 2 fossem saídas diferentes. **São a mesma.** `hooks/portaria.cjs:175`:
+  > `negar()` termina em `process.exit(2)`, e o contrato de hook do Claude Code
+  > é que **exit 2 barra**, exit 0 passa e **qualquer outro código é erro
+  > não-bloqueante — a tool call segue**. Isso está escrito no próprio arquivo,
+  > em 30 linhas de comentário sobre o defeito da rodada 6 do fluxo anterior,
+  > em que sair 1 por exceção deixou despacho passar em silêncio. Eu decidi sem
+  > ler essas linhas.
+  >
+  > O que a decisão queria continua de pé, e é o que foi implementado. A
+  > distinção não é de exit code — é de **duas outras coisas**:
+  >
+  > 1. **o log não registra como política o que é falha de instalação.** Uma
+  >    linha `deny` sobre o `revisor` diria que houve decisão sobre aquele
+  >    agente; não houve.
+  > 2. **a mensagem aponta para o plugin, não para o repo do usuário**, que não
+  >    tem nada a consertar.
+  >
+  > Implementado sem caminho novo: padrão ausente faz `throw`, e a rede que já
+  > existe no topo do arquivo converte em exit 2 com "falha interna" e sem linha
+  > no log. O mecanismo já estava lá — o erro foi inventar um segundo.
 
 - **D6 — O log de despacho sai do repositório, resolvido por
   `hooks/lib/raiz.cjs`, com o caminho do repo em cada linha** — porquê: hoje

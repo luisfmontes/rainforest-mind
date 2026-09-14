@@ -32,16 +32,48 @@ function caso(nome, cond, detalhe) {
   }
 }
 
-function rodaHook(raiz, stdin) {
-  return spawnSync(process.execPath, [HOOK], {
+// `hook` opcional: os casos 1 e 2 rodam o ESPELHO do plugin, não o hook desta
+// árvore (ver `espelharPlugin`). `RFM_ROOT` desde 2026-09-14 (D6): sem ele o log
+// de despacho ia para a pasta pessoal do usuário.
+function rodaHook(raiz, stdin, hook) {
+  return spawnSync(process.execPath, [hook || HOOK], {
     input: stdin,
-    env: { ...process.env, CLAUDE_PROJECT_DIR: raiz },
+    env: {
+      ...process.env,
+      CLAUDE_PROJECT_DIR: raiz,
+      RFM_ROOT: path.join(raiz, ".rainforest"),
+    },
     encoding: "utf8",
   });
 }
 
 function caixa() {
   return fs.mkdtempSync(path.join(os.tmpdir(), "portaria-captura-"));
+}
+
+/* Copia o plugin para dentro do sandbox e devolve o caminho do hook copiado.
+ *
+ * Desde 2026-09-14 a amostra só é gravada quando o projeto aberto É o próprio
+ * plugin — `path.resolve(__dirname, "..") === path.resolve(raiz)`. Num sandbox
+ * comum essa igualdade nunca vale, e os casos 1 e 2 passaram a medir o novo
+ * portão em vez da idempotência que eles existem para medir. Espelhando o
+ * plugin, o sandbox *é* o plugin, e a pergunta volta a ser "a segunda execução
+ * sobrescreve?".
+ *
+ * Mesma forma que `scripts/testa-memoria-somente-leitura.sh` já usa.
+ */
+function espelharPlugin(destino) {
+  fs.cpSync(__dirname, path.join(destino, "hooks"), { recursive: true });
+  // `hooks/lib/estagio-ativo.cjs` requer `../../scripts/estado.cjs`: sem o
+  // `scripts/` no espelho o hook nega por "falha interna (main)" e o caso
+  // mediria o require quebrado, não a captura.
+  fs.cpSync(path.join(__dirname, "..", "scripts"), path.join(destino, "scripts"), { recursive: true });
+  fs.mkdirSync(path.join(destino, ".rainforest"), { recursive: true });
+  fs.copyFileSync(
+    path.join(__dirname, "..", ".rainforest", "agentes.padrao.json"),
+    path.join(destino, ".rainforest", "agentes.padrao.json")
+  );
+  return path.join(destino, "hooks", "portaria.cjs");
 }
 
 function iniciarGit(raiz, branch) {
@@ -97,9 +129,10 @@ console.log("== 1. primeira execucao grava a amostra ==");
     },
   });
 
+  const hook = espelharPlugin(raiz);
   const amostra = path.join(raiz, ".rainforest", "portaria", "amostra.json");
-  const r = rodaHook(raiz, JSON.stringify({ session_id: "s1", tool_input: { subagent_type: "leitor" } }));
-  caso("exit 0", r.status === 0, `exit=${r.status}`);
+  const r = rodaHook(raiz, JSON.stringify({ session_id: "s1", tool_input: { subagent_type: "leitor" } }), hook);
+  caso("exit 0", r.status === 0, `exit=${r.status} stderr=${r.stderr}`);
   caso("amostra.json existe", fs.existsSync(amostra));
   let lido = null;
   try { lido = JSON.parse(fs.readFileSync(amostra, "utf8")); } catch {}
@@ -122,10 +155,11 @@ console.log("== 2. segunda execucao NAO sobrescreve ==");
     },
   });
 
+  const hook = espelharPlugin(raiz);
   const amostra = path.join(raiz, ".rainforest", "portaria", "amostra.json");
-  rodaHook(raiz, JSON.stringify({ session_id: "s1", tool_input: { subagent_type: "leitor" } }));
-  const r2 = rodaHook(raiz, JSON.stringify({ session_id: "s2", tool_input: { subagent_type: "leitor" } }));
-  caso("exit 0 na segunda execucao", r2.status === 0, `exit=${r2.status}`);
+  rodaHook(raiz, JSON.stringify({ session_id: "s1", tool_input: { subagent_type: "leitor" } }), hook);
+  const r2 = rodaHook(raiz, JSON.stringify({ session_id: "s2", tool_input: { subagent_type: "leitor" } }), hook);
+  caso("exit 0 na segunda execucao", r2.status === 0, `exit=${r2.status} stderr=${r2.stderr}`);
   let lido = null;
   try { lido = JSON.parse(fs.readFileSync(amostra, "utf8")); } catch {}
   caso("amostra continua com session_id da PRIMEIRA execucao (s1)",
@@ -176,6 +210,35 @@ console.log("== 5. subagent_type ausente continua negando ==");
   caso("exit 2 (fail-closed)", r.status === 2, `exit=${r.status}`);
   caso("erro no stderr", r.stderr && r.stderr.includes("subagent_type"), `stderr: "${r.stderr}"`);
   caso("amostra.json NAO existe", !fs.existsSync(amostra));
+  fs.rmSync(raiz, { recursive: true, force: true });
+}
+
+/* == 6. Repo que NÃO é o plugin não ganha amostra ==
+ *
+ * O inverso dos casos 1 e 2, e a mudança de 2026-09-14 propriamente dita. Sem
+ * este caso, espelhar o plugin nos dois primeiros teria só devolvido o verde
+ * antigo: a amostra voltaria a ser provada onde sempre foi, e o comportamento
+ * novo — não sujar repositório alheio — não seria medido em lugar nenhum.
+ *
+ * Despacho idêntico ao do caso 1, com a única diferença que importa: o projeto
+ * aberto é um repo comum.
+ */
+console.log("== 6. repo que NAO e o plugin nao ganha amostra ==");
+{
+  const raiz = caixa();
+
+  iniciarGit(raiz, "fluxo/teste");
+  criarEstado(raiz, "teste", "revisar");
+  criarManifesto(raiz, {
+    versao: 1,
+    agentes: { leitor: { estagios: ["revisar"], escreve: false } },
+  });
+
+  const r = rodaHook(raiz, JSON.stringify({ session_id: "s6", tool_input: { subagent_type: "leitor" } }));
+  caso("exit 0 (o despacho e admitido, como no caso 1)", r.status === 0, `exit=${r.status} stderr=${r.stderr}`);
+  caso("amostra.json NAO existe",
+    !fs.existsSync(path.join(raiz, ".rainforest", "portaria", "amostra.json")));
+
   fs.rmSync(raiz, { recursive: true, force: true });
 }
 

@@ -465,7 +465,15 @@ function rodaHook(raiz, payload) {
   // string de shell com aspas aninhadas.
   return spawnSync(process.execPath, [HOOK], {
     input: JSON.stringify(payload),
-    env: { ...process.env, CLAUDE_PROJECT_DIR: raiz },
+    // `RFM_ROOT` desde 2026-09-14 (D6): o log resolve pela raiz de DADOS, que
+    // sem isolamento é a pasta pessoal do usuário — esta bateria despeja ~20
+    // linhas por execução. Apontar para `<raiz>/.rainforest` dá uma caixa por
+    // caso e mantém `ultimaLinhaDoLog` lendo o caminho de sempre.
+    env: {
+      ...process.env,
+      CLAUDE_PROJECT_DIR: raiz,
+      RFM_ROOT: path.join(raiz, ".rainforest"),
+    },
     encoding: "utf8",
   });
 }
@@ -530,27 +538,54 @@ console.log("== 12. sem fluxo + sem autorizacao -> exit 2, motivo 'sem estagio a
   fs.rmSync(raiz, { recursive: true, force: true });
 }
 
-console.log("== 13. manifesto AUSENTE + autorizacao valida -> continua exit 2 ==");
+/* == 13. Padrão embarcado AUSENTE + autorização válida -> continua exit 2 ==
+ *
+ * Este caso dizia "manifesto AUSENTE": montava um sandbox sem
+ * `.rainforest/agentes.json` e exigia negação. Com o padrão embarcado (D2) isso
+ * deixou de negar — e deixar como estava seria pedir de volta o comportamento
+ * que a D5 mudou de propósito.
+ *
+ * O que ele protegia continua valendo e é o que se mede agora: **autorização do
+ * usuário não inventa manifesto**. O sumiço do manifesto que hoje importa é o do
+ * PADRÃO, e ele é falha de instalação, não decisão sobre este agente — então
+ * além do exit 2 as duas marcas da D5 têm de aparecer: nenhuma linha no log, e
+ * mensagem apontando para o plugin. "Autorização não dispensa manifesto" no
+ * sentido antigo continua coberto pelo caso 14, que sobreviveu intacto.
+ */
+console.log("== 13. padrao embarcado AUSENTE + autorizacao valida -> exit 2, sem log, sem consultar autorizacao ==");
 {
+  const espelho = fs.mkdtempSync(path.join(os.tmpdir(), "portaria-autorizacao-espelho-"));
+  fs.cpSync(__dirname, path.join(espelho, "hooks"), { recursive: true });
+  fs.mkdirSync(path.join(espelho, ".rainforest"), { recursive: true });
+  // ... sem copiar `.rainforest/agentes.padrao.json`. É essa a avaria.
+
   const raiz = caixa("13");
   iniciarGit(raiz);
-  // Sem manifesto de propósito: a autorização não pode criar o que falta.
 
-  const r = rodaHook(raiz, {
-    session_id: "s13",
-    cwd: raiz,
-    transcript_path: fx("autorizado.jsonl"),
-    tool_input: { subagent_type: "revisor" },
+  const dados = fs.mkdtempSync(path.join(os.tmpdir(), "portaria-autorizacao-dados-"));
+  const logPath = path.join(dados, "portaria", "despachos.jsonl");
+
+  const r = spawnSync(process.execPath, [path.join(espelho, "hooks", "portaria.cjs")], {
+    input: JSON.stringify({
+      session_id: "s13",
+      cwd: raiz,
+      transcript_path: fx("autorizado.jsonl"),
+      tool_input: { subagent_type: "revisor" },
+    }),
+    env: { ...process.env, CLAUDE_PROJECT_DIR: raiz, RFM_ROOT: dados },
+    encoding: "utf8",
   });
 
-  caso("exit 2 (autorizacao NAO cria manifesto)", r.status === 2, `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
-  caso("motivo cita manifesto ausente", /manifesto n[aã]o encontrado/i.test(r.stderr || ""), r.stderr);
+  caso("exit 2 (autorizacao NAO repara instalacao quebrada)", r.status === 2,
+    `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
+  caso("motivo aponta o padrao do plugin, nao o repo do usuario",
+    /agentes\.padrao\.json/.test(r.stderr || "") && /instalacao incompleta/i.test(r.stderr || ""), r.stderr);
+  caso("NENHUMA linha no log (falha de instalacao nao vira politica)",
+    !fs.existsSync(logPath), fs.existsSync(logPath) ? fs.readFileSync(logPath, "utf8") : "");
 
-  const entrada = ultimaLinhaDoLog(raiz);
-  caso("a linha de deny nao carrega 'via' (autorizacao nunca foi consultada)",
-    entrada === null || entrada.via === undefined, JSON.stringify(entrada));
-
+  fs.rmSync(dados, { recursive: true, force: true });
   fs.rmSync(raiz, { recursive: true, force: true });
+  fs.rmSync(espelho, { recursive: true, force: true });
 }
 
 console.log("== 14. agente NAO declarado + autorizacao valida -> continua exit 2 ==");

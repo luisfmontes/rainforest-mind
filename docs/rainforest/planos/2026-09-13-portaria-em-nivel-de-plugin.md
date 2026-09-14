@@ -84,18 +84,54 @@ mutacao:
   fixture: caso "log de um repo sem `.rainforest` não cria pasta no repo"
 pronto quando: com `RFM_ROOT` apontando para caixa de areia, um despacho num repo temporário grava em `<RFM_ROOT>/portaria/despachos.jsonl` e **não** cria `<repo>/.rainforest/`; a linha gravada tem o campo `repo` com o caminho do repo temporário; e forçar erro de escrita (raiz apontando para caminho não-gravável) imprime a falha no **stderr** sem mudar o exit code da decisão
 
-### 5. As quatro baterias que afirmam "manifesto ausente → nega" [tipo: testar]
+### 5. As baterias que afirmam "manifesto ausente → nega" [tipo: testar]
 atende: D5
-arquivos: `hooks/testa-portaria-nucleo.cjs`, `hooks/testa-portaria-autorizacao.cjs`, `hooks/testa-portaria-diagnostico.cjs`, `hooks/testa-portaria-gitignore.cjs`
+arquivos: `hooks/testa-portaria-nucleo.cjs`, `hooks/testa-portaria-autorizacao.cjs`, `hooks/testa-portaria-diagnostico.cjs`, `hooks/testa-portaria-gitignore.cjs`, `hooks/testa-portaria-captura.cjs`, `hooks/testa-portaria-portoes.cjs`, `hooks/testa-portaria-tools-bloco.cjs`, `hooks/portaria.cjs`
 depende de: 2, 4
 paralela: não
 mutacao:
   arquivo: `hooks/portaria.cjs`
-  de: o `exit 2` de padrão ausente
-  para: `negar("manifesto ausente")`
+  de: o `throw` de padrão embarcado ausente
+  para: `gravarDespacho(raiz, "deny", ...)` seguido de `negar(...)`
   bateria: `node hooks/testa-portaria-nucleo.cjs`
-  fixture: caso "padrão embarcado ausente é falha interna, não negação"
-pronto quando: as quatro saem exit 0; `node hooks/testa-portaria-nucleo.cjs` tem um caso que apaga o padrão embarcado numa cópia e exige **exit 2** com motivo citando o padrão, não `deny`; e `testa-portaria-gitignore.cjs` passa a afirmar que o log **não aparece** em `git status --porcelain` do repo porque não é escrito lá, não porque está ignorado
+  fixture: caso "padrão embarcado ausente não grava linha no log"
+pronto quando: as quatro saem exit 0; `node hooks/testa-portaria-nucleo.cjs` tem um caso que apaga o padrão embarcado numa cópia e exige **exit 2 com stderr citando o padrão do plugin e NENHUMA linha nova no log** — não o exit code, que é 2 nos dois casos; e `testa-portaria-gitignore.cjs` passa a afirmar que o log **não aparece** em `git status --porcelain` do repo porque não é escrito lá, não porque está ignorado
+
+> **Correção de 2026-09-14, durante o `executar`:** o critério original cobrava
+> "**exit 2** com motivo citando o padrão, não `deny`", e a mutação invertia "o
+> `exit 2` de padrão ausente" para `negar(...)`. As duas frases supõem que
+> negação e exit 2 sejam saídas diferentes. `hooks/portaria.cjs:175` mostra que
+> `negar()` **é** `process.exit(2)` — a mutação original não mudaria o exit
+> code, e o critério teria passado com o bug dentro. Critério e mutação passaram
+> a cobrar o que de fato distingue os dois caminhos: **linha no log e destino da
+> mensagem**. Ver a correção da D5 no design.
+
+> **Segunda correção de 2026-09-14:** a medição do design contou **4** baterias
+> que afirmam "manifesto ausente → nega"; rodadas uma a uma depois da tarefa 3,
+> **6** ficaram vermelhas. As duas que faltavam:
+> `testa-portaria-captura.cjs` (a amostra de payload deixou de ser escrita em
+> repo que não é o próprio plugin) e `testa-portaria-portoes.cjs` (procura o log
+> em `<repo>/.rainforest/`, que a D6 mudou). Entram em `arquivos:` agora, não
+> quando o `marcar` recusar.
+>
+> Uma sétima entrou por outro caminho, e vale registrar como se achou:
+> `testa-portaria-tools-bloco.cjs` ficou **verde o tempo todo** e mesmo assim
+> despejava 15 linhas por execução em `<home>/.rainforest/portaria/` — a pasta
+> pessoal do usuário. Só apareceu porque a linha "nenhum teste escreve na pasta
+> de dados real" de **O que não pode quebrar** foi conferida olhando a pasta, e
+> não deduzida do placar. Passar nas asserções e não sujar o ambiente do usuário
+> (regra 15) são coisas independentes; as seis vermelhas escondiam a sétima,
+> porque quem olha placar só vê quem falha. Total medido antes do conserto: 53
+> linhas de teste na pasta pessoal, removidas.
+>
+> `hooks/portaria.cjs` também entra: a tarefa 2 tornou **inalcançável** o bloco
+> `if (!fs.existsSync(manifestoPath))` — os dois ramos de `usandoPadrao` já
+> conferem existência antes. Deixá-lo lá é dizer no código que "repo sem
+> manifesto nega", que é o que deixou de ser verdade. O diagnóstico que ele
+> carregava (`raiz lida`, `branch`, outros worktrees) já existe igual nas
+> negações por **sem estágio ativo**; a metade que não existia em lugar nenhum —
+> **qual** dos dois manifestos foi lido — passa para a negação por
+> `não consta no manifesto`.
 
 ### 6. Baterias novas: busca do manifesto e log fora do repo [tipo: testar]
 atende: D2, D3, D6
