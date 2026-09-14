@@ -36,6 +36,13 @@ ideias.jsonl
 # ("o repo principal foi tocado?") em TODA entrega de agente.
 .claude/worktrees/
 
+# Cache de marketplace de plugin, clonado pelo harness ao adicionar uma fonte.
+# Mesma natureza do irmao acima e igualmente fora: e' cache de ferramenta, nao
+# fonte deste repo — 21 MB em 2026-09-14, e o clone do Codex nasce com DONO
+# DIFERENTE (usuario do sandbox), ao ponto de o proprio git recusar le-lo
+# ("dubious ownership"). Sem esta linha, `git status` oferece isso a todo commit.
+.claude/marketplaces/
+
 # Bytecode do Python, gerado ao rodar scripts/medir-injecao.py.
 __pycache__/
 *.pyc
