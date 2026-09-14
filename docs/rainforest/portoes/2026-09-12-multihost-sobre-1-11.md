@@ -1760,3 +1760,117 @@ revisão. O handover aponta diretamente para esse próximo estágio.
 Nenhum push, merge, PR, release, publicação, rebase, reinstalação, mudança no
 plugin instalado ou alteração de configuração externa foi executado. A `main`
 não foi tocada e continua protegida pela exigência de aval explícito do usuário.
+
+## Tarefa 7 — iteração 3, instalação a partir de export limpo
+
+### Veredito
+
+**OK.** A causa do P1 foi corrigida na origem, não escondida por uma nova
+exceção: instalar diretamente de clone ou worktree copia metadados `.git` para
+o cache. O marketplace ativo aponta agora para um export limpo do commit
+`77b0226e6b168f97848d5fa8021d58c06dda8f6f`, produzido por `git archive`.
+
+### Origem ativa
+
+```text
+MARKETPLACE             ROOT
+rainforest-mind-local   C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.13.2
+marketplace_list_exit=0
+
+rainforest-mind@rainforest-mind-local  installed, enabled  1.13.2  C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.13.2
+plugin_list_exit=0
+```
+
+### Export contra commit e cache completo
+
+Todos os inventários de filesystem usaram
+`Get-ChildItem -Force -Recurse -File`. Cada arquivo do export foi comparado ao
+blob correspondente do HEAD, e cada arquivo instalado foi comparado por
+SHA-256 ao export:
+
+```text
+head=77b0226e6b168f97848d5fa8021d58c06dda8f6f
+tracked_total=703
+export_total_force=703
+export_dotgit_exists=False
+export_missing=0
+export_different=0
+export_extra=0
+cache_total_force=704
+cache_dotgit_exists=False
+cache_missing=0
+cache_different=0
+cache_extra=1
+.codex-plugin/migrated-command-skills/source-command-saude/SKILL.md
+derived_sha256=321c30bcfda44ff56ad53fca7ef5c3b170987a3bd2bee646152af22aaf1dd339
+origin_sha256=f044c166ccbfaca6470e4090229011354b82d4007adc80a278581a6565f6a6f6
+```
+
+O cache contém os 703 arquivos do export, inclusive ocultos, e somente a
+projeção D11 como extra. Não há `.git` no export nem no cache. A allowlist D9
+permanece com os mesmos sete documentos de governança e D11 continua aceitando
+um único derivado.
+
+## Tarefa 9 — iteração 6, fechamento após a correção causal
+
+### Decisão registrada e projeção final
+
+A D12 formaliza o export limpo do commit candidato como origem da instalação
+local verificável. As tarefas 7 e 9 agora exigem inventário com `-Force` e
+ausência de `.git`; cobertura e critério foram fortalecidos sem afrouxar D9 ou
+D11.
+
+Projetando o cache completo contra o HEAD e excluindo somente os sete documentos
+de governança:
+
+```text
+tracked_total=703
+governance_excluded=7
+projection_expected=696
+cache_total_force=704
+export_dotgit_exists=False
+cache_dotgit_exists=False
+missing_count=0
+sha_divergent_count=0
+extra_count=1
+.codex-plugin/migrated-command-skills/source-command-saude/SKILL.md
+```
+
+### Cinco comandos literais
+
+Executados uma única vez, em sequência, com Git Bash como alias local ao
+processo:
+
+```powershell
+bash hooks/testa-gate-staging-total.sh
+bash scripts/testa-plugin-codex.sh
+bash scripts/testa-versao.sh
+node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-multihost-sobre-1-11
+node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 068468fb956b8d606e9af1800aaa91dd399fdeb8 --head HEAD
+```
+
+```text
+CMD1: == resultado: 106 ok, 0 falha(s) ==
+cmd1_exit=0
+CMD2: contrato Codex completo verde
+cmd2_exit=0
+CMD3: ok: 5   falhou: 0
+cmd3_exit=0
+CMD4: ok: cobertura válida — 12 decisão(ões), 9 tarefa(s)
+cmd4_exit=0
+CMD5: ok: sem creep — 18 arquivo(s) coberto(s)
+cmd5_exit=0
+total=5 vermelhas=0
+```
+
+### Estado e ausência de publicação
+
+O estado registra uma nova iteração da T7 e a T9 iteração 6 na base
+`77b0226e6b168f97848d5fa8021d58c06dda8f6f`, mantém `executar.status = ok` e
+`tarefas_ok = 9` de `9`, e preserva `revisar.status = reprovado` até nova
+revisão independente.
+
+Nenhum push, merge, PR, release, publicação, rebase, mudança na `main` ou nova
+alteração de configuração externa foi executado durante esta formalização. A
+reconfiguração para o export e a reinstalação exata foram feitas antes desta
+execução e são a origem factual medida acima.

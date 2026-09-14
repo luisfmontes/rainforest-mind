@@ -135,10 +135,24 @@
         "iteracao": 5,
         "sessao": "desconhecida",
         "ts": "2026-09-14T18:22:29.659Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "77b0226e6b168f97848d5fa8021d58c06dda8f6f",
+        "iteracao": 3,
+        "sessao": "desconhecida",
+        "ts": "2026-09-14T18:51:31.199Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "77b0226e6b168f97848d5fa8021d58c06dda8f6f",
+        "iteracao": 6,
+        "sessao": "desconhecida",
+        "ts": "2026-09-14T18:51:31.199Z"
       }
     ],
     "comando": "bash hooks/testa-gate-staging-total.sh; bash scripts/testa-plugin-codex.sh; bash scripts/testa-versao.sh; node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-multihost-sobre-1-11; node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 068468fb956b8d606e9af1800aaa91dd399fdeb8 --head HEAD",
-    "saida": "106 ok, 0 falhas; contrato Codex verde; versao 5/0; cobertura valida 11 decisoes/9 tarefas; sem creep 18 arquivos; projecao D9 696 arquivos, zero ausentes, zero SHA divergentes, um extra D11; handover distingue revisoes a4ff25e e 4b153ced e aponta para revisar",
+    "saida": "106 ok, 0 falhas; contrato Codex verde; versao 5/0; cobertura valida 12 decisoes/9 tarefas; sem creep 18 arquivos; export 703 arquivos com -Force e zero .git; cache 704 arquivos com -Force, zero .git, zero ausentes/divergentes e um extra D11",
     "mutacao": [
       {
         "tarefa": 1,
@@ -185,23 +199,40 @@
         "resultado": "n/a",
         "motivo": "integracao e registro sem comportamento novo"
       }
-    ]
+    ],
+    "origem_instalacao": {
+      "tipo": "git archive",
+      "commit": "77b0226e6b168f97848d5fa8021d58c06dda8f6f",
+      "caminho": "C:\\Projetos\\rainforest-mind\\.claude\\marketplaces\\rainforest-mind-export-1.13.2",
+      "export_arquivos_force": 703,
+      "cache_arquivos_force": 704,
+      "export_dotgit": false,
+      "cache_dotgit": false,
+      "extra_d11": ".codex-plugin/migrated-command-skills/source-command-saude/SKILL.md"
+    },
+    "projecao_d9": {
+      "governanca_excluida": 7,
+      "arquivos_esperados": 696,
+      "ausentes": 0,
+      "sha_divergentes": 0,
+      "extras": 1
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "44ac4c2a02fe7aaf66518c6934afc618ba2a39e1",
+      "head": "77b0226e6b168f97848d5fa8021d58c06dda8f6f",
       "caminhos_sujos": []
     },
     "achados": 1,
     "base": "068468fb956b8d606e9af1800aaa91dd399fdeb8",
-    "head": "44ac4c2a02fe7aaf66518c6934afc618ba2a39e1",
+    "head": "77b0226e6b168f97848d5fa8021d58c06dda8f6f",
     "pendentes": [
       "P2: remover do HANDOVER a instrucao de integrar T9 i3 ja ancestral do HEAD; seguir direto para revisar"
     ],
     "em": "2026-09-14",
-    "tentativas": 3,
-    "achado": "P2: HANDOVER chama a primeira revisão a4ff25e de anterior, mas o estado registra uma segunda tentativa mais recente em 4b153ced com um único achado residual",
+    "tentativas": 4,
+    "achado": "P1: cache 1.13.2 contém extra oculto .git apontando para worktree codex-task7-e2e-113; D9/D11 autorizam somente source-command-saude e a medição anterior omitiu arquivos ocultos",
     "liberado_em": "2026-09-14"
   },
   "verificar": {

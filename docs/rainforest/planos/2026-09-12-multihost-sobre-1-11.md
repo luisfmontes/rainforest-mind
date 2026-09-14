@@ -19,11 +19,15 @@ Referência histórica confirmada: `codex/piloto-rainforest` em
   explícito e deve continuar permitido.
 - **CONFIRMADO:** a piloto 1.7 tem os arquivos novos que servem de referência,
   mas o contrato congela 18 skills e âncoras de corpos antigos.
+- **CONFIRMADO:** o instalador copia metadados `.git` quando a origem é um clone
+  ou worktree; um export por `git archive` do commit candidato contém somente os
+  arquivos versionados e é a origem verificável da instalação final.
 - **INFERIDO:** os campos adicionais de `interface` do manifesto Codex podem
   conservar os valores comprovados na piloto; os quatro metadados canônicos
   continuam vindo do manifesto Claude conforme D3.
-- **LACUNA:** a forma exata do cache criado pelo instalador atual só será fato
-  depois da tarefa 6; nenhuma prova da instalação 1.7 fecha essa lacuna.
+- **CONFIRMADO:** inventários de export e cache usam
+  `Get-ChildItem -Force -Recurse -File`; enumeração sem `-Force` não prova a
+  ausência de metadados ocultos.
 
 ## O que não pode quebrar
 
@@ -39,6 +43,9 @@ Referência histórica confirmada: `codex/piloto-rainforest` em
 - Todo arquivo rastreado fora da lista fechada de sete documentos de governança
   da D9 aparece byte a byte no cache; extras são recusados, exceto a projeção
   Codex fechada de `commands/saude.md` definida em D11.
+- A instalação final nasce de um export limpo do commit candidato, nunca de um
+  checkout Git; export e cache são inventariados com `-Force` e não contêm
+  arquivo ou diretório `.git`.
 - Nenhum manifesto, hook ou payload Gemini é criado nesta entrega.
 - Nenhum push, merge, PR, release ou alteração na `main` ocorre sem aval
   explícito do usuário.
@@ -152,19 +159,22 @@ voltam byte a byte a `1.13.2` — provado no portão por comandos, saídas, cami
 do cache e hashes antes/depois, sem registrar o cachebuster no diff final.
 
 ### 7. Reinstalar exatamente 1.13.2 e executar o contrato ponta a ponta [tipo: teste]
-atende: D1, D2, D3, D6, D8, D9, D11
+atende: D1, D2, D3, D6, D8, D9, D11, D12
 arquivos: `docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md`
 depende de: 6
 paralela: nao
 mutacao: n/a
   motivo: validação do artefato instalado fora do repositório; as mutações dos comportamentos persistentes já pertencem às tarefas 1 a 5.
-pronto quando: com o marketplace local apontando para esta raiz e ambos os
-manifestos exatamente em `1.13.2`, uma reinstalação limpa produz cache
+pronto quando: com o marketplace local apontando para um export limpo produzido
+por `git archive` do commit candidato, sem arquivo ou diretório `.git`, e ambos
+os manifestos exatamente em `1.13.2`, uma reinstalação produz cache
 `1.13.2` em que todos os arquivos rastreados fora da lista fechada de
 governança da D9, inclusive `.codex-plugin/plugin.json`, existem com SHA-256
 idêntico; nenhum extra é aceito
 fora de `.codex-plugin/migrated-command-skills/source-command-saude/SKILL.md`,
-projeção de `commands/saude.md` gerada pelo host e registrada com hash; numa sessão Codex nova, uma skill
+projeção de `commands/saude.md` gerada pelo host e registrada com hash. O export
+e o cache são enumerados por `Get-ChildItem -Force -Recurse -File`, e a prova
+recusa qualquer `.git`, inclusive oculto; numa sessão Codex nova, uma skill
 é invocável, `git status` e `git add -- "-A"` são permitidos, `git add "-A"` e
 `bash -c "git status; git add -A"` são negados, e JSON malformado falha fechado
 sem vazamento — evidências completas coladas no portão com zero caso pulado.
@@ -184,7 +194,7 @@ do texto é resolvido por `git rev-parse`, `git cat-file -e` ou `Test-Path`, e o
 números do portão coincidem com as saídas registradas.
 
 ### 9. Fechar a execução local com todas as travas, sem publicar [tipo: teste]
-atende: D1, D2, D3, D4, D5, D6, D7, D8, D9, D10, D11
+atende: D1, D2, D3, D4, D5, D6, D7, D8, D9, D10, D11, D12
 arquivos: `docs/HANDOVER-CODEX.md`, `docs/rainforest/estado/2026-09-12-multihost-sobre-1-11.json`, `docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md`
 depende de: 8
 paralela: nao
@@ -196,7 +206,10 @@ pronto quando: com o commit candidato local, `bash hooks/testa-gate-staging-tota
 e `node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 068468fb956b8d606e9af1800aaa91dd399fdeb8 --head HEAD`
 terminam verdes; a projeção do cache `1.13.2` contra o HEAD, excluindo somente
 os sete documentos de governança da D9, tem zero caminho ausente e zero SHA-256
-divergente, e o único extra continua sendo o derivado autorizado pela D11; o
+divergente, e o único extra continua sendo o derivado autorizado pela D11. O
+marketplace ativo aponta para o export limpo do commit candidato; a enumeração
+com `Get-ChildItem -Force -Recurse -File` confirma zero `.git` no export e no
+cache, sem omitir arquivos ocultos; o
 handover registra execução `9/9` e aponta `revisar` como próximo estágio;
 `git diff --name-only 068468fb...HEAD` contém somente os
 caminhos autorizados pelo plano; o estado registra a evidência por tarefa; e
@@ -214,7 +227,7 @@ saídas reais depois da instalação final; T9 integra o conjunto. Não há grup
 
 ## Premissas aceitas sem conferir
 
-- Nenhuma decisão de produto ficou aberta: D1–D10 estão formalmente aprovadas
+- Nenhuma decisão de produto ficou aberta: D1–D12 estão formalmente aprovadas
   no estado do fluxo.
 - A instalação local do Codex continuará oferecendo o mesmo comando de
   reinstalação usado na piloto; a tarefa 6 deve parar e registrar a divergência

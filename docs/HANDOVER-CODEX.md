@@ -22,6 +22,13 @@ embora `f51168147d15f1bafff538c4f4e9595fb977cd2f` já fosse ancestral. Esse
 achado foi tratado na T9, iteração 4. O próximo estágio é **revisar novamente**;
 até essa nova revisão, o estado de `revisar` permanece `reprovado`.
 
+A revisão mais recente, sobre `77b0226e6b168f97848d5fa8021d58c06dda8f6f`,
+encontrou um problema causal na prova de instalação: instalar diretamente de
+um checkout Git copiava seus metadados `.git`, e a enumeração anterior sem
+`-Force` não os enxergava. A correção usa um export limpo desse commit como
+origem ativa, inventaria ocultos explicitamente e mantém `revisar` reprovado até
+uma nova revisão independente confirmar a prova.
+
 ## Retomada segura
 
 O worktree de entrega continua com o nome histórico `codex-multihost-1.11`, mas
@@ -29,10 +36,14 @@ a branch real é `codex/multihost-1.13`:
 
 ```powershell
 $entrega = 'C:\Projetos\rainforest-mind\.claude\worktrees\codex-multihost-1.11'
+$origemAtiva = 'C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.13.2'
 Test-Path -LiteralPath $entrega
+Test-Path -LiteralPath $origemAtiva
 git -C $entrega branch --show-current
 git -C $entrega rev-parse HEAD
 git -C $entrega merge-base --is-ancestor origin/main HEAD
+codex plugin marketplace list
+codex plugin list
 ```
 
 `git rev-parse HEAD` é a fonte de verdade para o HEAD corrente. Antes da T8, a
@@ -86,8 +97,11 @@ A T6 reaberta instalou o cachebuster
 `source-command-saude` e bloqueou `git add "-A"` em uma sessão Codex nova. Os
 dois manifestos foram restaurados byte a byte para `1.13.2`.
 
-A T7 fez uma reinstalação limpa da versão exata `1.13.2` e terminou verde, sem
-casos pulados:
+A T7 fez uma reinstalação da versão exata `1.13.2` e validou o payload de
+produto sem casos pulados. A palavra “limpa” usada na evidência original ficou
+invalidada depois: a origem era um checkout e a enumeração sem `-Force` omitiu
+o `.git` copiado. Os números abaixo permanecem evidência histórica dos arquivos
+de produto, não prova final de higiene da origem:
 
 - 702 arquivos rastreados presentes no cache, zero ausentes e zero SHA-256
   divergentes;
@@ -107,8 +121,12 @@ casos pulados:
 As saídas completas, caminhos de cache, hashes e comandos estão no portão do
 fluxo. Não promova o resumo acima no lugar da evidência primária.
 
-Na T9, iteração 3, o cache instalado `1.13.2` foi comparado novamente contra o
-HEAD usando a projeção fechada pela D9. Dos 703 arquivos rastreados, foram
+Na T9, iteração 3, os caminhos rastreados do cache `1.13.2` foram comparados
+novamente contra o HEAD usando a projeção fechada pela D9. A enumeração daquele
+momento não usou `-Force`, portanto não sustentava uma conclusão sobre extras
+ocultos; os números abaixo permanecem válidos somente para a projeção dos
+arquivos de produto e são superados pela prova causal posterior. Dos 703
+arquivos rastreados, foram
 excluídos exatamente os sete documentos de governança; os 696 arquivos de
 produto restantes tiveram zero ausente e zero SHA-256 divergente. Após aplicar
 a mesma exclusão ao inventário do cache, o único extra foi:
@@ -119,6 +137,48 @@ a mesma exclusão ao inventário do cache, o único extra foi:
   `f044c166ccbfaca6470e4090229011354b82d4007adc80a278581a6565f6a6f6`.
 
 Essa é a projeção D11 gerada pelo host; não é uma segunda fonte versionada.
+
+### Origem ativa e correção causal da instalação
+
+O marketplace `rainforest-mind-local` aponta agora para o export limpo:
+
+```text
+C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.13.2
+source_commit=77b0226e6b168f97848d5fa8021d58c06dda8f6f
+```
+
+Esse diretório foi produzido por `git archive`, não é clone nem worktree e
+contém exatamente os 703 blobs rastreados do commit-fonte. A comparação do hash
+de blob de cada caminho terminou assim:
+
+```text
+tracked_total=703
+export_total_force=703
+export_dotgit_exists=False
+export_missing=0
+export_different=0
+export_extra=0
+```
+
+Depois da reinstalação exata `1.13.2`, a enumeração que inclui ocultos mostrou:
+
+```text
+cache_total_force=704
+cache_dotgit_exists=False
+cache_missing=0
+cache_different=0
+cache_extra=1
+.codex-plugin/migrated-command-skills/source-command-saude/SKILL.md
+```
+
+O extra único continua sendo D11, SHA-256
+`321c30bcfda44ff56ad53fca7ef5c3b170987a3bd2bee646152af22aaf1dd339`,
+derivado de `commands/saude.md`, SHA-256
+`f044c166ccbfaca6470e4090229011354b82d4007adc80a278581a6565f6a6f6`.
+Os inventários foram feitos com `Get-ChildItem -Force -Recurse -File`; portanto,
+a ausência de `.git` cobre também arquivos ocultos. Os sete documentos de
+governança continuam sendo a única exclusão D9 quando o cache é projetado contra
+o HEAD documental posterior. Nenhuma exceção nova foi adicionada à D9/D11.
 
 ## Piloto histórica
 
@@ -143,12 +203,14 @@ A T9, iteração 3, já está integrada: `f51168147d15f1bafff538c4f4e9595fb977cd
 independente do estágio `revisar`, contra o diff real desde
 `068468fb956b8d606e9af1800aaa91dd399fdeb8`. A execução já está fechada em
 `9/9`; não integre nem repita a T9 como passo prescritivo de retomada. A revisão
-deve confirmar especialmente os dois achados anteriores agora tratados: a
-projeção D9/D11 do cache e este handover coerente com o estado.
+deve confirmar especialmente os achados anteriores agora tratados: a projeção
+D9/D11 do cache, a origem limpa definida pela D12 e este handover
+coerente com o estado.
 
 Antes de remover qualquer worktree auxiliar, confirme com `codex plugin list`
-qual caminho sustenta o marketplace/cache ativo e reaponte-o para a entrega se
-necessário. A configuração externa não foi alterada pela T8.
+que o marketplace ativo continua apontando para o export limpo. Não o reaponte
+diretamente para clone ou worktree, pois isso reintroduz os metadados `.git` que
+causaram o P1.
 
 ## Proibição de publicação
 

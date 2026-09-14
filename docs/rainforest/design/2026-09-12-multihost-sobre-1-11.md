@@ -17,10 +17,11 @@ histórica, não aceite desta versão.
 - **D5 — A versão corrente recebe documentos e evidências próprios** — porquê: design, plano, estado e portão da piloto `1.7.0` descrevem outra árvore e outro cache; eles serão referenciados pelo commit `c71ecd01a73ab9208c981ff2d1eea5f6378434d7`, não importados como estado atual. O slug preserva `1-11` porque o fluxo começou nessa base, passou pela `1.12.0` e foi reancorado sobre `1.13.2` quando a `main` avançou durante a execução.
 - **D6 — O delimitador `--` preserva a semântica de pathspec** — porquê: `git add -- "-A"` nomeia um caminho e permanece permitido; `git add "-A"` usa a opção de staging total e é bloqueado, inclusive quando aparece depois de um Git inofensivo dentro de wrapper.
 - **D7 — O portão global compara as versões Claude e Codex** — porquê: depois de existir um segundo manifesto nativo, a publicação não pode ficar verde com versões divergentes.
-- **D8 — O marketplace local distribui a raiz do repositório** — porquê: `source.path: "./"` materializa o produto único; uma subpasta ou cópia aninhada recriaria duas fontes do mesmo plugin.
+- **D8 — O marketplace local distribui a raiz lógica do produto** — porquê: `source.path: "./"` materializa o produto único na árvore-fonte fornecida ao marketplace; uma subpasta ou cópia aninhada recriaria duas fontes do mesmo plugin. Na instalação final, essa árvore-fonte é o export limpo definido pela D12, não um checkout Git.
 - **D9 — Cachebuster é somente instrumento de desenvolvimento** — porquê: iterações locais usam `1.13.2+codex.<token>`, mas o portão final reinstala `1.13.2` e exige igualdade byte a byte do payload de produto. A projeção exclui somente os sete documentos de governança desta entrega (`docs/HANDOVER-CODEX.md`, design, plano, estado, portão, mapa da fatia e `docs/rainforest/mapas/COBERTURA.md`): eles registram a prova depois que o cache existe e não são lidos pelo runtime. Exigir seus bytes criaria regressão infinita, porque cada commit da evidência tornaria a própria instalação recém-provada obsoleta.
 - **D10 — A adaptação será reaplicada como diff mínimo sobre a main corrente** — porquê: o merge entre as árvores da piloto alcança 209 caminhos e cherry-picks em série carregam hashes, contagens e documentos da `1.7.0`; a entrega foi reancorada sobre `068468fb956b8d606e9af1800aaa91dd399fdeb8`, e o rebase descartou o commit de staging já incorporado upstream com conteúdo idêntico.
 - **D11 — Artefatos derivados pelo host não viram uma segunda fonte no repo** — porquê: ao instalar a raiz única, o Codex materializa `.codex-plugin/migrated-command-skills/source-command-saude/SKILL.md` a partir de `commands/saude.md`. O portão compara estritamente todo arquivo rastreado fora da lista fechada de governança da D9 e aceita como extra somente essa saída derivada, com caminho, origem e hash registrados; versioná-la duplicaria o corpo do comando e violaria o núcleo único.
+- **D12 — A instalação local verificável parte de um export limpo do commit candidato** — porquê: o instalador copia recursivamente a origem informada pelo marketplace, e um checkout Git carrega metadados `.git` — arquivo em worktree ou diretório em clone — que não pertencem ao payload do plugin. A origem local final é produzida por `git archive` a partir do commit candidato, preserva a raiz única e não contém metadados do checkout. Tanto o export quanto o cache são inventariados com `Get-ChildItem -Force -Recurse -File`, para que arquivos ocultos entrem na medição. Essa higiene de origem não altera a projeção estrita da D9 nem a única exceção derivada da D11.
 
 ## Avaliado e descartado
 
@@ -31,6 +32,7 @@ histórica, não aceite desta versão.
 - Criar agora uma fonte neutra adicional de metadados: descartado por YAGNI; o contrato de igualdade com o manifesto Claude cobre a divergência observada e o portão global impedirá versões diferentes.
 - Promover instalações `1.7.0` ou `1.12.0` como prova da `1.13.2`: descartado porque evidência instalada não atravessa bump de versão nem mudança de bytes.
 - Versionar a skill migrada gerada pelo Codex: descartado porque duplicaria `commands/saude.md` e tornaria um detalhe interno do host uma segunda fonte do produto.
+- Instalar a versão final diretamente de um clone ou worktree: descartado porque o instalador também copia seus metadados `.git`; ignorar arquivos ocultos na medição esconderia exatamente essa contaminação.
 
 ## Fora de escopo
 
@@ -42,7 +44,7 @@ histórica, não aceite desta versão.
 
 ## Em aberto
 
-Nenhuma decisão de design permanece aberta. O plano deve transformar estas onze
+Nenhuma decisão de design permanece aberta. O plano deve transformar estas doze
 decisões em tarefas falsificáveis. Os três primeiros contratos nasceram sobre
 `a338dd02ad495f87a66d84af2ab24eab3d2660b8`; antes da tarefa 4, os 12 commits
 locais foram reaplicados sem conflito sobre `cf1ad7689f84428eb0b10943c0f1cf1a662b8faf` e depois reancorados sobre `068468fb956b8d606e9af1800aaa91dd399fdeb8`, preservando como referência o
