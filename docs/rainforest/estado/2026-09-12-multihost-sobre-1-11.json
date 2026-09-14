@@ -226,21 +226,22 @@
     }
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "f9339f475f317b01761d1f0176af505b833c57ef",
+      "head": "52245a7fd0e7c6f7a74dd56b6a7310bd1fb753cc",
       "caminhos_sujos": []
     },
-    "achados": 1,
+    "achados": 0,
     "base": "068468fb956b8d606e9af1800aaa91dd399fdeb8",
-    "head": "f9339f475f317b01761d1f0176af505b833c57ef",
-    "pendentes": [
-      "P2: remover do HANDOVER a instrucao de integrar T9 i3 ja ancestral do HEAD; seguir direto para revisar"
-    ],
+    "head": "52245a7fd0e7c6f7a74dd56b6a7310bd1fb753cc",
     "em": "2026-09-14",
-    "tentativas": 5,
     "achado": "P2: HANDOVER usa git -C sem confirmar que rev-parse --show-toplevel é exatamente a worktree de entrega; uma worktree inválida pode fazer Git subir ao repo pai e validar a main por engano",
-    "liberado_em": "2026-09-14"
+    "confirmacoes": [
+      "retomada fail-closed",
+      "D12 export limpo do mesmo repositorio",
+      "cache 704 com -Force sem .git e unico extra D11",
+      "repo unico preservado"
+    ]
   },
   "verificar": {
     "status": "pendente"
