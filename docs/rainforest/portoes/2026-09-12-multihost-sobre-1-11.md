@@ -1595,3 +1595,87 @@ plugin instalado ou alteração de configuração externa. A branch de entrega e
 `main` não foram alteradas. Menções documentais a essas operações são regras e
 evidência, não comandos executados. A proibição de publicar ou mesclar na
 `main` sem aval explícito do usuário permanece ativa.
+
+## Tarefa 9 — iteração 4, handover coerente com a integração
+
+### Veredito
+
+**OK, executar permanece 9/9.** O commit da T9, iteração 3,
+`f51168147d15f1bafff538c4f4e9595fb977cd2f`, já é ancestral do HEAD. A
+instrução residual para integrá-lo foi removida do handover, cujo próximo passo
+agora é diretamente uma nova revisão independente. O estágio `revisar`
+permanece `reprovado` até essa revisão acontecer.
+
+### Base e ancestralidade
+
+```text
+worktree=C:/Projetos/rainforest-mind/.claude/worktrees/codex-multihost-1.11
+branch=codex/multihost-1.13
+base/HEAD=46fcf099bad98c1a89cd8cdde62e12c93aed46c1
+origin/main=068468fb956b8d606e9af1800aaa91dd399fdeb8
+f511681_ancestor_exit=0
+estado_exigir_exit=0
+```
+
+### Projeção D9/D11 do cache instalado 1.13.2
+
+Sem reinstalação ou alteração de configuração, a projeção do HEAD excluiu
+exatamente os sete documentos de governança definidos pela D9 e comparou os
+arquivos restantes por SHA-256 contra o cache `1.13.2`:
+
+```text
+cache_claude_version=1.13.2
+cache_codex_version=1.13.2
+tracked_total=703
+governance_excluded=7
+projection_expected=696
+cache_total=703
+missing_count=0
+sha_divergent_count=0
+extra_count=1
+.codex-plugin/migrated-command-skills/source-command-saude/SKILL.md
+derived_sha256=321c30bcfda44ff56ad53fca7ef5c3b170987a3bd2bee646152af22aaf1dd339
+origin_sha256=f044c166ccbfaca6470e4090229011354b82d4007adc80a278581a6565f6a6f6
+```
+
+O único extra continua sendo a projeção D11 autorizada, derivada de
+`commands/saude.md`.
+
+### Cinco comandos literais
+
+Executados uma única vez, em sequência, com
+`C:\Program Files\Git\bin\bash.exe` como alias `bash` local ao processo:
+
+```powershell
+bash hooks/testa-gate-staging-total.sh
+bash scripts/testa-plugin-codex.sh
+bash scripts/testa-versao.sh
+node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-multihost-sobre-1-11
+node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 068468fb956b8d606e9af1800aaa91dd399fdeb8 --head HEAD
+```
+
+```text
+CMD1: == resultado: 106 ok, 0 falha(s) ==
+cmd1_exit=0
+CMD2: contrato Codex completo verde
+cmd2_exit=0
+CMD3: ok: 5   falhou: 0
+cmd3_exit=0
+CMD4: ok: cobertura válida — 11 decisão(ões), 9 tarefa(s)
+cmd4_exit=0
+CMD5: ok: sem creep — 18 arquivo(s) coberto(s)
+cmd5_exit=0
+total=5 vermelhas=0
+```
+
+### Handover, estado e ausência de publicação
+
+O handover não manda mais integrar nem repetir a T9. Ele registra que
+`f51168147d15f1bafff538c4f4e9595fb977cd2f` é ancestral do HEAD e encaminha a
+retomada diretamente para `revisar`. O estado registra a T9 iteração 4,
+`executar.status = ok`, `tarefas_ok = 9` de `9`, e conserva
+`revisar.status = reprovado` até uma nova revisão independente.
+
+Nenhum push, merge, PR, release, publicação, rebase, reinstalação, mudança no
+plugin instalado ou alteração de configuração externa foi executado. A `main`
+não foi tocada e continua protegida pela exigência de aval explícito do usuário.

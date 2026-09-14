@@ -135,12 +135,13 @@ git -C $entrega show "$piloto`:.claude-plugin/plugin.json" |
 
 ## Próximo passo: nova revisão
 
-Integre localmente a T9, iteração 3, na branch de entrega, rederive o HEAD e
-execute novamente o estágio `revisar` contra o diff real desde
+A T9, iteração 3, já está integrada: `f51168147d15f1bafff538c4f4e9595fb977cd2f`
+é ancestral do HEAD corrente. Siga diretamente para uma nova execução
+independente do estágio `revisar`, contra o diff real desde
 `068468fb956b8d606e9af1800aaa91dd399fdeb8`. A execução já está fechada em
-`9/9`; não repita a T9 como passo prescritivo de retomada. A revisão deve
-confirmar especialmente os dois achados anteriores agora tratados: a projeção
-D9/D11 do cache e este handover coerente com o estado.
+`9/9`; não integre nem repita a T9 como passo prescritivo de retomada. A revisão
+deve confirmar especialmente os dois achados anteriores agora tratados: a
+projeção D9/D11 do cache e este handover coerente com o estado.
 
 Antes de remover qualquer worktree auxiliar, confirme com `codex plugin list`
 qual caminho sustenta o marketplace/cache ativo e reaponte-o para a entrega se
