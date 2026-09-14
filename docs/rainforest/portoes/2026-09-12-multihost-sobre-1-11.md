@@ -1475,3 +1475,123 @@ merge, PR, release, publicação, rebase, alteração de configuração externa 
 mudança no plugin instalado. Ocorrências desses termos nos documentos são
 regras e exemplos, não comandos executados. A entrega continua aguardando aval
 explícito do usuário antes de qualquer publicação ou mesclagem na `main`.
+
+## Tarefa 9 — iteração 3, correção dos achados da revisão
+
+### Veredito
+
+**OK, executar permanece 9/9.** A revisão anterior sobre
+`a4ff25e212905d9422bbe873ff380f71a34e2fca` encontrou dois problemas: o
+handover ainda prescrevia uma T9 pendente e a prova do cache não delimitava a
+projeção D9 contra o HEAD documental final. Nesta iteração, o handover foi
+atualizado e a projeção fechada passou. O estágio `revisar` permanece
+`reprovado` até uma nova revisão independente; o próximo estágio é `revisar`.
+
+### Base e isolamento
+
+```text
+base/HEAD=f51168147d15f1bafff538c4f4e9595fb977cd2f
+branch=codex/task9-final-113-i3
+worktree=C:\Projetos\rainforest-mind\.claude\worktrees\codex-task9-final-113-i3
+origin/main=068468fb956b8d606e9af1800aaa91dd399fdeb8
+origin_main_ancestor_exit=0
+review_head_exists_exit=0
+```
+
+### Projeção D9 do cache instalado 1.13.2
+
+`codex plugin list` confirmou o plugin instalado e habilitado em `1.13.2`. A
+entrada medida, sem reinstalação ou mudança de configuração, foi:
+
+```text
+C:\Users\Luis\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.13.2
+cache_claude_version=1.13.2
+cache_codex_version=1.13.2
+```
+
+O inventário da fonte veio de `git ls-tree -r --name-only HEAD`. Foram
+excluídos exatamente estes sete documentos de governança, tanto do conjunto
+esperado quanto da classificação de extras do cache:
+
+```text
+docs/HANDOVER-CODEX.md
+docs/rainforest/design/2026-09-12-multihost-sobre-1-11.md
+docs/rainforest/planos/2026-09-12-multihost-sobre-1-11.md
+docs/rainforest/estado/2026-09-12-multihost-sobre-1-11.json
+docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md
+docs/rainforest/mapas/2026-09-12-multihost-sobre-1-11.md
+docs/rainforest/mapas/COBERTURA.md
+```
+
+Para cada arquivo restante, `Get-FileHash -Algorithm SHA256` comparou a fonte
+no HEAD com o caminho correspondente no cache:
+
+```text
+tracked_total=703
+governance_excluded=7
+projection_expected=696
+cache_total=703
+missing_count=0
+sha_divergent_count=0
+extra_count=1
+.codex-plugin/migrated-command-skills/source-command-saude/SKILL.md
+```
+
+O único extra é a projeção D11 gerada pelo host. Origem e hashes medidos:
+
+```text
+derived_path=.codex-plugin/migrated-command-skills/source-command-saude/SKILL.md
+derived_sha256=321c30bcfda44ff56ad53fca7ef5c3b170987a3bd2bee646152af22aaf1dd339
+origin_path=commands/saude.md
+origin_sha256=f044c166ccbfaca6470e4090229011354b82d4007adc80a278581a6565f6a6f6
+```
+
+O frontmatter do derivado declara `name: "source-command-saude"` e seu corpo
+informa que migra o comando-fonte `saude`, corroborando a origem sem criar uma
+segunda fonte versionada.
+
+### Cinco comandos literais
+
+Executados com `C:\Program Files\Git\bin\bash.exe` como shell de login e uma
+caixa efêmera em `%TEMP%`:
+
+```powershell
+bash hooks/testa-gate-staging-total.sh
+bash scripts/testa-plugin-codex.sh
+bash scripts/testa-versao.sh
+node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-multihost-sobre-1-11
+node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 068468fb956b8d606e9af1800aaa91dd399fdeb8 --head HEAD
+```
+
+```text
+CMD1: == resultado: 106 ok, 0 falha(s) ==
+cmd1_exit=0
+CMD2: contrato Codex completo verde
+cmd2_exit=0
+CMD3: ok: 5   falhou: 0
+cmd3_exit=0
+CMD4: ok: cobertura válida — 11 decisão(ões), 9 tarefa(s)
+cmd4_exit=0
+CMD5: ok: sem creep — 18 arquivo(s) coberto(s)
+cmd5_exit=0
+total=5 vermelhas=0
+```
+
+### Escopo, estado e ausência de publicação
+
+`git diff --name-only 068468fb956b8d606e9af1800aaa91dd399fdeb8...HEAD`
+retornou 18 caminhos, e o `creep` literal confirmou todos cobertos pelas nove
+tarefas. Antes dos três registros autorizados desta iteração, o worktree estava
+limpo; seu diff local ficou restrito a `docs/HANDOVER-CODEX.md`, ao estado e a
+este portão.
+
+O estado recebeu o carimbo da tarefa 9, iteração 3, na base
+`f51168147d15f1bafff538c4f4e9595fb977cd2f`, mantém `executar.status = ok`,
+`tarefas_ok = 9` de `9`, registra a bateria e a projeção D9, e preserva
+`revisar.status = reprovado` com os dois achados anteriores até nova revisão.
+
+Não houve push, merge, PR, release, publicação, rebase, reinstalação, mudança no
+plugin instalado ou alteração de configuração externa. A branch de entrega e a
+`main` não foram alteradas. Menções documentais a essas operações são regras e
+evidência, não comandos executados. A proibição de publicar ou mesclar na
+`main` sem aval explícito do usuário permanece ativa.

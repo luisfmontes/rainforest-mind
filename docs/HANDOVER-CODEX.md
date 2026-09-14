@@ -1,6 +1,6 @@
 # Handover Codex — Rainforest Mind multihost 1.13.2
 
-Atualizado em 2026-09-13. Este documento retoma a entrega local que adapta o
+Atualizado em 2026-09-14. Este documento retoma a entrega local que adapta o
 Rainforest Mind ao Codex sem bifurcar o produto.
 
 ## Resultado corrente
@@ -11,10 +11,13 @@ compartilhados; cada host recebe somente o adaptador fino necessário. Nesta
 entrega, Claude e Codex estão comprovados. Gemini permanece explicitamente adiado:
 nenhum manifesto, hook ou payload Gemini foi criado.
 
-A versão entregue e instalada localmente é `1.13.2`. As tarefas 1–7 do plano
-estão verdes. A T8 cria este handover e atualiza o rastro; depois de integrada,
-o estado deve mostrar 8/9 e restar somente a T9, que fecha as baterias locais
-sem publicar.
+A versão entregue e instalada localmente é `1.13.2`. A execução das nove
+tarefas está verde (`9/9`). A revisão anterior, feita sobre
+`a4ff25e212905d9422bbe873ff380f71a34e2fca`, foi reprovada por dois achados:
+o handover ainda descrevia a T9 como pendente e a igualdade do cache ainda não
+estava delimitada pela projeção D9. Ambos foram tratados na T9, iteração 3. O
+próximo estágio é **revisar novamente**; até essa nova revisão, o estado de
+`revisar` permanece `reprovado`.
 
 ## Retomada segura
 
@@ -101,6 +104,19 @@ casos pulados:
 As saídas completas, caminhos de cache, hashes e comandos estão no portão do
 fluxo. Não promova o resumo acima no lugar da evidência primária.
 
+Na T9, iteração 3, o cache instalado `1.13.2` foi comparado novamente contra o
+HEAD usando a projeção fechada pela D9. Dos 703 arquivos rastreados, foram
+excluídos exatamente os sete documentos de governança; os 696 arquivos de
+produto restantes tiveram zero ausente e zero SHA-256 divergente. Após aplicar
+a mesma exclusão ao inventário do cache, o único extra foi:
+
+- `.codex-plugin/migrated-command-skills/source-command-saude/SKILL.md`, SHA-256
+  `321c30bcfda44ff56ad53fca7ef5c3b170987a3bd2bee646152af22aaf1dd339`;
+- origem `commands/saude.md`, SHA-256
+  `f044c166ccbfaca6470e4090229011354b82d4007adc80a278581a6565f6a6f6`.
+
+Essa é a projeção D11 gerada pelo host; não é uma segunda fonte versionada.
+
 ## Piloto histórica
 
 A branch `codex/piloto-rainforest`, commit
@@ -117,13 +133,14 @@ git -C $entrega show "$piloto`:.claude-plugin/plugin.json" |
   Select-String '"version": "1.7.0"'
 ```
 
-## Próximo passo: somente T9
+## Próximo passo: nova revisão
 
-Depois de integrar a T8 na branch de entrega, rederive o HEAD e execute a T9 do
-plano. Ela deve rodar as cinco travas declaradas, conferir que o diff desde
-`068468fb...` contém somente caminhos autorizados, fechar o estado de execução e
-manter tudo local. Não reescreva critérios nem use evidência da piloto no lugar
-dos testes 1.13.2.
+Integre localmente a T9, iteração 3, na branch de entrega, rederive o HEAD e
+execute novamente o estágio `revisar` contra o diff real desde
+`068468fb956b8d606e9af1800aaa91dd399fdeb8`. A execução já está fechada em
+`9/9`; não repita a T9 como passo prescritivo de retomada. A revisão deve
+confirmar especialmente os dois achados anteriores agora tratados: a projeção
+D9/D11 do cache e este handover coerente com o estado.
 
 Antes de remover qualquer worktree auxiliar, confirme com `codex plugin list`
 qual caminho sustenta o marketplace/cache ativo e reaponte-o para a entrega se
