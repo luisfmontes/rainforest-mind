@@ -111,8 +111,7 @@
       }
     ],
     "pendentes": [
-      "tarefa-9: comando literal creep exige --base e --head ausentes no plano",
-      "tarefa-9: creep com base/head recusa docs/rainforest/mapas/2026-09-12-multihost-sobre-1-11.md e docs/rainforest/mapas/COBERTURA.md sem tarefa correspondente"
+      "tarefa-9: repetir fechamento com --base/--head e mapas autorizados no rastro da tarefa 8"
     ]
   },
   "revisar": {

@@ -169,7 +169,7 @@ sem vazamento — evidências completas coladas no portão com zero caso pulado.
 
 ### 8. Atualizar o rastro corrente e o handover sem promover a piloto [tipo: docs]
 atende: D4, D5, D9, D10, D11
-arquivos: `docs/HANDOVER-CODEX.md`, `docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md`
+arquivos: `docs/HANDOVER-CODEX.md`, `docs/rainforest/mapas/2026-09-12-multihost-sobre-1-11.md`, `docs/rainforest/mapas/COBERTURA.md`, `docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md`
 depende de: 7
 paralela: nao
 mutacao: n/a
@@ -191,7 +191,7 @@ mutacao: n/a
 pronto quando: com o commit candidato local, `bash hooks/testa-gate-staging-total.sh`,
 `bash scripts/testa-plugin-codex.sh`, `bash scripts/testa-versao.sh`,
 `node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-multihost-sobre-1-11`
-e `node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11`
+e `node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 068468fb956b8d606e9af1800aaa91dd399fdeb8 --head HEAD`
 terminam verdes; `git diff --name-only 068468fb...HEAD` contém somente os
 caminhos autorizados pelo plano; o estado registra a evidência por tarefa; e
 `git branch --show-current`, `git status --short` e a ausência de comandos de
