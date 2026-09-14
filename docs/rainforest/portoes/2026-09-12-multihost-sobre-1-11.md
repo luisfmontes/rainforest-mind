@@ -1045,3 +1045,158 @@ no cache exato `1.13.2`, aguardando integração.
 
 Resultado da T7 revisada: **verde, 7/9**. Nenhum push, merge, PR, release,
 publicação, rebase ou alteração da `main` ou da branch de entrega foi realizado.
+
+## Tarefa 8 — handover factual da entrega 1.13.2
+
+### Veredito
+
+**VERDE.** `docs/HANDOVER-CODEX.md` foi criado porque não existia na base da
+tarefa. Uma retomada por esse arquivo identifica o produto único, a entrega
+real, a origem, as âncoras históricas, o rastro 1.11 → 1.12 → 1.13.2, a
+evidência T6/T7, o adiamento de Gemini e a proibição de publicar sem aval.
+
+### Base isolada e HEAD rederivável
+
+```powershell
+git rev-parse HEAD
+git branch --show-current
+git merge-base --is-ancestor 068468fb956b8d606e9af1800aaa91dd399fdeb8 HEAD
+```
+
+```text
+810b0372df0f0ade2445645235d19dd261022550
+codex/task8-handover-113
+base_ancestor_exit=0
+```
+
+O handover registra `810b0372...` como âncora **anterior** à T8 e explica que
+ela não é o HEAD final. O ponteiro corrente é deliberadamente rederivado com:
+
+```powershell
+git -C 'C:\Projetos\rainforest-mind\.claude\worktrees\codex-multihost-1.11' rev-parse HEAD
+```
+
+Assim, o commit que adiciona o próprio handover não invalida a instrução de
+retomada.
+
+### Entrega, base e versões
+
+Comandos:
+
+```powershell
+$entrega = 'C:\Projetos\rainforest-mind\.claude\worktrees\codex-multihost-1.11'
+$base = '068468fb956b8d606e9af1800aaa91dd399fdeb8'
+Test-Path -LiteralPath $entrega
+git -C $entrega branch --show-current
+git -C $entrega rev-parse HEAD
+git -C $entrega merge-base --is-ancestor $base HEAD
+git -C $entrega cat-file -e "$base^{commit}"
+git -C $entrega rev-parse origin/main
+git -C $entrega show "$base`:.claude-plugin/plugin.json"
+(Get-Content -Raw "$entrega\.claude-plugin\plugin.json" | ConvertFrom-Json).version
+(Get-Content -Raw "$entrega\.codex-plugin\plugin.json" | ConvertFrom-Json).version
+```
+
+Saída relevante:
+
+```text
+exists=True
+codex/multihost-1.13
+810b0372df0f0ade2445645235d19dd261022550
+base_ancestor_exit=0
+base_cat_file_exit=0
+origin/main=068468fb956b8d606e9af1800aaa91dd399fdeb8
+base .claude-plugin/plugin.json version=1.13.2
+delivery .claude-plugin/plugin.json version=1.13.2
+delivery .codex-plugin/plugin.json version=1.13.2
+```
+
+### Caminhos do fluxo
+
+Os caminhos foram avaliados com `Test-Path -LiteralPath` no worktree isolado da
+T8, que contém o handover ainda não integrado:
+
+```text
+docs/HANDOVER-CODEX.md=True
+docs/rainforest/design/2026-09-12-multihost-sobre-1-11.md=True
+docs/rainforest/planos/2026-09-12-multihost-sobre-1-11.md=True
+docs/rainforest/estado/2026-09-12-multihost-sobre-1-11.json=True
+docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md=True
+docs/rainforest/mapas/2026-09-12-multihost-sobre-1-11.md=True
+```
+
+### Piloto histórica
+
+```powershell
+$piloto = 'c71ecd01a73ab9208c981ff2d1eea5f6378434d7'
+git -C $entrega cat-file -e "$piloto^{commit}"
+git -C $entrega rev-parse codex/piloto-rainforest
+git -C $entrega show "$piloto`:.claude-plugin/plugin.json"
+```
+
+```text
+pilot_cat_file_exit=0
+c71ecd01a73ab9208c981ff2d1eea5f6378434d7
+pilot .claude-plugin/plugin.json version=1.7.0
+```
+
+O handover classifica esse commit exclusivamente como referência histórica,
+nunca como base ou aceite da entrega 1.13.2.
+
+### Contrato textual do handover
+
+Uma verificação literal confirmou a presença de cada informação exigida:
+
+```text
+repo_unico=True
+claude=True
+codex=True
+gemini_futuro=True
+gemini_adiado=True
+branch=True
+worktree=True
+base=True
+base_version=True
+head_anchor=True
+head_dynamic=True
+pilot=True
+pilot_version=True
+slug_history=True
+t6=True
+t7=True
+no_publish=True
+```
+
+### Coerência com os números do portão
+
+A conferência foi limitada ao bloco `## Tarefa 7 revisada` para não contar como
+duplicata a evidência histórica 1.12. Cada marcador abaixo ocorreu exatamente
+uma vez nesse bloco e coincide com o handover:
+
+```text
+tracked=702 => 1
+cached=703 => 1
+missing=0 => 1
+different=0 => 1
+extra=1 => 1
+unexpected_extra=0 => 1
+aggregate_source=5fd4319558ce9c5134a8f554d6f985dd1fae855977f645058dc41494d2733e6d => 1
+WHITELIST_EXACT_OK => 1
+SKILL_OK `node scripts/saude.cjs` => 1
+PATHSPEC_OK => 1
+TOTAL_DENY_OK => 1
+WRAPPER_DENY_OK => 1
+secret_leaked=False => 1
+```
+
+Antes da atualização do estado pela T8, o JSON confirmou
+`tarefas_ok=7 tarefas=9`; depois desta entrega ele registra 8/9 e deixa somente
+a T9 pendente.
+
+### Limites preservados
+
+Gemini continua adiado dentro do mesmo produto e repositório. A T8 não alterou
+marketplace, cache ou outra configuração externa. Nenhum push, merge, PR,
+release, publicação, rebase ou alteração da `main` ou da branch de entrega foi
+realizado. A `main` só pode receber esta entrega depois de aval explícito do
+usuário.
