@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: sensor
 "use strict";
 /**
  * Catraca do vocabulário de veredito do `vigias/livro-de-repos.md`: lê a tabela

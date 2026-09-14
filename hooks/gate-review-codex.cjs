@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: sensor
 /**
  * Stop — review gate opt-in via Codex na resposta do Claude.
  * Protege contra: turno terminando sem aprovação explícita do revisor via Codex

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: sensor
 /**
  * Catraca de mutação: inverte um comportamento no fonte e EXIGE que a bateria
  * fique VERMELHA. Bateria que continua verde com o comportamento invertido não

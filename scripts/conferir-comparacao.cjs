@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: sensor
 /**
  * Catraca de comparação: RODA um comando em dois lugares e carimba onde cada
  * lado rodou. Não lê uma afirmação de "testei antes e depois" — produz a

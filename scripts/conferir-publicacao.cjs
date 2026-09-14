@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: sensor
 /**
  * Confere um relatório ANTES de ele sair da máquina — e RECUSA, em vez de avisar.
  *

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: sensor
 /**
  * Hook: marca d'água sobre o transcrito.
  *

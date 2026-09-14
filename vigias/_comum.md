@@ -1,3 +1,5 @@
+<!-- @categoria: dado -->
+
 # Instruções comuns aos vigias (incluídas por referência nos prompts)
 
 Você é um vigia agendado do usuario Montes, rodando sem ninguém presente.

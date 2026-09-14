@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: sensor
 /**
  * Quantos commits a base acumulou desde o ultimo bump de versao — e a partir de
  * quantos isso vira problema.

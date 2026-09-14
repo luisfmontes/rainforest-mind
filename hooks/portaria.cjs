@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: guia
 "use strict";
 /* Portaria — NÚCLEO DE DECISÃO (Tarefas 2 e 3 do fluxo 9, D1–D7).
  * Protege contra: despacho de subagente fora do manifesto (padrao do plugin ou do repo)

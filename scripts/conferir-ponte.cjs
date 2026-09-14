@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: sensor
 /**
  * Confere se o bloco gerado de `CLAUDE.md`, `AGENTS.md` ou `GEMINI.md` ainda
  * bate com o que `scripts/ponte.cjs` produziria agora, ou se foi editado à mão

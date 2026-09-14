@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: guia
 /**
  * PreToolUse — barra staging em massa (`git add -A`, `git commit -am`) em
  * working tree compartilhado por varias sessoes.

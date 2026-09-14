@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: guia
 /**
  * PreToolUse — barra escrita cujo destino está dentro de OUTRO repositório git.
  * Protege contra: escrita em repositório git diferente do cwd da sessão
