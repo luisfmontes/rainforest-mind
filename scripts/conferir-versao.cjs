@@ -266,6 +266,37 @@ function commitDoUltimoBump() {
   return sha || null;
 }
 
+/**
+ * O ponto em que o bump ALCANCOU a linha de primeiro pai de `cabeca`.
+ *
+ * Por que nao e simplesmente o bump: ele quase nunca esta nessa linha. O bump
+ * nasce numa branch de fluxo e chega na `main` por merge, entao ele e SEGUNDO
+ * pai do merge. `--first-parent` o pula e inclui o commit de merge no lugar —
+ * e o merge nao e acumulo desde o bump, e a entrega dele. Como todo bump chega
+ * assim, a contagem vinha um a mais para todo fluxo, sempre: o teto declarado
+ * de 5 recusava o sexto commit tendo a branch cinco seus.
+ *
+ * Devolve o proprio bump quando ele esta na linha (bump commitado direto na
+ * base, ou medicao rodada de dentro da branch que o contem), e o merge que o
+ * trouxe quando nao esta. Sem caminho de ancestralidade — historico reescrito,
+ * bump orfao — devolve o bump, que e o comportamento antigo: erra para o lado
+ * de contar demais, que recusa, em vez de para o lado de deixar passar.
+ */
+function ancoraDaContagem(bump, cabeca) {
+  const linha = git(["rev-list", "--first-parent", cabeca]);
+  if (linha && linha.split("\n").includes(bump)) {
+    return bump;
+  }
+
+  const caminho = git(["rev-list", "--first-parent", "--ancestry-path", `${bump}..${cabeca}`]);
+  if (!caminho) return bump;
+
+  const commits = caminho.split("\n").filter(Boolean);
+  // O ULTIMO da lista e o mais antigo: o primeiro descendente do bump que ja
+  // esta na linha de primeiro pai — o merge que o trouxe.
+  return commits.length ? commits[commits.length - 1] : bump;
+}
+
 function medir(base, teto) {
   // Primeiro, verifica se o RAIZ é um repositório git
   if (!git(["rev-parse", "--git-dir"])) {
@@ -314,9 +345,20 @@ function medir(base, teto) {
   // proprio commit "Versao 1.12.1" -- o bump de outra release contado como
   // acumulo desde o meu. Quem mescla a main para ficar em dia era punido por
   // isso, que e o contrario do que o teto quer ensinar.
-  const bruto = git(["rev-list", "--count", "--first-parent", `${bump}..${cabeca}`]);
+  //
+  // E o `--first-parent` sozinho ainda contava um a mais, achado em 14/09/2026:
+  // o bump quase nunca esta NA linha de primeiro pai da `main`. Ele nasce numa
+  // branch de fluxo e chega por merge, entao `--first-parent` pula o commit do
+  // bump (que e segundo pai) e inclui o MERGE no lugar dele. O merge nao e
+  // acumulo desde o bump — ele e a entrega do bump. Como todo bump chega assim,
+  // o teto efetivo era o declarado menos um, para todo fluxo, sempre.
+  //
+  // A ancora certa e o ponto em que o bump ALCANCOU esta linha: o proprio bump
+  // quando ele esta nela, e o merge que o trouxe quando nao esta.
+  const ancora = ancoraDaContagem(bump, cabeca);
+  const bruto = git(["rev-list", "--count", "--first-parent", `${ancora}..${cabeca}`]);
   if (bruto === null) {
-    return { medivel: false, motivo: `nao consegui contar ${bump.slice(0, 7)}..${base}` };
+    return { medivel: false, motivo: `nao consegui contar ${ancora.slice(0, 7)}..${base}` };
   }
   const commits = Number(bruto);
   return {

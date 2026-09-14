@@ -54,6 +54,42 @@ montar() {
   done
 }
 
+# Monta um repo em que o bump chega na base POR MERGE, que e como ele chega de
+# verdade: trabalha-se numa branch de fluxo, o bump e o ultimo commit dela, e o
+# PR e mesclado. O commit do bump fica sendo SEGUNDO pai do merge, fora da linha
+# de primeiro pai da base.
+#
+# Sem ancora, `--first-parent` pula o bump e conta o MERGE no lugar dele — e o
+# merge nao e acumulo desde o bump, e a entrega do bump. O erro era de exatamente
+# 1, em todo fluxo, sempre, porque todo bump chega assim.
+# $1 = pasta, $2 = quantos commits de trabalho DEPOIS do merge
+montar_bump_por_merge() {
+  local R="$1" depois="$2" i
+  mkdir -p "$R/.claude-plugin" "$R/scripts"
+  git init -q "$R"
+  git -C "$R" config user.email t@t; git -C "$R" config user.name t
+  git -C "$R" config commit.gpgsign false
+  cp "$CHECADOR" "$R/scripts/conferir-versao.cjs"
+  printf '{\n  "name": "p",\n  "version": "0.1.0"\n}\n' > "$R/.claude-plugin/plugin.json"
+  git -C "$R" add scripts .claude-plugin; git -C "$R" commit -qm "andaime com Versao 0.1.0"
+
+  # branch de fluxo: trabalho + bump no fim dela
+  git -C "$R" checkout -q -b fluxo/teste
+  echo trabalho > "$R/trabalho.txt"
+  git -C "$R" add trabalho.txt; git -C "$R" commit -qm "trabalho do fluxo"
+  printf '{\n  "name": "p",\n  "version": "0.2.0"\n}\n' > "$R/.claude-plugin/plugin.json"
+  git -C "$R" add .claude-plugin/plugin.json; git -C "$R" commit -qm "Versao 0.2.0"
+
+  # merge sem fast-forward: o bump vira segundo pai
+  git -C "$R" checkout -q -
+  git -C "$R" merge -q --no-ff -m "Merge do fluxo/teste" fluxo/teste
+
+  for ((i=1; i<=depois; i++)); do
+    echo "$i" > "$R/depois-$i.txt"
+    git -C "$R" add "depois-$i.txt"; git -C "$R" commit -qm "entrega $i"
+  done
+}
+
 # Monta um par de repositorios para testar a comparacao com `origin/main`: um
 # "remoto" com o manifesto na versao $2, e um local com `origin` apontando pra
 # ele (fetch ja feito, entao `origin/main` resolve) e o manifesto na versao $3.
@@ -140,6 +176,21 @@ if [ "$real" = "$esperado" ]; then
 else
   falhou=$((falhou+1)); echo "  FALHA contou $real onde o ultimo bump deixa $esperado — pickaxe achando o commit errado"
 fi
+
+echo
+echo "== bump que chegou por merge: o merge nao e acumulo, e a entrega =="
+# Achado em 14/09/2026, fechando este proprio fluxo: 5 commits de trabalho e o
+# checador dizia 6. O sexto era o commit de merge do PR anterior, aquele que
+# ENTREGOU o bump. Todo bump chega assim, entao o teto efetivo era o declarado
+# menos um, para sempre.
+RM0="$RAIZ/merge-zero"; montar_bump_por_merge "$RM0" 0
+RM3="$RAIZ/merge-tres"; montar_bump_por_merge "$RM3" 3
+checa "logo apos o merge do bump conta 0, nao 1"  0 0 "$RM0" "scripts/conferir-versao.cjs"
+checa "3 commits apos o merge do bump conta 3"    0 3 "$RM3" "scripts/conferir-versao.cjs"
+# E o caso simetrico continua valendo: bump commitado DIRETO na linha (sem
+# merge) tem de contar do proprio bump, nao do commit seguinte — a ancora nao
+# pode passar a subtrair um de todo mundo.
+checa "bump direto na linha continua contando do bump" 0 2 "$R2" "scripts/conferir-versao.cjs"
 
 echo
 echo "== o teto decide, nas duas direcoes =="

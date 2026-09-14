@@ -166,12 +166,34 @@ pronto quando: num repositório de teste recém-criado fora deste, com `RFM_ROOT
 
 ### 9. Bump de versão [tipo: configurar]
 atende: nenhuma decisão — exigência de release
-arquivos: `.claude-plugin/plugin.json`, `README.md`
+arquivos: `.claude-plugin/plugin.json`, `README.md`, `scripts/conferir-versao.cjs`, `scripts/testa-conferir-versao.sh`
 depende de: 8
 paralela: não
 mutacao: n/a
   motivo: subir dois literais de versao nao tem comportamento a inverter. A catraca que morde aqui ja existe e e outra: `scripts/conferir-versao.cjs` recusa versao que nao supera a da origin/main, e `scripts/testa-versao.sh` recusa numero divergente entre plugin.json e README.
 pronto quando: `node scripts/conferir-versao.cjs` sai 0 com versão **MINOR** acima da `origin/main` (entrou capacidade: portão em toda sessão), e `bash scripts/testa-versao.sh` sai 0
+
+> **Correção de 2026-09-14, durante o `executar`:** a catraca recusou este bump
+> com *"6 commits desde o bump, e o teto é 5"* tendo a branch **cinco** seus. O
+> sexto era `fdc0a28f`, o commit de **merge** do PR #246 — aquele que *entregou*
+> o bump 1.13.1 na `main`. O bump nasce numa branch de fluxo e chega por merge,
+> então ele é **segundo pai**; `--first-parent` o pula e conta o merge no lugar
+> dele. Como todo bump chega assim, o teto efetivo era o declarado **menos um**,
+> para todo fluxo, sempre.
+>
+> É a mesma família do defeito que `8025a18b` consertou ontem — contagem
+> inflada por escrituração de merge — e é defeito de ferramenta que apareceu na
+> frente do trabalho, então foi consertado na hora em vez de plantado:
+> `scripts/conferir-versao.cjs` passa a ancorar a contagem no ponto em que o
+> bump **alcançou** a linha de primeiro pai (o próprio bump quando está nela, o
+> merge que o trouxe quando não está). Dois casos novos em
+> `scripts/testa-conferir-versao.sh`, mais um simétrico que impede a âncora de
+> passar a subtrair um de todo mundo; a mutação `const ancora = bump` deixa os
+> dois primeiros vermelhos, errando por exatamente 1.
+>
+> O `>=` do teto foi olhado e **não** é defeito: `teto 7 com 7 commits: recusa`
+> é caso testado desde antes. "Teto 5" quer dizer menos de 5, e continua
+> querendo.
 
 ## Ordem
 
