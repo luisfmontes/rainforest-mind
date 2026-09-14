@@ -249,6 +249,33 @@ pronto quando: `node scripts/conferir-versao.cjs` sai 0 com versão **MINOR** ac
 > é caso testado desde antes. "Teto 5" quer dizer menos de 5, e continua
 > querendo.
 
+> **Terceira correção de 2026-09-14, no `fechar`:** com a âncora certa, o teto
+> passou a recusar de novo — *"5 commits desde o bump 3fe9c86, e o teto é 5"* —
+> e os cinco eram o merge da `main`, o conserto do README, a rodada de
+> `revisar`, o portão P6 e a emenda do plano: **todos destinados à 1.14.0**, que
+> ainda não estava na `main`.
+>
+> A pergunta que o script faz está na própria mensagem de recusa: *"o trabalho
+> que está aqui vai chegar na máquina de alguém?"*. Ele chega pelo cache,
+> indexado pela **versão**. Se a versão declarada **já supera** a de
+> `origin/main`, existe bump não publicado e **todo** o trabalho da branch sai
+> sob ele — nada represado, que é a única coisa que o teto impede. Sem isso o
+> teto mordia todo fluxo com rodada de revisão depois do bump, e o bump não
+> tinha como absorver os commits que ele mesmo provocou.
+>
+> Decisão do usuário entre três leituras (defeito / desenho / mudar o método):
+> **é defeito**. `estourou` passa a ser `commits >= teto && !bumpPendente`. Onde
+> **não dá** para comparar — sem remoto, semver ilegível — `bumpPendente` é
+> falso e o teto morde igual: erra para o lado de recusar, nunca para o de
+> deixar passar. A linha de ok diz em voz alta quando o teto *seria* estourado e
+> não foi; silêncio faria parecer que a contagem coube.
+>
+> Três casos novos (29 → 32), em par de propósito: bump pendente desarma; empate
+> com a `main` **continua recusando**; sem `origin/main` resolvível o teto morde
+> igual. Os dois últimos são o que prova que o teto não foi afrouxado. Duas
+> mutações, nas duas direções: tirar `&& !bumpPendente` mata o caso novo; fixar
+> `bumpPendente = true` mata três casos antigos.
+
 ## Ordem
 
 1 e depois 2 são o caminho crítico: sem manifesto padrão achável, a tarefa 3

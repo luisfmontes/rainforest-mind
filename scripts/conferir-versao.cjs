@@ -361,6 +361,32 @@ function medir(base, teto) {
     return { medivel: false, motivo: `nao consegui contar ${ancora.slice(0, 7)}..${base}` };
   }
   const commits = Number(bruto);
+
+  /* O teto NAO morde quando ja existe bump pendente (2026-09-14).
+   *
+   * A pergunta que este script faz esta escrita na propria mensagem de recusa:
+   * "o trabalho que esta aqui vai chegar na maquina de alguem?" Ele chega pelo
+   * cache, indexado pela VERSAO. Se a versao declarada JA SUPERA a de
+   * `origin/main`, entao existe um bump que ainda nao foi publicado, e TODO o
+   * trabalho desta branch — o que veio antes dele e o que veio depois — vai sair
+   * sob esse bump. Nada esta represado, que e a unica coisa que o teto existe
+   * para impedir.
+   *
+   * Sem isso, o teto mordia qualquer fluxo com rodada de revisao depois do bump:
+   * o proprio commit do bump zera a contagem, e os commits de conserto que vem
+   * do `revisar` voltam a enche-la, sem que exista um segundo release para
+   * absorve-los. Medido em 2026-09-14, fechando este fluxo: 5 commits (merge da
+   * main, conserto de README, rodada de revisar, portao novo, emenda do plano),
+   * todos destinados a 1.14.0, recusados por "o teto e 5".
+   *
+   * O teto continua mordendo no caso para o qual foi feito, que e o oposto
+   * deste: versao declarada IGUAL a de `origin/main` — nenhum bump pendente,
+   * commit atras de commit indo para a main sem nunca virar release. E quando
+   * nao da para comparar (sem remoto, semver ilegivel), ele volta a morder: erra
+   * para o lado de recusar, nao para o lado de deixar passar.
+   */
+  const bumpPendente = comparacao.comparouVersao === true && comparacao.versaoMaior === true;
+
   return {
     medivel: true,
     versao,
@@ -369,7 +395,8 @@ function medir(base, teto) {
     cabeca: cabeca.slice(0, 7),
     commits,
     teto,
-    estourou: commits >= teto,
+    bumpPendente,
+    estourou: commits >= teto && !bumpPendente,
     ...comparacao,
   };
 }
@@ -420,8 +447,13 @@ function main() {
     : ` (nao comparei com origin/main: ${r.motivoNaoComparou})`;
 
   if (!r.estourou) {
+    // Quando o teto SERIA estourado e nao e' so porque ha bump pendente, diz
+    // isso em voz alta: silencio aqui faria parecer que a contagem coube.
+    const nota = (r.bumpPendente && r.commits >= r.teto)
+      ? ` — teto ${r.teto} nao se aplica: ${r.versao} ja supera a origin/main, entao estes commits saem sob esse bump`
+      : ` (teto ${r.teto})`;
     console.log(
-      `ok    versao ${r.versao}: ${r.commits} commit(s) desde o bump ${r.bump} (teto ${r.teto})${notaComparacao}`
+      `ok    versao ${r.versao}: ${r.commits} commit(s) desde o bump ${r.bump}${nota}${notaComparacao}`
     );
     process.exit(0);
   }

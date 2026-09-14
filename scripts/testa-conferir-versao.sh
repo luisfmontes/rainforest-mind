@@ -328,6 +328,56 @@ else
   falhou=$((falhou+1)); echo "  FALHA versao maior que a da main passa: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
 fi
 
+echo
+echo "== bump PENDENTE desarma o teto; sem bump pendente ele continua mordendo =="
+# Achado fechando o fluxo da portaria, em 14/09/2026. O teto recusou um `fechar`
+# com "5 commits desde o bump, e o teto e 5" — e os cinco eram o merge da main, um
+# conserto de README, a rodada de revisar, um portao novo e uma emenda de plano,
+# TODOS destinados a 1.14.0, que ainda nao estava na main.
+#
+# A pergunta que o script faz esta na propria mensagem de recusa: "o trabalho que
+# esta aqui vai chegar na maquina de alguem?". Se a versao declarada ja SUPERA a
+# de origin/main, existe bump nao publicado e todo o trabalho desta branch sai
+# sob ele — nada represado, que e a unica coisa que o teto impede. Sem isso o
+# teto mordia todo fluxo com rodada de revisao DEPOIS do bump, e o proprio bump
+# nao tinha como absorver os commits que ele mesmo provocou.
+#
+# Os dois casos andam em par de proposito: o primeiro so vale como prova porque
+# o segundo mostra que o teto NAO foi afrouxado — ele continua recusando quando
+# versao local e remota empatam, que e o caso para o qual ele foi feito.
+PEND="$RAIZ/bump-pendente";  montar_com_origin "$PEND" "1.3.0" "1.4.0"
+EMPAT="$RAIZ/sem-bump";      montar_com_origin "$EMPAT" "1.3.0" "1.3.0"
+for d in "$PEND" "$EMPAT"; do
+  for i in 1 2 3 4 5 6; do
+    echo "$i" > "$d/depois-$i.txt"
+    git -C "$d" add "depois-$i.txt"; git -C "$d" commit -qm "conserto $i do revisar"
+  done
+done
+
+saida=$(cd "$PEND" && node "scripts/conferir-versao.cjs" --teto 5 2>&1); rc=$?
+if [ "$rc" = 0 ] && printf '%s' "$saida" | grep -qF "nao se aplica"; then
+  ok=$((ok+1)); echo "  ok   6 commits acima do teto passam quando ha bump pendente (exit $rc)"
+else
+  falhou=$((falhou+1)); echo "  FALHA bump pendente devia desarmar o teto: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
+fi
+
+saida=$(cd "$EMPAT" && node "scripts/conferir-versao.cjs" --teto 5 2>&1); rc=$?
+if [ "$rc" = 2 ]; then
+  ok=$((ok+1)); echo "  ok   sem bump pendente, o teto continua recusando (exit $rc)"
+else
+  falhou=$((falhou+1)); echo "  FALHA sem bump pendente o teto tinha de recusar: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
+fi
+
+# E onde NAO da para comparar (fixture sem remoto), o teto volta a morder: erra
+# para o lado de recusar, nunca para o de deixar passar.
+saida=$(cd "$R7" && node "scripts/conferir-versao.cjs" --teto 7 2>&1); rc=$?
+if [ "$rc" = 2 ]; then
+  ok=$((ok+1)); echo "  ok   sem origin/main resolvivel, o teto morde igual (exit $rc)"
+else
+  falhou=$((falhou+1)); echo "  FALHA sem comparacao possivel o teto tinha de morder: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
+fi
+
+echo
 # Parado NA main, em sincronia: empatar com origin/main e o estado CORRETO de
 # quem acabou de publicar, e o script nao pode acusar. Este caso existe porque o
 # falso positivo aconteceu de verdade: minutos depois de a comparacao entrar na

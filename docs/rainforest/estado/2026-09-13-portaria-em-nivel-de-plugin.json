@@ -78,13 +78,17 @@
     "em": "2026-09-14"
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "f98e4763f353a9c5289697aceca7631b8cd07de2",
-      "caminhos_sujos": [
-        "docs/rainforest/estado/2026-09-13-portaria-em-nivel-de-plugin.json"
-      ]
-    }
+      "head": "5995cad794de56147dbcfa21092b42ddf40ceb7e",
+      "caminhos_sujos": []
+    },
+    "achados": 3,
+    "base": "9dd4a88c",
+    "head": "5995cad7",
+    "comando": "bash varrer.sh (115 baterias, glob da CI) + leitura do diff completo + as 6 mutacoes do plano",
+    "saida": "== 115 baterias ==\ntodas verdes.  3 achados, os 3 consertados e commitados com bateria propria: (1) catraca de reference estourada, 13342 B > 10500 -- arquivo partido em regra-10-portaria-escopo.md; (2) default do --lint incoerente, agentesDir relativo com manifesto absoluto, 9 erros falsos e exit 1 rodado de outro repo -- 3 casos novos; (3) mutacao da tarefa 3 nao matava nada, matcher trocado deixava as 10 baterias verdes -- portao P6, que agora sai exit 1.  NOTA DE HONESTIDADE: o 'exigir --estagio revisar' foi armado DEPOIS da revisao, nao antes; o instantaneo nao prova ausencia de mutacao durante a janela de revisao. O que prova o escopo e o diff base..head e o fato de cada conserto ter virado commit proprio, com bateria que morre sob a mutacao correspondente.  Re-revisado contra 5995cad7 apos o gate recusar f98e4763 (HEAD mudou): o delta e so plano+estado, e a suite da portaria, a catraca de reference e a bateria de versao foram re-rodadas verdes contra a arvore nova.",
+    "em": "2026-09-14"
   },
   "verificar": {
     "status": "pendente"
