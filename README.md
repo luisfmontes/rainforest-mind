@@ -154,7 +154,7 @@ As baterias dos gates rodam em Windows + Git Bash (ambiente do CI: `runs-on: win
 | `gate-staging-total.cjs` | `git add` com caminho total (`-A`, `.`, `*`…) e `git commit -a` |
 | `gate-publicacao-destino.cjs` | escrita de dado sensível (JID, telefone, e-mail, credencial) em arquivo rastreado |
 | `gate-repo-alheio.cjs` | escrita cujo destino está dentro de **outro** repositório git |
-| `gate-fechar-issue.cjs` | `gh issue close` direto, e `closes #N` em PR sem comentário de evidência marcado |
+| `gate-fechar-issue.cjs` | `gh issue close` direto, e `closes #N` em PR sem comentário de evidência marcado. Corpo de heredoc é **dado**, não estrutura de comando: `cat > x.md <<'EOF'` com prosa (`(x). Ele sobe.`, `$(x)`, crase) passa; o corpo vira comando quando a linha do heredoc tem um interpretador (`bash <<EOF`, `cat <<EOF \| bash`, `(sh) <<EOF`, `eval`, `source`, `pwsh`…), e o texto dele é sempre varrido pelos padrões diretos (`gh issue close 12` literal no corpo barra, como antes) |
 | `gate-mensagem-commit.cjs` | `git commit` com assunto acima de 72 colunas ou terminando em ponto; sem corpo quando o stage passa de 3 arquivos ou 150 linhas; e mensagem que o hook não consegue ler (`-F -`, heredoc, `git commit` pelado — fechando merge, `-F .git/MERGE_MSG`) |
 | `gate-verificador-staged.cjs` | `git commit` cujo conteúdo **staged** o verificador do repositório reprova — descoberta nesta ordem: chave `"verificador-staged"` em `.rainforest/config.json`; senão `scripts/check-personal-data.py|.cjs|.sh|.js`; senão `scripts/conferir-publicacao.cjs`. Materializa os blobs (`git show :<caminho>`) numa pasta temporária e chama o verificador com esses caminhos; a saída dele vai no stderr. Repo sem verificador passa |
 | `portaria.cjs` | despacho de subagente não declarado em `.rainforest/agentes.json`, ou sem `isolation: "worktree"` quando ele escreve |
@@ -169,9 +169,9 @@ liberam sem perguntar. Codex sem cota bloqueia dizendo isso, com a hora de
 retorno (o despacho sai 75 e escreve `codex sem cota: ...`).
 
 Valem em **qualquer** repo git da máquina, porque o hábito é que é o problema,
-não o repositório. Cada uma tem bateria própria — **671 casos** rodando o hook
-de verdade contra repos git montados na hora (soma medida em 2026-09-12, com o gate novo:
-201 + 99 + 24 + 27 + 117 + 25 + 170 + 8 — a portaria soma os sete `testa-portaria-*.cjs` que o `testa-portaria.sh` encadeia, 12 + 15 + 9 + 28 + 78 + 5 + 23, e a última linha do wrapper (7) conta arquivos, não casos; re-verificar: a última linha da bateria `hooks/testa-<hook>.sh` de cada linha da tabela).
+não o repositório. Cada uma tem bateria própria — **712 casos** rodando o hook
+de verdade contra repos git montados na hora (soma medida em 2026-09-13, com os casos de heredoc e do staging citado:
+201 + 106 + 24 + 27 + 151 + 25 + 170 + 8 — a portaria soma sete dos oito `testa-portaria-*.cjs` que o `testa-portaria.sh` encadeia, 12 + 15 + 9 + 28 + 78 + 5 + 23 — o oitavo, `testa-portaria-autorizacao.cjs`, entrou pelo PR #246 e ainda não está na soma —, e a última linha do wrapper (8) conta arquivos, não casos; re-verificar: a última linha da bateria `hooks/testa-<hook>.sh` de cada linha da tabela).
 
 → O incidente de origem de cada trava, as saídas de emergência e a tabela de
 scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
@@ -231,6 +231,8 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 | `executor` · `resolvedor-de-build` · `documentador` | haiku, tarefa mecânica |
 | `planejador` · `revisor` · `tester` · `depurador` | sonnet, tarefa que exige julgamento |
 | `arqueologo` · `auditor-de-seguranca` | sonnet, executam skill própria |
+
+O `auditor-de-seguranca` roda duas réguas OWASP (Top 10 2025 + API Security 2023) e uma **Régua 3 de técnicas** — [`referencias/reguas-tecnicas-ofensivas.md`](referencias/reguas-tecnicas-ofensivas.md), 30 lentes de detecção defensiva derivadas do repositório `SnailSploit/claude-red` (MIT) e reescritas report-only — que afia as duas no nível de técnica de ataque.
 
 **Agentes em Claude ou Codex** — cada agente tem um `runtime:` no manifesto (ausente = `claude`); a primeira linha do briefing pode ser `Runtime: codex` ou `Runtime: claude` para override (case-insensitive). Quando o usuário diz "faz no codex", "roda no codex" ou equivalente, o despacho põe `Runtime: codex` na primeira linha. Transporte via `codex exec` usa sandbox `read-only` ou `workspace-write` conforme `escreve`, modelo por `codex-modelo-<haiku|sonnet|opus>` no `/setup` (padrão do `~/.codex/config.toml`). As skills `review`, `adversarial-review` e `rescue` do `openai/codex-plugin-cc` não ganharam comando aqui porque já existem como função neste plugin: `revisor`, segunda opinião cross-model, `depurador`.
 

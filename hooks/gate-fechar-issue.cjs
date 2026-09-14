@@ -71,6 +71,222 @@ function indiceSequencia(tokens, padrao) {
 }
 
 /**
+ * Extrai o corpo de um heredoc a partir da posição `i`.
+ * Recebe `cmd[i..]` começando por `<<` ou `<<-` seguido de delimitador
+ * (nu, entre aspas simples ou duplas).
+ * Retorna `{ fim, corpo, comando }` ou `null` se não há heredoc.
+ *
+ * `fim` = índice logo após a linha do delimitador de fechamento
+ * `corpo` = texto entre a linha do `<<` e a linha de fechamento
+ * `comando` = primeiro token (nome executável normalizado, minúsculo) do comando
+ *
+ * Se o delimitador nunca aparece, trata todo o resto como corpo.
+ */
+// Comandos para os quais o corpo de um heredoc (ou a string de um here-string)
+// e' script, nao dado (D1 do zerar-issues-3).
+const INTERPRETADORES_DE_HEREDOC = ["bash", "sh", "zsh", "ksh", "dash", "pwsh", "powershell", "cmd", "eval", "source", "."];
+
+/**
+ * A LINHA que abre o heredoc/here-string em `i` tem um interpretador em
+ * qualquer posição? Sexta revisão do zerar-issues-3 (2026-09-13): decidir
+ * pelo comando que recebe o `<<` deixou passar `(bash) <<EOF`, `{ bash; }
+ * <<EOF` e `cat <<EOF | bash` — em todos o corpo acaba executado, e o
+ * comando "dono" do heredoc não é `bash`. A regra conservadora é olhar a
+ * linha inteira (do `\n` anterior ao `\n` que abre o corpo): se `bash`,
+ * `sh`, `eval`… aparecem em qualquer token, o corpo é script. `cat <<EOF >
+ * d.md` e `tee x <<EOF` continuam dado. Parênteses, chaves, `;`, `|`, `&`
+ * são tirados dos tokens antes de comparar; wrappers e caminhos
+ * (`/bin/bash`, `bash.exe`) passam por `normalizarExecutavel`.
+ */
+// Fim da linha LÓGICA a partir de `i`: a primeira quebra de linha que não
+// vem precedida de `\` (continuação). Sétima revisão (2026-09-13):
+// `cat <<'EOF' \` + `| bash` na linha de baixo é UMA linha para o bash, e o
+// corpo começa depois da segunda quebra — a versão anterior parava na
+// primeira e o `| bash` virava corpo, invisível.
+function fimDaLinhaLogica(cmd, i) {
+  let idx = cmd.indexOf('\n', i);
+  while (idx > 0 && cmd[idx - 1] === '\\') idx = cmd.indexOf('\n', idx + 1);
+  return idx;
+}
+
+// Corpos de heredoc tratados como DADO nesta invocação. A estrutura deles
+// não é comando (é isso que a D1 conserta — `).` em prosa não é subshell
+// mais `source`), mas o TEXTO ainda é varrido pelos padrões diretos do gate
+// (`gh issue close`, `gh pr merge`…) em `verificarTextosDeHeredoc`: sétima
+// revisão do zerar-issues-3 (2026-09-13) mostrou que o corpo pode acabar
+// executado por caminhos que nenhuma leitura lexical rastreia — gravado em
+// arquivo e rodado na linha seguinte, `while read -r l; do $l; done <<EOF`,
+// `mapfile` + `${a[0]}`, interpretador em variável (`$I <<EOF`). A cf1ad768
+// barrava todos esses por ver a linha `gh issue close 12` do corpo; este
+// gate não pode ser pior que ela.
+const TEXTOS_DE_HEREDOC = [];
+
+function linhaDoHeredocTemInterpretador(cmd, i) {
+  let ini = i;
+  while (ini > 0 && cmd[ini - 1] !== '\n') ini--;
+  let fim = fimDaLinhaLogica(cmd, i);
+  if (fim === -1) fim = cmd.length;
+  const linha = cmd.slice(ini, fim);
+  let toks;
+  try { toks = tokensComAspas(linha).map((t) => t.v); } catch { toks = linha.split(/\s+/); }
+  for (const t of toks) {
+    for (const pedaco of String(t).split(/[|;&(){}]+/)) {
+      if (pedaco && INTERPRETADORES_DE_HEREDOC.includes(normalizarExecutavel(pedaco))) return true;
+    }
+  }
+  return false;
+}
+
+function corpoDeHeredoc(cmd, i) {
+  if (cmd[i] !== '<' || cmd[i + 1] !== '<') return null;
+  // `<<<` é here-string: a string vem na mesma linha, não há corpo nem linha de
+  // fechamento, e a linha seguinte é comando novo (terceira revisão do
+  // zerar-issues-3, 2026-09-13: `cat <<<bar\ngh issue close 12` era lido como
+  // heredoc de delimitador `<bar`, que nunca fecha, e o `gh` virava corpo).
+  if (cmd[i + 2] === '<' || (i > 0 && cmd[i - 1] === '<')) return null;
+
+  let j = i + 2;
+  const tiraTabs = cmd[j] === '-';
+  if (tiraTabs) j++;
+
+  // Pular espaços antes do delimitador
+  while (j < cmd.length && (cmd[j] === ' ' || cmd[j] === '\t')) j++;
+
+  // Extrair delimitador (nu, simples ou duplas)
+  let delimitador = '';
+  let tipoAspa = null;
+  if (cmd[j] === "'" || cmd[j] === '"') {
+    tipoAspa = cmd[j];
+    j++;
+    while (j < cmd.length && cmd[j] !== tipoAspa) {
+      delimitador += cmd[j];
+      j++;
+    }
+    if (j < cmd.length && cmd[j] === tipoAspa) j++;
+  } else {
+    // Delimitador nu — até espaço, quebra de linha ou fim
+    while (j < cmd.length && cmd[j] !== ' ' && cmd[j] !== '\t' && cmd[j] !== '\n' && cmd[j] !== ';' && cmd[j] !== '&' && cmd[j] !== '|' && cmd[j] !== ')' && cmd[j] !== '<' && cmd[j] !== '>') {
+      delimitador += cmd[j];
+      j++;
+    }
+  }
+
+  if (!delimitador) return null;
+
+  // Encontrar o início do corpo (fim da linha lógica — `\`+quebra continua)
+  const inicioCorpo = fimDaLinhaLogica(cmd, i);
+  if (inicioCorpo === -1) {
+    // Sem quebra de linha após `<<`, todo resto é "corpo" vazio
+    return {
+      fim: cmd.length,
+      corpo: '',
+      comando: extrairComandoDoHeredoc(cmd, i)
+    };
+  }
+
+  // Procurar a linha de fechamento
+  let corpo = '';
+  let linhaAtual = '';
+  let fim = cmd.length;
+  let k = inicioCorpo + 1;
+
+  while (k < cmd.length) {
+    const char = cmd[k];
+    if (char === '\n') {
+      // Verificar se a linha atual é o delimitador (exatamente, sem espaços).
+      // Com `<<-` o bash tira as TABULAÇÕES à esquerda da linha de fechamento
+      // antes de comparar (segunda revisão do zerar-issues-3, 2026-09-13:
+      // `cat <<-EOF\n\tcorpo\n\tEOF\ngh issue close 12` fechava no `\tEOF` de
+      // verdade e o gate, comparando exato, lia o `gh` como corpo e liberava).
+      // Espaços não contam — nem para o bash.
+      const linhaComparada = tiraTabs ? linhaAtual.replace(/^\t+/, '') : linhaAtual;
+      if (linhaComparada === delimitador) {
+        fim = k + 1;
+        break;
+      }
+      corpo += linhaAtual + '\n';
+      linhaAtual = '';
+      k++;
+    } else {
+      linhaAtual += char;
+      k++;
+    }
+  }
+
+  // Se saiu do loop sem encontrar o delimitador, adiciona a última linha ao corpo
+  if (fim === cmd.length && linhaAtual) {
+    corpo += linhaAtual;
+  }
+
+  return {
+    fim: fim,
+    corpo: corpo,
+    comando: extrairComandoDoHeredoc(cmd, i)
+  };
+}
+
+/**
+ * Extrai o comando (primeiro token) da linha que contém o `<<` da posição `i`.
+ * Procura para trás até encontrar um separador (`;`, `&&`, `||`, `|`, `(`) ou início.
+ * Normaliza o comando (remove caminho, extensão, minúsculo).
+ */
+function extrairComandoDoHeredoc(cmd, i) {
+  // Encontrar o início da linha
+  let inicioLinha = i;
+  while (inicioLinha > 0 && cmd[inicioLinha - 1] !== '\n') {
+    inicioLinha--;
+  }
+
+  const textoAteHeredoc = cmd.slice(inicioLinha, i);
+  let inicioComando = 0;
+
+  // Procurar para trás pelos separadores
+  for (let k = textoAteHeredoc.length - 1; k >= 0; k--) {
+    const c = textoAteHeredoc[k];
+    if (c === ';' || c === '|' || c === '(') {
+      inicioComando = k + 1;
+      break;
+    }
+    // Detectar `&&` e `||`
+    if (c === '&' && k > 0 && textoAteHeredoc[k - 1] === '&') {
+      inicioComando = k + 1;
+      break;
+    }
+    if (c === '|' && k > 0 && textoAteHeredoc[k - 1] === '|') {
+      inicioComando = k + 1;
+      break;
+    }
+  }
+
+  // Pular espaços
+  while (inicioComando < textoAteHeredoc.length && (textoAteHeredoc[inicioComando] === ' ' || textoAteHeredoc[inicioComando] === '\t')) {
+    inicioComando++;
+  }
+
+  // Quinta revisão do zerar-issues-3 (2026-09-13): o comando que recebe o
+  // heredoc pode vir atrás de um wrapper que repassa stdin (`env bash`,
+  // `command bash`, `nohup bash`, `timeout 5 bash`, `sudo bash`) — o primeiro
+  // token literal era `env`, nunca batia na lista de interpretadores, e o
+  // corpo virava dado. Mesma resolução de wrapper que o resto do gate usa
+  // (`posicaoDeComando`, de lib/tokens-comando.cjs).
+  const trecho = textoAteHeredoc.slice(inicioComando);
+  let toks = null;
+  try { toks = tokensComAspas(trecho); } catch { toks = null; }
+  if (toks && toks.length) {
+    const pos = posicaoDeComando(toks);
+    if (pos !== null) return normalizarExecutavel(toks[pos].v);
+  }
+
+  // Sem tokens legíveis: o primeiro token literal, como antes
+  let comando = '';
+  for (let k = inicioComando; k < textoAteHeredoc.length && textoAteHeredoc[k] !== ' ' && textoAteHeredoc[k] !== '\t' && textoAteHeredoc[k] !== '\n'; k++) {
+    comando += textoAteHeredoc[k];
+  }
+
+  return normalizarExecutavel(comando);
+}
+
+/**
  * Separa um comando em segmentos, respeitando aspas simples/duplas.
  * Delimitadores fora de aspas: `;`, `&&`, `||`, `|`, quebra de linha — e
  * também `(`, `)`, `{`, `}` (subshell, grupo, ou o `(` de uma substituição
@@ -175,6 +391,101 @@ function segmentosParaGate(cmd) {
       if (atual.trim()) segmentos.push(atual);
       atual = "";
       continue;
+    }
+    if (c === "<" && cmd[i + 1] === "<" && cmd[i + 2] === "<") {
+      // `<<<` é here-string: consome os três de uma vez, senão o segundo e o
+      // terceiro `<` seriam lidos como um `<<` de heredoc (terceira revisão
+      // do zerar-issues-3, 2026-09-13). O texto segue como qualquer palavra.
+      // Quarta revisão (2026-09-13): here-string dirigido a um interpretador
+      // (`bash <<<'gh issue close 12'`) É script, como o heredoc de `bash
+      // <<EOF` — a string entra em `segmentosParaGate` recursivamente. Para
+      // `cat` e afins continua dado.
+      let k = i + 3;
+      while (k < cmd.length && (cmd[k] === ' ' || cmd[k] === '\t')) k++;
+      let conteudo = '';
+      if (cmd[k] === "'" || cmd[k] === '"') {
+        const aspa = cmd[k];
+        k++;
+        while (k < cmd.length && cmd[k] !== aspa) { conteudo += cmd[k]; k++; }
+        if (k < cmd.length) k++; // fecha a aspa
+      } else {
+        // Palavra nua: `\` escapa o caractere seguinte (`gh\ issue\ close`
+        // é UMA palavra com espaços para o bash — quinta revisão).
+        while (k < cmd.length && !/[\s;&|]/.test(cmd[k])) {
+          if (cmd[k] === '\\' && k + 1 < cmd.length) { conteudo += cmd[k + 1]; k += 2; continue; }
+          conteudo += cmd[k]; k++;
+        }
+      }
+      if (linhaDoHeredocTemInterpretador(cmd, i)) {
+        for (const sub of segmentosParaGate(conteudo)) {
+          if (sub.trim()) segmentos.push(sub);
+        }
+      } else {
+        // Oitava revisão (2026-09-13): o here-string para sumidouro é dado,
+        // mas o texto entra na varredura direta como o corpo de heredoc —
+        // `cat <<<'gh issue close 12' > s.sh` + `bash s.sh` executa.
+        TEXTOS_DE_HEREDOC.push(conteudo);
+      }
+      atual += cmd.slice(i, k);
+      i = k - 1;
+      continue;
+    }
+    if (c === "<" && cmd[i + 1] === "<") {
+      // D1 (zerar-issues-3): Detectar heredoc — o corpo é dado, não comando.
+      // Chamar exatamente com esta linha literal (catraca de mutação do plano):
+      const heredoc = corpoDeHeredoc(cmd, i);
+      if (heredoc !== null) {
+        // Manter o texto até o `<<` no segmento atual (sem o corpo nem o delimitador)
+        atual += cmd.slice(i, i + 2); // Adiciona o `<<`
+        // Encontrar o final do delimitador (incluindo aspas, se houver)
+        let j = i + 2;
+        if (cmd[j] === '-') j++;
+        while (j < cmd.length && (cmd[j] === ' ' || cmd[j] === '\t')) j++;
+        if (cmd[j] === '"' || cmd[j] === "'") {
+          const tipoAspa = cmd[j];
+          j++;
+          while (j < cmd.length && cmd[j] !== tipoAspa) j++;
+          if (j < cmd.length && cmd[j] === tipoAspa) j++;
+        } else {
+          while (j < cmd.length && cmd[j] !== ' ' && cmd[j] !== '\t' && cmd[j] !== '\n' && cmd[j] !== ';' && cmd[j] !== '&' && cmd[j] !== '|' && cmd[j] !== ')' && cmd[j] !== '<' && cmd[j] !== '>') {
+            j++;
+          }
+        }
+        atual += cmd.slice(i + 2, j);
+
+        // Se o comando é um interpretador, processar o corpo recursivamente
+        // `heredoc.comando` continua no contrato da função; a decisão usa a
+        // linha inteira (sexta revisão): `(bash)`, `{ bash; }`, `| bash`.
+        if (linhaDoHeredocTemInterpretador(cmd, i)) {
+          for (const sub of segmentosParaGate(heredoc.corpo)) {
+            if (sub.trim()) segmentos.push(sub);
+          }
+        } else {
+          // Corpo é dado: não gera segmento, mas o texto fica para a
+          // varredura de padrões diretos (ver TEXTOS_DE_HEREDOC).
+          TEXTOS_DE_HEREDOC.push(heredoc.corpo);
+        }
+
+        // Revisão do fluxo zerar-issues-3 (2026-09-13): só o CORPO é dado. O
+        // resto da linha do heredoc (`cat <<EOF; gh issue close 12`, `&& gh`,
+        // `| gh pr create`) é comando de verdade e roda ANTES do corpo — a
+        // primeira versão pulava de `<<EOF` direto para depois do delimitador
+        // de fechamento e engolia esse trecho sem checar. Recorta-se o corpo
+        // (da quebra de linha que o abre até o delimitador de fechamento,
+        // inclusive) do texto, e a varredura segue do fim do token `<<EOF`;
+        // `;`, `&&`, `|` e a quebra de linha seguinte são tratados como em
+        // qualquer outra linha.
+        const inicioCorpo = fimDaLinhaLogica(cmd, i);
+        if (inicioCorpo !== -1 && inicioCorpo < heredoc.fim) {
+          // Fechado quando o corpo NAO chega ate `fim` (a linha do delimitador
+          // ficou de fora dele); sem fechamento, o corpo é tudo até o fim.
+          const fechado = inicioCorpo + 1 + heredoc.corpo.length < heredoc.fim;
+          const depois = fechado ? cmd.slice(heredoc.fim - 1) : '';
+          cmd = cmd.slice(0, inicioCorpo) + depois;
+        }
+        i = j - 1;
+        continue;
+      }
     }
     atual += c;
   }
@@ -818,6 +1129,36 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
   }
 }
 
+/**
+ * Varre o TEXTO dos corpos de heredoc tratados como dado pelos padrões
+ * diretos do gate — a mesma busca de sequência da rede W2, linha a linha,
+ * sem desempacotar wrapper e sem o veredito `ilegível` (é prosa: `).`,
+ * `$(`, crase e variável são texto). Só `gh issue close`, `gh issue
+ * create|comment`, `gh pr create|edit|merge` literais no corpo disparam
+ * `verificarComandoGh` — que é o que a cf1ad768 fazia, por acidente, ao
+ * quebrar o corpo em linhas. Comentário shell (`#` não citado) sai da
+ * busca, como na W2.
+ */
+function verificarTextosDeHeredoc(mapaCwd, contadores, ferramenta) {
+  const PADROES = [["gh", "issue", "close"], ["gh", "issue", "create"], ["gh", "issue", "comment"], ["gh", "pr", "create"], ["gh", "pr", "edit"], ["gh", "pr", "merge"]];
+  for (const corpo of TEXTOS_DE_HEREDOC) {
+    for (const linha of corpo.split('\n')) {
+      if (!linha.trim()) continue;
+      let toks;
+      try { toks = tokensComAspas(linha); } catch { toks = linha.split(/\s+/).filter(Boolean).map((v) => ({ v, q: false })); }
+      const idxComentario = toks.findIndex((t) => !t.q && t.v.startsWith("#"));
+      const valores = (idxComentario === -1 ? toks : toks.slice(0, idxComentario)).map((t) => t.v);
+      for (const padrao of PADROES) {
+        const idx = indiceSequencia(valores, padrao);
+        if (idx !== -1) {
+          verificarComandoGh(linha, valores.slice(idx + 1), cwdDoSegmento(linha, mapaCwd, contadores.get(linha.trim()) || 0));
+          break;
+        }
+      }
+    }
+  }
+}
+
 function main() {
   let ev;
   try {
@@ -864,6 +1205,7 @@ function main() {
   for (const segmento of segmentosParaGate(comando)) {
     processarSegmento(segmento, mapaCwd, contadores, nome);
   }
+  verificarTextosDeHeredoc(mapaCwd, contadores, nome);
 
   process.exit(0);
 }

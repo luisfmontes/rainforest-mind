@@ -9,6 +9,10 @@
  *   OUT_1, EXIT_1, ERR_1 para o primeiro hook
  *   OUT_2, EXIT_2, ERR_2 para o segundo, etc.
  *   HOOKS_COUNT com o total de hooks rodados
+ *
+ * Variável de ambiente RFM_HOOKS_JSON:
+ *   Se definida, especifica o caminho do arquivo hooks.json a usar.
+ *   Se não definida, usa o caminho relativo padrão: ../hooks/hooks.json
  */
 
 const fs = require('fs');
@@ -16,7 +20,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 function lerHooksJson() {
-  const hooksJsonPath = path.join(__dirname, '..', 'hooks', 'hooks.json');
+  const hooksJsonPath = process.env.RFM_HOOKS_JSON || path.join(__dirname, '..', 'hooks', 'hooks.json');
   if (!fs.existsSync(hooksJsonPath)) {
     console.error(`hooks.json não encontrado: ${hooksJsonPath}`);
     process.exit(1);
@@ -93,16 +97,20 @@ function main() {
             // `status === null` significa morto por sinal, nao "saiu 1". Se foi
             // o nosso proprio timeout, dizer isso no stderr: sem essa linha o
             // sintoma e uma falha silenciosa, indistinguivel de um hook que
-            // decidiu sair 1 de proposito.
+            // decidiu sair 1 de proposito. Merge de 13/09/2026 entre a D3 do
+            // zerar-issues-3 (exit 124, o mesmo do `timeout(1)` do coreutils,
+            // e a mensagem que a bateria afirma) e o PR #246 (o ramo de sinal
+            // que nao e timeout, que continua saindo 1).
             if (proc.status === null) {
               const porTempo = (proc.error && proc.error.code === 'ETIMEDOUT')
                 || proc.signal === 'SIGTERM';
               if (porTempo) {
-                stderr += `[exportador] o hook excedeu ${timeout} ms e foi morto`;
-              } else if (proc.signal) {
-                stderr += `[exportador] o hook morreu com o sinal ${proc.signal}`;
+                exitCode = 124;
+                stderr = `timeout: hook nao respondeu em ${timeout} ms` + (stderr ? '\n' + stderr : '');
+              } else {
+                if (proc.signal) stderr += `[exportador] o hook morreu com o sinal ${proc.signal}`;
+                exitCode = 1;
               }
-              exitCode = 1;
             } else {
               exitCode = proc.status;
             }

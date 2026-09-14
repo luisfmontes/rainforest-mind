@@ -1,0 +1,32 @@
+{
+  "slug": "2026-09-13-auditor-regua-tecnicas",
+  "titulo": "Régua 3 de técnicas no auditor-de-seguranca",
+  "criado_em": "2026-09-13",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-13-regua-tecnicas-claude-red.md",
+    "aprovacao": "Luis, 2026-09-13: recomendado (Q1a referencia consolidada, Q2a no rainforest-mind)",
+    "em": "2026-09-13"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-09-13-auditor-regua-tecnicas.md",
+    "tarefas": 4,
+    "em": "2026-09-13"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}

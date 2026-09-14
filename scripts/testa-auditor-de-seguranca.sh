@@ -288,6 +288,49 @@ else
   falhou=$((falhou+1)); echo "  FALHA node scripts/orcamento.cjs nao sai 0 com o agente instalado"
 fi
 
+# ------------------------------------------------- 12. Régua 3 — técnicas (claude-red)
+# A camada de técnica derivada do claude-red (MIT), lida de um arquivo externo.
+# Trava contra: a seção sumir do agente, a referência sumir, ou a referência
+# deixar de ser report-only (o modo de falha que a converteria de volta em
+# ferramenta ofensiva).
+echo; echo "12. a Régua 3 de técnicas está ligada e é report-only"
+REF="referencias/reguas-tecnicas-ofensivas.md"
+tem "o agente aponta para a referência da Régua 3" "$CORPO" "referencias/reguas-tecnicas-ofensivas.md"
+tem "o agente tem a seção da Régua 3" "$CORPO" "## Régua 3 — técnicas de ataque como lentes"
+tem "a Régua 3 dobra o achado na categoria OWASP, sem seção nova" "$CORPO_PLANO" "**não** abre seção nova"
+tem "a Régua 3 mantém report-only no agente" "$CORPO_PLANO" "nunca** gera payload, requisição ou exploit"
+if [ -f "$REF" ]; then
+  ok=$((ok+1)); echo "  ok   $REF existe"
+  REFC="$(cat "$REF")"
+  tem "a referência credita claude-red" "$REFC" "claude-red"
+  tem "a referência declara a licença MIT da origem" "$REFC" "(MIT)"
+  tem "a referência é report-only" "$REFC" "report-only"
+  nao_tem "a referência não instrui gerar exploit funcional" "$REFC" "gera payload"
+  N_LENTES="$(echo "$REFC" | grep -cE '^### ')"
+  if [ "$N_LENTES" -ge 25 ]; then
+    ok=$((ok+1)); echo "  ok   a referência tem $N_LENTES lentes (>= 25)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA a referência tem só $N_LENTES lentes (esperava >= 25)"
+  fi
+  tem "toda lente tem 'Onde procurar'" "$REFC" "Onde procurar"
+  tem "toda lente tem 'Como o seguro se parece'" "$REFC" "Como o seguro se parece"
+  tem "toda lente tem 'Procedimento de revisão'" "$REFC" "Procedimento de revisão"
+  tem "toda lente tem 'Formato de achado'" "$REFC" "Formato de achado"
+  # A numeração DEVE ser a da edição 2025 (a mesma da Régua 1), não a 2021.
+  # Este caso existe porque a primeira versão da referência usou os números da
+  # 2021 (Injection=A03, Crypto=A02, Insecure Design=A04), mandando o achado
+  # para a seção errada do relatório — achado da revisão de 2026-09-14.
+  tem "declara a numeração OWASP 2025" "$REFC" "seguem a edição 2025"
+  tem "Injection é A05 (2025)" "$REFC" "A05 Injection"
+  tem "Cryptographic Failures é A04 (2025)" "$REFC" "A04 Cryptographic Failures"
+  tem "supply chain aponta o A03 novo (2025)" "$REFC" "A03 Software Supply Chain Failures"
+  nao_tem "não usa Injection como A03 (numeração 2021)" "$REFC" "A03 Injection"
+  nao_tem "não usa Cryptographic como A02 (numeração 2021)" "$REFC" "A02 Cryptographic"
+  nao_tem "não usa Insecure Design como A04 (numeração 2021)" "$REFC" "A04 Insecure Design"
+else
+  falhou=$((falhou+1)); echo "  FALHA $REF não existe"
+fi
+
 echo; echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ] || exit 1
