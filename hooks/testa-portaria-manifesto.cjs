@@ -46,13 +46,27 @@ function caixa() {
 
 // `RFM_ROOT` na propria caixa: sem isso o log de despacho resolve para a pasta
 // pessoal do usuario (D6), e a bateria sujaria o ambiente dele (regra 15).
-function despachar(repo, agente) {
+//
+// `opcoes` e novo (Tarefa 6, campo `sensores`): as quatro chamadas que ja
+// existiam continuam identicas (prompt "prova", sem isolation/name), porque
+// `opcoes` e opcional e so acrescenta chaves ao `tool_input` quando pedido —
+// os casos novos do `escreve: true` precisam de `isolation`/`name` para
+// passar pelo portao de D3 passo 5b (regra 11) antes de chegar no de sensor.
+function despachar(repo, agente, opcoes) {
+  opcoes = opcoes || {};
+  const toolInput = {
+    subagent_type: agente,
+    prompt: opcoes.prompt !== undefined ? opcoes.prompt : "prova",
+  };
+  if (opcoes.isolation !== undefined) toolInput.isolation = opcoes.isolation;
+  if (opcoes.name !== undefined) toolInput.name = opcoes.name;
+
   return spawnSync(process.execPath, [HOOK], {
     input: JSON.stringify({
       session_id: "manifesto",
       cwd: repo,
       tool_name: "Task",
-      tool_input: { subagent_type: agente, prompt: "prova" },
+      tool_input: toolInput,
     }),
     encoding: "utf8",
     env: {
@@ -187,6 +201,210 @@ console.log("== 4. manifesto de repo invalido nega, sem cair no padrao ==");
     caso(`${rotulo}: motivo proprio, nao o do padrao`, esperado.test(r.stderr || ""), r.stderr);
 
     fs.rmSync(repo, { recursive: true, force: true });
+  }
+}
+
+// == 5. campo `sensores` do manifesto (Tarefa 6 do plano guias-e-sensores) ==
+//
+// O portao: agente cujo manifesto nao traz `sensores` e despachado sem
+// mudanca nenhuma (5a); agente que traz a lista e o briefing pede sensor
+// DELA e despachado (5b, 5g-ok); pede sensor DE FORA e negado com exit 2,
+// dizendo qual sensor foi pedido e qual manifesto foi lido (5c, 5g-fora);
+// sem linha `Sensor:` no briefing, a lista nao trava nada (5d); `sensores`
+// mal formado no manifesto nega (5e); linha `Sensor:` presente mas
+// ilegivel nega (5f). 5g prova que o portao vale tambem para `escreve:
+// true` — ele fica ANTES da bifurcacao que sai com `process.exit(0)`
+// proprio, e por isso precisa de caso com agente que escreve.
+console.log("== 5. campo sensores do manifesto ==");
+{
+  // 5a. sem `sensores` no manifesto do repo: uma linha `Sensor:` no briefing
+  // nao trava nada — ausencia do campo e "esta tarefa nao pede sensor".
+  {
+    const repo = caixa();
+    iniciarGit(repo, "fluxo/teste");
+    criarEstadoAtivo(repo, "teste", "revisar");
+    escreverManifestoDoRepo(repo, {
+      versao: 1,
+      agentes: { revisor: { estagios: ["revisar"], escreve: false } },
+    });
+
+    const r = despachar(repo, "revisor", { prompt: "prova\nSensor: qualquer-coisa\n" });
+
+    caso("5a: sem sensores no manifesto, exit 0 mesmo com linha Sensor: no briefing",
+      r.status === 0, `exit=${r.status} stderr=${r.stderr}`);
+
+    fs.rmSync(repo, { recursive: true, force: true });
+  }
+
+  // 5b/5c/5d/5f usam o mesmo manifesto: revisor com sensores declarados.
+  const manifestoComSensores = {
+    versao: 1,
+    agentes: {
+      revisor: { estagios: ["revisar"], escreve: false, sensores: ["temperatura", "umidade"] },
+    },
+  };
+
+  // 5b. briefing pede sensor QUE ESTA na lista: despachado.
+  {
+    const repo = caixa();
+    iniciarGit(repo, "fluxo/teste");
+    criarEstadoAtivo(repo, "teste", "revisar");
+    escreverManifestoDoRepo(repo, manifestoComSensores);
+
+    const r = despachar(repo, "revisor", { prompt: "prova\nSensor: temperatura\n" });
+
+    caso("5b: sensor pedido esta na lista, exit 0", r.status === 0, `exit=${r.status} stderr=${r.stderr}`);
+
+    fs.rmSync(repo, { recursive: true, force: true });
+  }
+
+  // 5c. briefing pede sensor DE FORA da lista: nega com exit 2, dizendo o
+  // sensor pedido e o manifesto lido.
+  {
+    const repo = caixa();
+    iniciarGit(repo, "fluxo/teste");
+    criarEstadoAtivo(repo, "teste", "revisar");
+    const manifestoPath = escreverManifestoDoRepo(repo, manifestoComSensores);
+
+    const r = despachar(repo, "revisor", { prompt: "prova\nSensor: pressao\n" });
+
+    caso("5c: sensor pedido fora da lista, exit 2", r.status === 2, `exit=${r.status}`);
+    caso("5c: stderr nomeia o sensor pedido ('pressao')", /pressao/.test(r.stderr || ""), r.stderr);
+    caso("5c: stderr nomeia o manifesto lido",
+      (r.stderr || "").includes(manifestoPath), r.stderr);
+
+    fs.rmSync(repo, { recursive: true, force: true });
+  }
+
+  // 5c2. DUAS linhas `Sensor:`, uma dentro da lista e outra fora: a de dentro
+  // nao pode mascarar a de fora — TODAS as linhas contam, nao so a primeira
+  // (e a razao de nao usar `.match()`/`.test()` de primeiro-encontro aqui,
+  // ao contrario de `runtimeEfetivo`). Sem este caso, um refactor para
+  // primeiro-encontro deixaria a bateria verde do mesmo jeito.
+  {
+    const repo = caixa();
+    iniciarGit(repo, "fluxo/teste");
+    criarEstadoAtivo(repo, "teste", "revisar");
+    escreverManifestoDoRepo(repo, manifestoComSensores);
+
+    const r = despachar(repo, "revisor", { prompt: "prova\nSensor: temperatura\nSensor: pressao\n" });
+
+    caso("5c2: duas linhas Sensor:, uma fora da lista, exit 2", r.status === 2, `exit=${r.status}`);
+    caso("5c2: stderr nomeia a que ficou de fora ('pressao')", /pressao/.test(r.stderr || ""), r.stderr);
+
+    fs.rmSync(repo, { recursive: true, force: true });
+  }
+
+  // 5d. manifesto tem `sensores`, mas o briefing NAO declara linha `Sensor:`
+  // nenhuma: nada pedido, nada fora da lista — despachado.
+  {
+    const repo = caixa();
+    iniciarGit(repo, "fluxo/teste");
+    criarEstadoAtivo(repo, "teste", "revisar");
+    escreverManifestoDoRepo(repo, manifestoComSensores);
+
+    const r = despachar(repo, "revisor", { prompt: "prova, sem linha de sensor" });
+
+    caso("5d: sensores na lista, briefing sem linha Sensor:, exit 0",
+      r.status === 0, `exit=${r.status} stderr=${r.stderr}`);
+
+    fs.rmSync(repo, { recursive: true, force: true });
+  }
+
+  // 5e. `sensores` mal formado no manifesto (nao e lista de nomes) nega —
+  // mesma regra dos tres estados que ja valem para `escreve` e `runtime`.
+  {
+    const formasInvalidas = [
+      ["string em vez de lista", "temperatura"],
+      ["lista vazia", []],
+      ["lista com item nao-string", ["temperatura", 7]],
+    ];
+
+    for (const [rotulo, valor] of formasInvalidas) {
+      const repo = caixa();
+      iniciarGit(repo, "fluxo/teste");
+      criarEstadoAtivo(repo, "teste", "revisar");
+      escreverManifestoDoRepo(repo, {
+        versao: 1,
+        agentes: { revisor: { estagios: ["revisar"], escreve: false, sensores: valor } },
+      });
+
+      const r = despachar(repo, "revisor");
+
+      caso(`5e (${rotulo}): exit 2`, r.status === 2, `exit=${r.status}`);
+      caso(`5e (${rotulo}): motivo cita 'sensores'`, /sensores/i.test(r.stderr || ""), r.stderr);
+
+      fs.rmSync(repo, { recursive: true, force: true });
+    }
+  }
+
+  // 5f. linha `Sensor:` presente mas com valor ilegivel (vazio, com espaco):
+  // nao da pra afirmar "nao pediu nada" a partir de texto nao lido — nega.
+  {
+    const repo = caixa();
+    iniciarGit(repo, "fluxo/teste");
+    criarEstadoAtivo(repo, "teste", "revisar");
+    escreverManifestoDoRepo(repo, manifestoComSensores);
+
+    const r = despachar(repo, "revisor", { prompt: "prova\nSensor: \n" });
+
+    caso("5f: linha Sensor: com valor vazio, exit 2", r.status === 2, `exit=${r.status}`);
+    caso("5f: motivo diz que o formato nao foi lido", /nao le|não lê/i.test(r.stderr || ""), r.stderr);
+
+    fs.rmSync(repo, { recursive: true, force: true });
+  }
+
+  // 5g. o portao vale tambem para `escreve: true` — prova de posicionamento.
+  // Fica ANTES da bifurcacao que sai com `process.exit(0)` proprio (linha
+  // ~959 de portaria.cjs); sem essa prova, um portao colocado so ao lado da
+  // checagem de `tools:` (dentro do `escreve === false`) passaria verde sem
+  // cobrir nada real, porque `executor` e companhia nunca chegariam la.
+  {
+    const manifestoExecutor = {
+      versao: 1,
+      agentes: {
+        executor: { estagios: ["executar"], escreve: true, sensores: ["disco"] },
+      },
+    };
+
+    // 5g-ok: sensor pedido esta na lista, isolation correto, sem name: exit 0.
+    {
+      const repo = caixa();
+      iniciarGit(repo, "fluxo/teste");
+      criarEstadoAtivo(repo, "teste", "executar");
+      escreverManifestoDoRepo(repo, manifestoExecutor);
+
+      const r = despachar(repo, "executor", {
+        prompt: "prova\nSensor: disco\n",
+        isolation: "worktree",
+      });
+
+      caso("5g-ok: escreve:true com sensor da lista, isolation correto, exit 0",
+        r.status === 0, `exit=${r.status} stderr=${r.stderr}`);
+
+      fs.rmSync(repo, { recursive: true, force: true });
+    }
+
+    // 5g-fora: mesmo agente, sensor pedido fora da lista: exit 2 — prova que
+    // o portao de sensor barra ANTES do allow proprio do `escreve: true`.
+    {
+      const repo = caixa();
+      iniciarGit(repo, "fluxo/teste");
+      criarEstadoAtivo(repo, "teste", "executar");
+      const manifestoPath = escreverManifestoDoRepo(repo, manifestoExecutor);
+
+      const r = despachar(repo, "executor", {
+        prompt: "prova\nSensor: rede\n",
+        isolation: "worktree",
+      });
+
+      caso("5g-fora: escreve:true com sensor fora da lista, exit 2", r.status === 2, `exit=${r.status}`);
+      caso("5g-fora: stderr nomeia o sensor pedido ('rede')", /rede/.test(r.stderr || ""), r.stderr);
+      caso("5g-fora: stderr nomeia o manifesto lido",
+        (r.stderr || "").includes(manifestoPath), r.stderr);
+
+      fs.rmSync(repo, { recursive: true, force: true });
+    }
   }
 }
 
