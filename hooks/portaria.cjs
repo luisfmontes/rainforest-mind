@@ -1,13 +1,19 @@
 #!/usr/bin/env node
 "use strict";
 /* Portaria — NÚCLEO DE DECISÃO (Tarefas 2 e 3 do fluxo 9, D1–D7).
- * Protege contra: despacho de subagente fora do manifesto .rainforest/agentes.json
+ * Protege contra: despacho de subagente fora do manifesto (padrao do plugin ou do repo)
  * Não protege contra: subagente declarado no manifesto com tools validadas
  *
- * Registrado como PreToolUse em `.claude/settings.json` com matcher de
- * despacho de subagente. Aqui é implementada a decisão fail-closed sobre
- * admissão de subagente via `.rainforest/agentes.json` (manifesto) + estágio
- * ativo (sem exceder estagios permitidos + escreve).
+ * Registrado como PreToolUse em `hooks/hooks.json` DO PLUGIN, com matcher de
+ * despacho de subagente. Desde 2026-09-13 vale em TODA sessão em que o plugin
+ * esteja habilitado, e não só neste repositório — que era o estado anterior,
+ * herdado de a portaria ter nascido aqui dentro, e que fazia a regra 10
+ * prometer portão onde não havia (Issue #241).
+ *
+ * Aqui é implementada a decisão fail-closed sobre admissão de subagente via
+ * manifesto + estágio ativo. O manifesto é o `.rainforest/agentes.padrao.json`
+ * embarcado no plugin, ou o `.rainforest/agentes.json` do repositório, que o
+ * SUBSTITUI por inteiro quando existe.
  *
  * Exit 0: aprovado, linha de log anexada.
  * Exit 2: negado, motivo no stderr (fail-closed — sempre com motivo não-vazio).
@@ -351,7 +357,26 @@ function obterDefinicaoAgente(raiz, nomeAgente, agentesDir) {
 }
 
 function gravarAmostra(raiz, payload) {
-  // Captura primeira amostra apenas (D7)
+  /* Captura primeira amostra apenas (D7 do fluxo 9).
+   *
+   * Só escreve quando o projeto aberto É o próprio plugin. A amostra existe
+   * para virar DOCUMENTAÇÃO VERSIONADA daqui — o payload real em que o parser
+   * se fixou, commitado ao lado do código que o lê. Num repositório de
+   * cliente ela não tem leitor nem destino: ninguém vai commitá-la, e o que
+   * sobra é uma pasta não rastreada aparecendo no `git status` de outra
+   * pessoa.
+   *
+   * Achado em 2026-09-14, no `executar` da D6: a prova do log fora do repo
+   * falhou porque `<repo>/.rainforest/portaria/` continuava nascendo. O log
+   * já tinha saído; era esta função. Mover o log e deixar a amostra teria
+   * resolvido o sintoma medido e mantido a causa — repo alheio sujo do mesmo
+   * jeito, por outro caminho.
+   */
+  const raizDoPlugin = path.resolve(__dirname, "..");
+  if (path.resolve(raiz) !== raizDoPlugin) {
+    return;
+  }
+
   const dir = path.join(raiz, ".rainforest", "portaria");
   const amostraPath = path.join(dir, "amostra.json");
 
@@ -380,9 +405,43 @@ function gravarAmostra(raiz, payload) {
  * que escreve rodou" sem dizer "isolado" não responde a pergunta pela qual ele
  * é evidência de primeira classe.
  */
+/* Onde o log de despacho mora (D6 de 2026-09-13).
+ *
+ * Antes: `<projeto>/.rainforest/portaria/`. Enquanto a portaria valia só neste
+ * repositório isso era invisível — a linha está no `.gitignore` daqui. Valendo
+ * em todo repo, passaria a criar pasta não rastreada dentro de repositório de
+ * cliente, aparecendo no `git status` de outra pessoa. Sujar repo alheio é a
+ * versão pequena de alterar o ambiente do usuário, que a regra 15 proíbe.
+ *
+ * Agora: a raiz de DADOS, pelo `hooks/lib/raiz.cjs`, que já existe e já é
+ * testado. Medido em 2026-09-13, desta árvore e de um repo de cliente: os dois
+ * resolvem para a raiz global do usuário. `RFM_ROOT` é o nível 1 dessa cadeia,
+ * então bateria se isola apontando para caixa de areia — nenhum teste escreve
+ * na pasta pessoal de verdade.
+ *
+ * A divergência, de propósito: um repositório que tenha o PRÓPRIO `.rainforest`
+ * com `FOCO.md` ou `ideias.jsonl` mantém o log lá. Esse repo optou por ter
+ * dados do rainforest, e o log acompanha a raiz que governa.
+ *
+ * O campo `repo` entra em cada linha porque, centralizado, o log deixa de dizer
+ * por vizinhança de onde veio cada decisão.
+ */
+function raizDoLog(raiz) {
+  try {
+    const { resolverRaiz } = require("./lib/raiz.cjs");
+    const r = resolverRaiz({ cwd: raiz });
+    if (r && r.raiz) return r.raiz;
+  } catch {
+    // Resolver quebrado não pode derrubar a decisão: o log é trilha, não portão.
+  }
+  // Último recurso: o comportamento antigo. Perder a trilha é ruim; não decidir
+  // é pior.
+  return path.join(raiz, ".rainforest");
+}
+
 function gravarDespacho(raiz, decisao, agente, estagio, sessao, motivo, escreveConferido, extra) {
   // Append-only log de despachos (D4)
-  const dir = path.join(raiz, ".rainforest", "portaria");
+  const dir = path.join(raizDoLog(raiz), "portaria");
   const logPath = path.join(dir, "despachos.jsonl");
 
   try {
@@ -390,6 +449,7 @@ function gravarDespacho(raiz, decisao, agente, estagio, sessao, motivo, escreveC
 
     const entrada = {
       ts: new Date().toISOString(),
+      repo: raiz,
       agente,
       estagio,
       decisao,
@@ -410,8 +470,25 @@ function gravarDespacho(raiz, decisao, agente, estagio, sessao, motivo, escreveC
 
     const linha = JSON.stringify(entrada) + "\n";
     fs.appendFileSync(logPath, linha, "utf8");
-  } catch {
-    // Falha de gravacao nao pode travar a sessao do usuario.
+  } catch (err) {
+    /* Falha de gravacao nao pode travar a sessao do usuario — mas tambem nao
+     * pode ser calada (D8 de 2026-09-13).
+     *
+     * Enquanto o log era arquivo ignorado do proprio repo, uma linha perdida
+     * era uma linha perdida. Depois da D6 ele e a UNICA trilha que atravessa
+     * repositorios, e trilha que perde linha em silencio e pior que nao ter
+     * trilha — porque parece ter. Auditar depois um log com buraco invisivel e
+     * concluir "nao houve despacho" e exatamente o erro que ele existe para
+     * impedir.
+     *
+     * Continua nao-fatal de proposito: o log e trilha, nao portao. Barrar
+     * trabalho porque o disco encheu seria dar ao log um poder que a decisao
+     * de admissao nunca lhe deu.
+     */
+    const detalhe = (err && err.message) ? err.message : String(err);
+    process.stderr.write(
+      `portaria: a decisao valeu, mas a linha do log NAO foi gravada em ${logPath} — ${detalhe}\n`
+    );
   }
 }
 
@@ -492,30 +569,50 @@ function main() {
   }
   const estagioLog = (estResult && estResult.estagio) || "?";
 
-  // Carrega manifesto (D3 passo 2: ausente ou inválido → nega)
-  const manifestoPath = path.join(raiz, ".rainforest", "agentes.json");
+  // Carrega manifesto. Dois níveis, e o do repo SUBSTITUI o padrão por inteiro
+  // — não soma (D3 de 2026-09-13).
+  //
+  // Merge apagaria a diferença entre "não declarei" e "declarei e tirei", que é
+  // justamente a diferença que este portão decide: um repo que precise barrar o
+  // `executor` tem de conseguir barrá-lo, e com merge ele voltaria pelo padrão.
+  // Substituição também deixa o arquivo legível sozinho — o que está escrito
+  // nele é o que vale, sem simular a fusão de cabeça.
+  const manifestoDoRepo = path.join(raiz, ".rainforest", "agentes.json");
+  const manifestoPadrao = path.resolve(__dirname, "..", ".rainforest", "agentes.padrao.json");
+  const usandoPadrao = !fs.existsSync(manifestoDoRepo);
+  const manifestoPath = usandoPadrao ? manifestoPadrao : manifestoDoRepo;
   let manifesto;
 
-  if (!fs.existsSync(manifestoPath)) {
-    gravarDespacho(raiz, "deny", nomeAgente, estagioLog, sessao, "manifesto ausente");
-
-    const branch = obterBranch(raiz);
-    const outrosWorktrees = obterOutrosWorktreesComFluxoAberto(raiz);
-
-    let msg = `Manifesto não encontrado em ${manifestoPath}\n`;
-    msg += `  raiz lida: ${raiz}\n`;
-    if (branch) {
-      msg += `  branch: ${branch}\n`;
-    }
-    msg += `  estágio resolvido: ${estagioLog}\n`;
-
-    if (outrosWorktrees.length > 0) {
-      msg += formatarOutrosWorktreesAbertos(outrosWorktrees);
-    }
-
-    negar(msg.trim());
+  // Padrão embarcado ausente NÃO é decisão sobre este agente — é instalação
+  // quebrada. Sobe, e a rede no topo do arquivo converte em exit 2 com
+  // "falha interna", sem gravar linha de `deny` no log.
+  //
+  // A distinção que importa NÃO é o exit code: `negar()` também sai 2, e 2 é o
+  // único código que barra — 0 passa e qualquer outro é erro não-bloqueante,
+  // que foi o fail-open da rodada 6. A distinção é de que o log de despacho não
+  // pode registrar como política ("agente negado") o que é falha de instalação,
+  // e de que a mensagem tem de apontar para o plugin, não para o repo do
+  // usuário, que não tem nada a consertar.
+  if (usandoPadrao && !fs.existsSync(manifestoPadrao)) {
+    throw new Error(
+      `manifesto padrao do plugin ausente em ${manifestoPadrao} — ` +
+      `instalacao incompleta do rainforest-mind, nao configuracao deste repo`
+    );
   }
 
+  // NAO existe mais um caminho "manifesto ausente" aqui. Depois da D2 os dois
+  // ramos de `usandoPadrao` ja conferiram existencia antes de `manifestoPath`
+  // ser definido: o do repo porque foi assim que `usandoPadrao` virou false, e o
+  // padrao pelo `throw` logo acima. O `if (!fs.existsSync(manifestoPath))` que
+  // ficava aqui so era alcancavel por TOCTOU, e mantê-lo daria a impressao de
+  // que "repo sem manifesto" ainda nega — que e exatamente o que deixou de ser
+  // verdade (D5 de 2026-09-13).
+  //
+  // O diagnostico que essa mensagem carregava (raiz lida, branch, outros
+  // worktrees em fluxo aberto) nao se perdeu: ele mora nas negacoes por "sem
+  // estagio ativo", que e onde a pergunta "por que a portaria nao enxerga meu
+  // setup" passa a cair. A outra metade da pergunta — QUAL manifesto foi lido —
+  // entra logo abaixo, na negacao por agente nao declarado.
   try {
     const brutoManifesto = fs.readFileSync(manifestoPath, "utf8");
     manifesto = JSON.parse(brutoManifesto);
@@ -541,10 +638,24 @@ function main() {
   }
 
   // D3 passo 3: agente não declarado → nega
+  //
+  // O stderr diz QUAL manifesto foi lido. Enquanto a portaria valia só neste
+  // repositório havia um manifesto possível; depois da D2 há dois, e "não
+  // consta" sem dizer onde se leu manda o usuário conferir o arquivo errado —
+  // tipicamente o do repo, quando quem decidiu foi o padrão embarcado.
   if (!manifesto.agentes[nomeAgente]) {
     const motivo = `agente '${nomeAgente}' não consta no manifesto`;
     gravarDespacho(raiz, "deny", nomeAgente, estagioLog, sessao, motivo);
-    negar(motivo);
+
+    let msg = `${motivo}\n`;
+    msg += `  manifesto lido: ${manifestoPath}\n`;
+    msg += `  origem: ${usandoPadrao ? "padrão embarcado do plugin" : "manifesto deste repositório"}\n`;
+    msg += `  raiz lida: ${raiz}\n`;
+    if (usandoPadrao) {
+      msg += `  para mudar só neste repositório, crie ${manifestoDoRepo} — ele SUBSTITUI o padrão por inteiro\n`;
+    }
+
+    negar(msg.trim());
   }
 
   const agentConfig = manifesto.agentes[nomeAgente];
@@ -1118,8 +1229,19 @@ function executarLint(manifestoPath, agentesDir) {
 
 if (require.main === module) {
   if (process.argv[2] === "--lint") {
-    let manifestoPath = ".rainforest/agentes.json";
-    let agentesDir = "agents";
+    // O default do lint acompanha o do runtime: o padrão embarcado. Um repo que
+    // tenha o seu passa `--manifesto .rainforest/agentes.json` e linta o dele.
+    //
+    // `agentesDir` acompanha o manifesto, e os DOIS são absolutos do plugin.
+    // Achado no `revisar` de 2026-09-14: mover só o manifesto deixou o par
+    // incoerente — caminho relativo resolve contra `raizDoProjeto()` (abaixo),
+    // então `--lint` sem argumentos rodado de qualquer outro repositório leria o
+    // manifesto do PLUGIN e procuraria os `.md` no `agents/` do repo alheio,
+    // acusando os 12 agentes como "declarado no manifesto mas sem arquivo".
+    // Antes da mudança os dois eram relativos, e por isso coerentes; o defeito
+    // nasceu de mover um par pela metade.
+    let manifestoPath = path.resolve(__dirname, "..", ".rainforest", "agentes.padrao.json");
+    let agentesDir = path.resolve(__dirname, "..", "agents");
 
     for (let i = 3; i < process.argv.length; i++) {
       if (process.argv[i] === "--manifesto" && i + 1 < process.argv.length) {
@@ -1163,8 +1285,10 @@ if (require.main === module) {
      * consegue decidir, admitir é exatamente a falha que ela existe para impedir.
      *
      * A saída de emergência não é variável de ambiente (isso seria a exceção em
-     * runtime que o D1 proíbe): é tirar o bloco do `.claude/settings.json`, que
-     * é arquivo versionado e passa pelo `revisar` — a mesma porta do manifesto.
+     * runtime que o D1 proíbe): é tirar o bloco do `hooks/hooks.json`, que é
+     * arquivo versionado e passa pelo `revisar` — a mesma porta do manifesto.
+     * Era o `.claude/settings.json` até 2026-09-13, quando a portaria subiu
+     * para o nível do plugin e aquele arquivo deixou de existir.
      */
     /* A rede é síncrona, e por isso não basta sozinha.
      *
@@ -1182,7 +1306,7 @@ if (require.main === module) {
       process.stderr.write(
         `portaria: falha interna (${origem}), e por isso o despacho foi NEGADO — ${detalhe}\n` +
         `a portaria nega quando nao consegue decidir; crashar deixaria o despacho passar.\n` +
-        `para destravar: conserte o erro acima, ou tire o bloco da portaria do .claude/settings.json.\n`
+        `para destravar: conserte o erro acima, ou tire o bloco da portaria do hooks/hooks.json do plugin.\n`
       );
       process.exit(2);
     };

@@ -80,6 +80,15 @@
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/ferramentas-consulta.cjs\""
           }
         ]
+      },
+      {
+        "matcher": "Task|Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/portaria.cjs\""
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [

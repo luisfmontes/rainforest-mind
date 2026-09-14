@@ -19,8 +19,8 @@
  *      que por acaso produza o mesmo número de linhas.
  * P5 — fail-closed em TEMPO DE EXECUÇÃO: o MESMO sandbox que aprovou o
  *      despacho (P4) passa a negá-lo depois que .rainforest/agentes.json é
- *      removido. Sandbox que nunca aprovou nada não prova fail-closed —
- *      prova só que sandbox vazio nega.
+ *      reescrito sem o agente. Sandbox que nunca aprovou nada não prova
+ *      fail-closed — prova só que sandbox vazio nega.
  *
  * Cada portão imprime seu rótulo ESPERA quando fecha (`P1 lint:ok`, ...).
  * Exit 0 só se os cinco fecharem; exit ≠ 0 na primeira falha, com o que
@@ -46,10 +46,20 @@ function fechar(portao, rotulo) {
   console.log(`${portao} ${rotulo}`);
 }
 
+// `RFM_ROOT` desde 2026-09-14 (D6): o log resolve pela raiz de DADOS, e sem
+// isolamento a raiz de dados é a pasta pessoal do usuário. Apontar para
+// `<raiz>/.rainforest` deixa cada caso na sua própria caixa (todo `caixa()` é um
+// mkdtemp novo) e mantém o P4 lendo o mesmo caminho de sempre — o portão P4 é
+// sobre o CONTEÚDO da linha e o append-only, não sobre onde o arquivo mora.
+// Quem prova o destino do log é `testa-portaria-log-fora-do-repo.cjs`.
 function rodaHook(raiz, stdin) {
   return spawnSync(process.execPath, [HOOK], {
     input: stdin,
-    env: { ...process.env, CLAUDE_PROJECT_DIR: raiz },
+    env: {
+      ...process.env,
+      CLAUDE_PROJECT_DIR: raiz,
+      RFM_ROOT: path.join(raiz, ".rainforest"),
+    },
     encoding: "utf8",
   });
 }
@@ -60,8 +70,15 @@ function rodaLint(manifestoPath, agentesDir) {
   });
 }
 
+// `realpathSync.native` pelo mesmo motivo de `testa-portaria-diagnostico.cjs`
+// (comentário de 2026-09-04): a CI roda em Windows e o `os.tmpdir()` do runner
+// vem em forma curta 8.3 (`RUNNER~1`), enquanto a portaria imprime o caminho
+// que o Node RESOLVE, por extenso. O P5 confere que o stderr cita o manifesto
+// DO REPO comparando com este caminho — sem expandir o 8.3 ele acusava caminho
+// errado onde a portaria tinha lido o certo: verde aqui, vermelho só lá
+// (2026-09-14). Só o `.native` expande nome curto.
 function caixa(prefixo) {
-  return fs.mkdtempSync(path.join(os.tmpdir(), `portaria-portoes-${prefixo}-`));
+  return fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), `portaria-portoes-${prefixo}-`)));
 }
 
 function iniciarGit(raiz, branch) {
@@ -299,24 +316,122 @@ function logPath(raiz) {
     falhar("P5", "exit 0 (allow) ANTES de remover o manifesto — pré-condição do fail-closed", `exit=${r1.status} stderr=${JSON.stringify(r1.stderr)}`);
   }
 
-  // --- remove o manifesto em tempo de execução, mesmo sandbox, mesmo payload ---
-  fs.rmSync(manifestoPath, { force: true });
-  if (fs.existsSync(manifestoPath)) {
-    falhar("P5", "manifesto removido do disco", "arquivo ainda existe após rmSync");
-  }
+  // --- muda o manifesto em tempo de execução, mesmo sandbox, mesmo payload ---
+  //
+  // Até 2026-09-13 o gatilho aqui era APAGAR o manifesto. Com o padrão embarcado
+  // (D2) apagar deixou de negar: cai no padrão, onde o `revisor` consta, e o
+  // caso passaria a provar o contrário do que o nome diz. O gatilho passa a ser
+  // reescrever o manifesto do repo SEM o agente — que é a mudança em tempo de
+  // execução que tem de negar, e que de quebra prova a D3: o padrão é
+  // SUBSTITUÍDO pelo do repo, não somado a ele; se somasse, o `revisor` voltaria
+  // pelo padrão e este portão ficaria verde com o bug dentro.
+  criarManifesto(raiz, {
+    versao: 1,
+    agentes: { executor: { estagios: ["executar"], escreve: true } },
+  });
 
   const r2 = rodaHook(raiz, JSON.stringify(payload));
   if (r2.status !== 2) {
-    falhar("P5", "exit 2 (deny) DEPOIS de remover o manifesto", `exit=${r2.status} stderr=${JSON.stringify(r2.stderr)}`);
+    falhar("P5", "exit 2 (deny) DEPOIS de tirar o agente do manifesto do repo", `exit=${r2.status} stderr=${JSON.stringify(r2.stderr)}`);
   }
   const motivo = (r2.stderr || "").trim();
   if (!motivo) {
-    falhar("P5", "motivo não vazio no stderr da negação pós-remoção", "stderr veio vazio");
+    falhar("P5", "motivo não vazio no stderr da negação pós-mudança", "stderr veio vazio");
+  }
+  if (!motivo.includes("não consta no manifesto")) {
+    falhar("P5", "motivo é 'não consta no manifesto'", motivo);
+  }
+  // O stderr tem de apontar o manifesto DO REPO — se apontasse o padrão, a
+  // negação teria vindo do arquivo errado.
+  if (!motivo.includes(manifestoPath) && !motivo.replace(/\//g, "\\").includes(manifestoPath)) {
+    falhar("P5", `stderr cita o manifesto do repo (${manifestoPath})`, motivo);
+  }
+  if (motivo.includes("agentes.padrao.json")) {
+    falhar("P5", "stderr NÃO cita o padrão embarcado (quem decidiu foi o do repo)", motivo);
   }
 
   fs.rmSync(raiz, { recursive: true, force: true });
   fechar("P5", "deny:fail-closed");
 }
 
-console.log("P1..P5: OK");
+/* ============================================== P6 — registro:alcance
+ *
+ * Achado ao exercitar a mutação da tarefa 3, em 2026-09-14: trocar o matcher de
+ * `Task|Agent` por `Bash` no `hooks/hooks.json` deixava esta suíte inteira
+ * **verde**. Todas as baterias invocam `portaria.cjs` como processo, direto —
+ * nenhuma perguntava se o harness chegaria a invocá-lo. A decisão que a portaria
+ * toma estava coberta em 307 casos; o fato de ela ser *chamada* não estava
+ * coberto em nenhum, e é ele que faz a regra 10 valer em toda sessão (D1).
+ *
+ * Gate desarmado passa em todo teste que só mede o gate.
+ */
+{
+  const hooksJson = path.join(__dirname, "hooks.json");
+  if (!fs.existsSync(hooksJson)) {
+    falhar("P6", `hooks/hooks.json existe (${hooksJson})`, "arquivo não encontrado");
+  }
+
+  let cfg;
+  try {
+    cfg = JSON.parse(fs.readFileSync(hooksJson, "utf8"));
+  } catch (e) {
+    falhar("P6", "hooks/hooks.json é JSON válido", e.message);
+  }
+
+  const pre = (cfg.hooks && cfg.hooks.PreToolUse) || [];
+  if (!Array.isArray(pre) || pre.length === 0) {
+    falhar("P6", "hooks.json tem grupos em PreToolUse", JSON.stringify(cfg.hooks || {}).slice(0, 200));
+  }
+
+  const grupo = pre.find((g) =>
+    Array.isArray(g.hooks) && g.hooks.some((h) => String(h.command || "").includes("portaria.cjs"))
+  );
+  if (!grupo) {
+    falhar("P6", "algum grupo de PreToolUse invoca portaria.cjs",
+      pre.map((g) => g.matcher).join(" | ") || "(nenhum)");
+  }
+
+  // O matcher tem de casar os DOIS nomes pelos quais o harness despacha
+  // subagente. Casar só um deixa metade dos despachos passar sem portão — e
+  // passa despercebido, porque a decisão continua correta para a outra metade.
+  let re;
+  try {
+    re = new RegExp(`^(?:${grupo.matcher})$`);
+  } catch (e) {
+    falhar("P6", `matcher '${grupo.matcher}' é regex válida`, e.message);
+  }
+  for (const tool of ["Task", "Agent"]) {
+    if (!re.test(tool)) {
+      falhar("P6", `matcher '${grupo.matcher}' casa a tool '${tool}'`, "não casa");
+    }
+  }
+  // E NÃO casa o que não é despacho: matcher largo demais faria a portaria
+  // decidir sobre Bash, Read e Write, negando trabalho que ela não governa.
+  for (const tool of ["Bash", "Read", "Write"]) {
+    if (re.test(tool)) {
+      falhar("P6", `matcher '${grupo.matcher}' NÃO casa '${tool}'`, "casou — matcher largo demais");
+    }
+  }
+
+  // O comando aponta para o plugin, não para o projeto aberto: é a diferença
+  // entre valer em toda sessão e valer só onde o arquivo existir.
+  const cmd = grupo.hooks.find((h) => String(h.command || "").includes("portaria.cjs")).command;
+  if (!cmd.includes("CLAUDE_PLUGIN_ROOT")) {
+    falhar("P6", "o comando resolve pelo CLAUDE_PLUGIN_ROOT (vale em qualquer projeto)", cmd);
+  }
+  if (cmd.includes("CLAUDE_PROJECT_DIR")) {
+    falhar("P6", "o comando NÃO aponta para o projeto aberto", cmd);
+  }
+
+  // E a portaria decide UMA vez: um segundo registro no settings.json deste repo
+  // duplicaria cada linha da trilha de auditoria e daria duas chances de divergir.
+  const settings = path.join(__dirname, "..", ".claude", "settings.json");
+  if (fs.existsSync(settings) && fs.readFileSync(settings, "utf8").includes("portaria")) {
+    falhar("P6", ".claude/settings.json não registra a portaria de novo", "registro duplicado");
+  }
+
+  fechar("P6", "registro:alcance");
+}
+
+console.log("P1..P6: OK");
 process.exit(0);

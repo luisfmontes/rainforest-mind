@@ -54,6 +54,42 @@ montar() {
   done
 }
 
+# Monta um repo em que o bump chega na base POR MERGE, que e como ele chega de
+# verdade: trabalha-se numa branch de fluxo, o bump e o ultimo commit dela, e o
+# PR e mesclado. O commit do bump fica sendo SEGUNDO pai do merge, fora da linha
+# de primeiro pai da base.
+#
+# Sem ancora, `--first-parent` pula o bump e conta o MERGE no lugar dele — e o
+# merge nao e acumulo desde o bump, e a entrega do bump. O erro era de exatamente
+# 1, em todo fluxo, sempre, porque todo bump chega assim.
+# $1 = pasta, $2 = quantos commits de trabalho DEPOIS do merge
+montar_bump_por_merge() {
+  local R="$1" depois="$2" i
+  mkdir -p "$R/.claude-plugin" "$R/scripts"
+  git init -q "$R"
+  git -C "$R" config user.email t@t; git -C "$R" config user.name t
+  git -C "$R" config commit.gpgsign false
+  cp "$CHECADOR" "$R/scripts/conferir-versao.cjs"
+  printf '{\n  "name": "p",\n  "version": "0.1.0"\n}\n' > "$R/.claude-plugin/plugin.json"
+  git -C "$R" add scripts .claude-plugin; git -C "$R" commit -qm "andaime com Versao 0.1.0"
+
+  # branch de fluxo: trabalho + bump no fim dela
+  git -C "$R" checkout -q -b fluxo/teste
+  echo trabalho > "$R/trabalho.txt"
+  git -C "$R" add trabalho.txt; git -C "$R" commit -qm "trabalho do fluxo"
+  printf '{\n  "name": "p",\n  "version": "0.2.0"\n}\n' > "$R/.claude-plugin/plugin.json"
+  git -C "$R" add .claude-plugin/plugin.json; git -C "$R" commit -qm "Versao 0.2.0"
+
+  # merge sem fast-forward: o bump vira segundo pai
+  git -C "$R" checkout -q -
+  git -C "$R" merge -q --no-ff -m "Merge do fluxo/teste" fluxo/teste
+
+  for ((i=1; i<=depois; i++)); do
+    echo "$i" > "$R/depois-$i.txt"
+    git -C "$R" add "depois-$i.txt"; git -C "$R" commit -qm "entrega $i"
+  done
+}
+
 # Monta um par de repositorios para testar a comparacao com `origin/main`: um
 # "remoto" com o manifesto na versao $2, e um local com `origin` apontando pra
 # ele (fetch ja feito, entao `origin/main` resolve) e o manifesto na versao $3.
@@ -140,6 +176,21 @@ if [ "$real" = "$esperado" ]; then
 else
   falhou=$((falhou+1)); echo "  FALHA contou $real onde o ultimo bump deixa $esperado — pickaxe achando o commit errado"
 fi
+
+echo
+echo "== bump que chegou por merge: o merge nao e acumulo, e a entrega =="
+# Achado em 14/09/2026, fechando este proprio fluxo: 5 commits de trabalho e o
+# checador dizia 6. O sexto era o commit de merge do PR anterior, aquele que
+# ENTREGOU o bump. Todo bump chega assim, entao o teto efetivo era o declarado
+# menos um, para sempre.
+RM0="$RAIZ/merge-zero"; montar_bump_por_merge "$RM0" 0
+RM3="$RAIZ/merge-tres"; montar_bump_por_merge "$RM3" 3
+checa "logo apos o merge do bump conta 0, nao 1"  0 0 "$RM0" "scripts/conferir-versao.cjs"
+checa "3 commits apos o merge do bump conta 3"    0 3 "$RM3" "scripts/conferir-versao.cjs"
+# E o caso simetrico continua valendo: bump commitado DIRETO na linha (sem
+# merge) tem de contar do proprio bump, nao do commit seguinte — a ancora nao
+# pode passar a subtrair um de todo mundo.
+checa "bump direto na linha continua contando do bump" 0 2 "$R2" "scripts/conferir-versao.cjs"
 
 echo
 echo "== o teto decide, nas duas direcoes =="
@@ -277,6 +328,56 @@ else
   falhou=$((falhou+1)); echo "  FALHA versao maior que a da main passa: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
 fi
 
+echo
+echo "== bump PENDENTE desarma o teto; sem bump pendente ele continua mordendo =="
+# Achado fechando o fluxo da portaria, em 14/09/2026. O teto recusou um `fechar`
+# com "5 commits desde o bump, e o teto e 5" — e os cinco eram o merge da main, um
+# conserto de README, a rodada de revisar, um portao novo e uma emenda de plano,
+# TODOS destinados a 1.14.0, que ainda nao estava na main.
+#
+# A pergunta que o script faz esta na propria mensagem de recusa: "o trabalho que
+# esta aqui vai chegar na maquina de alguem?". Se a versao declarada ja SUPERA a
+# de origin/main, existe bump nao publicado e todo o trabalho desta branch sai
+# sob ele — nada represado, que e a unica coisa que o teto impede. Sem isso o
+# teto mordia todo fluxo com rodada de revisao DEPOIS do bump, e o proprio bump
+# nao tinha como absorver os commits que ele mesmo provocou.
+#
+# Os dois casos andam em par de proposito: o primeiro so vale como prova porque
+# o segundo mostra que o teto NAO foi afrouxado — ele continua recusando quando
+# versao local e remota empatam, que e o caso para o qual ele foi feito.
+PEND="$RAIZ/bump-pendente";  montar_com_origin "$PEND" "1.3.0" "1.4.0"
+EMPAT="$RAIZ/sem-bump";      montar_com_origin "$EMPAT" "1.3.0" "1.3.0"
+for d in "$PEND" "$EMPAT"; do
+  for i in 1 2 3 4 5 6; do
+    echo "$i" > "$d/depois-$i.txt"
+    git -C "$d" add "depois-$i.txt"; git -C "$d" commit -qm "conserto $i do revisar"
+  done
+done
+
+saida=$(cd "$PEND" && node "scripts/conferir-versao.cjs" --teto 5 2>&1); rc=$?
+if [ "$rc" = 0 ] && printf '%s' "$saida" | grep -qF "nao se aplica"; then
+  ok=$((ok+1)); echo "  ok   6 commits acima do teto passam quando ha bump pendente (exit $rc)"
+else
+  falhou=$((falhou+1)); echo "  FALHA bump pendente devia desarmar o teto: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
+fi
+
+saida=$(cd "$EMPAT" && node "scripts/conferir-versao.cjs" --teto 5 2>&1); rc=$?
+if [ "$rc" = 2 ]; then
+  ok=$((ok+1)); echo "  ok   sem bump pendente, o teto continua recusando (exit $rc)"
+else
+  falhou=$((falhou+1)); echo "  FALHA sem bump pendente o teto tinha de recusar: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
+fi
+
+# E onde NAO da para comparar (fixture sem remoto), o teto volta a morder: erra
+# para o lado de recusar, nunca para o de deixar passar.
+saida=$(cd "$R7" && node "scripts/conferir-versao.cjs" --teto 7 2>&1); rc=$?
+if [ "$rc" = 2 ]; then
+  ok=$((ok+1)); echo "  ok   sem origin/main resolvivel, o teto morde igual (exit $rc)"
+else
+  falhou=$((falhou+1)); echo "  FALHA sem comparacao possivel o teto tinha de morder: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
+fi
+
+echo
 # Parado NA main, em sincronia: empatar com origin/main e o estado CORRETO de
 # quem acabou de publicar, e o script nao pode acusar. Este caso existe porque o
 # falso positivo aconteceu de verdade: minutos depois de a comparacao entrar na

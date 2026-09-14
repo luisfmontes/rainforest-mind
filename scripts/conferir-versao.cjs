@@ -266,6 +266,37 @@ function commitDoUltimoBump() {
   return sha || null;
 }
 
+/**
+ * O ponto em que o bump ALCANCOU a linha de primeiro pai de `cabeca`.
+ *
+ * Por que nao e simplesmente o bump: ele quase nunca esta nessa linha. O bump
+ * nasce numa branch de fluxo e chega na `main` por merge, entao ele e SEGUNDO
+ * pai do merge. `--first-parent` o pula e inclui o commit de merge no lugar —
+ * e o merge nao e acumulo desde o bump, e a entrega dele. Como todo bump chega
+ * assim, a contagem vinha um a mais para todo fluxo, sempre: o teto declarado
+ * de 5 recusava o sexto commit tendo a branch cinco seus.
+ *
+ * Devolve o proprio bump quando ele esta na linha (bump commitado direto na
+ * base, ou medicao rodada de dentro da branch que o contem), e o merge que o
+ * trouxe quando nao esta. Sem caminho de ancestralidade — historico reescrito,
+ * bump orfao — devolve o bump, que e o comportamento antigo: erra para o lado
+ * de contar demais, que recusa, em vez de para o lado de deixar passar.
+ */
+function ancoraDaContagem(bump, cabeca) {
+  const linha = git(["rev-list", "--first-parent", cabeca]);
+  if (linha && linha.split("\n").includes(bump)) {
+    return bump;
+  }
+
+  const caminho = git(["rev-list", "--first-parent", "--ancestry-path", `${bump}..${cabeca}`]);
+  if (!caminho) return bump;
+
+  const commits = caminho.split("\n").filter(Boolean);
+  // O ULTIMO da lista e o mais antigo: o primeiro descendente do bump que ja
+  // esta na linha de primeiro pai — o merge que o trouxe.
+  return commits.length ? commits[commits.length - 1] : bump;
+}
+
 function medir(base, teto) {
   // Primeiro, verifica se o RAIZ é um repositório git
   if (!git(["rev-parse", "--git-dir"])) {
@@ -314,11 +345,48 @@ function medir(base, teto) {
   // proprio commit "Versao 1.12.1" -- o bump de outra release contado como
   // acumulo desde o meu. Quem mescla a main para ficar em dia era punido por
   // isso, que e o contrario do que o teto quer ensinar.
-  const bruto = git(["rev-list", "--count", "--first-parent", `${bump}..${cabeca}`]);
+  //
+  // E o `--first-parent` sozinho ainda contava um a mais, achado em 14/09/2026:
+  // o bump quase nunca esta NA linha de primeiro pai da `main`. Ele nasce numa
+  // branch de fluxo e chega por merge, entao `--first-parent` pula o commit do
+  // bump (que e segundo pai) e inclui o MERGE no lugar dele. O merge nao e
+  // acumulo desde o bump — ele e a entrega do bump. Como todo bump chega assim,
+  // o teto efetivo era o declarado menos um, para todo fluxo, sempre.
+  //
+  // A ancora certa e o ponto em que o bump ALCANCOU esta linha: o proprio bump
+  // quando ele esta nela, e o merge que o trouxe quando nao esta.
+  const ancora = ancoraDaContagem(bump, cabeca);
+  const bruto = git(["rev-list", "--count", "--first-parent", `${ancora}..${cabeca}`]);
   if (bruto === null) {
-    return { medivel: false, motivo: `nao consegui contar ${bump.slice(0, 7)}..${base}` };
+    return { medivel: false, motivo: `nao consegui contar ${ancora.slice(0, 7)}..${base}` };
   }
   const commits = Number(bruto);
+
+  /* O teto NAO morde quando ja existe bump pendente (2026-09-14).
+   *
+   * A pergunta que este script faz esta escrita na propria mensagem de recusa:
+   * "o trabalho que esta aqui vai chegar na maquina de alguem?" Ele chega pelo
+   * cache, indexado pela VERSAO. Se a versao declarada JA SUPERA a de
+   * `origin/main`, entao existe um bump que ainda nao foi publicado, e TODO o
+   * trabalho desta branch — o que veio antes dele e o que veio depois — vai sair
+   * sob esse bump. Nada esta represado, que e a unica coisa que o teto existe
+   * para impedir.
+   *
+   * Sem isso, o teto mordia qualquer fluxo com rodada de revisao depois do bump:
+   * o proprio commit do bump zera a contagem, e os commits de conserto que vem
+   * do `revisar` voltam a enche-la, sem que exista um segundo release para
+   * absorve-los. Medido em 2026-09-14, fechando este fluxo: 5 commits (merge da
+   * main, conserto de README, rodada de revisar, portao novo, emenda do plano),
+   * todos destinados a 1.14.0, recusados por "o teto e 5".
+   *
+   * O teto continua mordendo no caso para o qual foi feito, que e o oposto
+   * deste: versao declarada IGUAL a de `origin/main` — nenhum bump pendente,
+   * commit atras de commit indo para a main sem nunca virar release. E quando
+   * nao da para comparar (sem remoto, semver ilegivel), ele volta a morder: erra
+   * para o lado de recusar, nao para o lado de deixar passar.
+   */
+  const bumpPendente = comparacao.comparouVersao === true && comparacao.versaoMaior === true;
+
   return {
     medivel: true,
     versao,
@@ -327,7 +395,8 @@ function medir(base, teto) {
     cabeca: cabeca.slice(0, 7),
     commits,
     teto,
-    estourou: commits >= teto,
+    bumpPendente,
+    estourou: commits >= teto && !bumpPendente,
     ...comparacao,
   };
 }
@@ -378,8 +447,13 @@ function main() {
     : ` (nao comparei com origin/main: ${r.motivoNaoComparou})`;
 
   if (!r.estourou) {
+    // Quando o teto SERIA estourado e nao e' so porque ha bump pendente, diz
+    // isso em voz alta: silencio aqui faria parecer que a contagem coube.
+    const nota = (r.bumpPendente && r.commits >= r.teto)
+      ? ` — teto ${r.teto} nao se aplica: ${r.versao} ja supera a origin/main, entao estes commits saem sob esse bump`
+      : ` (teto ${r.teto})`;
     console.log(
-      `ok    versao ${r.versao}: ${r.commits} commit(s) desde o bump ${r.bump} (teto ${r.teto})${notaComparacao}`
+      `ok    versao ${r.versao}: ${r.commits} commit(s) desde o bump ${r.bump}${nota}${notaComparacao}`
     );
     process.exit(0);
   }

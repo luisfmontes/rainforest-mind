@@ -192,6 +192,49 @@ lintDeManifesto("entrada null no manifesto → erro",
 lintDeManifesto("so 'arqueologia', que nunca fica ativo → aviso, exit 0",
   { leitor: { estagios: ["arqueologia"], escreve: false } }, 0, "nunca ficam ativos");
 
+/* == Os DEFAULTS do --lint são um par, e os dois são do plugin ==
+ *
+ * Achado no `revisar` de 2026-09-14. A D2 mudou o manifesto default para o
+ * caminho absoluto do padrão embarcado e deixou `agentesDir` como `"agents"`,
+ * relativo — e caminho relativo resolve contra `raizDoProjeto()`. `--lint` sem
+ * argumentos, rodado de QUALQUER outro repositório, passava a ler o manifesto do
+ * plugin e a procurar os `.md` no `agents/` do repo alheio: 9 erros de "declarado
+ * no manifesto mas sem arquivo" e exit 1, num manifesto que está correto.
+ *
+ * Antes da mudança os dois eram relativos, e por isso coerentes. O defeito
+ * nasceu de mover um par pela metade, e este caso existe para que a próxima
+ * metade não vá sozinha de novo.
+ *
+ * O cwd é `os.tmpdir()` de propósito: é o "qualquer outro lugar" que reproduz.
+ */
+console.log("== defaults do --lint: manifesto e agentes-dir andam juntos ==");
+{
+  const os = require("os");
+  const fora = fs.mkdtempSync(path.join(os.tmpdir(), "portaria-lint-cwd-"));
+
+  const r = spawnSync(process.execPath, [HOOK, "--lint"], {
+    cwd: fora,
+    encoding: "utf8",
+  });
+
+  const saida = `${r.stdout || ""}${r.stderr || ""}`;
+  caso("exit 0 rodando de fora do plugin, sem argumentos",
+    r.status === 0, `exit=${r.status}\n${saida.slice(0, 400)}`);
+  caso("nao acusa 'sem arquivo' (procurou os agents do plugin, nao os do cwd)",
+    !/sem arquivo/.test(saida), saida.slice(0, 400));
+
+  // Controle: rodar de DENTRO do plugin dá o mesmo veredito. Sem isto, o caso
+  // acima passaria também se o lint tivesse simplesmente parado de checar.
+  const rDentro = spawnSync(process.execPath, [HOOK, "--lint"], {
+    cwd: path.join(__dirname, ".."),
+    encoding: "utf8",
+  });
+  caso("e o veredito e o MESMO de dentro do plugin",
+    rDentro.status === r.status, `dentro=${rDentro.status} fora=${r.status}`);
+
+  fs.rmSync(fora, { recursive: true, force: true });
+}
+
 console.log(`\n== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 
 if (falhou > 0) {

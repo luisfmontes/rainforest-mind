@@ -28,7 +28,16 @@ function caso(nome, cond, detalhe) {
 function rodaHook(raiz, stdin) {
   return spawnSync(process.execPath, [HOOK], {
     input: stdin,
-    env: { ...process.env, CLAUDE_PROJECT_DIR: raiz },
+    // `RFM_ROOT` desde 2026-09-14 (D6): o log resolve pela raiz de DADOS, que
+    // sem isolamento é a pasta pessoal do usuário. Esta bateria ficou VERDE o
+    // tempo todo e mesmo assim despejava 15 linhas lá por execução — passar nas
+    // asserções e sujar o ambiente do usuário são coisas independentes
+    // (regra 15).
+    env: {
+      ...process.env,
+      CLAUDE_PROJECT_DIR: raiz,
+      RFM_ROOT: path.join(raiz, ".rainforest"),
+    },
     encoding: "utf8",
   });
 }

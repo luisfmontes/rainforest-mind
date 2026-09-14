@@ -3,10 +3,20 @@
 /* Bateria de diagnóstico da Tarefa 3 do fluxo 9 (portaria).
  *
  * Testa as mensagens de negação enriquecidas com diagnóstico:
- * (a) negação por manifesto ausente cita a raiz lida
+ * (a) a negação cita a raiz lida
  * (b) cita a branch atual
  * (c) com outro worktree do mesmo repo em fluxo aberto, cita slug e estágio dele
  * (d) sem outro worktree em fluxo aberto, não inventa nenhum
+ * (f) a negação por agente não declarado diz QUAL manifesto foi lido
+ *
+ * A negação que carrega o diagnóstico mudou em 2026-09-14 (D5). Até então era
+ * "manifesto ausente": todo caso montava um sandbox SEM manifesto e o hook
+ * negava. Com o padrão embarcado (D2), repo sem manifesto próprio virou o caso
+ * NORMAL — a pergunta "por que a portaria não enxerga meu setup" passou a cair
+ * em **sem estágio ativo**, que é onde o bloco de diagnóstico mora agora (mesma
+ * `raiz lida`, mesma `branch`, mesmos outros worktrees). O caso (f) é novo e
+ * cobre a metade da pergunta que não existia antes: com dois manifestos
+ * possíveis, "não consta" sem dizer onde se leu manda conferir o arquivo errado.
  *
  * Exit 0 = tudo passou; exit 1+ = alguma falha.
  */
@@ -31,10 +41,17 @@ function caso(nome, cond, detalhe) {
   }
 }
 
+// `RFM_ROOT` desde 2026-09-14 (D6): o log resolve pela raiz de DADOS, que sem
+// isolamento é a pasta pessoal do usuário. Esta bateria não olha o log — mas
+// sem isto ela escrevia nele.
 function rodaHook(raiz, stdin) {
   return spawnSync(process.execPath, [HOOK], {
     input: stdin,
-    env: { ...process.env, CLAUDE_PROJECT_DIR: raiz },
+    env: {
+      ...process.env,
+      CLAUDE_PROJECT_DIR: raiz,
+      RFM_ROOT: path.join(raiz, ".rainforest"),
+    },
     encoding: "utf8",
   });
 }
@@ -108,14 +125,15 @@ function manifestoD2(agentes) {
   };
 }
 
-// == (a) Negação por manifesto ausente cita a raiz lida ==
-console.log("== (a) negação manifesto ausente cita raiz lida ==");
+// == (a) A negação cita a raiz lida ==
+console.log("== (a) negação cita raiz lida ==");
 {
   const raiz = caixa();
 
   iniciarGit(raiz, "fluxo/teste");
-  criarEstadoAtivo(raiz, "teste", "revisar");
-  // Não cria manifesto
+  // Sem estado de fluxo: é a negação por "sem estágio ativo" que carrega o
+  // diagnóstico. (Antes da D5 o gatilho era a falta de manifesto, que hoje é o
+  // caso normal — ver o cabeçalho.)
 
   const payload = {
     session_id: "diag-a",
@@ -137,8 +155,7 @@ console.log("== (b) negação cita branch atual ==");
   const raiz = caixa();
 
   iniciarGit(raiz, "fluxo/memoria");
-  criarEstadoAtivo(raiz, "memoria", "revisar");
-  // Não cria manifesto
+  // Sem estado de fluxo — ver (a).
 
   const payload = {
     session_id: "diag-b",
@@ -178,11 +195,8 @@ console.log("== (c) outro worktree em fluxo aberto é mencionado ==");
   // Cria estado no worktree
   criarEstadoAtivo(raizWorktree, "outro", "plano");
 
-  // Cria estado no principal (fechado)
-  criarEstadoAtivo(raizPrincipal, "principal", "fechar");
-
-  // Não cria manifesto no principal (isso vai causar negação)
-  // Mas cria em outro para que ele apareça na lista de "em fluxo aberto"
+  // O principal NÃO tem estado de fluxo: é ele quem nega, por "sem estágio
+  // ativo". O worktree tem, e é ele que a mensagem deve citar.
 
   const payload = {
     session_id: "diag-c",
@@ -218,8 +232,7 @@ console.log("== (d) sem fluxo aberto, nao menciona slug ==");
   const raiz = caixa();
 
   iniciarGit(raiz, "fluxo/isolado");
-  criarEstadoAtivo(raiz, "isolado", "revisar");
-  // Não cria manifesto e não cria nenhum outro worktree
+  // Sem estado de fluxo e sem nenhum outro worktree
 
   const payload = {
     session_id: "diag-d",
@@ -254,10 +267,7 @@ console.log("== (e) dois worktrees com mesmo estado aberto — deduplica ==");
   criarEstadoAtivo(raizWorktree1, "mesmo-slug", "executar");
   criarEstadoAtivo(raizWorktree2, "mesmo-slug", "executar");
 
-  // Cria estado no principal (fechado)
-  criarEstadoAtivo(raizPrincipal, "principal", "fechar");
-
-  // Não cria manifesto no principal (isso vai causar negação)
+  // O principal NÃO tem estado de fluxo: é ele quem nega, por "sem estágio ativo".
 
   const payload = {
     session_id: "diag-e",
@@ -286,6 +296,57 @@ console.log("== (e) dois worktrees com mesmo estado aberto — deduplica ==");
       fs.rmSync(p, { recursive: true, force: true });
     }
   });
+}
+
+// == (f) Negação por agente não declarado diz QUAL manifesto foi lido ==
+//
+// Com dois manifestos possíveis (o do repo e o padrão embarcado), "não consta
+// no manifesto" sozinho manda o usuário abrir o arquivo errado. As duas metades
+// têm de aparecer: o caminho lido, e de qual dos dois níveis ele veio.
+console.log("== (f) negação por agente não declarado diz qual manifesto foi lido ==");
+{
+  // -- (f1) quem decide é o padrão embarcado (repo sem manifesto próprio) --
+  const raiz = caixa();
+  iniciarGit(raiz, "fluxo/diagf");
+  criarEstadoAtivo(raiz, "diagf", "revisar");
+
+  const r = rodaHook(raiz, JSON.stringify({
+    session_id: "diag-f1",
+    tool_input: { subagent_type: "agente-inexistente-em-qualquer-manifesto" },
+  }));
+
+  caso("exit 2", r.status === 2, `exit=${r.status} stderr=${r.stderr}`);
+  caso("stderr inclui 'manifesto lido:'", r.stderr.includes("manifesto lido:"), `stderr: ${r.stderr}`);
+  caso("stderr cita o agentes.padrao.json do plugin",
+    r.stderr.includes("agentes.padrao.json"), `stderr: ${r.stderr}`);
+  caso("stderr diz que a origem é o padrão embarcado",
+    r.stderr.includes("padrão embarcado do plugin"), `stderr: ${r.stderr}`);
+  caso("e ensina como substituir só neste repositório",
+    r.stderr.includes("SUBSTITUI o padrão"), `stderr: ${r.stderr}`);
+
+  fs.rmSync(raiz, { recursive: true, force: true });
+
+  // -- (f2) quem decide é o manifesto do repo --
+  const raiz2 = caixa();
+  iniciarGit(raiz2, "fluxo/diagf2");
+  criarEstadoAtivo(raiz2, "diagf2", "revisar");
+  criarManifesto(raiz2, manifestoD2({ executor: { estagios: ["executar"], escreve: true } }));
+
+  const r2 = rodaHook(raiz2, JSON.stringify({
+    session_id: "diag-f2",
+    tool_input: { subagent_type: "revisor" },
+  }));
+
+  caso("exit 2 (o revisor está no padrão, mas o repo substituiu)",
+    r2.status === 2, `exit=${r2.status} stderr=${r2.stderr}`);
+  caso("stderr cita o manifesto DO REPO",
+    mesmoCaminho(r2.stderr, path.join(raiz2, ".rainforest", "agentes.json")), `stderr: ${r2.stderr}`);
+  caso("stderr diz que a origem é o manifesto do repositório",
+    r2.stderr.includes("manifesto deste repositório"), `stderr: ${r2.stderr}`);
+  caso("e NÃO cita o padrão embarcado (não foi ele que decidiu)",
+    !r2.stderr.includes("agentes.padrao.json"), `stderr: ${r2.stderr}`);
+
+  fs.rmSync(raiz2, { recursive: true, force: true });
 }
 
 console.log(`\n== resultado: ${ok} ok, ${falhou} falha(s) ==`);
