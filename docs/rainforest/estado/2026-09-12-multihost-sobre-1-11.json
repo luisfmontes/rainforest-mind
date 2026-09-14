@@ -18,7 +18,7 @@
     "em": "2026-09-12"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-14",
     "tarefas_ok": 9,
     "tarefas": 9,
@@ -164,10 +164,27 @@
         "resultado": "n/a",
         "motivo": "integracao e registro sem comportamento novo"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-14"
+    }
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "a4ff25e212905d9422bbe873ff380f71a34e2fca",
+      "caminhos_sujos": []
+    },
+    "achados": 2,
+    "base": "068468fb956b8d606e9af1800aaa91dd399fdeb8",
+    "head": "a4ff25e212905d9422bbe873ff380f71a34e2fca",
+    "pendentes": [
+      "P1: reinstalar 1.13.2 depois do ultimo commit documental e provar cache byte-identico ao HEAD final",
+      "P2: atualizar HANDOVER-CODEX.md para refletir executar 9/9 e o proximo estagio real"
+    ],
+    "em": "2026-09-14",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
