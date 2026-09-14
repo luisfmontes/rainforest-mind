@@ -1,5 +1,4 @@
 #!/bin/bash
-# @categoria: sensor
 # Bateria do `scripts/conferir-categoria.cjs` — a trava que exige a marca
 # `@categoria` (guia | sensor | dado) em toda peça de harness do plugin.
 #

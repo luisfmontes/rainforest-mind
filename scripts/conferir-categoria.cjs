@@ -39,6 +39,15 @@
  * Isso significa que criar um hook novo, um conferidor novo ou um vigia novo
  * sem marca já reprova esta checagem — o conjunto cresce sozinho.
  *
+ * A FORMA DA MARCA, única nos 40 arquivos que este conferidor exige:
+ *   - em `.cjs`: comentário de linha na LINHA 2, logo após o shebang —
+ *     `// @categoria: <valor>`;
+ *   - em `.md`: comentário HTML na LINHA 1 — `<!-- @categoria: <valor> -->`.
+ * A leitura não depende da posição exata: procura `@categoria:\s*(\S+)` nas
+ * primeiras 20 linhas do arquivo, então tolera cabeçalho maior pela frente.
+ * `scripts/testa-*.sh` fica FORA do escopo — não carrega marca e não é
+ * varrido por este conferidor (ver a lista de exclusão no briefing da tarefa).
+ *
  * Uso:
  *   node scripts/conferir-categoria.cjs [--raiz <dir>] [--json]
  *
