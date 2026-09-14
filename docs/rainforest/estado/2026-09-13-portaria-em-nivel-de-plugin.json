@@ -22,11 +22,69 @@
     "em": "2026-09-13"
   },
   "executar": {
-    "status": "pendente",
-    "catraca_mutacao": "2026-09-14"
+    "status": "ok",
+    "catraca_mutacao": "2026-09-14",
+    "comando": "bash varrer.sh (glob da CI: scripts/testa-*.sh hooks/testa-*.sh) + as 6 mutacoes do plano exercitadas uma a uma",
+    "saida": "== 115 baterias ==\ntodas verdes\n(portaria: 10 baterias, 312 casos; nenhuma linha escrita em <home>/.rainforest/portaria/)",
+    "tarefas_ok": 9,
+    "tarefas": 9,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "revisor.estagios=[] -> testa-portaria-nucleo 86 ok/1 falha"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "padrao vira agentes.json -> testa-portaria-manifesto 15 ok/1 falha"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "matcher Task|Agent vira Bash -> testa-portaria-portoes P6 exit 1"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "raizDoLog volta ao repo -> testa-portaria-log-fora-do-repo 3 ok/5 falhas"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "throw vira deny logado -> testa-portaria-nucleo 84 ok/3 falhas"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "manifesto invalido cai no padrao -> testa-portaria-manifesto 14 ok/2 falhas"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "entrega e texto de skill e reference; quem falsifica o par e a tarefa 8, que mede o comportamento descrito"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "n/a",
+        "motivo": "nao escreve codigo: roda o criterio da #241 contra repo de teste real, ja sob as mutacoes de 2, 4 e 6"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "ancora vira o bump cru -> testa-conferir-versao, 2 casos errando por exatamente 1"
+      }
+    ],
+    "em": "2026-09-14"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "pendente",
+    "snapshot": {
+      "head": "f98e4763f353a9c5289697aceca7631b8cd07de2",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-09-13-portaria-em-nivel-de-plugin.json"
+      ]
+    }
   },
   "verificar": {
     "status": "pendente"

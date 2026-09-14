@@ -47,7 +47,7 @@ pronto quando: `.rainforest/agentes.json` não existe mais e `git ls-files .rain
 
 ### 2. Busca do manifesto em dois níveis, repo substituindo o padrão [tipo: implementar]
 atende: D2, D3
-arquivos: `hooks/portaria.cjs`
+arquivos: `hooks/portaria.cjs`, `hooks/testa-portaria-lint.cjs`
 depende de: 1
 paralela: não
 mutacao:
@@ -56,7 +56,14 @@ mutacao:
   para: `path.resolve(__dirname, "..", ".rainforest", "agentes.json")`
   bateria: `node hooks/testa-portaria-manifesto.cjs` (tarefa 6)
   fixture: caso "repo sem manifesto próprio usa o padrão embarcado"
-pronto quando: num diretório temporário **sem** `.rainforest/`, um despacho do `revisor` com estágio `revisar` ativo é **admitido** citando o padrão; no mesmo diretório com um `.rainforest/agentes.json` que declara só o `executor`, o mesmo despacho do `revisor` é **negado** com `não consta no manifesto` — provando substituição, não soma
+pronto quando: num diretório temporário **sem** `.rainforest/`, um despacho do `revisor` com estágio `revisar` ativo é **admitido** citando o padrão; no mesmo diretório com um `.rainforest/agentes.json` que declara só o `executor`, o mesmo despacho do `revisor` é **negado** com `não consta no manifesto` — provando substituição, não soma; e `node hooks/testa-portaria-lint.cjs` fecha, incluindo o caso de `--lint` sem argumentos rodado **de fora** do plugin
+
+> **Emenda de 2026-09-14, no `revisar`:** `hooks/testa-portaria-lint.cjs` entra
+> em `arquivos:` desta tarefa porque o defeito que ele passou a cobrir é desta
+> tarefa: mover o manifesto default para caminho absoluto deixou `agentesDir`
+> relativo para trás. Quem pegou a omissão foi o próprio gate do `marcar`,
+> recusando `revisar` com "arquivo no diff sem tarefa correspondente" — a
+> checagem funcionou exatamente como devia.
 
 ### 3. Registro no hooks.json e saída do settings.json [tipo: configurar]
 atende: D1
