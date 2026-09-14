@@ -316,6 +316,17 @@ if [ -f "$REF" ]; then
   tem "toda lente tem 'Como o seguro se parece'" "$REFC" "Como o seguro se parece"
   tem "toda lente tem 'Procedimento de revisão'" "$REFC" "Procedimento de revisão"
   tem "toda lente tem 'Formato de achado'" "$REFC" "Formato de achado"
+  # A numeração DEVE ser a da edição 2025 (a mesma da Régua 1), não a 2021.
+  # Este caso existe porque a primeira versão da referência usou os números da
+  # 2021 (Injection=A03, Crypto=A02, Insecure Design=A04), mandando o achado
+  # para a seção errada do relatório — achado da revisão de 2026-09-14.
+  tem "declara a numeração OWASP 2025" "$REFC" "seguem a edição 2025"
+  tem "Injection é A05 (2025)" "$REFC" "A05 Injection"
+  tem "Cryptographic Failures é A04 (2025)" "$REFC" "A04 Cryptographic Failures"
+  tem "supply chain aponta o A03 novo (2025)" "$REFC" "A03 Software Supply Chain Failures"
+  nao_tem "não usa Injection como A03 (numeração 2021)" "$REFC" "A03 Injection"
+  nao_tem "não usa Cryptographic como A02 (numeração 2021)" "$REFC" "A02 Cryptographic"
+  nao_tem "não usa Insecure Design como A04 (numeração 2021)" "$REFC" "A04 Insecure Design"
 else
   falhou=$((falhou+1)); echo "  FALHA $REF não existe"
 fi
