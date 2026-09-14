@@ -70,8 +70,15 @@ function rodaLint(manifestoPath, agentesDir) {
   });
 }
 
+// `realpathSync.native` pelo mesmo motivo de `testa-portaria-diagnostico.cjs`
+// (comentário de 2026-09-04): a CI roda em Windows e o `os.tmpdir()` do runner
+// vem em forma curta 8.3 (`RUNNER~1`), enquanto a portaria imprime o caminho
+// que o Node RESOLVE, por extenso. O P5 confere que o stderr cita o manifesto
+// DO REPO comparando com este caminho — sem expandir o 8.3 ele acusava caminho
+// errado onde a portaria tinha lido o certo: verde aqui, vermelho só lá
+// (2026-09-14). Só o `.native` expande nome curto.
 function caixa(prefixo) {
-  return fs.mkdtempSync(path.join(os.tmpdir(), `portaria-portoes-${prefixo}-`));
+  return fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), `portaria-portoes-${prefixo}-`)));
 }
 
 function iniciarGit(raiz, branch) {

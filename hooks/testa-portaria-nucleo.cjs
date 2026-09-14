@@ -63,8 +63,16 @@ function rodaHook(raiz, stdin, dados) {
   });
 }
 
+// `realpathSync.native` pelo mesmo motivo de `testa-portaria-diagnostico.cjs`
+// (o comentário de lá, de 2026-09-04, explica por extenso): a CI roda em
+// Windows, e o `os.tmpdir()` do runner vem em forma curta 8.3 — o nome do
+// usuário aparece truncado com `~1` —, enquanto a portaria grava o caminho que
+// o Node RESOLVE, por extenso. O `mesmoCaminho` acima normaliza barra e caixa,
+// mas NÃO expande 8.3: os casos 11 e 12, que comparam o campo `repo` da linha
+// com esta caixa, ficavam verdes aqui e vermelhos só lá (2026-09-14). Só o
+// `.native` expande nome curto.
 function caixa() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), "portaria-nucleo-"));
+  return fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "portaria-nucleo-")));
 }
 
 function criarEstadoAtivo(raiz, branchBase, estagio) {

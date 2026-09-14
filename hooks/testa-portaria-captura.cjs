@@ -47,8 +47,16 @@ function rodaHook(raiz, stdin, hook) {
   });
 }
 
+// `realpathSync.native` pelo mesmo motivo de `testa-portaria-diagnostico.cjs`
+// (comentário de 2026-09-04): a CI roda em Windows e o `os.tmpdir()` do runner
+// vem em forma curta 8.3 (`RUNNER~1`). Aqui isso vale dobrado por causa do
+// `espelharPlugin`: o portão da amostra compara `path.resolve(raiz)` com a raiz
+// do plugin derivada do `__dirname` do hook espelhado — uma vem do git, por
+// extenso, a outra do argv, curta. Sem expandir, o espelho deixava de ser
+// reconhecido como o próprio plugin e os casos 1 e 2 voltavam a medir o portão
+// em vez da idempotência: verdes aqui, vermelhos só lá (2026-09-14).
 function caixa() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), "portaria-captura-"));
+  return fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "portaria-captura-")));
 }
 
 /* Copia o plugin para dentro do sandbox e devolve o caminho do hook copiado.

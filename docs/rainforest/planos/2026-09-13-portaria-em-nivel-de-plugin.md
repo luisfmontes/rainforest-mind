@@ -276,6 +276,35 @@ pronto quando: `node scripts/conferir-versao.cjs` sai 0 com versão **MINOR** ac
 > mutações, nas duas direções: tirar `&& !bumpPendente` mata o caso novo; fixar
 > `bumpPendente = true` mata três casos antigos.
 
+> **Emenda 2026-09-14 (CI vermelha no PR #255 — nome curto 8.3 do Windows).**
+> As três baterias que este fluxo mexeu e que comparam **caminho** ficaram
+> vermelhas na CI estando verdes aqui, nas três varreduras completas: `nucleo`
+> (casos 11 e 12), `portoes` (P5) e `captura` (casos 1 e 2). Nos dois jobs,
+> node 22 e node 24 — não é versão de Node. A CI roda em **Windows**, e o
+> `os.tmpdir()` do runner vem em forma curta 8.3: o usuário aparece como
+> `RUNNER~1`. A portaria grava e imprime o caminho que o Node **resolve**, por
+> extenso, então a asserção comparava duas grafias do mesmo diretório.
+>
+> Não é defeito do produto: numa instalação real as duas pontas vêm por extenso
+> (`raiz` do `git`, raiz do plugin do `CLAUDE_PLUGIN_ROOT`). O 8.3 só aparece
+> porque o teste invoca o hook por um argv curto. O conserto é no teste:
+> `fs.realpathSync.native` nas três `caixa()`, que é o padrão que
+> `testa-portaria-diagnostico.cjs` já documenta desde 2026-09-04 — só o
+> `.native` expande nome curto, o `realpathSync` puro devolve `C:\PROGRA~1`
+> intacto. O `mesmoCaminho` do `nucleo` normalizava barra e caixa e por isso
+> parecia cobrir o caso; não expandia 8.3.
+>
+> **Reproduzido vermelho antes do conserto**, em vez de empurrar para a CI e
+> torcer: `TEMP`/`TMP` apontados para a forma curta de uma pasta do scratchpad
+> (só no processo filho — regra 15), as mesmas cinco asserções caem, com a
+> mesma contagem do runner. Com o conserto, as três saem exit 0 sob o mesmo
+> `TEMP` curto e sob o normal.
+>
+> Fica registrado o que **não** foi consertado agora: `gravarAmostra` compara
+> raízes com `!==` de string, que no Windows também é sensível à caixa. Não
+> morde em instalação real e mexer nisso depois do `verificar` fechado seria
+> alargar o fluxo — vira ideia, não emenda de código.
+
 ## Ordem
 
 1 e depois 2 são o caminho crítico: sem manifesto padrão achável, a tarefa 3
