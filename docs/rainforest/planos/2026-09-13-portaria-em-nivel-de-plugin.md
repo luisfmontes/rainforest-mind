@@ -60,7 +60,7 @@ pronto quando: num diretório temporário **sem** `.rainforest/`, um despacho do
 
 ### 3. Registro no hooks.json e saída do settings.json [tipo: configurar]
 atende: D1
-arquivos: `hooks/hooks.json`, `.claude/settings.json`
+arquivos: `hooks/hooks.json`, `.claude/settings.json`, `hooks/testa-portaria-portoes.cjs`
 depende de: 2
 paralela: não
 mutacao:
@@ -69,7 +69,25 @@ mutacao:
   para: `"matcher": "Bash"`
   bateria: `bash hooks/testa-portaria.sh`
   fixture: caso do despacho de `Task` passando pela portaria
-pronto quando: `node -e "const h=require('./hooks/hooks.json'); const g=h.hooks.PreToolUse.find(x=>x.matcher==='Task|Agent'); console.log(!!g && g.hooks.some(k=>k.command.includes('portaria.cjs')))"` devolve `true`; e `grep -c portaria .claude/settings.json` devolve **0**
+pronto quando: `node hooks/testa-portaria-portoes.cjs` fecha o portão **P6** (`registro:alcance`); e `grep -c portaria .claude/settings.json` devolve **0**
+
+> **Correção de 2026-09-14, ao exercitar esta mutação:** ela **não matava nada**.
+> Trocar o matcher por `"Bash"` deixava `hooks/testa-portaria.sh` inteiro
+> **verde**, exit 0 — porque todas as 10 baterias invocam `portaria.cjs` como
+> processo, direto, e nenhuma perguntava se o harness chegaria a invocá-lo. A
+> decisão que a portaria toma estava coberta em 307 casos; o fato de ela ser
+> **chamada** — que é a D1 inteira, e o motivo deste fluxo existir — não estava
+> coberto em nenhum. Gate desarmado passa em todo teste que só mede o gate.
+>
+> O critério original também não servia: era um `node -e` colado aqui, que
+> ninguém roda de novo depois do `fechar`. Vira portão **P6** em
+> `testa-portaria-portoes.cjs`, com quatro afirmações que o `node -e` não fazia:
+> o matcher casa `Task` **e** `Agent`; **não** casa `Bash`/`Read`/`Write` (largo
+> demais faria a portaria decidir sobre trabalho que ela não governa); o comando
+> resolve por `CLAUDE_PLUGIN_ROOT` e não por `CLAUDE_PROJECT_DIR` (é a diferença
+> entre valer em toda sessão e valer só onde o arquivo existir); e o
+> `.claude/settings.json` não registra a portaria de novo, o que duplicaria cada
+> linha da trilha. Com o P6, a mutação sai exit 1.
 
 ### 4. Log de despacho resolvido pela raiz de dados, com o repo em cada linha [tipo: implementar]
 atende: D6, D8
