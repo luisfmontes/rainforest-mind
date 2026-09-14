@@ -29,6 +29,13 @@ um checkout Git copiava seus metadados `.git`, e a enumeração anterior sem
 origem ativa, inventaria ocultos explicitamente e mantém `revisar` reprovado até
 uma nova revisão independente confirmar a prova.
 
+A tentativa seguinte, sobre `f9339f475f317b01761d1f0176af505b833c57ef`,
+encontrou um único achado P2 na retomada: usar `git -C` sem confirmar o top-level
+permitia que um caminho inválido subisse até o repositório pai e validasse a
+`main`. A T9, iteração 7, trata o achado antes de qualquer leitura de branch,
+HEAD ou ancestralidade; `revisar` continua reprovado até a próxima revisão
+independente.
+
 ## Retomada segura
 
 O worktree de entrega continua com o nome histórico `codex-multihost-1.11`, mas
@@ -37,14 +44,53 @@ a branch real é `codex/multihost-1.13`:
 ```powershell
 $entrega = 'C:\Projetos\rainforest-mind\.claude\worktrees\codex-multihost-1.11'
 $origemAtiva = 'C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.13.2'
-Test-Path -LiteralPath $entrega
+$base = '068468fb956b8d606e9af1800aaa91dd399fdeb8'
+
+if (-not (Test-Path -LiteralPath $entrega -PathType Container)) {
+  throw "ABORTO: worktree de entrega ausente ou não é diretório: $entrega"
+}
+
+$entregaCanonica = [System.IO.Path]::GetFullPath(
+  (Resolve-Path -LiteralPath $entrega -ErrorAction Stop).Path
+).TrimEnd([char[]]@('\', '/'))
+$topLevelInformado = git -C $entrega rev-parse --show-toplevel
+if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($topLevelInformado)) {
+  throw "ABORTO: Git não resolveu o top-level da worktree de entrega"
+}
+$topLevelCanonico = [System.IO.Path]::GetFullPath(
+  (Resolve-Path -LiteralPath ($topLevelInformado.Trim()) -ErrorAction Stop).Path
+).TrimEnd([char[]]@('\', '/'))
+if (-not [System.StringComparer]::OrdinalIgnoreCase.Equals(
+  $topLevelCanonico,
+  $entregaCanonica
+)) {
+  throw "ABORTO: top-level Git inesperado; esperado='$entregaCanonica'; obtido='$topLevelCanonico'"
+}
+
 Test-Path -LiteralPath $origemAtiva
-git -C $entrega branch --show-current
-git -C $entrega rev-parse HEAD
-git -C $entrega merge-base --is-ancestor origin/main HEAD
+$branch = git -C $entrega branch --show-current
+if ($LASTEXITCODE -ne 0 -or $branch.Trim() -ne 'codex/multihost-1.13') {
+  throw "ABORTO: branch de entrega inesperada: '$branch'"
+}
+$head = git -C $entrega rev-parse HEAD
+if ($LASTEXITCODE -ne 0 -or $head -notmatch '^[0-9a-f]{40}$') {
+  throw "ABORTO: HEAD da entrega não pôde ser derivado"
+}
+git -C $entrega merge-base --is-ancestor $base $head
+if ($LASTEXITCODE -ne 0) {
+  throw "ABORTO: base '$base' não é ancestral do HEAD '$head'"
+}
+"branch=$branch"
+"head=$head"
+"base_ancestral=True"
 codex plugin marketplace list
 codex plugin list
 ```
+
+O bloco é deliberadamente fail-closed: `Test-Path = False`, falha ao resolver
+qualquer caminho ou top-level canônico diferente de `$entrega` interrompe a
+retomada antes das consultas de branch, HEAD e ancestralidade. Assim, o Git
+nunca pode subir até o repositório pai e validar a `main` por engano.
 
 `git rev-parse HEAD` é a fonte de verdade para o HEAD corrente. Antes da T8, a
 branch estava em `810b0372df0f0ade2445645235d19dd261022550`, commit que integra
@@ -55,7 +101,6 @@ Confirme também que a base permanece ancestral e que os dois manifestos têm a
 versão esperada:
 
 ```powershell
-$base = '068468fb956b8d606e9af1800aaa91dd399fdeb8'
 git -C $entrega cat-file -e "$base^{commit}"
 git -C $entrega show "$base`:.claude-plugin/plugin.json" |
   Select-String '"version": "1.13.2"'
@@ -204,8 +249,8 @@ independente do estágio `revisar`, contra o diff real desde
 `068468fb956b8d606e9af1800aaa91dd399fdeb8`. A execução já está fechada em
 `9/9`; não integre nem repita a T9 como passo prescritivo de retomada. A revisão
 deve confirmar especialmente os achados anteriores agora tratados: a projeção
-D9/D11 do cache, a origem limpa definida pela D12 e este handover
-coerente com o estado.
+D9/D11 do cache, a origem limpa definida pela D12, a validação fail-closed do
+top-level e este handover coerente com o estado.
 
 Antes de remover qualquer worktree auxiliar, confirme com `codex plugin list`
 que o marketplace ativo continua apontando para o export limpo. Não o reaponte

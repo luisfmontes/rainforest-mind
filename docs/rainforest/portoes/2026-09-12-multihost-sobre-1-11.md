@@ -1874,3 +1874,81 @@ Nenhum push, merge, PR, release, publicação, rebase, mudança na `main` ou nov
 alteração de configuração externa foi executado durante esta formalização. A
 reconfiguração para o export e a reinstalação exata foram feitas antes desta
 execução e são a origem factual medida acima.
+
+## Tarefa 9 — iteração 7, retomada fail-closed
+
+### Veredito
+
+**OK, executar permanece 9/9.** A retomada agora resolve e normaliza para
+Windows tanto `$entrega` quanto `git rev-parse --show-toplevel`, compara os
+caminhos com `OrdinalIgnoreCase` e só depois consulta branch, HEAD e
+ancestralidade. Diretório ausente, falha de resolução ou top-level diferente
+abortam claramente; nenhum desses casos pode subir até o repositório pai e
+validar a `main`.
+
+### Prova da retomada
+
+```text
+retomada_top_level=C:\Projetos\rainforest-mind\.claude\worktrees\codex-multihost-1.11
+branch=codex/multihost-1.13
+head=f9339f475f317b01761d1f0176af505b833c57ef
+base_ancestral=True
+ausente=ABORTO: worktree de entrega ausente ou não é diretório: C:\Projetos\rainforest-mind\.claude\worktrees\nao-existe
+subdiretorio=ABORTO: top-level Git inesperado; esperado='C:\Projetos\rainforest-mind\.claude\worktrees\codex-multihost-1.11\docs'; obtido='C:\Projetos\rainforest-mind\.claude\worktrees\codex-multihost-1.11'
+```
+
+### Projeção D9/D11 com ocultos
+
+```text
+tracked_total=703
+governance_excluded=7
+projection_expected=696
+cache_total_force=704
+export_dotgit_exists=False
+cache_dotgit_exists=False
+missing_count=0
+sha_divergent_count=0
+extra_count=1
+.codex-plugin/migrated-command-skills/source-command-saude/SKILL.md
+EXIT=0
+```
+
+### Cinco comandos literais
+
+Executados em sequência. O runner recebeu `/usr/bin:/bin` explicitamente e a
+bateria que cria fixtures temporários foi executada fora do sandbox restrito;
+duas tentativas preparatórias anteriores não mediram o produto porque o ambiente
+não oferecia `dirname`/`mktemp` e depois recusou a criação dos fixtures em
+`%TEMP%`.
+
+```powershell
+bash hooks/testa-gate-staging-total.sh
+bash scripts/testa-plugin-codex.sh
+bash scripts/testa-versao.sh
+node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-multihost-sobre-1-11
+node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 068468fb956b8d606e9af1800aaa91dd399fdeb8 --head HEAD
+```
+
+```text
+CMD1: == resultado: 106 ok, 0 falha(s) ==
+cmd1_exit=0
+CMD2: ok Gemini adiado: caminhos rastreados nao contem manifesto, hook, adaptador ou fixture de payload Gemini fora dos documentos do fluxo
+cmd2_exit=0
+CMD3: ok: 5   falhou: 0
+cmd3_exit=0
+CMD4: ok: cobertura válida — 12 decisão(ões), 9 tarefa(s)
+cmd4_exit=0
+CMD5: ok: sem creep — 18 arquivo(s) coberto(s)
+cmd5_exit=0
+total=5 vermelhas=0
+```
+
+### Estado e ausência de publicação
+
+O estado registra a T9 iteração 7 na base
+`f9339f475f317b01761d1f0176af505b833c57ef`, fecha novamente
+`executar.status = ok` com `9/9` e mantém `revisar.status = reprovado` até nova
+revisão independente.
+
+Nenhum push, merge, PR, release, publicação, rebase, reinstalação, mudança na
+`main` ou alteração de configuração externa foi executado.
