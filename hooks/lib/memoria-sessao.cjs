@@ -158,6 +158,57 @@ function formatarObservacao(obs, apelidos) {
 }
 
 /**
+ * Constrói o aviso de corte do bloco de memória — vai no TOPO do payload, e
+ * NOMEIA quantas observações/resumos ficaram de fora (não o genérico
+ * "conteúdo truncado").
+ *
+ * Corte silencioso já aconteceu aqui: em 2026-08-10, 50 de 50 sessões
+ * receberam ~2,2 KB de um payload de 32 KB, e regras inteiras nunca chegaram
+ * a sessão nenhuma — sem uma linha dizendo que 93% do texto tinha sumido.
+ *
+ * @param {number} cortadas quantas linhas (observações/resumos) ficaram de fora
+ * @param {number} total quantas linhas existiam antes do corte
+ * @param {number} maxBytes teto em bytes do bloco
+ * @returns {string} aviso com quebra dupla no fim, ou '' quando nada foi cortado
+ */
+function construirAvisoCorteMemoria(cortadas, total, maxBytes) {
+  if (cortadas <= 0) return '';
+  return `⚠️ Memória acima do orçamento: ${cortadas} de ${total} observação(ões)/resumo(s) não couberam no teto de ${maxBytes} B e foram cortados.\n\n`;
+}
+
+/**
+ * Corta o bloco de memória por OBSERVAÇÃO INTEIRA (nunca no meio de uma
+ * linha), mantendo as mais recentes (início do array) e descartando as mais
+ * antigas primeiro, com o aviso de `construirAvisoCorteMemoria` no topo.
+ *
+ * Busca do maior prefixo de linhas para o menor: o aviso muda de tamanho
+ * conforme quantas ficam de fora, então o ponto de corte certo é o primeiro
+ * que cabe com o PRÓPRIO aviso já somado — não dá para calcular em uma
+ * conta só.
+ *
+ * @param {string[]} linhas linhas já formatadas, mais recentes primeiro
+ * @param {string} cabecalho cabeçalho fixo do bloco
+ * @param {string} rodape rodapé fixo do bloco
+ * @param {number} maxBytes teto em bytes
+ * @returns {string}
+ */
+function travarOrcamentoMemoria(linhas, cabecalho, rodape, maxBytes) {
+  for (let n = linhas.length; n >= 0; n--) {
+    const cortadas = linhas.length - n;
+    const aviso = construirAvisoCorteMemoria(cortadas, linhas.length, maxBytes);
+    const corpo = linhas.slice(0, n).join('\n');
+    const texto = aviso + cabecalho + corpo + rodape;
+    if (Buffer.byteLength(texto, 'utf8') <= maxBytes) {
+      return texto;
+    }
+  }
+  // Nem cabeçalho + rodapé + aviso, sozinhos (0 observações), coube no teto:
+  // corte duro em bytes como último recurso, mas o aviso continua no topo.
+  const aviso = construirAvisoCorteMemoria(linhas.length, linhas.length, maxBytes);
+  return cortarBytes(aviso + cabecalho + rodape, maxBytes);
+}
+
+/**
  * Monta o bloco de memória para injeção.
  *
  * @param {object} o
@@ -187,8 +238,13 @@ function montarMemoria(o) {
 
   const texto = cabecalho + corpo + rodape;
 
-  // Teto em bytes com corte ANUNCIADO.
-  return limitarBytes(texto, TETOS.MEMORIA_MAX_BYTES, 'Memória');
+  // Cabendo no teto, devolve sem acrescentar byte nenhum de aviso.
+  if (Buffer.byteLength(texto, 'utf8') <= TETOS.MEMORIA_MAX_BYTES) {
+    return texto;
+  }
+
+  // Estourou: corta por observação inteira e avisa NO TOPO o que ficou de fora.
+  return travarOrcamentoMemoria(linhas, cabecalho, rodape, TETOS.MEMORIA_MAX_BYTES);
 }
 
 /**
@@ -250,4 +306,6 @@ module.exports = {
   limitarBytes,
   cortarBytes,
   cortarCaracteres,
+  construirAvisoCorteMemoria,
+  travarOrcamentoMemoria,
 };
