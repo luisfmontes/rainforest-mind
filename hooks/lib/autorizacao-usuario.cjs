@@ -35,6 +35,36 @@ function levenshtein(a, b) {
 const TOLERANCIA_SUBAGENTE = 2;
 
 /**
+ * Verbos de autorizacao que CONCEDEM em qualquer posicao da oracao.
+ *
+ * Primeira pessoa e infinitivo so aparecem quando quem fala esta se
+ * comprometendo: "autorizo subagentes", "vou autorizar subagentes". Nao ha
+ * frase descritiva natural em que eles apareçam sem conceder.
+ */
+const VERBOS_QUE_CONCEDEM = /\bautorizo\b|\bautorizando\b|\bautorizar\b/;
+
+/**
+ * `autoriza` (3a pessoa) so concede quando ABRE a oracao -- ali e imperativo:
+ * "autoriza subagens", que e a forma da fixture `aprox-autoriza-subagens`.
+ *
+ * Depois de um sujeito ele e DESCRITIVO e nao concede nada. Aceitar a 3a
+ * pessoa em qualquer posicao, como esta tarefa fez na primeira versao, fez seis
+ * frases passarem a autorizar despacho de subagente sem o usuario ter
+ * autorizado coisa nenhuma -- duas delas frases em que ele esta NEGANDO:
+ *
+ *   "a regra 10 diz que a portaria autoriza subagente com estagio ativo"
+ *   "quem autoriza subagente aqui e voce, nao eu"
+ *   "o manifesto autoriza subagentes do tipo executor"
+ *   "ninguem autoriza subagente sem eu ver antes"
+ *   "me explica quando o plugin autoriza subagente"
+ *   "a doc autoriza subagentes nesse caso, mas eu nao quero"
+ *
+ * As seis davam `false` em 14c471ed e passaram a dar `true`. Achado pela
+ * auditoria de seguranca do lote zerar-issues-4, em 2026-09-14.
+ */
+const AUTORIZA_IMPERATIVO = /^\s*(?:por\s+favor,?\s+)?autoriza\b/;
+
+/**
  * Lê a autorização de subagentes do usuário no transcript.
  *
  * Estratégia:
@@ -515,7 +545,8 @@ function temAutorizacaoPrincipal(obj) {
     let texto = frase.trim();
     if (!texto) continue;
 
-    if (!/\bautorizo\b|\bautorizando\b|\bautorizar\b|\bautoriza\b/.test(texto)) continue;
+    // A 3a pessoa so vale abrindo a oracao -- ver `AUTORIZA_IMPERATIVO`.
+    if (!VERBOS_QUE_CONCEDEM.test(texto) && !AUTORIZA_IMPERATIVO.test(texto)) continue;
 
     // Verifica forma exata OU forma aproximada dentro da tolerância
     const temFormaExata = FORMAS_DE_SUBAGENTE.test(texto);
@@ -636,7 +667,12 @@ function temAutorizacaoPrincipal(obj) {
         continue;
       }
 
-      const posAutoriz = o.search(/\bautorizo\b|\bautorizando\b|\bautorizar\b|\bautoriza\b/);
+      let posAutoriz = o.search(VERBOS_QUE_CONCEDEM);
+      // Idem aqui: `o manifesto autoriza subagentes` nao pode virar concessao
+      // so por ter o verbo em algum lugar da oracao.
+      if (posAutoriz === -1 && AUTORIZA_IMPERATIVO.test(o)) {
+        posAutoriz = o.search(/\bautoriza\b/);
+      }
       if (posAutoriz === -1) continue;
 
       let subordinada = false;
