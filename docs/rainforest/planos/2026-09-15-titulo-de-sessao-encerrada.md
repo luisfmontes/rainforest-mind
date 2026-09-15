@@ -23,11 +23,29 @@ Design: docs/rainforest/design/2026-09-15-titulo-de-sessao-encerrada.md
 - **Nenhuma sessão já existente é reescrita** (D2): o hook só toca o transcript
   cujo `session_id` está no ledger.
 
+## Emendas ao plano
+
+Registradas antes do `revisar`, porque creep se destrava emendando o plano —
+justificar em prosa não destrava.
+
+- **2026-09-15, tarefa 1 — `.gitignore` entrou no `arquivos:`.** O executor
+  descobriu que `fluxos-sessao.json` não estava ignorado, enquanto o
+  `sessoes.json` (mesma raiz de dados) estava. Sem a linha, numa instalação
+  auto-hospedada do plugin o ledger cairia na raiz do repo e sujaria o
+  `git status` de todo dev.
+- **2026-09-15, tarefa 2 — a Parte A entrou no `arquivos:`.** O plano original
+  mandava o ledger gravar `{slug, estagio}`, e isso **não distingue**
+  `exigir --estagio fechar` (fluxo aberto) de `marcar --estagio fechar --status ok`
+  (fluxo completo) — sem a distinção o D8 não tem como decidir `[ok]`. O campo
+  `aberto` (próximo estágio não-fechado, `null` quando completou) corrige o furo,
+  e mexer nele obriga a tocar `hooks/lib/ledger-fluxos.cjs`, `scripts/estado.cjs`
+  e `hooks/testa-ledger-fluxos.sh`, que eram da tarefa 1.
+
 ## Tarefas
 
 ### 1. Ledger de fluxos por sessão, escrito pelos três verbos [tipo: implementar]
 atende: D5, D12
-arquivos: `hooks/lib/ledger-fluxos.cjs`, `scripts/estado.cjs`, `hooks/testa-ledger-fluxos.sh`
+arquivos: `hooks/lib/ledger-fluxos.cjs`, `scripts/estado.cjs`, `hooks/testa-ledger-fluxos.sh`, `.gitignore`
 depende de: nenhuma
 paralela: sim
 mutacao:
@@ -40,7 +58,7 @@ pronto quando: com `CLAUDE_SESSION_ID=11111111-1111-1111-1111-111111111111 RFM_E
 
 ### 2. Hook de título no SessionEnd [tipo: implementar]
 atende: D1, D3, D4, D6, D7, D8, D9, D10, D11
-arquivos: `hooks/titulo-sessao-end.cjs`, `hooks/testa-titulo-sessao-end.sh`
+arquivos: `hooks/titulo-sessao-end.cjs`, `hooks/testa-titulo-sessao-end.sh`, `hooks/lib/ledger-fluxos.cjs`, `scripts/estado.cjs`, `hooks/testa-ledger-fluxos.sh`
 depende de: 1
 paralela: nao
 mutacao:

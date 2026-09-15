@@ -72,7 +72,11 @@
     ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "pendente",
+    "snapshot": {
+      "head": "1fde69ef5fc7219110da655425c02c2dc865f0ff",
+      "caminhos_sujos": []
+    }
   },
   "verificar": {
     "status": "pendente"
