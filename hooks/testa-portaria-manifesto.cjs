@@ -63,6 +63,40 @@ function despachar(repo, agente) {
   });
 }
 
+// Despacho com `isolation`, para exercitar a regra 11 — o unico portao que a
+// portaria ainda barra depois da #264. Sem isto, um agente com `escreve: true`
+// so daria para testar pelo lado do deny, e "passa quando isolado" ficaria sem
+// prova.
+function despacharComIsolation(repo, agente, isolation) {
+  return spawnSync(process.execPath, [HOOK], {
+    input: JSON.stringify({
+      session_id: "manifesto",
+      cwd: repo,
+      tool_name: "Task",
+      tool_input: { subagent_type: agente, prompt: "prova", isolation },
+    }),
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      CLAUDE_PROJECT_DIR: repo,
+      RFM_ROOT: path.join(repo, ".dados-do-teste"),
+    },
+  });
+}
+
+// O log e a evidencia de primeira classe da portaria (D4), e depois da #264 e
+// ONDE a decisao aparece: o que antes era um `deny` visivel virou uma marca na
+// linha. Bateria que so olhe o exit code deixou de medir a politica.
+function lerLog(dadosDir) {
+  const p = path.join(dadosDir, "portaria", "despachos.jsonl");
+  if (!fs.existsSync(p)) return [];
+  return fs
+    .readFileSync(p, "utf8")
+    .split("\n")
+    .filter((l) => l.trim() !== "")
+    .map((l) => JSON.parse(l));
+}
+
 function iniciarGit(raiz, branch) {
   spawnSync("git", ["init"], { cwd: raiz });
   spawnSync("git", ["config", "user.email", "<email>"], { cwd: raiz });
@@ -123,7 +157,7 @@ console.log("== 1. repo sem manifesto proprio e decidido pelo padrao embarcado =
   fs.rmSync(repo, { recursive: true, force: true });
 }
 
-// == 2. Repo COM manifesto proprio: SUBSTITUI o padrao por inteiro ==
+// == 2. Repo COM manifesto proprio: SUBSTITUI o padrao, e agente nao declarado passa ==
 console.log("== 2. manifesto do repo substitui o padrao, nao soma ==");
 {
   const repo = caixa();
@@ -132,17 +166,29 @@ console.log("== 2. manifesto do repo substitui o padrao, nao soma ==");
   // Declara SO o executor. Se houvesse merge, o `revisor` voltaria pelo padrao.
   escreverManifestoDoRepo(repo, {
     versao: 1,
-    agentes: { executor: { estagios: ["executar"], escreve: true } },
+    agentes: { executor: { estagios: ["executar"], escreve: false } },
   });
 
+  // Com a substituicao CONFIRMADA, revisor nao esta no manifesto do repo,
+  // passa como nao-declarado
   const r = despachar(repo, "revisor");
 
-  caso("exit 2 (2 e o unico codigo que barra)", r.status === 2, `exit=${r.status}`);
-  caso("nega com 'nao consta no manifesto'",
-    /n[aã]o consta no manifesto/.test(r.stderr || ""), r.stderr);
-  caso("e o stderr aponta o manifesto DO REPO, nao o padrao",
-    /manifesto deste reposit[oó]rio/.test(r.stderr || "")
-      && !/agentes\.padrao\.json/.test(r.stderr || ""), r.stderr);
+  caso("exit 0 (agente nao declarado no repo passa)", r.status === 0, `exit=${r.status}`);
+  caso("log marca como declarado: false", true); // verificamos na linha do log depois
+
+  // Confira a linha do log para ter certeza que eh de fato nao-declarado
+  const logPath = path.join(repo, ".dados-do-teste", "portaria", "despachos.jsonl");
+  if (fs.existsSync(logPath)) {
+    const linhas = fs.readFileSync(logPath, "utf8").trim().split("\n").filter(Boolean);
+    if (linhas.length > 0) {
+      try {
+        const entrada = JSON.parse(linhas[linhas.length - 1]);
+        caso("linha do log tem declarado: false", entrada.declarado === false, JSON.stringify(entrada));
+      } catch (e) {
+        caso("linha do log tem declarado: false", false, `JSON parse error: ${e.message}`);
+      }
+    }
+  }
 
   fs.rmSync(repo, { recursive: true, force: true });
 }
@@ -185,6 +231,232 @@ console.log("== 4. manifesto de repo invalido nega, sem cair no padrao ==");
 
     caso(`${rotulo}: exit 2`, r.status === 2, `exit=${r.status} stderr=${r.stderr}`);
     caso(`${rotulo}: motivo proprio, nao o do padrao`, esperado.test(r.stderr || ""), r.stderr);
+
+    fs.rmSync(repo, { recursive: true, force: true });
+  }
+}
+
+// == 5. `agentes.extra.json` do usuario SOMA ao padrao embarcado (issue #264) ==
+//
+// Por que isto precisa de caso proprio: e o unico nivel de manifesto que SOMA,
+// e depois da #264 a soma virou invisivel para uma bateria que so pergunte "o
+// agente passou?" — nao declarado passa de qualquer jeito. O que prova a soma e
+// a marca `via: "agentes.extra.json"` no log MAIS o `escreve: true` sendo
+// obedecido pela regra 11.
+//
+// Medido: antes destes casos, mutar `if (usandoPadrao && fs.existsSync(
+// manifestoExtra))` para `if (false)` — ou seja, desligar a soma inteira —
+// deixava esta bateria VERDE. O `conferir-mutacao.cjs` recusou a entrega por
+// isso, e e esse mutante que os casos abaixo passam a derrubar.
+console.log("== 5. agentes.extra.json soma ao padrao, e o do repo o substitui ==");
+{
+  const escreverExtra = (dados, conteudo) => {
+    fs.mkdirSync(dados, { recursive: true });
+    const alvo = path.join(dados, "agentes.extra.json");
+    const texto = typeof conteudo === "string" ? conteudo : JSON.stringify(conteudo, null, 2) + "\n";
+    fs.writeFileSync(alvo, texto, "utf8");
+    return alvo;
+  };
+  const ALHEIO = "plugin-alheio-implementer";
+  const DECLARACAO = { versao: 1, agentes: { [ALHEIO]: { estagios: ["executar"], escreve: true } } };
+
+  // 5a. Agente AUSENTE do padrao, declarado no extra com escreve: true. E a
+  //     razao de o arquivo continuar existindo depois que a admissao foi
+  //     revogada: sem ele a regra 11 nao alcanca agente de outro plugin.
+  {
+    const repo = caixa();
+    iniciarGit(repo, "fluxo/teste");
+    criarEstadoAtivo(repo, "teste", "executar");
+    const dados = path.join(repo, ".dados-do-teste");
+    escreverExtra(dados, DECLARACAO);
+
+    const sem = despachar(repo, ALHEIO);
+    caso("5a. extra com escreve:true, sem isolation: exit 2 (regra 11)",
+      sem.status === 2, `exit=${sem.status} stderr=${sem.stderr}`);
+    caso("5a. o motivo e o da regra 11, nao 'nao consta no manifesto'",
+      /escreve: true/.test(sem.stderr || "") && !/n[ao]o consta/.test(sem.stderr || ""),
+      sem.stderr);
+
+    const com = despacharComIsolation(repo, ALHEIO, "worktree");
+    caso("5a. com isolation: worktree: exit 0", com.status === 0,
+      `exit=${com.status} stderr=${com.stderr}`);
+
+    const allow = lerLog(dados).filter((l) => l.decisao === "allow" && l.agente === ALHEIO);
+    caso("5a. o log marca via: agentes.extra.json",
+      allow.length === 1 && allow[0].via === "agentes.extra.json", JSON.stringify(allow));
+    caso("5a. o log NAO o marca como nao declarado — ele ESTA declarado, pelo extra",
+      allow.length === 1 && allow[0].declarado === undefined, JSON.stringify(allow));
+
+    fs.rmSync(repo, { recursive: true, force: true });
+  }
+
+  // 5b. Sem o extra, o MESMO agente com o MESMO despacho passa sem worktree.
+  //     Sem este caso o 5a valeria por vacuidade: um `escreve: true` que a
+  //     portaria nunca leu daria o mesmo exit 2 de um que ela leu.
+  {
+    const repo = caixa();
+    iniciarGit(repo, "fluxo/teste");
+    criarEstadoAtivo(repo, "teste", "executar");
+
+    const r = despachar(repo, ALHEIO);
+    caso("5b. sem o extra, o mesmo agente passa sem worktree: exit 0",
+      r.status === 0, `exit=${r.status} stderr=${r.stderr}`);
+
+    const allow = lerLog(path.join(repo, ".dados-do-teste")).filter((l) => l.decisao === "allow");
+    caso("5b. e o log o marca como nao declarado",
+      allow.length === 1 && allow[0].declarado === false, JSON.stringify(allow));
+
+    fs.rmSync(repo, { recursive: true, force: true });
+  }
+
+  // 5c. Manifesto do repo presente: SUBSTITUI os dois de cima. O extra e
+  //     ignorado — e com ele o `escreve: true` que fazia a regra 11 morder.
+  {
+    const repo = caixa();
+    iniciarGit(repo, "fluxo/teste");
+    criarEstadoAtivo(repo, "teste", "executar");
+    const dados = path.join(repo, ".dados-do-teste");
+    escreverExtra(dados, DECLARACAO);
+    escreverManifestoDoRepo(repo, {
+      versao: 1,
+      agentes: { executor: { estagios: ["executar"], escreve: false } },
+    });
+
+    const r = despachar(repo, ALHEIO);
+    caso("5c. com manifesto do repo, o extra e ignorado: exit 0 sem worktree",
+      r.status === 0, `exit=${r.status} stderr=${r.stderr}`);
+
+    const allow = lerLog(dados).filter((l) => l.decisao === "allow");
+    caso("5c. e o log o marca como nao declarado, sem via",
+      allow.length === 1 && allow[0].declarado === false && allow[0].via === undefined,
+      JSON.stringify(allow));
+
+    fs.rmSync(repo, { recursive: true, force: true });
+  }
+
+  // 5d. Extra malformado NEGA — nao e ignorado em silencio. Ignorar devolveria
+  //     o usuario ao sintoma da #264 (o agente que ele acabou de declarar nao
+  //     vale) sem nada apontando para o arquivo torto.
+  {
+    const quebrados = [
+      ["JSON ilegivel", "{isto nao e json", /JSON inv[aá]lido/i],
+      ["versao errada", { versao: 99, agentes: {} }, /versao inv[aá]lida/i],
+      ["agentes invalido", { versao: 1, agentes: [] }, /agentes' inv[aá]lido/i],
+    ];
+
+    for (const [rotulo, conteudo, esperado] of quebrados) {
+      const repo = caixa();
+      iniciarGit(repo, "fluxo/teste");
+      criarEstadoAtivo(repo, "teste", "revisar");
+      escreverExtra(path.join(repo, ".dados-do-teste"), conteudo);
+
+      const r = despachar(repo, "revisor");
+      caso(`5d. extra ${rotulo}: exit 2`, r.status === 2, `exit=${r.status} stderr=${r.stderr}`);
+      caso(`5d. extra ${rotulo}: o motivo aponta para o arquivo do usuario`,
+        /agentes\.extra\.json/.test(r.stderr || "") && esperado.test(r.stderr || ""),
+        r.stderr);
+
+      fs.rmSync(repo, { recursive: true, force: true });
+    }
+  }
+}
+
+// == 6. Inferencia de `escreve` para agente NAO declarado (issue #264) ==
+//
+// Este bloco existe por causa de duas coisas que nasceram juntas na #264:
+//
+// 1. A inferencia e o que mantem a regra 11 valendo para agente de outro plugin.
+//    Sem ela, quem nao esta no manifesto entraria como read-only — e sao
+//    justamente os agentes de outro plugin que nao estao no manifesto.
+// 2. A inferencia monta um CAMINHO a partir do nome do agente
+//    (`<raiz>/agents/<nome>.md`), e desde a #264 esse nome chega ali sem ter
+//    passado por manifesto nenhum. Antes, nome fora do manifesto era negado
+//    antes de virar caminho.
+console.log("== 6. escreve inferido do frontmatter para agente nao declarado ==");
+{
+  const escreverAgente = (repo, nome, tools) => {
+    const dir = path.join(repo, "agents");
+    fs.mkdirSync(dir, { recursive: true });
+    const fm = ["---", `name: ${nome}`, "description: prova", "tools:"]
+      .concat(tools.map((t) => `  - ${t}`))
+      .concat(["---", "", "corpo"])
+      .join("\n");
+    fs.writeFileSync(path.join(dir, `${nome}.md`), fm, "utf8");
+  };
+
+  // 6a. Frontmatter com Write/Edit -> escreve inferido TRUE, e a regra 11 morde
+  //     sem ninguem ter declarado nada.
+  {
+    const repo = caixa();
+    iniciarGit(repo, "fluxo/teste");
+    criarEstadoAtivo(repo, "teste", "executar");
+    escreverAgente(repo, "forasteiro-que-edita", ["Read", "Grep", "Write", "Edit"]);
+
+    const r = despachar(repo, "forasteiro-que-edita");
+    caso("6a. nao declarado com Write no frontmatter: exit 2 (regra 11)",
+      r.status === 2, `exit=${r.status} stderr=${r.stderr}`);
+    caso("6a. o motivo e o da regra 11", /escreve: true/.test(r.stderr || ""), r.stderr);
+
+    fs.rmSync(repo, { recursive: true, force: true });
+  }
+
+  // 6b. Frontmatter so com tool read-only -> passa, e o log diz que a checagem
+  //     FOI feita. Sem este caso o 6a passaria com a inferencia devolvendo
+  //     `true` para tudo.
+  {
+    const repo = caixa();
+    iniciarGit(repo, "fluxo/teste");
+    criarEstadoAtivo(repo, "teste", "executar");
+    escreverAgente(repo, "forasteiro-que-so-le", ["Read", "Grep", "Glob"]);
+
+    const r = despachar(repo, "forasteiro-que-so-le");
+    caso("6b. nao declarado so com tool read-only: exit 0",
+      r.status === 0, `exit=${r.status} stderr=${r.stderr}`);
+
+    const allow = lerLog(path.join(repo, ".dados-do-teste")).filter((l) => l.decisao === "allow");
+    caso("6b. e o log NAO o marca como nao-conferido (o arquivo estava ao alcance)",
+      allow.length === 1 && allow[0].escreve_conferido === undefined, JSON.stringify(allow));
+
+    fs.rmSync(repo, { recursive: true, force: true });
+  }
+
+  // 6c. Arquivo fora de alcance -> passa MARCADO, em vez de afirmar read-only.
+  //     E o caso comum em repo de consumidor, onde os agentes vem do cache do
+  //     plugin.
+  {
+    const repo = caixa();
+    iniciarGit(repo, "fluxo/teste");
+    criarEstadoAtivo(repo, "teste", "executar");
+
+    const r = despachar(repo, "forasteiro-sem-arquivo");
+    caso("6c. sem arquivo ao alcance: exit 0", r.status === 0, `exit=${r.status} stderr=${r.stderr}`);
+
+    const allow = lerLog(path.join(repo, ".dados-do-teste")).filter((l) => l.decisao === "allow");
+    caso("6c. e o log marca escreve_conferido: false",
+      allow.length === 1 && allow[0].escreve_conferido === false, JSON.stringify(allow));
+
+    fs.rmSync(repo, { recursive: true, force: true });
+  }
+
+  // 6d. Nome que nao e um segmento simples nao vira caminho. O mesmo arquivo do
+  //     6a, alcancado por travessia, NAO pode ser lido — se fosse, este caso
+  //     daria o exit 2 do 6a. Dar exit 0 aqui e a prova de que a leitura nao
+  //     aconteceu.
+  {
+    const repo = caixa();
+    iniciarGit(repo, "fluxo/teste");
+    criarEstadoAtivo(repo, "teste", "executar");
+    escreverAgente(repo, "forasteiro-que-edita", ["Read", "Write", "Edit"]);
+
+    for (const travessia of [
+      "../agents/forasteiro-que-edita",
+      "..\\..\\agents\\forasteiro-que-edita",
+      "subpasta/forasteiro-que-edita",
+    ]) {
+      const r = despachar(repo, travessia);
+      caso(`6d. nome com travessia (${travessia}): exit 0, sem ler o arquivo`,
+        r.status === 0, `exit=${r.status} stderr=${r.stderr}`);
+    }
 
     fs.rmSync(repo, { recursive: true, force: true });
   }

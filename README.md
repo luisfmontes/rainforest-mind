@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.14.1-1e5c3f?style=flat-square" alt="versão 1.14.1">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.15.0-1e5c3f?style=flat-square" alt="versão 1.15.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -148,15 +148,6 @@ mesmo assim**.
 
 As baterias dos gates rodam em Windows + Git Bash (ambiente do CI: `runs-on: windows-latest`); Linux e macOS não são medidos. Cada gate declara seu modelo de ameaça nos docblocks.
 
-Todas elas se rodam por um comando só, o mesmo que a CI roda — e o exit 0 dele é o que significa “as baterias passaram”:
-
-```bash
-bash scripts/varrer-baterias.sh                       # todas
-bash scripts/varrer-baterias.sh --so scripts/testa-jornada.sh   # uma só
-```
-
-A varredura recusa começar se qualquer uma das duas metades (`scripts/`, `hooks/`) vier vazia: glob quebrado sairia 0 sem provar nada. `--so` aceita só um arquivo existente de nome `testa-*.sh`.
-
 | Hook (`PreToolUse`, exit 2) | Barra |
 |---|---|
 | `gate-worktree.cjs` | escrita de subagente fora de worktree linkado; `git checkout/switch/reset` com outra sessão no mesmo diretório |
@@ -262,7 +253,7 @@ incidente datado, em [`references/regra-<n>.md`](skills/rainforest-mind/referenc
 | 7 | Tom sênior | Policia ponta solta e escopo, nunca o mérito |
 | 8 | Guarda-corpo de jornada | Jornada **medida**, não estimada; um aviso, uma vez |
 | 9 | Freio de Pareto | Polimento do que já está pronto → "alguém que recebe fica prejudicado?" |
-| 10 | Agentes baratos, e só os admitidos | Rodar exige estar declarado no manifesto, com o estágio ativo |
+| 10 | Agentes baratos, e a portaria registra | Só a regra 11 barra; manifesto e estágio viram linha de log, não portão |
 | 11 | Worktree: principal na `main` | Checkout principal fica na branch padrão, todo trabalho nasce em worktree; hash de base conferido na fonte |
 | 12 | Entrega se valida na saída real | Critério falsificável no briefing; suíte verde não é evidência |
 | 13 | Correção vira observação | Você corrigir a saída já é o sinal: registra silenciosamente |

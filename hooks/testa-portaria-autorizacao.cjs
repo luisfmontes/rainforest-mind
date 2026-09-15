@@ -21,10 +21,11 @@
  * sessão que motivou este fluxo, e por isso os testes NUNCA reaproveitam o
  * `raiz` deste repositório — sempre `caixa()`).
  *
- * O coração da bateria são os casos 13 a 16: eles provam que a autorização
- * dispensa SÓ o portão de ESTÁGIO, e nada mais — manifesto ausente, agente não
- * declarado, e as duas travas de `escreve: true` (isolation + ausência de
- * name) continuam negando com autorização válida.
+ * O coração da PARTE 2 agora são os casos 13 a 16: eles provam que a
+ * PORTARIA não lê mais transcripts fora de fluxo. Fora de fluxo, tudo passa —
+ * mas as regras de manifesto (casos 13), agente não declarado (caso 14), e as
+ * duas travas de `escreve: true` (isolation + ausência de name, casos 15 e 16)
+ * continuam valendo quando HÁ fluxo aberto.
  *
  * Mesmo formato das baterias irmãs: `caso(nome, cond, detalhe)` imprime
  * `ok`/`FALHA`, contagem final `== resultado: N ok, M falha(s) ==`, exit 0
@@ -580,69 +581,65 @@ function ultimaLinhaDoLog(raiz) {
   }
 }
 
-console.log("== 11. sem fluxo + autorizacao valida -> exit 0, log com estagio/decisao/via ==");
+console.log("== 11. sem fluxo -> exit 0, permite sem ler transcript ==");
 {
   const raiz = caixa("11");
   iniciarGit(raiz);
   criarManifesto(raiz, manifestoD2({ revisor: { estagios: ["revisar"], escreve: false } }));
 
+  // Agora SEM fluxo, a portaria NÃO lê transcript — autorização deixou de existir.
+  // Testa com transcript_path ausente (chave nem existe no payload).
   const r = rodaHook(raiz, {
     session_id: "s11",
     cwd: raiz,
-    transcript_path: fx("autorizado.jsonl"),
     tool_input: { subagent_type: "revisor" },
   });
 
-  caso("exit 0", r.status === 0, `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
+  caso("exit 0 (fora de fluxo, sem ler transcript)", r.status === 0, `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
 
   const entrada = ultimaLinhaDoLog(raiz);
   caso("log tem uma linha JSON valida", entrada !== null, entrada);
   if (entrada) {
     caso("estagio = 'fora-de-fluxo'", entrada.estagio === "fora-de-fluxo", entrada.estagio);
     caso("decisao = 'allow'", entrada.decisao === "allow", entrada.decisao);
-    caso("via = 'autorizacao-do-usuario'", entrada.via === "autorizacao-do-usuario", entrada.via);
+    caso("fora_de_fluxo = true", entrada.fora_de_fluxo === true, entrada.fora_de_fluxo);
+    caso("log NÃO traz campo 'via' (sem autorização a consultar)", !("via" in entrada) || entrada.via !== "autorizacao-do-usuario", entrada.via);
   }
 
   fs.rmSync(raiz, { recursive: true, force: true });
 }
 
-console.log("== 12. sem fluxo + sem autorizacao -> exit 2, motivo 'sem estagio ativo' ==");
+console.log("== 12. sem fluxo -> exit 0, mesmo com negação no transcript ==");
 {
   const raiz = caixa("12");
   iniciarGit(raiz);
   criarManifesto(raiz, manifestoD2({ revisor: { estagios: ["revisar"], escreve: false } }));
 
-  // A ARMADILHA: usar o transcript INTEIRO (test/fixtures/transcript-autorizacao.jsonl)
-  // aqui daria exit 0 por engano — ele tem uma concessão válida ANTES do turno
-  // de reclamação. O caso certo é o turno isolado, sem a concessão.
+  // Agora SEM fluxo passa INCONDICIONALMENTE — não lê transcript, não vê negação.
+  // Passa um transcript com "não autorizo", mas a portaria não o consulta.
   const r = rodaHook(raiz, {
     session_id: "s12",
     cwd: raiz,
-    transcript_path: fx("turno-reclamacao.jsonl"),
+    transcript_path: fx("turno-reclamacao.jsonl"), // contem negacao
     tool_input: { subagent_type: "revisor" },
   });
 
-  caso("exit 2", r.status === 2, `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
-  caso("motivo cita 'sem estágio ativo'", (r.stderr || "").includes("sem estágio ativo"), r.stderr);
+  caso("exit 0 (fora de fluxo, sem ler transcript mesmo com negacao)", r.status === 0, `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
+
+  const entrada = ultimaLinhaDoLog(raiz);
+  caso("log traz fora_de_fluxo = true", entrada && entrada.fora_de_fluxo === true, entrada && entrada.fora_de_fluxo);
 
   fs.rmSync(raiz, { recursive: true, force: true });
 }
 
-/* == 13. Padrão embarcado AUSENTE + autorização válida -> continua exit 2 ==
+/* == 13. Padrão embarcado AUSENTE -> continua exit 2 ==
  *
- * Este caso dizia "manifesto AUSENTE": montava um sandbox sem
- * `.rainforest/agentes.json` e exigia negação. Com o padrão embarcado (D2) isso
- * deixou de negar — e deixar como estava seria pedir de volta o comportamento
- * que a D5 mudou de propósito.
- *
- * O que ele protegia continua valendo e é o que se mede agora: **autorização do
- * usuário não inventa manifesto**. O sumiço do manifesto que hoje importa é o do
- * PADRÃO, e ele é falha de instalação, não decisão sobre este agente — então
- * além do exit 2 as duas marcas da D5 têm de aparecer: nenhuma linha no log, e
- * mensagem apontando para o plugin. "Autorização não dispensa manifesto" no
- * sentido antigo continua coberto pelo caso 14, que sobreviveu intacto.
+ * Falha de instalação: o padrão embarcado é obrigatório. Não é decisão sobre
+ * este agente — é avaria do sistema. Continua negando e SEM linha de log
+ * (D5). A portaria não consulta autorização, então o transcript_path é
+ * removido.
  */
-console.log("== 13. padrao embarcado AUSENTE + autorizacao valida -> exit 2, sem log, sem consultar autorizacao ==");
+console.log("== 13. padrao embarcado AUSENTE -> exit 2, sem log, falha de instalacao ==");
 {
   const espelho = fs.mkdtempSync(path.join(os.tmpdir(), "portaria-autorizacao-espelho-"));
   fs.cpSync(__dirname, path.join(espelho, "hooks"), { recursive: true });
@@ -659,14 +656,13 @@ console.log("== 13. padrao embarcado AUSENTE + autorizacao valida -> exit 2, sem
     input: JSON.stringify({
       session_id: "s13",
       cwd: raiz,
-      transcript_path: fx("autorizado.jsonl"),
       tool_input: { subagent_type: "revisor" },
     }),
     env: { ...process.env, CLAUDE_PROJECT_DIR: raiz, RFM_ROOT: dados },
     encoding: "utf8",
   });
 
-  caso("exit 2 (autorizacao NAO repara instalacao quebrada)", r.status === 2,
+  caso("exit 2 (instalacao quebrada nega)", r.status === 2,
     `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
   caso("motivo aponta o padrao do plugin, nao o repo do usuario",
     /agentes\.padrao\.json/.test(r.stderr || "") && /instalacao incompleta/i.test(r.stderr || ""), r.stderr);
@@ -678,96 +674,102 @@ console.log("== 13. padrao embarcado AUSENTE + autorizacao valida -> exit 2, sem
   fs.rmSync(espelho, { recursive: true, force: true });
 }
 
-console.log("== 14. agente NAO declarado + autorizacao valida -> continua exit 2 ==");
+console.log("== 14. agente NAO declarado fora de fluxo -> exit 0, sem ler autorização ==");
 {
   const raiz = caixa("14");
   iniciarGit(raiz);
   // Manifesto existe, mas não declara 'revisor'.
   criarManifesto(raiz, manifestoD2({ outro: { estagios: ["revisar"], escreve: false } }));
 
+  // Agente não declarado + fora de fluxo → passa SEM consultar autorização
   const r = rodaHook(raiz, {
     session_id: "s14",
     cwd: raiz,
-    transcript_path: fx("autorizado.jsonl"),
+    // transcript_path AUSENTE — portaria não o consultaria mesmo se tivesse
     tool_input: { subagent_type: "revisor" },
   });
 
-  caso("exit 2 (autorizacao NAO declara agente)", r.status === 2, `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
-  caso("motivo cita o agente e 'nao consta no manifesto'",
-    (r.stderr || "").includes("revisor") && (r.stderr || "").includes("não consta no manifesto"), r.stderr);
+  caso("exit 0 (agente nao declarado fora de fluxo passa)", r.status === 0, `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
+
+  const entrada = ultimaLinhaDoLog(raiz);
+  caso("log marca declarado: false", entrada && entrada.declarado === false, entrada && entrada.declarado);
+  caso("log marca fora_de_fluxo: true", entrada && entrada.fora_de_fluxo === true, entrada && entrada.fora_de_fluxo);
 
   fs.rmSync(raiz, { recursive: true, force: true });
 }
 
-console.log("== 15. escreve:true + autorizacao + SEM isolation:'worktree' -> continua exit 2 ==");
+console.log("== 15. escreve:true + SEM isolation:'worktree' -> continua exit 2, sem ler autorização ==");
 {
   const raiz = caixa("15");
   iniciarGit(raiz);
   criarManifesto(raiz, manifestoD2({ escritor: { estagios: ["executar"], escreve: true } }));
 
+  // escreve: true SEM isolation nega, mesmo fora de fluxo. Portaria não lê autorização.
   const r = rodaHook(raiz, {
     session_id: "s15",
     cwd: raiz,
-    transcript_path: fx("autorizado.jsonl"),
+    // transcript_path AUSENTE
     tool_input: { subagent_type: "escritor" }, // sem isolation
   });
 
-  caso("exit 2 (autorizacao NAO dispensa a regra 11)", r.status === 2, `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
+  caso("exit 2 (regra 11 continua negando escreve:true sem isolation)", r.status === 2, `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
   caso("motivo nomeia isolation: \"worktree\"", (r.stderr || "").includes('isolation: "worktree"'), r.stderr);
 
-  // Controle positivo, no MESMO sandbox: o mesmo agente, a mesma autorização,
-  // mas com isolation:"worktree" e sem name, aprova. Prova que a negação
-  // acima é sobre o isolamento — não uma recusa cega a 'escreve:true' com
-  // autorização.
+  // Controle positivo, no MESMO sandbox: o mesmo agente, mas com
+  // isolation:"worktree" e sem name, aprova. Prova que a negação acima é
+  // sobre o isolamento — e que passa SEM autorização (portaria não a consulta).
   const rControle = rodaHook(raiz, {
     session_id: "s15b",
     cwd: raiz,
-    transcript_path: fx("autorizado.jsonl"),
+    // transcript_path AUSENTE
     tool_input: { subagent_type: "escritor", isolation: "worktree" },
   });
   caso("controle: com isolation:'worktree' e sem name, aprova (exit 0)",
     rControle.status === 0, `exit=${rControle.status} stderr=${JSON.stringify(rControle.stderr)}`);
   const entradaControle = ultimaLinhaDoLog(raiz);
-  caso("e o log do controle registra via + isolation",
-    entradaControle && entradaControle.via === "autorizacao-do-usuario" && entradaControle.isolation === "worktree",
-    JSON.stringify(entradaControle));
+  caso("log do controle registra isolation: 'worktree'",
+    entradaControle && entradaControle.isolation === "worktree", JSON.stringify(entradaControle));
+  caso("log do controle registra fora_de_fluxo: true",
+    entradaControle && entradaControle.fora_de_fluxo === true, JSON.stringify(entradaControle));
 
   fs.rmSync(raiz, { recursive: true, force: true });
 }
 
-console.log("== 16. escreve:true + autorizacao + com 'name' preenchido -> continua exit 2 ==");
+console.log("== 16. escreve:true + isolation:'worktree' + com 'name' -> continua exit 2, sem ler autorização ==");
 {
   const raiz = caixa("16");
   iniciarGit(raiz);
   criarManifesto(raiz, manifestoD2({ escritor: { estagios: ["executar"], escreve: true } }));
 
+  // escreve: true COM name nega a regra 10. Portaria não lê autorização.
   const r = rodaHook(raiz, {
     session_id: "s16",
     cwd: raiz,
-    transcript_path: fx("autorizado.jsonl"),
+    // transcript_path AUSENTE
     tool_input: { subagent_type: "escritor", isolation: "worktree", name: "sonda-um" },
   });
 
-  caso("exit 2 (autorizacao NAO dispensa a regra 10)", r.status === 2, `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
+  caso("exit 2 (regra 10 continua negando escreve:true com name)", r.status === 2, `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
   caso("motivo cita o name recebido", (r.stderr || "").includes("sonda-um"), r.stderr);
 
   fs.rmSync(raiz, { recursive: true, force: true });
 }
 
-console.log("== 17. as mensagens de negacao sao distintas, cada uma com o seu texto ==");
+console.log("== 17. sem fluxo passa incondicionalmente (nenhuma leitura de transcript) ==");
 {
+  // Prova que fora de fluxo a portaria NÃO lê transcript em nenhuma circunstância.
+  // A política deixou de ser "lê autorização", ela é agora "fora de fluxo = passa".
+
   const raizAusente = caixa("17-ausente");
   iniciarGit(raizAusente);
   criarManifesto(raizAusente, manifestoD2({ revisor: { estagios: ["revisar"], escreve: false } }));
   const rAusente = rodaHook(raizAusente, {
     session_id: "s17a",
     cwd: raizAusente,
-    // transcript_path AUSENTE do payload (chave nem existe)
+    // transcript_path AUSENTE — não há nada a ler
     tool_input: { subagent_type: "revisor" },
   });
-  caso("transcript_path ausente: exit 2", rAusente.status === 2, `exit=${rAusente.status}`);
-  caso("transcript_path ausente: motivo 'sem estágio ativo'",
-    (rAusente.stderr || "").includes("sem estágio ativo — abra um fluxo"), rAusente.stderr);
+  caso("transcript_path ausente: exit 0 (fora de fluxo, sem ler)", rAusente.status === 0, `exit=${rAusente.status}`);
   fs.rmSync(raizAusente, { recursive: true, force: true });
 
   const raizVazio = caixa("17-vazio");
@@ -779,10 +781,7 @@ console.log("== 17. as mensagens de negacao sao distintas, cada uma com o seu te
     transcript_path: "",
     tool_input: { subagent_type: "revisor" },
   });
-  caso("transcript_path vazio: exit 2", rVazio.status === 2, `exit=${rVazio.status}`);
-  caso("transcript_path vazio: motivo proprio, distinto do 'ausente'",
-    (rVazio.stderr || "").includes("autorização não pôde ser conferida — transcript_path não foi fornecido"),
-    rVazio.stderr);
+  caso("transcript_path vazio: exit 0 (fora de fluxo, não lê vazio)", rVazio.status === 0, `exit=${rVazio.status}`);
   fs.rmSync(raizVazio, { recursive: true, force: true });
 
   const raizInexistente = caixa("17-inexistente");
@@ -795,10 +794,7 @@ console.log("== 17. as mensagens de negacao sao distintas, cada uma com o seu te
     transcript_path: caminhoFalso,
     tool_input: { subagent_type: "revisor" },
   });
-  caso("arquivo inexistente: exit 2", rInexistente.status === 2, `exit=${rInexistente.status}`);
-  caso("arquivo inexistente: motivo cita o caminho e 'não existe'",
-    (rInexistente.stderr || "").includes(caminhoFalso) && (rInexistente.stderr || "").includes("não existe"),
-    rInexistente.stderr);
+  caso("arquivo inexistente: exit 0 (fora de fluxo, não lê arquivo)", rInexistente.status === 0, `exit=${rInexistente.status}`);
   fs.rmSync(raizInexistente, { recursive: true, force: true });
 
   const raizNegacao = caixa("17-negacao");
@@ -810,24 +806,15 @@ console.log("== 17. as mensagens de negacao sao distintas, cada uma com o seu te
     transcript_path: fx("negado-sem-acento.jsonl"),
     tool_input: { subagent_type: "revisor" },
   });
-  caso("negacao explicita: exit 2", rNegacao.status === 2, `exit=${rNegacao.status}`);
-  caso("negacao explicita: motivo proprio, sobre revogacao",
-    (rNegacao.stderr || "").includes("autorização foi revogada"), rNegacao.stderr);
+  caso("arquivo com negacao: exit 0 (fora de fluxo, não confere autorização)",
+    rNegacao.status === 0, `exit=${rNegacao.status}`);
   fs.rmSync(raizNegacao, { recursive: true, force: true });
 
-  // As quatro mensagens sao, de fato, DIFERENTES entre si — nao a mesma
-  // string reaproveitada para os quatro casos.
-  //
-  // Esta assercao ja foi decorativa: ela montava um Set com as quatro strings
-  // ESPERADAS, digitadas aqui, e conferia `size === 4`. Passava sem consultar o
-  // hook uma vez sequer — mutar a portaria para emitir a mesma mensagem generica
-  // nos quatro ramos deixava esta linha verde. Achado da revisao de 2026-09-12.
-  // Agora ela le o stderr REAL dos quatro processos que ja rodaram acima.
-  const primeiraLinha = (r) => String((r && r.stderr) || "").trim().split("\n")[0].trim();
-  const reais = [rAusente, rVazio, rInexistente, rNegacao].map(primeiraLinha);
-  const textos = new Set(reais);
-  caso("as quatro mensagens REAIS do hook sao distintas entre si", textos.size === 4, reais);
-  caso("nenhuma das quatro mensagens reais e vazia", reais.every((t) => t.length > 0), reais);
+  // Prova que todas as quatro situações saem com o mesmo exit code,
+  // porque a portaria não diferencia — fora de fluxo é fora de fluxo.
+  caso("todos os quatro casos PASSAM (exit 0), independente do transcript_path",
+    rAusente.status === 0 && rVazio.status === 0 && rInexistente.status === 0 && rNegacao.status === 0,
+    [rAusente.status, rVazio.status, rInexistente.status, rNegacao.status].join(", "));
 }
 
 console.log(`\n== resultado: ${ok} ok, ${falhou} falha(s) ==`);

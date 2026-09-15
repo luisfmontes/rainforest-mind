@@ -166,3 +166,53 @@ O texto não encolhe para caber na realidade. A realidade sobe para caber no tex
   vale para ele até `claude plugin marketplace update` e uma janela nova. É ação
   dele, não do fluxo, mas o `fechar` deve dizer isso em voz alta em vez de deixar
   a entrega parecer ativa.
+
+## Emenda de 2026-09-15 — a admissão foi revogada (issue #264)
+
+**Decidido: a portaria deixa de admitir e passa a registrar. O único portão que
+barra é o da regra 11. Porque o custo dos outros dois foi medido e superou o que
+eles protegiam.**
+
+Esta emenda reverte, em parte, a D3 deste mesmo documento ("o manifesto do repo
+substitui, e agente fora dele nega") e, por inteiro, a autorização digitada que o
+PR #246 trouxe. A D3 continua valendo no que dizia sobre **níveis** — o
+`agentes.json` do repo continua substituindo por inteiro —, e deixa de valer no
+que dizia sobre **admissão**.
+
+O que a mediu:
+
+- `protheus-implementer` negado em dois repositórios de trabalho em 15/09, por
+  "não consta no manifesto". É agente instalado pelo próprio usuário, de outro
+  plugin dele. A única saída que a mensagem oferecia era criar o `agentes.json`
+  do repo — reescrever à mão os doze agentes do rainforest para acrescentar três,
+  numa cópia que congela no tempo. O preço da configuração superou o que ela
+  libera, e o fluxo do outro plugin ficou morto.
+- `Plan`, agente embutido do harness, negado duas vezes na mesma sessão pelo
+  mesmo motivo.
+- Seis `allow` com `via: autorizacao-do-usuario` no `despachos.jsonl` de 15/09,
+  um por sessão. Nenhum deles decidiu nada: todos teriam passado. O portão
+  cobrava uma digitação por sessão em todo repositório de trabalho — que é onde
+  não há fluxo do rainforest aberto — e o usuário nomeou o custo: "desgasta
+  demais".
+
+A pergunta que separa o portão que fica do que sai: **ele defende a árvore de
+trabalho do usuário, ou a ordem do fluxo?** A regra 11 (agente que escreve só
+roda em worktree isolado, e nunca nomeado) defende a árvore, e fica. Manifesto e
+estágio defendiam a ordem, e ordem se registra — `declarado: false`,
+`fora_de_fluxo: true` e `estagio_declarado` entram na linha do log, que o
+`conferir-fluxo` já lê.
+
+Entrou junto o **terceiro nível de manifesto** que a D3 havia descartado
+("decisão que o usuário não tomou"): `<raiz de dados>/agentes.extra.json`, que
+soma ao padrão embarcado. Com a admissão revogada ele não é mais necessário para
+um agente rodar; serve para o inverso — declarar `escreve: true` num agente de
+outro plugin faz a regra 11 valer para ele, o que a inferência por frontmatter
+não consegue quando o arquivo do agente está fora de alcance (o caso comum em
+repo de consumidor, onde os agentes vêm do cache do plugin).
+
+**Próximo passo:** `hooks/lib/autorizacao-usuario.cjs` ficou sem chamador. Não
+foi removido aqui de propósito — sai num `enxugar`, com a varredura que essa
+skill faz, e não no meio de uma mudança de política.
+
+**Continua valendo o que o fim da seção anterior diz:** nada disto roda na
+máquina do usuário até `claude plugin marketplace update` e uma janela nova.

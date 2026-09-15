@@ -22,10 +22,13 @@ A saída de emergência continua não sendo variável de ambiente (isso seria a
 exceção em runtime que a regra proíbe): é tirar o bloco do `hooks/hooks.json`,
 que é arquivo versionado e passa pelo `revisar` — a mesma porta do manifesto.
 
-## Dois níveis de manifesto, e o do repo substitui
+## Três níveis de manifesto, e só um soma
 
-1. `<repo>/.rainforest/agentes.json` — se existir, é **o** manifesto. Sozinho.
-2. `<plugin>/.rainforest/agentes.padrao.json` — o padrão embarcado, que responde
+1. `<repo>/.rainforest/agentes.json` — se existir, é **o** manifesto. Sozinho,
+   e cala os dois de baixo.
+2. `<raiz de dados>/agentes.extra.json` — do **usuário**, e **SOMA** ao padrão
+   embarcado. Entrou em 2026-09-15 pela issue #264.
+3. `<plugin>/.rainforest/agentes.padrao.json` — o padrão embarcado, que responde
    quando o repo não tem o próprio.
 
 Achado por `path.resolve(__dirname, '..', ...)`, **não** por `CLAUDE_PLUGIN_ROOT`:
@@ -39,9 +42,64 @@ que precise barrar um agente tem de conseguir barrá-lo, e com soma ele voltaria
 pelo padrão. Substituição também deixa o arquivo legível sozinho — o que está
 escrito nele é o que vale, sem simular a fusão de cabeça.
 
-Um terceiro nível, na raiz de dados do usuário entre o repo e o padrão, foi
-**avaliado e descartado**: o usuário escolheu entre "substitui" e "soma", e um
-nível a mais é decisão que ele não tomou.
+**O nível 2 soma, e isso não reabre a porta acima.** Ele mora FORA do
+repositório e é declaração do **usuário**, não do projeto; quando o projeto fala
+(nível 1), ele cala os dois de cima, inclusive este. Foi avaliado e descartado em
+2026-09-13 — "o usuário escolheu entre substitui e soma, e um nível a mais é
+decisão que ele não tomou" — e entrou em 2026-09-15, quando a issue #264 mediu o
+que a ausência dele custava: agente de outro plugin do próprio usuário sem
+caminho barato de declaração.
+
+Por que na raiz de dados e não numa chave `"soma": true` no arquivo do repo: os
+repositórios onde isso dói são compartilhados com outros devs, e a lista de
+agentes que **este** usuário tem instalados é configuração pessoal — não entra em
+repo de time. Fora do repo, um arquivo só cobre todos eles.
+
+O nome carrega a semântica de propósito: `agentes.json` **substitui**,
+`agentes.extra.json` **soma**. A raiz de dados PODE ser o `.rainforest` do
+próprio projeto (nível 2 do `lib/raiz.cjs`), e ali dois arquivos de mesmo nome
+com regras opostas seriam uma armadilha.
+
+```json
+{
+  "versao": 1,
+  "agentes": {
+    "protheus-implementer": { "estagios": ["executar"], "escreve": true },
+    "protheus-reviewer":    { "estagios": ["revisar"],  "escreve": false }
+  }
+}
+```
+
+### Onde esse arquivo NÃO vai
+
+- **No repo do plugin** (`.rainforest/agentes.padrao.json`): não. Esse arquivo é
+  publicado, e todo dev que instalar o rainforest passaria a carregar agentes de
+  um ERP que ele não tem. O padrão embarcado declara os agentes **do rainforest**,
+  e só.
+- **No cache do plugin** (`~/.claude/plugins/cache/...`): não. É diretório
+  derivado — `claude plugin marketplace update` o reescreve, e a declaração some
+  sem aviso.
+- **No repo de trabalho** (`<repo>/.rainforest/agentes.json`): funciona, mas é
+  arquivo versionado num repo compartilhado com o time, e substitui o padrão por
+  inteiro. Configuração pessoal de quem-tem-qual-plugin-instalado não é do
+  projeto.
+
+Vai na **raiz de dados do usuário**, que o `lib/raiz.cjs` resolve — tipicamente
+`~/.rainforest/`, fora de todo repositório e fora do cache. Um arquivo cobre
+todos os repos daquela máquina.
+
+**Outro dev usando o rainforest não faz nada.** Sem o arquivo, o padrão embarcado
+responde sozinho; e desde 2026-09-15 nem isso o impede de despachar o agente de
+um plugin de domínio dele — não declarado passa. Se ele quiser que a regra 11
+morda os agentes daquele plugin, cria o `agentes.extra.json` dele, com os agentes
+dele.
+
+Desde 2026-09-15 esse arquivo **não é mais necessário para o agente rodar** — não
+declarado passa. Ele serve para o inverso: declarar `escreve: true` num agente de
+outro plugin faz a **regra 11** valer para ele, que é o único portão que restou.
+JSON inválido, `versao` diferente de 1 ou `agentes` malformado nele **negam**:
+errar o JSON à mão é o modo de falha provável, e tem de doer no arquivo, não três
+telas adiante.
 
 ## "Manifesto ausente" mudou de significado
 
@@ -62,9 +120,10 @@ Manifesto do **repo** inválido é caso diferente e **nega** — não cai no pad
 Cair no padrão daria a esse repo *mais* agentes do que ele declarou, que é o
 oposto do que substituir significa.
 
-Toda negação por agente não declarado diz **qual** dos dois manifestos foi lido e
-de qual nível veio. Com dois níveis possíveis, "não consta no manifesto" sozinho
-manda conferir o arquivo errado.
+A negação por agente não declarado **deixou de existir** em 2026-09-15 — o agente
+passa e o log registra `declarado: false`. Quem veio do nível 2 sai com
+`via: "agentes.extra.json"` na linha, que é o que responde "de qual nível veio"
+agora que a pergunta não é mais feita numa mensagem de erro.
 
 ## Destino do log de despacho
 
