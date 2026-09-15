@@ -1705,5 +1705,92 @@ esperado "marcar design aprovado em fluxo recém-iniciado: exit 0" 0 \
 
 unset RFM_ESTADO_ROOT
 
+echo
+echo "== 27. EVIDENCIA DE 'verificar' CITA SENSOR (D3, D6 — Tarefa 5) =="
+# Caixa PROPRIA ($SBP/sensor-test), separada da caixa principal ($SBP): a
+# checagem nova (scripts/estado.cjs:pecasSensor) so ativa de verdade com
+# scripts/conferir-categoria.cjs presente ao lado do estado.cjs copiado — sem
+# ele, ela FALHA-ABERTO (avisa e nao barra; ver o comentario de `pecasSensor`
+# em scripts/estado.cjs). Copiar o conferidor para dentro da caixa PRINCIPAL
+# ($SBP/scripts) ativaria a checagem para as ~40 chamadas de 'marcar ...
+# executar ok' e 'marcar ... verificar ok' que ja existem ACIMA nesta bateria
+# — nenhuma delas cita sensor nem declara 'sensor_externo', porque foram
+# escritas antes desta tarefa. Uma caixa separada evita reescrever essas
+# dezenas de linhas de teste que nao sao desta tarefa, sem deixar a checagem
+# sem exercicio real: aqui ela roda com o conferidor de verdade, contra as
+# pecas de verdade do repo (RAIZ_PLUGIN = a raiz desta propria copia).
+mkdir -p "$SBP/sensor-test/scripts"
+cp "$SRC/scripts/estado.cjs" "$SBP/sensor-test/scripts/"
+cp "$SRC/scripts/conferir-categoria.cjs" "$SBP/sensor-test/scripts/"
+cd "$SBP/sensor-test" || exit 1
+ES="node scripts/estado.cjs"
+
+ateVerificar() { # slug — leva o fluxo ate 'exigir verificar', sem tocar nele
+  local slug="$1"
+  $ES iniciar --slug "$slug" >/dev/null
+  $ES marcar --slug "$slug" --estagio design --status aprovado >/dev/null
+  $ES marcar --slug "$slug" --estagio plano --status ok >/dev/null
+  $ES exigir --slug "$slug" --estagio executar >/dev/null
+  $ES marcar --slug "$slug" --estagio executar --status ok --json '{"comando":"echo exec","saida":"ok","mutacao":[]}' >/dev/null 2>&1
+  $ES marcar --slug "$slug" --estagio revisar --status ok >/dev/null 2>&1
+}
+
+ateVerificar sens-ok
+esperado "verificar aceita peca marcada sensor do repo" 0 \
+  $ES marcar --slug sens-ok --estagio verificar --status ok \
+    --json '{"comando":"node scripts/conferir-categoria.cjs","saida":"CONFERIDO"}'
+
+ateVerificar sens-rej
+esperado "verificar RECUSA comando que nao e sensor nem declarado" 2 \
+  $ES marcar --slug sens-rej --estagio verificar --status ok \
+    --json '{"comando":"echo hello","saida":"hello"}'
+
+ateVerificar sens-ext
+esperado "verificar aceita sensor externo declarado (sensor_externo)" 0 \
+  $ES marcar --slug sens-ext --estagio verificar --status ok \
+    --json '{"comando":"bash scripts/testa-estado.sh","saida":"0 falha(s)","sensor_externo":"bash scripts/testa-estado.sh"}'
+
+ateVerificar sens-ext-vazio
+esperado "verificar RECUSA sensor_externo vazio" 2 \
+  $ES marcar --slug sens-ext-vazio --estagio verificar --status ok \
+    --json '{"comando":"echo hello","saida":"hello","sensor_externo":""}'
+
+ateVerificar sens-ext-solto
+esperado "verificar RECUSA sensor_externo que nao aparece no comando" 2 \
+  $ES marcar --slug sens-ext-solto --estagio verificar --status ok \
+    --json '{"comando":"echo hello","saida":"hello","sensor_externo":"pytest"}'
+
+echo "  --- executar so avisa (D3), nunca barra ---"
+$ES iniciar --slug sens-exec-warn >/dev/null
+$ES marcar --slug sens-exec-warn --estagio design --status aprovado >/dev/null
+$ES marcar --slug sens-exec-warn --estagio plano --status ok >/dev/null
+$ES exigir --slug sens-exec-warn --estagio executar >/dev/null
+saida_exec=$($ES marcar --slug sens-exec-warn --estagio executar --status ok --json '{"comando":"echo hello","saida":"hello","mutacao":[]}' 2>&1); exit_exec=$?
+if [ "$exit_exec" = "0" ] && echo "$saida_exec" | grep -qi "aviso.*sensor"; then
+  ok=$((ok+1)); echo "  ok   executar fecha com aviso (exit 0), nao com recusa"
+else
+  falhou=$((falhou+1)); echo "  FALHA executar deveria fechar (exit 0) com aviso de sensor em stderr; exit=$exit_exec"
+  echo "$saida_exec" | sed 's/^/         /'
+fi
+
+echo
+echo "  --- MUTACAO: aceitar o ramo que recusa quebra o caso 'sens-rej' =="
+cp scripts/estado.cjs scripts/estado-sensor-mutante.cjs
+sed -i "s/return montarRecusaSensor(estagio, comando);/return null; \/\/ MUTADO/" scripts/estado-sensor-mutante.cjs
+if diff -q scripts/estado.cjs scripts/estado-sensor-mutante.cjs >/dev/null; then
+  falhou=$((falhou+1)); echo "  FALHA sed nao encontrou a linha alvo da mutacao — verifique o padrao"
+else
+  ateVerificar sens-mut
+  saida_mut=$(node scripts/estado-sensor-mutante.cjs marcar --slug sens-mut --estagio verificar --status ok --json '{"comando":"echo hello","saida":"hello"}' 2>&1); mut=$?
+  if [ "$mut" = "0" ]; then
+    ok=$((ok+1)); echo "  ok   sem a recusa, 'echo hello' fecha 'verificar' (a recusa e load-bearing)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — a recusa nao e quem decide (exit $mut)"
+    echo "$saida_mut" | sed 's/^/         /'
+  fi
+fi
+
+cd "$SBP" || exit 1
+
 echo "== resultado: $ok ok, $falhou falhas =="
 [ "$falhou" = 0 ]
