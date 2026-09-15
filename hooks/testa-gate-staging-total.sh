@@ -331,11 +331,31 @@ echo "== a mascara de heredoc nao pode ABRIR o gate (auditoria do zerar-issues-4
 gate "<< dentro de aspas duplas nao inicia heredoc" 2 "$(bml "$(printf 'echo \"a << b\"\ngit add -A')")"
 gate "<< dentro de aspas simples nao inicia heredoc" 2 "$(bml "$(printf 'echo %sa << b%s\ngit add -A' "'" "'")")"
 gate "<< em comentario nao inicia heredoc" 2 "$(bml "$(printf '# ver << abaixo\ngit add -A')")"
+# As duas de cima passavam so porque o delimitador ficava ABERTO. Com o
+# delimitador CITADO e FECHADO em linha propria, a condicao 3 nao cobre mais:
+# so a varredura de operador cobre. Medido em 2026-09-15 -- 14c471ed barrava,
+# o HEAD do lote (com a varredura definida e nunca chamada) deixava passar.
+gate "<< CITADO e FECHADO dentro de aspas nao inicia heredoc" 2 "$(bml "$(printf 'echo "x <<%sEOF%s"\ngit add -A\nEOF' "'" "'")")"
+gate "<< CITADO e FECHADO em comentario nao inicia heredoc" 2 "$(bml "$(printf '# ver <<%sEOF%s abaixo\ngit add -A\nEOF' "'" "'")")"
 gate "<< em aspas, com git commit -a depois" 2 "$(bml "$(printf 'echo \"x << y\"\ngit commit -am \"z\"')")"
 gate "linha de fechamento FALSA nao valida o heredoc" 2 "$(bml "$(printf 'echo \"a << b\"\ngit add -A\nb\"')")"
+# Heredoc ABERTO de varias linhas: sem a condicao `fechado`, o corpo inteiro
+# seria mascarado ate o fim do comando. Medido em 2026-09-15 desligando so ela:
+# exit 2 com a condicao, exit 0 sem ela.
+gate "heredoc ABERTO de varias linhas nao mascara o resto" 2 "$(bml "$(printf 'cat <<%sEOF%s\ngit add -A' "'" "'")")"
 gate "corpo de heredoc NAO citado expande e vira comando" 2 "$(bml "$(printf 'cat <<EOF\n$(git add -A)\nEOF')")"
 gate "heredoc nu gravado em script e executado adiante" 2 "$(bml "$(printf 'cat <<EOF > x.sh\ngit add -A\nEOF\nbash x.sh')")"
 gate "heredoc citado gravado em script e executado adiante" 2 "$(bml "$(printf 'cat <<%sEOF%s > x.sh\ngit add -A\nEOF\nbash x.sh' "'" "'")")"
+
+# O redirecionamento pode vir ANTES do `<<`. A primeira versao lia a linha a
+# partir do `<<` e nao via o `> x.sh` -- nono desvio da auditoria, medido em
+# 2026-09-15: 14c471ed barrava (exit 2) e o HEAD do lote deixava passar.
+gate "redirecionamento ANTES do << tambem e executado adiante" 2 "$(bml "$(printf 'cat > x.sh <<%sEOF%s\ngit add -A\nEOF\nbash x.sh' "'" "'")")"
+gate "...e quando o script roda por ./x.sh" 2 "$(bml "$(printf 'cat > x.sh <<%sEOF%s\ngit add -A\nEOF\nchmod +x x.sh && ./x.sh' "'" "'")")"
+
+# Contraponto: o arquivo CITADO adiante, e nao executado, continua sendo dado.
+# E o caso (b) da Issue #258 -- gravar corpo de issue e passar por --body-file.
+gate "arquivo so CITADO adiante (--body-file) continua dado" 0 "$(bml "$(printf 'cat > x.md <<%sEOF%s\nTexto que menciona git add -A ao explicar o cache.\nEOF\ngh issue create --body-file x.md' "'" "'")")"
 
 # PowerShell nao tem heredoc nenhum, e o gate roda a mesma mascara nas duas
 # ferramentas. Esta e a ferramenta primaria desta maquina (R3).

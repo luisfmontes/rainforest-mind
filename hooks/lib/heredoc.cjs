@@ -246,6 +246,7 @@ module.exports = {
   INTERPRETADORES_DE_HEREDOC,
   corpoDeHeredoc,
   linhaDoHeredocTemInterpretador,
+  normalizarExecutavel,
   fimDaLinhaLogica,
   extrairComandoDoHeredoc,
 };

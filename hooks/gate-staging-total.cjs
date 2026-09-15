@@ -59,7 +59,9 @@ const { cwdPorSegmento, segmentosComAspas } = require("./lib/cwd-efetivo.cjs");
 const {
   tokensComAspas, ehComando, posicaoDeComando, textoAPartir, desempacotarWrapperDeString,
 } = require("./lib/tokens-comando.cjs");
-const { corpoDeHeredoc, linhaDoHeredocTemInterpretador } = require("./lib/heredoc.cjs");
+const {
+  corpoDeHeredoc, linhaDoHeredocTemInterpretador, fimDaLinhaLogica, normalizarExecutavel,
+} = require("./lib/heredoc.cjs");
 
 // Flags globais do git que consomem o token seguinte (`git -C <dir> add`).
 const FLAG_COM_VALOR = new Set([
@@ -202,31 +204,71 @@ function posicoesDeOperadorHeredoc(cmd) {
   return achados;
 }
 
+// Comandos que EXECUTAM um arquivo passado como argumento. Superconjunto de
+// INTERPRETADORES_DE_HEREDOC de proposito: aqui o custo de errar para o lado de
+// bloquear e baixo, e o corpo pode ser script de qualquer linguagem.
+const EXECUTAM_ARQUIVO = new Set([
+  "bash", "sh", "zsh", "ksh", "dash", "pwsh", "powershell", "cmd", "eval",
+  "source", ".", "node", "python", "python3", "py", "perl", "ruby", "deno", "bun",
+]);
+
 /**
- * O alvo de `>`/`>>` na linha do heredoc reaparece depois como algo a
- * EXECUTAR? Entao o corpo nao e dado: vira script.
+ * O heredoc que abre em `i` e gravado num arquivo que o proprio comando executa
+ * depois? Nesse caso o corpo e script, nao dado, e nao pode ser mascarado.
  *
- *     cat <<'EOF' > x.sh
- *     git add -A
- *     EOF
- *     bash x.sh
+ * Duas sutilezas medidas na auditoria do zerar-issues-4 (2026-09-15):
  *
- * Mascarar aqui esconderia um staging em massa que o bash executa de fato.
- * A checagem e deliberadamente grosseira -- basta o nome do arquivo aparecer
- * depois do heredoc para a mascara desistir. Falso positivo aqui custa uma
- * mensagem de bloqueio; falso negativo custa o trabalho de outra sessao.
+ * 1. O redirecionamento pode vir ANTES do `<<` (`cat > x.sh <<'EOF'`). A
+ *    primeira versao lia a linha a partir do `<<` e nao o via — `cat > x.sh`
+ *    + `bash x.sh` atravessava o gate, com staging em massa no corpo. Agora a
+ *    linha logica inteira e varrida, e todos os alvos de redirecionamento dela.
+ *
+ * 2. "Aparece depois" nao basta. `cat > /tmp/x.md <<'EOF'` seguido de
+ *    `gh issue create --body-file /tmp/x.md` cita o arquivo sem executa-lo — e
+ *    e exatamente o caso da Issue #258, que tem de continuar passando. So conta
+ *    como execucao o arquivo citado como `./x` ou como argumento de um comando
+ *    que executa arquivo (`bash x`, `sh -x x`, `source x`, `node x`).
  */
 function alvoDoRedirecionamentoEhExecutadoDepois(cmd, i, fimDoHeredoc) {
-  const quebra = cmd.indexOf("\n", i);
-  const linha = quebra === -1 ? cmd.slice(i) : cmd.slice(i, quebra);
-  const m = /\s>>?\s*([^\s;|&<>]+)/.exec(linha);
-  if (!m) return false;
-  const alvo = m[1].replace(/^["']|["']$/g, "");
-  if (!alvo) return false;
-  const base = alvo.split(/[\\/]/).pop();
-  if (!base) return false;
+  let ini = i;
+  while (ini > 0 && cmd[ini - 1] !== "\n") ini--;
+  let fimLinha = fimDaLinhaLogica(cmd, i);
+  if (fimLinha === -1) fimLinha = cmd.length;
+  const linha = cmd.slice(ini, fimLinha);
+
+  const alvos = new Set();
+  const re = /(?:^|[\s;|&])\d?>>?\s*([^\s;|&<>]+)/g;
+  let m;
+  while ((m = re.exec(linha)) !== null) {
+    const alvo = m[1].replace(/^["']+|["']+$/g, "");
+    if (!alvo) continue;
+    const base = alvo.split(/[\\/]/).pop();
+    if (base) alvos.add(base);
+  }
+  if (alvos.size === 0) return false;
+
   const depois = cmd.slice(Math.min(fimDoHeredoc, cmd.length));
-  return depois.includes(base);
+  let toks;
+  try { toks = tokensComAspas(depois).map((t) => String(t.v)); } catch { toks = depois.split(/\s+/); }
+
+  for (let k = 0; k < toks.length; k++) {
+    const t = toks[k];
+    const nu = t.replace(/^["']+|["']+$/g, "");
+    const base = nu.split(/[\\/]/).pop();
+    if (!base || !alvos.has(base)) continue;
+    // Citado com caminho explicito de execucao: `./x.sh`, `.\x.sh`.
+    if (/^\.[\\/]/.test(nu)) return true;
+    // Argumento de um comando que executa arquivo, pulando flags.
+    for (let j = k - 1; j >= 0; j--) {
+      const anterior = String(toks[j]);
+      if (/^[|;&(){}]+$/.test(anterior)) break;
+      if (anterior.startsWith("-")) continue;
+      const alvoTok = anterior.split(/[|;&(){}]+/).filter(Boolean).pop();
+      if (alvoTok && EXECUTAM_ARQUIVO.has(normalizarExecutavel(alvoTok))) return true;
+      break;
+    }
+  }
+  return false;
 }
 
 /**
@@ -270,7 +312,7 @@ function mascararCorposDeHeredoc(cmd) {
   let fora = cmd;
   let de = 0;
   for (let guarda = 0; guarda < 200; guarda++) {
-    const i = fora.indexOf("<<", de) === -1 ? undefined : fora.indexOf("<<", de);
+    const i = posicoesDeOperadorHeredoc(fora).find((p) => p >= de);
     if (i === undefined) break;
     const heredoc = corpoDeHeredoc(fora, i);
     if (heredoc === null) { de = i + 2; continue; }
