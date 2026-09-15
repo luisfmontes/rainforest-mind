@@ -20,7 +20,7 @@
     "em": "2026-09-15"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-15",
     "tarefas_ok": 5,
     "tarefas": 5,
@@ -69,14 +69,22 @@
         "resultado": "n/a",
         "motivo": "tarefa so escreve doc; a falsificacao e coerencia com o fonte, conferida por comando"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-15"
+    }
   },
   "revisar": {
-    "status": "pendente",
+    "status": "reprovado",
     "snapshot": {
-      "head": "1fde69ef5fc7219110da655425c02c2dc865f0ff",
+      "head": "46fce80b7e5f333387fb091bfa5a5dba4bfe504e",
       "caminhos_sujos": []
-    }
+    },
+    "em_voo": [],
+    "em": "2026-09-15",
+    "achados": 2,
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"

@@ -120,9 +120,58 @@ mutacao: n/a
   motivo: doc não tem comportamento a inverter; a falsificação dela é casar com os literais que o hook realmente escreve e com a decisão do design.
 pronto quando: os dois marcadores literais que o hook escreve (`[ok] ` e
   `[aberto: `) aparecem no `README.md` extraídos **do fonte do hook**, não digitados
-  — provado por `node -e "const s=require('fs').readFileSync('hooks/titulo-sessao-end.cjs','utf8');const m=[...s.matchAll(/'\[(ok|aberto: )/g)].map(x=>x[1]);const r=require('fs').readFileSync('README.md','utf8');console.log(m.every(x=>r.includes(x)))"`
-  imprimindo `true`; e a nota acrescentada em `skills/fechar/SKILL.md` registra que a
+  — provado por `node -e "const s=require('fs').readFileSync('hooks/titulo-sessao-end.cjs','utf8');const m=[...new Set([...s.matchAll(/[\`']\[(ok|aberto: )/g)].map(x=>x[1]))];if(m.length!==2)throw new Error('esperava 2 marcadores no fonte, achei '+m.length);const r=require('fs').readFileSync('README.md','utf8');console.log(m.join(','), m.every(x=>r.includes('['+x)))"`
+  imprimindo `ok,aberto:  true` — a asserção de **dois** marcadores é obrigatória:
+  a versão anterior deste comando casava só aspas simples, e `[aberto: ` é template
+  string no fonte, então o `every` passava trivialmente sobre um array de um
+  elemento (achado 2 da revisão de 2026-09-15); e a nota acrescentada em `skills/fechar/SKILL.md` registra que a
   recusa da linha 168 (pendurar o `concluido` no `SessionEnd`) segue valendo para
   **aviso falado** e não cobre título escrito em sessão já encerrada — provado por
   `rg -c "aviso falado" skills/fechar/SKILL.md` devolvendo `1` e pela leitura do
   `revisar` conferindo que o texto não contradiz a decisão "Fora de escopo" do design
+
+### 6. Consertar o nome da variável de sessão, e provar contra o ambiente real [tipo: implementar]
+atende: D5, D12
+arquivos: `hooks/lib/ledger-fluxos.cjs`, `scripts/estado.cjs`, `hooks/testa-ledger-fluxos.sh`
+depende de: 1, 2
+paralela: nao
+mutacao:
+  arquivo: `hooks/lib/ledger-fluxos.cjs`
+  de: a leitura de `process.env.CLAUDE_CODE_SESSION_ID`
+  para: `process.env.CLAUDE_SESSION_ID` — o nome errado, que é exatamente o defeito que esta tarefa conserta
+  bateria: `bash hooks/testa-ledger-fluxos.sh`
+  fixture: `testa-ledger-fluxos.sh, o caso novo "carimba com o nome REAL da variavel, sem injetar CLAUDE_SESSION_ID"`
+pronto quando: com **apenas** `CLAUDE_CODE_SESSION_ID` no ambiente e
+  `CLAUDE_SESSION_ID` explicitamente ausente (`env -u CLAUDE_SESSION_ID`), rodar
+  `node scripts/estado.cjs iniciar --slug prova-var --titulo "t"` cria o
+  `fluxos-sessao.json` com a entrada daquele id — provado por
+  `node -e "const l=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));const k=Object.keys(l);console.log(k.length, k[0]===process.env.CLAUDE_CODE_SESSION_ID)" <ledger>`
+  imprimindo `1 true`
+
+**Por que esta tarefa existe** (achado 1 da revisão de 2026-09-15, bloqueante):
+`CLAUDE_SESSION_ID` **não existe** no ambiente do Claude Code — `printenv
+CLAUDE_SESSION_ID` sai 1, e a variável real é `CLAUDE_CODE_SESSION_ID`. Medido
+nesta máquina: o ledger de `C:\Users\Luis\.rainforest\fluxos-sessao.json` **não
+foi criado** apesar de esta sessão ter rodado `iniciar`, quatro `exigir` e vários
+`marcar` no mesmo dia. As 41 asserções das quatro baterias passavam porque
+**todas injetavam `CLAUDE_SESSION_ID` à mão** — nenhuma rodava contra o nome que
+o harness realmente exporta. É o defeito de 2026-08-19 outra vez: payload que a
+produção nunca produz.
+
+O `scripts/estado.cjs` tem a mesma leitura errada numa linha **pré-existente**
+(o carimbo `sessao` de `processarCarimbos`), e é dela que o D12 tirou a conclusão
+"a peça já existe". A prova de que estava errada está nos próprios arquivos de
+estado do repo: todo carimbo gravado tem `"sessao": "desconhecida"`. Conserte as
+duas leituras.
+
+**Compatibilidade:** aceite `CLAUDE_CODE_SESSION_ID` e, só como reserva,
+`CLAUDE_SESSION_ID` — nesta ordem. A reserva não custa nada e cobre host que
+exporte o nome antigo.
+
+**Limitação a registrar em comentário, não a resolver aqui:** não existe
+`CLAUDE_CODE_PARENT_SESSION_ID`. Subagente que rode um verbo do `estado.cjs`
+carimba o **próprio** id, e o hook roda no `SessionEnd` da sessão-mãe, então
+aquele carimbo não será visto. Na prática os verbos são rodados pela janela
+principal (as skills do fluxo mandam assim). `CLAUDE_CODE_CHILD_SESSION=1` não
+serve para distinguir: ele está presente também no shell da janela principal —
+medido em 2026-09-15.

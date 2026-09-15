@@ -77,8 +77,21 @@ título é o que o picker exibe **e** o que a busca dele casa.
   entrevista sem fechar estágio (esta aqui), e a que abre `executar`, despacha
   agente e morre antes de marcar. As duas são exatamente as sessões que o
   usuário precisa reconhecer como abertas. O que fica gravado por fluxo é o
-  **último estágio conhecido**, que é o que o título quer dizer. O
-  `estado.cjs` já lê `CLAUDE_SESSION_ID` (linha 1026), então a peça existe.
+  **último estágio conhecido**, que é o que o título quer dizer.
+
+  **Correção de 2026-09-15, achado 1 da revisão.** A primeira versão deste D12
+  dizia "o `estado.cjs` já lê `CLAUDE_SESSION_ID` (linha 1026), então a peça
+  existe" — e isso confundiu *o código lê a variável* com *a variável está
+  populada*. `printenv CLAUDE_SESSION_ID` sai **1**: a variável não existe. A
+  real é `CLAUDE_CODE_SESSION_ID`. Prova no próprio repo, sem forjar nada: todo
+  carimbo já gravado em `docs/rainforest/estado/*.json` tem
+  `"sessao": "desconhecida"`, e o ledger de `~/.rainforest/fluxos-sessao.json`
+  não existia depois de esta sessão rodar `iniciar`, quatro `exigir` e vários
+  `marcar` no mesmo dia. Conserto na tarefa 6 do plano.
+
+  Limitação medida e aceita: não existe `CLAUDE_CODE_PARENT_SESSION_ID`, então
+  subagente que rode um verbo carimba o próprio id e o hook da sessão-mãe não o
+  vê. Na prática os verbos são rodados pela janela principal.
 - **D13 — O hook mora em `hooks/hooks.json` do plugin, síncrono** — porquê: são
   duas config dirs de escopo usuário nesta máquina (`~/.claude` e
   `~/.claude-personal`), mantidas à mão e já divergidas uma vez (2026-08-10); o
