@@ -27,21 +27,29 @@ título é o que o picker exibe **e** o que a busca dele casa.
   um `[ok]` gravado às 14h mente se o fluxo reabrir às 16h. Lendo no fim, o
   título reflete o estado final. Custo aceito: o caso "fechou" passa a depender
   da mesma medição de flush que o caso "aberto".
-- **D5 — O vínculo sessão ↔ fluxo mora no `sessoes.json` do plugin, não no
-  repositório** — porquê: o estado comitado não está onde o hook consegue
-  lê-lo. O `cwd` da sessão é o **checkout principal**; o arquivo de estado de um
-  fluxo em andamento vive na branch de trabalho, dentro do worktree; e o
-  `fechar` (passo 3) **remove o worktree** antes do `/exit`. Sob o desenho
-  anterior o caso `[ok]` — o primeiro que o usuário pediu — nunca dispararia. O
-  `sessoes.json` já existe na raiz do plugin, já é gitignorado, já é indexado
-  por `session_id` com `cwd`, e já é escrito por `heartbeat.cjs` e
-  `contexto-sessao.cjs`. No `/exit` o hook lê só esse arquivo e **não toca no
-  repositório**: nem branch, nem worktree vivo, nem merge.
+- **D5 — O vínculo sessão ↔ fluxo mora num ledger local do plugin
+  (`fluxos-sessao.json`), não no repositório e não no `sessoes.json`** — porquê,
+  em duas partes. **Não no repositório:** o estado comitado não está onde o hook
+  consegue lê-lo — o `cwd` da sessão é o **checkout principal**, o arquivo de
+  estado de um fluxo em andamento vive na branch de trabalho dentro do worktree,
+  e o `fechar` (passo 3) **remove o worktree** antes do `/exit`; o caso `[ok]`
+  nunca dispararia. **E não no `sessoes.json`:** medido em 2026-09-15 com sessão
+  real — `heartbeat.cjs end` roda no mesmo `SessionEnd`, faz
+  `delete state[session_id]` (linha 59) e grava **sem lock** (o próprio comentário
+  do arquivo nomeia a ausência de lock como atalho). A sonda confirmou: a entrada
+  da sessão de teste **não estava mais lá** depois do encerramento. Como o
+  `heartbeat` é `async: true`, ordem entre hooks não é garantia. Ledger separado
+  não disputa arquivo com ninguém e não mexe no contrato do `heartbeat`; é
+  gitignorado, indexado por `session_id`, e podado por idade (24 h), porque a
+  entrada só precisa viver até o `SessionEnd` da própria sessão.
 - **D6 — O marcador é palavra entre colchetes: `[ok]` e `[aberto: <estágio>]`** —
   porquê: a busca do `/resume` casa contra o `customTitle`, e ninguém digita `⋯`.
   Com palavra, `/resume` + digitar `aberto` devolve exatamente a lista de
   pendências, que é a pergunta que originou o trabalho.
-- **D7 — O hook só age em `reason === "prompt_input_exit"`** — porquê: `clear` e
+- **D7 — O hook só age em `reason === "prompt_input_exit"`** — medido: sessão
+  headless (`claude -p`) emite `reason: "other"`, então o hook é **calado em modo
+  não interativo**, e o teste de T5 precisa alimentar o payload direto em vez de
+  rodar uma sessão headless de verdade. Porquê: `clear` e
   `resume` são continuação, não fim (o `/clear` grava `continued-in` ligando a
   sessão velha à nova, e o picker usa isso pra não listar fragmento da mesma
   cadeia); `logout` é raro; e `other` inclui crash, onde um `[ok]` mentiria.
@@ -80,6 +88,11 @@ título é o que o picker exibe **e** o que a busca dele casa.
 
 ## Avaliado e descartado
 
+- **Guardar o vínculo no `sessoes.json`** (era o D5 da rodada 5). Morreu na
+  medição de 2026-09-15: `heartbeat.cjs end` apaga a entrada da sessão no mesmo
+  `SessionEnd`, sem lock, e é `async: true` — a sonda encerrou uma sessão real e
+  a entrada já não estava lá. Guardar ali significaria ler um arquivo que outro
+  hook acabou de esvaziar.
 - **Carimbar a sessão dentro do JSON de estado comitado, em
   `docs/rainforest/estado/`** (era o D12 da rodada 4). Morreu na rodada 5 por
   três fatos somados: o `cwd` da sessão é o checkout principal, o estado de um
@@ -121,12 +134,31 @@ título é o que o picker exibe **e** o que a busca dele casa.
   sessão não interativa). O título vai **relatar** o fluxo pela metade; não
   impede que fique.
 
+## Medição da premissa do D4/D9 (2026-09-15) — aprovou
+
+A premissa "o transcript está liberado quando o hook de `SessionEnd` roda" era o
+único item em aberto. Medida com sessão real (`claude -p` + hook de sonda
+síncrono via `--settings`, fora do repo), resultado colado:
+
+```
+{"fase":"payload","hook_event_name":"SessionEnd","reason":"other",
+ "chaves":["cwd","hook_event_name","prompt_id","reason","session_id","transcript_path"]}
+{"fase":"medicao","tamanho_t0":237136,"tamanho_t1":237136,"tamanho_estavel":true,
+ "append_t0":"ok","append_t1":"ok","escreveu":"ok","releu":"ultima-linha-intacta"}
+```
+
+O que isso fecha:
+
+- **`append_t0: "ok"`** — o arquivo já estava liberado **antes** dos 500 ms de
+  espera. D4 sobrevive, e a espera do D9 vira rede de segurança, não caminho
+  normal.
+- **A linha `custom-title` escrita pelo hook releu intacta** como última linha do
+  transcript, numa sessão que tinha `aiTitle` ("Confirmação simples") — que é
+  exatamente o caso do D10.
+- **O payload tem 6 campos, nomeados acima**, e é a forma que o teste de T5 tem
+  de usar; fixture com schema inventado é o defeito de 2026-08-19 registrado na
+  skill `plano`.
+
 ## Em aberto
 
-- **Premissa não medida (D4/D9): o transcript está fechado quando o hook de
-  `SessionEnd` roda.** Sabemos que o CC **espera** o hook (`await` nos dois
-  pontos de disparo), mas não que já tenha liberado o arquivo. A primeira tarefa
-  do plano é a medição — o hook loga `stat(transcript_path).size`, espera
-  500 ms, loga de novo; tamanhos iguais = seguro anexar. **Se reprovar, D4 e D9
-  voltam ao brainstorm**, porque o fallback restante é um caminho que esta
-  rodada já descartou.
+- Nada.

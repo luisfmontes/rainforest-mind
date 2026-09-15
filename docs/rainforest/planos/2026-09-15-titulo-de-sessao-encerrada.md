@@ -1,0 +1,110 @@
+# Plano: título da sessão marca se o fluxo fechou ou onde parou
+
+Design: docs/rainforest/design/2026-09-15-titulo-de-sessao-encerrada.md
+
+## O que não pode quebrar
+
+- **O contrato do `heartbeat.cjs` fica intacto.** Ele continua fazendo
+  `delete state[session_id]` no `SessionEnd` (linha 59) e gravando o
+  `sessoes.json` sem lock. O ledger novo é **outro arquivo**; nenhuma tarefa
+  aqui altera `hooks/heartbeat.cjs`.
+- **O `estado.cjs` mantém os exit codes de hoje.** `iniciar` sai 1 em slug
+  repetido, `exigir` sai 2 em pré-requisito aberto, `marcar` sai 2 na trava de
+  formato e na trava de cobertura. O carimbo é efeito colateral; falha ao gravar
+  o ledger **não** pode mudar exit code nem abortar o verbo.
+- **Nada escreve fora da raiz de dados do plugin** (`hooks/lib/raiz.cjs`,
+  `resolverRaiz`) e fora do transcript da própria sessão.
+- **O transcript nunca é corrompido.** A única escrita permitida é o append de
+  **uma** linha JSON válida terminada em `\n`. Nada de reescrever, truncar ou
+  reordenar linha existente.
+- **Sessão sem fluxo carimbado sai sem título.** Repo sem `docs/rainforest/estado/`
+  (o `inovacao`, por exemplo) e sessão que não rodou verbo nenhum não recebem
+  escrita — silêncio, não `[ok]`.
+- **Nenhuma sessão já existente é reescrita** (D2): o hook só toca o transcript
+  cujo `session_id` está no ledger.
+
+## Tarefas
+
+### 1. Ledger de fluxos por sessão, escrito pelos três verbos [tipo: implementar]
+atende: D5, D12
+arquivos: `hooks/lib/ledger-fluxos.cjs`, `scripts/estado.cjs`, `hooks/testa-ledger-fluxos.sh`
+depende de: nenhuma
+paralela: sim
+mutacao:
+  arquivo: `hooks/lib/ledger-fluxos.cjs`
+  de: a escrita que faz merge de `{slug, estagio}` na entrada de `session_id` antes do `fs.writeFileSync` do ledger
+  para: `return;` imediatamente antes dessa escrita
+  bateria: `bash hooks/testa-ledger-fluxos.sh`
+  fixture: `testa-ledger-fluxos.sh, caso "iniciar carimba slug e estagio sob o CLAUDE_SESSION_ID do ambiente"`
+pronto quando: com `CLAUDE_SESSION_ID=11111111-1111-1111-1111-111111111111 RFM_ESTADO_ROOT=<sandbox> node scripts/estado.cjs iniciar --slug teste-carimbo --titulo "t"`, o `fluxos-sessao.json` da raiz de dados passa a ter a chave desse UUID com `[{slug:"teste-carimbo", estagio:"design"}]` — provado por `node -e "const l=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));const f=l['11111111-1111-1111-1111-111111111111'];console.log(f[0].slug, f[0].estagio)" <ledger>` imprimindo `teste-carimbo design`, e pelo mesmo comando depois de `exigir --estagio plano` e `marcar --estagio plano --status ok` imprimindo `teste-carimbo plano` (último estágio conhecido, entrada única por slug)
+
+### 2. Hook de título no SessionEnd [tipo: implementar]
+atende: D1, D3, D4, D6, D7, D8, D9, D10, D11
+arquivos: `hooks/titulo-sessao-end.cjs`, `hooks/testa-titulo-sessao-end.sh`
+depende de: 1
+paralela: nao
+mutacao:
+  arquivo: `hooks/titulo-sessao-end.cjs`
+  de: a guarda `if (data.reason !== 'prompt_input_exit') process.exit(0)`
+  para: remover a guarda, deixando qualquer `reason` seguir
+  bateria: `bash hooks/testa-titulo-sessao-end.sh`
+  fixture: `testa-titulo-sessao-end.sh, caso "reason=clear nao escreve nada no transcript"`
+pronto quando: com o payload real de 6 campos medido em 2026-09-15
+  (`{"cwd","hook_event_name":"SessionEnd","prompt_id","reason":"prompt_input_exit","session_id","transcript_path"}`)
+  no stdin e um transcript-fixture **copiado de sessão real** (contendo uma linha
+  `{"type":"ai-title","aiTitle":"Confirmação simples",...}`) com o `session_id`
+  carimbado no ledger no estágio `design`, a última linha do transcript passa a ser
+  `{"type":"custom-title","customTitle":"[aberto: design] Confirmação simples","sessionId":"<id>"}`
+  — provado por `tail -1 <fixture> | node -e "const o=JSON.parse(require('fs').readFileSync(0,'utf8'));console.log(o.type, o.customTitle)"` imprimindo
+  `custom-title [aberto: design] Confirmação simples`; e, com o mesmo fixture e o
+  ledger marcando `fechar` fechado, imprimindo `custom-title [ok] Confirmação simples`
+
+### 3. Registrar o hook no `hooks.json`, síncrono [tipo: configurar]
+atende: D13
+arquivos: `hooks/hooks.json`, `hooks/testa-titulo-sessao-registro.sh`
+depende de: 2
+paralela: nao
+mutacao:
+  arquivo: `hooks/hooks.json`
+  de: a entrada nova de `SessionEnd` que chama `titulo-sessao-end.cjs` sem `async`
+  para: acrescentar `"async": true` nessa entrada
+  bateria: `bash hooks/testa-titulo-sessao-registro.sh`
+  fixture: `testa-titulo-sessao-registro.sh, caso "a entrada de titulo-sessao-end e sincrona"`
+pronto quando: com o `hooks/hooks.json` que o Claude Code realmente carrega, existe
+  exatamente uma entrada de `SessionEnd` apontando para `titulo-sessao-end.cjs`, ela
+  **não** tem `async: true`, e está num grupo separado do `heartbeat.cjs` — provado por
+  `node -e "const h=require('./hooks/hooks.json').hooks.SessionEnd;const e=h.flatMap(g=>g.hooks).filter(x=>x.command.includes('titulo-sessao-end'));console.log(e.length, e[0].async===undefined)"`
+  imprimindo `1 true`
+
+### 4. Teste: sem carimbo no ledger, o hook não escreve [tipo: teste]
+atende: D2
+arquivos: `hooks/testa-titulo-sessao-sem-carimbo.sh`
+depende de: 2
+paralela: nao
+mutacao:
+  arquivo: `hooks/titulo-sessao-end.cjs`
+  de: a guarda que sai quando o ledger não tem entrada para o `session_id` recebido
+  para: seguir adiante e escrever o título com o marcador padrão
+  bateria: `bash hooks/testa-titulo-sessao-sem-carimbo.sh`
+  fixture: `testa-titulo-sessao-sem-carimbo.sh, caso "session_id ausente do ledger deixa o transcript byte-a-byte igual"`
+pronto quando: com o payload real de `reason: "prompt_input_exit"` e um `session_id`
+  **ausente** do ledger, o transcript-fixture fica byte-a-byte idêntico — provado por
+  `sha256sum` antes e depois devolvendo o mesmo hash, e pelo mesmo teste com um
+  fixture que **já tem** `custom-title` de `/rename` confirmando que a linha antiga
+  continua sendo a última
+
+### 5. Documentar o marcador e o filtro do `/resume` [tipo: docs]
+atende: D6, D7
+arquivos: `README.md`, `skills/fechar/SKILL.md`
+depende de: 2
+paralela: nao
+mutacao: n/a
+  motivo: doc não tem comportamento a inverter; a falsificação dela é casar com os literais que o hook realmente escreve e com a decisão do design.
+pronto quando: os dois marcadores literais que o hook escreve (`[ok] ` e
+  `[aberto: `) aparecem no `README.md` extraídos **do fonte do hook**, não digitados
+  — provado por `node -e "const s=require('fs').readFileSync('hooks/titulo-sessao-end.cjs','utf8');const m=[...s.matchAll(/'\[(ok|aberto: )/g)].map(x=>x[1]);const r=require('fs').readFileSync('README.md','utf8');console.log(m.every(x=>r.includes(x)))"`
+  imprimindo `true`; e a nota acrescentada em `skills/fechar/SKILL.md` registra que a
+  recusa da linha 168 (pendurar o `concluido` no `SessionEnd`) segue valendo para
+  **aviso falado** e não cobre título escrito em sessão já encerrada — provado por
+  `rg -c "aviso falado" skills/fechar/SKILL.md` devolvendo `1` e pela leitura do
+  `revisar` conferindo que o texto não contradiz a decisão "Fora de escopo" do design
