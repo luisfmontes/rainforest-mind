@@ -13,7 +13,7 @@
   "plano": {
     "status": "ok",
     "arquivo": "docs/rainforest/planos/2026-09-15-titulo-de-sessao-encerrada.md",
-    "tarefas": 5,
+    "tarefas": 7,
     "paralelas": [
       1
     ],
@@ -82,18 +82,17 @@
     ]
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "db3eb92a778161c83d4d7e3e5c1a735add0d6233",
+      "head": "a220ac94855cd62a843531a443d2c20387a1f07e",
       "caminhos_sujos": []
     },
     "em_voo": [],
     "em": "2026-09-15",
     "achados": 3,
     "base": "14c471ed29f790655f4f2b2e34fce2af578edaac",
-    "head": "db3eb92a",
-    "nota": "o revisor devolveu ok com 3 achados nao bloqueantes; a janela arbitrou consertar antes de fechar, porque dois deles fazem o marcador mentir. reprovado aqui e a decisao do integrador, nao o veredito do revisor.",
-    "tentativas": 1
+    "head": "a220ac94",
+    "nota": "3 achados nao bloqueantes: (1) comando de prova da tarefa 1 no plano usa f[0].slug em vez de f.fluxos[0].slug e crasha — precisa emenda antes do verificar; (2) JSON.parse(null) derruba o hook com exit 1 e stack trace, contrariando o proprio contrato de silencio (padrao herdado do heartbeat.cjs); (3) plano.tarefas=5 contra executar.tarefas=7, bookkeeping nao re-marcado."
   },
   "verificar": {
     "status": "pendente"

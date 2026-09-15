@@ -40,6 +40,14 @@ justificar em prosa não destrava.
   `aberto` (próximo estágio não-fechado, `null` quando completou) corrige o furo,
   e mexer nele obriga a tocar `hooks/lib/ledger-fluxos.cjs`, `scripts/estado.cjs`
   e `hooks/testa-ledger-fluxos.sh`, que eram da tarefa 1.
+- **2026-09-15, tarefa 1 — o comando de prova estava quebrado** (achado 1 da
+  terceira revisão). Ele fazia `l['<uuid>'][0].slug`, tratando a entrada da
+  sessão como array; a forma real é `{ts, fluxos:[…]}` desde o primeiro commit,
+  então rodá-lo ao pé da letra dava
+  `TypeError: Cannot read properties of undefined`. Importa porque `verificar`
+  executa o que o plano define, e ele crasharia. Corrigido para `.fluxos[0]`, e
+  a variável no comando passou de `CLAUDE_SESSION_ID` para
+  `CLAUDE_CODE_SESSION_ID` — o nome que existe de verdade (tarefa 6).
 
 ## Tarefas
 
@@ -54,7 +62,7 @@ mutacao:
   para: `return;` imediatamente antes dessa escrita
   bateria: `bash hooks/testa-ledger-fluxos.sh`
   fixture: `testa-ledger-fluxos.sh, caso "iniciar carimba slug e estagio sob o CLAUDE_SESSION_ID do ambiente"`
-pronto quando: com `CLAUDE_SESSION_ID=11111111-1111-1111-1111-111111111111 RFM_ESTADO_ROOT=<sandbox> node scripts/estado.cjs iniciar --slug teste-carimbo --titulo "t"`, o `fluxos-sessao.json` da raiz de dados passa a ter a chave desse UUID com `[{slug:"teste-carimbo", estagio:"design"}]` — provado por `node -e "const l=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));const f=l['11111111-1111-1111-1111-111111111111'];console.log(f[0].slug, f[0].estagio)" <ledger>` imprimindo `teste-carimbo design`, e pelo mesmo comando depois de `exigir --estagio plano` e `marcar --estagio plano --status ok` imprimindo `teste-carimbo plano` (último estágio conhecido, entrada única por slug)
+pronto quando: com `CLAUDE_CODE_SESSION_ID=11111111-1111-1111-1111-111111111111 RFM_ROOT=<sandbox> RFM_ESTADO_ROOT=<sandbox> node scripts/estado.cjs iniciar --slug teste-carimbo --titulo "t"`, o `fluxos-sessao.json` da raiz de dados passa a ter a chave desse UUID com `{ts, fluxos:[{slug:"teste-carimbo", estagio:"design", aberto:"design"}]}` — provado por `node -e "const l=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));const f=l['11111111-1111-1111-1111-111111111111'].fluxos;console.log(f.length, f[0].slug, f[0].estagio)" <ledger>` imprimindo `1 teste-carimbo design`, e pelo mesmo comando depois de `marcar --estagio design --status aprovado` e `exigir --estagio plano` imprimindo `1 teste-carimbo plano` (último estágio conhecido, entrada única por slug)
 
 ### 2. Hook de título no SessionEnd [tipo: implementar]
 atende: D1, D3, D4, D6, D7, D8, D9, D10, D11
