@@ -752,16 +752,26 @@ function main() {
     } else {
       // Transcript existe e é legível — confere autorização
       const temAutorizacao = autorizado(transcriptPath);
-      const { temNegacaoExplicita } = require("./lib/autorizacao-usuario.cjs");
+      const { temNegacaoExplicita, quaseFormaDeSubagente } = require("./lib/autorizacao-usuario.cjs");
 
       // Para detectar negação, precisa ler e parsear o transcript
       let temNegacao = false;
+      let quaseAutorizou = null;
       try {
         const conteudo = fs.readFileSync(transcriptPath, "utf8");
         const linhas = conteudo.trim().split("\n").filter(Boolean);
         if (linhas.length > 0) {
           const ultimaLinha = JSON.parse(linhas[linhas.length - 1]);
           temNegacao = temNegacaoExplicita(ultimaLinha);
+
+          // Extrai texto da última linha para checar digitação quase-correta
+          let linhaDoUsuario = null;
+          if (ultimaLinha.type === 'user' && ultimaLinha.message) {
+            linhaDoUsuario = ultimaLinha.message.content;
+          }
+          if (linhaDoUsuario) {
+            quaseAutorizou = quaseFormaDeSubagente(linhaDoUsuario);
+          }
         }
       } catch {
         // Se não conseguir parsear, assume que não há negação explícita
@@ -797,7 +807,12 @@ function main() {
         negar(msg.trim());
       } else {
         // Transcript legível, sem autorização
-        const motivo = "sem estágio ativo — abra um fluxo";
+        let motivo;
+        if (quaseAutorizou !== null) {
+          motivo = `autorização quase reconhecida — você digitou "${quaseAutorizou}", mas a tolerância admite até 2 edições de distância`;
+        } else {
+          motivo = "sem estágio ativo — abra um fluxo";
+        }
         gravarDespacho(raiz, "deny", nomeAgente, "?", sessao, motivo);
 
         const branch = obterBranch(raiz);
@@ -809,7 +824,13 @@ function main() {
           msg += `  branch: ${branch}\n`;
         }
         msg += `  estágio resolvido: ?\n`;
-        msg += `  alternativas: abra um fluxo com seu agente, ou responda "autorizo subagentes" nesta sessão\n`;
+        let alternativas;
+        if (quaseAutorizou !== null) {
+          alternativas = `  alternativas: responda "autorizo subagentes" nesta sessão, ou verifique se digitou a palavra corretamente\n`;
+        } else {
+          alternativas = `  alternativas: abra um fluxo com seu agente, ou responda "autorizo subagentes" nesta sessão\n`;
+        }
+        msg += alternativas;
 
         if (outrosWorktrees.length > 0) {
           msg += formatarOutrosWorktreesAbertos(outrosWorktrees);
