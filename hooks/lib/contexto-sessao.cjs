@@ -2,6 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const { resolverRaiz } = require('./raiz.cjs');
+const { cortarBytes } = require('./bytes.cjs');
 
 /**
  * contexto-sessao.cjs — motor puro do SessionStart (foco-session-start.cjs).
@@ -1010,7 +1011,6 @@ function limitarBytes(texto, maxBytes, nomeDoBloco) {
   return cortarBytes(s, espaco).trimEnd() + aviso;
 }
 
-/** Corta em `max` BYTES sem partir um caractere multibyte no meio. */
 /**
  * Corta em CARACTERES (code points), com reticencia quando cortou.
  *
@@ -1025,18 +1025,7 @@ function cortarCaracteres(texto, maxChars) {
   return chars.slice(0, Math.max(0, maxChars - 1)).join('').trimEnd() + '…';
 }
 
-function cortarBytes(texto, max) {
-  const s = String(texto || '');
-  if (Buffer.byteLength(s, 'utf8') <= max) return s;
-  let baixo = 0;
-  let alto = s.length;
-  while (baixo < alto) {
-    const meio = Math.ceil((baixo + alto) / 2);
-    if (Buffer.byteLength(s.slice(0, meio), 'utf8') <= max) baixo = meio;
-    else alto = meio - 1;
-  }
-  return s.slice(0, baixo);
-}
+/** `cortarBytes` vem de bytes.cjs — compartilhada com memoria-sessao.cjs. */
 
 /**
  * Trava de orçamento: falha RUIDOSA quando o payload passa do teto.

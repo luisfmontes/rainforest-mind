@@ -50,6 +50,9 @@ RAIZ_NEUTRA="$(novo_sandbox)"
 # ve que "diferiu" e credita `ok` — passa VERDE por nao ter conseguido executar nada,
 # que e exatamente a familia de defeito que ela existe para pegar.
 cp "$SRC/hooks/lib/raiz.cjs" "$RAIZ_POSIX/raiz.cjs"
+# Mesmo motivo, mesma correcao: desde a Issue #259 a lib tambem faz
+# `require('./bytes.cjs')` (cortarBytes deixou de ser copia local).
+cp "$SRC/hooks/lib/bytes.cjs" "$RAIZ_POSIX/bytes.cjs"
 
 ok=0; falhou=0
 
