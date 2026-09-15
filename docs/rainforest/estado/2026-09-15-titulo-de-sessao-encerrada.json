@@ -1,0 +1,28 @@
+{
+  "slug": "2026-09-15-titulo-de-sessao-encerrada",
+  "titulo": "Marcar no titulo da sessao, no SessionEnd de /exit, se o fluxo fechou ou onde parou",
+  "criado_em": "2026-09-15",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-15-titulo-de-sessao-encerrada.md",
+    "em": "2026-09-15"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
