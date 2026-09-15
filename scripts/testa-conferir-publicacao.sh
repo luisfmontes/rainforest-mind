@@ -264,6 +264,32 @@ tem     "valor literal e acusado"                               "$S" "credencial
 saiu    "e RECUSA (exit 2)"                                     "$(codigo "$SBP/cred-literal.md")" "2"
 
 echo
+
+echo
+echo "== 6d. token nu entre ASPAS continua sendo segredo (auditoria do zerar-issues-4) =="
+# A regex consome a aspa de ABERTURA fora do grupo, mas a de FECHAMENTO cai
+# dentro da captura, porque `\S+` so para no espaco. Enquanto o `so_se` aparava
+# so o comeco, `ehSegredoCredivel` reprovava o valor por causa da aspa colada e
+# o `token` nu era ISENTADO -- a tarefa 9 abria a fresta que dizia fechar.
+# As duas formas abaixo davam exit 2 em 14c471ed e passaram a dar 0.
+HEX32=$(printf '%s%s%s%s' 8f3a9c2b 1e7d4a6f 0b5c8e2d 9a4f7c1b)
+
+printf '# config\n\ntoken: "%s"\n' "$HEX32" > "$SBP/cred-token-aspas-duplas.md"
+tem     "token nu entre aspas DUPLAS e acusado"        "$(roda "$SBP/cred-token-aspas-duplas.md")" "credencial"
+saiu    "e RECUSA (exit 2)"                            "$(codigo "$SBP/cred-token-aspas-duplas.md")" "2"
+
+printf '# config\n\ntoken: %s%s%s\n' "'" "$HEX32" "'" > "$SBP/cred-token-aspas-simples.md"
+tem     "token nu entre aspas SIMPLES e acusado"       "$(roda "$SBP/cred-token-aspas-simples.md")" "credencial"
+saiu    "e RECUSA (exit 2)"                            "$(codigo "$SBP/cred-token-aspas-simples.md")" "2"
+
+# E o que a tarefa 9 liberou de proposito continua liberado: identificador de
+# codigo, e referencia de variavel entre aspas (que a aparadura nao pode quebrar).
+printf '# codigo\n\nconst token = toks[i];\n' > "$SBP/cred-token-identificador.md"
+saiu    "identificador const token = toks[i]; PASSA (exit 0)"  "$(codigo "$SBP/cred-token-identificador.md")" "0"
+
+printf '# workflow\n\ntoken: "${GITHUB_TOKEN}"\n' > "$SBP/cred-token-ref-aspas.md"
+saiu    "referencia de variavel entre aspas PASSA (exit 0)"      "$(codigo "$SBP/cred-token-ref-aspas.md")" "0"
+
 echo "== 8. dump hexadecimal nao e telefone (Issue #144) =="
 # Provar defeito de encoding exige colar bytes; ate 2026-09-02 o gate lia as
 # colunas de `xxd` como telefone e barrava a unica evidencia que o metodo aceita.

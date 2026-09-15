@@ -260,7 +260,16 @@ const PADROES = [
     // não no arquivo. Isenta interpolação de shell (${VAR}, $VAR), variáveis
     // do Windows (%VAR%), e expressões do GitHub Actions (${{ secrets.X }}).
     so_se: (m, linha) => {
-      const valor = m[1].replace(/^["']+/, '');
+      // A regex consome a aspa de ABERTURA fora do grupo (`["']?` antes de
+      // `(\S+)`), mas a de FECHAMENTO fica dentro da captura, porque `\S+` so
+      // para no espaco. Aparar so o comeco deixava o valor com a aspa colada, e
+      // `ehSegredoCredivel` — que so aceita base64/hex/hifen — reprovava por causa
+      // dela. Efeito medido: `token: "<32 hex>"` saia LIMPO no HEAD e era pego em
+      // 14c471ed, ou seja, esta tarefa abria a fresta que dizia estar fechando.
+      // Virgula e ponto-e-virgula entram pelo mesmo motivo (`"token": "...",` de
+      // JSON). Fecha-chaves NAO entra: apara-lo quebraria `${VAR}` e a isencao de
+      // referencia de variavel logo abaixo passaria a acusar.
+      const valor = m[1].replace(/^["']+/, '').replace(/["',;]+$/, '');
       const chaveComOp = m[0];
       const chave = chaveComOp.match(/^(.*?)\s*[:=]/i)[1].toLowerCase();
       const ehTokenNu = chave === 'token';
