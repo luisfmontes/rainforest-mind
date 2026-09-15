@@ -178,7 +178,9 @@ function corpoDeHeredoc(cmd, i) {
     return {
       fim: cmd.length,
       corpo: '',
-      comando: extrairComandoDoHeredoc(cmd, i)
+      comando: extrairComandoDoHeredoc(cmd, i),
+      delimitadorQuotado: tipoAspa !== null,
+      fechado: false
     };
   }
 
@@ -186,6 +188,7 @@ function corpoDeHeredoc(cmd, i) {
   let corpo = '';
   let linhaAtual = '';
   let fim = cmd.length;
+  let achouFechamento = false;
   let k = inicioCorpo + 1;
 
   while (k < cmd.length) {
@@ -200,6 +203,7 @@ function corpoDeHeredoc(cmd, i) {
       const linhaComparada = tiraTabs ? linhaAtual.replace(/^\t+/, '') : linhaAtual;
       if (linhaComparada === delimitador) {
         fim = k + 1;
+        achouFechamento = true;
         break;
       }
       corpo += linhaAtual + '\n';
@@ -213,13 +217,28 @@ function corpoDeHeredoc(cmd, i) {
 
   // Se saiu do loop sem encontrar o delimitador, adiciona a última linha ao corpo
   if (fim === cmd.length && linhaAtual) {
-    corpo += linhaAtual;
+    // Sem quebra de linha final, o laco nunca compara a ultima linha. Ela
+    // ainda pode ser o delimitador: um heredoc citado cujo texto termina em
+    // EOF sem quebra depois FECHA no bash, e precisa contar como fechado.
+    // So a marca muda; `fim` e `corpo` ficam como estavam, para nao alterar
+    // o comportamento de quem ja consome os tres campos (gate-fechar-issue).
+    if ((tiraTabs ? linhaAtual.replace(/^\t+/, '') : linhaAtual) === delimitador) {
+      achouFechamento = true;
+    } else {
+      corpo += linhaAtual;
+    }
   }
 
   return {
     fim: fim,
     corpo: corpo,
-    comando: extrairComandoDoHeredoc(cmd, i)
+    comando: extrairComandoDoHeredoc(cmd, i),
+    // Campos ACRESCENTADOS (zerar-issues-4, segunda revisao). Os tres acima
+    // mantem nome, tipo e valor: quem so le `fim`/`corpo`/`comando` nao muda.
+    // Quem decide MASCARAR precisa dos dois abaixo -- ver a nota em
+    // `mascararCorposDeHeredoc`, no gate-staging-total.cjs.
+    delimitadorQuotado: tipoAspa !== null,
+    fechado: achouFechamento
   };
 }
 

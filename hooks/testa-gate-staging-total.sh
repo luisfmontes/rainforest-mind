@@ -65,6 +65,8 @@ p() { printf '{"cwd":"%s","hook_event_name":"PreToolUse","tool_name":"PowerShell
 # caractere de controle: o JSON.parse do gate falha e ele sai 0 sem avaliar
 # nada. JSON.stringify escapa. (zerar-issues-4, #258)
 bml() { node -e 'const [c,d]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd:d,hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:c}}))' "$1" "${2:-$(esc "$R")}"; }
+# Idem para a ferramenta PowerShell.
+pml() { node -e 'const [c,d]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd:d,hook_event_name:"PreToolUse",tool_name:"PowerShell",tool_input:{command:c}}))' "$1" "${2:-$(esc "$R")}"; }
 
 echo "== deve BARRAR (exit 2) — inclusive na janela principal =="
 gate "JANELA PRINCIPAL: git add -A (incidente 1 e 2)" 2 "$(b 'git add -A')"
@@ -317,6 +319,28 @@ gate "(d) corpo com crase, \$(...), \$VAR e pipe" 0 "$(bml "$(printf 'cat > /tmp
 gate "(e) bash <<'EOF' com staging em massa no corpo BARRA" 2 "$(bml "$(printf 'bash <<%sEOF%s\ngit add -A\nEOF' "'" "'")")"
 gate "(f) staging em massa nu continua barrando" 2 "$(b 'git add -A')"
 gate "(g) heredoc sem linha de fechamento nao trava o gate" 0 "$(bml "$(printf 'cat <<%sEOF%s\nconteudo incompleto\nls -la' "'" "'")")"
+
+echo
+echo "== a mascara de heredoc nao pode ABRIR o gate (auditoria do zerar-issues-4) =="
+# Estes oito casos passavam no gate ANTES desta mascara existir e voltaram a
+# passar depois da primeira versao dela -- `git add -A` atravessando por causa
+# de um `<<` que nao era operador de heredoc, ou de um corpo que o bash expande.
+# Medidos contra `git archive 14c471ed | hooks/gate-staging-total.cjs`: todos
+# davam exit 2 na base. Falha aqui e regressao de seguranca, nao de estilo.
+
+gate "<< dentro de aspas duplas nao inicia heredoc" 2 "$(bml "$(printf 'echo \"a << b\"\ngit add -A')")"
+gate "<< dentro de aspas simples nao inicia heredoc" 2 "$(bml "$(printf 'echo %sa << b%s\ngit add -A' "'" "'")")"
+gate "<< em comentario nao inicia heredoc" 2 "$(bml "$(printf '# ver << abaixo\ngit add -A')")"
+gate "<< em aspas, com git commit -a depois" 2 "$(bml "$(printf 'echo \"x << y\"\ngit commit -am \"z\"')")"
+gate "linha de fechamento FALSA nao valida o heredoc" 2 "$(bml "$(printf 'echo \"a << b\"\ngit add -A\nb\"')")"
+gate "corpo de heredoc NAO citado expande e vira comando" 2 "$(bml "$(printf 'cat <<EOF\n$(git add -A)\nEOF')")"
+gate "heredoc nu gravado em script e executado adiante" 2 "$(bml "$(printf 'cat <<EOF > x.sh\ngit add -A\nEOF\nbash x.sh')")"
+gate "heredoc citado gravado em script e executado adiante" 2 "$(bml "$(printf 'cat <<%sEOF%s > x.sh\ngit add -A\nEOF\nbash x.sh' "'" "'")")"
+
+# PowerShell nao tem heredoc nenhum, e o gate roda a mesma mascara nas duas
+# ferramentas. Esta e a ferramenta primaria desta maquina (R3).
+gate "PowerShell: << em aspas nao esconde git add -A" 2 "$(pml "$(printf 'Write-Host \"a << b\"\ngit add -A')")"
+gate "PowerShell: << em comentario nao esconde git add -A" 2 "$(pml "$(printf '# compara a << b\ngit add -A')")"
 
 echo
 echo "== saidas de emergencia =="
