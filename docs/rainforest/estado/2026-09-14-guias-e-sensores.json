@@ -24,7 +24,93 @@
     "em": "2026-09-14"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-09-14",
+    "tarefas_ok": 8,
+    "tarefas": 8,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "14c471ed",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-14T23:41:18.678Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "14c471ed",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-14T23:41:18.678Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "14c471ed",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-14T23:41:18.678Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "14c471ed",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-14T23:41:18.678Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "14c471ed",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-14T23:41:18.678Z"
+      }
+    ],
+    "em": "2026-09-14",
+    "comando": "bash scripts/testa-saude.sh",
+    "saida": "== resultado: 67 ok, 0 falha(s) == (exit 0, zero FALHA em todo o log)",
+    "sensor_externo": "bash scripts/testa-saude.sh",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-categoria.sh, caso 2 — peca REAL sem marca reprova nomeando o caminho"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-orcamento.sh, secao 6 — teto agregado acompanha edicao de MEMORIA_MAX_BYTES na copia da lib"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria-session-start.sh, secao 3 — corte anunciado nomeando quantas marcas ficaram de fora"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-contexto-sessao.sh, secao 3.5 — FOCO.md com avanco de 8 dias exige a linha de aviso"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-estado.sh, secao 27, caso sens-rej — verificar RECUSA comando que nao e sensor nem declarado"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-portaria-manifesto.cjs, caso 5c — sensor pedido fora da lista, exit 2"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-portaria-manifesto.cjs, caso 6 — linha lida do SKILL.md aceita pelo parser"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "n/a",
+        "motivo": "medicao nao tem comportamento a inverter; a falsificacao dela e a rastreabilidade, conferida por git log --grep e por conferir-publicacao"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente"
