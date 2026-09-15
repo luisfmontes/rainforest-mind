@@ -349,6 +349,70 @@ console.log("== (f) negação por agente não declarado diz qual manifesto foi l
   fs.rmSync(raiz2, { recursive: true, force: true });
 }
 
+// == (g) D5: digitação quase-correta culpa digitação, não estágio ==
+console.log("== (g) digitação quase-correta culpa digitação, não estágio ==");
+{
+  const raiz = caixa();
+  iniciarGit(raiz, "fluxo/d5-quase");
+
+  // Monta um transcript com a última linha sendo um user message com "autorizo subgens"
+  // (distancia 3 de "subagente", fora da tolerancia 2)
+  const transcriptPath = path.join(raiz, "transcript.jsonl");
+  const transcriptContent = JSON.stringify({
+    type: "user",
+    message: {
+      content: "autorizo subgens"
+    }
+  }) + "\n";
+  fs.writeFileSync(transcriptPath, transcriptContent, "utf8");
+
+  const payload = {
+    session_id: "diag-g-quase",
+    transcript_path: transcriptPath,
+    tool_input: { subagent_type: "revisor" },
+  };
+
+  const r = rodaHook(raiz, JSON.stringify(payload));
+
+  caso("exit 2", r.status === 2, `exit=${r.status}`);
+  caso("stderr contém 'subgens' (palavra lida)", r.stderr.includes("subgens"), `stderr: ${r.stderr}`);
+  caso("stderr NÃO contém 'sem estágio ativo'", !r.stderr.includes("sem estágio ativo"), `stderr: ${r.stderr}`);
+  caso("stderr contém 'quase' (diagnóstico correto)", r.stderr.includes("quase"), `stderr: ${r.stderr}`);
+
+  fs.rmSync(raiz, { recursive: true, force: true });
+}
+
+// == (h) D5: sem menção a subagente, recusa é a de hoje ==
+console.log("== (h) sem menção a subagente, recusa é a de hoje ==");
+{
+  const raiz = caixa();
+  iniciarGit(raiz, "fluxo/d5-normal");
+
+  // Monta um transcript com uma mensagem normal, sem autorização
+  const transcriptPath = path.join(raiz, "transcript.jsonl");
+  const transcriptContent = JSON.stringify({
+    type: "user",
+    message: {
+      content: "preciso de ajuda com um problema"
+    }
+  }) + "\n";
+  fs.writeFileSync(transcriptPath, transcriptContent, "utf8");
+
+  const payload = {
+    session_id: "diag-h-normal",
+    transcript_path: transcriptPath,
+    tool_input: { subagent_type: "revisor" },
+  };
+
+  const r = rodaHook(raiz, JSON.stringify(payload));
+
+  caso("exit 2", r.status === 2, `exit=${r.status}`);
+  caso("stderr contém 'sem estágio ativo — abra um fluxo'", r.stderr.includes("sem estágio ativo — abra um fluxo"), `stderr: ${r.stderr}`);
+  caso("stderr NÃO contém 'quase'", !r.stderr.includes("quase"), `stderr: ${r.stderr}`);
+
+  fs.rmSync(raiz, { recursive: true, force: true });
+}
+
 console.log(`\n== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 
 if (falhou > 0) {
