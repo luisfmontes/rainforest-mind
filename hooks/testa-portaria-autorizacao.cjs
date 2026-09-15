@@ -428,6 +428,66 @@ console.log("== 10. transcript vazio, inexistente, e com linha JSON partida no f
   caso("e a concessao da linha anterior, intacta, ainda vale = true", partida === true, partida);
 }
 
+console.log("== 3i. Tarefa 3: formas aproximadas por distancia de Levenshtein ==");
+{
+  // Sete formas que AUTORIZAM
+  const autorizam = [
+    { frase: "autorizo subagentes", desc: "exata" },
+    { frase: "autorizo subagente", desc: "exata singular" },
+    { frase: "autorizo sub agentes", desc: "espaço (hifen esquecido)" },
+    { frase: "autorizo subagens", desc: "aprox. dist=2 (e→ag)" },
+    { frase: "autorizo os subagens", desc: "aprox. em janela de 2 palavras" },
+    { frase: "autoriza subagens", desc: "aprox. com verbo 'autoriza'" },
+    { frase: "autorizo subgentes", desc: "aprox. dist=1 (a→g)" },
+  ];
+
+  for (const tc of autorizam) {
+    const tmpfile = path.join(os.tmpdir(), `test-aprox-${Date.now()}-${Math.random()}.jsonl`);
+    const linha = JSON.stringify({
+      type: 'user',
+      message: { content: tc.frase },
+      origin: { kind: 'human' }
+    });
+    fs.writeFileSync(tmpfile, linha + '\n', 'utf8');
+    const r = autorizado(tmpfile);
+    caso(`'${tc.frase}' AUTORIZA (${tc.desc})`, r === true, r);
+    fs.unlinkSync(tmpfile);
+  }
+
+  // Seis formas que NÃO AUTORIZAM
+  const naoAutorizam = [
+    { frase: "nao autorizo subagentes", desc: "negação explícita" },
+    { frase: "autorizo submarinos", desc: "dist=5, fora da tolerância" },
+    { frase: "autorizo subir a versao", desc: "subir → dist=4, fora" },
+    { frase: "autorizo o deploy", desc: "sem 'sub'" },
+    { frase: "se eu autorizar subagentes um dia, avise", desc: "cláusula subordinada" },
+  ];
+
+  for (const tc of naoAutorizam) {
+    const tmpfile = path.join(os.tmpdir(), `test-aprox-${Date.now()}-${Math.random()}.jsonl`);
+    const linha = JSON.stringify({
+      type: 'user',
+      message: { content: tc.frase },
+      origin: { kind: 'human' }
+    });
+    fs.writeFileSync(tmpfile, linha + '\n', 'utf8');
+    const r = autorizado(tmpfile);
+    caso(`'${tc.frase}' NAO autoriza (${tc.desc})`, r === false, r);
+    fs.unlinkSync(tmpfile);
+  }
+
+  // Seis: mesmo com tool_result
+  const tmpfileTool = path.join(os.tmpdir(), `test-aprox-tool-${Date.now()}.jsonl`);
+  const linhaTool = JSON.stringify({
+    type: 'user',
+    message: { content: [{ type: 'tool_result', content: 'autorizo subagentes' }] }
+  });
+  fs.writeFileSync(tmpfileTool, linhaTool + '\n', 'utf8');
+  const rTool = autorizado(tmpfileTool);
+  caso("tool_result com 'autorizo subagentes' NAO autoriza (voz errada)", rTool === false, rTool);
+  fs.unlinkSync(tmpfileTool);
+}
+
 // ============================================================================
 // PARTE 2 — PORTARIA (hooks/portaria.cjs), processo real
 // ============================================================================

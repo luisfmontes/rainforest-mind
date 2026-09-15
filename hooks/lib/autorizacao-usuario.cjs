@@ -1,6 +1,40 @@
 const fs = require('fs');
 
 /**
+ * Distância de Levenshtein entre duas strings (algoritmo DP clássico).
+ * @param {string} a
+ * @param {string} b
+ * @returns {number}
+ */
+function levenshtein(a, b) {
+  if (!a) return b.length;
+  if (!b) return a.length;
+
+  const m = a.length;
+  const n = b.length;
+  const dp = Array(m + 1).fill(0).map(() => Array(n + 1).fill(0));
+
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + cost
+      );
+    }
+  }
+
+  return dp[m][n];
+}
+
+/** Tolerância de distância de Levenshtein para formas de "subagente" */
+const TOLERANCIA_SUBAGENTE = 2;
+
+/**
  * Lê a autorização de subagentes do usuário no transcript.
  *
  * Estratégia:
@@ -246,8 +280,63 @@ function normalizar(texto) {
 }
 
 /**
+ * Encontra uma palavra começada por "sub" após um verbo de autorização.
+ * Devolve { palavra, distancia } quando encontra, ou null caso contrário.
+ * Procura dentro de uma janela de até 2 palavras depois do verbo.
+ */
+function palavraSubDepoisDoVerbo(fraseNormalizada) {
+  const match = fraseNormalizada.match(/\b(autorizo|autorizando|autorizar|autoriza|autorizacao)\b/);
+  if (!match) return null;
+
+  const posVerbo = match.index + match[0].length;
+  const depois = fraseNormalizada.substring(posVerbo).trim();
+  const palavras = depois.split(/[^\p{L}]+/u).filter(t => t);
+
+  if (!palavras.length) return null;
+
+  // Procura por uma palavra começada por 'sub' dentro de uma janela de 2 palavras
+  for (let i = 0; i < Math.min(2, palavras.length); i++) {
+    const palavra = palavras[i];
+    if (palavra.startsWith('sub')) {
+      const dist1 = levenshtein(palavra, 'subagente');
+      const dist2 = levenshtein(palavra, 'subagentes');
+      const distancia = Math.min(dist1, dist2);
+      return { palavra, distancia };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Devolve a palavra lida quando a linha tem autoriz* seguido de uma palavra
+ * começada por 'sub' que NÃO passou na tolerância.
+ * Devolve null se: não há palavra-sub, a palavra passa na tolerância, ou há
+ * exatamente a forma pelas regras do regex.
+ */
+function quaseFormaDeSubagente(texto) {
+  if (!texto || typeof texto !== 'string') return null;
+
+  const normalizado = normalizar(texto);
+
+  if (FORMAS_DE_SUBAGENTE.test(normalizado)) {
+    return null;
+  }
+
+  const aprox = palavraSubDepoisDoVerbo(normalizado);
+  if (!aprox) return null;
+
+  if (aprox.distancia <= TOLERANCIA_SUBAGENTE) {
+    return null;
+  }
+
+  return aprox.palavra;
+}
+
+/**
  * Verifica se objeto contém negação explícita
- * Formas cobertas: "não autorizo", "não autorizar", "nunca autorizo", "não vou autorizar"
+ * Formas cobertas: "não autorizo", "não autorizar", "nunca autorizo", "não vou autorizar",
+ * "não autoriza", "nunca autoriza"
  * EXIGE proximidade com "subagente(s)" ou "agente" (não qualquer "não autorizo")
  */
 function temNegacaoExplicita(obj) {
@@ -271,6 +360,8 @@ function temNegacaoExplicita(obj) {
     /\bnao\s+autorizar\b/,
     /\bnunca\s+autorizo\b/,
     /\bnao\s+vou\s+autorizar\b/,
+    /\bnao\s+autoriza\b/,
+    /\bnunca\s+autoriza\b/,
   ];
 
   // Só é negação se contém AMBAS: forma de negação + menção a subagente/agente
@@ -279,6 +370,12 @@ function temNegacaoExplicita(obj) {
       // Encontra a negação e procura por "subagente" ou "agente" próximo
       const temSubagente = FORMAS_DE_AGENTE.test(normalizado);
       if (temSubagente) {
+        return true;
+      }
+
+      // Também nega se há uma palavra começada por 'sub' dentro da tolerância
+      const aproxNeg = palavraSubDepoisDoVerbo(normalizado);
+      if (aproxNeg && aproxNeg.distancia <= TOLERANCIA_SUBAGENTE) {
         return true;
       }
     }
@@ -318,7 +415,7 @@ function temAutorizacaoPrincipal(obj) {
   // Na 2ª frase "sub agentes" ESTÁ no começo, mas na linha inteira não está, e
   // o atalho matava antes. Atalho que decide é atalho errado: quem responde por
   // "tem subagente aqui?" é o laço, uma frase de cada vez.
-  const temAutoriz = /\bautorizo\b|\bautorizando\b|\bautorizar\b|\bautorizacao\b/.test(normalizado);
+  const temAutoriz = /\bautorizo\b|\bautorizando\b|\bautorizar\b|\bautoriza\b|\bautorizacao\b/.test(normalizado);
   if (!temAutoriz) {
     return false;
   }
@@ -418,8 +515,14 @@ function temAutorizacaoPrincipal(obj) {
     let texto = frase.trim();
     if (!texto) continue;
 
-    if (!/\bautorizo\b|\bautorizando\b|\bautorizar\b/.test(texto)) continue;
-    if (!FORMAS_DE_SUBAGENTE.test(texto)) continue;
+    if (!/\bautorizo\b|\bautorizando\b|\bautorizar\b|\bautoriza\b/.test(texto)) continue;
+
+    // Verifica forma exata OU forma aproximada dentro da tolerância
+    const temFormaExata = FORMAS_DE_SUBAGENTE.test(texto);
+    const aprox = palavraSubDepoisDoVerbo(texto);
+    const temFormaAprox = aprox && aprox.distancia <= TOLERANCIA_SUBAGENTE;
+
+    if (!temFormaExata && !temFormaAprox) continue;
 
     // Confirmação casual no fim não transforma concessão em pergunta.
     // "autorizo subagentes, beleza?" é o usuário autorizando e checando, não
@@ -533,7 +636,7 @@ function temAutorizacaoPrincipal(obj) {
         continue;
       }
 
-      const posAutoriz = o.search(/\bautorizo\b|\bautorizando\b|\bautorizar\b/);
+      const posAutoriz = o.search(/\bautorizo\b|\bautorizando\b|\bautorizar\b|\bautoriza\b/);
       if (posAutoriz === -1) continue;
 
       let subordinada = false;
@@ -560,4 +663,5 @@ function temAutorizacaoPrincipal(obj) {
 module.exports = {
   autorizado,
   temNegacaoExplicita,
+  quaseFormaDeSubagente,
 };
