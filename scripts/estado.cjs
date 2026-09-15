@@ -1296,7 +1296,7 @@ function main() {
     console.log('commite este arquivo junto com o trabalho — e por ele que outra');
     console.log('sessao, ou outro dev, retoma de onde parou.');
     console.log(`proximo: ${proximo(e)}`);
-    carimbarFluxo({ slug, estagio: 'design' });
+    carimbarFluxo({ slug, estagio: 'design', aberto: proximo(e) });
     return;
   }
 
@@ -1400,7 +1400,7 @@ function main() {
         gravar(slug, estado);
         console.log("catraca armada: fechar este 'executar' com 'ok' vai exigir o campo 'mutacao' no --json.");
       }
-      carimbarFluxo({ slug, estagio });
+      carimbarFluxo({ slug, estagio, aberto: proximo(estado) });
       return;
     }
     // Exit 2, não 1: é a mesma convenção dos gates deste repo, e o que separa
@@ -1641,7 +1641,7 @@ function main() {
     console.log(`${estagio}: ${status}`);
     const p = proximo(estado);
     console.log(p ? `proximo: ${p}` : 'completo');
-    carimbarFluxo({ slug, estagio });
+    carimbarFluxo({ slug, estagio, aberto: p });
     return;
   }
 

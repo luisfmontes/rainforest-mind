@@ -13,7 +13,16 @@
 // no topo daquele arquivo).
 //
 // Forma do arquivo:
-//   { "<session_id>": { "ts": <epoch_ms>, "fluxos": [ { "slug", "estagio", "ts" } ] } }
+//   { "<session_id>": { "ts": <epoch_ms>, "fluxos": [ { "slug", "estagio", "aberto", "ts" } ] } }
+//
+// `estagio` e o ultimo estagio TOCADO (o que o call site passou). `aberto` e o
+// PROXIMO estagio nao-fechado (o que `scripts/estado.cjs:proximo(estado)` ja
+// calcula), ou `null` quando o fluxo completou. Sao informacoes diferentes:
+// `exigir --estagio fechar` toca `fechar` mas o fluxo continua aberto nele
+// mesmo; `marcar --estagio fechar --status ok` tambem toca `fechar`, mas dessa
+// vez o fluxo completou. Sem o campo `aberto` essas duas gravacoes ficam
+// indistinguiveis, e o hook de titulo de sessao (Parte B) nao tem como decidir
+// `[ok]` vs `[aberto: <estagio>]`.
 //
 // Uma entrada por slug: rodar o verbo de novo no mesmo slug ATUALIZA o
 // `estagio` daquela entrada (mesma posição no array), nunca acrescenta outra.
@@ -42,11 +51,16 @@ function caminhoLedger() {
 }
 
 /**
- * Carimba `{slug, estagio}` na entrada da sessão atual (lida de
+ * Carimba `{slug, estagio, aberto}` na entrada da sessão atual (lida de
  * `CLAUDE_SESSION_ID`). Sem a variável de ambiente, não grava nada.
  * Nunca lança — qualquer falha de leitura, parse ou escrita é engolida.
  *
- * @param {{slug: string, estagio: string}} o
+ * `aberto` é o próximo estágio não-fechado (string) ou `null` quando o fluxo
+ * completou. Campo opcional: chamador que não passa `aberto` grava `null` —
+ * mais seguro que omitir a chave, porque quem lê o ledger (Parte B) sempre
+ * encontra a chave presente.
+ *
+ * @param {{slug: string, estagio: string, aberto?: string|null}} o
  */
 function carimbarFluxo(o) {
   try {
@@ -54,6 +68,7 @@ function carimbarFluxo(o) {
     if (!sessao) return;
     const slug = o && o.slug;
     const estagio = o && o.estagio;
+    const aberto = o && Object.prototype.hasOwnProperty.call(o, 'aberto') ? o.aberto : null;
     if (!slug || !estagio) return;
 
     const arquivo = caminhoLedger();
@@ -75,9 +90,9 @@ function carimbarFluxo(o) {
 
     const idx = fluxos.findIndex((f) => f && f.slug === slug);
     if (idx >= 0) {
-      fluxos[idx] = { slug, estagio, ts: agora };
+      fluxos[idx] = { slug, estagio, aberto, ts: agora };
     } else {
-      fluxos.push({ slug, estagio, ts: agora });
+      fluxos.push({ slug, estagio, aberto, ts: agora });
     }
 
     ledger[sessao] = { ts: agora, fluxos };
@@ -101,4 +116,4 @@ function carimbarFluxo(o) {
   }
 }
 
-module.exports = { carimbarFluxo };
+module.exports = { carimbarFluxo, caminhoLedger };

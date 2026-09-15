@@ -39,6 +39,17 @@ lerCampos() {
   ' "$1" "$2" 2>&1
 }
 
+lerAberto() {
+  # $1 = caminho do fluxos-sessao.json, $2 = session_id
+  node -e '
+    const fs = require("fs");
+    const l = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+    const e = l[process.argv[2]];
+    const f = (e && e.fluxos) || [];
+    console.log(JSON.stringify(f[0] && f[0].aberto));
+  ' "$1" "$2" 2>&1
+}
+
 echo
 echo "=========================================="
 echo "TESTE 1: iniciar carimba slug e estagio sob o CLAUDE_SESSION_ID do ambiente"
@@ -221,6 +232,70 @@ if [ "$RES5" = "1 teste-corrompido design" ]; then
   ok=$((ok+1)); echo "  ok    ledger se recuperou do JSON corrompido e carimbou a sessao atual"
 else
   falhou=$((falhou+1)); echo "  FALHA ledger nao se recuperou: '$RES5'"
+fi
+
+echo
+echo "=========================================="
+echo "TESTE 6: campo 'aberto' distingue fluxo aberto de fluxo completo (Parte A)"
+echo "=========================================="
+T6_POSIX="$BASE_POSIX/t6"; mkdir -p "$T6_POSIX"
+T6="$(aformato "$T6_POSIX")"
+SESSAO6="66666666-6666-6666-6666-666666666666"
+E6="RFM_ESTADO_ROOT=$T6 RFM_ROOT=$T6 CLAUDE_SESSION_ID=$SESSAO6"
+
+# Percorre o fluxo inteiro ate 'exigir --estagio fechar' (fluxo ainda ABERTO
+# nele mesmo), depois fecha com 'marcar --estagio fechar --status ok' (fluxo
+# COMPLETO) — mesma sequencia de scripts/testa-estado.sh, secao 2.
+RFM_ESTADO_ROOT="$T6" RFM_ROOT="$T6" CLAUDE_SESSION_ID="$SESSAO6" \
+  node "$ESTADO_JS" iniciar --slug teste-aberto --titulo "t" > /dev/null 2>&1
+RFM_ESTADO_ROOT="$T6" RFM_ROOT="$T6" CLAUDE_SESSION_ID="$SESSAO6" \
+  node "$ESTADO_JS" marcar --slug teste-aberto --estagio design --status aprovado > /dev/null 2>&1
+RFM_ESTADO_ROOT="$T6" RFM_ROOT="$T6" CLAUDE_SESSION_ID="$SESSAO6" \
+  node "$ESTADO_JS" marcar --slug teste-aberto --estagio plano --status ok > /dev/null 2>&1
+RFM_ESTADO_ROOT="$T6" RFM_ROOT="$T6" CLAUDE_SESSION_ID="$SESSAO6" \
+  node "$ESTADO_JS" exigir --slug teste-aberto --estagio executar > /dev/null 2>&1
+RFM_ESTADO_ROOT="$T6" RFM_ROOT="$T6" CLAUDE_SESSION_ID="$SESSAO6" \
+  node "$ESTADO_JS" marcar --slug teste-aberto --estagio executar --status ok \
+  --json '{"comando":"node script.cjs","saida":"ok","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"caso-teste-1"}]}' > /dev/null 2>&1
+RFM_ESTADO_ROOT="$T6" RFM_ROOT="$T6" CLAUDE_SESSION_ID="$SESSAO6" \
+  node "$ESTADO_JS" marcar --slug teste-aberto --estagio revisar --status ok > /dev/null 2>&1
+RFM_ESTADO_ROOT="$T6" RFM_ROOT="$T6" CLAUDE_SESSION_ID="$SESSAO6" \
+  node "$ESTADO_JS" marcar --slug teste-aberto --estagio verificar --status ok \
+  --json '{"comando":"bash test.sh","saida":"3 cases passed"}' > /dev/null 2>&1
+
+OUT6A=$(RFM_ESTADO_ROOT="$T6" RFM_ROOT="$T6" CLAUDE_SESSION_ID="$SESSAO6" \
+  node "$ESTADO_JS" exigir --slug teste-aberto --estagio fechar 2>&1)
+EXIT6A=$?
+echo "exigir fechar: $OUT6A (exit=$EXIT6A)"
+
+LEDGER6="$T6_POSIX/fluxos-sessao.json"
+if [ "$EXIT6A" -eq 0 ] && [ -f "$LEDGER6" ]; then
+  ABERTO6A=$(lerAberto "$LEDGER6" "$SESSAO6")
+  echo "ledger apos 'exigir fechar': aberto=$ABERTO6A"
+  if [ "$ABERTO6A" = '"fechar"' ]; then
+    ok=$((ok+1)); echo "  ok    exigir --estagio fechar grava aberto: \"fechar\" (fluxo ainda aberto)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA aberto inesperado apos exigir: '$ABERTO6A' (esperado '\"fechar\"')"
+  fi
+else
+  falhou=$((falhou+1)); echo "  FALHA exigir --estagio fechar nao saiu 0 ou ledger ausente"
+fi
+
+OUT6B=$(RFM_ESTADO_ROOT="$T6" RFM_ROOT="$T6" CLAUDE_SESSION_ID="$SESSAO6" \
+  node "$ESTADO_JS" marcar --slug teste-aberto --estagio fechar --status ok 2>&1)
+EXIT6B=$?
+echo "marcar fechar ok: $OUT6B (exit=$EXIT6B)"
+
+if [ "$EXIT6B" -eq 0 ] && [ -f "$LEDGER6" ]; then
+  ABERTO6B=$(lerAberto "$LEDGER6" "$SESSAO6")
+  echo "ledger apos 'marcar fechar ok': aberto=$ABERTO6B"
+  if [ "$ABERTO6B" = 'null' ]; then
+    ok=$((ok+1)); echo "  ok    marcar --estagio fechar --status ok grava aberto: null (fluxo completo)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA aberto inesperado apos marcar ok: '$ABERTO6B' (esperado 'null')"
+  fi
+else
+  falhou=$((falhou+1)); echo "  FALHA marcar --estagio fechar --status ok nao saiu 0 ou ledger ausente"
 fi
 
 echo
