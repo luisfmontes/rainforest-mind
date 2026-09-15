@@ -9,7 +9,12 @@
 #      vazio NAO entram na comparacao — copia identica dentro deles nao conta;
 #   4. `--funcoes` lista homonimos reais entre `scripts/*.cjs` de uma arvore
 #      de caixa de areia e sai 0 mesmo havendo homonimo;
-#   5. `--json` sai JSON valido nos dois modos.
+#   5. `--json` sai JSON valido nos dois modos;
+#   6. `--funcoes` tambem varre `hooks/`, recursivamente ate `hooks/lib/` —
+#      caso que fica VERMELHO se a varredura voltar a ficar fixa em `scripts/`
+#      (Issue #259: foi assim que `cortarBytes` duplicado em
+#      hooks/lib/memoria-sessao.cjs e hooks/lib/contexto-sessao.cjs escapou
+#      do inventario).
 #
 # A prova por MUTACAO (exit(2)->exit(0) no ramo de duplicata, revertido depois)
 # roda direto no fonte de producao, fora desta bateria — ver o relatorio da
@@ -124,6 +129,24 @@ if [ "$EXIT_JSON2" = "0" ] && echo "$SAIDA_JSON2" | node -e 'let d="";process.st
 else
   falhou=$((falhou+1)); echo "  FALHA 5b: --funcoes --json invalido ou exit errado (exit=$EXIT_JSON2)"; echo "$SAIDA_JSON2" | sed 's/^/         /'
 fi
+
+# ---------------------------------------------------------------- caso 6
+# --funcoes tem de varrer hooks/ tambem, recursivamente ate hooks/lib/ —
+# reproducao minima da Issue #259 (cortarBytes duplicado entre
+# hooks/lib/memoria-sessao.cjs e hooks/lib/contexto-sessao.cjs).
+C6="$RAIZ_POSIX/c6"
+mkdir -p "$C6/hooks/lib"
+cat > "$C6/hooks/lib/m1.cjs" <<'EOF'
+function cortarBytes(texto, max) { return texto; }
+module.exports = { cortarBytes };
+EOF
+cat > "$C6/hooks/lib/m2.cjs" <<'EOF'
+function cortarBytes(texto, max) { return texto; }
+module.exports = { cortarBytes };
+EOF
+C6_NATIVO="$(cygpath -m "$C6" 2>/dev/null || printf '%s' "$C6")"
+SAIDA6="$(node "$SCRIPT" --funcoes --raiz "$C6_NATIVO" 2>&1)"; EXIT6=$?
+checa "6. --funcoes acha homonimo dentro de hooks/lib/" 0 "cortarBytes: hooks/lib/m1.cjs, hooks/lib/m2.cjs" "$SAIDA6" "$EXIT6"
 
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]
