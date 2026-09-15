@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.14.0-1e5c3f?style=flat-square" alt="versão 1.14.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.14.1-1e5c3f?style=flat-square" alt="versão 1.14.1">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -147,6 +147,15 @@ mesmo assim**.
 > deveria travar, ela não trava nada. **Exit code não se argumenta.**
 
 As baterias dos gates rodam em Windows + Git Bash (ambiente do CI: `runs-on: windows-latest`); Linux e macOS não são medidos. Cada gate declara seu modelo de ameaça nos docblocks.
+
+Todas elas se rodam por um comando só, o mesmo que a CI roda — e o exit 0 dele é o que significa “as baterias passaram”:
+
+```bash
+bash scripts/varrer-baterias.sh                       # todas
+bash scripts/varrer-baterias.sh --so scripts/testa-jornada.sh   # uma só
+```
+
+A varredura recusa começar se qualquer uma das duas metades (`scripts/`, `hooks/`) vier vazia: glob quebrado sairia 0 sem provar nada. `--so` aceita só um arquivo existente de nome `testa-*.sh`.
 
 | Hook (`PreToolUse`, exit 2) | Barra |
 |---|---|

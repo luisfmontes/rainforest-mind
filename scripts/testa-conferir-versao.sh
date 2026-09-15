@@ -524,5 +524,18 @@ else
 fi
 
 echo
+echo "== sem origin/main resolvivel: saida diz que pulou a comparacao =="
+# Repositorio sem remoto configurado nao tem origin/main para comparar. O script
+# nao bloqueia (exit 0), mas imprime que pulou a comparacao. Este caso NAO e
+# sobre teto (o outro "sem origin/main" acima o testa com --teto). Esta e a
+# afirmacao de que a falta de remoto devolve SUCESSO COM AVISO, nunca RECUSA.
+saida=$(cd "$R0" && node "scripts/conferir-versao.cjs" --teto 999 2>&1); rc=$?
+if [ "$rc" = 0 ] && printf '%s' "$saida" | grep -qF "nao comparei com origin/main"; then
+  ok=$((ok+1)); echo "  ok   (d) sem origin/main sai 0 e cita que pulou (exit $rc)"
+else
+  falhou=$((falhou+1)); echo "  FALHA (d) sem origin/main: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
+fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

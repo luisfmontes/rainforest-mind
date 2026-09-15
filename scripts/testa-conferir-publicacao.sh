@@ -264,6 +264,78 @@ tem     "valor literal e acusado"                               "$S" "credencial
 saiu    "e RECUSA (exit 2)"                                     "$(codigo "$SBP/cred-literal.md")" "2"
 
 echo
+
+echo
+echo "== 6d. token nu entre ASPAS continua sendo segredo (auditoria do zerar-issues-4) =="
+# A regex consome a aspa de ABERTURA fora do grupo, mas a de FECHAMENTO cai
+# dentro da captura, porque `\S+` so para no espaco. Enquanto o `so_se` aparava
+# so o comeco, `ehSegredoCredivel` reprovava o valor por causa da aspa colada e
+# o `token` nu era ISENTADO -- a tarefa 9 abria a fresta que dizia fechar.
+# As duas formas abaixo davam exit 2 em 14c471ed e passaram a dar 0.
+HEX32=$(printf '%s%s%s%s' 8f3a9c2b 1e7d4a6f 0b5c8e2d 9a4f7c1b)
+
+printf '# config\n\ntoken: "%s"\n' "$HEX32" > "$SBP/cred-token-aspas-duplas.md"
+tem     "token nu entre aspas DUPLAS e acusado"        "$(roda "$SBP/cred-token-aspas-duplas.md")" "credencial"
+saiu    "e RECUSA (exit 2)"                            "$(codigo "$SBP/cred-token-aspas-duplas.md")" "2"
+
+printf '# config\n\ntoken: %s%s%s\n' "'" "$HEX32" "'" > "$SBP/cred-token-aspas-simples.md"
+tem     "token nu entre aspas SIMPLES e acusado"       "$(roda "$SBP/cred-token-aspas-simples.md")" "credencial"
+saiu    "e RECUSA (exit 2)"                            "$(codigo "$SBP/cred-token-aspas-simples.md")" "2"
+
+# E o que a tarefa 9 liberou de proposito continua liberado: identificador de
+# codigo, e referencia de variavel entre aspas (que a aparadura nao pode quebrar).
+printf '# codigo\n\nconst token = toks[i];\n' > "$SBP/cred-token-identificador.md"
+saiu    "identificador const token = toks[i]; PASSA (exit 0)"  "$(codigo "$SBP/cred-token-identificador.md")" "0"
+
+printf '# workflow\n\ntoken: "${GITHUB_TOKEN}"\n' > "$SBP/cred-token-ref-aspas.md"
+saiu    "referencia de variavel entre aspas PASSA (exit 0)"      "$(codigo "$SBP/cred-token-ref-aspas.md")" "0"
+
+echo
+echo "== 6e. token nu volta a ser acusado por PADRAO (revisao do zerar-issues-4) =="
+# A primeira versao da tarefa 9 isentava `token` nu por padrao: so acusava se o
+# valor casasse `^[A-Za-z0-9+/=_-]{16,}$` E tivesse digito. Quatro segredos de
+# verdade saiam LIMPOS. Medido em 2026-09-15 contra a arvore de 14c471ed: os
+# quatro davam exit 2 la e exit 0 aqui. Segredo montado em pedacos de proposito
+# -- o gate de publicacao varre o que e commitado.
+JWT=$(printf '%s.%s.%s' eyJhbGciOiJIUzI1NiJ9 eyJzdWIiOiIxMjM0In0 dBjftJeZ4CVPmB92K27uhbUJ)
+
+printf '# relatorio\n\ntoken: %s\n' "$JWT" > "$SBP/cred-token-jwt.md"
+tem     "JWT sob token nu e acusado (o ponto nao isenta)"   "$(roda "$SBP/cred-token-jwt.md")" "credencial"
+saiu    "e RECUSA (exit 2)"                                 "$(codigo "$SBP/cred-token-jwt.md")" "2"
+
+SEMDIG=$(printf '%s%s' abcdefghijkl mnopqrstuvwx)
+printf '# relatorio\n\ntoken: %s\n' "$SEMDIG" > "$SBP/cred-token-sem-digito.md"
+saiu    "24 letras SEM digito sob token nu RECUSA (exit 2)" "$(codigo "$SBP/cred-token-sem-digito.md")" "2"
+
+PAT=$(printf '%s-%s' glpat ABCDEFGHIJKLMNOPQRST)
+printf '# relatorio\n\ntoken: %s\n' "$PAT" > "$SBP/cred-token-pat-gitlab.md"
+saiu    "PAT do GitLab sob token nu RECUSA (exit 2)"        "$(codigo "$SBP/cred-token-pat-gitlab.md")" "2"
+
+CURTO=$(printf '%s%s' a1b2c3 d4e5f6)
+printf '# relatorio\n\ntoken: %s\n' "$CURTO" > "$SBP/cred-token-curto.md"
+saiu    "segredo curto sob token nu RECUSA (exit 2)"        "$(codigo "$SBP/cred-token-curto.md")" "2"
+
+# A isencao de prosa vale para a lista INTEIRA, como valia antes da tarefa 9.
+# Prende-la dentro do ramo de `token` criou dois falsos positivos novos: as duas
+# linhas abaixo davam exit 0 em 14c471ed e passaram a dar 2.
+printf '# manual\n\nsenha: alguma coisa qualquer aqui\n' > "$SBP/cred-prosa-senha.md"
+saiu    "prosa curta sob senha PASSA (exit 0)"              "$(codigo "$SBP/cred-prosa-senha.md")" "0"
+
+printf '# manual\n\nauthorization: pode ser feita pelo gestor\n' > "$SBP/cred-prosa-authorization.md"
+saiu    "prosa curta sob authorization PASSA (exit 0)"      "$(codigo "$SBP/cred-prosa-authorization.md")" "0"
+
+# A isencao de `token` nu e ESTREITA: declaracao de variavel com valor que NAO
+# abre com aspa. Literal entre aspas depois de `const` e segredo colado.
+printf '# codigo\n\nlet token = proximo();\n' > "$SBP/cred-token-let.md"
+saiu    "let token = proximo(); PASSA (exit 0)"             "$(codigo "$SBP/cred-token-let.md")" "0"
+
+printf '# codigo\n\nconst token = "%s";\n' "$JWT" > "$SBP/cred-token-const-aspas.md"
+saiu    "const token = \"<JWT>\"; RECUSA (exit 2)"            "$(codigo "$SBP/cred-token-const-aspas.md")" "2"
+
+printf '# relatorio\n\ntoken = %s\n' "$JWT" > "$SBP/cred-token-sem-declaracao.md"
+saiu    "token = <JWT> sem declaracao RECUSA (exit 2)"      "$(codigo "$SBP/cred-token-sem-declaracao.md")" "2"
+
+
 echo "== 8. dump hexadecimal nao e telefone (Issue #144) =="
 # Provar defeito de encoding exige colar bytes; ate 2026-09-02 o gate lia as
 # colunas de `xxd` como telefone e barrava a unica evidencia que o metodo aceita.
@@ -575,5 +647,28 @@ tem  "stderr comeca com 'nao-verificavel:'"    "$(roda_commit "$CPUB" deadbeef)"
 rm -rf "$CPUB_POSIX" "$RANGE_POSIX" "$DUPC_POSIX" "$NAODUP_POSIX"
 
 echo
+echo
+echo "== 15. o achado mostra o TRECHO casado, com o valor redigido (#260 D2) =="
+# A mensagem dizia so `linha N  [credencial]` e o texto generico da regua. Quem
+# le nao conseguia confirmar o achado sem reconstruir a entrada por tentativa --
+# e foi por isso que um executor gastou duas rodadas culpando o nome `dist`
+# quando o que disparava era a palavra `token`.
+TRECHO_DIR="$(novo_sandbox)"
+printf 'api_key = aBcD1234XyZw5678QqRsTuVw\n' > "$TRECHO_DIR/cred.txt"
+SAIDA_CRED="$(roda "$TRECHO_DIR/cred.txt")"
+tem     "credencial: o trecho mostra a chave"        "$SAIDA_CRED" "api_key"
+tem     "credencial: o valor sai redigido"           "$SAIDA_CRED" "<redigido>"
+nao_tem "credencial: o valor original NAO aparece"   "$SAIDA_CRED" "aBcD1234XyZw5678QqRsTuVw"
+
+# O espelho, e o que impede a correcao de virar vazamento: regua sem
+# `mostra_chave` redige o match INTEIRO. A primeira versao desta funcao pegava
+# o ultimo grupo capturante como valor e mostrava o resto, o que no JID
+# imprimia o numero completo -- o dado que a regua existe para conter.
+printf 'contato: 5500900000001@s.whatsapp.net\n' > "$TRECHO_DIR/jid.txt"
+SAIDA_JID="$(roda "$TRECHO_DIR/jid.txt")"
+nao_tem "jid: os digitos NAO aparecem no trecho"     "$SAIDA_JID" "5500900000001"
+tem     "jid: o trecho sai inteiro redigido"         "$SAIDA_JID" "<redigido>"
+rm -rf "$TRECHO_DIR"
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]

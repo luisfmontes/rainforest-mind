@@ -234,13 +234,20 @@ const PADROES = [
   },
   {
     id: 'credencial',
-    re: /\b(senha|password|api[_-]?key|apikey|secret|token|authorization)\s*[:=]\s*["']?(\S+)/gi,
+    mostra_chave: true,
+    re: /\b(?:(?:access|auth|refresh|api)[_-]?token|bearer|senha|password|api[_-]?key|apikey|secret|token|authorization)\s*[:=]\s*["']?(\S+)/gi,
     o_que: 'credencial atribuída a uma chave',
     faca: 'nunca cole credencial em relatório, nem revogada — troque por `<redigido>`',
     // O `i` vale para a CHAVE, e não é negociável: `API_KEY` e `SENHA` seguidas de dois-pontos são as
     // formas mais comuns em log e config, e padrão case-sensitive fica cego para
     // as duas. Quem separa prosa de segredo é o `so_se`, em código — a distinção
     // não cabe na mesma regex que ignora caixa.
+    //
+    // Qualificadores de token (access_token, auth_token, refresh_token, api_token, bearer)
+    // são sempre credencial no `so_se` — a presença do qualificador já dá certeza. O `token` nu
+    // (sem qualificador) passa por verificação rigorosa: só acusa se o valor parecer segredo
+    // (16+ caracteres contínuos de base64/hex/hífen com dígito) OU se for prosa curta com mais
+    // palavras na linha.
     //
     // 2026-08-17: a palavra `token` seguida de dois-pontos e prosa comum ("Regua
     // de orcamento de token: medir a abertura antes de comprimir...") recusou um
@@ -253,7 +260,20 @@ const PADROES = [
     // não no arquivo. Isenta interpolação de shell (${VAR}, $VAR), variáveis
     // do Windows (%VAR%), e expressões do GitHub Actions (${{ secrets.X }}).
     so_se: (m, linha) => {
-      const valor = m[2].replace(/^["']+/, '');
+      // A regex consome a aspa de ABERTURA fora do grupo (`["']?` antes de
+      // `(\S+)`), mas a de FECHAMENTO fica dentro da captura, porque `\S+` so
+      // para no espaco. Aparar so o comeco deixava o valor com a aspa colada, e
+      // `ehSegredoCredivel` — que so aceita base64/hex/hifen — reprovava por causa
+      // dela. Efeito medido: `token: "<32 hex>"` saia LIMPO no HEAD e era pego em
+      // 14c471ed, ou seja, esta tarefa abria a fresta que dizia estar fechando.
+      // Virgula e ponto-e-virgula entram pelo mesmo motivo (`"token": "...",` de
+      // JSON). Fecha-chaves NAO entra: apara-lo quebraria `${VAR}` e a isencao de
+      // referencia de variavel logo abaixo passaria a acusar.
+      const valor = m[1].replace(/^["']+/, '').replace(/["',;]+$/, '');
+      const chaveComOp = m[0];
+      const chave = chaveComOp.match(/^(.*?)\s*[:=]/i)[1].toLowerCase();
+      const ehTokenNu = chave === 'token';
+
 
       // Isenta referências de variável (não são segredos colados). A isenção é
       // pelo COMEÇO do valor, não pelo valor inteiro — e essa diferença é o
@@ -290,6 +310,46 @@ const PADROES = [
         if (!/^[A-Za-z0-9_]/.test(resto)) return false;
       }
 
+      // Isencao ESTREITA para `token` nu, que e o que a #260 pede: identificador
+      // de codigo. Este repo tokeniza linha de comando (`tokensComAspas`,
+      // `posicaoDeComando`), e `const token = toks[i];` era acusado com
+      // `pode_ser_falso: false`. DUAS condicoes, as duas necessarias: a linha
+      // DECLARA uma variavel (`const`/`let`/`var` imediatamente antes da chave),
+      // e o valor NAO abre com aspa -- literal entre aspas depois de `const` e
+      // segredo colado num arquivo de codigo, nao identificador.
+      //
+      // A primeira versao desta tarefa invertia o principio da trava: isentava
+      // `token` nu por PADRAO e so acusava se o valor casasse
+      // `^[A-Za-z0-9+/=_-]{16,}$` E tivesse digito. Medido em 2026-09-15 contra
+      // a arvore de 14c471ed, quatro segredos de verdade passaram a sair LIMPOS:
+      //
+      //   token: eyJhbGciOiJIUzI1NiJ9.eyJ...   JWT -- o `.` nao esta na classe
+      //   token: glpat-ABCDEFGHIJKLMNOPQRST    PAT do GitLab, sem digito
+      //   token: abcdefghijklmnopqrstuvwx      24 letras, sem digito
+      //   token: a1b2c3d4e5f6                  12 caracteres, curto demais
+      //
+      // Os dois ramos de prosa dentro daquele `if` devolviam `false` dos dois
+      // lados: codigo morto, com um comentario descrevendo o contrario do que
+      // rodava. Isencao por padrao numa regua de credencial e exatamente o modo
+      // de falha da #254 -- o instrumento respondendo "nao achei" quando o que
+      // houve foi "nao procurei".
+      if (ehTokenNu) {
+        const declara = /\b(?:const|let|var)\s+$/.test(linha.slice(0, m.index));
+        // A aspa de ABERTURA fica FORA do grupo capturante (`["']?` antes de
+        // `(\S+)`), entao `m[1]` nunca comeca com ela -- e preciso olhar o
+        // proprio `m[0]`, entre o separador e o valor. Medido em 2026-09-15:
+        // testando `m[1]`, `const token = "<JWT>";` saia LIMPO.
+        const entreAspas = /[:=]\s*["']/.test(m[0]);
+        if (declara && !entreAspas) return false;
+      }
+
+      // Prosa curta com mais palavras na linha nao e segredo. Vale para a lista
+      // INTEIRA, como valia antes desta tarefa (2026-08-17): a primeira versao
+      // prendeu esta isencao dentro do ramo de `token` nu e devolveu `true`
+      // incondicional para todas as outras chaves, o que criou dois falsos
+      // positivos novos, medidos na revisao de 2026-09-15 (exit 0 em 14c471ed,
+      // exit 2 aqui): `senha: alguma coisa qualquer aqui` e
+      // `authorization: pode ser feita pelo gestor`.
       const prosaCurta = /^[a-zà-ú]{1,12}$/.test(valor);
       const depois = linha.slice(m.index + m[0].length).trim().split(/\s+/).filter(Boolean);
       return !(prosaCurta && depois.length >= 2);
@@ -385,6 +445,40 @@ function dentroDeDumpHex(m, linha) {
   return !!t && m.index + m[0].length <= t[0].length;
 }
 
+/**
+ * O trecho que de fato casou, com o VALOR trocado por <redigido>.
+ *
+ * D2 da Issue #260. A mensagem dizia `linha 12  [credencial]` e o texto
+ * generico da regua, e nada do que foi casado ali: quem le nao consegue
+ * confirmar o achado sem reconstruir a entrada por tentativa. Custou duas
+ * rodadas de um executor no fluxo zerar-issues-4, que atribuiu o bloqueio ao
+ * nome `dist` e a 'certas estruturas const ... = ...', quando era a palavra
+ * `token` que estava na lista de nomes de segredo.
+ *
+ * O valor NUNCA sai daqui. A regua existe para segredo nao circular, e a
+ * mensagem de bloqueio vai para log, terminal e as vezes corpo de Issue. O
+ * grupo **1** e o valor, e essa e a unica leitura que este arquivo faz: o
+ * que sobra do match e a chave, que identifica o trecho sem expor nada.
+ *
+ * A frase anterior dizia "grupo 2" e contradizia o `const valor = m[1]` logo
+ * abaixo, desde que nasceu. Corrigida na revisao de 2026-09-15 -- o contrato
+ * vale para a proxima regua que declarar `mostra_chave`, e uma regua que
+ * capture o valor em outro grupo passaria a redigir o pedaco errado.
+ */
+function trechoRedigido(m, padrao) {
+  if (!m || !m[0]) return null;
+  const inteiro = m[0];
+  // Mostrar a chave e OPT-IN por regua, nunca heuristica. A primeira versao
+  // tomava o ultimo grupo capturante como "valor" e mostrava o resto: na regua
+  // `jid-whatsapp` isso imprimia o numero inteiro seguido de `@` e da marca --
+  // exatamente o dado que a regua existe para nao deixar circular. Quem nao
+  // declara `mostra_chave` tem o match inteiro redigido.
+  if (!padrao || !padrao.mostra_chave) return "<redigido>";
+  const valor = m[1];
+  if (!valor || !inteiro.endsWith(valor)) return "<redigido>";
+  return inteiro.slice(0, inteiro.length - valor.length) + "<redigido>";
+}
+
 function conferir(texto) {
   const achados = [];
   for (const p of PADROES) {
@@ -392,6 +486,7 @@ function conferir(texto) {
     linhas.forEach((linha, i) => {
       p.re.lastIndex = 0;
       let bateu;
+      let casado = null;
       if (p.so_se) {
         // Padrão com `so_se` decide olhando o match inteiro e a linha, então aqui
         // é `exec` e não `test`: um único match liberado não pode liberar a linha,
@@ -399,14 +494,23 @@ function conferir(texto) {
         bateu = false;
         let m;
         while ((m = p.re.exec(linha)) !== null) {
-          if (p.so_se(m, linha)) { bateu = true; break; }
+          if (p.so_se(m, linha)) { bateu = true; casado = m; break; }
           if (m.index === p.re.lastIndex) p.re.lastIndex += 1;
         }
       } else {
-        bateu = p.re.test(linha);
+        p.re.lastIndex = 0;
+        casado = p.re.exec(linha);
+        bateu = !!casado;
       }
       if (bateu) {
-        achados.push({ id: p.id, linha: i + 1, o_que: p.o_que, faca: p.faca, pode_ser_falso: !!p.pode_ser_falso });
+        achados.push({
+          id: p.id,
+          linha: i + 1,
+          o_que: p.o_que,
+          trecho: trechoRedigido(casado, p),
+          faca: p.faca,
+          pode_ser_falso: !!p.pode_ser_falso,
+        });
       }
     });
   }
@@ -549,6 +653,7 @@ function modoCommit(spec, json) {
     const onde = a.linha != null ? `${a.arquivo}:${a.linha}` : a.arquivo;
     console.log(`  ${onde}  [${a.id}]${a.pode_ser_falso ? '  (pode ser falso positivo)' : ''}`);
     console.log(`    ${a.o_que}`);
+    if (a.trecho) console.log(`      ${a.trecho}`);
     console.log(`    -> ${a.faca}`);
   }
   console.log('');
@@ -604,6 +709,7 @@ function main() {
   for (const a of achados) {
     console.log(`  linha ${a.linha}  [${a.id}]${a.pode_ser_falso ? '  (pode ser falso positivo)' : ''}`);
     console.log(`    ${a.o_que}`);
+    if (a.trecho) console.log(`      ${a.trecho}`);
     console.log(`    -> ${a.faca}`);
   }
   console.log('');
