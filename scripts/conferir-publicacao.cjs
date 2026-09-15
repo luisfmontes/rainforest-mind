@@ -234,13 +234,19 @@ const PADROES = [
   },
   {
     id: 'credencial',
-    re: /\b(senha|password|api[_-]?key|apikey|secret|token|authorization)\s*[:=]\s*["']?(\S+)/gi,
+    re: /\b(?:(?:access|auth|refresh|api)[_-]?token|bearer|senha|password|api[_-]?key|apikey|secret|token|authorization)\s*[:=]\s*["']?(\S+)/gi,
     o_que: 'credencial atribuída a uma chave',
     faca: 'nunca cole credencial em relatório, nem revogada — troque por `<redigido>`',
     // O `i` vale para a CHAVE, e não é negociável: `API_KEY` e `SENHA` seguidas de dois-pontos são as
     // formas mais comuns em log e config, e padrão case-sensitive fica cego para
     // as duas. Quem separa prosa de segredo é o `so_se`, em código — a distinção
     // não cabe na mesma regex que ignora caixa.
+    //
+    // Qualificadores de token (access_token, auth_token, refresh_token, api_token, bearer)
+    // são sempre credencial no `so_se` — a presença do qualificador já dá certeza. O `token` nu
+    // (sem qualificador) passa por verificação rigorosa: só acusa se o valor parecer segredo
+    // (16+ caracteres contínuos de base64/hex/hífen com dígito) OU se for prosa curta com mais
+    // palavras na linha.
     //
     // 2026-08-17: a palavra `token` seguida de dois-pontos e prosa comum ("Regua
     // de orcamento de token: medir a abertura antes de comprimir...") recusou um
@@ -253,7 +259,11 @@ const PADROES = [
     // não no arquivo. Isenta interpolação de shell (${VAR}, $VAR), variáveis
     // do Windows (%VAR%), e expressões do GitHub Actions (${{ secrets.X }}).
     so_se: (m, linha) => {
-      const valor = m[2].replace(/^["']+/, '');
+      const valor = m[1].replace(/^["']+/, '');
+      const chaveComOp = m[0];
+      const chave = chaveComOp.match(/^(.*?)\s*[:=]/i)[1].toLowerCase();
+      const ehTokenNu = chave === 'token';
+
 
       // Isenta referências de variável (não são segredos colados). A isenção é
       // pelo COMEÇO do valor, não pelo valor inteiro — e essa diferença é o
@@ -290,9 +300,20 @@ const PADROES = [
         if (!/^[A-Za-z0-9_]/.test(resto)) return false;
       }
 
-      const prosaCurta = /^[a-zà-ú]{1,12}$/.test(valor);
-      const depois = linha.slice(m.index + m[0].length).trim().split(/\s+/).filter(Boolean);
-      return !(prosaCurta && depois.length >= 2);
+      // Para `token` nu: checar se valor parece segredo OU se é prosa curta
+      if (ehTokenNu) {
+        // Forma de segredo: 16+ caracteres contínuos de base64/hex/hífen, com pelo menos um dígito
+        const ehSegredoCredivel = /^[A-Za-z0-9+/=_-]{16,}$/.test(valor) && /\d/.test(valor);
+        if (ehSegredoCredivel) return true;
+        
+        // Ou a forma anterior: prosa curta e mais palavras na linha
+        const prosaCurta = /^[a-zà-ú]{1,12}$/.test(valor);
+        const depois = linha.slice(m.index + m[0].length).trim().split(/\s+/).filter(Boolean);
+        return !(prosaCurta && depois.length >= 2);
+      }
+      
+      // Outras chaves (incluindo qualificadas como `api_token`, `access_token`) sempre acusam
+      return true;
     },
   },
   {
