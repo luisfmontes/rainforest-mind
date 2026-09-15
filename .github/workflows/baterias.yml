@@ -156,5 +156,8 @@ jobs:
           git config --global user.name "CI das baterias"
           git config --global init.defaultBranch master # o mesmo default da maquina do Luis (unset la tambem)
 
+      - name: Versao do manifesto sobe em relacao a origin/main
+        run: node scripts/conferir-versao.cjs
+
       - name: Rodar as baterias
         run: bash scripts/varrer-baterias.sh
