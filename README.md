@@ -119,6 +119,22 @@ sem ninguém decidir isso.
 <slug>` e sabe onde parou. Design, plano e estado do fluxo são versionados de
 propósito — é por eles que outro dev pega a atividade no meio.
 
+## O título da sessão diz se o fluxo fechou
+
+No `/exit`, o hook de `SessionEnd` `hooks/titulo-sessao-end.cjs` prefixa o
+título da sessão com o estado dos fluxos que ela tocou: `[ok]` quando todos
+fecharam, `[aberto: <estágio>]` quando algum ficou pela metade.
+
+A busca do `/resume` casa contra o `customTitle`: digitar a palavra `aberto`
+filtra exatamente as sessões que ficaram pela metade — é por isso que o
+marcador é palavra, não símbolo.
+
+O hook fica **calado** em três casos: `reason` diferente de
+`prompt_input_exit` (fechar o terminal na mão não dispara hook nenhum;
+`claude -p` emite `other`), sessão sem nenhum fluxo carimbado, e repositório
+que não usa o fluxo. Um nome dado com `/rename` tem precedência — o hook só
+prefixa, nunca substitui.
+
 ## Não chama de pronto sem a saída
 
 Esta é a que mais paga. Agente relata **intenção**, não resultado — e o relato é
