@@ -70,6 +70,30 @@ com regras opostas seriam uma armadilha.
 }
 ```
 
+### Onde esse arquivo NÃO vai
+
+- **No repo do plugin** (`.rainforest/agentes.padrao.json`): não. Esse arquivo é
+  publicado, e todo dev que instalar o rainforest passaria a carregar agentes de
+  um ERP que ele não tem. O padrão embarcado declara os agentes **do rainforest**,
+  e só.
+- **No cache do plugin** (`~/.claude/plugins/cache/...`): não. É diretório
+  derivado — `claude plugin marketplace update` o reescreve, e a declaração some
+  sem aviso.
+- **No repo de trabalho** (`<repo>/.rainforest/agentes.json`): funciona, mas é
+  arquivo versionado num repo compartilhado com o time, e substitui o padrão por
+  inteiro. Configuração pessoal de quem-tem-qual-plugin-instalado não é do
+  projeto.
+
+Vai na **raiz de dados do usuário**, que o `lib/raiz.cjs` resolve — tipicamente
+`~/.rainforest/`, fora de todo repositório e fora do cache. Um arquivo cobre
+todos os repos daquela máquina.
+
+**Outro dev usando o rainforest não faz nada.** Sem o arquivo, o padrão embarcado
+responde sozinho; e desde 2026-09-15 nem isso o impede de despachar o agente de
+um plugin de domínio dele — não declarado passa. Se ele quiser que a regra 11
+morda os agentes daquele plugin, cria o `agentes.extra.json` dele, com os agentes
+dele.
+
 Desde 2026-09-15 esse arquivo **não é mais necessário para o agente rodar** — não
 declarado passa. Ele serve para o inverso: declarar `escreve: true` num agente de
 outro plugin faz a **regra 11** valer para ele, que é o único portão que restou.
