@@ -376,6 +376,10 @@ git -C "$TEST_D" remote add origin "https://github.com/test/d.git"
 PD=$(PAY_CWD="$(esc "$TEST_D")" pay Write "$(esc "$TEST_D/d.txt")" "contato: $JID_REAL")
 SD=$(printf '%s' "$PD" | env HOME="$RAIZ" RFM_ROOT="$SANDBOX_DATA" GH_EXIT_CODE="1" RAINFOREST_GH="node $SANDBOX_BIN/gh" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" 2>&1); RC=$?
 if [ "$RC" = 2 ]; then ok=$((ok+1)); echo "  ok   (d) exit 2"
+  # Sem esta segunda assercao o caso e decoracao: 14c471ed tambem sai 2,
+  # porque la nao existe consulta de visibilidade nenhuma. O que separa as
+  # duas arvores e a linha da mensagem.
+  if printf '%s' "$SD" | grep -q "desconhecida"; then ok=$((ok+1)); echo "    ok   cita 'desconhecida'"; else falhou=$((falhou+1)); echo "    FALHA sem 'desconhecida'"; fi
 else falhou=$((falhou+1)); echo "  FALHA (d): $RC"; fi
 
 # Teste (e): gh lixo → sai 2
@@ -388,6 +392,10 @@ git -C "$TEST_E" remote add origin "https://github.com/test/e.git"
 PE=$(PAY_CWD="$(esc "$TEST_E")" pay Write "$(esc "$TEST_E/d.txt")" "contato: $JID_REAL")
 SE=$(printf '%s' "$PE" | env HOME="$RAIZ" RFM_ROOT="$SANDBOX_DATA" GH_RESPONSE="lixo" RAINFOREST_GH="node $SANDBOX_BIN/gh" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" 2>&1); RC=$?
 if [ "$RC" = 2 ]; then ok=$((ok+1)); echo "  ok   (e) exit 2"
+  # Sem esta segunda assercao o caso e decoracao: 14c471ed tambem sai 2,
+  # porque la nao existe consulta de visibilidade nenhuma. O que separa as
+  # duas arvores e a linha da mensagem.
+  if printf '%s' "$SE" | grep -q "desconhecida"; then ok=$((ok+1)); echo "    ok   cita 'desconhecida'"; else falhou=$((falhou+1)); echo "    FALHA sem 'desconhecida'"; fi
 else falhou=$((falhou+1)); echo "  FALHA (e): $RC"; fi
 
 # Teste (f): cache - 2x mesmo repo PUBLICO = 1 invocação.
@@ -458,6 +466,17 @@ if [ "$RC_K" = 0 ] && [ "$CNT_K" = "2" ] && [ "$GRAVOU" = "0" ]; then ok=$((ok+1
 else falhou=$((falhou+1)); echo "  FALHA (k): exit=$RC_K cnt=$CNT_K gravou=$GRAVOU (esperava 0,2,0)"; fi
 rm -f "$CACHE_VIS"
 
+# Teste (n): `em` como STRING tambem nao vale. A coercao de `"123" <= agora`
+# fazia a entrada plantada passar pela guarda de validade.
+echo "== (n) em como string e ignorado =="
+node -e "require('fs').writeFileSync(process.argv[1], JSON.stringify({'test/h': {visibilidade: 'publica', em: String(Date.now())}}))" "$CACHE_VIS"
+: > "$GH_INVOCATIONS"
+printf '%s' "$PH" | env HOME="$RAIZ" RFM_ROOT="$SANDBOX_DATA" GH_RESPONSE='{"isPrivate":false}' RAINFOREST_GH="node $SANDBOX_BIN/gh" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" > /dev/null 2>&1; RC_N=$?
+CNT_N=$(wc -l < "$GH_INVOCATIONS" 2>/dev/null || echo 0)
+if [ "$RC_N" = 2 ] && [ "$CNT_N" = "1" ]; then ok=$((ok+1)); echo "  ok   (n) em como string e ignorado, gh e re-perguntado"
+else falhou=$((falhou+1)); echo "  FALHA (n): exit=$RC_N cnt=$CNT_N (esperava 2,1)"; fi
+rm -f "$CACHE_VIS"
+
 # Testes (l) e (m): a visibilidade olha TODOS os remotos do GitHub.
 #
 # A primeira versao perguntava ao `@{upstream}` e caia em `origin` quando nao
@@ -516,6 +535,9 @@ PG=$(PAY_CWD="$(esc "$TEST_G")" pay Write "$(esc "$TEST_G/d.txt")" "contato: $JI
 SG=$(printf '%s' "$PG" | env HOME="$RAIZ" RFM_ROOT="$SANDBOX_DATA" RAINFOREST_GATE_SEM_REDE="1" RAINFOREST_GH="node $SANDBOX_BIN/gh" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" 2>&1); RC=$?
 CNT_G=$(wc -l < "$GH_INVOCATIONS" 2>/dev/null || echo 0)
 if [ "$RC" = 2 ] && [ "$CNT_G" = "0" ]; then ok=$((ok+1)); echo "  ok   (g) exit 2, $CNT_G invocações"
+  # "0 invocações" sozinho nao mede nada: em 14c471ed nao havia invocacao
+  # nenhuma para contar. A visibilidade citada e o que distingue.
+  if printf '%s' "$SG" | grep -q "desconhecida"; then ok=$((ok+1)); echo "    ok   cita 'desconhecida'"; else falhou=$((falhou+1)); echo "    FALHA sem 'desconhecida'"; fi
 else falhou=$((falhou+1)); echo "  FALHA (g): exit=$RC cnt=$CNT_G (esperava 2,0)"; fi
 
 echo "== Verificação: gate-staging-total continua verde =="

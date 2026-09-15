@@ -197,7 +197,13 @@ function visibilidadeDeUmRepo(ownerRepo) {
   const agora = Date.now();
   const cache = lerCache();
   const guardado = cache[ownerRepo];
-  if (guardado && guardado.em && guardado.em <= agora
+  // `em` tem de ser NUMERO. A auditoria mediu a forma com `em` como string
+  // (2026-09-15): `"123" <= agora` coage e passa, e a entrada plantada valia.
+  // Hoje isso so deixaria o gate mais rigido (o cache guarda apenas
+  // `publica`), mas ler tipo errado de um arquivo que qualquer um escreve e
+  // exatamente o que a A08 chama de integridade de dado nao verificada.
+  if (guardado && typeof guardado.em === "number" && Number.isFinite(guardado.em)
+      && guardado.em <= agora
       && agora - guardado.em < CACHE_VISIBILIDADE_TTL_MS
       && guardado.visibilidade === "publica") {
     return "publica";
