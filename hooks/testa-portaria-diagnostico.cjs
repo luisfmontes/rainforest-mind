@@ -18,6 +18,13 @@
  * cobre a metade da pergunta que não existia antes: com dois manifestos
  * possíveis, "não consta" sem dizer onde se leu manda conferir o arquivo errado.
  *
+ * Em 2026-09-15 a #264 revogou a negação por falta de fluxo. Os casos (g) e (h),
+ * que mediam QUAL texto a portaria usava para culpar digitação ou estágio,
+ * passaram a medir que ela não culpa nada — o despacho sai `exit 0`, marcado
+ * `fora_de_fluxo: true` no log. Os casos de (a) a (f) seguem valendo porque
+ * apoiam em negações que continuam existindo (manifesto inválido, `escreve`
+ * não-booleano).
+ *
  * Exit 0 = tudo passou; exit 1+ = alguma falha.
  */
 
@@ -311,6 +318,88 @@ console.log("== (f) negação por agente não declarado diz qual manifesto foi l
     !r2.stderr.includes("agentes.padrao.json"), `stderr: ${r2.stderr}`);
 
   fs.rmSync(raiz2, { recursive: true, force: true });
+}
+
+// == (g) D5 REESCRITO em 2026-09-15 (issue #264): digitação quase-correta não decide mais nada ==
+console.log("== (g) digitação quase-correta: a portaria não barra, então não há o que diagnosticar ==");
+{
+  // Este caso nasceu na D5 (14/09) como negação: sem fluxo aberto, o despacho
+  // era barrado, e o diagnóstico da barreira precisava culpar a DIGITAÇÃO
+  // ("você escreveu subgens") em vez do estágio, senão o usuário abria um fluxo
+  // atrás de um problema que não era o dele.
+  //
+  // A #264 revogou a barreira: sem fluxo aberto o despacho PASSA, marcado
+  // `fora_de_fluxo: true` no log. Com isso o diagnóstico de quase-digitação
+  // ficou sem caminho por onde sair — não porque estivesse errado, mas porque
+  // a pergunta que ele respondia ("por que fui barrado?") deixou de existir.
+  //
+  // O `quaseFormaDeSubagente` continua vivo em `lib/autorizacao-usuario.cjs` e
+  // continua coberto: a bateria `testa-portaria-autorizacao.cjs` exercita as
+  // formas aproximadas contra a função, que é onde a regra dela mora. O que
+  // esta bateria media era o texto do stderr da portaria, e esse stderr não é
+  // mais emitido.
+  //
+  // O caso fica, com a asserção invertida, em vez de sumir: assim a bateria
+  // continua provando que este cenário passa — se alguém reintroduzir a
+  // negação sem querer, é aqui que vai doer.
+  const raiz = caixa();
+  iniciarGit(raiz, "fluxo/d5-quase");
+
+  const transcriptPath = path.join(raiz, "transcript.jsonl");
+  const transcriptContent = JSON.stringify({
+    type: "user",
+    message: {
+      content: "autorizo subgens"
+    }
+  }) + "\n";
+  fs.writeFileSync(transcriptPath, transcriptContent, "utf8");
+
+  const payload = {
+    session_id: "diag-g-quase",
+    transcript_path: transcriptPath,
+    tool_input: { subagent_type: "revisor" },
+  };
+
+  const r = rodaHook(raiz, JSON.stringify(payload));
+
+  caso("exit 0 (fora de fluxo passa desde a #264)", r.status === 0, `exit=${r.status} stderr=${r.stderr}`);
+  caso("stderr NÃO culpa a digitação", !r.stderr.includes("quase"), `stderr: ${r.stderr}`);
+  caso("stderr NÃO culpa o estágio", !r.stderr.includes("sem estágio ativo"), `stderr: ${r.stderr}`);
+
+  fs.rmSync(raiz, { recursive: true, force: true });
+}
+
+// == (h) D5 REESCRITO em 2026-09-15 (issue #264): sem menção a subagente também passa ==
+console.log("== (h) sem menção a subagente: passa igual, e o par com o (g) é o ponto ==");
+{
+  // O par (g)/(h) existia para provar que a portaria distinguia DOIS motivos de
+  // negação. Agora prova o contrário, que é o que a #264 decidiu: o texto da
+  // última linha do transcript não muda o desfecho do despacho. Os dois passam.
+  const raiz = caixa();
+  iniciarGit(raiz, "fluxo/d5-normal");
+
+  const transcriptPath = path.join(raiz, "transcript.jsonl");
+  const transcriptContent = JSON.stringify({
+    type: "user",
+    message: {
+      content: "preciso de ajuda com um problema"
+    }
+  }) + "\n";
+  fs.writeFileSync(transcriptPath, transcriptContent, "utf8");
+
+  const payload = {
+    session_id: "diag-h-normal",
+    transcript_path: transcriptPath,
+    tool_input: { subagent_type: "revisor" },
+  };
+
+  const r = rodaHook(raiz, JSON.stringify(payload));
+
+  caso("exit 0 (fora de fluxo passa desde a #264)", r.status === 0, `exit=${r.status} stderr=${r.stderr}`);
+  caso("stderr NÃO diz 'sem estágio ativo — abra um fluxo'",
+    !r.stderr.includes("sem estágio ativo — abra um fluxo"), `stderr: ${r.stderr}`);
+
+  fs.rmSync(raiz, { recursive: true, force: true });
 }
 
 console.log(`\n== resultado: ${ok} ok, ${falhou} falha(s) ==`);
