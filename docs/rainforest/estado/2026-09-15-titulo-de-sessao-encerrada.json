@@ -22,8 +22,8 @@
   "executar": {
     "status": "ok",
     "catraca_mutacao": "2026-09-15",
-    "tarefas_ok": 6,
-    "tarefas": 6,
+    "tarefas_ok": 7,
+    "tarefas": 7,
     "em": "2026-09-15",
     "carimbos": [
       {
@@ -41,8 +41,8 @@
         "ts": "2026-09-15T13:57:53.963Z"
       }
     ],
-    "comando": "bash hooks/testa-ledger-fluxos.sh; bash hooks/testa-titulo-sessao-end.sh; bash hooks/testa-titulo-sessao-registro.sh; bash hooks/testa-titulo-sessao-sem-carimbo.sh",
-    "saida": "Resumo: 18 ok, 0 falhas | 9 ok, 0 falhas | 3 ok, 0 falhas | 15 ok, 0 falhas — 45 casos, 0 falhas, os quatro exit 0. E o pronto-quando da tarefa 6 contra o ambiente REAL desta sessao (sem injetar variavel): \"1 true\", fluxo carimbado [{slug:prova-ambiente-real,estagio:design,aberto:design}]",
+    "comando": "bash hooks/testa-ledger-fluxos.sh; bash hooks/testa-titulo-sessao-end.sh; bash hooks/testa-titulo-sessao-registro.sh; bash hooks/testa-titulo-sessao-sem-carimbo.sh; e a reproducao da corrida com 80 processos concorrentes",
+    "saida": "Resumo: 26 ok, 0 falhas | 21 ok, 0 falhas | 3 ok, 0 falhas | 15 ok, 0 falhas — 65 casos, 0 falhas, os quatro exit 0. Corrida reproduzida por mim na branch integrada: 80 de 80 chaves sobreviveram (eram 9 de 80 antes do conserto), e nenhum lock ficou para tras.",
     "mutacao": [
       {
         "tarefa": 1,
@@ -67,17 +67,22 @@
       {
         "tarefa": 5,
         "resultado": "n/a",
-        "motivo": "tarefa so escreve doc; falsificacao e coerencia com o fonte, e o critério agora exige os DOIS marcadores (achado 2 da revisao)"
+        "motivo": "tarefa so escreve doc; falsificacao e coerencia com o fonte, e o critério agora exige os DOIS marcadores (achado 2 da primeira revisao)"
       },
       {
         "tarefa": 6,
         "resultado": "vermelho",
         "fixture": "testa-ledger-fluxos.sh TESTE 7: carimba com o nome REAL da variavel, sem injetar CLAUDE_SESSION_ID (e TESTE 8, precedencia)"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-titulo-sessao-end.sh: as 12 assercoes novas de contagem de linha e hash do prefixo, nos 6 casos que escrevem (baseline 21 ok, mutado 9 ok / 12 falhas)"
       }
     ]
   },
   "revisar": {
-    "status": "ok",
+    "status": "reprovado",
     "snapshot": {
       "head": "db3eb92a778161c83d4d7e3e5c1a735add0d6233",
       "caminhos_sujos": []
@@ -86,7 +91,9 @@
     "em": "2026-09-15",
     "achados": 3,
     "base": "14c471ed29f790655f4f2b2e34fce2af578edaac",
-    "head": "db3eb92a"
+    "head": "db3eb92a",
+    "nota": "o revisor devolveu ok com 3 achados nao bloqueantes; a janela arbitrou consertar antes de fechar, porque dois deles fazem o marcador mentir. reprovado aqui e a decisao do integrador, nao o veredito do revisor.",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"

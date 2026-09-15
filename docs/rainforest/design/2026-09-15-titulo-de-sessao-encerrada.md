@@ -40,8 +40,31 @@ título é o que o picker exibe **e** o que a busca dele casa.
   da sessão de teste **não estava mais lá** depois do encerramento. Como o
   `heartbeat` é `async: true`, ordem entre hooks não é garantia. Ledger separado
   não disputa arquivo com ninguém e não mexe no contrato do `heartbeat`; é
-  gitignorado, indexado por `session_id`, e podado por idade (24 h), porque a
-  entrada só precisa viver até o `SessionEnd` da própria sessão.
+  gitignorado e indexado por `session_id`.
+
+  **Correção de 2026-09-15, achados 1 e 2 da segunda revisão.** Duas coisas que
+  a primeira versão deste D5 errou:
+
+  1. **A poda não pode ser de 24 h.** O texto dizia "a entrada só precisa viver
+     até o `SessionEnd` da própria sessão" — verdade, mas o `ts` do ledger só se
+     atualiza quando **aquela** sessão chama um verbo, ao contrário do
+     `heartbeat.cjs`, que atualiza a cada prompt. Sessão que roda `iniciar` na
+     sexta e fica aberta num `executar` longo perdia o carimbo quando outra
+     sessão disparava a poda na segunda. Janela agora é **30 dias**, com teto de
+     **500 entradas**.
+  2. **Arquivo separado evita corromper, não evita perder.** O ciclo
+     ler-mesclar-gravar sem lock perdia escrita: medido na revisão, **9 de 80**
+     chaves sobreviveram a 80 processos concorrentes, e uma escrita perdida podia
+     ressuscitar um `aberto` velho sobre um `[ok]` novo — título **errado**, que é
+     pior que título ausente. Agora há lockfile exclusivo (`openSync` com `wx`,
+     com destrave de lock órfão) e escrita atômica (temporário + `rename`).
+     Reproduzido depois do conserto: **80 de 80**.
+
+  Dívida nomeada, não fechada: no destrave de lock órfão existe uma janela
+  estreita entre o `stat` e o `unlink` em que dois esperadores podem entrar na
+  seção crítica. Exige lock órfão **e** múltiplos esperadores no mesmo instante;
+  o ledger é declarado best-effort e nunca é gate, então fica registrada em vez
+  de perseguida.
 - **D6 — O marcador é palavra entre colchetes: `[ok]` e `[aberto: <estágio>]`** —
   porquê: a busca do `/resume` casa contra o `customTitle`, e ninguém digita `⋯`.
   Com palavra, `/resume` + digitar `aberto` devolve exatamente a lista de
