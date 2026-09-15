@@ -575,5 +575,28 @@ tem  "stderr comeca com 'nao-verificavel:'"    "$(roda_commit "$CPUB" deadbeef)"
 rm -rf "$CPUB_POSIX" "$RANGE_POSIX" "$DUPC_POSIX" "$NAODUP_POSIX"
 
 echo
+echo
+echo "== 15. o achado mostra o TRECHO casado, com o valor redigido (#260 D2) =="
+# A mensagem dizia so `linha N  [credencial]` e o texto generico da regua. Quem
+# le nao conseguia confirmar o achado sem reconstruir a entrada por tentativa --
+# e foi por isso que um executor gastou duas rodadas culpando o nome `dist`
+# quando o que disparava era a palavra `token`.
+TRECHO_DIR="$(novo_sandbox)"
+printf 'api_key = aBcD1234XyZw5678QqRsTuVw\n' > "$TRECHO_DIR/cred.txt"
+SAIDA_CRED="$(roda "$TRECHO_DIR/cred.txt")"
+tem     "credencial: o trecho mostra a chave"        "$SAIDA_CRED" "api_key"
+tem     "credencial: o valor sai redigido"           "$SAIDA_CRED" "<redigido>"
+nao_tem "credencial: o valor original NAO aparece"   "$SAIDA_CRED" "aBcD1234XyZw5678QqRsTuVw"
+
+# O espelho, e o que impede a correcao de virar vazamento: regua sem
+# `mostra_chave` redige o match INTEIRO. A primeira versao desta funcao pegava
+# o ultimo grupo capturante como valor e mostrava o resto, o que no JID
+# imprimia o numero completo -- o dado que a regua existe para conter.
+printf 'contato: 5500900000001@s.whatsapp.net\n' > "$TRECHO_DIR/jid.txt"
+SAIDA_JID="$(roda "$TRECHO_DIR/jid.txt")"
+nao_tem "jid: os digitos NAO aparecem no trecho"     "$SAIDA_JID" "5500900000001"
+tem     "jid: o trecho sai inteiro redigido"         "$SAIDA_JID" "<redigido>"
+rm -rf "$TRECHO_DIR"
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]

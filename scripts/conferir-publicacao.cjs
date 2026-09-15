@@ -234,6 +234,7 @@ const PADROES = [
   },
   {
     id: 'credencial',
+    mostra_chave: true,
     re: /\b(?:(?:access|auth|refresh|api)[_-]?token|bearer|senha|password|api[_-]?key|apikey|secret|token|authorization)\s*[:=]\s*["']?(\S+)/gi,
     o_que: 'credencial atribuída a uma chave',
     faca: 'nunca cole credencial em relatório, nem revogada — troque por `<redigido>`',
@@ -409,6 +410,35 @@ function dentroDeDumpHex(m, linha) {
   return !!t && m.index + m[0].length <= t[0].length;
 }
 
+/**
+ * O trecho que de fato casou, com o VALOR trocado por <redigido>.
+ *
+ * D2 da Issue #260. A mensagem dizia `linha 12  [credencial]` e o texto
+ * generico da regua, e nada do que foi casado ali: quem le nao consegue
+ * confirmar o achado sem reconstruir a entrada por tentativa. Custou duas
+ * rodadas de um executor no fluxo zerar-issues-4, que atribuiu o bloqueio ao
+ * nome `dist` e a 'certas estruturas const ... = ...', quando era a palavra
+ * `token` que estava na lista de nomes de segredo.
+ *
+ * O valor NUNCA sai daqui. A regua existe para segredo nao circular, e a
+ * mensagem de bloqueio vai para log, terminal e as vezes corpo de Issue. O
+ * grupo 2, quando existe, e o valor; o que sobra do match e a chave, que
+ * identifica o trecho sem expor nada.
+ */
+function trechoRedigido(m, padrao) {
+  if (!m || !m[0]) return null;
+  const inteiro = m[0];
+  // Mostrar a chave e OPT-IN por regua, nunca heuristica. A primeira versao
+  // tomava o ultimo grupo capturante como "valor" e mostrava o resto: na regua
+  // `jid-whatsapp` isso imprimia o numero inteiro seguido de `@` e da marca --
+  // exatamente o dado que a regua existe para nao deixar circular. Quem nao
+  // declara `mostra_chave` tem o match inteiro redigido.
+  if (!padrao || !padrao.mostra_chave) return "<redigido>";
+  const valor = m[1];
+  if (!valor || !inteiro.endsWith(valor)) return "<redigido>";
+  return inteiro.slice(0, inteiro.length - valor.length) + "<redigido>";
+}
+
 function conferir(texto) {
   const achados = [];
   for (const p of PADROES) {
@@ -416,6 +446,7 @@ function conferir(texto) {
     linhas.forEach((linha, i) => {
       p.re.lastIndex = 0;
       let bateu;
+      let casado = null;
       if (p.so_se) {
         // Padrão com `so_se` decide olhando o match inteiro e a linha, então aqui
         // é `exec` e não `test`: um único match liberado não pode liberar a linha,
@@ -423,14 +454,23 @@ function conferir(texto) {
         bateu = false;
         let m;
         while ((m = p.re.exec(linha)) !== null) {
-          if (p.so_se(m, linha)) { bateu = true; break; }
+          if (p.so_se(m, linha)) { bateu = true; casado = m; break; }
           if (m.index === p.re.lastIndex) p.re.lastIndex += 1;
         }
       } else {
-        bateu = p.re.test(linha);
+        p.re.lastIndex = 0;
+        casado = p.re.exec(linha);
+        bateu = !!casado;
       }
       if (bateu) {
-        achados.push({ id: p.id, linha: i + 1, o_que: p.o_que, faca: p.faca, pode_ser_falso: !!p.pode_ser_falso });
+        achados.push({
+          id: p.id,
+          linha: i + 1,
+          o_que: p.o_que,
+          trecho: trechoRedigido(casado, p),
+          faca: p.faca,
+          pode_ser_falso: !!p.pode_ser_falso,
+        });
       }
     });
   }
@@ -573,6 +613,7 @@ function modoCommit(spec, json) {
     const onde = a.linha != null ? `${a.arquivo}:${a.linha}` : a.arquivo;
     console.log(`  ${onde}  [${a.id}]${a.pode_ser_falso ? '  (pode ser falso positivo)' : ''}`);
     console.log(`    ${a.o_que}`);
+    if (a.trecho) console.log(`      ${a.trecho}`);
     console.log(`    -> ${a.faca}`);
   }
   console.log('');
@@ -628,6 +669,7 @@ function main() {
   for (const a of achados) {
     console.log(`  linha ${a.linha}  [${a.id}]${a.pode_ser_falso ? '  (pode ser falso positivo)' : ''}`);
     console.log(`    ${a.o_que}`);
+    if (a.trecho) console.log(`      ${a.trecho}`);
     console.log(`    -> ${a.faca}`);
   }
   console.log('');
