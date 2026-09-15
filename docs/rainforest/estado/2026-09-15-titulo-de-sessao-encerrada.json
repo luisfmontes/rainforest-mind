@@ -95,7 +95,10 @@
     "nota": "3 achados nao bloqueantes: (1) comando de prova da tarefa 1 no plano usa f[0].slug em vez de f.fluxos[0].slug e crasha — precisa emenda antes do verificar; (2) JSON.parse(null) derruba o hook com exit 1 e stack trace, contrariando o proprio contrato de silencio (padrao herdado do heartbeat.cjs); (3) plano.tarefas=5 contra executar.tarefas=7, bookkeeping nao re-marcado."
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash verificar-1-6.sh; bash verificar-2-5.sh; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-09-15-titulo-de-sessao-encerrada",
+    "saida": "Rodei o \"pronto quando:\" literal de cada uma das 7 tarefas contra o artefato real, na branch integrada. T1: 1 teste-carimbo design, e 1 teste-carimbo plano depois de marcar design aprovado + exigir plano. T2: custom-title [aberto: design] Confirmacao simples, e custom-title [ok] Confirmacao simples (hook exit 0, stdout 0B, stderr 0B). T3: 1 true (uma entrada de SessionEnd para titulo-sessao-end.cjs, sem async). T4: sha antes == sha depois (18429cbd...), transcript byte-a-byte identico com session_id ausente do ledger. T5: ok,aberto:  true (os dois marcadores do fonte estao no README) e grep -c \"aviso falado\" skills/fechar/SKILL.md = 1. T6: printenv CLAUDE_SESSION_ID sai 1 (ausente, como em producao) e o carimbo sob env -u da 1 true. T7: conferir-mutacao exit 0; prova de append-only sha antes == sha de head -n -1 depois = 1ebc7334..., linhas 3 -> 4. Trava de mutacao: as 7 tarefas do plano reportam tarefa 1..4,6,7 = vermelho e tarefa 5 = pulada (n/a, doc). ACHADO MEU NESTE ESTAGIO, corrigido antes de fechar: conferir-fluxo mutacoes saia 0 pulando 5 das 7 tarefas porque os campos de: eram prosa, nao padrao literal. Corrigido no commit 45ff6dd1.",
+    "em": "2026-09-15"
   },
   "fechar": {
     "status": "pendente"
