@@ -1,4 +1,5 @@
 #!/bin/bash
+# rainforest-gate: dados-de-exemplo
 # Bateria do gate-publicacao-destino.cjs. Monta repo e worktree git de verdade e
 # alimenta o hook com payloads reais de PreToolUse, conferindo exit code.
 # Uso: bash hooks/testa-gate-publicacao-destino.sh
@@ -299,6 +300,122 @@ git -C "$N" merge --no-commit --no-ff so-no-espelho > /dev/null 2>&1
 gate "9e: publicado so num remoto que nao e o destino continua barrando" 2 \
   "$(payBash 'git commit --no-edit' "$(esc "$N")")"
 git -C "$N" merge --abort > /dev/null 2>&1
+
+echo
+echo "== NOVOS TESTES: visibilidade de repositório (D6) =="
+
+# Preparar sandbox para os testes de visibilidade
+SANDBOX_DATA="$RAIZ/rainforest-data"
+mkdir -p "$SANDBOX_DATA"
+SANDBOX_BIN="$RAIZ/bin"
+mkdir -p "$SANDBOX_BIN"
+GH_INVOCATIONS="$SANDBOX_BIN/gh-invocations"
+
+# Criar o dublê gh em Node.js
+cat > "$SANDBOX_BIN/gh" << 'GHSTUB'
+#!/usr/bin/env node
+const fs = require('fs');
+const invocFile = process.env.GH_INVOCATIONS_FILE;
+if (invocFile) {
+  fs.appendFileSync(invocFile, JSON.stringify(process.argv.slice(2)) + '\n', 'utf8');
+}
+if (process.argv[2] === 'repo' && process.argv[3] === 'view') {
+  const response = process.env.GH_RESPONSE || '{"isPrivate":false}';
+  if (process.env.GH_EXIT_CODE) process.exit(parseInt(process.env.GH_EXIT_CODE));
+  console.log(response);
+  process.exit(0);
+}
+process.exit(0);
+GHSTUB
+chmod +x "$SANDBOX_BIN/gh"
+
+
+# Teste (a): gh diz isPrivate:true → sai 0
+echo "== (a) repo privado → passa =="
+: > "$GH_INVOCATIONS"
+TEST_A="$RAIZ/vis-a"
+git init -q "$TEST_A"; git -C "$TEST_A" config user.email t@t; git -C "$TEST_A" config user.name t; git -C "$TEST_A" config commit.gpgsign false
+echo "x" > "$TEST_A/f.txt"; git -C "$TEST_A" add f.txt; git -C "$TEST_A" commit -qm x
+git -C "$TEST_A" remote add origin "https://github.com/test/a.git"
+PA=$(PAY_CWD="$(esc "$TEST_A")" pay Write "$(esc "$TEST_A/d.txt")" "contato: $JID_REAL")
+SA=$(printf '%s' "$PA" | env HOME="$RAIZ" RFM_ROOT="$SANDBOX_DATA" GH_RESPONSE='{"isPrivate":true}' RAINFOREST_GH="node $SANDBOX_BIN/gh" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" 2>&1); RC=$?
+if [ "$RC" = 0 ]; then ok=$((ok+1)); echo "  ok   (a) exit 0"
+else falhou=$((falhou+1)); echo "  FALHA (a): $RC"; fi
+
+# Teste (b): gh diz isPrivate:false → sai 2
+echo "== (b) repo público → bloqueia =="
+: > "$GH_INVOCATIONS"
+TEST_B="$RAIZ/vis-b"
+git init -q "$TEST_B"; git -C "$TEST_B" config user.email t@t; git -C "$TEST_B" config user.name t; git -C "$TEST_B" config commit.gpgsign false
+echo "x" > "$TEST_B/f.txt"; git -C "$TEST_B" add f.txt; git -C "$TEST_B" commit -qm x
+git -C "$TEST_B" remote add origin "https://github.com/test/b.git"
+PB=$(PAY_CWD="$(esc "$TEST_B")" pay Write "$(esc "$TEST_B/d.txt")" "contato: $JID_REAL")
+SB=$(printf '%s' "$PB" | env HOME="$RAIZ" RFM_ROOT="$SANDBOX_DATA" GH_RESPONSE='{"isPrivate":false}' RAINFOREST_GH="node $SANDBOX_BIN/gh" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" 2>&1); RC=$?
+if [ "$RC" = 2 ]; then ok=$((ok+1)); echo "  ok   (b) exit 2"; if printf '%s' "$SB" | grep -q "pública"; then ok=$((ok+1)); echo "    ok   cita 'pública'"; else falhou=$((falhou+1)); echo "    FALHA sem 'pública'"; fi
+else falhou=$((falhou+1)); echo "  FALHA (b): $RC"; fi
+
+# Teste (c): sem gh → sai 2
+echo "== (c) sem gh → bloqueia =="
+: > "$GH_INVOCATIONS"
+TEST_C="$RAIZ/vis-c"
+git init -q "$TEST_C"; git -C "$TEST_C" config user.email t@t; git -C "$TEST_C" config user.name t; git -C "$TEST_C" config commit.gpgsign false
+echo "x" > "$TEST_C/f.txt"; git -C "$TEST_C" add f.txt; git -C "$TEST_C" commit -qm x
+git -C "$TEST_C" remote add origin "https://github.com/test/c.git"
+PC=$(PAY_CWD="$(esc "$TEST_C")" pay Write "$(esc "$TEST_C/d.txt")" "contato: $JID_REAL")
+SC=$(printf '%s' "$PC" | env HOME="$RAIZ" RFM_ROOT="$SANDBOX_DATA" RAINFOREST_GH="$SANDBOX_BIN/gh-inexistente" node "$GATE" 2>&1); RC=$?
+if [ "$RC" = 2 ]; then ok=$((ok+1)); echo "  ok   (c) exit 2"; if printf '%s' "$SC" | grep -q "desconhecida"; then ok=$((ok+1)); echo "    ok   cita 'desconhecida'"; else falhou=$((falhou+1)); echo "    FALHA sem 'desconhecida'"; fi
+else falhou=$((falhou+1)); echo "  FALHA (c): $RC"; fi
+
+# Teste (d): gh sai 1 → sai 2
+echo "== (d) gh sai 1 → bloqueia =="
+: > "$GH_INVOCATIONS"
+TEST_D="$RAIZ/vis-d"
+git init -q "$TEST_D"; git -C "$TEST_D" config user.email t@t; git -C "$TEST_D" config user.name t; git -C "$TEST_D" config commit.gpgsign false
+echo "x" > "$TEST_D/f.txt"; git -C "$TEST_D" add f.txt; git -C "$TEST_D" commit -qm x
+git -C "$TEST_D" remote add origin "https://github.com/test/d.git"
+PD=$(PAY_CWD="$(esc "$TEST_D")" pay Write "$(esc "$TEST_D/d.txt")" "contato: $JID_REAL")
+SD=$(printf '%s' "$PD" | env HOME="$RAIZ" RFM_ROOT="$SANDBOX_DATA" GH_EXIT_CODE="1" RAINFOREST_GH="node $SANDBOX_BIN/gh" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" 2>&1); RC=$?
+if [ "$RC" = 2 ]; then ok=$((ok+1)); echo "  ok   (d) exit 2"
+else falhou=$((falhou+1)); echo "  FALHA (d): $RC"; fi
+
+# Teste (e): gh lixo → sai 2
+echo "== (e) gh lixo JSON → bloqueia =="
+: > "$GH_INVOCATIONS"
+TEST_E="$RAIZ/vis-e"
+git init -q "$TEST_E"; git -C "$TEST_E" config user.email t@t; git -C "$TEST_E" config user.name t; git -C "$TEST_E" config commit.gpgsign false
+echo "x" > "$TEST_E/f.txt"; git -C "$TEST_E" add f.txt; git -C "$TEST_E" commit -qm x
+git -C "$TEST_E" remote add origin "https://github.com/test/e.git"
+PE=$(PAY_CWD="$(esc "$TEST_E")" pay Write "$(esc "$TEST_E/d.txt")" "contato: $JID_REAL")
+SE=$(printf '%s' "$PE" | env HOME="$RAIZ" RFM_ROOT="$SANDBOX_DATA" GH_RESPONSE="lixo" RAINFOREST_GH="node $SANDBOX_BIN/gh" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" 2>&1); RC=$?
+if [ "$RC" = 2 ]; then ok=$((ok+1)); echo "  ok   (e) exit 2"
+else falhou=$((falhou+1)); echo "  FALHA (e): $RC"; fi
+
+# Teste (f): cache - 2x mesmo repo = 1 invocação
+echo "== (f) cache: 2 invocações = 1 chamada gh =="
+: > "$GH_INVOCATIONS"
+TEST_F="$RAIZ/vis-f"
+git init -q "$TEST_F"; git -C "$TEST_F" config user.email t@t; git -C "$TEST_F" config user.name t; git -C "$TEST_F" config commit.gpgsign false
+echo "x" > "$TEST_F/f.txt"; git -C "$TEST_F" add f.txt; git -C "$TEST_F" commit -qm x
+git -C "$TEST_F" remote add origin "https://github.com/test/f.git"
+PF=$(PAY_CWD="$(esc "$TEST_F")" pay Write "$(esc "$TEST_F/d.txt")" "contato: $JID_REAL")
+printf '%s' "$PF" | env HOME="$RAIZ" RFM_ROOT="$SANDBOX_DATA" GH_RESPONSE='{"isPrivate":true}' RAINFOREST_GH="node $SANDBOX_BIN/gh" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" 2>&1 > /dev/null
+printf '%s' "$PF" | env HOME="$RAIZ" RFM_ROOT="$SANDBOX_DATA" GH_RESPONSE='{"isPrivate":true}' RAINFOREST_GH="node $SANDBOX_BIN/gh" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" 2>&1 > /dev/null
+CNT=$(wc -l < "$GH_INVOCATIONS" 2>/dev/null || echo 0)
+if [ "$CNT" = "1" ]; then ok=$((ok+1)); echo "  ok   (f) cache: $CNT invocação"
+else falhou=$((falhou+1)); echo "  FALHA (f): $CNT invocações (esperava 1)"; fi
+
+# Teste (g): RAINFOREST_GATE_SEM_REDE=1 → 0 invocações
+echo "== (g) RAINFOREST_GATE_SEM_REDE=1 → sem rede =="
+: > "$GH_INVOCATIONS"
+TEST_G="$RAIZ/vis-g"
+git init -q "$TEST_G"; git -C "$TEST_G" config user.email t@t; git -C "$TEST_G" config user.name t; git -C "$TEST_G" config commit.gpgsign false
+echo "x" > "$TEST_G/f.txt"; git -C "$TEST_G" add f.txt; git -C "$TEST_G" commit -qm x
+git -C "$TEST_G" remote add origin "https://github.com/test/g.git"
+PG=$(PAY_CWD="$(esc "$TEST_G")" pay Write "$(esc "$TEST_G/d.txt")" "contato: $JID_REAL")
+SG=$(printf '%s' "$PG" | env HOME="$RAIZ" RFM_ROOT="$SANDBOX_DATA" RAINFOREST_GATE_SEM_REDE="1" RAINFOREST_GH="node $SANDBOX_BIN/gh" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" 2>&1); RC=$?
+CNT_G=$(wc -l < "$GH_INVOCATIONS" 2>/dev/null || echo 0)
+if [ "$RC" = 2 ] && [ "$CNT_G" = "0" ]; then ok=$((ok+1)); echo "  ok   (g) exit 2, $CNT_G invocações"
+else falhou=$((falhou+1)); echo "  FALHA (g): exit=$RC cnt=$CNT_G (esperava 2,0)"; fi
 
 echo "== Verificação: gate-staging-total continua verde =="
 echo "Rodando: bash hooks/testa-gate-staging-total.sh"
