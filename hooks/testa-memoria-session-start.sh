@@ -13,6 +13,10 @@ SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LIB="$SRC/hooks/lib/memoria-sessao.cjs"
 HOOK="$SRC/hooks/memoria-session-start.cjs"
 SCRIPT_MEMORIA="$SRC/scripts/memoria.cjs"
+# memoria-sessao.cjs importa cortarBytes de ./bytes.cjs (Issue #259) — uma
+# cópia mutada do lib escrita isolada num sandbox precisa da mesma vizinhança
+# para o require relativo resolver.
+BYTES_LIB="$SRC/hooks/lib/bytes.cjs"
 
 # Sandbox hermética.
 # Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
@@ -28,6 +32,7 @@ trap cleanup EXIT
 
 RAIZ_POSIX="$(novo_sandbox)"
 RAIZ="$(cygpath -m "$RAIZ_POSIX" 2>/dev/null || printf '%s' "$RAIZ_POSIX")"
+cp "$BYTES_LIB" "$RAIZ_POSIX/bytes.cjs"
 
 # Raiz gorda com FOCO.md de ~2500 B para teste de mutação (deve vir antes de RAIZ_NEUTRA)
 RAIZ_GORDA="$(novo_sandbox)"

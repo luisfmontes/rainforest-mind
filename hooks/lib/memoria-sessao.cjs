@@ -1,4 +1,5 @@
 'use strict';
+const { cortarBytes } = require('./bytes.cjs');
 
 /**
  * memoria-sessao.cjs — motor puro do SessionStart de memória (memoria-session-start.cjs).
@@ -51,25 +52,8 @@ const TETOS = {
 };
 
 /**
- * Corta texto em BYTES sem partir caractere multibyte no meio.
- * Reusa a mesma lógica de contexto-sessao.cjs por confiabilidade.
- */
-function cortarBytes(texto, max) {
-  const s = String(texto || '');
-  if (Buffer.byteLength(s, 'utf8') <= max) return s;
-  let baixo = 0;
-  let alto = s.length;
-  while (baixo < alto) {
-    const meio = Math.ceil((baixo + alto) / 2);
-    if (Buffer.byteLength(s.slice(0, meio), 'utf8') <= max) baixo = meio;
-    else alto = meio - 1;
-  }
-  return s.slice(0, baixo);
-}
-
-/**
  * Teto duro em BYTES, com aviso explícito de corte que cabe dentro do teto.
- * Reusa a lógica de contexto-sessao.cjs por confiabilidade.
+ * `cortarBytes` vem de bytes.cjs — compartilhada com contexto-sessao.cjs.
  */
 function limitarBytes(texto, maxBytes, nomeDoBloco) {
   const s = String(texto || '');
