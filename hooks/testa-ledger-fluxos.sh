@@ -52,14 +52,19 @@ lerAberto() {
 
 echo
 echo "=========================================="
-echo "TESTE 1: iniciar carimba slug e estagio sob o CLAUDE_SESSION_ID do ambiente"
+echo "TESTE 1 (reserva): iniciar carimba slug e estagio sob CLAUDE_SESSION_ID"
+echo "quando CLAUDE_CODE_SESSION_ID nao esta no ambiente"
 echo "=========================================="
 T1_POSIX="$BASE_POSIX/t1"; mkdir -p "$T1_POSIX"
 T1="$(aformato "$T1_POSIX")"
 SESSAO1="11111111-1111-1111-1111-111111111111"
 
+# -u CLAUDE_CODE_SESSION_ID: quem roda este script pode ja ter essa variavel
+# de verdade no ambiente (e o Claude Code exporta ela) — sem remove-la aqui
+# este caso deixaria de testar a reserva e passaria a testar a leitura
+# primaria por acidente.
 OUT1=$(RFM_ESTADO_ROOT="$T1" RFM_ROOT="$T1" CLAUDE_SESSION_ID="$SESSAO1" \
-  node "$ESTADO_JS" iniciar --slug teste-carimbo --titulo "t" 2>&1)
+  env -u CLAUDE_CODE_SESSION_ID node "$ESTADO_JS" iniciar --slug teste-carimbo --titulo "t" 2>&1)
 EXIT1=$?
 echo "$OUT1"
 echo "(exit=$EXIT1)"
@@ -85,19 +90,19 @@ fi
 
 echo
 echo "=========================================="
-echo "TESTE 2: sem CLAUDE_SESSION_ID, nada e gravado e o verbo ainda sai 0"
+echo "TESTE 2: sem NENHUMA variavel de sessao, nada e gravado e o verbo ainda sai 0"
 echo "=========================================="
 T2_POSIX="$BASE_POSIX/t2"; mkdir -p "$T2_POSIX"
 T2="$(aformato "$T2_POSIX")"
 
 OUT2=$(RFM_ESTADO_ROOT="$T2" RFM_ROOT="$T2" \
-  env -u CLAUDE_SESSION_ID node "$ESTADO_JS" iniciar --slug teste-sem-sessao --titulo "t" 2>&1)
+  env -u CLAUDE_SESSION_ID -u CLAUDE_CODE_SESSION_ID node "$ESTADO_JS" iniciar --slug teste-sem-sessao --titulo "t" 2>&1)
 EXIT2=$?
 echo "$OUT2"
 echo "(exit=$EXIT2)"
 
 if [ "$EXIT2" -eq 0 ]; then
-  ok=$((ok+1)); echo "  ok    iniciar saiu 0 mesmo sem CLAUDE_SESSION_ID"
+  ok=$((ok+1)); echo "  ok    iniciar saiu 0 mesmo sem nenhuma variavel de sessao"
 else
   falhou=$((falhou+1)); echo "  FALHA iniciar saiu $EXIT2 (esperado 0)"
 fi
@@ -106,27 +111,27 @@ LEDGER2="$T2_POSIX/fluxos-sessao.json"
 if [ ! -f "$LEDGER2" ]; then
   ok=$((ok+1)); echo "  ok    fluxos-sessao.json nao foi criado (sem sessao, sem gravacao)"
 else
-  falhou=$((falhou+1)); echo "  FALHA fluxos-sessao.json foi criado sem CLAUDE_SESSION_ID: $(cat "$LEDGER2")"
+  falhou=$((falhou+1)); echo "  FALHA fluxos-sessao.json foi criado sem variavel de sessao: $(cat "$LEDGER2")"
 fi
 
 echo
 echo "=========================================="
-echo "TESTE 3: exigir --estagio plano depois do iniciar atualiza a MESMA entrada"
+echo "TESTE 3 (reserva): exigir --estagio plano depois do iniciar atualiza a MESMA entrada"
 echo "=========================================="
 T3_POSIX="$BASE_POSIX/t3"; mkdir -p "$T3_POSIX"
 T3="$(aformato "$T3_POSIX")"
 SESSAO3="33333333-3333-3333-3333-333333333333"
 
 RFM_ESTADO_ROOT="$T3" RFM_ROOT="$T3" CLAUDE_SESSION_ID="$SESSAO3" \
-  node "$ESTADO_JS" iniciar --slug teste-atualiza --titulo "t" > /dev/null 2>&1
+  env -u CLAUDE_CODE_SESSION_ID node "$ESTADO_JS" iniciar --slug teste-atualiza --titulo "t" > /dev/null 2>&1
 
 # Fecha 'design' (pré-requisito de 'plano') para o 'exigir' seguinte passar.
 OUT_MARCAR=$(RFM_ESTADO_ROOT="$T3" RFM_ROOT="$T3" CLAUDE_SESSION_ID="$SESSAO3" \
-  node "$ESTADO_JS" marcar --slug teste-atualiza --estagio design --status aprovado 2>&1)
+  env -u CLAUDE_CODE_SESSION_ID node "$ESTADO_JS" marcar --slug teste-atualiza --estagio design --status aprovado 2>&1)
 EXIT_MARCAR=$?
 
 OUT3=$(RFM_ESTADO_ROOT="$T3" RFM_ROOT="$T3" CLAUDE_SESSION_ID="$SESSAO3" \
-  node "$ESTADO_JS" exigir --slug teste-atualiza --estagio plano 2>&1)
+  env -u CLAUDE_CODE_SESSION_ID node "$ESTADO_JS" exigir --slug teste-atualiza --estagio plano 2>&1)
 EXIT3=$?
 echo "marcar design aprovado: $OUT_MARCAR (exit=$EXIT_MARCAR)"
 echo "exigir plano: $OUT3 (exit=$EXIT3)"
@@ -152,7 +157,7 @@ fi
 
 echo
 echo "=========================================="
-echo "TESTE 4: entrada de sessao com ts de 25h atras e podada na escrita seguinte"
+echo "TESTE 4 (reserva): entrada de sessao com ts de 25h atras e podada na escrita seguinte"
 echo "=========================================="
 T4_POSIX="$BASE_POSIX/t4"; mkdir -p "$T4_POSIX"
 T4="$(aformato "$T4_POSIX")"
@@ -171,7 +176,7 @@ echo "ANTES:"
 cat "$T4_POSIX/fluxos-sessao.json"
 
 OUT4=$(RFM_ESTADO_ROOT="$T4" RFM_ROOT="$T4" CLAUDE_SESSION_ID="sessao-gatilho" \
-  node "$ESTADO_JS" iniciar --slug teste-poda --titulo "t" 2>&1)
+  env -u CLAUDE_CODE_SESSION_ID node "$ESTADO_JS" iniciar --slug teste-poda --titulo "t" 2>&1)
 EXIT4=$?
 echo "iniciar (gatilho da poda): exit=$EXIT4"
 
@@ -205,7 +210,7 @@ fi
 
 echo
 echo "=========================================="
-echo "TESTE 5: ledger com JSON corrompido nao derruba o verbo"
+echo "TESTE 5 (reserva): ledger com JSON corrompido nao derruba o verbo"
 echo "=========================================="
 T5_POSIX="$BASE_POSIX/t5"; mkdir -p "$T5_POSIX"
 T5="$(aformato "$T5_POSIX")"
@@ -214,7 +219,7 @@ printf '{ isso nao e json valido' > "$T5_POSIX/fluxos-sessao.json"
 echo "ANTES (corrompido): $(cat "$T5_POSIX/fluxos-sessao.json")"
 
 OUT5=$(RFM_ESTADO_ROOT="$T5" RFM_ROOT="$T5" CLAUDE_SESSION_ID="sessao-corrompida" \
-  node "$ESTADO_JS" iniciar --slug teste-corrompido --titulo "t" 2>&1)
+  env -u CLAUDE_CODE_SESSION_ID node "$ESTADO_JS" iniciar --slug teste-corrompido --titulo "t" 2>&1)
 EXIT5=$?
 echo "$OUT5"
 echo "(exit=$EXIT5)"
@@ -236,7 +241,7 @@ fi
 
 echo
 echo "=========================================="
-echo "TESTE 6: campo 'aberto' distingue fluxo aberto de fluxo completo (Parte A)"
+echo "TESTE 6 (reserva): campo 'aberto' distingue fluxo aberto de fluxo completo (Parte A)"
 echo "=========================================="
 T6_POSIX="$BASE_POSIX/t6"; mkdir -p "$T6_POSIX"
 T6="$(aformato "$T6_POSIX")"
@@ -247,24 +252,24 @@ E6="RFM_ESTADO_ROOT=$T6 RFM_ROOT=$T6 CLAUDE_SESSION_ID=$SESSAO6"
 # nele mesmo), depois fecha com 'marcar --estagio fechar --status ok' (fluxo
 # COMPLETO) — mesma sequencia de scripts/testa-estado.sh, secao 2.
 RFM_ESTADO_ROOT="$T6" RFM_ROOT="$T6" CLAUDE_SESSION_ID="$SESSAO6" \
-  node "$ESTADO_JS" iniciar --slug teste-aberto --titulo "t" > /dev/null 2>&1
+  env -u CLAUDE_CODE_SESSION_ID node "$ESTADO_JS" iniciar --slug teste-aberto --titulo "t" > /dev/null 2>&1
 RFM_ESTADO_ROOT="$T6" RFM_ROOT="$T6" CLAUDE_SESSION_ID="$SESSAO6" \
-  node "$ESTADO_JS" marcar --slug teste-aberto --estagio design --status aprovado > /dev/null 2>&1
+  env -u CLAUDE_CODE_SESSION_ID node "$ESTADO_JS" marcar --slug teste-aberto --estagio design --status aprovado > /dev/null 2>&1
 RFM_ESTADO_ROOT="$T6" RFM_ROOT="$T6" CLAUDE_SESSION_ID="$SESSAO6" \
-  node "$ESTADO_JS" marcar --slug teste-aberto --estagio plano --status ok > /dev/null 2>&1
+  env -u CLAUDE_CODE_SESSION_ID node "$ESTADO_JS" marcar --slug teste-aberto --estagio plano --status ok > /dev/null 2>&1
 RFM_ESTADO_ROOT="$T6" RFM_ROOT="$T6" CLAUDE_SESSION_ID="$SESSAO6" \
-  node "$ESTADO_JS" exigir --slug teste-aberto --estagio executar > /dev/null 2>&1
+  env -u CLAUDE_CODE_SESSION_ID node "$ESTADO_JS" exigir --slug teste-aberto --estagio executar > /dev/null 2>&1
 RFM_ESTADO_ROOT="$T6" RFM_ROOT="$T6" CLAUDE_SESSION_ID="$SESSAO6" \
-  node "$ESTADO_JS" marcar --slug teste-aberto --estagio executar --status ok \
+  env -u CLAUDE_CODE_SESSION_ID node "$ESTADO_JS" marcar --slug teste-aberto --estagio executar --status ok \
   --json '{"comando":"node script.cjs","saida":"ok","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"caso-teste-1"}]}' > /dev/null 2>&1
 RFM_ESTADO_ROOT="$T6" RFM_ROOT="$T6" CLAUDE_SESSION_ID="$SESSAO6" \
-  node "$ESTADO_JS" marcar --slug teste-aberto --estagio revisar --status ok > /dev/null 2>&1
+  env -u CLAUDE_CODE_SESSION_ID node "$ESTADO_JS" marcar --slug teste-aberto --estagio revisar --status ok > /dev/null 2>&1
 RFM_ESTADO_ROOT="$T6" RFM_ROOT="$T6" CLAUDE_SESSION_ID="$SESSAO6" \
-  node "$ESTADO_JS" marcar --slug teste-aberto --estagio verificar --status ok \
+  env -u CLAUDE_CODE_SESSION_ID node "$ESTADO_JS" marcar --slug teste-aberto --estagio verificar --status ok \
   --json '{"comando":"bash test.sh","saida":"3 cases passed"}' > /dev/null 2>&1
 
 OUT6A=$(RFM_ESTADO_ROOT="$T6" RFM_ROOT="$T6" CLAUDE_SESSION_ID="$SESSAO6" \
-  node "$ESTADO_JS" exigir --slug teste-aberto --estagio fechar 2>&1)
+  env -u CLAUDE_CODE_SESSION_ID node "$ESTADO_JS" exigir --slug teste-aberto --estagio fechar 2>&1)
 EXIT6A=$?
 echo "exigir fechar: $OUT6A (exit=$EXIT6A)"
 
@@ -282,7 +287,7 @@ else
 fi
 
 OUT6B=$(RFM_ESTADO_ROOT="$T6" RFM_ROOT="$T6" CLAUDE_SESSION_ID="$SESSAO6" \
-  node "$ESTADO_JS" marcar --slug teste-aberto --estagio fechar --status ok 2>&1)
+  env -u CLAUDE_CODE_SESSION_ID node "$ESTADO_JS" marcar --slug teste-aberto --estagio fechar --status ok 2>&1)
 EXIT6B=$?
 echo "marcar fechar ok: $OUT6B (exit=$EXIT6B)"
 
@@ -296,6 +301,80 @@ if [ "$EXIT6B" -eq 0 ] && [ -f "$LEDGER6" ]; then
   fi
 else
   falhou=$((falhou+1)); echo "  FALHA marcar --estagio fechar --status ok nao saiu 0 ou ledger ausente"
+fi
+
+echo
+echo "=========================================="
+echo "TESTE 7: carimba com o nome REAL da variavel, sem injetar CLAUDE_SESSION_ID"
+echo "=========================================="
+T7_POSIX="$BASE_POSIX/t7"; mkdir -p "$T7_POSIX"
+T7="$(aformato "$T7_POSIX")"
+SESSAO7="77777777-7777-7777-7777-777777777777"
+
+# env -u CLAUDE_SESSION_ID: garante que a variavel antiga NAO esta no
+# ambiente. So CLAUDE_CODE_SESSION_ID (o nome que o Claude Code realmente
+# exporta, medido em 2026-09-15) fica setada.
+OUT7=$(RFM_ESTADO_ROOT="$T7" RFM_ROOT="$T7" CLAUDE_CODE_SESSION_ID="$SESSAO7" \
+  env -u CLAUDE_SESSION_ID node "$ESTADO_JS" iniciar --slug teste-var-real --titulo "t" 2>&1)
+EXIT7=$?
+echo "$OUT7"
+echo "(exit=$EXIT7)"
+
+if [ "$EXIT7" -eq 0 ]; then
+  ok=$((ok+1)); echo "  ok    iniciar saiu 0 com apenas CLAUDE_CODE_SESSION_ID no ambiente"
+else
+  falhou=$((falhou+1)); echo "  FALHA iniciar saiu $EXIT7 (esperado 0)"
+fi
+
+LEDGER7="$T7_POSIX/fluxos-sessao.json"
+if [ -f "$LEDGER7" ]; then
+  RES7=$(lerCampos "$LEDGER7" "$SESSAO7")
+  echo "ledger: $RES7"
+  if [ "$RES7" = "1 teste-var-real design" ]; then
+    ok=$((ok+1)); echo "  ok    ledger nasceu com a chave de CLAUDE_CODE_SESSION_ID, sem CLAUDE_SESSION_ID no ambiente"
+  else
+    falhou=$((falhou+1)); echo "  FALHA ledger inesperado: '$RES7' (esperado '1 teste-var-real design')"
+  fi
+else
+  falhou=$((falhou+1)); echo "  FALHA fluxos-sessao.json nao foi criado em $LEDGER7"
+fi
+
+echo
+echo "=========================================="
+echo "TESTE 8: precedencia — as duas variaveis setadas com valores DIFERENTES,"
+echo "o carimbo usa o valor de CLAUDE_CODE_SESSION_ID"
+echo "=========================================="
+T8_POSIX="$BASE_POSIX/t8"; mkdir -p "$T8_POSIX"
+T8="$(aformato "$T8_POSIX")"
+SESSAO8_CODE="88888888-8888-8888-8888-888888888888"
+SESSAO8_LEGADA="99999999-9999-9999-9999-999999999999"
+
+OUT8=$(RFM_ESTADO_ROOT="$T8" RFM_ROOT="$T8" \
+  CLAUDE_CODE_SESSION_ID="$SESSAO8_CODE" CLAUDE_SESSION_ID="$SESSAO8_LEGADA" \
+  node "$ESTADO_JS" iniciar --slug teste-precedencia --titulo "t" 2>&1)
+EXIT8=$?
+echo "$OUT8"
+echo "(exit=$EXIT8)"
+
+if [ "$EXIT8" -eq 0 ]; then
+  ok=$((ok+1)); echo "  ok    iniciar saiu 0 com as duas variaveis setadas"
+else
+  falhou=$((falhou+1)); echo "  FALHA iniciar saiu $EXIT8 (esperado 0)"
+fi
+
+LEDGER8="$T8_POSIX/fluxos-sessao.json"
+if [ -f "$LEDGER8" ]; then
+  RES8_CODE=$(lerCampos "$LEDGER8" "$SESSAO8_CODE")
+  RES8_LEGADA=$(lerCampos "$LEDGER8" "$SESSAO8_LEGADA")
+  echo "ledger sob CLAUDE_CODE_SESSION_ID ($SESSAO8_CODE): $RES8_CODE"
+  echo "ledger sob CLAUDE_SESSION_ID ($SESSAO8_LEGADA): $RES8_LEGADA"
+  if [ "$RES8_CODE" = "1 teste-precedencia design" ] && [ "$RES8_LEGADA" = "0 undefined undefined" ]; then
+    ok=$((ok+1)); echo "  ok    carimbo usou CLAUDE_CODE_SESSION_ID, nao CLAUDE_SESSION_ID"
+  else
+    falhou=$((falhou+1)); echo "  FALHA precedencia errada: code='$RES8_CODE' legada='$RES8_LEGADA'"
+  fi
+else
+  falhou=$((falhou+1)); echo "  FALHA fluxos-sessao.json nao foi criado em $LEDGER8"
 fi
 
 echo

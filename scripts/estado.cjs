@@ -1032,7 +1032,12 @@ function processarCarimbos(estagio, blocoAnterior, extra, estado) {
     ? blocoAnterior.carimbos
     : [];
   const acumulado = existentes.slice();
-  const sessao = process.env.CLAUDE_SESSION_ID || SESSAO_DESCONHECIDA;
+  // CLAUDE_CODE_SESSION_ID é o nome real que o Claude Code exporta;
+  // CLAUDE_SESSION_ID é reserva só para host que exporte o nome antigo
+  // (medido em 2026-09-15: CLAUDE_SESSION_ID não existe no ambiente do
+  // Claude Code — ver hooks/lib/ledger-fluxos.cjs para a limitação de
+  // subagente/CLAUDE_CODE_PARENT_SESSION_ID, que vale igual aqui).
+  const sessao = process.env.CLAUDE_CODE_SESSION_ID || process.env.CLAUDE_SESSION_ID || SESSAO_DESCONHECIDA;
   const ts = agoraIso();
 
   // Validar se plano.tarefas está gravado e tarefa está dentro do intervalo

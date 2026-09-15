@@ -51,9 +51,20 @@ function caminhoLedger() {
 }
 
 /**
- * Carimba `{slug, estagio, aberto}` na entrada da sessão atual (lida de
- * `CLAUDE_SESSION_ID`). Sem a variável de ambiente, não grava nada.
+ * Carimba `{slug, estagio, aberto}` na entrada da sessão atual. Lê
+ * `CLAUDE_CODE_SESSION_ID` — o nome real que o Claude Code exporta — e só
+ * como reserva `CLAUDE_SESSION_ID` (medido em 2026-09-15: `CLAUDE_SESSION_ID`
+ * não existe no ambiente do Claude Code; a reserva não custa nada e cobre um
+ * host que exporte o nome antigo). Sem nenhuma das duas, não grava nada.
  * Nunca lança — qualquer falha de leitura, parse ou escrita é engolida.
+ *
+ * Limitação conhecida, não resolvida aqui: não existe
+ * `CLAUDE_CODE_PARENT_SESSION_ID`. Um subagente que rode um verbo de
+ * `scripts/estado.cjs` carimba o PRÓPRIO session id, e o hook de SessionEnd
+ * (Parte B) roda na sessão-mãe — então aquele carimbo de subagente nunca é
+ * visto por ela. Na prática os verbos são rodados pela janela principal.
+ * `CLAUDE_CODE_CHILD_SESSION=1` não serve para distinguir os dois casos: ele
+ * está presente também no shell da janela principal (medido em 2026-09-15).
  *
  * `aberto` é o próximo estágio não-fechado (string) ou `null` quando o fluxo
  * completou. Campo opcional: chamador que não passa `aberto` deixa a chave DE
@@ -68,7 +79,7 @@ function caminhoLedger() {
  */
 function carimbarFluxo(o) {
   try {
-    const sessao = process.env.CLAUDE_SESSION_ID;
+    const sessao = process.env.CLAUDE_CODE_SESSION_ID || process.env.CLAUDE_SESSION_ID;
     if (!sessao) return;
     const slug = o && o.slug;
     const estagio = o && o.estagio;
