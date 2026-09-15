@@ -362,10 +362,15 @@ function mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade) {
   return msg;
 }
 
-function bloqueia(achados, arquivo, agente, gitTop) {
+// `preambulo` sai ANTES da mensagem, e so quando ha bloqueio de verdade.
+// Medido na revisao de 2026-09-15: o aviso da Issue #165 era escrito no stderr
+// antes desta chamada, e em repositorio privado o gate segue para `exit(0)` --
+// o usuario lia "este conteudo entraria no COMMIT" e nada tinha sido barrado.
+function bloqueia(achados, arquivo, agente, gitTop, preambulo) {
   const ehSubagente = Boolean(agente);
   const visibilidade = visibilidadeDoRepo(gitTop);
   if (visibilidade === "privada") process.exit(0);
+  if (preambulo) process.stderr.write(preambulo);
   process.stderr.write(mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade));
   process.exit(2);
 }
@@ -571,12 +576,11 @@ function conferirCommit(ev, cwdDoEvento, agente) {
       }
 
       if (achadosAbloquear.length > 0) {
-        process.stderr.write(
+        bloqueia(achadosAbloquear, absoluto, agente, gitTop,
           `\nEste conteudo entraria no COMMIT, e o gate de escrita nao o viu —\n` +
           `ele cobre Write/Edit, e este arquivo pode ter sido escrito por script\n` +
           `(node, sed, heredoc). Issue #165.\n`
         );
-        bloqueia(achadosAbloquear, absoluto, agente, gitTop);
       }
     }
   }

@@ -239,5 +239,22 @@ fluxo, e é de uma linha.
 
 ## Em aberto
 
-Nada. As cinco Issues têm causa medida em `arquivo:linha` nesta máquina, sobre
-`14c471ed`, e critério falsificável no plano.
+As cinco Issues têm causa medida em `arquivo:linha` nesta máquina, sobre `14c471ed`, e
+critério falsificável no plano. Ficam dois pontos, levantados pela revisão e pela
+auditoria deste lote em 2026-09-15 e **não** consertados aqui:
+
+- **A isenção por visibilidade desliga todas as réguas, não só termo de cliente.** Ela
+  mora em `bloqueia()`, que é por onde passam os três caminhos — então repositório
+  privado libera JID, telefone, CPF, e-mail e credencial junto. É literalmente o que a
+  tarefa 5 pede, e por isso não é defeito de implementação; mas amplia o “Protege
+  contra” do próprio docblock do gate, e repositório privado que vira público depois já
+  tem o dado no histórico. Estreitar a isenção às réguas cujo dano depende de ser
+  público é mudança de escopo e vai em decisão própria.
+
+- **`RAINFOREST_GH` executa binário nomeado pelo ambiente.** É costura de teste, roda
+  por `execFileSync` com vetor (sem shell, sem interpolação), e quem controla o `env` já
+  tem `RAINFOREST_GATE_OFF=1`. A metade que preocupava — a resposta do impostor
+  sobreviver no disco por sete dias — morreu junto com o cache de `privada`; a auditoria
+  retirou o achado depois de medir. Fica a nota de que um gate de segurança executa um
+  caminho vindo do ambiente, e de que o `.split(" ")` quebra com caminho que tenha
+  espaço.

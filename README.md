@@ -148,6 +148,15 @@ mesmo assim**.
 
 As baterias dos gates rodam em Windows + Git Bash (ambiente do CI: `runs-on: windows-latest`); Linux e macOS não são medidos. Cada gate declara seu modelo de ameaça nos docblocks.
 
+Todas elas se rodam por um comando só, o mesmo que a CI roda — e o exit 0 dele é o que significa “as baterias passaram”:
+
+```bash
+bash scripts/varrer-baterias.sh                       # todas
+bash scripts/varrer-baterias.sh --so scripts/testa-jornada.sh   # uma só
+```
+
+A varredura recusa começar se qualquer uma das duas metades (`scripts/`, `hooks/`) vier vazia: glob quebrado sairia 0 sem provar nada. `--so` aceita só um arquivo existente de nome `testa-*.sh`.
+
 | Hook (`PreToolUse`, exit 2) | Barra |
 |---|---|
 | `gate-worktree.cjs` | escrita de subagente fora de worktree linkado; `git checkout/switch/reset` com outra sessão no mesmo diretório |

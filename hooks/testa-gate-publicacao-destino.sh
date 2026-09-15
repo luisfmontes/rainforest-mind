@@ -524,6 +524,36 @@ if [ "$RC_M" = 0 ]; then ok=$((ok+1)); echo "  ok   (m) so origin privado contin
 else falhou=$((falhou+1)); echo "  FALHA (m): exit=$RC_M (esperava 0)"; fi
 rm -f "$SANDBOX_DATA/cache-visibilidade-repo.json"
 
+# Teste (o): o preambulo da Issue #165 so sai quando ha bloqueio de verdade.
+#
+# Ele era escrito no stderr ANTES de `bloqueia`, e em repositorio privado o
+# gate segue para exit 0: o usuario lia "este conteudo entraria no COMMIT" e
+# nada tinha sido barrado. Medido contra 5e43b525, o commit que introduziu a
+# saida por visibilidade: preambulo presente nos DOIS casos la, so no publico
+# aqui.
+echo "== (o) preambulo do commit so sai bloqueando =="
+TEST_O="$RAIZ/vis-o"
+git init -q -b main "$TEST_O"; git -C "$TEST_O" config user.email t@t; git -C "$TEST_O" config user.name t; git -C "$TEST_O" config commit.gpgsign false
+echo "x" > "$TEST_O/f.txt"; git -C "$TEST_O" add f.txt; git -C "$TEST_O" commit -q -m x
+git -C "$TEST_O" remote add origin "https://github.com/test/o.git"
+# Arquivo com JID no indice: e o que o gate le no caminho do commit.
+printf 'contato: %s\n' "$JID_REAL" > "$TEST_O/novo.txt"
+git -C "$TEST_O" add novo.txt
+PO=$(payBash "git commit -q -m x" "$(esc "$TEST_O")")
+
+rm -f "$SANDBOX_DATA/cache-visibilidade-repo.json"
+SO_PRIV=$(printf '%s' "$PO" | env HOME="$RAIZ" RFM_ROOT="$SANDBOX_DATA" GH_RESPONSE='{"isPrivate":true}' RAINFOREST_GH="node $SANDBOX_BIN/gh" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" 2>&1); RC_OP=$?
+rm -f "$SANDBOX_DATA/cache-visibilidade-repo.json"
+SO_PUB=$(printf '%s' "$PO" | env HOME="$RAIZ" RFM_ROOT="$SANDBOX_DATA" GH_RESPONSE='{"isPrivate":false}' RAINFOREST_GH="node $SANDBOX_BIN/gh" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" 2>&1); RC_OU=$?
+rm -f "$SANDBOX_DATA/cache-visibilidade-repo.json"
+
+if [ "$RC_OP" = 0 ] && ! printf '%s' "$SO_PRIV" | grep -q "entraria no COMMIT"; then
+  ok=$((ok+1)); echo "  ok   (o) repo privado: exit 0 e SEM preambulo"
+else falhou=$((falhou+1)); echo "  FALHA (o) privado: exit=$RC_OP; saida: $SO_PRIV"; fi
+if [ "$RC_OU" = 2 ] && printf '%s' "$SO_PUB" | grep -q "entraria no COMMIT"; then
+  ok=$((ok+1)); echo "  ok   (o) repo publico: exit 2 e COM preambulo"
+else falhou=$((falhou+1)); echo "  FALHA (o) publico: exit=$RC_OU; saida: $SO_PUB"; fi
+
 # Teste (g): RAINFOREST_GATE_SEM_REDE=1 → 0 invocações
 echo "== (g) RAINFOREST_GATE_SEM_REDE=1 → sem rede =="
 : > "$GH_INVOCATIONS"

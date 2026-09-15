@@ -457,8 +457,13 @@ function dentroDeDumpHex(m, linha) {
  *
  * O valor NUNCA sai daqui. A regua existe para segredo nao circular, e a
  * mensagem de bloqueio vai para log, terminal e as vezes corpo de Issue. O
- * grupo 2, quando existe, e o valor; o que sobra do match e a chave, que
- * identifica o trecho sem expor nada.
+ * grupo **1** e o valor, e essa e a unica leitura que este arquivo faz: o
+ * que sobra do match e a chave, que identifica o trecho sem expor nada.
+ *
+ * A frase anterior dizia "grupo 2" e contradizia o `const valor = m[1]` logo
+ * abaixo, desde que nasceu. Corrigida na revisao de 2026-09-15 -- o contrato
+ * vale para a proxima regua que declarar `mostra_chave`, e uma regua que
+ * capture o valor em outro grupo passaria a redigir o pedaco errado.
  */
 function trechoRedigido(m, padrao) {
   if (!m || !m[0]) return null;
