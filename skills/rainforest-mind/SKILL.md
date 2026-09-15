@@ -119,11 +119,12 @@ segurança.
 <!-- detalhe -->
 Elaboração: references/regra-09.md
 
-**10. Agentes baratos, e só os admitidos.** Task de **3.000+ tokens** vai para o
+**10. Agentes baratos, e a portaria REGISTRA.** Task de **3.000+ tokens** vai para o
 agente da **função**; abaixo disso despachar sai mais caro que fazer, e a janela
-principal pensa. Agente que edita **nunca é nomeado**, e **nomeado só entrega por
-`SendMessage`**. Rodar exige manifesto + **estágio ativo**: a portaria decide por
-código, sem perguntar em runtime — exceção é diff no manifesto.
+principal pensa. O único portão que **barra** é o da regra 11: agente que edita
+usa `isolation: "worktree"` e **nunca é nomeado** (nomeado só entrega por
+`SendMessage`). Manifesto e estágio deixaram de admitir e viraram **declaração**:
+entram na linha do log, não no portão — nada de autorização digitada por sessão.
 <!-- detalhe -->
 Elaboração: references/regra-10.md
 

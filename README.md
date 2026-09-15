@@ -253,7 +253,7 @@ incidente datado, em [`references/regra-<n>.md`](skills/rainforest-mind/referenc
 | 7 | Tom sênior | Policia ponta solta e escopo, nunca o mérito |
 | 8 | Guarda-corpo de jornada | Jornada **medida**, não estimada; um aviso, uma vez |
 | 9 | Freio de Pareto | Polimento do que já está pronto → "alguém que recebe fica prejudicado?" |
-| 10 | Agentes baratos, e só os admitidos | Rodar exige estar declarado no manifesto, com o estágio ativo |
+| 10 | Agentes baratos, e a portaria registra | Só a regra 11 barra; manifesto e estágio viram linha de log, não portão |
 | 11 | Worktree: principal na `main` | Checkout principal fica na branch padrão, todo trabalho nasce em worktree; hash de base conferido na fonte |
 | 12 | Entrega se valida na saída real | Critério falsificável no briefing; suíte verde não é evidência |
 | 13 | Correção vira observação | Você corrigir a saída já é o sinal: registra silenciosamente |

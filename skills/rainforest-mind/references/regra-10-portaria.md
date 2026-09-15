@@ -6,9 +6,49 @@ cresceram juntos e estouraram o teto de bytes de um `reference`. A regra em si �
 roteamento por função, limiar de 3.000 tokens, agente que edita não é nomeado —
 continua em `regra-10.md`.
 
-Subagente só roda se estiver declarado no manifesto com o estágio ativo na sua lista. A decisão é tomada por código (hook `PreToolUse` que intercepta a tool `Task`), nunca por pergunta ao humano em runtime.
+## 2026-09-15 — a portaria deixou de admitir (issue #264)
 
-> **Regra 10 (reescrita):** Subagente só roda se estiver declarado no manifesto e o estágio ativo constar na sua lista. A portaria decide por código; o humano nunca é perguntado em sessão. Exceção não existe em runtime — exceção é editar o manifesto, e edição de manifesto é mudança versionada que passa pelo `revisar`.
+**Até 15/09 esta era uma allowlist: fora do manifesto, deny; sem estágio ativo,
+deny (a menos que o usuário digitasse "autorizo subagentes" naquela sessão).
+Não é mais.** O que mudou e por quê:
+
+| Portão | Antes | Agora |
+|---|---|---|
+| Agente fora do manifesto | nega | **passa**, com `declarado: false` no log |
+| Sem estágio ativo | nega, ou exige frase digitada | **passa**, com `fora_de_fluxo: true` no log |
+| Estágio fora da lista do agente | nega | **passa**, com `estagio_declarado` no log |
+| `escreve: true` sem `isolation: "worktree"` | nega | **nega** (regra 11) |
+| `escreve: true` com `name` | nega | **nega** (regra 10) |
+| Manifesto malformado | nega | **nega** |
+
+O custo dos dois primeiros foi medido e superou o que eles protegiam. Agente
+instalado pelo **próprio usuário**, vindo de outro plugin dele, nunca passava —
+`protheus-implementer` negado em dois repositórios em 15/09, `Plan` negado duas
+vezes na mesma sessão — e a única saída oferecida era reescrever à mão o
+manifesto inteiro. A frase "autorizo subagentes" custava uma digitação por
+sessão em todo repositório de trabalho: o `despachos.jsonl` de 15/09 tem seis
+`allow` com `via: autorizacao-do-usuario`, e nenhum deles decidiu nada — todos
+teriam passado.
+
+Nenhum dos dois defendia a árvore de trabalho do usuário. Quem defende é a
+regra 11, e essa continua barrando. Os outros defendiam a **ordem do fluxo**, e
+ordem de fluxo agora se registra: as marcas acima entram na linha do log, e o
+`conferir-fluxo` continua lendo o mesmo log.
+
+> **Regra 10 (reescrita em 2026-09-15):** o manifesto é **declaração**, não
+> admissão. A portaria barra um caso só — agente que escreve sem worktree
+> isolado, ou nomeado. Todo o resto ela deixa passar e registra. A decisão
+> continua sendo por código (hook `PreToolUse` sobre a tool `Task`), e o humano
+> continua não sendo perguntado em runtime — a diferença é que agora ele também
+> não é **cobrado** em runtime.
+
+**Agente não declarado tem o `escreve` INFERIDO** do frontmatter do arquivo do
+agente, quando o arquivo está ao alcance: tool fora da allowlist read-only →
+`escreve: true`, e a regra 11 passa a valer para ele. Quando o arquivo não está
+ao alcance — o caso comum em repo de consumidor, onde os agentes vêm do cache do
+plugin — o allow sai marcado com `escreve_conferido: false`, em vez de afirmar
+read-only. Para que a regra 11 morda um agente de outro plugin, declare-o no
+`agentes.extra.json` (ver `regra-10-portaria-escopo.md`).
 
 **Vale em toda sessão** com o plugin habilitado, e o manifesto do repo **substitui por inteiro** o padrão embarcado (2026-09-13): `regra-10-portaria-escopo.md`.
 
