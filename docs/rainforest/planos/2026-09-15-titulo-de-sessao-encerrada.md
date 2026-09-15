@@ -175,3 +175,50 @@ aquele carimbo não será visto. Na prática os verbos são rodados pela janela
 principal (as skills do fluxo mandam assim). `CLAUDE_CODE_CHILD_SESSION=1` não
 serve para distinguir: ele está presente também no shell da janela principal —
 medido em 2026-09-15.
+
+### 7. Fechar os três achados da segunda revisão [tipo: implementar]
+atende: D4, D5
+arquivos: `hooks/lib/ledger-fluxos.cjs`, `hooks/testa-ledger-fluxos.sh`, `hooks/testa-titulo-sessao-end.sh`
+depende de: 6
+paralela: nao
+mutacao:
+  arquivo: `hooks/titulo-sessao-end.cjs`
+  de: `fs.appendFileSync(caminho, linha)`
+  para: `fs.writeFileSync(caminho, linha)` — trunca o transcript, que é exatamente o que o D4 promete nunca acontecer
+  bateria: `bash hooks/testa-titulo-sessao-end.sh`
+  fixture: `testa-titulo-sessao-end.sh, a asserção nova de contagem de linhas do TESTE 1`
+pronto quando: com a mutação `appendFileSync` -> `writeFileSync` aplicada no
+  `hooks/titulo-sessao-end.cjs`, `bash hooks/testa-titulo-sessao-end.sh` sai **1** e a
+  falha aponta a contagem de linhas — provado pelo `conferir-mutacao.cjs` com esse
+  `--de`/`--para` saindo 0; e, com o fonte íntegro, um transcript de 3 linhas vira 4
+  com as 3 primeiras byte-a-byte iguais — provado por `head -n -1 <depois> | sha256sum`
+  batendo com `sha256sum <antes>`
+
+**Achado 1 — corrida de escrita no ledger.** `carimbarFluxo` faz
+leitura-modificação-escrita sem lock e sem escrita atômica. Reproduzido na revisão
+de 2026-09-15: 80 processos simultâneos contra o mesmo `RFM_ROOT` e **9 de 80
+chaves sobreviveram**. Duas janelas do usuário chamando um verbo quase junto
+perdem carimbo — e pode ressuscitar `aberto: "design"` sobre um `aberto: null`
+mais recente, que é título **errado**, pior que título ausente (o D2 existe para
+evitar justamente isso). Conserto: lockfile exclusivo (`fs.openSync` com flag
+`wx`) em volta do ciclo inteiro, com poucas tentativas e desistência **silenciosa**
+se não conseguir, mais escrita atômica (arquivo temporário + `fs.renameSync`). A
+invariante do "O que não pode quebrar" continua valendo: nunca lança, nunca muda
+exit code.
+
+**Achado 2 — a poda de 24 h apaga carimbo de sessão viva.** O `ts` do ledger só
+se atualiza quando **aquela** sessão chama um verbo, não a cada interação — ao
+contrário do `heartbeat.cjs`, que atualiza a cada prompt. Sessão que roda
+`iniciar` na sexta e fica aberta num `executar` longo perde o carimbo quando outra
+sessão dispara a poda na segunda, e fecha sem título. Isso contraria a premissa do
+D5 ("a entrada só precisa viver até o `SessionEnd` da própria sessão"). Conserto:
+janela de poda de **30 dias** em vez de 24 h, mais teto de **500 entradas** (as
+mais recentes ficam) para o arquivo não crescer sem limite. Corrija também o
+comentário do D5 no design.
+
+**Achado 3 — a bateria é cega a truncamento.** Todas as asserções de escrita de
+`testa-titulo-sessao-end.sh` usam `tail -1`. Trocar `appendFileSync` por
+`writeFileSync` destrói o transcript (3 linhas viram 1) e as seis asserções
+continuam **verdes**. Conserto: em cada caso que escreve, afirmar que o arquivo
+cresceu **exatamente uma linha** e que `head -n -1` do resultado é byte-a-byte
+igual ao conteúdo de antes.

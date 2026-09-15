@@ -77,15 +77,16 @@
     ]
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "46fce80b7e5f333387fb091bfa5a5dba4bfe504e",
+      "head": "db3eb92a778161c83d4d7e3e5c1a735add0d6233",
       "caminhos_sujos": []
     },
     "em_voo": [],
     "em": "2026-09-15",
-    "achados": 2,
-    "tentativas": 1
+    "achados": 3,
+    "base": "14c471ed29f790655f4f2b2e34fce2af578edaac",
+    "head": "db3eb92a"
   },
   "verificar": {
     "status": "pendente"
