@@ -96,10 +96,14 @@ depende de: nenhuma
 paralela: sim
 mutacao:
   arquivo: `scripts/varrer-baterias.sh`
-  de: `if [ "$total" -lt 15 ]; then`
-  para: `if [ "$total" -lt 0 ]; then`
+  de: `if [ "${#de_hooks[@]}" -lt 5 ]; then`
+  para: `if false; then`
   bateria: `bash scripts/testa-varrer-baterias.sh`
-  fixture: glob sabotado (zero bateria) passa a sair 0 em vez de 1
+  fixture: (g) esvaziar `hooks/` com `scripts/` cheio volta a sair 0 em vez de 1
+  ancora anterior: `if [ "$total" -lt 15 ]; then` — o piso unico deixou de existir na revisao
+    de 2026-09-15, quando cada pasta ganhou piso proprio. A ancora velha saiu **pulada** no
+    `verificar`, que e o defeito que a Issue #254 descreve: pular fecha o estagio como se
+    tivesse medido. Trocada pela que existe e vai vermelha.
 pronto quando: `scripts/varrer-baterias.sh` existe, é executável por `bash`, e contém o laço, a guarda de piso e o placar movidos de `.github/workflows/baterias.yml` (linhas ~160-196) **sem mudança de lógica**: mesmo glob `scripts/testa-*.sh hooks/testa-*.sh`, mesmo piso de 15 pela linha literal `if [ "$total" -lt 15 ]; then`, mesmo texto de placar, exit 0 com todas verdes e exit 1 listando as vermelhas; o script aceita `--so <caminho>` para rodar uma bateria só, e nesse modo a guarda de piso não se aplica; `grep -c 'testa-\*\.sh' .github/workflows/baterias.yml` devolve **0** e o passo `Rodar as baterias` do YAML é uma chamada a `bash scripts/varrer-baterias.sh`; `scripts/testa-varrer-baterias.sh` afirma, em sandbox com árvore sintética: (a) três baterias verdes → exit 0 e o placar cita 3 — mas só se o piso for exercitado pelo modo `--so`, senão a bateria monta as 15 mínimas; (b) uma vermelha entre elas → exit 1 e o nome dela aparece na lista de vermelhas; (c) glob que não casa com ninguém → exit 1 citando a guarda de piso, **não** exit 0; (d) `--so <uma bateria verde>` → exit 0 sem a guarda de piso; (e) `--so <uma vermelha>` → exit 1; a saída de cada bateria é preservada por bateria (o log de uma não sobrescreve o da outra) — provado por `bash scripts/testa-varrer-baterias.sh` exit 0, `bash scripts/varrer-baterias.sh` exit 0 na árvore do worktree, e `node scripts/conferir-mutacao.cjs` com o bloco acima saindo 0 (`vermelho`). **Acrescentado na revisão de 2026-09-15:** `scripts/` e `hooks/` têm piso **próprio** (15 e 5) e a descoberta usa `nullglob`, não `ls` — esvaziar `hooks/` com `scripts/` cheio sai **1** citando `hooks/`, e não 0; `baterias` e `vermelhas` são arrays — `--so` com glob não expande e caminho com espaço chega inteiro na lista de vermelhas; `--so` só aceita arquivo existente de nome `testa-*.sh` — script arbitrário sai **1** sem rodar; e `--so` sem valor ou flag desconhecida saem **1** com a linha de uso, em vez de cair calados na varredura completa — provado pelos casos (g) a (l) de `bash scripts/testa-varrer-baterias.sh` (exit 0) e por duas catracas vermelhas, o piso de `hooks/` e a guarda de nome do `--so`.
 
 ### 7. `conferir-versao.cjs` roda no job de PR [tipo: implementar]
