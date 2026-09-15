@@ -14,13 +14,105 @@
     "em": "2026-09-14"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-09-14",
+    "tarefas_ok": 8,
+    "tarefas": 9,
+    "comando": "bash scripts/varrer-baterias.sh",
+    "saida": "== 116 baterias ==  ...  ================ placar ================  as 116 baterias passaram  (exit 0)",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "(a) heredoc com prosa (2 B). Ele sobe. sai 0"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "tarefa retirada: o segundo sintoma da #258 nao reproduz em seis formas medidas; virou a Issue #261"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "autorizo subagens deixa de autorizar com TOLERANCIA 0"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "recusa volta a dizer sem estagio ativo"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "(a) repo privado volta a ser bloqueado"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "(c) glob vazio deixa de sair 1 pela guarda de piso"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "versao igual a de origin/main deixa de sair 2"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "n/a",
+        "motivo": "versao e documentacao; conferidas por testa-versao.sh e testa-mapa-regras.sh"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "o valor original volta a aparecer no trecho impresso"
+      }
+    ],
+    "em": "2026-09-14"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "snapshot": {
+      "head": "fb74073f76a1f35267f2e62de4ff8127a85f314f",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/zerar-issues-4.json"
+      ]
+    },
+    "achados": 12,
+    "base": "14c471ed",
+    "head": "fb74073f",
+    "comando": "bash scripts/varrer-baterias.sh",
+    "saida": "== 116 baterias ==  ...  ================ placar ================  as 116 baterias passaram  (exit 0)  -- 116 VERDE, 0 vermelha, primeira rodada em arvore parada",
+    "revisores": [
+      "revisor2 (rainforest-mind:revisor)",
+      "auditor2 (rainforest-mind:auditor-de-seguranca)",
+      "janela principal"
+    ],
+    "consertados": [
+      "0043e082 mascara de heredoc: 8 desvios (varredura da janela)",
+      "f8e5b28a autorizacao em 3a pessoa concedia (varredura da janela)",
+      "09f2dec1 token nu entre aspas deixava de ser segredo (varredura da janela)",
+      "e4943e1c mais 3 desvios da mascara: redirecionamento antes do <<, e << citado+fechado em aspas e em comentario (posicoesDeOperadorHeredoc estava definida e nunca chamada)",
+      "64c7cbf4 regua credencial isentava token nu por PADRAO (JWT, PAT sem digito, 24 letras, curto) e prendeu a isencao de prosa; cache de visibilidade liberava o gate com entrada plantada; sem upstream a visibilidade vinha do origin e nao do destino",
+      "818c04a8 varredura sem piso por pasta, sem arrays e sem guarda de invocacao; (d),(e),(g) do gate de publicacao eram decoracao; em como string; cache fora do .gitignore",
+      "b102426a preambulo da #165 saia sem bloquear; README nao citava o comando da varredura; docblock de trechoRedigido contradizia o codigo",
+      "fb74073f plano: fixtures de autorizacao e .gitignore ganham tarefa dona (trava de creep)"
+    ],
+    "plantados": [
+      "#262 credencial em JSON com a chave entre aspas (anterior a 14c471ed)",
+      "#263 gate-mensagem-commit nao le flag curta agrupada (-am, -qm) nem isenta heredoc",
+      "#266 conferir-mutacao muta a arvore compartilhada"
+    ],
+    "em_aberto": [
+      "isencao por visibilidade desliga TODAS as reguas (e o que a tarefa 5 pede; estreitar e mudanca de escopo)",
+      "RAINFOREST_GH executa binario do ambiente, e .split(\" \") quebra com caminho com espaco"
+    ],
+    "em": "2026-09-15"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/varrer-baterias.sh  (mais o criterio de cada tarefa, um por um)",
+    "saida": "== 116 baterias == ... as 116 baterias passaram (exit 0; 116 VERDE, 0 vermelha). Criterios: T1 lib heredoc exporta corpoDeHeredoc e gate-fechar-issue importa (define=0, importa=1), testa-gate-fechar-issue exit 0, staging 129 ok, casos (a)-(d)(g)=0 e (e)(f)=2. T2 retirada. T3 TOLERANCIA_SUBAGENTE=2 uma vez, FORMAS_DE_SUBAGENTE viva, portaria-autorizacao 112 ok. T4 quaseFormaDeSubagente exportada e chamada uma vez no portaria.cjs, submarinos->\"submarinos\", subir->\"subir\", subagentes->null, portaria-diagnostico 31 ok. T5 saida por privada uma vez, gate-publicacao 45 ok. T6 testa-varrer-baterias 12 casos PASS, YAML roda bash scripts/varrer-baterias.sh e nao tem laco solto (grep testa-*.sh = 0). T7 conferir-versao no YAML apos fetch-depth 0, testa-conferir-versao 33 ok. T8 plugin.json 1.14.1, badge 1.14.1, travas-mecanicas cita varrer-baterias e a linha do gate de publicacao alcancada em 527ef124, testa-versao e testa-mapa-regras exit 0, conferir-versao exit 0. T9 const token = toks[i]; e const palavra = token.length; exit 0, api_key = abc123 exit 2, conferir-publicacao 125 ok.  Catraca de mutacao das nove tarefas, rodada de novo depois de 06978ea0 (a ancora da T6 apontava para linha que a revisao apagou e saiu PULADA, que e o defeito da #254): T1 vermelho, T2 pulada n/a (retirada), T3 vermelho, T4 vermelho, T5 vermelho, T6 vermelho, T7 vermelho, T8 pulada n/a (texto e numero, conferidos por testa-versao.sh e testa-mapa-regras.sh), T9 vermelho -- exit 0.",
+    "em": "2026-09-15"
   },
   "fechar": {
     "status": "pendente"
