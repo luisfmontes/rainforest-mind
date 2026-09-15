@@ -543,13 +543,16 @@ else
   falhou=$((falhou+1)); echo "  FALHA chaveHarness deu '$TESTE_CHAVE_B'"
 fi
 
-# 11.c — caminho sem : (POSIX-like)
-TESTE_CHAVE_C="$(SCRIPT_PATH="$SCRIPT_MEMORIA" node -e "
+# 11.c — caminho sem : (POSIX-like). Fixture usa $USUARIO (placeholder, não
+# nome real) para não trombar com a regra `caminho-de-home` do verificador de
+# publicação — a isenção é por FORMA (começa com $), e aspas simples aqui
+# impedem o bash de expandir a variável antes de chegar ao node.
+TESTE_CHAVE_C="$(SCRIPT_PATH="$SCRIPT_MEMORIA" node -e '
 const m = require(process.env.SCRIPT_PATH);
-process.stdout.write(m.chaveHarness('/home/user/projetos/rainforest-mind'));
-")"
-if [ "$TESTE_CHAVE_C" = "-home-user-projetos-rainforest-mind" ]; then
-  ok=$((ok+1)); echo "  ok    chaveHarness transforma /home/user/projetos/rainforest-mind"
+process.stdout.write(m.chaveHarness("/home/$USUARIO/projetos/rainforest-mind"));
+')"
+if [ "$TESTE_CHAVE_C" = '-home-$USUARIO-projetos-rainforest-mind' ]; then
+  ok=$((ok+1)); echo '  ok    chaveHarness transforma /home/$USUARIO/projetos/rainforest-mind'
 else
   falhou=$((falhou+1)); echo "  FALHA chaveHarness deu '$TESTE_CHAVE_C'"
 fi
