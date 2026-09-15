@@ -1,5 +1,6 @@
 vigias/log-*.txt
 sessoes.json
+fluxos-sessao.json
 
 # Ajuste local de plugin: este projeto não aponta horas. Fica fora do versionado
 # porque nomeia um marketplace interno de cliente e o repositório é público.
