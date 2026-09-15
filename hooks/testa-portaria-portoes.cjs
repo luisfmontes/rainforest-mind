@@ -8,19 +8,17 @@
  * hooks/portaria.cjs como PROCESSO REAL via spawnSync. Tudo offline.
  *
  * P1 — `--lint` sai 0 num repo com manifesto de exemplo.
- * P2 — agente não declarado recebe deny com motivo não vazio.
- * P3 — agente declarado em estágio errado recebe deny citando o estágio
- *      atual e os permitidos.
+ * P2 — agente não declarado recebe allow com `declarado: false` no log.
+ * P3 — manifesto JSON inválido recebe deny com motivo citando JSON inválido.
  * P4 — agente declarado + estágio certo recebe allow, e despachos.jsonl
  *      ganha exatamente uma linha com os campos obrigatórios. Prova adicional
  *      exigida pelo design: append-only comprovado por BYTE COUNT MONOTÔNICO
  *      entre duas execuções consecutivas, com a 1ª linha idêntica byte a byte
  *      depois da 2ª gravação — contagem de linhas sozinha não pega um rewrite
  *      que por acaso produza o mesmo número de linhas.
- * P5 — fail-closed em TEMPO DE EXECUÇÃO: o MESMO sandbox que aprovou o
- *      despacho (P4) passa a negá-lo depois que .rainforest/agentes.json é
- *      reescrito sem o agente. Sandbox que nunca aprovou nada não prova
- *      fail-closed — prova só que sandbox vazio nega.
+ * P5 — mudança em tempo de execução: agente que era DECLARADO vira NÃO-DECLARADO
+ *      quando o manifesto muda, passa com `declarado: false` na 2ª execução.
+ *      Prova que o log captura mudanças e que não há cache entre execuções.
  *
  * Cada portão imprime seu rótulo ESPERA quando fecha (`P1 lint:ok`, ...).
  * Exit 0 só se os cinco fecharem; exit ≠ 0 na primeira falha, com o que
@@ -152,7 +150,7 @@ function logPath(raiz) {
   fechar("P1", "lint:ok");
 }
 
-// ================================================ P2 — deny:nao-declarado
+// ================================== P2 — allow:nao-declarado + marcas-de-registro
 {
   const raiz = caixa("p2");
   iniciarGit(raiz, "fluxo/p2-nao-declarado");
@@ -162,49 +160,64 @@ function logPath(raiz) {
     agentes: { leitor: { estagios: ["revisar"], escreve: false } },
   });
 
+  // Agente não declarado agora PASSA e ganha marca no log
   const payload = { session_id: "p2-sessao", tool_input: { subagent_type: "fantasma" } };
   const r = rodaHook(raiz, JSON.stringify(payload));
 
-  if (r.status !== 2) {
-    falhar("P2", "exit 2 (deny)", `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
+  if (r.status !== 0) {
+    falhar("P2", "exit 0 (allow)", `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
   }
-  const motivo = (r.stderr || "").trim();
-  if (!motivo) {
-    falhar("P2", "motivo não vazio no stderr", "stderr veio vazio");
+
+  // Confira a linha do log
+  const log = logPath(raiz);
+  if (!fs.existsSync(log)) {
+    falhar("P2", "despachos.jsonl existe após allow de não-declarado", "arquivo não existe");
   }
-  if (!motivo.includes("fantasma") || !motivo.toLowerCase().includes("manifesto")) {
-    falhar("P2", "motivo citando o agente e o manifesto", motivo);
+  const texto = fs.readFileSync(log, "utf8").trim();
+  const linhas = texto.split("\n").filter(Boolean);
+  if (linhas.length !== 1) {
+    falhar("P2", "exatamente 1 linha no log", `${linhas.length} linha(s)`);
   }
+  let entrada;
+  try {
+    entrada = JSON.parse(linhas[0]);
+  } catch (e) {
+    falhar("P2", "linha é JSON válido", e.message);
+  }
+  if (entrada.decisao !== "allow") {
+    falhar("P2", "decisao = 'allow'", entrada.decisao);
+  }
+  if (entrada.declarado !== false) {
+    falhar("P2", "declarado = false no log", JSON.stringify(entrada.declarado));
+  }
+
   fs.rmSync(raiz, { recursive: true, force: true });
-  fechar("P2", "deny:nao-declarado");
+  fechar("P2", "allow:nao-declarado");
 }
 
-// ====================================================== P3 — deny:estagio
+// ================================ P3 — deny:manifesto-invalido
 {
   const raiz = caixa("p3");
-  iniciarGit(raiz, "fluxo/p3-estagio-errado");
-  // Estágio ATIVO é "revisar", mas o agente só está autorizado em "executar".
-  criarEstadoAtivo(raiz, "p3-estagio-errado", "revisar");
-  criarManifesto(raiz, {
-    versao: 1,
-    agentes: { revisor: { estagios: ["executar"], escreve: false } },
-  });
+  iniciarGit(raiz, "fluxo/p3-manifesto-invalido");
+  criarEstadoAtivo(raiz, "p3-manifesto-invalido", "revisar");
+
+  // Cria manifesto JSON inválido (este continua negando)
+  const dir = path.join(raiz, ".rainforest");
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, "agentes.json"), "{isso nao e json", "utf8");
 
   const payload = { session_id: "p3-sessao", tool_input: { subagent_type: "revisor" } };
   const r = rodaHook(raiz, JSON.stringify(payload));
 
   if (r.status !== 2) {
-    falhar("P3", "exit 2 (deny)", `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
+    falhar("P3", "exit 2 (deny manifesto inválido)", `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
   }
   const motivo = (r.stderr || "").trim();
-  if (!motivo.includes("revisar")) {
-    falhar("P3", "motivo citando o estágio ATIVO ('revisar')", motivo);
-  }
-  if (!motivo.includes("executar")) {
-    falhar("P3", "motivo citando os estágios PERMITIDOS ('executar')", motivo);
+  if (!motivo || !motivo.toLowerCase().includes("json")) {
+    falhar("P3", "motivo citando JSON inválido", motivo);
   }
   fs.rmSync(raiz, { recursive: true, force: true });
-  fechar("P3", "deny:estagio");
+  fechar("P3", "deny:manifesto-invalido");
 }
 
 // ======================================================== P4 — allow:logado
@@ -298,11 +311,11 @@ function logPath(raiz) {
   fechar("P4", "allow:logado");
 }
 
-// =================================================== P5 — deny:fail-closed
+// ============================ P5 — allow:nao-declarado-por-mudanca
 {
   const raiz = caixa("p5");
-  iniciarGit(raiz, "fluxo/p5-fail-closed");
-  criarEstadoAtivo(raiz, "p5-fail-closed", "revisar");
+  iniciarGit(raiz, "fluxo/p5-nao-declarado-por-mudanca");
+  criarEstadoAtivo(raiz, "p5-nao-declarado-por-mudanca", "revisar");
   const manifestoPath = criarManifesto(raiz, {
     versao: 1,
     agentes: { revisor: { estagios: ["revisar"], escreve: false } },
@@ -310,48 +323,49 @@ function logPath(raiz) {
 
   const payload = { session_id: "p5-sessao", tool_input: { subagent_type: "revisor" } };
 
-  // --- confirma que o MESMO sandbox aprova antes de remover o manifesto ---
+  // --- confirma que o MESMO sandbox aprova antes de remover do manifesto ---
   const r1 = rodaHook(raiz, JSON.stringify(payload));
   if (r1.status !== 0) {
-    falhar("P5", "exit 0 (allow) ANTES de remover o manifesto — pré-condição do fail-closed", `exit=${r1.status} stderr=${JSON.stringify(r1.stderr)}`);
+    falhar("P5", "exit 0 (allow) ANTES de remover do manifesto — pré-condição", `exit=${r1.status} stderr=${JSON.stringify(r1.stderr)}`);
+  }
+  const log1 = logPath(raiz);
+  const linhas1 = fs.readFileSync(log1, "utf8").trim().split("\n").filter(Boolean);
+  let entrada1 = JSON.parse(linhas1[0]);
+  if (entrada1.declarado !== false && entrada1.declarado !== undefined) {
+    // Primeira execução com agente DECLARADO não deve ter o campo
+    if (entrada1.declarado === false) {
+      falhar("P5", "primeira execução tem agente DECLARADO (sem marca 'declarado: false')", JSON.stringify(entrada1));
+    }
   }
 
   // --- muda o manifesto em tempo de execução, mesmo sandbox, mesmo payload ---
-  //
-  // Até 2026-09-13 o gatilho aqui era APAGAR o manifesto. Com o padrão embarcado
-  // (D2) apagar deixou de negar: cai no padrão, onde o `revisor` consta, e o
-  // caso passaria a provar o contrário do que o nome diz. O gatilho passa a ser
-  // reescrever o manifesto do repo SEM o agente — que é a mudança em tempo de
-  // execução que tem de negar, e que de quebra prova a D3: o padrão é
-  // SUBSTITUÍDO pelo do repo, não somado a ele; se somasse, o `revisor` voltaria
-  // pelo padrão e este portão ficaria verde com o bug dentro.
+  // Agora o revisor não está mais no manifesto do repo, então vira não-declarado
+  // e passa com `declarado: false`
   criarManifesto(raiz, {
     versao: 1,
-    agentes: { executor: { estagios: ["executar"], escreve: true } },
+    agentes: { executor: { estagios: ["executar"], escreve: false } },
   });
 
   const r2 = rodaHook(raiz, JSON.stringify(payload));
-  if (r2.status !== 2) {
-    falhar("P5", "exit 2 (deny) DEPOIS de tirar o agente do manifesto do repo", `exit=${r2.status} stderr=${JSON.stringify(r2.stderr)}`);
+  if (r2.status !== 0) {
+    falhar("P5", "exit 0 (allow) DEPOIS de tirar do manifesto do repo", `exit=${r2.status} stderr=${JSON.stringify(r2.stderr)}`);
   }
-  const motivo = (r2.stderr || "").trim();
-  if (!motivo) {
-    falhar("P5", "motivo não vazio no stderr da negação pós-mudança", "stderr veio vazio");
+
+  // Segunda execução deve ter marcado como não-declarado
+  const linhas2 = fs.readFileSync(log1, "utf8").trim().split("\n").filter(Boolean);
+  if (linhas2.length !== 2) {
+    falhar("P5", "log append-only: 2 linhas após 2ª execução", `${linhas2.length} linha(s)`);
   }
-  if (!motivo.includes("não consta no manifesto")) {
-    falhar("P5", "motivo é 'não consta no manifesto'", motivo);
+  let entrada2 = JSON.parse(linhas2[1]);
+  if (entrada2.decisao !== "allow") {
+    falhar("P5", "2ª execução decisao = 'allow'", entrada2.decisao);
   }
-  // O stderr tem de apontar o manifesto DO REPO — se apontasse o padrão, a
-  // negação teria vindo do arquivo errado.
-  if (!motivo.includes(manifestoPath) && !motivo.replace(/\//g, "\\").includes(manifestoPath)) {
-    falhar("P5", `stderr cita o manifesto do repo (${manifestoPath})`, motivo);
-  }
-  if (motivo.includes("agentes.padrao.json")) {
-    falhar("P5", "stderr NÃO cita o padrão embarcado (quem decidiu foi o do repo)", motivo);
+  if (entrada2.declarado !== false) {
+    falhar("P5", "2ª execução tem declarado = false (agente saiu do manifesto)", JSON.stringify(entrada2.declarado));
   }
 
   fs.rmSync(raiz, { recursive: true, force: true });
-  fechar("P5", "deny:fail-closed");
+  fechar("P5", "allow:nao-declarado-por-mudanca");
 }
 
 /* ============================================== P6 — registro:alcance

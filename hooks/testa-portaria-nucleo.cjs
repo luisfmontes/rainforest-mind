@@ -134,7 +134,7 @@ function manifestoD2(agentes) {
   };
 }
 
-// == 1. Agente não declarado → exit 2, nome no stderr ==
+// == 1. Agente não declarado → exit 0, declarado: false no log ==
 console.log("== 1. agente nao declarado ==");
 {
   const raiz = caixa();
@@ -155,18 +155,26 @@ console.log("== 1. agente nao declarado ==");
 
   const r = rodaHook(raiz, JSON.stringify(payload));
 
-  caso("exit 2", r.status === 2, `exit=${r.status}`);
-  caso("stderr cita o agente", r.stderr.includes("executar"), `stderr: ${r.stderr}`);
-  caso(
-    "stderr menciona manifesto",
-    r.stderr.includes("manifesto"),
-    `stderr: ${r.stderr}`
-  );
+  caso("exit 0", r.status === 0, `exit=${r.status}`);
+
+  const logPath = path.join(raiz, ".rainforest", "portaria", "despachos.jsonl");
+  if (fs.existsSync(logPath)) {
+    const linhas = fs.readFileSync(logPath, "utf8").trim().split("\n").filter(Boolean);
+    if (linhas.length > 0) {
+      try {
+        const entrada = JSON.parse(linhas[0]);
+        caso("log marca declarado: false", entrada.declarado === false, `declarado: ${entrada.declarado}`);
+        caso("decisao = 'allow'", entrada.decisao === "allow", `decisao: ${entrada.decisao}`);
+      } catch (e) {
+        caso("log é JSON válido", false, e.message);
+      }
+    }
+  }
 
   fs.rmSync(raiz, { recursive: true, force: true });
 }
 
-// == 2. Agente declarado, estágio errado → exit 2, estágios no stderr ==
+// == 2. Agente declarado, estágio errado → exit 0, estagio_declarado no log ==
 console.log("== 2. agente declarado, estagio errado ==");
 {
   const raiz = caixa();
@@ -185,9 +193,22 @@ console.log("== 2. agente declarado, estagio errado ==");
 
   const r = rodaHook(raiz, JSON.stringify(payload));
 
-  caso("exit 2", r.status === 2, `exit=${r.status}`);
-  caso("stderr cita estágio atual", r.stderr.includes("executar"), `stderr: ${r.stderr}`);
-  caso("stderr cita estágios permitidos", r.stderr.includes("revisar"), `stderr: ${r.stderr}`);
+  caso("exit 0", r.status === 0, `exit=${r.status}`);
+
+  const logPath = path.join(raiz, ".rainforest", "portaria", "despachos.jsonl");
+  if (fs.existsSync(logPath)) {
+    const linhas = fs.readFileSync(logPath, "utf8").trim().split("\n").filter(Boolean);
+    if (linhas.length > 0) {
+      try {
+        const entrada = JSON.parse(linhas[0]);
+        caso("log marca estagio_declarado", entrada.estagio_declarado === "revisar, verificar", `estagio_declarado: ${entrada.estagio_declarado}`);
+        caso("decisao = 'allow'", entrada.decisao === "allow", `decisao: ${entrada.decisao}`);
+        caso("estagio = 'executar' (atual)", entrada.estagio === "executar", `estagio: ${entrada.estagio}`);
+      } catch (e) {
+        caso("log é JSON válido", false, e.message);
+      }
+    }
+  }
 
   fs.rmSync(raiz, { recursive: true, force: true });
 }
@@ -270,18 +291,26 @@ console.log("== 4. repo sem manifesto proprio e o caso NORMAL, decidido pelo pad
   caso("o repo NAO ganhou .rainforest/agentes.json",
     !fs.existsSync(path.join(raiz, ".rainforest", "agentes.json")));
 
-  // E o agente que NÃO está no padrão continua negado — sem isso o caso acima
-  // provaria só que a portaria parou de negar, não que ela leu o padrão certo.
+  // E o agente que NÃO está no padrão agora PASSA como não-declarado — sem isso
+  // o caso acima provaria só que a portaria parou de negar, não que ela leu o
+  // padrão certo.
   const r2 = rodaHook(raiz, JSON.stringify({
     session_id: "teste-4b",
     tool_input: { subagent_type: "agente-que-nao-existe-em-padrao-nenhum" },
   }));
-  caso("agente fora do padrao continua negando", r2.status === 2, `exit=${r2.status}`);
-  caso("e o stderr diz QUAL manifesto foi lido",
-    /manifesto lido:/.test(r2.stderr) && /agentes\.padrao\.json/.test(r2.stderr),
-    r2.stderr);
-  caso("e diz que a origem e o padrao embarcado",
-    /padrão embarcado do plugin/.test(r2.stderr), r2.stderr);
+  caso("agente fora do padrao passa com declarado: false", r2.status === 0, `exit=${r2.status}`);
+
+  const logPath = path.join(raiz, ".rainforest", "portaria", "despachos.jsonl");
+  const linhas = fs.readFileSync(logPath, "utf8").trim().split("\n").filter(Boolean);
+  if (linhas.length > 1) {
+    try {
+      const entrada = JSON.parse(linhas[1]); // segunda linha (primeira foi revisor)
+      caso("e marca declarado: false no log", entrada.declarado === false,
+        JSON.stringify(entrada));
+    } catch (e) {
+      caso("e marca declarado: false no log", false, e.message);
+    }
+  }
 
   fs.rmSync(raiz, { recursive: true, force: true });
 }
@@ -393,7 +422,7 @@ console.log("== 6. normalizacao de prefixo ==");
   fs.rmSync(raiz, { recursive: true, force: true });
 }
 
-// == 7. Sem estágio ativo → exit 2 ==
+// == 7. Sem estágio ativo → exit 0, fora_de_fluxo: true ==
 console.log("== 7. sem estagio ativo ==");
 {
   const raiz = caixa();
@@ -412,8 +441,22 @@ console.log("== 7. sem estagio ativo ==");
 
   const r = rodaHook(raiz, JSON.stringify(payload));
 
-  caso("exit 2", r.status === 2, `exit=${r.status}`);
-  caso("stderr contém 'estágio ativo'", r.stderr.includes("estágio ativo"), `stderr: ${r.stderr}`);
+  caso("exit 0", r.status === 0, `exit=${r.status}`);
+
+  const logPath = path.join(raiz, ".rainforest", "portaria", "despachos.jsonl");
+  if (fs.existsSync(logPath)) {
+    const linhas = fs.readFileSync(logPath, "utf8").trim().split("\n").filter(Boolean);
+    if (linhas.length > 0) {
+      try {
+        const entrada = JSON.parse(linhas[0]);
+        caso("log marca fora_de_fluxo: true", entrada.fora_de_fluxo === true, `fora_de_fluxo: ${entrada.fora_de_fluxo}`);
+        caso("decisao = 'allow'", entrada.decisao === "allow", `decisao: ${entrada.decisao}`);
+        caso("estagio = 'fora-de-fluxo'", entrada.estagio === "fora-de-fluxo", `estagio: ${entrada.estagio}`);
+      } catch (e) {
+        caso("log é JSON válido", false, e.message);
+      }
+    }
+  }
 
   fs.rmSync(raiz, { recursive: true, force: true });
 }
@@ -889,8 +932,7 @@ console.log("== 17. escreve:true exige isolation worktree e recusa name ==");
     linhas.filter((l) => l.decisao === "deny").length === 3,
     JSON.stringify(linhas.map((l) => l.decisao)));
 
-  // A ORDEM das decisoes nao mudou: estagio fora da lista nega ANTES de chegar
-  // na checagem de escrita, mesmo com o despacho perfeito.
+  // Agora estágio fora da lista NÃO nega mais — passa com `estagio_declarado`
   const raiz2 = caixa();
   iniciarGit(raiz2, "fluxo/teste");
   criarEstadoAtivo(raiz2, "teste", "revisar");
@@ -899,27 +941,26 @@ console.log("== 17. escreve:true exige isolation worktree e recusa name ==");
     session_id: "t17b",
     tool_input: { subagent_type: "escritor", isolation: "worktree" },
   }));
-  caso("estagio fora da lista nega mesmo com worktree", foraDoEstagio.status === 2,
+  caso("estagio fora da lista agora passa", foraDoEstagio.status === 0,
     `exit=${foraDoEstagio.status} stderr=${foraDoEstagio.stderr}`);
-  caso("e nega pelo ESTAGIO, nao pelo isolamento",
-    foraDoEstagio.stderr.includes("permitido"), foraDoEstagio.stderr);
+
+  const logPath2 = path.join(raiz2, ".rainforest", "portaria", "despachos.jsonl");
+  const linhas2 = fs.readFileSync(logPath2, "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  const ultima2 = linhas2[linhas2.length - 1];
+  caso("e registra estagio_declarado no log", ultima2.estagio_declarado === "executar",
+    JSON.stringify(ultima2));
 
   fs.rmSync(raiz, { recursive: true, force: true });
   fs.rmSync(raiz2, { recursive: true, force: true });
 }
 
-/* == 18. negacao anterior ao passo 4 registra o estagio REAL ==
+/* == 18. agente nao declarado passa com marca no log ==
  *
- * O log e evidencia de primeira classe (D4), e ate 2026-09-02 toda negacao
- * anterior a resolucao do estagio gravava `estagio: "?"`. Medido no dia do
- * conserto: cinco negacoes de `executor`, em duas sessoes distintas, todas com
- * `?` — nenhuma respondia "em qual estagio", que e um terco da pergunta que
- * o log existe para responder.
- *
- * A ORDEM das decisoes continua a mesma: agente ausente do manifesto nega
- * antes de tudo. O que mudou e so o que se grava.
+ * Agente não declarado deixou de negar e passa com `declarado: false` (issue #264).
+ * O log marca o estagio REAL (não "?"), porque o resolver roda antes da primeira
+ * decisão (desde 2026-09-02). Fora de fluxo, o estagio é "fora-de-fluxo".
  */
-console.log("== 18. deny por agente ausente registra o estagio ativo, nao '?' ==");
+console.log("== 18. agente nao declarado passa com marca no log ==");
 {
   const raiz = caixa();
   iniciarGit(raiz, "fluxo/teste");
@@ -930,16 +971,16 @@ console.log("== 18. deny por agente ausente registra o estagio ativo, nao '?' ==
     session_id: "t18",
     tool_input: { subagent_type: "naodeclarado" },
   }));
-  caso("agente ausente do manifesto continua negando", r.status === 2,
+  caso("agente nao declarado agora passa", r.status === 0,
     `exit=${r.status} stderr=${r.stderr}`);
 
   const logPath = path.join(raiz, ".rainforest", "portaria", "despachos.jsonl");
   const linha = JSON.parse(fs.readFileSync(logPath, "utf8").trim().split("\n").pop());
   caso("e a linha grava o estagio ativo", linha.estagio === "executar", JSON.stringify(linha));
-  caso("e o motivo continua sendo o do manifesto",
-    (linha.motivo || "").includes("manifesto"), JSON.stringify(linha));
+  caso("e marca declarado: false", linha.declarado === false, JSON.stringify(linha));
+  caso("e decisao = 'allow'", linha.decisao === "allow", JSON.stringify(linha));
 
-  // Sem fluxo aberto nenhum, '?' volta a ser a verdade — e nao uma lacuna.
+  // Sem fluxo aberto, o estagio é "fora-de-fluxo"
   const raiz2 = caixa();
   iniciarGit(raiz2, "fluxo/teste");
   criarManifesto(raiz2, manifestoD2({ revisor: { estagios: ["revisar"], escreve: false } }));
@@ -947,10 +988,11 @@ console.log("== 18. deny por agente ausente registra o estagio ativo, nao '?' ==
     session_id: "t18b",
     tool_input: { subagent_type: "naodeclarado" },
   }));
-  caso("sem fluxo aberto tambem nega", r2.status === 2, `exit=${r2.status}`);
+  caso("sem fluxo aberto tambem passa", r2.status === 0, `exit=${r2.status}`);
   const linha2 = JSON.parse(fs.readFileSync(
     path.join(raiz2, ".rainforest", "portaria", "despachos.jsonl"), "utf8").trim().split("\n").pop());
-  caso("e o estagio volta a ser '?' (nao ha estagio)", linha2.estagio === "?", JSON.stringify(linha2));
+  caso("e o estagio e 'fora-de-fluxo'", linha2.estagio === "fora-de-fluxo", JSON.stringify(linha2));
+  caso("e marca fora_de_fluxo: true", linha2.fora_de_fluxo === true, JSON.stringify(linha2));
 
   fs.rmSync(raiz, { recursive: true, force: true });
   fs.rmSync(raiz2, { recursive: true, force: true });
