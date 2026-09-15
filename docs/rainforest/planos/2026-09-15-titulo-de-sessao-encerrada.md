@@ -58,8 +58,8 @@ depende de: nenhuma
 paralela: sim
 mutacao:
   arquivo: `hooks/lib/ledger-fluxos.cjs`
-  de: a escrita que faz merge de `{slug, estagio}` na entrada de `session_id` antes do `fs.writeFileSync` do ledger
-  para: `return;` imediatamente antes dessa escrita
+  de: `ledger[sessao] = { ts: agora, fluxos };`
+  para: `return;`
   bateria: `bash hooks/testa-ledger-fluxos.sh`
   fixture: `testa-ledger-fluxos.sh, caso "iniciar carimba slug e estagio sob o CLAUDE_SESSION_ID do ambiente"`
 pronto quando: com `CLAUDE_CODE_SESSION_ID=11111111-1111-1111-1111-111111111111 RFM_ROOT=<sandbox> RFM_ESTADO_ROOT=<sandbox> node scripts/estado.cjs iniciar --slug teste-carimbo --titulo "t"`, o `fluxos-sessao.json` da raiz de dados passa a ter a chave desse UUID com `{ts, fluxos:[{slug:"teste-carimbo", estagio:"design", aberto:"design"}]}` — provado por `node -e "const l=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));const f=l['11111111-1111-1111-1111-111111111111'].fluxos;console.log(f.length, f[0].slug, f[0].estagio)" <ledger>` imprimindo `1 teste-carimbo design`, e pelo mesmo comando depois de `marcar --estagio design --status aprovado` e `exigir --estagio plano` imprimindo `1 teste-carimbo plano` (último estágio conhecido, entrada única por slug)
@@ -71,8 +71,8 @@ depende de: 1
 paralela: nao
 mutacao:
   arquivo: `hooks/titulo-sessao-end.cjs`
-  de: a guarda `if (data.reason !== 'prompt_input_exit') process.exit(0)`
-  para: remover a guarda, deixando qualquer `reason` seguir
+  de: `if (data.reason !== 'prompt_input_exit') process.exit(0);`
+  para: `if (false) process.exit(0);`
   bateria: `bash hooks/testa-titulo-sessao-end.sh`
   fixture: `testa-titulo-sessao-end.sh, caso "reason=clear nao escreve nada no transcript"`
 pronto quando: com o payload real de 6 campos medido em 2026-09-15
@@ -92,8 +92,8 @@ depende de: 2
 paralela: nao
 mutacao:
   arquivo: `hooks/hooks.json`
-  de: a entrada nova de `SessionEnd` que chama `titulo-sessao-end.cjs` sem `async`
-  para: acrescentar `"async": true` nessa entrada
+  de: `titulo-sessao-end.cjs\"",`
+  para: `titulo-sessao-end.cjs\"", "async": true,`
   bateria: `bash hooks/testa-titulo-sessao-registro.sh`
   fixture: `testa-titulo-sessao-registro.sh, caso "a entrada de titulo-sessao-end e sincrona"`
 pronto quando: com o `hooks/hooks.json` que o Claude Code realmente carrega, existe
@@ -109,8 +109,8 @@ depende de: 2
 paralela: nao
 mutacao:
   arquivo: `hooks/titulo-sessao-end.cjs`
-  de: a guarda que sai quando o ledger não tem entrada para o `session_id` recebido
-  para: seguir adiante e escrever o título com o marcador padrão
+  de: `const fluxos = entrada && Array.isArray(entrada.fluxos) ? entrada.fluxos : [];`
+  para: `const fluxos = entrada && Array.isArray(entrada.fluxos) ? entrada.fluxos : [{ slug: 'x', estagio: 'design', aberto: 'design' }];`
   bateria: `bash hooks/testa-titulo-sessao-sem-carimbo.sh`
   fixture: `testa-titulo-sessao-sem-carimbo.sh, caso "session_id ausente do ledger deixa o transcript byte-a-byte igual"`
 pronto quando: com o payload real de `reason: "prompt_input_exit"` e um `session_id`
@@ -145,8 +145,8 @@ depende de: 1, 2
 paralela: nao
 mutacao:
   arquivo: `hooks/lib/ledger-fluxos.cjs`
-  de: a leitura de `process.env.CLAUDE_CODE_SESSION_ID`
-  para: `process.env.CLAUDE_SESSION_ID` — o nome errado, que é exatamente o defeito que esta tarefa conserta
+  de: `const sessao = process.env.CLAUDE_CODE_SESSION_ID || process.env.CLAUDE_SESSION_ID;`
+  para: `const sessao = process.env.CLAUDE_SESSION_ID;`
   bateria: `bash hooks/testa-ledger-fluxos.sh`
   fixture: `testa-ledger-fluxos.sh, o caso novo "carimba com o nome REAL da variavel, sem injetar CLAUDE_SESSION_ID"`
 pronto quando: com **apenas** `CLAUDE_CODE_SESSION_ID` no ambiente e
