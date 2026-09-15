@@ -27,13 +27,16 @@ aformato() {
 }
 
 # Escreve um transcript-fixture com a forma de um transcript real: turnos de
-# user/assistant e, opcionalmente, uma linha de título no fim.
+# user/assistant e, opcionalmente, uma linha de título no fim. Os campos das
+# linhas user/assistant (parentUuid, isSidechain, message.content) foram
+# conferidos contra transcript real desta máquina (~/.claude-personal/projects)
+# antes de escrever este fixture — grep colado no relatório da tarefa.
 # $1 = caminho de saida, $2 = linha de titulo (ou vazio para nenhuma)
 escreverTranscript() {
   local out="$1" linha_titulo="$2"
   {
-    echo '{"type":"user","message":{"role":"user","content":[{"type":"text","text":"oi, tudo bem?"}]},"timestamp":"2026-09-15T10:00:00.000Z"}'
-    echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"tudo certo, e voce?"}]},"timestamp":"2026-09-15T10:00:01.000Z"}'
+    echo '{"parentUuid":null,"isSidechain":false,"promptId":"11111111-1111-1111-1111-111111111111","type":"user","message":{"role":"user","content":"oi, tudo bem?"}}'
+    echo '{"parentUuid":"11111111-1111-1111-1111-111111111111","isSidechain":false,"message":{"model":"claude-sonnet-5","id":"msg_teste","type":"message","role":"assistant","content":[{"type":"text","text":"tudo certo, e voce?"}]},"type":"assistant","timestamp":"2026-09-15T10:00:01.000Z"}'
     if [ -n "$linha_titulo" ]; then
       echo "$linha_titulo"
     fi

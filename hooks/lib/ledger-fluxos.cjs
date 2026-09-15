@@ -56,9 +56,13 @@ function caminhoLedger() {
  * Nunca lança — qualquer falha de leitura, parse ou escrita é engolida.
  *
  * `aberto` é o próximo estágio não-fechado (string) ou `null` quando o fluxo
- * completou. Campo opcional: chamador que não passa `aberto` grava `null` —
- * mais seguro que omitir a chave, porque quem lê o ledger (Parte B) sempre
- * encontra a chave presente.
+ * completou. Campo opcional: chamador que não passa `aberto` deixa a chave DE
+ * FORA do registro — nunca grava `null` por omissão. `null` é o único jeito
+ * explícito de dizer "fechado" (é o que o hook de SessionEnd, Parte B, lê
+ * para decidir `[ok]`); gravar `null` por omissão marcaria como fechado um
+ * fluxo que ninguém mediu. Chave ausente é o estado seguro, e é também o que
+ * um ledger escrito por uma versão anterior deste arquivo (sem o campo
+ * `aberto`) já produz — o mesmo tratamento vale para os dois casos.
  *
  * @param {{slug: string, estagio: string, aberto?: string|null}} o
  */
@@ -68,7 +72,8 @@ function carimbarFluxo(o) {
     if (!sessao) return;
     const slug = o && o.slug;
     const estagio = o && o.estagio;
-    const aberto = o && Object.prototype.hasOwnProperty.call(o, 'aberto') ? o.aberto : null;
+    const temAberto = !!(o && Object.prototype.hasOwnProperty.call(o, 'aberto'));
+    const aberto = temAberto ? o.aberto : undefined;
     if (!slug || !estagio) return;
 
     const arquivo = caminhoLedger();
@@ -88,11 +93,12 @@ function carimbarFluxo(o) {
       ? entradaAtual.fluxos.slice()
       : [];
 
+    const registro = temAberto ? { slug, estagio, aberto, ts: agora } : { slug, estagio, ts: agora };
     const idx = fluxos.findIndex((f) => f && f.slug === slug);
     if (idx >= 0) {
-      fluxos[idx] = { slug, estagio, aberto, ts: agora };
+      fluxos[idx] = registro;
     } else {
-      fluxos.push({ slug, estagio, aberto, ts: agora });
+      fluxos.push(registro);
     }
 
     ledger[sessao] = { ts: agora, fluxos };
