@@ -79,7 +79,19 @@ CI**: um passo a mais no job que já roda.
   motivo, e mexer no segmentador compartilhado mudaria o contrato de um gate que
   não tem defeito.
 
-- **D3 — #258, segundo defeito: o `-C` sobrevive ao ramo `incerto`.** A linha
+- **D3 — RETRATADA em 2026-09-14, antes de virar código.** O que está escrito abaixo
+  supunha que o segundo sintoma da #258 acontecia; **ele não reproduz**. Seis formas
+  medidas contra o gate real por stdin, `cwd` no checkout principal, sobre `14c471ed`,
+  incluindo a linha literal da Issue — todas saem 0, nenhuma imprime linha `Repo:`. A
+  frase "é consequência do primeiro", na seção de medição acima, era **inferência, não
+  medição**, e está errada pelo mesmo motivo: eu li o código e deduzi o caminho, em vez
+  de rodar. A tarefa 2 foi retirada e o sintoma virou a **Issue #261**, que pede a linha
+  de comando exata de quando aconteceu. Fica registrado em vez de apagado porque a
+  decisão existiu e governou uma tarefa.
+
+  <details><summary>Texto original da D3</summary>
+
+  **Texto original:** #258, segundo defeito — o `-C` sobrevive ao ramo `incerto`. A linha
   `dirC = null;` do ramo de ilegibilidade sai; quando o segmento traz
   `git -C <caminho>` resolvível, a mensagem cita **aquele** repositório. Não
   sendo resolvível (variável, subshell, `~`), a mensagem diz que não deu para
@@ -88,6 +100,9 @@ CI**: um passo a mais no job que já roda.
   não consegue nem conferir se o bloqueio procede, e a saída de menor esforço
   passa a ser desligar o gate. O aviso continua bloqueando; só para de mentir
   sobre onde.
+
+
+  </details>
 
 - **D4 — #257: a autorização casa por distância de edição, ancorada no verbo.**
   Dentro da mesma janela de proximidade que o arquivo já usa depois de
@@ -149,6 +164,8 @@ CI**: um passo a mais no job que já roda.
   critério. O bump entra neste PR, não depois: com a D8 ligada, o PR nasce
   vermelho até o número subir, e esse vermelho→verde é a prova de que a trava
   morde.
+
+- **D10 — #260: `token` sozinho deixa de ser evidência de credencial, e o achado passa a mostrar o trecho casado com o valor redigido.** A régua `credencial` de `scripts/conferir-publicacao.cjs` exige qualificador (`access_token`, `auth_token`, `refresh_token`, `api_token`, `bearer`) ou valor com cara de segredo; as demais palavras da lista continuam disparando sozinhas. Cada achado ganha `trecho`, impresso na saída de texto e no JSON, e mostrar a chave é **opt-in por régua** — **porquê:** este repositório é sobre tokenizar linha de comando (`tokens-comando.cjs`, `tokensComAspas`, `posicaoDeComando`), e `const token = toks[i]` era bloqueado com `pode_ser_falso: false`, a marca reservada para achado sem dúvida. Custou rodadas em três tarefas deste próprio fluxo. E a mensagem nomeava só a régua, nunca o trecho: um executor gastou duas rodadas culpando o nome `dist` e "certas estruturas `const ... = ...`". O opt-in existe porque a primeira versão da redação tomava o último grupo capturante como valor e mostrava o resto, o que na régua `jid-whatsapp` imprimia o número completo — uma correção de mensagem virando vazamento. Entrou a pedido do Luís em 2026-09-14, depois de a Issue ser aberta no meio do fluxo.
 
 ## Avaliado e descartado
 
