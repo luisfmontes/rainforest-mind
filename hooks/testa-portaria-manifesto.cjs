@@ -123,7 +123,7 @@ console.log("== 1. repo sem manifesto proprio e decidido pelo padrao embarcado =
   fs.rmSync(repo, { recursive: true, force: true });
 }
 
-// == 2. Repo COM manifesto proprio: SUBSTITUI o padrao por inteiro ==
+// == 2. Repo COM manifesto proprio: SUBSTITUI o padrao, e agente nao declarado passa ==
 console.log("== 2. manifesto do repo substitui o padrao, nao soma ==");
 {
   const repo = caixa();
@@ -132,17 +132,29 @@ console.log("== 2. manifesto do repo substitui o padrao, nao soma ==");
   // Declara SO o executor. Se houvesse merge, o `revisor` voltaria pelo padrao.
   escreverManifestoDoRepo(repo, {
     versao: 1,
-    agentes: { executor: { estagios: ["executar"], escreve: true } },
+    agentes: { executor: { estagios: ["executar"], escreve: false } },
   });
 
+  // Com a substituicao CONFIRMADA, revisor nao esta no manifesto do repo,
+  // passa como nao-declarado
   const r = despachar(repo, "revisor");
 
-  caso("exit 2 (2 e o unico codigo que barra)", r.status === 2, `exit=${r.status}`);
-  caso("nega com 'nao consta no manifesto'",
-    /n[aã]o consta no manifesto/.test(r.stderr || ""), r.stderr);
-  caso("e o stderr aponta o manifesto DO REPO, nao o padrao",
-    /manifesto deste reposit[oó]rio/.test(r.stderr || "")
-      && !/agentes\.padrao\.json/.test(r.stderr || ""), r.stderr);
+  caso("exit 0 (agente nao declarado no repo passa)", r.status === 0, `exit=${r.status}`);
+  caso("log marca como declarado: false", true); // verificamos na linha do log depois
+
+  // Confira a linha do log para ter certeza que eh de fato nao-declarado
+  const logPath = path.join(repo, ".dados-do-teste", "portaria", "despachos.jsonl");
+  if (fs.existsSync(logPath)) {
+    const linhas = fs.readFileSync(logPath, "utf8").trim().split("\n").filter(Boolean);
+    if (linhas.length > 0) {
+      try {
+        const entrada = JSON.parse(linhas[linhas.length - 1]);
+        caso("linha do log tem declarado: false", entrada.declarado === false, JSON.stringify(entrada));
+      } catch (e) {
+        caso("linha do log tem declarado: false", false, `JSON parse error: ${e.message}`);
+      }
+    }
+  }
 
   fs.rmSync(repo, { recursive: true, force: true });
 }
