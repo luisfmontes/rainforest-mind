@@ -70,6 +70,47 @@ ultimaLinhaCampo() {
   tail -1 "$1" | node -e "const o=JSON.parse(require('fs').readFileSync(0,'utf8'));console.log(o.type, o.customTitle)" 2>&1
 }
 
+# `tail -1` (usado em ultimaLinhaCampo) so olha a ULTIMA linha: uma mutacao que
+# trocasse o append por um write (truncando o arquivo pra 1 linha so) passaria
+# por ela do mesmo jeito, porque a ultima linha continua sendo a certa (achado
+# 3 da revisao de 2026-09-15). As duas funcoes abaixo fecham essa lacuna: toda
+# escrita tem que crescer o arquivo em EXATAMENTE uma linha, e as linhas de
+# ANTES tem que sobreviver byte-a-byte (head -n -1 do DEPOIS == sha256 do
+# ANTES).
+contarLinhas() {
+  wc -l < "$1" | tr -d ' '
+}
+
+shaArquivo() {
+  sha256sum "$1" | awk '{print $1}'
+}
+
+shaSemUltimaLinha() {
+  head -n -1 "$1" | sha256sum | awk '{print $1}'
+}
+
+# Confere que o hook fez exatamente um append de linha, preservando o
+# conteudo anterior byte-a-byte. Chamar com os valores capturados ANTES de
+# rodar o hook. $1 = caminho do transcript, $2 = linhas de antes, $3 = sha de
+# antes, $4 = rotulo do teste (para a mensagem).
+confirmarAppendUnico() {
+  local caminho="$1" linhas_antes="$2" sha_antes="$3" rotulo="$4"
+  local linhas_depois sha_sem_ultima
+  linhas_depois=$(contarLinhas "$caminho")
+  sha_sem_ultima=$(shaSemUltimaLinha "$caminho")
+  echo "$rotulo: linhas antes=$linhas_antes depois=$linhas_depois; sha antes=$sha_antes; head -n -1 depois=$sha_sem_ultima"
+  if [ "$linhas_depois" -eq "$((linhas_antes + 1))" ]; then
+    ok=$((ok+1)); echo "  ok    $rotulo: arquivo cresceu exatamente 1 linha"
+  else
+    falhou=$((falhou+1)); echo "  FALHA $rotulo: linhas foram de $linhas_antes para $linhas_depois (esperado +1)"
+  fi
+  if [ "$sha_sem_ultima" = "$sha_antes" ]; then
+    ok=$((ok+1)); echo "  ok    $rotulo: head -n -1 do depois e byte-a-byte igual ao antes"
+  else
+    falhou=$((falhou+1)); echo "  FALHA $rotulo: head -n -1 do depois diverge do conteudo de antes (truncamento ou reescrita)"
+  fi
+}
+
 echo
 echo "=========================================="
 echo "TESTE 1: reason=prompt_input_exit, ledger com fluxo aberto=design, transcript com ai-title"
@@ -80,6 +121,8 @@ TRANS1="$T1_POSIX/transcript.jsonl"
 escreverTranscript "$TRANS1" '{"type":"ai-title","aiTitle":"Confirmação simples","sessionId":"sessao-teste-01"}'
 escreverLedger "$T1_POSIX" "$SESSAO1" '[{"slug":"fluxo-um","estagio":"design","aberto":"design","ts":1}]'
 
+LINHAS1_ANTES=$(contarLinhas "$TRANS1")
+SHA1_ANTES=$(shaArquivo "$TRANS1")
 TRANS1_FMT="$(aformato "$TRANS1")"
 rodarHook "$T1_POSIX" "prompt_input_exit" "$SESSAO1" "$TRANS1_FMT"
 echo "exit=$OUT_EXIT stdout='$OUT_STDOUT' stderr='$OUT_STDERR'"
@@ -90,6 +133,7 @@ if [ "$RES1" = "custom-title [aberto: design] Confirmação simples" ]; then
 else
   falhou=$((falhou+1)); echo "  FALHA esperava 'custom-title [aberto: design] Confirmação simples', veio '$RES1'"
 fi
+confirmarAppendUnico "$TRANS1" "$LINHAS1_ANTES" "$SHA1_ANTES" "teste 1"
 
 echo
 echo "=========================================="
@@ -134,6 +178,8 @@ TRANS3="$T3_POSIX/transcript.jsonl"
 escreverTranscript "$TRANS3" '{"type":"ai-title","aiTitle":"Confirmação simples","sessionId":"sessao-teste-03"}'
 escreverLedger "$T3_POSIX" "$SESSAO3" '[{"slug":"fluxo-tres","estagio":"fechar","aberto":null,"ts":1}]'
 
+LINHAS3_ANTES=$(contarLinhas "$TRANS3")
+SHA3_ANTES=$(shaArquivo "$TRANS3")
 TRANS3_FMT="$(aformato "$TRANS3")"
 rodarHook "$T3_POSIX" "prompt_input_exit" "$SESSAO3" "$TRANS3_FMT"
 echo "exit=$OUT_EXIT stdout='$OUT_STDOUT' stderr='$OUT_STDERR'"
@@ -144,6 +190,7 @@ if [ "$RES3" = "custom-title [ok] Confirmação simples" ]; then
 else
   falhou=$((falhou+1)); echo "  FALHA esperava 'custom-title [ok] Confirmação simples', veio '$RES3'"
 fi
+confirmarAppendUnico "$TRANS3" "$LINHAS3_ANTES" "$SHA3_ANTES" "teste 3"
 
 echo
 echo "=========================================="
@@ -155,6 +202,8 @@ TRANS4="$T4_POSIX/transcript.jsonl"
 escreverTranscript "$TRANS4" '{"type":"ai-title","aiTitle":"Confirmação simples","sessionId":"sessao-teste-04"}'
 escreverLedger "$T4_POSIX" "$SESSAO4" '[{"slug":"fluxo-a","estagio":"verificar","aberto":"verificar","ts":1},{"slug":"fluxo-b","estagio":"plano","aberto":"plano","ts":2}]'
 
+LINHAS4_ANTES=$(contarLinhas "$TRANS4")
+SHA4_ANTES=$(shaArquivo "$TRANS4")
 TRANS4_FMT="$(aformato "$TRANS4")"
 rodarHook "$T4_POSIX" "prompt_input_exit" "$SESSAO4" "$TRANS4_FMT"
 echo "exit=$OUT_EXIT stdout='$OUT_STDOUT' stderr='$OUT_STDERR'"
@@ -165,6 +214,7 @@ if [ "$RES4" = "custom-title [aberto: plano] Confirmação simples" ]; then
 else
   falhou=$((falhou+1)); echo "  FALHA esperava 'custom-title [aberto: plano] Confirmação simples', veio '$RES4'"
 fi
+confirmarAppendUnico "$TRANS4" "$LINHAS4_ANTES" "$SHA4_ANTES" "teste 4"
 
 echo
 echo "=========================================="
@@ -176,6 +226,8 @@ TRANS5="$T5_POSIX/transcript.jsonl"
 escreverTranscript "$TRANS5" '{"type":"custom-title","customTitle":"[ok] Meu nome","sessionId":"sessao-teste-05"}'
 escreverLedger "$T5_POSIX" "$SESSAO5" '[{"slug":"fluxo-cinco","estagio":"design","aberto":"design","ts":1}]'
 
+LINHAS5_ANTES=$(contarLinhas "$TRANS5")
+SHA5_ANTES=$(shaArquivo "$TRANS5")
 TRANS5_FMT="$(aformato "$TRANS5")"
 rodarHook "$T5_POSIX" "prompt_input_exit" "$SESSAO5" "$TRANS5_FMT"
 echo "exit=$OUT_EXIT stdout='$OUT_STDOUT' stderr='$OUT_STDERR'"
@@ -186,6 +238,7 @@ if [ "$RES5" = "custom-title [aberto: design] Meu nome" ]; then
 else
   falhou=$((falhou+1)); echo "  FALHA esperava 'custom-title [aberto: design] Meu nome', veio '$RES5'"
 fi
+confirmarAppendUnico "$TRANS5" "$LINHAS5_ANTES" "$SHA5_ANTES" "teste 5"
 
 echo
 echo "=========================================="
@@ -197,6 +250,8 @@ TRANS6="$T6_POSIX/transcript.jsonl"
 escreverTranscript "$TRANS6" '{"type":"custom-title","customTitle":"[rascunho] x","sessionId":"sessao-teste-06"}'
 escreverLedger "$T6_POSIX" "$SESSAO6" '[{"slug":"fluxo-seis","estagio":"design","aberto":"design","ts":1}]'
 
+LINHAS6_ANTES=$(contarLinhas "$TRANS6")
+SHA6_ANTES=$(shaArquivo "$TRANS6")
 TRANS6_FMT="$(aformato "$TRANS6")"
 rodarHook "$T6_POSIX" "prompt_input_exit" "$SESSAO6" "$TRANS6_FMT"
 echo "exit=$OUT_EXIT stdout='$OUT_STDOUT' stderr='$OUT_STDERR'"
@@ -207,6 +262,7 @@ if [ "$RES6" = "custom-title [aberto: design] [rascunho] x" ]; then
 else
   falhou=$((falhou+1)); echo "  FALHA esperava 'custom-title [aberto: design] [rascunho] x', veio '$RES6'"
 fi
+confirmarAppendUnico "$TRANS6" "$LINHAS6_ANTES" "$SHA6_ANTES" "teste 6"
 
 echo
 echo "=========================================="
@@ -218,6 +274,8 @@ TRANS7="$T7_POSIX/transcript.jsonl"
 escreverTranscript "$TRANS7" ''
 escreverLedger "$T7_POSIX" "$SESSAO7" '[{"slug":"fluxo-sete","estagio":"design","aberto":"design","ts":1}]'
 
+LINHAS7_ANTES=$(contarLinhas "$TRANS7")
+SHA7_ANTES=$(shaArquivo "$TRANS7")
 TRANS7_FMT="$(aformato "$TRANS7")"
 rodarHook "$T7_POSIX" "prompt_input_exit" "$SESSAO7" "$TRANS7_FMT"
 echo "exit=$OUT_EXIT stdout='$OUT_STDOUT' stderr='$OUT_STDERR'"
@@ -228,6 +286,7 @@ if [ "$RES7" = "custom-title [aberto: design] fluxo-sete" ]; then
 else
   falhou=$((falhou+1)); echo "  FALHA esperava 'custom-title [aberto: design] fluxo-sete', veio '$RES7'"
 fi
+confirmarAppendUnico "$TRANS7" "$LINHAS7_ANTES" "$SHA7_ANTES" "teste 7"
 
 echo
 echo "=========================================="

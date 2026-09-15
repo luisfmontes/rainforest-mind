@@ -27,8 +27,20 @@
 // Uma entrada por slug: rodar o verbo de novo no mesmo slug ATUALIZA o
 // `estagio` daquela entrada (mesma posição no array), nunca acrescenta outra.
 //
-// Poda por idade, espelhando o corte de 24h do `heartbeat.cjs`: entradas de
-// sessão cujo `ts` é mais velho que o corte saem na escrita seguinte.
+// Poda por idade: entradas de sessão cujo `ts` é mais velho que o corte saem
+// na escrita seguinte, mais um teto de contagem (mantendo as mais recentes por
+// `ts`) para o arquivo não crescer sem limite.
+//
+// A janela aqui é de 30 DIAS, não as 24h do `heartbeat.cjs` — de propósito,
+// não por descuido: o `ts` do `heartbeat.cjs` é tocado a cada prompt daquela
+// sessão, então uma sessão viva nunca esfria ali. Aqui o `ts` só é tocado
+// quando a sessão chama um verbo do `estado.cjs` (iniciar/exigir/marcar) — uma
+// sessão pode ficar horas ou dias dentro de um `executar` longo sem chamar
+// nenhum, e uma janela de 24h podaria o carimbo dela por baixo, fazendo o
+// título de SessionEnd sair sem marcador para um fluxo que ainda estava vivo
+// (achado 2 da revisão de 2026-09-15). 30 dias cobre esse intervalo com folga
+// e ainda descarta lixo de sessão realmente abandonada; o teto de 500
+// entradas é a segunda rede, para não depender só do tempo.
 //
 // Toda falha é silenciosa (leitura, parse e escrita) — esta função nunca pode
 // lançar nem mudar o exit code de quem a chama. Os verbos de `estado.cjs` têm
@@ -43,11 +55,101 @@ const { resolverRaiz } = require('./raiz.cjs');
 // igual ao CODIGO_ROOT de hooks/heartbeat.cjs (que está uma pasta acima do dele).
 const CODIGO_ROOT = path.resolve(__dirname, '..', '..');
 
-const CORTE_MS = 24 * 3600 * 1000;
+const CORTE_MS = 30 * 24 * 3600 * 1000;
+const MAX_ENTRADAS = 500;
+
+// Lock exclusivo em volta do ciclo ler->mesclar->gravar (achado 1 da revisão
+// de 2026-09-15): sem ele, duas escritas quase simultâneas leem o mesmo
+// estado velho e uma sobrescreve a outra por inteiro — reproduzido com 80
+// processos concorrentes, 9 de 80 chaves sobreviveram. `wx` falha se o
+// arquivo já existe: é o mutex portável, sem depender de lib nenhuma.
+//
+// O ciclo em si é rápido (um JSON pequeno, ler->mesclar->gravar), mas sob
+// disputa de dezenas de processos o TEMPO DE FILA para cada um conseguir sua
+// vez pode passar longe de poucas centenas de ms — medido: com orçamento de
+// 20 tentativas x 15ms (300ms) só 1 de 80 processos concorrentes conseguia
+// gravar, porque os outros 79 desistiam antes de chegar a vez deles. O
+// orçamento por tentativa é curto de propósito (a fila anda rápido); o que
+// precisa ser generoso é o número de tentativas. `LOCK_ORFAO_MS` não muda com
+// isso: ele mede a idade do arquivo de lock (tempo de posse), não o tempo de
+// espera de quem está tentando — posse continua curta mesmo com fila funda.
+const LOCK_TENTATIVAS = 400;
+const LOCK_ESPERA_MS = 20;
+// Lock mais velho que isto é considerado órfão (processo morreu sem liberar
+// em `finally` — kill -9, crash). Bem acima do tempo que um ciclo
+// ler->mesclar->gravar leva de verdade (posse é sempre curta, mesmo sob fila
+// funda — ver comentário acima), para nunca confundir "lock em uso" com
+// "lock abandonado".
+const LOCK_ORFAO_MS = 5000;
+
+function dormirSincrono(ms) {
+  try {
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+  } catch {
+    // ambiente sem SharedArrayBuffer/Atomics: sem espera, só sem retry
+  }
+}
 
 function caminhoLedger() {
   const raiz = resolverRaiz({ plugin: CODIGO_ROOT }).raiz || CODIGO_ROOT;
   return path.join(raiz, 'fluxos-sessao.json');
+}
+
+/**
+ * Tenta abrir o lock exclusivo do arquivo `arquivo`. Devolve o caminho do
+ * lock em caso de sucesso, ou `null` se desistiu (não conseguiu em
+ * `LOCK_TENTATIVAS` tentativas). Nunca lança.
+ */
+function adquirirLock(arquivo) {
+  const lock = `${arquivo}.lock`;
+  for (let i = 0; i < LOCK_TENTATIVAS; i++) {
+    try {
+      const fd = fs.openSync(lock, 'wx');
+      fs.closeSync(fd);
+      return lock;
+    } catch {
+      // já existe (ou outra falha) — antes de esperar de novo, checa se é
+      // lock órfão (processo morto sem liberar): se for mais velho que o
+      // teto, trata como abandonado e segue em frente.
+      try {
+        const st = fs.statSync(lock);
+        if (Date.now() - st.mtimeMs > LOCK_ORFAO_MS) {
+          try {
+            fs.unlinkSync(lock);
+          } catch {
+            // outro processo já limpou, ou não conseguiu: tenta de novo no
+            // próximo laço
+          }
+          continue;
+        }
+      } catch {
+        // stat falhou (arquivo sumiu entre o openSync e aqui): tenta de novo
+        continue;
+      }
+      if (i < LOCK_TENTATIVAS - 1) dormirSincrono(LOCK_ESPERA_MS);
+    }
+  }
+  return null;
+}
+
+function liberarLock(lock) {
+  try {
+    fs.unlinkSync(lock);
+  } catch {
+    // já removido, ou falha de permissão: nada a fazer
+  }
+}
+
+/** Escrita atômica: grava num temporário ao lado e troca por cima do destino
+ *  com `renameSync` — nunca escreve direto no arquivo final, para uma leitura
+ *  concorrente nunca ver conteúdo parcial. */
+function escreverAtomico(arquivo, conteudo) {
+  const tmp = path.join(
+    path.dirname(arquivo),
+    `.${path.basename(arquivo)}.${process.pid}.${Date.now()}.tmp`
+  );
+  fs.writeFileSync(tmp, conteudo);
+  fs.renameSync(tmp, arquivo);
 }
 
 /**
@@ -78,6 +180,7 @@ function caminhoLedger() {
  * @param {{slug: string, estagio: string, aberto?: string|null}} o
  */
 function carimbarFluxo(o) {
+  let lock = null;
   try {
     const sessao = process.env.CLAUDE_CODE_SESSION_ID || process.env.CLAUDE_SESSION_ID;
     if (!sessao) return;
@@ -88,6 +191,13 @@ function carimbarFluxo(o) {
     if (!slug || !estagio) return;
 
     const arquivo = caminhoLedger();
+
+    // Lock exclusivo em volta do ciclo ler->mesclar->gravar inteiro. Não
+    // conseguindo o lock (outro processo segurando, ou retentativas
+    // esgotadas), desiste em silêncio — o ledger é best-effort, nunca um gate
+    // (ver cabeçalho do arquivo).
+    lock = adquirirLock(arquivo);
+    if (!lock) return;
 
     let ledger = {};
     try {
@@ -114,22 +224,34 @@ function carimbarFluxo(o) {
 
     ledger[sessao] = { ts: agora, fluxos };
 
-    // Poda por idade — a mesma rede embaixo do heartbeat.cjs: entrada sem
-    // atividade há 24h+ sai. A sessão que acabou de carimbar nunca é podada
-    // aqui (o `ts` dela é `agora`).
+    // Poda por idade: entrada sem atividade há 30 dias+ sai (ver o comentário
+    // no topo do arquivo sobre por que a janela aqui é diferente da do
+    // heartbeat.cjs). A sessão que acabou de carimbar nunca é podada aqui (o
+    // `ts` dela é `agora`).
     const corte = agora - CORTE_MS;
     for (const [id, dado] of Object.entries(ledger)) {
       const ts = dado && typeof dado.ts === 'number' ? dado.ts : 0;
       if (ts < corte) delete ledger[id];
     }
 
+    // Teto de contagem: segunda rede, independente do tempo, para o arquivo
+    // não crescer sem limite mesmo com sessões que carimbam dentro dos 30
+    // dias. Mantém as `MAX_ENTRADAS` mais recentes por `ts`.
+    const entradas = Object.entries(ledger);
+    if (entradas.length > MAX_ENTRADAS) {
+      entradas.sort((a, b) => (b[1] && b[1].ts || 0) - (a[1] && a[1].ts || 0));
+      ledger = Object.fromEntries(entradas.slice(0, MAX_ENTRADAS));
+    }
+
     try {
-      fs.writeFileSync(arquivo, JSON.stringify(ledger));
+      escreverAtomico(arquivo, JSON.stringify(ledger));
     } catch {
       // escrita falhou (disco cheio, permissão, raiz inexistente): silencioso
     }
   } catch {
     // qualquer outra falha inesperada: silencioso, nunca propaga
+  } finally {
+    if (lock) liberarLock(lock);
   }
 }
 

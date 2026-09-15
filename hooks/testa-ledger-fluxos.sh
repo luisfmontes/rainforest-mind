@@ -157,18 +157,22 @@ fi
 
 echo
 echo "=========================================="
-echo "TESTE 4 (reserva): entrada de sessao com ts de 25h atras e podada na escrita seguinte"
+echo "TESTE 4: entrada de sessao com ts de 25h atras NAO e podada (janela e 30 dias,"
+echo "diferente do corte de 24h do heartbeat.cjs — ver comentario no topo do arquivo);"
+echo "uma entrada de 31 dias atras e que sai na escrita seguinte"
 echo "=========================================="
 T4_POSIX="$BASE_POSIX/t4"; mkdir -p "$T4_POSIX"
 T4="$(aformato "$T4_POSIX")"
 
 AGORA_MS=$(date +%s000)
-VELHO_MS=$(( $(date +%s) * 1000 - 25 * 3600 * 1000 ))
+QUASE_UM_DIA_MS=$(( $(date +%s) * 1000 - 25 * 3600 * 1000 ))
+TRINTA_UM_DIAS_MS=$(( $(date +%s) * 1000 - 31 * 24 * 3600 * 1000 ))
 
 cat > "$T4_POSIX/fluxos-sessao.json" << EOF
 {
-  "sessao-velha":   { "ts": $VELHO_MS, "fluxos": [ { "slug": "antigo", "estagio": "design", "ts": $VELHO_MS } ] },
-  "sessao-recente": { "ts": $AGORA_MS, "fluxos": [ { "slug": "novo",   "estagio": "design", "ts": $AGORA_MS } ] }
+  "sessao-31-dias":  { "ts": $TRINTA_UM_DIAS_MS, "fluxos": [ { "slug": "antigo", "estagio": "design", "ts": $TRINTA_UM_DIAS_MS } ] },
+  "sessao-25h":      { "ts": $QUASE_UM_DIA_MS, "fluxos": [ { "slug": "vivo",   "estagio": "design", "ts": $QUASE_UM_DIA_MS } ] },
+  "sessao-recente":  { "ts": $AGORA_MS, "fluxos": [ { "slug": "novo",   "estagio": "design", "ts": $AGORA_MS } ] }
 }
 EOF
 
@@ -190,10 +194,16 @@ else
   falhou=$((falhou+1)); echo "  FALHA iniciar (gatilho) saiu $EXIT4"
 fi
 
-if ! echo "$RESULTADO4" | grep -q '"sessao-velha"'; then
-  ok=$((ok+1)); echo "  ok    sessao-velha (25h) foi podada"
+if ! echo "$RESULTADO4" | grep -q '"sessao-31-dias"'; then
+  ok=$((ok+1)); echo "  ok    sessao-31-dias (fora da janela de 30 dias) foi podada"
 else
-  falhou=$((falhou+1)); echo "  FALHA sessao-velha sobreviveu a poda"
+  falhou=$((falhou+1)); echo "  FALHA sessao-31-dias sobreviveu a poda"
+fi
+
+if echo "$RESULTADO4" | grep -q '"sessao-25h"'; then
+  ok=$((ok+1)); echo "  ok    sessao-25h sobreviveu (dentro da janela de 30 dias, diferente do heartbeat.cjs)"
+else
+  falhou=$((falhou+1)); echo "  FALHA sessao-25h foi podada — a janela de 30 dias nao esta valendo"
 fi
 
 if echo "$RESULTADO4" | grep -q '"sessao-recente"'; then
@@ -206,6 +216,73 @@ if echo "$RESULTADO4" | grep -q '"sessao-gatilho"'; then
   ok=$((ok+1)); echo "  ok    sessao-gatilho foi gravada"
 else
   falhou=$((falhou+1)); echo "  FALHA sessao-gatilho nao foi gravada"
+fi
+
+echo
+echo "=========================================="
+echo "TESTE 4B: teto de 500 entradas — com 501 sessoes no ledger, a escrita seguinte"
+echo "poda pelo TS mais antigo ate caber em 500, independente da janela de 30 dias"
+echo "=========================================="
+T4B_POSIX="$BASE_POSIX/t4b"; mkdir -p "$T4B_POSIX"
+T4B="$(aformato "$T4B_POSIX")"
+
+node -e '
+  const fs = require("fs");
+  const agora = Date.now();
+  const ledger = {};
+  // 501 sessoes, todas dentro da janela de 30 dias (ts decrescente: sessao-000
+  // e a mais recente, sessao-500 a mais antiga), so para isolar o teto de
+  // contagem da poda por idade.
+  for (let i = 0; i <= 500; i++) {
+    const id = "sessao-" + String(i).padStart(3, "0");
+    ledger[id] = { ts: agora - i * 1000, fluxos: [ { slug: "s" + i, estagio: "design", ts: agora - i * 1000 } ] };
+  }
+  fs.writeFileSync(process.argv[1], JSON.stringify(ledger));
+' "$T4B_POSIX/fluxos-sessao.json"
+
+CONTAGEM_ANTES=$(node -e 'console.log(Object.keys(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))).length)' "$T4B_POSIX/fluxos-sessao.json")
+echo "contagem ANTES: $CONTAGEM_ANTES"
+
+OUT4B=$(RFM_ESTADO_ROOT="$T4B" RFM_ROOT="$T4B" CLAUDE_SESSION_ID="sessao-gatilho-teto" \
+  env -u CLAUDE_CODE_SESSION_ID node "$ESTADO_JS" iniciar --slug teste-teto --titulo "t" 2>&1)
+EXIT4B=$?
+echo "iniciar (gatilho do teto): exit=$EXIT4B"
+
+CONTAGEM_DEPOIS=$(node -e 'console.log(Object.keys(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))).length)' "$T4B_POSIX/fluxos-sessao.json")
+echo "contagem DEPOIS: $CONTAGEM_DEPOIS"
+
+if [ "$EXIT4B" -eq 0 ]; then
+  ok=$((ok+1)); echo "  ok    iniciar (gatilho do teto) saiu 0"
+else
+  falhou=$((falhou+1)); echo "  FALHA iniciar (gatilho do teto) saiu $EXIT4B"
+fi
+
+# 501 pre-existentes + 1 nova (sessao-gatilho-teto) = 502 antes do teto: tem
+# que cair para exatamente 500 apos a poda por contagem.
+if [ "$CONTAGEM_DEPOIS" = "500" ]; then
+  ok=$((ok+1)); echo "  ok    teto de 500 entradas aplicado (502 -> 500)"
+else
+  falhou=$((falhou+1)); echo "  FALHA contagem depois foi '$CONTAGEM_DEPOIS' (esperado 500)"
+fi
+
+TEM_GATILHO=$(node -e '
+  const l = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+  console.log(Object.prototype.hasOwnProperty.call(l, "sessao-gatilho-teto") ? "sim" : "nao");
+' "$T4B_POSIX/fluxos-sessao.json")
+if [ "$TEM_GATILHO" = "sim" ]; then
+  ok=$((ok+1)); echo "  ok    a sessao que acabou de carimbar (mais recente) sobreviveu ao teto"
+else
+  falhou=$((falhou+1)); echo "  FALHA a sessao que acabou de carimbar foi descartada pelo teto"
+fi
+
+TEM_MAIS_ANTIGA=$(node -e '
+  const l = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+  console.log(Object.prototype.hasOwnProperty.call(l, "sessao-500") ? "sim" : "nao");
+' "$T4B_POSIX/fluxos-sessao.json")
+if [ "$TEM_MAIS_ANTIGA" = "nao" ]; then
+  ok=$((ok+1)); echo "  ok    a entrada mais antiga (sessao-500) foi descartada pelo teto"
+else
+  falhou=$((falhou+1)); echo "  FALHA sessao-500 (mais antiga) sobreviveu ao teto de 500"
 fi
 
 echo
@@ -375,6 +452,88 @@ if [ -f "$LEDGER8" ]; then
   fi
 else
   falhou=$((falhou+1)); echo "  FALHA fluxos-sessao.json nao foi criado em $LEDGER8"
+fi
+
+echo
+echo "=========================================="
+echo "TESTE 9: lock orfao (arquivo .lock pre-existente e velho) e tratado como"
+echo "abandonado — o verbo ainda sai 0 e o carimbo acontece"
+echo "=========================================="
+T9_POSIX="$BASE_POSIX/t9"; mkdir -p "$T9_POSIX"
+T9="$(aformato "$T9_POSIX")"
+SESSAO9="sessao-lock-orfao"
+
+LOCK9="$T9_POSIX/fluxos-sessao.json.lock"
+: > "$LOCK9"
+# Lock "velho": mtime bem alem do teto de orfandade (5s) do ledger-fluxos.cjs.
+touch -d '1 hour ago' "$LOCK9" 2>/dev/null || touch -A -010000 "$LOCK9" 2>/dev/null
+echo "lock pre-existente criado, mtime: $(node -e 'console.log(require("fs").statSync(process.argv[1]).mtimeMs)' "$LOCK9")"
+
+OUT9=$(RFM_ESTADO_ROOT="$T9" RFM_ROOT="$T9" CLAUDE_SESSION_ID="$SESSAO9" \
+  env -u CLAUDE_CODE_SESSION_ID node "$ESTADO_JS" iniciar --slug teste-lock-orfao --titulo "t" 2>&1)
+EXIT9=$?
+echo "$OUT9"
+echo "(exit=$EXIT9)"
+
+if [ "$EXIT9" -eq 0 ]; then
+  ok=$((ok+1)); echo "  ok    iniciar saiu 0 com lock orfao pre-existente"
+else
+  falhou=$((falhou+1)); echo "  FALHA iniciar saiu $EXIT9 (esperado 0) com lock orfao pre-existente"
+fi
+
+LEDGER9="$T9_POSIX/fluxos-sessao.json"
+if [ -f "$LEDGER9" ]; then
+  RES9=$(lerCampos "$LEDGER9" "$SESSAO9")
+  echo "ledger: $RES9"
+  if [ "$RES9" = "1 teste-lock-orfao design" ]; then
+    ok=$((ok+1)); echo "  ok    carimbo aconteceu apesar do lock orfao (lock foi destravado)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA ledger inesperado: '$RES9' (esperado '1 teste-lock-orfao design')"
+  fi
+else
+  falhou=$((falhou+1)); echo "  FALHA fluxos-sessao.json nao foi criado em $LEDGER9 (lock ficou preso)"
+fi
+
+echo
+echo "=========================================="
+echo "TESTE 10: corrida — muitos processos 'iniciar' quase simultaneos contra o"
+echo "mesmo RFM_ROOT/RFM_ESTADO_ROOT, cada um com sessao e slug diferentes; todas"
+echo "as chaves tem que sobreviver (achado 1 da revisao de 2026-09-15: sem lock,"
+echo "9 de 80 sobreviviam a 80 processos concorrentes)"
+echo "=========================================="
+T10_POSIX="$BASE_POSIX/t10"; mkdir -p "$T10_POSIX"
+T10="$(aformato "$T10_POSIX")"
+N=80
+
+pids=""
+i=1
+while [ "$i" -le "$N" ]; do
+  SID=$(printf 'corrida-sessao-%03d' "$i")
+  # CLAUDE_CODE_SESSION_ID precisa ser setado AQUI, nao so o CLAUDE_SESSION_ID
+  # legado: quem roda este script (Claude Code) ja tem a variavel real
+  # exportada no ambiente, e ela vence na leitura de ledger-fluxos.cjs — sem
+  # sobrescreve-la, os 80 processos herdam o MESMO id real e contendem por UMA
+  # so entrada (medido: "chaves" caia para 1, nao pela corrida, mas porque so
+  # havia uma chave possivel).
+  ( RFM_ESTADO_ROOT="$T10" RFM_ROOT="$T10" CLAUDE_CODE_SESSION_ID="$SID" CLAUDE_SESSION_ID="$SID" \
+    node "$ESTADO_JS" iniciar --slug "$SID" --titulo "t" > /dev/null 2>&1 ) &
+  pids="$pids $!"
+  i=$((i+1))
+done
+for p in $pids; do wait "$p"; done
+
+LEDGER10="$T10_POSIX/fluxos-sessao.json"
+if [ -f "$LEDGER10" ]; then
+  CONTAGEM10=$(node -e "const l=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));console.log(Object.keys(l).length)" "$LEDGER10")
+  echo "chaves no ledger apos $N processos concorrentes: $CONTAGEM10"
+  if [ "$CONTAGEM10" = "$N" ]; then
+    ok=$((ok+1)); echo "  ok    todas as $N chaves sobreviveram a corrida (lock + escrita atomica funcionando)"
+  else
+    PERDIDAS=$((N - CONTAGEM10))
+    falhou=$((falhou+1)); echo "  FALHA so $CONTAGEM10 de $N chaves sobreviveram — perdeu $PERDIDAS"
+  fi
+else
+  falhou=$((falhou+1)); echo "  FALHA fluxos-sessao.json nao foi criado em $LEDGER10"
 fi
 
 echo
