@@ -59,6 +59,7 @@ const { cwdPorSegmento, segmentosComAspas } = require("./lib/cwd-efetivo.cjs");
 const {
   tokensComAspas, ehComando, posicaoDeComando, textoAPartir, desempacotarWrapperDeString,
 } = require("./lib/tokens-comando.cjs");
+const { corpoDeHeredoc, linhaDoHeredocTemInterpretador } = require("./lib/heredoc.cjs");
 
 // Flags globais do git que consomem o token seguinte (`git -C <dir> add`).
 const FLAG_COM_VALOR = new Set([
@@ -159,6 +160,54 @@ function analisaGit(toksComAspas) {
  * reconstroi so o texto dali pra frente, sem o prefixo que ja foi
  * consumido — para o desempacotador enxergar `bash -c "..."` como tal.
  */
+
+/**
+ * D1 (zerar-issues-4, #258): troca o CORPO de cada heredoc não-interpretador
+ * por espaços, preservando o comprimento da string.
+ *
+ * Por que MASCARAR e não recortar. O índice do segmento onde o `git
+ * add`/`commit` casou é usado para consultar `cwdPorSegmento` (H1, rodada 5,
+ * lote 3). As duas travessias têm de ver a MESMA string: recortar o corpo
+ * mudaria os deslocamentos e o índice passaria a apontar para outro segmento —
+ * o mesmo desencontro que o comentário de `segmentos()` já avisa. Espaço no
+ * lugar de cada caractere mantém todo deslocamento, e o corpo deixa de gerar
+ * segmento com conteúdo.
+ *
+ * O `\n` é preservado porque ele é separador de comando: trocá-lo por espaço
+ * grudaria a linha seguinte à anterior.
+ *
+ * Por que isto conserta a #258. O gatilho não era o heredoc nem a citação de
+ * comando git: era o `.` que abre frase depois de `)` — `(folga de 2 B). Ele
+ * sobe.` —, que `posicaoDeComando` lê como o builtin `source` e
+ * `desempacotarWrapperDeString` devolve como ilegível, fazendo o gate bloquear
+ * por "comando dinâmico". Com o corpo em branco, não há segmento ilegível, e a
+ * classe inteira fecha de uma vez: `|`, `&&`, `$(`, crase e qualquer prosa
+ * futura. O corpo que alimenta interpretador (`bash <<'EOF'`) NÃO é mascarado,
+ * porque ali ele é comando de verdade.
+ */
+function mascararCorposDeHeredoc(cmd) {
+  let fora = cmd;
+  let i = fora.indexOf("<<");
+  while (i !== -1) {
+    const heredoc = corpoDeHeredoc(fora, i);
+    if (heredoc === null) {
+      i = fora.indexOf("<<", i + 2);
+      continue;
+    }
+    if (!linhaDoHeredocTemInterpretador(fora, i)) {
+      const quebra = fora.indexOf("\n", i);
+      const inicio = quebra === -1 ? fora.length : quebra + 1;
+      const fim = Math.min(heredoc.fim, fora.length);
+      if (fim > inicio) {
+        const emBranco = fora.slice(inicio, fim).replace(/[^\n]/g, " ");
+        fora = fora.slice(0, inicio) + emBranco + fora.slice(fim);
+      }
+    }
+    i = fora.indexOf("<<", Math.min(heredoc.fim, fora.length));
+  }
+  return fora;
+}
+
 function analisaSegmentoGit(segTexto, ferramenta) {
   const g = analisaGit(tokensComAspas(segTexto));
   if (g) return g;
@@ -318,7 +367,9 @@ function main() {
   let motivo = null;
   let dirC = null;
   let indiceSegmento = null;
-  const segs = segmentos(cmd);
+  // D1 (zerar-issues-4): remover corpos de heredoc nao-interpretador ANTES de segmentar
+  const cmdParaAnalise = mascararCorposDeHeredoc(cmd);
+  const segs = segmentos(cmdParaAnalise);
   for (let idx = 0; idx < segs.length; idx += 1) {
     const g = analisaSegmentoGit(segs[idx], ev.tool_name);
     if (!g) continue;
@@ -343,7 +394,7 @@ function main() {
   // `git -C`, e `-C` e explicito. `incerto` (cd variavel, subshell, `~` no
   // comeco, `popd` sem `pushd`) = conservadorismo: usa o cwd inicial, evitando
   // decidir por adivinhacao.
-  const porSegmento = cwdPorSegmento(cmd, cwdDoEvento);
+  const porSegmento = cwdPorSegmento(cmdParaAnalise, cwdDoEvento);
   const doSegmento = porSegmento[indiceSegmento] || { cwd: cwdDoEvento, incerto: true };
   const dir = dirC || (doSegmento.incerto ? cwdDoEvento : doSegmento.cwd);
   const gitDir = git(dir, ["rev-parse", "--git-dir"]);

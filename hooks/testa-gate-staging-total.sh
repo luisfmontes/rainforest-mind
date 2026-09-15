@@ -61,6 +61,10 @@ b() { printf '{"cwd":"%s","hook_event_name":"PreToolUse","tool_name":"Bash","too
 ba() { printf '{"agent_id":"ag-1","agent_type":"executor","cwd":"%s","tool_name":"Bash","tool_input":{"command":"%s"}}' "${2:-$(esc "$R")}" "$1"; }
 # payload da JANELA PRINCIPAL via ferramenta PowerShell (R3, rodada 9, lote 3)
 p() { printf '{"cwd":"%s","hook_event_name":"PreToolUse","tool_name":"PowerShell","tool_input":{"command":"%s"}}' "${2:-$(esc "$R")}" "$1"; }
+# payload com comando MULTILINHA. Quebra de linha crua dentro de string JSON e
+# caractere de controle: o JSON.parse do gate falha e ele sai 0 sem avaliar
+# nada. JSON.stringify escapa. (zerar-issues-4, #258)
+bml() { node -e 'const [c,d]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd:d,hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:c}}))' "$1" "${2:-$(esc "$R")}"; }
 
 echo "== deve BARRAR (exit 2) — inclusive na janela principal =="
 gate "JANELA PRINCIPAL: git add -A (incidente 1 e 2)" 2 "$(b 'git add -A')"
@@ -298,6 +302,21 @@ gate 'git add -- "-A" PASSA (pathspec depois de --)'           0 "$(b 'git add -
 gate 'git add -- "-u" PASSA (pathspec depois de --)'           0 "$(b 'git add -- \"-u\"')"
 gate 'git commit -m "-a" PASSA (valor de -m)'                  0 "$(b 'git commit -m \"-a\"')"
 gate 'git commit -m "--all" PASSA (valor de -m)'               0 "$(b 'git commit -m \"--all\"')"
+
+echo
+echo "== D1 (zerar-issues-4, #258): corpo de heredoc nao-interpretador e dado =="
+# Estes casos usam `bml`, nao `b`: o comando tem QUEBRA DE LINHA, e quebra crua
+# dentro de string JSON e caractere de controle. Com `b`, o payload nao parseia,
+# o gate sai 0 sem avaliar nada, e o caso passa verde contra o gate defeituoso
+# -- foi exatamente assim que a primeira tentativa desta tarefa ficou 113/113
+# com a correcao anulada. `conferir-mutacao.cjs` pegou; a bateria nao.
+gate "(a) cat <<'EOF' com prosa '(2 B). Ele sobe.' no corpo" 0 "$(bml "$(printf 'cat > /tmp/x.md <<%sEOF%s\nMedido (folga de 2 B). Ele sobe.\nEOF' "'" "'")")"
+gate "(b) o mesmo, seguido de gh issue create" 0 "$(bml "$(printf 'cat > /tmp/x.md <<%sEOF%s\nMedido (folga de 2 B). Ele sobe.\nEOF\ngh issue create --body-file /tmp/x.md' "'" "'")")"
+gate "(c) corpo citando staging em massa e dado, nao comando" 0 "$(bml "$(printf 'cat > /tmp/x.md <<%sEOF%s\ntexto explicando git add -A\nEOF' "'" "'")")"
+gate "(d) corpo com crase, \$(...), \$VAR e pipe" 0 "$(bml "$(printf 'cat > /tmp/x.md <<%sEOF%s\n`x` $(echo y) $VAR a | b\nEOF' "'" "'")")"
+gate "(e) bash <<'EOF' com staging em massa no corpo BARRA" 2 "$(bml "$(printf 'bash <<%sEOF%s\ngit add -A\nEOF' "'" "'")")"
+gate "(f) staging em massa nu continua barrando" 2 "$(b 'git add -A')"
+gate "(g) heredoc sem linha de fechamento nao trava o gate" 0 "$(bml "$(printf 'cat <<%sEOF%s\nconteudo incompleto\nls -la' "'" "'")")"
 
 echo
 echo "== saidas de emergencia =="
