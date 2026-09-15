@@ -309,7 +309,10 @@ const PADROES = [
         // Ou a forma anterior: prosa curta e mais palavras na linha
         const prosaCurta = /^[a-zà-ú]{1,12}$/.test(valor);
         const depois = linha.slice(m.index + m[0].length).trim().split(/\s+/).filter(Boolean);
-        return !(prosaCurta && depois.length >= 2);
+        if (prosaCurta && depois.length >= 2) return false;
+        
+        // token nu que não é segredo nem prosa: isenta
+        return false;
       }
       
       // Outras chaves (incluindo qualificadas como `api_token`, `access_token`) sempre acusam
