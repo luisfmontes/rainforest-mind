@@ -408,6 +408,76 @@ console.log("== 5. campo sensores do manifesto ==");
   }
 }
 
+// == 6. Tarefa 7: a linha do SKILL.md bate com o parser (D18) ==
+//
+// Falsifica a documentacao, nao so o parser: LE `skills/executar/SKILL.md`
+// em disco, extrai dali o bloco `Sensor: <nome>` (sem conhecer a forma de
+// antemao — se alguem editar o SKILL.md para uma forma que o parser nao
+// aceita, ex.: trocar `:` por `=`, o caso 6a cai vermelho) e prova as duas
+// pontas que a Tarefa 7 promete:
+//
+//   6a. a linha exatamente como o texto a escreve, com o nome preenchido,
+//       e aceita pelo parser — exit 0.
+//   6b. a MESMA linha na forma antiga — o placeholder `<nome>` sem
+//       preencher, ou seja, sem a declaracao de QUAL sensor — produz a
+//       negacao que o proprio texto promete ("valor que nao seja um nome
+//       ... nega em vez de ser ignorado", skills/executar/SKILL.md) — exit 2.
+console.log("== 6. Tarefa 7: linha do SKILL.md bate com o parser ==");
+{
+  const skillPath = path.join(__dirname, "..", "skills", "executar", "SKILL.md");
+  const skillTexto = fs.readFileSync(skillPath, "utf8");
+  const m = skillTexto.match(/```\n(Sensor:[^\n]*)\n```/);
+
+  caso("6: skills/executar/SKILL.md tem um bloco de exemplo 'Sensor: <nome>'",
+    !!m, skillPath);
+
+  if (m) {
+    const linhaTemplate = m[1]; // "Sensor: <nome>", exatamente como o texto escreve
+
+    const manifestoTarefa7 = {
+      versao: 1,
+      agentes: {
+        revisor: { estagios: ["revisar"], escreve: false, sensores: ["disco"] },
+      },
+    };
+
+    // 6a. a linha do texto, com o nome preenchido, e aceita pelo parser.
+    {
+      const repo = caixa();
+      iniciarGit(repo, "fluxo/teste");
+      criarEstadoAtivo(repo, "teste", "revisar");
+      escreverManifestoDoRepo(repo, manifestoTarefa7);
+
+      const linhaPreenchida = linhaTemplate.replace("<nome>", "disco");
+      const r = despachar(repo, "revisor", { prompt: `prova\n${linhaPreenchida}\n` });
+
+      caso("6a: linha do SKILL.md (preenchida) aceita pelo parser, exit 0",
+        r.status === 0,
+        `linha=${JSON.stringify(linhaPreenchida)} exit=${r.status} stderr=${r.stderr}`);
+
+      fs.rmSync(repo, { recursive: true, force: true });
+    }
+
+    // 6b. a mesma linha, na forma antiga (placeholder nao preenchido, sem
+    // declarar QUAL sensor) — o texto promete que valor ilegivel nega em vez
+    // de ser ignorado, e e essa negacao que este caso prova.
+    {
+      const repo = caixa();
+      iniciarGit(repo, "fluxo/teste");
+      criarEstadoAtivo(repo, "teste", "revisar");
+      escreverManifestoDoRepo(repo, manifestoTarefa7);
+
+      const r = despachar(repo, "revisor", { prompt: `prova\n${linhaTemplate}\n` });
+
+      caso("6b: linha na forma antiga (sem preencher o nome), a negacao que o texto promete, exit 2",
+        r.status === 2,
+        `linha=${JSON.stringify(linhaTemplate)} exit=${r.status} stderr=${r.stderr}`);
+
+      fs.rmSync(repo, { recursive: true, force: true });
+    }
+  }
+}
+
 console.log(`\n== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 if (falhou === 0) console.log("todos os casos: OK");
 process.exit(falhou > 0 ? 1 : 0);

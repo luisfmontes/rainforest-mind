@@ -70,6 +70,16 @@ registre que viu.
 
 **Runtime do agente:** a primeira linha do briefing pode ser `Runtime: codex` para despachar via Codex CLI, ou `Runtime: claude` (default). Com `Runtime: codex`, o briefing leva também o bloco de ponte de `rainforest-mind/references/regra-10-runtime.md` — o preâmbulo do agente sozinho não segurou um haiku (2026-09-08). O `conferir-entrega.cjs` não muda com o runtime — ele confere o worktree real independentemente de qual host correu o agente.
 
+**Sensor pedido pelo agente:** quando o manifesto do repo declara `sensores` para o agente despachado (`.rainforest/agentes.json` ou o padrão embarcado), o briefing pede o sensor que ele vai precisar rodar com uma linha isolada, no mesmo estilo de `Runtime:`:
+
+```
+Sensor: <nome>
+```
+
+`hooks/portaria.cjs`, função `sensoresPedidosDoPrompt`, lê essas linhas do prompt de despacho: case-insensitive, pode haver **várias** linhas `Sensor:` e **todas** contam — ao contrário de `Runtime:` (primeiro-encontro), uma linha `Sensor:` dentro da lista do manifesto não mascara outra que caia fora dela. Valor que não seja um nome (`[A-Za-z0-9_-]+`) — vazio, com espaço — **nega** em vez de ser ignorado: não dá para afirmar "não pediu nada" a partir de uma linha que não foi lida. Agente cujo manifesto não traz `sensores` não exige nada, e uma linha `Sensor:` num briefing desses não trava coisa alguma.
+
+Este é o sensor que o AGENTE PODE RODAR, decidido no despacho. É um canal diferente do sensor citado na evidência ao fechar `verificar` (campo `sensor_externo` do `--json` de `scripts/estado.cjs marcar`, ver `skills/plano/SKILL.md`) — aquele nunca passa por aqui, porque `scripts/estado.cjs` não recebe texto de briefing.
+
 O briefing de cada agente leva, sempre:
 - **O hash da base** (regra 11) e a instrução de conferir na primeira ação:
   `git rev-parse --show-toplevel` (PARE se for a raiz do repositório principal
