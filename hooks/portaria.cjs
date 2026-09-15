@@ -377,6 +377,14 @@ function inferirConfigNaoDeclarado(raiz, nomeAgente) {
   // menos do que o ideal, e e honesto no log, que e o que o ideal exige.
   const base = { estagios: null, escreve: false, conferido: false };
 
+  // O nome vira CAMINHO em `obterDefinicaoAgente` (`<dir>/<nome>.md`), e desde a
+  // #264 ele chega aqui sem ter passado por manifesto nenhum — antes, nome fora
+  // do manifesto era negado antes de virar caminho. `../../..` nao vaza nada (o
+  // conteudo so alimenta um regex de frontmatter e vira um booleano), mas ler
+  // fora da pasta de agentes nunca e o que esta funcao quer, e a checagem custa
+  // uma linha. Um segmento simples, sem separador e sem `..`.
+  if (!/^[A-Za-z0-9._-]+$/.test(nomeAgente) || nomeAgente.includes("..")) return base;
+
   const def = obterDefinicaoAgente(raiz, nomeAgente);
   if (!def) return base;
 

@@ -361,6 +361,107 @@ console.log("== 5. agentes.extra.json soma ao padrao, e o do repo o substitui ==
   }
 }
 
+// == 6. Inferencia de `escreve` para agente NAO declarado (issue #264) ==
+//
+// Este bloco existe por causa de duas coisas que nasceram juntas na #264:
+//
+// 1. A inferencia e o que mantem a regra 11 valendo para agente de outro plugin.
+//    Sem ela, quem nao esta no manifesto entraria como read-only — e sao
+//    justamente os agentes de outro plugin que nao estao no manifesto.
+// 2. A inferencia monta um CAMINHO a partir do nome do agente
+//    (`<raiz>/agents/<nome>.md`), e desde a #264 esse nome chega ali sem ter
+//    passado por manifesto nenhum. Antes, nome fora do manifesto era negado
+//    antes de virar caminho.
+console.log("== 6. escreve inferido do frontmatter para agente nao declarado ==");
+{
+  const escreverAgente = (repo, nome, tools) => {
+    const dir = path.join(repo, "agents");
+    fs.mkdirSync(dir, { recursive: true });
+    const fm = ["---", `name: ${nome}`, "description: prova", "tools:"]
+      .concat(tools.map((t) => `  - ${t}`))
+      .concat(["---", "", "corpo"])
+      .join("\n");
+    fs.writeFileSync(path.join(dir, `${nome}.md`), fm, "utf8");
+  };
+
+  // 6a. Frontmatter com Write/Edit -> escreve inferido TRUE, e a regra 11 morde
+  //     sem ninguem ter declarado nada.
+  {
+    const repo = caixa();
+    iniciarGit(repo, "fluxo/teste");
+    criarEstadoAtivo(repo, "teste", "executar");
+    escreverAgente(repo, "forasteiro-que-edita", ["Read", "Grep", "Write", "Edit"]);
+
+    const r = despachar(repo, "forasteiro-que-edita");
+    caso("6a. nao declarado com Write no frontmatter: exit 2 (regra 11)",
+      r.status === 2, `exit=${r.status} stderr=${r.stderr}`);
+    caso("6a. o motivo e o da regra 11", /escreve: true/.test(r.stderr || ""), r.stderr);
+
+    fs.rmSync(repo, { recursive: true, force: true });
+  }
+
+  // 6b. Frontmatter so com tool read-only -> passa, e o log diz que a checagem
+  //     FOI feita. Sem este caso o 6a passaria com a inferencia devolvendo
+  //     `true` para tudo.
+  {
+    const repo = caixa();
+    iniciarGit(repo, "fluxo/teste");
+    criarEstadoAtivo(repo, "teste", "executar");
+    escreverAgente(repo, "forasteiro-que-so-le", ["Read", "Grep", "Glob"]);
+
+    const r = despachar(repo, "forasteiro-que-so-le");
+    caso("6b. nao declarado so com tool read-only: exit 0",
+      r.status === 0, `exit=${r.status} stderr=${r.stderr}`);
+
+    const allow = lerLog(path.join(repo, ".dados-do-teste")).filter((l) => l.decisao === "allow");
+    caso("6b. e o log NAO o marca como nao-conferido (o arquivo estava ao alcance)",
+      allow.length === 1 && allow[0].escreve_conferido === undefined, JSON.stringify(allow));
+
+    fs.rmSync(repo, { recursive: true, force: true });
+  }
+
+  // 6c. Arquivo fora de alcance -> passa MARCADO, em vez de afirmar read-only.
+  //     E o caso comum em repo de consumidor, onde os agentes vem do cache do
+  //     plugin.
+  {
+    const repo = caixa();
+    iniciarGit(repo, "fluxo/teste");
+    criarEstadoAtivo(repo, "teste", "executar");
+
+    const r = despachar(repo, "forasteiro-sem-arquivo");
+    caso("6c. sem arquivo ao alcance: exit 0", r.status === 0, `exit=${r.status} stderr=${r.stderr}`);
+
+    const allow = lerLog(path.join(repo, ".dados-do-teste")).filter((l) => l.decisao === "allow");
+    caso("6c. e o log marca escreve_conferido: false",
+      allow.length === 1 && allow[0].escreve_conferido === false, JSON.stringify(allow));
+
+    fs.rmSync(repo, { recursive: true, force: true });
+  }
+
+  // 6d. Nome que nao e um segmento simples nao vira caminho. O mesmo arquivo do
+  //     6a, alcancado por travessia, NAO pode ser lido — se fosse, este caso
+  //     daria o exit 2 do 6a. Dar exit 0 aqui e a prova de que a leitura nao
+  //     aconteceu.
+  {
+    const repo = caixa();
+    iniciarGit(repo, "fluxo/teste");
+    criarEstadoAtivo(repo, "teste", "executar");
+    escreverAgente(repo, "forasteiro-que-edita", ["Read", "Write", "Edit"]);
+
+    for (const travessia of [
+      "../agents/forasteiro-que-edita",
+      "..\\..\\agents\\forasteiro-que-edita",
+      "subpasta/forasteiro-que-edita",
+    ]) {
+      const r = despachar(repo, travessia);
+      caso(`6d. nome com travessia (${travessia}): exit 0, sem ler o arquivo`,
+        r.status === 0, `exit=${r.status} stderr=${r.stderr}`);
+    }
+
+    fs.rmSync(repo, { recursive: true, force: true });
+  }
+}
+
 console.log(`\n== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 if (falhou === 0) console.log("todos os casos: OK");
 process.exit(falhou > 0 ? 1 : 0);
