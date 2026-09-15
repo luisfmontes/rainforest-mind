@@ -115,6 +115,10 @@
     "em": "2026-09-15"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "pr": "https://github.com/luisfmontes/rainforest-mind/pull/271",
+    "comando": "gh issue list --state closed",
+    "saida": "#258 #253 #249 #244 #260 CLOSED com evidencia por fechar-issue.cjs; #257 OPEN de proposito (o PR #267 revoga o portao que ela melhora — comentada com as duas medicoes); plantadas #261 #262 #263 #266 e a #270 da janela vizinha",
+    "em": "2026-09-15"
   }
 }
