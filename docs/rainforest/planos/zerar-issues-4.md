@@ -52,7 +52,7 @@ retirada porque: o segundo sintoma da #258 **não reproduz**. Medidas seis forma
 
 ### 3. Autorização de subagente tolera digitação, ancorada no verbo [tipo: implementar]
 atende: D4, D12
-arquivos: `hooks/lib/autorizacao-usuario.cjs`, `hooks/testa-portaria-autorizacao.cjs`, `.rainforest/cobertura/autorizacao-usuario.json`
+arquivos: `hooks/lib/autorizacao-usuario.cjs`, `hooks/testa-portaria-autorizacao.cjs`, `.rainforest/cobertura/autorizacao-usuario.json`, `test/fixtures/autorizacao/*.jsonl`
 depende de: nenhuma
 paralela: sim
 mutacao:
@@ -78,7 +78,7 @@ pronto quando: `hooks/lib/autorizacao-usuario.cjs` exporta `quaseFormaDeSubagent
 
 ### 5. Gate de publicação consulta a visibilidade do remoto [tipo: implementar]
 atende: D6
-arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-destino.sh`
+arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-destino.sh`, `.gitignore`
 depende de: nenhuma
 paralela: sim
 mutacao:
