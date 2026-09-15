@@ -310,23 +310,49 @@ const PADROES = [
         if (!/^[A-Za-z0-9_]/.test(resto)) return false;
       }
 
-      // Para `token` nu: checar se valor parece segredo OU se é prosa curta
+      // Isencao ESTREITA para `token` nu, que e o que a #260 pede: identificador
+      // de codigo. Este repo tokeniza linha de comando (`tokensComAspas`,
+      // `posicaoDeComando`), e `const token = toks[i];` era acusado com
+      // `pode_ser_falso: false`. DUAS condicoes, as duas necessarias: a linha
+      // DECLARA uma variavel (`const`/`let`/`var` imediatamente antes da chave),
+      // e o valor NAO abre com aspa -- literal entre aspas depois de `const` e
+      // segredo colado num arquivo de codigo, nao identificador.
+      //
+      // A primeira versao desta tarefa invertia o principio da trava: isentava
+      // `token` nu por PADRAO e so acusava se o valor casasse
+      // `^[A-Za-z0-9+/=_-]{16,}$` E tivesse digito. Medido em 2026-09-15 contra
+      // a arvore de 14c471ed, quatro segredos de verdade passaram a sair LIMPOS:
+      //
+      //   token: eyJhbGciOiJIUzI1NiJ9.eyJ...   JWT -- o `.` nao esta na classe
+      //   token: glpat-ABCDEFGHIJKLMNOPQRST    PAT do GitLab, sem digito
+      //   token: abcdefghijklmnopqrstuvwx      24 letras, sem digito
+      //   token: a1b2c3d4e5f6                  12 caracteres, curto demais
+      //
+      // Os dois ramos de prosa dentro daquele `if` devolviam `false` dos dois
+      // lados: codigo morto, com um comentario descrevendo o contrario do que
+      // rodava. Isencao por padrao numa regua de credencial e exatamente o modo
+      // de falha da #254 -- o instrumento respondendo "nao achei" quando o que
+      // houve foi "nao procurei".
       if (ehTokenNu) {
-        // Forma de segredo: 16+ caracteres contínuos de base64/hex/hífen, com pelo menos um dígito
-        const ehSegredoCredivel = /^[A-Za-z0-9+/=_-]{16,}$/.test(valor) && /\d/.test(valor);
-        if (ehSegredoCredivel) return true;
-        
-        // Ou a forma anterior: prosa curta e mais palavras na linha
-        const prosaCurta = /^[a-zà-ú]{1,12}$/.test(valor);
-        const depois = linha.slice(m.index + m[0].length).trim().split(/\s+/).filter(Boolean);
-        if (prosaCurta && depois.length >= 2) return false;
-        
-        // token nu que não é segredo nem prosa: isenta
-        return false;
+        const declara = /\b(?:const|let|var)\s+$/.test(linha.slice(0, m.index));
+        // A aspa de ABERTURA fica FORA do grupo capturante (`["']?` antes de
+        // `(\S+)`), entao `m[1]` nunca comeca com ela -- e preciso olhar o
+        // proprio `m[0]`, entre o separador e o valor. Medido em 2026-09-15:
+        // testando `m[1]`, `const token = "<JWT>";` saia LIMPO.
+        const entreAspas = /[:=]\s*["']/.test(m[0]);
+        if (declara && !entreAspas) return false;
       }
-      
-      // Outras chaves (incluindo qualificadas como `api_token`, `access_token`) sempre acusam
-      return true;
+
+      // Prosa curta com mais palavras na linha nao e segredo. Vale para a lista
+      // INTEIRA, como valia antes desta tarefa (2026-08-17): a primeira versao
+      // prendeu esta isencao dentro do ramo de `token` nu e devolveu `true`
+      // incondicional para todas as outras chaves, o que criou dois falsos
+      // positivos novos, medidos na revisao de 2026-09-15 (exit 0 em 14c471ed,
+      // exit 2 aqui): `senha: alguma coisa qualquer aqui` e
+      // `authorization: pode ser feita pelo gestor`.
+      const prosaCurta = /^[a-zà-ú]{1,12}$/.test(valor);
+      const depois = linha.slice(m.index + m[0].length).trim().split(/\s+/).filter(Boolean);
+      return !(prosaCurta && depois.length >= 2);
     },
   },
   {

@@ -390,19 +390,120 @@ SE=$(printf '%s' "$PE" | env HOME="$RAIZ" RFM_ROOT="$SANDBOX_DATA" GH_RESPONSE="
 if [ "$RC" = 2 ]; then ok=$((ok+1)); echo "  ok   (e) exit 2"
 else falhou=$((falhou+1)); echo "  FALHA (e): $RC"; fi
 
-# Teste (f): cache - 2x mesmo repo = 1 invocação
-echo "== (f) cache: 2 invocações = 1 chamada gh =="
+# Teste (f): cache - 2x mesmo repo PUBLICO = 1 invocação.
+# Media `publica` de proposito: a partir da revisao do zerar-issues-4, `privada`
+# NAO e cacheada (ver (h) a (k) abaixo), entao so a resposta que mantem o
+# bloqueio economiza chamada.
+echo "== (f) cache de repo publico: 2 invocações = 1 chamada gh =="
 : > "$GH_INVOCATIONS"
 TEST_F="$RAIZ/vis-f"
 git init -q "$TEST_F"; git -C "$TEST_F" config user.email t@t; git -C "$TEST_F" config user.name t; git -C "$TEST_F" config commit.gpgsign false
 echo "x" > "$TEST_F/f.txt"; git -C "$TEST_F" add f.txt; git -C "$TEST_F" commit -qm x
 git -C "$TEST_F" remote add origin "https://github.com/test/f.git"
 PF=$(PAY_CWD="$(esc "$TEST_F")" pay Write "$(esc "$TEST_F/d.txt")" "contato: $JID_REAL")
-printf '%s' "$PF" | env HOME="$RAIZ" RFM_ROOT="$SANDBOX_DATA" GH_RESPONSE='{"isPrivate":true}' RAINFOREST_GH="node $SANDBOX_BIN/gh" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" 2>&1 > /dev/null
-printf '%s' "$PF" | env HOME="$RAIZ" RFM_ROOT="$SANDBOX_DATA" GH_RESPONSE='{"isPrivate":true}' RAINFOREST_GH="node $SANDBOX_BIN/gh" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" 2>&1 > /dev/null
+printf '%s' "$PF" | env HOME="$RAIZ" RFM_ROOT="$SANDBOX_DATA" GH_RESPONSE='{"isPrivate":false}' RAINFOREST_GH="node $SANDBOX_BIN/gh" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" 2>&1 > /dev/null
+printf '%s' "$PF" | env HOME="$RAIZ" RFM_ROOT="$SANDBOX_DATA" GH_RESPONSE='{"isPrivate":false}' RAINFOREST_GH="node $SANDBOX_BIN/gh" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" 2>&1 > /dev/null
 CNT=$(wc -l < "$GH_INVOCATIONS" 2>/dev/null || echo 0)
 if [ "$CNT" = "1" ]; then ok=$((ok+1)); echo "  ok   (f) cache: $CNT invocação"
 else falhou=$((falhou+1)); echo "  FALHA (f): $CNT invocações (esperava 1)"; fi
+
+# Testes (h) a (k): o cache de visibilidade nao pode DESLIGAR a trava.
+#
+# O arquivo `<raiz de dados>/cache-visibilidade-repo.json` fica fora de repo
+# git e nenhum gate confere escrita nele. Enquanto `privada` era aceita do
+# disco, plantar uma entrada liberava o gate -- e com `em` no futuro,
+# liberava para sempre, porque `Date.now() - em < TTL` e verdade para
+# qualquer instante futuro. Medido em 2026-09-15 contra o gate que o commit
+# 5e43b525 introduziu: sem cache exit 2, plantado privada exit 0.
+echo "== (h)-(k) cache plantado nao libera a trava =="
+CACHE_VIS="$SANDBOX_DATA/cache-visibilidade-repo.json"
+TEST_H="$RAIZ/vis-h"
+git init -q "$TEST_H"; git -C "$TEST_H" config user.email t@t; git -C "$TEST_H" config user.name t; git -C "$TEST_H" config commit.gpgsign false
+echo "x" > "$TEST_H/f.txt"; git -C "$TEST_H" add f.txt; git -C "$TEST_H" commit -qm x
+git -C "$TEST_H" remote add origin "https://github.com/test/h.git"
+PH=$(PAY_CWD="$(esc "$TEST_H")" pay Write "$(esc "$TEST_H/d.txt")" "contato: $JID_REAL")
+
+# Roda o gate com o cache ja plantado. $1 = ms a somar em `em`.
+planta_e_roda() {
+  node -e "require('fs').writeFileSync(process.argv[1], JSON.stringify({'test/h': {visibilidade: process.argv[2], em: Date.now() + Number(process.argv[3])}}))" "$CACHE_VIS" "$1" "$2"
+  : > "$GH_INVOCATIONS"
+  printf '%s' "$PH" | env HOME="$RAIZ" RFM_ROOT="$SANDBOX_DATA" GH_RESPONSE='{"isPrivate":false}' RAINFOREST_GH="node $SANDBOX_BIN/gh" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" > /dev/null 2>&1
+  echo $?
+}
+
+RC_H=$(planta_e_roda privada 0)
+if [ "$RC_H" = 2 ]; then ok=$((ok+1)); echo "  ok   (h) privada plantada nao libera repo publico (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA (h): exit=$RC_H (esperava 2)"; fi
+
+RC_I=$(planta_e_roda privada 3153600000000)
+if [ "$RC_I" = 2 ]; then ok=$((ok+1)); echo "  ok   (i) privada com em no FUTURO nao libera (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA (i): exit=$RC_I (esperava 2)"; fi
+
+# E `publica` com `em` no futuro tambem nao vale: entrada adiantada nunca
+# expira, entao o clamp vale para as duas direcoes.
+RC_J=$(planta_e_roda publica 3153600000000)
+CNT_J=$(wc -l < "$GH_INVOCATIONS" 2>/dev/null || echo 0)
+if [ "$RC_J" = 2 ] && [ "$CNT_J" = "1" ]; then ok=$((ok+1)); echo "  ok   (j) publica com em no FUTURO e ignorada, gh e re-perguntado"
+else falhou=$((falhou+1)); echo "  FALHA (j): exit=$RC_J cnt=$CNT_J (esperava 2,1)"; fi
+
+# (k) repo PRIVADO de verdade continua liberando, e a resposta NAO fica no
+# disco: duas escritas seguidas perguntam ao `gh` duas vezes.
+rm -f "$CACHE_VIS"
+: > "$GH_INVOCATIONS"
+printf '%s' "$PH" | env HOME="$RAIZ" RFM_ROOT="$SANDBOX_DATA" GH_RESPONSE='{"isPrivate":true}' RAINFOREST_GH="node $SANDBOX_BIN/gh" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" > /dev/null 2>&1; RC_K=$?
+printf '%s' "$PH" | env HOME="$RAIZ" RFM_ROOT="$SANDBOX_DATA" GH_RESPONSE='{"isPrivate":true}' RAINFOREST_GH="node $SANDBOX_BIN/gh" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" > /dev/null 2>&1
+CNT_K=$(wc -l < "$GH_INVOCATIONS" 2>/dev/null || echo 0)
+GRAVOU=$(grep -c privada "$CACHE_VIS" 2>/dev/null || echo 0)
+if [ "$RC_K" = 0 ] && [ "$CNT_K" = "2" ] && [ "$GRAVOU" = "0" ]; then ok=$((ok+1)); echo "  ok   (k) privada libera, re-pergunta ao gh e nao vai para o disco"
+else falhou=$((falhou+1)); echo "  FALHA (k): exit=$RC_K cnt=$CNT_K gravou=$GRAVOU (esperava 0,2,0)"; fi
+rm -f "$CACHE_VIS"
+
+# Testes (l) e (m): a visibilidade olha TODOS os remotos do GitHub.
+#
+# A primeira versao perguntava ao `@{upstream}` e caia em `origin` quando nao
+# havia. Branch nova sem upstream e o caso comum: com `origin` privado e um
+# fork publico cadastrado, o gate consultava `origin`, liberava, o segredo
+# entrava no commit, e `git push fork main` publicava. Medido em 2026-09-15
+# contra a arvore de 5e43b525, que introduziu a checagem: exit 0 la, exit 2
+# aqui, e o `gh` consultado passa de `org/priv` para `me/pub`.
+#
+# Falha fechada: um remoto publico basta para bloquear. `remotoDeDestino`
+# continua intacta, porque `paiJaPublicado` depende dela querer dizer outra
+# coisa (D19 -- so o remoto de destino conta para 'ja publicado').
+echo "== (l)-(m) visibilidade olha todos os remotos =="
+TEST_L="$RAIZ/vis-l"
+git init -q "$TEST_L"; git -C "$TEST_L" config user.email t@t; git -C "$TEST_L" config user.name t; git -C "$TEST_L" config commit.gpgsign false
+echo "x" > "$TEST_L/f.txt"; git -C "$TEST_L" add f.txt; git -C "$TEST_L" commit -q -m x
+git -C "$TEST_L" remote add origin "https://github.com/test/priv.git"
+git -C "$TEST_L" remote add fork "https://github.com/test/pub.git"
+PL=$(PAY_CWD="$(esc "$TEST_L")" pay Write "$(esc "$TEST_L/d.txt")" "contato: $JID_REAL")
+
+# O duble responde pelo NOME do repositorio: `priv` privado, o resto publico.
+cat > "$SANDBOX_BIN/gh-por-nome" << "GHNOME"
+#!/usr/bin/env node
+const fs = require('fs');
+const invocFile = process.env.GH_INVOCATIONS_FILE;
+const alvo = process.argv[4] || '';
+if (invocFile) fs.appendFileSync(invocFile, alvo + '\n', 'utf8');
+console.log(JSON.stringify({ isPrivate: /\/priv$/.test(alvo) }));
+GHNOME
+chmod +x "$SANDBOX_BIN/gh-por-nome"
+
+rm -f "$SANDBOX_DATA/cache-visibilidade-repo.json"
+: > "$GH_INVOCATIONS"
+printf '%s' "$PL" | env HOME="$RAIZ" RFM_ROOT="$SANDBOX_DATA" RAINFOREST_GH="node $SANDBOX_BIN/gh-por-nome" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" > /dev/null 2>&1; RC_L=$?
+if [ "$RC_L" = 2 ]; then ok=$((ok+1)); echo "  ok   (l) fork publico bloqueia mesmo com origin privado (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA (l): exit=$RC_L (esperava 2); consultou: $(tr '\n' ' ' < "$GH_INVOCATIONS")"; fi
+
+# (m) sem o fork, o mesmo repo privado continua liberando -- a mudanca nao
+# pode transformar todo repo privado em bloqueio.
+git -C "$TEST_L" remote remove fork
+rm -f "$SANDBOX_DATA/cache-visibilidade-repo.json"
+: > "$GH_INVOCATIONS"
+printf '%s' "$PL" | env HOME="$RAIZ" RFM_ROOT="$SANDBOX_DATA" RAINFOREST_GH="node $SANDBOX_BIN/gh-por-nome" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" > /dev/null 2>&1; RC_M=$?
+if [ "$RC_M" = 0 ]; then ok=$((ok+1)); echo "  ok   (m) so origin privado continua liberando (exit 0)"
+else falhou=$((falhou+1)); echo "  FALHA (m): exit=$RC_M (esperava 0)"; fi
+rm -f "$SANDBOX_DATA/cache-visibilidade-repo.json"
 
 # Teste (g): RAINFOREST_GATE_SEM_REDE=1 → 0 invocações
 echo "== (g) RAINFOREST_GATE_SEM_REDE=1 → sem rede =="

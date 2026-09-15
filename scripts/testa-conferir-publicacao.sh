@@ -290,6 +290,52 @@ saiu    "identificador const token = toks[i]; PASSA (exit 0)"  "$(codigo "$SBP/c
 printf '# workflow\n\ntoken: "${GITHUB_TOKEN}"\n' > "$SBP/cred-token-ref-aspas.md"
 saiu    "referencia de variavel entre aspas PASSA (exit 0)"      "$(codigo "$SBP/cred-token-ref-aspas.md")" "0"
 
+echo
+echo "== 6e. token nu volta a ser acusado por PADRAO (revisao do zerar-issues-4) =="
+# A primeira versao da tarefa 9 isentava `token` nu por padrao: so acusava se o
+# valor casasse `^[A-Za-z0-9+/=_-]{16,}$` E tivesse digito. Quatro segredos de
+# verdade saiam LIMPOS. Medido em 2026-09-15 contra a arvore de 14c471ed: os
+# quatro davam exit 2 la e exit 0 aqui. Segredo montado em pedacos de proposito
+# -- o gate de publicacao varre o que e commitado.
+JWT=$(printf '%s.%s.%s' eyJhbGciOiJIUzI1NiJ9 eyJzdWIiOiIxMjM0In0 dBjftJeZ4CVPmB92K27uhbUJ)
+
+printf '# relatorio\n\ntoken: %s\n' "$JWT" > "$SBP/cred-token-jwt.md"
+tem     "JWT sob token nu e acusado (o ponto nao isenta)"   "$(roda "$SBP/cred-token-jwt.md")" "credencial"
+saiu    "e RECUSA (exit 2)"                                 "$(codigo "$SBP/cred-token-jwt.md")" "2"
+
+SEMDIG=$(printf '%s%s' abcdefghijkl mnopqrstuvwx)
+printf '# relatorio\n\ntoken: %s\n' "$SEMDIG" > "$SBP/cred-token-sem-digito.md"
+saiu    "24 letras SEM digito sob token nu RECUSA (exit 2)" "$(codigo "$SBP/cred-token-sem-digito.md")" "2"
+
+PAT=$(printf '%s-%s' glpat ABCDEFGHIJKLMNOPQRST)
+printf '# relatorio\n\ntoken: %s\n' "$PAT" > "$SBP/cred-token-pat-gitlab.md"
+saiu    "PAT do GitLab sob token nu RECUSA (exit 2)"        "$(codigo "$SBP/cred-token-pat-gitlab.md")" "2"
+
+CURTO=$(printf '%s%s' a1b2c3 d4e5f6)
+printf '# relatorio\n\ntoken: %s\n' "$CURTO" > "$SBP/cred-token-curto.md"
+saiu    "segredo curto sob token nu RECUSA (exit 2)"        "$(codigo "$SBP/cred-token-curto.md")" "2"
+
+# A isencao de prosa vale para a lista INTEIRA, como valia antes da tarefa 9.
+# Prende-la dentro do ramo de `token` criou dois falsos positivos novos: as duas
+# linhas abaixo davam exit 0 em 14c471ed e passaram a dar 2.
+printf '# manual\n\nsenha: alguma coisa qualquer aqui\n' > "$SBP/cred-prosa-senha.md"
+saiu    "prosa curta sob senha PASSA (exit 0)"              "$(codigo "$SBP/cred-prosa-senha.md")" "0"
+
+printf '# manual\n\nauthorization: pode ser feita pelo gestor\n' > "$SBP/cred-prosa-authorization.md"
+saiu    "prosa curta sob authorization PASSA (exit 0)"      "$(codigo "$SBP/cred-prosa-authorization.md")" "0"
+
+# A isencao de `token` nu e ESTREITA: declaracao de variavel com valor que NAO
+# abre com aspa. Literal entre aspas depois de `const` e segredo colado.
+printf '# codigo\n\nlet token = proximo();\n' > "$SBP/cred-token-let.md"
+saiu    "let token = proximo(); PASSA (exit 0)"             "$(codigo "$SBP/cred-token-let.md")" "0"
+
+printf '# codigo\n\nconst token = "%s";\n' "$JWT" > "$SBP/cred-token-const-aspas.md"
+saiu    "const token = \"<JWT>\"; RECUSA (exit 2)"            "$(codigo "$SBP/cred-token-const-aspas.md")" "2"
+
+printf '# relatorio\n\ntoken = %s\n' "$JWT" > "$SBP/cred-token-sem-declaracao.md"
+saiu    "token = <JWT> sem declaracao RECUSA (exit 2)"      "$(codigo "$SBP/cred-token-sem-declaracao.md")" "2"
+
+
 echo "== 8. dump hexadecimal nao e telefone (Issue #144) =="
 # Provar defeito de encoding exige colar bytes; ate 2026-09-02 o gate lia as
 # colunas de `xxd` como telefone e barrava a unica evidencia que o metodo aceita.

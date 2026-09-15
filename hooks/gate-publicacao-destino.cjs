@@ -109,10 +109,12 @@ const visibilidadeMemorizada = new Map();
  * ou `RAINFOREST_GATE_SEM_REDE=1`: "desconhecida", que bloqueia como antes. Um
  * repositorio publico novo nunca passa por omissao.
  *
- * O cache em disco guarda SO resposta conclusiva. Cachear "desconhecida"
+ * O cache em disco guarda SO "publica". Cachear "desconhecida"
  * transformaria uma indisponibilidade de rede de dez segundos em uma semana de
  * decisao errada -- e no sentido que importa, porque e a resposta que decide se
- * o termo vaza ou nao.
+ * o termo vaza ou nao. E `privada` e essa mesma resposta pelo lado que
+ * LIBERA, num arquivo que nenhum gate protege -- por isso tambem nao se
+ * cacheia, e se re-pergunta ao `gh` a cada achado.
  */
 function visibilidadeDoRepo(gitTop) {
   if (visibilidadeMemorizada.has(gitTop)) return visibilidadeMemorizada.get(gitTop);
@@ -121,22 +123,84 @@ function visibilidadeDoRepo(gitTop) {
   return v;
 }
 
+/**
+ * `owner/repo` de TODOS os remotos do GitHub cadastrados, sem repetir.
+ *
+ * Nao usa `remotoDeDestino`, e a diferenca e de proposito. Aquela funcao
+ * responde "para onde ESTA branch publica", e `paiJaPublicado` depende disso
+ * (D19: aceitar qualquer remoto reabria a porta do espelho descartavel). Aqui
+ * a pergunta e outra: "existe algum destino publico ao alcance de um push?".
+ *
+ * Medido em 2026-09-15: com `origin` privado e um fork publico cadastrado,
+ * numa branch SEM upstream, `remotoDeDestino` caia em `origin`, o gate
+ * consultava o repositorio errado, o segredo entrava no commit, e
+ * `git push fork main` publicava. Branch nova sem upstream e o caso comum, nao
+ * o raro. Falha fechada: basta um remoto publico para bloquear.
+ */
+function repositoriosDoGitHub(gitTop) {
+  const nomes = (git(gitTop, ["remote"]) || "").split(/\r?\n/).map((n) => n.trim()).filter(Boolean);
+  const achados = [];
+  for (const nome of nomes) {
+    const url = git(gitTop, ["remote", "get-url", nome]);
+    if (!url) continue;
+    const m = url.match(/(?:https:\/\/|git@)(?:www\.)?github\.com[:/]([\w.-]+)\/([\w.-]+?)(?:\.git)?$/);
+    if (!m) continue;
+    const ownerRepo = `${m[1]}/${m[2]}`;
+    if (!achados.includes(ownerRepo)) achados.push(ownerRepo);
+  }
+  return achados;
+}
+
 function calcularVisibilidade(gitTop) {
   if (process.env.RAINFOREST_GATE_SEM_REDE === "1") return "desconhecida";
 
-  const remoto = remotoDeDestino(gitTop);
-  if (!remoto) return "desconhecida";
-  const url = git(gitTop, ["remote", "get-url", remoto]);
-  if (!url) return "desconhecida";
-  const m = url.match(/(?:https:\/\/|git@)(?:www\.)?github\.com[:/]([\w.-]+)\/([\w.-]+?)(?:\.git)?$/);
-  if (!m) return "desconhecida";
-  const ownerRepo = `${m[1]}/${m[2]}`;
+  const repos = repositoriosDoGitHub(gitTop);
+  if (repos.length === 0) return "desconhecida";
 
+  // So libera quando TODOS sao privados. Um publico basta para bloquear, e um
+  // desconhecido tambem -- a mesma falha fechada que o resto deste gate usa.
+  let veredito = "privada";
+  for (const ownerRepo of repos) {
+    const v = visibilidadeDeUmRepo(ownerRepo);
+    if (v === "publica") return "publica";
+    if (v === "desconhecida") veredito = "desconhecida";
+  }
+  return veredito;
+}
+
+function visibilidadeDeUmRepo(ownerRepo) {
+  // O cache guarda SO `publica` -- a resposta que MANTEM o bloqueio.
+  //
+  // A primeira versao guardava as duas e aceitava `privada` do disco. O
+  // arquivo e `<raiz de dados>/cache-visibilidade-repo.json`, fora de repo
+  // git: nenhum gate confere escrita ali, e um `Write` basta. Medido em
+  // 2026-09-15, com o `gh` respondendo PUBLICO o tempo todo:
+  //
+  //   sem cache                                exit 2
+  //   plantado privada, em = agora             exit 0
+  //   plantado privada, em = +100 anos         exit 0   (para sempre)
+  //   plantado privada, em = 8 dias atras      exit 2
+  //
+  // A mensagem deste mesmo hook diz ao subagente para NAO criar arquivo nem
+  // variavel que desligue a trava; este era esse arquivo. O docblock de
+  // `visibilidadeDoRepo` ja dizia por que `desconhecida` nao se cacheia --
+  // e a resposta que decide se o termo vaza. `privada` e a MESMA resposta,
+  // do lado que libera, e o argumento vale com mais forca ainda.
+  //
+  // O custo e baixo porque `bloqueia()` so pergunta a visibilidade quando JA
+  // houve achado: em repo privado o `gh` roda uma vez por achado, nao por
+  // escrita. O cache continua existindo para o caso publico, que e o que se
+  // repete numa sessao de muitos achados.
+  //
+  // `em` no futuro nao vale: `Date.now() - em < TTL` e verdade para qualquer
+  // instante futuro, entao uma entrada com data adiantada nunca expirava.
+  const agora = Date.now();
   const cache = lerCache();
   const guardado = cache[ownerRepo];
-  if (guardado && guardado.em && Date.now() - guardado.em < CACHE_VISIBILIDADE_TTL_MS
-      && (guardado.visibilidade === "privada" || guardado.visibilidade === "publica")) {
-    return guardado.visibilidade;
+  if (guardado && guardado.em && guardado.em <= agora
+      && agora - guardado.em < CACHE_VISIBILIDADE_TTL_MS
+      && guardado.visibilidade === "publica") {
+    return "publica";
   }
 
   let visibilidade = "desconhecida";
@@ -160,8 +224,10 @@ function calcularVisibilidade(gitTop) {
   }
   if (visibilidade === "desconhecida") return "desconhecida";
 
-  cache[ownerRepo] = { visibilidade, em: Date.now() };
-  gravarCache(cache);
+  if (visibilidade === "publica") {
+    cache[ownerRepo] = { visibilidade, em: Date.now() };
+    gravarCache(cache);
+  }
   return visibilidade;
 }
 
