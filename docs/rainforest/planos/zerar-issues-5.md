@@ -587,3 +587,17 @@ mutacao:
   bateria: `bash hooks/testa-principal-atrasado.sh`
   fixture: caso novo "5 worktrees ja mesclados: 2 listados + 1 linha de resumo"
 pronto quando: com um repo de caixa de areia no temp do sistema que tem `origin/main` e 5 worktrees linkados cujas branches já estão mescladas, `require('./hooks/lib/principal-atrasado.cjs').linhas({cwd: <repo>})` devolve exatamente 2 linhas terminando em `já em origin/main` e 1 linha de resumo `(+3 worktree(s) já em origin/main — rode o limpar)`; com 2 worktrees mesclados, devolve as 2 linhas e nenhuma de resumo; a linha do checkout principal atrasado (quando houver) continua vindo antes e não conta no limite — provado por `bash hooks/testa-principal-atrasado.sh` com os casos novos. Superfície humana: quem lê a injeção precisa saber **quantos** worktrees sobram e **o que fazer** — a linha de resumo tem o número e o comando, e o caso de teste falha se qualquer um dos dois sumir.
+
+### 20. conferir-mutacao: a cópia da árvore continua sendo repositório git [tipo: implementar]
+atende: D5
+arquivos: `scripts/conferir-mutacao.cjs`, `scripts/testa-conferir-mutacao.sh`
+depende de: 7
+paralela: nao
+Achado da integração da tarefa 6 (2026-09-16): a cópia que a tarefa 7 criou exclui o `.git` de topo, e bateria que consulta git dentro da árvore deixa de ser verde no fonte íntegro. Medido: `bash hooks/testa-contexto-sessao.sh` sai `ok: 293 falhou: 0` na árvore real e `ok: 292 falhou: 1` dentro da cópia; a catraca nova recusa com exit 4 (`baseline NAO-VERDE`) o que a catraca anterior mede com exit 0. Falha segura (não dá falso verde), mas deixa sem medição toda bateria que depende de git — e o `verificar` deste fluxo roda justamente essa catraca.
+mutacao:
+  arquivo: `scripts/conferir-mutacao.cjs`
+  de: a linha do conserto que torna a cópia um repositório git (o executor reporta o literal de UMA linha)
+  para: a mesma linha neutralizada, de modo que a cópia volte a não ser repositório git
+  bateria: `bash scripts/testa-conferir-mutacao.sh`
+  fixture: caso novo "bateria que exige git rev-parse dentro da arvore mede verde no baseline da copia"
+pronto quando: com a árvore deste fluxo (`hooks/testa-contexto-sessao.sh`, bateria real que consulta git), `node scripts/conferir-mutacao.cjs --raiz <worktree> --arquivo hooks/testa-contexto-sessao.sh --de <trecho existente de uma linha> --para <neutro> --bateria "bash hooks/testa-contexto-sessao.sh"` passa do baseline (não sai 4 por `baseline NAO-VERDE`); a garantia da tarefa 7 continua de pé — durante a bateria mutada o arquivo alvo na árvore real mantém o conteúdo original (seção 22 de `scripts/testa-conferir-mutacao.sh` verde), e a cópia não compartilha índice nem HEAD com a árvore real (`git -C <arvore real> status --porcelain` igual antes e depois da catraca); a cópia temporária some ao fim, inclusive em erro — provado por `bash scripts/testa-conferir-mutacao.sh` com o caso novo. Superfície humana: se ainda assim o baseline da cópia falhar por ambiente, a mensagem diz que a falha foi **na cópia** e cita o diretório, para quem lê não confundir com bateria quebrada no fonte.
