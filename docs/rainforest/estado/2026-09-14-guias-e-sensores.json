@@ -135,12 +135,18 @@
     "creep": "cruzamento do diff inteiro (72 arquivos) contra arquivos: de todas as tarefas mais as quatro emendas: zero fora"
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "parcial",
     "snapshot": {
-      "head": "e2d1a2c1ddbf45808fe64f94c95939d85377e2c1",
+      "head": "792c50bb0b842b9040f092e3fb2a8fffa140c14c",
       "caminhos_sujos": []
     },
-    "em_voo": [],
+    "em_voo": [
+      {
+        "agente": "revisor",
+        "tarefa": "rodada 4: confere o cruzamento completo, diff 13b552c6...792c50bb",
+        "desde": "2026-09-16"
+      }
+    ],
     "em": "2026-09-16",
     "achados": 2,
     "bloqueantes": [

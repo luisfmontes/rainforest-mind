@@ -18,7 +18,7 @@ Design: docs/rainforest/design/2026-09-14-guias-e-sensores.md
 
 ### 1. Marca de categoria nas peças e conferidor que a exige [tipo: implementar]
 atende: D2, D5, D10, D16, D19
-arquivos: `scripts/conferir-categoria.cjs`, `scripts/testa-conferir-categoria.sh`, `hooks/codex-transfer-session-start.cjs`, `hooks/escada-subagente.cjs`, `hooks/ferramentas-consulta.cjs`, `hooks/foco-session-start.cjs`, `hooks/gate-agente-em-voo.cjs`, `hooks/gate-fechar-issue.cjs`, `hooks/gate-git-verificacao.cjs`, `hooks/gate-mensagem-commit.cjs`, `hooks/gate-publicacao-destino.cjs`, `hooks/gate-repo-alheio.cjs`, `hooks/gate-review-codex.cjs`, `hooks/gate-staging-total.cjs`, `hooks/gate-verificador-staged.cjs`, `hooks/gate-worktree.cjs`, `hooks/heartbeat.cjs`, `hooks/memoria-marca.cjs`, `hooks/memoria-session-start.cjs`, `hooks/portaria.cjs`, `scripts/observar.cjs`, `scripts/conferir-cobertura-fixtures.cjs`, `scripts/conferir-comparacao.cjs`, `scripts/conferir-divergencia.cjs`, `scripts/conferir-duplicacao.cjs`, `scripts/conferir-encoding.cjs`, `scripts/conferir-entrega.cjs`, `scripts/conferir-fluxo.cjs`, `scripts/conferir-invariantes.cjs`, `scripts/conferir-livro-de-repos.cjs`, `scripts/conferir-mutacao.cjs`, `scripts/conferir-ponte.cjs`, `scripts/conferir-publicacao.cjs`, `scripts/conferir-versao.cjs`, `vigias/ERROS.md`, `vigias/_comum.md`, `vigias/batedor-repos.md`, `vigias/jardineiro-ideias.md`, `vigias/livro-de-repos.md`, `vigias/revisao-bimestral.md`, `vigias/sentinela-foco.md`, `vigias/vigia-tickets.md`
+arquivos: `scripts/conferir-categoria.cjs`, `scripts/testa-conferir-categoria.sh`, `hooks/codex-transfer-session-start.cjs`, `hooks/escada-subagente.cjs`, `hooks/ferramentas-consulta.cjs`, `hooks/foco-session-start.cjs`, `hooks/gate-agente-em-voo.cjs`, `hooks/gate-fechar-issue.cjs`, `hooks/gate-git-verificacao.cjs`, `hooks/gate-mensagem-commit.cjs`, `hooks/gate-publicacao-destino.cjs`, `hooks/gate-repo-alheio.cjs`, `hooks/gate-review-codex.cjs`, `hooks/gate-staging-total.cjs`, `hooks/gate-verificador-staged.cjs`, `hooks/gate-worktree.cjs`, `hooks/heartbeat.cjs`, `hooks/memoria-marca.cjs`, `hooks/memoria-session-start.cjs`, `hooks/portaria.cjs`, `scripts/observar.cjs`, `scripts/conferir-cobertura-fixtures.cjs`, `scripts/conferir-comparacao.cjs`, `scripts/conferir-divergencia.cjs`, `scripts/conferir-duplicacao.cjs`, `scripts/conferir-encoding.cjs`, `scripts/conferir-entrega.cjs`, `scripts/conferir-fluxo.cjs`, `scripts/conferir-invariantes.cjs`, `scripts/conferir-livro-de-repos.cjs`, `scripts/conferir-mutacao.cjs`, `scripts/conferir-ponte.cjs`, `scripts/conferir-publicacao.cjs`, `scripts/conferir-versao.cjs`, `vigias/ERROS.md`, `vigias/_comum.md`, `vigias/batedor-repos.md`, `vigias/jardineiro-ideias.md`, `vigias/livro-de-repos.md`, `vigias/revisao-bimestral.md`, `vigias/sentinela-foco.md`, `vigias/vigia-tickets.md`, `hooks/titulo-sessao-end.cjs`
 depende de: nenhuma
 paralela: sim
 mutacao:
@@ -70,7 +70,7 @@ pronto quando: com um `FOCO.md` no formato real (seção Ativo com linhas `- AAA
 
 ### 5. Fechar `verificar` com ok exige sensor na evidência [tipo: implementar]
 atende: D3, D6
-arquivos: `scripts/estado.cjs`, `scripts/testa-estado.sh`
+arquivos: `scripts/estado.cjs`, `scripts/testa-estado.sh`, `hooks/testa-ledger-fluxos.sh`, `scripts/testa-portoes-gate.sh`, `scripts/testa-recibo-fechar.sh`
 depende de: 1
 paralela: nao
 mutacao:
@@ -83,7 +83,7 @@ pronto quando: com o mesmo `--json` que o fluxo já usa hoje para fechar (`{"com
 
 ### 6. Campo `sensores` no manifesto e portão na portaria [tipo: implementar]
 atende: D9, D13, D14
-arquivos: `.rainforest/agentes.padrao.json`, `hooks/portaria.cjs`, `hooks/testa-portaria-manifesto.cjs`
+arquivos: `.rainforest/agentes.padrao.json`, `hooks/portaria.cjs`, `hooks/testa-portaria-manifesto.cjs`, `skills/executar/SKILL.md`, `skills/plano/SKILL.md`, `skills/rainforest-mind/references/regra-10-portaria.md`
 depende de: nenhuma
 paralela: sim
 mutacao:
@@ -96,7 +96,7 @@ pronto quando: com o payload de `PreToolUse` que o harness realmente envia para 
 
 ### 7. Documentar a linha de declaração de sensor no briefing [tipo: docs]
 atende: D18
-arquivos: `skills/executar/SKILL.md`, `skills/plano/SKILL.md`
+arquivos: `skills/executar/SKILL.md`, `skills/plano/SKILL.md`, `skills/executar/references/sensor-no-briefing.md`, `skills/executar/references/runtime-do-agente.md`
 depende de: 5, 6
 paralela: nao
 mutacao: n/a
@@ -105,7 +105,7 @@ pronto quando: a linha de declaração de sensor exatamente como o texto a escre
 
 ### 8. Medição: modelo do builder na régua [tipo: pesquisar]
 atende: D1, D8, D12
-arquivos: `relatorios/2026-09-14-modelo-no-builder-da-regua.md`
+arquivos: `relatorios/2026-09-14-modelo-no-builder-da-regua.md`, `docs/rainforest/reguas/2026-09-14-conferidor-de-cli.md`
 depende de: 1, 2, 3, 4, 5, 6, 7
 paralela: nao
 mutacao: n/a
@@ -119,7 +119,7 @@ e três deles são de plano, não de código: um critério que a base mudou por 
 uma tarefa que existiu sem estar escrita, e uma peça nova que entrou pelo merge.
 As emendas abaixo são o que destrava — justificar em prosa não destrava creep.
 
-### 6. Campo `sensores` no manifesto e portão na portaria — CRITÉRIO SUBSTITUÍDO
+#### 6. Campo `sensores` no manifesto e portão na portaria — CRITÉRIO SUBSTITUÍDO
 
 atende: D9 e D13 **na redação da emenda de 2026-09-15 do design**, D14, D18
 arquivos: `hooks/portaria.cjs`, `hooks/testa-portaria-manifesto.cjs`, `skills/executar/SKILL.md`, `skills/plano/SKILL.md`, `skills/rainforest-mind/references/regra-10-portaria.md`
@@ -141,7 +141,7 @@ exatamente os que a nova redação inverte.
 
 ### 9. Fonte única de `cortarBytes` e varredura de `hooks/` no conferidor (Issue #259) [tipo: implementar]
 atende: nenhuma decisão deste design — é a Issue #259, que entrou na branch durante o `executar`
-arquivos: `hooks/lib/bytes.cjs`, `hooks/lib/memoria-sessao.cjs`, `hooks/lib/contexto-sessao.cjs`, `scripts/conferir-duplicacao.cjs`, `scripts/testa-conferir-duplicacao.sh`, `scripts/exporta-hooks-sessao-start.cjs`
+arquivos: `hooks/lib/bytes.cjs`, `hooks/lib/memoria-sessao.cjs`, `hooks/lib/contexto-sessao.cjs`, `scripts/conferir-duplicacao.cjs`, `scripts/testa-conferir-duplicacao.sh`, `scripts/exporta-hooks-sessao-start.cjs`, `scripts/testa-backup-estado.sh`, `scripts/testa-ponte.sh`, `scripts/testa-ponte-entrevista.sh`, `scripts/testa-registrar-erro.sh`
 depende de: nenhuma
 paralela: sim
 mutacao:
@@ -161,7 +161,7 @@ concreta e vale registrar: a tarefa 2 (`scripts/orcamento.cjs:112,121`) **não
 poderia** ter sido implementada como foi sem extrair `executarHooksSessionStart` de
 `scripts/exporta-hooks-sessao-start.cjs`.
 
-### 1. Marca de categoria — ADENDO
+#### 1. Marca de categoria — ADENDO
 
 A peça `hooks/titulo-sessao-end.cjs` entra na lista de `arquivos:` da tarefa 1, e a
 contagem do critério passa de 41 para 42 peças (20 hooks), distribuição
@@ -191,7 +191,7 @@ auditoria por `arquivos:` não os enxergava. A emenda de 2026-09-15 já tinha
 aberto a Tarefa 9 por essa mesma razão e fechou três dos oito arquivos da mesma
 causa raiz; estes são os que ficaram de fora.
 
-### 5. Fechar `verificar` com ok exige sensor na evidência — `arquivos:` AMPLIADO
+#### 5. Fechar `verificar` com ok exige sensor na evidência — `arquivos:` AMPLIADO
 
 acrescenta: `hooks/testa-ledger-fluxos.sh`, `scripts/testa-portoes-gate.sh`, `scripts/testa-recibo-fechar.sh`
 pronto quando (acréscimo ao critério existente): as três baterias acima, que fechavam `verificar` com `ok` sem citar sensor, passam a declarar `sensor_externo` com valor que aparece dentro de `comando` — e as três devolvem exit 0, provado por `bash hooks/testa-ledger-fluxos.sh`, `bash scripts/testa-portoes-gate.sh` e `bash scripts/testa-recibo-fechar.sh`
@@ -201,7 +201,7 @@ nova pede, não a regra parar de pedir. Nenhuma linha de `scripts/estado.cjs` fo
 tocada para isto, e a recusa continua load-bearing — provada por mutação ao vivo
 na seção 27 de `scripts/testa-estado.sh`.
 
-### 9. Fonte única de `cortarBytes` — `arquivos:` AMPLIADO
+#### 9. Fonte única de `cortarBytes` — `arquivos:` AMPLIADO
 
 acrescenta: `scripts/testa-backup-estado.sh`, `scripts/testa-ponte.sh`, `scripts/testa-ponte-entrevista.sh`, `scripts/testa-registrar-erro.sh`
 pronto quando (acréscimo ao critério existente): as quatro baterias acima, que montam a caixa de teste copiando `hooks/lib/` arquivo a arquivo, passam a copiar também o `hooks/lib/bytes.cjs` de que `contexto-sessao.cjs` passou a depender — e as quatro devolvem exit 0
@@ -226,7 +226,7 @@ se fecha a letra; a régua se conserta lá, fora deste fluxo.
 Os três não são escopo novo: cada um existe porque **outra regra documentada do
 repo obrigou a criá-lo**. Fica dito qual regra, em cada caso.
 
-### 7. Documentar a linha de declaração de sensor — `arquivos:` AMPLIADO
+#### 7. Documentar a linha de declaração de sensor — `arquivos:` AMPLIADO
 
 acrescenta: `skills/executar/references/sensor-no-briefing.md`, `skills/executar/references/runtime-do-agente.md`
 pronto quando (acréscimo ao critério existente): o conteúdo movido para os dois `references/` descreve o comportamento que `hooks/portaria.cjs` de fato tem — a tabela de casos de `sensor-no-briefing.md` bate com os casos 7a-7g da bateria —, e `skills/executar/SKILL.md` cabe no teto — provado por `bash scripts/testa-teto-skills.sh` devolvendo exit 0 e por `node hooks/testa-portaria-manifesto.cjs` devolvendo exit 0, este último porque o caso 8 lê do próprio `SKILL.md` o bloco `Sensor: <nome>`, que **não** pode migrar para a reference
@@ -238,7 +238,7 @@ o que `skills/rainforest-mind/references/` já faz — e ela cria arquivo que a
 tarefa não tinha como prever no `arquivos:`, porque a tarefa não sabia que ia
 estourar.
 
-### 8. Medição: modelo do builder na régua — `arquivos:` AMPLIADO
+#### 8. Medição: modelo do builder na régua — `arquivos:` AMPLIADO
 
 acrescenta: `docs/rainforest/reguas/2026-09-14-conferidor-de-cli.md`
 pronto quando (acréscimo ao critério existente): o arquivo de régua nomeia os sete mecanismos, e foi commitado **antes** da primeira rodada da medição — provado por `git log --diff-filter=A --format=%H -- docs/rainforest/reguas/2026-09-14-conferidor-de-cli.md` devolvendo um commit que é ancestral do commit da rodada 1 (`git merge-base --is-ancestor <ele> 7c362207`)
