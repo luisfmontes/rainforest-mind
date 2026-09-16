@@ -1385,6 +1385,74 @@ else
 fi
 rm -rf "$MUTCOPIA"
 
+echo "== checarDespachos: resume despachos.jsonl (Issue #276) =="
+# Formato REAL gravado por `gravarDespacho` em hooks/portaria.cjs:538 — uma
+# linha JSON por despacho com ts/repo/agente/estagio/decisao/sessao, mais
+# motivo/escreve_conferido/fora_de_fluxo so quando presentes.
+DESP_RAIZ="$SBP/despachos-raiz"
+mkdir -p "$DESP_RAIZ/portaria"
+cat > "$DESP_RAIZ/portaria/despachos.jsonl" <<'JSONL'
+{"ts":"2026-09-16T10:00:00.000Z","repo":"/r","agente":"executor","estagio":"executar","decisao":"allow","sessao":"s1"}
+{"ts":"2026-09-16T10:01:00.000Z","repo":"/r","agente":"executor","estagio":"executar","decisao":"allow","sessao":"s2"}
+{"ts":"2026-09-16T10:02:00.000Z","repo":"/r","agente":"executor","estagio":"executar","decisao":"deny","sessao":"s3","motivo":"fora do manifesto"}
+{"ts":"2026-09-16T10:03:00.000Z","repo":"/r","agente":"executor","estagio":"executar","decisao":"allow","sessao":"s4","fora_de_fluxo":true,"estagio_declarado":"executar","via":"manual","declarado":false}
+{"ts":"2026-09-16T10:04:00.000Z","repo":"/r","agente":"executor","estagio":"executar","decisao":"allow","sessao":"s5","escreve_conferido":false}
+JSONL
+DESP1="$( RFM_ROOT="$DESP_RAIZ" node "$SRC/scripts/saude.cjs" --json 2>/dev/null | node -e '
+  let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
+    try {
+      const a = JSON.parse(d).find(x => x.item === "despachos");
+      console.log(a ? a.nivel + " " + a.detalhe : "ausente");
+    } catch { console.log("erro"); }
+  })' )"
+checa "DESP1. 5 linhas viram achado 'despachos' em aviso" "aviso " "5 despacho" "$DESP1"
+case "$DESP1" in
+  *"1 deny"*) ok=$((ok+1)); echo "  ok   DESP1b. cita 1 deny" ;;
+  *) falhou=$((falhou+1)); echo "  FALHA DESP1b: esperava '1 deny' em: $DESP1" ;;
+esac
+case "$DESP1" in
+  *"1 fora de fluxo"*) ok=$((ok+1)); echo "  ok   DESP1c. cita 1 fora de fluxo" ;;
+  *) falhou=$((falhou+1)); echo "  FALHA DESP1c: esperava '1 fora de fluxo' em: $DESP1" ;;
+esac
+case "$DESP1" in
+  *"1 com escreve nao conferido"*) ok=$((ok+1)); echo "  ok   DESP1d. cita 1 escreve nao conferido" ;;
+  *) falhou=$((falhou+1)); echo "  FALHA DESP1d: esperava '1 com escreve nao conferido' em: $DESP1" ;;
+esac
+
+echo "== checarDespachos: raiz de PROJETO (.rainforest proprio) tem prioridade sobre a global =="
+# Hermetico por CONSTRUCAO: a raiz GLOBAL (fake home, nivel 3) tem 3 linhas; a
+# raiz de PROJETO (nivel 2, cwd) tem 1. Se o checador lesse a global por engano
+# (ou herdasse RFM_ROOT/CLAUDE_CONFIG_DIR do ambiente que roda a bateria), o
+# achado citaria "3 despacho(s)", nao "1" — a distincao nao depende do estado
+# de maquina nenhuma, so do que este teste monta.
+HOMEFALSA_DESP="$SBP/home-despachos"
+mkdir -p "$HOMEFALSA_DESP/.rainforest/portaria"
+printf 'foco global\n' > "$HOMEFALSA_DESP/.rainforest/FOCO.md"
+cat > "$HOMEFALSA_DESP/.rainforest/portaria/despachos.jsonl" <<'JSONL'
+{"ts":"2026-09-16T09:00:00.000Z","repo":"/g1","agente":"executor","estagio":"executar","decisao":"allow","sessao":"g1"}
+{"ts":"2026-09-16T09:01:00.000Z","repo":"/g2","agente":"executor","estagio":"executar","decisao":"allow","sessao":"g2"}
+{"ts":"2026-09-16T09:02:00.000Z","repo":"/g3","agente":"executor","estagio":"executar","decisao":"allow","sessao":"g3"}
+JSONL
+DESP_PROJ="$SBP/despachos-projeto"
+mkdir -p "$DESP_PROJ/.rainforest/portaria"
+printf 'foco local\n' > "$DESP_PROJ/.rainforest/FOCO.md"
+cat > "$DESP_PROJ/.rainforest/portaria/despachos.jsonl" <<'JSONL'
+{"ts":"2026-09-16T11:00:00.000Z","repo":"/r","agente":"executor","estagio":"executar","decisao":"allow","sessao":"p1"}
+JSONL
+DESP2="$( cd "$DESP_PROJ" && RFM_ROOT= CLAUDE_CONFIG_DIR= USERPROFILE="$HOMEFALSA_DESP" HOME="$HOMEFALSA_DESP" \
+  node "$SRC/scripts/saude.cjs" --json 2>/dev/null | node -e '
+  let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
+    try {
+      const a = JSON.parse(d).find(x => x.item === "despachos");
+      console.log(a ? a.nivel + " " + a.detalhe : "ausente");
+    } catch { console.log("erro"); }
+  })' )"
+case "$DESP2" in
+  "ok "*"1 despacho"*) ok=$((ok+1)); echo "  ok   DESP2. usa o despachos.jsonl LOCAL do .rainforest do projeto (nao os 3 do global)" ;;
+  *) falhou=$((falhou+1)); echo "  FALHA DESP2: esperava 'ok ...1 despacho(s)...' (arquivo local), veio: $DESP2" ;;
+esac
+rm -rf "$DESP_RAIZ" "$DESP_PROJ" "$HOMEFALSA_DESP"
+
 # Limpeza
 rm -rf "$R1_TEST" "$R2_TEST" "$R3_TEST"
 
