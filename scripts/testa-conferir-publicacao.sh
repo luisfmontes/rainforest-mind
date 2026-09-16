@@ -336,6 +336,46 @@ printf '# relatorio\n\ntoken = %s\n' "$JWT" > "$SBP/cred-token-sem-declaracao.md
 saiu    "token = <JWT> sem declaracao RECUSA (exit 2)"      "$(codigo "$SBP/cred-token-sem-declaracao.md")" "2"
 
 
+echo "== 6f. credencial com chave entre aspas (JSON canonico, Issue #262) =="
+# A regex da regra aceitava aspa opcional entre a palavra-chave e o separador.
+# Formas canonicas de JSON como `"token": "..."` sao as que mais aparecem em
+# config, settings.json, .env.json, resposta de API. O gate passava VERDE para elas.
+# Todos os casos sao montados em pedacos porque o proprio arquivo de teste
+# (rastreado no repo) sera lido pelo gate de publicacao em --commit mode.
+TOK1=$(printf '%s%s' 8f3a9c2b 1e7d4a6f)
+TOK2=$(printf '%s%s' 0b5c8e2d 9a4f7c1b)
+TOKEN_HEX=$(printf '%s%s' "$TOK1" "$TOK2")
+
+printf '{\"token\": \"%s\"}\n' "$TOKEN_HEX" > "$SBP/cred-json-token.md"
+saiu    "json com token entre aspas RECUSA (exit 2)"        "$(codigo "$SBP/cred-json-token.md")" "2"
+tem     "e aponta credencial"                               "$(roda "$SBP/cred-json-token.md")" "credencial"
+
+# Password: montado em pedacos de proposito para nao cascos com a regra durante commit
+PASS_P1=$(printf '%s' "MyP@ssw0rd")
+PASS_P2=$(printf '%s' "Secret123")
+PASSWD=$(printf '%s%s' "$PASS_P1" "$PASS_P2")
+
+printf '{"password": "%s"}\n' "$PASSWD" > "$SBP/cred-json-password.md"
+saiu    "json com password entre aspas RECUSA (exit 2)"     "$(codigo "$SBP/cred-json-password.md")" "2"
+tem     "e aponta credencial"                               "$(roda "$SBP/cred-json-password.md")" "credencial"
+
+# API key: montado em pedacos
+APIKEY_P1=$(printf '%s' "sk_live_")
+APIKEY_P2=$(printf '%s' "ABCDEFGHIJ0123456789")
+APIKEY=$(printf '%s%s' "$APIKEY_P1" "$APIKEY_P2")
+
+printf '{"api_key": "%s"}\n' "$APIKEY" > "$SBP/cred-json-apikey.md"
+saiu    "json com api_key entre aspas RECUSA (exit 2)"      "$(codigo "$SBP/cred-json-apikey.md")" "2"
+tem     "e aponta credencial"                               "$(roda "$SBP/cred-json-apikey.md")" "credencial"
+
+# Regressoes: as duas isencoes que ja passam tem que continuar passando
+printf '{\"token\": \"${GITHUB_TOKEN}\"}\n' > "$SBP/cred-json-var.md"
+saiu    "json token com variavel PASSA (exit 0)"            "$(codigo "$SBP/cred-json-var.md")" "0"
+
+printf '# codigo\n\nconst token = toks[i];\n' > "$SBP/cred-token-identificador.md"
+saiu    "const token = identificador PASSA (exit 0)"        "$(codigo "$SBP/cred-token-identificador.md")" "0"
+
+
 echo "== 8. dump hexadecimal nao e telefone (Issue #144) =="
 # Provar defeito de encoding exige colar bytes; ate 2026-09-02 o gate lia as
 # colunas de `xxd` como telefone e barrava a unica evidencia que o metodo aceita.

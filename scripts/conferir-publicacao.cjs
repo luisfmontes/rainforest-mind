@@ -236,7 +236,7 @@ const PADROES = [
   {
     id: 'credencial',
     mostra_chave: true,
-    re: /\b(?:(?:access|auth|refresh|api)[_-]?token|bearer|senha|password|api[_-]?key|apikey|secret|token|authorization)\s*[:=]\s*["']?(\S+)/gi,
+    re: /\b(?:(?:access|auth|refresh|api)[_-]?token|bearer|senha|password|api[_-]?key|apikey|secret|token|authorization)["']?\s*[:=]\s*["']?(\S+)/gi,
     o_que: 'credencial atribuída a uma chave',
     faca: 'nunca cole credencial em relatório, nem revogada — troque por `<redigido>`',
     // O `i` vale para a CHAVE, e não é negociável: `API_KEY` e `SENHA` seguidas de dois-pontos são as
@@ -272,7 +272,7 @@ const PADROES = [
       // referencia de variavel logo abaixo passaria a acusar.
       const valor = m[1].replace(/^["']+/, '').replace(/["',;]+$/, '');
       const chaveComOp = m[0];
-      const chave = chaveComOp.match(/^(.*?)\s*[:=]/i)[1].toLowerCase();
+      const chave = chaveComOp.match(/^(.*?)\s*[:=]/i)[1].replace(/^["']+|["']+$/g, '').toLowerCase();
       const ehTokenNu = chave === 'token';
 
 
