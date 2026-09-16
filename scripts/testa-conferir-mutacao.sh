@@ -879,43 +879,106 @@ echo "== 21. D24: a bateria roda em bash no Windows, nao no cmd.exe =="
 # (cmd nao separa comandos por ';'). Em bash, deixa marca-a e marca-b. A
 # bateria sai 0 nas duas rodadas, entao a catraca diz "sobreviveu" (exit 2) —
 # o que se mede aqui e' o SHELL, nao o veredito.
+#
+# D5 (Issue #266): a bateria roda numa COPIA temporaria da raiz, nao em
+# $CAIXA — os arquivos que ela cria desaparecem com a copia antes deste
+# script retomar o controle. A prova passa a ser o que a propria bateria
+# reporta no stdout, capturado em $SAIDA por `exige`.
 if uname -o 2>/dev/null | grep -q Msys; then
-  rm -f "$CAIXA/marca-a" "$CAIXA/marca-b" "$CAIXA/touch" "$CAIXA/marca-a;"
   exige 2 "D24 (a): bateria com ';' roda em bash (sobrevive, mas separa os comandos)" \
     CHK --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' \
-        --bateria 'touch marca-a; touch marca-b'
-  if [ -f "$CAIXA/marca-a" ] && [ -f "$CAIXA/marca-b" ]; then
-    ok=$((ok+1)); printf '  ok    marca-a e marca-b existem (bash separou os dois comandos)\n'
+        --bateria 'touch marca-a; touch marca-b; if [ -f marca-a ] && [ -f marca-b ]; then echo MARCA_A_E_B_OK; fi; if [ -e touch ] || [ -e "marca-a;" ]; then echo VIROU_CMDEXE; fi; true'
+  # A linha "bateria : <comando>" ecoa o --bateria LITERAL, que contem os
+  # proprios marcadores como texto de comando (`echo MARCA_A_E_B_OK`) — uma
+  # busca em $SAIDA inteiro casaria sempre, mesmo sem a bateria ter rodado.
+  # Filtra essa linha antes de conferir o que a bateria de fato IMPRIMIU.
+  SAIDA_SEM_ECO="$(grep -v '^bateria :' "$SAIDA")"
+  if printf '%s\n' "$SAIDA_SEM_ECO" | grep -q 'MARCA_A_E_B_OK'; then
+    ok=$((ok+1)); printf '  ok    D24 (a): marca-a e marca-b existem (bash separou os dois comandos)\n'
   else
-    falhou=$((falhou+1)); printf '  FALHA marca-a/marca-b nao existem: a bateria nao rodou em bash\n'
+    falhou=$((falhou+1)); printf '  FALHA D24 (a): marca-a/marca-b nao existem: a bateria nao rodou em bash\n'
   fi
-  if [ ! -e "$CAIXA/touch" ] && [ ! -e "$CAIXA/marca-a;" ]; then
-    ok=$((ok+1)); printf '  ok    nao existe arquivo "touch" nem "marca-a;" (nao foi o cmd.exe)\n'
+  if printf '%s\n' "$SAIDA_SEM_ECO" | grep -q 'VIROU_CMDEXE'; then
+    falhou=$((falhou+1)); printf '  FALHA D24 (a): arquivo "touch" ou "marca-a;" existe: a bateria foi ao cmd.exe\n'
   else
-    falhou=$((falhou+1)); printf '  FALHA arquivo "touch" ou "marca-a;" existe: a bateria foi ao cmd.exe\n'
+    ok=$((ok+1)); printf '  ok    D24 (a): nao existe arquivo "touch" nem "marca-a;" (nao foi o cmd.exe)\n'
   fi
-  rm -f "$CAIXA/marca-a" "$CAIXA/marca-b" "$CAIXA/touch" "$CAIXA/marca-a;"
 else
   printf '  (pulado: nao e MSYS)\n'
 fi
 
 # Caso (b) — PYTHONDONTWRITEBYTECODE chega como '1' na bateria, no baseline E na
-# pos-mutacao (a bateria anexa o valor a env.txt e roda a bateria honesta).
-rm -f "$CAIXA/env.txt"
+# pos-mutacao (a bateria imprime o valor no stdout e roda a bateria honesta).
+#
+# D5 (Issue #266): como a bateria roda numa copia temporaria (nao em $CAIXA),
+# o efeito so e observavel pelo que ela imprime — capturado em $SAIDA por
+# `exige` —, nao mais por um arquivo lido depois do fato.
 cat > "$CAIXA/bateria-env.sh" <<'BAT'
 #!/bin/bash
-printf '%s\n' "${PYTHONDONTWRITEBYTECODE-vazio}" >> env.txt
+printf 'PYTHONDONTWRITEBYTECODE_VISTO=%s\n' "${PYTHONDONTWRITEBYTECODE-vazio}"
 bash bateria.sh
 BAT
 exige 0 "D24/D25 (b): bateria honesta com PYTHONDONTWRITEBYTECODE gravado" \
   CHK --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' \
       --bateria 'bash bateria-env.sh'
-if [ "$(tr -d '\r' < "$CAIXA/env.txt" | grep -c '^1$')" -eq 2 ] && [ "$(tr -d '\r' < "$CAIXA/env.txt" | wc -l)" -eq 2 ]; then
-  ok=$((ok+1)); printf '  ok    env.txt tem exatamente "1" nas duas rodadas (baseline e mutacao)\n'
+if [ "$(tr -d '\r' < "$SAIDA" | grep -c '^PYTHONDONTWRITEBYTECODE_VISTO=1$')" -eq 2 ]; then
+  ok=$((ok+1)); printf '  ok    PYTHONDONTWRITEBYTECODE=1 aparece nas duas rodadas (baseline e mutacao)\n'
 else
-  falhou=$((falhou+1)); printf '  FALHA env.txt nao tem "1" nas duas rodadas:\n'; sed 's/^/        | /' "$CAIXA/env.txt"
+  falhou=$((falhou+1)); printf '  FALHA PYTHONDONTWRITEBYTECODE=1 nao aparece 2x na saida:\n'
+  grep 'PYTHONDONTWRITEBYTECODE_VISTO' "$SAIDA" | sed 's/^/        | /'
 fi
-rm -f "$CAIXA/env.txt" "$CAIXA/bateria-env.sh"
+rm -f "$CAIXA/bateria-env.sh"
+
+echo
+echo "== 22. mutacao roda em copia: o arquivo real fica intocado durante a bateria mutada (Issue #266) =="
+# D5 (Issue #266): a mutacao e as duas rodadas da bateria (baseline e
+# pos-mutacao) rodam numa COPIA temporaria da raiz, nunca em $CAIXA — quem
+# ler $CAIXA/fonte.cjs enquanto a catraca roda ve sempre o ORIGINAL. Prova
+# por ENTRADA REAL, nao por leitura de codigo: dispara a catraca em
+# BACKGROUND com uma bateria que dorme 2s (o baseline dorme os primeiros 2s,
+# a mutacao entra so DEPOIS dele passar, e a pos-mutacao dorme outros 2s) e,
+# NO MEIO da janela pos-mutacao (t=3s, dentro de [2,4)), le o fonte.cjs pelo
+# MESMO caminho que --raiz aponta. Antes do D5 (`alvo` resolvia contra
+# `raiz`), essa leitura veria o texto MUTADO — hoje ve sempre o original.
+cat > "$CAIXA/bateria-lenta-2s.sh" <<'BAT'
+#!/bin/bash
+sleep 2
+exit 0
+BAT
+
+CHK --arquivo fonte.cjs --de '// Fixture: recusa' --para '// MARCA-MUTADA' \
+    --bateria 'bash bateria-lenta-2s.sh' > "$SAIDA" 2>&1 &
+PID=$!
+
+sleep 3
+DURANTE="$(cat "$CAIXA/fonte.cjs")"
+wait "$PID"
+GOT=$?
+
+if printf '%s' "$DURANTE" | grep -q '// Fixture: recusa'; then
+  ok=$((ok+1)); printf '  ok    fonte real (%s) intocado durante a bateria mutada (marcador original presente)\n' "$CAIXA/fonte.cjs"
+else
+  falhou=$((falhou+1)); printf '  FALHA fonte real nao tem mais o marcador original (Issue #266 voltou):\n'
+  printf '%s\n' "$DURANTE" | head -3 | sed 's/^/        | /'
+fi
+if printf '%s' "$DURANTE" | grep -q 'MARCA-MUTADA'; then
+  falhou=$((falhou+1)); printf '  FALHA fonte real contem a marca MUTADA durante a execucao (Issue #266 voltou)\n'
+else
+  ok=$((ok+1)); printf '  ok    fonte real nao contem a marca mutada durante a execucao\n'
+fi
+if ! cmp -s "$CAIXA/fonte.cjs" "$PRISTINO"; then
+  falhou=$((falhou+1)); printf '  FALHA fonte real diverge do pristino apos a catraca terminar\n'
+  cp "$PRISTINO" "$CAIXA/fonte.cjs"
+else
+  ok=$((ok+1)); printf '  ok    fonte real bate com o pristino apos a catraca terminar\n'
+fi
+if [ "$GOT" -eq 2 ]; then
+  ok=$((ok+1)); printf '  ok    a bateria em background terminou com o veredito esperado (exit=2: mutacao de comentario nao muda comportamento)\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA a bateria em background terminou com exit inesperado: %s (esperava 2)\n' "$GOT"
+  sed 's/^/        | /' "$SAIDA" | tail -6
+fi
+rm -f "$CAIXA/bateria-lenta-2s.sh"
 
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
