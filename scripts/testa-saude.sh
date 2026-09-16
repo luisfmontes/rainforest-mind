@@ -724,8 +724,46 @@ Q6="$(RFM_ROOT="$DADOS_IMPREVISTO_ABS" node "$SRC/scripts/saude.cjs" --json 2>/d
 checa "Q6. erro nao classificado vira ALERTA (nao ok, nao silencio)" "alerta" "erro imprevisto" "$Q6"
 checa "Q6. e o alerta carrega a mensagem original do erro"           "alerta" "erro ao verificar marca dagua" "$Q6"
 
+# Teste Q7 (Tarefa 14, D9): rowid e processada_em em ordem DIVERGENTE.
+# Reproduz o padrao medido no banco real do usuario (ids 2515/2516): uma linha
+# de rowid MENOR com processada_em mais NOVA, e uma de rowid MAIOR com
+# processada_em mais ANTIGA. O achado tem que citar a mais ANTIGA das duas —
+# nao a de menor rowid (o que um SCAN sem ORDER BY devolveria primeiro) nem a
+# mais nova. Schema montado por `abrirBanco`/`criarSchema` reais de
+# scripts/memoria.cjs — nao um schema copiado a mao — para nao divergir da
+# migracao de producao.
+DADOS_ORDEM="$SBP/.rainforest-saude-ordem-divergente"
+rm -rf "$DADOS_ORDEM" && mkdir -p "$DADOS_ORDEM"
+printf '{"poda": false}' > "$DADOS_ORDEM/config.json"
+DATA_ANTIGA="$(node -e 'console.log(new Date(Date.now()-96*60*60*1000).toISOString())')"
+DATA_NOVA="$(node -e 'console.log(new Date(Date.now()-72*60*60*1000).toISOString())')"
+( cd "$DADOS_ORDEM" && RFM_SRC="$SRC" DATA_ANTIGA="$DATA_ANTIGA" DATA_NOVA="$DATA_NOVA" node << 'MKBANCO_ORDEM'
+const path = require('path');
+const { abrirBanco, criarSchema } = require(path.join(process.env.RFM_SRC, 'scripts', 'memoria.cjs'));
+const db = abrirBanco(path.join(process.cwd(), 'rainforest.db'));
+criarSchema(db);
+
+// sessA: inserida primeiro (rowid menor), processada_em mais NOVA (72h atras).
+// sessB: inserida depois (rowid maior), processada_em mais ANTIGA (96h atras).
+db.prepare(`INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?, ?, ?, ?, ?, ?)`)
+  .run('test', 'sessA', '/tmp/a.jsonl', 100, 50, process.env.DATA_NOVA);
+db.prepare(`INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?, ?, ?, ?, ?, ?)`)
+  .run('test', 'sessB', '/tmp/b.jsonl', 100, 50, process.env.DATA_ANTIGA);
+
+db.close();
+MKBANCO_ORDEM
+)
+DADOS_ORDEM_ABS="$(cd "$DADOS_ORDEM" && pwd)"
+Q7="$(RFM_ROOT="$DADOS_ORDEM_ABS" node "$SRC/scripts/saude.cjs" --json 2>/dev/null | node -e 'let d=""; process.stdin.on("data", c => d += c).on("end", () => { try { const a = JSON.parse(d).find(x => x.item === "banco de memoria"); console.log(a ? a.nivel + " " + a.detalhe : "ausente"); } catch(e) { console.log("erro"); } })')"
+checa "Q7. cita a pendencia mais ANTIGA (nao a de menor rowid)" "aviso" "$DATA_ANTIGA" "$Q7"
+if echo "$Q7" | grep -qF "$DATA_NOVA"; then
+  falhou=$((falhou+1)); echo "  FALHA Q7. nao deveria citar a pendencia mais nova (rowid menor)"
+else
+  ok=$((ok+1)); echo "  ok   Q7. nao cita a pendencia mais nova"
+fi
+
 # Limpeza
-rm -rf "$DADOS_OK" "$DADOS_DIVERGE" "$DADOS_PENDENTE_72H" "$DADOS_PENDENTE_1H" "$DADOS_IMPREVISTO"
+rm -rf "$DADOS_OK" "$DADOS_DIVERGE" "$DADOS_PENDENTE_72H" "$DADOS_PENDENTE_1H" "$DADOS_IMPREVISTO" "$DADOS_ORDEM"
 
 echo
 echo "== contas do harness em versoes diferentes do mesmo plugin =="
