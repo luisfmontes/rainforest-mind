@@ -41,16 +41,27 @@ Achado lateral, aberto como **#289**: `gate-worktree` barra `cd /c/.../scratchpa
 ## Decisões fechadas
 
 - **D1 — O `fechar-issue.cjs` deixa de exigir `--confirmo`; o comentário com comando e saída continua obrigatório** — porquê: o usuário recusou digitar frase para fechar Issue cujo conserto o fluxo entregou ("o fechar devia ser o resultado natural"), e Issue reabre, então a premissa de irreversibilidade da D3 do plano `absorver-plugin-terceiro` (commit `64a0ce21`) não vale para ela. A frase fica para apagar branch e worktree sujo. O marcador de evidência fica porque é o que impede fechar Issue com PR vazio (D15–D17 do `gate-fechar-issue`).
+- **D2 — O estágio `fechar` fecha cada Issue do plano pelo `fechar-issue.cjs`, com o portão do `verificar` como `--saida-arquivo`** — porquê: é o que torna o fechamento o resultado natural do fluxo sem perder a evidência; o portão mora em `docs/rainforest/portoes/`, dentro do repo, então a restrição do `--saida-arquivo` fica. A #269 se resolve corrigindo a forma ditada pelo gate (`:589,630`) e recusando caminho de arquivo existente passado em `--saida`.
+- **D3 — Escopo: as 19 Issues abertas e a #289 num plano só, em ondas pelas colisões de arquivo** — porquê: as colisões são poucas e nomeadas (#263 com #261 em `gate-staging-total.cjs`; #268, #265 e #262 na bateria do `gate-publicacao-destino`; #269 com D1/D2 em `fechar-issue.cjs`; #276 com o sub-pedido da #282 em `saude.cjs`). #281 e #254 são uma tarefa. A #278 fecha como duplicata da #275.
+- **D4 — Alternativas complementares entram juntas** — porquê: cada par cobre sintoma diferente, e a metade deixada de fora reincide. #287: `caminhoTemp` com nome de um nível **e** varredura que reconhece os dois formatos (recolhe os já vazados). #265: `--git-common-dir` nos três pontos **e** `.rainforest-gate-off` no `.gitignore`. #279: `reguas/` e `skills/*/references/` (com o `SKILL.md` da skill em `arquivos:`) em `globs_isentos` **e** `extrairArquivos` somando todas as `### N.` repetidas. #270: rótulo distinto para sabotagem em todas as baterias com `checa()` que imprimem mutante. #254: tirar crase residual da `bateria:` e documentar o formato em `skills/plano/SKILL.md`.
+- **D5 — #266: a mutação roda numa cópia temporária da árvore, não no fonte do repo** — porquê: lockfile só barra outra mutação concorrente; quem não conhece o lock (outra sessão, agente, bateria) continua lendo o mutante, que é o sintoma da Issue. O mesmo vale para o `cp` de `testa-limpar-branches.sh:484-498`.
+- **D6 — #273: teto do Teste 3 sobe para 30 s** — porquê: a fixture dorme 60 s, então qualquer duração abaixo disso prova o corte; é uma linha, contra fixture nova para tirar o relógio.
+- **D7 — #250: teto medido para cabeçalho+rodapé da injeção, asserido contra a saída real do hook; `ORCAMENTO_BYTES` só sobe se a medição pedir** — porquê: o que estoura é o texto fixo sem teto, não a soma das constantes.
+- **D8 — #276 só ganha resumo no `/saude`; #277 ganha `foco.cjs avanco` com `--contexto` opcional e `rotacionar` automático em seguida** — porquê: menor passo que fecha cada lacuna; rotação e CLI de `despachos.jsonl` ficam plantadas.
+- **D9 — Sub-pedido da #282 entra: `/saude` passa a medir a pendência mais antiga, depois de conferir a hipótese no banco real** — porquê: a causa é inferida, e o arquivo é o mesmo da #276.
 
 ## Avaliado e descartado
 
+- **Lockfile para a #266** — não protege leitor que não consulta o lock; descartado por D5.
 - **Invariante da #250 `NUCLEOS + LEGENDA + SESSOES + FOCO_MIN <= ORCAMENTO`** — soma bytes de dois canais diferentes, e passaria (7000 ≤ 8000 sem a legenda) com a injeção real estourando, porque o que estoura é o texto fixo sem teto.
 - **Sugestão 2 da #265 (o setup acrescenta ao `.gitignore` ao criar o arquivo)** — o `setup.cjs` nunca cria `.rainforest-gate-off`; não há onde enxertar.
 
 ## Fora de escopo
 
+- Validação de âncora e bateria no `marcar --estagio plano` (item b da #254): plantada como `validar-ancoras-no-marcar-plano`.
+- Rotação e CLI de leitura do `despachos.jsonl` (alternativas b e c da #276): plantadas como `despachos-jsonl-rotacao-e-cli`.
 - O resto da branch `fluxo/gate-publicacao-remotes-protegidos` (`2b86da3f`): duplica a #253, já entregue na rodada 4. Só o hunk da mensagem da #268 é aproveitado.
 
 ## Em aberto
 
-- Rodada 2 do brainstorm: fechamento automático no `fechar`, escopo e ondas, e as escolhas de #266, #273, #250, #276, #277, #254 (b/c), #282 (sub-pedido) e #289.
+- (nada)
