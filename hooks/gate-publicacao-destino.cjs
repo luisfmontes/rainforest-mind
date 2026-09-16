@@ -263,6 +263,39 @@ function estaGitignorado(dir, arquivo) {
 }
 
 /**
+ * O gate está desligado por arquivo `.rainforest-gate-off`?
+ *
+ * Issue #265: o arquivo é untracked, então `git worktree add` não o leva para
+ * a raiz do worktree novo — quem cria o toggle no checkout PRINCIPAL via um
+ * worktree linkado do mesmo repo (`gitTop` ali é a raiz do worktree, não a do
+ * principal) tinha o gate voltando a bloquear lá, mesmo com o arquivo presente
+ * no repo.
+ *
+ * `gitTop` continua sendo a raiz de onde o comando roda — é dali que o resto
+ * do hook lê conteúdo, visibilidade e `.gitignore`, e isso não muda. Este
+ * arquivo é o ÚNICO lido também na raiz do checkout principal, deduzida via
+ * `--git-common-dir` (mesmo padrão de `scripts/limpar-worktrees.cjs:365-379`):
+ * aponta para o `.git` do principal mesmo a partir de um worktree, e
+ * `path.dirname()` do resultado (quando termina em `.git`) dá a raiz dele.
+ *
+ * Falha ao medir o common-dir não apaga o comportamento de hoje: a checagem
+ * do próprio `gitTop` roda sempre, a do principal é só um OR a mais.
+ */
+function desligadoPorArquivo(gitTop) {
+  try {
+    if (fs.existsSync(path.join(gitTop, ".rainforest-gate-off"))) return true;
+  } catch {}
+  try {
+    const commonDir = git(gitTop, ["rev-parse", "--path-format=absolute", "--git-common-dir"]);
+    if (commonDir && path.basename(commonDir) === ".git") {
+      const raizPrincipal = path.dirname(commonDir);
+      if (raizPrincipal !== gitTop && fs.existsSync(path.join(raizPrincipal, ".rainforest-gate-off"))) return true;
+    }
+  } catch {}
+  return false;
+}
+
+/**
  * Detecta se o arquivo **em disco** tem o marcador que dispensa a conferência.
  * Marcador: qualquer linha contendo `rainforest-gate: dados-de-exemplo`.
  *
@@ -355,7 +388,9 @@ function mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade) {
       `  - arquivo .rainforest-gate-off: é conferido ANTES do hook rodar, então\n` +
       `    'touch .rainforest-gate-off && git commit' é bloqueado (usa outro 'git add' depois).\n\n` +
       `Se isto é falso positivo legítimo (teste com dado fake, documentação de formato),\n` +
-      `você tem duas saídas:\n` +
+      `você tem três saídas:\n` +
+      `  - node scripts/setup.cjs --desligar gate-publicacao --escopo projeto (preferida,\n` +
+      `    desliga só neste repositório, de forma declarada e legível);\n` +
       `  - RAINFOREST_GATE_OFF=1 no ambiente da sessão (desliga na sessão inteira);\n` +
       `  - arquivo .rainforest-gate-off na raiz do repo (desliga naquele repo).\n`;
 
@@ -555,9 +590,7 @@ function conferirCommit(ev, cwdDoEvento, agente) {
   const gitTop = git(cwdDoEvento, ["rev-parse", "--show-toplevel"]);
   if (!gitTop) process.exit(0);
 
-  try {
-    if (fs.existsSync(path.join(gitTop, ".rainforest-gate-off"))) process.exit(0);
-  } catch {}
+  if (desligadoPorArquivo(gitTop)) process.exit(0);
 
   for (const { nome, conteudo } of arquivosQueVaoParaOCommit(gitTop, cmd)) {
     const absoluto = path.join(gitTop, nome);
@@ -638,6 +671,8 @@ function main() {
 
         if (temMarcadorDados(a)) continue; // marcador de dados-de-exemplo passa
 
+        if (desligadoPorArquivo(gitTop)) continue; // Issue #265: faltava aqui
+
         const resultado = conferirConteudo(c);
         if (resultado && resultado.achados && resultado.achados.length) {
           bloqueia(resultado.achados, a, agente, gitTop);
@@ -664,10 +699,8 @@ function main() {
   // Confere se tem marcador de dados-de-exemplo (para testes de bateria)
   if (temMarcadorDados(arquivo)) process.exit(0); // marcador dispensa conferência
 
-  // Confere se o arquivo está na raiz do repo ou em subdiretório
-  try {
-    if (fs.existsSync(path.join(gitTop, ".rainforest-gate-off"))) process.exit(0);
-  } catch {}
+  // Toggle de emergência, herdado do checkout principal quando gitTop é worktree
+  if (desligadoPorArquivo(gitTop)) process.exit(0);
 
   // Roda a conferência de publicação
   const resultado = conferirConteudo(conteudo);
