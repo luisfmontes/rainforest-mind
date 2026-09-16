@@ -44,6 +44,15 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync, execSync } = require('child_process');
+// Defensivo, igual ao require de config.cjs mais abaixo: plugin antigo ou
+// cópia parcial não pode derrubar o script inteiro por um efeito colateral
+// best-effort. Sem o ledger, carimbarFluxo vira no-op.
+let carimbarFluxo = () => {};
+try {
+  ({ carimbarFluxo } = require(path.join(__dirname, '..', 'hooks', 'lib', 'ledger-fluxos.cjs')));
+} catch (_) {
+  // ledger indisponível: segue sem carimbar
+}
 
 // A raiz aqui é a do PROJETO em que se trabalha, e **não** a cadeia de dados do
 // rainforest (`hooks/lib/raiz.cjs`). São dois tipos de estado diferentes, e
@@ -1023,7 +1032,12 @@ function processarCarimbos(estagio, blocoAnterior, extra, estado) {
     ? blocoAnterior.carimbos
     : [];
   const acumulado = existentes.slice();
-  const sessao = process.env.CLAUDE_SESSION_ID || SESSAO_DESCONHECIDA;
+  // CLAUDE_CODE_SESSION_ID é o nome real que o Claude Code exporta;
+  // CLAUDE_SESSION_ID é reserva só para host que exporte o nome antigo
+  // (medido em 2026-09-15: CLAUDE_SESSION_ID não existe no ambiente do
+  // Claude Code — ver hooks/lib/ledger-fluxos.cjs para a limitação de
+  // subagente/CLAUDE_CODE_PARENT_SESSION_ID, que vale igual aqui).
+  const sessao = process.env.CLAUDE_CODE_SESSION_ID || process.env.CLAUDE_SESSION_ID || SESSAO_DESCONHECIDA;
   const ts = agoraIso();
 
   // Validar se plano.tarefas está gravado e tarefa está dentro do intervalo
@@ -1287,6 +1301,7 @@ function main() {
     console.log('commite este arquivo junto com o trabalho — e por ele que outra');
     console.log('sessao, ou outro dev, retoma de onde parou.');
     console.log(`proximo: ${proximo(e)}`);
+    carimbarFluxo({ slug, estagio: 'design', aberto: proximo(e) });
     return;
   }
 
@@ -1390,6 +1405,7 @@ function main() {
         gravar(slug, estado);
         console.log("catraca armada: fechar este 'executar' com 'ok' vai exigir o campo 'mutacao' no --json.");
       }
+      carimbarFluxo({ slug, estagio, aberto: proximo(estado) });
       return;
     }
     // Exit 2, não 1: é a mesma convenção dos gates deste repo, e o que separa
@@ -1630,6 +1646,7 @@ function main() {
     console.log(`${estagio}: ${status}`);
     const p = proximo(estado);
     console.log(p ? `proximo: ${p}` : 'completo');
+    carimbarFluxo({ slug, estagio, aberto: p });
     return;
   }
 

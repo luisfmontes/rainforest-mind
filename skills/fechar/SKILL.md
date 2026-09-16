@@ -168,6 +168,13 @@ nas que legitimamente não têm fluxo aberto. Se o aviso automático fizer
 falta depois do verbo em uso, vira fluxo próprio com o barulho medido em vez
 de chutado.
 
+Essa recusa é sobre **aviso falado** — um vigia que interrompe toda sessão
+para dizer algo que ninguém perguntou. `hooks/titulo-sessao-end.cjs` também
+roda no `SessionEnd`, mas escreve o estado do fluxo no título de uma sessão
+já encerrada: não fala com ninguém, então não reabre esta decisão (ver
+`docs/rainforest/design/2026-09-15-titulo-de-sessao-encerrada.md`, "Fora de
+escopo").
+
 **Fica de fora, Issue #180**: o estágio que despacha agente em background
 aposta que o turno dura mais que o agente — aposta perdida em toda sessão
 não interativa. O `concluido` diz que o fluxo ficou pela metade; ele **não**
