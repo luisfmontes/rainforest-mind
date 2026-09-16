@@ -834,6 +834,48 @@ EOF
 
 exige_msg "o trecho --de não existe no fonte" "a pulada carrega a razao do conferir-mutacao" \
   env RFM_ESTADO_ROOT="$S" node "$CHECADOR" mutacoes --slug t-de-nao-casa
+
+# Issue #281: `de nao encontrado` e' falha de medicao, nao sucesso. O plano
+# t-de-nao-casa (acima) tem UMA tarefa com mutacao declarada e nao aplicada;
+# antes deste conserto o subcomando saia exit 0 mesmo assim.
+exige 1 "de nao encontrado reprova (Issue #281)" \
+  env RFM_ESTADO_ROOT="$S" node "$CHECADOR" mutacoes --slug t-de-nao-casa
+
+echo
+echo "== 13b. mutacoes: bateria com nota entre parenteses colada (Issue #254) =="
+# Entrada real da Issue #254: `bateria: \`node hooks/testa-portaria-manifesto.cjs\` (tarefa 6)`.
+# O `(tarefa 6)` e' nota para humano e nao pode virar parte do comando
+# executado. Bateria trivial sempre-verde: o que importa aqui e' que o
+# comando extraido seja exatamente o que esta entre as crases, sem a nota.
+cat > "$S/bateria-sempre-verde.sh" <<'EOF'
+#!/bin/bash
+exit 0
+EOF
+
+cat > "$S/docs/rainforest/planos/t-bateria-com-nota.md" <<'EOF'
+# Plano Bateria Com Nota
+
+### 1. Tarefa cujo `bateria:` tem nota entre parenteses colada
+
+atende: D1
+
+mutacao:
+  arquivo: `src/teste-mutacao-morre.js`
+  de: `if (x === 1) return true;`
+  para: `if (x === 1) return false;`
+  bateria: `bash bateria-sempre-verde.sh` (tarefa 6)
+EOF
+
+SAIDA_NOTA="$(env RFM_ESTADO_ROOT="$S" node "$CHECADOR" mutacoes --slug t-bateria-com-nota 2>&1)"
+if printf '%s\n' "$SAIDA_NOTA" | grep -qE 'RECUSADO|nao encontrado|not found|ENOENT'; then
+  falhou=$((falhou+1)); printf '  FALHA bateria com nota entre parenteses: saida contem erro de comando:\n%s\n' "$SAIDA_NOTA"
+else
+  ok=$((ok+1)); printf '  ok    bateria com nota entre parenteses nao gera RECUSADO nem erro de comando (Issue #254)\n'
+fi
+
+exige_msg "mutante sobreviveu" "bateria com nota entre parenteses roda so' o comando puro, sem a nota (Issue #254)" \
+  env RFM_ESTADO_ROOT="$S" node "$CHECADOR" mutacoes --slug t-bateria-com-nota
+
 echo "== 14. ambiente: git fora do PATH (D5, 2026-09-12) =="
 # `creep` chama `git diff` via execFileSync. Sem `git` no PATH do processo
 # filho, o `spawnSync` interno devolve ENOENT — isso e' ambiente, nao "sem
