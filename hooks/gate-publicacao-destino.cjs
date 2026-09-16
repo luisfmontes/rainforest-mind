@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: guia
 /**
  * PreToolUse — barra escrita de dados sensíveis em arquivo rastreado.
  * Protege contra: dados sensíveis (telefone/JID/CPF) em arquivo versionado

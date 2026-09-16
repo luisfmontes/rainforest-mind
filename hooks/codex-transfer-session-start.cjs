@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: guia
 /**
  * Hook SessionStart: injeta variáveis de ambiente para transferência de sessão.
  *

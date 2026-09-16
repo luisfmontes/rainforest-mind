@@ -18,6 +18,17 @@
  * uma linha por teto excedido.
  *
  * Exit: 0 dentro dos tetos, 1 quando estoura qualquer um.
+ *
+ * Modo --agregado: mede o teto AGREGADO real do SessionStart inteiro — os
+ * cinco comandos declarados em hooks/hooks.json (foco, memória, marca de
+ * memória, transferência do Codex, observador), executados de fato via
+ * scripts/exporta-hooks-sessao-start.cjs (reaproveitado, nunca duplicado).
+ * Soma os bytes de additionalContext de cada um (hook que não emite
+ * additionalContext contribui 0, isso é esperado) e compara com a soma dos
+ * tetos já declarados nas libs: ORCAMENTO_BYTES (hooks/lib/contexto-sessao.cjs)
+ * + MEMORIA_MAX_BYTES (hooks/lib/memoria-sessao.cjs), cada um lido por regex,
+ * nunca somado como literal. Não grava arquivo nenhum — só responde "estourou
+ * agora?". Exit 0 dentro do teto, 1 fora.
  */
 
 const fs = require('fs');
@@ -51,6 +62,81 @@ function lerOrcamentoDaLib() {
     morrer('não consegui ler ORCAMENTO_BYTES de hooks/lib/contexto-sessao.cjs');
   }
   return Number(match[1]);
+}
+
+/**
+ * Extrai MEMORIA_MAX_BYTES de hooks/lib/memoria-sessao.cjs.
+ * Mesma prática de lerOrcamentoDaLib: nunca digita o literal, sempre lê de lá
+ * — senão quem sobe o teto na lib teria de lembrar de subir aqui também, e é
+ * exatamente essa divergência silenciosa que o modo --agregado existe para
+ * não ter.
+ */
+function lerMemoriaMaxDaLib() {
+  const caminhoLib = path.join(LOCAL, 'hooks', 'lib', 'memoria-sessao.cjs');
+  const conteudo = fs.readFileSync(caminhoLib, 'utf8');
+  const match = conteudo.match(/MEMORIA_MAX_BYTES:\s*(\d+)/);
+  if (!match) {
+    morrer('não consegui ler MEMORIA_MAX_BYTES de hooks/lib/memoria-sessao.cjs');
+  }
+  return Number(match[1]);
+}
+
+/**
+ * Extrai bytes de additionalContext de uma saída de hook (string bruta de
+ * stdout). Hook que não emite JSON, ou emite JSON sem additionalContext,
+ * contribui 0 — não é erro, é o esperado (item 2 do briefing da Tarefa 2).
+ */
+function bytesAdditionalContext(stdout) {
+  try {
+    const json = JSON.parse(stdout);
+    const additionalContext = json.hookSpecificOutput?.additionalContext || '';
+    return bytes(additionalContext);
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Modo --agregado: executa os comandos REAIS de SessionStart declarados em
+ * hooks/hooks.json (via scripts/exporta-hooks-sessao-start.cjs, reaproveitado
+ * — nunca uma lista digitada aqui), soma os additionalContext que eles
+ * emitem, e compara com a soma dos tetos das libs. Não grava nada em disco.
+ */
+function modoAgregado() {
+  // Requerido aqui dentro, não no topo do arquivo: as seções 3 e 4 da bateria
+  // (testa-orcamento.sh) copiam só orcamento.cjs + folga.cjs + uma
+  // contexto-sessao.cjs fake para uma sandbox, sem o exportador nem
+  // hooks/hooks.json. Um require no topo do arquivo quebraria essas duas
+  // seções com MODULE_NOT_FOUND antes de imprimir qualquer coisa — mesmo elas
+  // nunca chamando --agregado.
+  const { executarHooksSessionStart } = require('./exporta-hooks-sessao-start.cjs');
+
+  const tetoHook = lerOrcamentoDaLib();
+  const tetoMemoria = lerMemoriaMaxDaLib();
+  const tetoAgregadoReal = tetoHook + tetoMemoria;
+
+  // Sem raiz explícita: os hooks herdam o ambiente tal como está, e é a
+  // própria cadeia de hooks/lib/raiz.cjs que decide para onde olhar — igual
+  // medirHook() já faz para o hook sozinho. Ver executarHooksSessionStart.
+  const { outputs } = executarHooksSessionStart(undefined);
+
+  let somaBytes = 0;
+  for (const out of outputs) {
+    somaBytes += bytesAdditionalContext(out.stdout);
+  }
+
+  const resultado = avaliarFolga(somaBytes, tetoAgregadoReal, {
+    nome: 'SessionStart agregado',
+    banda: 0,
+    alternativas: ['tirar do additionalContext de algum hook', 'subir o teto na lib correspondente']
+  });
+
+  console.log(`SessionStart (additionalContext agregado): ${somaBytes} B / teto agregado real ${tetoAgregadoReal} B`);
+  if (resultado.mensagem) {
+    console.error(resultado.mensagem);
+  }
+
+  process.exit(resultado.estado === 'estouro' ? 1 : 0);
 }
 
 /**
@@ -160,6 +246,11 @@ function medirAgentes() {
 }
 
 function main() {
+  if (process.argv.includes('--agregado')) {
+    modoAgregado();
+    return;
+  }
+
   const orcamentoDaLib = lerOrcamentoDaLib();
   const tetoHook = orcamentoDaLib;
   /**

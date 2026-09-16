@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: guia
 /**
  * PreToolUse — barra arquivo STAGED com conteúdo rejeitado pelo verificador.
  * Protege contra: dados sensíveis, credenciais, ou violações definidas pelo projeto no conteúdo staged

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: guia
 /**
  * PreToolUse — exige forma minima na mensagem de `git commit` (Bash e
  * PowerShell, janela principal e subagente).

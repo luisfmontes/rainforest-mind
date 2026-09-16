@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: sensor
 /**
  * conferir-invariantes.cjs — valida que frases críticas não foram perdidas na extração.
  *

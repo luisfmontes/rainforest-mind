@@ -86,6 +86,7 @@ montar() {
   cp "$SRC/scripts/foco.cjs"                 "$SB/plugin/scripts/foco.cjs"
   cp "$SRC/hooks/lib/raiz.cjs"               "$SB/plugin/hooks/lib/raiz.cjs"
   cp "$SRC/hooks/lib/contexto-sessao.cjs"    "$SB/plugin/hooks/lib/contexto-sessao.cjs"
+  cp "$SRC/hooks/lib/bytes.cjs"             "$SB/plugin/hooks/lib/bytes.cjs"
   cp "$SRC/vigias/backup-estado.ps1"         "$SB/plugin/vigias/backup-estado.ps1"
   cp "$SRC/vigias/erros.ps1"                 "$SB/plugin/vigias/erros.ps1"
   # O ERROS.md da caixa nasce em LF, como o commitado. E o unico jeito de a

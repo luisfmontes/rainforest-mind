@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: guia
 /**
  * PreToolUse — barra pulo de verificacao no git.
  * Protege contra: --no-verify / -n / --no-gpg-sign em git commit/push

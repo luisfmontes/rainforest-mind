@@ -239,6 +239,82 @@ else
   falhou=$((falhou+1)); echo "  FALHA mutante ainda saiu != 0 — sabotagem nao teve efeito, mutante indetectavel"
 fi
 
+# ------------------------------------------------- 6. --agregado (Tarefa 2)
+echo; echo "6. --agregado — teto AGREGADO real do SessionStart inteiro"
+# Sandbox com hooks.json sintetico de 4 comandos: dois emitem additionalContext
+# de tamanho conhecido (700 B + 300 B = 1000 B), um imprime texto puro (sem
+# JSON) e um nao imprime nada -- os dois ultimos tem de contribuir ZERO, nao
+# erro (item 2 do briefing). A lib de memoria e uma COPIA DE VERDADE de
+# hooks/lib/memoria-sessao.cjs (nao uma fixture inventada), sabotada depois
+# por sed -- e o teto agregado impresso tem de acompanhar a sabotagem. Se nao
+# acompanhar, o script esta copiando o numero em vez de le-lo.
+SBP3="$(novo_sandbox)"
+mkdir -p "$SBP3/scripts" "$SBP3/hooks/lib"
+cp "$SRC/scripts/orcamento.cjs" "$SBP3/scripts/orcamento.cjs"
+cp "$SRC/scripts/exporta-hooks-sessao-start.cjs" "$SBP3/scripts/exporta-hooks-sessao-start.cjs"
+cp "$SRC/hooks/lib/folga.cjs" "$SBP3/hooks/lib/folga.cjs"
+cp "$SRC/hooks/lib/memoria-sessao.cjs" "$SBP3/hooks/lib/memoria-sessao.cjs"
+printf 'module.exports = { TETOS: { ORCAMENTO_BYTES: 8000 } };\n' > "$SBP3/hooks/lib/contexto-sessao.cjs"
+
+node -e 'const fs=require("fs"); fs.writeFileSync(process.argv[1], "#!/usr/bin/env node\nconsole.log(JSON.stringify({hookSpecificOutput:{additionalContext:\"x\".repeat(700)}}));\n");' "$SBP3/hooks/hook-a.cjs"
+node -e 'const fs=require("fs"); fs.writeFileSync(process.argv[1], "#!/usr/bin/env node\nconsole.log(JSON.stringify({hookSpecificOutput:{additionalContext:\"x\".repeat(300)}}));\n");' "$SBP3/hooks/hook-b.cjs"
+node -e 'const fs=require("fs"); fs.writeFileSync(process.argv[1], "#!/usr/bin/env node\nconsole.log(\"texto puro, sem JSON\");\n");' "$SBP3/hooks/hook-c.cjs"
+node -e 'const fs=require("fs"); fs.writeFileSync(process.argv[1], "#!/usr/bin/env node\n");' "$SBP3/hooks/hook-d.cjs"
+
+cat > "$SBP3/hooks/hooks.json" <<'EOF'
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/hook-a.cjs\"", "timeout": 5 },
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/hook-b.cjs\"", "timeout": 5 },
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/hook-c.cjs\"", "timeout": 5 },
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/hook-d.cjs\"", "timeout": 5 }
+        ]
+      }
+    ]
+  }
+}
+EOF
+
+echo "6a. soma correta (1000 B), zero de hook sem additionalContext, teto = soma das libs SEM edicao (8000+3000=11000)"
+SAIDA6A="$(node "$SBP3/scripts/orcamento.cjs" --agregado 2>&1)"; CODIGO6A=$?
+igual "6a sai 0 (dentro do teto)" "$CODIGO6A" "0"
+tem "6a soma exatamente 1000 B (700+300, hooks c/d contribuem 0)" "$SAIDA6A" "SessionStart (additionalContext agregado): 1000 B"
+tem "6a teto agregado real e a soma das libs, sem edicao (11000 B)" "$SAIDA6A" "teto agregado real 11000 B"
+
+echo "6b. teto e LIDO, nao copiado -- sabota MEMORIA_MAX_BYTES numa copia de verdade da lib"
+ANTES="$(grep -c 'MEMORIA_MAX_BYTES: 3000' "$SBP3/hooks/lib/memoria-sessao.cjs")"
+sed -i 's/MEMORIA_MAX_BYTES: 3000/MEMORIA_MAX_BYTES: 200/' "$SBP3/hooks/lib/memoria-sessao.cjs"
+DEPOIS="$(grep -c 'MEMORIA_MAX_BYTES: 200' "$SBP3/hooks/lib/memoria-sessao.cjs")"
+igual "6b troca de texto: achou 1 ocorrencia do valor antigo antes do sed" "$ANTES" "1"
+igual "6b troca de texto: achou 1 ocorrencia do valor novo depois do sed" "$DEPOIS" "1"
+
+SAIDA6B="$(node "$SBP3/scripts/orcamento.cjs" --agregado 2>&1)"; CODIGO6B=$?
+igual "6b sai 0 (1000 B ainda cabe em 8200 B)" "$CODIGO6B" "0"
+tem "6b teto agregado impresso ACOMPANHOU a edicao da lib (8000+200=8200 B)" "$SAIDA6B" "teto agregado real 8200 B"
+nao_tem "6b teto antigo (11000 B) sumiu -- prova que nao estava chumbado" "$SAIDA6B" "11000 B"
+
+echo "6c. caminho vermelho -- teto agregado (das libs) menor que a soma medida"
+printf 'module.exports = { TETOS: { ORCAMENTO_BYTES: 50 } };\n' > "$SBP3/hooks/lib/contexto-sessao.cjs"
+sed -i 's/MEMORIA_MAX_BYTES: 200/MEMORIA_MAX_BYTES: 50/' "$SBP3/hooks/lib/memoria-sessao.cjs"
+SAIDA6C="$(node "$SBP3/scripts/orcamento.cjs" --agregado 2>&1)"; CODIGO6C=$?
+igual "6c sai 1 (1000 B > 100 B)" "$CODIGO6C" "1"
+tem "6c acusa o estouro do SessionStart agregado" "$SAIDA6C" "Estouro de SessionStart agregado"
+tem "6c estouro cita o teto agregado real (100 B)" "$SAIDA6C" "> 100 B"
+
+echo "6d. --agregado nao grava arquivo nenhum na sandbox"
+ANTES_FIND="$(find "$SBP3" -type f | sort)"
+node "$SBP3/scripts/orcamento.cjs" --agregado > /dev/null 2>&1
+DEPOIS_FIND="$(find "$SBP3" -type f | sort)"
+igual "6d nenhum arquivo novo apareceu na sandbox depois de --agregado" "$DEPOIS_FIND" "$ANTES_FIND"
+
+echo "6e. caminho verde contra os hooks REAIS (raiz neutra) -- so roda uma vez, hooks reais sao lentos"
+SAIDA6E="$(RFM_ROOT="$RAIZ_VAZIA" node "$SRC/scripts/orcamento.cjs" --agregado 2>&1)"; CODIGO6E=$?
+igual "6e sai 0 contra os 5 hooks reais de hooks.json, raiz neutra" "$CODIGO6E" "0"
+tem "6e imprime soma medida e teto agregado real (8000+3000=11000, valores congelados na secao 1c)" "$SAIDA6E" "teto agregado real 11000 B"
+
 echo; echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ] || exit 1

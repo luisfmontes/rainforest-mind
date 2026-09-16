@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: sensor
 // Heartbeat da sessão para consciência entre janelas paralelas.
 // Chamado em três eventos (argv[2]): "prompt" (UserPromptSubmit — o usuario
 // agiu), "stop" (Stop — o Claude terminou o turno e está esperando) e "end"

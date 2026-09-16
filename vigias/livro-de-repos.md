@@ -1,3 +1,5 @@
+<!-- @categoria: dado -->
+
 # Livro de repos do batedor
 
 Uma linha por repo avaliado. **Repo não se aposenta aqui** — repo melhora todo dia.

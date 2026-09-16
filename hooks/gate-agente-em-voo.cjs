@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: sensor
 /**
  * Stop — barra o fim do turno quando o fluxo tem agente em voo.
  * Protege contra: turno terminando com agente em execução (em_voo não vazio)

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: guia
 "use strict";
 /* Portaria — NÚCLEO DE DECISÃO (Tarefas 2 e 3 do fluxo 9, D1–D7).
  * Protege contra: despacho de subagente fora do manifesto (padrao do plugin ou do repo)
@@ -264,6 +265,52 @@ function runtimeEfetivo(agentConfig, prompt) {
 
   // Default
   return "claude";
+}
+
+/**
+ * Extrai os sensores pedidos pelo briefing — linha(s) isolada(s) no prompt,
+ * mesmo estilo da linha `Runtime:` (Tarefa 6 de 2026-09-14, campo `sensores`
+ * do manifesto). Formato aceito:
+ *
+ *   Sensor: <nome>
+ *
+ * Isolada, case-insensitive, uma por linha — e pode haver mais de uma. TODAS
+ * contam: a pergunta que o portao faz e "algum sensor pedido cai fora da
+ * lista do manifesto", entao um `Sensor: ok` numa linha nao pode mascarar um
+ * `Sensor: fora` em outra. E a mesma armadilha que `RE_CHAVE_DE_TOPO` evita
+ * para `tools:` — aqui espalhada por varias linhas do prompt, em vez de uma
+ * chave so no frontmatter.
+ *
+ * Tres estados, no mesmo espirito de `parseToolsDoFrontmatter`:
+ *   { pedidos: [], invalida: false }    -> nenhuma linha `Sensor:` no prompt —
+ *                                          a tarefa nao pede sensor nenhum.
+ *   { pedidos: [...], invalida: false } -> uma ou mais linhas, todas com nome
+ *                                          que a portaria consegue ler.
+ *   { pedidos: [...], invalida: true }  -> ha linha `Sensor:` cujo valor nao e
+ *                                          um nome (vazio, com espaco, etc).
+ *                                          Nao da pra afirmar "nao pediu nada"
+ *                                          a partir de uma linha que nao foi
+ *                                          lida — o chamador nega.
+ */
+function sensoresPedidosDoPrompt(prompt) {
+  if (!prompt || typeof prompt !== "string") return { pedidos: [], invalida: false };
+
+  const linhas = prompt.split("\n").map((l) => l.replace(/\r$/, ""));
+  const pedidos = [];
+  let invalida = false;
+
+  for (const linha of linhas) {
+    const m = linha.match(/^\s*sensor\s*:\s*(.*)$/i);
+    if (!m) continue;
+    const valor = m[1].trim();
+    if (/^[A-Za-z0-9_-]+$/.test(valor)) {
+      pedidos.push(valor);
+    } else {
+      invalida = true;
+    }
+  }
+
+  return { pedidos, invalida };
 }
 
 function parseToolsDoFrontmatter(frontmatter) {
@@ -870,6 +917,65 @@ function main() {
     }
   }
 
+  // D3 passo 6c: validar 'sensores', se presente (Tarefa 6 do plano
+  // guias-e-sensores, 2026-09-14). Fica ANTES da bifurcacao `escreve: true`/
+  // `escreve: false` de proposito — os dois ramos saem por `process.exit(0)`
+  // proprio, e um agente que escreve (`executor`, `tester`, `depurador`,
+  // `resolvedor-de-build`, `documentador`, `arqueologo`) e justamente onde um
+  // requisito de sensor faria mais sentido. Um portao colocado so ao lado da
+  // checagem de `tools:` (que vive dentro do `escreve === false`) nunca
+  // dispararia para eles.
+  //
+  // Campo AUSENTE nao muda nada — "esta tarefa nao pede sensor", a mesma
+  // leitura do paragrafo do briefing. Campo presente tem de ser uma lista nao
+  // vazia de nomes; qualquer outra coisa nao da pra interpretar como permissao
+  // e nega — a mesma regra dos tres estados que ja valem para `escreve` e
+  // `runtime` aqui do lado (D3 passo 6 e 6b).
+  //
+  // Redacao de 2026-09-15 (emenda, issue #264): o portao deixa de negar e passa
+  // a registrar. Negacao continua APENAS para forma invalida (`sensores` malformado
+  // no manifesto); admissao e ordem (sensor pedido, sensor ilegivel) agora
+  // registram em vez de barrar (D3 passo 6c, Tarefa 6 do plano).
+  const sensorMarcas = {};
+
+  if (agentConfig.sensores !== undefined && agentConfig.sensores !== null) {
+    const listaValida = Array.isArray(agentConfig.sensores)
+      && agentConfig.sensores.length > 0
+      && agentConfig.sensores.every((s) => typeof s === "string" && /^[A-Za-z0-9_-]+$/.test(s));
+
+    if (!listaValida) {
+      const valor = JSON.stringify(agentConfig.sensores);
+      const motivo =
+        `agente '${nomeAgente}' tem 'sensores' invalido no manifesto (veio ${valor})` +
+        ` — use uma lista nao vazia de nomes`;
+      gravarDespacho(raiz, "deny", nomeAgente, estagioAtivo, sessao, motivo);
+      negar(motivo);
+    }
+
+    // Lista valida: o briefing pede sensor via linha(s) isolada(s)
+    // `Sensor: <nome>`, mesmo estilo de `Runtime:`. Sem linha nenhuma, a
+    // tarefa nao pediu sensor algum — o portao so registra o que CAI FORA da
+    // lista ou e ilegivel, nunca exige que a lista seja usada.
+    const promptSensor = payload.tool_input && payload.tool_input.prompt;
+    const { pedidos, invalida } = sensoresPedidosDoPrompt(promptSensor);
+
+    if (invalida) {
+      // Linha `Sensor:` com valor ilegivel: registra e continua (2026-09-15).
+      sensorMarcas.sensor_ilegivel = true;
+    }
+
+    const foraDaLista = pedidos.filter((s) => !agentConfig.sensores.includes(s));
+    if (foraDaLista.length > 0) {
+      // Sensor fora da lista: registra e continua (2026-09-15).
+      sensorMarcas.sensor_fora_da_lista = foraDaLista;
+    }
+
+    // Registra os sensores pedidos (todos os validos, dentro ou fora da lista).
+    if (pedidos.length > 0) {
+      sensorMarcas.sensores_pedidos = pedidos;
+    }
+  }
+
   // `escreve: true` — o agente PODE escrever, e por isso a portaria exige aqui
   // a trava que torna isso aceitavel, em vez de negar de saida.
   //
@@ -932,6 +1038,7 @@ function main() {
     const extraEscreve = {
       isolation: isolamento,
       runtime: runtime_escreve,
+      ...sensorMarcas,
     };
     marcasDeRegistro(extraEscreve);
 
@@ -998,7 +1105,7 @@ function main() {
   const prompt = payload.tool_input && payload.tool_input.prompt;
   const runtime = runtimeEfetivo(agentConfig, prompt);
 
-  const extra = marcasDeRegistro({ runtime });
+  const extra = marcasDeRegistro({ runtime, ...sensorMarcas });
 
   gravarDespacho(raiz, "allow", nomeAgente, estagioAtivo, sessao, null, escreveConferido, extra);
   process.exit(0);

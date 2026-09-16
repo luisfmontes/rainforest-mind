@@ -72,7 +72,7 @@ est marcar --slug sem-portoes --estagio executar --status ok \
   --json '{"comando":"bash x.sh","saida":"ok","tarefas_ok":1,"tarefas":1,"mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"caso-sandbox"}]}' >/dev/null
 est marcar --slug sem-portoes --estagio revisar --status ok \
   --json '{"achados":0,"base":"HEAD","head":"HEAD"}' >/dev/null
-SAIDA="$(est marcar --slug sem-portoes --estagio verificar --status ok --json '{"comando":"bash x.sh","saida":"ok"}')"; C=$?
+SAIDA="$(est marcar --slug sem-portoes --estagio verificar --status ok --json '{"comando":"bash x.sh","saida":"ok","sensor_externo":"bash x.sh"}')"; C=$?
 afirma "G2. verificar fecha com evidencia colada quando NAO ha portoes" \
   "$([ "$C" -eq 0 ] && echo 1 || echo 0)"
 
@@ -120,7 +120,7 @@ cat > "$S/docs/rainforest/portoes/check-falho.md" <<FIM
 FIM
 est marcar --slug check-falho --estagio plano --status ok >/dev/null
 prepara_ate_revisar check-falho
-SAIDA="$(est marcar --slug check-falho --estagio verificar --status ok --json '{"comando":"bash x.sh","saida":"tudo verde"}')"; C=$?
+SAIDA="$(est marcar --slug check-falho --estagio verificar --status ok --json '{"comando":"bash x.sh","saida":"tudo verde","sensor_externo":"bash x.sh"}')"; C=$?
 afirma "G6. verificar RECUSA com CHECK falho, mesmo com evidencia colada bonita" \
   "$([ "$C" -ne 0 ] && echo 1 || echo 0)"
 afirma "G7. e o motivo vem do portao, nao um erro generico" \
@@ -137,7 +137,7 @@ cat > "$S/docs/rainforest/portoes/check-bom.md" <<FIM
 FIM
 est marcar --slug check-bom --estagio plano --status ok >/dev/null
 prepara_ate_revisar check-bom
-SAIDA="$(est marcar --slug check-bom --estagio verificar --status ok --json '{"comando":"bash x.sh","saida":"ok"}')"; C=$?
+SAIDA="$(est marcar --slug check-bom --estagio verificar --status ok --json '{"comando":"bash x.sh","saida":"ok","sensor_externo":"bash x.sh"}')"; C=$?
 afirma "G8. verificar FECHA quando os portoes re-executam e passam" \
   "$([ "$C" -eq 0 ] && echo 1 || echo 0)"
 
@@ -321,7 +321,7 @@ cat > "$S/docs/rainforest/portoes/evidencia-velha.md" <<FIM
 FIM
 est marcar --slug evidencia-velha --estagio plano --status ok >/dev/null
 prepara_ate_revisar evidencia-velha
-SAIDA="$(est marcar --slug evidencia-velha --estagio verificar --status ok --json '{"comando":"bash x.sh","saida":"ok"}')"; C=$?
+SAIDA="$(est marcar --slug evidencia-velha --estagio verificar --status ok --json '{"comando":"bash x.sh","saida":"ok","sensor_externo":"bash x.sh"}')"; C=$?
 afirma "G21. verificar RECUSA portao com evidencia velha cujo CHECK hoje reprova" \
   "$([ "$C" -ne 0 ] && echo 1 || echo 0)"
 afirma "G22. e a saida mostra que ele foi EXECUTADO, nao pulado" \

@@ -2,6 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const { resolverRaiz } = require('./raiz.cjs');
+const { cortarBytes } = require('./bytes.cjs');
 
 /**
  * contexto-sessao.cjs — motor puro do SessionStart (foco-session-start.cjs).
@@ -359,16 +360,32 @@ function resumirMarcos(secao, mantidos = TETOS.MARCOS_RESIDENTES) {
 }
 
 /**
- * Iça a data do avanço mais recente para logo abaixo do cabeçalho da seção.
+ * Iça a data do avanço mais recente para logo abaixo do cabeçalho da seção, e
+ * avisa quando ela já passou do limiar da regra 3.
  *
  * O bloco de foco recebe a sobra do orçamento e é cortado pelo FIM quando não cabe
  * — e os "Avanços" moram no fim da seção Ativo, então eram a primeira coisa a
  * sumir. A data do último avanço não é decoração: a regra 3 avisa quando o foco
- * ativo está há 7+ dias sem avanço, e sem a data essa checagem não tem como rodar.
+ * ativo está há 7+ dias sem avanço. Antes, a data chegava à sessão mas ninguém
+ * fazia essa conta — quem cobrava os 7+ dias era só `vigias/sentinela-foco.md`
+ * (item 3), fora da sessão, no briefing matinal. O limiar aqui é o MESMO 7, de
+ * propósito: dois limiares diferentes sobre o mesmo campo fariam o sensor daqui
+ * contradizer o vigia em silêncio. Mesma forma do aviso de revisão bimestral da
+ * skill (`hooks/foco-session-start.cjs`, "Última revisão: AAAA-MM-DD" -> dias
+ * corridos com `Math.floor`), calculada aqui em vez de lá porque é aqui que a
+ * data já está extraída.
+ *
  * Uma linha no topo custa ~35 B e sobrevive a qualquer corte que preserve o
- * cabeçalho; o histórico completo continua no arquivo.
+ * cabeçalho; o histórico completo continua no arquivo. Sem avanço nenhum (data
+ * ausente), o comportamento já existente vale: a função devolve a seção sem
+ * mexer, e não há como calcular "dias sem avanço" de uma data que não existe.
+ *
+ * `agora` é injetável (default `Date.now()`) pelo mesmo motivo que outras
+ * funções de data desta lib injetam (`sessoesColocadas`, `dentroDoExpediente`,
+ * `focoAtivoEmOutraJanela`, `computarVeredito`): bateria determinística, sem
+ * depender do relógio real da máquina que roda o teste.
  */
-function iparAvancoRecente(secao) {
+function iparAvancoRecente(secao, agora) {
   // Sem exigir o `:` colado na data: a entrada real escreve "- 2026-08-10 (tarde):"
   // e a versão anterior do padrão simplesmente não a via — some a linha inteira, e
   // com ela a checagem de foco parado da regra 3.
@@ -379,7 +396,13 @@ function iparAvancoRecente(secao) {
   const cabecalho = secao.match(/^## .+$/m);
   if (!cabecalho) return secao;
   const corte = secao.indexOf(cabecalho[0]) + cabecalho[0].length;
-  return `${secao.slice(0, corte)}\nÚltimo avanço datado: ${datas[datas.length - 1]}.${secao.slice(corte)}`;
+  const ultima = datas[datas.length - 1];
+  const agoraTs = Number.isFinite(agora) ? agora : Date.now();
+  const dias = Math.floor((agoraTs - Date.parse(`${ultima}T00:00:00Z`)) / 86400000);
+  const linha = dias >= 7
+    ? `Último avanço datado: ${ultima} — FOCO.md sem avanço há ${dias} dias.`
+    : `Último avanço datado: ${ultima}.`;
+  return `${secao.slice(0, corte)}\n${linha}${secao.slice(corte)}`;
 }
 
 /**
@@ -401,7 +424,7 @@ function normalizarFimDeLinha(texto) {
   return String(texto || '').replace(/\r\n/g, '\n');
 }
 
-function resumirFoco(focoText) {
+function resumirFoco(focoText, agora) {
   // CRLF -> LF ANTES de qualquer coisa, pelo mesmo motivo que `filtrarRegras` faz
   // no bloco de regras — e o FOCO.md ficou de fora daquele conserto, em
   // 2026-08-13, sem ninguem notar.
@@ -432,7 +455,7 @@ function resumirFoco(focoText) {
   for (const parte of partes) {
     const cabecalho = parte.match(/^## (.+)$/m);
     if (!cabecalho || SECOES_RESIDENTES.includes(cabecalho[1].trim())) {
-      mantidas.push(iparAvancoRecente(resumirMarcos(parte.trim())));
+      mantidas.push(iparAvancoRecente(resumirMarcos(parte.trim()), agora));
     } else {
       omitidas.push(cabecalho[1].trim());
     }
@@ -988,7 +1011,6 @@ function limitarBytes(texto, maxBytes, nomeDoBloco) {
   return cortarBytes(s, espaco).trimEnd() + aviso;
 }
 
-/** Corta em `max` BYTES sem partir um caractere multibyte no meio. */
 /**
  * Corta em CARACTERES (code points), com reticencia quando cortou.
  *
@@ -1003,18 +1025,7 @@ function cortarCaracteres(texto, maxChars) {
   return chars.slice(0, Math.max(0, maxChars - 1)).join('').trimEnd() + '…';
 }
 
-function cortarBytes(texto, max) {
-  const s = String(texto || '');
-  if (Buffer.byteLength(s, 'utf8') <= max) return s;
-  let baixo = 0;
-  let alto = s.length;
-  while (baixo < alto) {
-    const meio = Math.ceil((baixo + alto) / 2);
-    if (Buffer.byteLength(s.slice(0, meio), 'utf8') <= max) baixo = meio;
-    else alto = meio - 1;
-  }
-  return s.slice(0, baixo);
-}
+/** `cortarBytes` vem de bytes.cjs — compartilhada com memoria-sessao.cjs. */
 
 /**
  * Trava de orçamento: falha RUIDOSA quando o payload passa do teto.
@@ -1070,6 +1081,8 @@ function travarOrcamento(payload, orcamento = TETOS.ORCAMENTO_BYTES) {
  *   Quando true, o bloco de foco ganha uma linha curta e RESIDENTE apontando
  *   para o arquivo. Compatibilidade para trás: omitido/false não muda nada do
  *   comportamento de hoje (FOCO.md monolítico continua idêntico).
+ * @param {number} [o.agora] timestamp de referência para o aviso de foco parado
+ *   (regra 3, 7+ dias sem avanço) — default `Date.now()`. Ver `iparAvancoRecente`.
  */
 function montarContexto(o) {
   const regras = blocoRegras(extrairNucleo(filtrarRegras(o.skillText)), o.caminhoSkill || '(caminho não informado)');
@@ -1125,7 +1138,7 @@ ${regras}
   const sobra = TETOS.ORCAMENTO_BYTES - fixo;
   const tetoFoco = Math.max(0, Math.min(TETOS.FOCO_MAX_BYTES, Math.max(0, sobra)) - custoEstrategia);
 
-  const focoResumido = resumirFoco(o.focoText).trim();
+  const focoResumido = resumirFoco(o.focoText, o.agora).trim();
   let foco;
   if (!focoResumido) {
     foco = '(nenhum foco declarado — sugira /foco <texto> se o usuario disser no que precisa entregar)';

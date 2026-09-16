@@ -50,6 +50,9 @@ RAIZ_NEUTRA="$(novo_sandbox)"
 # ve que "diferiu" e credita `ok` — passa VERDE por nao ter conseguido executar nada,
 # que e exatamente a familia de defeito que ela existe para pegar.
 cp "$SRC/hooks/lib/raiz.cjs" "$RAIZ_POSIX/raiz.cjs"
+# Mesmo motivo, mesma correcao: desde a Issue #259 a lib tambem faz
+# `require('./bytes.cjs')` (cortarBytes deixou de ser copia local).
+cp "$SRC/hooks/lib/bytes.cjs" "$RAIZ_POSIX/bytes.cjs"
 
 ok=0; falhou=0
 
@@ -62,6 +65,7 @@ process.stdout.write(lib.montarContexto({
   focoText: process.env.FIX_FOCO || '',
   caminhoSkill: 'C:\\fake\\SKILL.md',
   root: 'C:\\fake',
+  agora: process.env.FIX_AGORA ? Number(process.env.FIX_AGORA) : undefined,
 }));
 EOF
 
@@ -217,6 +221,94 @@ if echo "$S" | grep -qF "2026-08-01"; then
 else
   falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — nao e o teto em bytes que faz o resumo cortar"
 fi
+
+echo
+echo "3.5 SENSOR DE FOCO PARADO (regra 3) — 7+ dias sem avanco vira aviso na abertura"
+# Limiar IDENTICO ao de vigias/sentinela-foco.md item 3 (7 dias) — dois limiares
+# diferentes sobre o mesmo campo fariam o sensor daqui contradizer o vigia em
+# silencio (ver o comentario de iparAvancoRecente em hooks/lib/contexto-sessao.cjs).
+#
+# `agora` fixo, nunca Date.now(): os fixtures do resto desta bateria sao de
+# agosto de 2026 e o relogio real so cresce — sem fixar, "dias sem avanco"
+# mudaria todo dia que a bateria rodasse.
+montar_agora() { # skill, foco, agora_ms, [lib]
+  LIB_PATH="${4:-$LIB}" FIX_SKILL="$1" FIX_FOCO="$2" FIX_AGORA="$3" node "$RAIZ_POSIX/driver.cjs" 2>&1
+}
+AGORA_SENSOR="$(node -e "process.stdout.write(String(Date.UTC(2026,8,14,12,0,0)))")"   # 2026-09-14T12:00:00Z
+
+# FOCO.md no FORMATO REAL: secao Ativo com linhas "- AAAA-MM-DD" sob "Avancos:",
+# como o arquivo em uso — nao um schema que so o teste produz (este repo ja
+# caiu nisso: fixture com campos que o FOCO.md transcrito de verdade nao tem).
+FOCO_8_DIAS="# Foco
+
+## Ativo
+
+**Foco de teste** \`[trabalho]\`
+
+Avanços:
+- 2026-09-06: último avanço registrado, oito dias antes do agora fixo do teste."
+S8="$(montar_agora "$SKILL_OK" "$FOCO_8_DIAS" "$AGORA_SENSOR")"
+checa "8 dias sem avanco: uma linha nomeia o FOCO.md e a contagem" tem "FOCO.md sem avanço há 8 dias" "$S8"
+checa "8 dias sem avanco: a data continua saindo"                  tem "Último avanço datado: 2026-09-06" "$S8"
+
+FOCO_6_DIAS="# Foco
+
+## Ativo
+
+**Foco de teste** \`[trabalho]\`
+
+Avanços:
+- 2026-09-08: último avanço registrado, seis dias antes do agora fixo do teste."
+S6="$(montar_agora "$SKILL_OK" "$FOCO_6_DIAS" "$AGORA_SENSOR")"
+checa "6 dias sem avanco: NAO ganha a linha de aviso" nao_tem "sem avanço há" "$S6"
+
+# Prova em BYTES contra a lib da BASE desta tarefa (14c471ed, antes do sensor
+# existir): com 6 dias o payload nao pode ganhar nem 1 byte a mais do que o
+# comportamento de hoje. `MSYS_NO_PATHCONV=1` porque sem isso o MSYS reescreve
+# "ref:caminho" como caminho Windows e o `git show` falha em silencio — por
+# isso a checagem de saida nao-vazia antes de comparar.
+(cd "$SRC" && MSYS_NO_PATHCONV=1 git show 14c471ed29f790655f4f2b2e34fce2af578edaac:hooks/lib/contexto-sessao.cjs) \
+  > "$RAIZ_POSIX/lib-base.cjs" 2>/dev/null
+if [ -s "$RAIZ_POSIX/lib-base.cjs" ]; then
+  S6_BASE="$(montar_agora "$SKILL_OK" "$FOCO_6_DIAS" "$AGORA_SENSOR" "$RAIZ_POSIX/lib-base.cjs")"
+  BYTES_NOVO="$(printf '%s' "$S6" | wc -c)"
+  BYTES_BASE="$(printf '%s' "$S6_BASE" | wc -c)"
+  if [ "$BYTES_NOVO" = "$BYTES_BASE" ]; then
+    ok=$((ok+1)); echo "  ok    6 dias: payload identico em bytes ao da base 14c471ed ($BYTES_NOVO B)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA 6 dias: payload mudou de tamanho (base=$BYTES_BASE novo=$BYTES_NOVO)"
+  fi
+else
+  falhou=$((falhou+1)); echo "  FALHA nao consegui ler hooks/lib/contexto-sessao.cjs da base 14c471ed via git show — comparacao de bytes pulada"
+fi
+
+# FOCO.md sem NENHUM avanco datado: mesmo tratamento que o codigo vizinho ja dava
+# a ausencia (`if (!datas.length) return secao;`) — sem data nao ha o que datar
+# nem o que contar, e a saida fica identica a de hoje (nao inventa comportamento).
+FOCO_SEM_AVANCO="# Foco
+
+## Ativo
+
+**Foco de teste** \`[trabalho]\` — sem nenhum avanço datado ainda."
+S_SEM_AVANCO="$(montar_agora "$SKILL_OK" "$FOCO_SEM_AVANCO" "$AGORA_SENSOR")"
+checa "sem avanco algum: nao ha linha de ultimo avanco" nao_tem "Último avanço datado" "$S_SEM_AVANCO"
+checa "sem avanco algum: nao ha aviso de dias parado"   nao_tem "sem avanço há"        "$S_SEM_AVANCO"
+
+echo
+echo "3.6 MUTACAO — desligar o limiar de 7 dias tem que derrubar o aviso de 8 dias"
+cp "$LIB" "$RAIZ_POSIX/lib-sem-sensor.cjs"
+sed -i 's/dias >= 7/dias >= 99999/' "$RAIZ_POSIX/lib-sem-sensor.cjs"
+if diff "$LIB" "$RAIZ_POSIX/lib-sem-sensor.cjs" > /dev/null; then
+  falhou=$((falhou+1)); echo "  FALHA o sed nao encontrou a linha a mutar — mutacao nao aplicou nada, teste invalido"
+else
+  S8_MUT="$(montar_agora "$SKILL_OK" "$FOCO_8_DIAS" "$AGORA_SENSOR" "$RAIZ_POSIX/lib-sem-sensor.cjs")"
+  if echo "$S8_MUT" | grep -qF "sem avanço há"; then
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — o limiar de 7 dias nao e o que dispara o aviso"
+  else
+    ok=$((ok+1)); echo "  ok    mutacao expos o limiar (sem ele, 8 dias parado nao avisa mais)"
+  fi
+fi
+rm -f "$RAIZ_POSIX/lib-sem-sensor.cjs"
 
 echo
 echo "4. foco ausente cai na mensagem propria, nao no alarme de regras"

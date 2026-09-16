@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: sensor
 // SessionEnd: marca no título da sessão se o fluxo que ela tocou fechou ou
 // onde parou. Design: docs/rainforest/design/2026-09-15-titulo-de-sessao-encerrada.md
 //

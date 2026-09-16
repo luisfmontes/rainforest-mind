@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: guia
 /**
  * PreToolUse — barra `gh issue close` direto, palavras-chave falsas (português), e `gh pr create/edit/merge` sem evidência.
  * Protege contra: gh issue close direto / gh pr merge/create sem marcador de evidência
