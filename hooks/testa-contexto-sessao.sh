@@ -140,6 +140,25 @@ checa() { # nome, modo(tem|nao_tem), padrao, saida
   fi
 }
 
+# mostra_mutante() faz a MESMA comparação de checa(), para as demonstrações de
+# sabotagem (secao 17.1): mostrar que a asserção real morde a saida do mutante.
+# Não mexe em ok/falhou (a demonstração não é o veredito — o if/else logo
+# depois de cada SABOTAGEM é quem decide isso) e por isso não precisa mais do
+# subshell `( checa ... )` que blindava os contadores. O rótulo do ramo
+# esperado é ESPERADO-VERMELHO, não FALHA — "FALHA " é reservado para falha
+# real de asserção (Issue #270: as duas ficavam indistinguíveis em `grep`).
+mostra_mutante() { # nome, modo(tem|nao_tem), padrao, saida
+  local nome="$1" modo="$2" pad="$3" saida="$4"
+  if echo "$saida" | grep -qF "$pad"; then achou=1; else achou=0; fi
+  local esperado=1; [ "$modo" = "nao_tem" ] && esperado=0
+  if [ "$achou" = "$esperado" ]; then
+    echo "  ok    $nome"
+  else
+    echo "  ESPERADO-VERMELHO $nome (modo=$modo, padrao='$pad')"
+    echo "$saida" | sed 's/^/         /' | head -8
+  fi
+}
+
 echo
 echo "1. o fallback dispara quando as regras nao carregam"
 S="$(montar '' '')"
@@ -2067,10 +2086,12 @@ fi
 echo
 echo "17.1 MUTACOES — as sabotagens do briefing, cada uma tem que quebrar a asserção correspondente"
 # Padrao: sabota uma COPIA da lib (nunca o LIB original), roda a MESMA fixture
-# contra ela, e mostra a saida divergindo. A chamada de `checa` dentro de um
-# SUBSHELL `( ... )` imprime a linha "FALHA ..." de verdade (prova textual de
-# que a assercao pega o defeito) sem contaminar o ok/falhou do arquivo inteiro
-# — subshell tem copia propria das variaveis, o incremento nao vaza para fora.
+# contra ela, e mostra a saida divergindo. A chamada de `mostra_mutante`
+# imprime a linha "ESPERADO-VERMELHO ..." (prova textual de que a assercao
+# pega o defeito) sem contaminar o ok/falhou do arquivo inteiro — a função não
+# incrementa os contadores, por isso não precisa mais de subshell (Issue #270:
+# antes era `( checa ... )`, e a linha saia como "FALHA ...", indistinguível
+# de falha real num `grep FALHA` de triagem de CI).
 # O veredito sobre "mutacao e load-bearing" quem da e o if/else logo depois,
 # no mesmo estilo das secoes 5, 9 e 12 deste arquivo.
 
@@ -2083,7 +2104,7 @@ if diff "$LIB" "$RAIZ_POSIX/lib-mut-expediente.cjs" > /dev/null; then
 else
   S_MUT1="$(expediente '2026,8,10,10,0' '{}' "$RAIZ_POSIX/lib-mut-expediente.cjs")"
   echo "  (saida do mutante: $S_MUT1 — a assercao real espera 'null')"
-  ( checa "dentroDoExpediente: sem expediente no config devolve null (nao false)" tem "null" "$S_MUT1" )
+  mostra_mutante "dentroDoExpediente: sem expediente no config devolve null (nao false)" tem "null" "$S_MUT1"
   if [ "$S_MUT1" != "null" ]; then
     ok=$((ok+1)); echo "  ok    mutacao expos o colapso null->false (D6 inteiro depende disso)"
   else
@@ -2100,7 +2121,7 @@ if diff "$LIB" "$RAIZ_POSIX/lib-mut-includes.cjs" > /dev/null; then
 else
   S_MUT2="$(outra_janela "[{\"cwd\":\"C:/abc\",\"prompt_ts\":$((AGORA_FIXO-1000))}]" '["C:/a"]' 15 "$AGORA_FIXO" "$RAIZ_POSIX/lib-mut-includes.cjs")"
   echo "  (saida do mutante: $S_MUT2 — a assercao real espera 'false')"
-  ( checa "focoAtivoEmOutraJanela: C:/abc nao casa C:/a por prefixo" tem "false" "$S_MUT2" )
+  mostra_mutante "focoAtivoEmOutraJanela: C:/abc nao casa C:/a por prefixo" tem "false" "$S_MUT2"
   if [ "$S_MUT2" = "true" ]; then
     ok=$((ok+1)); echo "  ok    mutacao expos o casamento por prefixo (C:/abc passou a isentar contra C:/a)"
   else
@@ -2118,7 +2139,7 @@ else
   FIX_STOP="[{\"cwd\":\"C:/a\",\"prompt_ts\":$((AGORA_FIXO - 999999999)),\"stop_ts\":$((AGORA_FIXO-1000))}]"
   S_MUT3="$(outra_janela "$FIX_STOP" '["C:/a"]' 15 "$AGORA_FIXO" "$RAIZ_POSIX/lib-mut-stopts.cjs")"
   echo "  (saida do mutante: $S_MUT3 — a assercao real espera 'false')"
-  ( checa "focoAtivoEmOutraJanela: prompt_ts frio e o que conta, nao stop_ts" tem "false" "$S_MUT3" )
+  mostra_mutante "focoAtivoEmOutraJanela: prompt_ts frio e o que conta, nao stop_ts" tem "false" "$S_MUT3"
   if [ "$S_MUT3" = "true" ]; then
     ok=$((ok+1)); echo "  ok    mutacao expos a troca prompt_ts->stop_ts (sinal errado passou a isentar)"
   else
@@ -2205,7 +2226,7 @@ if grep -qF 'normalizarCwd(s.cwd) === alvo' "$RAIZ_POSIX/lib-mut-colocada.cjs"; 
 else
   S_MUT5="$(colocada 'C:/Projetos/rainforest-mind' 'sess-a' "$AGORA_COL" "$RAIZ_POSIX/lib-mut-colocada.cjs")"
   echo "  (saida do mutante: $S_MUT5 — a assercao real espera 'ids=[sess-b-parada]')"
-  ( checa "co-locada: session_id de uma das duas devolve EXATAMENTE a outra" tem "ids=[sess-b-parada]" "$S_MUT5" )
+  mostra_mutante "co-locada: session_id de uma das duas devolve EXATAMENTE a outra" tem "ids=[sess-b-parada]" "$S_MUT5"
   if [ "$S_MUT5" = "ids=[] paradas=[]" ]; then
     ok=$((ok+1)); echo "  ok    mutacao expos a co-locacao (o gate de checkout ficaria mudo no caso das Issues #25 e #38)"
   else
@@ -2222,7 +2243,7 @@ if diff "$LIB" "$RAIZ_POSIX/lib-mut-faixas.cjs" > /dev/null; then
 else
   S_MUT6="$(expediente '2026,8,10,15,0' "$CONFIG_EXPEDIENTE_FAIXAS" "$RAIZ_POSIX/lib-mut-faixas.cjs")"
   echo "  (saida do mutante em seg 15:00, 2a faixa 14-18: $S_MUT6 — a assercao real espera 'true')"
-  ( checa "dentroDoExpediente: faixas - dentro da 2a faixa (seg 15:00)" tem "true" "$S_MUT6" )
+  mostra_mutante "dentroDoExpediente: faixas - dentro da 2a faixa (seg 15:00)" tem "true" "$S_MUT6"
   if [ "$S_MUT6" = "false" ]; then
     ok=$((ok+1)); echo "  ok    mutacao expos que so a 1a faixa valia (a 2a faixa, com o almoco no meio, ficaria sempre fora)"
   else
