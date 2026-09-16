@@ -117,11 +117,11 @@ testa('cortado por timeout', () => {
   // Deve ter sido cortado (status é null quando killed ou saída vazia).
   // Teto folgado: rodarCli agora paga matarDescendencia no ramo de timeout,
   // que no Windows soma 1-2 chamadas a powershell.exe (~1-1.5s cada) para
-  // consultar e matar a descendência. O teto de 8s ainda distingue "cortado"
-  // de "dormiu a fixture inteira" — a fixture dorme 60s, não 10s: subiu junto
-  // com este teto, porque 8s contra 10s deixava só 2s de margem.
-  if (duracao >= 8000) {
-    throw new Error(`Não foi cortado: duração ${duracao}ms >= 8000ms`);
+  // consultar e matar a descendência. O teto de 30s ainda distingue "cortado"
+  // de "dormiu a fixture inteira" — a fixture dorme 60s: 30s dá margem contra
+  // variação de performance do runner, que pode atingir 8-9s em Windows com node 24.
+  if (duracao >= 30000) {
+    throw new Error(`Não foi cortado: duração ${duracao}ms >= 30000ms`);
   }
 });
 
