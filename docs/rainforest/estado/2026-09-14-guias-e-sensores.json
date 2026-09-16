@@ -118,12 +118,13 @@
     "em_voo": [],
     "nota": "executor voltou com 872485e6 (base 5a43d1fc conferida, pai correto). Entrega NAO integrada: varredura completa acusou 6 baterias vermelhas (testa-backup-estado, testa-ponte-entrevista, testa-ponte, testa-portoes-gate, testa-recibo-fechar, testa-registrar-erro) e falta apurar se e corrida entre varreduras paralelas ou defeito real.",
     "pendencias_medidas": [
-      "varrer-baterias.sh (runner da CI) sai exit 1 na branch e exit 0 na main, provado tambem em worktree para descartar ambiente: 8 baterias vermelhas",
-      "skills/executar/SKILL.md em 17622 B contra teto de 16384 (main tem 16375). A tarefa 7 escreveu por cima de 9 B de folga. Vermelho desde 9107ec2e, ANTES do merge — o testa-saude.sh usado para fechar o executar em 14/09 era estreito demais para ver",
-      "hooks/testa-ledger-fluxos.sh veio da main pela #274 e fica vermelho aqui: ele fecha o verificar sem declarar sensor, e a tarefa 5 passou a exigir. Precisa de tarefa no plano, senao e creep",
-      "regra-10-portaria.md:68 diz nega em cinco casos mas a lista enumera quatro: sensores entrou dentro da clausula de escreve/runtime, que continua sendo um caso"
+      "TETO: skills/executar/SKILL.md em 16624 B contra 16384. A main ja chega em 16375 (9 B de folga), entao a Tarefa 7 nao cabe sem cortar conteudo de outro fluxo do mesmo arquivo. Detalhe ja movido para skills/executar/references/sensor-no-briefing.md; o bloco Sensor: <nome> tem de ficar no SKILL.md porque as baterias 8/8a/8b leem dele. DECISAO DO USUARIO.",
+      "LEDGER: hooks/testa-ledger-fluxos.sh (veio da main pela #274) fecha o verificar sem declarar sensor, e a Tarefa 5 passou a exigir. Precisa de tarefa no plano para a bateria acompanhar a regra nova, senao e creep.",
+      "varrer-baterias.sh na branch: exit 1. Na main, exit 0 — provado tambem em worktree, para descartar ambiente."
     ],
-    "entrega_do_agente": "872485e6 conferido: base 5a43d1fc correta, conversao feita, mutacao prova o campo de log. NAO integrado ainda."
+    "entrega_do_agente": "872485e6 conferido: base 5a43d1fc correta, conversao feita, mutacao prova o campo de log. NAO integrado ainda.",
+    "tarefa_6": "integrada em ba08a0e0/5fb11c94, conferida rodando (62 ok, mutacao prova o campo de log, nao o exit code)",
+    "sensor_correto": "bash scripts/varrer-baterias.sh (runner da CI). O testa-saude.sh usado no fechamento de 14/09 so cobre scripts/saude.cjs"
   },
   "revisar": {
     "status": "reprovado",
