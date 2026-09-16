@@ -170,6 +170,65 @@ function armarLimpeza(raizExecucao) {
   }
 }
 
+// ======================================= Repositório git na cópia (tarefa 20)
+//
+// A tarefa 7 excluía `.git` da cópia para nunca compartilhar índice, HEAD ou
+// refs com a árvore real — e quebrou toda bateria que consulta git (achado da
+// integração da tarefa 6, medido em 2026-09-16: `bash
+// hooks/testa-contexto-sessao.sh` sai `ok: 293 falhou: 0` na árvore real e
+// `ok: 292 falhou: 1` dentro da cópia sem `.git` — o `git show
+// 14c471ed...:hooks/lib/contexto-sessao.cjs` daquela bateria falha em
+// silêncio sem repositório).
+//
+// Conserto: materializar um `.git` PRÓPRIO na cópia. NUNCA o arquivo-ponteiro
+// de um worktree vinculado (`gitdir: <caminho>`), que apontaria pro MESMO
+// gitdir da árvore real — proibido pela D5. Em vez disso: HEAD/index/config/
+// refs copiados (arquivos novos, fisicamente separados dos originais) mais
+// `objects/info/alternates` apontando pro object-store real só para LEITURA —
+// o mesmo mecanismo que já torna `git worktree` seguro (histórico imutável
+// compartilhado, HEAD/index/refs próprios de cada worktree). A mutação desta
+// ferramenta escreve num arquivo da árvore de trabalho, nunca num objeto git,
+// então não existe caminho de escrita cruzada passando pelo alternates.
+function materializarGit(raiz, raizExecucao) {
+  const gitDirRes = spawnSync('git', ['rev-parse', '--git-dir'], { cwd: raiz, encoding: 'utf8', stdio: 'pipe' });
+  if (gitDirRes.status !== 0) return; // raiz nao e repositorio git: copia fica sem .git (comportamento da tarefa 7)
+  const commonDirRes = spawnSync('git', ['rev-parse', '--git-common-dir'], { cwd: raiz, encoding: 'utf8', stdio: 'pipe' });
+  if (commonDirRes.status !== 0) return;
+
+  let gitDir, commonDir;
+  try {
+    gitDir = fs.realpathSync(path.resolve(raiz, gitDirRes.stdout.trim()));
+    commonDir = fs.realpathSync(path.resolve(raiz, commonDirRes.stdout.trim()));
+  } catch {
+    return; // caminho de git-dir/common-dir nao resolve: copia fica sem .git
+  }
+
+  const destGit = path.join(raizExecucao, '.git');
+  fs.mkdirSync(destGit, { recursive: true });
+
+  // HEAD e index PROPRIOS deste worktree (se `raiz` for worktree vinculado,
+  // moram em `gitDir`, nao em `commonDir` — que teria os do checkout PRINCIPAL).
+  for (const nome of ['HEAD', 'index']) {
+    const origem = path.join(gitDir, nome);
+    if (fs.existsSync(origem)) fs.copyFileSync(origem, path.join(destGit, nome));
+  }
+  // config e refs sao compartilhados por definicao entre worktrees do mesmo
+  // repositorio, e vem sempre do commonDir.
+  for (const nome of ['config', 'packed-refs']) {
+    const origem = path.join(commonDir, nome);
+    if (fs.existsSync(origem)) fs.copyFileSync(origem, path.join(destGit, nome));
+  }
+  if (fs.existsSync(path.join(commonDir, 'refs'))) {
+    fs.cpSync(path.join(commonDir, 'refs'), path.join(destGit, 'refs'), { recursive: true });
+  }
+
+  fs.mkdirSync(path.join(destGit, 'objects', 'info'), { recursive: true });
+  fs.writeFileSync(
+    path.join(destGit, 'objects', 'info', 'alternates'),
+    `${path.join(commonDir, 'objects').replace(/\\/g, '/')}\n`,
+  );
+}
+
 // ============================== Comando da bateria (D24, D25)
 
 /**
@@ -386,6 +445,7 @@ function main() {
     recursive: true,
     filter: (p) => path.relative(raiz, p) !== '.git',
   });
+  materializarGit(raiz, raizExecucao);
 
   const alvo = path.resolve(raizExecucao, rel);
   if (!fs.existsSync(alvo) || !fs.statSync(alvo).isFile()) {
@@ -444,6 +504,11 @@ function main() {
     console.error(`RECUSADO: baseline NAO-VERDE (exit ${baselineExit}).`);
     console.error('  A bateria não sai 0 no fonte íntegro. Qualquer mutação pode deixá-la');
     console.error('  vermelha por motivo diverso do comportamento que você quer medir.');
+    // Superfície humana (tarefa 20): a bateria roda dentro da CÓPIA temporária
+    // (Issue #266, D5), não no fonte real — se falhar aqui por motivo de
+    // ambiente (ex.: git ausente da cópia), quem lê não pode confundir com
+    // bateria quebrada no fonte de `--raiz`.
+    console.error(`  A falha foi NA CÓPIA temporária (${raizExecucao}), não em ${raiz}.`);
     console.error('  Conserte a bateria ou o source antes de invocar esta catraca.');
     process.exit(4);
   }

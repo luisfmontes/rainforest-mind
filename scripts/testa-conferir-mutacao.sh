@@ -980,6 +980,60 @@ else
 fi
 rm -f "$CAIXA/bateria-lenta-2s.sh"
 
+echo
+echo "== 23. a copia da mutacao continua sendo repositorio git (tarefa 20, Issue #266) =="
+# Achado da integracao da tarefa 6 (2026-09-16): a tarefa 7 excluia '.git' da
+# copia por completo, e qualquer bateria que consulta git dentro da arvore
+# deixava de medir verde ali (medido: `bash hooks/testa-contexto-sessao.sh`
+# saia `ok: 293 falhou: 0` na arvore real e `ok: 292 falhou: 1` dentro da
+# copia). Fixture proprio: um repositorio git minimo, com um commit — a
+# bateria exige `git rev-parse --show-toplevel` e `git show HEAD:<arquivo>`
+# funcionando DENTRO da arvore copiada.
+CAIXA_GIT="$S/caixa-git"; WCAIXA_GIT="$W/caixa-git"
+mkdir -p "$CAIXA_GIT"
+cat > "$CAIXA_GIT/bateria-git.sh" <<'BAT'
+#!/bin/bash
+set -e
+git rev-parse --show-toplevel >/dev/null
+git show HEAD:alvo.cjs | grep -q 'Fixture: recusa'
+BAT
+(
+  cd "$CAIXA_GIT" || exit 1
+  git init -q
+  git config user.email "test@test"
+  git config user.name "Test"
+  git config core.autocrlf false
+  cat > alvo.cjs <<'FIX'
+// Fixture: recusa
+module.exports = function ok() { return true; };
+FIX
+  git add alvo.cjs bateria-git.sh
+  git commit -q -m "commit inicial do fixture git"
+)
+
+OUT_GIT="$(node "$SCRIPT" --raiz "$WCAIXA_GIT" --arquivo alvo.cjs --de '// Fixture: recusa' --para '// MARCA-MUTADA' --bateria 'bash bateria-git.sh' 2>&1)"
+GOT_GIT=$?
+
+if printf '%s' "$OUT_GIT" | grep -q 'baseline NAO-VERDE'; then
+  falhou=$((falhou+1)); printf '  FALHA baseline NAO-VERDE dentro da copia (regressao da tarefa 20 -- a copia deixou de ser repositorio git):\n'
+  printf '%s\n' "$OUT_GIT" | tail -12 | sed 's/^/        | /'
+elif printf '%s' "$OUT_GIT" | grep -q 'ok: baseline VERDE'; then
+  ok=$((ok+1)); printf '  ok    baseline VERDE dentro da copia: git rev-parse e git show funcionam (copia continua sendo repositorio git)\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA saida inesperada (nem baseline VERDE nem NAO-VERDE, exit=%s):\n' "$GOT_GIT"
+  printf '%s\n' "$OUT_GIT" | tail -12 | sed 's/^/        | /'
+fi
+
+# A garantia da tarefa 7 nao pode regredir: a copia nao compartilha HEAD,
+# index nem refs com a arvore real -- o fixture git original tem que continuar
+# limpo (git status --porcelain vazio) depois da catraca terminar.
+STATUS_GIT="$(cd "$CAIXA_GIT" && git status --porcelain)"
+if [ -z "$STATUS_GIT" ]; then
+  ok=$((ok+1)); printf '  ok    fixture git original sem alteracoes apos a catraca (git status --porcelain vazio -- copia nao compartilha HEAD/index/refs)\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA fixture git original ficou sujo apos a catraca (copia pode estar compartilhando HEAD/index/refs):\n%s\n' "$STATUS_GIT"
+fi
+
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]
