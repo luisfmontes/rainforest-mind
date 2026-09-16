@@ -99,6 +99,15 @@ mutacao:
   comportamento a inverter, então não tem caso a nomear.
 - **O relato de mutação do agente não fecha a tarefa.** A integração re-roda, e
   só o exit code dela vale.
+- **`de:` e `para:` são texto COPIADO do fonte, nunca prosa** — mesmo quando o
+  trecho citado tem crase no meio de uma frase (`de: o \`process.exit(2)\` do
+  ramo de sessão co-locada` é prosa disfarçada de literal; a catraca não sabe
+  aplicar isso e a tarefa fica sem medição nenhuma, exatamente o formato que a
+  Issue #281 mostrou passando despercebido). E **`bateria:` é só a linha de
+  comando**, sem anotação depois da crase de fechamento — `` `node
+  x.cjs` (tarefa 6) `` vira comando com o `(tarefa 6)` colado (Issue #254).
+  Nota para humano sobre o bloco vai em outro lugar do plano, nunca dentro do
+  campo nem colada a ele.
 
 **`mutacao: n/a` com `motivo:` é resposta aceita.** Tarefa de doc não tem
 comportamento a inverter; a falsificação dela é outra (casar com a interface
