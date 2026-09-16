@@ -48,6 +48,7 @@ let input = '';
 try { input = fs.readFileSync(0, 'utf8'); } catch { process.exit(0); }
 let data = {};
 try { data = JSON.parse(input); } catch { process.exit(0); }
+if (!data || typeof data !== 'object') process.exit(0);
 if (!data.session_id) process.exit(0);
 
 let state = {};
