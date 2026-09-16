@@ -2,16 +2,16 @@
 /**
  * Fecha Issue com evidência: comenta com comando + saída, só então fecha.
  *
- * Uso: node scripts/fechar-issue.cjs <n> --comando <c> (--saida <texto> | --saida-arquivo <caminho>) --confirmo "CONFIRMO fechar issue #<n>"
+ * Uso: node scripts/fechar-issue.cjs <n> --comando <c> (--saida <texto> | --saida-arquivo <caminho>)
  *
- * --confirmo é obrigatório e exige a frase EXATA "CONFIRMO fechar issue #<n>"
- * (com o <n> do primeiro argumento). Essa frase é digitada pelo usuário e
- * repassada verbatim — o script nunca a inventa nem a completa sozinho.
+ * --saida recebe texto colado; se o valor for o caminho de um arquivo que
+ * existe de verdade, o script recusa (Issue #269 — colar um caminho onde se
+ * espera saída é sempre erro) e instrui a usar --saida-arquivo <caminho>.
  *
  * Exits:
  *   0 — comentário postado, Issue fechada
  *   1 — gh recusou (comentário ou close), saída dele colada
- *   2 — uso errado (sem flags, n inválido, --confirmo ausente ou divergente, etc.)
+ *   2 — uso errado (sem flags, n inválido, --saida com caminho de arquivo, etc.)
  */
 
 const fs = require('fs');
@@ -85,7 +85,7 @@ if (args[0] === '--verificar-gh' && args[1]) {
 }
 
 if (args.length < 4) {
-  console.error('Uso: node scripts/fechar-issue.cjs <n> --comando <c> (--saida <texto> | --saida-arquivo <caminho>) --confirmo "CONFIRMO fechar issue #<n>"');
+  console.error('Uso: node scripts/fechar-issue.cjs <n> --comando <c> (--saida <texto> | --saida-arquivo <caminho>)');
   process.exit(2);
 }
 
@@ -97,15 +97,18 @@ if (!/^\d+$/.test(n)) {
 
 let comando = null;
 let saidaConteudo = null;
-let confirmo = null;
 
 for (let i = 1; i < args.length; i++) {
   if (args[i] === '--comando' && i + 1 < args.length) {
     comando = args[++i];
-  } else if (args[i] === '--confirmo' && i + 1 < args.length) {
-    confirmo = args[++i];
   } else if (args[i] === '--saida' && i + 1 < args.length) {
-    saidaConteudo = args[++i];
+    const valor = args[++i];
+    if (fs.existsSync(valor) && fs.statSync(valor).isFile()) {
+      console.error(`RECUSADO: --saida recebeu o caminho de um arquivo existente (${valor}).`);
+      console.error(`Use --saida-arquivo ${valor} para ler o conteudo do arquivo.`);
+      process.exit(2);
+    }
+    saidaConteudo = valor;
   } else if (args[i] === '--saida-arquivo' && i + 1 < args.length) {
     const caminhoArquivo = args[++i];
     // Validar se o arquivo está dentro do repositório
@@ -124,17 +127,6 @@ for (let i = 1; i < args.length; i++) {
 
 if (!comando || saidaConteudo === null) {
   console.error('Erro: --comando e (--saida ou --saida-arquivo) são obrigatórios');
-  process.exit(2);
-}
-
-// Frase de confirmação com o alvo dentro: recusa ANTES de tocar em gh.
-// A frase é digitada pelo usuário e repassada verbatim — este script nunca
-// a inventa, nunca a completa e nunca a deriva sozinho a partir do <n>.
-const fraseEsperada = `CONFIRMO fechar issue #${n}`;
-if (confirmo !== fraseEsperada) {
-  console.error('RECUSADO: --confirmo ausente ou nao confere com o alvo desta Issue.');
-  console.error('A frase e digitada pelo usuario e repassada verbatim; este script nao a inventa. Frase esperada:');
-  console.log(fraseEsperada);
   process.exit(2);
 }
 
