@@ -701,7 +701,8 @@ fi
 # 2026-09-02: 5597 -> 5595 — a regra 12 ganhou "exit ≠ 0 nunca é sucesso" (fluxo 7, T6) e cedeu 2 B no proprio texto.
 # 2026-09-08: 5595 -> 5598 — a regra 11 ganhou "checkout principal fica na branch padrão; trabalho nasce em worktree" mais a trava e a chave que a desliga (Issue #195), pagando por subtracao no proprio texto: 388 -> 391 B. Folga: 2 B.
 # 2026-09-12: 5598 -> 5904 — a regra 6 ganhou a triagem de achado (defeito ≠ ideia) (+306 B), zerando a folga de 2 B; NUCLEOS_MAX_BYTES subiu de 5600 para 6000, deixando 96 B.
-NUCLEO_ESPERADO=5904
+# 2026-09-15: 5904 -> 5897 — a regra 10 perdeu a admissao por manifesto + estagio (issue #264: a portaria passou a registrar) e foi reescrita mais curta, pagando por SUBTRACAO no proprio texto: 500 B na primeira redacao, que estourou a catraca (6002 > 6000), depois 396 B contra os 402 de antes. Folga sobre NUCLEOS_MAX_BYTES: 103 B.
+NUCLEO_ESPERADO=5897
 if [ "$NUCLEO_BYTES_REAL" = "$NUCLEO_ESPERADO" ]; then
   ok=$((ok+1)); echo "  ok    D7: nucleo emitido mede exatamente $NUCLEO_BYTES_REAL B (contrato: $NUCLEO_ESPERADO B)"
 else

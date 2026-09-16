@@ -403,6 +403,47 @@ function obterDefinicaoAgente(raiz, nomeAgente, agentesDir) {
   return null; // Arquivo não encontrado
 }
 
+function inferirConfigNaoDeclarado(raiz, nomeAgente) {
+  // Agente fora do manifesto nao e mais barrado (issue #264) — mas tambem nao
+  // pode ser presumido read-only. Presumir desligaria a regra 11 justamente
+  // para os agentes que mais precisam dela: os de OUTRO plugin, que sao, por
+  // definicao, os que nao estao declarados aqui. `protheus-implementer` tem
+  // Write e Edit no frontmatter; entrar como read-only seria pior do que o
+  // deny que esta funcao substitui.
+  //
+  // `escreve: true` sai so com EVIDENCIA de escrita — uma tool fora da
+  // allowlist read-only. Todo o resto (arquivo fora de alcance, sem
+  // frontmatter, sem `tools:`, `tools:` em formato que a portaria nao le) sai
+  // como `escreve: false` com `conferido: false`, que e o allow MARCADO da
+  // rodada 4 da revisao: quem ler o log distingue "conferi e e read-only" de
+  // "nao deu para conferir".
+  //
+  // Em repo de consumidor o arquivo quase sempre esta fora de alcance — os
+  // agentes vem do cache do plugin. Entao o caminho comum e allow marcado, e a
+  // regra 11 so morde o agente cujo frontmatter a portaria conseguiu ler. E
+  // menos do que o ideal, e e honesto no log, que e o que o ideal exige.
+  const base = { estagios: null, escreve: false, conferido: false };
+
+  // O nome vira CAMINHO em `obterDefinicaoAgente` (`<dir>/<nome>.md`), e desde a
+  // #264 ele chega aqui sem ter passado por manifesto nenhum — antes, nome fora
+  // do manifesto era negado antes de virar caminho. `../../..` nao vaza nada (o
+  // conteudo so alimenta um regex de frontmatter e vira um booleano), mas ler
+  // fora da pasta de agentes nunca e o que esta funcao quer, e a checagem custa
+  // uma linha. Um segmento simples, sem separador e sem `..`.
+  if (!/^[A-Za-z0-9._-]+$/.test(nomeAgente) || nomeAgente.includes("..")) return base;
+
+  const def = obterDefinicaoAgente(raiz, nomeAgente);
+  if (!def) return base;
+
+  const fmMatch = def.match(/^---\n([\s\S]*?)\n---/);
+  if (!fmMatch) return base;
+
+  const { declarado: temTools, tools } = parseToolsDoFrontmatter(fmMatch[1]);
+  if (!temTools || !tools) return base;
+
+  return { estagios: null, escreve: Boolean(validarToolsAowlist(tools)), conferido: true };
+}
+
 function gravarAmostra(raiz, payload) {
   /* Captura primeira amostra apenas (D7 do fluxo 9).
    *
@@ -452,7 +493,12 @@ function gravarAmostra(raiz, payload) {
  * que escreve rodou" sem dizer "isolado" não responde a pergunta pela qual ele
  * é evidência de primeira classe.
  */
-/* Onde o log de despacho mora (D6 de 2026-09-13).
+/* A raiz de DADOS do rainforest — onde o log de despacho mora (D6 de
+ * 2026-09-13) e de onde sai o `agentes.extra.json` do usuario (issue #264).
+ *
+ * O nome diz a coisa, nao o consumidor: desde a #264 o log nao e mais o unico
+ * que pergunta, e um segundo helper com outro nome para a mesma resolucao seria
+ * a duplicacao que a #259 registra neste mesmo repositorio.
  *
  * Antes: `<projeto>/.rainforest/portaria/`. Enquanto a portaria valia só neste
  * repositório isso era invisível — a linha está no `.gitignore` daqui. Valendo
@@ -473,7 +519,7 @@ function gravarAmostra(raiz, payload) {
  * O campo `repo` entra em cada linha porque, centralizado, o log deixa de dizer
  * por vizinhança de onde veio cada decisão.
  */
-function raizDoLog(raiz) {
+function raizDeDados(raiz) {
   try {
     const { resolverRaiz } = require("./lib/raiz.cjs");
     const r = resolverRaiz({ cwd: raiz });
@@ -488,7 +534,7 @@ function raizDoLog(raiz) {
 
 function gravarDespacho(raiz, decisao, agente, estagio, sessao, motivo, escreveConferido, extra) {
   // Append-only log de despachos (D4)
-  const dir = path.join(raizDoLog(raiz), "portaria");
+  const dir = path.join(raizDeDados(raiz), "portaria");
   const logPath = path.join(dir, "despachos.jsonl");
 
   try {
@@ -540,9 +586,6 @@ function gravarDespacho(raiz, decisao, agente, estagio, sessao, motivo, escreveC
 }
 
 function main() {
-  // Import do módulo de autorização — precisa estar aqui para a rede de exceção
-  const { autorizado } = require("./lib/autorizacao-usuario.cjs");
-
   // Ler payload do stdin
   let bruto = "";
   try {
@@ -616,16 +659,46 @@ function main() {
   }
   const estagioLog = (estResult && estResult.estagio) || "?";
 
-  // Carrega manifesto. Dois níveis, e o do repo SUBSTITUI o padrão por inteiro
-  // — não soma (D3 de 2026-09-13).
+  // Carrega manifesto. TRÊS níveis, e só um deles soma:
   //
-  // Merge apagaria a diferença entre "não declarei" e "declarei e tirei", que é
-  // justamente a diferença que este portão decide: um repo que precise barrar o
+  //   1. `<plugin>/.rainforest/agentes.padrao.json`  — a base embarcada
+  //   2. `<raiz de dados>/agentes.extra.json`        — do usuário, SOMA sobre a base
+  //   3. `<repo>/.rainforest/agentes.json`           — SUBSTITUI os dois por inteiro
+  //
+  // O nível 3 continua substituindo, e o porquê é o de D3 (2026-09-13): merge
+  // apagaria a diferença entre "não declarei" e "declarei e tirei", que é
+  // justamente a diferença que este portão decide. Um repo que precise barrar o
   // `executor` tem de conseguir barrá-lo, e com merge ele voltaria pelo padrão.
   // Substituição também deixa o arquivo legível sozinho — o que está escrito
   // nele é o que vale, sem simular a fusão de cabeça.
+  //
+  // O nível 2 é da issue #264 e NÃO reabre aquela porta, porque mora fora do
+  // repositório e é declaração do USUÁRIO, não do projeto — quando o projeto
+  // fala (nível 3), ele cala os dois de cima, inclusive este.
+  //
+  // O caso medido: em repo de trabalho que usa outro plugin de domínio, a skill
+  // daquele plugin despachou `protheus-implementer` e a portaria negou por "não
+  // consta no manifesto". A única saída que a mensagem oferecia era criar o
+  // `agentes.json` do repo — que substitui por inteiro, ou seja, copiar à mão os
+  // doze agentes do rainforest para acrescentar três, numa cópia que congela no
+  // tempo: a próxima versão do plugin que acrescente um agente não chega lá, e
+  // ninguém é avisado. O preço da configuração ficou maior que o que ela libera,
+  // e o efeito foi o fluxo do outro plugin morto. Não é hipótese: o
+  // `despachos.jsonl` de 2026-09-15 tem dois `deny` de `protheus-implementer`,
+  // em dois repositórios diferentes, e nenhum `allow` depois.
+  //
+  // Por que na raiz de dados, e não numa chave `"soma": true` no arquivo do
+  // repo: os repositórios onde isso dói são compartilhados com outros devs, e a
+  // lista de agentes que ESTE usuário tem instalados é configuração pessoal —
+  // não entra em repo de time. Fora do repo, um arquivo só cobre todos eles.
+  //
+  // Nome diferente de propósito: `agentes.json` substitui, `agentes.extra.json`
+  // soma. A semântica mora no NOME, não no diretório — a raiz de dados pode ser
+  // o `.rainforest` do próprio projeto (nível 2 do `lib/raiz.cjs`), e ali dois
+  // arquivos de mesmo nome com regras opostas seriam uma armadilha.
   const manifestoDoRepo = path.join(raiz, ".rainforest", "agentes.json");
   const manifestoPadrao = path.resolve(__dirname, "..", ".rainforest", "agentes.padrao.json");
+  const manifestoExtra = path.join(raizDeDados(raiz), "agentes.extra.json");
   const usandoPadrao = !fs.existsSync(manifestoDoRepo);
   const manifestoPath = usandoPadrao ? manifestoPadrao : manifestoDoRepo;
   let manifesto;
@@ -684,205 +757,115 @@ function main() {
     negar("Manifesto.agentes inválido");
   }
 
-  // D3 passo 3: agente não declarado → nega
+  // Nível 2: a soma do usuário (issue #264). Só entra quando a base é o padrão
+  // embarcado — manifesto do repositório cala os níveis de cima.
   //
-  // O stderr diz QUAL manifesto foi lido. Enquanto a portaria valia só neste
-  // repositório havia um manifesto possível; depois da D2 há dois, e "não
-  // consta" sem dizer onde se leu manda o usuário conferir o arquivo errado —
-  // tipicamente o do repo, quando quem decidiu foi o padrão embarcado.
-  if (!manifesto.agentes[nomeAgente]) {
-    const motivo = `agente '${nomeAgente}' não consta no manifesto`;
-    gravarDespacho(raiz, "deny", nomeAgente, estagioLog, sessao, motivo);
-
-    let msg = `${motivo}\n`;
-    msg += `  manifesto lido: ${manifestoPath}\n`;
-    msg += `  origem: ${usandoPadrao ? "padrão embarcado do plugin" : "manifesto deste repositório"}\n`;
-    msg += `  raiz lida: ${raiz}\n`;
-    if (usandoPadrao) {
-      msg += `  para mudar só neste repositório, crie ${manifestoDoRepo} — ele SUBSTITUI o padrão por inteiro\n`;
+  // Validação idêntica à da base, e fail-closed: arquivo ilegível ou com forma
+  // errada NEGA, nunca é ignorado. Ignorar em silêncio devolveria o usuário ao
+  // sintoma exato da #264 — "não consta no manifesto" para um agente que ele
+  // acabou de declarar — sem nada apontando para o arquivo torto. Errar um JSON
+  // à mão é o modo de falha mais provável deste arquivo; ele tem de doer no
+  // arquivo, não três telas adiante.
+  //
+  // Entrada do extra com a MESMA chave vence a do padrão: é assim que o usuário
+  // afrouxa ou aperta um agente do rainforest sem copiar os outros onze. O que
+  // ele NÃO consegue por aqui é remover — remoção continua sendo o nível 3, que
+  // substitui, e é onde a leitura "o que está escrito é o que vale" tem de
+  // valer inteira.
+  const agentesSomados = [];
+  if (usandoPadrao && fs.existsSync(manifestoExtra)) {
+    let extraManifesto;
+    try {
+      extraManifesto = JSON.parse(fs.readFileSync(manifestoExtra, "utf8"));
+    } catch {
+      const motivo = `manifesto extra do usuario JSON invalido: ${manifestoExtra}`;
+      gravarDespacho(raiz, "deny", nomeAgente, estagioLog, sessao, motivo);
+      negar(motivo);
     }
 
-    negar(msg.trim());
+    if (extraManifesto.versao !== 1) {
+      const motivo =
+        `manifesto extra do usuario com versao invalida (veio ${JSON.stringify(extraManifesto.versao)}) ` +
+        `em ${manifestoExtra} — use 1`;
+      gravarDespacho(raiz, "deny", nomeAgente, estagioLog, sessao, motivo);
+      negar(motivo);
+    }
+
+    if (
+      typeof extraManifesto.agentes !== "object" ||
+      extraManifesto.agentes === null ||
+      Array.isArray(extraManifesto.agentes)
+    ) {
+      const motivo = `manifesto extra do usuario com 'agentes' invalido em ${manifestoExtra}`;
+      gravarDespacho(raiz, "deny", nomeAgente, estagioLog, sessao, motivo);
+      negar(motivo);
+    }
+
+    for (const nome of Object.keys(extraManifesto.agentes)) {
+      manifesto.agentes[nome] = extraManifesto.agentes[nome];
+      agentesSomados.push(nome);
+    }
   }
 
-  const agentConfig = manifesto.agentes[nomeAgente];
-
-  // D3 passo 4: sem estágio ativo → nega, OU consulta autorização (D4, D6, D8).
-  // `estResult` já foi resolvido acima, para o log das negações anteriores; a
-  // decisão é a mesma de sempre.
+  // D3 passo 3 — REESCRITO em 2026-09-15 (issue #264): agente nao declarado
+  // NAO e mais negado. E registrado.
   //
-  // Resolver que estourou não é "sem estágio ativo". O erro foi só adiado até
-  // aqui: sobe, e a rede de `main` o converte em exit 2 com "falha interna" —
-  // fail-closed com o motivo certo.
+  // Ate aqui a portaria era allowlist: fora do manifesto, deny. O custo disso
+  // foi medido e superou o que ele protegia. Agente instalado pelo PROPRIO
+  // usuario, vindo de outro plugin dele, nunca passava — `protheus-implementer`
+  // negado em dois repositorios no dia 15/09, `Plan` negado duas vezes na mesma
+  // sessao — e a unica saida que a mensagem oferecia era reescrever o manifesto
+  // inteiro a mao, numa copia que congela no tempo. O portao cobrava do usuario
+  // e nao defendia a arvore dele.
+  //
+  // Quem defende a arvore e o passo 7 (regra 11: quem escreve so roda em
+  // worktree), e esse continua barrando. Este aqui passou a registrar.
+  //
+  // O manifesto deixa de ser lista de ADMISSAO e passa a ser DECLARACAO: quem
+  // esta nele chega com `estagios`, `escreve` e `runtime` ja afirmados; quem nao
+  // esta roda do mesmo jeito, com `declarado: false` na linha do log e com
+  // `escreve` INFERIDO do frontmatter do agente quando o arquivo existe. Inferir
+  // e o que mantem a regra 11 valendo para agente de outro plugin: sem isso,
+  // `protheus-implementer` (que tem Write e Edit) entraria como read-only.
+  const declarado = Boolean(manifesto.agentes[nomeAgente]);
+  const agentConfig = declarado
+    ? manifesto.agentes[nomeAgente]
+    : inferirConfigNaoDeclarado(raiz, nomeAgente);
+
+  // D3 passo 4 — REESCRITO em 2026-09-15 (issue #264): sem estagio ativo NAO
+  // nega mais, e a autorizacao digitada deixou de existir.
+  //
+  // Era aqui que a portaria cobrava a frase "autorizo subagentes", uma vez por
+  // sessao, em todo repositorio sem fluxo do rainforest aberto — ou seja, em
+  // todo repositorio de trabalho. O usuario nomeou o custo em 2026-09-15
+  // ("desgasta demais"), e o custo e real: o `despachos.jsonl` daquele dia tem
+  // seis `allow` seguidos com `via: autorizacao-do-usuario`, um por sessao, e
+  // nenhum deles decidiu nada — todos passariam.
+  //
+  // O portao nao protegia a arvore do usuario, protegia a ORDEM do fluxo. Ordem
+  // de fluxo agora se registra: `fora_de_fluxo: true` na linha do log, e o
+  // `conferir-fluxo` continua lendo o mesmo log.
+  //
+  // Resolver que estourou continua sendo erro, nao "fora de fluxo". O erro foi
+  // so adiado ate aqui: sobe, e a rede de `main` o converte em exit 2 com
+  // "falha interna" — fail-closed com o motivo certo.
   if (estErro) throw estErro;
 
-  // Quando há autorização válida, simula `estResult` para que a lógica
-  // continue nos passos 5+ com as travas de escreve: true.
-  // A autorização dispensa APENAS o portão de estágio (D6).
-  let autorizacaoValida = false;
-  let estagioPorAutorizacao = null;
+  const foraDeFluxo = !estResult;
+  const estagioAtivo = foraDeFluxo ? "fora-de-fluxo" : estResult.estagio;
 
-  if (!estResult) {
-    // Consultar autorização do usuário antes de negar por falta de estágio (D4, D6, D8)
-    const transcriptPath = payload.transcript_path;
-    const temTranscriptPathDefined = payload.hasOwnProperty("transcript_path");
+  // D3 passo 5 — REESCRITO em 2026-09-15 (issue #264): estagio fora da lista
+  // declarada NAO nega mais. Vira nota na linha do log.
+  //
+  // `estagios` continua no manifesto e continua servindo: e o que diz para que
+  // o agente foi feito, e e o que o `--lint` deste repositorio confere. O que
+  // mudou e quem paga pelo desvio — antes era o usuario, com o despacho barrado
+  // no meio do trabalho; agora e a auditoria, que le `estagio_declarado` no log
+  // e sabe que aquele despacho saiu fora do que o agente prometia cobrir.
+  const estagiosDeclarados = Array.isArray(agentConfig.estagios) ? agentConfig.estagios : null;
+  const estagioForaDoDeclarado =
+    estagiosDeclarados !== null && !estagiosDeclarados.includes(estagioAtivo);
 
-    // Se transcript_path não foi definido no payload, nega normalmente
-    if (!temTranscriptPathDefined) {
-      const motivo = "sem estágio ativo — abra um fluxo";
-      gravarDespacho(raiz, "deny", nomeAgente, "?", sessao, motivo);
-
-      const branch = obterBranch(raiz);
-      const outrosWorktrees = obterOutrosWorktreesComFluxoAberto(raiz);
-
-      let msg = `${motivo}\n`;
-      msg += `  raiz lida: ${raiz}\n`;
-      if (branch) {
-        msg += `  branch: ${branch}\n`;
-      }
-      msg += `  estágio resolvido: ?\n`;
-
-      if (outrosWorktrees.length > 0) {
-        msg += formatarOutrosWorktreesAbertos(outrosWorktrees);
-      }
-
-      negar(msg.trim());
-    }
-
-    // transcript_path foi definido — tenta conferir autorização
-    // Verifica se é válido
-    const caminhoVazio = !transcriptPath || typeof transcriptPath !== "string" || transcriptPath.trim() === "";
-    const caminhoExiste = !caminhoVazio && fs.existsSync(transcriptPath);
-
-    if (caminhoVazio) {
-      // transcript_path vazio ou inválido
-      const motivo = "autorização não pôde ser conferida — transcript_path não foi fornecido no payload";
-      gravarDespacho(raiz, "deny", nomeAgente, "?", sessao, motivo);
-
-      const branch = obterBranch(raiz);
-      const outrosWorktrees = obterOutrosWorktreesComFluxoAberto(raiz);
-
-      let msg = `${motivo}\n`;
-      msg += `  raiz lida: ${raiz}\n`;
-      if (branch) {
-        msg += `  branch: ${branch}\n`;
-      }
-      msg += `  estágio resolvido: ?\n`;
-      msg += `  alternativas: abra um fluxo com seu agente, ou envie o transcript_path no payload\n`;
-
-      if (outrosWorktrees.length > 0) {
-        msg += formatarOutrosWorktreesAbertos(outrosWorktrees);
-      }
-
-      negar(msg.trim());
-    } else if (!caminhoExiste) {
-      // transcript_path apontando para arquivo inexistente
-      const motivo = `autorização não pôde ser conferida — arquivo ${transcriptPath} não existe`;
-      gravarDespacho(raiz, "deny", nomeAgente, "?", sessao, motivo);
-
-      const branch = obterBranch(raiz);
-      const outrosWorktrees = obterOutrosWorktreesComFluxoAberto(raiz);
-
-      let msg = `${motivo}\n`;
-      msg += `  raiz lida: ${raiz}\n`;
-      if (branch) {
-        msg += `  branch: ${branch}\n`;
-      }
-      msg += `  estágio resolvido: ?\n`;
-      msg += `  alternativas: abra um fluxo com seu agente, ou corrija o caminho do transcript\n`;
-
-      if (outrosWorktrees.length > 0) {
-        msg += formatarOutrosWorktreesAbertos(outrosWorktrees);
-      }
-
-      negar(msg.trim());
-    } else {
-      // Transcript existe e é legível — confere autorização
-      const temAutorizacao = autorizado(transcriptPath);
-      const { temNegacaoExplicita } = require("./lib/autorizacao-usuario.cjs");
-
-      // Para detectar negação, precisa ler e parsear o transcript
-      let temNegacao = false;
-      try {
-        const conteudo = fs.readFileSync(transcriptPath, "utf8");
-        const linhas = conteudo.trim().split("\n").filter(Boolean);
-        if (linhas.length > 0) {
-          const ultimaLinha = JSON.parse(linhas[linhas.length - 1]);
-          temNegacao = temNegacaoExplicita(ultimaLinha);
-        }
-      } catch {
-        // Se não conseguir parsear, assume que não há negação explícita
-        temNegacao = false;
-      }
-
-      if (temAutorizacao) {
-        // Autorização válida: simula um estResult para passar nos passos 5+
-        // As travas de escreve: true continuam valendo (D6)
-        autorizacaoValida = true;
-        estagioPorAutorizacao = "fora-de-fluxo";
-        estResult = { estagio: "fora-de-fluxo" }; // Marca que não há fluxo, mas há autorização
-      } else if (temNegacao) {
-        // Negação explícita do usuário
-        const motivo = "autorização foi revogada — usuário disse explicitamente que não autoriza subagentes nesta sessão";
-        gravarDespacho(raiz, "deny", nomeAgente, "?", sessao, motivo);
-
-        const branch = obterBranch(raiz);
-        const outrosWorktrees = obterOutrosWorktreesComFluxoAberto(raiz);
-
-        let msg = `${motivo}\n`;
-        msg += `  raiz lida: ${raiz}\n`;
-        if (branch) {
-          msg += `  branch: ${branch}\n`;
-        }
-        msg += `  estágio resolvido: ?\n`;
-        msg += `  alternativas: abra um fluxo com seu agente, ou autorize novamente em uma nova mensagem\n`;
-
-        if (outrosWorktrees.length > 0) {
-          msg += formatarOutrosWorktreesAbertos(outrosWorktrees);
-        }
-
-        negar(msg.trim());
-      } else {
-        // Transcript legível, sem autorização
-        const motivo = "sem estágio ativo — abra um fluxo";
-        gravarDespacho(raiz, "deny", nomeAgente, "?", sessao, motivo);
-
-        const branch = obterBranch(raiz);
-        const outrosWorktrees = obterOutrosWorktreesComFluxoAberto(raiz);
-
-        let msg = `${motivo}\n`;
-        msg += `  raiz lida: ${raiz}\n`;
-        if (branch) {
-          msg += `  branch: ${branch}\n`;
-        }
-        msg += `  estágio resolvido: ?\n`;
-        msg += `  alternativas: abra um fluxo com seu agente, ou responda "autorizo subagentes" nesta sessão\n`;
-
-        if (outrosWorktrees.length > 0) {
-          msg += formatarOutrosWorktreesAbertos(outrosWorktrees);
-        }
-
-        negar(msg.trim());
-      }
-    }
-  }
-
-  const { estagio: estagioAtivo } = estResult;
-
-  // D3 passo 5: estágio fora da lista permitida → nega, EXCETO se há autorização (D6)
-  if (!agentConfig.estagios || !Array.isArray(agentConfig.estagios)) {
-    const motivo = `Configuração inválida do agente '${nomeAgente}' no manifesto`;
-    gravarDespacho(raiz, "deny", nomeAgente, estagioAtivo, sessao, motivo);
-    negar(motivo);
-  }
-
-  // Autorização dispensa a checagem de estágio (D6): qualquer estágio é permitido
-  if (!autorizacaoValida && !agentConfig.estagios.includes(estagioAtivo)) {
-    const permitidos = agentConfig.estagios.join(", ");
-    const motivo = `estágio '${estagioAtivo}' não permitido para '${nomeAgente}' (permitidos: ${permitidos})`;
-    gravarDespacho(raiz, "deny", nomeAgente, estagioAtivo, sessao, motivo);
-    negar(motivo);
-  }
 
   // D3 passo 6: escreve: false com tools fora de allowlist → nega.
   //
@@ -1054,17 +1037,14 @@ function main() {
       isolation: isolamento,
       runtime: runtime_escreve,
     };
-    // Adiciona `via: autorizacao-do-usuario` quando a autorização foi usada (D8)
-    if (autorizacaoValida) {
-      extraEscreve.via = "autorizacao-do-usuario";
-    }
+    marcasDeRegistro(extraEscreve);
 
     gravarDespacho(raiz, "allow", nomeAgente, estagioAtivo, sessao, null, undefined, extraEscreve);
     process.exit(0);
   }
 
-  let escreveConferido = true;
-  if (agentConfig.escreve === false) {
+  let escreveConferido = declarado ? true : agentConfig.conferido;
+  if (declarado && agentConfig.escreve === false) {
     const def = obterDefinicaoAgente(raiz, nomeAgente);
     if (!def) escreveConferido = false;
 
@@ -1101,6 +1081,18 @@ function main() {
     // mas o allow sai MARCADO, e não indistinguível de um allow conferido.
   }
 
+  // As marcas que a linha do log carrega desde a #264: o portao deixou de negar
+  // nesses tres pontos, entao e o log que passa a responder por eles. Sem isso a
+  // mudanca de politica viraria silencio, que e o pior resultado possivel para
+  // uma trilha de auditoria — ela pareceria dizer que nada aconteceu.
+  function marcasDeRegistro(alvo) {
+    if (!declarado) alvo.declarado = false;
+    if (declarado && agentesSomados.includes(nomeAgente)) alvo.via = "agentes.extra.json";
+    if (foraDeFluxo) alvo.fora_de_fluxo = true;
+    if (estagioForaDoDeclarado) alvo.estagio_declarado = estagiosDeclarados.join(", ");
+    return alvo;
+  }
+
   // Passou tudo → aprova (D3 passo 7). `escreve_conferido: false` na linha do
   // log quando a checagem de escrita não pôde ser feita — o log é evidência de
   // primeira classe (D4), e evidência que não distingue "conferi" de "não deu
@@ -1110,11 +1102,7 @@ function main() {
   const prompt = payload.tool_input && payload.tool_input.prompt;
   const runtime = runtimeEfetivo(agentConfig, prompt);
 
-  // Adiciona `via: autorizacao-do-usuario` quando a autorização foi usada (D8)
-  const extra = { runtime };
-  if (autorizacaoValida) {
-    extra.via = "autorizacao-do-usuario";
-  }
+  const extra = marcasDeRegistro({ runtime });
 
   gravarDespacho(raiz, "allow", nomeAgente, estagioAtivo, sessao, null, escreveConferido, extra);
   process.exit(0);

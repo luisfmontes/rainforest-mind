@@ -111,14 +111,18 @@ caso("e a raiz de dados NAO recebeu linha nova",
   linhas(logDados).length === antes,
   `antes=${antes} depois=${linhas(logDados).length}`);
 
-// == 3. Falha de gravacao se anuncia, e nao vira passe livre (D8) ==
+// == 3. Falha de gravacao se anuncia, mas nao vira negacao (D8) ==
 //
 // `gravarDespacho` engolia erro de escrita num `catch` vazio. Enquanto o log era
 // um arquivo ignorado do proprio repo, uma linha perdida era uma linha perdida;
 // depois da D6 ele e a unica trilha que atravessa repositorios, e perder linha
 // em silencio e pior que nao ter trilha — porque parece ter. A escrita continua
 // NAO-fatal (log ilegivel nao pode barrar trabalho), mas deixa de ser calada.
-console.log("== 3. falha de gravacao aparece no stderr, sem mudar a decisao ==");
+// Desde 2026-09-15 a decisao deixa de ser negada por falta de log: o log e
+// trilha, nao portao. A falha ainda aparece no stderr (para auditoria), mas
+// a decisao passa a ser 'allow' — agora a trilha pode ter buraco, mas o trabalho
+// nao e barrado.
+console.log("== 3. falha de gravacao aparece no stderr, mas deixa de negar ==");
 const repo3 = path.join(caixa, "repo-sem-log");
 fs.mkdirSync(repo3, { recursive: true });
 // Aponta a raiz de dados para um ARQUIVO: `mkdir` dentro dele e impossivel.
@@ -128,8 +132,8 @@ fs.writeFileSync(dadosArquivo, "nao sou pasta\n", "utf8");
 const r3 = despachar(repo3, dadosArquivo, "revisor");
 caso("o stderr diz que a linha NAO foi gravada",
   /linha do log NAO foi gravada/i.test(r3.stderr || ""), r3.stderr);
-caso("e a decisao continua saindo 2 (falha de log nao vira passe livre)",
-  r3.status === 2, `exit=${r3.status}`);
+caso("mas a decisao continua saindo 0 (log e trilha, nao portao)",
+  r3.status === 0, `exit=${r3.status}`);
 
 console.log(`\n== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 try { fs.rmSync(caixa, { recursive: true, force: true }); } catch {}

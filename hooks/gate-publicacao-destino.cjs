@@ -36,12 +36,208 @@
 const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
+const { resolverRaiz } = require("./lib/raiz.cjs");
 
 const FERRAMENTAS_DE_ESCRITA = new Set(["Write", "Edit", "MultiEdit"]);
 
 /**
+ * Validade do cache de visibilidade de repositório, em ms.
+ * Um repositório privado que muda para público é caso raro; uma semana é
+ * conservador e cobre a maioria dos casos sem rede constante.
+ */
+const CACHE_VISIBILIDADE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 dias
+
+/**
  * Tenta rodar um comando git neste diretório. Retorna output ou null se falhar.
  */
+
+/**
+ * Obtém o caminho do cache de visibilidade de repositório.
+ */
+function obterCachePath() {
+  const { raiz } = resolverRaiz();
+  if (!raiz) return null;
+  return path.join(raiz, "cache-visibilidade-repo.json");
+}
+
+/**
+ * Lê o cache de visibilidade de repositório.
+ */
+function lerCache() {
+  const cachePath = obterCachePath();
+  if (!cachePath) return {};
+  try {
+    const conteudo = fs.readFileSync(cachePath, "utf8");
+    return JSON.parse(conteudo) || {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Grava o cache de visibilidade de repositório.
+ */
+function gravarCache(cache) {
+  const cachePath = obterCachePath();
+  if (!cachePath) return;
+  try {
+    const dir = path.dirname(cachePath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(cachePath, JSON.stringify(cache, null, 2), "utf8");
+  } catch {
+    // erro ao gravar cache
+  }
+}
+
+// Memoria do PROCESSO. `bloqueia` precisa da visibilidade duas vezes -- para
+// decidir e para escrever a mensagem -- e sem isto o `gh` seria invocado duas
+// vezes na mesma gravacao.
+const visibilidadeMemorizada = new Map();
+
+/**
+ * Visibilidade do remoto de destino: "privada", "publica" ou "desconhecida".
+ *
+ * D6 (zerar-issues-4, #253). A lista de termos proibidos existe para proteger
+ * repositorio PUBLICO -- a propria mensagem de bloqueio dizia "Arquivos
+ * versionados em repo publico nao tem como desaparecer" --, mas o hook nunca
+ * conferiu visibilidade. Aplicada a um repositorio privado de trabalho, ela
+ * torna impossivel documentar o trabalho no lugar onde o trabalho mora: medido
+ * em 2026-09-14, 18 ocorrencias num design doc, todas do prefixo dos fontes e
+ * do nome da organizacao, que sao o proprio assunto daquele repositorio.
+ *
+ * FALHA FECHADA. So "privada" libera, e so quando o `gh` respondeu JSON com
+ * `isPrivate: true`. Sem remoto, sem `gh`, `gh` com exit != 0, saida ilegivel,
+ * ou `RAINFOREST_GATE_SEM_REDE=1`: "desconhecida", que bloqueia como antes. Um
+ * repositorio publico novo nunca passa por omissao.
+ *
+ * O cache em disco guarda SO "publica". Cachear "desconhecida"
+ * transformaria uma indisponibilidade de rede de dez segundos em uma semana de
+ * decisao errada -- e no sentido que importa, porque e a resposta que decide se
+ * o termo vaza ou nao. E `privada` e essa mesma resposta pelo lado que
+ * LIBERA, num arquivo que nenhum gate protege -- por isso tambem nao se
+ * cacheia, e se re-pergunta ao `gh` a cada achado.
+ */
+function visibilidadeDoRepo(gitTop) {
+  if (visibilidadeMemorizada.has(gitTop)) return visibilidadeMemorizada.get(gitTop);
+  const v = calcularVisibilidade(gitTop);
+  visibilidadeMemorizada.set(gitTop, v);
+  return v;
+}
+
+/**
+ * `owner/repo` de TODOS os remotos do GitHub cadastrados, sem repetir.
+ *
+ * Nao usa `remotoDeDestino`, e a diferenca e de proposito. Aquela funcao
+ * responde "para onde ESTA branch publica", e `paiJaPublicado` depende disso
+ * (D19: aceitar qualquer remoto reabria a porta do espelho descartavel). Aqui
+ * a pergunta e outra: "existe algum destino publico ao alcance de um push?".
+ *
+ * Medido em 2026-09-15: com `origin` privado e um fork publico cadastrado,
+ * numa branch SEM upstream, `remotoDeDestino` caia em `origin`, o gate
+ * consultava o repositorio errado, o segredo entrava no commit, e
+ * `git push fork main` publicava. Branch nova sem upstream e o caso comum, nao
+ * o raro. Falha fechada: basta um remoto publico para bloquear.
+ */
+function repositoriosDoGitHub(gitTop) {
+  const nomes = (git(gitTop, ["remote"]) || "").split(/\r?\n/).map((n) => n.trim()).filter(Boolean);
+  const achados = [];
+  for (const nome of nomes) {
+    const url = git(gitTop, ["remote", "get-url", nome]);
+    if (!url) continue;
+    const m = url.match(/(?:https:\/\/|git@)(?:www\.)?github\.com[:/]([\w.-]+)\/([\w.-]+?)(?:\.git)?$/);
+    if (!m) continue;
+    const ownerRepo = `${m[1]}/${m[2]}`;
+    if (!achados.includes(ownerRepo)) achados.push(ownerRepo);
+  }
+  return achados;
+}
+
+function calcularVisibilidade(gitTop) {
+  if (process.env.RAINFOREST_GATE_SEM_REDE === "1") return "desconhecida";
+
+  const repos = repositoriosDoGitHub(gitTop);
+  if (repos.length === 0) return "desconhecida";
+
+  // So libera quando TODOS sao privados. Um publico basta para bloquear, e um
+  // desconhecido tambem -- a mesma falha fechada que o resto deste gate usa.
+  let veredito = "privada";
+  for (const ownerRepo of repos) {
+    const v = visibilidadeDeUmRepo(ownerRepo);
+    if (v === "publica") return "publica";
+    if (v === "desconhecida") veredito = "desconhecida";
+  }
+  return veredito;
+}
+
+function visibilidadeDeUmRepo(ownerRepo) {
+  // O cache guarda SO `publica` -- a resposta que MANTEM o bloqueio.
+  //
+  // A primeira versao guardava as duas e aceitava `privada` do disco. O
+  // arquivo e `<raiz de dados>/cache-visibilidade-repo.json`, fora de repo
+  // git: nenhum gate confere escrita ali, e um `Write` basta. Medido em
+  // 2026-09-15, com o `gh` respondendo PUBLICO o tempo todo:
+  //
+  //   sem cache                                exit 2
+  //   plantado privada, em = agora             exit 0
+  //   plantado privada, em = +100 anos         exit 0   (para sempre)
+  //   plantado privada, em = 8 dias atras      exit 2
+  //
+  // A mensagem deste mesmo hook diz ao subagente para NAO criar arquivo nem
+  // variavel que desligue a trava; este era esse arquivo. O docblock de
+  // `visibilidadeDoRepo` ja dizia por que `desconhecida` nao se cacheia --
+  // e a resposta que decide se o termo vaza. `privada` e a MESMA resposta,
+  // do lado que libera, e o argumento vale com mais forca ainda.
+  //
+  // O custo e baixo porque `bloqueia()` so pergunta a visibilidade quando JA
+  // houve achado: em repo privado o `gh` roda uma vez por achado, nao por
+  // escrita. O cache continua existindo para o caso publico, que e o que se
+  // repete numa sessao de muitos achados.
+  //
+  // `em` no futuro nao vale: `Date.now() - em < TTL` e verdade para qualquer
+  // instante futuro, entao uma entrada com data adiantada nunca expirava.
+  const agora = Date.now();
+  const cache = lerCache();
+  const guardado = cache[ownerRepo];
+  // `em` tem de ser NUMERO. A auditoria mediu a forma com `em` como string
+  // (2026-09-15): `"123" <= agora` coage e passa, e a entrada plantada valia.
+  // Hoje isso so deixaria o gate mais rigido (o cache guarda apenas
+  // `publica`), mas ler tipo errado de um arquivo que qualquer um escreve e
+  // exatamente o que a A08 chama de integridade de dado nao verificada.
+  if (guardado && typeof guardado.em === "number" && Number.isFinite(guardado.em)
+      && guardado.em <= agora
+      && agora - guardado.em < CACHE_VISIBILIDADE_TTL_MS
+      && guardado.visibilidade === "publica") {
+    return "publica";
+  }
+
+  let visibilidade = "desconhecida";
+  try {
+    // `RAINFOREST_GH` e costura de teste, e existe por uma razao de plataforma:
+    // no Windows o `execFileSync` resolve pelo PATHEXT, entao um duble de `gh`
+    // escrito como script sem extensao nunca roda, por mais que esteja no PATH
+    // com bit de execucao -- a chamada cai no catch e o caso de teste passa a
+    // medir a ausencia do duble, nao a visibilidade. Aceita linha de comando
+    // ("node /caminho/stub"), e os argumentos sao passados como VETOR: nada de
+    // shell, nada de interpolacao.
+    const gh = (process.env.RAINFOREST_GH || "gh").split(" ").filter(Boolean);
+    const saida = execFileSync(gh[0], [...gh.slice(1), "repo", "view", ownerRepo, "--json", "isPrivate"], {
+      encoding: "utf8", timeout: 10000, stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    const j = JSON.parse(saida);
+    if (j && j.isPrivate === true) visibilidade = "privada";
+    else if (j && j.isPrivate === false) visibilidade = "publica";
+  } catch {
+    return "desconhecida"; // nao cacheia: ver docblock
+  }
+  if (visibilidade === "desconhecida") return "desconhecida";
+
+  if (visibilidade === "publica") {
+    cache[ownerRepo] = { visibilidade, em: Date.now() };
+    gravarCache(cache);
+  }
+  return visibilidade;
+}
+
 function git(dir, args) {
   try {
     return execFileSync("git", ["-C", dir, ...args], {
@@ -119,7 +315,7 @@ function conferirConteudo(conteudo) {
 /**
  * Formata a mensagem de bloqueio com os achados.
  */
-function mensagemBloqueio(achados, arquivo, ehSubagente) {
+function mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade) {
   let msg = `BLOQUEADO pelo gate de publicação do rainforest-mind.\n\n` +
     `Arquivo: ${arquivo}\n` +
     `Razão: este arquivo é versionado (rastreado por git) e contém dados sensíveis.\n\n` +
@@ -130,6 +326,14 @@ function mensagemBloqueio(achados, arquivo, ehSubagente) {
     msg += `    ${a.o_que}\n`;
     msg += `    → ${a.faca}\n`;
   }
+
+  let msgVisibilidade = "";
+  if (visibilidade === "publica") {
+    msgVisibilidade = `\n\nRepositório: visibilidade pública, apurada por 'gh repo view'. `;
+  } else if (visibilidade === "desconhecida") {
+    msgVisibilidade = `\n\nRepositório: visibilidade desconhecida — bloqueado por precaução. `;
+  }
+  msg += msgVisibilidade;
 
   msg += `\n\nArquivos versionados em repo público não têm como "desaparecer". `;
   msg += `Filter-branch\nremove de uma branch, mas em rede de fork o objeto continua `;
@@ -159,9 +363,16 @@ function mensagemBloqueio(achados, arquivo, ehSubagente) {
   return msg;
 }
 
-function bloqueia(achados, arquivo, agente) {
+// `preambulo` sai ANTES da mensagem, e so quando ha bloqueio de verdade.
+// Medido na revisao de 2026-09-15: o aviso da Issue #165 era escrito no stderr
+// antes desta chamada, e em repositorio privado o gate segue para `exit(0)` --
+// o usuario lia "este conteudo entraria no COMMIT" e nada tinha sido barrado.
+function bloqueia(achados, arquivo, agente, gitTop, preambulo) {
   const ehSubagente = Boolean(agente);
-  process.stderr.write(mensagemBloqueio(achados, arquivo, ehSubagente));
+  const visibilidade = visibilidadeDoRepo(gitTop);
+  if (visibilidade === "privada") process.exit(0);
+  if (preambulo) process.stderr.write(preambulo);
+  process.stderr.write(mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade));
   process.exit(2);
 }
 
@@ -366,12 +577,11 @@ function conferirCommit(ev, cwdDoEvento, agente) {
       }
 
       if (achadosAbloquear.length > 0) {
-        process.stderr.write(
+        bloqueia(achadosAbloquear, absoluto, agente, gitTop,
           `\nEste conteudo entraria no COMMIT, e o gate de escrita nao o viu —\n` +
           `ele cobre Write/Edit, e este arquivo pode ter sido escrito por script\n` +
           `(node, sed, heredoc). Issue #165.\n`
         );
-        bloqueia(achadosAbloquear, absoluto, agente);
       }
     }
   }
@@ -430,7 +640,7 @@ function main() {
 
         const resultado = conferirConteudo(c);
         if (resultado && resultado.achados && resultado.achados.length) {
-          bloqueia(resultado.achados, a, agente);
+          bloqueia(resultado.achados, a, agente, gitTop);
         }
       }
     }
@@ -462,7 +672,7 @@ function main() {
   // Roda a conferência de publicação
   const resultado = conferirConteudo(conteudo);
   if (resultado && resultado.achados && resultado.achados.length) {
-    bloqueia(resultado.achados, arquivo, agente);
+    bloqueia(resultado.achados, arquivo, agente, gitTop);
   }
 
   process.exit(0);

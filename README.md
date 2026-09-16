@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.14.0-1e5c3f?style=flat-square" alt="versão 1.14.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.16.0-1e5c3f?style=flat-square" alt="versão 1.16.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -118,6 +118,22 @@ sem ninguém decidir isso.
 **Retomada é comando, não memória.** Sessão nova roda `estado.cjs proximo --slug
 <slug>` e sabe onde parou. Design, plano e estado do fluxo são versionados de
 propósito — é por eles que outro dev pega a atividade no meio.
+
+## O título da sessão diz se o fluxo fechou
+
+No `/exit`, o hook de `SessionEnd` `hooks/titulo-sessao-end.cjs` prefixa o
+título da sessão com o estado dos fluxos que ela tocou: `[ok]` quando todos
+fecharam, `[aberto: <estágio>]` quando algum ficou pela metade.
+
+A busca do `/resume` casa contra o `customTitle`: digitar a palavra `aberto`
+filtra exatamente as sessões que ficaram pela metade — é por isso que o
+marcador é palavra, não símbolo.
+
+O hook fica **calado** em três casos: `reason` diferente de
+`prompt_input_exit` (fechar o terminal na mão não dispara hook nenhum;
+`claude -p` emite `other`), sessão sem nenhum fluxo carimbado, e repositório
+que não usa o fluxo. Um nome dado com `/rename` tem precedência — o hook só
+prefixa, nunca substitui.
 
 ## Não chama de pronto sem a saída
 
@@ -253,7 +269,7 @@ incidente datado, em [`references/regra-<n>.md`](skills/rainforest-mind/referenc
 | 7 | Tom sênior | Policia ponta solta e escopo, nunca o mérito |
 | 8 | Guarda-corpo de jornada | Jornada **medida**, não estimada; um aviso, uma vez |
 | 9 | Freio de Pareto | Polimento do que já está pronto → "alguém que recebe fica prejudicado?" |
-| 10 | Agentes baratos, e só os admitidos | Rodar exige estar declarado no manifesto, com o estágio ativo |
+| 10 | Agentes baratos, e a portaria registra | Só a regra 11 barra; manifesto e estágio viram linha de log, não portão |
 | 11 | Worktree: principal na `main` | Checkout principal fica na branch padrão, todo trabalho nasce em worktree; hash de base conferido na fonte |
 | 12 | Entrega se valida na saída real | Critério falsificável no briefing; suíte verde não é evidência |
 | 13 | Correção vira observação | Você corrigir a saída já é o sinal: registra silenciosamente |

@@ -60,6 +60,9 @@ const { cwdPorSegmento, segmentosComAspas } = require("./lib/cwd-efetivo.cjs");
 const {
   tokensComAspas, ehComando, posicaoDeComando, textoAPartir, desempacotarWrapperDeString,
 } = require("./lib/tokens-comando.cjs");
+const {
+  corpoDeHeredoc, linhaDoHeredocTemInterpretador, fimDaLinhaLogica, normalizarExecutavel,
+} = require("./lib/heredoc.cjs");
 
 // Flags globais do git que consomem o token seguinte (`git -C <dir> add`).
 const FLAG_COM_VALOR = new Set([
@@ -160,6 +163,179 @@ function analisaGit(toksComAspas) {
  * reconstroi so o texto dali pra frente, sem o prefixo que ja foi
  * consumido — para o desempacotador enxergar `bash -c "..."` como tal.
  */
+
+/**
+ * Onde comeca cada `<<` que e mesmo OPERADOR de heredoc.
+ *
+ * `indexOf('<<')` nao serve: ele acha `<<` dentro de aspas e dentro de
+ * comentario. Foi assim que a primeira versao desta mascara abriu o gate --
+ * `echo "a << b"` numa linha fazia o corpo do 'heredoc' comecar na linha
+ * seguinte e ir ate o fim do comando, apagando o `git add -A` que vinha
+ * depois (auditoria de seguranca do zerar-issues-4, A01).
+ *
+ * Varre uma vez rastreando aspas simples (onde nada escapa), aspas duplas
+ * (onde a contrabarra escapa), contrabarra solta e comentario `#` em inicio
+ * de palavra. `<<<` e here-string, nao heredoc: e pulado.
+ */
+function posicoesDeOperadorHeredoc(cmd) {
+  const achados = [];
+  let simples = false;
+  let duplas = false;
+  for (let k = 0; k < cmd.length; k++) {
+    const c = cmd[k];
+    if (!simples && c === "\\") { k++; continue; }
+    if (!duplas && c === "'") { simples = !simples; continue; }
+    if (!simples && c === '"') { duplas = !duplas; continue; }
+    if (simples || duplas) continue;
+    if (c === "#") {
+      const antes = k === 0 ? "" : cmd[k - 1];
+      if (k === 0 || " \t\n;|&(".includes(antes)) {
+        const quebra = cmd.indexOf("\n", k);
+        if (quebra === -1) break;
+        k = quebra;
+        continue;
+      }
+    }
+    if (c === "<" && cmd[k + 1] === "<") {
+      if (cmd[k + 2] === "<") { k += 2; continue; }
+      achados.push(k);
+      k++;
+    }
+  }
+  return achados;
+}
+
+// Comandos que EXECUTAM um arquivo passado como argumento. Superconjunto de
+// INTERPRETADORES_DE_HEREDOC de proposito: aqui o custo de errar para o lado de
+// bloquear e baixo, e o corpo pode ser script de qualquer linguagem.
+const EXECUTAM_ARQUIVO = new Set([
+  "bash", "sh", "zsh", "ksh", "dash", "pwsh", "powershell", "cmd", "eval",
+  "source", ".", "node", "python", "python3", "py", "perl", "ruby", "deno", "bun",
+]);
+
+/**
+ * O heredoc que abre em `i` e gravado num arquivo que o proprio comando executa
+ * depois? Nesse caso o corpo e script, nao dado, e nao pode ser mascarado.
+ *
+ * Duas sutilezas medidas na auditoria do zerar-issues-4 (2026-09-15):
+ *
+ * 1. O redirecionamento pode vir ANTES do `<<` (`cat > x.sh <<'EOF'`). A
+ *    primeira versao lia a linha a partir do `<<` e nao o via — `cat > x.sh`
+ *    + `bash x.sh` atravessava o gate, com staging em massa no corpo. Agora a
+ *    linha logica inteira e varrida, e todos os alvos de redirecionamento dela.
+ *
+ * 2. "Aparece depois" nao basta. `cat > /tmp/x.md <<'EOF'` seguido de
+ *    `gh issue create --body-file /tmp/x.md` cita o arquivo sem executa-lo — e
+ *    e exatamente o caso da Issue #258, que tem de continuar passando. So conta
+ *    como execucao o arquivo citado como `./x` ou como argumento de um comando
+ *    que executa arquivo (`bash x`, `sh -x x`, `source x`, `node x`).
+ */
+function alvoDoRedirecionamentoEhExecutadoDepois(cmd, i, fimDoHeredoc) {
+  let ini = i;
+  while (ini > 0 && cmd[ini - 1] !== "\n") ini--;
+  let fimLinha = fimDaLinhaLogica(cmd, i);
+  if (fimLinha === -1) fimLinha = cmd.length;
+  const linha = cmd.slice(ini, fimLinha);
+
+  const alvos = new Set();
+  const re = /(?:^|[\s;|&])\d?>>?\s*([^\s;|&<>]+)/g;
+  let m;
+  while ((m = re.exec(linha)) !== null) {
+    const alvo = m[1].replace(/^["']+|["']+$/g, "");
+    if (!alvo) continue;
+    const base = alvo.split(/[\\/]/).pop();
+    if (base) alvos.add(base);
+  }
+  if (alvos.size === 0) return false;
+
+  const depois = cmd.slice(Math.min(fimDoHeredoc, cmd.length));
+  let toks;
+  try { toks = tokensComAspas(depois).map((t) => String(t.v)); } catch { toks = depois.split(/\s+/); }
+
+  for (let k = 0; k < toks.length; k++) {
+    const t = toks[k];
+    const nu = t.replace(/^["']+|["']+$/g, "");
+    const base = nu.split(/[\\/]/).pop();
+    if (!base || !alvos.has(base)) continue;
+    // Citado com caminho explicito de execucao: `./x.sh`, `.\x.sh`.
+    if (/^\.[\\/]/.test(nu)) return true;
+    // Argumento de um comando que executa arquivo, pulando flags.
+    for (let j = k - 1; j >= 0; j--) {
+      const anterior = String(toks[j]);
+      if (/^[|;&(){}]+$/.test(anterior)) break;
+      if (anterior.startsWith("-")) continue;
+      const alvoTok = anterior.split(/[|;&(){}]+/).filter(Boolean).pop();
+      if (alvoTok && EXECUTAM_ARQUIVO.has(normalizarExecutavel(alvoTok))) return true;
+      break;
+    }
+  }
+  return false;
+}
+
+/**
+ * D1 (zerar-issues-4, #258): troca o CORPO de um heredoc por espacos,
+ * preservando o comprimento da string, quando aquele corpo e mesmo DADO.
+ *
+ * Por que MASCARAR e nao recortar. O indice do segmento onde o `git
+ * add`/`commit` casou e usado para consultar `cwdPorSegmento` (H1, rodada 5,
+ * lote 3). As duas travessias tem de ver a MESMA string: recortar o corpo
+ * mudaria os deslocamentos e o indice passaria a apontar para outro segmento.
+ * Espaco no lugar de cada caractere mantem todo deslocamento. O `\n` e
+ * preservado porque e separador de comando.
+ *
+ * Por que isto conserta a #258. O gatilho nao era o heredoc nem a citacao de
+ * comando git: era o `.` que abre frase depois de `)` -- `(folga de 2 B). Ele
+ * sobe.` --, que `posicaoDeComando` le como o builtin `source`, fazendo o gate
+ * bloquear por "comando dinamico".
+ *
+ * QUATRO condicoes, todas obrigatorias. A primeira versao exigia so a quarta
+ * e abriu sete formas de atravessar o gate (auditoria do zerar-issues-4).
+ * Cada condicao existe por um caso medido:
+ *
+ * 1. O `<<` e operador, nao texto -- `posicoesDeOperadorHeredoc`. Sem isto,
+ *    `echo "a << b"` numa linha apaga o `git add -A` da linha seguinte.
+ * 2. O delimitador esta entre aspas (`<<'EOF'` ou `<<"EOF"`). Corpo de
+ *    heredoc NAO citado expande `$(...)` e crase: `cat <<EOF` com
+ *    `$(git add -A)` no corpo EXECUTA o staging. Corpo que expande nao e dado.
+ *    E o caso citado que a #258 relata e a propria Issue sugere isentar.
+ * 3. O delimitador fecha em linha propria. Sem fechamento, `corpoDeHeredoc`
+ *    devolve `fim = cmd.length` e a mascara engole o resto do comando --
+ *    inclusive uma linha de fechamento FALSA plantada no fim.
+ * 4. O comando receptor nao e interpretador (`bash <<'EOF'`), e o alvo do
+ *    redirecionamento nao e executado adiante: nos dois casos o corpo e
+ *    comando de verdade.
+ *
+ * Fora dessas quatro, o corpo segue para a analise como sempre seguiu -- o
+ * lado de bloquear. Falha fechada e o unico default aceitavel aqui: este gate
+ * existe por um `git add -A` que varreu o trabalho de outra sessao.
+ */
+function mascararCorposDeHeredoc(cmd) {
+  let fora = cmd;
+  let de = 0;
+  for (let guarda = 0; guarda < 200; guarda++) {
+    const i = posicoesDeOperadorHeredoc(fora).find((p) => p >= de);
+    if (i === undefined) break;
+    const heredoc = corpoDeHeredoc(fora, i);
+    if (heredoc === null) { de = i + 2; continue; }
+    const fimDoHeredoc = Math.min(heredoc.fim, fora.length);
+    const dado =
+      heredoc.delimitadorQuotado &&
+      heredoc.fechado &&
+      !linhaDoHeredocTemInterpretador(fora, i) &&
+      !alvoDoRedirecionamentoEhExecutadoDepois(fora, i, fimDoHeredoc);
+    if (dado) {
+      const quebra = fora.indexOf("\n", i);
+      const inicio = quebra === -1 ? fora.length : quebra + 1;
+      if (fimDoHeredoc > inicio) {
+        const emBranco = fora.slice(inicio, fimDoHeredoc).replace(/[^\n]/g, " ");
+        fora = fora.slice(0, inicio) + emBranco + fora.slice(fimDoHeredoc);
+      }
+    }
+    de = Math.max(fimDoHeredoc, i + 2);
+  }
+  return fora;
+}
+
 function analisaSegmentoGit(segTexto, ferramenta) {
   const g = analisaGit(tokensComAspas(segTexto));
   if (g) return g;
@@ -319,7 +495,9 @@ function main() {
   let motivo = null;
   let dirC = null;
   let indiceSegmento = null;
-  const segs = segmentos(cmd);
+  // D1 (zerar-issues-4): remover corpos de heredoc nao-interpretador ANTES de segmentar
+  const cmdParaAnalise = mascararCorposDeHeredoc(cmd);
+  const segs = segmentos(cmdParaAnalise);
   for (let idx = 0; idx < segs.length; idx += 1) {
     const g = analisaSegmentoGit(segs[idx], ev.tool_name);
     if (!g) continue;
@@ -344,7 +522,7 @@ function main() {
   // `git -C`, e `-C` e explicito. `incerto` (cd variavel, subshell, `~` no
   // comeco, `popd` sem `pushd`) = conservadorismo: usa o cwd inicial, evitando
   // decidir por adivinhacao.
-  const porSegmento = cwdPorSegmento(cmd, cwdDoEvento);
+  const porSegmento = cwdPorSegmento(cmdParaAnalise, cwdDoEvento);
   const doSegmento = porSegmento[indiceSegmento] || { cwd: cwdDoEvento, incerto: true };
   const dir = dirC || (doSegmento.incerto ? cwdDoEvento : doSegmento.cwd);
   const gitDir = git(dir, ["rev-parse", "--git-dir"]);

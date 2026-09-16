@@ -1,5 +1,6 @@
 vigias/log-*.txt
 sessoes.json
+fluxos-sessao.json
 
 # Ajuste local de plugin: este projeto não aponta horas. Fica fora do versionado
 # porque nomeia um marketplace interno de cliente e o repositório é público.
@@ -79,3 +80,15 @@ ferramentas.jsonl
 # Outro dev em outro ambiente refaz a colheita e obtem hash diferente: normal e
 # esperado. Fica fora (D9).
 .rainforest/colheita/
+
+# Cache de visibilidade de repositorio (gate de publicacao, D6): owner/repo
+# -> publica, com carimbo de tempo. E' RASTRO DE EXECUCAO desta maquina --
+# resposta do `gh` num instante, num repositorio, para uma conta. Nao
+# descreve o plugin e nao serve para outro dev.
+#
+# Entrou na lista em 2026-09-15, pela auditoria do lote zerar-issues-4:
+# `git check-ignore` saia rc=1, e em repositorio com raiz de dados no
+# proprio projeto o arquivo viajaria no PR e chegaria em cada clone. O dano
+# de uma entrada plantada acabou junto com o cache de `privada` (o que fica
+# so deixa o gate mais rigido), mas rastro de execucao nao se versiona.
+.rainforest/cache-visibilidade-repo.json

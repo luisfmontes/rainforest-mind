@@ -6,11 +6,47 @@ cresceram juntos e estouraram o teto de bytes de um `reference`. A regra em si �
 roteamento por função, limiar de 3.000 tokens, agente que edita não é nomeado —
 continua em `regra-10.md`.
 
-Subagente só roda se estiver declarado no manifesto com o estágio ativo na sua lista. A decisão é tomada por código (hook `PreToolUse` que intercepta a tool `Task`), nunca por pergunta ao humano em runtime.
+## 2026-09-15 — a portaria deixou de admitir (issue #264)
 
-> **Regra 10 (reescrita):** Subagente só roda se estiver declarado no manifesto e o estágio ativo constar na sua lista. A portaria decide por código; o humano nunca é perguntado em sessão. Exceção não existe em runtime — exceção é editar o manifesto, e edição de manifesto é mudança versionada que passa pelo `revisar`.
+**Até 15/09 esta era uma allowlist: fora do manifesto, deny; sem estágio ativo,
+deny (a menos que o usuário digitasse "autorizo subagentes" naquela sessão).
+Não é mais.** O que mudou e por quê:
 
-**Vale em toda sessão** com o plugin habilitado, e o manifesto do repo **substitui por inteiro** o padrão embarcado (2026-09-13): `regra-10-portaria-escopo.md`.
+| Portão | Antes | Agora |
+|---|---|---|
+| Agente fora do manifesto | nega | **passa**, com `declarado: false` no log |
+| Sem estágio ativo | nega, ou exige frase digitada | **passa**, com `fora_de_fluxo: true` no log |
+| Estágio fora da lista do agente | nega | **passa**, com `estagio_declarado` no log |
+| `escreve: true` sem `isolation: "worktree"` | nega | **nega** (regra 11) |
+| `escreve: true` com `name` | nega | **nega** (regra 10) |
+| Manifesto malformado | nega | **nega** |
+
+O custo dos dois primeiros foi medido no `despachos.jsonl` de 15/09 e superou o
+que protegiam — medições completas em
+`docs/rainforest/design/2026-09-13-portaria-em-nivel-de-plugin.md`, emenda de
+15/09. Em resumo: agente de outro plugin do próprio usuário nunca passava, e a
+frase "autorizo subagentes" custava uma digitação por sessão sem decidir nada.
+
+O critério que separa o portão que fica do que sai: **ele defende a árvore de
+trabalho do usuário, ou a ordem do fluxo?** A regra 11 defende a árvore, e fica.
+Ordem de fluxo agora se registra — as marcas acima entram no log, que o
+`conferir-fluxo` já lê.
+
+> **Regra 10 (reescrita em 2026-09-15):** o manifesto é **declaração**, não
+> admissão. A portaria barra um caso só — agente que escreve sem worktree
+> isolado, ou nomeado. Todo o resto ela deixa passar e registra. A decisão
+> continua sendo por código (hook `PreToolUse` sobre a tool `Task`), e o humano
+> continua não sendo perguntado em runtime — a diferença é que agora ele também
+> não é **cobrado** em runtime.
+
+**Agente não declarado tem o `escreve` INFERIDO** do frontmatter, quando o
+arquivo está ao alcance: tool fora da allowlist read-only → `escreve: true`, e a
+regra 11 vale para ele. Fora de alcance — o caso comum em repo de consumidor,
+onde os agentes vêm do cache do plugin — o allow sai marcado
+`escreve_conferido: false`, em vez de afirmar read-only. Para a regra 11 morder
+agente de outro plugin, declare-o no `agentes.extra.json` (ver `-escopo.md`).
+
+**Vale em toda sessão** com o plugin habilitado. Os três níveis de manifesto — padrão embarcado, `agentes.extra.json` que soma, `agentes.json` do repo que substitui — estão em `regra-10-portaria-escopo.md`.
 
 **O manifesto** declara por agente:
 - `estagios`: em quais estágios do grafo (ex.: `["revisar"]`, `["design", "plano"]`) pode ser despachado.
@@ -27,45 +63,29 @@ Exemplo:
 }
 ```
 
-**A FORMA do manifesto é conferida antes do conteúdo.** `escreve` tem de ser o booleano `false` — string `"false"`, ausente, ou qualquer outra coisa **nega**, com motivo instrutivo, no runtime e no `--lint`. `escreve: true` era negado até 2026-09-02, quando o mecanismo que faltava foi implementado — ver a emenda no fim deste arquivo. `estagios` ausente, não-lista ou vazio é **erro** no lint; lista que só contém estágio que nunca fica ativo (`arqueologia`) é **aviso**, porque o manifesto não está malformado, está inútil — o runtime negaria todo despacho daquele agente. Isto nasceu do crítico da rodada 5 da revisão: `escreve === false` é igualdade estrita, e qualquer outro valor desligava a checagem de escrita inteira, liberando em silêncio um agente que declarava `tools: Write, Edit, Bash` — com a linha de log idêntica à de um allow conferido.
+**A FORMA do manifesto é conferida antes do conteúdo.** `escreve` tem de ser o booleano `false` — string `"false"`, ausente, ou qualquer outra coisa **nega**, com motivo instrutivo, no runtime e no `--lint`. `estagios` ausente, não-lista ou vazio é **erro** no lint; lista que só contém estágio que nunca fica ativo (`arqueologia`) é **aviso**, porque o manifesto não está malformado, está inútil — o runtime negaria todo despacho daquele agente. O porquê (crítico da rodada 5: `escreve === false` é igualdade estrita, e qualquer outro valor desligava a checagem inteira em silêncio) está no `git log` de `hooks/portaria.cjs`.
 
-**Fail-closed, sempre com motivo.** A portaria nega quando: manifesto do repo inválido — **nega, não cai no padrão**, senão o repo ganharia agentes que não declarou; agente não declarado, sem estágio ativo (nenhum fluxo aberto que case com a branch), estágio ativo fora da lista `estagios` do agente, ou `escreve: false` mas o arquivo `agents/<nome>.md` declara tools fora da allowlist read-only (`Read`, `Grep`, `Glob`). Toda negação sai com motivo não vazio — negação muda é bug.
+**Fail-closed, sempre com motivo.** Depois da revogação acima a portaria nega em quatro casos, e todos são forma ou regra 11: manifesto do repo inválido — **nega, não cai no padrão**, senão o repo ganharia agentes que não declarou; `agentes.extra.json` do usuário inválido; campo `escreve` ou `runtime` com valor que não dá para interpretar em agente **declarado**; e `escreve: true` sem `isolation: "worktree"` ou com `name`. Agente declarado com `escreve: false` cujo `agents/<nome>.md` declara tool fora da allowlist read-only (`Read`, `Grep`, `Glob`) também nega — é declaração que contradiz o arquivo. Toda negação sai com motivo não vazio: negação muda é bug.
 
-**Log de despacho** — `<raiz de dados>/portaria/despachos.jsonl`, **fora do repositório** desde 2026-09-13 (raiz por `hooks/lib/raiz.cjs`; ver `-escopo.md`): append-only, uma linha JSON por decisão, aprovada ou negada. Cada linha é autocontida — legível isolada, sem precisar do resto do log para fazer sentido:
+**Log de despacho** — `<raiz de dados>/portaria/despachos.jsonl`, **fora do repositório** desde 2026-09-13 (raiz por `hooks/lib/raiz.cjs`; ver `-escopo.md`): append-only, uma linha JSON por decisão, autocontida. Depois da #264 é ele que responde pelos portões que saíram — o exemplo antigo mostrava um deny por "não consta no manifesto", que deixou de existir:
 ```json
-{"ts":"2026-08-31T14:02:11Z","repo":"<caminho>","agente":"revisor","estagio":"revisar","decisao":"allow","sessao":"<id>"}
-{"ts":"2026-08-31T14:05:47Z","repo":"<caminho>","agente":"executor","estagio":"revisar","decisao":"deny","motivo":"agente 'executor' não consta no manifesto","sessao":"<id>"}
+{"ts":"…","repo":"…","agente":"Plan","estagio":"fora-de-fluxo","decisao":"allow","sessao":"…","declarado":false,"fora_de_fluxo":true}
+{"ts":"…","repo":"…","agente":"executor","estagio":"executar","decisao":"deny","sessao":"…","motivo":"… 'escreve: true' e so roda com isolation: \"worktree\" … (regra 11)"}
 ```
 
 O log é evidência de primeira classe: responde "quem rodou, quando, onde, em qual estágio" com `cat`, e o recibo do fluxo 7 pode referenciá-lo. Falha ao gravar vai para o **stderr** sem mudar a decisão: não-fatal, mas não calada.
 
-**Exceção é editar o manifesto.** Quem quer disparar agente não declarado edita o manifesto que vale ali (o do repo, ou o padrão do plugin se a mudança vale em todo lugar), passando a mudança pelo `revisar` — é o único jeito de aprovar novas declarações. Em runtime, sem edição no manifesto, não há pergunta ao humano.
+**Dívida nomeada: `escreve: false` é declaração, não trava.** A checagem lê `tools:` do frontmatter e nega o que estiver fora de `Read`/`Grep`/`Glob`. Ela quase não dispara contra agente real, por duas portas:
 
-**Estado atual (Opção A: 2026-08-31).** Enquanto `escreve: false` for a única opção no schema e agentes escritores (`executor`, `documentador`, `resolvedor-de-build`, `tester`) não tiverem worktree próprio (extensão futura não implementada), esses quatro agentes não cabem no manifesto real — ficar de fora do manifesto significa serem bloqueados assim que o hook for registrado (no `hooks/hooks.json` do plugin desde 2026-09-13). A Tarefa 9 do plano (fluxo 9) registra bloqueio explícito — o hook entra em produção (`main`) apenas com aceite por escrito do usuário de que sabe e aceitou que `executor`/`documentador`/`resolvedor-de-build`/`tester` param de rodar nesse instante, até a reavaliação futura de `escreve: true` com isolamento de worktree.
+1. **Nenhum** dos arquivos em `agents/` declara `tools:` (medido em 2026-09-01) — todos herdam o conjunto inteiro. Escrever `tools: Read, Grep, Glob` foi recusado com razão: o `revisor` precisa de `Bash` para **reproduzir cada achado** antes do veredito, que é o que a regra 12 cobra dele. A trava real exigiria uma allowlist que separasse "roda comando" de "escreve arquivo", e o frontmatter não tem isso.
+2. Em repositório que apenas **consome** o plugin o arquivo do agente nem existe localmente — vem do cache. A portaria aprova sem conferir, e tem de aprovar: negar por arquivo ausente a quebraria fora deste repo. O `--lint` diverge de propósito, porque é local a este repositório, onde todo agente declarado tem de ter arquivo.
 
-**Aceite registrado (Luís, 2026-09-01).** A Opção A foi aceita: `executor`, `documentador`, `resolvedor-de-build` e `tester` param de rodar quando o hook entrar na `main`, até a reavaliação de `escreve: true` com worktree por filho. O manifesto real admite três — `revisor` e `auditor-de-seguranca` em `["revisar"]`, `planejador` em `["design", "plano"]`. `arqueologo` fica de fora porque escreve em `docs/rainforest/mapas/`; `depurador`, por não ter sido avaliado.
-
-**Dívida nomeada: `escreve: false` é declaração, não trava.** A decisão 6 (runtime) e a checagem 3 (lint) leem `tools:` do frontmatter e negam o que estiver fora de `Read`/`Grep`/`Glob`. Ela não dispara contra agente real, por duas portas:
-
-1. **Nenhum** dos nove arquivos em `agents/` declara `tools:` (medido em 2026-09-01) — todos herdam o conjunto inteiro. Escrever `tools: Read, Grep, Glob` nos três admitidos foi recusado com razão: o `revisor` precisa de `Bash` para **reproduzir cada achado** antes do veredito, que é o que a regra 12 cobra dele. A trava real exigiria uma allowlist que separasse "roda comando" de "escreve arquivo", e o frontmatter não tem isso.
-2. Em repositório que apenas **consome** o plugin, o arquivo do agente nem existe localmente — vem do cache. A portaria então aprova sem conferir, e tem de aprovar: negar por arquivo ausente quebraria a portaria fora deste repo. O `--lint` diverge de propósito, porque ele é local a este repositório, onde todo agente declarado tem de ter arquivo.
-
-A assimetria é desenho. O que estava errado, e a rodada 4 da revisão pegou, é ela ser **invisível**: o allow saía idêntico ao de um agente conferido. Agora a linha do `despachos.jsonl` traz `escreve_conferido: false` quando a checagem não pôde ser feita — allow sem o campo é allow conferido. Até a folga fechar, quem defende `escreve: false` é o manifesto + estágio, não o `escreve`. (Para `escreve: true` a defesa é outra, e é conferida: ver a emenda abaixo.)
+A assimetria é desenho; o errado era ela ser **invisível**. Hoje a linha traz `escreve_conferido: false` quando não deu para conferir — allow sem o campo é allow conferido. E desde a #264 **não há mais nada atrás dela**: manifesto e estágio pararam de defender. Para `escreve: false` o que resta é a declaração; a defesa conferida existe só para `escreve: true`, e é a regra 11.
 
 ## Emenda de 2026-09-02 — `escreve: true` admitido, com worktree obrigatório
 
 A Opção A acima **continua sendo o histórico correto** e não se apaga: descreve
 o estado entre 2026-08-31 e 2026-09-02. O que mudou é o mecanismo que faltava.
-
-**O que a espera custou, e não era o que se supunha.** Os três agentes admitidos
-cobriam `revisar`, `design` e `plano`; **nenhum cobria `executar`**. O estágio
-inteiro ficou sem agente admitido, e a regra 10 — que manda despachar toda task
-mecânica no `executor` — ficou desligada sem que nada dissesse isso. Dois
-mecanismos do usuário, os dois na `main`, contradizendo-se em silêncio. O log
-provou (é para isso que ele existe): cinco negações de `executor`, em **duas
-sessões distintas** com horas de intervalo, mais uma de `planejador` no
-`executar` — a saída que a primeira sessão tentou. Ela contornou implementando
-na mão e **não registrou o bloqueio no handover dela**.
 
 **A trava, agora.** `escreve: true` não é permissão: é a exigência de duas
 condições que já eram obrigatórias em prosa, e agora são conferidas por código.
