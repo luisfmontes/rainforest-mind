@@ -449,10 +449,12 @@ echo "  -- SABOTAGEM: devolver o \`readonly\` minusculo e exigir que a assercao 
 # O IRMAO VAI JUNTO: memoria.cjs faz require("../hooks/lib/raiz.cjs"), que resolve ao lado
 # do arquivo COPIADO. Sem recriar a arvore, o mutante morre com MODULE_NOT_FOUND antes de
 # rodar uma linha — e a bateria creditaria 'ok' por nao ter conseguido executar nada.
-mkdir -p "$CAIXA/mut/scripts" "$CAIXA/mut/hooks/lib"
+# Desde o #282 memoria.cjs tambem faz require("./lib/achar-executavel-claude.cjs").
+mkdir -p "$CAIXA/mut/scripts/lib" "$CAIXA/mut/hooks/lib"
 MUT_MEMORIA="$CAIXA/mut/scripts/memoria-mut.cjs"
 cp "$SRC/scripts/memoria.cjs" "$MUT_MEMORIA"
 cp "$SRC/hooks/lib/raiz.cjs" "$CAIXA/mut/hooks/lib/raiz.cjs"
+cp "$SRC/scripts/lib/achar-executavel-claude.cjs" "$CAIXA/mut/scripts/lib/achar-executavel-claude.cjs"
 node -e '
 const fs = require("fs");
 const alvo = process.argv[1];
