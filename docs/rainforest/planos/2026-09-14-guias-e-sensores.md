@@ -180,3 +180,35 @@ peça nova que entrar pelo merge vai deixá-la vermelha até alguém atualizar o
 número. É o argumento da D5 ("lista central diverge do diretório em silêncio")
 apontado para o teste — mas trocar isso por uma contagem derivada é mudança de
 escopo, e vira ideia plantada, não tarefa desta rodada.
+
+## Emenda de 2026-09-16 — as baterias que as regras novas invalidaram
+
+O `revisar` da rodada 2 aprovou o mérito e reprovou por rastreabilidade: sete
+arquivos de bateria foram tocados para acompanhar regra nova desta branch, e
+nenhum deles caía no `arquivos:` de tarefa alguma. Nenhum é regressão — o diff de
+cada um só acrescenta campo ou linha de cópia, nunca remove asserção —, mas a
+auditoria por `arquivos:` não os enxergava. A emenda de 2026-09-15 já tinha
+aberto a Tarefa 9 por essa mesma razão e fechou três dos oito arquivos da mesma
+causa raiz; estes são os que ficaram de fora.
+
+### 5. Fechar `verificar` com ok exige sensor na evidência — `arquivos:` AMPLIADO
+
+acrescenta: `hooks/testa-ledger-fluxos.sh`, `scripts/testa-portoes-gate.sh`, `scripts/testa-recibo-fechar.sh`
+pronto quando (acréscimo ao critério existente): as três baterias acima, que fechavam `verificar` com `ok` sem citar sensor, passam a declarar `sensor_externo` com valor que aparece dentro de `comando` — e as três devolvem exit 0, provado por `bash hooks/testa-ledger-fluxos.sh`, `bash scripts/testa-portoes-gate.sh` e `bash scripts/testa-recibo-fechar.sh`
+
+**Por que não é afrouxamento:** o conserto é a bateria declarar o que a regra
+nova pede, não a regra parar de pedir. Nenhuma linha de `scripts/estado.cjs` foi
+tocada para isto, e a recusa continua load-bearing — provada por mutação ao vivo
+na seção 27 de `scripts/testa-estado.sh`.
+
+### 9. Fonte única de `cortarBytes` — `arquivos:` AMPLIADO
+
+acrescenta: `scripts/testa-backup-estado.sh`, `scripts/testa-ponte.sh`, `scripts/testa-ponte-entrevista.sh`, `scripts/testa-registrar-erro.sh`
+pronto quando (acréscimo ao critério existente): as quatro baterias acima, que montam a caixa de teste copiando `hooks/lib/` arquivo a arquivo, passam a copiar também o `hooks/lib/bytes.cjs` de que `contexto-sessao.cjs` passou a depender — e as quatro devolvem exit 0
+
+**O preço da extração, que não estava escrito em lugar nenhum:** extrair função
+para arquivo novo cobra de toda caixa de teste que copia lib seletivamente. O
+repo tem **nove** baterias nesse padrão; quatro quebraram agora, e as outras
+cinco só não exercitam o caminho do `cortarBytes` ainda. Quem mexer em
+`hooks/lib/` de novo deve conferir a lista antes:
+`grep -rl "hooks/lib/contexto-sessao.cjs\|hooks/lib/memoria-sessao.cjs" scripts/testa-*.sh hooks/testa-*.sh`.
