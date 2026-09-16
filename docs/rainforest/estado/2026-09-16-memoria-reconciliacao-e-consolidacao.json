@@ -1,0 +1,28 @@
+{
+  "slug": "2026-09-16-memoria-reconciliacao-e-consolidacao",
+  "titulo": "Memória: reconciliação na escrita e consolidação automática",
+  "criado_em": "2026-09-16",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-16-memoria-reconciliacao-e-consolidacao.md",
+    "em": "2026-09-16"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
