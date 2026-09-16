@@ -11,7 +11,25 @@
     "em": "2026-09-16"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/zerar-issues-5.md",
+    "tarefas": 18,
+    "paralelas": [
+      1,
+      2,
+      4,
+      7,
+      9,
+      10,
+      11,
+      12,
+      13,
+      15,
+      16,
+      17,
+      18
+    ],
+    "em": "2026-09-16"
   },
   "executar": {
     "status": "pendente"
