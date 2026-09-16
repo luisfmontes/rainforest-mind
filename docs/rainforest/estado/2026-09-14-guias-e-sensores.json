@@ -67,7 +67,7 @@
     ],
     "em": "2026-09-16",
     "comando": "bash scripts/varrer-baterias.sh",
-    "saida": "as 121 baterias passaram (EXIT_DO_RUNNER=0, gravado dentro do proprio log); as 7 baterias da emenda de 16/09 rodadas de novo, exit 0 cada",
+    "saida": "as 121 baterias passaram (EXIT_DO_RUNNER=0 no log); criterios das emendas de 16/09 provados: as 7 baterias exit 0, testa-teto-skills exit 0, testa-portaria-manifesto exit 0, regua ancestral da rodada 1",
     "sensor_externo": "bash scripts/varrer-baterias.sh",
     "mutacao": [
       {
@@ -131,17 +131,18 @@
       "testa-ledger-fluxos: 26 ok, 0 falhas, exit 0"
     ],
     "agente_morto": "executor das seis baterias travou (600s sem progresso) sem commitar. Deixou modificacao nao commitada trocando require(./bytes.cjs) por __dirname, hipotese FALSA: CommonJS ja resolve relativo ao arquivo. Descartada.",
-    "causa_raiz_das_seis": "Tarefa 9 (Issue #259): baterias copiam hooks/lib/ arquivo a arquivo para a caixa de teste e nao levam o bytes.cjs novo, que contexto-sessao.cjs e memoria-sessao.cjs passaram a requerer"
+    "causa_raiz_das_seis": "Tarefa 9 (Issue #259): baterias copiam hooks/lib/ arquivo a arquivo para a caixa de teste e nao levam o bytes.cjs novo, que contexto-sessao.cjs e memoria-sessao.cjs passaram a requerer",
+    "creep": "cruzamento do diff inteiro (72 arquivos) contra arquivos: de todas as tarefas mais as quatro emendas: zero fora"
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "06f52e2a4067b439fa87707270f9047b6322b712",
+      "head": "e2d1a2c1ddbf45808fe64f94c95939d85377e2c1",
       "caminhos_sujos": []
     },
     "em_voo": [],
     "em": "2026-09-16",
-    "achados": 1,
+    "achados": 2,
     "bloqueantes": [
       "testa-conferir-categoria.sh vermelho no head: hooks/titulo-sessao-end.cjs (vindo da main pela #274) sem marca @categoria, e o total esperado do teste virou 42",
       "nucleo injetado da regra 10 ficou falso: SKILL.md:124 e regra-10-portaria.md:68 afirmam que so a regra 11 barra, e a tarefa 6 acrescentou um quinto portao"
@@ -152,10 +153,13 @@
     "baixos": [
       "estado.json cita caso 5c e caso 6, renumerados para 7c e 8 pelo merge"
     ],
-    "tentativas": 2,
+    "tentativas": 3,
     "achado": "creep parcial: 7 arquivos de bateria tocados sem tarefa que os cubra. hooks/testa-ledger-fluxos.sh, scripts/testa-portoes-gate.sh e scripts/testa-recibo-fechar.sh sao consequencia da Tarefa 5; scripts/testa-backup-estado.sh, testa-ponte.sh, testa-ponte-entrevista.sh e testa-registrar-erro.sh sao consequencia da Tarefa 9. Nenhum e regressao — o diff de cada um so acrescenta campo ou linha de copia, nunca remove assercao — mas a auditoria por arquivos: nao os enxerga",
     "aprovado_no_merito": "os quatro achados da rodada 1 fechados e conferidos rodando; conversao da Tarefa 6 bate com a separacao forma/admissao da dd2e7ccd; nenhuma bateria afrouxada; teto do SKILL.md em 16308 B com o bloco Sensor: preservado inline",
-    "lacuna_do_revisor_respondida": "ele nao conseguiu rodar varrer-baterias.sh ate o fim e supos instabilidade historica. A varredura completa rodou aqui: 121 de 121 verdes, EXIT_DO_RUNNER=0 gravado no log. Nao ha instabilidade; a divergencia anterior era defeito real, consertado nesta rodada"
+    "lacuna_do_revisor_respondida": "ele nao conseguiu rodar varrer-baterias.sh ate o fim e supos instabilidade historica. A varredura completa rodou aqui: 121 de 121 verdes, EXIT_DO_RUNNER=0 gravado no log. Nao ha instabilidade; a divergencia anterior era defeito real, consertado nesta rodada",
+    "achado_1": "creep: docs/rainforest/reguas/2026-09-14-conferidor-de-cli.md, skills/executar/references/runtime-do-agente.md e skills/executar/references/sensor-no-briefing.md sem tarefa que os cubra. O revisor da rodada 2 os isentou por julgamento; o da rodada 3 aplicou a letra da regua. Emendar e mais barato que arbitrar",
+    "achado_2": "a emenda de 16/09 diz nove baterias, mas o grep que ela mesma publica devolve onze: falta o passo explicito de excluir os dois testes dedicados das proprias libs (testa-contexto-sessao.sh e testa-memoria-session-start.sh). A contagem final esta certa, a derivacao e que ficou implicita",
+    "liberado_em": "2026-09-16"
   },
   "verificar": {
     "status": "pendente"

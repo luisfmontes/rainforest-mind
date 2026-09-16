@@ -211,4 +211,39 @@ para arquivo novo cobra de toda caixa de teste que copia lib seletivamente. O
 repo tem **nove** baterias nesse padrão; quatro quebraram agora, e as outras
 cinco só não exercitam o caminho do `cortarBytes` ainda. Quem mexer em
 `hooks/lib/` de novo deve conferir a lista antes:
-`grep -rl "hooks/lib/contexto-sessao.cjs\|hooks/lib/memoria-sessao.cjs" scripts/testa-*.sh hooks/testa-*.sh`.
+`grep -rl "hooks/lib/contexto-sessao.cjs\|hooks/lib/memoria-sessao.cjs" scripts/testa-*.sh hooks/testa-*.sh`
+— ele devolve **onze**, e os nove saem de excluir `hooks/testa-contexto-sessao.sh`
+e `hooks/testa-memoria-session-start.sh`, que sao os testes dedicados das
+proprias libs e andam sempre em sincronia com elas, nao caixas de terceiros.
+
+## Emenda de 2026-09-16 (2) — os três artefatos que outra régua obrigou a criar
+
+A rodada 3 do `revisar` reprovou por três arquivos que a rodada 2 havia isentado
+por julgamento. Os dois revisores olharam o mesmo diff e decidiram diferente, e
+está registrado na Issue #279 que o critério é que é ambíguo — não o diff. Aqui
+se fecha a letra; a régua se conserta lá, fora deste fluxo.
+
+Os três não são escopo novo: cada um existe porque **outra regra documentada do
+repo obrigou a criá-lo**. Fica dito qual regra, em cada caso.
+
+### 7. Documentar a linha de declaração de sensor — `arquivos:` AMPLIADO
+
+acrescenta: `skills/executar/references/sensor-no-briefing.md`, `skills/executar/references/runtime-do-agente.md`
+pronto quando (acréscimo ao critério existente): o conteúdo movido para os dois `references/` descreve o comportamento que `hooks/portaria.cjs` de fato tem — a tabela de casos de `sensor-no-briefing.md` bate com os casos 7a-7g da bateria —, e `skills/executar/SKILL.md` cabe no teto — provado por `bash scripts/testa-teto-skills.sh` devolvendo exit 0 e por `node hooks/testa-portaria-manifesto.cjs` devolvendo exit 0, este último porque o caso 8 lê do próprio `SKILL.md` o bloco `Sensor: <nome>`, que **não** pode migrar para a reference
+
+**A regra que obrigou:** `scripts/testa-teto-skills.sh` fixa 16384 B por
+`SKILL.md`. A Tarefa 7 escreveu num arquivo que a `origin/main` já entregava com
+**nove bytes** de folga. Mover para `references/` é a saída padrão deste repo — é
+o que `skills/rainforest-mind/references/` já faz — e ela cria arquivo que a
+tarefa não tinha como prever no `arquivos:`, porque a tarefa não sabia que ia
+estourar.
+
+### 8. Medição: modelo do builder na régua — `arquivos:` AMPLIADO
+
+acrescenta: `docs/rainforest/reguas/2026-09-14-conferidor-de-cli.md`
+pronto quando (acréscimo ao critério existente): o arquivo de régua nomeia os sete mecanismos, e foi commitado **antes** da primeira rodada da medição — provado por `git log --diff-filter=A --format=%H -- docs/rainforest/reguas/2026-09-14-conferidor-de-cli.md` devolvendo um commit que é ancestral do commit da rodada 1 (`git merge-base --is-ancestor <ele> 7c362207`)
+
+**A regra que obrigou:** a skill `regua` manda fixar a régua num arquivo nomeado
+e commitá-lo antes da primeira rodada, justamente para que ela não possa ser
+ajustada depois de ver o resultado. Quem segue a `regua` produz este arquivo por
+obrigação, não por escolha.
