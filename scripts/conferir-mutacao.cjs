@@ -74,6 +74,7 @@
  */
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
@@ -128,37 +129,41 @@ function ultimasLinhas(texto, n) {
   return [`... (${linhas.length - n} linha(s) acima omitida(s))`, ...linhas.slice(-n)].join('\n');
 }
 
-// ====================================================== Restauração do fonte
+// ============================================== Limpeza da cópia temporária
 //
-// O fonte volta ao byte original em TODO caminho de saída: verdicto normal,
-// exceção, estouro de tempo e Ctrl-C. Deixar um fonte mutado na árvore de
-// trabalho é pior que qualquer veredito errado — é dano, e silencioso: o commit
-// seguinte o leva junto. Por isso o original é guardado como Buffer (nada de
-// re-encodar) e a restauração é idempotente.
+// A mutação (e as duas rodadas da bateria) rodam numa CÓPIA descartável da
+// árvore, nunca no fonte real (Issue #266): lockfile só barra outra mutação
+// concorrente, mas quem não consulta o lock — outra sessão, outro agente,
+// `varrer-baterias.sh` — continuaria lendo o fonte mutado durante a janela de
+// execução. Copiando a árvore inteira essa janela deixa de existir: o fonte
+// real nunca é tocado, em NENHUM caminho de saída (verdicto normal, exceção,
+// estouro de tempo, Ctrl-C). Por isso a limpeza da cópia usa o mesmo
+// mecanismo de `process.on('exit'/sinal)` que antes restaurava o byte
+// original, só que agora apaga o diretório inteiro.
 
-let restaurar = () => {};
+let limpar = () => {};
 
-function armarRestauracao(caminho, original) {
+function armarLimpeza(raizExecucao) {
   let feito = false;
-  restaurar = () => {
+  limpar = () => {
     if (feito) return;
     feito = true;
     try {
-      fs.writeFileSync(caminho, original);
+      fs.rmSync(raizExecucao, { recursive: true, force: true });
     } catch (err) {
-      // Última linha de defesa: se nem restaurar dá, o humano precisa saber
-      // exatamente qual arquivo ficou mutado e com o quê.
-      console.error(`FALHA AO RESTAURAR ${caminho}: ${err.message}`);
-      console.error('O FONTE FICOU MUTADO. Recupere com `git checkout -- <arquivo>`.');
+      // Última linha de defesa: se nem apagar dá, o humano precisa saber
+      // exatamente qual diretório temporário sobrou.
+      console.error(`FALHA AO LIMPAR CÓPIA TEMPORÁRIA ${raizExecucao}: ${err.message}`);
+      console.error('Apague manualmente esse diretório temporário.');
     }
   };
   // 'exit' cobre saída normal e exceção não tratada; sinal não dispara 'exit'
   // sozinho, daí os handlers explícitos abaixo.
-  process.on('exit', () => restaurar());
+  process.on('exit', () => limpar());
   for (const sinal of ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGBREAK']) {
     try {
       process.on(sinal, () => {
-        restaurar();
+        limpar();
         process.exit(1);
       });
     } catch { /* sinal inexistente nesta plataforma */ }
@@ -371,7 +376,18 @@ function main() {
     console.error(`erro: --raiz não é uma pasta: ${raiz}`);
     process.exit(1);
   }
-  const alvo = path.resolve(raiz, rel);
+
+  // Cópia descartável de toda a árvore: baseline, mutação e bateria
+  // pós-mutação rodam AQUI, nunca em `raiz`. Só o `.git` de TOPO fica de
+  // fora — `.git` aninhado em alguma fixture não é excluído (D5, Issue #266).
+  const raizExecucao = fs.mkdtempSync(path.join(os.tmpdir(), 'conferir-mutacao-'));
+  armarLimpeza(raizExecucao);
+  fs.cpSync(raiz, raizExecucao, {
+    recursive: true,
+    filter: (p) => path.relative(raiz, p) !== '.git',
+  });
+
+  const alvo = path.resolve(raizExecucao, rel);
   if (!fs.existsSync(alvo) || !fs.statSync(alvo).isFile()) {
     console.error(`erro: --arquivo não existe: ${alvo}`);
     process.exit(1);
@@ -393,7 +409,7 @@ function main() {
   // Roda a bateria no fonte ÍNTEGRO. Se não sair 0, a prova não será válida,
   // porque qualquer alteração pode deixar a bateria vermelha sem relação com
   // o comportamento que você quer testar. D11 estendido.
-  const baselineRes = rodaBateria(bateria, raiz, timeout, 'baseline');
+  const baselineRes = rodaBateria(bateria, raizExecucao, timeout, 'baseline');
   const baselineExit = baselineRes.r.status;
   const baselineDuracao = baselineRes.duracao;
 
@@ -466,8 +482,8 @@ function main() {
   console.log('');
 
   // ======================================================== Fase 3: mutação
-  armarRestauracao(alvo, original);
-
+  // A limpeza da cópia temporária já está armada desde a criação de
+  // `raizExecucao` — cobre este caminho de erro sem precisar rearmar.
   let temErroEscrita = false;
   try {
     fs.writeFileSync(alvo, pedacos.join(para), 'utf8');
@@ -477,12 +493,12 @@ function main() {
     if (err.code === 'EACCES') {
       console.error('  Arquivo somente-leitura ou sem permissão de escrita.');
     }
-    restaurar();
+    limpar();
     process.exit(1);
   }
 
   // ============================================ Fase 4: bateria pós-mutação
-  const posRes = rodaBateria(bateria, raiz, timeout, 'pós-mutação');
+  const posRes = rodaBateria(bateria, raizExecucao, timeout, 'pós-mutação');
   const posExit = posRes.r.status;
   const posDuracao = posRes.duracao;
 
@@ -492,9 +508,9 @@ function main() {
   console.log('---------------------------------');
   console.log('');
 
-  // Restaura ANTES de decidir e imprimir: nenhum caminho abaixo pode escapar
-  // com o fonte mutado.
-  restaurar();
+  // Apaga a cópia temporária ANTES de decidir e imprimir: nenhum caminho
+  // abaixo precisa dela, e o fonte real nunca esteve mutado (Issue #266).
+  limpar();
 
   // ============================================== Fase 5: veredito final
   const estourou = posRes.r.error && posRes.r.error.code === 'ETIMEDOUT';
