@@ -24,9 +24,9 @@
     "em": "2026-09-14"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-15",
-    "tarefas_ok": 8,
+    "tarefas_ok": 9,
     "tarefas": 9,
     "carimbos": [
       {
@@ -66,9 +66,9 @@
       }
     ],
     "em": "2026-09-16",
-    "comando": "bash scripts/testa-saude.sh",
-    "saida": "== resultado: 67 ok, 0 falha(s) == (exit 0, zero FALHA em todo o log)",
-    "sensor_externo": "bash scripts/testa-saude.sh",
+    "comando": "bash scripts/varrer-baterias.sh",
+    "saida": "as 121 baterias passaram (EXIT_DO_RUNNER=0, gravado dentro do proprio log)",
+    "sensor_externo": "bash scripts/varrer-baterias.sh",
     "mutacao": [
       {
         "tarefa": 1,
@@ -78,43 +78,44 @@
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "testa-orcamento.sh, secao 6 — teto agregado acompanha edicao de MEMORIA_MAX_BYTES na copia da lib"
+        "fixture": "testa-orcamento.sh, secao 6 — teto agregado acompanha edicao do teto por hook"
       },
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "testa-memoria-session-start.sh, secao 3 — corte anunciado nomeando quantas marcas ficaram de fora"
+        "fixture": "testa-memoria-session-start.sh, secao 3 — corte anunciado no topo"
       },
       {
         "tarefa": 4,
         "resultado": "vermelho",
-        "fixture": "testa-contexto-sessao.sh, secao 3.5 — FOCO.md com avanco de 8 dias exige a linha de aviso"
+        "fixture": "testa-contexto-sessao.sh, secao 3.5 — FOCO.md com avanco datado velho"
       },
       {
         "tarefa": 5,
         "resultado": "vermelho",
-        "fixture": "testa-estado.sh, secao 27, caso sens-rej — verificar RECUSA comando que nao e sensor nem declarado"
+        "fixture": "testa-estado.sh, secao 27, caso sens-rej — verificar RECUSA fechar sem sensor na evidencia"
       },
       {
         "tarefa": 6,
         "resultado": "vermelho",
-        "fixture": "testa-portaria-manifesto.cjs, caso 5c — sensor pedido fora da lista, exit 2"
+        "fixture": "testa-portaria-manifesto.cjs, caso 7c — desligando a escrita de sensor_fora_da_lista, o caso fica vermelho POR CAMPO AUSENTE e nao por exit code; com o portao apenas removido ele ficaria verde, que era o risco"
       },
       {
         "tarefa": 7,
         "resultado": "vermelho",
-        "fixture": "testa-portaria-manifesto.cjs, caso 6 — linha lida do SKILL.md aceita pelo parser"
+        "fixture": "testa-portaria-manifesto.cjs, caso 8 — linha lida de skills/executar/SKILL.md deixa de existir e o caso cai"
       },
       {
         "tarefa": 8,
         "resultado": "n/a",
-        "motivo": "medicao nao tem comportamento a inverter; a falsificacao dela e a rastreabilidade, conferida por git log --grep e por conferir-publicacao"
+        "motivo": "tarefa de medicao: o artefato e o relatorio da rodada da regua, nao codigo com comportamento a inverter. O que ela pode errar e o metodo (crítico nao cego, braços com briefing diferente), e isso se falsifica lendo o relatorio, nao mutando fonte"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-duplicacao.sh, caso 6 — tirando hooks/ da varredura de --funcoes, a duplicata plantada em hooks/lib/ deixa de ser achada"
       }
     ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-15"
-    },
     "em_voo": [],
     "nota": "executor voltou com 872485e6 (base 5a43d1fc conferida, pai correto). Entrega NAO integrada: varredura completa acusou 6 baterias vermelhas (testa-backup-estado, testa-ponte-entrevista, testa-ponte, testa-portoes-gate, testa-recibo-fechar, testa-registrar-erro) e falta apurar se e corrida entre varreduras paralelas ou defeito real.",
     "pendencias_medidas": [
