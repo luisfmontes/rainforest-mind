@@ -931,6 +931,13 @@ function main() {
   // vazia de nomes; qualquer outra coisa nao da pra interpretar como permissao
   // e nega — a mesma regra dos tres estados que ja valem para `escreve` e
   // `runtime` aqui do lado (D3 passo 6 e 6b).
+  //
+  // Redacao de 2026-09-15 (emenda, issue #264): o portao deixa de negar e passa
+  // a registrar. Negacao continua APENAS para forma invalida (`sensores` malformado
+  // no manifesto); admissao e ordem (sensor pedido, sensor ilegivel) agora
+  // registram em vez de barrar (D3 passo 6c, Tarefa 6 do plano).
+  const sensorMarcas = {};
+
   if (agentConfig.sensores !== undefined && agentConfig.sensores !== null) {
     const listaValida = Array.isArray(agentConfig.sensores)
       && agentConfig.sensores.length > 0
@@ -947,30 +954,25 @@ function main() {
 
     // Lista valida: o briefing pede sensor via linha(s) isolada(s)
     // `Sensor: <nome>`, mesmo estilo de `Runtime:`. Sem linha nenhuma, a
-    // tarefa nao pediu sensor algum — o portao so trava o que CAI FORA da
-    // lista, nunca exige que a lista seja usada.
+    // tarefa nao pediu sensor algum — o portao so registra o que CAI FORA da
+    // lista ou e ilegivel, nunca exige que a lista seja usada.
     const promptSensor = payload.tool_input && payload.tool_input.prompt;
     const { pedidos, invalida } = sensoresPedidosDoPrompt(promptSensor);
 
     if (invalida) {
-      const motivo =
-        `agente '${nomeAgente}' com 'sensores' no manifesto recebeu um briefing com linha 'Sensor:' em formato` +
-        ` que a portaria nao le — use 'Sensor: <nome>', um nome por linha`;
-      gravarDespacho(raiz, "deny", nomeAgente, estagioAtivo, sessao, motivo);
-      negar(motivo);
+      // Linha `Sensor:` com valor ilegivel: registra e continua (2026-09-15).
+      sensorMarcas.sensor_ilegivel = true;
     }
 
     const foraDaLista = pedidos.filter((s) => !agentConfig.sensores.includes(s));
     if (foraDaLista.length > 0) {
-      const motivo =
-        `agente '${nomeAgente}' nao declara o(s) sensor(es) pedido(s) pelo briefing: ${foraDaLista.join(", ")}` +
-        ` (sensores do manifesto: ${agentConfig.sensores.join(", ")})`;
-      gravarDespacho(raiz, "deny", nomeAgente, estagioAtivo, sessao, motivo);
+      // Sensor fora da lista: registra e continua (2026-09-15).
+      sensorMarcas.sensor_fora_da_lista = foraDaLista;
+    }
 
-      let msg = `${motivo}\n`;
-      msg += `  manifesto lido: ${manifestoPath}\n`;
-      msg += `  origem: ${usandoPadrao ? "padrão embarcado do plugin" : "manifesto deste repositório"}\n`;
-      negar(msg.trim());
+    // Registra os sensores pedidos (todos os validos, dentro ou fora da lista).
+    if (pedidos.length > 0) {
+      sensorMarcas.sensores_pedidos = pedidos;
     }
   }
 
@@ -1036,6 +1038,7 @@ function main() {
     const extraEscreve = {
       isolation: isolamento,
       runtime: runtime_escreve,
+      ...sensorMarcas,
     };
     marcasDeRegistro(extraEscreve);
 
@@ -1102,7 +1105,7 @@ function main() {
   const prompt = payload.tool_input && payload.tool_input.prompt;
   const runtime = runtimeEfetivo(agentConfig, prompt);
 
-  const extra = marcasDeRegistro({ runtime });
+  const extra = marcasDeRegistro({ runtime, ...sensorMarcas });
 
   gravarDespacho(raiz, "allow", nomeAgente, estagioAtivo, sessao, null, escreveConferido, extra);
   process.exit(0);

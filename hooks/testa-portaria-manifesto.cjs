@@ -485,7 +485,7 @@ console.log("== 6. escreve inferido do frontmatter para agente nao declarado =="
 // dizendo qual sensor foi pedido e qual manifesto foi lido (5c, 5g-fora);
 // sem linha `Sensor:` no briefing, a lista nao trava nada (7d); `sensores`
 // mal formado no manifesto nega (7e); linha `Sensor:` presente mas
-// ilegivel nega (7f). 5g prova que o portao vale tambem para `escreve:
+// ilegivel registra (7f, 2026-09-15). 7g prova que o portao vale tambem para `escreve:
 // true` — ele fica ANTES da bifurcacao que sai com `process.exit(0)`
 // proprio, e por isso precisa de caso com agente que escreve.
 console.log("== 7. campo sensores do manifesto ==");
@@ -531,20 +531,22 @@ console.log("== 7. campo sensores do manifesto ==");
     fs.rmSync(repo, { recursive: true, force: true });
   }
 
-  // 7c. briefing pede sensor DE FORA da lista: nega com exit 2, dizendo o
-  // sensor pedido e o manifesto lido.
+  // 7c. briefing pede sensor DE FORA da lista: passa com exit 0, registrando
+  // o sensor de fora (2026-09-15, issue #264, Tarefa 6 do plano).
   {
     const repo = caixa();
     iniciarGit(repo, "fluxo/teste");
     criarEstadoAtivo(repo, "teste", "revisar");
-    const manifestoPath = escreverManifestoDoRepo(repo, manifestoComSensores);
+    escreverManifestoDoRepo(repo, manifestoComSensores);
 
     const r = despachar(repo, "revisor", { prompt: "prova\nSensor: pressao\n" });
 
-    caso("7c: sensor pedido fora da lista, exit 2", r.status === 2, `exit=${r.status}`);
-    caso("7c: stderr nomeia o sensor pedido ('pressao')", /pressao/.test(r.stderr || ""), r.stderr);
-    caso("7c: stderr nomeia o manifesto lido",
-      (r.stderr || "").includes(manifestoPath), r.stderr);
+    caso("7c: sensor pedido fora da lista, exit 0", r.status === 0, `exit=${r.status}`);
+    const log = lerLog(path.join(repo, ".dados-do-teste"));
+    const ultima = log.length > 0 ? log[log.length - 1] : null;
+    caso("7c: log carrega sensor_fora_da_lista com o sensor pedido",
+      ultima && Array.isArray(ultima.sensor_fora_da_lista) && ultima.sensor_fora_da_lista.includes("pressao"),
+      `campo=${JSON.stringify(ultima?.sensor_fora_da_lista)}`);
 
     fs.rmSync(repo, { recursive: true, force: true });
   }
@@ -553,7 +555,8 @@ console.log("== 7. campo sensores do manifesto ==");
   // nao pode mascarar a de fora — TODAS as linhas contam, nao so a primeira
   // (e a razao de nao usar `.match()`/`.test()` de primeiro-encontro aqui,
   // ao contrario de `runtimeEfetivo`). Sem este caso, um refactor para
-  // primeiro-encontro deixaria a bateria verde do mesmo jeito.
+  // primeiro-encontro deixaria a bateria verde do mesmo jeito. Passa com exit 0
+  // e registra os sensores de fora (2026-09-15).
   {
     const repo = caixa();
     iniciarGit(repo, "fluxo/teste");
@@ -562,8 +565,14 @@ console.log("== 7. campo sensores do manifesto ==");
 
     const r = despachar(repo, "revisor", { prompt: "prova\nSensor: temperatura\nSensor: pressao\n" });
 
-    caso("7c2: duas linhas Sensor:, uma fora da lista, exit 2", r.status === 2, `exit=${r.status}`);
-    caso("7c2: stderr nomeia a que ficou de fora ('pressao')", /pressao/.test(r.stderr || ""), r.stderr);
+    caso("7c2: duas linhas Sensor:, uma fora da lista, exit 0", r.status === 0, `exit=${r.status}`);
+    const log = lerLog(path.join(repo, ".dados-do-teste"));
+    const ultima = log.length > 0 ? log[log.length - 1] : null;
+    caso("7c2: log tem sensor_fora_da_lista com pressao, nao temperatura",
+      ultima && Array.isArray(ultima.sensor_fora_da_lista) &&
+      ultima.sensor_fora_da_lista.includes("pressao") &&
+      !ultima.sensor_fora_da_lista.includes("temperatura"),
+      `campo=${JSON.stringify(ultima?.sensor_fora_da_lista)}`);
 
     fs.rmSync(repo, { recursive: true, force: true });
   }
@@ -612,7 +621,8 @@ console.log("== 7. campo sensores do manifesto ==");
   }
 
   // 7f. linha `Sensor:` presente mas com valor ilegivel (vazio, com espaco):
-  // nao da pra afirmar "nao pediu nada" a partir de texto nao lido — nega.
+  // nao da pra afirmar "nao pediu nada" a partir de texto nao lido — registra
+  // (2026-09-15, issue #264, Tarefa 6 do plano).
   {
     const repo = caixa();
     iniciarGit(repo, "fluxo/teste");
@@ -621,8 +631,12 @@ console.log("== 7. campo sensores do manifesto ==");
 
     const r = despachar(repo, "revisor", { prompt: "prova\nSensor: \n" });
 
-    caso("7f: linha Sensor: com valor vazio, exit 2", r.status === 2, `exit=${r.status}`);
-    caso("7f: motivo diz que o formato nao foi lido", /nao le|não lê/i.test(r.stderr || ""), r.stderr);
+    caso("7f: linha Sensor: com valor vazio, exit 0", r.status === 0, `exit=${r.status}`);
+    const log = lerLog(path.join(repo, ".dados-do-teste"));
+    const ultima = log.length > 0 ? log[log.length - 1] : null;
+    caso("7f: log marca que a linha nao foi lida (sensor_ilegivel: true)",
+      ultima && ultima.sensor_ilegivel === true,
+      `campo=${JSON.stringify(ultima?.sensor_ilegivel)}`);
 
     fs.rmSync(repo, { recursive: true, force: true });
   }
@@ -658,23 +672,26 @@ console.log("== 7. campo sensores do manifesto ==");
       fs.rmSync(repo, { recursive: true, force: true });
     }
 
-    // 7g-fora: mesmo agente, sensor pedido fora da lista: exit 2 — prova que
-    // o portao de sensor barra ANTES do allow proprio do `escreve: true`.
+    // 7g-fora: mesmo agente, sensor pedido fora da lista: passa com exit 0
+    // (2026-09-15, issue #264, Tarefa 6 do plano). Prova que o portao de sensor
+    // registra e continua ANTES do allow proprio do `escreve: true`.
     {
       const repo = caixa();
       iniciarGit(repo, "fluxo/teste");
       criarEstadoAtivo(repo, "teste", "executar");
-      const manifestoPath = escreverManifestoDoRepo(repo, manifestoExecutor);
+      escreverManifestoDoRepo(repo, manifestoExecutor);
 
       const r = despachar(repo, "executor", {
         prompt: "prova\nSensor: rede\n",
         isolation: "worktree",
       });
 
-      caso("7g-fora: escreve:true com sensor fora da lista, exit 2", r.status === 2, `exit=${r.status}`);
-      caso("7g-fora: stderr nomeia o sensor pedido ('rede')", /rede/.test(r.stderr || ""), r.stderr);
-      caso("7g-fora: stderr nomeia o manifesto lido",
-        (r.stderr || "").includes(manifestoPath), r.stderr);
+      caso("7g-fora: escreve:true com sensor fora da lista, exit 0", r.status === 0, `exit=${r.status}`);
+      const log = lerLog(path.join(repo, ".dados-do-teste"));
+      const ultima = log.length > 0 ? log[log.length - 1] : null;
+      caso("7g-fora: log carrega sensor_fora_da_lista com o sensor pedido",
+        ultima && Array.isArray(ultima.sensor_fora_da_lista) && ultima.sensor_fora_da_lista.includes("rede"),
+        `campo=${JSON.stringify(ultima?.sensor_fora_da_lista)}`);
 
       fs.rmSync(repo, { recursive: true, force: true });
     }
@@ -732,8 +749,8 @@ console.log("== 8. Tarefa 7: linha do SKILL.md bate com o parser ==");
     }
 
     // 8b. a mesma linha, na forma antiga (placeholder nao preenchido, sem
-    // declarar QUAL sensor) — o texto promete que valor ilegivel nega em vez
-    // de ser ignorado, e e essa negacao que este caso prova.
+    // declarar QUAL sensor) — o texto promete que valor ilegivel registra em vez
+    // de ser ignorado (2026-09-15, Tarefa 6), e e esse registro que este caso prova.
     {
       const repo = caixa();
       iniciarGit(repo, "fluxo/teste");
@@ -742,9 +759,14 @@ console.log("== 8. Tarefa 7: linha do SKILL.md bate com o parser ==");
 
       const r = despachar(repo, "revisor", { prompt: `prova\n${linhaTemplate}\n` });
 
-      caso("8b: linha na forma antiga (sem preencher o nome), a negacao que o texto promete, exit 2",
-        r.status === 2,
+      caso("8b: linha na forma antiga (sem preencher o nome), registra sensor_ilegivel, exit 0",
+        r.status === 0,
         `linha=${JSON.stringify(linhaTemplate)} exit=${r.status} stderr=${r.stderr}`);
+      const log = lerLog(path.join(repo, ".dados-do-teste"));
+      const ultima = log.length > 0 ? log[log.length - 1] : null;
+      caso("8b: log marca que a linha template nao foi lida (sensor_ilegivel: true)",
+        ultima && ultima.sensor_ilegivel === true,
+        `campo=${JSON.stringify(ultima?.sensor_ilegivel)}`);
 
       fs.rmSync(repo, { recursive: true, force: true });
     }
