@@ -54,6 +54,8 @@ function acharExecutavelClaude() {
           }
           continue;
         }
+        // Outras extensões do PATHEXT (.js, .vbs, .ps1...) também não rodam por spawn direto.
+        if (ehWindows && extLower !== '.exe' && extLower !== '.com') continue;
 
         // Candidato é .exe ou estamos em Unix.
         if (!ehWindows) {
