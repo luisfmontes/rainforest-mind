@@ -6,7 +6,9 @@
     "status": "pendente"
   },
   "design": {
-    "status": "pendente"
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/zerar-issues-5.md",
+    "em": "2026-09-16"
   },
   "plano": {
     "status": "pendente"
