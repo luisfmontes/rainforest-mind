@@ -173,13 +173,13 @@
     "nota": "a rodada 4 aprovou o merito; o fechamento foi recusado porque as emendas estavam num formato que o parser nao le, e o delta que corrigiu isso foi revisado por agente zerado, sem achado"
   },
   "verificar": {
-    "status": "reprovado",
+    "status": "ok",
     "criterio": "catraca D9 de mutacao (conferir-fluxo.cjs mutacoes) e criterios canonicos das tarefas 6 e 7",
-    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug 2026-09-14-guias-e-sensores",
-    "saida": "exit 0, mas as tarefas 1, 2, 3, 4, 5, 6 e 9 sairam pulada (de nao encontrado): MUTACAO NAO APLICADA. Nenhum mutante foi aplicado; o exit 0 nao mediu nada",
+    "comando": "node scripts/conferir-categoria.cjs; bash scripts/testa-conferir-categoria.sh; node scripts/orcamento.cjs --agregado; bash hooks/testa-memoria-session-start.sh; bash hooks/testa-contexto-sessao.sh; bash scripts/testa-estado.sh; bash hooks/testa-ledger-fluxos.sh; bash scripts/testa-portoes-gate.sh; bash scripts/testa-recibo-fechar.sh; node hooks/testa-portaria-manifesto.cjs; node scripts/conferir-encoding.cjs; bash scripts/testa-teto-skills.sh; node scripts/conferir-publicacao.cjs relatorios/2026-09-14-modelo-no-builder-da-regua.md; git merge-base --is-ancestor ceb2d14b 7c362207; bash scripts/testa-conferir-duplicacao.sh; bash scripts/testa-orcamento.sh; bash scripts/testa-backup-estado.sh; bash scripts/testa-ponte.sh; bash scripts/testa-ponte-entrevista.sh; bash scripts/testa-registrar-erro.sh; node scripts/conferir-fluxo.cjs mutacoes",
+    "saida": "23 criterios, todos exit 0 e zero skipped. T1: 42 pecas, CONFERIDO; testa-conferir-categoria 14 ok 0 falha 0 pulado. T2: SessionStart agregado 9662 B / teto agregado real 11000 B, git status limpo depois. T3: 73 ok. T4: ok 284 falhou 0 (as 6 linhas FALHA sao saida esperada de sabotagens internas, cada uma seguida de ok mutacao expos). T5: testa-estado 233 ok; ledger, portoes-gate e recibo-fechar exit 0. T6: testa-portaria-manifesto 62 ok; conferir-encoding exit 0; zero linhas com exit 2 sobre sensor/ilegivel/fora da lista nos dois SKILL.md. T7: testa-teto-skills 19 OK 0 FALHA. T8: 1 commit regua: rodada para a rodada 1 citada; conferir-publicacao CONFERIDO; regua ceb2d14b ancestral de 7c362207. T9: conferir-duplicacao 10 ok, orcamento, backup-estado, ponte, ponte-entrevista e registrar-erro exit 0. Catraca D9: tarefas 1,2,3,4,5,6,9 aplicadas e vermelhas, 7 e 8 n/a com motivo",
     "faltou": "(1) os campos de: e para: do plano descrevem a mutacao em prosa, e a catraca procura trecho literal no fonte, como o precedente de: `NUCLEOS_MAX_BYTES: 6000`. (2) a primeira definicao das tarefas 6 e 7, que e a que o parser le, ainda carrega o criterio de negar com exit 2 que a emenda de 15/09 substituiu; a definicao emendada foi rebaixada para #### em 8d8a1602 e ficou invisivel",
     "em": "2026-09-16",
-    "tentativas": 1
+    "sensor_externo": "node scripts/conferir-fluxo.cjs mutacoes"
   },
   "fechar": {
     "status": "pendente"
