@@ -23,11 +23,11 @@ depende de: nenhuma
 paralela: sim
 mutacao:
   arquivo: `scripts/conferir-categoria.cjs`
-  de: o `process.exit(1)` do ramo que reprova peça sem marca de categoria
-  para: `process.exit(0)`
+  de: `if (invalidas.length) {`
+  para: `if (false) {`
   bateria: `bash scripts/testa-conferir-categoria.sh`
   fixture: o caso que copia uma peça real para um diretório temporário, apaga a linha de marca e espera exit 1 com o caminho nomeado na saída
-pronto quando: com o repositório real como entrada — os 19 hooks citados em `hooks/hooks.json`, os 13 `scripts/conferir-*.cjs` e os 8 `vigias/*.md` —, todo arquivo de peça carrega uma marca entre `guia`, `sensor` e `dado`, e apagar a marca de qualquer um deles reprova — provado por `node scripts/conferir-categoria.cjs; echo $?` devolvendo `0`, e por `bash scripts/testa-conferir-categoria.sh` devolvendo exit 0 com zero casos `skipped`
+pronto quando: com o repositório real como entrada — os 20 hooks citados em `hooks/hooks.json`, os 13 `scripts/conferir-*.cjs` e os 8 `vigias/*.md` —, todo arquivo de peça carrega uma marca entre `guia`, `sensor` e `dado`, e apagar a marca de qualquer um deles reprova — provado por `node scripts/conferir-categoria.cjs; echo $?` devolvendo `0`, e por `bash scripts/testa-conferir-categoria.sh` devolvendo exit 0 com zero casos `skipped`
 
 ### 2. Agregado de SessionStart no orcamento.cjs [tipo: implementar]
 atende: D7, D15
@@ -36,8 +36,8 @@ depende de: nenhuma
 paralela: sim
 mutacao:
   arquivo: `scripts/orcamento.cjs`
-  de: a leitura por regex de `MEMORIA_MAX_BYTES` em `hooks/lib/memoria-sessao.cjs`
-  para: o literal `3000`
+  de: `const match = conteudo.match(/MEMORIA_MAX_BYTES:\s*(\d+)/);`
+  para: `const match = ['', '3000'];`
   bateria: `bash scripts/testa-orcamento.sh`
   fixture: o caso que edita `MEMORIA_MAX_BYTES` para outro valor numa cópia temporária da lib e exige que o teto agregado impresso acompanhe a edição
 pronto quando: com os comandos de SessionStart reais declarados em `hooks/hooks.json` executados de fato, `scripts/orcamento.cjs` soma os bytes de `additionalContext` que eles emitem e compara com a soma dos tetos lidos das libs (`ORCAMENTO_BYTES` em `hooks/lib/contexto-sessao.cjs` mais `MEMORIA_MAX_BYTES` em `hooks/lib/memoria-sessao.cjs`), sem gravar arquivo nenhum — provado por `node scripts/orcamento.cjs --agregado; echo $?` devolvendo `0` e imprimindo uma linha com a soma medida e o teto agregado, e por `git status --porcelain` devolvendo vazio depois da execução
@@ -49,8 +49,8 @@ depende de: nenhuma
 paralela: sim
 mutacao:
   arquivo: `hooks/lib/memoria-sessao.cjs`
-  de: a chamada que aplica o teto ao payload de memória antes de devolvê-lo
-  para: o payload devolvido sem corte
+  de: `return travarOrcamentoMemoria(linhas, cabecalho, rodape, TETOS.MEMORIA_MAX_BYTES);`
+  para: `return texto;`
   bateria: `bash hooks/testa-memoria-session-start.sh`
   fixture: o caso que injeta observações suficientes para passar de `MEMORIA_MAX_BYTES` e exige tanto o corte quanto o aviso no topo
 pronto quando: com o JSON de SessionStart que o harness realmente envia no stdin (mesmo formato das fixtures já usadas por `hooks/testa-memoria-session-start.sh`) e uma base de memória cujo conteúdo excede `MEMORIA_MAX_BYTES`, o `additionalContext` emitido cabe no teto e traz no topo uma linha nomeando o que foi cortado — provado por `bash hooks/testa-memoria-session-start.sh` devolvendo exit 0 com zero casos `skipped`
@@ -62,8 +62,8 @@ depende de: nenhuma
 paralela: sim
 mutacao:
   arquivo: `hooks/lib/contexto-sessao.cjs`
-  de: a comparação que dispara o aviso quando o último avanço passa de 7 dias
-  para: uma comparação que nunca dispara
+  de: `const linha = dias >= 7`
+  para: `const linha = dias >= 99999`
   bateria: `bash hooks/testa-contexto-sessao.sh`
   fixture: o caso que monta um FOCO.md cujo último avanço datado tem 8 dias e exige a linha de aviso no payload
 pronto quando: com um `FOCO.md` no formato real (seção Ativo com linhas `- AAAA-MM-DD`, como o arquivo em uso) cujo avanço mais recente tem 8 dias, o payload da abertura traz uma linha nomeando o arquivo e os dias sem avanço; com avanço de 6 dias, o payload não ganha byte nenhum a mais — provado por `bash hooks/testa-contexto-sessao.sh` devolvendo exit 0 com zero casos `skipped`
@@ -75,24 +75,24 @@ depende de: 1
 paralela: nao
 mutacao:
   arquivo: `scripts/estado.cjs`
-  de: o ramo que recusa o fechamento de `verificar` quando a evidência não cita sensor
-  para: o ramo que aceita
+  de: `if (recusa_sensor) {`
+  para: `if (false) {`
   bateria: `bash scripts/testa-estado.sh`
   fixture: o caso que fecha `verificar` com `comando` que não é sensor nem foi declarado e espera exit 2
-pronto quando: com o mesmo `--json` que o fluxo já usa hoje para fechar (`{"comando": "...", "saida": "..."}`), `marcar --estagio verificar --status ok` aceita quando o `comando` casa com uma peça marcada `sensor` ou com um sensor externo declarado na tarefa do plano, e recusa com exit 2 quando não casa com nenhum dos dois; `executar`, `revisar` e os demais estágios continuam fechando como hoje, no máximo com aviso — provado por `bash scripts/testa-estado.sh` devolvendo exit 0 com zero casos `skipped`
+pronto quando: com o mesmo `--json` que o fluxo já usa hoje para fechar (`{"comando": "...", "saida": "..."}`), `marcar --estagio verificar --status ok` aceita quando o `comando` casa com uma peça marcada `sensor` ou com um sensor externo declarado na tarefa do plano, e recusa com exit 2 quando não casa com nenhum dos dois; `executar`, `revisar` e os demais estágios continuam fechando como hoje, no máximo com aviso — provado por `bash scripts/testa-estado.sh` devolvendo exit 0 com zero casos `skipped`, e por `bash hooks/testa-ledger-fluxos.sh`, `bash scripts/testa-portoes-gate.sh` e `bash scripts/testa-recibo-fechar.sh` devolvendo exit 0 — as três fecham `verificar` declarando `sensor_externo`
 
 ### 6. Campo `sensores` no manifesto e portão na portaria [tipo: implementar]
-atende: D9, D13, D14
+atende: D9 e D13 na redação da emenda de 2026-09-15 do design, D14, D18
 arquivos: `.rainforest/agentes.padrao.json`, `hooks/portaria.cjs`, `hooks/testa-portaria-manifesto.cjs`, `skills/executar/SKILL.md`, `skills/plano/SKILL.md`, `skills/rainforest-mind/references/regra-10-portaria.md`
 depende de: nenhuma
 paralela: sim
 mutacao:
   arquivo: `hooks/portaria.cjs`
-  de: o `negar()` do ramo em que o briefing exige sensor fora da lista declarada
-  para: seguir para o allow
+  de: `sensorMarcas.sensor_fora_da_lista = foraDaLista;`
+  para: `void foraDaLista;`
   bateria: `node hooks/testa-portaria-manifesto.cjs`
-  fixture: o caso com manifesto que declara `sensores` e briefing pedindo um sensor de fora, esperando exit 2
-pronto quando: com o payload de `PreToolUse` que o harness realmente envia para `Task`/`Agent`, agente cujo manifesto **não** traz `sensores` é despachado como hoje, agente que traz a lista é despachado quando o briefing só pede sensor dela, e é negado com exit 2 quando pede um de fora; manifesto com `versao: 1` e sem o campo novo continua aceito — provado por `node hooks/testa-portaria-manifesto.cjs` devolvendo exit 0 com zero casos `skipped`, e por `node scripts/conferir-encoding.cjs` devolvendo exit 0
+  fixture: o caso 7c — manifesto que declara `sensores` e briefing pedindo um de fora — exige exit 0 COM o campo no log; sem a escrita, fica vermelho por ausência do campo, não por exit code
+pronto quando: com o payload de `PreToolUse` que o harness realmente envia para `Task`/`Agent` — (a) agente cujo manifesto não traz `sensores` é despachado como hoje; (b) briefing que só pede sensor da lista é despachado e o log registra o sensor pedido; (c) briefing que pede sensor de fora é despachado com exit 0 e o log nomeia o sensor de fora; (d) linha `Sensor:` ilegível é despachada com exit 0 e o log marca que não foi lida; (e) `sensores` malformado no manifesto nega com exit 2, por ser forma de arquivo — provado por `node hooks/testa-portaria-manifesto.cjs` devolvendo exit 0 com zero casos `skipped` e por `node scripts/conferir-encoding.cjs` devolvendo exit 0
 
 ### 7. Documentar a linha de declaração de sensor no briefing [tipo: docs]
 atende: D18
@@ -101,7 +101,7 @@ depende de: 5, 6
 paralela: nao
 mutacao: n/a
   motivo: a tarefa não muda comportamento — o parser vive em `hooks/portaria.cjs` (tarefa 6) e em `scripts/estado.cjs` (tarefa 5). O que ela pode errar é descrever forma diferente da que o código aceita, e isso se falsifica rodando o código contra a forma documentada.
-pronto quando: a linha de declaração de sensor exatamente como o texto a escreve, copiada do SKILL.md e colada num briefing real, é aceita pelo parser do código — e uma linha na forma antiga, sem a declaração, produz a negação que o texto promete — provado por `node hooks/testa-portaria-manifesto.cjs` rodando um caso cujo briefing é montado a partir do trecho lido de `skills/executar/SKILL.md`, devolvendo exit 0
+pronto quando: a linha de declaração de sensor exatamente como o texto a escreve, lida do bloco de exemplo de `skills/executar/SKILL.md`, é aceita pelo parser; uma linha na forma antiga, sem o nome preenchido, produz o registro `sensor_ilegivel` que o texto descreve; e `skills/executar/SKILL.md` cabe no teto com o detalhe movido para `skills/executar/references/` — provado por `node hooks/testa-portaria-manifesto.cjs` devolvendo exit 0, cujo caso 8 lê o bloco do próprio SKILL.md, e por `bash scripts/testa-teto-skills.sh` devolvendo exit 0
 
 ### 8. Medição: modelo do builder na régua [tipo: pesquisar]
 atende: D1, D8, D12
@@ -110,7 +110,7 @@ depende de: 1, 2, 3, 4, 5, 6, 7
 paralela: nao
 mutacao: n/a
   motivo: a tarefa produz medição, não comportamento — não há linha a inverter. A falsificação dela é a rastreabilidade: cada rodada relatada tem de ter commit correspondente na branch.
-pronto quando: o relatório traz os dois braços (builder `haiku` e builder `sonnet`, crítico cego no mesmo modelo nos dois), o veredito binário do crítico por rodada e o número de rodadas até a vitória de cada braço, e cada rodada relatada corresponde a um commit real — provado por `git log --oneline --grep='regua: rodada'` listando uma linha para cada rodada citada no relatório, e por `node scripts/conferir-publicacao.cjs relatorios/2026-09-14-modelo-no-builder-da-regua.md` devolvendo exit 0
+pronto quando: o relatório traz os dois braços (builder `haiku` e builder `sonnet`, crítico cego no mesmo modelo nos dois), o veredito binário do crítico por rodada e o número de rodadas até a vitória de cada braço, e cada rodada relatada corresponde a um commit real — provado por `git log --oneline --grep='regua: rodada'` listando uma linha para cada rodada citada no relatório, e por `node scripts/conferir-publicacao.cjs relatorios/2026-09-14-modelo-no-builder-da-regua.md` devolvendo exit 0, e por `git merge-base --is-ancestor ceb2d14b 7c362207` devolvendo exit 0 — a régua foi commitada antes da rodada 1
 
 ## Emenda de 2026-09-15 — depois do merge da main e da reprovação do `revisar`
 
@@ -146,11 +146,11 @@ depende de: nenhuma
 paralela: sim
 mutacao:
   arquivo: `scripts/conferir-duplicacao.cjs`
-  de: a inclusão de `hooks/` (e `hooks/lib/`) na varredura de `--funcoes`
-  para: varrer só `scripts/`
+  de: `const dirHooks = path.join(raiz, 'hooks');`
+  para: `const dirHooks = path.join(raiz, 'hooks-inexistente');`
   bateria: `bash scripts/testa-conferir-duplicacao.sh`
   fixture: o caso 6, que planta função duplicada dentro de `hooks/lib/` e espera que o conferidor a encontre
-pronto quando: `cortarBytes` existe num arquivo só e é importado pelos dois consumidores, o `conferir-duplicacao --funcoes` acha duplicata plantada dentro de `hooks/lib/`, e `scripts/orcamento.cjs` consome `executarHooksSessionStart` exportada em vez de reimplementá-la — provado por `bash scripts/testa-conferir-duplicacao.sh`, `bash scripts/testa-orcamento.sh` e `bash hooks/testa-memoria-session-start.sh`, os três devolvendo exit 0 com zero casos `skipped`
+pronto quando: `cortarBytes` existe num arquivo só e é importado pelos dois consumidores, o `conferir-duplicacao --funcoes` acha duplicata plantada dentro de `hooks/lib/`, e `scripts/orcamento.cjs` consome `executarHooksSessionStart` exportada em vez de reimplementá-la — provado por `bash scripts/testa-conferir-duplicacao.sh`, `bash scripts/testa-orcamento.sh` e `bash hooks/testa-memoria-session-start.sh`, os três devolvendo exit 0 com zero casos `skipped`, e por `bash scripts/testa-backup-estado.sh`, `bash scripts/testa-ponte.sh`, `bash scripts/testa-ponte-entrevista.sh` e `bash scripts/testa-registrar-erro.sh` devolvendo exit 0 — as quatro copiam `hooks/lib/bytes.cjs` para a caixa de teste
 
 **Por que esta tarefa é retroativa:** o trabalho foi feito (commits `0ef8cc97`,
 `0730206d`, `ae681310`) e roda limpo, mas nasceu de uma Issue que apareceu no meio

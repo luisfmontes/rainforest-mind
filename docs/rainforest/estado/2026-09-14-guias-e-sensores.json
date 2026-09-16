@@ -73,32 +73,38 @@
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-categoria.sh, caso 2 — peca REAL sem marca reprova nomeando o caminho"
+        "fixture": "testa-conferir-categoria.sh, caso 2 — peca REAL sem marca reprova nomeando o caminho",
+        "aplicada_pela_catraca": "if (invalidas.length) { -> if (false) {"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "testa-orcamento.sh, secao 6 — teto agregado acompanha edicao do teto por hook"
+        "fixture": "testa-orcamento.sh, secao 6 — teto agregado acompanha edicao do teto por hook",
+        "aplicada_pela_catraca": "regex de MEMORIA_MAX_BYTES -> literal 3000"
       },
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "testa-memoria-session-start.sh, secao 3 — corte anunciado no topo"
+        "fixture": "testa-memoria-session-start.sh, secao 3 — corte anunciado no topo",
+        "aplicada_pela_catraca": "return travarOrcamentoMemoria(...) -> return texto;"
       },
       {
         "tarefa": 4,
         "resultado": "vermelho",
-        "fixture": "testa-contexto-sessao.sh, secao 3.5 — FOCO.md com avanco datado velho"
+        "fixture": "testa-contexto-sessao.sh, secao 3.5 — FOCO.md com avanco datado velho",
+        "aplicada_pela_catraca": "dias >= 7 -> dias >= 99999"
       },
       {
         "tarefa": 5,
         "resultado": "vermelho",
-        "fixture": "testa-estado.sh, secao 27, caso sens-rej — verificar RECUSA fechar sem sensor na evidencia. A mesma recusa e o que derruba as 3 baterias da emenda de 16/09 quando elas nao declaram sensor_externo"
+        "fixture": "testa-estado.sh, secao 27, caso sens-rej — verificar RECUSA fechar sem sensor na evidencia. A mesma recusa e o que derruba as 3 baterias da emenda de 16/09 quando elas nao declaram sensor_externo",
+        "aplicada_pela_catraca": "if (recusa_sensor) { -> if (false) {"
       },
       {
         "tarefa": 6,
         "resultado": "vermelho",
-        "fixture": "testa-portaria-manifesto.cjs, caso 7c — desligando a escrita de sensor_fora_da_lista, o caso fica vermelho POR CAMPO AUSENTE e nao por exit code; com o portao apenas removido ele ficaria verde, que era o risco"
+        "fixture": "testa-portaria-manifesto.cjs, caso 7c — desligando a escrita de sensor_fora_da_lista, o caso fica vermelho POR CAMPO AUSENTE e nao por exit code; com o portao apenas removido ele ficaria verde, que era o risco",
+        "aplicada_pela_catraca": "sensorMarcas.sensor_fora_da_lista = foraDaLista; -> void foraDaLista;"
       },
       {
         "tarefa": 7,
@@ -113,7 +119,8 @@
       {
         "tarefa": 9,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-duplicacao.sh, caso 6 — tirando hooks/ da varredura de --funcoes, a duplicata plantada em hooks/lib/ deixa de ser achada. E tirando a copia do bytes.cjs das 4 caixas da emenda de 16/09, elas voltam a Cannot find module"
+        "fixture": "testa-conferir-duplicacao.sh, caso 6 — tirando hooks/ da varredura de --funcoes, a duplicata plantada em hooks/lib/ deixa de ser achada. E tirando a copia do bytes.cjs das 4 caixas da emenda de 16/09, elas voltam a Cannot find module",
+        "aplicada_pela_catraca": "path.join(raiz, 'hooks') -> 'hooks-inexistente'"
       }
     ],
     "em_voo": [],
@@ -132,7 +139,8 @@
     ],
     "agente_morto": "executor das seis baterias travou (600s sem progresso) sem commitar. Deixou modificacao nao commitada trocando require(./bytes.cjs) por __dirname, hipotese FALSA: CommonJS ja resolve relativo ao arquivo. Descartada.",
     "causa_raiz_das_seis": "Tarefa 9 (Issue #259): baterias copiam hooks/lib/ arquivo a arquivo para a caixa de teste e nao levam o bytes.cjs novo, que contexto-sessao.cjs e memoria-sessao.cjs passaram a requerer",
-    "creep": "cruzamento do diff inteiro (72 arquivos) contra arquivos: de todas as tarefas mais as quatro emendas: zero fora"
+    "creep": "cruzamento do diff inteiro (72 arquivos) contra arquivos: de todas as tarefas mais as quatro emendas: zero fora",
+    "catraca_d9": "node scripts/conferir-fluxo.cjs mutacoes: EXIT 0 com as tarefas 1,2,3,4,5,6,9 APLICADAS e vermelhas; 7 e 8 n/a com motivo. Antes desta rodada as sete saiam pulada (de nao encontrado) porque o plano descrevia a mutacao em prosa"
   },
   "revisar": {
     "status": "ok",
@@ -165,7 +173,13 @@
     "nota": "a rodada 4 aprovou o merito; o fechamento foi recusado porque as emendas estavam num formato que o parser nao le, e o delta que corrigiu isso foi revisado por agente zerado, sem achado"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "criterio": "catraca D9 de mutacao (conferir-fluxo.cjs mutacoes) e criterios canonicos das tarefas 6 e 7",
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug 2026-09-14-guias-e-sensores",
+    "saida": "exit 0, mas as tarefas 1, 2, 3, 4, 5, 6 e 9 sairam pulada (de nao encontrado): MUTACAO NAO APLICADA. Nenhum mutante foi aplicado; o exit 0 nao mediu nada",
+    "faltou": "(1) os campos de: e para: do plano descrevem a mutacao em prosa, e a catraca procura trecho literal no fonte, como o precedente de: `NUCLEOS_MAX_BYTES: 6000`. (2) a primeira definicao das tarefas 6 e 7, que e a que o parser le, ainda carrega o criterio de negar com exit 2 que a emenda de 15/09 substituiu; a definicao emendada foi rebaixada para #### em 8d8a1602 e ficou invisivel",
+    "em": "2026-09-16",
+    "tentativas": 1
   },
   "fechar": {
     "status": "pendente"
