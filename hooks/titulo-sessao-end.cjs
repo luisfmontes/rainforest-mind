@@ -144,6 +144,8 @@ function main() {
     process.exit(0);
   }
 
+  if (!data || typeof data !== 'object') process.exit(0);
+
   // Guarda 1 (D7) — literal: é o alvo da catraca de mutação da tarefa.
   if (data.reason !== 'prompt_input_exit') process.exit(0);
 
