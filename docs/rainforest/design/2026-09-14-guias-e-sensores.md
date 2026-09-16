@@ -60,3 +60,72 @@ Origem: vídeo "Harness Engineering: A Nova Corrida do Mercado de IA"
 ## Em aberto
 
 - Nada.
+
+## Emenda de 2026-09-15 — o portão de sensor vira registro (issue #264)
+
+**Decidido: o portão de sensor na portaria deixa de negar e passa a registrar,
+porque a política que ele assumia foi revogada enquanto este fluxo estava aberto.
+Continua negando só o que é forma de arquivo.**
+
+Esta emenda reverte a D9 ("o portão de sensor declarado fica na portaria, antes
+do despacho") e a D13 ("nega-se o briefing que exige sensor fora de uma lista
+declarada") no que elas diziam sobre **negar**. O que elas diziam sobre **onde**
+a declaração mora continua valendo: o campo `sensores` segue no manifesto, a
+linha `Sensor:` segue no briefing, e a portaria segue sendo quem os lê (D18
+intacta).
+
+### O que a mediu
+
+A `dd2e7ccd` ("portaria: deixa de admitir agente e passa a registrar", fecha a
+#264) entrou na main em 2026-09-15, depois do `executar` deste fluxo ter fechado
+em 14/09. Ela separou dois critérios que a portaria misturava:
+
+- **forma do arquivo → nega.** Manifesto com JSON ilegível, versão desconhecida,
+  `agentes` inválido, `escreve`/`runtime` com valor que não dá para interpretar.
+  A razão está escrita no próprio código: "tem de doer no arquivo, não três telas
+  adiante". O `agentes.extra.json` malformado continua saindo com exit 2.
+- **admissão e ordem → registra.** Agente fora do manifesto, despacho fora de
+  fluxo. Viraram `declarado: false` e `fora_de_fluxo: true` no `despachos.jsonl`.
+  O custo foi medido: o log de 15/09 tinha seis `allow` com
+  `via: autorizacao-do-usuario` e nenhum deles decidiu nada.
+
+O portão da D13 é do segundo tipo — ele pergunta "este agente pode receber esta
+tarefa?", que é admissão. Mantê-lo faria o plugin negar por uma lista declarada
+no mesmo dia em que parou de negar por uma lista declarada.
+
+### O que muda, e o que não muda
+
+| Caso | Antes (D9/D13) | Agora |
+|---|---|---|
+| `sensores` ausente no manifesto | passa | passa, sem mudança |
+| briefing pede sensor DA lista | passa | passa, e o log registra o sensor pedido |
+| briefing pede sensor FORA da lista | **nega, exit 2** | **passa, exit 0**, com `sensor_fora_da_lista` no log |
+| `sensores` malformado no manifesto | nega, exit 2 | **nega, exit 2** — é forma, não admissão |
+| linha `Sensor:` ilegível no briefing | nega, exit 2 | **passa, exit 0**, com `sensor_ilegivel: true` no log |
+
+A peça continua classificada `guia` pela D10, e isso não é contradição: a D10
+classifica **pelo evento em que o código roda** (`PreToolUse`), nunca pelo que
+ele faz com o que leu. Foi essa regra que existiu justamente para não abrir
+julgamento caso a caso.
+
+### O que isto conserta de graça
+
+O núcleo da regra 10, injetado em toda sessão, afirma que **só a regra 11 barra**
+(`skills/rainforest-mind/SKILL.md:124`), e a elaboração lista os casos de negação
+como "todos forma ou regra 11" (`references/regra-10-portaria.md:68`). Com a D9
+valendo, os dois passariam a mentir a partir deste merge — o revisor levantou
+isso como achado bloqueante, por leitura independente, em 2026-09-15. Convertido
+o portão em registro, os dois voltam a ser verdade sem edição. A única linha que
+ainda precisa de emenda é a lista de negações por forma, que ganha `sensores`
+malformado ao lado de `escreve` e `runtime`.
+
+### O que não foi feito aqui, e por quê
+
+Não se acrescentou `sensores` a nenhum agente do `.rainforest/agentes.padrao.json`
+— seguindo o que a Tarefa 6 já tinha decidido e registrado. Com o portão virando
+registro, isso significa que o campo hoje não tem consumidor: nada no manifesto
+o declara, então nada aparece no log por causa dele. É o argumento da D15
+("arquivo que só cresce e ninguém abre") apontado para dentro, e fica dito em vez
+de escondido. O que sustenta a peça mesmo assim é a D18: quando algum agente
+precisar declarar sensor, o canal existe, foi testado e não precisa ser desenhado
+de novo no meio da urgência.

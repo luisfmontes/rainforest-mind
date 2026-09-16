@@ -111,3 +111,72 @@ paralela: nao
 mutacao: n/a
   motivo: a tarefa produz medição, não comportamento — não há linha a inverter. A falsificação dela é a rastreabilidade: cada rodada relatada tem de ter commit correspondente na branch.
 pronto quando: o relatório traz os dois braços (builder `haiku` e builder `sonnet`, crítico cego no mesmo modelo nos dois), o veredito binário do crítico por rodada e o número de rodadas até a vitória de cada braço, e cada rodada relatada corresponde a um commit real — provado por `git log --oneline --grep='regua: rodada'` listando uma linha para cada rodada citada no relatório, e por `node scripts/conferir-publicacao.cjs relatorios/2026-09-14-modelo-no-builder-da-regua.md` devolvendo exit 0
+
+## Emenda de 2026-09-15 — depois do merge da main e da reprovação do `revisar`
+
+O `revisar` reprovou com quatro achados (`docs/rainforest/estado/2026-09-14-guias-e-sensores.json`),
+e três deles são de plano, não de código: um critério que a base mudou por baixo,
+uma tarefa que existiu sem estar escrita, e uma peça nova que entrou pelo merge.
+As emendas abaixo são o que destrava — justificar em prosa não destrava creep.
+
+### 6. Campo `sensores` no manifesto e portão na portaria — CRITÉRIO SUBSTITUÍDO
+
+atende: D9 e D13 **na redação da emenda de 2026-09-15 do design**, D14, D18
+arquivos: `hooks/portaria.cjs`, `hooks/testa-portaria-manifesto.cjs`, `skills/executar/SKILL.md`, `skills/plano/SKILL.md`, `skills/rainforest-mind/references/regra-10-portaria.md`
+depende de: nenhuma
+paralela: nao (é a única tarefa desta rodada que toca a portaria)
+mutacao:
+  arquivo: `hooks/portaria.cjs`
+  de: a escrita do campo que marca, no `despachos.jsonl`, que o briefing pediu sensor fora da lista declarada
+  para: não escrever o campo (seguir para o allow sem registrar nada)
+  bateria: `node hooks/testa-portaria-manifesto.cjs`
+  fixture: o caso 7c — manifesto que declara `sensores` e briefing pedindo um de fora — que passa a exigir exit 0 **com** o campo no log; sem a escrita, o caso fica vermelho por ausência do campo, não por exit code
+pronto quando: com o payload de `PreToolUse` que o harness realmente envia para `Task`/`Agent` — (a) agente cujo manifesto **não** traz `sensores` é despachado como hoje, sem campo novo no log; (b) agente que traz a lista e cujo briefing só pede sensor dela é despachado, e o log registra o sensor pedido; (c) agente que traz a lista e cujo briefing pede sensor **de fora** é **despachado com exit 0**, e o log carrega o campo que nomeia o sensor de fora; (d) linha `Sensor:` com valor ilegível é **despachada com exit 0**, e o log marca que a linha não foi lida; (e) `sensores` malformado no manifesto continua **negando com exit 2**, porque é forma de arquivo e não admissão — a mesma classe de `escreve` e `runtime` inválidos, que a #264 manteve negando; e (f) os três documentos citados em `arquivos:` descrevem (a)-(e) sem prometer negação que o código não faz — provado por `node hooks/testa-portaria-manifesto.cjs` devolvendo exit 0 com zero casos `skipped`, por `node scripts/conferir-encoding.cjs` devolvendo exit 0, e por `grep -n "exit 2" skills/executar/SKILL.md skills/plano/SKILL.md` não devolvendo nenhuma linha que descreva o caso (c) ou (d)
+
+**Por que o critério anterior saiu:** ele exigia exit 2 no caso (c), e a `dd2e7ccd`
+(issue #264) revogou essa classe de portão enquanto este fluxo estava aberto. O
+critério velho não está errado por si — ele ficou incompatível com a base. Os
+casos `7c`, `7c2` e `7g-fora` da bateria provam hoje a negação, verdes, e são
+exatamente os que a nova redação inverte.
+
+### 9. Fonte única de `cortarBytes` e varredura de `hooks/` no conferidor (Issue #259) [tipo: implementar]
+atende: nenhuma decisão deste design — é a Issue #259, que entrou na branch durante o `executar`
+arquivos: `hooks/lib/bytes.cjs`, `hooks/lib/memoria-sessao.cjs`, `hooks/lib/contexto-sessao.cjs`, `scripts/conferir-duplicacao.cjs`, `scripts/testa-conferir-duplicacao.sh`, `scripts/exporta-hooks-sessao-start.cjs`
+depende de: nenhuma
+paralela: sim
+mutacao:
+  arquivo: `scripts/conferir-duplicacao.cjs`
+  de: a inclusão de `hooks/` (e `hooks/lib/`) na varredura de `--funcoes`
+  para: varrer só `scripts/`
+  bateria: `bash scripts/testa-conferir-duplicacao.sh`
+  fixture: o caso 6, que planta função duplicada dentro de `hooks/lib/` e espera que o conferidor a encontre
+pronto quando: `cortarBytes` existe num arquivo só e é importado pelos dois consumidores, o `conferir-duplicacao --funcoes` acha duplicata plantada dentro de `hooks/lib/`, e `scripts/orcamento.cjs` consome `executarHooksSessionStart` exportada em vez de reimplementá-la — provado por `bash scripts/testa-conferir-duplicacao.sh`, `bash scripts/testa-orcamento.sh` e `bash hooks/testa-memoria-session-start.sh`, os três devolvendo exit 0 com zero casos `skipped`
+
+**Por que esta tarefa é retroativa:** o trabalho foi feito (commits `0ef8cc97`,
+`0730206d`, `ae681310`) e roda limpo, mas nasceu de uma Issue que apareceu no meio
+do `executar` e nunca entrou no plano. Sem esta entrada, três arquivos do diff não
+casam com `arquivos:` de tarefa nenhuma — é creep pela definição do `revisar`, e a
+única saída é escrever a tarefa que faltava. A dependência que o plano não previu é
+concreta e vale registrar: a tarefa 2 (`scripts/orcamento.cjs:112,121`) **não
+poderia** ter sido implementada como foi sem extrair `executarHooksSessionStart` de
+`scripts/exporta-hooks-sessao-start.cjs`.
+
+### 1. Marca de categoria — ADENDO
+
+A peça `hooks/titulo-sessao-end.cjs` entra na lista de `arquivos:` da tarefa 1, e a
+contagem do critério passa de 41 para 42 peças (20 hooks), distribuição
+14 guia / 25 sensor / 3 dado.
+
+**Por que:** o hook chegou pelo merge da main (PR #274, commit `13b552c6`), depois
+do `executar` ter fechado, sem marca `@categoria` — e o conferidor da tarefa 1
+varre `hooks/hooks.json` dinamicamente, então a peça nova reprovou a bateria no
+head. Isso não é defeito da tarefa 1: é ela funcionando, e pegando a primeira peça
+que entrou no repo depois que a regra passou a existir. Classificada `sensor` pelo
+precedente que o próprio conferidor documenta — `SessionEnd` fica do lado sensor,
+como `heartbeat.cjs` e `memoria-marca.cjs`.
+
+**Fica dito, e não entra nesta rodada:** o total é literal na bateria, então toda
+peça nova que entrar pelo merge vai deixá-la vermelha até alguém atualizar o
+número. É o argumento da D5 ("lista central diverge do diretório em silêncio")
+apontado para o teste — mas trocar isso por uma contagem derivada é mudança de
+escopo, e vira ideia plantada, não tarefa desta rodada.
