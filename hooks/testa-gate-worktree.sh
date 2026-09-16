@@ -829,5 +829,47 @@ else
 fi
 
 echo
+echo "== Issue #289: cd com caminho MSYS (/c/...) resolve com path.resolve do Node =="
+# Git Bash monta o `cd` em forma MSYS (/c/...); path.resolve do Node no Windows nao
+# entende essa forma sozinha e produz uma quimera (<atual>\c\Users\...) que nunca
+# existe em disco — o cd virava incerto por caminho MAL RESOLVIDO (nao por incerteza
+# real), e o gate barrava um commit legitimo no scratchpad chamando o worktree
+# linkado de "principal" na mensagem.
+#
+# `msys()` converte a forma Windows para /c/... na mao (com sed) — `cygpath -u`
+# neste ambiente mapeia o temp do sistema de volta para `/tmp/...` (mount table do
+# MSYS), entao nao reproduz a forma /c/... que o bug precisa.
+msys() { # caminho Windows -> forma /c/...
+  printf '%s' "$1" | sed -E 's#^([A-Za-z]):#/\L\1#'
+}
+GW289="$SCRATCH/gw289"
+mkdir -p "$GW289"
+git init -q "$GW289"; git -C "$GW289" config user.email t@t; git -C "$GW289" config user.name t
+git -C "$GW289" config commit.gpgsign false
+GW289_MSYS="$(msys "$GW289")"
+gate "cd <scratchpad-msys> && git commit --allow-empty, do worktree PASSA (#289)" 0 \
+  "$(b "cd $GW289_MSYS && git commit --allow-empty -m y" "$WT")"
+
+echo
+echo "== #289: cd MSYS para repo comum (nao scratchpad, nao worktree) continua BARRANDO =="
+R_MSYS="$(msys "$R")"
+gate "cd <principal-msys> && git commit, do worktree continua BARRANDO (#289, nao regressao)" 2 \
+  "$(b "cd $R_MSYS && git commit -m x" "$WT")"
+
+echo
+echo "== #289: cd com variavel nao resolvivel, do worktree — mensagem nao chama worktree de principal =="
+# `incerto` com o alvo verdadeiro sendo um worktree isolado: antes do conserto a
+# mensagem reaproveitava o texto de "diretorio de trabalho principal" mesmo o
+# worktree linkado sendo, de fato, um worktree isolado.
+saida289=$(printf '%s' "$(b "cd \$ALVO289 && git commit -m x" "$WT")" | node "$GATE" 2>&1); rc289=$?
+if [ "$rc289" = 2 ] && ! printf '%s' "$saida289" | grep -q "Este e o diretorio de trabalho principal" \
+   && printf '%s' "$saida289" | grep -q "worktree isolado"; then
+  ok=$((ok+1)); echo "  ok   cd \$ALVO289 do worktree BARRA sem chamar o worktree de principal (#289)"
+else
+  falhou=$((falhou+1)); echo "  FALHA cd \$ALVO289 do worktree (exit $rc289, esperava 2 com msg nova):"
+  printf '%s' "$saida289" | sed 's/^/         /' | head -8
+fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
