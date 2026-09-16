@@ -76,7 +76,7 @@ registre que viu.
 Sensor: <nome>
 ```
 
-`hooks/portaria.cjs`, função `sensoresPedidosDoPrompt`, lê essas linhas do prompt de despacho: case-insensitive, pode haver **várias** linhas `Sensor:` e **todas** contam — ao contrário de `Runtime:` (primeiro-encontro), uma linha `Sensor:` dentro da lista do manifesto não mascara outra que caia fora dela. Valor que não seja um nome (`[A-Za-z0-9_-]+`) — vazio, com espaço — **nega** em vez de ser ignorado: não dá para afirmar "não pediu nada" a partir de uma linha que não foi lida. Agente cujo manifesto não traz `sensores` não exige nada, e uma linha `Sensor:` num briefing desses não trava coisa alguma.
+`hooks/portaria.cjs`, função `sensoresPedidosDoPrompt`, lê essas linhas do prompt de despacho: case-insensitive, pode haver **várias** linhas `Sensor:` e **todas** contam — ao contrário de `Runtime:` (primeiro-encontro), uma linha `Sensor:` dentro da lista do manifesto não mascara outra que caia fora dela. Valor que não seja um nome (`[A-Za-z0-9_-]+`) — vazio, com espaço — **registra no log** em vez de ser ignorado: não dá para afirmar "não pediu nada" a partir de uma linha que não foi lida (2026-09-15, issue #264, Tarefa 6 do plano). Agente cujo manifesto não traz `sensores` não exige nada, e uma linha `Sensor:` num briefing desses não trava coisa alguma.
 
 Este é o sensor que o AGENTE PODE RODAR, decidido no despacho. É um canal diferente do sensor citado na evidência ao fechar `verificar` (campo `sensor_externo` do `--json` de `scripts/estado.cjs marcar`, ver `skills/plano/SKILL.md`) — aquele nunca passa por aqui, porque `scripts/estado.cjs` não recebe texto de briefing.
 
