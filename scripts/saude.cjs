@@ -1134,19 +1134,28 @@ function checarMemoria() {
     // Verificação 3: pendência de marca d'água com >48h
     // Offset visto > offset processado = há trabalho parado
     // Se parado há mais de 48h, avisa. Menos de 48h não acusa (Q3).
+    //
+    // Tarefa 14 (D9): a pendência relevante para "há quanto tempo a captura está
+    // parada" é a mais ANTIGA por `processada_em`, não a primeira que o SCAN do
+    // SQLite devolve. Sem `ORDER BY`, a ordem de varredura segue `rowid` — que no
+    // banco real diverge de `processada_em` em pelo menos um par medido (ids
+    // 2515/2516, ver achado da Tarefa 14) — e um `ORDER BY`/índice futuro, um
+    // `VACUUM` ou outra versão do SQLite podem mudar essa ordem sem aviso. Tornar a
+    // seleção da mais antiga EXPLÍCITA (não uma coincidência de ordem de scan).
     try {
-      const marcas = db.prepare(`
+      const marca = db.prepare(`
         SELECT processada_em, offset, offset_processado
         FROM marca_dagua
         WHERE offset > COALESCE(offset_processado, 0)
-      `).all();
+          AND processada_em IS NOT NULL AND processada_em <> ''
+        ORDER BY processada_em ASC
+        LIMIT 1
+      `).get();
 
-      for (const marca of marcas) {
-        if (!marca.processada_em) continue;
+      if (marca) {
         const tempoPassado = Date.now() - Date.parse(marca.processada_em);
         if (tempoPassado > QUARENTA_E_OITO_HORAS_MS) {
           problemas.push(`pipeline parado ha mais de 48h (marca: ${marca.processada_em})`);
-          break; // relatar só a primeira, não saturar
         }
       }
     } catch (e) {
