@@ -663,7 +663,7 @@ echo "== varredura de worktree temporario vazado =="
 # faltava era ela rodar quando o processo morre no MEIO — e aí nenhum `finally`
 # salva, porque o processo nao desempilha. So a rodada seguinte pode limpar.
 #
-# Tres casos, e o terceiro e o que impede a varredura de virar "apaga tudo".
+# Quatro casos, e o terceiro e o que impede a varredura de virar "apaga tudo".
 SBV="$(novo_sandbox)"
 git init -q "$SBV/repo"
 (
@@ -681,6 +681,10 @@ git -C "$SBV/repo" worktree add -q --detach "$LEGITIMO" HEAD 2>/dev/null
 # (3) um temporario de OUTRO dono (a ponte-codex), que nao casa o padrao
 ALHEIO="$SBV/piloto-validacao-final-1788888888888"
 git -C "$SBV/repo" worktree add -q --detach "$ALHEIO" HEAD 2>/dev/null
+# (4) um temporario de DOIS niveis (Issue #287): antes do conserto,
+# caminhoTemp('codex/fix-malformed-json') gerava exatamente este formato
+VAZADO_DOIS_NIVEIS="$SBV/worktree-codex/fix-malformed-json-1788888888888"
+git -C "$SBV/repo" worktree add -q --detach "$VAZADO_DOIS_NIVEIS" HEAD 2>/dev/null
 
 antes=$(git -C "$SBV/repo" worktree list | wc -l)
 
@@ -696,11 +700,26 @@ console.log(JSON.stringify({ removidos: r.removidos.length, falharam: r.falharam
 depois=$(git -C "$SBV/repo" worktree list | wc -l)
 removidos=$(node -e "try{console.log(JSON.parse(require('fs').readFileSync('$SBVW/saida.json','utf8')).removidos)}catch(e){console.log('erro')}")
 
-if [ "$removidos" = "1" ]; then ok=$((ok+1)); echo "  ok   varre exatamente 1 (o do padrao deste script)"; else falhou=$((falhou+1)); echo "  FALHA varreu '$removidos', esperava 1 -- $(cat "$SBV/erro.txt" | head -3)"; fi
-if [ "$antes" = "4" ] && [ "$depois" = "3" ]; then ok=$((ok+1)); echo "  ok   o registro sai da lista (4 -> 3)"; else falhou=$((falhou+1)); echo "  FALHA lista foi $antes -> $depois, esperava 4 -> 3"; fi
+# caminhoTemp precisa gerar um nome de UM nivel so, mesmo para branch com barra
+# (Issue #287: 'codex/fix-malformed-json' virava dois niveis e escapava da
+# varredura acima). Testa a funcao diretamente -- e o unico jeito de cravar
+# a mutante em caminhoTemp, ja que a varredura acima nao passa por ela (usa
+# caminhos ja registrados a mao).
+temp_gerado=$(CLAUDE_PROJECT_DIR="$SBVW/repo" node -e "
+const { caminhoTemp } = require('$SRCW/scripts/limpar-branches.cjs');
+console.log(caminhoTemp('codex/fix-malformed-json'));
+")
+case "$temp_gerado" in
+  */worktree-codex-fix-malformed-json-*) ok=$((ok+1)); echo "  ok    caminhoTemp('codex/fix-malformed-json') e de um nivel so ($temp_gerado)" ;;
+  *) falhou=$((falhou+1)); echo "  FALHA caminhoTemp gerou dois niveis: $temp_gerado" ;;
+esac
+
+if [ "$removidos" = "2" ]; then ok=$((ok+1)); echo "  ok   varre exatamente 2 (um nivel e dois niveis)"; else falhou=$((falhou+1)); echo "  FALHA varreu '$removidos', esperava 2 -- $(cat "$SBV/erro.txt" | head -3)"; fi
+if [ "$antes" = "5" ] && [ "$depois" = "3" ]; then ok=$((ok+1)); echo "  ok   o registro sai da lista (5 -> 3)"; else falhou=$((falhou+1)); echo "  FALHA lista foi $antes -> $depois, esperava 5 -> 3"; fi
 if [ -d "$LEGITIMO" ]; then ok=$((ok+1)); echo "  ok    worktree de trabalho sem timestamp NAO e tocado"; else falhou=$((falhou+1)); echo "  FALHA varredura comeu o worktree de trabalho"; fi
 if [ -d "$ALHEIO" ]; then ok=$((ok+1)); echo "  ok    temporario de OUTRO dono NAO e tocado"; else falhou=$((falhou+1)); echo "  FALHA varredura comeu temporario alheio"; fi
-if [ ! -d "$VAZADO" ]; then ok=$((ok+1)); echo "  ok    o vazado sumiu do disco"; else falhou=$((falhou+1)); echo "  FALHA o vazado continua no disco"; fi
+if [ ! -d "$VAZADO" ]; then ok=$((ok+1)); echo "  ok    o vazado de um nivel sumiu do disco"; else falhou=$((falhou+1)); echo "  FALHA o vazado de um nivel continua no disco"; fi
+if [ ! -d "$VAZADO_DOIS_NIVEIS" ]; then ok=$((ok+1)); echo "  ok    o vazado de dois niveis sumiu do disco"; else falhou=$((falhou+1)); echo "  FALHA o vazado de dois niveis continua no disco"; fi
 
 git -C "$SBV/repo" worktree remove --force "$LEGITIMO" >/dev/null 2>&1
 git -C "$SBV/repo" worktree remove --force "$ALHEIO" >/dev/null 2>&1
