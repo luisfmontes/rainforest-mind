@@ -522,7 +522,21 @@ function cmdCreep() {
     // que o comentário acima descreve para o design, e sobreviveu a ele.
     `docs/rainforest/portoes/*${slug}.md`,
     'relatorios/',
+    // A skill `regua` exige commitar a régua antes da 1ª rodada, e ela nunca
+    // aparece em `arquivos:` de tarefa nenhuma — incondicional, igual a
+    // `relatorios/` acima (Issue #279).
+    'docs/rainforest/reguas/',
   ];
+
+  // Isenção condicional: quando uma tarefa declara `skills/<s>/SKILL.md` em
+  // `arquivos:`, os `references/` dessa mesma skill ficam isentos também —
+  // documentação auxiliar da skill que a tarefa já está autorizada a tocar.
+  // Só entra quando o `SKILL.md` está declarado; skill nenhuma ganha glob
+  // largo escondendo creep de verdade (Issue #279).
+  for (const g of globs) {
+    const m = g.match(/^skills\/([^/]+)\/SKILL\.md$/);
+    if (m) globs_isentos.push(`skills/${m[1]}/references/`);
+  }
 
   // Pega diff.
   //
@@ -609,10 +623,11 @@ function extrairArquivos(conteudo_plano, numero_tarefa) {
       continue;
     }
 
-    // Para quando chegar em outra tarefa ou seção
-    if (em_tarefa && (linha.startsWith('###') || linha.startsWith('##'))) {
-      break;
-    }
+    // Sai do modo "dentro da tarefa" sem encerrar a varredura do documento
+    // inteiro: uma emenda que repete `### N.` mais adiante, separada por
+    // outra tarefa, ainda precisa ser alcançada (Issue #279). Numa linha só
+    // de propósito — o campo `de:`/`para:` do plano só aceita uma linha.
+    if (em_tarefa && (linha.startsWith('###') || linha.startsWith('##'))) { em_tarefa = false; continue; }
 
     // Procura "arquivos: ..."
     if (em_tarefa && linha.startsWith('arquivos:')) {

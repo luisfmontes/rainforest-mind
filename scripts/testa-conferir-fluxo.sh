@@ -893,6 +893,69 @@ else
 fi
 
 echo
+echo "== 15. creep: emenda repetindo ### N. e isencao de reguas/ e skills/*/references/ (Issue #279) =="
+# extrairArquivos parava no PRIMEIRO `###`/`##` depois de entrar na tarefa, entao
+# uma emenda que repete `### 1.` mais adiante no documento (separada por uma
+# `### 2.` no meio) nunca era lida: o `break` encerrava a varredura do documento
+# inteiro, nao so o modo "dentro da tarefa". Mesma forma da secao 10/11: repositorio
+# git de verdade, senao nao ha diff e o `creep` recusa antes de chegar no codigo alvo.
+E="$(novo_sandbox)"; EW="$(cygpath -m "$E" 2>/dev/null || printf '%s' "$E")"
+mkdir -p "$E/docs/rainforest/planos" "$E/docs/rainforest/reguas" \
+  "$E/skills/exemplo/references" "$E/skills/outra/references"
+cat > "$E/docs/rainforest/planos/t.md" <<'PLANO_EOF'
+# Plano t
+
+## Tarefas
+
+### 1. Tarefa original
+arquivos: `a.js`
+
+### 2. Outra tarefa
+arquivos: `x.js`
+
+### 1. Tarefa original (emenda)
+arquivos: `b.js`
+
+### 3. Skill exemplo
+arquivos: `skills/exemplo/SKILL.md`
+PLANO_EOF
+git -C "$E" init -q . >/dev/null 2>&1
+git -C "$E" config user.email t@t; git -C "$E" config user.name t
+git -C "$E" add docs >/dev/null 2>&1; git -C "$E" commit -qm base >/dev/null 2>&1
+BASE_E="$(git -C "$E" rev-parse HEAD 2>/dev/null)"
+# commit A: so' toca o arquivo declarado na SEGUNDA ocorrencia de `### 1.` (emenda)
+echo "conteudo" > "$E/b.js"
+git -C "$E" add b.js >/dev/null 2>&1; git -C "$E" commit -qm so-emenda >/dev/null 2>&1
+EMENDA="$(git -C "$E" rev-parse HEAD 2>/dev/null)"
+# commit B: regua nova, sem tarefa nenhuma declarando o caminho
+echo "# regua" > "$E/docs/rainforest/reguas/exemplo.md"
+git -C "$E" add docs >/dev/null 2>&1; git -C "$E" commit -qm regua >/dev/null 2>&1
+REGUA="$(git -C "$E" rev-parse HEAD 2>/dev/null)"
+# commit C: references/ da skill CUJO SKILL.md esta em arquivos: (isento)
+echo "# algo" > "$E/skills/exemplo/references/algo.md"
+git -C "$E" add skills >/dev/null 2>&1; git -C "$E" commit -qm skill-isenta >/dev/null 2>&1
+SKILL_ISENTO="$(git -C "$E" rev-parse HEAD 2>/dev/null)"
+# commit D: references/ de skill cujo SKILL.md NAO esta em arquivos: de tarefa
+# nenhuma — continua creep, prova de que a isencao e' condicional.
+echo "# algo" > "$E/skills/outra/references/algo.md"
+git -C "$E" add skills >/dev/null 2>&1; git -C "$E" commit -qm skill-nao-isenta >/dev/null 2>&1
+SKILL_NAO_ISENTO="$(git -C "$E" rev-parse HEAD 2>/dev/null)"
+
+if [ -n "$BASE_E" ] && [ -n "$SKILL_NAO_ISENTO" ] && [ "$BASE_E" != "$SKILL_NAO_ISENTO" ]; then
+  exige 0 "arquivo coberto so pela ### 1. repetida (emenda, #279)" \
+    env RFM_ESTADO_ROOT="$EW" node "$CHECADOR" creep --slug t --base "$BASE_E" --head "$EMENDA"
+  exige 0 "docs/rainforest/reguas/ e isento do creep (#279)" \
+    env RFM_ESTADO_ROOT="$EW" node "$CHECADOR" creep --slug t --base "$EMENDA" --head "$REGUA"
+  exige 0 "skills/exemplo/references/ e isento quando SKILL.md esta em arquivos: (#279)" \
+    env RFM_ESTADO_ROOT="$EW" node "$CHECADOR" creep --slug t --base "$REGUA" --head "$SKILL_ISENTO"
+  exige 2 "skills/outra/references/ continua creep sem SKILL.md em arquivos: (#279)" \
+    env RFM_ESTADO_ROOT="$EW" node "$CHECADOR" creep --slug t --base "$SKILL_ISENTO" --head "$SKILL_NAO_ISENTO"
+else
+  echo "  FALHA nao consegui montar o repositorio de fixture"; falhou=$((falhou+1))
+fi
+rm -rf "$E"
+
+echo
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]
