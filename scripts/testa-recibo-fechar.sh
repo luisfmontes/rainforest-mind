@@ -64,7 +64,7 @@ prepara_ate_verificar() {
   est marcar --slug "$slug" --estagio revisar --status ok \
     --json '{"achados":0,"base":"HEAD","head":"HEAD"}' >/dev/null
   est marcar --slug "$slug" --estagio verificar --status ok \
-    --json '{"comando":"bash x.sh","saida":"ok"}' >/dev/null
+    --json '{"comando":"bash x.sh","saida":"ok","sensor_externo":"bash x.sh"}' >/dev/null
 }
 
 echo "== SEM plano.entregaveis: fechar funciona como hoje (D3) =="

@@ -124,7 +124,13 @@
     ],
     "entrega_do_agente": "872485e6 conferido: base 5a43d1fc correta, conversao feita, mutacao prova o campo de log. NAO integrado ainda.",
     "tarefa_6": "integrada em ba08a0e0/5fb11c94, conferida rodando (62 ok, mutacao prova o campo de log, nao o exit code)",
-    "sensor_correto": "bash scripts/varrer-baterias.sh (runner da CI). O testa-saude.sh usado no fechamento de 14/09 so cobre scripts/saude.cjs"
+    "sensor_correto": "bash scripts/varrer-baterias.sh (runner da CI). O testa-saude.sh usado no fechamento de 14/09 so cobre scripts/saude.cjs",
+    "resolvidas": [
+      "teto do SKILL.md: 16308 B, testa-teto-skills 19 OK 0 FALHA",
+      "testa-ledger-fluxos: 26 ok, 0 falhas, exit 0"
+    ],
+    "agente_morto": "executor das seis baterias travou (600s sem progresso) sem commitar. Deixou modificacao nao commitada trocando require(./bytes.cjs) por __dirname, hipotese FALSA: CommonJS ja resolve relativo ao arquivo. Descartada.",
+    "causa_raiz_das_seis": "Tarefa 9 (Issue #259): baterias copiam hooks/lib/ arquivo a arquivo para a caixa de teste e nao levam o bytes.cjs novo, que contexto-sessao.cjs e memoria-sessao.cjs passaram a requerer"
   },
   "revisar": {
     "status": "reprovado",
