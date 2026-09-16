@@ -433,6 +433,50 @@ else
 fi
 
 echo
+echo "== so estado de fluxo mudou: nao ha o que lancar =="
+# O commit do `marcar fechar ok` so existe depois do merge e chega num PR proprio
+# (PR #286, 2026-09-16). Exigir bump para ele e' exigir release de um arquivo que
+# nada executa. A contraprova e' o que impede a isencao de virar buraco: estado
+# MAIS qualquer outro arquivo continua recusando.
+SO_ESTADO="$RAIZ/so-estado"
+git clone -q "$EM_DIA_REMOTO" "$SO_ESTADO"
+git -C "$SO_ESTADO" config user.email t@t; git -C "$SO_ESTADO" config user.name t
+git -C "$SO_ESTADO" config commit.gpgsign false
+mkdir -p "$SO_ESTADO/docs/rainforest/estado"
+echo '{"fechar":{"status":"ok"}}' > "$SO_ESTADO/docs/rainforest/estado/fluxo-x.json"
+git -C "$SO_ESTADO" add docs; git -C "$SO_ESTADO" commit -qm "estado: fecha fluxo-x"
+saida=$(cd "$SO_ESTADO" && node "scripts/conferir-versao.cjs" --teto 999 2>&1); rc=$?
+if [ "$rc" = 0 ] && printf '%s' "$saida" | grep -qF "nada que o cache execute"; then
+  ok=$((ok+1)); echo "  ok   so docs/rainforest/estado/ a frente nao exige bump (exit $rc)"
+else
+  falhou=$((falhou+1)); echo "  FALHA so estado a frente: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
+fi
+
+echo trabalho > "$SO_ESTADO/scripts/outro.cjs"
+git -C "$SO_ESTADO" add scripts; git -C "$SO_ESTADO" commit -qm "estado e codigo juntos"
+saida=$(cd "$SO_ESTADO" && node "scripts/conferir-versao.cjs" --teto 999 2>&1); rc=$?
+if [ "$rc" = 2 ] && printf '%s' "$saida" | grep -qF "nao e' maior"; then
+  ok=$((ok+1)); echo "  ok   estado MAIS codigo continua recusando (exit $rc)"
+else
+  falhou=$((falhou+1)); echo "  FALHA estado mais codigo: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
+fi
+
+# Prefixo, nao substring: um arquivo cujo caminho so CONTEM o nome da pasta nao isenta.
+SO_ESTADO2="$RAIZ/so-estado-falso"
+git clone -q "$EM_DIA_REMOTO" "$SO_ESTADO2"
+git -C "$SO_ESTADO2" config user.email t@t; git -C "$SO_ESTADO2" config user.name t
+git -C "$SO_ESTADO2" config commit.gpgsign false
+mkdir -p "$SO_ESTADO2/hooks/docs/rainforest/estado"
+echo x > "$SO_ESTADO2/hooks/docs/rainforest/estado/a.cjs"
+git -C "$SO_ESTADO2" add hooks; git -C "$SO_ESTADO2" commit -qm "parece estado"
+saida=$(cd "$SO_ESTADO2" && node "scripts/conferir-versao.cjs" --teto 999 2>&1); rc=$?
+if [ "$rc" = 2 ]; then
+  ok=$((ok+1)); echo "  ok   caminho que so contem docs/rainforest/estado/ nao isenta (exit $rc)"
+else
+  falhou=$((falhou+1)); echo "  FALHA caminho parecido isentou: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
+fi
+
+echo
 echo "== buscarOrigem: fetch origin/main antes de comparar =="
 # Monta remoto bare, dois clones, e faz um clone ficar a versao local mais recente
 REMOTO_BARE="$RAIZ/remoto.bare"
