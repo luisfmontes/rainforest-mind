@@ -182,6 +182,9 @@
     "sensor_externo": "node scripts/conferir-fluxo.cjs mutacoes"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "acao": "merge",
+    "pr": 285,
+    "em": "2026-09-16"
   }
 }
