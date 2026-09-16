@@ -254,7 +254,7 @@ function oQueSeriaVarrido(dir) {
   );
 }
 
-function bloqueia(motivo, dir, quem) {
+function bloqueia(motivo, dir, quem, segmento) {
   // P1 do relatorio 2026-08-11-escotilha-do-gate-usada-para-contornar: a saida
   // de emergencia era NOMEADA na mensagem que o SUBAGENTE le. Um implementador
   // bloqueado leu o nome do arquivo de escape na propria mensagem de bloqueio,
@@ -285,6 +285,7 @@ function bloqueia(motivo, dir, quem) {
   process.stderr.write(
     `BLOQUEADO pelo gate de staging total do rainforest-mind.\n\n` +
     `Comando: ${motivo}\n` +
+    `Segmento: ${segmento}\n` +
     `Repo: ${dir}\n` +
     `Quem: ${quem}\n\n` +
     `Varias sessoes podem trabalhar no MESMO working tree. Staging em massa nao\n` +
@@ -327,16 +328,23 @@ function main() {
   let motivo = null;
   let dirC = null;
   let indiceSegmento = null;
+  // Issue #261 (segundo sintoma da #258): o -C explicito de um segmento
+  // ANTERIOR (ex.: `git -C <outro-repo> add f2.txt; iex "$cmd"`) nao pode
+  // sumir so porque o segmento que efetivamente bloqueou (o `iex` ilegivel)
+  // nao tem -C proprio. Guarda o ultimo -C visto em QUALQUER segmento git,
+  // mesmo quando aquele segmento sozinho nao bloqueia (`motivoDe` null).
+  let ultimoDirC = null;
   // D1 (zerar-issues-4): remover corpos de heredoc nao-interpretador ANTES de segmentar
   const cmdParaAnalise = mascararCorposDeHeredoc(cmd);
   const segs = segmentos(cmdParaAnalise);
   for (let idx = 0; idx < segs.length; idx += 1) {
     const g = analisaSegmentoGit(segs[idx], ev.tool_name);
     if (!g) continue;
+    if (g.dirC) ultimoDirC = g.dirC;
     if (g.incerto) {
       motivo = "comando dinamico (eval/bash -c/Invoke-Expression/iex/pwsh -Command/cmd /c) com " +
         "conteudo nao resolvivel — pode esconder git add -A/commit -a";
-      dirC = null;
+      dirC = ultimoDirC;
       indiceSegmento = idx;
       break;
     }
@@ -375,7 +383,11 @@ function main() {
   const toplevel = git(dir, ["rev-parse", "--show-toplevel"]) || dir;
   if (fs.existsSync(path.join(toplevel, ".rainforest-gate-off"))) process.exit(0);
 
-  bloqueia(motivo, toplevel, ev.agent_id ? `${ev.agent_type || "?"} (${ev.agent_id})` : "janela principal");
+  bloqueia(
+    motivo, toplevel,
+    ev.agent_id ? `${ev.agent_type || "?"} (${ev.agent_id})` : "janela principal",
+    segs[indiceSegmento],
+  );
 }
 
 main();
