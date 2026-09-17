@@ -818,7 +818,18 @@ PY
 # Baseline: VALOR deve ser 1.5e9
 # Pos-mutacao (com mutacao em mod.py): VALOR sera 0.5e9 — bateria falha.
 # $PY vem exportado pela bateria de fora (resolvedor unico de interprete).
-"$PY" -c "import mod; exit(0 if mod.VALOR == 1.5e9 else 1)" 2>/dev/null || exit 1
+#
+# D5 (Issue #266): esta bateria roda numa COPIA temporaria da raiz (nao em
+# $CAIXA) — o __pycache__ que ela criar ou deixar de criar so e' observavel
+# pelo que ela mesma imprime no stdout, capturado em $SAIDA por `exige`.
+"$PY" -c "import mod; exit(0 if mod.VALOR == 1.5e9 else 1)" 2>/dev/null
+RC=$?
+if [ -d __pycache__ ]; then
+  printf 'PYCACHE_VISTO=sim\n'
+else
+  printf 'PYCACHE_VISTO=nao\n'
+fi
+exit $RC
 BAT
 
   # Fixture: arquivo que sera' mutado no modulo
@@ -853,12 +864,15 @@ FONTE
     ok=$((ok+1)); printf '  ok    fonte-pyc.cjs restaurado\n'
   fi
 
-  # Verificar que nao ha' __pycache__
-  if [ -d "$CAIXA/__pycache__" ]; then
-    falhou=$((falhou+1)); printf '  FALHA: __pycache__ nao foi limpo (PYTHONDONTWRITEBYTECODE nao funcionou)\n'
-    rm -rf "$CAIXA/__pycache__"
+  # Verificar que nao ha' __pycache__: a bateria roda numa COPIA temporaria
+  # (raizExecucao, D5/Issue #266), nunca em $CAIXA — o unico jeito honesto de
+  # ver o efeito e' o que a propria bateria reportou no stdout, capturado em
+  # $SAIDA por `exige` (uma linha por rodada: baseline e pos-mutacao).
+  if [ "$(tr -d '\r' < "$SAIDA" | grep -c '^PYCACHE_VISTO=nao$')" -eq 2 ]; then
+    ok=$((ok+1)); printf '  ok    nao ha __pycache__ nas duas rodadas (PYTHONDONTWRITEBYTECODE bloqueou .pyc)\n'
   else
-    ok=$((ok+1)); printf '  ok    nao ha __pycache__ (PYTHONDONTWRITEBYTECODE bloqueou .pyc)\n'
+    falhou=$((falhou+1)); printf '  FALHA: __pycache__ visto em pelo menos uma rodada (PYTHONDONTWRITEBYTECODE nao funcionou):\n'
+    grep 'PYCACHE_VISTO' "$SAIDA" | sed 's/^/        | /'
   fi
 
   # Re-rodar bateria sobre fonte restaurado para confirmar que funciona
