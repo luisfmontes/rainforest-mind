@@ -32,12 +32,12 @@
     "em": "2026-09-16"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-16",
     "em_voo": [],
     "em": "2026-09-16",
-    "tarefas_ok": 20,
-    "tarefas": 20,
+    "tarefas_ok": 21,
+    "tarefas": 21,
     "pendentes": [],
     "mutacao": [
       {
@@ -139,14 +139,15 @@
         "tarefa": 20,
         "resultado": "vermelho",
         "fixture": "caso novo \"bateria que exige git rev-parse dentro da arvore mede verde no baseline da copia\""
+      },
+      {
+        "tarefa": 21,
+        "resultado": "n/a",
+        "motivo": "tarefa so reescreve documentacao"
       }
     ],
-    "comando": "node scripts/conferir-mutacao.cjs (re-rodado na integracao, 20 tarefas)",
-    "saida": "20 de 20 exit 0: bateria VERMELHA com o comportamento invertido",
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-16"
-    }
+    "comando": "node scripts/conferir-mutacao.cjs (20 tarefas re-rodadas na integracao; exemplo da tarefa 21 medido)",
+    "saida": "20 de 20 exit 0 bateria VERMELHA; exemplo do template exit 0"
   },
   "revisar": {
     "status": "reprovado",
