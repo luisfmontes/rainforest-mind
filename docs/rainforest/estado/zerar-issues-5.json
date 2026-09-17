@@ -32,12 +32,12 @@
     "em": "2026-09-16"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-16",
     "em_voo": [],
     "em": "2026-09-16",
-    "tarefas_ok": 21,
-    "tarefas": 21,
+    "tarefas_ok": 22,
+    "tarefas": 22,
     "pendentes": [],
     "mutacao": [
       {
@@ -88,7 +88,7 @@
       {
         "tarefa": 10,
         "resultado": "vermelho",
-        "fixture": "seção nova \"6f\" — \"token\": \"...\", \"password\": \"...\", \"api_key\": \"...\" (chave entre aspas duplas) recusados com exit 2"
+        "fixture": "seção nova \"6f\" — \"token\" (valor de exemplo entre aspas), \"password\" (valor de exemplo entre aspas), \"api_key\" (valor de exemplo entre aspas) (chave entre aspas duplas) recusados com exit 2"
       },
       {
         "tarefa": 11,
@@ -144,14 +144,15 @@
         "tarefa": 21,
         "resultado": "n/a",
         "motivo": "tarefa so reescreve documentacao"
+      },
+      {
+        "tarefa": 22,
+        "resultado": "vermelho",
+        "fixture": "caso novo \"raiz worktree vinculado em branch nao-padrao: copia tambem e vinculada\""
       }
     ],
-    "comando": "node scripts/conferir-mutacao.cjs (20 tarefas re-rodadas na integracao; exemplo da tarefa 21 medido)",
-    "saida": "20 de 20 exit 0 bateria VERMELHA; exemplo do template exit 0",
-    "reaberto_por": {
-      "estagio": "verificar",
-      "data": "2026-09-16"
-    }
+    "comando": "node scripts/conferir-mutacao.cjs (21 tarefas re-rodadas na integracao, incluindo a 22; exemplo da tarefa 21 medido)",
+    "saida": "20 de 20 exit 0 bateria VERMELHA; exemplo do template exit 0"
   },
   "revisar": {
     "status": "ok",
