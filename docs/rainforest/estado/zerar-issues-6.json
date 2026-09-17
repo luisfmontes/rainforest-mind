@@ -13,7 +13,7 @@
   "plano": {
     "status": "ok",
     "arquivo": "docs/rainforest/planos/zerar-issues-6.md",
-    "tarefas": 10,
+    "tarefas": 11,
     "paralelas": [
       1,
       2,
@@ -21,15 +21,16 @@
       5,
       7,
       8,
-      10
+      10,
+      11
     ],
     "em": "2026-09-17"
   },
   "executar": {
     "status": "ok",
     "catraca_mutacao": "2026-09-17",
-    "tarefas_ok": 10,
-    "tarefas": 10,
+    "tarefas_ok": 11,
+    "tarefas": 11,
     "carimbos": [
       {
         "tarefa": 1,
@@ -96,8 +97,8 @@
       }
     ],
     "em": "2026-09-17",
-    "comando": "bash hooks/testa-gate-agente-em-voo.sh (intacto e com jaAvisado mutado para false)",
-    "saida": "intacto: 21 ok, 0 falha(s); mutado: 18 ok, 3 falha(s) (turno seguinte da mesma sessao; mem-a e mem-b alternando)",
+    "comando": "node scripts/conferir-versao.cjs ; bash hooks/testa-gate-agente-em-voo.sh",
+    "saida": "versao 1.19.0 supera origin/main 1.18.0 (exit 0); testa-versao 4/0; gate em voo 21 ok, 0 falha(s)",
     "mutacao": [
       {
         "tarefa": 1,
@@ -148,18 +149,29 @@
         "tarefa": 10,
         "resultado": "vermelho",
         "fixture": "testa-gate-agente-em-voo.sh: mesma sessao turno seguinte; mem-a e mem-b alternando"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "n/a",
+        "motivo": "numero de versao; conferir-versao.cjs exit 0 contra origin/main"
       }
     ],
     "em_voo": [],
     "pendentes": []
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "parcial",
     "snapshot": {
-      "head": "532f6f6d26af10281910ce93eb96ba6f9b6ca7b1",
+      "head": "5cc4a0a629d80a1203602ca3af9a35d7b4456f04",
       "caminhos_sujos": []
     },
-    "em_voo": [],
+    "em_voo": [
+      {
+        "agente": "revisor",
+        "tarefa": "revisao 4: memoria em mapa do gate-agente-em-voo",
+        "desde": "2026-09-17"
+      }
+    ],
     "em": "2026-09-17",
     "achados": 1,
     "base": "cb15742c",

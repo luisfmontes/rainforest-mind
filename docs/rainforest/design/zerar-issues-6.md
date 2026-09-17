@@ -42,6 +42,7 @@ da #292.
 - **D11 — #294.4: `normalizarMsys` devolve o caminho intacto fora de `win32`** — porquê: fora do Windows `/c/x` é caminho POSIX legítimo; medido sem regressão nas duas baterias.
 - **D12 — #294.5: as asserções `SOBRA_22_*` passam a medir a saída real de `montarContexto` com o fixture `FOCO_MUITOS`; `medir_sobra` sai** — porquê: espelho de código nasce desatualizado, e este já nasceu.
 - **D13 — #298, emenda de 2026-09-17: o `gate-agente-em-voo` avisa uma vez por conjunto `em_voo` na sessão; lembra o aviso num arquivo dentro do git-dir (`session_id` + assinatura de slug, estágio e agentes em voo), e só volta a barrar se a sessão ou o conjunto mudar; a mensagem deixa de prometer "UMA vez" sem escopo** — porquê: achado durante este fluxo. A trava `stop_hook_active` vale por turno, e em sessão interativa cada notificação de agente abre turno novo; o aviso repetiu ~30 vezes. O usuário perguntou por que "zerar" abria Issue nova, e a regra 6 reescrita nesta rodada manda consertar na hora o defeito do repo da sessão que atrapalha. O git-dir não é versionado e nem aparece no `git status`; em `claude -p` (turno único) o primeiro aviso continua saindo.
+- **D14 — O lote sai como versão 1.19.0 (MINOR), no mesmo PR** — porquê: a regra 6 muda contrato de comportamento e `gate-verificador-staged` vira chave de config; sem bump, o conserto do gate (#293) não chega ao cache que executa. Segue o padrão da rodada 5 (`db0797dd`), com veto do usuário anotado no PR.
 
 ## Avaliado e descartado
 
