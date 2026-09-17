@@ -24,6 +24,8 @@ pergunta: entrega a avaliação e para; só executa mudança com ordem dele.
 Item que ele já deu por resolvido ("1 ok") sai da lista e os restantes
 **renumeram a partir do 1** — numeração sempre começa no 1; item ausente
 significa fechado, sem linha de confirmação.
+Etapas de uma rota **não** renumeram — elas atravessam turnos e só se reconhecem
+pelo número; ver `references/regra-04.md`.
 
 **Emenda que chega no meio do turno se confirma numa linha própria, não
 enterrada num item já em andamento.** Pedido curto que interrompe trabalho em

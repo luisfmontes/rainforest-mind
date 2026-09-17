@@ -1,0 +1,105 @@
+{
+  "slug": "zerar-issues-7",
+  "titulo": "Zerar as Issues abertas, rodada 7 — rota com emoji por etapa (#299)",
+  "criado_em": "2026-09-17",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/zerar-issues-7.md",
+    "em": "2026-09-17"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/zerar-issues-7.md",
+    "tarefas": 3,
+    "paralelas": [
+      1,
+      2,
+      3
+    ],
+    "em": "2026-09-17"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-17",
+    "comando": "bash hooks/testa-contexto-sessao.sh",
+    "saida": "ok: 295   falhou: 0",
+    "tarefas_ok": 3,
+    "tarefas": 3,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "a171f9d",
+        "iteracao": 1,
+        "sessao": "a5b3c655-244e-4fac-b4ac-9b617b7d5387",
+        "ts": "2026-09-17T17:53:53.364Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "a171f9d",
+        "iteracao": 1,
+        "sessao": "a5b3c655-244e-4fac-b4ac-9b617b7d5387",
+        "ts": "2026-09-17T17:53:53.364Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "a171f9d",
+        "iteracao": 1,
+        "sessao": "a5b3c655-244e-4fac-b4ac-9b617b7d5387",
+        "ts": "2026-09-17T17:53:53.364Z"
+      }
+    ],
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-contexto-sessao.sh, assercao D7: nucleo emitido mede exatamente"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "texto de elaboracao fora do nucleo"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "troca de numero de versao"
+      }
+    ],
+    "em": "2026-09-17"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "d8f22eb45ce5c811904af73b8a936c5e6bd4cf82",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/zerar-issues-7.json"
+      ]
+    },
+    "em_voo": [],
+    "em": "2026-09-17",
+    "achados": 2,
+    "bloqueantes": 0,
+    "corrigidos": 2,
+    "base": "a171f9df",
+    "head": "d8f22eb",
+    "comando": "bash hooks/testa-contexto-sessao.sh",
+    "saida": "ok: 295   falhou: 0"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues-7 && bash hooks/testa-contexto-sessao.sh && node scripts/conferir-versao.cjs",
+    "saida": "tarefa 1: vermelho; tarefas 2-3 puladas (n/a); testa-contexto-sessao ok: 295 falhou: 0 (D7 nucleo 5899 B, regra 4 termina em ↳); mapa-regras, conferir-invariantes, ponte, conferir-ponte, versao exit 0; conferir-versao ok 1.19.1 > origin/main 1.19.0; diff regra-01.md + modo-dev/SKILL.md = 2 arquivos, +4 linhas",
+    "em": "2026-09-17"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "pr",
+    "pr": 301,
+    "comando": "gh pr create --base main --head fluxo/zerar-issues-7",
+    "saida": "https://github.com/luisfmontes/rainforest-mind/pull/301",
+    "em": "2026-09-17"
+  }
+}
