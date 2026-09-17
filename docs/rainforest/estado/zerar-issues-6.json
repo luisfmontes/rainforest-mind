@@ -160,51 +160,44 @@
     "pendentes": []
   },
   "revisar": {
-    "status": "parcial",
+    "status": "ok",
     "snapshot": {
-      "head": "5cc4a0a629d80a1203602ca3af9a35d7b4456f04",
+      "head": "a3dde47eccf85a0e644331ea2ade98f39587f8c4",
       "caminhos_sujos": []
     },
-    "em_voo": [
-      {
-        "agente": "revisor",
-        "tarefa": "revisao 4: memoria em mapa do gate-agente-em-voo",
-        "desde": "2026-09-17"
-      }
-    ],
+    "em_voo": [],
     "em": "2026-09-17",
-    "achados": 1,
-    "base": "cb15742c",
-    "head": "532f6f6d",
+    "achados": 0,
+    "base": "7e8dd298",
+    "head": "a3dde47e",
     "lista": [
       "1: memoria do gate-agente-em-voo e um slot unico; duas sessoes alternando no mesmo git-dir fazem A ser barrada de novo sem mudar sessao nem conjunto (reproduzido)"
     ],
     "rodadas": [
       {
-        "rodada": 1,
+        "rodada": 3,
         "veredito": "reprovado",
-        "achados": 2,
-        "consertado_em": "5cafc040"
+        "achados": 1,
+        "consertado_em": "19bd8d85"
       },
       {
-        "rodada": 2,
+        "rodada": 4,
         "veredito": "aprovado",
-        "achados_menores": 1,
-        "consertado_em": "7b9173e3",
-        "prova": "testa-contexto-sessao.sh ok: 295 falhou: 0, D7 5895 B; conferir-invariantes ok"
+        "achados_menores": 2
+      },
+      {
+        "creep": "plugin.json e README.md cobertos pela emenda D14/tarefa 11"
       }
-    ],
-    "tentativas": 2
+    ]
   },
   "verificar": {
-    "status": "reprovado",
-    "comando": "node scripts/conferir-fluxo.cjs cobertura --slug zerar-issues-6",
-    "saida": "ok: cobertura válida — 13 decisão(ões), 10 tarefa(s)",
+    "status": "ok",
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues-6 ; baterias das 11 tarefas (testa-foco, testa-gate-publicacao-destino, testa-gate-verificador-staged, testa-gate-commit, testa-config, testa-conferir-mutacao, testa-perfil, perfil --conferir, testa-cwd-efetivo, testa-gate-worktree, testa-contexto-sessao, conferir-invariantes, testa-gate-agente-em-voo, conferir-versao, testa-versao)",
+    "saida": "mutacoes: 2,3,4,5,6,8,9,10 vermelho; 1,7,11 n/a. Baterias exit 0: 91/0, 50/0, 15/0, 19/0, 45/0, 156/0, 4/0, perfil ok, 49/0, 204/0, 295/0 (D7 5895 B), invariantes ok, 21/0, versao 1.19.0 > origin/main, testa-versao 4/0. Placar 22.x = 295 (nao 296 do plano): 22.3 virou busca de tamanho na revisao 1.",
     "sensor_externo": "node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues-6",
     "em": "2026-09-17",
     "criterio": "tarefa 10 (emenda, Issue #298)",
-    "faltou": "tarefa 10 ainda nao executada",
-    "tentativas": 1
+    "faltou": "tarefa 10 ainda nao executada"
   },
   "fechar": {
     "status": "pendente"
