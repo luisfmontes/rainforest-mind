@@ -95,6 +95,11 @@
     "em": "2026-09-17"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "acao": "pr",
+    "pr": 301,
+    "comando": "gh pr create --base main --head fluxo/zerar-issues-7",
+    "saida": "https://github.com/luisfmontes/rainforest-mind/pull/301",
+    "em": "2026-09-17"
   }
 }
