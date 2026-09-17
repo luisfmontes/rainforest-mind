@@ -18,6 +18,7 @@ Design: docs/rainforest/design/zerar-issues-6.md
 - Execução, tarefa 2: o item 13 do `testa-foco.sh` nunca mediu nada — a âncora `while (arquivos.length > teto)` não existe em `foco.cjs` desde que a poda foi para `scripts/lib/backup-rotativo.cjs`. O agente reescreveu a mutação do item 13 para o laço real, dentro do mesmo arquivo.
 - Execução, tarefa 8: a fixture passou de caminho de home para `/c/proj/x` — o gate de publicação instalado barra caminho de home mesmo com marcador (o defeito da #293, que só some quando esta versão for instalada).
 - Execução, tarefa 7: deixou `regra-12.md` em 10571 B, acima de `REFERENCE_MAX_BYTES` (10500); a integração não rodou `testa-contexto-sessao.sh` e só a tarefa 9 revelou. Corrigido em `edcc44b2` (10491 B).
+- Revisão 1 (reprovada, 2 achados): (1) o núcleo da regra 6 deixava ler "Issue **e** conserto" no repo da sessão, contra D2; (2) os +93 B da tarefa 1 faziam a combinação real de hoje (22.1) perder o bloco de Dependências em silêncio — 22.1 não afirmava a presença do bloco, e a fixture de tamanho fixo da 22.3 só discriminava numa faixa de ~15 B atrelada ao núcleo. Consertado: núcleo reescrito com o mesmo tamanho da base (5897 B, pago por subtração), 22.1 passa a asserir o bloco, e a 22.3 busca o tamanho do aviso contra a lib real em vez de fixá-lo.
 
 ## Tarefas
 

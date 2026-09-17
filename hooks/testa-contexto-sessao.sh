@@ -730,8 +730,8 @@ fi
 # 2026-09-08: 5595 -> 5598 — a regra 11 ganhou "checkout principal fica na branch padrão; trabalho nasce em worktree" mais a trava e a chave que a desliga (Issue #195), pagando por subtracao no proprio texto: 388 -> 391 B. Folga: 2 B.
 # 2026-09-12: 5598 -> 5904 — a regra 6 ganhou a triagem de achado (defeito ≠ ideia) (+306 B), zerando a folga de 2 B; NUCLEOS_MAX_BYTES subiu de 5600 para 6000, deixando 96 B.
 # 2026-09-15: 5904 -> 5897 — a regra 10 perdeu a admissao por manifesto + estagio (issue #264: a portaria passou a registrar) e foi reescrita mais curta, pagando por SUBTRACAO no proprio texto: 500 B na primeira redacao, que estourou a catraca (6002 > 6000), depois 396 B contra os 402 de antes. Folga sobre NUCLEOS_MAX_BYTES: 103 B.
-# 2026-09-17: 5897 -> 5990 — a regra 6 ganhou a fronteira de repo (issue #291: "conserta na hora" so vale no repo da sessao; repo alheio vira Issue + Q, nunca commit) (+93 B). Folga sobre NUCLEOS_MAX_BYTES: 10 B.
-NUCLEO_ESPERADO=5990
+# 2026-09-17: 5897 -> 5897 — a regra 6 ganhou a fronteira de repo (issue #291: conserto na hora so no repo da sessao; repo alheio vira Issue + Q) pagando por SUBTRACAO no proprio texto. A primeira redacao custou +93 B e a combinacao real de hoje (22.1) passou a perder o bloco de Dependencias em silencio; +27 B ainda cortava. Folga sobre NUCLEOS_MAX_BYTES: 103 B, mas a folga que vale e' a da 22.1, que nao passa de ~20 B.
+NUCLEO_ESPERADO=5897
 if [ "$NUCLEO_BYTES_REAL" = "$NUCLEO_ESPERADO" ]; then
   ok=$((ok+1)); echo "  ok    D7: nucleo emitido mede exatamente $NUCLEO_BYTES_REAL B (contrato: $NUCLEO_ESPERADO B)"
 else
@@ -2753,26 +2753,6 @@ Checado pelo hook: bridge WhatsApp online (http://127.0.0.1:3001); claude-mem at
 # linhas prontas -- montarContexto acrescenta o "- " na frente de cada uma).
 FIX_PRINCIPAL_22='["worktree `zerar-issues-5` está 6 commit(s) atrás do principal — considere sincronizar."]'
 
-# 22.3: aviso de principal atrasado DOMINANTE -- grande o bastante para que
-# remover dependencias+sessoes (o corte por prioridade) nao resolva o estouro
-# sozinho. Medido ao vivo contra este mesmo fixture (SKILL_REAL, BLOCO_SESSOES_22,
-# BLOCO_VEREDITO_22, BLOCO_REVISAO_22, DEPENDENCIAS_CRESCIDAS_22): com o corte
-# "so' corta se resolver" (contexto-sessao.cjs:1188) intacto, a saida real fica em
-# 8088 B (dentro do ORCAMENTO_BYTES de 8100) e MANTEM Dependencias e sessoes —
-# tirar os dois nao teria devolvido bytes suficientes, entao o corte nao mexe em
-# nada. Com a linha 1188 mutada para sempre tentar (`if (true)`), a mesma entrada
-# cai para 7570 B e os dois blocos somem — prova de que e' o guarda "so corta se
-# resolver" quem decide, nao um efeito de tamanho generico.
-#
-# A janela que faz o teste discriminar (medida contra este mesmo fixture, item
-# de principal com texto de base de 90 B + sufixo): sufixo entre 361 e 376 B
-# (texto do item entre 451 e 466 B) cai exatamente no "dominante"; fora dela, ou
-# o corte resolve sozinho (texto menor) ou o total mutado/nao-mutado empata em
-# ACIMA DO ORÇAMENTO (texto maior). O texto abaixo tem 454 B — dentro da janela,
-# ~3 B acima do piso e ~12 B abaixo do teto. NUCLEOS_MAX_BYTES e' catraca: se o
-# SKILL.md real crescer ate o teto, a janela desliza e este fixture pode sair
-# dela — reconferir com o script de exploracao se a secao 22.3 comecar a falhar.
-PRINCIPAL_DOMINANTE_22='["worktree `zerar-issues-5` está 6 commit(s) atrás do principal — considere sincronizar, e essa distancia so cresce: enquanto a sessao de origem ficar parada sem dar merge ou rebase, cada commit novo no principal aumenta o numero e o risco de conflito na hora de finalmente sincronizar, entao vale tratar isso ainda hoje mesmo, de preferencia antes de abrir qualquer PR novo nesse worktree ou empilhar mais trabalho por cima dele sem revisar com calma."]'
 
 contexto_rodape() { # veredito, sessoes, revisao, dependencias, principal(json), [lib], [foco]
   LIB_PATH="${6:-$LIB}" FIX_SKILL="$SKILL_REAL" FIX_FOCO="${7-$FOCO_MUITOS}" \
@@ -2816,6 +2796,10 @@ sobra_real() { # veredito, sessoes, revisao, dependencias, principal(json), [lib
 S_22_1="$(contexto_rodape "$BLOCO_VEREDITO_22" "$BLOCO_SESSOES_22" "$BLOCO_REVISAO_22" "$BLOCO_DEPENDENCIAS_22" "$FIX_PRINCIPAL_22")"
 checa "22.1 combinacao real de hoje: sem aviso de foco que 'nao coube'" nao_tem "não coube" "$S_22_1"
 checa "22.1 combinacao real de hoje: sem aviso de injecao acima do orcamento" nao_tem "ACIMA DO ORÇAMENTO" "$S_22_1"
+# O "SEM precisar do corte" acima e' asserido, nao so dito: em 2026-09-17 a regra 6
+# cresceu 93 B no nucleo e a combinacao de hoje passou a perder este bloco em
+# silencio (22.1 e 22.2 davam saida identica). Nucleo que crescer ~20 B derruba aqui.
+checa "22.1 combinacao real de hoje: Dependencias de ambiente sobrevive sem corte" tem "Dependências de ambiente" "$S_22_1"
 SOBRA_22_1="$(sobra_real "$BLOCO_VEREDITO_22" "$BLOCO_SESSOES_22" "$BLOCO_REVISAO_22" "$BLOCO_DEPENDENCIAS_22" "$FIX_PRINCIPAL_22")"
 if [ "$SOBRA_22_1" -ge 700 ] 2>/dev/null; then
   ok=$((ok+1)); echo "  ok    22.1 sobra calculada para o foco: $SOBRA_22_1 B (>= piso FOCO_MIN_BYTES de 700 B)"
@@ -2843,31 +2827,45 @@ fi
 
 echo
 echo "22.3 (D12/Issue #294.5) — so' corta se resolver: corte que nao resolve fica de fora"
-# PRINCIPAL_DOMINANTE_22 e' grande o bastante para que remover dependencias+sessoes
-# nao traga fixo de volta para dentro do orcamento -- o guarda de
-# contexto-sessao.cjs:1188 tem que perceber isso e NAO remover nada.
-S_22_3="$(contexto_rodape "$BLOCO_VEREDITO_22" "$BLOCO_SESSOES_22" "$BLOCO_REVISAO_22" "$DEPENDENCIAS_CRESCIDAS_22" "$PRINCIPAL_DOMINANTE_22")"
-checa "22.3 principal dominante: corte que nao resolve deixa Dependencias" tem "Dependências de ambiente" "$S_22_3"
-checa "22.3 principal dominante: corte que nao resolve deixa as sessoes" tem "radar multi-janela" "$S_22_3"
-checa "22.3 principal dominante: sem aviso de injecao acima do orcamento" nao_tem "ACIMA DO ORÇAMENTO" "$S_22_3"
-
-echo
-echo "22.3 MUTAÇÃO LOCAL — desligar o guarda 'so corta se resolver' tem que remover os dois blocos"
+# Um aviso de principal atrasado DOMINANTE faz o corte por prioridade (tirar
+# dependencias+sessoes) nao bastar; o guarda de contexto-sessao.cjs tem de perceber
+# isso e NAO remover nada. A faixa de tamanho em que isso acontece sem cair em
+# ACIMA DO ORCAMENTO tem ~15 B e anda com cada byte do nucleo (em 2026-09-17 um
+# fixture de tamanho fixo quebrou quando a regra 6 mudou), entao o tamanho e'
+# BUSCADO aqui, contra a lib real: o primeiro sufixo em que a lib real mantem os
+# dois blocos sem ACIMA e a lib com o guarda desligado (`if (true)`) tira os dois.
+# Se o guarda de producao nao fizer diferenca em tamanho nenhum, nao ha faixa: FALHA.
 cp "$LIB" "$RAIZ_POSIX/lib-mut-so-corta-se-resolve.cjs"
 sed -i "s/if (fixoComCorteMaximo <= TETOS.ORCAMENTO_BYTES - TETOS.FOCO_MIN_BYTES) {/if (true) {/" "$RAIZ_POSIX/lib-mut-so-corta-se-resolve.cjs"
+NOTA_22_3=""
 if diff "$LIB" "$RAIZ_POSIX/lib-mut-so-corta-se-resolve.cjs" > /dev/null; then
-  falhou=$((falhou+1)); echo "  FALHA o sed não encontrou a linha a mutar — mutação não aplicou nada, teste inválido"
-else
-  S_MUT_22_3="$(contexto_rodape "$BLOCO_VEREDITO_22" "$BLOCO_SESSOES_22" "$BLOCO_REVISAO_22" "$DEPENDENCIAS_CRESCIDAS_22" "$PRINCIPAL_DOMINANTE_22" "$RAIZ_POSIX/lib-mut-so-corta-se-resolve.cjs")"
-  echo "  (o mutante ainda mostra Dependencias/radar? $(echo "$S_MUT_22_3" | grep -qF 'Dependências de ambiente' && echo sim || echo não) / $(echo "$S_MUT_22_3" | grep -qF 'radar multi-janela' && echo sim || echo não))"
-  if echo "$S_MUT_22_3" | grep -qF "Dependências de ambiente"; then
-    falhou=$((falhou+1)); echo "  FALHA mutação sem efeito — desligar o guarda não tirou o bloco de dependencias"
-  elif echo "$S_MUT_22_3" | grep -qF "radar multi-janela"; then
-    falhou=$((falhou+1)); echo "  FALHA mutação sem efeito — desligar o guarda não tirou o bloco de sessoes"
-  else
-    ok=$((ok+1)); echo "  ok    mutação expôs que o guarda 'so corta se resolver' é quem preserva os dois blocos"
-  fi
+  # Sem a linha do guarda na lib, a copia "sem guarda" e' a propria lib: a busca
+  # roda igual e nao acha faixa -- o vermelho sai pelo motivo certo (o guarda nao
+  # decide nada), com a nota dizendo por que.
+  NOTA_22_3=" (a linha do guarda nao existe na lib: mudou ou sumiu)"
 fi
+{
+  ACHOU_22_3=""
+  BASE_22_3='worktree `zerar-issues-5` está 6 commit(s) atrás do principal — considere sincronizar. '
+  SUF_22_3=""; while [ "${#SUF_22_3}" -lt 200 ]; do SUF_22_3="${SUF_22_3}xxxxx"; done
+  while [ "${#SUF_22_3}" -le 1200 ]; do
+    P_22_3="[\"${BASE_22_3}${SUF_22_3}\"]"
+    R_22_3="$(contexto_rodape "$BLOCO_VEREDITO_22" "$BLOCO_SESSOES_22" "$BLOCO_REVISAO_22" "$DEPENDENCIAS_CRESCIDAS_22" "$P_22_3")"
+    if printf '%s' "$R_22_3" | grep -qF "ACIMA DO ORÇAMENTO"; then break; fi
+    if printf '%s' "$R_22_3" | grep -qF "Dependências de ambiente" && printf '%s' "$R_22_3" | grep -qF "radar multi-janela"; then
+      M_22_3="$(contexto_rodape "$BLOCO_VEREDITO_22" "$BLOCO_SESSOES_22" "$BLOCO_REVISAO_22" "$DEPENDENCIAS_CRESCIDAS_22" "$P_22_3" "$RAIZ_POSIX/lib-mut-so-corta-se-resolve.cjs")"
+      if ! printf '%s' "$M_22_3" | grep -qF "Dependências de ambiente" && ! printf '%s' "$M_22_3" | grep -qF "radar multi-janela"; then
+        ACHOU_22_3="${#SUF_22_3}"; break
+      fi
+    fi
+    SUF_22_3="${SUF_22_3}xxxxx"
+  done
+  if [ -n "$ACHOU_22_3" ]; then
+    ok=$((ok+1)); echo "  ok    22.3 principal dominante (sufixo de $ACHOU_22_3 B): o guarda mantem Dependencias e sessoes sem ACIMA, e sem o guarda os dois somem"
+  else
+    falhou=$((falhou+1)); echo "  FALHA 22.3 nenhum tamanho de aviso (200-1200 B) em que o guarda 'so corta se resolver' faca diferenca -- o guarda nao decide nada$NOTA_22_3"
+  fi
+}
 rm -f "$RAIZ_POSIX/lib-mut-so-corta-se-resolve.cjs"
 
 echo
