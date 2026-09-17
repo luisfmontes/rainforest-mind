@@ -26,9 +26,9 @@
     "em": "2026-09-17"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-17",
-    "tarefas_ok": 9,
+    "tarefas_ok": 10,
     "tarefas": 10,
     "carimbos": [
       {
@@ -96,13 +96,13 @@
       }
     ],
     "em": "2026-09-17",
-    "comando": "bash hooks/testa-contexto-sessao.sh (intacto e com o guarda mutado para if (true))",
-    "saida": "intacto: ok: 295 falhou: 0 (D7 5897 B; 22.1 sobra 725, deps presente; 22.3 sufixo 455 B); mutado: ok: 294 falhou: 1 (22.3 nenhum tamanho em que o guarda faca diferenca)",
+    "comando": "bash hooks/testa-gate-agente-em-voo.sh (intacto e com jaAvisado mutado para false)",
+    "saida": "intacto: 19 ok, 0 falha(s); mutado: 18 ok, 1 falha (mesma sessao, mesmo em_voo, turno seguinte NAO barra de novo)",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "n/a",
-        "motivo": "so texto de regra; nucleo 5897 B com D7 e 22.1 verdes"
+        "motivo": "so texto de regra; nucleo 5895 B com D7 e 22.1 verdes"
       },
       {
         "tarefa": 2,
@@ -143,19 +143,15 @@
         "tarefa": 9,
         "resultado": "vermelho",
         "fixture": "testa-contexto-sessao.sh 22.3: nenhum tamanho em que o guarda faca diferenca"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-agente-em-voo.sh: mesma sessao, mesmo em_voo, turno seguinte NAO barra de novo"
       }
     ],
-    "reaberto_por": {
-      "estagio": "verificar",
-      "data": "2026-09-17"
-    },
-    "em_voo": [
-      {
-        "agente": "executor",
-        "tarefa": "tarefa 10 (emenda, Issue #298)",
-        "desde": "2026-09-17"
-      }
-    ]
+    "em_voo": [],
+    "pendentes": []
   },
   "revisar": {
     "status": "reprovado",
