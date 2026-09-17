@@ -25,7 +25,120 @@
     "em": "2026-09-17"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-09-17",
+    "tarefas_ok": 9,
+    "tarefas": 9,
+    "em_voo": [],
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "7e8dd298",
+        "iteracao": 1,
+        "sessao": "033532e9-e484-455a-8c68-75288d64bb63",
+        "ts": "2026-09-17T11:45:21.676Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "7e8dd298",
+        "iteracao": 1,
+        "sessao": "033532e9-e484-455a-8c68-75288d64bb63",
+        "ts": "2026-09-17T11:45:21.676Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "7e8dd298",
+        "iteracao": 1,
+        "sessao": "033532e9-e484-455a-8c68-75288d64bb63",
+        "ts": "2026-09-17T11:45:21.676Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "7e8dd298",
+        "iteracao": 1,
+        "sessao": "033532e9-e484-455a-8c68-75288d64bb63",
+        "ts": "2026-09-17T11:45:21.676Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "7e8dd298",
+        "iteracao": 1,
+        "sessao": "033532e9-e484-455a-8c68-75288d64bb63",
+        "ts": "2026-09-17T11:45:21.676Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "7e8dd298",
+        "iteracao": 1,
+        "sessao": "033532e9-e484-455a-8c68-75288d64bb63",
+        "ts": "2026-09-17T11:45:21.676Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "9a3c3d5d",
+        "iteracao": 1,
+        "sessao": "033532e9-e484-455a-8c68-75288d64bb63",
+        "ts": "2026-09-17T11:59:46.452Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "9a3c3d5d",
+        "iteracao": 1,
+        "sessao": "033532e9-e484-455a-8c68-75288d64bb63",
+        "ts": "2026-09-17T11:59:46.452Z"
+      }
+    ],
+    "em": "2026-09-17",
+    "pendentes": [],
+    "comando": "bash hooks/testa-contexto-sessao.sh (arvore integrada) + mutacao da tarefa 9 aplicada a mao",
+    "saida": "integro: ok: 297 falhou: 0; mutado: ok: 294 falhou: 3 (22.3 Dependencias, 22.3 sessoes, 22.4 sed)",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "n/a",
+        "motivo": "so texto de regra; catraca de bytes NUCLEO_ESPERADO=5990 verde em testa-contexto-sessao.sh (297/0)"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-foco.sh item 9: FALHA mutante nao rodou (MODULE_NOT_FOUND)"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-publicacao-destino.sh CASO 11: Edit em arquivo com marcador so na linha 6 -> barrado"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-verificador-staged.sh caso j: gate-verificador-staged false desliga"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-mutacao.sh secao 20: __pycache__ visto em pelo menos uma rodada"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-mutacao.sh secao 25: conferir-mutacao-VELHO e -git-VELHO deveriam ter sido removidos"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "texto replicado; perfil.cjs --conferir exit 0 com os 9 agentes"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "testa-cwd-efetivo.sh (msys-1) plataforma injetada linux"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "testa-contexto-sessao.sh 22.3 principal dominante: Dependencias e sessoes"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente"

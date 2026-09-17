@@ -15,6 +15,9 @@ Design: docs/rainforest/design/zerar-issues-6.md
 - Tarefa 3: medido que hoje uma credencial nova num arquivo com o marcador só na linha 100 passa pelo `gate-publicacao-destino` (exit 0) — a D6 fecha isso, não só alinha os dois gates.
 - Tarefas 3 e 4 tocam a mesma bateria; 5 e 6 também; 1 e 9 também: daí as dependências seriais.
 - Tarefa 6: o nome `limparTemporariosOrfaos()` e o ponto de chamada são inferência do planejamento, não do design.
+- Execução, tarefa 2: o item 13 do `testa-foco.sh` nunca mediu nada — a âncora `while (arquivos.length > teto)` não existe em `foco.cjs` desde que a poda foi para `scripts/lib/backup-rotativo.cjs`. O agente reescreveu a mutação do item 13 para o laço real, dentro do mesmo arquivo.
+- Execução, tarefa 8: a fixture passou de caminho de home para `/c/proj/x` — o gate de publicação instalado barra caminho de home mesmo com marcador (o defeito da #293, que só some quando esta versão for instalada).
+- Execução, tarefa 7: deixou `regra-12.md` em 10571 B, acima de `REFERENCE_MAX_BYTES` (10500); a integração não rodou `testa-contexto-sessao.sh` e só a tarefa 9 revelou. Corrigido em `edcc44b2` (10491 B).
 
 ## Tarefas
 
@@ -113,8 +116,8 @@ mutacao:
   de: `if (plataforma !== "win32") return caminho;`
   para: `if (false) return caminho;`
   bateria: `bash hooks/testa-cwd-efetivo.sh`
-  fixture: caso novo `(msys-1) plataforma injetada 'linux': /c/Users/x volta INTACTO`
-pronto quando: (`de:` é trecho NOVO.) A assinatura vira `normalizarMsys(caminho, plataforma = process.platform)`; os chamadores reais (`:371`) não mudam. Entrada real: `normalizarMsys("/c/Users/x", "linux")` devolve `/c/Users/x`, e `normalizarMsys("/c/Users/x", "win32")` continua devolvendo `c:/Users/x` — CONFIRMADO ao vivo pelo planejamento: `bash hooks/testa-cwd-efetivo.sh` vai de 47/0 para 49/0, e com a mutação fica 48/1 com a falha em `(msys-1)`; `bash hooks/testa-gate-worktree.sh` (ponta a ponta com `cd /c/...`, seção "Issue #289") continua 204/0 — provado pelas duas baterias e por `node scripts/conferir-mutacao.cjs --arquivo hooks/lib/cwd-efetivo.cjs --de 'if (plataforma !== "win32") return caminho;' --para 'if (false) return caminho;' --bateria "bash hooks/testa-cwd-efetivo.sh"` saindo 0 (`vermelho`).
+  fixture: caso novo `(msys-1) plataforma injetada 'linux': /c/proj/x volta INTACTO`
+pronto quando: (`de:` é trecho NOVO.) A assinatura vira `normalizarMsys(caminho, plataforma = process.platform)`; os chamadores reais (`:371`) não mudam. Entrada real: `normalizarMsys("/c/proj/x", "linux")` devolve `/c/proj/x`, e `normalizarMsys("/c/proj/x", "win32")` continua devolvendo `c:/proj/x` — CONFIRMADO ao vivo pelo planejamento: `bash hooks/testa-cwd-efetivo.sh` vai de 47/0 para 49/0, e com a mutação fica 48/1 com a falha em `(msys-1)`; `bash hooks/testa-gate-worktree.sh` (ponta a ponta com `cd /c/...`, seção "Issue #289") continua 204/0 — provado pelas duas baterias e por `node scripts/conferir-mutacao.cjs --arquivo hooks/lib/cwd-efetivo.cjs --de 'if (plataforma !== "win32") return caminho;' --para 'if (false) return caminho;' --bateria "bash hooks/testa-cwd-efetivo.sh"` saindo 0 (`vermelho`).
 
 ### 9. testa-contexto-sessao.sh: SOBRA_22_* medem a saída real de montarContexto; medir_sobra sai [tipo: teste]
 atende: D12
