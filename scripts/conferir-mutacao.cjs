@@ -79,6 +79,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const TIMEOUT_PADRAO = 300000; // 5 min
+const LIMITE_ORFAO_MS = 24 * 60 * 60 * 1000; // 24h (tarefa 6, Issue #294.2)
 
 const USO = `uso: node scripts/conferir-mutacao.cjs --arquivo <caminho> --de <trecho> --para <trecho> --bateria <comando>
 
@@ -300,6 +301,46 @@ function materializarGit(raiz, raizExecucao) {
   fs.writeFileSync(destGit, `gitdir: ${gitDirCopia.replace(/\\/g, '/')}\n`);
 }
 
+// ==================== Varredura de órfãos na abertura (tarefa 6, Issue #294.2)
+//
+// `armarLimpeza` apaga a cópia ao FIM de uma execução normal. Mas saída
+// anormal — processo morto por um sinal que os handlers acima não cobrem,
+// máquina desligada no meio, `--timeout` matando o processo pai antes do
+// `exit` disparar — deixa `conferir-mutacao-*` (e `conferir-mutacao-git-*`,
+// o diretório-irmão de metadados de `materializarGit`) para trás em
+// `os.tmpdir()`. `limparTemporariosOrfaos` varre isso na ABERTURA da PRÓXIMA
+// execução, antes de criar a cópia desta: só diretórios, só o prefixo
+// `conferir-mutacao-`, só mtime acima de `LIMITE_ORFAO_MS` — nunca o
+// diretório que esta própria execução está prestes a criar, que nasce com
+// mtime de agora e sempre fica de fora do corte de 24h. Erro de leitura ou
+// remoção é SILENCIOSO e nunca muda o exit: isto é limpeza de melhor
+// esforço, nunca pode derrubar o veredito da catraca.
+function limparTemporariosOrfaos() {
+  let entradas;
+  try {
+    entradas = fs.readdirSync(os.tmpdir(), { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const entrada of entradas) {
+    if (!entrada.isDirectory()) continue;
+    if (!entrada.name.startsWith('conferir-mutacao-')) continue;
+    const caminho = path.join(os.tmpdir(), entrada.name);
+    let st;
+    try {
+      st = fs.statSync(caminho);
+    } catch {
+      continue;
+    }
+    if (Date.now() - st.mtimeMs < LIMITE_ORFAO_MS) continue;
+    try {
+      fs.rmSync(caminho, { recursive: true, force: true });
+    } catch {
+      // melhor esforço: sobrar um órfão não pode falhar esta execução
+    }
+  }
+}
+
 // ============================== Comando da bateria (D24, D25)
 
 /**
@@ -506,6 +547,10 @@ function main() {
     console.error(`erro: --raiz não é uma pasta: ${raiz}`);
     process.exit(1);
   }
+
+  // Varredura de órfãos de execuções anteriores (tarefa 6, Issue #294.2) —
+  // antes de criar a cópia desta execução, para não apagar a própria.
+  limparTemporariosOrfaos();
 
   // Cópia descartável de toda a árvore: baseline, mutação e bateria
   // pós-mutação rodam AQUI, nunca em `raiz`. Só o `.git` de TOPO fica de
