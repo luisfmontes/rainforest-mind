@@ -139,26 +139,44 @@
     ]
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "5cafc04084a89cbe84ef1bbbd89ea366543360ef",
+      "head": "7b9173e3f6b847142f117bb650dc3ea0b2669caf",
       "caminhos_sujos": [
         "docs/rainforest/estado/zerar-issues-6.json"
       ]
     },
     "em_voo": [],
     "em": "2026-09-17",
-    "achados": 2,
+    "achados": 0,
     "base": "7e8dd298",
-    "head": "80973958",
+    "head": "7b9173e3",
     "lista": [
       "1: nucleo da regra 6 (SKILL.md:90-92) permite ler Issue E conserto no repo da sessao, contra D2",
       "2: +93 B do nucleo fazem a combinacao real de hoje (22.1) cortar Dependencias de ambiente; 22.1 nao afirma presenca do bloco e o comentario ficou falso"
     ],
-    "tentativas": 1
+    "rodadas": [
+      {
+        "rodada": 1,
+        "veredito": "reprovado",
+        "achados": 2,
+        "consertado_em": "5cafc040"
+      },
+      {
+        "rodada": 2,
+        "veredito": "aprovado",
+        "achados_menores": 1,
+        "consertado_em": "7b9173e3",
+        "prova": "testa-contexto-sessao.sh ok: 295 falhou: 0, D7 5895 B; conferir-invariantes ok"
+      }
+    ]
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues-6 ; baterias: bash scripts/testa-foco.sh, bash hooks/testa-gate-publicacao-destino.sh, bash hooks/testa-gate-verificador-staged.sh, node hooks/testa-gate-commit.cjs, bash hooks/testa-config.sh, bash scripts/testa-conferir-mutacao.sh, bash scripts/testa-perfil.sh, node scripts/perfil.cjs --conferir, bash hooks/testa-cwd-efetivo.sh, bash hooks/testa-gate-worktree.sh, bash hooks/testa-contexto-sessao.sh, node scripts/conferir-invariantes.cjs",
+    "saida": "mutacoes exit 0: tarefas 2,3,4,5,6,8,9 vermelho; 1 e 7 puladas (n/a). Baterias todas exit 0: 91/0, 50/0, 15/0, 19/0, 45/0, 156/0, 4/0, perfil ok 9 agentes, 49/0, 204/0, 295/0 (D7 5895 B), invariantes ok 5. git grep do limiar bloqueia: vazio. Placar da 22.x: 295, nao 296 do plano — a 22.3 virou busca de tamanho na revisao 1 (nota no plano).",
+    "sensor_externo": "node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues-6",
+    "em": "2026-09-17"
   },
   "fechar": {
     "status": "pendente"
