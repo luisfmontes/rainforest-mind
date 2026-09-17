@@ -16,6 +16,12 @@
 #  (g) RAINFOREST_GATE_OFF=1 → exit 0 mesmo com SEGREDO
 #  (h) merge trazendo arquivo idêntico ao MERGE_HEAD da branch mesclada → exit 0;
 #      um segundo arquivo staged sem correspondente em HEAD nem MERGE_HEAD → exit 2
+#  (i) marcador "rainforest-gate: dados-de-exemplo" nas 5 primeiras linhas do
+#      STAGED dispensa o arquivo, mesmo com SEGREDO nas linhas seguintes
+#      (Issue #293); sem o marcador, o mesmo SEGREDO continua barrando
+#  (j) "gate-verificador-staged": false no config.json desliga o gate mesmo com
+#      SEGREDO staged e verificador reprovando → exit 0; com true (ou chave
+#      ausente) o mesmo conteúdo continua exit 2
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -305,6 +311,83 @@ else
   printf '%s' "$msg" | sed 's/^/         /' | head -5
   falhou=$((falhou+1))
 fi
+
+echo
+echo "== Caso (i): marcador nas 5 primeiras linhas do STAGED dispensa o arquivo =="
+CASE_I_POSIX="$SANDBOXES_POSIX/case-i"
+CASE_I="$(cygpath -m "$CASE_I_POSIX" 2>/dev/null || printf '%s' "$CASE_I_POSIX")"
+mkdir -p "$CASE_I_POSIX"
+mkdir -p "$CASE_I_POSIX/.rainforest"
+mkdir -p "$CASE_I_POSIX/scripts"
+git init -q "$CASE_I_POSIX"
+git -C "$CASE_I_POSIX" config user.email test@test
+git -C "$CASE_I_POSIX" config user.name test
+git -C "$CASE_I_POSIX" config core.autocrlf false
+echo "base" > "$CASE_I_POSIX/arquivo.txt"
+git -C "$CASE_I_POSIX" add arquivo.txt
+git -C "$CASE_I_POSIX" commit -qm "base"
+cat > "$CASE_I_POSIX/.rainforest/config.json" <<'EOF'
+{"verificador-staged": "bash scripts/verifica.sh"}
+EOF
+cat > "$CASE_I_POSIX/scripts/verifica.sh" << 'EOF'
+#!/bin/bash
+for arquivo in "$@"; do
+  if grep -q "SEGREDO" "$arquivo" 2>/dev/null; then
+    echo "encontrado: SEGREDO no arquivo"
+    exit 1
+  fi
+done
+exit 0
+EOF
+chmod +x "$CASE_I_POSIX/scripts/verifica.sh"
+# Marcador na primeira linha, SEGREDO na segunda -> dispensado
+printf '# rainforest-gate: dados-de-exemplo\ncontato: SEGREDO\n' > "$CASE_I_POSIX/arquivo.txt"
+git -C "$CASE_I_POSIX" add arquivo.txt
+gate "case-i: marcador dispensa arquivo com SEGREDO" "$CASE_I" "git commit -m x" 0
+# Mesmo conteudo sem a linha do marcador continua barrando
+printf 'contato: SEGREDO\n' > "$CASE_I_POSIX/arquivo.txt"
+git -C "$CASE_I_POSIX" add arquivo.txt
+gate "case-i: sem marcador, SEGREDO continua barrado" "$CASE_I" "git commit -m x" 2
+
+echo
+echo "== Caso (j): \"gate-verificador-staged\": false desliga o gate =="
+CASE_J_POSIX="$SANDBOXES_POSIX/case-j"
+CASE_J="$(cygpath -m "$CASE_J_POSIX" 2>/dev/null || printf '%s' "$CASE_J_POSIX")"
+mkdir -p "$CASE_J_POSIX"
+mkdir -p "$CASE_J_POSIX/.rainforest"
+mkdir -p "$CASE_J_POSIX/scripts"
+git init -q "$CASE_J_POSIX"
+git -C "$CASE_J_POSIX" config user.email test@test
+git -C "$CASE_J_POSIX" config user.name test
+git -C "$CASE_J_POSIX" config core.autocrlf false
+echo "base" > "$CASE_J_POSIX/arquivo.txt"
+git -C "$CASE_J_POSIX" add arquivo.txt
+git -C "$CASE_J_POSIX" commit -qm "base"
+cat > "$CASE_J_POSIX/scripts/verifica.sh" << 'EOF'
+#!/bin/bash
+for arquivo in "$@"; do
+  if grep -q "SEGREDO" "$arquivo" 2>/dev/null; then
+    echo "encontrado: SEGREDO no arquivo"
+    exit 1
+  fi
+done
+exit 0
+EOF
+chmod +x "$CASE_J_POSIX/scripts/verifica.sh"
+echo "contato: SEGREDO" > "$CASE_J_POSIX/arquivo.txt"
+git -C "$CASE_J_POSIX" add arquivo.txt
+cat > "$CASE_J_POSIX/.rainforest/config.json" <<'EOF'
+{"verificador-staged": "bash scripts/verifica.sh", "gate-verificador-staged": false}
+EOF
+gate "case-j: gate-verificador-staged false desliga (exit 0)" "$CASE_J" "git commit -m x" 0
+cat > "$CASE_J_POSIX/.rainforest/config.json" <<'EOF'
+{"verificador-staged": "bash scripts/verifica.sh", "gate-verificador-staged": true}
+EOF
+gate "case-j: gate-verificador-staged true continua barrando (exit 2)" "$CASE_J" "git commit -m x" 2
+cat > "$CASE_J_POSIX/.rainforest/config.json" <<'EOF'
+{"verificador-staged": "bash scripts/verifica.sh"}
+EOF
+gate "case-j: chave ausente continua barrando (exit 2)" "$CASE_J" "git commit -m x" 2
 
 echo
 echo "== Resultado: $ok ok   $falhou falha(s) =="

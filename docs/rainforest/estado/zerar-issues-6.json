@@ -1,0 +1,205 @@
+{
+  "slug": "zerar-issues-6",
+  "titulo": "Zerar as Issues abertas, rodada 6 — regra 6 e as 3 da rodada 5",
+  "criado_em": "2026-09-17",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/zerar-issues-6.md",
+    "em": "2026-09-17"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/zerar-issues-6.md",
+    "tarefas": 11,
+    "paralelas": [
+      1,
+      2,
+      3,
+      5,
+      7,
+      8,
+      10,
+      11
+    ],
+    "em": "2026-09-17"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-17",
+    "tarefas_ok": 11,
+    "tarefas": 11,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "7e8dd298",
+        "iteracao": 1,
+        "sessao": "033532e9-e484-455a-8c68-75288d64bb63",
+        "ts": "2026-09-17T11:45:21.676Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "7e8dd298",
+        "iteracao": 1,
+        "sessao": "033532e9-e484-455a-8c68-75288d64bb63",
+        "ts": "2026-09-17T11:45:21.676Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "7e8dd298",
+        "iteracao": 1,
+        "sessao": "033532e9-e484-455a-8c68-75288d64bb63",
+        "ts": "2026-09-17T11:45:21.676Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "7e8dd298",
+        "iteracao": 1,
+        "sessao": "033532e9-e484-455a-8c68-75288d64bb63",
+        "ts": "2026-09-17T11:45:21.676Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "7e8dd298",
+        "iteracao": 1,
+        "sessao": "033532e9-e484-455a-8c68-75288d64bb63",
+        "ts": "2026-09-17T11:45:21.676Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "7e8dd298",
+        "iteracao": 1,
+        "sessao": "033532e9-e484-455a-8c68-75288d64bb63",
+        "ts": "2026-09-17T11:45:21.676Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "9a3c3d5d",
+        "iteracao": 1,
+        "sessao": "033532e9-e484-455a-8c68-75288d64bb63",
+        "ts": "2026-09-17T11:59:46.452Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "9a3c3d5d",
+        "iteracao": 1,
+        "sessao": "033532e9-e484-455a-8c68-75288d64bb63",
+        "ts": "2026-09-17T11:59:46.452Z"
+      },
+      {
+        "tarefa": 10,
+        "hash_base": "5ade88a1",
+        "iteracao": 1,
+        "sessao": "033532e9-e484-455a-8c68-75288d64bb63",
+        "ts": "2026-09-17T13:40:32.674Z"
+      }
+    ],
+    "em": "2026-09-17",
+    "comando": "node scripts/conferir-versao.cjs ; bash hooks/testa-gate-agente-em-voo.sh",
+    "saida": "versao 1.19.0 supera origin/main 1.18.0 (exit 0); testa-versao 4/0; gate em voo 21 ok, 0 falha(s)",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "n/a",
+        "motivo": "so texto de regra; nucleo 5895 B com D7 e 22.1 verdes"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-foco.sh item 9: FALHA mutante nao rodou (MODULE_NOT_FOUND)"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-publicacao-destino.sh CASO 11: Edit em arquivo com marcador so na linha 6 -> barrado"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-verificador-staged.sh caso j: gate-verificador-staged false desliga"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-mutacao.sh secao 20: __pycache__ visto em pelo menos uma rodada"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-mutacao.sh secao 25: conferir-mutacao-VELHO e -git-VELHO deveriam ter sido removidos"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "texto replicado; perfil.cjs --conferir exit 0 com os 9 agentes"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "testa-cwd-efetivo.sh (msys-1) plataforma injetada linux"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "testa-contexto-sessao.sh 22.3: nenhum tamanho em que o guarda faca diferenca"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-agente-em-voo.sh: mesma sessao turno seguinte; mem-a e mem-b alternando"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "n/a",
+        "motivo": "numero de versao; conferir-versao.cjs exit 0 contra origin/main"
+      }
+    ],
+    "em_voo": [],
+    "pendentes": []
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "a3dde47eccf85a0e644331ea2ade98f39587f8c4",
+      "caminhos_sujos": []
+    },
+    "em_voo": [],
+    "em": "2026-09-17",
+    "achados": 0,
+    "base": "7e8dd298",
+    "head": "a3dde47e",
+    "lista": [
+      "1: memoria do gate-agente-em-voo e um slot unico; duas sessoes alternando no mesmo git-dir fazem A ser barrada de novo sem mudar sessao nem conjunto (reproduzido)"
+    ],
+    "rodadas": [
+      {
+        "rodada": 3,
+        "veredito": "reprovado",
+        "achados": 1,
+        "consertado_em": "19bd8d85"
+      },
+      {
+        "rodada": 4,
+        "veredito": "aprovado",
+        "achados_menores": 2
+      },
+      {
+        "creep": "plugin.json e README.md cobertos pela emenda D14/tarefa 11"
+      }
+    ]
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues-6 ; baterias das 11 tarefas (testa-foco, testa-gate-publicacao-destino, testa-gate-verificador-staged, testa-gate-commit, testa-config, testa-conferir-mutacao, testa-perfil, perfil --conferir, testa-cwd-efetivo, testa-gate-worktree, testa-contexto-sessao, conferir-invariantes, testa-gate-agente-em-voo, conferir-versao, testa-versao)",
+    "saida": "mutacoes: 2,3,4,5,6,8,9,10 vermelho; 1,7,11 n/a. Baterias exit 0: 91/0, 50/0, 15/0, 19/0, 45/0, 156/0, 4/0, perfil ok, 49/0, 204/0, 295/0 (D7 5895 B), invariantes ok, 21/0, versao 1.19.0 > origin/main, testa-versao 4/0. Placar 22.x = 295 (nao 296 do plano): 22.3 virou busca de tamanho na revisao 1.",
+    "sensor_externo": "node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues-6",
+    "em": "2026-09-17",
+    "criterio": "tarefa 10 (emenda, Issue #298)",
+    "faltou": "tarefa 10 ainda nao executada"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}

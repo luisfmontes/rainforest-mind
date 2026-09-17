@@ -37,6 +37,7 @@ const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 const { resolverRaiz } = require("./lib/raiz.cjs");
+const { temMarcadorNoConteudo } = require("./lib/marcador-dados.cjs");
 
 const FERRAMENTAS_DE_ESCRITA = new Set(["Write", "Edit", "MultiEdit"]);
 
@@ -297,7 +298,8 @@ function desligadoPorArquivo(gitTop) {
 
 /**
  * Detecta se o arquivo **em disco** tem o marcador que dispensa a conferência.
- * Marcador: qualquer linha contendo `rainforest-gate: dados-de-exemplo`.
+ * Marcador: `rainforest-gate: dados-de-exemplo` nas 5 primeiras linhas do
+ * arquivo (hooks/lib/marcador-dados.cjs, Issue #293) — fora dessa janela não conta.
  *
  * LEITURA DO DISCO, não do conteúdo que chega: isto fecha dois furos:
  *   - Edit no arquivo com marcador passa, mesmo se new_string não o tem;
@@ -309,7 +311,7 @@ function desligadoPorArquivo(gitTop) {
 function temMarcadorDados(caminhoDoArquivo) {
   try {
     const conteudo = fs.readFileSync(caminhoDoArquivo, "utf8");
-    return /rainforest-gate:\s*dados-de-exemplo/i.test(conteudo);
+    return temMarcadorNoConteudo(conteudo);
   } catch {
     // Arquivo inexistente, sem permissão, ou erro de leitura: sem marcador
     return false;
@@ -598,7 +600,7 @@ function conferirCommit(ev, cwdDoEvento, agente) {
     // O marcador é procurado no conteúdo QUE VAI SER COMMITADO, não no disco:
     // arquivo que ganhou o marcador só no worktree não pode dispensar a
     // conferência do que já está no índice.
-    if (/rainforest-gate:\s*dados-de-exemplo/i.test(conteudo)) continue;
+    if (temMarcadorNoConteudo(conteudo)) continue;
 
     const resultado = conferirConteudo(conteudo);
     if (resultado && resultado.achados && resultado.achados.length) {

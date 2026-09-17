@@ -730,7 +730,8 @@ fi
 # 2026-09-08: 5595 -> 5598 — a regra 11 ganhou "checkout principal fica na branch padrão; trabalho nasce em worktree" mais a trava e a chave que a desliga (Issue #195), pagando por subtracao no proprio texto: 388 -> 391 B. Folga: 2 B.
 # 2026-09-12: 5598 -> 5904 — a regra 6 ganhou a triagem de achado (defeito ≠ ideia) (+306 B), zerando a folga de 2 B; NUCLEOS_MAX_BYTES subiu de 5600 para 6000, deixando 96 B.
 # 2026-09-15: 5904 -> 5897 — a regra 10 perdeu a admissao por manifesto + estagio (issue #264: a portaria passou a registrar) e foi reescrita mais curta, pagando por SUBTRACAO no proprio texto: 500 B na primeira redacao, que estourou a catraca (6002 > 6000), depois 396 B contra os 402 de antes. Folga sobre NUCLEOS_MAX_BYTES: 103 B.
-NUCLEO_ESPERADO=5897
+# 2026-09-17: 5897 -> 5895 — a regra 6 ganhou a fronteira de repo (issue #291: conserto na hora so no repo da sessao; repo alheio vira Issue + Q) pagando por SUBTRACAO no proprio texto. A primeira redacao custou +93 B e a combinacao real de hoje (22.1) passou a perder o bloco de Dependencias em silencio; +27 B ainda cortava. Folga sobre NUCLEOS_MAX_BYTES: 103 B, mas a folga que vale e' a da 22.1, que nao passa de ~20 B.
+NUCLEO_ESPERADO=5895
 if [ "$NUCLEO_BYTES_REAL" = "$NUCLEO_ESPERADO" ]; then
   ok=$((ok+1)); echo "  ok    D7: nucleo emitido mede exatamente $NUCLEO_BYTES_REAL B (contrato: $NUCLEO_ESPERADO B)"
 else
@@ -2752,69 +2753,42 @@ Checado pelo hook: bridge WhatsApp online (http://127.0.0.1:3001); claude-mem at
 # linhas prontas -- montarContexto acrescenta o "- " na frente de cada uma).
 FIX_PRINCIPAL_22='["worktree `zerar-issues-5` está 6 commit(s) atrás do principal — considere sincronizar."]'
 
-contexto_rodape() { # veredito, sessoes, revisao, dependencias, principal(json), [lib]
-  LIB_PATH="${6:-$LIB}" FIX_SKILL="$SKILL_REAL" FIX_FOCO="$FOCO_MUITOS" \
+
+contexto_rodape() { # veredito, sessoes, revisao, dependencias, principal(json), [lib], [foco]
+  LIB_PATH="${6:-$LIB}" FIX_SKILL="$SKILL_REAL" FIX_FOCO="${7-$FOCO_MUITOS}" \
     FIX_VEREDITO="$1" FIX_BLOCO_SESSOES="$2" FIX_REVISAO="$3" FIX_DEPENDENCIAS="$4" FIX_PRINCIPAL="$5" \
     node "$RAIZ_POSIX/driver.cjs" 2>&1
 }
 
 # Mede a SOBRA real (ORCAMENTO_BYTES - fixo) que `montarContexto` calcula
-# internamente. ESPELHO do calculo interno, nao chamada direta: reusa as
-# funcoes EXPORTADAS da lib para regras/cabecalho (blocoRegras/extrairNucleo/
-# filtrarRegras, TETOS), mas reimplementa aqui o corte por prioridade em si,
-# porque a funcao real nao devolve fixo/sobra -- so o texto final. Se o corte
-# na lib mudar de forma, este espelho tem que acompanhar (e o numero abaixo
-# para de bater, o que e' o proprio sinal de que ele desatualizou). E' o
-# numero exato que decide se o piso do foco (FOCO_MIN_BYTES) e' respeitado, e
-# "nao aparece o aviso" e consequencia dele, nao um segundo fato independente.
-medir_sobra() { # veredito, sessoes, revisao, dependencias, principal(json), [lib]
-  LIB_PATH="${6:-$LIB}" FIX_SKILL="$SKILL_REAL" \
-    FIX_VEREDITO="$1" FIX_BLOCO_SESSOES="$2" FIX_REVISAO="$3" FIX_DEPENDENCIAS="$4" FIX_PRINCIPAL="$5" \
-    node -e '
-      const lib = require(process.env.LIB_PATH);
-      const path = require("path");
-      const regras = lib.blocoRegras(lib.extrairNucleo(lib.filtrarRegras(process.env.FIX_SKILL)), "C:\\fake\\SKILL.md");
-      const pastaReferences = path.join(path.dirname("C:\\fake\\SKILL.md"), "references").replace(/\\/g, "/");
-      const cabecalho = `RAINFOREST MIND ATIVO — memória de trabalho externa e radar de escopo do usuario (perfil 2e).
-
-**Isto é o NÚCLEO das regras, não o texto completo.** Regra marcada com ↳ tem
-elaboração que não está aqui — critérios finos, comandos exatos, incidentes.
-**Antes de aplicar uma regra marcada, leia a elaboração:**
-`+"`"+`${pastaReferences}/regra-<n>.md`+"`"+` (onde `+"`"+`<n>`+"`"+` é o número com dois dígitos — `+"`"+`06`+"`"+`, `+"`"+`13`+"`"+`, `+"`"+`17`+"`"+`).
-
-## Regras (aplicar em toda resposta)
-${regras}
-
-## Foco declarado
-`;
-      const dependencias = process.env.FIX_DEPENDENCIAS || "";
-      const sessoes = process.env.FIX_BLOCO_SESSOES || "";
-      const linhaDependencias = dependencias ? String(dependencias).replace(/^\n+/, "").trimEnd() : null;
-      const linhaSessoes = sessoes ? String(sessoes).replace(/^\n+/, "").trimEnd() : null;
-      const principal = JSON.parse(process.env.FIX_PRINCIPAL || "[]");
-      let blocoRodape = [process.env.FIX_VEREDITO, sessoes, process.env.FIX_REVISAO, dependencias]
-        .filter(Boolean)
-        .map((b) => String(b).replace(/^\n+/, "").trimEnd());
-      if (principal.length) blocoRodape.push(principal.map((l) => `- ${l}`).join("\n"));
-      blocoRodape.push("Arquivos de apoio: C:\\fake\\FOCO.md e C:\\fake\\ideias.jsonl (uma ideia por linha)");
-      let rodape = "\n\n" + blocoRodape.join("\n\n");
-      let fixo = Buffer.byteLength(cabecalho + rodape, "utf8");
-      if (fixo > lib.TETOS.ORCAMENTO_BYTES - lib.TETOS.FOCO_MIN_BYTES) {
-        if (linhaDependencias) {
-          const idx = blocoRodape.indexOf(linhaDependencias);
-          if (idx !== -1) blocoRodape.splice(idx, 1);
-        }
-        rodape = "\n\n" + blocoRodape.join("\n\n");
-        fixo = Buffer.byteLength(cabecalho + rodape, "utf8");
-        if (fixo > lib.TETOS.ORCAMENTO_BYTES - lib.TETOS.FOCO_MIN_BYTES && linhaSessoes) {
-          const idx2 = blocoRodape.indexOf(linhaSessoes);
-          if (idx2 !== -1) blocoRodape.splice(idx2, 1);
-          rodape = "\n\n" + blocoRodape.join("\n\n");
-          fixo = Buffer.byteLength(cabecalho + rodape, "utf8");
-        }
-      }
-      process.stdout.write(String(lib.TETOS.ORCAMENTO_BYTES - fixo));
-    '
+# internamente -- SEM reimplementar o corte (a funcao anterior aqui era um
+# espelho da logica de corte, e nasceu desatualizada assim que o "so corta se
+# resolver" (contexto-sessao.cjs:1188, D12) entrou: o mirror nao conhecia o
+# guarda novo e removia dependencias/sessoes mesmo quando isso nao ajudava).
+# Em vez disso, roda o driver REAL (`contexto_rodape`) com foco VAZIO: o corte
+# de `fixo` (cabecalho+rodape) nao depende do texto do foco, entao a saida com
+# foco vazio tem exatamente o mesmo `fixo` que qualquer outro foco. Com foco
+# vazio, `montarContexto` sempre grava a mensagem FIXA de foco vazio
+# (contexto-sessao.cjs:1210-1211) no lugar do foco -- entao
+# `fixo = bytes(saida) - bytes(mensagem fixa)` e `sobra = ORCAMENTO_BYTES - fixo`.
+# Se essa string mudar no fonte, a asserção abaixo tem que falhar ALTO (nunca
+# calcular com ela ausente, tratando "nao achei" como zero ou ignorando).
+FOCO_VAZIO_MSG='(nenhum foco declarado — sugira /foco <texto> se o usuario disser no que precisa entregar)'
+sobra_real() { # veredito, sessoes, revisao, dependencias, principal(json), [lib]
+  local lib="${6:-$LIB}"
+  local saida
+  saida="$(contexto_rodape "$1" "$2" "$3" "$4" "$5" "$lib" "")"
+  if ! printf '%s' "$saida" | grep -qF "$FOCO_VAZIO_MSG"; then
+    echo "  FALHA sobra_real: a mensagem fixa de foco vazio nao foi encontrada na saida -- a string mudou no fonte? sobra NAO calculada." >&2
+    echo "ERRO-MENSAGEM-FIXA-AUSENTE"
+    return
+  fi
+  LIB_PATH="$lib" FIX_SAIDA="$saida" FIX_MSG="$FOCO_VAZIO_MSG" node -e '
+    const lib = require(process.env.LIB_PATH);
+    const bytesSaida = Buffer.byteLength(process.env.FIX_SAIDA, "utf8");
+    const bytesMsg = Buffer.byteLength(process.env.FIX_MSG, "utf8");
+    process.stdout.write(String(lib.TETOS.ORCAMENTO_BYTES - (bytesSaida - bytesMsg)));
+  '
 }
 
 # 22.1 — a combinacao de HOJE (as duas dependencias que o hook realmente checa)
@@ -2822,7 +2796,11 @@ ${regras}
 S_22_1="$(contexto_rodape "$BLOCO_VEREDITO_22" "$BLOCO_SESSOES_22" "$BLOCO_REVISAO_22" "$BLOCO_DEPENDENCIAS_22" "$FIX_PRINCIPAL_22")"
 checa "22.1 combinacao real de hoje: sem aviso de foco que 'nao coube'" nao_tem "não coube" "$S_22_1"
 checa "22.1 combinacao real de hoje: sem aviso de injecao acima do orcamento" nao_tem "ACIMA DO ORÇAMENTO" "$S_22_1"
-SOBRA_22_1="$(medir_sobra "$BLOCO_VEREDITO_22" "$BLOCO_SESSOES_22" "$BLOCO_REVISAO_22" "$BLOCO_DEPENDENCIAS_22" "$FIX_PRINCIPAL_22")"
+# O "SEM precisar do corte" acima e' asserido, nao so dito: em 2026-09-17 a regra 6
+# cresceu 93 B no nucleo e a combinacao de hoje passou a perder este bloco em
+# silencio (22.1 e 22.2 davam saida identica). Nucleo que crescer ~20 B derruba aqui.
+checa "22.1 combinacao real de hoje: Dependencias de ambiente sobrevive sem corte" tem "Dependências de ambiente" "$S_22_1"
+SOBRA_22_1="$(sobra_real "$BLOCO_VEREDITO_22" "$BLOCO_SESSOES_22" "$BLOCO_REVISAO_22" "$BLOCO_DEPENDENCIAS_22" "$FIX_PRINCIPAL_22")"
 if [ "$SOBRA_22_1" -ge 700 ] 2>/dev/null; then
   ok=$((ok+1)); echo "  ok    22.1 sobra calculada para o foco: $SOBRA_22_1 B (>= piso FOCO_MIN_BYTES de 700 B)"
 else
@@ -2840,7 +2818,7 @@ checa "22.2 dependencias crescidas: corte evita o aviso de 'nao coube'" nao_tem 
 checa "22.2 dependencias crescidas: sem aviso de injecao acima do orcamento" nao_tem "ACIMA DO ORÇAMENTO" "$S_22_2"
 checa "22.2 dependencias crescidas: o corte tirou o bloco de dependencias" nao_tem "Dependências de ambiente" "$S_22_2"
 checa "22.2 dependencias crescidas: as sessoes sobrevivem (o corte so tira depois)" tem "radar multi-janela" "$S_22_2"
-SOBRA_22_2="$(medir_sobra "$BLOCO_VEREDITO_22" "$BLOCO_SESSOES_22" "$BLOCO_REVISAO_22" "$DEPENDENCIAS_CRESCIDAS_22" "$FIX_PRINCIPAL_22")"
+SOBRA_22_2="$(sobra_real "$BLOCO_VEREDITO_22" "$BLOCO_SESSOES_22" "$BLOCO_REVISAO_22" "$DEPENDENCIAS_CRESCIDAS_22" "$FIX_PRINCIPAL_22")"
 if [ "$SOBRA_22_2" -ge 700 ] 2>/dev/null; then
   ok=$((ok+1)); echo "  ok    22.2 sobra calculada para o foco: $SOBRA_22_2 B (>= piso FOCO_MIN_BYTES de 700 B)"
 else
@@ -2848,7 +2826,50 @@ else
 fi
 
 echo
-echo "22.3 MUTAÇÃO — desligar o corte tem que derrubar o item 22.2"
+echo "22.3 (D12/Issue #294.5) — so' corta se resolver: corte que nao resolve fica de fora"
+# Um aviso de principal atrasado DOMINANTE faz o corte por prioridade (tirar
+# dependencias+sessoes) nao bastar; o guarda de contexto-sessao.cjs tem de perceber
+# isso e NAO remover nada. A faixa de tamanho em que isso acontece sem cair em
+# ACIMA DO ORCAMENTO tem ~15 B e anda com cada byte do nucleo (em 2026-09-17 um
+# fixture de tamanho fixo quebrou quando a regra 6 mudou), entao o tamanho e'
+# BUSCADO aqui, contra a lib real: o primeiro sufixo em que a lib real mantem os
+# dois blocos sem ACIMA e a lib com o guarda desligado (`if (true)`) tira os dois.
+# Se o guarda de producao nao fizer diferenca em tamanho nenhum, nao ha faixa: FALHA.
+cp "$LIB" "$RAIZ_POSIX/lib-mut-so-corta-se-resolve.cjs"
+sed -i "s/if (fixoComCorteMaximo <= TETOS.ORCAMENTO_BYTES - TETOS.FOCO_MIN_BYTES) {/if (true) {/" "$RAIZ_POSIX/lib-mut-so-corta-se-resolve.cjs"
+NOTA_22_3=""
+if diff "$LIB" "$RAIZ_POSIX/lib-mut-so-corta-se-resolve.cjs" > /dev/null; then
+  # Sem a linha do guarda na lib, a copia "sem guarda" e' a propria lib: a busca
+  # roda igual e nao acha faixa -- o vermelho sai pelo motivo certo (o guarda nao
+  # decide nada), com a nota dizendo por que.
+  NOTA_22_3=" (a linha do guarda nao existe na lib: mudou ou sumiu)"
+fi
+{
+  ACHOU_22_3=""
+  BASE_22_3='worktree `zerar-issues-5` está 6 commit(s) atrás do principal — considere sincronizar. '
+  SUF_22_3=""; while [ "${#SUF_22_3}" -lt 200 ]; do SUF_22_3="${SUF_22_3}xxxxx"; done
+  while [ "${#SUF_22_3}" -le 1200 ]; do
+    P_22_3="[\"${BASE_22_3}${SUF_22_3}\"]"
+    R_22_3="$(contexto_rodape "$BLOCO_VEREDITO_22" "$BLOCO_SESSOES_22" "$BLOCO_REVISAO_22" "$DEPENDENCIAS_CRESCIDAS_22" "$P_22_3")"
+    if printf '%s' "$R_22_3" | grep -qF "ACIMA DO ORÇAMENTO"; then break; fi
+    if printf '%s' "$R_22_3" | grep -qF "Dependências de ambiente" && printf '%s' "$R_22_3" | grep -qF "radar multi-janela"; then
+      M_22_3="$(contexto_rodape "$BLOCO_VEREDITO_22" "$BLOCO_SESSOES_22" "$BLOCO_REVISAO_22" "$DEPENDENCIAS_CRESCIDAS_22" "$P_22_3" "$RAIZ_POSIX/lib-mut-so-corta-se-resolve.cjs")"
+      if ! printf '%s' "$M_22_3" | grep -qF "Dependências de ambiente" && ! printf '%s' "$M_22_3" | grep -qF "radar multi-janela"; then
+        ACHOU_22_3="${#SUF_22_3}"; break
+      fi
+    fi
+    SUF_22_3="${SUF_22_3}xxxxx"
+  done
+  if [ -n "$ACHOU_22_3" ]; then
+    ok=$((ok+1)); echo "  ok    22.3 principal dominante (sufixo de $ACHOU_22_3 B): o guarda mantem Dependencias e sessoes sem ACIMA, e sem o guarda os dois somem"
+  else
+    falhou=$((falhou+1)); echo "  FALHA 22.3 nenhum tamanho de aviso (200-1200 B) em que o guarda 'so corta se resolver' faca diferenca -- o guarda nao decide nada$NOTA_22_3"
+  fi
+}
+rm -f "$RAIZ_POSIX/lib-mut-so-corta-se-resolve.cjs"
+
+echo
+echo "22.4 MUTAÇÃO — desligar o corte tem que derrubar o item 22.2"
 cp "$LIB" "$RAIZ_POSIX/lib-mut-rodape.cjs"
 sed -i "s/if (fixo > TETOS.ORCAMENTO_BYTES - TETOS.FOCO_MIN_BYTES) {/if (false) {/" "$RAIZ_POSIX/lib-mut-rodape.cjs"
 if diff "$LIB" "$RAIZ_POSIX/lib-mut-rodape.cjs" > /dev/null; then

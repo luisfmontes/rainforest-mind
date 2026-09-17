@@ -37,6 +37,7 @@ const { execFileSync, spawnSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
+const { temMarcadorNoConteudo } = require("./lib/marcador-dados.cjs");
 
 function git(dir, args) {
   try {
@@ -116,6 +117,11 @@ function materializaStaged(gitTop) {
         (conteudoHead !== null && conteudoHead === conteudo) ||
         (conteudoMergeHead !== null && conteudoMergeHead === conteudo);
       if (jaPublicado) continue;
+
+      // Marcador de dados-de-exemplo (só nas 5 primeiras linhas do conteúdo
+      // STAGED): dispensa este arquivo da conferência, mesma regra do gate
+      // de publicação (hooks/lib/marcador-dados.cjs, Issue #293).
+      if (temMarcadorNoConteudo(conteudo)) continue;
 
       // Cria diretório pai se necessário
       const dir = path.dirname(caminhoTemp);
