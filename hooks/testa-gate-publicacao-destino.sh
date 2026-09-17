@@ -17,6 +17,8 @@
 #      worktree linkado do mesmo repo (Issue #265)
 #  10. mensagem de bloqueio cita setup.cjs --desligar gate-publicacao antes das
 #      saídas de emergência (Issue #268)
+#  11. marcador só conta nas 5 primeiras linhas do arquivo — marcador na
+#      linha 6 não dispensa a conferência (Issue #293)
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -218,6 +220,15 @@ gate "Edit em arquivo vizinho SEM marcador, mesmo conteudo -> barrado" 2   "$(pa
 # entao nao ha marcador — auto-isencao num unico write nao passa.
 gate "Write de arquivo novo com marcador embutido -> barrado" 2   "$(pay Write "$(esc "$R")/arquivo-com-marcador.sh" '# rainforest-gate: dados-de-exemplo
 jid="5500900000001@s.whatsapp.net"')"
+
+echo
+echo "== CASO 11: marcador so conta nas 5 primeiras linhas (Issue #293) =="
+# Arquivo com o marcador so na linha 6 (fora da janela de 5 primeiras linhas).
+# Antes do conserto, temMarcadorDados varria o arquivo inteiro e este caso
+# passava (exit 0) mesmo trazendo credencial nova pelo Edit.
+printf 'linha um\nlinha dois\nlinha tres\nlinha quatro\nlinha cinco\n# rainforest-gate: dados-de-exemplo\n' > "$R/marcador-tardio.sh"
+git -C "$R" add marcador-tardio.sh; git -C "$R" commit -qm "marcador tardio"
+gate "Edit em arquivo com marcador so na linha 6 -> barrado" 2   "$(pay Edit "$(esc "$R")/marcador-tardio.sh" 'jid="5500900000001@s.whatsapp.net"')"
 
 # Entrada malformada nunca derruba a sessao: sai 0. E o comportamento certo, e
 # tambem o que escondeu os casos acima quando o payload vinha quebrado — por isso
