@@ -71,10 +71,28 @@
     "em": "2026-09-17"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "snapshot": {
+      "head": "d8f22eb45ce5c811904af73b8a936c5e6bd4cf82",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/zerar-issues-7.json"
+      ]
+    },
+    "em_voo": [],
+    "em": "2026-09-17",
+    "achados": 2,
+    "bloqueantes": 0,
+    "corrigidos": 2,
+    "base": "a171f9df",
+    "head": "d8f22eb",
+    "comando": "bash hooks/testa-contexto-sessao.sh",
+    "saida": "ok: 295   falhou: 0"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues-7 && bash hooks/testa-contexto-sessao.sh && node scripts/conferir-versao.cjs",
+    "saida": "tarefa 1: vermelho; tarefas 2-3 puladas (n/a); testa-contexto-sessao ok: 295 falhou: 0 (D7 nucleo 5899 B, regra 4 termina em ↳); mapa-regras, conferir-invariantes, ponte, conferir-ponte, versao exit 0; conferir-versao ok 1.19.1 > origin/main 1.19.0; diff regra-01.md + modo-dev/SKILL.md = 2 arquivos, +4 linhas",
+    "em": "2026-09-17"
   },
   "fechar": {
     "status": "pendente"
