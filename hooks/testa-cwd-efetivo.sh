@@ -14,7 +14,7 @@ TESTE_JS="$RAIZ/teste.js"
 cat > "$TESTE_JS" << 'NODESCRIPT'
 const path = require("path");
 const fs = require("fs");
-const { resolverCwdEfetivo, cwdPorSegmento, toplevelConfinado } = require(process.argv[2]);
+const { resolverCwdEfetivo, cwdPorSegmento, toplevelConfinado, normalizarMsys } = require(process.argv[2]);
 const { execSync } = require("child_process");
 
 let ok = 0, falhou = 0;
@@ -450,6 +450,15 @@ test('(r2) nome citado como ARGUMENTO nao move nada', () => {
   const r = cwdPorSegmento(cmd, testDir);
   eq(r.length, 1, "numero de segmentos");
   eq(r[0].cwd, testDir, "cwd do segmento (nada moveu)");
+});
+
+console.log();
+console.log("== Caso (msys): normalizarMsys so converte /<letra>/... em win32 (D11) ==");
+test("(msys-1) plataforma injetada 'linux': /c/proj/x volta INTACTO", () => {
+  eq(normalizarMsys("/c/proj/x", "linux"), "/c/proj/x", "caminho fora do win32 nao muda");
+});
+test("(msys-2) plataforma injetada 'win32': /c/proj/x vira c:/proj/x", () => {
+  eq(normalizarMsys("/c/proj/x", "win32"), "c:/proj/x", "caminho em win32 converte pra forma Windows");
 });
 
 console.log();
