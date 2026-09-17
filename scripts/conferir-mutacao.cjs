@@ -181,14 +181,35 @@ function armarLimpeza(raizExecucao) {
 // silêncio sem repositório).
 //
 // Conserto: materializar um `.git` PRÓPRIO na cópia. NUNCA o arquivo-ponteiro
-// de um worktree vinculado (`gitdir: <caminho>`), que apontaria pro MESMO
-// gitdir da árvore real — proibido pela D5. Em vez disso: HEAD/index/config/
-// refs copiados (arquivos novos, fisicamente separados dos originais) mais
-// `objects/info/alternates` apontando pro object-store real só para LEITURA —
-// o mesmo mecanismo que já torna `git worktree` seguro (histórico imutável
-// compartilhado, HEAD/index/refs próprios de cada worktree). A mutação desta
-// ferramenta escreve num arquivo da árvore de trabalho, nunca num objeto git,
-// então não existe caminho de escrita cruzada passando pelo alternates.
+// de um worktree vinculado apontando pro gitdir da árvore REAL — proibido
+// pela D5. Em vez disso: HEAD/index/config/refs copiados (arquivos novos,
+// fisicamente separados dos originais) mais `objects/info/alternates`
+// apontando pro object-store real só para LEITURA — o mesmo mecanismo que já
+// torna `git worktree` seguro (histórico imutável compartilhado, HEAD/index/
+// refs próprios de cada worktree). A mutação desta ferramenta escreve num
+// arquivo da árvore de trabalho, nunca num objeto git, então não existe
+// caminho de escrita cruzada passando pelo alternates.
+//
+// Tarefa 22 (achado do verificar, 2026-09-16): quando `raiz` é worktree
+// VINCULADO (git-dir != git-common-dir), o código anterior misturava HEAD/
+// index do worktree com config/refs do commondir num ÚNICO diretório
+// `.git` — e o resultado tinha git-dir == git-common-dir na cópia, ou seja,
+// a cópia de um worktree vinculado virava CHECKOUT PRINCIPAL (branch
+// `estado.cjs iniciar` recusa por ver "checkout principal fora da branch
+// padrão"). Conserto: quando vinculado, a cópia ganha DOIS diretórios
+// próprios, nunca compartilhando nada gravável com o repo real:
+//   - `.git-comum` (commonDirCopia): config, packed-refs, refs copiados,
+//     `objects/info/alternates` apontando pros objects reais — como antes.
+//   - `.git-privado` (gitDirCopia): HEAD e index PRÓPRIOS deste worktree,
+//     mais os dois arquivos que amarram um git-dir de worktree ao seu
+//     common-dir: `commondir` (aponta pra `.git-comum`) e `gitdir` (aponta
+//     de volta pro `.git` de `raizExecucao`, convenção de
+//     `git worktree add`).
+//   - `raizExecucao/.git` vira um ARQUIVO `gitdir: <gitDirCopia>` — nunca o
+//     gitdir real, sempre a cópia.
+// Os dois diretórios moram DENTRO de `raizExecucao`, então a limpeza de
+// `armarLimpeza` (um `fs.rmSync` recursivo na raiz da cópia) já os cobre,
+// inclusive em erro — nenhum mecanismo de limpeza novo.
 function materializarGit(raiz, raizExecucao) {
   const gitDirRes = spawnSync('git', ['rev-parse', '--git-dir'], { cwd: raiz, encoding: 'utf8', stdio: 'pipe' });
   if (gitDirRes.status !== 0) return; // raiz nao e repositorio git: copia fica sem .git (comportamento da tarefa 7)
@@ -203,30 +224,52 @@ function materializarGit(raiz, raizExecucao) {
     return; // caminho de git-dir/common-dir nao resolve: copia fica sem .git
   }
 
-  const destGit = path.join(raizExecucao, '.git');
-  fs.mkdirSync(destGit, { recursive: true });
+  const vinculado = gitDir !== commonDir;
 
-  // HEAD e index PROPRIOS deste worktree (se `raiz` for worktree vinculado,
-  // moram em `gitDir`, nao em `commonDir` — que teria os do checkout PRINCIPAL).
-  for (const nome of ['HEAD', 'index']) {
-    const origem = path.join(gitDir, nome);
-    if (fs.existsSync(origem)) fs.copyFileSync(origem, path.join(destGit, nome));
-  }
+  const destGit = path.join(raizExecucao, '.git');
+  // Nao-vinculado (checkout principal): o common-dir da copia E o `.git` da
+  // copia, exatamente como antes. Vinculado: common-dir vira um diretorio
+  // IRMAO, proprio, separado do git-dir do worktree.
+  const commonDirCopia = vinculado ? path.join(raizExecucao, '.git-comum') : destGit;
+  fs.mkdirSync(commonDirCopia, { recursive: true });
+
   // config e refs sao compartilhados por definicao entre worktrees do mesmo
-  // repositorio, e vem sempre do commonDir.
+  // repositorio, e vem sempre do commonDir real.
   for (const nome of ['config', 'packed-refs']) {
     const origem = path.join(commonDir, nome);
-    if (fs.existsSync(origem)) fs.copyFileSync(origem, path.join(destGit, nome));
+    if (fs.existsSync(origem)) fs.copyFileSync(origem, path.join(commonDirCopia, nome));
   }
   if (fs.existsSync(path.join(commonDir, 'refs'))) {
-    fs.cpSync(path.join(commonDir, 'refs'), path.join(destGit, 'refs'), { recursive: true });
+    fs.cpSync(path.join(commonDir, 'refs'), path.join(commonDirCopia, 'refs'), { recursive: true });
   }
-
-  fs.mkdirSync(path.join(destGit, 'objects', 'info'), { recursive: true });
+  fs.mkdirSync(path.join(commonDirCopia, 'objects', 'info'), { recursive: true });
   fs.writeFileSync(
-    path.join(destGit, 'objects', 'info', 'alternates'),
+    path.join(commonDirCopia, 'objects', 'info', 'alternates'),
     `${path.join(commonDir, 'objects').replace(/\\/g, '/')}\n`,
   );
+
+  if (!vinculado) {
+    // HEAD e index moram no MESMO diretorio que config/refs (checkout principal).
+    for (const nome of ['HEAD', 'index']) {
+      const origem = path.join(gitDir, nome);
+      if (fs.existsSync(origem)) fs.copyFileSync(origem, path.join(destGit, nome));
+    }
+    return;
+  }
+
+  // Vinculado: git-dir PROPRIO do worktree (HEAD e index deste worktree, nao
+  // do checkout principal), amarrado ao commonDirCopia por `commondir`/`gitdir`
+  // — a mesma convencao que `git worktree add` usa de verdade, so que os DOIS
+  // lados (`gitDirCopia` e `commonDirCopia`) sao copias, nunca os originais.
+  const gitDirCopia = path.join(raizExecucao, '.git-privado');
+  fs.mkdirSync(gitDirCopia, { recursive: true });
+  for (const nome of ['HEAD', 'index']) {
+    const origem = path.join(gitDir, nome);
+    if (fs.existsSync(origem)) fs.copyFileSync(origem, path.join(gitDirCopia, nome));
+  }
+  fs.writeFileSync(path.join(gitDirCopia, 'commondir'), `${commonDirCopia.replace(/\\/g, '/')}\n`);
+  fs.writeFileSync(path.join(gitDirCopia, 'gitdir'), `${destGit.replace(/\\/g, '/')}\n`);
+  fs.writeFileSync(destGit, `gitdir: ${gitDirCopia.replace(/\\/g, '/')}\n`);
 }
 
 // ============================== Comando da bateria (D24, D25)
