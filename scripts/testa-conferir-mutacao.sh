@@ -1193,6 +1193,87 @@ else
   falhou=$((falhou+1)); printf '  FALHA fluxo/x andou -- antes=%s depois=%s\n' "$FLUXO_X_ANTES" "$FLUXO_X_DEPOIS"
 fi
 
+echo
+echo "== 25. varredura de orfaos na abertura (tarefa 6, Issue #294.2) =="
+# Seguranca (inegociavel): TMP/TEMP so' apontam para um sandbox PROPRIO deste
+# teste (dentro de $S, apagado pelo trap de saida) -- a varredura NUNCA toca
+# o $TEMP real da maquina. So' o processo FILHO (o node da catraca) recebe o
+# override, via prefixo de variavel na chamada de CHK.
+TMPORFAOS="$S/tmp-orfaos"; WTMPORFAOS="$(cygpath -m "$TMPORFAOS" 2>/dev/null || printf '%s' "$TMPORFAOS")"
+mkdir -p "$TMPORFAOS"
+
+mkdir -p "$TMPORFAOS/conferir-mutacao-VELHO"
+mkdir -p "$TMPORFAOS/conferir-mutacao-git-VELHO"
+mkdir -p "$TMPORFAOS/conferir-mutacao-NOVO"
+mkdir -p "$TMPORFAOS/outra-coisa-velha"
+: > "$TMPORFAOS/conferir-mutacao-ARQUIVO.txt"
+# Forca mtime de 2 dias atras nos que tem de ser varridos (e no de prefixo
+# errado e no arquivo, que tem de SOBREVIVER apesar da idade). conferir-mutacao-NOVO
+# fica com mtime de agora (acabou de ser criado) -- e' o "diretorio da execucao
+# corrente" que a funcao nunca pode apagar.
+touch -d "2 days ago" "$TMPORFAOS/conferir-mutacao-VELHO" "$TMPORFAOS/conferir-mutacao-git-VELHO" \
+  "$TMPORFAOS/outra-coisa-velha" "$TMPORFAOS/conferir-mutacao-ARQUIVO.txt"
+
+cat > "$CAIXA/fonte-orfaos.cjs" <<'FONTE'
+#!/usr/bin/env node
+const x = 1;
+FONTE
+cat > "$CAIXA/bateria-orfaos.sh" <<'BAT'
+#!/bin/bash
+exit 0
+BAT
+
+TMP="$WTMPORFAOS" TEMP="$WTMPORFAOS" CHK --arquivo fonte-orfaos.cjs --de "const x = 1;" --para "const x = 2;" \
+    --bateria 'bash bateria-orfaos.sh' > "$SAIDA" 2>&1
+GOT_ORFAOS=$?
+if [ "$GOT_ORFAOS" -eq 2 ]; then
+  ok=$((ok+1)); printf '  ok    execucao com TMP/TEMP em sandbox roda normalmente (exit=2, bateria sempre verde)\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA execucao com TMP/TEMP em sandbox: esperado exit=2, veio exit=%s\n' "$GOT_ORFAOS"
+  sed 's/^/        | /' "$SAIDA" | tail -10
+fi
+
+if [ -e "$TMPORFAOS/conferir-mutacao-VELHO" ]; then
+  falhou=$((falhou+1)); printf '  FALHA conferir-mutacao-VELHO (diretorio, 2 dias) deveria ter sido removido e continua existindo\n'
+else
+  ok=$((ok+1)); printf '  ok    conferir-mutacao-VELHO (diretorio, 2 dias) foi removido\n'
+fi
+
+if [ -e "$TMPORFAOS/conferir-mutacao-git-VELHO" ]; then
+  falhou=$((falhou+1)); printf '  FALHA conferir-mutacao-git-VELHO (diretorio, 2 dias) deveria ter sido removido e continua existindo\n'
+else
+  ok=$((ok+1)); printf '  ok    conferir-mutacao-git-VELHO (diretorio, 2 dias) foi removido\n'
+fi
+
+if [ -d "$TMPORFAOS/conferir-mutacao-NOVO" ]; then
+  ok=$((ok+1)); printf '  ok    conferir-mutacao-NOVO (mtime de agora) NAO foi removido\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA conferir-mutacao-NOVO (mtime de agora) foi removido -- nunca pode apagar o diretorio da execucao corrente\n'
+fi
+
+if [ -d "$TMPORFAOS/outra-coisa-velha" ]; then
+  ok=$((ok+1)); printf '  ok    outra-coisa-velha (prefixo errado, 2 dias) NAO foi removido\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA outra-coisa-velha (prefixo errado) foi removido -- apenas o prefixo conferir-mutacao- pode ser varrido\n'
+fi
+
+if [ -f "$TMPORFAOS/conferir-mutacao-ARQUIVO.txt" ]; then
+  ok=$((ok+1)); printf '  ok    conferir-mutacao-ARQUIVO.txt (arquivo, nao diretorio, 2 dias) NAO foi removido\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA conferir-mutacao-ARQUIVO.txt (arquivo) foi removido -- apenas DIRETORIO pode ser varrido\n'
+fi
+
+# A propria execucao acima criou seu conferir-mutacao-<rand> dentro do
+# sandbox (mkdtempSync usa os.tmpdir()) -- a limpeza de fim de execucao
+# (armarLimpeza) ja apaga essa copia. Alem de conferir-mutacao-NOVO (plantado
+# de proposito), nao pode sobrar mais nenhum diretorio conferir-mutacao-*.
+SOBRAS_INESPERADAS="$(find "$TMPORFAOS" -maxdepth 1 -type d -name 'conferir-mutacao-*' ! -name 'conferir-mutacao-NOVO' 2>/dev/null)"
+if [ -z "$SOBRAS_INESPERADAS" ]; then
+  ok=$((ok+1)); printf '  ok    nenhum diretorio conferir-mutacao-* inesperado ficou para tras no sandbox\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA sobrou diretorio inesperado no sandbox:\n%s\n' "$SOBRAS_INESPERADAS"
+fi
+
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]
