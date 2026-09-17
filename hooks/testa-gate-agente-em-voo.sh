@@ -97,6 +97,10 @@ echo "== memoria de aviso por sessao (Issue #298) =="
 checa "primeiro turno da sessao mem-a BARRA"             2 "$(pay "$R" false mem-a)"
 checa "mesma sessao, mesmo em_voo, turno seguinte NAO barra de novo" 0 "$(pay "$R" false mem-a)"
 checa "sessao mem-b diferente BARRA (memoria e por sessao)" 2 "$(pay "$R" false mem-b)"
+# Duas janelas alternando no mesmo git-dir: a memoria de uma nao pode apagar a da
+# outra (revisao 3 do zerar-issues-6 achou o slot unico fazendo isso).
+checa "depois de mem-b, mem-a no turno seguinte continua sem barrar" 0 "$(pay "$R" false mem-a)"
+checa "  ... e mem-b tambem continua sem barrar"                    0 "$(pay "$R" false mem-b)"
 escreve_estado '{"status":"parcial","em":"2026-09-04","em_voo":[{"agente":"rainforest-mind:revisor","tarefa":7,"desde":"2026-09-04"},{"agente":"rainforest-mind:tester","tarefa":8,"desde":"2026-09-04"}]}'
 checa "sessao mem-a com em_voo mudado (agente novo) volta a barrar" 2 "$(pay "$R" false mem-a)"
 escreve_estado '{"status":"parcial","em":"2026-09-04","em_voo":[{"agente":"rainforest-mind:revisor","tarefa":7,"desde":"2026-09-04"}]}'

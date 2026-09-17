@@ -29,7 +29,7 @@
  * e o aviso repetia a cada um (~30 vezes numa sessão só), sempre prometendo
  * "UMA vez". Agora o hook lembra o aviso por sessão: calcula uma assinatura
  * de slug + estágio + lista de agentes em voo e grava
- * `{session_id, assinatura, em}` em `<git-dir>/rainforest-gate-agente-em-voo.json`
+ * um mapa `{sessoes: {<session_id>: {assinatura, em}}}` (no maximo 50, as mais recentes) em `<git-dir>/rainforest-gate-agente-em-voo.json`
  * quando barra. Turno seguinte, mesma sessão e mesma assinatura → exit 0 em
  * silêncio; sessão diferente ou conjunto `em_voo` mudado → barra de novo.
  * Payload sem `session_id` não tem como memorizar: barra como antes, sempre.
@@ -97,14 +97,30 @@ function leAviso(caminho) {
   }
 }
 
+/** Assinatura já avisada para esta sessão, ou null. A memória é um mapa por
+ * `session_id`: duas janelas no mesmo git-dir não apagam a memória uma da outra
+ * (um slot único fazia a sessão A voltar a barrar depois que a B barrou). */
+function assinaturaAvisada(memoria, sessionId) {
+  if (!memoria || typeof memoria !== 'object' || !memoria.sessoes) return null;
+  const entrada = memoria.sessoes[sessionId];
+  return entrada && typeof entrada.assinatura === 'string' ? entrada.assinatura : null;
+}
+
+const MAX_SESSOES_LEMBRADAS = 50;
+
 /** Erro de escrita nunca impede o bloqueio deste turno — só a memória para o
- * próximo é que se perde. */
-function gravaAviso(caminho, sessionId, assinatura, emVoo) {
+ * próximo é que se perde. Guarda no máximo MAX_SESSOES_LEMBRADAS, as mais
+ * recentes, para o arquivo não crescer sem teto. */
+function gravaAviso(caminho, memoria, sessionId, assinatura, emVoo) {
   try {
-    fs.writeFileSync(
-      caminho,
-      JSON.stringify({ session_id: sessionId, assinatura, em: emVoo }, null, 2) + '\n'
-    );
+    const sessoes = memoria && typeof memoria === 'object' && memoria.sessoes && typeof memoria.sessoes === 'object'
+      ? { ...memoria.sessoes }
+      : {};
+    sessoes[sessionId] = { assinatura, em: Date.now(), em_voo: emVoo };
+    const recentes = Object.entries(sessoes)
+      .sort((a, b) => (Number(b[1] && b[1].em) || 0) - (Number(a[1] && a[1].em) || 0))
+      .slice(0, MAX_SESSOES_LEMBRADAS);
+    fs.writeFileSync(caminho, JSON.stringify({ sessoes: Object.fromEntries(recentes) }, null, 2) + '\n');
   } catch {}
 }
 
@@ -169,18 +185,19 @@ function main() {
   // memorizar: cai direto para o bloqueio, como antes.
   let caminhoAviso = null;
   let assinatura = null;
+  let memoria = null;
   let jaAvisado = false;
-  if (ev.session_id) {
+  if (typeof ev.session_id === 'string' && ev.session_id) {
     const gd = gitDir(gitTop);
     if (gd) {
       caminhoAviso = path.join(gd, 'rainforest-gate-agente-em-voo.json');
       assinatura = assinaturaDe(ativo.slug, ativo.estagio, emVoo);
-      const memoria = leAviso(caminhoAviso);
-      jaAvisado = !!memoria && memoria.session_id === ev.session_id && memoria.assinatura === assinatura;
+      memoria = leAviso(caminhoAviso);
+      jaAvisado = assinaturaAvisada(memoria, ev.session_id) === assinatura;
     }
   }
   if (jaAvisado) process.exit(0);
-  if (caminhoAviso) gravaAviso(caminhoAviso, ev.session_id, assinatura, emVoo);
+  if (caminhoAviso) gravaAviso(caminhoAviso, memoria, ev.session_id, assinatura, emVoo);
 
   const lista = emVoo
     .map((a) => `  - ${a.agente}${a.tarefa ? `, tarefa ${a.tarefa}` : ''}${a.desde ? ` (desde ${a.desde})` : ''}`)

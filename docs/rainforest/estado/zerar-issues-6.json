@@ -26,7 +26,7 @@
     "em": "2026-09-17"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-17",
     "tarefas_ok": 10,
     "tarefas": 10,
@@ -151,23 +151,25 @@
       }
     ],
     "em_voo": [],
-    "pendentes": []
+    "pendentes": [],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-17"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "7b9173e3f6b847142f117bb650dc3ea0b2669caf",
-      "caminhos_sujos": [
-        "docs/rainforest/estado/zerar-issues-6.json"
-      ]
+      "head": "532f6f6d26af10281910ce93eb96ba6f9b6ca7b1",
+      "caminhos_sujos": []
     },
     "em_voo": [],
     "em": "2026-09-17",
     "achados": 1,
-    "base": "7e8dd298",
-    "head": "db89e6cc",
+    "base": "cb15742c",
+    "head": "532f6f6d",
     "lista": [
-      "1: emenda do plano (tarefa 10, Issue #298) ainda nao executada nem revisada"
+      "1: memoria do gate-agente-em-voo e um slot unico; duas sessoes alternando no mesmo git-dir fazem A ser barrada de novo sem mudar sessao nem conjunto (reproduzido)"
     ],
     "rodadas": [
       {
@@ -184,7 +186,7 @@
         "prova": "testa-contexto-sessao.sh ok: 295 falhou: 0, D7 5895 B; conferir-invariantes ok"
       }
     ],
-    "tentativas": 1
+    "tentativas": 2
   },
   "verificar": {
     "status": "reprovado",
