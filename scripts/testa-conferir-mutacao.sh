@@ -996,6 +996,16 @@ cat > "$CAIXA_GIT/bateria-git.sh" <<'BAT'
 set -e
 git rev-parse --show-toplevel >/dev/null
 git show HEAD:alvo.cjs | grep -q 'Fixture: recusa'
+# Criterio 2 da tarefa 22: raiz checkout PRINCIPAL (nao worktree vinculado) --
+# a copia tem de continuar principal, isto e, git-dir e git-common-dir
+# resolvem para o MESMO caminho dentro dela.
+GD="$(git rev-parse --git-dir)"
+GCD="$(git rev-parse --git-common-dir)"
+echo "checkout-principal: git-dir=$GD git-common-dir=$GCD"
+if [ "$GD" != "$GCD" ]; then
+  echo "FALHA: copia de checkout principal deveria ter git-dir == git-common-dir"
+  exit 1
+fi
 BAT
 (
   cd "$CAIXA_GIT" || exit 1
@@ -1032,6 +1042,91 @@ if [ -z "$STATUS_GIT" ]; then
   ok=$((ok+1)); printf '  ok    fixture git original sem alteracoes apos a catraca (git status --porcelain vazio -- copia nao compartilha HEAD/index/refs)\n'
 else
   falhou=$((falhou+1)); printf '  FALHA fixture git original ficou sujo apos a catraca (copia pode estar compartilhando HEAD/index/refs):\n%s\n' "$STATUS_GIT"
+fi
+
+echo
+echo "== 24. raiz worktree vinculado em branch nao-padrao: copia tambem e vinculada (tarefa 22, Issue #266) =="
+# Achado do verificar (2026-09-16): a tarefa 20 materializava um `.git` UNICO
+# na copia, misturando HEAD/index do worktree com config/refs do commondir --
+# e o resultado tinha git-dir == git-common-dir na copia, ou seja, a copia de
+# um worktree VINCULADO virava CHECKOUT PRINCIPAL (`estado.cjs iniciar` recusa
+# com "checkout principal fora da branch padrao", e baterias que dependem
+# disso saem `baseline NAO-VERDE`). Fixture: um repositorio principal com um
+# commit, mais um worktree VINCULADO numa branch nao-padrao (`fluxo/x`) -- a
+# bateria roda DENTRO do worktree vinculado (`--raiz` aponta pra ele) e
+# confere que git-dir e git-common-dir DIFEREM dentro da copia, e que um
+# `git branch` + `git commit` na copia nunca alcanca o repositorio real.
+CAIXA_WT="$S/caixa-wt-principal"
+mkdir -p "$CAIXA_WT"
+(
+  cd "$CAIXA_WT" || exit 1
+  git init -q
+  git config user.email "test@test"
+  git config user.name "Test"
+  git config core.autocrlf false
+  cat > alvo.cjs <<'FIX'
+// Fixture: recusa
+module.exports = function ok() { return true; };
+FIX
+  git add alvo.cjs
+  git commit -q -m "commit inicial do fixture git (checkout principal)"
+)
+
+LINKED="$S/caixa-wt-linked"; WLINKED="$W/caixa-wt-linked"
+(
+  cd "$CAIXA_WT" || exit 1
+  git worktree add -q -b fluxo/x "$LINKED" >/dev/null
+)
+FLUXO_X_ANTES="$(cd "$CAIXA_WT" && git rev-parse fluxo/x)"
+
+cat > "$LINKED/bateria-worktree.sh" <<'BAT'
+#!/bin/bash
+set -e
+GD="$(git rev-parse --git-dir)"
+GCD="$(git rev-parse --git-common-dir)"
+echo "worktree-vinculado: git-dir=$GD git-common-dir=$GCD"
+if [ "$GD" = "$GCD" ]; then
+  echo "FALHA: git-dir igual a git-common-dir (copia de worktree vinculado virou checkout principal)"
+  exit 1
+fi
+case "$GD" in
+  *conferir-mutacao-*) ;;
+  *) echo "FALHA: git-dir fora do temporario da copia: $GD"; exit 1 ;;
+esac
+case "$GCD" in
+  *conferir-mutacao-*) ;;
+  *) echo "FALHA: git-common-dir fora do temporario da copia: $GCD"; exit 1 ;;
+esac
+git branch -f x-copia
+git commit -q --allow-empty -m c
+echo "vinculado-ok"
+BAT
+
+OUT_WT="$(node "$SCRIPT" --raiz "$WLINKED" --arquivo alvo.cjs --de '// Fixture: recusa' --para '// MARCA-MUTADA' --bateria 'bash bateria-worktree.sh' 2>&1)"
+printf '%s\n' "$OUT_WT" | tail -20 | sed 's/^/        | /'
+
+if printf '%s' "$OUT_WT" | grep -q 'FALHA'; then
+  falhou=$((falhou+1)); printf '  FALHA a bateria dentro da copia reportou FALHA (ver saida acima)\n'
+elif printf '%s' "$OUT_WT" | grep -q 'vinculado-ok'; then
+  ok=$((ok+1)); printf '  ok    copia de worktree vinculado tambem e vinculada (git-dir != git-common-dir, ambos dentro do temporario)\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA saida inesperada — nem FALHA nem vinculado-ok (ver saida acima)\n'
+fi
+
+# O side effect nao pode alcancar o repositorio sandbox real: x-copia so' pode
+# existir DENTRO da copia temporaria, e fluxo/x nao pode ter andado.
+BRANCHES_REAIS="$(cd "$CAIXA_WT" && git branch --list x-copia)"
+if [ -z "$BRANCHES_REAIS" ]; then
+  ok=$((ok+1)); printf '  ok    x-copia nao existe no repositorio sandbox real\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA x-copia vazou para o repositorio sandbox real: %s\n' "$BRANCHES_REAIS"
+fi
+
+FLUXO_X_DEPOIS="$(cd "$CAIXA_WT" && git rev-parse fluxo/x)"
+if [ "$FLUXO_X_ANTES" = "$FLUXO_X_DEPOIS" ]; then
+  ok=$((ok+1)); printf '  ok    fluxo/x nao andou (mesmo commit antes e depois da catraca): %s\n' "$FLUXO_X_DEPOIS"
+else
+  falhou=$((falhou+1)); printf '  FALHA fluxo/x andou -- antes=%s depois=%s\n' "$FLUXO_X_ANTES" "$FLUXO_X_DEPOIS"
 fi
 
 echo "-----------------------------------------"
