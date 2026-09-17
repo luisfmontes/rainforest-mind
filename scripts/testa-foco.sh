@@ -216,42 +216,75 @@ for i in 1 2 3 4 5 6 7 8; do
   printf 'teste %d\n' $i > "$SBP/dados/.foco-backups/foco-2026010${i}-000000-000.md"
   sleep 0.01
 done
-MUT_BACKUP="$SBP/foco-mutante-backup.cjs"
-# Mutação: trocar "while (arquivos.length > teto)" por "while (false)"
+MUT_BACKUP="$SRC/scripts/.mut-tmp-foco-13.cjs"
+MUT_BACKUP_LIB="$SRC/scripts/lib/.mut-tmp-foco-13-lib.cjs"
+# O laço de poda mora hoje em lib/backup-rotativo.cjs (gravarBackup), nao mais
+# em foco.cjs. Mutacao em duas pecas: (1) uma copia de backup-rotativo.cjs com
+# o laço desligado, gravada dentro de scripts/lib/ (a lib so usa 'fs'/'path',
+# entao nao ha require relativo dela mesma a resolver); (2) uma copia de
+# foco.cjs cujo require aponta para essa lib mutada, gravada dentro de
+# scripts/ (mesma exigencia de diretorio do item 17: requires relativos ao
+# __dirname do arquivo executado).
 node -e "
   const fs = require('fs');
   const content = fs.readFileSync(process.argv[1], 'utf8');
   const mutated = content.replace(
-    /while \(arquivos\.length > teto\)/,
+    /while \(candidatos\.length > teto\)/,
     'while (false)'
   );
   if (content === mutated) {
-    console.error('MUTACAO_NAO_ENCONTRADA');
+    console.error('ANCORA_NAO_ENCONTRADA');
     process.exit(1);
   }
   fs.writeFileSync(process.argv[2], mutated, 'utf8');
-" "$SRC/scripts/foco.cjs" "$MUT_BACKUP"
-node "$MUT_BACKUP" backup --teto 3 --raiz "$SBP/dados" > /dev/null 2>&1
-COUNT_MUT="$(ls "$SBP/dados/.foco-backups/foco-"*.md 2>/dev/null | wc -l)"
-if [ "$COUNT_MUT" -gt 3 ]; then
-  ok=$((ok+1)); echo "  ok   desligar o laço de poda mantem tudo (mutante detectavel)"
+" "$SRC/scripts/lib/backup-rotativo.cjs" "$MUT_BACKUP_LIB"
+if [ ! -s "$MUT_BACKUP_LIB" ]; then
+  falhou=$((falhou+1)); echo "  FALHA a mutacao nao encontrou o laço de poda em backup-rotativo.cjs -- teste invalido"
 else
-  falhou=$((falhou+1)); echo "  FALHA mutante passou despercebido: a poda rodou mesmo com while(false)"
+  node -e "
+    const fs = require('fs');
+    const content = fs.readFileSync(process.argv[1], 'utf8');
+    const mutated = content.replace(
+      \"require('./lib/backup-rotativo.cjs')\",
+      \"require('./lib/.mut-tmp-foco-13-lib.cjs')\"
+    );
+    if (content === mutated) {
+      console.error('ANCORA_NAO_ENCONTRADA');
+      process.exit(1);
+    }
+    fs.writeFileSync(process.argv[2], mutated, 'utf8');
+  " "$SRC/scripts/foco.cjs" "$MUT_BACKUP"
+  if [ ! -s "$MUT_BACKUP" ]; then
+    falhou=$((falhou+1)); echo "  FALHA a mutacao nao encontrou o require de backup-rotativo.cjs em foco.cjs -- teste invalido"
+  else
+    ERR_MUT_BACKUP="$(node "$MUT_BACKUP" backup --teto 3 --raiz "$SBP/dados" 2>&1 1>/dev/null)"
+    COUNT_MUT="$(ls "$SBP/dados/.foco-backups/foco-"*.md 2>/dev/null | wc -l)"
+    if grep -qF -- "MODULE_NOT_FOUND" <<< "$ERR_MUT_BACKUP"; then
+      falhou=$((falhou+1)); echo "  FALHA mutante nao rodou (MODULE_NOT_FOUND) -- crash mascarado de deteccao"
+    elif [ "$COUNT_MUT" -gt 3 ]; then
+      ok=$((ok+1)); echo "  ok   desligar o laço de poda mantem tudo (mutante detectavel)"
+    else
+      falhou=$((falhou+1)); echo "  FALHA mutante passou despercebido: a poda rodou mesmo com while(false)"
+    fi
+  fi
 fi
-rm -f "$MUT_BACKUP"
+rm -f "$MUT_BACKUP" "$MUT_BACKUP_LIB"
 
 # ------------------------------------------------------- 9. MUTACAO
 echo; echo "9. mutacao (a bateria tem de acusar)"
 montar
-MUT="$SBP/foco-mutante.cjs"
+MUT="$SRC/scripts/.mut-tmp-foco-09.cjs"
 sed 's/mantidosIdx.size >= MIN_ENTRADAS && usado + custo > teto/false/' "$SRC/scripts/foco.cjs" > "$MUT"
-node "$MUT" rotacionar --raiz "$SBP/dados" --teto 3200 --aplicar > /dev/null 2>&1
-FOCOM="$(cat "$SBP/dados/FOCO.md")"
-if grep -qF -- "- 2026-08-01: primeiro avanco" <<< "$FOCOM"; then
+ERR_MUT="$(node "$MUT" rotacionar --raiz "$SBP/dados" --teto 3200 --aplicar 2>&1 1>/dev/null)"
+FOCOM="$(cat "$SBP/dados/FOCO.md" 2>/dev/null)"
+if grep -qF -- "MODULE_NOT_FOUND" <<< "$ERR_MUT"; then
+  falhou=$((falhou+1)); echo "  FALHA mutante nao rodou (MODULE_NOT_FOUND) -- crash mascarado de deteccao"
+elif grep -qF -- "- 2026-08-01: primeiro avanco" <<< "$FOCOM"; then
   ok=$((ok+1)); echo "  ok   corte desligado mantem tudo no FOCO (mutante detectavel pelo item 2)"
 else
   falhou=$((falhou+1)); echo "  FALHA mutante passou despercebido: o corte nao depende do teto"
 fi
+rm -f "$MUT"
 
 # ============================================================================
 # Issue #290 — `escolher()` decide o conjunto mantido por DATA, nao por
@@ -610,7 +643,7 @@ tem "e nao ficou nenhum pedaco dele no tatico"                        "$CONFERE"
 
 echo; echo "15. MUTACAO — desligar o roteamento por PARAGRAFO tem que voltar a partir a prosa quebrada"
 montar_quebrada
-MUT="$SBP/foco-mut-paragrafo.cjs"
+MUT="$SRC/scripts/.mut-tmp-foco-15.cjs"
 # sed com classes de regex dentro de regex (\n{2,}) e fragil de escapar
 # corretamente em shell; a troca e feita em JS puro, por substring exata.
 node -e '
@@ -625,7 +658,7 @@ node -e '
 if [ ! -s "$MUT" ] || diff -q "$SRC/scripts/foco.cjs" "$MUT" > /dev/null; then
   falhou=$((falhou+1)); echo "  FALHA a mutacao nao encontrou o split por paragrafo -- teste invalido"
 else
-  node "$MUT" separar --raiz "$SBP/dados" --aplicar > /dev/null 2>&1
+  ERR_MUT="$(node "$MUT" separar --raiz "$SBP/dados" --aplicar 2>&1 1>/dev/null)"
   FOCOM="$(cat "$SBP/dados/FOCO.md" 2>/dev/null)"
   # Com o roteamento voltando a ser por LINHA, a primeira linha da prosa
   # quebrada ("Esta e uma prosa...") nao comeca com `**` -- deixa de ser
@@ -633,6 +666,9 @@ else
   # o sintoma observavel e a prosa aparecer FRAGMENTADA (a primeira linha
   # separada das demais) em vez de sobreviver inteira e junta no estrategico.
   ESTM="$(cat "$SBP/dados/ESTRATEGIA.md" 2>/dev/null)"
+  if grep -qF -- "MODULE_NOT_FOUND" <<< "$ERR_MUT"; then
+    falhou=$((falhou+1)); echo "  FALHA mutante nao rodou (MODULE_NOT_FOUND) -- crash mascarado de deteccao"
+  else
   CONFEREM="$(node -e '
     const fs = require("fs");
     const raiz = process.argv[1];
@@ -649,6 +685,7 @@ else
     ok=$((ok+1)); echo "  ok   mutacao expos que o roteamento por paragrafo e o que mantem a prosa inteira"
   else
     falhou=$((falhou+1)); echo "  FALHA mutante passou despercebido: a prosa continuou intacta mesmo roteando por linha"
+  fi
   fi
 fi
 rm -f "$MUT"
