@@ -142,19 +142,27 @@ function ultimasLinhas(texto, n) {
 // original, só que agora apaga o diretório inteiro.
 
 let limpar = () => {};
+// Emenda 2026-09-17 (tarefa 22): alem da copia, o git-dir/common-dir de um
+// worktree vinculado moram num diretorio-irmao PROPRIO (fora da copia) — ver
+// `materializarGit`. `registrarLimpeza` deixa esse irmao entrar na mesma
+// varredura de saida, sem duplicar o mecanismo de `process.on`.
+let alvosLimpeza = [];
 
 function armarLimpeza(raizExecucao) {
+  alvosLimpeza = [raizExecucao];
   let feito = false;
   limpar = () => {
     if (feito) return;
     feito = true;
-    try {
-      fs.rmSync(raizExecucao, { recursive: true, force: true });
-    } catch (err) {
-      // Última linha de defesa: se nem apagar dá, o humano precisa saber
-      // exatamente qual diretório temporário sobrou.
-      console.error(`FALHA AO LIMPAR CÓPIA TEMPORÁRIA ${raizExecucao}: ${err.message}`);
-      console.error('Apague manualmente esse diretório temporário.');
+    for (const alvo of alvosLimpeza) {
+      try {
+        fs.rmSync(alvo, { recursive: true, force: true });
+      } catch (err) {
+        // Última linha de defesa: se nem apagar dá, o humano precisa saber
+        // exatamente qual diretório temporário sobrou.
+        console.error(`FALHA AO LIMPAR CÓPIA TEMPORÁRIA ${alvo}: ${err.message}`);
+        console.error('Apague manualmente esse diretório temporário.');
+      }
     }
   };
   // 'exit' cobre saída normal e exceção não tratada; sinal não dispara 'exit'
@@ -168,6 +176,10 @@ function armarLimpeza(raizExecucao) {
       });
     } catch { /* sinal inexistente nesta plataforma */ }
   }
+}
+
+function registrarLimpeza(caminho) {
+  alvosLimpeza.push(caminho);
 }
 
 // ======================================= Repositório git na cópia (tarefa 20)
@@ -207,9 +219,20 @@ function armarLimpeza(raizExecucao) {
 //     `git worktree add`).
 //   - `raizExecucao/.git` vira um ARQUIVO `gitdir: <gitDirCopia>` — nunca o
 //     gitdir real, sempre a cópia.
-// Os dois diretórios moram DENTRO de `raizExecucao`, então a limpeza de
-// `armarLimpeza` (um `fs.rmSync` recursivo na raiz da cópia) já os cobre,
-// inclusive em erro — nenhum mecanismo de limpeza novo.
+//
+// Emenda do verificar (2026-09-17): os dois diretórios moravam DENTRO de
+// `raizExecucao` — e isso fazia `conferir-duplicacao.cjs` achar os metadados
+// git copiados como "arquivos duplicados" (DUP2) e uma execução aninhada
+// (bateria que copia a árvore de novo e roda `testa-conferir-mutacao.sh`
+// dentro dela) reprovar B/C/D/controle/DUP2, porque a segunda cópia via os
+// `.git-*` da primeira como parte da árvore. Conserto: quando vinculado, os
+// dois diretórios passam a morar num diretório-irmão PRÓPRIO, fora de
+// `raizExecucao` (`fs.mkdtempSync` separado) — exatamente como um worktree
+// real (`.git/worktrees/<nome>` nunca fica dentro da árvore de trabalho).
+// `raizExecucao/.git` continua sendo só o arquivo-ponteiro. A limpeza desse
+// irmão é registrada em `registrarLimpeza`, coberta pelo mesmo mecanismo de
+// saída/sinal de `armarLimpeza` — nenhum mecanismo de limpeza novo, só mais
+// um alvo na lista existente.
 function materializarGit(raiz, raizExecucao) {
   const gitDirRes = spawnSync('git', ['rev-parse', '--git-dir'], { cwd: raiz, encoding: 'utf8', stdio: 'pipe' });
   if (gitDirRes.status !== 0) return; // raiz nao e repositorio git: copia fica sem .git (comportamento da tarefa 7)
@@ -228,9 +251,14 @@ function materializarGit(raiz, raizExecucao) {
 
   const destGit = path.join(raizExecucao, '.git');
   // Nao-vinculado (checkout principal): o common-dir da copia E o `.git` da
-  // copia, exatamente como antes. Vinculado: common-dir vira um diretorio
-  // IRMAO, proprio, separado do git-dir do worktree.
-  const commonDirCopia = vinculado ? path.join(raizExecucao, '.git-comum') : destGit;
+  // copia, exatamente como antes (dentro de `raizExecucao`, um diretorio de
+  // verdade). Vinculado: `.git-comum`/`.git-privado` moram num diretorio
+  // TEMPORARIO IRMAO, fora de `raizExecucao` — nunca dentro da copia, para
+  // nao aparecerem como "arquivo da arvore" pra quem varre a copia (DUP2,
+  // execucao aninhada). `registrarLimpeza` cobre a remocao desse irmao.
+  const metaDir = vinculado ? fs.mkdtempSync(path.join(os.tmpdir(), 'conferir-mutacao-git-')) : null;
+  if (metaDir) registrarLimpeza(metaDir);
+  const commonDirCopia = vinculado ? path.join(metaDir, '.git-comum') : destGit;
   fs.mkdirSync(commonDirCopia, { recursive: true });
 
   // config e refs sao compartilhados por definicao entre worktrees do mesmo
@@ -261,7 +289,7 @@ function materializarGit(raiz, raizExecucao) {
   // do checkout principal), amarrado ao commonDirCopia por `commondir`/`gitdir`
   // — a mesma convencao que `git worktree add` usa de verdade, so que os DOIS
   // lados (`gitDirCopia` e `commonDirCopia`) sao copias, nunca os originais.
-  const gitDirCopia = path.join(raizExecucao, '.git-privado');
+  const gitDirCopia = path.join(metaDir, '.git-privado');
   fs.mkdirSync(gitDirCopia, { recursive: true });
   for (const nome of ['HEAD', 'index']) {
     const origem = path.join(gitDir, nome);

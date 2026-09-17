@@ -1084,33 +1084,83 @@ cat > "$LINKED/bateria-worktree.sh" <<'BAT'
 set -e
 GD="$(git rev-parse --git-dir)"
 GCD="$(git rev-parse --git-common-dir)"
+# Forma Windows (drive-letter), a mesma que `git rev-parse` usa -- `pwd` puro
+# no Git Bash devolve forma /c/... e um prefixo comparado nas formas erradas
+# aprova "fora da copia" mesmo quando esta DENTRO (falso-negativo).
+COPIA="$(pwd -W 2>/dev/null || pwd)"
 echo "worktree-vinculado: git-dir=$GD git-common-dir=$GCD"
+echo "COPIA=$COPIA"
 if [ "$GD" = "$GCD" ]; then
   echo "FALHA: git-dir igual a git-common-dir (copia de worktree vinculado virou checkout principal)"
   exit 1
 fi
 case "$GD" in
-  *conferir-mutacao-*) ;;
-  *) echo "FALHA: git-dir fora do temporario da copia: $GD"; exit 1 ;;
+  *conferir-mutacao-git-*) ;;
+  *) echo "FALHA: git-dir nao esta no diretorio-irmao de metadados esperado: $GD"; exit 1 ;;
 esac
 case "$GCD" in
-  *conferir-mutacao-*) ;;
-  *) echo "FALHA: git-common-dir fora do temporario da copia: $GCD"; exit 1 ;;
+  *conferir-mutacao-git-*) ;;
+  *) echo "FALHA: git-common-dir nao esta no diretorio-irmao de metadados esperado: $GCD"; exit 1 ;;
 esac
+case "$GD" in
+  "$COPIA"/*) echo "FALHA: git-dir esta DENTRO da copia: $GD"; exit 1 ;;
+esac
+case "$GCD" in
+  "$COPIA"/*) echo "FALHA: git-common-dir esta DENTRO da copia: $GCD"; exit 1 ;;
+esac
+META="$(dirname "$GD")"
+echo "META=$META"
+echo "== topo da copia (ls -A) =="
+ls -A .
+TOPOGIT="$(ls -A . | grep '^\.git' | tr '\n' ',')"
+if [ "$TOPOGIT" != ".git," ]; then
+  echo "FALHA: topo da copia tem entrada(s) .git* alem do arquivo .git: $TOPOGIT"
+  exit 1
+fi
+if [ ! -f .git ]; then
+  echo "FALHA: .git no topo da copia nao e um arquivo"
+  exit 1
+fi
 git branch -f x-copia
 git commit -q --allow-empty -m c
 echo "vinculado-ok"
 BAT
 
 OUT_WT="$(node "$SCRIPT" --raiz "$WLINKED" --arquivo alvo.cjs --de '// Fixture: recusa' --para '// MARCA-MUTADA' --bateria 'bash bateria-worktree.sh' 2>&1)"
-printf '%s\n' "$OUT_WT" | tail -20 | sed 's/^/        | /'
+printf '%s\n' "$OUT_WT" | tail -30 | sed 's/^/        | /'
 
 if printf '%s' "$OUT_WT" | grep -q 'FALHA'; then
   falhou=$((falhou+1)); printf '  FALHA a bateria dentro da copia reportou FALHA (ver saida acima)\n'
 elif printf '%s' "$OUT_WT" | grep -q 'vinculado-ok'; then
-  ok=$((ok+1)); printf '  ok    copia de worktree vinculado tambem e vinculada (git-dir != git-common-dir, ambos dentro do temporario)\n'
+  ok=$((ok+1)); printf '  ok    copia de worktree vinculado tambem e vinculada (git-dir != git-common-dir, ambos FORA da copia, topo da copia so tem o arquivo .git)\n'
 else
   falhou=$((falhou+1)); printf '  FALHA saida inesperada — nem FALHA nem vinculado-ok (ver saida acima)\n'
+fi
+
+# Criterio 2 da emenda (2026-09-17): apos a catraca terminar, nem a copia nem o
+# diretorio-irmao de metadados (META, capturado da saida da bateria acima)
+# podem continuar existindo. So a PRIMEIRA ocorrencia (baseline) importa aqui
+# -- a bateria roda duas vezes (baseline + pos-mutacao) mas ambas rodam DENTRO
+# da mesma copia/mesmo META, entao os caminhos sao os mesmos nas duas.
+COPIA_WT="$(printf '%s\n' "$OUT_WT" | grep '^COPIA=' | head -1 | cut -d= -f2-)"
+META_WT="$(printf '%s\n' "$OUT_WT" | grep '^META=' | head -1 | cut -d= -f2-)"
+if [ -z "$COPIA_WT" ] || [ -z "$META_WT" ]; then
+  falhou=$((falhou+1)); printf '  FALHA nao consegui capturar COPIA/META da saida da bateria (COPIA=%s META=%s)\n' "$COPIA_WT" "$META_WT"
+else
+  case "$META_WT" in
+    *conferir-mutacao-git-*) ;;
+    *) falhou=$((falhou+1)); printf '  FALHA META capturado nao bate com o prefixo esperado: %s\n' "$META_WT" ;;
+  esac
+  if [ -e "$COPIA_WT" ]; then
+    falhou=$((falhou+1)); printf '  FALHA a copia continua existindo apos a catraca: %s\n' "$COPIA_WT"
+  else
+    ok=$((ok+1)); printf '  ok    a copia nao existe mais apos a catraca: %s\n' "$COPIA_WT"
+  fi
+  if [ -e "$META_WT" ]; then
+    falhou=$((falhou+1)); printf '  FALHA o diretorio-irmao de metadados continua existindo apos a catraca: %s\n' "$META_WT"
+  else
+    ok=$((ok+1)); printf '  ok    o diretorio-irmao de metadados nao existe mais apos a catraca: %s\n' "$META_WT"
+  fi
 fi
 
 # O side effect nao pode alcancar o repositorio sandbox real: x-copia so' pode
