@@ -290,6 +290,45 @@ confirmarAppendUnico "$TRANS7" "$LINHAS7_ANTES" "$SHA7_ANTES" "teste 7"
 
 echo
 echo "=========================================="
+echo "TESTE 8: payload JSON null nao causa stack trace, sai 0 calado"
+echo "=========================================="
+T8_POSIX="$BASE_POSIX/t8"; mkdir -p "$T8_POSIX"
+SESSAO8="sessao-teste-08"
+TRANS8="$T8_POSIX/transcript.jsonl"
+escreverTranscript "$TRANS8" '{"type":"ai-title","aiTitle":"Titulo teste","sessionId":"sessao-teste-08"}'
+escreverLedger "$T8_POSIX" "$SESSAO8" '[{"slug":"fluxo-oito","estagio":"design","aberto":"design","ts":1}]'
+
+LINHAS8_ANTES=$(contarLinhas "$TRANS8")
+SHA8_ANTES=$(shaArquivo "$TRANS8")
+TRANS8_FMT="$(aformato "$TRANS8")"
+OUT_STDOUT=$(printf 'null' | RFM_ROOT="$(aformato "$T8_POSIX")" node "$HOOK_JS" 2> "$BASE_POSIX/stderr8.tmp")
+OUT_EXIT=$?
+OUT_STDERR=$(cat "$BASE_POSIX/stderr8.tmp")
+echo "exit=$OUT_EXIT stdout='$OUT_STDOUT' stderr='$OUT_STDERR'"
+if [ "$OUT_EXIT" -eq 0 ]; then
+  ok=$((ok+1)); echo "  ok    payload null -> exit 0"
+else
+  falhou=$((falhou+1)); echo "  FALHA payload null -> exit $OUT_EXIT (esperado 0)"
+fi
+if [ -z "$OUT_STDOUT" ]; then
+  ok=$((ok+1)); echo "  ok    stdout vazio"
+else
+  falhou=$((falhou+1)); echo "  FALHA stdout nao vazio: '$OUT_STDOUT'"
+fi
+if [ -z "$OUT_STDERR" ]; then
+  ok=$((ok+1)); echo "  ok    stderr vazio"
+else
+  falhou=$((falhou+1)); echo "  FALHA stderr nao vazio: '$OUT_STDERR'"
+fi
+SHA8_DEPOIS=$(shaArquivo "$TRANS8")
+if [ "$SHA8_ANTES" = "$SHA8_DEPOIS" ]; then
+  ok=$((ok+1)); echo "  ok    transcript nao foi modificado"
+else
+  falhou=$((falhou+1)); echo "  FALHA transcript foi modificado"
+fi
+
+echo
+echo "=========================================="
 echo "Resumo: $ok ok, $falhou falhas"
 echo "=========================================="
 [ $falhou -eq 0 ]

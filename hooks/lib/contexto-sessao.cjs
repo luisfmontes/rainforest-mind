@@ -58,11 +58,23 @@ const TETOS = {
   /** Marcos AINDA DE PÉ que ficam residentes. Cumprido não entra em nenhum caso. */
   MARCOS_RESIDENTES: 2,
   /**
-   * Teto do payload inteiro, em BYTES. 8.000 contra 9.766 B observados passando
-   * inteiros — ~18% de folga. O limite exato do harness não é documentado; este
-   * número é dimensionado para não depender de descobri-lo.
+   * Teto do payload inteiro, em BYTES. Continua abaixo dos 9.766 B observados
+   * passando inteiros pelo harness (o limite exato dele não é documentado; este
+   * número é dimensionado para não depender de descobri-lo).
+   *
+   * Subiu de 8000 para 8100 em 2026-09-16 (Issue #250, Tarefa 17): medido ao
+   * vivo com o SKILL.md real deste repositório e um rodapé sintético
+   * reproduzindo a combinação que `foco-session-start.cjs` monta de verdade
+   * (veredito de isenção de desvio, 3 sessões paralelas em pastas distintas,
+   * revisão vencida, dependências de ambiente declaradas, principal atrasado)
+   * — comando em `hooks/testa-contexto-sessao.sh`, seção 22 — deu **7375 B de
+   * fixo** (cabeçalho+rodapé). 7375 + `FOCO_MIN_BYTES` (700) = 8075,
+   * arredondado para cima para 8100. Isto NÃO substitui o corte por
+   * prioridade abaixo (que já resolvia este caso sozinho, com 625 B de sobra):
+   * é o piso deste teto ficar por CIMA do caso comum, para o corte só morder
+   * em combinação mais rara — dependências + muitas sessões ao mesmo tempo.
    */
-  ORCAMENTO_BYTES: 8000,
+  ORCAMENTO_BYTES: 8100,
   /**
    * Teto do bloco de REGRAS (só os núcleos), em BYTES. É um **catraca**, não uma
    * medida do harness: fica pouco acima do tamanho de hoje justamente para que
@@ -1109,6 +1121,14 @@ ${regras}
   // sessão paralela, o `## Dependências` colava na última linha do foco e virava
   // continuação do texto dele. Normalizar aqui vale para qualquer combinação de
   // blocos presentes ou ausentes.
+  //
+  // Guarda as formas JÁ NORMALIZADAS de sessões/dependências: são os dois únicos
+  // blocos que o corte de prioridade abaixo (Issue #250) remove, e splice()
+  // precisa localizar exatamente a string que entrou no array, não o `o.sessoes`
+  // /`o.dependencias` crus (que ainda têm a quebra de linha do prefixo).
+  const linhaDependencias = o.dependencias ? String(o.dependencias).replace(/^\n+/, '').trimEnd() : null;
+  const linhaSessoesRodape = o.sessoes ? String(o.sessoes).replace(/^\n+/, '').trimEnd() : null;
+
   const blocoRodape = [o.veredito, o.sessoes, o.revisao, o.dependencias]
     .filter(Boolean)
     .map((bloco) => String(bloco).replace(/^\n+/, '').trimEnd());
@@ -1120,7 +1140,7 @@ ${regras}
   }
 
   blocoRodape.push(`Arquivos de apoio: ${o.root || ''}\\FOCO.md e ${o.root || ''}\\ideias.jsonl (uma ideia por linha)`);
-  const rodape = '\n\n' + blocoRodape.join('\n\n');
+  let rodape = '\n\n' + blocoRodape.join('\n\n');
 
   // Issue #74: ponteiro RESIDENTE para o ESTRATEGIA.md, quando o adaptador
   // confirmou que o arquivo existe ao lado do FOCO.md. Reservado ANTES de
@@ -1134,7 +1154,54 @@ ${regras}
     : '';
   const custoEstrategia = pastaEstrategia ? Buffer.byteLength(pastaEstrategia, 'utf8') : 0;
 
-  const fixo = Buffer.byteLength(cabecalho + rodape, 'utf8');
+  let fixo = Buffer.byteLength(cabecalho + rodape, 'utf8');
+
+  // Issue #250: "cabecalho+rodape" (fixo) não tinha teto PRÓPRIO — só as partes
+  // tinham (NUCLEOS_MAX_BYTES, SESSOES_MAX_BYTES), e a soma delas podia passar
+  // do que sobra para o foco sem nenhum corte reagir; o hook só AVISAVA depois
+  // do fato (`travarOrcamento`, no fim). O corte por prioridade tira primeiro
+  // as DEPENDÊNCIAS (regra 14 — texto que duplica um bloqueio que o usuario já
+  // vê em outro canal) e só então as SESSÕES (radar de janela, regra 17) —
+  // nunca o veredito (regra 3/17, isenção de cobrança de desvio) nem o aviso de
+  // revisão, os dois mais curtos e mais críticos para não cobrar errado.
+  if (fixo > TETOS.ORCAMENTO_BYTES - TETOS.FOCO_MIN_BYTES) {
+    // So' aplica o corte se ELE RESOLVER: simula a remocao das DUAS partes antes
+    // de tirar qualquer uma de verdade. Medido ao vivo (2026-09-16, worktree com
+    // 11 pastas ja mescladas em origin/main): quando quem domina o estouro e' o
+    // aviso de "principal atrasado" (bloco que este corte nao mexe), tirar so a
+    // dependencia nao devolve nada — so' apaga um bloco que o usuario TEM que
+    // ver (regra 14) sem o foco ganhar nenhum byte de volta. Corte que nao
+    // resolve e' pior que nao cortar: `hooks/testa-contexto-sessao.sh`, secao
+    // "16. DEPENDENCIA SO SE CHECA QUANDO ALGUEM DECLAROU", quebrou exatamente
+    // assim na primeira versao desta mutacao.
+    const blocoRodapeSimulado = blocoRodape.slice();
+    if (linhaDependencias) {
+      const i = blocoRodapeSimulado.indexOf(linhaDependencias);
+      if (i !== -1) blocoRodapeSimulado.splice(i, 1);
+    }
+    if (linhaSessoesRodape) {
+      const i = blocoRodapeSimulado.indexOf(linhaSessoesRodape);
+      if (i !== -1) blocoRodapeSimulado.splice(i, 1);
+    }
+    const fixoComCorteMaximo = Buffer.byteLength(cabecalho + '\n\n' + blocoRodapeSimulado.join('\n\n'), 'utf8');
+
+    if (fixoComCorteMaximo <= TETOS.ORCAMENTO_BYTES - TETOS.FOCO_MIN_BYTES) {
+      if (linhaDependencias) {
+        const idxDependencias = blocoRodape.indexOf(linhaDependencias);
+        if (idxDependencias !== -1) blocoRodape.splice(idxDependencias, 1);
+      }
+      rodape = '\n\n' + blocoRodape.join('\n\n');
+      fixo = Buffer.byteLength(cabecalho + rodape, 'utf8');
+
+      if (fixo > TETOS.ORCAMENTO_BYTES - TETOS.FOCO_MIN_BYTES && linhaSessoesRodape) {
+        const idxSessoes = blocoRodape.indexOf(linhaSessoesRodape);
+        if (idxSessoes !== -1) blocoRodape.splice(idxSessoes, 1);
+        rodape = '\n\n' + blocoRodape.join('\n\n');
+        fixo = Buffer.byteLength(cabecalho + rodape, 'utf8');
+      }
+    }
+  }
+
   const sobra = TETOS.ORCAMENTO_BYTES - fixo;
   const tetoFoco = Math.max(0, Math.min(TETOS.FOCO_MAX_BYTES, Math.max(0, sobra)) - custoEstrategia);
 

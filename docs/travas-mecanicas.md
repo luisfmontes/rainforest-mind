@@ -98,7 +98,7 @@ citado que não existe em disco.
 | 8 | `scripts/jornada.cjs` | |
 | 9 | | disciplina |
 | 10 | `hooks/portaria.cjs`, `hooks/gate-agente-em-voo.cjs`, `scripts/testa-teto-skills.sh` | |
-| 11 | `hooks/gate-worktree.cjs`, `--confirmo` em `scripts/limpar-branches.cjs`, `scripts/limpar-worktrees.cjs` e `scripts/fechar-issue.cjs` | |
+| 11 | `hooks/gate-worktree.cjs`, `--confirmo` em `scripts/limpar-branches.cjs` e `scripts/limpar-worktrees.cjs`; `scripts/fechar-issue.cjs` exige evidência (`--comando` + `--saida`), não frase | |
 | 12 | `hooks/gate-mensagem-commit.cjs`, `scripts/conferir-entrega.cjs`, `scripts/conferir-mutacao.cjs`, `scripts/conferir-duplicacao.cjs`, `carimbos` no `scripts/estado.cjs`, `hooks/gate-agente-em-voo.cjs` | |
 | 13 | `scripts/ideias.cjs` | |
 | 14 | exit 69 em `scripts/conferir-entrega.cjs`, `scripts/conferir-mutacao.cjs`, `scripts/conferir-fluxo.cjs`, `scripts/conferir-ponte.cjs`, `hooks/ferramentas-consulta.cjs` | |

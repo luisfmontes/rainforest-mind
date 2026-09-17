@@ -149,6 +149,20 @@ echo "== (k) fora de repo git: PASSA =="
 gate "fora de repo git -> exit 0" 0 "$(payload "$FORA" Bash 'git commit -m "Assunto valido"')"
 
 echo
+echo "== (l) flag curta agrupada (Issue #263): -qm/-am/-qam e valor colado resolvem a mensagem =="
+gate "git commit -qm \"teste\" -> exit 0" 0 "$(payload "$R1" Bash 'git commit -qm "teste"')"
+gate "git commit -am \"teste\" -> exit 0" 0 "$(payload "$R1" Bash 'git commit -am "teste"')"
+gate "git commit -qam \"teste\" -> exit 0" 0 "$(payload "$R1" Bash 'git commit -qam "teste"')"
+gate "git commit -mteste (valor colado, sem espaco) -> exit 0" 0 "$(payload "$R1" Bash 'git commit -mteste')"
+gate_contendo "git commit -a sozinho (sem m/F) continua barrando -> exit 2" 2 "nenhuma mensagem resolvivel" \
+  "$(payload "$R1" Bash 'git commit -a')"
+
+echo
+echo "== (m) corpo de heredoc citando 'git commit' e dado, nao comando (Issue #263) =="
+CMD_HEREDOC_GIT=$'cat > issue.md <<\x27MD\x27\ntexto explicando o defeito\ngit commit\nMD'
+gate "heredoc com linha 'git commit' bare no corpo -> exit 0" 0 "$(payload "$R1" Bash "$CMD_HEREDOC_GIT")"
+
+echo
 echo "== extra: mesma forma via ferramenta PowerShell (o hook vale para as duas) =="
 gate "PowerShell, 4 arquivos, so assunto -> exit 2" 2 "$(payload "$R4" PowerShell 'git commit -m "Assunto valido"')"
 gate "PowerShell, 3 arquivos/20 linhas, so assunto -> exit 0" 0 "$(payload "$R3" PowerShell 'git commit -m "Assunto valido"')"

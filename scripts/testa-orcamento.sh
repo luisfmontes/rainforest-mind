@@ -112,13 +112,13 @@ congelado() {
 }
 
 NUCLEOS_CHECK="$(congelado 'NUCLEOS_MAX_BYTES: 6000' "$SRC/hooks/lib/contexto-sessao.cjs")"
-ORCAMENTO_CHECK="$(congelado 'ORCAMENTO_BYTES: 8000' "$SRC/hooks/lib/contexto-sessao.cjs")"
+ORCAMENTO_CHECK="$(congelado 'ORCAMENTO_BYTES: 8100' "$SRC/hooks/lib/contexto-sessao.cjs")"
 FOCO_MAX_CHECK="$(congelado 'FOCO_MAX_BYTES: 2600' "$SRC/hooks/lib/contexto-sessao.cjs")"
 FOCO_MIN_CHECK="$(congelado 'FOCO_MIN_BYTES: 700' "$SRC/hooks/lib/contexto-sessao.cjs")"
 TETO_AGREGADO_CHECK="$(congelado '|| 15600' "$SRC/scripts/orcamento.cjs")"
 
 if [ "$NUCLEOS_CHECK" -ge 1 ] && [ "$ORCAMENTO_CHECK" -ge 1 ] && [ "$FOCO_MAX_CHECK" -ge 1 ] && [ "$FOCO_MIN_CHECK" -ge 1 ] && [ "$TETO_AGREGADO_CHECK" -ge 1 ]; then
-  ok=$((ok+1)); echo "  ok   D6: constantes congeladas (nucleos 6000 e agregado 15600 desde 2026-09-12, commit 2f385e00)"
+  ok=$((ok+1)); echo "  ok   D6: constantes congeladas (nucleos 6000 desde 2026-09-12 commit 2f385e00; orcamento 8100 desde 2026-09-16 Issue #250/Tarefa 17; agregado 15600 desde 2026-09-12)"
 else
   falhou=$((falhou+1)); echo "  FALHA D6: constantes mudaram. Subir teto e decisao, nao efeito colateral -- se foi de proposito, atualize os literais AQUI com a medicao no corpo do commit; NUCLEOS=$NUCLEOS_CHECK, ORCAMENTO=$ORCAMENTO_CHECK, FOCO_MAX=$FOCO_MAX_CHECK, FOCO_MIN=$FOCO_MIN_CHECK, TETO_AGR=$TETO_AGREGADO_CHECK"
 fi
@@ -313,7 +313,7 @@ igual "6d nenhum arquivo novo apareceu na sandbox depois de --agregado" "$DEPOIS
 echo "6e. caminho verde contra os hooks REAIS (raiz neutra) -- so roda uma vez, hooks reais sao lentos"
 SAIDA6E="$(RFM_ROOT="$RAIZ_VAZIA" node "$SRC/scripts/orcamento.cjs" --agregado 2>&1)"; CODIGO6E=$?
 igual "6e sai 0 contra os 5 hooks reais de hooks.json, raiz neutra" "$CODIGO6E" "0"
-tem "6e imprime soma medida e teto agregado real (8000+3000=11000, valores congelados na secao 1c)" "$SAIDA6E" "teto agregado real 11000 B"
+tem "6e imprime soma medida e teto agregado real (8100+3000=11100, valores congelados na secao 1c)" "$SAIDA6E" "teto agregado real 11100 B"
 
 echo; echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"

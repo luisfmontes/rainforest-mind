@@ -252,6 +252,24 @@ function semPrefixoSintaticoDeBuiltin(seg) {
 }
 
 /**
+ * Normaliza caminho em forma MSYS (`/c/...`) para forma Windows (`C:/...`).
+ *
+ * Git Bash/MSYS2 traduz `C:\` para `/c/` na hora de montar o comando; `path.resolve`
+ * do Node no Windows nao entende essa forma e produz uma quimera (`<atual>\c\Users\...`)
+ * que nunca existe em disco — o `cd` virava INCERTO por caminho MAL RESOLVIDO, nao por
+ * incerteza real, e o gate barrava commit legitimo no scratchpad chamando o worktree
+ * linkado de "principal" (#289).
+ *
+ * Só a forma `/<letra>` ou `/<letra>/resto` no INÍCIO do caminho conta — qualquer outra
+ * coisa (caminho relativo, `/tmp` sem letra de unidade, `~`, etc.) volta como veio.
+ */
+function normalizarMsys(caminho) {
+  const m = /^\/([A-Za-z])(\/.*|$)/.exec(caminho);
+  if (!m) return caminho;
+  return `${m[1]}:${m[2] || "/"}`;
+}
+
+/**
  * Reconhece `cd`, `pushd`, `popd` e `env -C`/`--chdir=` num ÚNICO segmento, e
  * aplica o efeito ao `estado` da travessia (mutado in-place).
  *
@@ -350,7 +368,7 @@ function resolverMovedor(seg, estado) {
       estado.incerto = true;
       return { cwd: estado.atual, incerto: estado.incerto, soMovedor: true };
     }
-    const alvo = path.resolve(estado.atual, destino);
+    const alvo = path.resolve(estado.atual, normalizarMsys(destino));
     estado.atual = alvo;
     // S1: destino resolvido que nao existe em disco nunca sai como certeza.
     if (!fs.existsSync(alvo)) estado.incerto = true;
@@ -522,6 +540,7 @@ module.exports = {
   cwdPorSegmento,
   resolverMovedor,
   toplevelConfinado,
+  normalizarMsys,
   segmentosComAspas,
   extrairUltimoDirGit,
   contemSubshellOuGrupo,

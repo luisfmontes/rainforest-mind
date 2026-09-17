@@ -373,17 +373,20 @@ case "$CHAMADAS_G" in
   *)       falhou=$((falhou+1)); echo "  FALHA (g) $CHAMADAS_G chamadas externas com 33 worktrees (teto 4) — voltou a pagar por worktree" ;;
 esac
 
+# Tarefa 19: o teto (MAX_WORKTREES_LISTADOS = 2) corta a lista de mergeados;
+# dos 15, so 2 aparecem nomeados e o resto vira 1 linha de resumo.
 MERGEADAS_LISTADAS=0
 for i in $(seq 1 15); do
   if printf '%s' "$SAIDA_G" | grep -qF "wt-mergeada-$i "; then
     MERGEADAS_LISTADAS=$((MERGEADAS_LISTADAS + 1))
   fi
 done
-if [ "$MERGEADAS_LISTADAS" = "15" ]; then
-  ok=$((ok+1)); echo "  ok    (g) os 15 worktrees mergeados aparecem como 'ja em origin/main'"
+if [ "$MERGEADAS_LISTADAS" = "2" ]; then
+  ok=$((ok+1)); echo "  ok    (g) so 2 dos 15 worktrees mergeados aparecem nomeados (teto)"
 else
-  falhou=$((falhou+1)); echo "  FALHA (g) $MERGEADAS_LISTADAS de 15 worktrees mergeados listados: $SAIDA_G"
+  falhou=$((falhou+1)); echo "  FALHA (g) $MERGEADAS_LISTADAS de 15 worktrees mergeados nomeados (esperava 2, teto): $SAIDA_G"
 fi
+checa_contem "(g) linha de resumo com os 13 excedentes" '(+13 worktree(s) já em origin/main — rode o limpar)' "$SAIDA_G"
 
 NAO_LISTADAS=0
 for i in $(seq 1 15); do
@@ -435,6 +438,70 @@ ERRO_H="$SANDBOX_H/erro-h.log"
 SAIDA_H="$(rodar_linhas "$PRINCIPAL_H" "$ERRO_H")"; EXIT_H=$?
 checa_exit0 "(h) worktree prunable nao derruba a funcao" "$EXIT_H" "$ERRO_H"
 checa_vazio "(h) worktree prunable nao e listado" "$SAIDA_H"
+
+# Fixture para (i) e (j): repo com N worktrees linkados, todos ja mesclados em
+# origin/main (cada um `worktree add -b <x> origin/main`, sem commit proprio).
+# Devolve o caminho do PRINCIPAL por stdout.
+montar_repo_so_mescladas() { # base, n -> stdout PRINCIPAL
+  local base="$1" n="$2" bare principal i
+  bare="$base/repo.git"; principal="$base/principal"
+  git init -q -b main --bare "$bare"
+  git clone -q "$bare" "$principal"
+  git -C "$principal" config user.email "t@t"
+  git -C "$principal" config user.name "t"
+  git -C "$principal" config commit.gpgsign false
+  echo base > "$principal/arquivo.txt"
+  git -C "$principal" add .
+  git -C "$principal" commit -qm base
+  git -C "$principal" push -q -u origin main
+  for i in $(seq 1 "$n"); do
+    git -C "$principal" worktree add -q "$base/wt-$i" -b "mesclada-so-$i" origin/main
+  done
+  printf '%s' "$principal"
+}
+
+# Conta so os elementos do array JSON que TERMINAM em 'já em origin/main'
+# (o `"` de fechamento da string vem logo depois) — a linha de resumo tambem
+# contem a frase 'já em origin/main' no meio, e nao pode ser contada aqui.
+conta_ja_mescladas() { # saida_json -> numero (stdout)
+  printf '%s' "$1" | grep -o 'já em origin/main"' | wc -l | tr -d ' '
+}
+
+echo
+echo "(i) 5 worktrees ja mesclados: 2 listados + 1 linha de resumo"
+SANDBOX_I="$RAIZ_POSIX/caso-i"; mkdir -p "$SANDBOX_I"
+PRINCIPAL_I="$(montar_repo_so_mescladas "$SANDBOX_I" 5)"
+ERRO_I="$RAIZ_POSIX/erro-i.log"
+SAIDA_I="$(rodar_linhas "$PRINCIPAL_I" "$ERRO_I")"; EXIT_I=$?
+checa_exit0 "(i) roda sem estourar" "$EXIT_I" "$ERRO_I"
+
+LISTADAS_I="$(conta_ja_mescladas "$SAIDA_I")"
+if [ "$LISTADAS_I" = "2" ]; then
+  ok=$((ok+1)); echo "  ok    (i) exatamente 2 linhas terminam em 'ja em origin/main'"
+else
+  falhou=$((falhou+1)); echo "  FALHA (i) $LISTADAS_I linhas 'ja em origin/main' (esperava 2): $SAIDA_I"
+fi
+checa_contem "(i) linha de resumo com o numero e o comando" '(+3 worktree(s) já em origin/main — rode o limpar)' "$SAIDA_I"
+
+echo
+echo "(j) 2 worktrees ja mesclados: as 2 linhas, sem linha de resumo"
+SANDBOX_J="$RAIZ_POSIX/caso-j"; mkdir -p "$SANDBOX_J"
+PRINCIPAL_J="$(montar_repo_so_mescladas "$SANDBOX_J" 2)"
+ERRO_J="$RAIZ_POSIX/erro-j.log"
+SAIDA_J="$(rodar_linhas "$PRINCIPAL_J" "$ERRO_J")"; EXIT_J=$?
+checa_exit0 "(j) roda sem estourar" "$EXIT_J" "$ERRO_J"
+
+LISTADAS_J="$(conta_ja_mescladas "$SAIDA_J")"
+if [ "$LISTADAS_J" = "2" ]; then
+  ok=$((ok+1)); echo "  ok    (j) as 2 linhas aparecem, sem corte"
+else
+  falhou=$((falhou+1)); echo "  FALHA (j) $LISTADAS_J linhas 'ja em origin/main' (esperava 2): $SAIDA_J"
+fi
+if printf '%s' "$SAIDA_J" | grep -qF 'rode o limpar'; then
+  falhou=$((falhou+1)); echo "  FALHA (j) linha de resumo apareceu sem excedente: $SAIDA_J"
+else
+  ok=$((ok+1)); echo "  ok    (j) nenhuma linha de resumo (sem excedente)"
+fi
 
 echo
 echo "-----------------------------------------"

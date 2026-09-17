@@ -14,6 +14,8 @@
 #  (e) command = `git status` (não git commit) → exit 0 sem rodar verificador
 #  (f) payload com agent_id → stderr SEM .rainforest-gate-off
 #  (g) RAINFOREST_GATE_OFF=1 → exit 0 mesmo com SEGREDO
+#  (h) merge trazendo arquivo idêntico ao MERGE_HEAD da branch mesclada → exit 0;
+#      um segundo arquivo staged sem correspondente em HEAD nem MERGE_HEAD → exit 2
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -252,6 +254,55 @@ if [ "$rc" = 0 ]; then
   ok=$((ok+1))
 else
   echo "  FALHA case-g: RAINFOREST_GATE_OFF=1 não funcionou (exit $rc)"
+  falhou=$((falhou+1))
+fi
+
+echo
+echo "== Caso (h): merge trazendo segredo.txt idêntico ao MERGE_HEAD da branch mesclada =="
+CASE_H_POSIX="$SANDBOXES_POSIX/case-h"
+CASE_H="$(cygpath -m "$CASE_H_POSIX" 2>/dev/null || printf '%s' "$CASE_H_POSIX")"
+mkdir -p "$CASE_H_POSIX"
+git init -q -b master "$CASE_H_POSIX"
+git -C "$CASE_H_POSIX" config user.email test@test
+git -C "$CASE_H_POSIX" config user.name test
+git -C "$CASE_H_POSIX" config core.autocrlf false
+echo "meu" > "$CASE_H_POSIX/meu.txt"
+git -C "$CASE_H_POSIX" add meu.txt
+git -C "$CASE_H_POSIX" commit -qm "base (master)"
+git -C "$CASE_H_POSIX" branch -q outra
+git -C "$CASE_H_POSIX" checkout -q outra
+echo "contato: SEGREDO" > "$CASE_H_POSIX/segredo.txt"
+git -C "$CASE_H_POSIX" add segredo.txt
+git -C "$CASE_H_POSIX" commit -qm "segredo (outra)"
+git -C "$CASE_H_POSIX" checkout -q master
+git -C "$CASE_H_POSIX" merge -q --no-commit --no-ff outra
+mkdir -p "$CASE_H_POSIX/.rainforest" "$CASE_H_POSIX/scripts"
+cat > "$CASE_H_POSIX/.rainforest/config.json" <<'EOF'
+{"verificador-staged": "bash scripts/verifica.sh"}
+EOF
+cat > "$CASE_H_POSIX/scripts/verifica.sh" << 'EOF'
+#!/bin/bash
+for arquivo in "$@"; do
+  if grep -q "SEGREDO" "$arquivo" 2>/dev/null; then
+    echo "encontrado: SEGREDO em $(basename "$arquivo")"
+    exit 1
+  fi
+done
+exit 0
+EOF
+chmod +x "$CASE_H_POSIX/scripts/verifica.sh"
+gate "case-h: merge com segredo.txt idêntico ao MERGE_HEAD" "$CASE_H" "git commit -m x" 0
+# Acrescenta um segundo arquivo staged sem correspondente em HEAD nem MERGE_HEAD:
+# continua bloqueando, citando o arquivo novo.
+echo "contato: SEGREDO novo" > "$CASE_H_POSIX/novo-segredo.txt"
+git -C "$CASE_H_POSIX" add novo-segredo.txt
+msg=$(printf '%s' "$(printf '{"session_id":"s1","cwd":"%s","hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"git commit -m x"}}' "$CASE_H")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ] && printf '%s' "$msg" | grep -q "novo-segredo.txt"; then
+  echo "  ok   case-h: novo-segredo.txt (sem correspondente) continua bloqueando"
+  ok=$((ok+1))
+else
+  echo "  FALHA case-h: esperava exit 2 citando novo-segredo.txt, veio exit $rc"
+  printf '%s' "$msg" | sed 's/^/         /' | head -5
   falhou=$((falhou+1))
 fi
 

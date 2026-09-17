@@ -155,8 +155,19 @@ function confirmarRemotaSumiu(refs) {
  */
 const RE_TEMP_DESTE_SCRIPT = /^worktree-.+-\d{13}$/;
 
+/**
+ * Antes deste conserto (Issue #287), `caminhoTemp` não sanitizava a barra do
+ * nome da branch, e um nome como `codex/fix-malformed-json` produzia um
+ * temporário de DOIS níveis (`worktree-codex/fix-malformed-json-<13
+ * dígitos>`). `caminhoTemp` já não cria mais isso, mas o disco tem resíduo de
+ * antes do conserto — e essa varredura existe também para recolher esse
+ * resíduo, não só o formato novo. Reconhece o basename do pai (quando começa
+ * com `worktree-`) mais o basename do próprio caminho, com a barra no meio.
+ */
+const RE_TEMP_DOIS_NIVEIS = /^worktree-.+\/.+-\d{13}$/;
+
 function caminhoTemp(nomeBranch) {
-  return `/tmp/worktree-${nomeBranch}-${Date.now()}`;
+  return `/tmp/worktree-${nomeBranch.replace(/\//g, '-')}-${Date.now()}`;
 }
 
 /**
@@ -196,7 +207,12 @@ function varrerTemporariosVazados() {
 
     const norm = path.resolve(caminho).replace(/\\/g, '/').toLowerCase();
     if (norm === repoNorm || norm.startsWith(repoNorm + '/')) continue;
-    if (!RE_TEMP_DESTE_SCRIPT.test(path.basename(caminho))) continue;
+
+    const baseName = path.basename(caminho);
+    const paiName = path.basename(path.dirname(caminho));
+    const doisNiveis = paiName.startsWith('worktree-')
+      && RE_TEMP_DOIS_NIVEIS.test(`${paiName}/${baseName}`);
+    if (!RE_TEMP_DESTE_SCRIPT.test(baseName) && !doisNiveis) continue;
 
     // `unlock` antes: o registro pode ter ficado travado pelo processo morto, e
     // `remove` recusa worktree travado mesmo com `--force`.
@@ -674,4 +690,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { descobrirBase, forcarConfigurado, REMOVIVEIS, varrerTemporariosVazados, RE_TEMP_DESTE_SCRIPT };
+module.exports = { descobrirBase, forcarConfigurado, REMOVIVEIS, varrerTemporariosVazados, RE_TEMP_DESTE_SCRIPT, caminhoTemp };

@@ -879,43 +879,305 @@ echo "== 21. D24: a bateria roda em bash no Windows, nao no cmd.exe =="
 # (cmd nao separa comandos por ';'). Em bash, deixa marca-a e marca-b. A
 # bateria sai 0 nas duas rodadas, entao a catraca diz "sobreviveu" (exit 2) —
 # o que se mede aqui e' o SHELL, nao o veredito.
+#
+# D5 (Issue #266): a bateria roda numa COPIA temporaria da raiz, nao em
+# $CAIXA — os arquivos que ela cria desaparecem com a copia antes deste
+# script retomar o controle. A prova passa a ser o que a propria bateria
+# reporta no stdout, capturado em $SAIDA por `exige`.
 if uname -o 2>/dev/null | grep -q Msys; then
-  rm -f "$CAIXA/marca-a" "$CAIXA/marca-b" "$CAIXA/touch" "$CAIXA/marca-a;"
   exige 2 "D24 (a): bateria com ';' roda em bash (sobrevive, mas separa os comandos)" \
     CHK --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' \
-        --bateria 'touch marca-a; touch marca-b'
-  if [ -f "$CAIXA/marca-a" ] && [ -f "$CAIXA/marca-b" ]; then
-    ok=$((ok+1)); printf '  ok    marca-a e marca-b existem (bash separou os dois comandos)\n'
+        --bateria 'touch marca-a; touch marca-b; if [ -f marca-a ] && [ -f marca-b ]; then echo MARCA_A_E_B_OK; fi; if [ -e touch ] || [ -e "marca-a;" ]; then echo VIROU_CMDEXE; fi; true'
+  # A linha "bateria : <comando>" ecoa o --bateria LITERAL, que contem os
+  # proprios marcadores como texto de comando (`echo MARCA_A_E_B_OK`) — uma
+  # busca em $SAIDA inteiro casaria sempre, mesmo sem a bateria ter rodado.
+  # Filtra essa linha antes de conferir o que a bateria de fato IMPRIMIU.
+  SAIDA_SEM_ECO="$(grep -v '^bateria :' "$SAIDA")"
+  if printf '%s\n' "$SAIDA_SEM_ECO" | grep -q 'MARCA_A_E_B_OK'; then
+    ok=$((ok+1)); printf '  ok    D24 (a): marca-a e marca-b existem (bash separou os dois comandos)\n'
   else
-    falhou=$((falhou+1)); printf '  FALHA marca-a/marca-b nao existem: a bateria nao rodou em bash\n'
+    falhou=$((falhou+1)); printf '  FALHA D24 (a): marca-a/marca-b nao existem: a bateria nao rodou em bash\n'
   fi
-  if [ ! -e "$CAIXA/touch" ] && [ ! -e "$CAIXA/marca-a;" ]; then
-    ok=$((ok+1)); printf '  ok    nao existe arquivo "touch" nem "marca-a;" (nao foi o cmd.exe)\n'
+  if printf '%s\n' "$SAIDA_SEM_ECO" | grep -q 'VIROU_CMDEXE'; then
+    falhou=$((falhou+1)); printf '  FALHA D24 (a): arquivo "touch" ou "marca-a;" existe: a bateria foi ao cmd.exe\n'
   else
-    falhou=$((falhou+1)); printf '  FALHA arquivo "touch" ou "marca-a;" existe: a bateria foi ao cmd.exe\n'
+    ok=$((ok+1)); printf '  ok    D24 (a): nao existe arquivo "touch" nem "marca-a;" (nao foi o cmd.exe)\n'
   fi
-  rm -f "$CAIXA/marca-a" "$CAIXA/marca-b" "$CAIXA/touch" "$CAIXA/marca-a;"
 else
   printf '  (pulado: nao e MSYS)\n'
 fi
 
 # Caso (b) — PYTHONDONTWRITEBYTECODE chega como '1' na bateria, no baseline E na
-# pos-mutacao (a bateria anexa o valor a env.txt e roda a bateria honesta).
-rm -f "$CAIXA/env.txt"
+# pos-mutacao (a bateria imprime o valor no stdout e roda a bateria honesta).
+#
+# D5 (Issue #266): como a bateria roda numa copia temporaria (nao em $CAIXA),
+# o efeito so e observavel pelo que ela imprime — capturado em $SAIDA por
+# `exige` —, nao mais por um arquivo lido depois do fato.
 cat > "$CAIXA/bateria-env.sh" <<'BAT'
 #!/bin/bash
-printf '%s\n' "${PYTHONDONTWRITEBYTECODE-vazio}" >> env.txt
+printf 'PYTHONDONTWRITEBYTECODE_VISTO=%s\n' "${PYTHONDONTWRITEBYTECODE-vazio}"
 bash bateria.sh
 BAT
 exige 0 "D24/D25 (b): bateria honesta com PYTHONDONTWRITEBYTECODE gravado" \
   CHK --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' \
       --bateria 'bash bateria-env.sh'
-if [ "$(tr -d '\r' < "$CAIXA/env.txt" | grep -c '^1$')" -eq 2 ] && [ "$(tr -d '\r' < "$CAIXA/env.txt" | wc -l)" -eq 2 ]; then
-  ok=$((ok+1)); printf '  ok    env.txt tem exatamente "1" nas duas rodadas (baseline e mutacao)\n'
+if [ "$(tr -d '\r' < "$SAIDA" | grep -c '^PYTHONDONTWRITEBYTECODE_VISTO=1$')" -eq 2 ]; then
+  ok=$((ok+1)); printf '  ok    PYTHONDONTWRITEBYTECODE=1 aparece nas duas rodadas (baseline e mutacao)\n'
 else
-  falhou=$((falhou+1)); printf '  FALHA env.txt nao tem "1" nas duas rodadas:\n'; sed 's/^/        | /' "$CAIXA/env.txt"
+  falhou=$((falhou+1)); printf '  FALHA PYTHONDONTWRITEBYTECODE=1 nao aparece 2x na saida:\n'
+  grep 'PYTHONDONTWRITEBYTECODE_VISTO' "$SAIDA" | sed 's/^/        | /'
 fi
-rm -f "$CAIXA/env.txt" "$CAIXA/bateria-env.sh"
+rm -f "$CAIXA/bateria-env.sh"
+
+echo
+echo "== 22. mutacao roda em copia: o arquivo real fica intocado durante a bateria mutada (Issue #266) =="
+# D5 (Issue #266): a mutacao e as duas rodadas da bateria (baseline e
+# pos-mutacao) rodam numa COPIA temporaria da raiz, nunca em $CAIXA — quem
+# ler $CAIXA/fonte.cjs enquanto a catraca roda ve sempre o ORIGINAL. Prova
+# por ENTRADA REAL, nao por leitura de codigo: dispara a catraca em
+# BACKGROUND com uma bateria que dorme 2s (o baseline dorme os primeiros 2s,
+# a mutacao entra so DEPOIS dele passar, e a pos-mutacao dorme outros 2s) e,
+# NO MEIO da janela pos-mutacao (t=3s, dentro de [2,4)), le o fonte.cjs pelo
+# MESMO caminho que --raiz aponta. Antes do D5 (`alvo` resolvia contra
+# `raiz`), essa leitura veria o texto MUTADO — hoje ve sempre o original.
+cat > "$CAIXA/bateria-lenta-2s.sh" <<'BAT'
+#!/bin/bash
+sleep 2
+exit 0
+BAT
+
+CHK --arquivo fonte.cjs --de '// Fixture: recusa' --para '// MARCA-MUTADA' \
+    --bateria 'bash bateria-lenta-2s.sh' > "$SAIDA" 2>&1 &
+PID=$!
+
+sleep 3
+DURANTE="$(cat "$CAIXA/fonte.cjs")"
+wait "$PID"
+GOT=$?
+
+if printf '%s' "$DURANTE" | grep -q '// Fixture: recusa'; then
+  ok=$((ok+1)); printf '  ok    fonte real (%s) intocado durante a bateria mutada (marcador original presente)\n' "$CAIXA/fonte.cjs"
+else
+  falhou=$((falhou+1)); printf '  FALHA fonte real nao tem mais o marcador original (Issue #266 voltou):\n'
+  printf '%s\n' "$DURANTE" | head -3 | sed 's/^/        | /'
+fi
+if printf '%s' "$DURANTE" | grep -q 'MARCA-MUTADA'; then
+  falhou=$((falhou+1)); printf '  FALHA fonte real contem a marca MUTADA durante a execucao (Issue #266 voltou)\n'
+else
+  ok=$((ok+1)); printf '  ok    fonte real nao contem a marca mutada durante a execucao\n'
+fi
+if ! cmp -s "$CAIXA/fonte.cjs" "$PRISTINO"; then
+  falhou=$((falhou+1)); printf '  FALHA fonte real diverge do pristino apos a catraca terminar\n'
+  cp "$PRISTINO" "$CAIXA/fonte.cjs"
+else
+  ok=$((ok+1)); printf '  ok    fonte real bate com o pristino apos a catraca terminar\n'
+fi
+if [ "$GOT" -eq 2 ]; then
+  ok=$((ok+1)); printf '  ok    a bateria em background terminou com o veredito esperado (exit=2: mutacao de comentario nao muda comportamento)\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA a bateria em background terminou com exit inesperado: %s (esperava 2)\n' "$GOT"
+  sed 's/^/        | /' "$SAIDA" | tail -6
+fi
+rm -f "$CAIXA/bateria-lenta-2s.sh"
+
+echo
+echo "== 23. a copia da mutacao continua sendo repositorio git (tarefa 20, Issue #266) =="
+# Achado da integracao da tarefa 6 (2026-09-16): a tarefa 7 excluia '.git' da
+# copia por completo, e qualquer bateria que consulta git dentro da arvore
+# deixava de medir verde ali (medido: `bash hooks/testa-contexto-sessao.sh`
+# saia `ok: 293 falhou: 0` na arvore real e `ok: 292 falhou: 1` dentro da
+# copia). Fixture proprio: um repositorio git minimo, com um commit — a
+# bateria exige `git rev-parse --show-toplevel` e `git show HEAD:<arquivo>`
+# funcionando DENTRO da arvore copiada.
+CAIXA_GIT="$S/caixa-git"; WCAIXA_GIT="$W/caixa-git"
+mkdir -p "$CAIXA_GIT"
+cat > "$CAIXA_GIT/bateria-git.sh" <<'BAT'
+#!/bin/bash
+set -e
+git rev-parse --show-toplevel >/dev/null
+git show HEAD:alvo.cjs | grep -q 'Fixture: recusa'
+# Criterio 2 da tarefa 22: raiz checkout PRINCIPAL (nao worktree vinculado) --
+# a copia tem de continuar principal, isto e, git-dir e git-common-dir
+# resolvem para o MESMO caminho dentro dela.
+GD="$(git rev-parse --git-dir)"
+GCD="$(git rev-parse --git-common-dir)"
+echo "checkout-principal: git-dir=$GD git-common-dir=$GCD"
+if [ "$GD" != "$GCD" ]; then
+  echo "FALHA: copia de checkout principal deveria ter git-dir == git-common-dir"
+  exit 1
+fi
+BAT
+(
+  cd "$CAIXA_GIT" || exit 1
+  git init -q
+  git config user.email "test@test"
+  git config user.name "Test"
+  git config core.autocrlf false
+  cat > alvo.cjs <<'FIX'
+// Fixture: recusa
+module.exports = function ok() { return true; };
+FIX
+  git add alvo.cjs bateria-git.sh
+  git commit -q -m "commit inicial do fixture git"
+)
+
+OUT_GIT="$(node "$SCRIPT" --raiz "$WCAIXA_GIT" --arquivo alvo.cjs --de '// Fixture: recusa' --para '// MARCA-MUTADA' --bateria 'bash bateria-git.sh' 2>&1)"
+GOT_GIT=$?
+
+if printf '%s' "$OUT_GIT" | grep -q 'baseline NAO-VERDE'; then
+  falhou=$((falhou+1)); printf '  FALHA baseline NAO-VERDE dentro da copia (regressao da tarefa 20 -- a copia deixou de ser repositorio git):\n'
+  printf '%s\n' "$OUT_GIT" | tail -12 | sed 's/^/        | /'
+elif printf '%s' "$OUT_GIT" | grep -q 'ok: baseline VERDE'; then
+  ok=$((ok+1)); printf '  ok    baseline VERDE dentro da copia: git rev-parse e git show funcionam (copia continua sendo repositorio git)\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA saida inesperada (nem baseline VERDE nem NAO-VERDE, exit=%s):\n' "$GOT_GIT"
+  printf '%s\n' "$OUT_GIT" | tail -12 | sed 's/^/        | /'
+fi
+
+# A garantia da tarefa 7 nao pode regredir: a copia nao compartilha HEAD,
+# index nem refs com a arvore real -- o fixture git original tem que continuar
+# limpo (git status --porcelain vazio) depois da catraca terminar.
+STATUS_GIT="$(cd "$CAIXA_GIT" && git status --porcelain)"
+if [ -z "$STATUS_GIT" ]; then
+  ok=$((ok+1)); printf '  ok    fixture git original sem alteracoes apos a catraca (git status --porcelain vazio -- copia nao compartilha HEAD/index/refs)\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA fixture git original ficou sujo apos a catraca (copia pode estar compartilhando HEAD/index/refs):\n%s\n' "$STATUS_GIT"
+fi
+
+echo
+echo "== 24. raiz worktree vinculado em branch nao-padrao: copia tambem e vinculada (tarefa 22, Issue #266) =="
+# Achado do verificar (2026-09-16): a tarefa 20 materializava um `.git` UNICO
+# na copia, misturando HEAD/index do worktree com config/refs do commondir --
+# e o resultado tinha git-dir == git-common-dir na copia, ou seja, a copia de
+# um worktree VINCULADO virava CHECKOUT PRINCIPAL (`estado.cjs iniciar` recusa
+# com "checkout principal fora da branch padrao", e baterias que dependem
+# disso saem `baseline NAO-VERDE`). Fixture: um repositorio principal com um
+# commit, mais um worktree VINCULADO numa branch nao-padrao (`fluxo/x`) -- a
+# bateria roda DENTRO do worktree vinculado (`--raiz` aponta pra ele) e
+# confere que git-dir e git-common-dir DIFEREM dentro da copia, e que um
+# `git branch` + `git commit` na copia nunca alcanca o repositorio real.
+CAIXA_WT="$S/caixa-wt-principal"
+mkdir -p "$CAIXA_WT"
+(
+  cd "$CAIXA_WT" || exit 1
+  git init -q
+  git config user.email "test@test"
+  git config user.name "Test"
+  git config core.autocrlf false
+  cat > alvo.cjs <<'FIX'
+// Fixture: recusa
+module.exports = function ok() { return true; };
+FIX
+  git add alvo.cjs
+  git commit -q -m "commit inicial do fixture git (checkout principal)"
+)
+
+LINKED="$S/caixa-wt-linked"; WLINKED="$W/caixa-wt-linked"
+(
+  cd "$CAIXA_WT" || exit 1
+  git worktree add -q -b fluxo/x "$LINKED" >/dev/null
+)
+FLUXO_X_ANTES="$(cd "$CAIXA_WT" && git rev-parse fluxo/x)"
+
+cat > "$LINKED/bateria-worktree.sh" <<'BAT'
+#!/bin/bash
+set -e
+GD="$(git rev-parse --git-dir)"
+GCD="$(git rev-parse --git-common-dir)"
+# Forma Windows (drive-letter), a mesma que `git rev-parse` usa -- `pwd` puro
+# no Git Bash devolve forma /c/... e um prefixo comparado nas formas erradas
+# aprova "fora da copia" mesmo quando esta DENTRO (falso-negativo).
+COPIA="$(pwd -W 2>/dev/null || pwd)"
+echo "worktree-vinculado: git-dir=$GD git-common-dir=$GCD"
+echo "COPIA=$COPIA"
+if [ "$GD" = "$GCD" ]; then
+  echo "FALHA: git-dir igual a git-common-dir (copia de worktree vinculado virou checkout principal)"
+  exit 1
+fi
+case "$GD" in
+  *conferir-mutacao-git-*) ;;
+  *) echo "FALHA: git-dir nao esta no diretorio-irmao de metadados esperado: $GD"; exit 1 ;;
+esac
+case "$GCD" in
+  *conferir-mutacao-git-*) ;;
+  *) echo "FALHA: git-common-dir nao esta no diretorio-irmao de metadados esperado: $GCD"; exit 1 ;;
+esac
+case "$GD" in
+  "$COPIA"/*) echo "FALHA: git-dir esta DENTRO da copia: $GD"; exit 1 ;;
+esac
+case "$GCD" in
+  "$COPIA"/*) echo "FALHA: git-common-dir esta DENTRO da copia: $GCD"; exit 1 ;;
+esac
+META="$(dirname "$GD")"
+echo "META=$META"
+echo "== topo da copia (ls -A) =="
+ls -A .
+TOPOGIT="$(ls -A . | grep '^\.git' | tr '\n' ',')"
+if [ "$TOPOGIT" != ".git," ]; then
+  echo "FALHA: topo da copia tem entrada(s) .git* alem do arquivo .git: $TOPOGIT"
+  exit 1
+fi
+if [ ! -f .git ]; then
+  echo "FALHA: .git no topo da copia nao e um arquivo"
+  exit 1
+fi
+git branch -f x-copia
+git commit -q --allow-empty -m c
+echo "vinculado-ok"
+BAT
+
+OUT_WT="$(node "$SCRIPT" --raiz "$WLINKED" --arquivo alvo.cjs --de '// Fixture: recusa' --para '// MARCA-MUTADA' --bateria 'bash bateria-worktree.sh' 2>&1)"
+printf '%s\n' "$OUT_WT" | tail -30 | sed 's/^/        | /'
+
+if printf '%s' "$OUT_WT" | grep -q 'FALHA'; then
+  falhou=$((falhou+1)); printf '  FALHA a bateria dentro da copia reportou FALHA (ver saida acima)\n'
+elif printf '%s' "$OUT_WT" | grep -q 'vinculado-ok'; then
+  ok=$((ok+1)); printf '  ok    copia de worktree vinculado tambem e vinculada (git-dir != git-common-dir, ambos FORA da copia, topo da copia so tem o arquivo .git)\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA saida inesperada — nem FALHA nem vinculado-ok (ver saida acima)\n'
+fi
+
+# Criterio 2 da emenda (2026-09-17): apos a catraca terminar, nem a copia nem o
+# diretorio-irmao de metadados (META, capturado da saida da bateria acima)
+# podem continuar existindo. So a PRIMEIRA ocorrencia (baseline) importa aqui
+# -- a bateria roda duas vezes (baseline + pos-mutacao) mas ambas rodam DENTRO
+# da mesma copia/mesmo META, entao os caminhos sao os mesmos nas duas.
+COPIA_WT="$(printf '%s\n' "$OUT_WT" | grep '^COPIA=' | head -1 | cut -d= -f2-)"
+META_WT="$(printf '%s\n' "$OUT_WT" | grep '^META=' | head -1 | cut -d= -f2-)"
+if [ -z "$COPIA_WT" ] || [ -z "$META_WT" ]; then
+  falhou=$((falhou+1)); printf '  FALHA nao consegui capturar COPIA/META da saida da bateria (COPIA=%s META=%s)\n' "$COPIA_WT" "$META_WT"
+else
+  case "$META_WT" in
+    *conferir-mutacao-git-*) ;;
+    *) falhou=$((falhou+1)); printf '  FALHA META capturado nao bate com o prefixo esperado: %s\n' "$META_WT" ;;
+  esac
+  if [ -e "$COPIA_WT" ]; then
+    falhou=$((falhou+1)); printf '  FALHA a copia continua existindo apos a catraca: %s\n' "$COPIA_WT"
+  else
+    ok=$((ok+1)); printf '  ok    a copia nao existe mais apos a catraca: %s\n' "$COPIA_WT"
+  fi
+  if [ -e "$META_WT" ]; then
+    falhou=$((falhou+1)); printf '  FALHA o diretorio-irmao de metadados continua existindo apos a catraca: %s\n' "$META_WT"
+  else
+    ok=$((ok+1)); printf '  ok    o diretorio-irmao de metadados nao existe mais apos a catraca: %s\n' "$META_WT"
+  fi
+fi
+
+# O side effect nao pode alcancar o repositorio sandbox real: x-copia so' pode
+# existir DENTRO da copia temporaria, e fluxo/x nao pode ter andado.
+BRANCHES_REAIS="$(cd "$CAIXA_WT" && git branch --list x-copia)"
+if [ -z "$BRANCHES_REAIS" ]; then
+  ok=$((ok+1)); printf '  ok    x-copia nao existe no repositorio sandbox real\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA x-copia vazou para o repositorio sandbox real: %s\n' "$BRANCHES_REAIS"
+fi
+
+FLUXO_X_DEPOIS="$(cd "$CAIXA_WT" && git rev-parse fluxo/x)"
+if [ "$FLUXO_X_ANTES" = "$FLUXO_X_DEPOIS" ]; then
+  ok=$((ok+1)); printf '  ok    fluxo/x nao andou (mesmo commit antes e depois da catraca): %s\n' "$FLUXO_X_DEPOIS"
+else
+  falhou=$((falhou+1)); printf '  FALHA fluxo/x andou -- antes=%s depois=%s\n' "$FLUXO_X_ANTES" "$FLUXO_X_DEPOIS"
+fi
 
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
