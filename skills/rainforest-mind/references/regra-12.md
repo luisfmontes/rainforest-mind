@@ -92,8 +92,9 @@ verde, "quebre a peça que a checagem afirma proteger, cole a saída vermelha,
 desfaça, cole a verde de novo". A mutação **mantém o artefato executável** —
 mutação que rebenta a execução mede o `catch`, não o comportamento — e o teste
 afirma que o resultado mutado é **não-vazio** antes de julgar a diferença. E a
-integração **repete a mutação por conta própria**, no fonte de produção, nunca
-numa cópia.
+integração **repete a mutação por conta própria**, no fonte de produção
+dentro do clone fiel de `conferir-mutacao.cjs` — nunca numa cópia isolada só
+do trecho (fixture) ou feita à mão.
 (acervo: 2026-08-25)
 
 **Entrega analítica escapa por não ter artefato.** Relatório que compara,
