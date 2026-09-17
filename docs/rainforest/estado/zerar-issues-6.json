@@ -29,7 +29,7 @@
     "status": "parcial",
     "catraca_mutacao": "2026-09-17",
     "tarefas_ok": 9,
-    "tarefas": 9,
+    "tarefas": 10,
     "carimbos": [
       {
         "tarefa": 1,
@@ -86,6 +86,13 @@
         "iteracao": 1,
         "sessao": "033532e9-e484-455a-8c68-75288d64bb63",
         "ts": "2026-09-17T11:59:46.452Z"
+      },
+      {
+        "tarefa": 10,
+        "hash_base": "5ade88a1",
+        "iteracao": 1,
+        "sessao": "033532e9-e484-455a-8c68-75288d64bb63",
+        "ts": "2026-09-17T13:40:32.674Z"
       }
     ],
     "em": "2026-09-17",
@@ -139,9 +146,16 @@
       }
     ],
     "reaberto_por": {
-      "estagio": "revisar",
+      "estagio": "verificar",
       "data": "2026-09-17"
-    }
+    },
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "tarefa 10 (emenda, Issue #298)",
+        "desde": "2026-09-17"
+      }
+    ]
   },
   "revisar": {
     "status": "reprovado",
@@ -177,11 +191,14 @@
     "tentativas": 1
   },
   "verificar": {
-    "status": "ok",
-    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues-6 ; baterias: bash scripts/testa-foco.sh, bash hooks/testa-gate-publicacao-destino.sh, bash hooks/testa-gate-verificador-staged.sh, node hooks/testa-gate-commit.cjs, bash hooks/testa-config.sh, bash scripts/testa-conferir-mutacao.sh, bash scripts/testa-perfil.sh, node scripts/perfil.cjs --conferir, bash hooks/testa-cwd-efetivo.sh, bash hooks/testa-gate-worktree.sh, bash hooks/testa-contexto-sessao.sh, node scripts/conferir-invariantes.cjs",
-    "saida": "mutacoes exit 0: tarefas 2,3,4,5,6,8,9 vermelho; 1 e 7 puladas (n/a). Baterias todas exit 0: 91/0, 50/0, 15/0, 19/0, 45/0, 156/0, 4/0, perfil ok 9 agentes, 49/0, 204/0, 295/0 (D7 5895 B), invariantes ok 5. git grep do limiar bloqueia: vazio. Placar da 22.x: 295, nao 296 do plano — a 22.3 virou busca de tamanho na revisao 1 (nota no plano).",
+    "status": "reprovado",
+    "comando": "node scripts/conferir-fluxo.cjs cobertura --slug zerar-issues-6",
+    "saida": "ok: cobertura válida — 13 decisão(ões), 10 tarefa(s)",
     "sensor_externo": "node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues-6",
-    "em": "2026-09-17"
+    "em": "2026-09-17",
+    "criterio": "tarefa 10 (emenda, Issue #298)",
+    "faltou": "tarefa 10 ainda nao executada",
+    "tentativas": 1
   },
   "fechar": {
     "status": "pendente"
