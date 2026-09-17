@@ -260,10 +260,18 @@ function semPrefixoSintaticoDeBuiltin(seg) {
  * incerteza real, e o gate barrava commit legitimo no scratchpad chamando o worktree
  * linkado de "principal" (#289).
  *
+ * Essa traducao MSYS só existe no Git Bash sobre Windows — fora de `win32` o caminho
+ * `/c/...` já é um caminho absoluto de verdade (Linux/macOS), e convertê-lo pra
+ * `c:/...` fabricaria um caminho que nunca existiu (D11).
+ *
  * Só a forma `/<letra>` ou `/<letra>/resto` no INÍCIO do caminho conta — qualquer outra
  * coisa (caminho relativo, `/tmp` sem letra de unidade, `~`, etc.) volta como veio.
+ *
+ * @param {string} caminho
+ * @param {string} [plataforma] - `process.platform` por padrão; parametrizável para teste.
  */
-function normalizarMsys(caminho) {
+function normalizarMsys(caminho, plataforma = process.platform) {
+  if (plataforma !== "win32") return caminho;
   const m = /^\/([A-Za-z])(\/.*|$)/.exec(caminho);
   if (!m) return caminho;
   return `${m[1]}:${m[2] || "/"}`;
