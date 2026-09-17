@@ -41,6 +41,7 @@ da #292.
 - **D10 — #294.3: a frase passa a distinguir clone fiel via catraca (`conferir-mutacao.cjs`, aceito) de fixture isolada ou cópia à mão (proibida); edita-se a fonte e o `perfil.cjs --aplicar` replica** — porquê: o checador garante identidade entre as cópias; editar os agentes à mão quebra o `--conferir`.
 - **D11 — #294.4: `normalizarMsys` devolve o caminho intacto fora de `win32`** — porquê: fora do Windows `/c/x` é caminho POSIX legítimo; medido sem regressão nas duas baterias.
 - **D12 — #294.5: as asserções `SOBRA_22_*` passam a medir a saída real de `montarContexto` com o fixture `FOCO_MUITOS`; `medir_sobra` sai** — porquê: espelho de código nasce desatualizado, e este já nasceu.
+- **D13 — #298, emenda de 2026-09-17: o `gate-agente-em-voo` avisa uma vez por conjunto `em_voo` na sessão; lembra o aviso num arquivo dentro do git-dir (`session_id` + assinatura de slug, estágio e agentes em voo), e só volta a barrar se a sessão ou o conjunto mudar; a mensagem deixa de prometer "UMA vez" sem escopo** — porquê: achado durante este fluxo. A trava `stop_hook_active` vale por turno, e em sessão interativa cada notificação de agente abre turno novo; o aviso repetiu ~30 vezes. O usuário perguntou por que "zerar" abria Issue nova, e a regra 6 reescrita nesta rodada manda consertar na hora o defeito do repo da sessão que atrapalha. O git-dir não é versionado e nem aparece no `git status`; em `claude -p` (turno único) o primeiro aviso continua saindo.
 
 ## Avaliado e descartado
 
