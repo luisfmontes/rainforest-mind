@@ -2763,6 +2763,15 @@ FIX_PRINCIPAL_22='["worktree `zerar-issues-5` está 6 commit(s) atrás do princi
 # nada. Com a linha 1188 mutada para sempre tentar (`if (true)`), a mesma entrada
 # cai para 7570 B e os dois blocos somem — prova de que e' o guarda "so corta se
 # resolver" quem decide, nao um efeito de tamanho generico.
+#
+# A janela que faz o teste discriminar (medida contra este mesmo fixture, item
+# de principal com texto de base de 90 B + sufixo): sufixo entre 361 e 376 B
+# (texto do item entre 451 e 466 B) cai exatamente no "dominante"; fora dela, ou
+# o corte resolve sozinho (texto menor) ou o total mutado/nao-mutado empata em
+# ACIMA DO ORÇAMENTO (texto maior). O texto abaixo tem 454 B — dentro da janela,
+# ~3 B acima do piso e ~12 B abaixo do teto. NUCLEOS_MAX_BYTES e' catraca: se o
+# SKILL.md real crescer ate o teto, a janela desliza e este fixture pode sair
+# dela — reconferir com o script de exploracao se a secao 22.3 comecar a falhar.
 PRINCIPAL_DOMINANTE_22='["worktree `zerar-issues-5` está 6 commit(s) atrás do principal — considere sincronizar, e essa distancia so cresce: enquanto a sessao de origem ficar parada sem dar merge ou rebase, cada commit novo no principal aumenta o numero e o risco de conflito na hora de finalmente sincronizar, entao vale tratar isso ainda hoje mesmo, de preferencia antes de abrir qualquer PR novo nesse worktree ou empilhar mais trabalho por cima dele sem revisar com calma."]'
 
 contexto_rodape() { # veredito, sessoes, revisao, dependencias, principal(json), [lib], [foco]
@@ -2843,7 +2852,7 @@ checa "22.3 principal dominante: corte que nao resolve deixa as sessoes" tem "ra
 checa "22.3 principal dominante: sem aviso de injecao acima do orcamento" nao_tem "ACIMA DO ORÇAMENTO" "$S_22_3"
 
 echo
-echo "22.3 MUTAÇÃO — desligar o guarda 'so corta se resolver' tem que remover os dois blocos"
+echo "22.3 MUTAÇÃO LOCAL — desligar o guarda 'so corta se resolver' tem que remover os dois blocos"
 cp "$LIB" "$RAIZ_POSIX/lib-mut-so-corta-se-resolve.cjs"
 sed -i "s/if (fixoComCorteMaximo <= TETOS.ORCAMENTO_BYTES - TETOS.FOCO_MIN_BYTES) {/if (true) {/" "$RAIZ_POSIX/lib-mut-so-corta-se-resolve.cjs"
 if diff "$LIB" "$RAIZ_POSIX/lib-mut-so-corta-se-resolve.cjs" > /dev/null; then
