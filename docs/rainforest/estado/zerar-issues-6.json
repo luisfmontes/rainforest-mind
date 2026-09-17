@@ -1,0 +1,28 @@
+{
+  "slug": "zerar-issues-6",
+  "titulo": "Zerar as Issues abertas, rodada 6 — regra 6 e as 3 da rodada 5",
+  "criado_em": "2026-09-17",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/zerar-issues-6.md",
+    "em": "2026-09-17"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
