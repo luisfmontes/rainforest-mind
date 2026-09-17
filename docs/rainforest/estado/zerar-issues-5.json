@@ -32,7 +32,7 @@
     "em": "2026-09-16"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-16",
     "em_voo": [],
     "em": "2026-09-16",
@@ -142,10 +142,32 @@
       }
     ],
     "comando": "node scripts/conferir-mutacao.cjs (re-rodado na integracao, 20 tarefas)",
-    "saida": "20 de 20 exit 0: bateria VERMELHA com o comportamento invertido"
+    "saida": "20 de 20 exit 0: bateria VERMELHA com o comportamento invertido",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-16"
+    }
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "2d9093575a460eb9fc991877edc17a7f8c67912a",
+      "caminhos_sujos": []
+    },
+    "em_voo": [],
+    "em": "2026-09-16",
+    "achados": 2,
+    "lista": [
+      "1: skills/plano/SKILL.md:74-80 template de: em prosa que a catraca recusa (exit 3)",
+      "2: README.md:206 e docs/travas-mecanicas.md:101 ainda exigem --confirmo em fechar-issue.cjs"
+    ],
+    "menores_para_issue": [
+      "testa-conferir-mutacao.sh:842-857 assercoes pyc tautologicas apos copia",
+      "regra-12/agents: nunca numa copia vs conferir-mutacao em copia",
+      "cwd-efetivo normalizarMsys sem guarda de plataforma",
+      "testa-contexto-sessao medir_sobra espelho incompleto"
+    ],
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"

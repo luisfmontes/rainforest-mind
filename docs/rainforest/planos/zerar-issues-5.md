@@ -601,3 +601,13 @@ mutacao:
   bateria: `bash scripts/testa-conferir-mutacao.sh`
   fixture: caso novo "bateria que exige git rev-parse dentro da arvore mede verde no baseline da copia"
 pronto quando: com a árvore deste fluxo (`hooks/testa-contexto-sessao.sh`, bateria real que consulta git), `node scripts/conferir-mutacao.cjs --raiz <worktree> --arquivo hooks/testa-contexto-sessao.sh --de <trecho existente de uma linha> --para <neutro> --bateria "bash hooks/testa-contexto-sessao.sh"` passa do baseline (não sai 4 por `baseline NAO-VERDE`); a garantia da tarefa 7 continua de pé — durante a bateria mutada o arquivo alvo na árvore real mantém o conteúdo original (seção 22 de `scripts/testa-conferir-mutacao.sh` verde), e a cópia não compartilha índice nem HEAD com a árvore real (`git -C <arvore real> status --porcelain` igual antes e depois da catraca); a cópia temporária some ao fim, inclusive em erro — provado por `bash scripts/testa-conferir-mutacao.sh` com o caso novo. Superfície humana: se ainda assim o baseline da cópia falhar por ambiente, a mensagem diz que a falha foi **na cópia** e cita o diretório, para quem lê não confundir com bateria quebrada no fonte.
+
+### 21. docs coerentes com a entrega: template de mutacao literal e fechar-issue sem --confirmo [tipo: docs]
+atende: D1, D4
+arquivos: `skills/plano/SKILL.md`, `README.md`, `docs/travas-mecanicas.md`
+depende de: 9
+paralela: nao
+Achado do revisar (2026-09-16): o bloco-exemplo de `mutacao:` em `skills/plano/SKILL.md` usava o mesmo `de:` em prosa que o texto novo da tarefa 5/#281 aponta como erro (conferir-mutacao sai 3), e `README.md:206` e `docs/travas-mecanicas.md:101` ainda listavam `fechar-issue.cjs` entre os scripts que exigem `--confirmo`, flag que a tarefa 9 removeu.
+mutacao: n/a
+  motivo: tarefa so reescreve documentacao; nao ha comportamento a inverter
+pronto quando: com o bloco-exemplo de `skills/plano/SKILL.md` copiado como está, `node scripts/conferir-mutacao.cjs --arquivo hooks/lib/cwd-efetivo.cjs --de <de do exemplo> --para <para do exemplo> --bateria "bash hooks/testa-gate-worktree.sh"` sai 0 (o exemplo mede de verdade, em vez de sair 3); e a lista de scripts que exigem `--confirmo` em `README.md` e `docs/travas-mecanicas.md` casa com `grep -l -- "--confirmo" scripts/limpar-branches.cjs scripts/limpar-worktrees.cjs scripts/fechar-issue.cjs` (os dois primeiros, nunca `fechar-issue.cjs`).

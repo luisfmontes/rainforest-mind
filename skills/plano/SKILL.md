@@ -74,11 +74,11 @@ por isso o alvo mora no plano, e não na cabeça de quem executa depois.
 
 ```
 mutacao:
-  arquivo: `hooks/gate-worktree.cjs`
-  de: o `process.exit(2)` do ramo de sessão co-locada
-  para: `process.exit(0)`
+  arquivo: `hooks/lib/cwd-efetivo.cjs`
+  de: `const alvo = path.resolve(estado.atual, normalizarMsys(destino));`
+  para: `const alvo = path.resolve(estado.atual, destino);`
   bateria: `bash hooks/testa-gate-worktree.sh`
-  fixture: `testa-gate-worktree.sh, linhas 23-30 (o ramo co-locado que dispara a saída)`
+  fixture: `testa-gate-worktree.sh, secao "Issue #289: cd com caminho MSYS (/c/...) resolve com path.resolve do Node"`
 ```
 
 - **`de:` é o padrão exato**, não a intenção. Padrão que não casa com o fonte
