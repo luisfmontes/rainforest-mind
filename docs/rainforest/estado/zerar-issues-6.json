@@ -13,19 +13,20 @@
   "plano": {
     "status": "ok",
     "arquivo": "docs/rainforest/planos/zerar-issues-6.md",
-    "tarefas": 9,
+    "tarefas": 10,
     "paralelas": [
       1,
       2,
       3,
       5,
       7,
-      8
+      8,
+      10
     ],
     "em": "2026-09-17"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-17",
     "tarefas_ok": 9,
     "tarefas": 9,
@@ -136,10 +137,14 @@
         "resultado": "vermelho",
         "fixture": "testa-contexto-sessao.sh 22.3: nenhum tamanho em que o guarda faca diferenca"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-17"
+    }
   },
   "revisar": {
-    "status": "ok",
+    "status": "reprovado",
     "snapshot": {
       "head": "7b9173e3f6b847142f117bb650dc3ea0b2669caf",
       "caminhos_sujos": [
@@ -148,12 +153,11 @@
     },
     "em_voo": [],
     "em": "2026-09-17",
-    "achados": 0,
+    "achados": 1,
     "base": "7e8dd298",
-    "head": "7b9173e3",
+    "head": "db89e6cc",
     "lista": [
-      "1: nucleo da regra 6 (SKILL.md:90-92) permite ler Issue E conserto no repo da sessao, contra D2",
-      "2: +93 B do nucleo fazem a combinacao real de hoje (22.1) cortar Dependencias de ambiente; 22.1 nao afirma presenca do bloco e o comentario ficou falso"
+      "1: emenda do plano (tarefa 10, Issue #298) ainda nao executada nem revisada"
     ],
     "rodadas": [
       {
@@ -169,7 +173,8 @@
         "consertado_em": "7b9173e3",
         "prova": "testa-contexto-sessao.sh ok: 295 falhou: 0, D7 5895 B; conferir-invariantes ok"
       }
-    ]
+    ],
+    "tentativas": 1
   },
   "verificar": {
     "status": "ok",
