@@ -67,6 +67,11 @@ const CHAVES = {
     padrao: true,
     descricao: 'barra sessão quando há agente em voo que morreu',
   },
+  'gate-verificador-staged': {
+    tipo: 'boolean',
+    padrao: true,
+    descricao: 'barra commit quando o `verificador-staged` do config reprova conteúdo staged',
+  },
   fluxo: {
     tipo: 'boolean',
     padrao: true,
