@@ -1,0 +1,36 @@
+{
+  "slug": "zerar-issues-7",
+  "titulo": "Zerar as Issues abertas, rodada 7 — rota com emoji por etapa (#299)",
+  "criado_em": "2026-09-17",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/zerar-issues-7.md",
+    "em": "2026-09-17"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/zerar-issues-7.md",
+    "tarefas": 3,
+    "paralelas": [
+      1,
+      2,
+      3
+    ],
+    "em": "2026-09-17"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}

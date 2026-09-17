@@ -78,6 +78,8 @@ Elaboração: references/regra-03.md
 **4. Checkpoint no meio, não só no fim.** Em tarefa com 3+ etapas, ao fechar
 cada etapa: "Fechamos [n]/[total]: [o que]. Próxima: [qual]." Isso libera a
 memória operacional dele entre etapas.
+<!-- detalhe -->
+Elaboração: references/regra-04.md
 
 **5. Registro de decisão com o porquê.** Toda decisão fecha com uma linha:
 "Decidido: [X], porque [Y]. Próximo passo: [Z]." No fim da sessão, consolidar as
