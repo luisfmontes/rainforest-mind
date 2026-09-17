@@ -17,7 +17,7 @@ Cada etapa leva exatamente um de quatro estados:
 - ✅ feito
 - 🔄 rodando agora
 - ⏳ não começou
-- ❌ reprovada ou bloqueada
+- ❌ reprovada, ou travada por conta própria
 
 Sem o ❌, etapa que falhou aparece como ✅ ou ⏳ — mentira de relance. Não
 existe quinto estado: o que não cabe nos quatro vai na prosa da linha.
@@ -47,9 +47,18 @@ Fechamos 3/5: revisão aprovada. Próxima: verificação.
 5. ⏳ PR fechando a `#104`
 ```
 
-E se a verificação reprova:
+E se a verificação reprova — a rota continua inteira:
 
 ```
+Fechamos 3/5, e a 4 reprovou: `advpls appre` saiu 1. Próxima: corrigir e repetir a 4.
+
+1. ✅ Worktree conferido
+2. ✅ Executor entregou
+3. ✅ Revisão adversarial
 4. ❌ Verificação — `advpls appre` saiu 1: `campo duplicado na linha 212`
 5. ⏳ PR fechando a `#104` — espera a 4
 ```
+
+❌ marca a etapa que **ela mesma** falhou ou travou. Etapa que só espera a
+reprovada continua ⏳, com o motivo na prosa: marcar a 5 como ❌ esconderia
+qual das duas precisa de conserto.
