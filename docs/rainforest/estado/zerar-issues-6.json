@@ -200,6 +200,18 @@
     "faltou": "tarefa 10 ainda nao executada"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "acao": "pr",
+    "pr": 297,
+    "merge": "7eefe4cb",
+    "issues_fechadas": [
+      291,
+      292,
+      293,
+      294,
+      298
+    ],
+    "versao": "1.19.0",
+    "em": "2026-09-17"
   }
 }
