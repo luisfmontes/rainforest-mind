@@ -19,10 +19,23 @@
  *
  * - estágio aberto com `em_voo` não vazio e `stop_hook_active` falso → exit 2
  * - o MESMO payload com `stop_hook_active` verdadeiro → exit 0. Barrar duas
- *   vezes vira laço, e laço é pior que o defeito: avisa uma vez.
+ *   vezes no mesmo turno vira laço, e laço é pior que o defeito.
  * - sem fluxo aberto, sem `em_voo`, payload vazio ou ilegível, fora de git →
  *   exit 0, em silêncio. Hook que derruba a sessão por defeito próprio não
  *   entra.
+ *
+ * Emenda D13/#298 (2026-09-17): `stop_hook_active` vale por turno, não por
+ * sessão — em sessão interativa cada notificação de agente abre turno novo,
+ * e o aviso repetia a cada um (~30 vezes numa sessão só), sempre prometendo
+ * "UMA vez". Agora o hook lembra o aviso por sessão: calcula uma assinatura
+ * de slug + estágio + lista de agentes em voo e grava
+ * `{session_id, assinatura, em}` em `<git-dir>/rainforest-gate-agente-em-voo.json`
+ * quando barra. Turno seguinte, mesma sessão e mesma assinatura → exit 0 em
+ * silêncio; sessão diferente ou conjunto `em_voo` mudado → barra de novo.
+ * Payload sem `session_id` não tem como memorizar: barra como antes, sempre.
+ * Falha de leitura ou escrita desse arquivo nunca derruba a sessão nem
+ * silencia um aviso que devia sair (erro de leitura = não avisado; erro de
+ * escrita = barra mesmo assim).
  *
  * Saídas de emergência, na ordem que os outros gates usam:
  * `RAINFOREST_GATE_OFF` no ambiente, `.rainforest-gate-off` na raiz do repo, e
@@ -50,6 +63,49 @@ function toplevel(cwd) {
   } catch {
     return null;
   }
+}
+
+/** git-dir do repositório do EVENTO, resolvido contra `gitTop` (worktree
+ * linkado tem git-dir próprio; `--git-dir` já devolve o caminho certo). */
+function gitDir(gitTop) {
+  try {
+    const saida = execFileSync('git', ['-C', gitTop, 'rev-parse', '--git-dir'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    if (!saida) return null;
+    return path.isAbsolute(saida) ? saida : path.resolve(gitTop, saida);
+  } catch {
+    return null;
+  }
+}
+
+/** Assinatura estável de slug + estágio + agentes em voo (agente+tarefa+desde,
+ * na ordem em que aparecem no estado). */
+function assinaturaDe(slug, estagio, emVoo) {
+  const lista = emVoo.map((a) => `${a.agente}|${a.tarefa ?? ''}|${a.desde ?? ''}`).join(';');
+  return `${slug}::${estagio}::${lista}`;
+}
+
+/** Erro de leitura conta como "ainda não avisado" — nunca silencia um aviso
+ * que devia sair. */
+function leAviso(caminho) {
+  try {
+    return JSON.parse(fs.readFileSync(caminho, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+/** Erro de escrita nunca impede o bloqueio deste turno — só a memória para o
+ * próximo é que se perde. */
+function gravaAviso(caminho, sessionId, assinatura, emVoo) {
+  try {
+    fs.writeFileSync(
+      caminho,
+      JSON.stringify({ session_id: sessionId, assinatura, em: emVoo }, null, 2) + '\n'
+    );
+  } catch {}
 }
 
 function main() {
@@ -107,6 +163,25 @@ function main() {
   // neste encerramento. A segunda vez não avisa: deixa o turno acabar.
   if (ev.stop_hook_active === true) process.exit(0);
 
+  // Memória por sessão (Issue #298): decidiu que vai barrar, então confere se
+  // esta MESMA sessão já viu esta MESMA assinatura (slug + estágio + agentes
+  // em voo) antes de avisar de novo. Payload sem `session_id` não tem como
+  // memorizar: cai direto para o bloqueio, como antes.
+  let caminhoAviso = null;
+  let assinatura = null;
+  let jaAvisado = false;
+  if (ev.session_id) {
+    const gd = gitDir(gitTop);
+    if (gd) {
+      caminhoAviso = path.join(gd, 'rainforest-gate-agente-em-voo.json');
+      assinatura = assinaturaDe(ativo.slug, ativo.estagio, emVoo);
+      const memoria = leAviso(caminhoAviso);
+      jaAvisado = !!memoria && memoria.session_id === ev.session_id && memoria.assinatura === assinatura;
+    }
+  }
+  if (jaAvisado) process.exit(0);
+  if (caminhoAviso) gravaAviso(caminhoAviso, ev.session_id, assinatura, emVoo);
+
   const lista = emVoo
     .map((a) => `  - ${a.agente}${a.tarefa ? `, tarefa ${a.tarefa}` : ''}${a.desde ? ` (desde ${a.desde})` : ''}`)
     .join('\n');
@@ -123,7 +198,8 @@ function main() {
     `     node scripts/estado.cjs marcar --slug ${ativo.slug} --estagio ${ativo.estagio} --status parcial --json '{"em_voo":[]}'\n` +
     `  3. Se ele morreu, registre isso em vez de deixar o rastro mudo — o campo\n` +
     `     'em_voo' é o que responde "ficou pela metade?" para a próxima sessão.\n\n` +
-    `Este aviso sai UMA vez: encerrando de novo, o turno acaba.\n`
+    `Este aviso sai uma vez por conjunto de agentes em voo nesta sessão: registrar\n` +
+    `agente novo em 'em_voo' faz o aviso voltar.\n`
   );
 }
 

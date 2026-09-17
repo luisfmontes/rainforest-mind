@@ -27,8 +27,8 @@ ok=0; falhou=0
 # Payload de Stop montado por node, com os valores chegando por argv — printf
 # com aspas aninhadas ja produziu JSON invalido neste repo, e JSON invalido faz
 # o hook sair 0: o exit esperado pelo motivo errado.
-pay() { # cwd, stop_hook_active(true|false)
-  node -e 'const [c,s]=process.argv.slice(1);process.stdout.write(JSON.stringify({session_id:"s1",cwd:c,hook_event_name:"Stop",stop_hook_active:s==="true"}))' "$1" "$2"
+pay() { # cwd, stop_hook_active(true|false), [session_id=s1]
+  node -e 'const [c,s,sid]=process.argv.slice(1);process.stdout.write(JSON.stringify({session_id:sid||"s1",cwd:c,hook_event_name:"Stop",stop_hook_active:s==="true"}))' "$1" "$2" "${3:-}"
 }
 
 checa() { # nome, exit esperado, payload, [trecho que a mensagem deve conter]
@@ -84,10 +84,22 @@ fs.writeFileSync(p, JSON.stringify({
 escreve_estado '{"status":"parcial","em":"2026-09-04","em_voo":[{"agente":"rainforest-mind:revisor","tarefa":7,"desde":"2026-09-04"}]}'
 
 echo "== com agente em voo =="
-checa "stop_hook_active falso BARRA e nomeia o agente" 2 "$(pay "$R" false)" "rainforest-mind:revisor"
-checa "a mensagem nomeia o estagio"                    2 "$(pay "$R" false)" "executar"
-checa "a mensagem nomeia o fluxo"                      2 "$(pay "$R" false)" "$SLUG"
-checa "stop_hook_active verdadeiro NAO barra (sem laco)" 0 "$(pay "$R" true)"
+# Sessoes distintas por checagem: cada uma barra a MESMA assinatura pela
+# primeira vez, entao a memoria por sessao (Issue #298) nao apaga o exit 2
+# esperado da checagem seguinte.
+checa "stop_hook_active falso BARRA e nomeia o agente" 2 "$(pay "$R" false msg-agente)" "rainforest-mind:revisor"
+checa "a mensagem nomeia o estagio"                    2 "$(pay "$R" false msg-estagio)" "executar"
+checa "a mensagem nomeia o fluxo"                      2 "$(pay "$R" false msg-fluxo)" "$SLUG"
+checa "stop_hook_active verdadeiro NAO barra (sem laco)" 0 "$(pay "$R" true msg-loop)"
+
+echo
+echo "== memoria de aviso por sessao (Issue #298) =="
+checa "primeiro turno da sessao mem-a BARRA"             2 "$(pay "$R" false mem-a)"
+checa "mesma sessao, mesmo em_voo, turno seguinte NAO barra de novo" 0 "$(pay "$R" false mem-a)"
+checa "sessao mem-b diferente BARRA (memoria e por sessao)" 2 "$(pay "$R" false mem-b)"
+escreve_estado '{"status":"parcial","em":"2026-09-04","em_voo":[{"agente":"rainforest-mind:revisor","tarefa":7,"desde":"2026-09-04"},{"agente":"rainforest-mind:tester","tarefa":8,"desde":"2026-09-04"}]}'
+checa "sessao mem-a com em_voo mudado (agente novo) volta a barrar" 2 "$(pay "$R" false mem-a)"
+escreve_estado '{"status":"parcial","em":"2026-09-04","em_voo":[{"agente":"rainforest-mind:revisor","tarefa":7,"desde":"2026-09-04"}]}'
 
 echo
 echo "== saidas de emergencia =="
