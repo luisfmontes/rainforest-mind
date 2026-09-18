@@ -307,7 +307,7 @@ cima disso sozinhas, sem você chamar nada:
   vez por dia no `SessionStart`, em processo destacado (nunca dentro do hook
   de captura, que tem orçamento curto): garante o esquema, reconcilia e
   consolida, e grava em `manutencao.log`. Falha da manutenção, ou captura
-  parada há 48h ou mais, vira uma linha na abertura da sessão seguinte.
+  parada há mais de 48h, vira uma linha na abertura da sessão seguinte.
 
 O FTS5 como buscador de candidatas mediu recall de 82,0% contra 200 sondagens
 do acervo real (74,6% na metade em português, 89,2% na metade em inglês) —
