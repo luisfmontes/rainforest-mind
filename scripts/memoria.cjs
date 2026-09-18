@@ -79,6 +79,16 @@ function chaveHarness(diretorio) {
   return diretorio.replace(/[\\/:]/g, '-');
 }
 
+// Ponto único de inversão (Tarefa 3, D3): observação substituída
+// (substituida_por IS NOT NULL) sai da injeção e da busca, sem ser apagada.
+// Todo caminho de leitura em observacoes usa esta função em vez de escrever
+// o AND à mão — um único lugar para a catraca de mutação inverter.
+// `alias`, quando a consulta usa alias de tabela (ex.: `FROM observacoes o`),
+// tem que vir com o ponto (`'o.'`), porque o retorno é colado direto na SQL.
+function filtroVivas(alias) {
+  return 'AND ' + (alias || '') + 'substituida_por IS NULL';
+}
+
 function resolverCaminhos() {
   const { raiz } = resolverRaiz({
     plugin: path.resolve(__dirname, '..'),
@@ -908,12 +918,14 @@ function cmdBuscar() {
 
     if (texto) {
       // Busca FTS5: combinar conteúdo com projeto se fornecido.
+      // Tarefa 3 (D3): filtroVivas('o.') tira a substituída da busca.
       query = `
         SELECT o.id, o.projeto, o.conteudo, o.criada_em
         FROM observacoes o
         WHERE o.id IN (
           SELECT rowid FROM observacoes_fts WHERE conteudo MATCH :fts_query
         )
+        ${filtroVivas('o.')}
       `;
       params.fts_query = texto; // FTS5 syntax: "palavra" ou "palavra1 AND palavra2"
 
@@ -923,10 +935,11 @@ function cmdBuscar() {
       }
     } else {
       // Sem texto: listar recentes de um projeto (se fornecido).
-      query = 'SELECT id, projeto, conteudo, criada_em FROM observacoes';
+      // Tarefa 3 (D3): WHERE 1=1 ancora o AND de filtroVivas() mesmo sem --projeto.
+      query = `SELECT id, projeto, conteudo, criada_em FROM observacoes WHERE 1=1 ${filtroVivas()}`;
 
       if (projeto) {
-        query += ' WHERE projeto = :projeto';
+        query += ' AND projeto = :projeto';
         params.projeto = projeto;
       }
     }
@@ -1457,10 +1470,12 @@ async function cmdConsolidar() {
 
     // 2. Encontrar todos os projetos que têm observações consolidáveis (51+)
     // C5: teto é "passarem de 50" — 50 não consolida, 51 consolida.
+    // Tarefa 3 (D3): filtroVivas() tira a substituída da contagem — senão o
+    // HAVING conta uma linha que a leitura abaixo (mesma filtroVivas()) não traria.
     const projetosComConsolidaveis = conexao.prepare(`
       SELECT projeto, COUNT(*) as cnt
       FROM observacoes
-      WHERE consolidada_em IS NULL AND criada_em < ?
+      WHERE consolidada_em IS NULL AND criada_em < ? ${filtroVivas()}
       GROUP BY projeto
       HAVING COUNT(*) > 50
       ORDER BY projeto
@@ -1481,10 +1496,11 @@ async function cmdConsolidar() {
       console.log(`projeto "${projeto}": ${cnt} observações consolidáveis`);
 
       // 4. Ler observações consolidáveis deste projeto, ordenadas por criada_em
+      // Tarefa 3 (D3): filtroVivas() — substituída não entra no lote a consolidar.
       const observacoes = conexao.prepare(`
         SELECT id, conteudo, criada_em
         FROM observacoes
-        WHERE projeto = ? AND consolidada_em IS NULL AND criada_em < ?
+        WHERE projeto = ? AND consolidada_em IS NULL AND criada_em < ? ${filtroVivas()}
         ORDER BY criada_em ASC
       `).all(projeto, dataLimite);
 
@@ -1988,4 +2004,5 @@ module.exports = {
   resolverCaminhos, verificarConstraintUniqueProjetoOrigem,
   K_CANDIDATAS, TETO_RECONCILIAR, construirQueryFts5, buscarCandidatas,
   interpretarDecisaoReconciliacao, aplicarDecisaoReconciliacao,
+  filtroVivas,
 };

@@ -1282,5 +1282,84 @@ checa "19.b hook real: bloco traz a observação pequena" tem "Obs pequena" "$CT
 rm -rf "$CAIXA_SEMESTOURO"
 
 echo
+echo "20. Tarefa 3 (D3) — observacao substituida nao entra na disputa de vagas"
+# 20 observações, as 6 MAIS RECENTES com substituida_por preenchido — de
+# propósito: se o filtro não funcionasse, elas seriam justamente as que
+# ORDER BY criada_em DESC LIMIT 14 escolheria primeiro. As 14 mais antigas
+# (ids 1-14) são as vivas, e sobram exatas 14 vagas para elas — prova que o
+# filtro tira as 6 substituídas SEM cortar nenhuma viva por falta de vaga.
+CAIXA_SUBST="$(novo_sandbox)"
+git init -q "$CAIXA_SUBST"
+export RFM_ROOT="$CAIXA_SUBST"
+node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+
+node <<'SETUP_SUBST'
+const { DatabaseSync } = require('node:sqlite');
+const path = require('path');
+const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
+const projectKey = path.basename(process.env.RFM_ROOT);
+const NL = String.fromCharCode(10);
+// ids 1-14: vivas (mais antigas). ids 15-20: substituidas (mais recentes).
+for (let i = 1; i <= 20; i++) {
+  const dia = String(i).padStart(2, '0');
+  const marcador = i <= 14 ? 'VIVA_MARCADOR_' + String(i).padStart(2, '0') : 'SUBST_MARCADOR_' + String(i).padStart(2, '0');
+  db.prepare("INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?,?,?,?)")
+    .run(projectKey, '## rainforest obs ' + i + NL + NL + marcador, '2026-06-' + dia + 'T10:00:00Z', 'subst-' + i);
+}
+// Marca as 6 mais recentes (ids 15-20) como substituidas por uma nova (id fictício 999).
+db.prepare("UPDATE observacoes SET substituida_por = 999, reconciliada_em = ? WHERE id >= 15")
+  .run('2026-09-01T00:00:00Z');
+db.close();
+SETUP_SUBST
+
+# Grava conteudos.json no formato do contrato de retorno (critério 1 do briefing):
+# arrays com os marcadores das substituídas e das vivas.
+node -e "
+const fs = require('fs');
+const substituidas = [];
+const vivas = [];
+for (let i = 1; i <= 20; i++) {
+  const marcador = i <= 14 ? 'VIVA_MARCADOR_' + String(i).padStart(2, '0') : 'SUBST_MARCADOR_' + String(i).padStart(2, '0');
+  (i <= 14 ? vivas : substituidas).push(marcador);
+}
+fs.writeFileSync(process.argv[1], JSON.stringify({ substituidas, vivas }));
+" "$CAIXA_SUBST/conteudos.json"
+
+echo
+echo "  20.a — sem FOCO.md (lerObservacoes, 14 recentes)"
+SAIDA_SUBST_A="$(cd "$CAIXA_SUBST" && printf '%s' '{"hook_event_name":"SessionStart","source":"startup","session_id":"11111111-1111-1111-1111-111111111111","cwd":"'"$CAIXA_SUBST"'","transcript_path":"'"$CAIXA_SUBST"'/t.jsonl"}' | RFM_ROOT="$CAIXA_SUBST" node "$HOOK" 2>/dev/null)"
+echo "$SAIDA_SUBST_A" > "$CAIXA_SUBST/saida-a.json"
+CONTAGEM_A="$(node -e "const fs=require('fs');const t=JSON.parse(fs.readFileSync(process.argv[1],'utf8')).hookSpecificOutput.additionalContext;const m=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));console.log(m.substituidas.filter(c=>t.includes(c)).length, m.vivas.filter(c=>t.includes(c)).length)" "$CAIXA_SUBST/saida-a.json" "$CAIXA_SUBST/conteudos.json")"
+echo "  comando: RFM_ROOT=<sandbox> printf '%s' '<payload>' | node hooks/memoria-session-start.cjs > saida.json && node -e '...' saida.json conteudos.json"
+echo "  saida: $CONTAGEM_A"
+if [ "$CONTAGEM_A" = "0 14" ]; then
+  ok=$((ok+1)); echo "  ok    20.a sem FOCO.md: 0 substituidas, 14 vivas"
+else
+  falhou=$((falhou+1)); echo "  FALHA 20.a sem FOCO.md: esperava '0 14', veio '$CONTAGEM_A'"
+fi
+
+echo
+echo "  20.b — com FOCO.md casando termo (lerObservacoesComFTS, 9 recentes + até 5 casadas)"
+cat > "$CAIXA_SUBST/FOCO.md" <<'FOCO_SUBST'
+# FOCO
+
+## Ativo
+**Revisar rainforest memoria**
+
+Descrição do que está sendo feito.
+FOCO_SUBST
+SAIDA_SUBST_B="$(cd "$CAIXA_SUBST" && printf '%s' '{"hook_event_name":"SessionStart","source":"startup","session_id":"11111111-1111-1111-1111-111111111111","cwd":"'"$CAIXA_SUBST"'","transcript_path":"'"$CAIXA_SUBST"'/t.jsonl"}' | RFM_ROOT="$CAIXA_SUBST" node "$HOOK" 2>/dev/null)"
+echo "$SAIDA_SUBST_B" > "$CAIXA_SUBST/saida-b.json"
+CONTAGEM_B="$(node -e "const fs=require('fs');const t=JSON.parse(fs.readFileSync(process.argv[1],'utf8')).hookSpecificOutput.additionalContext;const m=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));console.log(m.substituidas.filter(c=>t.includes(c)).length, m.vivas.filter(c=>t.includes(c)).length)" "$CAIXA_SUBST/saida-b.json" "$CAIXA_SUBST/conteudos.json")"
+echo "  comando: RFM_ROOT=<sandbox> printf '%s' '<payload>' | node hooks/memoria-session-start.cjs > saida.json && node -e '...' saida.json conteudos.json"
+echo "  saida: $CONTAGEM_B"
+if [ "$CONTAGEM_B" = "0 14" ]; then
+  ok=$((ok+1)); echo "  ok    20.b com FOCO.md: 0 substituidas, 14 vivas (recentes + casadas)"
+else
+  falhou=$((falhou+1)); echo "  FALHA 20.b com FOCO.md: esperava '0 14', veio '$CONTAGEM_B'"
+fi
+rm -rf "$CAIXA_SUBST"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]

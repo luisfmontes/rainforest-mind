@@ -10,7 +10,7 @@ const path = require('path');
 const { montarMemoria, montarLegendaMemoria } = require('./lib/memoria-sessao.cjs');
 const { tituloDoFocoAtivo } = require('./lib/contexto-sessao.cjs');
 const { resolverRaiz } = require('./lib/raiz.cjs');
-const { abrirBanco, resolverCaminhos } = require(path.join(__dirname, '..', 'scripts', 'memoria.cjs'));
+const { abrirBanco, resolverCaminhos, filtroVivas } = require(path.join(__dirname, '..', 'scripts', 'memoria.cjs'));
 
 // Extrai termos de busca do título do foco ativo.
 // Retorna array de termos (palavras com >2 caracteres, em minúsculas).
@@ -53,12 +53,14 @@ function lerObservacoesComFTS(caminhoDb, projetosList, termos) {
 
     try {
       // C3: Passo 1: Buscar 9 recentes, EXCLUINDO consolidadas
+      // Tarefa 3 (D3): filtroVivas() em ambos os ramos — substituída não disputa vaga.
       const queryRecentes = projetosList && projetosList.length > 0
         ? `
           SELECT id, projeto, conteudo, criada_em
           FROM observacoes
           WHERE projeto IN (${projetosList.map(() => '?').join(', ')})
           AND consolidada_em IS NULL
+          ${filtroVivas()}
           ORDER BY criada_em DESC
           LIMIT 9
         `
@@ -66,6 +68,7 @@ function lerObservacoesComFTS(caminhoDb, projetosList, termos) {
           SELECT id, projeto, conteudo, criada_em
           FROM observacoes
           WHERE consolidada_em IS NULL
+          ${filtroVivas()}
           ORDER BY criada_em DESC
           LIMIT 9
         `;
@@ -85,11 +88,12 @@ function lerObservacoesComFTS(caminhoDb, projetosList, termos) {
         const termoFTS = termos.join(' OR '); // FTS5: termos separados por OR
 
         // A consulta FTS deve descartar as linhas que já estão em recentes
-        // E também descartar consolidadas (C3)
+        // E também descartar consolidadas (C3) e substituídas (Tarefa 3, D3)
         const queryCasadas = `
           SELECT o.id, o.projeto, o.conteudo, o.criada_em
           FROM observacoes o
           WHERE o.consolidada_em IS NULL
+          ${filtroVivas('o.')}
           AND o.id IN (
             SELECT rowid FROM observacoes_fts
             WHERE observacoes_fts MATCH ?
@@ -107,6 +111,8 @@ function lerObservacoesComFTS(caminhoDb, projetosList, termos) {
         // FTS indisponível (tabela não existe ou corrompida): fallback para 14 recentes
         // Retorna 14 recentes SEM aplicar FTS (comportamento byte-idêntico ao fallback sem foco)
         // C3: EXCLUIR consolidadas no fallback também
+        // Tarefa 3 (D3): filtroVivas() nos 3 ramos de recurso — mesma exclusão
+        // que os passos 1 e 2 já aplicam, sem o que o fallback vazaria substituída.
         if (projetosList && projetosList.length > 0) {
           const placeholders = projetosList.map(() => '?').join(', ');
           const queryFallback = `
@@ -114,6 +120,7 @@ function lerObservacoesComFTS(caminhoDb, projetosList, termos) {
             FROM observacoes
             WHERE projeto IN (${placeholders})
             AND consolidada_em IS NULL
+            ${filtroVivas()}
             ORDER BY criada_em DESC
             LIMIT 14
           `;
@@ -132,6 +139,7 @@ function lerObservacoesComFTS(caminhoDb, projetosList, termos) {
             FROM observacoes
             WHERE projeto NOT IN (${placeholdersNot})
             AND consolidada_em IS NULL
+            ${filtroVivas()}
             ORDER BY criada_em DESC
             LIMIT ?
           `;
@@ -143,6 +151,7 @@ function lerObservacoesComFTS(caminhoDb, projetosList, termos) {
             SELECT id, projeto, conteudo, criada_em
             FROM observacoes
             WHERE consolidada_em IS NULL
+            ${filtroVivas()}
             ORDER BY criada_em DESC
             LIMIT 14
           `;
@@ -184,11 +193,14 @@ function lerObservacoes(caminhoDb, projetosList, limiteTotal = 5) {
     try {
       // Tarefa 3 (D3): Se lista de projetos está vazia ou nula, busca sem filtro (fallback).
       // C3: EXCLUIR consolidadas
+      // Tarefa 3 (D3): filtroVivas() nas 3 consultas — sem projetosList,
+      // com projetosList, e no completar com outros projetos.
       if (!projetosList || projetosList.length === 0) {
         const queryTudo = `
           SELECT id, projeto, conteudo, criada_em
           FROM observacoes
           WHERE consolidada_em IS NULL
+          ${filtroVivas()}
           ORDER BY criada_em DESC
           LIMIT ?
         `;
@@ -206,6 +218,7 @@ function lerObservacoes(caminhoDb, projetosList, limiteTotal = 5) {
         FROM observacoes
         WHERE projeto IN (${placeholders})
         AND consolidada_em IS NULL
+        ${filtroVivas()}
         ORDER BY criada_em DESC
         LIMIT ?
       `;
@@ -225,6 +238,7 @@ function lerObservacoes(caminhoDb, projetosList, limiteTotal = 5) {
         FROM observacoes
         WHERE projeto NOT IN (${placeholdersNot})
         AND consolidada_em IS NULL
+        ${filtroVivas()}
         ORDER BY criada_em DESC
         LIMIT ?
       `;

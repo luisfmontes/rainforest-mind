@@ -749,5 +749,108 @@ else
 fi
 
 echo
+echo "== 23. buscar --texto exclui observacao substituida (filtroVivas) =="
+# Tarefa 3 (D3): o ramo COM --texto de cmdBuscar usa filtroVivas('o.'). Termo
+# "SOMENTESUBSTITUIDAS" só existe em observações marcadas substituida_por —
+# se o filtro não funcionar, o buscar acha o termo mesmo assim.
+CAIXA17="$(novo_sandbox)"
+RFM_ROOT="$CAIXA17" $MEMORIA iniciar > /dev/null 2>&1
+RFM_ROOT="$CAIXA17" node -e "
+  const { abrirBanco } = require('./scripts/memoria.cjs');
+  const path = require('path');
+  const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+  db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
+    .run('proj-subst', 'termo SOMENTESUBSTITUIDAS aqui', new Date().toISOString(), 'subst-a');
+  db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
+    .run('proj-subst', 'termo SOMENTESUBSTITUIDAS tambem', new Date().toISOString(), 'subst-b');
+  db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
+    .run('proj-subst', 'termo VIVOBUSCA presente', new Date().toISOString(), 'subst-c');
+  db.prepare(\"UPDATE observacoes SET substituida_por = 999, reconciliada_em = datetime('now') WHERE origem IN ('subst-a','subst-b')\").run();
+  db.close();
+" 2>/dev/null
+RESULTADO_BUSCA_SUBST=$(RFM_ROOT="$CAIXA17" $MEMORIA buscar --texto "SOMENTESUBSTITUIDAS" --json 2>/dev/null)
+echo "  comando: RFM_ROOT=<sandbox> node scripts/memoria.cjs buscar --texto SOMENTESUBSTITUIDAS --json"
+echo "  saida: $RESULTADO_BUSCA_SUBST"
+if [ "$(echo "$RESULTADO_BUSCA_SUBST" | tr -d '[:space:]')" = "[]" ]; then
+  ok=$((ok+1)); echo "  ok   buscar --texto: termo que só as substituídas contêm devolve []"
+else
+  falhou=$((falhou+1)); echo "  FALHA buscar --texto devolveu resultado para termo só de substituídas: $RESULTADO_BUSCA_SUBST"
+fi
+RESULTADO_BUSCA_VIVA=$(RFM_ROOT="$CAIXA17" $MEMORIA buscar --texto "VIVOBUSCA" --json 2>/dev/null)
+if echo "$RESULTADO_BUSCA_VIVA" | grep -q "VIVOBUSCA"; then
+  ok=$((ok+1)); echo "  ok   buscar --texto: observação viva com termo próprio continua achável (ramo não quebrou)"
+else
+  falhou=$((falhou+1)); echo "  FALHA buscar --texto deixou de achar observação viva: $RESULTADO_BUSCA_VIVA"
+fi
+
+echo
+echo "== 24. buscar sem --texto (recentes) exclui observacao substituida =="
+# Tarefa 3 (D3): o ramo SEM --texto de cmdBuscar (listagem de recentes) usa
+# filtroVivas() ancorado em WHERE 1=1. Mesma caixa 17: 1 viva + 2 substituídas.
+RESULTADO_RECENTES=$(RFM_ROOT="$CAIXA17" $MEMORIA buscar --projeto "proj-subst" --limite 10 --json 2>/dev/null)
+echo "  comando: RFM_ROOT=<sandbox> node scripts/memoria.cjs buscar --projeto proj-subst --limite 10 --json"
+echo "  saida: $RESULTADO_RECENTES"
+if echo "$RESULTADO_RECENTES" | grep -q "SOMENTESUBSTITUIDAS"; then
+  falhou=$((falhou+1)); echo "  FALHA buscar sem --texto trouxe observação substituída"
+else
+  ok=$((ok+1)); echo "  ok   buscar sem --texto: nenhuma observação substituída na listagem de recentes"
+fi
+if echo "$RESULTADO_RECENTES" | grep -q "VIVOBUSCA"; then
+  ok=$((ok+1)); echo "  ok   buscar sem --texto: observação viva continua na listagem"
+else
+  falhou=$((falhou+1)); echo "  FALHA buscar sem --texto perdeu a observação viva: $RESULTADO_RECENTES"
+fi
+
+echo
+echo "== 25. consolidar nao seleciona observacao substituida (filtroVivas) =="
+# Tarefa 3 (D3): cmdConsolidar filtra substituida_por nas duas consultas (a
+# contagem por HAVING e a leitura do lote). Discriminador: 55 observações de
+# 60+ dias, das quais 10 substituídas — SEM o filtro, 55 > 50 consolidaria;
+# COM o filtro, sobram 45 (<=50) e o comando não deve consolidar nada.
+CAIXA18="$(novo_sandbox)"
+cat > "$CAIXA18/dubleLLM.cjs" <<'EOF'
+async function chamarLLM(texto) {
+  return "Síntese do lote: tópicos consolidados com sucesso";
+}
+module.exports = { chamarLLM };
+EOF
+RFM_ROOT="$CAIXA18" $MEMORIA iniciar > /dev/null 2>&1
+RFM_ROOT="$CAIXA18" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const agora = new Date();
+const seissentaDias = new Date(agora.getTime() - 61 * 24 * 60 * 60 * 1000).toISOString();
+for (let i = 0; i < 55; i++) {
+  db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
+    .run('proj-consol-subst', 'Observação ' + i, seissentaDias, 'origem-cs-' + i);
+}
+// Marca as 10 primeiras como substituídas — sobram 45, abaixo do gatilho de 50.
+db.prepare(\"UPDATE observacoes SET substituida_por = 999, reconciliada_em = ? WHERE projeto = 'proj-consol-subst' AND origem IN (\" + Array.from({length:10}, (_,i)=>\"'origem-cs-\"+i+\"'\").join(',') + \")\").run(agora.toISOString());
+db.close();
+" 2>/dev/null
+SAIDA_CONSOL_SUBST=$(RFM_ROOT="$CAIXA18" TESTADOR_CHAMAR_LLM="$CAIXA18/dubleLLM.cjs" $MEMORIA consolidar 2>&1)
+echo "  comando: RFM_ROOT=<sandbox> TESTADOR_CHAMAR_LLM=<mock> node scripts/memoria.cjs consolidar"
+echo "  saida: $SAIDA_CONSOL_SUBST"
+if echo "$SAIDA_CONSOL_SUBST" | grep -q "nenhum projeto com 50+"; then
+  ok=$((ok+1)); echo "  ok   consolidar: 55 obs com 10 substituídas (45 vivas) NÃO dispara consolidação"
+else
+  falhou=$((falhou+1)); echo "  FALHA consolidar disparou apesar de só 45 vivas (10 substituídas contando)"
+fi
+CNT_CONSOL_SUBST=$(RFM_ROOT="$CAIXA18" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const c = db.prepare(\"SELECT COUNT(*) c FROM observacoes WHERE substituida_por IS NOT NULL AND consolidada_em IS NOT NULL\").get().c;
+db.close();
+process.stdout.write(String(c));
+" 2>/dev/null)
+if [ "$CNT_CONSOL_SUBST" = "0" ]; then
+  ok=$((ok+1)); echo "  ok   nenhuma observação substituída ficou marcada consolidada_em ($CNT_CONSOL_SUBST)"
+else
+  falhou=$((falhou+1)); echo "  FALHA $CNT_CONSOL_SUBST observação(ões) substituída(s) foram consolidadas"
+fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
