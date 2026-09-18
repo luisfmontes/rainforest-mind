@@ -44,6 +44,9 @@ const { resolverRaiz } = require('../hooks/lib/raiz.cjs');
 // Acha o executável `claude` do PATH.
 const { acharExecutavelClaude } = require('./lib/achar-executavel-claude.cjs');
 
+// Chave de grupo de origem de uma observação — consolidação por grupo (D7).
+const { sqlGrupoDeOrigem } = require('./lib/grupo-de-origem.cjs');
+
 // Encontra o diretório .git subindo a árvore de diretórios.
 // Retorna o caminho do diretório que contém .git, ou null se não encontrado.
 // Implementação: varredura de sistema de arquivos, sem spawns de git (decisão D1).
@@ -1405,14 +1408,20 @@ function marcarConsolidadas(conexao, { projeto, ids }) {
 
 // C4: Consolida resumo + marca observações ATOMICAMENTE numa transação.
 // Se qualquer parte falha, ROLLBACK descarta ambas (nem resumo nem marca ficam gravados).
+// `quando` (opcional): timestamp ISO a gravar em criada_em (resumo) e
+// consolidada_em (marca). Tarefa 4 (D7): cmdConsolidar passa um relógio
+// monotônico por pedaço, para garantir consolidada_em DISTINTO entre
+// pedaços mesmo que o mock de LLM responda rápido demais para o relógio de
+// parede avançar — é por esse valor que o critério 1 prova que nenhum
+// resumo mistura dois grupos. Sem argumento, usa o relógio de parede.
 // Retorna true se sucesso, false se falha.
-function consolidarAtomico(conexao, { projeto, titulo, conteudo, ids }) {
+function consolidarAtomico(conexao, { projeto, titulo, conteudo, ids, quando }) {
   if (!ids || ids.length === 0) {
     return true;
   }
 
   try {
-    const agora = new Date().toISOString();
+    const agora = quando || new Date().toISOString();
 
     // Uma transação única para ambas operações
     conexao.exec('BEGIN TRANSACTION');
@@ -1447,12 +1456,29 @@ function consolidarAtomico(conexao, { projeto, titulo, conteudo, ids }) {
   }
 }
 
-// Comando: consolidar — agrupar observações em lotes, sintetizar via LLM, gravar resumos.
-// Tarefa 4 (D4): consolidar encontra observações com 60+ dias não consolidadas,
-// agrupa em lotes de 10, passa à LLM, grava resumo e marca originals.
-// NOTA: processa TODOS os projetos que têm observações consolidáveis (não apenas o projeto da sessão).
+// Comando: consolidar — agrupar observações por grupo de origem, sintetizar
+// via LLM, gravar resumos (Tarefa 4, D7).
+//
+// D7: em vez de lotes cronológicos de 10 a partir de 60 dias (misturava
+// assuntos sem relação num resumo só, e nunca disparava — a observação mais
+// antiga do acervo real tem 45 dias), agrupa por sqlGrupoDeOrigem() — a
+// sessão de origem quando `origem` é `sessao:<id>:offset:<n>`; para o resto
+// (as importadas do claude-mem, sem sessão nenhuma), (projeto, dia de
+// criada_em) — a partir de DIAS_CONSOLIDACAO dias. Grupo com menos de 2
+// observações não consolida (nada a sintetizar de uma linha só). Grupo maior
+// que TETO_POR_GRUPO é fatiado em pedaços de até TETO_POR_GRUPO — o maior
+// grupo de recurso medido tem 521 observações, e o TETO_ARGUMENTO de 16.000
+// caracteres da chamada de LLM não aguenta isso. Cada pedaço vira UM resumo:
+// nenhum resumo mistura dois grupos, porque todo pedaço nasce da leitura de
+// um único grupo. No máximo TETO_GRUPOS pedaços por execução — sem esse teto
+// a primeira execução dispararia ~340 chamadas de LLM de uma vez (medição do
+// plano). NOTA: processa todos os grupos elegíveis, de todos os projetos —
+// sessão de origem não pertence a um projeto só na consulta, é global.
+const DIAS_CONSOLIDACAO = 30;
+const TETO_GRUPOS = 10;
+
 async function cmdConsolidar() {
-  const { raiz, caminhoDb } = resolverCaminhos();
+  const { caminhoDb } = resolverCaminhos();
 
   if (!fs.existsSync(caminhoDb)) {
     console.error(`ERRO: banco não existe em ${caminhoDb}`);
@@ -1463,100 +1489,107 @@ async function cmdConsolidar() {
   const conexao = abrirBanco(caminhoDb);
 
   try {
-    // 1. Data limite: 60 dias atrás
+    // 1. Data limite: DIAS_CONSOLIDACAO dias atrás.
     const agora = new Date();
-    const seissentaDiasAtras = new Date(agora.getTime() - 60 * 24 * 60 * 60 * 1000);
-    const dataLimite = seissentaDiasAtras.toISOString();
+    const dataLimiteObj = new Date(agora.getTime() - DIAS_CONSOLIDACAO * 24 * 60 * 60 * 1000);
+    const dataLimite = dataLimiteObj.toISOString();
 
-    // 2. Encontrar todos os projetos que têm observações consolidáveis (51+)
-    // C5: teto é "passarem de 50" — 50 não consolida, 51 consolida.
-    // Tarefa 3 (D3): filtroVivas() tira a substituída da contagem — senão o
-    // HAVING conta uma linha que a leitura abaixo (mesma filtroVivas()) não traria.
-    const projetosComConsolidaveis = conexao.prepare(`
-      SELECT projeto, COUNT(*) as cnt
+    const grupoOrigem = sqlGrupoDeOrigem();
+
+    // 2. Grupos elegíveis: vivos, não consolidados, DIAS_CONSOLIDACAO+ dias,
+    // com 2+ observações. Mais antigos primeiro (MIN(criada_em) do grupo) —
+    // os grupos mais velhos entram primeiro no teto de execução.
+    const grupos = conexao.prepare(`
+      SELECT (${grupoOrigem}) AS grupo, COUNT(*) as cnt, MIN(criada_em) as mais_antiga
       FROM observacoes
       WHERE consolidada_em IS NULL AND criada_em < ? ${filtroVivas()}
-      GROUP BY projeto
-      HAVING COUNT(*) > 50
-      ORDER BY projeto
+      GROUP BY grupo
+      HAVING COUNT(*) >= 2
+      ORDER BY mais_antiga ASC
     `).all(dataLimite);
 
-    if (projetosComConsolidaveis.length === 0) {
-      console.log('nenhum projeto com 50+ observações de 60+ dias, nada a fazer');
+    if (grupos.length === 0) {
+      console.log(`nenhum grupo com 2+ observações de ${DIAS_CONSOLIDACAO}+ dias, nada a fazer`);
       conexao.close();
       return;
     }
 
-    console.log(`${projetosComConsolidaveis.length} projeto(s) com observações para consolidar`);
+    console.log(`${grupos.length} grupo(s) com 2+ observações de ${DIAS_CONSOLIDACAO}+ dias`);
 
     let totalResumosGravados = 0;
+    // Relógio monotônico: cada pedaço grava consolidada_em em baseMs +
+    // (índice do pedaço já gravado), garantindo timestamps distintos entre
+    // pedaços mesmo que o mock de LLM responda no mesmo milissegundo.
+    const baseMs = Date.now();
 
-    // 3. Processar cada projeto
-    for (const { projeto, cnt } of projetosComConsolidaveis) {
-      console.log(`projeto "${projeto}": ${cnt} observações consolidáveis`);
+    // 3. Processar cada grupo, do mais velho ao mais novo, até TETO_GRUPOS
+    // pedaços no total.
+    for (const { grupo } of grupos) {
+      if (totalResumosGravados >= TETO_GRUPOS) break;
 
-      // 4. Ler observações consolidáveis deste projeto, ordenadas por criada_em
-      // Tarefa 3 (D3): filtroVivas() — substituída não entra no lote a consolidar.
-      const observacoes = conexao.prepare(`
-        SELECT id, conteudo, criada_em
+      // Teto de observações por pedaço — o ponto único que a catraca de
+      // mutação inverte (Tarefa 4). Grupo maior que isto vira mais de um
+      // resumo; nenhum pedaço passa deste número.
+      const TETO_POR_GRUPO = 30;
+
+      // 4. Ler as observações vivas deste grupo, mais antigas primeiro.
+      const observacoesGrupo = conexao.prepare(`
+        SELECT id, projeto, conteudo, criada_em
         FROM observacoes
-        WHERE projeto = ? AND consolidada_em IS NULL AND criada_em < ? ${filtroVivas()}
+        WHERE consolidada_em IS NULL AND criada_em < ? AND (${grupoOrigem}) = ? ${filtroVivas()}
         ORDER BY criada_em ASC
-      `).all(projeto, dataLimite);
+      `).all(dataLimite, grupo);
 
-      // 5. Dividir em lotes de 10
-      const lotes = [];
-      for (let i = 0; i < observacoes.length; i += 10) {
-        lotes.push(observacoes.slice(i, i + 10));
-      }
+      console.log(`grupo "${grupo}": ${observacoesGrupo.length} observação(ões) consolidáveis`);
 
-      console.log(`  dividido em ${lotes.length} lote(s) de 10`);
+      // 5. Fatiar em pedaços de até TETO_POR_GRUPO — cada pedaço vem da
+      // leitura de UM grupo só, então nenhum resumo mistura dois grupos.
+      for (let i = 0; i < observacoesGrupo.length; i += TETO_POR_GRUPO) {
+        if (totalResumosGravados >= TETO_GRUPOS) break;
 
-      // 6. Processar cada lote
-      let resumosGravadosProjeto = 0;
-      for (let i = 0; i < lotes.length; i++) {
-        const lote = lotes[i];
-        const ids = lote.map(o => o.id);
+        const pedaco = observacoesGrupo.slice(i, i + TETO_POR_GRUPO);
+        const ids = pedaco.map(o => o.id);
+        const projetoPedaco = pedaco[0].projeto;
 
-        // Formatar para LLM: concatenar conteúdos
-        const textoDasObservacoes = lote
+        // Formatar para LLM: concatenar conteúdos.
+        const textoDasObservacoes = pedaco
           .map((obs, idx) => `${idx + 1}. ${obs.conteudo}`)
           .join('\n');
 
-        console.log(`    lote ${i + 1}/${lotes.length}: chamando LLM para ${lote.length} observações`);
+        console.log(`  grupo "${grupo}": chamando LLM para ${pedaco.length} observações`);
 
-        // 7. Chamar LLM (falha deixa lote intacto)
+        // 6. Chamar LLM (falha deixa o pedaço intacto para a próxima rodada).
         const resumo = await chamarLLMParaConsolidar(textoDasObservacoes);
 
         if (!resumo) {
-          console.log(`    lote ${i + 1}/${lotes.length}: LLM falhou, lote intacto para próxima rodada`);
+          console.log(`  grupo "${grupo}": LLM falhou, pedaço intacto para próxima rodada`);
           continue;
         }
 
-        // 8. C4: Consolidar atomicamente (resumo + marca numa transação)
-        // Se falhar em qualquer parte, ROLLBACK desfaz ambas — nem resumo nem marca ficam.
+        // 7. C4: Consolidar atomicamente (resumo + marca numa transação).
+        // Se falhar em qualquer parte, ROLLBACK desfaz ambas — nem resumo
+        // nem marca ficam. `quando` vem do relógio monotônico por pedaço.
         const titulo = resumo.substring(0, 80); // Primeiros 80 caracteres como título
+        const quando = new Date(baseMs + totalResumosGravados).toISOString();
         const sucesso = consolidarAtomico(conexao, {
-          projeto,
+          projeto: projetoPedaco,
           titulo,
           conteudo: resumo,
           ids,
+          quando,
         });
 
         if (!sucesso) {
-          console.log(`    lote ${i + 1}/${lotes.length}: falha ao consolidar atomicamente, lote intacto`);
+          console.log(`  grupo "${grupo}": falha ao consolidar atomicamente, pedaço intacto`);
           continue;
         }
 
-        resumosGravadosProjeto++;
-        console.log(`    lote ${i + 1}/${lotes.length}: ok (resumo gravado, ${lote.length} observações marcadas)`);
+        totalResumosGravados++;
+        console.log(`  grupo "${grupo}": ok (resumo gravado, ${pedaco.length} observações marcadas)`);
       }
-
-      console.log(`  ${projeto}: ${resumosGravadosProjeto} resumo(s) gravado(s)`);
-      totalResumosGravados += resumosGravadosProjeto;
     }
 
-    // 10. Relatório final
+    // 8. Relatório final.
     console.log(`consolidacao completa: ${totalResumosGravados} resumo(s) total gravado(s)`);
 
     conexao.close();
@@ -2004,5 +2037,5 @@ module.exports = {
   resolverCaminhos, verificarConstraintUniqueProjetoOrigem,
   K_CANDIDATAS, TETO_RECONCILIAR, construirQueryFts5, buscarCandidatas,
   interpretarDecisaoReconciliacao, aplicarDecisaoReconciliacao,
-  filtroVivas,
+  filtroVivas, DIAS_CONSOLIDACAO, TETO_GRUPOS,
 };
