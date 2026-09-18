@@ -20,7 +20,118 @@
     "em": "2026-09-18"
   },
   "executar": {
-    "status": "pendente"
+    "status": "parcial",
+    "catraca_mutacao": "2026-09-18",
+    "tarefas_ok": 3,
+    "tarefas": 8,
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "tarefa 7: medir recall do FTS5",
+        "desde": "2026-09-18T16:05:00-03:00"
+      }
+    ],
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "187652d8",
+        "iteracao": 1,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:05:25.554Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "187652d8",
+        "iteracao": 2,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:11:53.515Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "187652d8",
+        "iteracao": 3,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:12:43.060Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "74e99672",
+        "iteracao": 1,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:12:43.060Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "187652d8",
+        "iteracao": 4,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:27:13.104Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "74e99672",
+        "iteracao": 2,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:27:13.104Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "187652d8",
+        "iteracao": 5,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:28:32.289Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "74e99672",
+        "iteracao": 3,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:28:32.289Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "413525e1",
+        "iteracao": 1,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:28:32.289Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "413525e1",
+        "iteracao": 1,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:28:32.289Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "187652d8",
+        "iteracao": 6,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:51:15.503Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "74e99672",
+        "iteracao": 4,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:51:15.503Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "413525e1",
+        "iteracao": 2,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:51:15.503Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "413525e1",
+        "iteracao": 2,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:51:15.503Z"
+      }
+    ],
+    "em": "2026-09-18"
   },
   "revisar": {
     "status": "pendente"

@@ -64,6 +64,21 @@ usuário e pode mudar só a tarefa 4.
 - **Regra 15 — nada fora da raiz de dados.** A manutenção em segundo plano escreve só
   em `~/.rainforest/` (banco, trava, log) e é morta pelo PID que ela mesma registra.
 
+## Emendas ao plano
+
+Registradas antes do `revisar`, porque creep se destrava emendando o plano —
+justificar em prosa não destrava.
+
+- **2026-09-18, tarefa 3 — a leitura de `resumos` sai do escopo do filtro.** O
+  plano mandava aplicar `substituida_por IS NULL` também à leitura de `resumos`
+  no hook. A tabela `resumos` **não tem essa coluna** (`PRAGMA table_info(resumos)`
+  → `id, projeto, titulo, conteudo, criada_em`), e nenhuma tarefa a adiciona — a
+  reconciliação só toca `observacoes`. Aplicar o filtro ali geraria SQL inválido,
+  que o `try/catch` de degradação engoliria em silêncio, **esvaziando os resumos da
+  injeção sem ninguém ver** — o modo de falha que o filtro existe para evitar. O
+  executor recusou aplicar e devolveu o achado; a emenda é do plano, não da
+  entrega. O critério da tarefa 3 vale sem essa metade.
+
 ## Nomes fixados (o plano prescreve, para o critério ter o que ler)
 
 As tarefas 2, 4 e 5 criam constantes com **estes nomes**, em `scripts/memoria.cjs`:
