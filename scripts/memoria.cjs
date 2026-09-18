@@ -539,6 +539,35 @@ function criarSchema(conexao) {
       console.error(`AVISO: falha na migração FTS: ${e.message}`);
     }
   }
+
+  // Migração 6: adicionar colunas substituida_por e reconciliada_em em
+  // observacoes (idempotente). Tarefa 1 (D3, D6): `substituida_por` tira a
+  // linha da injeção e da busca sem apagar nada; `reconciliada_em` marca
+  // quando a observação passou pelo passo de reconciliação. ADD COLUMN
+  // garante que roda só uma vez — as colunas já existem em novos bancos
+  // (schema acima), e são adicionadas em legados (sem erro se já existem).
+  try {
+    conexao.exec(`
+      ALTER TABLE observacoes ADD COLUMN substituida_por INTEGER;
+    `);
+  } catch (e) {
+    // Se falhar com "duplicate column name", é porque já existe — ok.
+    // Qualquer outro erro é inesperado, mas não trava a sessão.
+    if (!e.message.includes('duplicate column')) {
+      // Nota: não relançamos — a coluna pode estar parcialmente aplicada.
+    }
+  }
+  try {
+    conexao.exec(`
+      ALTER TABLE observacoes ADD COLUMN reconciliada_em TEXT;
+    `);
+  } catch (e) {
+    // Se falhar com "duplicate column name", é porque já existe — ok.
+    // Qualquer outro erro é inesperado, mas não trava a sessão.
+    if (!e.message.includes('duplicate column')) {
+      // Nota: não relançamos — a coluna pode estar parcialmente aplicada.
+    }
+  }
 }
 
 // Migração de observacoes: garantir que tem UNIQUE(projeto, origem).

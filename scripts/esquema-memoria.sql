@@ -21,6 +21,11 @@
 -- e isolamento por projeto é propósito — quem aponta raiz por projeto quer
 -- dados separados. Gravar o projeto dentro garante que uma consulta global
 -- sabe de quem vem cada linha.
+--
+-- Colunas `substituida_por` e `reconciliada_em` em observacoes (decisão D3):
+-- `substituida_por` tira a linha da injeção e da busca, nunca apaga — a linha
+-- continua na tabela, só some do que é lido; `reconciliada_em` marca quando a
+-- observação passou pelo passo de reconciliação (store/update/merge/skip).
 
 CREATE TABLE IF NOT EXISTS observacoes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29,6 +34,8 @@ CREATE TABLE IF NOT EXISTS observacoes (
   criada_em TEXT NOT NULL,
   origem TEXT,
   consolidada_em TEXT,
+  substituida_por INTEGER,
+  reconciliada_em TEXT,
   UNIQUE(projeto, origem)
 );
 

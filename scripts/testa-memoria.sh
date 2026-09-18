@@ -696,5 +696,58 @@ else
 fi
 
 echo
+echo "== 22. migracao 6: banco legado ganha substituida_por e reconciliada_em =="
+# Tarefa 1 (D3, D6): duas colunas novas em observacoes (substituida_por,
+# reconciliada_em), migração idempotente no molde exato da Migração 4.
+# Banco legado (sem as duas colunas) ganha as duas via `iniciar`, e nenhuma
+# linha se perde — mesmo padrão do caso 11 (FTS legado): a tabela é criada
+# À MÃO, sem as colunas novas, para provar que é a migração real (ALTER
+# TABLE) que as adiciona, não o CREATE TABLE IF NOT EXISTS do schema atual.
+CAIXA16="$(novo_sandbox)"
+RFM_ROOT="$CAIXA16" node -e "
+  const DatabaseSync = require('node:sqlite').DatabaseSync;
+  const path = require('path');
+  const fs = require('fs');
+  fs.mkdirSync(process.env.RFM_ROOT, { recursive: true });
+  const db = new DatabaseSync(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+  db.exec(\`
+    CREATE TABLE IF NOT EXISTS observacoes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      projeto TEXT NOT NULL,
+      conteudo TEXT NOT NULL,
+      criada_em TEXT NOT NULL,
+      origem TEXT,
+      consolidada_em TEXT,
+      UNIQUE(projeto, origem)
+    );
+  \`);
+  for (let i = 0; i < 5; i++) {
+    db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
+      .run('proj-legado', 'Obs legado ' + i, new Date().toISOString(), 'orig-legado-' + i);
+  }
+  db.close();
+" 2>/dev/null
+CNT_ANTES_MIG6=$(RFM_ROOT="$CAIXA16" node --no-warnings -e "
+const { abrirBancoSomenteLeitura } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBancoSomenteLeitura(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+process.stdout.write(String(db.prepare('SELECT COUNT(*) n FROM observacoes').get().n));
+" 2>/dev/null)
+RFM_ROOT="$CAIXA16" $MEMORIA iniciar > /dev/null 2>&1
+RESULTADO_MIG6=$(RFM_ROOT="$CAIXA16" node --no-warnings -e "
+const { abrirBancoSomenteLeitura } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBancoSomenteLeitura(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const cols = db.prepare('PRAGMA table_info(observacoes)').all().map(c => c.name);
+const cnt = db.prepare('SELECT COUNT(*) n FROM observacoes').get().n;
+process.stdout.write(cols.includes('substituida_por') + ':' + cols.includes('reconciliada_em') + ':' + cnt);
+" 2>/dev/null)
+if [ "$RESULTADO_MIG6" = "true:true:$CNT_ANTES_MIG6" ]; then
+  ok=$((ok+1)); echo "  ok   migracao 6: banco legado ganha substituida_por e reconciliada_em (colunas presentes, ${CNT_ANTES_MIG6} linhas preservadas)"
+else
+  falhou=$((falhou+1)); echo "  FALHA migracao 6: banco legado ganha substituida_por e reconciliada_em: esperava true:true:$CNT_ANTES_MIG6, veio $RESULTADO_MIG6"
+fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
