@@ -281,6 +281,47 @@ function montarLegendaMemoria(o) {
   return limitarBytes(linhas.join('\n'), teto, 'Legenda da memória');
 }
 
+/**
+ * Compõe a linha de aviso de CAPTURA parada, para o topo do bloco de memória
+ * (Tarefa 6, D8).
+ *
+ * O `/saude` já acusava "pipeline parado há mais de 48h" e ninguém viu por 13
+ * dias (#282) — aviso que só aparece quando alguém pergunta não é aviso. Esta
+ * linha é a mesma informação, na abertura da sessão, sem precisar perguntar.
+ *
+ * SUPERFÍCIE HUMANA: a linha nomeia as TRÊS coisas de que a pessoa precisa
+ * pra agir — que está parado, há quantas horas, e o comando que religa. Sem
+ * uma das três ela não serve pra decidir nada.
+ *
+ * @param {number} horasParada horas desde a marca d'água mais antiga pendente
+ *   (mesma seleção EXPLÍCITA de `scripts/saude.cjs`, verificação 3:
+ *   `ORDER BY processada_em ASC LIMIT 1` — nunca a ordem de varredura do SQLite)
+ * @param {{falhou: boolean, quando: string, horasDesde: number}|null} [ultimaManutencao]
+ *   contexto da última passada de manutenção registrada no log; se ela
+ *   TAMBÉM falhou, a linha soma essa informação em vez de calar o segundo problema.
+ * @returns {string} linha pronta, sem quebra de linha no fim
+ */
+function avisoDePipeline(horasParada, ultimaManutencao) {
+  const horas = Math.max(0, Math.round(Number(horasParada) || 0));
+  const tambemFalhou = ultimaManutencao && ultimaManutencao.falhou;
+  const sufixo = tambemFalhou ? ' (a manutenção também falhou na última passada)' : '';
+  return `⚠️ Captura da memória parada há ${horas}h${sufixo} — religa com: node scripts/observar.cjs`;
+}
+
+/**
+ * Compõe a linha de aviso de MANUTENÇÃO falhada (Tarefa 6, D8) — a segunda
+ * metade do D8, independente da captura estar ou não em dia: uma passada de
+ * manutenção que terminou em `manutencao: completa com falhas` significa que
+ * reconciliação e/ou consolidação pararam de rodar, mesmo com a captura viva.
+ *
+ * @param {number} horasDesde horas desde que a última passada (com falha) terminou
+ * @returns {string} linha pronta, sem quebra de linha no fim
+ */
+function avisoDeManutencaoFalhou(horasDesde) {
+  const horas = Math.max(0, Math.round(Number(horasDesde) || 0));
+  return `⚠️ Manutenção da memória falhou há ${horas}h (última passada) — religa com: node scripts/memoria.cjs manutencao`;
+}
+
 module.exports = {
   TETOS,
   montarMemoria,
@@ -292,4 +333,6 @@ module.exports = {
   cortarCaracteres,
   construirAvisoCorteMemoria,
   travarOrcamentoMemoria,
+  avisoDePipeline,
+  avisoDeManutencaoFalhou,
 };

@@ -7,10 +7,10 @@
 // que é puro e tem bateria própria (hooks/testa-memoria-session-start.sh).
 const fs = require('fs');
 const path = require('path');
-const { montarMemoria, montarLegendaMemoria } = require('./lib/memoria-sessao.cjs');
+const { montarMemoria, montarLegendaMemoria, TETOS, avisoDePipeline, avisoDeManutencaoFalhou } = require('./lib/memoria-sessao.cjs');
 const { tituloDoFocoAtivo } = require('./lib/contexto-sessao.cjs');
 const { resolverRaiz } = require('./lib/raiz.cjs');
-const { abrirBanco, resolverCaminhos, filtroVivas } = require(path.join(__dirname, '..', 'scripts', 'memoria.cjs'));
+const { abrirBanco, abrirBancoSomenteLeitura, resolverCaminhos, filtroVivas } = require(path.join(__dirname, '..', 'scripts', 'memoria.cjs'));
 
 // Extrai termos de busca do título do foco ativo.
 // Retorna array de termos (palavras com >2 caracteres, em minúsculas).
@@ -264,6 +264,73 @@ function readSafe(p) {
   try { return fs.readFileSync(p, 'utf8').trim(); } catch { return ''; }
 }
 
+// Tarefa 6 (D8): quantas horas a CAPTURA está com pendência acumulada.
+// Mesma consulta, com a MESMA seleção explícita, de `scripts/saude.cjs`
+// (verificação 3) — `ORDER BY processada_em ASC LIMIT 1`, nunca a ordem de
+// varredura do SQLite: sem o ORDER BY explícito, a ordem segue `rowid`, que
+// no banco real já divergiu de `processada_em` num par medido (ids 2515/2516,
+// achado da Tarefa 14 de outro plano). Retorna 0 (sem pendência/erro/banco
+// ausente) até o número de horas da pendência mais ANTIGA.
+function horasDeCapturaParada(caminhoDb) {
+  if (!fs.existsSync(caminhoDb)) return 0;
+  const conexao = abrirBancoSomenteLeitura(caminhoDb);
+  if (!conexao) return 0;
+  try {
+    const marca = conexao.prepare(`
+      SELECT processada_em, offset, offset_processado
+      FROM marca_dagua
+      WHERE offset > COALESCE(offset_processado, 0)
+        AND processada_em IS NOT NULL AND processada_em <> ''
+      ORDER BY processada_em ASC
+      LIMIT 1
+    `).get();
+    if (!marca) return 0;
+    const decorridoMs = Date.now() - Date.parse(marca.processada_em);
+    if (!Number.isFinite(decorridoMs)) return 0;
+    return decorridoMs / (1000 * 60 * 60);
+  } catch (e) {
+    return 0;
+  } finally {
+    try { conexao.close(); } catch (_) {}
+  }
+}
+
+// Tarefa 6 (D8): lê a última passada de manutenção registrada em
+// `<raiz>/manutencao.log`. Formato documentado no topo de `cmdManutencao`
+// (scripts/memoria.cjs): a linha que FECHA uma passada é
+// `<ISO> manutencao: completa` ou `<ISO> manutencao: completa com falhas`, e
+// é a ÚLTIMA dessas — de trás pra frente — que diz quando a passada terminou
+// e se terminou limpa. Um arquivo cujo fim não é uma dessas duas linhas indica
+// passada ainda em andamento (ou morta por fora) — degrada para null, como
+// "sem informação", nunca como falha.
+// Retorna null (log ausente/sem passada fechada) ou
+// {falhou, quando, horasDesde}.
+function lerUltimaManutencao(caminhoLog) {
+  if (!fs.existsSync(caminhoLog)) return null;
+  let conteudo;
+  try {
+    conteudo = fs.readFileSync(caminhoLog, 'utf8');
+  } catch {
+    return null;
+  }
+  const linhas = conteudo.split('\n');
+  for (let i = linhas.length - 1; i >= 0; i--) {
+    const linha = linhas[i].trim();
+    if (!linha) continue;
+    const m = linha.match(/^(\S+)\s+manutencao: completa( com falhas)?$/);
+    if (m) {
+      const quando = m[1];
+      const decorridoMs = Date.now() - Date.parse(quando);
+      return {
+        falhou: !!m[2],
+        quando,
+        horasDesde: Number.isFinite(decorridoMs) ? decorridoMs / (1000 * 60 * 60) : 0,
+      };
+    }
+  }
+  return null;
+}
+
 // Resolve caminhos da raiz de dados.
 const { raiz: RAIZ_RESOLVIDA } = resolverRaiz({
   plugin: path.resolve(__dirname, '..'),
@@ -374,6 +441,46 @@ try {
 // Monta o bloco de memória.
 const bloco = montarMemoria({ observacoes, apelidos });
 
+// Tarefa 6 (D8): pipeline parado (captura OU manutenção) vira linha na
+// abertura, além do `/saude` — o `/saude` já acusava "pipeline parado há mais
+// de 48h" e ninguém viu por 13 dias (#282); aviso que só aparece quando
+// alguém pergunta não é aviso. Degradação: qualquer erro aqui dentro não pode
+// derrubar a abertura — os dois helpers já devolvem 0/null em vez de lançar.
+// Bloco próprio (em vez de topo do módulo) só pra não vazar `horasParada` e
+// `ultimaManutencao` pro resto do arquivo depois de já terem sido consumidos.
+let blocoComAviso = bloco;
+{
+  let horasParada = 0;
+  let ultimaManutencao = null;
+  try {
+    horasParada = horasDeCapturaParada(caminhoDb);
+  } catch {
+    horasParada = 0;
+  }
+  try {
+    ultimaManutencao = lerUltimaManutencao(path.join(ROOT, 'manutencao.log'));
+  } catch {
+    ultimaManutencao = null;
+  }
+
+  const linhas = [];
+  if (horasParada > 48) linhas.push(avisoDePipeline(horasParada, ultimaManutencao));
+  if (ultimaManutencao && ultimaManutencao.falhou) {
+    linhas.push(avisoDeManutencaoFalhou(ultimaManutencao.horasDesde));
+  }
+
+  // O teto não sobe (TETOS.MEMORIA_MAX_BYTES continua 3.000 B): o aviso cabe
+  // dentro do que o bloco de observações já ocupa, ou não entra — nunca corta
+  // uma observação pra abrir espaço pra ele.
+  if (linhas.length > 0) {
+    const aviso = linhas.join('\n');
+    const candidato = bloco ? `${aviso}\n\n${bloco}` : aviso;
+    if (Buffer.byteLength(candidato, 'utf8') <= TETOS.MEMORIA_MAX_BYTES) {
+      blocoComAviso = candidato;
+    }
+  }
+}
+
 // JSON, não texto cru (regra 12 do hook foco-session-start).
 // O harness lê `additionalContext` e o stdout ao redor não conta para o teto.
 // A legenda é o MESMO corpus, outro público: `additionalContext` é o que o modelo
@@ -384,7 +491,7 @@ const legenda = montarLegendaMemoria({ observacoes, apelidos });
 const saida = {
   hookSpecificOutput: {
     hookEventName: 'SessionStart',
-    additionalContext: bloco,
+    additionalContext: blocoComAviso,
   },
 };
 // Sem marca nenhuma, campo ausente: caixa vazia na tela é pior que tela limpa.

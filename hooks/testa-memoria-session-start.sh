@@ -1361,5 +1361,112 @@ fi
 rm -rf "$CAIXA_SUBST"
 
 echo
+echo "21. Tarefa 6 (D8) — pipeline parado (captura ou manutenção) vira linha na abertura"
+
+echo
+echo "  marca d agua parada ha 60h imprime a linha de pipeline na abertura"
+CAIXA_PIPELINE="$(novo_sandbox)"
+RFM_ROOT="$CAIXA_PIPELINE" node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+
+# Insere uma marca_dagua com offset > offset_processado e processada_em de 60h
+# atras — a pendencia que o D8 quer que a abertura acuse.
+RFM_ROOT="$CAIXA_PIPELINE" node <<'SETUP_MARCA_PARADA'
+const { DatabaseSync } = require('node:sqlite');
+const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
+const sessenta = new Date(Date.now() - 60 * 60 * 60 * 1000).toISOString();
+db.prepare('INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?,?,?,?,?,?)')
+  .run('projx', 'sessao1', 'arq1', 10, 5, sessenta);
+db.close();
+SETUP_MARCA_PARADA
+
+PAYLOAD_PIPELINE='{"hook_event_name":"SessionStart","source":"startup","session_id":"11111111-1111-1111-1111-111111111111","cwd":"'"$CAIXA_PIPELINE"'","transcript_path":"'"$CAIXA_PIPELINE"'/t.jsonl"}'
+SAIDA_PARADA="$(printf '%s' "$PAYLOAD_PIPELINE" | RFM_ROOT="$CAIXA_PIPELINE" node "$HOOK" 2>/dev/null)"
+echo "$SAIDA_PARADA" > "$CAIXA_PIPELINE/saida-parada.json"
+
+echo "  comando: printf '%s' '<payload>' | RFM_ROOT=<sandbox> node hooks/memoria-session-start.cjs | node -e '...'"
+RESULT_PARADA="$(cat "$CAIXA_PIPELINE/saida-parada.json" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const t=JSON.parse(s).hookSpecificOutput.additionalContext;const l=t.split("\n").filter(x=>/captura/i.test(x)&&/60/.test(x)&&x.includes("observar.cjs"));console.log(l.length, Buffer.byteLength(t,"utf8")<=3000)})')"
+echo "  saida: $RESULT_PARADA"
+
+if [ "$RESULT_PARADA" = "1 true" ]; then
+  ok=$((ok+1)); echo "  ok   marca d agua parada ha 60h imprime a linha de pipeline na abertura"
+else
+  falhou=$((falhou+1)); echo "  FALHA marca d agua parada ha 60h imprime a linha de pipeline na abertura: esperava '1 true', veio '$RESULT_PARADA'"
+fi
+
+echo
+echo "  21.b — marca d agua em dia: a linha nao aparece"
+CAIXA_EMDIA="$(novo_sandbox)"
+RFM_ROOT="$CAIXA_EMDIA" node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+PAYLOAD_EMDIA='{"hook_event_name":"SessionStart","source":"startup","session_id":"11111111-1111-1111-1111-111111111111","cwd":"'"$CAIXA_EMDIA"'","transcript_path":"'"$CAIXA_EMDIA"'/t.jsonl"}'
+SAIDA_EMDIA="$(printf '%s' "$PAYLOAD_EMDIA" | RFM_ROOT="$CAIXA_EMDIA" node "$HOOK" 2>/dev/null)"
+echo "$SAIDA_EMDIA" > "$CAIXA_EMDIA/saida-emdia.json"
+RESULT_EMDIA="$(cat "$CAIXA_EMDIA/saida-emdia.json" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const t=JSON.parse(s).hookSpecificOutput.additionalContext;const l=t.split("\n").filter(x=>/captura/i.test(x)&&/60/.test(x)&&x.includes("observar.cjs"));console.log(l.length, Buffer.byteLength(t,"utf8")<=3000)})')"
+echo "  saida: $RESULT_EMDIA"
+if [ "$RESULT_EMDIA" = "0 true" ]; then
+  ok=$((ok+1)); echo "  ok    21.b sem pendencia, a linha de captura parada nao aparece"
+else
+  falhou=$((falhou+1)); echo "  FALHA 21.b esperava '0 true', veio '$RESULT_EMDIA'"
+fi
+
+echo
+echo "  21.c — ultima passada de manutencao falhou (manutencao: completa com falhas): a linha aparece"
+CAIXA_MANFALHOU="$(novo_sandbox)"
+RFM_ROOT="$CAIXA_MANFALHOU" node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+cat > "$CAIXA_MANFALHOU/manutencao.log" <<'LOG_FALHOU'
+2026-09-17T10:00:00.000Z esquema: inicio
+2026-09-17T10:00:00.100Z esquema: fim
+2026-09-17T10:00:01.000Z reconciliar: inicio
+2026-09-17T10:00:05.000Z reconciliar: falhou: no such column: substituida_por
+2026-09-17T10:00:05.100Z consolidar: inicio
+2026-09-17T10:00:06.000Z consolidar: falhou: no such column: substituida_por
+2026-09-17T10:00:06.100Z manutencao: completa com falhas
+LOG_FALHOU
+PAYLOAD_MANFALHOU='{"hook_event_name":"SessionStart","source":"startup","session_id":"11111111-1111-1111-1111-111111111111","cwd":"'"$CAIXA_MANFALHOU"'","transcript_path":"'"$CAIXA_MANFALHOU"'/t.jsonl"}'
+SAIDA_MANFALHOU="$(printf '%s' "$PAYLOAD_MANFALHOU" | RFM_ROOT="$CAIXA_MANFALHOU" node "$HOOK" 2>/dev/null)"
+echo "  log: $(cat "$CAIXA_MANFALHOU/manutencao.log" | tail -1)"
+echo "  saida: $SAIDA_MANFALHOU"
+if echo "$SAIDA_MANFALHOU" | grep -qi "manuten" && echo "$SAIDA_MANFALHOU" | grep -q "node scripts/memoria.cjs manutencao"; then
+  ok=$((ok+1)); echo "  ok    21.c manutencao falhou: a linha aparece e nomeia o comando de religar"
+else
+  falhou=$((falhou+1)); echo "  FALHA 21.c manutencao falhou mas a linha nao apareceu como esperado"
+fi
+
+echo
+echo "  21.d — ultima passada de manutencao foi limpa (manutencao: completa): a linha nao aparece"
+CAIXA_MANOK="$(novo_sandbox)"
+RFM_ROOT="$CAIXA_MANOK" node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+cat > "$CAIXA_MANOK/manutencao.log" <<'LOG_OK'
+2026-09-18T05:00:00.000Z esquema: inicio
+2026-09-18T05:00:00.100Z esquema: fim
+2026-09-18T05:00:01.000Z reconciliar: inicio
+2026-09-18T05:00:02.000Z reconciliar: fim
+2026-09-18T05:00:02.100Z consolidar: inicio
+2026-09-18T05:00:03.000Z consolidar: fim
+2026-09-18T05:00:03.100Z manutencao: completa
+LOG_OK
+PAYLOAD_MANOK='{"hook_event_name":"SessionStart","source":"startup","session_id":"11111111-1111-1111-1111-111111111111","cwd":"'"$CAIXA_MANOK"'","transcript_path":"'"$CAIXA_MANOK"'/t.jsonl"}'
+SAIDA_MANOK="$(printf '%s' "$PAYLOAD_MANOK" | RFM_ROOT="$CAIXA_MANOK" node "$HOOK" 2>/dev/null)"
+echo "  log: $(cat "$CAIXA_MANOK/manutencao.log" | tail -1)"
+echo "  saida: $SAIDA_MANOK"
+if echo "$SAIDA_MANOK" | grep -qi "manuten"; then
+  falhou=$((falhou+1)); echo "  FALHA 21.d manutencao limpa, mas a linha de falha apareceu mesmo assim"
+else
+  ok=$((ok+1)); echo "  ok    21.d manutencao limpa: nenhuma linha de manutencao falhada"
+fi
+
+echo
+echo "  21.e — a seleção da marca mais antiga é EXPLÍCITA (ORDER BY processada_em ASC LIMIT 1), não a ordem de varredura"
+# Mesma prova de forma da tarefa 14 (scripts/saude.cjs, verificação 3): o
+# ORDER BY explícito tem que estar no fonte do hook, não só "funcionar por
+# acaso" na ordem que o SQLite devolve.
+if grep -q "ORDER BY processada_em ASC" "$HOOK" && grep -q "LIMIT 1" "$HOOK"; then
+  ok=$((ok+1)); echo "  ok    21.e hook usa ORDER BY processada_em ASC LIMIT 1 explícito"
+else
+  falhou=$((falhou+1)); echo "  FALHA 21.e hook não tem a seleção explícita da marca mais antiga"
+fi
+
+rm -rf "$CAIXA_PIPELINE" "$CAIXA_EMDIA" "$CAIXA_MANFALHOU" "$CAIXA_MANOK"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]
