@@ -7,7 +7,7 @@
 // que é puro e tem bateria própria (hooks/testa-memoria-session-start.sh).
 const fs = require('fs');
 const path = require('path');
-const { montarMemoria, montarLegendaMemoria, TETOS, avisoDePipeline, avisoDeManutencaoFalhou } = require('./lib/memoria-sessao.cjs');
+const { montarMemoria, montarLegendaMemoria, avisoDePipeline, avisoDeManutencaoFalhou } = require('./lib/memoria-sessao.cjs');
 const { tituloDoFocoAtivo } = require('./lib/contexto-sessao.cjs');
 const { resolverRaiz } = require('./lib/raiz.cjs');
 const { abrirBanco, abrirBancoSomenteLeitura, resolverCaminhos, filtroVivas } = require(path.join(__dirname, '..', 'scripts', 'memoria.cjs'));
@@ -438,17 +438,23 @@ try {
   observacoes = [];
 }
 
-// Monta o bloco de memória.
-const bloco = montarMemoria({ observacoes, apelidos });
-
 // Tarefa 6 (D8): pipeline parado (captura OU manutenção) vira linha na
 // abertura, além do `/saude` — o `/saude` já acusava "pipeline parado há mais
 // de 48h" e ninguém viu por 13 dias (#282); aviso que só aparece quando
 // alguém pergunta não é aviso. Degradação: qualquer erro aqui dentro não pode
 // derrubar a abertura — os dois helpers já devolvem 0/null em vez de lançar.
+//
+// O aviso entra como PREFIXO FIXO do cabeçalho (parâmetro `avisos` de
+// `montarMemoria`), dentro do MESMO teto de 3.000 B do corpus — nunca um
+// segundo canal que só se preenche se sobrar espaço depois das observações.
+// Um corpus de milhares de observações reais já enche o teto sozinho; um
+// aviso que só aparecesse "se coubesse depois" não apareceria nunca em
+// produção — o mesmo silêncio que o D8 existe pra matar. É a observação
+// mais antiga que cede lugar quando o orçamento aperta, pelo mesmo mecanismo
+// que já existe pra o aviso de CORTE (`travarOrcamentoMemoria`).
 // Bloco próprio (em vez de topo do módulo) só pra não vazar `horasParada` e
 // `ultimaManutencao` pro resto do arquivo depois de já terem sido consumidos.
-let blocoComAviso = bloco;
+let bloco;
 {
   let horasParada = 0;
   let ultimaManutencao = null;
@@ -469,16 +475,7 @@ let blocoComAviso = bloco;
     linhas.push(avisoDeManutencaoFalhou(ultimaManutencao.horasDesde));
   }
 
-  // O teto não sobe (TETOS.MEMORIA_MAX_BYTES continua 3.000 B): o aviso cabe
-  // dentro do que o bloco de observações já ocupa, ou não entra — nunca corta
-  // uma observação pra abrir espaço pra ele.
-  if (linhas.length > 0) {
-    const aviso = linhas.join('\n');
-    const candidato = bloco ? `${aviso}\n\n${bloco}` : aviso;
-    if (Buffer.byteLength(candidato, 'utf8') <= TETOS.MEMORIA_MAX_BYTES) {
-      blocoComAviso = candidato;
-    }
-  }
+  bloco = montarMemoria({ observacoes, apelidos, avisos: linhas });
 }
 
 // JSON, não texto cru (regra 12 do hook foco-session-start).
@@ -491,7 +488,7 @@ const legenda = montarLegendaMemoria({ observacoes, apelidos });
 const saida = {
   hookSpecificOutput: {
     hookEventName: 'SessionStart',
-    additionalContext: blocoComAviso,
+    additionalContext: bloco,
   },
 };
 // Sem marca nenhuma, campo ausente: caixa vazia na tela é pior que tela limpa.

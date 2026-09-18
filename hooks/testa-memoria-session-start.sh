@@ -1465,7 +1465,44 @@ else
   falhou=$((falhou+1)); echo "  FALHA 21.e hook não tem a seleção explícita da marca mais antiga"
 fi
 
-rm -rf "$CAIXA_PIPELINE" "$CAIXA_EMDIA" "$CAIXA_MANFALHOU" "$CAIXA_MANOK"
+echo
+echo "  21.f — FALSIFICAÇÃO: bloco cheio (corta observação) + marca parada: o aviso NÃO some"
+# O corpus de 11 mil observações reais já enche o teto de 3.000 B sozinho.
+# Se o aviso de pipeline fosse um segundo canal que só entra "se sobrar
+# espaço depois do corpus", ele nunca apareceria em produção — o mesmo
+# silêncio que o D8 existe pra matar. Fixture: as MESMAS 20 observações
+# grandes do teste 19.a (força travarOrcamentoMemoria a cortar) MAIS a
+# marca d'água de 60h atrás no mesmo sandbox.
+CAIXA_CHEIO="$(novo_sandbox)"
+RFM_ROOT="$CAIXA_CHEIO" node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+RFM_ROOT="$CAIXA_CHEIO" GRANDE="$GRANDE" node <<'SETUP_CHEIO'
+const { DatabaseSync } = require('node:sqlite');
+const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
+const conteudoGrande = process.env.GRANDE + ' ' + process.env.GRANDE;
+const stmt = db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)');
+for (let i = 0; i < 20; i++) {
+  const dia = String(10 + i).padStart(2, '0');
+  stmt.run('proj-estouro', '## Obs grande ' + i + '\n\n' + conteudoGrande, `2026-08-${dia}T10:00:00Z`, 'sessao:teste:offset:' + i);
+}
+const sessenta = new Date(Date.now() - 60 * 60 * 60 * 1000).toISOString();
+db.prepare('INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?,?,?,?,?,?)')
+  .run('projx', 'sessao1', 'arq1', 10, 5, sessenta);
+db.close();
+SETUP_CHEIO
+
+PAYLOAD_CHEIO='{"hook_event_name":"SessionStart","source":"startup","session_id":"11111111-1111-1111-1111-111111111111","cwd":"'"$CAIXA_CHEIO"'","transcript_path":"'"$CAIXA_CHEIO"'/t.jsonl"}'
+SAIDA_CHEIO="$(printf '%s' "$PAYLOAD_CHEIO" | RFM_ROOT="$CAIXA_CHEIO" node "$HOOK" 2>/dev/null)"
+echo "$SAIDA_CHEIO" > "$CAIXA_CHEIO/saida-cheio.json"
+RESULT_CHEIO="$(cat "$CAIXA_CHEIO/saida-cheio.json" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const t=JSON.parse(s).hookSpecificOutput.additionalContext;const l=t.split("\n").filter(x=>/captura/i.test(x)&&/60/.test(x)&&x.includes("observar.cjs"));console.log(l.length, Buffer.byteLength(t,"utf8")<=3000)})')"
+echo "  comando: printf '%s' '<payload>' | RFM_ROOT=<sandbox com 20 obs grandes + marca parada> node hooks/memoria-session-start.cjs | node -e '...'"
+echo "  saida: $RESULT_CHEIO"
+if [ "$RESULT_CHEIO" = "1 true" ]; then
+  ok=$((ok+1)); echo "  ok    21.f o aviso sobrevive ao corte do corpus (a observação mais antiga cede lugar, não o aviso)"
+else
+  falhou=$((falhou+1)); echo "  FALHA 21.f esperava '1 true' com o corpus cheio, veio '$RESULT_CHEIO'"
+fi
+
+rm -rf "$CAIXA_PIPELINE" "$CAIXA_EMDIA" "$CAIXA_MANFALHOU" "$CAIXA_MANOK" "$CAIXA_CHEIO"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

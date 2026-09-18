@@ -198,19 +198,38 @@ function travarOrcamentoMemoria(linhas, cabecalho, rodape, maxBytes) {
  * @param {object} o
  * @param {array} [o.observacoes] array de observações do banco
  * @param {object} [o.apelidos] mapa chave-do-banco -> nome curto para exibição
+ * @param {string[]} [o.avisos] linhas de aviso de PIPELINE (Tarefa 6, D8 —
+ *   captura/manutenção paradas), que entram no TOPO do bloco, DENTRO do
+ *   mesmo teto de bytes do corpus — nunca um canal à parte que só se
+ *   preenche se sobrar espaço. Um corpus de 11 mil observações reais já
+ *   enche o teto de 3.000 B sozinho; um aviso que só aparecesse "se coubesse
+ *   depois" nunca apareceria em produção — o mesmo silêncio que o D8 existe
+ *   pra matar (#282, pipeline parado por 13 dias sem ninguém ver). Por isso
+ *   o aviso vira parte do CABEÇALHO fixo, e é a observação mais antiga que
+ *   cede lugar quando o orçamento aperta — o mesmo mecanismo que já existe
+ *   pra o aviso de CORTE (`travarOrcamentoMemoria`), generalizado.
  * @returns {string} bloco montado, dentro do teto de bytes
  */
 function montarMemoria(o) {
   const observacoes = Array.isArray(o?.observacoes) ? o.observacoes : [];
   const apelidos = (o && typeof o.apelidos === 'object' && o.apelidos) || null;
+  const avisos = Array.isArray(o?.avisos) ? o.avisos.filter(Boolean) : [];
+  const prefixoAvisos = avisos.length ? `${avisos.join('\n')}\n\n` : '';
 
-  // Se vazio, devolve bloco vazio (não injetar item de contexto desnecessário).
+  // Sem observação nenhuma: sem corpus pra injetar. O aviso de pipeline,
+  // se houver, ainda é a única coisa que precisa chegar à abertura — banco
+  // vazio não é motivo pra calar "a captura está parada".
   if (!observacoes.length) {
-    return '';
+    if (!avisos.length) return '';
+    const soAviso = avisos.join('\n');
+    return Buffer.byteLength(soAviso, 'utf8') <= TETOS.MEMORIA_MAX_BYTES
+      ? soAviso
+      : cortarBytes(soAviso, TETOS.MEMORIA_MAX_BYTES);
   }
 
-  // Cabeçalho do bloco.
-  const cabecalho = '## Memória (corpus residentes)\n';
+  // Cabeçalho do bloco — o aviso de pipeline (se houver) entra ANTES do
+  // título do corpus, como prefixo fixo do cabeçalho.
+  const cabecalho = `${prefixoAvisos}## Memória (corpus residentes)\n`;
 
   // Formata cada observação como linha curta (título + subtítulo).
   const linhas = observacoes.map((obs) => formatarObservacao(obs, apelidos)).filter(Boolean);
@@ -222,12 +241,14 @@ function montarMemoria(o) {
 
   const texto = cabecalho + corpo + rodape;
 
-  // Cabendo no teto, devolve sem acrescentar byte nenhum de aviso.
+  // Cabendo no teto, devolve sem acrescentar byte nenhum de aviso de corte.
   if (Buffer.byteLength(texto, 'utf8') <= TETOS.MEMORIA_MAX_BYTES) {
     return texto;
   }
 
-  // Estourou: corta por observação inteira e avisa NO TOPO o que ficou de fora.
+  // Estourou: corta por observação inteira e avisa NO TOPO o que ficou de
+  // fora. O aviso de PIPELINE, por já estar dentro do `cabecalho`, nunca é
+  // ele que sai — é sempre a observação mais antiga que cede lugar primeiro.
   return travarOrcamentoMemoria(linhas, cabecalho, rodape, TETOS.MEMORIA_MAX_BYTES);
 }
 
@@ -297,15 +318,18 @@ function montarLegendaMemoria(o) {
  *   (mesma seleção EXPLÍCITA de `scripts/saude.cjs`, verificação 3:
  *   `ORDER BY processada_em ASC LIMIT 1` — nunca a ordem de varredura do SQLite)
  * @param {{falhou: boolean, quando: string, horasDesde: number}|null} [ultimaManutencao]
- *   contexto da última passada de manutenção registrada no log; se ela
- *   TAMBÉM falhou, a linha soma essa informação em vez de calar o segundo problema.
+ *   contexto da última passada de manutenção registrada no log — recebido
+ *   pra manter a mesma assinatura de quem chama os dois avisos, mas NÃO
+ *   entra no texto desta linha: se a manutenção TAMBÉM falhou, é
+ *   `avisoDeManutencaoFalhou` (função irmã, abaixo) que soma a segunda
+ *   linha, cada uma nomeando seu próprio problema sem repetir a do outro —
+ *   escolha deliberada pra não ter duas linhas dizendo a mesma coisa de
+ *   jeitos diferentes.
  * @returns {string} linha pronta, sem quebra de linha no fim
  */
 function avisoDePipeline(horasParada, ultimaManutencao) {
   const horas = Math.max(0, Math.round(Number(horasParada) || 0));
-  const tambemFalhou = ultimaManutencao && ultimaManutencao.falhou;
-  const sufixo = tambemFalhou ? ' (a manutenção também falhou na última passada)' : '';
-  return `⚠️ Captura da memória parada há ${horas}h${sufixo} — religa com: node scripts/observar.cjs`;
+  return `⚠️ Captura da memória parada há ${horas}h — religa com: node scripts/observar.cjs`;
 }
 
 /**
