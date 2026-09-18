@@ -79,6 +79,23 @@ justificar em prosa não destrava.
   executor recusou aplicar e devolveu o achado; a emenda é do plano, não da
   entrega. O critério da tarefa 3 vale sem essa metade.
 
+- **2026-09-18, tarefas 3, 5 e 6 — o `RFM_ROOT` estava do lado errado do cano, e
+  isso apontava os critérios para a raiz REAL do usuário.** Os três critérios
+  traziam `RFM_ROOT=<sandbox> printf '%s' "<payload>" | node <hook>`. Em shell,
+  `VAR=v cmd1 | cmd2` aplica `VAR` só ao `cmd1` — o `node`, depois do cano, **não
+  recebe `RFM_ROOT`**, e `resolverRaiz()` cai no nível 3, `~/.rainforest`. O
+  executor da tarefa 5 colou o comando ao pé da letra num teste manual e disparou a
+  manutenção contra a raiz real: criou `manutencao-2026-09-18.lock` e
+  `manutencao.log` lá dentro. Ele detectou, limpou e reportou. **Nada foi
+  alterado** — o banco real ainda não tem as colunas da tarefa 1, então
+  `reconciliar` e `consolidar` falham antes de qualquer escrita; conferido na
+  integração: `mtime` do `rainforest.db` inalterado, `PRAGMA table_info` sem
+  `substituida_por`/`reconciliada_em`, 11.469 observações, 0 resumos, 0
+  consolidadas, e nenhum `manutencao*` na raiz. Os três critérios passaram para
+  `printf '%s' "<payload>" | RFM_ROOT=<sandbox> node <hook>`. O erro é meu, de quem
+  escreveu o plano, não da entrega — e a tarefa 6, que ainda não tinha sido
+  despachada, já sai corrigida.
+
 ## Nomes fixados (o plano prescreve, para o critério ter o que ler)
 
 As tarefas 2, 4 e 5 criam constantes com **estes nomes**, em `scripts/memoria.cjs`:
@@ -131,7 +148,7 @@ mutacao:
   para: `  return '';`
   bateria: `bash hooks/testa-memoria-session-start.sh`
   fixture: `testa-memoria-session-start.sh, caso "observacao substituida nao entra na disputa de vagas"`
-pronto quando: num sandbox com 20 observações das quais 6 têm `substituida_por` preenchido, o payload real de `SessionStart` (`{"hook_event_name":"SessionStart","source":"startup","session_id":"11111111-1111-1111-1111-111111111111","cwd":"<sandbox>","transcript_path":"<sandbox>/t.jsonl"}`) no stdin de `node hooks/memoria-session-start.cjs` produz um `additionalContext` em que **nenhuma** das 6 substituídas aparece e as 14 vivas aparecem — provado por `RFM_ROOT=<sandbox> printf '%s' "<payload>" | node hooks/memoria-session-start.cjs > <sandbox>/saida.json && node -e 'const fs=require("fs");const t=JSON.parse(fs.readFileSync(process.argv[1],"utf8")).hookSpecificOutput.additionalContext;const m=JSON.parse(fs.readFileSync(process.argv[2],"utf8"));console.log(m.substituidas.filter(c=>t.includes(c)).length, m.vivas.filter(c=>t.includes(c)).length)' <sandbox>/saida.json <sandbox>/conteudos.json` imprimindo `0 14`, e por `RFM_ROOT=<sandbox> node scripts/memoria.cjs buscar --texto <termo que só as substituídas contêm> --json` imprimindo `[]`. Os caminhos cobertos, um a um: as 7 consultas de `lerObservacoesComFTS`/`lerObservacoes` (recentes, casadas por FTS, os 3 ramos de recurso, `lerObservacoes` com e sem `projetosList`), a leitura de `resumos`, os dois ramos de `cmdBuscar` e a seleção de `cmdConsolidar` — todos por `filtroVivas()`, para haver um ponto único a inverter
+pronto quando: num sandbox com 20 observações das quais 6 têm `substituida_por` preenchido, o payload real de `SessionStart` (`{"hook_event_name":"SessionStart","source":"startup","session_id":"11111111-1111-1111-1111-111111111111","cwd":"<sandbox>","transcript_path":"<sandbox>/t.jsonl"}`) no stdin de `node hooks/memoria-session-start.cjs` produz um `additionalContext` em que **nenhuma** das 6 substituídas aparece e as 14 vivas aparecem — provado por `printf '%s' "<payload>" | RFM_ROOT=<sandbox> node hooks/memoria-session-start.cjs > <sandbox>/saida.json && node -e 'const fs=require("fs");const t=JSON.parse(fs.readFileSync(process.argv[1],"utf8")).hookSpecificOutput.additionalContext;const m=JSON.parse(fs.readFileSync(process.argv[2],"utf8"));console.log(m.substituidas.filter(c=>t.includes(c)).length, m.vivas.filter(c=>t.includes(c)).length)' <sandbox>/saida.json <sandbox>/conteudos.json` imprimindo `0 14`, e por `RFM_ROOT=<sandbox> node scripts/memoria.cjs buscar --texto <termo que só as substituídas contêm> --json` imprimindo `[]`. Os caminhos cobertos, um a um: as 7 consultas de `lerObservacoesComFTS`/`lerObservacoes` (recentes, casadas por FTS, os 3 ramos de recurso, `lerObservacoes` com e sem `projetosList`), a leitura de `resumos`, os dois ramos de `cmdBuscar` e a seleção de `cmdConsolidar` — todos por `filtroVivas()`, para haver um ponto único a inverter
 
 ### 4. Consolidação por grupo de origem, a partir de 30 dias [tipo: implementar]
 atende: D7
@@ -157,7 +174,7 @@ mutacao:
   para: `    if (false) process.exit(0);`
   bateria: `bash hooks/testa-memoria-manutencao.sh`
   fixture: `testa-memoria-manutencao.sh, caso "segunda sessao no mesmo dia nao dispara a manutencao"`
-pronto quando: a trava do dia nasce **atomicamente** de `fs.openSync(trava, 'wx')` — nunca `existsSync` seguido de escrita, porque duas sessões abrem juntas —, a primeira execução grava nela o PID do filho destacado e retorna em menos de 1 s, e a segunda execução do mesmo dia não cria processo nenhum — provado por `RFM_ROOT=<sandbox> printf '%s' "<payload>" | node hooks/memoria-manutencao-session-start.cjs; echo "exit1=$?"; A=$(cat <sandbox>/manutencao-$(date +%F).lock); RFM_ROOT=<sandbox> printf '%s' "<payload>" | node hooks/memoria-manutencao-session-start.cjs; echo "exit2=$?"; B=$(cat <sandbox>/manutencao-$(date +%F).lock); echo "pid1=$A pid2=$B"` saindo `exit1=0`, `exit2=0` e `pid1` igual a `pid2` (a segunda não disparou nada); e por `RFM_ROOT=<sandbox> TESTADOR_CHAMAR_LLM=<mock> node scripts/memoria.cjs manutencao && cat <sandbox>/manutencao.log` trazendo a linha de `reconciliar` **antes** da de `consolidar`, com o executável resolvido por `scripts/lib/achar-executavel-claude.cjs` (o conserto do #282). Nenhum dos dois caminhos escreve fora de `<sandbox>` (regra 15)
+pronto quando: a trava do dia nasce **atomicamente** de `fs.openSync(trava, 'wx')` — nunca `existsSync` seguido de escrita, porque duas sessões abrem juntas —, a primeira execução grava nela o PID do filho destacado e retorna em menos de 1 s, e a segunda execução do mesmo dia não cria processo nenhum — provado por `printf '%s' "<payload>" | RFM_ROOT=<sandbox> node hooks/memoria-manutencao-session-start.cjs; echo "exit1=$?"; A=$(cat <sandbox>/manutencao-$(date +%F).lock); printf '%s' "<payload>" | RFM_ROOT=<sandbox> node hooks/memoria-manutencao-session-start.cjs; echo "exit2=$?"; B=$(cat <sandbox>/manutencao-$(date +%F).lock); echo "pid1=$A pid2=$B"` saindo `exit1=0`, `exit2=0` e `pid1` igual a `pid2` (a segunda não disparou nada); e por `RFM_ROOT=<sandbox> TESTADOR_CHAMAR_LLM=<mock> node scripts/memoria.cjs manutencao && cat <sandbox>/manutencao.log` trazendo a linha de `reconciliar` **antes** da de `consolidar`, com o executável resolvido por `scripts/lib/achar-executavel-claude.cjs` (o conserto do #282). Nenhum dos dois caminhos escreve fora de `<sandbox>` (regra 15)
 
 ### 6. Falha da manutenção ou da captura vira linha na abertura [tipo: implementar]
 atende: D8
@@ -170,7 +187,7 @@ mutacao:
   para: `  if (false) linhas.push(avisoDePipeline(horasParada, ultimaManutencao));`
   bateria: `bash hooks/testa-memoria-session-start.sh`
   fixture: `testa-memoria-session-start.sh, caso "marca d agua parada ha 60h imprime a linha de pipeline na abertura"`
-pronto quando: num sandbox cuja `marca_dagua` tenha `offset > offset_processado` e `processada_em` de 60 h atrás, o payload real de `SessionStart` no stdin produz um `additionalContext` com **uma** linha que nomeia as três coisas de que o usuário precisa para agir — que a captura está parada, **há quantas horas**, e o comando que religa (`node scripts/observar.cjs`) — e o bloco inteiro continua dentro de `TETOS.MEMORIA_MAX_BYTES` (3.000 B, que **não sobe**); com a marca em dia, a linha não aparece — provado por `RFM_ROOT=<sandbox> printf '%s' "<payload>" | node hooks/memoria-session-start.cjs | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const t=JSON.parse(s).hookSpecificOutput.additionalContext;const l=t.split("\n").filter(x=>/captura/i.test(x)&&/60/.test(x)&&x.includes("observar.cjs"));console.log(l.length, Buffer.byteLength(t,"utf8")<=3000)})'` imprimindo `1 true` no sandbox parado e `0 true` no sandbox em dia, e por `bash scripts/testa-orcamento.sh` continuando verde
+pronto quando: num sandbox cuja `marca_dagua` tenha `offset > offset_processado` e `processada_em` de 60 h atrás, o payload real de `SessionStart` no stdin produz um `additionalContext` com **uma** linha que nomeia as três coisas de que o usuário precisa para agir — que a captura está parada, **há quantas horas**, e o comando que religa (`node scripts/observar.cjs`) — e o bloco inteiro continua dentro de `TETOS.MEMORIA_MAX_BYTES` (3.000 B, que **não sobe**); com a marca em dia, a linha não aparece — provado por `printf '%s' "<payload>" | RFM_ROOT=<sandbox> node hooks/memoria-session-start.cjs | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const t=JSON.parse(s).hookSpecificOutput.additionalContext;const l=t.split("\n").filter(x=>/captura/i.test(x)&&/60/.test(x)&&x.includes("observar.cjs"));console.log(l.length, Buffer.byteLength(t,"utf8")<=3000)})'` imprimindo `1 true` no sandbox parado e `0 true` no sandbox em dia, e por `bash scripts/testa-orcamento.sh` continuando verde
 
 ### 7. Medir o recall do FTS5 como buscador de candidatas [tipo: pesquisar]
 atende: D4

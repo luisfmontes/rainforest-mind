@@ -22,13 +22,18 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-09-18",
-    "tarefas_ok": 3,
+    "tarefas_ok": 4,
     "tarefas": 8,
     "em_voo": [
       {
         "agente": "executor",
         "tarefa": "tarefa 7: medir recall do FTS5",
         "desde": "2026-09-18T16:05:00-03:00"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "tarefa 5: manutencao em background",
+        "desde": "2026-09-18T17:15:00-03:00"
       }
     ],
     "carimbos": [
@@ -129,6 +134,20 @@
         "iteracao": 2,
         "sessao": "c948157d-1047-4919-969d-e90df9063854",
         "ts": "2026-09-18T16:51:15.503Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "4128e622",
+        "iteracao": 1,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:52:20.923Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "14bc3f5e",
+        "iteracao": 1,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T17:13:23.820Z"
       }
     ],
     "em": "2026-09-18"
