@@ -19,6 +19,8 @@
  *   node scripts/memoria.cjs buscar [opções]         buscar observações
  *   node scripts/memoria.cjs backup                  fazer backup do banco
  *   node scripts/memoria.cjs reindexar               reconstruir índices
+ *   node scripts/memoria.cjs consolidar              sintetizar observações antigas em resumos
+ *   node scripts/memoria.cjs reconciliar             store/update/merge/skip contra o acervo pendente
  */
 
 const fs = require('fs');
@@ -1549,6 +1551,386 @@ async function cmdConsolidar() {
   }
 }
 
+// Comando `reconciliar` (Tarefa 2, D2/D3/D4/D6).
+//
+// K = 5 candidatas por observação sondada, do FTS5, mesmo `projeto`, ordenadas
+// por bm25(observacoes_fts) — sem limiar numérico de similaridade: quem decide
+// parecença é a LLM (D4). N = 200 observações reconciliadas por execução,
+// mais recentes primeiro — teto do D6, para não estourar custo de LLM numa
+// passada só.
+const K_CANDIDATAS = 5;
+const TETO_RECONCILIAR = 200;
+
+// Ações válidas na resposta da LLM. Qualquer outra coisa cai em 'store' — o
+// lado seguro do D3 (nunca inventa update/merge a partir de resposta que não
+// entendemos).
+const ACOES_RECONCILIACAO_VALIDAS = new Set(['store', 'update', 'merge', 'skip']);
+
+// Constrói uma query MATCH segura para o FTS5 a partir de texto livre.
+// Passar o conteúdo cru (com pontuação, aspas, dois-pontos) direto como MATCH
+// quebra a sintaxe do FTS5 (reservada para AND/OR/NOT/coluna:termo/etc). Aqui
+// tokenizamos por letra/dígito (Unicode, cobre acento) e citamos cada termo
+// entre aspas duplas — frase literal, sem sintaxe especial — unindo por OR.
+// Retorna null se não sobrar termo nenhum (ex.: texto só com pontuação).
+function construirQueryFts5(texto) {
+  const tokens = (String(texto || '').match(/[\p{L}\p{N}]+/gu) || []).filter(t => t.length > 0);
+  if (tokens.length === 0) return null;
+  return tokens.map(t => `"${t.replace(/"/g, '""')}"`).join(' OR ');
+}
+
+// Busca até K_CANDIDATAS observações parecidas com `obs`, no mesmo projeto,
+// via FTS5 + bm25. Exclui a própria observação e as já substituídas
+// (substituida_por IS NOT NULL) — candidata substituída não é alvo válido.
+// Degradação: erro de SQL (ex.: query MATCH malformada) devolve lista vazia,
+// nunca lança.
+function buscarCandidatas(conexao, obs) {
+  const query = construirQueryFts5(obs.conteudo);
+  if (!query) return [];
+
+  try {
+    return conexao.prepare(`
+      SELECT o.id, o.conteudo
+      FROM observacoes_fts
+      JOIN observacoes o ON o.id = observacoes_fts.rowid
+      WHERE observacoes_fts MATCH :query
+        AND o.projeto = :projeto
+        AND o.id != :id
+        AND o.substituida_por IS NULL
+      ORDER BY bm25(observacoes_fts)
+      LIMIT :k
+    `).all({ query, projeto: obs.projeto, id: obs.id, k: K_CANDIDATAS });
+  } catch (e) {
+    console.error(`AVISO: falha ao buscar candidatas para observação ${obs.id}: ${e.message}`);
+    return [];
+  }
+}
+
+// Monta o texto que vai para a LLM: a observação sondada e suas candidatas.
+function formatarPromptReconciliacao(observacao, candidatas) {
+  const linhasCandidatas = candidatas
+    .map((c) => `- [id=${c.id}] ${c.conteudo}`)
+    .join('\n');
+
+  return [
+    'Observacao nova (sondada):',
+    `[id=${observacao.id}] ${observacao.conteudo}`,
+    '',
+    'Candidatas parecidas, mesmo projeto (busca por texto, nao por LLM):',
+    linhasCandidatas || '(nenhuma)',
+    '',
+    'Decida a acao para a observacao sondada:',
+    '- store: nova, sem relacao com nenhuma candidata',
+    '- update: a observacao sondada atualiza uma candidata desatualizada (informe alvo_id)',
+    '- merge: a observacao sondada e uma candidata sao complementares e devem se fundir (informe alvo_id)',
+    '- skip: a observacao sondada ja esta coberta por uma candidata, descarte',
+    '',
+    'Responda em JSON estrito, sem texto antes ou depois:',
+    '{"acao": "store"|"update"|"merge"|"skip", "alvo_id": <id da candidata ou null>}',
+  ].join('\n');
+}
+
+// Interpreta a resposta bruta da LLM. Resposta ausente, que não é JSON válido,
+// ou com ação desconhecida caem em 'store' — o lado seguro do D3. Nunca em
+// 'update'/'merge' por adivinhação.
+function interpretarDecisaoReconciliacao(respostaBruta) {
+  const seguro = { acao: 'store', alvo_id: null };
+  if (!respostaBruta || typeof respostaBruta !== 'string') return seguro;
+
+  let bruto = respostaBruta.trim();
+  let obj = null;
+  try {
+    obj = JSON.parse(bruto);
+  } catch (e) {
+    // Tolerar CLI real que envolve o JSON em texto/markdown: extrair o
+    // primeiro bloco {...} e tentar de novo antes de desistir.
+    const match = bruto.match(/\{[\s\S]*\}/);
+    if (match) {
+      try {
+        obj = JSON.parse(match[0]);
+      } catch (e2) {
+        return seguro;
+      }
+    } else {
+      return seguro;
+    }
+  }
+
+  if (!obj || typeof obj !== 'object' || !ACOES_RECONCILIACAO_VALIDAS.has(obj.acao)) {
+    return seguro;
+  }
+
+  let alvoId = null;
+  if (obj.alvo_id !== null && obj.alvo_id !== undefined) {
+    const n = Number(obj.alvo_id);
+    if (Number.isFinite(n)) alvoId = n;
+  }
+
+  return { acao: obj.acao, alvo_id: alvoId };
+}
+
+// Chamada à LLM isolada atrás de função para permitir mock em testes — mesmo
+// padrão que chamarLLMParaConsolidar (D14). Respeita TESTADOR_CHAMAR_LLM
+// (módulo que exporta chamarLLM(texto)); a bateria roda inteira sob esse mock,
+// então o caminho de spawn do `claude` real nunca é alcançado nela.
+// Retorna a resposta bruta (string) ou null se falhar — null vira 'store' em
+// interpretarDecisaoReconciliacao.
+async function chamarLLMParaReconciliar(observacao, candidatas) {
+  const prompt = formatarPromptReconciliacao(observacao, candidatas);
+
+  if (process.env.TESTADOR_CHAMAR_LLM) {
+    try {
+      const modulo = require(process.env.TESTADOR_CHAMAR_LLM);
+      return await modulo.chamarLLM(prompt);
+    } catch (e) {
+      console.error(`AVISO: não consegui carregar mock de LLM: ${e.message}`);
+      return null;
+    }
+  }
+
+  const { spawn } = require('child_process');
+  const os = require('os');
+
+  const executavel = acharExecutavelClaude();
+  if (!executavel) {
+    console.error('AVISO: não encontrei o executável `claude` no PATH');
+    return null;
+  }
+
+  const tempDir = os.tmpdir();
+  const TETO_ARGUMENTO = 16000;
+
+  if (prompt.length > TETO_ARGUMENTO) {
+    console.error(`AVISO: prompt de reconciliação acima do teto (${prompt.length} > ${TETO_ARGUMENTO})`);
+    return null;
+  }
+
+  return new Promise((resolve) => {
+    const timeout = 60000;
+    const timer = setTimeout(() => {
+      console.error('AVISO: chamada à LLM expirou (timeout 60s)');
+      resolve(null);
+    }, timeout);
+
+    try {
+      const child = spawn(executavel, [
+        prompt,
+        '-p',
+        '--model', 'claude-haiku-4-5-20251001',
+        '--setting-sources', '',
+        '--permission-mode', 'dontAsk',
+        '--disallowedTools', 'Read,Write,Edit,Bash,Glob,Grep,WebFetch,WebSearch,Task,NotebookEdit',
+      ], {
+        cwd: tempDir,
+        windowsHide: true,
+        timeout: timeout + 5000,
+      });
+
+      let stdout = '';
+
+      child.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      child.stderr.on('data', () => {});
+
+      child.stdin.end();
+
+      child.on('error', (error) => {
+        clearTimeout(timer);
+        console.error(`AVISO: erro ao chamar claude em "${executavel}": ${error.message}`);
+        resolve(null);
+      });
+
+      child.on('close', (code) => {
+        clearTimeout(timer);
+
+        if (code !== 0) {
+          console.error(`AVISO: claude retornou exit code ${code}`);
+          resolve(null);
+          return;
+        }
+
+        if (!stdout || !stdout.trim()) {
+          console.error('AVISO: LLM retornou saída vazia');
+          resolve(null);
+          return;
+        }
+
+        resolve(stdout.trim());
+      });
+    } catch (e) {
+      clearTimeout(timer);
+      console.error(`AVISO: erro ao invocar claude em "${executavel}": ${e.message}`);
+      resolve(null);
+    }
+  });
+}
+
+// Aplica a decisão de reconciliação a UMA observação sondada, atomicamente
+// (mesmo padrão que consolidarAtomico): falha no meio faz ROLLBACK e a
+// observação continua pendente (reconciliada_em fica NULL) para a próxima
+// rodada de `reconciliar`.
+//
+// update: a candidata-alvo (mais antiga, o `alvo_id`) recebe substituida_por
+// igual ao id da observação sondada — ela é quem corrige o alvo. Nada é
+// apagado: as duas continuam na tabela.
+//
+// merge: insere uma TERCEIRA observação com a síntese das duas, origem
+// determinística `reconciliacao:<id_menor>+<id_maior>` (UNIQUE(projeto,
+// origem) impede duplicar ao reprocessar o mesmo par — se o INSERT colidir,
+// reaproveita a linha já existente em vez de falhar), e marca as DUAS antigas
+// (a sondada e o alvo) com substituida_por apontando para a nova.
+//
+// store/skip: nada é substituído; só marca reconciliada_em na sondada.
+//
+// alvo_id ausente, inexistente, de outro projeto, ou igual à própria
+// observação: cai no lado seguro (equivalente a store) em vez de confiar cego
+// numa resposta de LLM que aponta para nada.
+function aplicarDecisaoReconciliacao(conexao, obs, decisao) {
+  const agora = new Date().toISOString();
+
+  try {
+    conexao.exec('BEGIN TRANSACTION');
+
+    if (decisao.acao === 'merge' || decisao.acao === 'update') {
+      const alvo = decisao.alvo_id !== null
+        ? conexao.prepare('SELECT id, conteudo FROM observacoes WHERE id = ? AND projeto = ?')
+            .get(decisao.alvo_id, obs.projeto)
+        : null;
+
+      if (!alvo || alvo.id === obs.id) {
+        // alvo_id inválido — lado seguro: nada é substituído.
+        conexao.prepare('UPDATE observacoes SET reconciliada_em = ? WHERE id = ?').run(agora, obs.id);
+        conexao.exec('COMMIT');
+        return true;
+      }
+
+      if (decisao.acao === 'update') {
+        conexao.prepare('UPDATE observacoes SET substituida_por = ?, reconciliada_em = ? WHERE id = ?')
+          .run(obs.id, agora, alvo.id);
+        conexao.prepare('UPDATE observacoes SET reconciliada_em = ? WHERE id = ?')
+          .run(agora, obs.id);
+      } else {
+        // merge: insere a terceira observação com origem determinística.
+        const idMenor = Math.min(obs.id, alvo.id);
+        const idMaior = Math.max(obs.id, alvo.id);
+        const origemMerge = `reconciliacao:${idMenor}+${idMaior}`;
+        const conteudoNovo = `${obs.conteudo}\n${alvo.conteudo}`;
+
+        let novoId;
+        try {
+          const resultado = conexao.prepare(`
+            INSERT INTO observacoes (projeto, conteudo, criada_em, origem)
+            VALUES (?, ?, ?, ?)
+          `).run(obs.projeto, conteudoNovo, agora, origemMerge);
+          novoId = Number(resultado.lastInsertRowid);
+        } catch (e) {
+          if (!String(e.message).includes('UNIQUE constraint')) throw e;
+          // Reprocessando o mesmo par: a fusão já existe, reaproveitar.
+          const existente = conexao.prepare('SELECT id FROM observacoes WHERE projeto = ? AND origem = ?')
+            .get(obs.projeto, origemMerge);
+          novoId = existente.id;
+        }
+
+        conexao.prepare('UPDATE observacoes SET substituida_por = ?, reconciliada_em = ? WHERE id = ?')
+          .run(novoId, agora, obs.id);
+        conexao.prepare('UPDATE observacoes SET substituida_por = ?, reconciliada_em = ? WHERE id = ?')
+          .run(novoId, agora, alvo.id);
+        // A própria síntese nasce reconciliada: ela é o RESULTADO da
+        // reconciliação da sondada com o alvo, não mais uma pendência. Sem
+        // isto, ela reentraria em `pendentes` na próxima execução e seria
+        // processada contra as mesmas duas observações que a originaram.
+        conexao.prepare('UPDATE observacoes SET reconciliada_em = ? WHERE id = ?')
+          .run(agora, novoId);
+      }
+    } else {
+      // store ou skip: nada é substituído.
+      conexao.prepare('UPDATE observacoes SET reconciliada_em = ? WHERE id = ?').run(agora, obs.id);
+    }
+
+    conexao.exec('COMMIT');
+    return true;
+  } catch (e) {
+    try {
+      conexao.exec('ROLLBACK');
+    } catch (_) {}
+    console.error(`AVISO: falha ao aplicar reconciliação da observação ${obs.id}: ${e.message}`);
+    return false;
+  }
+}
+
+// Comando: reconciliar — store/update/merge/skip contra o acervo pendente.
+// Tarefa 2 (D2, D3, D4, D6). Seleciona até TETO_RECONCILIAR observações
+// pendentes (reconciliada_em IS NULL AND substituida_por IS NULL), mais
+// recentes primeiro; para cada uma, busca até K_CANDIDATAS parecidas no FTS5
+// do mesmo projeto e pede à LLM a decisão. Degradação: banco ausente/
+// corrompido ou LLM indisponível vira aviso no stderr e exit 0 — nenhum
+// caminho novo derruba a sessão (D1: fora do hook de captura).
+async function cmdReconciliar() {
+  const { caminhoDb } = resolverCaminhos();
+
+  if (!fs.existsSync(caminhoDb)) {
+    console.error(`AVISO: banco não existe em ${caminhoDb}`);
+    console.error('rode: node scripts/memoria.cjs iniciar');
+    return;
+  }
+
+  let conexao;
+  try {
+    conexao = abrirBanco(caminhoDb);
+  } catch (e) {
+    console.error(`AVISO: não consegui abrir o banco: ${e.message}`);
+    return;
+  }
+
+  try {
+    const pendentes = conexao.prepare(`
+      SELECT id, projeto, conteudo, criada_em
+      FROM observacoes
+      WHERE reconciliada_em IS NULL AND substituida_por IS NULL
+      ORDER BY criada_em DESC
+      LIMIT ?
+    `).all(TETO_RECONCILIAR);
+
+    if (pendentes.length === 0) {
+      console.log('nenhuma observação pendente de reconciliação');
+      conexao.close();
+      return;
+    }
+
+    console.log(`${pendentes.length} observação(ões) pendente(s) de reconciliação`);
+
+    let processadas = 0;
+    let pulos = 0;
+
+    for (const obs of pendentes) {
+      const candidatas = buscarCandidatas(conexao, obs);
+
+      let decisao;
+      if (candidatas.length === 0) {
+        // Nada parecido no acervo: não há o que reconciliar, poupa a chamada.
+        decisao = { acao: 'store', alvo_id: null };
+      } else {
+        const respostaBruta = await chamarLLMParaReconciliar(obs, candidatas);
+        decisao = interpretarDecisaoReconciliacao(respostaBruta);
+      }
+
+      const sucesso = aplicarDecisaoReconciliacao(conexao, obs, decisao);
+      if (sucesso) {
+        processadas++;
+      } else {
+        pulos++;
+      }
+    }
+
+    console.log(`reconciliação completa: ${processadas} processada(s), ${pulos} pulo(s) (falha, pendente para a próxima rodada)`);
+    conexao.close();
+  } catch (e) {
+    console.error(`AVISO: erro durante reconciliação: ${e.message}`);
+    try { conexao.close(); } catch (_) {}
+  }
+}
+
 // ---- CLI
 
 async function main() {
@@ -1567,9 +1949,11 @@ async function main() {
       return cmdReindexar();
     case 'consolidar':
       return await cmdConsolidar();
+    case 'reconciliar':
+      return await cmdReconciliar();
     default:
       console.error(`Comando desconhecido: ${cmd}`);
-      console.error('Use: iniciar | esquema | buscar | backup | reindexar | consolidar');
+      console.error('Use: iniciar | esquema | buscar | backup | reindexar | consolidar | reconciliar');
       process.exit(1);
   }
 }
@@ -1586,4 +1970,9 @@ if (require.main === module) {
   }
 }
 
-module.exports = { abrirBanco, abrirBancoSomenteLeitura, chaveHarness, criarSchema, extrairSchema, popularFts5, resolverCaminhos, verificarConstraintUniqueProjetoOrigem };
+module.exports = {
+  abrirBanco, abrirBancoSomenteLeitura, chaveHarness, criarSchema, extrairSchema, popularFts5,
+  resolverCaminhos, verificarConstraintUniqueProjetoOrigem,
+  K_CANDIDATAS, TETO_RECONCILIAR, construirQueryFts5, buscarCandidatas,
+  interpretarDecisaoReconciliacao, aplicarDecisaoReconciliacao,
+};
