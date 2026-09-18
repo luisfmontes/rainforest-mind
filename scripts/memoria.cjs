@@ -1993,6 +1993,53 @@ async function cmdReconciliar() {
   }
 }
 
+// Comando `manutencao` (Tarefa 5, D1/D5): a passada que roda de verdade
+// reconciliar e DEPOIS consolidar, nessa ordem, registrando cada passo em
+// `<raiz>/manutencao.log`. Quem dispara isto é o hook fino
+// `hooks/memoria-manutencao-session-start.cjs`, num filho destacado — nunca
+// o hook em si (D1: o hook de captura já pagou o preço de uma chamada de
+// LLM no caminho síncrono, #282).
+//
+// Cada passo é tentado independente do outro: reconciliar() nunca lança (ela
+// mesma degrada por dentro), mas resolverCaminhos() e cmdConsolidar() podem
+// terminar o processo com process.exit em caminho de erro — comportamento
+// pré-existente de ambos, que esta tarefa não altera. Quando isso acontece,
+// o log fica só com o "inicio" do passo que travou, e é exatamente essa
+// assimetria que o critério 4 lê (reconciliar sempre grava fim antes de
+// consolidar começar).
+async function cmdManutencao() {
+  const { raiz } = resolverCaminhos();
+  fs.mkdirSync(raiz, { recursive: true });
+  const caminhoLog = path.join(raiz, 'manutencao.log');
+
+  function registrar(linha) {
+    try {
+      fs.appendFileSync(caminhoLog, `${new Date().toISOString()} ${linha}\n`);
+    } catch (e) {
+      console.error(`AVISO: não consegui gravar em ${caminhoLog}: ${e.message}`);
+    }
+  }
+
+  registrar('reconciliar: inicio');
+  try {
+    await cmdReconciliar();
+    registrar('reconciliar: fim');
+  } catch (e) {
+    registrar(`reconciliar: erro ${e.message}`);
+  }
+
+  registrar('consolidar: inicio');
+  try {
+    await cmdConsolidar();
+    registrar('consolidar: fim');
+  } catch (e) {
+    registrar(`consolidar: erro ${e.message}`);
+  }
+
+  registrar('manutencao: completa');
+  console.log(`manutencao completa: log em ${caminhoLog}`);
+}
+
 // ---- CLI
 
 async function main() {
@@ -2013,9 +2060,11 @@ async function main() {
       return await cmdConsolidar();
     case 'reconciliar':
       return await cmdReconciliar();
+    case 'manutencao':
+      return await cmdManutencao();
     default:
       console.error(`Comando desconhecido: ${cmd}`);
-      console.error('Use: iniciar | esquema | buscar | backup | reindexar | consolidar | reconciliar');
+      console.error('Use: iniciar | esquema | buscar | backup | reindexar | consolidar | reconciliar | manutencao');
       process.exit(1);
   }
 }
