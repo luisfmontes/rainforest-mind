@@ -2052,7 +2052,7 @@ async function cmdReconciliar() {
 // Quem chama `consolidar`/`reconciliar` direto da CLI continua saindo 1 em
 // erro, via o `catch` de `main()`.
 async function cmdManutencao() {
-  const { raiz } = resolverCaminhos();
+  const { raiz, caminhoDb } = resolverCaminhos();
   fs.mkdirSync(raiz, { recursive: true });
   const caminhoLog = path.join(raiz, 'manutencao.log');
 
@@ -2062,6 +2062,21 @@ async function cmdManutencao() {
     } catch (e) {
       console.error(`AVISO: não consegui gravar em ${caminhoLog}: ${e.message}`);
     }
+  }
+
+  // Banco ausente = nada a reconciliar e nada a consolidar. A manutenção
+  // MIGRA um banco que já existe (é para isso que garantirEsquema() ganhou o
+  // recuperarSeNecessario()/criarSchema() aqui), mas nunca CRIA um banco que
+  // não existe: `abrirBanco()` usa `new DatabaseSync(caminhoDb)`, que cria o
+  // arquivo ao abrir. Se este passo chamasse garantirEsquema() incondicional,
+  // a passada de manutenção (disparada pelo hook de SessionStart) estaria
+  // escrevendo o rainforest.db durante a abertura da sessão — o invariante
+  // que scripts/testa-memoria-somente-leitura.sh existe para proteger.
+  if (!fs.existsSync(caminhoDb)) {
+    registrar('manutencao: banco ausente, nada a fazer');
+    registrar('manutencao: completa');
+    console.log(`manutencao: banco ausente em ${caminhoDb}, nada a fazer`);
+    return;
   }
 
   let houveFalha = false;

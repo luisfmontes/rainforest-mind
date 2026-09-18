@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @categoria: sensor
+// @categoria: guia
 /**
  * Hook: dispara a passada de manutenção da memória (reconciliar + consolidar)
  * uma vez por dia, em segundo plano.
