@@ -1902,8 +1902,21 @@ async function cmdReconciliar() {
 
     let processadas = 0;
     let pulos = 0;
+    let jaTratadas = 0;
 
     for (const obs of pendentes) {
+      // `pendentes` foi lida de uma vez, antes do laço começar. Uma decisão
+      // anterior DESTE MESMO laço pode já ter marcado `obs` (ela era o alvo
+      // de um update/merge de outra observação processada primeiro) — sem
+      // reler o estado atual, ela seria sondada de novo contra candidatas que
+      // agora incluem sua própria substituta, e uma LLM real poderia decidir
+      // reconciliar uma observação já substituída contra o que a substituiu.
+      const atual = conexao.prepare('SELECT substituida_por, reconciliada_em FROM observacoes WHERE id = ?').get(obs.id);
+      if (!atual || atual.substituida_por !== null || atual.reconciliada_em !== null) {
+        jaTratadas++;
+        continue;
+      }
+
       const candidatas = buscarCandidatas(conexao, obs);
 
       let decisao;
@@ -1923,7 +1936,7 @@ async function cmdReconciliar() {
       }
     }
 
-    console.log(`reconciliação completa: ${processadas} processada(s), ${pulos} pulo(s) (falha, pendente para a próxima rodada)`);
+    console.log(`reconciliação completa: ${processadas} processada(s), ${pulos} pulo(s) (falha, pendente para a próxima rodada), ${jaTratadas} já tratada(s) por outra decisão neste laço`);
     conexao.close();
   } catch (e) {
     console.error(`AVISO: erro durante reconciliação: ${e.message}`);

@@ -24,7 +24,8 @@
 #  11. banco ausente: reconciliar sai 0 com aviso
 #  12. LLM que falha (mock retorna null) cai em store, exit 0
 #  13. sem TESTADOR_CHAMAR_LLM e sem claude no PATH cai em store, exit 0
-#  14. constantes exportadas com os nomes exigidos pelo plano
+#  14. pendentes recarrega o estado atual: alvo ja resolvido nao e sondado de novo
+#  15. constantes exportadas com os nomes exigidos pelo plano
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -51,6 +52,10 @@ for dir in $PATH; do
 done
 IFS="$OLDIFS"
 export PATH="$NOVO_PATH"
+# `acharExecutavelClaude()` honra RFM_CLAUDE_EXECUTAVEL ANTES de varrer o
+# PATH — numa máquina que tenha essa variável setada, filtrar o PATH sozinho
+# não bastaria para provar "sem claude acessível" no caso 13.
+unset RFM_CLAUDE_EXECUTAVEL
 if command -v claude >/dev/null 2>&1; then
   falhou=$((falhou+1)); echo "  FALHA claude continua no PATH mesmo apos filtrar: $(command -v claude)"
 else
@@ -527,7 +532,64 @@ else
 fi
 
 echo
-echo "== 14. constantes exportadas com os nomes exigidos pelo plano =="
+echo "== 14. pendentes recarrega o estado atual: alvo ja resolvido nao e sondado de novo =="
+# Defeito achado em revisao: `pendentes` e lida uma vez antes do laco. Sem
+# reler o estado de cada observacao no comeco da iteracao, uma observacao que
+# JA foi marcada substituida_por (porque foi alvo da decisao de outra
+# observacao processada antes, no MESMO laco) seria sondada de novo — pedindo
+# uma decisao da LLM sobre uma observacao ja resolvida, contra candidatas que
+# agora incluem a propria observacao que a substituiu. Prova por EFEITO: o
+# mock grava o id de cada sondada num arquivo; so pode haver 1 chamada (a
+# mais recente) — a mais antiga, ja resolvida pela primeira decisao, nao pode
+# gerar uma segunda.
+CAIXA14="$(novo_sandbox)"
+RFM_ROOT="$CAIXA14" $MEMORIA iniciar > /dev/null 2>&1
+IDS14=$(RFM_ROOT="$CAIXA14" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const agora = Date.now();
+const rAntiga = db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?,?,?,?)')
+  .run('proj-recarga', 'Timeout de conexao configurado para 30 segundos', new Date(agora - 120000).toISOString(), 'o1');
+const rNova = db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?,?,?,?)')
+  .run('proj-recarga', 'Timeout de conexao configurado para 60 segundos apos incidente', new Date(agora - 60000).toISOString(), 'o2');
+db.close();
+process.stdout.write(rAntiga.lastInsertRowid + ':' + rNova.lastInsertRowid);
+" 2>/dev/null)
+ID_ANTIGA14=$(echo "$IDS14" | cut -d: -f1)
+ID_NOVA14=$(echo "$IDS14" | cut -d: -f2)
+
+cat > "$CAIXA14/mock-conta.cjs" <<EOF
+const fs = require('fs');
+const path = require('path');
+const ARQ = path.join(__dirname, 'chamadas.log');
+async function chamarLLM(texto) {
+  const m = texto.match(/\[id=(\d+)\]/);
+  fs.appendFileSync(ARQ, (m ? m[1] : '?') + '\n');
+  return JSON.stringify({ acao: 'update', alvo_id: $ID_ANTIGA14 });
+}
+module.exports = { chamarLLM };
+EOF
+
+RFM_ROOT="$CAIXA14" TESTADOR_CHAMAR_LLM="$CAIXA14/mock-conta.cjs" $MEMORIA reconciliar > /dev/null 2>&1
+
+# grep -c ja imprime "0" quando nao ha match nenhum (so muda o exit code) —
+# um `|| echo 0` aqui duplicaria a linha e quebraria a comparacao de string.
+if [ -f "$CAIXA14/chamadas.log" ]; then
+  NUM_CHAMADAS=$(grep -c . "$CAIXA14/chamadas.log")
+  CHAMOU_ANTIGA=$(grep -c "^${ID_ANTIGA14}\$" "$CAIXA14/chamadas.log")
+else
+  NUM_CHAMADAS=0
+  CHAMOU_ANTIGA=0
+fi
+if [ "$NUM_CHAMADAS" = "1" ] && [ "$CHAMOU_ANTIGA" = "0" ]; then
+  ok=$((ok+1)); echo "  ok   apenas 1 chamada de LLM (a mais recente); a antiga, ja resolvida, nao foi sondada de novo"
+else
+  falhou=$((falhou+1)); echo "  FALHA esperava 1 chamada e 0 para a antiga (id=$ID_ANTIGA14); veio $NUM_CHAMADAS chamada(s), $CHAMOU_ANTIGA para a antiga. Log: $(cat "$CAIXA14/chamadas.log" 2>/dev/null)"
+fi
+
+echo
+echo "== 15. constantes exportadas com os nomes exigidos pelo plano =="
 CONST_CHECK=$(node --no-warnings -e "
 const { K_CANDIDATAS, TETO_RECONCILIAR } = require('./scripts/memoria.cjs');
 console.log(K_CANDIDATAS, TETO_RECONCILIAR);
