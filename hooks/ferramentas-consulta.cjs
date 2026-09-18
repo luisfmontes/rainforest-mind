@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: guia
 /**
  * PreToolUse — consulta catálogo de ferramentas antes de tentar usar uma.
  *

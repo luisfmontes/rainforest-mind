@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: sensor
 /**
  * Confere ENCODING dos arquivos de texto rastreados pelo git — mojibake, BOM e
  * (opcionalmente) CRLF — e RECUSA com exit code, no estilo de conferir-publicacao.cjs

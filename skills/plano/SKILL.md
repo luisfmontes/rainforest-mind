@@ -74,11 +74,11 @@ por isso o alvo mora no plano, e não na cabeça de quem executa depois.
 
 ```
 mutacao:
-  arquivo: `hooks/gate-worktree.cjs`
-  de: o `process.exit(2)` do ramo de sessão co-locada
-  para: `process.exit(0)`
+  arquivo: `hooks/lib/cwd-efetivo.cjs`
+  de: `const alvo = path.resolve(estado.atual, normalizarMsys(destino));`
+  para: `const alvo = path.resolve(estado.atual, destino);`
   bateria: `bash hooks/testa-gate-worktree.sh`
-  fixture: `testa-gate-worktree.sh, linhas 23-30 (o ramo co-locado que dispara a saída)`
+  fixture: `testa-gate-worktree.sh, secao "Issue #289: cd com caminho MSYS (/c/...) resolve com path.resolve do Node"`
 ```
 
 - **`de:` é o padrão exato**, não a intenção. Padrão que não casa com o fonte
@@ -99,6 +99,15 @@ mutacao:
   comportamento a inverter, então não tem caso a nomear.
 - **O relato de mutação do agente não fecha a tarefa.** A integração re-roda, e
   só o exit code dela vale.
+- **`de:` e `para:` são texto COPIADO do fonte, nunca prosa** — mesmo quando o
+  trecho citado tem crase no meio de uma frase (`de: o \`process.exit(2)\` do
+  ramo de sessão co-locada` é prosa disfarçada de literal; a catraca não sabe
+  aplicar isso e a tarefa fica sem medição nenhuma, exatamente o formato que a
+  Issue #281 mostrou passando despercebido). E **`bateria:` é só a linha de
+  comando**, sem anotação depois da crase de fechamento — `` `node
+  x.cjs` (tarefa 6) `` vira comando com o `(tarefa 6)` colado (Issue #254).
+  Nota para humano sobre o bloco vai em outro lugar do plano, nunca dentro do
+  campo nem colada a ele.
 
 **`mutacao: n/a` com `motivo:` é resposta aceita.** Tarefa de doc não tem
 comportamento a inverter; a falsificação dela é outra (casar com a interface
@@ -152,6 +161,40 @@ ela só não é mais o que a tarefa promete.
 > O agravante: a armadilha estava documentada **dentro do próprio repositório**
 > (`referencias/2026-08-11-everything-claude-code.md:131`), incluindo o
 > mecanismo pelo qual a suíte não pega. O repo documentou e caiu nela.
+
+### Evidência do `verificar` precisa citar um sensor
+
+Fechar o estágio `verificar` com `ok` exige mais do que `comando`/`saida`
+presentes na evidência (`--json` de `node scripts/estado.cjs marcar`):
+`comando` precisa casar com um **sensor**. Duas formas contam:
+
+- **peça do repo marcada `sensor`** por `node scripts/conferir-categoria.cjs`
+  (ex.: `node scripts/conferir-categoria.cjs` propriamente, ou outro
+  `scripts/conferir-*.cjs`) — `comando` cita o caminho da peça; ou
+- **sensor externo declarado** pelo campo `sensor_externo`, no mesmo
+  `--json` — string não vazia que precisa aparecer DENTRO de `comando`:
+
+  ```
+  --json '{"comando":"bash scripts/testa-estado.sh","saida":"...","sensor_externo":"bash scripts/testa-estado.sh"}'
+  ```
+
+Sem um dos dois, `scripts/estado.cjs` recusa o fechamento com exit 2. Só
+`verificar` barra — `executar` (o outro estágio que exige evidência) apenas
+avisa em stderr e fecha normalmente, porque barrar ali pararia trabalho
+legítimo no meio.
+
+**`scripts/testa-*.sh` NÃO são peças marcadas `sensor`** —
+`conferir-categoria.cjs` os exclui de propósito. Quase todo critério deste
+repo é "provado por `bash scripts/testa-*.sh`", então **critério do
+`verificar` cujo `comando` não seja peça marcada `sensor` precisa declarar
+`sensor_externo`**, mesmo sendo um script do próprio repo — senão o
+fechamento recusa.
+
+Este canal é diferente da linha `Sensor:` do briefing de despacho (ver
+`skills/executar/SKILL.md`) — aquela é lida por `hooks/portaria.cjs` a
+partir do prompt de despacho de agente; este é campo do `--json` de
+fechamento, lido por `scripts/estado.cjs`, que nunca recebe texto de
+briefing.
 
 ### Critério de superfície humana
 

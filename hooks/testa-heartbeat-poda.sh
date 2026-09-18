@@ -125,6 +125,83 @@ fi
 
 echo
 echo "=========================================="
+echo "PAYLOAD NULL: nao causa stack trace, sai 0 calado (Issue #272)"
+echo "=========================================="
+
+# Modo: prompt
+ANTES_PROMPT_SHA=$([ -f "$RAIZ_POSIX/sessoes.json" ] && sha256sum "$RAIZ_POSIX/sessoes.json" | awk '{print $1}' || echo "")
+OUT_PROMPT=$(printf 'null' | RFM_ROOT="$RAIZ" node "$SRC/hooks/heartbeat.cjs" prompt 2> "$RAIZ_POSIX/stderr_prompt.tmp")
+EXIT_PROMPT=$?
+STDERR_PROMPT=$(cat "$RAIZ_POSIX/stderr_prompt.tmp")
+DEPOIS_PROMPT_SHA=$([ -f "$RAIZ_POSIX/sessoes.json" ] && sha256sum "$RAIZ_POSIX/sessoes.json" | awk '{print $1}' || echo "")
+
+echo "Modo prompt: exit=$EXIT_PROMPT stdout='$OUT_PROMPT' stderr='$STDERR_PROMPT'"
+if [ "$EXIT_PROMPT" -eq 0 ]; then
+  ok=$((ok+1)); echo "  ok    prompt + payload null -> exit 0"
+else
+  falhou=$((falhou+1)); echo "  FALHA prompt + payload null -> exit $EXIT_PROMPT (esperado 0)"
+fi
+if [ -z "$STDERR_PROMPT" ]; then
+  ok=$((ok+1)); echo "  ok    prompt stderr vazio"
+else
+  falhou=$((falhou+1)); echo "  FALHA prompt stderr nao vazio: '$STDERR_PROMPT'"
+fi
+if [ "$ANTES_PROMPT_SHA" = "$DEPOIS_PROMPT_SHA" ]; then
+  ok=$((ok+1)); echo "  ok    prompt: sessoes.json nao foi alterado"
+else
+  falhou=$((falhou+1)); echo "  FALHA prompt: sessoes.json foi alterado"
+fi
+
+# Modo: stop
+ANTES_STOP_SHA=$([ -f "$RAIZ_POSIX/sessoes.json" ] && sha256sum "$RAIZ_POSIX/sessoes.json" | awk '{print $1}' || echo "")
+OUT_STOP=$(printf 'null' | RFM_ROOT="$RAIZ" node "$SRC/hooks/heartbeat.cjs" stop 2> "$RAIZ_POSIX/stderr_stop.tmp")
+EXIT_STOP=$?
+STDERR_STOP=$(cat "$RAIZ_POSIX/stderr_stop.tmp")
+DEPOIS_STOP_SHA=$([ -f "$RAIZ_POSIX/sessoes.json" ] && sha256sum "$RAIZ_POSIX/sessoes.json" | awk '{print $1}' || echo "")
+
+echo "Modo stop: exit=$EXIT_STOP stdout='$OUT_STOP' stderr='$STDERR_STOP'"
+if [ "$EXIT_STOP" -eq 0 ]; then
+  ok=$((ok+1)); echo "  ok    stop + payload null -> exit 0"
+else
+  falhou=$((falhou+1)); echo "  FALHA stop + payload null -> exit $EXIT_STOP (esperado 0)"
+fi
+if [ -z "$STDERR_STOP" ]; then
+  ok=$((ok+1)); echo "  ok    stop stderr vazio"
+else
+  falhou=$((falhou+1)); echo "  FALHA stop stderr nao vazio: '$STDERR_STOP'"
+fi
+if [ "$ANTES_STOP_SHA" = "$DEPOIS_STOP_SHA" ]; then
+  ok=$((ok+1)); echo "  ok    stop: sessoes.json nao foi alterado"
+else
+  falhou=$((falhou+1)); echo "  FALHA stop: sessoes.json foi alterado"
+fi
+
+# Modo: end
+ANTES_END_SHA=$([ -f "$RAIZ_POSIX/sessoes.json" ] && sha256sum "$RAIZ_POSIX/sessoes.json" | awk '{print $1}' || echo "")
+OUT_END=$(printf 'null' | RFM_ROOT="$RAIZ" node "$SRC/hooks/heartbeat.cjs" end 2> "$RAIZ_POSIX/stderr_end.tmp")
+EXIT_END=$?
+STDERR_END=$(cat "$RAIZ_POSIX/stderr_end.tmp")
+DEPOIS_END_SHA=$([ -f "$RAIZ_POSIX/sessoes.json" ] && sha256sum "$RAIZ_POSIX/sessoes.json" | awk '{print $1}' || echo "")
+
+echo "Modo end: exit=$EXIT_END stdout='$OUT_END' stderr='$STDERR_END'"
+if [ "$EXIT_END" -eq 0 ]; then
+  ok=$((ok+1)); echo "  ok    end + payload null -> exit 0"
+else
+  falhou=$((falhou+1)); echo "  FALHA end + payload null -> exit $EXIT_END (esperado 0)"
+fi
+if [ -z "$STDERR_END" ]; then
+  ok=$((ok+1)); echo "  ok    end stderr vazio"
+else
+  falhou=$((falhou+1)); echo "  FALHA end stderr nao vazio: '$STDERR_END'"
+fi
+if [ "$ANTES_END_SHA" = "$DEPOIS_END_SHA" ]; then
+  ok=$((ok+1)); echo "  ok    end: sessoes.json nao foi alterado"
+else
+  falhou=$((falhou+1)); echo "  FALHA end: sessoes.json foi alterado"
+fi
+
+echo
+echo "=========================================="
 echo "Resumo: $ok ok, $falhou falhas"
 echo "=========================================="
 [ $falhou -eq 0 ]

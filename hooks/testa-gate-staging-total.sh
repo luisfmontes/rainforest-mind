@@ -156,6 +156,35 @@ else
 fi
 
 echo
+echo "== Tarefa 3 (Issue #261): -C explicito de um segmento ANTERIOR sobrevive ao segmento INCERTO seguinte =="
+# Resíduo do segundo sintoma da #258: `git -C <outro-repo> add f2.txt; iex "$cmd"`
+# tem o `-C` num segmento que sozinho nao bloqueia (`git add f2.txt` por caminho
+# passa), e o bloqueio de verdade vem do segmento SEGUINTE, ilegivel (`iex
+# "$cmd"`). Antes desta tarefa o `-C` do primeiro segmento era descartado
+# (`dirC = null` no ramo `incerto`) e a mensagem citava o cwd do EVENTO — o
+# repo ERRADO.
+msg3=$(printf '%s' "$(p 'git -C \"'"$(esc "$WT2")"'\" add f2.txt; iex \"$cmd\"')" | node "$GATE" 2>&1); rc3=$?
+if [ "$rc3" = 2 ]; then ok=$((ok+1)); echo "  ok   git -C <outro-repo> add f2.txt; iex \"\$cmd\" barra (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA esperava exit 2, veio $rc3"; printf '%s' "$msg3" | sed 's/^/         /' | head -8; fi
+if norm2 "$msg3" | grep -qF -- "$(norm2 "$WT2")" || norm2 "$msg3" | grep -qF -- "$(norm2 "$WT2_REAL")"; then
+  ok=$((ok+1)); echo "  ok   stderr cita o repo do -C EXPLICITO ($WT2_REAL), nao o cwd do evento"
+else
+  falhou=$((falhou+1)); echo "  FALHA stderr NAO cita o repo do -C explicito"
+  printf '%s' "$msg3" | sed 's/^/         /' | head -8
+fi
+if printf '%s' "$msg3" | grep -qF -- "Repo: $R"; then
+  falhou=$((falhou+1)); echo "  FALHA stderr cita o cwd do EVENTO ($R) como Repo, em vez do -C explicito"
+else
+  ok=$((ok+1)); echo "  ok   stderr NAO cita o cwd do evento como Repo"
+fi
+if printf '%s' "$msg3" | grep -qF -- 'Segmento:' && printf '%s' "$msg3" | grep -qF -- 'iex "$cmd"'; then
+  ok=$((ok+1)); echo "  ok   stderr nomeia o SEGMENTO que bloqueou (o iex ilegivel, nao o git -C add)"
+else
+  falhou=$((falhou+1)); echo "  FALHA stderr NAO nomeia o segmento que bloqueou"
+  printf '%s' "$msg3" | sed 's/^/         /' | head -8
+fi
+
+echo
 echo "== H1 (rodada 5): cwd do SEGMENTO onde o verbo aparece, nao o cwd final da linha =="
 # Ate aqui o cwd efetivo era o da linha INTEIRA: `git add -A && cd <worktree>`
 # fazia o `add` de verdade no principal, mas o cwd apos o `cd` caia no

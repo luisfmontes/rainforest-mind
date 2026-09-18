@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: sensor
 // SessionEnd: marca no título da sessão se o fluxo que ela tocou fechou ou
 // onde parou. Design: docs/rainforest/design/2026-09-15-titulo-de-sessao-encerrada.md
 //
@@ -142,6 +143,8 @@ function main() {
   } catch {
     process.exit(0);
   }
+
+  if (!data || typeof data !== 'object') process.exit(0);
 
   // Guarda 1 (D7) — literal: é o alvo da catraca de mutação da tarefa.
   if (data.reason !== 'prompt_input_exit') process.exit(0);

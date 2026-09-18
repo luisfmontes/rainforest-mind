@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: sensor
 /**
  * Quantos commits a base acumulou desde o ultimo bump de versao — e a partir de
  * quantos isso vira problema.
@@ -212,12 +213,43 @@ function compararSemver(a, b) {
  * `git init` sem remoto: eles caem no ramo "nao comparei" antes de chegar aqui.
  * Quem pegou foi rodar o artefato real no repositorio real depois do merge.
  */
+const PREFIXO_ESTADO = "docs/rainforest/estado/";
+
+/**
+ * Verdadeiro quando TUDO o que a branch mudou desde `origin/main` e' arquivo de
+ * estado de fluxo.
+ *
+ * Achado em 2026-09-16, fechando `guias-e-sensores`: o `marcar fechar ok` so
+ * pode rodar depois do merge, porque `acao` registra o que DE FATO aconteceu. O
+ * commit dele chega na main num PR proprio, e este script o recusava por "versao
+ * nao e' maior" (PR #286). Obrigava um bump para um arquivo que nenhum hook nem
+ * skill executa, ou um merge com a CI vermelha. A pergunta do script ("o
+ * trabalho daqui chega na maquina de alguem?") nao se aplica a estado.
+ *
+ * Diff de tres pontos: o que a branch trouxe, nao o que a main andou. Lista
+ * vazia ou diff que falha NAO isenta: cai na comparacao normal, que recusa.
+ */
+function soEstadoDeFluxo() {
+  const saida = git(["diff", "--name-only", "origin/main...HEAD"]);
+  if (!saida) return false;
+  const arquivos = saida.split("\n").map((l) => l.trim()).filter(Boolean);
+  return arquivos.length > 0 && arquivos.every((f) => f.startsWith(PREFIXO_ESTADO));
+}
+
 function compararComOrigemMain(versaoLocal) {
   const aFrente = git(["rev-list", "--count", "origin/main..HEAD"]);
   if (aFrente !== null && Number(aFrente) === 0) {
     return {
       comparouVersao: false,
       motivoNaoComparou: "nenhum commit a frente de origin/main — nada a lancar daqui",
+      versaoOrigemMain: versaoDeOrigemMain(),
+      versaoMaior: null,
+    };
+  }
+  if (soEstadoDeFluxo()) {
+    return {
+      comparouVersao: false,
+      motivoNaoComparou: `so ${PREFIXO_ESTADO} mudou desde origin/main — nada que o cache execute`,
       versaoOrigemMain: versaoDeOrigemMain(),
       versaoMaior: null,
     };

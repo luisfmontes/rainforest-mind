@@ -1,0 +1,227 @@
+{
+  "slug": "zerar-issues-5",
+  "titulo": "Zerar as Issues abertas, rodada 5 — as 20 medidas no codigo",
+  "criado_em": "2026-09-16",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/zerar-issues-5.md",
+    "em": "2026-09-16"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/zerar-issues-5.md",
+    "tarefas": 18,
+    "paralelas": [
+      1,
+      2,
+      4,
+      7,
+      9,
+      10,
+      11,
+      12,
+      13,
+      15,
+      16,
+      17,
+      18
+    ],
+    "em": "2026-09-16"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-16",
+    "em_voo": [],
+    "em": "2026-09-16",
+    "tarefas_ok": 22,
+    "tarefas": 22,
+    "pendentes": [],
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "caso novo (h) — merge trazendo segredo.txt idêntico ao MERGE_HEAD da branch mesclada"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "caso novo — git commit -qm \"teste\" (e -am, -qam) passam a resolver a mensagem em vez de barrar com \"nenhuma mensagem resolvivel\""
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "caso novo — git -C \"<outro-repo>\" add f2.txt; iex \"$cmd\" (PowerShell) cita <outro-repo> em \"Repo:\", não o cwd do evento"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "nova asserção de exit code sobre o plano t-de-nao-casa já existente em scripts/testa-conferir-fluxo.sh:821-836 — hoje esse bloco só tem exige_msg (checa texto, não exit code), que é exatamente o buraco que deixou a Issue #281 passar despercebida. O conserto acrescenta, logo após a linha 836: exige 1 \"de nao encontrado reprova (Issue #281)\" env RFM_ESTADO_ROOT=\"$S\" node \"$CHECADOR\" mutacoes --slug t-de-nao-casa"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "nova seção em scripts/testa-conferir-fluxo.sh (sandbox git de verdade, mesmo molde da seção 10/11 do arquivo, linhas 534-614) com um plano de 3 tarefas (### 1., ### 2., ### 1. (emenda) — arquivos a.js, x.js, b.js) e um commit que só toca b.js; a asserção nova é exige 0 \"arquivo coberto so pela ### 1. repetida (emenda, #279)\" ... creep --slug <t> --base <A> --head <B>"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "SABOTAGEM 1 (hoje linha ~2068-2083, dentroDoExpediente: sem expediente no config devolve null (nao false)) — a primeira das 5 chamadas convertidas de ( checa ... ) para mostra_mutante"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "nova seção \"== 22. mutacao roda em copia: o arquivo real fica intocado durante a bateria mutada (Issue #266) ==\", acrescentada ao fim de scripts/testa-conferir-mutacao.sh (depois da seção 21, linha 876+)"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "seção \"== varredura de worktree temporario vazado ==\" (hoje linhas 638-691) ganha um QUARTO caso — um temporário de dois níveis ($SBV/worktree-codex/fix-malformed-json-1788888888888, mesmo molde do caso (1) da seção), com as contagens antes/depois/removidos ajustadas de 4/3/1 para 5/3/2 (os dois vazados — de um nível e de dois — removidos, o legítimo e o alheio preservados)"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "caso novo (p) — --saida \"<caminho de arquivo existente>\" recusa antes de chamar gh"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "vermelho",
+        "fixture": "seção nova \"6f\" — \"token\" (valor de exemplo entre aspas), \"password\" (valor de exemplo entre aspas), \"api_key\" (valor de exemplo entre aspas) (chave entre aspas duplas) recusados com exit 2"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "caso novo — .rainforest-gate-off criado no checkout principal desliga o gate rodando a partir de um worktree linkado do mesmo repo"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "novo \"TESTE 8\" no arquivo, stdin literal null (não um objeto), afirmando exit 0 e stdout/stderr vazios — hoje a bateria só cobre reason inválido e ledger ausente, nunca payload não-objeto."
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "nova seção do arquivo que grava um despachos.jsonl fixture com 1 linha decisao: \"deny\" e afirma que o achado item: 'despachos' cita 1 deny — com a mutação, a contagem impressa vira 0 deny e a asserção específica de deny falha (o total geral de linhas continua batendo, então só a asserção de deny discrimina)."
+      },
+      {
+        "tarefa": 14,
+        "resultado": "vermelho",
+        "fixture": "nova seção que monta um rainforest.db de teste (schema real via scripts/memoria.cjs, tabela marca_dagua com as colunas reais) com pelo menos 2 pendências cujo rowid e processada_em estão em ordens DIVERGENTES — reproduzindo o padrão medido (uma linha de rowid menor com processada_em mais NOVA, e uma de rowid maior com processada_em mais ANTIGA, tipo ids 2515/2516 acima) — e afirma que o achado cita a processada_em mais ANTIGA das duas, não a de menor rowid nem a mais nova."
+      },
+      {
+        "tarefa": 15,
+        "resultado": "vermelho",
+        "fixture": "nova seção com um bloco Avanços: em ordem MISTA replicando o padrão real medido acima — ex.: [2026-09-15: grande, 2026-09-14: média, 2026-08-23: grande] nessa ordem física (mais nova no topo, mais antiga no fim) — teto que força uma remoção, e a asserção exige que 2026-08-23 (mais antiga por DATA, mas fisicamente no fim) vá para o histórico, e 2026-09-15 (mais nova por DATA, mas fisicamente no topo) permaneça — o INVERSO do que escolher() faz hoje."
+      },
+      {
+        "tarefa": 16,
+        "resultado": "vermelho",
+        "fixture": "Teste 3 \"cli-que-trava-e-cortado\" (linhas 106-126)"
+      },
+      {
+        "tarefa": 17,
+        "resultado": "vermelho",
+        "fixture": "estender o driver.cjs (linha 61 do arquivo, já usado por outras seções desta bateria) com variáveis de ambiente para veredito/sessoes/revisao/dependencias/principalAtrasado, e uma nova seção que chama montarContexto com o SKILL.md real do repositório e um rodapé dimensionado para reproduzir a magnitude medida HOJE no ambiente real (veredito de foco parado, 3 sessões vivas em pastas distintas, revisão vencida, dependências declaradas, principal atrasado — a mesma combinação que o foco-session-start.cjs monta de verdade) — sem a mutação, o bloco de foco recebe pelo menos FOCO_MIN_BYTES e a mensagem \"não coube\" não aparece; com a mutação, ela reaparece (mutação de COMPORTAMENTO observável, não de comparação entre dois números)."
+      },
+      {
+        "tarefa": 18,
+        "resultado": "vermelho",
+        "fixture": "caso novo — cd /c/.../scratchpad/<repo> && git commit --allow-empty -m y (payload PreToolUse com agent_id, cwd = worktree linkado) sai 0"
+      },
+      {
+        "tarefa": 19,
+        "resultado": "vermelho",
+        "fixture": "caso novo \"5 worktrees ja mesclados: 2 listados + 1 linha de resumo\""
+      },
+      {
+        "tarefa": 20,
+        "resultado": "vermelho",
+        "fixture": "caso novo \"bateria que exige git rev-parse dentro da arvore mede verde no baseline da copia\""
+      },
+      {
+        "tarefa": 21,
+        "resultado": "n/a",
+        "motivo": "tarefa so reescreve documentacao"
+      },
+      {
+        "tarefa": 22,
+        "resultado": "vermelho",
+        "fixture": "caso novo \"raiz worktree vinculado em branch nao-padrao: copia tambem e vinculada\""
+      }
+    ],
+    "comando": "node scripts/conferir-mutacao.cjs (21 tarefas re-rodadas na integracao, incluindo a 22; exemplo da tarefa 21 medido)",
+    "saida": "20 de 20 exit 0 bateria VERMELHA; exemplo do template exit 0"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "00375cc0176ed537f1150e57ae757321a2d237b4",
+      "caminhos_sujos": []
+    },
+    "em_voo": [],
+    "em": "2026-09-16",
+    "achados": 0,
+    "lista": [
+      "1: skills/plano/SKILL.md:74-80 template de: em prosa que a catraca recusa (exit 3)",
+      "2: README.md:206 e docs/travas-mecanicas.md:101 ainda exigem --confirmo em fechar-issue.cjs"
+    ],
+    "menores_para_issue": [
+      "testa-conferir-mutacao.sh:842-857 assercoes pyc tautologicas apos copia",
+      "regra-12/agents: nunca numa copia vs conferir-mutacao em copia",
+      "cwd-efetivo normalizarMsys sem guarda de plataforma",
+      "testa-contexto-sessao medir_sobra espelho incompleto"
+    ],
+    "base": "e6eccded5e0985a152277b906e0ef319402cf641",
+    "head": "00375cc0176ed537f1150e57ae757321a2d237b4",
+    "rodadas": 2,
+    "issue_menores": 294
+  },
+  "verificar": {
+    "status": "ok",
+    "criterio": "catraca de mutacao das 20 tarefas (conferir-fluxo mutacoes)",
+    "comando": "node scripts/conferir-fluxo.cjs cobertura --slug zerar-issues-5 && node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues-5",
+    "saida": "ok: cobertura válida — 9 decisão(ões), 21 tarefa(s); mutacoes: ver saida do marcar (gate roda a catraca das 20 tarefas). Checagens de entrada real: titulo-sessao-end/heartbeat com payload null exit 0; fechar-issue uso sem --confirmo; gate-mensagem-commit -am com assunto de 80 colunas exit 2; principal-atrasado no repo real lista 2 + (+3 worktree(s) já em origin/main — rode o limpar)",
+    "faltou": "(1) copia do conferir-mutacao vira checkout principal em branch nao-padrao quando a raiz e worktree vinculado: estado.cjs iniciar recusa e testa-conferir-fluxo.sh fica vermelho so na copia; (2) de: da tarefa 8 no plano com crase escapada por contrabarra",
+    "em": "2026-09-17"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "pr",
+    "pr": 295,
+    "merge": "3e2497f5",
+    "versao": "1.18.0",
+    "issues_fechadas": [
+      250,
+      254,
+      261,
+      262,
+      263,
+      265,
+      266,
+      268,
+      269,
+      270,
+      272,
+      273,
+      275,
+      276,
+      277,
+      278,
+      279,
+      281,
+      282,
+      287,
+      289,
+      290
+    ],
+    "abertas": [
+      291,
+      292,
+      293,
+      294
+    ],
+    "em": "2026-09-17"
+  }
+}

@@ -1,0 +1,190 @@
+{
+  "slug": "2026-09-14-guias-e-sensores",
+  "titulo": "Guias e sensores: cinco enxertos do Harness Engineering",
+  "criado_em": "2026-09-14",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-14-guias-e-sensores.md",
+    "em": "2026-09-14"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-09-14-guias-e-sensores.md",
+    "tarefas": 8,
+    "paralelas": [
+      1,
+      2,
+      3,
+      4,
+      6
+    ],
+    "em": "2026-09-14"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-16",
+    "tarefas_ok": 9,
+    "tarefas": 9,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "14c471ed",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-14T23:41:18.678Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "14c471ed",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-14T23:41:18.678Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "14c471ed",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-14T23:41:18.678Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "14c471ed",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-14T23:41:18.678Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "14c471ed",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-14T23:41:18.678Z"
+      }
+    ],
+    "em": "2026-09-16",
+    "comando": "bash scripts/varrer-baterias.sh",
+    "saida": "as 121 baterias passaram (EXIT_DO_RUNNER=0 no log); criterios das emendas de 16/09 provados: as 7 baterias exit 0, testa-teto-skills exit 0, testa-portaria-manifesto exit 0, regua ancestral da rodada 1",
+    "sensor_externo": "bash scripts/varrer-baterias.sh",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-categoria.sh, caso 2 — peca REAL sem marca reprova nomeando o caminho",
+        "aplicada_pela_catraca": "if (invalidas.length) { -> if (false) {"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-orcamento.sh, secao 6 — teto agregado acompanha edicao do teto por hook",
+        "aplicada_pela_catraca": "regex de MEMORIA_MAX_BYTES -> literal 3000"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria-session-start.sh, secao 3 — corte anunciado no topo",
+        "aplicada_pela_catraca": "return travarOrcamentoMemoria(...) -> return texto;"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-contexto-sessao.sh, secao 3.5 — FOCO.md com avanco datado velho",
+        "aplicada_pela_catraca": "dias >= 7 -> dias >= 99999"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-estado.sh, secao 27, caso sens-rej — verificar RECUSA fechar sem sensor na evidencia. A mesma recusa e o que derruba as 3 baterias da emenda de 16/09 quando elas nao declaram sensor_externo",
+        "aplicada_pela_catraca": "if (recusa_sensor) { -> if (false) {"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-portaria-manifesto.cjs, caso 7c — desligando a escrita de sensor_fora_da_lista, o caso fica vermelho POR CAMPO AUSENTE e nao por exit code; com o portao apenas removido ele ficaria verde, que era o risco",
+        "aplicada_pela_catraca": "sensorMarcas.sensor_fora_da_lista = foraDaLista; -> void foraDaLista;"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-portaria-manifesto.cjs, caso 8 — linha lida de skills/executar/SKILL.md deixa de existir e o caso cai"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "n/a",
+        "motivo": "tarefa de medicao: o artefato e o relatorio da rodada da regua, nao codigo com comportamento a inverter. O que ela pode errar e o metodo (crítico nao cego, braços com briefing diferente), e isso se falsifica lendo o relatorio, nao mutando fonte"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-duplicacao.sh, caso 6 — tirando hooks/ da varredura de --funcoes, a duplicata plantada em hooks/lib/ deixa de ser achada. E tirando a copia do bytes.cjs das 4 caixas da emenda de 16/09, elas voltam a Cannot find module",
+        "aplicada_pela_catraca": "path.join(raiz, 'hooks') -> 'hooks-inexistente'"
+      }
+    ],
+    "em_voo": [],
+    "nota": "executor voltou com 872485e6 (base 5a43d1fc conferida, pai correto). Entrega NAO integrada: varredura completa acusou 6 baterias vermelhas (testa-backup-estado, testa-ponte-entrevista, testa-ponte, testa-portoes-gate, testa-recibo-fechar, testa-registrar-erro) e falta apurar se e corrida entre varreduras paralelas ou defeito real.",
+    "pendencias_medidas": [
+      "TETO: skills/executar/SKILL.md em 16624 B contra 16384. A main ja chega em 16375 (9 B de folga), entao a Tarefa 7 nao cabe sem cortar conteudo de outro fluxo do mesmo arquivo. Detalhe ja movido para skills/executar/references/sensor-no-briefing.md; o bloco Sensor: <nome> tem de ficar no SKILL.md porque as baterias 8/8a/8b leem dele. DECISAO DO USUARIO.",
+      "LEDGER: hooks/testa-ledger-fluxos.sh (veio da main pela #274) fecha o verificar sem declarar sensor, e a Tarefa 5 passou a exigir. Precisa de tarefa no plano para a bateria acompanhar a regra nova, senao e creep.",
+      "varrer-baterias.sh na branch: exit 1. Na main, exit 0 — provado tambem em worktree, para descartar ambiente."
+    ],
+    "entrega_do_agente": "872485e6 conferido: base 5a43d1fc correta, conversao feita, mutacao prova o campo de log. NAO integrado ainda.",
+    "tarefa_6": "integrada em ba08a0e0/5fb11c94, conferida rodando (62 ok, mutacao prova o campo de log, nao o exit code)",
+    "sensor_correto": "bash scripts/varrer-baterias.sh (runner da CI). O testa-saude.sh usado no fechamento de 14/09 so cobre scripts/saude.cjs",
+    "resolvidas": [
+      "teto do SKILL.md: 16308 B, testa-teto-skills 19 OK 0 FALHA",
+      "testa-ledger-fluxos: 26 ok, 0 falhas, exit 0"
+    ],
+    "agente_morto": "executor das seis baterias travou (600s sem progresso) sem commitar. Deixou modificacao nao commitada trocando require(./bytes.cjs) por __dirname, hipotese FALSA: CommonJS ja resolve relativo ao arquivo. Descartada.",
+    "causa_raiz_das_seis": "Tarefa 9 (Issue #259): baterias copiam hooks/lib/ arquivo a arquivo para a caixa de teste e nao levam o bytes.cjs novo, que contexto-sessao.cjs e memoria-sessao.cjs passaram a requerer",
+    "creep": "cruzamento do diff inteiro (72 arquivos) contra arquivos: de todas as tarefas mais as quatro emendas: zero fora",
+    "catraca_d9": "node scripts/conferir-fluxo.cjs mutacoes: EXIT 0 com as tarefas 1,2,3,4,5,6,9 APLICADAS e vermelhas; 7 e 8 n/a com motivo. Antes desta rodada as sete saiam pulada (de nao encontrado) porque o plano descrevia a mutacao em prosa"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "8d8a1602b6106cd4bfe560308393cbe5185c43bb",
+      "caminhos_sujos": []
+    },
+    "em_voo": [],
+    "em": "2026-09-16",
+    "achados": 0,
+    "bloqueantes": [
+      "testa-conferir-categoria.sh vermelho no head: hooks/titulo-sessao-end.cjs (vindo da main pela #274) sem marca @categoria, e o total esperado do teste virou 42",
+      "nucleo injetado da regra 10 ficou falso: SKILL.md:124 e regra-10-portaria.md:68 afirmam que so a regra 11 barra, e a tarefa 6 acrescentou um quinto portao"
+    ],
+    "medios": [
+      "creep: hooks/lib/bytes.cjs, scripts/exporta-hooks-sessao-start.cjs e scripts/testa-conferir-duplicacao.sh fecham a Issue #259 e nao casam com arquivos: de tarefa nenhuma"
+    ],
+    "baixos": [
+      "estado.json cita caso 5c e caso 6, renumerados para 7c e 8 pelo merge"
+    ],
+    "achado": "creep parcial: 7 arquivos de bateria tocados sem tarefa que os cubra. hooks/testa-ledger-fluxos.sh, scripts/testa-portoes-gate.sh e scripts/testa-recibo-fechar.sh sao consequencia da Tarefa 5; scripts/testa-backup-estado.sh, testa-ponte.sh, testa-ponte-entrevista.sh e testa-registrar-erro.sh sao consequencia da Tarefa 9. Nenhum e regressao — o diff de cada um so acrescenta campo ou linha de copia, nunca remove assercao — mas a auditoria por arquivos: nao os enxerga",
+    "aprovado_no_merito": "os quatro achados da rodada 1 fechados e conferidos rodando; conversao da Tarefa 6 bate com a separacao forma/admissao da dd2e7ccd; nenhuma bateria afrouxada; teto do SKILL.md em 16308 B com o bloco Sensor: preservado inline",
+    "lacuna_do_revisor_respondida": "ele nao conseguiu rodar varrer-baterias.sh ate o fim e supos instabilidade historica. A varredura completa rodou aqui: 121 de 121 verdes, EXIT_DO_RUNNER=0 gravado no log. Nao ha instabilidade; a divergencia anterior era defeito real, consertado nesta rodada",
+    "achado_1": "creep: docs/rainforest/reguas/2026-09-14-conferidor-de-cli.md, skills/executar/references/runtime-do-agente.md e skills/executar/references/sensor-no-briefing.md sem tarefa que os cubra. O revisor da rodada 2 os isentou por julgamento; o da rodada 3 aplicou a letra da regua. Emendar e mais barato que arbitrar",
+    "achado_2": "a emenda de 16/09 diz nove baterias, mas o grep que ela mesma publica devolve onze: falta o passo explicito de excluir os dois testes dedicados das proprias libs (testa-contexto-sessao.sh e testa-memoria-session-start.sh). A contagem final esta certa, a derivacao e que ficou implicita",
+    "base": "13b552c604b1f34c48b8a93ffbbc26c0c0b66da8",
+    "head": "8d8a1602b6106cd4bfe560308393cbe5185c43bb",
+    "creep": "conferir-fluxo.cjs creep: ok, sem creep, 72 arquivos cobertos, exit 0",
+    "rodadas": "4 de merito mais 1 de delta de formato do plano",
+    "nota": "a rodada 4 aprovou o merito; o fechamento foi recusado porque as emendas estavam num formato que o parser nao le, e o delta que corrigiu isso foi revisado por agente zerado, sem achado"
+  },
+  "verificar": {
+    "status": "ok",
+    "criterio": "catraca D9 de mutacao (conferir-fluxo.cjs mutacoes) e criterios canonicos das tarefas 6 e 7",
+    "comando": "node scripts/conferir-categoria.cjs; bash scripts/testa-conferir-categoria.sh; node scripts/orcamento.cjs --agregado; bash hooks/testa-memoria-session-start.sh; bash hooks/testa-contexto-sessao.sh; bash scripts/testa-estado.sh; bash hooks/testa-ledger-fluxos.sh; bash scripts/testa-portoes-gate.sh; bash scripts/testa-recibo-fechar.sh; node hooks/testa-portaria-manifesto.cjs; node scripts/conferir-encoding.cjs; bash scripts/testa-teto-skills.sh; node scripts/conferir-publicacao.cjs relatorios/2026-09-14-modelo-no-builder-da-regua.md; git merge-base --is-ancestor ceb2d14b 7c362207; bash scripts/testa-conferir-duplicacao.sh; bash scripts/testa-orcamento.sh; bash scripts/testa-backup-estado.sh; bash scripts/testa-ponte.sh; bash scripts/testa-ponte-entrevista.sh; bash scripts/testa-registrar-erro.sh; node scripts/conferir-fluxo.cjs mutacoes",
+    "saida": "23 criterios, todos exit 0 e zero skipped. T1: 42 pecas, CONFERIDO; testa-conferir-categoria 14 ok 0 falha 0 pulado. T2: SessionStart agregado 9662 B / teto agregado real 11000 B, git status limpo depois. T3: 73 ok. T4: ok 284 falhou 0 (as 6 linhas FALHA sao saida esperada de sabotagens internas, cada uma seguida de ok mutacao expos). T5: testa-estado 233 ok; ledger, portoes-gate e recibo-fechar exit 0. T6: testa-portaria-manifesto 62 ok; conferir-encoding exit 0; zero linhas com exit 2 sobre sensor/ilegivel/fora da lista nos dois SKILL.md. T7: testa-teto-skills 19 OK 0 FALHA. T8: 1 commit regua: rodada para a rodada 1 citada; conferir-publicacao CONFERIDO; regua ceb2d14b ancestral de 7c362207. T9: conferir-duplicacao 10 ok, orcamento, backup-estado, ponte, ponte-entrevista e registrar-erro exit 0. Catraca D9: tarefas 1,2,3,4,5,6,9 aplicadas e vermelhas, 7 e 8 n/a com motivo",
+    "faltou": "(1) os campos de: e para: do plano descrevem a mutacao em prosa, e a catraca procura trecho literal no fonte, como o precedente de: `NUCLEOS_MAX_BYTES: 6000`. (2) a primeira definicao das tarefas 6 e 7, que e a que o parser le, ainda carrega o criterio de negar com exit 2 que a emenda de 15/09 substituiu; a definicao emendada foi rebaixada para #### em 8d8a1602 e ficou invisivel",
+    "em": "2026-09-16",
+    "sensor_externo": "node scripts/conferir-fluxo.cjs mutacoes"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "merge",
+    "pr": 285,
+    "em": "2026-09-16"
+  }
+}

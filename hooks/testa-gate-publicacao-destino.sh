@@ -13,6 +13,12 @@
 #   6. progress.jsonl versionado recebendo JID → barrado (exit 2)
 #   7. marcador "rainforest-gate: dados-de-exemplo" dispensa conferência (exit 0)
 #   8. sem marcador, conteúdo sujo é barrado — marcador não vaza para vizinhos (exit 2)
+#   9. .rainforest-gate-off no checkout principal libera o gate rodando de um
+#      worktree linkado do mesmo repo (Issue #265)
+#  10. mensagem de bloqueio cita setup.cjs --desligar gate-publicacao antes das
+#      saídas de emergência (Issue #268)
+#  11. marcador só conta nas 5 primeiras linhas do arquivo — marcador na
+#      linha 6 não dispensa a conferência (Issue #293)
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -158,6 +164,48 @@ fi
 rm "$R/.rainforest-gate-off"
 
 echo
+echo "== CASO NOVO (Issue #265): .rainforest-gate-off do checkout principal libera gate rodando de worktree linkado =="
+WT="$RAIZ/worktree-linkado"
+git -C "$R" worktree add -q "$WT" -b wt-gate-off-branch >/dev/null 2>&1
+echo "v1" > "$WT/b.txt"
+msg=$(printf '%s' "$(write "$WT/escape-worktree.txt" "contato: $JID_REAL" "$(esc "$WT")")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" != 0 ]; then
+  ok=$((ok+1)); echo "  ok   sem .rainforest-gate-off, worktree barra normalmente (exit $rc)"
+else
+  falhou=$((falhou+1)); echo "  FALHA worktree passou sem gate-off (exit $rc) — sanidade do caso quebrada"
+fi
+touch "$R/.rainforest-gate-off"
+msg=$(printf '%s' "$(write "$WT/escape-worktree.txt" "contato: $JID_REAL" "$(esc "$WT")")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 0 ]; then
+  ok=$((ok+1)); echo "  ok   .rainforest-gate-off do principal libera gate a partir do worktree (exit 0)"
+else
+  falhou=$((falhou+1)); echo "  FALHA nao herdou o gate-off do principal (exit $rc)"; echo "$msg" | sed 's/^/         /' | head -10
+fi
+rm "$R/.rainforest-gate-off"
+git -C "$R" worktree remove --force "$WT" >/dev/null 2>&1
+
+echo
+echo "== CASO NOVO (Issue #268): mensagem de bloqueio oferece setup.cjs --desligar antes das saidas de emergencia =="
+msg=$(printf '%s' "$(write "$R/mensagem-toggle.txt" "contato: $JID_REAL")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" != 0 ] && printf '%s' "$msg" | grep -q "setup.cjs --desligar gate-publicacao"; then
+  ok=$((ok+1)); echo "  ok   mensagem cita setup.cjs --desligar gate-publicacao"
+else
+  falhou=$((falhou+1)); echo "  FALHA mensagem nao cita o toggle do setup.cjs"; echo "$msg" | sed 's/^/         /' | head -15
+fi
+if printf '%s' "$msg" | grep -qE "setup\.cjs.*RAINFOREST_GATE_OFF" ; then
+  falhou=$((falhou+1)); echo "  FALHA ordem errada: RAINFOREST_GATE_OFF nao pode vir antes do setup.cjs"
+else
+  # ordem certa: a linha do setup.cjs aparece ANTES da linha do RAINFOREST_GATE_OFF
+  linha_setup=$(printf '%s' "$msg" | grep -n "setup.cjs --desligar gate-publicacao" | head -1 | cut -d: -f1)
+  linha_env=$(printf '%s' "$msg" | grep -n "RAINFOREST_GATE_OFF=1 no ambiente da sessão" | head -1 | cut -d: -f1)
+  if [ -n "$linha_setup" ] && [ -n "$linha_env" ] && [ "$linha_setup" -lt "$linha_env" ]; then
+    ok=$((ok+1)); echo "  ok   setup.cjs aparece antes de RAINFOREST_GATE_OFF (ordem preco-crescente)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA ordem preco-crescente nao respeitada (setup=$linha_setup env=$linha_env)"
+  fi
+fi
+
+echo
 echo "== Teste do marcador: le o DISCO, nao o conteudo que chega =="
 # O arquivo real tem o marcador no topo; o fragmento do Edit nao tem. Se o gate
 # lesse o conteudo que chega, este caso barraria — foi o furo de 5480ce4^.
@@ -172,6 +220,15 @@ gate "Edit em arquivo vizinho SEM marcador, mesmo conteudo -> barrado" 2   "$(pa
 # entao nao ha marcador — auto-isencao num unico write nao passa.
 gate "Write de arquivo novo com marcador embutido -> barrado" 2   "$(pay Write "$(esc "$R")/arquivo-com-marcador.sh" '# rainforest-gate: dados-de-exemplo
 jid="5500900000001@s.whatsapp.net"')"
+
+echo
+echo "== CASO 11: marcador so conta nas 5 primeiras linhas (Issue #293) =="
+# Arquivo com o marcador so na linha 6 (fora da janela de 5 primeiras linhas).
+# Antes do conserto, temMarcadorDados varria o arquivo inteiro e este caso
+# passava (exit 0) mesmo trazendo credencial nova pelo Edit.
+printf 'linha um\nlinha dois\nlinha tres\nlinha quatro\nlinha cinco\n# rainforest-gate: dados-de-exemplo\n' > "$R/marcador-tardio.sh"
+git -C "$R" add marcador-tardio.sh; git -C "$R" commit -qm "marcador tardio"
+gate "Edit em arquivo com marcador so na linha 6 -> barrado" 2   "$(pay Edit "$(esc "$R")/marcador-tardio.sh" 'jid="5500900000001@s.whatsapp.net"')"
 
 # Entrada malformada nunca derruba a sessao: sai 0. E o comportamento certo, e
 # tambem o que escondeu os casos acima quando o payload vinha quebrado — por isso

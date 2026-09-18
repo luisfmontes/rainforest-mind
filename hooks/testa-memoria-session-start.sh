@@ -13,6 +13,10 @@ SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LIB="$SRC/hooks/lib/memoria-sessao.cjs"
 HOOK="$SRC/hooks/memoria-session-start.cjs"
 SCRIPT_MEMORIA="$SRC/scripts/memoria.cjs"
+# memoria-sessao.cjs importa cortarBytes de ./bytes.cjs (Issue #259) — uma
+# cópia mutada do lib escrita isolada num sandbox precisa da mesma vizinhança
+# para o require relativo resolver.
+BYTES_LIB="$SRC/hooks/lib/bytes.cjs"
 
 # Sandbox hermética.
 # Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): cada sandbox
@@ -28,6 +32,7 @@ trap cleanup EXIT
 
 RAIZ_POSIX="$(novo_sandbox)"
 RAIZ="$(cygpath -m "$RAIZ_POSIX" 2>/dev/null || printf '%s' "$RAIZ_POSIX")"
+cp "$BYTES_LIB" "$RAIZ_POSIX/bytes.cjs"
 
 # Raiz gorda com FOCO.md de ~2500 B para teste de mutação (deve vir antes de RAIZ_NEUTRA)
 RAIZ_GORDA="$(novo_sandbox)"
@@ -88,6 +93,22 @@ else
   falhou=$((falhou+1)); echo "  FALHA bloco estoura o teto ($BYTES B > $TETO B)"
 fi
 
+# Sem estourar o teto, o bloco não pode ganhar nem um byte de aviso — a trava
+# só se manifesta em cima do que estoura, nunca no caminho comum.
+ESPERADO_SEM_AVISO="## Memória (corpus residentes)
+[2026-08-17 (teste)] Conteúdo pequeno
+
+mais: node scripts/memoria.cjs buscar --texto \"<termo>\""
+if [ "$S" = "$ESPERADO_SEM_AVISO" ]; then
+  ok=$((ok+1)); echo "  ok    sem estouro, bloco é byte-idêntico ao esperado (nenhum byte de aviso)"
+else
+  falhou=$((falhou+1)); echo "  FALHA bloco sem estouro diverge do esperado"
+  echo "$S" | sed 's/^/         obtido:   /'
+  echo "$ESPERADO_SEM_AVISO" | sed 's/^/         esperado: /'
+fi
+
+checa "sem estouro não traz aviso de corte" nao_tem "⚠️" "$S"
+
 echo
 echo "3. Corte é ANUNCIADO quando excede teto"
 # Fixture: 20 observações grandes para forçar corte.
@@ -108,9 +129,20 @@ else
   falhou=$((falhou+1)); echo "  FALHA bloco não cabe mesmo com corte ($BYTES_GRANDE B)"
 fi
 
-checa "corte anuncia que foi cortado" tem "truncado no teto" "$S"
-checa "aviso diz o teto exato" tem "$TETO bytes" "$S"
-checa "manda ler o arquivo" tem "arquivo em disco" "$S"
+checa "corte anuncia que foi cortado" tem "não couberam" "$S"
+checa "aviso diz o teto exato" tem "$TETO B" "$S"
+checa "aviso nomeia QUANTAS observações/resumos ficaram de fora" tem "de 20 observação" "$S"
+checa "aviso manda buscar o resto" tem 'buscar --texto "<termo>"' "$S"
+
+PRIMEIRA_LINHA="$(printf '%s' "$S" | head -1)"
+case "$PRIMEIRA_LINHA" in
+  "⚠️ Memória acima do orçamento:"*)
+    ok=$((ok+1)); echo "  ok    aviso de corte é a PRIMEIRA linha do bloco (topo)"
+    ;;
+  *)
+    falhou=$((falhou+1)); echo "  FALHA aviso de corte não está no topo; primeira linha: $PRIMEIRA_LINHA"
+    ;;
+esac
 
 echo
 echo "4. Hook real emite JSON com exit 0 quando banco não existe"
@@ -291,8 +323,8 @@ else
   falhou=$((falhou+1)); echo "  FALHA bloco mutado não cabe no teto de 200 B ($BYTES_MUTADA B)"
 fi
 
-# Confirma que o aviso foi incluído (prova que limitarBytes funcionou).
-if echo "$S" | grep -q "truncado no teto"; then
+# Confirma que o aviso foi incluído (prova que travarOrcamentoMemoria funcionou).
+if echo "$S" | grep -q "não couberam"; then
   ok=$((ok+1)); echo "  ok    aviso de corte está presente"
 else
   falhou=$((falhou+1)); echo "  FALHA aviso de corte não apareceu"
@@ -543,13 +575,16 @@ else
   falhou=$((falhou+1)); echo "  FALHA chaveHarness deu '$TESTE_CHAVE_B'"
 fi
 
-# 11.c — caminho sem : (POSIX-like)
-TESTE_CHAVE_C="$(SCRIPT_PATH="$SCRIPT_MEMORIA" node -e "
+# 11.c — caminho sem : (POSIX-like). Fixture usa $USUARIO (placeholder, não
+# nome real) para não trombar com a regra `caminho-de-home` do verificador de
+# publicação — a isenção é por FORMA (começa com $), e aspas simples aqui
+# impedem o bash de expandir a variável antes de chegar ao node.
+TESTE_CHAVE_C="$(SCRIPT_PATH="$SCRIPT_MEMORIA" node -e '
 const m = require(process.env.SCRIPT_PATH);
-process.stdout.write(m.chaveHarness('/home/user/projetos/rainforest-mind'));
-")"
-if [ "$TESTE_CHAVE_C" = "-home-user-projetos-rainforest-mind" ]; then
-  ok=$((ok+1)); echo "  ok    chaveHarness transforma /home/user/projetos/rainforest-mind"
+process.stdout.write(m.chaveHarness("/home/$USUARIO/projetos/rainforest-mind"));
+')"
+if [ "$TESTE_CHAVE_C" = '-home-$USUARIO-projetos-rainforest-mind' ]; then
+  ok=$((ok+1)); echo '  ok    chaveHarness transforma /home/$USUARIO/projetos/rainforest-mind'
 else
   falhou=$((falhou+1)); echo "  FALHA chaveHarness deu '$TESTE_CHAVE_C'"
 fi
@@ -1172,6 +1207,79 @@ else
   echo "         veio:     $(printf '%s' "$BLOCO_SEMRES" | head -3)"
 fi
 rm -rf "$CAIXA_RESUMO" "$CAIXA_SEMRES"
+
+echo
+echo "19. Tarefa 3 — aviso de corte ponta a ponta, no hook de verdade (não só no motor puro)"
+
+# 19.a — DB com muitas observações grandes: o additionalContext real do hook
+# estoura o teto, e o corte precisa vir anunciado no TOPO, como no harness real
+# (JSON no stdin — mesmo formato de invocação que a secao 15 já usa).
+CAIXA_ESTOURO="$(novo_sandbox)"
+RFM_ROOT="$CAIXA_ESTOURO" node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+RFM_ROOT="$CAIXA_ESTOURO" GRANDE="$GRANDE" node <<'SETUP_ESTOURO'
+const { DatabaseSync } = require('node:sqlite');
+const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
+const stmt = db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)');
+// Cada observação sozinha já passa de 300 B — mesmo as 14 que o hook lê
+// (lerObservacoes tem LIMIT 14) estouram o teto de 3000 B juntas, forçando
+// o corte de travarOrcamentoMemoria dentro do próprio hook real.
+const conteudoGrande = process.env.GRANDE + ' ' + process.env.GRANDE;
+for (let i = 0; i < 20; i++) {
+  const dia = String(10 + i).padStart(2, '0');
+  stmt.run('proj-estouro', '## Obs grande ' + i + '\n\n' + conteudoGrande, `2026-08-${dia}T10:00:00Z`, 'sessao:teste:offset:' + i);
+}
+db.close();
+SETUP_ESTOURO
+
+SAIDA_ESTOURO="$(echo '{"hook_event_name":"SessionStart","session_id":"teste"}' | RFM_ROOT="$CAIXA_ESTOURO" node "$HOOK" 2>/dev/null)"
+CTX_ESTOURO="$(echo "$SAIDA_ESTOURO" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); process.stdout.write((d.hookSpecificOutput||{}).additionalContext||'')")"
+BYTES_CTX_ESTOURO="$(printf '%s' "$CTX_ESTOURO" | wc -c)"
+PRIMEIRA_ESTOURO="$(printf '%s' "$CTX_ESTOURO" | head -1)"
+
+echo "  comando: echo '{\"hook_event_name\":\"SessionStart\",\"session_id\":\"teste\"}' | RFM_ROOT=<caixa> node hooks/memoria-session-start.cjs"
+echo "  additionalContext real: $BYTES_CTX_ESTOURO B (teto: $TETO B)"
+echo "  primeira linha: $PRIMEIRA_ESTOURO"
+
+if [ "$BYTES_CTX_ESTOURO" -le "$TETO" ] && [ "$BYTES_CTX_ESTOURO" -gt 0 ]; then
+  ok=$((ok+1)); echo "  ok    19.a hook real: additionalContext cabe no teto ($BYTES_CTX_ESTOURO B)"
+else
+  falhou=$((falhou+1)); echo "  FALHA 19.a hook real: additionalContext fora do teto ou vazio ($BYTES_CTX_ESTOURO B)"
+fi
+
+case "$PRIMEIRA_ESTOURO" in
+  "⚠️ Memória acima do orçamento:"*)
+    ok=$((ok+1)); echo "  ok    19.a hook real: aviso de corte no TOPO do additionalContext"
+    ;;
+  *)
+    falhou=$((falhou+1)); echo "  FALHA 19.a hook real: aviso não está no topo; primeira linha: $PRIMEIRA_ESTOURO"
+    ;;
+esac
+
+checa "19.a hook real: aviso nomeia quantidade cortada" tem "observação(ões)/resumo(s)" "$CTX_ESTOURO"
+rm -rf "$CAIXA_ESTOURO"
+
+# 19.b — DB pequeno que NÃO estoura: o additionalContext real não pode ganhar
+# nem um byte de aviso (mesmo comando de invocação da 19.a, dado menor).
+CAIXA_SEMESTOURO="$(novo_sandbox)"
+RFM_ROOT="$CAIXA_SEMESTOURO" node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+RFM_ROOT="$CAIXA_SEMESTOURO" node <<'SETUP_SEMESTOURO'
+const { DatabaseSync } = require('node:sqlite');
+const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
+db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
+  .run('proj-semestouro', '## Obs pequena\n\nsubtitulo curto', '2026-08-17T10:00:00Z', 'teste');
+db.close();
+SETUP_SEMESTOURO
+
+SAIDA_SEMESTOURO="$(echo '{"hook_event_name":"SessionStart","session_id":"teste"}' | RFM_ROOT="$CAIXA_SEMESTOURO" node "$HOOK" 2>/dev/null)"
+CTX_SEMESTOURO="$(echo "$SAIDA_SEMESTOURO" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); process.stdout.write((d.hookSpecificOutput||{}).additionalContext||'')")"
+BYTES_CTX_SEMESTOURO="$(printf '%s' "$CTX_SEMESTOURO" | wc -c)"
+
+echo "  comando: echo '{\"hook_event_name\":\"SessionStart\",\"session_id\":\"teste\"}' | RFM_ROOT=<caixa> node hooks/memoria-session-start.cjs"
+echo "  additionalContext real (sem estouro): $BYTES_CTX_SEMESTOURO B"
+
+checa "19.b hook real: sem estouro, nenhum aviso de corte" nao_tem "⚠️" "$CTX_SEMESTOURO"
+checa "19.b hook real: bloco traz a observação pequena" tem "Obs pequena" "$CTX_SEMESTOURO"
+rm -rf "$CAIXA_SEMESTOURO"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

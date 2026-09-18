@@ -125,6 +125,35 @@ Encontrou creep? A única forma de destravá-lo é emendar o plano: a tarefa que
 
 A emenda deixa rastro conscientemente registrado de que o escopo cresceu — é isso que distingue creep legítimo (genuinamente necessário) de mudança de escopo silenciosa.
 
+### Isenções: quando um arquivo não precisa de tarefa
+
+Alguns arquivos escapam do creep sem estar em `arquivos:` de tarefa nenhuma, porque
+não pertencem a esta tarefa — pertencem a OUTRA regra documentada do repo. A
+pergunta-teste, antes de olhar qualquer lista: **o arquivo existe porque outra
+regra documentada do repo obrigou a criá-lo?** Se sim, isenção; se a resposta é
+"achei que fazia sentido" ou "aproveitei e ajustei", é creep.
+
+Classes que o `conferir-fluxo.cjs creep` reconhece (`globs_isentos`):
+
+- `docs/rainforest/design/<slug>.md`, `docs/rainforest/planos/<slug>.md`,
+  `docs/rainforest/estado/<slug>.json`, `docs/rainforest/portoes/*<slug>.md` —
+  o próprio rastro que o fluxo escreve para ESTE trabalho.
+- `relatorios/` — registro escrito depois que o fluxo já fechou; não pode ter
+  tarefa que o cubra, porque nasce depois do plano.
+- `docs/rainforest/reguas/` — a skill `regua` exige commitar a régua antes da
+  1ª rodada.
+- `skills/<s>/references/`, **só quando `skills/<s>/SKILL.md` está em
+  `arquivos:` de alguma tarefa do plano** — documentação auxiliar da skill que
+  a tarefa já está autorizada a tocar. Sem essa declaração, `references/` da
+  mesma skill continua creep normalmente: a isenção é condicional ao
+  `SKILL.md` estar no escopo, nunca um glob largo por nome de skill.
+
+Foi a divergência real da Issue #279: dois revisores, o mesmo diff, veredito
+oposto sobre `docs/rainforest/reguas/2026-09-14-conferidor-de-cli.md` e
+`skills/executar/references/runtime-do-agente.md` — um leu por olho, o outro
+pelo `creep` sem estas duas classes. Achar uma classe nova de isenção fora
+desta lista não é decisão de revisor: emenda a esta seção primeiro.
+
 ## Registre agentes em voo
 
 Quando o revisor despacha agente em background, atualize o estado antes:

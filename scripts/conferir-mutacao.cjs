@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: sensor
 /**
  * Catraca de mutação: inverte um comportamento no fonte e EXIGE que a bateria
  * fique VERMELHA. Bateria que continua verde com o comportamento invertido não
@@ -73,10 +74,12 @@
  */
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
 const TIMEOUT_PADRAO = 300000; // 5 min
+const LIMITE_ORFAO_MS = 24 * 60 * 60 * 1000; // 24h (tarefa 6, Issue #294.2)
 
 const USO = `uso: node scripts/conferir-mutacao.cjs --arquivo <caminho> --de <trecho> --para <trecho> --bateria <comando>
 
@@ -127,40 +130,214 @@ function ultimasLinhas(texto, n) {
   return [`... (${linhas.length - n} linha(s) acima omitida(s))`, ...linhas.slice(-n)].join('\n');
 }
 
-// ====================================================== Restauração do fonte
+// ============================================== Limpeza da cópia temporária
 //
-// O fonte volta ao byte original em TODO caminho de saída: verdicto normal,
-// exceção, estouro de tempo e Ctrl-C. Deixar um fonte mutado na árvore de
-// trabalho é pior que qualquer veredito errado — é dano, e silencioso: o commit
-// seguinte o leva junto. Por isso o original é guardado como Buffer (nada de
-// re-encodar) e a restauração é idempotente.
+// A mutação (e as duas rodadas da bateria) rodam numa CÓPIA descartável da
+// árvore, nunca no fonte real (Issue #266): lockfile só barra outra mutação
+// concorrente, mas quem não consulta o lock — outra sessão, outro agente,
+// `varrer-baterias.sh` — continuaria lendo o fonte mutado durante a janela de
+// execução. Copiando a árvore inteira essa janela deixa de existir: o fonte
+// real nunca é tocado, em NENHUM caminho de saída (verdicto normal, exceção,
+// estouro de tempo, Ctrl-C). Por isso a limpeza da cópia usa o mesmo
+// mecanismo de `process.on('exit'/sinal)` que antes restaurava o byte
+// original, só que agora apaga o diretório inteiro.
 
-let restaurar = () => {};
+let limpar = () => {};
+// Emenda 2026-09-17 (tarefa 22): alem da copia, o git-dir/common-dir de um
+// worktree vinculado moram num diretorio-irmao PROPRIO (fora da copia) — ver
+// `materializarGit`. `registrarLimpeza` deixa esse irmao entrar na mesma
+// varredura de saida, sem duplicar o mecanismo de `process.on`.
+let alvosLimpeza = [];
 
-function armarRestauracao(caminho, original) {
+function armarLimpeza(raizExecucao) {
+  alvosLimpeza = [raizExecucao];
   let feito = false;
-  restaurar = () => {
+  limpar = () => {
     if (feito) return;
     feito = true;
-    try {
-      fs.writeFileSync(caminho, original);
-    } catch (err) {
-      // Última linha de defesa: se nem restaurar dá, o humano precisa saber
-      // exatamente qual arquivo ficou mutado e com o quê.
-      console.error(`FALHA AO RESTAURAR ${caminho}: ${err.message}`);
-      console.error('O FONTE FICOU MUTADO. Recupere com `git checkout -- <arquivo>`.');
+    for (const alvo of alvosLimpeza) {
+      try {
+        fs.rmSync(alvo, { recursive: true, force: true });
+      } catch (err) {
+        // Última linha de defesa: se nem apagar dá, o humano precisa saber
+        // exatamente qual diretório temporário sobrou.
+        console.error(`FALHA AO LIMPAR CÓPIA TEMPORÁRIA ${alvo}: ${err.message}`);
+        console.error('Apague manualmente esse diretório temporário.');
+      }
     }
   };
   // 'exit' cobre saída normal e exceção não tratada; sinal não dispara 'exit'
   // sozinho, daí os handlers explícitos abaixo.
-  process.on('exit', () => restaurar());
+  process.on('exit', () => limpar());
   for (const sinal of ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGBREAK']) {
     try {
       process.on(sinal, () => {
-        restaurar();
+        limpar();
         process.exit(1);
       });
     } catch { /* sinal inexistente nesta plataforma */ }
+  }
+}
+
+function registrarLimpeza(caminho) {
+  alvosLimpeza.push(caminho);
+}
+
+// ======================================= Repositório git na cópia (tarefa 20)
+//
+// A tarefa 7 excluía `.git` da cópia para nunca compartilhar índice, HEAD ou
+// refs com a árvore real — e quebrou toda bateria que consulta git (achado da
+// integração da tarefa 6, medido em 2026-09-16: `bash
+// hooks/testa-contexto-sessao.sh` sai `ok: 293 falhou: 0` na árvore real e
+// `ok: 292 falhou: 1` dentro da cópia sem `.git` — o `git show
+// 14c471ed...:hooks/lib/contexto-sessao.cjs` daquela bateria falha em
+// silêncio sem repositório).
+//
+// Conserto: materializar um `.git` PRÓPRIO na cópia. NUNCA o arquivo-ponteiro
+// de um worktree vinculado apontando pro gitdir da árvore REAL — proibido
+// pela D5. Em vez disso: HEAD/index/config/refs copiados (arquivos novos,
+// fisicamente separados dos originais) mais `objects/info/alternates`
+// apontando pro object-store real só para LEITURA — o mesmo mecanismo que já
+// torna `git worktree` seguro (histórico imutável compartilhado, HEAD/index/
+// refs próprios de cada worktree). A mutação desta ferramenta escreve num
+// arquivo da árvore de trabalho, nunca num objeto git, então não existe
+// caminho de escrita cruzada passando pelo alternates.
+//
+// Tarefa 22 (achado do verificar, 2026-09-16): quando `raiz` é worktree
+// VINCULADO (git-dir != git-common-dir), o código anterior misturava HEAD/
+// index do worktree com config/refs do commondir num ÚNICO diretório
+// `.git` — e o resultado tinha git-dir == git-common-dir na cópia, ou seja,
+// a cópia de um worktree vinculado virava CHECKOUT PRINCIPAL (branch
+// `estado.cjs iniciar` recusa por ver "checkout principal fora da branch
+// padrão"). Conserto: quando vinculado, a cópia ganha DOIS diretórios
+// próprios, nunca compartilhando nada gravável com o repo real:
+//   - `.git-comum` (commonDirCopia): config, packed-refs, refs copiados,
+//     `objects/info/alternates` apontando pros objects reais — como antes.
+//   - `.git-privado` (gitDirCopia): HEAD e index PRÓPRIOS deste worktree,
+//     mais os dois arquivos que amarram um git-dir de worktree ao seu
+//     common-dir: `commondir` (aponta pra `.git-comum`) e `gitdir` (aponta
+//     de volta pro `.git` de `raizExecucao`, convenção de
+//     `git worktree add`).
+//   - `raizExecucao/.git` vira um ARQUIVO `gitdir: <gitDirCopia>` — nunca o
+//     gitdir real, sempre a cópia.
+//
+// Emenda do verificar (2026-09-17): os dois diretórios moravam DENTRO de
+// `raizExecucao` — e isso fazia `conferir-duplicacao.cjs` achar os metadados
+// git copiados como "arquivos duplicados" (DUP2) e uma execução aninhada
+// (bateria que copia a árvore de novo e roda `testa-conferir-mutacao.sh`
+// dentro dela) reprovar B/C/D/controle/DUP2, porque a segunda cópia via os
+// `.git-*` da primeira como parte da árvore. Conserto: quando vinculado, os
+// dois diretórios passam a morar num diretório-irmão PRÓPRIO, fora de
+// `raizExecucao` (`fs.mkdtempSync` separado) — exatamente como um worktree
+// real (`.git/worktrees/<nome>` nunca fica dentro da árvore de trabalho).
+// `raizExecucao/.git` continua sendo só o arquivo-ponteiro. A limpeza desse
+// irmão é registrada em `registrarLimpeza`, coberta pelo mesmo mecanismo de
+// saída/sinal de `armarLimpeza` — nenhum mecanismo de limpeza novo, só mais
+// um alvo na lista existente.
+function materializarGit(raiz, raizExecucao) {
+  const gitDirRes = spawnSync('git', ['rev-parse', '--git-dir'], { cwd: raiz, encoding: 'utf8', stdio: 'pipe' });
+  if (gitDirRes.status !== 0) return; // raiz nao e repositorio git: copia fica sem .git (comportamento da tarefa 7)
+  const commonDirRes = spawnSync('git', ['rev-parse', '--git-common-dir'], { cwd: raiz, encoding: 'utf8', stdio: 'pipe' });
+  if (commonDirRes.status !== 0) return;
+
+  let gitDir, commonDir;
+  try {
+    gitDir = fs.realpathSync(path.resolve(raiz, gitDirRes.stdout.trim()));
+    commonDir = fs.realpathSync(path.resolve(raiz, commonDirRes.stdout.trim()));
+  } catch {
+    return; // caminho de git-dir/common-dir nao resolve: copia fica sem .git
+  }
+
+  const vinculado = gitDir !== commonDir;
+
+  const destGit = path.join(raizExecucao, '.git');
+  // Nao-vinculado (checkout principal): o common-dir da copia E o `.git` da
+  // copia, exatamente como antes (dentro de `raizExecucao`, um diretorio de
+  // verdade). Vinculado: `.git-comum`/`.git-privado` moram num diretorio
+  // TEMPORARIO IRMAO, fora de `raizExecucao` — nunca dentro da copia, para
+  // nao aparecerem como "arquivo da arvore" pra quem varre a copia (DUP2,
+  // execucao aninhada). `registrarLimpeza` cobre a remocao desse irmao.
+  const metaDir = vinculado ? fs.mkdtempSync(path.join(os.tmpdir(), 'conferir-mutacao-git-')) : null;
+  if (metaDir) registrarLimpeza(metaDir);
+  const commonDirCopia = vinculado ? path.join(metaDir, '.git-comum') : destGit;
+  fs.mkdirSync(commonDirCopia, { recursive: true });
+
+  // config e refs sao compartilhados por definicao entre worktrees do mesmo
+  // repositorio, e vem sempre do commonDir real.
+  for (const nome of ['config', 'packed-refs']) {
+    const origem = path.join(commonDir, nome);
+    if (fs.existsSync(origem)) fs.copyFileSync(origem, path.join(commonDirCopia, nome));
+  }
+  if (fs.existsSync(path.join(commonDir, 'refs'))) {
+    fs.cpSync(path.join(commonDir, 'refs'), path.join(commonDirCopia, 'refs'), { recursive: true });
+  }
+  fs.mkdirSync(path.join(commonDirCopia, 'objects', 'info'), { recursive: true });
+  fs.writeFileSync(
+    path.join(commonDirCopia, 'objects', 'info', 'alternates'),
+    `${path.join(commonDir, 'objects').replace(/\\/g, '/')}\n`,
+  );
+
+  if (!vinculado) {
+    // HEAD e index moram no MESMO diretorio que config/refs (checkout principal).
+    for (const nome of ['HEAD', 'index']) {
+      const origem = path.join(gitDir, nome);
+      if (fs.existsSync(origem)) fs.copyFileSync(origem, path.join(destGit, nome));
+    }
+    return;
+  }
+
+  // Vinculado: git-dir PROPRIO do worktree (HEAD e index deste worktree, nao
+  // do checkout principal), amarrado ao commonDirCopia por `commondir`/`gitdir`
+  // — a mesma convencao que `git worktree add` usa de verdade, so que os DOIS
+  // lados (`gitDirCopia` e `commonDirCopia`) sao copias, nunca os originais.
+  const gitDirCopia = path.join(metaDir, '.git-privado');
+  fs.mkdirSync(gitDirCopia, { recursive: true });
+  for (const nome of ['HEAD', 'index']) {
+    const origem = path.join(gitDir, nome);
+    if (fs.existsSync(origem)) fs.copyFileSync(origem, path.join(gitDirCopia, nome));
+  }
+  fs.writeFileSync(path.join(gitDirCopia, 'commondir'), `${commonDirCopia.replace(/\\/g, '/')}\n`);
+  fs.writeFileSync(path.join(gitDirCopia, 'gitdir'), `${destGit.replace(/\\/g, '/')}\n`);
+  fs.writeFileSync(destGit, `gitdir: ${gitDirCopia.replace(/\\/g, '/')}\n`);
+}
+
+// ==================== Varredura de órfãos na abertura (tarefa 6, Issue #294.2)
+//
+// `armarLimpeza` apaga a cópia ao FIM de uma execução normal. Mas saída
+// anormal — processo morto por um sinal que os handlers acima não cobrem,
+// máquina desligada no meio, `--timeout` matando o processo pai antes do
+// `exit` disparar — deixa `conferir-mutacao-*` (e `conferir-mutacao-git-*`,
+// o diretório-irmão de metadados de `materializarGit`) para trás em
+// `os.tmpdir()`. `limparTemporariosOrfaos` varre isso na ABERTURA da PRÓXIMA
+// execução, antes de criar a cópia desta: só diretórios, só o prefixo
+// `conferir-mutacao-`, só mtime acima de `LIMITE_ORFAO_MS` — nunca o
+// diretório que esta própria execução está prestes a criar, que nasce com
+// mtime de agora e sempre fica de fora do corte de 24h. Erro de leitura ou
+// remoção é SILENCIOSO e nunca muda o exit: isto é limpeza de melhor
+// esforço, nunca pode derrubar o veredito da catraca.
+function limparTemporariosOrfaos() {
+  let entradas;
+  try {
+    entradas = fs.readdirSync(os.tmpdir(), { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const entrada of entradas) {
+    if (!entrada.isDirectory()) continue;
+    if (!entrada.name.startsWith('conferir-mutacao-')) continue;
+    const caminho = path.join(os.tmpdir(), entrada.name);
+    let st;
+    try {
+      st = fs.statSync(caminho);
+    } catch {
+      continue;
+    }
+    if (Date.now() - st.mtimeMs < LIMITE_ORFAO_MS) continue;
+    try {
+      fs.rmSync(caminho, { recursive: true, force: true });
+    } catch {
+      // melhor esforço: sobrar um órfão não pode falhar esta execução
+    }
   }
 }
 
@@ -370,7 +547,23 @@ function main() {
     console.error(`erro: --raiz não é uma pasta: ${raiz}`);
     process.exit(1);
   }
-  const alvo = path.resolve(raiz, rel);
+
+  // Varredura de órfãos de execuções anteriores (tarefa 6, Issue #294.2) —
+  // antes de criar a cópia desta execução, para não apagar a própria.
+  limparTemporariosOrfaos();
+
+  // Cópia descartável de toda a árvore: baseline, mutação e bateria
+  // pós-mutação rodam AQUI, nunca em `raiz`. Só o `.git` de TOPO fica de
+  // fora — `.git` aninhado em alguma fixture não é excluído (D5, Issue #266).
+  const raizExecucao = fs.mkdtempSync(path.join(os.tmpdir(), 'conferir-mutacao-'));
+  armarLimpeza(raizExecucao);
+  fs.cpSync(raiz, raizExecucao, {
+    recursive: true,
+    filter: (p) => path.relative(raiz, p) !== '.git',
+  });
+  materializarGit(raiz, raizExecucao);
+
+  const alvo = path.resolve(raizExecucao, rel);
   if (!fs.existsSync(alvo) || !fs.statSync(alvo).isFile()) {
     console.error(`erro: --arquivo não existe: ${alvo}`);
     process.exit(1);
@@ -392,7 +585,7 @@ function main() {
   // Roda a bateria no fonte ÍNTEGRO. Se não sair 0, a prova não será válida,
   // porque qualquer alteração pode deixar a bateria vermelha sem relação com
   // o comportamento que você quer testar. D11 estendido.
-  const baselineRes = rodaBateria(bateria, raiz, timeout, 'baseline');
+  const baselineRes = rodaBateria(bateria, raizExecucao, timeout, 'baseline');
   const baselineExit = baselineRes.r.status;
   const baselineDuracao = baselineRes.duracao;
 
@@ -427,6 +620,11 @@ function main() {
     console.error(`RECUSADO: baseline NAO-VERDE (exit ${baselineExit}).`);
     console.error('  A bateria não sai 0 no fonte íntegro. Qualquer mutação pode deixá-la');
     console.error('  vermelha por motivo diverso do comportamento que você quer medir.');
+    // Superfície humana (tarefa 20): a bateria roda dentro da CÓPIA temporária
+    // (Issue #266, D5), não no fonte real — se falhar aqui por motivo de
+    // ambiente (ex.: git ausente da cópia), quem lê não pode confundir com
+    // bateria quebrada no fonte de `--raiz`.
+    console.error(`  A falha foi NA CÓPIA temporária (${raizExecucao}), não em ${raiz}.`);
     console.error('  Conserte a bateria ou o source antes de invocar esta catraca.');
     process.exit(4);
   }
@@ -465,8 +663,8 @@ function main() {
   console.log('');
 
   // ======================================================== Fase 3: mutação
-  armarRestauracao(alvo, original);
-
+  // A limpeza da cópia temporária já está armada desde a criação de
+  // `raizExecucao` — cobre este caminho de erro sem precisar rearmar.
   let temErroEscrita = false;
   try {
     fs.writeFileSync(alvo, pedacos.join(para), 'utf8');
@@ -476,12 +674,12 @@ function main() {
     if (err.code === 'EACCES') {
       console.error('  Arquivo somente-leitura ou sem permissão de escrita.');
     }
-    restaurar();
+    limpar();
     process.exit(1);
   }
 
   // ============================================ Fase 4: bateria pós-mutação
-  const posRes = rodaBateria(bateria, raiz, timeout, 'pós-mutação');
+  const posRes = rodaBateria(bateria, raizExecucao, timeout, 'pós-mutação');
   const posExit = posRes.r.status;
   const posDuracao = posRes.duracao;
 
@@ -491,9 +689,9 @@ function main() {
   console.log('---------------------------------');
   console.log('');
 
-  // Restaura ANTES de decidir e imprimir: nenhum caminho abaixo pode escapar
-  // com o fonte mutado.
-  restaurar();
+  // Apaga a cópia temporária ANTES de decidir e imprimir: nenhum caminho
+  // abaixo precisa dela, e o fonte real nunca esteve mutado (Issue #266).
+  limpar();
 
   // ============================================== Fase 5: veredito final
   const estourou = posRes.r.error && posRes.r.error.code === 'ETIMEDOUT';

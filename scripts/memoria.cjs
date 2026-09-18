@@ -39,6 +39,9 @@ try {
 // RFM_ROOT > projeto/.rainforest > ~/.rainforest > plugin
 const { resolverRaiz } = require('../hooks/lib/raiz.cjs');
 
+// Acha o executável `claude` do PATH.
+const { acharExecutavelClaude } = require('./lib/achar-executavel-claude.cjs');
+
 // Encontra o diretório .git subindo a árvore de diretórios.
 // Retorna o caminho do diretório que contém .git, ou null se não encontrado.
 // Implementação: varredura de sistema de arquivos, sem spawns de git (decisão D1).
@@ -1273,7 +1276,7 @@ async function chamarLLMParaConsolidar(textoDasObservacoes) {
 
       child.on('error', (error) => {
         clearTimeout(timer);
-        console.error(`AVISO: erro ao chamar claude: ${error.message}`);
+        console.error(`AVISO: erro ao chamar claude em "${executavel}": ${error.message}`);
         resolve(null);
       });
 
@@ -1296,38 +1299,12 @@ async function chamarLLMParaConsolidar(textoDasObservacoes) {
       });
     } catch (e) {
       clearTimeout(timer);
-      console.error(`AVISO: erro ao invocar claude: ${e.message}`);
+      console.error(`AVISO: erro ao invocar claude em "${executavel}": ${e.message}`);
       resolve(null);
     }
   });
 }
 
-// Acha o executável `claude` (mesmo padrão que observar.cjs).
-function acharExecutavelClaude() {
-  if (process.env.RFM_CLAUDE_EXECUTAVEL) {
-    return process.env.RFM_CLAUDE_EXECUTAVEL;
-  }
-  const ehWindows = process.platform === 'win32';
-  const separador = ehWindows ? ';' : ':';
-  const extensoes = ehWindows
-    ? (process.env.PATHEXT || '.EXE;.CMD;.BAT').split(';').map((e) => e.toLowerCase())
-    : [''];
-  for (const dir of (process.env.PATH || '').split(separador)) {
-    if (!dir) continue;
-    for (const ext of extensoes) {
-      const alvo = path.join(dir, `claude${ext}`);
-      try {
-        if (fs.statSync(alvo).isFile()) {
-          if (!ehWindows) fs.accessSync(alvo, fs.constants.X_OK);
-          return alvo;
-        }
-      } catch {
-        // Caminho inexistente ou sem permissão: segue procurando.
-      }
-    }
-  }
-  return null;
-}
 
 // Grava resumo no banco.
 // Retorna true se sucesso, false se falha.

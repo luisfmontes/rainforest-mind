@@ -216,42 +216,275 @@ for i in 1 2 3 4 5 6 7 8; do
   printf 'teste %d\n' $i > "$SBP/dados/.foco-backups/foco-2026010${i}-000000-000.md"
   sleep 0.01
 done
-MUT_BACKUP="$SBP/foco-mutante-backup.cjs"
-# Mutação: trocar "while (arquivos.length > teto)" por "while (false)"
+MUT_BACKUP="$SRC/scripts/.mut-tmp-foco-13.cjs"
+MUT_BACKUP_LIB="$SRC/scripts/lib/.mut-tmp-foco-13-lib.cjs"
+# O laço de poda mora hoje em lib/backup-rotativo.cjs (gravarBackup), nao mais
+# em foco.cjs. Mutacao em duas pecas: (1) uma copia de backup-rotativo.cjs com
+# o laço desligado, gravada dentro de scripts/lib/ (a lib so usa 'fs'/'path',
+# entao nao ha require relativo dela mesma a resolver); (2) uma copia de
+# foco.cjs cujo require aponta para essa lib mutada, gravada dentro de
+# scripts/ (mesma exigencia de diretorio do item 17: requires relativos ao
+# __dirname do arquivo executado).
 node -e "
   const fs = require('fs');
   const content = fs.readFileSync(process.argv[1], 'utf8');
   const mutated = content.replace(
-    /while \(arquivos\.length > teto\)/,
+    /while \(candidatos\.length > teto\)/,
     'while (false)'
   );
   if (content === mutated) {
-    console.error('MUTACAO_NAO_ENCONTRADA');
+    console.error('ANCORA_NAO_ENCONTRADA');
     process.exit(1);
   }
   fs.writeFileSync(process.argv[2], mutated, 'utf8');
-" "$SRC/scripts/foco.cjs" "$MUT_BACKUP"
-node "$MUT_BACKUP" backup --teto 3 --raiz "$SBP/dados" > /dev/null 2>&1
-COUNT_MUT="$(ls "$SBP/dados/.foco-backups/foco-"*.md 2>/dev/null | wc -l)"
-if [ "$COUNT_MUT" -gt 3 ]; then
-  ok=$((ok+1)); echo "  ok   desligar o laço de poda mantem tudo (mutante detectavel)"
+" "$SRC/scripts/lib/backup-rotativo.cjs" "$MUT_BACKUP_LIB"
+if [ ! -s "$MUT_BACKUP_LIB" ]; then
+  falhou=$((falhou+1)); echo "  FALHA a mutacao nao encontrou o laço de poda em backup-rotativo.cjs -- teste invalido"
 else
-  falhou=$((falhou+1)); echo "  FALHA mutante passou despercebido: a poda rodou mesmo com while(false)"
+  node -e "
+    const fs = require('fs');
+    const content = fs.readFileSync(process.argv[1], 'utf8');
+    const mutated = content.replace(
+      \"require('./lib/backup-rotativo.cjs')\",
+      \"require('./lib/.mut-tmp-foco-13-lib.cjs')\"
+    );
+    if (content === mutated) {
+      console.error('ANCORA_NAO_ENCONTRADA');
+      process.exit(1);
+    }
+    fs.writeFileSync(process.argv[2], mutated, 'utf8');
+  " "$SRC/scripts/foco.cjs" "$MUT_BACKUP"
+  if [ ! -s "$MUT_BACKUP" ]; then
+    falhou=$((falhou+1)); echo "  FALHA a mutacao nao encontrou o require de backup-rotativo.cjs em foco.cjs -- teste invalido"
+  else
+    ERR_MUT_BACKUP="$(node "$MUT_BACKUP" backup --teto 3 --raiz "$SBP/dados" 2>&1 1>/dev/null)"
+    COUNT_MUT="$(ls "$SBP/dados/.foco-backups/foco-"*.md 2>/dev/null | wc -l)"
+    if grep -qF -- "MODULE_NOT_FOUND" <<< "$ERR_MUT_BACKUP"; then
+      falhou=$((falhou+1)); echo "  FALHA mutante nao rodou (MODULE_NOT_FOUND) -- crash mascarado de deteccao"
+    elif [ "$COUNT_MUT" -gt 3 ]; then
+      ok=$((ok+1)); echo "  ok   desligar o laço de poda mantem tudo (mutante detectavel)"
+    else
+      falhou=$((falhou+1)); echo "  FALHA mutante passou despercebido: a poda rodou mesmo com while(false)"
+    fi
+  fi
 fi
-rm -f "$MUT_BACKUP"
+rm -f "$MUT_BACKUP" "$MUT_BACKUP_LIB"
 
 # ------------------------------------------------------- 9. MUTACAO
 echo; echo "9. mutacao (a bateria tem de acusar)"
 montar
-MUT="$SBP/foco-mutante.cjs"
-sed 's/mantidas.length >= MIN_ENTRADAS && usado + custo > teto/false/' "$SRC/scripts/foco.cjs" > "$MUT"
-node "$MUT" rotacionar --raiz "$SBP/dados" --teto 3200 --aplicar > /dev/null 2>&1
-FOCOM="$(cat "$SBP/dados/FOCO.md")"
-if grep -qF -- "- 2026-08-01: primeiro avanco" <<< "$FOCOM"; then
+MUT="$SRC/scripts/.mut-tmp-foco-09.cjs"
+sed 's/mantidosIdx.size >= MIN_ENTRADAS && usado + custo > teto/false/' "$SRC/scripts/foco.cjs" > "$MUT"
+ERR_MUT="$(node "$MUT" rotacionar --raiz "$SBP/dados" --teto 3200 --aplicar 2>&1 1>/dev/null)"
+FOCOM="$(cat "$SBP/dados/FOCO.md" 2>/dev/null)"
+if grep -qF -- "MODULE_NOT_FOUND" <<< "$ERR_MUT"; then
+  falhou=$((falhou+1)); echo "  FALHA mutante nao rodou (MODULE_NOT_FOUND) -- crash mascarado de deteccao"
+elif grep -qF -- "- 2026-08-01: primeiro avanco" <<< "$FOCOM"; then
   ok=$((ok+1)); echo "  ok   corte desligado mantem tudo no FOCO (mutante detectavel pelo item 2)"
 else
   falhou=$((falhou+1)); echo "  FALHA mutante passou despercebido: o corte nao depende do teto"
 fi
+rm -f "$MUT"
+
+# ============================================================================
+# Issue #290 — `escolher()` decide o conjunto mantido por DATA, nao por
+# posicao fisica. A fixture "montar" (ascendente, mais antiga no topo) ja
+# cobre o sentido ascendente nos itens 1-8 acima: o antigo `[...entradas]
+# .reverse()` e a decisao por data coincidem quando o arquivo e sempre
+# ascendente, entao aquela fixture sozinha NUNCA exporia o defeito da #290.
+# Esta secao cobre o sentido DESCENDENTE (entradas novas no TOPO), que e o
+# padrao real do FOCO.md do usuario e o que a Issue #277 (`avanco`, abaixo)
+# passa a escrever.
+# ============================================================================
+
+montar_desc() {
+  rm -rf "$SBP/dados"; mkdir -p "$SBP/dados"
+  node -e '
+    const fs = require("fs");
+    const g = (n) => "x".repeat(n);
+    const foco = [
+      "# Foco", "", "## Ativo", "",
+      "**Trabalho de teste** `[trabalho]` — declarado 2026-08-01.",
+      "Criterio de pronto: a bateria passar.", "",
+      "Avancos:".replace("Avancos", "Avanços"),
+      "- 2026-09-15: mais nova, GRANDE. " + g(1450),
+      "- 2026-09-14: media. " + g(700),
+      "- 2026-08-23: mais antiga, GRANDE. " + g(1450),
+      "",
+      "## Nao especificado ainda", "", "- nevoa preservada", ""
+    ].join("\n");
+    fs.writeFileSync(process.argv[1] + "/FOCO.md", foco, "utf8");
+  ' "$SBP/dados"
+}
+
+echo; echo "16. #290: rotacionar decide por DATA em bloco DESCENDENTE (mais nova no topo)"
+montar_desc
+SAIDA="$(node "$SRC/scripts/foco.cjs" rotacionar --raiz "$SBP/dados" --teto 2500 --aplicar 2>&1)"
+FOCOD="$(cat "$SBP/dados/FOCO.md")"
+HISTD="$(cat "$SBP/dados/AVANCOS.md" 2>/dev/null)"
+tem "a mais nova por DATA (fisicamente no TOPO) fica" "$FOCOD" "- 2026-09-15: mais nova"
+tem "a media fica" "$FOCOD" "- 2026-09-14: media"
+nao_tem "a mais antiga por DATA (fisicamente no FIM) sai do FOCO" "$FOCOD" "- 2026-08-23: mais antiga"
+tem "a mais antiga foi para o historico" "$HISTD" "- 2026-08-23: mais antiga"
+# ordem fisica original das mantidas preservada (09-15 antes de 09-14 no arquivo)
+IDX_15=$(grep -n '2026-09-15' <<< "$FOCOD" | head -1 | cut -d: -f1)
+IDX_14=$(grep -n '2026-09-14' <<< "$FOCOD" | head -1 | cut -d: -f1)
+if [ -n "$IDX_15" ] && [ -n "$IDX_14" ] && [ "$IDX_15" -lt "$IDX_14" ]; then
+  ok=$((ok+1)); echo "  ok   ordem fisica original das mantidas preservada (nao embaralhou)"
+else
+  falhou=$((falhou+1)); echo "  FALHA ordem fisica das mantidas foi alterada"
+fi
+
+echo; echo "17. #290 MUTACAO — reverter a decisao por data para posicao fisica tem que voltar a inverter"
+montar_desc
+# O mutante PRECISA morar dentro de scripts/: foco.cjs faz `require('./lib/
+# backup-rotativo.cjs')` e `require('../hooks/lib/...')` relativos ao seu
+# proprio __dirname, sem try/catch — um mutante em $SBP (fora de scripts/)
+# nao acha essas dependencias e MORRE ANTES de chegar em rotacionar(), o que
+# faria este teste "passar" por um motivo totalmente errado (o mesmo defeito
+# silencioso que os itens 9/13/15 acima ja carregam, fora do escopo desta
+# tarefa). Roda de dentro de scripts/ e apaga em seguida.
+MUT_290="$SRC/scripts/.mut-tmp-foco-290.cjs"
+node -e '
+  const fs = require("fs");
+  const src = process.argv[1], dst = process.argv[2];
+  const t = fs.readFileSync(src, "utf8");
+  const alvo = "const porData = [...indexado].sort((a, b) => (a.data < b.data ? 1 : a.data > b.data ? -1 : 0));";
+  const novo = "const porData = [...indexado].reverse();";
+  if (!t.includes(alvo)) { console.error("ANCORA_NAO_ENCONTRADA"); process.exit(1); }
+  fs.writeFileSync(dst, t.split(alvo).join(novo), "utf8");
+' "$SRC/scripts/foco.cjs" "$MUT_290"
+if [ ! -s "$MUT_290" ] || diff -q "$SRC/scripts/foco.cjs" "$MUT_290" > /dev/null; then
+  falhou=$((falhou+1)); echo "  FALHA a mutacao nao encontrou a ordenacao por data -- teste invalido"
+else
+  node "$MUT_290" rotacionar --raiz "$SBP/dados" --teto 2500 --aplicar > /dev/null 2>&1
+  FOCOM290="$(cat "$SBP/dados/FOCO.md" 2>/dev/null)"
+  # Com a decisao voltando a ser por POSICAO fisica (reverse), o algoritmo trata
+  # a entrada fisicamente ULTIMA (08-23, a mais ANTIGA por data) como se fosse a
+  # mais recente, e descarta a fisicamente PRIMEIRA (09-15, a mais NOVA por
+  # data de verdade) -- exatamente o sintoma da Issue #290. O sinal da mutacao
+  # e a mais nova (09-15) sumir do FOCO, nao a mais antiga aparecer nele.
+  if grep -qF -- "- 2026-09-15: mais nova" <<< "$FOCOM290"; then
+    falhou=$((falhou+1)); echo "  FALHA mutante passou despercebido: a mais recente continuou sobrevivendo"
+  else
+    ok=$((ok+1)); echo "  ok   mutante expos que a decisao por data e o que mantem a mais recente"
+  fi
+fi
+rm -f "$MUT_290"
+
+# ============================================================================
+# Issue #277 — `foco.cjs avanco`: registra o avanco por script (a regra 5
+# pede a data; a regra 17 proibe editar o FOCO.md a mao).
+# ============================================================================
+
+montar_avanco() {
+  rm -rf "$SBP/dados"; mkdir -p "$SBP/dados"
+  node -e '
+    const fs = require("fs");
+    const foco = [
+      "# Foco", "", "## Ativo", "",
+      "**Trabalho de teste** `[trabalho]` — declarado 2026-08-01.",
+      "Criterio de pronto: a bateria passar.", "",
+      "Avancos:".replace("Avancos", "Avanços"),
+      "- 2026-09-14: avanco existente.",
+      "",
+      "## Nao especificado ainda", "", "- nevoa preservada", ""
+    ].join("\n");
+    fs.writeFileSync(process.argv[1] + "/FOCO.md", foco, "utf8");
+  ' "$SBP/dados"
+}
+
+HOJE="$(node -e 'const d=new Date();const p=(n)=>String(n).padStart(2,"0");console.log(`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`)')"
+
+echo; echo "18. avanco --aplicar: grava no topo, acima das entradas, formato com --contexto"
+montar_avanco
+SAIDA="$(node "$SRC/scripts/foco.cjs" avanco "texto do avanco novo" --contexto "teste-slug" --aplicar --raiz "$SBP/dados" 2>&1)"; CODIGO=$?
+igual "sai 0" "$CODIGO" "0"
+FOCOAV="$(cat "$SBP/dados/FOCO.md")"
+tem "a entrada nova esta no formato esperado" "$FOCOAV" "- $HOJE (sessão do \`teste-slug\`): texto do avanco novo"
+POS_NOVA=$(grep -n "texto do avanco novo" <<< "$FOCOAV" | head -1 | cut -d: -f1)
+POS_EXISTENTE=$(grep -n "avanco existente" <<< "$FOCOAV" | head -1 | cut -d: -f1)
+if [ -n "$POS_NOVA" ] && [ -n "$POS_EXISTENTE" ] && [ "$POS_NOVA" -lt "$POS_EXISTENTE" ]; then
+  ok=$((ok+1)); echo "  ok   entrada nova fica ACIMA da entrada existente (topo do bloco)"
+else
+  falhou=$((falhou+1)); echo "  FALHA entrada nova nao ficou no topo"
+fi
+tem "a entrada existente continua intacta" "$FOCOAV" "- 2026-09-14: avanco existente."
+
+montar_avanco_com_ponteiro() {
+  rm -rf "$SBP/dados"; mkdir -p "$SBP/dados"
+  node -e '
+    const fs = require("fs");
+    const foco = [
+      "# Foco", "", "## Ativo", "",
+      "**Trabalho de teste** `[trabalho]` — declarado 2026-08-01.",
+      "Criterio de pronto: a bateria passar.", "",
+      "Avancos:".replace("Avancos", "Avanços"),
+      "- (histórico: 4 avanços de 2026-08-06 a 2026-08-23 em AVANCOS.md.)",
+      "- 2026-09-14: avanco existente.",
+      "",
+      "## Nao especificado ainda", "", "- nevoa preservada", ""
+    ].join("\n");
+    fs.writeFileSync(process.argv[1] + "/FOCO.md", foco, "utf8");
+  ' "$SBP/dados"
+}
+
+echo; echo "18b. avanco --aplicar com ponteiro de histórico já existente: entrada nova fica ACIMA do ponteiro"
+montar_avanco_com_ponteiro
+node "$SRC/scripts/foco.cjs" avanco "outro avanco" --aplicar --raiz "$SBP/dados" > /dev/null
+FOCOP="$(cat "$SBP/dados/FOCO.md")"
+POS_NOVA_P=$(grep -n "outro avanco" <<< "$FOCOP" | head -1 | cut -d: -f1)
+POS_PONTEIRO=$(grep -n "histórico: 4 avan" <<< "$FOCOP" | head -1 | cut -d: -f1)
+POS_EXISTENTE_P=$(grep -n "avanco existente" <<< "$FOCOP" | head -1 | cut -d: -f1)
+if [ -n "$POS_NOVA_P" ] && [ -n "$POS_PONTEIRO" ] && [ -n "$POS_EXISTENTE_P" ] && \
+   [ "$POS_NOVA_P" -lt "$POS_PONTEIRO" ] && [ "$POS_PONTEIRO" -lt "$POS_EXISTENTE_P" ]; then
+  ok=$((ok+1)); echo "  ok   ordem: entrada nova > ponteiro de histórico > entrada antiga"
+else
+  falhou=$((falhou+1)); echo "  FALHA entrada nova nao ficou acima do ponteiro existente"
+fi
+
+echo; echo "19. avanco sem --aplicar: mostra a entrada E o que rotacionar moveria, nao escreve"
+montar_avanco
+ANTES="$(node -e 'console.log(require("fs").statSync(process.argv[1]+"/FOCO.md").size)' "$SBP/dados")"
+SAIDA="$(node "$SRC/scripts/foco.cjs" avanco "avanco so de ensaio" --raiz "$SBP/dados" --teto 30 2>&1)"; CODIGO=$?
+igual "sai 0" "$CODIGO" "0"
+DEPOIS="$(node -e 'console.log(require("fs").statSync(process.argv[1]+"/FOCO.md").size)' "$SBP/dados")"
+igual "FOCO.md intocado" "$DEPOIS" "$ANTES"
+tem "mostra a entrada que seria escrita" "$SAIDA" "avanco so de ensaio"
+tem "mostra o que rotacionar moveria" "$SAIDA" "moveria"
+tem "avisa que precisa de --aplicar" "$SAIDA" "--aplicar"
+if [ -e "$SBP/dados/AVANCOS.md" ]; then
+  falhou=$((falhou+1)); echo "  FALHA criou AVANCOS.md no ensaio"
+else
+  ok=$((ok+1)); echo "  ok   nao criou AVANCOS.md no ensaio"
+fi
+
+echo; echo "20. avanco --aplicar com texto que quebra o parse: aborta sem gravar (sha256 antes == depois)"
+montar_avanco
+SHA_ANTES="$(node -e 'const c=require("crypto");console.log(c.createHash("sha256").update(require("fs").readFileSync(process.argv[1]+"/FOCO.md")).digest("hex"))' "$SBP/dados")"
+# Texto com uma quebra de linha seguida de "- AAAA-MM-DD:" embutida: ao ser
+# inserido, a releitura por partirCorpo enxerga DUAS entradas onde deveria
+# haver uma so -- a conferencia (analoga a de rotacionar) tem que recusar
+# ANTES de gravar qualquer byte.
+TEXTO_QUEBRADO="$(printf 'linha 1\n- 2020-01-01: entrada falsa embutida')"
+SAIDA="$(node "$SRC/scripts/foco.cjs" avanco "$TEXTO_QUEBRADO" --aplicar --raiz "$SBP/dados" 2>&1)"; CODIGO=$?
+if [ "$CODIGO" -ne 0 ]; then
+  ok=$((ok+1)); echo "  ok   sai com erro (nao silencioso)"
+else
+  falhou=$((falhou+1)); echo "  FALHA sai 0 com texto que deveria ter sido recusado"
+fi
+SHA_DEPOIS="$(node -e 'const c=require("crypto");console.log(c.createHash("sha256").update(require("fs").readFileSync(process.argv[1]+"/FOCO.md")).digest("hex"))' "$SBP/dados")"
+igual "FOCO.md byte-a-byte identico ao de antes (sha256)" "$SHA_DEPOIS" "$SHA_ANTES"
+
+echo; echo "21. avanco --aplicar encadeia rotacionar: a entrada recem-escrita SOBREVIVE (nao e ela quem rotaciona pra fora)"
+montar_desc
+SAIDA="$(node "$SRC/scripts/foco.cjs" avanco "avanco recem chegado" --aplicar --raiz "$SBP/dados" --teto 2500 2>&1)"; CODIGO=$?
+igual "sai 0" "$CODIGO" "0"
+FOCO21="$(cat "$SBP/dados/FOCO.md")"
+HIST21="$(cat "$SBP/dados/AVANCOS.md" 2>/dev/null)"
+tem "a entrada recem-escrita (a mais recente por data) fica no FOCO.md" "$FOCO21" "avanco recem chegado"
+nao_tem "a entrada recem-escrita NAO foi para o historico" "$HIST21" "avanco recem chegado"
+tem "a mais antiga do cenario original foi rotacionada pra fora (rotacionar rodou)" "$HIST21" "- 2026-08-23: mais antiga"
 
 # ============================================================================
 # Issue #74 — `separar`: FOCO.md monolitico -> FOCO.md (tatico) + ESTRATEGIA.md
@@ -410,7 +643,7 @@ tem "e nao ficou nenhum pedaco dele no tatico"                        "$CONFERE"
 
 echo; echo "15. MUTACAO — desligar o roteamento por PARAGRAFO tem que voltar a partir a prosa quebrada"
 montar_quebrada
-MUT="$SBP/foco-mut-paragrafo.cjs"
+MUT="$SRC/scripts/.mut-tmp-foco-15.cjs"
 # sed com classes de regex dentro de regex (\n{2,}) e fragil de escapar
 # corretamente em shell; a troca e feita em JS puro, por substring exata.
 node -e '
@@ -425,7 +658,7 @@ node -e '
 if [ ! -s "$MUT" ] || diff -q "$SRC/scripts/foco.cjs" "$MUT" > /dev/null; then
   falhou=$((falhou+1)); echo "  FALHA a mutacao nao encontrou o split por paragrafo -- teste invalido"
 else
-  node "$MUT" separar --raiz "$SBP/dados" --aplicar > /dev/null 2>&1
+  ERR_MUT="$(node "$MUT" separar --raiz "$SBP/dados" --aplicar 2>&1 1>/dev/null)"
   FOCOM="$(cat "$SBP/dados/FOCO.md" 2>/dev/null)"
   # Com o roteamento voltando a ser por LINHA, a primeira linha da prosa
   # quebrada ("Esta e uma prosa...") nao comeca com `**` -- deixa de ser
@@ -433,6 +666,9 @@ else
   # o sintoma observavel e a prosa aparecer FRAGMENTADA (a primeira linha
   # separada das demais) em vez de sobreviver inteira e junta no estrategico.
   ESTM="$(cat "$SBP/dados/ESTRATEGIA.md" 2>/dev/null)"
+  if grep -qF -- "MODULE_NOT_FOUND" <<< "$ERR_MUT"; then
+    falhou=$((falhou+1)); echo "  FALHA mutante nao rodou (MODULE_NOT_FOUND) -- crash mascarado de deteccao"
+  else
   CONFEREM="$(node -e '
     const fs = require("fs");
     const raiz = process.argv[1];
@@ -449,6 +685,7 @@ else
     ok=$((ok+1)); echo "  ok   mutacao expos que o roteamento por paragrafo e o que mantem a prosa inteira"
   else
     falhou=$((falhou+1)); echo "  FALHA mutante passou despercebido: a prosa continuou intacta mesmo roteando por linha"
+  fi
   fi
 fi
 rm -f "$MUT"

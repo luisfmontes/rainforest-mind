@@ -50,6 +50,9 @@ RAIZ_NEUTRA="$(novo_sandbox)"
 # ve que "diferiu" e credita `ok` — passa VERDE por nao ter conseguido executar nada,
 # que e exatamente a familia de defeito que ela existe para pegar.
 cp "$SRC/hooks/lib/raiz.cjs" "$RAIZ_POSIX/raiz.cjs"
+# Mesmo motivo, mesma correcao: desde a Issue #259 a lib tambem faz
+# `require('./bytes.cjs')` (cortarBytes deixou de ser copia local).
+cp "$SRC/hooks/lib/bytes.cjs" "$RAIZ_POSIX/bytes.cjs"
 
 ok=0; falhou=0
 
@@ -62,6 +65,16 @@ process.stdout.write(lib.montarContexto({
   focoText: process.env.FIX_FOCO || '',
   caminhoSkill: 'C:\\fake\\SKILL.md',
   root: 'C:\\fake',
+  agora: process.env.FIX_AGORA ? Number(process.env.FIX_AGORA) : undefined,
+  // Issue #250 (Tarefa 17): campos do rodape, opcionais e undefined por
+  // padrao — nenhuma secao que ja chama montar() com so skill/foco/agora muda
+  // de comportamento, porque undefined e exatamente o que o cabecalho de hoje
+  // usa quando o campo nao vem.
+  veredito: process.env.FIX_VEREDITO || undefined,
+  sessoes: process.env.FIX_BLOCO_SESSOES || undefined,
+  revisao: process.env.FIX_REVISAO || undefined,
+  dependencias: process.env.FIX_DEPENDENCIAS || undefined,
+  principalAtrasado: process.env.FIX_PRINCIPAL ? JSON.parse(process.env.FIX_PRINCIPAL) : undefined,
 }));
 EOF
 
@@ -123,6 +136,25 @@ checa() { # nome, modo(tem|nao_tem), padrao, saida
     ok=$((ok+1)); echo "  ok    $nome"
   else
     falhou=$((falhou+1)); echo "  FALHA $nome (modo=$modo, padrao='$pad')"
+    echo "$saida" | sed 's/^/         /' | head -8
+  fi
+}
+
+# mostra_mutante() faz a MESMA comparação de checa(), para as demonstrações de
+# sabotagem (secao 17.1): mostrar que a asserção real morde a saida do mutante.
+# Não mexe em ok/falhou (a demonstração não é o veredito — o if/else logo
+# depois de cada SABOTAGEM é quem decide isso) e por isso não precisa mais do
+# subshell `( checa ... )` que blindava os contadores. O rótulo do ramo
+# esperado é ESPERADO-VERMELHO, não FALHA — "FALHA " é reservado para falha
+# real de asserção (Issue #270: as duas ficavam indistinguíveis em `grep`).
+mostra_mutante() { # nome, modo(tem|nao_tem), padrao, saida
+  local nome="$1" modo="$2" pad="$3" saida="$4"
+  if echo "$saida" | grep -qF "$pad"; then achou=1; else achou=0; fi
+  local esperado=1; [ "$modo" = "nao_tem" ] && esperado=0
+  if [ "$achou" = "$esperado" ]; then
+    echo "  ok    $nome"
+  else
+    echo "  ESPERADO-VERMELHO $nome (modo=$modo, padrao='$pad')"
     echo "$saida" | sed 's/^/         /' | head -8
   fi
 }
@@ -217,6 +249,94 @@ if echo "$S" | grep -qF "2026-08-01"; then
 else
   falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — nao e o teto em bytes que faz o resumo cortar"
 fi
+
+echo
+echo "3.5 SENSOR DE FOCO PARADO (regra 3) — 7+ dias sem avanco vira aviso na abertura"
+# Limiar IDENTICO ao de vigias/sentinela-foco.md item 3 (7 dias) — dois limiares
+# diferentes sobre o mesmo campo fariam o sensor daqui contradizer o vigia em
+# silencio (ver o comentario de iparAvancoRecente em hooks/lib/contexto-sessao.cjs).
+#
+# `agora` fixo, nunca Date.now(): os fixtures do resto desta bateria sao de
+# agosto de 2026 e o relogio real so cresce — sem fixar, "dias sem avanco"
+# mudaria todo dia que a bateria rodasse.
+montar_agora() { # skill, foco, agora_ms, [lib]
+  LIB_PATH="${4:-$LIB}" FIX_SKILL="$1" FIX_FOCO="$2" FIX_AGORA="$3" node "$RAIZ_POSIX/driver.cjs" 2>&1
+}
+AGORA_SENSOR="$(node -e "process.stdout.write(String(Date.UTC(2026,8,14,12,0,0)))")"   # 2026-09-14T12:00:00Z
+
+# FOCO.md no FORMATO REAL: secao Ativo com linhas "- AAAA-MM-DD" sob "Avancos:",
+# como o arquivo em uso — nao um schema que so o teste produz (este repo ja
+# caiu nisso: fixture com campos que o FOCO.md transcrito de verdade nao tem).
+FOCO_8_DIAS="# Foco
+
+## Ativo
+
+**Foco de teste** \`[trabalho]\`
+
+Avanços:
+- 2026-09-06: último avanço registrado, oito dias antes do agora fixo do teste."
+S8="$(montar_agora "$SKILL_OK" "$FOCO_8_DIAS" "$AGORA_SENSOR")"
+checa "8 dias sem avanco: uma linha nomeia o FOCO.md e a contagem" tem "FOCO.md sem avanço há 8 dias" "$S8"
+checa "8 dias sem avanco: a data continua saindo"                  tem "Último avanço datado: 2026-09-06" "$S8"
+
+FOCO_6_DIAS="# Foco
+
+## Ativo
+
+**Foco de teste** \`[trabalho]\`
+
+Avanços:
+- 2026-09-08: último avanço registrado, seis dias antes do agora fixo do teste."
+S6="$(montar_agora "$SKILL_OK" "$FOCO_6_DIAS" "$AGORA_SENSOR")"
+checa "6 dias sem avanco: NAO ganha a linha de aviso" nao_tem "sem avanço há" "$S6"
+
+# Prova em BYTES contra a lib da BASE desta tarefa (14c471ed, antes do sensor
+# existir): com 6 dias o payload nao pode ganhar nem 1 byte a mais do que o
+# comportamento de hoje. `MSYS_NO_PATHCONV=1` porque sem isso o MSYS reescreve
+# "ref:caminho" como caminho Windows e o `git show` falha em silencio — por
+# isso a checagem de saida nao-vazia antes de comparar.
+(cd "$SRC" && MSYS_NO_PATHCONV=1 git show 14c471ed29f790655f4f2b2e34fce2af578edaac:hooks/lib/contexto-sessao.cjs) \
+  > "$RAIZ_POSIX/lib-base.cjs" 2>/dev/null
+if [ -s "$RAIZ_POSIX/lib-base.cjs" ]; then
+  S6_BASE="$(montar_agora "$SKILL_OK" "$FOCO_6_DIAS" "$AGORA_SENSOR" "$RAIZ_POSIX/lib-base.cjs")"
+  BYTES_NOVO="$(printf '%s' "$S6" | wc -c)"
+  BYTES_BASE="$(printf '%s' "$S6_BASE" | wc -c)"
+  if [ "$BYTES_NOVO" = "$BYTES_BASE" ]; then
+    ok=$((ok+1)); echo "  ok    6 dias: payload identico em bytes ao da base 14c471ed ($BYTES_NOVO B)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA 6 dias: payload mudou de tamanho (base=$BYTES_BASE novo=$BYTES_NOVO)"
+  fi
+else
+  falhou=$((falhou+1)); echo "  FALHA nao consegui ler hooks/lib/contexto-sessao.cjs da base 14c471ed via git show — comparacao de bytes pulada"
+fi
+
+# FOCO.md sem NENHUM avanco datado: mesmo tratamento que o codigo vizinho ja dava
+# a ausencia (`if (!datas.length) return secao;`) — sem data nao ha o que datar
+# nem o que contar, e a saida fica identica a de hoje (nao inventa comportamento).
+FOCO_SEM_AVANCO="# Foco
+
+## Ativo
+
+**Foco de teste** \`[trabalho]\` — sem nenhum avanço datado ainda."
+S_SEM_AVANCO="$(montar_agora "$SKILL_OK" "$FOCO_SEM_AVANCO" "$AGORA_SENSOR")"
+checa "sem avanco algum: nao ha linha de ultimo avanco" nao_tem "Último avanço datado" "$S_SEM_AVANCO"
+checa "sem avanco algum: nao ha aviso de dias parado"   nao_tem "sem avanço há"        "$S_SEM_AVANCO"
+
+echo
+echo "3.6 MUTACAO — desligar o limiar de 7 dias tem que derrubar o aviso de 8 dias"
+cp "$LIB" "$RAIZ_POSIX/lib-sem-sensor.cjs"
+sed -i 's/dias >= 7/dias >= 99999/' "$RAIZ_POSIX/lib-sem-sensor.cjs"
+if diff "$LIB" "$RAIZ_POSIX/lib-sem-sensor.cjs" > /dev/null; then
+  falhou=$((falhou+1)); echo "  FALHA o sed nao encontrou a linha a mutar — mutacao nao aplicou nada, teste invalido"
+else
+  S8_MUT="$(montar_agora "$SKILL_OK" "$FOCO_8_DIAS" "$AGORA_SENSOR" "$RAIZ_POSIX/lib-sem-sensor.cjs")"
+  if echo "$S8_MUT" | grep -qF "sem avanço há"; then
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — o limiar de 7 dias nao e o que dispara o aviso"
+  else
+    ok=$((ok+1)); echo "  ok    mutacao expos o limiar (sem ele, 8 dias parado nao avisa mais)"
+  fi
+fi
+rm -f "$RAIZ_POSIX/lib-sem-sensor.cjs"
 
 echo
 echo "4. foco ausente cai na mensagem propria, nao no alarme de regras"
@@ -610,7 +730,9 @@ fi
 # 2026-09-08: 5595 -> 5598 — a regra 11 ganhou "checkout principal fica na branch padrão; trabalho nasce em worktree" mais a trava e a chave que a desliga (Issue #195), pagando por subtracao no proprio texto: 388 -> 391 B. Folga: 2 B.
 # 2026-09-12: 5598 -> 5904 — a regra 6 ganhou a triagem de achado (defeito ≠ ideia) (+306 B), zerando a folga de 2 B; NUCLEOS_MAX_BYTES subiu de 5600 para 6000, deixando 96 B.
 # 2026-09-15: 5904 -> 5897 — a regra 10 perdeu a admissao por manifesto + estagio (issue #264: a portaria passou a registrar) e foi reescrita mais curta, pagando por SUBTRACAO no proprio texto: 500 B na primeira redacao, que estourou a catraca (6002 > 6000), depois 396 B contra os 402 de antes. Folga sobre NUCLEOS_MAX_BYTES: 103 B.
-NUCLEO_ESPERADO=5897
+# 2026-09-17: 5897 -> 5895 — a regra 6 ganhou a fronteira de repo (issue #291: conserto na hora so no repo da sessao; repo alheio vira Issue + Q) pagando por SUBTRACAO no proprio texto. A primeira redacao custou +93 B e a combinacao real de hoje (22.1) passou a perder o bloco de Dependencias em silencio; +27 B ainda cortava. Folga sobre NUCLEOS_MAX_BYTES: 103 B, mas a folga que vale e' a da 22.1, que nao passa de ~20 B.
+# 2026-09-17: 5895 -> 5899 — a regra 4 ganhou elaboracao (issue #299: rota com emoji por etapa); o texto do nucleo nao mudou, os +4 B sao so o " ↳" do marcador. A 22.1 segue verde; folga dela cai para ~16 B.
+NUCLEO_ESPERADO=5899
 if [ "$NUCLEO_BYTES_REAL" = "$NUCLEO_ESPERADO" ]; then
   ok=$((ok+1)); echo "  ok    D7: nucleo emitido mede exatamente $NUCLEO_BYTES_REAL B (contrato: $NUCLEO_ESPERADO B)"
 else
@@ -1966,10 +2088,12 @@ fi
 echo
 echo "17.1 MUTACOES — as sabotagens do briefing, cada uma tem que quebrar a asserção correspondente"
 # Padrao: sabota uma COPIA da lib (nunca o LIB original), roda a MESMA fixture
-# contra ela, e mostra a saida divergindo. A chamada de `checa` dentro de um
-# SUBSHELL `( ... )` imprime a linha "FALHA ..." de verdade (prova textual de
-# que a assercao pega o defeito) sem contaminar o ok/falhou do arquivo inteiro
-# — subshell tem copia propria das variaveis, o incremento nao vaza para fora.
+# contra ela, e mostra a saida divergindo. A chamada de `mostra_mutante`
+# imprime a linha "ESPERADO-VERMELHO ..." (prova textual de que a assercao
+# pega o defeito) sem contaminar o ok/falhou do arquivo inteiro — a função não
+# incrementa os contadores, por isso não precisa mais de subshell (Issue #270:
+# antes era `( checa ... )`, e a linha saia como "FALHA ...", indistinguível
+# de falha real num `grep FALHA` de triagem de CI).
 # O veredito sobre "mutacao e load-bearing" quem da e o if/else logo depois,
 # no mesmo estilo das secoes 5, 9 e 12 deste arquivo.
 
@@ -1982,7 +2106,7 @@ if diff "$LIB" "$RAIZ_POSIX/lib-mut-expediente.cjs" > /dev/null; then
 else
   S_MUT1="$(expediente '2026,8,10,10,0' '{}' "$RAIZ_POSIX/lib-mut-expediente.cjs")"
   echo "  (saida do mutante: $S_MUT1 — a assercao real espera 'null')"
-  ( checa "dentroDoExpediente: sem expediente no config devolve null (nao false)" tem "null" "$S_MUT1" )
+  mostra_mutante "dentroDoExpediente: sem expediente no config devolve null (nao false)" tem "null" "$S_MUT1"
   if [ "$S_MUT1" != "null" ]; then
     ok=$((ok+1)); echo "  ok    mutacao expos o colapso null->false (D6 inteiro depende disso)"
   else
@@ -1999,7 +2123,7 @@ if diff "$LIB" "$RAIZ_POSIX/lib-mut-includes.cjs" > /dev/null; then
 else
   S_MUT2="$(outra_janela "[{\"cwd\":\"C:/abc\",\"prompt_ts\":$((AGORA_FIXO-1000))}]" '["C:/a"]' 15 "$AGORA_FIXO" "$RAIZ_POSIX/lib-mut-includes.cjs")"
   echo "  (saida do mutante: $S_MUT2 — a assercao real espera 'false')"
-  ( checa "focoAtivoEmOutraJanela: C:/abc nao casa C:/a por prefixo" tem "false" "$S_MUT2" )
+  mostra_mutante "focoAtivoEmOutraJanela: C:/abc nao casa C:/a por prefixo" tem "false" "$S_MUT2"
   if [ "$S_MUT2" = "true" ]; then
     ok=$((ok+1)); echo "  ok    mutacao expos o casamento por prefixo (C:/abc passou a isentar contra C:/a)"
   else
@@ -2017,7 +2141,7 @@ else
   FIX_STOP="[{\"cwd\":\"C:/a\",\"prompt_ts\":$((AGORA_FIXO - 999999999)),\"stop_ts\":$((AGORA_FIXO-1000))}]"
   S_MUT3="$(outra_janela "$FIX_STOP" '["C:/a"]' 15 "$AGORA_FIXO" "$RAIZ_POSIX/lib-mut-stopts.cjs")"
   echo "  (saida do mutante: $S_MUT3 — a assercao real espera 'false')"
-  ( checa "focoAtivoEmOutraJanela: prompt_ts frio e o que conta, nao stop_ts" tem "false" "$S_MUT3" )
+  mostra_mutante "focoAtivoEmOutraJanela: prompt_ts frio e o que conta, nao stop_ts" tem "false" "$S_MUT3"
   if [ "$S_MUT3" = "true" ]; then
     ok=$((ok+1)); echo "  ok    mutacao expos a troca prompt_ts->stop_ts (sinal errado passou a isentar)"
   else
@@ -2104,7 +2228,7 @@ if grep -qF 'normalizarCwd(s.cwd) === alvo' "$RAIZ_POSIX/lib-mut-colocada.cjs"; 
 else
   S_MUT5="$(colocada 'C:/Projetos/rainforest-mind' 'sess-a' "$AGORA_COL" "$RAIZ_POSIX/lib-mut-colocada.cjs")"
   echo "  (saida do mutante: $S_MUT5 — a assercao real espera 'ids=[sess-b-parada]')"
-  ( checa "co-locada: session_id de uma das duas devolve EXATAMENTE a outra" tem "ids=[sess-b-parada]" "$S_MUT5" )
+  mostra_mutante "co-locada: session_id de uma das duas devolve EXATAMENTE a outra" tem "ids=[sess-b-parada]" "$S_MUT5"
   if [ "$S_MUT5" = "ids=[] paradas=[]" ]; then
     ok=$((ok+1)); echo "  ok    mutacao expos a co-locacao (o gate de checkout ficaria mudo no caso das Issues #25 e #38)"
   else
@@ -2121,7 +2245,7 @@ if diff "$LIB" "$RAIZ_POSIX/lib-mut-faixas.cjs" > /dev/null; then
 else
   S_MUT6="$(expediente '2026,8,10,15,0' "$CONFIG_EXPEDIENTE_FAIXAS" "$RAIZ_POSIX/lib-mut-faixas.cjs")"
   echo "  (saida do mutante em seg 15:00, 2a faixa 14-18: $S_MUT6 — a assercao real espera 'true')"
-  ( checa "dentroDoExpediente: faixas - dentro da 2a faixa (seg 15:00)" tem "true" "$S_MUT6" )
+  mostra_mutante "dentroDoExpediente: faixas - dentro da 2a faixa (seg 15:00)" tem "true" "$S_MUT6"
   if [ "$S_MUT6" = "false" ]; then
     ok=$((ok+1)); echo "  ok    mutacao expos que so a 1a faixa valia (a 2a faixa, com o almoco no meio, ficaria sempre fora)"
   else
@@ -2574,6 +2698,193 @@ checa "21.2 com CRLF divide igual ao LF"            tem     "$saida_lf"  "$saida
 # limpo, e passou TAMBEM com a normalizacao removida — nao discriminava nada, e teste
 # que fica verde com a protecao desligada e ruido que da falsa confianca. Quem carrega
 # a prova aqui e o 21.2: com CRLF a divisao tem que dar o MESMO resultado que com LF.
+
+echo
+echo "== 22. Issue #250 (Tarefa 17) — cabecalho+rodape sem teto proprio: corte por prioridade =="
+# Ate aqui so as PARTES do rodape tinham teto (SESSOES_MAX_BYTES) ou catraca
+# (NUCLEOS_MAX_BYTES) -- a SOMA de cabecalho+rodape ("fixo") nao tinha nenhum,
+# e o hook so avisava DEPOIS do estouro (travarOrcamento, no fim). Esta secao
+# reproduz a combinacao REAL que hooks/foco-session-start.cjs monta quando o
+# ambiente tem veredito de isencao de desvio, sessoes paralelas em pastas
+# distintas, revisao vencida, dependencias de ambiente declaradas e worktree
+# principal atrasado -- ao mesmo tempo, com o SKILL.md REAL do repositorio (o
+# defeito e sobre o TAMANHO de hoje do nucleo de regras, que um fixture curto
+# nao reproduz).
+
+SKILL_REAL="$(cat "$SRC/skills/rainforest-mind/SKILL.md")"
+
+# Sessoes: 3 janelas vivas em pastas distintas -- a combinacao que a Tarefa 17
+# mediu ao vivo em 2026-09-16 (comando: node hooks/foco-session-start.cjs contra
+# o ambiente real do usuario).
+SESSOES_22='[{"cwd":"C:\\Projetos\\rainforest-mind","trabalhando":true,"minutos":2},
+             {"cwd":"C:\\Projetos\\outro-repo","trabalhando":false,"minutos":10},
+             {"cwd":"C:\\Projetos\\terceiro-repo","trabalhando":false,"minutos":25}]'
+BLOCO_SESSOES_22="$(node -e '
+const lib = require(process.argv[1]);
+process.stdout.write(lib.resumirSessoes(JSON.parse(process.argv[2]), "45"));
+' "$LIB" "$SESSOES_22")"
+
+# Veredito: computarVeredito DE VERDADE (nao texto inventado), com Pastas/
+# Ociosidade declaradas e uma sessao ativa dentro do foco -- o shape exato que
+# a isencao 1 (regra 17) produz quando ela se aplica.
+FOCO_PARA_VEREDITO_22="# Foco
+
+## Ativo
+
+**Zerar issues** \`[trabalho]\` — declarado 2026-09-01.
+Pastas: C:\\Projetos\\rainforest-mind
+Ociosidade máxima: 45 min
+"
+SESSOES_PARA_VEREDITO_22='[{"cwd":"C:\\Projetos\\rainforest-mind","prompt_ts":9999999999999,"stop_ts":0}]'
+BLOCO_VEREDITO_22="$(node -e '
+const lib = require(process.argv[1]);
+process.stdout.write(lib.computarVeredito(process.argv[2], JSON.parse(process.argv[3]), {}, 9999999999999));
+' "$LIB" "$FOCO_PARA_VEREDITO_22" "$SESSOES_PARA_VEREDITO_22")"
+
+# Revisao vencida: mesmo template de hooks/foco-session-start.cjs:181.
+BLOCO_REVISAO_22="
+⚠ A skill rainforest-mind não é revisada há 214 dias (limite: 60). Avise o usuario que está na hora de revisá-la."
+
+# Dependencias: mesmo template de hooks/foco-session-start.cjs:264-268, com os
+# DOIS itens que o hook checa hoje (bridge WhatsApp + claude-mem).
+BLOCO_DEPENDENCIAS_22="## Dependências de ambiente (regra 14)
+Checado pelo hook: bridge WhatsApp online (http://127.0.0.1:3001); claude-mem ativo."
+
+# principalAtrasado: mesmo shape de hooks/lib/principal-atrasado.cjs (array de
+# linhas prontas -- montarContexto acrescenta o "- " na frente de cada uma).
+FIX_PRINCIPAL_22='["worktree `zerar-issues-5` está 6 commit(s) atrás do principal — considere sincronizar."]'
+
+
+contexto_rodape() { # veredito, sessoes, revisao, dependencias, principal(json), [lib], [foco]
+  LIB_PATH="${6:-$LIB}" FIX_SKILL="$SKILL_REAL" FIX_FOCO="${7-$FOCO_MUITOS}" \
+    FIX_VEREDITO="$1" FIX_BLOCO_SESSOES="$2" FIX_REVISAO="$3" FIX_DEPENDENCIAS="$4" FIX_PRINCIPAL="$5" \
+    node "$RAIZ_POSIX/driver.cjs" 2>&1
+}
+
+# Mede a SOBRA real (ORCAMENTO_BYTES - fixo) que `montarContexto` calcula
+# internamente -- SEM reimplementar o corte (a funcao anterior aqui era um
+# espelho da logica de corte, e nasceu desatualizada assim que o "so corta se
+# resolver" (contexto-sessao.cjs:1188, D12) entrou: o mirror nao conhecia o
+# guarda novo e removia dependencias/sessoes mesmo quando isso nao ajudava).
+# Em vez disso, roda o driver REAL (`contexto_rodape`) com foco VAZIO: o corte
+# de `fixo` (cabecalho+rodape) nao depende do texto do foco, entao a saida com
+# foco vazio tem exatamente o mesmo `fixo` que qualquer outro foco. Com foco
+# vazio, `montarContexto` sempre grava a mensagem FIXA de foco vazio
+# (contexto-sessao.cjs:1210-1211) no lugar do foco -- entao
+# `fixo = bytes(saida) - bytes(mensagem fixa)` e `sobra = ORCAMENTO_BYTES - fixo`.
+# Se essa string mudar no fonte, a asserção abaixo tem que falhar ALTO (nunca
+# calcular com ela ausente, tratando "nao achei" como zero ou ignorando).
+FOCO_VAZIO_MSG='(nenhum foco declarado — sugira /foco <texto> se o usuario disser no que precisa entregar)'
+sobra_real() { # veredito, sessoes, revisao, dependencias, principal(json), [lib]
+  local lib="${6:-$LIB}"
+  local saida
+  saida="$(contexto_rodape "$1" "$2" "$3" "$4" "$5" "$lib" "")"
+  if ! printf '%s' "$saida" | grep -qF "$FOCO_VAZIO_MSG"; then
+    echo "  FALHA sobra_real: a mensagem fixa de foco vazio nao foi encontrada na saida -- a string mudou no fonte? sobra NAO calculada." >&2
+    echo "ERRO-MENSAGEM-FIXA-AUSENTE"
+    return
+  fi
+  LIB_PATH="$lib" FIX_SAIDA="$saida" FIX_MSG="$FOCO_VAZIO_MSG" node -e '
+    const lib = require(process.env.LIB_PATH);
+    const bytesSaida = Buffer.byteLength(process.env.FIX_SAIDA, "utf8");
+    const bytesMsg = Buffer.byteLength(process.env.FIX_MSG, "utf8");
+    process.stdout.write(String(lib.TETOS.ORCAMENTO_BYTES - (bytesSaida - bytesMsg)));
+  '
+}
+
+# 22.1 — a combinacao de HOJE (as duas dependencias que o hook realmente checa)
+# ja fica dentro do ORCAMENTO_BYTES corrigido SEM precisar do corte.
+S_22_1="$(contexto_rodape "$BLOCO_VEREDITO_22" "$BLOCO_SESSOES_22" "$BLOCO_REVISAO_22" "$BLOCO_DEPENDENCIAS_22" "$FIX_PRINCIPAL_22")"
+checa "22.1 combinacao real de hoje: sem aviso de foco que 'nao coube'" nao_tem "não coube" "$S_22_1"
+checa "22.1 combinacao real de hoje: sem aviso de injecao acima do orcamento" nao_tem "ACIMA DO ORÇAMENTO" "$S_22_1"
+# O "SEM precisar do corte" acima e' asserido, nao so dito: em 2026-09-17 a regra 6
+# cresceu 93 B no nucleo e a combinacao de hoje passou a perder este bloco em
+# silencio (22.1 e 22.2 davam saida identica). Nucleo que crescer ~20 B derruba aqui.
+checa "22.1 combinacao real de hoje: Dependencias de ambiente sobrevive sem corte" tem "Dependências de ambiente" "$S_22_1"
+SOBRA_22_1="$(sobra_real "$BLOCO_VEREDITO_22" "$BLOCO_SESSOES_22" "$BLOCO_REVISAO_22" "$BLOCO_DEPENDENCIAS_22" "$FIX_PRINCIPAL_22")"
+if [ "$SOBRA_22_1" -ge 700 ] 2>/dev/null; then
+  ok=$((ok+1)); echo "  ok    22.1 sobra calculada para o foco: $SOBRA_22_1 B (>= piso FOCO_MIN_BYTES de 700 B)"
+else
+  falhou=$((falhou+1)); echo "  FALHA 22.1 sobra calculada para o foco: so $SOBRA_22_1 B (< piso de 700 B)"
+fi
+
+# 22.2 — o bloco de DEPENDENCIAS nao tem teto proprio (diferente de sessoes, que
+# tem SESSOES_MAX_BYTES): se ele crescer (mais um item checado no futuro), a
+# SOMA cabecalho+rodape passa do que o orcamento corrigido deixa para o foco, e
+# so o corte por prioridade (nao o valor fixo de ORCAMENTO_BYTES) resolve.
+DEPENDENCIAS_CRESCIDAS_22="## Dependências de ambiente (regra 14)
+Checado pelo hook: bridge WhatsApp online (http://127.0.0.1:3001); claude-mem ativo; sonda de patch TOTVS ativa (advpls.exe respondendo); backup noturno concluído às 03:12."
+S_22_2="$(contexto_rodape "$BLOCO_VEREDITO_22" "$BLOCO_SESSOES_22" "$BLOCO_REVISAO_22" "$DEPENDENCIAS_CRESCIDAS_22" "$FIX_PRINCIPAL_22")"
+checa "22.2 dependencias crescidas: corte evita o aviso de 'nao coube'" nao_tem "não coube" "$S_22_2"
+checa "22.2 dependencias crescidas: sem aviso de injecao acima do orcamento" nao_tem "ACIMA DO ORÇAMENTO" "$S_22_2"
+checa "22.2 dependencias crescidas: o corte tirou o bloco de dependencias" nao_tem "Dependências de ambiente" "$S_22_2"
+checa "22.2 dependencias crescidas: as sessoes sobrevivem (o corte so tira depois)" tem "radar multi-janela" "$S_22_2"
+SOBRA_22_2="$(sobra_real "$BLOCO_VEREDITO_22" "$BLOCO_SESSOES_22" "$BLOCO_REVISAO_22" "$DEPENDENCIAS_CRESCIDAS_22" "$FIX_PRINCIPAL_22")"
+if [ "$SOBRA_22_2" -ge 700 ] 2>/dev/null; then
+  ok=$((ok+1)); echo "  ok    22.2 sobra calculada para o foco: $SOBRA_22_2 B (>= piso FOCO_MIN_BYTES de 700 B)"
+else
+  falhou=$((falhou+1)); echo "  FALHA 22.2 sobra calculada para o foco: so $SOBRA_22_2 B (< piso de 700 B)"
+fi
+
+echo
+echo "22.3 (D12/Issue #294.5) — so' corta se resolver: corte que nao resolve fica de fora"
+# Um aviso de principal atrasado DOMINANTE faz o corte por prioridade (tirar
+# dependencias+sessoes) nao bastar; o guarda de contexto-sessao.cjs tem de perceber
+# isso e NAO remover nada. A faixa de tamanho em que isso acontece sem cair em
+# ACIMA DO ORCAMENTO tem ~15 B e anda com cada byte do nucleo (em 2026-09-17 um
+# fixture de tamanho fixo quebrou quando a regra 6 mudou), entao o tamanho e'
+# BUSCADO aqui, contra a lib real: o primeiro sufixo em que a lib real mantem os
+# dois blocos sem ACIMA e a lib com o guarda desligado (`if (true)`) tira os dois.
+# Se o guarda de producao nao fizer diferenca em tamanho nenhum, nao ha faixa: FALHA.
+cp "$LIB" "$RAIZ_POSIX/lib-mut-so-corta-se-resolve.cjs"
+sed -i "s/if (fixoComCorteMaximo <= TETOS.ORCAMENTO_BYTES - TETOS.FOCO_MIN_BYTES) {/if (true) {/" "$RAIZ_POSIX/lib-mut-so-corta-se-resolve.cjs"
+NOTA_22_3=""
+if diff "$LIB" "$RAIZ_POSIX/lib-mut-so-corta-se-resolve.cjs" > /dev/null; then
+  # Sem a linha do guarda na lib, a copia "sem guarda" e' a propria lib: a busca
+  # roda igual e nao acha faixa -- o vermelho sai pelo motivo certo (o guarda nao
+  # decide nada), com a nota dizendo por que.
+  NOTA_22_3=" (a linha do guarda nao existe na lib: mudou ou sumiu)"
+fi
+{
+  ACHOU_22_3=""
+  BASE_22_3='worktree `zerar-issues-5` está 6 commit(s) atrás do principal — considere sincronizar. '
+  SUF_22_3=""; while [ "${#SUF_22_3}" -lt 200 ]; do SUF_22_3="${SUF_22_3}xxxxx"; done
+  while [ "${#SUF_22_3}" -le 1200 ]; do
+    P_22_3="[\"${BASE_22_3}${SUF_22_3}\"]"
+    R_22_3="$(contexto_rodape "$BLOCO_VEREDITO_22" "$BLOCO_SESSOES_22" "$BLOCO_REVISAO_22" "$DEPENDENCIAS_CRESCIDAS_22" "$P_22_3")"
+    if printf '%s' "$R_22_3" | grep -qF "ACIMA DO ORÇAMENTO"; then break; fi
+    if printf '%s' "$R_22_3" | grep -qF "Dependências de ambiente" && printf '%s' "$R_22_3" | grep -qF "radar multi-janela"; then
+      M_22_3="$(contexto_rodape "$BLOCO_VEREDITO_22" "$BLOCO_SESSOES_22" "$BLOCO_REVISAO_22" "$DEPENDENCIAS_CRESCIDAS_22" "$P_22_3" "$RAIZ_POSIX/lib-mut-so-corta-se-resolve.cjs")"
+      if ! printf '%s' "$M_22_3" | grep -qF "Dependências de ambiente" && ! printf '%s' "$M_22_3" | grep -qF "radar multi-janela"; then
+        ACHOU_22_3="${#SUF_22_3}"; break
+      fi
+    fi
+    SUF_22_3="${SUF_22_3}xxxxx"
+  done
+  if [ -n "$ACHOU_22_3" ]; then
+    ok=$((ok+1)); echo "  ok    22.3 principal dominante (sufixo de $ACHOU_22_3 B): o guarda mantem Dependencias e sessoes sem ACIMA, e sem o guarda os dois somem"
+  else
+    falhou=$((falhou+1)); echo "  FALHA 22.3 nenhum tamanho de aviso (200-1200 B) em que o guarda 'so corta se resolver' faca diferenca -- o guarda nao decide nada$NOTA_22_3"
+  fi
+}
+rm -f "$RAIZ_POSIX/lib-mut-so-corta-se-resolve.cjs"
+
+echo
+echo "22.4 MUTAÇÃO — desligar o corte tem que derrubar o item 22.2"
+cp "$LIB" "$RAIZ_POSIX/lib-mut-rodape.cjs"
+sed -i "s/if (fixo > TETOS.ORCAMENTO_BYTES - TETOS.FOCO_MIN_BYTES) {/if (false) {/" "$RAIZ_POSIX/lib-mut-rodape.cjs"
+if diff "$LIB" "$RAIZ_POSIX/lib-mut-rodape.cjs" > /dev/null; then
+  falhou=$((falhou+1)); echo "  FALHA o sed não encontrou a linha a mutar — mutação não aplicou nada, teste inválido"
+else
+  S_MUT_22="$(contexto_rodape "$BLOCO_VEREDITO_22" "$BLOCO_SESSOES_22" "$BLOCO_REVISAO_22" "$DEPENDENCIAS_CRESCIDAS_22" "$FIX_PRINCIPAL_22" "$RAIZ_POSIX/lib-mut-rodape.cjs")"
+  echo "  (o mutante ainda mostra 'não coube'? $(echo "$S_MUT_22" | grep -qF 'não coube' && echo sim || echo não))"
+  if echo "$S_MUT_22" | grep -qF "não coube"; then
+    ok=$((ok+1)); echo "  ok    mutação expôs que o corte é o que evita o aviso (sem ele, ele volta)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mutação sem efeito — desligar o corte não trouxe o aviso de volta"
+  fi
+fi
+rm -f "$RAIZ_POSIX/lib-mut-rodape.cjs"
 
 echo
 echo "-----------------------------------------"

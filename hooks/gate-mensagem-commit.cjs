@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: guia
 /**
  * PreToolUse — exige forma minima na mensagem de `git commit` (Bash e
  * PowerShell, janela principal e subagente).
@@ -69,6 +70,7 @@ const { segmentosComAspas } = require("./lib/cwd-efetivo.cjs");
 const {
   tokensComAspas, ehComando, posicaoDeComando, textoAPartir, desempacotarWrapperDeString,
 } = require("./lib/tokens-comando.cjs");
+const { mascararCorposDeHeredoc } = require("./lib/heredoc.cjs");
 
 // Flags globais do git (antes do subcomando) que consomem o token seguinte.
 const FLAG_GLOBAL_COM_VALOR = new Set([
@@ -136,6 +138,35 @@ function achaGitCommit(cmd, ferramenta) {
     if (g) return g;
   }
   return null;
+}
+
+/**
+ * Desmonta flag curta AGRUPADA (`-am`, `-qm`, `-qam`) e flag curta com valor
+ * COLADO (`-mtexto`) em tokens separados, antes de `leFlagsCommit` — Issue
+ * #263: `-am "x"`/`-qm "x"`/`-qam "x"` eram lidos como um token so, que nunca
+ * batia em `-m`/`--message`, e o gate bloqueava com "nenhuma mensagem
+ * resolvivel" mesmo com a mensagem ali.
+ *
+ * So mexe em token NAO CITADO (`!tok.q`) que casa `/^-([aq]*)([mF])(.*)$/`:
+ * zero ou mais letras `-a`/`-q` (uma por token, na ordem em que apareceram),
+ * seguidas de `-m` ou `-F`, seguidas do restante colado — se nao vazio, vira
+ * um token de valor novo. `-m`/`-F` isolados (resto vazio, sem `a`/`q`)
+ * produzem so o proprio token, identico a hoje — nao regride. `-a` sozinho
+ * (sem `m`/`F` logo depois) nao casa e sai inalterado, continua barrando por
+ * falta de mensagem.
+ */
+function desmontarFlagsCurtas(argsToks) {
+  const out = [];
+  for (const tok of argsToks) {
+    if (tok.q) { out.push(tok); continue; }
+    const m = /^-([aq]*)([mF])(.*)$/.exec(tok.v);
+    if (!m) { out.push(tok); continue; }
+    const [, letras, mf, resto] = m;
+    for (const letra of letras) out.push({ v: `-${letra}`, q: false });
+    out.push({ v: `-${mf}`, q: false });
+    if (resto) out.push({ v: resto, q: false });
+  }
+  return out;
 }
 
 /**
@@ -246,10 +277,13 @@ function main() {
   const cmd = (ev.tool_input || {}).command;
   if (typeof cmd !== "string") process.exit(0);
 
-  const achado = achaGitCommit(cmd, ev.tool_name);
+  // Issue #263: corpo de heredoc nao e comando, e nao pode ser varrido em
+  // busca de `git commit` — mesma mascara que `gate-staging-total.cjs` usa.
+  const cmdParaAnalise = mascararCorposDeHeredoc(cmd);
+  const achado = achaGitCommit(cmdParaAnalise, ev.tool_name);
   if (!achado) process.exit(0); // comando sem `git commit`
 
-  const { mParts, fFile, reusaMensagem } = leFlagsCommit(achado.argsToks);
+  const { mParts, fFile, reusaMensagem } = leFlagsCommit(desmontarFlagsCurtas(achado.argsToks));
   if (reusaMensagem) process.exit(0); // --amend/--no-edit/-C/-c: mensagem ja existe
 
   if (fFile === "-") {

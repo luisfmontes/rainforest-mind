@@ -92,3 +92,9 @@ ferramentas.jsonl
 # de uma entrada plantada acabou junto com o cache de `privada` (o que fica
 # so deixa o gate mais rigido), mas rastro de execucao nao se versiona.
 .rainforest/cache-visibilidade-repo.json
+
+# Toggle de EMERGENCIA do gate de publicacao (issue #265): quem cria este
+# arquivo na raiz do repo ou do checkout principal desliga o gate ali. Sem
+# esta linha, copiar o arquivo para um worktree vira pegadinha de
+# `git add -A` — o arquivo untracked entraria versionado por engano.
+.rainforest-gate-off

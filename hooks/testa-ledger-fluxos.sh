@@ -343,7 +343,7 @@ RFM_ESTADO_ROOT="$T6" RFM_ROOT="$T6" CLAUDE_SESSION_ID="$SESSAO6" \
   env -u CLAUDE_CODE_SESSION_ID node "$ESTADO_JS" marcar --slug teste-aberto --estagio revisar --status ok > /dev/null 2>&1
 RFM_ESTADO_ROOT="$T6" RFM_ROOT="$T6" CLAUDE_SESSION_ID="$SESSAO6" \
   env -u CLAUDE_CODE_SESSION_ID node "$ESTADO_JS" marcar --slug teste-aberto --estagio verificar --status ok \
-  --json '{"comando":"bash test.sh","saida":"3 cases passed"}' > /dev/null 2>&1
+  --json '{"comando":"bash test.sh","saida":"3 cases passed","sensor_externo":"bash test.sh"}' > /dev/null 2>&1
 
 OUT6A=$(RFM_ESTADO_ROOT="$T6" RFM_ROOT="$T6" CLAUDE_SESSION_ID="$SESSAO6" \
   env -u CLAUDE_CODE_SESSION_ID node "$ESTADO_JS" exigir --slug teste-aberto --estagio fechar 2>&1)

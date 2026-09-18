@@ -20,6 +20,8 @@ superpowers, karpathy, mattpocock; procedência item a item no README).
    antes de começar, no formato `1. [passo] → verifica: [checagem]`.
    Critério forte deixa o trabalho rodar sozinho até o fim; critério fraco
    ("faz funcionar") obriga a voltar perguntando no meio.
+   Durante a execução é essa mesma lista que o checkpoint da regra 4
+   re-renderiza, com ✅ 🔄 ⏳ ❌ por etapa e a numeração original.
 
 ## A cadeia antes do código
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: guia
 /**
  * PreToolUse — barra `gh issue close` direto, palavras-chave falsas (português), e `gh pr create/edit/merge` sem evidência.
  * Protege contra: gh issue close direto / gh pr merge/create sem marcador de evidência
@@ -585,7 +586,7 @@ function verificarIssuesCitadas(corpo) {
         `Razão: Issue #${issue} não tem comentário com a evidência de pronto.\n\n` +
         `O critério de pronto deve ter sido rodado e colado em comentário.\n` +
         `Use:\n` +
-        `  node scripts/fechar-issue.cjs ${issue} --comando "<seu-comando>" --saida "<saída-ou-arquivo>"\n\n` +
+        `  node scripts/fechar-issue.cjs ${issue} --comando "<seu-comando>" --saida "<texto colado>" ou --saida-arquivo <caminho dentro do repo>\n\n` +
         `Depois crie o PR com o corpo citando closes #${issue}.\n`
       );
     }
@@ -626,7 +627,7 @@ function verificarComandoGh(segmento, subcomandos, cwdSegmento) {
       `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
       `Razão: 'gh issue close' direto não registra a evidência de pronto.\n\n` +
       `Use:\n` +
-      `  node scripts/fechar-issue.cjs <número> --comando "<seu-comando>" --saida "<saída-ou-arquivo>"\n\n` +
+      `  node scripts/fechar-issue.cjs <número> --comando "<seu-comando>" --saida "<texto colado>" ou --saida-arquivo <caminho dentro do repo>\n\n` +
       `O script registra o comentário com a evidência antes de fechar.\n`
     );
   }

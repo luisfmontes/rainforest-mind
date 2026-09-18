@@ -1134,19 +1134,28 @@ function checarMemoria() {
     // Verificação 3: pendência de marca d'água com >48h
     // Offset visto > offset processado = há trabalho parado
     // Se parado há mais de 48h, avisa. Menos de 48h não acusa (Q3).
+    //
+    // Tarefa 14 (D9): a pendência relevante para "há quanto tempo a captura está
+    // parada" é a mais ANTIGA por `processada_em`, não a primeira que o SCAN do
+    // SQLite devolve. Sem `ORDER BY`, a ordem de varredura segue `rowid` — que no
+    // banco real diverge de `processada_em` em pelo menos um par medido (ids
+    // 2515/2516, ver achado da Tarefa 14) — e um `ORDER BY`/índice futuro, um
+    // `VACUUM` ou outra versão do SQLite podem mudar essa ordem sem aviso. Tornar a
+    // seleção da mais antiga EXPLÍCITA (não uma coincidência de ordem de scan).
     try {
-      const marcas = db.prepare(`
+      const marca = db.prepare(`
         SELECT processada_em, offset, offset_processado
         FROM marca_dagua
         WHERE offset > COALESCE(offset_processado, 0)
-      `).all();
+          AND processada_em IS NOT NULL AND processada_em <> ''
+        ORDER BY processada_em ASC
+        LIMIT 1
+      `).get();
 
-      for (const marca of marcas) {
-        if (!marca.processada_em) continue;
+      if (marca) {
         const tempoPassado = Date.now() - Date.parse(marca.processada_em);
         if (tempoPassado > QUARENTA_E_OITO_HORAS_MS) {
           problemas.push(`pipeline parado ha mais de 48h (marca: ${marca.processada_em})`);
-          break; // relatar só a primeira, não saturar
         }
       }
     } catch (e) {
@@ -1452,6 +1461,74 @@ function checarPoda(o = {}) {
   ok('poda', `porta ${pidInfo.porta} responde, ${requisicoes} requisição(ões) registrada(s)`);
 }
 
+// ---------------------------------------------------------------- 13. despachos
+/**
+ * Resumo do `despachos.jsonl` que a portaria grava (Issue #276) — hoje uma
+ * escrita sem leitor nenhum. Conta despachos, `deny`, `fora_de_fluxo` e
+ * `escreve_conferido: false` desde sempre (o arquivo é append-only, sem
+ * corte por data) e responde com números concretos, não "consulte o log".
+ *
+ * Resolve a raiz com `resolverRaiz({ cwd: process.cwd() })` — a MESMA
+ * semantica de `raizDeDados` em `hooks/portaria.cjs` (raiz do PROJETO
+ * corrente que a portaria protege), diferente de `checarEsquema`/
+ * `checarMemoria` acima, que usam `{ plugin: RAIZ_CODIGO }`. Os dois
+ * caminhos convergem enquanto so existir raiz GLOBAL; um repositorio com
+ * `.rainforest` PROPRIO (nivel 2) diverge, e o log que a portaria grava
+ * para AQUELE repo tem que ser lido dali, nao do global.
+ */
+function checarDespachos() {
+  let raizDados;
+  try {
+    const { resolverRaiz } = require('../hooks/lib/raiz.cjs');
+    ({ raiz: raizDados } = resolverRaiz({ cwd: process.cwd() }));
+  } catch {
+    return; // sem raiz de dados: nada a checar
+  }
+  if (!raizDados) return; // sem raiz: nada a checar
+
+  const logPath = path.join(raizDados, 'portaria', 'despachos.jsonl');
+  if (!fs.existsSync(logPath)) return; // nenhum despacho ainda: nada a dizer
+
+  let bruto;
+  try {
+    bruto = fs.readFileSync(logPath, 'utf8');
+  } catch {
+    return; // sem leitura: nada a checar
+  }
+
+  let despachos = 0;
+  let deny = 0;
+  let foraDeFluxo = 0;
+  let escreveNaoConferido = 0;
+
+  for (const linhaTexto of bruto.split('\n')) {
+    if (!linhaTexto.trim()) continue;
+    let linha;
+    try {
+      linha = JSON.parse(linhaTexto);
+    } catch {
+      continue; // linha corrompida: nao soma, nao derruba o checador
+    }
+    despachos++;
+    if (linha.decisao === 'deny') deny++;
+    if (linha.fora_de_fluxo === true) foraDeFluxo++;
+    if (linha.escreve_conferido === false) escreveNaoConferido++;
+  }
+
+  if (!despachos) return; // arquivo existe mas vazio: nada a dizer
+
+  const detalhe = `${despachos} despacho(s), ${deny} deny, ${foraDeFluxo} fora de fluxo, `
+    + `${escreveNaoConferido} com escreve nao conferido`;
+
+  // Mesma sensibilidade que `ideias` ja usa para divida herdada: um so caso
+  // ja justifica aviso, nunca alerta — o log e trilha, nao portao.
+  if (deny + foraDeFluxo + escreveNaoConferido > 0) {
+    return aviso('despachos', detalhe,
+      `leia ${logPath} — cada deny/fora_de_fluxo/escreve_conferido tem o motivo na propria linha`);
+  }
+  ok('despachos', detalhe);
+}
+
 // ---------------------------------------------------------------- 12. backup-externo
 /**
  * Alerta quando o backup fora da máquina está velho (Tarefa 10 do plano guardas).
@@ -1547,6 +1624,7 @@ async function main() {
   checarBranches();
   checarDuplicacao();
   checarConselho();
+  checarDespachos();
   checarEsquema();
   checarMemoria();
   checarVigias();
