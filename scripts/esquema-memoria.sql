@@ -26,6 +26,10 @@
 -- `substituida_por` tira a linha da injeção e da busca, nunca apaga — a linha
 -- continua na tabela, só some do que é lido; `reconciliada_em` marca quando a
 -- observação passou pelo passo de reconciliação (store/update/merge/skip).
+-- O motivo do design (D3): preserva o invariante "verdade de máquina não se
+-- apaga" e deixa fusão ruim (update/merge errado) reversível — quem lê
+-- `substituida_por` sempre pode voltar à linha original, que continua na
+-- tabela.
 
 CREATE TABLE IF NOT EXISTS observacoes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
