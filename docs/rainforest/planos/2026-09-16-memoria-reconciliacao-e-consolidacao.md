@@ -96,6 +96,21 @@ justificar em prosa não destrava.
   escreveu o plano, não da entrega — e a tarefa 6, que ainda não tinha sido
   despachada, já sai corrigida.
 
+- **2026-09-18, tarefa 5 — a manutenção tem que migrar o esquema antes de rodar, e
+  registrar a falha no log.** Achado da integração, rodando o artefato real contra
+  uma cópia do banco do usuário **como ele está hoje**: `manutencao` sai
+  `AVISO: erro durante reconciliação: no such column: substituida_por` e depois
+  `ERRO: no such column: substituida_por`, e o `manutencao.log` para em
+  `consolidar: inicio` — sem `fim`, sem `manutencao: completa`. Duas causas, as
+  duas dentro do escopo do D5: (a) só `iniciar` roda `criarSchema`/migrações, e o
+  banco real **nunca foi migrado**, então a passada diária falharia para sempre;
+  (b) `cmdConsolidar` chama `process.exit(1)` no catch, o que mata o filho
+  destacado no meio — e como ele roda com `stdio: 'ignore'`, **ninguém vê**. A
+  tarefa 5 ganha as duas correções: `manutencao` garante o esquema (idempotente,
+  como o `iniciar`) antes do primeiro passo, e cada passo grava `fim` ou `falhou:
+  <motivo>` no log sem derrubar o processo. Sem isto a tarefa 6 não teria o que
+  ler para avisar na abertura.
+
 ## Nomes fixados (o plano prescreve, para o critério ter o que ler)
 
 As tarefas 2, 4 e 5 criam constantes com **estes nomes**, em `scripts/memoria.cjs`:
