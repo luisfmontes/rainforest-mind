@@ -111,6 +111,18 @@ justificar em prosa não destrava.
   <motivo>` no log sem derrubar o processo. Sem isto a tarefa 6 não teria o que
   ler para avisar na abertura.
 
+- **2026-09-18, tarefa 8 — o `\s` do critério não sobrevive ao shell, e o critério
+  reprovava entrega correta.** O comando lia os três números com
+  `new RegExp(n+"\s*=\s*([0-9]+)")`. Dentro de `node -e '…'` no Git Bash, a
+  contrabarra se perde e a expressão vira `TETO_RECONCILIARs*=s*([0-9]+)`, que não
+  casa com nada: `node -e 'console.log(new RegExp("X\s*=\s*(\d+)").source)'` imprime
+  `Xs*=s*(d+)`. A entrega estava certa (`const TETO_RECONCILIAR = 200;` está lá, e o
+  README traz 200, 10 e 30); o **critério** é que estava quebrado, e teria reprovado
+  no `verificar` pelo motivo errado. Trocado por `n+" *= *([0-9]+)"`, sem contrabarra
+  nenhuma, e conferido: imprime `200 10 30 true`. Mesma família do `…` que a primeira
+  rodada de correção do plano já tinha pego — comando de critério é código, e código
+  do plano também precisa rodar antes de ser publicado.
+
 ## Nomes fixados (o plano prescreve, para o critério ter o que ler)
 
 As tarefas 2, 4 e 5 criam constantes com **estes nomes**, em `scripts/memoria.cjs`:
@@ -223,7 +235,7 @@ paralela: nao
 mutacao: n/a
   motivo: texto não tem comportamento a inverter; a falsificação é a coerência com o
   que o código faz, e é isso que o comando abaixo mede
-pronto quando: os três números do README são **lidos do fonte**, não do plano — o teto por execução, o teto de grupos e a idade de consolidação do texto são os mesmos literais de `TETO_RECONCILIAR`, `TETO_GRUPOS` e `DIAS_CONSOLIDACAO` em `scripts/memoria.cjs` — provado por `node -e 'const fs=require("fs");const s=fs.readFileSync("scripts/memoria.cjs","utf8");const r=fs.readFileSync("README.md","utf8");const v=["TETO_RECONCILIAR","TETO_GRUPOS","DIAS_CONSOLIDACAO"].map(n=>(s.match(new RegExp(n+"\\s*=\\s*([0-9]+)"))||[])[1]);console.log(v.join(" "), v.every(x=>x&&r.includes(x)))'` imprimindo `200 10 30 true`; e o cabeçalho de `scripts/esquema-memoria.sql` descrevendo `substituida_por` com a prescrição do D3 — "tira da injeção e da busca, nunca apaga" — conferido por `grep -c "nunca apaga" scripts/esquema-memoria.sql` devolvendo `1` e por `bash scripts/testa-memoria.sh` continuando verde
+pronto quando: os três números do README são **lidos do fonte**, não do plano — o teto por execução, o teto de grupos e a idade de consolidação do texto são os mesmos literais de `TETO_RECONCILIAR`, `TETO_GRUPOS` e `DIAS_CONSOLIDACAO` em `scripts/memoria.cjs` — provado por `node -e 'const fs=require("fs");const s=fs.readFileSync("scripts/memoria.cjs","utf8");const r=fs.readFileSync("README.md","utf8");const v=["TETO_RECONCILIAR","TETO_GRUPOS","DIAS_CONSOLIDACAO"].map(n=>(s.match(new RegExp(n+" *= *([0-9]+)"))||[])[1]);console.log(v.join(" "), v.every(x=>x&&r.includes(x)))'` imprimindo `200 10 30 true`; e o cabeçalho de `scripts/esquema-memoria.sql` descrevendo `substituida_por` com a prescrição do D3 — "tira da injeção e da busca, nunca apaga" — conferido por `grep -c "nunca apaga" scripts/esquema-memoria.sql` devolvendo `1` e por `bash scripts/testa-memoria.sh` continuando verde
 
 ## Em aberto para o usuário
 

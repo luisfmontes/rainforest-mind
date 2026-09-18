@@ -22,18 +22,13 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-09-18",
-    "tarefas_ok": 4,
+    "tarefas_ok": 7,
     "tarefas": 8,
     "em_voo": [
       {
-        "agente": "executor",
-        "tarefa": "tarefa 7: medir recall do FTS5",
-        "desde": "2026-09-18T16:05:00-03:00"
-      },
-      {
-        "agente": "executor",
-        "tarefa": "tarefa 5: manutencao em background",
-        "desde": "2026-09-18T17:15:00-03:00"
+        "agente": "documentador",
+        "tarefa": "tarefa 8: documentar",
+        "desde": "2026-09-18T20:30:00-03:00"
       }
     ],
     "carimbos": [
@@ -148,9 +143,47 @@
         "iteracao": 1,
         "sessao": "c948157d-1047-4919-969d-e90df9063854",
         "ts": "2026-09-18T17:13:23.820Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "20ec41e4",
+        "iteracao": 2,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T17:47:18.291Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "655ea6cd",
+        "iteracao": 1,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T18:08:01.219Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "655ea6cd",
+        "iteracao": 2,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T18:33:36.522Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "413525e1",
+        "iteracao": 3,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T18:56:40.204Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "9655fd46",
+        "iteracao": 1,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T20:03:20.263Z"
       }
     ],
-    "em": "2026-09-18"
+    "em": "2026-09-18",
+    "pendentes": [
+      "tarefa 7: agente morreu; a integracao recuperou o script e roda a medicao de 200 sondagens (PID 57632)"
+    ]
   },
   "revisar": {
     "status": "pendente"
