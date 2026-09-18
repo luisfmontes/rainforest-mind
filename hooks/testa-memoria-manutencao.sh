@@ -19,6 +19,13 @@
 #      ANTES da linha de consolidar no log, com TESTADOR_CHAMAR_LLM mockado
 #   7. degradacao: raiz inacessivel (mkdir falha) -> exit 0 com aviso no
 #      stderr, nada escrito
+#   8. banco NAO migrado (sem substituida_por/reconciliada_em, como o banco
+#      real do usuario esta hoje): manutencao garante o esquema sozinha,
+#      completa sem "no such column", e nao perde nenhuma linha (emenda
+#      2026-09-18 ao plano)
+#   9. passo que falha NAO mata a passada: consolidar falha (banco corrompido
+#      no meio da execucao) e o processo segue ate o fim, gravando
+#      "falhou: <motivo>" e saindo 0 (emenda 2026-09-18 ao plano)
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -254,6 +261,132 @@ if [ ! -e "$RAIZ7" ]; then
 else
   falhou=$((falhou+1)); echo "  FALHA algo foi escrito em $RAIZ7"
 fi
+
+echo
+echo "== 8. banco nao migrado: manutencao garante o esquema sozinha =="
+# Simula o banco real do usuario: uma tabela `observacoes` do esquema ANTIGO
+# (sem substituida_por/reconciliada_em), criada a mao — sem rodar `iniciar`
+# antes, igual ao caso 22 de scripts/testa-memoria.sh. Sem o conserto desta
+# tarefa, `manutencao` sai com "no such column: substituida_por" e o log para
+# em "consolidar: inicio" (process.exit(1) de cmdConsolidar matando o
+# processo destacado).
+CAIXA8="$(novo_sandbox)"
+RFM_ROOT="$CAIXA8" node -e "
+  const DatabaseSync = require('node:sqlite').DatabaseSync;
+  const path = require('path');
+  const fs = require('fs');
+  fs.mkdirSync(process.env.RFM_ROOT, { recursive: true });
+  const db = new DatabaseSync(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+  db.exec(\`
+    CREATE TABLE IF NOT EXISTS observacoes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      projeto TEXT NOT NULL,
+      conteudo TEXT NOT NULL,
+      criada_em TEXT NOT NULL,
+      origem TEXT,
+      consolidada_em TEXT,
+      UNIQUE(projeto, origem)
+    );
+  \`);
+  for (let i = 0; i < 5; i++) {
+    db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
+      .run('proj-nao-migrado', 'Obs nao migrada ' + i, new Date().toISOString(), 'orig-nao-migrada-' + i);
+  }
+  db.close();
+" 2>/dev/null
+CNT_ANTES8=$(node --experimental-sqlite -e "
+const{DatabaseSync}=require('node:sqlite');
+console.log(new DatabaseSync(process.argv[1],{readOnly:true}).prepare('SELECT COUNT(*) n FROM observacoes').get().n);
+" "$CAIXA8/rainforest.db" 2>/dev/null)
+
+cat > "$CAIXA8/mock-vazio.cjs" <<'EOF'
+async function chamarLLM(texto) {
+  return JSON.stringify({ acao: 'skip' });
+}
+module.exports = { chamarLLM };
+EOF
+
+RFM_ROOT="$CAIXA8" TESTADOR_CHAMAR_LLM="$CAIXA8/mock-vazio.cjs" $MEMORIA manutencao > "$CAIXA8/stdout8.log" 2> "$CAIXA8/stderr8.log"
+GOT8=$?
+LOG8="$CAIXA8/manutencao.log"
+echo "  comando: RFM_ROOT=<sandbox> TESTADOR_CHAMAR_LLM=<mock> node scripts/memoria.cjs manutencao; echo \"exit=\$?\"; cat <sandbox>/manutencao.log"
+echo "  saida real: exit=$GOT8"
+echo "  log real:"
+sed 's/^/    /' "$LOG8" 2>/dev/null
+igual "manutencao sai 0 mesmo com banco nao migrado" "0" "$GOT8"
+if grep -q "no such column" "$LOG8" "$CAIXA8/stderr8.log" 2>/dev/null; then
+  falhou=$((falhou+1)); echo "  FALHA log ou stderr ainda tem 'no such column'"
+else
+  ok=$((ok+1)); echo "  ok   nenhum 'no such column' no log nem no stderr"
+fi
+if grep -q "^.*manutencao: completa$" "$LOG8" 2>/dev/null; then
+  ok=$((ok+1)); echo "  ok   log chega em 'manutencao: completa' (sem falhas)"
+else
+  falhou=$((falhou+1)); echo "  FALHA log nao chegou em 'manutencao: completa': $(cat "$LOG8" 2>/dev/null)"
+fi
+RESULTADO8=$(node --experimental-sqlite -e "
+const{DatabaseSync}=require('node:sqlite');
+const db=new DatabaseSync(process.argv[1],{readOnly:true});
+const cols=db.prepare('PRAGMA table_info(observacoes)').all().map(c=>c.name);
+const cnt=db.prepare('SELECT COUNT(*) n FROM observacoes').get().n;
+console.log(cols.includes('substituida_por')+':'+cols.includes('reconciliada_em')+':'+cnt);
+" "$CAIXA8/rainforest.db" 2>/dev/null)
+igual "esquema migrado sozinho e nenhuma linha perdida (true:true:$CNT_ANTES8)" "true:true:$CNT_ANTES8" "$RESULTADO8"
+
+echo
+echo "== 9. passo que falha nao mata a passada: consolidar falha e o processo segue e sai 0 =="
+# Forca uma falha real no passo `consolidar`, sem tocar em codigo: duas
+# observacoes que casam por FTS5 (mesmo projeto, termo comum) fazem
+# `reconciliar` chamar a LLM mockada; o mock, como efeito colateral, sobrescreve
+# o arquivo do banco com bytes que nao sao um SQLite valido. `reconciliar`
+# tolera (seu try/catch nunca lanca, registra AVISO e segue) e ainda grava
+# "fim". `consolidar`, ao abrir uma conexao NOVA no arquivo corrompido, lanca
+# de verdade — e e essa a falha que a Tarefa 5 (emenda 2026-09-18) precisa
+# capturar sem derrubar `manutencao`.
+CAIXA9="$(novo_sandbox)"
+RFM_ROOT="$CAIXA9" $MEMORIA iniciar > /dev/null 2>&1
+RFM_ROOT="$CAIXA9" SRC_JS="$SRC_WIN" node --no-warnings -e "
+const path = require('path');
+const { abrirBanco } = require(path.join(process.env.SRC_JS, 'scripts', 'memoria.cjs'));
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const t1 = new Date(Date.now() - 60000).toISOString();
+const t2 = new Date().toISOString();
+db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?,?,?,?)').run('proj-corrupcao', 'Teste de corrupcao Alfa Bravo Charlie', t1, 'origem-corrupcao-1');
+db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?,?,?,?)').run('proj-corrupcao', 'Teste de corrupcao Alfa Bravo Charlie Delta', t2, 'origem-corrupcao-2');
+db.close();
+" 2>/dev/null
+
+cat > "$CAIXA9/mock-corrompe.cjs" <<'EOF'
+async function chamarLLM(texto) {
+  const fs = require('fs');
+  const path = require('path');
+  const caminho = path.join(process.env.RFM_ROOT, 'rainforest.db');
+  fs.writeFileSync(caminho, 'corrompido-de-proposito');
+  return JSON.stringify({ acao: 'skip' });
+}
+module.exports = { chamarLLM };
+EOF
+
+RFM_ROOT="$CAIXA9" TESTADOR_CHAMAR_LLM="$CAIXA9/mock-corrompe.cjs" $MEMORIA manutencao > "$CAIXA9/stdout9.log" 2> "$CAIXA9/stderr9.log"
+GOT9=$?
+LOG9="$CAIXA9/manutencao.log"
+echo "  comando: forca falha em consolidar (banco corrompido pelo mock durante reconciliar) e roda: RFM_ROOT=<sandbox> TESTADOR_CHAMAR_LLM=<mock> node scripts/memoria.cjs manutencao; echo \"exit=\$?\"; cat <sandbox>/manutencao.log"
+echo "  saida real: exit=$GOT9"
+echo "  log real:"
+sed 's/^/    /' "$LOG9" 2>/dev/null
+igual "manutencao sai 0 mesmo com consolidar falhando" "0" "$GOT9"
+if grep -q "consolidar: falhou:" "$LOG9" 2>/dev/null; then
+  ok=$((ok+1)); echo "  ok   log tem 'consolidar: falhou: <motivo>'"
+else
+  falhou=$((falhou+1)); echo "  FALHA log nao tem 'consolidar: falhou:'"
+fi
+if grep -q "reconciliar: fim" "$LOG9" 2>/dev/null; then
+  ok=$((ok+1)); echo "  ok   passo anterior (reconciliar) chegou em 'fim' antes de consolidar quebrar"
+else
+  falhou=$((falhou+1)); echo "  FALHA reconciliar nao chegou em 'fim'"
+fi
+ULTIMA_LINHA9=$(tail -1 "$LOG9" 2>/dev/null | sed -E 's/^[^ ]+ //')
+igual "linha final diz que a passada NAO completou limpa" "manutencao: completa com falhas" "$ULTIMA_LINHA9"
 
 echo
 echo "== resumo =="

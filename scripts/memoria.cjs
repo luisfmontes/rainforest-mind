@@ -823,9 +823,18 @@ function popularFts5(conexao) {
   }
 }
 
-// Comando: iniciar — criar/abrir o banco, verificar schema.
-function cmdIniciar() {
-  const { raiz, caminhoDb, projeto } = resolverCaminhos();
+// Garante que o esquema do banco em `raiz` está em dia: cria o diretório,
+// abre/cria o banco, recupera de estado quebrado e roda as migrações
+// idempotentes de `criarSchema` + a repopulação do FTS5. É a MESMA lógica
+// que `iniciar` sempre rodou — extraída para cá (Tarefa 5, emenda
+// 2026-09-18) porque `manutencao` também precisa garanti-lo antes de
+// reconciliar/consolidar: o banco real do usuário nunca passou por `iniciar`
+// com as colunas novas, e sem isto a passada diária falharia para sempre
+// com "no such column: substituida_por". Lança se `abrirBanco`/`criarSchema`
+// falharem — mesmo comportamento de antes, quando esse código vivia dentro
+// de `cmdIniciar`.
+function garantirEsquema() {
+  const { raiz, caminhoDb } = resolverCaminhos();
 
   // Criar diretório se não existe.
   fs.mkdirSync(raiz, { recursive: true });
@@ -840,10 +849,18 @@ function cmdIniciar() {
   // Popular índice FTS5 (idempotente).
   popularFts5(conexao);
 
+  conexao.close();
+}
+
+// Comando: iniciar — criar/abrir o banco, verificar schema.
+function cmdIniciar() {
+  const { caminhoDb, projeto } = resolverCaminhos();
+
+  garantirEsquema();
+
   console.log(`ok: banco em ${caminhoDb} (projeto: ${projeto})`);
 
   // Retornar exit 0 implicitamente.
-  conexao.close();
 }
 
 // Comando: esquema [--json] — listar o schema do banco.
@@ -1481,9 +1498,11 @@ async function cmdConsolidar() {
   const { caminhoDb } = resolverCaminhos();
 
   if (!fs.existsSync(caminhoDb)) {
-    console.error(`ERRO: banco não existe em ${caminhoDb}`);
-    console.error('rode: node scripts/memoria.cjs iniciar');
-    process.exit(1);
+    // Lança em vez de `process.exit(1)` (Tarefa 5, emenda 2026-09-18): quem
+    // chama via CLI (`main()`) captura e sai 1 do mesmo jeito; quem chama
+    // via `cmdManutencao` precisa poder capturar sem o processo morrer no
+    // meio da passada.
+    throw new Error(`banco não existe em ${caminhoDb} — rode: node scripts/memoria.cjs iniciar`);
   }
 
   const conexao = abrirBanco(caminhoDb);
@@ -1594,9 +1613,13 @@ async function cmdConsolidar() {
 
     conexao.close();
   } catch (e) {
-    console.error(`ERRO: ${e.message}`);
+    // Lança em vez de `process.exit(1)` (Tarefa 5, emenda 2026-09-18) — mesmo
+    // motivo do `throw` acima: `main()` (CLI direta) captura isto e imprime
+    // `ERRO: <mensagem>` antes de sair 1, preservando o exit code de quem
+    // chama `consolidar` direto da linha de comando; `cmdManutencao` captura
+    // e segue para o passo seguinte sem matar o processo destacado.
     try { conexao.close(); } catch (_) {}
-    process.exit(1);
+    throw e;
   }
 }
 
@@ -1994,19 +2017,40 @@ async function cmdReconciliar() {
 }
 
 // Comando `manutencao` (Tarefa 5, D1/D5): a passada que roda de verdade
-// reconciliar e DEPOIS consolidar, nessa ordem, registrando cada passo em
-// `<raiz>/manutencao.log`. Quem dispara isto é o hook fino
+// garante o esquema, reconcilia e DEPOIS consolida, nessa ordem, registrando
+// cada passo em `<raiz>/manutencao.log`. Quem dispara isto é o hook fino
 // `hooks/memoria-manutencao-session-start.cjs`, num filho destacado — nunca
 // o hook em si (D1: o hook de captura já pagou o preço de uma chamada de
 // LLM no caminho síncrono, #282).
 //
-// Cada passo é tentado independente do outro: reconciliar() nunca lança (ela
-// mesma degrada por dentro), mas resolverCaminhos() e cmdConsolidar() podem
-// terminar o processo com process.exit em caminho de erro — comportamento
-// pré-existente de ambos, que esta tarefa não altera. Quando isso acontece,
-// o log fica só com o "inicio" do passo que travou, e é exatamente essa
-// assimetria que o critério 4 lê (reconciliar sempre grava fim antes de
-// consolidar começar).
+// Formato do log (uma linha por evento, `<ISO timestamp> <evento>`):
+//   - `esquema: inicio` / `reconciliar: inicio` / `consolidar: inicio` — o
+//     passo começou.
+//   - `esquema: fim` / `reconciliar: fim` / `consolidar: fim` — o passo
+//     terminou SEM lançar. Não significa "sem nada a fazer": consolidar/
+//     reconciliar podem legitimamente não achar trabalho e ainda gravar `fim`.
+//   - `esquema: falhou: <motivo>` / `reconciliar: falhou: <motivo>` /
+//     `consolidar: falhou: <motivo>` — o passo lançou; `<motivo>` é
+//     `e.message`. O passo seguinte roda do mesmo jeito (cada um é tentado
+//     independente dos outros; ver o `try/catch` de cada bloco abaixo).
+//   - Linha final da passada: `manutencao: completa` (todo passo terminou em
+//     `fim`) ou `manutencao: completa com falhas` (algum passo gravou
+//     `falhou:`). Esta é a única linha que fecha uma passada.
+// Achar a última passada: leia o arquivo de trás para frente até a última
+// linha que começa com `manutencao: completa` — o timestamp dela é quando a
+// última passada terminou, e o texto diz se terminou limpa ou com falha (é
+// isto que a Tarefa 6 lê para avisar na abertura da sessão). Um arquivo cujo
+// fim não é uma dessas duas linhas indica passada ainda em andamento (ou um
+// processo morto por fora, ex.: kill -9) — não deveria mais acontecer por
+// falha interna, já que nenhum passo aqui chama `process.exit`/lança sem ser
+// capturado.
+//
+// Nenhum passo mata o processo: `cmdReconciliar()` já degrada por dentro
+// (nunca lança), e `garantirEsquema()`/`cmdConsolidar()` foram ajustados
+// (Tarefa 5, emenda 2026-09-18) para LANÇAR em vez de `process.exit` no
+// caminho de erro — o `try/catch` de cada passo abaixo é o que captura isso.
+// Quem chama `consolidar`/`reconciliar` direto da CLI continua saindo 1 em
+// erro, via o `catch` de `main()`.
 async function cmdManutencao() {
   const { raiz } = resolverCaminhos();
   fs.mkdirSync(raiz, { recursive: true });
@@ -2020,12 +2064,24 @@ async function cmdManutencao() {
     }
   }
 
+  let houveFalha = false;
+
+  registrar('esquema: inicio');
+  try {
+    garantirEsquema();
+    registrar('esquema: fim');
+  } catch (e) {
+    houveFalha = true;
+    registrar(`esquema: falhou: ${e.message}`);
+  }
+
   registrar('reconciliar: inicio');
   try {
     await cmdReconciliar();
     registrar('reconciliar: fim');
   } catch (e) {
-    registrar(`reconciliar: erro ${e.message}`);
+    houveFalha = true;
+    registrar(`reconciliar: falhou: ${e.message}`);
   }
 
   registrar('consolidar: inicio');
@@ -2033,10 +2089,11 @@ async function cmdManutencao() {
     await cmdConsolidar();
     registrar('consolidar: fim');
   } catch (e) {
-    registrar(`consolidar: erro ${e.message}`);
+    houveFalha = true;
+    registrar(`consolidar: falhou: ${e.message}`);
   }
 
-  registrar('manutencao: completa');
+  registrar(houveFalha ? 'manutencao: completa com falhas' : 'manutencao: completa');
   console.log(`manutencao completa: log em ${caminhoLog}`);
 }
 
