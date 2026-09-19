@@ -454,11 +454,41 @@ O `exigir` recaptura o snapshot no HEAD corrente e re-arma a trava; sem ele, o
 `marcar revisar ok` recusa com `HEAD mudou durante a revisao`. Só depois disso
 `verificar` é legítimo.
 
+Dois detalhes que a reancoragem acrescentou a esse passo:
+
+- O bloco `revisar` do estado ainda traz `base: 068468fb...`, da revisão de
+  14/09. O `marcar revisar ok` do Codex precisa carregar
+  `base: 2adbae270782a5a36512c28a5c2a5354ba05c73e`, senão o registro da
+  revisão aponta para uma base que não é mais a da entrega.
+- A `main` reescreveu `scripts/estado.cjs` (+183 linhas) desde a base antiga.
+  Conferido por leitura, sem executar: `exigir --estagio revisar` continua
+  capturando o snapshot, e `verificarMutacao` continua sendo chamado num único
+  ponto, dentro do `marcar revisar`. O caminho descrito acima segue valendo.
+  O que é novo na `main` é uma checagem de "sensor na evidência" no `marcar`;
+  ela já foi exercitada por este fluxo, porque o fechamento de `executar`
+  passou por ela.
+
 ### O que a revisão do Codex precisa olhar
 
-- O diff desta sessão é de **documentação de evidência apenas**: o portão e o
-  estado. Nenhum arquivo de produto foi tocado — conferir com
-  `git diff --name-only 052245a7..HEAD` restrito ao que não é governança D9.
+- **Corrigido em 2026-09-19, depois da reancoragem.** Este parágrafo dizia que
+  o diff era de documentação apenas e mandava conferir com
+  `git diff --name-only 052245a7..HEAD` — hash com um dígito a mais, e a frase
+  deixou de valer no instante em que a entrega foi reancorada. O diff a revisar
+  agora é `git diff 2adbae270782a5a36512c28a5c2a5354ba05c73e..HEAD`: são os
+  commits próprios da entrega sobre a `main` corrente. **Dois arquivos de
+  produto foram tocados nesta rodada**, ambos no commit
+  `eabeb898706cf9160e72e45d534162dcfa30b6d8`:
+  `.codex-plugin/plugin.json` (versão `1.13.2` → `1.19.2`) e
+  `scripts/testa-plugin-codex.cjs` (âncoras de corpo de `fechar` e `modo-dev`
+  reancoradas nos blobs de `origin/main`, mais o comentário que as data). O
+  merge da `main` é o commit `1cd74a2ee1f565c2d026199d3f9aa1a4ac18b73e` e não
+  carrega alteração própria: a árvore dele é o merge limpo.
+- **A mensagem do commit de merge `1cd74a2e` está errada e ficou como está.**
+  Ela diz "origin/main 1.19.1" e "185 commits"; a ponta realmente mesclada foi
+  `2adbae27`, versão `1.19.2`, 188 commits — a `main` avançou três commits
+  entre a medição e o merge. O commit não foi reescrito porque já estava no
+  `origin`; a árvore mesclada é a certa, e é esta nota que vale sobre a
+  mensagem. Derive sempre com `git`, nunca da prosa do log.
 - A projeção D9/D11 foi recalculada por um script novo, escrito no scratchpad
   da sessão e **não versionado**, que compara blob SHA-1 do Git contra os bytes
   em disco em vez de reidratar o blob por redirecionamento de shell. Isso foi

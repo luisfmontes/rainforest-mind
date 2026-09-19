@@ -2388,6 +2388,38 @@ o gancho de retorno e a observação de que
 `ok hook seletivo Codex: PreToolUse/Bash, 1 adaptador` vira mentira no dia em
 que um segundo adaptador entrar.
 
+### Modos aplicáveis contra o cache 1.19.2
+
+O modo Gemini continua rodando só na worktree versionada, porque chama
+`git ls-files` e um export não é repositório. Os quatro aplicáveis, dentro de
+`C:\Users\Luis\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.19.2`:
+
+```text
+node scripts/testa-plugin-codex.cjs --contrato-manifesto       exit=0  ok skills compartilhadas descobertas: 19
+node scripts/testa-plugin-codex.cjs --contrato-skills          exit=0  ok frontmatter Codex: 19 skills descobertas dinamicamente
+node scripts/testa-plugin-codex.cjs --contrato-adaptador-hook  exit=0  ok mutacao handler Codex -> core direto: vermelho e bytes restaurados
+node scripts/testa-plugin-codex.cjs --contrato-marketplace     exit=0  ok marketplace rainforest-mind: source.path ./ resolve a raiz com manifestos Claude e Codex
+```
+
+### Mensagem errada no commit de merge
+
+O commit de merge `1cd74a2ee1f565c2d026199d3f9aa1a4ac18b73e` diz na mensagem
+"origin/main 1.19.1" e "185 commits". A ponta efetivamente mesclada foi
+`2adbae270782a5a36512c28a5c2a5354ba05c73e`, versão `1.19.2`, 188 commits: a
+`main` andou três commits entre a medição da análise de sobreposição e o merge,
+e o merge pegou a ponta corrente, que é o comportamento certo. O commit não foi
+reescrito porque já estava publicado na branch. Quem ler o `git log` deve
+derivar a base com `git merge-base`/`git rev-parse`, não da prosa da mensagem.
+
+### Nota sobre a análise de sobreposição e a base medida
+
+A análise que autorizou a troca de âncora foi feita contra
+`95e0b7bc786978ff230e5248faf8b9ace5bbc88c` (1.19.1) e o merge consumiu
+`2adbae27` (1.19.2). Os três commits de diferença foram cobertos pela
+revalidação: as âncoras foram conferidas contra os blobs de `origin/main` **na
+ponta mesclada**, e as cinco baterias, a projeção D9/D11 e a contraprova do
+hook rodaram todas depois do merge, sobre a árvore final. Nenhuma conclusão
+desta iteração repousa sobre a medição feita em 1.19.1.
 ### Ausência de publicação
 
 Nenhum merge na `main`, PR, release ou alteração da `main`. A branch de entrega
