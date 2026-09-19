@@ -19,6 +19,8 @@
  *   node scripts/memoria.cjs buscar [opções]         buscar observações
  *   node scripts/memoria.cjs backup                  fazer backup do banco
  *   node scripts/memoria.cjs reindexar               reconstruir índices
+ *   node scripts/memoria.cjs consolidar              sintetizar observações antigas em resumos
+ *   node scripts/memoria.cjs reconciliar             store/update/merge/skip contra o acervo pendente
  */
 
 const fs = require('fs');
@@ -41,6 +43,9 @@ const { resolverRaiz } = require('../hooks/lib/raiz.cjs');
 
 // Acha o executável `claude` do PATH.
 const { acharExecutavelClaude } = require('./lib/achar-executavel-claude.cjs');
+
+// Chave de grupo de origem de uma observação — consolidação por grupo (D7).
+const { sqlGrupoDeOrigem } = require('./lib/grupo-de-origem.cjs');
 
 // Encontra o diretório .git subindo a árvore de diretórios.
 // Retorna o caminho do diretório que contém .git, ou null se não encontrado.
@@ -75,6 +80,16 @@ function chaveHarness(diretorio) {
   if (!diretorio) return '';
   // Normalizar separadores (\ e /) e : para -
   return diretorio.replace(/[\\/:]/g, '-');
+}
+
+// Ponto único de inversão (Tarefa 3, D3): observação substituída
+// (substituida_por IS NOT NULL) sai da injeção e da busca, sem ser apagada.
+// Todo caminho de leitura em observacoes usa esta função em vez de escrever
+// o AND à mão — um único lugar para a catraca de mutação inverter.
+// `alias`, quando a consulta usa alias de tabela (ex.: `FROM observacoes o`),
+// tem que vir com o ponto (`'o.'`), porque o retorno é colado direto na SQL.
+function filtroVivas(alias) {
+  return 'AND ' + (alias || '') + 'substituida_por IS NULL';
 }
 
 function resolverCaminhos() {
@@ -539,6 +554,35 @@ function criarSchema(conexao) {
       console.error(`AVISO: falha na migração FTS: ${e.message}`);
     }
   }
+
+  // Migração 6: adicionar colunas substituida_por e reconciliada_em em
+  // observacoes (idempotente). Tarefa 1 (D3, D6): `substituida_por` tira a
+  // linha da injeção e da busca sem apagar nada; `reconciliada_em` marca
+  // quando a observação passou pelo passo de reconciliação. ADD COLUMN
+  // garante que roda só uma vez — as colunas já existem em novos bancos
+  // (schema acima), e são adicionadas em legados (sem erro se já existem).
+  try {
+    conexao.exec(`
+      ALTER TABLE observacoes ADD COLUMN substituida_por INTEGER;
+    `);
+  } catch (e) {
+    // Se falhar com "duplicate column name", é porque já existe — ok.
+    // Qualquer outro erro é inesperado, mas não trava a sessão.
+    if (!e.message.includes('duplicate column')) {
+      // Nota: não relançamos — a coluna pode estar parcialmente aplicada.
+    }
+  }
+  try {
+    conexao.exec(`
+      ALTER TABLE observacoes ADD COLUMN reconciliada_em TEXT;
+    `);
+  } catch (e) {
+    // Se falhar com "duplicate column name", é porque já existe — ok.
+    // Qualquer outro erro é inesperado, mas não trava a sessão.
+    if (!e.message.includes('duplicate column')) {
+      // Nota: não relançamos — a coluna pode estar parcialmente aplicada.
+    }
+  }
 }
 
 // Migração de observacoes: garantir que tem UNIQUE(projeto, origem).
@@ -779,9 +823,18 @@ function popularFts5(conexao) {
   }
 }
 
-// Comando: iniciar — criar/abrir o banco, verificar schema.
-function cmdIniciar() {
-  const { raiz, caminhoDb, projeto } = resolverCaminhos();
+// Garante que o esquema do banco em `raiz` está em dia: cria o diretório,
+// abre/cria o banco, recupera de estado quebrado e roda as migrações
+// idempotentes de `criarSchema` + a repopulação do FTS5. É a MESMA lógica
+// que `iniciar` sempre rodou — extraída para cá (Tarefa 5, emenda
+// 2026-09-18) porque `manutencao` também precisa garanti-lo antes de
+// reconciliar/consolidar: o banco real do usuário nunca passou por `iniciar`
+// com as colunas novas, e sem isto a passada diária falharia para sempre
+// com "no such column: substituida_por". Lança se `abrirBanco`/`criarSchema`
+// falharem — mesmo comportamento de antes, quando esse código vivia dentro
+// de `cmdIniciar`.
+function garantirEsquema() {
+  const { raiz, caminhoDb } = resolverCaminhos();
 
   // Criar diretório se não existe.
   fs.mkdirSync(raiz, { recursive: true });
@@ -796,10 +849,18 @@ function cmdIniciar() {
   // Popular índice FTS5 (idempotente).
   popularFts5(conexao);
 
+  conexao.close();
+}
+
+// Comando: iniciar — criar/abrir o banco, verificar schema.
+function cmdIniciar() {
+  const { caminhoDb, projeto } = resolverCaminhos();
+
+  garantirEsquema();
+
   console.log(`ok: banco em ${caminhoDb} (projeto: ${projeto})`);
 
   // Retornar exit 0 implicitamente.
-  conexao.close();
 }
 
 // Comando: esquema [--json] — listar o schema do banco.
@@ -877,12 +938,14 @@ function cmdBuscar() {
 
     if (texto) {
       // Busca FTS5: combinar conteúdo com projeto se fornecido.
+      // Tarefa 3 (D3): filtroVivas('o.') tira a substituída da busca.
       query = `
         SELECT o.id, o.projeto, o.conteudo, o.criada_em
         FROM observacoes o
         WHERE o.id IN (
           SELECT rowid FROM observacoes_fts WHERE conteudo MATCH :fts_query
         )
+        ${filtroVivas('o.')}
       `;
       params.fts_query = texto; // FTS5 syntax: "palavra" ou "palavra1 AND palavra2"
 
@@ -892,10 +955,11 @@ function cmdBuscar() {
       }
     } else {
       // Sem texto: listar recentes de um projeto (se fornecido).
-      query = 'SELECT id, projeto, conteudo, criada_em FROM observacoes';
+      // Tarefa 3 (D3): WHERE 1=1 ancora o AND de filtroVivas() mesmo sem --projeto.
+      query = `SELECT id, projeto, conteudo, criada_em FROM observacoes WHERE 1=1 ${filtroVivas()}`;
 
       if (projeto) {
-        query += ' WHERE projeto = :projeto';
+        query += ' AND projeto = :projeto';
         params.projeto = projeto;
       }
     }
@@ -1361,14 +1425,20 @@ function marcarConsolidadas(conexao, { projeto, ids }) {
 
 // C4: Consolida resumo + marca observações ATOMICAMENTE numa transação.
 // Se qualquer parte falha, ROLLBACK descarta ambas (nem resumo nem marca ficam gravados).
+// `quando` (opcional): timestamp ISO a gravar em criada_em (resumo) e
+// consolidada_em (marca). Tarefa 4 (D7): cmdConsolidar passa um relógio
+// monotônico por pedaço, para garantir consolidada_em DISTINTO entre
+// pedaços mesmo que o mock de LLM responda rápido demais para o relógio de
+// parede avançar — é por esse valor que o critério 1 prova que nenhum
+// resumo mistura dois grupos. Sem argumento, usa o relógio de parede.
 // Retorna true se sucesso, false se falha.
-function consolidarAtomico(conexao, { projeto, titulo, conteudo, ids }) {
+function consolidarAtomico(conexao, { projeto, titulo, conteudo, ids, quando }) {
   if (!ids || ids.length === 0) {
     return true;
   }
 
   try {
-    const agora = new Date().toISOString();
+    const agora = quando || new Date().toISOString();
 
     // Uma transação única para ambas operações
     conexao.exec('BEGIN TRANSACTION');
@@ -1403,121 +1473,679 @@ function consolidarAtomico(conexao, { projeto, titulo, conteudo, ids }) {
   }
 }
 
-// Comando: consolidar — agrupar observações em lotes, sintetizar via LLM, gravar resumos.
-// Tarefa 4 (D4): consolidar encontra observações com 60+ dias não consolidadas,
-// agrupa em lotes de 10, passa à LLM, grava resumo e marca originals.
-// NOTA: processa TODOS os projetos que têm observações consolidáveis (não apenas o projeto da sessão).
+// Comando: consolidar — agrupar observações por grupo de origem, sintetizar
+// via LLM, gravar resumos (Tarefa 4, D7).
+//
+// D7: em vez de lotes cronológicos de 10 a partir de 60 dias (misturava
+// assuntos sem relação num resumo só, e nunca disparava — a observação mais
+// antiga do acervo real tem 45 dias), agrupa por sqlGrupoDeOrigem() — a
+// sessão de origem quando `origem` é `sessao:<id>:offset:<n>`; para o resto
+// (as importadas do claude-mem, sem sessão nenhuma), (projeto, dia de
+// criada_em) — a partir de DIAS_CONSOLIDACAO dias. Grupo com menos de 2
+// observações não consolida (nada a sintetizar de uma linha só). Grupo maior
+// que TETO_POR_GRUPO é fatiado em pedaços de até TETO_POR_GRUPO — o maior
+// grupo de recurso medido tem 521 observações, e o TETO_ARGUMENTO de 16.000
+// caracteres da chamada de LLM não aguenta isso. Cada pedaço vira UM resumo:
+// nenhum resumo mistura dois grupos, porque todo pedaço nasce da leitura de
+// um único grupo. No máximo TETO_GRUPOS pedaços por execução — sem esse teto
+// a primeira execução dispararia ~340 chamadas de LLM de uma vez (medição do
+// plano). NOTA: processa todos os grupos elegíveis, de todos os projetos —
+// sessão de origem não pertence a um projeto só na consulta, é global.
+const DIAS_CONSOLIDACAO = 30;
+const TETO_GRUPOS = 10;
+
 async function cmdConsolidar() {
-  const { raiz, caminhoDb } = resolverCaminhos();
+  const { caminhoDb } = resolverCaminhos();
 
   if (!fs.existsSync(caminhoDb)) {
-    console.error(`ERRO: banco não existe em ${caminhoDb}`);
-    console.error('rode: node scripts/memoria.cjs iniciar');
-    process.exit(1);
+    // Lança em vez de `process.exit(1)` (Tarefa 5, emenda 2026-09-18): quem
+    // chama via CLI (`main()`) captura e sai 1 do mesmo jeito; quem chama
+    // via `cmdManutencao` precisa poder capturar sem o processo morrer no
+    // meio da passada.
+    throw new Error(`banco não existe em ${caminhoDb} — rode: node scripts/memoria.cjs iniciar`);
   }
 
   const conexao = abrirBanco(caminhoDb);
 
   try {
-    // 1. Data limite: 60 dias atrás
+    // 1. Data limite: DIAS_CONSOLIDACAO dias atrás.
     const agora = new Date();
-    const seissentaDiasAtras = new Date(agora.getTime() - 60 * 24 * 60 * 60 * 1000);
-    const dataLimite = seissentaDiasAtras.toISOString();
+    const dataLimiteObj = new Date(agora.getTime() - DIAS_CONSOLIDACAO * 24 * 60 * 60 * 1000);
+    const dataLimite = dataLimiteObj.toISOString();
 
-    // 2. Encontrar todos os projetos que têm observações consolidáveis (51+)
-    // C5: teto é "passarem de 50" — 50 não consolida, 51 consolida.
-    const projetosComConsolidaveis = conexao.prepare(`
-      SELECT projeto, COUNT(*) as cnt
+    const grupoOrigem = sqlGrupoDeOrigem();
+
+    // 2. Grupos elegíveis: vivos, não consolidados, DIAS_CONSOLIDACAO+ dias,
+    // com 2+ observações. Mais antigos primeiro (MIN(criada_em) do grupo) —
+    // os grupos mais velhos entram primeiro no teto de execução.
+    const grupos = conexao.prepare(`
+      SELECT (${grupoOrigem}) AS grupo, COUNT(*) as cnt, MIN(criada_em) as mais_antiga
       FROM observacoes
-      WHERE consolidada_em IS NULL AND criada_em < ?
-      GROUP BY projeto
-      HAVING COUNT(*) > 50
-      ORDER BY projeto
+      WHERE consolidada_em IS NULL AND criada_em < ? ${filtroVivas()}
+      GROUP BY grupo
+      HAVING COUNT(*) >= 2
+      ORDER BY mais_antiga ASC
     `).all(dataLimite);
 
-    if (projetosComConsolidaveis.length === 0) {
-      console.log('nenhum projeto com 50+ observações de 60+ dias, nada a fazer');
+    if (grupos.length === 0) {
+      console.log(`nenhum grupo com 2+ observações de ${DIAS_CONSOLIDACAO}+ dias, nada a fazer`);
       conexao.close();
       return;
     }
 
-    console.log(`${projetosComConsolidaveis.length} projeto(s) com observações para consolidar`);
+    console.log(`${grupos.length} grupo(s) com 2+ observações de ${DIAS_CONSOLIDACAO}+ dias`);
 
     let totalResumosGravados = 0;
+    // Relógio monotônico: cada pedaço grava consolidada_em em baseMs +
+    // (índice do pedaço já gravado), garantindo timestamps distintos entre
+    // pedaços mesmo que o mock de LLM responda no mesmo milissegundo.
+    const baseMs = Date.now();
 
-    // 3. Processar cada projeto
-    for (const { projeto, cnt } of projetosComConsolidaveis) {
-      console.log(`projeto "${projeto}": ${cnt} observações consolidáveis`);
+    // 3. Processar cada grupo, do mais velho ao mais novo, até TETO_GRUPOS
+    // pedaços no total.
+    for (const { grupo } of grupos) {
+      if (totalResumosGravados >= TETO_GRUPOS) break;
 
-      // 4. Ler observações consolidáveis deste projeto, ordenadas por criada_em
-      const observacoes = conexao.prepare(`
-        SELECT id, conteudo, criada_em
+      // Teto de observações por pedaço — o ponto único que a catraca de
+      // mutação inverte (Tarefa 4). Grupo maior que isto vira mais de um
+      // resumo; nenhum pedaço passa deste número.
+      const TETO_POR_GRUPO = 30;
+
+      // 4. Ler as observações vivas deste grupo, mais antigas primeiro.
+      const observacoesGrupo = conexao.prepare(`
+        SELECT id, projeto, conteudo, criada_em
         FROM observacoes
-        WHERE projeto = ? AND consolidada_em IS NULL AND criada_em < ?
+        WHERE consolidada_em IS NULL AND criada_em < ? AND (${grupoOrigem}) = ? ${filtroVivas()}
         ORDER BY criada_em ASC
-      `).all(projeto, dataLimite);
+      `).all(dataLimite, grupo);
 
-      // 5. Dividir em lotes de 10
-      const lotes = [];
-      for (let i = 0; i < observacoes.length; i += 10) {
-        lotes.push(observacoes.slice(i, i + 10));
-      }
+      console.log(`grupo "${grupo}": ${observacoesGrupo.length} observação(ões) consolidáveis`);
 
-      console.log(`  dividido em ${lotes.length} lote(s) de 10`);
+      // 5. Fatiar em pedaços de até TETO_POR_GRUPO — cada pedaço vem da
+      // leitura de UM grupo só, então nenhum resumo mistura dois grupos.
+      for (let i = 0; i < observacoesGrupo.length; i += TETO_POR_GRUPO) {
+        if (totalResumosGravados >= TETO_GRUPOS) break;
 
-      // 6. Processar cada lote
-      let resumosGravadosProjeto = 0;
-      for (let i = 0; i < lotes.length; i++) {
-        const lote = lotes[i];
-        const ids = lote.map(o => o.id);
+        const pedaco = observacoesGrupo.slice(i, i + TETO_POR_GRUPO);
+        const ids = pedaco.map(o => o.id);
+        const projetoPedaco = pedaco[0].projeto;
 
-        // Formatar para LLM: concatenar conteúdos
-        const textoDasObservacoes = lote
+        // Formatar para LLM: concatenar conteúdos.
+        const textoDasObservacoes = pedaco
           .map((obs, idx) => `${idx + 1}. ${obs.conteudo}`)
           .join('\n');
 
-        console.log(`    lote ${i + 1}/${lotes.length}: chamando LLM para ${lote.length} observações`);
+        console.log(`  grupo "${grupo}": chamando LLM para ${pedaco.length} observações`);
 
-        // 7. Chamar LLM (falha deixa lote intacto)
+        // 6. Chamar LLM (falha deixa o pedaço intacto para a próxima rodada).
         const resumo = await chamarLLMParaConsolidar(textoDasObservacoes);
 
         if (!resumo) {
-          console.log(`    lote ${i + 1}/${lotes.length}: LLM falhou, lote intacto para próxima rodada`);
+          console.log(`  grupo "${grupo}": LLM falhou, pedaço intacto para próxima rodada`);
           continue;
         }
 
-        // 8. C4: Consolidar atomicamente (resumo + marca numa transação)
-        // Se falhar em qualquer parte, ROLLBACK desfaz ambas — nem resumo nem marca ficam.
+        // 7. C4: Consolidar atomicamente (resumo + marca numa transação).
+        // Se falhar em qualquer parte, ROLLBACK desfaz ambas — nem resumo
+        // nem marca ficam. `quando` vem do relógio monotônico por pedaço.
         const titulo = resumo.substring(0, 80); // Primeiros 80 caracteres como título
+        const quando = new Date(baseMs + totalResumosGravados).toISOString();
         const sucesso = consolidarAtomico(conexao, {
-          projeto,
+          projeto: projetoPedaco,
           titulo,
           conteudo: resumo,
           ids,
+          quando,
         });
 
         if (!sucesso) {
-          console.log(`    lote ${i + 1}/${lotes.length}: falha ao consolidar atomicamente, lote intacto`);
+          console.log(`  grupo "${grupo}": falha ao consolidar atomicamente, pedaço intacto`);
           continue;
         }
 
-        resumosGravadosProjeto++;
-        console.log(`    lote ${i + 1}/${lotes.length}: ok (resumo gravado, ${lote.length} observações marcadas)`);
+        totalResumosGravados++;
+        console.log(`  grupo "${grupo}": ok (resumo gravado, ${pedaco.length} observações marcadas)`);
       }
-
-      console.log(`  ${projeto}: ${resumosGravadosProjeto} resumo(s) gravado(s)`);
-      totalResumosGravados += resumosGravadosProjeto;
     }
 
-    // 10. Relatório final
+    // 8. Relatório final.
     console.log(`consolidacao completa: ${totalResumosGravados} resumo(s) total gravado(s)`);
 
     conexao.close();
   } catch (e) {
-    console.error(`ERRO: ${e.message}`);
+    // Lança em vez de `process.exit(1)` (Tarefa 5, emenda 2026-09-18) — mesmo
+    // motivo do `throw` acima: `main()` (CLI direta) captura isto e imprime
+    // `ERRO: <mensagem>` antes de sair 1, preservando o exit code de quem
+    // chama `consolidar` direto da linha de comando; `cmdManutencao` captura
+    // e segue para o passo seguinte sem matar o processo destacado.
     try { conexao.close(); } catch (_) {}
-    process.exit(1);
+    throw e;
   }
+}
+
+// Comando `reconciliar` (Tarefa 2, D2/D3/D4/D6).
+//
+// K = 5 candidatas por observação sondada, do FTS5, mesmo `projeto`, ordenadas
+// por bm25(observacoes_fts) — sem limiar numérico de similaridade: quem decide
+// parecença é a LLM (D4). N = 200 observações reconciliadas por execução,
+// mais recentes primeiro — teto do D6, para não estourar custo de LLM numa
+// passada só.
+const K_CANDIDATAS = 5;
+const TETO_RECONCILIAR = 200;
+
+// Ações válidas na resposta da LLM. Qualquer outra coisa cai em 'store' — o
+// lado seguro do D3 (nunca inventa update/merge a partir de resposta que não
+// entendemos).
+const ACOES_RECONCILIACAO_VALIDAS = new Set(['store', 'update', 'merge', 'skip']);
+
+// Constrói uma query MATCH segura para o FTS5 a partir de texto livre.
+// Passar o conteúdo cru (com pontuação, aspas, dois-pontos) direto como MATCH
+// quebra a sintaxe do FTS5 (reservada para AND/OR/NOT/coluna:termo/etc). Aqui
+// tokenizamos por letra/dígito (Unicode, cobre acento) e citamos cada termo
+// entre aspas duplas — frase literal, sem sintaxe especial — unindo por OR.
+// Retorna null se não sobrar termo nenhum (ex.: texto só com pontuação).
+function construirQueryFts5(texto) {
+  const tokens = (String(texto || '').match(/[\p{L}\p{N}]+/gu) || []).filter(t => t.length > 0);
+  if (tokens.length === 0) return null;
+  return tokens.map(t => `"${t.replace(/"/g, '""')}"`).join(' OR ');
+}
+
+// Busca até K_CANDIDATAS observações parecidas com `obs`, no mesmo projeto,
+// via FTS5 + bm25. Exclui a própria observação e as já substituídas
+// (substituida_por IS NOT NULL) — candidata substituída não é alvo válido.
+// Degradação: erro de SQL (ex.: query MATCH malformada) devolve lista vazia,
+// nunca lança.
+function buscarCandidatas(conexao, obs) {
+  const query = construirQueryFts5(obs.conteudo);
+  if (!query) return [];
+
+  try {
+    return conexao.prepare(`
+      SELECT o.id, o.conteudo, o.criada_em
+      FROM observacoes_fts
+      JOIN observacoes o ON o.id = observacoes_fts.rowid
+      WHERE observacoes_fts MATCH :query
+        AND o.projeto = :projeto
+        AND o.id != :id
+        AND o.substituida_por IS NULL
+      ORDER BY bm25(observacoes_fts)
+      LIMIT :k
+    `).all({ query, projeto: obs.projeto, id: obs.id, k: K_CANDIDATAS });
+  } catch (e) {
+    console.error(`AVISO: falha ao buscar candidatas para observação ${obs.id}: ${e.message}`);
+    return [];
+  }
+}
+
+// Monta o texto que vai para a LLM: a observação sondada e suas candidatas.
+//
+// Achado 1 da revisão (2026-09-16): rotular a sondada como "nova" é falso
+// quando a varredura do acervo (D6) sonda observações antigas — 88% do
+// corpus são as importadas do claude-mem, as mais antigas dele. Sem data
+// nenhuma, a LLM decide a direção só pela etiqueta, e "nova" numa observação
+// velha inverte o update. Carrega `criada_em` da sondada e de cada candidata
+// e chama a sondada pelo que ela é (a observação em exame), nunca "nova" —
+// a LLM decide a direção pela data, não pela etiqueta.
+function formatarPromptReconciliacao(observacao, candidatas) {
+  const linhasCandidatas = candidatas
+    .map((c) => `- [id=${c.id}, criada_em=${c.criada_em}] ${c.conteudo}`)
+    .join('\n');
+
+  return [
+    'Observacao sondada (em exame), com a data em que foi criada:',
+    `[id=${observacao.id}, criada_em=${observacao.criada_em}] ${observacao.conteudo}`,
+    '',
+    'Candidatas parecidas, mesmo projeto, com a data em que foram criadas (busca por texto, nao por LLM):',
+    linhasCandidatas || '(nenhuma)',
+    '',
+    'Use as datas para decidir a direcao: em "update", quem esta desatualizado e quem corrige se decide pela data, nao pela ordem em que aparecem aqui.',
+    '',
+    'Decida a acao para a observacao sondada:',
+    '- store: nova, sem relacao com nenhuma candidata',
+    '- update: a observacao sondada atualiza uma candidata desatualizada (informe alvo_id)',
+    '- merge: a observacao sondada e uma candidata sao complementares e devem se fundir (informe alvo_id)',
+    '- skip: a observacao sondada ja esta coberta por uma candidata, descarte',
+    '',
+    'Responda em JSON estrito, sem texto antes ou depois:',
+    '{"acao": "store"|"update"|"merge"|"skip", "alvo_id": <id da candidata ou null>}',
+  ].join('\n');
+}
+
+// Interpreta a resposta bruta da LLM. Resposta ausente, que não é JSON válido,
+// ou com ação desconhecida caem em 'store' — o lado seguro do D3. Nunca em
+// 'update'/'merge' por adivinhação.
+function interpretarDecisaoReconciliacao(respostaBruta) {
+  const seguro = { acao: 'store', alvo_id: null };
+  if (!respostaBruta || typeof respostaBruta !== 'string') return seguro;
+
+  let bruto = respostaBruta.trim();
+  let obj = null;
+  try {
+    obj = JSON.parse(bruto);
+  } catch (e) {
+    // Tolerar CLI real que envolve o JSON em texto/markdown: extrair o
+    // primeiro bloco {...} e tentar de novo antes de desistir.
+    const match = bruto.match(/\{[\s\S]*\}/);
+    if (match) {
+      try {
+        obj = JSON.parse(match[0]);
+      } catch (e2) {
+        return seguro;
+      }
+    } else {
+      return seguro;
+    }
+  }
+
+  if (!obj || typeof obj !== 'object' || !ACOES_RECONCILIACAO_VALIDAS.has(obj.acao)) {
+    return seguro;
+  }
+
+  let alvoId = null;
+  if (obj.alvo_id !== null && obj.alvo_id !== undefined) {
+    const n = Number(obj.alvo_id);
+    if (Number.isFinite(n)) alvoId = n;
+  }
+
+  return { acao: obj.acao, alvo_id: alvoId };
+}
+
+// Chamada à LLM isolada atrás de função para permitir mock em testes — mesmo
+// padrão que chamarLLMParaConsolidar (D14). Respeita TESTADOR_CHAMAR_LLM
+// (módulo que exporta chamarLLM(texto)); a bateria roda inteira sob esse mock,
+// então o caminho de spawn do `claude` real nunca é alcançado nela.
+// Retorna a resposta bruta (string) ou null se falhar — null vira 'store' em
+// interpretarDecisaoReconciliacao.
+async function chamarLLMParaReconciliar(observacao, candidatas) {
+  const prompt = formatarPromptReconciliacao(observacao, candidatas);
+
+  if (process.env.TESTADOR_CHAMAR_LLM) {
+    try {
+      const modulo = require(process.env.TESTADOR_CHAMAR_LLM);
+      return await modulo.chamarLLM(prompt);
+    } catch (e) {
+      console.error(`AVISO: não consegui carregar mock de LLM: ${e.message}`);
+      return null;
+    }
+  }
+
+  const { spawn } = require('child_process');
+  const os = require('os');
+
+  const executavel = acharExecutavelClaude();
+  if (!executavel) {
+    console.error('AVISO: não encontrei o executável `claude` no PATH');
+    return null;
+  }
+
+  const tempDir = os.tmpdir();
+  const TETO_ARGUMENTO = 16000;
+
+  if (prompt.length > TETO_ARGUMENTO) {
+    console.error(`AVISO: prompt de reconciliação acima do teto (${prompt.length} > ${TETO_ARGUMENTO})`);
+    return null;
+  }
+
+  return new Promise((resolve) => {
+    const timeout = 60000;
+    const timer = setTimeout(() => {
+      console.error('AVISO: chamada à LLM expirou (timeout 60s)');
+      resolve(null);
+    }, timeout);
+
+    try {
+      const child = spawn(executavel, [
+        prompt,
+        '-p',
+        '--model', 'claude-haiku-4-5-20251001',
+        '--setting-sources', '',
+        '--permission-mode', 'dontAsk',
+        '--disallowedTools', 'Read,Write,Edit,Bash,Glob,Grep,WebFetch,WebSearch,Task,NotebookEdit',
+      ], {
+        cwd: tempDir,
+        windowsHide: true,
+        timeout: timeout + 5000,
+      });
+
+      let stdout = '';
+
+      child.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      child.stderr.on('data', () => {});
+
+      child.stdin.end();
+
+      child.on('error', (error) => {
+        clearTimeout(timer);
+        console.error(`AVISO: erro ao chamar claude em "${executavel}": ${error.message}`);
+        resolve(null);
+      });
+
+      child.on('close', (code) => {
+        clearTimeout(timer);
+
+        if (code !== 0) {
+          console.error(`AVISO: claude retornou exit code ${code}`);
+          resolve(null);
+          return;
+        }
+
+        if (!stdout || !stdout.trim()) {
+          console.error('AVISO: LLM retornou saída vazia');
+          resolve(null);
+          return;
+        }
+
+        resolve(stdout.trim());
+      });
+    } catch (e) {
+      clearTimeout(timer);
+      console.error(`AVISO: erro ao invocar claude em "${executavel}": ${e.message}`);
+      resolve(null);
+    }
+  });
+}
+
+// Aplica a decisão de reconciliação a UMA observação sondada, atomicamente
+// (mesmo padrão que consolidarAtomico): falha no meio faz ROLLBACK e a
+// observação continua pendente (reconciliada_em fica NULL) para a próxima
+// rodada de `reconciliar`.
+//
+// update: a candidata-alvo (mais antiga, o `alvo_id`) recebe substituida_por
+// igual ao id da observação sondada — ela é quem corrige o alvo. Nada é
+// apagado: as duas continuam na tabela.
+//
+// merge: insere uma TERCEIRA observação com a síntese das duas, origem
+// determinística `reconciliacao:<id_menor>+<id_maior>` (UNIQUE(projeto,
+// origem) impede duplicar ao reprocessar o mesmo par — se o INSERT colidir,
+// reaproveita a linha já existente em vez de falhar), e marca as DUAS antigas
+// (a sondada e o alvo) com substituida_por apontando para a nova.
+//
+// store/skip: nada é substituído; só marca reconciliada_em na sondada.
+//
+// alvo_id ausente, inexistente, de outro projeto, já substituída, igual à
+// própria observação, ou FORA DO CONJUNTO de candidatas que `buscarCandidatas`
+// de fato ofereceu a esta sondagem: cai no lado seguro (equivalente a store)
+// em vez de confiar cego numa resposta de LLM que aponta para algo que nunca
+// foi mostrado a ela. `buscarCandidatas` protegia o que é OFERECIDO (mesmo
+// projeto, viva); nada protegia o que a LLM DEVOLVE — achado 2 da revisão
+// (2026-09-16): um `alvo_id` de resposta de LLM podia apontar para uma
+// candidata morta (`substituida_por` já preenchido) ou para qualquer id de
+// outra sondagem, sobrescrevendo um `substituida_por` correto e ressuscitando
+// conteúdo morto numa observação nova.
+//
+// Para 'update' há ainda a guarda de direção temporal — achado 1 da mesma
+// revisão: a varredura do acervo (D6) sonda observações antigas (88% do
+// corpus são as importadas do claude-mem), e uma LLM sem soubesse a data
+// podia decidir "update" apontando da sondada ANTIGA para uma candidata mais
+// NOVA e correta, invertendo a direção — a correta acabava marcada
+// `substituida_por` e a desatualizada continuava viva. `update` só é
+// aplicado quando a sondada não é mais antiga que o alvo
+// (`obs.criada_em >= alvo.criada_em`); do contrário cai no lado seguro. Isto
+// é backstop determinístico — o prompt (formatarPromptReconciliacao) já
+// carrega as datas para a LLM decidir certo na maioria dos casos, mas uma
+// resposta errada não pode inverter o invariante do D3.
+function aplicarDecisaoReconciliacao(conexao, obs, decisao, candidatas = []) {
+  const agora = new Date().toISOString();
+  const idsOferecidos = new Set(candidatas.map((c) => c.id));
+
+  try {
+    conexao.exec('BEGIN TRANSACTION');
+
+    if (decisao.acao === 'merge' || decisao.acao === 'update') {
+      const alvo = decisao.alvo_id !== null
+        ? conexao.prepare('SELECT id, conteudo, criada_em FROM observacoes WHERE id = ? AND projeto = ? AND substituida_por IS NULL')
+            .get(decisao.alvo_id, obs.projeto)
+        : null;
+
+      const alvoInvalido = !alvo
+        || alvo.id === obs.id
+        || !idsOferecidos.has(alvo.id)
+        || (decisao.acao === 'update' && obs.criada_em < alvo.criada_em);
+
+      if (alvoInvalido) {
+        // alvo_id inválido (ou update na direção errada) — lado seguro:
+        // nada é substituído.
+        conexao.prepare('UPDATE observacoes SET reconciliada_em = ? WHERE id = ?').run(agora, obs.id);
+        conexao.exec('COMMIT');
+        return true;
+      }
+
+      if (decisao.acao === 'update') {
+        conexao.prepare('UPDATE observacoes SET substituida_por = ?, reconciliada_em = ? WHERE id = ?')
+          .run(obs.id, agora, alvo.id);
+        conexao.prepare('UPDATE observacoes SET reconciliada_em = ? WHERE id = ?')
+          .run(agora, obs.id);
+      } else {
+        // merge: insere a terceira observação com origem determinística.
+        const idMenor = Math.min(obs.id, alvo.id);
+        const idMaior = Math.max(obs.id, alvo.id);
+        const origemMerge = `reconciliacao:${idMenor}+${idMaior}`;
+        const conteudoNovo = `${obs.conteudo}\n${alvo.conteudo}`;
+
+        let novoId;
+        try {
+          const resultado = conexao.prepare(`
+            INSERT INTO observacoes (projeto, conteudo, criada_em, origem)
+            VALUES (?, ?, ?, ?)
+          `).run(obs.projeto, conteudoNovo, agora, origemMerge);
+          novoId = Number(resultado.lastInsertRowid);
+        } catch (e) {
+          if (!String(e.message).includes('UNIQUE constraint')) throw e;
+          // Reprocessando o mesmo par: a fusão já existe, reaproveitar.
+          const existente = conexao.prepare('SELECT id FROM observacoes WHERE projeto = ? AND origem = ?')
+            .get(obs.projeto, origemMerge);
+          novoId = existente.id;
+        }
+
+        conexao.prepare('UPDATE observacoes SET substituida_por = ?, reconciliada_em = ? WHERE id = ?')
+          .run(novoId, agora, obs.id);
+        conexao.prepare('UPDATE observacoes SET substituida_por = ?, reconciliada_em = ? WHERE id = ?')
+          .run(novoId, agora, alvo.id);
+        // A própria síntese nasce reconciliada: ela é o RESULTADO da
+        // reconciliação da sondada com o alvo, não mais uma pendência. Sem
+        // isto, ela reentraria em `pendentes` na próxima execução e seria
+        // processada contra as mesmas duas observações que a originaram.
+        conexao.prepare('UPDATE observacoes SET reconciliada_em = ? WHERE id = ?')
+          .run(agora, novoId);
+      }
+    } else {
+      // store ou skip: nada é substituído.
+      conexao.prepare('UPDATE observacoes SET reconciliada_em = ? WHERE id = ?').run(agora, obs.id);
+    }
+
+    conexao.exec('COMMIT');
+    return true;
+  } catch (e) {
+    try {
+      conexao.exec('ROLLBACK');
+    } catch (_) {}
+    console.error(`AVISO: falha ao aplicar reconciliação da observação ${obs.id}: ${e.message}`);
+    return false;
+  }
+}
+
+// Comando: reconciliar — store/update/merge/skip contra o acervo pendente.
+// Tarefa 2 (D2, D3, D4, D6). Seleciona até TETO_RECONCILIAR observações
+// pendentes (reconciliada_em IS NULL AND substituida_por IS NULL), mais
+// recentes primeiro; para cada uma, busca até K_CANDIDATAS parecidas no FTS5
+// do mesmo projeto e pede à LLM a decisão. Degradação: banco ausente/
+// corrompido ou LLM indisponível vira aviso no stderr e exit 0 — nenhum
+// caminho novo derruba a sessão (D1: fora do hook de captura).
+async function cmdReconciliar() {
+  const { caminhoDb } = resolverCaminhos();
+
+  if (!fs.existsSync(caminhoDb)) {
+    console.error(`AVISO: banco não existe em ${caminhoDb}`);
+    console.error('rode: node scripts/memoria.cjs iniciar');
+    return;
+  }
+
+  let conexao;
+  try {
+    conexao = abrirBanco(caminhoDb);
+  } catch (e) {
+    console.error(`AVISO: não consegui abrir o banco: ${e.message}`);
+    return;
+  }
+
+  try {
+    const pendentes = conexao.prepare(`
+      SELECT id, projeto, conteudo, criada_em
+      FROM observacoes
+      WHERE reconciliada_em IS NULL AND substituida_por IS NULL
+      ORDER BY criada_em DESC
+      LIMIT ?
+    `).all(TETO_RECONCILIAR);
+
+    if (pendentes.length === 0) {
+      console.log('nenhuma observação pendente de reconciliação');
+      conexao.close();
+      return;
+    }
+
+    console.log(`${pendentes.length} observação(ões) pendente(s) de reconciliação`);
+
+    let processadas = 0;
+    let pulos = 0;
+    let jaTratadas = 0;
+
+    for (const obs of pendentes) {
+      // `pendentes` foi lida de uma vez, antes do laço começar. Uma decisão
+      // anterior DESTE MESMO laço pode já ter marcado `obs` (ela era o alvo
+      // de um update/merge de outra observação processada primeiro) — sem
+      // reler o estado atual, ela seria sondada de novo contra candidatas que
+      // agora incluem sua própria substituta, e uma LLM real poderia decidir
+      // reconciliar uma observação já substituída contra o que a substituiu.
+      const atual = conexao.prepare('SELECT substituida_por, reconciliada_em FROM observacoes WHERE id = ?').get(obs.id);
+      if (!atual || atual.substituida_por !== null || atual.reconciliada_em !== null) {
+        jaTratadas++;
+        continue;
+      }
+
+      const candidatas = buscarCandidatas(conexao, obs);
+
+      let decisao;
+      if (candidatas.length === 0) {
+        // Nada parecido no acervo: não há o que reconciliar, poupa a chamada.
+        decisao = { acao: 'store', alvo_id: null };
+      } else {
+        const respostaBruta = await chamarLLMParaReconciliar(obs, candidatas);
+        decisao = interpretarDecisaoReconciliacao(respostaBruta);
+      }
+
+      const sucesso = aplicarDecisaoReconciliacao(conexao, obs, decisao, candidatas);
+      if (sucesso) {
+        processadas++;
+      } else {
+        pulos++;
+      }
+    }
+
+    console.log(`reconciliação completa: ${processadas} processada(s), ${pulos} pulo(s) (falha, pendente para a próxima rodada), ${jaTratadas} já tratada(s) por outra decisão neste laço`);
+    conexao.close();
+  } catch (e) {
+    console.error(`AVISO: erro durante reconciliação: ${e.message}`);
+    try { conexao.close(); } catch (_) {}
+  }
+}
+
+// Comando `manutencao` (Tarefa 5, D1/D5): a passada que roda de verdade
+// garante o esquema, reconcilia e DEPOIS consolida, nessa ordem, registrando
+// cada passo em `<raiz>/manutencao.log`. Quem dispara isto é o hook fino
+// `hooks/memoria-manutencao-session-start.cjs`, num filho destacado — nunca
+// o hook em si (D1: o hook de captura já pagou o preço de uma chamada de
+// LLM no caminho síncrono, #282).
+//
+// Formato do log (uma linha por evento, `<ISO timestamp> <evento>`):
+//   - `esquema: inicio` / `reconciliar: inicio` / `consolidar: inicio` — o
+//     passo começou.
+//   - `esquema: fim` / `reconciliar: fim` / `consolidar: fim` — o passo
+//     terminou SEM lançar. Não significa "sem nada a fazer": consolidar/
+//     reconciliar podem legitimamente não achar trabalho e ainda gravar `fim`.
+//   - `esquema: falhou: <motivo>` / `reconciliar: falhou: <motivo>` /
+//     `consolidar: falhou: <motivo>` — o passo lançou; `<motivo>` é
+//     `e.message`. O passo seguinte roda do mesmo jeito (cada um é tentado
+//     independente dos outros; ver o `try/catch` de cada bloco abaixo).
+//   - Linha final da passada: `manutencao: completa` (todo passo terminou em
+//     `fim`) ou `manutencao: completa com falhas` (algum passo gravou
+//     `falhou:`). Esta é a única linha que fecha uma passada.
+// Achar a última passada: leia o arquivo de trás para frente até a última
+// linha que começa com `manutencao: completa` — o timestamp dela é quando a
+// última passada terminou, e o texto diz se terminou limpa ou com falha (é
+// isto que a Tarefa 6 lê para avisar na abertura da sessão). Um arquivo cujo
+// fim não é uma dessas duas linhas indica passada ainda em andamento (ou um
+// processo morto por fora, ex.: kill -9) — não deveria mais acontecer por
+// falha interna, já que nenhum passo aqui chama `process.exit`/lança sem ser
+// capturado.
+//
+// Nenhum passo mata o processo: `cmdReconciliar()` já degrada por dentro
+// (nunca lança), e `garantirEsquema()`/`cmdConsolidar()` foram ajustados
+// (Tarefa 5, emenda 2026-09-18) para LANÇAR em vez de `process.exit` no
+// caminho de erro — o `try/catch` de cada passo abaixo é o que captura isso.
+// Quem chama `consolidar`/`reconciliar` direto da CLI continua saindo 1 em
+// erro, via o `catch` de `main()`.
+async function cmdManutencao() {
+  const { raiz, caminhoDb } = resolverCaminhos();
+  fs.mkdirSync(raiz, { recursive: true });
+  const caminhoLog = path.join(raiz, 'manutencao.log');
+
+  function registrar(linha) {
+    try {
+      fs.appendFileSync(caminhoLog, `${new Date().toISOString()} ${linha}\n`);
+    } catch (e) {
+      console.error(`AVISO: não consegui gravar em ${caminhoLog}: ${e.message}`);
+    }
+  }
+
+  // Banco ausente = nada a reconciliar e nada a consolidar. A manutenção
+  // MIGRA um banco que já existe (é para isso que garantirEsquema() ganhou o
+  // recuperarSeNecessario()/criarSchema() aqui), mas nunca CRIA um banco que
+  // não existe: `abrirBanco()` usa `new DatabaseSync(caminhoDb)`, que cria o
+  // arquivo ao abrir. Se este passo chamasse garantirEsquema() incondicional,
+  // a passada de manutenção (disparada pelo hook de SessionStart) estaria
+  // escrevendo o rainforest.db durante a abertura da sessão — o invariante
+  // que scripts/testa-memoria-somente-leitura.sh existe para proteger.
+  if (!fs.existsSync(caminhoDb)) {
+    registrar('manutencao: banco ausente, nada a fazer');
+    registrar('manutencao: completa');
+    console.log(`manutencao: banco ausente em ${caminhoDb}, nada a fazer`);
+    return;
+  }
+
+  let houveFalha = false;
+
+  registrar('esquema: inicio');
+  try {
+    garantirEsquema();
+    registrar('esquema: fim');
+  } catch (e) {
+    houveFalha = true;
+    registrar(`esquema: falhou: ${e.message}`);
+  }
+
+  registrar('reconciliar: inicio');
+  try {
+    await cmdReconciliar();
+    registrar('reconciliar: fim');
+  } catch (e) {
+    houveFalha = true;
+    registrar(`reconciliar: falhou: ${e.message}`);
+  }
+
+  registrar('consolidar: inicio');
+  try {
+    await cmdConsolidar();
+    registrar('consolidar: fim');
+  } catch (e) {
+    houveFalha = true;
+    registrar(`consolidar: falhou: ${e.message}`);
+  }
+
+  registrar(houveFalha ? 'manutencao: completa com falhas' : 'manutencao: completa');
+  console.log(`manutencao completa: log em ${caminhoLog}`);
 }
 
 // ---- CLI
@@ -1538,9 +2166,13 @@ async function main() {
       return cmdReindexar();
     case 'consolidar':
       return await cmdConsolidar();
+    case 'reconciliar':
+      return await cmdReconciliar();
+    case 'manutencao':
+      return await cmdManutencao();
     default:
       console.error(`Comando desconhecido: ${cmd}`);
-      console.error('Use: iniciar | esquema | buscar | backup | reindexar | consolidar');
+      console.error('Use: iniciar | esquema | buscar | backup | reindexar | consolidar | reconciliar | manutencao');
       process.exit(1);
   }
 }
@@ -1557,4 +2189,11 @@ if (require.main === module) {
   }
 }
 
-module.exports = { abrirBanco, abrirBancoSomenteLeitura, chaveHarness, criarSchema, extrairSchema, popularFts5, resolverCaminhos, verificarConstraintUniqueProjetoOrigem };
+module.exports = {
+  abrirBanco, abrirBancoSomenteLeitura, chaveHarness, criarSchema, extrairSchema, popularFts5,
+  resolverCaminhos, verificarConstraintUniqueProjetoOrigem,
+  K_CANDIDATAS, TETO_RECONCILIAR, construirQueryFts5, buscarCandidatas,
+  interpretarDecisaoReconciliacao, aplicarDecisaoReconciliacao,
+  formatarPromptReconciliacao,
+  filtroVivas, DIAS_CONSOLIDACAO, TETO_GRUPOS,
+};

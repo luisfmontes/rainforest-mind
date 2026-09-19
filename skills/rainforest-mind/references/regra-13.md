@@ -61,8 +61,14 @@ campo obrigatório, e o valor para ela é `solta` — o slug de ideia sem projet
 o único que nasce com `caminho: null`. O motivo é **categoria**, não
 visibilidade: hoje `projeto` quase não decide onde a observação reaparece, e
 escrever o contrário seria inventar mecanismo. A injeção de abertura não lê o
-`ideias.jsonl`; o jardineiro de sexta mostra observação independente do campo. O
-que `solta` muda de fato é o agrupamento do `listar` e o recorte do
+`ideias.jsonl`; o jardineiro de sexta mostra observação independente do campo.
+A memória automática é outro mecanismo — `scripts/observar.cjs` grava em
+`rainforest.db`, essa sim lida pela injeção de abertura — e essa é a que
+reconcilia (`node scripts/memoria.cjs reconciliar`): observação nova que
+corrige, repete ou complementa uma antiga passa a atualizá-la ou se fundir a
+ela, em vez de virar mais uma linha solta, e a antiga sai da injeção; o
+`ideias.jsonl` desta regra não passa por isso. O que `solta` muda de fato é
+o agrupamento do `listar` e o recorte do
 `listar --projeto`. Reaparecimento por sessão é mecanismo que ainda não existe —
 está plantado, não escrito aqui como se existisse.
 

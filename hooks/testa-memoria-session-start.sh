@@ -1282,5 +1282,228 @@ checa "19.b hook real: bloco traz a observação pequena" tem "Obs pequena" "$CT
 rm -rf "$CAIXA_SEMESTOURO"
 
 echo
+echo "20. Tarefa 3 (D3) — observacao substituida nao entra na disputa de vagas"
+# 20 observações, as 6 MAIS RECENTES com substituida_por preenchido — de
+# propósito: se o filtro não funcionasse, elas seriam justamente as que
+# ORDER BY criada_em DESC LIMIT 14 escolheria primeiro. As 14 mais antigas
+# (ids 1-14) são as vivas, e sobram exatas 14 vagas para elas — prova que o
+# filtro tira as 6 substituídas SEM cortar nenhuma viva por falta de vaga.
+CAIXA_SUBST="$(novo_sandbox)"
+git init -q "$CAIXA_SUBST"
+export RFM_ROOT="$CAIXA_SUBST"
+node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+
+node <<'SETUP_SUBST'
+const { DatabaseSync } = require('node:sqlite');
+const path = require('path');
+const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
+const projectKey = path.basename(process.env.RFM_ROOT);
+const NL = String.fromCharCode(10);
+// ids 1-14: vivas (mais antigas). ids 15-20: substituidas (mais recentes).
+for (let i = 1; i <= 20; i++) {
+  const dia = String(i).padStart(2, '0');
+  const marcador = i <= 14 ? 'VIVA_MARCADOR_' + String(i).padStart(2, '0') : 'SUBST_MARCADOR_' + String(i).padStart(2, '0');
+  db.prepare("INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?,?,?,?)")
+    .run(projectKey, '## rainforest obs ' + i + NL + NL + marcador, '2026-06-' + dia + 'T10:00:00Z', 'subst-' + i);
+}
+// Marca as 6 mais recentes (ids 15-20) como substituidas por uma nova (id fictício 999).
+db.prepare("UPDATE observacoes SET substituida_por = 999, reconciliada_em = ? WHERE id >= 15")
+  .run('2026-09-01T00:00:00Z');
+db.close();
+SETUP_SUBST
+
+# Grava conteudos.json no formato do contrato de retorno (critério 1 do briefing):
+# arrays com os marcadores das substituídas e das vivas.
+node -e "
+const fs = require('fs');
+const substituidas = [];
+const vivas = [];
+for (let i = 1; i <= 20; i++) {
+  const marcador = i <= 14 ? 'VIVA_MARCADOR_' + String(i).padStart(2, '0') : 'SUBST_MARCADOR_' + String(i).padStart(2, '0');
+  (i <= 14 ? vivas : substituidas).push(marcador);
+}
+fs.writeFileSync(process.argv[1], JSON.stringify({ substituidas, vivas }));
+" "$CAIXA_SUBST/conteudos.json"
+
+echo
+echo "  20.a — sem FOCO.md (lerObservacoes, 14 recentes)"
+SAIDA_SUBST_A="$(cd "$CAIXA_SUBST" && printf '%s' '{"hook_event_name":"SessionStart","source":"startup","session_id":"11111111-1111-1111-1111-111111111111","cwd":"'"$CAIXA_SUBST"'","transcript_path":"'"$CAIXA_SUBST"'/t.jsonl"}' | RFM_ROOT="$CAIXA_SUBST" node "$HOOK" 2>/dev/null)"
+echo "$SAIDA_SUBST_A" > "$CAIXA_SUBST/saida-a.json"
+CONTAGEM_A="$(node -e "const fs=require('fs');const t=JSON.parse(fs.readFileSync(process.argv[1],'utf8')).hookSpecificOutput.additionalContext;const m=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));console.log(m.substituidas.filter(c=>t.includes(c)).length, m.vivas.filter(c=>t.includes(c)).length)" "$CAIXA_SUBST/saida-a.json" "$CAIXA_SUBST/conteudos.json")"
+echo "  comando: RFM_ROOT=<sandbox> printf '%s' '<payload>' | node hooks/memoria-session-start.cjs > saida.json && node -e '...' saida.json conteudos.json"
+echo "  saida: $CONTAGEM_A"
+if [ "$CONTAGEM_A" = "0 14" ]; then
+  ok=$((ok+1)); echo "  ok    20.a sem FOCO.md: 0 substituidas, 14 vivas"
+else
+  falhou=$((falhou+1)); echo "  FALHA 20.a sem FOCO.md: esperava '0 14', veio '$CONTAGEM_A'"
+fi
+
+echo
+echo "  20.b — com FOCO.md casando termo (lerObservacoesComFTS, 9 recentes + até 5 casadas)"
+cat > "$CAIXA_SUBST/FOCO.md" <<'FOCO_SUBST'
+# FOCO
+
+## Ativo
+**Revisar rainforest memoria**
+
+Descrição do que está sendo feito.
+FOCO_SUBST
+SAIDA_SUBST_B="$(cd "$CAIXA_SUBST" && printf '%s' '{"hook_event_name":"SessionStart","source":"startup","session_id":"11111111-1111-1111-1111-111111111111","cwd":"'"$CAIXA_SUBST"'","transcript_path":"'"$CAIXA_SUBST"'/t.jsonl"}' | RFM_ROOT="$CAIXA_SUBST" node "$HOOK" 2>/dev/null)"
+echo "$SAIDA_SUBST_B" > "$CAIXA_SUBST/saida-b.json"
+CONTAGEM_B="$(node -e "const fs=require('fs');const t=JSON.parse(fs.readFileSync(process.argv[1],'utf8')).hookSpecificOutput.additionalContext;const m=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));console.log(m.substituidas.filter(c=>t.includes(c)).length, m.vivas.filter(c=>t.includes(c)).length)" "$CAIXA_SUBST/saida-b.json" "$CAIXA_SUBST/conteudos.json")"
+echo "  comando: RFM_ROOT=<sandbox> printf '%s' '<payload>' | node hooks/memoria-session-start.cjs > saida.json && node -e '...' saida.json conteudos.json"
+echo "  saida: $CONTAGEM_B"
+if [ "$CONTAGEM_B" = "0 14" ]; then
+  ok=$((ok+1)); echo "  ok    20.b com FOCO.md: 0 substituidas, 14 vivas (recentes + casadas)"
+else
+  falhou=$((falhou+1)); echo "  FALHA 20.b com FOCO.md: esperava '0 14', veio '$CONTAGEM_B'"
+fi
+rm -rf "$CAIXA_SUBST"
+
+echo
+echo "21. Tarefa 6 (D8) — pipeline parado (captura ou manutenção) vira linha na abertura"
+
+echo
+echo "  marca d agua parada ha 60h imprime a linha de pipeline na abertura"
+CAIXA_PIPELINE="$(novo_sandbox)"
+RFM_ROOT="$CAIXA_PIPELINE" node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+
+# Insere uma marca_dagua com offset > offset_processado e processada_em de 60h
+# atras — a pendencia que o D8 quer que a abertura acuse.
+RFM_ROOT="$CAIXA_PIPELINE" node <<'SETUP_MARCA_PARADA'
+const { DatabaseSync } = require('node:sqlite');
+const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
+const sessenta = new Date(Date.now() - 60 * 60 * 60 * 1000).toISOString();
+db.prepare('INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?,?,?,?,?,?)')
+  .run('projx', 'sessao1', 'arq1', 10, 5, sessenta);
+db.close();
+SETUP_MARCA_PARADA
+
+PAYLOAD_PIPELINE='{"hook_event_name":"SessionStart","source":"startup","session_id":"11111111-1111-1111-1111-111111111111","cwd":"'"$CAIXA_PIPELINE"'","transcript_path":"'"$CAIXA_PIPELINE"'/t.jsonl"}'
+SAIDA_PARADA="$(printf '%s' "$PAYLOAD_PIPELINE" | RFM_ROOT="$CAIXA_PIPELINE" node "$HOOK" 2>/dev/null)"
+echo "$SAIDA_PARADA" > "$CAIXA_PIPELINE/saida-parada.json"
+
+echo "  comando: printf '%s' '<payload>' | RFM_ROOT=<sandbox> node hooks/memoria-session-start.cjs | node -e '...'"
+RESULT_PARADA="$(cat "$CAIXA_PIPELINE/saida-parada.json" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const t=JSON.parse(s).hookSpecificOutput.additionalContext;const l=t.split("\n").filter(x=>/captura/i.test(x)&&/60/.test(x)&&x.includes("observar.cjs"));console.log(l.length, Buffer.byteLength(t,"utf8")<=3000)})')"
+echo "  saida: $RESULT_PARADA"
+
+if [ "$RESULT_PARADA" = "1 true" ]; then
+  ok=$((ok+1)); echo "  ok   marca d agua parada ha 60h imprime a linha de pipeline na abertura"
+else
+  falhou=$((falhou+1)); echo "  FALHA marca d agua parada ha 60h imprime a linha de pipeline na abertura: esperava '1 true', veio '$RESULT_PARADA'"
+fi
+
+echo
+echo "  21.b — marca d agua em dia: a linha nao aparece"
+CAIXA_EMDIA="$(novo_sandbox)"
+RFM_ROOT="$CAIXA_EMDIA" node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+PAYLOAD_EMDIA='{"hook_event_name":"SessionStart","source":"startup","session_id":"11111111-1111-1111-1111-111111111111","cwd":"'"$CAIXA_EMDIA"'","transcript_path":"'"$CAIXA_EMDIA"'/t.jsonl"}'
+SAIDA_EMDIA="$(printf '%s' "$PAYLOAD_EMDIA" | RFM_ROOT="$CAIXA_EMDIA" node "$HOOK" 2>/dev/null)"
+echo "$SAIDA_EMDIA" > "$CAIXA_EMDIA/saida-emdia.json"
+RESULT_EMDIA="$(cat "$CAIXA_EMDIA/saida-emdia.json" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const t=JSON.parse(s).hookSpecificOutput.additionalContext;const l=t.split("\n").filter(x=>/captura/i.test(x)&&/60/.test(x)&&x.includes("observar.cjs"));console.log(l.length, Buffer.byteLength(t,"utf8")<=3000)})')"
+echo "  saida: $RESULT_EMDIA"
+if [ "$RESULT_EMDIA" = "0 true" ]; then
+  ok=$((ok+1)); echo "  ok    21.b sem pendencia, a linha de captura parada nao aparece"
+else
+  falhou=$((falhou+1)); echo "  FALHA 21.b esperava '0 true', veio '$RESULT_EMDIA'"
+fi
+
+echo
+echo "  21.c — ultima passada de manutencao falhou (manutencao: completa com falhas): a linha aparece"
+CAIXA_MANFALHOU="$(novo_sandbox)"
+RFM_ROOT="$CAIXA_MANFALHOU" node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+cat > "$CAIXA_MANFALHOU/manutencao.log" <<'LOG_FALHOU'
+2026-09-17T10:00:00.000Z esquema: inicio
+2026-09-17T10:00:00.100Z esquema: fim
+2026-09-17T10:00:01.000Z reconciliar: inicio
+2026-09-17T10:00:05.000Z reconciliar: falhou: no such column: substituida_por
+2026-09-17T10:00:05.100Z consolidar: inicio
+2026-09-17T10:00:06.000Z consolidar: falhou: no such column: substituida_por
+2026-09-17T10:00:06.100Z manutencao: completa com falhas
+LOG_FALHOU
+PAYLOAD_MANFALHOU='{"hook_event_name":"SessionStart","source":"startup","session_id":"11111111-1111-1111-1111-111111111111","cwd":"'"$CAIXA_MANFALHOU"'","transcript_path":"'"$CAIXA_MANFALHOU"'/t.jsonl"}'
+SAIDA_MANFALHOU="$(printf '%s' "$PAYLOAD_MANFALHOU" | RFM_ROOT="$CAIXA_MANFALHOU" node "$HOOK" 2>/dev/null)"
+echo "  log: $(cat "$CAIXA_MANFALHOU/manutencao.log" | tail -1)"
+echo "  saida: $SAIDA_MANFALHOU"
+if echo "$SAIDA_MANFALHOU" | grep -qi "manuten" && echo "$SAIDA_MANFALHOU" | grep -q "node scripts/memoria.cjs manutencao"; then
+  ok=$((ok+1)); echo "  ok    21.c manutencao falhou: a linha aparece e nomeia o comando de religar"
+else
+  falhou=$((falhou+1)); echo "  FALHA 21.c manutencao falhou mas a linha nao apareceu como esperado"
+fi
+
+echo
+echo "  21.d — ultima passada de manutencao foi limpa (manutencao: completa): a linha nao aparece"
+CAIXA_MANOK="$(novo_sandbox)"
+RFM_ROOT="$CAIXA_MANOK" node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+cat > "$CAIXA_MANOK/manutencao.log" <<'LOG_OK'
+2026-09-18T05:00:00.000Z esquema: inicio
+2026-09-18T05:00:00.100Z esquema: fim
+2026-09-18T05:00:01.000Z reconciliar: inicio
+2026-09-18T05:00:02.000Z reconciliar: fim
+2026-09-18T05:00:02.100Z consolidar: inicio
+2026-09-18T05:00:03.000Z consolidar: fim
+2026-09-18T05:00:03.100Z manutencao: completa
+LOG_OK
+PAYLOAD_MANOK='{"hook_event_name":"SessionStart","source":"startup","session_id":"11111111-1111-1111-1111-111111111111","cwd":"'"$CAIXA_MANOK"'","transcript_path":"'"$CAIXA_MANOK"'/t.jsonl"}'
+SAIDA_MANOK="$(printf '%s' "$PAYLOAD_MANOK" | RFM_ROOT="$CAIXA_MANOK" node "$HOOK" 2>/dev/null)"
+echo "  log: $(cat "$CAIXA_MANOK/manutencao.log" | tail -1)"
+echo "  saida: $SAIDA_MANOK"
+if echo "$SAIDA_MANOK" | grep -qi "manuten"; then
+  falhou=$((falhou+1)); echo "  FALHA 21.d manutencao limpa, mas a linha de falha apareceu mesmo assim"
+else
+  ok=$((ok+1)); echo "  ok    21.d manutencao limpa: nenhuma linha de manutencao falhada"
+fi
+
+echo
+echo "  21.e — a seleção da marca mais antiga é EXPLÍCITA (ORDER BY processada_em ASC LIMIT 1), não a ordem de varredura"
+# Mesma prova de forma da tarefa 14 (scripts/saude.cjs, verificação 3): o
+# ORDER BY explícito tem que estar no fonte do hook, não só "funcionar por
+# acaso" na ordem que o SQLite devolve.
+if grep -q "ORDER BY processada_em ASC" "$HOOK" && grep -q "LIMIT 1" "$HOOK"; then
+  ok=$((ok+1)); echo "  ok    21.e hook usa ORDER BY processada_em ASC LIMIT 1 explícito"
+else
+  falhou=$((falhou+1)); echo "  FALHA 21.e hook não tem a seleção explícita da marca mais antiga"
+fi
+
+echo
+echo "  21.f — FALSIFICAÇÃO: bloco cheio (corta observação) + marca parada: o aviso NÃO some"
+# O corpus de 11 mil observações reais já enche o teto de 3.000 B sozinho.
+# Se o aviso de pipeline fosse um segundo canal que só entra "se sobrar
+# espaço depois do corpus", ele nunca apareceria em produção — o mesmo
+# silêncio que o D8 existe pra matar. Fixture: as MESMAS 20 observações
+# grandes do teste 19.a (força travarOrcamentoMemoria a cortar) MAIS a
+# marca d'água de 60h atrás no mesmo sandbox.
+CAIXA_CHEIO="$(novo_sandbox)"
+RFM_ROOT="$CAIXA_CHEIO" node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+RFM_ROOT="$CAIXA_CHEIO" GRANDE="$GRANDE" node <<'SETUP_CHEIO'
+const { DatabaseSync } = require('node:sqlite');
+const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
+const conteudoGrande = process.env.GRANDE + ' ' + process.env.GRANDE;
+const stmt = db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)');
+for (let i = 0; i < 20; i++) {
+  const dia = String(10 + i).padStart(2, '0');
+  stmt.run('proj-estouro', '## Obs grande ' + i + '\n\n' + conteudoGrande, `2026-08-${dia}T10:00:00Z`, 'sessao:teste:offset:' + i);
+}
+const sessenta = new Date(Date.now() - 60 * 60 * 60 * 1000).toISOString();
+db.prepare('INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?,?,?,?,?,?)')
+  .run('projx', 'sessao1', 'arq1', 10, 5, sessenta);
+db.close();
+SETUP_CHEIO
+
+PAYLOAD_CHEIO='{"hook_event_name":"SessionStart","source":"startup","session_id":"11111111-1111-1111-1111-111111111111","cwd":"'"$CAIXA_CHEIO"'","transcript_path":"'"$CAIXA_CHEIO"'/t.jsonl"}'
+SAIDA_CHEIO="$(printf '%s' "$PAYLOAD_CHEIO" | RFM_ROOT="$CAIXA_CHEIO" node "$HOOK" 2>/dev/null)"
+echo "$SAIDA_CHEIO" > "$CAIXA_CHEIO/saida-cheio.json"
+RESULT_CHEIO="$(cat "$CAIXA_CHEIO/saida-cheio.json" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const t=JSON.parse(s).hookSpecificOutput.additionalContext;const l=t.split("\n").filter(x=>/captura/i.test(x)&&/60/.test(x)&&x.includes("observar.cjs"));console.log(l.length, Buffer.byteLength(t,"utf8")<=3000)})')"
+echo "  comando: printf '%s' '<payload>' | RFM_ROOT=<sandbox com 20 obs grandes + marca parada> node hooks/memoria-session-start.cjs | node -e '...'"
+echo "  saida: $RESULT_CHEIO"
+if [ "$RESULT_CHEIO" = "1 true" ]; then
+  ok=$((ok+1)); echo "  ok    21.f o aviso sobrevive ao corte do corpus (a observação mais antiga cede lugar, não o aviso)"
+else
+  falhou=$((falhou+1)); echo "  FALHA 21.f esperava '1 true' com o corpus cheio, veio '$RESULT_CHEIO'"
+fi
+
+rm -rf "$CAIXA_PIPELINE" "$CAIXA_EMDIA" "$CAIXA_MANFALHOU" "$CAIXA_MANOK" "$CAIXA_CHEIO"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]
