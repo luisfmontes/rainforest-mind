@@ -2206,3 +2206,192 @@ remoção de worktree foi executado. A fixture, o export diagnóstico e os logs 
 `visualizations` foram preservados como evidência. `revisar` e `verificar`
 permanecem intocados nesta sessão: a revisão final independente e a verificação
 ficam com o Codex, conforme a divisão do handover.
+
+## Reancoragem na `origin/main` 1.19.2 — iteração 9 (2026-09-19)
+
+### Por que a âncora mudou
+
+A entrega nasceu sobre `068468fb956b8d606e9af1800aaa91dd399fdeb8`, versão
+`1.13.2`. Entre aquele ponto e hoje a `main` andou 188 commits e seis versões
+menores, até `2adbae270782a5a36512c28a5c2a5354ba05c73e`, versão `1.19.2`. O
+handover proíbe trocar a âncora sem repetir a análise de sobreposição; ela foi
+feita antes do merge e está registrada abaixo.
+
+### Análise de sobreposição
+
+A `main` **não encosta em nenhum dos oito arquivos de produto** da adaptação
+Codex — eles simplesmente não existem lá:
+
+```text
+.codex-plugin/plugin.json          ausente na main
+.agents/plugins/marketplace.json   ausente na main
+hooks/codex-gate-staging-total.cjs ausente na main
+hooks/codex-gate-staging-total.json ausente na main
+scripts/testa-plugin-codex.cjs     ausente na main
+scripts/testa-plugin-codex.sh      ausente na main
+scripts/testa-versao.sh            0 commits da main desde a base
+docs/rainforest/mapas/COBERTURA.md 0 commits da main desde a base
+```
+
+Dos quatro `SKILL.md` que a entrega toca, a `main` mexeu em dois — `fechar`
+(quatro para seis passos) e `modo-dev`. Como a entrega só altera o
+**frontmatter** desses arquivos e a `main` só altera o **corpo**, os dois lados
+sobrevivem ao merge. Conferido no arquivo mesclado, não presumido: `fechar`
+ficou com a `description` entre aspas da entrega e com os seis passos da `main`.
+
+Isso é a D10 funcionando. A adaptação foi reaplicada como diff mínimo em vez de
+merge da piloto, e foi por isso que atravessou 188 commits sem conflito.
+
+### O que a reancoragem quebrou, e por quê
+
+Merge textual limpo não é entrega verde. Medido rodando as baterias numa árvore
+de merge descartável, antes de tocar na branch:
+
+```text
+testa-versao.sh        FALHA manifesto Codex na mesma versao da fonte Claude
+                       (esperava '1.19.1', veio '1.13.2')     -> 4 ok, 1 falha
+testa-plugin-codex.sh  FALHA version Codex diverge do manifesto Claude
+testa-plugin-codex.sh  FALHA corpo fechar diverge da ancora binaria: 9986 bytes
+testa-plugin-codex.sh  FALHA corpo modo-dev diverge da ancora binaria: 13414 bytes
+conferir-fluxo creep   exit 2 com a base velha: 188 commits da main sem cobertura
+```
+
+Nenhuma dessas é defeito. O teste de versão existe para impedir que dois hosts
+sejam instalados com bytes diferentes, e as âncoras existem para provar que a
+entrega normalizou frontmatter sem tocar em corpo. Os três gates gritaram
+exatamente no que foram construídos para pegar.
+
+### Os consertos, um por gate
+
+**Manifesto Codex → `1.19.2`.** Só o valor do campo; a formatação do arquivo
+ficou intacta.
+
+**Âncoras de `fechar` e `modo-dev` → os corpos da `main`.** A âncora não
+descreve o que a entrega escreveu; descreve o que ela **não** tocou. O valor
+certo é portanto sempre o da `main`, e foi verificado lendo os blobs de
+`origin/main` direto do Git, sem passar pelo disco:
+
+```text
+BATE    fechar         ancora=9986B   origin/main=9986B
+BATE    modo-dev       ancora=13414B  origin/main=13414B
+BATE    montar-corpus  ancora=2935B   origin/main=2935B   (sem frontmatter na main)
+BATE    regua          ancora=13394B  origin/main=13394B
+```
+
+`montar-corpus` e `regua` não precisaram de nada: a `main` não os alterou.
+
+**Base do `creep` → `2adbae27`.** A lista de arquivos declarada no plano
+**não** precisou de reescrita: com a base nova ela fecha nos mesmos 18 arquivos.
+
+### Baterias na base reancorada
+
+```text
+CMD1 bash hooks/testa-gate-staging-total.sh
+     == resultado: 133 ok, 0 falha(s) ==                        cmd1_exit=0
+CMD2 bash scripts/testa-plugin-codex.sh
+     contrato Codex completo, Gemini adiado                     cmd2_exit=0
+CMD3 bash scripts/testa-versao.sh
+     ok: 5   falhou: 0                                          cmd3_exit=0
+CMD4 node scripts/conferir-fluxo.cjs cobertura --slug ...
+     ok: cobertura válida — 12 decisão(ões), 9 tarefa(s)        cmd4_exit=0
+CMD5 node scripts/conferir-fluxo.cjs creep --slug ... --base 2adbae27 --head HEAD
+     ok: sem creep — 18 arquivo(s) coberto(s)                   cmd5_exit=0
+total=5 vermelhas=0
+```
+
+O gate passou de 106 para 133 casos: 27 vieram da própria `main`.
+
+### Evidência de instalação, refeita
+
+A evidência anterior provava a árvore `1.13.2` e deixou de valer no instante em
+que a versão mudou. Export novo por `git archive` a partir do commit candidato
+`eabeb898706cf9160e72e45d534162dcfa30b6d8`, em
+`C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.19.2`:
+
+```text
+codex plugin remove rainforest-mind@rainforest-mind-local        # exit 0
+codex plugin marketplace remove rainforest-mind-local            # exit 0
+codex plugin marketplace add '...\rainforest-mind-export-1.19.2' # exit 0
+codex plugin add rainforest-mind@rainforest-mind-local           # exit 0
+
+rainforest-mind@rainforest-mind-local  installed, enabled  1.19.2
+plugin_root=C:\Users\Luis\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.19.2
+```
+
+Projeção D9/D11 com arquivos ocultos, contra o commit candidato:
+
+```text
+head=eabeb898706cf9160e72e45d534162dcfa30b6d8
+tracked_total=765
+governance_excluded=7
+projection_expected=758
+export_source_commit=eabeb898706cf9160e72e45d534162dcfa30b6d8
+export_tracked_total=765
+export_total_force=765
+export_dotgit_exists=false
+export_missing=0
+export_different=0
+export_extra=0
+cache_total_force=766
+cache_dotgit_exists=false
+missing_count=0
+sha_divergent_count=0
+extra_count=1
+.codex-plugin/migrated-command-skills/source-command-saude/SKILL.md  sha256=321c30bcfda44ff56ad53fca7ef5c3b170987a3bd2bee646152af22aaf1dd339
+origin_sha256(commands/saude.md)=f044c166ccbfaca6470e4090229011354b82d4007adc80a278581a6565f6a6f6
+EXIT=0
+```
+
+Os totais subiram de 703/704 para 765/766 porque a `main` trouxe 62 arquivos
+novos. A estrutura da prova não mudou: zero `.git`, zero ausente, zero
+divergente e o mesmo extra D11 único, com os mesmos dois SHA-256 — a `main` não
+tocou em `commands/saude.md`.
+
+### Contraprova do hook, refeita na 1.19.2
+
+Mesma fixture host-owned, mesma forma de comando, agora contra a instalação
+`1.19.2` (`session id: 01a0bb99-1f24-7310-bc4a-689613d1589e`):
+
+```text
+COUNT=20
+hook: PreToolUse
+2026-09-19T21:36:20.730558Z ERROR codex_core::tools::router: error=Command blocked by PreToolUse hook: BLOQUEADO pelo gate de staging total do rainforest-mind.
+hook: PreToolUse Blocked
+```
+
+Conclusão literal da sessão:
+
+```text
+Código de saída: `N/A` — processo não iniciado.
+```
+
+Estado da fixture depois:
+
+```text
+git status --short            -> ?? deny-control.txt
+git diff --cached --name-only -> (vazio)
+.git/index.lock               -> ausente
+```
+
+### Escopo que ficou de fora, de propósito
+
+A `main` acrescentou dois ganchos ao `hooks/hooks.json` do Claude que o
+adaptador Codex não recebe: `portaria.cjs` em `PreToolUse` com matcher
+`Task|Agent`, e `titulo-sessao-end.cjs` em `Stop`. O adaptador continua
+declarando um único gancho, `PreToolUse`/`^Bash$`, como a decisão de design
+original determina — e essa decisão é anterior aos dois ganchos existirem.
+
+Não é regressão: nada que a entrega provava deixou de valer. É escopo novo, e
+foi **plantado como ideia** (`hooks-novos-da-main-no-adaptador-codex`) em vez de
+emendado aqui, porque alargar reabriria uma execução já fechada. A ideia carrega
+o gancho de retorno e a observação de que
+`ok hook seletivo Codex: PreToolUse/Bash, 1 adaptador` vira mentira no dia em
+que um segundo adaptador entrar.
+
+### Ausência de publicação
+
+Nenhum merge na `main`, PR, release ou alteração da `main`. A branch de entrega
+foi commitada e enviada para o `origin`, o que o usuário esclareceu em
+2026-09-19 estar liberado — o veto sempre foi a `main`, não o push. A fixture,
+os exports anteriores e os logs de `visualizations` foram preservados.
+`revisar` e `verificar` continuam com o Codex.

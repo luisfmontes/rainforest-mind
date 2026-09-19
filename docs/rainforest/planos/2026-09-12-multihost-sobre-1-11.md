@@ -4,7 +4,13 @@ Design: `docs/rainforest/design/2026-09-12-multihost-sobre-1-11.md`
 
 Base inicial confirmada: `a338dd02ad495f87a66d84af2ab24eab3d2660b8`.
 Base corrente confirmada antes da tarefa 4: `cf1ad7689f84428eb0b10943c0f1cf1a662b8faf` (`1.12.0`). Os 12 commits locais foram reaplicados sobre ela após confirmar zero caminhos sobrepostos.
-Base corrente após a primeira T7: `068468fb956b8d606e9af1800aaa91dd399fdeb8` (`1.13.2`). O rebase descartou como já aplicado o commit do gate de staging, cujo patch era idêntico ao incorporado upstream.
+Base corrente: `2adbae270782a5a36512c28a5c2a5354ba05c73e` (`1.19.2`), reancorada em 2026-09-19 por merge da
+`origin/main`. A base anterior era `068468fb956b8d606e9af1800aaa91dd399fdeb8` (`1.13.2`), fixada
+após a primeira T7; o rebase daquela vez descartou como já aplicado o commit do gate de staging,
+cujo patch era idêntico ao incorporado upstream. A troca de âncora seguiu a análise de
+sobreposição registrada no portão: a `main` não toca nenhum arquivo de produto da adaptação
+Codex, e os dois `SKILL.md` que ela reescreveu só divergem da entrega no corpo, que a entrega
+não altera.
 Referência histórica confirmada: `codex/piloto-rainforest` em
 `c71ecd01a73ab9208c981ff2d1eea5f6378434d7`.
 
@@ -203,7 +209,7 @@ mutacao: n/a
 pronto quando: com o commit candidato local, `bash hooks/testa-gate-staging-total.sh`,
 `bash scripts/testa-plugin-codex.sh`, `bash scripts/testa-versao.sh`,
 `node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-multihost-sobre-1-11`
-e `node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 068468fb956b8d606e9af1800aaa91dd399fdeb8 --head HEAD`
+e `node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 2adbae270782a5a36512c28a5c2a5354ba05c73e --head HEAD`
 terminam verdes; a projeção do cache `1.13.2` contra o HEAD, excluindo somente
 os sete documentos de governança da D9, tem zero caminho ausente e zero SHA-256
 divergente, e o único extra continua sendo o derivado autorizado pela D11. O

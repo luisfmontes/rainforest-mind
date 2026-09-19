@@ -158,89 +158,85 @@
         "ts": "2026-09-14T19:10:34.525Z"
       }
     ],
-    "comando": "codex exec --ephemeral --approve-for-me --dangerously-bypass-hook-trust --color never -C <fixture host-owned> <prompt git add -A literal>; codex plugin marketplace add <export-1.13.2>; codex plugin add rainforest-mind@rainforest-mind-local; node <projecao D9/D11 com ocultos>; bash hooks/testa-gate-staging-total.sh; bash scripts/testa-plugin-codex.sh; bash scripts/testa-versao.sh; node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-multihost-sobre-1-11; node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 068468fb956b8d606e9af1800aaa91dd399fdeb8 --head HEAD",
-    "saida": "contraprova verde nas duas instalacoes: hook PreToolUse Blocked antes do Git, fixture segue ?? deny-control.txt, nada staged, sem index.lock; instalacao final restaurada no export limpo, versao 1.13.2 exata; projecao D9/D11 com ocultos 703/696, export 703 sem .git e 0/0/0, cache 704 sem .git, 0 ausentes, 0 divergentes, 1 extra D11; 106 ok 0 falhas; contrato Codex verde com Gemini adiado; versao 5/0; cobertura 12 decisoes/9 tarefas; sem creep 18 arquivos; modos manifesto/skills/adaptador/marketplace verdes contra o cache",
+    "comando": "git merge origin/main; node <bump manifesto Codex>; node <reancora ancoras de corpo>; bash hooks/testa-gate-staging-total.sh; bash scripts/testa-plugin-codex.sh; bash scripts/testa-versao.sh; node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-multihost-sobre-1-11; node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 2adbae270782a5a36512c28a5c2a5354ba05c73e --head HEAD; git archive eabeb898 > export-1.19.2; codex plugin marketplace add <export-1.19.2>; codex plugin add rainforest-mind@rainforest-mind-local; node <projecao D9/D11 com ocultos>; codex exec --ephemeral --approve-for-me --dangerously-bypass-hook-trust --color never -C <fixture host-owned> <prompt git add -A literal>",
+    "saida": "reancorada em 2adbae27 (1.19.2) por merge limpo: a main nao toca nenhum dos oito arquivos de produto da adaptacao Codex, e os dois SKILL.md que ela reescreveu so divergem no corpo, que a entrega nao altera. Tres gates venceram e foram consertados pelo que medem: manifesto Codex 1.13.2 -> 1.19.2, ancoras de corpo de fechar e modo-dev reancoradas nos blobs de origin/main, base do creep movida. Baterias: 133 ok 0 falhas; contrato Codex completo com Gemini adiado; versao 5/0; cobertura 12 decisoes/9 tarefas; sem creep, mesmos 18 arquivos. Evidencia de instalacao refeita do zero: export por git archive de eabeb898, 765 arquivos sem .git e 0/0/0; cache 766 com zero ausente, zero divergente e o unico extra D11, mesmos SHA-256. Contraprova do hook na 1.19.2: PreToolUse Blocked, COUNT=20 skills, codigo de saida N/A processo nao iniciado, fixture segue ?? deny-control.txt sem nada staged e sem index.lock",
     "mutacao": [
       {
+        "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-gate-staging-total.sh: git add citado e wrapper",
-        "tarefa": 1
+        "fixture": "gate-staging-total.cjs: matar os DOIS detectores de add (CAMINHO_TOTAL e flag combinada) -> 69 ok 64 falhas; e motivoDe cego para add -> 64 ok 69 falhas"
       },
       {
+        "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "--contrato-skills: montar-corpus description ausente",
-        "tarefa": 2
+        "fixture": "--contrato-skills: montar-corpus sem description -> FALHA skills Codex invalidas"
       },
       {
+        "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "--contrato-adaptador-hook: handler Codex para core direto",
-        "tarefa": 3
+        "fixture": "--contrato-adaptador-hook: handler Codex trocado por core direto (roda dentro da propria bateria)"
       },
       {
+        "tarefa": 4,
         "resultado": "vermelho",
-        "fixture": "testa-versao.sh: Codex 1.13.3 versus Claude 1.13.2",
-        "tarefa": 4
+        "fixture": "testa-versao.sh: manifesto Codex em 9.9.9 contra Claude 1.19.2 -> FALHA manifesto Codex na mesma versao da fonte"
       },
       {
+        "tarefa": 5,
         "resultado": "vermelho",
-        "fixture": "--contrato-marketplace: source.path nao resolve este repo",
-        "tarefa": 5
+        "fixture": "--contrato-marketplace: source.path ./nao-existe/ -> FALHA source.path nao resolve o manifesto deste repo"
       },
       {
-        "motivo": "tarefa operacional sobre instalador e cache externo",
+        "tarefa": 6,
         "resultado": "n/a",
-        "tarefa": 6
+        "motivo": "tarefa operacional sobre instalador e cache externo"
       },
       {
-        "motivo": "validacao do artefato instalado fora do repositorio",
+        "tarefa": 7,
         "resultado": "n/a",
-        "tarefa": 7
+        "motivo": "validacao do artefato instalado fora do repositorio"
       },
       {
-        "motivo": "documentacao de continuidade",
+        "tarefa": 8,
         "resultado": "n/a",
-        "tarefa": 8
+        "motivo": "documentacao de continuidade"
       },
       {
-        "motivo": "integracao e registro sem comportamento novo",
+        "tarefa": 9,
         "resultado": "n/a",
-        "tarefa": 9
+        "motivo": "integracao e registro sem comportamento novo"
       }
     ],
     "origem_instalacao": {
       "tipo": "git archive",
-      "commit": "77b0226e6b168f97848d5fa8021d58c06dda8f6f",
-      "caminho": "C:/Projetos/rainforest-mind/.claude/marketplaces/rainforest-mind-export-1.13.2",
-      "export_arquivos_force": 703,
-      "cache_arquivos_force": 704,
+      "commit": "eabeb898706cf9160e72e45d534162dcfa30b6d8",
+      "caminho": "C:/Projetos/rainforest-mind/.claude/marketplaces/rainforest-mind-export-1.19.2",
+      "versao": "1.19.2",
+      "export_arquivos_force": 765,
+      "cache_arquivos_force": 766,
       "export_dotgit": false,
       "cache_dotgit": false,
       "extra_d11": ".codex-plugin/migrated-command-skills/source-command-saude/SKILL.md"
     },
     "projecao_d9": {
       "governanca_excluida": 7,
-      "arquivos_esperados": 696,
+      "arquivos_esperados": 758,
       "ausentes": 0,
       "sha_divergentes": 0,
       "extras": 1
     },
     "contraprova_hook": {
       "fixture": "C:/Users/Luis/.codex/visualizations/2026/09/08/01a07ef1-6e62-7301-b14c-e07018b98ed6/t6-cachebuster-session-host",
-      "gitdir": ".git",
-      "causa_do_falso_vermelho": "fixture anterior pertencia a CodexSandboxOffline; git rev-parse --git-dir saia 128 por dubious ownership",
-      "diagnostico": {
-        "sessao": "01a0b9a5-8533-77b3-8fae-7aa60a3b3433",
-        "versao": "1.13.2+codex.20260915000908",
-        "decisao": "PreToolUse Blocked"
-      },
-      "final_limpa": {
-        "versao": "1.13.2",
-        "decisao": "PreToolUse Blocked",
-        "skills": 20
-      },
+      "sessao": "01a0bb99-1f24-7310-bc4a-689613d1589e",
+      "versao_instalada": "1.19.2",
+      "decisao": "PreToolUse Blocked",
+      "saida_literal": "Codigo de saida: N/A - processo nao iniciado",
       "estado_apos": "?? deny-control.txt; nada staged; sem .git/index.lock"
     },
-    "mutacao_nesta_iteracao": "arvore de produto identica a do HEAD mutado: de 52245a7f ate aqui so mudaram documentos de governanca D9; os mutantes de 2026-09-14 valem. O de T3 foi reexercitado hoje pelo --contrato-adaptador-hook: ok mutacao handler Codex -> core direto: vermelho e bytes restaurados"
+    "mutacao_nesta_iteracao": "arvore de produto identica a do HEAD mutado: de 52245a7f ate aqui so mudaram documentos de governanca D9; os mutantes de 2026-09-14 valem. O de T3 foi reexercitado hoje pelo --contrato-adaptador-hook: ok mutacao handler Codex -> core direto: vermelho e bytes restaurados",
+    "base": "2adbae270782a5a36512c28a5c2a5354ba05c73e",
+    "base_anterior": "068468fb956b8d606e9af1800aaa91dd399fdeb8",
+    "nota_mutacao": "Mutantes reexercitados na arvore reancorada, nao herdados: a main trouxe 188 commits e a lista de 2026-09-14 media outra arvore. Uma primeira mutacao da T1 sobreviveu (tirar -A de CAMINHO_TOTAL) e isso NAO era lacuna da bateria: temCurta(opcoes,\"A\") pega o mesmo caso sozinho. Defesa redundante nao morre com um tiro so, entao o mutante foi refeito matando os dois detectores."
   },
   "revisar": {
     "status": "ok",

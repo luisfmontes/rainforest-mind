@@ -1,5 +1,12 @@
 # Handover Codex — Rainforest Mind multihost 1.13.2
 
+> **Reancorado na `origin/main` 1.19.2 em 2026-09-19.** A base da entrega saiu de
+> `068468fb` (1.13.2) para `2adbae270782a5a36512c28a5c2a5354ba05c73e` (1.19.2),
+> depois da análise de sobreposição que este handover exige. Todo hash e toda
+> versão `1.13.2` citados nas seções antigas são **registro histórico**: o estado
+> corrente está na seção "Reancoragem na origin/main 1.19.2" do portão do fluxo.
+> Derive sempre o HEAD e a base correntes com Git, nunca copie hash de prosa.
+
 > **Atualizado em 2026-09-19, depois da sessão Claude.** A contraprova do hook
 > foi concluída e passou, a instalação final limpa foi restaurada e `executar`
 > fechou de novo em `ok`, 9/9. As seções abaixo até "Piloto histórica"
