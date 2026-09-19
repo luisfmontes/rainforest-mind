@@ -1,7 +1,19 @@
 # Handover Codex — Rainforest Mind multihost 1.13.2
 
-Atualizado em 2026-09-14. Este documento retoma a entrega local que adapta o
+Atualizado em 2026-09-19. Este documento retoma a entrega local que adapta o
 Rainforest Mind ao Codex sem bifurcar o produto.
+
+**Destinatário deste handover: uma nova sessão do Claude Code.** Continue o
+trabalho no Claude para poupar tokens do Codex. Não transfira a implementação
+ou a revisão para uma sessão/agente Codex; invoque o binário `codex` somente na
+sessão efêmera de contraprova descrita abaixo, porque ela mede o host real que o
+plugin precisa suportar.
+
+**Divisão combinada:** o Claude executa a contraprova, restaura a instalação
+final, corrige o rastro e fecha novamente `executar`. Então ele para e devolve
+a branch ao Codex; o Codex fará a revisão final independente e, se ela passar,
+o estágio `verificar`. A proibição de publicar ou mesclar
+na `main` continua valendo também depois dessa revisão, até novo aval do usuário.
 
 ## Resultado corrente
 
@@ -11,30 +23,51 @@ compartilhados; cada host recebe somente o adaptador fino necessário. Nesta
 entrega, Claude e Codex estão comprovados. Gemini permanece explicitamente adiado:
 nenhum manifesto, hook ou payload Gemini foi criado.
 
-A versão entregue e instalada localmente é `1.13.2`. A execução das nove
-tarefas está verde (`9/9`). A primeira revisão, feita sobre
-`a4ff25e212905d9422bbe873ff380f71a34e2fca`, foi reprovada por dois achados:
-o handover ainda descrevia a T9 como pendente e a igualdade do cache ainda não
-estava delimitada pela projeção D9. Ambos foram tratados na T9, iteração 3. A
-tentativa seguinte, sobre `4b153ced395d96d3dbd885ea5b77f75ffacb323a`,
-encontrou um único achado residual: o handover ainda instruía integrar a T9 i3,
-embora `f51168147d15f1bafff538c4f4e9595fb977cd2f` já fosse ancestral. Esse
-achado foi tratado na T9, iteração 4. O próximo estágio é **revisar novamente**;
-até essa nova revisão, o estado de `revisar` permanece `reprovado`.
+A versão final da fonte continua exatamente em `1.13.2`. O plano existe, está
+aprovado e contém nove tarefas; o arquivo é
+`docs/rainforest/planos/2026-09-12-multihost-sobre-1-11.md`. O último commit
+antes desta atualização de handover é
+`fd0c8501d479653eccd79b3d74834bc26d04fd31`; derive o HEAD corrente com Git. Esse
+commit registra a revisão independente final com **zero achados** sobre o candidato
+`52245a7fd0e7c6f7a74dd56b6a7310bd1fb753cc`.
 
-A revisão mais recente, sobre `77b0226e6b168f97848d5fa8021d58c06dda8f6f`,
-encontrou um problema causal na prova de instalação: instalar diretamente de
-um checkout Git copiava seus metadados `.git`, e a enumeração anterior sem
-`-Force` não os enxergava. A correção usa um export limpo desse commit como
-origem ativa, inventaria ocultos explicitamente e mantém `revisar` reprovado até
-uma nova revisão independente confirmar a prova.
+O fluxo, porém, **não está pronto para fechar**. O estágio `verificar` foi
+marcado `reprovado` durante uma repetição da T6/T7, e isso reabriu `executar`
+como `parcial`. A reprovação veio de uma sessão Codex em fixture criada pelo
+usuário isolado `CodexSandboxOffline`: dentro do hook, `git rev-parse --git-dir`
+saiu 128 por `dubious ownership`, o núcleo interpretou o diretório como fora de
+Git e deixou `git add "-A"` chegar ao executor. O comando ainda falhou depois,
+ao tentar criar `.git/index.lock`; portanto aquela sessão não provou o bloqueio.
 
-A tentativa seguinte, sobre `f9339f475f317b01761d1f0176af505b833c57ef`,
-encontrou um único achado P2 na retomada: usar `git -C` sem confirmar o top-level
-permitia que um caminho inválido subisse até o repositório pai e validasse a
-`main`. A T9, iteração 7, trata o achado antes de qualquer leitura de branch,
-HEAD ou ancestralidade; `revisar` continua reprovado até a próxima revisão
-independente.
+O diagnóstico posterior mostrou que parser, configuração e adaptador estão
+corretos: `gateLigado=true`, motivo `git add -A`, payload real idêntico ao
+fixture e o adaptador manual devolvendo `permissionDecision: "deny"`. A causa
+do falso vermelho foi confirmada no stderr do Git:
+
+```text
+fatal: detected dubious ownership in repository at '<fixture>'
+owned by: CodexSandboxOffline
+current user: Luis
+```
+
+Uma fixture de contraprova já foi criada fora do sandbox, com proprietário
+correto, em:
+
+```text
+C:\Users\Luis\.codex\visualizations\2026\09\08\01a07ef1-6e62-7301-b14c-e07018b98ed6\t6-cachebuster-session-host
+```
+
+Ela responde `.git` a `git rev-parse --git-dir` e contém somente
+`?? deny-control.txt`. A próxima sessão deve repetir nela o teste real do hook.
+Não marque `verificar=ok` antes dessa contraprova.
+
+Neste instante o marketplace **não está na instalação final**: ele aponta
+deliberadamente para o export diagnóstico
+`C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-diagnostic`,
+versão `1.13.2+codex.20260915000908`. Esse pacote contém instrumentação apenas
+para diagnóstico e nunca deve ser commitado nem tratado como release. Depois da
+contraprova, restaure o marketplace e o plugin exato pelo export limpo
+`C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.13.2`.
 
 ## Retomada segura
 
@@ -43,7 +76,8 @@ a branch real é `codex/multihost-1.13`:
 
 ```powershell
 $entrega = 'C:\Projetos\rainforest-mind\.claude\worktrees\codex-multihost-1.11'
-$origemAtiva = 'C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.13.2'
+$origemFinal = 'C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.13.2'
+$origemDiagnostica = 'C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-diagnostic'
 $base = '068468fb956b8d606e9af1800aaa91dd399fdeb8'
 
 if (-not (Test-Path -LiteralPath $entrega -PathType Container)) {
@@ -67,7 +101,8 @@ if (-not [System.StringComparer]::OrdinalIgnoreCase.Equals(
   throw "ABORTO: top-level Git inesperado; esperado='$entregaCanonica'; obtido='$topLevelCanonico'"
 }
 
-Test-Path -LiteralPath $origemAtiva
+Test-Path -LiteralPath $origemFinal
+Test-Path -LiteralPath $origemDiagnostica
 $branch = git -C $entrega branch --show-current
 if ($LASTEXITCODE -ne 0 -or $branch.Trim() -ne 'codex/multihost-1.13') {
   throw "ABORTO: branch de entrega inesperada: '$branch'"
@@ -183,9 +218,11 @@ a mesma exclusão ao inventário do cache, o único extra foi:
 
 Essa é a projeção D11 gerada pelo host; não é uma segunda fonte versionada.
 
-### Origem ativa e correção causal da instalação
+### Origem final pretendida e correção causal da instalação
 
-O marketplace `rainforest-mind-local` aponta agora para o export limpo:
+O destino final validado para `rainforest-mind-local` é o export limpo abaixo.
+Ele não está ativo durante o handover de 2026-09-19 porque o marketplace foi
+temporariamente apontado ao export diagnóstico descrito no início deste arquivo:
 
 ```text
 C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.13.2
@@ -241,21 +278,99 @@ git -C $entrega show "$piloto`:.claude-plugin/plugin.json" |
   Select-String '"version": "1.7.0"'
 ```
 
-## Próximo passo: nova revisão
+## Próximo passo: concluir a contraprova e restaurar a instalação final
 
-A T9, iteração 3, já está integrada: `f51168147d15f1bafff538c4f4e9595fb977cd2f`
-é ancestral do HEAD corrente. Siga diretamente para uma nova execução
-independente do estágio `revisar`, contra o diff real desde
-`068468fb956b8d606e9af1800aaa91dd399fdeb8`. A execução já está fechada em
-`9/9`; não integre nem repita a T9 como passo prescritivo de retomada. A revisão
-deve confirmar especialmente os achados anteriores agora tratados: a projeção
-D9/D11 do cache, a origem limpa definida pela D12, a validação fail-closed do
-top-level e este handover coerente com o estado.
+Execute os comandos a partir da worktree de entrega. `estado.cjs` resolve o
+slug relativamente ao cwd; executá-lo a partir da raiz principal produz o falso
+erro “slug não existe”.
 
-Antes de remover qualquer worktree auxiliar, confirme com `codex plugin list`
-que o marketplace ativo continua apontando para o export limpo. Não o reaponte
-diretamente para clone ou worktree, pois isso reintroduz os metadados `.git` que
-causaram o P1.
+1. Confirme o estado atual:
+
+```powershell
+Set-Location 'C:\Projetos\rainforest-mind\.claude\worktrees\codex-multihost-1.11'
+git branch --show-current
+git rev-parse HEAD
+git status --short
+node scripts/estado.cjs proximo --slug 2026-09-12-multihost-sobre-1-11
+```
+
+Esperado antes de qualquer edição: branch `codex/multihost-1.13`, HEAD
+descendente de `fd0c8501d479653eccd79b3d74834bc26d04fd31`, worktree limpa e
+próximo estágio `executar` porque `verificar` reabriu a execução.
+
+2. Ainda na sessão Claude, com o plugin diagnóstico ativo, invoque pelo terminal
+uma única sessão Codex efêmera na
+fixture `t6-cachebuster-session-host` e peça exatamente uma chamada literal
+`git add "-A"`. Use `--dangerously-bypass-hook-trust` somente nessa fixture
+descartável. A prova válida exige `PreToolUse Blocked`/decisão `deny` e
+`git status --short` ainda mostrando `?? deny-control.txt`; uma falha posterior
+do Git não substitui o bloqueio do hook. Encerre a sessão efêmera ao obter a
+saída; todo o restante continua no Claude Code.
+
+3. Se ainda não bloquear, leia os logs diagnósticos abaixo antes de formular
+outra hipótese:
+
+```text
+C:\Users\Luis\.codex\visualizations\2026\09\08\01a07ef1-6e62-7301-b14c-e07018b98ed6\hook-payload-diagnostic.jsonl
+C:\Users\Luis\.codex\visualizations\2026\09\08\01a07ef1-6e62-7301-b14c-e07018b98ed6\hook-environment-diagnostic.jsonl
+C:\Users\Luis\.codex\visualizations\2026\09\08\01a07ef1-6e62-7301-b14c-e07018b98ed6\core-diagnostic.jsonl
+C:\Users\Luis\.codex\visualizations\2026\09\08\01a07ef1-6e62-7301-b14c-e07018b98ed6\git-error-diagnostic.jsonl
+```
+
+4. Depois da contraprova, remova a instalação diagnóstica e restaure
+`rainforest-mind-local` para o export final limpo:
+
+```powershell
+$env:CODEX_HOME = 'C:\Users\Luis\.codex'
+$env:HOME = 'C:\Users\Luis'
+codex plugin remove rainforest-mind@rainforest-mind-local
+codex plugin marketplace remove rainforest-mind-local
+codex plugin marketplace add 'C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.13.2'
+codex plugin add rainforest-mind@rainforest-mind-local
+codex plugin marketplace list
+codex plugin list
+```
+
+Esperado: marketplace no export `rainforest-mind-export-1.13.2` e plugin
+instalado na versão exata `1.13.2`. Reconfirme o cache com
+`Get-ChildItem -Force -Recurse -File`: 704 arquivos, zero `.git`, zero
+ausentes/divergentes na projeção D9 e somente o extra D11.
+
+5. Como `verificar` já reprovou, não sobrescreva o estado diretamente. Feche
+novamente `executar` com a evidência corrigida e as baterias aplicáveis, mas
+pare antes de marcar `revisar` ou `verificar`: esses dois estágios ficam para o
+Codex, conforme a divisão combinada acima. A verificação anterior já
+confirmou T1–T5 na fonte; no cache, execute os modos aplicáveis separadamente.
+Não use `scripts/testa-plugin-codex.sh` completo dentro do export/cache como
+prova de Gemini: o modo Gemini chama `git ls-files` e um export não é repositório.
+O contrato Gemini deve ser executado na worktree versionada.
+
+6. Ao terminar, o Claude deve entregar branch/HEAD, status, comandos/saídas e
+arquivos alterados ao usuário e parar. O Codex fará a revisão final. Somente
+depois dessa revisão e de `verificar=ok` será lícito considerar
+`rainforest-mind:fechar`/`rainforest-mind:limpar`; mesmo assim, não abra PR, não
+faça push/merge/release e não remova a worktree de entrega sem aval explícito.
+
+### Briefing curto para iniciar a sessão Claude
+
+```text
+Continue a entrega multihost do Rainforest Mind pela worktree
+C:\Projetos\rainforest-mind\.claude\worktrees\codex-multihost-1.11.
+Leia integralmente docs/HANDOVER-CODEX.md e siga o estado versionado do slug
+2026-09-12-multihost-sobre-1-11. O plano já existe e está aprovado, com nove
+tarefas. Comece pelo estágio executar reaberto pela verificação.
+
+Primeiro conclua a contraprova do hook na fixture host-owned
+C:\Users\Luis\.codex\visualizations\2026\09\08\01a07ef1-6e62-7301-b14c-e07018b98ed6\t6-cachebuster-session-host.
+O marketplace está temporariamente no export diagnóstico
+rainforest-mind-diagnostic, versão 1.13.2+codex.20260915000908. Depois da prova,
+restaure a instalação exata 1.13.2 pelo export limpo
+rainforest-mind-export-1.13.2 e reconfira D9/D11 com arquivos ocultos.
+
+Feche novamente executar com evidência literal e pare. Não marque revisar nem
+verificar: o Codex fará a revisão final e a verificação. Não publique, não faça
+push/PR/merge/release, não altere a main e não remova a worktree de entrega.
+```
 
 ## Proibição de publicação
 

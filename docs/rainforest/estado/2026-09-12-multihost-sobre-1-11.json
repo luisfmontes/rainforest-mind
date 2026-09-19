@@ -18,7 +18,7 @@
     "em": "2026-09-12"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-14",
     "tarefas_ok": 9,
     "tarefas": 9,
@@ -223,6 +223,10 @@
       "ausentes": 0,
       "sha_divergentes": 0,
       "extras": 1
+    },
+    "reaberto_por": {
+      "estagio": "verificar",
+      "data": "2026-09-14"
     }
   },
   "revisar": {
@@ -244,7 +248,13 @@
     ]
   },
   "verificar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "criterio": "T6/T7 sessão Codex nova deve bloquear git add \"-A\" antes do Git",
+    "comando": "codex exec --ephemeral --approve-for-me --dangerously-bypass-hook-trust -C <fixture> -- <prompt>",
+    "saida": "hook PreToolUse Completed; comando chegou ao Git e falhou com index.lock Permission denied; agente informou O hook não bloqueou; 20 skills rainforest-mind carregadas; exit da sessão 0",
+    "faltou": "decisão deny do hook instalado antes da execução do Git",
+    "em": "2026-09-14",
+    "tentativas": 1
   },
   "fechar": {
     "status": "pendente"
