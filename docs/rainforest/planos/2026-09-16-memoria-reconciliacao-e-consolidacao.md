@@ -69,6 +69,36 @@ usuário e pode mudar só a tarefa 4.
 Registradas antes do `revisar`, porque creep se destrava emendando o plano —
 justificar em prosa não destrava.
 
+- **2026-09-19, tarefa 9 — o `de:` da mutação casava 7 vezes e não media nada.** O
+  bloco declarava `de: `  if (!fs.existsSync(caminhoDb)) {`` — uma linha que
+  aparece **7 vezes** em `scripts/memoria.cjs` (linhas 870, 924, 1001, 1176, 1500,
+  1980 e 2111), porque toda função que abre o banco começa com a mesma guarda. O
+  `conferir-mutacao.cjs` recusa com exit 4 (`--de casa 7 vez(es), não 1`) — e recusa
+  **antes** de tocar no fonte, então a tarefa 9 nunca teve medição nenhuma: o `ok`
+  anterior do `executar` a declarava `vermelho` sem que a catraca jamais tivesse
+  rodado nela. O `de:` passou a ancorar nas **duas** linhas do guard da manutenção
+  (a condição mais o `registrar('manutencao: banco ausente, nada a fazer')`), que
+  casa 1 vez — escrito no plano com `\n` literal, porque o parser de
+  `conferir-fluxo.cjs cobertura` lê o bloco linha a linha; a integração o passa ao
+  `conferir-mutacao.cjs` com `$'...'` do bash. Re-rodado na integração: `Baseline: 10140 ms (exit 0) → Mutação: 5554
+  ms (exit 1)`, exit 0 do conferidor. O erro é do plano, não da entrega.
+
+- **2026-09-19, achados 1 e 2 do `revisar` — a guarda de candidata oferecida e a de
+  direção temporal.** O `revisar` reprovou com dois bloqueantes em
+  `aplicarDecisaoReconciliacao`: o `alvo_id` devolvido pela LLM não era conferido
+  contra o conjunto de candidatas que lhe foi **oferecido**, nem contra
+  `substituida_por IS NULL` (achado 2), e o prompt rotulava a sondada como
+  "nova" sem mandar data nenhuma, invertendo a direção do `update` na varredura do
+  acervo, onde a sondada costuma ser a **mais velha** (achado 1). O conserto é da
+  tarefa 2 (mesmos `arquivos:`), não tarefa nova: `alvo_id` só vale se estiver no
+  `Set` das candidatas oferecidas e viva, e `update` só se aplica quando
+  `obs.criada_em >= alvo.criada_em`; o prompt passou a levar `criada_em` dos dois
+  lados. Reproduzido na integração contra o artefato real: com a morta
+  (`substituida_por=1`) fora das candidatas oferecidas, um `merge alvo_id=<morta>`
+  cai no lado seguro — nenhuma linha nova nasce e o ponteiro correto fica intacto;
+  e o `update` da sondada de 2026-08-01 para a candidata de 2026-09-01 é barrado,
+  deixando a correta viva.
+
 - **2026-09-18, tarefa 3 — a leitura de `resumos` sai do escopo do filtro.** O
   plano mandava aplicar `substituida_por IS NULL` também à leitura de `resumos`
   no hook. A tabela `resumos` **não tem essa coluna** (`PRAGMA table_info(resumos)`
@@ -260,8 +290,8 @@ depende de: 8
 paralela: nao
 mutacao:
   arquivo: `scripts/memoria.cjs`
-  de: `  if (!fs.existsSync(caminhoDb)) {`
-  para: `  if (false) {`
+  de: `  if (!fs.existsSync(caminhoDb)) {\n    registrar('manutencao: banco ausente, nada a fazer');`
+  para: `  if (false) {\n    registrar('manutencao: banco ausente, nada a fazer');`
   bateria: `bash scripts/testa-memoria-somente-leitura.sh`
   fixture: `testa-memoria-somente-leitura.sh, caso "rainforest.db foi CRIADO pela abertura — a fase 1 escreveu (armadilha do iniciar)"`
 pronto quando: as tarefas 1 a 8 entregaram com as baterias delas verdes, mas a varredura completa do repo acusou **cinco** vermelhas — todas verdes em `origin/main`, portanto regressões desta entrega. A tarefa fecha quando `bash scripts/varrer-baterias.sh` traz `as 124 baterias passaram` e sai 0, **e** o invariante quebrado se prova pelo comportamento, não pelo teste: num sandbox **sem** `rainforest.db`, disparar o hook de manutenção e esperar o filho destacado deixa o arquivo **ainda inexistente** — provado por `printf '%s' '<payload real de SessionStart>' | RFM_ROOT=<sandbox> node hooks/memoria-manutencao-session-start.cjs && sleep 6 && (test -f <sandbox>/rainforest.db && echo CRIADO || echo "nao existe")` imprimindo `nao existe`, enquanto num sandbox **com** banco não migrado a mesma manutenção migra e o `manutencao.log` chega em `manutencao: completa`. A separação que rege o conserto: contagem que envelheceu porque o repo cresceu legitimamente (um `SessionStart` a mais em `hooks.json`, peças novas em `scripts/`) se atualiza **no teste**; invariante que a entrega quebrou — a abertura da sessão passando a escrever — se conserta **no código**, nunca afrouxando a bateria que o protege
