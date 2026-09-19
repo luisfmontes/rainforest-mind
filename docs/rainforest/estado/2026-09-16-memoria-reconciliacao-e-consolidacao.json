@@ -226,19 +226,22 @@
     "sensor_externo": "bash scripts/varrer-baterias.sh"
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "e2fbfde5831a5acf0b928d90f54a2b90d11eb89c",
+      "head": "552b2d0123e62247970e1d998b041541fa5da9a5",
       "caminhos_sujos": []
     },
     "em_voo": [],
     "em": "2026-09-19",
-    "achados": 2,
+    "achados": 0,
     "detalhe": [
       "1 (bloqueia): reconciliacao inverte a direcao temporal — o prompt rotula a sondada como Observacao nova e nunca manda criada_em; na varredura do acervo (D6) a sondada e a MAIS ANTIGA, entao update pode marcar a candidata correta como substituida e deixar a desatualizada viva",
       "2 (bloqueia): alvo_id nao e conferido contra o conjunto de candidatas oferecido nem contra vivacidade — memoria.cjs:1868 seleciona por id+projeto sem filtroVivas; reproduzido na integracao: linha morta id=2 (sp=1) aceita como alvo de merge, ponteiro sobrescrito para 4 e conteudo ja corrigido ressuscitado na nova linha viva"
     ],
-    "tentativas": 1
+    "base": "95e0b7bc786978ff230e5248faf8b9ace5bbc88c",
+    "head": "552b2d0123e62247970e1d998b041541fa5da9a5",
+    "comando": "node scripts/conferir-fluxo.cjs creep --slug 2026-09-16-memoria-reconciliacao-e-consolidacao",
+    "saida": "ok: sem creep — 22 arquivo(s) coberto(s)"
   },
   "verificar": {
     "status": "pendente"
