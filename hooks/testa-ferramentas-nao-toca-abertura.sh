@@ -58,10 +58,13 @@ QTD="$(node -e '
 # com transfer-codex ligado —, entao nao mexe no tamanho da injecao que esta
 # bateria guarda. Subir este numero de novo exige a mesma prova: hook que nao
 # imprime nada na abertura.
-if [ "$QTD" = "5" ]; then
-  ok=$((ok+1)); echo "  ok   SessionStart continua com 5 hooks"
+# 6 desde 2026-09-16: entrou hooks/memoria-manutencao-session-start.cjs (Tarefa
+# 5 do plano memoria-reconciliacao-e-consolidacao) — "async": true, dispara um
+# filho destacado e sai sem escrever no stdout, mesma prova de antes.
+if [ "$QTD" = "6" ]; then
+  ok=$((ok+1)); echo "  ok   SessionStart continua com 6 hooks"
 else
-  falhou=$((falhou+1)); echo "  FALHA SessionStart tem $QTD hooks, esperava 5"
+  falhou=$((falhou+1)); echo "  FALHA SessionStart tem $QTD hooks, esperava 6"
 fi
 
 echo

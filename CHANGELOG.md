@@ -10,6 +10,32 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.20.0 — 2026-09-19
+
+**A memória deixa de só acumular.** Duas coisas que não existiam passam a existir,
+e as duas rodam sozinhas numa passada de manutenção que abre junto com a sessão:
+
+- **Reconciliação.** Observação que corrige, repete ou complementa uma antiga agora
+  atualiza ou funde-se a ela, em vez de virar mais uma linha ao lado. **Nada é
+  apagado**: a substituída ganha um ponteiro, sai da injeção e da busca, e continua
+  na tabela — fusão ruim se desfaz.
+- **Consolidação automática em resumos.** Era manual e nunca tinha rodado uma vez.
+  Passa a agrupar por origem a partir de 30 dias — pela sessão quando ela existe, e
+  por `(projeto, dia)` para as 10.092 observações importadas do claude-mem, que não
+  têm sessão nenhuma e são 88% do acervo.
+
+**Aviso na abertura quando o pipeline para.** Captura ou manutenção paradas há mais
+de 48 h viram uma linha na abertura da sessão, com há quantas horas e o comando que
+religa. O silêncio de 13 dias que ninguém viu (#282) é o que ela existe para matar —
+aviso que só aparece quando alguém pergunta não é aviso.
+
+A busca de parecidas continua no FTS5, sem índice vetorial: medido em 200 sondagens
+com o CLI real, o recall ficou em 82,0% global (74,6% em português, 89,2% em inglês).
+O relatório está em `relatorios/2026-09-18-recall-fts5-reconciliacao.md`.
+
+Nada disso mexe no `observar.cjs`: a captura não ganhou chamada de LLM nenhuma no
+caminho da escrita, que é onde ela já tinha parado calada uma vez.
+
 ## 1.19.2 — 2026-09-19
 
 **Este arquivo.** O plugin passa a trazer notas de atualização, e o contrato de

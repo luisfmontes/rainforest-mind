@@ -64,7 +64,11 @@ RES3=$(node -e '
   }));
 ' "$HOOKS_JSON" 2>&1)
 echo "contagem: $RES3"
-if [ "$RES3" = '{"SessionStart":5,"PreToolUse":10,"Stop":4,"UserPromptSubmit":1}' ]; then
+# SessionStart subiu de 5 para 6 em 2026-09-16: entrou
+# hooks/memoria-manutencao-session-start.cjs (Tarefa 5 do plano
+# memoria-reconciliacao-e-consolidacao), disparando a passada diaria de
+# reconciliar+consolidar num filho destacado.
+if [ "$RES3" = '{"SessionStart":6,"PreToolUse":10,"Stop":4,"UserPromptSubmit":1}' ]; then
   ok=$((ok+1)); echo "  ok    JSON valido e contagem de SessionStart/PreToolUse/Stop/UserPromptSubmit preservada"
 else
   falhou=$((falhou+1)); echo "  FALHA contagem mudou (ou JSON invalido): $RES3"
