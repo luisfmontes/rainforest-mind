@@ -78,9 +78,14 @@ justificar em prosa não destrava.
   anterior do `executar` a declarava `vermelho` sem que a catraca jamais tivesse
   rodado nela. O `de:` passou a ancorar nas **duas** linhas do guard da manutenção
   (a condição mais o `registrar('manutencao: banco ausente, nada a fazer')`), que
-  casa 1 vez — escrito no plano com `\n` literal, porque o parser de
-  `conferir-fluxo.cjs cobertura` lê o bloco linha a linha; a integração o passa ao
-  `conferir-mutacao.cjs` com `$'...'` do bash. Re-rodado na integração: `Baseline: 10140 ms (exit 0) → Mutação: 5554
+  casa 1 vez. Uma primeira tentativa ancorou nas DUAS linhas do guard, com `\n`
+  literal — `cobertura` passou, mas `conferir-fluxo.cjs mutacoes` entrega o `\n` ao
+  `sed` como dois caracteres e devolveu `pulada (de não encontrado)`, que é medição
+  nenhuma outra vez. O par final inverte o invariante por DENTRO do guard, numa linha
+  só: `de: `    registrar('manutencao: banco ausente, nada a fazer');`` (única no fonte)
+  para `para: `    abrirBanco(caminhoDb).close();``, que é exatamente o comportamento de
+  antes do conserto — a passada de manutenção CRIANDO o banco na abertura da sessão.
+  Re-rodado na integração: `Baseline: 10140 ms (exit 0) → Mutação: 5554
   ms (exit 1)`, exit 0 do conferidor. O erro é do plano, não da entrega.
 
 - **2026-09-19, achados 1 e 2 do `revisar` — a guarda de candidata oferecida e a de
@@ -290,8 +295,8 @@ depende de: 8
 paralela: nao
 mutacao:
   arquivo: `scripts/memoria.cjs`
-  de: `  if (!fs.existsSync(caminhoDb)) {\n    registrar('manutencao: banco ausente, nada a fazer');`
-  para: `  if (false) {\n    registrar('manutencao: banco ausente, nada a fazer');`
+  de: `    registrar('manutencao: banco ausente, nada a fazer');`
+  para: `    abrirBanco(caminhoDb).close();`
   bateria: `bash scripts/testa-memoria-somente-leitura.sh`
   fixture: `testa-memoria-somente-leitura.sh, caso "rainforest.db foi CRIADO pela abertura — a fase 1 escreveu (armadilha do iniciar)"`
 pronto quando: as tarefas 1 a 8 entregaram com as baterias delas verdes, mas a varredura completa do repo acusou **cinco** vermelhas — todas verdes em `origin/main`, portanto regressões desta entrega. A tarefa fecha quando `bash scripts/varrer-baterias.sh` traz `as 124 baterias passaram` e sai 0, **e** o invariante quebrado se prova pelo comportamento, não pelo teste: num sandbox **sem** `rainforest.db`, disparar o hook de manutenção e esperar o filho destacado deixa o arquivo **ainda inexistente** — provado por `printf '%s' '<payload real de SessionStart>' | RFM_ROOT=<sandbox> node hooks/memoria-manutencao-session-start.cjs && sleep 6 && (test -f <sandbox>/rainforest.db && echo CRIADO || echo "nao existe")` imprimindo `nao existe`, enquanto num sandbox **com** banco não migrado a mesma manutenção migra e o `manutencao.log` chega em `manutencao: completa`. A separação que rege o conserto: contagem que envelheceu porque o repo cresceu legitimamente (um `SessionStart` a mais em `hooks.json`, peças novas em `scripts/`) se atualiza **no teste**; invariante que a entrega quebrou — a abertura da sessão passando a escrever — se conserta **no código**, nunca afrouxando a bateria que o protege

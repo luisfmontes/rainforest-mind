@@ -244,7 +244,12 @@
     "saida": "ok: sem creep — 22 arquivo(s) coberto(s)"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug 2026-09-16-memoria-reconciliacao-e-consolidacao",
+    "saida": "tarefa 1..6 vermelho, tarefa 7 e 8 pulada (n/a), tarefa 9 vermelho — exit 0",
+    "criterios": 9,
+    "criterios_ok": 9,
+    "em": "2026-09-19"
   },
   "fechar": {
     "status": "pendente"
