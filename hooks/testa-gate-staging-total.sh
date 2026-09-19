@@ -61,6 +61,12 @@ b() { printf '{"cwd":"%s","hook_event_name":"PreToolUse","tool_name":"Bash","too
 ba() { printf '{"agent_id":"ag-1","agent_type":"executor","cwd":"%s","tool_name":"Bash","tool_input":{"command":"%s"}}' "${2:-$(esc "$R")}" "$1"; }
 # payload da JANELA PRINCIPAL via ferramenta PowerShell (R3, rodada 9, lote 3)
 p() { printf '{"cwd":"%s","hook_event_name":"PreToolUse","tool_name":"PowerShell","tool_input":{"command":"%s"}}' "${2:-$(esc "$R")}" "$1"; }
+# payload com comando MULTILINHA. Quebra de linha crua dentro de string JSON e
+# caractere de controle: o JSON.parse do gate falha e ele sai 0 sem avaliar
+# nada. JSON.stringify escapa. (zerar-issues-4, #258)
+bml() { node -e 'const [c,d]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd:d,hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:c}}))' "$1" "${2:-$(esc "$R")}"; }
+# Idem para a ferramenta PowerShell.
+pml() { node -e 'const [c,d]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd:d,hook_event_name:"PreToolUse",tool_name:"PowerShell",tool_input:{command:c}}))' "$1" "${2:-$(esc "$R")}"; }
 
 echo "== deve BARRAR (exit 2) — inclusive na janela principal =="
 gate "JANELA PRINCIPAL: git add -A (incidente 1 e 2)" 2 "$(b 'git add -A')"
@@ -147,6 +153,35 @@ if printf '%s' "$msg2" | grep -qF -- "Repo: $R"; then
   falhou=$((falhou+1)); echo "  FALHA stderr cita o cwd do EVENTO ($R) como Repo, em vez do efetivo"
 else
   ok=$((ok+1)); echo "  ok   stderr NAO cita o cwd do evento como Repo"
+fi
+
+echo
+echo "== Tarefa 3 (Issue #261): -C explicito de um segmento ANTERIOR sobrevive ao segmento INCERTO seguinte =="
+# Resíduo do segundo sintoma da #258: `git -C <outro-repo> add f2.txt; iex "$cmd"`
+# tem o `-C` num segmento que sozinho nao bloqueia (`git add f2.txt` por caminho
+# passa), e o bloqueio de verdade vem do segmento SEGUINTE, ilegivel (`iex
+# "$cmd"`). Antes desta tarefa o `-C` do primeiro segmento era descartado
+# (`dirC = null` no ramo `incerto`) e a mensagem citava o cwd do EVENTO — o
+# repo ERRADO.
+msg3=$(printf '%s' "$(p 'git -C \"'"$(esc "$WT2")"'\" add f2.txt; iex \"$cmd\"')" | node "$GATE" 2>&1); rc3=$?
+if [ "$rc3" = 2 ]; then ok=$((ok+1)); echo "  ok   git -C <outro-repo> add f2.txt; iex \"\$cmd\" barra (exit 2)"
+else falhou=$((falhou+1)); echo "  FALHA esperava exit 2, veio $rc3"; printf '%s' "$msg3" | sed 's/^/         /' | head -8; fi
+if norm2 "$msg3" | grep -qF -- "$(norm2 "$WT2")" || norm2 "$msg3" | grep -qF -- "$(norm2 "$WT2_REAL")"; then
+  ok=$((ok+1)); echo "  ok   stderr cita o repo do -C EXPLICITO ($WT2_REAL), nao o cwd do evento"
+else
+  falhou=$((falhou+1)); echo "  FALHA stderr NAO cita o repo do -C explicito"
+  printf '%s' "$msg3" | sed 's/^/         /' | head -8
+fi
+if printf '%s' "$msg3" | grep -qF -- "Repo: $R"; then
+  falhou=$((falhou+1)); echo "  FALHA stderr cita o cwd do EVENTO ($R) como Repo, em vez do -C explicito"
+else
+  ok=$((ok+1)); echo "  ok   stderr NAO cita o cwd do evento como Repo"
+fi
+if printf '%s' "$msg3" | grep -qF -- 'Segmento:' && printf '%s' "$msg3" | grep -qF -- 'iex "$cmd"'; then
+  ok=$((ok+1)); echo "  ok   stderr nomeia o SEGMENTO que bloqueou (o iex ilegivel, nao o git -C add)"
+else
+  falhou=$((falhou+1)); echo "  FALHA stderr NAO nomeia o segmento que bloqueou"
+  printf '%s' "$msg3" | sed 's/^/         /' | head -8
 fi
 
 echo
@@ -298,6 +333,63 @@ gate 'git add -- "-A" PASSA (pathspec depois de --)'           0 "$(b 'git add -
 gate 'git add -- "-u" PASSA (pathspec depois de --)'           0 "$(b 'git add -- \"-u\"')"
 gate 'git commit -m "-a" PASSA (valor de -m)'                  0 "$(b 'git commit -m \"-a\"')"
 gate 'git commit -m "--all" PASSA (valor de -m)'               0 "$(b 'git commit -m \"--all\"')"
+
+echo
+echo "== D1 (zerar-issues-4, #258): corpo de heredoc nao-interpretador e dado =="
+# Estes casos usam `bml`, nao `b`: o comando tem QUEBRA DE LINHA, e quebra crua
+# dentro de string JSON e caractere de controle. Com `b`, o payload nao parseia,
+# o gate sai 0 sem avaliar nada, e o caso passa verde contra o gate defeituoso
+# -- foi exatamente assim que a primeira tentativa desta tarefa ficou 113/113
+# com a correcao anulada. `conferir-mutacao.cjs` pegou; a bateria nao.
+gate "(a) cat <<'EOF' com prosa '(2 B). Ele sobe.' no corpo" 0 "$(bml "$(printf 'cat > /tmp/x.md <<%sEOF%s\nMedido (folga de 2 B). Ele sobe.\nEOF' "'" "'")")"
+gate "(b) o mesmo, seguido de gh issue create" 0 "$(bml "$(printf 'cat > /tmp/x.md <<%sEOF%s\nMedido (folga de 2 B). Ele sobe.\nEOF\ngh issue create --body-file /tmp/x.md' "'" "'")")"
+gate "(c) corpo citando staging em massa e dado, nao comando" 0 "$(bml "$(printf 'cat > /tmp/x.md <<%sEOF%s\ntexto explicando git add -A\nEOF' "'" "'")")"
+gate "(d) corpo com crase, \$(...), \$VAR e pipe" 0 "$(bml "$(printf 'cat > /tmp/x.md <<%sEOF%s\n`x` $(echo y) $VAR a | b\nEOF' "'" "'")")"
+gate "(e) bash <<'EOF' com staging em massa no corpo BARRA" 2 "$(bml "$(printf 'bash <<%sEOF%s\ngit add -A\nEOF' "'" "'")")"
+gate "(f) staging em massa nu continua barrando" 2 "$(b 'git add -A')"
+gate "(g) heredoc sem linha de fechamento nao trava o gate" 0 "$(bml "$(printf 'cat <<%sEOF%s\nconteudo incompleto\nls -la' "'" "'")")"
+
+echo
+echo "== a mascara de heredoc nao pode ABRIR o gate (auditoria do zerar-issues-4) =="
+# Estes oito casos passavam no gate ANTES desta mascara existir e voltaram a
+# passar depois da primeira versao dela -- `git add -A` atravessando por causa
+# de um `<<` que nao era operador de heredoc, ou de um corpo que o bash expande.
+# Medidos contra `git archive 14c471ed | hooks/gate-staging-total.cjs`: todos
+# davam exit 2 na base. Falha aqui e regressao de seguranca, nao de estilo.
+
+gate "<< dentro de aspas duplas nao inicia heredoc" 2 "$(bml "$(printf 'echo \"a << b\"\ngit add -A')")"
+gate "<< dentro de aspas simples nao inicia heredoc" 2 "$(bml "$(printf 'echo %sa << b%s\ngit add -A' "'" "'")")"
+gate "<< em comentario nao inicia heredoc" 2 "$(bml "$(printf '# ver << abaixo\ngit add -A')")"
+# As duas de cima passavam so porque o delimitador ficava ABERTO. Com o
+# delimitador CITADO e FECHADO em linha propria, a condicao 3 nao cobre mais:
+# so a varredura de operador cobre. Medido em 2026-09-15 -- 14c471ed barrava,
+# o HEAD do lote (com a varredura definida e nunca chamada) deixava passar.
+gate "<< CITADO e FECHADO dentro de aspas nao inicia heredoc" 2 "$(bml "$(printf 'echo "x <<%sEOF%s"\ngit add -A\nEOF' "'" "'")")"
+gate "<< CITADO e FECHADO em comentario nao inicia heredoc" 2 "$(bml "$(printf '# ver <<%sEOF%s abaixo\ngit add -A\nEOF' "'" "'")")"
+gate "<< em aspas, com git commit -a depois" 2 "$(bml "$(printf 'echo \"x << y\"\ngit commit -am \"z\"')")"
+gate "linha de fechamento FALSA nao valida o heredoc" 2 "$(bml "$(printf 'echo \"a << b\"\ngit add -A\nb\"')")"
+# Heredoc ABERTO de varias linhas: sem a condicao `fechado`, o corpo inteiro
+# seria mascarado ate o fim do comando. Medido em 2026-09-15 desligando so ela:
+# exit 2 com a condicao, exit 0 sem ela.
+gate "heredoc ABERTO de varias linhas nao mascara o resto" 2 "$(bml "$(printf 'cat <<%sEOF%s\ngit add -A' "'" "'")")"
+gate "corpo de heredoc NAO citado expande e vira comando" 2 "$(bml "$(printf 'cat <<EOF\n$(git add -A)\nEOF')")"
+gate "heredoc nu gravado em script e executado adiante" 2 "$(bml "$(printf 'cat <<EOF > x.sh\ngit add -A\nEOF\nbash x.sh')")"
+gate "heredoc citado gravado em script e executado adiante" 2 "$(bml "$(printf 'cat <<%sEOF%s > x.sh\ngit add -A\nEOF\nbash x.sh' "'" "'")")"
+
+# O redirecionamento pode vir ANTES do `<<`. A primeira versao lia a linha a
+# partir do `<<` e nao via o `> x.sh` -- nono desvio da auditoria, medido em
+# 2026-09-15: 14c471ed barrava (exit 2) e o HEAD do lote deixava passar.
+gate "redirecionamento ANTES do << tambem e executado adiante" 2 "$(bml "$(printf 'cat > x.sh <<%sEOF%s\ngit add -A\nEOF\nbash x.sh' "'" "'")")"
+gate "...e quando o script roda por ./x.sh" 2 "$(bml "$(printf 'cat > x.sh <<%sEOF%s\ngit add -A\nEOF\nchmod +x x.sh && ./x.sh' "'" "'")")"
+
+# Contraponto: o arquivo CITADO adiante, e nao executado, continua sendo dado.
+# E o caso (b) da Issue #258 -- gravar corpo de issue e passar por --body-file.
+gate "arquivo so CITADO adiante (--body-file) continua dado" 0 "$(bml "$(printf 'cat > x.md <<%sEOF%s\nTexto que menciona git add -A ao explicar o cache.\nEOF\ngh issue create --body-file x.md' "'" "'")")"
+
+# PowerShell nao tem heredoc nenhum, e o gate roda a mesma mascara nas duas
+# ferramentas. Esta e a ferramenta primaria desta maquina (R3).
+gate "PowerShell: << em aspas nao esconde git add -A" 2 "$(pml "$(printf 'Write-Host \"a << b\"\ngit add -A')")"
+gate "PowerShell: << em comentario nao esconde git add -A" 2 "$(pml "$(printf '# compara a << b\ngit add -A')")"
 
 echo
 echo "== saidas de emergencia =="

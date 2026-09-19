@@ -21,10 +21,11 @@
  * sessão que motivou este fluxo, e por isso os testes NUNCA reaproveitam o
  * `raiz` deste repositório — sempre `caixa()`).
  *
- * O coração da bateria são os casos 13 a 16: eles provam que a autorização
- * dispensa SÓ o portão de ESTÁGIO, e nada mais — manifesto ausente, agente não
- * declarado, e as duas travas de `escreve: true` (isolation + ausência de
- * name) continuam negando com autorização válida.
+ * O coração da PARTE 2 agora são os casos 13 a 16: eles provam que a
+ * PORTARIA não lê mais transcripts fora de fluxo. Fora de fluxo, tudo passa —
+ * mas as regras de manifesto (casos 13), agente não declarado (caso 14), e as
+ * duas travas de `escreve: true` (isolation + ausência de name, casos 15 e 16)
+ * continuam valendo quando HÁ fluxo aberto.
  *
  * Mesmo formato das baterias irmãs: `caso(nome, cond, detalhe)` imprime
  * `ok`/`FALHA`, contagem final `== resultado: N ok, M falha(s) ==`, exit 0
@@ -184,6 +185,36 @@ console.log("== 3d. pontuacao grudada e oracao por virgula (achados da 2a rodada
   // Guarda de regressao: quem barra e o marcador `posso autoriz`, nao o rabicho.
   const rPergRabicho = autorizado(fx("pergunta-com-rabicho.jsonl"));
   caso("'posso autorizar subagentes, ta?' NAO autoriza", rPergRabicho === false, rPergRabicho);
+}
+
+
+console.log("== 3f. `autoriza` na 3a pessoa: imperativo concede, descritivo NAO ==");
+{
+  // A tarefa 3 acrescentou `\\bautoriza\\b` as tres regex que decidem concessao,
+  // para cobrir a forma imperativa `autoriza subagens` (fixture irma
+  // `aprox-autoriza-subagens`). Em qualquer posicao da oracao, porem, a 3a
+  // pessoa e DESCRITIVA, e as seis frases abaixo passaram a conceder despacho
+  // de subagente sem o usuario ter autorizado nada. Duas delas sao frases em
+  // que ele esta NEGANDO. Todas davam false em 14c471ed.
+  //
+  // Sem estes casos a bateria fica verde com a 3a pessoa solta: 105 ok antes e
+  // 105 ok depois do conserto -- medido em 2026-09-14, auditoria do lote.
+  const descritivas = [
+    ["descritiva-regra-citada.jsonl", "a regra 10 diz que a portaria autoriza subagente..."],
+    ["descritiva-quem-autoriza-e-voce.jsonl", "quem autoriza subagente aqui e voce, nao eu"],
+    ["descritiva-manifesto.jsonl", "o manifesto autoriza subagentes do tipo executor"],
+    ["descritiva-ninguem-autoriza.jsonl", "ninguem autoriza subagente sem eu ver antes"],
+    ["descritiva-pergunta-quando.jsonl", "me explica quando o plugin autoriza subagente"],
+    ["descritiva-doc-mas-nao-quero.jsonl", "a doc autoriza subagentes nesse caso, mas eu nao quero"],
+  ];
+  for (const [arquivo, frase] of descritivas) {
+    const r = autorizado(fx(arquivo));
+    caso("'" + frase + "' NAO autoriza", r === false, r);
+  }
+
+  // E o imperativo, que e a razao de a 3a pessoa ser aceita, continua valendo.
+  const rImperativo = autorizado(fx("aprox-autoriza-subagens.jsonl"));
+  caso("'autoriza subagens' (imperativo, abre a oracao) AUTORIZA", rImperativo === true, rImperativo);
 }
 
 console.log("== 3e. rabicho ambiguo, '?' colado e palavra comum (achados da 3a rodada) ==");
@@ -428,6 +459,66 @@ console.log("== 10. transcript vazio, inexistente, e com linha JSON partida no f
   caso("e a concessao da linha anterior, intacta, ainda vale = true", partida === true, partida);
 }
 
+console.log("== 3i. Tarefa 3: formas aproximadas por distancia de Levenshtein ==");
+{
+  // Sete formas que AUTORIZAM
+  const autorizam = [
+    { frase: "autorizo subagentes", desc: "exata" },
+    { frase: "autorizo subagente", desc: "exata singular" },
+    { frase: "autorizo sub agentes", desc: "espaço (hifen esquecido)" },
+    { frase: "autorizo subagens", desc: "aprox. dist=2 (e→ag)" },
+    { frase: "autorizo os subagens", desc: "aprox. em janela de 2 palavras" },
+    { frase: "autoriza subagens", desc: "aprox. com verbo 'autoriza'" },
+    { frase: "autorizo subgentes", desc: "aprox. dist=1 (a→g)" },
+  ];
+
+  for (const tc of autorizam) {
+    const tmpfile = path.join(os.tmpdir(), `test-aprox-${Date.now()}-${Math.random()}.jsonl`);
+    const linha = JSON.stringify({
+      type: 'user',
+      message: { content: tc.frase },
+      origin: { kind: 'human' }
+    });
+    fs.writeFileSync(tmpfile, linha + '\n', 'utf8');
+    const r = autorizado(tmpfile);
+    caso(`'${tc.frase}' AUTORIZA (${tc.desc})`, r === true, r);
+    fs.unlinkSync(tmpfile);
+  }
+
+  // Seis formas que NÃO AUTORIZAM
+  const naoAutorizam = [
+    { frase: "nao autorizo subagentes", desc: "negação explícita" },
+    { frase: "autorizo submarinos", desc: "dist=5, fora da tolerância" },
+    { frase: "autorizo subir a versao", desc: "subir → dist=4, fora" },
+    { frase: "autorizo o deploy", desc: "sem 'sub'" },
+    { frase: "se eu autorizar subagentes um dia, avise", desc: "cláusula subordinada" },
+  ];
+
+  for (const tc of naoAutorizam) {
+    const tmpfile = path.join(os.tmpdir(), `test-aprox-${Date.now()}-${Math.random()}.jsonl`);
+    const linha = JSON.stringify({
+      type: 'user',
+      message: { content: tc.frase },
+      origin: { kind: 'human' }
+    });
+    fs.writeFileSync(tmpfile, linha + '\n', 'utf8');
+    const r = autorizado(tmpfile);
+    caso(`'${tc.frase}' NAO autoriza (${tc.desc})`, r === false, r);
+    fs.unlinkSync(tmpfile);
+  }
+
+  // Seis: mesmo com tool_result
+  const tmpfileTool = path.join(os.tmpdir(), `test-aprox-tool-${Date.now()}.jsonl`);
+  const linhaTool = JSON.stringify({
+    type: 'user',
+    message: { content: [{ type: 'tool_result', content: 'autorizo subagentes' }] }
+  });
+  fs.writeFileSync(tmpfileTool, linhaTool + '\n', 'utf8');
+  const rTool = autorizado(tmpfileTool);
+  caso("tool_result com 'autorizo subagentes' NAO autoriza (voz errada)", rTool === false, rTool);
+  fs.unlinkSync(tmpfileTool);
+}
+
 // ============================================================================
 // PARTE 2 — PORTARIA (hooks/portaria.cjs), processo real
 // ============================================================================
@@ -465,7 +556,15 @@ function rodaHook(raiz, payload) {
   // string de shell com aspas aninhadas.
   return spawnSync(process.execPath, [HOOK], {
     input: JSON.stringify(payload),
-    env: { ...process.env, CLAUDE_PROJECT_DIR: raiz },
+    // `RFM_ROOT` desde 2026-09-14 (D6): o log resolve pela raiz de DADOS, que
+    // sem isolamento é a pasta pessoal do usuário — esta bateria despeja ~20
+    // linhas por execução. Apontar para `<raiz>/.rainforest` dá uma caixa por
+    // caso e mantém `ultimaLinhaDoLog` lendo o caminho de sempre.
+    env: {
+      ...process.env,
+      CLAUDE_PROJECT_DIR: raiz,
+      RFM_ROOT: path.join(raiz, ".rainforest"),
+    },
     encoding: "utf8",
   });
 }
@@ -482,167 +581,195 @@ function ultimaLinhaDoLog(raiz) {
   }
 }
 
-console.log("== 11. sem fluxo + autorizacao valida -> exit 0, log com estagio/decisao/via ==");
+console.log("== 11. sem fluxo -> exit 0, permite sem ler transcript ==");
 {
   const raiz = caixa("11");
   iniciarGit(raiz);
   criarManifesto(raiz, manifestoD2({ revisor: { estagios: ["revisar"], escreve: false } }));
 
+  // Agora SEM fluxo, a portaria NÃO lê transcript — autorização deixou de existir.
+  // Testa com transcript_path ausente (chave nem existe no payload).
   const r = rodaHook(raiz, {
     session_id: "s11",
     cwd: raiz,
-    transcript_path: fx("autorizado.jsonl"),
     tool_input: { subagent_type: "revisor" },
   });
 
-  caso("exit 0", r.status === 0, `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
+  caso("exit 0 (fora de fluxo, sem ler transcript)", r.status === 0, `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
 
   const entrada = ultimaLinhaDoLog(raiz);
   caso("log tem uma linha JSON valida", entrada !== null, entrada);
   if (entrada) {
     caso("estagio = 'fora-de-fluxo'", entrada.estagio === "fora-de-fluxo", entrada.estagio);
     caso("decisao = 'allow'", entrada.decisao === "allow", entrada.decisao);
-    caso("via = 'autorizacao-do-usuario'", entrada.via === "autorizacao-do-usuario", entrada.via);
+    caso("fora_de_fluxo = true", entrada.fora_de_fluxo === true, entrada.fora_de_fluxo);
+    caso("log NÃO traz campo 'via' (sem autorização a consultar)", !("via" in entrada) || entrada.via !== "autorizacao-do-usuario", entrada.via);
   }
 
   fs.rmSync(raiz, { recursive: true, force: true });
 }
 
-console.log("== 12. sem fluxo + sem autorizacao -> exit 2, motivo 'sem estagio ativo' ==");
+console.log("== 12. sem fluxo -> exit 0, mesmo com negação no transcript ==");
 {
   const raiz = caixa("12");
   iniciarGit(raiz);
   criarManifesto(raiz, manifestoD2({ revisor: { estagios: ["revisar"], escreve: false } }));
 
-  // A ARMADILHA: usar o transcript INTEIRO (test/fixtures/transcript-autorizacao.jsonl)
-  // aqui daria exit 0 por engano — ele tem uma concessão válida ANTES do turno
-  // de reclamação. O caso certo é o turno isolado, sem a concessão.
+  // Agora SEM fluxo passa INCONDICIONALMENTE — não lê transcript, não vê negação.
+  // Passa um transcript com "não autorizo", mas a portaria não o consulta.
   const r = rodaHook(raiz, {
     session_id: "s12",
     cwd: raiz,
-    transcript_path: fx("turno-reclamacao.jsonl"),
+    transcript_path: fx("turno-reclamacao.jsonl"), // contem negacao
     tool_input: { subagent_type: "revisor" },
   });
 
-  caso("exit 2", r.status === 2, `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
-  caso("motivo cita 'sem estágio ativo'", (r.stderr || "").includes("sem estágio ativo"), r.stderr);
-
-  fs.rmSync(raiz, { recursive: true, force: true });
-}
-
-console.log("== 13. manifesto AUSENTE + autorizacao valida -> continua exit 2 ==");
-{
-  const raiz = caixa("13");
-  iniciarGit(raiz);
-  // Sem manifesto de propósito: a autorização não pode criar o que falta.
-
-  const r = rodaHook(raiz, {
-    session_id: "s13",
-    cwd: raiz,
-    transcript_path: fx("autorizado.jsonl"),
-    tool_input: { subagent_type: "revisor" },
-  });
-
-  caso("exit 2 (autorizacao NAO cria manifesto)", r.status === 2, `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
-  caso("motivo cita manifesto ausente", /manifesto n[aã]o encontrado/i.test(r.stderr || ""), r.stderr);
+  caso("exit 0 (fora de fluxo, sem ler transcript mesmo com negacao)", r.status === 0, `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
 
   const entrada = ultimaLinhaDoLog(raiz);
-  caso("a linha de deny nao carrega 'via' (autorizacao nunca foi consultada)",
-    entrada === null || entrada.via === undefined, JSON.stringify(entrada));
+  caso("log traz fora_de_fluxo = true", entrada && entrada.fora_de_fluxo === true, entrada && entrada.fora_de_fluxo);
 
   fs.rmSync(raiz, { recursive: true, force: true });
 }
 
-console.log("== 14. agente NAO declarado + autorizacao valida -> continua exit 2 ==");
+/* == 13. Padrão embarcado AUSENTE -> continua exit 2 ==
+ *
+ * Falha de instalação: o padrão embarcado é obrigatório. Não é decisão sobre
+ * este agente — é avaria do sistema. Continua negando e SEM linha de log
+ * (D5). A portaria não consulta autorização, então o transcript_path é
+ * removido.
+ */
+console.log("== 13. padrao embarcado AUSENTE -> exit 2, sem log, falha de instalacao ==");
+{
+  const espelho = fs.mkdtempSync(path.join(os.tmpdir(), "portaria-autorizacao-espelho-"));
+  fs.cpSync(__dirname, path.join(espelho, "hooks"), { recursive: true });
+  fs.mkdirSync(path.join(espelho, ".rainforest"), { recursive: true });
+  // ... sem copiar `.rainforest/agentes.padrao.json`. É essa a avaria.
+
+  const raiz = caixa("13");
+  iniciarGit(raiz);
+
+  const dados = fs.mkdtempSync(path.join(os.tmpdir(), "portaria-autorizacao-dados-"));
+  const logPath = path.join(dados, "portaria", "despachos.jsonl");
+
+  const r = spawnSync(process.execPath, [path.join(espelho, "hooks", "portaria.cjs")], {
+    input: JSON.stringify({
+      session_id: "s13",
+      cwd: raiz,
+      tool_input: { subagent_type: "revisor" },
+    }),
+    env: { ...process.env, CLAUDE_PROJECT_DIR: raiz, RFM_ROOT: dados },
+    encoding: "utf8",
+  });
+
+  caso("exit 2 (instalacao quebrada nega)", r.status === 2,
+    `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
+  caso("motivo aponta o padrao do plugin, nao o repo do usuario",
+    /agentes\.padrao\.json/.test(r.stderr || "") && /instalacao incompleta/i.test(r.stderr || ""), r.stderr);
+  caso("NENHUMA linha no log (falha de instalacao nao vira politica)",
+    !fs.existsSync(logPath), fs.existsSync(logPath) ? fs.readFileSync(logPath, "utf8") : "");
+
+  fs.rmSync(dados, { recursive: true, force: true });
+  fs.rmSync(raiz, { recursive: true, force: true });
+  fs.rmSync(espelho, { recursive: true, force: true });
+}
+
+console.log("== 14. agente NAO declarado fora de fluxo -> exit 0, sem ler autorização ==");
 {
   const raiz = caixa("14");
   iniciarGit(raiz);
   // Manifesto existe, mas não declara 'revisor'.
   criarManifesto(raiz, manifestoD2({ outro: { estagios: ["revisar"], escreve: false } }));
 
+  // Agente não declarado + fora de fluxo → passa SEM consultar autorização
   const r = rodaHook(raiz, {
     session_id: "s14",
     cwd: raiz,
-    transcript_path: fx("autorizado.jsonl"),
+    // transcript_path AUSENTE — portaria não o consultaria mesmo se tivesse
     tool_input: { subagent_type: "revisor" },
   });
 
-  caso("exit 2 (autorizacao NAO declara agente)", r.status === 2, `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
-  caso("motivo cita o agente e 'nao consta no manifesto'",
-    (r.stderr || "").includes("revisor") && (r.stderr || "").includes("não consta no manifesto"), r.stderr);
+  caso("exit 0 (agente nao declarado fora de fluxo passa)", r.status === 0, `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
+
+  const entrada = ultimaLinhaDoLog(raiz);
+  caso("log marca declarado: false", entrada && entrada.declarado === false, entrada && entrada.declarado);
+  caso("log marca fora_de_fluxo: true", entrada && entrada.fora_de_fluxo === true, entrada && entrada.fora_de_fluxo);
 
   fs.rmSync(raiz, { recursive: true, force: true });
 }
 
-console.log("== 15. escreve:true + autorizacao + SEM isolation:'worktree' -> continua exit 2 ==");
+console.log("== 15. escreve:true + SEM isolation:'worktree' -> continua exit 2, sem ler autorização ==");
 {
   const raiz = caixa("15");
   iniciarGit(raiz);
   criarManifesto(raiz, manifestoD2({ escritor: { estagios: ["executar"], escreve: true } }));
 
+  // escreve: true SEM isolation nega, mesmo fora de fluxo. Portaria não lê autorização.
   const r = rodaHook(raiz, {
     session_id: "s15",
     cwd: raiz,
-    transcript_path: fx("autorizado.jsonl"),
+    // transcript_path AUSENTE
     tool_input: { subagent_type: "escritor" }, // sem isolation
   });
 
-  caso("exit 2 (autorizacao NAO dispensa a regra 11)", r.status === 2, `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
+  caso("exit 2 (regra 11 continua negando escreve:true sem isolation)", r.status === 2, `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
   caso("motivo nomeia isolation: \"worktree\"", (r.stderr || "").includes('isolation: "worktree"'), r.stderr);
 
-  // Controle positivo, no MESMO sandbox: o mesmo agente, a mesma autorização,
-  // mas com isolation:"worktree" e sem name, aprova. Prova que a negação
-  // acima é sobre o isolamento — não uma recusa cega a 'escreve:true' com
-  // autorização.
+  // Controle positivo, no MESMO sandbox: o mesmo agente, mas com
+  // isolation:"worktree" e sem name, aprova. Prova que a negação acima é
+  // sobre o isolamento — e que passa SEM autorização (portaria não a consulta).
   const rControle = rodaHook(raiz, {
     session_id: "s15b",
     cwd: raiz,
-    transcript_path: fx("autorizado.jsonl"),
+    // transcript_path AUSENTE
     tool_input: { subagent_type: "escritor", isolation: "worktree" },
   });
   caso("controle: com isolation:'worktree' e sem name, aprova (exit 0)",
     rControle.status === 0, `exit=${rControle.status} stderr=${JSON.stringify(rControle.stderr)}`);
   const entradaControle = ultimaLinhaDoLog(raiz);
-  caso("e o log do controle registra via + isolation",
-    entradaControle && entradaControle.via === "autorizacao-do-usuario" && entradaControle.isolation === "worktree",
-    JSON.stringify(entradaControle));
+  caso("log do controle registra isolation: 'worktree'",
+    entradaControle && entradaControle.isolation === "worktree", JSON.stringify(entradaControle));
+  caso("log do controle registra fora_de_fluxo: true",
+    entradaControle && entradaControle.fora_de_fluxo === true, JSON.stringify(entradaControle));
 
   fs.rmSync(raiz, { recursive: true, force: true });
 }
 
-console.log("== 16. escreve:true + autorizacao + com 'name' preenchido -> continua exit 2 ==");
+console.log("== 16. escreve:true + isolation:'worktree' + com 'name' -> continua exit 2, sem ler autorização ==");
 {
   const raiz = caixa("16");
   iniciarGit(raiz);
   criarManifesto(raiz, manifestoD2({ escritor: { estagios: ["executar"], escreve: true } }));
 
+  // escreve: true COM name nega a regra 10. Portaria não lê autorização.
   const r = rodaHook(raiz, {
     session_id: "s16",
     cwd: raiz,
-    transcript_path: fx("autorizado.jsonl"),
+    // transcript_path AUSENTE
     tool_input: { subagent_type: "escritor", isolation: "worktree", name: "sonda-um" },
   });
 
-  caso("exit 2 (autorizacao NAO dispensa a regra 10)", r.status === 2, `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
+  caso("exit 2 (regra 10 continua negando escreve:true com name)", r.status === 2, `exit=${r.status} stderr=${JSON.stringify(r.stderr)}`);
   caso("motivo cita o name recebido", (r.stderr || "").includes("sonda-um"), r.stderr);
 
   fs.rmSync(raiz, { recursive: true, force: true });
 }
 
-console.log("== 17. as mensagens de negacao sao distintas, cada uma com o seu texto ==");
+console.log("== 17. sem fluxo passa incondicionalmente (nenhuma leitura de transcript) ==");
 {
+  // Prova que fora de fluxo a portaria NÃO lê transcript em nenhuma circunstância.
+  // A política deixou de ser "lê autorização", ela é agora "fora de fluxo = passa".
+
   const raizAusente = caixa("17-ausente");
   iniciarGit(raizAusente);
   criarManifesto(raizAusente, manifestoD2({ revisor: { estagios: ["revisar"], escreve: false } }));
   const rAusente = rodaHook(raizAusente, {
     session_id: "s17a",
     cwd: raizAusente,
-    // transcript_path AUSENTE do payload (chave nem existe)
+    // transcript_path AUSENTE — não há nada a ler
     tool_input: { subagent_type: "revisor" },
   });
-  caso("transcript_path ausente: exit 2", rAusente.status === 2, `exit=${rAusente.status}`);
-  caso("transcript_path ausente: motivo 'sem estágio ativo'",
-    (rAusente.stderr || "").includes("sem estágio ativo — abra um fluxo"), rAusente.stderr);
+  caso("transcript_path ausente: exit 0 (fora de fluxo, sem ler)", rAusente.status === 0, `exit=${rAusente.status}`);
   fs.rmSync(raizAusente, { recursive: true, force: true });
 
   const raizVazio = caixa("17-vazio");
@@ -654,10 +781,7 @@ console.log("== 17. as mensagens de negacao sao distintas, cada uma com o seu te
     transcript_path: "",
     tool_input: { subagent_type: "revisor" },
   });
-  caso("transcript_path vazio: exit 2", rVazio.status === 2, `exit=${rVazio.status}`);
-  caso("transcript_path vazio: motivo proprio, distinto do 'ausente'",
-    (rVazio.stderr || "").includes("autorização não pôde ser conferida — transcript_path não foi fornecido"),
-    rVazio.stderr);
+  caso("transcript_path vazio: exit 0 (fora de fluxo, não lê vazio)", rVazio.status === 0, `exit=${rVazio.status}`);
   fs.rmSync(raizVazio, { recursive: true, force: true });
 
   const raizInexistente = caixa("17-inexistente");
@@ -670,10 +794,7 @@ console.log("== 17. as mensagens de negacao sao distintas, cada uma com o seu te
     transcript_path: caminhoFalso,
     tool_input: { subagent_type: "revisor" },
   });
-  caso("arquivo inexistente: exit 2", rInexistente.status === 2, `exit=${rInexistente.status}`);
-  caso("arquivo inexistente: motivo cita o caminho e 'não existe'",
-    (rInexistente.stderr || "").includes(caminhoFalso) && (rInexistente.stderr || "").includes("não existe"),
-    rInexistente.stderr);
+  caso("arquivo inexistente: exit 0 (fora de fluxo, não lê arquivo)", rInexistente.status === 0, `exit=${rInexistente.status}`);
   fs.rmSync(raizInexistente, { recursive: true, force: true });
 
   const raizNegacao = caixa("17-negacao");
@@ -685,24 +806,15 @@ console.log("== 17. as mensagens de negacao sao distintas, cada uma com o seu te
     transcript_path: fx("negado-sem-acento.jsonl"),
     tool_input: { subagent_type: "revisor" },
   });
-  caso("negacao explicita: exit 2", rNegacao.status === 2, `exit=${rNegacao.status}`);
-  caso("negacao explicita: motivo proprio, sobre revogacao",
-    (rNegacao.stderr || "").includes("autorização foi revogada"), rNegacao.stderr);
+  caso("arquivo com negacao: exit 0 (fora de fluxo, não confere autorização)",
+    rNegacao.status === 0, `exit=${rNegacao.status}`);
   fs.rmSync(raizNegacao, { recursive: true, force: true });
 
-  // As quatro mensagens sao, de fato, DIFERENTES entre si — nao a mesma
-  // string reaproveitada para os quatro casos.
-  //
-  // Esta assercao ja foi decorativa: ela montava um Set com as quatro strings
-  // ESPERADAS, digitadas aqui, e conferia `size === 4`. Passava sem consultar o
-  // hook uma vez sequer — mutar a portaria para emitir a mesma mensagem generica
-  // nos quatro ramos deixava esta linha verde. Achado da revisao de 2026-09-12.
-  // Agora ela le o stderr REAL dos quatro processos que ja rodaram acima.
-  const primeiraLinha = (r) => String((r && r.stderr) || "").trim().split("\n")[0].trim();
-  const reais = [rAusente, rVazio, rInexistente, rNegacao].map(primeiraLinha);
-  const textos = new Set(reais);
-  caso("as quatro mensagens REAIS do hook sao distintas entre si", textos.size === 4, reais);
-  caso("nenhuma das quatro mensagens reais e vazia", reais.every((t) => t.length > 0), reais);
+  // Prova que todas as quatro situações saem com o mesmo exit code,
+  // porque a portaria não diferencia — fora de fluxo é fora de fluxo.
+  caso("todos os quatro casos PASSAM (exit 0), independente do transcript_path",
+    rAusente.status === 0 && rVazio.status === 0 && rInexistente.status === 0 && rNegacao.status === 0,
+    [rAusente.status, rVazio.status, rInexistente.status, rNegacao.status].join(", "));
 }
 
 console.log(`\n== resultado: ${ok} ok, ${falhou} falha(s) ==`);

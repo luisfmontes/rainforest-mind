@@ -14,7 +14,7 @@ node scripts/estado.cjs exigir --slug <slug> --estagio fechar
 Exit 2 significa que `verificar` ainda não fechou com `ok` — pare, não
 force `marcar` por cima.
 
-Quatro passos, nesta ordem.
+Seis passos, nesta ordem.
 
 ## 1. Commitar o pendente
 
@@ -28,7 +28,44 @@ adicione por caminho.
 pare e mostre o `git status` ao usuário em vez de commitar por cima. Nunca
 assuma que um arquivo modificado é seu porque está lá.
 
-## 2. Limpar o repositório local
+## 2. Fechar as Issues do plano
+
+Sem `--confirmo`: o fechamento de Issue é o resultado natural do fluxo, não
+um ato que exige frase digitada (a frase continua obrigatória só para apagar
+branch e worktree sujo, em `limpar-branches`/`limpar-worktrees`). Para cada
+Issue que o plano deste fluxo resolveu, feche por uma das duas formas — nunca
+um "ou" vago, escolha pinada pela existência do portão:
+
+**(a) Existe `docs/rainforest/portoes/<slug>.md` para este fluxo:**
+
+```
+node scripts/portoes.cjs rodar docs/rainforest/portoes/<slug>.md
+node scripts/fechar-issue.cjs <n> --comando "node scripts/portoes.cjs rodar docs/rainforest/portoes/<slug>.md" --saida-arquivo docs/rainforest/portoes/<slug>.md
+```
+
+`rodar` grava o campo `EVIDENCIA:` de volta no próprio arquivo do portão —
+depois de rodar, o arquivo já é comando+saída, não só a definição do portão.
+
+**(b) Sem portão para este fluxo** (é o caso de `zerar-issues-5`: não existe
+`docs/rainforest/portoes/zerar-issues-5.md`): rode o comando do critério de
+pronto da Issue redirecionando a saída para um arquivo **dentro do
+repositório** (ex.: `docs/rainforest/estado/<slug>-fechar-<n>.txt`, apagado
+depois de usado — mesma disciplina de "limpar o repositório local" do passo
+seguinte) e passe esse arquivo em `--saida-arquivo`:
+
+```
+<comando do critério de pronto> > docs/rainforest/estado/<slug>-fechar-<n>.txt 2>&1
+node scripts/fechar-issue.cjs <n> --comando "<comando do critério de pronto>" --saida-arquivo docs/rainforest/estado/<slug>-fechar-<n>.txt
+rm docs/rainforest/estado/<slug>-fechar-<n>.txt
+```
+
+**Nunca um caminho fora do repositório**: `--saida-arquivo` recusa
+(`estaNoRepositorio` em `fechar-issue.cjs`) e `--saida` recusa qualquer valor
+que já seja o caminho de um arquivo existente, colado ou não — "o diretório
+temporário da sessão" não é atalho válido (Issue #269: colar um caminho onde
+se espera saída sempre é erro).
+
+## 3. Limpar o repositório local
 
 Arquivo temporário, log e artefato de teste que o **próprio fluxo**
 gerou e que não é entrega (harness descartável da fase de execução, log de
@@ -37,7 +74,7 @@ apagar**: outra sessão trabalha no mesmo working tree (`git worktree list`
 mostra quem mais está ativo), e o que não foi este fluxo que criou fica
 de pé.
 
-## 3. Remover os worktrees deste trabalho
+## 4. Remover os worktrees deste trabalho
 
 ```
 git worktree remove <caminho>
@@ -47,7 +84,7 @@ git worktree prune
 Invoque a skill `limpar` para isso — ela já separa o que tem trabalho
 pendente do que está limpo, e decide o que remove sem perguntar.
 
-## 4. Abrir PR
+## 5. Abrir PR
 
 **O destino da branch é sempre PR.** Abra o PR e informe o número — sem menu,
 sem pergunta. O menu de três opções que ficava aqui foi removido em 2026-08-24:
@@ -69,12 +106,12 @@ nenhuma palavra-chave foi reconhecida e as duas issues continuaram abertas.
 **A branch remota sai sozinha no merge.** O repositório tem
 `delete_branch_on_merge` ligado desde 2026-08-26, então o `gh pr merge` apaga a
 `origin/<branch>` sem `--delete-branch`. Isso **não** alcança a branch local nem
-o worktree — os dois continuam sendo trabalho do passo 2 e do passo 3, e é
+o worktree — os dois continuam sendo trabalho do passo 3 e do passo 4, e é
 justamente a metade que sobrevive e ninguém vê. Fork deste repositório não herda
 a configuração: quem clonar liga com
 `gh api -X PATCH repos/<dono>/<repo> -f delete_branch_on_merge=true`.
 
-## 5. Conferir se a versão ficou para trás
+## 6. Conferir se a versão ficou para trás
 
 Depois do PR aberto, no repositório do **plugin**:
 
@@ -137,13 +174,13 @@ node scripts/estado.cjs marcar --slug <slug> --estagio fechar --status ok \
   --json '{"acao":"merge|pr|manteve"}'
 ```
 
-`acao` é o que **de fato aconteceu** no passo 4: `pr` no caminho normal, e
+`acao` é o que **de fato aconteceu** no passo 5: `pr` no caminho normal, e
 `merge` ou `manteve` só quando o usuário pediu outra coisa. Nunca a que
 pareceria mais razoável em retrospecto — o registro serve para saber o que foi
 feito, não para justificar.
 
 O `marcar ... fechar ok` grava o estado no JSON, sujando o `git status`. Se
-houver pendência, o commit se repete: os passos 1 a 3 fizeram sua parte, e o
+houver pendência, o commit se repete: os passos 1 a 4 fizeram sua parte, e o
 estágio só termina com a árvore limpa.
 
 ## Conferir de fora se o fluxo fechou: `concluido`
@@ -168,6 +205,13 @@ nas que legitimamente não têm fluxo aberto. Se o aviso automático fizer
 falta depois do verbo em uso, vira fluxo próprio com o barulho medido em vez
 de chutado.
 
+Essa recusa é sobre **aviso falado** — um vigia que interrompe toda sessão
+para dizer algo que ninguém perguntou. `hooks/titulo-sessao-end.cjs` também
+roda no `SessionEnd`, mas escreve o estado do fluxo no título de uma sessão
+já encerrada: não fala com ninguém, então não reabre esta decisão (ver
+`docs/rainforest/design/2026-09-15-titulo-de-sessao-encerrada.md`, "Fora de
+escopo").
+
 **Fica de fora, Issue #180**: o estágio que despacha agente em background
 aposta que o turno dura mais que o agente — aposta perdida em toda sessão
 não interativa. O `concluido` diz que o fluxo ficou pela metade; ele **não**
@@ -176,5 +220,5 @@ impede que fique.
 ## Condição de parada
 
 Árvore suja com algo alheio ao trabalho: pare e mostre, nunca commite por
-cima. E o passo 4 não fecha sem o PR existir: `acao: "pr"` sem número de PR é
+cima. E o passo 5 não fecha sem o PR existir: `acao: "pr"` sem número de PR é
 estágio marcado por cima de trabalho que não aconteceu.

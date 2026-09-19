@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.13.2-1e5c3f?style=flat-square" alt="versão 1.13.2">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.19.2-1e5c3f?style=flat-square" alt="versão 1.19.2">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -119,6 +119,22 @@ sem ninguém decidir isso.
 <slug>` e sabe onde parou. Design, plano e estado do fluxo são versionados de
 propósito — é por eles que outro dev pega a atividade no meio.
 
+## O título da sessão diz se o fluxo fechou
+
+No `/exit`, o hook de `SessionEnd` `hooks/titulo-sessao-end.cjs` prefixa o
+título da sessão com o estado dos fluxos que ela tocou: `[ok]` quando todos
+fecharam, `[aberto: <estágio>]` quando algum ficou pela metade.
+
+A busca do `/resume` casa contra o `customTitle`: digitar a palavra `aberto`
+filtra exatamente as sessões que ficaram pela metade — é por isso que o
+marcador é palavra, não símbolo.
+
+O hook fica **calado** em três casos: `reason` diferente de
+`prompt_input_exit` (fechar o terminal na mão não dispara hook nenhum;
+`claude -p` emite `other`), sessão sem nenhum fluxo carimbado, e repositório
+que não usa o fluxo. Um nome dado com `/rename` tem precedência — o hook só
+prefixa, nunca substitui.
+
 ## Não chama de pronto sem a saída
 
 Esta é a que mais paga. Agente relata **intenção**, não resultado — e o relato é
@@ -169,9 +185,9 @@ liberam sem perguntar. Codex sem cota bloqueia dizendo isso, com a hora de
 retorno (o despacho sai 75 e escreve `codex sem cota: ...`).
 
 Valem em **qualquer** repo git da máquina, porque o hábito é que é o problema,
-não o repositório. Cada uma tem bateria própria — **712 casos** rodando o hook
-de verdade contra repos git montados na hora (soma medida em 2026-09-13, com os casos de heredoc e do staging citado:
-201 + 106 + 24 + 27 + 151 + 25 + 170 + 8 — a portaria soma sete dos oito `testa-portaria-*.cjs` que o `testa-portaria.sh` encadeia, 12 + 15 + 9 + 28 + 78 + 5 + 23 — o oitavo, `testa-portaria-autorizacao.cjs`, entrou pelo PR #246 e ainda não está na soma —, e a última linha do wrapper (8) conta arquivos, não casos; re-verificar: a última linha da bateria `hooks/testa-<hook>.sh` de cada linha da tabela).
+não o repositório. Cada uma tem bateria própria — **849 casos** rodando o hook
+de verdade contra repos git montados na hora (soma re-medida em 2026-09-14, com os casos de heredoc e do staging citado:
+201 + 106 + 24 + 27 + 151 + 25 + 307 + 8 — a portaria agora soma os **dez** `testa-portaria-*.cjs` que o `testa-portaria.sh` encadeia, 92 + 14 + 24 + 10 + 28 + 8 + 16 + 87 + 5 + 23 (o `portoes` conta 5 porque imprime portões, não casos), e a última linha do wrapper (10) conta arquivos, não casos; re-verificar: a última linha da bateria `hooks/testa-<hook>.sh` de cada linha da tabela).
 
 → O incidente de origem de cada trava, as saídas de emergência e a tabela de
 scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
@@ -187,7 +203,7 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 | `scripts/testa-mapa-regras.sh` | Cada uma das 17 regras tem linha em `## Regra → trava` de `docs/travas-mecanicas.md` (hook/script existente **ou** `disciplina`), e todo arquivo citado existe |
 | `scripts/conferir-fluxo.cjs mutacoes --slug <slug> [--plano <arquivo>]` | Roda a catraca de cada tarefa do plano que declara `mutacao:` (`conferir-mutacao.cjs` com os campos literais do bloco) e imprime uma linha por tarefa: `vermelho`, `mutante sobreviveu` ou `pulada (<motivo>)`. **Exit 1** se algum mutante sobreviveu, 0 se nenhum (ou tudo pulado), 2 se o plano não existe; `--plano` aponta o arquivo quando ele não está em `docs/rainforest/planos/<slug>.md` — é o que `marcar verificar ok` passa (Issue #192) |
 | `scripts/testa-sandbox-com-trap.sh` | Guarda estática das baterias `testa-*.sh` que criam sandbox: **mais de um** `mktemp -d` no arquivo exige o idioma `SANDBOXES=()` + função que registra cada caixa + um único `trap … EXIT` que varre o array; **um só** `mktemp -d` basta com `trap … EXIT` simples; sandbox sem trap nenhum reprova. A própria guarda e `testa-dependencias-de-bateria.sh` ficam fora da varredura real (seus fixtures citam `mktemp -d` como texto); `--autoteste` prova a guarda com fixtures sintéticos (Issue #216) |
-| `--confirmo` em `limpar-branches.cjs`, `limpar-worktrees.cjs --remover-sujo` e `fechar-issue.cjs` | Apagar branch, remover worktree sujo e fechar Issue exigem a frase literal que o próprio script imprime (`CONFIRMO apagar branches a,b`), digitada por você e repassada verbatim — frase de outro alvo sai 2 e nada acontece |
+| `--confirmo` em `limpar-branches.cjs` e `limpar-worktrees.cjs --remover-sujo` | Apagar branch e remover worktree sujo exigem a frase literal que o próprio script imprime (`CONFIRMO apagar branches a,b`), digitada por você e repassada verbatim — frase de outro alvo sai 2 e nada acontece |
 | exit **69** `nao-verificavel:` em `conferir-entrega`, `conferir-mutacao`, `conferir-fluxo`, `conferir-ponte` | Ambiente impediu a checagem (worktree sumiu, `git` fora do PATH, bateria que não executa): nem aprovação, nem reprovação, nem `flaky` — anuncia em uma linha e não redespacha (regra 14) |
 
 ## Comandos, skills e agentes
@@ -253,7 +269,7 @@ incidente datado, em [`references/regra-<n>.md`](skills/rainforest-mind/referenc
 | 7 | Tom sênior | Policia ponta solta e escopo, nunca o mérito |
 | 8 | Guarda-corpo de jornada | Jornada **medida**, não estimada; um aviso, uma vez |
 | 9 | Freio de Pareto | Polimento do que já está pronto → "alguém que recebe fica prejudicado?" |
-| 10 | Agentes baratos, e só os admitidos | Rodar exige estar declarado no manifesto, com o estágio ativo |
+| 10 | Agentes baratos, e a portaria registra | Só a regra 11 barra; manifesto e estágio viram linha de log, não portão |
 | 11 | Worktree: principal na `main` | Checkout principal fica na branch padrão, todo trabalho nasce em worktree; hash de base conferido na fonte |
 | 12 | Entrega se valida na saída real | Critério falsificável no briefing; suíte verde não é evidência |
 | 13 | Correção vira observação | Você corrigir a saída já é o sinal: registra silenciosamente |

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: sensor
 /**
  * Conferir fluxo — validação de fechamento entre design, plano e código.
  *
@@ -521,7 +522,21 @@ function cmdCreep() {
     // que o comentário acima descreve para o design, e sobreviveu a ele.
     `docs/rainforest/portoes/*${slug}.md`,
     'relatorios/',
+    // A skill `regua` exige commitar a régua antes da 1ª rodada, e ela nunca
+    // aparece em `arquivos:` de tarefa nenhuma — incondicional, igual a
+    // `relatorios/` acima (Issue #279).
+    'docs/rainforest/reguas/',
   ];
+
+  // Isenção condicional: quando uma tarefa declara `skills/<s>/SKILL.md` em
+  // `arquivos:`, os `references/` dessa mesma skill ficam isentos também —
+  // documentação auxiliar da skill que a tarefa já está autorizada a tocar.
+  // Só entra quando o `SKILL.md` está declarado; skill nenhuma ganha glob
+  // largo escondendo creep de verdade (Issue #279).
+  for (const g of globs) {
+    const m = g.match(/^skills\/([^/]+)\/SKILL\.md$/);
+    if (m) globs_isentos.push(`skills/${m[1]}/references/`);
+  }
 
   // Pega diff.
   //
@@ -608,10 +623,11 @@ function extrairArquivos(conteudo_plano, numero_tarefa) {
       continue;
     }
 
-    // Para quando chegar em outra tarefa ou seção
-    if (em_tarefa && (linha.startsWith('###') || linha.startsWith('##'))) {
-      break;
-    }
+    // Sai do modo "dentro da tarefa" sem encerrar a varredura do documento
+    // inteiro: uma emenda que repete `### N.` mais adiante, separada por
+    // outra tarefa, ainda precisa ser alcançada (Issue #279). Numa linha só
+    // de propósito — o campo `de:`/`para:` do plano só aceita uma linha.
+    if (em_tarefa && (linha.startsWith('###') || linha.startsWith('##'))) { em_tarefa = false; continue; }
 
     // Procura "arquivos: ..."
     if (em_tarefa && linha.startsWith('arquivos:')) {
@@ -710,6 +726,13 @@ function cmdMutacoes() {
 
   // Processa cada tarefa
   let algumSobreviveu = false;
+  // Issue #281: exit 1/3/4/5/outros (mutação não aplicada, baseline
+  // não-verde, corte de shell, etc.) são "não medi", não "medi e passou".
+  // Antes só exit === 2 (mutante sobreviveu de fato) recusava o subcomando;
+  // qualquer outra falha de medição saía como `pulada` e não pesava no exit
+  // final, então um plano com `de:` todo em prosa fechava `mutacoes` com
+  // exit 0 sem ter aplicado mutação nenhuma.
+  let algumaFalhaDeMedicao = false;
   const CONFERIR_MUTACAO = path.join(__dirname, 'conferir-mutacao.cjs');
 
   for (const tarefa of tarefas) {
@@ -744,7 +767,14 @@ function cmdMutacoes() {
     const arquivo = campos.arquivo.replace(/^`|`$/g, '');
     const de = campos.de.replace(/^`|`$/g, '');
     const para = campos.para.replace(/^`|`$/g, '');
-    const bateria = campos.bateria.replace(/^`|`$/g, '');
+    // Issue #254(b): `campos.bateria` é a linha inteira depois de `bateria:`,
+    // e quem escreve o plano às vezes cola uma nota humana depois da crase de
+    // fechamento (`` `node x.cjs` (tarefa 6) ``). Tirar só a crase do
+    // início/fim da string inteira deixava a nota colada ao comando. Extrai
+    // só o PRIMEIRO trecho entre crases — mesmo padrão de `extrairArquivos`
+    // (linha 625) — caindo para o valor bruto trimado se não houver crase.
+    const bateriaEntreCrases = campos.bateria.match(/`([^`]+)`/);
+    const bateria = bateriaEntreCrases ? bateriaEntreCrases[1] : campos.bateria.trim();
     // `timeout:` e opcional. Sem ele o conferir-mutacao usa o proprio padrao.
     // Existe porque bateria legitimamente lenta (testa-saude.sh passa dos 300 s,
     // e a catraca a roda DUAS vezes) virava `pulada (nao mensuravel)` — cobertura
@@ -818,24 +848,36 @@ function cmdMutacoes() {
       console.log(`tarefa ${numero}: mutante sobreviveu`);
       algumSobreviveu = true;
     } else if (exit === 3) {
-      // MUTACAO NAO APLICADA — trecho não existe
+      // MUTACAO NAO APLICADA — trecho não existe. Falha de medição (#281):
+      // ninguém provou que a bateria morde, então não pode fechar como se
+      // tivesse medido.
       console.log(`tarefa ${numero}: pulada (de não encontrado)${razao()}`);
+      algumaFalhaDeMedicao = true;
     } else if (exit === 4) {
       // Não dá para medir — baseline já falha ou --de ambíguo
       console.log(`tarefa ${numero}: pulada (não mensurável)${razao()}`);
+      algumaFalhaDeMedicao = true;
     } else if (exit === 5) {
       // Suspeita de corte de shell
       console.log(`tarefa ${numero}: pulada (suspeita de corte de shell)${razao()}`);
+      algumaFalhaDeMedicao = true;
     } else if (exit === 1) {
       // Erro de uso ou bateria sem veredito
       console.log(`tarefa ${numero}: pulada (erro de execução)${razao()}`);
+      algumaFalhaDeMedicao = true;
     } else {
+      // Qualquer outro exit (inclusive o 6 de "bateria colapsou") é a mesma
+      // coisa: a catraca não conseguiu medir esta tarefa.
       console.log(`tarefa ${numero}: pulada (exit ${exit})${razao()}`);
+      algumaFalhaDeMedicao = true;
     }
   }
 
-  // Exit code do subcomando
-  process.exit(algumSobreviveu ? 1 : 0);
+  // Exit code do subcomando. `algumaFalhaDeMedicao` cobre o caso que a Issue
+  // #281 registrou: nove tarefas, sete com mutação declarada, nenhuma
+  // aplicada, e o exit saía 0 porque só `algumSobreviveu` (mutante realmente
+  // sobrevivendo) derrubava o subcomando.
+  process.exit((algumSobreviveu || algumaFalhaDeMedicao) ? 1 : 0);
 }
 
 // ================================================================ main

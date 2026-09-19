@@ -44,6 +44,15 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync, execSync } = require('child_process');
+// Defensivo, igual ao require de config.cjs mais abaixo: plugin antigo ou
+// cópia parcial não pode derrubar o script inteiro por um efeito colateral
+// best-effort. Sem o ledger, carimbarFluxo vira no-op.
+let carimbarFluxo = () => {};
+try {
+  ({ carimbarFluxo } = require(path.join(__dirname, '..', 'hooks', 'lib', 'ledger-fluxos.cjs')));
+} catch (_) {
+  // ledger indisponível: segue sem carimbar
+}
 
 // A raiz aqui é a do PROJETO em que se trabalha, e **não** a cadeia de dados do
 // rainforest (`hooks/lib/raiz.cjs`). São dois tipos de estado diferentes, e
@@ -666,6 +675,163 @@ function validarEvidenciaNoFechamento(estagio, extra) {
   return null;
 }
 
+// ---------------------- evidencia de 'verificar' cita sensor (D3, D6, Tarefa 5)
+//
+// `validarEvidenciaNoFechamento` (logo acima) so cobra PRESENCA de `comando` e
+// `saida`. Presenca nao distingue evidencia real de "rodei alguma coisa e colei
+// a saida": nada ali prova que o COMANDO citado observa artefato de verdade.
+// `verificar` existe para isso — rodar criterio contra artefato real —, entao
+// fechar `verificar` com `ok` exige que `comando` seja um SENSOR:
+//
+//   - uma PECA DO REPO marcada `sensor` por `scripts/conferir-categoria.cjs`
+//     (D10, D19 do design — CLI rodado sob demanda conta, e todo
+//     `scripts/conferir-*.cjs` se enquadra ali); ou
+//   - um SENSOR EXTERNO declarado — ferramenta de fora do repo (`npm test`,
+//     `pytest`, compilador, linter). E necessario: o formato de criterio do
+//     plano e "provado por `<comando exato>` devolvendo `<saida esperada>`"
+//     (`skills/plano/SKILL.md:49`), e comando exato e com frequencia
+//     ferramenta externa — exigir peca do repo quebraria criterio legitimo
+//     (D6 do design).
+//
+// A DECLARACAO DO SENSOR EXTERNO chega por CAMPO no `--json` de fechamento —
+// `sensor_externo`, string nao vazia que precisa aparecer DENTRO de `comando`
+// (nao vale declarar qualquer coisa: tem que nomear o que de fato rodou) — no
+// mesmo espirito de `comando`/`saida`, que ja sao campos do mesmo `--json`, e
+// no mesmo estilo de `mutacao`/`carimbos` mais abaixo. ESCOLHA EXPLICITA desta
+// tarefa (briefing da Tarefa 5, 2026-09-14): o design (D18) fala de "linha
+// declarada no briefing" — a mesma forma da linha `Sensor:` que a Tarefa 6 le
+// em `hooks/portaria.cjs`, a partir de `payload.tool_input.prompt` de um
+// `PreToolUse` de `Task`/`Agent` — mas esse prompt de despacho de agente e algo
+// que `scripts/estado.cjs` NUNCA recebe: este arquivo so ve o `--json` de quem
+// fecha o estagio, chamado direto de linha de comando, sem prompt nenhum ao
+// redor. Ler "a linha declarada no briefing" aqui exigiria inventar um segundo
+// parser de texto livre so para repetir um dado que já cabe no `--json` — e
+// pior, cairia sempre em fail-open num fluxo sandbox (sem plano em disco nao
+// ha 'a tarefa do plano' para ler). O campo no `--json` E o canal aqui — mesma
+// forma que `comando`, `saida`, `mutacao` e `carimbos` ja usam. Registrado
+// para quem lê D18 esperando a mesma linha `Sensor:`: a divergência é
+// deliberada, e cabe a quem manteve o design reconciliar os dois mecanismos se
+// achar que devem convergir.
+//
+// D3: SO `verificar` barra. `executar` — o outro estagio de
+// `ESTAGIOS_EXIGEM_EVIDENCIA` — apenas avisa em stderr e fecha normalmente:
+// barrar ali pararia trabalho legitimo no meio (D3 do design, nao negociavel
+// nesta tarefa). `revisar` e `fechar` nunca exigem evidencia, entao nunca
+// chegam aqui (`extra.comando` nem existe pra eles).
+//
+// AVISO PRATICO: `scripts/testa-*.sh` NAO sao pecas marcadas (D19 do design e
+// o cabecalho de `conferir-categoria.cjs` excluem explicitamente esses
+// arquivos do conjunto varrido). Quase todo criterio deste repo e "provado por
+// `bash scripts/testa-*.sh`" — ou seja, fechar `verificar` com essa evidencia
+// PRECISA de `sensor_externo` citando o mesmo comando, mesmo sendo um script
+// do proprio repo.
+
+// Raiz onde vivem as PECAS que `scripts/conferir-categoria.cjs` classifica
+// (`hooks/hooks.json`, `scripts/conferir-*.cjs`, `vigias/*.md`) — SEMPRE a
+// raiz do PLUGIN, isto e, onde este proprio arquivo mora
+// (`path.resolve(__dirname, '..')`), e NUNCA `RAIZ` (a raiz do PROJETO em que
+// se trabalha, ver o comentario de `RAIZ` no topo deste arquivo). A marca
+// `@categoria` e sempre da peca do PLUGIN, nunca de um projeto de terceiro que
+// o instale — as duas coincidem quando se trabalha no proprio plugin (o caso
+// desta entrega), mas divergem para quem roda `scripts/estado.cjs` a partir de
+// um projeto que so USA o plugin. Resolver por `__dirname` (e nao por `RAIZ`)
+// e o que deixa provar esta trava em sandbox: `RFM_ESTADO_ROOT` isola so onde
+// o ARQUIVO DE ESTADO e gravado, e a leitura de sensor continua enxergando o
+// repo de verdade.
+const RAIZ_PLUGIN = path.resolve(__dirname, '..');
+
+/** As pecas do plugin marcadas 'sensor' por `conferir-categoria.cjs`, ou
+ *  `null` quando o conferidor nao existe (plugin antigo, ou sandbox que nao o
+ *  copiou — nao inventa trava, mesma convencao de `CHECADOR`/
+ *  `extrairNumerosTarefa`). Cada FONTE (hooks do manifesto, conferidores do
+ *  disco, vigias do disco) e tentada separadamente: `hooksDoManifesto` faz
+ *  `readFileSync` sem checar existencia e lanca se `hooks/hooks.json` nao
+ *  existir, e uma sandbox pode ter so um pedaco da arvore do plugin — a falta
+ *  de UMA fonte nao pode apagar as outras duas. */
+function pecasSensor() {
+  let mod;
+  try {
+    mod = require('./conferir-categoria.cjs');
+  } catch (e) {
+    console.warn(`aviso: nao consegui carregar scripts/conferir-categoria.cjs (${e.message}) — a citacao de sensor na evidencia nao sera conferida.`);
+    return null;
+  }
+  const { hooksDoManifesto, conferidoresDoDisco, vigiasDoDisco, lerMarca } = mod;
+  const pecas = [];
+  for (const fonte of [hooksDoManifesto, conferidoresDoDisco, vigiasDoDisco]) {
+    try {
+      pecas.push(...fonte(RAIZ_PLUGIN));
+    } catch (_) {
+      // fonte ausente nesta arvore (ex.: sandbox sem hooks/hooks.json) — sem pecas dali
+    }
+  }
+  const sensores = new Set();
+  for (const rel of pecas) {
+    try {
+      const { valor } = lerMarca(path.join(RAIZ_PLUGIN, rel));
+      if (valor === 'sensor') sensores.add(rel.replace(/\\/g, '/'));
+    } catch (_) {
+      // leitura falhou — peca nao entra no conjunto
+    }
+  }
+  return sensores;
+}
+
+/** `comando` casa com alguma peca marcada 'sensor' quando o caminho da peca
+ *  aparece dentro dele como substring (ex.: `comando` = "node
+ *  scripts/conferir-categoria.cjs --raiz .", peca = "scripts/conferir-categoria.cjs"). */
+function comandoCitaPecaSensor(comando, sensores) {
+  const normalizado = String(comando).replace(/\\/g, '/');
+  for (const rel of sensores) {
+    if (normalizado.includes(rel)) return true;
+  }
+  return false;
+}
+
+/** Mensagem de recusa de 'verificar' sem sensor — extraida para ficar num
+ *  UNICO `return` (alvo da mutacao desta tarefa: inverter para `return null`
+ *  tem que fazer `bash scripts/testa-estado.sh` cair vermelho). */
+function montarRecusaSensor(estagio, comando) {
+  return `RECUSADO: evidencia de '${estagio}' nao cita sensor: 'comando' (${JSON.stringify(String(comando))}) `
+    + `nao casa com nenhuma peca marcada 'sensor' (node scripts/conferir-categoria.cjs) nem declara sensor externo.\n`
+    + `'verificar' existe para rodar criterio contra artefato real; evidencia sem sensor e verificacao de fachada (D3, D6).\n`
+    + `Ex. (peca do repo): --json '{"comando":"node scripts/conferir-categoria.cjs","saida":"..."}'\n`
+    + `Ex. (sensor externo, ex.: a propria bateria da tarefa): --json '{"comando":"bash scripts/testa-estado.sh","saida":"...","sensor_externo":"bash scripts/testa-estado.sh"}'`;
+}
+
+/** @returns {string|null} mensagem de recusa (so quando `estagio === 'verificar'`),
+ *  ou `null` se passou ou nao se aplica. Em `executar`, NUNCA recusa: quando
+ *  nao acha sensor nem declaracao, avisa em stderr e devolve `null` (D3). */
+function verificarSensorNaEvidencia(estagio, extra) {
+  if (!ESTAGIOS_EXIGEM_EVIDENCIA.includes(estagio)) return null;
+
+  const comando = extra && extra.comando;
+  // `comando` ausente/vazio ja foi recusado por `validarEvidenciaNoFechamento`
+  // (que roda antes desta funcao, ver `marcar`) — sem ele, nada a conferir
+  // aqui, e `revisar`/`fechar` (que nunca tem `comando`) tambem caem aqui.
+  if (comando === undefined || comando === null || String(comando).trim() === '') return null;
+
+  const sensores = pecasSensor();
+  if (sensores === null) return null; // conferidor indisponivel — ja avisou, nao barra
+
+  if (comandoCitaPecaSensor(comando, sensores)) return null;
+
+  const sensorExterno = extra.sensor_externo;
+  const normalizado = String(comando).replace(/\\/g, '/');
+  const declarado = typeof sensorExterno === 'string'
+    && sensorExterno.trim() !== ''
+    && normalizado.includes(sensorExterno.trim());
+  if (declarado) return null;
+
+  if (estagio !== 'verificar') {
+    console.warn(`aviso: evidencia de '${estagio}' nao cita sensor: 'comando' (${JSON.stringify(String(comando))}) `
+      + `nao casa com peca marcada 'sensor' nem declara 'sensor_externo' — nao barra aqui, so em 'verificar' (D3).`);
+    return null;
+  }
+
+  return montarRecusaSensor(estagio, comando);
+}
+
 // ------------------------------------------------- trava de fechamento (D5)
 //
 // Fechar estágio roda a checagem correspondente do `conferir-fluxo.cjs`, e
@@ -1023,7 +1189,12 @@ function processarCarimbos(estagio, blocoAnterior, extra, estado) {
     ? blocoAnterior.carimbos
     : [];
   const acumulado = existentes.slice();
-  const sessao = process.env.CLAUDE_SESSION_ID || SESSAO_DESCONHECIDA;
+  // CLAUDE_CODE_SESSION_ID é o nome real que o Claude Code exporta;
+  // CLAUDE_SESSION_ID é reserva só para host que exporte o nome antigo
+  // (medido em 2026-09-15: CLAUDE_SESSION_ID não existe no ambiente do
+  // Claude Code — ver hooks/lib/ledger-fluxos.cjs para a limitação de
+  // subagente/CLAUDE_CODE_PARENT_SESSION_ID, que vale igual aqui).
+  const sessao = process.env.CLAUDE_CODE_SESSION_ID || process.env.CLAUDE_SESSION_ID || SESSAO_DESCONHECIDA;
   const ts = agoraIso();
 
   // Validar se plano.tarefas está gravado e tarefa está dentro do intervalo
@@ -1287,6 +1458,7 @@ function main() {
     console.log('commite este arquivo junto com o trabalho — e por ele que outra');
     console.log('sessao, ou outro dev, retoma de onde parou.');
     console.log(`proximo: ${proximo(e)}`);
+    carimbarFluxo({ slug, estagio: 'design', aberto: proximo(e) });
     return;
   }
 
@@ -1390,6 +1562,7 @@ function main() {
         gravar(slug, estado);
         console.log("catraca armada: fechar este 'executar' com 'ok' vai exigir o campo 'mutacao' no --json.");
       }
+      carimbarFluxo({ slug, estagio, aberto: proximo(estado) });
       return;
     }
     // Exit 2, não 1: é a mesma convenção dos gates deste repo, e o que separa
@@ -1548,6 +1721,14 @@ function main() {
         console.error(recusa_evidencia);
         process.exit(2);
       }
+      // Evidência cita sensor (D3, D6 — Tarefa 5): só recusa em 'verificar',
+      // avisa nos demais estágios de ESTAGIOS_EXIGEM_EVIDENCIA (ver comentário
+      // de `verificarSensorNaEvidencia`).
+      const recusa_sensor = verificarSensorNaEvidencia(estagio, extra);
+      if (recusa_sensor) {
+        console.error(recusa_sensor);
+        process.exit(2);
+      }
       // Validar mutações ao fechar verificar: roda `conferir-fluxo.cjs mutacoes`
       // Caminho pelo mesmo `docDoEstagio` que resolve `design`/`plano` em todo
       // o resto do arquivo: lê `plano.arquivo` do estado (fluxo cujo plano não
@@ -1630,6 +1811,7 @@ function main() {
     console.log(`${estagio}: ${status}`);
     const p = proximo(estado);
     console.log(p ? `proximo: ${p}` : 'completo');
+    carimbarFluxo({ slug, estagio, aberto: p });
     return;
   }
 

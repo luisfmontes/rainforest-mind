@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: sensor
 /**
  * Confere duplicação byte a byte e homônimos de função dentro do plugin.
  *
@@ -117,26 +118,68 @@ function extrairNomes(conteudo) {
   return nomes;
 }
 
-function coletarHomonimos(raiz) {
-  const dirScripts = path.join(raiz, 'scripts');
-  let arquivos;
-  try {
-    arquivos = fs.readdirSync(dirScripts).filter((f) => f.endsWith('.cjs')).sort();
-  } catch {
-    arquivos = [];
-  }
-
-  const porNome = new Map();
-  for (const f of arquivos) {
-    let conteudo;
+/** Varre `dirBase` recursivamente por `.cjs`, respeitando as mesmas exclusões do modo byte a byte. */
+function listarArquivosCjsRecursivo(raiz, dirBase) {
+  const resultado = [];
+  const pilha = [dirBase];
+  while (pilha.length) {
+    const dir = pilha.pop();
+    let entradas;
     try {
-      conteudo = fs.readFileSync(path.join(dirScripts, f), 'utf8');
+      entradas = fs.readdirSync(dir, { withFileTypes: true });
     } catch {
       continue;
     }
+    for (const ent of entradas) {
+      const caminhoAbs = path.join(dir, ent.name);
+      if (ent.isDirectory()) {
+        if (deveIgnorarDir(raiz, caminhoAbs, ent.name)) continue;
+        pilha.push(caminhoAbs);
+        continue;
+      }
+      if (ent.isFile() && ent.name.endsWith('.cjs')) resultado.push(caminhoAbs);
+    }
+  }
+  return resultado.sort();
+}
+
+/**
+ * Inventaria homônimos em `scripts/` (nível único, como sempre foi) e em `hooks/`
+ * — incluindo `hooks/lib/` — de forma recursiva, já que é lá que vivem as libs
+ * puras do plugin (`hooks/lib/memoria-sessao.cjs`, `hooks/lib/contexto-sessao.cjs`
+ * etc.). Sem `hooks/` no inventário, um homônimo como `cortarBytes` entre duas
+ * dessas libs não aparecia em lugar nenhum (Issue #259).
+ */
+function coletarHomonimos(raiz) {
+  const dirScripts = path.join(raiz, 'scripts');
+  const dirHooks = path.join(raiz, 'hooks');
+
+  let arquivosScripts;
+  try {
+    arquivosScripts = fs
+      .readdirSync(dirScripts)
+      .filter((f) => f.endsWith('.cjs'))
+      .sort()
+      .map((f) => path.join(dirScripts, f));
+  } catch {
+    arquivosScripts = [];
+  }
+
+  const arquivosHooks = listarArquivosCjsRecursivo(raiz, dirHooks);
+  const arquivosAbs = [...arquivosScripts, ...arquivosHooks];
+
+  const porNome = new Map();
+  for (const caminhoAbs of arquivosAbs) {
+    let conteudo;
+    try {
+      conteudo = fs.readFileSync(caminhoAbs, 'utf8');
+    } catch {
+      continue;
+    }
+    const rel = relPosix(raiz, caminhoAbs);
     for (const nome of extrairNomes(conteudo)) {
       if (!porNome.has(nome)) porNome.set(nome, new Set());
-      porNome.get(nome).add(`scripts/${f}`);
+      porNome.get(nome).add(rel);
     }
   }
 
@@ -170,7 +213,7 @@ function rodarFuncoes(raiz, json) {
     return;
   }
   if (!homonimos.length) {
-    console.log('nenhum nome homonimo entre scripts/*.cjs');
+    console.log('nenhum nome homonimo entre scripts/*.cjs e hooks/**/*.cjs');
     process.exit(0);
     return;
   }

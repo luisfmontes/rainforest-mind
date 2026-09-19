@@ -10,12 +10,20 @@ insegura do código, não a munição.
 - A Régua 1 (OWASP Top 10 2025) e a Régua 2 (API 2023) rodam as **categorias**.
   Esta Régua 3 **afia no nível-de-técnica**: cada lente marca a categoria OWASP
   que refina, para compor sem duplicar.
-- Quando uma classe já é uma categoria inteira da Top 10 (injeção, acesso
-  quebrado, SSRF), a lente é **curta e cruzada** — só o detalhe de técnica que o
-  título da categoria não dá. As classes que a Top 10 **não** enumera como item
-  próprio (SSTI, desserialização, request smuggling, confusão de dependência,
-  segredos de CI/CD, JWT, cadeia de suprimentos, escape de container, LLM) ganham
-  lente cheia.
+- **Os números A01–A10 seguem a edição 2025** (a mesma da Régua 1), que
+  renumerou as categorias em relação à 2021: Injeção é **A05** (não A03),
+  Cryptographic Failures é **A04** (não A02), Security Misconfiguration é **A02**,
+  Insecure Design é **A06**, e a nova **A03 é Software Supply Chain Failures**.
+  Os títulos canônicos: A01 Broken Access Control, A02 Security Misconfiguration,
+  A03 Software Supply Chain Failures, A04 Cryptographic Failures, A05 Injection,
+  A06 Insecure Design, A07 Authentication Failures, A08 Software or Data Integrity
+  Failures, A09 Security Logging and Alerting Failures, A10 Mishandling of
+  Exceptional Conditions.
+- Quando uma classe já é uma categoria inteira da Top 10, a lente é **curta e
+  cruzada** — só o detalhe de técnica que o título da categoria não dá. As
+  classes que a Top 10 **não** enumera como item próprio (SSTI, desserialização,
+  request smuggling, confusão de dependência, segredos de CI/CD, JWT, cadeia de
+  suprimentos, escape de container, LLM) ganham lente cheia.
 - Escopo: só classes que se revisam em **código-fonte/config de repositório**.
   Fora ataque a sistema em execução, RF, pessoa (wireless, C2/EDR,
   pós-exploração, engenharia social, recon).
@@ -28,9 +36,9 @@ citada por URL, com palavras próprias (repo MIT, OWASP CC BY-SA 4.0).
 
 ---
 
-## A. Injeção (web) — afia A03 Injection
+## A. Injeção (web) — afia A05 Injection (2025)
 
-### SQL Injection (afia: A03 Injection)
+### SQL Injection (afia: A05 Injection)
 **Severidade padrão:** high · **Derivada de:** claude-red/web/offensive-sqli (MIT)
 **Onde procurar:** SQL montado por concatenação/interpolação de input
 (`"... WHERE id=" + req.x`, f-strings/template strings com valor de request,
@@ -47,7 +55,7 @@ dinâmica; verifique erros de banco não vazam query ao cliente.
 **Formato de achado:** arquivo:linha · a forma concatenada · "input de <campo>
 alcança a cláusula WHERE sem bind" · severidade. Report-only.
 
-### RCE / Command Injection (afia: A03 Injection)
+### RCE / Command Injection (afia: A05 Injection)
 **Severidade padrão:** critical · **Derivada de:** claude-red/web/offensive-rce (MIT)
 **Onde procurar:** shell com input (`os.system`, `subprocess(..., shell=True)`,
 `exec`/`eval`, `child_process.exec`, backticks, `Runtime.exec` com string
@@ -63,7 +71,7 @@ de `shell=True`/concatenação.
 **Formato de achado:** arquivo:linha · a chamada · "input de <origem> vira
 comando/código executado" · severidade. Report-only.
 
-### Cross-Site Scripting (XSS) (afia: A03 Injection)
+### Cross-Site Scripting (XSS) (afia: A05 Injection)
 **Severidade padrão:** high · **Derivada de:** claude-red/web/offensive-xss (MIT)
 **Onde procurar:** sink de HTML cru com input — `innerHTML`, `dangerouslySetInnerHTML`,
 `v-html`, `document.write`, `$(...).html()`, template server-side com
@@ -80,7 +88,7 @@ dado é de origem não confiável e se o escape do contexto está garantido; che
 **Formato de achado:** arquivo:linha · o sink · "input de <campo> chega ao DOM
 sem escape de contexto" · severidade. Report-only.
 
-### Server-Side Template Injection (SSTI) (afia: A03 Injection)
+### Server-Side Template Injection (SSTI) (afia: A05 Injection)
 **Severidade padrão:** critical · **Derivada de:** claude-red/web/offensive-ssti (MIT)
 **Onde procurar:** input concatenado na **string do template**, não nos dados —
 `render_template_string(user)`, `Template(user).render()`, `env.from_string(user)`,
@@ -97,7 +105,7 @@ onde houver template de usuário, exija sandbox explícita.
 **Formato de achado:** arquivo:linha · a chamada · "input de <origem> compõe o
 corpo do template; motor avalia como código" · critical. Report-only.
 
-### XML External Entities (XXE) (afia: A05 Security Misconfiguration)
+### XML External Entities (XXE) (afia: A02 Security Misconfiguration, também A05)
 **Severidade padrão:** high · **Derivada de:** claude-red/web/offensive-xxe (MIT)
 **Onde procurar:** parser XML com defaults inseguros — `DocumentBuilderFactory`
 sem desabilitar DTD/entidades externas, `lxml` com `resolve_entities`/`no_network`
@@ -114,7 +122,7 @@ libs que fazem parse implícito.
 com DTD/entidade externa habilitada (leitura de arquivo/SSRF)" · severidade.
 Report-only.
 
-### Insecure Deserialization (afia: A08 Software and Data Integrity Failures)
+### Insecure Deserialization (afia: A08 Software or Data Integrity Failures)
 **Severidade padrão:** critical · **Derivada de:** claude-red/web/offensive-deserialization (MIT)
 **Onde procurar:** desserialização de dado não confiável em formato que
 reconstrói objetos — `pickle.loads`, `yaml.load` sem `SafeLoader`,
@@ -134,7 +142,7 @@ desserializado reconstruindo tipos arbitrários" · critical. Report-only.
 
 ## B. Acesso e lógica (web)
 
-### IDOR / Broken Access Control (afia: A01 / API1 BOLA)
+### IDOR / Broken Access Control (afia: A01 Broken Access Control / API1 BOLA)
 **Severidade padrão:** high · **Derivada de:** claude-red/web/offensive-idor (MIT)
 **Onde procurar:** handler que pega id do request e busca no store **sem**
 cláusula de dono/tenant (`findByPk(id)`, `Model.objects.get(pk=id)` retornado ao
@@ -151,7 +159,7 @@ vindo do cliente).
 **Formato de achado:** arquivo:linha · origem do id · a checagem ausente ·
 "usuário A acessa recurso de B; handler consulta só por id" · severidade. Report-only.
 
-### Server-Side Request Forgery (SSRF) (afia: A10 SSRF / API7)
+### Server-Side Request Forgery (SSRF) (afia: API7 SSRF; na Top 10 2025 sem item próprio — reporte sob A01/A02 conforme o vetor)
 **Severidade padrão:** high · **Derivada de:** claude-red/web/offensive-ssrf (MIT)
 **Onde procurar:** cliente HTTP/fetch com URL de input (`requests.get(url)`,
 `fetch(user)`, webhooks, "importar de URL", geradores de PDF/preview de link,
@@ -167,7 +175,7 @@ pós-DNS; cheque metadata de cloud alcançável.
 **Formato de achado:** arquivo:linha · a chamada · "URL de <origem> faz o
 servidor requisitar destino interno/metadata" · severidade. Report-only.
 
-### Business Logic Abuse (afia: A04 Insecure Design / API6)
+### Business Logic Abuse (afia: A06 Insecure Design / API6)
 **Severidade padrão:** medium · **Derivada de:** claude-red/web/offensive-business-logic (MIT)
 **Onde procurar:** fluxo multi-etapa sem checar ordem/estado (pular pagamento,
 reusar cupom, checkout com preço/quantidade do cliente); confiança em valor
@@ -182,7 +190,7 @@ eu pular/repetir/inverter esta etapa?"; caçe valor de negócio vindo do cliente
 **Formato de achado:** arquivo:linha · a etapa · "cliente controla <valor/ordem>
 que deveria ser imposto no servidor" · severidade. Report-only.
 
-### Open Redirect (afia: A01 / A03)
+### Open Redirect (afia: A01 Broken Access Control)
 **Severidade padrão:** medium · **Derivada de:** claude-red/web/offensive-open-redirect (MIT)
 **Onde procurar:** redirect com destino de input (`redirect(req.next)`,
 `Location: <param>`, `returnUrl`/`continue` em login/SSO); meta-refresh/JS
@@ -195,7 +203,7 @@ atenção a fluxos de login (open redirect + OAuth vaza token).
 **Formato de achado:** arquivo:linha · o redirect · "destino de <param> não é
 validado; leva a domínio externo" · severidade. Report-only.
 
-### HTTP Parameter Pollution (afia: A03 Injection)
+### HTTP Parameter Pollution (afia: A05 Injection)
 **Severidade padrão:** low · **Derivada de:** claude-red/web/offensive-parameter-pollution (MIT)
 **Onde procurar:** parâmetro duplicado tratado de forma divergente entre
 camadas (WAF vê o primeiro, app vê o último; framework vira lista quando espera
@@ -212,7 +220,7 @@ diferente entre WAF/app, contornando validação" · severidade. Report-only.
 
 ## C. Protocolo e concorrência (web)
 
-### HTTP Request Smuggling (afia: A05 Security Misconfiguration)
+### HTTP Request Smuggling (afia: A02 Security Misconfiguration)
 **Severidade padrão:** high · **Derivada de:** claude-red/web/offensive-request-smuggling (MIT)
 **Onde procurar:** cadeia com proxy/CDN + backend que divergem no parsing de
 `Content-Length` vs `Transfer-Encoding`; front-end e back-end de servidores/versões
@@ -226,7 +234,7 @@ possível; versões de proxy e app alinhadas na interpretação.
 **Formato de achado:** componente · "proxy X e backend Y divergem em CL/TE,
 permitindo dessincronizar requisições" · severidade. Report-only.
 
-### Race Condition / TOCTOU (afia: A04 Insecure Design)
+### Race Condition / TOCTOU (afia: A06 Insecure Design)
 **Severidade padrão:** medium · **Derivada de:** claude-red/web/offensive-race-condition (MIT)
 **Onde procurar:** checar-depois-agir sem atomicidade (saldo lido, validado e
 gravado em passos separados; "resgatar cupom uma vez"; criação idempotente por
@@ -240,7 +248,7 @@ compartilhado; pergunte "duas requisições simultâneas quebram a invariante?".
 **Formato de achado:** arquivo:linha · a sequência · "duas chamadas concorrentes
 gastam o mesmo saldo/cupom" · severidade. Report-only.
 
-### GraphQL Abuse (afia: API / A03)
+### GraphQL Abuse (afia: A05 Injection / API)
 **Severidade padrão:** medium · **Derivada de:** claude-red/web/offensive-graphql (MIT)
 **Onde procurar:** introspection ligada em produção; ausência de limite de
 profundidade/complexidade/custo (query aninhada = DoS); autorização no resolver
@@ -254,7 +262,7 @@ resolver; cheque introspection e batching.
 **Formato de achado:** arquivo:linha/resolver · "campo <x> sem checagem de
 autorização" ou "sem limite de complexidade" · severidade. Report-only.
 
-### File Upload (afia: A03 / A04)
+### File Upload (afia: A05 Injection / A06 Insecure Design)
 **Severidade padrão:** high · **Derivada de:** claude-red/web/offensive-file-upload (MIT)
 **Onde procurar:** upload que confia em extensão/`Content-Type` do cliente;
 gravação dentro do webroot com nome do cliente; ausência de checagem de conteúdo
@@ -269,7 +277,7 @@ confirme validação por conteúdo, destino não executável e nome seguro.
 **Formato de achado:** arquivo:linha · "upload de <campo> gravado no webroot com
 extensão do cliente; pode ser servido como código" · severidade. Report-only.
 
-### WAF não é controle de origem (afia: A05 Security Misconfiguration)
+### WAF não é controle de origem (afia: A02 Security Misconfiguration)
 **Severidade padrão:** informativo · **Derivada de:** claude-red/web/offensive-waf-bypass (MIT)
 **Onde procurar:** correção que existe **só** no WAF/regra de borda enquanto o
 código de origem segue vulnerável; comentário "protegido pelo WAF" sobre input
@@ -287,7 +295,7 @@ vulnerável a <classe>" · manter severidade da classe subjacente. Report-only.
 
 ## D. Autenticação e API
 
-### JWT (afia: A07 Identification and Authentication Failures / API2)
+### JWT (afia: A07 Authentication Failures / API2)
 **Severidade padrão:** high · **Derivada de:** claude-red/auth/offensive-jwt (MIT)
 **Onde procurar:** verificação que aceita `alg: none`; verificação sem fixar o
 algoritmo esperado (confusão RS256↔HS256, usando a chave pública como segredo
@@ -303,7 +311,7 @@ rejeição de none, validação de claims, origem do segredo/chave.
 **Formato de achado:** arquivo:linha · "verificação aceita alg de input / não
 valida exp/aud" · severidade. Report-only.
 
-### OAuth / OIDC (afia: A07 / API2)
+### OAuth / OIDC (afia: A07 Authentication Failures / API2)
 **Severidade padrão:** high · **Derivada de:** claude-red/auth/offensive-oauth (MIT)
 **Onde procurar:** `redirect_uri` sem match exato (permite subpath/wildcard/host
 parecido); ausência de `state` (CSRF no callback); ausência de PKCE em cliente
@@ -331,7 +339,7 @@ autenticação, autorização de função, de objeto e limite de taxa.
 **Formato de achado:** arquivo:linha · "rota <x> sem rate limit / sem checagem
 de função" · severidade. Report-only.
 
-### API Security — mass assignment e exposição excessiva (afia: API3/API6)
+### API Security — mass assignment e exposição excessiva (afia: API3 BOPLA / API6)
 **Severidade padrão:** medium · **Derivada de:** claude-red/api/offensive-api-security (MIT)
 **Onde procurar:** serializer/DTO que devolve o objeto inteiro (vaza campos
 internos, hash de senha, flags); update que aceita o body cru (grava `is_admin`,
@@ -348,7 +356,7 @@ sem allow-list" · severidade. Report-only.
 
 ## E. CI/CD e cadeia de suprimentos
 
-### CI/CD Pipeline (afia: A05 Security Misconfiguration / A08)
+### CI/CD Pipeline (afia: A03 Software Supply Chain Failures / A08)
 **Severidade padrão:** high · **Derivada de:** claude-red/cicd/offensive-cicd-pipeline (MIT)
 **Onde procurar (GitHub Actions e afins):** `pull_request_target`/`workflow_run`
 com checkout do código do PR **e** segredos no escopo; `issue_comment`/eventos de
@@ -366,7 +374,7 @@ por SHA e escopo de `permissions`.
 **Formato de achado:** arquivo:linha do YAML · "workflow <x> em <evento> tem
 `contents:write` e roda código de fork" · severidade. Report-only.
 
-### CI/CD Secrets (afia: A02 Cryptographic Failures / A07)
+### CI/CD Secrets (afia: A04 Cryptographic Failures / A07)
 **Severidade padrão:** critical · **Derivada de:** claude-red/cicd/offensive-cicd-secrets (MIT)
 **Onde procurar:** segredo hardcoded no repo (token, chave, senha, `.env`
 commitado, chave privada, `id` de service account); segredo em log/echo do
@@ -382,7 +390,7 @@ histórico dos arquivos tocados; cheque se o pipeline ecoa segredo; confirme
 repo/log; rotacionar" · critical. Report-only — **não cole o valor do segredo**,
 só o local e o tipo.
 
-### Dependency Confusion (afia: A08 Software and Data Integrity Failures)
+### Dependency Confusion (afia: A03 Software Supply Chain Failures)
 **Severidade padrão:** high · **Derivada de:** claude-red/supply-chain/offensive-dependency-confusion (MIT)
 **Onde procurar:** pacote interno cujo nome **não** está registrado/reservado no
 registro público (npm/PyPI/nuget) e cujo cliente resolve de múltiplos registros
@@ -396,7 +404,7 @@ nome no público e resolução por registro fixo; cheque lockfile.
 **Formato de achado:** arquivo:linha · "pacote interno <x> não reservado no
 público; instalação pode puxar impostor" · severidade. Report-only.
 
-### Supply Chain (afia: A06 Vulnerable and Outdated Components / A08)
+### Supply Chain (afia: A03 Software Supply Chain Failures / A08)
 **Severidade padrão:** high · **Derivada de:** claude-red/supply-chain/offensive-supply-chain (MIT)
 **Onde procurar:** dependência sem lockfile/hash; versão flutuante (`^`,`latest`,
 `*`); dependência abandonada/typosquat; `postinstall`/script de build de
@@ -414,7 +422,7 @@ superfície de comprometimento na build" · severidade. Report-only.
 
 ## F. Cripto e transporte
 
-### Crypto Attacks (afia: A02 Cryptographic Failures)
+### Crypto Attacks (afia: A04 Cryptographic Failures)
 **Severidade padrão:** high · **Derivada de:** claude-red/crypto/offensive-crypto-attacks (MIT)
 **Onde procurar:** algoritmo fraco/quebrado (MD5/SHA1 para senha, DES, RC4, ECB);
 senha sem hash lento com sal (`bcrypt`/`argon2`/`scrypt` ausente); IV/nonce fixo
@@ -428,7 +436,7 @@ IV/nonce reusado, RNG errado e chave embutida.
 **Formato de achado:** arquivo:linha · "senha com MD5 sem sal / nonce fixo em
 AES" · severidade. Report-only.
 
-### TLS (afia: A02 Cryptographic Failures / A05)
+### TLS (afia: A04 Cryptographic Failures / A02 Security Misconfiguration)
 **Severidade padrão:** medium · **Derivada de:** claude-red/crypto/offensive-tls-attacks (MIT)
 **Onde procurar:** validação de certificado desligada (`verify=False`,
 `rejectUnauthorized:false`, `InsecureSkipVerify:true`, `TrustAllCerts`);
@@ -445,7 +453,7 @@ severidade. Report-only.
 
 ## G. Infra e IA
 
-### Container Escape (afia: A05 Security Misconfiguration)
+### Container Escape (afia: A02 Security Misconfiguration)
 **Severidade padrão:** high · **Derivada de:** claude-red/container/offensive-container-escape (MIT)
 **Onde procurar (Dockerfile/compose/manifest):** `privileged: true`; montar
 `docker.sock` no container; `cap_add: [SYS_ADMIN, ...]`; `--pid=host`/`network:
@@ -459,7 +467,7 @@ socket do runtime, root e host namespaces.
 **Formato de achado:** arquivo:linha · "container privileged / monta
 docker.sock" · severidade. Report-only.
 
-### Kubernetes (afia: A05 Security Misconfiguration / A01)
+### Kubernetes (afia: A02 Security Misconfiguration / A01 Broken Access Control)
 **Severidade padrão:** high · **Derivada de:** claude-red/container/offensive-k8s-attacks (MIT)
 **Onde procurar:** RBAC amplo (`cluster-admin`, `verbs: ["*"]`, `resources:
 ["*"]`); ServiceAccount default automontada com poder; `securityContext`
@@ -473,7 +481,7 @@ manifests; caçe curinga e privilégio.
 **Formato de achado:** arquivo:linha · "Role com verbs:[*] / pod privileged" ·
 severidade. Report-only.
 
-### Cloud (IaC e credenciais) (afia: A05 / A01 / A02)
+### Cloud (IaC e credenciais) (afia: A02 Security Misconfiguration / A01 / A04)
 **Severidade padrão:** high · **Derivada de:** claude-red/cloud/offensive-cloud (MIT)
 **Onde procurar (Terraform/CFN/IaC):** bucket/blob público; SG/firewall
 `0.0.0.0/0` em porta sensível; IAM com `Action:*`/`Resource:*`; chave de acesso
@@ -487,7 +495,7 @@ chave estática e criptografia/log desligados.
 **Formato de achado:** arquivo:linha · "S3 público / IAM Action:*" · severidade.
 Report-only.
 
-### IA / LLM Security (afia: A03 Injection / A04 Insecure Design)
+### IA / LLM Security (afia: A05 Injection / A06 Insecure Design)
 **Severidade padrão:** medium · **Derivada de:** claude-red/ai/offensive-ai-security (MIT)
 **Onde procurar:** prompt montado com input não confiável sem fronteira
 (injeção de prompt direta/indireta via conteúdo buscado); saída do LLM usada

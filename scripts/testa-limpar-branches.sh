@@ -29,27 +29,48 @@ SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # criada com `mktemp -d` entra em SANDBOXES e o trap de EXIT varre todas.
 SANDBOXES=()
 novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
-# A secao 16 SABOTA `scripts/limpar-branches.cjs` no lugar e restaura no fim. Se a
-# bateria for interrompida no meio (Ctrl-C, crash, timeout), o script fica MUTADO no
-# repositorio — e um `limpar-branches` sabotado responde `false` para toda deteccao
-# de conteudo, o que e silencioso e nao aparece em nenhum status. O cleanup restaura
-# a copia intacta em qualquer saida, ANTES de varrer as sandboxes.
+# A secao 16 SABOTA `scripts/limpar-branches.cjs` e restaura no fim. Ate a Issue
+# #266 isso mutava o arquivo DENTRO do repositorio — e enquanto durava (ou se a
+# bateria fosse interrompida no meio: Ctrl-C, crash, timeout) qualquer leitor
+# concorrente (outra bateria, `varrer-baterias.sh`, outra sessao) via o script
+# sabotado, que responde `false` para toda deteccao de conteudo, de forma
+# silenciosa e sem aparecer em status nenhum (D5). Por isso a mutacao roda numa
+# COPIA de trabalho `$LB`, dentro da sandbox — o arquivo real do repositorio
+# nunca e tocado. O cleanup restaura `$LB` a partir de `$ORIGINAL_LIMPAR` em
+# qualquer saida, ANTES de varrer as sandboxes (redundante com a remocao de
+# `$SBP` logo depois, mas barato e a mesma defesa em profundidade que ja havia).
 cleanup() {
-  [ -f "${ORIGINAL_LIMPAR:-}" ] && cp "$ORIGINAL_LIMPAR" "$SRC/scripts/limpar-branches.cjs"
+  [ -f "${ORIGINAL_LIMPAR:-}" ] && [ -f "${LB:-}" ] && cp "$ORIGINAL_LIMPAR" "$LB"
   for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done
 }
 trap cleanup EXIT
 
 SBP="$(novo_sandbox)"
+# Copia de trabalho: as 5 funcoes `roda*` e as 6 secoes de MUTACAO abaixo leem,
+# rodam e sabotam ESTE arquivo, nunca o do repositorio (D5, Issue #266). Este
+# `cp` e o UNICO lugar em que `$SRC/scripts/limpar-branches.cjs` ainda aparece
+# como ORIGEM de leitura — nunca mais como destino de escrita.
+#
+# Precisa ficar em `$SBP/scripts/`, nao solto em `$SBP/`: o proprio fonte faz
+# `require('../hooks/lib/config.cjs')` relativo ao seu `__dirname` (linha 88).
+# Uma copia solta quebra esse require (MODULE_NOT_FOUND), cai no catch de
+# `forcarConfigurado()` e o toggle branch-forcar para de funcionar em SILENCIO
+# — medido ao vivo: a copia solta fez a secao 5 falhar por completo. `config.cjs`
+# so precisa do irmao `raiz.cjs` (o unico require relativo que ele proprio faz).
+mkdir -p "$SBP/scripts" "$SBP/hooks/lib"
+LB="$SBP/scripts/limpar-branches.cjs"
+cp "$SRC/scripts/limpar-branches.cjs" "$LB"
+cp "$SRC/hooks/lib/config.cjs" "$SBP/hooks/lib/config.cjs"
+cp "$SRC/hooks/lib/raiz.cjs" "$SBP/hooks/lib/raiz.cjs"
 ORIGINAL_LIMPAR="$SBP/limpar-branches.original.cjs"
-cp "$SRC/scripts/limpar-branches.cjs" "$ORIGINAL_LIMPAR"
+cp "$LB" "$ORIGINAL_LIMPAR"
 echo "(caixa de areia: $SBP)"
 
 ok=0; falhou=0
 tem()     { if echo "$2" | grep -qF "$3"; then ok=$((ok+1)); echo "  ok   $1"; else falhou=$((falhou+1)); echo "  FALHA $1 (esperava achar '$3')"; fi; }
 nao_tem() { if echo "$2" | grep -qF "$3"; then falhou=$((falhou+1)); echo "  FALHA $1 (achou '$3')"; else ok=$((ok+1)); echo "  ok   $1"; fi; }
 
-roda() { ( cd "$SBP/local" && CLAUDE_PROJECT_DIR="$SBP/local" node "$SRC/scripts/limpar-branches.cjs" "$@" 2>&1 ); }
+roda() { ( cd "$SBP/local" && CLAUDE_PROJECT_DIR="$SBP/local" node "$LB" "$@" 2>&1 ); }
 
 # ---------------------------------------------------------------- o cenario
 # Um repo com as quatro formas que importam, montadas contra um remoto de verdade
@@ -151,20 +172,20 @@ echo "== 6. MUTACAO: sabotar a lista de removiveis =="
 # Se `viva` sobrevive por acidente e nao pela trava, este bloco passa verde e a
 # bateria inteira nao vale nada. Ele mete `viva` em REMOVIVEIS e exige que ela morra.
 montar
-cp "$SRC/scripts/limpar-branches.cjs" "$SBP/original.cjs"
+cp "$LB" "$SBP/original.cjs"
 node -e "
   const fs=require('fs'), p=process.argv[1];
   const s=fs.readFileSync(p,'utf8'), a=\"'sumiu-divergente']\";
   if(!s.includes(a)) { console.error('MUTACAO NAO APLICADA: alvo ausente'); process.exit(1); }
   fs.writeFileSync(p, s.replace(a, \"'sumiu-divergente','viva']\"));
-" "$SRC/scripts/limpar-branches.cjs"
+" "$LB"
 if [ $? -ne 0 ]; then falhou=$((falhou+1)); echo "  FALHA nao consegui aplicar a mutacao"; else
   # 'viva' entra em REMOVIVEIS pela mutacao, mas nao muda de classe — o
   # --confirmo continua exigido so por 'squashed' (sumiu-divergente).
   S="$(roda --sem-fetch --forcar --remover --confirmo "CONFIRMO apagar branches squashed")"
   tem "com a trava sabotada, viva MORRE (prova que era a trava)" "$S" "ok      viva"
 fi
-cp "$SBP/original.cjs" "$SRC/scripts/limpar-branches.cjs"
+cp "$SBP/original.cjs" "$LB"
 S="$(roda --sem-fetch --json --forcar)"
 nao_tem "e o script foi restaurado (viva protegida de novo)" "$(montar; alvos --forcar)" "viva"
 
@@ -218,15 +239,15 @@ STUB
 # `roda_gh` antes de a secao 12 definir o log de argumentos. Sem o default, o subshell
 # morre com "unbound variable", a saida vem vazia, e as falhas aparecem como se a
 # classificacao tivesse quebrado — foi o que aconteceu na primeira tentativa.
-roda_gh()    { ( cd "$SBP/local" && PATH="$SBP/bin:$SEM_GH_PATH" GH_LOG="${GH_LOG:-}" CLAUDE_PROJECT_DIR="$SBP/local" node "$SRC/scripts/limpar-branches.cjs" "$@" 2>&1 ); }
-roda_sem_gh(){ ( cd "$SBP/local" && PATH="$SEM_GH_PATH"          CLAUDE_PROJECT_DIR="$SBP/local" node "$SRC/scripts/limpar-branches.cjs" "$@" 2>&1 ); }
+roda_gh()    { ( cd "$SBP/local" && PATH="$SBP/bin:$SEM_GH_PATH" GH_LOG="${GH_LOG:-}" CLAUDE_PROJECT_DIR="$SBP/local" node "$LB" "$@" 2>&1 ); }
+roda_sem_gh(){ ( cd "$SBP/local" && PATH="$SEM_GH_PATH"          CLAUDE_PROJECT_DIR="$SBP/local" node "$LB" "$@" 2>&1 ); }
 # Issue #161: quem vai fazer JSON.parse le SO o stdout. As duas funcoes acima
 # capturam 2>&1 porque as assercoes de texto precisam ver a mensagem de erro; mas
 # em Node 24 o fallback 'shell: true' do limpar-branches.cjs emite DEP0190 no
 # stderr, e com 2>&1 o aviso entrava no meio do JSON (SyntaxError na posicao
 # 1193). O CI pinava Node 22 e nunca via. Dado por stdout, diagnostico por stderr.
-roda_gh_json()     { ( cd "$SBP/local" && PATH="$SBP/bin:$SEM_GH_PATH" GH_LOG="${GH_LOG:-}" CLAUDE_PROJECT_DIR="$SBP/local" node "$SRC/scripts/limpar-branches.cjs" "$@" 2>/dev/null ); }
-roda_sem_gh_json() { ( cd "$SBP/local" && PATH="$SEM_GH_PATH"          CLAUDE_PROJECT_DIR="$SBP/local" node "$SRC/scripts/limpar-branches.cjs" "$@" 2>/dev/null ); }
+roda_gh_json()     { ( cd "$SBP/local" && PATH="$SBP/bin:$SEM_GH_PATH" GH_LOG="${GH_LOG:-}" CLAUDE_PROJECT_DIR="$SBP/local" node "$LB" "$@" 2>/dev/null ); }
+roda_sem_gh_json() { ( cd "$SBP/local" && PATH="$SEM_GH_PATH"          CLAUDE_PROJECT_DIR="$SBP/local" node "$LB" "$@" 2>/dev/null ); }
 alvos_gh()   { roda_gh_json --sem-fetch --json "$@" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.stringify(JSON.parse(d).alvos)))"; }
 classe_gh()  { roda_gh_json --sem-fetch --json | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const b=JSON.parse(d).refs.find(x=>x.nome===process.argv[1]);console.log(b?b.classe:'(ausente)')})" "$1"; }
 
@@ -309,19 +330,19 @@ echo "== 11. MUTACAO: sabotar a exigencia de -D de mergeada-por-squash =="
 # mergeada-por-squash sumir do codigo, o caso 8 ("sem --forcar, fica de fora dos
 # alvos") tem que FALHAR — senao a trava nao esta la, so parece que esta.
 montar_squash_vivo
-cp "$SRC/scripts/limpar-branches.cjs" "$SBP/original2.cjs"
+cp "$LB" "$SBP/original2.cjs"
 node -e "
   const fs=require('fs'), p=process.argv[1];
   const s=fs.readFileSync(p,'utf8');
   const alvo = \"b.classe !== 'sumiu-divergente' && b.classe !== 'mergeada-por-squash'\";
   if(!s.includes(alvo)) { console.error('MUTACAO NAO APLICADA: alvo ausente'); process.exit(1); }
   fs.writeFileSync(p, s.replace(alvo, \"b.classe !== 'sumiu-divergente'\"));
-" "$SRC/scripts/limpar-branches.cjs"
+" "$LB"
 if [ $? -ne 0 ]; then falhou=$((falhou+1)); echo "  FALHA nao consegui aplicar a mutacao"; else
   AM="$(alvos_gh)"
   tem "com a exigencia sabotada, squash-vivo entra nos alvos sem --forcar (prova que a exigencia de -D era a trava)" "$AM" "squash-vivo"
 fi
-cp "$SBP/original2.cjs" "$SRC/scripts/limpar-branches.cjs"
+cp "$SBP/original2.cjs" "$LB"
 montar_squash_vivo
 nao_tem "e o script foi restaurado (squash-vivo exige --forcar de novo)" "$(alvos_gh)" "squash-vivo"
 
@@ -406,18 +427,18 @@ montar
   git push -q -u origin outra-base
   git checkout -q outra-base
 )
-cp "$SRC/scripts/limpar-branches.cjs" "$SBP/original3.cjs"
+cp "$LB" "$SBP/original3.cjs"
 node -e "
   const fs=require('fs'), p=process.argv[1];
   const s=fs.readFileSync(p,'utf8');
   const alvo = \"else if (padrao && b.nome === padrao) b.classe = 'padrao';\";
   if(!s.includes(alvo)) { console.error('MUTACAO NAO APLICADA: alvo ausente'); process.exit(1); }
   fs.writeFileSync(p, s.replace(alvo, ''));
-" "$SRC/scripts/limpar-branches.cjs"
+" "$LB"
 if [ $? -ne 0 ]; then falhou=$((falhou+1)); echo "  FALHA nao consegui aplicar a mutacao"; else
   tem "sem a protecao, a main volta a entrar nos alvos (prova que era a trava)" "$(alvos_base outra-base)" '"main"'
 fi
-cp "$SBP/original3.cjs" "$SRC/scripts/limpar-branches.cjs"
+cp "$SBP/original3.cjs" "$LB"
 nao_tem "e o script foi restaurado (main protegida de novo)" "$(alvos_base outra-base)" '"main"'
 
 echo
@@ -482,18 +503,18 @@ echo "== 16. MUTACAO da secao 15: sabotar a comparacao de conteudo (Issue #82) =
 # deteccao de conteudo, este bloco passa verde e a bateria inteira nao vale nada.
 # Ele sabota a funcao mergeadosPorConteudo e exige que o caso 1 da secao 15 FALHE.
 montar_squash_sem_upstream
-cp "$SRC/scripts/limpar-branches.cjs" "$SBP/original4.cjs"
+cp "$LB" "$SBP/original4.cjs"
 node -e "
   const fs=require('fs'), p=process.argv[1];
   const s=fs.readFileSync(p,'utf8');
   const alvo = \"resultado[b.nome] = diff.status === 0;\";
   if(!s.includes(alvo)) { console.error('MUTACAO NAO APLICADA: alvo ausente'); process.exit(1); }
   fs.writeFileSync(p, s.replace(alvo, \"resultado[b.nome] = false;\"));
-" "$SRC/scripts/limpar-branches.cjs"
+" "$LB"
 if [ $? -ne 0 ]; then falhou=$((falhou+1)); echo "  FALHA nao consegui aplicar a mutacao"; else
   tem "com a deteccao sabotada, worktree-agent-conteudo volta a ser viva (prova que a deteccao era a trava)" "$(classe worktree-agent-conteudo)" "viva"
 fi
-cp "$SBP/original4.cjs" "$SRC/scripts/limpar-branches.cjs"
+cp "$SBP/original4.cjs" "$LB"
 montar_squash_sem_upstream
 nao_tem "e o script foi restaurado (worktree-agent-conteudo volta a ser mergeada-por-conteudo)" "$(classe worktree-agent-conteudo)" "viva"
 
@@ -557,18 +578,18 @@ montar
 git -C "$SBP/remoto" update-ref -d refs/heads/falso-gone-mutacao
 git -C "$SBP/local" fetch -q --prune
 git -C "$SBP/remoto" update-ref refs/heads/falso-gone-mutacao "$(git -C "$SBP/local" rev-parse falso-gone-mutacao)"
-cp "$SRC/scripts/limpar-branches.cjs" "$SBP/original5.cjs"
+cp "$LB" "$SBP/original5.cjs"
 node -e "
   const fs=require('fs'), p=process.argv[1];
   const s=fs.readFileSync(p,'utf8');
   const alvo = \"remotoConfirmado[b.nome] === false) {\";
   if(!s.includes(alvo)) { console.error('MUTACAO NAO APLICADA: alvo ausente'); process.exit(1); }
   fs.writeFileSync(p, s.replace(alvo, \"remotoConfirmado[b.nome] === true) {\"));
-" "$SRC/scripts/limpar-branches.cjs"
+" "$LB"
 if [ $? -ne 0 ]; then falhou=$((falhou+1)); echo "  FALHA nao consegui aplicar a mutacao"; else
   tem "com a checagem sabotada, falso-gone volta a ser sumiu (prova que a checagem era a trava)" "$(classe_remota falso-gone-mutacao)" "sumiu-divergente"
 fi
-cp "$SBP/original5.cjs" "$SRC/scripts/limpar-branches.cjs"
+cp "$SBP/original5.cjs" "$LB"
 montar
 (
   cd "$SBP/local"
@@ -618,19 +639,19 @@ echo "== 20c. MUTACAO (T2): sabotar a comparacao da frase de --confirmo =="
 # Se `frase !== esperada` virar `false`, o -D atropela SEM confirmacao — o caso
 # 20a ("sem --confirmo, sai com a frase esperada" / nao remove) tem que FALHAR.
 montar
-cp "$SRC/scripts/limpar-branches.cjs" "$SBP/original6.cjs"
+cp "$LB" "$SBP/original6.cjs"
 node -e "
   const fs=require('fs'), p=process.argv[1];
   const s=fs.readFileSync(p,'utf8');
   const alvo = 'if (frase !== esperada) {';
   if(!s.includes(alvo)) { console.error('MUTACAO NAO APLICADA: alvo ausente'); process.exit(1); }
   fs.writeFileSync(p, s.replace(alvo, 'if (false) {'));
-" "$SRC/scripts/limpar-branches.cjs"
+" "$LB"
 if [ $? -ne 0 ]; then falhou=$((falhou+1)); echo "  FALHA nao consegui aplicar a mutacao"; else
   S20c="$(roda --sem-fetch --remover --forcar)"
   tem "com a comparacao sabotada, squashed morre sem --confirmo (prova que a comparacao era a trava)" "$S20c" "ok      squashed"
 fi
-cp "$SBP/original6.cjs" "$SRC/scripts/limpar-branches.cjs"
+cp "$SBP/original6.cjs" "$LB"
 montar
 S20c_restaurado="$(roda --sem-fetch --remover --forcar)"
 tem "e o script foi restaurado (exige --confirmo de novo)" "$S20c_restaurado" "CONFIRMO apagar branches squashed"
@@ -642,7 +663,7 @@ echo "== varredura de worktree temporario vazado =="
 # faltava era ela rodar quando o processo morre no MEIO — e aí nenhum `finally`
 # salva, porque o processo nao desempilha. So a rodada seguinte pode limpar.
 #
-# Tres casos, e o terceiro e o que impede a varredura de virar "apaga tudo".
+# Quatro casos, e o terceiro e o que impede a varredura de virar "apaga tudo".
 SBV="$(novo_sandbox)"
 git init -q "$SBV/repo"
 (
@@ -660,6 +681,10 @@ git -C "$SBV/repo" worktree add -q --detach "$LEGITIMO" HEAD 2>/dev/null
 # (3) um temporario de OUTRO dono (a ponte-codex), que nao casa o padrao
 ALHEIO="$SBV/piloto-validacao-final-1788888888888"
 git -C "$SBV/repo" worktree add -q --detach "$ALHEIO" HEAD 2>/dev/null
+# (4) um temporario de DOIS niveis (Issue #287): antes do conserto,
+# caminhoTemp('codex/fix-malformed-json') gerava exatamente este formato
+VAZADO_DOIS_NIVEIS="$SBV/worktree-codex/fix-malformed-json-1788888888888"
+git -C "$SBV/repo" worktree add -q --detach "$VAZADO_DOIS_NIVEIS" HEAD 2>/dev/null
 
 antes=$(git -C "$SBV/repo" worktree list | wc -l)
 
@@ -675,11 +700,26 @@ console.log(JSON.stringify({ removidos: r.removidos.length, falharam: r.falharam
 depois=$(git -C "$SBV/repo" worktree list | wc -l)
 removidos=$(node -e "try{console.log(JSON.parse(require('fs').readFileSync('$SBVW/saida.json','utf8')).removidos)}catch(e){console.log('erro')}")
 
-if [ "$removidos" = "1" ]; then ok=$((ok+1)); echo "  ok   varre exatamente 1 (o do padrao deste script)"; else falhou=$((falhou+1)); echo "  FALHA varreu '$removidos', esperava 1 -- $(cat "$SBV/erro.txt" | head -3)"; fi
-if [ "$antes" = "4" ] && [ "$depois" = "3" ]; then ok=$((ok+1)); echo "  ok   o registro sai da lista (4 -> 3)"; else falhou=$((falhou+1)); echo "  FALHA lista foi $antes -> $depois, esperava 4 -> 3"; fi
+# caminhoTemp precisa gerar um nome de UM nivel so, mesmo para branch com barra
+# (Issue #287: 'codex/fix-malformed-json' virava dois niveis e escapava da
+# varredura acima). Testa a funcao diretamente -- e o unico jeito de cravar
+# a mutante em caminhoTemp, ja que a varredura acima nao passa por ela (usa
+# caminhos ja registrados a mao).
+temp_gerado=$(CLAUDE_PROJECT_DIR="$SBVW/repo" node -e "
+const { caminhoTemp } = require('$SRCW/scripts/limpar-branches.cjs');
+console.log(caminhoTemp('codex/fix-malformed-json'));
+")
+case "$temp_gerado" in
+  */worktree-codex-fix-malformed-json-*) ok=$((ok+1)); echo "  ok    caminhoTemp('codex/fix-malformed-json') e de um nivel so ($temp_gerado)" ;;
+  *) falhou=$((falhou+1)); echo "  FALHA caminhoTemp gerou dois niveis: $temp_gerado" ;;
+esac
+
+if [ "$removidos" = "2" ]; then ok=$((ok+1)); echo "  ok   varre exatamente 2 (um nivel e dois niveis)"; else falhou=$((falhou+1)); echo "  FALHA varreu '$removidos', esperava 2 -- $(cat "$SBV/erro.txt" | head -3)"; fi
+if [ "$antes" = "5" ] && [ "$depois" = "3" ]; then ok=$((ok+1)); echo "  ok   o registro sai da lista (5 -> 3)"; else falhou=$((falhou+1)); echo "  FALHA lista foi $antes -> $depois, esperava 5 -> 3"; fi
 if [ -d "$LEGITIMO" ]; then ok=$((ok+1)); echo "  ok    worktree de trabalho sem timestamp NAO e tocado"; else falhou=$((falhou+1)); echo "  FALHA varredura comeu o worktree de trabalho"; fi
 if [ -d "$ALHEIO" ]; then ok=$((ok+1)); echo "  ok    temporario de OUTRO dono NAO e tocado"; else falhou=$((falhou+1)); echo "  FALHA varredura comeu temporario alheio"; fi
-if [ ! -d "$VAZADO" ]; then ok=$((ok+1)); echo "  ok    o vazado sumiu do disco"; else falhou=$((falhou+1)); echo "  FALHA o vazado continua no disco"; fi
+if [ ! -d "$VAZADO" ]; then ok=$((ok+1)); echo "  ok    o vazado de um nivel sumiu do disco"; else falhou=$((falhou+1)); echo "  FALHA o vazado de um nivel continua no disco"; fi
+if [ ! -d "$VAZADO_DOIS_NIVEIS" ]; then ok=$((ok+1)); echo "  ok    o vazado de dois niveis sumiu do disco"; else falhou=$((falhou+1)); echo "  FALHA o vazado de dois niveis continua no disco"; fi
 
 git -C "$SBV/repo" worktree remove --force "$LEGITIMO" >/dev/null 2>&1
 git -C "$SBV/repo" worktree remove --force "$ALHEIO" >/dev/null 2>&1

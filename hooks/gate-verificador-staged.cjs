@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: guia
 /**
  * PreToolUse — barra arquivo STAGED com conteúdo rejeitado pelo verificador.
  * Protege contra: dados sensíveis, credenciais, ou violações definidas pelo projeto no conteúdo staged
@@ -36,6 +37,7 @@ const { execFileSync, spawnSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
+const { temMarcadorNoConteudo } = require("./lib/marcador-dados.cjs");
 
 function git(dir, args) {
   try {
@@ -92,22 +94,41 @@ function materializaStaged(gitTop) {
     const staged = git(gitTop, ["diff", "--cached", "--name-only", "--diff-filter=ACMR"]);
     if (!staged) return { pasta, arquivos };
 
+    // Em merge, MERGE_HEAD resolve; usado para não reexaminar conteúdo que a
+    // outra ponta do merge já publicou (Issue #275) — o gate media o texto
+    // que passa por ele, não a mudança que o autor do commit fez.
+    const emMerge = git(gitTop, ["rev-parse", "-q", "--verify", "MERGE_HEAD"]) !== null;
+
     const nomes = staged.split("\n").filter(Boolean);
     for (const nome of nomes) {
       const relativo = nome;
-      const caminhoLocal = path.join(gitTop, nome);
       const caminhoTemp = path.join(pasta, nome);
+
+      // Copia conteúdo STAGED (não o disco) para a pasta temporária
+      const conteudo = git(gitTop, ["show", `:${nome}`]);
+      if (conteudo === null) continue;
+
+      // Já publicado (idêntico a HEAD ou, em merge, a MERGE_HEAD): não é
+      // conteúdo que o autor do commit escreveu, não materializa nem entra
+      // em `arquivos`.
+      const conteudoHead = git(gitTop, ["show", `HEAD:${nome}`]);
+      const conteudoMergeHead = emMerge ? git(gitTop, ["show", `MERGE_HEAD:${nome}`]) : null;
+      const jaPublicado =
+        (conteudoHead !== null && conteudoHead === conteudo) ||
+        (conteudoMergeHead !== null && conteudoMergeHead === conteudo);
+      if (jaPublicado) continue;
+
+      // Marcador de dados-de-exemplo (só nas 5 primeiras linhas do conteúdo
+      // STAGED): dispensa este arquivo da conferência, mesma regra do gate
+      // de publicação (hooks/lib/marcador-dados.cjs, Issue #293).
+      if (temMarcadorNoConteudo(conteudo)) continue;
 
       // Cria diretório pai se necessário
       const dir = path.dirname(caminhoTemp);
       fs.mkdirSync(dir, { recursive: true });
 
-      // Copia conteúdo STAGED (não o disco) para a pasta temporária
-      const conteudo = git(gitTop, ["show", `:${nome}`]);
-      if (conteudo !== null) {
-        fs.writeFileSync(caminhoTemp, conteudo, "utf8");
-        arquivos.push(relativo);
-      }
+      fs.writeFileSync(caminhoTemp, conteudo, "utf8");
+      arquivos.push(relativo);
     }
   } catch (e) {
     try { fs.rmSync(pasta, { recursive: true }); } catch {}

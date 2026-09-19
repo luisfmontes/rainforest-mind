@@ -2,6 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const { resolverRaiz } = require('./raiz.cjs');
+const { cortarBytes } = require('./bytes.cjs');
 
 /**
  * contexto-sessao.cjs — motor puro do SessionStart (foco-session-start.cjs).
@@ -57,11 +58,23 @@ const TETOS = {
   /** Marcos AINDA DE PÉ que ficam residentes. Cumprido não entra em nenhum caso. */
   MARCOS_RESIDENTES: 2,
   /**
-   * Teto do payload inteiro, em BYTES. 8.000 contra 9.766 B observados passando
-   * inteiros — ~18% de folga. O limite exato do harness não é documentado; este
-   * número é dimensionado para não depender de descobri-lo.
+   * Teto do payload inteiro, em BYTES. Continua abaixo dos 9.766 B observados
+   * passando inteiros pelo harness (o limite exato dele não é documentado; este
+   * número é dimensionado para não depender de descobri-lo).
+   *
+   * Subiu de 8000 para 8100 em 2026-09-16 (Issue #250, Tarefa 17): medido ao
+   * vivo com o SKILL.md real deste repositório e um rodapé sintético
+   * reproduzindo a combinação que `foco-session-start.cjs` monta de verdade
+   * (veredito de isenção de desvio, 3 sessões paralelas em pastas distintas,
+   * revisão vencida, dependências de ambiente declaradas, principal atrasado)
+   * — comando em `hooks/testa-contexto-sessao.sh`, seção 22 — deu **7375 B de
+   * fixo** (cabeçalho+rodapé). 7375 + `FOCO_MIN_BYTES` (700) = 8075,
+   * arredondado para cima para 8100. Isto NÃO substitui o corte por
+   * prioridade abaixo (que já resolvia este caso sozinho, com 625 B de sobra):
+   * é o piso deste teto ficar por CIMA do caso comum, para o corte só morder
+   * em combinação mais rara — dependências + muitas sessões ao mesmo tempo.
    */
-  ORCAMENTO_BYTES: 8000,
+  ORCAMENTO_BYTES: 8100,
   /**
    * Teto do bloco de REGRAS (só os núcleos), em BYTES. É um **catraca**, não uma
    * medida do harness: fica pouco acima do tamanho de hoje justamente para que
@@ -359,16 +372,32 @@ function resumirMarcos(secao, mantidos = TETOS.MARCOS_RESIDENTES) {
 }
 
 /**
- * Iça a data do avanço mais recente para logo abaixo do cabeçalho da seção.
+ * Iça a data do avanço mais recente para logo abaixo do cabeçalho da seção, e
+ * avisa quando ela já passou do limiar da regra 3.
  *
  * O bloco de foco recebe a sobra do orçamento e é cortado pelo FIM quando não cabe
  * — e os "Avanços" moram no fim da seção Ativo, então eram a primeira coisa a
  * sumir. A data do último avanço não é decoração: a regra 3 avisa quando o foco
- * ativo está há 7+ dias sem avanço, e sem a data essa checagem não tem como rodar.
+ * ativo está há 7+ dias sem avanço. Antes, a data chegava à sessão mas ninguém
+ * fazia essa conta — quem cobrava os 7+ dias era só `vigias/sentinela-foco.md`
+ * (item 3), fora da sessão, no briefing matinal. O limiar aqui é o MESMO 7, de
+ * propósito: dois limiares diferentes sobre o mesmo campo fariam o sensor daqui
+ * contradizer o vigia em silêncio. Mesma forma do aviso de revisão bimestral da
+ * skill (`hooks/foco-session-start.cjs`, "Última revisão: AAAA-MM-DD" -> dias
+ * corridos com `Math.floor`), calculada aqui em vez de lá porque é aqui que a
+ * data já está extraída.
+ *
  * Uma linha no topo custa ~35 B e sobrevive a qualquer corte que preserve o
- * cabeçalho; o histórico completo continua no arquivo.
+ * cabeçalho; o histórico completo continua no arquivo. Sem avanço nenhum (data
+ * ausente), o comportamento já existente vale: a função devolve a seção sem
+ * mexer, e não há como calcular "dias sem avanço" de uma data que não existe.
+ *
+ * `agora` é injetável (default `Date.now()`) pelo mesmo motivo que outras
+ * funções de data desta lib injetam (`sessoesColocadas`, `dentroDoExpediente`,
+ * `focoAtivoEmOutraJanela`, `computarVeredito`): bateria determinística, sem
+ * depender do relógio real da máquina que roda o teste.
  */
-function iparAvancoRecente(secao) {
+function iparAvancoRecente(secao, agora) {
   // Sem exigir o `:` colado na data: a entrada real escreve "- 2026-08-10 (tarde):"
   // e a versão anterior do padrão simplesmente não a via — some a linha inteira, e
   // com ela a checagem de foco parado da regra 3.
@@ -379,7 +408,13 @@ function iparAvancoRecente(secao) {
   const cabecalho = secao.match(/^## .+$/m);
   if (!cabecalho) return secao;
   const corte = secao.indexOf(cabecalho[0]) + cabecalho[0].length;
-  return `${secao.slice(0, corte)}\nÚltimo avanço datado: ${datas[datas.length - 1]}.${secao.slice(corte)}`;
+  const ultima = datas[datas.length - 1];
+  const agoraTs = Number.isFinite(agora) ? agora : Date.now();
+  const dias = Math.floor((agoraTs - Date.parse(`${ultima}T00:00:00Z`)) / 86400000);
+  const linha = dias >= 7
+    ? `Último avanço datado: ${ultima} — FOCO.md sem avanço há ${dias} dias.`
+    : `Último avanço datado: ${ultima}.`;
+  return `${secao.slice(0, corte)}\n${linha}${secao.slice(corte)}`;
 }
 
 /**
@@ -401,7 +436,7 @@ function normalizarFimDeLinha(texto) {
   return String(texto || '').replace(/\r\n/g, '\n');
 }
 
-function resumirFoco(focoText) {
+function resumirFoco(focoText, agora) {
   // CRLF -> LF ANTES de qualquer coisa, pelo mesmo motivo que `filtrarRegras` faz
   // no bloco de regras — e o FOCO.md ficou de fora daquele conserto, em
   // 2026-08-13, sem ninguem notar.
@@ -432,7 +467,7 @@ function resumirFoco(focoText) {
   for (const parte of partes) {
     const cabecalho = parte.match(/^## (.+)$/m);
     if (!cabecalho || SECOES_RESIDENTES.includes(cabecalho[1].trim())) {
-      mantidas.push(iparAvancoRecente(resumirMarcos(parte.trim())));
+      mantidas.push(iparAvancoRecente(resumirMarcos(parte.trim()), agora));
     } else {
       omitidas.push(cabecalho[1].trim());
     }
@@ -988,7 +1023,6 @@ function limitarBytes(texto, maxBytes, nomeDoBloco) {
   return cortarBytes(s, espaco).trimEnd() + aviso;
 }
 
-/** Corta em `max` BYTES sem partir um caractere multibyte no meio. */
 /**
  * Corta em CARACTERES (code points), com reticencia quando cortou.
  *
@@ -1003,18 +1037,7 @@ function cortarCaracteres(texto, maxChars) {
   return chars.slice(0, Math.max(0, maxChars - 1)).join('').trimEnd() + '…';
 }
 
-function cortarBytes(texto, max) {
-  const s = String(texto || '');
-  if (Buffer.byteLength(s, 'utf8') <= max) return s;
-  let baixo = 0;
-  let alto = s.length;
-  while (baixo < alto) {
-    const meio = Math.ceil((baixo + alto) / 2);
-    if (Buffer.byteLength(s.slice(0, meio), 'utf8') <= max) baixo = meio;
-    else alto = meio - 1;
-  }
-  return s.slice(0, baixo);
-}
+/** `cortarBytes` vem de bytes.cjs — compartilhada com memoria-sessao.cjs. */
 
 /**
  * Trava de orçamento: falha RUIDOSA quando o payload passa do teto.
@@ -1070,6 +1093,8 @@ function travarOrcamento(payload, orcamento = TETOS.ORCAMENTO_BYTES) {
  *   Quando true, o bloco de foco ganha uma linha curta e RESIDENTE apontando
  *   para o arquivo. Compatibilidade para trás: omitido/false não muda nada do
  *   comportamento de hoje (FOCO.md monolítico continua idêntico).
+ * @param {number} [o.agora] timestamp de referência para o aviso de foco parado
+ *   (regra 3, 7+ dias sem avanço) — default `Date.now()`. Ver `iparAvancoRecente`.
  */
 function montarContexto(o) {
   const regras = blocoRegras(extrairNucleo(filtrarRegras(o.skillText)), o.caminhoSkill || '(caminho não informado)');
@@ -1096,6 +1121,14 @@ ${regras}
   // sessão paralela, o `## Dependências` colava na última linha do foco e virava
   // continuação do texto dele. Normalizar aqui vale para qualquer combinação de
   // blocos presentes ou ausentes.
+  //
+  // Guarda as formas JÁ NORMALIZADAS de sessões/dependências: são os dois únicos
+  // blocos que o corte de prioridade abaixo (Issue #250) remove, e splice()
+  // precisa localizar exatamente a string que entrou no array, não o `o.sessoes`
+  // /`o.dependencias` crus (que ainda têm a quebra de linha do prefixo).
+  const linhaDependencias = o.dependencias ? String(o.dependencias).replace(/^\n+/, '').trimEnd() : null;
+  const linhaSessoesRodape = o.sessoes ? String(o.sessoes).replace(/^\n+/, '').trimEnd() : null;
+
   const blocoRodape = [o.veredito, o.sessoes, o.revisao, o.dependencias]
     .filter(Boolean)
     .map((bloco) => String(bloco).replace(/^\n+/, '').trimEnd());
@@ -1107,7 +1140,7 @@ ${regras}
   }
 
   blocoRodape.push(`Arquivos de apoio: ${o.root || ''}\\FOCO.md e ${o.root || ''}\\ideias.jsonl (uma ideia por linha)`);
-  const rodape = '\n\n' + blocoRodape.join('\n\n');
+  let rodape = '\n\n' + blocoRodape.join('\n\n');
 
   // Issue #74: ponteiro RESIDENTE para o ESTRATEGIA.md, quando o adaptador
   // confirmou que o arquivo existe ao lado do FOCO.md. Reservado ANTES de
@@ -1121,11 +1154,58 @@ ${regras}
     : '';
   const custoEstrategia = pastaEstrategia ? Buffer.byteLength(pastaEstrategia, 'utf8') : 0;
 
-  const fixo = Buffer.byteLength(cabecalho + rodape, 'utf8');
+  let fixo = Buffer.byteLength(cabecalho + rodape, 'utf8');
+
+  // Issue #250: "cabecalho+rodape" (fixo) não tinha teto PRÓPRIO — só as partes
+  // tinham (NUCLEOS_MAX_BYTES, SESSOES_MAX_BYTES), e a soma delas podia passar
+  // do que sobra para o foco sem nenhum corte reagir; o hook só AVISAVA depois
+  // do fato (`travarOrcamento`, no fim). O corte por prioridade tira primeiro
+  // as DEPENDÊNCIAS (regra 14 — texto que duplica um bloqueio que o usuario já
+  // vê em outro canal) e só então as SESSÕES (radar de janela, regra 17) —
+  // nunca o veredito (regra 3/17, isenção de cobrança de desvio) nem o aviso de
+  // revisão, os dois mais curtos e mais críticos para não cobrar errado.
+  if (fixo > TETOS.ORCAMENTO_BYTES - TETOS.FOCO_MIN_BYTES) {
+    // So' aplica o corte se ELE RESOLVER: simula a remocao das DUAS partes antes
+    // de tirar qualquer uma de verdade. Medido ao vivo (2026-09-16, worktree com
+    // 11 pastas ja mescladas em origin/main): quando quem domina o estouro e' o
+    // aviso de "principal atrasado" (bloco que este corte nao mexe), tirar so a
+    // dependencia nao devolve nada — so' apaga um bloco que o usuario TEM que
+    // ver (regra 14) sem o foco ganhar nenhum byte de volta. Corte que nao
+    // resolve e' pior que nao cortar: `hooks/testa-contexto-sessao.sh`, secao
+    // "16. DEPENDENCIA SO SE CHECA QUANDO ALGUEM DECLAROU", quebrou exatamente
+    // assim na primeira versao desta mutacao.
+    const blocoRodapeSimulado = blocoRodape.slice();
+    if (linhaDependencias) {
+      const i = blocoRodapeSimulado.indexOf(linhaDependencias);
+      if (i !== -1) blocoRodapeSimulado.splice(i, 1);
+    }
+    if (linhaSessoesRodape) {
+      const i = blocoRodapeSimulado.indexOf(linhaSessoesRodape);
+      if (i !== -1) blocoRodapeSimulado.splice(i, 1);
+    }
+    const fixoComCorteMaximo = Buffer.byteLength(cabecalho + '\n\n' + blocoRodapeSimulado.join('\n\n'), 'utf8');
+
+    if (fixoComCorteMaximo <= TETOS.ORCAMENTO_BYTES - TETOS.FOCO_MIN_BYTES) {
+      if (linhaDependencias) {
+        const idxDependencias = blocoRodape.indexOf(linhaDependencias);
+        if (idxDependencias !== -1) blocoRodape.splice(idxDependencias, 1);
+      }
+      rodape = '\n\n' + blocoRodape.join('\n\n');
+      fixo = Buffer.byteLength(cabecalho + rodape, 'utf8');
+
+      if (fixo > TETOS.ORCAMENTO_BYTES - TETOS.FOCO_MIN_BYTES && linhaSessoesRodape) {
+        const idxSessoes = blocoRodape.indexOf(linhaSessoesRodape);
+        if (idxSessoes !== -1) blocoRodape.splice(idxSessoes, 1);
+        rodape = '\n\n' + blocoRodape.join('\n\n');
+        fixo = Buffer.byteLength(cabecalho + rodape, 'utf8');
+      }
+    }
+  }
+
   const sobra = TETOS.ORCAMENTO_BYTES - fixo;
   const tetoFoco = Math.max(0, Math.min(TETOS.FOCO_MAX_BYTES, Math.max(0, sobra)) - custoEstrategia);
 
-  const focoResumido = resumirFoco(o.focoText).trim();
+  const focoResumido = resumirFoco(o.focoText, o.agora).trim();
   let foco;
   if (!focoResumido) {
     foco = '(nenhum foco declarado — sugira /foco <texto> se o usuario disser no que precisa entregar)';

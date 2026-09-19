@@ -6,11 +6,16 @@ Achado que não é a tarefa atual (bug, ideia, observação sobre método) preci
 
 A triagem usa a tabela de `commands/issue.md` seção 2 e `commands/feedback.md` seção 1: procure ali a classificação exata. Na dúvida, pergunte em uma linha. **Achados que caem em mais de uma categoria são DUAS coisas — nunca uma escolha:** um defeito descoberto por engano meu é Issue (código errado é código errado) mais `/feedback` (engano meu é observação de método); não existem "meio-termos" que compõem escolha.
 
-### Conserta na hora
+### Conserta na hora — e só no repo da sessão
 
-Defeito que **bloqueia o trabalho em curso** não sobe como Issue: conserta e segue. O limite é claro: "bloqueia" quer dizer a tarefa atual não continua sem consertar. Erro que não bloqueia vira Issue e segue normalmente.
+Defeito que **atrapalha a tarefa em curso** conserta na hora e segue: o commit é o registro, e só vira Issue o que não for consertado. Erro que não atrapalha vira Issue e segue normalmente.
 
-Razão: plantio resgata tópicos depois; semente plantada é prioridade baixa. Defeito que impede a tarefa atual é prioridade imediata por definição.
+Isso vale **só no repo da sessão**. Achado em repo **alheio** nunca vira worktree, commit ou PR ali — por mais que atrapalhe a entrega pedida: sobe como Issue no repo dono (regra normal de triagem) mais uma `Q` numerada para o usuário, já com a recomendação — que pode ser "consertar agora" — e a decisão é dele. O peso do defeito não move a fronteira: "mas bloqueia a entrega" foi exatamente o argumento que puxou o incidente abaixo para o lado errado. A fronteira é só texto: não há hook que avise commit fora do repo da sessão; trava mecânica pediria design próprio.
+
+Razão: plantio resgata tópicos depois; semente plantada é prioridade baixa. Defeito que atrapalha a tarefa atual é prioridade imediata por definição — mas prioridade não é autorização para editar o repo de outra pessoa.
+
+> **2026-09-16 (Issue #291):** sessão no repo A, pedido para gerar um relatório quinzenal. No meio, achou dois defeitos reais no gerador — mas o gerador mora num plugin de um repo vizinho, com outra sessão ativa nele. O texto da regra dizia o quê e quando ("atrapalha a tarefa em curso, conserta na hora") mas não **onde**; a leitura literal autorizou worktree, commit e teste novo no repo vizinho antes de o usuário decidir. Ele cortou no meio — "por que você tá corrigindo erro de outro repo?" — e estava certo: a regra 11 protegia o **como** (worktree isolado, base conferida, nada commitado até a decisão), mas nenhuma regra protegia a **autorização** de mexer fora do repo da sessão.
+> re-verificar: `gh issue view 291 --json title`
 
 ### O que sobe é rascunho escrito, não pergunta
 
@@ -48,4 +53,4 @@ abandonado consciente, nunca como pendência solta.
 
 ## Nota: "nunca barrar defeito"
 
-Esta regra (regra 6, triagem obrigatória) e a regra 9 (freio de Pareto) trabalham juntas: regra 9 barra **polimento de coisa pronta**, mas nunca defeito. Se encostou aqui lendo sobre triagem, o ponto é que defeito não sobe como ideia (regra 6), e só é consertado na hora se bloqueia o trabalho em curso — o que não bloqueia vira Issue e entra na fila normal. Veja `references/regra-09.md` para onde o freio é real (melhoria em coisa pronta) e onde é proibido (correção de defeito).
+Esta regra (regra 6, triagem obrigatória) e a regra 9 (freio de Pareto) trabalham juntas: regra 9 barra **polimento de coisa pronta**, mas nunca defeito. Se encostou aqui lendo sobre triagem, o ponto é que defeito não sobe como ideia (regra 6), e só é consertado na hora se atrapalha o trabalho em curso **e mora no repo da sessão** — o que não atrapalha, ou mora em repo alheio, vira Issue (mais `Q` no caso do repo alheio) e entra na fila normal. Veja `references/regra-09.md` para onde o freio é real (melhoria em coisa pronta) e onde é proibido (correção de defeito).

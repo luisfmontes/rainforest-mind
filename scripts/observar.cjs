@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: sensor
 /**
  * Passada de LLM: transforma trecho de transcrito em observação gravada.
  *
@@ -31,6 +32,7 @@ const os = require('os');
 const { abrirBanco, criarSchema, resolverCaminhos } = require(
   path.join(__dirname, 'memoria.cjs')
 );
+const { acharExecutavelClaude } = require(path.join(__dirname, 'lib', 'achar-executavel-claude.cjs'));
 
 // Teto conservador de argumento para CLI claude
 // Medição: ENAMETOOLONG ocorre entre 16.908 e 33.708 caracteres
@@ -222,35 +224,6 @@ function formatarParaLLM(eventos) {
   return resumo.join('\n');
 }
 
-// Acha o executável `claude` varrendo o PATH, sem subir processo para descobrir
-// (nada de `where`/`which`: este arquivo existe para tirar spawn do caminho).
-// Devolve caminho absoluto ou null. `RFM_CLAUDE_EXECUTAVEL` sobrepõe, para quem
-// tem o CLI fora do PATH.
-function acharExecutavelClaude() {
-  if (process.env.RFM_CLAUDE_EXECUTAVEL) {
-    return process.env.RFM_CLAUDE_EXECUTAVEL;
-  }
-  const ehWindows = process.platform === 'win32';
-  const separador = ehWindows ? ';' : ':';
-  const extensoes = ehWindows
-    ? (process.env.PATHEXT || '.EXE;.CMD;.BAT').split(';').map((e) => e.toLowerCase())
-    : [''];
-  for (const dir of (process.env.PATH || '').split(separador)) {
-    if (!dir) continue;
-    for (const ext of extensoes) {
-      const alvo = path.join(dir, `claude${ext}`);
-      try {
-        if (fs.statSync(alvo).isFile()) {
-          if (!ehWindows) fs.accessSync(alvo, fs.constants.X_OK);
-          return alvo;
-        }
-      } catch {
-        // Caminho inexistente ou sem permissão: segue procurando.
-      }
-    }
-  }
-  return null;
-}
 
 // Chamada à LLM isolada atrás de função para permitir mock em testes.
 // Retorna promise com observação (string) ou null se falhar.
@@ -334,7 +307,7 @@ async function chamarLLM(textoDaPassada) {
 
       child.on('error', (error) => {
         clearTimeout(timer);
-        console.error(`AVISO: erro ao chamar claude: ${error.message}`);
+        console.error(`AVISO: erro ao chamar claude em "${executavel}": ${error.message}`);
         resolve(null);
       });
 
@@ -358,7 +331,7 @@ async function chamarLLM(textoDaPassada) {
       });
     } catch (e) {
       clearTimeout(timer);
-      console.error(`AVISO: erro ao invocar claude: ${e.message}`);
+      console.error(`AVISO: erro ao invocar claude em "${executavel}": ${e.message}`);
       resolve(null);
     }
   });

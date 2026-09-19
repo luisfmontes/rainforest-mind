@@ -1,3 +1,5 @@
+<!-- @categoria: sensor -->
+
 Leia C:\Projetos\rainforest-mind\vigias\_comum.md e siga as instruções de lá.
 
 Você é o vigia **sentinela-foco**. Descubra o arquivo de foco com

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: guia
 /**
  * PreToolUse — barra subagente que escreve fora de worktree isolado.
  * Protege contra: escrita de subagente fora de worktree isolado via Write/Edit/Bash
@@ -308,7 +309,7 @@ function dirDe(alvo) {
   }
 }
 
-function bloqueia(motivo, toplevel, agente, apenasRestauracao = null) {
+function bloqueia(motivo, toplevel, agente, apenasRestauracao = null, ehWorktreeAlvo = false) {
   // P1 do relatorio 2026-08-11-escotilha-do-gate-usada-para-contornar: a saida
   // de emergencia era NOMEADA na mensagem que o SUBAGENTE le. Um implementador
   // bloqueado leu o nome do arquivo de escape na propria mensagem de bloqueio,
@@ -345,11 +346,17 @@ function bloqueia(motivo, toplevel, agente, apenasRestauracao = null) {
     msg += `${apenasRestauracao}\n\n`;
   }
 
-  msg += `Este e o diretorio de trabalho principal, nao um worktree isolado. A regra 11 manda\n` +
-    `subagente que edita arquivos trabalhar em worktree proprio, para o trabalho poder ser\n` +
-    `descartado sem tocar no estado dele. Em 2026-08-08 um agente escreveu aqui duas vezes,\n` +
-    `trocou a branch e moveu o HEAD com stash/pop.\n\n` +
-    saidas;
+  msg += ehWorktreeAlvo
+    ? `Este diretorio E um worktree isolado, mas nao deu para confirmar o cwd real de onde\n` +
+      `o comando roda (cd com variavel, subshell ou movedor que o parser nao resolve). Por\n` +
+      `precaucao o gate bloqueia mesmo assim — a incerteza pode esconder um comando rodando\n` +
+      `em outro lugar, inclusive no diretorio principal.\n\n` +
+      saidas
+    : `Este e o diretorio de trabalho principal, nao um worktree isolado. A regra 11 manda\n` +
+      `subagente que edita arquivos trabalhar em worktree proprio, para o trabalho poder ser\n` +
+      `descartado sem tocar no estado dele. Em 2026-08-08 um agente escreveu aqui duas vezes,\n` +
+      `trocou a branch e moveu o HEAD com stash/pop.\n\n` +
+      saidas;
 
   process.stderr.write(msg);
   process.exit(2);
@@ -854,7 +861,7 @@ function main() {
     if (!incerto && estado.ehWorktree) continue; // worktree linkado: era pra ser isso mesmo
     if (fs.existsSync(path.join(estado.toplevel, ".rainforest-gate-off"))) continue;
     const restauro = linhaDeRestauro(entrada.command || '', estado.toplevel);
-    bloqueia(motivo, estado.toplevel, `${ev.agent_type || "?"} (${ev.agent_id})`, restauro);
+    bloqueia(motivo, estado.toplevel, `${ev.agent_type || "?"} (${ev.agent_id})`, restauro, estado.ehWorktree);
   }
   process.exit(0);
 }

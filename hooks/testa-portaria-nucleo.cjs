@@ -19,6 +19,14 @@ const path = require("path");
 
 const HOOK = path.join(__dirname, "portaria.cjs");
 
+// Mesma normalização de `testa-portaria-diagnostico.cjs`: a portaria grava o
+// caminho que o Node resolve (barra normal), o `mkdtemp` devolve contrabarra, e
+// o NTFS não distingue caixa — comparar as formas cruas ficava vermelho só no CI.
+function mesmoCaminho(texto, caminho) {
+  const norm = (s) => String(s).replace(/\\/g, "/").toLowerCase();
+  return norm(texto).includes(norm(caminho));
+}
+
 let ok = 0;
 let falhou = 0;
 
@@ -32,16 +40,39 @@ function caso(nome, cond, detalhe) {
   }
 }
 
-function rodaHook(raiz, stdin) {
+// `RFM_ROOT` é obrigatório desde 2026-09-14 (D6): o log de despacho deixou de
+// ser escrito em `<repo>/.rainforest/` e passou a resolver pela raiz de DADOS,
+// que sem isolamento é a pasta pessoal do usuário — esta bateria estava
+// escrevendo 50+ linhas de teste em `<home>/.rainforest/portaria/`.
+//
+// O padrão aponta para `<raiz>/.rainforest` de propósito: é uma caixa de areia
+// por caso (cada `caixa()` é um mkdtemp novo), e mantém as asserções desta
+// bateria — que é sobre DECISÃO, não sobre onde o log mora — lendo o mesmo
+// caminho de antes. Quem prova o destino real do log é
+// `testa-portaria-log-fora-do-repo.cjs`. Casos que precisam de uma raiz de
+// dados neutra (11 e 12, sobre qual raiz venceu) passam `dados` explícito.
+function rodaHook(raiz, stdin, dados) {
   return spawnSync(process.execPath, [HOOK], {
     input: stdin,
-    env: { ...process.env, CLAUDE_PROJECT_DIR: raiz },
+    env: {
+      ...process.env,
+      CLAUDE_PROJECT_DIR: raiz,
+      RFM_ROOT: dados || path.join(raiz, ".rainforest"),
+    },
     encoding: "utf8",
   });
 }
 
+// `realpathSync.native` pelo mesmo motivo de `testa-portaria-diagnostico.cjs`
+// (o comentário de lá, de 2026-09-04, explica por extenso): a CI roda em
+// Windows, e o `os.tmpdir()` do runner vem em forma curta 8.3 — o nome do
+// usuário aparece truncado com `~1` —, enquanto a portaria grava o caminho que
+// o Node RESOLVE, por extenso. O `mesmoCaminho` acima normaliza barra e caixa,
+// mas NÃO expande 8.3: os casos 11 e 12, que comparam o campo `repo` da linha
+// com esta caixa, ficavam verdes aqui e vermelhos só lá (2026-09-14). Só o
+// `.native` expande nome curto.
 function caixa() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), "portaria-nucleo-"));
+  return fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "portaria-nucleo-")));
 }
 
 function criarEstadoAtivo(raiz, branchBase, estagio) {
@@ -103,7 +134,7 @@ function manifestoD2(agentes) {
   };
 }
 
-// == 1. Agente não declarado → exit 2, nome no stderr ==
+// == 1. Agente não declarado → exit 0, declarado: false no log ==
 console.log("== 1. agente nao declarado ==");
 {
   const raiz = caixa();
@@ -124,18 +155,26 @@ console.log("== 1. agente nao declarado ==");
 
   const r = rodaHook(raiz, JSON.stringify(payload));
 
-  caso("exit 2", r.status === 2, `exit=${r.status}`);
-  caso("stderr cita o agente", r.stderr.includes("executar"), `stderr: ${r.stderr}`);
-  caso(
-    "stderr menciona manifesto",
-    r.stderr.includes("manifesto"),
-    `stderr: ${r.stderr}`
-  );
+  caso("exit 0", r.status === 0, `exit=${r.status}`);
+
+  const logPath = path.join(raiz, ".rainforest", "portaria", "despachos.jsonl");
+  if (fs.existsSync(logPath)) {
+    const linhas = fs.readFileSync(logPath, "utf8").trim().split("\n").filter(Boolean);
+    if (linhas.length > 0) {
+      try {
+        const entrada = JSON.parse(linhas[0]);
+        caso("log marca declarado: false", entrada.declarado === false, `declarado: ${entrada.declarado}`);
+        caso("decisao = 'allow'", entrada.decisao === "allow", `decisao: ${entrada.decisao}`);
+      } catch (e) {
+        caso("log é JSON válido", false, e.message);
+      }
+    }
+  }
 
   fs.rmSync(raiz, { recursive: true, force: true });
 }
 
-// == 2. Agente declarado, estágio errado → exit 2, estágios no stderr ==
+// == 2. Agente declarado, estágio errado → exit 0, estagio_declarado no log ==
 console.log("== 2. agente declarado, estagio errado ==");
 {
   const raiz = caixa();
@@ -154,9 +193,22 @@ console.log("== 2. agente declarado, estagio errado ==");
 
   const r = rodaHook(raiz, JSON.stringify(payload));
 
-  caso("exit 2", r.status === 2, `exit=${r.status}`);
-  caso("stderr cita estágio atual", r.stderr.includes("executar"), `stderr: ${r.stderr}`);
-  caso("stderr cita estágios permitidos", r.stderr.includes("revisar"), `stderr: ${r.stderr}`);
+  caso("exit 0", r.status === 0, `exit=${r.status}`);
+
+  const logPath = path.join(raiz, ".rainforest", "portaria", "despachos.jsonl");
+  if (fs.existsSync(logPath)) {
+    const linhas = fs.readFileSync(logPath, "utf8").trim().split("\n").filter(Boolean);
+    if (linhas.length > 0) {
+      try {
+        const entrada = JSON.parse(linhas[0]);
+        caso("log marca estagio_declarado", entrada.estagio_declarado === "revisar, verificar", `estagio_declarado: ${entrada.estagio_declarado}`);
+        caso("decisao = 'allow'", entrada.decisao === "allow", `decisao: ${entrada.decisao}`);
+        caso("estagio = 'executar' (atual)", entrada.estagio === "executar", `estagio: ${entrada.estagio}`);
+      } catch (e) {
+        caso("log é JSON válido", false, e.message);
+      }
+    }
+  }
 
   fs.rmSync(raiz, { recursive: true, force: true });
 }
@@ -214,14 +266,18 @@ console.log("== 3. agente declarado, estagio certo ==");
 }
 
 // == 4. Manifesto ausente → exit 2 (fail-closed) ==
-console.log("== 4. manifesto ausente ==");
+console.log("== 4. repo sem manifesto proprio e o caso NORMAL, decidido pelo padrao ==");
 {
+  // Até 2026-09-13 este caso afirmava o contrário: repo sem manifesto → exit 2,
+  // "manifesto ausente". Com o padrão embarcado (D2/D5) ausência no repo deixou
+  // de ser falta de configuração e virou o caso comum — quem decide é o padrão
+  // do plugin, e o `revisor` consta lá.
   const raiz = caixa();
 
   iniciarGit(raiz, "fluxo/teste");
   criarEstadoAtivo(raiz, "teste", "revisar");
 
-  // Não cria manifesto
+  // Não cria manifesto de propósito: o padrão embarcado é quem responde.
 
   const payload = {
     session_id: "teste-4",
@@ -230,10 +286,79 @@ console.log("== 4. manifesto ausente ==");
 
   const r = rodaHook(raiz, JSON.stringify(payload));
 
-  caso("exit 2", r.status === 2, `exit=${r.status}`);
-  caso("stderr não vazio", r.stderr.length > 0, `"${r.stderr}"`);
+  caso("exit 0 (o padrao embarcado admite o revisor em `revisar`)",
+    r.status === 0, `exit=${r.status} stderr=${r.stderr}`);
+  caso("o repo NAO ganhou .rainforest/agentes.json",
+    !fs.existsSync(path.join(raiz, ".rainforest", "agentes.json")));
+
+  // E o agente que NÃO está no padrão agora PASSA como não-declarado — sem isso
+  // o caso acima provaria só que a portaria parou de negar, não que ela leu o
+  // padrão certo.
+  const r2 = rodaHook(raiz, JSON.stringify({
+    session_id: "teste-4b",
+    tool_input: { subagent_type: "agente-que-nao-existe-em-padrao-nenhum" },
+  }));
+  caso("agente fora do padrao passa com declarado: false", r2.status === 0, `exit=${r2.status}`);
+
+  const logPath = path.join(raiz, ".rainforest", "portaria", "despachos.jsonl");
+  const linhas = fs.readFileSync(logPath, "utf8").trim().split("\n").filter(Boolean);
+  if (linhas.length > 1) {
+    try {
+      const entrada = JSON.parse(linhas[1]); // segunda linha (primeira foi revisor)
+      caso("e marca declarado: false no log", entrada.declarado === false,
+        JSON.stringify(entrada));
+    } catch (e) {
+      caso("e marca declarado: false no log", false, e.message);
+    }
+  }
 
   fs.rmSync(raiz, { recursive: true, force: true });
+}
+
+/* == 4b. Padrão embarcado AUSENTE é instalação quebrada, não decisão ==
+ *
+ * O fixture da D5. A distinção NÃO é o exit code — `negar()` também sai 2, e 2 é
+ * o único código que barra. A distinção é outra, e é o que este caso mede:
+ *
+ *   1. o log de despacho NÃO ganha linha. Uma linha `deny` sobre o `revisor`
+ *      afirmaria que houve decisão sobre aquele agente; não houve.
+ *   2. a mensagem aponta para o PLUGIN, não para o repo do usuário, que não tem
+ *      nada a consertar.
+ *
+ * Roda contra um ESPELHO do plugin, porque o que se apaga é o arquivo do plugin
+ * — apagar o de verdade quebraria a árvore de trabalho.
+ */
+console.log("== 4b. padrao embarcado ausente: falha de instalacao, sem linha no log ==");
+{
+  const espelho = fs.mkdtempSync(path.join(os.tmpdir(), "portaria-espelho-"));
+  fs.cpSync(path.join(__dirname), path.join(espelho, "hooks"), { recursive: true });
+  fs.mkdirSync(path.join(espelho, ".rainforest"), { recursive: true });
+  // ... e NÃO copia o `.rainforest/agentes.padrao.json`. É essa a avaria.
+
+  const raiz = caixa();
+  iniciarGit(raiz, "fluxo/teste");
+  criarEstadoAtivo(raiz, "teste", "revisar");
+
+  const dados = fs.mkdtempSync(path.join(os.tmpdir(), "portaria-nucleo-dados-"));
+  const logPath = path.join(dados, "portaria", "despachos.jsonl");
+
+  const r = spawnSync(process.execPath, [path.join(espelho, "hooks", "portaria.cjs")], {
+    input: JSON.stringify({ session_id: "teste-4c", tool_input: { subagent_type: "revisor" } }),
+    env: { ...process.env, CLAUDE_PROJECT_DIR: raiz, RFM_ROOT: dados },
+    encoding: "utf8",
+  });
+
+  caso("exit 2 (barra — fail-closed, como qualquer negacao)", r.status === 2, `exit=${r.status}`);
+  caso("stderr aponta para o PADRAO DO PLUGIN, nao para o repo",
+    /agentes\.padrao\.json/.test(r.stderr) && /instalacao incompleta/i.test(r.stderr), r.stderr);
+  caso("stderr nao manda o usuario configurar o repo dele",
+    !/manifesto ausente/i.test(r.stderr), r.stderr);
+  caso("NENHUMA linha no log (falha de instalacao nao vira politica)",
+    !fs.existsSync(logPath), fs.existsSync(logPath) ? fs.readFileSync(logPath, "utf8") : "");
+
+  fs.rmSync(dados, { recursive: true, force: true });
+  fs.rmSync(raiz, { recursive: true, force: true });
+  fs.rmSync(espelho, { recursive: true, force: true });
 }
 
 // == 5. Manifesto JSON inválido → exit 2 (fail-closed) ==
@@ -297,7 +422,7 @@ console.log("== 6. normalizacao de prefixo ==");
   fs.rmSync(raiz, { recursive: true, force: true });
 }
 
-// == 7. Sem estágio ativo → exit 2 ==
+// == 7. Sem estágio ativo → exit 0, fora_de_fluxo: true ==
 console.log("== 7. sem estagio ativo ==");
 {
   const raiz = caixa();
@@ -316,8 +441,22 @@ console.log("== 7. sem estagio ativo ==");
 
   const r = rodaHook(raiz, JSON.stringify(payload));
 
-  caso("exit 2", r.status === 2, `exit=${r.status}`);
-  caso("stderr contém 'estágio ativo'", r.stderr.includes("estágio ativo"), `stderr: ${r.stderr}`);
+  caso("exit 0", r.status === 0, `exit=${r.status}`);
+
+  const logPath = path.join(raiz, ".rainforest", "portaria", "despachos.jsonl");
+  if (fs.existsSync(logPath)) {
+    const linhas = fs.readFileSync(logPath, "utf8").trim().split("\n").filter(Boolean);
+    if (linhas.length > 0) {
+      try {
+        const entrada = JSON.parse(linhas[0]);
+        caso("log marca fora_de_fluxo: true", entrada.fora_de_fluxo === true, `fora_de_fluxo: ${entrada.fora_de_fluxo}`);
+        caso("decisao = 'allow'", entrada.decisao === "allow", `decisao: ${entrada.decisao}`);
+        caso("estagio = 'fora-de-fluxo'", entrada.estagio === "fora-de-fluxo", `estagio: ${entrada.estagio}`);
+      } catch (e) {
+        caso("log é JSON válido", false, e.message);
+      }
+    }
+  }
 
   fs.rmSync(raiz, { recursive: true, force: true });
 }
@@ -458,21 +597,40 @@ console.log("== 11. raiz vem do payload.cwd (CRÍTICO 1) ==");
   //   - process.cwd() em B (seria negado se processo.cwd() fosse usado)
   //   - CLAUDE_PROJECT_DIR apontando para B (seria negado se env fosse usado)
   //   - payload.cwd apontando para A (aprovado, prova que payload vence)
+  // Raiz de dados NEUTRA — nem A nem B. Depois da D6 o log não mora mais dentro
+  // do repositório, então "em qual pasta o arquivo apareceu" parou de responder
+  // qual raiz venceu: com `RFM_ROOT` em A a resposta seria A mesmo que o bug
+  // existisse. Quem responde agora é o campo `repo` da linha, que é o caminho
+  // que a portaria de fato decidiu usar.
+  const dados = fs.mkdtempSync(path.join(os.tmpdir(), "portaria-nucleo-dados-"));
+
   const r = spawnSync(process.execPath, [HOOK], {
     input: JSON.stringify(payload),
     cwd: raizB, // Simula que o processo atual está em outro lugar
-    env: { ...process.env, CLAUDE_PROJECT_DIR: raizB },
+    env: { ...process.env, CLAUDE_PROJECT_DIR: raizB, RFM_ROOT: dados },
     encoding: "utf8",
   });
 
   caso("exit 0 (payload.cwd venceu)", r.status === 0, `exit=${r.status}`);
 
-  const logPathA = path.join(raizA, ".rainforest", "portaria", "despachos.jsonl");
-  caso("log gravado em A (payload.cwd)", fs.existsSync(logPathA));
+  const logPath = path.join(dados, "portaria", "despachos.jsonl");
+  caso("log gravado na raiz de dados", fs.existsSync(logPath), logPath);
 
-  const logPathB = path.join(raizB, ".rainforest", "portaria", "despachos.jsonl");
-  caso("log NÃO gravado em B", !fs.existsSync(logPathB));
+  const linha = fs.existsSync(logPath)
+    ? JSON.parse(fs.readFileSync(logPath, "utf8").trim().split("\n").pop())
+    : null;
+  caso("a linha aponta o repo A (payload.cwd)",
+    !!linha && mesmoCaminho(linha.repo, raizA),
+    linha ? JSON.stringify(linha) : "sem linha");
+  caso("e NÃO o repo B (cwd do processo / env)",
+    !!linha && !mesmoCaminho(linha.repo, raizB),
+    linha ? JSON.stringify(linha) : "sem linha");
 
+  caso("nenhum dos dois repos ganhou pasta .rainforest",
+    !fs.existsSync(path.join(raizA, ".rainforest", "portaria"))
+      && !fs.existsSync(path.join(raizB, ".rainforest", "portaria")));
+
+  fs.rmSync(dados, { recursive: true, force: true });
   fs.rmSync(raizA, { recursive: true, force: true });
   fs.rmSync(raizB, { recursive: true, force: true });
 }
@@ -498,17 +656,28 @@ console.log("== 12. normalização de raiz para subdiretório ==");
     cwd: subdir, // Payload aponta para subdiretório, não raiz
   };
 
+  // Raiz de dados neutra, pelo mesmo motivo do caso 11: o fato a medir é que a
+  // raiz normalizou do subdiretório para o topo do repo, e é o campo `repo` da
+  // linha que diz isso — não a pasta em que o arquivo caiu.
+  const dados = fs.mkdtempSync(path.join(os.tmpdir(), "portaria-nucleo-dados-"));
+
   const r = spawnSync(process.execPath, [HOOK], {
     input: JSON.stringify(payload),
-    env: { ...process.env, CLAUDE_PROJECT_DIR: "" }, // Sem env
+    env: { ...process.env, CLAUDE_PROJECT_DIR: "", RFM_ROOT: dados }, // Sem CLAUDE_PROJECT_DIR
     encoding: "utf8",
   });
 
   caso("exit 0 (mesmo com payload.cwd em subdir)", r.status === 0, `exit=${r.status}`);
 
-  const logPath = path.join(raizA, ".rainforest", "portaria", "despachos.jsonl");
-  caso("log gravado na raiz (normalizado)", fs.existsSync(logPath));
+  const logPath = path.join(dados, "portaria", "despachos.jsonl");
+  const linha = fs.existsSync(logPath)
+    ? JSON.parse(fs.readFileSync(logPath, "utf8").trim().split("\n").pop())
+    : null;
+  caso("a linha grava a raiz do repo, nao o subdiretorio",
+    !!linha && mesmoCaminho(linha.repo, raizA) && !mesmoCaminho(linha.repo, subdir),
+    linha ? JSON.stringify(linha) : "sem linha");
 
+  fs.rmSync(dados, { recursive: true, force: true });
   fs.rmSync(raizA, { recursive: true, force: true });
 }
 
@@ -763,8 +932,7 @@ console.log("== 17. escreve:true exige isolation worktree e recusa name ==");
     linhas.filter((l) => l.decisao === "deny").length === 3,
     JSON.stringify(linhas.map((l) => l.decisao)));
 
-  // A ORDEM das decisoes nao mudou: estagio fora da lista nega ANTES de chegar
-  // na checagem de escrita, mesmo com o despacho perfeito.
+  // Agora estágio fora da lista NÃO nega mais — passa com `estagio_declarado`
   const raiz2 = caixa();
   iniciarGit(raiz2, "fluxo/teste");
   criarEstadoAtivo(raiz2, "teste", "revisar");
@@ -773,27 +941,26 @@ console.log("== 17. escreve:true exige isolation worktree e recusa name ==");
     session_id: "t17b",
     tool_input: { subagent_type: "escritor", isolation: "worktree" },
   }));
-  caso("estagio fora da lista nega mesmo com worktree", foraDoEstagio.status === 2,
+  caso("estagio fora da lista agora passa", foraDoEstagio.status === 0,
     `exit=${foraDoEstagio.status} stderr=${foraDoEstagio.stderr}`);
-  caso("e nega pelo ESTAGIO, nao pelo isolamento",
-    foraDoEstagio.stderr.includes("permitido"), foraDoEstagio.stderr);
+
+  const logPath2 = path.join(raiz2, ".rainforest", "portaria", "despachos.jsonl");
+  const linhas2 = fs.readFileSync(logPath2, "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  const ultima2 = linhas2[linhas2.length - 1];
+  caso("e registra estagio_declarado no log", ultima2.estagio_declarado === "executar",
+    JSON.stringify(ultima2));
 
   fs.rmSync(raiz, { recursive: true, force: true });
   fs.rmSync(raiz2, { recursive: true, force: true });
 }
 
-/* == 18. negacao anterior ao passo 4 registra o estagio REAL ==
+/* == 18. agente nao declarado passa com marca no log ==
  *
- * O log e evidencia de primeira classe (D4), e ate 2026-09-02 toda negacao
- * anterior a resolucao do estagio gravava `estagio: "?"`. Medido no dia do
- * conserto: cinco negacoes de `executor`, em duas sessoes distintas, todas com
- * `?` — nenhuma respondia "em qual estagio", que e um terco da pergunta que
- * o log existe para responder.
- *
- * A ORDEM das decisoes continua a mesma: agente ausente do manifesto nega
- * antes de tudo. O que mudou e so o que se grava.
+ * Agente não declarado deixou de negar e passa com `declarado: false` (issue #264).
+ * O log marca o estagio REAL (não "?"), porque o resolver roda antes da primeira
+ * decisão (desde 2026-09-02). Fora de fluxo, o estagio é "fora-de-fluxo".
  */
-console.log("== 18. deny por agente ausente registra o estagio ativo, nao '?' ==");
+console.log("== 18. agente nao declarado passa com marca no log ==");
 {
   const raiz = caixa();
   iniciarGit(raiz, "fluxo/teste");
@@ -804,16 +971,16 @@ console.log("== 18. deny por agente ausente registra o estagio ativo, nao '?' ==
     session_id: "t18",
     tool_input: { subagent_type: "naodeclarado" },
   }));
-  caso("agente ausente do manifesto continua negando", r.status === 2,
+  caso("agente nao declarado agora passa", r.status === 0,
     `exit=${r.status} stderr=${r.stderr}`);
 
   const logPath = path.join(raiz, ".rainforest", "portaria", "despachos.jsonl");
   const linha = JSON.parse(fs.readFileSync(logPath, "utf8").trim().split("\n").pop());
   caso("e a linha grava o estagio ativo", linha.estagio === "executar", JSON.stringify(linha));
-  caso("e o motivo continua sendo o do manifesto",
-    (linha.motivo || "").includes("manifesto"), JSON.stringify(linha));
+  caso("e marca declarado: false", linha.declarado === false, JSON.stringify(linha));
+  caso("e decisao = 'allow'", linha.decisao === "allow", JSON.stringify(linha));
 
-  // Sem fluxo aberto nenhum, '?' volta a ser a verdade — e nao uma lacuna.
+  // Sem fluxo aberto, o estagio é "fora-de-fluxo"
   const raiz2 = caixa();
   iniciarGit(raiz2, "fluxo/teste");
   criarManifesto(raiz2, manifestoD2({ revisor: { estagios: ["revisar"], escreve: false } }));
@@ -821,10 +988,11 @@ console.log("== 18. deny por agente ausente registra o estagio ativo, nao '?' ==
     session_id: "t18b",
     tool_input: { subagent_type: "naodeclarado" },
   }));
-  caso("sem fluxo aberto tambem nega", r2.status === 2, `exit=${r2.status}`);
+  caso("sem fluxo aberto tambem passa", r2.status === 0, `exit=${r2.status}`);
   const linha2 = JSON.parse(fs.readFileSync(
     path.join(raiz2, ".rainforest", "portaria", "despachos.jsonl"), "utf8").trim().split("\n").pop());
-  caso("e o estagio volta a ser '?' (nao ha estagio)", linha2.estagio === "?", JSON.stringify(linha2));
+  caso("e o estagio e 'fora-de-fluxo'", linha2.estagio === "fora-de-fluxo", JSON.stringify(linha2));
+  caso("e marca fora_de_fluxo: true", linha2.fora_de_fluxo === true, JSON.stringify(linha2));
 
   fs.rmSync(raiz, { recursive: true, force: true });
   fs.rmSync(raiz2, { recursive: true, force: true });

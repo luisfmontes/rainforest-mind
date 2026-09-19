@@ -222,6 +222,46 @@
     {
       "fixture": "sub-como-abreviacao-possessivo.jsonl",
       "motivo": "guarda de regressao do 'sub' como abreviacao. Depois que a forma com espaco passou a exigir o verbo IMEDIATAMENTE antes, nenhuma mutacao de UMA linha reabre estes casos: com artigo ou possessivo no meio, o lookbehind nao casa em nenhuma das variantes mutadas. O que elas guardam e a regra nao voltar a ser uma lista de exclusao."
+    },
+    {
+      "fixture": "aprox-subagentes-exata.jsonl",
+      "motivo": "forma EXATA 'autorizo subagentes' - novo mecanismo de Levenshtein (Tarefa 3). Nenhum mutante de UMA linha desativa apenas a forma exata sem afetar a aproximada; mutantes existentes foram projetados antes da Tarefa 3."
+    },
+    {
+      "fixture": "aprox-subagente-singular.jsonl",
+      "motivo": "forma EXATA singular 'autorizo subagente' - novo mecanismo de Levenshtein (Tarefa 3). Nenhum mutante de UMA linha desativa apenas singular."
+    },
+    {
+      "fixture": "aprox-subagens-dist2.jsonl",
+      "motivo": "forma APROXIMADA 'autorizo subagens' (distancia=2) - novo mecanismo de Levenshtein (Tarefa 3). Nenhum mutante de UMA linha desativa apenas a tolerancia sem afetar outros testes."
+    },
+    {
+      "fixture": "aprox-os-subagens-janela2.jsonl",
+      "motivo": "forma APROXIMADA 'autorizo os subagens' em janela de 2 palavras - novo mecanismo de Levenshtein (Tarefa 3). Nenhum mutante de UMA linha desativa apenas a janela de proximidade."
+    },
+    {
+      "fixture": "aprox-autoriza-subagens.jsonl",
+      "motivo": "forma APROXIMADA com verbo 'autoriza' (conjugacao alternativa) - novo mecanismo de Levenshtein (Tarefa 3). Nenhum mutante de UMA linha desativa apenas esse verbo."
+    },
+    {
+      "fixture": "aprox-subgentes-dist1.jsonl",
+      "motivo": "forma APROXIMADA 'autorizo subgentes' (distancia=1) - novo mecanismo de Levenshtein (Tarefa 3). Nenhum mutante de UMA linha desativa apenas a tolerancia."
+    },
+    {
+      "fixture": "aprox-submarinos-dist5.jsonl",
+      "motivo": "rejeicao de forma distante 'submarinos' (distancia=5 > tolerancia de 2) - guarda de regressao do limite de tolerancia de Levenshtein (Tarefa 3). Nenhum mutante desativa o limite de forma isolada."
+    },
+    {
+      "fixture": "aprox-subir-versao-dist4.jsonl",
+      "motivo": "rejeicao de forma distante 'subir a versao' (distancia=4 > tolerancia de 2) - guarda de regressao do limite de tolerancia de Levenshtein (Tarefa 3). Nenhum mutante desativa o limite de forma isolada."
+    },
+    {
+      "fixture": "aprox-sem-sub.jsonl",
+      "motivo": "rejeicao de texto sem prefixo 'sub' ('autorizo o deploy') - guarda de regressao de que APENAS formas comecadas por 'sub' sao consideradas aproximadas (Tarefa 3). Nenhum mutante desativa essa restricao isoladamente."
+    },
+    {
+      "fixture": "aprox-tool-result.jsonl",
+      "motivo": "rejeicao de tool_result com 'autorizo subagentes' - novo mecanismo de Levenshtein integrado com filtro de origem (Tarefa 3). Nenhum mutante de UMA linha desativa apenas o filtro de origem."
     }
   ]
 }

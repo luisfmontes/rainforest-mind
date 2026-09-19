@@ -1,3 +1,5 @@
+<!-- @categoria: dado -->
+
 # Erros de execução dos vigias
 
 - 2026-08-06 14:52 [vigia-tickets]: WhatsApp bridge offline (HTTPConnectionPool localhost:8765 refused)
@@ -16,3 +18,4 @@
 - 2026-08-28 15:52 [jardineiro-ideias]: backup do FOCO.md falhou (exit 1): erro: não achei o FOCO.md em C:\Projetos\rainforest-mind
 - 2026-08-31 08:00 [sentinela-foco]: send_message falhou na 1a tentativa com account='trabalho' (nao participa do grupo JID <jid>, mesmo sintoma do batedor-repos em 28/08); reenviei com account='pessoal' e funcionou. Grupo e so 'pessoal'.
 - 2026-08-31 09:32 [sentinela-foco]: backup do FOCO.md falhou (exit 1): erro: não achei o FOCO.md em C:\Projetos\rainforest-mind
+- 2026-09-11 12:54 [sentinela-foco]: backup externo falhou (exit 2): System.Management.Automation.RemoteException

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: guia
 /**
  * Hook de SubagentStart: injeta a escada YAGNI em todos os subagentes.
  *

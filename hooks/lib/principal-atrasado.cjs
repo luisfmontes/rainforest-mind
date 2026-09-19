@@ -11,6 +11,12 @@ const { execFileSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
+// Teto de linhas "<caminho> já em origin/main" na injeção; o resto vira uma
+// única linha de resumo (mesmo tratamento que o bloco de sessões já dá aos
+// excedentes). Sem teto, uma rodada com muitos agentes cresce uma linha por
+// worktree e sozinha empurra o foco para baixo do piso (achado da tarefa 17).
+const MAX_WORKTREES_LISTADOS = 2;
+
 // `git worktree list --porcelain` sempre imprime `/` nos caminhos, mesmo no
 // Windows; `path.dirname`/`path.resolve` do módulo `path` (win32) devolvem `\`.
 // Sem normalizar, `wtPath === principal` nunca bate no Windows e o próprio
@@ -168,6 +174,7 @@ function linhas({ cwd }) {
       });
 
       const mergeadas = branchesMergeadas(principal);
+      const jaMescladas = [];
 
       // Parse em blocos: cada bloco é separado por linha vazia
       const blocos = worktreesOutput.split('\n\n').filter((b) => b.trim().length > 0);
@@ -215,8 +222,16 @@ function linhas({ cwd }) {
 
         // Verificar se branch está no set de mergeadas
         if (mergeadas.has(branch)) {
-          resultado.push(`${wtPath} já em origin/main`);
+          jaMescladas.push(`${wtPath} já em origin/main`);
         }
+      }
+
+      const excedente = jaMescladas.length - MAX_WORKTREES_LISTADOS;
+      if (excedente > 0) {
+        resultado.push(...jaMescladas.slice(0, MAX_WORKTREES_LISTADOS));
+        resultado.push(`(+${excedente} worktree(s) já em origin/main — rode o limpar)`);
+      } else {
+        resultado.push(...jaMescladas);
       }
     } catch {
       // erro ao listar worktrees, continua

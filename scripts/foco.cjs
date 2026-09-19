@@ -107,7 +107,13 @@ const TETO_PADRAO = 5000;
 const MIN_ENTRADAS = 1;
 
 const MARCADOR = '\nAvanços:';
-const ENTRADA_DATADA = /\n(?=- \d{4}-\d{2}-\d{2})/;
+// Fronteira de peça: antes de uma entrada DATADA ou antes do PONTEIRO de
+// histórico. O ponteiro precisa da fronteira própria (não só a das entradas)
+// porque `avanco` (Issue #277) pode colocar uma entrada nova IMEDIATAMENTE
+// ACIMA de um ponteiro já existente — sem esta fronteira, a linha do ponteiro
+// gruda na entrada anterior (nada aqui detectava o início dela sozinha) e o
+// re-parse enxerga UMA peça só onde deveriam ser duas.
+const ENTRADA_DATADA = /\n(?=- \d{4}-\d{2}-\d{2}|- \(histórico:)/;
 const DATA_DA_ENTRADA = /^- (\d{4}-\d{2}-\d{2})/;
 
 /** Linha gerada por este script. É reconhecida (e reescrita) a cada rodada. */
@@ -183,19 +189,64 @@ function partirCorpo(corpo) {
 }
 
 /**
- * Do mais recente para o mais antigo, enquanto couber no teto. O que não coube sai
- * na ordem cronológica em que estava — é assim que ele entra no histórico.
+ * Do mais recente para o mais antigo POR DATA, enquanto couber no teto. O que não
+ * coube sai — na ordem física em que estava — para o histórico.
+ *
+ * Issue #290: a versão antiga decidia por POSIÇÃO FÍSICA (`[...entradas].reverse()`,
+ * preservava o fim do bloco, descartava o início), o que só é seguro quando o
+ * arquivo é sempre ascendente (mais antiga no topo, mais nova no fim). O FOCO.md
+ * real do usuário não segue essa convenção — entradas novas entram no TOPO — e a
+ * Issue #277 (`avanco`, abaixo) formaliza esse hábito. Por isso a decisão agora é
+ * pela DATA EFETIVA de cada entrada, não pela posição.
  */
 function escolher(entradas, teto) {
-  const mantidas = [];
+  const indexado = entradas.map((entrada, indice) => ({
+    entrada,
+    indice,
+    data: (entrada.match(DATA_DA_ENTRADA) || [])[1] || '',
+  }));
+
+  // Decide o CONJUNTO mantido por DATA EFETIVA (mais recente primeiro) — não por
+  // posição física. Entrada sem data legível (prosa solta) conta como a mais
+  // antiga de todas, e sai primeiro se o teto apertar.
+  const porData = [...indexado].sort((a, b) => (a.data < b.data ? 1 : a.data > b.data ? -1 : 0));
+
+  const mantidosIdx = new Set();
   let usado = 0;
-  for (const entrada of [...entradas].reverse()) {
-    const custo = bytes(entrada) + 1;
-    if (mantidas.length >= MIN_ENTRADAS && usado + custo > teto) break;
-    mantidas.unshift(entrada);
+  for (const item of porData) {
+    const custo = bytes(item.entrada) + 1;
+    if (mantidosIdx.size >= MIN_ENTRADAS && usado + custo > teto) break;
+    mantidosIdx.add(item.indice);
     usado += custo;
   }
-  return { mantidas, movidas: entradas.slice(0, entradas.length - mantidas.length), usado };
+
+  // Remonta o conjunto mantido — e o movido — preservando a ORDEM FÍSICA ORIGINAL
+  // das entradas escolhidas (não a ordem de data), para não embaralhar o arquivo.
+  const mantidas = indexado.filter((item) => mantidosIdx.has(item.indice)).map((item) => item.entrada);
+  const movidas = indexado.filter((item) => !mantidosIdx.has(item.indice)).map((item) => item.entrada);
+  return { mantidas, movidas, usado };
+}
+
+/**
+ * Reconstitui `entradasOriginais` puxando, para cada posição, do topo de
+ * `mantidas` ou de `movidas` — o dono que casar byte a byte naquela posição.
+ * Generaliza a antiga conferência por concatenação (que assumia `movidas` como
+ * PREFIXO físico e `mantidas` como SUFIXO): com a decisão por data (acima), os
+ * dois grupos podem intercalar fisicamente, e a prova de integridade não pode
+ * mais ser só `[...movidas, ...mantidas].join('\n') === entradas.join('\n')`.
+ * Devolve `null` quando a partição não bate (perda, duplicata ou entrada fora
+ * de ordem) — o chamador aborta sem escrever.
+ */
+function reconstituirPorOrdemFisica(entradasOriginais, mantidas, movidas) {
+  const filaMantidas = [...mantidas];
+  const filaMovidas = [...movidas];
+  const resultado = [];
+  for (const entrada of entradasOriginais) {
+    if (filaMantidas.length && filaMantidas[0] === entrada) resultado.push(filaMantidas.shift());
+    else if (filaMovidas.length && filaMovidas[0] === entrada) resultado.push(filaMovidas.shift());
+    else return null;
+  }
+  return filaMantidas.length === 0 && filaMovidas.length === 0 ? resultado : null;
 }
 
 function datasDe(entradas) {
@@ -256,8 +307,8 @@ function rotacionar() {
   // --- a conferência que autoriza a escrita -------------------------------------
   // Nada de "confio que o split devolveu tudo": as entradas mantidas mais as movidas
   // têm de reconstituir, byte a byte, a lista original. Divergiu, aborta.
-  const reconstituido = [...movidas, ...mantidas].join('\n');
-  if (reconstituido !== entradas.join('\n')) {
+  const reconstituido = reconstituirPorOrdemFisica(entradas, mantidas, movidas);
+  if (!reconstituido || reconstituido.join('\n') !== entradas.join('\n')) {
     morrer('conferência falhou: mantidas + movidas não reconstituem as entradas originais. Nada foi escrito.');
   }
 
@@ -310,6 +361,110 @@ function concluir(relato, msg, movidas = []) {
   if (relato.jaNoHistorico) {
     console.log(`\n(${relato.jaNoHistorico} entrada(s) já estavam no AVANCOS.md e não foram duplicadas.)`);
   }
+}
+
+/** `AAAA-MM-DD` de hoje, sempre do relógio — `avanco` não aceita `--data`. */
+function dataDeHoje() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** Monta a linha da entrada nova no formato que `partirCorpo`/`rotacionar` já entendem. */
+function montarEntradaAvanco(texto, contexto) {
+  const sufixo = contexto ? ` (sessão do \`${contexto}\`)` : '';
+  return `- ${dataDeHoje()}${sufixo}: ${texto}`;
+}
+
+// ============================================================================
+// Issue #277 — `avanco`: registra o avanço por script, em vez de editar o
+// FOCO.md à mão (a regra 5 pede a data; a regra 17 proíbe editar à mão).
+// ============================================================================
+//
+// Insere a entrada nova no TOPO do bloco "Avanços:" (mesma posição em que as
+// entradas novas já entram no arquivo real do usuário), acima de qualquer
+// ponteiro de histórico existente. Antes de gravar, RELÊ o texto que seria
+// escrito com `recortarBloco`+`partirCorpo` — mesma disciplina de `rotacionar`
+// (linhas 256-262 daquele comando): se a releitura não bater EXATAMENTE com a
+// entrada pretendida mais as originais intactas, aborta sem tocar em disco.
+//
+// Depois de gravar, encaixa `rotacionar` (a correção da Issue #290, acima, é o
+// que garante que a entrada recém-escrita — sempre a mais recente por data —
+// sobrevive à rotação em vez de ser ela quem sai).
+function avanco() {
+  const raiz = valorDe('raiz') || RAIZ_PADRAO;
+  const contexto = valorDe('contexto');
+  const teto = Number(valorDe('teto') || TETO_PADRAO);
+  if (!Number.isFinite(teto) || teto <= 0) morrer('--teto precisa ser um número de bytes positivo');
+
+  const texto = process.argv[3];
+  if (!texto || texto.startsWith('--')) {
+    morrer('uso: node scripts/foco.cjs avanco "<texto>" [--contexto "<slug>"] [--aplicar] [--raiz DIR] [--teto N] [--json]');
+  }
+
+  const alvoFoco = path.join(raiz, 'FOCO.md');
+  if (!fs.existsSync(alvoFoco)) morrer(`não achei o FOCO.md em ${raiz}`);
+
+  const original = fs.readFileSync(alvoFoco, 'utf8');
+  const bloco = recortarBloco(original);
+  if (!bloco) morrer('FOCO.md sem bloco "Avanços:" — declare o foco (com um bloco "Avanços:") antes de registrar avanço.');
+
+  const { entradas, ponteiroAntigo } = partirCorpo(bloco.corpo);
+  const novaEntrada = montarEntradaAvanco(texto, contexto);
+
+  // Nova entrada no TOPO, acima de qualquer ponteiro existente, entradas originais
+  // depois — na mesma ordem física em que já estavam.
+  const corpoNovo = `\n${[novaEntrada, ponteiroAntigo, ...entradas].filter(Boolean).join('\n')}\n`;
+  const focoDepois = bloco.cabeca + corpoNovo + bloco.cauda.replace(/^\n*/, '\n');
+
+  // --- a conferência que autoriza a escrita, ANTES de gravar qualquer byte ------
+  const blocoRelido = recortarBloco(focoDepois);
+  const relido = blocoRelido ? partirCorpo(blocoRelido.corpo) : null;
+  const bateuContagem = relido && relido.entradas.length === entradas.length + 1;
+  const bateuEntradaNova = bateuContagem && relido.entradas[0] === novaEntrada;
+  const bateuRestante = bateuContagem && relido.entradas.slice(1).join('\n') === entradas.join('\n');
+  if (!bateuEntradaNova || !bateuRestante) {
+    morrer('conferência falhou: a releitura não bate com a entrada pretendida mais as originais intactas. Nada foi escrito.');
+  }
+
+  // Prévia do que `rotacionar`, encadeado, moveria — sobre o corpo COM a entrada
+  // nova, sem tocar em disco (o quadro completo que a pessoa precisa pra decidir
+  // se aplica: sem isto ela aplicaria sem saber que o avanço seria rotacionado
+  // para fora na mesma hora).
+  const previa = escolher([novaEntrada, ...entradas], teto);
+
+  if (!tem('aplicar')) {
+    if (tem('json')) {
+      console.log(JSON.stringify({
+        raiz, foco: alvoFoco, aplicado: false,
+        entrada: novaEntrada, moveriaRotacionar: previa.movidas,
+      }, null, 2));
+      return;
+    }
+    console.log('entrada que seria escrita:');
+    console.log(`  ${novaEntrada}`);
+    console.log('');
+    if (previa.movidas.length) {
+      console.log(`rotacionar, encadeado, moveria ${previa.movidas.length} entrada(s) para AVANCOS.md:`);
+      for (const e of previa.movidas) console.log(`  ${e.split('\n')[0].slice(0, 88)}`);
+    } else {
+      console.log('rotacionar, encadeado, não moveria nenhuma entrada (dentro do teto).');
+    }
+    console.log('');
+    console.log('Nada foi escrito. Rode com --aplicar para valer.');
+    return;
+  }
+
+  gravar(alvoFoco, focoDepois);
+
+  if (!tem('json')) {
+    console.log(`avanço gravado em ${alvoFoco}:`);
+    console.log(`  ${novaEntrada}`);
+    console.log('');
+  }
+
+  // Encadeia rotacionar: mesmos --raiz/--teto/--aplicar/--json já estão em
+  // process.argv (valorDe/tem os leem direto de lá, independente do comando).
+  rotacionar();
 }
 
 /**
@@ -702,10 +857,12 @@ function separar() {
 function main() {
   const comando = process.argv[2];
   if (comando === 'rotacionar') return rotacionar();
+  if (comando === 'avanco') return avanco();
   if (comando === 'separar') return separar();
   if (comando === 'backup') return backup();
   if (comando === 'caminho') return caminho();
   console.error('uso: node scripts/foco.cjs rotacionar [--aplicar] [--teto N] [--raiz DIR] [--json]');
+  console.error('     node scripts/foco.cjs avanco "<texto>" [--contexto "<slug>"] [--aplicar] [--raiz DIR] [--teto N] [--json]');
   console.error('     node scripts/foco.cjs separar [--aplicar] [--raiz DIR] [--json]');
   console.error('     node scripts/foco.cjs backup [--teto N] [--raiz DIR] [--json]');
   console.error('     node scripts/foco.cjs caminho [--raiz DIR] [--json]');
@@ -714,7 +871,8 @@ function main() {
 
 if (require.main === module) main();
 module.exports = {
-  rotacionar, separar, backup, caminho, main,
+  rotacionar, avanco, separar, backup, caminho, main,
   dividirFoco, dividirAtivo, dividirPorParagrafo, medirAjusteIdentidade,
+  escolher, reconstituirPorOrdemFisica, montarEntradaAvanco,
   RAIZ_PADRAO,
 };

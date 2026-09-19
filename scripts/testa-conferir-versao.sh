@@ -54,6 +54,42 @@ montar() {
   done
 }
 
+# Monta um repo em que o bump chega na base POR MERGE, que e como ele chega de
+# verdade: trabalha-se numa branch de fluxo, o bump e o ultimo commit dela, e o
+# PR e mesclado. O commit do bump fica sendo SEGUNDO pai do merge, fora da linha
+# de primeiro pai da base.
+#
+# Sem ancora, `--first-parent` pula o bump e conta o MERGE no lugar dele — e o
+# merge nao e acumulo desde o bump, e a entrega do bump. O erro era de exatamente
+# 1, em todo fluxo, sempre, porque todo bump chega assim.
+# $1 = pasta, $2 = quantos commits de trabalho DEPOIS do merge
+montar_bump_por_merge() {
+  local R="$1" depois="$2" i
+  mkdir -p "$R/.claude-plugin" "$R/scripts"
+  git init -q "$R"
+  git -C "$R" config user.email t@t; git -C "$R" config user.name t
+  git -C "$R" config commit.gpgsign false
+  cp "$CHECADOR" "$R/scripts/conferir-versao.cjs"
+  printf '{\n  "name": "p",\n  "version": "0.1.0"\n}\n' > "$R/.claude-plugin/plugin.json"
+  git -C "$R" add scripts .claude-plugin; git -C "$R" commit -qm "andaime com Versao 0.1.0"
+
+  # branch de fluxo: trabalho + bump no fim dela
+  git -C "$R" checkout -q -b fluxo/teste
+  echo trabalho > "$R/trabalho.txt"
+  git -C "$R" add trabalho.txt; git -C "$R" commit -qm "trabalho do fluxo"
+  printf '{\n  "name": "p",\n  "version": "0.2.0"\n}\n' > "$R/.claude-plugin/plugin.json"
+  git -C "$R" add .claude-plugin/plugin.json; git -C "$R" commit -qm "Versao 0.2.0"
+
+  # merge sem fast-forward: o bump vira segundo pai
+  git -C "$R" checkout -q -
+  git -C "$R" merge -q --no-ff -m "Merge do fluxo/teste" fluxo/teste
+
+  for ((i=1; i<=depois; i++)); do
+    echo "$i" > "$R/depois-$i.txt"
+    git -C "$R" add "depois-$i.txt"; git -C "$R" commit -qm "entrega $i"
+  done
+}
+
 # Monta um par de repositorios para testar a comparacao com `origin/main`: um
 # "remoto" com o manifesto na versao $2, e um local com `origin` apontando pra
 # ele (fetch ja feito, entao `origin/main` resolve) e o manifesto na versao $3.
@@ -140,6 +176,21 @@ if [ "$real" = "$esperado" ]; then
 else
   falhou=$((falhou+1)); echo "  FALHA contou $real onde o ultimo bump deixa $esperado — pickaxe achando o commit errado"
 fi
+
+echo
+echo "== bump que chegou por merge: o merge nao e acumulo, e a entrega =="
+# Achado em 14/09/2026, fechando este proprio fluxo: 5 commits de trabalho e o
+# checador dizia 6. O sexto era o commit de merge do PR anterior, aquele que
+# ENTREGOU o bump. Todo bump chega assim, entao o teto efetivo era o declarado
+# menos um, para sempre.
+RM0="$RAIZ/merge-zero"; montar_bump_por_merge "$RM0" 0
+RM3="$RAIZ/merge-tres"; montar_bump_por_merge "$RM3" 3
+checa "logo apos o merge do bump conta 0, nao 1"  0 0 "$RM0" "scripts/conferir-versao.cjs"
+checa "3 commits apos o merge do bump conta 3"    0 3 "$RM3" "scripts/conferir-versao.cjs"
+# E o caso simetrico continua valendo: bump commitado DIRETO na linha (sem
+# merge) tem de contar do proprio bump, nao do commit seguinte — a ancora nao
+# pode passar a subtrair um de todo mundo.
+checa "bump direto na linha continua contando do bump" 0 2 "$R2" "scripts/conferir-versao.cjs"
 
 echo
 echo "== o teto decide, nas duas direcoes =="
@@ -277,6 +328,56 @@ else
   falhou=$((falhou+1)); echo "  FALHA versao maior que a da main passa: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
 fi
 
+echo
+echo "== bump PENDENTE desarma o teto; sem bump pendente ele continua mordendo =="
+# Achado fechando o fluxo da portaria, em 14/09/2026. O teto recusou um `fechar`
+# com "5 commits desde o bump, e o teto e 5" — e os cinco eram o merge da main, um
+# conserto de README, a rodada de revisar, um portao novo e uma emenda de plano,
+# TODOS destinados a 1.14.0, que ainda nao estava na main.
+#
+# A pergunta que o script faz esta na propria mensagem de recusa: "o trabalho que
+# esta aqui vai chegar na maquina de alguem?". Se a versao declarada ja SUPERA a
+# de origin/main, existe bump nao publicado e todo o trabalho desta branch sai
+# sob ele — nada represado, que e a unica coisa que o teto impede. Sem isso o
+# teto mordia todo fluxo com rodada de revisao DEPOIS do bump, e o proprio bump
+# nao tinha como absorver os commits que ele mesmo provocou.
+#
+# Os dois casos andam em par de proposito: o primeiro so vale como prova porque
+# o segundo mostra que o teto NAO foi afrouxado — ele continua recusando quando
+# versao local e remota empatam, que e o caso para o qual ele foi feito.
+PEND="$RAIZ/bump-pendente";  montar_com_origin "$PEND" "1.3.0" "1.4.0"
+EMPAT="$RAIZ/sem-bump";      montar_com_origin "$EMPAT" "1.3.0" "1.3.0"
+for d in "$PEND" "$EMPAT"; do
+  for i in 1 2 3 4 5 6; do
+    echo "$i" > "$d/depois-$i.txt"
+    git -C "$d" add "depois-$i.txt"; git -C "$d" commit -qm "conserto $i do revisar"
+  done
+done
+
+saida=$(cd "$PEND" && node "scripts/conferir-versao.cjs" --teto 5 2>&1); rc=$?
+if [ "$rc" = 0 ] && printf '%s' "$saida" | grep -qF "nao se aplica"; then
+  ok=$((ok+1)); echo "  ok   6 commits acima do teto passam quando ha bump pendente (exit $rc)"
+else
+  falhou=$((falhou+1)); echo "  FALHA bump pendente devia desarmar o teto: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
+fi
+
+saida=$(cd "$EMPAT" && node "scripts/conferir-versao.cjs" --teto 5 2>&1); rc=$?
+if [ "$rc" = 2 ]; then
+  ok=$((ok+1)); echo "  ok   sem bump pendente, o teto continua recusando (exit $rc)"
+else
+  falhou=$((falhou+1)); echo "  FALHA sem bump pendente o teto tinha de recusar: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
+fi
+
+# E onde NAO da para comparar (fixture sem remoto), o teto volta a morder: erra
+# para o lado de recusar, nunca para o de deixar passar.
+saida=$(cd "$R7" && node "scripts/conferir-versao.cjs" --teto 7 2>&1); rc=$?
+if [ "$rc" = 2 ]; then
+  ok=$((ok+1)); echo "  ok   sem origin/main resolvivel, o teto morde igual (exit $rc)"
+else
+  falhou=$((falhou+1)); echo "  FALHA sem comparacao possivel o teto tinha de morder: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
+fi
+
+echo
 # Parado NA main, em sincronia: empatar com origin/main e o estado CORRETO de
 # quem acabou de publicar, e o script nao pode acusar. Este caso existe porque o
 # falso positivo aconteceu de verdade: minutos depois de a comparacao entrar na
@@ -329,6 +430,50 @@ else
   else
     falhou=$((falhou+1)); echo "  FALHA com commit a frente e versao parada: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
   fi
+fi
+
+echo
+echo "== so estado de fluxo mudou: nao ha o que lancar =="
+# O commit do `marcar fechar ok` so existe depois do merge e chega num PR proprio
+# (PR #286, 2026-09-16). Exigir bump para ele e' exigir release de um arquivo que
+# nada executa. A contraprova e' o que impede a isencao de virar buraco: estado
+# MAIS qualquer outro arquivo continua recusando.
+SO_ESTADO="$RAIZ/so-estado"
+git clone -q "$EM_DIA_REMOTO" "$SO_ESTADO"
+git -C "$SO_ESTADO" config user.email t@t; git -C "$SO_ESTADO" config user.name t
+git -C "$SO_ESTADO" config commit.gpgsign false
+mkdir -p "$SO_ESTADO/docs/rainforest/estado"
+echo '{"fechar":{"status":"ok"}}' > "$SO_ESTADO/docs/rainforest/estado/fluxo-x.json"
+git -C "$SO_ESTADO" add docs; git -C "$SO_ESTADO" commit -qm "estado: fecha fluxo-x"
+saida=$(cd "$SO_ESTADO" && node "scripts/conferir-versao.cjs" --teto 999 2>&1); rc=$?
+if [ "$rc" = 0 ] && printf '%s' "$saida" | grep -qF "nada que o cache execute"; then
+  ok=$((ok+1)); echo "  ok   so docs/rainforest/estado/ a frente nao exige bump (exit $rc)"
+else
+  falhou=$((falhou+1)); echo "  FALHA so estado a frente: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
+fi
+
+echo trabalho > "$SO_ESTADO/scripts/outro.cjs"
+git -C "$SO_ESTADO" add scripts; git -C "$SO_ESTADO" commit -qm "estado e codigo juntos"
+saida=$(cd "$SO_ESTADO" && node "scripts/conferir-versao.cjs" --teto 999 2>&1); rc=$?
+if [ "$rc" = 2 ] && printf '%s' "$saida" | grep -qF "nao e' maior"; then
+  ok=$((ok+1)); echo "  ok   estado MAIS codigo continua recusando (exit $rc)"
+else
+  falhou=$((falhou+1)); echo "  FALHA estado mais codigo: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
+fi
+
+# Prefixo, nao substring: um arquivo cujo caminho so CONTEM o nome da pasta nao isenta.
+SO_ESTADO2="$RAIZ/so-estado-falso"
+git clone -q "$EM_DIA_REMOTO" "$SO_ESTADO2"
+git -C "$SO_ESTADO2" config user.email t@t; git -C "$SO_ESTADO2" config user.name t
+git -C "$SO_ESTADO2" config commit.gpgsign false
+mkdir -p "$SO_ESTADO2/hooks/docs/rainforest/estado"
+echo x > "$SO_ESTADO2/hooks/docs/rainforest/estado/a.cjs"
+git -C "$SO_ESTADO2" add hooks; git -C "$SO_ESTADO2" commit -qm "parece estado"
+saida=$(cd "$SO_ESTADO2" && node "scripts/conferir-versao.cjs" --teto 999 2>&1); rc=$?
+if [ "$rc" = 2 ]; then
+  ok=$((ok+1)); echo "  ok   caminho que so contem docs/rainforest/estado/ nao isenta (exit $rc)"
+else
+  falhou=$((falhou+1)); echo "  FALHA caminho parecido isentou: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
 fi
 
 echo
@@ -420,6 +565,19 @@ if printf '%s' "$saida" | grep -qF "aviso: fetch falhou"; then
   ok=$((ok+1)); echo "  ok   (c) remoto inacessivel imprime aviso (exit $rc)"
 else
   falhou=$((falhou+1)); echo "  FALHA (c) remoto inacessivel: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
+fi
+
+echo
+echo "== sem origin/main resolvivel: saida diz que pulou a comparacao =="
+# Repositorio sem remoto configurado nao tem origin/main para comparar. O script
+# nao bloqueia (exit 0), mas imprime que pulou a comparacao. Este caso NAO e
+# sobre teto (o outro "sem origin/main" acima o testa com --teto). Esta e a
+# afirmacao de que a falta de remoto devolve SUCESSO COM AVISO, nunca RECUSA.
+saida=$(cd "$R0" && node "scripts/conferir-versao.cjs" --teto 999 2>&1); rc=$?
+if [ "$rc" = 0 ] && printf '%s' "$saida" | grep -qF "nao comparei com origin/main"; then
+  ok=$((ok+1)); echo "  ok   (d) sem origin/main sai 0 e cita que pulou (exit $rc)"
+else
+  falhou=$((falhou+1)); echo "  FALHA (d) sem origin/main: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
 fi
 
 echo
