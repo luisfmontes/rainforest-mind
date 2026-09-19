@@ -478,8 +478,21 @@ desativada em 14/09 por gravar dentro dos repositórios; o caminho do Codex é
 outro e continua ativo. Não foi mexido nada: é ambiente do usuário, e a decisão
 é dele.
 
-## Proibição de publicação
+## Proibição de publicação — corrigida pelo usuário em 2026-09-19
 
-Esta entrega permanece local. **Não execute push, merge na `main`, PR, release
-ou qualquer publicação sem aval explícito do usuário.** Aprovações anteriores
-para continuar a execução local não autorizam publicar nem alterar a `main`.
+**O que o usuário quis dizer, e o que este handover dizia.** A restrição sempre
+foi sobre a `main`: a entrega não vai para a `main` sem aval. As versões
+anteriores desta seção generalizaram isso para "não execute push", o que é
+outra coisa — enviar a branch para o `origin` não publica nada na `main`, e o
+usuário confirmou que nunca foi essa a intenção.
+
+Vale, portanto:
+
+- **Proibido sem aval explícito:** merge na `main`, PR, release, alteração da
+  `main` por qualquer caminho, e remoção da worktree de entrega.
+- **Liberado:** commit na branch de entrega e `git push` da própria branch para
+  o `origin`. A branch `codex/multihost-1.13` foi enviada em 2026-09-19, depois
+  dessa correção.
+
+As frases anteriores que dizem "não faça push" ficam no texto como registro do
+que foi combinado em cada momento, mas **esta seção é a que vale**.
