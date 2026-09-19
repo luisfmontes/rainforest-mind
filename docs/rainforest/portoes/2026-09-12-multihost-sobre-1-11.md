@@ -2140,6 +2140,65 @@ node scripts/testa-plugin-codex.cjs --contrato-adaptador-hook   exit=0
 node scripts/testa-plugin-codex.cjs --contrato-marketplace      exit=0
 ```
 
+### Mutação nesta iteração, e por que a lista de 2026-09-14 continua valendo
+
+`catraca_mutacao` permanece em `2026-09-14`: o campo registra quando
+`exigir --estagio executar` armou a catraca, não quando os mutantes foram
+exercitados. Uma primeira gravação desta iteração o moveu para `2026-09-19` por
+leitura errada do campo e foi corrigida; o comportamento do gate é idêntico nos
+dois valores, porque ambos são posteriores a `FIXTURE_EXIGIDA_DESDE`
+(`2026-08-23`), mas o registro estava falso.
+
+A lista de mutantes foi herdada sem alteração, e isso é deliberado: a árvore de
+produto é byte a byte a mesma do HEAD em que eles rodaram. De
+`52245a7fd0e7c6f7a74dd56b6a7310bd1fb753cc` até aqui mudaram somente documentos
+da lista fechada de governança da D9 — nenhum arquivo que um mutante alcança.
+Refazer a bateria de mutação mediria exatamente os mesmos bytes.
+
+Além disso, o mutante da T3 **foi** reexercitado nesta iteração, porque
+`scripts/testa-plugin-codex.sh` o executa dentro do modo
+`--contrato-adaptador-hook`:
+
+```text
+ok mutacao handler Codex -> core direto: vermelho e bytes restaurados
+```
+
+### Distância até a `origin/main`
+
+Fato registrado aqui porque muda o que `fechar` vai custar, não porque mude esta
+entrega:
+
+```text
+git ls-remote --heads origin codex/multihost-1.13   -> (vazio; a branch nunca foi enviada)
+git rev-list --count HEAD..origin/main              -> 185
+origin/main .claude-plugin/plugin.json              -> 1.19.1
+base desta entrega (068468fb)                       -> 1.13.2
+```
+
+A base continua ancestral do HEAD e a entrega continua correta sobre ela, mas a
+`origin/main` avançou seis versões menores desde o ancoramento. Qualquer
+integração futura exige repetir a análise de sobreposição e reancoragem que o
+handover já condiciona — não é trabalho desta sessão nem do estágio `verificar`.
+
+### Projeção reconferida no HEAD entregue
+
+```text
+head=a8fcfd6f18755d2d25b4993b4a16533af03362c0
+tracked_total=703
+cache_total_force=704
+missing_count=0
+sha_divergent_count=0
+extra_count=1
+```
+
+Idêntica à medição feita em `d1cfe613`, como a D9 prevê. O script que produz
+esses números foi escrito no scratchpad da sessão e **não** é versionado; ele
+compara o blob SHA-1 do Git contra os bytes em disco em vez de reidratar o blob
+por redirecionamento de shell, porque no PowerShell 5.1 redirecionar saída
+binária de executável nativo re-codifica o conteúdo e falsearia o hash. A
+concordância com o método das iterações 6 e 7, que era outro, é parte da
+evidência.
+
 ### Ausência de publicação
 
 Nenhum push, merge, PR, release, publicação, rebase, mudança na `main` ou
