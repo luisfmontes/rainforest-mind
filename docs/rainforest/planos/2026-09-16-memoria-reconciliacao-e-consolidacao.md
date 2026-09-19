@@ -252,3 +252,16 @@ A tarefa 4 está escrita com a recomendação e **só ela muda** se a resposta f
 as tarefas 1, 2, 3 e 7 não dependem da Q1. Respondida, o D7 do design ganha a linha
 do agrupamento de recurso nesta mesma branch, para o `revisar` ver design e plano
 dizendo a mesma coisa.
+
+### 9. Consertar as cinco regressões que a varredura completa acusou [tipo: implementar]
+atende: D1, D5
+arquivos: `scripts/memoria.cjs`, `hooks/memoria-manutencao-session-start.cjs`, `scripts/testa-memoria-somente-leitura.sh`, `hooks/testa-ferramentas-nao-toca-abertura.sh`, `hooks/testa-titulo-sessao-registro.sh`, `scripts/testa-conferir-categoria.sh`, `scripts/testa-importar-claude-mem.sh`
+depende de: 8
+paralela: nao
+mutacao:
+  arquivo: `scripts/memoria.cjs`
+  de: `  if (!fs.existsSync(caminhoDb)) {`
+  para: `  if (false) {`
+  bateria: `bash scripts/testa-memoria-somente-leitura.sh`
+  fixture: `testa-memoria-somente-leitura.sh, caso "rainforest.db foi CRIADO pela abertura — a fase 1 escreveu (armadilha do iniciar)"`
+pronto quando: as tarefas 1 a 8 entregaram com as baterias delas verdes, mas a varredura completa do repo acusou **cinco** vermelhas — todas verdes em `origin/main`, portanto regressões desta entrega. A tarefa fecha quando `bash scripts/varrer-baterias.sh` traz `as 124 baterias passaram` e sai 0, **e** o invariante quebrado se prova pelo comportamento, não pelo teste: num sandbox **sem** `rainforest.db`, disparar o hook de manutenção e esperar o filho destacado deixa o arquivo **ainda inexistente** — provado por `printf '%s' '<payload real de SessionStart>' | RFM_ROOT=<sandbox> node hooks/memoria-manutencao-session-start.cjs && sleep 6 && (test -f <sandbox>/rainforest.db && echo CRIADO || echo "nao existe")` imprimindo `nao existe`, enquanto num sandbox **com** banco não migrado a mesma manutenção migra e o `manutencao.log` chega em `manutencao: completa`. A separação que rege o conserto: contagem que envelheceu porque o repo cresceu legitimamente (um `SessionStart` a mais em `hooks.json`, peças novas em `scripts/`) se atualiza **no teste**; invariante que a entrega quebrou — a abertura da sessão passando a escrever — se conserta **no código**, nunca afrouxando a bateria que o protege

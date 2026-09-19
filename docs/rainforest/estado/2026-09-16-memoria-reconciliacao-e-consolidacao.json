@@ -221,7 +221,11 @@
     ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "pendente",
+    "snapshot": {
+      "head": "46f93fec692c525e947d85f09ee76e4609f28c99",
+      "caminhos_sujos": []
+    }
   },
   "verificar": {
     "status": "pendente"
