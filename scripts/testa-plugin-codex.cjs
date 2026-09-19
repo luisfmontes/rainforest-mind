@@ -24,11 +24,16 @@ const DOCUMENTOS_DO_FLUXO = new Set([
   'docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md',
 ]);
 
-// Corpos na base 4028a28513d6ecc7247fe3d76c673a0928a0dd09,
-// medidos antes da normalizacao exclusiva do frontmatter.
+// Corpos medidos na base 2adbae270782a5a36512c28a5c2a5354ba05c73e (origin/main,
+// versao 1.19.2), antes da normalizacao exclusiva do frontmatter. Reancorados em
+// 2026-09-19: a base anterior era 4028a285, e entre ela e esta a main reescreveu o
+// corpo de fechar (quatro para seis passos) e o de modo-dev. Esta ancora nao
+// descreve o que a entrega escreveu — descreve o que ela NAO tocou, entao o valor
+// certo e sempre o da main, e um vermelho aqui significa ou corpo alterado por
+// engano, ou base velha depois que a main andou.
 const ANCORA_CORPOS_SKILLS = {
-  fechar: { bytes: 7654, sha256: '28277e22ad12f08604e3666f6466e7d50d66fe3313d86ab173ca87bf60ab7966' },
-  'modo-dev': { bytes: 13268, sha256: '23693addf6004160f1fb993b0b842273bf6954166609981e755b173b19b3464d' },
+  fechar: { bytes: 9986, sha256: 'a2f231f8137431da4e1b998b75d361c18f228b13ccc2cffbd4d5432c4de5a0f8' },
+  'modo-dev': { bytes: 13414, sha256: '281949f83cc647685a715e7dffae00fe082f6045adb0e16ad34fbbd3452aefa2' },
   'montar-corpus': { bytes: 2935, sha256: 'f21d9af8be400bd8222f272b98ece70c1d01c92865e41f418340410b69bb11ab' },
   regua: { bytes: 13394, sha256: '6022ac66fddd981592838ad6006e57ea3057a60fcbfad835b228d4fa4cfe9484' },
 };
