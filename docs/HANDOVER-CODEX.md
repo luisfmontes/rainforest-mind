@@ -1,5 +1,12 @@
 # Handover Codex — Rainforest Mind multihost 1.13.2
 
+> **Atualizado em 2026-09-19, depois da sessão Claude.** A contraprova do hook
+> foi concluída e passou, a instalação final limpa foi restaurada e `executar`
+> fechou de novo em `ok`, 9/9. As seções abaixo até "Piloto histórica"
+> descrevem o estado **anterior** a essa sessão e ficam como registro; o estado
+> corrente está em "Estado em 2026-09-19, depois da sessão Claude", no fim
+> deste arquivo, e é por onde o Codex deve começar.
+
 Atualizado em 2026-09-19. Este documento retoma a entrega local que adapta o
 Rainforest Mind ao Codex sem bifurcar o produto.
 
@@ -278,7 +285,11 @@ git -C $entrega show "$piloto`:.claude-plugin/plugin.json" |
   Select-String '"version": "1.7.0"'
 ```
 
-## Próximo passo: concluir a contraprova e restaurar a instalação final
+## Próximo passo (CONCLUÍDO em 2026-09-19): contraprova e instalação final
+
+> Esta seção foi executada integralmente pela sessão Claude de 2026-09-19.
+> Fica como registro do que foi pedido e de como foi feito; o resultado está
+> na seção final deste arquivo e no portão do fluxo.
 
 Execute os comandos a partir da worktree de entrega. `estado.cjs` resolve o
 slug relativamente ao cwd; executá-lo a partir da raiz principal produz o falso
@@ -371,6 +382,101 @@ Feche novamente executar com evidência literal e pare. Não marque revisar nem
 verificar: o Codex fará a revisão final e a verificação. Não publique, não faça
 push/PR/merge/release, não altere a main e não remova a worktree de entrega.
 ```
+
+## Estado em 2026-09-19, depois da sessão Claude
+
+A contraprova foi concluída e **passou**, a instalação final foi restaurada e
+`executar` fechou de novo em `ok`, 9/9. A evidência literal está na seção
+"Tarefa 6/7 — iteração 8" do portão.
+
+O que esta sessão fez, em ordem:
+
+1. Repetiu o teste do hook na fixture host-owned, ainda com o plugin
+   diagnóstico: `hook: PreToolUse Blocked`, `git` nunca iniciou, a fixture
+   continuou com `?? deny-control.txt`, nada staged e sem `.git/index.lock`.
+   O `core-diagnostic.jsonl` registrou `gitDir=".git"`; o `dubious ownership`
+   não reapareceu e o `git-error-diagnostic.jsonl` não cresceu. Fica confirmado
+   que a reprovação anterior de `verificar` era falso vermelho de propriedade de
+   diretório, não defeito do gate.
+2. Removeu a instalação diagnóstica e reinstalou pelo export limpo
+   `rainforest-mind-export-1.13.2`. `codex plugin list` mostra a versão exata
+   `1.13.2`, sem cachebuster.
+3. **Repetiu a contraprova com a instalação final limpa**, porque a prova do
+   passo 1 media o pacote diagnóstico e não o que será entregue. Mesmo
+   resultado: `PreToolUse Blocked`, `COUNT=20` skills, fixture intacta. Os
+   `*-diagnostic.jsonl` não cresceram nessa segunda sessão, como esperado de um
+   pacote sem instrumentação.
+4. Reconferiu a projeção D9/D11 com arquivos ocultos contra o HEAD corrente:
+   703 rastreados, 696 projetados, export 703 sem `.git` com 0 ausente / 0
+   divergente / 0 extra, cache 704 sem `.git` com 0 ausente / 0 divergente e o
+   único extra D11. Números idênticos aos das iterações 6 e 7.
+5. Rodou as cinco baterias na worktree (106/0, contrato Codex verde com Gemini
+   adiado, versão 5/0, cobertura 12/9, sem creep) e, contra o cache instalado,
+   somente os modos aplicáveis: `--contrato-manifesto`, `--contrato-skills`,
+   `--contrato-adaptador-hook` e `--contrato-marketplace`, todos exit 0. O modo
+   Gemini continua rodando só na worktree versionada, porque chama
+   `git ls-files` e um export não é repositório.
+
+A validade do export para o HEAD corrente foi conferida, não presumida: o diff
+de `77b0226e6b168f97848d5fa8021d58c06dda8f6f` até o HEAD toca cinco caminhos,
+todos dentro da lista fechada de governança da D9. Nenhum arquivo de produto
+mudou, logo o export não precisa ser regerado.
+
+### Ponto de atenção para o Codex: `revisar` está `ok` com snapshot velho
+
+`node scripts/estado.cjs proximo` agora responde `verificar`, e isso **não**
+significa que a revisão final já aconteceu. O bloco `revisar` continua `ok` do
+aceite de 2026-09-14, com `snapshot.head = 52245a7fd0e7c6f7a74dd56b6a7310bd1fb753cc`
+e o `head` revisado igual — vários commits atrás do HEAD atual.
+
+A trava de mutação de `estado.cjs` compara o snapshot apenas quando
+`marcar revisar ok` roda; ela não roda em `marcar verificar ok`. Portanto o
+fluxo, sozinho, deixaria `verificar` fechar sobre uma revisão que nunca viu
+este diff. Esta sessão não corrigiu isso por conta própria porque mexer em
+`revisar` era exatamente o que o handover reservou ao Codex.
+
+O caminho correto, do lado Codex, é:
+
+```powershell
+node scripts/estado.cjs exigir --estagio revisar --slug 2026-09-12-multihost-sobre-1-11
+# revisar o diff real contra a base 068468fb956b8d606e9af1800aaa91dd399fdeb8
+node scripts/estado.cjs marcar --slug 2026-09-12-multihost-sobre-1-11 --estagio revisar --status ok --json '{...}'
+```
+
+O `exigir` recaptura o snapshot no HEAD corrente e re-arma a trava; sem ele, o
+`marcar revisar ok` recusa com `HEAD mudou durante a revisao`. Só depois disso
+`verificar` é legítimo.
+
+### O que a revisão do Codex precisa olhar
+
+- O diff desta sessão é de **documentação de evidência apenas**: o portão e o
+  estado. Nenhum arquivo de produto foi tocado — conferir com
+  `git diff --name-only 052245a7..HEAD` restrito ao que não é governança D9.
+- A projeção D9/D11 foi recalculada por um script novo, escrito no scratchpad
+  da sessão e **não versionado**, que compara blob SHA-1 do Git contra os bytes
+  em disco em vez de reidratar o blob por redirecionamento de shell. Isso foi
+  deliberado: no PowerShell 5.1, redirecionar saída binária de executável nativo
+  re-codifica o conteúdo e falsearia o hash. Os números conferem com os das
+  iterações 6 e 7, que usaram outro método — a concordância entre os dois
+  caminhos é parte da evidência.
+- As duas contraprovas usaram `--dangerously-bypass-hook-trust`, restrito à
+  fixture descartável, como o handover previa.
+
+### Não foi feito, de propósito
+
+Nenhum push, merge, PR, release, publicação, rebase, alteração da `main` ou
+remoção de worktree. A fixture host-owned, o export diagnóstico e os logs em
+`~/.codex/visualizations` foram preservados como evidência, não limpos.
+`revisar` e `verificar` não foram tocados.
+
+### Observação lateral, fora do escopo desta entrega
+
+As duas sessões Codex efêmeras carregaram a skill `task-observer` de
+`C:\Users\Luis\.agents\skills\task-observer\SKILL.md` e anunciaram que ela é
+"exigida para sessões com uso de ferramentas". Do lado Claude essa skill foi
+desativada em 14/09 por gravar dentro dos repositórios; o caminho do Codex é
+outro e continua ativo. Não foi mexido nada: é ambiente do usuário, e a decisão
+é dele.
 
 ## Proibição de publicação
 

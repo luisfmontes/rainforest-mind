@@ -1952,3 +1952,198 @@ revisão independente.
 
 Nenhum push, merge, PR, release, publicação, rebase, reinstalação, mudança na
 `main` ou alteração de configuração externa foi executado.
+
+## Tarefa 6/7 — iteração 8, contraprova do hook em fixture host-owned (2026-09-19)
+
+### Veredito
+
+**OK.** A reprovação de `verificar` era falso vermelho de ambiente: a fixture
+anterior pertencia ao usuário `CodexSandboxOffline`, `git rev-parse --git-dir`
+saía 128 por `dubious ownership` e o núcleo tratava o diretório como fora de
+Git. Repetida em fixture de propriedade do usuário corrente, a sessão Codex nova
+recebeu `deny` do hook **antes** de o Git rodar, nas duas instalações medidas:
+o export diagnóstico e, depois, o export limpo `1.13.2` que é a entrega.
+
+### Fixture e estado de controle
+
+```text
+fixture=C:\Users\Luis\.codex\visualizations\2026\09\08\01a07ef1-6e62-7301-b14c-e07018b98ed6\t6-cachebuster-session-host
+git rev-parse --git-dir -> .git (exit 0)
+git status --short (antes) -> ?? deny-control.txt
+.git/index.lock (antes) -> ausente
+```
+
+### Prova 1 — plugin diagnóstico `1.13.2+codex.20260915000908`
+
+Comando:
+
+```text
+codex exec --ephemeral --approve-for-me --dangerously-bypass-hook-trust --color never -C <fixture> '<prompt de execução literal de git add "-A">'
+```
+
+Saída literal da sessão (`session id: 01a0b9a5-8533-77b3-8fae-7aa60a3b3433`):
+
+```text
+hook: PreToolUse
+2026-09-19T12:30:34.594634Z ERROR codex_core::tools::router: error=Command blocked by PreToolUse hook: BLOQUEADO pelo gate de staging total do rainforest-mind.
+
+Comando: git add -A
+Repo: C:/Users/Luis/.codex/visualizations/2026/09/08/01a07ef1-6e62-7301-b14c-e07018b98ed6/t6-cachebuster-session-host
+Quem: janela principal
+...
+O que o comando pegaria AGORA (git status --porcelain):
+  ?? deny-control.txt
+...
+hook: PreToolUse Blocked
+```
+
+Conclusão literal da própria sessão:
+
+```text
+Código de saída: não foi produzido; o hook bloqueou o comando antes da execução. O executor reportou `Script failed`.
+```
+
+Diagnóstico do núcleo na mesma execução:
+
+```text
+{"stage":"start","cwd":"...t6-cachebuster-session-host","toolName":"Bash","command":"git add \"-A\""}
+{"stage":"config","gateLigado":true}
+{"stage":"motivo","motivo":"git add -A","dirC":null,"indiceSegmento":0}
+{"stage":"gitdir","dir":"...t6-cachebuster-session-host","gitDir":".git"}
+```
+
+`git-error-diagnostic.jsonl` **não cresceu** (2 linhas antes e depois): o
+`dubious ownership` não reapareceu. A única entrada de erro ali continua sendo
+a da fixture antiga `t6-cachebuster-session` (sem `-host`).
+
+Estado após a prova — o bloqueio foi efetivo, não uma falha posterior do Git:
+
+```text
+git status --short   -> ?? deny-control.txt
+git diff --cached --name-only -> (vazio)
+.git/index.lock      -> ausente
+```
+
+### Restauração da instalação final
+
+```powershell
+codex plugin remove rainforest-mind@rainforest-mind-local        # exit 0
+codex plugin marketplace remove rainforest-mind-local            # exit 0
+codex plugin marketplace add '...\rainforest-mind-export-1.13.2' # exit 0
+codex plugin add rainforest-mind@rainforest-mind-local           # exit 0
+```
+
+```text
+MARKETPLACE             ROOT
+rainforest-mind-local   C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.13.2
+marketplace_list_exit=0
+
+rainforest-mind@rainforest-mind-local  installed, enabled  1.13.2
+plugin_list_exit=0
+plugin_root=C:\Users\Luis\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.13.2
+```
+
+O export permanece válido para o HEAD corrente: o diff de
+`77b0226e6b168f97848d5fa8021d58c06dda8f6f` até `d1cfe613c806042da1a4bc4dfd8b3f18524bbd07` toca
+exatamente cinco caminhos, todos dentro da lista fechada de governança da D9
+(`docs/HANDOVER-CODEX.md`, design, plano, estado e portão). Nenhum arquivo de
+produto mudou, portanto nenhuma reancoragem do export é devida.
+
+### Prova 2 — instalação final limpa `1.13.2`
+
+Mesma fixture, mesma forma de comando, com a instalação que é a entrega:
+
+```text
+COUNT=20        (19 skills físicas + a projeção D11 source-command-saude)
+hook: PreToolUse
+2026-09-19T12:35:21.312231Z ERROR codex_core::tools::router: error=Command blocked by PreToolUse hook: BLOQUEADO pelo gate de staging total do rainforest-mind.
+hook: PreToolUse Blocked
+```
+
+Conclusão literal da sessão:
+
+```text
+Código de saída: não produzido/informado, pois o hook impediu que o processo fosse iniciado.
+```
+
+O único `PreToolUse Completed` desta sessão foi de um `Get-Content` alheio ao
+teste; o `git add "-A"` recebeu `Blocked`. Estado após a prova:
+
+```text
+git status --short   -> ?? deny-control.txt
+git diff --cached --name-only -> (vazio)
+.git/index.lock      -> ausente
+```
+
+Os arquivos `*-diagnostic.jsonl` **não cresceram** nesta segunda sessão
+(22 e 52 linhas antes e depois), como esperado: o export limpo não carrega a
+instrumentação de diagnóstico. A prova do bloqueio aqui é a saída da própria
+sessão, não o log.
+
+### Projeção D9/D11 com ocultos, contra o HEAD corrente
+
+Inventário recursivo incluindo arquivos ocultos, comparação por blob SHA-1 do
+Git (bytes literais, sem filtro de EOL) e SHA-256 dos extras:
+
+```text
+head=d1cfe613c806042da1a4bc4dfd8b3f18524bbd07
+tracked_total=703
+governance_excluded=7
+projection_expected=696
+export_source_commit=77b0226e6b168f97848d5fa8021d58c06dda8f6f
+export_tracked_total=703
+export_total_force=703
+export_dotgit_exists=false
+export_missing=0
+export_different=0
+export_extra=0
+cache_total_force=704
+cache_dotgit_exists=false
+missing_count=0
+sha_divergent_count=0
+extra_count=1
+.codex-plugin/migrated-command-skills/source-command-saude/SKILL.md  sha256=321c30bcfda44ff56ad53fca7ef5c3b170987a3bd2bee646152af22aaf1dd339
+origin_sha256(commands/saude.md)=f044c166ccbfaca6470e4090229011354b82d4007adc80a278581a6565f6a6f6
+EXIT=0
+```
+
+Números idênticos aos das iterações 6 e 7, agora reproduzidos contra o HEAD
+corrente. Nenhuma exceção nova foi adicionada à D9 ou à D11.
+
+### Baterias
+
+Na worktree versionada:
+
+```text
+CMD1 bash hooks/testa-gate-staging-total.sh
+     == resultado: 106 ok, 0 falha(s) ==                                  cmd1_exit=0
+CMD2 bash scripts/testa-plugin-codex.sh
+     ok Gemini adiado: caminhos rastreados nao contem manifesto, hook,
+     adaptador ou fixture de payload Gemini fora dos documentos do fluxo  cmd2_exit=0
+CMD3 bash scripts/testa-versao.sh
+     ok: 5   falhou: 0                                                    cmd3_exit=0
+CMD4 node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-multihost-sobre-1-11
+     ok: cobertura válida — 12 decisão(ões), 9 tarefa(s)                  cmd4_exit=0
+CMD5 node scripts/conferir-fluxo.cjs creep --slug ... --base 068468fb... --head HEAD
+     ok: sem creep — 18 arquivo(s) coberto(s)                             cmd5_exit=0
+total=5 vermelhas=0
+```
+
+Contra o cache instalado, somente os modos aplicáveis — o modo Gemini chama
+`git ls-files` e um export não é repositório, portanto continua rodando só na
+worktree versionada:
+
+```text
+node scripts/testa-plugin-codex.cjs --contrato-manifesto        exit=0
+node scripts/testa-plugin-codex.cjs --contrato-skills           exit=0  (19 skills)
+node scripts/testa-plugin-codex.cjs --contrato-adaptador-hook   exit=0
+node scripts/testa-plugin-codex.cjs --contrato-marketplace      exit=0
+```
+
+### Ausência de publicação
+
+Nenhum push, merge, PR, release, publicação, rebase, mudança na `main` ou
+remoção de worktree foi executado. A fixture, o export diagnóstico e os logs de
+`visualizations` foram preservados como evidência. `revisar` e `verificar`
+permanecem intocados nesta sessão: a revisão final independente e a verificação
+ficam com o Codex, conforme a divisão do handover.

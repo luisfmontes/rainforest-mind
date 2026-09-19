@@ -18,11 +18,11 @@
     "em": "2026-09-12"
   },
   "executar": {
-    "status": "parcial",
-    "catraca_mutacao": "2026-09-14",
+    "status": "ok",
+    "catraca_mutacao": "2026-09-19",
     "tarefas_ok": 9,
     "tarefas": 9,
-    "em": "2026-09-14",
+    "em": "2026-09-19",
     "carimbos": [
       {
         "tarefa": 1,
@@ -158,8 +158,8 @@
         "ts": "2026-09-14T19:10:34.525Z"
       }
     ],
-    "comando": "bash hooks/testa-gate-staging-total.sh; bash scripts/testa-plugin-codex.sh; bash scripts/testa-versao.sh; node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-multihost-sobre-1-11; node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 068468fb956b8d606e9af1800aaa91dd399fdeb8 --head HEAD",
-    "saida": "retomada fail-closed verde; ausente e top-level divergente abortam; 106 ok, 0 falhas; contrato Codex verde; versao 5/0; cobertura valida 12 decisoes/9 tarefas; sem creep 18 arquivos; cache com -Force: zero .git, zero ausentes/divergentes e um extra D11",
+    "comando": "codex exec --ephemeral --approve-for-me --dangerously-bypass-hook-trust --color never -C <fixture host-owned> <prompt git add -A literal>; codex plugin marketplace add <export-1.13.2>; codex plugin add rainforest-mind@rainforest-mind-local; node <projecao D9/D11 com ocultos>; bash hooks/testa-gate-staging-total.sh; bash scripts/testa-plugin-codex.sh; bash scripts/testa-versao.sh; node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-multihost-sobre-1-11; node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 068468fb956b8d606e9af1800aaa91dd399fdeb8 --head HEAD",
+    "saida": "contraprova verde nas duas instalacoes: hook PreToolUse Blocked antes do Git, fixture segue ?? deny-control.txt, nada staged, sem index.lock; instalacao final restaurada no export limpo, versao 1.13.2 exata; projecao D9/D11 com ocultos 703/696, export 703 sem .git e 0/0/0, cache 704 sem .git, 0 ausentes, 0 divergentes, 1 extra D11; 106 ok 0 falhas; contrato Codex verde com Gemini adiado; versao 5/0; cobertura 12 decisoes/9 tarefas; sem creep 18 arquivos; modos manifesto/skills/adaptador/marketplace verdes contra o cache",
     "mutacao": [
       {
         "resultado": "vermelho",
@@ -210,7 +210,7 @@
     "origem_instalacao": {
       "tipo": "git archive",
       "commit": "77b0226e6b168f97848d5fa8021d58c06dda8f6f",
-      "caminho": "C:\\Projetos\\rainforest-mind\\.claude\\marketplaces\\rainforest-mind-export-1.13.2",
+      "caminho": "C:/Projetos/rainforest-mind/.claude/marketplaces/rainforest-mind-export-1.13.2",
       "export_arquivos_force": 703,
       "cache_arquivos_force": 704,
       "export_dotgit": false,
@@ -224,9 +224,21 @@
       "sha_divergentes": 0,
       "extras": 1
     },
-    "reaberto_por": {
-      "estagio": "verificar",
-      "data": "2026-09-14"
+    "contraprova_hook": {
+      "fixture": "C:/Users/Luis/.codex/visualizations/2026/09/08/01a07ef1-6e62-7301-b14c-e07018b98ed6/t6-cachebuster-session-host",
+      "gitdir": ".git",
+      "causa_do_falso_vermelho": "fixture anterior pertencia a CodexSandboxOffline; git rev-parse --git-dir saia 128 por dubious ownership",
+      "diagnostico": {
+        "sessao": "01a0b9a5-8533-77b3-8fae-7aa60a3b3433",
+        "versao": "1.13.2+codex.20260915000908",
+        "decisao": "PreToolUse Blocked"
+      },
+      "final_limpa": {
+        "versao": "1.13.2",
+        "decisao": "PreToolUse Blocked",
+        "skills": 20
+      },
+      "estado_apos": "?? deny-control.txt; nada staged; sem .git/index.lock"
     }
   },
   "revisar": {
