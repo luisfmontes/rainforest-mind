@@ -156,3 +156,66 @@ carregam — anteriores a este design, e a tratar em trabalho próprio.
   daquele marketplace diz, em uma linha, que aquele time não edita plugin
   alheio e mantém os seus no próprio repo — e ignorar isso já foi erro
   registrado uma vez.
+
+---
+
+## Adendo de 2026-09-17 — um terceiro candidato mede o D2 de fora
+
+Chegou, por contribuição externa, um pacote de 8 skills de **Power BI** (domínio
+PBIP) para avaliar. O conteúdo não entra no rainforest — o D3 e o D7 já resolvem
+isso. O que ele acrescenta ao contrato é outra coisa: é o **primeiro fornecedor
+de fora** contra o qual o D2 pôde ser medido sem ser por quem o escreveu, e as
+quatro linhas não pontuaram igual.
+
+| O D2 exige que o território forneça | O pacote fornece |
+|---|---|
+| Regra de detecção para `semear`/`setup` | **Sim, e limpa** — "pasta com `.SemanticModel/` e `.Report/`". As 5 skills que dependem do formato **param** e instruem a conversão quando ele falta, em vez de tentar adivinhar |
+| Templates de critério falsificável para o `plano` | **Parcial, e é o melhor do pacote** — rubrica de 5 testes 0–2, corte declarado (`≥ 7`) e **dois eliminatórios**: zero em "Ação" ou em "Referência" derruba o achado por bom que seja o número |
+| Comandos canônicos (build, teste, lint) com exit code | **Quase não** — 5 scripts, e só um devolve exit code de verdade (`sys.exit(0 if ok else 1)`); os outros saem com mensagem, que o shell lê como 1 sem distinguir causa |
+| Padrão de bateria e alvo de mutação | **Não** — zero teste no pacote; o arquivo de evals é roteiro manual ("faça o pedido em sessão limpa") |
+
+### O que isso muda no contrato
+
+- **D8 — a linha de "comandos canônicos" precisa dizer *exit code de verdade*.**
+  O D2 diz "comandos canônicos com exit code" e um fornecedor cumpriu isso com
+  `sys.exit("ERRO: ...")`, que sai 1 com a mensagem no lugar do código. A regra 12
+  cobra "exit ≠ 0 nunca é sucesso" e esse fornecedor a satisfaz por acidente: não
+  há como distinguir "reprovou" de "não rodou". O contrato passa a exigir o código
+  **e** a tabela do que cada valor significa — com o exit 3 de "pulou" já usado nas
+  baterias daqui como precedente.
+- **D9 — bateria e alvo de mutação não podem ficar no "fornece, se tiver".** Este
+  fornecedor não tem nenhum dos dois, e é o mais maduro em conteúdo que apareceu.
+  A conclusão não é recusá-lo: é que o contrato tem de dizer de quem é a obrigação
+  quando o território não traz bateria — se o fluxo aceita território sem trava e
+  cai na `regua`, ou se a bateria é condição de admissão. Q em aberto abaixo.
+- **O critério eliminatório é enxertável, e a `regua` não tem.** A `regua` tem os
+  três testes da régua (nomeada, obtível, comparável) e o direito de recusar a
+  tarefa; não tem **dimensão cujo zero derruba o resultado inteiro**. Num
+  território em que "pronto quando" não é teste, isso é o que impede o crítico de
+  aprovar por soma alta com o essencial faltando.
+
+### Por que ele é o terceiro, e não o primeiro
+
+Pelo D1 levado a sério: o contrato nasce por extração, e extrai-se de onde há caso
+concreto, fornecedor pronto e medição. O D4 já deu essa vez ao AdvPL e reservou ao
+Python o papel de provar que a interface generaliza. Este entra **depois**, e o que
+ele traz de único é o caso que nenhum dos dois exercita: um domínio em que o
+critério de aceite é qualidade **visual e analítica** — território da `regua`, não
+do `pytest`. Adiantá-lo seria especificar a interface antes do caso, que é
+exatamente o que o D1 proíbe.
+
+Registrado como ideia `territorio-power-bi`, com o gancho no contrato extraído.
+
+### Q em aberto
+
+- **Q6 — território sem bateria entra?** ➡️ Recomendo **entra, com a falta
+  declarada no próprio pacote**: o fluxo então trata a tarefa como sem-teste e vai
+  para a `regua`, em vez de fingir que tem trava. Condição de admissão dura
+  barraria o fornecedor mais maduro que apareceu até agora — e o D6 manda medir
+  antes de construir, não antes de aceitar.
+
+### Vocabulário: "território" fica
+
+Houve sugestão de renomear para *Domain*. Recusada: este design usa **domínio**
+para outro nível — "domínio é skill, papel é agente" — e o nome novo colapsaria
+dois termos que o contrato separa de propósito.

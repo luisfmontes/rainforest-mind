@@ -1,0 +1,92 @@
+# Notas de atualização
+
+O que mudou em cada versão publicada, do ponto de vista de quem **usa** o plugin —
+não o log de commits. A versão instalada aparece em `/plugin` → Installed Plugins,
+e atualizar é `/plugin` → Browse Plugins → Update Marketplace, depois Update no
+`rainforest-mind`.
+
+Este arquivo começa na **1.19.0**. As versões anteriores não têm notas escritas: o
+que existe delas é o commit de release (`git log --grep="^Versao "`), e reescrever
+29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
+entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
+
+## 1.20.0 — 2026-09-19
+
+**A memória deixa de só acumular.** Duas coisas que não existiam passam a existir,
+e as duas rodam sozinhas numa passada de manutenção que abre junto com a sessão:
+
+- **Reconciliação.** Observação que corrige, repete ou complementa uma antiga agora
+  atualiza ou funde-se a ela, em vez de virar mais uma linha ao lado. **Nada é
+  apagado**: a substituída ganha um ponteiro, sai da injeção e da busca, e continua
+  na tabela — fusão ruim se desfaz.
+- **Consolidação automática em resumos.** Era manual e nunca tinha rodado uma vez.
+  Passa a agrupar por origem a partir de 30 dias — pela sessão quando ela existe, e
+  por `(projeto, dia)` para as 10.092 observações importadas do claude-mem, que não
+  têm sessão nenhuma e são 88% do acervo.
+
+**Aviso na abertura quando o pipeline para.** Captura ou manutenção paradas há mais
+de 48 h viram uma linha na abertura da sessão, com há quantas horas e o comando que
+religa. O silêncio de 13 dias que ninguém viu (#282) é o que ela existe para matar —
+aviso que só aparece quando alguém pergunta não é aviso.
+
+A busca de parecidas continua no FTS5, sem índice vetorial: medido em 200 sondagens
+com o CLI real, o recall ficou em 82,0% global (74,6% em português, 89,2% em inglês).
+O relatório está em `relatorios/2026-09-18-recall-fts5-reconciliacao.md`.
+
+Nada disso mexe no `observar.cjs`: a captura não ganhou chamada de LLM nenhuma no
+caminho da escrita, que é onde ela já tinha parado calada uma vez.
+
+## 1.19.2 — 2026-09-19
+
+**Este arquivo.** O plugin passa a trazer notas de atualização, e o contrato de
+como mantê-las: versão nova entra aqui no mesmo commit que sobe o `version` do
+`plugin.json`.
+
+Ganhou versão própria porque a catraca `conferir-versao.cjs` exige número maior
+em toda PR que não seja só estado de fluxo — e ela está certa: sem bump não há
+versão nova para o `claude plugin update` buscar, e notas que ninguém baixa não
+resolvem o problema que elas existem para resolver.
+
+Junto, um adendo ao design do contrato de território (`docs/rainforest/design/`),
+que não muda comportamento nenhum.
+
+## 1.19.1 — 2026-09-17
+
+**Rota com emoji de status por etapa** (Issue #299).
+
+A regra 4 já mandava fechar cada etapa com "Fechamos [n]/[total]", mas não dizia em
+que **formato** acompanhar o todo. Em tarefa longa o checkpoint contava o avanço e
+não mostrava o mapa, e a pessoa perdia de vista quantas etapas faltavam e onde
+estava. Agora a elaboração da regra 4 traz a rota — uma linha por etapa com marcador
+de status — e a `modo-dev` aponta para ela.
+
+Muda o que você vê na resposta; não muda comando, gate nem dado.
+
+## 1.19.0 — 2026-09-17
+
+Cinco issues fechadas, todas de trava que prometia mais do que cumpria.
+
+- **Regra 6 agora diz em que repo "conserta na hora" vale** (#291). A regra mandava
+  consertar defeito na hora e não dizia **onde**: o conserto saía no repositório do
+  vizinho. Passou a ser explícita — defeito que atrapalha no repo **da sessão**
+  conserta na hora; repo alheio é Issue + `Q`, nunca commit.
+- **`gate-agente-em-voo` para de repetir o aviso a cada turno** (#298). O gate
+  prometia avisar **uma** vez e, em sessão interativa, repetia no turno seguinte.
+  A memória era de slot único e duas sessões alternando se sobrescreviam; virou mapa
+  por sessão, com assinatura dos agentes em voo.
+- **`gate-verificador-staged` volta a respeitar o marcador `dados-de-exemplo`** (#293).
+  O marcador era ignorado e o toggle anunciado no cabeçalho do arquivo não existia —
+  duas promessas sem implementação.
+- **Mutantes de `testa-foco.sh` passam a morrer pelo comportamento certo** (#292).
+  Os mutantes dos itens 9 e 13 morriam por `MODULE_NOT_FOUND`, não pela mutação:
+  a bateria parecia provar e não provava nada.
+- **Achados da revisão do ciclo anterior** (#294): catraca que rodava em cópia, `.pyc`
+  no caminho de teste e conversão de caminho do MSYS.
+
+## Antes da 1.19.0
+
+Sem notas escritas. Para ver o que cada release carregou:
+
+```
+git log --grep="^Versao " --format="%ad %s" --date=short
+```
