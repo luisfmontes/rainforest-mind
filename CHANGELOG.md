@@ -10,6 +10,20 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.19.2 — 2026-09-19
+
+**Este arquivo.** O plugin passa a trazer notas de atualização, e o contrato de
+como mantê-las: versão nova entra aqui no mesmo commit que sobe o `version` do
+`plugin.json`.
+
+Ganhou versão própria porque a catraca `conferir-versao.cjs` exige número maior
+em toda PR que não seja só estado de fluxo — e ela está certa: sem bump não há
+versão nova para o `claude plugin update` buscar, e notas que ninguém baixa não
+resolvem o problema que elas existem para resolver.
+
+Junto, um adendo ao design do contrato de território (`docs/rainforest/design/`),
+que não muda comportamento nenhum.
+
 ## 1.19.1 — 2026-09-17
 
 **Rota com emoji de status por etapa** (Issue #299).
