@@ -1661,7 +1661,7 @@ function buscarCandidatas(conexao, obs) {
 
   try {
     return conexao.prepare(`
-      SELECT o.id, o.conteudo
+      SELECT o.id, o.conteudo, o.criada_em
       FROM observacoes_fts
       JOIN observacoes o ON o.id = observacoes_fts.rowid
       WHERE observacoes_fts MATCH :query
@@ -1678,17 +1678,27 @@ function buscarCandidatas(conexao, obs) {
 }
 
 // Monta o texto que vai para a LLM: a observação sondada e suas candidatas.
+//
+// Achado 1 da revisão (2026-09-16): rotular a sondada como "nova" é falso
+// quando a varredura do acervo (D6) sonda observações antigas — 88% do
+// corpus são as importadas do claude-mem, as mais antigas dele. Sem data
+// nenhuma, a LLM decide a direção só pela etiqueta, e "nova" numa observação
+// velha inverte o update. Carrega `criada_em` da sondada e de cada candidata
+// e chama a sondada pelo que ela é (a observação em exame), nunca "nova" —
+// a LLM decide a direção pela data, não pela etiqueta.
 function formatarPromptReconciliacao(observacao, candidatas) {
   const linhasCandidatas = candidatas
-    .map((c) => `- [id=${c.id}] ${c.conteudo}`)
+    .map((c) => `- [id=${c.id}, criada_em=${c.criada_em}] ${c.conteudo}`)
     .join('\n');
 
   return [
-    'Observacao nova (sondada):',
-    `[id=${observacao.id}] ${observacao.conteudo}`,
+    'Observacao sondada (em exame), com a data em que foi criada:',
+    `[id=${observacao.id}, criada_em=${observacao.criada_em}] ${observacao.conteudo}`,
     '',
-    'Candidatas parecidas, mesmo projeto (busca por texto, nao por LLM):',
+    'Candidatas parecidas, mesmo projeto, com a data em que foram criadas (busca por texto, nao por LLM):',
     linhasCandidatas || '(nenhuma)',
+    '',
+    'Use as datas para decidir a direcao: em "update", quem esta desatualizado e quem corrige se decide pela data, nao pela ordem em que aparecem aqui.',
     '',
     'Decida a acao para a observacao sondada:',
     '- store: nova, sem relacao com nenhuma candidata',
@@ -1855,23 +1865,49 @@ async function chamarLLMParaReconciliar(observacao, candidatas) {
 //
 // store/skip: nada é substituído; só marca reconciliada_em na sondada.
 //
-// alvo_id ausente, inexistente, de outro projeto, ou igual à própria
-// observação: cai no lado seguro (equivalente a store) em vez de confiar cego
-// numa resposta de LLM que aponta para nada.
-function aplicarDecisaoReconciliacao(conexao, obs, decisao) {
+// alvo_id ausente, inexistente, de outro projeto, já substituída, igual à
+// própria observação, ou FORA DO CONJUNTO de candidatas que `buscarCandidatas`
+// de fato ofereceu a esta sondagem: cai no lado seguro (equivalente a store)
+// em vez de confiar cego numa resposta de LLM que aponta para algo que nunca
+// foi mostrado a ela. `buscarCandidatas` protegia o que é OFERECIDO (mesmo
+// projeto, viva); nada protegia o que a LLM DEVOLVE — achado 2 da revisão
+// (2026-09-16): um `alvo_id` de resposta de LLM podia apontar para uma
+// candidata morta (`substituida_por` já preenchido) ou para qualquer id de
+// outra sondagem, sobrescrevendo um `substituida_por` correto e ressuscitando
+// conteúdo morto numa observação nova.
+//
+// Para 'update' há ainda a guarda de direção temporal — achado 1 da mesma
+// revisão: a varredura do acervo (D6) sonda observações antigas (88% do
+// corpus são as importadas do claude-mem), e uma LLM sem soubesse a data
+// podia decidir "update" apontando da sondada ANTIGA para uma candidata mais
+// NOVA e correta, invertendo a direção — a correta acabava marcada
+// `substituida_por` e a desatualizada continuava viva. `update` só é
+// aplicado quando a sondada não é mais antiga que o alvo
+// (`obs.criada_em >= alvo.criada_em`); do contrário cai no lado seguro. Isto
+// é backstop determinístico — o prompt (formatarPromptReconciliacao) já
+// carrega as datas para a LLM decidir certo na maioria dos casos, mas uma
+// resposta errada não pode inverter o invariante do D3.
+function aplicarDecisaoReconciliacao(conexao, obs, decisao, candidatas = []) {
   const agora = new Date().toISOString();
+  const idsOferecidos = new Set(candidatas.map((c) => c.id));
 
   try {
     conexao.exec('BEGIN TRANSACTION');
 
     if (decisao.acao === 'merge' || decisao.acao === 'update') {
       const alvo = decisao.alvo_id !== null
-        ? conexao.prepare('SELECT id, conteudo FROM observacoes WHERE id = ? AND projeto = ?')
+        ? conexao.prepare('SELECT id, conteudo, criada_em FROM observacoes WHERE id = ? AND projeto = ? AND substituida_por IS NULL')
             .get(decisao.alvo_id, obs.projeto)
         : null;
 
-      if (!alvo || alvo.id === obs.id) {
-        // alvo_id inválido — lado seguro: nada é substituído.
+      const alvoInvalido = !alvo
+        || alvo.id === obs.id
+        || !idsOferecidos.has(alvo.id)
+        || (decisao.acao === 'update' && obs.criada_em < alvo.criada_em);
+
+      if (alvoInvalido) {
+        // alvo_id inválido (ou update na direção errada) — lado seguro:
+        // nada é substituído.
         conexao.prepare('UPDATE observacoes SET reconciliada_em = ? WHERE id = ?').run(agora, obs.id);
         conexao.exec('COMMIT');
         return true;
@@ -2000,7 +2036,7 @@ async function cmdReconciliar() {
         decisao = interpretarDecisaoReconciliacao(respostaBruta);
       }
 
-      const sucesso = aplicarDecisaoReconciliacao(conexao, obs, decisao);
+      const sucesso = aplicarDecisaoReconciliacao(conexao, obs, decisao, candidatas);
       if (sucesso) {
         processadas++;
       } else {
@@ -2158,5 +2194,6 @@ module.exports = {
   resolverCaminhos, verificarConstraintUniqueProjetoOrigem,
   K_CANDIDATAS, TETO_RECONCILIAR, construirQueryFts5, buscarCandidatas,
   interpretarDecisaoReconciliacao, aplicarDecisaoReconciliacao,
+  formatarPromptReconciliacao,
   filtroVivas, DIAS_CONSOLIDACAO, TETO_GRUPOS,
 };

@@ -26,6 +26,10 @@
 #  13. sem TESTADOR_CHAMAR_LLM e sem claude no PATH cai em store, exit 0
 #  14. pendentes recarrega o estado atual: alvo ja resolvido nao e sondado de novo
 #  15. constantes exportadas com os nomes exigidos pelo plano
+#  16. achado 2 (revisao): alvo_id de candidata morta nao sobrescreve o
+#      substituida_por correto nem ressuscita conteudo morto numa linha nova
+#  17. achado 1 (revisao): update da sondada antiga para um alvo mais novo nao
+#      inverte a direcao — a guarda de direcao temporal barra antes do commit
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -598,6 +602,130 @@ if [ "$CONST_CHECK" = "5 200" ]; then
   ok=$((ok+1)); echo "  ok   K_CANDIDATAS=5, TETO_RECONCILIAR=200 ($CONST_CHECK)"
 else
   falhou=$((falhou+1)); echo "  FALHA constantes: esperava '5 200', veio '$CONST_CHECK'"
+fi
+
+echo
+echo "== 16. achado 2 (revisao): alvo_id de candidata morta nao sobrescreve o substituida_por correto nem ressuscita conteudo morto =="
+# Sandbox do achado 2 do relatorio de revisao: id1 viva, id2 morta (ja
+# substituida por id1), id3 pendente. O mock responde 'merge' apontando para
+# a candidata MORTA (id2) — que buscarCandidatas() nunca oferece (ela filtra
+# substituida_por IS NULL) e que, por isto, nunca esta no conjunto de ids que
+# a guarda aceita. Antes do conserto isto sobrescrevia o substituida_por
+# correto de id2 e fazia nascer uma quarta linha viva com o conteudo morto
+# ressuscitado dentro dela.
+CAIXA16="$(novo_sandbox)"
+RFM_ROOT="$CAIXA16" $MEMORIA iniciar > /dev/null 2>&1
+IDS16=$(RFM_ROOT="$CAIXA16" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const agora = Date.now();
+const r1 = db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?,?,?,?)')
+  .run('proj-morta', 'Endpoint de pagamento migrado para v2 com sucesso', new Date(agora - 180000).toISOString(), 'o1');
+const r2 = db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?,?,?,?)')
+  .run('proj-morta', 'Endpoint de pagamento com bug de timeout na versao um', new Date(agora - 120000).toISOString(), 'o2');
+db.prepare('UPDATE observacoes SET substituida_por = ?, reconciliada_em = ? WHERE id = ?').run(r1.lastInsertRowid, new Date().toISOString(), r2.lastInsertRowid);
+db.prepare('UPDATE observacoes SET reconciliada_em = ? WHERE id = ?').run(new Date().toISOString(), r1.lastInsertRowid);
+const r3 = db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?,?,?,?)')
+  .run('proj-morta', 'Endpoint de pagamento voltou a apresentar timeout', new Date(agora - 60000).toISOString(), 'o3');
+db.close();
+process.stdout.write(r1.lastInsertRowid + ':' + r2.lastInsertRowid + ':' + r3.lastInsertRowid);
+" 2>/dev/null)
+ID1_16=$(echo "$IDS16" | cut -d: -f1)
+ID2_16=$(echo "$IDS16" | cut -d: -f2)
+ID3_16=$(echo "$IDS16" | cut -d: -f3)
+
+cat > "$CAIXA16/mock-alvo-morto.cjs" <<EOF
+async function chamarLLM(texto) {
+  return JSON.stringify({ acao: 'merge', alvo_id: $ID2_16 });
+}
+module.exports = { chamarLLM };
+EOF
+
+ANTES16=$(node --experimental-sqlite -e "
+const{DatabaseSync}=require('node:sqlite');
+const d=new DatabaseSync(process.argv[1],{readOnly:true});
+console.log(d.prepare('SELECT COUNT(*) n FROM observacoes').get().n, d.prepare('SELECT substituida_por FROM observacoes WHERE id=?').get(Number(process.argv[2])).substituida_por);
+" "$CAIXA16/rainforest.db" "$ID2_16" 2>/dev/null)
+echo "  antes (total, substituida_por de id=$ID2_16): $ANTES16"
+
+RFM_ROOT="$CAIXA16" TESTADOR_CHAMAR_LLM="$CAIXA16/mock-alvo-morto.cjs" $MEMORIA reconciliar > /dev/null 2>&1
+got=$?
+
+DEPOIS16=$(node --experimental-sqlite -e "
+const{DatabaseSync}=require('node:sqlite');
+const d=new DatabaseSync(process.argv[1],{readOnly:true});
+const total = d.prepare('SELECT COUNT(*) n FROM observacoes').get().n;
+const sp2 = d.prepare('SELECT substituida_por FROM observacoes WHERE id=?').get(Number(process.argv[2])).substituida_por;
+const r3 = d.prepare('SELECT substituida_por sp, reconciliada_em r FROM observacoes WHERE id=?').get(Number(process.argv[3]));
+console.log(total, sp2, r3.sp, r3.r !== null);
+" "$CAIXA16/rainforest.db" "$ID2_16" "$ID3_16" 2>/dev/null)
+echo "  depois (total, substituida_por de id=$ID2_16, substituida_por de id=$ID3_16, id=$ID3_16 tem reconciliada_em): $DEPOIS16"
+
+if [ "$got" = "0" ] && [ "$DEPOIS16" = "3 $ID1_16 null true" ]; then
+  ok=$((ok+1)); echo "  ok   achado 2 nao reproduz: nenhuma linha nova nasceu, id=$ID2_16 continua com substituida_por=$ID1_16, id=$ID3_16 so ganhou reconciliada_em"
+else
+  falhou=$((falhou+1)); echo "  FALHA achado 2 reproduziu: esperava '3 $ID1_16 null true', veio '$DEPOIS16' (exit $got)"
+fi
+
+echo
+echo "== 17. achado 1 (revisao): update da sondada antiga para um alvo mais novo nao inverte a direcao =="
+# Sandbox do achado 1 do relatorio de revisao: id_antiga (2026-08-20,
+# desatualizada, pendente) e id_nova (2026-09-19, correta, ja reconciliada
+# antes deste laco). O mock responde 'update' apontando da sondada (a
+# antiga) para a candidata mais NOVA — a inversao exata que o achado 1
+# descreve. A guarda de direcao temporal em aplicarDecisaoReconciliacao
+# (obs.criada_em >= alvo.criada_em) barra isto: como a sondada e mais antiga
+# que o alvo, a decisao cai no lado seguro antes do commit.
+CAIXA17="$(novo_sandbox)"
+RFM_ROOT="$CAIXA17" $MEMORIA iniciar > /dev/null 2>&1
+IDS17=$(RFM_ROOT="$CAIXA17" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const r1 = db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?,?,?,?)')
+  .run('proj-direcao', 'Endpoint usa API v1, timeout intermitente', '2026-08-20T10:00:00.000Z', 'antiga');
+const r2 = db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?,?,?,?)')
+  .run('proj-direcao', 'Endpoint migrado para API v2, timeout resolvido', '2026-09-19T10:00:00.000Z', 'nova');
+db.prepare('UPDATE observacoes SET reconciliada_em = ? WHERE id = ?').run(new Date().toISOString(), r2.lastInsertRowid);
+db.close();
+process.stdout.write(r1.lastInsertRowid + ':' + r2.lastInsertRowid);
+" 2>/dev/null)
+ID_ANTIGA17=$(echo "$IDS17" | cut -d: -f1)
+ID_NOVA17=$(echo "$IDS17" | cut -d: -f2)
+
+cat > "$CAIXA17/mock-inversao.cjs" <<EOF
+async function chamarLLM(texto) {
+  return JSON.stringify({ acao: 'update', alvo_id: $ID_NOVA17 });
+}
+module.exports = { chamarLLM };
+EOF
+
+ANTES17=$(node --experimental-sqlite -e "
+const{DatabaseSync}=require('node:sqlite');
+const d=new DatabaseSync(process.argv[1],{readOnly:true});
+const a=d.prepare('SELECT substituida_por sp FROM observacoes WHERE id=?').get(Number(process.argv[2]));
+const n=d.prepare('SELECT substituida_por sp FROM observacoes WHERE id=?').get(Number(process.argv[3]));
+console.log(a.sp, n.sp);
+" "$CAIXA17/rainforest.db" "$ID_ANTIGA17" "$ID_NOVA17" 2>/dev/null)
+echo "  antes (substituida_por da antiga id=$ID_ANTIGA17, da nova id=$ID_NOVA17): $ANTES17"
+
+RFM_ROOT="$CAIXA17" TESTADOR_CHAMAR_LLM="$CAIXA17/mock-inversao.cjs" $MEMORIA reconciliar > /dev/null 2>&1
+got=$?
+
+DEPOIS17=$(node --experimental-sqlite -e "
+const{DatabaseSync}=require('node:sqlite');
+const d=new DatabaseSync(process.argv[1],{readOnly:true});
+const a=d.prepare('SELECT substituida_por sp, reconciliada_em r FROM observacoes WHERE id=?').get(Number(process.argv[2]));
+const n=d.prepare('SELECT substituida_por sp FROM observacoes WHERE id=?').get(Number(process.argv[3]));
+console.log(a.sp, a.r !== null, n.sp);
+" "$CAIXA17/rainforest.db" "$ID_ANTIGA17" "$ID_NOVA17" 2>/dev/null)
+echo "  depois (substituida_por da antiga, antiga tem reconciliada_em, substituida_por da nova): $DEPOIS17"
+
+if [ "$got" = "0" ] && [ "$DEPOIS17" = "null true null" ]; then
+  ok=$((ok+1)); echo "  ok   achado 1 nao reproduz: a guarda de direcao temporal barrou o update invertido, nenhuma das duas ganhou substituida_por"
+else
+  falhou=$((falhou+1)); echo "  FALHA achado 1 reproduziu: esperava 'null true null', veio '$DEPOIS17' (exit $got)"
 fi
 
 echo
