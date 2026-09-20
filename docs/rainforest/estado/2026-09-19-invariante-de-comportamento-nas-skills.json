@@ -24,7 +24,7 @@
     "em": "2026-09-19"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-19",
     "tarefas_ok": 4,
     "tarefas": 4,
@@ -98,26 +98,32 @@
       "criterio da T3 emendado durante o executar: exigia onde:[skill,nucleo] nas cinco entradas, e a da regra 15 sempre teve referencia tambem. Erro de quem escreveu o plano. Passou a exigir identidade de blob e caminho unico de leitura"
     ],
     "rodada": 2,
-    "achados_corrigidos": 4
+    "achados_corrigidos": 4,
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-20"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "1288fbe9fcc1551fcdc559cb8925e00cece841e3",
+      "head": "9eb62139c0bd4922674b1fa36446a164343b031f",
       "caminhos_sujos": []
     },
     "em_voo": [],
     "em": "2026-09-20",
-    "achados": 4,
+    "achados": 1,
     "base": "4f714ef69e942606032627ab8284b5e1c3336cec",
-    "head": "1288fbe9fcc1551fcdc559cb8925e00cece841e3",
+    "head": "9eb62139c0bd4922674b1fa36446a164343b031f",
     "lista": [
       "A1 skills/fechar/invariantes.json: descricao do nao_deve atribui a guarda a reversao be8c49eb, mas be8c49eb^:skills/fechar/SKILL.md tem zero ocorrencias de confirmo e o checador so le skills/*; a regressao citada e inalcancavel",
       "A2 scripts/conferir-invariantes.cjs:140: campo frase sem validacao; chave digitada errado num nao_deve vira corpo.includes(undefined) e o invariante passa vazio",
       "A3 plano T4: criterio manda cruzar a celula com a secao Objetivo do design, mas o design nao contem 2026-07-13 nem Apache (0 ocorrencias); o cruzamento nao e executavel",
       "A4 plano T2 e T3: o fixture nomeado nao detecta a mutacao, aborta no proprio setup (nao consegui aplicar); quem fica vermelho e o caso 1 repositorio integro, que cairia com qualquer mudanca"
     ],
-    "tentativas": 1
+    "tentativas": 2,
+    "bloqueante": "conferir-invariantes.cjs sai 0 sem medir nada: invariantes.json = [] da conferidas 0 e exit 0; deve com onde:[] aprova frase inexistente",
+    "nao_bloqueantes": 9
   },
   "verificar": {
     "status": "pendente"
