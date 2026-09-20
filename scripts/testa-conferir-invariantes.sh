@@ -7,7 +7,11 @@
 # 3. O script detecta frases proibidas (tipo: nao_deve) quando presentes
 # 4. O script passa quando frases proibidas estão ausentes
 # 5. O script detecta quando frase obrigatória é removida (skills de ação)
-# 6. O script detecta duplicação de frases
+# 6. O script detecta duplicação de frases nos DOIS ramos — `onde` ausente e
+#    `onde` presente. O sensor tem duas checagens de ocorrência única, uma por
+#    ramo, e até 2026-09-20 só a do ramo `onde` ausente tinha caso: apagar as
+#    sete linhas da outra deixava a bateria em `ok: 29   falhou: 0` na base
+#    `f6872939`. Mutante sobrevivente, achado da OITAVA revisão
 # 7. O script falha com exit ≠ 0 quando nenhum invariantes.json existe
 # 8. O script falha com exit ≠ 0 quando tipo desconhecido é usado
 # 9. O script falha com exit 1 quando o campo `frase` está ausente ou vazio
@@ -88,9 +92,15 @@
 #     nomeando a skill, então vermelho de vácuo não passa por elas. Ler "CADA
 #     bloco de mutação" como se as cobrisse é que era falso.
 #
-#   A exceção declarada: o caso `VIVACIDADE`, que é `# Caso:` e mesmo assim
-#   assere a SUA linha de base, uma por entrada varrida, porque o número de
-#   caixas dele não é fixo no fonte — sai da árvore de produção.
+#   As exceções declaradas são DUAS, e eram uma até 2026-09-20:
+#
+#     - `VIVACIDADE`, que é `# Caso:` e mesmo assim assere a SUA linha de base,
+#       uma por entrada varrida, porque o número de caixas dele não é fixo no
+#       fonte — sai da árvore de produção.
+#     - `deve duplicado no ramo onde`, acrescentado em 2026-09-20: ele é
+#       `# Caso:` e chama `assere_base` porque MUTA a árvore da
+#       `rainforest-mind`, como os blocos `# (n) MUTAÇÃO:`, em vez de montar uma
+#       caixa de areia à mão como a `CAIXA_DUP` e a `CAIXA_LIMPAR`.
 #
 # Autoria de `tipo: nao_deve`:
 # - Frase proibida só vale se for vocabulário que o texto correto nunca usa
@@ -101,6 +111,26 @@
 set -u
 
 cd "$(dirname "$0")/.." || exit 1
+
+# Diretorio de logs DESTA execucao. Ate 2026-09-20 os 27 caminhos de log deste
+# arquivo eram FIXOS em `/tmp/<nome>.log` — exatamente o defeito que o motivo (1)
+# da remocao do bloco (6), no fim deste arquivo, da como uma das razoes para
+# apaga-lo. O argumento ficava valendo contra 27 linhas do proprio arquivo que o
+# escreveu.
+#
+# E nao e ruido de diagnostico: varios casos ASSEREM lendo o log — `grep -q
+# "aparece 2 vezes" "$LOGS/dup.log"`, `grep -q "fechar"
+# "$LOGS/naodev-presente.log"`, `grep -q "nucelo" "$LOGS/degrau-lixo.log"` —,
+# entao duas execucoes concorrentes podiam fazer uma ler o log da OUTRA e marcar
+# `ok` pelo motivo errado. Falha ABERTO. E a concorrencia nao e hipotetica:
+# `scripts/conferir-mutacao.cjs` roda esta MESMA bateria sobre uma arvore
+# MUTADA, entao uma catraca de mutacao rodando ao lado de uma bateria limpa ja
+# e o cenario. Em CI nao colide (serial, runners separados); na maquina, colide.
+#
+# A limpeza fica IMEDIATAMENTE ANTES do `[ "$falhou" -eq 0 ]` final, nunca
+# depois: `rm -rf` como ultimo comando viraria o status de saida do script e a
+# bateria perderia a capacidade de reprovar.
+LOGS="$(mktemp -d)"
 
 ok=0
 falhou=0
@@ -117,7 +147,7 @@ echo "== invariantes nao foram perdidas na extracao ===="
 echo
 
 # Caso 1: O repositório íntegro passa
-node scripts/conferir-invariantes.cjs > /tmp/invariantes-check.log 2>&1
+node scripts/conferir-invariantes.cjs > "$LOGS/invariantes-check.log" 2>&1
 REPO_INTEGRO=$?
 marca "repositorio integro passa no conferir" $REPO_INTEGRO
 
@@ -152,13 +182,13 @@ nova_caixa_rf() {
 # vermelho de vácuo — a mutação pode não medir nada e o caso imprime `ok`.
 # $1 = caixa   $2 = nome do caso (começa com LINHA DE BASE)
 assere_base() {
-  (cd "$1/scripts" && node conferir-invariantes.cjs > /tmp/caixa-linha-de-base.log 2>&1)
+  (cd "$1/scripts" && node conferir-invariantes.cjs > "$LOGS/caixa-linha-de-base.log" 2>&1)
   local estado=$?
   if [ "$estado" -eq 0 ]; then
     ok=$((ok+1)); echo "  ok   $2 (exit 0)"
   else
     falhou=$((falhou+1)); echo "  FALHA $2 — saiu $estado; a mutacao deste bloco NAO MEDE NADA"
-    sed 's/^/    | /' /tmp/caixa-linha-de-base.log
+    sed 's/^/    | /' "$LOGS/caixa-linha-de-base.log"
   fi
 }
 
@@ -232,13 +262,45 @@ ROSTER_CONTAGEM=-1
 # normalizacao e o que faz os dois lados coincidirem por construcao — que e
 # exatamente o que uma segunda fonte nao pode ter.
 #
-# `regra` e `descricao` FICAM DE FORA, e o motivo e medido, nao estetico:
-# `descricao` so entra em mensagem de falha, nunca numa decisao; e `regra` so
-# escolhe qual `references/regra-<n>.md` o degrau `referencia` abre — trocar o
-# numero faz o sensor procurar arquivo que nao existe, ou que existe e nao tem a
-# frase, e sair 2 nos dois casos. Medido em 2026-09-20: `printenv NOME` aparece
-# em `regra-15.md` e em nenhum dos outros 21 arquivos de `references/`. Falha
-# FECHADO, entao nao e da classe que esta declaracao existe para fechar.
+# `regra` e `descricao` FICAM DE FORA, e a conclusao continua valendo — o MOTIVO
+# escrito aqui e que estava errado ate 2026-09-20, achado da OITAVA revisao.
+#
+# `descricao` so entra em mensagem de falha, nunca numa decisao: esse lado nunca
+# esteve em duvida.
+#
+# `regra` era justificado assim: "trocar o numero faz o sensor procurar arquivo
+# que nao existe, ou que existe e nao tem a frase, e sair 2 nos dois casos".
+# FALSO para a maioria das entradas. `regra` so entra numa DECISAO pelo
+# `lerReferencia`, e `lerReferencia` so e chamado quando `onde` inclui
+# `referencia` — o que hoje vale para UMA das QUINZE (`printenv NOME`, regra 15).
+# Para as outras catorze o campo nao toca decisao nenhuma; ele so compoe o
+# sufixo ` regra-<n>` da mensagem. Medido em 2026-09-20 na base `f6872939`,
+# trocando `"regra": 10` por `"regra": 99` na entrada com `onde:
+# ["skill","nucleo"]` de `skills/rainforest-mind/invariantes.json`:
+#
+#   ok: conferidas 15 invariantes
+#   exit=0
+#
+# O MOTIVO REAL de deixar `regra` de fora e, entao, outro: para catorze das
+# quinze o campo e inerte, e para a unica em que ele decide algo o erro hoje
+# falha FECHADO por propriedade do DADO, nao do mecanismo — `printenv NOME`
+# aparece em `regra-15.md` e em nenhum dos outros 21 arquivos de `references/`,
+# medido em 2026-09-20, entao qualquer outro numero manda o sensor a um arquivo
+# que nao tem a frase e ele sai 2.
+#
+# A CONSEQUENCIA, que e o que esta linha registra para quem vier depois: uma
+# invariante FUTURA com `onde: ["referencia"]` cuja frase exista em MAIS DE UM
+# `references/regra-<n>.md` falha ABERTO, e esta declaracao nao pega, porque
+# `regra` nao esta nela. Medido em 2026-09-20, acrescentando a
+# `skills/rainforest-mind/invariantes.json` a entrada `{"frase": "Pensamento |
+# Realidade |", "onde": ["referencia"]}` — frase presente em `regra-09.md`,
+# `regra-10.md` e `regra-12.md` — e alternando so o numero:
+#
+#   regra=10 -> ok: conferidas 16 invariantes   exit=0
+#   regra=12 -> ok: conferidas 16 invariantes   exit=0
+#
+# O campo que escolhe QUAL arquivo e a fonte protegida pode mudar sem um vermelho.
+# Nao ha invariante assim hoje; declarar `regra` quando houver e a saida.
 #
 # Aspas SIMPLES de proposito: as frases trazem crase — `git rev-parse`, `main`,
 # `ideias.cjs plantar`, `bash <bateria>` — e dentro de aspas duplas o bash
@@ -315,9 +377,9 @@ avalia_roster() {
   ROSTER_ATUAL="$(cd "$1" && for f in skills/*/invariantes.json; do
     [ -e "$f" ] && basename "$(dirname "$f")"
   done | LC_ALL=C sort | tr '\n' ' ' | sed 's/ *$//')"
-  (cd "$1/scripts" && node conferir-invariantes.cjs > /tmp/roster.log 2>&1)
+  (cd "$1/scripts" && node conferir-invariantes.cjs > "$LOGS/roster.log" 2>&1)
   ROSTER_EXIT=$?
-  ROSTER_CONTAGEM="$(sed -n 's/.*conferidas \([0-9][0-9]*\) invariantes.*/\1/p' /tmp/roster.log | head -1)"
+  ROSTER_CONTAGEM="$(sed -n 's/.*conferidas \([0-9][0-9]*\) invariantes.*/\1/p' "$LOGS/roster.log" | head -1)"
   [ -n "$ROSTER_CONTAGEM" ] || ROSTER_CONTAGEM=-1
 }
 
@@ -370,9 +432,9 @@ mkdir -p "$CAIXA_NAODEV/skills/fechar"
 cp skills/fechar/SKILL.md "$CAIXA_NAODEV/skills/fechar/SKILL.md"
 printf '%s\n' '[{"frase":"CONFIRMO fechar issue","tipo":"nao_deve"}]' > "$CAIXA_NAODEV/skills/fechar/invariantes.json"
 printf '%s\n' 'CONFIRMO fechar issue' >> "$CAIXA_NAODEV/skills/fechar/SKILL.md"
-(cd "$CAIXA_NAODEV/scripts" && node conferir-invariantes.cjs > /tmp/naodev-presente.log 2>&1)
+(cd "$CAIXA_NAODEV/scripts" && node conferir-invariantes.cjs > "$LOGS/naodev-presente.log" 2>&1)
 NAODEV_PRESENTE=$?
-if [ "$NAODEV_PRESENTE" -eq 2 ] && grep -q "fechar" /tmp/naodev-presente.log && grep -q "CONFIRMO fechar issue" /tmp/naodev-presente.log; then
+if [ "$NAODEV_PRESENTE" -eq 2 ] && grep -q "fechar" "$LOGS/naodev-presente.log" && grep -q "CONFIRMO fechar issue" "$LOGS/naodev-presente.log"; then
   ok=$((ok+1)); echo "  ok   VERDE: nao_deve: frase proibida presente no corpo reprova (exit $NAODEV_PRESENTE)"
 else
   falhou=$((falhou+1)); echo "  FALHA: nao_deve deveria falhar com exit 2 (saiu $NAODEV_PRESENTE)"
@@ -384,7 +446,7 @@ CAIXA_NAODEV_OK="$(nova_caixa)"
 mkdir -p "$CAIXA_NAODEV_OK/skills/fechar"
 cp skills/fechar/SKILL.md "$CAIXA_NAODEV_OK/skills/fechar/SKILL.md"
 printf '%s\n' '[{"frase":"CONFIRMO fechar issue","tipo":"nao_deve"}]' > "$CAIXA_NAODEV_OK/skills/fechar/invariantes.json"
-(cd "$CAIXA_NAODEV_OK/scripts" && node conferir-invariantes.cjs > /tmp/naodev-ausente.log 2>&1)
+(cd "$CAIXA_NAODEV_OK/scripts" && node conferir-invariantes.cjs > "$LOGS/naodev-ausente.log" 2>&1)
 NAODEV_AUSENTE=$?
 if [ "$NAODEV_AUSENTE" -eq 0 ]; then
   ok=$((ok+1)); echo "  ok   VERDE: nao_deve: frase proibida ausente no corpo passa (exit 0)"
@@ -467,12 +529,12 @@ while read -r VIVA_SKILL VIVA_IDX; do
   if [ -d "skills/$VIVA_SKILL/references" ]; then cp -r "skills/$VIVA_SKILL/references" "$CAIXA_VIVA/skills/$VIVA_SKILL/"; fi
 
   # Linha de base DESTE plantio: a caixa integra tem de sair 0 antes de plantar.
-  (cd "$CAIXA_VIVA/scripts" && node conferir-invariantes.cjs > /tmp/vivacidade-base.log 2>&1)
+  (cd "$CAIXA_VIVA/scripts" && node conferir-invariantes.cjs > "$LOGS/vivacidade-base.log" 2>&1)
   VIVA_BASE=$?
   if [ "$VIVA_BASE" -ne 0 ]; then
     VIVACIDADE_OK=0
     echo "    ($VIVA_SKILL #$VIVA_IDX: caixa integra saiu $VIVA_BASE ANTES de plantar — o plantio nao mediria nada)"
-    sed 's/^/    | /' /tmp/vivacidade-base.log
+    sed 's/^/    | /' "$LOGS/vivacidade-base.log"
     rm -rf "$CAIXA_VIVA"
     continue
   fi
@@ -500,19 +562,19 @@ fs.writeFileSync(arquivo,depois);
     continue
   fi
 
-  (cd "$CAIXA_VIVA/scripts" && node conferir-invariantes.cjs > /tmp/vivacidade.log 2>&1)
+  (cd "$CAIXA_VIVA/scripts" && node conferir-invariantes.cjs > "$LOGS/vivacidade.log" 2>&1)
   VIVA_EXIT=$?
   # DESLIGA: esta condicao e' a afericao POSITIVA do caso — o comportamento que
   # ele existe para medir. O laco vazio e a linha de base acima sao guardas de
   # vacuo, nao afericoes de comportamento. Neutralizar esta linha (trocar por
   # `if true; then`) desliga a vivacidade sem mexer em mais nada; note que isso
   # deixa a bateria VERDE, entao `conferir-mutacao.cjs` sai 2 nela, nao 0.
-  if [ "$VIVA_EXIT" -eq 2 ] && grep -q "\[$VIVA_SKILL\]" /tmp/vivacidade.log && grep -q "frase proibida encontrada" /tmp/vivacidade.log; then
+  if [ "$VIVA_EXIT" -eq 2 ] && grep -q "\[$VIVA_SKILL\]" "$LOGS/vivacidade.log" && grep -q "frase proibida encontrada" "$LOGS/vivacidade.log"; then
     :
   else
     VIVACIDADE_OK=0
     echo "    ($VIVA_SKILL #$VIVA_IDX: com a frase de producao plantada no corpo, esperava exit 2 nomeando [$VIVA_SKILL], saiu $VIVA_EXIT)"
-    sed 's/^/    | /' /tmp/vivacidade.log
+    sed 's/^/    | /' "$LOGS/vivacidade.log"
   fi
   rm -rf "$CAIXA_VIVA"
 done <<VIVACIDADE_FIM
@@ -687,9 +749,9 @@ fs.writeFileSync(arquivo, depois);
 " 2>&1)
 MUTACAO_LIMPAR=$?
 if [ "$MUTACAO_LIMPAR" -eq 0 ]; then
-  (cd "$CAIXA_LIMPAR/scripts" && node conferir-invariantes.cjs > /tmp/limpar-removida.log 2>&1)
+  (cd "$CAIXA_LIMPAR/scripts" && node conferir-invariantes.cjs > "$LOGS/limpar-removida.log" 2>&1)
   FALHA_LIMPAR=$?
-  if [ "$FALHA_LIMPAR" -eq 2 ] && grep -q "limpar" /tmp/limpar-removida.log; then
+  if [ "$FALHA_LIMPAR" -eq 2 ] && grep -q "limpar" "$LOGS/limpar-removida.log"; then
     ok=$((ok+1)); echo "  ok   VERMELHO: skill de acao: frase obrigatoria removida do corpo reprova (exit $FALHA_LIMPAR)"
   else
     falhou=$((falhou+1)); echo "  FALHA: frase removida deveria falhar com exit 2 (saiu $FALHA_LIMPAR)"
@@ -717,9 +779,9 @@ fs.writeFileSync(arquivo, depois);
 " 2>&1)
 MUTACAO_DUP=$?
 if [ "$MUTACAO_DUP" -eq 0 ]; then
-  (cd "$CAIXA_DUP/scripts" && node conferir-invariantes.cjs > /tmp/dup.log 2>&1)
+  (cd "$CAIXA_DUP/scripts" && node conferir-invariantes.cjs > "$LOGS/dup.log" 2>&1)
   FALHA_DUP=$?
-  if [ "$FALHA_DUP" -eq 2 ] && grep -q "aparece 2 vezes" /tmp/dup.log; then
+  if [ "$FALHA_DUP" -eq 2 ] && grep -q "aparece 2 vezes" "$LOGS/dup.log"; then
     ok=$((ok+1)); echo "  ok   VERMELHO: deve duplicado reprova com contagem (exit $FALHA_DUP)"
   else
     falhou=$((falhou+1)); echo "  FALHA: duplicação deveria falhar com exit 2 (saiu $FALHA_DUP)"
@@ -729,9 +791,74 @@ else
 fi
 rm -rf "$CAIXA_DUP"
 
+# Caso: deve duplicado NO RAMO `onde` — a SEGUNDA checagem de ocorrencia unica.
+# O sensor tem DUAS, uma por ramo: `onde` ausente (`conferir-invariantes.cjs`,
+# ramo `if (onde === undefined)`) e `onde` presente (o ramo `else`). Ate
+# 2026-09-20 so a primeira tinha caso — a `CAIXA_DUP` acima declara
+# `[{"frase":"O destino da branch é sempre PR"}]`, SEM `onde`. Medido na base
+# `f6872939`, apagando as sete linhas da checagem do ramo `onde`: a bateria
+# ficava `ok: 29   falhou: 0`. Mutante sobrevivente, achado da OITAVA revisao.
+#
+# A caixa declara a entrada INTEIRA em vez de herdar a de producao que
+# `nova_caixa_rf` copia, e isso nao e zelo: se `onde` sumisse do
+# `skills/rainforest-mind/invariantes.json`, o caso passaria a exercitar o ramo
+# `onde === undefined` — ainda exit 2, ainda "aparece 2 vezes" — e ficaria verde
+# medindo o ramo errado, que e o defeito que ele existe para pegar.
+#
+# A duplicata e plantada DENTRO do bloco de regras, no nucleo da regra 10: assim
+# `emSkill` e `emNucleo` continuam verdadeiros e a UNICA falha e a de
+# duplicidade. Plantar fora do bloco casaria a contagem no arquivo mas nao
+# exercitaria o ramo com as tres checagens em pe.
+#
+# E `# Caso:` que CHAMA `assere_base` — a segunda excecao declarada, ao lado do
+# VIVACIDADE —, porque ele muta a arvore da `rainforest-mind`, como os blocos
+# `# (n) MUTAÇÃO:`.
+CAIXA_DUP_ONDE="$(nova_caixa_rf)"
+printf '%s\n' '[{"regra": 10, "frase": "3.000+ tokens", "onde": ["skill", "nucleo"], "descricao": "ramo onde: ocorrencia unica"}]' > "$CAIXA_DUP_ONDE/skills/rainforest-mind/invariantes.json"
+assere_base "$CAIXA_DUP_ONDE" "LINHA DE BASE (dup-onde): caixa integra passa antes da mutacao dup-onde"
+(cd "$CAIXA_DUP_ONDE/scripts" && node -e "
+const fs=require('fs');
+const arquivo='../skills/rainforest-mind/SKILL.md';
+const antes=fs.readFileSync(arquivo,'utf8');
+
+const regex = /(\*\*10\. [^\n]+\n(?:[^\n]+\n)*?)(\<!-- detalhe -->)/;
+const match = antes.match(regex);
+if (!match) {
+  console.error('Nao achei regra 10 ou marca detalhe');
+  process.exit(3);
+}
+if (!match[1].includes('3.000+ tokens')) {
+  console.error('Nao achei a frase 3.000+ tokens na regra 10');
+  process.exit(3);
+}
+
+// Duplica DENTRO do nucleo da regra 10, antes da marca detalhe
+const regra10Duplicada = match[1].replace('3.000+ tokens', '3.000+ tokens (repetido de proposito: 3.000+ tokens)');
+const depois = antes.replace(match[0], regra10Duplicada + match[2]);
+if (antes === depois) {
+  console.error('MUTACAO NAO APLICADA');
+  process.exit(3);
+}
+fs.writeFileSync(arquivo, depois);
+")
+MUTACAO_DUP_ONDE=$?
+if [ "$MUTACAO_DUP_ONDE" -eq 0 ]; then
+  (cd "$CAIXA_DUP_ONDE/scripts" && node conferir-invariantes.cjs > "$LOGS/dup-onde.log" 2>&1)
+  FALHA_DUP_ONDE=$?
+  if [ "$FALHA_DUP_ONDE" -eq 2 ] && grep -q "aparece 2 vezes" "$LOGS/dup-onde.log"; then
+    ok=$((ok+1)); echo "  ok   VERMELHO: deve duplicado no ramo onde reprova com contagem (exit $FALHA_DUP_ONDE)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA: duplicacao no ramo onde deveria falhar com exit 2 (saiu $FALHA_DUP_ONDE)"
+    sed 's/^/    | /' "$LOGS/dup-onde.log"
+  fi
+else
+  falhou=$((falhou+1)); echo "  FALHA: nao consegui aplicar mutacao duplicacao no ramo onde"
+fi
+rm -rf "$CAIXA_DUP_ONDE"
+
 # Caso: zero arquivos invariantes.json reprova
 CAIXA_VAZIA="$(nova_caixa)"
-(cd "$CAIXA_VAZIA/scripts" && node conferir-invariantes.cjs > /tmp/vazia.log 2>&1)
+(cd "$CAIXA_VAZIA/scripts" && node conferir-invariantes.cjs > "$LOGS/vazia.log" 2>&1)
 FALHA_VAZIA=$?
 if [ "$FALHA_VAZIA" -ne 0 ]; then
   ok=$((ok+1)); echo "  ok   VERMELHO: zero arquivos invariantes reprova (exit $FALHA_VAZIA)"
@@ -745,7 +872,7 @@ CAIXA_TIPO="$(nova_caixa)"
 mkdir -p "$CAIXA_TIPO/skills/fechar"
 cp skills/fechar/SKILL.md "$CAIXA_TIPO/skills/fechar/SKILL.md"
 printf '%s\n' '[{"frase":"test","tipo":"invalido"}]' > "$CAIXA_TIPO/skills/fechar/invariantes.json"
-(cd "$CAIXA_TIPO/scripts" && node conferir-invariantes.cjs > /tmp/tipo-invalido.log 2>&1)
+(cd "$CAIXA_TIPO/scripts" && node conferir-invariantes.cjs > "$LOGS/tipo-invalido.log" 2>&1)
 FALHA_TIPO=$?
 if [ "$FALHA_TIPO" -ne 0 ]; then
   ok=$((ok+1)); echo "  ok   VERMELHO: tipo desconhecido reprova (exit $FALHA_TIPO)"
@@ -760,7 +887,7 @@ mkdir -p "$CAIXA_SEM_FRASE/skills/fechar"
 cp skills/fechar/SKILL.md "$CAIXA_SEM_FRASE/skills/fechar/SKILL.md"
 printf '%s\n' '[{"tipo":"nao_deve","frasse":"CONFIRMO fechar issue"}]' > "$CAIXA_SEM_FRASE/skills/fechar/invariantes.json"
 printf '%s\n' 'CONFIRMO fechar issue' >> "$CAIXA_SEM_FRASE/skills/fechar/SKILL.md"
-(cd "$CAIXA_SEM_FRASE/scripts" && node conferir-invariantes.cjs > /tmp/sem-frase.log 2>&1)
+(cd "$CAIXA_SEM_FRASE/scripts" && node conferir-invariantes.cjs > "$LOGS/sem-frase.log" 2>&1)
 SEM_FRASE=$?
 if [ "$SEM_FRASE" -eq 1 ]; then
   ok=$((ok+1)); echo "  ok   VERMELHO: frase ausente na invariante reprova (exit $SEM_FRASE)"
@@ -775,9 +902,9 @@ mkdir -p "$CAIXA_NAODEV_CAIXA/skills/fechar"
 cp skills/fechar/SKILL.md "$CAIXA_NAODEV_CAIXA/skills/fechar/SKILL.md"
 printf '%s\n' '[{"frase":"CONFIRMO fechar issue","tipo":"nao_deve"}]' > "$CAIXA_NAODEV_CAIXA/skills/fechar/invariantes.json"
 printf '%s\n' 'Confirmo fechar issue #12' >> "$CAIXA_NAODEV_CAIXA/skills/fechar/SKILL.md"
-(cd "$CAIXA_NAODEV_CAIXA/scripts" && node conferir-invariantes.cjs > /tmp/naodev-caixa.log 2>&1)
+(cd "$CAIXA_NAODEV_CAIXA/scripts" && node conferir-invariantes.cjs > "$LOGS/naodev-caixa.log" 2>&1)
 NAODEV_CAIXA=$?
-if [ "$NAODEV_CAIXA" -eq 2 ] && grep -q "fechar" /tmp/naodev-caixa.log; then
+if [ "$NAODEV_CAIXA" -eq 2 ] && grep -q "fechar" "$LOGS/naodev-caixa.log"; then
   ok=$((ok+1)); echo "  ok   VERMELHO: nao_deve casa com caixa diferente (exit 2)"
 else
   falhou=$((falhou+1)); echo "  FALHA VERMELHO: nao_deve casa com caixa diferente (exit 2) — saiu $NAODEV_CAIXA"
@@ -789,9 +916,9 @@ CAIXA_ARR_VAZIO="$(nova_caixa)"
 mkdir -p "$CAIXA_ARR_VAZIO/skills/fechar"
 cp skills/fechar/SKILL.md "$CAIXA_ARR_VAZIO/skills/fechar/SKILL.md"
 printf '%s\n' '[]' > "$CAIXA_ARR_VAZIO/skills/fechar/invariantes.json"
-(cd "$CAIXA_ARR_VAZIO/scripts" && node conferir-invariantes.cjs > /tmp/arr-vazio.log 2>&1)
+(cd "$CAIXA_ARR_VAZIO/scripts" && node conferir-invariantes.cjs > "$LOGS/arr-vazio.log" 2>&1)
 ARR_VAZIO=$?
-if [ "$ARR_VAZIO" -eq 1 ] && grep -q "fechar" /tmp/arr-vazio.log; then
+if [ "$ARR_VAZIO" -eq 1 ] && grep -q "fechar" "$LOGS/arr-vazio.log"; then
   ok=$((ok+1)); echo "  ok   VERMELHO: invariantes.json com array vazio reprova (exit 1)"
 else
   falhou=$((falhou+1)); echo "  FALHA VERMELHO: invariantes.json com array vazio reprova (exit 1) — saiu $ARR_VAZIO"
@@ -817,9 +944,9 @@ for conteudo in '{"frase":"x"}' 'null' '"texto"' '42' '[null]' '["x"]' '[42]'; d
   mkdir -p "$CAIXA_FORA/skills/fechar"
   cp skills/fechar/SKILL.md "$CAIXA_FORA/skills/fechar/SKILL.md"
   printf '%s\n' "$conteudo" > "$CAIXA_FORA/skills/fechar/invariantes.json"
-  (cd "$CAIXA_FORA/scripts" && node conferir-invariantes.cjs > /tmp/fora-formato.log 2>&1)
+  (cd "$CAIXA_FORA/scripts" && node conferir-invariantes.cjs > "$LOGS/fora-formato.log" 2>&1)
   FORA=$?
-  if [ "$FORA" -ne 1 ] || ! grep -q "fechar" /tmp/fora-formato.log || grep -q "TypeError" /tmp/fora-formato.log; then
+  if [ "$FORA" -ne 1 ] || ! grep -q "fechar" "$LOGS/fora-formato.log" || grep -q "TypeError" "$LOGS/fora-formato.log"; then
     FORA_FORMATO_OK=0
     echo "    (forma [$conteudo] saiu $FORA)"
   fi
@@ -838,9 +965,9 @@ for conteudo in '[{"frase":"FRASE QUE NAO EXISTE EM LUGAR NENHUM","onde":[]}]' '
   mkdir -p "$CAIXA_ONDE/skills/fechar"
   cp skills/fechar/SKILL.md "$CAIXA_ONDE/skills/fechar/SKILL.md"
   printf '%s\n' "$conteudo" > "$CAIXA_ONDE/skills/fechar/invariantes.json"
-  (cd "$CAIXA_ONDE/scripts" && node conferir-invariantes.cjs > /tmp/onde-sem-degrau.log 2>&1)
+  (cd "$CAIXA_ONDE/scripts" && node conferir-invariantes.cjs > "$LOGS/onde-sem-degrau.log" 2>&1)
   ONDE=$?
-  if [ "$ONDE" -ne 1 ] || ! grep -q "fechar" /tmp/onde-sem-degrau.log || grep -q "TypeError" /tmp/onde-sem-degrau.log; then
+  if [ "$ONDE" -ne 1 ] || ! grep -q "fechar" "$LOGS/onde-sem-degrau.log" || grep -q "TypeError" "$LOGS/onde-sem-degrau.log"; then
     ONDE_SEM_DEGRAU_OK=0
     echo "    (forma [$conteudo] saiu $ONDE)"
   fi
@@ -852,7 +979,7 @@ CAIXA_SEM_ONDE="$(nova_caixa)"
 mkdir -p "$CAIXA_SEM_ONDE/skills/fechar"
 cp skills/fechar/SKILL.md "$CAIXA_SEM_ONDE/skills/fechar/SKILL.md"
 printf '%s\n' '[{"frase":"FRASE QUE NAO EXISTE EM LUGAR NENHUM"}]' > "$CAIXA_SEM_ONDE/skills/fechar/invariantes.json"
-(cd "$CAIXA_SEM_ONDE/scripts" && node conferir-invariantes.cjs > /tmp/sem-onde.log 2>&1)
+(cd "$CAIXA_SEM_ONDE/scripts" && node conferir-invariantes.cjs > "$LOGS/sem-onde.log" 2>&1)
 SEM_ONDE=$?
 if [ "$SEM_ONDE" -ne 2 ]; then
   ONDE_SEM_DEGRAU_OK=0
@@ -914,21 +1041,21 @@ if [ "$MUTACAO_DEGRAU" -eq 0 ]; then
   # Controle: com `nucleo` escrito certo, a mutacao canonica E' medida — exit 2.
   # Sem este controle o vermelho abaixo poderia vir de caixa quebrada.
   degrau_com_onde '["skill","nucleo"]'
-  (cd "$CAIXA_DEGRAU/scripts" && node conferir-invariantes.cjs > /tmp/degrau-controle.log 2>&1)
+  (cd "$CAIXA_DEGRAU/scripts" && node conferir-invariantes.cjs > "$LOGS/degrau-controle.log" 2>&1)
   DEGRAU_CONTROLE=$?
   if [ "$DEGRAU_CONTROLE" -ne 2 ]; then
     DEGRAU_OK=0
     echo "    (controle: onde [skill,nucleo] com a mutacao canonica dentro deveria sair 2, saiu $DEGRAU_CONTROLE)"
-    sed 's/^/    | /' /tmp/degrau-controle.log
+    sed 's/^/    | /' "$LOGS/degrau-controle.log"
   fi
   # A medida: um degrau lixo AO LADO do valido. Ate 2026-09-20 saia 0 aqui.
   degrau_com_onde '["skill","nucelo"]'
-  (cd "$CAIXA_DEGRAU/scripts" && node conferir-invariantes.cjs > /tmp/degrau-lixo.log 2>&1)
+  (cd "$CAIXA_DEGRAU/scripts" && node conferir-invariantes.cjs > "$LOGS/degrau-lixo.log" 2>&1)
   DEGRAU_LIXO=$?
-  if [ "$DEGRAU_LIXO" -ne 1 ] || ! grep -q "nucelo" /tmp/degrau-lixo.log || ! grep -q "rainforest-mind" /tmp/degrau-lixo.log || grep -q "TypeError" /tmp/degrau-lixo.log; then
+  if [ "$DEGRAU_LIXO" -ne 1 ] || ! grep -q "nucelo" "$LOGS/degrau-lixo.log" || ! grep -q "rainforest-mind" "$LOGS/degrau-lixo.log" || grep -q "TypeError" "$LOGS/degrau-lixo.log"; then
     DEGRAU_OK=0
     echo "    (onde [skill,nucelo] saiu $DEGRAU_LIXO, esperado 1 — com a mutacao canonica dentro da caixa; saiu 0 na base 3e967643, que e' o defeito que este caso tranca)"
-    sed 's/^/    | /' /tmp/degrau-lixo.log
+    sed 's/^/    | /' "$LOGS/degrau-lixo.log"
   fi
 else
   DEGRAU_OK=0
@@ -951,9 +1078,9 @@ for conteudo in '[{"frase":"x","xpto":"lixo"}]' '[{"frase":"O destino da branch 
   mkdir -p "$CAIXA_CHAVE/skills/fechar"
   cp skills/fechar/SKILL.md "$CAIXA_CHAVE/skills/fechar/SKILL.md"
   printf '%s\n' "$conteudo" > "$CAIXA_CHAVE/skills/fechar/invariantes.json"
-  (cd "$CAIXA_CHAVE/scripts" && node conferir-invariantes.cjs > /tmp/chave-desconhecida.log 2>&1)
+  (cd "$CAIXA_CHAVE/scripts" && node conferir-invariantes.cjs > "$LOGS/chave-desconhecida.log" 2>&1)
   CHAVE=$?
-  if [ "$CHAVE" -ne 1 ] || ! grep -q "fechar" /tmp/chave-desconhecida.log || grep -q "TypeError" /tmp/chave-desconhecida.log; then
+  if [ "$CHAVE" -ne 1 ] || ! grep -q "fechar" "$LOGS/chave-desconhecida.log" || grep -q "TypeError" "$LOGS/chave-desconhecida.log"; then
     CHAVE_DESCONHECIDA_OK=0
     echo "    (forma [$conteudo] saiu $CHAVE)"
   fi
@@ -965,7 +1092,7 @@ CAIXA_CHAVE_OK="$(nova_caixa)"
 mkdir -p "$CAIXA_CHAVE_OK/skills/fechar"
 cp skills/fechar/SKILL.md "$CAIXA_CHAVE_OK/skills/fechar/SKILL.md"
 printf '%s\n' '[{"frase":"O destino da branch é sempre PR"}]' > "$CAIXA_CHAVE_OK/skills/fechar/invariantes.json"
-(cd "$CAIXA_CHAVE_OK/scripts" && node conferir-invariantes.cjs > /tmp/chave-conhecida.log 2>&1)
+(cd "$CAIXA_CHAVE_OK/scripts" && node conferir-invariantes.cjs > "$LOGS/chave-conhecida.log" 2>&1)
 CHAVE_OK=$?
 if [ "$CHAVE_OK" -ne 0 ]; then
   CHAVE_DESCONHECIDA_OK=0
@@ -984,9 +1111,9 @@ CAIXA_NAODEV_ONDE="$(nova_caixa)"
 mkdir -p "$CAIXA_NAODEV_ONDE/skills/fechar"
 cp skills/fechar/SKILL.md "$CAIXA_NAODEV_ONDE/skills/fechar/SKILL.md"
 printf '%s\n' '[{"frase":"CONFIRMO fechar issue","tipo":"nao_deve","onde":["skill"]}]' > "$CAIXA_NAODEV_ONDE/skills/fechar/invariantes.json"
-(cd "$CAIXA_NAODEV_ONDE/scripts" && node conferir-invariantes.cjs > /tmp/naodev-onde.log 2>&1)
+(cd "$CAIXA_NAODEV_ONDE/scripts" && node conferir-invariantes.cjs > "$LOGS/naodev-onde.log" 2>&1)
 NAODEV_ONDE=$?
-if [ "$NAODEV_ONDE" -eq 1 ] && grep -q "fechar" /tmp/naodev-onde.log && grep -q "nao_deve" /tmp/naodev-onde.log; then
+if [ "$NAODEV_ONDE" -eq 1 ] && grep -q "fechar" "$LOGS/naodev-onde.log" && grep -q "nao_deve" "$LOGS/naodev-onde.log"; then
   ok=$((ok+1)); echo "  ok   VERMELHO: onde em invariante nao_deve reprova (exit 1)"
 else
   falhou=$((falhou+1)); echo "  FALHA VERMELHO: onde em invariante nao_deve reprova (exit 1) — saiu $NAODEV_ONDE"
@@ -1039,7 +1166,7 @@ MUTACAO1=$?
 
 if [ "$MUTACAO1" -eq 0 ]; then
   # Agora executar o conferir na cópia com a mutação
-  (cd "$CAIXA1/scripts" && node conferir-invariantes.cjs > /tmp/mutacao1.log 2>&1)
+  (cd "$CAIXA1/scripts" && node conferir-invariantes.cjs > "$LOGS/mutacao1.log" 2>&1)
   VERMELHO1=$?
   if [ "$VERMELHO1" -ne 0 ]; then
     ok=$((ok+1)); echo "  ok   VERMELHO: frase movida para apos detalhe derruba conferir (exit $VERMELHO1)"
@@ -1079,7 +1206,7 @@ fs.writeFileSync(arquivo, depois);
 MUTACAO2=$?
 
 if [ "$MUTACAO2" -eq 0 ]; then
-  (cd "$CAIXA2/scripts" && node conferir-invariantes.cjs > /tmp/mutacao2.log 2>&1)
+  (cd "$CAIXA2/scripts" && node conferir-invariantes.cjs > "$LOGS/mutacao2.log" 2>&1)
   VERMELHO2=$?
   if [ "$VERMELHO2" -ne 0 ]; then
     ok=$((ok+1)); echo "  ok   VERMELHO: frase removida derruba conferir (exit $VERMELHO2)"
@@ -1132,7 +1259,7 @@ fs.writeFileSync(arquivo, depois);
 MUTACAO3=$?
 
 if [ "$MUTACAO3" -eq 0 ]; then
-  (cd "$CAIXA3/scripts" && node conferir-invariantes.cjs > /tmp/mutacao3.log 2>&1)
+  (cd "$CAIXA3/scripts" && node conferir-invariantes.cjs > "$LOGS/mutacao3.log" 2>&1)
   VERMELHO3=$?
   if [ "$VERMELHO3" -ne 0 ]; then
     ok=$((ok+1)); echo "  ok   VERMELHO: frase movida para apos detalhe nao chega ao nucleo (exit $VERMELHO3)"
@@ -1171,7 +1298,7 @@ fs.writeFileSync(arquivo, depois);
 MUTACAO4=$?
 
 if [ "$MUTACAO4" -eq 0 ]; then
-  (cd "$CAIXA4/scripts" && node conferir-invariantes.cjs > /tmp/mutacao4.log 2>&1)
+  (cd "$CAIXA4/scripts" && node conferir-invariantes.cjs > "$LOGS/mutacao4.log" 2>&1)
   VERMELHO4=$?
   if [ "$VERMELHO4" -ne 0 ]; then
     ok=$((ok+1)); echo "  ok   VERMELHO: frase removida da referencia derruba conferir (exit $VERMELHO4)"
@@ -1238,15 +1365,15 @@ fs.writeFileSync(arquivo, depois);
 MUTACAO5=$?
 
 if [ "$MUTACAO5" -eq 0 ]; then
-  (cd "$CAIXA5/scripts" && node conferir-invariantes.cjs > /tmp/mutacao5.log 2>&1)
+  (cd "$CAIXA5/scripts" && node conferir-invariantes.cjs > "$LOGS/mutacao5.log" 2>&1)
   VERMELHO5=$?
   # Exige a regra 13 nomeada no stderr: sem isso o vermelho poderia vir de
   # qualquer outra invariante e o bloco voltaria a medir o que o (1) já mede.
-  if [ "$VERMELHO5" -ne 0 ] && grep -q "regra-13" /tmp/mutacao5.log; then
+  if [ "$VERMELHO5" -ne 0 ] && grep -q "regra-13" "$LOGS/mutacao5.log"; then
     ok=$((ok+1)); echo "  ok   VERMELHO: frase da regra 13 movida para apos detalhe nao chega ao nucleo (exit $VERMELHO5)"
   else
     falhou=$((falhou+1)); echo "  FALHA: frase da regra 13 movida para apos detalhe nao derrubou o conferir citando regra-13 (saiu $VERMELHO5)"
-    sed 's/^/    | /' /tmp/mutacao5.log
+    sed 's/^/    | /' "$LOGS/mutacao5.log"
   fi
 else
   falhou=$((falhou+1)); echo "  FALHA: nao consegui aplicar a quinta mutacao"
@@ -1261,6 +1388,16 @@ rm -rf "$CAIXA5"
 #    verdade: montava `/tmp/meta-ref` com caminho FIXO, fora do `mktemp -d`, o
 #    que ainda fazia duas execuções concorrentes da bateria brigarem pela mesma
 #    pasta.
+#
+#    ESSE ARGUMENTO VALIA CONTRA O PRÓPRIO ARQUIVO até 2026-09-20, por achado da
+#    OITAVA revisão: os caminhos de log daqui eram todos fixos —
+#    `grep -o "/tmp/[a-z0-9-]*\.log"` devolvia 57 ocorrências e 28 caminhos
+#    distintos, inclusive o `caixa-linha-de-base.log` que a `assere_base` LÊ para
+#    imprimir a causa de uma linha de base vermelha. A inconsistência foi
+#    resolvida do lado do arquivo, não do argumento: hoje todos saem do `LOGS`
+#    declarado no topo, um `mktemp -d` por execução. O motivo de resolver assim,
+#    e não de riscar a frase, é que aqui a colisão falha ABERTO — vários casos
+#    aferem com `grep` no log, então log trocado vira `ok` pelo motivo errado.
 # 2. Repetia, byte a byte, a mutação do bloco (4) — `printenv NOME` ->
 #    `printenv VARNAME` em `references/regra-15.md`. O degrau `referencia` já é
 #    coberto lá, com caixa própria e linha de base asserida.
@@ -1284,4 +1421,5 @@ rm -rf "$CAIXA5"
 echo
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
+rm -rf "$LOGS"
 [ "$falhou" -eq 0 ]

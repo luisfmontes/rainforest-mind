@@ -390,7 +390,7 @@ for (const nomeSkill of skillsComInvariantes) {
     // já foi decidida no passe de validação acima, antes de qualquer medição.
     // `onde` AUSENTE continua válido e significa presença no corpo (D4).
 
-    // Determinação do "corpo" a testar conforme o tipo e onde
+    // O "corpo" é o arquivo INTEIRO, sempre: nem o `tipo` nem o `onde` o estreitam — quem olha pedaço são as checagens do ramo `onde`, que leem `regrasTexto` e `nucleoContent`, nunca esta variável (a redação anterior, "Determinação do corpo conforme o tipo e onde", prometia um estreitamento que esta linha nunca fez)
     const corpo = skillContent;
 
     // Checagem de tipo nao_deve — insensível a caixa, como o `/i` do enxerto (D5)

@@ -144,13 +144,35 @@ com um tiro só, e invariante redundante não prova nada.
   invariante nova não declarada (com a mensagem dizendo o arquivo e a variável
   onde declarar), declarada que sumiu, e varredura vazia.
 
-  **`regra` e `descricao` ficam de fora da declaração, e é decisão medida:**
-  `descricao` só entra em mensagem de falha, nunca numa decisão; e `regra` só
-  escolhe qual `references/regra-<n>.md` o degrau `referencia` abre — trocar o
-  número faz o sensor procurar arquivo inexistente, ou existente e sem a frase, e
-  sair 2 nos dois casos. Medido em 2026-09-20: `printenv NOME` está em
-  `regra-15.md` e em nenhum dos outros 21 arquivos de `references/`. Falha
-  fechado, então não é da classe que a declaração existe para fechar.
+  **`regra` e `descricao` ficam de fora da declaração. A decisão continua certa;
+  o motivo escrito aqui estava errado** — corrigido em 2026-09-20, por achado da
+  oitava revisão. A redação anterior dizia que trocar `regra` "faz o sensor
+  procurar arquivo inexistente, ou existente e sem a frase, e sair 2 **nos dois
+  casos**". Falso para a maioria das entradas: `regra` só entra numa **decisão**
+  através do `lerReferencia`, e o `lerReferencia` só é chamado quando `onde`
+  inclui `referencia` — o que hoje vale para **uma das quinze**. Nas outras
+  catorze o campo é inerte: ele só compõe o sufixo ` regra-<n>` da mensagem.
+  Medido em 2026-09-20 na base `f6872939`, trocando `"regra": 10` por
+  `"regra": 99` na entrada com `onde: ["skill","nucleo"]`:
+  `ok: conferidas 15 invariantes`, **exit 0**.
+
+  O **motivo real** é outro, e é este: para catorze das quinze o campo não toca
+  decisão nenhuma, e para a única em que toca o erro falha **fechado por
+  propriedade do dado**, não do mecanismo — `printenv NOME` está em `regra-15.md`
+  e em nenhum dos outros 21 arquivos de `references/`, então qualquer outro
+  número manda o sensor a um arquivo que não tem a frase e ele sai 2.
+
+  **A consequência, que a oitava revisão nomeou:** uma invariante **futura** com
+  `onde: ["referencia"]` cuja frase exista em **mais de um**
+  `references/regra-<n>.md` falha **aberto**, e a declaração não pega, porque
+  `regra` não está nela. Medido em 2026-09-20, acrescentando a
+  `skills/rainforest-mind/invariantes.json` a entrada
+  `{"frase": "Pensamento | Realidade |", "onde": ["referencia"]}` — frase presente
+  em `regra-09.md`, `regra-10.md` e `regra-12.md` — e alternando só o número:
+  `regra: 10` dá `ok: conferidas 16 invariantes`, exit 0; `regra: 12` dá
+  exatamente o mesmo. O campo que escolhe **qual arquivo é a fonte protegida**
+  pode mudar sem um vermelho. Não há invariante assim hoje; declarar `regra`
+  quando houver é a saída, e é barato.
 
   **Um efeito colateral que vale registrar:** com `onde` dentro da declaração,
   **remover** o campo de uma entrada passou a ser vermelho. Antes não era — medido
@@ -173,3 +195,64 @@ com um tiro só, e invariante redundante não prova nada.
   `INVARIANTES_ESPERADAS`. É o mesmo custo que a trava de roster já cobra de uma
   skill protegida nova, e a mensagem de recusa nomeia o arquivo, a variável e a
   linha pronta para colar.
+
+  **O que a segunda fonte garante, e o que ela não garante** — acrescentado em
+  2026-09-20, por achado da oitava revisão, para o parágrafo acima não vender mais
+  do que existe. Ela guarda **deriva**, não **corretude de origem**. A mensagem de
+  recusa manda "acrescente cada linha abaixo, EXATAMENTE como esta", então a linha
+  declarada de uma invariante **nova** nasce copiada da produção: no nascimento os
+  dois lados saem de uma mão só, e a segunda fonte só passa a valer da **próxima**
+  edição em diante. Isso é defensável — é exatamente na edição posterior que o
+  RETARGET e o typo moram — e não muda o mecanismo; o que muda é a promessa.
+
+  Para as **quinze de hoje** existe uma **terceira** fonte, e ela é o que sustenta
+  a corretude de origem que a declaração não sustenta. As **dez** das skills de
+  ação batem, frase a frase, com a tabela "Frases propostas" deste design — a que
+  o usuário cortou em 2026-09-19 —, conferido em 2026-09-20 comparando os dois
+  conjuntos: 10 contra 10, nenhuma linha só de um lado. As **cinco** da
+  `rainforest-mind` não nasceram nesta entrega: o arquivo é o blob
+  `3ae94ce4d660dcf3a5c0589934b8d282b41b5f99` desde `97e6f29e` (2026-09-08), byte a
+  byte, e `git hash-object skills/rainforest-mind/invariantes.json` devolve o mesmo
+  hash hoje. Uma invariante criada **depois** deste fluxo não terá nenhuma das
+  duas — e é para ela que a ressalva acima vale inteira.
+
+- **A OITAVA FORMA: a frase preservada, a instrução invertida em volta dela** —
+  aberto em 2026-09-20, por achado da oitava revisão. **Não é para consertar nesta
+  rodada**; a saída é mudança de desenho, e desenho é decisão do usuário.
+
+  **O resíduo.** Dez das quinze entradas têm `onde` ausente, e para elas a única
+  aferição do sensor é "a substring está **em algum lugar** do arquivo". Como o
+  `SKILL.md` é markdown, a frase pode continuar presente como **comentário HTML**
+  enquanto o texto ao redor manda o contrário. Medido em 2026-09-20 na base
+  `f6872939`, trocando em `skills/fechar/SKILL.md` a linha
+  `**O destino da branch é sempre PR.** Abra o PR e informe o número — sem menu,`
+  por
+
+  ```
+  ATE 2026-09 valia <!-- O destino da branch é sempre PR -->; agora ofereca menu merge / PR / manter
+  ```
+
+  → `node scripts/conferir-invariantes.cjs` dá `ok: conferidas 15 invariantes`,
+  **exit 0**, e `bash scripts/testa-conferir-invariantes.sh` dá
+  `ok: 29   falhou: 0`, **exit 0** — e **repetido com a entrega fechada**, já com
+  o caso de duplicidade do ramo `onde` dentro, dá `ok: 31   falhou: 0`, exit 0. O
+  número de casos mudou; o resíduo não. O comportamento que a D1 elegeu como
+  irreversível fica **invertido com o CI inteiro verde**. A segunda fonte não
+  alcança isto por construção: ela compara `invariantes.json` contra a declaração,
+  e nenhum dos dois mudou — quem mudou foi o `SKILL.md`.
+
+  **A D4 continua correta, e é importante dizer por quê.** Ela declara a
+  semântica "`onde` ausente = presença no corpo", e o sensor entrega exatamente
+  isso; não há discrepância entre o que a D4 promete e o que o código faz. O que
+  promete demais é o **Objetivo** deste design — "impedir que uma instrução de
+  comportamento suma de um `SKILL.md` sem ninguém perceber" —, porque "sumir" e
+  "deixar de valer" não são a mesma coisa, e as dez entradas só medem a primeira.
+  Nada aqui pede alteração da D4.
+
+  **Direção candidata, decisão pendente do usuário** (não é pendência de
+  implementação): dar às skills de ação um **degrau posicional** — um valor de
+  `onde` que exija a frase num pedaço qualificado do corpo, como `["skill"]` já
+  faz para a `rainforest-mind` via `filtrarRegras`, em vez de no arquivo inteiro.
+  Isso fecharia o comentário HTML e o texto morto, e cobraria um preço: as seis
+  skills de ação não têm hoje nenhuma marca de corte, então o degrau precisaria de
+  uma convenção nova nelas. Reabrir só com a palavra do usuário.
