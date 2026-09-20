@@ -137,3 +137,48 @@ artefato com tarefa.
   a régua na Fase 0 não tem onde ler isso, e a mensagem de erro agrava: diz
   `quantidade invalida de mecanismos: 0` quando o autor escreveu sete com outra
   pontuação.
+
+**Rodada 3 (2026-09-20).** Um contraexemplo novo de estado de git por rodada
+(repo sem commit, `packed-refs` ilegível). A sonda em camadas de `ancoraDe`
+cobriu os conhecidos e o cabeçalho passou a **declarar o limite**: estado exótico
+de git pode cair no lado errado da fronteira 1/2. Decisão do usuário, não
+autoaprovação — prometer perfeição numa classificação que três rodadas
+independentes furaram é o que estava errado.
+
+**Rodada 4 (2026-09-20), achado `D1`.** `--slug` entra sem validação nos três
+pontos que montam `docs/rainforest/reguas/${slug}.md`, e
+`--slug '../../../skills/regua/SKILL'` faz o conferidor **ler e dar veredito**
+sobre arquivo de fora da pasta de réguas — `fs.existsSync` e `fs.readFileSync`
+normalizam o `..`. O que ele não chega a fazer é **imprimir**: `git show
+<sha>:<caminho com ..>` não normaliza e falha, então sem a validação o script já
+saía 2 ali, por acidente e com a mensagem errada (`erro ao ler conteudo do
+commit`). Isso importa para a medição: assertiva de exit code sozinha não
+distingue os dois mundos, e a bateria por pouco mediu o acidente em vez da
+recusa — quem separa é a mensagem e a ausência de `..` na saída. Não é o limite
+declarado na rodada 3 — aquele fala só da fronteira exit 1 vs 2 sob git estranho —
+e contradiz o design `D3`, que afirma **um** ponto onde burlar o selo. O conserto
+não inventa mecanismo: reusa `validarSlug` de `scripts/recibo.cjs`, que já recusa
+barra, contrabarra, dois-pontos e `..` com exit 2, já é exportado e já tem
+bateria própria.
+
+pronto quando (rodada 4): com `--slug '../fora'` apontando para um manifesto
+válido e commitado fora da pasta de réguas, tanto `conferir` quanto `mostrar`
+saem **2** com `RECUSADO: slug invalido` em stderr, nenhum byte em stdout, e
+**nenhum caminho contendo `..` na saída** — é esta última que distingue a recusa
+do acidente do `git show`. Um slug legítimo ao lado do alvo continua saindo 0.
+Provado por
+`bash scripts/testa-conferir-regua.sh` devolvendo `resultado: N ok, 0 falha(s)`,
+exit 0 e zero pulados.
+
+Alvo de mutação da rodada 4 — vai em cerca de propósito: o bloco `mutacao:`
+que o `conferir-fluxo.cjs cobertura` lê é o da tarefa 6 (a inversão de EOL), e
+um segundo bloco fora de cerca seria lido em silêncio ou ignorado em silêncio,
+que é pior. Este é o que a **integração** re-rodou:
+
+```
+arquivo: scripts/conferir-regua.cjs
+de: if (slug) validarSlug(slug);
+para: if (false) validarSlug(slug);
+bateria: bash scripts/testa-conferir-regua.sh
+fixture: testa-conferir-regua.sh, caso 17 "--slug com ../ nao escapa de docs/rainforest/reguas/"
+```

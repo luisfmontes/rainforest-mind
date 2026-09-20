@@ -100,27 +100,26 @@
       {
         "tarefa": 6,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-regua.sh, casos 9 (autocrlf), 12/14/15/16 (camadas da sonda) e 13 (### M<n> sem descricao)"
+        "fixture": "testa-conferir-regua.sh, caso 17 \"--slug com ../ nao escapa\" (rodada 4) e casos 9, 12/14/15/16 e 13 (rodadas anteriores)"
       }
     ],
     "comando": "bash scripts/varrer-baterias.sh",
     "saida": "as 125 baterias passaram (exit 0)",
-    "em_voo": []
+    "sensor_externo": "bash scripts/varrer-baterias.sh"
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "2b625ca836ea812a22af4b0f45a96385bda60fd3",
+      "head": "52d789eccb132dc4b6da59eb9edd5c54ff13b539",
       "caminhos_sujos": []
     },
     "em_voo": [],
     "em": "2026-09-20",
-    "achados": 2,
+    "achados": 1,
     "lista": [
-      "C1: a sonda for-each-ref erra nos dois sentidos - HEAD destacado sem branch da 1 com objeto podre, e refs/remotes de um fetch da 2 num repo sao",
-      "C2: a doc promete apenas espaco obrigatorio, mas o regex exige espaco E conteudo - o proprio template da doc seria rejeitado"
+      "D1: --slug nao e validado e escapa de docs/rainforest/reguas/ por ../ - a D3 afirma um ponto onde burlar e ha dois"
     ],
-    "tentativas": 3,
+    "tentativas": 4,
     "liberado_em": "2026-09-20"
   },
   "verificar": {

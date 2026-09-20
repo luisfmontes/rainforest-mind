@@ -577,6 +577,63 @@ fi
 
 cd "$REPO2"
 
+echo
+echo "== 17. --slug com ../ nao escapa de docs/rainforest/reguas/ =="
+# O selo tem UM ponto por onde burlar (design D3): quem nao chama o script.
+# Sem validar o slug haveria DOIS — `--slug ../fora` monta
+# docs/rainforest/reguas/../fora.md, e `fs.existsSync`/`fs.readFileSync`
+# normalizam o `..`: o conferidor passa a LER e a dar VEREDITO sobre arquivo de
+# fora da pasta de reguas.
+#
+# O que ele NAO faz, e medir isso e o ponto deste bloco: imprimir o conteudo.
+# `git show <sha>:<caminho com ..>` nao normaliza e falha, entao sem a
+# validacao o script ja saia 2 ali — por acidente, e com a mensagem errada
+# ("erro ao ler conteudo do commit"). Por isso as assercoes de exit code
+# sozinhas NAO discriminam: sob mutacao seis das sete passam. Quem separa os
+# dois mundos e a MENSAGEM e a ausencia de `..` na saida — e por isso elas
+# existem aqui, nao como zelo.
+#
+# O alvo abaixo e um manifesto VALIDO e COMMITADO, com um gemeo dentro da
+# pasta, para que o caso meça a recusa e nao a ausencia do arquivo.
+REPO8="$CAIXA/repo-travessia"
+mkdir -p "$REPO8/docs/rainforest/reguas"
+cd "$REPO8"
+git init >/dev/null 2>&1
+git config user.email "test@<email>"
+git config user.name "Test User"
+git config commit.gpgsign false
+cp "$REPO2/docs/rainforest/reguas/autocrlf-test.md" docs/rainforest/fora.md
+cp "$REPO2/docs/rainforest/reguas/autocrlf-test.md" docs/rainforest/reguas/dentro.md
+git add -A >/dev/null 2>&1
+git commit -q -m "alvo fora da pasta de reguas" >/dev/null 2>&1
+
+# Contraprova: o mesmo manifesto, dentro da pasta, passa. Sem ela o caso
+# poderia estar verde porque o conferidor recusa tudo.
+esperado "slug legitimo ao lado do alvo segue passando" 0 node "$SCRIPT" conferir --slug dentro
+
+esperado "conferir --slug ../fora recusa" 2 node "$SCRIPT" conferir --slug ../fora
+contem "conferir --slug ../fora diz por que" "slug invalido" node "$SCRIPT" conferir --slug ../fora
+esperado "mostrar --slug ../fora recusa" 2 node "$SCRIPT" mostrar --slug ../fora
+
+bytes8=$(stdout_bytes node "$SCRIPT" mostrar --slug ../fora)
+if [ "$bytes8" = "0" ]; then
+  ok=$((ok+1)); echo "  ok   mostrar --slug ../fora nao imprime byte nenhum"
+else
+  falhou=$((falhou+1)); echo "  FALHA mostrar --slug ../fora imprimiu $bytes8 bytes de fora da pasta de reguas"
+fi
+
+saida8=$(node "$SCRIPT" conferir --slug ../fora 2>&1)
+if echo "$saida8" | grep -q -- 'reguas/\.\./'; then
+  falhou=$((falhou+1)); echo "  FALHA a saida ainda carrega caminho montado com ..: $saida8"
+else
+  ok=$((ok+1)); echo "  ok   a saida nao menciona caminho montado com .."
+fi
+
+esperado "slug com barra recusa" 2 node "$SCRIPT" conferir --slug "reguas/dentro"
+esperado "slug com dois-pontos recusa" 2 node "$SCRIPT" conferir --slug "dentro:stream"
+
+cd "$REPO2"
+
 echo "== Resumo =="
 resultado=$((ok+falhou))
 if [ "$falhou" = "0" ]; then

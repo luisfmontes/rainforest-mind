@@ -25,24 +25,26 @@
  * Uso:
  *   node scripts/conferir-regua.cjs conferir --slug <slug>
  *     Valida que o manifesto <slug> não foi alterado e tem formato válido.
- *     Exit 0: tudo ok. Exit 1: veredito negativo. Exit 2: uso errado ou
- *             arquivo inexistente.
+ *     Exit 0: tudo ok. Exit 1: veredito negativo. Exit 2: uso errado, slug
+ *             invalido (barra, contrabarra, dois-pontos ou "..") ou arquivo
+ *             inexistente.
  *
  *   node scripts/conferir-regua.cjs mostrar --slug <slug>
  *     Valida que o manifesto <slug> não foi alterado e tem formato válido.
  *     Se válido, imprime o conteúdo do commit-âncora em stdout.
  *     Exit 0: tudo ok. Exit 1: manifesto alterado ou formato inválido.
- *             Exit 2: slug inexistente ou git falhou.
+ *             Exit 2: slug invalido ou inexistente, ou git falhou.
  *
  * Exit codes:
  *   0  Manifesto íntegro e formato válido (conferir: sucesso; mostrar: imprimiu conteúdo).
  *   1  Manifesto alterado OU formato inválido.
- *   2  Slug inexistente, uso errado, ou git falhou.
+ *   2  Slug invalido ou inexistente, uso errado, ou git falhou.
  */
 
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { validarSlug } = require('./recibo.cjs');
 
 const EXIT_RECUSA = 1;
 const EXIT_GIT_FALHOU = 2;
@@ -245,6 +247,14 @@ function exigirAncoraEFormato(slug) {
 
 const subcomando = process.argv[2];
 const slug = arg('slug');
+
+// Slug monta caminho (`docs/rainforest/reguas/<slug>.md`) em tres pontos. Sem
+// validar, `--slug '../../../skills/regua/SKILL'` le fora da pasta de reguas e
+// o selo passa a ter dois pontos por onde burlar, nao um (design D3). A recusa
+// vem de `validarSlug` (scripts/recibo.cjs), que ja sai 2 com motivo nomeado.
+// Falta de `--slug` continua caindo no `uso()` de cada subcomando, que e a
+// mensagem certa para quem chamou errado.
+if (slug) validarSlug(slug);
 
 if (subcomando === 'conferir') {
   if (!slug) {
