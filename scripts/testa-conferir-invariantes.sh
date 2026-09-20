@@ -112,11 +112,13 @@ set -u
 
 cd "$(dirname "$0")/.." || exit 1
 
-# Diretorio de logs DESTA execucao. Ate 2026-09-20 os 27 caminhos de log deste
-# arquivo eram FIXOS em `/tmp/<nome>.log` — exatamente o defeito que o motivo (1)
-# da remocao do bloco (6), no fim deste arquivo, da como uma das razoes para
-# apaga-lo. O argumento ficava valendo contra 27 linhas do proprio arquivo que o
-# escreveu.
+# Diretorio de logs DESTA execucao. Ate 2026-09-20 os caminhos de log deste
+# arquivo eram todos FIXOS em `/tmp/<nome>.log` — exatamente o defeito que o
+# motivo (1) da remocao do bloco (6), no fim deste arquivo, da como uma das
+# razoes para apaga-lo. O argumento ficava valendo contra o proprio arquivo que
+# o escreveu. Contados por `grep -o "/tmp/[a-z0-9-]*\.log"`: 27 caminhos
+# distintos em 54 linhas na base `f6872939`, e 28 em 57 depois do caso
+# `dup-onde` desta mesma rodada — 57 foi o que a troca varreu.
 #
 # E nao e ruido de diagnostico: varios casos ASSEREM lendo o log — `grep -q
 # "aparece 2 vezes" "$LOGS/dup.log"`, `grep -q "fechar"
@@ -1391,8 +1393,9 @@ rm -rf "$CAIXA5"
 #
 #    ESSE ARGUMENTO VALIA CONTRA O PRÓPRIO ARQUIVO até 2026-09-20, por achado da
 #    OITAVA revisão: os caminhos de log daqui eram todos fixos —
-#    `grep -o "/tmp/[a-z0-9-]*\.log"` devolvia 57 ocorrências e 28 caminhos
-#    distintos, inclusive o `caixa-linha-de-base.log` que a `assere_base` LÊ para
+#    `grep -o "/tmp/[a-z0-9-]*\.log"` devolvia 27 caminhos distintos em 54 linhas
+#    na base `f6872939`, e 28 em 57 depois do caso `dup-onde` desta mesma rodada
+#    —, inclusive o `caixa-linha-de-base.log` que a `assere_base` LÊ para
 #    imprimir a causa de uma linha de base vermelha. A inconsistência foi
 #    resolvida do lado do arquivo, não do argumento: hoje todos saem do `LOGS`
 #    declarado no topo, um `mktemp -d` por execução. O motivo de resolver assim,
@@ -1417,6 +1420,10 @@ rm -rf "$CAIXA5"
 # que gravam `SKILL.md` mutado — `CAIXA_LIMPAR` e `CAIXA_DUP` — não chamam
 # `assere_base`, e continuam assim de propósito. Eles abortam explícito quando a
 # mutação não pega e exigem `-eq 2` mais `grep`, que é o que fecha o vácuo neles.
+# A lista NÃO é a de todos os `# Caso:` que gravam `SKILL.md` mutado: o
+# `CAIXA_DUP_ONDE`, acrescentado nesta mesma data, também grava e CHAMA
+# `assere_base` — é a segunda exceção declarada no bloco OS DOIS RÓTULOS, lá em
+# cima. Lida como enumeração completa, esta linha ficaria falsa.
 
 echo
 echo "-----------------------------------------"
