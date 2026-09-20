@@ -24,7 +24,7 @@
     "em": "2026-09-19"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-19",
     "tarefas_ok": 4,
     "tarefas": 4,
@@ -99,26 +99,30 @@
     ],
     "rodada": 7,
     "achados_corrigidos": 4,
-    "medido": "com o typo CONFIRM0, VIVACIDADE segue verde e a bateria 28/0"
+    "medido": "com o typo CONFIRM0, VIVACIDADE segue verde e a bateria 28/0",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-20"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "045ded9793fbcc05e95c77baa7ff414ab55ab8b9",
+      "head": "5e7a31a60d5bffc402a33ef9fd3ea91d1de643c8",
       "caminhos_sujos": []
     },
     "em_voo": [],
     "em": "2026-09-20",
     "achados": 1,
     "base": "4f714ef69e942606032627ab8284b5e1c3336cec",
-    "head": "045ded9793fbcc05e95c77baa7ff414ab55ab8b9",
+    "head": "5e7a31a60d5bffc402a33ef9fd3ea91d1de643c8",
     "lista": [
       "B1 testa-conferir-invariantes.sh:282-527: a CAIXA e criada uma vez e nunca restaurada; a linha de base so guarda o bloco (1). Blocos (2) a (5) herdam arvore estragada e so aferem exit != 0, entao viram no-op em silencio. Pior: bateria, plano e design agora AFIRMAM que o vacuo foi fechado",
       "B2 conferir-invariantes.cjs:72: nada fixa quais skills estao protegidas. Apagar os seis invariantes.json das skills de acao deixa exit 0 com conferidas 5 - medido por mim. A unica guarda e zero arquivos no total, que rainforest-mind sozinha satisfaz para sempre"
     ],
-    "tentativas": 5,
-    "bloqueante": "typo na frase de um nao_deve deixa o invariante permanentemente vazio: sensor sai 0 e bateria segue 27/0. A varredura declarada e cega a isso por construcao, porque frase-que-nao-existe e a condicao de aprovacao do nao_deve. Conserto e na bateria, nao no sensor",
-    "nao_bloqueantes": 4
+    "tentativas": 6,
+    "bloqueante": "setima forma: nada fixa QUAL frase um deve protege. SEGUNDA FONTE so cobre nao_deve. Trocar a frase de um deve por name: (ocorre 1x em todos os sete SKILL.md) passa presenca e ocorrencia unica; depois a frase real pode sumir do corpo com sensor 0 e bateria 29/0. Medido",
+    "nao_bloqueantes": 5
   },
   "verificar": {
     "status": "pendente"
