@@ -1,6 +1,6 @@
 {
   "slug": "2026-09-19-regua-selada-keep-discard",
-  "titulo": "Regua selada por construcao e keep/discard por custo fixo",
+  "titulo": "Regua selada por construcao e keep/discard por comparacao interna",
   "criado_em": "2026-09-19",
   "arqueologia": {
     "status": "pendente"
@@ -22,7 +22,7 @@
     "em": "2026-09-19"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-19",
     "tarefas_ok": 5,
     "tarefas": 5,
@@ -92,10 +92,30 @@
       }
     ],
     "comando": "bash scripts/varrer-baterias.sh",
-    "saida": "as 125 baterias passaram (exit 0)"
+    "saida": "as 125 baterias passaram (exit 0)",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-20"
+    }
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "376102000007d830a4a096a22cf632e87cd87a42",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-09-19-regua-selada-keep-discard.json"
+      ]
+    },
+    "em_voo": [],
+    "em": "2026-09-20",
+    "achados": 4,
+    "lista": [
+      "A1 bloqueante: conferir-regua.cjs compara integridade sem normalizar CRLF; com core.autocrlf=true o manifesto intacto vira falso positivo e trava o loop",
+      "A2: docstring promete exit 2 para falha de git, codigo sai 1 - confunde ambiente com adulteracao",
+      "A3: formato do manifesto (### M<n> com separador, ## Freios exato) nao esta documentado em lugar que o autor da regua leia, e a mensagem de erro diz quantidade 0 quando o problema e pontuacao",
+      "A4: titulo do estado nomeia custo fixo, mecanismo que o design descartou"
+    ],
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"

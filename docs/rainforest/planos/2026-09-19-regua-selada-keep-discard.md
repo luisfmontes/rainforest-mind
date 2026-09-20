@@ -100,3 +100,40 @@ paralela: sim
 mutacao: n/a
   motivo: uma linha de tabela; o comportamento que a protege já existe e é a catraca `conferir-livro-de-repos.cjs`, cuja bateria não muda nesta entrega.
 pronto quando: com a linha de `karpathy/autoresearch` datada de `2026-09-19` na tabela "Avaliados", `node scripts/conferir-livro-de-repos.cjs` sai 0 — e, trocando o veredito dessa linha para `Enxertar: vale a pena`, sai 2 com `VEREDITO FORA DO VOCABULÁRIO` citando a linha, provando que a linha nova está de fato dentro do alcance da catraca e não antes do corte.
+
+### 6. Fecha os achados do `revisar` no conferidor [tipo: implementar]
+atende: D1, D3, D5, D7
+arquivos: `scripts/conferir-regua.cjs`, `scripts/testa-conferir-regua.sh`, `skills/regua/SKILL.md`
+depende de: 2
+paralela: nao
+mutacao:
+  arquivo: `scripts/conferir-regua.cjs`
+  de: `if (normalizarEol(conteudoCommit) !== normalizarEol(conteudoArquivo)) {`
+  para: `if (conteudoCommit !== conteudoArquivo) {`
+  bateria: `bash scripts/testa-conferir-regua.sh`
+  fixture: `testa-conferir-regua.sh, caso "manifesto recheckado com autocrlf continua intacto"`
+pronto quando: num repositório git real com `core.autocrlf=true` e sem `.gitattributes` forçando `eol=lf`, com o manifesto commitado em LF e depois recheckado na árvore de trabalho (portanto com CRLF em disco e nenhuma alteração de conteúdo), `node scripts/conferir-regua.cjs conferir --slug <slug>` sai **0** e `mostrar --slug <slug>` imprime o manifesto — provado por `bash scripts/testa-conferir-regua.sh` devolvendo `resultado: N ok, 0 falha(s)`, exit 0 e zero pulados; e `node scripts/conferir-regua.cjs mostrar --slug <slug>` num repositório sem `git` no PATH sai **2**, não 1.
+
+**Rodada 2 (achados do `revisar`, 2026-09-20).** A revisão reprovou com quatro
+achados. Três são desta tarefa; o quarto (`A4`) é o `titulo` do arquivo de estado,
+que nomeava "custo fixo" — o mecanismo que o design descartou — e foi corrigido
+direto, porque `docs/rainforest/estado/<slug>.json` é rastro do fluxo, não
+artefato com tarefa.
+
+- **A1, bloqueante** — a comparação de integridade não normaliza fim de linha. A
+  etapa de formato já removia `\r`, mas ela roda **depois** do gate, que aborta
+  antes. Com `core.autocrlf=true` (padrão do Git no Windows) num repo hospedeiro
+  sem `.gitattributes`, qualquer checkout que reconstrua o arquivo o devolve em
+  CRLF, e o conferidor passa a acusar de adulterado um manifesto que ninguém
+  tocou — `conferir` sai 1 e `mostrar` recusa imprimir, travando o loop inteiro.
+  É o incidente de 2026-08-13 que o `.gitattributes:1-11` deste repo documenta,
+  só que a proteção de lá é do repo do plugin e não acompanha a skill.
+- **A2** — o cabeçalho promete exit 2 para "git falhou" e o código sai 1. Falha
+  de ambiente passa a ser lida como adulteração. Âncora vazia (manifesto nunca
+  commitado) continua 1, que é veredito legítimo; o que vira 2 é o git não
+  executar.
+- **A3** — o formato exigido (`### M<n>` com separador depois do número, `## Freios`
+  comparado por igualdade exata) só existe nas fixtures da bateria. Quem escreve
+  a régua na Fase 0 não tem onde ler isso, e a mensagem de erro agrava: diz
+  `quantidade invalida de mecanismos: 0` quando o autor escreveu sete com outra
+  pontuação.
