@@ -322,11 +322,51 @@ else falhou=$((falhou+1)); echo "  FALHA mostrar não imprimiu com autocrlf"; fi
 cd "$REPO"
 
 echo
-echo "== 10. git indisponivel sai 2 =="
-# Valida que slug inexistente (arquivo não criado) sai 2
+echo "== 10. ambiente sai 2, veredito sai 1 =="
+# Dois casos distintos, e a distincao e o ponto do A2:
+#   - slug inexistente        -> 2 (uso errado)
+#   - git presente, sem commit -> 1 (veredito negativo sobre o trabalho)
+#   - fora de repositorio git  -> 2 (ambiente), nunca 1
 esperado "arquivo inexistente sai 2" 2 node "$SCRIPT" conferir --slug totalmente-inexistente
 
-echo
+# Manifesto valido em disco, porem NUNCA commitado: veredito negativo, exit 1.
+REPO3="$CAIXA/repo-sem-commit"
+mkdir -p "$REPO3/docs/rainforest/reguas"
+cd "$REPO3"
+git init >/dev/null 2>&1
+git config user.email "test@<email>"
+git config user.name "Test User"
+git config commit.gpgsign false
+cp "$REPO2/docs/rainforest/reguas/autocrlf-test.md" docs/rainforest/reguas/sem-commit.md
+esperado "manifesto nunca commitado sai 1 (veredito, nao ambiente)" 1 node "$SCRIPT" conferir --slug sem-commit
+
+# Ramo de AMBIENTE: manifesto em disco, mas fora de qualquer repositorio git.
+# Sabotar o PATH com um `git` falso nao serve aqui: no Windows o Node resolve o
+# binario por PATHEXT e ignora um `git` sem extensao num PATH estilo Unix — a
+# versao anterior deste caso passava sem nunca ter usado o falso, que e
+# exatamente o "verde pelo motivo errado" que esta bateria existe para impedir.
+FORA="$CAIXA/fora-de-repo/docs/rainforest/reguas"
+mkdir -p "$FORA"
+cp "$REPO2/docs/rainforest/reguas/autocrlf-test.md" "$FORA/orfa.md"
+cd "$CAIXA/fora-de-repo"
+saida_fora=$(node "$SCRIPT" conferir --slug orfa 2>&1); ec_fora=$?
+if [ "$ec_fora" = "2" ]; then
+  ok=$((ok+1)); echo "  ok   fora de repositorio git sai 2, nao 1 (exit $ec_fora)"
+else
+  falhou=$((falhou+1)); echo "  FALHA fora de repositorio: esperava exit 2, veio $ec_fora"
+  echo "$saida_fora" | sed 's/^/         /' | tail -4
+fi
+if echo "$saida_fora" | grep -q "git indisponivel ou fora de repositorio"; then
+  ok=$((ok+1)); echo "  ok     ... nomeia o ambiente, nao acusa adulteracao"
+else
+  falhou=$((falhou+1)); echo "  FALHA mensagem nao nomeia o ambiente"
+  echo "$saida_fora" | sed 's/^/         /' | tail -4
+fi
+
+# O caso 10 saiu do repositorio de proposito; volta antes de seguir, senao o
+# caso seguinte roda fora de repo e reprova por 2 em vez de 1.
+cd "$REPO2"
+
 echo "== 11. manifesto com cabecalho ### M1: x recheckado com mensagem nova =="
 # Cria manifesto com formato errado
 cat > docs/rainforest/reguas/formato-errado.md << 'EOF'

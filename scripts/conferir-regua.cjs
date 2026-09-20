@@ -76,10 +76,21 @@ function ancoraDe(slug) {
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 
-  if (res.error) {
-    return null;
-  }
-  if (res.status !== 0) {
+  // AMBIENTE (2) vs. VEREDITO (1), e a distincao nao se faz por texto de erro.
+  // `git log` sai != 0 em DOIS casos muito diferentes: o git nao executou, e o
+  // repositorio nao tem commit nenhum ainda. O segundo e "manifesto nunca
+  // commitado", que e veredito legitimo sobre o trabalho. Quem separa os dois e
+  // um `git rev-parse --git-dir`: se ELE responde, o git existe e estamos num
+  // repositorio, entao a falha do `log` so pode ser ausencia de commit.
+  if (res.error || res.status !== 0) {
+    const sonda = spawnSync('git', ['rev-parse', '--git-dir'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    if (sonda.error || sonda.status !== 0) {
+      console.error(`git indisponivel ou fora de repositorio ao resolver a ancora de ${slug}`);
+      process.exit(EXIT_GIT_FALHOU);
+    }
     return null;
   }
 
