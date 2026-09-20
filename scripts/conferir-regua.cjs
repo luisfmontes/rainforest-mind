@@ -20,8 +20,14 @@
  *     Exit 0: tudo ok. Exit 1: veredito negativo. Exit 2: uso errado ou
  *             arquivo inexistente.
  *
+ *   node scripts/conferir-regua.cjs mostrar --slug <slug>
+ *     Valida que o manifesto <slug> não foi alterado e tem formato válido.
+ *     Se válido, imprime o conteúdo do commit-âncora em stdout.
+ *     Exit 0: tudo ok. Exit 1: manifesto alterado ou formato inválido.
+ *             Exit 2: slug inexistente ou git falhou.
+ *
  * Exit codes:
- *   0  Manifesto íntegro e formato válido.
+ *   0  Manifesto íntegro e formato válido (conferir: sucesso; mostrar: imprimiu conteúdo).
  *   1  Manifesto alterado OU formato inválido.
  *   2  Slug inexistente, uso errado, ou git falhou.
  */
@@ -39,6 +45,7 @@ function arg(nome) {
 
 function uso() {
   console.error(`uso: node scripts/conferir-regua.cjs conferir --slug <slug>`);
+  console.error(`      node scripts/conferir-regua.cjs mostrar --slug <slug>`);
 }
 
 /**
@@ -76,9 +83,8 @@ function ancoraDe(slug) {
 
 /**
  * Resolve a âncora, valida que existe, valida o formato do manifesto.
- * Retorna { valido: true } se tudo ok.
- * Retorna { valido: false, exitCode: 1 ou 2 } se há erro.
- * Nunca faz process.exit para que a tarefa 2 possa usar a função.
+ * Retorna a string do hash (âncora) se tudo ok.
+ * Faz process.exit(1 ou 2) se há erro. Nunca retorna em caso de falha.
  */
 function exigirAncoraEFormato(slug) {
   const caminhoManifesto = `docs/rainforest/reguas/${slug}.md`;
@@ -86,14 +92,14 @@ function exigirAncoraEFormato(slug) {
   // Verifica se o arquivo existe na árvore de trabalho
   if (!fs.existsSync(caminhoManifesto)) {
     console.error(`arquivo não encontrado: ${caminhoManifesto}`);
-    return { valido: false, exitCode: 2 };
+    process.exit(2);
   }
 
   // Resolve a âncora
   const ancora = ancoraDe(slug);
   if (!ancora) {
     console.error(`manifesto nunca foi commitado: ${caminhoManifesto}`);
-    return { valido: false, exitCode: EXIT_RECUSA };
+    process.exit(EXIT_RECUSA);
   }
 
   // Lê o conteúdo do commit
@@ -108,7 +114,7 @@ function exigirAncoraEFormato(slug) {
 
   if (resShow.error || resShow.status !== 0) {
     console.error(`erro ao ler conteudo do commit ${ancora}: ${caminhoManifesto}`);
-    return { valido: false, exitCode: EXIT_RECUSA };
+    process.exit(EXIT_RECUSA);
   }
 
   const conteudoCommit = resShow.stdout;
@@ -117,7 +123,7 @@ function exigirAncoraEFormato(slug) {
   // Compara conteudo
   if (conteudoCommit !== conteudoArquivo) {
     console.error(`manifesto editado na arvore de trabalho: ${caminhoManifesto}`);
-    return { valido: false, exitCode: EXIT_RECUSA };
+    process.exit(EXIT_RECUSA);
   }
 
   // Valida formato
@@ -128,7 +134,7 @@ function exigirAncoraEFormato(slug) {
   const temFreios = linhas.some(linha => linha === '## Freios');
   if (!temFreios) {
     console.error(`secao obrigatoria ausente: ## Freios (${caminhoManifesto})`);
-    return { valido: false, exitCode: EXIT_RECUSA };
+    process.exit(EXIT_RECUSA);
   }
 
   // Procura por cabecalhos ### M<n>
@@ -145,18 +151,18 @@ function exigirAncoraEFormato(slug) {
   // Valida: 5 a 7 mecanismos
   if (numerosM.length < 5 || numerosM.length > 7) {
     console.error(`quantidade invalida de mecanismos: ${numerosM.length} (esperado 5-7) (${caminhoManifesto})`);
-    return { valido: false, exitCode: EXIT_RECUSA };
+    process.exit(EXIT_RECUSA);
   }
 
   // Valida: sequencial a partir de 1, sem buraco e sem repetido
   for (let i = 0; i < numerosM.length; i++) {
     if (numerosM[i] !== i + 1) {
       console.error(`mecanismos nao sequenciais ou com buraco: ${numerosM.join(', ')} (${caminhoManifesto})`);
-      return { valido: false, exitCode: EXIT_RECUSA };
+      process.exit(EXIT_RECUSA);
     }
   }
 
-  return { valido: true };
+  return ancora;
 }
 
 // ============== Main
@@ -170,12 +176,32 @@ if (subcomando === 'conferir') {
     process.exit(2);
   }
 
-  const resultado = exigirAncoraEFormato(slug);
-  if (resultado.valido) {
-    process.exit(0);
-  } else {
-    process.exit(resultado.exitCode);
+  exigirAncoraEFormato(slug);
+  process.exit(0);
+} else if (subcomando === 'mostrar') {
+  if (!slug) {
+    uso();
+    process.exit(2);
   }
+
+  const ancora = exigirAncoraEFormato(slug);
+  const caminhoManifesto = `docs/rainforest/reguas/${slug}.md`;
+
+  const resShow = spawnSync('git', [
+    'show',
+    `${ancora}:${caminhoManifesto}`,
+  ], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: { ...process.env, MSYS_NO_PATHCONV: '1' },
+  });
+
+  if (resShow.error || resShow.status !== 0) {
+    process.exit(EXIT_RECUSA);
+  }
+
+  process.stdout.write(resShow.stdout);
+  process.exit(0);
 } else {
   uso();
   process.exit(2);
