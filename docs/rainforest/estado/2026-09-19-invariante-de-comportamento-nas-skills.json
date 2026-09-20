@@ -25,7 +25,7 @@
   },
   "executar": {
     "status": "ok",
-    "catraca_mutacao": "2026-09-19",
+    "catraca_mutacao": "2026-09-20",
     "tarefas_ok": 4,
     "tarefas": 4,
     "em_voo": [],
@@ -64,19 +64,26 @@
         "iteracao": 1,
         "sessao": "9586f0f8-9dba-4bd3-b8e6-2b4aad9730d6",
         "ts": "2026-09-20T02:35:54.967Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "820983a3",
+        "iteracao": 3,
+        "sessao": "9586f0f8-9dba-4bd3-b8e6-2b4aad9730d6",
+        "ts": "2026-09-20T18:44:20.134Z"
       }
     ],
     "em": "2026-09-20",
     "t4": "livro 51 -> 52 linhas; conferir-livro-de-repos.cjs exit 0, 12 checadas (era 11); os quatro dados do criterio conferidos na celula",
     "t1": "integrada em bd2d897c; catraca re-rodada pela integracao exit 0 (baseline verde 49,7s, mutacao vermelha exit 1); bateria 13 ok 0 falhas; dispensa por escrito da checagem 5 (skill-observations/ nao rastreado, fora do commit e dos worktrees)",
     "comando": "bash scripts/testa-conferir-invariantes.sh",
-    "saida": "ok: 31   falhou: 0",
+    "saida": "ok: 32   falhou: 0",
     "sensor_externo": "bash scripts/testa-conferir-invariantes.sh",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-invariantes.sh, caso \"nao_deve: frase proibida presente no corpo reprova\""
+        "fixture": "testa-conferir-invariantes.sh, caso \"VERMELHO: onde [skill] sozinho reprova pelo degrau skill\" e caso \"nao_deve: frase proibida presente no corpo reprova\""
       },
       {
         "tarefa": 2,
@@ -97,21 +104,26 @@
     "emendas": [
       "criterio da T3 emendado durante o executar: exigia onde:[skill,nucleo] nas cinco entradas, e a da regra 15 sempre teve referencia tambem. Erro de quem escreveu o plano. Passou a exigir identidade de blob e caminho unico de leitura"
     ],
-    "rodada": 9,
+    "rodada": 10,
     "achados_corrigidos": 4,
-    "medido": "com o typo CONFIRM0, VIVACIDADE segue verde e a bateria 28/0"
+    "medido": "com o typo CONFIRM0, VIVACIDADE segue verde e a bateria 28/0",
+    "lista": [
+      "A1 conferir-invariantes.cjs:450 mutante sobrevivente no degrau skill: nenhum caso monta deve com onde [skill] sem nucleo — FECHADO na rodada 10",
+      "A2 design Em aberto: dizia dez entradas so medem presenca; sao nove deve, a decima e nao_deve e pega o ataque — FECHADO na rodada 10",
+      "A3 bateria:668-676 e plano criterio (e): o controle SF_MODO=onde muta a primeira entrada com onde (regra 10), nao a regra 12 — FECHADO na rodada 10"
+    ]
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "21378334ae4e4dd7b818a0fd77bcf4db3ba29f5d",
+      "head": "820983a3e78318bf60858fd383e107a393809aba",
       "caminhos_sujos": []
     },
     "em_voo": [],
     "em": "2026-09-20",
-    "achados": 6,
-    "base": "4f714ef69e942606032627ab8284b5e1c3336cec",
-    "head": "21378334ae4e4dd7b818a0fd77bcf4db3ba29f5d",
+    "achados": 3,
+    "base": "4f714ef69e94",
+    "head": "820983a3",
     "lista": [
       "A1 conferir-invariantes.cjs:483-489 mutante sobrevivente: a checagem de ocorrencia unica do ramo onde presente nao e exercitada por caso nenhum; apagar as 7 linhas deixa 29/0",
       "A2 oitava forma: instrucao invertida com a frase preservada em comentario HTML sai exit 0. As dez entradas de skill de acao so testam substring em qualquer lugar do arquivo",
@@ -120,11 +132,13 @@
       "A5 27 caminhos /tmp fixos contra a propria justificativa de apagar o bloco (6)",
       "A6 comentario em :393-394 promete determinacao de corpo que a linha nao faz"
     ],
-    "tentativas": 7,
+    "tentativas": 8,
     "bloqueante": "setima forma: nada fixa QUAL frase um deve protege. SEGUNDA FONTE so cobre nao_deve. Trocar a frase de um deve por name: (ocorre 1x em todos os sete SKILL.md) passa presenca e ocorrencia unica; depois a frase real pode sumir do corpo com sensor 0 e bateria 29/0. Medido",
     "nao_bloqueantes": 5,
     "bloqueantes": 0,
-    "nota": "primeira revisao com 0 bloqueantes; reprovado para consertar 6 menores em vez de escrever achados:0 sendo falso"
+    "nota": "revisor votou aprovado; fechei reprovado porque os tres menores sao conferidos na saida real e sao a propria materia da entrega. Regra de parada: se a revisao 9 devolver 0 bloqueantes, fecho ok e nao abro rodada 11.",
+    "rodada": 8,
+    "liberado_em": "2026-09-20"
   },
   "verificar": {
     "status": "pendente"
