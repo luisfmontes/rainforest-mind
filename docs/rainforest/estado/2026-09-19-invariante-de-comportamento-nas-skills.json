@@ -142,6 +142,10 @@
     "em": "2026-09-20"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "acao": "pr",
+    "pr": 306,
+    "nota": "PR #306. Worktree do agente removido do registro do git e branch apagada; o diretorio agent-a90a159e29bb889e4 ficou em disco com Device or resource busy e nao foi forcado. conferir-versao sai 2: bump e decisao do usuario, recomendado MINOR 1.21.0.",
+    "em": "2026-09-20"
   }
 }
