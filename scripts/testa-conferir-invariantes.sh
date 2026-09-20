@@ -665,15 +665,19 @@ fi
 #   - `typo`: a frase do `nao_deve` ganha um caractere. E a adulteracao da rodada
 #     anterior, mantida porque o `nao_deve` aprova por ausencia e nenhuma outra
 #     peca pega essa.
-#   - `onde`: o campo `onde` some da primeira invariante que o tem. Medido em
-#     2026-09-20 na base `eaae2a6f`: dropar `onde` so da entrada da regra 12
+#   - `onde`: o campo `onde` some da primeira invariante que o tem — posicional,
+#     nunca pelo numero da regra, porque e' mais robusto a renumeracao. Na ordem
+#     atual de `skills/rainforest-mind/invariantes.json` (regra 10, 11, 12, 13,
+#     15) isso muta a regra 10. A MEDICAO ORIGINAL foi manual, na regra 12: em
+#     2026-09-20 na base `eaae2a6f`, dropar `onde` so da entrada da regra 12
 #     deixava o sensor em `ok: conferidas 15 invariantes`, exit 0, e a bateria em
 #     `ok: 29 falhou: 0` — a checagem degradava de "chega ao nucleo extraido"
 #     para "esta no corpo" e nenhum caso notava, porque a mutacao do bloco (2)
 #     SUBSTITUI a frase em vez de move-la, e as duas checagens falham igual
 #     quando a frase some do corpo. Os blocos (1), (3) e (5) MOVEM a frase, e la
 #     o drop seria pego. Com o `onde` dentro da declaracao, ele passou a ser pego
-#     em qualquer entrada, inclusive nessa.
+#     em qualquer entrada, inclusive nessa — o controle automatizado abaixo so
+#     precisa mutar UMA entrada com `onde`, nao especificamente a regra 12.
 for SF_MODO_ATUAL in retarget typo onde; do
   CAIXA_SF="$(mktemp -d)"
   for f in skills/*/invariantes.json; do
@@ -857,6 +861,48 @@ else
   falhou=$((falhou+1)); echo "  FALHA: nao consegui aplicar mutacao duplicacao no ramo onde"
 fi
 rm -rf "$CAIXA_DUP_ONDE"
+
+# Caso: `onde: ["skill"]` SOZINHO, sem `nucleo` — isola a checagem de ~450, que
+# ate 2026-09-20 nao tinha caso proprio. Achado da oitava revisao (mutante
+# sobrevivente):
+#   node scripts/conferir-mutacao.cjs --raiz . --arquivo scripts/conferir-invariantes.cjs \
+#     --de "if (onde.includes('skill') && !emSkill) {" \
+#     --para "if (false && onde.includes('skill') && !emSkill) {" \
+#     --bateria "bash scripts/testa-conferir-invariantes.sh" --timeout 400000
+#   -> ok: 31   falhou: 0 ... bateria ficava VERDE com o comportamento invertido.
+#
+# Por que nenhum caso ja existente pegava isso: as cinco unicas invariantes com
+# `onde` (todas em `skills/rainforest-mind/invariantes.json`) trazem `nucleo`
+# junto, e `!emSkill` implica `!emNucleo` (o nucleo deriva do texto ja filtrado
+# pelo degrau skill). Quando a frase some do corpo, o ramo
+# `else if (!emSkill && !emNucleo)` ja reprova sozinho, e a checagem
+# `onde.includes('skill') && !emSkill` nunca e' a UNICA a falar. A linha 1115
+# tem `onde: ["skill"]` sozinho, mas e' `tipo: "nao_deve"`, que segue outro
+# caminho no sensor (a checagem de presenca por `toLowerCase`, nao esta).
+#
+# A frase "memória de trabalho externa e radar de escopo" mora na abertura do
+# SKILL.md, ANTES de `## As regras` — fora do bloco que `filtrarRegras` recorta
+# (`emSkill` = false) — e aparece exatamente 1 vez no corpo inteiro do arquivo,
+# entao a checagem de ocorrencia unica (~483-489) fica quieta e o UNICO
+# vermelho vem do degrau `skill`. Nao chama `assere_base`: ao contrario dos
+# blocos de MUTACAO acima, esta caixa nunca passa ANTES — a declaracao em si e'
+# o ataque, nao o `SKILL.md` — entao a linha de base seria um caso a mais que
+# nao mede nada.
+CAIXA_SKILL_SO="$(nova_caixa_rf)"
+(cd "$CAIXA_SKILL_SO/scripts" && node -e "
+const fs=require('fs');
+const inv=[{frase:'memória de trabalho externa e radar de escopo', onde:['skill'], descricao:'ramo skill isolado: frase fora do bloco de regras filtradas'}];
+fs.writeFileSync('../skills/rainforest-mind/invariantes.json', JSON.stringify(inv, null, 2));
+")
+(cd "$CAIXA_SKILL_SO/scripts" && node conferir-invariantes.cjs > "$LOGS/skill-so.log" 2>&1)
+SKILL_SO=$?
+if [ "$SKILL_SO" -eq 2 ] && grep -q "frase não encontrada nas regras filtradas do SKILL.md" "$LOGS/skill-so.log"; then
+  ok=$((ok+1)); echo "  ok   VERMELHO: onde [skill] sozinho reprova pelo degrau skill (exit $SKILL_SO)"
+else
+  falhou=$((falhou+1)); echo "  FALHA VERMELHO: onde [skill] sozinho reprova pelo degrau skill (exit 2) — saiu $SKILL_SO"
+  sed 's/^/    | /' "$LOGS/skill-so.log"
+fi
+rm -rf "$CAIXA_SKILL_SO"
 
 # Caso: zero arquivos invariantes.json reprova
 CAIXA_VAZIA="$(nova_caixa)"

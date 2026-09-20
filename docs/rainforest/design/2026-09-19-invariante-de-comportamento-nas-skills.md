@@ -220,11 +220,21 @@ com um tiro só, e invariante redundante não prova nada.
   aberto em 2026-09-20, por achado da oitava revisão. **Não é para consertar nesta
   rodada**; a saída é mudança de desenho, e desenho é decisão do usuário.
 
-  **O resíduo.** Dez das quinze entradas têm `onde` ausente, e para elas a única
-  aferição do sensor é "a substring está **em algum lugar** do arquivo". Como o
-  `SKILL.md` é markdown, a frase pode continuar presente como **comentário HTML**
-  enquanto o texto ao redor manda o contrário. Medido em 2026-09-20 na base
-  `f6872939`, trocando em `skills/fechar/SKILL.md` a linha
+  **O resíduo.** Nove das quinze entradas — as `deve` sem `onde` — têm essa
+  lacuna: para elas a única aferição do sensor é "a substring está **em algum
+  lugar** do arquivo". Como o `SKILL.md` é markdown, a frase pode continuar
+  presente como **comentário HTML** enquanto o texto ao redor manda o
+  contrário.
+
+  A décima entrada sem `onde` fica de fora deste resíduo: é a `nao_deve`
+  `"CONFIRMO fechar issue"` de `skills/fechar/invariantes.json`, cuja aferição
+  é invertida — presença em **qualquer lugar** do corpo reprova, inclusive
+  dentro de um comentário HTML —, então o ataque abaixo não a escapa. Medido em
+  2026-09-20, varrendo `skills/*/invariantes.json`:
+  `{ semOndeDeve: 9, semOndeNaoDeve: 1, comOnde: 5 }`.
+
+  Medido em 2026-09-20 na base `f6872939`, trocando em `skills/fechar/SKILL.md`
+  a linha
   `**O destino da branch é sempre PR.** Abra o PR e informe o número — sem menu,`
   por
 
@@ -246,7 +256,8 @@ com um tiro só, e invariante redundante não prova nada.
   isso; não há discrepância entre o que a D4 promete e o que o código faz. O que
   promete demais é o **Objetivo** deste design — "impedir que uma instrução de
   comportamento suma de um `SKILL.md` sem ninguém perceber" —, porque "sumir" e
-  "deixar de valer" não são a mesma coisa, e as dez entradas só medem a primeira.
+  "deixar de valer" não são a mesma coisa, e as nove entradas `deve` sem `onde`
+  só medem a primeira.
   Nada aqui pede alteração da D4.
 
   **Direção candidata, decisão pendente do usuário** (não é pendência de
