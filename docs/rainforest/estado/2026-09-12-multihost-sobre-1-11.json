@@ -1,6 +1,6 @@
 {
   "slug": "2026-09-12-multihost-sobre-1-11",
-  "titulo": "Reaplicar a adaptação multihost sobre o Rainforest Mind 1.13.2 (slug iniciado em 1.11)",
+  "titulo": "Reaplicar a adaptação multihost sobre o Rainforest Mind 1.19.2 (slug iniciado em 1.11)",
   "criado_em": "2026-09-12",
   "arqueologia": {
     "status": "pendente"
@@ -210,7 +210,7 @@
     "origem_instalacao": {
       "tipo": "git archive",
       "commit": "eabeb898706cf9160e72e45d534162dcfa30b6d8",
-      "caminho": "C:/Projetos/rainforest-mind/.claude/marketplaces/rainforest-mind-export-1.19.2",
+      "caminho": "<export-clean-1.19.2>",
       "versao": "1.19.2",
       "export_arquivos_force": 765,
       "cache_arquivos_force": 766,
@@ -226,12 +226,23 @@
       "extras": 1
     },
     "contraprova_hook": {
-      "fixture": "C:/Users/Luis/.codex/visualizations/2026/09/08/01a07ef1-6e62-7301-b14c-e07018b98ed6/t6-cachebuster-session-host",
+      "fixture": "<fixture-host-owned>",
       "sessao": "01a0bb99-1f24-7310-bc4a-689613d1589e",
       "versao_instalada": "1.19.2",
       "decisao": "PreToolUse Blocked",
       "saida_literal": "Codigo de saida: N/A - processo nao iniciado",
       "estado_apos": "?? deny-control.txt; nada staged; sem .git/index.lock"
+    },
+    "correcao_revisao_2026_09_20": {
+      "cachebuster": "1.19.2+codex.20260920005618",
+      "sessao": "01a0bc51-ac65-7461-a8eb-4781dbd6c9ae",
+      "skills": 20,
+      "decisao": "PreToolUse Blocked",
+      "git_iniciou": false,
+      "fixture_apos": "?? deny-control.txt; nada staged; sem .git/index.lock",
+      "gemini_vermelho_antes": "detector Gemini deixou passar test/fixtures/gemini/request.json",
+      "gemini_verde_depois": true,
+      "manifestos_restaurados": "1.19.2 byte a byte"
     },
     "mutacao_nesta_iteracao": "arvore de produto identica a do HEAD mutado: de 52245a7f ate aqui so mudaram documentos de governanca D9; os mutantes de 2026-09-14 valem. O de T3 foi reexercitado hoje pelo --contrato-adaptador-hook: ok mutacao handler Codex -> core direto: vermelho e bytes restaurados",
     "base": "2adbae270782a5a36512c28a5c2a5354ba05c73e",
@@ -239,21 +250,21 @@
     "nota_mutacao": "Mutantes reexercitados na arvore reancorada, nao herdados: a main trouxe 188 commits e a lista de 2026-09-14 media outra arvore. Uma primeira mutacao da T1 sobreviveu (tirar -A de CAMINHO_TOTAL) e isso NAO era lacuna da bateria: temCurta(opcoes,\"A\") pega o mesmo caso sozinho. Defesa redundante nao morre com um tiro so, entao o mutante foi refeito matando os dois detectores."
   },
   "revisar": {
-    "status": "ok",
+    "status": "reprovado",
     "snapshot": {
-      "head": "52245a7fd0e7c6f7a74dd56b6a7310bd1fb753cc",
+      "head": "5cd54d32a3c4b32ffff941e16bc72951eefa9137",
       "caminhos_sujos": []
     },
-    "achados": 0,
-    "base": "068468fb956b8d606e9af1800aaa91dd399fdeb8",
-    "head": "52245a7fd0e7c6f7a74dd56b6a7310bd1fb753cc",
-    "em": "2026-09-14",
-    "achado": "P2: HANDOVER usa git -C sem confirmar que rev-parse --show-toplevel é exatamente a worktree de entrega; uma worktree inválida pode fazer Git subir ao repo pai e validar a main por engano",
+    "achados": 7,
+    "base": "2adbae270782a5a36512c28a5c2a5354ba05c73e",
+    "head": "5cd54d32a3c4b32ffff941e16bc72951eefa9137",
+    "em": "2026-09-20",
+    "achado": "Reancoragem incompleta em D5/D9 e T4/T6/T7/T8/T9; T6 sem cachebuster 1.19.2; criterio de creep antigo; falso negativo em fixture Gemini; caminhos locais e medicoes sem re-verificar. Correcoes aplicadas aguardam nova revisao independente.",
     "confirmacoes": [
-      "retomada fail-closed",
-      "D12 export limpo do mesmo repositorio",
-      "cache 704 com -Force sem .git e unico extra D11",
-      "repo unico preservado"
+      "base corrente 2adbae27 propagada ao design e plano",
+      "cachebuster 1.19.2 provado em sessao nova",
+      "fixture Gemini request.json agora falha no detector",
+      "caminhos locais removidos do rastro versionado"
     ]
   },
   "verificar": {

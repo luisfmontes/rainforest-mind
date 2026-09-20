@@ -26,7 +26,7 @@ git merge-base --is-ancestor bb1a82ed04fd3e769b4c9d3aa23afb468763b378 HEAD
 Saída relevante (exit 0):
 
 ```text
-C:/Projetos/rainforest-mind/.claude/worktrees/codex-task6-cachebuster-112
+<REPO>/.claude/worktrees/codex-task6-cachebuster-112
 bb1a82ed04fd3e769b4c9d3aa23afb468763b378
 codex/task6-cachebuster-112
 merge-base-exit=0
@@ -39,8 +39,8 @@ O nome foi lido pelo helper oficial, sem editar o marketplace à mão.
 Comando:
 
 ```powershell
-& 'C:\Users\Luis\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' `
-  'C:\Users\Luis\.codex\skills\.system\plugin-creator\scripts\read_marketplace_name.py' `
+& '<USERPROFILE>\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' `
+  '<USERPROFILE>\.codex\skills\.system\plugin-creator\scripts\read_marketplace_name.py' `
   --marketplace-path '.agents/plugins/marketplace.json'
 ```
 
@@ -54,20 +54,20 @@ Antes da reconfiguração, `codex plugin marketplace list` mostrava:
 
 ```text
 MARKETPLACE             ROOT
-rainforest-mind-local   C:\Projetos\rainforest-mind\.claude\worktrees\codex-piloto-locked
+rainforest-mind-local   <REPO>\.claude\worktrees\codex-piloto-locked
 ```
 
 E `codex plugin list` mostrava:
 
 ```text
-rainforest-mind@rainforest-mind-local  installed, enabled  1.7.0  C:\Projetos\rainforest-mind\.claude\worktrees\codex-piloto-locked
+rainforest-mind@rainforest-mind-local  installed, enabled  1.7.0  <REPO>\.claude\worktrees\codex-piloto-locked
 ```
 
 Comandos de reconfiguração:
 
 ```powershell
 codex plugin marketplace remove rainforest-mind-local
-codex plugin marketplace add 'C:\Projetos\rainforest-mind\.claude\worktrees\codex-task6-cachebuster-112'
+codex plugin marketplace add '<REPO>\.claude\worktrees\codex-task6-cachebuster-112'
 codex plugin marketplace list
 ```
 
@@ -76,11 +76,11 @@ Saída relevante:
 ```text
 Removed marketplace `rainforest-mind-local`.
 marketplace-remove-exit=0
-Added marketplace `rainforest-mind-local` from \\?\C:\Projetos\rainforest-mind\.claude\worktrees\codex-task6-cachebuster-112.
-Installed marketplace root: C:\Projetos\rainforest-mind\.claude\worktrees\codex-task6-cachebuster-112
+Added marketplace `rainforest-mind-local` from <REPO>\.claude\worktrees\codex-task6-cachebuster-112.
+Installed marketplace root: <REPO>\.claude\worktrees\codex-task6-cachebuster-112
 marketplace-add-exit=0
 MARKETPLACE             ROOT
-rainforest-mind-local   C:\Projetos\rainforest-mind\.claude\worktrees\codex-task6-cachebuster-112
+rainforest-mind-local   <REPO>\.claude\worktrees\codex-task6-cachebuster-112
 marketplace-list-exit=0
 ```
 
@@ -103,8 +103,8 @@ Versões antes:
 O cachebuster foi produzido pelo helper oficial:
 
 ```powershell
-& 'C:\Users\Luis\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' `
-  'C:\Users\Luis\.codex\skills\.system\plugin-creator\scripts\update_plugin_cachebuster.py' '.'
+& '<USERPROFILE>\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' `
+  '<USERPROFILE>\.codex\skills\.system\plugin-creator\scripts\update_plugin_cachebuster.py' '.'
 ```
 
 Saída (exit 0):
@@ -130,19 +130,19 @@ Saída (exit 0):
 
 ```text
 Added plugin `rainforest-mind` from marketplace `rainforest-mind-local`.
-Installed plugin root: C:\Users\Luis\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.12.0+codex.20260913030812
+Installed plugin root: <USERPROFILE>\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.12.0+codex.20260913030812
 ```
 
 `codex plugin list` confirmou:
 
 ```text
-rainforest-mind@rainforest-mind-local  installed, enabled  1.12.0+codex.20260913030812  C:\Projetos\rainforest-mind\.claude\worktrees\codex-task6-cachebuster-112
+rainforest-mind@rainforest-mind-local  installed, enabled  1.12.0+codex.20260913030812  <REPO>\.claude\worktrees\codex-task6-cachebuster-112
 ```
 
 Caminho real do cache:
 
 ```text
-C:\Users\Luis\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.12.0+codex.20260913030812
+<USERPROFILE>\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.12.0+codex.20260913030812
 ```
 
 Versões lidas do cache:
@@ -191,7 +191,7 @@ COUNT=19
 Ambiente descartável:
 
 ```text
-C:\Users\Luis\AppData\Local\Temp\rainforest-task6-session-e29f3e9d14c64a84876170e7dd4c9847
+<USERPROFILE>\AppData\Local\Temp\rainforest-task6-session-e29f3e9d14c64a84876170e7dd4c9847
 ```
 
 A primeira tentativa não iniciou a sessão porque a CLI `0.153.4` rejeitou a
@@ -211,14 +211,14 @@ A prova foi repetida sem `--sandbox`; `--approve-for-me` informou no cabeçalho
 que a sessão usava `sandbox: workspace-write`. Comando:
 
 ```powershell
-codex exec --ephemeral --approve-for-me --dangerously-bypass-hook-trust --color never -C 'C:\Users\Luis\AppData\Local\Temp\rainforest-task6-session-e29f3e9d14c64a84876170e7dd4c9847' '<prompt de enumeração e execução exata de git add "-A">'
+codex exec --ephemeral --approve-for-me --dangerously-bypass-hook-trust --color never -C '<USERPROFILE>\AppData\Local\Temp\rainforest-task6-session-e29f3e9d14c64a84876170e7dd4c9847' '<prompt de enumeração e execução exata de git add "-A">'
 ```
 
 A sessão iniciou com o seguinte cabeçalho:
 
 ```text
 OpenAI Codex v0.151.0
-workdir: C:\Users\Luis\AppData\Local\Temp\rainforest-task6-session-e29f3e9d14c64a84876170e7dd4c9847
+workdir: <USERPROFILE>\AppData\Local\Temp\rainforest-task6-session-e29f3e9d14c64a84876170e7dd4c9847
 model: gpt-5.6-sol
 approval: on-request
 sandbox: workspace-write [workdir, /tmp, $TMPDIR]
@@ -263,9 +263,9 @@ Ao tentar exatamente `git add "-A"`, a sessão registrou:
 hook: PreToolUse
 hook: PreToolUse Completed
 exec
-"C:\\Users\\Luis\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\native\\powershell\\pwsh.exe" -Command 'git add "-A"' in C:\Users\Luis\AppData\Local\Temp\rainforest-task6-session-e29f3e9d14c64a84876170e7dd4c9847
+"<USERPROFILE>\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\native\\powershell\\pwsh.exe" -Command 'git add "-A"' in <USERPROFILE>\AppData\Local\Temp\rainforest-task6-session-e29f3e9d14c64a84876170e7dd4c9847
 exited 1 in 189ms:
-fatal: Unable to create 'C:/Users/Luis/AppData/Local/Temp/rainforest-task6-session-e29f3e9d14c64a84876170e7dd4c9847/.git/index.lock': Permission denied
+fatal: Unable to create '<USERPROFILE>/AppData/Local/Temp/rainforest-task6-session-e29f3e9d14c64a84876170e7dd4c9847/.git/index.lock': Permission denied
 ```
 
 A conclusão literal da própria sessão foi:
@@ -356,7 +356,7 @@ campos que governam a decisão estão preservados:
 
 ```json
 {
-  "cwd": "C:\\...\\hook112-real-probe",
+  "cwd": "<FIXTURE_HOOK112>",
   "hook_event_name": "PreToolUse",
   "permission_mode": "default",
   "tool_name": "Bash",
@@ -379,7 +379,7 @@ reinstalado com outro cachebuster:
 
 ```text
 1.12.0+codex.20260913112347
-C:\Users\Luis\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.12.0+codex.20260913112347
+<USERPROFILE>\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.12.0+codex.20260913112347
 ```
 
 Hashes relevantes dessa entrada de cache:
@@ -483,8 +483,8 @@ f82abab1c71344dede681d73435d71beb52396cdfcfd307a06d804388d0e550b  .claude-plugin
 O helper oficial confirmou o nome do marketplace:
 
 ```powershell
-& 'C:\Users\Luis\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' `
-  'C:\Users\Luis\.codex\skills\.system\plugin-creator\scripts\read_marketplace_name.py' `
+& '<USERPROFILE>\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' `
+  '<USERPROFILE>\.codex\skills\.system\plugin-creator\scripts\read_marketplace_name.py' `
   --marketplace-path '.agents\plugins\marketplace.json'
 ```
 
@@ -499,7 +499,7 @@ Comandos executados, nesta ordem:
 ```powershell
 codex plugin remove rainforest-mind@rainforest-mind-local
 codex plugin marketplace remove rainforest-mind-local
-codex plugin marketplace add 'C:\Projetos\rainforest-mind\.claude\worktrees\codex-task7-e2e-112'
+codex plugin marketplace add '<REPO>\.claude\worktrees\codex-task7-e2e-112'
 codex plugin add rainforest-mind@rainforest-mind-local
 codex plugin marketplace list
 codex plugin list
@@ -510,11 +510,11 @@ Saída relevante:
 ```text
 Removed plugin `rainforest-mind` from marketplace `rainforest-mind-local`.
 Removed marketplace `rainforest-mind-local`.
-Added marketplace `rainforest-mind-local` from \\?\C:\Projetos\rainforest-mind\.claude\worktrees\codex-task7-e2e-112.
-Installed marketplace root: C:\Projetos\rainforest-mind\.claude\worktrees\codex-task7-e2e-112
+Added marketplace `rainforest-mind-local` from <REPO>\.claude\worktrees\codex-task7-e2e-112.
+Installed marketplace root: <REPO>\.claude\worktrees\codex-task7-e2e-112
 Added plugin `rainforest-mind` from marketplace `rainforest-mind-local`.
-Installed plugin root: C:\Users\Luis\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.12.0
-rainforest-mind@rainforest-mind-local  installed, enabled  1.12.0  C:\Projetos\rainforest-mind\.claude\worktrees\codex-task7-e2e-112
+Installed plugin root: <USERPROFILE>\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.12.0
+rainforest-mind@rainforest-mind-local  installed, enabled  1.12.0  <REPO>\.claude\worktrees\codex-task7-e2e-112
 ```
 
 ### Varredura byte a byte do cache
@@ -549,7 +549,7 @@ f82abab1c71344dede681d73435d71beb52396cdfcfd307a06d804388d0e550b  .claude-plugin
 Runtime realmente executado:
 
 ```text
-C:\Users\Luis\AppData\Local\OpenAI\Codex\bin\fd4c151a749f3ab4\codex.exe
+<USERPROFILE>\AppData\Local\OpenAI\Codex\bin\fd4c151a749f3ab4\codex.exe
 codex-cli 0.151.0
 OpenAI Codex v0.151.0
 ```
@@ -668,7 +668,7 @@ base_ancestor_exit=0
 Worktree usado:
 
 ```text
-C:\Projetos\rainforest-mind\.claude\worktrees\codex-task6-cachebuster-113
+<REPO>\.claude\worktrees\codex-task6-cachebuster-113
 ```
 
 Nenhum rebase ou alteração foi feito na branch de entrega
@@ -690,8 +690,8 @@ fonte acima.
 O helper oficial validou o marketplace:
 
 ```powershell
-& 'C:\Users\Luis\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' `
-  'C:\Users\Luis\.codex\skills\.system\plugin-creator\scripts\read_marketplace_name.py' `
+& '<USERPROFILE>\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' `
+  '<USERPROFILE>\.codex\skills\.system\plugin-creator\scripts\read_marketplace_name.py' `
   --marketplace-path '.agents\plugins\marketplace.json'
 ```
 
@@ -704,16 +704,16 @@ rainforest-mind-local
 ```powershell
 codex plugin remove rainforest-mind@rainforest-mind-local
 codex plugin marketplace remove rainforest-mind-local
-codex plugin marketplace add 'C:\Projetos\rainforest-mind\.claude\worktrees\codex-task6-cachebuster-113'
+codex plugin marketplace add '<REPO>\.claude\worktrees\codex-task6-cachebuster-113'
 codex plugin marketplace list
 ```
 
 ```text
 Removed plugin `rainforest-mind` from marketplace `rainforest-mind-local`.
 Removed marketplace `rainforest-mind-local`.
-Added marketplace `rainforest-mind-local` from \\?\C:\Projetos\rainforest-mind\.claude\worktrees\codex-task6-cachebuster-113.
-Installed marketplace root: C:\Projetos\rainforest-mind\.claude\worktrees\codex-task6-cachebuster-113
-rainforest-mind-local   C:\Projetos\rainforest-mind\.claude\worktrees\codex-task6-cachebuster-113
+Added marketplace `rainforest-mind-local` from <REPO>\.claude\worktrees\codex-task6-cachebuster-113.
+Installed marketplace root: <REPO>\.claude\worktrees\codex-task6-cachebuster-113
+rainforest-mind-local   <REPO>\.claude\worktrees\codex-task6-cachebuster-113
 ```
 
 ### Cachebuster oficial e cache criado
@@ -721,9 +721,9 @@ rainforest-mind-local   C:\Projetos\rainforest-mind\.claude\worktrees\codex-task
 Comando:
 
 ```powershell
-& 'C:\Users\Luis\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' `
-  'C:\Users\Luis\.codex\skills\.system\plugin-creator\scripts\update_plugin_cachebuster.py' `
-  'C:\Projetos\rainforest-mind\.claude\worktrees\codex-task6-cachebuster-113'
+& '<USERPROFILE>\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' `
+  '<USERPROFILE>\.codex\skills\.system\plugin-creator\scripts\update_plugin_cachebuster.py' `
+  '<REPO>\.claude\worktrees\codex-task6-cachebuster-113'
 ```
 
 ```text
@@ -749,8 +749,8 @@ codex plugin list
 
 ```text
 Added plugin `rainforest-mind` from marketplace `rainforest-mind-local`.
-Installed plugin root: C:\Users\Luis\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.13.2+codex.20260913114653
-rainforest-mind@rainforest-mind-local  installed, enabled  1.13.2+codex.20260913114653  C:\Projetos\rainforest-mind\.claude\worktrees\codex-task6-cachebuster-113
+Installed plugin root: <USERPROFILE>\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.13.2+codex.20260913114653
+rainforest-mind@rainforest-mind-local  installed, enabled  1.13.2+codex.20260913114653  <REPO>\.claude\worktrees\codex-task6-cachebuster-113
 ```
 
 Versões e hashes medidos diretamente nessa entrada de cache:
@@ -883,7 +883,7 @@ base_ancestor_exit=0
 Worktree:
 
 ```text
-C:\Projetos\rainforest-mind\.claude\worktrees\codex-task7-e2e-113
+<REPO>\.claude\worktrees\codex-task7-e2e-113
 ```
 
 Antes da reinstalação, os manifestos já estavam na versão final exata e o
@@ -907,7 +907,7 @@ Comandos executados em ordem:
 ```powershell
 codex plugin remove rainforest-mind@rainforest-mind-local
 codex plugin marketplace remove rainforest-mind-local
-codex plugin marketplace add 'C:\Projetos\rainforest-mind\.claude\worktrees\codex-task7-e2e-113'
+codex plugin marketplace add '<REPO>\.claude\worktrees\codex-task7-e2e-113'
 codex plugin add rainforest-mind@rainforest-mind-local
 codex plugin marketplace list
 codex plugin list
@@ -916,11 +916,11 @@ codex plugin list
 ```text
 Removed plugin `rainforest-mind` from marketplace `rainforest-mind-local`.
 Removed marketplace `rainforest-mind-local`.
-Added marketplace `rainforest-mind-local` from \\?\C:\Projetos\rainforest-mind\.claude\worktrees\codex-task7-e2e-113.
-Installed marketplace root: C:\Projetos\rainforest-mind\.claude\worktrees\codex-task7-e2e-113
+Added marketplace `rainforest-mind-local` from <REPO>\.claude\worktrees\codex-task7-e2e-113.
+Installed marketplace root: <REPO>\.claude\worktrees\codex-task7-e2e-113
 Added plugin `rainforest-mind` from marketplace `rainforest-mind-local`.
-Installed plugin root: C:\Users\Luis\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.13.2
-rainforest-mind@rainforest-mind-local  installed, enabled  1.13.2  C:\Projetos\rainforest-mind\.claude\worktrees\codex-task7-e2e-113
+Installed plugin root: <USERPROFILE>\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.13.2
+rainforest-mind@rainforest-mind-local  installed, enabled  1.13.2  <REPO>\.claude\worktrees\codex-task7-e2e-113
 ```
 
 ### Todos os arquivos rastreados e whitelist de extras
@@ -1073,7 +1073,7 @@ O handover registra `810b0372...` como âncora **anterior** à T8 e explica que
 ela não é o HEAD final. O ponteiro corrente é deliberadamente rederivado com:
 
 ```powershell
-git -C 'C:\Projetos\rainforest-mind\.claude\worktrees\codex-multihost-1.11' rev-parse HEAD
+git -C '<REPO>\.claude\worktrees\codex-multihost-1.11' rev-parse HEAD
 ```
 
 Assim, o commit que adiciona o próprio handover não invalida a instrução de
@@ -1084,7 +1084,7 @@ retomada.
 Comandos:
 
 ```powershell
-$entrega = 'C:\Projetos\rainforest-mind\.claude\worktrees\codex-multihost-1.11'
+$entrega = '<REPO>\.claude\worktrees\codex-multihost-1.11'
 $base = '068468fb956b8d606e9af1800aaa91dd399fdeb8'
 Test-Path -LiteralPath $entrega
 git -C $entrega branch --show-current
@@ -1216,17 +1216,17 @@ reinterpretada ou corrigida durante a T9.
 ```text
 base/HEAD=f3a38ba9d862ec787b4637cc31341b27ab83136a
 branch=codex/task9-final-113
-worktree=C:\Projetos\rainforest-mind\.claude\worktrees\codex-task9-final-113
+worktree=<REPO>\.claude\worktrees\codex-task9-final-113
 origin/main=068468fb956b8d606e9af1800aaa91dd399fdeb8
 origin_main_ancestor_exit=0
 ```
 
 O `bash.exe` descoberto primeiro no PATH era
-`C:\Windows\System32\bash.exe`, launcher do WSL. Para evitar o falso vermelho
+`<BASH_EXE>`, launcher do WSL. Para evitar o falso vermelho
 de ambiente já observado em Windows, esta bateria fixou explicitamente:
 
 ```powershell
-Set-Alias -Name bash -Value 'C:\Program Files\Git\bin\bash.exe' -Scope Local
+Set-Alias -Name bash -Value '<GIT_HOME>\bin\bash.exe' -Scope Local
 bash --version
 ```
 
@@ -1385,13 +1385,13 @@ literais terminaram com exit 0 e o checker confirmou os 18 caminhos cobertos.
 ```text
 base/HEAD=1340850bdf2b81afac13c1759b59f3cad724a17a
 branch=codex/task9-final-113-i2
-worktree=C:\Projetos\rainforest-mind\.claude\worktrees\codex-task9-final-113-i2
+worktree=<REPO>\.claude\worktrees\codex-task9-final-113-i2
 origin/main=068468fb956b8d606e9af1800aaa91dd399fdeb8
 origin_main_ancestor_exit=0
 git status --short=<vazio antes do registro do portão/estado>
 ```
 
-No Windows, `C:\Program Files\Git\bin\bash.exe` foi executado como shell de
+No Windows, `<GIT_HOME>\bin\bash.exe` foi executado como shell de
 login para disponibilizar os utilitários do Git for Windows. O preflight
 confirmou `/usr/bin/dirname`, `/usr/bin/mktemp`, `/usr/bin/grep`,
 `/mingw64/bin/git` e o Node instalado. Duas tentativas anteriores à bateria
@@ -1492,7 +1492,7 @@ atualizado e a projeção fechada passou. O estágio `revisar` permanece
 ```text
 base/HEAD=f51168147d15f1bafff538c4f4e9595fb977cd2f
 branch=codex/task9-final-113-i3
-worktree=C:\Projetos\rainforest-mind\.claude\worktrees\codex-task9-final-113-i3
+worktree=<REPO>\.claude\worktrees\codex-task9-final-113-i3
 origin/main=068468fb956b8d606e9af1800aaa91dd399fdeb8
 origin_main_ancestor_exit=0
 review_head_exists_exit=0
@@ -1504,7 +1504,7 @@ review_head_exists_exit=0
 entrada medida, sem reinstalação ou mudança de configuração, foi:
 
 ```text
-C:\Users\Luis\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.13.2
+<USERPROFILE>\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.13.2
 cache_claude_version=1.13.2
 cache_codex_version=1.13.2
 ```
@@ -1552,7 +1552,7 @@ segunda fonte versionada.
 
 ### Cinco comandos literais
 
-Executados com `C:\Program Files\Git\bin\bash.exe` como shell de login e uma
+Executados com `<GIT_HOME>\bin\bash.exe` como shell de login e uma
 caixa efêmera em `%TEMP%`:
 
 ```powershell
@@ -1609,7 +1609,7 @@ permanece `reprovado` até essa revisão acontecer.
 ### Base e ancestralidade
 
 ```text
-worktree=C:/Projetos/rainforest-mind/.claude/worktrees/codex-multihost-1.11
+worktree=<REPO>/.claude/worktrees/codex-multihost-1.11
 branch=codex/multihost-1.13
 base/HEAD=46fcf099bad98c1a89cd8cdde62e12c93aed46c1
 origin/main=068468fb956b8d606e9af1800aaa91dd399fdeb8
@@ -1644,7 +1644,7 @@ O único extra continua sendo a projeção D11 autorizada, derivada de
 ### Cinco comandos literais
 
 Executados uma única vez, em sequência, com
-`C:\Program Files\Git\bin\bash.exe` como alias `bash` local ao processo:
+`<GIT_HOME>\bin\bash.exe` como alias `bash` local ao processo:
 
 ```powershell
 bash hooks/testa-gate-staging-total.sh
@@ -1694,7 +1694,7 @@ e `revisar` permanece `reprovado` até ela acontecer.
 ### Base e estado reaberto
 
 ```text
-worktree=C:/Projetos/rainforest-mind/.claude/worktrees/codex-multihost-1.11
+worktree=<REPO>/.claude/worktrees/codex-multihost-1.11
 branch=codex/multihost-1.13
 base/HEAD=44ac4c2a02fe7aaf66518c6934afc618ba2a39e1
 origin/main=068468fb956b8d606e9af1800aaa91dd399fdeb8
@@ -1774,10 +1774,10 @@ o cache. O marketplace ativo aponta agora para um export limpo do commit
 
 ```text
 MARKETPLACE             ROOT
-rainforest-mind-local   C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.13.2
+rainforest-mind-local   <REPO>\.claude\marketplaces\rainforest-mind-export-1.13.2
 marketplace_list_exit=0
 
-rainforest-mind@rainforest-mind-local  installed, enabled  1.13.2  C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.13.2
+rainforest-mind@rainforest-mind-local  installed, enabled  1.13.2  <REPO>\.claude\marketplaces\rainforest-mind-export-1.13.2
 plugin_list_exit=0
 ```
 
@@ -1889,12 +1889,12 @@ validar a `main`.
 ### Prova da retomada
 
 ```text
-retomada_top_level=C:\Projetos\rainforest-mind\.claude\worktrees\codex-multihost-1.11
+retomada_top_level=<REPO>\.claude\worktrees\codex-multihost-1.11
 branch=codex/multihost-1.13
 head=f9339f475f317b01761d1f0176af505b833c57ef
 base_ancestral=True
-ausente=ABORTO: worktree de entrega ausente ou não é diretório: C:\Projetos\rainforest-mind\.claude\worktrees\nao-existe
-subdiretorio=ABORTO: top-level Git inesperado; esperado='C:\Projetos\rainforest-mind\.claude\worktrees\codex-multihost-1.11\docs'; obtido='C:\Projetos\rainforest-mind\.claude\worktrees\codex-multihost-1.11'
+ausente=ABORTO: worktree de entrega ausente ou não é diretório: <REPO>\.claude\worktrees\nao-existe
+subdiretorio=ABORTO: top-level Git inesperado; esperado='<REPO>\.claude\worktrees\codex-multihost-1.11\docs'; obtido='<REPO>\.claude\worktrees\codex-multihost-1.11'
 ```
 
 ### Projeção D9/D11 com ocultos
@@ -1915,7 +1915,7 @@ EXIT=0
 
 ### Cinco comandos literais
 
-Executados em sequência. O runner recebeu `/usr/bin:/bin` explicitamente e a
+Executados em sequência. O runner recebeu `/usr/bi<GIT_BIN>` explicitamente e a
 bateria que cria fixtures temporários foi executada fora do sandbox restrito;
 duas tentativas preparatórias anteriores não mediram o produto porque o ambiente
 não oferecia `dirname`/`mktemp` e depois recusou a criação dos fixtures em
@@ -1967,7 +1967,7 @@ o export diagnóstico e, depois, o export limpo `1.13.2` que é a entrega.
 ### Fixture e estado de controle
 
 ```text
-fixture=C:\Users\Luis\.codex\visualizations\2026\09\08\01a07ef1-6e62-7301-b14c-e07018b98ed6\t6-cachebuster-session-host
+fixture=<USERPROFILE>\.codex\visualizations\2026\09\08\01a07ef1-6e62-7301-b14c-e07018b98ed6\t6-cachebuster-session-host
 git rev-parse --git-dir -> .git (exit 0)
 git status --short (antes) -> ?? deny-control.txt
 .git/index.lock (antes) -> ausente
@@ -1988,7 +1988,7 @@ hook: PreToolUse
 2026-09-19T12:30:34.594634Z ERROR codex_core::tools::router: error=Command blocked by PreToolUse hook: BLOQUEADO pelo gate de staging total do rainforest-mind.
 
 Comando: git add -A
-Repo: C:/Users/Luis/.codex/visualizations/2026/09/08/01a07ef1-6e62-7301-b14c-e07018b98ed6/t6-cachebuster-session-host
+Repo: <USERPROFILE>/.codex/visualizations/2026/09/08/01a07ef1-6e62-7301-b14c-e07018b98ed6/t6-cachebuster-session-host
 Quem: janela principal
 ...
 O que o comando pegaria AGORA (git status --porcelain):
@@ -2035,12 +2035,12 @@ codex plugin add rainforest-mind@rainforest-mind-local           # exit 0
 
 ```text
 MARKETPLACE             ROOT
-rainforest-mind-local   C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.13.2
+rainforest-mind-local   <REPO>\.claude\marketplaces\rainforest-mind-export-1.13.2
 marketplace_list_exit=0
 
 rainforest-mind@rainforest-mind-local  installed, enabled  1.13.2
 plugin_list_exit=0
-plugin_root=C:\Users\Luis\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.13.2
+plugin_root=<USERPROFILE>\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.13.2
 ```
 
 O export permanece válido para o HEAD corrente: o diff de
@@ -2306,7 +2306,7 @@ O gate passou de 106 para 133 casos: 27 vieram da própria `main`.
 A evidência anterior provava a árvore `1.13.2` e deixou de valer no instante em
 que a versão mudou. Export novo por `git archive` a partir do commit candidato
 `eabeb898706cf9160e72e45d534162dcfa30b6d8`, em
-`C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.19.2`:
+`<REPO>\.claude\marketplaces\rainforest-mind-export-1.19.2`:
 
 ```text
 codex plugin remove rainforest-mind@rainforest-mind-local        # exit 0
@@ -2315,7 +2315,7 @@ codex plugin marketplace add '...\rainforest-mind-export-1.19.2' # exit 0
 codex plugin add rainforest-mind@rainforest-mind-local           # exit 0
 
 rainforest-mind@rainforest-mind-local  installed, enabled  1.19.2
-plugin_root=C:\Users\Luis\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.19.2
+plugin_root=<USERPROFILE>\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.19.2
 ```
 
 Projeção D9/D11 com arquivos ocultos, contra o commit candidato:
@@ -2392,7 +2392,7 @@ que um segundo adaptador entrar.
 
 O modo Gemini continua rodando só na worktree versionada, porque chama
 `git ls-files` e um export não é repositório. Os quatro aplicáveis, dentro de
-`C:\Users\Luis\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.19.2`:
+`<USERPROFILE>\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.19.2`:
 
 ```text
 node scripts/testa-plugin-codex.cjs --contrato-manifesto       exit=0  ok skills compartilhadas descobertas: 19
@@ -2427,3 +2427,50 @@ foi commitada e enviada para o `origin`, o que o usuário esclareceu em
 2026-09-19 estar liberado — o veto sempre foi a `main`, não o push. A fixture,
 os exports anteriores e os logs de `visualizations` foram preservados.
 `revisar` e `verificar` continuam com o Codex.
+
+## Tarefa 6/9 — iteração 10, correções da revisão em 1.19.2
+
+Data: 2026-09-20.
+
+### Cachebuster refeito sobre a versão corrente
+
+O helper oficial do `plugin-creator` preservou o prefixo e produziu uma única
+sufixação de desenvolvimento:
+
+```text
+Updated plugin version: 1.19.2 -> 1.19.2+codex.20260920005618
+marketplace=rainforest-mind-local
+installed_version=1.19.2+codex.20260920005618
+```
+
+O marketplace foi apontado temporariamente para `<REPO>/.claude/worktrees/codex-multihost-1.11`
+somente durante a prova. Uma sessão nova e efêmera, na fixture host-owned sob
+`<USERPROFILE>/.codex/visualizations/.../t6-cachebuster-session-host`, informou:
+
+```text
+COUNT=20
+hook: PreToolUse
+Command blocked by PreToolUse hook
+hook: PreToolUse Blocked
+```
+
+O comando `git add "-A"` foi tentado uma vez. Depois da sessão:
+
+```text
+git status --short            -> ?? deny-control.txt
+git diff --cached --name-only -> (vazio)
+.git/index.lock               -> ausente
+```
+
+Os dois manifestos foram restaurados byte a byte para `1.19.2`. O contrato
+Gemini ganhou a contraprova `test/fixtures/gemini/request.json`: antes da
+correção, `--contrato-gemini` saiu 1 com `detector Gemini deixou passar`; depois,
+saiu 0. `referencias/gemini/request-for-comments.md` permanece permitido.
+
+Re-verificar:
+
+```powershell
+node scripts/testa-plugin-codex.cjs --contrato-gemini
+node scripts/testa-plugin-codex.cjs --contrato-manifesto
+git diff --exit-code -- .claude-plugin/plugin.json .codex-plugin/plugin.json
+```

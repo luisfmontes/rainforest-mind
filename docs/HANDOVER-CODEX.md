@@ -1,4 +1,4 @@
-# Handover Codex — Rainforest Mind multihost 1.13.2
+# Handover Codex — Rainforest Mind multihost 1.19.2
 
 > **Reancorado na `origin/main` 1.19.2 em 2026-09-19.** A base da entrega saiu de
 > `068468fb` (1.13.2) para `2adbae270782a5a36512c28a5c2a5354ba05c73e` (1.19.2),
@@ -6,6 +6,7 @@
 > versão `1.13.2` citados nas seções antigas são **registro histórico**: o estado
 > corrente está na seção "Reancoragem na origin/main 1.19.2" do portão do fluxo.
 > Derive sempre o HEAD e a base correntes com Git, nunca copie hash de prosa.
+> re-verificar: `git merge-base origin/main HEAD; git show HEAD:.claude-plugin/plugin.json; git show HEAD:.codex-plugin/plugin.json`
 
 > **Atualizado em 2026-09-19, depois da sessão Claude.** A contraprova do hook
 > foi concluída e passou, a instalação final limpa foi restaurada e `executar`
@@ -13,6 +14,7 @@
 > descrevem o estado **anterior** a essa sessão e ficam como registro; o estado
 > corrente está em "Estado em 2026-09-19, depois da sessão Claude", no fim
 > deste arquivo, e é por onde o Codex deve começar.
+> re-verificar: `node scripts/estado.cjs ler --slug 2026-09-12-multihost-sobre-1-11`
 
 Atualizado em 2026-09-19. Este documento retoma a entrega local que adapta o
 Rainforest Mind ao Codex sem bifurcar o produto.
@@ -68,7 +70,7 @@ Uma fixture de contraprova já foi criada fora do sandbox, com proprietário
 correto, em:
 
 ```text
-C:\Users\Luis\.codex\visualizations\2026\09\08\01a07ef1-6e62-7301-b14c-e07018b98ed6\t6-cachebuster-session-host
+<USERPROFILE>\.codex\visualizations\2026\09\08\01a07ef1-6e62-7301-b14c-e07018b98ed6\t6-cachebuster-session-host
 ```
 
 Ela responde `.git` a `git rev-parse --git-dir` e contém somente
@@ -77,11 +79,11 @@ Não marque `verificar=ok` antes dessa contraprova.
 
 Neste instante o marketplace **não está na instalação final**: ele aponta
 deliberadamente para o export diagnóstico
-`C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-diagnostic`,
+`<REPO>\.claude\marketplaces\rainforest-mind-diagnostic`,
 versão `1.13.2+codex.20260915000908`. Esse pacote contém instrumentação apenas
 para diagnóstico e nunca deve ser commitado nem tratado como release. Depois da
 contraprova, restaure o marketplace e o plugin exato pelo export limpo
-`C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.13.2`.
+`<REPO>\.claude\marketplaces\rainforest-mind-export-1.13.2`.
 
 ## Retomada segura
 
@@ -89,9 +91,9 @@ O worktree de entrega continua com o nome histórico `codex-multihost-1.11`, mas
 a branch real é `codex/multihost-1.13`:
 
 ```powershell
-$entrega = 'C:\Projetos\rainforest-mind\.claude\worktrees\codex-multihost-1.11'
-$origemFinal = 'C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.13.2'
-$origemDiagnostica = 'C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-diagnostic'
+$entrega = '<REPO>\.claude\worktrees\codex-multihost-1.11'
+$origemFinal = '<REPO>\.claude\marketplaces\rainforest-mind-export-1.13.2'
+$origemDiagnostica = '<REPO>\.claude\marketplaces\rainforest-mind-diagnostic'
 $base = '068468fb956b8d606e9af1800aaa91dd399fdeb8'
 
 if (-not (Test-Path -LiteralPath $entrega -PathType Container)) {
@@ -239,7 +241,7 @@ Ele não está ativo durante o handover de 2026-09-19 porque o marketplace foi
 temporariamente apontado ao export diagnóstico descrito no início deste arquivo:
 
 ```text
-C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.13.2
+<REPO>\.claude\marketplaces\rainforest-mind-export-1.13.2
 source_commit=77b0226e6b168f97848d5fa8021d58c06dda8f6f
 ```
 
@@ -305,7 +307,7 @@ erro “slug não existe”.
 1. Confirme o estado atual:
 
 ```powershell
-Set-Location 'C:\Projetos\rainforest-mind\.claude\worktrees\codex-multihost-1.11'
+Set-Location '<REPO>\.claude\worktrees\codex-multihost-1.11'
 git branch --show-current
 git rev-parse HEAD
 git status --short
@@ -329,21 +331,21 @@ saída; todo o restante continua no Claude Code.
 outra hipótese:
 
 ```text
-C:\Users\Luis\.codex\visualizations\2026\09\08\01a07ef1-6e62-7301-b14c-e07018b98ed6\hook-payload-diagnostic.jsonl
-C:\Users\Luis\.codex\visualizations\2026\09\08\01a07ef1-6e62-7301-b14c-e07018b98ed6\hook-environment-diagnostic.jsonl
-C:\Users\Luis\.codex\visualizations\2026\09\08\01a07ef1-6e62-7301-b14c-e07018b98ed6\core-diagnostic.jsonl
-C:\Users\Luis\.codex\visualizations\2026\09\08\01a07ef1-6e62-7301-b14c-e07018b98ed6\git-error-diagnostic.jsonl
+<USERPROFILE>\.codex\visualizations\2026\09\08\01a07ef1-6e62-7301-b14c-e07018b98ed6\hook-payload-diagnostic.jsonl
+<USERPROFILE>\.codex\visualizations\2026\09\08\01a07ef1-6e62-7301-b14c-e07018b98ed6\hook-environment-diagnostic.jsonl
+<USERPROFILE>\.codex\visualizations\2026\09\08\01a07ef1-6e62-7301-b14c-e07018b98ed6\core-diagnostic.jsonl
+<USERPROFILE>\.codex\visualizations\2026\09\08\01a07ef1-6e62-7301-b14c-e07018b98ed6\git-error-diagnostic.jsonl
 ```
 
 4. Depois da contraprova, remova a instalação diagnóstica e restaure
 `rainforest-mind-local` para o export final limpo:
 
 ```powershell
-$env:CODEX_HOME = 'C:\Users\Luis\.codex'
-$env:HOME = 'C:\Users\Luis'
+$env:CODEX_HOME = '<USERPROFILE>\.codex'
+$env:HOME = '<USERPROFILE>'
 codex plugin remove rainforest-mind@rainforest-mind-local
 codex plugin marketplace remove rainforest-mind-local
-codex plugin marketplace add 'C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.13.2'
+codex plugin marketplace add '<REPO>\.claude\marketplaces\rainforest-mind-export-1.13.2'
 codex plugin add rainforest-mind@rainforest-mind-local
 codex plugin marketplace list
 codex plugin list
@@ -373,13 +375,13 @@ faça push/merge/release e não remova a worktree de entrega sem aval explícito
 
 ```text
 Continue a entrega multihost do Rainforest Mind pela worktree
-C:\Projetos\rainforest-mind\.claude\worktrees\codex-multihost-1.11.
+<REPO>\.claude\worktrees\codex-multihost-1.11.
 Leia integralmente docs/HANDOVER-CODEX.md e siga o estado versionado do slug
 2026-09-12-multihost-sobre-1-11. O plano já existe e está aprovado, com nove
 tarefas. Comece pelo estágio executar reaberto pela verificação.
 
 Primeiro conclua a contraprova do hook na fixture host-owned
-C:\Users\Luis\.codex\visualizations\2026\09\08\01a07ef1-6e62-7301-b14c-e07018b98ed6\t6-cachebuster-session-host.
+<USERPROFILE>\.codex\visualizations\2026\09\08\01a07ef1-6e62-7301-b14c-e07018b98ed6\t6-cachebuster-session-host.
 O marketplace está temporariamente no export diagnóstico
 rainforest-mind-diagnostic, versão 1.13.2+codex.20260915000908. Depois da prova,
 restaure a instalação exata 1.13.2 pelo export limpo
@@ -509,7 +511,7 @@ remoção de worktree. A fixture host-owned, o export diagnóstico e os logs em
 ### Observação lateral, fora do escopo desta entrega
 
 As duas sessões Codex efêmeras carregaram a skill `task-observer` de
-`C:\Users\Luis\.agents\skills\task-observer\SKILL.md` e anunciaram que ela é
+`<USERPROFILE>\.agents\skills\task-observer\SKILL.md` e anunciaram que ela é
 "exigida para sessões com uso de ferramentas". Do lado Claude essa skill foi
 desativada em 14/09 por gravar dentro dos repositórios; o caminho do Codex é
 outro e continua ativo. Não foi mexido nada: é ambiente do usuário, e a decisão
@@ -533,3 +535,27 @@ Vale, portanto:
 
 As frases anteriores que dizem "não faça push" ficam no texto como registro do
 que foi combinado em cada momento, mas **esta seção é a que vale**.
+
+## Correções da revisão de 2026-09-20
+
+A revisão sobre `5cd54d32a3c4b32ffff941e16bc72951eefa9137` encontrou quatro
+inconsistências de especificação e três de rastro. Esta rodada corrigiu:
+
+- design e plano agora tratam `2adbae270782a5a36512c28a5c2a5354ba05c73e`
+  (`1.19.2`) como base corrente em D5/D9 e T4/T6/T7/T8/T9;
+- o critério de creep da T9 usa a mesma base `2adbae27` já exercitada pelo gate;
+- o contrato Gemini cobre também fixtures nomeadas `request.json`, sem confundir
+  documentos como `request-for-comments.md`;
+- caminhos locais dos registros versionados foram substituídos por marcadores
+  portáveis como `<REPO>` e `<USERPROFILE>`;
+- a T6 foi repetida com `1.19.2+codex.20260920005618`: uma sessão efêmera nova
+  enumerou 20 skills e recebeu `PreToolUse Blocked` antes de o Git iniciar.
+
+Os manifestos voltaram byte a byte para `1.19.2` depois da contraprova. O bump
+de release não pertence a esta correção: pelo contrato do repositório ele é o
+último commit do estágio `fechar`, depois de `verificar` fechar.
+
+> 2026-09-20: cachebuster `1.19.2+codex.20260920005618`, 20 skills e
+> `PreToolUse Blocked`; fixture permaneceu com `?? deny-control.txt`, nada
+> staged e sem `.git/index.lock` — re-verificar: `codex plugin list` e repetir
+> a sessão efêmera descrita na iteração 10 do portão.

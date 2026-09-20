@@ -447,7 +447,11 @@ function ehArtefatoGemini(arquivo) {
     /(^|[._-])gemini([._-]|$)/.test(segmento));
   const temTermoDeHost = segmentos.some((segmento) =>
     /(^|[._-])(adapter|adapters|adaptador|adaptadores|hook|hooks|manifest|manifesto|plugin|payload)([._-]|$)/.test(segmento));
-  return temGemini && temTermoDeHost;
+  const ehFixture = segmentos.some((segmento) =>
+    /(^|[._-])fixtures?([._-]|$)/.test(segmento));
+  const temFormaDePayload = segmentos.some((segmento) =>
+    /^(payload|request|response|event)([._-]|$)/.test(segmento));
+  return temGemini && (temTermoDeHost || (ehFixture && temFormaDePayload));
 }
 
 function validarDetectorGemini() {
@@ -456,11 +460,13 @@ function validarDetectorGemini() {
     'adapters/gemini/manifest.json',
     'hooks/gemini/pre-tool-use.json',
     'test/fixtures/gemini/payload.json',
+    'test/fixtures/gemini/request.json',
     '.gemini-plugin/plugin.json',
   ];
   const permitidos = [
     'scripts/fixtures/conselho/membro-gemini-fake.cjs',
     'referencias/notas-gemini.md',
+    'referencias/gemini/request-for-comments.md',
   ];
   for (const documento of DOCUMENTOS_DO_FLUXO) {
     exige(!ehArtefatoGemini(documento), `detector Gemini confundiu documento do fluxo: ${documento}`);
