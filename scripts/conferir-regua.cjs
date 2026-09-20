@@ -13,6 +13,14 @@
  * NENHUMA PROTECAO CONTRA: orquestrador que não chama o script, rebase do
  * commit de adição, semântica vazia de seção "Freios" ou cabeçalhos M<n>
  * (validamos presença, não conteúdo).
+ *   Tambem NAO protege contra estado de git em que a leitura do historico
+ *   falha por um motivo que a sonda em camadas de `ancoraDe` nao alcanca: ali
+ *   o script pode sair 1 (veredito) onde 2 (ambiente) seria mais correto. A
+ *   sonda cobre os casos conhecidos — sem commit, HEAD destacado, ref ausente,
+ *   packed-refs ilegivel, fora de repositorio — e tres rodadas de revisao
+ *   independente acharam um estado novo cada. O selo em si NAO depende dessa
+ *   distincao: manifesto alterado continua sendo pego em qualquer um dos casos.
+
  *
  * Uso:
  *   node scripts/conferir-regua.cjs conferir --slug <slug>
@@ -76,44 +84,58 @@ function ancoraDe(slug) {
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 
-  // AMBIENTE (2) vs. VEREDITO (1), e a distincao nao se faz por texto de erro.
-  // `git log` sai != 0 em casos muito diferentes: o git nao executou, estamos
-  // fora de repositorio, o repositorio nao tem commit nenhum, ou o historico
-  // existe mas nao pode ser lido (objeto corrompido). So o TERCEIRO e veredito
-  // legitimo sobre o trabalho; os outros sao ambiente.
+  // AMBIENTE (2) vs. VEREDITO (1). `git log` sai != 0 em casos muito
+  // diferentes, e so UM deles e veredito sobre o trabalho: o repositorio nunca
+  // recebeu commit. Os outros — git ausente, fora de repositorio, historico
+  // ilegivel — sao ambiente.
   //
-  // A sonda nao pode ser `rev-parse --git-dir` sozinha: ela apenas resolve o
-  // caminho do .git e responde 0 mesmo com o objeto do HEAD corrompido, o que
-  // fazia corrupcao real ser reportada como "manifesto nunca commitado".
-  // Quem separa e `for-each-ref`, que responde se existe ALGUMA ref sem
-  // precisar ler objeto: sem ref nenhuma o repositorio nunca recebeu commit;
-  // com ref e o log falhando, a falha e do ambiente.
+  // A sonda e em CAMADAS, e nenhuma delas e "existe alguma ref". Essa foi a
+  // tentativa anterior e errava nos dois sentidos: HEAD destacado sem branch
+  // nao aparece em `for-each-ref` (e virava veredito com o objeto podre), e um
+  // `fetch` sem checkout enche `refs/remotes/` num repositorio que nunca
+  // commitou nada (e virava ambiente). "Tem ref em algum lugar" nao responde
+  // "o HEAD tem historico legivel".
   if (res.error || res.status !== 0) {
-    const sonda = spawnSync('git', ['rev-parse', '--git-dir'], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
+    const gitDir = spawnSync('git', ['rev-parse', '--git-dir'], {
+      encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
     });
-    if (sonda.error || sonda.status !== 0) {
+    if (gitDir.error || gitDir.status !== 0) {
       console.error(`git indisponivel ou fora de repositorio ao resolver a ancora de ${slug}`);
       process.exit(EXIT_GIT_FALHOU);
     }
 
-    // `--format=%(refname)` importa: sem ele o for-each-ref precisa LER o
-    // objeto apontado por cada ref, e num repositorio corrompido ele falha
-    // junto com o log, apagando a distincao que esta sonda existe para fazer.
-    const refs = spawnSync('git', ['for-each-ref', '--count=1', '--format=%(refname)'], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
+    // 1. O HEAD resolve? Se sim, ha historico legivel e o `log` falhou por
+    //    outro motivo — ambiente.
+    const head = spawnSync('git', ['rev-parse', '--quiet', '--verify', 'HEAD'], {
+      encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
     });
-    if (refs.error || refs.status !== 0) {
-      console.error(`git falhou ao listar referencias ao resolver a ancora de ${slug}`);
+    if (head.status === 0) {
+      console.error(`git falhou ao ler o historico ao resolver a ancora de ${slug} (o HEAD resolve)`);
       process.exit(EXIT_GIT_FALHOU);
     }
-    if (refs.stdout.trim() !== '') {
-      console.error(`git falhou ao ler o historico ao resolver a ancora de ${slug} (o repositorio TEM referencias)`);
+
+    // 2. HEAD nao resolve. Destacado (nao simbolico) significa que HEAD guarda
+    //    um SHA: ja houve commit, e nao resolver e historico podre — ambiente.
+    const sym = spawnSync('git', ['symbolic-ref', '-q', 'HEAD'], {
+      encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    if (sym.error || sym.status !== 0) {
+      console.error(`git falhou ao ler o HEAD destacado ao resolver a ancora de ${slug}`);
       process.exit(EXIT_GIT_FALHOU);
     }
-    return null;
+
+    // 3. HEAD simbolico: o ref para o qual ele aponta existe? `show-ref` usa
+    //    status 1 para "nao achei" e 128 para erro de verdade (packed-refs
+    //    ilegivel, por exemplo) — e a distincao e por CODIGO, nunca por texto.
+    const ref = sym.stdout.trim();
+    const mostraRef = spawnSync('git', ['show-ref', '--verify', '--quiet', ref], {
+      encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    if (mostraRef.status === 1) {
+      return null; // ref ausente: o repositorio nunca commitou. Veredito, exit 1.
+    }
+    console.error(`git falhou ao resolver ${ref} ao resolver a ancora de ${slug}`);
+    process.exit(EXIT_GIT_FALHOU);
   }
 
   const linhas = res.stdout.trim().split(/\r?\n/).filter(Boolean);
