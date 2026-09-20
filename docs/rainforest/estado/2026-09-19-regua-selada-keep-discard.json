@@ -22,7 +22,77 @@
     "em": "2026-09-19"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-09-19",
+    "tarefas_ok": 5,
+    "tarefas": 5,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "fdbfa28",
+        "iteracao": 1,
+        "sessao": "916c51f0-b6a9-4fc2-8102-3ba81981d545",
+        "ts": "2026-09-20T01:59:39.583Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "fdbfa28",
+        "iteracao": 1,
+        "sessao": "916c51f0-b6a9-4fc2-8102-3ba81981d545",
+        "ts": "2026-09-20T01:59:39.583Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "fdbfa28",
+        "iteracao": 1,
+        "sessao": "916c51f0-b6a9-4fc2-8102-3ba81981d545",
+        "ts": "2026-09-20T01:59:39.583Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "71e1b13",
+        "iteracao": 1,
+        "sessao": "916c51f0-b6a9-4fc2-8102-3ba81981d545",
+        "ts": "2026-09-20T02:19:10.328Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "71e1b13",
+        "iteracao": 1,
+        "sessao": "916c51f0-b6a9-4fc2-8102-3ba81981d545",
+        "ts": "2026-09-20T02:19:10.328Z"
+      }
+    ],
+    "em": "2026-09-20",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-regua.sh, caso 1 \"manifesto editado na arvore de trabalho recusa\""
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-regua.sh, caso 6 \"mostrar com manifesto editado nao imprime nada\""
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "texto prescritivo da skill; a falsificacao e o critico cego do fluxo-13-regua-fase0"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "texto prescritivo da skill; a falsificacao e o critico cego do fluxo-13-regua-loop"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "linha de tabela; a trava e a catraca conferir-livro-de-repos.cjs, cuja bateria nao muda"
+      }
+    ],
+    "comando": "bash scripts/varrer-baterias.sh",
+    "saida": "as 125 baterias passaram (exit 0)"
   },
   "revisar": {
     "status": "pendente"
