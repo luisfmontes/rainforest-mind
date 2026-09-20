@@ -168,6 +168,17 @@ melhor guardado é um SHA registrado no log de rodadas versionado,
 `venceu_regua`, `venceu_interno`, `status` (em `keep|discard|abortado`) e `lacuna`,
 e atualizado pela comparação interna a cada rodada.
 
+**O limite do `git show`: artefato que só existe renderizado.** `git show` devolve
+o que está versionado, e isso basta enquanto o artefato é texto — README, mensagem
+de erro, código, nome. Quando o que se julga é um render — print de tela,
+filmstrip de animação, PDF de documento —, o arquivo renderizado **precisa estar
+commitado junto** com a rodada. Sem isso não há como materializar o melhor
+guardado, e a **comparação interna fica cega**: ela seguiria comparando o fonte
+enquanto o crítico da régua julga a imagem, e os dois passariam a medir coisas
+diferentes sem ninguém perceber. O preflight da Fase 0 já pergunta se o nosso
+lado renderiza; aqui a exigência é mais forte, porque o render precisa
+**sobreviver à rodada**, não só existir durante ela.
+
 **Crítico da régua.** `Agent` novo **toda rodada**, nunca `fork`, nunca o mesmo
 da rodada anterior. Recebe o nosso artefato e a régua **sem rótulo** e sem saber
 qual é qual, sem saber que rodada é — mais o arquivo de mecanismos da Fase 0,
