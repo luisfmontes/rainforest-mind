@@ -10,6 +10,7 @@
 # 6. O script detecta duplicação de frases
 # 7. O script falha com exit ≠ 0 quando nenhum invariantes.json existe
 # 8. O script falha com exit ≠ 0 quando tipo desconhecido é usado
+# 9. O script falha com exit 1 quando o campo `frase` está ausente ou vazio
 #
 # Autoria de `tipo: nao_deve`:
 # - Frase proibida só vale se for vocabulário que o texto correto nunca usa
@@ -166,6 +167,21 @@ else
   falhou=$((falhou+1)); echo "  FALHA: tipo invalido deveria falhar"
 fi
 rm -rf "$CAIXA_TIPO"
+
+# Caso: frase ausente na invariante (chave digitada errada) reprova
+CAIXA_SEM_FRASE="$(nova_caixa)"
+mkdir -p "$CAIXA_SEM_FRASE/skills/fechar"
+cp skills/fechar/SKILL.md "$CAIXA_SEM_FRASE/skills/fechar/SKILL.md"
+printf '%s\n' '[{"tipo":"nao_deve","frasse":"CONFIRMO fechar issue"}]' > "$CAIXA_SEM_FRASE/skills/fechar/invariantes.json"
+printf '%s\n' 'CONFIRMO fechar issue' >> "$CAIXA_SEM_FRASE/skills/fechar/SKILL.md"
+(cd "$CAIXA_SEM_FRASE/scripts" && node conferir-invariantes.cjs > /tmp/sem-frase.log 2>&1)
+SEM_FRASE=$?
+if [ "$SEM_FRASE" -eq 1 ]; then
+  ok=$((ok+1)); echo "  ok   VERMELHO: frase ausente na invariante reprova (exit $SEM_FRASE)"
+else
+  falhou=$((falhou+1)); echo "  FALHA VERMELHO: frase ausente na invariante reprova (exit 1) — saiu $SEM_FRASE"
+fi
+rm -rf "$CAIXA_SEM_FRASE"
 
 # Casos vermelhos para rainforest-mind — mutações numa CÓPIA, nunca no repo
 CAIXA="$(mktemp -d)"

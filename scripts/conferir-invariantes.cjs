@@ -133,6 +133,11 @@ for (const nomeSkill of skillsComInvariantes) {
       process.exit(1);
     }
 
+    if (typeof frase !== 'string' || frase.length === 0) {
+      console.error(`Erro: campo "frase" ausente ou vazio na invariante [${nomeSkill}]${regra !== undefined ? ' regra-'+regra : ''}`);
+      process.exit(1);
+    }
+
     // Determinação do "corpo" a testar conforme o tipo e onde
     const corpo = skillContent;
 

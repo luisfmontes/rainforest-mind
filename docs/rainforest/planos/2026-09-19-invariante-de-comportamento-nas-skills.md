@@ -38,8 +38,21 @@ mutacao:
   de: `**Nunca entra na remoção**`
   para: `**Entra na remoção**`
   bateria: `bash scripts/testa-conferir-invariantes.sh`
-  fixture: `testa-conferir-invariantes.sh, secao "skill de acao: frase obrigatoria removida do corpo reprova"`
+  fixture: `testa-conferir-invariantes.sh, caso "repositorio integro passa no conferir"`
 pronto quando: com os seis arquivos na árvore e nenhum `SKILL.md` alterado, `node scripts/conferir-invariantes.cjs` sai **0** e relata **15** invariantes conferidas (as 5 da `rainforest-mind` mais as 10 aprovadas); e com a frase `Nunca entra na remoção` removida de `skills/limpar/SKILL.md` numa cópia de caixa de areia, sai **2** nomeando `limpar` — provado por `bash scripts/testa-conferir-invariantes.sh` terminando em `falhou=0`
+
+> **Fixture emendado em 2026-09-20, por achado da revisão.** A forma anterior
+> nomeava o caso `skill de acao: frase obrigatoria removida do corpo reprova`.
+> Medido rodando `node scripts/conferir-mutacao.cjs` com esta mutação: aquele
+> caso **não detecta** — ele aborta no próprio setup, imprimindo `Nao achei a
+> frase Nunca entra na remoção` e `FALHA: nao consegui aplicar mutacao na
+> limpar`, porque a mutação externa já tinha removido a frase que ele precisava
+> remover. Aborto de setup não é detecção. Quem fica vermelho é o caso nomeado
+> no `fixture:` acima, e o motivo é estrutural: a mutação é aplicada na árvore
+> inteira, e o caso que roda o checador contra a árvore real alcança exatamente
+> o ramo que o invariante protege — `deve` cuja frase sumiu do corpo, exit 2.
+> Caso de caixa de areia que muta a mesma frase X colide com a mutação externa
+> de X e não serve de fixture para ela.
 
 As dez frases aprovadas pelo usuário em 2026-09-19, sem corte, estão na tabela
 "Frases propostas" do design. Nenhuma delas usa `--confirmo` como frase de
@@ -56,7 +69,7 @@ mutacao:
   de: `3.000+ tokens`
   para: `3.000 tokens`
   bateria: `bash scripts/testa-conferir-invariantes.sh`
-  fixture: `testa-conferir-invariantes.sh, secao "(1) MUTACAO: mover a frase \"3.000+ tokens\" para DEPOIS de <!-- detalhe --> no SKILL.md"`
+  fixture: `testa-conferir-invariantes.sh, caso "repositorio integro passa no conferir"`
 pronto quando: o arquivo é **byte a byte idêntico** ao da base — `git hash-object skills/rainforest-mind/invariantes.json` devolve o mesmo blob que `git rev-parse <base>:skills/rainforest-mind/invariantes.json` — e `node scripts/conferir-invariantes.cjs` passa a conferir **15** invariantes lendo esse arquivo pelo **mesmo caminho genérico** das outras seis, sem caso especial no código (`SKILLS_DIR` + `readdirSync`, conferível por `grep -n "rainforest-mind" scripts/conferir-invariantes.cjs` não casando nada fora de comentário); com `3.000+ tokens` trocado por `3.000 tokens` em `skills/rainforest-mind/SKILL.md`, a bateria fica **vermelha** — provado por `node scripts/conferir-mutacao.cjs` saindo **0**
 
 > **Critério emendado em 2026-09-19, durante o `executar`.** A forma anterior
@@ -69,6 +82,18 @@ pronto quando: o arquivo é **byte a byte idêntico** ao da base — `git hash-o
 > para parecer migrado seria churn. A prova de que os dois formatos deixaram de
 > conviver é o caminho único de leitura, não uma edição no dado.
 
+> **Fixture emendado em 2026-09-20, por achado da revisão.** A forma anterior
+> nomeava o caso `(1) MUTACAO: mover a frase "3.000+ tokens" para DEPOIS de <!-- detalhe --> no SKILL.md`.
+> Medido rodando `node scripts/conferir-mutacao.cjs` com esta mutação: aquele caso **não detecta** — ele aborta no próprio setup,
+> com `FALHA: nao consegui aplicar a primeira mutacao`, porque a mutação externa
+> já tinha alterado a frase que ele precisava mover. Aborto de setup não é
+> detecção. Quem fica vermelho é o caso nomeado no `fixture:` acima, e o motivo
+> é estrutural: a mutação é aplicada na árvore inteira, e o caso que roda o
+> checador contra a árvore real alcança exatamente o ramo que o invariante
+> protege — `deve` cuja frase sumiu do corpo, exit 2. Caso de caixa de areia que
+> muta a mesma frase X colide com a mutação externa de X e não serve de fixture
+> para ela.
+
 ### 4. Registrar o openai-developers-for-claude no livro de repos [tipo: docs]
 atende: D9
 arquivos: `vigias/livro-de-repos.md`
@@ -76,7 +101,16 @@ depende de: nenhuma
 paralela: sim
 mutacao: n/a
   motivo: linha de tabela num documento de registro — não há comportamento a inverter. A falsificação dela é outra e está no critério: a sintaxe da célula é validada por peça marcada `sensor`, e o conteúdo tem de casar com o que foi medido no repo de terceiro.
-pronto quando: com a linha nova na tabela "Avaliados", `node scripts/conferir-livro-de-repos.cjs` sai **0** e conta uma linha a mais que antes; e a linha registra, casando com o que foi medido em 2026-09-19, o caminho `Enxertar: enxerta`, o último push visto `2026-07-13`, a licença Apache-2.0 como fato e não como veredito, e a âncora `gate-do-p1-e-hook-nao-texto` — conferido lendo a célula contra a seção "Objetivo" do design, que traz os mesmos quatro dados
+pronto quando: com a linha nova na tabela "Avaliados", `node scripts/conferir-livro-de-repos.cjs` sai **0** e a tabela passa de **51** linhas de dado na base para **52** — contadas por `awk '/^## Avaliados/{f=1;next} /^## /{f=0} f&&/^\|/{n++} END{print n-2}' vigias/livro-de-repos.md`, que desconta cabeçalho e separador. **Dois dados da célula têm segunda fonte e se conferem contra o design**: a trilha `Enxertar: enxerta`, que está na D9, e a âncora `gate-do-p1-e-hook-nao-texto`, que está no cabeçalho e na seção "Objetivo". **Os outros dois são fonte única**: o último push `2026-07-13` e a licença `Apache-2.0` — esta registrada como fato e não como veredito — foram medidos do repositório de terceiro em 2026-09-19 e **não existem no design**; conferi-los exige abrir `openai/openai-developers-for-claude`, não o design. Acrescentá-los ao design para "fechar" o cruzamento seria fabricar segunda fonte a partir da mesma medição.
+
+> **Critério emendado em 2026-09-20, por achado da revisão.** A forma anterior
+> terminava em "conferido lendo a célula contra a seção 'Objetivo' do design,
+> que traz os mesmos quatro dados". Falso, e falso de um jeito que torna o
+> critério inexecutável: medido no design, `Enxertar: enxerta` aparece 1 vez e
+> `gate-do-p1-e-hook-nao-texto` 2 vezes, mas o último push e a licença aparecem
+> **0** vezes. Metade do cruzamento prometido não tinha como ser feita. O
+> conserto é o critério dizer o que tem duas fontes e o que tem uma, não o
+> design ganhar o dado que faltava.
 
 ## Nota sobre a ordem
 

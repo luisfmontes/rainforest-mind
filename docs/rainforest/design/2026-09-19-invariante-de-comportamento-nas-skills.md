@@ -54,7 +54,7 @@ Nove `deve` e uma `nao_deve`. O corte é do Luís.
 |---|---|---|---|
 | `fechar` | deve | `O destino da branch é sempre PR` | o agente volta a oferecer menu de merge/PR/manter |
 | `fechar` | deve | `Árvore suja de algo que não é deste trabalho é condição de parada` | volta a commitar por cima de trabalho alheio |
-| `fechar` | **nao_deve** | `CONFIRMO fechar issue` | a exigência de frase digitada revertida em 16/09 volta sem ninguém notar |
+| `fechar` | **nao_deve** | `CONFIRMO fechar issue` | vocabulário prospectivo: uma versão futura do corpo do `fechar` volta a exigir frase digitada e ninguém nota. Não é a reversão de 16/09 — aquela vivia em script e hook, fora do alcance do checador, que só lê o corpo da skill |
 | `limpar` | deve | `Nunca entra na remoção` | branch `viva` entra na remoção — perda irreversível |
 | `executar` | deve | `O hash da base é executado \`git rev-parse\`, nunca digitado` | volta o hash copiado de prosa, que a regra 12 proíbe |
 | `executar` | deve | `nunca é nomeado` | agente que edita ganha nome e escapa do worktree |
