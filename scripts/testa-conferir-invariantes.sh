@@ -249,8 +249,11 @@ rm -rf "$CAIXA_NAODEV_OK"
 #
 # A varredura por frase-inexistente que fechou a classe da forma malformada na
 # quinta rodada e' CEGA a este campo POR CONSTRUCAO: para um `nao_deve`,
-# frase-que-nao-existe e' a condicao de APROVACAO, nao de recusa. As nove `deve`
-# falham FECHADO sob o mesmo typo; so a `nao_deve` falha ABERTO.
+# frase-que-nao-existe e' a condicao de APROVACAO, nao de recusa. As outras
+# catorze invariantes do roster, todas `deve`, falham FECHADO sob o mesmo typo; so
+# a `nao_deve` falha ABERTO. Catorze e nao nove: o roster confere 15, sendo 14
+# `deve` mais esta; "nove" e' a contagem do design para as seis skills de acao,
+# sem as cinco da rainforest-mind.
 #
 # O conserto nao esta no sensor — nenhum sensor decide se uma frase proibida e'
 # "significativa", porque ela legitimamente nao esta no corpo. O que este caso
@@ -339,8 +342,11 @@ fs.writeFileSync(arquivo,depois);
 
   (cd "$CAIXA_VIVA/scripts" && node conferir-invariantes.cjs > /tmp/vivacidade.log 2>&1)
   VIVA_EXIT=$?
-  # DESLIGA: esta condicao e' a unica afericao do caso. Neutraliza-la (trocar por
-  # `if true; then`) desliga a vivacidade inteira sem mexer em mais nada.
+  # DESLIGA: esta condicao e' a afericao POSITIVA do caso — o comportamento que
+  # ele existe para medir. O laco vazio e a linha de base acima sao guardas de
+  # vacuo, nao afericoes de comportamento. Neutralizar esta linha (trocar por
+  # `if true; then`) desliga a vivacidade sem mexer em mais nada; note que isso
+  # deixa a bateria VERDE, entao `conferir-mutacao.cjs` sai 2 nela, nao 0.
   if [ "$VIVA_EXIT" -eq 2 ] && grep -q "\[$VIVA_SKILL\]" /tmp/vivacidade.log && grep -q "frase proibida encontrada" /tmp/vivacidade.log; then
     :
   else

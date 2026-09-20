@@ -108,4 +108,4 @@ com um tiro só, e invariante redundante não prova nada.
 ## Em aberto
 
 - Se a cobertura passar de seis skills, reabrir a D3 (arquivo por skill contra arquivo central).
-- Nenhuma outra: a fronteira esvaziou em duas rodadas.
+- **Segunda fonte da frase de um `nao_deve`** — reaberto em 2026-09-20, por achado da SEXTA revisão. Um `nao_deve` bem-formado com a frase grafada errado (`CONFIRM0` por `CONFIRMO`) aprova para sempre sem medir nada, e nenhum sensor pode decidir isso: a frase legitimamente não está no corpo. O caso `VIVACIDADE` da bateria fecha a metade fechável — prova que o caminho `nao_deve` mede a árvore de produção e recusa varredura vazia —, mas **não** distingue grafia certa de grafia com typo: medido em 2026-09-20, a errada também sai 2 quando plantada. Fechar a outra metade exige pinar a frase numa segunda fonte, no padrão de `ROSTER_ESPERADO`, ao custo de um `nao_deve` novo nascer vermelho até ser declarado. Decisão do Luís, não desta entrega. A linha anterior desta seção dizia "Nenhuma outra: a fronteira esvaziou em duas rodadas" — deixou de ser verdade nesta.

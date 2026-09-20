@@ -84,8 +84,11 @@
  *     nunca vai existir. Medido em 2026-09-20 na base `cefad9d1`: roster intacto,
  *     `ok: conferidas 15 invariantes`, exit 0, e a bateria em `ok: 27 falhou: 0`
  *     — com uma das 15 sem medir mais nada. Falha ABERTO, ao contrário das duas
- *     acima: as nove `deve` falham FECHADO sob o mesmo typo, porque lá a frase
- *     ausente do corpo é reprovação; só a `nao_deve` inverte o sinal.
+ *     acima: as OUTRAS CATORZE invariantes do roster, todas `deve`, falham
+ *     FECHADO sob o mesmo typo, porque lá a frase ausente do corpo é
+ *     reprovação; só a `nao_deve` inverte o sinal. Catorze e não nove: o roster
+ *     confere 15, sendo 14 `deve` mais esta; "nove" é a contagem do design para
+ *     as seis skills de ação, sem as cinco da `rainforest-mind`.
  *
  *     NÃO SE CONSERTA AQUI, e insistir no sensor é o caminho errado: nenhum
  *     sensor decide se uma frase proibida é "significativa", porque ela
