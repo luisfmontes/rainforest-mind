@@ -26,7 +26,7 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-09-19",
-    "tarefas_ok": 4,
+    "tarefas_ok": 3,
     "tarefas": 4,
     "em_voo": [],
     "carimbos": [
@@ -97,12 +97,16 @@
     "emendas": [
       "criterio da T3 emendado durante o executar: exigia onde:[skill,nucleo] nas cinco entradas, e a da regra 15 sempre teve referencia tambem. Erro de quem escreveu o plano. Passou a exigir identidade de blob e caminho unico de leitura"
     ],
-    "rodada": 5,
+    "rodada": 6,
     "achados_corrigidos": 4,
     "reaberto_por": {
       "estagio": "revisar",
       "data": "2026-09-20"
-    }
+    },
+    "pendentes": [
+      "bloqueante da revisao 5 NAO fechado: plantar-e-detectar prova vivacidade mas nao distingue grafia certa de typo, porque nao tem segunda fonte da frase. Mecanismo que eu prescrevi e incapaz disso por construcao"
+    ],
+    "medido": "com o typo CONFIRM0, VIVACIDADE segue verde e a bateria 28/0"
   },
   "revisar": {
     "status": "reprovado",
