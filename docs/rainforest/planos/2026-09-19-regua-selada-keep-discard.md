@@ -28,6 +28,17 @@ a linha ainda não existe. O script expõe, obrigatoriamente: a constante
 função `exigirAncoraEFormato(slug)` (resolve a âncora, valida o formato, aborta
 com `EXIT_RECUSA`). Nome diferente reprova a tarefa pelo bloco `mutacao`.
 
+**Emenda de 2026-09-20 (creep do `revisar`).** Três arquivos entraram no diff
+sem tarefa que os cobrisse, e o `conferir-fluxo.cjs creep` os pegou:
+
+- `scripts/testa-conferir-categoria.sh` entra em `arquivos:` da T1. Não foi
+  escolha: a bateria fixa a distribuição real de categorias do repo, e um sensor
+  novo obriga a atualizá-la. Era consequência da T1 que o plano não previu.
+- `docs/rainforest/criterios/fluxo-13-regua-fase0.md` entra na T3 e
+  `...-loop.md` na T4. Os dois foram escritos **neste estágio**, de propósito —
+  critério redigido por quem executa não trava nada —, mas são artefatos do diff
+  e precisam de dono declarado.
+
 ## O que não pode quebrar
 - Todas as baterias `scripts/testa-*.sh` e `hooks/testa-*.sh` continuam verdes (CI roda todas).
 - `docs/rainforest/reguas/2026-09-14-conferidor-de-cli.md` não é tocado e nada o passa pelo conferidor novo: foi medição de uma vez só, já encerrada, e reabri-lo para ganhar seção "Freios" seria rejulgar peça antiga sob régua nova.
@@ -39,7 +50,7 @@ com `EXIT_RECUSA`). Nome diferente reprova a tarefa pelo bloco `mutacao`.
 
 ### 1. `conferir-regua.cjs` confere âncora e formato do manifesto [tipo: implementar]
 atende: D1, D4, D5, D6, D7
-arquivos: `scripts/conferir-regua.cjs`, `scripts/testa-conferir-regua.sh`
+arquivos: `scripts/conferir-regua.cjs`, `scripts/testa-conferir-regua.sh`, `scripts/testa-conferir-categoria.sh`
 depende de: nenhuma
 paralela: sim
 mutacao:
@@ -65,7 +76,7 @@ pronto quando: num repositório git real, com o manifesto alterado na árvore de
 
 ### 3. Skill `regua`: Fase 0 passa a produzir manifesto selado [tipo: docs]
 atende: D2, D18
-arquivos: `skills/regua/SKILL.md`
+arquivos: `skills/regua/SKILL.md`, `docs/rainforest/criterios/fluxo-13-regua-fase0.md`
 depende de: nenhuma
 paralela: sim
 mutacao: n/a
@@ -74,7 +85,7 @@ pronto quando: com o diff real da branch contra `origin/main`, um modelo de outr
 
 ### 4. Skill `regua`: Fase 2, keep/discard e as quatro paradas [tipo: docs]
 atende: D8, D9, D10, D11, D12, D13, D14, D15, D16
-arquivos: `skills/regua/SKILL.md`
+arquivos: `skills/regua/SKILL.md`, `docs/rainforest/criterios/fluxo-13-regua-loop.md`
 depende de: 3
 paralela: nao
 mutacao: n/a
