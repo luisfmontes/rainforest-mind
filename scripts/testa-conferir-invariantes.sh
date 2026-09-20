@@ -27,7 +27,14 @@
 #     um válido, com a mutação canônica dentro da caixa
 # 19. TODA frase `nao_deve` dos `skills/*/invariantes.json` DE PRODUÇÃO é
 #     detectável quando plantada no corpo — e varredura que não acha entrada
-#     nenhuma é VERMELHA, nunca verde silencioso
+#     nenhuma é VERMELHA, nunca verde silencioso. Isso prova que o CAMINHO
+#     `nao_deve` mede a árvore de produção; NÃO prova que a frase está grafada
+#     certa, e não tem como provar — ver o item 20
+# 20. O conjunto `(skill, frase)` das entradas `nao_deve` de produção BATE com a
+#     declaração `NAO_DEVE_ESPERADO`, que é a segunda fonte da frase. Typo na
+#     frase de produção, troca por outra frase bem-formada, `nao_deve` novo não
+#     declarado e declarado que sumiu ficam todos VERMELHOS — e a trava tem
+#     controle próprio, que exige vermelho sobre uma árvore adulterada
 #
 # Sobre o item 16, que é linha de base e não caso: até 2026-09-20 a `$CAIXA` das
 # mutações era UMA, criada no setup e nunca restaurada entre os blocos. Duas
@@ -156,6 +163,70 @@ ROSTER_ATUAL=""
 ROSTER_EXIT=-1
 ROSTER_CONTAGEM=-1
 
+# SEGUNDA FONTE das frases `nao_deve` de producao, no mesmo padrao literal do
+# `ROSTER_ESPERADO` acima. Declarada UMA vez, aqui, e em nenhum outro lugar.
+#
+# POR QUE existe, medido em 2026-09-20. Um `nao_deve` aprova quando a frase NAO
+# esta no corpo. Entao um typo na frase de producao — `CONFIRM0` por `CONFIRMO` —
+# deixa o invariante procurando para sempre uma string que nunca vai existir:
+# roster intacto, contagem intacta, `ok: conferidas 15 invariantes`, exit 0, e
+# uma das 15 deixou de medir qualquer coisa. As outras catorze, todas `deve`,
+# falham FECHADO sob o mesmo typo; so a `nao_deve` inverte o sinal.
+#
+# POR QUE o caso VIVACIDADE abaixo nao fecha isso, e nao tem como fechar: ele
+# planta a frase LIDA do arquivo e exige exit 2. Para qualquer string nao vazia
+# `s`, "acrescenta `s` ao corpo, depois procura `s` no corpo" sempre casa — entao
+# plantar-e-detectar nao distingue grafia certa de grafia errada, porque nao tem
+# SEGUNDA FONTE da frase. Medido: com `CONFIRM0 fechar issue` na producao, a
+# VIVACIDADE fica verde. Ela prova que o caminho esta vivo; esta declaracao e'
+# que prova que a frase esta certa.
+#
+# O que NAO fecha nem com isto: `node scripts/conferir-invariantes.cjs` sozinho
+# continua saindo 0 com o typo dentro, e vai continuar — nenhum sensor decide se
+# uma frase proibida e' "significativa", porque ela legitimamente nao esta no
+# corpo. Quem pega o typo e' esta bateria, isto e', o CI.
+#
+# Formato: uma linha por entrada, `<skill>|<frase>`, ordenada por `LC_ALL=C`.
+# Frase `nao_deve` NOVA em producao nasce VERMELHA ate ser declarada aqui — custo
+# aceito e registrado na secao "Em aberto" do design.
+NAO_DEVE_ESPERADO="fechar|CONFIRMO fechar issue"
+SF_DECL=""
+SF_PROD=""
+SF_N_PROD=-1
+
+# Preenche SF_PROD / SF_N_PROD a partir dos `skills/*/invariantes.json` da arvore
+# em $1. Parametrizado pela arvore de proposito: o controle da propria trava,
+# logo abaixo do caso, precisa avaliar uma caixa de areia com a MESMA funcao.
+avalia_segunda_fonte() {
+  SF_PROD="$(cd "$1" && node -e "
+const fs=require('fs');
+const path=require('path');
+for (const skill of fs.readdirSync('skills').sort()) {
+  const alvo=path.join('skills',skill,'invariantes.json');
+  if (!fs.existsSync(alvo)) continue;
+  let inv;
+  try { inv=JSON.parse(fs.readFileSync(alvo,'utf8')); } catch (e) { continue; }
+  if (!Array.isArray(inv)) continue;
+  for (const entrada of inv) {
+    if (entrada && typeof entrada==='object' && entrada.tipo==='nao_deve') {
+      console.log(skill+'|'+String(entrada.frase));
+    }
+  }
+}
+" | sed '/^$/d' | LC_ALL=C sort)"
+  SF_N_PROD="$(printf '%s\n' "$SF_PROD" | sed '/^$/d' | wc -l | tr -d ' ')"
+}
+
+# A AFERICAO do caso, numa linha so — conjunto igual, e laco vazio nunca verde.
+# E' o alvo de catraca declarado no relatorio: trocar esta linha por `  true`
+# deixa a bateria VERMELHA, porque o controle logo abaixo do caso exige que ela
+# fique FALSA sobre uma arvore com a frase adulterada. Sem esse controle, desligar
+# a afericao deixaria tudo verde e `conferir-mutacao.cjs` sairia 2 — que e'
+# exatamente o que acontece com a linha `# DESLIGA` do VIVACIDADE.
+segunda_fonte_verde() {
+  [ "$SF_N_PROD" -gt 0 ] && [ "$SF_DECL" = "$SF_PROD" ]
+}
+
 # Preenche ROSTER_ATUAL / ROSTER_EXIT / ROSTER_CONTAGEM a partir da árvore em $1
 avalia_roster() {
   ROSTER_ATUAL="$(cd "$1" && for f in skills/*/invariantes.json; do
@@ -264,13 +335,16 @@ rm -rf "$CAIXA_NAODEV_OK"
 # uma caixa de areia, e o checador tem de sair 2 nomeando a skill. `nao_deve`
 # futuro fica coberto sem ninguem lembrar de escrever caso novo.
 #
-# LIMITE MEDIDO, para a setima revisao nao ler mais do que esta escrito: plantar a
-# frase lida do arquivo prova que o caminho `nao_deve` MEDE a arvore de producao e
-# que a varredura achou entrada; NAO distingue frase certa de frase com typo.
-# Medido em 2026-09-20 com `CONFIRM0 fechar issue` no lugar de `CONFIRMO fechar
-# issue`: plantada, ela tambem sai 2, e este caso fica VERDE. Distinguir as duas
-# exige uma SEGUNDA fonte da frase (um pino no padrao de `ROSTER_ESPERADO`), que
-# esta rodada NAO tem — a forma fica aberta e declarada, nunca dada por fechada.
+# LIMITE MEDIDO DESTE CASO, e onde ele foi coberto: plantar a frase lida do
+# arquivo prova que o caminho `nao_deve` MEDE a arvore de producao e que a
+# varredura achou entrada; NAO distingue frase certa de frase com typo. Medido em
+# 2026-09-20 com `CONFIRM0 fechar issue` no lugar de `CONFIRMO fechar issue`:
+# plantada, ela tambem sai 2, e este caso fica VERDE. A razao e' estrutural, nao
+# de implementacao: para qualquer string nao vazia `s`, "acrescenta `s` ao corpo,
+# depois procura `s` no corpo" sempre casa. Nao se conserta aqui dentro, e nao se
+# tentou: o que distingue as duas grafias e' uma SEGUNDA fonte da frase, e ela
+# chegou no caso `SEGUNDA FONTE` logo abaixo, no padrao literal de
+# `ROSTER_ESPERADO`. Este caso fica como esta, medindo o que sabe medir.
 #
 # Tres coisas sao aferidas, e as tres tem de valer:
 # 1. a varredura achou PELO MENOS uma entrada — laco vazio e' VERMELHO, nunca
@@ -366,6 +440,101 @@ if [ "$VIVACIDADE_OK" -eq 1 ]; then
   ok=$((ok+1)); echo "  ok   VIVACIDADE: toda frase nao_deve de producao e detectavel quando plantada ($VIVACIDADE_N entrada(s), todas exit 2)"
 else
   falhou=$((falhou+1)); echo "  FALHA VIVACIDADE: toda frase nao_deve de producao e detectavel quando plantada ($VIVACIDADE_N entrada(s) varrida(s))"
+fi
+
+# Caso: SEGUNDA FONTE das frases `nao_deve` de producao.
+#
+# O que este caso pega, e a VIVACIDADE acima nao pega: `nao_deve` bem-formado com
+# a frase GRAFADA ERRADO. O porque esta na declaracao de `NAO_DEVE_ESPERADO`, no
+# topo deste arquivo, junto com o custo.
+#
+# Quatro coisas sao aferidas, e as quatro tem de valer:
+# 1. o conjunto `(skill, frase)` lido de `skills/*/invariantes.json` e' IGUAL ao
+#    declarado — conjunto, nao contagem: frase trocada por outra frase bem-formada
+#    e' vermelho, porque a linha declarada nao casa mais;
+# 2. frase em producao e NAO declarada e' vermelho, com a mensagem dizendo onde
+#    declarar — arquivo e variavel pelo nome;
+# 3. frase declarada e AUSENTE de producao e' vermelho;
+# 4. laco vazio e' VERMELHO, nunca verde silencioso: zero entrada varrida nao
+#    pode passar. Coincide com o item 3 enquanto houver uma unica entrada
+#    declarada, e continua valendo se a declaracao tambem for esvaziada.
+#
+# E o CONTROLE da propria trava, no padrao do controle do roster: sobre uma caixa
+# de areia com a frase de producao adulterada, `segunda_fonte_verde` TEM de ficar
+# falsa. Sem ele, uma afericao sempre-verdadeira passaria despercebida — a trava
+# existiria sem trancar nada — e desligar a afericao deixaria a bateria verde.
+SEGUNDA_FONTE_OK=1
+SF_DECL="$(printf '%s\n' "$NAO_DEVE_ESPERADO" | sed '/^$/d' | LC_ALL=C sort)"
+avalia_segunda_fonte "."
+SF_N_REAL="$SF_N_PROD"
+if ! segunda_fonte_verde; then
+  SEGUNDA_FONTE_OK=0
+  SF_TMP="$(mktemp -d)"
+  printf '%s\n' "$SF_DECL" | sed '/^$/d' > "$SF_TMP/decl"
+  printf '%s\n' "$SF_PROD" | sed '/^$/d' > "$SF_TMP/prod"
+  SF_SO_PROD="$(LC_ALL=C comm -13 "$SF_TMP/decl" "$SF_TMP/prod")"
+  SF_SO_DECL="$(LC_ALL=C comm -23 "$SF_TMP/decl" "$SF_TMP/prod")"
+  rm -rf "$SF_TMP"
+  echo "    (repo real: $SF_N_PROD entrada(s) tipo nao_deve em skills/*/invariantes.json)"
+  if [ "$SF_N_PROD" -eq 0 ]; then
+    echo "    (a varredura nao achou NENHUMA entrada tipo nao_deve em skills/*/invariantes.json — laco vazio nao e' verde)"
+  fi
+  if [ -n "$SF_SO_PROD" ]; then
+    echo "    (EM PRODUCAO E NAO DECLARADA — acrescente cada linha abaixo, no formato <skill>|<frase>, a variavel NAO_DEVE_ESPERADO de scripts/testa-conferir-invariantes.sh:)"
+    printf '%s\n' "$SF_SO_PROD" | sed 's/^/      + /'
+  fi
+  if [ -n "$SF_SO_DECL" ]; then
+    echo "    (DECLARADA E AUSENTE DE PRODUCAO — a frase mudou de grafia, mudou de skill ou sumiu. Conserte skills/<skill>/invariantes.json, ou retire a linha de NAO_DEVE_ESPERADO em scripts/testa-conferir-invariantes.sh:)"
+    printf '%s\n' "$SF_SO_DECL" | sed 's/^/      - /'
+  fi
+  echo "    (frase com typo aparece como um + e um - do mesmo par — a declaracao nao mudou junto, que e' o defeito que este caso existe para pegar)"
+fi
+# Controle da propria trava: com a frase de producao adulterada, a afericao TEM de
+# ficar falsa. A caixa leva so os `invariantes.json`; o checador nao roda aqui.
+CAIXA_SF="$(mktemp -d)"
+for f in skills/*/invariantes.json; do
+  s="$(basename "$(dirname "$f")")"
+  mkdir -p "$CAIXA_SF/skills/$s"
+  cp "$f" "$CAIXA_SF/skills/$s/"
+done
+(cd "$CAIXA_SF" && node -e "
+const fs=require('fs');
+const path=require('path');
+for (const skill of fs.readdirSync('skills').sort()) {
+  const alvo=path.join('skills',skill,'invariantes.json');
+  if (!fs.existsSync(alvo)) continue;
+  const antes=fs.readFileSync(alvo,'utf8');
+  let inv;
+  try { inv=JSON.parse(antes); } catch (e) { continue; }
+  if (!Array.isArray(inv)) continue;
+  const i=inv.findIndex(e => e && typeof e==='object' && e.tipo==='nao_deve');
+  if (i<0) continue;
+  inv[i].frase=String(inv[i].frase)+'X';
+  const depois=JSON.stringify(inv,null,2);
+  if (antes===depois) { console.error('MUTACAO NAO APLICADA'); process.exit(3); }
+  fs.writeFileSync(alvo,depois);
+  process.exit(0);
+}
+console.error('nenhuma entrada nao_deve para adulterar — o controle nao mediria nada');
+process.exit(3);
+" 2>&1)
+SF_CONTROLE_MUT=$?
+if [ "$SF_CONTROLE_MUT" -ne 0 ]; then
+  SEGUNDA_FONTE_OK=0
+  echo "    (controle: nao consegui adulterar a frase de producao na caixa, saiu $SF_CONTROLE_MUT)"
+else
+  avalia_segunda_fonte "$CAIXA_SF"
+  if segunda_fonte_verde; then
+    SEGUNDA_FONTE_OK=0
+    echo "    (controle: adulterar a frase de um nao_deve NAO deixou a segunda fonte vermelha — a trava nao tranca nada)"
+    echo "    (controle: declarado [$SF_DECL], caixa adulterada [$SF_PROD])"
+  fi
+fi
+rm -rf "$CAIXA_SF"
+if [ "$SEGUNDA_FONTE_OK" -eq 1 ]; then
+  ok=$((ok+1)); echo "  ok   SEGUNDA FONTE: as frases nao_deve de producao batem com a declaracao ($SF_N_REAL entrada(s))"
+else
+  falhou=$((falhou+1)); echo "  FALHA SEGUNDA FONTE: as frases nao_deve de producao batem com a declaracao ($SF_N_REAL entrada(s))"
 fi
 
 # Caso: skill de acao: frase obrigatoria removida do corpo reprova

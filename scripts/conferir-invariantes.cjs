@@ -100,14 +100,32 @@
  *     daquela skill e exige exit 2 nomeando a skill, e fica VERMELHO se a
  *     varredura não achar entrada nenhuma.
  *
- *     O QUE ESSE CASO NÃO FAZ, medido em 2026-09-20 e escrito aqui para a sétima
- *     revisão não ler mais do que está escrito: ele NÃO distingue frase certa de
- *     frase com typo. Plantada, `CONFIRM0 fechar issue` também sai 2, e o caso
- *     fica verde. O que ele prova é que o caminho `nao_deve` MEDE a árvore de
- *     produção e que existe entrada para medir. Distinguir a grafia certa da
- *     errada exige uma SEGUNDA fonte da frase — um pino no padrão de
- *     `ROSTER_ESPERADO` —, que esta rodada não tem. A forma fica ABERTA e
- *     DECLARADA, nunca dada por fechada.
+ *     O QUE ESSE CASO NÃO FAZ, medido em 2026-09-20: ele NÃO distingue frase
+ *     certa de frase com typo. Plantada, `CONFIRM0 fechar issue` também sai 2, e
+ *     o caso fica verde. A razão é estrutural: para qualquer string não vazia
+ *     `s`, "acrescenta `s` ao corpo, depois procura `s` no corpo" sempre casa,
+ *     porque plantar-e-detectar não tem SEGUNDA fonte da frase. O que ele prova
+ *     é que o caminho `nao_deve` MEDE a árvore de produção e que existe entrada
+ *     para medir.
+ *
+ *     A OUTRA METADE FECHOU EM 2026-09-20, e fechou NA BATERIA, não aqui. O caso
+ *     `SEGUNDA FONTE: as frases nao_deve de producao batem com a declaracao`,
+ *     de `scripts/testa-conferir-invariantes.sh`, declara uma vez — na variável
+ *     `NAO_DEVE_ESPERADO`, ao lado de `ROSTER_ESPERADO` — o conjunto
+ *     `(skill, frase)` esperado, e exige que ele seja IGUAL ao lido dos
+ *     `skills/<n>/invariantes.json` — grafado com `<n>` e não com asterisco de
+ *     propósito: o par `*` mais barra FECHA este bloco de comentário, e fechá-lo
+ *     aqui derruba o sensor inteiro com `SyntaxError`, medido em 2026-09-20 ao
+ *     escrever justamente este parágrafo. Typo, troca por outra frase bem-formada,
+ *     entrada nova não declarada, entrada declarada que sumiu e varredura vazia
+ *     ficam todos VERMELHOS, e a trava tem controle próprio: sobre uma árvore com
+ *     a frase adulterada a aferição tem de ficar falsa.
+ *
+ *     ESTE SENSOR NÃO MUDOU, e não deve mudar: `node
+ *     scripts/conferir-invariantes.cjs` sozinho continua saindo 0 com o typo
+ *     dentro, porque a frase proibida legitimamente não está no corpo. Quem pega
+ *     o typo é a bateria, isto é, o CI. Ler este parágrafo como "o sensor passou
+ *     a detectar" é ler mais do que está escrito.
  *
  * Regra do `tipo: "nao_deve"`:
  * - Frase proibida só vale se for vocabulário que o texto correto nunca usa
