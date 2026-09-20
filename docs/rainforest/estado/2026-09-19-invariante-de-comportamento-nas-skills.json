@@ -24,7 +24,7 @@
     "em": "2026-09-19"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-19",
     "tarefas_ok": 4,
     "tarefas": 4,
@@ -98,26 +98,30 @@
       "criterio da T3 emendado durante o executar: exigia onde:[skill,nucleo] nas cinco entradas, e a da regra 15 sempre teve referencia tambem. Erro de quem escreveu o plano. Passou a exigir identidade de blob e caminho unico de leitura"
     ],
     "rodada": 4,
-    "achados_corrigidos": 4
+    "achados_corrigidos": 4,
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-20"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "10e48c850c08d43c327eccaacf02b1fe5bb166b2",
+      "head": "1e6f9e4de393086e952761187fe914324142b573",
       "caminhos_sujos": []
     },
     "em_voo": [],
     "em": "2026-09-20",
-    "achados": 2,
+    "achados": 1,
     "base": "4f714ef69e942606032627ab8284b5e1c3336cec",
-    "head": "10e48c850c08d43c327eccaacf02b1fe5bb166b2",
+    "head": "1e6f9e4de393086e952761187fe914324142b573",
     "lista": [
       "B1 testa-conferir-invariantes.sh:282-527: a CAIXA e criada uma vez e nunca restaurada; a linha de base so guarda o bloco (1). Blocos (2) a (5) herdam arvore estragada e so aferem exit != 0, entao viram no-op em silencio. Pior: bateria, plano e design agora AFIRMAM que o vacuo foi fechado",
       "B2 conferir-invariantes.cjs:72: nada fixa quais skills estao protegidas. Apagar os seis invariantes.json das skills de acao deixa exit 0 com conferidas 5 - medido por mim. A unica guarda e zero arquivos no total, que rainforest-mind sozinha satisfaz para sempre"
     ],
-    "tentativas": 3,
-    "bloqueante": "conferir-invariantes.cjs sai 0 sem medir nada: invariantes.json = [] da conferidas 0 e exit 0; deve com onde:[] aprova frase inexistente",
-    "nao_bloqueantes": 9
+    "tentativas": 4,
+    "bloqueante": "conferir-invariantes.cjs:226 usa onde.some(); um degrau grafado errado ao lado de um valido e descartado em silencio. Medido: onde [skill,nucelo] + mutacao canonica sai 0, contra exit 2 com nucleo escrito certo",
+    "nao_bloqueantes": 6
   },
   "verificar": {
     "status": "pendente"
