@@ -12,7 +12,7 @@ se deriva com `git rev-parse`, nunca se copia desta linha.
 - Os **seis** blocos de mutação daquela bateria continuam existindo e continuam ficando vermelhos, **cada um sobre a SUA caixa de areia, cuja linha de base sai 0** — asserido pelos **seis** casos `LINHA DE BASE (n): caixa integra passa antes da mutacao n`, um imediatamente antes de cada mutação. Os seis são: os cinco numerados `(1)` a `(5)` mais o do degrau desconhecido, `LINHA DE BASE (degrau)`.
 - O roster de skills protegidas continua sendo **sete** arquivos `skills/*/invariantes.json` — `executar`, `fechar`, `limpar`, `plano`, `rainforest-mind`, `revisar`, `verificar` — e **15** invariantes conferidas, asserido pelo caso `ROSTER: as skills protegidas continuam as mesmas (7 arquivos, 15 invariantes)`, que roda contra o repositório real. Os dois números e a etiqueta saem de `ROSTER_ESPERADO` e `ROSTER_INVARIANTES`, numa fonte só — até 2026-09-20 eram três strings independentes que se desatualizavam separadas.
 - Nenhum `SKILL.md` das seis skills tem o corpo alterado por este trabalho — o que entra é arquivo de invariante ao lado, nunca edição da skill.
-- TODA entrada `tipo: "nao_deve"` dos `skills/*/invariantes.json` de produção continua sendo **detectável quando plantada** no corpo da sua skill, asserido pelo caso `VIVACIDADE: toda frase nao_deve de producao e detectavel quando plantada` — acrescentado em 2026-09-20, por achado da SEXTA revisão. A varredura lê os arquivos de produção, então `nao_deve` futuro fica coberto sem caso novo, e **varredura que não acha entrada nenhuma é VERMELHA**. O limite está medido e declarado no comentário do caso: ele prova que o caminho `nao_deve` mede a árvore real, e **não** distingue frase certa de frase com typo — plantada, a grafia errada também sai 2. Essa metade continua **aberta**: fechá-la exige uma segunda fonte da frase, no padrão de `ROSTER_ESPERADO`, e não está nesta rodada.
+- TODA entrada `tipo: "nao_deve"` dos `skills/*/invariantes.json` de produção continua sendo **detectável quando plantada** no corpo da sua skill, asserido pelo caso `VIVACIDADE: toda frase nao_deve de producao e detectavel quando plantada` — acrescentado em 2026-09-20, por achado da SEXTA revisão. A varredura lê os arquivos de produção, então `nao_deve` futuro fica coberto sem caso novo, e **varredura que não acha entrada nenhuma é VERMELHA**. O limite está medido e declarado no comentário do caso: ele prova que o caminho `nao_deve` mede a árvore real, e **não** distingue frase certa de frase com typo — plantada, a grafia errada também sai 2. Essa metade FECHOU em 2026-09-20, e a metade IRMÃ fechou junto, na sétima revisão: o caso `SEGUNDA FONTE: as frases de producao batem com a declaracao` declara em `INVARIANTES_ESPERADAS`, uma vez só e ao lado de `ROSTER_ESPERADO`, o conjunto `(skill, tipo, onde, frase)` das **quinze** invariantes, e exige que ele seja **igual** ao lido de `skills/*/invariantes.json`. A metade irmã era esta: até 2026-09-20 a segunda fonte cobria só a `nao_deve`, e para as catorze `deve` nada fixava **qual** frase era protegida — trocar a frase de um `deve` por `name:`, que é a chave do frontmatter e ocorre uma vez em cada `SKILL.md`, passava a checagem de presença e a de ocorrência única em qualquer skill do roster, e a frase real podia sumir do corpo com o CI verde.
 - `node scripts/conferir-livro-de-repos.cjs` continua saindo 0.
 
 > **Linha corrigida em 2026-09-20, por achado da revisão.** A forma anterior
@@ -70,7 +70,7 @@ mutacao:
   para: `const proibidaPresente = false;`
   bateria: `bash scripts/testa-conferir-invariantes.sh`
   fixture: `testa-conferir-invariantes.sh, secao "nao_deve: frase proibida presente no corpo reprova"`
-pronto quando: com uma cópia de caixa de areia onde `skills/fechar/invariantes.json` declara `{"frase": "CONFIRMO fechar issue", "tipo": "nao_deve"}` e a string `CONFIRMO fechar issue` foi plantada dentro de `skills/fechar/SKILL.md`, `node scripts/conferir-invariantes.cjs` sai **2** e o stderr contém `fechar` e `CONFIRMO fechar issue`; com a mesma string ausente do corpo, sai **0**; e com um `deve` cuja frase aparece **duas** vezes no corpo, sai **2** citando a contagem — provado por `bash scripts/testa-conferir-invariantes.sh` terminando em `falhou=0`
+pronto quando: com uma cópia de caixa de areia onde `skills/fechar/invariantes.json` declara `{"frase": "CONFIRMO fechar issue", "tipo": "nao_deve"}` e a string `CONFIRMO fechar issue` foi plantada dentro de `skills/fechar/SKILL.md`, `node scripts/conferir-invariantes.cjs` sai **2** e o stderr contém `fechar` e `CONFIRMO fechar issue`; com a mesma string ausente do corpo, sai **0**; e com um `deve` cuja frase aparece **duas** vezes no corpo, sai **2** citando a contagem — provado por `bash scripts/testa-conferir-invariantes.sh` terminando em `falhou=0`. **E, para a SEGUNDA FONTE**, cinco cenários falsificáveis, cada um numa cópia de caixa de areia da árvore inteira: **(a) RETARGET** — com a frase do `deve` de `skills/revisar/invariantes.json` trocada por `name:`, `node scripts/conferir-invariantes.cjs` continua saindo **0** com `ok: conferidas 15 invariantes` e `bash scripts/testa-conferir-invariantes.sh` fica **VERMELHA** reprovando o caso `SEGUNDA FONTE: as frases de producao batem com a declaracao`; **(b)** o mesmo, agora com `nunca reduz a severidade de um achado` também apagada de `skills/revisar/SKILL.md` — a bateria **continua vermelha**, enquanto na base `eaae2a6f` esse mesmo par saía `ok: conferidas 15 invariantes` e `ok: 29   falhou: 0`; **(c)** invariante nova em produção e não declarada — vermelho, com a recusa nomeando `INVARIANTES_ESPERADAS` e `scripts/testa-conferir-invariantes.sh` e imprimindo a linha pronta para colar; **(d)** invariante declarada que sumiu de produção, e varredura vazia — vermelho, com a linha que falta impressa com `-`; **(e)** `onde` removido da entrada da regra 12 de `skills/rainforest-mind/invariantes.json` — vermelho, enquanto na base `eaae2a6f` isso saía `ok: conferidas 15 invariantes`, exit 0 e `ok: 29   falhou: 0`
 
 > **Alvo da mutação atualizado em 2026-09-20, por achado da revisão.** A forma
 > anterior era `de: const proibidaPresente = tipo === 'nao_deve' && corpo.includes(inv.frase);`.
@@ -80,6 +80,22 @@ pronto quando: com uma cópia de caixa de areia onde `skills/fechar/invariantes.
 > antiga deixou de existir no fonte, então manter o `de:` velho faria o
 > `conferir-mutacao.cjs` sair **3** (`MUTACAO NAO APLICADA`), que é veredito de
 > declaração errada, não de bateria fraca. O `para:` e o `fixture:` não mudam.
+
+> **`pronto quando:` emendado em 2026-09-20, por achado da SÉTIMA revisão.** Duas
+> coisas, e a primeira é a que importa. **Nenhum** dos quatro `pronto quando:`
+> deste plano cobria o caso `SEGUNDA FONTE`, que é o que fechou o bloqueante da
+> rodada 6: o estágio `verificar` não tinha o que executar contra o mecanismo
+> entregue, e um critério que não existe não reprova nada. A segunda: a linha de
+> "O que não pode quebrar" acima declarava **aberta** a metade que `210a7233`
+> tinha fechado — ela foi escrita em `1fbe4769` e não foi tocada pelo commit que
+> entregou o fechamento, então o design foi atualizado e o plano não.
+>
+> O critério novo inclui o cenário do **RETARGET**, que é o achado da sétima
+> revisão e o motivo de a segunda fonte ter deixado de valer só para `nao_deve`:
+> `name:` ocorre exatamente uma vez em cada um dos sete `SKILL.md` protegidos, e
+> com ele no `invariantes.json` a invariante passa a "proteger" a chave do
+> frontmatter enquanto a frase real some do corpo com o CI verde. Medido na base
+> `eaae2a6f`: `ok: conferidas 15 invariantes`, exit 0, `ok: 29   falhou: 0`.
 
 ### 2. Escrever os seis arquivos de invariante das skills de ação [tipo: configurar]
 atende: D1, D6, D10

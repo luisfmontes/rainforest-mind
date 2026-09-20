@@ -85,10 +85,32 @@
  *     `ok: conferidas 15 invariantes`, exit 0, e a bateria em `ok: 27 falhou: 0`
  *     — com uma das 15 sem medir mais nada. Falha ABERTO, ao contrário das duas
  *     acima: as OUTRAS CATORZE invariantes do roster, todas `deve`, falham
- *     FECHADO sob o mesmo typo, porque lá a frase ausente do corpo é
+ *     FECHADO sob o mesmo TYPO, porque lá a frase ausente do corpo é
  *     reprovação; só a `nao_deve` inverte o sinal. Catorze e não nove: o roster
  *     confere 15, sendo 14 `deve` mais esta; "nove" é a contagem do design para
  *     as seis skills de ação, sem as cinco da `rainforest-mind`.
+ *
+ *     TYPO NÃO É A ÚNICA ADULTERAÇÃO, e o parágrafo acima já foi lido como se
+ *     fosse — qualificado em 2026-09-20, por achado da SÉTIMA revisão. As
+ *     catorze `deve` falham FECHADO sob TYPO e falham ABERTO sob RETARGET: a
+ *     frase trocada por OUTRA frase que existe no corpo. A cadeia `name:` é o
+ *     valor degenerado UNIVERSAL — é a chave do frontmatter e ocorre EXATAMENTE
+ *     uma vez em cada um dos sete `SKILL.md` protegidos —, então ela passa a
+ *     checagem de presença E a de ocorrência única em qualquer skill do roster.
+ *     Medido em 2026-09-20 na base `eaae2a6f`: com a frase da `revisar` trocada
+ *     por `name:`, a frase real foi APAGADA do corpo com `ok: conferidas 15
+ *     invariantes`, exit 0, e a bateria em `ok: 29 falhou: 0`. O caminho
+ *     plausível não é sabotagem, é manutenção: alguém reescreve o `SKILL.md`, o
+ *     CI fica vermelho, e o conserto barato é encurtar a frase do
+ *     `invariantes.json` até casar.
+ *
+ *     O RETARGET TAMBÉM NÃO SE CONSERTA AQUI, e pelo motivo OPOSTO ao do
+ *     `nao_deve` — que é o do parágrafo seguinte. `name:` está mesmo no corpo,
+ *     uma vez só, então as duas checagens que este sensor faz, presença e
+ *     ocorrência única, passam com razão. Não há o que endurecer aqui sem
+ *     inventar um juízo sobre o que é uma frase significativa. Quem fecha é a
+ *     declaração da bateria, descrita no fim deste bloco, que desde 2026-09-20
+ *     cobre as QUINZE invariantes e não só a `nao_deve`.
  *
  *     NÃO SE CONSERTA AQUI, e insistir no sensor é o caminho errado: nenhum
  *     sensor decide se uma frase proibida é "significativa", porque ela
@@ -109,17 +131,35 @@
  *     para medir.
  *
  *     A OUTRA METADE FECHOU EM 2026-09-20, e fechou NA BATERIA, não aqui. O caso
- *     `SEGUNDA FONTE: as frases nao_deve de producao batem com a declaracao`,
- *     de `scripts/testa-conferir-invariantes.sh`, declara uma vez — na variável
- *     `NAO_DEVE_ESPERADO`, ao lado de `ROSTER_ESPERADO` — o conjunto
- *     `(skill, frase)` esperado, e exige que ele seja IGUAL ao lido dos
- *     `skills/<n>/invariantes.json` — grafado com `<n>` e não com asterisco de
- *     propósito: o par `*` mais barra FECHA este bloco de comentário, e fechá-lo
- *     aqui derruba o sensor inteiro com `SyntaxError`, medido em 2026-09-20 ao
- *     escrever justamente este parágrafo. Typo, troca por outra frase bem-formada,
- *     entrada nova não declarada, entrada declarada que sumiu e varredura vazia
- *     ficam todos VERMELHOS, e a trava tem controle próprio: sobre uma árvore com
- *     a frase adulterada a aferição tem de ficar falsa.
+ *     `SEGUNDA FONTE: as frases de producao batem com a declaracao`, de
+ *     `scripts/testa-conferir-invariantes.sh`, declara uma vez — na variável
+ *     `INVARIANTES_ESPERADAS`, ao lado de `ROSTER_ESPERADO` — o conjunto
+ *     `(skill, tipo, onde, frase)` das QUINZE invariantes, e exige que ele seja
+ *     IGUAL ao lido dos `skills/<n>/invariantes.json` — grafado com `<n>` e não
+ *     com asterisco de propósito: o par `*` mais barra FECHA este bloco de
+ *     comentário, e fechá-lo aqui derruba o sensor inteiro com `SyntaxError`,
+ *     medido em 2026-09-20 ao escrever justamente este parágrafo. Ficam todos
+ *     VERMELHOS: typo, RETARGET, `tipo` trocado, `onde` alterado ou removido,
+ *     invariante nova não declarada, declarada que sumiu e varredura vazia. E a
+ *     trava tem TRÊS controles próprios — frase de um `deve` retargetada para
+ *     `name:`, frase do `nao_deve` com typo, e `onde` removido —: sobre as três
+ *     árvores de areia a aferição tem de ficar falsa.
+ *
+ *     A DECLARAÇÃO COBRIA SÓ A `nao_deve` ATÉ 2026-09-20, e foi a sétima revisão
+ *     que achou o eixo irmão: para as catorze `deve` nada fixava QUAL frase era
+ *     protegida, então o RETARGET passava. Estender a declaração às quinze fecha
+ *     os dois eixos com uma peça só.
+ *
+ *     UM EFEITO COLATERAL QUE VALE REGISTRAR, porque fecha um buraco achado por
+ *     fora: com `onde` dentro da declaração, REMOVER o campo de uma entrada
+ *     passou a ser vermelho. Antes não era. Medido em 2026-09-20 na base
+ *     `eaae2a6f`, dropando `onde` só da entrada da regra 12: sensor em `ok:
+ *     conferidas 15 invariantes`, exit 0, e bateria em `ok: 29 falhou: 0`. A
+ *     checagem degrada de "chega ao núcleo extraído" para "está no corpo", e
+ *     nenhum caso notava, porque a mutação do bloco (2) da bateria SUBSTITUI a
+ *     frase em vez de movê-la, e as duas checagens falham igual quando a frase
+ *     some do corpo. Os blocos (1), (3) e (5) MOVEM a frase, então lá o drop
+ *     seria pego, e o (4) mexe na referência — só o (2) deixava passar.
  *
  *     ESTE SENSOR NÃO MUDOU, e não deve mudar: `node
  *     scripts/conferir-invariantes.cjs` sozinho continua saindo 0 com o typo

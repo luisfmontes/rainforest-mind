@@ -97,7 +97,7 @@ com um tiro só, e invariante redundante não prova nada.
 - Arquivo central único de invariantes: descartado pela D3, com o contra-argumento registrado para reabrir se a cobertura crescer.
 - Enxertar também a proibição de fato embutido do `openai-docs` ("Never use bundled or remembered model facts as a fallback"): descartado porque não se aplica. Medido: os quatro `claude-haiku-4-5-20251001` do repo são **pino deliberado** em invocação de CLI, para custo e determinismo, não fato lembrado apresentado como corrente. Este plugin não responde perguntas sobre modelo.
 - Fazer o invariante avisar em vez de quebrar: descartado pela D8.
-- **Consolidar os literais `CONFIRMO fechar issue` das caixas de areia de `scripts/testa-conferir-invariantes.sh` na declaração `NAO_DEVE_ESPERADO`**: descartado em 2026-09-20, junto com a entrada da segunda fonte. São oito literais digitados — achados por `grep -n "CONFIRMO fechar issue" scripts/testa-conferir-invariantes.sh` menos as três linhas de comentário e a da declaração; não os fixamos por número de linha porque editar o cabeçalho daquele arquivo já os deslocou uma vez, em 2026-09-20 —, e eles **ficam digitados**. Três motivos, na ordem do peso. Primeiro: cada caixa grava o mesmo literal no `invariantes.json` **e** no `SKILL.md` que ela mesma monta, dentro do mesmo bloco — ela é autoconsistente por construção, e um typo ali não esconde nada, porque o que ela afere é que a frase plantada e a frase declarada na caixa casam, quaisquer que sejam. Segundo: elas testam o **mecanismo** do checador (proibida presente, proibida ausente, insensibilidade a caixa, chave errada, `onde` em `nao_deve`), não o dado de produção; lê-las da produção faria uma mudança legítima da frase real alterar em silêncio o que essas cinco caixas medem, e uma frase de produção vazia ou malformada as faria **abortar** em vez de medir o mecanismo. Terceiro, e é o que decide: acoplá-las à produção recriaria exatamente a fonte única que esta rodada existe para desfazer — o valor da segunda fonte vem de os dois lados serem escritos por mãos diferentes, e o caso `SEGUNDA FONTE` é o **único** lugar em que produção e declaração se encontram.
+- **Consolidar os literais `CONFIRMO fechar issue` das caixas de areia de `scripts/testa-conferir-invariantes.sh` na declaração `INVARIANTES_ESPERADAS`**: descartado em 2026-09-20, junto com a entrada da segunda fonte. São oito literais digitados — achados por `grep -n "CONFIRMO fechar issue" scripts/testa-conferir-invariantes.sh` menos as quatro linhas de comentário e a da declaração; não os fixamos por número de linha porque editar o cabeçalho daquele arquivo já os deslocou uma vez, em 2026-09-20 —, e eles **ficam digitados**. Três motivos, na ordem do peso. Primeiro: cada caixa grava o mesmo literal no `invariantes.json` **e** no `SKILL.md` que ela mesma monta, dentro do mesmo bloco — ela é autoconsistente por construção, e um typo ali não esconde nada, porque o que ela afere é que a frase plantada e a frase declarada na caixa casam, quaisquer que sejam. Segundo: elas testam o **mecanismo** do checador (proibida presente, proibida ausente, insensibilidade a caixa, chave errada, `onde` em `nao_deve`), não o dado de produção; lê-las da produção faria uma mudança legítima da frase real alterar em silêncio o que essas cinco caixas medem, e uma frase de produção vazia ou malformada as faria **abortar** em vez de medir o mecanismo. Terceiro: se alguém "consertar" um CI vermelho editando a **declaração** em vez da produção, essas caixas passariam a seguir a declaração em silêncio. **Reescrito em 2026-09-20, por achado da SÉTIMA revisão**, que mediu a redação anterior e a achou superdimensionada: ela dizia que acoplá-las à produção "recriaria exatamente a fonte única que esta rodada existe para desfazer", e isso não procede — consolidar os literais das caixas na declaração não tocaria a comparação declaração × produção, que continuaria com os dois lados escritos por mãos diferentes. O risco é este aqui, e é menor: os motivos 1 e 2 se sustentam sozinhos, e este é coadjuvante. **E a conta também estava errada**: a receita dizia "menos as três linhas de comentário", e elas são quatro — medido, `grep -c "CONFIRMO fechar issue" scripts/testa-conferir-invariantes.sh` dá 13, e `13 − 3 − 1` dá 9, não 8. O número OITO sempre esteve certo; quem errava era a receita.
 
 ## Fora de escopo
 
@@ -109,10 +109,67 @@ com um tiro só, e invariante redundante não prova nada.
 ## Em aberto
 
 - Se a cobertura passar de seis skills, reabrir a D3 (arquivo por skill contra arquivo central).
-- ~~**Segunda fonte da frase de um `nao_deve`**~~ — **FECHADO em 2026-09-20**, na mesma data em que foi reaberto pela SEXTA revisão. O que estava aberto: um `nao_deve` bem-formado com a frase grafada errado (`CONFIRM0` por `CONFIRMO`) aprovava para sempre sem medir nada. O caso `VIVACIDADE` fechava só a metade fechável — prova que o caminho `nao_deve` mede a árvore de produção e recusa varredura vazia —, e **não** distinguia grafia certa de grafia com typo, por razão estrutural: para qualquer string não vazia `s`, "acrescenta `s` ao corpo, depois procura `s` no corpo" sempre casa.
+- ~~**Segunda fonte da frase de um invariante**~~ — **FECHADO para a `nao_deve` em
+  2026-09-20** (sexta revisão) e **FECHADO para as catorze `deve` no mesmo dia**
+  (sétima revisão). As duas metades são o mesmo defeito em eixos diferentes:
+  nada, fora do próprio `invariantes.json`, fixava **qual** frase cada invariante
+  protege.
 
-  **Pelo que fechou:** o caso `SEGUNDA FONTE: as frases nao_deve de producao batem com a declaracao`, em `scripts/testa-conferir-invariantes.sh`. A declaração `NAO_DEVE_ESPERADO`, uma só, ao lado de `ROSTER_ESPERADO`, fixa o conjunto `(skill, frase)` esperado; a aferição exige que ele seja **igual** ao lido dos `skills/*/invariantes.json`, e tem controle próprio — sobre uma árvore com a frase adulterada, a aferição tem de ficar falsa. Ficam vermelhos: typo, troca por outra frase bem-formada, `nao_deve` novo não declarado (com a mensagem dizendo o arquivo e a variável onde declarar), declarado que sumiu, e varredura vazia.
+  **Metade `nao_deve`:** um `nao_deve` bem-formado com a frase grafada errado
+  (`CONFIRM0` por `CONFIRMO`) aprovava para sempre sem medir nada. O caso
+  `VIVACIDADE` fechava só a metade fechável — prova que o caminho `nao_deve` mede
+  a árvore de produção e recusa varredura vazia —, e **não** distinguia grafia
+  certa de grafia com typo, por razão estrutural: para qualquer string não vazia
+  `s`, "acrescenta `s` ao corpo, depois procura `s` no corpo" sempre casa.
 
-  **O que NÃO fechou, e não deve fechar:** `node scripts/conferir-invariantes.cjs` sozinho continua saindo **0** com o typo dentro. Nenhum sensor decide se uma frase proibida é "significativa", porque ela legitimamente não está no corpo — a D5 e a D6 dependem disso. Quem pega o typo é a bateria, isto é, o CI.
+  **Metade `deve`, achada pela sétima revisão:** a frase de um `deve` trocada por
+  **outra frase que existe no corpo** passa para sempre. A cadeia `name:` é o
+  valor degenerado universal — é a chave do frontmatter e ocorre **exatamente uma**
+  vez em cada um dos sete `SKILL.md` protegidos, então passa a checagem de
+  presença **e** a de ocorrência única em qualquer skill do roster. Medido na base
+  `eaae2a6f`: com a frase do `revisar` trocada por `name:`, `nunca reduz a
+  severidade de um achado` foi apagada do corpo com `ok: conferidas 15
+  invariantes`, exit 0, e a bateria em `ok: 29   falhou: 0`. O caminho plausível
+  não é sabotagem, é manutenção: alguém reescreve o `SKILL.md`, o CI fica vermelho,
+  e o conserto barato é encurtar a frase do `invariantes.json` até casar.
 
-  **Custo aceito:** um `nao_deve` novo nasce **vermelho** até ser declarado em `NAO_DEVE_ESPERADO`. É o mesmo custo que a trava de roster já cobra de uma skill protegida nova, e a mensagem de recusa nomeia o arquivo e a variável.
+  **Pelo que fechou:** o caso `SEGUNDA FONTE: as frases de producao batem com a
+  declaracao`, em `scripts/testa-conferir-invariantes.sh`. A declaração
+  `INVARIANTES_ESPERADAS`, uma só, ao lado de `ROSTER_ESPERADO`, fixa o conjunto
+  `(skill, tipo, onde, frase)` das **quinze**; a aferição exige que ele seja
+  **igual** ao lido dos `skills/*/invariantes.json`, e tem **três** controles
+  próprios — frase de um `deve` retargetada para `name:`, frase do `nao_deve` com
+  typo, e `onde` removido —, sobre os quais a aferição tem de ficar falsa. Ficam
+  vermelhos: typo, RETARGET, `tipo` trocado, `onde` alterado ou removido,
+  invariante nova não declarada (com a mensagem dizendo o arquivo e a variável
+  onde declarar), declarada que sumiu, e varredura vazia.
+
+  **`regra` e `descricao` ficam de fora da declaração, e é decisão medida:**
+  `descricao` só entra em mensagem de falha, nunca numa decisão; e `regra` só
+  escolhe qual `references/regra-<n>.md` o degrau `referencia` abre — trocar o
+  número faz o sensor procurar arquivo inexistente, ou existente e sem a frase, e
+  sair 2 nos dois casos. Medido em 2026-09-20: `printenv NOME` está em
+  `regra-15.md` e em nenhum dos outros 21 arquivos de `references/`. Falha
+  fechado, então não é da classe que a declaração existe para fechar.
+
+  **Um efeito colateral que vale registrar:** com `onde` dentro da declaração,
+  **remover** o campo de uma entrada passou a ser vermelho. Antes não era — medido
+  na base `eaae2a6f`, dropando `onde` só da entrada da regra 12: `ok: conferidas
+  15 invariantes`, exit 0, e bateria em `ok: 29   falhou: 0`. A checagem degradava
+  de "chega ao núcleo extraído" para "está no corpo" e nenhum caso notava, porque
+  a mutação do bloco (2) da bateria **substitui** a frase em vez de movê-la, e as
+  duas checagens falham igual quando a frase some do corpo. Os blocos (1), (3) e
+  (5) **movem** a frase, então lá o drop já era pego, e o (4) mexe na referência.
+
+  **O que NÃO fechou, e não deve fechar:** `node scripts/conferir-invariantes.cjs`
+  sozinho continua saindo **0** nos dois casos, e por motivos opostos. No
+  `nao_deve` com typo, porque nenhum sensor decide se uma frase proibida é
+  "significativa" — ela legitimamente não está no corpo, e a D5 e a D6 dependem
+  disso. No `deve` retargetado, porque `name:` **está** mesmo no corpo, uma vez
+  só: as duas checagens que o sensor faz passam com razão. Quem pega os dois é a
+  bateria, isto é, o CI.
+
+  **Custo aceito:** uma invariante nova nasce **vermelha** até ser declarada em
+  `INVARIANTES_ESPERADAS`. É o mesmo custo que a trava de roster já cobra de uma
+  skill protegida nova, e a mensagem de recusa nomeia o arquivo, a variável e a
+  linha pronta para colar.
