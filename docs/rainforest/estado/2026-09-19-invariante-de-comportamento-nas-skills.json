@@ -24,7 +24,7 @@
     "em": "2026-09-19"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-19",
     "tarefas_ok": 4,
     "tarefas": 4,
@@ -69,9 +69,9 @@
     "em": "2026-09-20",
     "t4": "livro 51 -> 52 linhas; conferir-livro-de-repos.cjs exit 0, 12 checadas (era 11); os quatro dados do criterio conferidos na celula",
     "t1": "integrada em bd2d897c; catraca re-rodada pela integracao exit 0 (baseline verde 49,7s, mutacao vermelha exit 1); bateria 13 ok 0 falhas; dispensa por escrito da checagem 5 (skill-observations/ nao rastreado, fora do commit e dos worktrees)",
-    "comando": "node scripts/conferir-invariantes.cjs",
-    "saida": "ok: conferidas 15 invariantes",
-    "sensor_externo": "node scripts/conferir-invariantes.cjs",
+    "comando": "bash scripts/testa-conferir-invariantes.sh",
+    "saida": "ok: 26   falhou: 0",
+    "sensor_externo": "bash scripts/testa-conferir-invariantes.sh",
     "mutacao": [
       {
         "tarefa": 1,
@@ -97,12 +97,8 @@
     "emendas": [
       "criterio da T3 emendado durante o executar: exigia onde:[skill,nucleo] nas cinco entradas, e a da regra 15 sempre teve referencia tambem. Erro de quem escreveu o plano. Passou a exigir identidade de blob e caminho unico de leitura"
     ],
-    "rodada": 3,
-    "achados_corrigidos": 4,
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-20"
-    }
+    "rodada": 4,
+    "achados_corrigidos": 4
   },
   "revisar": {
     "status": "reprovado",
