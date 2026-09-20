@@ -24,9 +24,9 @@
     "em": "2026-09-19"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-19",
-    "tarefas_ok": 2,
+    "tarefas_ok": 4,
     "tarefas": 4,
     "em_voo": [],
     "carimbos": [
@@ -50,11 +50,53 @@
         "iteracao": 2,
         "sessao": "9586f0f8-9dba-4bd3-b8e6-2b4aad9730d6",
         "ts": "2026-09-20T02:27:57.356Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "bc95f3ac0f1306b27275c743f66058f35b242627",
+        "iteracao": 1,
+        "sessao": "9586f0f8-9dba-4bd3-b8e6-2b4aad9730d6",
+        "ts": "2026-09-20T02:35:54.967Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "bc95f3ac0f1306b27275c743f66058f35b242627",
+        "iteracao": 1,
+        "sessao": "9586f0f8-9dba-4bd3-b8e6-2b4aad9730d6",
+        "ts": "2026-09-20T02:35:54.967Z"
       }
     ],
     "em": "2026-09-19",
     "t4": "livro 51 -> 52 linhas; conferir-livro-de-repos.cjs exit 0, 12 checadas (era 11); os quatro dados do criterio conferidos na celula",
-    "t1": "integrada em bd2d897c; catraca re-rodada pela integracao exit 0 (baseline verde 49,7s, mutacao vermelha exit 1); bateria 13 ok 0 falhas; dispensa por escrito da checagem 5 (skill-observations/ nao rastreado, fora do commit e dos worktrees)"
+    "t1": "integrada em bd2d897c; catraca re-rodada pela integracao exit 0 (baseline verde 49,7s, mutacao vermelha exit 1); bateria 13 ok 0 falhas; dispensa por escrito da checagem 5 (skill-observations/ nao rastreado, fora do commit e dos worktrees)",
+    "comando": "node scripts/conferir-invariantes.cjs; node scripts/conferir-mutacao.cjs --arquivo scripts/conferir-invariantes.cjs --de <linha do nao_deve> --para \"const proibidaPresente = false;\" --bateria \"bash scripts/testa-conferir-invariantes.sh\"; node scripts/conferir-mutacao.cjs --arquivo skills/limpar/SKILL.md; node scripts/conferir-mutacao.cjs --arquivo skills/rainforest-mind/SKILL.md; node scripts/conferir-livro-de-repos.cjs; bash scripts/varrer-baterias.sh --so scripts/testa-conferir-invariantes.sh",
+    "saida": "conferir-invariantes ok: conferidas 15 invariantes (era 5), exit 0; as tres catracas de mutacao re-rodadas pela integracao sairam 0, cada uma com baseline verde e bateria vermelha; bateria 13 ok 0 falhas rodada inteira na janela; conferir-livro-de-repos APROVADO com 12 linhas checadas (era 11); varredura da bateria passou",
+    "sensor_externo": "node scripts/conferir-invariantes.cjs",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-invariantes.sh, secao \"nao_deve: frase proibida presente no corpo reprova\" — baseline verde 49,7s, mutacao exit 1"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-invariantes.sh, secao \"skill de acao: frase obrigatoria removida do corpo reprova\" — baseline verde 46,9s, mutacao exit 1 com 2 falhas"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-invariantes.sh, secao da frase 3.000+ tokens movida para apos detalhe — baseline verde 60,7s, mutacao exit 1"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "linha de tabela no livro de repos: nao ha comportamento a inverter; a falsificacao e a sintaxe validada pelo conferir-livro-de-repos.cjs e a coerencia da celula com a secao Objetivo do design"
+      }
+    ],
+    "emendas": [
+      "criterio da T3 emendado durante o executar: exigia onde:[skill,nucleo] nas cinco entradas, e a da regra 15 sempre teve referencia tambem. Erro de quem escreveu o plano. Passou a exigir identidade de blob e caminho unico de leitura"
+    ]
   },
   "revisar": {
     "status": "pendente"
