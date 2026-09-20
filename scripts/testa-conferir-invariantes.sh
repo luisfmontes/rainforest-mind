@@ -477,7 +477,7 @@ if [ "$MUTACAO_DEGRAU" -eq 0 ]; then
   DEGRAU_LIXO=$?
   if [ "$DEGRAU_LIXO" -ne 1 ] || ! grep -q "nucelo" /tmp/degrau-lixo.log || ! grep -q "rainforest-mind" /tmp/degrau-lixo.log || grep -q "TypeError" /tmp/degrau-lixo.log; then
     DEGRAU_OK=0
-    echo "    (onde [skill,nucelo] saiu $DEGRAU_LIXO — na base 3e967643 saia 0, com a mutacao canonica dentro)"
+    echo "    (onde [skill,nucelo] saiu $DEGRAU_LIXO, esperado 1 — com a mutacao canonica dentro da caixa; saiu 0 na base 3e967643, que e' o defeito que este caso tranca)"
     sed 's/^/    | /' /tmp/degrau-lixo.log
   fi
 else

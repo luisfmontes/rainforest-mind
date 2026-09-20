@@ -41,6 +41,29 @@
  * o `nao_deve` varre o corpo inteiro, e o campo era aceito e ignorado, dando
  * aparência de checagem por degrau que nunca existiu.
  *
+ * VARREDURA DA CLASSE, 2026-09-20. Quatro revisões seguidas acharam, cada uma,
+ * uma forma diferente do MESMO defeito — entrada malformada que o sensor aceita e
+ * silenciosamente deixa de medir — e cada conserto fechou a forma medida deixando
+ * a forma irmã aberta. Na quinta, em vez de consertar só a instância, os valores
+ * de todos os campos foram varridos com uma frase que não existe em lugar nenhum,
+ * procurando exit 0. O que a varredura estabeleceu:
+ *
+ *   - `tipo`: lista fechada por `!==`, então `"Deve"`, `" deve"` e `null` saem 1.
+ *   - chave: lista fechada por `CHAVES_ACEITAS.includes`, então `"Onde"` sai 1.
+ *   - `onde` como um todo: `[]`, `null`, `"skill"`, `["outro"]`, `[{}]` saem 1.
+ *   - `onde` ELEMENTO a elemento: era o buraco, e é o que esta rodada fechou.
+ *
+ * DUAS FORMAS FICARAM, de propósito, e o motivo é o mesmo nas duas: elas FALHAM
+ * FECHADO — o sensor não para de medir, ele mede e reprova, alto. Não são da
+ * classe, e trancá-las custaria recusa nova sem defeito correspondente:
+ *
+ *   - `regra` ausente ou de tipo estranho com `onde: ["referencia"]`: o sensor
+ *     procura `references/regra-undefined.md` ou `references/regra-abc.md`, não
+ *     acha, e sai 2. A mensagem nomeia o arquivo que procurou, então o defeito
+ *     é legível. Fica como ruído de mensagem, não como checagem desligada.
+ *   - `descricao` de tipo estranho (`42`): só entra na mensagem de falha, nunca
+ *     numa decisão. Não há o que deixar de medir.
+ *
  * Regra do `tipo: "nao_deve"`:
  * - Frase proibida só vale se for vocabulário que o texto correto nunca usa
  * - Exemplo: `--confirmo` é proibido no `fechar` e obrigatório no `limpar`, então
