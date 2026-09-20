@@ -100,31 +100,27 @@
       {
         "tarefa": 6,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-regua.sh, caso 9 \"manifesto recheckado com autocrlf continua intacto\""
+        "fixture": "testa-conferir-regua.sh, casos 9 (autocrlf), 12 (objeto corrompido) e 13 (### M<n> sem descricao)"
       }
     ],
     "comando": "bash scripts/varrer-baterias.sh",
-    "saida": "as 125 baterias passaram (exit 0)",
+    "saida": "as 125 baterias passaram (exit 0); numa primeira rodada testa-saude.sh saiu vermelha e nao reproduziu - isolada deu 74 ok 0 falhas e a varredura seguinte deu 125 verdes; nao esta no diff da branch",
     "em_voo": []
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "376102000007d830a4a096a22cf632e87cd87a42",
-      "caminhos_sujos": [
-        "docs/rainforest/estado/2026-09-19-regua-selada-keep-discard.json"
-      ]
+      "head": "7587444d761d6d42876fcbee838498411544624e",
+      "caminhos_sujos": []
     },
     "em_voo": [],
     "em": "2026-09-20",
-    "achados": 4,
+    "achados": 2,
     "lista": [
-      "A1 bloqueante: conferir-regua.cjs compara integridade sem normalizar CRLF; com core.autocrlf=true o manifesto intacto vira falso positivo e trava o loop",
-      "A2: docstring promete exit 2 para falha de git, codigo sai 1 - confunde ambiente com adulteracao",
-      "A3: formato do manifesto (### M<n> com separador, ## Freios exato) nao esta documentado em lugar que o autor da regua leia, e a mensagem de erro diz quantidade 0 quando o problema e pontuacao",
-      "A4: titulo do estado nomeia custo fixo, mecanismo que o design descartou"
+      "B1: a sonda git rev-parse --git-dir nao le objeto, entao repositorio com objeto corrompido ainda sai 1 em vez de 2 - A2 segue pela metade",
+      "B2: references/formato-manifesto.md promete que ### M1 sem espaco e rejeitado, mas o regex aceita por causa da alternativa $ - doc promete mais rigor que o codigo"
     ],
-    "tentativas": 1
+    "tentativas": 2
   },
   "verificar": {
     "status": "pendente"
