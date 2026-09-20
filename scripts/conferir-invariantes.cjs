@@ -16,11 +16,20 @@
  *   - `frase`: string não vazia a validar (obrigatório)
  *   - `tipo`: opcional. Ausente vale "deve"; presente só aceita "deve" ou
  *     "nao_deve", e qualquer outro valor sai 1
- *   - `onde`: opcional, array com pelo menos um de "skill", "referencia", "nucleo"
+ *   - `onde`: opcional, array NÃO VAZIO em que CADA elemento é "skill",
+ *     "referencia" ou "nucleo"
  *     - Ausente: testa presença da frase no corpo do SKILL.md
  *     - Presente: testa presença conforme configurado (skill, referencia, nucleo)
  *     - Presente sem nenhum degrau reconhecido (`[]`, `null`, `["outro"]`): sai 1.
  *       Antes de 2026-09-20 isso desligava a checagem em silêncio e saía 0
+ *     - Presente com UM degrau estranho AO LADO de um válido
+ *       (`["skill","nucelo"]`): sai 1. Até a quinta revisão, em 2026-09-20, a
+ *       guarda era `onde.some(d => DEGRAUS.includes(d))` — exigia UM degrau
+ *       reconhecido e ignorava todos os outros em silêncio. Medido com a
+ *       mutação canônica do projeto dentro da caixa: `["skill","nucleo"]` saía
+ *       2 e `["skill","nucelo"]` saía 0. A rodada 4 tinha fechado o nome da
+ *       CHAVE e deixado aberto o nome do DEGRAU dentro dela — a mesma classe,
+ *       um nível abaixo
  *   - `regra`, `descricao`: metadados
  *
  * Chave fora dessa lista é ERRO (exit 1), nunca campo ignorado. Até 2026-09-20 a
@@ -126,11 +135,20 @@ for (const nomeSkill of skillsComInvariantes) {
     process.exit(1);
   }
 
-  // Validação de FORMA de cada entrada, antes de qualquer leitura de campo.
-  // Tem de vir aqui, e não dentro do laço de checagem: o `invariantes.some(inv =>
-  // inv.onde !== undefined)` mais abaixo já estoura `TypeError` num elemento
-  // `null`, e a desestruturação estoura em `"x"` e `42` — stack cru do Node no
-  // lugar de recusa legível (achado da revisão, 2026-09-20).
+  // Validação de FORMA de TODA entrada, antes de qualquer leitura de campo e de
+  // qualquer medição. É aqui, num passe só, que o valor de cada campo é decidido
+  // contra a sua lista fechada — foi a forma de validação partida em dois laços
+  // que deixou o elemento de `onde` sem checagem por quatro rodadas.
+  //
+  // Tem de vir antes do laço de checagem porque o `invariantes.some(inv =>
+  // inv.onde !== undefined)` mais abaixo estoura `TypeError` num elemento `null`
+  // — stack cru do Node no lugar de recusa legível (achado da revisão,
+  // 2026-09-20). Só o `null` estoura: desestruturar `"x"` ou `42` é legal em
+  // JavaScript, e sem esta guarda as duas formas cairiam em "campo frase ausente
+  // ou vazio", exit 1 com mensagem que mente sobre o defeito. Das três formas de
+  // elemento na bateria, portanto, só `[null]` distingue esta guarda presente de
+  // ausente; `["x"]` e `[42]` saem 1 nos dois mundos (medido em 2026-09-20 com a
+  // guarda neutralizada).
   for (let i = 0; i < invariantes.length; i++) {
     const inv = invariantes[i];
     const rotulo = `[${nomeSkill}] invariante #${i + 1}`;
@@ -161,6 +179,30 @@ for (const nomeSkill of skillsComInvariantes) {
       console.error('  o `nao_deve` procura a frase no corpo inteiro do SKILL.md; até 2026-09-20 o campo era aceito e ignorado');
       console.error('  remova o campo "onde" desta invariante');
       process.exit(1);
+    }
+
+    // FORMA do `onde`: array não vazio, e CADA elemento um degrau conhecido.
+    if (inv.onde !== undefined) {
+      if (!Array.isArray(inv.onde) || inv.onde.length === 0) {
+        console.error(`Erro: campo "onde" sem degrau reconhecido na invariante ${rotulo}${sufixoRegra}`);
+        console.error(`  onde recebido: ${resumir(inv.onde)}`);
+        console.error(`  degraus aceitos: ${DEGRAUS.join(', ')} (ou omita o campo para testar presença no corpo)`);
+        process.exit(1);
+      }
+
+      // Recusa ELEMENTO a elemento. A guarda anterior era
+      // `onde.some(d => DEGRAUS.includes(d))`: exigia UM degrau reconhecido e
+      // ignorava todos os outros em silêncio, então `["skill","nucelo"]` media
+      // só o degrau `skill` e o degrau de núcleo sumia sem uma linha de aviso.
+      const degrausEstranhos = inv.onde.filter(degrau => !DEGRAUS.includes(degrau));
+      if (degrausEstranhos.length > 0) {
+        const lista = degrausEstranhos.map(degrau => resumir(degrau)).join(', ');
+        console.error(`Erro: degrau desconhecido ${lista} no campo "onde" em ${rotulo}${sufixoRegra}`);
+        console.error(`  onde recebido: ${resumir(inv.onde)}`);
+        console.error(`  degraus aceitos: ${DEGRAUS.join(', ')} (ou omita o campo para testar presença no corpo)`);
+        console.error('  degrau fora da lista era ignorado em silêncio até 2026-09-20 — `nucelo` por `nucleo` desligava a checagem de núcleo e o sensor saía 0 com a mutação canônica dentro');
+        process.exit(1);
+      }
     }
   }
 
@@ -218,18 +260,9 @@ for (const nomeSkill of skillsComInvariantes) {
       process.exit(1);
     }
 
-    // `onde` presente tem de nomear pelo menos um degrau conhecido. Sem esta
-    // guarda, `onde: []` passava por todos os `onde.includes(...)` como falso e
-    // aprovava frase que não existe em lugar nenhum; `onde: null` estourava em
-    // TypeError. `onde` AUSENTE continua válido e significa presença no corpo (D4).
-    if (inv.onde !== undefined) {
-      if (!Array.isArray(onde) || !onde.some(degrau => DEGRAUS.includes(degrau))) {
-        console.error(`Erro: campo "onde" sem degrau reconhecido na invariante [${nomeSkill}]${regra !== undefined ? ' regra-'+regra : ''}`);
-        console.error(`  onde recebido: ${resumir(onde)}`);
-        console.error(`  degraus aceitos: ${DEGRAUS.join(', ')} (ou omita o campo para testar presença no corpo)`);
-        process.exit(1);
-      }
-    }
+    // A FORMA do `onde` — array não vazio, cada elemento um degrau conhecido —
+    // já foi decidida no passe de validação acima, antes de qualquer medição.
+    // `onde` AUSENTE continua válido e significa presença no corpo (D4).
 
     // Determinação do "corpo" a testar conforme o tipo e onde
     const corpo = skillContent;
@@ -265,7 +298,14 @@ for (const nomeSkill of skillsComInvariantes) {
       } else {
         // onde foi especificado — executar checagens conforme a semântica original
 
-        // Checagem 1: a frase está no núcleo do SKILL.md (antes do corte)?
+        // Checagem 1: a frase está nas REGRAS FILTRADAS do SKILL.md?
+        // O que se mede aqui é `filtrarRegras(skillContent)`, não o arquivo: o
+        // filtro descarta o que está fora do bloco de regras, então frase que
+        // ESTÁ no SKILL.md e mora fora desse bloco dá `emSkill` falso. Medido em
+        // 2026-09-20: `onde: ["skill"]` com `O destino da branch é sempre PR`,
+        // que está em `skills/fechar/SKILL.md`, sai 2. As mensagens abaixo dizem
+        // "regras filtradas do SKILL.md" por isso — até esta data diziam
+        // "SKILL.md" e mentiam sobre o que tinha sido medido.
         const emSkill = regrasTexto.includes(frase);
 
         // Checagem 2: a frase está na referência (references/regra-<n>.md)?
@@ -282,7 +322,7 @@ for (const nomeSkill of skillsComInvariantes) {
 
         // Se deve estar em skill, checar se está
         if (onde.includes('skill') && !emSkill) {
-          console.error(`FALHA invariante [${nomeSkill}]${regra !== undefined ? ' regra-'+regra : ''}: frase não encontrada no SKILL.md`);
+          console.error(`FALHA invariante [${nomeSkill}]${regra !== undefined ? ' regra-'+regra : ''}: frase não encontrada nas regras filtradas do SKILL.md`);
           console.error(`  frase: "${frase}"`);
           console.error(`  descricao: ${descricao}`);
           falhas++;
@@ -302,13 +342,13 @@ for (const nomeSkill of skillsComInvariantes) {
           if (emSkill && !emNucleo) {
             // Frase está no arquivo original mas não no núcleo extraído
             // Significa que foi movida para depois da marca <!-- detalhe -->
-            console.error(`FALHA invariante [${nomeSkill}]${regra !== undefined ? ' regra-'+regra : ''}: frase existe em SKILL.md mas não chega ao núcleo extraído`);
+            console.error(`FALHA invariante [${nomeSkill}]${regra !== undefined ? ' regra-'+regra : ''}: frase existe nas regras filtradas do SKILL.md mas não chega ao núcleo extraído`);
             console.error(`  frase: "${frase}"`);
             console.error(`  descricao: ${descricao}`);
             falhas++;
           } else if (!emSkill && !emNucleo) {
             // Frase não está em nenhum lugar — erro de configuração
-            console.error(`FALHA invariante [${nomeSkill}]${regra !== undefined ? ' regra-'+regra : ''}: frase não encontrada nem em SKILL.md nem em núcleo extraído`);
+            console.error(`FALHA invariante [${nomeSkill}]${regra !== undefined ? ' regra-'+regra : ''}: frase não encontrada nem nas regras filtradas do SKILL.md nem no núcleo extraído`);
             console.error(`  frase: "${frase}"`);
             falhas++;
           }

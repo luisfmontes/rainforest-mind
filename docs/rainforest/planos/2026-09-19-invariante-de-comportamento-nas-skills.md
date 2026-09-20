@@ -9,8 +9,8 @@ se deriva com `git rev-parse`, nunca se copia desta linha.
 
 - As 5 invariantes já existentes de `skills/rainforest-mind/` continuam verdes, nas mesmas regras 10, 11, 12, 13 e 15, com o mesmo campo `onde` — quatro delas `["skill","nucleo"]` e a da regra 15 `["skill","referencia","nucleo"]` (corrigido em 2026-09-19: a forma anterior desta linha generalizava a primeira entrada para as cinco).
 - `scripts/testa-conferir-invariantes.sh` continua sendo descoberto pelo glob `scripts/testa-*.sh` do `varrer-baterias.sh`, e continua verde em Node 22 e 24.
-- Os **cinco** blocos de mutação daquela bateria (quatro distintos — o bloco (5) repete o (1)) e o meta-teste continuam existindo e continuam ficando vermelhos, **cada um sobre a SUA caixa de areia, cuja linha de base sai 0** — asserido pelos cinco casos `LINHA DE BASE (n): caixa integra passa antes da mutacao n`, um imediatamente antes de cada mutação.
-- O roster de skills protegidas continua sendo **sete** arquivos `skills/*/invariantes.json` — `executar`, `fechar`, `limpar`, `plano`, `rainforest-mind`, `revisar`, `verificar` — e **15** invariantes conferidas, asserido pelo caso `ROSTER: as skills protegidas continuam as mesmas (7 arquivos, 15 invariantes)`, que roda contra o repositório real.
+- Os **seis** blocos de mutação daquela bateria continuam existindo e continuam ficando vermelhos, **cada um sobre a SUA caixa de areia, cuja linha de base sai 0** — asserido pelos **seis** casos `LINHA DE BASE (n): caixa integra passa antes da mutacao n`, um imediatamente antes de cada mutação. Os seis são: os cinco numerados `(1)` a `(5)` mais o do degrau desconhecido, `LINHA DE BASE (degrau)`.
+- O roster de skills protegidas continua sendo **sete** arquivos `skills/*/invariantes.json` — `executar`, `fechar`, `limpar`, `plano`, `rainforest-mind`, `revisar`, `verificar` — e **15** invariantes conferidas, asserido pelo caso `ROSTER: as skills protegidas continuam as mesmas (7 arquivos, 15 invariantes)`, que roda contra o repositório real. Os dois números e a etiqueta saem de `ROSTER_ESPERADO` e `ROSTER_INVARIANTES`, numa fonte só — até 2026-09-20 eram três strings independentes que se desatualizavam separadas.
 - Nenhum `SKILL.md` das seis skills tem o corpo alterado por este trabalho — o que entra é arquivo de invariante ao lado, nunca edição da skill.
 - `node scripts/conferir-livro-de-repos.cjs` continua saindo 0.
 
@@ -25,6 +25,21 @@ se deriva com `git rev-parse`, nunca se copia desta linha.
 > mutação — e como os cinco blocos só aferem `exit != 0`, todos ficariam
 > vermelhos com a mutação sendo no-op. O conserto é copiar `references/` no setup
 > e asserir a linha de base antes de mutar.
+
+> **Linha corrigida pela QUINTA vez em 2026-09-20.** A forma anterior dizia
+> "os **cinco** blocos … (quatro distintos — o bloco (5) repete o (1)) e o
+> meta-teste", e das cinco asserções de linha de base prometidas o meta-teste
+> não tinha nenhuma. Duas coisas mudaram, e as duas fecham a mesma classe: o
+> meta-teste — bloco (6) — foi **apagado**, porque repetia byte a byte a mutação
+> do bloco (4), montava caixa em `/tmp/meta-ref` com caminho fixo em vez de
+> `mktemp -d`, engolia a saída com `) > /dev/null 2>&1` e não asseria linha de
+> base nenhuma; medido em 2026-09-20 com a cópia de `references/` desligada só
+> nele, imprimia `ok META-TESTE` sobre caixa quebrada e a bateria seguia `26/0`.
+> E o bloco (5) deixou de repetir o (1): passou a mover a frase da **regra 13**
+> (``pelo `ideias.cjs plantar` ``), a única das cinco invariantes da
+> `rainforest-mind` que não tinha mutação apontada para ela. Entrou junto um sexto bloco, o do degrau
+> desconhecido ao lado de um válido. Agora "CADA bloco de mutação tem a SUA
+> caixa e a SUA linha de base" é verdade sem exceção.
 
 > **Linha corrigida de novo em 2026-09-20, por achado da TERCEIRA revisão.** A
 > forma imediatamente anterior — a que a nota acima produziu — dizia que os cinco

@@ -18,7 +18,10 @@
 # 14. O script falha com exit 1 quando a invariante traz chave desconhecida
 # 15. O script falha com exit 1 quando `nao_deve` traz `onde`
 # 16. CADA bloco de mutação sai 0 na sua própria caixa ANTES de mutar
-# 17. O roster de skills protegidas continua o mesmo (7 arquivos, 15 invariantes)
+# 17. O roster de skills protegidas continua o mesmo — a contagem e a etiqueta do
+#     caso saem de `ROSTER_ESPERADO` e `ROSTER_INVARIANTES`, nunca de literal solto
+# 18. O script falha com exit 1 quando `onde` traz degrau desconhecido AO LADO de
+#     um válido, com a mutação canônica dentro da caixa
 #
 # Sobre o item 16, que é linha de base e não caso: até 2026-09-20 a `$CAIXA` das
 # mutações era UMA, criada no setup e nunca restaurada entre os blocos. Duas
@@ -32,6 +35,12 @@
 # todas as quatro continuavam verdes. O conserto é cada bloco montar a SUA caixa
 # com `nova_caixa_rf` e asserir a linha de base dela antes de mutar; a asserção
 # por bloco é o que impede esse vácuo de voltar em silêncio.
+#
+# A afirmação "CADA bloco" só passou a ser verdadeira em 2026-09-20. Sobrava um
+# bloco (6), meta-teste sem `assere_base`, com caminho fixo `/tmp/meta-ref` no
+# lugar de `mktemp -d` e com a saída engolida por `> /dev/null 2>&1` — e ele
+# repetia a mutação do bloco (4). Foi apagado; o porquê, medido, está no lugar
+# onde ele ficava, no fim deste arquivo.
 #
 # Autoria de `tipo: nao_deve`:
 # - Frase proibida só vale se for vocabulário que o texto correto nunca usa
@@ -109,7 +118,16 @@ assere_base() {
 # sempre pela `rainforest-mind` sozinha, então apagar os seis arquivos das skills
 # de ação tirava dez frases da proteção com o CI verde (achado da revisão,
 # 2026-09-20). Quem tranca isso é a asserção de roster + contagem abaixo.
+#
+# A contagem, o número de arquivos e a etiqueta do caso saem de UMA fonte só.
+# Até 2026-09-20 eram três strings independentes — o literal `-eq 15` da
+# `roster_verde` e a etiqueta `(7 arquivos, 15 invariantes)` repetida em três
+# lugares —, e quem acrescentasse uma invariante mexeria no número e esqueceria a
+# etiqueta: o placar diria "15" asserindo 16 (achado da quinta revisão).
 ROSTER_ESPERADO="executar fechar limpar plano rainforest-mind revisar verificar"
+ROSTER_INVARIANTES=15
+ROSTER_ARQUIVOS="$(printf '%s\n' $ROSTER_ESPERADO | wc -l | tr -d ' ')"
+ROSTER_ETIQUETA="ROSTER: as skills protegidas continuam as mesmas ($ROSTER_ARQUIVOS arquivos, $ROSTER_INVARIANTES invariantes)"
 ROSTER_ATUAL=""
 ROSTER_EXIT=-1
 ROSTER_CONTAGEM=-1
@@ -126,7 +144,7 @@ avalia_roster() {
 }
 
 roster_verde() {
-  if [ "$ROSTER_ESPERADO" = "$ROSTER_ATUAL" ] && [ "$ROSTER_EXIT" -eq 0 ] && [ "$ROSTER_CONTAGEM" -eq 15 ]; then
+  if [ "$ROSTER_ESPERADO" = "$ROSTER_ATUAL" ] && [ "$ROSTER_EXIT" -eq 0 ] && [ "$ROSTER_CONTAGEM" -eq "$ROSTER_INVARIANTES" ]; then
     return 0
   fi
   return 1
@@ -139,7 +157,7 @@ if ! roster_verde; then
   echo "    (repo real: esperado [$ROSTER_ESPERADO])"
   echo "    (repo real: atual    [$ROSTER_ATUAL])"
   echo "    (repo real: conferir saiu $ROSTER_EXIT, conferiu $ROSTER_CONTAGEM invariantes)"
-  echo "    (oitava skill protegida entrou de proposito? atualize ROSTER_ESPERADO, o '-eq 15' de roster_verde e o nome deste caso, aqui neste arquivo)"
+  echo "    (skill protegida a mais ou a menos, de proposito? atualize ROSTER_ESPERADO e ROSTER_INVARIANTES aqui neste arquivo — a contagem de arquivos e a etiqueta do caso saem deles)"
 fi
 # Controle da própria trava: com um `invariantes.json` a menos, o roster TEM de
 # ficar vermelho. Sem este controle, `roster_verde` sempre-verdadeiro passaria
@@ -163,9 +181,9 @@ if roster_verde; then
 fi
 rm -rf "$CAIXA_ROSTER"
 if [ "$ROSTER_OK" -eq 1 ]; then
-  ok=$((ok+1)); echo "  ok   ROSTER: as skills protegidas continuam as mesmas (7 arquivos, 15 invariantes)"
+  ok=$((ok+1)); echo "  ok   $ROSTER_ETIQUETA"
 else
-  falhou=$((falhou+1)); echo "  FALHA ROSTER: as skills protegidas continuam as mesmas (7 arquivos, 15 invariantes)"
+  falhou=$((falhou+1)); echo "  FALHA $ROSTER_ETIQUETA"
 fi
 
 # Caso: nao_deve: frase proibida presente no corpo reprova
@@ -331,8 +349,18 @@ fi
 rm -rf "$CAIXA_ARR_VAZIO"
 
 # Caso: invariantes.json fora do formato array reprova com mensagem legivel, sem stack do Node
-# As tres ultimas formas sao ELEMENTO fora de formato DENTRO do array: ate
-# 2026-09-20 elas batiam na desestruturacao e saiam com stack cru de TypeError.
+# As tres ultimas formas sao ELEMENTO fora de formato DENTRO do array, e QUAL
+# DELAS MEDE a guarda foi corrigido em 2026-09-20, por achado da quinta revisao.
+# A redacao anterior dizia que as tres batiam na desestruturacao e saiam com
+# stack cru de TypeError. So `[null]` faz isso: desestruturar uma string ou um
+# numero e' legal em JavaScript, entao `["x"]` e `[42]` nunca estouraram.
+# Medido com a validacao de forma neutralizada:
+#   [null]  exit=1  TypeError: sim
+#   ["x"]   exit=1  TypeError: nao -> "campo frase ausente ou vazio"
+#   [42]    exit=1  TypeError: nao -> "campo frase ausente ou vazio"
+# Ou seja: **so `[null]` distingue a guarda presente da guarda ausente**. As
+# outras duas ficam porque documentam a mensagem legivel, nao porque medem a
+# guarda — e um dia em que `["x"]` passar a sair 2 ou 0 elas vao valer a linha.
 FORA_FORMATO_OK=1
 for conteudo in '{"frase":"x"}' 'null' '"texto"' '42' '[null]' '["x"]' '[42]'; do
   CAIXA_FORA="$(nova_caixa)"
@@ -386,6 +414,82 @@ if [ "$ONDE_SEM_DEGRAU_OK" -eq 1 ]; then
 else
   falhou=$((falhou+1)); echo "  FALHA VERMELHO: onde presente sem degrau reconhecido reprova (exit 1)"
 fi
+
+# Caso: degrau desconhecido AO LADO de um valido — a forma IRMA da anterior, e a
+# quinta forma desta mesma classe a ser achada. A guarda de antes era
+# `onde.some(d => DEGRAUS.includes(d))`: exigia UM degrau reconhecido e ignorava
+# todos os outros em silencio. A rodada 4 fechou o nome da CHAVE (`ondes` por
+# `onde`) e deixou aberto o nome do DEGRAU dentro dela.
+#
+# Este caso exercita o CENARIO INTEIRO, nao so a recusa: a mutacao canonica do
+# projeto — a mesma do bloco (1) — fica DENTRO da caixa, e entao o `onde` da
+# regra 10 e' variado. O controle com `nucleo` escrito certo tem de sair 2 (a
+# mutacao E' medida); so depois disso o `nucelo` tem valor de prova. Medido na
+# base 3e967643: `["skill","nucleo"]` -> exit 2, `["skill","nucelo"]` -> exit 0.
+#
+# O `onde` e' reescrito parseando o JSON, nunca por `sed`: a string `nucleo`
+# aparece 5 vezes em `skills/rainforest-mind/invariantes.json` e uma troca de
+# texto casaria todas as cinco.
+CAIXA_DEGRAU="$(nova_caixa_rf)"
+assere_base "$CAIXA_DEGRAU" "LINHA DE BASE (degrau): caixa integra passa antes da mutacao do degrau"
+(cd "$CAIXA_DEGRAU/scripts" && node -e "
+const fs=require('fs');
+const arquivo='../skills/rainforest-mind/SKILL.md';
+const antes=fs.readFileSync(arquivo,'utf8');
+const regex = /(\*\*10\. [^\n]+\n(?:[^\n]+\n)*?)(\<!-- detalhe -->)/;
+const match = antes.match(regex);
+if (!match) { console.error('Nao achei regra 10 ou marca detalhe'); process.exit(3); }
+if (!match[1].includes('3.000+ tokens')) { console.error('Nao achei a frase 3.000+ tokens na regra 10'); process.exit(3); }
+const depois = antes.replace(match[0], match[1].replace('3.000+ tokens', '') + match[2] + '\n3.000+ tokens vai aqui nos detalhes');
+if (antes === depois) { console.error('MUTACAO NAO APLICADA'); process.exit(3); }
+fs.writeFileSync(arquivo, depois);
+")
+MUTACAO_DEGRAU=$?
+
+# Reescreve o campo `onde` da invariante da regra 10 com o JSON recebido em \$1.
+degrau_com_onde() {
+  (cd "$CAIXA_DEGRAU/scripts" && ONDE_NOVO="$1" node -e "
+const fs=require('fs');
+const caminho='../skills/rainforest-mind/invariantes.json';
+const inv=JSON.parse(fs.readFileSync(caminho,'utf8'));
+const alvo=inv.find(i => i.regra === 10);
+if (!alvo) { console.error('Nao achei a invariante da regra 10'); process.exit(3); }
+alvo.onde=JSON.parse(process.env.ONDE_NOVO);
+fs.writeFileSync(caminho, JSON.stringify(inv, null, 2));
+")
+}
+
+DEGRAU_OK=1
+if [ "$MUTACAO_DEGRAU" -eq 0 ]; then
+  # Controle: com `nucleo` escrito certo, a mutacao canonica E' medida — exit 2.
+  # Sem este controle o vermelho abaixo poderia vir de caixa quebrada.
+  degrau_com_onde '["skill","nucleo"]'
+  (cd "$CAIXA_DEGRAU/scripts" && node conferir-invariantes.cjs > /tmp/degrau-controle.log 2>&1)
+  DEGRAU_CONTROLE=$?
+  if [ "$DEGRAU_CONTROLE" -ne 2 ]; then
+    DEGRAU_OK=0
+    echo "    (controle: onde [skill,nucleo] com a mutacao canonica dentro deveria sair 2, saiu $DEGRAU_CONTROLE)"
+    sed 's/^/    | /' /tmp/degrau-controle.log
+  fi
+  # A medida: um degrau lixo AO LADO do valido. Ate 2026-09-20 saia 0 aqui.
+  degrau_com_onde '["skill","nucelo"]'
+  (cd "$CAIXA_DEGRAU/scripts" && node conferir-invariantes.cjs > /tmp/degrau-lixo.log 2>&1)
+  DEGRAU_LIXO=$?
+  if [ "$DEGRAU_LIXO" -ne 1 ] || ! grep -q "nucelo" /tmp/degrau-lixo.log || ! grep -q "rainforest-mind" /tmp/degrau-lixo.log || grep -q "TypeError" /tmp/degrau-lixo.log; then
+    DEGRAU_OK=0
+    echo "    (onde [skill,nucelo] saiu $DEGRAU_LIXO — na base 3e967643 saia 0, com a mutacao canonica dentro)"
+    sed 's/^/    | /' /tmp/degrau-lixo.log
+  fi
+else
+  DEGRAU_OK=0
+  echo "    (nao consegui aplicar a mutacao canonica na caixa do degrau)"
+fi
+if [ "$DEGRAU_OK" -eq 1 ]; then
+  ok=$((ok+1)); echo "  ok   VERMELHO: degrau desconhecido ao lado de valido reprova (exit 1)"
+else
+  falhou=$((falhou+1)); echo "  FALHA VERMELHO: degrau desconhecido ao lado de valido reprova (exit 1)"
+fi
+rm -rf "$CAIXA_DEGRAU"
 
 # Caso: chave desconhecida na invariante reprova — antes era descartada em silencio.
 # A segunda forma e' a medida: `ondes` no lugar de `onde` derrubava as cinco
@@ -629,10 +733,23 @@ else
 fi
 rm -rf "$CAIXA4"
 
-# (5) MUTAÇÃO: mover frase "3.000+ tokens" para depois de detalhe (checa que nucleoContent está sendo validado)
+# (5) MUTAÇÃO: mover a frase "pelo `ideias.cjs plantar`" (regra 13) para DEPOIS
+# de <!-- detalhe --> — o degrau `nucleo` da ÚNICA invariante que não tinha
+# mutação nenhuma apontada para ela.
+#
 # Caixa própria, como os demais: até 2026-09-20 este bloco reusava a árvore dos
 # anteriores e só restaurava o `SKILL.md`, deixando `references/regra-15.md` com a
 # mutação do bloco (4) dentro — a caixa nascia vermelha e o vermelho dele era vácuo.
+#
+# O ALVO mudou em 2026-09-20, por achado da quinta revisão: até então este bloco
+# era o bloco (1) copiado, mudando só o nome da variável de shell — mutava
+# `3.000+ tokens` (regra 10) exatamente como ele. O comentário prometia "checa
+# que nucleoContent está sendo validado" e o plano registrava a duplicação como
+# fato ("quatro distintos — o (5) repete o (1)"). Em vez de fazer o comentário
+# admitir a repetição, o bloco passou a valer a sua linha: das cinco invariantes
+# da `rainforest-mind`, a da regra 13 era a única sem mutação que a exercitasse
+# (10 pelo bloco (1), 11 pelo (3), 12 pelo (2), 15 pelo (4)). Agora o comentário
+# é verdade E a cobertura é nova.
 CAIXA5="$(nova_caixa_rf)"
 assere_base "$CAIXA5" "LINHA DE BASE (5): caixa integra passa antes da mutacao 5"
 (cd "$CAIXA5/scripts" && node -e "
@@ -640,27 +757,27 @@ const fs=require('fs');
 const arquivo='../skills/rainforest-mind/SKILL.md';
 const antes=fs.readFileSync(arquivo,'utf8');
 
-// Encontrar a regra 10 e sua marca detalhe
-const regex = /(\*\*10\. [^\n]+\n(?:[^\n]+\n)*?)(\<!-- detalhe -->)/;
+// Encontrar a regra 13 e sua marca detalhe
+const regex = /(\*\*13\. [^\n]+\n(?:[^\n]+\n)*?)(\<!-- detalhe -->)/;
 const match = antes.match(regex);
 
 if (!match) {
-  console.error('Nao achei regra 10 ou marca detalhe');
+  console.error('Nao achei regra 13 ou marca detalhe');
   process.exit(3);
 }
 
 // Mover a frase: remover do núcleo e adicionar após a marca
-let regra10 = match[1];
-if (!regra10.includes('3.000+ tokens')) {
-  console.error('Nao achei a frase 3.000+ tokens na regra 10');
+let regra13 = match[1];
+if (!regra13.includes('pelo \`ideias.cjs plantar\`')) {
+  console.error('Nao achei a frase pelo ideias.cjs plantar na regra 13');
   process.exit(3);
 }
 
 // Remover a frase do núcleo (a frase antes da marca detalhe)
-const regra10SemFrase = regra10.replace('3.000+ tokens', '');
+const regra13SemFrase = regra13.replace('pelo \`ideias.cjs plantar\`', '');
 const detalhe = match[2];
 // Colocar a frase após a marca detalhe (a frase agora vem depois)
-const depois = antes.replace(match[0], regra10SemFrase + detalhe + '\n3.000+ tokens vai aqui nos detalhes');
+const depois = antes.replace(match[0], regra13SemFrase + detalhe + '\nobservação se grava pelo \`ideias.cjs plantar\`, diz o detalhe');
 
 if (antes === depois) {
   console.error('MUTACAO NAO APLICADA');
@@ -673,42 +790,40 @@ MUTACAO5=$?
 if [ "$MUTACAO5" -eq 0 ]; then
   (cd "$CAIXA5/scripts" && node conferir-invariantes.cjs > /tmp/mutacao5.log 2>&1)
   VERMELHO5=$?
-  if [ "$VERMELHO5" -ne 0 ]; then
-    ok=$((ok+1)); echo "  ok   VERMELHO: frase 3.000+ tokens movida para apos detalhe derruba conferir (exit $VERMELHO5)"
+  # Exige a regra 13 nomeada no stderr: sem isso o vermelho poderia vir de
+  # qualquer outra invariante e o bloco voltaria a medir o que o (1) já mede.
+  if [ "$VERMELHO5" -ne 0 ] && grep -q "regra-13" /tmp/mutacao5.log; then
+    ok=$((ok+1)); echo "  ok   VERMELHO: frase da regra 13 movida para apos detalhe nao chega ao nucleo (exit $VERMELHO5)"
   else
-    falhou=$((falhou+1)); echo "  FALHA: frase movida para apos detalhe passou (deveria falhar)"
+    falhou=$((falhou+1)); echo "  FALHA: frase da regra 13 movida para apos detalhe nao derrubou o conferir citando regra-13 (saiu $VERMELHO5)"
+    sed 's/^/    | /' /tmp/mutacao5.log
   fi
 else
   falhou=$((falhou+1)); echo "  FALHA: nao consegui aplicar a quinta mutacao"
 fi
 rm -rf "$CAIXA5"
 
-# (6) MUTAÇÃO VERIFICAÇÃO: testa que o conferir detecta quando frase é removida da referencia
-# Esta é uma meta-verificação que prova que a checagem de referencia está funcionando
-# Diretamente inline para evitar issues com heredoc e subprocessos
-(
-  mkdir -p /tmp/meta-ref/skills/rainforest-mind/references /tmp/meta-ref/scripts /tmp/meta-ref/hooks
-  cp scripts/conferir-invariantes.cjs /tmp/meta-ref/scripts/
-  cp skills/rainforest-mind/invariantes.json /tmp/meta-ref/skills/rainforest-mind/
-  cp skills/rainforest-mind/SKILL.md /tmp/meta-ref/skills/rainforest-mind/
-  cp -r skills/rainforest-mind/references /tmp/meta-ref/skills/rainforest-mind/
-  cp -r hooks /tmp/meta-ref/
-  # Remove a frase da referencia para testar que a checagem funciona
-  sed 's/printenv NOME/printenv VARNAME/g' /tmp/meta-ref/skills/rainforest-mind/references/regra-15.md > /tmp/meta-ref/skills/rainforest-mind/references/regra-15.md.tmp
-  mv /tmp/meta-ref/skills/rainforest-mind/references/regra-15.md.tmp /tmp/meta-ref/skills/rainforest-mind/references/regra-15.md
-  # Executa o conferir na cópia com a mutação
-  (cd /tmp/meta-ref/scripts && node conferir-invariantes.cjs) > /dev/null 2>&1
-  RESULTADO=$?
-  rm -rf /tmp/meta-ref
-  # Deve sair com código 1 (falha) se printenv NOME for removido da referencia
-  [ "$RESULTADO" -ne 0 ]
-) > /dev/null 2>&1
-TESTE_REF=$?
-if [ "$TESTE_REF" -eq 0 ]; then
-  ok=$((ok+1)); echo "  ok   META-TESTE: referencia check detecta frase removida"
-else
-  falhou=$((falhou+1)); echo "  FALHA: meta-teste para referencia check falhou"
-fi
+# O bloco (6), "META-TESTE: referencia check detecta frase removida", foi APAGADO
+# em 2026-09-20, por achado da quinta revisão. Três motivos, e o terceiro sozinho
+# já bastava:
+#
+# 1. Era o ÚNICO bloco de mutação sem `assere_base` — e sem caixa própria de
+#    verdade: montava `/tmp/meta-ref` com caminho FIXO, fora do `mktemp -d`, o
+#    que ainda fazia duas execuções concorrentes da bateria brigarem pela mesma
+#    pasta.
+# 2. Repetia, byte a byte, a mutação do bloco (4) — `printenv NOME` ->
+#    `printenv VARNAME` em `references/regra-15.md`. O degrau `referencia` já é
+#    coberto lá, com caixa própria e linha de base asserida.
+# 3. `) > /dev/null 2>&1` engolia a saída, e a única aferição era `-ne 0`. Medido
+#    em 2026-09-20: desligando a cópia de `references/` SÓ deste bloco, ele
+#    imprimia `ok META-TESTE` sobre caixa quebrada e a bateria seguia `26/0` —
+#    vermelho de vácuo, exatamente o defeito que a asserção de linha de base
+#    existe para impedir.
+#
+# Apagar, em vez de dar caixa e linha de base a ele, é o que torna VERDADEIRA a
+# afirmação do item 16 do cabeçalho: agora CADA bloco de mutação que existe tem a
+# sua caixa e a sua linha de base asserida. Manter uma sexta cópia da mutação do
+# (4) só para satisfazer a contagem seria inflar o placar sem acrescentar medida.
 
 echo
 echo "-----------------------------------------"
