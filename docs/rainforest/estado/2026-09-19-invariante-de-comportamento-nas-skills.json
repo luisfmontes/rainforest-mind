@@ -114,34 +114,32 @@
     ]
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "820983a3e78318bf60858fd383e107a393809aba",
+      "head": "36baf71fb7093c68a6416d03d47f2ed8e87a6e5f",
       "caminhos_sujos": []
     },
     "em_voo": [],
     "em": "2026-09-20",
-    "achados": 3,
+    "achados": 0,
     "base": "4f714ef69e94",
-    "head": "820983a3",
-    "lista": [
-      "A1 conferir-invariantes.cjs:483-489 mutante sobrevivente: a checagem de ocorrencia unica do ramo onde presente nao e exercitada por caso nenhum; apagar as 7 linhas deixa 29/0",
-      "A2 oitava forma: instrucao invertida com a frase preservada em comentario HTML sai exit 0. As dez entradas de skill de acao so testam substring em qualquer lugar do arquivo",
-      "A3 design:147-153 e bateria:235-241: a justificativa de deixar regra fora e falsa como escrita; so 1 das 5 entradas tem referencia",
-      "A4 a segunda fonte guarda deriva, nao corretude de origem: invariante nova nasce com a declaracao copiada da producao",
-      "A5 27 caminhos /tmp fixos contra a propria justificativa de apagar o bloco (6)",
-      "A6 comentario em :393-394 promete determinacao de corpo que a linha nao faz"
-    ],
-    "tentativas": 8,
+    "head": "36baf71f",
+    "lista": [],
     "bloqueante": "setima forma: nada fixa QUAL frase um deve protege. SEGUNDA FONTE so cobre nao_deve. Trocar a frase de um deve por name: (ocorre 1x em todos os sete SKILL.md) passa presenca e ocorrencia unica; depois a frase real pode sumir do corpo com sensor 0 e bateria 29/0. Medido",
-    "nao_bloqueantes": 5,
+    "nao_bloqueantes": 2,
     "bloqueantes": 0,
-    "nota": "revisor votou aprovado; fechei reprovado porque os tres menores sao conferidos na saida real e sao a propria materia da entrega. Regra de parada: se a revisao 9 devolver 0 bloqueantes, fecho ok e nao abro rodada 11.",
-    "rodada": 8,
-    "liberado_em": "2026-09-20"
+    "nota": "revisor #9 aprovado com 2 menores, os dois de rastreabilidade e conferidos por mim: (1) bateria:879 aponta linha 1115 para o caso CAIXA_NAODEV_ONDE, que hoje esta na 1161; (2) o caso novo do degrau skill nao tem pronto quando: no plano nem entrada no indice do cabecalho da bateria. Pela regra de parada declarada na rodada 8, os dois vao para o corpo do PR e nao abro rodada 11.",
+    "rodada": 9
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/testa-conferir-invariantes.sh",
+    "saida": "ok: 32   falhou: 0",
+    "sensor_externo": "bash scripts/testa-conferir-invariantes.sh",
+    "criterios": 4,
+    "criterios_ok": 4,
+    "nota": "os quatro pronto quando: rodados contra o artefato real. T1: sensor sai 2 nomeando fechar com a frase nao_deve plantada, 0 com ela ausente, 2 citando a contagem com um deve duplicado; e os cinco cenarios da SEGUNDA FONTE (a,b,c,d,e) rodados em copia da arvore — o sensor segue 0/15 nos tres em que o criterio exige cegueira, e a bateria fica vermelha nos cinco. T2: caixa integra 0/15, frase removida do limpar sai 2 nomeando limpar. T3: blob 3ae94ce4 identico ao da base, grep rainforest-mind so em comentario, 15 invariantes pelo caminho generico. T4: livro aprovado, tabela de 51 para 52, trilha e ancora cruzadas com o design. conferir-fluxo mutacoes: 1,2,3 vermelho, 4 pulada.",
+    "em": "2026-09-20"
   },
   "fechar": {
     "status": "pendente"
