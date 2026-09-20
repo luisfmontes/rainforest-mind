@@ -33,8 +33,19 @@
 # 20. O conjunto `(skill, frase)` das entradas `nao_deve` de produção BATE com a
 #     declaração `NAO_DEVE_ESPERADO`, que é a segunda fonte da frase. Typo na
 #     frase de produção, troca por outra frase bem-formada, `nao_deve` novo não
-#     declarado e declarado que sumiu ficam todos VERMELHOS — e a trava tem
-#     controle próprio, que exige vermelho sobre uma árvore adulterada
+#     declarado, declarado que sumiu e LAÇO VAZIO ficam todos VERMELHOS — e a
+#     trava tem controle próprio, que exige vermelho sobre uma árvore adulterada
+#
+# Os OITO literais `CONFIRMO fechar issue` das caixas de areia — achados por
+# `grep -n "CONFIRMO fechar issue" scripts/testa-conferir-invariantes.sh`, menos
+# as três linhas de comentário e a da declaração — continuam DIGITADOS, de
+# propósito, e o item 20 não os alcança. Não vão aqui por número de linha porque
+# editar este próprio cabeçalho já os deslocou uma vez, em 2026-09-20. O porquê
+# da decisão está na "Avaliado e descartado" do design de 2026-09-19.
+# Em uma frase: cada caixa grava o literal no `invariantes.json` E no `SKILL.md`
+# do mesmo bloco, então ela é autoconsistente por construção e testa o
+# MECANISMO, não a produção; lê-lo da produção recriaria a fonte única que o
+# item 20 existe para desfazer.
 #
 # Sobre o item 16, que é linha de base e não caso: até 2026-09-20 a `$CAIXA` das
 # mutações era UMA, criada no setup e nunca restaurada entre os blocos. Duas
