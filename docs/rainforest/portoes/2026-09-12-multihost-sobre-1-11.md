@@ -2474,3 +2474,47 @@ node scripts/testa-plugin-codex.cjs --contrato-gemini
 node scripts/testa-plugin-codex.cjs --contrato-manifesto
 git diff --exit-code -- .claude-plugin/plugin.json .codex-plugin/plugin.json
 ```
+
+### Instalação final exata depois das correções
+
+O commit candidato `68dbcf6e3493084f3faa6a41a5a3e012c6281bbb` foi exportado por
+`git archive` para `<export-clean-1.19.2-reviewfix-68dbcf6e>`. O marketplace
+temporário da T6 foi removido e o plugin foi reinstalado desse export:
+
+```text
+installed_version=1.19.2
+export_total_force=765
+cache_total_force=766
+export_dotgit=false
+cache_dotgit=false
+```
+
+A projeção excluiu somente os sete documentos de governança da D9 e comparou
+blob Git → export → cache:
+
+```text
+tracked_total=765
+governance_excluded=7
+expected=758
+export_missing=0
+export_different=0
+cache_missing=0
+cache_different=0
+extras=1
+.codex-plugin/migrated-command-skills/source-command-saude/SKILL.md
+```
+
+Contra o cache instalado, `--contrato-manifesto`, `--contrato-skills`,
+`--contrato-adaptador-hook` e `--contrato-marketplace` terminaram em exit 0.
+O contrato Gemini roda na árvore versionada porque depende de `git ls-files`.
+
+A mutação T4 sobre a versão corrigida também fechou pelo motivo esperado:
+
+```text
+baseline: 1.19.2 == 1.19.2 -> 5 ok, 0 falhas
+mutação:  1.19.3 != 1.19.2 -> 4 ok, 1 falha
+```
+
+A declaração de mutação da T3 passou a representar as aspas escapadas do JSON;
+trocar o adaptador pelo core casou uma ocorrência e produziu
+`FALHA handler Codex chama core direto`.

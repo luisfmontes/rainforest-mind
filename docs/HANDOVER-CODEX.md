@@ -555,7 +555,18 @@ Os manifestos voltaram byte a byte para `1.19.2` depois da contraprova. O bump
 de release não pertence a esta correção: pelo contrato do repositório ele é o
 último commit do estágio `fechar`, depois de `verificar` fechar.
 
+A instalação final foi restaurada pelo export limpo do commit candidato
+`68dbcf6e3493084f3faa6a41a5a3e012c6281bbb`. Git, export e cache coincidiram
+nos 758 arquivos de produto: zero ausente e zero divergente; o cache contém
+somente o extra derivado autorizado pela D11. Export e cache não contêm `.git`.
+Os quatro contratos aplicáveis ao cache instalado terminaram em exit 0.
+
 > 2026-09-20: cachebuster `1.19.2+codex.20260920005618`, 20 skills e
 > `PreToolUse Blocked`; fixture permaneceu com `?? deny-control.txt`, nada
 > staged e sem `.git/index.lock` — re-verificar: `codex plugin list` e repetir
 > a sessão efêmera descrita na iteração 10 do portão.
+
+> 2026-09-20: export limpo do commit `68dbcf6e`, 765 arquivos; cache exato
+> `1.19.2`, 766 arquivos; projeção de produto 758/758, zero ausente, zero
+> divergente e um extra D11 — re-verificar: repetir a projeção D9/D11 descrita
+> na iteração 10 do portão contra `git rev-parse HEAD`.

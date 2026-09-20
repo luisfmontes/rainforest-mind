@@ -209,8 +209,8 @@
     ],
     "origem_instalacao": {
       "tipo": "git archive",
-      "commit": "eabeb898706cf9160e72e45d534162dcfa30b6d8",
-      "caminho": "<export-clean-1.19.2>",
+      "commit": "68dbcf6e3493084f3faa6a41a5a3e012c6281bbb",
+      "caminho": "<export-clean-1.19.2-reviewfix-68dbcf6e>",
       "versao": "1.19.2",
       "export_arquivos_force": 765,
       "cache_arquivos_force": 766,
@@ -242,9 +242,14 @@
       "fixture_apos": "?? deny-control.txt; nada staged; sem .git/index.lock",
       "gemini_vermelho_antes": "detector Gemini deixou passar test/fixtures/gemini/request.json",
       "gemini_verde_depois": true,
-      "manifestos_restaurados": "1.19.2 byte a byte"
+      "manifestos_restaurados": "1.19.2 byte a byte",
+      "export_commit": "68dbcf6e3493084f3faa6a41a5a3e012c6281bbb",
+      "export_arquivos_force": 765,
+      "cache_arquivos_force": 766,
+      "projecao": "758 esperados; 0 ausente; 0 divergente; 1 extra D11; zero .git",
+      "contratos_cache": "manifesto, skills, adaptador e marketplace exit 0"
     },
-    "mutacao_nesta_iteracao": "arvore de produto identica a do HEAD mutado: de 52245a7f ate aqui so mudaram documentos de governanca D9; os mutantes de 2026-09-14 valem. O de T3 foi reexercitado hoje pelo --contrato-adaptador-hook: ok mutacao handler Codex -> core direto: vermelho e bytes restaurados",
+    "mutacao_nesta_iteracao": "o detector Gemini mudou com vermelho antes e verde depois. T3 foi corrigida para casar as aspas escapadas do JSON e ficou vermelha ao trocar o adaptador pelo core; T4 ficou vermelha em 1.19.3 contra 1.19.2. Os demais contratos aplicaveis ficaram verdes.",
     "base": "2adbae270782a5a36512c28a5c2a5354ba05c73e",
     "base_anterior": "068468fb956b8d606e9af1800aaa91dd399fdeb8",
     "nota_mutacao": "Mutantes reexercitados na arvore reancorada, nao herdados: a main trouxe 188 commits e a lista de 2026-09-14 media outra arvore. Uma primeira mutacao da T1 sobreviveu (tirar -A de CAMINHO_TOTAL) e isso NAO era lacuna da bateria: temCurta(opcoes,\"A\") pega o mesmo caso sozinho. Defesa redundante nao morre com um tiro so, entao o mutante foi refeito matando os dois detectores."
