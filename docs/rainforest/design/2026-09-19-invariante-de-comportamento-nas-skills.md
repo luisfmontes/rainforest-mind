@@ -82,8 +82,8 @@ Nove `deve` e uma `nao_deve`. O corte é do Luís.
 | `plano` | deve | `"\`bash <bateria>\` sai 0" não é critério de pronto` | o critério volta a medir o instrumento, não o sistema |
 
 Duas que foram consideradas e **não** entraram, com o motivo, porque o motivo é o
-mesmo achado da sessão: `git add -A` é **proibido` no `fechar` e `Git destrutivo
-proibido` no `executar` já têm gate de `PreToolUse` por trás. Proteger a prosa
+mesmo achado da sessão: o `git add -A` **proibido** no `fechar` e o `Git
+destrutivo proibido` no `executar` já têm gate de `PreToolUse` por trás. Proteger a prosa
 deles duplicaria defesa onde ela já existe, e a sessão de 2026-09-19 mostrou o
 custo disso: um mutante que tirava `-A` de `CAMINHO_TOTAL` sobreviveu porque
 `temCurta(opcoes, "A")` pegava o mesmo caso sozinho. Defesa redundante não morre

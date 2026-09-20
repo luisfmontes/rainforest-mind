@@ -17,11 +17,17 @@
 # 13. O script falha com exit 1 quando `onde` está presente sem degrau reconhecido
 # 14. O script falha com exit 1 quando a invariante traz chave desconhecida
 # 15. O script falha com exit 1 quando `nao_deve` traz `onde`
-# 16. CADA bloco de mutação sai 0 na sua própria caixa ANTES de mutar
+# 16. CADA bloco rotulado `# (n) MUTAÇÃO:` — mais o do degrau — sai 0 na sua
+#     própria caixa ANTES de mutar, asserido por `assere_base`. Os blocos
+#     rotulados `# Caso:` NÃO chamam `assere_base`; ver a nota dos dois rótulos
+#     logo abaixo
 # 17. O roster de skills protegidas continua o mesmo — a contagem e a etiqueta do
 #     caso saem de `ROSTER_ESPERADO` e `ROSTER_INVARIANTES`, nunca de literal solto
 # 18. O script falha com exit 1 quando `onde` traz degrau desconhecido AO LADO de
 #     um válido, com a mutação canônica dentro da caixa
+# 19. TODA frase `nao_deve` dos `skills/*/invariantes.json` DE PRODUÇÃO é
+#     detectável quando plantada no corpo — e varredura que não acha entrada
+#     nenhuma é VERMELHA, nunca verde silencioso
 #
 # Sobre o item 16, que é linha de base e não caso: até 2026-09-20 a `$CAIXA` das
 # mutações era UMA, criada no setup e nunca restaurada entre os blocos. Duas
@@ -41,6 +47,24 @@
 # lugar de `mktemp -d` e com a saída engolida por `> /dev/null 2>&1` — e ele
 # repetia a mutação do bloco (4). Foi apagado; o porquê, medido, está no lugar
 # onde ele ficava, no fim deste arquivo.
+#
+# OS DOIS RÓTULOS, e de qual deles o item 16 fala — precisado em 2026-09-20, por
+# achado da SEXTA revisão. O arquivo tem duas categorias de bloco, e só a
+# primeira chama `assere_base`:
+#
+#   - `# (n) MUTAÇÃO:` — os cinco numerados, mais o do degrau desconhecido. Mutam
+#     a árvore da `rainforest-mind` dentro de `nova_caixa_rf` e são os que o item
+#     16 nomeia: cada um tem `assere_base` imediatamente antes da mutação.
+#   - `# Caso:` — as caixas de areia montadas à mão, `CAIXA_LIMPAR` e `CAIXA_DUP`
+#     entre elas. Elas também gravam `SKILL.md` mutado e NÃO chamam `assere_base`.
+#     Não há perda de medição: as duas abortam explícito com `MUTACAO NAO
+#     APLICADA` (ou com a frase-alvo não encontrada) e exigem `-eq 2` mais `grep`
+#     nomeando a skill, então vermelho de vácuo não passa por elas. Ler "CADA
+#     bloco de mutação" como se as cobrisse é que era falso.
+#
+#   A exceção declarada: o caso `VIVACIDADE`, que é `# Caso:` e mesmo assim
+#   assere a SUA linha de base, uma por entrada varrida, porque o número de
+#   caixas dele não é fixo no fonte — sai da árvore de produção.
 #
 # Autoria de `tipo: nao_deve`:
 # - Frase proibida só vale se for vocabulário que o texto correto nunca usa
@@ -214,6 +238,129 @@ else
   falhou=$((falhou+1)); echo "  FALHA: nao_deve ausente deveria passar (saiu $NAODEV_AUSENTE)"
 fi
 rm -rf "$CAIXA_NAODEV_OK"
+
+# Caso: VIVACIDADE das frases `nao_deve` de PRODUCAO.
+#
+# O que este caso existe para pegar, achado da SEXTA revisao em 2026-09-20: um
+# `nao_deve` BEM-FORMADO cuja frase foi grafada errado. Ele aprova quando a frase
+# NAO esta no corpo, entao um typo (`CONFIRM0` por `CONFIRMO`) faz o invariante
+# procurar para sempre uma string que nunca vai existir — roster intacto, contagem
+# intacta, CI verde, e uma das invariantes deixou de medir qualquer coisa.
+#
+# A varredura por frase-inexistente que fechou a classe da forma malformada na
+# quinta rodada e' CEGA a este campo POR CONSTRUCAO: para um `nao_deve`,
+# frase-que-nao-existe e' a condicao de APROVACAO, nao de recusa. As nove `deve`
+# falham FECHADO sob o mesmo typo; so a `nao_deve` falha ABERTO.
+#
+# O conserto nao esta no sensor — nenhum sensor decide se uma frase proibida e'
+# "significativa", porque ela legitimamente nao esta no corpo. O que este caso
+# acrescenta e' controle de VIVACIDADE contra a arvore real, no mesmo padrao que a
+# trava de roster acima usa com `avalia_roster "."`: para CADA entrada
+# `tipo: "nao_deve"` dos `skills/*/invariantes.json` DE PRODUCAO, a frase e' LIDA
+# do arquivo (nunca digitada aqui), plantada no `SKILL.md` daquela skill dentro de
+# uma caixa de areia, e o checador tem de sair 2 nomeando a skill. `nao_deve`
+# futuro fica coberto sem ninguem lembrar de escrever caso novo.
+#
+# LIMITE MEDIDO, para a setima revisao nao ler mais do que esta escrito: plantar a
+# frase lida do arquivo prova que o caminho `nao_deve` MEDE a arvore de producao e
+# que a varredura achou entrada; NAO distingue frase certa de frase com typo.
+# Medido em 2026-09-20 com `CONFIRM0 fechar issue` no lugar de `CONFIRMO fechar
+# issue`: plantada, ela tambem sai 2, e este caso fica VERDE. Distinguir as duas
+# exige uma SEGUNDA fonte da frase (um pino no padrao de `ROSTER_ESPERADO`), que
+# esta rodada NAO tem — a forma fica aberta e declarada, nunca dada por fechada.
+#
+# Tres coisas sao aferidas, e as tres tem de valer:
+# 1. a varredura achou PELO MENOS uma entrada — laco vazio e' VERMELHO, nunca
+#    verde silencioso, que seria o mesmo defeito outra vez;
+# 2. a caixa integra sai 0 ANTES de plantar — sem isso o exit 2 depois do plantio
+#    seria vermelho de vacuo, o defeito que `assere_base` existe para impedir;
+# 3. depois de plantada, a saida e' exit 2 com a skill nomeada entre colchetes e a
+#    mensagem de frase proibida. O `grep` nunca procura a frase em si: frase futura
+#    pode trazer metacaractere de regex.
+#
+# A LINHA QUE DESLIGA ESTE CASO e' a condicao do `if` marcado `# DESLIGA` abaixo.
+VIVACIDADE_OK=1
+VIVACIDADE_N=0
+VIVACIDADE_PARES="$(node -e "
+const fs=require('fs');
+const path=require('path');
+for (const skill of fs.readdirSync('skills').sort()) {
+  const alvo=path.join('skills',skill,'invariantes.json');
+  if (!fs.existsSync(alvo)) continue;
+  let inv;
+  try { inv=JSON.parse(fs.readFileSync(alvo,'utf8')); } catch (e) { continue; }
+  if (!Array.isArray(inv)) continue;
+  inv.forEach((entrada,i) => {
+    if (entrada && typeof entrada==='object' && entrada.tipo==='nao_deve') console.log(skill+' '+i);
+  });
+}
+")"
+while read -r VIVA_SKILL VIVA_IDX; do
+  [ -n "$VIVA_SKILL" ] || continue
+  VIVACIDADE_N=$((VIVACIDADE_N+1))
+  CAIXA_VIVA="$(nova_caixa)"
+  mkdir -p "$CAIXA_VIVA/skills/$VIVA_SKILL"
+  cp "skills/$VIVA_SKILL/invariantes.json" "skills/$VIVA_SKILL/SKILL.md" "$CAIXA_VIVA/skills/$VIVA_SKILL/"
+  if [ -d "skills/$VIVA_SKILL/references" ]; then cp -r "skills/$VIVA_SKILL/references" "$CAIXA_VIVA/skills/$VIVA_SKILL/"; fi
+
+  # Linha de base DESTE plantio: a caixa integra tem de sair 0 antes de plantar.
+  (cd "$CAIXA_VIVA/scripts" && node conferir-invariantes.cjs > /tmp/vivacidade-base.log 2>&1)
+  VIVA_BASE=$?
+  if [ "$VIVA_BASE" -ne 0 ]; then
+    VIVACIDADE_OK=0
+    echo "    ($VIVA_SKILL #$VIVA_IDX: caixa integra saiu $VIVA_BASE ANTES de plantar — o plantio nao mediria nada)"
+    sed 's/^/    | /' /tmp/vivacidade-base.log
+    rm -rf "$CAIXA_VIVA"
+    continue
+  fi
+
+  # Planta a frase LIDA do invariantes.json daquela skill. A frase nunca atravessa
+  # o shell: quem le e quem escreve e' o mesmo processo node.
+  (cd "$CAIXA_VIVA/scripts" && VIVA_SKILL="$VIVA_SKILL" VIVA_IDX="$VIVA_IDX" node -e "
+const fs=require('fs');
+const skill=process.env.VIVA_SKILL;
+const i=Number(process.env.VIVA_IDX);
+const inv=JSON.parse(fs.readFileSync('../skills/'+skill+'/invariantes.json','utf8'));
+const frase=inv[i] && inv[i].frase;
+if (typeof frase!=='string' || frase.length===0) { console.error('frase ausente ou vazia na entrada '+i); process.exit(3); }
+const arquivo='../skills/'+skill+'/SKILL.md';
+const antes=fs.readFileSync(arquivo,'utf8');
+const depois=antes+String.fromCharCode(10)+frase+String.fromCharCode(10);
+if (antes===depois) { console.error('MUTACAO NAO APLICADA'); process.exit(3); }
+fs.writeFileSync(arquivo,depois);
+" 2>&1)
+  VIVA_PLANTIO=$?
+  if [ "$VIVA_PLANTIO" -ne 0 ]; then
+    VIVACIDADE_OK=0
+    echo "    ($VIVA_SKILL #$VIVA_IDX: nao consegui plantar a frase lida do arquivo, saiu $VIVA_PLANTIO)"
+    rm -rf "$CAIXA_VIVA"
+    continue
+  fi
+
+  (cd "$CAIXA_VIVA/scripts" && node conferir-invariantes.cjs > /tmp/vivacidade.log 2>&1)
+  VIVA_EXIT=$?
+  # DESLIGA: esta condicao e' a unica afericao do caso. Neutraliza-la (trocar por
+  # `if true; then`) desliga a vivacidade inteira sem mexer em mais nada.
+  if [ "$VIVA_EXIT" -eq 2 ] && grep -q "\[$VIVA_SKILL\]" /tmp/vivacidade.log && grep -q "frase proibida encontrada" /tmp/vivacidade.log; then
+    :
+  else
+    VIVACIDADE_OK=0
+    echo "    ($VIVA_SKILL #$VIVA_IDX: com a frase de producao plantada no corpo, esperava exit 2 nomeando [$VIVA_SKILL], saiu $VIVA_EXIT)"
+    sed 's/^/    | /' /tmp/vivacidade.log
+  fi
+  rm -rf "$CAIXA_VIVA"
+done <<VIVACIDADE_FIM
+$VIVACIDADE_PARES
+VIVACIDADE_FIM
+if [ "$VIVACIDADE_N" -eq 0 ]; then
+  VIVACIDADE_OK=0
+  echo "    (a varredura nao achou NENHUMA entrada tipo nao_deve em skills/*/invariantes.json — laco vazio nao e' verde)"
+fi
+if [ "$VIVACIDADE_OK" -eq 1 ]; then
+  ok=$((ok+1)); echo "  ok   VIVACIDADE: toda frase nao_deve de producao e detectavel quando plantada ($VIVACIDADE_N entrada(s), todas exit 2)"
+else
+  falhou=$((falhou+1)); echo "  FALHA VIVACIDADE: toda frase nao_deve de producao e detectavel quando plantada ($VIVACIDADE_N entrada(s) varrida(s))"
+fi
 
 # Caso: skill de acao: frase obrigatoria removida do corpo reprova
 CAIXA_LIMPAR="$(nova_caixa)"
@@ -821,9 +968,15 @@ rm -rf "$CAIXA5"
 #    existe para impedir.
 #
 # Apagar, em vez de dar caixa e linha de base a ele, é o que torna VERDADEIRA a
-# afirmação do item 16 do cabeçalho: agora CADA bloco de mutação que existe tem a
-# sua caixa e a sua linha de base asserida. Manter uma sexta cópia da mutação do
-# (4) só para satisfazer a contagem seria inflar o placar sem acrescentar medida.
+# afirmação do item 16 do cabeçalho: agora CADA bloco rotulado `# (n) MUTAÇÃO:`
+# que existe tem a sua caixa e a sua linha de base asserida. Manter uma sexta
+# cópia da mutação do (4) só para satisfazer a contagem seria inflar o placar sem
+# acrescentar medida.
+#
+# O que o item 16 NÃO diz, precisado em 2026-09-20: os blocos rotulados `# Caso:`
+# que gravam `SKILL.md` mutado — `CAIXA_LIMPAR` e `CAIXA_DUP` — não chamam
+# `assere_base`, e continuam assim de propósito. Eles abortam explícito quando a
+# mutação não pega e exigem `-eq 2` mais `grep`, que é o que fecha o vácuo neles.
 
 echo
 echo "-----------------------------------------"

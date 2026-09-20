@@ -53,9 +53,18 @@
  *   - `onde` como um todo: `[]`, `null`, `"skill"`, `["outro"]`, `[{}]` saem 1.
  *   - `onde` ELEMENTO a elemento: era o buraco, e é o que esta rodada fechou.
  *
- * DUAS FORMAS FICARAM, de propósito, e o motivo é o mesmo nas duas: elas FALHAM
- * FECHADO — o sensor não para de medir, ele mede e reprova, alto. Não são da
- * classe, e trancá-las custaria recusa nova sem defeito correspondente:
+ * A VARREDURA É CEGA AO `nao_deve` POR CONSTRUÇÃO, e este é o ponto mais
+ * valioso deste cabeçalho. O método acima procura exit 0 plantando uma frase que
+ * não existe em lugar nenhum — e, para um `nao_deve`, frase-que-não-existe é a
+ * condição de APROVAÇÃO, não de recusa. Varrer os valores dele com frase
+ * inexistente mede o sucesso esperado, nunca o defeito. Quem repetir o método
+ * sobre este campo vai concluir "fechado" outra vez, e vai concluir errado.
+ * Achado da SEXTA revisão, 2026-09-20.
+ *
+ * TRÊS FORMAS FICARAM, não duas — corrigido em 2026-09-20. As DUAS PRIMEIRAS
+ * ficaram de propósito, e o motivo é o mesmo nas duas: elas FALHAM FECHADO — o
+ * sensor não para de medir, ele mede e reprova, alto. Não são da classe, e
+ * trancá-las custaria recusa nova sem defeito correspondente:
  *
  *   - `regra` ausente ou de tipo estranho com `onde: ["referencia"]`: o sensor
  *     procura `references/regra-undefined.md` ou `references/regra-abc.md`, não
@@ -63,6 +72,39 @@
  *     é legível. Fica como ruído de mensagem, não como checagem desligada.
  *   - `descricao` de tipo estranho (`42`): só entra na mensagem de falha, nunca
  *     numa decisão. Não há o que deixar de medir.
+ *
+ * A TERCEIRA NÃO FALHA FECHADO, e é por causa dela que este bloco foi reescrito.
+ * A redação anterior dizia "DUAS FORMAS FICARAM … elas FALHAM FECHADO", e a
+ * afirmação era falsa sobre esta:
+ *
+ *   - `nao_deve` BEM-FORMADO com a frase GRAFADA ERRADO. Nada aqui é malformado:
+ *     o `tipo` é válido, as chaves são válidas, `onde` está ausente como tem de
+ *     estar. Só a frase tem um typo — `CONFIRM0 fechar issue` por `CONFIRMO
+ *     fechar issue` —, e o invariante passa a procurar para sempre uma string que
+ *     nunca vai existir. Medido em 2026-09-20 na base `cefad9d1`: roster intacto,
+ *     `ok: conferidas 15 invariantes`, exit 0, e a bateria em `ok: 27 falhou: 0`
+ *     — com uma das 15 sem medir mais nada. Falha ABERTO, ao contrário das duas
+ *     acima: as nove `deve` falham FECHADO sob o mesmo typo, porque lá a frase
+ *     ausente do corpo é reprovação; só a `nao_deve` inverte o sinal.
+ *
+ *     NÃO SE CONSERTA AQUI, e insistir no sensor é o caminho errado: nenhum
+ *     sensor decide se uma frase proibida é "significativa", porque ela
+ *     legitimamente não está no corpo. O que fechou a metade fechável está na
+ *     BATERIA — o caso `VIVACIDADE: toda frase nao_deve de producao e detectavel
+ *     quando plantada`, de `scripts/testa-conferir-invariantes.sh`, no padrão da
+ *     trava de roster: para cada entrada `nao_deve` dos `skills/<n>/invariantes.json`
+ *     de produção ele monta caixa, planta a frase LIDA do arquivo no `SKILL.md`
+ *     daquela skill e exige exit 2 nomeando a skill, e fica VERMELHO se a
+ *     varredura não achar entrada nenhuma.
+ *
+ *     O QUE ESSE CASO NÃO FAZ, medido em 2026-09-20 e escrito aqui para a sétima
+ *     revisão não ler mais do que está escrito: ele NÃO distingue frase certa de
+ *     frase com typo. Plantada, `CONFIRM0 fechar issue` também sai 2, e o caso
+ *     fica verde. O que ele prova é que o caminho `nao_deve` MEDE a árvore de
+ *     produção e que existe entrada para medir. Distinguir a grafia certa da
+ *     errada exige uma SEGUNDA fonte da frase — um pino no padrão de
+ *     `ROSTER_ESPERADO` —, que esta rodada não tem. A forma fica ABERTA e
+ *     DECLARADA, nunca dada por fechada.
  *
  * Regra do `tipo: "nao_deve"`:
  * - Frase proibida só vale se for vocabulário que o texto correto nunca usa
