@@ -24,7 +24,7 @@
     "em": "2026-09-19"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-19",
     "tarefas_ok": 4,
     "tarefas": 4,
@@ -99,26 +99,36 @@
     ],
     "rodada": 8,
     "achados_corrigidos": 4,
-    "medido": "com o typo CONFIRM0, VIVACIDADE segue verde e a bateria 28/0"
+    "medido": "com o typo CONFIRM0, VIVACIDADE segue verde e a bateria 28/0",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-20"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "5e7a31a60d5bffc402a33ef9fd3ea91d1de643c8",
+      "head": "21378334ae4e4dd7b818a0fd77bcf4db3ba29f5d",
       "caminhos_sujos": []
     },
     "em_voo": [],
     "em": "2026-09-20",
-    "achados": 1,
+    "achados": 6,
     "base": "4f714ef69e942606032627ab8284b5e1c3336cec",
-    "head": "5e7a31a60d5bffc402a33ef9fd3ea91d1de643c8",
+    "head": "21378334ae4e4dd7b818a0fd77bcf4db3ba29f5d",
     "lista": [
-      "B1 testa-conferir-invariantes.sh:282-527: a CAIXA e criada uma vez e nunca restaurada; a linha de base so guarda o bloco (1). Blocos (2) a (5) herdam arvore estragada e so aferem exit != 0, entao viram no-op em silencio. Pior: bateria, plano e design agora AFIRMAM que o vacuo foi fechado",
-      "B2 conferir-invariantes.cjs:72: nada fixa quais skills estao protegidas. Apagar os seis invariantes.json das skills de acao deixa exit 0 com conferidas 5 - medido por mim. A unica guarda e zero arquivos no total, que rainforest-mind sozinha satisfaz para sempre"
+      "A1 conferir-invariantes.cjs:483-489 mutante sobrevivente: a checagem de ocorrencia unica do ramo onde presente nao e exercitada por caso nenhum; apagar as 7 linhas deixa 29/0",
+      "A2 oitava forma: instrucao invertida com a frase preservada em comentario HTML sai exit 0. As dez entradas de skill de acao so testam substring em qualquer lugar do arquivo",
+      "A3 design:147-153 e bateria:235-241: a justificativa de deixar regra fora e falsa como escrita; so 1 das 5 entradas tem referencia",
+      "A4 a segunda fonte guarda deriva, nao corretude de origem: invariante nova nasce com a declaracao copiada da producao",
+      "A5 27 caminhos /tmp fixos contra a propria justificativa de apagar o bloco (6)",
+      "A6 comentario em :393-394 promete determinacao de corpo que a linha nao faz"
     ],
-    "tentativas": 6,
+    "tentativas": 7,
     "bloqueante": "setima forma: nada fixa QUAL frase um deve protege. SEGUNDA FONTE so cobre nao_deve. Trocar a frase de um deve por name: (ocorre 1x em todos os sete SKILL.md) passa presenca e ocorrencia unica; depois a frase real pode sumir do corpo com sensor 0 e bateria 29/0. Medido",
-    "nao_bloqueantes": 5
+    "nao_bloqueantes": 5,
+    "bloqueantes": 0,
+    "nota": "primeira revisao com 0 bloqueantes; reprovado para consertar 6 menores em vez de escrever achados:0 sendo falso"
   },
   "verificar": {
     "status": "pendente"
