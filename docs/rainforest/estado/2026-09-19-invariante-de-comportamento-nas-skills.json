@@ -66,40 +66,58 @@
         "ts": "2026-09-20T02:35:54.967Z"
       }
     ],
-    "em": "2026-09-19",
+    "em": "2026-09-20",
     "t4": "livro 51 -> 52 linhas; conferir-livro-de-repos.cjs exit 0, 12 checadas (era 11); os quatro dados do criterio conferidos na celula",
     "t1": "integrada em bd2d897c; catraca re-rodada pela integracao exit 0 (baseline verde 49,7s, mutacao vermelha exit 1); bateria 13 ok 0 falhas; dispensa por escrito da checagem 5 (skill-observations/ nao rastreado, fora do commit e dos worktrees)",
-    "comando": "node scripts/conferir-invariantes.cjs; node scripts/conferir-mutacao.cjs --arquivo scripts/conferir-invariantes.cjs --de <linha do nao_deve> --para \"const proibidaPresente = false;\" --bateria \"bash scripts/testa-conferir-invariantes.sh\"; node scripts/conferir-mutacao.cjs --arquivo skills/limpar/SKILL.md; node scripts/conferir-mutacao.cjs --arquivo skills/rainforest-mind/SKILL.md; node scripts/conferir-livro-de-repos.cjs; bash scripts/varrer-baterias.sh --so scripts/testa-conferir-invariantes.sh",
-    "saida": "conferir-invariantes ok: conferidas 15 invariantes (era 5), exit 0; as tres catracas de mutacao re-rodadas pela integracao sairam 0, cada uma com baseline verde e bateria vermelha; bateria 13 ok 0 falhas rodada inteira na janela; conferir-livro-de-repos APROVADO com 12 linhas checadas (era 11); varredura da bateria passou",
+    "comando": "node scripts/conferir-invariantes.cjs",
+    "saida": "ok: conferidas 15 invariantes",
     "sensor_externo": "node scripts/conferir-invariantes.cjs",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-invariantes.sh, secao \"nao_deve: frase proibida presente no corpo reprova\" — baseline verde 49,7s, mutacao exit 1"
+        "fixture": "testa-conferir-invariantes.sh, caso \"nao_deve: frase proibida presente no corpo reprova\""
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-invariantes.sh, secao \"skill de acao: frase obrigatoria removida do corpo reprova\" — baseline verde 46,9s, mutacao exit 1 com 2 falhas"
+        "fixture": "testa-conferir-invariantes.sh, caso \"repositorio integro passa no conferir\""
       },
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-invariantes.sh, secao da frase 3.000+ tokens movida para apos detalhe — baseline verde 60,7s, mutacao exit 1"
+        "fixture": "testa-conferir-invariantes.sh, caso \"repositorio integro passa no conferir\""
       },
       {
         "tarefa": 4,
         "resultado": "n/a",
-        "motivo": "linha de tabela no livro de repos: nao ha comportamento a inverter; a falsificacao e a sintaxe validada pelo conferir-livro-de-repos.cjs e a coerencia da celula com a secao Objetivo do design"
+        "motivo": "linha de tabela num documento de registro: nao ha comportamento a inverter; a falsificacao e a contagem 51->52 e o cruzamento com o design"
       }
     ],
     "emendas": [
       "criterio da T3 emendado durante o executar: exigia onde:[skill,nucleo] nas cinco entradas, e a da regra 15 sempre teve referencia tambem. Erro de quem escreveu o plano. Passou a exigir identidade de blob e caminho unico de leitura"
-    ]
+    ],
+    "rodada": 2,
+    "achados_corrigidos": 4
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "1288fbe9fcc1551fcdc559cb8925e00cece841e3",
+      "caminhos_sujos": []
+    },
+    "em_voo": [],
+    "em": "2026-09-20",
+    "achados": 4,
+    "base": "4f714ef69e942606032627ab8284b5e1c3336cec",
+    "head": "1288fbe9fcc1551fcdc559cb8925e00cece841e3",
+    "lista": [
+      "A1 skills/fechar/invariantes.json: descricao do nao_deve atribui a guarda a reversao be8c49eb, mas be8c49eb^:skills/fechar/SKILL.md tem zero ocorrencias de confirmo e o checador so le skills/*; a regressao citada e inalcancavel",
+      "A2 scripts/conferir-invariantes.cjs:140: campo frase sem validacao; chave digitada errado num nao_deve vira corpo.includes(undefined) e o invariante passa vazio",
+      "A3 plano T4: criterio manda cruzar a celula com a secao Objetivo do design, mas o design nao contem 2026-07-13 nem Apache (0 ocorrencias); o cruzamento nao e executavel",
+      "A4 plano T2 e T3: o fixture nomeado nao detecta a mutacao, aborta no proprio setup (nao consegui aplicar); quem fica vermelho e o caso 1 repositorio integro, que cairia com qualquer mudanca"
+    ],
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
