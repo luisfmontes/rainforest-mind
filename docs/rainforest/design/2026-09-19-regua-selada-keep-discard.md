@@ -20,11 +20,17 @@ auditada por prosa — exatamente o buraco do autoresearch, que protege o juiz
 - **D2 — O manifesto é um arquivo só, com régua, mecanismos e freios** — porquê:
   teto de rodadas trocado no meio do loop é a mesma fraude que mecanismo trocado
   no meio; um arquivo é uma âncora e um `git show`.
-- **D3 — O juiz lê do commit, nunca da árvore de trabalho** — porquê: conferir é
-  uma checagem que se pode pular; `git show "$ANCORA":<regua>` é imutável por
-  construção, porque o crítico não tem como enxergar outra coisa. Exige
-  `MSYS_NO_PATHCONV=1` no Windows, senão o `ref:caminho` vira caminho de
-  arquivo e falha em silêncio.
+- **D3 — O juiz lê do commit, e a checagem e a leitura são o mesmo caminho** —
+  porquê: `git show "$ANCORA":<regua>` sozinho ainda é um passo que a sessão
+  orquestradora pode trocar por um `cat`. Por isso a leitura não é um passo
+  solto: `conferir-regua.cjs mostrar --slug <slug>` é a **única** coisa que
+  imprime o texto do manifesto, e ela confere a âncora e o formato antes de
+  imprimir. Não existe caminho que entregue o conteúdo sem a checagem ter
+  passado. O topo continua procedural — a sessão precisa chamar o comando certo —
+  e isso é o teto honesto quando quem orquestra é um LLM; o ganho é que sobrou
+  **um** ponto onde burlar, em vez de um por rodada e por crítico. Exige
+  `MSYS_NO_PATHCONV=1` no Windows, senão o `ref:caminho` vira caminho de arquivo
+  e falha em silêncio.
 - **D4 — A âncora é recomputada, nunca SHA fixo em arquivo versionado** — porquê:
   `git log --diff-filter=A --format=%H -- <regua> | tail -1` sobrevive a rebase;
   âncora hardcoded já quebrou duas vezes neste repo
@@ -35,12 +41,14 @@ auditada por prosa — exatamente o buraco do autoresearch, que protege o juiz
 - **D6 — O teto de rodadas passa a viver no manifesto, em seção "Freios"** —
   porquê: hoje ele só existe na conversa, e o que não está em disco não chega ao
   agente novo de cada rodada.
-- **D7 — `scripts/conferir-regua.cjs` confere âncora e formato, com bateria** —
-  porquê: com o teto dentro do selo, manifesto sem teto sela um buraco. O script
-  valida a âncora, a presença da seção "Freios" e 5 a 7 `### M<n>` sequenciais,
-  no contrato de exit code do repo (0 ok, 1 veredito negativo, 2 uso errado), com
-  `scripts/testa-conferir-regua.sh`. A alternativa — o próprio agente contar — é
-  o modo de falha que este trabalho conserta.
+- **D7 — `scripts/conferir-regua.cjs` confere âncora e formato, e é quem emite o
+  manifesto** — porquê: com o teto dentro do selo, manifesto sem teto sela um
+  buraco. O script valida a âncora, a presença da seção "Freios" e 5 a 7
+  `### M<n>` sequenciais, no contrato de exit code do repo (0 ok, 1 veredito
+  negativo, 2 uso errado), com `scripts/testa-conferir-regua.sh`. O modo
+  `mostrar` da D3 mora aqui: conferir e imprimir fundidos num comando só, para
+  que não exista o caminho "pegou o texto sem conferir". A alternativa — o
+  próprio agente contar — é o modo de falha que este trabalho conserta.
 - **D8 — Keep/discard nasce de uma segunda comparação cega** — porquê: o veredito
   contra a régua é binário e não ranqueia as nossas rodadas entre si. Nosso-novo
   contra nosso-melhor-guardado é o que dá o descarte automático e faz o builder
@@ -76,6 +84,17 @@ auditada por prosa — exatamente o buraco do autoresearch, que protege o juiz
   — porquê: se em três usos toda rodada der `keep`, a comparação interna não
   discrimina e o mecanismo custa dois críticos por rodada para nunca reprovar
   nada. O remédio seria cortar o crítico interno, não apertá-lo.
+- **D17 — `karpathy/autoresearch` entra na tabela "Avaliados" do
+  `vigias/livro-de-repos.md`** — porquê: repo de terceiro que rende mecanismo
+  vira registro, e o vocabulário é fechado por catraca
+  (`scripts/conferir-livro-de-repos.cjs`). A linha é
+  `Enxertar: enxerta`, datada de 2026-09-19, com o último push visto em
+  2026-03-26.
+- **D18 — O rodapé de `skills/regua/SKILL.md` nomeia a terceira fonte** —
+  porquê: o critério 6 de `docs/rainforest/criterios/fluxo-12-regua.md` exige
+  que a atribuição nomeie as fontes, e hoje ela cita duas
+  (`robonuggets/gauntlet-loop` e `design-loop`). O autoresearch entra com o que
+  dele veio e o que dele ficou de fora, reimplementado a partir da descrição.
 
 ## Avaliado e descartado
 
