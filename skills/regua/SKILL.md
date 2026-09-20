@@ -59,7 +59,8 @@ quando falta critério: "o B está mais polido".
 Antes da rodada 1, leia a régua de verdade e escreva **5 a 7 mecanismos** em
 um manifesto único: `docs/rainforest/reguas/<slug>.md`. Este arquivo carrega
 as três coisas — qual é a régua, os mecanismos, e uma seção `## Freios` com o
-teto de rodadas. Mecanismo é o que alguém **confere olhando** — não adjetivo:
+teto de rodadas. Mecanismo é o que alguém **confere olhando** — não adjetivo.
+Veja o formato exigido em `references/formato-manifesto.md`.
 
 Quatro pares de exemplo, adjetivo contra mecanismo, estão em
 `references/mecanismos-exemplos.md`.

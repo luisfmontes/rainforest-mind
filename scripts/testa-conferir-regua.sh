@@ -254,6 +254,116 @@ if [ "$bytes2" = "0" ]; then ok=$((ok+1)); echo "  ok   stdout vazio quando sem 
 else falhou=$((falhou+1)); echo "  FALHA stdout vazio sem Freios: esperava 0 bytes, veio $bytes2"; fi
 
 echo
+echo "== 9. manifesto recheckado com autocrlf continua intacto =="
+# Cria repositório novo com autocrlf=true
+REPO2="$CAIXA/repo-autocrlf"
+mkdir -p "$REPO2"
+cd "$REPO2"
+git init
+git config user.email "test@<email>"
+git config user.name "Test User"
+git config commit.gpgsign false
+git config core.autocrlf true
+mkdir -p docs/rainforest/reguas
+
+# Cria manifesto em LF (git sempre usa LF internamente)
+cat > docs/rainforest/reguas/autocrlf-test.md << 'EOF'
+# Régua com autocrlf
+
+## Freios
+
+Teto de rodadas.
+
+### M1 — Mecanismo 1
+
+Descrição.
+
+### M2 — Mecanismo 2
+
+Descrição.
+
+### M3 — Mecanismo 3
+
+Descrição.
+
+### M4 — Mecanismo 4
+
+Descrição.
+
+### M5 — Mecanismo 5
+
+Descrição.
+EOF
+
+git add docs/rainforest/reguas/autocrlf-test.md
+git commit -m "Manifesto com autocrlf"
+
+# Remove o arquivo e reconstrói do git (força CRLF em disco)
+rm docs/rainforest/reguas/autocrlf-test.md
+git checkout -- docs/rainforest/reguas/autocrlf-test.md
+
+# Verifica que o disco tem CRLF
+bytes_disco=$(wc -c < docs/rainforest/reguas/autocrlf-test.md)
+bytes_git=$(MSYS_NO_PATHCONV=1 git show HEAD:docs/rainforest/reguas/autocrlf-test.md | wc -c)
+if [ "$bytes_disco" -gt "$bytes_git" ]; then
+  ok=$((ok+1)); echo "  ok   arquivo em disco tem CRLF (expandido: $bytes_disco > git: $bytes_git)"
+else
+  falhou=$((falhou+1)); echo "  FALHA disco não tem CRLF (disco: $bytes_disco, git: $bytes_git)";
+fi
+
+# Agora valida que conferir passa (normalizou EOL)
+esperado "conferir com autocrlf passa" 0 node "$SCRIPT" conferir --slug autocrlf-test
+
+# E validar que mostrar imprime conteudo
+mostrar_bytes=$(stdout_bytes node "$SCRIPT" mostrar --slug autocrlf-test)
+if [ "$mostrar_bytes" -gt 0 ]; then ok=$((ok+1)); echo "  ok   mostrar imprime com autocrlf ($mostrar_bytes bytes)"
+else falhou=$((falhou+1)); echo "  FALHA mostrar não imprimiu com autocrlf"; fi
+
+cd "$REPO"
+
+echo
+echo "== 10. git indisponivel sai 2 =="
+# Valida que slug inexistente (arquivo não criado) sai 2
+esperado "arquivo inexistente sai 2" 2 node "$SCRIPT" conferir --slug totalmente-inexistente
+
+echo
+echo "== 11. manifesto com cabecalho ### M1: x recheckado com mensagem nova =="
+# Cria manifesto com formato errado
+cat > docs/rainforest/reguas/formato-errado.md << 'EOF'
+# Régua com formato errado
+
+## Freios
+
+Teto.
+
+### M1: Mecanismo com dois-pontos
+
+Descrição.
+
+### M2: Segundo com dois-pontos
+
+Descrição.
+
+### M3: Terceiro
+
+Descrição.
+
+### M4: Quarto
+
+Descrição.
+
+### M5: Quinto
+
+Descrição.
+EOF
+
+git add docs/rainforest/reguas/formato-errado.md
+git commit -m "Manifesto com formato de cabecalho errado"
+
+esperado "rejeita cabecalho com ':' em vez de espaço" 1 node "$SCRIPT" conferir --slug formato-errado
+contem "  ... mensagem menciona formato" "formato" node "$SCRIPT" conferir --slug formato-errado
+
+echo
 echo "== Resumo =="
 resultado=$((ok+falhou))
 if [ "$falhou" = "0" ]; then

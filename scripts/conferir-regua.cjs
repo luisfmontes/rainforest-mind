@@ -37,6 +37,16 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const EXIT_RECUSA = 1;
+const EXIT_GIT_FALHOU = 2;
+
+/**
+ * Normaliza fins de linha: reduz \r\n e \r a \n.
+ * Necessário para comparar conteúdo entre git (sempre LF) e arquivo
+ * em disco (pode ser CRLF com core.autocrlf=true).
+ */
+function normalizarEol(texto) {
+  return texto.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+}
 
 function arg(nome) {
   const i = process.argv.indexOf(`--${nome}`);
@@ -114,21 +124,20 @@ function exigirAncoraEFormato(slug) {
 
   if (resShow.error || resShow.status !== 0) {
     console.error(`erro ao ler conteudo do commit ${ancora}: ${caminhoManifesto}`);
-    process.exit(EXIT_RECUSA);
+    process.exit(EXIT_GIT_FALHOU);
   }
 
   const conteudoCommit = resShow.stdout;
   const conteudoArquivo = fs.readFileSync(caminhoManifesto, 'utf8');
 
-  // Compara conteudo
-  if (conteudoCommit !== conteudoArquivo) {
+  // Compara conteudo (normalizado para EOL)
+  if (normalizarEol(conteudoCommit) !== normalizarEol(conteudoArquivo)) {
     console.error(`manifesto editado na arvore de trabalho: ${caminhoManifesto}`);
     process.exit(EXIT_RECUSA);
   }
 
-  // Valida formato
-  // Remove \r para lidar com CRLF no Windows
-  const linhas = conteudoCommit.replace(/\r/g, '').split('\n');
+  // Valida formato (normaliza EOL primeiro)
+  const linhas = normalizarEol(conteudoCommit).split('\n');
 
   // Procura pela secao "## Freios"
   const temFreios = linhas.some(linha => linha === '## Freios');
@@ -139,18 +148,30 @@ function exigirAncoraEFormato(slug) {
 
   // Procura por cabecalhos ### M<n>
   const regexM = /^### M(\d+)(?:\s|$)/;
+  const regexMQualquer = /^### M/;
   const numerosM = [];
+  let primeiraLinhaOffensora = null;
 
   for (const linha of linhas) {
     const match = linha.match(regexM);
     if (match) {
       numerosM.push(parseInt(match[1], 10));
+    } else if (regexMQualquer.test(linha)) {
+      // Tem "### M" mas não casa o padrão
+      if (!primeiraLinhaOffensora) {
+        primeiraLinhaOffensora = linha;
+      }
     }
   }
 
-  // Valida: 5 a 7 mecanismos
+  // Valida: 5 a 7 mecanismos, com formato correto
   if (numerosM.length < 5 || numerosM.length > 7) {
-    console.error(`quantidade invalida de mecanismos: ${numerosM.length} (esperado 5-7) (${caminhoManifesto})`);
+    if (numerosM.length === 0 && primeiraLinhaOffensora) {
+      // Tem "### M" mas formato errado
+      console.error(`cabecalho de mecanismo fora do formato '### M<n> ': ${primeiraLinhaOffensora} (${caminhoManifesto})`);
+    } else {
+      console.error(`quantidade invalida de mecanismos: ${numerosM.length} (esperado 5-7) (${caminhoManifesto})`);
+    }
     process.exit(EXIT_RECUSA);
   }
 
@@ -197,7 +218,7 @@ if (subcomando === 'conferir') {
   });
 
   if (resShow.error || resShow.status !== 0) {
-    process.exit(EXIT_RECUSA);
+    process.exit(EXIT_GIT_FALHOU);
   }
 
   process.stdout.write(resShow.stdout);
