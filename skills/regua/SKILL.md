@@ -149,46 +149,83 @@ rodada 1 já provou que não vai discriminar na rodada 7.
 
 ## Fase 2 — o loop
 
-Cada rodada tem duas metades, e elas **nunca** rodam no mesmo contexto.
+Cada rodada tem três peças: **builder**, **crítico da régua** e **crítico interno**
+— nunca no mesmo contexto, e a partir da rodada 2.
 
-**Builder.** Recebe a tarefa e, a partir da rodada 2, **a lacuna única** que o
-crítico apontou — uma, não uma lista. Lista faz o builder espalhar esforço e
-não fechar nenhuma. Ele não vê os vereditos anteriores.
+**Builder.** Recebe a tarefa e **a lacuna única** que o crítico da régua
+apontou — uma, não uma lista. Lista faz o builder espalhar esforço e não fechar
+nenhuma. Ele não vê os vereditos anteriores nem o arquivo de mecanismos.
 
 Ele também **não vê o arquivo de mecanismos** — vê a régua, o artefato inteiro.
 Builder com a lista na mão otimiza para a lista: entrega os sete itens, vence a
 comparação e não fica melhor. Aí o loop mede a si mesmo, que é a forma mais cara
 de não medir nada.
 
-**Crítico.** `Agent` novo **toda rodada**, nunca `fork`, nunca o mesmo da rodada
-anterior. Recebe os dois artefatos **sem rótulo** e sem saber qual é qual, sem
-saber que rodada é, e sem saber que um deles é "nosso" — mais o arquivo de
-mecanismos da Fase 0, que é o que ele tem para enxergar com. Devolve:
+A partir da rodada 2, o builder parte do **artefato do melhor guardado**
+materializado pelo orquestrador através de `git show`, não do último commit. O
+melhor guardado é um SHA registrado no log de rodadas versionado,
+`docs/rainforest/reguas/<slug>-rodadas.tsv`, com as colunas `rodada`, `commit`,
+`venceu_regua`, `venceu_interno`, `status` (em `keep|discard|abortado`) e `lacuna`,
+e atualizado pela comparação interna a cada rodada.
 
-1. **Qual venceu** — binário, A ou B. Nunca nota, nunca "empate", nunca "os dois
-   têm méritos". Nota infla a cada rodada; binário não.
+**Crítico da régua.** `Agent` novo **toda rodada**, nunca `fork`, nunca o mesmo
+da rodada anterior. Recebe o nosso artefato e a régua **sem rótulo** e sem saber
+qual é qual, sem saber que rodada é — mais o arquivo de mecanismos da Fase 0,
+que é o que ele tem para enxergar com. Caminho: `node scripts/conferir-regua.cjs
+mostrar --slug <slug>`. Devolve:
+
+1. **Qual venceu** — binário, nosso ou régua. Nunca nota, nunca "empate", nunca
+   "os dois têm méritos". Nota infla a cada rodada; binário não.
 2. **A lacuna única** — se o vencedor não foi o nosso, a **uma** coisa concreta
    que decidiu. Com localização, igual a achado de `revisar`: "a terceira linha
-   força o leitor a contar colunas" é lacuna, "parece menos polido" não é.
+   força o leitor a contar colunas" é lacuna, "parece menos polido" não é. Essa
+   lacuna é a **única** que alimenta o builder da rodada seguinte — nunca vem da
+   comparação interna. Senão o loop passa a se perseguir, medindo a si mesmo.
+
+**Crítico interno.** `Agent` novo **toda rodada**, separado e cego como o crítico
+da régua. Recebe nosso-novo e nosso-melhor **sem rótulo**, sem saber qual é qual,
+sem saber que rodada é, e sem saber qual é mais recente — mais o mesmo arquivo
+de mecanismos, pelo mesmo comando `conferir-regua.cjs mostrar`. Devolve **só**
+o binário: guardar (keep) ou descartar (discard). Sem lacuna. Sem notas. Sem
+progresso. Sem simpatia.
+
+Dois críticos em despachos separados porque um crítico só, vendo nosso-novo,
+nosso-melhor e a régua ao mesmo tempo, identifica pelo parentesco quais dois são
+nossos — o anonimato cai naquela linha. Os dois recebem o mesmo manifesto porque
+crítico sem critério devolve "o B está mais polido", que é a falha já nomeada na
+calibragem da Fase 1.
 
 **Os mecanismos não são uma rubrica.** O crítico não pontua sete itens e soma:
-ele continua devolvendo A ou B, e **uma** lacuna. A lista existe para ele saber
-onde olhar, não para virar nota — nota infla a cada rodada, e é por isso que o
-veredito é binário desde a primeira linha desta seção.
+ele continua devolvendo A ou B (régua) ou keep/discard (interno), e **uma** lacuna
+(régua só). A lista existe para ele saber onde olhar, não para virar nota — nota
+infla a cada rodada, e é por isso que o veredito continua binário.
 
-O crítico ser novo a cada rodada é o mecanismo, não zelo. Crítico que
-acompanhou o loop julga **progresso** ("muito melhor que a rodada 3") em vez de
-julgar contra a régua, e aprova cedo demais por simpatia acumulada.
+O crítico ser novo a cada rodada é o mecanismo, não zelo. Crítico que acompanhou
+o loop julga **progresso** ("muito melhor que a rodada 3") em vez de julgar contra
+a régua, e aprova cedo demais por simpatia acumulada. Crítico interno que segue
+rodada após rodada vira calibrador de "está bom demais pra jogar fora?", que é
+exatamente o viés que esta skill impede.
 
 ## Condição de parada
 
-Três saídas, e só três:
+Quatro saídas, não três:
 
-- **Venceu** — o crítico cego escolheu o nosso. Fim, sem mais uma rodada. Mais
-  uma rodada depois de vencer é a regra 9 sendo violada com método.
-- **Teto** — acabaram as rodadas. Você olha os commits, escolhe o melhor, e a
-  entrega sai com a distância para a régua **nomeada em uma linha**, não
-  escondida.
+- **Venceu** — o crítico da régua escolheu o nosso. Fim, sem mais uma rodada.
+  Mais uma rodada depois de vencer é a regra 9 sendo violada com método.
+- **Teto** — acabaram as rodadas declaradas na Fase 1. Você entrega o **melhor
+  guardado** do log de rodadas, com a distância para a régua **nomeada em uma
+  linha**, não escondida. O orquestrador materializa o melhor via `git show`,
+  retrocedendo rodadas se necessário. Commit por rodada existe para isso. Os
+  commits das rodadas descartadas **permanecem no histórico** — não são apagados.
+  O que não avança é o ponteiro do melhor guardado. A regra 11 proíbe git
+  destrutivo em agente, e poder voltar à rodada 3 depende do commit dela estar
+  lá.
+- **Estagnação** — três rodadas seguidas com veredito `discard` do crítico
+  interno. O orçamento não acabou (há rodadas sobrando), mas o ponteiro do
+  melhor guardado não se moveu em três tentativas. Com dois críticos por rodada,
+  estagnação é o sinal de que o investimento deixou de pagar. Distinto do teto:
+  teto é "acabaram os recursos", estagnação é "recursos sobraram, tentativas
+  pararam".
 - **Régua errada** — a calibragem da rodada 1 falhou. Nada foi entregue, e isso
   é resultado, não fracasso: descobrir em uma rodada que a régua não discrimina
   é o barato desta skill.
@@ -210,13 +247,21 @@ os dois, é a única configuração em que largar e sair de perto se sustenta.
 
 ## O que falsificaria esta skill
 
-Guarde a régua e o número da rodada em que o loop saiu. Se, em três usos,
-**todos** saírem na rodada 1 ou 2, a régua está sendo escolhida fraca de
-propósito e a skill virou cerimônia — o remédio é apertar a régua, não rodar
-mais. Se, em três usos, **nenhum** vencer dentro do teto, ou o teto está curto
-demais ou o padrão não paga o custo nesta classe de trabalho, e ele sai daqui.
+Três testes baratos e controláveis:
 
-Os dois testes são baratos e valem mais que qualquer argumento de desenho,
+1. Se, em três usos, **todos** saírem na rodada 1 ou 2, a régua está sendo
+   escolhida fraca de propósito e a skill virou cerimônia — o remédio é
+   apertar a régua, não rodar mais.
+2. Se, em três usos, **nenhum** vencer dentro do teto, ou o teto está curto
+   demais ou o padrão não paga o custo nesta classe de trabalho — ele sai daqui.
+3. Se, em três usos, **toda rodada** der `keep` (crítico interno nunca descarta),
+   o crítico interno não discrimina — você não tem comparação, só chapa. O remédio
+   não é apertar o crítico: é **cortá-lo inteiramente**. Dois críticos por rodada
+   para nunca reprovar nada é cerimônia cara. A comparação interna existe quando há
+   duas rodadas de verdade para comparar; sem ela, largar um `Agent` cego contra o
+   nosso-melhor-guardado queima dois tokens por rodada e decida nada.
+
+Os três testes são baratos e valem mais que qualquer argumento de desenho,
 inclusive os desta página.
 
 Três fontes, e todas valem nomear. Padrão adaptado do
