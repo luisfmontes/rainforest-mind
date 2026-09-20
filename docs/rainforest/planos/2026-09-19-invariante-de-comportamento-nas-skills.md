@@ -9,9 +9,21 @@ se deriva com `git rev-parse`, nunca se copia desta linha.
 
 - As 5 invariantes já existentes de `skills/rainforest-mind/` continuam verdes, nas mesmas regras 10, 11, 12, 13 e 15, com o mesmo campo `onde` — quatro delas `["skill","nucleo"]` e a da regra 15 `["skill","referencia","nucleo"]` (corrigido em 2026-09-19: a forma anterior desta linha generalizava a primeira entrada para as cinco).
 - `scripts/testa-conferir-invariantes.sh` continua sendo descoberto pelo glob `scripts/testa-*.sh` do `varrer-baterias.sh`, e continua verde em Node 22 e 24.
-- Os dois mutantes que aquela bateria já tem continuam existindo e continuam ficando vermelhos.
+- Os **cinco** blocos de mutação daquela bateria (quatro distintos — o bloco (5) repete o (1)) e o meta-teste continuam existindo e continuam ficando vermelhos, **sobre uma caixa de areia cuja linha de base sai 0** — asserido pelo caso `LINHA DE BASE: caixa integra passa no conferir (exit 0)`, que roda entre o setup e a primeira mutação.
 - Nenhum `SKILL.md` das seis skills tem o corpo alterado por este trabalho — o que entra é arquivo de invariante ao lado, nunca edição da skill.
 - `node scripts/conferir-livro-de-repos.cjs` continua saindo 0.
+
+> **Linha corrigida em 2026-09-20, por achado da revisão.** A forma anterior
+> dizia "Os dois mutantes que aquela bateria já tem continuam existindo e
+> continuam ficando vermelhos". Errada nas duas metades. Medido: são **cinco**
+> blocos de mutação mais um meta-teste, não dois; e nenhum deles media coisa
+> alguma, porque a `$CAIXA` compartilhada copiava `scripts/`, `invariantes.json`,
+> `SKILL.md` e `hooks/`, mas **nunca** `skills/rainforest-mind/references/`. A
+> invariante da regra 15 exige o degrau `referencia`, então a caixa já saía
+> `FALHA invariante [rainforest-mind] regra-15` com **exit 2** antes da primeira
+> mutação — e como os cinco blocos só aferem `exit != 0`, todos ficariam
+> vermelhos com a mutação sendo no-op. O conserto é copiar `references/` no setup
+> e asserir a linha de base antes de mutar.
 
 ## Tarefas
 
@@ -22,11 +34,20 @@ depende de: nenhuma
 paralela: sim
 mutacao:
   arquivo: `scripts/conferir-invariantes.cjs`
-  de: `const proibidaPresente = tipo === 'nao_deve' && corpo.includes(inv.frase);`
+  de: `const proibidaPresente = tipo === 'nao_deve' && corpo.toLowerCase().includes(frase.toLowerCase());`
   para: `const proibidaPresente = false;`
   bateria: `bash scripts/testa-conferir-invariantes.sh`
   fixture: `testa-conferir-invariantes.sh, secao "nao_deve: frase proibida presente no corpo reprova"`
 pronto quando: com uma cópia de caixa de areia onde `skills/fechar/invariantes.json` declara `{"frase": "CONFIRMO fechar issue", "tipo": "nao_deve"}` e a string `CONFIRMO fechar issue` foi plantada dentro de `skills/fechar/SKILL.md`, `node scripts/conferir-invariantes.cjs` sai **2** e o stderr contém `fechar` e `CONFIRMO fechar issue`; com a mesma string ausente do corpo, sai **0**; e com um `deve` cuja frase aparece **duas** vezes no corpo, sai **2** citando a contagem — provado por `bash scripts/testa-conferir-invariantes.sh` terminando em `falhou=0`
+
+> **Alvo da mutação atualizado em 2026-09-20, por achado da revisão.** A forma
+> anterior era `de: const proibidaPresente = tipo === 'nao_deve' && corpo.includes(inv.frase);`.
+> A revisão achou que o `nao_deve` tinha perdido o `/i` do enxerto citado na D5 —
+> `Confirmo fechar issue #12` no corpo passava com exit 0 —, e o conserto trocou
+> essa linha por `corpo.toLowerCase().includes(frase.toLowerCase())`. A linha
+> antiga deixou de existir no fonte, então manter o `de:` velho faria o
+> `conferir-mutacao.cjs` sair **3** (`MUTACAO NAO APLICADA`), que é veredito de
+> declaração errada, não de bateria fraca. O `para:` e o `fixture:` não mudam.
 
 ### 2. Escrever os seis arquivos de invariante das skills de ação [tipo: configurar]
 atende: D1, D6, D10

@@ -11,6 +11,17 @@
 # 7. O script falha com exit ≠ 0 quando nenhum invariantes.json existe
 # 8. O script falha com exit ≠ 0 quando tipo desconhecido é usado
 # 9. O script falha com exit 1 quando o campo `frase` está ausente ou vazio
+# 10. O `nao_deve` casa sem distinguir caixa, como o `/i` do enxerto (D5)
+# 11. O script falha com exit 1 quando o `invariantes.json` é array vazio
+# 12. O script falha com exit 1 quando o `invariantes.json` não é array, sem stack do Node
+# 13. O script falha com exit 1 quando `onde` está presente sem degrau reconhecido
+# 14. A caixa de areia compartilhada das mutações sai 0 ANTES de qualquer mutação
+#
+# Sobre o item 14, que é linha de base e não caso: até 2026-09-20 a `$CAIXA`
+# compartilhada não copiava `skills/rainforest-mind/references/`, então ela já
+# saía **exit 2** antes da primeira mutação. Como os cinco blocos de mutação só
+# aferem `exit != 0`, todos ficariam vermelhos com a mutação sendo no-op. A
+# asserção de linha de base é o que impede esse vácuo de voltar em silêncio.
 #
 # Autoria de `tipo: nao_deve`:
 # - Frase proibida só vale se for vocabulário que o texto correto nunca usa
@@ -183,6 +194,90 @@ else
 fi
 rm -rf "$CAIXA_SEM_FRASE"
 
+# Caso: nao_deve casa com caixa diferente — restaura o semantico do `/i` do enxerto (D5)
+CAIXA_NAODEV_CAIXA="$(nova_caixa)"
+mkdir -p "$CAIXA_NAODEV_CAIXA/skills/fechar"
+cp skills/fechar/SKILL.md "$CAIXA_NAODEV_CAIXA/skills/fechar/SKILL.md"
+printf '%s\n' '[{"frase":"CONFIRMO fechar issue","tipo":"nao_deve"}]' > "$CAIXA_NAODEV_CAIXA/skills/fechar/invariantes.json"
+printf '%s\n' 'Confirmo fechar issue #12' >> "$CAIXA_NAODEV_CAIXA/skills/fechar/SKILL.md"
+(cd "$CAIXA_NAODEV_CAIXA/scripts" && node conferir-invariantes.cjs > /tmp/naodev-caixa.log 2>&1)
+NAODEV_CAIXA=$?
+if [ "$NAODEV_CAIXA" -eq 2 ] && grep -q "fechar" /tmp/naodev-caixa.log; then
+  ok=$((ok+1)); echo "  ok   VERMELHO: nao_deve casa com caixa diferente (exit 2)"
+else
+  falhou=$((falhou+1)); echo "  FALHA VERMELHO: nao_deve casa com caixa diferente (exit 2) — saiu $NAODEV_CAIXA"
+fi
+rm -rf "$CAIXA_NAODEV_CAIXA"
+
+# Caso: invariantes.json com array vazio reprova (nao "ok: conferidas 0 invariantes")
+CAIXA_ARR_VAZIO="$(nova_caixa)"
+mkdir -p "$CAIXA_ARR_VAZIO/skills/fechar"
+cp skills/fechar/SKILL.md "$CAIXA_ARR_VAZIO/skills/fechar/SKILL.md"
+printf '%s\n' '[]' > "$CAIXA_ARR_VAZIO/skills/fechar/invariantes.json"
+(cd "$CAIXA_ARR_VAZIO/scripts" && node conferir-invariantes.cjs > /tmp/arr-vazio.log 2>&1)
+ARR_VAZIO=$?
+if [ "$ARR_VAZIO" -eq 1 ] && grep -q "fechar" /tmp/arr-vazio.log; then
+  ok=$((ok+1)); echo "  ok   VERMELHO: invariantes.json com array vazio reprova (exit 1)"
+else
+  falhou=$((falhou+1)); echo "  FALHA VERMELHO: invariantes.json com array vazio reprova (exit 1) — saiu $ARR_VAZIO"
+fi
+rm -rf "$CAIXA_ARR_VAZIO"
+
+# Caso: invariantes.json fora do formato array reprova com mensagem legivel, sem stack do Node
+FORA_FORMATO_OK=1
+for conteudo in '{"frase":"x"}' 'null' '"texto"' '42'; do
+  CAIXA_FORA="$(nova_caixa)"
+  mkdir -p "$CAIXA_FORA/skills/fechar"
+  cp skills/fechar/SKILL.md "$CAIXA_FORA/skills/fechar/SKILL.md"
+  printf '%s\n' "$conteudo" > "$CAIXA_FORA/skills/fechar/invariantes.json"
+  (cd "$CAIXA_FORA/scripts" && node conferir-invariantes.cjs > /tmp/fora-formato.log 2>&1)
+  FORA=$?
+  if [ "$FORA" -ne 1 ] || ! grep -q "fechar" /tmp/fora-formato.log || grep -q "TypeError" /tmp/fora-formato.log; then
+    FORA_FORMATO_OK=0
+    echo "    (forma [$conteudo] saiu $FORA)"
+  fi
+  rm -rf "$CAIXA_FORA"
+done
+if [ "$FORA_FORMATO_OK" -eq 1 ]; then
+  ok=$((ok+1)); echo "  ok   VERMELHO: invariantes.json fora do formato array reprova sem stack (exit 1)"
+else
+  falhou=$((falhou+1)); echo "  FALHA VERMELHO: invariantes.json fora do formato array reprova sem stack (exit 1)"
+fi
+
+# Caso: `onde` presente sem degrau reconhecido reprova — antes desligava a checagem em silencio
+ONDE_SEM_DEGRAU_OK=1
+for conteudo in '[{"frase":"FRASE QUE NAO EXISTE EM LUGAR NENHUM","onde":[]}]' '[{"frase":"FRASE QUE NAO EXISTE EM LUGAR NENHUM","onde":null}]' '[{"frase":"FRASE QUE NAO EXISTE EM LUGAR NENHUM","onde":["outro"]}]'; do
+  CAIXA_ONDE="$(nova_caixa)"
+  mkdir -p "$CAIXA_ONDE/skills/fechar"
+  cp skills/fechar/SKILL.md "$CAIXA_ONDE/skills/fechar/SKILL.md"
+  printf '%s\n' "$conteudo" > "$CAIXA_ONDE/skills/fechar/invariantes.json"
+  (cd "$CAIXA_ONDE/scripts" && node conferir-invariantes.cjs > /tmp/onde-sem-degrau.log 2>&1)
+  ONDE=$?
+  if [ "$ONDE" -ne 1 ] || ! grep -q "fechar" /tmp/onde-sem-degrau.log || grep -q "TypeError" /tmp/onde-sem-degrau.log; then
+    ONDE_SEM_DEGRAU_OK=0
+    echo "    (forma [$conteudo] saiu $ONDE)"
+  fi
+  rm -rf "$CAIXA_ONDE"
+done
+# Controle: a MESMA frase inexistente SEM o campo `onde` continua saindo 2, nao 1 —
+# `onde` ausente e' presenca no corpo (D4) e nao pode virar erro de configuracao.
+CAIXA_SEM_ONDE="$(nova_caixa)"
+mkdir -p "$CAIXA_SEM_ONDE/skills/fechar"
+cp skills/fechar/SKILL.md "$CAIXA_SEM_ONDE/skills/fechar/SKILL.md"
+printf '%s\n' '[{"frase":"FRASE QUE NAO EXISTE EM LUGAR NENHUM"}]' > "$CAIXA_SEM_ONDE/skills/fechar/invariantes.json"
+(cd "$CAIXA_SEM_ONDE/scripts" && node conferir-invariantes.cjs > /tmp/sem-onde.log 2>&1)
+SEM_ONDE=$?
+if [ "$SEM_ONDE" -ne 2 ]; then
+  ONDE_SEM_DEGRAU_OK=0
+  echo "    (controle: frase inexistente SEM onde deveria sair 2, saiu $SEM_ONDE)"
+fi
+rm -rf "$CAIXA_SEM_ONDE"
+if [ "$ONDE_SEM_DEGRAU_OK" -eq 1 ]; then
+  ok=$((ok+1)); echo "  ok   VERMELHO: onde presente sem degrau reconhecido reprova (exit 1)"
+else
+  falhou=$((falhou+1)); echo "  FALHA VERMELHO: onde presente sem degrau reconhecido reprova (exit 1)"
+fi
+
 # Casos vermelhos para rainforest-mind — mutações numa CÓPIA, nunca no repo
 CAIXA="$(mktemp -d)"
 trap 'rm -rf "${CAIXA:-}"' EXIT
@@ -191,7 +286,22 @@ mkdir -p "$CAIXA/skills/rainforest-mind" "$CAIXA/scripts"
 cp scripts/conferir-invariantes.cjs "$CAIXA/scripts/"
 cp skills/rainforest-mind/invariantes.json "$CAIXA/skills/rainforest-mind/"
 cp skills/rainforest-mind/SKILL.md "$CAIXA/skills/rainforest-mind/SKILL.md"
+# A invariante da regra 15 exige o degrau `referencia`. Sem esta cópia a caixa já
+# nasce exit 2 e as cinco mutações abaixo viram no-op (achado da revisão, 2026-09-20).
+cp -r skills/rainforest-mind/references "$CAIXA/skills/rainforest-mind/"
 cp -r hooks "$CAIXA/"
+
+# LINHA DE BASE: a caixa íntegra tem de passar ANTES de qualquer mutação.
+# Se esta asserção ficar vermelha, os casos de mutação seguintes não medem nada:
+# eles só aferem `exit != 0`, e uma caixa que já sai != 0 dá vermelho de vácuo.
+(cd "$CAIXA/scripts" && node conferir-invariantes.cjs > /tmp/caixa-linha-de-base.log 2>&1)
+BASELINE_CAIXA=$?
+if [ "$BASELINE_CAIXA" -eq 0 ]; then
+  ok=$((ok+1)); echo "  ok   LINHA DE BASE: caixa integra passa no conferir (exit 0)"
+else
+  falhou=$((falhou+1)); echo "  FALHA LINHA DE BASE: caixa integra passa no conferir (exit 0) — saiu $BASELINE_CAIXA; a linha de base da caixa esta quebrada e os casos de mutacao seguintes NAO MEDEM NADA"
+  sed 's/^/    | /' /tmp/caixa-linha-de-base.log
+fi
 
 # (1) MUTAÇÃO: mover a frase "3.000+ tokens" para DEPOIS de <!-- detalhe --> no SKILL.md
 # Encontra a regra 10, remove "3.000+ tokens" dela, colocando a frase após a marca detalhe
@@ -244,7 +354,9 @@ else
 fi
 
 # (2) MUTAÇÃO: remover a frase "exit ≠ 0 nunca é sucesso" de regra 12
-cp -r skills/rainforest-mind/references "$CAIXA/skills/rainforest-mind/referencias"
+# (a cópia de `references` saiu daqui em 2026-09-20: ela copiava para um diretório
+#  chamado `referencias`, que o checador nunca abre, e agora o setup já copia para
+#  o nome certo antes da linha de base)
 (cd "$CAIXA/scripts" && node -e "
 const fs=require('fs');
 const arquivo='../skills/rainforest-mind/SKILL.md';
@@ -329,8 +441,8 @@ else
 fi
 
 # (4) MUTAÇÃO: remover a frase da references/regra-15.md (testa checagem de referencia)
-# Cria um cópia da árvore com a referência disponível
-cp -r skills/rainforest-mind/references "$CAIXA/skills/rainforest-mind/"
+# (a cópia de `references` saiu daqui em 2026-09-20: o setup já a copiou, e repetir
+#  sobre um diretório existente criava `references/references/`)
 (cd "$CAIXA/scripts" && node -e "
 const fs=require('fs');
 const arquivo='../skills/rainforest-mind/references/regra-15.md';

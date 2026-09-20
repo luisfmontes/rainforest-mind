@@ -6,12 +6,21 @@
  * Procura todos os `skills/<nome>/invariantes.json` e valida frases de cada skill
  * contra seu correspondente `skills/<nome>/SKILL.md`.
  *
+ * O arquivo tem de ser um array com PELO MENOS uma invariante. Array vazio,
+ * ou qualquer coisa que não seja array, é erro de configuração e sai 1: um
+ * `invariantes.json` que não declara invariante nenhuma faria o sensor imprimir
+ * "ok: conferidas 0 invariantes" sem ter medido nada — defeito achado pela
+ * revisão em 2026-09-20, que é exatamente o que este sensor existe para impedir.
+ *
  * Formato de invariante:
- *   - `frase`: string a validar (obrigatório)
- *   - `tipo`: "deve" (padrão) ou "nao_deve" (obrigatório)
- *   - `onde`: ["skill", "nucleo", "referencia"] — opcional
- *     - Ausente: testa presença no corpo do SKILL.md
+ *   - `frase`: string não vazia a validar (obrigatório)
+ *   - `tipo`: opcional. Ausente vale "deve"; presente só aceita "deve" ou
+ *     "nao_deve", e qualquer outro valor sai 1
+ *   - `onde`: opcional, array com pelo menos um de "skill", "referencia", "nucleo"
+ *     - Ausente: testa presença da frase no corpo do SKILL.md
  *     - Presente: testa presença conforme configurado (skill, referencia, nucleo)
+ *     - Presente sem nenhum degrau reconhecido (`[]`, `null`, `["outro"]`): sai 1.
+ *       Antes de 2026-09-20 isso desligava a checagem em silêncio e saía 0
  *   - `regra`, `descricao`: metadados
  *
  * Regra do `tipo: "nao_deve"`:
@@ -19,12 +28,25 @@
  * - Exemplo: `--confirmo` é proibido no `fechar` e obrigatório no `limpar`, então
  *   um `nao_deve: --confirmo` dispararia no texto certo — proibido
  * - `CONFIRMO fechar issue` é seguro: não existe em nenhuma skill correta
+ * - A comparação do `nao_deve` é INSENSÍVEL A CAIXA, como o `/i` do
+ *   `assert.doesNotMatch(skill, /secure encrypted provisioning/i)` que originou o
+ *   enxerto (D5). O `deve` continua exato — lá a comparação é de presença de uma
+ *   frase aprovada, e ignorar caixa mudaria o que a frase significa
  */
 
 const fs = require('fs');
 const path = require('path');
 
 const SKILLS_DIR = path.join(__dirname, '../skills');
+const DEGRAUS = ['skill', 'referencia', 'nucleo'];
+
+// Mostra o valor recebido na mensagem de recusa, com teto, para a recusa dizer
+// QUAL valor chegou sem despejar um arquivo inteiro no stderr.
+function resumir(valor) {
+  const texto = JSON.stringify(valor);
+  if (texto === undefined) return String(valor);
+  return texto.length > 120 ? `${texto.slice(0, 120)}…` : texto;
+}
 const CONTEXTO_LIB = path.join(__dirname, '../hooks/lib/contexto-sessao.cjs');
 
 // Importar as funções do motor real
@@ -84,6 +106,16 @@ for (const nomeSkill of skillsComInvariantes) {
     process.exit(1);
   }
 
+  // Array vazio, ou o que não é array, é erro de configuração — nunca sucesso.
+  // Sem esta guarda o sensor imprimia "ok: conferidas 0 invariantes" e saía 0.
+  if (!Array.isArray(invariantes) || invariantes.length === 0) {
+    const motivo = Array.isArray(invariantes)
+      ? 'array vazio — um invariantes.json que não declara nenhuma invariante não confere nada'
+      : `esperava um array de invariantes, veio ${resumir(invariantes)}`;
+    console.error(`Erro: [${nomeSkill}] invariantes.json inválido: ${motivo}`);
+    process.exit(1);
+  }
+
   // Ler o SKILL.md
   let skillContent;
   try {
@@ -138,11 +170,24 @@ for (const nomeSkill of skillsComInvariantes) {
       process.exit(1);
     }
 
+    // `onde` presente tem de nomear pelo menos um degrau conhecido. Sem esta
+    // guarda, `onde: []` passava por todos os `onde.includes(...)` como falso e
+    // aprovava frase que não existe em lugar nenhum; `onde: null` estourava em
+    // TypeError. `onde` AUSENTE continua válido e significa presença no corpo (D4).
+    if (inv.onde !== undefined) {
+      if (!Array.isArray(onde) || !onde.some(degrau => DEGRAUS.includes(degrau))) {
+        console.error(`Erro: campo "onde" sem degrau reconhecido na invariante [${nomeSkill}]${regra !== undefined ? ' regra-'+regra : ''}`);
+        console.error(`  onde recebido: ${resumir(onde)}`);
+        console.error(`  degraus aceitos: ${DEGRAUS.join(', ')} (ou omita o campo para testar presença no corpo)`);
+        process.exit(1);
+      }
+    }
+
     // Determinação do "corpo" a testar conforme o tipo e onde
     const corpo = skillContent;
 
-    // Checagem de tipo nao_deve
-    const proibidaPresente = tipo === 'nao_deve' && corpo.includes(inv.frase);
+    // Checagem de tipo nao_deve — insensível a caixa, como o `/i` do enxerto (D5)
+    const proibidaPresente = tipo === 'nao_deve' && corpo.toLowerCase().includes(frase.toLowerCase());
     if (proibidaPresente) {
       console.error(`FALHA invariante [${nomeSkill}]${regra !== undefined ? ' regra-'+regra : ''}: frase proibida encontrada no corpo`);
       console.error(`  frase: "${frase}"`);
