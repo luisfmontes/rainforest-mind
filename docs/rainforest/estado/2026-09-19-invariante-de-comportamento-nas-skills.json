@@ -24,7 +24,37 @@
     "em": "2026-09-19"
   },
   "executar": {
-    "status": "pendente"
+    "status": "parcial",
+    "catraca_mutacao": "2026-09-19",
+    "tarefas_ok": 2,
+    "tarefas": 4,
+    "em_voo": [],
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "bc95f3ac0f1306b27275c743f66058f35b242627",
+        "iteracao": 1,
+        "sessao": "9586f0f8-9dba-4bd3-b8e6-2b4aad9730d6",
+        "ts": "2026-09-20T02:11:21.126Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "bc95f3ac0f1306b27275c743f66058f35b242627",
+        "iteracao": 1,
+        "sessao": "9586f0f8-9dba-4bd3-b8e6-2b4aad9730d6",
+        "ts": "2026-09-20T02:13:20.329Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "bc95f3ac0f1306b27275c743f66058f35b242627",
+        "iteracao": 2,
+        "sessao": "9586f0f8-9dba-4bd3-b8e6-2b4aad9730d6",
+        "ts": "2026-09-20T02:27:57.356Z"
+      }
+    ],
+    "em": "2026-09-19",
+    "t4": "livro 51 -> 52 linhas; conferir-livro-de-repos.cjs exit 0, 12 checadas (era 11); os quatro dados do criterio conferidos na celula",
+    "t1": "integrada em bd2d897c; catraca re-rodada pela integracao exit 0 (baseline verde 49,7s, mutacao vermelha exit 1); bateria 13 ok 0 falhas; dispensa por escrito da checagem 5 (skill-observations/ nao rastreado, fora do commit e dos worktrees)"
   },
   "revisar": {
     "status": "pendente"

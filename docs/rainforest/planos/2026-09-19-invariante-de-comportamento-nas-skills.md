@@ -7,7 +7,7 @@ se deriva com `git rev-parse`, nunca se copia desta linha.
 
 ## O que não pode quebrar
 
-- As 5 invariantes já existentes de `skills/rainforest-mind/` continuam verdes, nas mesmas regras 10, 11, 12, 13 e 15, com a mesma semântica de `onde: ["skill","nucleo"]`.
+- As 5 invariantes já existentes de `skills/rainforest-mind/` continuam verdes, nas mesmas regras 10, 11, 12, 13 e 15, com o mesmo campo `onde` — quatro delas `["skill","nucleo"]` e a da regra 15 `["skill","referencia","nucleo"]` (corrigido em 2026-09-19: a forma anterior desta linha generalizava a primeira entrada para as cinco).
 - `scripts/testa-conferir-invariantes.sh` continua sendo descoberto pelo glob `scripts/testa-*.sh` do `varrer-baterias.sh`, e continua verde em Node 22 e 24.
 - Os dois mutantes que aquela bateria já tem continuam existindo e continuam ficando vermelhos.
 - Nenhum `SKILL.md` das seis skills tem o corpo alterado por este trabalho — o que entra é arquivo de invariante ao lado, nunca edição da skill.
@@ -57,7 +57,17 @@ mutacao:
   para: `3.000 tokens`
   bateria: `bash scripts/testa-conferir-invariantes.sh`
   fixture: `testa-conferir-invariantes.sh, secao "(1) MUTACAO: mover a frase \"3.000+ tokens\" para DEPOIS de <!-- detalhe --> no SKILL.md"`
-pronto quando: com o arquivo migrado, as cinco entradas mantêm `regra` 10, 11, 12, 13 e 15 e mantêm `onde: ["skill","nucleo"]` — conferido por `node -e` lendo o JSON e comparando com os valores desta linha — e `node scripts/conferir-invariantes.cjs` continua saindo **0**; com `3.000+ tokens` trocado por `3.000 tokens` em `skills/rainforest-mind/SKILL.md` numa cópia de caixa de areia, sai **2** na regra 10 — provado por `bash scripts/testa-conferir-invariantes.sh` terminando em `falhou=0`
+pronto quando: o arquivo é **byte a byte idêntico** ao da base — `git hash-object skills/rainforest-mind/invariantes.json` devolve o mesmo blob que `git rev-parse <base>:skills/rainforest-mind/invariantes.json` — e `node scripts/conferir-invariantes.cjs` passa a conferir **15** invariantes lendo esse arquivo pelo **mesmo caminho genérico** das outras seis, sem caso especial no código (`SKILLS_DIR` + `readdirSync`, conferível por `grep -n "rainforest-mind" scripts/conferir-invariantes.cjs` não casando nada fora de comentário); com `3.000+ tokens` trocado por `3.000 tokens` em `skills/rainforest-mind/SKILL.md`, a bateria fica **vermelha** — provado por `node scripts/conferir-mutacao.cjs` saindo **0**
+
+> **Critério emendado em 2026-09-19, durante o `executar`.** A forma anterior
+> exigia que as cinco entradas mantivessem `onde: ["skill","nucleo"]`. Errado:
+> a entrada da regra 15 sempre teve um terceiro valor, `"referencia"`, e o
+> critério foi escrito olhando só a primeira entrada do arquivo. Erro de quem
+> escreveu o plano, não da entrega. A emenda também troca a exigência de
+> "arquivo migrado" por "arquivo idêntico": a tarefa 1 generalizou o caminho de
+> leitura, então a migração da D7 aconteceu no **código**, e editar o JSON só
+> para parecer migrado seria churn. A prova de que os dois formatos deixaram de
+> conviver é o caminho único de leitura, não uma edição no dado.
 
 ### 4. Registrar o openai-developers-for-claude no livro de repos [tipo: docs]
 atende: D9

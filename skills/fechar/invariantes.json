@@ -1,0 +1,15 @@
+[
+  {
+    "frase": "O destino da branch é sempre PR",
+    "descricao": "Sem ela o agente volta a oferecer menu de merge/PR/manter, que é o que o usuário pediu para sumir"
+  },
+  {
+    "frase": "Árvore suja de algo que não é deste trabalho é condição de parada",
+    "descricao": "Sem ela o agente volta a commitar por cima de trabalho de outra sessão no mesmo working tree"
+  },
+  {
+    "tipo": "nao_deve",
+    "frase": "CONFIRMO fechar issue",
+    "descricao": "Frase do comportamento revertido em be8c49eb (16/09, D1 do zerar-issues-5): fechar Issue deixou de exigir frase digitada. Vocabulário que só uma versão errada usaria — não existe em nenhuma skill, script ou hook. NÃO trocar por '--confirmo': aquele token é obrigatório no limpar e aparece dentro da própria frase que o proíbe aqui"
+  }
+]
