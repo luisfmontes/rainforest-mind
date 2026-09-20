@@ -100,7 +100,7 @@
       {
         "tarefa": 6,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-regua.sh, caso 17 \"--slug com ../ nao escapa\" (rodada 4) e casos 9, 12/14/15/16 e 13 (rodadas anteriores)"
+        "fixture": "testa-conferir-regua.sh, casos 18 (clone raso) e 19 (### M<n> malformado) da rodada 5; 17 (slug) da rodada 4; 9, 12/14/15/16 e 13 das anteriores"
       }
     ],
     "comando": "bash scripts/varrer-baterias.sh",
@@ -110,16 +110,21 @@
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "52d789eccb132dc4b6da59eb9edd5c54ff13b539",
+      "head": "56cf8eefc6c76a148bb2d6a8a825788d3b6216db",
       "caminhos_sujos": []
     },
     "em_voo": [],
     "em": "2026-09-20",
-    "achados": 1,
+    "achados": 6,
     "lista": [
-      "D1: --slug nao e validado e escapa de docs/rainforest/reguas/ por ../ - a D3 afirma um ponto onde burlar e ha dois"
+      "1 BLOQUEANTE: em clone raso a ancora vira a fronteira do clone e o selo compara o arquivo consigo mesmo - conferir sai 0 sobre regua adulterada e mostrar entrega a adulterada ao critico cego (reproduzido)",
+      "2: leitura decodificada como utf8 quebra a promessa byte-a-byte do mostrar (T2) e compara uma projecao com perda",
+      "3: cabecalho ### M<n> malformado e ignorado em silencio - 5 validos + M6:/M7: passa com exit 0 e burla o teto 5-7 (reproduzido)",
+      "4: duas assercoes do caso 17 (barra, dois-pontos) passam por coincidencia - slug inexistente tambem sai 2",
+      "5: stdout_bytes usa $(...) e come newline final - zero byte e byte-a-byte nao medem o que dizem",
+      "6: sub-bloco Uso de conferir nao lista git falhou entre os motivos de exit 2"
     ],
-    "tentativas": 4,
+    "tentativas": 5,
     "liberado_em": "2026-09-20"
   },
   "verificar": {

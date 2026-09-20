@@ -26,19 +26,20 @@
  *   node scripts/conferir-regua.cjs conferir --slug <slug>
  *     Valida que o manifesto <slug> não foi alterado e tem formato válido.
  *     Exit 0: tudo ok. Exit 1: veredito negativo. Exit 2: uso errado, slug
- *             invalido (barra, contrabarra, dois-pontos ou "..") ou arquivo
- *             inexistente.
+ *             invalido (barra, contrabarra, dois-pontos ou ".."), arquivo
+ *             inexistente, clone raso ou git falhou.
  *
  *   node scripts/conferir-regua.cjs mostrar --slug <slug>
  *     Valida que o manifesto <slug> não foi alterado e tem formato válido.
  *     Se válido, imprime o conteúdo do commit-âncora em stdout.
  *     Exit 0: tudo ok. Exit 1: manifesto alterado ou formato inválido.
- *             Exit 2: slug invalido ou inexistente, ou git falhou.
+ *             Exit 2: slug invalido ou inexistente, clone raso, ou git
+ *             falhou.
  *
  * Exit codes:
  *   0  Manifesto íntegro e formato válido (conferir: sucesso; mostrar: imprimiu conteúdo).
  *   1  Manifesto alterado OU formato inválido.
- *   2  Slug invalido ou inexistente, uso errado, ou git falhou.
+ *   2  Slug invalido ou inexistente, uso errado, clone raso, ou git falhou.
  */
 
 const fs = require('fs');
@@ -58,6 +59,30 @@ function normalizarEol(texto) {
   return texto.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 }
 
+/**
+ * O mesmo, sobre BYTES. O selo compara bytes, nunca texto decodificado.
+ *
+ * Decodificar como utf8 antes de comparar troca todo byte invalido por
+ * U+FFFD, e dois manifestos com bytes diferentes passam a ser "iguais". Na
+ * saida e pior: manifesto em CP-1252 — cenario vivo nesta maquina — sai do
+ * `mostrar` com todo acento virado U+FFFD, quebrando a promessa de que a
+ * leitura entregue ao critico cego e byte a byte a do `git show`.
+ */
+function normalizarEolBytes(buf) {
+  const CR = 0x0d, LF = 0x0a;
+  const saida = Buffer.allocUnsafe(buf.length);
+  let n = 0;
+  for (let i = 0; i < buf.length; i++) {
+    if (buf[i] === CR) {
+      saida[n++] = LF;
+      if (buf[i + 1] === LF) i++;
+    } else {
+      saida[n++] = buf[i];
+    }
+  }
+  return saida.subarray(0, n);
+}
+
 function arg(nome) {
   const i = process.argv.indexOf(`--${nome}`);
   return (i === -1 || i + 1 >= process.argv.length) ? null : process.argv[i + 1];
@@ -73,6 +98,28 @@ function uso() {
  * Devolve a string do hash SHA1, ou null se não encontrado.
  */
 function ancoraDe(slug) {
+  // CLONE RASO NAO TEM ONDE ANCORAR (achado bloqueante da rodada 5).
+  //
+  // `git log --diff-filter=A` devolve o commit de adicao VISIVEL. Num clone
+  // raso o unico commit visivel e a fronteira do clone, e o conteudo dela e,
+  // por construcao, o que esta no checkout: a comparacao de integridade passa
+  // a comparar o arquivo consigo mesmo e sai 0 sobre manifesto adulterado. O
+  // selo degradava em silencio de "nao mudou desde que entrou no repo" para
+  // "nao esta sujo desde o clone" — e `--depth 1` e o default do
+  // `actions/checkout`. Reproduzido: repo completo sai 1, clone raso do mesmo
+  // repo sai 0 e o `mostrar` entrega a regua afrouxada ao critico cego.
+  //
+  // Aqui o script se RECUSA A JULGAR (exit 2, ambiente), em vez de julgar
+  // errado — e a D5 aplicada: ancora que nao resolve aborta.
+  const raso = spawnSync("git", ["rev-parse", "--is-shallow-repository"], {
+    encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
+  });
+  if (!raso.error && raso.status === 0 && raso.stdout.trim() === "true") {
+    console.error(`clone raso: o selo nao ancora sem historico (${slug})`);
+    console.error("  Refaca o checkout com historico completo (em CI, fetch-depth: 0).");
+    process.exit(EXIT_GIT_FALHOU);
+  }
+
   const caminhoManifesto = `docs/rainforest/reguas/${slug}.md`;
 
   const res = spawnSync('git', [
@@ -174,7 +221,6 @@ function exigirAncoraEFormato(slug) {
     'show',
     `${ancora}:${caminhoManifesto}`,
   ], {
-    encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, MSYS_NO_PATHCONV: '1' },
   });
@@ -184,17 +230,20 @@ function exigirAncoraEFormato(slug) {
     process.exit(EXIT_GIT_FALHOU);
   }
 
-  const conteudoCommit = resShow.stdout;
-  const conteudoArquivo = fs.readFileSync(caminhoManifesto, 'utf8');
+  // Sem `encoding` no spawn acima: `resShow.stdout` vem Buffer.
+  const bytesCommit = resShow.stdout;
+  const bytesArquivo = fs.readFileSync(caminhoManifesto);
 
-  // Compara conteudo (normalizado para EOL)
-  if (normalizarEol(conteudoCommit) !== normalizarEol(conteudoArquivo)) {
+  // Compara BYTES, so com EOL normalizado. Decodificar antes de comparar
+  // apagaria diferenca real: byte invalido vira U+FFFD dos dois lados.
+  if (!normalizarEolBytes(bytesCommit).equals(normalizarEolBytes(bytesArquivo))) {
     console.error(`manifesto editado na arvore de trabalho: ${caminhoManifesto}`);
     process.exit(EXIT_RECUSA);
   }
 
-  // Valida formato (normaliza EOL primeiro)
-  const linhas = normalizarEol(conteudoCommit).split('\n');
+  // Valida formato. Aqui decodificar e legitimo: o que se procura sao
+  // cabecalhos ASCII, e a integridade ja foi comparada sobre bytes.
+  const linhas = normalizarEolBytes(bytesCommit).toString('utf8').split('\n');
 
   // Procura pela secao "## Freios"
   const temFreios = linhas.some(linha => linha === '## Freios');
@@ -221,14 +270,22 @@ function exigirAncoraEFormato(slug) {
     }
   }
 
-  // Valida: 5 a 7 mecanismos, com formato correto
+  // Cabecalho `### M` malformado REPROVA, sempre — nunca e ignorado.
+  //
+  // Antes ele so era relatado quando NENHUM casava, e isso deixava o teto de
+  // 5-7 burlavel: cinco bem formados mais `### M6:` e `### M7:` contavam
+  // cinco, passavam a faixa e saiam 0, com dois mecanismos que o validador
+  // nunca viu. `references/formato-manifesto.md` diz que essas formas sao
+  // REJEITADAS, e divergencia entre o doc e a regex e defeito pela propria
+  // letra daquele arquivo.
+  if (primeiraLinhaOffensora) {
+    console.error(`cabecalho de mecanismo fora do formato '### M<n> ': ${primeiraLinhaOffensora} (${caminhoManifesto})`);
+    process.exit(EXIT_RECUSA);
+  }
+
+  // Valida: 5 a 7 mecanismos
   if (numerosM.length < 5 || numerosM.length > 7) {
-    if (numerosM.length === 0 && primeiraLinhaOffensora) {
-      // Tem "### M" mas formato errado
-      console.error(`cabecalho de mecanismo fora do formato '### M<n> ': ${primeiraLinhaOffensora} (${caminhoManifesto})`);
-    } else {
-      console.error(`quantidade invalida de mecanismos: ${numerosM.length} (esperado 5-7) (${caminhoManifesto})`);
-    }
+    console.error(`quantidade invalida de mecanismos: ${numerosM.length} (esperado 5-7) (${caminhoManifesto})`);
     process.exit(EXIT_RECUSA);
   }
 
@@ -277,7 +334,6 @@ if (subcomando === 'conferir') {
     'show',
     `${ancora}:${caminhoManifesto}`,
   ], {
-    encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, MSYS_NO_PATHCONV: '1' },
   });
@@ -286,6 +342,9 @@ if (subcomando === 'conferir') {
     process.exit(EXIT_GIT_FALHOU);
   }
 
+  // Buffer direto para stdout: o que o critico cego le e byte a byte o que
+  // o `git show` devolve. Decodificar e reescrever trocaria byte invalido
+  // por U+FFFD e a leitura deixaria de ser a do commit.
   process.stdout.write(resShow.stdout);
   process.exit(0);
 } else {

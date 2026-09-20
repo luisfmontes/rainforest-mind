@@ -182,3 +182,65 @@ para: if (false) validarSlug(slug);
 bateria: bash scripts/testa-conferir-regua.sh
 fixture: testa-conferir-regua.sh, caso 17 "--slug com ../ nao escapa de docs/rainforest/reguas/"
 ```
+
+**Rodada 5 (2026-09-20), seis achados — um deles atinge a D1.** A revisão
+reprovou, e o bloqueante não era de implementação: **em clone raso o selo não
+tem no que ancorar**. `git log --diff-filter=A` devolve o commit de adição
+*visível*; num clone raso o único commit visível é a fronteira, cujo conteúdo é,
+por construção, o do checkout — a comparação de integridade compara o arquivo
+consigo mesmo. Reproduzido lado a lado no mesmo repositório: completo sai 1,
+raso sai 0 e o `mostrar` entrega a régua afrouxada ao crítico cego. E
+`--depth 1` é o default do `actions/checkout`.
+
+A decisão subiu ao usuário, como o teto manda, porque a pergunta era de design:
+a D1 diz "git é o selo". **Decidido: manter a D1 e recusar clone raso** — o
+conferidor detecta `--is-shallow-repository` e sai 2 (ambiente), em vez de
+julgar errado. É a D5 aplicada: âncora que não resolve aborta. O preço é
+declarado na skill: em CI, `fetch-depth: 0`. A alternativa (hash próprio como
+âncora de reserva) segue em "avaliado e descartado" no design — este achado é o
+contraexemplo que faltava a ela, e reabri-la custaria o fluxo desde o primeiro
+estágio.
+
+Os outros cinco são conserto da mesma rodada:
+
+- **A2** — a leitura era decodificada como UTF-8 dos dois lados. Byte inválido
+  vira U+FFFD, então bytes diferentes passavam por iguais, e o `mostrar`
+  entregava manifesto CP-1252 com todo acento trocado — quebrando o
+  `pronto quando` da T2, que exige stdout byte a byte igual ao `git show`.
+  Agora compara e escreve `Buffer`, com EOL normalizado sobre bytes.
+- **A3** — cabeçalho `### M<n>` malformado era ignorado em silêncio quando
+  havia outros bem formados, e o teto de 5-7 ficava burlável. Reproduzido: 5
+  válidos + `### M6:`/`### M7:` saía 0 com 7 cabeçalhos no arquivo. Agora
+  qualquer `### M` fora do formato reprova.
+- **A4** — duas asserções do caso 17 passavam por coincidência: slug
+  inexistente também sai 2. Ganharam asserção de mensagem.
+- **A5** — `stdout_bytes` e a comparação do caso 7 passavam por `$(...)`, que
+  come newline final: "zero byte" e "byte a byte" mediam outra coisa. Agora vão
+  para arquivo e são julgados por `wc -c` e `cmp`.
+- **A6** — o sub-bloco `Uso:` de `conferir` não listava "git falhou" entre os
+  motivos de exit 2.
+
+pronto quando (rodada 5): no mesmo repositório, com a régua commitada e depois
+adulterada e commitada, `conferir` sai **1** no checkout completo e **2** no
+`git clone --depth 1` dele, com `mostrar` imprimindo **zero bytes** no raso; e
+um manifesto com cinco `### M<n>` bem formados mais `### M6:` sai **1**
+nomeando o cabeçalho ofensor — provado por `bash scripts/testa-conferir-regua.sh`
+devolvendo `resultado: N ok, 0 falha(s)`, exit 0 e zero pulados.
+
+Alvos de mutação da rodada 5, em cerca pelo mesmo motivo da rodada 4 (o bloco
+`mutacao:` que o `cobertura` lê é o da tarefa 6). Estes são os que a integração
+re-rodou:
+
+```
+arquivo: scripts/conferir-regua.cjs
+de: if (!raso.error && raso.status === 0 && raso.stdout.trim() === "true") {
+para: if (false) {
+bateria: bash scripts/testa-conferir-regua.sh
+fixture: testa-conferir-regua.sh, caso 18 "clone raso nao ancora"
+
+arquivo: scripts/conferir-regua.cjs
+de: if (primeiraLinhaOffensora) {
+para: if (false) {
+bateria: bash scripts/testa-conferir-regua.sh
+fixture: testa-conferir-regua.sh, caso 19 "### M<n> malformado REPROVA mesmo com 5 bem formados"
+```

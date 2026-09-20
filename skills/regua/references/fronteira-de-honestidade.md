@@ -31,3 +31,20 @@ Esta regra é comprada com a vida do repositório. Estimativa que fica lá não 
 bem — daqui a um ano ela é história, e a próxima pessoa lê como fato. Três linhas
 de honestidade ("número saiu de bateria medida com gate, CLI: codex") custam bem
 menos que quatro meses de alguém acreditando em número que não existe.
+
+## O topo continua procedural
+
+A sessão que orquestra precisa chamar o comando certo, porque quem orquestra é
+um LLM. Não é promessa de impossibilidade de burla; é limite honesto de onde
+termina a garantia.
+
+## E o selo precisa de histórico
+
+O selo é o git, e em clone raso não há no que ancorar: o único commit visível é
+a fronteira do clone, e o conteúdo dela é, por construção, o que está no
+checkout — a comparação de integridade compararia o arquivo consigo mesmo e
+sairia 0 sobre régua adulterada.
+
+Por isso `conferir-regua.cjs` detecta clone raso e **se recusa a julgar**
+(exit 2, ambiente), em vez de julgar errado. Quem roda o loop em CI precisa de
+`fetch-depth: 0` — `--depth 1` é o default do `actions/checkout`.

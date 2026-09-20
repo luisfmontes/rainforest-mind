@@ -41,13 +41,22 @@ contem() { # nome, agulha, comando...
   else falhou=$((falhou+1)); echo "  FALHA $nome: não achei '$txt'"; echo "$saida" | sed 's/^/         /' | tail -3; fi
 }
 
-stdout_bytes() { # comando...
-  local saida; saida=$("$@" 2>/dev/null)
-  echo -n "$saida" | wc -c
+# ATENCAO: nada aqui passa a saida por $(...). A substituicao de comando
+# REMOVE os newlines finais antes de qualquer contagem, e era isso que fazia
+# "zero byte" e "byte a byte" medirem outra coisa: um `mostrar` que imprimisse
+# so um newline antes de sair 1 era contado como 0 bytes, e uma regressao que
+# sumisse com o newline final do manifesto passava por identica. A saida vai
+# para arquivo, e quem julga e `wc -c` / `cmp` sobre o arquivo.
+stdout_para() { # arquivo, comando...
+  local alvo="$1"; shift
+  "$@" >"$alvo" 2>/dev/null
 }
 
-stdout_conteudo() { # comando...
-  "$@" 2>/dev/null
+stdout_bytes() { # comando...
+  local tmp="$CAIXA/stdout-$$-$RANDOM.bin"
+  "$@" >"$tmp" 2>/dev/null
+  wc -c < "$tmp" | tr -d " "
+  rm -f "$tmp"
 }
 
 echo "== 1. manifesto editado na arvore de trabalho recusa =="
@@ -227,21 +236,19 @@ node "$SCRIPT" conferir --slug teste-4 >/dev/null 2>&1 || conf_exit=$?
 if [ "$conf_exit" = "0" ]; then echo "  ok   conferir passa (sanidade)"
 else echo "  FALHA conferir: exit $conf_exit"; fi
 
-# Captura o conteúdo esperado (do commit)
+# Byte a byte de verdade: arquivo contra arquivo, com `cmp`. Newline final
+# inclusive — era ele que $(...) apagava dos dois lados.
 ancora=$(git log --diff-filter=A --format=%H -- docs/rainforest/reguas/teste-4.md | tail -1)
-esperado_conteudo=$(MSYS_NO_PATHCONV=1 git show "$ancora":docs/rainforest/reguas/teste-4.md)
+MSYS_NO_PATHCONV=1 git show "$ancora":docs/rainforest/reguas/teste-4.md > "$CAIXA/esperado-7.bin"
+stdout_para "$CAIXA/mostrar-7.bin" node "$SCRIPT" mostrar --slug teste-4
 
-# Captura o conteúdo do mostrar
-mostrar_conteudo=$(stdout_conteudo node "$SCRIPT" mostrar --slug teste-4)
-
-# Compara byte a byte
-if [ "$esperado_conteudo" = "$mostrar_conteudo" ]; then ok=$((ok+1)); echo "  ok   mostrar imprime conteudo idêntico da âncora"
+if cmp -s "$CAIXA/esperado-7.bin" "$CAIXA/mostrar-7.bin"; then
+  ok=$((ok+1)); echo "  ok   mostrar imprime conteudo byte a byte identico ao da âncora"
 else
   falhou=$((falhou+1))
   echo "  FALHA mostrar: conteúdo diverge da âncora"
-  exp_len=$(echo -n "$esperado_conteudo" | wc -c)
-  most_len=$(echo -n "$mostrar_conteudo" | wc -c)
-  echo "         esperado: $exp_len bytes, mostrar: $most_len bytes"
+  echo "         esperado: $(wc -c < "$CAIXA/esperado-7.bin") bytes, mostrar: $(wc -c < "$CAIXA/mostrar-7.bin") bytes"
+  cmp "$CAIXA/esperado-7.bin" "$CAIXA/mostrar-7.bin" | sed "s/^/         /"
 fi
 
 echo
@@ -629,8 +636,106 @@ else
   ok=$((ok+1)); echo "  ok   a saida nao menciona caminho montado com .."
 fi
 
+# Exit 2 sozinho NAO discrimina aqui: slug inexistente tambem sai 2 (caso 5),
+# e os dois abaixo montam caminho que nao existe. Sem a assercao de mensagem
+# eles ficariam verdes com a validacao removida — passavam por coincidencia.
 esperado "slug com barra recusa" 2 node "$SCRIPT" conferir --slug "reguas/dentro"
+contem "slug com barra recusa PELO motivo certo" "slug invalido" node "$SCRIPT" conferir --slug "reguas/dentro"
 esperado "slug com dois-pontos recusa" 2 node "$SCRIPT" conferir --slug "dentro:stream"
+contem "slug com dois-pontos recusa PELO motivo certo" "slug invalido" node "$SCRIPT" conferir --slug "dentro:stream"
+
+cd "$REPO2"
+
+echo
+echo "== 18. clone raso nao ancora: ambiente (2), nunca 0 sobre regua adulterada =="
+# O achado bloqueante da rodada 5. Num clone raso o unico commit visivel e a
+# fronteira, e o conteudo dela e o que esta no checkout: a comparacao de
+# integridade comparava o arquivo consigo mesmo. O caso monta o cenario
+# inteiro — regua selada, depois adulterada E COMMITADA — para que o repo
+# completo e o clone raso sejam medidos lado a lado. Sem a guarda, o raso sai
+# 0 e o `mostrar` entrega a regua afrouxada ao critico cego.
+REPO9="$CAIXA/repo-fundo"
+mkdir -p "$REPO9/docs/rainforest/reguas"
+cd "$REPO9"
+git init >/dev/null 2>&1
+git config user.email "test@<email>"
+git config user.name "Test User"
+git config commit.gpgsign false
+cp "$REPO2/docs/rainforest/reguas/autocrlf-test.md" docs/rainforest/reguas/fundo.md
+git add -A >/dev/null 2>&1
+git commit -q -m "regua selada" >/dev/null 2>&1
+sed -i "s/^### M1 .*/### M1 criterio afrouxado/" docs/rainforest/reguas/fundo.md
+git add -A >/dev/null 2>&1
+git commit -q -m "adultera a regua depois de selada" >/dev/null 2>&1
+
+# Contraprova: no repo COMPLETO a adulteracao e pega.
+esperado "repo completo pega a regua adulterada" 1 node "$SCRIPT" conferir --slug fundo
+
+RASO="$CAIXA/clone-raso"
+rm -rf "$RASO"
+git clone -q --depth 1 "file://$REPO9" "$RASO" >/dev/null 2>&1
+cd "$RASO"
+if [ "$(git rev-parse --is-shallow-repository 2>/dev/null)" = "true" ]; then
+  ok=$((ok+1)); echo "  ok   o clone e mesmo raso (o caso alcanca a guarda)"
+else
+  falhou=$((falhou+1)); echo "  FALHA o clone nao ficou raso — o caso nao mede nada"
+fi
+esperado "clone raso e AMBIENTE (2), nao veredito" 2 node "$SCRIPT" conferir --slug fundo
+contem "clone raso diz por que e o que fazer" "clone raso" node "$SCRIPT" conferir --slug fundo
+esperado "mostrar tambem recusa em clone raso" 2 node "$SCRIPT" mostrar --slug fundo
+
+bytes9=$(stdout_bytes node "$SCRIPT" mostrar --slug fundo)
+if [ "$bytes9" = "0" ]; then
+  ok=$((ok+1)); echo "  ok   o critico cego nao recebe a regua afrouxada"
+else
+  falhou=$((falhou+1)); echo "  FALHA mostrar imprimiu $bytes9 bytes em clone raso"
+fi
+
+cd "$REPO2"
+
+echo
+echo "== 19. ### M<n> malformado REPROVA mesmo com 5 bem formados =="
+# O teto de 5-7 era burlavel: o laco so contava o que casava a regex, e o
+# resto virava uma variavel que so era lida quando NENHUM casava. Cinco bem
+# formados + `### M6:` e `### M7:` davam cinco, dentro da faixa, exit 0 — com
+# dois mecanismos que o validador nunca viu. O caso 13 nao cobre isto: la os
+# malformados sao a totalidade.
+REPO10="$CAIXA/repo-teto"
+mkdir -p "$REPO10/docs/rainforest/reguas"
+cd "$REPO10"
+git init >/dev/null 2>&1
+git config user.email "test@<email>"
+git config user.name "Test User"
+git config commit.gpgsign false
+{
+  printf "# Regua misturada
+
+## Freios
+
+"
+  for n in 1 2 3 4 5; do printf "### M%s mecanismo
+corpo
+
+" "$n"; done
+  printf "### M6: sexto invisivel
+corpo
+
+### M7: setimo invisivel
+corpo
+"
+} > docs/rainforest/reguas/misturado.md
+git add -A >/dev/null 2>&1
+git commit -q -m "cinco validos e dois malformados" >/dev/null 2>&1
+
+cabecalhos=$(grep -c "^### M" docs/rainforest/reguas/misturado.md)
+if [ "$cabecalhos" = "7" ]; then
+  ok=$((ok+1)); echo "  ok   o manifesto tem mesmo 7 cabecalhos ### M (5 validos + 2 malformados)"
+else
+  falhou=$((falhou+1)); echo "  FALHA esperava 7 cabecalhos, achei $cabecalhos — o caso nao mede nada"
+fi
+esperado "5 validos + 2 malformados REPROVA" 1 node "$SCRIPT" conferir --slug misturado
+contem "e a mensagem nomeia o cabecalho ofensor" "### M6: sexto invisivel" node "$SCRIPT" conferir --slug misturado
+esperado "mostrar tambem recusa" 1 node "$SCRIPT" mostrar --slug misturado
 
 cd "$REPO2"
 

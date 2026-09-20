@@ -32,3 +32,9 @@ A linha exata:
 
 Define o ponto onde a régua anuncia seu teto de rodadas. Uma seção `## Freios:`
 ou `## freios` não passa na validação.
+
+A rejeição vale **mesmo em manifesto misto**: cinco cabeçalhos bem formados
+mais um `### M6:` reprovam o arquivo inteiro. Antes o validador contava só os
+que casavam e o resto sumia — cinco dentro da faixa 5-7 e exit 0, com dois
+mecanismos que ele nunca viu. Cabeçalho `### M` fora do formato é recusa,
+nunca omissão.

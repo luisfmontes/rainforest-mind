@@ -86,9 +86,9 @@ impressão, e só imprime se passou. Arquivo lido direto, ou por `git show` por
 conta do orquestrador, falseia o mecanismo — o ganho de ter a régua sob controle
 do git é **um ponto onde burlar**, em vez de um por rodada e por crítico.
 
-O topo continua procedural — a sessão que orquestra precisa chamar o comando
-certo — porque quem orquestra é um LLM. Não é promessa de impossibilidade de
-burla; é limite honesto de onde termina a garantia.
+O selo é o histórico do git: em clone raso o conferidor recusa (exit 2) em vez
+de julgar — em CI, `fetch-depth: 0`. Onde a garantia termina:
+`references/fronteira-de-honestidade.md`.
 
 ### Preflight: quem consegue ver o quê
 
