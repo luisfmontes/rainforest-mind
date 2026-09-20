@@ -77,11 +77,17 @@ function ancoraDe(slug) {
   });
 
   // AMBIENTE (2) vs. VEREDITO (1), e a distincao nao se faz por texto de erro.
-  // `git log` sai != 0 em DOIS casos muito diferentes: o git nao executou, e o
-  // repositorio nao tem commit nenhum ainda. O segundo e "manifesto nunca
-  // commitado", que e veredito legitimo sobre o trabalho. Quem separa os dois e
-  // um `git rev-parse --git-dir`: se ELE responde, o git existe e estamos num
-  // repositorio, entao a falha do `log` so pode ser ausencia de commit.
+  // `git log` sai != 0 em casos muito diferentes: o git nao executou, estamos
+  // fora de repositorio, o repositorio nao tem commit nenhum, ou o historico
+  // existe mas nao pode ser lido (objeto corrompido). So o TERCEIRO e veredito
+  // legitimo sobre o trabalho; os outros sao ambiente.
+  //
+  // A sonda nao pode ser `rev-parse --git-dir` sozinha: ela apenas resolve o
+  // caminho do .git e responde 0 mesmo com o objeto do HEAD corrompido, o que
+  // fazia corrupcao real ser reportada como "manifesto nunca commitado".
+  // Quem separa e `for-each-ref`, que responde se existe ALGUMA ref sem
+  // precisar ler objeto: sem ref nenhuma o repositorio nunca recebeu commit;
+  // com ref e o log falhando, a falha e do ambiente.
   if (res.error || res.status !== 0) {
     const sonda = spawnSync('git', ['rev-parse', '--git-dir'], {
       encoding: 'utf8',
@@ -89,6 +95,22 @@ function ancoraDe(slug) {
     });
     if (sonda.error || sonda.status !== 0) {
       console.error(`git indisponivel ou fora de repositorio ao resolver a ancora de ${slug}`);
+      process.exit(EXIT_GIT_FALHOU);
+    }
+
+    // `--format=%(refname)` importa: sem ele o for-each-ref precisa LER o
+    // objeto apontado por cada ref, e num repositorio corrompido ele falha
+    // junto com o log, apagando a distincao que esta sonda existe para fazer.
+    const refs = spawnSync('git', ['for-each-ref', '--count=1', '--format=%(refname)'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    if (refs.error || refs.status !== 0) {
+      console.error(`git falhou ao listar referencias ao resolver a ancora de ${slug}`);
+      process.exit(EXIT_GIT_FALHOU);
+    }
+    if (refs.stdout.trim() !== '') {
+      console.error(`git falhou ao ler o historico ao resolver a ancora de ${slug} (o repositorio TEM referencias)`);
       process.exit(EXIT_GIT_FALHOU);
     }
     return null;
@@ -158,7 +180,7 @@ function exigirAncoraEFormato(slug) {
   }
 
   // Procura por cabecalhos ### M<n>
-  const regexM = /^### M(\d+)(?:\s|$)/;
+  const regexM = /^### M(\d+) +\S/;
   const regexMQualquer = /^### M/;
   const numerosM = [];
   let primeiraLinhaOffensora = null;

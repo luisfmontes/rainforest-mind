@@ -404,6 +404,80 @@ esperado "rejeita cabecalho com ':' em vez de espaço" 1 node "$SCRIPT" conferir
 contem "  ... mensagem menciona formato" "formato" node "$SCRIPT" conferir --slug formato-errado
 
 echo
+echo "== 12. historico ilegivel (objeto corrompido) sai 2, nao 1 =="
+# O caso 10 cobre "repositorio sem commit nenhum" (veredito, 1). Este cobre o
+# outro lado: o historico EXISTE e o git nao consegue le-lo. Uma sonda que so
+# resolva o caminho do .git responde 0 aqui e classifica corrupcao como
+# "nunca commitado" — foi o achado B1.
+REPO4="$CAIXA/repo-corrompido"
+mkdir -p "$REPO4/docs/rainforest/reguas"
+cd "$REPO4"
+git init >/dev/null 2>&1
+git config user.email "test@<email>"
+git config user.name "Test User"
+git config commit.gpgsign false
+cp "$REPO2/docs/rainforest/reguas/autocrlf-test.md" docs/rainforest/reguas/corrompido.md
+git add -A >/dev/null 2>&1
+git commit -q -m "manifesto" >/dev/null 2>&1
+SHA_HEAD=$(git rev-parse HEAD)
+OBJ=".git/objects/${SHA_HEAD:0:2}/${SHA_HEAD:2}"
+if [ -f "$OBJ" ]; then
+  # Objeto solto nasce read-only (444): sem remover antes, o redirecionamento
+  # falha com "Permission denied" e o caso mede o repositorio INTACTO.
+  rm -f "$OBJ"
+  echo "lixo que nao e um objeto git" > "$OBJ"
+  if git cat-file -t HEAD >/dev/null 2>&1; then
+    falhou=$((falhou+1)); echo "  FALHA nao consegui corromper o objeto do HEAD — caso nao mediu nada"
+  fi
+  saida_corr=$(node "$SCRIPT" conferir --slug corrompido 2>&1); ec_corr=$?
+  if [ "$ec_corr" = "2" ]; then
+    ok=$((ok+1)); echo "  ok   objeto corrompido sai 2, nao 1 (exit $ec_corr)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA objeto corrompido: esperava exit 2, veio $ec_corr"
+    echo "$saida_corr" | sed 's/^/         /' | tail -4
+  fi
+  if echo "$saida_corr" | grep -q "TEM referencias"; then
+    ok=$((ok+1)); echo "  ok     ... diz que o repositorio TEM referencias, nao acusa de nunca commitado"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mensagem nao distingue historico ilegivel de ausencia de commit"
+    echo "$saida_corr" | sed 's/^/         /' | tail -4
+  fi
+else
+  falhou=$((falhou+1)); echo "  FALHA nao achei o objeto solto do HEAD em $OBJ — caso nao mediu nada"
+fi
+
+cd "$REPO2"
+
+echo
+echo "== 13. cabecalho ### M<n> sem descricao e rejeitado (doc e codigo batem) =="
+# references/formato-manifesto.md promete que `### M1` sem espaco reprova. O
+# regex antigo aceitava, porque fim de linha satisfazia a alternativa `$` —
+# achado B2. Doc que promete mais rigor que o codigo e pior que doc ausente.
+cat > docs/rainforest/reguas/sem-descricao.md << 'FIMMANIFESTO'
+# Régua sem descrição nos mecanismos
+
+## Freios
+
+Teto de rodadas: 5.
+
+### M1
+### M2
+### M3
+### M4
+### M5
+FIMMANIFESTO
+git add -A >/dev/null 2>&1
+git commit -q -m "manifesto sem descricao" >/dev/null 2>&1
+esperado "### M1 sem descricao reprova" 1 node "$SCRIPT" conferir --slug sem-descricao
+contem "  ... mensagem cita o formato exigido" "fora do formato" node "$SCRIPT" conferir --slug sem-descricao
+saida_semdesc=$(node "$SCRIPT" mostrar --slug sem-descricao 2>/dev/null)
+if [ -z "$saida_semdesc" ]; then
+  ok=$((ok+1)); echo "  ok     ... mostrar nao imprime nada nesse caso"
+else
+  falhou=$((falhou+1)); echo "  FALHA mostrar imprimiu ${#saida_semdesc} bytes com formato invalido"
+fi
+
+echo
 echo "== Resumo =="
 resultado=$((ok+falhou))
 if [ "$falhou" = "0" ]; then
