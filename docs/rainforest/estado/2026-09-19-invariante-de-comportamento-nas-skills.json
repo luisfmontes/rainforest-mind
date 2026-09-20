@@ -6,10 +6,22 @@
     "status": "pendente"
   },
   "design": {
-    "status": "pendente"
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-19-invariante-de-comportamento-nas-skills.md",
+    "decisoes": 11,
+    "frases_aprovadas": 10,
+    "cortes_do_usuario": 0,
+    "em": "2026-09-19"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-09-19-invariante-de-comportamento-nas-skills.md",
+    "tarefas": 4,
+    "paralelas": [
+      1,
+      4
+    ],
+    "em": "2026-09-19"
   },
   "executar": {
     "status": "pendente"
