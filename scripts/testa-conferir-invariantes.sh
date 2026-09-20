@@ -15,13 +15,23 @@
 # 11. O script falha com exit 1 quando o `invariantes.json` é array vazio
 # 12. O script falha com exit 1 quando o `invariantes.json` não é array, sem stack do Node
 # 13. O script falha com exit 1 quando `onde` está presente sem degrau reconhecido
-# 14. A caixa de areia compartilhada das mutações sai 0 ANTES de qualquer mutação
+# 14. O script falha com exit 1 quando a invariante traz chave desconhecida
+# 15. O script falha com exit 1 quando `nao_deve` traz `onde`
+# 16. CADA bloco de mutação sai 0 na sua própria caixa ANTES de mutar
+# 17. O roster de skills protegidas continua o mesmo (7 arquivos, 15 invariantes)
 #
-# Sobre o item 14, que é linha de base e não caso: até 2026-09-20 a `$CAIXA`
-# compartilhada não copiava `skills/rainforest-mind/references/`, então ela já
-# saía **exit 2** antes da primeira mutação. Como os cinco blocos de mutação só
-# aferem `exit != 0`, todos ficariam vermelhos com a mutação sendo no-op. A
-# asserção de linha de base é o que impede esse vácuo de voltar em silêncio.
+# Sobre o item 16, que é linha de base e não caso: até 2026-09-20 a `$CAIXA` das
+# mutações era UMA, criada no setup e nunca restaurada entre os blocos. Duas
+# coisas quebravam por causa disso. A primeira: ela não copiava
+# `skills/rainforest-mind/references/`, então já saía **exit 2** antes da
+# primeira mutação. A segunda, achada pela terceira revisão depois que a cópia
+# entrou: do bloco (2) em diante cada bloco rodava sobre a árvore que o anterior
+# estragou, e como todos só aferem `exit != 0`, qualquer um deles podia virar
+# no-op — alvo de `replace` errado, frase renomeada, refactor — e continuar
+# imprimindo `ok VERMELHO`. Medido sem aplicar nenhuma das mutações (2) a (5):
+# todas as quatro continuavam verdes. O conserto é cada bloco montar a SUA caixa
+# com `nova_caixa_rf` e asserir a linha de base dela antes de mutar; a asserção
+# por bloco é o que impede esse vácuo de voltar em silêncio.
 #
 # Autoria de `tipo: nao_deve`:
 # - Frase proibida só vale se for vocabulário que o texto correto nunca usa
@@ -60,6 +70,103 @@ nova_caixa() {
   cp -r hooks "$tmp/"
   echo "$tmp"
 }
+
+# Caixa completa da `rainforest-mind` — a única skill com a marca `<!-- detalhe -->`,
+# então as mutações de núcleo e de referência só existem aqui. Cada bloco de
+# mutação monta a SUA caixa: até 2026-09-20 havia uma só, nunca restaurada, e do
+# bloco (2) em diante cada um rodava sobre a árvore estragada pelo anterior.
+nova_caixa_rf() {
+  local tmp="$(mktemp -d)"
+  mkdir -p "$tmp/skills/rainforest-mind" "$tmp/scripts"
+  cp scripts/conferir-invariantes.cjs "$tmp/scripts/"
+  cp skills/rainforest-mind/invariantes.json "$tmp/skills/rainforest-mind/"
+  cp skills/rainforest-mind/SKILL.md "$tmp/skills/rainforest-mind/SKILL.md"
+  # A invariante da regra 15 exige o degrau `referencia`. Sem esta cópia a caixa
+  # nasce exit 2 e a mutação do bloco vira no-op.
+  cp -r skills/rainforest-mind/references "$tmp/skills/rainforest-mind/"
+  cp -r hooks "$tmp/"
+  echo "$tmp"
+}
+
+# Asserção de linha de base de UM bloco de mutação: a caixa íntegra tem de sair 0
+# ANTES de mutar. Sem ela o bloco só afere `exit != 0`, e caixa que já sai != 0 dá
+# vermelho de vácuo — a mutação pode não medir nada e o caso imprime `ok`.
+# $1 = caixa   $2 = nome do caso (começa com LINHA DE BASE)
+assere_base() {
+  (cd "$1/scripts" && node conferir-invariantes.cjs > /tmp/caixa-linha-de-base.log 2>&1)
+  local estado=$?
+  if [ "$estado" -eq 0 ]; then
+    ok=$((ok+1)); echo "  ok   $2 (exit 0)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA $2 — saiu $estado; a mutacao deste bloco NAO MEDE NADA"
+    sed 's/^/    | /' /tmp/caixa-linha-de-base.log
+  fi
+}
+
+# Roster: QUAIS skills estão protegidas. O checador pula em silêncio diretório de
+# skill sem `invariantes.json` — e tem de continuar pulando, porque as caixas de
+# areia acima dependem disso. A guarda "zero arquivos sai 1" é satisfeita para
+# sempre pela `rainforest-mind` sozinha, então apagar os seis arquivos das skills
+# de ação tirava dez frases da proteção com o CI verde (achado da revisão,
+# 2026-09-20). Quem tranca isso é a asserção de roster + contagem abaixo.
+ROSTER_ESPERADO="executar fechar limpar plano rainforest-mind revisar verificar"
+ROSTER_ATUAL=""
+ROSTER_EXIT=-1
+ROSTER_CONTAGEM=-1
+
+# Preenche ROSTER_ATUAL / ROSTER_EXIT / ROSTER_CONTAGEM a partir da árvore em $1
+avalia_roster() {
+  ROSTER_ATUAL="$(cd "$1" && for f in skills/*/invariantes.json; do
+    [ -e "$f" ] && basename "$(dirname "$f")"
+  done | LC_ALL=C sort | tr '\n' ' ' | sed 's/ *$//')"
+  (cd "$1/scripts" && node conferir-invariantes.cjs > /tmp/roster.log 2>&1)
+  ROSTER_EXIT=$?
+  ROSTER_CONTAGEM="$(sed -n 's/.*conferidas \([0-9][0-9]*\) invariantes.*/\1/p' /tmp/roster.log | head -1)"
+  [ -n "$ROSTER_CONTAGEM" ] || ROSTER_CONTAGEM=-1
+}
+
+roster_verde() {
+  if [ "$ROSTER_ESPERADO" = "$ROSTER_ATUAL" ] && [ "$ROSTER_EXIT" -eq 0 ] && [ "$ROSTER_CONTAGEM" -eq 15 ]; then
+    return 0
+  fi
+  return 1
+}
+
+ROSTER_OK=1
+avalia_roster "."
+if ! roster_verde; then
+  ROSTER_OK=0
+  echo "    (repo real: esperado [$ROSTER_ESPERADO])"
+  echo "    (repo real: atual    [$ROSTER_ATUAL])"
+  echo "    (repo real: conferir saiu $ROSTER_EXIT, conferiu $ROSTER_CONTAGEM invariantes)"
+  echo "    (oitava skill protegida entrou de proposito? atualize ROSTER_ESPERADO, o '-eq 15' de roster_verde e o nome deste caso, aqui neste arquivo)"
+fi
+# Controle da própria trava: com um `invariantes.json` a menos, o roster TEM de
+# ficar vermelho. Sem este controle, `roster_verde` sempre-verdadeiro passaria
+# despercebido — a trava existiria sem trancar nada.
+CAIXA_ROSTER="$(mktemp -d)"
+mkdir -p "$CAIXA_ROSTER/scripts"
+cp scripts/conferir-invariantes.cjs "$CAIXA_ROSTER/scripts/"
+cp -r hooks "$CAIXA_ROSTER/"
+for f in skills/*/invariantes.json; do
+  s="$(basename "$(dirname "$f")")"
+  mkdir -p "$CAIXA_ROSTER/skills/$s"
+  cp "skills/$s/invariantes.json" "skills/$s/SKILL.md" "$CAIXA_ROSTER/skills/$s/"
+  if [ -d "skills/$s/references" ]; then cp -r "skills/$s/references" "$CAIXA_ROSTER/skills/$s/"; fi
+done
+rm -f "$CAIXA_ROSTER/skills/limpar/invariantes.json"
+avalia_roster "$CAIXA_ROSTER"
+if roster_verde; then
+  ROSTER_OK=0
+  echo "    (controle: apagar skills/limpar/invariantes.json NAO deixou o roster vermelho — a trava nao tranca nada)"
+  echo "    (controle: atual [$ROSTER_ATUAL], conferir saiu $ROSTER_EXIT, conferiu $ROSTER_CONTAGEM invariantes)"
+fi
+rm -rf "$CAIXA_ROSTER"
+if [ "$ROSTER_OK" -eq 1 ]; then
+  ok=$((ok+1)); echo "  ok   ROSTER: as skills protegidas continuam as mesmas (7 arquivos, 15 invariantes)"
+else
+  falhou=$((falhou+1)); echo "  FALHA ROSTER: as skills protegidas continuam as mesmas (7 arquivos, 15 invariantes)"
+fi
 
 # Caso: nao_deve: frase proibida presente no corpo reprova
 CAIXA_NAODEV="$(nova_caixa)"
@@ -224,8 +331,10 @@ fi
 rm -rf "$CAIXA_ARR_VAZIO"
 
 # Caso: invariantes.json fora do formato array reprova com mensagem legivel, sem stack do Node
+# As tres ultimas formas sao ELEMENTO fora de formato DENTRO do array: ate
+# 2026-09-20 elas batiam na desestruturacao e saiam com stack cru de TypeError.
 FORA_FORMATO_OK=1
-for conteudo in '{"frase":"x"}' 'null' '"texto"' '42'; do
+for conteudo in '{"frase":"x"}' 'null' '"texto"' '42' '[null]' '["x"]' '[42]'; do
   CAIXA_FORA="$(nova_caixa)"
   mkdir -p "$CAIXA_FORA/skills/fechar"
   cp skills/fechar/SKILL.md "$CAIXA_FORA/skills/fechar/SKILL.md"
@@ -278,34 +387,68 @@ else
   falhou=$((falhou+1)); echo "  FALHA VERMELHO: onde presente sem degrau reconhecido reprova (exit 1)"
 fi
 
-# Casos vermelhos para rainforest-mind — mutações numa CÓPIA, nunca no repo
-CAIXA="$(mktemp -d)"
-trap 'rm -rf "${CAIXA:-}"' EXIT
-
-mkdir -p "$CAIXA/skills/rainforest-mind" "$CAIXA/scripts"
-cp scripts/conferir-invariantes.cjs "$CAIXA/scripts/"
-cp skills/rainforest-mind/invariantes.json "$CAIXA/skills/rainforest-mind/"
-cp skills/rainforest-mind/SKILL.md "$CAIXA/skills/rainforest-mind/SKILL.md"
-# A invariante da regra 15 exige o degrau `referencia`. Sem esta cópia a caixa já
-# nasce exit 2 e as cinco mutações abaixo viram no-op (achado da revisão, 2026-09-20).
-cp -r skills/rainforest-mind/references "$CAIXA/skills/rainforest-mind/"
-cp -r hooks "$CAIXA/"
-
-# LINHA DE BASE: a caixa íntegra tem de passar ANTES de qualquer mutação.
-# Se esta asserção ficar vermelha, os casos de mutação seguintes não medem nada:
-# eles só aferem `exit != 0`, e uma caixa que já sai != 0 dá vermelho de vácuo.
-(cd "$CAIXA/scripts" && node conferir-invariantes.cjs > /tmp/caixa-linha-de-base.log 2>&1)
-BASELINE_CAIXA=$?
-if [ "$BASELINE_CAIXA" -eq 0 ]; then
-  ok=$((ok+1)); echo "  ok   LINHA DE BASE: caixa integra passa no conferir (exit 0)"
-else
-  falhou=$((falhou+1)); echo "  FALHA LINHA DE BASE: caixa integra passa no conferir (exit 0) — saiu $BASELINE_CAIXA; a linha de base da caixa esta quebrada e os casos de mutacao seguintes NAO MEDEM NADA"
-  sed 's/^/    | /' /tmp/caixa-linha-de-base.log
+# Caso: chave desconhecida na invariante reprova — antes era descartada em silencio.
+# A segunda forma e' a medida: `ondes` no lugar de `onde` derrubava as cinco
+# invariantes da rainforest-mind para presenca-no-corpo, e a mutacao canonica do
+# projeto passava com exit 0.
+CHAVE_DESCONHECIDA_OK=1
+for conteudo in '[{"frase":"x","xpto":"lixo"}]' '[{"frase":"O destino da branch é sempre PR","ondes":["skill","nucleo"]}]'; do
+  CAIXA_CHAVE="$(nova_caixa)"
+  mkdir -p "$CAIXA_CHAVE/skills/fechar"
+  cp skills/fechar/SKILL.md "$CAIXA_CHAVE/skills/fechar/SKILL.md"
+  printf '%s\n' "$conteudo" > "$CAIXA_CHAVE/skills/fechar/invariantes.json"
+  (cd "$CAIXA_CHAVE/scripts" && node conferir-invariantes.cjs > /tmp/chave-desconhecida.log 2>&1)
+  CHAVE=$?
+  if [ "$CHAVE" -ne 1 ] || ! grep -q "fechar" /tmp/chave-desconhecida.log || grep -q "TypeError" /tmp/chave-desconhecida.log; then
+    CHAVE_DESCONHECIDA_OK=0
+    echo "    (forma [$conteudo] saiu $CHAVE)"
+  fi
+  rm -rf "$CAIXA_CHAVE"
+done
+# Controle: a MESMA frase SEM a chave estranha continua saindo 0 — a recusa e' da
+# chave, nao da frase.
+CAIXA_CHAVE_OK="$(nova_caixa)"
+mkdir -p "$CAIXA_CHAVE_OK/skills/fechar"
+cp skills/fechar/SKILL.md "$CAIXA_CHAVE_OK/skills/fechar/SKILL.md"
+printf '%s\n' '[{"frase":"O destino da branch é sempre PR"}]' > "$CAIXA_CHAVE_OK/skills/fechar/invariantes.json"
+(cd "$CAIXA_CHAVE_OK/scripts" && node conferir-invariantes.cjs > /tmp/chave-conhecida.log 2>&1)
+CHAVE_OK=$?
+if [ "$CHAVE_OK" -ne 0 ]; then
+  CHAVE_DESCONHECIDA_OK=0
+  echo "    (controle: a mesma frase sem chave estranha deveria sair 0, saiu $CHAVE_OK)"
 fi
+rm -rf "$CAIXA_CHAVE_OK"
+if [ "$CHAVE_DESCONHECIDA_OK" -eq 1 ]; then
+  ok=$((ok+1)); echo "  ok   VERMELHO: chave desconhecida na invariante reprova (exit 1)"
+else
+  falhou=$((falhou+1)); echo "  FALHA VERMELHO: chave desconhecida na invariante reprova (exit 1)"
+fi
+
+# Caso: `onde` numa invariante `nao_deve` reprova — era aceito e ignorado, o que
+# dava aparencia de checagem por degrau que nunca existiu.
+CAIXA_NAODEV_ONDE="$(nova_caixa)"
+mkdir -p "$CAIXA_NAODEV_ONDE/skills/fechar"
+cp skills/fechar/SKILL.md "$CAIXA_NAODEV_ONDE/skills/fechar/SKILL.md"
+printf '%s\n' '[{"frase":"CONFIRMO fechar issue","tipo":"nao_deve","onde":["skill"]}]' > "$CAIXA_NAODEV_ONDE/skills/fechar/invariantes.json"
+(cd "$CAIXA_NAODEV_ONDE/scripts" && node conferir-invariantes.cjs > /tmp/naodev-onde.log 2>&1)
+NAODEV_ONDE=$?
+if [ "$NAODEV_ONDE" -eq 1 ] && grep -q "fechar" /tmp/naodev-onde.log && grep -q "nao_deve" /tmp/naodev-onde.log; then
+  ok=$((ok+1)); echo "  ok   VERMELHO: onde em invariante nao_deve reprova (exit 1)"
+else
+  falhou=$((falhou+1)); echo "  FALHA VERMELHO: onde em invariante nao_deve reprova (exit 1) — saiu $NAODEV_ONDE"
+fi
+rm -rf "$CAIXA_NAODEV_ONDE"
+
+# Casos vermelhos para rainforest-mind — mutações numa CÓPIA, nunca no repo.
+# CADA bloco monta a sua caixa com `nova_caixa_rf`, assere a linha de base dela e
+# só então muta. A caixa única de antes deixava os blocos (2) a (5) rodando sobre
+# a árvore estragada pelo anterior, onde qualquer mutação no-op dava `ok VERMELHO`.
 
 # (1) MUTAÇÃO: mover a frase "3.000+ tokens" para DEPOIS de <!-- detalhe --> no SKILL.md
 # Encontra a regra 10, remove "3.000+ tokens" dela, colocando a frase após a marca detalhe
-(cd "$CAIXA/scripts" && node -e "
+CAIXA1="$(nova_caixa_rf)"
+assere_base "$CAIXA1" "LINHA DE BASE (1): caixa integra passa antes da mutacao 1"
+(cd "$CAIXA1/scripts" && node -e "
 const fs=require('fs');
 const arquivo='../skills/rainforest-mind/SKILL.md';
 const antes=fs.readFileSync(arquivo,'utf8');
@@ -342,7 +485,7 @@ MUTACAO1=$?
 
 if [ "$MUTACAO1" -eq 0 ]; then
   # Agora executar o conferir na cópia com a mutação
-  (cd "$CAIXA/scripts" && node conferir-invariantes.cjs > /tmp/mutacao1.log 2>&1)
+  (cd "$CAIXA1/scripts" && node conferir-invariantes.cjs > /tmp/mutacao1.log 2>&1)
   VERMELHO1=$?
   if [ "$VERMELHO1" -ne 0 ]; then
     ok=$((ok+1)); echo "  ok   VERMELHO: frase movida para apos detalhe derruba conferir (exit $VERMELHO1)"
@@ -352,12 +495,15 @@ if [ "$MUTACAO1" -eq 0 ]; then
 else
   falhou=$((falhou+1)); echo "  FALHA: nao consegui aplicar a primeira mutacao"
 fi
+rm -rf "$CAIXA1"
 
 # (2) MUTAÇÃO: remover a frase "exit ≠ 0 nunca é sucesso" de regra 12
 # (a cópia de `references` saiu daqui em 2026-09-20: ela copiava para um diretório
-#  chamado `referencias`, que o checador nunca abre, e agora o setup já copia para
-#  o nome certo antes da linha de base)
-(cd "$CAIXA/scripts" && node -e "
+#  chamado `referencias`, que o checador nunca abre, e agora `nova_caixa_rf` copia
+#  para o nome certo antes da linha de base deste bloco)
+CAIXA2="$(nova_caixa_rf)"
+assere_base "$CAIXA2" "LINHA DE BASE (2): caixa integra passa antes da mutacao 2"
+(cd "$CAIXA2/scripts" && node -e "
 const fs=require('fs');
 const arquivo='../skills/rainforest-mind/SKILL.md';
 const antes=fs.readFileSync(arquivo,'utf8');
@@ -379,7 +525,7 @@ fs.writeFileSync(arquivo, depois);
 MUTACAO2=$?
 
 if [ "$MUTACAO2" -eq 0 ]; then
-  (cd "$CAIXA/scripts" && node conferir-invariantes.cjs > /tmp/mutacao2.log 2>&1)
+  (cd "$CAIXA2/scripts" && node conferir-invariantes.cjs > /tmp/mutacao2.log 2>&1)
   VERMELHO2=$?
   if [ "$VERMELHO2" -ne 0 ]; then
     ok=$((ok+1)); echo "  ok   VERMELHO: frase removida derruba conferir (exit $VERMELHO2)"
@@ -389,11 +535,14 @@ if [ "$MUTACAO2" -eq 0 ]; then
 else
   falhou=$((falhou+1)); echo "  FALHA: nao consegui aplicar a segunda mutacao"
 fi
+rm -rf "$CAIXA2"
 
 # (3) MUTAÇÃO: mover a frase "nunca a `main`" para DEPOIS de <!-- detalhe --> (testa checagem de nucleo)
 # Frase que existe em SKILL.md, está em references/, mas é movida para apos a marca detalhe
 # Deve falhar pois existe em SKILL mas não chega ao nucleo extraído
-(cd "$CAIXA/scripts" && node -e "
+CAIXA3="$(nova_caixa_rf)"
+assere_base "$CAIXA3" "LINHA DE BASE (3): caixa integra passa antes da mutacao 3"
+(cd "$CAIXA3/scripts" && node -e "
 const fs=require('fs');
 const arquivo='../skills/rainforest-mind/SKILL.md';
 const antes=fs.readFileSync(arquivo,'utf8');
@@ -429,7 +578,7 @@ fs.writeFileSync(arquivo, depois);
 MUTACAO3=$?
 
 if [ "$MUTACAO3" -eq 0 ]; then
-  (cd "$CAIXA/scripts" && node conferir-invariantes.cjs > /tmp/mutacao3.log 2>&1)
+  (cd "$CAIXA3/scripts" && node conferir-invariantes.cjs > /tmp/mutacao3.log 2>&1)
   VERMELHO3=$?
   if [ "$VERMELHO3" -ne 0 ]; then
     ok=$((ok+1)); echo "  ok   VERMELHO: frase movida para apos detalhe nao chega ao nucleo (exit $VERMELHO3)"
@@ -439,11 +588,14 @@ if [ "$MUTACAO3" -eq 0 ]; then
 else
   falhou=$((falhou+1)); echo "  FALHA: nao consegui aplicar a terceira mutacao"
 fi
+rm -rf "$CAIXA3"
 
 # (4) MUTAÇÃO: remover a frase da references/regra-15.md (testa checagem de referencia)
-# (a cópia de `references` saiu daqui em 2026-09-20: o setup já a copiou, e repetir
-#  sobre um diretório existente criava `references/references/`)
-(cd "$CAIXA/scripts" && node -e "
+# (a cópia de `references` saiu daqui em 2026-09-20: `nova_caixa_rf` já a copia, e
+#  repetir sobre um diretório existente criava `references/references/`)
+CAIXA4="$(nova_caixa_rf)"
+assere_base "$CAIXA4" "LINHA DE BASE (4): caixa integra passa antes da mutacao 4"
+(cd "$CAIXA4/scripts" && node -e "
 const fs=require('fs');
 const arquivo='../skills/rainforest-mind/references/regra-15.md';
 const antes=fs.readFileSync(arquivo,'utf8');
@@ -465,7 +617,7 @@ fs.writeFileSync(arquivo, depois);
 MUTACAO4=$?
 
 if [ "$MUTACAO4" -eq 0 ]; then
-  (cd "$CAIXA/scripts" && node conferir-invariantes.cjs > /tmp/mutacao4.log 2>&1)
+  (cd "$CAIXA4/scripts" && node conferir-invariantes.cjs > /tmp/mutacao4.log 2>&1)
   VERMELHO4=$?
   if [ "$VERMELHO4" -ne 0 ]; then
     ok=$((ok+1)); echo "  ok   VERMELHO: frase removida da referencia derruba conferir (exit $VERMELHO4)"
@@ -475,11 +627,15 @@ if [ "$MUTACAO4" -eq 0 ]; then
 else
   falhou=$((falhou+1)); echo "  FALHA: nao consegui aplicar a quarta mutacao"
 fi
+rm -rf "$CAIXA4"
 
 # (5) MUTAÇÃO: mover frase "3.000+ tokens" para depois de detalhe (checa que nucleoContent está sendo validado)
-# Reutiliza a árvore anterior com references já copiadas, mas reseta SKILL.md
-cp skills/rainforest-mind/SKILL.md "$CAIXA/skills/rainforest-mind/SKILL.md"
-(cd "$CAIXA/scripts" && node -e "
+# Caixa própria, como os demais: até 2026-09-20 este bloco reusava a árvore dos
+# anteriores e só restaurava o `SKILL.md`, deixando `references/regra-15.md` com a
+# mutação do bloco (4) dentro — a caixa nascia vermelha e o vermelho dele era vácuo.
+CAIXA5="$(nova_caixa_rf)"
+assere_base "$CAIXA5" "LINHA DE BASE (5): caixa integra passa antes da mutacao 5"
+(cd "$CAIXA5/scripts" && node -e "
 const fs=require('fs');
 const arquivo='../skills/rainforest-mind/SKILL.md';
 const antes=fs.readFileSync(arquivo,'utf8');
@@ -515,7 +671,7 @@ fs.writeFileSync(arquivo, depois);
 MUTACAO5=$?
 
 if [ "$MUTACAO5" -eq 0 ]; then
-  (cd "$CAIXA/scripts" && node conferir-invariantes.cjs > /tmp/mutacao5.log 2>&1)
+  (cd "$CAIXA5/scripts" && node conferir-invariantes.cjs > /tmp/mutacao5.log 2>&1)
   VERMELHO5=$?
   if [ "$VERMELHO5" -ne 0 ]; then
     ok=$((ok+1)); echo "  ok   VERMELHO: frase 3.000+ tokens movida para apos detalhe derruba conferir (exit $VERMELHO5)"
@@ -525,6 +681,7 @@ if [ "$MUTACAO5" -eq 0 ]; then
 else
   falhou=$((falhou+1)); echo "  FALHA: nao consegui aplicar a quinta mutacao"
 fi
+rm -rf "$CAIXA5"
 
 # (6) MUTAÇÃO VERIFICAÇÃO: testa que o conferir detecta quando frase é removida da referencia
 # Esta é uma meta-verificação que prova que a checagem de referencia está funcionando

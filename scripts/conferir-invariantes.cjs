@@ -23,6 +23,15 @@
  *       Antes de 2026-09-20 isso desligava a checagem em silêncio e saía 0
  *   - `regra`, `descricao`: metadados
  *
+ * Chave fora dessa lista é ERRO (exit 1), nunca campo ignorado. Até 2026-09-20 a
+ * desestruturação descartava em silêncio toda chave não listada: grafar `onde`
+ * como `ondes` nas cinco entradas da `rainforest-mind` derrubava a checagem para
+ * presença-no-corpo, e a mutação canônica do projeto (mover `3.000+ tokens` para
+ * depois de `<!-- detalhe -->`) passava com exit 0 — o defeito exato que este
+ * sensor existe para pegar. `onde` em invariante `tipo: "nao_deve"` também é erro:
+ * o `nao_deve` varre o corpo inteiro, e o campo era aceito e ignorado, dando
+ * aparência de checagem por degrau que nunca existiu.
+ *
  * Regra do `tipo: "nao_deve"`:
  * - Frase proibida só vale se for vocabulário que o texto correto nunca usa
  * - Exemplo: `--confirmo` é proibido no `fechar` e obrigatório no `limpar`, então
@@ -39,6 +48,7 @@ const path = require('path');
 
 const SKILLS_DIR = path.join(__dirname, '../skills');
 const DEGRAUS = ['skill', 'referencia', 'nucleo'];
+const CHAVES_ACEITAS = ['regra', 'frase', 'onde', 'descricao', 'tipo'];
 
 // Mostra o valor recebido na mensagem de recusa, com teto, para a recusa dizer
 // QUAL valor chegou sem despejar um arquivo inteiro no stderr.
@@ -114,6 +124,44 @@ for (const nomeSkill of skillsComInvariantes) {
       : `esperava um array de invariantes, veio ${resumir(invariantes)}`;
     console.error(`Erro: [${nomeSkill}] invariantes.json inválido: ${motivo}`);
     process.exit(1);
+  }
+
+  // Validação de FORMA de cada entrada, antes de qualquer leitura de campo.
+  // Tem de vir aqui, e não dentro do laço de checagem: o `invariantes.some(inv =>
+  // inv.onde !== undefined)` mais abaixo já estoura `TypeError` num elemento
+  // `null`, e a desestruturação estoura em `"x"` e `42` — stack cru do Node no
+  // lugar de recusa legível (achado da revisão, 2026-09-20).
+  for (let i = 0; i < invariantes.length; i++) {
+    const inv = invariantes[i];
+    const rotulo = `[${nomeSkill}] invariante #${i + 1}`;
+
+    if (inv === null || typeof inv !== 'object' || Array.isArray(inv)) {
+      console.error(`Erro: ${rotulo}: esperava um objeto, veio ${resumir(inv)}`);
+      process.exit(1);
+    }
+
+    const sufixoRegra = inv.regra !== undefined ? ` regra-${inv.regra}` : '';
+
+    // Chave desconhecida é recusa, não campo ignorado: `ondes` no lugar de `onde`
+    // desligava a checagem de núcleo em silêncio e o sensor saía 0.
+    const desconhecidas = Object.keys(inv).filter(chave => !CHAVES_ACEITAS.includes(chave));
+    if (desconhecidas.length > 0) {
+      const lista = desconhecidas.map(chave => `"${chave}"`).join(', ');
+      console.error(`Erro: chave desconhecida ${lista} em ${rotulo}${sufixoRegra}`);
+      console.error(`  chaves aceitas: ${CHAVES_ACEITAS.join(', ')}`);
+      console.error('  chave fora da lista era descartada em silêncio até 2026-09-20 — `ondes` por `onde` desligava a checagem de núcleo e o sensor saía 0');
+      process.exit(1);
+    }
+
+    // `onde` em `nao_deve` também é recusa. Ele era ACEITO E IGNORADO: o
+    // `nao_deve` procura a frase no corpo inteiro do SKILL.md, então o campo
+    // dava aparência de checagem por degrau que nunca existiu.
+    if (inv.tipo === 'nao_deve' && inv.onde !== undefined) {
+      console.error(`Erro: campo "onde" não se aplica a tipo "nao_deve" em ${rotulo}${sufixoRegra}`);
+      console.error('  o `nao_deve` procura a frase no corpo inteiro do SKILL.md; até 2026-09-20 o campo era aceito e ignorado');
+      console.error('  remova o campo "onde" desta invariante');
+      process.exit(1);
+    }
   }
 
   // Ler o SKILL.md

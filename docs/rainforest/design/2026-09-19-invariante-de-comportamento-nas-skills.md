@@ -26,7 +26,25 @@ hook e hoje não tem teste nenhum.
 
 - **D1 — O escopo são as seis skills de ação destrutiva ou irreversível** — porquê: `fechar`, `limpar`, `executar`, `revisar`, `verificar` e `plano` são onde uma frase perdida muda o que o agente **faz**, não o que ele explica. Cobrir as 19 de uma vez transformaria a escolha de frase em trabalho de horas, e lista longa vira manutenção que ninguém faz; cobrir só `fechar`, que é o caso com evidência real, entregaria mecanismo sem cobertura quando o mecanismo já quase existe.
 
-- **D2 — O mecanismo é o `conferir-invariantes.cjs` estendido, não um script novo** — porquê: ele já lê `skills/rainforest-mind/invariantes.json`, já confere 5 frases das regras 10, 11, 12, 13 e 15, já tem bateria própria com mutantes em `scripts/testa-conferir-invariantes.sh` — **eram cinco blocos, não dois, e nenhum deles media nada**, corrigido em 2026-09-20 por achado da revisão: a caixa compartilhada nunca copiava `references/`, então a árvore já saía `exit 2` antes da primeira mutação e os cinco ficariam vermelhos com a mutação sendo no-op; hoje o setup copia `references/` e a bateria assere a linha de base antes de mutar — e essa bateria já é descoberta pelo glob `scripts/testa-*.sh` do `varrer-baterias.sh`, que o CI roda em Node 22 e 24. Estender herda CI de graça; script novo teria de reconquistar tudo isso e criaria um segundo lugar onde a mesma regra mora.
+- **D2 — O mecanismo é o `conferir-invariantes.cjs` estendido, não um script novo** — porquê: ele já lê `skills/rainforest-mind/invariantes.json`, já confere 5 frases das regras 10, 11, 12, 13 e 15, já tem bateria própria com mutantes em `scripts/testa-conferir-invariantes.sh` — **eram cinco blocos, não dois, e nenhum deles media nada**, corrigido em 2026-09-20 por achado da revisão: a caixa compartilhada nunca copiava `references/`, então a árvore já saía `exit 2` antes da primeira mutação e os cinco ficariam vermelhos com a mutação sendo no-op; hoje cada bloco monta a **sua** caixa, com `references/` dentro, e tem a **sua** asserção de linha de base imediatamente antes da mutação (ver a nota de 2026-09-20 abaixo) — e essa bateria já é descoberta pelo glob `scripts/testa-*.sh` do `varrer-baterias.sh`, que o CI roda em Node 22 e 24. Estender herda CI de graça; script novo teria de reconquistar tudo isso e criaria um segundo lugar onde a mesma regra mora.
+
+> **Nota de 2026-09-20, achado da TERCEIRA revisão, sobre a D2.** A forma
+> anterior desta decisão dizia "hoje o setup copia `references/` e a bateria
+> assere a linha de base antes de mutar", como se o vácuo estivesse fechado. Ele
+> estava fechado **só para o primeiro bloco**: a `$CAIXA` era criada uma vez e
+> nunca restaurada, então os blocos (2) a (5) rodavam sobre a árvore estragada
+> pelo anterior — o (5) restaurava o `SKILL.md` e deixava dentro a mutação que o
+> (4) fez em `references/regra-15.md` —, e a asserção de linha de base existia
+> uma vez só, entre o setup e o bloco (1). Medido sem aplicar as mutações (2) a
+> (5): as quatro continuavam imprimindo `ok VERMELHO` sobre uma árvore que já
+> saía `exit 2`. Cada bloco passou a montar a sua caixa e a asserir a linha de
+> base dela antes de mutar. Duas outras formas de verde vazio foram fechadas na
+> mesma passagem: chave desconhecida na invariante era descartada em silêncio
+> (grafar `onde` como `ondes` nas cinco entradas da `rainforest-mind` deixava a
+> mutação canônica passar com exit 0), e nada fixava **quais** skills estavam
+> protegidas — apagar os seis arquivos das skills de ação deixava o CI verde
+> conferindo cinco invariantes. Agora há asserção de roster e de contagem contra
+> o repositório real.
 
 - **D3 — Um `invariantes.json` por skill, ao lado do `SKILL.md`** — porquê: é a convenção que já existe, e o caminho `skills/<nome>/invariantes.json` é derivável do nome da skill sem tabela de tradução. O contra-argumento pesado foi considerado e perdeu por pouco: um arquivo central responderia "o que está protegido hoje?" mais barato. Fica registrado porque, se a cobertura passar de seis skills, é a primeira coisa a reabrir.
 

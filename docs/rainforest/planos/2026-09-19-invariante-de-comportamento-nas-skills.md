@@ -9,7 +9,8 @@ se deriva com `git rev-parse`, nunca se copia desta linha.
 
 - As 5 invariantes já existentes de `skills/rainforest-mind/` continuam verdes, nas mesmas regras 10, 11, 12, 13 e 15, com o mesmo campo `onde` — quatro delas `["skill","nucleo"]` e a da regra 15 `["skill","referencia","nucleo"]` (corrigido em 2026-09-19: a forma anterior desta linha generalizava a primeira entrada para as cinco).
 - `scripts/testa-conferir-invariantes.sh` continua sendo descoberto pelo glob `scripts/testa-*.sh` do `varrer-baterias.sh`, e continua verde em Node 22 e 24.
-- Os **cinco** blocos de mutação daquela bateria (quatro distintos — o bloco (5) repete o (1)) e o meta-teste continuam existindo e continuam ficando vermelhos, **sobre uma caixa de areia cuja linha de base sai 0** — asserido pelo caso `LINHA DE BASE: caixa integra passa no conferir (exit 0)`, que roda entre o setup e a primeira mutação.
+- Os **cinco** blocos de mutação daquela bateria (quatro distintos — o bloco (5) repete o (1)) e o meta-teste continuam existindo e continuam ficando vermelhos, **cada um sobre a SUA caixa de areia, cuja linha de base sai 0** — asserido pelos cinco casos `LINHA DE BASE (n): caixa integra passa antes da mutacao n`, um imediatamente antes de cada mutação.
+- O roster de skills protegidas continua sendo **sete** arquivos `skills/*/invariantes.json` — `executar`, `fechar`, `limpar`, `plano`, `rainforest-mind`, `revisar`, `verificar` — e **15** invariantes conferidas, asserido pelo caso `ROSTER: as skills protegidas continuam as mesmas (7 arquivos, 15 invariantes)`, que roda contra o repositório real.
 - Nenhum `SKILL.md` das seis skills tem o corpo alterado por este trabalho — o que entra é arquivo de invariante ao lado, nunca edição da skill.
 - `node scripts/conferir-livro-de-repos.cjs` continua saindo 0.
 
@@ -24,6 +25,21 @@ se deriva com `git rev-parse`, nunca se copia desta linha.
 > mutação — e como os cinco blocos só aferem `exit != 0`, todos ficariam
 > vermelhos com a mutação sendo no-op. O conserto é copiar `references/` no setup
 > e asserir a linha de base antes de mutar.
+
+> **Linha corrigida de novo em 2026-09-20, por achado da TERCEIRA revisão.** A
+> forma imediatamente anterior — a que a nota acima produziu — dizia que os cinco
+> blocos ficavam vermelhos "sobre uma caixa de areia cuja linha de base sai 0",
+> asserida por um caso único que rodava "entre o setup e a primeira mutação".
+> Falso a partir do bloco (2). A `$CAIXA` era criada **uma vez** e nunca
+> restaurada: cada bloco rodava sobre a árvore que o anterior estragou, o bloco
+> (5) restaurava só o `SKILL.md` e deixava dentro a mutação que o (4) fez em
+> `references/regra-15.md`, e a linha de base era medida uma vez só. Medido sem
+> aplicar nenhuma das mutações (2) a (5): `LINHA DE BASE exit=0`, `apos (1)
+> exit=2`, e então `SEM aplicar (2) exit=2`, `SEM (3) exit=2`, `SEM (4) exit=2`,
+> `(5) NAO aplicada exit=2` — quatro dos seis blocos afiravam vermelho de vácuo.
+> O vácuo estava fechado só para o primeiro bloco. O conserto é cada bloco montar
+> a sua caixa com `nova_caixa_rf` e ter a sua própria asserção de linha de base
+> imediatamente antes da mutação.
 
 ## Tarefas
 
