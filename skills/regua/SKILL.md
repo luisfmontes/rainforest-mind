@@ -54,15 +54,16 @@ E uma régua **boa demais** é o outro lado da mesma moeda: se o alvo é
 inalcançável com o esforço disponível, o loop nunca sai e queima orçamento
 parecendo progresso. O teto da fase 1 existe por causa disso.
 
-### Os mecanismos: destile a régua antes de olhar para o seu trabalho
+### Os mecanismos: selam a régua por construção
 
 Régua nomeada ainda não é régua **útil**. "O README do Stripe" passa nos três
 testes acima e mesmo assim não diz nada ao crítico — ele vai olhar os dois lados
 e responder com o que sobra quando falta critério: "o B está mais polido".
 
 Antes da rodada 1, leia a régua de verdade e escreva **5 a 7 mecanismos** em
-`docs/rainforest/reguas/<slug>.md`. Mecanismo é o que alguém **confere
-olhando** — não adjetivo:
+um manifesto único: `docs/rainforest/reguas/<slug>.md`. Este arquivo carrega
+as três coisas — qual é a régua, os mecanismos, e uma seção `## Freios` com o
+teto de rodadas. Mecanismo é o que alguém **confere olhando** — não adjetivo:
 
 | ❌ não é mecanismo | ✅ é mecanismo |
 |---|---|
@@ -74,12 +75,29 @@ olhando** — não adjetivo:
 O arquivo é **commitado na rodada 1** e não muda depois. Isso não é
 organização: o crítico é `Agent` novo a **toda** rodada, e o que não estiver em
 disco não chega nele. Régua reescrita no meio do loop é régua trocada no meio do
-loop — que é exatamente o que esta skill existe para impedir.
+loop — que é exatamente o que esta skill existe para impedir. O teto de rodadas,
+que hoje só existe na conversa, virou item do arquivo: o que não está em disco
+não chega no agente novo de cada rodada, e teto trocado no meio do loop é a
+mesma fraude que mecanismo trocado.
 
 **Não consegue escrever cinco?** A régua reprovou, e reprovou **de graça**. Essa
 é a rede barata: ela custa zero rodada, enquanto a calibragem da Fase 1 custa
 uma. As duas ficam, porque pegam coisas diferentes — aqui, régua da qual não se
 extrai critério nenhum; lá, régua da qual se extrai critério que não discrimina.
+
+### Crítico cego lerá do commit, pela checagem
+
+O crítico recebe o manifesto pela saída de `node scripts/conferir-regua.cjs
+mostrar --slug <slug>`, e é o **único** caminho que imprime o arquivo. Assim
+não existe a abertura "pegou o conteúdo sem conferir": a checagem da âncora e
+do formato (cinco a sete mecanismos, seção "Freios" presente) rode antes da
+impressão, e só imprime se passou. Arquivo lido direto, ou por `git show` por
+conta do orquestrador, falseia o mecanismo — o ganho de ter a régua sob controle
+do git é **um ponto onde burlar**, em vez de um por rodada e por crítico.
+
+O topo continua procedural — a sessão que orquestra precisa chamar o comando
+certo — porque quem orquestra é um LLM. Não é promessa de impossibilidade de
+burla; é limite honesto de onde termina a garantia.
 
 ### Preflight: quem consegue ver o quê
 
@@ -201,7 +219,7 @@ demais ou o padrão não paga o custo nesta classe de trabalho, e ele sai daqui.
 Os dois testes são baratos e valem mais que qualquer argumento de desenho,
 inclusive os desta página.
 
-Duas fontes, e vale nomear as duas. Padrão adaptado do
+Três fontes, e todas valem nomear. Padrão adaptado do
 `robonuggets/gauntlet-loop`, que enuncia bem a tese central —
 trocar rubrica auto-avaliada por comparação cega contra uma referência externa
 nomeada — e cataloga com honestidade as formas de quebrá-la. Reimplementado a
@@ -218,6 +236,17 @@ vai cego quando falta o render. O resto dela ficou de fora por medição, não p
 gosto — três críticos por rodada, sem teto e sem commit intermediário, custa mais
 que este loop inteiro, e o custo era justamente a queixa que trouxe as duas
 skills para a mesma mesa (2026-09-04).
+
+A imutabilidade da régua por construção (Fase 0, arquivo em disco com âncora de
+git) e o keep/discard automático por comparação interna entre rodadas (Fase 2)
+são enxertos do `karpathy/autoresearch`. Dele veio: a ideia de selar a régua
+por mecanismo (ele usa `createHash`, nós usamos o commit de adição) e decidir
+sozinho a cada iteração se guarda o trabalho ou descarta. Dele ficou de fora:
+o custo fixo de 5 minutos por tentativa (lá faz `val_bpb` comparável entre
+arquiteturas diferentes; aqui a comparabilidade vem do crítico cego vendo os
+dois artefatos lado a lado). Reimplementado a partir da descrição, sem copiar
+arquivo — o original não está neste repositório, e o padrão não reusa código de
+terceiro nesta classe de controle.
 
 ## A fronteira de honestidade
 
