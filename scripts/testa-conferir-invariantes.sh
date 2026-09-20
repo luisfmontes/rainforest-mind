@@ -1,9 +1,21 @@
 #!/usr/bin/env bash
 # testa-conferir-invariantes.sh — bateria para validar conferir-invariantes.cjs
 #
-# Checa:
+# Valida:
 # 1. O script passa com o repositório íntegro
-# 2. O script falha quando uma frase é movida para depois de <!-- detalhe -->
+# 2. O script falha quando uma frase é movida para depois de <!-- detalhe --> (rainforest-mind)
+# 3. O script detecta frases proibidas (tipo: nao_deve) quando presentes
+# 4. O script passa quando frases proibidas estão ausentes
+# 5. O script detecta quando frase obrigatória é removida (skills de ação)
+# 6. O script detecta duplicação de frases
+# 7. O script falha com exit ≠ 0 quando nenhum invariantes.json existe
+# 8. O script falha com exit ≠ 0 quando tipo desconhecido é usado
+#
+# Autoria de `tipo: nao_deve`:
+# - Frase proibida só vale se for vocabulário que o texto correto nunca usa
+# - Exemplo: `--confirmo` é proibido no `fechar` e obrigatório no `limpar`, então
+#   um `nao_deve: --confirmo` dispararia no texto certo — proibido
+# - `CONFIRMO fechar issue` é seguro: não existe em nenhuma skill correta
 
 set -u
 
@@ -28,7 +40,134 @@ node scripts/conferir-invariantes.cjs > /tmp/invariantes-check.log 2>&1
 REPO_INTEGRO=$?
 marca "repositorio integro passa no conferir" $REPO_INTEGRO
 
-# Casos vermelhos — mutações numa CÓPIA, nunca no repo
+# Funções auxiliares
+nova_caixa() {
+  local tmp="$(mktemp -d)"
+  mkdir -p "$tmp/skills/rainforest-mind" "$tmp/scripts"
+  cp scripts/conferir-invariantes.cjs "$tmp/scripts/"
+  cp -r hooks "$tmp/"
+  echo "$tmp"
+}
+
+# Caso: nao_deve: frase proibida presente no corpo reprova
+CAIXA_NAODEV="$(nova_caixa)"
+mkdir -p "$CAIXA_NAODEV/skills/fechar"
+cp skills/fechar/SKILL.md "$CAIXA_NAODEV/skills/fechar/SKILL.md"
+printf '%s\n' '[{"frase":"CONFIRMO fechar issue","tipo":"nao_deve"}]' > "$CAIXA_NAODEV/skills/fechar/invariantes.json"
+printf '%s\n' 'CONFIRMO fechar issue' >> "$CAIXA_NAODEV/skills/fechar/SKILL.md"
+(cd "$CAIXA_NAODEV/scripts" && node conferir-invariantes.cjs > /tmp/naodev-presente.log 2>&1)
+NAODEV_PRESENTE=$?
+if [ "$NAODEV_PRESENTE" -eq 2 ] && grep -q "fechar" /tmp/naodev-presente.log && grep -q "CONFIRMO fechar issue" /tmp/naodev-presente.log; then
+  ok=$((ok+1)); echo "  ok   VERDE: nao_deve: frase proibida presente no corpo reprova (exit $NAODEV_PRESENTE)"
+else
+  falhou=$((falhou+1)); echo "  FALHA: nao_deve deveria falhar com exit 2 (saiu $NAODEV_PRESENTE)"
+fi
+rm -rf "$CAIXA_NAODEV"
+
+# Caso: nao_deve: frase proibida ausente no corpo passa
+CAIXA_NAODEV_OK="$(nova_caixa)"
+mkdir -p "$CAIXA_NAODEV_OK/skills/fechar"
+cp skills/fechar/SKILL.md "$CAIXA_NAODEV_OK/skills/fechar/SKILL.md"
+printf '%s\n' '[{"frase":"CONFIRMO fechar issue","tipo":"nao_deve"}]' > "$CAIXA_NAODEV_OK/skills/fechar/invariantes.json"
+(cd "$CAIXA_NAODEV_OK/scripts" && node conferir-invariantes.cjs > /tmp/naodev-ausente.log 2>&1)
+NAODEV_AUSENTE=$?
+if [ "$NAODEV_AUSENTE" -eq 0 ]; then
+  ok=$((ok+1)); echo "  ok   VERDE: nao_deve: frase proibida ausente no corpo passa (exit 0)"
+else
+  falhou=$((falhou+1)); echo "  FALHA: nao_deve ausente deveria passar (saiu $NAODEV_AUSENTE)"
+fi
+rm -rf "$CAIXA_NAODEV_OK"
+
+# Caso: skill de acao: frase obrigatoria removida do corpo reprova
+CAIXA_LIMPAR="$(nova_caixa)"
+mkdir -p "$CAIXA_LIMPAR/skills/limpar"
+cp skills/limpar/SKILL.md "$CAIXA_LIMPAR/skills/limpar/SKILL.md"
+printf '%s\n' '[{"frase":"Nunca entra na remoção"}]' > "$CAIXA_LIMPAR/skills/limpar/invariantes.json"
+(cd "$CAIXA_LIMPAR/scripts" && node -e "
+const fs=require('fs');
+const arquivo='../skills/limpar/SKILL.md';
+const antes=fs.readFileSync(arquivo,'utf8');
+if (!antes.includes('Nunca entra na remoção')) {
+  console.error('Nao achei a frase Nunca entra na remoção');
+  process.exit(3);
+}
+const depois = antes.replace('Nunca entra na remoção', '');
+if (antes === depois) {
+  console.error('MUTACAO NAO APLICADA');
+  process.exit(3);
+}
+fs.writeFileSync(arquivo, depois);
+" 2>&1)
+MUTACAO_LIMPAR=$?
+if [ "$MUTACAO_LIMPAR" -eq 0 ]; then
+  (cd "$CAIXA_LIMPAR/scripts" && node conferir-invariantes.cjs > /tmp/limpar-removida.log 2>&1)
+  FALHA_LIMPAR=$?
+  if [ "$FALHA_LIMPAR" -eq 2 ] && grep -q "limpar" /tmp/limpar-removida.log; then
+    ok=$((ok+1)); echo "  ok   VERMELHO: skill de acao: frase obrigatoria removida do corpo reprova (exit $FALHA_LIMPAR)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA: frase removida deveria falhar com exit 2 (saiu $FALHA_LIMPAR)"
+  fi
+else
+  falhou=$((falhou+1)); echo "  FALHA: nao consegui aplicar mutacao na limpar"
+fi
+rm -rf "$CAIXA_LIMPAR"
+
+# Caso: deve duplicado: frase aparecendo 2x reprova
+CAIXA_DUP="$(nova_caixa)"
+mkdir -p "$CAIXA_DUP/skills/fechar"
+cp skills/fechar/SKILL.md "$CAIXA_DUP/skills/fechar/SKILL.md"
+printf '%s\n' '[{"frase":"O destino da branch é sempre PR"}]' > "$CAIXA_DUP/skills/fechar/invariantes.json"
+(cd "$CAIXA_DUP/scripts" && node -e "
+const fs=require('fs');
+const arquivo='../skills/fechar/SKILL.md';
+const antes=fs.readFileSync(arquivo,'utf8');
+if (!antes.includes('O destino da branch é sempre PR')) {
+  console.error('Nao achei a frase');
+  process.exit(3);
+}
+const depois = antes.replace('O destino da branch é sempre PR', 'O destino da branch é sempre PR\n\nRepetição: O destino da branch é sempre PR');
+fs.writeFileSync(arquivo, depois);
+" 2>&1)
+MUTACAO_DUP=$?
+if [ "$MUTACAO_DUP" -eq 0 ]; then
+  (cd "$CAIXA_DUP/scripts" && node conferir-invariantes.cjs > /tmp/dup.log 2>&1)
+  FALHA_DUP=$?
+  if [ "$FALHA_DUP" -eq 2 ] && grep -q "aparece 2 vezes" /tmp/dup.log; then
+    ok=$((ok+1)); echo "  ok   VERMELHO: deve duplicado reprova com contagem (exit $FALHA_DUP)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA: duplicação deveria falhar com exit 2 (saiu $FALHA_DUP)"
+  fi
+else
+  falhou=$((falhou+1)); echo "  FALHA: nao consegui aplicar mutacao duplicacao"
+fi
+rm -rf "$CAIXA_DUP"
+
+# Caso: zero arquivos invariantes.json reprova
+CAIXA_VAZIA="$(nova_caixa)"
+(cd "$CAIXA_VAZIA/scripts" && node conferir-invariantes.cjs > /tmp/vazia.log 2>&1)
+FALHA_VAZIA=$?
+if [ "$FALHA_VAZIA" -ne 0 ]; then
+  ok=$((ok+1)); echo "  ok   VERMELHO: zero arquivos invariantes reprova (exit $FALHA_VAZIA)"
+else
+  falhou=$((falhou+1)); echo "  FALHA: zero arquivos deveria falhar"
+fi
+rm -rf "$CAIXA_VAZIA"
+
+# Caso: tipo desconhecido reprova
+CAIXA_TIPO="$(nova_caixa)"
+mkdir -p "$CAIXA_TIPO/skills/fechar"
+cp skills/fechar/SKILL.md "$CAIXA_TIPO/skills/fechar/SKILL.md"
+printf '%s\n' '[{"frase":"test","tipo":"invalido"}]' > "$CAIXA_TIPO/skills/fechar/invariantes.json"
+(cd "$CAIXA_TIPO/scripts" && node conferir-invariantes.cjs > /tmp/tipo-invalido.log 2>&1)
+FALHA_TIPO=$?
+if [ "$FALHA_TIPO" -ne 0 ]; then
+  ok=$((ok+1)); echo "  ok   VERMELHO: tipo desconhecido reprova (exit $FALHA_TIPO)"
+else
+  falhou=$((falhou+1)); echo "  FALHA: tipo invalido deveria falhar"
+fi
+rm -rf "$CAIXA_TIPO"
+
+# Casos vermelhos para rainforest-mind — mutações numa CÓPIA, nunca no repo
 CAIXA="$(mktemp -d)"
 trap 'rm -rf "${CAIXA:-}"' EXIT
 
