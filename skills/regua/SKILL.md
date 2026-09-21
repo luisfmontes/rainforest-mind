@@ -52,9 +52,6 @@ parecendo progresso. O teto da fase 1 existe por causa disso.
 
 ### Os mecanismos: selam a régua por construção
 
-Régua nomeada ainda não é régua **útil**. "O README do Stripe" passa nos três
-testes acima e mesmo assim não diz nada ao crítico, que responde com o que sobra
-quando falta critério: "o B está mais polido".
 
 Antes da rodada 1, leia a régua de verdade e escreva **5 a 7 mecanismos** em
 um manifesto único: `docs/rainforest/reguas/<slug>.md`. Este arquivo carrega
@@ -65,7 +62,9 @@ Veja o formato exigido em `references/formato-manifesto.md`.
 Quatro pares de exemplo, adjetivo contra mecanismo, estão em
 `references/mecanismos-exemplos.md`.
 
-O arquivo é **commitado na rodada 1** e não muda depois. Isso não é
+O arquivo é **commitado na rodada 1** — e o commit vem **antes de despachar o
+primeiro crítico**, porque o `mostrar` lê do commit e recusa (exit 1) manifesto
+que ainda não entrou no git. Depois disso não muda. Isso não é
 organização: o crítico é `Agent` novo a **toda** rodada, e o que não estiver em
 disco não chega nele. É por isso que o teto de rodadas deixou de viver na
 conversa e virou item do arquivo — e régua reescrita no meio do loop é régua
@@ -86,9 +85,11 @@ impressão, e só imprime se passou. Arquivo lido direto, ou por `git show` por
 conta do orquestrador, falseia o mecanismo — o ganho de ter a régua sob controle
 do git é **um ponto onde burlar**, em vez de um por rodada e por crítico.
 
-O selo é o histórico do git: em clone raso o conferidor recusa (exit 2) em vez
-de julgar — em CI, `fetch-depth: 0`. Onde a garantia termina:
-`references/fronteira-de-honestidade.md`.
+O topo continua procedural — a sessão que orquestra precisa chamar o comando
+certo — porque quem orquestra é um LLM. Não é promessa de impossibilidade de
+burla; é limite honesto de onde termina a garantia. E o selo é o histórico do
+git: em clone raso o conferidor recusa (exit 2) em vez de julgar — em CI,
+`fetch-depth: 0`. Mais em `references/fronteira-de-honestidade.md`.
 
 ### Preflight: quem consegue ver o quê
 
@@ -123,15 +124,16 @@ outro lado da comparação, e insistir é queimar rodada.
 O padrão original não tem nenhum destes, e é por isso que ele só funciona com
 alguém olhando. Os três se declaram **antes** da rodada 1:
 
-**Teto de rodadas.** Um número. Ele **não é a condição de saída** — é o abort.
-Saída é vencer a comparação; abort é acabar o orçamento e você olhar o que tem.
-Confundir os dois é o que produz "5 rodadas, pronto!" com o trabalho pior que na
-rodada 2.
+**Teto de rodadas.** Já está escrito: é o número que a Fase 0 pôs no `## Freios`
+do manifesto, e é de lá que ele se lê. Não se declara de novo aqui — teto
+redeclarado na Fase 1 é teto de volta na conversa, que é o buraco que selá-lo
+fechou.
 
 **Commit por rodada.** Cada rodada fecha com um commit próprio, mensagem
-`regua: rodada N — <o que mudou>`. A última rodada **não é necessariamente a
-melhor**: sem commit por rodada, voltar para a rodada 3 é impossível e o loop
-vira um caminho só de ida.
+`regua: rodada N — <o que mudou>`.
+
+Por que abort não é saída, e por que a última rodada não é a melhor:
+`references/fase-1-orcamento.md`.
 
 **Calibragem na rodada 1.** Se o crítico da primeira rodada não conseguir
 apontar **uma lacuna específica e fechável**, o problema é a régua, não o
@@ -140,8 +142,11 @@ rodada 1 já provou que não vai discriminar na rodada 7.
 
 ## Fase 2 — o loop
 
-Cada rodada tem três peças: **builder**, **crítico da régua** e **crítico interno**
-— nunca no mesmo contexto, e a partir da rodada 2.
+Cada rodada tem três peças: **builder**, **crítico da régua** e **crítico
+interno** — nunca no mesmo contexto. As duas primeiras rodam desde a rodada 1
+(é o crítico da rodada 1 que a calibragem acima usa); o **crítico interno só
+existe a partir da rodada 2**, porque antes disso não há rodada anterior com
+que comparar.
 
 **Builder.** Recebe a tarefa e **a lacuna única** que o crítico da régua
 apontou — uma, não uma lista. Lista faz o builder espalhar esforço e não fechar
@@ -223,10 +228,6 @@ Quatro saídas, não três:
   é resultado, não fracasso: descobrir em uma rodada que a régua não discrimina
   é o barato desta skill.
 
-Esta skill **não é estágio do fluxo** e não aparece no `estado.cjs` — é
-invocável sozinha, como `divergir`, `semear` e `arqueologia`. Ela também pode
-alimentar o `plano`: a régua vira o critério de aceite da tarefa que não tinha
-nenhum, e aí o `verificar` volta a ter o que rodar.
 
 ## O que falsificaria esta skill
 

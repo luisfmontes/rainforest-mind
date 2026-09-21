@@ -108,8 +108,8 @@ depende de: 2
 paralela: nao
 mutacao:
   arquivo: `scripts/conferir-regua.cjs`
-  de: `if (normalizarEol(conteudoCommit) !== normalizarEol(conteudoArquivo)) {`
-  para: `if (conteudoCommit !== conteudoArquivo) {`
+  de: `if (!normalizarEolBytes(bytesCommit).equals(normalizarEolBytes(bytesArquivo))) {`
+  para: `if (!bytesCommit.equals(bytesArquivo)) {`
   bateria: `bash scripts/testa-conferir-regua.sh`
   fixture: `testa-conferir-regua.sh, caso "manifesto recheckado com autocrlf continua intacto"`
 pronto quando: num repositório git real com `core.autocrlf=true` e sem `.gitattributes` forçando `eol=lf`, com o manifesto commitado em LF e depois recheckado na árvore de trabalho (portanto com CRLF em disco e nenhuma alteração de conteúdo), `node scripts/conferir-regua.cjs conferir --slug <slug>` sai **0** e `mostrar --slug <slug>` imprime o manifesto — provado por `bash scripts/testa-conferir-regua.sh` devolvendo `resultado: N ok, 0 falha(s)`, exit 0 e zero pulados; e `node scripts/conferir-regua.cjs mostrar --slug <slug>` num repositório sem `git` no PATH sai **2**, não 1.
@@ -243,4 +243,43 @@ de: if (primeiraLinhaOffensora) {
 para: if (false) {
 bateria: bash scripts/testa-conferir-regua.sh
 fixture: testa-conferir-regua.sh, caso 19 "### M<n> malformado REPROVA mesmo com 5 bem formados"
+```
+
+**Rodada 6 (2026-09-20), onze achados — o bloqueante era meu.** Na rodada 5 a
+comparação de integridade passou de texto para `Buffer`, e o bloco `mutacao:`
+desta tarefa continuou apontando para a linha antiga. O `de:` casava **zero**
+vezes no fonte: `conferir-mutacao.cjs` sairia 3 (`MUTACAO NAO APLICADA`), e o
+carimbo `catraca_mutacao` afirmava uma falsificação que não aconteceu. O
+`conferir-fluxo.cjs cobertura` não pega isso — ele confere que os campos
+existem, não que o `de:` existe no arquivo. O bloco acima agora aponta para o
+par vivo (`normalizarEolBytes` contra comparação de bytes crus), e a
+integração o re-rodou.
+
+Os outros dez: `normalizarEol` virou código morto e saiu; a `SKILL.md` escopava
+"a partir da rodada 2" nas três peças, e o qualificador é só do crítico
+interno; a skill não mandava commitar o manifesto **antes** do primeiro
+`mostrar`; o contrato de exit 1 omitia "nunca commitado"; o
+`formato-manifesto.md` não enunciava sequência nem faixa 5-7; o caso 13 ainda
+passava por `$(...)`; manifesto selado e apagado saía 2 em vez de 1; a cláusula
+"sem `git` no PATH" deste `pronto quando` não era medida; a Fase 1 redeclarava
+o teto em vez de apontar para o `## Freios`; e o parágrafo do topo procedural,
+que eu tinha movido para `references/` ao abrir espaço na rodada 5, é exigido
+**dentro** da `SKILL.md` pela afirmação 3 do `fluxo-13-regua-fase0` — o
+crítico cego do Codex discordou por isso.
+
+pronto quando (rodada 6): `node scripts/conferir-fluxo.cjs mutacoes --slug
+2026-09-19-regua-selada-keep-discard` executa o bloco desta tarefa **sem** exit
+3; manifesto selado e depois apagado da árvore sai **1** com "removido da
+arvore"; e com o `PATH` vazio (git inalcançável pelo spawn) `conferir` sai
+**2** — provado por `bash scripts/testa-conferir-regua.sh` devolvendo
+`resultado: N ok, 0 falha(s)`, exit 0 e zero pulados.
+
+Alvo de mutação novo desta rodada, em cerca pelo motivo das rodadas 4 e 5:
+
+```
+arquivo: scripts/conferir-regua.cjs
+de: if (!existeNaArvore) {
+para: if (false) {
+bateria: bash scripts/testa-conferir-regua.sh
+fixture: testa-conferir-regua.sh, caso 20 "manifesto selado e apagado da arvore e VEREDITO (1)"
 ```

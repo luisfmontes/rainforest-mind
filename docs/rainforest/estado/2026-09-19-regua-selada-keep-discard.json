@@ -23,7 +23,7 @@
   },
   "executar": {
     "status": "ok",
-    "catraca_mutacao": "2026-09-20",
+    "catraca_mutacao": "2026-09-21",
     "tarefas_ok": 6,
     "tarefas": 6,
     "carimbos": [
@@ -70,7 +70,7 @@
         "ts": "2026-09-20T04:54:14.443Z"
       }
     ],
-    "em": "2026-09-20",
+    "em": "2026-09-21",
     "mutacao": [
       {
         "tarefa": 1,
@@ -100,7 +100,7 @@
       {
         "tarefa": 6,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-regua.sh, casos 18 (clone raso) e 19 (### M<n> malformado) da rodada 5; 17 (slug) da rodada 4; 9, 12/14/15/16 e 13 das anteriores"
+        "fixture": "testa-conferir-regua.sh, caso 9 (autocrlf) pelo par vivo de bytes, re-rodado por conferir-fluxo mutacoes; caso 20 (apagado) da rodada 6; 18/19 da 5; 17 da 4"
       }
     ],
     "comando": "bash scripts/varrer-baterias.sh",
@@ -110,22 +110,27 @@
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "56cf8eefc6c76a148bb2d6a8a825788d3b6216db",
+      "head": "e678c41729c75b8f5e669fead5e2ea8dc00a0c3c",
       "caminhos_sujos": []
     },
     "em_voo": [],
     "em": "2026-09-20",
-    "achados": 6,
+    "achados": 11,
     "lista": [
-      "1 BLOQUEANTE: em clone raso a ancora vira a fronteira do clone e o selo compara o arquivo consigo mesmo - conferir sai 0 sobre regua adulterada e mostrar entrega a adulterada ao critico cego (reproduzido)",
-      "2: leitura decodificada como utf8 quebra a promessa byte-a-byte do mostrar (T2) e compara uma projecao com perda",
-      "3: cabecalho ### M<n> malformado e ignorado em silencio - 5 validos + M6:/M7: passa com exit 0 e burla o teto 5-7 (reproduzido)",
-      "4: duas assercoes do caso 17 (barra, dois-pontos) passam por coincidencia - slug inexistente tambem sai 2",
-      "5: stdout_bytes usa $(...) e come newline final - zero byte e byte-a-byte nao medem o que dizem",
-      "6: sub-bloco Uso de conferir nao lista git falhou entre os motivos de exit 2"
+      "1 BLOQUEANTE: o de: do bloco mutacao da T6 casa ZERO vezes no fonte - eu troquei a comparacao para Buffer na rodada 5 e nao emendei o plano; conferir-mutacao sairia 3 (MUTACAO NAO APLICADA), entao o carimbo catraca_mutacao afirma falsificacao que nao aconteceu (reproduzido: grep -cF devolve 0)",
+      "2: normalizarEol virou codigo morto com docstring afirmando o contrario (reproduzido: unica ocorrencia e a definicao)",
+      "3: SKILL.md 143-144 escopa a partir da rodada 2 nas TRES pecas, contradizendo Calibragem na rodada 1 - o qualificador era do critico interno",
+      "4: a skill nao manda commitar o manifesto ANTES do primeiro mostrar, e sem commit o conferidor sai 1 e o loop aborta na rodada 1",
+      "5: o contrato de exit code omite manifesto nunca foi commitado como terceiro caminho de exit 1",
+      "6: formato-manifesto.md nao documenta a regra de sequencia nem a faixa 5-7 que o script aplica",
+      "7: testa-conferir-regua.sh:483 usa $(...) violando o invariante que o proprio arquivo declara em :44-45 (reproduzido)",
+      "8: manifesto selado e apagado da arvore sai 2 (ambiente) em vez de 1, e manda o operador para o remedio errado",
+      "9: a clausula sem git no PATH do pronto quando da T6 nao e medida por caso nenhum",
+      "10: Fase 1 ainda apresenta o teto como declaracao dela, sem apontar para o ## Freios do manifesto",
+      "11 (critico cego codex, discordo): afirmacao 3 do fluxo-13-regua-fase0 exige o paragrafo do topo procedural DENTRO de SKILL.md, e eu o movi para references nesta rodada"
     ],
-    "tentativas": 5,
-    "liberado_em": "2026-09-20"
+    "tentativas": 6,
+    "liberado_em": "2026-09-21"
   },
   "verificar": {
     "status": "pendente"

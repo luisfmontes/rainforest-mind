@@ -25,20 +25,23 @@
  * Uso:
  *   node scripts/conferir-regua.cjs conferir --slug <slug>
  *     Valida que o manifesto <slug> não foi alterado e tem formato válido.
- *     Exit 0: tudo ok. Exit 1: veredito negativo. Exit 2: uso errado, slug
+ *     Exit 0: tudo ok. Exit 1: veredito negativo (alterado, fora do formato,
+ *     nunca commitado, ou selado e removido da arvore). Exit 2: uso errado, slug
  *             invalido (barra, contrabarra, dois-pontos ou ".."), arquivo
  *             inexistente, clone raso ou git falhou.
  *
  *   node scripts/conferir-regua.cjs mostrar --slug <slug>
  *     Valida que o manifesto <slug> não foi alterado e tem formato válido.
  *     Se válido, imprime o conteúdo do commit-âncora em stdout.
- *     Exit 0: tudo ok. Exit 1: manifesto alterado ou formato inválido.
+ *     Exit 0: tudo ok. Exit 1: manifesto alterado, formato inválido, nunca
+ *             commitado, ou selado e removido da árvore.
  *             Exit 2: slug invalido ou inexistente, clone raso, ou git
  *             falhou.
  *
  * Exit codes:
  *   0  Manifesto íntegro e formato válido (conferir: sucesso; mostrar: imprimiu conteúdo).
- *   1  Manifesto alterado OU formato inválido.
+ *   1  Manifesto alterado, formato inválido, nunca commitado, ou selado e
+ *      removido da árvore de trabalho.
  *   2  Slug invalido ou inexistente, uso errado, clone raso, ou git falhou.
  */
 
@@ -49,15 +52,6 @@ const { validarSlug } = require('./recibo.cjs');
 
 const EXIT_RECUSA = 1;
 const EXIT_GIT_FALHOU = 2;
-
-/**
- * Normaliza fins de linha: reduz \r\n e \r a \n.
- * Necessário para comparar conteúdo entre git (sempre LF) e arquivo
- * em disco (pode ser CRLF com core.autocrlf=true).
- */
-function normalizarEol(texto) {
-  return texto.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-}
 
 /**
  * O mesmo, sobre BYTES. O selo compara bytes, nunca texto decodificado.
@@ -203,16 +197,27 @@ function ancoraDe(slug) {
 function exigirAncoraEFormato(slug) {
   const caminhoManifesto = `docs/rainforest/reguas/${slug}.md`;
 
-  // Verifica se o arquivo existe na árvore de trabalho
-  if (!fs.existsSync(caminhoManifesto)) {
+  const existeNaArvore = fs.existsSync(caminhoManifesto);
+  const ancora = ancoraDe(slug);
+
+  // AUSENCIA SEM ANCORA e uso errado (2): nao ha regua com esse slug.
+  if (!ancora && !existeNaArvore) {
     console.error(`arquivo não encontrado: ${caminhoManifesto}`);
     process.exit(2);
   }
 
-  // Resolve a âncora
-  const ancora = ancoraDe(slug);
+  // Existe na arvore mas nunca entrou no git: veredito (1). Nao ha selo.
   if (!ancora) {
     console.error(`manifesto nunca foi commitado: ${caminhoManifesto}`);
+    process.exit(EXIT_RECUSA);
+  }
+
+  // SELADO E APAGADO tambem e veredito (1), nunca ambiente. Sumir com o
+  // manifesto e da mesma familia de edita-lo, e classificar isso como uso
+  // errado manda o operador para o remedio de ambiente — refazer o checkout
+  // com historico — quando o que houve foi o manifesto deixar a arvore.
+  if (!existeNaArvore) {
+    console.error(`manifesto selado e removido da arvore de trabalho: ${caminhoManifesto}`);
     process.exit(EXIT_RECUSA);
   }
 

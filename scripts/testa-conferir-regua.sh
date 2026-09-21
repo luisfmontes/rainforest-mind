@@ -480,11 +480,11 @@ git add -A >/dev/null 2>&1
 git commit -q -m "manifesto sem descricao" >/dev/null 2>&1
 esperado "### M1 sem descricao reprova" 1 node "$SCRIPT" conferir --slug sem-descricao
 contem "  ... mensagem cita o formato exigido" "fora do formato" node "$SCRIPT" conferir --slug sem-descricao
-saida_semdesc=$(node "$SCRIPT" mostrar --slug sem-descricao 2>/dev/null)
-if [ -z "$saida_semdesc" ]; then
+bytes_semdesc=$(stdout_bytes node "$SCRIPT" mostrar --slug sem-descricao)
+if [ "$bytes_semdesc" = "0" ]; then
   ok=$((ok+1)); echo "  ok     ... mostrar nao imprime nada nesse caso"
 else
-  falhou=$((falhou+1)); echo "  FALHA mostrar imprimiu ${#saida_semdesc} bytes com formato invalido"
+  falhou=$((falhou+1)); echo "  FALHA mostrar imprimiu $bytes_semdesc bytes com formato invalido"
 fi
 
 echo
@@ -736,6 +736,64 @@ fi
 esperado "5 validos + 2 malformados REPROVA" 1 node "$SCRIPT" conferir --slug misturado
 contem "e a mensagem nomeia o cabecalho ofensor" "### M6: sexto invisivel" node "$SCRIPT" conferir --slug misturado
 esperado "mostrar tambem recusa" 1 node "$SCRIPT" mostrar --slug misturado
+
+cd "$REPO2"
+
+echo
+echo "== 20. manifesto selado e apagado da arvore e VEREDITO (1), nao ambiente (2) =="
+# Sumir com o manifesto e da mesma familia de edita-lo. Classificar como uso
+# errado (2) mandava o operador para o remedio de ambiente — refazer o checkout
+# com historico — quando o que houve foi o manifesto deixar a arvore.
+#
+# O exit code sozinho NAO discrimina este caso, e a catraca mostrou por que:
+# sem a guarda, o `readFileSync` do arquivo ausente lanca excecao e o node
+# morre com exit 1 e stack trace — o mesmo codigo do veredito, por acidente.
+# Quem separa os dois mundos e a mensagem "removido da arvore".
+REPO11="$CAIXA/repo-apagado"
+mkdir -p "$REPO11/docs/rainforest/reguas"
+cd "$REPO11"
+git init >/dev/null 2>&1
+git config user.email "test@<email>"
+git config user.name "Test User"
+git config commit.gpgsign false
+cp "$REPO2/docs/rainforest/reguas/autocrlf-test.md" docs/rainforest/reguas/some.md
+git add -A >/dev/null 2>&1
+git commit -q -m "regua selada" >/dev/null 2>&1
+
+# Contraprova: antes de apagar, passa.
+esperado "com o manifesto na arvore, passa" 0 node "$SCRIPT" conferir --slug some
+rm -f docs/rainforest/reguas/some.md
+esperado "apagado da arvore: veredito (1), nao ambiente" 1 node "$SCRIPT" conferir --slug some
+contem "e diz que foi removido, nao que o arquivo nunca existiu" "removido da arvore" node "$SCRIPT" conferir --slug some
+esperado "slug que nunca existiu continua sendo 2" 2 node "$SCRIPT" conferir --slug nunca-existiu
+
+cd "$REPO2"
+
+echo
+echo "== 21. git AUSENTE do PATH sai 2 pelo ramo do ENOENT =="
+# O `pronto quando` da tarefa 6 prometia isto e nenhum caso media. O caso 10
+# mede "fora de repositorio", que chega ao mesmo exit 2 por OUTRO ramo
+# (`res.status !== 0`); aqui o gatilho e `res.error` ENOENT, o do spawn que nem
+# acha o binario. Regressao que tratasse os dois de forma diferente passava a
+# bateria inteira.
+#
+# Sabotar o PATH com um `git` falso nao funciona no Windows (o Node resolve por
+# PATHEXT e ignora um extensionless). Esvaziar o PATH funciona, e por isso o
+# node e chamado pelo caminho absoluto.
+NODE_ABS=$(command -v node)
+cd "$REPO9" 2>/dev/null || cd "$REPO2"
+if [ -n "$NODE_ABS" ] && ! env PATH= "$NODE_ABS" -e "require('child_process').execSync('git --version')" >/dev/null 2>&1; then
+  ok=$((ok+1)); echo "  ok   com PATH vazio o git realmente nao e encontrado (o caso alcanca o ramo)"
+  saida21=$(env PATH= "$NODE_ABS" "$SCRIPT" conferir --slug fundo 2>&1); ec21=$?
+  if [ "$ec21" = "2" ]; then
+    ok=$((ok+1)); echo "  ok   git ausente do PATH sai 2, nao 1 (exit $ec21)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA git ausente do PATH: esperava 2, veio $ec21"
+    echo "$saida21" | sed "s/^/         /" | tail -3
+  fi
+else
+  falhou=$((falhou+1)); echo "  FALHA nao consegui montar um ambiente sem git — o caso nao mede nada"
+fi
 
 cd "$REPO2"
 

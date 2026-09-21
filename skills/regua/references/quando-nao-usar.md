@@ -14,3 +14,10 @@ use quando:
 
 Use quando errar o acabamento custa a impressão de quem recebe, e você percebe
 que não consegue escrever a frase "isto está pronto quando ___".
+
+## Onde ela encaixa
+
+Esta skill **não é estágio do fluxo** e não aparece no `estado.cjs` — é
+invocável sozinha, como `divergir`, `semear` e `arqueologia`. Ela também pode
+alimentar o `plano`: a régua vira o critério de aceite da tarefa que não tinha
+nenhum, e aí o `verificar` volta a ter o que rodar.
