@@ -150,6 +150,26 @@ tem     "viva continua no repo"                       "$(git -C "$SBP/local" bra
 nao_tem "resolvida saiu do repo"                      "$(git -C "$SBP/local" branch)" "resolvida"
 
 echo
+echo "== 4b. viva sem upstream sai num grupo proprio, com rotulo que nao fala de remoto =="
+# Ate 2026-09-21 toda `viva` saia sob "o remoto esta de pe", e 72 das 78 assim
+# rotuladas na maquina do Luis nunca tinham tido remoto: o rotulo mandava procurar
+# no GitHub um trabalho que so existia no disco. A classe (e a recusa de remover)
+# nao muda; muda so o grupo impresso. `bloco` recorta o grupo de um cabecalho ate
+# a linha em branco, para o caso provar ONDE a branch saiu, nao so que saiu.
+montar
+git -C "$SBP/local" checkout -qb so-local
+echo l > "$SBP/local/l.txt"; git -C "$SBP/local" add .; git -C "$SBP/local" commit -qm l
+git -C "$SBP/local" checkout -q main
+bloco() { printf '%s\n' "$1" | awk -v h="$2" 'index($0, h)==1{f=1;next} f&&/^$/{exit} f'; }
+S4B="$(roda --sem-fetch)"
+tem     "so-local sai no grupo viva-so-local"          "$(bloco "$S4B" "viva-so-local (")" "so-local (sem upstream)"
+nao_tem "so-local NAO sai no grupo viva"               "$(bloco "$S4B" "viva (")" "so-local"
+tem     "viva com upstream continua no grupo viva"     "$(bloco "$S4B" "viva (")" "viva -> origin/viva"
+nao_tem "nenhum rotulo diz mais que o remoto esta de pe" "$S4B" "remoto esta de pe"
+tem     "a classe continua viva (a decisao nao mudou)" "$(classe so-local)" "viva"
+nao_tem "so-local fica fora dos alvos MESMO com --forcar" "$(alvos --forcar)" "so-local"
+
+echo
 echo "== 5. o toggle branch-forcar =="
 montar
 mkdir -p "$SBP/local/.rainforest"
