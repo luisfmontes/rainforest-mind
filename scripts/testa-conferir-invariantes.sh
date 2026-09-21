@@ -132,7 +132,17 @@ cd "$(dirname "$0")/.." || exit 1
 # A limpeza fica IMEDIATAMENTE ANTES do `[ "$falhou" -eq 0 ]` final, nunca
 # depois: `rm -rf` como ultimo comando viraria o status de saida do script e a
 # bateria perderia a capacidade de reprovar.
-LOGS="$(mktemp -d)"
+# Idioma SANDBOXES (cobrado por scripts/testa-sandbox-com-trap.sh): uma RAIZ
+# unica registrada no processo principal, e toda caixa nasce DENTRO dela. As
+# caixas saem de `$(nova_caixa)`, que roda num subshell, e um `SANDBOXES+=` la
+# dentro nunca chegaria ao array daqui -- registrar a raiz e o que faz o trap
+# varrer de fato a caixa esquecida quando a bateria morre no meio.
+SANDBOXES=()
+RAIZ_TMP="$(mktemp -d)"
+SANDBOXES+=("$RAIZ_TMP")
+limpar_sandboxes() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done; }
+trap limpar_sandboxes EXIT
+LOGS="$(mktemp -d "$RAIZ_TMP/logs.XXXXXX")"
 
 ok=0
 falhou=0
@@ -155,7 +165,7 @@ marca "repositorio integro passa no conferir" $REPO_INTEGRO
 
 # Funções auxiliares
 nova_caixa() {
-  local tmp="$(mktemp -d)"
+  local tmp="$(mktemp -d "$RAIZ_TMP/caixa.XXXXXX")"
   mkdir -p "$tmp/skills/rainforest-mind" "$tmp/scripts"
   cp scripts/conferir-invariantes.cjs "$tmp/scripts/"
   cp -r hooks "$tmp/"
@@ -167,7 +177,7 @@ nova_caixa() {
 # mutação monta a SUA caixa: até 2026-09-20 havia uma só, nunca restaurada, e do
 # bloco (2) em diante cada um rodava sobre a árvore estragada pelo anterior.
 nova_caixa_rf() {
-  local tmp="$(mktemp -d)"
+  local tmp="$(mktemp -d "$RAIZ_TMP/caixa.XXXXXX")"
   mkdir -p "$tmp/skills/rainforest-mind" "$tmp/scripts"
   cp scripts/conferir-invariantes.cjs "$tmp/scripts/"
   cp skills/rainforest-mind/invariantes.json "$tmp/skills/rainforest-mind/"
@@ -404,7 +414,7 @@ fi
 # Controle da própria trava: com um `invariantes.json` a menos, o roster TEM de
 # ficar vermelho. Sem este controle, `roster_verde` sempre-verdadeiro passaria
 # despercebido — a trava existiria sem trancar nada.
-CAIXA_ROSTER="$(mktemp -d)"
+CAIXA_ROSTER="$(mktemp -d "$RAIZ_TMP/roster.XXXXXX")"
 mkdir -p "$CAIXA_ROSTER/scripts"
 cp scripts/conferir-invariantes.cjs "$CAIXA_ROSTER/scripts/"
 cp -r hooks "$CAIXA_ROSTER/"
@@ -631,7 +641,7 @@ avalia_segunda_fonte "."
 SF_N_REAL="$SF_N_PROD"
 if ! segunda_fonte_verde; then
   SEGUNDA_FONTE_OK=0
-  SF_TMP="$(mktemp -d)"
+  SF_TMP="$(mktemp -d "$RAIZ_TMP/sf.XXXXXX")"
   printf '%s\n' "$SF_DECL" | sed '/^$/d' > "$SF_TMP/decl"
   printf '%s\n' "$SF_PROD" | sed '/^$/d' > "$SF_TMP/prod"
   SF_SO_PROD="$(LC_ALL=C comm -13 "$SF_TMP/decl" "$SF_TMP/prod")"
@@ -679,7 +689,7 @@ fi
 #     em qualquer entrada, inclusive nessa — o controle automatizado abaixo so
 #     precisa mutar UMA entrada com `onde`, nao especificamente a regra 12.
 for SF_MODO_ATUAL in retarget typo onde; do
-  CAIXA_SF="$(mktemp -d)"
+  CAIXA_SF="$(mktemp -d "$RAIZ_TMP/caixa-sf.XXXXXX")"
   for f in skills/*/invariantes.json; do
     s="$(basename "$(dirname "$f")")"
     mkdir -p "$CAIXA_SF/skills/$s"
