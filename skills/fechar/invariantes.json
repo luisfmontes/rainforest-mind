@@ -1,0 +1,15 @@
+[
+  {
+    "frase": "O destino da branch é sempre PR",
+    "descricao": "Sem ela o agente volta a oferecer menu de merge/PR/manter, que é o que o usuário pediu para sumir"
+  },
+  {
+    "frase": "Árvore suja de algo que não é deste trabalho é condição de parada",
+    "descricao": "Sem ela o agente volta a commitar por cima de trabalho de outra sessão no mesmo working tree"
+  },
+  {
+    "tipo": "nao_deve",
+    "frase": "CONFIRMO fechar issue",
+    "descricao": "É guarda prospectiva, não detector de regressão: trava vocabulário que uma versão futura do corpo do `fechar` escreveria ao reintroduzir exigência de frase digitada. A frase nunca existiu no corpo do fechar — `git show be8c49eb^:skills/fechar/SKILL.md` não tem nenhuma ocorrência de \"confirmo\", em qualquer caixa. O `--confirmo` que be8c49eb removeu (16/09, D1 do zerar-issues-5) vivia em scripts/fechar-issue.cjs e scripts/testa-fechar-issue.sh — 10 e 19 linhas com \"confirmo\" em qualquer caixa em be8c49eb^ (`grep -ci`), contra 0 no corpo do fechar — e segue obrigatório em skills/limpar/SKILL.md; scripts/ e hooks/ estão fora do alcance do checador, que só abre skills/<n>/invariantes.json, skills/<n>/SKILL.md e skills/<n>/references/regra-<n>.md. Logo este invariante não pega reintrodução de --confirmo em script ou hook, e não deve ser lido como se pegasse. NÃO trocar a frase por '--confirmo': aquele token é obrigatório no limpar e aparece dentro da própria frase que o proíbe aqui"
+  }
+]

@@ -1,0 +1,10 @@
+[
+  {
+    "frase": "O hash da base é executado `git rev-parse`, nunca digitado",
+    "descricao": "Regra 12. Sem ela volta o hash copiado de prosa, que é o começo de toda auditoria que não fecha"
+  },
+  {
+    "frase": "nunca é nomeado",
+    "descricao": "Regra 10/11: agente que edita sem nome usa worktree isolado. Nome sem worktree é a ilusão de isolamento"
+  }
+]
