@@ -10,6 +10,15 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.21.1 — 2026-09-21
+
+**A limpeza de branches para de mandar procurar no GitHub o que só existe no
+disco.** A listagem do `limpar` rotulava toda branch fora da `main` como "o remoto
+está de pé", inclusive as que nunca tiveram remoto. Agora elas saem num grupo
+próprio, `viva-so-local`: os commits só existem na sua máquina, o script não sabe
+dizer se é trabalho em andamento ou tentativa descartada, e quem decide é você,
+olhando e apagando à mão. Nada que antes era protegido passou a ser removido.
+
 ## 1.21.0 — 2026-09-21
 
 **A instrução de comportamento de uma skill passa a ter trava.** Até agora, uma
