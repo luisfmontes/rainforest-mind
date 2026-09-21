@@ -48,7 +48,7 @@ comparação e aprovar a primeira rodada, que é a falha mais comum deste padrã
 
 E uma régua **boa demais** é o outro lado da mesma moeda: se o alvo é
 inalcançável com o esforço disponível, o loop nunca sai e queima orçamento
-parecendo progresso. O teto da fase 1 existe por causa disso.
+parecendo progresso. O teto do `## Freios` existe por causa disso.
 
 ### Os mecanismos: selam a régua por construção
 
@@ -62,9 +62,10 @@ Veja o formato exigido em `references/formato-manifesto.md`.
 Quatro pares de exemplo, adjetivo contra mecanismo, estão em
 `references/mecanismos-exemplos.md`.
 
-O arquivo é **commitado na rodada 1** — e o commit vem **antes de despachar o
-primeiro crítico**, porque o `mostrar` lê do commit e recusa (exit 1) manifesto
-que ainda não entrou no git. Depois disso não muda. Isso não é
+Antes de selar, `node scripts/conferir-regua.cjs validar --slug <slug>`: selado
+com erro de formato não tem conserto, só slug novo. O arquivo é **commitado na
+rodada 1**, **antes do primeiro crítico** — o `mostrar` lê do commit e recusa
+(exit 1) manifesto fora do git. Depois disso não muda. Isso não é
 organização: o crítico é `Agent` novo a **toda** rodada, e o que não estiver em
 disco não chega nele. É por isso que o teto de rodadas deixou de viver na
 conversa e virou item do arquivo — e régua reescrita no meio do loop é régua
@@ -161,17 +162,16 @@ materializado pelo orquestrador através de `git show`, não do último commit. 
 melhor guardado é um SHA registrado no log de rodadas versionado,
 `docs/rainforest/reguas/<slug>-rodadas.tsv`, com as colunas `rodada`, `commit`,
 `venceu_regua`, `venceu_interno`, `status` (em `keep|discard|abortado`) e `lacuna`,
-e atualizado pela comparação interna a cada rodada.
+e atualizado pela comparação interna a cada rodada. A rodada 1 entra como `keep`
+— é o primeiro melhor guardado —, e cada linha entra depois do commit que fecha
+a rodada, que é de onde sai o SHA.
 
 **O limite do `git show`: artefato que só existe renderizado.** `git show` devolve
-o que está versionado, e isso basta enquanto o artefato é texto — README, mensagem
-de erro, código, nome. Quando o que se julga é um render — print de tela,
-filmstrip de animação, PDF de documento —, o arquivo renderizado **precisa estar
-commitado junto** com a rodada. Sem isso a **comparação interna fica cega**:
-seguiria comparando o fonte enquanto o crítico da régua julga a imagem, e os
-dois mediriam coisas diferentes sem ninguém perceber. O preflight da Fase 0
-pergunta se o nosso lado renderiza; aqui o render precisa **sobreviver à
-rodada**, não só existir durante ela.
+o versionado, e basta para texto. Quando se julga um render — print, filmstrip,
+PDF —, o arquivo renderizado **precisa estar commitado junto** com a rodada. Sem
+isso a **comparação interna fica cega**: compara o fonte enquanto o crítico da
+régua julga a imagem. O preflight pergunta se o nosso lado renderiza; aqui o
+render precisa **sobreviver à rodada**.
 
 **Crítico da régua.** `Agent` novo **toda rodada**, nunca `fork`, nunca o mesmo
 da rodada anterior. Recebe o nosso artefato e a régua **sem rótulo** e sem saber
@@ -214,7 +214,7 @@ Quatro saídas, não três:
 
 - **Venceu** — o crítico da régua escolheu o nosso. Fim, sem mais uma rodada.
   Mais uma rodada depois de vencer é a regra 9 sendo violada com método.
-- **Teto** — acabaram as rodadas declaradas na Fase 1. Você entrega o **melhor
+- **Teto** — acabaram as rodadas do `## Freios`. Você entrega o **melhor
   guardado** do log, materializado via `git show`, com a distância para a régua
   **nomeada em uma linha**. Os commits das rodadas descartadas **permanecem no
   histórico**: o que não avança é o ponteiro. A regra 11 proíbe git destrutivo em

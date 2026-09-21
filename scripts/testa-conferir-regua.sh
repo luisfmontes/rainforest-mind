@@ -233,8 +233,8 @@ echo "== 7. mostrar manifesto intacto imprime conteudo da ancora =="
 # Verifica que conferir passa (sanidade check)
 conf_exit=0
 node "$SCRIPT" conferir --slug teste-4 >/dev/null 2>&1 || conf_exit=$?
-if [ "$conf_exit" = "0" ]; then echo "  ok   conferir passa (sanidade)"
-else echo "  FALHA conferir: exit $conf_exit"; fi
+if [ "$conf_exit" = "0" ]; then ok=$((ok+1)); echo "  ok   conferir passa (sanidade)"
+else falhou=$((falhou+1)); echo "  FALHA conferir: exit $conf_exit"; fi
 
 # Byte a byte de verdade: arquivo contra arquivo, com `cmp`. Newline final
 # inclusive — era ele que $(...) apagava dos dois lados.
@@ -793,6 +793,146 @@ if [ -n "$NODE_ABS" ] && ! env PATH= "$NODE_ABS" -e "require('child_process').ex
   fi
 else
   falhou=$((falhou+1)); echo "  FALHA nao consegui montar um ambiente sem git — o caso nao mede nada"
+fi
+
+cd "$REPO2"
+
+echo
+echo "== 22. merge TREESAME nao troca a ancora: mais de uma adicao e VEREDITO (1) =="
+# Achado bloqueante da rodada 7. Regua estrita selada na main; uma branch
+# nascida ANTES dela tambem adiciona o arquivo, frouxo; o merge conflita
+# (add/add) e e resolvido com o lado da branch. Sem `--full-history`, o git
+# simplifica o historico, segue so o pai TREESAME e devolve so a adicao da
+# branch: `conferir` saia 0 e `mostrar` entregava a regua frouxa.
+REPO12="$CAIXA/repo-merge"
+mkdir -p "$REPO12"
+cd "$REPO12"
+git init -q -b main >/dev/null 2>&1
+git config user.email "test@<email>"
+git config user.name "Test User"
+git config commit.gpgsign false
+git config core.autocrlf false
+echo base > LEIA; git add -A >/dev/null 2>&1; git commit -q -m C0 >/dev/null 2>&1
+manifesto12() { # adjetivo
+  mkdir -p docs/rainforest/reguas
+  { printf "# Regua
+
+## Freios
+
+"; for n in 1 2 3 4 5; do printf "### M%s %s
+x
+
+" "$n" "$1"; done; } > docs/rainforest/reguas/merge.md
+}
+git checkout -q -b frouxa
+manifesto12 frouxo; git add -A >/dev/null 2>&1; git commit -q -m "E1 frouxa" >/dev/null 2>&1
+git checkout -q main
+manifesto12 estrito; git add -A >/dev/null 2>&1; git commit -q -m "C1 estrita, a selada" >/dev/null 2>&1
+
+# Contraprova: antes do merge, a regua selada passa.
+esperado "antes do merge a regua selada passa" 0 node "$SCRIPT" conferir --slug merge
+
+git merge frouxa >/dev/null 2>&1
+git checkout --theirs docs/rainforest/reguas/merge.md >/dev/null 2>&1
+git add -A >/dev/null 2>&1
+git commit -q -m "merge resolvido com a frouxa" >/dev/null 2>&1
+if grep -q "### M1 frouxo" docs/rainforest/reguas/merge.md; then
+  ok=$((ok+1)); echo "  ok   o merge deixou a regua frouxa na arvore (o caso monta o ataque)"
+else
+  falhou=$((falhou+1)); echo "  FALHA o merge nao deixou a frouxa — o caso nao mede nada"
+fi
+esperado "depois do merge: veredito (1), nao 0" 1 node "$SCRIPT" conferir --slug merge
+contem "e nomeia o selo ambiguo" "selo ambiguo" node "$SCRIPT" conferir --slug merge
+bytes12=$(stdout_bytes node "$SCRIPT" mostrar --slug merge)
+if [ "$bytes12" = "0" ]; then
+  ok=$((ok+1)); echo "  ok   o critico cego nao recebe a regua frouxa"
+else
+  falhou=$((falhou+1)); echo "  FALHA mostrar entregou $bytes12 bytes depois do merge"
+fi
+
+cd "$REPO2"
+
+echo
+echo "== 23. git replace nao troca o conteudo que o selo le =="
+# `git replace` troca o objeto que `git show` devolve sem reescrever
+# historico: o commit selado continua la, com o mesmo SHA, e o que se le dele
+# e outro blob. Aqui o blob da regua estrita e substituido pelo da frouxa, e a
+# arvore fica com a frouxa — sem `GIT_NO_REPLACE_OBJECTS` as duas batem e o
+# `conferir` sai 0.
+REPO13="$CAIXA/repo-replace"
+mkdir -p "$REPO13/docs/rainforest/reguas"
+cd "$REPO13"
+git init -q >/dev/null 2>&1
+git config user.email "test@<email>"
+git config user.name "Test User"
+git config commit.gpgsign false
+git config core.autocrlf false
+{ printf "# Regua
+
+## Freios
+
+"; for n in 1 2 3 4 5; do printf "### M%s estrito
+x
+
+" "$n"; done; } > docs/rainforest/reguas/troca.md
+git add -A >/dev/null 2>&1; git commit -q -m "regua selada" >/dev/null 2>&1
+blob_estrito=$(git rev-parse HEAD:docs/rainforest/reguas/troca.md)
+sed -i "s/estrito/frouxo/" docs/rainforest/reguas/troca.md
+blob_frouxo=$(git hash-object -w docs/rainforest/reguas/troca.md)
+git replace "$blob_estrito" "$blob_frouxo" >/dev/null 2>&1
+if MSYS_NO_PATHCONV=1 git show HEAD:docs/rainforest/reguas/troca.md | grep -q frouxo; then
+  ok=$((ok+1)); echo "  ok   sem a guarda o git show ja entrega a frouxa (o caso monta o ataque)"
+else
+  falhou=$((falhou+1)); echo "  FALHA o replace nao pegou — o caso nao mede nada"
+fi
+esperado "com replace: veredito (1), nao 0" 1 node "$SCRIPT" conferir --slug troca
+bytes13=$(stdout_bytes node "$SCRIPT" mostrar --slug troca)
+if [ "$bytes13" = "0" ]; then
+  ok=$((ok+1)); echo "  ok   o critico cego nao recebe o conteudo substituido"
+else
+  falhou=$((falhou+1)); echo "  FALHA mostrar entregou $bytes13 bytes com o replace ativo"
+fi
+
+cd "$REPO2"
+
+echo
+echo "== 24. validar confere o formato ANTES de selar, sem imprimir o manifesto =="
+# Sem este subcomando, manifesto selado com erro de formato ficava sem
+# conserto: a ancora e a primeira adicao, a quebrada. Nenhum dos arquivos
+# abaixo e commitado — e o ponto: validar tem de funcionar SEM ancora.
+REPO14="$CAIXA/repo-validar"
+mkdir -p "$REPO14/docs/rainforest/reguas"
+cd "$REPO14"
+git init -q >/dev/null 2>&1
+{ printf "# Regua
+
+## Freios
+
+"; for n in 1 2 3 4 5; do printf "### M%s bom
+x
+
+" "$n"; done; } > docs/rainforest/reguas/bom.md
+{ printf "# Regua
+
+## Freios
+
+"; for n in 1 2 3 4 5; do printf "### M%s: ruim
+x
+
+" "$n"; done; } > docs/rainforest/reguas/ruim.md
+esperado "manifesto bom, nunca commitado: validar sai 0" 0 node "$SCRIPT" validar --slug bom
+contem "e diz que pode selar" "pode selar" node "$SCRIPT" validar --slug bom
+esperado "manifesto fora do formato: validar sai 1" 1 node "$SCRIPT" validar --slug ruim
+contem "e nomeia o cabecalho ofensor" "### M1: ruim" node "$SCRIPT" validar --slug ruim
+esperado "slug inexistente: validar sai 2" 2 node "$SCRIPT" validar --slug nao-ha
+# Contraprova: o mesmo manifesto bom, sem commit, o `conferir` recusa — e a
+# diferenca entre as duas rotas que o caso existe para medir.
+esperado "o conferir do mesmo arquivo recusa (nunca commitado)" 1 node "$SCRIPT" conferir --slug bom
+bytes14=$(stdout_bytes node "$SCRIPT" validar --slug bom)
+if [ "$bytes14" = "0" ]; then
+  ok=$((ok+1)); echo "  ok   validar nao imprime o manifesto (o mostrar segue o unico que imprime)"
+else
+  falhou=$((falhou+1)); echo "  FALHA validar imprimiu $bytes14 bytes em stdout"
 fi
 
 cd "$REPO2"

@@ -11,8 +11,12 @@
  * herda contexto da conversa — o que não estiver em disco não chega nele.
  *
  * NENHUMA PROTECAO CONTRA: orquestrador que não chama o script, rebase do
- * commit de adição, semântica vazia de seção "Freios" ou cabeçalhos M<n>
- * (validamos presença, não conteúdo).
+ * commit de adição (reescrever o histórico apaga a adição selada; o que sobra
+ * parece uma adição única legítima), semântica vazia de seção "Freios" ou
+ * cabeçalhos M<n> (validamos presença, não conteúdo).
+ *   PROTEGE, e ja nao estava garantido antes: merge resolvido com um lado que
+ *   tambem adicionou o manifesto (`--full-history` + recusa de mais de uma
+ *   adicao) e `git replace` (`GIT_NO_REPLACE_OBJECTS`).
  *   Tambem NAO protege contra estado de git em que a leitura do historico
  *   falha por um motivo que a sonda em camadas de `ancoraDe` nao alcanca: ali
  *   o script pode sair 1 (veredito) onde 2 (ambiente) seria mais correto. A
@@ -20,7 +24,6 @@
  *   packed-refs ilegivel, fora de repositorio — e tres rodadas de revisao
  *   independente acharam um estado novo cada. O selo em si NAO depende dessa
  *   distincao: manifesto alterado continua sendo pego em qualquer um dos casos.
-
  *
  * Uso:
  *   node scripts/conferir-regua.cjs conferir --slug <slug>
@@ -38,10 +41,17 @@
  *             Exit 2: slug invalido ou inexistente, clone raso, ou git
  *             falhou.
  *
+ *   node scripts/conferir-regua.cjs validar --slug <slug>
+ *     ANTES de selar: confere so o formato do arquivo na arvore, sem ancora,
+ *     e nao imprime o manifesto (o `mostrar` segue o unico que imprime).
+ *     Exit 0: formato ok, pode commitar. Exit 1: formato invalido.
+ *             Exit 2: slug invalido ou arquivo inexistente.
+ *
  * Exit codes:
  *   0  Manifesto íntegro e formato válido (conferir: sucesso; mostrar: imprimiu conteúdo).
- *   1  Manifesto alterado, formato inválido, nunca commitado, ou selado e
- *      removido da árvore de trabalho.
+ *   1  Manifesto alterado, formato inválido, nunca commitado, selado e
+ *      removido da árvore de trabalho, ou adicionado mais de uma vez no
+ *      histórico (selo ambíguo).
  *   2  Slug invalido ou inexistente, uso errado, clone raso, ou git falhou.
  */
 
@@ -52,6 +62,11 @@ const { validarSlug } = require('./recibo.cjs');
 
 const EXIT_RECUSA = 1;
 const EXIT_GIT_FALHOU = 2;
+
+// `git replace` troca o conteudo que `git log` e `git show` enxergam sem
+// reescrever historico nenhum — o commit selado continua la, e o que se le
+// dele e outra coisa. Toda leitura de historico e de conteudo passa por aqui.
+const ENV_GIT = { ...process.env, GIT_NO_REPLACE_OBJECTS: '1', MSYS_NO_PATHCONV: '1' };
 
 /**
  * O mesmo, sobre BYTES. O selo compara bytes, nunca texto decodificado.
@@ -85,6 +100,7 @@ function arg(nome) {
 function uso() {
   console.error(`uso: node scripts/conferir-regua.cjs conferir --slug <slug>`);
   console.error(`      node scripts/conferir-regua.cjs mostrar --slug <slug>`);
+  console.error(`      node scripts/conferir-regua.cjs validar --slug <slug>`);
 }
 
 /**
@@ -116,8 +132,15 @@ function ancoraDe(slug) {
 
   const caminhoManifesto = `docs/rainforest/reguas/${slug}.md`;
 
+  // `--full-history` e obrigatorio. Sem ele o git SIMPLIFICA o historico: num
+  // merge TREESAME a um dos pais, segue so aquele pai. Reproduzido: regua
+  // estrita selada na main, branch que tambem adiciona o arquivo (frouxo),
+  // merge resolvido com o lado da branch — o `log` simplificado nunca visita a
+  // adicao selada, devolve so a da branch, e `conferir` saia 0 com `mostrar`
+  // entregando a regua frouxa ao critico cego.
   const res = spawnSync('git', [
     'log',
+    '--full-history',
     '--diff-filter=A',
     '--format=%H',
     '--',
@@ -125,6 +148,7 @@ function ancoraDe(slug) {
   ], {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
+    env: ENV_GIT,
   });
 
   // AMBIENTE (2) vs. VEREDITO (1). `git log` sai != 0 em casos muito
@@ -186,69 +210,32 @@ function ancoraDe(slug) {
     return null;
   }
 
-  return linhas[linhas.length - 1];
+  // MAIS DE UMA ADICAO e veredito (1): o selo ficou ambiguo. Escolher uma
+  // delas nao resolve — pela data, a data de commit e de quem commita; pela
+  // topologia, e a mesma porta do merge com outro nome. Regua apagada e
+  // recriada no mesmo slug cai aqui tambem, e e coerente que caia: regua
+  // recriada e regua trocada. Slug novo e o caminho legitimo.
+  if (linhas.length > 1) {
+    console.error(`manifesto adicionado ${linhas.length} vezes no historico: selo ambiguo (docs/rainforest/reguas/${slug}.md)`);
+    console.error(`  commits de adicao: ${linhas.join(' ')}`);
+    console.error('  Regua trocada nao se re-sela no mesmo slug: crie outro.');
+    process.exit(EXIT_RECUSA);
+  }
+
+  return linhas[0];
 }
 
 /**
- * Resolve a âncora, valida que existe, valida o formato do manifesto.
- * Retorna a string do hash (âncora) se tudo ok.
- * Faz process.exit(1 ou 2) se há erro. Nunca retorna em caso de falha.
+ * Os quatro contratos de formato do manifesto — `## Freios`, `### M<n>`
+ * bem formado, 5 a 7, sequencial desde 1. Recebe BYTES e sai 1 no primeiro
+ * que falhar. E a MESMA funcao que o selo aplica ao conteudo do commit e que
+ * o `validar` aplica ao arquivo antes de selar: se fossem duas, divergiriam,
+ * e o autor passaria no `validar` para reprovar no `conferir`.
  */
-function exigirAncoraEFormato(slug) {
-  const caminhoManifesto = `docs/rainforest/reguas/${slug}.md`;
-
-  const existeNaArvore = fs.existsSync(caminhoManifesto);
-  const ancora = ancoraDe(slug);
-
-  // AUSENCIA SEM ANCORA e uso errado (2): nao ha regua com esse slug.
-  if (!ancora && !existeNaArvore) {
-    console.error(`arquivo não encontrado: ${caminhoManifesto}`);
-    process.exit(2);
-  }
-
-  // Existe na arvore mas nunca entrou no git: veredito (1). Nao ha selo.
-  if (!ancora) {
-    console.error(`manifesto nunca foi commitado: ${caminhoManifesto}`);
-    process.exit(EXIT_RECUSA);
-  }
-
-  // SELADO E APAGADO tambem e veredito (1), nunca ambiente. Sumir com o
-  // manifesto e da mesma familia de edita-lo, e classificar isso como uso
-  // errado manda o operador para o remedio de ambiente — refazer o checkout
-  // com historico — quando o que houve foi o manifesto deixar a arvore.
-  if (!existeNaArvore) {
-    console.error(`manifesto selado e removido da arvore de trabalho: ${caminhoManifesto}`);
-    process.exit(EXIT_RECUSA);
-  }
-
-  // Lê o conteúdo do commit
-  const resShow = spawnSync('git', [
-    'show',
-    `${ancora}:${caminhoManifesto}`,
-  ], {
-    stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, MSYS_NO_PATHCONV: '1' },
-  });
-
-  if (resShow.error || resShow.status !== 0) {
-    console.error(`erro ao ler conteudo do commit ${ancora}: ${caminhoManifesto}`);
-    process.exit(EXIT_GIT_FALHOU);
-  }
-
-  // Sem `encoding` no spawn acima: `resShow.stdout` vem Buffer.
-  const bytesCommit = resShow.stdout;
-  const bytesArquivo = fs.readFileSync(caminhoManifesto);
-
-  // Compara BYTES, so com EOL normalizado. Decodificar antes de comparar
-  // apagaria diferenca real: byte invalido vira U+FFFD dos dois lados.
-  if (!normalizarEolBytes(bytesCommit).equals(normalizarEolBytes(bytesArquivo))) {
-    console.error(`manifesto editado na arvore de trabalho: ${caminhoManifesto}`);
-    process.exit(EXIT_RECUSA);
-  }
-
-  // Valida formato. Aqui decodificar e legitimo: o que se procura sao
+function validarFormato(bytes, caminhoManifesto) {
+  // Aqui decodificar e legitimo: o que se procura sao
   // cabecalhos ASCII, e a integridade ja foi comparada sobre bytes.
-  const linhas = normalizarEolBytes(bytesCommit).toString('utf8').split('\n');
+  const linhas = normalizarEolBytes(bytes).toString('utf8').split('\n');
 
   // Procura pela secao "## Freios"
   const temFreios = linhas.some(linha => linha === '## Freios');
@@ -301,6 +288,66 @@ function exigirAncoraEFormato(slug) {
       process.exit(EXIT_RECUSA);
     }
   }
+}
+
+/**
+ * Resolve a âncora, valida que existe, valida o formato do manifesto.
+ * Retorna a string do hash (âncora) se tudo ok.
+ * Faz process.exit(1 ou 2) se há erro. Nunca retorna em caso de falha.
+ */
+function exigirAncoraEFormato(slug) {
+  const caminhoManifesto = `docs/rainforest/reguas/${slug}.md`;
+
+  const existeNaArvore = fs.existsSync(caminhoManifesto);
+  const ancora = ancoraDe(slug);
+
+  // AUSENCIA SEM ANCORA e uso errado (2): nao ha regua com esse slug.
+  if (!ancora && !existeNaArvore) {
+    console.error(`arquivo não encontrado: ${caminhoManifesto}`);
+    process.exit(2);
+  }
+
+  // Existe na arvore mas nunca entrou no git: veredito (1). Nao ha selo.
+  if (!ancora) {
+    console.error(`manifesto nunca foi commitado: ${caminhoManifesto}`);
+    process.exit(EXIT_RECUSA);
+  }
+
+  // SELADO E APAGADO tambem e veredito (1), nunca ambiente. Sumir com o
+  // manifesto e da mesma familia de edita-lo, e classificar isso como uso
+  // errado manda o operador para o remedio de ambiente — refazer o checkout
+  // com historico — quando o que houve foi o manifesto deixar a arvore.
+  if (!existeNaArvore) {
+    console.error(`manifesto selado e removido da arvore de trabalho: ${caminhoManifesto}`);
+    process.exit(EXIT_RECUSA);
+  }
+
+  // Lê o conteúdo do commit
+  const resShow = spawnSync('git', [
+    'show',
+    `${ancora}:${caminhoManifesto}`,
+  ], {
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: ENV_GIT,
+  });
+
+  if (resShow.error || resShow.status !== 0) {
+    console.error(`erro ao ler conteudo do commit ${ancora}: ${caminhoManifesto}`);
+    process.exit(EXIT_GIT_FALHOU);
+  }
+
+  // Sem `encoding` no spawn acima: `resShow.stdout` vem Buffer.
+  const bytesCommit = resShow.stdout;
+  const bytesArquivo = fs.readFileSync(caminhoManifesto);
+
+  // Compara BYTES, so com EOL normalizado. Decodificar antes de comparar
+  // apagaria diferenca real: byte invalido vira U+FFFD dos dois lados.
+  if (!normalizarEolBytes(bytesCommit).equals(normalizarEolBytes(bytesArquivo))) {
+    console.error(`manifesto editado na arvore de trabalho: ${caminhoManifesto}`);
+    process.exit(EXIT_RECUSA);
+  }
+
+  validarFormato(bytesCommit, caminhoManifesto);
 
   return ancora;
 }
@@ -318,7 +365,28 @@ const slug = arg('slug');
 // mensagem certa para quem chamou errado.
 if (slug) validarSlug(slug);
 
-if (subcomando === 'conferir') {
+if (subcomando === 'validar') {
+  // ANTES de selar. Confere so o formato do arquivo na arvore — sem ancora,
+  // porque ainda nao ha commit — e nao imprime o manifesto: o `mostrar`
+  // continua sendo o unico caminho que imprime (D3). Sem este subcomando,
+  // manifesto selado com erro de formato ficava sem conserto: a ancora e a
+  // primeira adicao, a quebrada, e o orquestrador travado ali tinha o
+  // incentivo exato para ler o arquivo direto.
+  if (!slug) {
+    uso();
+    process.exit(2);
+  }
+
+  const caminhoManifesto = `docs/rainforest/reguas/${slug}.md`;
+  if (!fs.existsSync(caminhoManifesto)) {
+    console.error(`arquivo não encontrado: ${caminhoManifesto}`);
+    process.exit(2);
+  }
+
+  validarFormato(fs.readFileSync(caminhoManifesto), caminhoManifesto);
+  console.error(`formato ok: ${caminhoManifesto} — pode selar (commitar).`);
+  process.exit(0);
+} else if (subcomando === 'conferir') {
   if (!slug) {
     uso();
     process.exit(2);
@@ -340,10 +408,14 @@ if (subcomando === 'conferir') {
     `${ancora}:${caminhoManifesto}`,
   ], {
     stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, MSYS_NO_PATHCONV: '1' },
+    env: ENV_GIT,
   });
 
   if (resShow.error || resShow.status !== 0) {
+    // Mesmo `git show` que acabou de funcionar dentro de exigirAncoraEFormato:
+    // chegar aqui e o git mudar entre as duas chamadas. Raro — e por isso
+    // mesmo nao pode sair mudo, que e o formato de erro que ninguem investiga.
+    console.error(`erro ao reler o commit ${ancora}: ${caminhoManifesto}`);
     process.exit(EXIT_GIT_FALHOU);
   }
 

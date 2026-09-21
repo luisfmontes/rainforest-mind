@@ -283,3 +283,80 @@ para: if (false) {
 bateria: bash scripts/testa-conferir-regua.sh
 fixture: testa-conferir-regua.sh, caso 20 "manifesto selado e apagado da arvore e VEREDITO (1)"
 ```
+
+**Rodada 7 (2026-09-21), cinco achados — o selo tinha uma segunda porta.**
+Reproduzido: régua estrita selada na `main`; uma branch nascida antes dela
+também adiciona o arquivo, frouxo; o merge conflita (add/add) e é resolvido com
+o lado da branch. O `git log` **simplifica o histórico**: num merge TREESAME a um
+dos pais, segue só aquele pai, nunca visita a adição selada e devolve só a da
+branch. `conferir` saía 0 e `mostrar` entregava `### M1 frouxo` ao crítico
+cego. Não exige má-fé elaborada — é um fluxo normal de branch.
+
+Duas decisões subiram ao usuário, como o teto manda:
+
+- **Q1, decidido: recusar mais de uma adição.** `git log --full-history`, e
+  mais de um commit de adição sai 1 ("selo ambíguo"). Escolher uma delas não
+  resolveria: pela data, a data de commit é de quem commita; pela topologia, é
+  a mesma porta. Régua apagada e recriada no mesmo slug também cai aqui, e é
+  coerente — régua recriada é régua trocada. Junto, `GIT_NO_REPLACE_OBJECTS`
+  em toda leitura de histórico e conteúdo, que fecha a variante do `git replace`
+  (o commit selado continua lá, com o mesmo SHA, e o que se lê dele é outro
+  blob). O "rebase do commit de adição" segue declarado como limite.
+- **Q2, decidido: subcomando `validar`.** Manifesto selado com erro de formato
+  ficava sem conserto: a âncora é a primeira adição, a quebrada; corrigir e
+  commitar não troca a âncora; validar antes de selar era impossível (sem
+  commit, "nunca commitado"). E o orquestrador travado ali tinha o incentivo
+  exato para ler o arquivo direto — o furo da D3. `validar` aplica os quatro
+  contratos ao arquivo na árvore, sem âncora, e **não imprime** o manifesto: o
+  `mostrar` segue sendo o único que imprime. É a mesma função `validarFormato`
+  que o `conferir` aplica ao conteúdo selado, para as duas nunca divergirem.
+  Cresce o escopo desta tarefa — os arquivos já são dela.
+
+Os outros três: a rodada 1 não inicializava o melhor guardado no TSV (entra
+como `keep`, e cada linha depois do commit que fecha a rodada); a `SKILL.md`
+ainda dizia "teto da Fase 1" em dois pontos; e dívida — a sanidade do caso 4
+imprimia `FALHA` sem contar, e o `mostrar` saía 2 mudo na releitura.
+
+A mesma rodada teve uma discordância do crítico cego do Codex sobre a
+afirmação 1 do `fluxo-13-regua-loop` ("dois críticos a cada rodada"): a skill
+diz que o crítico interno só existe a partir da rodada 2. A janela rejeitou o
+parecer e registrou a divergência com motivo — a D8 define a comparação interna
+como nosso-novo contra nosso-melhor-guardado, e na rodada 1 não há melhor
+guardado. Comparar a rodada 1 contra o estado pré-loop, quando existir, é
+decisão de design nova, não conserto.
+
+pronto quando (rodada 7): com a régua selada na `main` e um merge resolvido com
+uma branch que também adicionou o manifesto, `conferir` sai **1** com "selo
+ambiguo" e `mostrar` imprime **zero bytes**; com `git replace` trocando o blob
+selado, `conferir` sai **1**; e `validar` sai **0** num manifesto bom nunca
+commitado, **1** num fora do formato, **2** num slug inexistente, sem imprimir
+byte em stdout — provado por `bash scripts/testa-conferir-regua.sh` devolvendo
+`resultado: N ok, 0 falha(s)`, exit 0 e zero pulados.
+
+Alvos de mutação da rodada 7, em cerca pelo motivo das anteriores:
+
+```
+arquivo: scripts/conferir-regua.cjs
+de: '--full-history',
+para: '--topo-order',
+bateria: bash scripts/testa-conferir-regua.sh
+fixture: testa-conferir-regua.sh, caso 22 "merge TREESAME nao troca a ancora"
+
+arquivo: scripts/conferir-regua.cjs
+de: if (linhas.length > 1) {
+para: if (false) {
+bateria: bash scripts/testa-conferir-regua.sh
+fixture: testa-conferir-regua.sh, caso 22, assercao "e nomeia o selo ambiguo"
+
+arquivo: scripts/conferir-regua.cjs
+de: GIT_NO_REPLACE_OBJECTS: '1',
+para: GIT_NO_REPLACE_OBJECTS_DESLIGADO: '1',
+bateria: bash scripts/testa-conferir-regua.sh
+fixture: testa-conferir-regua.sh, caso 23 "git replace nao troca o conteudo que o selo le"
+
+arquivo: scripts/conferir-regua.cjs
+de: if (subcomando === 'validar') {
+para: if (subcomando === 'validar-desligado') {
+bateria: bash scripts/testa-conferir-regua.sh
+fixture: testa-conferir-regua.sh, caso 24 "validar confere o formato ANTES de selar"
+```

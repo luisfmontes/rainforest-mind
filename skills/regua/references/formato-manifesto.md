@@ -49,3 +49,14 @@ recusa sem causa:
 4. **Numeração sequencial a partir de 1**, sem buraco e sem repetido. `M1 M2 M3
    M5` reprova com `mecanismos nao sequenciais ou com buraco: 1, 2, 3, 5` — o
    caso comum é apagar um mecanismo ao editar e não renumerar os de baixo.
+
+## Confira antes de selar
+
+`node scripts/conferir-regua.cjs validar --slug <slug>` aplica os quatro
+contratos ao arquivo na árvore, **antes** do commit. É a mesma função que o
+`conferir` aplica ao conteúdo selado — as duas não podem divergir.
+
+Não é opcional na prática: a âncora é a **primeira** adição do manifesto, então
+manifesto selado com erro de formato fica quebrado para sempre. Corrigir e
+commitar de novo não troca a âncora, e apagar e recriar vira "adicionado mais de
+uma vez" (selo ambíguo). O único conserto depois de selar é slug novo.

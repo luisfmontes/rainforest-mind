@@ -100,7 +100,7 @@
       {
         "tarefa": 6,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-regua.sh, caso 9 (autocrlf) pelo par vivo de bytes, re-rodado por conferir-fluxo mutacoes; caso 20 (apagado) da rodada 6; 18/19 da 5; 17 da 4"
+        "fixture": "testa-conferir-regua.sh, caso 9 pelo par vivo (conferir-fluxo mutacoes); rodada 7: casos 22 (full-history e contagem), 23 (replace), 24 (validar), cada um conferido na asercao que caiu"
       }
     ],
     "comando": "bash scripts/varrer-baterias.sh",
@@ -110,26 +110,20 @@
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "e678c41729c75b8f5e669fead5e2ea8dc00a0c3c",
+      "head": "117615cbf3d33cc642bea8e8a704dca42f099756",
       "caminhos_sujos": []
     },
     "em_voo": [],
-    "em": "2026-09-20",
-    "achados": 11,
+    "em": "2026-09-21",
+    "achados": 5,
     "lista": [
-      "1 BLOQUEANTE: o de: do bloco mutacao da T6 casa ZERO vezes no fonte - eu troquei a comparacao para Buffer na rodada 5 e nao emendei o plano; conferir-mutacao sairia 3 (MUTACAO NAO APLICADA), entao o carimbo catraca_mutacao afirma falsificacao que nao aconteceu (reproduzido: grep -cF devolve 0)",
-      "2: normalizarEol virou codigo morto com docstring afirmando o contrario (reproduzido: unica ocorrencia e a definicao)",
-      "3: SKILL.md 143-144 escopa a partir da rodada 2 nas TRES pecas, contradizendo Calibragem na rodada 1 - o qualificador era do critico interno",
-      "4: a skill nao manda commitar o manifesto ANTES do primeiro mostrar, e sem commit o conferidor sai 1 e o loop aborta na rodada 1",
-      "5: o contrato de exit code omite manifesto nunca foi commitado como terceiro caminho de exit 1",
-      "6: formato-manifesto.md nao documenta a regra de sequencia nem a faixa 5-7 que o script aplica",
-      "7: testa-conferir-regua.sh:483 usa $(...) violando o invariante que o proprio arquivo declara em :44-45 (reproduzido)",
-      "8: manifesto selado e apagado da arvore sai 2 (ambiente) em vez de 1, e manda o operador para o remedio errado",
-      "9: a clausula sem git no PATH do pronto quando da T6 nao e medida por caso nenhum",
-      "10: Fase 1 ainda apresenta o teto como declaracao dela, sem apontar para o ## Freios do manifesto",
-      "11 (critico cego codex, discordo): afirmacao 3 do fluxo-13-regua-fase0 exige o paragrafo do topo procedural DENTRO de SKILL.md, e eu o movi para references nesta rodada"
+      "1 BLOQUEANTE (reproduzido): merge resolvido com um lado que tambem adicionou o manifesto troca a ancora - git log simplifica historico, segue so o pai TREESAME e nunca ve a adicao selada; conferir sai 0 e mostrar entrega a regua frouxa. Variante inferida: git replace, sem GIT_NO_REPLACE_OBJECTS",
+      "2: manifesto selado com erro de formato nao tem conserto - a ancora fica na adicao quebrada para sempre, validar antes de selar e impossivel (sem commit sai nunca commitado), e a unica saida (trocar de slug) nao esta escrita",
+      "3: a rodada 1 nao inicializa o melhor guardado no TSV, e na rodada 2 nao ha SHA para o git show",
+      "4: SKILL.md:51 e :217 ainda dizem teto da Fase 1, contra :127-130",
+      "5: divida - assercao de sanidade do caso 4 imprime FALHA sem contar; mostrar sai 2 mudo em :346-348"
     ],
-    "tentativas": 6,
+    "tentativas": 7,
     "liberado_em": "2026-09-21"
   },
   "verificar": {
