@@ -11,6 +11,15 @@ SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CAIXA="$(mktemp -d)"
 trap 'rm -rf "$CAIXA"' EXIT
 
+# Config GLOBAL de git isolada. Os achados de log.showSignature e log.follow
+# passaram por 89 casos verdes porque a bateria herdava a config de quem roda,
+# e nesta maquina nenhuma das duas esta setada. Os casos que dependem de config
+# a setam explicitamente, por repositorio ou por GIT_CONFIG_COUNT. A config de
+# SISTEMA fica — e dela que vem o autocrlf do Git for Windows, e o caso 9 o
+# fixa por repositorio de todo modo.
+export GIT_CONFIG_GLOBAL="$CAIXA/gitconfig-global-vazio"
+: > "$GIT_CONFIG_GLOBAL"
+
 SCRIPT="$SRC/scripts/conferir-regua.cjs"
 REPO="$CAIXA/repo"
 mkdir -p "$REPO"
@@ -325,6 +334,18 @@ esperado "conferir com autocrlf passa" 0 node "$SCRIPT" conferir --slug autocrlf
 mostrar_bytes=$(stdout_bytes node "$SCRIPT" mostrar --slug autocrlf-test)
 if [ "$mostrar_bytes" -gt 0 ]; then ok=$((ok+1)); echo "  ok   mostrar imprime com autocrlf ($mostrar_bytes bytes)"
 else falhou=$((falhou+1)); echo "  FALHA mostrar não imprimiu com autocrlf"; fi
+
+# O mostrar entrega o COMMIT, nao a arvore — e aqui os dois diferem (CRLF no
+# disco, LF no git), entao este e o unico caso da bateria em que `cmp`
+# distingue "imprime a ancora" de "imprime a arvore". No caso 7 os dois sao
+# identicos, e um `mostrar` que lesse o disco passaria nele.
+MSYS_NO_PATHCONV=1 git show HEAD:docs/rainforest/reguas/autocrlf-test.md > "$CAIXA/ancora-9.bin"
+stdout_para "$CAIXA/mostrar-9.bin" node "$SCRIPT" mostrar --slug autocrlf-test
+if cmp -s "$CAIXA/ancora-9.bin" "$CAIXA/mostrar-9.bin"; then
+  ok=$((ok+1)); echo "  ok   mostrar entrega o commit byte a byte, nao a arvore com CRLF"
+else
+  falhou=$((falhou+1)); echo "  FALHA mostrar nao e o commit: $(wc -c < "$CAIXA/mostrar-9.bin") bytes contra $(wc -c < "$CAIXA/ancora-9.bin") da ancora"
+fi
 
 cd "$REPO"
 
@@ -1027,6 +1048,101 @@ if echo "$saida18" | grep -qE "node:fs|at Object|Error:"; then
 else
   ok=$((ok+1)); echo "  ok   sem stack trace"
 fi
+
+cd "$REPO2"
+
+echo
+echo "== 29. log.showSignature=true nao polui a ancora =="
+# Com a config ligada, o `git log` poe as linhas da verificacao de assinatura
+# no STDOUT, antes do hash. Um manifesto intacto em commit assinado virava
+# "adicionado N vezes no historico" — acusacao falsa, e o loop travava.
+# Assinatura por chave SSH gerada aqui, para nao depender de GPG na maquina.
+REPO19="$CAIXA/repo-assinado"
+mkdir -p "$REPO19/docs/rainforest/reguas"
+cd "$REPO19"
+git init -q >/dev/null 2>&1
+git config user.email "test@<email>"
+git config user.name "Test User"
+git config core.autocrlf false
+ssh-keygen -t ed25519 -N "" -f "$CAIXA/chave-assinatura" -q >/dev/null 2>&1
+git config gpg.format ssh
+git config user.signingkey "$CAIXA/chave-assinatura.pub"
+{ printf '# Regua\n\n## Freios\n\n'; for n in 1 2 3 4 5; do printf '### M%s ok\nx\n\n' "$n"; done; } > docs/rainforest/reguas/assinada.md
+git add -A >/dev/null 2>&1
+git commit -q -S -m "regua selada, commit assinado" >/dev/null 2>&1
+linhas19=$(GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=log.showSignature GIT_CONFIG_VALUE_0=true git log --format=%H 2>/dev/null | grep -c .)
+if [ "$linhas19" -gt 1 ]; then
+  ok=$((ok+1)); echo "  ok   com a config, o git log poe $linhas19 linhas no stdout (o caso monta o ataque)"
+else
+  falhou=$((falhou+1)); echo "  FALHA o commit nao ficou assinado ou a config nao pegou — o caso nao mede nada"
+fi
+esperado "com log.showSignature=true, manifesto intacto passa" 0 env GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=log.showSignature GIT_CONFIG_VALUE_0=true node "$SCRIPT" conferir --slug assinada
+
+cd "$REPO2"
+
+echo
+echo "== 30. log.follow=true nao troca a ancora de um git mv =="
+# Manifesto posto no lugar com `git mv` e caminho de boa-fe. Com log.follow, o
+# git segue o arquivo de origem e a ancora vira um commit em que o caminho do
+# manifesto nao existe: `git show` falhava e o `conferir` saia 2 falso.
+REPO20="$CAIXA/repo-follow"
+mkdir -p "$REPO20/docs/rainforest/reguas"
+cd "$REPO20"
+git init -q >/dev/null 2>&1
+git config user.email "test@<email>"
+git config user.name "Test User"
+git config commit.gpgsign false
+git config core.autocrlf false
+{ printf '# Regua\n\n## Freios\n\n'; for n in 1 2 3 4 5; do printf '### M%s ok\nx\n\n' "$n"; done; } > docs/rainforest/reguas/rascunho.md
+git add -A >/dev/null 2>&1; git commit -q -m "rascunho" >/dev/null 2>&1
+git mv docs/rainforest/reguas/rascunho.md docs/rainforest/reguas/movida.md >/dev/null 2>&1
+git commit -q -m "a regua e esta" >/dev/null 2>&1
+esperado "sem a config, manifesto movido passa" 0 node "$SCRIPT" conferir --slug movida
+esperado "com log.follow=true, continua passando" 0 env GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=log.follow GIT_CONFIG_VALUE_0=true node "$SCRIPT" conferir --slug movida
+
+cd "$REPO2"
+
+echo
+echo "== 31. mecanismo comentado com <!-- --> nao conta =="
+# Comentar o rascunho de um mecanismo e edicao comum de boa-fe. O comentado
+# contava: 4 reais + 1 comentado passavam o piso de 5, e o critico recebia 4.
+REPO21="$CAIXA/repo-comentario"
+mkdir -p "$REPO21/docs/rainforest/reguas"
+cd "$REPO21"
+mecs21() { for n in $(seq 1 "$1"); do printf '### M%s ok\nx\n\n' "$n"; done; }
+{ printf '# Regua\n\n## Freios\n\n'; mecs21 4; printf '<!--\n### M5 rascunho comentado\n-->\n'; } > docs/rainforest/reguas/quatro.md
+{ printf '# Regua\n\n## Freios\n\n'; mecs21 7; printf '<!--\n### M8 rascunho comentado\n-->\n'; } > docs/rainforest/reguas/sete.md
+{ printf '# Regua\n\n## Freios\n\n'; mecs21 7; printf '<!-- ### M8 comentado na mesma linha -->\n'; } > docs/rainforest/reguas/uma-linha.md
+esperado "4 reais + 1 comentado: recusa (sao 4)" 1 node "$SCRIPT" validar --slug quatro
+contem "e diz que sao 4" "quantidade invalida de mecanismos: 4" node "$SCRIPT" validar --slug quatro
+esperado "7 reais + 1 comentado: passa" 0 node "$SCRIPT" validar --slug sete
+esperado "7 reais + comentario de uma linha: passa" 0 node "$SCRIPT" validar --slug uma-linha
+
+cd "$REPO2"
+
+echo
+echo "== 32. cerca aninhada fecha como no CommonMark =="
+# A cerca fechava so pelo caractere. Uma cerca de quatro crases com um exemplo
+# de tres dentro fechava no exemplo, e o `### M1 exemplo` de dentro contava:
+# 7 reais viravam 8 e o manifesto bom reprovava.
+REPO22="$CAIXA/repo-aninhada"
+mkdir -p "$REPO22/docs/rainforest/reguas"
+cd "$REPO22"
+mecs22() { for n in $(seq 1 "$1"); do printf '### M%s ok\nx\n\n' "$n"; done; }
+{ printf '# Regua\n\n## Freios\n\n'; mecs22 7; printf '````\n```\n### M1 exemplo\n```\n````\n'; } > docs/rainforest/reguas/quatro-crases.md
+{ printf '# Regua\n\n## Freios\n\n'; mecs22 7; printf '```\n```js\n### M1 exemplo\n```\n'; } > docs/rainforest/reguas/info-string.md
+esperado "cerca de 4 crases com exemplo de 3 dentro: passa" 0 node "$SCRIPT" validar --slug quatro-crases
+esperado "linha com info string nao fecha a cerca: passa" 0 node "$SCRIPT" validar --slug info-string
+
+cd "$REPO2"
+
+echo
+echo "== 33. slug com metacaractere de glob e slug inexistente (2) =="
+# Sem pathspec literal, `--slug '*'` casava todos os manifestos no `git log` e
+# saia 1 ("selado e removido") — veredito sobre um slug que nao existe.
+cd "$REPO"
+esperado "--slug '*' sai 2, nao 1" 2 node "$SCRIPT" conferir --slug '*'
+esperado "--slug 'teste-?' sai 2, nao 1" 2 node "$SCRIPT" conferir --slug 'teste-?'
 
 cd "$REPO2"
 

@@ -59,8 +59,7 @@ as três coisas — qual é a régua, os mecanismos, e uma seção `## Freios` c
 teto de rodadas. Mecanismo é o que alguém **confere olhando** — não adjetivo.
 Veja o formato exigido em `references/formato-manifesto.md`.
 
-Quatro pares de exemplo, adjetivo contra mecanismo, estão em
-`references/mecanismos-exemplos.md`.
+Adjetivo contra mecanismo, em pares: `references/mecanismos-exemplos.md`.
 
 Antes de selar, `node scripts/conferir-regua.cjs validar --slug <slug>`: selado
 com erro de formato não tem conserto, só slug novo. O arquivo é **commitado na
@@ -214,7 +213,8 @@ a régua, e aprova cedo por simpatia acumulada — no crítico interno isso vira
 
 Quatro saídas, não três:
 
-- **Venceu** — o crítico da régua escolheu o nosso. Fim, sem mais uma rodada.
+- **Venceu** — o crítico da régua escolheu o nosso. Fim, sem mais uma rodada,
+  e **mesmo com discard do interno**: o novo é o único que venceu, entra `keep`.
   Mais uma rodada depois de vencer é a regra 9 sendo violada com método.
 - **Teto** — acabaram as rodadas do `## Freios`. Você entrega o **melhor
   guardado** do log, materializado via `git show`, com a distância para a régua
@@ -222,8 +222,8 @@ Quatro saídas, não três:
   histórico**: o que não avança é o ponteiro. A regra 11 proíbe git destrutivo em
   agente, e poder voltar à rodada 3 depende do commit dela estar lá.
 - **Estagnação** — três rodadas seguidas com `discard` do crítico interno. Há
-  rodadas sobrando, mas o ponteiro não se moveu em três tentativas, e com dois
-  críticos por rodada isso é o investimento deixando de pagar. Distinto do teto:
+  rodadas sobrando, mas o ponteiro não se moveu em três tentativas: o
+  investimento deixou de pagar. Distinto do teto:
   teto é "acabaram os recursos", estagnação é "recursos sobraram, tentativas
   pararam".
 - **Régua errada** — a calibragem da rodada 1 falhou. Nada foi entregue, e isso

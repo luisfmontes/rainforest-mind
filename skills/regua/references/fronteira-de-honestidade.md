@@ -48,3 +48,27 @@ sairia 0 sobre régua adulterada.
 Por isso `conferir-regua.cjs` detecta clone raso e **se recusa a julgar**
 (exit 2, ambiente), em vez de julgar errado. Quem roda o loop em CI precisa de
 `fetch-depth: 0` — `--depth 1` é o default do `actions/checkout`.
+
+## Contra quem o selo protege
+
+Decidido pelo usuário em 2026-09-21, depois de nove rodadas de revisão em que
+cada revisor novo achava mais um jeito de o markdown mostrar ao crítico um
+número de mecanismos diferente do contado. Duas peças, com donos diferentes:
+
+- **O selo é fronteira.** Protege a régua contra alteração depois de selada por
+  fluxos **normais** de git — editar na árvore, commitar por cima, mergear uma
+  branch que também a adicionou, apagar e recriar — e contra configuração comum
+  que mudaria a leitura (`log.showSignature`, `log.follow`, replace refs,
+  grafts, pathspec com glob). Quem ele tem em vista é o **builder**, que
+  commita toda rodada e não pode reescrever a régua pelo caminho.
+- **O formato é lint.** Pega erro honesto de quem escreve o manifesto na Fase
+  0 — você ou o orquestrador, não um adversário. Cobre o que um autor de
+  boa-fé escreve sem perceber e não persegue construção deliberada.
+
+Fora do modelo, e por isso não protegido: manipulação **deliberada** de
+histórico por quem tem escrita no repositório — rebase ou squash que apaga a
+adição selada, branch órfã ou nascida antes do selo que a adiciona de novo. O
+que sobra parece uma adição única legítima, e nenhum conferidor que confie no
+histórico distingue isso. "Um ponto onde burlar" vale contra erro e contra o
+builder; contra quem reescreve o histórico de propósito, o selo é tão forte
+quanto o controle de acesso do repositório.

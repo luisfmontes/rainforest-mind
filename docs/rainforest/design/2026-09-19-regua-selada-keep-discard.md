@@ -31,6 +31,12 @@ auditada por prosa — exatamente o buraco do autoresearch, que protege o juiz
   **um** ponto onde burlar, em vez de um por rodada e por crítico. Exige
   `MSYS_NO_PATHCONV=1` no Windows, senão o `ref:caminho` vira caminho de arquivo
   e falha em silêncio.
+  *Nota de 2026-09-21 (rodada 9, Q1 do usuário):* "um ponto onde burlar" vale
+  contra erro e contra o **builder**, que é quem o selo vigia. Manipulação
+  deliberada de histórico por quem tem escrita no repositório (rebase, squash,
+  branch órfã) fica fora do modelo de ameaça e declarada no cabeçalho do
+  conferidor. O formato do manifesto é lint para autor de boa-fé, não
+  fronteira.
 - **D4 — A âncora é recomputada, nunca SHA fixo em arquivo versionado** — porquê:
   `git log --diff-filter=A --format=%H -- <regua> | tail -1` sobrevive a rebase;
   âncora hardcoded já quebrou duas vezes neste repo

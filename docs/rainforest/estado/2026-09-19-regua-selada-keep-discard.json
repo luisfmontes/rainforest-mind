@@ -100,31 +100,36 @@
       {
         "tarefa": 6,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-regua.sh, caso 9 pelo par vivo (conferir-fluxo mutacoes); rodada 8: casos 25 (render), 26 (cerca), 27 (grafts), 28 (diretorio), cada um com o numero de falhas das assercoes do caso"
+        "fixture": "testa-conferir-regua.sh, caso 9 pelo par vivo (conferir-fluxo mutacoes); rodada 8: casos 25-28; rodada 9: casos 30 (follow, 2 falhas), 31 (comentario, 3), 32 (cerca, 1), 33 (pathspec, 2); as duas camadas do caso 29 sobrevivem sozinhas e juntas o derrubam (1 falha)"
       }
     ],
     "comando": "bash scripts/varrer-baterias.sh",
-    "saida": "as 125 baterias passaram (exit 0)",
+    "saida": "as 125 baterias passaram (exit 0); testa-conferir-regua.sh 102 ok / 0 falha(s)",
     "sensor_externo": "bash scripts/varrer-baterias.sh"
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "ad225c369d3686c20b1bc39f0fd4bdb344684944",
+      "head": "d8529b9e56525fc21984b25755b78336da20f488",
       "caminhos_sujos": []
     },
     "em_voo": [],
     "em": "2026-09-21",
-    "achados": 6,
+    "achados": 11,
     "lista": [
-      "1 BLOQUEANTE (reproduzido): cabecalho que renderiza mas a regex nao ve - ###  M8 (dois espacos), recuado, #### M9 - fura o teto 5-7: 7 validos + 2 invisiveis, validar sai 0; e ### M<n> dentro de cerca de codigo conta como mecanismo",
-      "2 (design): depois de discard, o builder parte do melhor guardado mas recebe a lacuna do artefato descartado",
-      "3 (reproduzido): .git/info/grafts corta o historico - conferir sai 0 e mostrar entrega a regua frouxa; GIT_NO_REPLACE_OBJECTS nao cobre grafts, GIT_GRAFT_FILE inexistente cobre",
-      "4 (criterio): afirmacao 1 do fluxo-13-regua-loop diz dois criticos a cada rodada, e a D8 torna impossivel na rodada 1 - o Codex discorda toda rodada e o verificar da T4 exige concordo",
-      "5: validar com diretorio no lugar do arquivo cai no exit 1 com stack trace",
-      "6: Uso de conferir/mostrar omite adicionado mais de uma vez; D4 do design ainda descreve tail -1 contra a Q1"
+      "1 (reproduzido): log.showSignature=true poe linhas do gpg no stdout do git log - manifesto intacto vira selo ambiguo (4 adicoes)",
+      "2: comentario HTML com ### M5 entra na contagem - 4 reais + 1 comentado passa",
+      "3: fechamento de cerca ignora comprimento/info string do CommonMark - cerca de 4 crases com exemplo de 3 reprova manifesto bom",
+      "4: setext, > ###, - ###, ### **M8** renderizam e a regex nao ve (construcao deliberada)",
+      "5: log.follow=true troca a ancora - git mv da exit 2 falso; desvio inferido leva a 0",
+      "6: declaracao de limite nomeia so rebase; branch orfa e squash-merge sao da mesma familia",
+      "7: SKILL nao define o que se entrega quando venceu e discard caem na mesma rodada",
+      "8: caso 7 nao distingue imprimir a ancora de imprimir a arvore",
+      "9: bateria herda config global de git - por isso 1 e 5 passaram",
+      "10: slug com glob (*) vira pathspec e sai 1 em vez de 2",
+      "11: plano diz Cinco tarefas e lista seis; livro-de-repos descreve a ancora sem --full-history"
     ],
-    "tentativas": 8,
+    "tentativas": 9,
     "liberado_em": "2026-09-21"
   },
   "verificar": {

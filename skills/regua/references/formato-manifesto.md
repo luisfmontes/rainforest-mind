@@ -72,3 +72,16 @@ bloco de código no markdown e ficam de fora.
 
 Dentro de cerca de código (três crases ou três tis) nada conta: um `### M6
 exemplo` cercado é exemplo, não mecanismo — nem soma ao teto, nem reprova.
+
+## Até onde o formato vai
+
+O formato é **lint para autor de boa-fé**, não fronteira contra adversário
+(decidido pelo usuário em 2026-09-21). Ele cobre o que se escreve sem perceber:
+cabeçalho com dois espaços, recuado ou com dois-pontos; mecanismo comentado com
+`<!-- -->` (não conta); exemplo dentro de cerca, inclusive cerca aninhada —
+fecha como no CommonMark, com o mesmo caractere e comprimento maior ou igual.
+
+Não persegue construção deliberada: cabeçalho setext (`M8` sublinhado com
+`---`), `> ### M8`, `- ### M8`, `### **M8**`. O crítico lê o texto cru, e não
+há parser exato para "o que um LLM enxerga como mecanismo" — perseguir isso
+não tem fim, e o autor do manifesto não é quem o selo vigia.

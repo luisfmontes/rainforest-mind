@@ -10,14 +10,29 @@
  * hash próprio (D1). O crítico da régua é um agente novo a cada rodada e não
  * herda contexto da conversa — o que não estiver em disco não chega nele.
  *
- * NENHUMA PROTECAO CONTRA: orquestrador que não chama o script, rebase do
- * commit de adição (reescrever o histórico apaga a adição selada; o que sobra
- * parece uma adição única legítima), semântica vazia de seção "Freios" ou
- * cabeçalhos M<n> (validamos presença, não conteúdo).
- *   PROTEGE, e ja nao estava garantido antes: merge resolvido com um lado que
- *   tambem adicionou o manifesto (`--full-history` + recusa de mais de uma
- *   adicao), `git replace` (`GIT_NO_REPLACE_OBJECTS`) e `.git/info/grafts`
- *   (`GIT_GRAFT_FILE`).
+ * MODELO DE AMEACA (decidido pelo usuario em 2026-09-21, rodada 9). Duas
+ * pecas com donos diferentes:
+ *
+ *   O SELO e fronteira. Protege a regua contra alteracao depois de selada por
+ *   fluxos NORMAIS de git — editar na arvore, commitar por cima, mergear uma
+ *   branch que tambem a adicionou, apagar e recriar — e contra configuracao
+ *   comum que mudaria a leitura (log.showSignature, log.follow, replace refs,
+ *   grafts, pathspec com glob). Quem o selo tem em vista e o BUILDER do loop,
+ *   que commita toda rodada e nao pode reescrever a regua pelo caminho.
+ *
+ *   O FORMATO e lint. Pega erro honesto de quem escreve o manifesto na Fase 0
+ *   — que e o usuario ou o orquestrador, nao um adversario. Por isso ele
+ *   cobre o que um autor de boa-fe escreve sem perceber (cabecalho com dois
+ *   espacos, recuado, com dois-pontos; comentario HTML; cerca aninhada) e NAO
+ *   persegue construcao deliberada: cabecalho setext, `> ###`, `- ###`,
+ *   `### **M8**`. O critico le o texto cru, e nao ha parser exato para "o que
+ *   um LLM enxerga como mecanismo" — perseguir isso nao tem fim.
+ *
+ * FORA DO MODELO, e por isso NAO protegido: orquestrador que nao chama o
+ * script; manipulacao DELIBERADA de historico por quem tem escrita no repo
+ * (rebase ou squash que apaga a adicao selada, branch orfa ou nascida antes do
+ * selo que a adiciona de novo — o que sobra parece uma adicao unica legitima);
+ * semantica vazia de "## Freios" ou dos M<n> (validamos presenca, nao conteudo).
  *   Tambem NAO protege contra estado de git em que a leitura do historico
  *   falha por um motivo que a sonda em camadas de `ancoraDe` nao alcanca: ali
  *   o script pode sair 1 (veredito) onde 2 (ambiente) seria mais correto. A
@@ -77,6 +92,9 @@ const EXIT_GIT_FALHOU = 2;
 const ENV_GIT = {
   ...process.env,
   GIT_NO_REPLACE_OBJECTS: '1',
+  // Sem isto o caminho vira pathspec com magia: `--slug '*'` casava todos os
+  // manifestos e saia 1 ("selado e removido") em vez de 2 (slug inexistente).
+  GIT_LITERAL_PATHSPECS: '1',
   GIT_GRAFT_FILE: path.join(__dirname, '.grafts-desligados-este-arquivo-nao-existe'),
   MSYS_NO_PATHCONV: '1',
 };
@@ -156,7 +174,14 @@ function ancoraDe(slug) {
   // merge resolvido com o lado da branch — o `log` simplificado nunca visita a
   // adicao selada, devolve so a da branch, e `conferir` saia 0 com `mostrar`
   // entregando a regua frouxa ao critico cego.
+  // `-c` antes do subcomando vence a config do usuario. log.showSignature poe
+  // as linhas do gpg/ssh no STDOUT, antes do hash — um manifesto intacto em
+  // commit assinado virava "adicionado 4 vezes" (reproduzido). log.follow troca
+  // o arquivo seguido num `git mv` e muda a ancora — manifesto posto no lugar
+  // com `git mv` dava exit 2 falso.
   const res = spawnSync('git', [
+    '-c', 'log.showSignature=false',
+    '-c', 'log.follow=false',
     'log',
     '--full-history',
     '--diff-filter=A',
@@ -223,7 +248,9 @@ function ancoraDe(slug) {
     process.exit(EXIT_GIT_FALHOU);
   }
 
-  const linhas = res.stdout.trim().split(/\r?\n/).filter(Boolean);
+  // So hash conta (SHA-1 ou SHA-256). O `-c` acima fecha as poluicoes
+  // conhecidas; este filtro fecha as que ainda nao conhecemos.
+  const linhas = res.stdout.trim().split(/\r?\n/).filter(l => /^[0-9a-f]{40}([0-9a-f]{24})?$/.test(l));
   if (linhas.length === 0) {
     return null;
   }
@@ -260,14 +287,36 @@ function validarFormato(bytes, caminhoManifesto) {
   // teto (5 reais + exemplo cercado passavam por 6) quanto reprova manifesto
   // bom (7 reais + 1 exemplo viravam 8). A cerca fecha com o mesmo caractere
   // que abriu, repetido ao menos tres vezes.
+  //
+  // A cerca fecha como no CommonMark: mesmo caractere, comprimento MAIOR OU
+  // IGUAL ao da abertura, e nada depois dela. Antes bastava o caractere, e uma
+  // cerca de quatro crases com um exemplo de tres dentro fechava no exemplo —
+  // o `### M1 exemplo` de dentro contava e reprovava manifesto bom.
+  //
+  // COMENTARIO HTML tambem nao e manifesto: `<!--` no inicio da linha abre, a
+  // linha que contem `-->` fecha (bloco HTML tipo 2 do CommonMark). Comentar o
+  // rascunho de um mecanismo e edicao comum de boa-fe, e o comentado contava:
+  // 4 reais + 1 comentado passavam o piso de 5.
   const foraDeCerca = [];
   let cerca = null;
+  let tamanhoCerca = 0;
+  let emComentario = false;
   for (const linha of linhas) {
+    if (emComentario) {
+      if (linha.includes('-->')) emComentario = false;
+      continue;
+    }
     const abre = linha.match(/^ {0,3}(`{3,}|~{3,})/);
     if (cerca === null) {
+      if (abre) tamanhoCerca = abre[1].length;
       if (abre) { cerca = abre[1][0]; continue; }
+      if (/^ {0,3}<!--/.test(linha)) {
+        if (!linha.slice(linha.indexOf('<!--') + 4).includes('-->')) emComentario = true;
+        continue;
+      }
       foraDeCerca.push(linha);
-    } else if (abre && abre[1][0] === cerca) {
+    } else if (abre && abre[1][0] === cerca && abre[1].length >= tamanhoCerca
+               && linha.slice(linha.indexOf(abre[1]) + abre[1].length).trim() === '') {
       cerca = null;
     }
   }

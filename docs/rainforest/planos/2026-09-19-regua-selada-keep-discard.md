@@ -3,7 +3,7 @@
 **Slug:** `2026-09-19-regua-selada-keep-discard` · **Design:** `docs/rainforest/design/2026-09-19-regua-selada-keep-discard.md`
 **Base:** `origin/main` @ `4f714ef6` · **Branch:** `fluxo/regua-selada-keep-discard`
 
-Cinco tarefas, dezoito decisões. **Fan-out em duas ondas**, separadas por arquivo
+Seis tarefas (a sexta entrou por emenda), dezoito decisões. **Fan-out em duas ondas**, separadas por arquivo
 compartilhado:
 
 - **Onda 1** (arquivos disjuntos entre si): T1 (`scripts/conferir-regua.cjs` e sua
@@ -431,4 +431,72 @@ de: try { return fs.statSync(caminho).isFile(); } catch { return false; }
 para: return fs.existsSync(caminho);
 bateria: bash scripts/testa-conferir-regua.sh
 fixture: testa-conferir-regua.sh, caso 28 "diretorio no lugar do manifesto"
+```
+
+**Rodada 9 (2026-09-21), onze achados — e a decisão que para a divergência.**
+A cada rodada um revisor novo achava mais um jeito de o markdown mostrar ao
+crítico um número de mecanismos diferente do contado. A causa não é descuido: "o
+que o crítico enxerga" não tem parser exato — ele é um LLM lendo texto cru —, e
+perseguir cada construção não converge. Duas decisões subiram ao usuário:
+
+- **Q1, decidido: selo é fronteira, formato é lint.** O selo protege contra o
+  builder e contra fluxos normais de git e configuração comum; o formato pega
+  erro honesto de quem escreve o manifesto. Construção deliberada (setext,
+  `> ###`, `- ###`, `### **M8**`) e manipulação deliberada de histórico (rebase,
+  squash, branch órfã) ficam **fora do modelo**, declaradas no cabeçalho do
+  conferidor, em `references/fronteira-de-honestidade.md` e em nota datada na D3.
+- **Q2, decidido: venceu prevalece.** Se na mesma rodada o crítico da régua
+  escolhe o nosso e o interno manda descartar, o artefato da rodada nova é
+  entregue e entra no TSV como `keep`, com a divergência anotada — o novo é o
+  único que venceu.
+
+Consertado, por ser boa-fé ou ambiente: `log.showSignature` punha as linhas da
+assinatura no stdout e um manifesto intacto em commit assinado virava "adicionado
+N vezes" (agora `-c log.showSignature=false` **e** filtro de hash — duas camadas
+redundantes de propósito); `log.follow` trocava a âncora de um manifesto posto
+com `git mv` e dava 2 falso (`-c log.follow=false`); `--slug '*'` virava glob e
+saía 1 (`GIT_LITERAL_PATHSPECS`); mecanismo comentado com `<!-- -->` contava;
+cerca aninhada fechava no exemplo de dentro (fecha agora como no CommonMark); o
+caso 9 não distinguia `mostrar` da âncora de `mostrar` da árvore (ganhou `cmp`
+contra `git show`); e a bateria herdava a config global de git de quem roda —
+foi por isso que os dois primeiros passaram por 89 casos verdes. A config global
+agora é um arquivo vazio dentro da caixa.
+
+pronto quando (rodada 9): com `log.showSignature=true` e commit assinado,
+`conferir` de manifesto intacto sai **0**; com `log.follow=true` e manifesto
+posto por `git mv`, sai **0**; `--slug '*'` sai **2**; 4 mecanismos reais mais
+um comentado saem **1** em `validar`, 7 reais mais um comentado saem **0**; cerca
+de quatro crases com exemplo de três dentro, e 7 reais, sai **0**; e `mostrar`
+no caso 9 é idêntico byte a byte a `git show` do commit — provado por `bash
+scripts/testa-conferir-regua.sh` devolvendo `resultado: N ok, 0 falha(s)`, exit
+0 e zero pulados.
+
+Alvos de mutação da rodada 9, em cerca e sem contrabarra pelo motivo das
+anteriores. As duas camadas contra poluição de stdout não têm alvo aqui: cada
+uma sozinha segura o caso 29, então mutar uma só sobrevive por construção.
+
+```
+arquivo: scripts/conferir-regua.cjs
+de: '-c', 'log.follow=false',
+para: '-c', 'log.follow=true',
+bateria: bash scripts/testa-conferir-regua.sh
+fixture: testa-conferir-regua.sh, caso 30 "log.follow=true nao troca a ancora"
+
+arquivo: scripts/conferir-regua.cjs
+de: GIT_LITERAL_PATHSPECS: '1',
+para: GIT_LITERAL_PATHSPECS_DESLIGADO: '1',
+bateria: bash scripts/testa-conferir-regua.sh
+fixture: testa-conferir-regua.sh, caso 33 "slug com metacaractere de glob"
+
+arquivo: scripts/conferir-regua.cjs
+de: if (/^ {0,3}<!--/.test(linha)) {
+para: if (false) {
+bateria: bash scripts/testa-conferir-regua.sh
+fixture: testa-conferir-regua.sh, caso 31 "mecanismo comentado nao conta"
+
+arquivo: scripts/conferir-regua.cjs
+de: abre[1].length >= tamanhoCerca
+para: true
+bateria: bash scripts/testa-conferir-regua.sh
+fixture: testa-conferir-regua.sh, caso 32 "cerca aninhada fecha como no CommonMark"
 ```
