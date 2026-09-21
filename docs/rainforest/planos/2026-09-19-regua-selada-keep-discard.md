@@ -360,3 +360,75 @@ para: if (subcomando === 'validar-desligado') {
 bateria: bash scripts/testa-conferir-regua.sh
 fixture: testa-conferir-regua.sh, caso 24 "validar confere o formato ANTES de selar"
 ```
+
+**Rodada 8 (2026-09-21), seis achados.** O bloqueante é da mesma classe que a
+rodada 5 já tratou como bloqueante — mecanismo que o validador nunca viu — por
+um caminho que ela não fechou: a detecção era `/^### M/`, e `###  M8` (dois
+espaços), ` ### M8` (recuado) e `#### M8` **renderizam** como cabeçalho sem casar
+nada. Reproduzido: 7 válidos + 2 invisíveis, `validar` saía 0 com 9 mecanismos na
+tela do crítico cego. A detecção passou a ser o que o markdown renderiza — até
+três espaços de recuo, um a seis `#`, espaço, `M` e dígito — e tudo que casa ali
+sem casar o formato estrito é recusa. Cercas de código (três crases ou três tis)
+deixaram de contar, o que furava o teto e reprovava manifesto bom ao mesmo
+tempo.
+
+Também reproduzido: `.git/info/grafts` corta o histórico por um mecanismo que o
+`GIT_NO_REPLACE_OBJECTS` não cobre — com o HEAD enxertado como raiz, a adição
+selada sumia e `conferir` saía 0. `GIT_GRAFT_FILE` apontando para arquivo
+inexistente desliga os grafts sem recusar o repositório. E: diretório no lugar
+do manifesto caía no exit 1 com stack trace (agora é ausência, 2); o `Uso:` de
+`conferir` e `mostrar` omitia "adicionado mais de uma vez"; a D4 do design ainda
+descrevia `tail -1` — ganhou nota datada, sem reescrever a decisão aprovada.
+
+Três decisões subiram ao usuário, como o teto manda:
+
+- **Q1, decidido: consertar tudo acima.**
+- **Q2, decidido: emendar a afirmação 1 do `fluxo-13-regua-loop`** para "a cada
+  rodada a partir da 2ª", com nota no próprio critério dizendo que a emenda é
+  decisão do usuário. A redação anterior contradizia a D8, e o crítico cego do
+  Codex discordou por isso em duas rodadas seguidas. A `SKILL.md` foi alinhada
+  no mesmo ponto: o crítico interno é `Agent` novo toda rodada **a partir da 2ª**.
+- **Q3, decidido: depois de um discard, a lacuna vem da rodada do melhor
+  guardado** — a coluna `lacuna` da linha dele no TSV. Antes o builder partia do
+  artefato guardado com a lacuna do descartado, que aponta para um artefato de
+  que ele não parte. Continua vindo do crítico da régua (D11), só que da rodada
+  certa.
+
+pronto quando (rodada 8): 7 mecanismos válidos mais `###  M8`, ` ### M8` ou
+`#### M8` saem **1** em `validar`, e 7 válidos mais `    ### M8` (quatro espaços,
+bloco de código) saem **0**; 7 válidos mais um `### M8` dentro de cerca saem
+**0**, e `## Freios` só dentro de cerca sai **1**; com `.git/info/grafts`
+cortando a adição selada de uma régua adulterada e commitada, `conferir` sai
+**1** e `mostrar` imprime **zero bytes**; e diretório no caminho do manifesto sai
+**2** sem stack trace — provado por `bash scripts/testa-conferir-regua.sh`
+devolvendo `resultado: N ok, 0 falha(s)`, exit 0 e zero pulados.
+
+Alvos de mutação da rodada 8, em cerca pelo motivo das anteriores. Nenhum `de:`
+leva contrabarra: o quoting do shell que a integração usa come contrabarra, e um
+`de:` que chega adulterado dá exit 3 sem culpa do fonte.
+
+```
+arquivo: scripts/conferir-regua.cjs
+de: const regexMQualquer = /^ {0,3}#{1,6}
+para: const regexMQualquer = /^###
+bateria: bash scripts/testa-conferir-regua.sh
+fixture: testa-conferir-regua.sh, caso 25, assercoes do recuado e do nivel quatro
+
+arquivo: scripts/conferir-regua.cjs
+de: if (abre) { cerca = abre[1][0]; continue; }
+para: if (false) { cerca = abre[1][0]; continue; }
+bateria: bash scripts/testa-conferir-regua.sh
+fixture: testa-conferir-regua.sh, caso 26 "cerca de codigo nao e manifesto"
+
+arquivo: scripts/conferir-regua.cjs
+de: GIT_GRAFT_FILE: path.join(
+para: GIT_GRAFT_FILE_DESLIGADO: path.join(
+bateria: bash scripts/testa-conferir-regua.sh
+fixture: testa-conferir-regua.sh, caso 27 ".git/info/grafts nao corta o historico"
+
+arquivo: scripts/conferir-regua.cjs
+de: try { return fs.statSync(caminho).isFile(); } catch { return false; }
+para: return fs.existsSync(caminho);
+bateria: bash scripts/testa-conferir-regua.sh
+fixture: testa-conferir-regua.sh, caso 28 "diretorio no lugar do manifesto"
+```

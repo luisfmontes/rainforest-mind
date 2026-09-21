@@ -937,6 +937,99 @@ fi
 
 cd "$REPO2"
 
+echo
+echo "== 25. cabecalho que o markdown RENDERIZA e a regex estrita nao ve e recusa =="
+# Achado bloqueante da rodada 8. A deteccao era `/^### M/`, e `###  M8` (dois
+# espacos), ` ### M8` (recuado) e `#### M8` renderizavam como cabecalho sem o
+# validador ver: 7 validos + 2 invisiveis saiam 0, com 9 mecanismos na tela do
+# critico cego. Sem git: `validar` le a arvore.
+REPO15="$CAIXA/repo-render"
+mkdir -p "$REPO15/docs/rainforest/reguas"
+cd "$REPO15"
+sete15() { printf '# Regua\n\n## Freios\n\n'; for n in 1 2 3 4 5 6 7; do printf '### M%s ok\nx\n\n' "$n"; done; }
+{ sete15; printf '###  M8 dois espacos\n'; } > docs/rainforest/reguas/dois.md
+{ sete15; printf ' ### M8 recuado\n'; } > docs/rainforest/reguas/recuo.md
+{ sete15; printf '#### M8 nivel quatro\n'; } > docs/rainforest/reguas/nivel.md
+{ sete15; printf '    ### M8 bloco de codigo por recuo\n'; } > docs/rainforest/reguas/codigo.md
+esperado "###  M8 (dois espacos) recusa" 1 node "$SCRIPT" validar --slug dois
+contem "e nomeia o ofensor" "###  M8" node "$SCRIPT" validar --slug dois
+esperado " ### M8 (recuado) recusa" 1 node "$SCRIPT" validar --slug recuo
+esperado "#### M8 (nivel quatro) recusa" 1 node "$SCRIPT" validar --slug nivel
+# Contraprova: quatro espacos de recuo sao bloco de codigo no markdown, nao
+# renderizam como cabecalho — recusar ali seria reprovar manifesto bom.
+esperado "quatro espacos de recuo e codigo: nao conta, 7 validos passam" 0 node "$SCRIPT" validar --slug codigo
+
+cd "$REPO2"
+
+echo
+echo "== 26. cerca de codigo nao e manifesto =="
+# `### M6 exemplo` dentro de uma cerca contava como mecanismo: furava o teto
+# (5 + exemplo davam 6) e reprovava manifesto bom (7 + exemplo davam 8).
+REPO16="$CAIXA/repo-cerca"
+mkdir -p "$REPO16/docs/rainforest/reguas"
+cd "$REPO16"
+mecs16() { for n in $(seq 1 "$1"); do printf '### M%s ok\nx\n\n' "$n"; done; }
+{ printf '# Regua\n\n## Freios\n\n'; mecs16 7; printf '```\n### M8 exemplo cercado\n```\n'; } > docs/rainforest/reguas/crase.md
+{ printf '# Regua\n\n## Freios\n\n'; mecs16 7; printf '~~~\n### M8 exemplo em til\n~~~\n'; } > docs/rainforest/reguas/til.md
+{ printf '# Regua\n\n```\n## Freios\n```\n\n'; mecs16 5; } > docs/rainforest/reguas/freios-cercado.md
+esperado "7 reais + exemplo em cerca de crases: passa" 0 node "$SCRIPT" validar --slug crase
+esperado "7 reais + exemplo em cerca de til: passa" 0 node "$SCRIPT" validar --slug til
+esperado "## Freios so dentro de cerca nao conta: recusa" 1 node "$SCRIPT" validar --slug freios-cercado
+
+cd "$REPO2"
+
+echo
+echo "== 27. .git/info/grafts nao corta o historico que o selo le =="
+# Com o HEAD enxertado como raiz, a adicao selada sumia do `git log` e
+# `conferir` saia 0 sobre regua adulterada e commitada. GIT_NO_REPLACE_OBJECTS
+# nao cobre grafts; GIT_GRAFT_FILE apontando para arquivo inexistente cobre.
+REPO17="$CAIXA/repo-grafts"
+mkdir -p "$REPO17/docs/rainforest/reguas"
+cd "$REPO17"
+git init -q >/dev/null 2>&1
+git config user.email "test@<email>"
+git config user.name "Test User"
+git config commit.gpgsign false
+git config core.autocrlf false
+{ printf '# Regua\n\n## Freios\n\n'; for n in 1 2 3 4 5; do printf '### M%s estrito\nx\n\n' "$n"; done; } > docs/rainforest/reguas/enxerto.md
+git add -A >/dev/null 2>&1; git commit -q -m "regua selada" >/dev/null 2>&1
+sed -i "s/estrito/frouxo/" docs/rainforest/reguas/enxerto.md
+git add -A >/dev/null 2>&1; git commit -q -m "adultera" >/dev/null 2>&1
+esperado "sem grafts, a adulteracao e pega" 1 node "$SCRIPT" conferir --slug enxerto
+git rev-parse HEAD > .git/info/grafts
+if [ "$(git log --format=%h 2>/dev/null | wc -l | tr -d ' ')" = "1" ]; then
+  ok=$((ok+1)); echo "  ok   com grafts o git log enxerga so um commit (o caso monta o ataque)"
+else
+  falhou=$((falhou+1)); echo "  FALHA o graft nao cortou o historico — o caso nao mede nada"
+fi
+esperado "com grafts: veredito (1), nao 0" 1 node "$SCRIPT" conferir --slug enxerto
+bytes17=$(stdout_bytes node "$SCRIPT" mostrar --slug enxerto)
+if [ "$bytes17" = "0" ]; then
+  ok=$((ok+1)); echo "  ok   o critico cego nao recebe a regua frouxa"
+else
+  falhou=$((falhou+1)); echo "  FALHA mostrar entregou $bytes17 bytes com grafts"
+fi
+
+cd "$REPO2"
+
+echo
+echo "== 28. diretorio no lugar do manifesto e AUSENCIA (2), sem stack trace =="
+# O `validar` fazia `existsSync` e depois `readFileSync`: diretorio passa no
+# primeiro e explode no segundo, com exit 1 por acidente — o codigo que o
+# cabecalho reserva para formato.
+REPO18="$CAIXA/repo-diretorio"
+mkdir -p "$REPO18/docs/rainforest/reguas/pasta.md"
+cd "$REPO18"
+esperado "diretorio no caminho: validar sai 2" 2 node "$SCRIPT" validar --slug pasta
+saida18=$(node "$SCRIPT" validar --slug pasta 2>&1)
+if echo "$saida18" | grep -qE "node:fs|at Object|Error:"; then
+  falhou=$((falhou+1)); echo "  FALHA validar vazou stack trace: $(echo "$saida18" | head -1)"
+else
+  ok=$((ok+1)); echo "  ok   sem stack trace"
+fi
+
+cd "$REPO2"
+
 echo "== Resumo =="
 resultado=$((ok+falhou))
 if [ "$falhou" = "0" ]; then

@@ -60,3 +60,15 @@ Não é opcional na prática: a âncora é a **primeira** adição do manifesto,
 manifesto selado com erro de formato fica quebrado para sempre. Corrigir e
 commitar de novo não troca a âncora, e apagar e recriar vira "adicionado mais de
 uma vez" (selo ambíguo). O único conserto depois de selar é slug novo.
+
+## O que conta como cabeçalho de mecanismo
+
+O que o **markdown renderiza**, não o que a regex estrita casa. Toda linha com
+até três espaços de recuo, de um a seis `#`, espaço e `M` seguido de dígito
+é cabeçalho de mecanismo aos olhos do crítico cego — e, se não casar o formato
+exato `### M<n> <descrição>`, é recusa. `###  M8` (dois espaços), ` ### M8`
+(recuado) e `#### M8` reprovam o manifesto. Quatro espaços de recuo já são
+bloco de código no markdown e ficam de fora.
+
+Dentro de cerca de código (três crases ou três tis) nada conta: um `### M6
+exemplo` cercado é exemplo, não mecanismo — nem soma ao teto, nem reprova.

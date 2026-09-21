@@ -7,9 +7,18 @@ falsa. Responda `concordo` só se as sete forem verdadeiras; qualquer uma falsa 
 `discordo`, nomeando o número.
 
 1. **Dois críticos por rodada, em despachos separados.** O texto prescreve dois
-   `Agent` novos e cegos a cada rodada — um contra a régua, outro contra o nosso
-   melhor guardado — e dá o motivo de não serem o mesmo: um crítico só, vendo as
-   três peças, identifica pelo parentesco quais duas são nossas e o anonimato cai.
+   `Agent` novos e cegos a cada rodada **a partir da 2ª** — um contra a régua,
+   outro contra o nosso melhor guardado — e dá o motivo de não serem o mesmo: um
+   crítico só, vendo as três peças, identifica pelo parentesco quais duas são
+   nossas e o anonimato cai. Na rodada 1 só existe o crítico da régua, e o texto
+   tem de dizer por quê: ainda não há melhor guardado com que comparar (D8).
+
+   > Emenda de 2026-09-21, **decidida pelo usuário**, não por quem executa: a
+   > redação anterior dizia "a cada rodada" sem exceção, o que a D8 torna
+   > impossível na rodada 1. O crítico cego do Codex discordou por isso em duas
+   > rodadas seguidas, e a divergência está registrada em
+   > `divergencias-segunda-opiniao.jsonl`. Reescrever o critério por conta
+   > própria seria mover a trave depois do chute.
 
 2. **Os dois recebem o mesmo manifesto, da mesma origem.** O texto diz que o
    crítico interno também recebe os mecanismos, pelo mesmo comando `conferir-regua.cjs

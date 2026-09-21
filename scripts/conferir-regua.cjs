@@ -16,7 +16,8 @@
  * cabeçalhos M<n> (validamos presença, não conteúdo).
  *   PROTEGE, e ja nao estava garantido antes: merge resolvido com um lado que
  *   tambem adicionou o manifesto (`--full-history` + recusa de mais de uma
- *   adicao) e `git replace` (`GIT_NO_REPLACE_OBJECTS`).
+ *   adicao), `git replace` (`GIT_NO_REPLACE_OBJECTS`) e `.git/info/grafts`
+ *   (`GIT_GRAFT_FILE`).
  *   Tambem NAO protege contra estado de git em que a leitura do historico
  *   falha por um motivo que a sonda em camadas de `ancoraDe` nao alcanca: ali
  *   o script pode sair 1 (veredito) onde 2 (ambiente) seria mais correto. A
@@ -29,7 +30,8 @@
  *   node scripts/conferir-regua.cjs conferir --slug <slug>
  *     Valida que o manifesto <slug> não foi alterado e tem formato válido.
  *     Exit 0: tudo ok. Exit 1: veredito negativo (alterado, fora do formato,
- *     nunca commitado, ou selado e removido da arvore). Exit 2: uso errado, slug
+ *     nunca commitado, selado e removido da arvore, ou adicionado mais de uma
+ *     vez no historico). Exit 2: uso errado, slug
  *             invalido (barra, contrabarra, dois-pontos ou ".."), arquivo
  *             inexistente, clone raso ou git falhou.
  *
@@ -37,7 +39,8 @@
  *     Valida que o manifesto <slug> não foi alterado e tem formato válido.
  *     Se válido, imprime o conteúdo do commit-âncora em stdout.
  *     Exit 0: tudo ok. Exit 1: manifesto alterado, formato inválido, nunca
- *             commitado, ou selado e removido da árvore.
+ *             commitado, selado e removido da árvore, ou adicionado mais
+ *             de uma vez no histórico.
  *             Exit 2: slug invalido ou inexistente, clone raso, ou git
  *             falhou.
  *
@@ -66,7 +69,17 @@ const EXIT_GIT_FALHOU = 2;
 // `git replace` troca o conteudo que `git log` e `git show` enxergam sem
 // reescrever historico nenhum — o commit selado continua la, e o que se le
 // dele e outra coisa. Toda leitura de historico e de conteudo passa por aqui.
-const ENV_GIT = { ...process.env, GIT_NO_REPLACE_OBJECTS: '1', MSYS_NO_PATHCONV: '1' };
+//
+// `.git/info/grafts` corta o historico do mesmo jeito, por outro mecanismo que
+// o GIT_NO_REPLACE_OBJECTS nao cobre: com o HEAD enxertado como raiz, a adicao
+// selada some e `conferir` saia 0. GIT_GRAFT_FILE apontando para um arquivo
+// que nao existe desliga os grafts sem recusar o repositorio.
+const ENV_GIT = {
+  ...process.env,
+  GIT_NO_REPLACE_OBJECTS: '1',
+  GIT_GRAFT_FILE: path.join(__dirname, '.grafts-desligados-este-arquivo-nao-existe'),
+  MSYS_NO_PATHCONV: '1',
+};
 
 /**
  * O mesmo, sobre BYTES. O selo compara bytes, nunca texto decodificado.
@@ -90,6 +103,11 @@ function normalizarEolBytes(buf) {
     }
   }
   return saida.subarray(0, n);
+}
+
+/** Existe E e arquivo. Diretorio no caminho do manifesto nao e manifesto. */
+function ehArquivo(caminho) {
+  try { return fs.statSync(caminho).isFile(); } catch { return false; }
 }
 
 function arg(nome) {
@@ -237,25 +255,50 @@ function validarFormato(bytes, caminhoManifesto) {
   // cabecalhos ASCII, e a integridade ja foi comparada sobre bytes.
   const linhas = normalizarEolBytes(bytes).toString('utf8').split('\n');
 
+  // CERCAS DE CODIGO nao sao manifesto. `### M6 exemplo` dentro de ``` ou ~~~
+  // e exemplo, nao mecanismo — e contava como mecanismo, o que tanto fura o
+  // teto (5 reais + exemplo cercado passavam por 6) quanto reprova manifesto
+  // bom (7 reais + 1 exemplo viravam 8). A cerca fecha com o mesmo caractere
+  // que abriu, repetido ao menos tres vezes.
+  const foraDeCerca = [];
+  let cerca = null;
+  for (const linha of linhas) {
+    const abre = linha.match(/^ {0,3}(`{3,}|~{3,})/);
+    if (cerca === null) {
+      if (abre) { cerca = abre[1][0]; continue; }
+      foraDeCerca.push(linha);
+    } else if (abre && abre[1][0] === cerca) {
+      cerca = null;
+    }
+  }
+
   // Procura pela secao "## Freios"
-  const temFreios = linhas.some(linha => linha === '## Freios');
+  const temFreios = foraDeCerca.some(linha => linha === '## Freios');
   if (!temFreios) {
     console.error(`secao obrigatoria ausente: ## Freios (${caminhoManifesto})`);
     process.exit(EXIT_RECUSA);
   }
 
   // Procura por cabecalhos ### M<n>
+  //
+  // `regexMQualquer` e o que o MARKDOWN RENDERIZA como cabecalho de mecanismo:
+  // ate tres espacos de recuo, um a seis `#`, espaco, `M` e digito. Nao e o
+  // que o formato exige — e o que o critico cego ENXERGA. Tudo que casa aqui e
+  // nao casa o formato estrito e recusa. Antes a deteccao era `/^### M/`, e
+  // `###  M8` (dois espacos), ` ### M9` (recuado) e `#### M9` renderizavam
+  // como cabecalho sem o validador ver: 7 validos + 2 invisiveis saiam 0.
+  // Quatro espacos de recuo ja sao bloco de codigo no markdown, e ficam fora.
   const regexM = /^### M(\d+) +\S/;
-  const regexMQualquer = /^### M/;
+  const regexMQualquer = /^ {0,3}#{1,6}[ \t]+M\d/;
   const numerosM = [];
   let primeiraLinhaOffensora = null;
 
-  for (const linha of linhas) {
+  for (const linha of foraDeCerca) {
     const match = linha.match(regexM);
     if (match) {
       numerosM.push(parseInt(match[1], 10));
     } else if (regexMQualquer.test(linha)) {
-      // Tem "### M" mas não casa o padrão
+      // Renderiza como mecanismo, mas nao casa o formato
       if (!primeiraLinhaOffensora) {
         primeiraLinhaOffensora = linha;
       }
@@ -298,7 +341,7 @@ function validarFormato(bytes, caminhoManifesto) {
 function exigirAncoraEFormato(slug) {
   const caminhoManifesto = `docs/rainforest/reguas/${slug}.md`;
 
-  const existeNaArvore = fs.existsSync(caminhoManifesto);
+  const existeNaArvore = ehArquivo(caminhoManifesto);
   const ancora = ancoraDe(slug);
 
   // AUSENCIA SEM ANCORA e uso errado (2): nao ha regua com esse slug.
@@ -378,7 +421,7 @@ if (subcomando === 'validar') {
   }
 
   const caminhoManifesto = `docs/rainforest/reguas/${slug}.md`;
-  if (!fs.existsSync(caminhoManifesto)) {
+  if (!ehArquivo(caminhoManifesto)) {
     console.error(`arquivo não encontrado: ${caminhoManifesto}`);
     process.exit(2);
   }

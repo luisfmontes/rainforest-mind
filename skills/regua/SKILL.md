@@ -184,10 +184,12 @@ mostrar --slug <slug>`. Devolve:
 2. **A lacuna única** — se o vencedor não foi o nosso, a **uma** coisa concreta
    que decidiu. Com localização, igual a achado de `revisar`: "a terceira linha
    força o leitor a contar colunas" é lacuna, "parece menos polido" não é. Essa
-   lacuna é a **única** que alimenta o builder da rodada seguinte — nunca vem da
-   comparação interna. Senão o loop passa a se perseguir, medindo a si mesmo.
+   lacuna é a **única** que alimenta o builder — nunca da comparação interna,
+   senão o loop se persegue — e é a da **rodada do melhor guardado** (coluna
+   `lacuna` no TSV): a do descartado aponta para artefato de que o builder não
+   parte.
 
-**Crítico interno.** `Agent` novo **toda rodada**, separado e cego como o crítico
+**Crítico interno.** `Agent` novo toda rodada **a partir da 2ª**, cego como o crítico
 da régua. Recebe nosso-novo e nosso-melhor **sem rótulo** e sem saber qual é
 mais recente — mais o mesmo arquivo de mecanismos, pelo mesmo comando
 `conferir-regua.cjs mostrar`. Devolve **só** o binário: guardar (keep) ou
@@ -231,7 +233,7 @@ Quatro saídas, não três:
 
 ## O que falsificaria esta skill
 
-Três testes baratos e controláveis:
+Três testes baratos, que valem mais que qualquer argumento desta página:
 
 1. Se, em três usos, **todos** saírem na rodada 1 ou 2, a régua está sendo
    escolhida fraca de propósito e a skill virou cerimônia — o remédio é
@@ -242,9 +244,6 @@ Três testes baratos e controláveis:
    discrimina — não há comparação, só chapa. O remédio não é apertá-lo: é
    **cortá-lo inteiramente**. Dois críticos por rodada para nunca reprovar nada
    é cerimônia cara.
-
-Os três testes são baratos e valem mais que qualquer argumento de desenho,
-inclusive os desta página.
 
 Três fontes, e todas valem nomear. Padrão adaptado do
 `robonuggets/gauntlet-loop`, que enuncia bem a tese central —

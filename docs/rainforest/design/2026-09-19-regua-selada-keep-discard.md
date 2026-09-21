@@ -35,6 +35,13 @@ auditada por prosa — exatamente o buraco do autoresearch, que protege o juiz
   `git log --diff-filter=A --format=%H -- <regua> | tail -1` sobrevive a rebase;
   âncora hardcoded já quebrou duas vezes neste repo
   (`scripts/testa-conferir-encoding.sh:9-17`).
+  *Nota de 2026-09-21 (rodada 7, Q1 do usuário):* o comando acima não é mais o
+  que roda. Sem `--full-history`, um merge TREESAME escondia a adição selada, e
+  `tail -1` escolhia pela data, que é de quem commita. Hoje é `git log
+  --full-history --diff-filter=A`, e **mais de uma adição é recusada** (selo
+  ambíguo), com `GIT_NO_REPLACE_OBJECTS` e `GIT_GRAFT_FILE` desligando o que
+  troca o conteúdo lido sem reescrever histórico. A decisão — recomputar, nunca
+  fixar — continua a mesma.
 - **D5 — Âncora que não resolve aborta o loop** — porquê: exit 1 antes de
   despachar qualquer crítico. Degradar para "usa a árvore de trabalho mesmo"
   devolve o problema sem ninguém notar; falha fechada é o enxerto inteiro.
