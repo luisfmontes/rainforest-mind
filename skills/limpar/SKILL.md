@@ -82,8 +82,13 @@ Sem `--remover` ele só lista, em oito classes. As que importam:
   fica `viva` e o script avisa em uma linha — falta de resposta nunca vira
   remoção. Nasceu da Issue #14, em que três branches mergeadas passavam por
   trabalho vivo.
-- **`viva`** — não está na base e o remoto está de pé. **Nunca entra na remoção**,
-  nem com `--forcar`.
+- **`viva`** — não está na base e o `-d` a recusa. **Nunca entra na remoção**,
+  nem com `--forcar`. Sai impressa em dois grupos: `viva`, com um upstream que
+  existe, e `viva-so-local`, que **nunca teve upstream** — os commits só existem
+  na máquina, e o script não distingue trabalho em andamento de tentativa
+  descartada. Até 2026-09-21 as duas saíam sob "o remoto está de pé", e 72 das
+  78 assim rotuladas nunca tinham tido remoto. `viva-so-local` é para olhar e
+  apagar à mão com `git branch -D`, não para procurar no GitHub.
 - **`padrao`** — a branch padrão do repositório (`origin/HEAD`). **Nunca entra na
   remoção**, seja qual for a `--base`. Nasceu da Issue #23, e o ponto é que a
   classificação estava *certa* e levava ao lugar errado — ver logo abaixo.
