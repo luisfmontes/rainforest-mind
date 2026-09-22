@@ -14,9 +14,8 @@
 - Instalação, export, projeção D9/D11 e contraprova de 1.21.1 estão
   concluídos na seção de evidência corrente ao fim deste arquivo. As medições
   1.19.2 intermediárias permanecem somente como histórico.
-- `executar` está `parcial` somente enquanto esta correção do rastro final
-  permanece em curso; as 9/9 tarefas estão concluídas. O coordenador fechará
-  `executar` depois deste commit e então encaminhará uma nova revisão
+- `executar` está `ok`, com 9/9 tarefas concluídas e a catraca T1–T9
+  reaplicada na árvore integrada. O próximo estágio é uma nova revisão
   independente do diff final.
 - Sem aval explícito, não abrir PR, publicar release, mesclar nem alterar a
   `main`.

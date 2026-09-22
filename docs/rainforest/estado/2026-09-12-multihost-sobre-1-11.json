@@ -304,9 +304,9 @@
     "sensor_externo": "node scripts/conferir-fluxo.cjs mutacoes"
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "parcial",
     "snapshot": {
-      "head": "9e47ddae71ea85b7a9cfcc5641630c5c82e54479",
+      "head": "9b5768b4ee3a59221bc60164a9d4619d535fd955",
       "caminhos_sujos": []
     },
     "achados": 3,
@@ -324,7 +324,14 @@
       "coordenador fechar executar depois da correcao do rastro final",
       "nova revisão independente do diff final depois do fechamento de executar"
     ],
-    "tentativas": 2
+    "tentativas": 2,
+    "em_voo": [
+      {
+        "agente": "revisor-final-multihost-2",
+        "desde": "2026-09-22T14:25:00-03:00",
+        "tarefa": "revisão independente do diff final"
+      }
+    ]
   },
   "verificar": {
     "status": "reprovado",
