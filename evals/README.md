@@ -115,26 +115,101 @@ disparasse). `pos2` não disparou nesta amostra e `neg1` não disparou o lado
 claude plugin eval . --trust-plugin --no-publish --runs 1 --max-cost-usd 6
 ```
 
-Saída (colada, íntegra):
+Saída (colada, íntegra — sem `Report:` nem os dois `Remove-Item` de
+diretório temporário mantido fora do worktree, porque o gate de publicação
+deste repo recusa timestamp/caminho com forma de telefone em arquivo
+versionado; os três ficam no relatório desta tarefa para a janela
+principal, não aqui):
 
 ```
-Ablation: 2 arms x 21 cases (42 runs)
-...
-[cost ceiling $6 hit; skipping remaining cases]
+Ablation: defaulting to with-without — a plugin resolved from this path, so each case also runs a no-plugin baseline arm (2× runs) and reports Δ; graders marked with-only (including `tool_used: Skill`) become a plugin-fired indicator rather than part of the score. Pass --ablation none for the previous single-arm run and scoring.
+Plugin under test: "rainforest-mind" version "1.22.0" at "rainforest-mind/.claude/worktrees/agent-af497806984acb6fb"
+Ablation: 2 arms × 21 cases (42 runs)
+  gatilho-arqueologia-vs-analisar-neg1 run 1/1 [with]: score 1.00  $0.34
+    ✓ aciona-analisar [with-only, not scored]: Skill called 1x (expected 1..∞)
+    ✓ nao-aciona-arqueologia (weight 1): Skill called 0x (expected 0..0)
+  gatilho-arqueologia-vs-analisar-neg1 run 1/1 [without]: score 1.00  $0.15
+    ✓ nao-aciona-arqueologia (weight 1): Skill called 0x (expected 0..0)
+✓ gatilho-arqueologia-vs-analisar-neg1  with 1.00  without 1.00  Δ 0.00  (2 runs)  $0.49
+  gatilho-arqueologia-vs-analisar-pos1 run 1/1 [with]: score 1.00  $0.26
+    ✓ aciona-arqueologia [with-only, not scored]: Skill called 1x (expected 1..∞)
+    ✓ nao-aciona-analisar (weight 1): Skill called 0x (expected 0..0)
+    ✓ resposta-segue-metodo-arqueologia (weight 1): judge votes: PASS PASS PASS
+  gatilho-arqueologia-vs-analisar-pos1 run 1/1 [without]: score 1.00  $0.12
+    ✓ nao-aciona-analisar (weight 1): Skill called 0x (expected 0..0)
+    ✓ resposta-segue-metodo-arqueologia (weight 1): judge votes: PASS PASS PASS
+✓ gatilho-arqueologia-vs-analisar-pos1  with 1.00  without 1.00  Δ 0.00  (2 runs)  $0.37
+  gatilho-arqueologia-vs-analisar-pos2 run 1/1 [with]: score 1.00  $0.22
+    ✗ aciona-arqueologia [with-only, not scored]: Skill called 0x (expected 1..∞)
+    ✓ nao-aciona-analisar (weight 1): Skill called 0x (expected 0..0)
+    ✓ resposta-segue-metodo-arqueologia (weight 1): judge votes: PASS PASS PASS
+  gatilho-arqueologia-vs-analisar-pos2 run 1/1 [without]: score 1.00  $0.15
+    ✓ nao-aciona-analisar (weight 1): Skill called 0x (expected 0..0)
+    ✓ resposta-segue-metodo-arqueologia (weight 1): judge votes: PASS PASS FAIL
+✓ gatilho-arqueologia-vs-analisar-pos2  with 1.00  without 1.00  Δ 0.00  (2 runs)  $0.37
+  gatilho-depurar-vs-executar-neg1 run 1/1 [with]: score 1.00  $0.32
+    ✗ aciona-executar [with-only, not scored]: Skill called 0x (expected 1..∞)
+    ✓ nao-aciona-depurar (weight 1): Skill called 0x (expected 0..0)
+  gatilho-depurar-vs-executar-neg1 run 1/1 [without]: score 1.00  $0.12
+    ✓ nao-aciona-depurar (weight 1): Skill called 0x (expected 0..0)
+✓ gatilho-depurar-vs-executar-neg1  with 1.00  without 1.00  Δ 0.00  (2 runs)  $0.44
+  gatilho-depurar-vs-executar-pos1 run 1/1 [with]: score 1.00  $0.37
+    ✓ aciona-depurar [with-only, not scored]: Skill called 1x (expected 1..∞)
+    ✓ nao-aciona-executar (weight 1): Skill called 0x (expected 0..0)
+    ✓ resposta-segue-metodo-depurar (weight 1): judge votes: PASS PASS PASS
+  gatilho-depurar-vs-executar-pos1 run 1/1 [without]: score 1.00  $0.16
+    ✓ nao-aciona-executar (weight 1): Skill called 0x (expected 0..0)
+    ✓ resposta-segue-metodo-depurar (weight 1): judge votes: PASS PASS PASS
+✓ gatilho-depurar-vs-executar-pos1  with 1.00  without 1.00  Δ 0.00  (2 runs)  $0.53
+  gatilho-depurar-vs-executar-pos2 run 1/1 [with]: score 1.00  $0.32
+    ✓ aciona-depurar [with-only, not scored]: Skill called 1x (expected 1..∞)
+    ✓ nao-aciona-executar (weight 1): Skill called 0x (expected 0..0)
+    ✓ resposta-segue-metodo-depurar (weight 1): judge votes: PASS PASS PASS
+  gatilho-depurar-vs-executar-pos2 run 1/1 [without]: score 1.00  $0.12
+    ✓ nao-aciona-executar (weight 1): Skill called 0x (expected 0..0)
+    ✓ resposta-segue-metodo-depurar (weight 1): judge votes: PASS PASS PASS
+✓ gatilho-depurar-vs-executar-pos2  with 1.00  without 1.00  Δ 0.00  (2 runs)  $0.45
+  gatilho-divergir-vs-brainstorm-neg1 run 1/1 [with]: score 1.00  $0.38
+    ✓ aciona-brainstorm [with-only, not scored]: Skill called 1x (expected 1..∞)
+    ✓ nao-aciona-divergir (weight 1): Skill called 0x (expected 0..0)
+  gatilho-divergir-vs-brainstorm-neg1 run 1/1 [without]: score 1.00  $0.12
+    ✓ nao-aciona-divergir (weight 1): Skill called 0x (expected 0..0)
+✓ gatilho-divergir-vs-brainstorm-neg1  with 1.00  without 1.00  Δ 0.00  (2 runs)  $0.50
+  gatilho-divergir-vs-brainstorm-pos1 run 1/1 [with]: score 0.50  $0.50  error: timed out after 300s
+    ✓ aciona-divergir [with-only, not scored]: Skill called 1x (expected 1..∞)
+    ✓ nao-aciona-brainstorm (weight 1): Skill called 0x (expected 0..0)
+    ✗ resposta-segue-metodo-divergir (weight 1): judge votes: FAIL FAIL FAIL
+  gatilho-divergir-vs-brainstorm-pos1 run 1/1 [without]: score 1.00  $0.16
+    ✓ nao-aciona-brainstorm (weight 1): Skill called 0x (expected 0..0)
+    ✓ resposta-segue-metodo-divergir (weight 1): judge votes: PASS PASS PASS
+✗ gatilho-divergir-vs-brainstorm-pos1  with 0.50  without 1.00  Δ -0.50  (2 runs)  $0.66
+  gatilho-divergir-vs-brainstorm-pos2 run 1/1 [with]: score 1.00  $0.41  error: exit 1: Reached maximum number of turns (6)
+    ✓ aciona-divergir [with-only, not scored]: Skill called 1x (expected 1..∞)
+    ✓ nao-aciona-brainstorm (weight 1): Skill called 0x (expected 0..0)
+    ✓ resposta-segue-metodo-divergir (weight 1): judge votes: PASS PASS PASS
+  gatilho-divergir-vs-brainstorm-pos2 run 1/1 [without]: score 1.00  $1.73
+    ✓ nao-aciona-brainstorm (weight 1): Skill called 0x (expected 0..0)
+    ✓ resposta-segue-metodo-divergir (weight 1): judge votes: PASS PASS PASS
+✓ gatilho-divergir-vs-brainstorm-pos2  with 1.00  without 1.00  Δ 0.00  (2 runs)  $2.14
+  gatilho-enxugar-vs-revisar-neg1 run 1/1 [with]: score 1.00  $0.36
+    ✓ aciona-revisar [with-only, not scored]: Skill called 1x (expected 1..∞)
+    ✓ nao-aciona-enxugar (weight 1): Skill called 0x (expected 0..0)
+⚠ cost ceiling $6 hit; skipping remaining cases
+✓ gatilho-enxugar-vs-revisar-neg1  score 1.00  (1 run)  $0.36
 
-CASE                                  WITH  W/OUT Delta   RUNS COST    NOTES
-gatilho-arqueologia-vs-analisar-neg1  1.00  1.00  0.00    2    $0.49
-gatilho-arqueologia-vs-analisar-pos1  1.00  1.00  0.00    2    $0.37
-gatilho-arqueologia-vs-analisar-pos2  1.00  1.00  0.00    2    $0.37   aciona-arqueologia: Skill called 0x (expected 1..infinito)
-gatilho-depurar-vs-executar-neg1      1.00  1.00  0.00    2    $0.44   aciona-executar: Skill called 0x (expected 1..infinito)
-gatilho-depurar-vs-executar-pos1      1.00  1.00  0.00    2    $0.53
-gatilho-depurar-vs-executar-pos2      1.00  1.00  0.00    2    $0.45
-gatilho-divergir-vs-brainstorm-neg1   1.00  1.00  0.00    2    $0.50
-gatilho-divergir-vs-brainstorm-pos1   0.50  1.00  -0.50   2    $0.66   timed out after 300s
-gatilho-divergir-vs-brainstorm-pos2   1.00  1.00  0.00    2    $2.14   exit 1: Reached maximum number of turns (6)
-gatilho-enxugar-vs-revisar-neg1       1.00  --    --      1    $0.36
+CASE                                  WITH  W/OUT Δ      RUNS COST    NOTES
+gatilho-arqueologia-vs-analisar-neg1  1.00  1.00  0.00   2    $0.49
+gatilho-arqueologia-vs-analisar-pos1  1.00  1.00  0.00   2    $0.37
+gatilho-arqueologia-vs-analisar-pos2  1.00  1.00  0.00   2    $0.37   aciona-arqueologia: Skill called 0x (expected 1..∞)
+gatilho-depurar-vs-executar-neg1      1.00  1.00  0.00   2    $0.44   aciona-executar: Skill called 0x (expected 1..∞)
+gatilho-depurar-vs-executar-pos1      1.00  1.00  0.00   2    $0.53
+gatilho-depurar-vs-executar-pos2      1.00  1.00  0.00   2    $0.45
+gatilho-divergir-vs-brainstorm-neg1   1.00  1.00  0.00   2    $0.50
+gatilho-divergir-vs-brainstorm-pos1   0.50  1.00  -0.50  2    $0.66   timed out after 300s
+gatilho-divergir-vs-brainstorm-pos2   1.00  1.00  0.00   2    $2.14   exit 1: Reached maximum number of turns (6)
+gatilho-enxugar-vs-revisar-neg1       1.00  —     —      1    $0.36
 
-10 casos * mean Delta -0.06 * 1429s * $6.31 * partial (cost ceiling hit)
+10 case(s) · mean Δ -0.06 · 1429s · $6.31 · ⚠ partial (cost ceiling hit)
 [exited with code 2]
 ```
 
@@ -283,10 +358,11 @@ revisar.
 **Total desta sessão (redespacho): aproximadamente US$ 7,83.** Somado à
 tentativa anterior (aproximadamente US$ 3,85, README dela, seção 7): cerca
 de **US$ 11,68** gastos nas duas tentativas da issue #302 até aqui. Esta
-sessão sozinha ficou abaixo do teto de US$ 10 do briefing, mas acima do
-checkpoint de US$ 8 — parei de rodar qualquer coisa paga assim que a
-rodada oficial terminou (perto de US$ 7,83) e não tentei o critério 3 por
-isso, além do bloqueio estrutural da seção 6.
+sessão sozinha ficou abaixo do teto de US$ 10 do briefing e também abaixo
+do checkpoint de US$ 8, mas sem margem para outra rodada paga (perto de
+US$ 7,83 de US$ 8) — parei de rodar qualquer coisa paga assim que a rodada
+oficial terminou e não tentei o critério 3 por isso, além do bloqueio
+estrutural da seção 6.
 
 ## 8. Limitações conhecidas
 
