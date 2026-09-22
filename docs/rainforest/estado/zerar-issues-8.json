@@ -23,9 +23,9 @@
     "em": "2026-09-22"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-22",
-    "tarefas_ok": 13,
+    "tarefas_ok": 14,
     "tarefas": 14,
     "carimbos": [
       {
@@ -66,32 +66,32 @@
     ],
     "em": "2026-09-22",
     "comando": "bash hooks/testa-gate-fechar-issue.sh",
-    "saida": "184 ok, 0 falha(s)",
+    "saida": "190 ok, 0 falha(s)",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-gate-fechar-issue.sh, bypass por palavra reservada (#309)"
+        "fixture": "testa-gate-fechar-issue.sh, palavra reservada"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "testa-gate-fechar-issue.sh, variavel citada como ultimo argumento"
+        "fixture": "testa-gate-fechar-issue.sh, variavel citada final"
       },
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-entrega.sh, D5 exit 69 (+ BOM, commit vazio, --escopo)"
+        "fixture": "testa-conferir-entrega.sh, exit 69"
       },
       {
         "tarefa": 4,
         "resultado": "n/a",
-        "motivo": "passo de workflow; log do CI run 35734739268 (73 ok, 0 falha)"
+        "motivo": "passo de workflow; log do CI run 35734739268"
       },
       {
         "tarefa": 5,
         "resultado": "n/a",
-        "motivo": "emenda D6: suite fora desta entrega (PR #311)"
+        "motivo": "emenda D6: suite no PR #311"
       },
       {
         "tarefa": 6,
@@ -101,52 +101,47 @@
       {
         "tarefa": 7,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-entrega.sh, git fora do PATH -> exit 69"
+        "fixture": "testa-conferir-entrega.sh, git fora do PATH"
       },
       {
         "tarefa": 8,
         "resultado": "vermelho",
-        "fixture": "testa-gate-fechar-issue.sh, coproc (#309, revisao)"
+        "fixture": "testa-gate-fechar-issue.sh, coproc"
       },
       {
         "tarefa": 9,
         "resultado": "vermelho",
-        "fixture": "testa-gate-fechar-issue.sh, parametro especial (#309, revisao)"
+        "fixture": "testa-gate-fechar-issue.sh, parametro especial"
       },
       {
         "tarefa": 10,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-publicacao.sh, TLD reservado (RFC 2606)"
+        "fixture": "testa-conferir-publicacao.sh, TLD reservado"
       },
       {
         "tarefa": 11,
         "resultado": "vermelho",
-        "fixture": "testa-gate-fechar-issue.sh, pipe com stderr (|&) (#309, revisao 2)"
+        "fixture": "testa-gate-fechar-issue.sh, pipe com stderr"
       },
       {
         "tarefa": 12,
         "resultado": "vermelho",
-        "fixture": "testa-gate-fechar-issue.sh, continuacao de linha dentro da string"
+        "fixture": "testa-gate-fechar-issue.sh, continuacao dentro da string"
       },
       {
         "tarefa": 13,
         "resultado": "vermelho",
-        "fixture": "testa-gate-fechar-issue.sh, continuacao de linha no topo (caso fy)"
-      }
-    ],
-    "em_voo": [
+        "fixture": "testa-gate-fechar-issue.sh, continuacao no topo (fy)"
+      },
       {
-        "agente": "executor-gate-r5",
-        "tarefa": "14 paridade de contrabarra e aspas",
-        "desde": "2026-09-22"
+        "tarefa": 14,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, paridade e aspas (ha-hf)"
       }
     ],
+    "em_voo": [],
     "pendentes": [],
-    "sensor_externo": "bash hooks/testa-gate-fechar-issue.sh",
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-22"
-    }
+    "sensor_externo": "bash hooks/testa-gate-fechar-issue.sh"
   },
   "revisar": {
     "status": "reprovado",
