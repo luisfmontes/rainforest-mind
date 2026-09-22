@@ -171,52 +171,52 @@
       }
     ],
     "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug 2026-09-12-multihost-sobre-1-11",
-    "saida": "T1-T5 vermelho; T6-T9 n/a; exit 0; pendências correntes corrigidas",
+    "saida": "T1-T5 vermelho; T6-T9 n/a; exit 0; linhagem corrente corrigida",
     "mutacao": [
       {
-        "fixture": "testa-gate-staging-total.sh: git add citado e wrappers",
         "resultado": "vermelho",
-        "tarefa": 1
+        "tarefa": 1,
+        "fixture": "testa-gate-staging-total.sh: git add citado e wrappers"
       },
       {
-        "fixture": "contrato-skills: montar-corpus sem description",
         "resultado": "vermelho",
-        "tarefa": 2
+        "tarefa": 2,
+        "fixture": "contrato-skills: montar-corpus sem description"
       },
       {
-        "fixture": "contrato-adaptador-hook: handler Codex chama core direto",
         "resultado": "vermelho",
-        "tarefa": 3
+        "tarefa": 3,
+        "fixture": "contrato-adaptador-hook: handler Codex chama core direto"
       },
       {
-        "fixture": "testa-versao.sh: Codex 1.21.2 diverge de Claude 1.21.1",
         "resultado": "vermelho",
-        "tarefa": 4
+        "tarefa": 4,
+        "fixture": "testa-versao.sh: Codex 1.21.2 diverge de Claude 1.21.1"
       },
       {
-        "fixture": "contrato-marketplace: source.path não resolve raiz",
         "resultado": "vermelho",
-        "tarefa": 5
+        "tarefa": 5,
+        "fixture": "contrato-marketplace: source.path não resolve raiz"
       },
       {
-        "motivo": "tarefa operacional sobre instalador e cache externo; projeção e host medidos",
         "resultado": "n/a",
-        "tarefa": 6
+        "tarefa": 6,
+        "motivo": "tarefa operacional sobre instalador e cache externo; projeção e host medidos"
       },
       {
-        "motivo": "artefato instalado validado fora do repositório",
         "resultado": "n/a",
-        "tarefa": 7
+        "tarefa": 7,
+        "motivo": "artefato instalado validado fora do repositório"
       },
       {
-        "motivo": "documentação de continuidade conferida contra evidência real",
         "resultado": "n/a",
-        "tarefa": 8
+        "tarefa": 8,
+        "motivo": "documentação de continuidade conferida contra evidência real"
       },
       {
-        "motivo": "integração e registro sem comportamento novo",
         "resultado": "n/a",
-        "tarefa": 9
+        "tarefa": 9,
+        "motivo": "integração e registro sem comportamento novo"
       }
     ],
     "origem_instalacao": {
@@ -296,34 +296,34 @@
       "mutacao_nesta_iteracao": "o detector Gemini mudou com vermelho antes e verde depois. T3 foi corrigida para casar as aspas escapadas do JSON e ficou vermelha ao trocar o adaptador pelo core; T4 ficou vermelha em 1.19.3 contra 1.19.2. Os demais contratos aplicaveis ficaram verdes."
     },
     "base": "5cdb90e768cb1ba808821d5bdcdf46f7a19fc782",
-    "base_anterior": "068468fb956b8d606e9af1800aaa91dd399fdeb8",
+    "base_anterior": "2adbae270782a5a36512c28a5c2a5354ba05c73e",
     "nota_mutacao": "Mutantes reexercitados na arvore reancorada, nao herdados: a main trouxe 188 commits e a lista de 2026-09-14 media outra arvore. Uma primeira mutacao da T1 sobreviveu (tirar -A de CAMINHO_TOTAL) e isso NAO era lacuna da bateria: temCurta(opcoes,\"A\") pega o mesmo caso sozinho. Defesa redundante nao morre com um tiro so, entao o mutante foi refeito matando os dois detectores.",
     "contratos_cache": "manifesto, skills, adaptador e marketplace exit 0; Gemini completo somente na worktree Git",
     "baterias_branch": "executadas com Git Bash correto depois de tentativa invalida pelo WSL sem Node; a tentativa sem Node nao e teste de produto",
-    "head": "e5526bd8",
+    "head": "4dda647e",
     "sensor_externo": "node scripts/conferir-fluxo.cjs mutacoes"
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "e5526bd807cbc2311b7d675d1ac0c211f2009f4e",
+      "head": "4dda647e0b0c6f9f04f594b91d0e546d3868a7b6",
       "caminhos_sujos": []
     },
     "achados": 1,
     "base": "5cdb90e768cb1ba808821d5bdcdf46f7a19fc782",
-    "head": "e5526bd807cbc2311b7d675d1ac0c211f2009f4e",
+    "head": "4dda647e0b0c6f9f04f594b91d0e546d3868a7b6",
     "em": "2026-09-22",
-    "achado": "revisar.pendencias ainda condiciona nova revisão ao fechamento já satisfeito de executar",
+    "achado": "Campos correntes executar.base_anterior e revisar.confirmacoes ainda descrevem bases 1.13.2/1.19.2 fora do histórico.",
     "confirmacoes": [
-      "base corrente 2adbae27 propagada ao design e plano",
-      "cachebuster da base anterior provado em sessao nova",
-      "fixture Gemini request.json agora falha no detector",
+      "base corrente 5cdb90e propagada ao design, plano, handover e portão",
+      "instalação, cache e projeção 1.21.1 medidos na árvore reancorada",
+      "contraprova do hook 1.21.1 bloqueou git add antes do Git",
       "caminhos locais removidos do rastro versionado"
     ],
     "pendencias": [
       "nova revisão independente do diff final"
     ],
-    "tentativas": 4,
+    "tentativas": 5,
     "em_voo": [
       {
         "agente": "revisor-final-multihost-2",
@@ -331,8 +331,8 @@
         "tarefa": "revisão independente do diff final"
       }
     ],
-    "comando": "revisão independente do diff 5cdb90e...e5526bd8",
-    "saida": "REPROVADO: 1 achado documental médio; portão corrigido, cobertura 12/9, creep 18 e diff-check verdes"
+    "comando": "revisão independente do diff 5cdb90e...4dda647e",
+    "saida": "REPROVADO: 1 achado documental médio; demais verificações verdes"
   },
   "verificar": {
     "status": "reprovado",
