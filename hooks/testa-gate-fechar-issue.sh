@@ -1894,6 +1894,107 @@ echo "== (dz) if true; then gh issue view 12; fi → exit 0 (regressao: view con
 EXIT_DZ=$?
 [ $EXIT_DZ -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_DZ)"
 
+# (#309) bash "$t" como ultimo argumento: variavel citada com aspas DUPLAS,
+# sozinha, como ULTIMO argumento (redirecionamento nao conta), e um CAMINHO
+# DE SCRIPT — mesmo tratamento que `bash ./script.sh` ja recebe (D17). Antes
+# deste conserto `contemConstrucaoIlegivel` marcava `"$t"` como ilegivel pela
+# MESMA regra que pega `bash $CMD` (variavel de verdade, nao resolvida) —
+# falso positivo diario: `for t in $(...); do bash "$t"; done` e o padrao
+# real usado para rodar as proprias baterias deste repo. Mais argumento
+# depois da variavel citada (`bash "$t" x`), ou variavel SEM aspas
+# (`bash $t`), continuam ilegivel — a variavel ali pode ser qualquer coisa,
+# inclusive um `-c` escondido.
+echo
+echo '== (fa) for t in $(grep -lE "CHANGELOG|badge|plugin.json" scripts/testa-*.sh hooks/testa-*.sh); do bash "$t"; done → exit 0 ((#309) bash "$t" como ultimo argumento) =='
+(
+  export PATH="$SBP/bin:$PATH"
+  CMD_FA='for t in $(grep -lE "CHANGELOG|badge|plugin\.json" scripts/testa-*.sh hooks/testa-*.sh); do bash "$t"; done'
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$CMD_FA")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-fa"
+EXIT_FA=$?
+[ $EXIT_FA -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_FA)"
+
+echo
+echo '== (fb) bash "$t" → exit 0 ((#309) bash "$t" como ultimo argumento) =='
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"bash \"$t\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-fb"
+EXIT_FB=$?
+[ $EXIT_FB -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_FB)"
+
+echo
+echo '== (fc) bash "${t}" → exit 0 ((#309) bash "$t" como ultimo argumento) =='
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"bash \"${t}\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-fc"
+EXIT_FC=$?
+[ $EXIT_FC -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_FC)"
+
+echo
+echo '== (fd) bash "$t" 2>&1 → exit 0 ((#309) bash "$t" como ultimo argumento) =='
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"bash \"$t\" 2>&1"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-fd"
+EXIT_FD=$?
+[ $EXIT_FD -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_FD)"
+
+echo
+echo '== (fe) bash "$t" > log → exit 0 ((#309) bash "$t" como ultimo argumento) =='
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"bash \"$t\" > log"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-fe"
+EXIT_FE=$?
+[ $EXIT_FE -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_FE)"
+
+echo
+echo '== (ff) bash "$f" "gh issue close 12" → exit 2 ((#309) bash "$t" como ultimo argumento, mais argumento depois) =='
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"bash \"$f\" \"gh issue close 12\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ff"
+EXIT_FF=$?
+[ $EXIT_FF -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_FF)"
+
+echo
+echo '== (fg) bash $t → exit 2 ((#309) bash "$t" como ultimo argumento, sem aspas) =='
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"bash $t"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-fg"
+EXIT_FG=$?
+[ $EXIT_FG -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_FG)"
+
+echo
+echo '== (fh) bash "$t" x → exit 2 ((#309) bash "$t" como ultimo argumento, mais argumento depois) =='
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"bash \"$t\" x"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-fh"
+EXIT_FH=$?
+[ $EXIT_FH -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_FH)"
+
+echo
+echo '== (fi) for t in x; do bash -c "gh issue close 12"; done → exit 2 ((#309) bash "$t" como ultimo argumento, controle T1) =='
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"for t in x; do bash -c \"gh issue close 12\"; done"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-fi"
+EXIT_FI=$?
+[ $EXIT_FI -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_FI)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

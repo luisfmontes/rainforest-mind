@@ -177,6 +177,26 @@ gate "{ bash -c \"git commit -m x\"; } -> exit 2 (#309, controle: ja passava)"  
 gate "if true; then git status; fi -> exit 0 (#309, regressao: nao e git commit)" 0 "$(payload "$R4" Bash 'if true; then git status; fi')"
 
 echo
+echo '== (#309) bash "$t" como ultimo argumento: variavel citada com aspas DUPLAS =='
+# Este gate e sobre FORMA de mensagem, nao sobre evasao (comentario de
+# `analisaSegmentoCommit`, tokens-comando.cjs): conteudo ILEGIVEL de um
+# wrapper (`ilegivel === true`, ou `interno === null` — inclusive um
+# CAMINHO reconhecido por D2, que tambem tem `interno === null`) sempre
+# devolve "nao achei um git commit aqui", NUNCA bloqueia. D2 (#309) troca
+# `"$t"` de ilegivel para caminho, mas os dois braços do OR ja levavam ao
+# mesmo `return null` — o comportamento OBSERVAVEL deste gate para estes
+# casos e exit 0 tanto ANTES quanto DEPOIS do conserto (medido com o gate
+# real); a secao aqui e o registro dessa nao-regressao, nao uma mudanca.
+gate 'bash "$t" -> exit 0 (#309, caminho de script)'                          0 "$(payload "$R4" Bash 'bash "$t"')"
+gate 'bash "${t}" -> exit 0 (#309, chaves)'                                   0 "$(payload "$R4" Bash 'bash "${t}"')"
+gate 'bash "$t" 2>&1 -> exit 0 (#309, redirecionamento nao conta)'            0 "$(payload "$R4" Bash 'bash "$t" 2>&1')"
+gate 'bash "$t" > log -> exit 0 (#309, redirecionamento nao conta)'           0 "$(payload "$R4" Bash 'bash "$t" > log')"
+gate 'for t in $(grep -l x y.sh); do bash "$t"; done -> exit 0 (#309, padrao real de bateria)' 0 "$(payload "$R4" Bash 'for t in $(grep -l x y.sh); do bash "$t"; done')"
+gate 'bash "$f" "git commit -m x" -> exit 0 (#309, mais argumento depois — gate nao adivinha)' 0 "$(payload "$R4" Bash 'bash "$f" "git commit -m x"')"
+gate 'bash $t -> exit 0 (#309, sem aspas — gate nao adivinha)'                0 "$(payload "$R4" Bash 'bash $t')"
+gate 'bash "$t" x -> exit 0 (#309, mais argumento depois — gate nao adivinha)' 0 "$(payload "$R4" Bash 'bash "$t" x')"
+
+echo
 echo "== extra: payload/ferramenta que nao trava o gate =="
 gate "ferramenta que nao e Bash/PowerShell (Write) -> exit 0" 0 \
   "$(node -e 'process.stdout.write(JSON.stringify({tool_name:"Write",tool_input:{file_path:"x"}}))')"
