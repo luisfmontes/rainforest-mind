@@ -12,8 +12,6 @@ execution:
   max_turns: 6
   allowed_tools: [Skill, Read, Glob, Grep]
 
-runs: 1
-
 graders:
   - type: tool_used
     name: aciona-enxugar

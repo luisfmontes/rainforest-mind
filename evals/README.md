@@ -77,11 +77,23 @@ expected_outcome?: string
 
 `arm` só aceita `with-only | both` (omitido = o runner decide; para
 `tool_used` com `tool: Skill` isso vira indicador *display-only*, fora do
-score — confirmado batendo o JSON de uma rodada de teste: com `arm`
+score — CONFIRMADO batendo o JSON de uma rodada de teste: com `arm`
 omitido, `scored: false`/`withOnly: true`; com `arm: both`, `scored: true`
 nos dois braços). `input_match` é regex JS testada contra o JSON
 stringificado do input da chamada (`new RegExp(input_match).test(inputText)`),
-não string exata.
+não string exata — CONFIRMADO lendo o binário: `function Ul(e,n){if(e.name!==n.tool)return!1;if(n.input_match)return new RegExp(n.input_match).test(e.inputText);return!0}`.
+
+**`arm: both` no positivo não derruba o exit pelo braço baseline** —
+CONFIRMADO lendo o binário (é o `without` arm que estrutural e sempre vai
+falhar `aciona-<dona>`, já que não existe `rainforest-mind:<skill>` sem
+plugin; se isso contasse para o exit, toda a suíte falharia sempre por
+construção): `casesPassed:j(u,(d)=>d.aggregates.score>=i)` onde `i` é o
+threshold e `d.aggregates.score` é especificamente o campo `score` (do
+braço `with`), não `scoreWithout`. Testado empiricamente também: rodando
+só `limpar` com `aciona-limpar: arm both` e o disparo não ocorrendo em
+nenhum dos dois braços, ambos os braços deram score 0.333 e o exit foi 1
+— consistente com o `with` sendo o único braço que determina
+`casesPassed`.
 
 **Nome real que o grader vê** (pedido explícito do briefing): o Skill tool
 grava `input.skill` como `"rainforest-mind:<nome-da-skill>"` — confirmado
@@ -124,8 +136,9 @@ claude plugin eval . --trust-plugin --no-publish --runs 1 --max-cost-usd 10
 ```
 
 Saída: `Ablation: 2 arms × 7 cases (14 runs)`. Os 7 casos apareceram, o
-braço baseline rodou para todos, **nenhum `skipped`**. Exit 1 (score abaixo
-do threshold 1.0 no braço `with`, esperado — ver achado 1).
+braço baseline rodou para todos, **nenhum `skipped`**. Exit 1 — nenhum dos
+7 casos fechou score >= threshold (1.0) no braço `with`; ver achado 1
+abaixo para o detalhe caso a caso.
 `aggregate-result.json` em
 `evals/results/2026-09-22T13-07-36-435Z/aggregate-result.json`
 (`evals/results/` não é commitado — entrou no `.gitignore`).
@@ -163,9 +176,10 @@ rodada, registrado como está — não maquiado:
   reconhece a skill mas trata sandbox vazia (sem repositório, sem
   arquivo) como "nada para agir agora" e pergunta contexto em vez de
   invocar.
-- O próprio texto de ajuda do `claude plugin eval` embute uma regra dura
-  para quem autora eval: `runs: 3` como **mínimo não-negociável**,
-  justamente porque disparo de skill é estocástico. O critério T5 manda
+- O binário do `claude plugin eval` embute, no prompt do autor usado por
+  `init --interactive` (não no `--help`), uma regra dura para quem
+  autora eval: `runs: 3` como **mínimo não-negociável**, justamente
+  porque disparo de skill é estocástico. O critério T5 manda
   `--runs 1` por custo; esta rodada mede exatamente o que isso custa em
   confiabilidade — o resultado não dá para generalizar como "a skill não
   dispara", só como "não disparou nesta amostra de 1".
@@ -262,3 +276,36 @@ roda a segunda bateria quando a baseline já reprova).
 - **CI (critério 3 da #302)**: esta task não conectou a suíte ao CI —
   fora do escopo do que foi pedido na tarefa 5 (que pede a suíte e a
   mutação, não a integração em pipeline).
+- **Sessão filha da eval recebe a mesma listagem de skills que uma sessão
+  interativa** — INFERIDO, não CONFIRMADO diretamente: a base é a
+  resposta do agente nomeando a skill certa em prosa ("o caminho é
+  `depurar`") mesmo sem chamar o tool, e o fato de `aciona-limpar` ter
+  disparado de verdade numa das rodadas exploratórias. Não inspecionei o
+  `trace.jsonl` bruto de nenhuma rodada (nenhuma foi salva com
+  `--keep-temp`) para confirmar o system prompt exato que o filho recebe.
+- **`case.yaml` era o formato pretendido pelo autor do briefing**, apesar
+  de `init --bare` gerar `prompt.md` + `graders/*.md` — aceito sem
+  confirmar com quem escreveu o briefing; o `--help` confirma que
+  `case.yaml` é um formato válido e suportado, então segui a instrução
+  literal em vez de trocar para o formato do `--bare`.
+
+## 7. Custo total desta autoria (todas as rodadas, não só a oficial)
+
+A autorização do briefing foi para "UMA rodada de medição" (a da seção 3)
+com `--max-cost-usd 10`; a descoberta do formato real do `input.skill`
+("confirme o nome real que o grader vê", pedido explícito do briefing)
+exigiu rodadas exploratórias adicionais antes de escrever os 7 casos
+definitivos. Custo de cada uma, registrado por transparência:
+
+| Rodada | Propósito | Custo |
+|---|---|---|
+| exploratória 1 (`depurar`, sem Bash) | testar se o schema `case.yaml` é aceito | $0.271467 |
+| exploratória 2 (`depurar`, com Bash listado) | ver se Bash muda o comportamento | $0.326866 |
+| exploratória 3 (`limpar`) | confirmar `input.skill` — disparou 1x | $0.48523 |
+| exploratória 4 (`limpar`, `arm: both`) | confirmar que `arm: both` não derruba o exit pelo braço `without` | LACUNA — só imprimi `aggregates` (score/passRate), não `costUsd`, e apaguei o `eval-debug4.json` antes de guardar o número |
+| mutação (`conferir-mutacao.cjs`, só baseline — exit 4 antes de mutar) | critério 4 da #302 | $0.35 |
+| oficial (seção 3) | critério T5 | $2.4196105 |
+
+Total aproximado (excluindo a lacuna): **~US$ 3,85**. Nenhuma rodada
+excedeu o teto passado (`--max-cost-usd 3` nas exploratórias e na
+mutação, `--max-cost-usd 10` na oficial).
