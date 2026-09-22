@@ -537,13 +537,17 @@ function colapsaContinuacaoDeLinha(str) {
       }
       // Escapa um caractere qualquer (inclusive aspa): emite os dois juntos,
       // sem passar pelo teste de alternancia de estado acima.
-      saida += "\\";
-      if (alvo !== undefined) {
-        saida += alvo;
-        i = fim + 1;
-      } else {
-        i = fim; // contrabarra no fim da string, sem proximo caractere
+      if (alvo === undefined) {
+        // Contrabarra solta no fim absoluto: o bash a DESCARTA (`echo hi\` com
+        // EOF logo depois imprime `hi`). Emiti-la deixava a funcao divergindo
+        // do bash no unico ponto em que a revisao 4 pegou diferenca.
+        i = fim;
+        continue;
       }
+      // Escapa um caractere qualquer (inclusive aspa): emite os dois juntos,
+      // sem passar pelo teste de alternancia de estado acima.
+      saida += "\\" + alvo;
+      i = fim + 1;
       continue;
     }
     saida += c;

@@ -23,7 +23,7 @@
     "em": "2026-09-22"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-22",
     "tarefas_ok": 14,
     "tarefas": 14,
@@ -141,22 +141,26 @@
     ],
     "em_voo": [],
     "pendentes": [],
-    "sensor_externo": "bash hooks/testa-gate-fechar-issue.sh"
+    "sensor_externo": "bash hooks/testa-gate-fechar-issue.sh",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-22"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "84c0c5dac682a643d88131a882a5a3dbc97e93ca",
+      "head": "e8f7da5eae011cd8a2117b917b350d01eabb689f",
       "caminhos_sujos": []
     },
     "em_voo": [],
     "em": "2026-09-22",
     "achados": 2,
     "pendentes": [
-      "14 REGRESSAO nossa: contrabarra dupla antes da quebra e colapsada como se fosse continuacao; na main barrava (2), agora passa (0)",
-      "14b pre-existente: apostrofo solto dentro de aspas duplas faz a mascara de aspas simples engolir a continuacao"
+      "15a contrabarra solta no fim absoluto nao e descartada como no bash",
+      "15b casos hc e hf nao discriminam: outra camada do gate ja barra, entao regressao isolada na funcao passaria"
     ],
-    "tentativas": 3
+    "tentativas": 4
   },
   "verificar": {
     "status": "pendente"

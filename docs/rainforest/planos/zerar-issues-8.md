@@ -178,3 +178,16 @@ mutacao:
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
   fixture: testa-gate-fechar-issue.sh, secao "continuacao de linha: paridade e aspas (#309, revisao 3)"
 pronto quando: com o payload PreToolUse real e `gh` de sandbox, (a) `echo hi \<LF>gh issue close 12` (duas contrabarras — no bash a primeira escapa a segunda e a quebra separa comandos) sai **2**, como saía em `origin/main` antes desta rodada e como passou a sair **0** depois da tarefa 13; (b) `gh pr create --body "it's done, closes \<LF>#42, don't worry"` sai **2**, porque o bash colapsa e o corpo vira `closes #42` (na `origin/main` também saía 0 — é buraco antigo, não regressão); (c) `echo hi \<LF>gh issue close 12` (contrabarra única) continua **2** e `echo 'a\<LF>b'` (aspas simples de verdade) continua **0**. O colapso passa a varrer caractere a caractere, com estado de aspas simples/duplas e contagem de contrabarras, em vez de regex sobre o texto mascarado. Achados 1 e 2 da revisão 3.
+
+### 15. Bateria de unidade do colapso, e contrabarra solta no fim [tipo: teste]
+atende: D1, D2, D3
+arquivos: `hooks/lib/tokens-comando.cjs`, `hooks/testa-colapso-continuacao.cjs`, `hooks/testa-colapso-continuacao.sh`
+depende de: 14
+paralela: nao
+mutacao:
+  arquivo: `hooks/lib/tokens-comando.cjs`
+  de: `const pares = Math.floor(qtd / 2) * 2;`
+  para: `const pares = 0;`
+  bateria: `bash hooks/testa-colapso-continuacao.sh`
+  fixture: testa-colapso-continuacao.cjs, casos de 2, 3 e 4 contrabarras
+pronto quando: `bash hooks/testa-colapso-continuacao.sh` afere a STRING devolvida por `colapsaContinuacaoDeLinha` (não o exit do gate) em 19 casos medidos contra o bash real, e sai `== resultado: 19 ok, 0 falha(s) ==`; com `echo hi\` (contrabarra solta no fim, sem nada depois) a função devolve `echo hi`, como o bash, em vez de preservar a contrabarra. Achados 1 e 2 da revisão 4: os casos do gate `hc` e `hf` davam o mesmo exit com a função certa ou quebrada, porque outra camada do gate já barrava.
