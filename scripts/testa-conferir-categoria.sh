@@ -52,17 +52,17 @@ montar_copia() {
   cp "$RAIZ"/vigias/*.md "$destino/vigias/" 2>/dev/null
 }
 
-echo "== 1. repositorio real na base — exit 0, 43 pecas, distribuicao 15/25/3 =="
+echo "== 1. repositorio real na base — exit 0, 44 pecas, distribuicao 15/26/3 =="
 S1="$(roda --raiz "$RAIZ")"
 saiu "repositorio real passa (exit 0)" "$(codigo --raiz "$RAIZ")" "0"
-tem  "conta as 43 pecas"               "$S1" "Total de peças varridas: 43"
+tem  "conta as 44 pecas"               "$S1" "Total de peças varridas: 44"
 N_GUIA="$(printf '%s' "$S1" | grep -cF '>  guia')"
 N_SENSOR="$(printf '%s' "$S1" | grep -cF '>  sensor')"
 N_DADO="$(printf '%s' "$S1" | grep -cF '>  dado')"
-if [ "$N_GUIA" = "15" ] && [ "$N_SENSOR" = "25" ] && [ "$N_DADO" = "3" ]; then
-  ok=$((ok+1)); echo "  ok   distribuicao 15 guia / 25 sensor / 3 dado confere"
+if [ "$N_GUIA" = "15" ] && [ "$N_SENSOR" = "26" ] && [ "$N_DADO" = "3" ]; then
+  ok=$((ok+1)); echo "  ok   distribuicao 15 guia / 26 sensor / 3 dado confere"
 else
-  falhou=$((falhou+1)); echo "  FALHA distribuicao: guia=$N_GUIA sensor=$N_SENSOR dado=$N_DADO (esperava 15/25/3)"
+  falhou=$((falhou+1)); echo "  FALHA distribuicao: guia=$N_GUIA sensor=$N_SENSOR dado=$N_DADO (esperava 15/26/3)"
 fi
 
 echo

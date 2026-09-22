@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.21.1-1e5c3f?style=flat-square" alt="versão 1.21.1">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.22.0-1e5c3f?style=flat-square" alt="versão 1.22.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -233,7 +233,7 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 | `/saude` | Só o que os checadores oficiais não sabem |
 | `/setup` | Monta a pasta de dados, liga/desliga gates e fluxo |
 | `/semear` | Propõe o que criar **neste** repo a partir do que ele já tropeçou |
-| `/regua` | Régua externa nomeada, builder contra crítico cego — para o que não tem teste. A Fase 0 destila a régua em 5-7 mecanismos conferíveis por olho em `docs/rainforest/reguas/<slug>.md` (o builder não os vê; o crítico sim) e faz o preflight de renderização, nomeando qual crítico ficaria cego |
+| `/regua` | Régua externa nomeada, builder contra crítico cego — para o que não tem teste. A Fase 0 destila a régua em 5-7 mecanismos conferíveis por olho em `docs/rainforest/reguas/<slug>.md` (o builder não os vê; o crítico sim) e faz o preflight de renderização, nomeando qual crítico ficaria cego. A régua é **selada pelo commit que a adicionou**: `scripts/conferir-regua.cjs` (`validar` antes de selar, `conferir`, `mostrar`) recusa régua alterada depois, e `mostrar` é o único caminho que a imprime. A partir da 2ª rodada, um segundo crítico cego compara o novo com o melhor guardado e decide **keep/discard** sozinho; as rodadas ficam num TSV versionado |
 | `/transferir` | Leva a sessão atual para uma thread Codex retomável por `codex resume <id>`; exige `transfer-codex` ligado no `/setup` |
 | `/ponte` | Gera `CLAUDE.md`, `AGENTS.md` ou `GEMINI.md` ([detalhe](docs/pontes.md)) |
 | `modo-dev` | Escada YAGNI, causa raiz antes de remendo, rastreabilidade do diff |
@@ -348,6 +348,7 @@ As três restrições nasceram de uma necessidade pessoal e valem pra qualquer u
 - [task-observer](https://github.com/rebelytics/one-skill-to-rule-them-all) — Eoghan Henn (rebelytics.com), CC BY 4.0: o gatilho "correção do usuário = observação" e o ciclo de revisão que viraram a regra 13.
 - [mattpocock/skills](https://github.com/mattpocock/skills) — MIT: a árvore de decisão e a fronteira de `grilling` (regra 16 e `/brainstorm`), o loop vermelho-capaz de `diagnosing-bugs` (skill `depurar`), expandir–contrair de `to-tickets`, e o portão triplo do registro de decisão de `domain-modeling`. Acoplado por compressão — nenhuma das 35 skills instalada.
 - [andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills) — a rastreabilidade de cada linha do diff até o pedido, no `modo-dev`.
+- [karpathy/autoresearch](https://github.com/karpathy/autoresearch) — MIT: as duas peças da `regua` 1.22 — o juiz que o agente avaliado não pode editar (aqui, a régua selada pelo commit que a adicionou) e o keep/discard automático contra o melhor guardado. Reimplementado a partir da descrição, sem copiar arquivo.
 - [dietrichgebert/ponytail](https://github.com/dietrichgebert/ponytail) — MIT: a escada YAGNI e as carve-outs de "onde a escada não desce" (`modo-dev`), a convenção de marcador `atalho:` com teto e caminho de upgrade mais o ledger que a colhe (`scripts/atalhos.cjs`), a fronteira que mantém revisão de excesso separada de revisão de correção (skill `enxugar`), e o hook de `SubagentStart` — que é dele o achado de que `SessionStart` não alcança subagente e de que ali só a forma `hookSpecificOutput` entrega, texto cru sendo descartado em silêncio. A fronteira de honestidade da `regua` ("nunca imprimir economia estimada sobre repo vivo: a versão não construída nunca foi escrita") também vem de lá.
 - [obra/superpowers](https://github.com/obra/superpowers) — Jesse Vincent, MIT: o nome e o lugar do estágio `brainstorm` no par `brainstorm` → `plano`, e a divisão entre o que é commitado e o que morre com a máquina (worktree, briefing de agente, diff de review ficam git-ignored). Serviu também de **contraste** em duas decisões, e as duas estão escritas onde valem: lá a transição entre estágios é texto que o modelo lê e obedece, aqui é arquivo com parser e hook (`scripts/estado.cjs`); e lá o paralelo de implementadores foi proibido, aqui não precisa ser porque `isolation: "worktree"` é obrigatório (`skills/executar/SKILL.md`).
 - [unlazy](https://github.com/Leonxlnx/unlazy) — Leonxlnx, MIT: o mecanismo do `scripts/portoes.cjs` — portão declara o comando que o decide e o marcador que a saída precisa conter. O **lint de autoria** não vem do original: é acréscimo deste repo.
