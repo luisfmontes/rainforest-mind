@@ -165,3 +165,16 @@ mutacao:
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
   fixture: testa-gate-fechar-issue.sh, secao "continuacao de linha no topo (#309, revisao 2)"
 pronto quando: com o payload PreToolUse real e `gh` de sandbox, `gh issue <contrabarra><LF>close 12` mandado direto, **sem wrapper**, sai **2** (hoje sai 0, inclusive depois das tarefas 11 e 12), e `git add <contrabarra><LF>-A` sai **2** no `gate-staging-total.cjs`; comando de várias linhas sem contrabarra (`gh issue<LF>close 12`) continua **0**, e contrabarra dentro de aspas simples segue o que o bash faz (medir e dizer o que mediu). Achado que a tarefa 12 deixou de fora, nomeado pelo próprio executor.
+
+### 14. Colapso de continuação segue o bash: paridade de contrabarra e estado de aspas [tipo: implementar]
+atende: D1, D2, D3
+arquivos: `hooks/lib/tokens-comando.cjs`, `hooks/testa-gate-fechar-issue.sh`, `hooks/testa-gate-staging-total.sh`
+depende de: 13
+paralela: nao
+mutacao:
+  arquivo: `hooks/lib/tokens-comando.cjs`
+  de: `function colapsaContinuacaoDeLinha(str) {`
+  para: `function colapsaContinuacaoDeLinha(str) { return str.replace(/\\r?\n/g, "");`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  fixture: testa-gate-fechar-issue.sh, secao "continuacao de linha: paridade e aspas (#309, revisao 3)"
+pronto quando: com o payload PreToolUse real e `gh` de sandbox, (a) `echo hi \<LF>gh issue close 12` (duas contrabarras — no bash a primeira escapa a segunda e a quebra separa comandos) sai **2**, como saía em `origin/main` antes desta rodada e como passou a sair **0** depois da tarefa 13; (b) `gh pr create --body "it's done, closes \<LF>#42, don't worry"` sai **2**, porque o bash colapsa e o corpo vira `closes #42` (na `origin/main` também saía 0 — é buraco antigo, não regressão); (c) `echo hi \<LF>gh issue close 12` (contrabarra única) continua **2** e `echo 'a\<LF>b'` (aspas simples de verdade) continua **0**. O colapso passa a varrer caractere a caractere, com estado de aspas simples/duplas e contagem de contrabarras, em vez de regex sobre o texto mascarado. Achados 1 e 2 da revisão 3.
