@@ -1,5 +1,10 @@
 #!/usr/bin/env node
 // @categoria: sensor
+// rainforest-gate: dados-de-exemplo — este e o proprio conferidor: os comentarios
+// mostram de proposito as formas que ele pega (token, JWT, PAT). CUIDADO: o
+// marcador isenta o ARQUIVO INTEIRO (nao ha isencao por trecho), entao segredo
+// real colado aqui nao e pego por gate nenhum — nunca cole credencial de
+// verdade neste arquivo, nem para calibrar regex.
 /**
  * Confere um relatório ANTES de ele sair da máquina — e RECUSA, em vez de avisar.
  *
@@ -201,7 +206,7 @@ const PADROES = [
   },
   {
     id: 'email',
-    re: /\b[\w.+-]+@(?!s\.whatsapp\.net|g\.us)[\w-]+\.[\w.]{2,}\b/g,
+    re: /\b[\w.+-]+@(?!s\.whatsapp\.net|g\.us)(?![\w.-]+\.(?:invalid|example|test|localhost)(?![-\w]|\.\w))[\w-]+\.[\w.]{2,}\b/g,
     o_que: 'endereço de e-mail',
     faca: 'troque por `<email>` — endereço de terceiro em Issue público vira alvo de spam',
   },

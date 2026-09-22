@@ -710,5 +710,44 @@ nao_tem "jid: os digitos NAO aparecem no trecho"     "$SAIDA_JID" "5500900000001
 tem     "jid: o trecho sai inteiro redigido"         "$SAIDA_JID" "<redigido>"
 rm -rf "$TRECHO_DIR"
 
+echo "== 16. TLD reservado (RFC 2606) =="
+# .invalid, .example, .test e .localhost sao reservados pela RFC 2606/6761 --
+# nunca resolvem para um endereco real. O achado 3 da revisao do zerar-issues-8
+# media isto: o ci@rainforest.invalid do workflow (identidade sintetica do
+# runner, nunca uma credencial) acendia a regra de e-mail e isentava o arquivo
+# inteiro por conta do marcador dados-de-exemplo. TLD reservado nao e endereco
+# real, entao nao deveria precisar do marcador para passar.
+printf '# achado\n\nidentidade: ci@rainforest.invalid\n' > "$SBP/tld-invalid.md"
+nao_tem "TLD .invalid NAO acende a regra de e-mail" "$(roda "$SBP/tld-invalid.md")" "email"
+saiu    "e passa limpo (exit 0)"                    "$(codigo "$SBP/tld-invalid.md")" "0"
+
+printf '# achado\n\ncontato: fulano@foo.example\n' > "$SBP/tld-example.md"
+nao_tem "TLD .example NAO acende a regra de e-mail" "$(roda "$SBP/tld-example.md")" "email"
+
+printf '# achado\n\ncontato: fulano@a.test\n' > "$SBP/tld-test.md"
+nao_tem "TLD .test NAO acende a regra de e-mail"    "$(roda "$SBP/tld-test.md")" "email"
+
+printf '# achado\n\ncontato: fulano@a.localhost\n' > "$SBP/tld-localhost.md"
+nao_tem "TLD .localhost NAO acende a regra de e-mail" "$(roda "$SBP/tld-localhost.md")" "email"
+
+# E o lado que importa: TLD real com prefixo parecido continua pego. Isencao
+# que engole o caso real trocaria um falso positivo por um falso negativo.
+printf '# achado\n\nreportado por fulano@empresa.com.br\n' > "$SBP/tld-real1.md"
+tem  "mas TLD real (.com.br) continua pego"         "$(roda "$SBP/tld-real1.md")" "email"
+
+printf '# achado\n\ncontato: a@b.com\n' > "$SBP/tld-real2.md"
+tem  "e TLD real curto (.com) continua pego"        "$(roda "$SBP/tld-real2.md")" "email"
+
+# O reservado tem de ser o ULTIMO rotulo: com fronteira \b, `foo.test.com`
+# (dominio registravel) era isento junto com `.test` puro (revisao, 2026-09-22).
+printf '# achado\n\ncontato: x@foo.test.com\n' > "$SBP/tld-meio.md"
+tem  "reservado no MEIO do dominio (foo.test.com) continua pego" "$(roda "$SBP/tld-meio.md")" "email"
+
+printf '# achado\n\ncontato: x@a.test-b.com\n' > "$SBP/tld-hifen.md"
+tem  "reservado colado em hifen (a.test-b.com) continua pego" "$(roda "$SBP/tld-hifen.md")" "email"
+
+printf '# achado\n\nescreva para ci@rainforest.invalid.\n' > "$SBP/tld-ponto-final.md"
+nao_tem "reservado seguido de ponto final de frase NAO acende" "$(roda "$SBP/tld-ponto-final.md")" "email"
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]
