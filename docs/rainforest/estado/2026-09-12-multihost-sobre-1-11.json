@@ -26,7 +26,7 @@
     "head_derivacao": "git rev-parse HEAD",
     "gemini": "adiado",
     "ancoras_corpo": "fechar, modo-dev, montar-corpus e regua iguais byte a byte a base 1.21.1",
-    "instalacao_cache": "pendente de repeticao em 1.21.1 depois da integracao; evidencia 1.19.2 e somente historica",
+    "instalacao_cache": "concluida em 1.21.1 sobre f02843b91c2f7dd09aa2919b14e5713c5333a9ee; evidencia 1.19.2 preservada somente como historico",
     "em": "2026-09-22"
   },
   "executar": {
@@ -265,17 +265,37 @@
     "base": "2adbae270782a5a36512c28a5c2a5354ba05c73e",
     "base_anterior": "068468fb956b8d606e9af1800aaa91dd399fdeb8",
     "nota_mutacao": "Mutantes reexercitados na arvore reancorada, nao herdados: a main trouxe 188 commits e a lista de 2026-09-14 media outra arvore. Uma primeira mutacao da T1 sobreviveu (tirar -A de CAMINHO_TOTAL) e isso NAO era lacuna da bateria: temCurta(opcoes,\"A\") pega o mesmo caso sozinho. Defesa redundante nao morre com um tiro so, entao o mutante foi refeito matando os dois detectores.",
+    "evidencia_1_21_1": {
+      "source_commit": "f02843b91c2f7dd09aa2919b14e5713c5333a9ee",
+      "origem_export": "C:\\Projetos\\rainforest-mind\\.claude\\marketplaces\\rainforest-mind-export-1.21.1-flow",
+      "export_arquivos_force": 783,
+      "cache": "C:\\Users\\Luis\\.codex\\plugins\\cache\\rainforest-mind-local\\rainforest-mind\\1.21.1",
+      "cache_arquivos_force": 784,
+      "export_dotgit": false,
+      "cache_dotgit": false,
+      "rastreados": 783,
+      "governanca_excluida": 7,
+      "arquivos_esperados": 776,
+      "export_missing": 0,
+      "export_different": 0,
+      "cache_missing": 0,
+      "cache_different": 0,
+      "extra_d11": ".codex-plugin/migrated-command-skills/source-command-saude/SKILL.md",
+      "contratos_cache": "manifesto, skills, adaptador e marketplace exit 0; Gemini completo somente na worktree Git",
+      "contraprova": {
+        "sessao": "01a0c90c-bbe6-7940-9011-e944d8d585ad",
+        "fixture": "<fixture-host-owned>",
+        "comando": "git add \"-A\"",
+        "decisao": "hook: PreToolUse Blocked",
+        "estado_apos": "?? deny-control.txt; staged_count=0; index_lock=False"
+      },
+      "baterias_branch": "executadas com Git Bash correto depois de tentativa invalida pelo WSL sem Node; a tentativa sem Node nao e teste de produto",
+      "pendencia_fluxo": "coordenador ainda fechara a catraca e repetira as baterias formais"
+    },
     "reaberto_por": {
       "estagio": "revisar",
       "data": "2026-09-22"
-    },
-    "em_voo": [
-      {
-        "agente": "documentador-evidencia-1.21.1",
-        "tarefa": "registrar export, cache, projeção e contraprova host 1.21.1",
-        "desde": "2026-09-22T12:18:00Z"
-      }
-    ]
+    }
   },
   "revisar": {
     "status": "reprovado",
@@ -294,16 +314,9 @@
       "fixture Gemini request.json agora falha no detector",
       "caminhos locais removidos do rastro versionado"
     ],
-    "em_voo": [
-      {
-        "agente": "revisor-independente",
-        "tarefa": "revisar diff real contra design, plano e padrões do repositório",
-        "desde": "2026-09-22T00:00:00-03:00"
-      }
-    ],
     "pendencias": [
       "nova revisão independente da reancoragem 1.21.1",
-      "refazer instalação, cachebuster, export e projeção D9/D11 em 1.21.1 depois da integração"
+      "coordenador fechar a catraca de executar e repetir as baterias formais"
     ],
     "tentativas": 1
   },

@@ -22,9 +22,15 @@
 - Portão: `docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md`.
 - Gemini continua adiado: nenhum manifesto, hook, adaptador ou fixture de
   payload Gemini pertence a esta entrega.
-- A prova de instalação/cache 1.19.2 é apenas histórica. A prova equivalente
-  para 1.21.1 está **pendente** e deve ser refeita depois da integração; não há
-  evidência de instalação 1.21.1 neste handover.
+- A prova de instalação/cache 1.19.2 é apenas histórica. A prova corrente
+  de 1.21.1 foi concluída sobre o commit
+  `f02843b91c2f7dd09aa2919b14e5713c5333a9ee`: export limpo com 783 arquivos,
+  cache com 784, zero `.git`, projeção D9 de 776 arquivos sem ausência ou
+  divergência e somente o extra D11. A sessão efêmera
+  `01a0c90c-bbe6-7940-9011-e944d8d585ad` recebeu
+  `hook: PreToolUse Blocked` para `git add "-A"`; a fixture anonimizada
+  `<fixture-host-owned>` permaneceu com `?? deny-control.txt`, nada staged e
+  sem `.git/index.lock`.
 - Sem aval explícito do usuário, é proibido abrir PR, publicar release, mesclar
   ou alterar a `main`. Commit e push da branch de entrega não equivalem a merge.
 
@@ -38,6 +44,33 @@ git show HEAD:.claude-plugin/plugin.json
 git show HEAD:.codex-plugin/plugin.json
 node scripts/estado.cjs ler --slug 2026-09-12-multihost-sobre-1-11
 ```
+
+### Evidência corrente de instalação 1.21.1
+
+O marketplace ativo aponta para
+`C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.21.1-flow`,
+export produzido por `git archive` do commit
+`f02843b91c2f7dd09aa2919b14e5713c5333a9ee`. O export tem 783 arquivos e o
+cache exato em
+`C:\Users\Luis\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.21.1`
+tem 784; ambos foram enumerados incluindo ocultos, não contêm `.git` e
+declaram `1.21.1` nos manifestos Claude e Codex.
+
+A projeção D9/D11 mediu 783 caminhos rastreados, excluiu somente os sete
+documentos de governança e comparou os 776 arquivos de produto esperados:
+`export_missing=0`, `export_different=0`, `cache_missing=0` e
+`cache_different=0`. Depois da mesma exclusão, o único extra do cache é
+`.codex-plugin/migrated-command-skills/source-command-saude/SKILL.md`.
+
+Os contratos aplicáveis ao cache — manifesto, skills, adaptador e marketplace —
+terminaram em exit 0. O contrato Gemini completo continua restrito à worktree
+Git, porque depende de `git ls-files`. A bateria da branch foi executada pelo
+Git Bash correto; uma tentativa anterior pelo WSL sem Node foi inválida e não
+é teste de produto.
+
+Essa evidência fecha instalação, projeção e contraprova em 1.21.1, mas
+`executar` permanece `parcial`: o coordenador ainda precisa fechar a catraca e
+repetir as baterias formais antes de avançar o fluxo.
 
 ## Arquivo histórico — 1.13.2 e 1.19.2 (não executar)
 

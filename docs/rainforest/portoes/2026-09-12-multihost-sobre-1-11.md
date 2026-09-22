@@ -11,9 +11,9 @@
   mantêm os mesmos bytes e SHA-256 já declarados no contrato.
 - O manifesto Codex acompanha o manifesto Claude em 1.21.1. Gemini permanece
   adiado, sem artefato de host nesta entrega.
-- Instalação, cachebuster, export e projeção D9/D11 de 1.21.1 estão pendentes de
-  repetição depois da integração. As medições 1.19.2 abaixo são históricas e
-  não constituem evidência instalada da versão corrente.
+- Instalação, export, projeção D9/D11 e contraprova de 1.21.1 estão
+  concluídos na seção de evidência corrente ao fim deste arquivo. As medições
+  1.19.2 intermediárias permanecem somente como histórico.
 - Sem aval explícito, não abrir PR, publicar release, mesclar nem alterar a
   `main`.
 
@@ -2541,3 +2541,91 @@ mutação:  1.19.3 != 1.19.2 -> 4 ok, 1 falha
 A declaração de mutação da T3 passou a representar as aspas escapadas do JSON;
 trocar o adaptador pelo core casou uma ocorrência e produziu
 `FALHA handler Codex chama core direto`.
+
+## Evidência corrente 1.21.1 — instalação, projeção e contraprova (2026-09-22)
+
+Esta seção substitui a pendência de instalação 1.21.1. As seções 1.19.2
+anteriores permanecem como arquivo histórico e não são promovidas a aceite da
+versão corrente.
+
+### Export limpo e cache instalado
+
+O export foi produzido por `git archive` do commit candidato
+`f02843b91c2f7dd09aa2919b14e5713c5333a9ee` em:
+
+```text
+C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.21.1-flow
+```
+
+A origem tem 783 arquivos, zero arquivo ou diretório `.git`, e os manifestos
+Claude e Codex declaram `1.21.1`. O cache instalado medido foi:
+
+```text
+C:\Users\Luis\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.21.1
+```
+
+Ele tem 784 arquivos e zero `.git`. A configuração do Codex registra o
+marketplace `rainforest-mind-local` na origem acima e o plugin
+`rainforest-mind@rainforest-mind-local` habilitado.
+
+### Projeção D9/D11
+
+A enumeração incluiu arquivos ocultos e comparou os blobs do commit aos bytes
+do export e do cache:
+
+```text
+source_commit=f02843b91c2f7dd09aa2919b14e5713c5333a9ee
+tracked_total=783
+governance_excluded=7
+projection_expected=776
+export_total_force=783
+export_dotgit=false
+export_missing=0
+export_different=0
+cache_total_force=784
+cache_dotgit=false
+cache_missing=0
+cache_different=0
+cache_extra_after_governance=1
+.codex-plugin/migrated-command-skills/source-command-saude/SKILL.md
+```
+
+O extra único é a projeção D11 autorizada. Nenhuma exceção foi acrescentada
+à lista fechada de sete documentos da D9.
+
+### Contratos aplicáveis no cache
+
+Os quatro modos que não dependem de uma worktree Git terminaram em exit 0:
+
+```text
+node scripts/testa-plugin-codex.cjs --contrato-manifesto       exit=0
+node scripts/testa-plugin-codex.cjs --contrato-skills          exit=0
+node scripts/testa-plugin-codex.cjs --contrato-adaptador-hook  exit=0
+node scripts/testa-plugin-codex.cjs --contrato-marketplace     exit=0
+```
+
+O contrato Gemini completo roda somente na worktree Git, porque usa
+`git ls-files`. As baterias da branch foram executadas pelo Git Bash correto,
+com Node disponível. Uma tentativa anterior pelo WSL sem Node foi inválida e
+não conta como teste de produto.
+
+### Contraprova em sessão Codex efêmera
+
+A sessão `01a0c90c-bbe6-7940-9011-e944d8d585ad`, na fixture anonimizada
+`<fixture-host-owned>`, tentou literalmente `git add "-A"` e registrou:
+
+```text
+hook: PreToolUse Blocked
+```
+
+Depois da sessão:
+
+```text
+git status --short -> ?? deny-control.txt
+staged_count=0
+index_lock=False
+```
+
+Instalação, projeção e contraprova 1.21.1 estão completas. O estágio
+`executar` continua `parcial`: o coordenador ainda fechará a catraca e repetirá
+as baterias formais.
