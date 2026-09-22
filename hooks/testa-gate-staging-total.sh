@@ -392,6 +392,15 @@ gate "PowerShell: << em aspas nao esconde git add -A" 2 "$(pml "$(printf 'Write-
 gate "PowerShell: << em comentario nao esconde git add -A" 2 "$(pml "$(printf '# compara a << b\ngit add -A')")"
 
 echo
+echo "== bypass por palavra reservada (#309): posicaoDeComando pulando do/then/else/elif/while/until/if/! =="
+gate "for t in x; do bash -c \"git add -A\"; done BARRA (#309, do)"        2 "$(b 'for t in x; do bash -c \"git add -A\"; done')"
+gate "if true; then bash -c \"git add -A\"; fi BARRA (#309, then)"        2 "$(b 'if true; then bash -c \"git add -A\"; fi')"
+gate "while true; do bash -c \"git add -A\"; done BARRA (#309, while/do)" 2 "$(b 'while true; do bash -c \"git add -A\"; done')"
+gate "! bash -c \"git add -A\" BARRA (#309, !)"                           2 "$(b '! bash -c \"git add -A\"')"
+gate "{ bash -c \"git add -A\"; } BARRA (#309, controle: ja passava)"     2 "$(b '{ bash -c \"git add -A\"; }')"
+gate "if true; then git status; fi PASSA (#309, regressao: nao staging total)" 0 "$(b 'if true; then git status; fi')"
+
+echo
 echo "== saidas de emergencia =="
 saida=$(printf '%s' "$(b 'git add -A')" | RAINFOREST_GATE_OFF=1 node "$GATE" 2>&1); rc=$?
 if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   RAINFOREST_GATE_OFF=1 libera (exit 0)"

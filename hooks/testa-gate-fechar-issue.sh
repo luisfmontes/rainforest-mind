@@ -1827,6 +1827,73 @@ EXIT_CC=$?
 	EXIT_DT=$?
 	[ $EXIT_DT -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_DT)"
 
+# bypass por palavra reservada (#309): `posicaoDeComando` (tokens-comando.cjs)
+# nao pulava palavra reservada do shell (`do`/`then`/`else`/`elif`/`while`/
+# `until`/`if`/`!`) antes de um wrapper de string — a busca parava NA PROPRIA
+# palavra reservada (nao e atribuicao nem wrapper conhecido), e o `bash -c
+# "gh issue close 12"` logo depois nunca era desempacotado. `{`/`(` ja saiam
+# exit 2 sem mudanca nenhuma (medido): `segmentosParaGate` os consome como
+# fronteira de SEGMENTO antes da tokenizacao — entram aqui so como controle.
+echo
+echo "== (du) for t in x; do bash -c \"gh issue close 12\"; done → exit 2 (bypass por palavra reservada #309, do) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"for t in x; do bash -c \"gh issue close 12\"; done"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-du"
+EXIT_DU=$?
+[ $EXIT_DU -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DU)"
+
+echo
+echo "== (dv) if true; then bash -c \"gh issue close 12\"; fi → exit 2 (bypass por palavra reservada #309, then) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"if true; then bash -c \"gh issue close 12\"; fi"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-dv"
+EXIT_DV=$?
+[ $EXIT_DV -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DV)"
+
+echo
+echo "== (dw) while true; do bash -c \"gh issue close 12\"; done → exit 2 (bypass por palavra reservada #309, while/do) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"while true; do bash -c \"gh issue close 12\"; done"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-dw"
+EXIT_DW=$?
+[ $EXIT_DW -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DW)"
+
+echo
+echo "== (dx) ! bash -c \"gh issue close 12\" → exit 2 (bypass por palavra reservada #309, !) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"! bash -c \"gh issue close 12\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-dx"
+EXIT_DX=$?
+[ $EXIT_DX -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DX)"
+
+echo
+echo "== (dy) { bash -c \"gh issue close 12\"; } → exit 2 (bypass por palavra reservada #309, controle: ja passava) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"{ bash -c \"gh issue close 12\"; }"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-dy"
+EXIT_DY=$?
+[ $EXIT_DY -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_DY)"
+
+echo
+echo "== (dz) if true; then gh issue view 12; fi → exit 0 (regressao: view continua liberado atras de reservada) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"if true; then gh issue view 12; fi"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-dz"
+EXIT_DZ=$?
+[ $EXIT_DZ -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_DZ)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

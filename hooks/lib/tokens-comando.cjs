@@ -96,6 +96,21 @@ const WRAPPERS_QUE_REPASSAM = new Set([
   "env", "command", "exec", "nohup", "nice", "timeout", "xargs", "sudo", "time",
 ]);
 
+// Palavras reservadas do shell que precedem um comando sem SEREM o comando —
+// `posicaoDeComando` tem que pular por cima delas para achar o wrapper de
+// verdade (#309): medido com o gate real, `do`/`then`/`else`/`elif`/`while`/
+// `until`/`if`/`!` na frente de `bash -c "gh issue close 12"` faziam
+// `posicaoDeComando` apontar para a PROPRIA palavra reservada (nao e
+// atribuicao nem wrapper conhecido, o laco parava ali), entao
+// `desempacotarWrapperDeString` nunca via o `bash -c` — `for t in x; do bash
+// -c "gh issue close 12"; done` saia com exit 0 (bypass). `{`/`(` NAO entram
+// aqui: `segmentosParaGate` (nos tres gates de texto) ja os consome como
+// FRONTEIRA DE SEGMENTO antes de qualquer tokenizacao chegar aqui — medido
+// que ja saiam exit 2 sem mudanca nenhuma.
+const PALAVRAS_RESERVADAS = new Set([
+  "do", "then", "else", "elif", "while", "until", "if", "!",
+]);
+
 // Flags que cada wrapper reconhece e que CONSOMEM VALOR: o proprio token
 // mais o seguinte — ou so o proprio, se o valor vier colado com `=`
 // (`--chdir=X`). Wrapper (ou flag) NAO listado aqui e tratado como SEM
@@ -207,6 +222,10 @@ function posicaoDeComando(toks, captura) {
   let i = 0;
   for (;;) {
     if (i < toks.length && !toks[i].q && ehAtribuicao(toks[i].v)) {
+      i += 1;
+      continue;
+    }
+    if (i < toks.length && !toks[i].q && PALAVRAS_RESERVADAS.has(toks[i].v)) {
       i += 1;
       continue;
     }

@@ -168,6 +168,15 @@ gate "PowerShell, 4 arquivos, so assunto -> exit 2" 2 "$(payload "$R4" PowerShel
 gate "PowerShell, 3 arquivos/20 linhas, so assunto -> exit 0" 0 "$(payload "$R3" PowerShell 'git commit -m "Assunto valido"')"
 
 echo
+echo "== bypass por palavra reservada (#309): posicaoDeComando pulando do/then/else/elif/while/until/if/! =="
+gate "for t in x; do bash -c \"git commit -m x\"; done -> exit 2 (#309, do)"        2 "$(payload "$R4" Bash 'for t in x; do bash -c "git commit -m x"; done')"
+gate "if true; then bash -c \"git commit -m x\"; fi -> exit 2 (#309, then)"        2 "$(payload "$R4" Bash 'if true; then bash -c "git commit -m x"; fi')"
+gate "while true; do bash -c \"git commit -m x\"; done -> exit 2 (#309, while/do)" 2 "$(payload "$R4" Bash 'while true; do bash -c "git commit -m x"; done')"
+gate "! bash -c \"git commit -m x\" -> exit 2 (#309, !)"                           2 "$(payload "$R4" Bash '! bash -c "git commit -m x"')"
+gate "{ bash -c \"git commit -m x\"; } -> exit 2 (#309, controle: ja passava)"     2 "$(payload "$R4" Bash '{ bash -c "git commit -m x"; }')"
+gate "if true; then git status; fi -> exit 0 (#309, regressao: nao e git commit)" 0 "$(payload "$R4" Bash 'if true; then git status; fi')"
+
+echo
 echo "== extra: payload/ferramenta que nao trava o gate =="
 gate "ferramenta que nao e Bash/PowerShell (Write) -> exit 0" 0 \
   "$(node -e 'process.stdout.write(JSON.stringify({tool_name:"Write",tool_input:{file_path:"x"}}))')"
