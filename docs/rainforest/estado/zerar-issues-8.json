@@ -149,30 +149,28 @@
     "sensor_externo": "bash hooks/testa-colapso-continuacao.sh"
   },
   "revisar": {
-    "status": "parcial",
+    "status": "ok",
     "snapshot": {
-      "head": "b97983360e7c550841ff8b888f9c7430ea3660db",
-      "caminhos_sujos": [
-        "docs/rainforest/estado/zerar-issues-8.json"
-      ]
+      "head": "309c0432c0cf34f04821f10f957f2679b2adb6c0",
+      "caminhos_sujos": []
     },
-    "em_voo": [
-      {
-        "agente": "revisor-5",
-        "tarefa": "revisao da tarefa 15",
-        "desde": "2026-09-22"
-      }
-    ],
+    "em_voo": [],
     "em": "2026-09-22",
     "achados": 2,
-    "pendentes": [
-      "15a contrabarra solta no fim absoluto nao e descartada como no bash",
-      "15b casos hc e hf nao discriminam: outra camada do gate ja barra, entao regressao isolada na funcao passaria"
-    ],
-    "tentativas": 4
+    "bloqueantes": 0,
+    "corrigidos": 2,
+    "base": "922f0a81",
+    "head": "309c0432",
+    "comando": "bash hooks/testa-colapso-continuacao.sh",
+    "saida": "19 ok, 0 falha(s)",
+    "sensor_externo": "bash hooks/testa-colapso-continuacao.sh"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues-8 && bash hooks/testa-colapso-continuacao.sh && CONFERIR=\"python scripts/conferir-entrega.py\" bash scripts/testa-conferir-entrega.sh",
+    "saida": "12 tarefas vermelhas, 3 puladas com motivo; colapso 19 ok 0 falha; gemeo 73 ok 0 falha (igual ao .cjs); 15 criterios de gate conferidos com payload real, todos no exit esperado",
+    "sensor_externo": "node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues-8",
+    "em": "2026-09-22"
   },
   "fechar": {
     "status": "pendente"
