@@ -173,6 +173,19 @@
     "em": "2026-09-22"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "acao": "merge",
+    "pr": 310,
+    "merge_commit": "0e27956c14d52bd7efefdd343531ffbbb8811726",
+    "issues_fechadas": [
+      309,
+      303
+    ],
+    "issues_abertas_no_caminho": [
+      311,
+      312,
+      313
+    ],
+    "em": "2026-09-22"
   }
 }
