@@ -9,7 +9,7 @@
 const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
-const { tokensComAspas, ehComando, posicaoDeComando } = require("./tokens-comando.cjs");
+const { tokensComAspas, ehComando, posicaoDeComando, OPERADORES_DE_DOIS } = require("./tokens-comando.cjs");
 
 // `cd X` isolado num segmento do encadeamento.
 const CD = /^\s*cd\s+(?:--\s+)?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s*$/;
@@ -75,6 +75,16 @@ function segmentosComAspas(cmd) {
       // Entrar em aspa
       aspa = c;
       atual += c;
+    } else if (i + 1 < cmd.length && OPERADORES_DE_DOIS.has(c + cmd[i + 1])) {
+      // `|&` (#309, achado 1, revisao 2): fronteira de DOIS caracteres — o
+      // `&` NAO pode sobrar como primeiro token do segmento seguinte, senao
+      // tira `bash -c "..."` da posicao de comando. Ver `OPERADORES_DE_DOIS`
+      // em `tokens-comando.cjs`.
+      if (atual.trim()) {
+        segmentos.push(atual);
+      }
+      i++;
+      atual = "";
     } else if (i + 1 < cmd.length && (
       (c === '&' && cmd[i + 1] === '&') ||
       (c === '|' && cmd[i + 1] === '|') ||

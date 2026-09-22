@@ -32,7 +32,7 @@ const { MARCADOR } = require("./lib/marcador-evidencia.cjs");
 const { executar } = require("./lib/resolver-executavel.cjs");
 const {
   tokensComAspas, posicaoDeComando, textoAPartir, WRAPPERS_QUE_REPASSAM,
-  WRAPPERS_DE_COMANDO, desempacotarWrapperDeString,
+  WRAPPERS_DE_COMANDO, desempacotarWrapperDeString, OPERADORES_DE_DOIS,
 } = require("./lib/tokens-comando.cjs");
 const { cwdPorSegmento } = require("./lib/cwd-efetivo.cjs");
 const { corpoDeHeredoc, linhaDoHeredocTemInterpretador, fimDaLinhaLogica } = require("./lib/heredoc.cjs");
@@ -163,6 +163,17 @@ function segmentosParaGate(cmd) {
       continue;
     }
     if (c === "|" && cmd[i + 1] === "|") {
+      if (atual.trim()) segmentos.push(atual);
+      atual = "";
+      i++;
+      continue;
+    }
+    if (OPERADORES_DE_DOIS.has(cmd[i] + (cmd[i + 1] || ""))) {
+      // `|&` (#309, achado 1, revisao 2): fronteira de DOIS caracteres, como
+      // `||`/`&&` acima — o `&` NAO pode sobrar para o segmento seguinte,
+      // senao ele vira o primeiro token e tira `bash -c "..."` da posicao
+      // de comando. Ver o comentario de `OPERADORES_DE_DOIS` em
+      // `lib/tokens-comando.cjs`.
       if (atual.trim()) segmentos.push(atual);
       atual = "";
       i++;

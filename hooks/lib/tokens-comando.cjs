@@ -96,6 +96,21 @@ const WRAPPERS_QUE_REPASSAM = new Set([
   "env", "command", "exec", "nohup", "nice", "timeout", "xargs", "sudo", "time",
 ]);
 
+// Operadores de fronteira de segmento com DOIS caracteres que tem que ser
+// consumidos JUNTOS — nunca so o primeiro deles. `|&` (#309, achado 1, revisao
+// 2): atalho do bash para `2>&1 |` (liga stderr ao pipe seguinte). A
+// fronteira de segmento ja tratava `|` sozinho como divisor incondicional
+// (junto com `;`, `\n`, `(`, `)`, `{`, `}`), entao o `&` de `|&` sobrava e
+// virava o PRIMEIRO TOKEN do segmento seguinte — `echo hi |& bash -c "gh
+// issue close 12"` deixava `bash -c ...` fora da posicao de comando (o token
+// inicial era `&`). Medido saindo exit 0 no `gate-fechar-issue.cjs` e no
+// `gate-staging-total.cjs`, inclusive na `origin/main` (2026-09-22).
+// Exportado para as copias da segmentacao (`gate-fechar-issue.cjs` e
+// `cwd-efetivo.cjs`, que `gate-staging-total.cjs`/`gate-mensagem-commit.cjs`
+// usam) compartilharem a MESMA lista, em vez de cada uma aprender o operador
+// numa rodada diferente.
+const OPERADORES_DE_DOIS = new Set(["|&"]);
+
 // Palavras reservadas do shell que precedem um comando sem SEREM o comando —
 // `posicaoDeComando` tem que pular por cima delas para achar o wrapper de
 // verdade (#309): medido com o gate real, `do`/`then`/`else`/`elif`/`while`/
@@ -417,11 +432,44 @@ function casaPrefixoDeFlag(tok, nomeCompleto) {
   return t.length >= 2 && t[0] === "-" && nomeCompleto.toLowerCase().startsWith(t);
 }
 
+/**
+ * Remove continuacao de linha: contrabarra IMEDIATAMENTE seguida de quebra
+ * de linha (LF ou CRLF) some — exatamente como o bash colapsa a string que
+ * vira script de um wrapper (`bash -c "..."`, `eval "..."`) ANTES de rodar.
+ *
+ * #309, achado 2, revisao 2: `bash -c "gh issue \<LF>close 12"` (contrabarra
+ * seguida de quebra de linha real, dentro da string) chegava aqui com o LF
+ * literal ainda dentro de `interno` — o LF depois vira fronteira de segmento
+ * em quem reprocessa `interno` (`segmentosParaGate`/`segmentosComAspas`
+ * tratam `\n` como divisor incondicional), partindo `gh issue` de `close 12`
+ * em dois segmentos que isolados não bloqueiam. Medido saindo exit 0 no
+ * `gate-fechar-issue.cjs` e no `gate-staging-total.cjs`, inclusive na
+ * `origin/main` (2026-09-22).
+ *
+ * Medido tambem (2026-09-22, `bash -c` real, via `spawnSync(["bash", "-c",
+ * script])` com o argv MONTADO, sem passar por quoting nenhum, e confirmado
+ * de ponta a ponta com o wrapper citado dos dois jeitos): contrabarra+LF
+ * dentro da string que vira `-c` de um `bash`/`sh`/`zsh`/... SEMPRE colapsa,
+ * tanto quando a string chega citada com aspas DUPLAS (o bash EXTERNO ja
+ * colapsa ao processar a aspa dupla, antes mesmo de `bash -c` rodar) quanto
+ * com aspas SIMPLES (o bash externo preserva literal — aspas simples nao
+ * processam nada — mas o `bash -c` INTERNO faz uma segunda passada de
+ * tokenizacao sobre o proprio argumento, e ESSA passada colapsa contrabarra+LF
+ * de novo, porque nao ha aspas sobrando naquele nivel). As duas formas citadas
+ * terminam executando o MESMO comando merged — por isso o colapso aqui nao
+ * distingue aspas simples de aspas duplas.
+ */
+function colapsaContinuacaoDeLinha(str) {
+  return str.replace(/\\\r?\n/g, "");
+}
+
 /** Tira UM nivel de aspas externas de `interno`, se houver. */
 function desempacota(interno) {
   interno = interno.trim();
   const aspas = /^"([\s\S]*)"$/.exec(interno) || /^'([\s\S]*)'$/.exec(interno);
-  return aspas ? aspas[1] : interno;
+  interno = aspas ? aspas[1] : interno;
+  interno = colapsaContinuacaoDeLinha(interno);
+  return interno;
 }
 
 /**
@@ -587,9 +635,11 @@ module.exports = {
   ehComando,
   nomeDeWrapper,
   WRAPPERS_QUE_REPASSAM,
+  OPERADORES_DE_DOIS,
   posicaoDeComando,
   textoAPartir,
   WRAPPERS_DE_COMANDO,
   desempacotarWrapperDeString,
   contemConstrucaoIlegivel,
+  colapsaContinuacaoDeLinha,
 };
