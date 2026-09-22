@@ -27,13 +27,7 @@
     "catraca_mutacao": "2026-09-22",
     "tarefas_ok": 4,
     "tarefas": 6,
-    "em_voo": [
-      {
-        "agente": "executor-evals-2",
-        "tarefa": "5 eval #302 (redespacho)",
-        "desde": "2026-09-22"
-      }
-    ],
+    "em_voo": [],
     "carimbos": [
       {
         "tarefa": 1,
@@ -73,7 +67,7 @@
     ],
     "em": "2026-09-22",
     "pendentes": [
-      "tarefa-5: eval rodou (US$ 2,42 oficial, ~3,85 total) mas nenhuma skill disparou em 7/7 casos; prompts de 2-3 palavras sem contexto; mutacao exit 4 (baseline nao-verde). Branch worktree-agent-a9d76e42881c581ed, nao integrada"
+      "tarefa-5: redespacho parcial — 10/21 casos rodaram (teto US$6 estourou, 11 skipped), mutacao nao rodada; grader with-only sai do score, entao a suite nao reprova regressao de gatilho sob with-without. Gasto #302: ~US$11,7. Branch worktree-agent-af497806984acb6fb, nao integrada"
     ]
   },
   "revisar": {

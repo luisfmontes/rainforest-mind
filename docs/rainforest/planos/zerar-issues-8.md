@@ -57,18 +57,14 @@ mutacao: n/a
   motivo: é passo de workflow; a falsificação é o passo aparecer e rodar no log do CI do PR, não um ramo de código a inverter
 pronto quando: no run de CI do PR desta rodada, o job `baterias` mostra um passo cujo comando é `CONFERIR="python scripts/conferir-entrega.py" bash scripts/testa-conferir-entrega.sh`, com `== resultado: N ok, 0 falha(s) ==` no log — provado por `gh run view <run> --log | grep -E "gemeo|resultado: [0-9]+ ok, 0 falha"`; o `CONTRIBUTING.md` diz que o CI roda essa linha, coerente com D5 (passo separado, não dentro da bateria padrão).
 
-### 5. Suíte de eval de gatilho com os 7 pares de colisão [tipo: implementar]
+### 5. Suíte de eval de gatilho publicada em PR próprio, fora desta rodada [tipo: configurar]
 atende: D6
-arquivos: `evals/`, `evals/gatilho-*/case.yaml`, `evals/README.md`
+arquivos: `evals/README.md`, `evals/gatilho-*/case.yaml`
 depende de: nenhuma
 paralela: sim
-mutacao:
-  arquivo: `skills/depurar/SKILL.md`
-  de: `description: Use quando algo está quebrado, falhando, com erro, lento ou intermitente`
-  para: `description: Use para formatar tabelas em markdown`
-  bateria: `claude plugin eval . --trust-plugin --no-publish --runs 3 --threshold 0.6 --max-cost-usd 5 --case "*depurar*"`
-  fixture: evals/gatilho-depurar-*/case.yaml (casos positivos do depurar)
-pronto quando: com `claude plugin eval . --trust-plugin --no-publish --runs 1` rodado de verdade na raiz do worktree, os 7 pares da tabela da #302 (2-3 casos positivos e 1-2 negativos por par, cada pedido com cenario realista, nunca 2-3 palavras soltas; grader de disparo so no braco with) (divergir×brainstorm, revisar×enxugar/verificar, enxugar×revisar, depurar×executar, arqueologia×analisar, verificar×revisar, limpar×fechar) aparecem no relatório, cada um com pedidos que devem acionar a skill dona (grader `tool_used: Skill` com o nome dela) e pedidos que não devem (nomeando a dona), e o braço baseline `with-without` roda — o relatório (`evals/results/<ts>/aggregate-result.json`) é lido e o `evals/README.md` registra por skill **acrescenta** ou **peso morto** e o custo total em USD da rodada; com a mutação aplicada o caso depurar sai abaixo do threshold (exit 1). Nenhum `skipped`. `--max-cost-usd` usado para limitar a rodada.
+mutacao: n/a
+  motivo: emenda D6 — a suíte não entra nesta entrega; a mutação planejada foi tentada e mostrou que o desenho não a torna possível (grader with-only fora do score), registrado no PR #311 e na #302
+pronto quando: com a branch `fluxo/eval-gatilho-302` no origin, o PR #311 existe em rascunho contra a `main` e o diff do PR #310 não contém nenhum caminho sob `evals/` — provado por `gh pr view 311 --json isDraft,headRefName` devolvendo `isDraft: true` e `git diff --name-only origin/main...HEAD -- evals/` vazio.
 
 ### 6. Custo na #302, versão e changelog [tipo: docs]
 atende: D7, D8
@@ -77,4 +73,4 @@ depende de: 1, 2, 3, 4, 5
 paralela: nao
 mutacao: n/a
   motivo: bump de versão e texto de changelog, sem comportamento a inverter
-pronto quando: com `origin/main` no momento do `fechar`, a versão no `plugin.json` e no badge do README é o minor seguinte ao dela — provado por `node scripts/conferir-versao.cjs` saindo 0; a #302 recebe comentário com o custo medido na tarefa 5 (o mesmo número do `evals/README.md`) e continua aberta; #309 e #303 fecham pelo PR.
+pronto quando: com `origin/main` no momento do `fechar`, a versão no `plugin.json` e no badge do README é o minor seguinte ao dela — provado por `node scripts/conferir-versao.cjs` saindo 0; a #302 recebe comentário com o custo medido (~US$ 11,70) e os dois achados, e continua aberta; o CHANGELOG não anuncia a suíte de eval; #309 e #303 fecham pelo PR.

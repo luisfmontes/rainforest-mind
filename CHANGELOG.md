@@ -32,9 +32,6 @@ a reprovação de commit vazio e o BOM no `git status`. As quatro foram portadas
 CI passou a rodar a bateria contra o gêmeo em passo próprio, para ele não congelar
 de novo em silêncio.
 
-**Primeira suíte de eval de gatilho de skill** em `evals/`, rodável com
-`claude plugin eval`. Não entra no CI ainda: cada rodada custa crédito de API.
-
 ## 1.22.0 — 2026-09-22
 
 **A régua do `/regua` não pode mais ser mexida depois que o loop começa.** Antes,
