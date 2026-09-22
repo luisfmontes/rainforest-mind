@@ -1,0 +1,30 @@
+schema_version: "1.0"
+name: gatilho-limpar-vs-fechar-neg1
+description: >
+  Cenário realista de fim de fluxo depois de 'verificar' fechado (issue
+  #302, par limpar×fechar) — tem que acionar `fechar`, não `limpar`: é
+  commit, remoção de worktree e PR, não manutenção avulsa de rastro.
+tags: [gatilho, colisao, negativo]
+
+execution:
+  prompt: >
+    O estágio de verificar já fechou ok pra essa branch, todos os
+    critérios passaram. Agora é commitar, remover os worktrees e abrir o
+    PR — pode encerrar o fluxo?
+  max_turns: 6
+  allowed_tools: [Skill, Read, Glob, Grep]
+
+graders:
+  - type: tool_used
+    name: aciona-fechar
+    tool: Skill
+    input_match: "rainforest-mind:fechar"
+    arm: with-only
+
+  - type: tool_used
+    name: nao-aciona-limpar
+    tool: Skill
+    input_match: "rainforest-mind:limpar"
+    min: 0
+    max: 0
+    arm: both

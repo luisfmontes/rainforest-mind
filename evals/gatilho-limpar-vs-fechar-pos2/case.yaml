@@ -1,0 +1,39 @@
+schema_version: "1.0"
+name: gatilho-limpar-vs-fechar-pos2
+description: >
+  Cenário realista de faxina depois de um dia de testes exploratórios
+  (issue #302, par limpar×fechar) — tem que acionar `limpar`, não
+  `fechar`.
+tags: [gatilho, colisao, positivo]
+
+execution:
+  prompt: >
+    Passei o dia rodando testes exploratórios e sobrou estado de sessão
+    concluída espalhado, além de um worktree que não sei se ainda está em
+    uso. Dá uma faxina nisso antes que eu esqueça?
+  max_turns: 6
+  allowed_tools: [Skill, Read, Glob, Grep]
+
+graders:
+  - type: tool_used
+    name: aciona-limpar
+    tool: Skill
+    input_match: "rainforest-mind:limpar"
+    arm: with-only
+
+  - type: tool_used
+    name: nao-aciona-fechar
+    tool: Skill
+    input_match: "rainforest-mind:fechar"
+    min: 0
+    max: 0
+    arm: both
+
+  - type: llm
+    name: resposta-segue-metodo-limpar
+    criteria: >
+      A resposta trata o pedido como manutenção de rastro (estado
+      concluído, worktree possivelmente órfão) — não como o fim do fluxo
+      com commit e PR. Vale mesmo que a resposta só peça mais contexto
+      antes de agir, desde que o enquadramento seja o de `limpar`.
+    weight: 1

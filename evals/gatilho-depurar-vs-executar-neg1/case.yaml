@@ -1,0 +1,30 @@
+schema_version: "1.0"
+name: gatilho-depurar-vs-executar-neg1
+description: >
+  Cenário realista de despachar um plano já fechado (issue #302, par
+  depurar×executar) — tem que acionar `executar`, não `depurar`: não há bug
+  nenhum, é a fatia paralela de um plano já aprovado.
+tags: [gatilho, colisao, negativo]
+
+execution:
+  prompt: >
+    O plano da tarefa 4 já fechou ok ontem à noite — tem três tarefas
+    marcadas como independentes nele, sem sobreposição de arquivo entre
+    elas. Pode despachar os agentes agora pra rodar essa etapa em paralelo?
+  max_turns: 6
+  allowed_tools: [Skill, Read, Glob, Grep]
+
+graders:
+  - type: tool_used
+    name: aciona-executar
+    tool: Skill
+    input_match: "rainforest-mind:executar"
+    arm: with-only
+
+  - type: tool_used
+    name: nao-aciona-depurar
+    tool: Skill
+    input_match: "rainforest-mind:depurar"
+    min: 0
+    max: 0
+    arm: both
