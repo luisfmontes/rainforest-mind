@@ -24,10 +24,11 @@ const DOCUMENTOS_DO_FLUXO = new Set([
   'docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md',
 ]);
 
-// Corpos medidos na base 5cdb90e768cb1ba808821d5bdcdf46f7a19fc782 (origin/main,
-// versao 1.21.1), antes da normalizacao exclusiva do frontmatter. Reancorados em
-// 2026-09-22: desde a base anterior 2adbae27 (1.19.2), somente a skill limpar
-// mudou; os quatro corpos abaixo permaneceram byte a byte iguais. Esta ancora nao
+// Corpos medidos na base 0e27956c14d52bd7efefdd343531ffbbb8811726 (origin/main,
+// versao 1.23.0), antes da normalizacao exclusiva do frontmatter. Reancorados em
+// 2026-09-22: desde a base anterior historica 5cdb90e7 (1.21.1), somente a skill regua
+// mudou entre as quatro normalizadas; os demais corpos permaneceram byte a byte
+// iguais. Esta ancora nao
 // descreve o que a entrega escreveu — descreve o que ela NAO tocou, entao o valor
 // certo e sempre o da main, e um vermelho aqui significa ou corpo alterado por
 // engano, ou base velha depois que a main andou.
@@ -35,7 +36,7 @@ const ANCORA_CORPOS_SKILLS = {
   fechar: { bytes: 9986, sha256: 'a2f231f8137431da4e1b998b75d361c18f228b13ccc2cffbd4d5432c4de5a0f8' },
   'modo-dev': { bytes: 13414, sha256: '281949f83cc647685a715e7dffae00fe082f6045adb0e16ad34fbbd3452aefa2' },
   'montar-corpus': { bytes: 2935, sha256: 'f21d9af8be400bd8222f272b98ece70c1d01c92865e41f418340410b69bb11ab' },
-  regua: { bytes: 13394, sha256: '6022ac66fddd981592838ad6006e57ea3057a60fcbfad835b228d4fa4cfe9484' },
+  regua: { bytes: 16053, sha256: '6a2e1e78075d89b0fb8a3c4e796c2f09eced762bf5e5bebd843dffb449fefcb6' },
 };
 
 class FalhaContrato extends Error {}

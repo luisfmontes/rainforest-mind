@@ -1,6 +1,6 @@
 {
   "slug": "2026-09-12-multihost-sobre-1-11",
-  "titulo": "Reaplicar a adaptação multihost sobre o Rainforest Mind 1.21.1 (slug iniciado em 1.11)",
+  "titulo": "Reaplicar a adaptação multihost sobre o Rainforest Mind 1.23.0 (slug iniciado em 1.11)",
   "criado_em": "2026-09-12",
   "arqueologia": {
     "status": "pendente"
@@ -18,23 +18,28 @@
     "em": "2026-09-12"
   },
   "reancoragem_corrente": {
-    "versao": "1.21.1",
-    "base": "5cdb90e768cb1ba808821d5bdcdf46f7a19fc782",
-    "merge": "5d81ebcebf6ca0b6fd2a852cb1d227e1505b949a",
+    "versao": "1.23.0",
+    "base": "0e27956c14d52bd7efefdd343531ffbbb8811726",
+    "merge": "7febeface33c10de4f2b32395c3e0a595656857a",
+    "base_anterior": "5cdb90e768cb1ba808821d5bdcdf46f7a19fc782",
     "branch": "codex/multihost-1.13",
     "worktree_derivacao": "git worktree list --porcelain; localizar branch refs/heads/codex/multihost-1.13",
     "head_derivacao": "git rev-parse HEAD",
     "gemini": "adiado",
-    "ancoras_corpo": "fechar, modo-dev, montar-corpus e regua iguais byte a byte a base 1.21.1",
-    "instalacao_cache": "concluida em 1.21.1 sobre f02843b91c2f7dd09aa2919b14e5713c5333a9ee; evidencia anterior preservada somente sob executar.historico_1_19_2",
+    "ancoras_corpo": "fechar, modo-dev, montar-corpus e regua iguais byte a byte a base 1.23.0; somente regua exigiu nova ancora",
+    "instalacao_cache": "pendente em 1.23.0; evidencia anterior preservada somente sob executar.historico_1_21_1",
     "em": "2026-09-22"
   },
   "executar": {
     "status": "parcial",
-    "catraca_mutacao": "2026-09-22",
-    "tarefas_ok": 9,
+    "catraca_mutacao_historico_1_21_1": "2026-09-22",
+    "tarefas_ok": 5,
     "tarefas": 9,
     "em": "2026-09-22",
+    "pendentes": [
+      "catraca completa T1-T5 na base 1.23.0; T4 ja reexecutada com vermelho",
+      "instalacao, cache, projecao D9/D11 e contraprova de host em 1.23.0"
+    ],
     "carimbos": [
       {
         "tarefa": 1,
@@ -170,9 +175,9 @@
         "ts": "2026-09-14T19:10:34.525Z"
       }
     ],
-    "comando": "node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md --reverificar; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-09-12-multihost-sobre-1-11",
-    "saida": "P1-P5 cumpridos; lint 0 avisos; T1-T5 vermelho; T6-T9 n/a",
-    "mutacao": [
+    "comando_historico_1_21_1": "node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md --reverificar; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-09-12-multihost-sobre-1-11",
+    "saida_historico_1_21_1": "P1-P5 cumpridos; lint 0 avisos; T1-T5 vermelho; T6-T9 n/a",
+    "historico_mutacao_1_21_1": [
       {
         "fixture": "testa-gate-staging-total.sh: git add citado e wrappers",
         "resultado": "vermelho",
@@ -219,36 +224,38 @@
         "tarefa": 9
       }
     ],
-    "origem_instalacao": {
-      "tipo": "git archive",
-      "commit": "f02843b91c2f7dd09aa2919b14e5713c5333a9ee",
-      "caminho": "<export-clean-1.21.1>",
-      "versao": "1.21.1",
-      "export_arquivos_force": 783,
-      "cache": "<cache-rainforest-mind-1.21.1>",
-      "cache_arquivos_force": 784,
-      "export_dotgit": false,
-      "cache_dotgit": false,
-      "extra_d11": ".codex-plugin/migrated-command-skills/source-command-saude/SKILL.md"
-    },
-    "projecao_d9": {
-      "rastreados": 783,
-      "governanca_excluida": 7,
-      "arquivos_esperados": 776,
-      "export_missing": 0,
-      "export_different": 0,
-      "cache_missing": 0,
-      "cache_different": 0,
-      "cache_extras": 1,
-      "extra_d11": ".codex-plugin/migrated-command-skills/source-command-saude/SKILL.md"
-    },
-    "contraprova_hook": {
-      "fixture": "<fixture-host-owned>",
-      "sessao": "01a0c90c-bbe6-7940-9011-e944d8d585ad",
-      "versao_instalada": "1.21.1",
-      "comando": "git add \"-A\"",
-      "decisao": "hook: PreToolUse Blocked",
-      "estado_apos": "?? deny-control.txt; staged_count=0; index_lock=False"
+    "historico_1_21_1": {
+      "origem_instalacao": {
+        "tipo": "git archive",
+        "commit": "f02843b91c2f7dd09aa2919b14e5713c5333a9ee",
+        "caminho": "<export-clean-1.21.1>",
+        "versao": "1.21.1",
+        "export_arquivos_force": 783,
+        "cache": "<cache-rainforest-mind-1.21.1>",
+        "cache_arquivos_force": 784,
+        "export_dotgit": false,
+        "cache_dotgit": false,
+        "extra_d11": ".codex-plugin/migrated-command-skills/source-command-saude/SKILL.md"
+      },
+      "projecao_d9": {
+        "rastreados": 783,
+        "governanca_excluida": 7,
+        "arquivos_esperados": 776,
+        "export_missing": 0,
+        "export_different": 0,
+        "cache_missing": 0,
+        "cache_different": 0,
+        "cache_extras": 1,
+        "extra_d11": ".codex-plugin/migrated-command-skills/source-command-saude/SKILL.md"
+      },
+      "contraprova_hook": {
+        "fixture": "<fixture-host-owned>",
+        "sessao": "01a0c90c-bbe6-7940-9011-e944d8d585ad",
+        "versao_instalada": "1.21.1",
+        "comando": "git add \"-A\"",
+        "decisao": "hook: PreToolUse Blocked",
+        "estado_apos": "?? deny-control.txt; staged_count=0; index_lock=False"
+      }
     },
     "historico_1_19_2": {
       "origem_instalacao": {
@@ -295,19 +302,35 @@
       },
       "mutacao_nesta_iteracao": "o detector Gemini mudou com vermelho antes e verde depois. T3 foi corrigida para casar as aspas escapadas do JSON e ficou vermelha ao trocar o adaptador pelo core; T4 ficou vermelha em 1.19.3 contra 1.19.2. Os demais contratos aplicaveis ficaram verdes."
     },
-    "base": "5cdb90e768cb1ba808821d5bdcdf46f7a19fc782",
-    "base_anterior": "2adbae270782a5a36512c28a5c2a5354ba05c73e",
-    "nota_mutacao": "Mutantes reexercitados na arvore reancorada, nao herdados: a main trouxe 188 commits e a lista de 2026-09-14 media outra arvore. Uma primeira mutacao da T1 sobreviveu (tirar -A de CAMINHO_TOTAL) e isso NAO era lacuna da bateria: temCurta(opcoes,\"A\") pega o mesmo caso sozinho. Defesa redundante nao morre com um tiro so, entao o mutante foi refeito matando os dois detectores.",
-    "contratos_cache": "manifesto, skills, adaptador e marketplace exit 0; Gemini completo somente na worktree Git",
-    "baterias_branch": "executadas com Git Bash correto depois de tentativa invalida pelo WSL sem Node; a tentativa sem Node nao e teste de produto",
-    "head": "f6466b59",
+    "base": "0e27956c14d52bd7efefdd343531ffbbb8811726",
+    "base_anterior": "5cdb90e768cb1ba808821d5bdcdf46f7a19fc782",
+    "mutacao_versao_1_23_0": {
+      "tarefa": 4,
+      "resultado": "vermelho",
+      "comando": "node scripts/conferir-mutacao.cjs --arquivo .codex-plugin/plugin.json --de '\"version\": \"1.23.0\"' --para '\"version\": \"1.23.1\"' --bateria 'bash scripts/testa-versao.sh'",
+      "saida": "baseline: ok: 5   falhou: 0; mutacao: ok: 4   falhou: 1; bateria VERMELHA (exit 1); fonte restaurado; catraca exit 0"
+    },
+    "nota_mutacao": "T4 reexecutada: Codex 1.23.1 diverge de Claude 1.23.0 e a bateria fica vermelha; a catraca completa ainda precisa ser reexecutada na base corrente.",
+    "contratos_cache": "pendentes para 1.23.0; evidencia anterior preservada em historico_1_21_1",
+    "baterias_branch": "Git Bash com login e Node; TMPDIR neutro fora de .claude/worktrees. Tentativas sem utilitarios Unix no PATH ou com TMPDIR sob .claude/worktrees sao invalidas e nao contam como teste de produto.",
+    "verificacao_local_1_23_0": {
+      "gate_staging": "== resultado: 154 ok, 0 falha(s) ==",
+      "contratos": "manifesto, skills, adaptador, marketplace, Gemini e wrapper: exit 0; 19 skills, 4 ancoras",
+      "versao": "ok: 5   falhou: 0",
+      "cobertura": "ok: cobertura válida — 12 decisão(ões), 9 tarefa(s)",
+      "creep": "ok: sem creep — 18 arquivo(s) coberto(s)",
+      "portoes": "TODOS OS PORTOES CUMPRIDOS — 5 portão(ões).",
+      "lint": "LINT OK — 5 portão(ões), 0 aviso(s)",
+      "status": "PARSE OK — 5 portão(ões), 0 não cumprido(s), 0 abandonado(s)"
+    },
+    "head": "derivar com git rev-parse HEAD",
     "sensor_externo": "node scripts/portoes.cjs rodar",
     "reaberto_por": {
       "estagio": "verificar",
       "data": "2026-09-22"
     }
   },
-  "revisar": {
+  "revisar_historico_1_21_1": {
     "status": "ok",
     "snapshot": {
       "head": "6b0d19d2e0c524fcce1ee24c32887234e653e31c",
@@ -328,7 +351,10 @@
     "comando": "revisão independente do diff 5cdb90e...6b0d19d2",
     "saida": "APROVADO: 0 achados; P1-P5 válidos e reexecutáveis; estado coerente"
   },
-  "verificar": {
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar_historico_1_21_1": {
     "status": "reprovado",
     "criterio": "versão da entrega deve ser maior ou compatível com origin/main no fechamento",
     "comando": "node scripts/conferir-versao.cjs",
@@ -337,6 +363,9 @@
     "em": "2026-09-22",
     "sensor_externo": "node scripts/portoes.cjs rodar",
     "tentativas": 1
+  },
+  "verificar": {
+    "status": "pendente"
   },
   "fechar": {
     "status": "pendente"

@@ -1,22 +1,20 @@
-# Portão: adaptação multihost sobre o Rainforest Mind 1.21.1
+# Portão: adaptação multihost sobre o Rainforest Mind 1.23.0
 
-## Estado corrente — reancoragem 1.21.1 (2026-09-22)
+## Estado corrente — reancoragem 1.23.0 (2026-09-22)
 
-- Base: `5cdb90e768cb1ba808821d5bdcdf46f7a19fc782` (`origin/main`, 1.21.1).
-- Merge da base na entrega: `5d81ebcebf6ca0b6fd2a852cb1d227e1505b949a`.
+- Base: `0e27956c14d52bd7efefdd343531ffbbb8811726` (`origin/main`, 1.23.0).
+- Merge da base na entrega: `7febeface33c10de4f2b32395c3e0a595656857a`.
+- Base anterior corrente: `5cdb90e768cb1ba808821d5bdcdf46f7a19fc782`.
 - Branch: `codex/multihost-1.13`; HEAD é rederivado com `git rev-parse HEAD`.
-- Entre `2adbae27` e `5cdb90e7`, 81 commits entraram. Nenhum arquivo de produto
-  Codex mudou; entre as skills, somente `skills/limpar/SKILL.md` mudou, fora das
-  quatro âncoras de corpo. `fechar`, `modo-dev`, `montar-corpus` e `regua`
-  mantêm os mesmos bytes e SHA-256 já declarados no contrato.
-- O manifesto Codex acompanha o manifesto Claude em 1.21.1. Gemini permanece
+- Entre `5cdb90e7` e `0e27956c`, 71 commits entraram. O escopo da entrega permanece
+  em 18 arquivos; entre as quatro skills normalizadas, só o corpo de `regua`
+  mudou, e sua âncora foi recalculada contra a nova base.
+- O manifesto Codex acompanha o manifesto Claude em 1.23.0. Gemini permanece
   adiado, sem artefato de host nesta entrega.
-- Instalação, export, projeção D9/D11 e contraprova de 1.21.1 estão
-  concluídos na seção de evidência corrente ao fim deste arquivo. As medições
-  1.19.2 intermediárias permanecem somente como histórico.
-- `executar` está `ok`, com 9/9 tarefas concluídas e a catraca T1–T9
-  reaplicada na árvore integrada. O próximo estágio é uma nova revisão
-  independente do diff final.
+- Instalação, export, projeção D9/D11 e contraprova de 1.23.0 estão pendentes.
+  Evidências de versões anteriores permanecem somente como histórico.
+- `executar` está parcial até a prova externa de 1.23.0; esta reancoragem não
+  altera configuração nem cache do host.
 - Sem aval explícito, não abrir PR, publicar release, mesclar nem alterar a
   `main`.
 
@@ -28,18 +26,18 @@ export, cache e sessão Codex continuam nas seções seguintes.
 
 - [x] P1: o gate de staging total passa todos os casos
   CHECK: bash hooks/testa-gate-staging-total.sh
-  ESPERA: == resultado: 133 ok, 0 falha(s) ==
-  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"925058d08bb2"}
+  ESPERA: == resultado: 154 ok, 0 falha(s) ==
+  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"337c2736a31a"}
 
 - [x] P2: o contrato ponta a ponta do plugin Codex passa
   CHECK: bash scripts/testa-plugin-codex.sh
   ESPERA: ok Gemini adiado: caminhos rastreados nao contem manifesto, hook, adaptador ou fixture de payload Gemini fora dos documentos do fluxo
-  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"2ae8bc313fc2"}
+  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"077adea17e32"}
 
 - [x] P3: os manifestos e referências públicas têm a mesma versão
   CHECK: bash scripts/testa-versao.sh
   ESPERA: ok: 5   falhou: 0
-  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"a215401d6ca2"}
+  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"c8fd95e6a496"}
 
 - [x] P4: todas as decisões aprovadas são cobertas pelo plano
   CHECK: node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-multihost-sobre-1-11
@@ -47,14 +45,65 @@ export, cache e sessão Codex continuam nas seções seguintes.
   EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"c2c28f24842b"}
 
 - [x] P5: o diff final não contém creep fora do plano
-  CHECK: node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 5cdb90e768cb1ba808821d5bdcdf46f7a19fc782 --head HEAD
+  CHECK: node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 0e27956c14d52bd7efefdd343531ffbbb8811726 --head HEAD
   ESPERA: ok: sem creep — 18 arquivo(s) coberto(s)
   EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"465244f33ebc"}
 
-## Arquivo histórico abaixo — 1.12.0, 1.13.2 e 1.19.2 (não executar)
+## Medição local 1.23.0 — 2026-09-22
+
+Executada no Git Bash iniciado com `bash.exe -lc`, com Node e utilitários Unix
+disponíveis. `TMPDIR` apontou para uma pasta temporária neutra fora de
+`.claude/worktrees`; a configuração valeu somente para o processo de teste.
+A tentativa anterior em pasta sob `.claude/worktrees` (153/1) e as tentativas
+sem utilitários Unix no PATH são inválidas como teste de produto.
+
+```text
+bash hooks/testa-gate-staging-total.sh
+  ok   encadeado: cd x && git add -A (exit 2)
+== resultado: 154 ok, 0 falha(s) ==
+
+bash scripts/testa-plugin-codex.sh
+ok frontmatter Codex: 19 skills descobertas dinamicamente
+ok manifesto Codex: metadados name/version/description/author iguais ao manifesto Claude
+ok Gemini adiado: caminhos rastreados nao contem manifesto, hook, adaptador ou fixture de payload Gemini fora dos documentos do fluxo
+
+bash scripts/testa-versao.sh
+ok: 5   falhou: 0
+
+node scripts/conferir-mutacao.cjs --arquivo .codex-plugin/plugin.json --de '"version": "1.23.0"' --para '"version": "1.23.1"' --bateria 'bash scripts/testa-versao.sh'
+  FALHA manifesto Codex na mesma versao da fonte Claude (esperava '1.23.0', veio '1.23.1')
+ok: 4   falhou: 1
+ok: bateria VERMELHA com o comportamento invertido (exit 1).
+    A bateria sabe falhar, e o fonte foi restaurado.
+
+node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-multihost-sobre-1-11
+ok: cobertura válida — 12 decisão(ões), 9 tarefa(s)
+
+node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 0e27956c14d52bd7efefdd343531ffbbb8811726 --head HEAD
+ok: sem creep — 18 arquivo(s) coberto(s)
+
+node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md --reverificar
+TODOS OS PORTOES CUMPRIDOS — 5 portão(ões).
+
+node scripts/portoes.cjs lint docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md
+LINT OK — 5 portão(ões), 0 aviso(s)
+
+node scripts/portoes.cjs status docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md
+PARSE OK — 5 portão(ões), 0 não cumprido(s), 0 abandonado(s)
+```
+
+Todos esses comandos saíram 0; a bateria interna do mutante saiu 1, como
+exigido. Os cinco contratos individuais também saíram 0. As quatro âncoras
+foram comparadas diretamente aos corpos de `git show 0e27956c:<skill>`:
+iguais byte a byte; `regua` tem 16053 bytes e SHA-256
+`6a2e1e78075d89b0fb8a3c4e796c2f09eced762bf5e5bebd843dffb449fefcb6`.
+P1–P5 medem somente a árvore local; não encerram a catraca completa nem as
+tarefas de instalação, cache e host pendentes para 1.23.0.
+
+## Arquivo histórico abaixo — 1.12.0, 1.13.2, 1.19.2 e 1.21.1 (não executar)
 
 Os comandos e saídas restantes preservam a evidência das rodadas anteriores;
-não são roteiro de retomada para 1.21.1. O ponto canônico é o topo de
+não são roteiro de retomada para 1.23.0. O ponto canônico é o topo de
 `docs/HANDOVER-CODEX.md`.
 
 ## Tarefa 6 — iteração local com cachebuster
@@ -2576,11 +2625,10 @@ A declaração de mutação da T3 passou a representar as aspas escapadas do JSO
 trocar o adaptador pelo core casou uma ocorrência e produziu
 `FALHA handler Codex chama core direto`.
 
-## Evidência corrente 1.21.1 — instalação, projeção e contraprova (2026-09-22)
+## Histórico explícito 1.21.1 — instalação, projeção e contraprova (2026-09-22)
 
-Esta seção substitui a pendência de instalação 1.21.1. As seções 1.19.2
-anteriores permanecem como arquivo histórico e não são promovidas a aceite da
-versão corrente.
+Esta seção preserva a evidência da antiga versão 1.21.1 e não é promovida a
+aceite da versão corrente 1.23.0.
 
 ### Export limpo e cache instalado
 
@@ -2660,6 +2708,11 @@ staged_count=0
 index_lock=False
 ```
 
-Instalação, projeção e contraprova 1.21.1 estão completas. `executar` está
-`ok`, com 9/9 tarefas concluídas e a catraca T1–T9 reaplicada na árvore
-integrada. O próximo estágio é uma nova revisão independente do diff final.
+Instalação, projeção e contraprova 1.21.1 estavam completas naquela árvore; são
+histórico não operacional depois da reancoragem 1.23.0.
+
+## Evidência corrente 1.23.0 — pendente
+
+Nenhuma instalação externa foi executada nesta reancoragem. Permanecem pendentes
+o export limpo do commit candidato, o cache instalado, a projeção D9/D11 e a
+contraprova em sessão Codex para 1.23.0.
