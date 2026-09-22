@@ -20,6 +20,37 @@
 - Sem aval explícito, não abrir PR, publicar release, mesclar nem alterar a
   `main`.
 
+## Portões executáveis correntes
+
+Estes oráculos são a forma executável dos cinco comandos já definidos no
+critério da tarefa 9 do plano. A evidência narrativa e as medições externas de
+export, cache e sessão Codex continuam nas seções seguintes.
+
+- [x] P1: o gate de staging total passa todos os casos
+  CHECK: bash hooks/testa-gate-staging-total.sh
+  ESPERA: == resultado: 133 ok, 0 falha(s) ==
+  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"c50e8aa65118"}
+
+- [x] P2: o contrato ponta a ponta do plugin Codex passa
+  CHECK: bash scripts/testa-plugin-codex.sh
+  ESPERA: ok Gemini adiado: caminhos rastreados nao contem manifesto, hook, adaptador ou fixture de payload Gemini fora dos documentos do fluxo
+  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"2ae8bc313fc2"}
+
+- [x] P3: os manifestos e referências públicas têm a mesma versão
+  CHECK: bash scripts/testa-versao.sh
+  ESPERA: ok: 5   falhou: 0
+  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"a215401d6ca2"}
+
+- [x] P4: todas as decisões aprovadas são cobertas pelo plano
+  CHECK: node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-multihost-sobre-1-11
+  ESPERA: ok: cobertura válida — 12 decisão(ões), 9 tarefa(s)
+  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"c2c28f24842b"}
+
+- [x] P5: o diff final não contém creep fora do plano
+  CHECK: node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 5cdb90e768cb1ba808821d5bdcdf46f7a19fc782 --head HEAD
+  ESPERA: ok: sem creep — 18 arquivo(s) coberto(s)
+  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"465244f33ebc"}
+
 ## Arquivo histórico abaixo — 1.12.0, 1.13.2 e 1.19.2 (não executar)
 
 Os comandos e saídas restantes preservam a evidência das rodadas anteriores;

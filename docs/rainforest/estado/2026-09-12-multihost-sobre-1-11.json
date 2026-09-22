@@ -170,53 +170,53 @@
         "ts": "2026-09-14T19:10:34.525Z"
       }
     ],
-    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug 2026-09-12-multihost-sobre-1-11",
-    "saida": "T1-T5 vermelho; T6-T9 n/a; exit 0; linhagem corrente corrigida",
+    "comando": "node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md --reverificar; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-09-12-multihost-sobre-1-11",
+    "saida": "P1-P5 cumpridos; lint 0 avisos; T1-T5 vermelho; T6-T9 n/a",
     "mutacao": [
       {
+        "fixture": "testa-gate-staging-total.sh: git add citado e wrappers",
         "resultado": "vermelho",
-        "tarefa": 1,
-        "fixture": "testa-gate-staging-total.sh: git add citado e wrappers"
+        "tarefa": 1
       },
       {
+        "fixture": "contrato-skills: montar-corpus sem description",
         "resultado": "vermelho",
-        "tarefa": 2,
-        "fixture": "contrato-skills: montar-corpus sem description"
+        "tarefa": 2
       },
       {
+        "fixture": "contrato-adaptador-hook: handler Codex chama core direto",
         "resultado": "vermelho",
-        "tarefa": 3,
-        "fixture": "contrato-adaptador-hook: handler Codex chama core direto"
+        "tarefa": 3
       },
       {
+        "fixture": "testa-versao.sh: Codex 1.21.2 diverge de Claude 1.21.1",
         "resultado": "vermelho",
-        "tarefa": 4,
-        "fixture": "testa-versao.sh: Codex 1.21.2 diverge de Claude 1.21.1"
+        "tarefa": 4
       },
       {
+        "fixture": "contrato-marketplace: source.path não resolve raiz",
         "resultado": "vermelho",
-        "tarefa": 5,
-        "fixture": "contrato-marketplace: source.path não resolve raiz"
+        "tarefa": 5
       },
       {
+        "motivo": "tarefa operacional sobre instalador e cache externo; projeção e host medidos",
         "resultado": "n/a",
-        "tarefa": 6,
-        "motivo": "tarefa operacional sobre instalador e cache externo; projeção e host medidos"
+        "tarefa": 6
       },
       {
+        "motivo": "artefato instalado validado fora do repositório",
         "resultado": "n/a",
-        "tarefa": 7,
-        "motivo": "artefato instalado validado fora do repositório"
+        "tarefa": 7
       },
       {
+        "motivo": "documentação de continuidade conferida contra evidência real",
         "resultado": "n/a",
-        "tarefa": 8,
-        "motivo": "documentação de continuidade conferida contra evidência real"
+        "tarefa": 8
       },
       {
+        "motivo": "integração e registro sem comportamento novo",
         "resultado": "n/a",
-        "tarefa": 9,
-        "motivo": "integração e registro sem comportamento novo"
+        "tarefa": 9
       }
     ],
     "origem_instalacao": {
@@ -300,8 +300,8 @@
     "nota_mutacao": "Mutantes reexercitados na arvore reancorada, nao herdados: a main trouxe 188 commits e a lista de 2026-09-14 media outra arvore. Uma primeira mutacao da T1 sobreviveu (tirar -A de CAMINHO_TOTAL) e isso NAO era lacuna da bateria: temCurta(opcoes,\"A\") pega o mesmo caso sozinho. Defesa redundante nao morre com um tiro so, entao o mutante foi refeito matando os dois detectores.",
     "contratos_cache": "manifesto, skills, adaptador e marketplace exit 0; Gemini completo somente na worktree Git",
     "baterias_branch": "executadas com Git Bash correto depois de tentativa invalida pelo WSL sem Node; a tentativa sem Node nao e teste de produto",
-    "head": "4dda647e",
-    "sensor_externo": "node scripts/conferir-fluxo.cjs mutacoes"
+    "head": "f6466b59",
+    "sensor_externo": "node scripts/portoes.cjs rodar"
   },
   "revisar": {
     "status": "ok",
@@ -326,12 +326,12 @@
   },
   "verificar": {
     "status": "reprovado",
-    "criterio": "T6/T7 sessão Codex nova deve bloquear git add \"-A\" antes do Git",
-    "comando": "codex exec --ephemeral --approve-for-me --dangerously-bypass-hook-trust -C <fixture> -- <prompt>",
-    "saida": "hook PreToolUse Completed; comando chegou ao Git e falhou com index.lock Permission denied; agente informou O hook não bloqueou; 20 skills rainforest-mind carregadas; exit da sessão 0",
-    "faltou": "decisão deny do hook instalado antes da execução do Git",
-    "em": "2026-09-14",
-    "tentativas": 1
+    "criterio": "arquivo de portões deve ser parseável e reexecutável no fechamento de verificar",
+    "comando": "node scripts/portoes.cjs status docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md",
+    "saida": "RECUSADO: arquivo sem portão nenhum; exit 2",
+    "faltou": "bloco formal P1-P5 com CHECK, ESPERA e EVIDENCIA para os cinco comandos já definidos na tarefa 9",
+    "em": "2026-09-22",
+    "tentativas": 2
   },
   "fechar": {
     "status": "pendente"
