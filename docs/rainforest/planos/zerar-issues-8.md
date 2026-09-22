@@ -19,6 +19,7 @@ mutacao:
   de: `const PALAVRAS_RESERVADAS = new Set([`
   para: `const PALAVRAS_RESERVADAS = new Set([]); const _mutacao = new Set([`
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `600000`
   fixture: testa-gate-fechar-issue.sh, secao "bypass por palavra reservada (#309)"
 pronto quando: com o payload PreToolUse real (`{"cwd":<worktree>,"tool_name":"Bash","tool_input":{"command":...}}`) e `gh` de sandbox no PATH, `for t in x; do bash -c "gh issue close 12"; done`, `if true; then bash -c "gh issue close 12"; fi`, `while true; do bash -c "gh issue close 12"; done`, `! bash -c "gh issue close 12"` e `{ bash -c "gh issue close 12"; }` saem **2** no `gate-fechar-issue.cjs` (hoje o primeiro sai 0) — provado por `bash hooks/testa-gate-fechar-issue.sh` com a seção nova e cada caso impresso com o exit; a declaração vive numa linha única que começa exatamente com `const PALAVRAS_RESERVADAS = new Set([` (é o alvo da mutação) e é consultada em `posicaoDeComando`. Antes de escrever, medir quais palavras realmente vazam (inclusive `(`, `until`, `elif`, `else`) e pôr no conjunto só as que vazam, com o exit de antes colado no relato.
 
@@ -32,6 +33,7 @@ mutacao:
   de: `if (ehVariavelCitadaFinal(current)) {`
   para: `if (false && ehVariavelCitadaFinal(current)) {`
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `600000`
   fixture: testa-gate-fechar-issue.sh, secao "(#309) bash \"$t\" como ultimo argumento"
 pronto quando: com o payload PreToolUse real e `gh` de sandbox, a linha exata da issue `for t in $(grep -lE "CHANGELOG|badge|plugin\.json" scripts/testa-*.sh hooks/testa-*.sh); do bash "$t"; done`, `bash "$t"`, `bash "${t}"`, `bash "$t" 2>&1` e `bash "$t" > log` saem **0**, enquanto `bash "$f" "gh issue close 12"`, `bash $t`, `bash "$t" x` e `for t in x; do bash -c "gh issue close 12"; done` saem **2** — nos três gates de texto, provado por `bash hooks/testa-gate-fechar-issue.sh && bash hooks/testa-gate-mensagem-commit.sh && bash hooks/testa-gate-staging-total.sh` com os casos impressos; o ramo novo mora em `desempacotarWrapperDeString` atrás da linha exata `if (ehVariavelCitadaFinal(current)) {`.
 
@@ -98,10 +100,11 @@ mutacao:
   de: `"do", "then", "else", "elif", "while", "until", "if", "!", "coproc",`
   para: `"do", "then", "else", "elif", "while", "until", "if", "!",`
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `600000`
   fixture: testa-gate-fechar-issue.sh, secao "coproc (#309, revisao)"
 pronto quando: com o payload PreToolUse real e `gh` de sandbox, `coproc bash -c "gh issue close 12"` sai **2** no `gate-fechar-issue.cjs` (antes: 0, medido na revisão de 2026-09-22) e `coproc git add -A` sai **2** no `gate-staging-total.cjs` — provado pelas duas baterias com os casos impressos. Achado 1 da revisão.
 
-### 9. Parâmetro especial (`$@`, `$*`, `$#`, `$?`, `$$`, `$!`, `$-`) é construção ilegível [tipo: implementar]
+### 9. Parâmetro especial (`$@`, `$*`, `$#`, `$?`, `$`, `$!`, `$-`) é construção ilegível [tipo: implementar]
 atende: D2, D3
 arquivos: `hooks/lib/tokens-comando.cjs`, `hooks/testa-gate-fechar-issue.sh`
 depende de: 2
@@ -111,6 +114,7 @@ mutacao:
   de: `return /\$\(|`|\$[A-Za-z_{0-9@*#?$!-]/.test(str);`
   para: `return /\$\(|`|\$[A-Za-z_{0-9]/.test(str);`
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `600000`
   fixture: testa-gate-fechar-issue.sh, secao "parametro especial (#309, revisao)"
 pronto quando: com o payload PreToolUse real e `gh` de sandbox, `set -- -c "gh issue close 12"; bash "$@"`, `bash "$*"`, `eval "$@"` e `eval $@` saem **2** no `gate-fechar-issue.cjs` (antes: 0), e `bash "$t"` continua **0** — provado por `bash hooks/testa-gate-fechar-issue.sh` com os casos impressos. Achado 2 da revisão.
 
@@ -137,6 +141,7 @@ mutacao:
   de: `const OPERADORES_DE_DOIS = new Set(["|&"]);`
   para: `const OPERADORES_DE_DOIS = new Set([]);`
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `600000`
   fixture: testa-gate-fechar-issue.sh, secao "pipe com stderr (|&) (#309, revisao 2)"
 pronto quando: com o payload PreToolUse real e `gh` de sandbox, `echo hi |& bash -c "gh issue close 12"` sai **2** no `gate-fechar-issue.cjs` e `echo hi |& git add -A` sai **2** no `gate-staging-total.cjs` — os dois saem **0** hoje, inclusive na `origin/main` (medido em 2026-09-22); `echo a | grep b` e `echo a || echo b` continuam com o exit de hoje. Achado 1 da revisão 2.
 
@@ -150,6 +155,7 @@ mutacao:
   de: `if (ehLF || ehCRLF) {`
   para: `if (false) {`
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `600000`
   fixture: testa-gate-fechar-issue.sh, secao "continuacao de linha dentro da string (#309, revisao 2)"
 pronto quando: com o payload PreToolUse real e `gh` de sandbox, `bash -c "gh issue \<LF>close 12"` (contrabarra seguida de quebra de linha dentro das aspas, que o bash colapsa antes de executar) sai **2**, e `bash -c "git add \<LF>-A"` sai **2** no `gate-staging-total.cjs` — hoje os dois saem **0**, inclusive na `origin/main`; comando legítimo de várias linhas sem contrabarra continua com o exit de hoje. Achado 2 da revisão 2.
 
@@ -159,10 +165,11 @@ arquivos: `hooks/lib/cwd-efetivo.cjs`, `hooks/gate-fechar-issue.cjs`, `hooks/lib
 depende de: 12
 paralela: nao
 mutacao:
-  arquivo: `hooks/lib/tokens-comando.cjs`
+  arquivo: `hooks/gate-fechar-issue.cjs`
   de: `cmd = colapsaContinuacaoDeLinhaNoTopo(cmd);`
   para: `cmd = cmd;`
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `600000`
   fixture: testa-gate-fechar-issue.sh, secao "continuacao de linha no topo (#309, revisao 2)"
 pronto quando: com o payload PreToolUse real e `gh` de sandbox, `gh issue <contrabarra><LF>close 12` mandado direto, **sem wrapper**, sai **2** (hoje sai 0, inclusive depois das tarefas 11 e 12), e `git add <contrabarra><LF>-A` sai **2** no `gate-staging-total.cjs`; comando de várias linhas sem contrabarra (`gh issue<LF>close 12`) continua **0**, e contrabarra dentro de aspas simples segue o que o bash faz (medir e dizer o que mediu). Achado que a tarefa 12 deixou de fora, nomeado pelo próprio executor. Alvo de mutação corrigido no `verificar`: a tarefa 14 reescreveu a função e o alvo antigo deixou de existir. Medido também no `verificar`: com o colapso de topo no lugar, a chamada interna `interno = colapsaContinuacaoDeLinha(interno)` de `desempacota` ficou **neutra** em 7 casos de wrapper (mesmo exit com e sem ela) — fica como está, e a redundância está registrada na #313, que mexe nesse mesmo ponto.
 
@@ -176,6 +183,7 @@ mutacao:
   de: `function colapsaContinuacaoDeLinha(str) {`
   para: `function colapsaContinuacaoDeLinha(str) { return str.replace(/\\r?\n/g, "");`
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `600000`
   fixture: testa-gate-fechar-issue.sh, secao "continuacao de linha: paridade e aspas (#309, revisao 3)"
 pronto quando: com o payload PreToolUse real e `gh` de sandbox, (a) `echo hi \<LF>gh issue close 12` (duas contrabarras — no bash a primeira escapa a segunda e a quebra separa comandos) sai **2**, como saía em `origin/main` antes desta rodada e como passou a sair **0** depois da tarefa 13; (b) `gh pr create --body "it's done, closes \<LF>#42, don't worry"` sai **2**, porque o bash colapsa e o corpo vira `closes #42` (na `origin/main` também saía 0 — é buraco antigo, não regressão); (c) `echo hi \<LF>gh issue close 12` (contrabarra única) continua **2** e `echo 'a\<LF>b'` (aspas simples de verdade) continua **0**. O colapso passa a varrer caractere a caractere, com estado de aspas simples/duplas e contagem de contrabarras, em vez de regex sobre o texto mascarado. Achados 1 e 2 da revisão 3.
 
