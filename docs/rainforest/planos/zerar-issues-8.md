@@ -74,3 +74,16 @@ paralela: nao
 mutacao: n/a
   motivo: bump de versão e texto de changelog, sem comportamento a inverter
 pronto quando: com `origin/main` no momento do `fechar`, a versão no `plugin.json` e no badge do README é o minor seguinte ao dela — provado por `node scripts/conferir-versao.cjs` saindo 0; a #302 recebe comentário com o custo medido (~US$ 11,70) e os dois achados, e continua aberta; o CHANGELOG não anuncia a suíte de eval; #309 e #303 fecham pelo PR.
+
+### 7. A bateria do conferir-entrega deixa o interpretador do gêmeo no PATH sem git [tipo: teste]
+atende: D4, D5
+arquivos: `scripts/testa-conferir-entrega.sh`
+depende de: 3
+paralela: nao
+mutacao:
+  arquivo: `scripts/testa-conferir-entrega.sh`
+  de: `PATH_SEM_GIT="$NODE_DIR:$INTERP_DIR"`
+  para: `PATH_SEM_GIT="$NODE_DIR"`
+  bateria: `CONFERIR="python scripts/conferir-entrega.py" bash scripts/testa-conferir-entrega.sh`
+  fixture: testa-conferir-entrega.sh, caso "git fora do PATH -> exit 69 (ambiente, nao 'nao e repositorio git')"
+pronto quando: com o gêmeo Python como `CONFERIR` e o PATH do filho reduzido a node + interpretador (sem git), o caso "git fora do PATH" recebe **69** do `.py` em vez de **127** do `env` — provado por `CONFERIR="python scripts/conferir-entrega.py" bash scripts/testa-conferir-entrega.sh` devolvendo `== resultado: 73 ok, 0 falha(s) ==` (antes da emenda: 71 ok, 2 falhas, ambas nesse caso), e pelo mesmo comando sem `CONFERIR` continuar em 73 ok. Emenda de 2026-09-22 na revisão: o conserto foi feito na integração da tarefa 3 e ficou sem tarefa.
