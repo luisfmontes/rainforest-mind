@@ -325,13 +325,13 @@
     "saida": "APROVADO: 0 achados; P1-P5 válidos e reexecutáveis; estado coerente"
   },
   "verificar": {
-    "status": "reprovado",
-    "criterio": "arquivo de portões deve ser parseável e reexecutável no fechamento de verificar",
-    "comando": "node scripts/portoes.cjs status docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md",
-    "saida": "RECUSADO: arquivo sem portão nenhum; exit 2",
-    "faltou": "bloco formal P1-P5 com CHECK, ESPERA e EVIDENCIA para os cinco comandos já definidos na tarefa 9",
+    "status": "ok",
+    "criterio": "T1-T9 conforme plano na árvore, export e cache 1.21.1 reais",
+    "comando": "node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md --reverificar; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-09-12-multihost-sobre-1-11; projeção SHA-256; sessões Codex efêmeras 01a0ca47-c9c6-7e82-b49a-e5f8fbd9cea2 e 01a0ca49-115c-7d40-8289-fffbe205dc4a",
+    "saida": "P1-P5 cumpridos; gate 133/0; plugin exit 0; versão 5/0; cobertura 12/9; creep 18; T1-T5 vermelho e T6-T9 n/a; projeção expected=776 export/cache missing=0 different=0; cache extra=1 D11; dotgit=0; status e pathspec chegaram ao Git; git add \"-A\" e bash -c bloqueados antes do processo",
+    "faltou": "nada",
     "em": "2026-09-22",
-    "tentativas": 2
+    "sensor_externo": "node scripts/portoes.cjs rodar"
   },
   "fechar": {
     "status": "pendente"
