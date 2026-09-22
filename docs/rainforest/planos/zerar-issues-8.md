@@ -87,3 +87,42 @@ mutacao:
   bateria: `CONFERIR="python scripts/conferir-entrega.py" bash scripts/testa-conferir-entrega.sh`
   fixture: testa-conferir-entrega.sh, caso "git fora do PATH -> exit 69 (ambiente, nao 'nao e repositorio git')"
 pronto quando: com o gêmeo Python como `CONFERIR` e o PATH do filho reduzido a node + interpretador (sem git), o caso "git fora do PATH" recebe **69** do `.py` em vez de **127** do `env` — provado por `CONFERIR="python scripts/conferir-entrega.py" bash scripts/testa-conferir-entrega.sh` devolvendo `== resultado: 73 ok, 0 falha(s) ==` (antes da emenda: 71 ok, 2 falhas, ambas nesse caso), e pelo mesmo comando sem `CONFERIR` continuar em 73 ok. Emenda de 2026-09-22 na revisão: o conserto foi feito na integração da tarefa 3 e ficou sem tarefa.
+
+### 8. `coproc` também é palavra reservada que precede comando [tipo: implementar]
+atende: D1, D3
+arquivos: `hooks/lib/tokens-comando.cjs`, `hooks/testa-gate-fechar-issue.sh`, `hooks/testa-gate-staging-total.sh`, `hooks/testa-gate-mensagem-commit.sh`
+depende de: 1
+paralela: sim
+mutacao:
+  arquivo: `hooks/lib/tokens-comando.cjs`
+  de: `"do", "then", "else", "elif", "while", "until", "if", "!", "coproc",`
+  para: `"do", "then", "else", "elif", "while", "until", "if", "!",`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  fixture: testa-gate-fechar-issue.sh, secao "coproc (#309, revisao)"
+pronto quando: com o payload PreToolUse real e `gh` de sandbox, `coproc bash -c "gh issue close 12"` sai **2** no `gate-fechar-issue.cjs` (antes: 0, medido na revisão de 2026-09-22) e `coproc git add -A` sai **2** no `gate-staging-total.cjs` — provado pelas duas baterias com os casos impressos. Achado 1 da revisão.
+
+### 9. Parâmetro especial (`$@`, `$*`, `$#`, `$?`, `$$`, `$!`, `$-`) é construção ilegível [tipo: implementar]
+atende: D2, D3
+arquivos: `hooks/lib/tokens-comando.cjs`, `hooks/testa-gate-fechar-issue.sh`
+depende de: 2
+paralela: nao
+mutacao:
+  arquivo: `hooks/lib/tokens-comando.cjs`
+  de: `return /\$\(|`|\$[A-Za-z_{0-9@*#?$!-]/.test(str);`
+  para: `return /\$\(|`|\$[A-Za-z_{0-9]/.test(str);`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  fixture: testa-gate-fechar-issue.sh, secao "parametro especial (#309, revisao)"
+pronto quando: com o payload PreToolUse real e `gh` de sandbox, `set -- -c "gh issue close 12"; bash "$@"`, `bash "$*"`, `eval "$@"` e `eval $@` saem **2** no `gate-fechar-issue.cjs` (antes: 0), e `bash "$t"` continua **0** — provado por `bash hooks/testa-gate-fechar-issue.sh` com os casos impressos. Achado 2 da revisão.
+
+### 10. O workflow volta a ser escaneado pelo gate de publicação inteiro [tipo: implementar]
+atende: D5
+arquivos: `.github/workflows/baterias.yml`, `scripts/conferir-publicacao.cjs`, `scripts/testa-conferir-publicacao.sh`
+depende de: 4
+paralela: sim
+mutacao:
+  arquivo: `scripts/conferir-publicacao.cjs`
+  de: `(?![\w.-]+\.(?:invalid|example|test|localhost)\b)`
+  para: `(?!x^)`
+  bateria: `bash scripts/testa-conferir-publicacao.sh`
+  fixture: testa-conferir-publicacao.sh, secao "TLD reservado (RFC 2606)"
+pronto quando: com o `.github/workflows/baterias.yml` real, `head -5` não contém `rainforest-gate: dados-de-exemplo` e `node scripts/conferir-publicacao.cjs .github/workflows/baterias.yml` sai **0** sem achado — o e-mail `ci@rainforest.invalid` deixa de ser achado porque TLD reservado (`.invalid`, `.example`, `.test`, `.localhost`) não é endereço real, e o id de run no comentário é reescrito sem a sequência de 11 dígitos; `nome@empresa.com.br` continua achado — provado por `bash scripts/testa-conferir-publicacao.sh` com os casos impressos. Achado 3 da revisão.
