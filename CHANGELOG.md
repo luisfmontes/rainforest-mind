@@ -15,8 +15,8 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 **Os gates de texto pararam de deixar passar `bash -c` escondido atrás de palavra
 reservada, e pararam de barrar `bash "$t"`.** Antes, `for t in x; do bash -c "gh
 issue close 12"; done` passava pelo gate de fechar issue, enquanto o mesmo `bash -c`
-sem o laço era barrado: `do`, `then`, `else`, `elif`, `if`, `while`, `until` e `!`
-tiravam o `bash` da posição de comando. E o inverso: rodar uma lista de baterias com
+sem o laço era barrado: `do`, `then`, `else`, `elif`, `if`, `while`, `until`, `!` e
+`coproc` tiravam o `bash` da posição de comando. E o inverso: rodar uma lista de baterias com
 `for t in ...; do bash "$t"; done` era recusado como "comando encapsulado".
 
 - **Palavra reservada é pulada** na posição de comando, nos três gates de texto e no
@@ -25,6 +25,11 @@ tiravam o `bash` da posição de comando. E o inverso: rodar uma lista de bateri
   `bash "$t"`, `bash "${t}"` e `bash "$t" 2>&1` passam. Sem aspas (`bash $t`) ou com
   argumento depois (`bash "$f" "gh ..."`, que com `f=-c` vira `bash -c`) continuam
   barrados.
+- **Parâmetro especial é ilegível**: `set -- -c "<cmd>"; bash "$@"`, `bash "$*"` e
+  `eval "$@"` passavam como se fossem caminho de script, e agora são barrados.
+- **E-mail em TLD reservado** (`.invalid`, `.example`, `.test`, `.localhost`, RFC 2606)
+  deixa de ser achado do gate de publicação, desde que seja o último rótulo
+  (`x@foo.test.com` continua pego).
 
 **O `conferir-entrega` em Python voltou a valer o mesmo que o de Node.** Ele tinha
 parado em agosto: faltavam `--escopo`, o exit 69 de "não deu para verificar",
