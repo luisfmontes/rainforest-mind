@@ -1,8 +1,3 @@
-# rainforest-gate: dados-de-exemplo — o endereco de e-mail e o id de run do
-# Actions mais abaixo (step "Identidade git") sao sinteticos, nao credencial
-# real; o marcador precisa estar nas 5 primeiras linhas do arquivo para o gate
-# de publicacao ler (hooks/lib/marcador-dados.cjs), e so existia mais fundo.
-#
 # Roda TODAS as baterias do repositorio a cada push e a cada PR.
 #
 # Por que existe: ate 2026-08-17 nenhuma bateria deste repo rodava sozinha. A
@@ -137,15 +132,14 @@ jobs:
           fi
           echo "  ok    arvore em LF"
 
-      # rainforest-gate: dados-de-exemplo — o endereco abaixo e sintetico (TLD
-      # .invalid, RFC 2606) e o numero citado no comentario e id de run do Actions.
-      # Sem o marcador, o gate de publicacao recusa qualquer edicao neste arquivo
-      # (Issue #165: ele confere o COMMIT inteiro, nao so as linhas novas).
+      # O endereco abaixo e sintetico: TLD .invalid (RFC 2606), que o gate de
+      # publicacao nao trata como e-mail real. Por isso o arquivo dispensa o
+      # marcador de dados de exemplo e continua escaneado inteiro.
       - name: Identidade git — o runner nao tem, a maquina do Luis tem
         run: |
           # Rede, nao conserto. Isto entrou apostando que era a causa das baterias
           # vermelhas — NAO era: com o step no lugar, as mesmas 4 continuaram
-          # vermelhas (run 32052513910). As causas reais estao no corpo do PR #17.
+          # vermelhas (mesma execucao). As causas reais estao no corpo do PR #17.
           #
           # Fica porque a afirmacao continua verdadeira e o custo e zero: o runner
           # nao tem `user.email` global, e hoje toda bateria que commita seta a
