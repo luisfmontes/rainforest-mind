@@ -450,11 +450,18 @@ echo "  -- SABOTAGEM: devolver o \`readonly\` minusculo e exigir que a assercao 
 # do arquivo COPIADO. Sem recriar a arvore, o mutante morre com MODULE_NOT_FOUND antes de
 # rodar uma linha — e a bateria creditaria 'ok' por nao ter conseguido executar nada.
 # Desde o #282 memoria.cjs tambem faz require("./lib/achar-executavel-claude.cjs").
+# Desde a Tarefa 5 do plano memoria-reconciliacao-e-consolidacao (2026-09-16)
+# memoria.cjs TAMBEM faz require("./lib/grupo-de-origem.cjs") no topo do
+# arquivo (usado por cmdConsolidar) — sem copiar este irmao, o mutante morria
+# de MODULE_NOT_FOUND igual aos outros dois, so que calado pelo `2>/dev/null`
+# la embaixo: stdout vazio comparava igual a "" != "ESCREVEU" e a bateria
+# reportava "mutacao sem efeito" sem nunca ter chegado a rodar a mutacao.
 mkdir -p "$CAIXA/mut/scripts/lib" "$CAIXA/mut/hooks/lib"
 MUT_MEMORIA="$CAIXA/mut/scripts/memoria-mut.cjs"
 cp "$SRC/scripts/memoria.cjs" "$MUT_MEMORIA"
 cp "$SRC/hooks/lib/raiz.cjs" "$CAIXA/mut/hooks/lib/raiz.cjs"
 cp "$SRC/scripts/lib/achar-executavel-claude.cjs" "$CAIXA/mut/scripts/lib/achar-executavel-claude.cjs"
+cp "$SRC/scripts/lib/grupo-de-origem.cjs" "$CAIXA/mut/scripts/lib/grupo-de-origem.cjs"
 node -e '
 const fs = require("fs");
 const alvo = process.argv[1];

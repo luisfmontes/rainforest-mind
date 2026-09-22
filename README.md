@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.19.2-1e5c3f?style=flat-square" alt="versão 1.19.2">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.21.1-1e5c3f?style=flat-square" alt="versão 1.21.1">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -287,6 +287,33 @@ quem o publicou. Onde eles moram sai de uma cadeia de quatro níveis —
 
 → A cadeia inteira, o teto do FOCO.md e as variáveis de ambiente:
 [`docs/dados-e-foco.md`](docs/dados-e-foco.md)
+
+## Memória: reconciliação e consolidação automáticas
+
+`scripts/observar.cjs` resume o transcrito e grava cada observação em
+`rainforest.db` (mesma cadeia de raiz de dados acima). Duas passadas rodam por
+cima disso sozinhas, sem você chamar nada:
+
+- **Reconciliação** (`node scripts/memoria.cjs reconciliar`) — observação nova
+  que corrige, repete ou complementa uma antiga passa a atualizá-la ou se
+  fundir a ela, em vez de virar mais uma linha solta. Nada é apagado: a antiga
+  ganha `substituida_por` e sai da injeção de abertura e da busca; a fusão
+  insere uma terceira observação. As candidatas vêm do FTS5 (mesmo projeto,
+  por `bm25`), até 200 observações reconciliadas por execução.
+- **Consolidação** (`node scripts/memoria.cjs consolidar`) — a partir de 30
+  dias, agrupa observações por origem e sintetiza cada grupo num resumo, até
+  30 observações por grupo e 10 grupos por execução.
+- **Manutenção diária** (`node scripts/memoria.cjs manutencao`) — dispara uma
+  vez por dia no `SessionStart`, em processo destacado (nunca dentro do hook
+  de captura, que tem orçamento curto): garante o esquema, reconcilia e
+  consolida, e grava em `manutencao.log`. Falha da manutenção, ou captura
+  parada há mais de 48h, vira uma linha na abertura da sessão seguinte.
+
+O FTS5 como buscador de candidatas mediu recall de 82,0% contra 200 sondagens
+do acervo real (74,6% na metade em português, 89,2% na metade em inglês) —
+acima do limiar de 70% definido para as duas metades, então segue sem índice
+vetorial por ora:
+[`relatorios/2026-09-18-recall-fts5-reconciliacao.md`](relatorios/2026-09-18-recall-fts5-reconciliacao.md).
 
 ## Mais fundo
 

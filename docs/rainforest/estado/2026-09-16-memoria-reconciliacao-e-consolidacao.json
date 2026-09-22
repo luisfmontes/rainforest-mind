@@ -1,0 +1,260 @@
+{
+  "slug": "2026-09-16-memoria-reconciliacao-e-consolidacao",
+  "titulo": "Memória: reconciliação na escrita e consolidação automática",
+  "criado_em": "2026-09-16",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-16-memoria-reconciliacao-e-consolidacao.md",
+    "em": "2026-09-16"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-09-16-memoria-reconciliacao-e-consolidacao.md",
+    "tarefas": 8,
+    "paralelas": [
+      1
+    ],
+    "em": "2026-09-18"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-18",
+    "tarefas_ok": 9,
+    "tarefas": 9,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "187652d8",
+        "iteracao": 1,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:05:25.554Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "187652d8",
+        "iteracao": 2,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:11:53.515Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "187652d8",
+        "iteracao": 3,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:12:43.060Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "74e99672",
+        "iteracao": 1,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:12:43.060Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "187652d8",
+        "iteracao": 4,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:27:13.104Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "74e99672",
+        "iteracao": 2,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:27:13.104Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "187652d8",
+        "iteracao": 5,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:28:32.289Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "74e99672",
+        "iteracao": 3,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:28:32.289Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "413525e1",
+        "iteracao": 1,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:28:32.289Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "413525e1",
+        "iteracao": 1,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:28:32.289Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "187652d8",
+        "iteracao": 6,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:51:15.503Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "74e99672",
+        "iteracao": 4,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:51:15.503Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "413525e1",
+        "iteracao": 2,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:51:15.503Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "413525e1",
+        "iteracao": 2,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:51:15.503Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "4128e622",
+        "iteracao": 1,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T16:52:20.923Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "14bc3f5e",
+        "iteracao": 1,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T17:13:23.820Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "20ec41e4",
+        "iteracao": 2,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T17:47:18.291Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "655ea6cd",
+        "iteracao": 1,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T18:08:01.219Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "655ea6cd",
+        "iteracao": 2,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T18:33:36.522Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "413525e1",
+        "iteracao": 3,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T18:56:40.204Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "9655fd46",
+        "iteracao": 1,
+        "sessao": "c948157d-1047-4919-969d-e90df9063854",
+        "ts": "2026-09-18T20:03:20.263Z"
+      }
+    ],
+    "em": "2026-09-19",
+    "comando": "bash scripts/varrer-baterias.sh",
+    "saida": "as 124 baterias passaram",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria.sh, caso 22 'migracao 6: banco legado ganha substituida_por e reconciliada_em'"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria-reconciliar.sh, caso 'update marca a antiga com substituida_por e nao apaga nada' (3 casos caem na inversao)"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria-session-start.sh, caso 'observacao substituida nao entra na disputa de vagas'"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria.sh, caso 20 'grupo de 45 observacoes vira dois resumos, nao um'"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria-manutencao.sh, casos 8 e 9 (banco nao migrado; passo que falha nao mata a passada)"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria-session-start.sh, caso 'marca d agua parada ha 60h imprime a linha de pipeline na abertura'"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "tarefa de medicao: o artefato e um relatorio com numeros, nao comportamento a inverter"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "n/a",
+        "motivo": "tarefa de docs: texto nao tem comportamento a inverter; a falsificacao e a coerencia com o fonte"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria-somente-leitura.sh, caso 'rainforest.db foi CRIADO pela abertura — a fase 1 escreveu (armadilha do iniciar)'"
+      }
+    ],
+    "sensor_externo": "bash scripts/varrer-baterias.sh"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "552b2d0123e62247970e1d998b041541fa5da9a5",
+      "caminhos_sujos": []
+    },
+    "em_voo": [],
+    "em": "2026-09-19",
+    "achados": 0,
+    "detalhe": [
+      "1 (bloqueia): reconciliacao inverte a direcao temporal — o prompt rotula a sondada como Observacao nova e nunca manda criada_em; na varredura do acervo (D6) a sondada e a MAIS ANTIGA, entao update pode marcar a candidata correta como substituida e deixar a desatualizada viva",
+      "2 (bloqueia): alvo_id nao e conferido contra o conjunto de candidatas oferecido nem contra vivacidade — memoria.cjs:1868 seleciona por id+projeto sem filtroVivas; reproduzido na integracao: linha morta id=2 (sp=1) aceita como alvo de merge, ponteiro sobrescrito para 4 e conteudo ja corrigido ressuscitado na nova linha viva"
+    ],
+    "base": "95e0b7bc786978ff230e5248faf8b9ace5bbc88c",
+    "head": "552b2d0123e62247970e1d998b041541fa5da9a5",
+    "comando": "node scripts/conferir-fluxo.cjs creep --slug 2026-09-16-memoria-reconciliacao-e-consolidacao",
+    "saida": "ok: sem creep — 22 arquivo(s) coberto(s)"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug 2026-09-16-memoria-reconciliacao-e-consolidacao",
+    "saida": "tarefa 1..6 vermelho, tarefa 7 e 8 pulada (n/a), tarefa 9 vermelho — exit 0",
+    "criterios": 9,
+    "criterios_ok": 9,
+    "em": "2026-09-19"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "pr",
+    "pr": 305,
+    "em": "2026-09-19"
+  }
+}

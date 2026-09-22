@@ -321,12 +321,11 @@ else
 fi
 
 echo
-echo "== 14. consolidar com 50+ observacoes de 60+ dias grava resumos e marca =="
-# Tarefa 4 (D4): Criar banco com 55 observações de 60+ dias não consolidadas,
-# rodar consolidar com dublê de LLM, verificar que:
-# - resumos foram gravados (lotes 10→1: 55/10 = 5 lotes)
-# - observações foram marcadas com consolidada_em
-# - count(observacoes) antes == count depois (NUNCA apaga linha)
+echo "== 14. consolidar com grupo de 30+ dias grava resumos e marca =="
+# Tarefa 4 (D7): 55 observações de uma MESMA sessao (sqlGrupoDeOrigem agrupa
+# por sessao quando origem é 'sessao:<id>:offset:<n>'), com 31 dias — acima
+# de DIAS_CONSOLIDACAO (30). Um grupo só, fatiado em pedaços de até
+# TETO_POR_GRUPO (30): 55 => 30 + 25 = 2 pedaços = 2 resumos.
 CAIXA9="$(novo_sandbox)"
 
 # Criar dublê de LLM que retorna um resumo fixo (ou null se TESTADOR_LLM_FALHAR=1)
@@ -337,24 +336,22 @@ async function chamarLLM(texto) {
     return null;
   }
   // Simular resumo de LLM
-  return "Síntese do lote: tópicos consolidados com sucesso";
+  return "Síntese do grupo: tópicos consolidados com sucesso";
 }
 module.exports = { chamarLLM };
 EOF
 
-# Criar banco e popular com 55 observações de 60+ dias
+# Criar banco e popular com 55 observações de uma mesma sessao, 31 dias atras
 RFM_ROOT="$CAIXA9" $MEMORIA iniciar > /dev/null 2>&1
 RESULTADO=$(RFM_ROOT="$CAIXA9" node --no-warnings -e "
 const { abrirBanco } = require('./scripts/memoria.cjs');
 const path = require('path');
 const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
-const agora = new Date();
-const sessentiaDias = new Date(agora.getTime() - 61 * 24 * 60 * 60 * 1000).toISOString();
+const trintaEUmDias = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString();
 
-// Inserir 55 observações de 60+ dias atrás
 for (let i = 0; i < 55; i++) {
   db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
-    .run('proj-test', 'Observação ' + i, sessentiaDias, 'origem-' + i);
+    .run('proj-test', 'Observação ' + i, trintaEUmDias, 'sessao:11111111-1111-1111-1111-111111111111:offset:' + i);
 }
 
 const cntAntes = db.prepare('SELECT COUNT(*) c FROM observacoes').get().c;
@@ -385,15 +382,15 @@ cntObs=$(echo "$RESULTADO" | cut -d':' -f1)
 cntResumidos=$(echo "$RESULTADO" | cut -d':' -f2)
 cntResumosGravados=$(echo "$RESULTADO" | cut -d':' -f3)
 
-if [ "$cntAntes" = "$cntObs" ] && [ "$cntResumidos" = "55" ] && [ "$cntResumosGravados" = "6" ]; then
-  ok=$((ok+1)); echo "  ok   consolidacao: ${cntAntes} obs antes, ${cntObs} após (iguais), ${cntResumidos} marcadas, ${cntResumosGravados} resumos (55/10=5 lotes mais 1)"
+if [ "$cntAntes" = "$cntObs" ] && [ "$cntResumidos" = "55" ] && [ "$cntResumosGravados" = "2" ]; then
+  ok=$((ok+1)); echo "  ok   consolidacao: ${cntAntes} obs antes, ${cntObs} após (iguais), ${cntResumidos} marcadas, ${cntResumosGravados} resumos (55 = 30+25, 2 pedaços)"
 else
-  falhou=$((falhou+1)); echo "  FALHA consolidacao: antes=$cntAntes, obs=$cntObs, resumidos=$cntResumidos (esperava 55), resumos=$cntResumosGravados (esperava 5-6)"
+  falhou=$((falhou+1)); echo "  FALHA consolidacao: antes=$cntAntes, obs=$cntObs, resumidos=$cntResumidos (esperava 55), resumos=$cntResumosGravados (esperava 2)"
 fi
 
 echo
 echo "== 15. consolidar duas vezes nao gera resumo duplicado =="
-# Tarefa 4 (D4): rodagem anterior já consolidou, segunda rodada não toca nada
+# Tarefa 4 (D7): rodagem anterior já consolidou, segunda rodada não toca nada
 # porque todas as observações já estão marcadas com consolidada_em.
 RFM_ROOT="$CAIXA9" TESTADOR_CHAMAR_LLM="$CAIXA9/dubleLLM.cjs" $MEMORIA consolidar > /dev/null 2>&1
 
@@ -413,22 +410,25 @@ else
 fi
 
 echo
-echo "== 16. consolidar com <50 observacoes nao faz nada =="
-# Tarefa 4 (D4): abaixo do gatilho de 50, sai sem gravar resumo nenhum
+echo "== 16. grupo com 1 observacao nao consolida =="
+# Tarefa 4 (D7): grupo mínimo é 2 — resumo de uma observação só não sintetiza
+# nada. Uma sessao com uma única observação, 31 dias, não gera resumo.
 CAIXA10="$(novo_sandbox)"
 
 RFM_ROOT="$CAIXA10" $MEMORIA iniciar > /dev/null 2>&1
-# Inserir apenas 30 observações de 60+ dias
+cat > "$CAIXA10/dubleLLM.cjs" <<'EOF'
+async function chamarLLM(texto) {
+  return "Síntese que não deveria existir para grupo de 1";
+}
+module.exports = { chamarLLM };
+EOF
 RFM_ROOT="$CAIXA10" node --no-warnings -e "
 const { abrirBanco } = require('./scripts/memoria.cjs');
 const path = require('path');
 const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
-const sessentiaDias = new Date(Date.now() - 61 * 24 * 60 * 60 * 1000).toISOString();
-
-for (let i = 0; i < 30; i++) {
-  db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
-    .run('proj-test', 'Obs ' + i, sessentiaDias, 'orig-' + i);
-}
+const trintaEUmDias = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString();
+db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
+  .run('proj-test', 'Observacao solitaria', trintaEUmDias, 'sessao:22222222-2222-2222-2222-222222222222:offset:0');
 db.close();
 " 2>/dev/null
 
@@ -444,14 +444,14 @@ process.stdout.write(cntResumos.toString());
 " 2>/dev/null)
 
 if [ "$RESULTADO3" = "0" ]; then
-  ok=$((ok+1)); echo "  ok   consolidar com <50 obs não grava resumo"
+  ok=$((ok+1)); echo "  ok   grupo de 1 observacao nao grava resumo"
 else
-  falhou=$((falhou+1)); echo "  FALHA consolidar com <50 obs gravou $RESULTADO3 resumo(s), esperava 0"
+  falhou=$((falhou+1)); echo "  FALHA grupo de 1 observacao gravou $RESULTADO3 resumo(s), esperava 0"
 fi
 
 echo
 echo "== 17. criarSchema com coluna nova nao erra =="
-# Tarefa 4 (D4): migração idempotente — rodar criarSchema duas vezes não causa erro
+# Tarefa 4 (D7): migração idempotente — rodar criarSchema duas vezes não causa erro
 CAIXA11="$(novo_sandbox)"
 
 RFM_ROOT="$CAIXA11" $MEMORIA iniciar > /dev/null 2>&1
@@ -465,24 +465,24 @@ else
 fi
 
 echo
-echo "== 18. dublê simulando falha de LLM deixa lote intacto para próxima rodada =="
-# Tarefa 4 (D4): caso (d) — quando LLM falha, lote não é marcado, não são gravados resumos,
-# tudo fica disponível para reconsolidação. Rodada seguinte com LLM saudável consolida normalmente.
+echo "== 18. dublê simulando falha de LLM deixa grupo intacto para próxima rodada =="
+# Tarefa 4 (D7): caso (d) — quando a LLM falha, o pedaço não é marcado, nenhum
+# resumo é gravado, tudo fica disponível para a próxima rodada. Rodada
+# seguinte com LLM saudável consolida normalmente.
 CAIXA12="$(novo_sandbox)"
 
-# Usar dublê de CAIXA9 que suporta falha via TESTADOR_LLM_FALHAR=1
 RFM_ROOT="$CAIXA12" $MEMORIA iniciar > /dev/null 2>&1
 
-# Inserir 55 observações de 60+ dias
+# Inserir 55 observações de uma mesma sessao, 31 dias atras
 RFM_ROOT="$CAIXA12" node --no-warnings -e "
 const { abrirBanco } = require('./scripts/memoria.cjs');
 const path = require('path');
 const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
-const sessentiaDias = new Date(Date.now() - 61 * 24 * 60 * 60 * 1000).toISOString();
+const trintaEUmDias = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString();
 
 for (let i = 0; i < 55; i++) {
   db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
-    .run('proj-test', 'Obs ' + i, sessentiaDias, 'orig-' + i);
+    .run('proj-test', 'Obs ' + i, trintaEUmDias, 'sessao:33333333-3333-3333-3333-333333333333:offset:' + i);
 }
 db.close();
 " 2>/dev/null
@@ -529,26 +529,22 @@ cntObs_ok=$(echo "$RESULTADO_OK" | cut -d':' -f1)
 cntResumidos_ok=$(echo "$RESULTADO_OK" | cut -d':' -f2)
 cntResumos_ok=$(echo "$RESULTADO_OK" | cut -d':' -f3)
 
-# Validar: falha deixa lote intacto, rodada seguinte consolida
+# Validar: falha deixa grupo intacto, rodada seguinte consolida
 if [ "$cntObs_falha" = "55" ] && [ "$cntResumidos_falha" = "0" ] && [ "$cntResumos_falha" = "0" ] && \
-   [ "$cntObs_ok" = "55" ] && [ "$cntResumidos_ok" = "55" ] && [ "$cntResumos_ok" = "6" ]; then
-  ok=$((ok+1)); echo "  ok   falha LLM lota lote intacto (obs=$cntObs_falha, resumidos=$cntResumidos_falha, resumos=$cntResumos_falha), segunda rodada consolida (marcadas=$cntResumidos_ok, resumos=$cntResumos_ok)"
+   [ "$cntObs_ok" = "55" ] && [ "$cntResumidos_ok" = "55" ] && [ "$cntResumos_ok" = "2" ]; then
+  ok=$((ok+1)); echo "  ok   falha LLM deixa grupo intacto (obs=$cntObs_falha, resumidos=$cntResumidos_falha, resumos=$cntResumos_falha), segunda rodada consolida (marcadas=$cntResumidos_ok, resumos=$cntResumos_ok)"
 else
-  falhou=$((falhou+1)); echo "  FALHA rodada com falha: obs=$cntObs_falha (esp 55), resumidos=$cntResumidos_falha (esp 0), resumos=$cntResumos_falha (esp 0); rodada OK: obs=$cntObs_ok (esp 55), resumidos=$cntResumidos_ok (esp 55), resumos=$cntResumos_ok (esp 6)"
+  falhou=$((falhou+1)); echo "  FALHA rodada com falha: obs=$cntObs_falha (esp 55), resumidos=$cntResumidos_falha (esp 0), resumos=$cntResumos_falha (esp 0); rodada OK: obs=$cntObs_ok (esp 55), resumidos=$cntResumidos_ok (esp 55), resumos=$cntResumos_ok (esp 2)"
 fi
 
 echo
-echo "== 19. C5: exatamente 50 observacoes NAO consolida (o gatilho e PASSAR de 50) =="
-# C5: a régua é "passarem de 50" — 50 não consolida, 51 consolida. A versão
-# anterior do código usava >= 50, e nenhum teste pisava na fronteira exata.
-# O dublê de LLM AQUI é essencial: se o limiar regredir para >= 50, o consolidar
-# chama o LLM e grava resumo — sem o dublê, a chamada real falharia e deixaria
-# resumos=0, escondendo a regressão atrás de um verde falso.
+echo "== 19. grupo de exatamente 30 observacoes vira UM resumo (fronteira do teto por grupo) =="
+# TETO_POR_GRUPO = 30: grupo NO teto não fatia (1 resumo com as 30).
 CAIXA13="$(novo_sandbox)"
 
 cat > "$CAIXA13/dubleLLM.cjs" <<'EOF'
 async function chamarLLM(texto) {
-  return "Síntese que não deveria existir com exatamente 50 observações";
+  return "Síntese de grupo no teto exato";
 }
 module.exports = { chamarLLM };
 EOF
@@ -558,17 +554,17 @@ RFM_ROOT="$CAIXA13" node --no-warnings -e "
 const { abrirBanco } = require('./scripts/memoria.cjs');
 const path = require('path');
 const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
-const sessentaEUmDias = new Date(Date.now() - 61 * 24 * 60 * 60 * 1000).toISOString();
-for (let i = 0; i < 50; i++) {
+const trintaEUmDias = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString();
+for (let i = 0; i < 30; i++) {
   db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
-    .run('proj-fronteira', 'Obs ' + i, sessentaEUmDias, 'orig-' + i);
+    .run('proj-fronteira', 'Obs ' + i, trintaEUmDias, 'sessao:44444444-4444-4444-4444-444444444444:offset:' + i);
 }
 db.close();
 " 2>/dev/null
 
 RFM_ROOT="$CAIXA13" TESTADOR_CHAMAR_LLM="$CAIXA13/dubleLLM.cjs" $MEMORIA consolidar > /dev/null 2>&1
 
-RESULTADO_50=$(RFM_ROOT="$CAIXA13" node --no-warnings -e "
+RESULTADO_30=$(RFM_ROOT="$CAIXA13" node --no-warnings -e "
 const { abrirBanco } = require('./scripts/memoria.cjs');
 const path = require('path');
 const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
@@ -578,14 +574,16 @@ db.close();
 process.stdout.write(cntResumos + ':' + cntMarcadas);
 " 2>/dev/null)
 
-if [ "$RESULTADO_50" = "0:0" ]; then
-  ok=$((ok+1)); echo "  ok   50 obs exatas: nenhum resumo, nenhuma marcada (fronteira respeitada)"
+if [ "$RESULTADO_30" = "1:30" ]; then
+  ok=$((ok+1)); echo "  ok   grupo de 30 obs exatas: 1 resumo, 30 marcadas (nao fatia no teto exato)"
 else
-  falhou=$((falhou+1)); echo "  FALHA 50 obs exatas: esperava resumos:marcadas = 0:0, veio $RESULTADO_50"
+  falhou=$((falhou+1)); echo "  FALHA grupo de 30 obs exatas: esperava resumos:marcadas = 1:30, veio $RESULTADO_30"
 fi
 
 echo
-echo "== 20. C5: 51 observacoes consolida (primeiro valor acima da fronteira) =="
+echo "== 20. grupo de 45 observacoes vira dois resumos, nao um =="
+# TETO_POR_GRUPO = 30: grupo de 45 fatia em 30 + 15, dois resumos — nenhum
+# deles passa do teto, e os dois vêm do mesmo grupo (critério 1 do plano).
 CAIXA14="$(novo_sandbox)"
 
 RFM_ROOT="$CAIXA14" $MEMORIA iniciar > /dev/null 2>&1
@@ -593,18 +591,18 @@ RFM_ROOT="$CAIXA14" node --no-warnings -e "
 const { abrirBanco } = require('./scripts/memoria.cjs');
 const path = require('path');
 const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
-const sessentaEUmDias = new Date(Date.now() - 61 * 24 * 60 * 60 * 1000).toISOString();
-for (let i = 0; i < 51; i++) {
+const trintaEUmDias = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString();
+for (let i = 0; i < 45; i++) {
   db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
-    .run('proj-fronteira', 'Obs ' + i, sessentaEUmDias, 'orig-' + i);
+    .run('proj-fronteira', 'Obs ' + i, trintaEUmDias, 'sessao:55555555-5555-5555-5555-555555555555:offset:' + i);
 }
 db.close();
 " 2>/dev/null
 
 RFM_ROOT="$CAIXA14" TESTADOR_CHAMAR_LLM="$CAIXA13/dubleLLM.cjs" $MEMORIA consolidar > /dev/null 2>&1
 
-# 51 obs em lotes de 10 = 6 lotes (5 cheios + 1 de uma) = 6 resumos, 51 marcadas
-RESULTADO_51=$(RFM_ROOT="$CAIXA14" node --no-warnings -e "
+# 45 obs no teto de 30 por grupo = 2 pedaços (30 + 15) = 2 resumos, 45 marcadas
+RESULTADO_45=$(RFM_ROOT="$CAIXA14" node --no-warnings -e "
 const { abrirBanco } = require('./scripts/memoria.cjs');
 const path = require('path');
 const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
@@ -614,10 +612,10 @@ db.close();
 process.stdout.write(cntResumos + ':' + cntMarcadas);
 " 2>/dev/null)
 
-if [ "$RESULTADO_51" = "6:51" ]; then
-  ok=$((ok+1)); echo "  ok   51 obs: consolidou (6 resumos em lotes de 10, 51 marcadas)"
+if [ "$RESULTADO_45" = "2:45" ]; then
+  ok=$((ok+1)); echo "  ok   grupo de 45 obs: fatiado em dois pedacos (2 resumos, 30+15=45 marcadas)"
 else
-  falhou=$((falhou+1)); echo "  FALHA 51 obs: esperava resumos:marcadas = 6:51, veio $RESULTADO_51"
+  falhou=$((falhou+1)); echo "  FALHA grupo de 45 obs: esperava resumos:marcadas = 2:45, veio $RESULTADO_45"
 fi
 
 echo
@@ -634,10 +632,10 @@ RFM_ROOT="$CAIXA15" node --no-warnings -e "
 const { abrirBanco } = require('./scripts/memoria.cjs');
 const path = require('path');
 const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
-const sessentaEUmDias = new Date(Date.now() - 61 * 24 * 60 * 60 * 1000).toISOString();
-for (let i = 0; i < 55; i++) {
+const trintaEUmDias = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString();
+for (let i = 0; i < 45; i++) {
   db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
-    .run('proj-atomico', 'Obs ' + i, sessentaEUmDias, 'orig-' + i);
+    .run('proj-atomico', 'Obs ' + i, trintaEUmDias, 'sessao:66666666-6666-6666-6666-666666666666:offset:' + i);
 }
 // Injeção de falha: qualquer tentativa de marcar consolidada_em aborta.
 db.exec(\`
@@ -689,10 +687,236 @@ db.close();
 process.stdout.write(cntResumos + ':' + cntMarcadas);
 " 2>/dev/null)
 
-if [ "$RESULTADO_CONTROLE" = "6:55" ]; then
-  ok=$((ok+1)); echo "  ok   controle: sem a injecao o mesmo banco consolida (6 resumos, 55 marcadas)"
+if [ "$RESULTADO_CONTROLE" = "2:45" ]; then
+  ok=$((ok+1)); echo "  ok   controle: sem a injecao o mesmo banco consolida (2 resumos, 45 marcadas)"
 else
-  falhou=$((falhou+1)); echo "  FALHA controle: esperava 6:55 apos remover a injecao, veio $RESULTADO_CONTROLE"
+  falhou=$((falhou+1)); echo "  FALHA controle: esperava 2:45 apos remover a injecao, veio $RESULTADO_CONTROLE"
+fi
+
+echo
+echo "== 22. migracao 6: banco legado ganha substituida_por e reconciliada_em =="
+# Tarefa 1 (D3, D6): duas colunas novas em observacoes (substituida_por,
+# reconciliada_em), migração idempotente no molde exato da Migração 4.
+# Banco legado (sem as duas colunas) ganha as duas via `iniciar`, e nenhuma
+# linha se perde — mesmo padrão do caso 11 (FTS legado): a tabela é criada
+# À MÃO, sem as colunas novas, para provar que é a migração real (ALTER
+# TABLE) que as adiciona, não o CREATE TABLE IF NOT EXISTS do schema atual.
+CAIXA16="$(novo_sandbox)"
+RFM_ROOT="$CAIXA16" node -e "
+  const DatabaseSync = require('node:sqlite').DatabaseSync;
+  const path = require('path');
+  const fs = require('fs');
+  fs.mkdirSync(process.env.RFM_ROOT, { recursive: true });
+  const db = new DatabaseSync(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+  db.exec(\`
+    CREATE TABLE IF NOT EXISTS observacoes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      projeto TEXT NOT NULL,
+      conteudo TEXT NOT NULL,
+      criada_em TEXT NOT NULL,
+      origem TEXT,
+      consolidada_em TEXT,
+      UNIQUE(projeto, origem)
+    );
+  \`);
+  for (let i = 0; i < 5; i++) {
+    db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
+      .run('proj-legado', 'Obs legado ' + i, new Date().toISOString(), 'orig-legado-' + i);
+  }
+  db.close();
+" 2>/dev/null
+CNT_ANTES_MIG6=$(RFM_ROOT="$CAIXA16" node --no-warnings -e "
+const { abrirBancoSomenteLeitura } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBancoSomenteLeitura(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+process.stdout.write(String(db.prepare('SELECT COUNT(*) n FROM observacoes').get().n));
+" 2>/dev/null)
+RFM_ROOT="$CAIXA16" $MEMORIA iniciar > /dev/null 2>&1
+RESULTADO_MIG6=$(RFM_ROOT="$CAIXA16" node --no-warnings -e "
+const { abrirBancoSomenteLeitura } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBancoSomenteLeitura(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const cols = db.prepare('PRAGMA table_info(observacoes)').all().map(c => c.name);
+const cnt = db.prepare('SELECT COUNT(*) n FROM observacoes').get().n;
+process.stdout.write(cols.includes('substituida_por') + ':' + cols.includes('reconciliada_em') + ':' + cnt);
+" 2>/dev/null)
+if [ "$RESULTADO_MIG6" = "true:true:$CNT_ANTES_MIG6" ]; then
+  ok=$((ok+1)); echo "  ok   migracao 6: banco legado ganha substituida_por e reconciliada_em (colunas presentes, ${CNT_ANTES_MIG6} linhas preservadas)"
+else
+  falhou=$((falhou+1)); echo "  FALHA migracao 6: banco legado ganha substituida_por e reconciliada_em: esperava true:true:$CNT_ANTES_MIG6, veio $RESULTADO_MIG6"
+fi
+
+echo
+echo "== 23. buscar --texto exclui observacao substituida (filtroVivas) =="
+# Tarefa 3 (D3): o ramo COM --texto de cmdBuscar usa filtroVivas('o.'). Termo
+# "SOMENTESUBSTITUIDAS" só existe em observações marcadas substituida_por —
+# se o filtro não funcionar, o buscar acha o termo mesmo assim.
+CAIXA17="$(novo_sandbox)"
+RFM_ROOT="$CAIXA17" $MEMORIA iniciar > /dev/null 2>&1
+RFM_ROOT="$CAIXA17" node -e "
+  const { abrirBanco } = require('./scripts/memoria.cjs');
+  const path = require('path');
+  const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+  db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
+    .run('proj-subst', 'termo SOMENTESUBSTITUIDAS aqui', new Date().toISOString(), 'subst-a');
+  db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
+    .run('proj-subst', 'termo SOMENTESUBSTITUIDAS tambem', new Date().toISOString(), 'subst-b');
+  db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
+    .run('proj-subst', 'termo VIVOBUSCA presente', new Date().toISOString(), 'subst-c');
+  db.prepare(\"UPDATE observacoes SET substituida_por = 999, reconciliada_em = datetime('now') WHERE origem IN ('subst-a','subst-b')\").run();
+  db.close();
+" 2>/dev/null
+RESULTADO_BUSCA_SUBST=$(RFM_ROOT="$CAIXA17" $MEMORIA buscar --texto "SOMENTESUBSTITUIDAS" --json 2>/dev/null)
+echo "  comando: RFM_ROOT=<sandbox> node scripts/memoria.cjs buscar --texto SOMENTESUBSTITUIDAS --json"
+echo "  saida: $RESULTADO_BUSCA_SUBST"
+if [ "$(echo "$RESULTADO_BUSCA_SUBST" | tr -d '[:space:]')" = "[]" ]; then
+  ok=$((ok+1)); echo "  ok   buscar --texto: termo que só as substituídas contêm devolve []"
+else
+  falhou=$((falhou+1)); echo "  FALHA buscar --texto devolveu resultado para termo só de substituídas: $RESULTADO_BUSCA_SUBST"
+fi
+RESULTADO_BUSCA_VIVA=$(RFM_ROOT="$CAIXA17" $MEMORIA buscar --texto "VIVOBUSCA" --json 2>/dev/null)
+if echo "$RESULTADO_BUSCA_VIVA" | grep -q "VIVOBUSCA"; then
+  ok=$((ok+1)); echo "  ok   buscar --texto: observação viva com termo próprio continua achável (ramo não quebrou)"
+else
+  falhou=$((falhou+1)); echo "  FALHA buscar --texto deixou de achar observação viva: $RESULTADO_BUSCA_VIVA"
+fi
+
+echo
+echo "== 24. buscar sem --texto (recentes) exclui observacao substituida =="
+# Tarefa 3 (D3): o ramo SEM --texto de cmdBuscar (listagem de recentes) usa
+# filtroVivas() ancorado em WHERE 1=1. Mesma caixa 17: 1 viva + 2 substituídas.
+RESULTADO_RECENTES=$(RFM_ROOT="$CAIXA17" $MEMORIA buscar --projeto "proj-subst" --limite 10 --json 2>/dev/null)
+echo "  comando: RFM_ROOT=<sandbox> node scripts/memoria.cjs buscar --projeto proj-subst --limite 10 --json"
+echo "  saida: $RESULTADO_RECENTES"
+if echo "$RESULTADO_RECENTES" | grep -q "SOMENTESUBSTITUIDAS"; then
+  falhou=$((falhou+1)); echo "  FALHA buscar sem --texto trouxe observação substituída"
+else
+  ok=$((ok+1)); echo "  ok   buscar sem --texto: nenhuma observação substituída na listagem de recentes"
+fi
+if echo "$RESULTADO_RECENTES" | grep -q "VIVOBUSCA"; then
+  ok=$((ok+1)); echo "  ok   buscar sem --texto: observação viva continua na listagem"
+else
+  falhou=$((falhou+1)); echo "  FALHA buscar sem --texto perdeu a observação viva: $RESULTADO_RECENTES"
+fi
+
+echo
+echo "== 25. consolidar nao seleciona observacao substituida (filtroVivas) =="
+# Tarefa 3 (D3) + Tarefa 4 (D7): cmdConsolidar filtra substituida_por nas duas
+# consultas (a contagem por HAVING e a leitura do grupo). Discriminador: 12
+# observações de uma mesma sessao, das quais 11 substituídas — SEM o filtro,
+# 12 >= 2 consolidaria; COM o filtro, sobra 1 viva (<2) e o comando não deve
+# consolidar nada.
+CAIXA18="$(novo_sandbox)"
+cat > "$CAIXA18/dubleLLM.cjs" <<'EOF'
+async function chamarLLM(texto) {
+  return "Síntese que não deveria existir (so 1 observacao viva)";
+}
+module.exports = { chamarLLM };
+EOF
+RFM_ROOT="$CAIXA18" $MEMORIA iniciar > /dev/null 2>&1
+RFM_ROOT="$CAIXA18" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const trintaEUmDias = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString();
+for (let i = 0; i < 12; i++) {
+  db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
+    .run('proj-consol-subst', 'Observação ' + i, trintaEUmDias, 'sessao:77777777-7777-7777-7777-777777777777:offset:' + i);
+}
+// Marca as 11 primeiras como substituídas — sobra 1 viva, abaixo do minimo de 2.
+db.prepare(\"UPDATE observacoes SET substituida_por = 999, reconciliada_em = ? WHERE projeto = 'proj-consol-subst' AND origem IN (\" + Array.from({length:11}, (_,i)=>\"'sessao:77777777-7777-7777-7777-777777777777:offset:\"+i+\"'\").join(',') + \")\").run(trintaEUmDias);
+db.close();
+" 2>/dev/null
+SAIDA_CONSOL_SUBST=$(RFM_ROOT="$CAIXA18" TESTADOR_CHAMAR_LLM="$CAIXA18/dubleLLM.cjs" $MEMORIA consolidar 2>&1)
+echo "  comando: RFM_ROOT=<sandbox> TESTADOR_CHAMAR_LLM=<mock> node scripts/memoria.cjs consolidar"
+echo "  saida: $SAIDA_CONSOL_SUBST"
+if echo "$SAIDA_CONSOL_SUBST" | grep -q "nenhum grupo com 2+"; then
+  ok=$((ok+1)); echo "  ok   consolidar: 12 obs com 11 substituídas (1 viva) NÃO dispara consolidação"
+else
+  falhou=$((falhou+1)); echo "  FALHA consolidar disparou apesar de só 1 observação viva no grupo"
+fi
+CNT_CONSOL_SUBST=$(RFM_ROOT="$CAIXA18" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const c = db.prepare(\"SELECT COUNT(*) c FROM observacoes WHERE consolidada_em IS NOT NULL\").get().c;
+db.close();
+process.stdout.write(String(c));
+" 2>/dev/null)
+if [ "$CNT_CONSOL_SUBST" = "0" ]; then
+  ok=$((ok+1)); echo "  ok   nenhuma observação (viva ou substituída) ficou marcada consolidada_em ($CNT_CONSOL_SUBST)"
+else
+  falhou=$((falhou+1)); echo "  FALHA $CNT_CONSOL_SUBST observação(ões) foram consolidadas apesar do grupo abaixo do minimo"
+fi
+
+echo
+echo "== 26. TETO_GRUPOS limita quantos pedacos sao consolidados por execucao =="
+# Tarefa 4 (D7): sem este teto, a primeira execução dispararia uma chamada de
+# LLM por grupo elegível de uma vez (medição do plano: ~340 no acervo real).
+# 15 sessões distintas, 2 observações cada (30 no total) — cada sessão é um
+# grupo que cabe inteiro num resumo só (2 <= TETO_POR_GRUPO). Com
+# TETO_GRUPOS=10, a primeira execução consolida só 10 grupos (20 obs, 10
+# resumos); os outros 5 ficam pendentes. A segunda execução consolida o resto.
+CAIXA19="$(novo_sandbox)"
+cat > "$CAIXA19/dubleLLM.cjs" <<'EOF'
+async function chamarLLM(texto) {
+  return "Síntese de grupo pequeno";
+}
+module.exports = { chamarLLM };
+EOF
+RFM_ROOT="$CAIXA19" $MEMORIA iniciar > /dev/null 2>&1
+RFM_ROOT="$CAIXA19" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const base = Date.now() - 31 * 24 * 60 * 60 * 1000;
+for (let g = 0; g < 15; g++) {
+  const sessao = 'grupo-teto-' + String(g).padStart(2, '0');
+  for (let i = 0; i < 2; i++) {
+    // ordem cronologica entre grupos: grupo g mais velho que g+1, para o
+    // teto processar sempre os mesmos 10 primeiros de forma deterministica.
+    const quando = new Date(base - (15 - g) * 1000 + i).toISOString();
+    db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
+      .run('proj-teto', 'Obs g' + g + ' i' + i, quando, 'sessao:' + sessao + ':offset:' + i);
+  }
+}
+db.close();
+" 2>/dev/null
+
+RFM_ROOT="$CAIXA19" TESTADOR_CHAMAR_LLM="$CAIXA19/dubleLLM.cjs" $MEMORIA consolidar > /dev/null 2>&1
+
+RESULTADO_1A=$(RFM_ROOT="$CAIXA19" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const cntResumos = db.prepare('SELECT COUNT(*) c FROM resumos').get().c;
+const cntMarcadas = db.prepare('SELECT COUNT(*) c FROM observacoes WHERE consolidada_em IS NOT NULL').get().c;
+db.close();
+process.stdout.write(cntResumos + ':' + cntMarcadas);
+" 2>/dev/null)
+
+if [ "$RESULTADO_1A" = "10:20" ]; then
+  ok=$((ok+1)); echo "  ok   primeira execucao: TETO_GRUPOS=10 grupos consolidados (10 resumos, 20 obs marcadas), 5 grupos ficam pendentes"
+else
+  falhou=$((falhou+1)); echo "  FALHA primeira execucao: esperava resumos:marcadas = 10:20, veio $RESULTADO_1A"
+fi
+
+RFM_ROOT="$CAIXA19" TESTADOR_CHAMAR_LLM="$CAIXA19/dubleLLM.cjs" $MEMORIA consolidar > /dev/null 2>&1
+
+RESULTADO_2A=$(RFM_ROOT="$CAIXA19" node --no-warnings -e "
+const { abrirBanco } = require('./scripts/memoria.cjs');
+const path = require('path');
+const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+const cntResumos = db.prepare('SELECT COUNT(*) c FROM resumos').get().c;
+const cntMarcadas = db.prepare('SELECT COUNT(*) c FROM observacoes WHERE consolidada_em IS NOT NULL').get().c;
+db.close();
+process.stdout.write(cntResumos + ':' + cntMarcadas);
+" 2>/dev/null)
+
+if [ "$RESULTADO_2A" = "15:30" ]; then
+  ok=$((ok+1)); echo "  ok   segunda execucao: os 5 grupos pendentes sao consolidados (15 resumos total, 30 obs marcadas)"
+else
+  falhou=$((falhou+1)); echo "  FALHA segunda execucao: esperava resumos:marcadas = 15:30, veio $RESULTADO_2A"
 fi
 
 echo

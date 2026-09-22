@@ -4,8 +4,13 @@
 #
 # O QUE PRECISA PROVAR:
 #   1. o repositorio real, na base desta tarefa, passa limpo (exit 0), com as
-#      42 pecas (20 hooks + 14 conferidores, este incluso + 8 vigias) e a
-#      distribuicao 14 guia / 25 sensor / 3 dado;
+#      43 pecas (21 hooks + 14 conferidores, este incluso + 8 vigias) e a
+#      distribuicao 15 guia / 25 sensor / 3 dado. 43 e 15 guia desde
+#      2026-09-16: entrou hooks/memoria-manutencao-session-start.cjs, um hook
+#      de SessionStart puro (sem outro evento) — pela regra de classificacao
+#      do proprio conferir-categoria.cjs (evento, nunca o que a peca
+#      inspeciona), SessionStart e guia, nao sensor. A marca do arquivo tinha
+#      vindo "sensor" por engano; o conserto foi a marca, nao o numero.
 #   2. peca REAL copiada para arvore temporaria, com a linha de marca apagada,
 #      reprova (exit 1) e NOMEIA o caminho na saida;
 #   3. peca REAL copiada com valor de marca fora do vocabulario (nem guia, nem
@@ -47,17 +52,17 @@ montar_copia() {
   cp "$RAIZ"/vigias/*.md "$destino/vigias/" 2>/dev/null
 }
 
-echo "== 1. repositorio real na base — exit 0, 42 pecas, distribuicao 14/25/3 =="
+echo "== 1. repositorio real na base — exit 0, 43 pecas, distribuicao 15/25/3 =="
 S1="$(roda --raiz "$RAIZ")"
 saiu "repositorio real passa (exit 0)" "$(codigo --raiz "$RAIZ")" "0"
-tem  "conta as 42 pecas"               "$S1" "Total de peças varridas: 42"
+tem  "conta as 43 pecas"               "$S1" "Total de peças varridas: 43"
 N_GUIA="$(printf '%s' "$S1" | grep -cF '>  guia')"
 N_SENSOR="$(printf '%s' "$S1" | grep -cF '>  sensor')"
 N_DADO="$(printf '%s' "$S1" | grep -cF '>  dado')"
-if [ "$N_GUIA" = "14" ] && [ "$N_SENSOR" = "25" ] && [ "$N_DADO" = "3" ]; then
-  ok=$((ok+1)); echo "  ok   distribuicao 14 guia / 25 sensor / 3 dado confere"
+if [ "$N_GUIA" = "15" ] && [ "$N_SENSOR" = "25" ] && [ "$N_DADO" = "3" ]; then
+  ok=$((ok+1)); echo "  ok   distribuicao 15 guia / 25 sensor / 3 dado confere"
 else
-  falhou=$((falhou+1)); echo "  FALHA distribuicao: guia=$N_GUIA sensor=$N_SENSOR dado=$N_DADO (esperava 14/25/3)"
+  falhou=$((falhou+1)); echo "  FALHA distribuicao: guia=$N_GUIA sensor=$N_SENSOR dado=$N_DADO (esperava 15/25/3)"
 fi
 
 echo
