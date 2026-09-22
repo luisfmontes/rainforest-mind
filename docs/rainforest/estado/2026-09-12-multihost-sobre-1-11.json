@@ -171,52 +171,52 @@
       }
     ],
     "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug 2026-09-12-multihost-sobre-1-11",
-    "saida": "T1-T5 vermelho; T6-T9 n/a; exit 0; correção documental do portão aplicada",
+    "saida": "T1-T5 vermelho; T6-T9 n/a; exit 0; pendências correntes corrigidas",
     "mutacao": [
       {
+        "fixture": "testa-gate-staging-total.sh: git add citado e wrappers",
         "resultado": "vermelho",
-        "tarefa": 1,
-        "fixture": "testa-gate-staging-total.sh: git add citado e wrappers"
+        "tarefa": 1
       },
       {
+        "fixture": "contrato-skills: montar-corpus sem description",
         "resultado": "vermelho",
-        "tarefa": 2,
-        "fixture": "contrato-skills: montar-corpus sem description"
+        "tarefa": 2
       },
       {
+        "fixture": "contrato-adaptador-hook: handler Codex chama core direto",
         "resultado": "vermelho",
-        "tarefa": 3,
-        "fixture": "contrato-adaptador-hook: handler Codex chama core direto"
+        "tarefa": 3
       },
       {
+        "fixture": "testa-versao.sh: Codex 1.21.2 diverge de Claude 1.21.1",
         "resultado": "vermelho",
-        "tarefa": 4,
-        "fixture": "testa-versao.sh: Codex 1.21.2 diverge de Claude 1.21.1"
+        "tarefa": 4
       },
       {
+        "fixture": "contrato-marketplace: source.path não resolve raiz",
         "resultado": "vermelho",
-        "tarefa": 5,
-        "fixture": "contrato-marketplace: source.path não resolve raiz"
+        "tarefa": 5
       },
       {
+        "motivo": "tarefa operacional sobre instalador e cache externo; projeção e host medidos",
         "resultado": "n/a",
-        "tarefa": 6,
-        "motivo": "tarefa operacional sobre instalador e cache externo; projeção e host medidos"
+        "tarefa": 6
       },
       {
+        "motivo": "artefato instalado validado fora do repositório",
         "resultado": "n/a",
-        "tarefa": 7,
-        "motivo": "artefato instalado validado fora do repositório"
+        "tarefa": 7
       },
       {
+        "motivo": "documentação de continuidade conferida contra evidência real",
         "resultado": "n/a",
-        "tarefa": 8,
-        "motivo": "documentação de continuidade conferida contra evidência real"
+        "tarefa": 8
       },
       {
+        "motivo": "integração e registro sem comportamento novo",
         "resultado": "n/a",
-        "tarefa": 9,
-        "motivo": "integração e registro sem comportamento novo"
+        "tarefa": 9
       }
     ],
     "origem_instalacao": {
@@ -300,20 +300,20 @@
     "nota_mutacao": "Mutantes reexercitados na arvore reancorada, nao herdados: a main trouxe 188 commits e a lista de 2026-09-14 media outra arvore. Uma primeira mutacao da T1 sobreviveu (tirar -A de CAMINHO_TOTAL) e isso NAO era lacuna da bateria: temCurta(opcoes,\"A\") pega o mesmo caso sozinho. Defesa redundante nao morre com um tiro so, entao o mutante foi refeito matando os dois detectores.",
     "contratos_cache": "manifesto, skills, adaptador e marketplace exit 0; Gemini completo somente na worktree Git",
     "baterias_branch": "executadas com Git Bash correto depois de tentativa invalida pelo WSL sem Node; a tentativa sem Node nao e teste de produto",
-    "head": "75fa8d4e",
+    "head": "e5526bd8",
     "sensor_externo": "node scripts/conferir-fluxo.cjs mutacoes"
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "75fa8d4e24d724995bf2da99f7213fbeedab113b",
+      "head": "e5526bd807cbc2311b7d675d1ac0c211f2009f4e",
       "caminhos_sujos": []
     },
     "achados": 1,
     "base": "5cdb90e768cb1ba808821d5bdcdf46f7a19fc782",
-    "head": "75fa8d4e24d724995bf2da99f7213fbeedab113b",
+    "head": "e5526bd807cbc2311b7d675d1ac0c211f2009f4e",
     "em": "2026-09-22",
-    "achado": "Portão linhas 2632-2635 ainda descreve executar parcial e fechamento futuro, contradizendo o estado corrente executar=ok e próximo revisar.",
+    "achado": "revisar.pendencias ainda condiciona nova revisão ao fechamento já satisfeito de executar",
     "confirmacoes": [
       "base corrente 2adbae27 propagada ao design e plano",
       "cachebuster da base anterior provado em sessao nova",
@@ -321,10 +321,9 @@
       "caminhos locais removidos do rastro versionado"
     ],
     "pendencias": [
-      "coordenador fechar executar depois da correcao do rastro final",
-      "nova revisão independente do diff final depois do fechamento de executar"
+      "nova revisão independente do diff final"
     ],
-    "tentativas": 3,
+    "tentativas": 4,
     "em_voo": [
       {
         "agente": "revisor-final-multihost-2",
@@ -332,8 +331,8 @@
         "tarefa": "revisão independente do diff final"
       }
     ],
-    "comando": "revisão independente do diff 5cdb90e...75fa8d4",
-    "saida": "REPROVADO: 1 achado documental médio; cobertura 12/9, creep 18 e contratos não mutantes verdes"
+    "comando": "revisão independente do diff 5cdb90e...e5526bd8",
+    "saida": "REPROVADO: 1 achado documental médio; portão corrigido, cobertura 12/9, creep 18 e diff-check verdes"
   },
   "verificar": {
     "status": "reprovado",
