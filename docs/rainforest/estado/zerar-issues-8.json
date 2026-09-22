@@ -25,8 +25,8 @@
   "executar": {
     "status": "ok",
     "catraca_mutacao": "2026-09-22",
-    "tarefas_ok": 10,
-    "tarefas": 10,
+    "tarefas_ok": 13,
+    "tarefas": 13,
     "carimbos": [
       {
         "tarefa": 1,
@@ -66,27 +66,27 @@
     ],
     "em": "2026-09-22",
     "comando": "bash hooks/testa-gate-fechar-issue.sh",
-    "saida": "172 ok, 0 falha(s)",
+    "saida": "184 ok, 0 falha(s)",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-gate-fechar-issue.sh, secao bypass por palavra reservada (#309)"
+        "fixture": "testa-gate-fechar-issue.sh, bypass por palavra reservada (#309)"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "testa-gate-fechar-issue.sh, secao (#309) bash variavel citada como ultimo argumento"
+        "fixture": "testa-gate-fechar-issue.sh, variavel citada como ultimo argumento"
       },
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-entrega.sh, secao D5 exit 69 (+ BOM, commit vazio e --escopo)"
+        "fixture": "testa-conferir-entrega.sh, D5 exit 69 (+ BOM, commit vazio, --escopo)"
       },
       {
         "tarefa": 4,
         "resultado": "n/a",
-        "motivo": "passo de workflow; falsificado pelo log do CI run 35734739268 (73 ok, 0 falha)"
+        "motivo": "passo de workflow; log do CI run 35734739268 (73 ok, 0 falha)"
       },
       {
         "tarefa": 5,
@@ -101,22 +101,37 @@
       {
         "tarefa": 7,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-entrega.sh, caso git fora do PATH -> exit 69"
+        "fixture": "testa-conferir-entrega.sh, git fora do PATH -> exit 69"
       },
       {
         "tarefa": 8,
         "resultado": "vermelho",
-        "fixture": "testa-gate-fechar-issue.sh, secao coproc (#309, revisao)"
+        "fixture": "testa-gate-fechar-issue.sh, coproc (#309, revisao)"
       },
       {
         "tarefa": 9,
         "resultado": "vermelho",
-        "fixture": "testa-gate-fechar-issue.sh, secao parametro especial (#309, revisao)"
+        "fixture": "testa-gate-fechar-issue.sh, parametro especial (#309, revisao)"
       },
       {
         "tarefa": 10,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-publicacao.sh, secao TLD reservado (RFC 2606)"
+        "fixture": "testa-conferir-publicacao.sh, TLD reservado (RFC 2606)"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, pipe com stderr (|&) (#309, revisao 2)"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, continuacao de linha dentro da string"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, continuacao de linha no topo (caso fy)"
       }
     ],
     "em_voo": [],
@@ -126,18 +141,18 @@
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "24ad6fa23c27d18822cbff96307dcc56442f1046",
+      "head": "8a9886d11d91c2c35669a8bdb56619dfe0b4fb0d",
       "caminhos_sujos": []
     },
     "em_voo": [],
     "em": "2026-09-22",
     "achados": 3,
     "pendentes": [
-      "1 coproc fora de PALAVRAS_RESERVADAS: coproc seguido de bash -c passa nos gates",
-      "2 contemConstrucaoIlegivel nao cobre parametros especiais (arroba, asterisco etc.): set -- -c X; bash com arroba entre aspas passa",
-      "3 marcador dados-de-exemplo movido ao topo de baterias.yml isenta o arquivo inteiro do gate de publicacao"
+      "11 pipe com stderr esconde o comando do gate (pre-existente na main)",
+      "12 continuacao de linha dentro da string do wrapper parte o comando (pre-existente na main)",
+      "3 menor: marcador no conferir-publicacao.cjs isenta o arquivo inteiro — risco a nomear no design"
     ],
-    "tentativas": 1
+    "tentativas": 2
   },
   "verificar": {
     "status": "pendente"

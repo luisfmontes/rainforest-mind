@@ -27,6 +27,10 @@ sem o laço era barrado: `do`, `then`, `else`, `elif`, `if`, `while`, `until`, `
   barrados.
 - **Parâmetro especial é ilegível**: `set -- -c "<cmd>"; bash "$@"`, `bash "$*"` e
   `eval "$@"` passavam como se fossem caminho de script, e agora são barrados.
+- **Pipe com stderr (`|&`) e continuação de linha** deixaram de esconder comando: `echo
+  hi |& bash -c "<cmd>"`, `bash -c "gh issue \<quebra>close 12"` e a mesma quebra sem
+  wrapper nenhum passavam, e passavam também na 1.22.0 — são buracos antigos, achados
+  pela revisão desta rodada.
 - **E-mail em TLD reservado** (`.invalid`, `.example`, `.test`, `.localhost`, RFC 2606)
   deixa de ser achado do gate de publicação, desde que seja o último rótulo
   (`x@foo.test.com` continua pego).
