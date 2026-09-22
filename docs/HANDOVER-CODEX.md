@@ -1,20 +1,49 @@
-# Handover Codex — Rainforest Mind multihost 1.19.2
+# Handover Codex — Rainforest Mind multihost 1.21.1
 
-> **Reancorado na `origin/main` 1.19.2 em 2026-09-19.** A base da entrega saiu de
-> `068468fb` (1.13.2) para `2adbae270782a5a36512c28a5c2a5354ba05c73e` (1.19.2),
-> depois da análise de sobreposição que este handover exige. Todo hash e toda
-> versão `1.13.2` citados nas seções antigas são **registro histórico**: o estado
-> corrente está na seção "Reancoragem na origin/main 1.19.2" do portão do fluxo.
-> Derive sempre o HEAD e a base correntes com Git, nunca copie hash de prosa.
-> re-verificar: `git merge-base origin/main HEAD; git show HEAD:.claude-plugin/plugin.json; git show HEAD:.codex-plugin/plugin.json`
+> **PONTO CANÔNICO DE RETOMADA — 2026-09-22.** Este bloco substitui todos os
+> roteiros abaixo. As seções posteriores a "Arquivo histórico" preservam a
+> evidência das versões 1.13.2 e 1.19.2, mas **não são instruções executáveis**.
 
-> **Atualizado em 2026-09-19, depois da sessão Claude.** A contraprova do hook
-> foi concluída e passou, a instalação final limpa foi restaurada e `executar`
-> fechou de novo em `ok`, 9/9. As seções abaixo até "Piloto histórica"
-> descrevem o estado **anterior** a essa sessão e ficam como registro; o estado
-> corrente está em "Estado em 2026-09-19, depois da sessão Claude", no fim
-> deste arquivo, e é por onde o Codex deve começar.
-> re-verificar: `node scripts/estado.cjs ler --slug 2026-09-12-multihost-sobre-1-11`
+- Versão corrente: `1.21.1`, lida de `.claude-plugin/plugin.json`.
+- Base corrente: `5cdb90e768cb1ba808821d5bdcdf46f7a19fc782`
+  (`origin/main`, 1.21.1).
+- Branch de entrega: `codex/multihost-1.13`.
+- Worktree rederivável: localize a entrada cuja linha `branch` é
+  `refs/heads/codex/multihost-1.13` com `git worktree list --porcelain`; se ela
+  não existir, recrie uma worktree isolada a partir dessa branch. A entrada
+  registrada em 2026-09-22 é `<REPO>/.claude/worktrees/codex-multihost-1.11`.
+- HEAD derivável: dentro dessa worktree, rode `git rev-parse HEAD`; a base deve
+  ser ancestral segundo `git merge-base --is-ancestor 5cdb90e768cb1ba808821d5bdcdf46f7a19fc782 HEAD`.
+  O merge que incorporou essa base é
+  `5d81ebcebf6ca0b6fd2a852cb1d227e1505b949a`.
+- Design: `docs/rainforest/design/2026-09-12-multihost-sobre-1-11.md`.
+- Plano: `docs/rainforest/planos/2026-09-12-multihost-sobre-1-11.md`.
+- Estado: `docs/rainforest/estado/2026-09-12-multihost-sobre-1-11.json`.
+- Portão: `docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md`.
+- Gemini continua adiado: nenhum manifesto, hook, adaptador ou fixture de
+  payload Gemini pertence a esta entrega.
+- A prova de instalação/cache 1.19.2 é apenas histórica. A prova equivalente
+  para 1.21.1 está **pendente** e deve ser refeita depois da integração; não há
+  evidência de instalação 1.21.1 neste handover.
+- Sem aval explícito do usuário, é proibido abrir PR, publicar release, mesclar
+  ou alterar a `main`. Commit e push da branch de entrega não equivalem a merge.
+
+Revalide o ponto corrente com:
+
+```powershell
+git rev-parse --show-toplevel
+git rev-parse HEAD
+git merge-base --is-ancestor 5cdb90e768cb1ba808821d5bdcdf46f7a19fc782 HEAD
+git show HEAD:.claude-plugin/plugin.json
+git show HEAD:.codex-plugin/plugin.json
+node scripts/estado.cjs ler --slug 2026-09-12-multihost-sobre-1-11
+```
+
+## Arquivo histórico — 1.13.2 e 1.19.2 (não executar)
+
+Tudo abaixo registra decisões, comandos e saídas das rodadas antigas. Números
+de versão, hashes, worktrees, caches e instruções ali não formam o roteiro de
+retomada atual; use exclusivamente o bloco canônico acima.
 
 Atualizado em 2026-09-19. Este documento retoma a entrega local que adapta o
 Rainforest Mind ao Codex sem bifurcar o produto.

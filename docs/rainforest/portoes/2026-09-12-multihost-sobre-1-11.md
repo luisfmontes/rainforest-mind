@@ -1,4 +1,27 @@
-# Portão: adaptação multihost sobre o Rainforest Mind 1.13.2
+# Portão: adaptação multihost sobre o Rainforest Mind 1.21.1
+
+## Estado corrente — reancoragem 1.21.1 (2026-09-22)
+
+- Base: `5cdb90e768cb1ba808821d5bdcdf46f7a19fc782` (`origin/main`, 1.21.1).
+- Merge da base na entrega: `5d81ebcebf6ca0b6fd2a852cb1d227e1505b949a`.
+- Branch: `codex/multihost-1.13`; HEAD é rederivado com `git rev-parse HEAD`.
+- Entre `2adbae27` e `5cdb90e7`, 81 commits entraram. Nenhum arquivo de produto
+  Codex mudou; entre as skills, somente `skills/limpar/SKILL.md` mudou, fora das
+  quatro âncoras de corpo. `fechar`, `modo-dev`, `montar-corpus` e `regua`
+  mantêm os mesmos bytes e SHA-256 já declarados no contrato.
+- O manifesto Codex acompanha o manifesto Claude em 1.21.1. Gemini permanece
+  adiado, sem artefato de host nesta entrega.
+- Instalação, cachebuster, export e projeção D9/D11 de 1.21.1 estão pendentes de
+  repetição depois da integração. As medições 1.19.2 abaixo são históricas e
+  não constituem evidência instalada da versão corrente.
+- Sem aval explícito, não abrir PR, publicar release, mesclar nem alterar a
+  `main`.
+
+## Arquivo histórico abaixo — 1.12.0, 1.13.2 e 1.19.2 (não executar)
+
+Os comandos e saídas restantes preservam a evidência das rodadas anteriores;
+não são roteiro de retomada para 1.21.1. O ponto canônico é o topo de
+`docs/HANDOVER-CODEX.md`.
 
 ## Tarefa 6 — iteração local com cachebuster
 

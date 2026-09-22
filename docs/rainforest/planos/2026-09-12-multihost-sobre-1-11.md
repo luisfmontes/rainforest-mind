@@ -1,22 +1,24 @@
-# Plano: adaptação multihost sobre o Rainforest Mind 1.19.2
+# Plano: adaptação multihost sobre o Rainforest Mind 1.21.1
 
 Design: `docs/rainforest/design/2026-09-12-multihost-sobre-1-11.md`
 
 Base inicial confirmada: `a338dd02ad495f87a66d84af2ab24eab3d2660b8`.
 Base corrente confirmada antes da tarefa 4: `cf1ad7689f84428eb0b10943c0f1cf1a662b8faf` (`1.12.0`). Os 12 commits locais foram reaplicados sobre ela após confirmar zero caminhos sobrepostos.
-Base corrente: `2adbae270782a5a36512c28a5c2a5354ba05c73e` (`1.19.2`), reancorada em 2026-09-19 por merge da
-`origin/main`. A base anterior era `068468fb956b8d606e9af1800aaa91dd399fdeb8` (`1.13.2`), fixada
+Base corrente: `5cdb90e768cb1ba808821d5bdcdf46f7a19fc782` (`1.21.1`), incorporada pelo merge limpo
+`5d81ebcebf6ca0b6fd2a852cb1d227e1505b949a` em 2026-09-22. A base anterior era
+`2adbae270782a5a36512c28a5c2a5354ba05c73e` (`1.19.2`), reancorada em 2026-09-19 por merge da
+`origin/main`; antes dela, `068468fb956b8d606e9af1800aaa91dd399fdeb8` (`1.13.2`) foi fixada
 após a primeira T7; o rebase daquela vez descartou como já aplicado o commit do gate de staging,
 cujo patch era idêntico ao incorporado upstream. A troca de âncora seguiu a análise de
-sobreposição registrada no portão: a `main` não toca nenhum arquivo de produto da adaptação
-Codex, e os dois `SKILL.md` que ela reescreveu só divergem da entrega no corpo, que a entrega
-não altera.
+sobreposição registrada no portão. Entre 1.19.2 e 1.21.1, a `main` não toca nenhum arquivo de
+produto da adaptação Codex; entre as skills, somente `skills/limpar/SKILL.md` mudou, fora das
+quatro âncoras normalizadas, que permanecem byte a byte iguais.
 Referência histórica confirmada: `codex/piloto-rainforest` em
 `c71ecd01a73ab9208c981ff2d1eea5f6378434d7`.
 
 ## Fatos, inferências e lacunas
 
-- **CONFIRMADO:** `.claude-plugin/plugin.json` declara `1.19.2`; a base não
+- **CONFIRMADO:** `.claude-plugin/plugin.json` declara `1.21.1`; a base não
   contém `.codex-plugin/plugin.json` nem `.agents/plugins/marketplace.json`.
 - **CONFIRMADO:** há 19 `skills/*/SKILL.md`; `fechar`, `modo-dev`,
   `montar-corpus` e `regua` não satisfazem hoje o frontmatter aceito pelo Codex.
@@ -34,6 +36,9 @@ Referência histórica confirmada: `codex/piloto-rainforest` em
 - **CONFIRMADO:** inventários de export e cache usam
   `Get-ChildItem -Force -Recurse -File`; enumeração sem `-Force` não prova a
   ausência de metadados ocultos.
+- **LACUNA:** instalação, cachebuster, export e projeção D9/D11 ainda não foram
+  refeitos para 1.21.1; as saídas 1.19.2 são arquivo histórico e não satisfazem
+  as tarefas 6 e 7 nesta base.
 
 ## O que não pode quebrar
 
@@ -45,7 +50,7 @@ Referência histórica confirmada: `codex/piloto-rainforest` em
   continuam recusadas mesmo citadas ou dentro de wrappers.
 - O inventário do contrato vem do disco e valida todas as skills presentes;
   nenhuma constante fixa 19.
-- O cachebuster nunca entra no commit final, cuja versão de integração é exatamente `1.19.2`; o bump de release pertence ao estágio `fechar`, em commit próprio, depois de `verificar`.
+- O cachebuster nunca entra no commit final, cuja versão de integração é exatamente `1.21.1`; o bump de release pertence ao estágio `fechar`, em commit próprio, depois de `verificar`.
 - Todo arquivo rastreado fora da lista fechada de sete documentos de governança
   da D9 aparece byte a byte no cache; extras são recusados, exceto a projeção
   Codex fechada de `commands/saude.md` definida em D11.
@@ -122,14 +127,14 @@ depende de: 2
 paralela: nao
 mutacao:
   arquivo: `.codex-plugin/plugin.json`
-  de: `"version": "1.19.2"`
-  para: `"version": "1.19.3"`
+  de: `"version": "1.21.1"`
+  para: `"version": "1.21.2"`
   bateria: `bash scripts/testa-versao.sh`
-  fixture: seção `manifesto Codex na mesma versao da fonte Claude`, esperando divergência `1.19.3` versus `1.19.2`
-pronto quando: com Claude e Codex em `1.19.2`, o portão informa igualdade;
-mudando somente o manifesto Codex para `1.19.3`, ele sai não zero e mostra os
+  fixture: seção `manifesto Codex na mesma versao da fonte Claude`, esperando divergência `1.21.2` versus `1.21.1`
+pronto quando: com Claude e Codex em `1.21.1`, o portão informa igualdade;
+mudando somente o manifesto Codex para `1.21.2`, ele sai não zero e mostra os
 dois valores — provado por `bash scripts/testa-versao.sh` no original e por
-`node scripts/conferir-mutacao.cjs --arquivo .codex-plugin/plugin.json --de '"version": "1.19.2"' --para '"version": "1.19.3"' --bateria 'bash scripts/testa-versao.sh'`.
+`node scripts/conferir-mutacao.cjs --arquivo .codex-plugin/plugin.json --de '"version": "1.21.1"' --para '"version": "1.21.2"' --bateria 'bash scripts/testa-versao.sh'`.
 
 ### 5. Distribuir a raiz única e manter Gemini como escopo negativo [tipo: configurar]
 atende: D4, D8, D10
@@ -158,13 +163,13 @@ paralela: nao
 mutacao: n/a
   motivo: tarefa operacional sobre o instalador e seu cache externo; a falsificação é comparar a versão/bytes realmente instalados, não inverter fonte persistente.
 pronto quando: com os manifestos temporariamente em
-`1.19.2+codex.<token>` e o marketplace apontando para este worktree, reinstalar
+`1.21.1+codex.<token>` e o marketplace apontando para este worktree, reinstalar
 o plugin cria uma entrada de cache nessa versão, uma sessão nova enumera as
 skills descobertas e o hook recusa `git add "-A"`; em seguida os dois manifestos
-voltam byte a byte a `1.19.2` — provado no portão por comandos, saídas, caminho
+voltam byte a byte a `1.21.1` — provado no portão por comandos, saídas, caminho
 do cache e hashes antes/depois, sem registrar o cachebuster no diff final.
 
-### 7. Reinstalar exatamente 1.19.2 e executar o contrato ponta a ponta [tipo: teste]
+### 7. Reinstalar exatamente 1.21.1 e executar o contrato ponta a ponta [tipo: teste]
 atende: D1, D2, D3, D6, D8, D9, D11, D12
 arquivos: `docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md`
 depende de: 6
@@ -173,8 +178,8 @@ mutacao: n/a
   motivo: validação do artefato instalado fora do repositório; as mutações dos comportamentos persistentes já pertencem às tarefas 1 a 5.
 pronto quando: com o marketplace local apontando para um export limpo produzido
 por `git archive` do commit candidato, sem arquivo ou diretório `.git`, e ambos
-os manifestos exatamente em `1.19.2`, uma reinstalação produz cache
-`1.19.2` em que todos os arquivos rastreados fora da lista fechada de
+os manifestos exatamente em `1.21.1`, uma reinstalação produz cache
+`1.21.1` em que todos os arquivos rastreados fora da lista fechada de
 governança da D9, inclusive `.codex-plugin/plugin.json`, existem com SHA-256
 idêntico; nenhum extra é aceito
 fora de `.codex-plugin/migrated-command-skills/source-command-saude/SKILL.md`,
@@ -194,7 +199,7 @@ mutacao: n/a
   motivo: documentação de continuidade; a falsificação é a coerência dos hashes, versão, escopo e comandos com os artefatos medidos nas tarefas anteriores.
 pronto quando: uma pessoa retomando apenas por `docs/HANDOVER-CODEX.md` vê a
 branch/worktree/HEAD rederivável, sabe que `c71ecd01...` é referência histórica
-1.7, encontra design/plano/portão do fluxo iniciado na 1.11 e entregue na 1.19.2, enxerga Gemini como adiado e
+1.7, encontra design/plano/portão do fluxo iniciado na 1.11 e reancorado na 1.21.1, enxerga Gemini como adiado e
 a proibição explícita de publicar/mesclar na main sem aval; cada hash e caminho
 do texto é resolvido por `git rev-parse`, `git cat-file -e` ou `Test-Path`, e os
 números do portão coincidem com as saídas registradas.
@@ -209,15 +214,15 @@ mutacao: n/a
 pronto quando: com o commit candidato local, `bash hooks/testa-gate-staging-total.sh`,
 `bash scripts/testa-plugin-codex.sh`, `bash scripts/testa-versao.sh`,
 `node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-multihost-sobre-1-11`
-e `node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 2adbae270782a5a36512c28a5c2a5354ba05c73e --head HEAD`
-terminam verdes; a projeção do cache `1.19.2` contra o HEAD, excluindo somente
+e `node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 5cdb90e768cb1ba808821d5bdcdf46f7a19fc782 --head HEAD`
+terminam verdes; a projeção do cache `1.21.1` contra o HEAD, excluindo somente
 os sete documentos de governança da D9, tem zero caminho ausente e zero SHA-256
 divergente, e o único extra continua sendo o derivado autorizado pela D11. O
 marketplace ativo aponta para o export limpo do commit candidato; a enumeração
 com `Get-ChildItem -Force -Recurse -File` confirma zero `.git` no export e no
 cache, sem omitir arquivos ocultos; o
 handover registra execução `9/9` e aponta `revisar` como próximo estágio;
-`git diff --name-only 2adbae270782a5a36512c28a5c2a5354ba05c73e...HEAD` contém somente os
+`git diff --name-only 5cdb90e768cb1ba808821d5bdcdf46f7a19fc782...HEAD` contém somente os
 caminhos autorizados pelo plano; o estado registra a evidência por tarefa; e
 `git branch --show-current`, `git status --short` e a ausência de comandos de
 push/merge/release no portão demonstram que a entrega permanece somente na

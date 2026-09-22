@@ -1,6 +1,6 @@
 {
   "slug": "2026-09-12-multihost-sobre-1-11",
-  "titulo": "Reaplicar a adaptação multihost sobre o Rainforest Mind 1.19.2 (slug iniciado em 1.11)",
+  "titulo": "Reaplicar a adaptação multihost sobre o Rainforest Mind 1.21.1 (slug iniciado em 1.11)",
   "criado_em": "2026-09-12",
   "arqueologia": {
     "status": "pendente"
@@ -16,6 +16,18 @@
     "tarefas": 9,
     "paralelas": [],
     "em": "2026-09-12"
+  },
+  "reancoragem_corrente": {
+    "versao": "1.21.1",
+    "base": "5cdb90e768cb1ba808821d5bdcdf46f7a19fc782",
+    "merge": "5d81ebcebf6ca0b6fd2a852cb1d227e1505b949a",
+    "branch": "codex/multihost-1.13",
+    "worktree_derivacao": "git worktree list --porcelain; localizar branch refs/heads/codex/multihost-1.13",
+    "head_derivacao": "git rev-parse HEAD",
+    "gemini": "adiado",
+    "ancoras_corpo": "fechar, modo-dev, montar-corpus e regua iguais byte a byte a base 1.21.1",
+    "instalacao_cache": "pendente de repeticao em 1.21.1 depois da integracao; evidencia 1.19.2 e somente historica",
+    "em": "2026-09-22"
   },
   "executar": {
     "status": "parcial",
@@ -290,7 +302,8 @@
       }
     ],
     "pendencias": [
-      "docs/HANDOVER-CODEX.md:15 aponta a retomada para a seção obsoleta 1.13.2; tornar 1.19.2 o ponto de entrada canônico"
+      "nova revisão independente da reancoragem 1.21.1",
+      "refazer instalação, cachebuster, export e projeção D9/D11 em 1.21.1 depois da integração"
     ],
     "tentativas": 1
   },
