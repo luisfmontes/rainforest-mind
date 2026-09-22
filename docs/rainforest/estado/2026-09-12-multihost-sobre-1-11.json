@@ -271,9 +271,9 @@
     },
     "em_voo": [
       {
-        "agente": "documentador-reancoragem-1.21.1",
-        "tarefa": "reancorar documentação e contrato Codex na main 1.21.1, corrigindo ponto de entrada do handover",
-        "desde": "2026-09-22T00:00:00-03:00"
+        "agente": "documentador-evidencia-1.21.1",
+        "tarefa": "registrar export, cache, projeção e contraprova host 1.21.1",
+        "desde": "2026-09-22T12:18:00Z"
       }
     ]
   },
