@@ -2630,6 +2630,5 @@ index_lock=False
 ```
 
 Instalação, projeção e contraprova 1.21.1 estão completas. `executar` está
-`parcial` somente enquanto esta correção do rastro final permanece em curso;
-as 9/9 tarefas estão concluídas. O coordenador fechará `executar` depois deste
-commit e então encaminhará uma nova revisão independente do diff final.
+`ok`, com 9/9 tarefas concluídas e a catraca T1–T9 reaplicada na árvore
+integrada. O próximo estágio é uma nova revisão independente do diff final.

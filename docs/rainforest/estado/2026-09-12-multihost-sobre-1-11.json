@@ -171,51 +171,51 @@
       }
     ],
     "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug 2026-09-12-multihost-sobre-1-11",
-    "saida": "T1-T5 vermelho; T6-T9 n/a; exit 0 na árvore integrada 1.21.1",
+    "saida": "T1-T5 vermelho; T6-T9 n/a; exit 0; correção documental do portão aplicada",
     "mutacao": [
       {
-        "tarefa": 1,
         "resultado": "vermelho",
+        "tarefa": 1,
         "fixture": "testa-gate-staging-total.sh: git add citado e wrappers"
       },
       {
-        "tarefa": 2,
         "resultado": "vermelho",
+        "tarefa": 2,
         "fixture": "contrato-skills: montar-corpus sem description"
       },
       {
-        "tarefa": 3,
         "resultado": "vermelho",
+        "tarefa": 3,
         "fixture": "contrato-adaptador-hook: handler Codex chama core direto"
       },
       {
-        "tarefa": 4,
         "resultado": "vermelho",
+        "tarefa": 4,
         "fixture": "testa-versao.sh: Codex 1.21.2 diverge de Claude 1.21.1"
       },
       {
-        "tarefa": 5,
         "resultado": "vermelho",
+        "tarefa": 5,
         "fixture": "contrato-marketplace: source.path não resolve raiz"
       },
       {
-        "tarefa": 6,
         "resultado": "n/a",
+        "tarefa": 6,
         "motivo": "tarefa operacional sobre instalador e cache externo; projeção e host medidos"
       },
       {
-        "tarefa": 7,
         "resultado": "n/a",
+        "tarefa": 7,
         "motivo": "artefato instalado validado fora do repositório"
       },
       {
-        "tarefa": 8,
         "resultado": "n/a",
+        "tarefa": 8,
         "motivo": "documentação de continuidade conferida contra evidência real"
       },
       {
-        "tarefa": 9,
         "resultado": "n/a",
+        "tarefa": 9,
         "motivo": "integração e registro sem comportamento novo"
       }
     ],
@@ -300,20 +300,20 @@
     "nota_mutacao": "Mutantes reexercitados na arvore reancorada, nao herdados: a main trouxe 188 commits e a lista de 2026-09-14 media outra arvore. Uma primeira mutacao da T1 sobreviveu (tirar -A de CAMINHO_TOTAL) e isso NAO era lacuna da bateria: temCurta(opcoes,\"A\") pega o mesmo caso sozinho. Defesa redundante nao morre com um tiro so, entao o mutante foi refeito matando os dois detectores.",
     "contratos_cache": "manifesto, skills, adaptador e marketplace exit 0; Gemini completo somente na worktree Git",
     "baterias_branch": "executadas com Git Bash correto depois de tentativa invalida pelo WSL sem Node; a tentativa sem Node nao e teste de produto",
-    "head": "a2b5e2a3",
+    "head": "75fa8d4e",
     "sensor_externo": "node scripts/conferir-fluxo.cjs mutacoes"
   },
   "revisar": {
-    "status": "parcial",
+    "status": "reprovado",
     "snapshot": {
-      "head": "9b5768b4ee3a59221bc60164a9d4619d535fd955",
+      "head": "75fa8d4e24d724995bf2da99f7213fbeedab113b",
       "caminhos_sujos": []
     },
-    "achados": 3,
+    "achados": 1,
     "base": "5cdb90e768cb1ba808821d5bdcdf46f7a19fc782",
-    "head": "9e47ddae71ea85b7a9cfcc5641630c5c82e54479",
+    "head": "75fa8d4e24d724995bf2da99f7213fbeedab113b",
     "em": "2026-09-22",
-    "achado": "Reancoragem incompleta em D5/D9 e T4/T6/T7/T8/T9; T6 sem cachebuster da base anterior; criterio de creep antigo; falso negativo em fixture Gemini; caminhos locais e medicoes sem re-verificar. Correcoes aplicadas aguardam o fechamento de executar pelo coordenador e nova revisao independente.",
+    "achado": "Portão linhas 2632-2635 ainda descreve executar parcial e fechamento futuro, contradizendo o estado corrente executar=ok e próximo revisar.",
     "confirmacoes": [
       "base corrente 2adbae27 propagada ao design e plano",
       "cachebuster da base anterior provado em sessao nova",
@@ -324,14 +324,16 @@
       "coordenador fechar executar depois da correcao do rastro final",
       "nova revisão independente do diff final depois do fechamento de executar"
     ],
-    "tentativas": 2,
+    "tentativas": 3,
     "em_voo": [
       {
         "agente": "revisor-final-multihost-2",
         "desde": "2026-09-22T14:25:00-03:00",
         "tarefa": "revisão independente do diff final"
       }
-    ]
+    ],
+    "comando": "revisão independente do diff 5cdb90e...75fa8d4",
+    "saida": "REPROVADO: 1 achado documental médio; cobertura 12/9, creep 18 e contratos não mutantes verdes"
   },
   "verificar": {
     "status": "reprovado",
