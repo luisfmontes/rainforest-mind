@@ -30,9 +30,9 @@
     "em": "2026-09-22"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-22",
-    "tarefas_ok": 8,
+    "tarefas_ok": 9,
     "tarefas": 9,
     "em": "2026-09-22",
     "carimbos": [
@@ -170,53 +170,53 @@
         "ts": "2026-09-14T19:10:34.525Z"
       }
     ],
-    "comando": "git merge origin/main; node <bump manifesto Codex>; node <reancora ancoras de corpo>; bash hooks/testa-gate-staging-total.sh; bash scripts/testa-plugin-codex.sh; bash scripts/testa-versao.sh; node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-multihost-sobre-1-11; node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 2adbae270782a5a36512c28a5c2a5354ba05c73e --head HEAD; git archive eabeb898 > export-1.19.2; codex plugin marketplace add <export-1.19.2>; codex plugin add rainforest-mind@rainforest-mind-local; node <projecao D9/D11 com ocultos>; codex exec --ephemeral --approve-for-me --dangerously-bypass-hook-trust --color never -C <fixture host-owned> <prompt git add -A literal>",
-    "saida": "reancorada em 2adbae27 (1.19.2) por merge limpo: a main nao toca nenhum dos oito arquivos de produto da adaptacao Codex, e os dois SKILL.md que ela reescreveu so divergem no corpo, que a entrega nao altera. Tres gates venceram e foram consertados pelo que medem: manifesto Codex 1.13.2 -> 1.19.2, ancoras de corpo de fechar e modo-dev reancoradas nos blobs de origin/main, base do creep movida. Baterias: 133 ok 0 falhas; contrato Codex completo com Gemini adiado; versao 5/0; cobertura 12 decisoes/9 tarefas; sem creep, mesmos 18 arquivos. Evidencia de instalacao refeita do zero: export por git archive de eabeb898, 765 arquivos sem .git e 0/0/0; cache 766 com zero ausente, zero divergente e o unico extra D11, mesmos SHA-256. Contraprova do hook na 1.19.2: PreToolUse Blocked, COUNT=20 skills, codigo de saida N/A processo nao iniciado, fixture segue ?? deny-control.txt sem nada staged e sem index.lock",
+    "comando": "baterias da branch; contratos do cache; projeção D9/D11; sessão Codex efêmera; conferir-fluxo mutacoes/cobertura/creep",
+    "saida": "1.21.1: gate 133/0; contratos aplicáveis do cache exit 0; 776 esperados, 0 ausentes, 0 divergentes, 1 extra D11; PreToolUse Blocked; T1-T5 vermelho; T6-T9 n/a",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "gate-staging-total.cjs: matar os DOIS detectores de add (CAMINHO_TOTAL e flag combinada) -> 69 ok 64 falhas; e motivoDe cego para add -> 64 ok 69 falhas"
+        "fixture": "testa-gate-staging-total.sh: git add citado e wrappers"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "--contrato-skills: montar-corpus sem description -> FALHA skills Codex invalidas"
+        "fixture": "contrato-skills: montar-corpus sem description"
       },
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "--contrato-adaptador-hook: handler Codex trocado por core direto (roda dentro da propria bateria)"
+        "fixture": "contrato-adaptador-hook: handler Codex chama core direto"
       },
       {
         "tarefa": 4,
         "resultado": "vermelho",
-        "fixture": "testa-versao.sh: manifesto Codex em 9.9.9 contra Claude 1.19.2 -> FALHA manifesto Codex na mesma versao da fonte"
+        "fixture": "testa-versao.sh: Codex 1.21.2 diverge de Claude 1.21.1"
       },
       {
         "tarefa": 5,
         "resultado": "vermelho",
-        "fixture": "--contrato-marketplace: source.path ./nao-existe/ -> FALHA source.path nao resolve o manifesto deste repo"
+        "fixture": "contrato-marketplace: source.path não resolve raiz"
       },
       {
         "tarefa": 6,
         "resultado": "n/a",
-        "motivo": "tarefa operacional sobre instalador e cache externo"
+        "motivo": "tarefa operacional sobre instalador e cache externo; projeção e host medidos"
       },
       {
         "tarefa": 7,
         "resultado": "n/a",
-        "motivo": "validacao do artefato instalado fora do repositorio"
+        "motivo": "artefato instalado validado fora do repositório"
       },
       {
         "tarefa": 8,
         "resultado": "n/a",
-        "motivo": "documentacao de continuidade"
+        "motivo": "documentação de continuidade conferida contra evidência real"
       },
       {
         "tarefa": 9,
         "resultado": "n/a",
-        "motivo": "integracao e registro sem comportamento novo"
+        "motivo": "integração e registro sem comportamento novo"
       }
     ],
     "origem_instalacao": {
@@ -262,7 +262,7 @@
       "contratos_cache": "manifesto, skills, adaptador e marketplace exit 0"
     },
     "mutacao_nesta_iteracao": "o detector Gemini mudou com vermelho antes e verde depois. T3 foi corrigida para casar as aspas escapadas do JSON e ficou vermelha ao trocar o adaptador pelo core; T4 ficou vermelha em 1.19.3 contra 1.19.2. Os demais contratos aplicaveis ficaram verdes.",
-    "base": "2adbae270782a5a36512c28a5c2a5354ba05c73e",
+    "base": "5cdb90e768cb1ba808821d5bdcdf46f7a19fc782",
     "base_anterior": "068468fb956b8d606e9af1800aaa91dd399fdeb8",
     "nota_mutacao": "Mutantes reexercitados na arvore reancorada, nao herdados: a main trouxe 188 commits e a lista de 2026-09-14 media outra arvore. Uma primeira mutacao da T1 sobreviveu (tirar -A de CAMINHO_TOTAL) e isso NAO era lacuna da bateria: temCurta(opcoes,\"A\") pega o mesmo caso sozinho. Defesa redundante nao morre com um tiro so, entao o mutante foi refeito matando os dois detectores.",
     "evidencia_1_21_1": {
@@ -292,10 +292,7 @@
       "baterias_branch": "executadas com Git Bash correto depois de tentativa invalida pelo WSL sem Node; a tentativa sem Node nao e teste de produto",
       "pendencia_fluxo": "coordenador ainda fechara a catraca e repetira as baterias formais"
     },
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-22"
-    }
+    "head": "e8baa18e"
   },
   "revisar": {
     "status": "reprovado",
