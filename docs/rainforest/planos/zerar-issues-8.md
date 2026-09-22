@@ -121,8 +121,8 @@ depende de: 4
 paralela: sim
 mutacao:
   arquivo: `scripts/conferir-publicacao.cjs`
-  de: `(?![\w.-]+\.(?:invalid|example|test|localhost)\b)`
+  de: `(?![\w.-]+\.(?:invalid|example|test|localhost)(?![-\w]|\.\w))`
   para: `(?!x^)`
   bateria: `bash scripts/testa-conferir-publicacao.sh`
   fixture: testa-conferir-publicacao.sh, secao "TLD reservado (RFC 2606)"
-pronto quando: com o `.github/workflows/baterias.yml` real, `head -5` não contém `rainforest-gate: dados-de-exemplo` e `node scripts/conferir-publicacao.cjs .github/workflows/baterias.yml` sai **0** sem achado — o e-mail `ci@rainforest.invalid` deixa de ser achado porque TLD reservado (`.invalid`, `.example`, `.test`, `.localhost`) não é endereço real, e o id de run no comentário é reescrito sem a sequência de 11 dígitos; `nome@empresa.com.br` continua achado — provado por `bash scripts/testa-conferir-publicacao.sh` com os casos impressos. Achado 3 da revisão.
+pronto quando: com o `.github/workflows/baterias.yml` real, `head -5` não contém `rainforest-gate: dados-de-exemplo` e `node scripts/conferir-publicacao.cjs .github/workflows/baterias.yml` sai **0** sem achado — o e-mail `ci@rainforest.invalid` deixa de ser achado porque TLD reservado (`.invalid`, `.example`, `.test`, `.localhost`) não é endereço real, e o id de run no comentário é reescrito sem a sequência de 11 dígitos; `nome@empresa.com.br` e `x@foo.test.com` (reservado fora do último rótulo) continuam achado; o próprio `scripts/conferir-publicacao.cjs`, cujos comentários são exemplos das formas que ele pega, leva o marcador nas primeiras linhas (o mesmo que a bateria dele já usa) — provado por `bash scripts/testa-conferir-publicacao.sh` com os casos impressos. Achado 3 da revisão.
